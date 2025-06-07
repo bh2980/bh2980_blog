@@ -1,4 +1,4 @@
-import { css } from "../../styled-system/css";
+import { css } from "@/pandacss/css";
 
 export default function Home() {
   return (
