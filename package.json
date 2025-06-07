@@ -13,8 +13,8 @@
     "@pandacss/dev": "^0.53.7",
     "next": "15.3.3",
     "next-mdx-remote": "^5.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "0.0.0-experimental-280ff6fe-20250606",
+    "react-dom": "0.0.0-experimental-280ff6fe-20250606"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
