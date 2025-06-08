@@ -3,6 +3,7 @@ import path from "path";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { ReactElement } from "react";
 import rehypePrettyCode from "rehype-pretty-code";
+import remarkBreaks from "remark-breaks";
 
 interface Frontmatter {
   slug: string;
@@ -61,6 +62,7 @@ export async function getPostContent(slug: string): Promise<Post> {
     options: {
       parseFrontmatter: true,
       mdxOptions: {
+        remarkPlugins: [remarkBreaks],
         rehypePlugins: [[rehypePrettyCode, { theme: "one-dark-pro" }]],
       },
     },
