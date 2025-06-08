@@ -15,7 +15,8 @@
     "next-mdx-remote": "^5.0.0",
     "react": "0.0.0-experimental-280ff6fe-20250606",
     "react-dom": "0.0.0-experimental-280ff6fe-20250606",
-    "rehype-pretty-code": "^0.14.1"
+    "rehype-pretty-code": "^0.14.1",
+    "remark-breaks": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
