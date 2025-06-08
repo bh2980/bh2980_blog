@@ -63,7 +63,14 @@ export async function getPostContent(slug: string): Promise<Post> {
       parseFrontmatter: true,
       mdxOptions: {
         remarkPlugins: [remarkBreaks],
-        rehypePlugins: [[rehypePrettyCode, { theme: "one-dark-pro" }]],
+        rehypePlugins: [
+          [
+            rehypePrettyCode,
+            {
+              theme: "catppuccin-frappe",
+            },
+          ],
+        ],
       },
     },
   });
