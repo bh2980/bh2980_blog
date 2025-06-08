@@ -2,18 +2,20 @@ import Link from "next/link";
 import { getPostContent } from "@/lib/posts";
 import { notFound } from "next/navigation";
 import {
-  container,
-  header,
-  title,
+  mainContainer,
+  postHeader,
+  postTitle,
   backLink,
-  content,
-  tagContainer,
-  tag,
+  postContent,
+  postTags,
+  postTag,
 } from "./styles";
 import { css } from "@/pandacss/css";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
 export default async function PostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = await getPostContent(slug);
@@ -23,31 +25,33 @@ export default async function PostPage({ params }: PageProps) {
   }
 
   return (
-    <div className={container}>
-      <div className={css({ maxWidth: "800px" })}>
-        <div className={header}>
+    <main className={mainContainer}>
+      <article className={css({ maxWidth: "800px" })}>
+        <header className={postHeader}>
           <Link href="/" className={backLink}>
             ← Back to home
           </Link>
-          <h1 className={title}>{post.title}</h1>
+          <h1 className={postTitle}>{post.title}</h1>
           <div
             className={css({
               display: "flex",
               gap: "1rem",
             })}
           >
-            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-            <div className={tagContainer}>
+            <time dateTime={new Date(post.createdAt).toISOString()}>
+              {new Date(post.createdAt).toLocaleDateString()}
+            </time>
+            <div className={postTags}>
               {post.tags.map((tagName) => (
-                <span key={tagName} className={tag}>
+                <span key={tagName} className={postTag}>
                   {tagName}
                 </span>
               ))}
             </div>
           </div>
-        </div>
-        <div className={content}>{post.content}</div>
-      </div>
-    </div>
+        </header>
+        <section className={postContent}>{post.content}</section>
+      </article>
+    </main>
   );
 }
