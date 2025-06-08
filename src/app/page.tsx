@@ -34,60 +34,78 @@ export default async function Home() {
           maxWidth: "800px",
         })}
       >
-        {posts.map((post) => (
-          <Link
-            key={post.slug}
-            href={`/posts/${post.slug}`}
-            className={css({
-              padding: "1rem",
-              borderRadius: "0.5rem",
-              backgroundColor: "gray.100",
-              _hover: {
-                backgroundColor: "gray.200",
-              },
-            })}
-          >
-            <h2
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <Link
+              key={post.slug}
+              href={`/posts/${post.slug}`}
               className={css({
-                fontSize: "1.5rem",
-                fontWeight: "semibold",
+                padding: "1rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "gray.100",
+                _hover: {
+                  backgroundColor: "gray.200",
+                },
               })}
             >
-              {post.title}
-            </h2>
-            {post.description && (
-              <p
+              <h2
                 className={css({
-                  marginTop: "0.5rem",
-                  color: "gray.600",
+                  fontSize: "1.5rem",
+                  fontWeight: "semibold",
                 })}
               >
-                {post.description}
-              </p>
-            )}
-            <div
-              className={css({
-                marginTop: "0.5rem",
-                display: "flex",
-                gap: "0.5rem",
-              })}
-            >
-              {post.tags.map((tag) => (
-                <span
-                  key={tag}
+                {post.title}
+              </h2>
+              {post.description && (
+                <p
                   className={css({
-                    padding: "0.25rem 0.5rem",
-                    backgroundColor: "gray.200",
-                    borderRadius: "0.25rem",
-                    fontSize: "0.875rem",
+                    marginTop: "0.5rem",
+                    color: "gray.600",
                   })}
                 >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </Link>
-        ))}
+                  {post.description}
+                </p>
+              )}
+              <div
+                className={css({
+                  marginTop: "0.5rem",
+                  display: "flex",
+                  gap: "0.5rem",
+                })}
+              >
+                {post.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className={css({
+                      padding: "0.25rem 0.5rem",
+                      backgroundColor: "gray.200",
+                      borderRadius: "0.25rem",
+                      fontSize: "0.875rem",
+                    })}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </Link>
+          ))
+        ) : (
+          <p
+            className={css({
+              color: "gray.600",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              width: "100%",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              fontSize: "1.25rem",
+              fontWeight: "bold",
+            })}
+          >
+            No posts found...😭
+          </p>
+        )}
       </div>
     </div>
   );
