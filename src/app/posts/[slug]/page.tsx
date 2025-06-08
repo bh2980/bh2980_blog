@@ -28,13 +28,14 @@ export default async function PostPage({ params }: PageProps) {
       <article className={css({ maxWidth: "800px" })}>
         <header className={postHeader}>
           <Link href="/" className={backLink}>
-            ← Back to home
+            ← Back
           </Link>
           <h1 className={postTitle}>{post.title}</h1>
           <div
             className={css({
               display: "flex",
               gap: "1rem",
+              alignItems: "center",
             })}
           >
             <time dateTime={new Date(post.createdAt).toISOString()}>
