@@ -26,7 +26,7 @@ export const postsSection = css({
 
 export const postCard = css({
   padding: "1.5rem",
-  borderRadius: "0.5rem",
+  borderRadius: "1rem",
   backgroundColor: "white",
   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
   transition: "all 0.2s ease-in-out",
