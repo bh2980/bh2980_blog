@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
+
+import localFont from "next/font/local";
+import { css } from "@/pandacss/css";
 
 const pretendard = localFont({
   src: "../../public/fonts/PretendardVariable.woff2",
-  variable: "--font-pretendard",
   display: "swap",
+  weight: "100 900",
+  variable: "--font-pretendard",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -19,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${pretendard.variable} antialiased`}>{children}</body>
+    <html lang="ko" className={pretendard.variable}>
+      <body className={css({ fontFamily: "pretendard" })}>{children}</body>
     </html>
   );
 }

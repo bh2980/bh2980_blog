@@ -12,7 +12,15 @@ export default defineConfig({
 
   // Useful for theme customization
   theme: {
-    extend: {},
+    extend: {
+      tokens: {
+        fonts: {
+          pretendard: {
+            value: "var(--font-pretendard)",
+          },
+        },
+      },
+    },
   },
 
   // The output directory for your css system
