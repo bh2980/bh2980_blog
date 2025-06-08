@@ -1,10 +1,9 @@
 import { css } from "@/pandacss/css";
-import { MDXRemote } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { getPostContent } from "@/lib/posts";
 
-export default function Post({ params }: { params: { slug: string } }) {
-  const source = getPostContent(params.slug);
+export default async function Post({ params }: { params: { slug: string } }) {
+  const post = await getPostContent(params.slug);
 
   return (
     <div
@@ -46,7 +45,7 @@ export default function Post({ params }: { params: { slug: string } }) {
           "& h1": {
             fontSize: "2.5rem",
             fontWeight: "bold",
-            marginBottom: "2rem",
+            marginBottom: "1rem",
           },
           "& p": {
             marginBottom: "1rem",
@@ -54,7 +53,55 @@ export default function Post({ params }: { params: { slug: string } }) {
           },
         })}
       >
-        <MDXRemote source={source} />
+        <h1>{post.title}</h1>
+        {post.description && (
+          <p
+            className={css({
+              fontSize: "1.25rem",
+              color: "gray.600",
+              marginBottom: "2rem",
+            })}
+          >
+            {post.description}
+          </p>
+        )}
+        <div
+          className={css({
+            display: "flex",
+            gap: "1rem",
+            marginBottom: "2rem",
+            alignItems: "center",
+          })}
+        >
+          <time
+            className={css({
+              color: "gray.600",
+            })}
+          >
+            {new Date(post.createdAt).toLocaleDateString()}
+          </time>
+          <div
+            className={css({
+              display: "flex",
+              gap: "0.5rem",
+            })}
+          >
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className={css({
+                  padding: "0.25rem 0.5rem",
+                  backgroundColor: "gray.100",
+                  borderRadius: "0.25rem",
+                  fontSize: "0.875rem",
+                })}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+        {post.content}
       </article>
     </div>
   );

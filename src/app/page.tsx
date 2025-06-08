@@ -2,8 +2,8 @@ import { css } from "@/pandacss/css";
 import Link from "next/link";
 import { getPostList } from "@/lib/posts";
 
-export default function Home() {
-  const posts = getPostList();
+export default async function Home() {
+  const posts = await getPostList();
 
   return (
     <div
@@ -13,7 +13,6 @@ export default function Home() {
         alignItems: "center",
         minHeight: "100vh",
         padding: "2rem",
-        gap: "2rem",
       })}
     >
       <h1
@@ -21,6 +20,7 @@ export default function Home() {
           fontSize: "2.5rem",
           fontWeight: "bold",
           marginBottom: "2rem",
+          color: "blue.500",
         })}
       >
         bh2980.dev
@@ -55,6 +55,37 @@ export default function Home() {
             >
               {post.title}
             </h2>
+            {post.description && (
+              <p
+                className={css({
+                  marginTop: "0.5rem",
+                  color: "gray.600",
+                })}
+              >
+                {post.description}
+              </p>
+            )}
+            <div
+              className={css({
+                marginTop: "0.5rem",
+                display: "flex",
+                gap: "0.5rem",
+              })}
+            >
+              {post.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className={css({
+                    padding: "0.25rem 0.5rem",
+                    backgroundColor: "gray.200",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.875rem",
+                  })}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </Link>
         ))}
       </div>
