@@ -84,6 +84,9 @@ export default defineConfig({
         height: "auto",
         margin: "1.5rem 0",
       },
+      "& figure[data-rehype-pretty-code-figure]": {
+        marginBottom: "1.5rem",
+      },
     },
   },
 });
