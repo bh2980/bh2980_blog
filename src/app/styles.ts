@@ -5,6 +5,7 @@ export const mainContainer = css({
   flexDirection: "column",
   alignItems: "center",
   minHeight: "100vh",
+  height: "100vh",
   padding: "2rem",
   backgroundColor: "gray.50",
 });
@@ -22,6 +23,8 @@ export const postsSection = css({
   gap: "1.5rem",
   width: "100%",
   maxWidth: "800px",
+  height: "100%",
+  flex: 1,
 });
 
 export const postCard = css({
@@ -68,13 +71,10 @@ export const postTag = css({
 
 export const emptyState = css({
   color: "gray.600",
+  fontSize: "1.25rem",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
   width: "100%",
-  borderRadius: "0.5rem",
-  padding: "2rem",
-  fontSize: "1.25rem",
-  fontWeight: "bold",
-  backgroundColor: "white",
+  height: "100%",
 });
