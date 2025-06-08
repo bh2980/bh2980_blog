@@ -31,13 +31,13 @@ export default defineConfig({
     ".prose": {
       "& h1": {
         fontSize: "2.25rem",
-        fontWeight: "700",
+        fontWeight: "800",
         marginTop: "2rem",
         marginBottom: "1rem",
       },
       "& h2": {
         fontSize: "1.875rem",
-        fontWeight: "600",
+        fontWeight: "700",
         marginTop: "1.75rem",
         marginBottom: "0.75rem",
       },
@@ -89,11 +89,11 @@ export default defineConfig({
 
         "&:has(figcaption[data-rehype-pretty-code-title])": {
           "& figcaption[data-rehype-pretty-code-title]": {
-            backgroundColor: "rgb(36, 36, 36)",
+            backgroundColor: "rgb(41, 41, 41)",
             padding: "0.7rem 1rem",
             color: "rgb(207, 207, 207)",
             borderRadius: "16px 16px 0 0",
-            borderBottom: "1px solid rgb(51 65 85)",
+            borderBottom: "1px solid rgb(201, 201, 201)",
           },
           "& pre": {
             borderRadius: "0 0 16px 16px",
