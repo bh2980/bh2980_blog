@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { ReactElement } from "react";
+import rehypePrettyCode from "rehype-pretty-code";
 
 interface Frontmatter {
   slug: string;
@@ -28,7 +29,9 @@ export async function getPostList(): Promise<Frontmatter[]> {
       );
       const { frontmatter } = await compileMDX<Frontmatter>({
         source,
-        options: { parseFrontmatter: true },
+        options: {
+          parseFrontmatter: true,
+        },
       });
 
       return {
@@ -55,7 +58,12 @@ export async function getPostContent(slug: string): Promise<Post> {
   const source = fs.readFileSync(filePath, "utf8");
   const { frontmatter, content } = await compileMDX<Frontmatter>({
     source,
-    options: { parseFrontmatter: true },
+    options: {
+      parseFrontmatter: true,
+      mdxOptions: {
+        rehypePlugins: [[rehypePrettyCode, { theme: "one-dark-pro" }]],
+      },
+    },
   });
 
   return {
