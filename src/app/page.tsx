@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { getPostList } from '@/lib/posts';
+import Link from "next/link";
+import { getPostList } from "@/lib/posts";
 import {
   container,
   title,
@@ -10,14 +10,18 @@ import {
   tagContainer,
   tag,
   noPosts,
-} from './styles';
+} from "./styles";
+import { css } from "@/pandacss/css";
 
 export default async function Home() {
   const posts = await getPostList();
 
   return (
     <div className={container}>
-      <h1 className={title}>bh2980.dev</h1>
+      <h1 className={title}>
+        bh2980
+        <span className={css({ color: "gray.300" })}>.dev</span>
+      </h1>
       <div className={postList}>
         {posts.length > 0 ? (
           posts.map((post) => (

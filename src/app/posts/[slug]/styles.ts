@@ -11,15 +11,6 @@ export const container = css({
 export const header = css({
   display: "flex",
   flexDirection: "column",
-  alignItems: "center",
-  marginBottom: "2rem",
-});
-
-export const title = css({
-  fontSize: "2.5rem",
-  fontWeight: "bold",
-  marginBottom: "1rem",
-  color: "blue.500",
 });
 
 export const backLink = css({
@@ -28,13 +19,19 @@ export const backLink = css({
   _hover: {
     textDecoration: "underline",
   },
+  marginBottom: "1rem",
+});
+
+export const title = css({
+  fontSize: "2.5rem",
+  fontWeight: "bold",
+  color: "blue.500",
 });
 
 export const content = css({
   width: "100%",
-  maxWidth: "900px",
   backgroundColor: "white",
-  padding: "2rem",
+  padding: "2rem 0rem",
 });
 
 export const tagContainer = css({

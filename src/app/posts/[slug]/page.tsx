@@ -24,29 +24,30 @@ export default async function PostPage({ params }: PageProps) {
 
   return (
     <div className={container}>
-      <Link href="/" className={backLink}>
-        ← Back to home
-      </Link>
-      <div className={header}>
-        <h1 className={title}>{post.title}</h1>
-        <div
-          className={css({
-            display: "flex",
-            gap: "1rem",
-            alignItems: "center",
-          })}
-        >
-          <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-          <div className={tagContainer}>
-            {post.tags.map((tagName) => (
-              <span key={tagName} className={tag}>
-                {tagName}
-              </span>
-            ))}
+      <div className={css({ maxWidth: "800px" })}>
+        <div className={header}>
+          <Link href="/" className={backLink}>
+            ← Back to home
+          </Link>
+          <h1 className={title}>{post.title}</h1>
+          <div
+            className={css({
+              display: "flex",
+              gap: "1rem",
+            })}
+          >
+            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+            <div className={tagContainer}>
+              {post.tags.map((tagName) => (
+                <span key={tagName} className={tag}>
+                  {tagName}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
+        <div className={content}>{post.content}</div>
       </div>
-      <div className={content}>{post.content}</div>
     </div>
   );
 }
