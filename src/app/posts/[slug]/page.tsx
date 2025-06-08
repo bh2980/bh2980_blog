@@ -6,7 +6,6 @@ import {
   postHeader,
   postTitle,
   backLink,
-  postContent,
   postTags,
   postTag,
 } from "./styles";
@@ -50,7 +49,7 @@ export default async function PostPage({ params }: PageProps) {
             </div>
           </div>
         </header>
-        <section className={postContent}>{post.content}</section>
+        <section className="prose">{post.content}</section>
       </article>
     </main>
   );
