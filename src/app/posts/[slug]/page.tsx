@@ -1,12 +1,10 @@
 import { css } from "@/pandacss/css";
-import fs from "fs";
-import path from "path";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import Link from "next/link";
+import { getPostContent } from "@/lib/posts";
 
 export default function Post({ params }: { params: { slug: string } }) {
-  const filePath = path.join(process.cwd(), "src/posts", `${params.slug}.mdx`);
-  const source = fs.readFileSync(filePath, "utf8");
+  const source = getPostContent(params.slug);
 
   return (
     <div

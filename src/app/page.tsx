@@ -1,20 +1,9 @@
 import { css } from "@/pandacss/css";
-import fs from "fs";
-import path from "path";
 import Link from "next/link";
+import { getPostList } from "@/lib/posts";
 
 export default function Home() {
-  const posts = fs
-    .readdirSync(path.join(process.cwd(), "src/posts"))
-    .filter((file) => file.endsWith(".mdx"))
-    .map((file) => ({
-      slug: file.replace(/\.mdx$/, ""),
-      title: file
-        .replace(/\.mdx$/, "")
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" "),
-    }));
+  const posts = getPostList();
 
   return (
     <div
@@ -34,7 +23,7 @@ export default function Home() {
           marginBottom: "2rem",
         })}
       >
-        My Blog
+        bh2980.dev
       </h1>
       <div
         className={css({
