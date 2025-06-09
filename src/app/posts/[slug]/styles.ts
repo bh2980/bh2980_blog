@@ -22,7 +22,8 @@ export const postTitle = css({
 });
 
 export const backLink = css({
-  color: "blue.600",
+  color: "blue.500",
+  fontFamily: "righteous",
   textDecoration: "none",
   "&:hover": {
     textDecoration: "underline",
