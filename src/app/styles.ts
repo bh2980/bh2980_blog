@@ -20,9 +20,10 @@ export const siteTitle = css({
   "&::after": {
     content: "''",
     position: "absolute",
-    left: 0,
+    left: "50%",
+    transform: "translateX(-50%)",
     bottom: "-4px",
-    width: "100%",
+    width: "90%",
     height: "12px",
     backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='12'><path stroke='red' fill='transparent' d='M0 6 Q5 0,10 6 T20 6 T30 6 T40 6 T50 6 T60 6 T70 6 T80 6 T90 6 T100 6 T110 6 T120 6 T130 6 T140 6 T150 6 T160 6 T170 6 T180 6 T190 6 T200 6' stroke-width='2'/></svg>")`,
     backgroundRepeat: "no-repeat",
