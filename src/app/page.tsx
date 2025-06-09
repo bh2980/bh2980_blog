@@ -20,8 +20,7 @@ export default async function Home() {
     <main className={mainContainer}>
       <header>
         <h1 className={siteTitle}>
-          bh2980
-          <span className={css({ color: "gray.300" })}>.dev</span>
+          bh2980<span className={css({ color: "gray.300" })}>.dev</span>
         </h1>
       </header>
       <section className={postsSection}>
