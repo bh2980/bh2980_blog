@@ -15,8 +15,11 @@ export default defineConfig({
     extend: {
       tokens: {
         fonts: {
-          pretendard: {
-            value: "var(--font-pretendard)",
+          ibmPlex: {
+            value: "var(--font-ibmplex)",
+          },
+          righteous: {
+            value: "var(--font-righteous)",
           },
         },
       },
@@ -47,7 +50,10 @@ export default defineConfig({
         marginTop: "1.5rem",
         marginBottom: "0.5rem",
       },
-      "& p": { marginBottom: "1.25rem", lineHeight: "1.75" },
+      "& p": {
+        marginBottom: "1.25rem",
+        lineHeight: "1.75",
+      },
       "& ul": {
         listStyleType: "disc",
         paddingLeft: "1.5rem",

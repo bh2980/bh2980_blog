@@ -4,11 +4,51 @@ import "./globals.css";
 import localFont from "next/font/local";
 import { css } from "@/pandacss/css";
 
-const pretendard = localFont({
-  src: "../../public/fonts/PretendardVariable.woff2",
+const ibmPlex = localFont({
+  src: [
+    {
+      path: "../../public/fonts/IBMPlexSansKR-ExtraLight.woff2",
+      weight: "200",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-Light.woff2",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-Text.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-Regular.woff2",
+      weight: "450",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/IBMPlexSansKR-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-ibmplex",
+});
+
+const righteous = localFont({
+  src: "../../public/fonts/Righteous-Regular.ttf",
   display: "swap",
-  weight: "100 900",
-  variable: "--font-pretendard",
+  variable: "--font-righteous",
   preload: true,
 });
 
@@ -23,8 +63,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={pretendard.variable}>
-      <body className={css({ fontFamily: "pretendard" })}>{children}</body>
+    <html lang="ko" className={`${ibmPlex.variable} ${righteous.variable}`}>
+      <body className={css({ fontFamily: "ibmPlex" })}>{children}</body>
     </html>
   );
 }
