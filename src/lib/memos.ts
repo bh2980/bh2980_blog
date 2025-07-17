@@ -121,6 +121,151 @@ type UpdateUser = Partial<User>;
 // { id?: number; name?: string; email?: string; age?: number; }
 \`\`\``,
   },
+  {
+    id: 4,
+    slug: "css-battle-02",
+    title: "CSS Battle #2 - Carrom",
+    date: "2024-01-25",
+    category: "css-battle",
+    tags: ["css", "challenge", "circle"],
+    excerpt: "CSS Battle 두 번째 문제 Carrom 풀이. 원형 요소들의 배치 최적화",
+    content: `# CSS Battle #2 - Carrom
+
+## 문제
+4개의 원형 요소를 사각형 모서리에 배치
+
+## 내 풀이
+\`\`\`html
+<div class="container">
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+</div>
+\`\`\`
+
+## 핵심 CSS
+- border-radius: 50% (원형)
+- position: absolute (정확한 위치)
+- 계산된 좌표값 활용`,
+  },
+  {
+    id: 5,
+    slug: "css-centering-techniques",
+    title: "CSS 중앙 정렬 모든 방법",
+    date: "2024-01-23",
+    category: "etc",
+    tags: ["css", "centering", "layout"],
+    excerpt:
+      "CSS로 요소를 중앙에 정렬하는 다양한 방법들 정리 - Flexbox, Grid, 전통적 방법까지",
+    content: `# CSS 중앙 정렬 모든 방법
+
+## 1. Flexbox 방법
+\`\`\`css
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+\`\`\`
+
+## 2. CSS Grid 방법
+\`\`\`css
+.container {
+  display: grid;
+  place-items: center;
+}
+\`\`\`
+
+## 3. 전통적 방법
+\`\`\`css
+.container {
+  position: relative;
+}
+.child {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+\`\`\``,
+  },
+  {
+    id: 6,
+    slug: "css-battle-03",
+    title: "CSS Battle #3 - Push Button",
+    date: "2024-01-21",
+    category: "css-battle",
+    tags: ["css", "challenge", "button"],
+    excerpt:
+      "CSS Battle 세 번째 문제 Push Button 풀이. 그라데이션과 그림자 효과",
+    content: `# CSS Battle #3 - Push Button
+
+## 문제
+입체적인 버튼 효과 만들기
+
+## 핵심 기법
+- linear-gradient로 그라데이션
+- box-shadow로 입체감
+- border-radius로 둥근 모서리
+
+## 최적화 팁
+- 단일 div로 해결
+- 최소한의 CSS 속성 사용`,
+  },
+  {
+    id: 7,
+    slug: "css-pseudo-elements",
+    title: "CSS 가상 요소 활용법",
+    date: "2024-01-19",
+    category: "etc",
+    tags: ["css", "pseudo-elements", "before", "after"],
+    excerpt: "::before와 ::after 가상 요소를 활용한 창의적인 CSS 기법들",
+    content: `# CSS 가상 요소 활용법
+
+## 기본 문법
+\`\`\`css
+.element::before {
+  content: "";
+  display: block;
+  /* 스타일 */
+}
+\`\`\`
+
+## 활용 예시
+1. 아이콘 추가
+2. 장식 요소 생성
+3. 레이아웃 보조
+4. 호버 효과
+
+## 주의사항
+- content 속성 필수
+- display 속성 설정 권장`,
+  },
+  {
+    id: 8,
+    slug: "css-battle-04",
+    title: "CSS Battle #4 - Ups n Downs",
+    date: "2024-01-17",
+    category: "css-battle",
+    tags: ["css", "challenge", "zigzag"],
+    excerpt:
+      "CSS Battle 네 번째 문제 지그재그 패턴 만들기. 복잡한 모양을 간단하게",
+    content: `# CSS Battle #4 - Ups n Downs
+
+## 문제 분석
+지그재그 패턴의 요소들 배치
+
+## 해결 전략
+1. 기본 도형들의 조합
+2. transform rotate 활용
+3. 정확한 positioning
+
+## 코드 최적화
+- 불필요한 HTML 제거
+- CSS 단축 속성 활용
+- 공백 최소화`,
+  },
 ];
 
 export function getAllMemos(): Memo[] {
