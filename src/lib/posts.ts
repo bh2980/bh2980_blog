@@ -43,6 +43,50 @@ const mockPosts: Post[] = [
       "# Tailwind CSS 유용한 팁들\n\nTailwind CSS 사용 시 도움이 되는 팁들을 소개합니다.\n\n## 반응형 디자인\n\n- `sm:`, `md:`, `lg:` 접두사 활용\n- 모바일 퍼스트 접근법",
     tags: ["CSS", "Tailwind", "스타일링", "팁"],
   },
+  {
+    id: 4,
+    slug: "css-grid-guide",
+    title: "CSS Grid 완벽 가이드",
+    date: "2024-01-22",
+    excerpt:
+      "CSS Grid의 기본 개념부터 고급 레이아웃까지 완벽하게 마스터하는 방법을 알아보겠습니다.",
+    content:
+      "# CSS Grid 완벽 가이드\n\nCSS Grid는 2차원 레이아웃을 위한 강력한 도구입니다.\n\n## 기본 개념\n\n- grid-container와 grid-item\n- grid-template-columns, grid-template-rows\n- gap 속성 활용",
+    tags: ["CSS", "Grid", "레이아웃"],
+  },
+  {
+    id: 5,
+    slug: "css-flexbox-mastery",
+    title: "Flexbox로 마스터하는 CSS 레이아웃",
+    date: "2024-01-20",
+    excerpt:
+      "Flexbox의 모든 속성을 이해하고 실무에서 활용할 수 있는 레이아웃 기법들을 정리했습니다.",
+    content:
+      "# Flexbox로 마스터하는 CSS 레이아웃\n\nFlexbox는 1차원 레이아웃의 최고의 선택입니다.\n\n## 주요 속성\n\n- justify-content: 주축 정렬\n- align-items: 교차축 정렬\n- flex-grow, flex-shrink, flex-basis",
+    tags: ["CSS", "Flexbox", "레이아웃", "정렬"],
+  },
+  {
+    id: 6,
+    slug: "css-animations-guide",
+    title: "CSS 애니메이션과 트랜지션 활용법",
+    date: "2024-01-18",
+    excerpt:
+      "CSS만으로 만드는 부드럽고 인상적인 애니메이션 효과들을 살펴보고 실무에 적용하는 방법을 알아봅니다.",
+    content:
+      "# CSS 애니메이션과 트랜지션 활용법\n\n부드러운 사용자 경험을 위한 CSS 애니메이션을 알아봅시다.\n\n## 기본 개념\n\n- transition: 상태 변화 애니메이션\n- animation: 키프레임 기반 애니메이션\n- transform: 변형 효과",
+    tags: ["CSS", "애니메이션", "트랜지션", "UX"],
+  },
+  {
+    id: 7,
+    slug: "css-variables-tips",
+    title: "CSS 변수로 효율적인 스타일 관리하기",
+    date: "2024-01-16",
+    excerpt:
+      "CSS 커스텀 속성(변수)을 활용해서 유지보수하기 쉽고 일관성 있는 스타일시트를 작성하는 방법입니다.",
+    content:
+      "# CSS 변수로 효율적인 스타일 관리하기\n\nCSS 변수는 코드 재사용성과 유지보수성을 크게 향상시킵니다.\n\n## 활용 방법\n\n- :root에서 전역 변수 정의\n- 컴포넌트별 지역 변수\n- JavaScript와의 연동",
+    tags: ["CSS", "변수", "유지보수", "효율성"],
+  },
 ];
 
 export function getAllPosts(): Post[] {

@@ -22,7 +22,7 @@ const mockSeries: Series[] = [
     title: "CSS 마스터하기",
     description:
       "CSS의 기초부터 고급 기법까지, 실무에서 바로 사용할 수 있는 CSS 스킬을 단계별로 학습하는 묶음글입니다.",
-    postIds: [3], // Tailwind CSS 유용한 팁들
+    postIds: [3, 4, 5], // Tailwind CSS 팁, CSS Grid 가이드, Flexbox 마스터리
     createdDate: "2024-01-05",
   },
   {
@@ -32,6 +32,30 @@ const mockSeries: Series[] = [
       "개발자로서의 성장 과정과 경험을 공유하는 묶음글입니다. 개발 일기부터 커리어 조언까지 다양한 이야기를 담고 있습니다.",
     postIds: [1], // 첫 번째 블로그 포스트
     createdDate: "2024-01-15",
+  },
+  {
+    id: 4,
+    title: "CSS 레이아웃 완전정복",
+    description:
+      "Grid, Flexbox부터 최신 CSS 레이아웃 기법까지 모든 것을 다루는 완전한 가이드입니다.",
+    postIds: [4, 5], // CSS Grid 가이드, Flexbox 마스터리
+    createdDate: "2024-01-22",
+  },
+  {
+    id: 5,
+    title: "CSS 실무 활용 가이드",
+    description:
+      "실무에서 자주 사용하는 CSS 기법들을 모아둔 실용적인 가이드입니다. 애니메이션, 변수 등 다양한 주제를 다룹니다.",
+    postIds: [6, 7], // CSS 애니메이션, CSS 변수
+    createdDate: "2024-01-18",
+  },
+  {
+    id: 6,
+    title: "모던 CSS 테크닉",
+    description:
+      "최신 CSS 기법과 트렌드를 다루는 묶음글입니다. CSS 변수, 애니메이션 등 모던 웹 개발에 필요한 내용들을 정리했습니다.",
+    postIds: [6, 7, 3], // CSS 애니메이션, CSS 변수, Tailwind CSS
+    createdDate: "2024-01-16",
   },
 ];
 
