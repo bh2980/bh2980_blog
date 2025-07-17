@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import SearchBar from "./SearchBar";
 
 export default function Navigation() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -13,6 +18,7 @@ export default function Navigation() {
             bh2980's blog
           </Link>
 
+          {/* 데스크톱 메뉴 */}
           <div className="hidden md:flex items-center space-x-8">
             <div className="flex space-x-6">
               <Link
@@ -43,8 +49,8 @@ export default function Navigation() {
             <SearchBar />
           </div>
 
-          {/* 모바일에서는 간단한 메뉴만 */}
-          <div className="md:hidden flex space-x-4">
+          {/* 모바일 메뉴 버튼 */}
+          <div className="md:hidden flex items-center space-x-3">
             <Link
               href="/search"
               className="text-gray-600 hover:text-gray-900"
@@ -64,8 +70,72 @@ export default function Navigation() {
                 />
               </svg>
             </Link>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-gray-600 hover:text-gray-900"
+              aria-label="메뉴"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {isMobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* 모바일 드롭다운 메뉴 */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 py-4">
+            <div className="flex flex-col space-y-3">
+              <Link
+                href="/"
+                className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                홈
+              </Link>
+              <Link
+                href="/series"
+                className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                묶음글
+              </Link>
+              <Link
+                href="/blog"
+                className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                블로그
+              </Link>
+              <Link
+                href="/memo"
+                className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                메모장
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

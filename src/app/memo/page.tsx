@@ -80,7 +80,7 @@ export default function MemoPage() {
         {memos.map((memo) => (
           <article
             key={memo.slug}
-            className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all hover:border-gray-300"
+            className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all hover:border-gray-300 flex flex-col h-full"
           >
             <div className="flex items-center justify-between mb-3">
               <span
@@ -111,17 +111,17 @@ export default function MemoPage() {
               {memo.excerpt}
             </p>
 
-            <div className="flex flex-wrap gap-1 mb-4">
+            <div className="flex flex-wrap gap-1 mb-4 flex-grow">
               {memo.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded h-fit"
                 >
                   #{tag}
                 </span>
               ))}
               {memo.tags.length > 3 && (
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 h-fit">
                   +{memo.tags.length - 3}
                 </span>
               )}
@@ -129,7 +129,7 @@ export default function MemoPage() {
 
             <Link
               href={`/memo/${memo.slug}`}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-auto"
             >
               자세히 보기 →
             </Link>
