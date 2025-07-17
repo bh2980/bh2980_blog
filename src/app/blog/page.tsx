@@ -40,6 +40,17 @@ export default function BlogPage() {
 
             <p className="text-gray-700 leading-relaxed mb-6">{post.excerpt}</p>
 
+            <div className="flex flex-wrap gap-2 mb-6">
+              {post.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-full font-medium"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+
             <Link
               href={`/blog/${post.slug}`}
               className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
