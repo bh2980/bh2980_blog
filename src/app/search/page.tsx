@@ -65,11 +65,60 @@ export default function SearchPage() {
     ? results.memos
     : results.memos.slice(0, INITIAL_DISPLAY_COUNT);
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const searchQuery = formData.get("q") as string;
+
+    if (searchQuery.trim()) {
+      window.history.pushState(
+        {},
+        "",
+        `/search?q=${encodeURIComponent(searchQuery.trim())}`
+      );
+      setQuery(searchQuery.trim());
+      setIsLoading(true);
+      const searchResults = searchContent(searchQuery.trim());
+      setResults(searchResults);
+      setIsLoading(false);
+      // 새 검색 시 "더 보기" 상태 초기화
+      setShowAllPosts(false);
+      setShowAllSeries(false);
+      setShowAllMemos(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 페이지 제목 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">검색 🔍</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">검색 🔍</h1>
+        
+        {/* 모바일용 검색창 */}
+        <form onSubmit={handleSearch} className="relative max-w-2xl md:hidden">
+          <input
+            type="text"
+            name="q"
+            defaultValue={query}
+            placeholder="포스트, 묶음글, 메모를 검색해보세요..."
+            className="w-full px-6 py-4 pl-12 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </form>
       </div>
 
       {/* 검색 결과 */}
@@ -224,7 +273,7 @@ export default function SearchPage() {
                     {displayedMemos.map((memo) => (
                       <article
                         key={memo.id}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col h-full"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span
@@ -251,21 +300,21 @@ export default function SearchPage() {
                           </Link>
                         </h4>
 
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">
                           {memo.excerpt}
                         </p>
 
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 mt-auto">
                           {memo.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+                              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded h-fit"
                             >
                               #{tag}
                             </span>
                           ))}
                           {memo.tags.length > 3 && (
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-400 h-fit">
                               +{memo.tags.length - 3}
                             </span>
                           )}
