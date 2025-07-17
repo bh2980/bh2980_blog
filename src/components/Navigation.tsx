@@ -24,6 +24,12 @@ export default function Navigation() {
             >
               블로그
             </Link>
+            <Link
+              href="/memo"
+              className="text-gray-600 hover:text-gray-900 font-medium"
+            >
+              메모장
+            </Link>
           </div>
         </div>
       </div>
