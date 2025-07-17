@@ -1,8 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { getAllMemos, categoryLabels, type Memo } from "@/lib/memos";
 
 export default function MemoPage() {
-  const memos = getAllMemos();
+  const allMemos = getAllMemos();
+  const [selectedCategory, setSelectedCategory] = useState<
+    Memo["category"] | "all"
+  >("all");
+
+  const memos =
+    selectedCategory === "all"
+      ? allMemos
+      : allMemos.filter((memo) => memo.category === selectedCategory);
 
   const getCategoryBadgeColor = (category: Memo["category"]) => {
     const colors = {
@@ -14,13 +25,55 @@ export default function MemoPage() {
     return colors[category];
   };
 
+  const getTabColor = (category: Memo["category"] | "all") => {
+    if (selectedCategory === category) {
+      if (category === "all") return "bg-blue-600 text-white";
+      const colors = {
+        algorithm: "bg-green-600 text-white",
+        "css-battle": "bg-purple-600 text-white",
+        typescript: "bg-blue-600 text-white",
+        etc: "bg-gray-600 text-white",
+      };
+      return colors[category];
+    }
+    return "bg-gray-100 text-gray-700 hover:bg-gray-200";
+  };
+
+  const getCategoryCount = (category: Memo["category"] | "all") => {
+    if (category === "all") return allMemos.length;
+    return allMemos.filter((memo) => memo.category === category).length;
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">메모장 📝</h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-gray-600 mb-8">
           알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
         </p>
+
+        {/* 카테고리 필터 탭 */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => setSelectedCategory("all")}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+              "all"
+            )}`}
+          >
+            전체 ({getCategoryCount("all")})
+          </button>
+          {Object.entries(categoryLabels).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setSelectedCategory(key as Memo["category"])}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                key as Memo["category"]
+              )}`}
+            >
+              {label} ({getCategoryCount(key as Memo["category"])})
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -86,7 +139,13 @@ export default function MemoPage() {
 
       {memos.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">아직 작성된 메모가 없습니다.</p>
+          <p className="text-gray-500 text-lg">
+            {selectedCategory === "all"
+              ? "아직 작성된 메모가 없습니다."
+              : `${
+                  categoryLabels[selectedCategory as Memo["category"]]
+                } 카테고리에 메모가 없습니다.`}
+          </p>
         </div>
       )}
     </div>
