@@ -19,6 +19,12 @@ export default function Navigation() {
               홈
             </Link>
             <Link
+              href="/series"
+              className="text-gray-600 hover:text-gray-900 font-medium"
+            >
+              묶음글
+            </Link>
+            <Link
               href="/blog"
               className="text-gray-600 hover:text-gray-900 font-medium"
             >
