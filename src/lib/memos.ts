@@ -1,4 +1,5 @@
 export interface Memo {
+  id: number;
   slug: string;
   title: string;
   date: string;
@@ -11,6 +12,7 @@ export interface Memo {
 // 임시 목업 데이터 (나중에 Notion API로 교체 예정)
 const mockMemos: Memo[] = [
   {
+    id: 1,
     slug: "two-sum-solution",
     title: "Two Sum 문제 풀이",
     date: "2024-01-20",
@@ -45,6 +47,7 @@ function twoSum(nums: number[], target: number): number[] {
 - 공간복잡도: O(n): HashMap 사용`,
   },
   {
+    id: 2,
     slug: "css-battle-01",
     title: "CSS Battle #1 - Simply Square",
     date: "2024-01-18",
@@ -80,6 +83,7 @@ div{
 - CSS 단축 속성 활용`,
   },
   {
+    id: 3,
     slug: "typescript-utility-types",
     title: "TypeScript Utility Types 정리",
     date: "2024-01-15",
@@ -125,6 +129,10 @@ export function getAllMemos(): Memo[] {
 
 export function getMemoBySlug(slug: string): Memo | null {
   return mockMemos.find((memo) => memo.slug === slug) || null;
+}
+
+export function getMemoById(id: number): Memo | null {
+  return mockMemos.find((memo) => memo.id === id) || null;
 }
 
 export function getMemosByCategory(category: Memo["category"]): Memo[] {
