@@ -67,7 +67,7 @@ export default function Home() {
                 </Link>
               </h3>
               <p className="text-gray-600 text-sm mb-3">
-                {new Date(post.date).toLocaleDateString("ko-KR")}
+                {new Date(post.createdAt).toLocaleDateString("ko-KR")}
               </p>
               <p className="text-gray-700 leading-relaxed mb-4">
                 {post.excerpt}
@@ -115,7 +115,7 @@ export default function Home() {
                   묶음글
                 </span>
                 <time className="text-xs text-gray-500">
-                  {new Date(seriesItem.createdDate).toLocaleDateString(
+                  {new Date(seriesItem.createdAt).toLocaleDateString(
                     "ko-KR",
                     {
                       month: "short",

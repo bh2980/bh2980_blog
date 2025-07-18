@@ -65,7 +65,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
           </h1>
           <div className="flex items-center text-gray-600 mb-6">
             <time>
-              {new Date(post.date).toLocaleDateString("ko-KR", {
+              {new Date(post.createdAt).toLocaleDateString("ko-KR", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",

@@ -179,7 +179,7 @@ export default function SearchPage() {
                           </Link>
                         </h4>
                         <p className="text-gray-600 text-sm mb-3">
-                          {new Date(post.date).toLocaleDateString("ko-KR")}
+                          {new Date(post.createdAt).toLocaleDateString("ko-KR")}
                         </p>
                         <p className="text-gray-700 mb-4">{post.excerpt}</p>
                         <div className="flex flex-wrap gap-2">
