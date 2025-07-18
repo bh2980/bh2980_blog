@@ -1,0 +1,184 @@
+---
+id: 5
+title: "Flexbox로 마스터하는 CSS 레이아웃"
+slug: "css-flexbox-mastery"
+createdAt: "2024-01-20T09:00:00.000Z"
+tags: ["CSS", "Flexbox", "레이아웃", "정렬"]
+---
+
+# Flexbox로 마스터하는 CSS 레이아웃
+
+Flexbox는 1차원 레이아웃의 최고의 선택입니다.
+
+## 기본 개념
+
+- **flex-container**: `display: flex`가 적용된 부모 요소
+- **flex-item**: flex-container의 직접적인 자식 요소
+- **주축(main axis)**: flex-direction에 의해 정의되는 주요 축
+- **교차축(cross axis)**: 주축에 수직인 축
+
+## 컨테이너 속성
+
+### 1. flex-direction
+
+```css
+.container {
+  display: flex;
+  flex-direction: row; /* 기본값: 가로 방향 */
+  flex-direction: column; /* 세로 방향 */
+  flex-direction: row-reverse; /* 가로 역방향 */
+  flex-direction: column-reverse; /* 세로 역방향 */
+}
+```
+
+### 2. justify-content (주축 정렬)
+
+```css
+.container {
+  justify-content: flex-start; /* 시작점 정렬 */
+  justify-content: flex-end; /* 끝점 정렬 */
+  justify-content: center; /* 중앙 정렬 */
+  justify-content: space-between; /* 양 끝 배치, 사이 균등 분배 */
+  justify-content: space-around; /* 아이템 주위 균등 분배 */
+  justify-content: space-evenly; /* 모든 간격 균등 분배 */
+}
+```
+
+### 3. align-items (교차축 정렬)
+
+```css
+.container {
+  align-items: stretch; /* 기본값: 컨테이너 높이에 맞춤 */
+  align-items: flex-start; /* 교차축 시작점 */
+  align-items: flex-end; /* 교차축 끝점 */
+  align-items: center; /* 교차축 중앙 */
+  align-items: baseline; /* 텍스트 베이스라인 */
+}
+```
+
+### 4. flex-wrap
+
+```css
+.container {
+  flex-wrap: nowrap; /* 기본값: 줄바꿈 안함 */
+  flex-wrap: wrap; /* 줄바꿈 허용 */
+  flex-wrap: wrap-reverse; /* 역방향 줄바꿈 */
+}
+```
+
+## 아이템 속성
+
+### 1. flex-grow, flex-shrink, flex-basis
+
+```css
+.item {
+  flex-grow: 1; /* 여유 공간 분배 비율 */
+  flex-shrink: 1; /* 공간 부족 시 축소 비율 */
+  flex-basis: auto; /* 기본 크기 */
+
+  /* 축약형 */
+  flex: 1; /* flex: 1 1 0% */
+  flex: 0 1 auto; /* 기본값 */
+}
+```
+
+### 2. align-self
+
+```css
+.item {
+  align-self: auto; /* 부모의 align-items 상속 */
+  align-self: flex-start; /* 개별 교차축 정렬 */
+  align-self: center;
+}
+```
+
+### 3. order
+
+```css
+.item {
+  order: 0; /* 기본값 */
+  order: 1; /* 나타나는 순서 변경 */
+}
+```
+
+## 실용적인 패턴들
+
+### 1. 완벽한 중앙 정렬
+
+```css
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+```
+
+### 2. 네비게이션 바
+
+```css
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+}
+```
+
+### 3. 카드 레이아웃
+
+```css
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.card {
+  flex: 1 1 300px; /* 최소 300px, 유연하게 증가 */
+}
+```
+
+### 4. 푸터 하단 고정
+
+```css
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1; /* 남은 공간 모두 차지 */
+}
+```
+
+## 반응형 디자인에서의 활용
+
+```css
+.responsive-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .responsive-layout {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    flex: 0 0 250px; /* 고정 너비 */
+  }
+
+  .content {
+    flex: 1; /* 나머지 공간 */
+  }
+}
+```
+
+Flexbox는 간단하면서도 강력한 레이아웃 도구입니다. 특히 1차원 정렬과 분배에 최적화되어 있어 네비게이션, 카드 레이아웃 등에 매우 유용합니다! 💪

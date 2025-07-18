@@ -1,0 +1,314 @@
+---
+id: 7
+title: "CSS 변수로 효율적인 스타일 관리하기"
+slug: "css-variables-tips"
+createdAt: "2024-01-16T09:00:00.000Z"
+tags: ["CSS", "변수", "유지보수", "효율성"]
+---
+
+# CSS 변수로 효율적인 스타일 관리하기
+
+CSS 변수는 코드 재사용성과 유지보수성을 크게 향상시킵니다.
+
+## 기본 문법
+
+### 변수 정의
+
+```css
+:root {
+  --primary-color: #3b82f6;
+  --secondary-color: #10b981;
+  --font-size-base: 16px;
+  --spacing-unit: 8px;
+}
+```
+
+### 변수 사용
+
+```css
+.button {
+  background-color: var(--primary-color);
+  font-size: var(--font-size-base);
+  padding: calc(var(--spacing-unit) * 2);
+}
+```
+
+### 기본값 설정
+
+```css
+.element {
+  color: var(--text-color, #333); /* --text-color가 없으면 #333 사용 */
+}
+```
+
+## 실용적인 활용 방법
+
+### 1. 컬러 시스템 구축
+
+```css
+:root {
+  /* Primary Colors */
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-900: #1e3a8a;
+
+  /* Semantic Colors */
+  --color-primary: var(--blue-500);
+  --color-primary-hover: var(--blue-600);
+  --color-text: var(--gray-900);
+  --color-text-muted: var(--gray-600);
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+}
+```
+
+### 2. 타이포그래피 시스템
+
+```css
+:root {
+  /* Font Families */
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "Fira Code", monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+}
+
+.heading-1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+```
+
+### 3. 간격 시스템
+
+```css
+:root {
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-12: 3rem; /* 48px */
+}
+
+.card {
+  padding: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+```
+
+### 4. 반응형 변수
+
+```css
+:root {
+  --container-padding: var(--space-4);
+  --grid-columns: 1;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --container-padding: var(--space-6);
+    --grid-columns: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-padding: var(--space-8);
+    --grid-columns: 3;
+  }
+}
+
+.container {
+  padding: var(--container-padding);
+}
+
+.grid {
+  grid-template-columns: repeat(var(--grid-columns), 1fr);
+}
+```
+
+## 다크 모드 구현
+
+### CSS만으로 다크 모드
+
+```css
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --border-color: #374151;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+```
+
+### 시스템 설정 감지
+
+```css
+:root {
+  --bg-primary: #ffffff;
+  --text-primary: #1f2937;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #111827;
+    --text-primary: #f9fafb;
+  }
+}
+```
+
+## JavaScript와의 연동
+
+### 변수 값 읽기
+
+```javascript
+// CSS 변수 값 가져오기
+const primaryColor = getComputedStyle(document.documentElement)
+  .getPropertyValue("--primary-color")
+  .trim();
+
+console.log(primaryColor); // #3b82f6
+```
+
+### 변수 값 설정
+
+```javascript
+// CSS 변수 값 변경
+document.documentElement.style.setProperty("--primary-color", "#ef4444");
+
+// 컴포넌트별 변수 설정
+const card = document.querySelector(".card");
+card.style.setProperty("--card-bg", "#f0f9ff");
+```
+
+### 동적 테마 변경
+
+```javascript
+function setTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme);
+}
+
+// 테마 토글
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  setTheme(newTheme);
+}
+```
+
+## 컴포넌트별 변수 스코핑
+
+### 지역 변수 활용
+
+```css
+.button {
+  --button-bg: var(--color-primary);
+  --button-text: white;
+  --button-padding: var(--space-3) var(--space-6);
+
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  padding: var(--button-padding);
+}
+
+.button--secondary {
+  --button-bg: transparent;
+  --button-text: var(--color-primary);
+}
+
+.button--large {
+  --button-padding: var(--space-4) var(--space-8);
+}
+```
+
+## 고급 활용 패턴
+
+### 1. 계산된 값들
+
+```css
+:root {
+  --base-size: 1rem;
+  --scale-ratio: 1.25;
+
+  --size-sm: calc(var(--base-size) / var(--scale-ratio));
+  --size-lg: calc(var(--base-size) * var(--scale-ratio));
+  --size-xl: calc(var(--size-lg) * var(--scale-ratio));
+}
+```
+
+### 2. 조건부 값
+
+```css
+:root {
+  --is-mobile: 0;
+  --is-desktop: 1;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --is-mobile: 1;
+    --is-desktop: 0;
+  }
+}
+
+.element {
+  padding: calc(
+    var(--space-2) * var(--is-mobile) + var(--space-6) * var(--is-desktop)
+  );
+}
+```
+
+## 성능과 브라우저 지원
+
+### 브라우저 지원 체크
+
+```css
+@supports (--css: variables) {
+  /* CSS 변수 지원 시 스타일 */
+  .element {
+    color: var(--text-color);
+  }
+}
+
+@supports not (--css: variables) {
+  /* 폴백 스타일 */
+  .element {
+    color: #333;
+  }
+}
+```
+
+CSS 변수를 체계적으로 활용하면 더 유지보수하기 쉽고 일관성 있는 스타일시트를 작성할 수 있습니다. 특히 대규모 프로젝트나 디자인 시스템 구축 시 매우 유용합니다! 🎨
