@@ -10,7 +10,7 @@
       "트랜지션",
       "UX"
     ],
-    "excerpt": "CSS 애니메이션과 트랜지션 활용법\n부드러운 사용자 경험을 위한 CSS 애니메이션을 알아봅시다.\n기본 개념\nTransition vs Animation\n\nTransition: 상태 변화 시 부드러운 전환 (A → B)\nAnimation: 키프레임 기반의 복잡한 움직임 (A → B → C → D...)\n\nCSS Transitions\n기본 문법\n.element {\n  transition: property duration timing-function delay;\n  /"
+    "excerpt": "CSS 애니메이션과 트랜지션 활용법\n부드러운 사용자 경험을 위한 CSS 애니메이션을 알아봅시다.\n기본 개념\nTransition vs Animat"
   },
   {
     "title": "Flexbox로 마스터하는 CSS 레이아웃",
@@ -23,7 +23,7 @@
       "레이아웃",
       "정렬"
     ],
-    "excerpt": "Flexbox로 마스터하는 CSS 레이아웃\nFlexbox는 1차원 레이아웃의 최고의 선택입니다.\n기본 개념\n\nflex-container: display: flex가 적용된 부모 요소\nflex-item: flex-container의 직접적인 자식 요소\n주축(main axis): flex-direction에 의해 정의되는 주요 축\n교차축(cross axis): 주축에 수직인 축\n\n컨테이너 속성\n1. flex-direction\n.container {\n  display"
+    "excerpt": "Flexbox로 마스터하는 CSS 레이아웃\nFlexbox는 1차원 레이아웃의 최고의 선택입니다.\n기본 개념\n\nflex-container: dis"
   },
   {
     "title": "CSS Grid 완벽 가이드",
@@ -35,7 +35,7 @@
       "Grid",
       "레이아웃"
     ],
-    "excerpt": "CSS Grid 완벽 가이드\nCSS Grid는 2차원 레이아웃을 위한 강력한 도구입니다.\n기본 개념\n\ngrid-container: display: grid가 적용된 부모 요소\ngrid-item: grid-container의 직접적인 자식 요소\ngrid-line: 그리드를 구분하는 선\ngrid-track: 두 그리드 라인 사이의 공간 (행 또는 열)\ngrid-cell: 가장 작은 그리드 단위\ngrid-area: 하나 이상의 셀로 구성된 직사각형 영역\n\n컨테이너 속"
+    "excerpt": "CSS Grid 완벽 가이드\nCSS Grid는 2차원 레이아웃을 위한 강력한 도구입니다.\n기본 개념\n\ngrid-container: display"
   },
   {
     "title": "CSS 변수로 효율적인 스타일 관리하기",
@@ -48,7 +48,7 @@
       "유지보수",
       "효율성"
     ],
-    "excerpt": "CSS 변수로 효율적인 스타일 관리하기\nCSS 변수는 코드 재사용성과 유지보수성을 크게 향상시킵니다.\n기본 문법\n변수 정의\n:root {\n  --primary-color: #3b82f6;\n  --secondary-color: #10b981;\n  --font-size-base: 16px;\n  --spacing-unit: 8px;\n}\n\n변수 사용\n.button {\n  background-color: var(--primary-color);\n  font-size: va"
+    "excerpt": "CSS 변수로 효율적인 스타일 관리하기\nCSS 변수는 코드 재사용성과 유지보수성을 크게 향상시킵니다.\n기본 문법\n변수 정의\n:root {\n  -"
   },
   {
     "title": "첫 번째 블로그 포스트",
@@ -60,7 +60,7 @@
       "시작",
       "개발일기"
     ],
-    "excerpt": "첫 번째 블로그 포스트\n안녕하세요! 개발자 블로그를 시작합니다.\n앞으로의 계획\n\nReact/Next.js 관련 포스트\n개발 경험 공유\n문제 해결 과정 기록\n\n개발하면서 배운 것들과 겪었던 문제들을 차근차근 정리해서 공유해보겠습니다.\n주요 주제들\n\n\n프론트엔드 개발\n\nReact와 Next.js 심화 학습\n상태 관리와 성능 최적화\nUI/UX 디자인 패턴\n\n\n\n백엔드 개발\n\nNode.js와 Express\n데이터베이스 설계와 최적화\nAPI 설계 원칙\n\n\n\nDevOps와"
+    "excerpt": "첫 번째 블로그 포스트\n안녕하세요! 개발자 블로그를 시작합니다.\n앞으로의 계획\n\nReact/Next.js 관련 포스트\n개발 경험 공유\n문제 해결"
   },
   {
     "title": "Next.js 시작하기",
@@ -73,7 +73,7 @@
       "프레임워크",
       "튜토리얼"
     ],
-    "excerpt": "Next.js 시작하기\nNext.js는 React 기반의 풀스택 프레임워크입니다.\n주요 특징\n\nServer-side Rendering (SSR): 서버에서 HTML을 생성하여 SEO와 초기 로딩 성능을 개선\nStatic Site Generation (SSG): 빌드 타임에 정적 페이지를 생성하여 빠른 로딩 속도 제공\nApp Router: 새로운 라우팅 시스템으로 더 직관적이고 강력한 기능 제공\nAPI Routes: 백엔드 API를 쉽게 구축할 수 있는 기능\n\n설"
+    "excerpt": "Next.js 시작하기\nNext.js는 React 기반의 풀스택 프레임워크입니다.\n주요 특징\n\nServer-side Rendering (SSR)"
   },
   {
     "title": "Tailwind CSS 유용한 팁들",
@@ -86,7 +86,7 @@
       "스타일링",
       "팁"
     ],
-    "excerpt": "Tailwind CSS 유용한 팁들\nTailwind CSS 사용 시 도움이 되는 팁들을 소개합니다.\n반응형 디자인\n\nsm:, md:, lg:, xl:, 2xl: 접두사 활용\n모바일 퍼스트 접근법 (기본 스타일은 모바일 기준)\n\n<div class=\"text-sm md:text-base lg:text-lg\">반응형 텍스트 크기</div>\n\n유용한 유틸리티 클래스들\n1. 공간 설정\n<!-- 균등한 간격 -->\n<div class=\"space-y-4\">\n  <div>"
+    "excerpt": "Tailwind CSS 유용한 팁들\nTailwind CSS 사용 시 도움이 되는 팁들을 소개합니다.\n반응형 디자인\n\nsm:, md:, lg:, "
   },
   {
     "title": "테스트 포스트",
