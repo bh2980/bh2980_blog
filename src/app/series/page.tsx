@@ -29,7 +29,7 @@ export default function SeriesPage() {
                     묶음글
                   </span>
                   <time className="text-gray-500 text-sm">
-                    {new Date(seriesItem.createdDate).toLocaleDateString(
+                    {new Date(seriesItem.createdAt).toLocaleDateString(
                       "ko-KR",
                       {
                         year: "numeric",
@@ -87,7 +87,7 @@ export default function SeriesPage() {
                     </div>
 
                     <time className="flex-shrink-0 text-xs text-gray-500">
-                      {new Date(post.date).toLocaleDateString("ko-KR", {
+                      {new Date(post.createdAt).toLocaleDateString("ko-KR", {
                         month: "short",
                         day: "numeric",
                       })}
