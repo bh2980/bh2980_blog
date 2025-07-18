@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostBySlug, getAllPosts } from "@/lib/posts";
-import dynamic from "next/dynamic";
-import { ComponentType } from "react";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import fs from "fs";
+import path from "path";
 
 interface BlogPostProps {
   params: Promise<{ slug: string }>;
@@ -15,12 +16,8 @@ export async function generateStaticParams() {
   }));
 }
 
-// MDX 컴포넌트를 동적으로 로드하는 함수
-function getMDXComponent(slug: string): ComponentType {
-  return dynamic(() => import(`@/content/posts/${slug}.mdx`), {
-    loading: () => <div className="animate-pulse">로딩 중...</div>,
-  });
-}
+// dynamicParams를 false로 설정하여 사전 정의된 경로만 허용
+export const dynamicParams = false;
 
 export default async function BlogPost({ params }: BlogPostProps) {
   const { slug } = await params;
@@ -30,7 +27,23 @@ export default async function BlogPost({ params }: BlogPostProps) {
     notFound();
   }
 
-  const MDXContent = getMDXComponent(slug);
+  // MDX 파일에서 본문 읽어오기
+  let mdxSource: string;
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "content",
+      "posts",
+      `${slug}.mdx`
+    );
+    const fileContent = fs.readFileSync(filePath, "utf8");
+
+    // frontmatter 제거 (--- 사이의 내용 제거)
+    mdxSource = fileContent.replace(/^---[\s\S]*?---\n/, "");
+  } catch (error) {
+    console.error(`Failed to read MDX file: ${slug}`, error);
+    notFound();
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -87,7 +100,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
 
         {/* 포스트 내용 */}
         <div className="prose prose-lg prose-gray max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100">
-          <MDXContent />
+          <MDXRemote source={mdxSource} />
         </div>
       </article>
 

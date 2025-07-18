@@ -26,7 +26,6 @@ export function searchContent(query: string): SearchResult {
     (post) =>
       post.title.toLowerCase().includes(searchTerm) ||
       post.excerpt.toLowerCase().includes(searchTerm) ||
-      post.content.toLowerCase().includes(searchTerm) ||
       post.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
   );
 
