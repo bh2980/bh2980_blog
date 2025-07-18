@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostBySlug, getAllPosts } from "@/lib/posts";
-import { readFileSync } from "fs";
-import { join } from "path";
+import dynamic from "next/dynamic";
+import { ComponentType } from "react";
 
 interface BlogPostProps {
   params: Promise<{ slug: string }>;
@@ -15,19 +15,11 @@ export async function generateStaticParams() {
   }));
 }
 
-async function getMDXContent(slug: string) {
-  try {
-    const filePath = join(process.cwd(), "src", "posts", `${slug}.mdx`);
-    const source = readFileSync(filePath, "utf8");
-
-    // frontmatter 제거 (--- 부분)
-    const contentWithoutFrontmatter = source.replace(/^---[\s\S]*?---\n/, "");
-
-    return contentWithoutFrontmatter;
-  } catch (error) {
-    console.error("MDX 파일을 읽을 수 없습니다:", error);
-    return null;
-  }
+// MDX 컴포넌트를 동적으로 로드하는 함수
+function getMDXComponent(slug: string): ComponentType {
+  return dynamic(() => import(`@/posts/${slug}.mdx`), {
+    loading: () => <div className="animate-pulse">로딩 중...</div>,
+  });
 }
 
 export default async function BlogPost({ params }: BlogPostProps) {
@@ -38,11 +30,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
     notFound();
   }
 
-  const mdxContent = await getMDXContent(slug);
-
-  if (!mdxContent) {
-    notFound();
-  }
+  const MDXContent = getMDXComponent(slug);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -99,9 +87,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
 
         {/* 포스트 내용 */}
         <div className="prose prose-lg prose-gray max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100">
-          {mdxContent && (
-            <div className="whitespace-pre-wrap">{mdxContent}</div>
-          )}
+          <MDXContent />
         </div>
       </article>
 

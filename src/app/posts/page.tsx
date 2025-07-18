@@ -21,7 +21,7 @@ export default function BlogPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <time className="text-sm text-gray-500">
-                {new Date(post.date).toLocaleDateString("ko-KR", {
+                {new Date(post.createdAt).toLocaleDateString("ko-KR", {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
