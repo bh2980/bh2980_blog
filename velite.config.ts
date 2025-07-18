@@ -7,11 +7,19 @@ export default defineConfig({
       pattern: "posts/*.mdx",
       schema: s.object({
         title: s.string(),
-        slug: s.slug("posts"),
+        slug: s
+          .slug("posts")
+          .optional()
+          .transform((_, context) => {
+            return (context.meta.path as string)
+              .split("/")
+              .pop()
+              ?.replace(".mdx", "");
+          }),
         id: s.number(),
         createdAt: s.isodate(),
         tags: s.array(s.string()),
-        excerpt: s.excerpt(),
+        excerpt: s.excerpt({ length: 80 }),
       }),
     },
     series: {
