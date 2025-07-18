@@ -17,7 +17,7 @@ export async function generateStaticParams() {
 
 // MDX 컴포넌트를 동적으로 로드하는 함수
 function getMDXComponent(slug: string): ComponentType {
-  return dynamic(() => import(`@/posts/${slug}.mdx`), {
+  return dynamic(() => import(`@/content/posts/${slug}.mdx`), {
     loading: () => <div className="animate-pulse">로딩 중...</div>,
   });
 }
