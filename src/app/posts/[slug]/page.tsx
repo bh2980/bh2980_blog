@@ -37,7 +37,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
       {/* 뒤로 가기 링크 */}
       <div className="mb-8">
         <Link
-          href="/blog"
+          href="/posts"
           className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
         >
           <svg
@@ -95,7 +95,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
       <div className="mt-16 pt-8 border-t border-gray-200">
         <div className="flex justify-between">
           <Link
-            href="/blog"
+            href="/posts"
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← 모든 포스트 보기

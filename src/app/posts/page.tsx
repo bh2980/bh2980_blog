@@ -31,7 +31,7 @@ export default function BlogPage() {
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               <Link
-                href={`/blog/${post.slug}`}
+                href={`/posts/${post.slug}`}
                 className="hover:text-blue-600 transition-colors"
               >
                 {post.title}

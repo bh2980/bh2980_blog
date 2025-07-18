@@ -79,7 +79,7 @@ export default function SeriesPage() {
 
                     <div className="flex-1">
                       <Link
-                        href={`/blog/${post.slug}`}
+                        href={`/posts/${post.slug}`}
                         className="text-gray-900 hover:text-indigo-600 font-medium transition-colors"
                       >
                         {post.title}
