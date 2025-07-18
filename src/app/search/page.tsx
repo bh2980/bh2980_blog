@@ -172,7 +172,7 @@ export default function SearchPage() {
                       >
                         <h4 className="text-lg font-semibold text-gray-900 mb-2">
                           <Link
-                            href={`/blog/${post.slug}`}
+                            href={`/posts/${post.slug}`}
                             className="hover:text-blue-600"
                           >
                             {post.title}

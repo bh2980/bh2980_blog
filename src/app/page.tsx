@@ -33,7 +33,7 @@ export default function Home() {
           Next.js, TypeScript에 대해 다룹니다.
         </p>
         <Link
-          href="/blog"
+          href="/posts"
           className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
           블로그 둘러보기
@@ -45,7 +45,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-gray-900">최근 포스트</h2>
           <Link
-            href="/blog"
+            href="/posts"
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             전체 보기 →
@@ -60,7 +60,7 @@ export default function Home() {
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 <Link
-                  href={`/blog/${post.slug}`}
+                  href={`/posts/${post.slug}`}
                   className="hover:text-blue-600"
                 >
                   {post.title}
@@ -115,13 +115,10 @@ export default function Home() {
                   묶음글
                 </span>
                 <time className="text-xs text-gray-500">
-                  {new Date(seriesItem.createdAt).toLocaleDateString(
-                    "ko-KR",
-                    {
-                      month: "short",
-                      day: "numeric",
-                    }
-                  )}
+                  {new Date(seriesItem.createdAt).toLocaleDateString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </time>
               </div>
 

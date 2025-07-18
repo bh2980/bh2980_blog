@@ -120,7 +120,7 @@ export default function Navigation() {
                 묶음글
               </Link>
               <Link
-                href="/blog"
+                href="/posts"
                 className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
