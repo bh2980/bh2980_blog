@@ -40,5 +40,25 @@ export default defineConfig({
         createdAt: s.isodate(),
       }),
     },
+    memos: {
+      name: "Memo",
+      pattern: "memos/*.mdx",
+      schema: s.object({
+        title: s.string(),
+        slug: s
+          .slug("memos")
+          .optional()
+          .transform((_, context) => {
+            return (context.meta.path as string)
+              .split("/")
+              .pop()
+              ?.replace(".mdx", "");
+          }),
+        createdAt: s.isodate(),
+        category: s.enum(["algorithm", "css-battle", "typescript", "etc"]),
+        tags: s.array(s.string()),
+        excerpt: s.excerpt({ length: 80 }),
+      }),
+    },
   },
 });

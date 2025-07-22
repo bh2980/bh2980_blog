@@ -9,3 +9,6 @@ export declare const posts: Post[]
 
 export type Series = Collections['series']['schema']['_output']
 export declare const series: Series[]
+
+export type Memo = Collections['memos']['schema']['_output']
+export declare const memos: Memo[]
