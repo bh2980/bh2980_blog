@@ -1,14 +1,5 @@
 // @ts-ignore - velite 생성 파일
-import { memos } from "@/velite";
-
-export interface Memo {
-  slug: string;
-  title: string;
-  createdAt: string;
-  category: "algorithm" | "css-battle" | "typescript" | "etc";
-  tags: string[];
-  excerpt: string;
-}
+import { memos, type Memo } from "@/velite";
 
 export function getAllMemos(): Memo[] {
   return (memos as Memo[]).sort(
