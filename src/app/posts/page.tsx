@@ -52,7 +52,7 @@ export default function BlogPage() {
             </div>
 
             <Link
-              href={`/blog/${post.slug}`}
+              href={`/posts/${post.slug}`}
               className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
             >
               계속 읽기
