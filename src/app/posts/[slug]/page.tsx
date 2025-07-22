@@ -148,9 +148,7 @@ export default async function BlogPost({
         </header>
 
         {/* 포스트 내용 */}
-        <div className="prose prose-lg prose-gray max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100">
-          <MDXRemote source={mdxSource} />
-        </div>
+        <MDXRemote source={mdxSource} />
       </article>
 
       {/* 이전/다음 포스트 네비게이션 */}
