@@ -1,5 +1,12 @@
 import { defineConfig, s } from "velite";
 
+// 파일명에서 slug를 추출하는 공통 함수
+const generateSlugFromFilename = (_: string, context: any) => {
+  return (
+    (context.meta.path as string).split("/").pop()?.replace(".mdx", "") || ""
+  );
+};
+
 export default defineConfig({
   collections: {
     posts: {
@@ -7,15 +14,7 @@ export default defineConfig({
       pattern: "posts/*.mdx",
       schema: s.object({
         title: s.string(),
-        slug: s
-          .slug("posts")
-          .optional()
-          .transform((_, context) => {
-            return (context.meta.path as string)
-              .split("/")
-              .pop()
-              ?.replace(".mdx", "");
-          }),
+        slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
@@ -26,15 +25,7 @@ export default defineConfig({
       pattern: "series/*.mdx",
       schema: s.object({
         title: s.string(),
-        slug: s
-          .slug("series")
-          .optional()
-          .transform((_, context) => {
-            return (context.meta.path as string)
-              .split("/")
-              .pop()
-              ?.replace(".mdx", "");
-          }),
+        slug: s.string().default("").transform(generateSlugFromFilename),
         description: s.string(),
         postSlugs: s.array(s.string()),
         createdAt: s.isodate(),
@@ -45,15 +36,7 @@ export default defineConfig({
       pattern: "memos/*.mdx",
       schema: s.object({
         title: s.string(),
-        slug: s
-          .slug("memos")
-          .optional()
-          .transform((_, context) => {
-            return (context.meta.path as string)
-              .split("/")
-              .pop()
-              ?.replace(".mdx", "");
-          }),
+        slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
         category: s.enum(["algorithm", "css-battle", "typescript", "etc"]),
         tags: s.array(s.string()),
