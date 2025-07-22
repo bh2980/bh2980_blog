@@ -1,4 +1,3 @@
-// @ts-ignore - velite 생성 파일
 import { memos, type Memo } from "@/velite";
 
 export function getAllMemos(): Memo[] {

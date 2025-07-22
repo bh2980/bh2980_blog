@@ -1,4 +1,3 @@
-// @ts-ignore - velite 생성 파일
 import { series, type Series } from "@/velite";
 
 export function getAllSeries(): Series[] {

@@ -1,4 +1,3 @@
-// @ts-ignore - velite 생성 파일
 import { posts, type Post } from "@/velite";
 
 export function getAllPosts(): Post[] {
