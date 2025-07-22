@@ -1,6 +1,8 @@
-import { getAllPosts, type Post } from "./posts";
-import { getAllSeries, type Series } from "./series";
-import { getAllMemos, type Memo } from "./memos";
+import { getAllPosts } from "./posts";
+import { getAllSeries } from "./series";
+import { getAllMemos } from "./memos";
+
+import type { Post, Series, Memo } from "@/velite";
 
 export interface SearchResult {
   posts: Post[];
@@ -41,7 +43,6 @@ export function searchContent(query: string): SearchResult {
     (memo) =>
       memo.title.toLowerCase().includes(searchTerm) ||
       memo.excerpt.toLowerCase().includes(searchTerm) ||
-      memo.content.toLowerCase().includes(searchTerm) ||
       memo.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
   );
 
