@@ -18,10 +18,13 @@ export default function SeriesPage() {
       <div className="space-y-16">
         {series.map((seriesItem) => {
           // 묶음글에 포함된 포스트들 가져오기
-                  const posts = getPostsBySlugs(seriesItem.postSlugs);
+          const posts = getPostsBySlugs(seriesItem.postSlugs);
 
-        return (
-          <section key={seriesItem.slug} className="bg-gray-50 rounded-lg p-8">
+          return (
+            <section
+              key={seriesItem.slug}
+              className="bg-gray-50 rounded-lg p-8"
+            >
               {/* 묶음글 헤더 */}
               <header className="mb-8 pb-6 border-b border-gray-200">
                 <div className="flex items-center gap-3 mb-4">

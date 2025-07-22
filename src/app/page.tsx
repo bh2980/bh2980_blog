@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getAllPosts } from "@/lib/posts";
-import { getAllMemos, categoryLabels, type Memo } from "@/lib/memos";
+import { getAllMemos, categoryLabels } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
+import type { Memo } from "@/velite";
 
 export default function Home() {
   const posts = getAllPosts();
@@ -147,7 +148,7 @@ export default function Home() {
                       d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
                     />
                   </svg>
-                  {seriesItem.postIds.length}개 포스트
+                  {seriesItem.postSlugs.length}개 포스트
                 </div>
                 <Link
                   href="/series"
@@ -188,7 +189,7 @@ export default function Home() {
                   {categoryLabels[memo.category]}
                 </span>
                 <time className="text-xs text-gray-500">
-                                          {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
+                  {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
                     month: "short",
                     day: "numeric",
                   })}
