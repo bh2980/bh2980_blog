@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
-import { categoryLabels, type Memo } from "@/lib/memos";
+import { categoryLabels } from "@/lib/memos";
+import { type Memo } from "@/velite";
 
 const INITIAL_DISPLAY_COUNT = 3;
 
@@ -51,7 +52,7 @@ export default function SearchPage() {
       "css-battle": "bg-purple-100 text-purple-800",
       typescript: "bg-blue-100 text-blue-800",
       etc: "bg-gray-100 text-gray-800",
-    };
+    } as const;
     return colors[category];
   };
 
@@ -93,7 +94,7 @@ export default function SearchPage() {
       {/* 페이지 제목 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">검색 🔍</h1>
-        
+
         {/* 모바일용 검색창 */}
         <form onSubmit={handleSearch} className="relative max-w-2xl md:hidden">
           <input
@@ -284,10 +285,13 @@ export default function SearchPage() {
                             {categoryLabels[memo.category]}
                           </span>
                           <time className="text-xs text-gray-500">
-                            {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {new Date(memo.createdAt).toLocaleDateString(
+                              "ko-KR",
+                              {
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
                           </time>
                         </div>
 
