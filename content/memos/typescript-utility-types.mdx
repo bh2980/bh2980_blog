@@ -7,7 +7,7 @@ tags: ["typescript", "utility-types"]
 
 # TypeScript Utility Types 정리
 
-## Pick<T, K>
+## Pick&lt;T, K&gt;
 
 특정 속성만 선택
 
@@ -23,7 +23,7 @@ type UserProfile = Pick<User, "name" | "email">;
 // { name: string; email: string; }
 ```
 
-## Omit<T, K>
+## Omit&lt;T, K&gt;
 
 특정 속성 제외
 
@@ -32,7 +32,7 @@ type CreateUser = Omit<User, "id">;
 // { name: string; email: string; age: number; }
 ```
 
-## Partial<T>
+## Partial&lt;T&gt;
 
 모든 속성을 optional로
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
@@ -9,7 +9,7 @@ import { type Memo } from "@/velite";
 
 const INITIAL_DISPLAY_COUNT = 3;
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult>({
@@ -18,24 +18,17 @@ export default function SearchPage() {
     memos: [],
     totalCount: 0,
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [showAllSeries, setShowAllSeries] = useState(false);
   const [showAllMemos, setShowAllMemos] = useState(false);
 
+  // URL 검색 파라미터에서 쿼리 가져오기
   useEffect(() => {
-    const q = searchParams.get("q") || "";
-    setQuery(q);
-
-    if (q) {
-      setIsLoading(true);
-      const searchResults = searchContent(q);
+    const urlQuery = searchParams.get("q") || "";
+    setQuery(urlQuery);
+    if (urlQuery) {
+      const searchResults = searchContent(urlQuery);
       setResults(searchResults);
-      setIsLoading(false);
-      // 새 검색 시 "더 보기" 상태 초기화
-      setShowAllPosts(false);
-      setShowAllSeries(false);
-      setShowAllMemos(false);
     } else {
       setResults({
         posts: [],
@@ -66,60 +59,14 @@ export default function SearchPage() {
     ? results.memos
     : results.memos.slice(0, INITIAL_DISPLAY_COUNT);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const searchQuery = formData.get("q") as string;
-
-    if (searchQuery.trim()) {
-      window.history.pushState(
-        {},
-        "",
-        `/search?q=${encodeURIComponent(searchQuery.trim())}`
-      );
-      setQuery(searchQuery.trim());
-      setIsLoading(true);
-      const searchResults = searchContent(searchQuery.trim());
-      setResults(searchResults);
-      setIsLoading(false);
-      // 새 검색 시 "더 보기" 상태 초기화
-      setShowAllPosts(false);
-      setShowAllSeries(false);
-      setShowAllMemos(false);
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* 페이지 제목 */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">검색 🔍</h1>
-
-        {/* 모바일용 검색창 */}
-        <form onSubmit={handleSearch} className="relative max-w-2xl md:hidden">
-          <input
-            type="text"
-            name="q"
-            defaultValue={query}
-            placeholder="포스트, 묶음글, 메모를 검색해보세요..."
-            className="w-full px-6 py-4 pl-12 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-            <svg
-              className="w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-        </form>
+      {/* 헤더 */}
+      <div className="mb-12">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">검색 🔍</h1>
+        <p className="text-lg text-gray-600">
+          찾고 있는 포스트, 메모, 시리즈를 검색해보세요.
+        </p>
       </div>
 
       {/* 검색 결과 */}
@@ -134,14 +81,25 @@ export default function SearchPage() {
             </span>
           </div>
 
-          {isLoading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">검색 중...</p>
-            </div>
-          ) : results.totalCount === 0 ? (
+          {results.totalCount === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">검색 결과가 없습니다.</p>
-              <p className="text-gray-400 mt-2">다른 키워드로 검색해보세요.</p>
+              <div className="text-gray-400 mb-4">
+                <svg
+                  className="mx-auto h-12 w-12"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33l-.46.46a3 3 0 11-4.24-4.24l.46-.46A7.962 7.962 0 0115 12z"
+                  />
+                </svg>
+              </div>
+              <p className="text-lg text-gray-500 mb-2">검색 결과가 없습니다</p>
+              <p className="text-gray-400">다른 키워드로 다시 시도해보세요.</p>
             </div>
           ) : (
             <div className="space-y-12">
@@ -150,7 +108,7 @@ export default function SearchPage() {
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      블로그 포스트 ({results.posts.length})
+                      포스트 ({results.posts.length})
                     </h3>
                     {results.posts.length > INITIAL_DISPLAY_COUNT && (
                       <button
@@ -294,8 +252,7 @@ export default function SearchPage() {
                             )}
                           </time>
                         </div>
-
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1">
                           <Link
                             href={`/memo/${memo.slug}`}
                             className="hover:text-blue-600"
@@ -303,23 +260,21 @@ export default function SearchPage() {
                             {memo.title}
                           </Link>
                         </h4>
-
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">
+                        <p className="text-xs text-gray-600 mb-3 line-clamp-2">
                           {memo.excerpt}
                         </p>
-
-                        <div className="flex flex-wrap gap-1 mt-auto">
-                          {memo.tags.slice(0, 3).map((tag) => (
+                        <div className="flex flex-wrap gap-1">
+                          {memo.tags.slice(0, 2).map((tag) => (
                             <span
                               key={tag}
-                              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded h-fit"
+                              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
                             >
                               #{tag}
                             </span>
                           ))}
-                          {memo.tags.length > 3 && (
-                            <span className="text-xs text-gray-400 h-fit">
-                              +{memo.tags.length - 3}
+                          {memo.tags.length > 2 && (
+                            <span className="px-1.5 py-0.5 text-xs text-gray-500">
+                              +{memo.tags.length - 2}
                             </span>
                           )}
                         </div>
@@ -333,18 +288,49 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* 검색 팁 */}
+      {/* 검색어가 없을 때 */}
       {!query && (
-        <div className="bg-gray-50 rounded-lg p-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">검색 팁</h3>
-          <ul className="space-y-2 text-gray-700">
-            <li>• 포스트 제목, 내용, 태그에서 검색됩니다</li>
-            <li>• 묶음글의 제목과 설명에서 검색됩니다</li>
-            <li>• 메모의 제목, 내용, 태그에서 검색됩니다</li>
-            <li>• 여러 단어로 검색할 때는 띄어쓰기로 구분하세요</li>
-          </ul>
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg
+              className="mx-auto h-16 w-16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <p className="text-lg text-gray-500 mb-2">검색어를 입력해주세요</p>
+          <p className="text-gray-400">
+            상단 검색창에서 원하는 내용을 검색할 수 있습니다.
+          </p>
         </div>
       )}
     </div>
+  );
+}
+
+function SearchFallback() {
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="mb-12">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">검색 🔍</h1>
+        <p className="text-lg text-gray-600">검색 중...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchFallback />}>
+      <SearchContent />
+    </Suspense>
   );
 }
