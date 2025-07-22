@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAllMemos, categoryLabels, type Memo } from "@/lib/memos";
+import { getAllMemos, categoryLabels } from "@/lib/memos";
+import { type Memo } from "@/velite";
 
 export default function MemoPage() {
   const allMemos = getAllMemos();
@@ -91,7 +92,7 @@ export default function MemoPage() {
                 {categoryLabels[memo.category]}
               </span>
               <time className="text-xs text-gray-500">
-                                        {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
+                {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
                   month: "short",
                   day: "numeric",
                 })}

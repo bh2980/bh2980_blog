@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  getMemoBySlug,
-  getAllMemos,
-  categoryLabels,
-  type Memo,
-} from "@/lib/memos";
+import { getMemoBySlug, getAllMemos, categoryLabels } from "@/lib/memos";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import fs from "fs";
 import path from "path";
+import { type Memo } from "@/velite";
 
 interface MemoPostProps {
   params: Promise<{ slug: string }>;
