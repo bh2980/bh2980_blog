@@ -2,7 +2,6 @@
 import { posts } from "@/velite";
 
 export interface Post {
-  id: number;
   slug: string;
   title: string;
   createdAt: string;
@@ -20,12 +19,34 @@ export function getPostBySlug(slug: string): Post | null {
   return (posts as Post[]).find((post) => post.slug === slug) || null;
 }
 
-export function getPostById(id: number): Post | null {
-  return (posts as Post[]).find((post) => post.id === id) || null;
+export function getPostsBySlugs(slugs: string[]): Post[] {
+  if (!slugs || !Array.isArray(slugs)) {
+    return [];
+  }
+  
+  return slugs
+    .map((slug) => getPostBySlug(slug))
+    .filter((post): post is Post => post !== null);
 }
 
-export function getPostsByIds(ids: number[]): Post[] {
-  return ids
-    .map((id) => getPostById(id))
-    .filter((post) => post !== null) as Post[];
+export function getPreviousPost(slug: string): Post | null {
+  const allPosts = getAllPosts();
+  const currentIndex = allPosts.findIndex((post) => post.slug === slug);
+
+  if (currentIndex === -1 || currentIndex === 0) {
+    return null;
+  }
+
+  return allPosts[currentIndex - 1];
+}
+
+export function getNextPost(slug: string): Post | null {
+  const allPosts = getAllPosts();
+  const currentIndex = allPosts.findIndex((post) => post.slug === slug);
+
+  if (currentIndex === -1 || currentIndex === allPosts.length - 1) {
+    return null;
+  }
+
+  return allPosts[currentIndex + 1];
 }

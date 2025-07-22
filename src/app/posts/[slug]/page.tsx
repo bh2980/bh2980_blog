@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPostBySlug, getAllPosts } from "@/lib/posts";
+import {
+  getPostBySlug,
+  getAllPosts,
+  getPreviousPost,
+  getNextPost,
+} from "@/lib/posts";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import fs from "fs";
 import path from "path";
@@ -26,6 +31,10 @@ export default async function BlogPost({ params }: BlogPostProps) {
   if (!post) {
     notFound();
   }
+
+  // 이전/다음 포스트 가져오기
+  const previousPost = getPreviousPost(slug);
+  const nextPost = getNextPost(slug);
 
   // MDX 파일에서 본문 읽어오기
   let mdxSource: string;
@@ -104,23 +113,40 @@ export default async function BlogPost({ params }: BlogPostProps) {
         </div>
       </article>
 
-      {/* 네비게이션 */}
-      <div className="mt-16 pt-8 border-t border-gray-200">
-        <div className="flex justify-between">
-          <Link
-            href="/posts"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            ← 모든 포스트 보기
-          </Link>
-          <Link
-            href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            홈으로 가기 →
-          </Link>
+      {/* 이전/다음 포스트 네비게이션 */}
+      {(previousPost || nextPost) && (
+        <div className="mt-16 pt-8 border-t border-gray-200">
+          <div className="flex justify-between items-center">
+            {previousPost ? (
+              <Link
+                href={`/posts/${previousPost.slug}`}
+                className="group flex flex-col text-left max-w-sm"
+              >
+                <span className="text-sm text-gray-500 mb-1">이전 포스트</span>
+                <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
+                  ← {previousPost.title}
+                </span>
+              </Link>
+            ) : (
+              <div></div>
+            )}
+            
+            {nextPost ? (
+              <Link
+                href={`/posts/${nextPost.slug}`}
+                className="group flex flex-col text-right max-w-sm"
+              >
+                <span className="text-sm text-gray-500 mb-1">다음 포스트</span>
+                <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
+                  {nextPost.title} →
+                </span>
+              </Link>
+            ) : (
+              <div></div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
