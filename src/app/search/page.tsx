@@ -284,7 +284,7 @@ export default function SearchPage() {
                             {categoryLabels[memo.category]}
                           </span>
                           <time className="text-xs text-gray-500">
-                            {new Date(memo.date).toLocaleDateString("ko-KR", {
+                            {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
                               month: "short",
                               day: "numeric",
                             })}

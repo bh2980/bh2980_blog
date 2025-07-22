@@ -6,6 +6,9 @@ import {
   categoryLabels,
   type Memo,
 } from "@/lib/memos";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import fs from "fs";
+import path from "path";
 
 interface MemoPostProps {
   params: Promise<{ slug: string }>;
@@ -23,6 +26,24 @@ export default async function MemoPost({ params }: MemoPostProps) {
   const memo = getMemoBySlug(slug);
 
   if (!memo) {
+    notFound();
+  }
+
+  // MDX 파일에서 본문 읽어오기
+  let mdxSource: string;
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "content",
+      "memos",
+      `${slug}.mdx`
+    );
+    const fileContent = fs.readFileSync(filePath, "utf8");
+
+    // frontmatter 제거 (--- 사이의 내용 제거)
+    mdxSource = fileContent.replace(/^---[\s\S]*?---\n/, "");
+  } catch (error) {
+    console.error(`Failed to read MDX file: ${slug}`, error);
     notFound();
   }
 
@@ -73,7 +94,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
               {categoryLabels[memo.category]}
             </span>
             <time className="text-gray-500">
-              {new Date(memo.date).toLocaleDateString("ko-KR", {
+              {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -98,11 +119,8 @@ export default async function MemoPost({ params }: MemoPostProps) {
         </header>
 
         {/* 메모 내용 */}
-        <div className="prose prose-lg prose-gray max-w-none">
-          {/* 임시로 마크다운을 그대로 표시 - 나중에 MDX 또는 Notion API로 교체 */}
-          <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-            {memo.content}
-          </div>
+        <div className="prose prose-lg prose-gray max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:text-gray-100">
+          <MDXRemote source={mdxSource} />
         </div>
       </article>
 

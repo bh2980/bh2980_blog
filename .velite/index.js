@@ -2,3 +2,4 @@
 
 export { default as posts } from './posts.json'
 export { default as series } from './series.json'
+export { default as memos } from './memos.json'
