@@ -167,7 +167,7 @@ export default function SearchPage() {
                   <div className="space-y-4">
                     {displayedPosts.map((post) => (
                       <article
-                        key={post.id}
+                        key={post.slug}
                         className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
                       >
                         <h4 className="text-lg font-semibold text-gray-900 mb-2">
@@ -221,7 +221,7 @@ export default function SearchPage() {
                   <div className="space-y-4">
                     {displayedSeries.map((seriesItem) => (
                       <article
-                        key={seriesItem.id}
+                        key={seriesItem.slug}
                         className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center gap-2 mb-2">
@@ -229,7 +229,7 @@ export default function SearchPage() {
                             묶음글
                           </span>
                           <span className="text-xs text-gray-500">
-                            {seriesItem.postIds.length}개 포스트
+                            {seriesItem.postSlugs.length}개 포스트
                           </span>
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-2">
@@ -272,7 +272,7 @@ export default function SearchPage() {
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {displayedMemos.map((memo) => (
                       <article
-                        key={memo.id}
+                        key={memo.slug}
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col h-full"
                       >
                         <div className="flex items-center justify-between mb-2">

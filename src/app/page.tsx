@@ -55,7 +55,7 @@ export default function Home() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recentPosts.map((post) => (
             <article
-              key={post.id}
+              key={post.slug}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -107,7 +107,7 @@ export default function Home() {
         <div className="grid gap-6 md:grid-cols-2">
           {recentSeries.map((seriesItem) => (
             <article
-              key={seriesItem.id}
+              key={seriesItem.slug}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between mb-3">

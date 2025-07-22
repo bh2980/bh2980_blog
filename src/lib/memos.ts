@@ -1,5 +1,4 @@
 export interface Memo {
-  id: number;
   slug: string;
   title: string;
   date: string;
@@ -12,7 +11,6 @@ export interface Memo {
 // 임시 목업 데이터 (나중에 Notion API로 교체 예정)
 const mockMemos: Memo[] = [
   {
-    id: 1,
     slug: "two-sum-solution",
     title: "Two Sum 문제 풀이",
     date: "2024-01-20",
@@ -47,7 +45,6 @@ function twoSum(nums: number[], target: number): number[] {
 - 공간복잡도: O(n): HashMap 사용`,
   },
   {
-    id: 2,
     slug: "css-battle-01",
     title: "CSS Battle #1 - Simply Square",
     date: "2024-01-18",
@@ -83,7 +80,6 @@ div{
 - CSS 단축 속성 활용`,
   },
   {
-    id: 3,
     slug: "typescript-utility-types",
     title: "TypeScript Utility Types 정리",
     date: "2024-01-15",
@@ -122,7 +118,6 @@ type UpdateUser = Partial<User>;
 \`\`\``,
   },
   {
-    id: 4,
     slug: "css-battle-02",
     title: "CSS Battle #2 - Carrom",
     date: "2024-01-25",
@@ -150,7 +145,6 @@ type UpdateUser = Partial<User>;
 - 계산된 좌표값 활용`,
   },
   {
-    id: 5,
     slug: "css-centering-techniques",
     title: "CSS 중앙 정렬 모든 방법",
     date: "2024-01-23",
@@ -191,7 +185,6 @@ type UpdateUser = Partial<User>;
 \`\`\``,
   },
   {
-    id: 6,
     slug: "css-battle-03",
     title: "CSS Battle #3 - Push Button",
     date: "2024-01-21",
@@ -214,7 +207,6 @@ type UpdateUser = Partial<User>;
 - 최소한의 CSS 속성 사용`,
   },
   {
-    id: 7,
     slug: "css-pseudo-elements",
     title: "CSS 가상 요소 활용법",
     date: "2024-01-19",
@@ -243,7 +235,6 @@ type UpdateUser = Partial<User>;
 - display 속성 설정 권장`,
   },
   {
-    id: 8,
     slug: "css-battle-04",
     title: "CSS Battle #4 - Ups n Downs",
     date: "2024-01-17",
@@ -274,10 +265,6 @@ export function getAllMemos(): Memo[] {
 
 export function getMemoBySlug(slug: string): Memo | null {
   return mockMemos.find((memo) => memo.slug === slug) || null;
-}
-
-export function getMemoById(id: number): Memo | null {
-  return mockMemos.find((memo) => memo.id === id) || null;
 }
 
 export function getMemosByCategory(category: Memo["category"]): Memo[] {

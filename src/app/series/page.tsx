@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAllSeries } from "@/lib/series";
-import { getPostsByIds } from "@/lib/posts";
+import { getPostsBySlugs } from "@/lib/posts";
 
 export default function SeriesPage() {
   const series = getAllSeries();
@@ -18,10 +18,10 @@ export default function SeriesPage() {
       <div className="space-y-16">
         {series.map((seriesItem) => {
           // 묶음글에 포함된 포스트들 가져오기
-          const posts = getPostsByIds(seriesItem.postIds);
+                  const posts = getPostsBySlugs(seriesItem.postSlugs);
 
-          return (
-            <section key={seriesItem.id} className="bg-gray-50 rounded-lg p-8">
+        return (
+          <section key={seriesItem.slug} className="bg-gray-50 rounded-lg p-8">
               {/* 묶음글 헤더 */}
               <header className="mb-8 pb-6 border-b border-gray-200">
                 <div className="flex items-center gap-3 mb-4">
@@ -70,7 +70,7 @@ export default function SeriesPage() {
               <div className="space-y-3">
                 {posts.map((post, index) => (
                   <div
-                    key={post.id}
+                    key={post.slug}
                     className="flex items-center gap-4 py-3 px-4 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all"
                   >
                     <div className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs">
