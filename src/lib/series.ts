@@ -1,13 +1,5 @@
 // @ts-ignore - velite 생성 파일
-import { series } from "@/velite";
-
-export interface Series {
-  title: string;
-  slug: string;
-  description: string;
-  postSlugs: string[];
-  createdAt: string;
-}
+import { series, type Series } from "@/velite";
 
 export function getAllSeries(): Series[] {
   return (series as Series[]).sort(

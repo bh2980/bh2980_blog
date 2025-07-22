@@ -1,13 +1,5 @@
 // @ts-ignore - velite 생성 파일
-import { posts } from "@/velite";
-
-export interface Post {
-  slug: string;
-  title: string;
-  createdAt: string;
-  excerpt: string;
-  tags: string[];
-}
+import { posts, type Post } from "@/velite";
 
 export function getAllPosts(): Post[] {
   return (posts as Post[]).sort(
@@ -23,7 +15,7 @@ export function getPostsBySlugs(slugs: string[]): Post[] {
   if (!slugs || !Array.isArray(slugs)) {
     return [];
   }
-  
+
   return slugs
     .map((slug) => getPostBySlug(slug))
     .filter((post): post is Post => post !== null);
