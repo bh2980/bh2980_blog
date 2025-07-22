@@ -12,7 +12,9 @@
     "next": "15.4.1",
     "next-mdx-remote": "^5.0.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "rehype-pretty-code": "^0.14.1",
+    "shiki": "^3.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
