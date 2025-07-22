@@ -119,24 +119,6 @@ export default async function MemoPost({ params }: MemoPostProps) {
           <MDXRemote source={mdxSource} />
         </div>
       </article>
-
-      {/* 네비게이션 */}
-      <div className="mt-16 pt-8 border-t border-gray-200">
-        <div className="flex justify-between">
-          <Link
-            href="/memo"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            ← 모든 메모 보기
-          </Link>
-          <Link
-            href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            홈으로 가기 →
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
