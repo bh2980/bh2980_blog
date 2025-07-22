@@ -16,7 +16,6 @@ export default defineConfig({
               .pop()
               ?.replace(".mdx", "");
           }),
-        id: s.number(),
         createdAt: s.isodate(),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
@@ -26,11 +25,18 @@ export default defineConfig({
       name: "Series",
       pattern: "series/*.mdx",
       schema: s.object({
-        id: s.number(),
         title: s.string(),
-        slug: s.slug("series"),
+        slug: s
+          .slug("series")
+          .optional()
+          .transform((_, context) => {
+            return (context.meta.path as string)
+              .split("/")
+              .pop()
+              ?.replace(".mdx", "");
+          }),
         description: s.string(),
-        postIds: s.array(s.number()),
+        postSlugs: s.array(s.string()),
         createdAt: s.isodate(),
       }),
     },

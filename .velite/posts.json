@@ -2,7 +2,6 @@
   {
     "title": "CSS 애니메이션과 트랜지션 활용법",
     "slug": "css-animations-guide",
-    "id": 6,
     "createdAt": "2024-01-18T09:00:00.000Z",
     "tags": [
       "CSS",
@@ -15,7 +14,6 @@
   {
     "title": "Flexbox로 마스터하는 CSS 레이아웃",
     "slug": "css-flexbox-mastery",
-    "id": 5,
     "createdAt": "2024-01-20T09:00:00.000Z",
     "tags": [
       "CSS",
@@ -28,7 +26,6 @@
   {
     "title": "CSS Grid 완벽 가이드",
     "slug": "css-grid-guide",
-    "id": 4,
     "createdAt": "2024-01-22T09:00:00.000Z",
     "tags": [
       "CSS",
@@ -40,7 +37,6 @@
   {
     "title": "CSS 변수로 효율적인 스타일 관리하기",
     "slug": "css-variables-tips",
-    "id": 7,
     "createdAt": "2024-01-16T09:00:00.000Z",
     "tags": [
       "CSS",
@@ -53,7 +49,6 @@
   {
     "title": "첫 번째 블로그 포스트",
     "slug": "first-post",
-    "id": 1,
     "createdAt": "2024-01-15T09:00:00.000Z",
     "tags": [
       "블로그",
@@ -65,7 +60,6 @@
   {
     "title": "Next.js 시작하기",
     "slug": "nextjs-tutorial",
-    "id": 2,
     "createdAt": "2024-01-10T09:00:00.000Z",
     "tags": [
       "Next.js",
@@ -78,7 +72,6 @@
   {
     "title": "Tailwind CSS 유용한 팁들",
     "slug": "tailwind-css-tips",
-    "id": 3,
     "createdAt": "2024-01-05T09:00:00.000Z",
     "tags": [
       "CSS",
@@ -91,7 +84,6 @@
   {
     "title": "테스트 포스트",
     "slug": "test",
-    "id": 999,
     "createdAt": "2024-01-01T09:00:00.000Z",
     "tags": [
       "테스트"
