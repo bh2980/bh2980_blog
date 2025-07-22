@@ -12,6 +12,7 @@ import {
   getNextPostInSeries,
 } from "@/lib/series";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import rehypePrettyCode from "rehype-pretty-code";
 import fs from "fs";
 import path from "path";
 
@@ -86,6 +87,16 @@ export default async function BlogPost({
     notFound();
   }
 
+  // rehype-pretty-code 옵션 설정
+  const prettyCodeOptions = {
+    theme: {
+      dark: "github-dark",
+      light: "github-light",
+    },
+    keepBackground: false,
+    defaultLang: "plaintext",
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 뒤로 가기 링크 */}
@@ -148,7 +159,14 @@ export default async function BlogPost({
         </header>
 
         {/* 포스트 내용 */}
-        <MDXRemote source={mdxSource} />
+        <MDXRemote
+          source={mdxSource}
+          options={{
+            mdxOptions: {
+              rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+            },
+          }}
+        />
       </article>
 
       {/* 이전/다음 포스트 네비게이션 */}
