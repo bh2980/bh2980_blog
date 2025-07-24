@@ -86,7 +86,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
             </time>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">
             {memo.title}
           </h1>
 
@@ -94,7 +94,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
             {memo.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded"
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
               >
                 #{tag}
               </span>
@@ -103,7 +103,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
         </header>
 
         {/* 메모 내용 */}
-        <MDXContent source={mdxSource} />
+        <MDXContent source={mdxSource} className="prose dark:prose-invert" />
       </article>
     </div>
   );
