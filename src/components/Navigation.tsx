@@ -43,7 +43,7 @@ export default function Navigation() {
               href="/"
               className="text-xl font-bold text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
             >
-              bh2980's blog
+              bh2980.dev
             </Link>
             <div className="hidden md:flex items-center space-x-8">
               <div className="flex space-x-6">
@@ -89,7 +89,7 @@ export default function Navigation() {
             href="/"
             className="text-xl font-bold text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
           >
-            bh2980's blog
+            bh2980.dev
           </Link>
 
           {/* 데스크톱 메뉴 */}
