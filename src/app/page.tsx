@@ -100,60 +100,58 @@ export default function Home() {
 
         <div className="grid gap-6 md:grid-cols-2">
           {recentSeries.map((seriesItem) => (
-            <article
+            <Link
               key={seriesItem.slug}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+              href={`/series#${seriesItem.slug}`}
+              className="block"
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
-                  묶음글
-                </span>
-                <time className="text-xs text-gray-500">
-                  {new Date(seriesItem.createdAt).toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </time>
-              </div>
-
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                <Link
-                  href={`/series#${seriesItem.slug}`}
-                  className="hover:text-indigo-600"
-                >
-                  {seriesItem.title}
-                </Link>
-              </h3>
-
-              <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                {seriesItem.description}
-              </p>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center text-xs text-gray-500">
-                  <svg
-                    className="mr-1 w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                    />
-                  </svg>
-                  {seriesItem.postSlugs.length}개 포스트
+              <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                    묶음글
+                  </span>
+                  <time className="text-xs text-gray-500">
+                    {new Date(seriesItem.createdAt).toLocaleDateString(
+                      "ko-KR",
+                      {
+                        month: "short",
+                        day: "numeric",
+                      }
+                    )}
+                  </time>
                 </div>
-                <Link
-                  href={`/series#${seriesItem.slug}`}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  묶음글 보기 →
-                </Link>
-              </div>
-            </article>
+
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {seriesItem.title}
+                </h3>
+
+                <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
+                  {seriesItem.description}
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-xs text-gray-500">
+                    <svg
+                      className="mr-1 w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                      />
+                    </svg>
+                    {seriesItem.postSlugs.length}개 포스트
+                  </div>
+                  <span className="text-xs text-indigo-600 font-medium">
+                    묶음글 보기 →
+                  </span>
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
       </section>
