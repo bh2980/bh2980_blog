@@ -15,7 +15,7 @@ export default function SeriesPage() {
         </p>
       </div>
 
-      <div className="space-y-16">
+      <div className="space-y-8">
         {series.map((seriesItem) => {
           // 묶음글에 포함된 포스트들 가져오기
           const posts = getPostsBySlugs(seriesItem.postSlugs);
@@ -23,7 +23,7 @@ export default function SeriesPage() {
           return (
             <section
               key={seriesItem.slug}
-              className="bg-gray-50 rounded-lg p-8"
+              className="bg-gray-50 rounded-lg p-8 border border-gray-200"
             >
               {/* 묶음글 헤더 */}
               <header className="mb-8 pb-6 border-b border-gray-200">

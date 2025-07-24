@@ -3,7 +3,7 @@
     "title": "CSS 애니메이션과 트랜지션 활용법",
     "slug": "css-animations-guide",
     "createdAt": "2024-01-18T09:00:00.000Z",
-    "category": "css",
+    "category": "CSS",
     "tags": [
       "CSS",
       "애니메이션",
@@ -16,7 +16,7 @@
     "title": "Flexbox로 마스터하는 CSS 레이아웃",
     "slug": "css-flexbox-mastery",
     "createdAt": "2024-01-20T09:00:00.000Z",
-    "category": "css",
+    "category": "CSS",
     "tags": [
       "CSS",
       "Flexbox",
@@ -29,7 +29,7 @@
     "title": "CSS Grid 완벽 가이드",
     "slug": "css-grid-guide",
     "createdAt": "2024-01-22T09:00:00.000Z",
-    "category": "css",
+    "category": "CSS",
     "tags": [
       "CSS",
       "Grid",
@@ -41,7 +41,7 @@
     "title": "CSS 변수로 효율적인 스타일 관리하기",
     "slug": "css-variables-tips",
     "createdAt": "2024-01-16T09:00:00.000Z",
-    "category": "css",
+    "category": "CSS",
     "tags": [
       "CSS",
       "변수",
@@ -54,7 +54,7 @@
     "title": "첫 번째 블로그 포스트",
     "slug": "first-post",
     "createdAt": "2024-01-15T09:00:00.000Z",
-    "category": "general",
+    "category": "일반",
     "tags": [
       "블로그",
       "시작",
@@ -66,7 +66,7 @@
     "title": "Next.js 시작하기",
     "slug": "nextjs-tutorial",
     "createdAt": "2024-01-10T09:00:00.000Z",
-    "category": "nextjs",
+    "category": "Next.js",
     "tags": [
       "Next.js",
       "React",
@@ -79,7 +79,7 @@
     "title": "Tailwind CSS 유용한 팁들",
     "slug": "tailwind-css-tips",
     "createdAt": "2024-01-05T09:00:00.000Z",
-    "category": "css",
+    "category": "CSS",
     "tags": [
       "CSS",
       "Tailwind",
@@ -92,7 +92,7 @@
     "title": "테스트 포스트",
     "slug": "test",
     "createdAt": "2024-01-01T09:00:00.000Z",
-    "category": "general",
+    "category": "일반",
     "tags": [
       "테스트"
     ],
