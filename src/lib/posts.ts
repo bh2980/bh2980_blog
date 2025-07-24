@@ -6,6 +6,18 @@ export function getAllPosts(): Post[] {
   );
 }
 
+export function getPostsByCategory(category: Post["category"]): Post[] {
+  return (posts as Post[]).filter((post) => post.category === category);
+}
+
+export const categoryLabels = {
+  css: "CSS",
+  nextjs: "Next.js",
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  general: "일반",
+} as const;
+
 export function getPostBySlug(slug: string): Post | null {
   return (posts as Post[]).find((post) => post.slug === slug) || null;
 }
