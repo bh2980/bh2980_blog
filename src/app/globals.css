@@ -100,4 +100,24 @@
       padding: 0;
     }
   }
+
+  /* 코드 블록 복사 버튼 스타일 */
+  pre {
+    @apply relative;
+  }
+
+  /* 복사 버튼이 있는 코드 블록 */
+  .group:hover .absolute {
+    opacity: 1;
+  }
+
+  .absolute {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  /* 하이라이트된 줄 스타일 */
+  .highlighted {
+    @apply bg-blue-500/10 border-l-4 border-blue-500;
+  }
 }
