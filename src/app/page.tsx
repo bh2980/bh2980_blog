@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { getAllPosts } from "@/lib/posts";
-import { getAllMemos, categoryLabels } from "@/lib/memos";
+import { getAllPosts, categoryLabels as postCategoryLabels } from "@/lib/posts";
+import { getAllMemos, categoryLabels as memoCategoryLabels } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
-import type { Memo } from "@/velite";
+import type { Memo, Post } from "@/velite";
 
 export default function Home() {
   const posts = getAllPosts();
@@ -12,12 +12,23 @@ export default function Home() {
   const recentMemos = memos.slice(0, 4);
   const recentSeries = series.slice(0, 2);
 
-  const getCategoryBadgeColor = (category: Memo["category"]) => {
+  const getMemoCategoryBadgeColor = (category: Memo["category"]) => {
     const colors = {
       algorithm: "bg-green-100 text-green-800",
       "css-battle": "bg-purple-100 text-purple-800",
       typescript: "bg-blue-100 text-blue-800",
       etc: "bg-gray-100 text-gray-800",
+    };
+    return colors[category];
+  };
+
+  const getPostCategoryBadgeColor = (category: Post["category"]) => {
+    const colors = {
+      css: "bg-blue-100 text-blue-800",
+      nextjs: "bg-black text-white",
+      javascript: "bg-yellow-100 text-yellow-800",
+      typescript: "bg-blue-100 text-blue-800",
+      general: "bg-gray-100 text-gray-800",
     };
     return colors[category];
   };
@@ -59,6 +70,18 @@ export default function Home() {
               key={post.slug}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  className={`px-2 py-1 text-xs font-medium rounded-full ${getPostCategoryBadgeColor(
+                    post.category
+                  )}`}
+                >
+                  {postCategoryLabels[post.category]}
+                </span>
+                <p className="text-gray-600 text-sm">
+                  {new Date(post.createdAt).toLocaleDateString("ko-KR")}
+                </p>
+              </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 <Link
                   href={`/posts/${post.slug}`}
@@ -67,9 +90,6 @@ export default function Home() {
                   {post.title}
                 </Link>
               </h3>
-              <p className="text-gray-600 text-sm mb-3">
-                {new Date(post.createdAt).toLocaleDateString("ko-KR")}
-              </p>
               <p className="text-gray-700 leading-relaxed mb-4">
                 {post.excerpt}
               </p>
@@ -182,11 +202,11 @@ export default function Home() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryBadgeColor(
+                  className={`px-2 py-1 text-xs font-medium rounded-full ${getMemoCategoryBadgeColor(
                     memo.category
                   )}`}
                 >
-                  {categoryLabels[memo.category]}
+                  {memoCategoryLabels[memo.category]}
                 </span>
                 <time className="text-xs text-gray-500">
                   {new Date(memo.createdAt).toLocaleDateString("ko-KR", {

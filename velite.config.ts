@@ -32,6 +32,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
+        category: s.enum(["css", "nextjs", "javascript", "typescript", "general"]).default("general"),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
