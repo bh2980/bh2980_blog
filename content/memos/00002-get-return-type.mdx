@@ -1,0 +1,33 @@
+---
+title: "Get Return Type"
+category: "Type Challenges"
+tags: ["TypeScript"]
+createdAt: "2023-09-17T19:17:00.000Z"
+---
+
+## **2 - Get Return Type**
+
+> 내장 제네릭 `ReturnType<T>`을 이를 사용하지 않고 구현하세요.
+
+```typescript
+const fn = (v: boolean) => {
+  if (v) return 1;
+  else return 2;
+};
+
+type a = MyReturnType<typeof fn>; // should be "1 | 2"
+```
+
+## **풀이**
+
+```typescript
+type MyReturnType<T> = T extends (...args: any) => infer ReturnType
+  ? ReturnType
+  : never;
+```
+
+`args`는 `:`을 통해서 파라미터 타입을 지정해주는 반면에 리턴 타입은 바로 `infer`로 가져온다.
+
+## Reference
+
+[Type Challenges, 2 - Get Return Type](https://github.com/type-challenges/type-challenges/blob/main/questions/00002-easy-return-type/README.ko.md)
