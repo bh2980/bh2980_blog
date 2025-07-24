@@ -19,7 +19,7 @@
       }
     ],
     "paths": {
-      "@/velite": ["./.velite"],
+      "@/content": ["./content"],
       "@/content/*": ["./content/*"],
       "@/*": ["./src/*"]
     }
