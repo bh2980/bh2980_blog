@@ -94,7 +94,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
             {memo.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-full"
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded"
               >
                 #{tag}
               </span>
