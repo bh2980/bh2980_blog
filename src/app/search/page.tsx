@@ -153,40 +153,38 @@ function SearchContent() {
                   </div>
                   <div className="space-y-4">
                     {displayedPosts.map((post) => (
-                      <article
+                      <Link
                         key={post.slug}
-                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                        href={`/posts/${post.slug}`}
+                        className="block"
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                            {post.category}
-                          </span>
-                          <p className="text-gray-600 text-sm">
-                            {new Date(post.createdAt).toLocaleDateString(
-                              "ko-KR"
-                            )}
-                          </p>
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                          <Link
-                            href={`/posts/${post.slug}`}
-                            className="hover:text-blue-600"
-                          >
-                            {post.title}
-                          </Link>
-                        </h4>
-                        <p className="text-gray-700 mb-4">{post.excerpt}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {post.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                            >
-                              #{tag}
+                        <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                              {post.category}
                             </span>
-                          ))}
-                        </div>
-                      </article>
+                            <p className="text-gray-600 text-sm">
+                              {new Date(post.createdAt).toLocaleDateString(
+                                "ko-KR"
+                              )}
+                            </p>
+                          </div>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                            {post.title}
+                          </h4>
+                          <p className="text-gray-700 mb-4">{post.excerpt}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {post.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        </article>
+                      </Link>
                     ))}
                   </div>
                 </section>
@@ -265,51 +263,49 @@ function SearchContent() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {displayedMemos.map((memo) => (
-                      <article
+                      <Link
                         key={memo.slug}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col h-full"
+                        href={`/memo/${memo.slug}`}
+                        className="block"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                            {memo.category}
-                          </span>
-                          <time className="text-xs text-gray-500">
-                            {new Date(memo.createdAt).toLocaleDateString(
-                              "ko-KR",
-                              {
-                                month: "short",
-                                day: "numeric",
-                              }
-                            )}
-                          </time>
-                        </div>
-                        <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1">
-                          <Link
-                            href={`/memo/${memo.slug}`}
-                            className="hover:text-blue-600"
-                          >
+                        <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                              {memo.category}
+                            </span>
+                            <time className="text-xs text-gray-500">
+                              {new Date(memo.createdAt).toLocaleDateString(
+                                "ko-KR",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )}
+                            </time>
+                          </div>
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1">
                             {memo.title}
-                          </Link>
-                        </h4>
-                        <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                          {memo.excerpt}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {memo.tags.slice(0, 2).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                          {memo.tags.length > 2 && (
-                            <span className="text-xs text-gray-400">
-                              +{memo.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      </article>
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                            {memo.excerpt}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {memo.tags.slice(0, 2).map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                            {memo.tags.length > 2 && (
+                              <span className="text-xs text-gray-400">
+                                +{memo.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </article>
+                      </Link>
                     ))}
                   </div>
                 </section>

@@ -45,45 +45,43 @@ export default function Home() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recentPosts.map((post) => (
-            <article
+            <Link
               key={post.slug}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col h-full"
+              href={`/posts/${post.slug}`}
+              className="block"
             >
-              <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                  {post.category}
-                </span>
-                <p className="text-gray-600 text-sm">
-                  {new Date(post.createdAt).toLocaleDateString("ko-KR")}
-                </p>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                <Link
-                  href={`/posts/${post.slug}`}
-                  className="hover:text-blue-600"
-                >
+              <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    {post.category}
+                  </span>
+                  <p className="text-gray-600 text-sm">
+                    {new Date(post.createdAt).toLocaleDateString("ko-KR")}
+                  </p>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600">
                   {post.title}
-                </Link>
-              </h3>
-              <p className="text-gray-700 leading-relaxed mb-4 flex-1">
-                {post.excerpt}
-              </p>
-              <div className="flex flex-wrap gap-1 mt-auto">
-                {post.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-                {post.tags.length > 3 && (
-                  <span className="text-xs text-gray-400">
-                    +{post.tags.length - 3}
-                  </span>
-                )}
-              </div>
-            </article>
+                </h3>
+                <p className="text-gray-700 leading-relaxed mb-4 flex-1">
+                  {post.excerpt}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-auto">
+                  {post.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                  {post.tags.length > 3 && (
+                    <span className="text-xs text-gray-400">
+                      +{post.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
       </section>
@@ -171,49 +169,45 @@ export default function Home() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {recentMemos.map((memo) => (
-            <article
+            <Link
               key={memo.slug}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              href={`/memo/${memo.slug}`}
+              className="block"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                >
-                  {memo.category}
-                </span>
-                <time className="text-xs text-gray-500">
-                  {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </time>
-              </div>
+              <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    {memo.category}
+                  </span>
+                  <time className="text-xs text-gray-500">
+                    {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </time>
+                </div>
 
-              <h3 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
-                <Link
-                  href={`/memo/${memo.slug}`}
-                  className="hover:text-blue-600"
-                >
+                <h3 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
                   {memo.title}
-                </Link>
-              </h3>
+                </h3>
 
-              <div className="flex flex-wrap gap-1">
-                {memo.tags.slice(0, 2).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-                {memo.tags.length > 2 && (
-                  <span className="text-xs text-gray-400">
-                    +{memo.tags.length - 2}
-                  </span>
-                )}
-              </div>
-            </article>
+                <div className="flex flex-wrap gap-1">
+                  {memo.tags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                  {memo.tags.length > 2 && (
+                    <span className="text-xs text-gray-400">
+                      +{memo.tags.length - 2}
+                    </span>
+                  )}
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
       </section>
