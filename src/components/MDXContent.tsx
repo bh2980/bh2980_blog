@@ -1,5 +1,6 @@
 import { MDXRemote, MDXRemoteProps } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
+import remarkBreaks from "remark-breaks";
 
 interface MDXContentProps {
   source: string;
@@ -16,6 +17,7 @@ const defaultPrettyCodeOptions = {
 // 기본 MDX 옵션
 const defaultMdxOptions: NonNullable<MDXRemoteProps["options"]> = {
   mdxOptions: {
+    remarkPlugins: [remarkBreaks],
     rehypePlugins: [[rehypePrettyCode, defaultPrettyCodeOptions]],
   },
 };
