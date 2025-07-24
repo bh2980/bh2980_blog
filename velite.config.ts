@@ -34,41 +34,7 @@ const getCategoriesConfig = () => {
   }
 };
 
-const getValidPostCategories = (): string[] => {
-  const config = getCategoriesConfig();
-  return Object.keys(config.posts);
-};
-
-const getValidMemoCategories = (): string[] => {
-  const config = getCategoriesConfig();
-  return Object.keys(config.memos);
-};
-
 // 유효성 검증 함수들
-const validatePostCategory = (category: string): boolean => {
-  const validCategories = getValidPostCategories();
-  if (!validCategories.includes(category)) {
-    throw new Error(
-      `유효하지 않은 포스트 카테고리: '${category}'\n사용 가능한 카테고리: ${validCategories.join(
-        ", "
-      )}`
-    );
-  }
-  return true;
-};
-
-const validateMemoCategory = (category: string): boolean => {
-  const validCategories = getValidMemoCategories();
-  if (!validCategories.includes(category)) {
-    throw new Error(
-      `유효하지 않은 메모 카테고리: '${category}'\n사용 가능한 카테고리: ${validCategories.join(
-        ", "
-      )}`
-    );
-  }
-  return true;
-};
-
 const validatePostSlugs = (slugs: string[]): boolean => {
   const availableSlugs = getAvailablePostSlugs();
   const invalidSlugs = slugs.filter((slug) => !availableSlugs.includes(slug));
@@ -93,7 +59,9 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s.string().default("general").refine(validatePostCategory),
+        category: s
+          .enum(["CSS", "Next.js", "JavaScript", "TypeScript", "일반"])
+          .default("일반"),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
@@ -116,7 +84,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s.string().refine(validateMemoCategory),
+        category: s.enum(["알고리즘", "CSS Battle", "TypeScript", "기타"]),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
