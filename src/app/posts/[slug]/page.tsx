@@ -92,7 +92,7 @@ export default async function BlogPost({
       {/* 뒤로 가기 링크 */}
       <div className="mb-8">
         <Link
-          href={isFromSeries ? "/series" : "/posts"}
+          href={isFromSeries ? `/series#${fromSeries}` : "/posts"}
           className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
         >
           <svg

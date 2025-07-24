@@ -117,7 +117,10 @@ export default function Home() {
               </div>
 
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                <Link href="/series" className="hover:text-indigo-600">
+                <Link
+                  href={`/series#${seriesItem.slug}`}
+                  className="hover:text-indigo-600"
+                >
                   {seriesItem.title}
                 </Link>
               </h3>
@@ -144,7 +147,7 @@ export default function Home() {
                   {seriesItem.postSlugs.length}개 포스트
                 </div>
                 <Link
-                  href="/series"
+                  href={`/series#${seriesItem.slug}`}
                   className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                 >
                   묶음글 보기 →
@@ -169,11 +172,7 @@ export default function Home() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {recentMemos.map((memo) => (
-            <Link
-              key={memo.slug}
-              href={`/memo/${memo.slug}`}
-              className="block"
-            >
+            <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
               <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
