@@ -1,0 +1,30 @@
+---
+title: "Parameters"
+category: "Type Challenges"
+tags: ["TypeScript"]
+createdAt: "2023-09-17T03:50:00.000Z"
+---
+
+## **3312 - Parameters**
+
+> 내장 제네릭 `Parameters<T>`를 이를 사용하지 않고 구현하세요.
+
+```typescript
+const foo = (arg1: string, arg2: number): void => {};
+
+type FunctionParamsType = MyParameters<typeof foo>; // [arg1: string, arg2: number]
+```
+
+## **풀이**
+
+```typescript
+type MyParameters<T extends (...args: any[]) => any> = T extends (
+  ...args: infer Params
+) => any
+  ? Params
+  : never;
+```
+
+## Reference
+
+[Type Challenges, 3312 - Parameters](https://github.com/type-challenges/type-challenges/blob/main/questions/03312-easy-parameters/README.ko.md)

@@ -1,0 +1,90 @@
+---
+title: "Length of Tuple"
+category: "Type Challenges"
+tags: ["TypeScript"]
+createdAt: "2023-09-06T01:23:00.000Z"
+---
+
+## **18 - Length of Tuple**
+
+> 배열(튜플)을 받아 길이를 반환하는 제네릭 `Length<T>`를 구현하세요.
+
+```typescript
+type tesla = ["tesla", "model 3", "model X", "model Y"];
+type spaceX = [
+  "FALCON 9",
+  "FALCON HEAVY",
+  "DRAGON",
+  "STARSHIP",
+  "HUMAN SPACEFLIGHT"
+];
+
+type teslaLength = Length<tesla>; // expected 4
+type spaceXLength = Length<spaceX>; // expected 5
+```
+
+## **풀이**
+
+```typescript
+type Length<T extends readonly any[]> = T["length"];
+```
+
+일단 먼저, JS에서 배열은 객체이고 가질 수 있는 `length`, `toString()`과 같은 속성들이 있다.
+TS에서는 이런 속성들을 타입마다 인터페이스로 미리 정의해둔다.
+
+```typescript
+//lib.es5.d.ts
+
+interface Array<T> {
+    /**
+     * Gets or sets the length of the array. This is a number one higher than the highest index in the array.
+     */
+    length: number;
+    /**
+     * Returns a string representation of an array.
+     */
+    toString(): string;
+    /**
+     * Returns a string representation of an array. The elements are converted to string using their toLocaleString methods.
+     */
+    toLocaleString(): string;
+    /**
+     * Removes the last element from an array and returns it.
+     * If the array is empty, undefined is returned and the array is not modified.
+     */
+    pop(): T | undefined;
+    /**
+     * Appends new elements to the end of an array, and returns the new length of the array.
+     * @param items New elements to add to the array.
+     */
+    push(...items: T[]): number;
+
+    ...
+
+    [n: number]: T;
+ }
+```
+
+Array 인터페이스에서 가질 수 있는 속성으로 `length`, `pop`, `toString`과 같은 속성들을 정의해놓은 것을 알 수 있다.
+따라서 T의 `length` 속성을 가져오면 배열 객체 내부적으로 가지고 있는 길이 값을 return한다.
+튜플 타입은 Array 인터페이스를 상속받아 만들어지는데 위의 규칙을 따라 `tesla`라는 튜플 타입은 아래처럼 생성된다.
+
+```typescript
+type tesla = {
+  0: 'tesla',
+  1: 'model 3',
+  2: 'model X',
+  3: 'model Y',
+
+   // And all other properties and methods from the Array interface...
+
+   length: 4,
+   ...
+}
+```
+
+따라서 4가 return된다.
+
+## Reference
+
+[Type Challenges, 18 - Length of Tuple](https://github.com/type-challenges/type-challenges/blob/main/questions/00018-easy-tuple-length/README.ko.md)
