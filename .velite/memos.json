@@ -3,7 +3,7 @@
     "title": "CSS Battle #1 - Simply Square",
     "slug": "css-battle-01",
     "createdAt": "2024-01-18T09:00:00.000Z",
-    "category": "css-battle",
+    "category": "CSS Battle",
     "tags": [
       "css",
       "challenge"
@@ -14,7 +14,7 @@
     "title": "CSS Battle #2 - Carrom",
     "slug": "css-battle-02",
     "createdAt": "2024-01-25T09:00:00.000Z",
-    "category": "css-battle",
+    "category": "CSS Battle",
     "tags": [
       "css",
       "challenge",
@@ -26,7 +26,7 @@
     "title": "CSS Battle #3 - Push Button",
     "slug": "css-battle-03",
     "createdAt": "2024-01-21T09:00:00.000Z",
-    "category": "css-battle",
+    "category": "CSS Battle",
     "tags": [
       "css",
       "challenge",
@@ -38,7 +38,7 @@
     "title": "CSS Battle #4 - Ups n Downs",
     "slug": "css-battle-04",
     "createdAt": "2024-01-17T09:00:00.000Z",
-    "category": "css-battle",
+    "category": "CSS Battle",
     "tags": [
       "css",
       "challenge",
@@ -50,7 +50,7 @@
     "title": "CSS 중앙 정렬 모든 방법",
     "slug": "css-centering-techniques",
     "createdAt": "2024-01-23T09:00:00.000Z",
-    "category": "etc",
+    "category": "기타",
     "tags": [
       "css",
       "centering",
@@ -62,7 +62,7 @@
     "title": "CSS 가상 요소 활용법",
     "slug": "css-pseudo-elements",
     "createdAt": "2024-01-19T09:00:00.000Z",
-    "category": "etc",
+    "category": "기타",
     "tags": [
       "css",
       "pseudo-elements",
@@ -75,7 +75,7 @@
     "title": "Two Sum 문제 풀이",
     "slug": "two-sum-solution",
     "createdAt": "2024-01-20T09:00:00.000Z",
-    "category": "algorithm",
+    "category": "알고리즘",
     "tags": [
       "leetcode",
       "hash-map",
@@ -87,7 +87,7 @@
     "title": "TypeScript Utility Types 정리",
     "slug": "typescript-utility-types",
     "createdAt": "2024-01-15T09:00:00.000Z",
-    "category": "typescript",
+    "category": "TypeScript",
     "tags": [
       "typescript",
       "utility-types"

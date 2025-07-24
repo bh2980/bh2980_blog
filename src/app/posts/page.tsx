@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAllPosts, categoryLabels } from "@/lib/posts";
-import { getPostCategoryColors, type PostCategory } from "@/lib/categories";
+import { getAllPosts } from "@/lib/posts";
 import { type Post } from "@/velite";
 
 export default function BlogPage() {
   const allPosts = getAllPosts();
   const [selectedCategory, setSelectedCategory] = useState<
-    PostCategory | "all"
+    Post["category"] | "all"
   >("all");
 
   const posts =
@@ -17,27 +16,14 @@ export default function BlogPage() {
       ? allPosts
       : allPosts.filter((post) => post.category === selectedCategory);
 
-  const getCategoryBadgeColor = (category: PostCategory) => {
-    return getPostCategoryColors(category, "light");
-  };
-
-  const getTabColor = (category: PostCategory | "all") => {
+  const getTabColor = (category: Post["category"] | "all") => {
     if (selectedCategory === category) {
-      if (category === "all") return "bg-blue-600 text-white";
-      // 탭 활성화 시에는 진한 색상 사용
-      const activeColors: Record<PostCategory, string> = {
-        css: "bg-blue-600 text-white",
-        nextjs: "bg-black text-white",
-        javascript: "bg-yellow-600 text-white",
-        typescript: "bg-blue-600 text-white",
-        general: "bg-gray-600 text-white",
-      };
-      return activeColors[category];
+      return "bg-blue-600 text-white";
     }
-    return "bg-gray-100 text-gray-700 hover:bg-gray-200";
+    return "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
   };
 
-  const getCategoryCount = (category: PostCategory | "all") => {
+  const getCategoryCount = (category: Post["category"] | "all") => {
     if (category === "all") return allPosts.length;
     return allPosts.filter((post) => post.category === category).length;
   };
@@ -60,15 +46,17 @@ export default function BlogPage() {
           >
             전체 ({getCategoryCount("all")})
           </button>
-          {Object.entries(categoryLabels).map(([key, label]) => (
+          {(
+            ["CSS", "Next.js", "JavaScript", "TypeScript", "일반"] as const
+          ).map((category) => (
             <button
-              key={key}
-              onClick={() => setSelectedCategory(key as PostCategory)}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                  key as PostCategory
-                )}`}
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                category
+              )}`}
             >
-                              {label} ({getCategoryCount(key as PostCategory)})
+              {category} ({getCategoryCount(category)})
             </button>
           ))}
         </div>
@@ -82,12 +70,8 @@ export default function BlogPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryBadgeColor(
-                    post.category
-                  )}`}
-                >
-                  {categoryLabels[post.category]}
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                  {post.category}
                 </span>
                 <time className="text-sm text-gray-500">
                   {new Date(post.createdAt).toLocaleDateString("ko-KR", {

@@ -1,13 +1,7 @@
 import Link from "next/link";
-import { getAllPosts, categoryLabels as postCategoryLabels } from "@/lib/posts";
-import { getAllMemos, categoryLabels as memoCategoryLabels } from "@/lib/memos";
+import { getAllPosts } from "@/lib/posts";
+import { getAllMemos } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
-import {
-  getPostCategoryColors,
-  getMemoCategoryColors,
-  type PostCategory,
-  type MemoCategory,
-} from "@/lib/categories";
 import type { Memo, Post } from "@/velite";
 
 export default function Home() {
@@ -17,14 +11,6 @@ export default function Home() {
   const recentPosts = posts.slice(0, 3);
   const recentMemos = memos.slice(0, 4);
   const recentSeries = series.slice(0, 2);
-
-  const getMemoCategoryBadgeColor = (category: MemoCategory) => {
-    return getMemoCategoryColors(category, "light");
-  };
-
-  const getPostCategoryBadgeColor = (category: PostCategory) => {
-    return getPostCategoryColors(category, "light");
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -64,12 +50,8 @@ export default function Home() {
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getPostCategoryBadgeColor(
-                    post.category
-                  )}`}
-                >
-                  {postCategoryLabels[post.category]}
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                  {post.category}
                 </span>
                 <p className="text-gray-600 text-sm">
                   {new Date(post.createdAt).toLocaleDateString("ko-KR")}
@@ -195,11 +177,9 @@ export default function Home() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getMemoCategoryBadgeColor(
-                    memo.category
-                  )}`}
+                  className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                 >
-                  {memoCategoryLabels[memo.category]}
+                  {memo.category}
                 </span>
                 <time className="text-xs text-gray-500">
                   {new Date(memo.createdAt).toLocaleDateString("ko-KR", {

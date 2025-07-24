@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMemoBySlug, getAllMemos, categoryLabels } from "@/lib/memos";
-import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
+import { getMemoBySlug, getAllMemos } from "@/lib/memos";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
@@ -44,10 +43,6 @@ export default async function MemoPost({ params }: MemoPostProps) {
     notFound();
   }
 
-  const getCategoryBadgeColor = (category: MemoCategory) => {
-    return getMemoCategoryColors(category, "light");
-  };
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 뒤로 가기 링크 */}
@@ -78,11 +73,9 @@ export default async function MemoPost({ params }: MemoPostProps) {
         <header className="mb-12 pb-8 border-b border-gray-200">
           <div className="flex items-center gap-3 mb-4">
             <span
-              className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeColor(
-                memo.category
-              )}`}
+              className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
             >
-              {categoryLabels[memo.category]}
+              {memo.category}
             </span>
             <time className="text-gray-500">
               {new Date(memo.createdAt).toLocaleDateString("ko-KR", {

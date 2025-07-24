@@ -4,8 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
-import { categoryLabels } from "@/lib/memos";
-import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
+
 import { type Memo } from "@/velite";
 
 const INITIAL_DISPLAY_COUNT = 3;
@@ -40,9 +39,7 @@ function SearchContent() {
     }
   }, [searchParams]);
 
-  const getCategoryBadgeColor = (category: MemoCategory) => {
-    return getMemoCategoryColors(category, "light");
-  };
+
 
   const displayedPosts = showAllPosts
     ? results.posts
@@ -231,11 +228,9 @@ function SearchContent() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryBadgeColor(
-                              memo.category
-                            )}`}
+                            className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                           >
-                            {categoryLabels[memo.category]}
+                            {memo.category}
                           </span>
                           <time className="text-xs text-gray-500">
                             {new Date(memo.createdAt).toLocaleDateString(

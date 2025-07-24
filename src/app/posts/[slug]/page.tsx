@@ -5,9 +5,8 @@ import {
   getAllPosts,
   getPreviousPost,
   getNextPost,
-  categoryLabels,
 } from "@/lib/posts";
-import { getPostCategoryColors, type PostCategory } from "@/lib/categories";
+
 import {
   getSeriesBySlug,
   getPreviousPostInSeries,
@@ -43,10 +42,6 @@ export default async function BlogPost({
   if (!post) {
     notFound();
   }
-
-  const getCategoryBadgeColor = (category: PostCategory) => {
-    return getPostCategoryColors(category, "light");
-  };
 
   // 시리즈에서 온 경우인지 확인
   const fromSeries =
@@ -129,12 +124,8 @@ export default async function BlogPost({
           )}
 
           <div className="mb-4">
-            <span
-              className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeColor(
-                post.category
-              )}`}
-            >
-              {categoryLabels[post.category]}
+            <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+              {post.category}
             </span>
           </div>
 

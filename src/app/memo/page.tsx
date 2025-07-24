@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAllMemos, categoryLabels } from "@/lib/memos";
-import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
+import { getAllMemos } from "@/lib/memos";
 import { type Memo } from "@/velite";
 
 export default function MemoPage() {
   const allMemos = getAllMemos();
   const [selectedCategory, setSelectedCategory] = useState<
-    MemoCategory | "all"
+    Memo["category"] | "all"
   >("all");
 
   const memos =
@@ -17,26 +16,14 @@ export default function MemoPage() {
       ? allMemos
       : allMemos.filter((memo) => memo.category === selectedCategory);
 
-  const getCategoryBadgeColor = (category: MemoCategory) => {
-    return getMemoCategoryColors(category, "light");
-  };
-
-  const getTabColor = (category: MemoCategory | "all") => {
+  const getTabColor = (category: Memo["category"] | "all") => {
     if (selectedCategory === category) {
-      if (category === "all") return "bg-blue-600 text-white";
-      // 탭 활성화 시에는 진한 색상 사용
-      const activeColors: Record<MemoCategory, string> = {
-        algorithm: "bg-green-600 text-white",
-        "css-battle": "bg-purple-600 text-white",
-        typescript: "bg-blue-600 text-white",
-        etc: "bg-gray-600 text-white",
-      };
-      return activeColors[category];
+      return "bg-blue-600 text-white";
     }
-    return "bg-gray-100 text-gray-700 hover:bg-gray-200";
+    return "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
   };
 
-  const getCategoryCount = (category: MemoCategory | "all") => {
+  const getCategoryCount = (category: Memo["category"] | "all") => {
     if (category === "all") return allMemos.length;
     return allMemos.filter((memo) => memo.category === category).length;
   };
@@ -59,17 +46,19 @@ export default function MemoPage() {
           >
             전체 ({getCategoryCount("all")})
           </button>
-          {Object.entries(categoryLabels).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedCategory(key as MemoCategory)}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                  key as MemoCategory
+          {(["알고리즘", "CSS Battle", "TypeScript", "기타"] as const).map(
+            (category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                  category
                 )}`}
-            >
-                              {label} ({getCategoryCount(key as MemoCategory)})
-            </button>
-          ))}
+              >
+                {category} ({getCategoryCount(category)})
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -80,12 +69,8 @@ export default function MemoPage() {
             className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all hover:border-gray-300 flex flex-col h-full"
           >
             <div className="flex items-center justify-between mb-3">
-              <span
-                className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryBadgeColor(
-                  memo.category
-                )}`}
-              >
-                {categoryLabels[memo.category]}
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                {memo.category}
               </span>
               <time className="text-xs text-gray-500">
                 {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
@@ -139,9 +124,7 @@ export default function MemoPage() {
           <p className="text-gray-500 text-lg">
             {selectedCategory === "all"
               ? "아직 작성된 메모가 없습니다."
-              : `${
-                  categoryLabels[selectedCategory as Memo["category"]]
-                } 카테고리에 메모가 없습니다.`}
+              : `${selectedCategory} 카테고리에 메모가 없습니다.`}
           </p>
         </div>
       )}
