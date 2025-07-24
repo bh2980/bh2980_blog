@@ -1,4 +1,6 @@
-import { MDXRemote, MDXRemoteProps } from "next-mdx-remote/rsc";
+import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import CopyButton from "./CopyButton";
+import { extractCodeText } from "@/lib/mdx";
 import rehypePrettyCode from "rehype-pretty-code";
 import remarkBreaks from "remark-breaks";
 
@@ -23,7 +25,11 @@ const defaultMdxOptions: NonNullable<MDXRemoteProps["options"]> = {
   },
 };
 
-export default function MDXContent({ source, options, className }: MDXContentProps) {
+export default function MDXContent({
+  source,
+  options,
+  className,
+}: MDXContentProps) {
   // 전달받은 옵션과 기본 옵션을 병합
   const mergedOptions = {
     ...defaultMdxOptions,
@@ -38,5 +44,25 @@ export default function MDXContent({ source, options, className }: MDXContentPro
     },
   };
 
-  return <MDXRemote source={source} options={mergedOptions} components={{ wrapper: ({ children }) => <div className={className}>{children}</div> }} />;
+  return (
+    <MDXRemote
+      source={source}
+      options={mergedOptions}
+      components={{
+        wrapper: ({ children }) => <div className={className}>{children}</div>,
+        pre: ({ children, ...props }) => {
+          const code = extractCodeText(children);
+
+          return (
+            <div className="relative group">
+              <pre {...props} className="relative">
+                {children}
+              </pre>
+              <CopyButton code={code} />
+            </div>
+          );
+        },
+      }}
+    />
+  );
 }
