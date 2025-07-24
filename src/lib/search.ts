@@ -23,7 +23,7 @@ export function searchContent(query: string): SearchResult {
 
   const searchTerm = query.toLowerCase().trim();
 
-  // 포스트 검색
+  // 게시글 검색
   const posts = getAllPosts().filter(
     (post) =>
       post.title.toLowerCase().includes(searchTerm) ||

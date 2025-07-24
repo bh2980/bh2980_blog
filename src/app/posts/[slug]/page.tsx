@@ -50,13 +50,13 @@ export default async function BlogPost({
       : null;
   const isFromSeries = fromSeries !== null;
 
-  // 이전/다음 포스트 가져오기
+  // 이전/다음 게시글 가져오기
   let previousPost = null;
   let nextPost = null;
   let seriesInfo = null;
 
   if (isFromSeries) {
-    // 시리즈에서 온 경우: 시리즈 내 이전/다음 포스트
+    // 시리즈에서 온 경우: 시리즈 내 이전/다음 게시글
     seriesInfo = getSeriesBySlug(fromSeries);
     const prevSlug = getPreviousPostInSeries(slug, fromSeries);
     const nextSlug = getNextPostInSeries(slug, fromSeries);
@@ -64,7 +64,7 @@ export default async function BlogPost({
     if (prevSlug) previousPost = getPostBySlug(prevSlug);
     if (nextSlug) nextPost = getPostBySlug(nextSlug);
   } else {
-    // 일반 접속: 전체 포스트 기준 이전/다음 포스트
+    // 일반 접속: 전체 게시글 기준 이전/다음 게시글
     previousPost = getPreviousPost(slug);
     nextPost = getNextPost(slug);
   }
@@ -113,7 +113,7 @@ export default async function BlogPost({
       </div>
 
       <article className="prose prose-lg max-w-none">
-        {/* 포스트 헤더 */}
+        {/* 게시글 헤더 */}
         <header className="mb-12 pb-8 border-b border-gray-200">
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
@@ -151,11 +151,11 @@ export default async function BlogPost({
           </div>
         </header>
 
-        {/* 포스트 내용 */}
+        {/* 게시글 내용 */}
         <MDXContent source={mdxSource} className="prose dark:prose-invert" />
       </article>
 
-      {/* 이전/다음 포스트 네비게이션 */}
+      {/* 이전/다음 게시글 네비게이션 */}
       {(previousPost || nextPost) && (
         <div className="mt-16 pt-8 border-t border-gray-200">
           <div className="flex justify-between items-center">
@@ -169,7 +169,7 @@ export default async function BlogPost({
                 className="group flex flex-col text-left max-w-sm"
               >
                 <span className="text-sm text-gray-500 mb-1">
-                  {isFromSeries ? "시리즈 이전 포스트" : "이전 포스트"}
+                  {isFromSeries ? "시리즈 이전 게시글" : "이전 게시글"}
                 </span>
                 <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
                   ← {previousPost.title}
@@ -189,7 +189,7 @@ export default async function BlogPost({
                 className="group flex flex-col text-right max-w-sm"
               >
                 <span className="text-sm text-gray-500 mb-1">
-                  {isFromSeries ? "시리즈 다음 포스트" : "다음 포스트"}
+                  {isFromSeries ? "시리즈 다음 게시글" : "다음 게시글"}
                 </span>
                 <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
                   {nextPost.title} →
