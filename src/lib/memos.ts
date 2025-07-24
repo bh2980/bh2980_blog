@@ -1,4 +1,4 @@
-import { memos, type Memo } from "@/velite";
+import { memos, type Memo } from "@/content";
 
 export function getAllMemos(): Memo[] {
   return (memos as Memo[]).sort(

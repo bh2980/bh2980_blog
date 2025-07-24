@@ -1,4 +1,4 @@
-import { series, type Series } from "@/velite";
+import { series, type Series } from "@/content";
 
 export function getAllSeries(): Series[] {
   return (series as Series[]).sort(

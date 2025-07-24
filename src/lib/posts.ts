@@ -1,4 +1,4 @@
-import { posts, type Post } from "@/velite";
+import { posts, type Post } from "@/content";
 
 export function getAllPosts(): Post[] {
   return (posts as Post[]).sort(
