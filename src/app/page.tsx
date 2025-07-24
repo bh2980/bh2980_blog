@@ -47,7 +47,7 @@ export default function Home() {
           {recentPosts.map((post) => (
             <article
               key={post.slug}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow flex flex-col h-full"
             >
               <div className="flex items-center gap-2 mb-3">
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
@@ -65,14 +65,14 @@ export default function Home() {
                   {post.title}
                 </Link>
               </h3>
-              <p className="text-gray-700 leading-relaxed mb-4">
+              <p className="text-gray-700 leading-relaxed mb-4 flex-1">
                 {post.excerpt}
               </p>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 mt-auto">
                 {post.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded font-medium"
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
                   >
                     #{tag}
                   </span>
@@ -202,7 +202,7 @@ export default function Home() {
                 {memo.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
                   >
                     #{tag}
                   </span>
