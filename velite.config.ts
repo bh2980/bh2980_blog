@@ -41,7 +41,7 @@ const validatePostSlugs = (slugs: string[]): boolean => {
 
   if (invalidSlugs.length > 0) {
     throw new Error(
-      `존재하지 않는 포스트 slug: ${invalidSlugs.join(
+      `존재하지 않는 게시글 slug: ${invalidSlugs.join(
         ", "
       )}\n사용 가능한 slug: ${availableSlugs.join(", ")}`
     );

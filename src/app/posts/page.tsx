@@ -107,7 +107,7 @@ export default function BlogPage() {
       {posts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg dark:text-gray-400">
-            아직 작성된 포스트가 없습니다.
+            아직 작성된 게시글이 없습니다.
           </p>
         </div>
       )}

@@ -63,9 +63,11 @@ function SearchContent() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 헤더 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
+          검색 🔍
+        </h1>
         <p className="text-lg text-gray-600 mb-6 dark:text-gray-300">
-          찾고 있는 포스트, 메모, 시리즈를 검색해보세요.
+          찾고 있는 게시글, 메모를 검색해보세요.
         </p>
 
         {/* 검색창 */}
@@ -126,17 +128,21 @@ function SearchContent() {
                   />
                 </svg>
               </div>
-              <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색 결과가 없습니다</p>
-              <p className="text-gray-400 dark:text-gray-500">다른 키워드로 다시 시도해보세요.</p>
+              <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">
+                검색 결과가 없습니다
+              </p>
+              <p className="text-gray-400 dark:text-gray-500">
+                다른 키워드로 다시 시도해보세요.
+              </p>
             </div>
           ) : (
             <div className="space-y-12">
-              {/* 포스트 결과 */}
+              {/* 게시글 결과 */}
               {results.posts.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      포스트 ({results.posts.length})
+                      게시글 ({results.posts.length})
                     </h3>
                     {results.posts.length > INITIAL_DISPLAY_COUNT && (
                       <button
@@ -172,7 +178,9 @@ function SearchContent() {
                           <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
                             {post.title}
                           </h4>
-                          <p className="text-gray-700 mb-4 dark:text-gray-300">{post.excerpt}</p>
+                          <p className="text-gray-700 mb-4 dark:text-gray-300">
+                            {post.excerpt}
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             {post.tags.map((tag) => (
                               <span
@@ -221,7 +229,7 @@ function SearchContent() {
                             묶음글
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {seriesItem.postSlugs.length}개 포스트
+                            {seriesItem.postSlugs.length}개 게시글
                           </span>
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
@@ -333,7 +341,9 @@ function SearchContent() {
               />
             </svg>
           </div>
-          <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색어를 입력해주세요</p>
+          <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">
+            검색어를 입력해주세요
+          </p>
           <p className="text-gray-400 dark:text-gray-500">
             상단 검색창에서 원하는 내용을 검색할 수 있습니다.
           </p>
@@ -347,7 +357,9 @@ function SearchFallback() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
+          검색 🔍
+        </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300">검색 중...</p>
       </div>
     </div>

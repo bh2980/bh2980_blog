@@ -20,8 +20,7 @@ export default function Home() {
           안녕하세요, bh2980입니다 👋
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto dark:text-gray-300">
-          개발하면서 배운 것들과 경험을 공유하는 공간입니다. 주로 React,
-          Next.js, TypeScript에 대해 다룹니다.
+          개발하면서 배운 것들과 경험을 공유하는 공간입니다.
         </p>
         <Link
           href="/posts"
@@ -34,7 +33,9 @@ export default function Home() {
       {/* Recent Posts */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">최근 포스트</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            최근 게시글
+          </h2>
           <Link
             href="/posts"
             className="text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
@@ -85,7 +86,9 @@ export default function Home() {
               </Link>
             ))
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">게시글이 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              게시글이 없습니다.
+            </p>
           )}
         </div>
       </section>
@@ -93,7 +96,9 @@ export default function Home() {
       {/* Recent Series */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">최근 묶음글</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            최근 묶음글
+          </h2>
           <Link
             href="/series"
             className="text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-500 dark:hover:text-indigo-600"
@@ -149,7 +154,7 @@ export default function Home() {
                           d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
                         />
                       </svg>
-                      {seriesItem.postSlugs.length}개 포스트
+                      {seriesItem.postSlugs.length}개 게시글
                     </div>
                     <span className="text-xs text-indigo-600 font-medium dark:text-indigo-500">
                       묶음글 보기 →
@@ -159,7 +164,9 @@ export default function Home() {
               </Link>
             ))
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">게시글이 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              묶음글이 없습니다.
+            </p>
           )}
         </div>
       </section>
@@ -167,7 +174,9 @@ export default function Home() {
       {/* Recent Memos */}
       <section>
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">최근 메모</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            최근 메모
+          </h2>
           <Link
             href="/memo"
             className="text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
@@ -179,7 +188,11 @@ export default function Home() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {recentMemos.length > 0 ? (
             recentMemos.map((memo) => (
-              <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
+              <Link
+                key={memo.slug}
+                href={`/memo/${memo.slug}`}
+                className="block"
+              >
                 <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                   <div className="flex items-center justify-between mb-2">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
@@ -216,7 +229,7 @@ export default function Home() {
               </Link>
             ))
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">게시글이 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400">메모가 없습니다.</p>
           )}
         </div>
       </section>

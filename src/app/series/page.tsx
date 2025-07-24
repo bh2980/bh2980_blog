@@ -30,16 +30,18 @@ export default function SeriesPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">묶음글 📚</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
+          묶음글 📚
+        </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300">
-          연관된 주제별로 정리된 포스트 모음입니다. 체계적으로 학습하고 싶은
+          연관된 주제별로 정리된 게시글 모음입니다. 체계적으로 학습하고 싶은
           주제를 선택해보세요.
         </p>
       </div>
 
       <div className="space-y-8">
         {series.map((seriesItem) => {
-          // 묶음글에 포함된 포스트들 가져오기
+          // 묶음글에 포함된 게시글들 가져오기
           const posts = getPostsBySlugs(seriesItem.postSlugs);
 
           return (
@@ -88,11 +90,11 @@ export default function SeriesPage() {
                       d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
                     />
                   </svg>
-                  총 {posts.length}개의 포스트
+                  총 {posts.length}개의 게시글
                 </div>
               </header>
 
-              {/* 포스트 목록 - 제목만 */}
+              {/* 게시글 목록 - 제목만 */}
               <div className="space-y-3">
                 {posts.map((post, index) => (
                   <div
@@ -124,7 +126,7 @@ export default function SeriesPage() {
                 {posts.length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-gray-500 dark:text-gray-400">
-                      이 묶음글에는 아직 포스트가 없습니다.
+                      이 묶음글에는 아직 게시글이 없습니다.
                     </p>
                   </div>
                 )}
