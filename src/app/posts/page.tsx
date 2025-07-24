@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { getAllPosts } from "@/lib/posts";
-import { type Post } from "@/velite";
+import { type Post } from "@/content";
+import { POST_CATEGORIES } from "@/content/categories";
 
 export default function BlogPage() {
   const allPosts = getAllPosts();
@@ -31,7 +32,9 @@ export default function BlogPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">블로그</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
+          블로그
+        </h1>
         <p className="text-lg text-gray-600 mb-8 dark:text-gray-300">
           개발하면서 배운 것들과 경험을 기록합니다.
         </p>
@@ -46,9 +49,7 @@ export default function BlogPage() {
           >
             전체 ({getCategoryCount("all")})
           </button>
-          {(
-            ["CSS", "Next.js", "JavaScript", "TypeScript", "일반"] as const
-          ).map((category) => (
+          {POST_CATEGORIES.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}

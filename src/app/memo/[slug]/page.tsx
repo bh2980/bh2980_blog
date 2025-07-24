@@ -4,7 +4,7 @@ import { getMemoBySlug, getAllMemos } from "@/lib/memos";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
-import { type Memo } from "@/velite";
+import { type Memo } from "@/content";
 
 interface MemoPostProps {
   params: Promise<{ slug: string }>;
@@ -72,9 +72,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
         {/* 메모 헤더 */}
         <header className="mb-12 pb-8 border-b border-gray-200">
           <div className="flex items-center gap-3 mb-4">
-            <span
-              className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-            >
+            <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
               {memo.category}
             </span>
             <time className="text-gray-500">
