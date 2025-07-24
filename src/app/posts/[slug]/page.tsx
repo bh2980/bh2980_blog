@@ -115,18 +115,15 @@ export default async function BlogPost({
       <article className="prose prose-lg max-w-none">
         {/* 포스트 헤더 */}
         <header className="mb-12 pb-8 border-b border-gray-200">
-          {isFromSeries && seriesInfo && (
-            <div className="mb-4">
-              <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium">
-                📚 {seriesInfo.title}
-              </span>
-            </div>
-          )}
-
-          <div className="mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
               {post.category}
             </span>
+            {isFromSeries && seriesInfo && (
+              <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                📚 {seriesInfo.title}
+              </span>
+            )}
           </div>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
