@@ -6,7 +6,31 @@
 .prose {
   /* 코드 줄 번호 */
   pre {
-    padding: 0;
+    @apply p-0 dark:border dark:border-gray-700/50;
+
+    /* 스크롤바 스타일링 */
+    &::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      @apply bg-slate-800 dark:bg-gray-900;
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      @apply bg-slate-600 dark:bg-gray-700;
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      @apply bg-slate-500 dark:bg-gray-600;
+    }
+
+    &::-webkit-scrollbar-corner {
+      @apply bg-slate-800 dark:bg-gray-900;
+    }
   }
 
   code {
