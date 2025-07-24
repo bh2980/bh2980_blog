@@ -31,8 +31,8 @@ export default function MemoPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">메모장 📝</h1>
-        <p className="text-lg text-gray-600 mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">메모장 📝</h1>
+        <p className="text-lg text-gray-600 mb-8 dark:text-gray-300">
           알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
         </p>
 
@@ -65,12 +65,12 @@ export default function MemoPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {memos.map((memo) => (
           <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
-            <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full">
+            <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
               <div className="flex items-center justify-between mb-3">
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                   {memo.category}
                 </span>
-                <time className="text-xs text-gray-500">
+                <time className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
                     month: "short",
                     day: "numeric",
@@ -78,11 +78,11 @@ export default function MemoPage() {
                 </time>
               </div>
 
-              <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 dark:text-gray-100">
                 {memo.title}
               </h2>
 
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">
+              <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1 dark:text-gray-300">
                 {memo.excerpt}
               </p>
 
@@ -90,13 +90,13 @@ export default function MemoPage() {
                 {memo.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
                   >
                     #{tag}
                   </span>
                 ))}
                 {memo.tags.length > 3 && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     +{memo.tags.length - 3}
                   </span>
                 )}
@@ -108,7 +108,7 @@ export default function MemoPage() {
 
       {memos.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-500 text-lg dark:text-gray-400">
             {selectedCategory === "all"
               ? "아직 작성된 메모가 없습니다."
               : `${selectedCategory} 카테고리에 메모가 없습니다.`}

@@ -63,8 +63,8 @@ function SearchContent() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 헤더 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">검색 🔍</h1>
-        <p className="text-lg text-gray-600 mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
+        <p className="text-lg text-gray-600 mb-6 dark:text-gray-300">
           찾고 있는 포스트, 메모, 시리즈를 검색해보세요.
         </p>
 
@@ -76,7 +76,7 @@ function SearchContent() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="검색어를 입력하세요..."
-              className="w-full px-4 py-3 pl-12 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 pl-12 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-blue-600"
             />
             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <svg
@@ -101,10 +101,10 @@ function SearchContent() {
       {query && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               "{query}" 검색 결과
             </h2>
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               총 {results.totalCount}개 결과
             </span>
           </div>
@@ -126,8 +126,8 @@ function SearchContent() {
                   />
                 </svg>
               </div>
-              <p className="text-lg text-gray-500 mb-2">검색 결과가 없습니다</p>
-              <p className="text-gray-400">다른 키워드로 다시 시도해보세요.</p>
+              <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색 결과가 없습니다</p>
+              <p className="text-gray-400 dark:text-gray-500">다른 키워드로 다시 시도해보세요.</p>
             </div>
           ) : (
             <div className="space-y-12">
@@ -135,13 +135,13 @@ function SearchContent() {
               {results.posts.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       포스트 ({results.posts.length})
                     </h3>
                     {results.posts.length > INITIAL_DISPLAY_COUNT && (
                       <button
                         onClick={() => setShowAllPosts(!showAllPosts)}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
                         {showAllPosts
                           ? "접기"
@@ -158,26 +158,26 @@ function SearchContent() {
                         href={`/posts/${post.slug}`}
                         className="block"
                       >
-                        <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all">
+                        <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                               {post.category}
                             </span>
-                            <p className="text-gray-600 text-sm">
+                            <p className="text-gray-600 text-sm dark:text-gray-400">
                               {new Date(post.createdAt).toLocaleDateString(
                                 "ko-KR"
                               )}
                             </p>
                           </div>
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
                             {post.title}
                           </h4>
-                          <p className="text-gray-700 mb-4">{post.excerpt}</p>
+                          <p className="text-gray-700 mb-4 dark:text-gray-300">{post.excerpt}</p>
                           <div className="flex flex-wrap gap-2">
                             {post.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
                               >
                                 #{tag}
                               </span>
@@ -194,13 +194,13 @@ function SearchContent() {
               {results.series.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       묶음글 ({results.series.length})
                     </h3>
                     {results.series.length > INITIAL_DISPLAY_COUNT && (
                       <button
                         onClick={() => setShowAllSeries(!showAllSeries)}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
                         {showAllSeries
                           ? "접기"
@@ -214,25 +214,25 @@ function SearchContent() {
                     {displayedSeries.map((seriesItem) => (
                       <article
                         key={seriesItem.slug}
-                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow dark:bg-gray-900 dark:border-gray-800"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full">
+                          <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full dark:bg-indigo-900/30 dark:text-indigo-400">
                             묶음글
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
                             {seriesItem.postSlugs.length}개 포스트
                           </span>
                         </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
                           <Link
                             href="/series"
-                            className="hover:text-indigo-600"
+                            className="hover:text-indigo-600 dark:hover:text-indigo-500"
                           >
                             {seriesItem.title}
                           </Link>
                         </h4>
-                        <p className="text-gray-700">
+                        <p className="text-gray-700 dark:text-gray-300">
                           {seriesItem.description}
                         </p>
                       </article>
@@ -245,13 +245,13 @@ function SearchContent() {
               {results.memos.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       메모 ({results.memos.length})
                     </h3>
                     {results.memos.length > INITIAL_DISPLAY_COUNT && (
                       <button
                         onClick={() => setShowAllMemos(!showAllMemos)}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
                         {showAllMemos
                           ? "접기"
@@ -268,12 +268,12 @@ function SearchContent() {
                         href={`/memo/${memo.slug}`}
                         className="block"
                       >
-                        <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full">
+                        <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                           <div className="flex items-center justify-between mb-2">
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                               {memo.category}
                             </span>
-                            <time className="text-xs text-gray-500">
+                            <time className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(memo.createdAt).toLocaleDateString(
                                 "ko-KR",
                                 {
@@ -283,23 +283,23 @@ function SearchContent() {
                               )}
                             </time>
                           </div>
-                          <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1 dark:text-gray-100">
                             {memo.title}
                           </h4>
-                          <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                          <p className="text-xs text-gray-600 mb-3 line-clamp-2 dark:text-gray-300">
                             {memo.excerpt}
                           </p>
                           <div className="flex flex-wrap gap-1">
                             {memo.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag}
-                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
                               >
                                 #{tag}
                               </span>
                             ))}
                             {memo.tags.length > 2 && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
                                 +{memo.tags.length - 2}
                               </span>
                             )}
@@ -333,8 +333,8 @@ function SearchContent() {
               />
             </svg>
           </div>
-          <p className="text-lg text-gray-500 mb-2">검색어를 입력해주세요</p>
-          <p className="text-gray-400">
+          <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색어를 입력해주세요</p>
+          <p className="text-gray-400 dark:text-gray-500">
             상단 검색창에서 원하는 내용을 검색할 수 있습니다.
           </p>
         </div>
@@ -347,8 +347,8 @@ function SearchFallback() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">검색 🔍</h1>
-        <p className="text-lg text-gray-600">검색 중...</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
+        <p className="text-lg text-gray-600 dark:text-gray-300">검색 중...</p>
       </div>
     </div>
   );

@@ -21,9 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="dark">
       <body
-        className={`${pretendardVariable.variable} antialiased min-h-screen flex flex-col`}
+        className={`${pretendardVariable.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}
       >
         <Navigation />
         <main className="flex-1">{children}</main>

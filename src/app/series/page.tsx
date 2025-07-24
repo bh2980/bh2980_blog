@@ -30,8 +30,8 @@ export default function SeriesPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">묶음글 📚</h1>
-        <p className="text-lg text-gray-600">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">묶음글 📚</h1>
+        <p className="text-lg text-gray-600 dark:text-gray-300">
           연관된 주제별로 정리된 포스트 모음입니다. 체계적으로 학습하고 싶은
           주제를 선택해보세요.
         </p>
@@ -46,15 +46,15 @@ export default function SeriesPage() {
             <section
               key={seriesItem.slug}
               id={seriesItem.slug}
-              className="bg-gray-50 rounded-lg p-8 border border-gray-200"
+              className="bg-gray-50 rounded-lg p-8 border border-gray-200 dark:bg-gray-900 dark:border-gray-800"
             >
               {/* 묶음글 헤더 */}
-              <header className="mb-8 pb-6 border-b border-gray-200">
+              <header className="mb-8 pb-6 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                  <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
                     묶음글
                   </span>
-                  <time className="text-gray-500 text-sm">
+                  <time className="text-gray-500 text-sm dark:text-gray-400">
                     {new Date(seriesItem.createdAt).toLocaleDateString(
                       "ko-KR",
                       {
@@ -66,15 +66,15 @@ export default function SeriesPage() {
                   </time>
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 dark:text-gray-100">
                   {seriesItem.title}
                 </h2>
 
-                <p className="text-gray-700 leading-relaxed mb-4">
+                <p className="text-gray-700 leading-relaxed mb-4 dark:text-gray-300">
                   {seriesItem.description}
                 </p>
 
-                <div className="flex items-center text-gray-600">
+                <div className="flex items-center text-gray-600 dark:text-gray-400">
                   <svg
                     className="mr-2 w-4 h-4"
                     fill="none"
@@ -97,22 +97,22 @@ export default function SeriesPage() {
                 {posts.map((post, index) => (
                   <div
                     key={post.slug}
-                    className="flex items-center gap-4 py-3 px-4 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all"
+                    className="flex items-center gap-4 py-3 px-4 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all dark:bg-gray-800 dark:border-gray-700 dark:hover:border-indigo-600"
                   >
-                    <div className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs">
+                    <div className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs dark:bg-indigo-900/30 dark:text-indigo-400">
                       {index + 1}
                     </div>
 
                     <div className="flex-1">
                       <Link
                         href={`/posts/${post.slug}?from=series-${seriesItem.slug}`}
-                        className="text-gray-900 hover:text-indigo-600 font-medium transition-colors"
+                        className="text-gray-900 hover:text-indigo-600 font-medium transition-colors dark:text-gray-100 dark:hover:text-indigo-500"
                       >
                         {post.title}
                       </Link>
                     </div>
 
-                    <time className="flex-shrink-0 text-xs text-gray-500">
+                    <time className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">
                       {new Date(post.createdAt).toLocaleDateString("ko-KR", {
                         month: "short",
                         day: "numeric",
@@ -123,7 +123,7 @@ export default function SeriesPage() {
 
                 {posts.length === 0 && (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">
+                    <p className="text-gray-500 dark:text-gray-400">
                       이 묶음글에는 아직 포스트가 없습니다.
                     </p>
                   </div>
@@ -136,7 +136,7 @@ export default function SeriesPage() {
 
       {series.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-500 text-lg dark:text-gray-400">
             아직 작성된 묶음글이 없습니다.
           </p>
         </div>
