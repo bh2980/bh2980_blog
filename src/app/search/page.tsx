@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
 
@@ -11,7 +11,9 @@ const INITIAL_DISPLAY_COUNT = 3;
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [query, setQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [results, setResults] = useState<SearchResult>({
     posts: [],
     series: [],
@@ -26,6 +28,7 @@ function SearchContent() {
   useEffect(() => {
     const urlQuery = searchParams.get("q") || "";
     setQuery(urlQuery);
+    setSearchInput(urlQuery);
     if (urlQuery) {
       const searchResults = searchContent(urlQuery);
       setResults(searchResults);
@@ -39,7 +42,12 @@ function SearchContent() {
     }
   }, [searchParams]);
 
-
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+    }
+  };
 
   const displayedPosts = showAllPosts
     ? results.posts
@@ -54,11 +62,39 @@ function SearchContent() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 헤더 */}
-      <div className="mb-12">
+      <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">검색 🔍</h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-gray-600 mb-6">
           찾고 있는 포스트, 메모, 시리즈를 검색해보세요.
         </p>
+
+        {/* 검색창 */}
+        <form onSubmit={handleSearch} className="relative max-w-md">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="검색어를 입력하세요..."
+              className="w-full px-4 py-3 pl-12 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </form>
       </div>
 
       {/* 검색 결과 */}
@@ -121,6 +157,16 @@ function SearchContent() {
                         key={post.slug}
                         className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
                       >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            {post.category}
+                          </span>
+                          <p className="text-gray-600 text-sm">
+                            {new Date(post.createdAt).toLocaleDateString(
+                              "ko-KR"
+                            )}
+                          </p>
+                        </div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-2">
                           <Link
                             href={`/posts/${post.slug}`}
@@ -129,15 +175,12 @@ function SearchContent() {
                             {post.title}
                           </Link>
                         </h4>
-                        <p className="text-gray-600 text-sm mb-3">
-                          {new Date(post.createdAt).toLocaleDateString("ko-KR")}
-                        </p>
                         <p className="text-gray-700 mb-4">{post.excerpt}</p>
                         <div className="flex flex-wrap gap-2">
                           {post.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded"
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
                             >
                               #{tag}
                             </span>
@@ -227,9 +270,7 @@ function SearchContent() {
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col h-full"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span
-                            className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                          >
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                             {memo.category}
                           </span>
                           <time className="text-xs text-gray-500">
@@ -257,13 +298,13 @@ function SearchContent() {
                           {memo.tags.slice(0, 2).map((tag) => (
                             <span
                               key={tag}
-                              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
                             >
                               #{tag}
                             </span>
                           ))}
                           {memo.tags.length > 2 && (
-                            <span className="px-1.5 py-0.5 text-xs text-gray-500">
+                            <span className="text-xs text-gray-400">
                               +{memo.tags.length - 2}
                             </span>
                           )}
