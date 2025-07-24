@@ -11,8 +11,8 @@ const pretendardVariable = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "bh2980's blog",
-  description: "bh2980's blog",
+  title: "bh2980.dev",
+  description: "bh2980.dev",
 };
 
 export default function RootLayout({
