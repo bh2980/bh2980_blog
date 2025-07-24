@@ -4,7 +4,6 @@ import { getMemoBySlug, getAllMemos } from "@/lib/memos";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
-import { type Memo } from "@/content";
 
 interface MemoPostProps {
   params: Promise<{ slug: string }>;

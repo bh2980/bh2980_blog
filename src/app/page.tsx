@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getAllPosts } from "@/lib/posts";
 import { getAllMemos } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
-import type { Memo, Post } from "@/content";
 
 export default function Home() {
   const posts = getAllPosts();
