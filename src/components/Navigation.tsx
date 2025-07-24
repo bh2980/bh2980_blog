@@ -6,7 +6,7 @@ import SearchBar from "./SearchBar";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -16,6 +16,8 @@ export default function Navigation() {
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");
       document.documentElement.classList.add("dark");
+    } else {
+      setTheme("light");
     }
   }, []);
 
@@ -30,6 +32,54 @@ export default function Navigation() {
       setTheme("dark");
     }
   };
+
+  // 초기 렌더링 시 테마가 결정되지 않았으면 로딩 상태 표시
+  if (theme === undefined) {
+    return (
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 dark:bg-gray-950 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link
+              href="/"
+              className="text-xl font-bold text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
+            >
+              bh2980's blog
+            </Link>
+            <div className="hidden md:flex items-center space-x-8">
+              <div className="flex space-x-6">
+                <Link
+                  href="/"
+                  className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+                >
+                  홈
+                </Link>
+                <Link
+                  href="/series"
+                  className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+                >
+                  묶음글
+                </Link>
+                <Link
+                  href="/posts"
+                  className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+                >
+                  블로그
+                </Link>
+                <Link
+                  href="/memo"
+                  className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+                >
+                  메모장
+                </Link>
+              </div>
+              <SearchBar />
+              <div className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 dark:bg-gray-950 dark:border-gray-800">
