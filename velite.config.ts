@@ -44,7 +44,7 @@ const getValidMemoCategories = (): string[] => {
   return Object.keys(config.memos);
 };
 
-// 카테고리 유효성 검증 함수들
+// 유효성 검증 함수들
 const validatePostCategory = (category: string): boolean => {
   const validCategories = getValidPostCategories();
   if (!validCategories.includes(category)) {
@@ -69,6 +69,21 @@ const validateMemoCategory = (category: string): boolean => {
   return true;
 };
 
+const validatePostSlugs = (slugs: string[]): boolean => {
+  const availableSlugs = getAvailablePostSlugs();
+  const invalidSlugs = slugs.filter((slug) => !availableSlugs.includes(slug));
+
+  if (invalidSlugs.length > 0) {
+    throw new Error(
+      `존재하지 않는 포스트 slug: ${invalidSlugs.join(
+        ", "
+      )}\n사용 가능한 slug: ${availableSlugs.join(", ")}`
+    );
+  }
+
+  return true;
+};
+
 export default defineConfig({
   collections: {
     posts: {
@@ -78,10 +93,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s
-          .string()
-          .default("general")
-          .refine(validatePostCategory),
+        category: s.string().default("general").refine(validatePostCategory),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
@@ -93,22 +105,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         description: s.string(),
-        postSlugs: s.array(s.string()).refine((slugs) => {
-          const availableSlugs = getAvailablePostSlugs();
-          const invalidSlugs = slugs.filter(
-            (slug) => !availableSlugs.includes(slug)
-          );
-
-          if (invalidSlugs.length > 0) {
-            throw new Error(
-              `존재하지 않는 포스트 slug: ${invalidSlugs.join(
-                ", "
-              )}\n사용 가능한 slug: ${availableSlugs.join(", ")}`
-            );
-          }
-
-          return true;
-        }),
+        postSlugs: s.array(s.string()).refine(validatePostSlugs),
         createdAt: s.isodate(),
       }),
     },
