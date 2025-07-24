@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { getAllMemos } from "@/lib/memos";
-import { type Memo } from "@/velite";
+import { type Memo } from "@/content";
+import { MEMO_CATEGORIES } from "@/content/categories";
 
 export default function MemoPage() {
   const allMemos = getAllMemos();
@@ -31,7 +32,9 @@ export default function MemoPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">메모장 📝</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
+          메모장 📝
+        </h1>
         <p className="text-lg text-gray-600 mb-8 dark:text-gray-300">
           알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
         </p>
@@ -46,19 +49,17 @@ export default function MemoPage() {
           >
             전체 ({getCategoryCount("all")})
           </button>
-          {(["알고리즘", "CSS Battle", "TypeScript", "기타"] as const).map(
-            (category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                  category
-                )}`}
-              >
-                {category} ({getCategoryCount(category)})
-              </button>
-            )
-          )}
+          {MEMO_CATEGORIES.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                category
+              )}`}
+            >
+              {category} ({getCategoryCount(category)})
+            </button>
+          ))}
         </div>
       </div>
 

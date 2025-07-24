@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
 
-import { type Memo } from "@/velite";
+import { type Memo } from "@/content";
 
 const INITIAL_DISPLAY_COUNT = 3;
 

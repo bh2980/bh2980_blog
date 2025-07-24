@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllPosts } from "@/lib/posts";
 import { getAllMemos } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
-import type { Memo, Post } from "@/velite";
+import type { Memo, Post } from "@/content";
 
 export default function Home() {
   const posts = getAllPosts();
@@ -87,7 +87,7 @@ export default function Home() {
             ))
           ) : (
             <p className="text-gray-500 dark:text-gray-400">
-              게시글이 없습니다.
+              작성된 게시글이 없습니다.
             </p>
           )}
         </div>
@@ -165,7 +165,7 @@ export default function Home() {
             ))
           ) : (
             <p className="text-gray-500 dark:text-gray-400">
-              묶음글이 없습니다.
+              작성된 묶음글이 없습니다.
             </p>
           )}
         </div>
@@ -229,7 +229,9 @@ export default function Home() {
               </Link>
             ))
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">메모가 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              작성된 메모가 없습니다.
+            </p>
           )}
         </div>
       </section>
