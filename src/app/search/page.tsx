@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { searchContent, type SearchResult } from "@/lib/search";
 import { categoryLabels } from "@/lib/memos";
+import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
 import { type Memo } from "@/velite";
 
 const INITIAL_DISPLAY_COUNT = 3;
@@ -39,14 +40,8 @@ function SearchContent() {
     }
   }, [searchParams]);
 
-  const getCategoryBadgeColor = (category: Memo["category"]) => {
-    const colors = {
-      algorithm: "bg-green-100 text-green-800",
-      "css-battle": "bg-purple-100 text-purple-800",
-      typescript: "bg-blue-100 text-blue-800",
-      etc: "bg-gray-100 text-gray-800",
-    } as const;
-    return colors[category];
+  const getCategoryBadgeColor = (category: MemoCategory) => {
+    return getMemoCategoryColors(category, "light");
   };
 
   const displayedPosts = showAllPosts

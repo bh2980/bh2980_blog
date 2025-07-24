@@ -1,4 +1,5 @@
 import { memos, type Memo } from "@/velite";
+import { getMemoCategoryLabels, type MemoCategory } from "@/lib/categories";
 
 export function getAllMemos(): Memo[] {
   return (memos as Memo[]).sort(
@@ -10,13 +11,8 @@ export function getMemoBySlug(slug: string): Memo | null {
   return (memos as Memo[]).find((memo) => memo.slug === slug) || null;
 }
 
-export function getMemosByCategory(category: Memo["category"]): Memo[] {
+export function getMemosByCategory(category: MemoCategory): Memo[] {
   return (memos as Memo[]).filter((memo) => memo.category === category);
 }
 
-export const categoryLabels = {
-  algorithm: "알고리즘",
-  "css-battle": "CSS Battle",
-  typescript: "TypeScript",
-  etc: "기타",
-} as const;
+export const categoryLabels = getMemoCategoryLabels();

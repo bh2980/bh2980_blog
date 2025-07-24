@@ -7,6 +7,7 @@ import {
   getNextPost,
   categoryLabels,
 } from "@/lib/posts";
+import { getPostCategoryColors, type PostCategory } from "@/lib/categories";
 import {
   getSeriesBySlug,
   getPreviousPostInSeries,
@@ -43,15 +44,8 @@ export default async function BlogPost({
     notFound();
   }
 
-  const getCategoryBadgeColor = (category: typeof post.category) => {
-    const colors = {
-      css: "bg-blue-100 text-blue-800",
-      nextjs: "bg-black text-white",
-      javascript: "bg-yellow-100 text-yellow-800",
-      typescript: "bg-blue-100 text-blue-800",
-      general: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getCategoryBadgeColor = (category: PostCategory) => {
+    return getPostCategoryColors(category, "light");
   };
 
   // 시리즈에서 온 경우인지 확인
