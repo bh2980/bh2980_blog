@@ -1,9 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
 import { getAllSeries } from "@/lib/series";
 import { getPostsBySlugs } from "@/lib/posts";
 
 export default function SeriesPage() {
   const series = getAllSeries();
+
+  useEffect(() => {
+    // URL 해시가 있으면 해당 시리즈로 스크롤
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1); // # 제거
+      if (hash) {
+        const targetElement = document.getElementById(hash);
+        if (targetElement) {
+          // 약간의 지연 후 스크롤 (페이지 로딩 완료 후)
+          setTimeout(() => {
+            targetElement.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }, 100);
+        }
+      }
+    }
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -23,6 +45,7 @@ export default function SeriesPage() {
           return (
             <section
               key={seriesItem.slug}
+              id={seriesItem.slug}
               className="bg-gray-50 rounded-lg p-8 border border-gray-200"
             >
               {/* 묶음글 헤더 */}
