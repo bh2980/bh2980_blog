@@ -64,67 +64,43 @@ export default function BlogPage() {
 
       <div className="space-y-8">
         {posts.map((post) => (
-          <article
-            key={post.slug}
-            className="bg-white border border-gray-200 rounded-lg p-8 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                  {post.category}
-                </span>
-                <time className="text-sm text-gray-500">
-                  {new Date(post.createdAt).toLocaleDateString("ko-KR", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </time>
+          <Link key={post.slug} href={`/posts/${post.slug}`} className="block">
+            <article className="bg-white border border-gray-200 rounded-lg p-8 hover:shadow-lg hover:border-gray-300 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    {post.category}
+                  </span>
+                  <time className="text-sm text-gray-500">
+                    {new Date(post.createdAt).toLocaleDateString("ko-KR", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </time>
+                </div>
               </div>
-            </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              <Link
-                href={`/posts/${post.slug}`}
-                className="hover:text-blue-600 transition-colors"
-              >
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 {post.title}
-              </Link>
-            </h2>
+              </h2>
 
-            <p className="text-gray-700 leading-relaxed mb-6">{post.excerpt}</p>
+              <p className="text-gray-700 leading-relaxed mb-6">
+                {post.excerpt}
+              </p>
 
-            <div className="flex flex-wrap gap-2 mb-6">
-              {post.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-
-            <Link
-              href={`/posts/${post.slug}`}
-              className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-            >
-              계속 읽기
-              <svg
-                className="ml-1 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Link>
-          </article>
+              <div className="flex flex-wrap gap-2">
+                {post.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </article>
+          </Link>
         ))}
       </div>
 
