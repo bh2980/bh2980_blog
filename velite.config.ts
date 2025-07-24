@@ -59,9 +59,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s
-          .enum(["CSS", "Next.js", "JavaScript", "TypeScript", "일반"])
-          .default("일반"),
+        category: s.enum(["Frontend"]),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
@@ -84,7 +82,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s.enum(["알고리즘", "CSS Battle", "TypeScript", "기타"]),
+        category: s.enum(["알고리즘", "Type Challenges", "CSS Battle"]),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
