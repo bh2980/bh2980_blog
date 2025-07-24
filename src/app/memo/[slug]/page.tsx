@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMemoBySlug, getAllMemos, categoryLabels } from "@/lib/memos";
+import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
@@ -43,14 +44,8 @@ export default async function MemoPost({ params }: MemoPostProps) {
     notFound();
   }
 
-  const getCategoryBadgeColor = (category: Memo["category"]) => {
-    const colors = {
-      algorithm: "bg-green-100 text-green-800",
-      "css-battle": "bg-purple-100 text-purple-800",
-      typescript: "bg-blue-100 text-blue-800",
-      etc: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getCategoryBadgeColor = (category: MemoCategory) => {
+    return getMemoCategoryColors(category, "light");
   };
 
   return (

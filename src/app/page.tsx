@@ -2,6 +2,12 @@ import Link from "next/link";
 import { getAllPosts, categoryLabels as postCategoryLabels } from "@/lib/posts";
 import { getAllMemos, categoryLabels as memoCategoryLabels } from "@/lib/memos";
 import { getAllSeries } from "@/lib/series";
+import {
+  getPostCategoryColors,
+  getMemoCategoryColors,
+  type PostCategory,
+  type MemoCategory,
+} from "@/lib/categories";
 import type { Memo, Post } from "@/velite";
 
 export default function Home() {
@@ -12,25 +18,12 @@ export default function Home() {
   const recentMemos = memos.slice(0, 4);
   const recentSeries = series.slice(0, 2);
 
-  const getMemoCategoryBadgeColor = (category: Memo["category"]) => {
-    const colors = {
-      algorithm: "bg-green-100 text-green-800",
-      "css-battle": "bg-purple-100 text-purple-800",
-      typescript: "bg-blue-100 text-blue-800",
-      etc: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getMemoCategoryBadgeColor = (category: MemoCategory) => {
+    return getMemoCategoryColors(category, "light");
   };
 
-  const getPostCategoryBadgeColor = (category: Post["category"]) => {
-    const colors = {
-      css: "bg-blue-100 text-blue-800",
-      nextjs: "bg-black text-white",
-      javascript: "bg-yellow-100 text-yellow-800",
-      typescript: "bg-blue-100 text-blue-800",
-      general: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getPostCategoryBadgeColor = (category: PostCategory) => {
+    return getPostCategoryColors(category, "light");
   };
 
   return (

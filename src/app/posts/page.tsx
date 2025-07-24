@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { getAllPosts, categoryLabels } from "@/lib/posts";
+import { getPostCategoryColors, type PostCategory } from "@/lib/categories";
 import { type Post } from "@/velite";
 
 export default function BlogPage() {
   const allPosts = getAllPosts();
   const [selectedCategory, setSelectedCategory] = useState<
-    Post["category"] | "all"
+    PostCategory | "all"
   >("all");
 
   const posts =
@@ -16,33 +17,27 @@ export default function BlogPage() {
       ? allPosts
       : allPosts.filter((post) => post.category === selectedCategory);
 
-  const getCategoryBadgeColor = (category: Post["category"]) => {
-    const colors = {
-      css: "bg-blue-100 text-blue-800",
-      nextjs: "bg-black text-white",
-      javascript: "bg-yellow-100 text-yellow-800",
-      typescript: "bg-blue-100 text-blue-800",
-      general: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getCategoryBadgeColor = (category: PostCategory) => {
+    return getPostCategoryColors(category, "light");
   };
 
-  const getTabColor = (category: Post["category"] | "all") => {
+  const getTabColor = (category: PostCategory | "all") => {
     if (selectedCategory === category) {
       if (category === "all") return "bg-blue-600 text-white";
-      const colors = {
+      // 탭 활성화 시에는 진한 색상 사용
+      const activeColors: Record<PostCategory, string> = {
         css: "bg-blue-600 text-white",
         nextjs: "bg-black text-white",
         javascript: "bg-yellow-600 text-white",
         typescript: "bg-blue-600 text-white",
         general: "bg-gray-600 text-white",
       };
-      return colors[category];
+      return activeColors[category];
     }
     return "bg-gray-100 text-gray-700 hover:bg-gray-200";
   };
 
-  const getCategoryCount = (category: Post["category"] | "all") => {
+  const getCategoryCount = (category: PostCategory | "all") => {
     if (category === "all") return allPosts.length;
     return allPosts.filter((post) => post.category === category).length;
   };
@@ -68,12 +63,12 @@ export default function BlogPage() {
           {Object.entries(categoryLabels).map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setSelectedCategory(key as Post["category"])}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                key as Post["category"]
-              )}`}
+              onClick={() => setSelectedCategory(key as PostCategory)}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                  key as PostCategory
+                )}`}
             >
-              {label} ({getCategoryCount(key as Post["category"])})
+                              {label} ({getCategoryCount(key as PostCategory)})
             </button>
           ))}
         </div>

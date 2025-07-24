@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { getAllMemos, categoryLabels } from "@/lib/memos";
+import { getMemoCategoryColors, type MemoCategory } from "@/lib/categories";
 import { type Memo } from "@/velite";
 
 export default function MemoPage() {
   const allMemos = getAllMemos();
   const [selectedCategory, setSelectedCategory] = useState<
-    Memo["category"] | "all"
+    MemoCategory | "all"
   >("all");
 
   const memos =
@@ -16,31 +17,26 @@ export default function MemoPage() {
       ? allMemos
       : allMemos.filter((memo) => memo.category === selectedCategory);
 
-  const getCategoryBadgeColor = (category: Memo["category"]) => {
-    const colors = {
-      algorithm: "bg-green-100 text-green-800",
-      "css-battle": "bg-purple-100 text-purple-800",
-      typescript: "bg-blue-100 text-blue-800",
-      etc: "bg-gray-100 text-gray-800",
-    };
-    return colors[category];
+  const getCategoryBadgeColor = (category: MemoCategory) => {
+    return getMemoCategoryColors(category, "light");
   };
 
-  const getTabColor = (category: Memo["category"] | "all") => {
+  const getTabColor = (category: MemoCategory | "all") => {
     if (selectedCategory === category) {
       if (category === "all") return "bg-blue-600 text-white";
-      const colors = {
+      // 탭 활성화 시에는 진한 색상 사용
+      const activeColors: Record<MemoCategory, string> = {
         algorithm: "bg-green-600 text-white",
         "css-battle": "bg-purple-600 text-white",
         typescript: "bg-blue-600 text-white",
         etc: "bg-gray-600 text-white",
       };
-      return colors[category];
+      return activeColors[category];
     }
     return "bg-gray-100 text-gray-700 hover:bg-gray-200";
   };
 
-  const getCategoryCount = (category: Memo["category"] | "all") => {
+  const getCategoryCount = (category: MemoCategory | "all") => {
     if (category === "all") return allMemos.length;
     return allMemos.filter((memo) => memo.category === category).length;
   };
@@ -66,12 +62,12 @@ export default function MemoPage() {
           {Object.entries(categoryLabels).map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setSelectedCategory(key as Memo["category"])}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                key as Memo["category"]
-              )}`}
+              onClick={() => setSelectedCategory(key as MemoCategory)}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
+                  key as MemoCategory
+                )}`}
             >
-              {label} ({getCategoryCount(key as Memo["category"])})
+                              {label} ({getCategoryCount(key as MemoCategory)})
             </button>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { defineConfig, s } from "velite";
-import { readdirSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 
 // 파일명에서 slug를 추출하는 공통 함수
@@ -23,6 +23,52 @@ const getAvailablePostSlugs = (): string[] => {
   }
 };
 
+// categories.json에서 카테고리 목록을 가져오는 함수들
+const getCategoriesConfig = () => {
+  try {
+    const categoriesPath = join(process.cwd(), "src/config/categories.json");
+    const categoriesContent = readFileSync(categoriesPath, "utf8");
+    return JSON.parse(categoriesContent);
+  } catch (error) {
+    throw new Error(`categories.json 파일을 읽을 수 없습니다: ${error}`);
+  }
+};
+
+const getValidPostCategories = (): string[] => {
+  const config = getCategoriesConfig();
+  return Object.keys(config.posts);
+};
+
+const getValidMemoCategories = (): string[] => {
+  const config = getCategoriesConfig();
+  return Object.keys(config.memos);
+};
+
+// 카테고리 유효성 검증 함수들
+const validatePostCategory = (category: string): boolean => {
+  const validCategories = getValidPostCategories();
+  if (!validCategories.includes(category)) {
+    throw new Error(
+      `유효하지 않은 포스트 카테고리: '${category}'\n사용 가능한 카테고리: ${validCategories.join(
+        ", "
+      )}`
+    );
+  }
+  return true;
+};
+
+const validateMemoCategory = (category: string): boolean => {
+  const validCategories = getValidMemoCategories();
+  if (!validCategories.includes(category)) {
+    throw new Error(
+      `유효하지 않은 메모 카테고리: '${category}'\n사용 가능한 카테고리: ${validCategories.join(
+        ", "
+      )}`
+    );
+  }
+  return true;
+};
+
 export default defineConfig({
   collections: {
     posts: {
@@ -32,7 +78,10 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s.enum(["css", "nextjs", "javascript", "typescript", "general"]).default("general"),
+        category: s
+          .string()
+          .default("general")
+          .refine(validatePostCategory),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
@@ -70,7 +119,7 @@ export default defineConfig({
         title: s.string(),
         slug: s.string().default("").transform(generateSlugFromFilename),
         createdAt: s.isodate(),
-        category: s.enum(["algorithm", "css-battle", "typescript", "etc"]),
+        category: s.string().refine(validateMemoCategory),
         tags: s.array(s.string()),
         excerpt: s.excerpt({ length: 80 }),
       }),
