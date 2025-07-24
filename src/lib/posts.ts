@@ -1,5 +1,4 @@
 import { posts, type Post } from "@/velite";
-import { getPostCategoryLabels, type PostCategory } from "@/lib/categories";
 
 export function getAllPosts(): Post[] {
   return (posts as Post[]).sort(
@@ -7,11 +6,9 @@ export function getAllPosts(): Post[] {
   );
 }
 
-export function getPostsByCategory(category: PostCategory): Post[] {
+export function getPostsByCategory(category: Post["category"]): Post[] {
   return (posts as Post[]).filter((post) => post.category === category);
 }
-
-export const categoryLabels = getPostCategoryLabels();
 
 export function getPostBySlug(slug: string): Post | null {
   return (posts as Post[]).find((post) => post.slug === slug) || null;
