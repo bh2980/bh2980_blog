@@ -34,8 +34,7 @@ export default function SeriesPage() {
           묶음글 📚
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300">
-          연관된 주제별로 정리된 게시글 모음입니다. 체계적으로 학습하고 싶은
-          주제를 선택해보세요.
+          연관된 주제별로 정리된 게시글 모음입니다.
         </p>
       </div>
 
