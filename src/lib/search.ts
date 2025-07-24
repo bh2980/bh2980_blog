@@ -2,7 +2,7 @@ import { getAllPosts } from "./posts";
 import { getAllSeries } from "./series";
 import { getAllMemos } from "./memos";
 
-import type { Post, Series, Memo } from "@/velite";
+import type { Post, Series, Memo } from "@/content";
 
 export interface SearchResult {
   posts: Post[];
