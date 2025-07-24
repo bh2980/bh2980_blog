@@ -5,6 +5,7 @@ import remarkBreaks from "remark-breaks";
 interface MDXContentProps {
   source: string;
   options?: MDXRemoteProps["options"];
+  className?: string;
 }
 
 // 기본 rehype-pretty-code 설정
@@ -22,7 +23,7 @@ const defaultMdxOptions: NonNullable<MDXRemoteProps["options"]> = {
   },
 };
 
-export default function MDXContent({ source, options }: MDXContentProps) {
+export default function MDXContent({ source, options, className }: MDXContentProps) {
   // 전달받은 옵션과 기본 옵션을 병합
   const mergedOptions = {
     ...defaultMdxOptions,
@@ -37,5 +38,5 @@ export default function MDXContent({ source, options }: MDXContentProps) {
     },
   };
 
-  return <MDXRemote source={source} options={mergedOptions} />;
+  return <MDXRemote source={source} options={mergedOptions} components={{ wrapper: ({ children }) => <div className={className}>{children}</div> }} />;
 }

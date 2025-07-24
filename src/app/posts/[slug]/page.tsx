@@ -120,13 +120,13 @@ export default async function BlogPost({
               {post.category}
             </span>
             {isFromSeries && seriesInfo && (
-              <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium">
+              <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
                 📚 {seriesInfo.title}
               </span>
             )}
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4 dark:text-gray-100">
             {post.title}
           </h1>
           <div className="flex items-center text-gray-600 mb-6">
@@ -143,7 +143,7 @@ export default async function BlogPost({
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded"
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
               >
                 #{tag}
               </span>
@@ -152,7 +152,7 @@ export default async function BlogPost({
         </header>
 
         {/* 포스트 내용 */}
-        <MDXContent source={mdxSource} />
+        <MDXContent source={mdxSource} className="prose dark:prose-invert" />
       </article>
 
       {/* 이전/다음 포스트 네비게이션 */}
