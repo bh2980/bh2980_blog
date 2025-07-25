@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,10 +12,7 @@
     "next": "15.4.1",
     "next-mdx-remote": "^5.0.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "rehype-pretty-code": "^0.14.1",
-    "remark-breaks": "^4.0.0",
-    "shiki": "^3.8.1"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -26,6 +23,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.1",
+    "rehype-pretty-code": "^0.14.1",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "shiki": "^3.8.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "velite": "^0.2.4"
