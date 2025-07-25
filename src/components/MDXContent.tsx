@@ -3,12 +3,7 @@ import CopyButton from "./CopyButton";
 import { extractCodeText } from "@/lib/mdx";
 import rehypePrettyCode from "rehype-pretty-code";
 import remarkBreaks from "remark-breaks";
-
-interface MDXContentProps {
-  source: string;
-  options?: MDXRemoteProps["options"];
-  className?: string;
-}
+import remarkGfm from "remark-gfm";
 
 // 기본 rehype-pretty-code 설정
 const defaultPrettyCodeOptions = {
@@ -20,10 +15,16 @@ const defaultPrettyCodeOptions = {
 // 기본 MDX 옵션
 const defaultMdxOptions: NonNullable<MDXRemoteProps["options"]> = {
   mdxOptions: {
-    remarkPlugins: [remarkBreaks],
+    remarkPlugins: [remarkBreaks, remarkGfm],
     rehypePlugins: [[rehypePrettyCode, defaultPrettyCodeOptions]],
   },
 };
+
+interface MDXContentProps {
+  source: string;
+  options?: MDXRemoteProps["options"];
+  className?: string;
+}
 
 export default function MDXContent({
   source,
