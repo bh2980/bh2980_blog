@@ -3,7 +3,9 @@ import { visit } from "unist-util-visit";
 
 export const remarkMermaidToComponent = () => {
   return (tree: any) => {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     visit(tree, "code", (node: any, index: number | undefined, parent: any) => {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       if (
         node &&
         node.type === "code" &&
