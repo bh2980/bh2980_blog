@@ -27,15 +27,12 @@ interface MDXContentProps {
   className?: string;
 }
 
-export default function MDXContent({
-  source,
-  options,
-  className,
-}: MDXContentProps) {
+export default function MDXContent({ source, options, className }: MDXContentProps) {
   // 전달받은 옵션과 기본 옵션을 병합
   const mergedOptions = {
     ...defaultMdxOptions,
     ...options,
+    parseFrontmatter: true,
     mdxOptions: {
       ...defaultMdxOptions.mdxOptions,
       ...options?.mdxOptions,
