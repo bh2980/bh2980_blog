@@ -26,4 +26,14 @@ export const memoSchema = s.object({
   category: s.enum(MEMO_CATEGORIES),
   tags: s.array(s.string()),
   excerpt: s.excerpt({ length: 80 }),
+  path: s
+    .array(s.string())
+    .optional()
+    .transform((_, context) => {
+      if (Array.isArray(context.meta.history) && context.meta.history.length > 0) {
+        return (context.meta?.history[0] as string).replace(/^.*?\/content\//, "content/").split("/");
+      }
+
+      return [];
+    }),
 });
