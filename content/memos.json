@@ -1,5 +1,41 @@
 [
   {
+    "title": "downloadFile",
+    "slug": "snippets-download-file",
+    "createdAt": "2025-08-07T19:17:00.000Z",
+    "category": "Snippets",
+    "tags": [
+      "TypeScript",
+      "Utility",
+      "Browser"
+    ],
+    "excerpt": "downloadFile\n브라우저에서 파일을 다운로드하는 유틸리티 함수입니다. Blob이나 MediaSource 객체를 받아서 지정된 파일명으로 ",
+    "path": [
+      "content",
+      "memos",
+      "snippets",
+      "snippets-download-file.mdx"
+    ]
+  },
+  {
+    "title": "loadFile",
+    "slug": "snippets-load-file",
+    "createdAt": "2025-08-07T19:17:00.000Z",
+    "category": "Snippets",
+    "tags": [
+      "TypeScript",
+      "Utility",
+      "Browser"
+    ],
+    "excerpt": "loadFile\n브라우저에서 파일을 선택하고 로드하는 유틸리티 함수입니다. 파일 선택 후 제공받은 콜백 함수를 통해 파일 객체를 처리할 수 있습",
+    "path": [
+      "content",
+      "memos",
+      "snippets",
+      "snippets-load-file.mdx"
+    ]
+  },
+  {
     "title": "Get Return Type",
     "slug": "00002-get-return-type",
     "createdAt": "2023-09-17T19:17:00.000Z",
@@ -7,7 +43,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "2 - Get Return Type\n\n내장 제네릭 ReturnType<T>을 이를 사용하지 않고 구현하세요.\n\nconst fn = (v: boo"
+    "excerpt": "2 - Get Return Type\n\n내장 제네릭 ReturnType<T>을 이를 사용하지 않고 구현하세요.\n\nconst fn = (v: boo",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00002-get-return-type.mdx"
+    ]
   },
   {
     "title": "Omit",
@@ -17,7 +59,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "3 - Omit\n\nT에서 K 프로퍼티만 제거해 새로운 오브젝트 타입을 만드는 내장 제네릭 Omit<T, K>를\n이를 사용하지 않고 구현하세요.\n"
+    "excerpt": "3 - Omit\n\nT에서 K 프로퍼티만 제거해 새로운 오브젝트 타입을 만드는 내장 제네릭 Omit<T, K>를\n이를 사용하지 않고 구현하세요.\n",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00003-omit.mdx"
+    ]
   },
   {
     "title": "Pick",
@@ -27,7 +75,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "4 - Pick\n\nT에서 K 프로퍼티만 선택해 새로운 오브젝트 타입을 만드는 내장 제네릭 Pick<T, K>을\n이를 사용하지 않고 구현하세요.\n"
+    "excerpt": "4 - Pick\n\nT에서 K 프로퍼티만 선택해 새로운 오브젝트 타입을 만드는 내장 제네릭 Pick<T, K>을\n이를 사용하지 않고 구현하세요.\n",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00004-pick.mdx"
+    ]
   },
   {
     "title": "Readonly",
@@ -37,7 +91,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "7 - Readonly\n\nT의 모든 프로퍼티를 읽기 전용(재할당 불가)으로 바꾸는 내장 제네릭 Readonly<T>를\n이를 사용하지 않고 구현하"
+    "excerpt": "7 - Readonly\n\nT의 모든 프로퍼티를 읽기 전용(재할당 불가)으로 바꾸는 내장 제네릭 Readonly<T>를\n이를 사용하지 않고 구현하",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00007-readonly.mdx"
+    ]
   },
   {
     "title": "Readonly 2",
@@ -47,7 +107,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "8 - Readonly 2\n\nT에서 K 프로퍼티만 읽기 전용으로 설정해 새로운 오브젝트 타입을 만드는 제네릭 MyReadonly2<T, K>를 "
+    "excerpt": "8 - Readonly 2\n\nT에서 K 프로퍼티만 읽기 전용으로 설정해 새로운 오브젝트 타입을 만드는 제네릭 MyReadonly2<T, K>를 ",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00008-readonly-2.mdx"
+    ]
   },
   {
     "title": "Tuple to Object",
@@ -57,7 +123,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "11 - Tuple to Object\n\n배열(튜플)을 받아, 각 원소의 값을 key/value로 갖는 오브젝트 타입을 반환하는 타입을 구현하세요"
+    "excerpt": "11 - Tuple to Object\n\n배열(튜플)을 받아, 각 원소의 값을 key/value로 갖는 오브젝트 타입을 반환하는 타입을 구현하세요",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00011-tuple-to-object.mdx"
+    ]
   },
   {
     "title": "Hello World",
@@ -67,7 +139,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "13 - Hello World\n\nHello, World!\nType Challenges에서는 타입 단언(assertion)을 하기 위해 자체적인 "
+    "excerpt": "13 - Hello World\n\nHello, World!\nType Challenges에서는 타입 단언(assertion)을 하기 위해 자체적인 ",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00013-hello-world.mdx"
+    ]
   },
   {
     "title": "First of Array",
@@ -77,7 +155,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "14 - First of Array\n\n배열(튜플) T를 받아 첫 원소의 타입을 반환하는 제네릭 First<T>를 구현하세요.\n\ntype arr1"
+    "excerpt": "14 - First of Array\n\n배열(튜플) T를 받아 첫 원소의 타입을 반환하는 제네릭 First<T>를 구현하세요.\n\ntype arr1",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00014-first-of-array.mdx"
+    ]
   },
   {
     "title": "Length of Tuple",
@@ -87,7 +171,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "18 - Length of Tuple\n\n배열(튜플)을 받아 길이를 반환하는 제네릭 Length<T>를 구현하세요.\n\ntype tesla = [\""
+    "excerpt": "18 - Length of Tuple\n\n배열(튜플)을 받아 길이를 반환하는 제네릭 Length<T>를 구현하세요.\n\ntype tesla = [\"",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00018-length-of-tuple.mdx"
+    ]
   },
   {
     "title": "Exclude",
@@ -97,7 +187,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "43 - Exclude\n\nT에서 U에 할당할 수 있는 타입을 제외하는 내장 제네릭 Exclude<T, U>를 이를 사용하지 않고 구현하세요.\n\n"
+    "excerpt": "43 - Exclude\n\nT에서 U에 할당할 수 있는 타입을 제외하는 내장 제네릭 Exclude<T, U>를 이를 사용하지 않고 구현하세요.\n\n",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00043-exclude.mdx"
+    ]
   },
   {
     "title": "Awaited",
@@ -107,7 +203,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "189 - Awaited\n\nPromise와 같은 타입에 감싸인 타입이 있을 때, 안에 감싸인 타입이 무엇인지 어떻게 알 수 있을까요?\n\ntype"
+    "excerpt": "189 - Awaited\n\nPromise와 같은 타입에 감싸인 타입이 있을 때, 안에 감싸인 타입이 무엇인지 어떻게 알 수 있을까요?\n\ntype",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00189-awaited.mdx"
+    ]
   },
   {
     "title": "If",
@@ -117,7 +219,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "268 - If\n\n조건 C, 참일 때 반환하는 타입 T, 거짓일 때 반환하는 타입 F를 받는 타입 If를 구현하세요. C는 true 또는 fal"
+    "excerpt": "268 - If\n\n조건 C, 참일 때 반환하는 타입 T, 거짓일 때 반환하는 타입 F를 받는 타입 If를 구현하세요. C는 true 또는 fal",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00268-if.mdx"
+    ]
   },
   {
     "title": "Concat",
@@ -127,7 +235,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "533 - Concat\n\nJavaScript의 Array.concat 함수를 타입 시스템에서 구현하세요.\n타입은 두 인수를 받고, 인수를 왼쪽부"
+    "excerpt": "533 - Concat\n\nJavaScript의 Array.concat 함수를 타입 시스템에서 구현하세요.\n타입은 두 인수를 받고, 인수를 왼쪽부",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00533-concat.mdx"
+    ]
   },
   {
     "title": "Includes",
@@ -137,7 +251,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "898 - Includes\n\nJavaScript의 Array.includes 함수를 타입 시스템에서 구현하세요.\n타입은 두 인수를 받고, tru"
+    "excerpt": "898 - Includes\n\nJavaScript의 Array.includes 함수를 타입 시스템에서 구현하세요.\n타입은 두 인수를 받고, tru",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "00898-includes.mdx"
+    ]
   },
   {
     "title": "Unshift",
@@ -147,7 +267,13 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "3060 - Unshift\n\nArray.unshift의 타입 버전을 구현하세요.\n\ntype Result = Unshift<[1, 2], 0>; "
+    "excerpt": "3060 - Unshift\n\nArray.unshift의 타입 버전을 구현하세요.\n\ntype Result = Unshift<[1, 2], 0>; ",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "03060-unshift.mdx"
+    ]
   },
   {
     "title": "Parameters",
@@ -157,6 +283,12 @@
     "tags": [
       "TypeScript"
     ],
-    "excerpt": "3312 - Parameters\n\n내장 제네릭 Parameters<T>를 이를 사용하지 않고 구현하세요.\n\nconst foo = (arg1: s"
+    "excerpt": "3312 - Parameters\n\n내장 제네릭 Parameters<T>를 이를 사용하지 않고 구현하세요.\n\nconst foo = (arg1: s",
+    "path": [
+      "content",
+      "memos",
+      "type-chellenges",
+      "03312-parameters.mdx"
+    ]
   }
 ]
