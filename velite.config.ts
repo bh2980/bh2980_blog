@@ -18,7 +18,7 @@ export default defineConfig({
     },
     memos: {
       name: "Memo",
-      pattern: "memos/*.mdx",
+      pattern: "memos/**/*.mdx",
       schema: memoSchema,
     },
   },
