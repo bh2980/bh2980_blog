@@ -13,6 +13,7 @@ export async function generateStaticParams() {
   const memos = getAllMemos();
   return memos.map((memo) => ({
     slug: memo.slug,
+    path: memo.path,
   }));
 }
 
@@ -27,12 +28,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
   // MDX 파일에서 본문 읽어오기
   let mdxSource: string;
   try {
-    const filePath = path.join(
-      process.cwd(),
-      "content",
-      "memos",
-      `${slug}.mdx`
-    );
+    const filePath = path.join(process.cwd(), ...(memo.path ?? []));
     const fileContent = fs.readFileSync(filePath, "utf8");
 
     // frontmatter 제거 (--- 사이의 내용 제거)
@@ -46,22 +42,9 @@ export default async function MemoPost({ params }: MemoPostProps) {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 뒤로 가기 링크 */}
       <div className="mb-8">
-        <Link
-          href="/memo"
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-        >
-          <svg
-            className="mr-1 w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+        <Link href="/memo" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
+          <svg className="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           메모장으로 돌아가기
         </Link>
@@ -83,9 +66,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
             </time>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">
-            {memo.title}
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">{memo.title}</h1>
 
           <div className="flex flex-wrap gap-2">
             {memo.tags.map((tag) => (
