@@ -1,18 +1,23 @@
 import { ReactNode } from "react";
 import { visit } from "unist-util-visit";
+import type { Node, Parent } from "unist";
+
+interface MDXNode extends Node {
+  name: string;
+  value?: string;
+  lang?: string;
+  attributes?: MDXNode[];
+  children?: MDXNode[];
+}
+
+interface MDXParent extends Parent {
+  children: MDXNode[];
+}
 
 export const remarkMermaidToComponent = () => {
-  return (tree: any) => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
-    visit(tree, "code", (node: any, index: number | undefined, parent: any) => {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
-      if (
-        node &&
-        node.type === "code" &&
-        node.lang === "mermaid" &&
-        parent &&
-        typeof index === "number"
-      ) {
+  return (tree: MDXNode) => {
+    visit(tree, "code", (node: MDXNode, index: number | undefined, parent: MDXParent) => {
+      if (node && node.type === "code" && node.lang === "mermaid" && parent && typeof index === "number") {
         const chart = node.value;
 
         parent.children[index] = {
