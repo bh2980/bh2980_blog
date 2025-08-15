@@ -29,10 +29,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
   let mdxSource: string;
   try {
     const filePath = path.join(process.cwd(), ...(memo.path ?? []));
-    const fileContent = fs.readFileSync(filePath, "utf8");
-
-    // frontmatter 제거 (--- 사이의 내용 제거)
-    mdxSource = fileContent.replace(/^---[\s\S]*?---\n/, "");
+    mdxSource = fs.readFileSync(filePath, "utf8");
   } catch (error) {
     console.error(`Failed to read MDX file: ${slug}`, error);
     notFound();
