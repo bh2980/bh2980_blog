@@ -1,13 +1,13 @@
 [
   {
-    "title": "Solidity 001 - Contract, 자료형, 구조체, 함수, 이벤트",
-    "slug": "001_making_the_zombie_factory",
-    "createdAt": "2025-08-16T12:06:13.364Z",
+    "title": "CZ 001 - Contract, 자료형, 구조체, 함수, 이벤트",
+    "slug": "CZ_001_making_the_zombie_factory",
+    "createdAt": "2025-08-16T12:06:58.215Z",
     "path": [
       "content",
       "memos",
       "cryptozombies",
-      "001_making_the_zombie_factory.mdx"
+      "CZ_001_making_the_zombie_factory.mdx"
     ],
     "category": "Crypto Zombies",
     "tags": [
