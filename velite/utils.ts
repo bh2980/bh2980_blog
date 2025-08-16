@@ -22,7 +22,7 @@ export const generateSlugFromFilename = (_: string, context: VeliteContext) => {
  * @returns string
  * @example `2023-09-17T19:51:00.000Z`
  */
-export const getKoreaISOTimeText = () => new Date(new Date().getTime() - 9 * 60 * 60 * 1000).toISOString();
+export const getKoreaISOTimeText = () => new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString();
 
 /**
  * content 파일 경로를 content 폴더부터 배열로 return 하는 함수
