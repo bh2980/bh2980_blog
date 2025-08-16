@@ -1,17 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  getPostBySlug,
-  getAllPosts,
-  getPreviousPost,
-  getNextPost,
-} from "@/lib/posts";
+import { getPostBySlug, getAllPosts, getPreviousPost, getNextPost } from "@/lib/posts";
 
-import {
-  getSeriesBySlug,
-  getPreviousPostInSeries,
-  getNextPostInSeries,
-} from "@/lib/series";
+import { getSeriesBySlug, getPreviousPostInSeries, getNextPostInSeries } from "@/lib/series";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
@@ -31,10 +22,7 @@ export async function generateStaticParams() {
 // dynamicParams를 false로 설정하여 사전 정의된 경로만 허용
 export const dynamicParams = false;
 
-export default async function BlogPost({
-  params,
-  searchParams,
-}: BlogPostProps) {
+export default async function BlogPost({ params, searchParams }: BlogPostProps) {
   const { slug } = await params;
   const { from } = await searchParams;
   const post = getPostBySlug(slug);
@@ -44,10 +32,7 @@ export default async function BlogPost({
   }
 
   // 시리즈에서 온 경우인지 확인
-  const fromSeries =
-    typeof from === "string" && from.startsWith("series-")
-      ? from.replace("series-", "")
-      : null;
+  const fromSeries = typeof from === "string" && from.startsWith("series-") ? from.replace("series-", "") : null;
   const isFromSeries = fromSeries !== null;
 
   // 이전/다음 게시글 가져오기
@@ -72,16 +57,8 @@ export default async function BlogPost({
   // MDX 파일에서 본문 읽어오기
   let mdxSource: string;
   try {
-    const filePath = path.join(
-      process.cwd(),
-      "content",
-      "posts",
-      `${slug}.mdx`
-    );
-    const fileContent = fs.readFileSync(filePath, "utf8");
-
-    // frontmatter 제거 (--- 사이의 내용 제거)
-    mdxSource = fileContent.replace(/^---[\s\S]*?---\n/, "");
+    const filePath = path.join(process.cwd(), ...post.path);
+    mdxSource = fs.readFileSync(filePath, "utf8");
   } catch (error) {
     console.error(`Failed to read MDX file: ${slug}`, error);
     notFound();
@@ -95,18 +72,8 @@ export default async function BlogPost({
           href={isFromSeries ? `/series#${fromSeries}` : "/posts"}
           className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
         >
-          <svg
-            className="mr-1 w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+          <svg className="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           {isFromSeries ? "묶음글로 돌아가기" : "블로그로 돌아가기"}
         </Link>
@@ -126,9 +93,7 @@ export default async function BlogPost({
             )}
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 dark:text-gray-100">
-            {post.title}
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4 dark:text-gray-100">{post.title}</h1>
           <div className="flex items-center text-gray-600 mb-6">
             <time>
               {new Date(post.createdAt).toLocaleDateString("ko-KR", {
@@ -162,9 +127,7 @@ export default async function BlogPost({
             {previousPost ? (
               <Link
                 href={
-                  isFromSeries
-                    ? `/posts/${previousPost.slug}?from=series-${fromSeries}`
-                    : `/posts/${previousPost.slug}`
+                  isFromSeries ? `/posts/${previousPost.slug}?from=series-${fromSeries}` : `/posts/${previousPost.slug}`
                 }
                 className="group flex flex-col text-left max-w-sm"
               >
@@ -181,11 +144,7 @@ export default async function BlogPost({
 
             {nextPost ? (
               <Link
-                href={
-                  isFromSeries
-                    ? `/posts/${nextPost.slug}?from=series-${fromSeries}`
-                    : `/posts/${nextPost.slug}`
-                }
+                href={isFromSeries ? `/posts/${nextPost.slug}?from=series-${fromSeries}` : `/posts/${nextPost.slug}`}
                 className="group flex flex-col text-right max-w-sm"
               >
                 <span className="text-sm text-gray-500 mb-1">
