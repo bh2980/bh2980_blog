@@ -8,12 +8,12 @@ export default defineConfig({
   collections: {
     posts: {
       name: "Post",
-      pattern: "posts/*.mdx",
+      pattern: "posts/**/*.mdx",
       schema: postSchema,
     },
     series: {
       name: "Series",
-      pattern: "series/*.mdx",
+      pattern: "series/**/*.mdx",
       schema: seriesSchema,
     },
     memos: {
