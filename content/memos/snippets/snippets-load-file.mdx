@@ -19,14 +19,14 @@ createdAt: "2025-08-07T19:17:00.000Z"
 ### 코드
 
 ```
-export const loadFile = (onLoad: (file: File) => void) => {
+export const loadFile = (onLoad: (file: File) => void, accept?: string) => {
   if (!document) {
     return;
   }
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
-  fileInput.accept = "*/*";
+  fileInput.accept = accept;
   fileInput.onchange = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0];
 
