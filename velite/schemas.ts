@@ -1,11 +1,15 @@
 import { s } from "velite";
-import { generateSlugFromFilename, getContentFilePathArray, getKoreaISOTimeText, validatePostSlugs } from "./utils";
+import {
+  generateSlugFromFilename,
+  getContentFilePathArray,
+  validatePostSlugs,
+} from "./utils";
 import { POST_CATEGORIES, MEMO_CATEGORIES } from "@/content/categories";
 
 const contentSchema = s.object({
   title: s.string(),
   slug: s.string().default("").transform(generateSlugFromFilename),
-  createdAt: s.isodate().default(getKoreaISOTimeText()),
+  createdAt: s.isodate(),
   path: s.array(s.string()).default([]).transform(getContentFilePathArray),
 });
 
