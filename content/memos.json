@@ -1,21 +1,5 @@
 [
   {
-    "title": "CZ 001 - Contract, 자료형, 구조체, 함수, 이벤트",
-    "slug": "CZ_001_making_the_zombie_factory",
-    "createdAt": "2025-08-16T12:06:58.215Z",
-    "path": [
-      "content",
-      "memos",
-      "cryptozombies",
-      "CZ_001_making_the_zombie_factory.mdx"
-    ],
-    "category": "Crypto Zombies",
-    "tags": [
-      "Solidity"
-    ],
-    "excerpt": "Solidity\nSolidity란 이더리움(Ethereum)과 같은 블록체인 플랫폼에서\n스마트 컨트랙트를 개발하기 위한 고급 프로그래밍 언어이다"
-  },
-  {
     "title": "downloadFile",
     "slug": "snippets-download-file",
     "createdAt": "2025-08-07T19:17:00.000Z",
@@ -50,6 +34,38 @@
       "Browser"
     ],
     "excerpt": "loadFile\n브라우저에서 파일을 선택하고 로드하는 유틸리티 함수입니다. 파일 선택 후 제공받은 콜백 함수를 통해 파일 객체를 처리할 수 있습"
+  },
+  {
+    "title": "CZ 001 - Contract, 자료형, 구조체, 함수, 이벤트",
+    "slug": "CZ_001_making_the_zombie_factory",
+    "createdAt": "2025-08-16T12:06:58.215Z",
+    "path": [
+      "content",
+      "memos",
+      "cryptozombies",
+      "CZ_001_making_the_zombie_factory.mdx"
+    ],
+    "category": "Crypto Zombies",
+    "tags": [
+      "Solidity"
+    ],
+    "excerpt": "Solidity\nSolidity란 이더리움(Ethereum)과 같은 블록체인 플랫폼에서\n스마트 컨트랙트를 개발하기 위한 고급 프로그래밍 언어이다"
+  },
+  {
+    "title": "CZ 002 - 주소와 매핑, 인터페이스 기초",
+    "slug": "CZ_002_zombie_attack_their_victims",
+    "createdAt": "2025-08-21T00:00:00.000Z",
+    "path": [
+      "content",
+      "memos",
+      "cryptozombies",
+      "CZ_002_zombie_attack_their_victims.mdx"
+    ],
+    "category": "Crypto Zombies",
+    "tags": [
+      "Solidity"
+    ],
+    "excerpt": "address\n주소는 특정 계정을 가리키는 고유 식별자로, 계좌번호와 같은 역할을 한다.\n자료형이다.\n0x0cE446255506E92DF4161"
   },
   {
     "title": "Get Return Type",
