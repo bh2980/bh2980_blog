@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -22,16 +18,16 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
-      "@/content": [
-        "./content"
-      ],
-      "@/content/*": [
-        "./content/*"
-      ],
-      "@/*": [
-        "./src/*"
-      ]
+      "@/keystatic/*": ["./src/keystatic/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/libs/*": ["./src/libs/*"],
+      "@/contents": ["./src/contents"],
+      "@/content": ["./src/content"], // 추후 제거
+      "@/content/*": ["./src/content/*"], // 추후 제거
+      "@/root/*": ["./*"],
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -42,7 +38,5 @@
     "velite.config.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
