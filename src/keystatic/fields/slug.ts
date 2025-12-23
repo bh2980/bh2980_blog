@@ -1,6 +1,6 @@
 import { fields } from "@keystatic/core";
 
-export const slug = (nameLabel: string, slugLabel: string) =>
+export const slug = (nameLabel: string = '제목', slugLabel: string = '슬러그') =>
   fields.slug({
     name: { label: nameLabel },
     slug: {
