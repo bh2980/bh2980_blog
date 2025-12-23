@@ -1,7 +1,7 @@
+import { MEMO_CATEGORIES, POST_CATEGORIES } from "@/content/categories";
 import { readdirSync } from "fs";
 import { join } from "path";
 import { ZodMeta } from "velite";
-import { POST_CATEGORIES, MEMO_CATEGORIES } from "../content/categories";
 
 interface VeliteContext {
   meta: ZodMeta;
