@@ -66,7 +66,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
           <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">{memo.title}</h1>
 
           <div className="flex flex-wrap gap-2">
-            {memo.tags.map((tag) => (
+            {memo.tags.map((tag: string) => (
               <span
                 key={tag}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
