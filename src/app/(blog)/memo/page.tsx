@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAllMemos } from "@/lib/memos";
+import { getAllMemos } from "@/libs/memos";
 import { type Memo } from "@/content";
 import { MEMO_CATEGORIES } from "@/content/categories";
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAllPosts } from "@/lib/posts";
+import { getAllPosts } from "@/libs/posts";
 import { type Post } from "@/content";
 import { POST_CATEGORIES } from "@/content/categories";
 

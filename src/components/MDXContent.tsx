@@ -1,6 +1,6 @@
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import CopyButton from "./CopyButton";
-import { extractCodeText, remarkMermaidToComponent } from "@/lib/mdx";
+import { extractCodeText, remarkMermaidToComponent } from "@/libs/mdx";
 import rehypePrettyCode from "rehype-pretty-code";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
