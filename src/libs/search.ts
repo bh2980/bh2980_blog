@@ -28,14 +28,13 @@ export function searchContent(query: string): SearchResult {
     (post) =>
       post.title.toLowerCase().includes(searchTerm) ||
       post.excerpt.toLowerCase().includes(searchTerm) ||
-      post.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
+      post.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm))
   );
 
   // 시리즈 검색
   const series = getAllSeries().filter(
     (seriesItem) =>
-      seriesItem.title.toLowerCase().includes(searchTerm) ||
-      seriesItem.description.toLowerCase().includes(searchTerm)
+      seriesItem.title.toLowerCase().includes(searchTerm) || seriesItem.description.toLowerCase().includes(searchTerm)
   );
 
   // 메모 검색
@@ -43,7 +42,7 @@ export function searchContent(query: string): SearchResult {
     (memo) =>
       memo.title.toLowerCase().includes(searchTerm) ||
       memo.excerpt.toLowerCase().includes(searchTerm) ||
-      memo.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
+      memo.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm))
   );
 
   return {
