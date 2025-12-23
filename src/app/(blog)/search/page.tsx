@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { searchContent, type SearchResult } from "@/lib/search";
+import { searchContent, type SearchResult } from "@/libs/search";
 
 const INITIAL_DISPLAY_COUNT = 3;
 

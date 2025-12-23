@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { getAllSeries } from "@/lib/series";
-import { getPostsBySlugs } from "@/lib/posts";
+import { getAllSeries } from "@/libs/series";
+import { getPostsBySlugs } from "@/libs/posts";
 
 export default function SeriesPage() {
   const series = getAllSeries();

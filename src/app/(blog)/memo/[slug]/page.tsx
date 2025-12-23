@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMemoBySlug, getAllMemos } from "@/lib/memos";
+import { getMemoBySlug, getAllMemos } from "@/libs/memos";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";

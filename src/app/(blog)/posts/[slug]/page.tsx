@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPostBySlug, getAllPosts, getPreviousPost, getNextPost } from "@/lib/posts";
+import { getPostBySlug, getAllPosts, getPreviousPost, getNextPost } from "@/libs/posts";
 
-import { getSeriesBySlug, getPreviousPostInSeries, getNextPostInSeries } from "@/lib/series";
+import { getSeriesBySlug, getPreviousPostInSeries, getNextPostInSeries } from "@/libs/series";
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
