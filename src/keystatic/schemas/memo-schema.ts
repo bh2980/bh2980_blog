@@ -5,6 +5,7 @@ export const memoSchema = collection({
   label: "메모",
   slugField: "title",
   path: "src/content/memos/*",
+  entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
     title: slug(),

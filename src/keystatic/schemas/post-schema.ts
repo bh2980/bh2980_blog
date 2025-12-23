@@ -5,6 +5,7 @@ export const postSchema = collection({
   label: "게시글",
   slugField: "title",
   path: "src/content/posts/*",
+  entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
     title: slug(),
