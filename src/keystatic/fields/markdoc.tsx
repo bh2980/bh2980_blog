@@ -6,6 +6,9 @@ import Mermaid from "@/components/Mermaid";
 export const markdoc = (label: string) =>
   fields.markdoc({
     label,
+    options: {
+      codeBlock: true,
+    },
     components: {
       Mermaid: block({
         label: "Mermaid 차트",

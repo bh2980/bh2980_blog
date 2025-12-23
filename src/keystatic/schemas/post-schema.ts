@@ -4,7 +4,7 @@ import { slug, markdoc } from "@/root/src/keystatic/fields";
 export const postSchema = collection({
   label: "게시글",
   slugField: "title",
-  path: "src/content/posts/*",
+  path: "src/contents/posts/*",
   entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
