@@ -4,7 +4,11 @@ import { block } from "@keystatic/core/content-components";
 
 export default config({
   storage: {
-    kind: "local",
+    kind: "github",
+    repo: {
+      owner: "bh2980",
+      name: "bh2980_blog",
+    },
   },
   collections: {
     posts: collection({
