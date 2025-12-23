@@ -47,26 +47,16 @@ function SearchContent() {
     }
   };
 
-  const displayedPosts = showAllPosts
-    ? results.posts
-    : results.posts.slice(0, INITIAL_DISPLAY_COUNT);
-  const displayedSeries = showAllSeries
-    ? results.series
-    : results.series.slice(0, INITIAL_DISPLAY_COUNT);
-  const displayedMemos = showAllMemos
-    ? results.memos
-    : results.memos.slice(0, INITIAL_DISPLAY_COUNT);
+  const displayedPosts = showAllPosts ? results.posts : results.posts.slice(0, INITIAL_DISPLAY_COUNT);
+  const displayedSeries = showAllSeries ? results.series : results.series.slice(0, INITIAL_DISPLAY_COUNT);
+  const displayedMemos = showAllMemos ? results.memos : results.memos.slice(0, INITIAL_DISPLAY_COUNT);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 헤더 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
-          검색 🔍
-        </h1>
-        <p className="text-lg text-gray-600 mb-6 dark:text-gray-300">
-          찾고 있는 게시글, 메모를 검색해보세요.
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
+        <p className="text-lg text-gray-600 mb-6 dark:text-gray-300">찾고 있는 게시글, 메모를 검색해보세요.</p>
 
         {/* 검색창 */}
         <form onSubmit={handleSearch} className="relative max-w-md">
@@ -79,12 +69,7 @@ function SearchContent() {
               className="w-full px-4 py-3 pl-12 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-blue-600"
             />
             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <svg
-                className="w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -101,23 +86,14 @@ function SearchContent() {
       {query && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              "{query}" 검색 결과
-            </h2>
-            <span className="text-gray-500 dark:text-gray-400">
-              총 {results.totalCount}개 결과
-            </span>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">"{query}" 검색 결과</h2>
+            <span className="text-gray-500 dark:text-gray-400">총 {results.totalCount}개 결과</span>
           </div>
 
           {results.totalCount === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
-                <svg
-                  className="mx-auto h-12 w-12"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -126,12 +102,8 @@ function SearchContent() {
                   />
                 </svg>
               </div>
-              <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">
-                검색 결과가 없습니다
-              </p>
-              <p className="text-gray-400 dark:text-gray-500">
-                다른 키워드로 다시 시도해보세요.
-              </p>
+              <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색 결과가 없습니다</p>
+              <p className="text-gray-400 dark:text-gray-500">다른 키워드로 다시 시도해보세요.</p>
             </div>
           ) : (
             <div className="space-y-12">
@@ -147,40 +119,26 @@ function SearchContent() {
                         onClick={() => setShowAllPosts(!showAllPosts)}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
-                        {showAllPosts
-                          ? "접기"
-                          : `${
-                              results.posts.length - INITIAL_DISPLAY_COUNT
-                            }개 더 보기`}
+                        {showAllPosts ? "접기" : `${results.posts.length - INITIAL_DISPLAY_COUNT}개 더 보기`}
                       </button>
                     )}
                   </div>
                   <div className="space-y-4">
                     {displayedPosts.map((post) => (
-                      <Link
-                        key={post.slug}
-                        href={`/posts/${post.slug}`}
-                        className="block"
-                      >
+                      <Link key={post.slug} href={`/posts/${post.slug}`} className="block">
                         <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                               {post.category}
                             </span>
                             <p className="text-gray-600 text-sm dark:text-gray-400">
-                              {new Date(post.createdAt).toLocaleDateString(
-                                "ko-KR"
-                              )}
+                              {new Date(post.createdAt).toLocaleDateString("ko-KR")}
                             </p>
                           </div>
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
-                            {post.title}
-                          </h4>
-                          <p className="text-gray-700 mb-4 dark:text-gray-300">
-                            {post.excerpt}
-                          </p>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">{post.title}</h4>
+                          <p className="text-gray-700 mb-4 dark:text-gray-300">{post.excerpt}</p>
                           <div className="flex flex-wrap gap-2">
-                            {post.tags.map((tag) => (
+                            {post.tags.map((tag: string) => (
                               <span
                                 key={tag}
                                 className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
@@ -208,11 +166,7 @@ function SearchContent() {
                         onClick={() => setShowAllSeries(!showAllSeries)}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
-                        {showAllSeries
-                          ? "접기"
-                          : `${
-                              results.series.length - INITIAL_DISPLAY_COUNT
-                            }개 더 보기`}
+                        {showAllSeries ? "접기" : `${results.series.length - INITIAL_DISPLAY_COUNT}개 더 보기`}
                       </button>
                     )}
                   </div>
@@ -231,16 +185,11 @@ function SearchContent() {
                           </span>
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
-                          <Link
-                            href="/series"
-                            className="hover:text-indigo-600 dark:hover:text-indigo-500"
-                          >
+                          <Link href="/series" className="hover:text-indigo-600 dark:hover:text-indigo-500">
                             {seriesItem.title}
                           </Link>
                         </h4>
-                        <p className="text-gray-700 dark:text-gray-300">
-                          {seriesItem.description}
-                        </p>
+                        <p className="text-gray-700 dark:text-gray-300">{seriesItem.description}</p>
                       </article>
                     ))}
                   </div>
@@ -259,44 +208,31 @@ function SearchContent() {
                         onClick={() => setShowAllMemos(!showAllMemos)}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-500 dark:hover:text-blue-600"
                       >
-                        {showAllMemos
-                          ? "접기"
-                          : `${
-                              results.memos.length - INITIAL_DISPLAY_COUNT
-                            }개 더 보기`}
+                        {showAllMemos ? "접기" : `${results.memos.length - INITIAL_DISPLAY_COUNT}개 더 보기`}
                       </button>
                     )}
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {displayedMemos.map((memo) => (
-                      <Link
-                        key={memo.slug}
-                        href={`/memo/${memo.slug}`}
-                        className="block"
-                      >
+                      <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
                         <article className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                           <div className="flex items-center justify-between mb-2">
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                               {memo.category}
                             </span>
                             <time className="text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(memo.createdAt).toLocaleDateString(
-                                "ko-KR",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                }
-                              )}
+                              {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
+                                month: "short",
+                                day: "numeric",
+                              })}
                             </time>
                           </div>
                           <h4 className="text-sm font-semibold text-gray-900 mb-2 flex-1 dark:text-gray-100">
                             {memo.title}
                           </h4>
-                          <p className="text-xs text-gray-600 mb-3 line-clamp-2 dark:text-gray-300">
-                            {memo.excerpt}
-                          </p>
+                          <p className="text-xs text-gray-600 mb-3 line-clamp-2 dark:text-gray-300">{memo.excerpt}</p>
                           <div className="flex flex-wrap gap-1">
-                            {memo.tags.slice(0, 2).map((tag) => (
+                            {memo.tags.slice(0, 2).map((tag: string) => (
                               <span
                                 key={tag}
                                 className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
@@ -305,9 +241,7 @@ function SearchContent() {
                               </span>
                             ))}
                             {memo.tags.length > 2 && (
-                              <span className="text-xs text-gray-400 dark:text-gray-500">
-                                +{memo.tags.length - 2}
-                              </span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">+{memo.tags.length - 2}</span>
                             )}
                           </div>
                         </article>
@@ -325,12 +259,7 @@ function SearchContent() {
       {!query && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
-            <svg
-              className="mx-auto h-16 w-16"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -339,12 +268,8 @@ function SearchContent() {
               />
             </svg>
           </div>
-          <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">
-            검색어를 입력해주세요
-          </p>
-          <p className="text-gray-400 dark:text-gray-500">
-            상단 검색창에서 원하는 내용을 검색할 수 있습니다.
-          </p>
+          <p className="text-lg text-gray-500 mb-2 dark:text-gray-400">검색어를 입력해주세요</p>
+          <p className="text-gray-400 dark:text-gray-500">상단 검색창에서 원하는 내용을 검색할 수 있습니다.</p>
         </div>
       )}
     </div>
@@ -355,9 +280,7 @@ function SearchFallback() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
-          검색 🔍
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">검색 🔍</h1>
         <p className="text-lg text-gray-600 dark:text-gray-300">검색 중...</p>
       </div>
     </div>

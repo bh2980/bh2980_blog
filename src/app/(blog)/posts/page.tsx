@@ -8,14 +8,9 @@ import { POST_CATEGORIES } from "@/content/categories";
 
 export default function BlogPage() {
   const allPosts = getAllPosts();
-  const [selectedCategory, setSelectedCategory] = useState<
-    Post["category"] | "all"
-  >("all");
+  const [selectedCategory, setSelectedCategory] = useState<Post["category"] | "all">("all");
 
-  const posts =
-    selectedCategory === "all"
-      ? allPosts
-      : allPosts.filter((post) => post.category === selectedCategory);
+  const posts = selectedCategory === "all" ? allPosts : allPosts.filter((post) => post.category === selectedCategory);
 
   const getTabColor = (category: Post["category"] | "all") => {
     if (selectedCategory === category) {
@@ -32,20 +27,14 @@ export default function BlogPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">
-          블로그
-        </h1>
-        <p className="text-lg text-gray-600 mb-8 dark:text-gray-300">
-          개발하면서 배운 것들과 경험을 기록합니다.
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">블로그</h1>
+        <p className="text-lg text-gray-600 mb-8 dark:text-gray-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
 
         {/* 카테고리 필터 탭 */}
         <div className="flex flex-wrap gap-2 mb-8">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-              "all"
-            )}`}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor("all")}`}
           >
             전체 ({getCategoryCount("all")})
           </button>
@@ -53,9 +42,7 @@ export default function BlogPage() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(
-                category
-              )}`}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(category)}`}
             >
               {category} ({getCategoryCount(category)})
             </button>
@@ -82,16 +69,12 @@ export default function BlogPage() {
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 dark:text-gray-100">
-                {post.title}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 dark:text-gray-100">{post.title}</h2>
 
-              <p className="text-gray-700 leading-relaxed mb-6 dark:text-gray-300">
-                {post.excerpt}
-              </p>
+              <p className="text-gray-700 leading-relaxed mb-6 dark:text-gray-300">{post.excerpt}</p>
 
               <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag) => (
+                {post.tags.map((tag: string) => (
                   <span
                     key={tag}
                     className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
@@ -107,9 +90,7 @@ export default function BlogPage() {
 
       {posts.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg dark:text-gray-400">
-            아직 작성된 게시글이 없습니다.
-          </p>
+          <p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 게시글이 없습니다.</p>
         </div>
       )}
     </div>
