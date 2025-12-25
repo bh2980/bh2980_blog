@@ -59,7 +59,7 @@ export default async function MemoPage() {
         {/* 카테고리 필터 탭 */}
         <div className="flex flex-wrap gap-2 mb-8">
           <div className="px-4 rounded-full text-sm flex justify-center items-center font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <span className="w-2 h-2 opacity-70 bg-black rounded-full mr-2 inline-block" />
+            <span className="w-2 h-2 bg-black rounded-full mr-2 inline-block" />
             <span className="inline-block">전체</span>
           </div>
           {categoryList.map((category) => (
@@ -68,7 +68,7 @@ export default async function MemoPage() {
               className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               <span
-                className="w-2 h-2 opacity-70 rounded-full mr-2 inline-block"
+                className="w-2 h-2 rounded-full mr-2 inline-block"
                 style={{ backgroundColor: `${category.color}` }}
               />
               <span className="inline-block">{category.name}</span>
