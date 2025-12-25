@@ -10,7 +10,7 @@ export default function RootLayout({
   return (
     <Fragment>
       <Navigation />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 flex">{children}</main>
       <Footer />
     </Fragment>
   );
