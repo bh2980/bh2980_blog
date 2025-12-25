@@ -27,6 +27,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
 
   const content = await memo.content();
 
+  // TODO : 추후 Mermaid 같은 커스텀 컴포넌트 추가
   // 1) transform (태그/노드 커스텀 없으면 빈 config로도 동작)
   const transformed = Markdoc.transform(content.node);
 
