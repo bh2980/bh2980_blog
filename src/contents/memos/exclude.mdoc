@@ -1,0 +1,29 @@
+---
+title: Exclude
+publishedDate: 2023-09-06T01:34:00.000Z
+category: type-challenges
+tags:
+  - typescript
+---
+## **43 - Exclude**
+
+> T에서 U에 할당할 수 있는 타입을 제외하는 내장 제네릭 `Exclude<T, U>`를 이를 사용하지 않고 구현하세요.
+
+```TypeScript
+type Result = MyExclude<"a" | "b" | "c", "a">; // 'b' | 'c'
+```
+
+## **풀이**
+
+```TypeScript
+type MyExclude<T, U> = T extends U ? never : T;
+```
+
+타입스크립트의 타입시스템은 유니온 타입을 분배시켜 처리한다.
+예를 들어 `'a' | 'b' | 'c' extends 'a'`라면 이는 `'a' extends 'a' | 'b' extends 'a' | 'c' extends 'a'`로 처리된다.
+따라서 `MyExclude<'a' | 'b' | 'c', 'a'>`는 `'b' | 'c'`가 된다.
+
+## Reference
+
+[Type Challenges, 43 - Exclude](https://github.com/type-challenges/type-challenges/blob/main/questions/00043-easy-exclude/README.ko.md)
+
