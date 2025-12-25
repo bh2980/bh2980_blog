@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import SearchBar from "./SearchBar";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,7 +71,6 @@ export default function Navigation() {
                   메모장
                 </Link>
               </div>
-              <SearchBar />
               <div className="w-6 h-6" />
             </div>
           </div>
@@ -120,7 +118,6 @@ export default function Navigation() {
                 메모장
               </Link>
             </div>
-            <SearchBar />
             <button
               onClick={toggleTheme}
               className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"

@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPostBySlug, getAllPosts, getPreviousPost, getNextPost } from "@/libs/posts";
 
-import { getSeriesBySlug, getPreviousPostInSeries, getNextPostInSeries } from "@/libs/series";
-import MDXContent from "@/components/MDXContent";
-import fs from "fs";
-import path from "path";
 import { reader } from "@/keystatic/utils/reader";
 import Markdoc from "@markdoc/markdoc";
 import React from "react";
@@ -13,13 +8,6 @@ import React from "react";
 interface BlogPostProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-export async function generateStaticParams() {
-  const posts = getAllPosts();
-  return posts.map((post) => ({
-    slug: post.slug,
-  }));
 }
 
 export default async function BlogPost({ params }: BlogPostProps) {
