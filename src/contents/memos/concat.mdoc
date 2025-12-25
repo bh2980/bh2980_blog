@@ -1,0 +1,46 @@
+---
+title: Concat
+publishedDate: 2023-09-06T03:37:00.000Z
+category: type-challenges
+tags:
+  - typescript
+---
+## **533 - Concat**
+
+> JavaScript의 `Array.concat` 함수를 타입 시스템에서 구현하세요.
+> 타입은 두 인수를 받고, 인수를 왼쪽부터 concat한 새로운 배열을 반환해야 합니다.
+
+```TypeScript
+type Result = Concat<[1], [2]>; // expected to be [1, 2]
+```
+
+## **풀이**
+
+```TypeScript
+type Concat<
+  T extends readonly any[],
+  U extends readonly any[]
+> = T extends readonly [...infer A]
+  ? U extends readonly [...infer B]
+    ? [...A, ...B]
+    : never
+  : never;
+```
+
+`extends`와 `infer`를 통해서 T와 U 내부의 타입들을 꺼내오는게 핵심이다.
+단, `T = [1, 2, 3]`에서 `T extends [...infer A]`로 A를 꺼내왔어도
+A는 `1, 2, 3`이 아니라 배열을 포함한 `[1, 2, 3]`이다.따라서 다시 정의해 줄 때 `[...A]`로 정의해야 `[1, 2]`로 담긴다.
+
+```TypeScript
+T = [1, 2, 3] -> T extends [...infer A]
+
+A = [1, 2, 3]
+
+[A] = [[1, 2, 3]]
+[...A] = [1, 2, 3]
+```
+
+## Reference
+
+[Type Challenges, 533 - Concat](https://github.com/type-challenges/type-challenges/blob/main/questions/00533-easy-concat/README.ko.md)
+
