@@ -10,7 +10,7 @@ export default function RootLayout({
   return (
     <Fragment>
       <Navigation className="absolute top-0 w-full z-10 bg-transparent" />
-      <main className="flex-1 flex flex-col bg-amber-400">{children}</main>
+      <main className="flex-1 flex flex-col">{children}</main>
     </Fragment>
   );
 }
