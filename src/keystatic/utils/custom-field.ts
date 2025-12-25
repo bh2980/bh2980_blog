@@ -13,7 +13,8 @@ export class FieldDataError extends Error {
 // https://github.com/Thinkmill/keystatic/blob/main/packages/keystatic/src/form/fields/utils.tsx
 
 export function basicFormFieldWithSimpleReaderParse<
-	ParsedValue extends object | null,
+	// biome-ignore lint/complexity/noBannedTypes: follow the original code type
+	ParsedValue extends {} | null,
 	ValidatedValue extends ParsedValue,
 >(config: {
 	Input(props: FormFieldInputProps<ParsedValue>): ReactElement | null;
