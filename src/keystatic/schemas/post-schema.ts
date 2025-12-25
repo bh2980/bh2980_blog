@@ -8,12 +8,17 @@ export const postSchema = collection({
   entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
-    title: fields.slug({ name: { label: "제목" } }),
-    publishedDate: fields.datetime({ label: "발행일", defaultValue: { kind: "now" } }),
+    title: fields.slug({ name: { label: "제목", validation: { isRequired: true } } }),
+    publishedDate: fields.datetime({
+      label: "발행일",
+      defaultValue: { kind: "now" },
+      validation: { isRequired: true },
+    }),
 
     category: fields.relationship({
       collection: "post-category",
       label: "카테고리",
+      validation: { isRequired: true },
     }),
 
     project: fields.relationship({

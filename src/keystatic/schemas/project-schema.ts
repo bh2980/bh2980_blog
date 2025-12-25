@@ -6,7 +6,7 @@ export const projectSchema = collection({
   slugField: "title",
   path: "src/contents/project/*",
   schema: {
-    title: fields.slug({ name: { label: "이름" } }),
+    title: fields.slug({ name: { label: "이름", validation: { isRequired: true } } }),
     description: fields.text({ label: "프로젝트 설명", multiline: true }),
   },
 });

@@ -18,6 +18,7 @@ export const memoSchema = collection({
     category: fields.relationship({
       collection: "memo-category",
       label: "카테고리",
+      validation: { isRequired: true },
     }),
 
     tags: fields.array(fields.relationship({ collection: "tag", label: "태그" }), {
