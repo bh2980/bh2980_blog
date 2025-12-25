@@ -1,5 +1,5 @@
-import { collection, fields } from "@keystatic/core";
-import { slug, markdoc } from "@/root/src/keystatic/fields";
+import { collection } from "@keystatic/core";
+import { fields } from "../fields";
 
 export const memoSchema = collection({
   label: "메모",
@@ -8,8 +8,12 @@ export const memoSchema = collection({
   entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
-    title: slug(),
-    publishedDate: fields.datetime({ label: "발행일", defaultValue: { kind: "now" } }),
+    title: fields.slug({ name: { label: "제목", validation: { isRequired: true } } }),
+    publishedDate: fields.datetime({
+      label: "발행일",
+      defaultValue: { kind: "now" },
+      validation: { isRequired: true },
+    }),
 
     category: fields.relationship({
       collection: "memo-category",
@@ -21,6 +25,6 @@ export const memoSchema = collection({
       itemLabel: (props) => props.value ?? "태그 선택",
     }),
 
-    content: markdoc("내용"),
+    content: fields.markdoc({ label: "내용" }),
   },
 });

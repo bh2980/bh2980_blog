@@ -1,5 +1,5 @@
-import { collection, fields } from "@keystatic/core";
-import { slug, markdoc } from "@/root/src/keystatic/fields";
+import { collection } from "@keystatic/core";
+import { fields } from "../fields";
 
 export const postSchema = collection({
   label: "게시글",
@@ -8,7 +8,7 @@ export const postSchema = collection({
   entryLayout: "content",
   format: { contentField: "content" }, // 본문 분리 저장
   schema: {
-    title: slug(),
+    title: fields.slug({ name: { label: "제목" } }),
     publishedDate: fields.datetime({ label: "발행일", defaultValue: { kind: "now" } }),
 
     category: fields.relationship({
@@ -31,6 +31,6 @@ export const postSchema = collection({
       itemLabel: (props) => props.value ?? "태그 선택",
     }),
 
-    content: markdoc("내용"),
+    content: fields.markdoc({ label: "내용" }),
   },
 });

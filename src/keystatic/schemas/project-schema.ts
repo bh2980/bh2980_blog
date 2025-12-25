@@ -1,12 +1,12 @@
-import { collection, fields } from "@keystatic/core";
-import { slug } from "@/keystatic/fields";
+import { collection } from "@keystatic/core";
+import { fields } from "../fields";
 
 export const projectSchema = collection({
   label: "프로젝트",
   slugField: "title",
   path: "src/contents/project/*",
   schema: {
-    title: slug(),
+    title: fields.slug({ name: { label: "이름" } }),
     description: fields.text({ label: "프로젝트 설명", multiline: true }),
   },
 });

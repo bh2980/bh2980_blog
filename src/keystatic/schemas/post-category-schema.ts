@@ -1,11 +1,11 @@
 import { collection } from "@keystatic/core";
-import { slug } from "../fields";
+import { fields } from "../fields";
 
 export const postCategorySchema = collection({
   label: "카테고리",
   slugField: "name",
   path: "src/contents/post-category/*",
   schema: {
-    name: slug("카테고리 이름"),
+    name: fields.slug({ name: { label: "카테고리 이름" } }),
   },
 });
