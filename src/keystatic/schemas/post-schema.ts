@@ -16,7 +16,7 @@ export const postSchema = collection({
     }),
 
     category: fields.relationship({
-      collection: "post-category",
+      collection: "postCategory",
       label: "카테고리",
       validation: { isRequired: true },
     }),

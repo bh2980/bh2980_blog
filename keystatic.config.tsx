@@ -20,18 +20,18 @@ export default config({
     //공통
     tag: tagSchema,
     //게시글
-    "post-category": postCategorySchema,
+    postCategory: postCategorySchema,
     post: postSchema,
     series: seriesSchema,
     project: projectSchema,
     //메모
-    "memo-category": memoCategorySchema,
+    memoCategory: memoCategorySchema,
     memo: memoSchema,
   },
   ui: {
     navigation: {
-      게시글: ["post-category", "post", "series", "project", "tag"],
-      메모: ["memo-category", "memo", "tag"],
+      게시글: ["postCategory", "post", "series", "project", "tag"],
+      메모: ["memoCategory", "memo", "tag"],
     },
   },
 });

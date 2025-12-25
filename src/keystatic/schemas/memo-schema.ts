@@ -16,7 +16,7 @@ export const memoSchema = collection({
     }),
 
     category: fields.relationship({
-      collection: "memo-category",
+      collection: "memoCategory",
       label: "카테고리",
       validation: { isRequired: true },
     }),
