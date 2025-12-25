@@ -7,5 +7,6 @@ export const postCategorySchema = collection({
   path: "src/contents/post-category/*",
   schema: {
     name: fields.slug({ name: { label: "카테고리 이름", validation: { isRequired: true } } }),
+    color: fields.colorPicker({ label: "색상", defaultValue: "#000000" }),
   },
 });
