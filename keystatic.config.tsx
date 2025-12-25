@@ -7,16 +7,15 @@ import {
   memoCategorySchema,
   projectSchema,
 } from "@/root/src/keystatic/schemas";
-import { config } from "@keystatic/core";
+import { type Config, config } from "@keystatic/core";
+
+const storage: Config["storage"] =
+  process.env.NODE_ENV === "development"
+    ? { kind: "local" }
+    : { kind: "github", repo: { owner: "bh2980", name: "bh2980_blog" } };
 
 export default config({
-  storage: {
-    kind: "github",
-    repo: {
-      owner: "bh2980",
-      name: "bh2980_blog",
-    },
-  },
+  storage,
   collections: {
     //공통
     tag: tagSchema,
