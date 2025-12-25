@@ -1,28 +1,53 @@
-"use client";
-
+import { reader } from "@/keystatic/utils/reader";
+import keystaticConfig from "@/root/keystatic.config";
+import { Entry } from "@keystatic/core/reader";
 import Link from "next/link";
-import { useState } from "react";
-import { getAllMemos } from "@/libs/memos";
-import { type Memo } from "@/content";
-import { MEMO_CATEGORIES } from "@/content/categories";
 
-export default function MemoPage() {
-  const allMemos = getAllMemos();
-  const [selectedCategory, setSelectedCategory] = useState<Memo["category"] | "all">("all");
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
-  const memos = selectedCategory === "all" ? allMemos : allMemos.filter((memo) => memo.category === selectedCategory);
+const isDefined = <T extends any>(value: T | undefined | null): value is T => {
+  return value !== undefined && value !== null;
+};
 
-  const getTabColor = (category: Memo["category"] | "all") => {
-    if (selectedCategory === category) {
-      return "bg-blue-600 text-white";
-    }
-    return "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
-  };
+export default async function MemoPage() {
+  const [allMemos, allMemoCategories, allTags] = await Promise.all([
+    reader.collections.memo.all(),
+    reader.collections.memoCategory.all(),
+    reader.collections.tag.all(),
+  ]);
 
-  const getCategoryCount = (category: Memo["category"] | "all") => {
-    if (category === "all") return allMemos.length;
-    return allMemos.filter((memo) => memo.category === category).length;
-  };
+  const categoryMap = new Map(
+    allMemoCategories.map((category) => [category.slug, { ...category.entry, slug: category.slug }])
+  );
+  const tagMap = new Map(allTags.map((tag) => [tag.slug, { name: tag.entry.name, slug: tag.slug }]));
+
+  const memoList = allMemos
+    .map((memo) => {
+      const { entry, slug } = memo;
+
+      const category = categoryMap.get(entry.category);
+
+      const tags = (entry.tags || [])
+        .filter((tagSlug): tagSlug is string => !!tagSlug)
+        .map((tagSlug) => tagMap.get(tagSlug))
+        .filter(isDefined);
+
+      const publishedDate = new Date(memo.entry.publishedDate).toLocaleString("ko-KR", { dateStyle: "short" });
+
+      return {
+        ...entry,
+        publishedDate,
+        slug,
+        category,
+        tags,
+      };
+    })
+    .filter((memo): memo is Expand<Omit<typeof memo, "category"> & { category: NonNullable<typeof memo.category> }> =>
+      isDefined(memo.category)
+    )
+    .sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime());
+
+  const categoryList = Array.from(categoryMap, (v) => v[1]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -34,51 +59,40 @@ export default function MemoPage() {
 
         {/* 카테고리 필터 탭 */}
         <div className="flex flex-wrap gap-2 mb-8">
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor("all")}`}
-          >
-            전체 ({getCategoryCount("all")})
-          </button>
-          {MEMO_CATEGORIES.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${getTabColor(category)}`}
+          <div className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            전체
+          </div>
+          {categoryList.map((category) => (
+            <div
+              key={category.slug}
+              className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
-              {category} ({getCategoryCount(category)})
-            </button>
+              {category.name}
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {memos.map((memo) => (
+      <div className="flex flex-col">
+        {memoList.map((memo) => (
           <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
             <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
               <div className="flex items-center justify-between mb-3">
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                  {memo.category}
+                  {memo.category.name}
                 </span>
-                <time className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </time>
+                <time className="text-xs text-gray-500 dark:text-gray-400">{memo.publishedDate}</time>
               </div>
 
               <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 dark:text-gray-100">{memo.title}</h2>
 
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1 dark:text-gray-300">{memo.excerpt}</p>
-
               <div className="flex flex-wrap gap-1 mt-auto">
-                {memo.tags.slice(0, 3).map((tag: string) => (
+                {memo.tags.slice(0, 3).map((tag) => (
                   <span
-                    key={tag}
+                    key={tag.name}
                     className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
                   >
-                    #{tag}
+                    #{tag.name}
                   </span>
                 ))}
                 {memo.tags.length > 3 && (
@@ -90,13 +104,9 @@ export default function MemoPage() {
         ))}
       </div>
 
-      {memos.length === 0 && (
+      {memoList.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg dark:text-gray-400">
-            {selectedCategory === "all"
-              ? "아직 작성된 메모가 없습니다."
-              : `${selectedCategory} 카테고리에 메모가 없습니다.`}
-          </p>
+          <p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 메모가 없습니다.</p>
         </div>
       )}
     </div>
