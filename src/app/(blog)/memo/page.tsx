@@ -20,6 +20,7 @@ export default async function MemoPage() {
   const tagMap = new Map(allTags.map((tag) => [tag.slug, { name: tag.entry.name, slug: tag.slug }]));
 
   const memoList = allMemos
+    .sort((a, b) => new Date(b.entry.publishedDate).getTime() - new Date(a.entry.publishedDate).getTime())
     .map((memo) => {
       const { entry, slug } = memo;
 
@@ -43,8 +44,7 @@ export default async function MemoPage() {
     })
     .filter((memo): memo is Expand<Omit<typeof memo, "category"> & { category: NonNullable<typeof memo.category> }> =>
       isDefined(memo.category)
-    )
-    .sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime());
+    );
 
   const categoryList = Array.from(categoryMap, (v) => v[1]);
 
@@ -77,7 +77,7 @@ export default async function MemoPage() {
         </div>
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         {memoList.map((memo) => (
           <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
             <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
