@@ -1,6 +1,7 @@
 import { reader } from "@/keystatic/utils/reader";
 import Link from "next/link";
 
+// TODO : 추후 post와 중복 제거
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 const isDefined = <T extends any>(value: T | undefined | null): value is T => {
@@ -59,7 +60,7 @@ export default async function MemoPage() {
         {/* 카테고리 필터 탭 */}
         <div className="flex flex-wrap gap-2 mb-8">
           <div className="px-4 rounded-full text-sm flex justify-center items-center font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <span className="w-2 h-2 bg-black rounded-full mr-2 inline-block" />
+            <span className="w-2 h-2 bg-slate-900 dark:bg-slate-300 rounded-full mr-2 inline-block" />
             <span className="inline-block">전체</span>
           </div>
           {categoryList.map((category) => (
