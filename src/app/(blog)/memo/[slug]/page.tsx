@@ -1,39 +1,37 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMemoBySlug, getAllMemos } from "@/libs/memos";
-import MDXContent from "@/components/MDXContent";
-import fs from "fs";
-import path from "path";
+import { reader } from "@/keystatic/utils/reader";
+import Markdoc from "@markdoc/markdoc";
+import React from "react";
 
 interface MemoPostProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams() {
-  const memos = getAllMemos();
-  return memos.map((memo) => ({
-    slug: memo.slug,
-    path: memo.path,
-  }));
-}
-
 export default async function MemoPost({ params }: MemoPostProps) {
   const { slug } = await params;
-  const memo = getMemoBySlug(slug);
+  const rawMemo = await reader.collections.memo.read(slug);
 
-  if (!memo) {
+  if (!rawMemo) {
     notFound();
   }
 
-  // MDX 파일에서 본문 읽어오기
-  let mdxSource: string;
-  try {
-    const filePath = path.join(process.cwd(), ...(memo.path ?? []));
-    mdxSource = fs.readFileSync(filePath, "utf8");
-  } catch (error) {
-    console.error(`Failed to read MDX file: ${slug}`, error);
-    notFound();
-  }
+  const memo = {
+    ...rawMemo,
+    publishedDate: new Date(rawMemo?.publishedDate).toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+  };
+
+  const content = await memo.content();
+
+  // 1) transform (태그/노드 커스텀 없으면 빈 config로도 동작)
+  const transformed = Markdoc.transform(content.node);
+
+  // 2) React로 렌더
+  const document = Markdoc.renderers.react(transformed, React);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -54,19 +52,13 @@ export default async function MemoPost({ params }: MemoPostProps) {
             <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
               {memo.category}
             </span>
-            <time className="text-gray-500">
-              {new Date(memo.createdAt).toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
+            <time className="text-gray-500">{memo.publishedDate}</time>
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">{memo.title}</h1>
 
           <div className="flex flex-wrap gap-2">
-            {memo.tags.map((tag: string) => (
+            {memo.tags?.map((tag) => (
               <span
                 key={tag}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
@@ -76,9 +68,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
             ))}
           </div>
         </header>
-
-        {/* 메모 내용 */}
-        <MDXContent source={mdxSource} className="prose dark:prose-invert" />
+        <div className="prose prose-lg max-w-none">{document}</div>
       </article>
     </div>
   );
