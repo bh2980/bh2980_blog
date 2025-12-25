@@ -159,7 +159,7 @@ function SearchContent() {
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      묶음글 ({results.series.length})
+                      시리즈 ({results.series.length})
                     </h3>
                     {results.series.length > INITIAL_DISPLAY_COUNT && (
                       <button
@@ -178,7 +178,7 @@ function SearchContent() {
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full dark:bg-indigo-900/30 dark:text-indigo-400">
-                            묶음글
+                            시리즈
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {seriesItem.postSlugs.length}개 게시글
