@@ -80,28 +80,24 @@ export default async function MemoPage() {
       <div className="flex flex-col gap-2">
         {memoList.map((memo) => (
           <Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
-            <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all flex flex-col h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
-              <div className="flex items-center justify-between mb-3">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                  {memo.category.name}
-                </span>
+            <article className="flex gap-4 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
+              <span className="w-1 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
+              <div className="flex flex-col gap-1">
                 <time className="text-xs text-gray-500 dark:text-gray-400">{memo.publishedDate}</time>
-              </div>
-
-              <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 dark:text-gray-100">{memo.title}</h2>
-
-              <div className="flex flex-wrap gap-1 mt-auto">
-                {memo.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag.name}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-                {memo.tags.length > 3 && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">+{memo.tags.length - 3}</span>
-                )}
+                <h2 className="font-semibold text-gray-900 mb-2 line-clamp-2 dark:text-gray-100">{memo.title}</h2>
+                <div className="flex flex-wrap gap-1 mt-auto">
+                  {memo.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag.name}
+                      className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
+                    >
+                      #{tag.name}
+                    </span>
+                  ))}
+                  {memo.tags.length > 3 && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">+{memo.tags.length - 3}</span>
+                  )}
+                </div>
               </div>
             </article>
           </Link>
