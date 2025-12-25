@@ -1,2 +1,1 @@
-pnpm lint
-pnpm velite
+pnpm exec biome check .
