@@ -6,6 +6,9 @@ import { getSeriesBySlug, getPreviousPostInSeries, getNextPostInSeries } from "@
 import MDXContent from "@/components/MDXContent";
 import fs from "fs";
 import path from "path";
+import { reader } from "@/keystatic/utils/reader";
+import Markdoc from "@markdoc/markdoc";
+import React from "react";
 
 interface BlogPostProps {
   params: Promise<{ slug: string }>;
@@ -19,93 +22,58 @@ export async function generateStaticParams() {
   }));
 }
 
-// dynamicParams를 false로 설정하여 사전 정의된 경로만 허용
-export const dynamicParams = false;
-
-export default async function BlogPost({ params, searchParams }: BlogPostProps) {
+export default async function BlogPost({ params }: BlogPostProps) {
   const { slug } = await params;
-  const { from } = await searchParams;
-  const post = getPostBySlug(slug);
+  const rawPost = await reader.collections.post.read(slug);
 
-  if (!post) {
+  if (!rawPost) {
     notFound();
   }
 
-  // 시리즈에서 온 경우인지 확인
-  const fromSeries = typeof from === "string" && from.startsWith("series-") ? from.replace("series-", "") : null;
-  const isFromSeries = fromSeries !== null;
+  const post = {
+    ...rawPost,
+    publishedDate: new Date(rawPost?.publishedDate).toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+  };
 
-  // 이전/다음 게시글 가져오기
-  let previousPost = null;
-  let nextPost = null;
-  let seriesInfo = null;
+  const content = await post.content();
 
-  if (isFromSeries) {
-    // 시리즈에서 온 경우: 시리즈 내 이전/다음 게시글
-    seriesInfo = getSeriesBySlug(fromSeries);
-    const prevSlug = getPreviousPostInSeries(slug, fromSeries);
-    const nextSlug = getNextPostInSeries(slug, fromSeries);
+  // TODO : 추후 Mermaid 같은 커스텀 컴포넌트 추가
+  // 1) transform (태그/노드 커스텀 없으면 빈 config로도 동작)
+  const transformed = Markdoc.transform(content.node);
 
-    if (prevSlug) previousPost = getPostBySlug(prevSlug);
-    if (nextSlug) nextPost = getPostBySlug(nextSlug);
-  } else {
-    // 일반 접속: 전체 게시글 기준 이전/다음 게시글
-    previousPost = getPreviousPost(slug);
-    nextPost = getNextPost(slug);
-  }
-
-  // MDX 파일에서 본문 읽어오기
-  let mdxSource: string;
-  try {
-    const filePath = path.join(process.cwd(), ...post.path);
-    mdxSource = fs.readFileSync(filePath, "utf8");
-  } catch (error) {
-    console.error(`Failed to read MDX file: ${slug}`, error);
-    notFound();
-  }
+  // 2) React로 렌더
+  const document = Markdoc.renderers.react(transformed, React);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* 뒤로 가기 링크 */}
       <div className="mb-8">
-        <Link
-          href={isFromSeries ? `/series#${fromSeries}` : "/posts"}
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-        >
+        <Link href="/posts" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
           <svg className="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          {isFromSeries ? "묶음글로 돌아가기" : "블로그로 돌아가기"}
+          뒤로 가기
         </Link>
       </div>
 
       <article className="prose prose-lg max-w-none">
-        {/* 게시글 헤더 */}
+        {/* 메모 헤더 */}
         <header className="mb-12 pb-8 border-b border-gray-200">
-          <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
               {post.category}
             </span>
-            {isFromSeries && seriesInfo && (
-              <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
-                📚 {seriesInfo.title}
-              </span>
-            )}
+            <time className="text-gray-500">{post.publishedDate}</time>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 dark:text-gray-100">{post.title}</h1>
-          <div className="flex items-center text-gray-600 mb-6">
-            <time>
-              {new Date(post.createdAt).toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">{post.title}</h1>
 
           <div className="flex flex-wrap gap-2">
-            {post.tags.map((tag: string) => (
+            {post.tags?.map((tag) => (
               <span
                 key={tag}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
@@ -115,51 +83,8 @@ export default async function BlogPost({ params, searchParams }: BlogPostProps) 
             ))}
           </div>
         </header>
-
-        {/* 게시글 내용 */}
-        <MDXContent source={mdxSource} className="prose dark:prose-invert" />
+        <div className="prose prose-lg max-w-none">{document}</div>
       </article>
-
-      {/* 이전/다음 게시글 네비게이션 */}
-      {(previousPost || nextPost) && (
-        <div className="mt-16 pt-8 border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            {previousPost ? (
-              <Link
-                href={
-                  isFromSeries ? `/posts/${previousPost.slug}?from=series-${fromSeries}` : `/posts/${previousPost.slug}`
-                }
-                className="group flex flex-col text-left max-w-sm"
-              >
-                <span className="text-sm text-gray-500 mb-1">
-                  {isFromSeries ? "시리즈 이전 게시글" : "이전 게시글"}
-                </span>
-                <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
-                  ← {previousPost.title}
-                </span>
-              </Link>
-            ) : (
-              <div></div>
-            )}
-
-            {nextPost ? (
-              <Link
-                href={isFromSeries ? `/posts/${nextPost.slug}?from=series-${fromSeries}` : `/posts/${nextPost.slug}`}
-                className="group flex flex-col text-right max-w-sm"
-              >
-                <span className="text-sm text-gray-500 mb-1">
-                  {isFromSeries ? "시리즈 다음 게시글" : "다음 게시글"}
-                </span>
-                <span className="text-blue-600 hover:text-blue-700 font-medium group-hover:underline">
-                  {nextPost.title} →
-                </span>
-              </Link>
-            ) : (
-              <div></div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
