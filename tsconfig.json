@@ -1,42 +1,42 @@
 {
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@/keystatic/*": ["./src/keystatic/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/libs/*": ["./src/libs/*"],
-      "@/contents": ["./src/contents"],
-      "@/content": ["./src/content"], // 추후 제거
-      "@/content/*": ["./src/content/*"], // 추후 제거
-      "@/root/*": ["./*"],
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    "velite.config.ts",
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+	"compilerOptions": {
+		"target": "ES2017",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"allowJs": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noEmit": true,
+		"esModuleInterop": true,
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"jsx": "react-jsx",
+		"incremental": true,
+		"plugins": [
+			{
+				"name": "next"
+			}
+		],
+		"baseUrl": ".",
+		"paths": {
+			"@/keystatic/*": ["./src/keystatic/*"],
+			"@/components/*": ["./src/components/*"],
+			"@/libs/*": ["./src/libs/*"],
+			"@/contents": ["./src/contents"],
+			"@/content": ["./src/content"], // 추후 제거
+			"@/content/*": ["./src/content/*"], // 추후 제거
+			"@/root/*": ["./*"],
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": [
+		"next-env.d.ts",
+		"**/*.ts",
+		"**/*.tsx",
+		".next/types/**/*.ts",
+		"velite.config.ts",
+		".next/dev/types/**/*.ts"
+	],
+	"exclude": ["node_modules"]
 }
