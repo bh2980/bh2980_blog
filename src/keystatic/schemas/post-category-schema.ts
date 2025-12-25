@@ -6,6 +6,6 @@ export const postCategorySchema = collection({
   slugField: "name",
   path: "src/contents/post-category/*",
   schema: {
-    name: fields.slug({ name: { label: "카테고리 이름" } }),
+    name: fields.slug({ name: { label: "카테고리 이름", validation: { isRequired: true } } }),
   },
 });
