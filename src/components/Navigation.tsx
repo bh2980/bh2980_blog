@@ -57,7 +57,7 @@ export default function Navigation() {
                   href="/series"
                   className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
                 >
-                  묶음글
+                  시리즈
                 </Link>
                 <Link
                   href="/posts"
@@ -105,7 +105,7 @@ export default function Navigation() {
                 href="/series"
                 className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
               >
-                묶음글
+                시리즈
               </Link>
               <Link
                 href="/posts"
@@ -127,12 +127,7 @@ export default function Navigation() {
               aria-label="다크 모드 토글"
             >
               {theme === "dark" ? (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -141,12 +136,7 @@ export default function Navigation() {
                   />
                 </svg>
               ) : (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -165,12 +155,7 @@ export default function Navigation() {
               className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
               aria-label="검색"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -184,26 +169,11 @@ export default function Navigation() {
               className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
               aria-label="메뉴"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isMobileMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
@@ -226,7 +196,7 @@ export default function Navigation() {
                 className="text-gray-600 hover:text-gray-900 font-medium px-3 py-2 dark:text-gray-300 dark:hover:text-gray-100"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                묶음글
+                시리즈
               </Link>
               <Link
                 href="/posts"

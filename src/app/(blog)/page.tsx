@@ -106,7 +106,7 @@ export default function Home() {
       {/* Recent Series */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">최근 묶음글</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">최근 시리즈</h2>
           <Link
             href="/series"
             className="text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-500 dark:hover:text-indigo-600"
@@ -122,7 +122,7 @@ export default function Home() {
                 <article className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
                   <div className="flex items-center justify-between mb-3">
                     <span className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
-                      묶음글
+                      시리즈
                     </span>
                     <time className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(seriesItem.createdAt).toLocaleDateString("ko-KR", {
@@ -150,13 +150,13 @@ export default function Home() {
                       </svg>
                       {seriesItem.postSlugs.length}개 게시글
                     </div>
-                    <span className="text-xs text-indigo-600 font-medium dark:text-indigo-500">묶음글 보기 →</span>
+                    <span className="text-xs text-indigo-600 font-medium dark:text-indigo-500">시리즈 보기 →</span>
                   </div>
                 </article>
               </Link>
             ))
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">작성된 묶음글이 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400">작성된 시리즈이 없습니다.</p>
           )}
         </div>
       </section>
