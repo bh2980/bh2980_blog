@@ -1,25 +1,26 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
+import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
 
 export const postSchema = collection({
 	label: "게시글",
 	slugField: "title",
-	path: "src/contents/posts/*",
+	path: "src/contents/posts/**/",
 	entryLayout: "content",
 	format: { contentField: "content" }, // 본문 분리 저장
 	schema: {
+		category: fields.relationship({
+			collection: "postCategory",
+			label: "카테고리",
+			validation: { isRequired: true },
+		}),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
+			slug: { generate: getCategoryTitleSlug },
 		}),
 		publishedDate: fields.datetime({
 			label: "발행일",
 			defaultValue: { kind: "now" },
-			validation: { isRequired: true },
-		}),
-
-		category: fields.relationship({
-			collection: "postCategory",
-			label: "카테고리",
 			validation: { isRequired: true },
 		}),
 
