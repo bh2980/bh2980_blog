@@ -1,7 +1,7 @@
 import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx";
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import { Code } from "./code";
-import Mermaid from "./mermaid";
+import { Mermaid } from "./mermaid";
 
 interface MDXContentProps {
 	source: string;
