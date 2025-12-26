@@ -4,7 +4,7 @@ import MDXContent from "@/components/mdx-content";
 import { reader } from "@/keystatic/libs/reader";
 
 interface BlogPostProps {
-	params: Promise<{ slug: string }>;
+	params: Promise<{ slug: Array<string> }>;
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
@@ -12,7 +12,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
 	const { slug } = await params;
 	const r = await reader();
 
-	const rawPost = await r.collections.post.read(slug);
+	const rawPost = await r.collections.post.read(slug.join("/"));
 
 	if (!rawPost) {
 		notFound();
