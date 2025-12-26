@@ -7,7 +7,9 @@ export default async function RootLayout({
 	children: React.ReactNode;
 }>) {
 	const { isEnabled } = await draftMode();
-	const branch = (await cookies()).get("branch")?.value;
+
+	const ck = await cookies();
+	const branch = ck.get("ks-branch")?.value;
 
 	return (
 		<Fragment>
