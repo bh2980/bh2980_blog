@@ -88,7 +88,7 @@ export default async function MemoPage() {
 
 			<div className="flex flex-col gap-2">
 				{memoList.map((memo) => (
-					<Link key={memo.slug} href={`/memo/${memo.slug}`} className="block">
+					<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
 						<article className="flex gap-4 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
 							<span className="w-1 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
 							<div className="flex flex-col gap-1">

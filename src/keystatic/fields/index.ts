@@ -1,11 +1,11 @@
 import { fields as keystaticFields } from "@keystatic/core";
 import { colorPicker } from "./color-picker";
-import { markdoc } from "./markdoc";
+import { mdx } from "./mdx";
 import { slug } from "./slug";
 
 export const fields = {
 	...keystaticFields,
 	slug,
-	markdoc,
+	mdx,
 	colorPicker,
 };

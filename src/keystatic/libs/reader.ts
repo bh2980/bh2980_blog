@@ -1,3 +1,4 @@
+import { createReader } from "@keystatic/core/reader";
 import { createGitHubReader } from "@keystatic/core/reader/github";
 import { cookies, draftMode } from "next/headers";
 import keystaticConfig from "@/root/keystatic.config";
@@ -27,6 +28,10 @@ export const reader = async () => {
 				token: cookieStore.get("keystatic-gh-access-token")?.value,
 			});
 		}
+	}
+
+	if (process.env.NODE_ENV === "development") {
+		return createReader(process.cwd(), keystaticConfig);
 	}
 
 	return createGitHubReader(keystaticConfig, {
