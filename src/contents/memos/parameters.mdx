@@ -9,7 +9,7 @@ tags:
 
 > 내장 제네릭 `Parameters<T>`를 이를 사용하지 않고 구현하세요.
 
-```TypeScript
+```ts
 const foo = (arg1: string, arg2: number): void => {};
 
 type FunctionParamsType = MyParameters<typeof foo>; // [arg1: string, arg2: number]
@@ -17,7 +17,7 @@ type FunctionParamsType = MyParameters<typeof foo>; // [arg1: string, arg2: numb
 
 ## **풀이**
 
-```TypeScript
+```ts
 type MyParameters<T extends (...args: any[]) => any> = T extends (
   ...args: infer Params
 ) => any

@@ -10,7 +10,7 @@ tags:
 > T에서 K 프로퍼티만 제거해 새로운 오브젝트 타입을 만드는 내장 제네릭 `Omit<T, K>`를  
 > 이를 사용하지 않고 구현하세요.
 
-```TypeScript
+```ts
 interface Todo {
   title: string;
   description: string;
@@ -26,7 +26,7 @@ const todo: TodoPreview = {
 
 ## **풀이**
 
-```TypeScript
+```ts
 type MyOmit<T, K extends keyof T> = {
   [P in keyof T as P extends K ? never : P]: T[P];
 };
@@ -36,7 +36,7 @@ type MyOmit<T, K extends keyof T> = {
 이는 TypeScript의 `as` 연산자를 통해 가능한데 객체 Key 부분에서 `as`를 사용하면 키를 다시 매핑할 수 있다.
 즉, P에서 K를 제외하고 싶다면, `as`를 통해 P를 다시 매핑해 P가 K에 할당가능한 경우에 `never`를 통해서 제거해버리면 된다.
 
-```TypeScript
+```ts
 type MyOmit<T, K extends keyof T> = {
   [P in Exclude<keyof T, K>]: T[P];
 };

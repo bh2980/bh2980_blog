@@ -9,13 +9,13 @@ tags:
 
 > `Array.unshift`의 타입 버전을 구현하세요.
 
-```TypeScript
+```ts
 type Result = Unshift<[1, 2], 0>; // [0, 1, 2,]
 ```
 
 ## **풀이**
 
-```TypeScript
+```ts
 type Unshift<T, U> = T extends [...infer Rest] ? [U, ...Rest] : never;
 ```
 

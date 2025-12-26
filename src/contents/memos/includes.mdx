@@ -10,13 +10,13 @@ tags:
 > JavaScript의 `Array.includes` 함수를 타입 시스템에서 구현하세요.
 > 타입은 두 인수를 받고, `true` 또는 `false`를 반환해야 합니다.
 
-```TypeScript
+```ts
 type isPillarMen = Includes<["Kars", "Esidisi", "Wamuu", "Santana"], "Dio">; // expected to be false
 ```
 
 ## **풀이**
 
-```TypeScript
+```ts
 type IsEqual<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
   ? 1
   : 2
@@ -35,7 +35,7 @@ type Includes<T extends readonly any[], U> = T extends [
 
 좀 어려운데 하나씩 짚어보자.
 
-```TypeScript
+```ts
 type IsEqual<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
   ? 1
   : 2
@@ -46,14 +46,14 @@ type IsEqual<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
 `IsEqual` 타입은 X와 Y를 받아 두 타입이 같은지 검사하는 타입이다.
 그런데 갑자기 T는 왜 나오고 함수는 왜 나오고 1, 2는 뭘까?
 
-```TypeScript
+```ts
 <T>() => T extends X ? 1 : 2
 ```
 
 먼저 위는 `<T>()`라는 매개변수를 받아 `T extends X ? 1 : 2`를 return하는 형태의 함수 타입이다.
 즉, 아무 매개변수를 받지 않고 T가 X에 할당할 수 있다면 1을 아니면 2를 return한다.
 
-```TypeScript
+```ts
 function <T>():
     if T extends X:
         return 1
@@ -66,7 +66,7 @@ function <T>():
 즉, X에 할당 가능한 타입들은 `<T>() => 1`이라는 타입이 될 것이고, X에 할당 불가능한 타입들은 `<T>() => 2`라는 타입이 된다.
 결론적으로 위는 모든 타입들에 대해서 각 타입별로 `<T>() => 1` 혹은 `<T>() => 2`가 매칭되어있는 타입 집합이다.
 
-```TypeScript
+```ts
 (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
 ```
 
@@ -76,7 +76,7 @@ X와 Y에 대해 각각 모든 타입 T들에 대해서 `<T>() => 1` 혹은 `<T>
 예를 들어 string을 검사했을 때 X에서는 `<string>() => 1`인데 Y에서는 `<string>() => 2`라면 이 두 타입은 일치하지 않는다.
 즉, X와 Y가 같다면 모든 타입 T에 대한 두 타입 집합이 정확히 일치할 것이므로 true를 아니면 false를 return한다.
 
-```TypeScript
+```ts
 type Includes<T extends readonly any[], U> = T extends [
   infer First,
   ...infer Rest
