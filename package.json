@@ -8,6 +8,7 @@
 		"preview": "pnpm build && pnpm start",
 		"start": "next start",
 		"lint": "pnpm exec biome check . --write",
+		"typecheck": "pnpm exec tsc --noEmit",
 		"prepare": "husky"
 	},
 	"dependencies": {
