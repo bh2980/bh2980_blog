@@ -4,14 +4,14 @@ import MDXContent from "@/components/mdx-content";
 import { reader } from "@/keystatic/libs/reader";
 
 interface MemoPostProps {
-	params: Promise<{ slug: string }>;
+	params: Promise<{ slug: Array<string> }>;
 }
 
 export default async function MemoPost({ params }: MemoPostProps) {
 	const { slug } = await params;
 	const r = await reader();
 
-	const rawMemo = await r.collections.memo.read(slug);
+	const rawMemo = await r.collections.memo.read(slug.join("/"));
 
 	if (!rawMemo) {
 		notFound();
