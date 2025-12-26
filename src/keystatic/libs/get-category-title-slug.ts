@@ -5,7 +5,9 @@ export const getCategoryTitleSlug = (name: string) => {
 	if (!labelElement) return "";
 
 	const root = labelElement.parentElement;
-	const category = root?.querySelector('input[role="combobox"]') ?? null;
+	const categoryInput = (root?.querySelector('input[role="combobox"]') as HTMLInputElement) ?? null;
+
+	const category = categoryInput?.value;
 	const title = getKoreanSlug(name);
 
 	if (!category || !title) return "";
