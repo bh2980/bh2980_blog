@@ -10,7 +10,7 @@ tags:
 > T에서 K 프로퍼티만 선택해 새로운 오브젝트 타입을 만드는 내장 제네릭 `Pick<T, K>`을  
 > 이를 사용하지 않고 구현하세요.
 
-```TypeScript
+```ts
 interface Todo {
   title: string;
   description: string;
@@ -27,7 +27,7 @@ const todo: TodoPreview = {
 
 ## **풀이**
 
-```TypeScript
+```ts
 type MyPick<T, K extends keyof T> = {
   [Property in K]: T[Property];
 };
@@ -36,7 +36,7 @@ type MyPick<T, K extends keyof T> = {
 K가 T 타입의 key들에 대한 것이라고 제한해둔다.
 이게 중요한데 테스트 코드 상에서 아래 코드가 있기 때문이다.
 
-```TypeScript
+```ts
 // @ts-expect-error
   MyPick<Todo, 'title' | 'completed' | 'invalid'>,
 ```
@@ -46,7 +46,7 @@ K가 T 타입의 key들에 대한 것이라고 제한해둔다.
 즉, T의 key가 아닌 값이 들어갔는데 주석에 빨간 줄이 뜨므로 정상적으로 작동하고 있다는 의미이다.
 이를 위해서는 K 값이 T의 Key가 되도록 만들어야하기 때문에 `extends keyof T`가 필요하다.
 
-```TypeScript
+```ts
 [Property in K]: T[Property];
 ```
 

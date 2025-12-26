@@ -7,7 +7,7 @@ interface MermaidProps {
 	chart: string;
 }
 
-export default function Mermaid({ chart }: MermaidProps) {
+export const Mermaid = ({ chart }: MermaidProps) => {
 	const ref = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -24,4 +24,4 @@ export default function Mermaid({ chart }: MermaidProps) {
 	}, [chart]);
 
 	return <div ref={ref} />;
-}
+};

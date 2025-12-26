@@ -2,30 +2,26 @@
 
 import { useState } from "react";
 
-interface CopyButtonProps {
-	code: string;
-}
-
-export default function CopyButton({ code }: CopyButtonProps) {
+export function CopyButton({ text }: { text: string }) {
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = async () => {
+		if (copied) return;
 		try {
-			await navigator.clipboard.writeText(code);
+			await navigator.clipboard.writeText(text);
 			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
+			setTimeout(() => setCopied(false), 1200);
 		} catch (err) {
-			console.error("Failed to copy code:", err);
+			console.error("클립보드 복사에 실패했습니다:", err);
 		}
 	};
 
 	return (
 		<button
+			className="hover:bg-gray-400/20 p-2 rounded absolute top-1 right-1 text-zinc-200"
+			aria-label="Copy to clipboard"
 			onClick={handleCopy}
-			className="absolute top-2 right-2 p-2 text-gray-400 hover:text-gray-200 bg-gray-800/50 hover:bg-gray-700/50 rounded transition-colors"
-			title="Copy code"
 			type="button"
-			aria-label="코드 복사"
 		>
 			{copied ? (
 				<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

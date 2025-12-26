@@ -18,7 +18,7 @@ tags:
 
 ### **코드**
 
-```TypeScript
+```ts
 export const downloadFile = (file: Blob | MediaSource, filename: string) => {
   const url = URL.createObjectURL(file);
   const a = document.createElement("a");
@@ -31,7 +31,7 @@ export const downloadFile = (file: Blob | MediaSource, filename: string) => {
 
 ### **사용법**
 
-```TypeScript
+```ts
 // 텍스트 파일 다운로드
 const textContent = "Hello, World!";
 const blob = new Blob([textContent], { type: 'text/plain' });

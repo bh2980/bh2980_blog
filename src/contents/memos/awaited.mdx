@@ -9,7 +9,7 @@ tags:
 
 > Promise와 같은 타입에 감싸인 타입이 있을 때, 안에 감싸인 타입이 무엇인지 어떻게 알 수 있을까요?
 
-```TypeScript
+```ts
 type ExampleType = Promise<string>;
 
 type Result = MyAwaited<ExampleType>; // string
@@ -17,7 +17,7 @@ type Result = MyAwaited<ExampleType>; // string
 
 ## **풀이**
 
-```TypeScript
+```ts
 type Thenable<T> = {
   then: (_: (_: T) => any) => any;
 };
@@ -29,7 +29,7 @@ type MyAwaited<T extends Thenable<any>> = T extends Thenable<infer U>
   : never;
 ```
 
-```TypeScript
+```ts
 type MyAwaited<T extends object> = T extends {
   then: (onfulfilled: (value: infer U) => any) => any;
 }
