@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 // TODO : 추후 post와 중복 제거
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;

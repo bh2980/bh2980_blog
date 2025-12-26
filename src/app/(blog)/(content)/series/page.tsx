@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 export default async function SeriesPage() {
 	const r = await reader();

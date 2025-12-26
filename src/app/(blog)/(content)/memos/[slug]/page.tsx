@@ -2,7 +2,7 @@ import Markdoc from "@markdoc/markdoc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import React from "react";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 interface MemoPostProps {
 	params: Promise<{ slug: string }>;
