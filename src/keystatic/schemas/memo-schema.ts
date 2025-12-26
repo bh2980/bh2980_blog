@@ -5,7 +5,7 @@ import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
 export const memoSchema = collection({
 	label: "메모",
 	slugField: "title",
-	path: "src/contents/memos/**/",
+	path: "src/contents/memos/**",
 	entryLayout: "content",
 	format: { contentField: "content" }, // 본문 분리 저장
 	schema: {
@@ -29,7 +29,10 @@ export const memoSchema = collection({
 			itemLabel: (props) => props.value ?? "태그 선택",
 		}),
 
-		content: fields.mdx({ label: "내용" }),
+		content: fields.mdx({
+			label: "내용",
+			options: { image: { directory: "public/assets/images/memos", publicPath: "/assets/images/memos" } },
+		}),
 	},
 	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
 });
