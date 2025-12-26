@@ -30,6 +30,9 @@
 						"filenameCases": ["kebab-case"]
 					}
 				}
+			},
+			"nursery": {
+				"useSortedClasses": "error"
 			}
 		}
 	},
