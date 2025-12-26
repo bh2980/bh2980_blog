@@ -5,7 +5,7 @@ import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
 export const postSchema = collection({
 	label: "게시글",
 	slugField: "title",
-	path: "src/contents/posts/**/",
+	path: "src/contents/posts/**",
 	entryLayout: "content",
 	format: { contentField: "content" }, // 본문 분리 저장
 	schema: {
@@ -39,7 +39,10 @@ export const postSchema = collection({
 			itemLabel: (props) => props.value ?? "태그 선택",
 		}),
 
-		content: fields.mdx({ label: "내용" }),
+		content: fields.mdx({
+			label: "내용",
+			options: { image: { directory: "public/assets/images/posts", publicPath: "/assets/images/posts" } },
+		}),
 	},
 	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
 });
