@@ -28,7 +28,7 @@ export const memoSchema = collection({
 			itemLabel: (props) => props.value ?? "태그 선택",
 		}),
 
-		content: fields.markdoc({ label: "내용" }),
+		content: fields.mdx({ label: "내용" }),
 	},
 	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
 });
