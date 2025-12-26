@@ -10,7 +10,9 @@ interface MemoPostProps {
 
 export default async function MemoPost({ params }: MemoPostProps) {
 	const { slug } = await params;
-	const rawMemo = await reader.collections.memo.read(slug);
+	const r = await reader();
+
+	const rawMemo = await r.collections.memo.read(slug);
 
 	if (!rawMemo) {
 		notFound();

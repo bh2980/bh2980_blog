@@ -11,7 +11,9 @@ interface BlogPostProps {
 
 export default async function BlogPost({ params }: BlogPostProps) {
 	const { slug } = await params;
-	const rawPost = await reader.collections.post.read(slug);
+	const r = await reader();
+
+	const rawPost = await r.collections.post.read(slug);
 
 	if (!rawPost) {
 		notFound();

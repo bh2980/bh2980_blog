@@ -9,10 +9,11 @@ const isDefined = <T,>(value: T | undefined | null): value is T => {
 };
 
 export default async function BlogPage() {
+	const r = await reader();
 	const [allPosts, allPostCategories, allTags] = await Promise.all([
-		reader.collections.post.all(),
-		reader.collections.postCategory.all(),
-		reader.collections.tag.all(),
+		r.collections.post.all(),
+		r.collections.postCategory.all(),
+		r.collections.tag.all(),
 	]);
 
 	const categoryMap = new Map(

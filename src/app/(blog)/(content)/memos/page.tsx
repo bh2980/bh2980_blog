@@ -1,3 +1,4 @@
+import { draftMode, headers } from "next/headers";
 import Link from "next/link";
 import { reader } from "@/keystatic/utils/reader";
 
@@ -9,10 +10,12 @@ const isDefined = <T,>(value: T | undefined | null): value is T => {
 };
 
 export default async function MemoPage() {
+	const r = await reader();
+
 	const [allMemos, allMemoCategories, allTags] = await Promise.all([
-		reader.collections.memo.all(),
-		reader.collections.memoCategory.all(),
-		reader.collections.tag.all(),
+		r.collections.memo.all(),
+		r.collections.memoCategory.all(),
+		r.collections.tag.all(),
 	]);
 
 	const categoryMap = new Map(
