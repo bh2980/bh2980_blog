@@ -9,7 +9,7 @@ tags:
 
 > T에서 K 프로퍼티만 읽기 전용으로 설정해 새로운 오브젝트 타입을 만드는 제네릭 `MyReadonly2<T, K>`를 구현하세요. K가 주어지지 않으면 단순히 `Readonly<T>`처럼 모든 프로퍼티를 읽기 전용으로 설정해야 합니다.
 
-```TypeScript
+```ts
 interface Todo {
   title: string;
   description: string;
@@ -29,7 +29,7 @@ todo.completed = true; // OK
 
 ## **풀이**
 
-```TypeScript
+```ts
 type MyReadonly2<T, K extends keyof T = keyof T> = {
   [P in keyof T as P extends K ? never : P]: T[P];
 } & {
@@ -39,7 +39,7 @@ type MyReadonly2<T, K extends keyof T = keyof T> = {
 
 먼저 문제에서 `// @ts-expect-error` 주석 부분이 있다.
 
-```TypeScript
+```ts
 // @ts-expect-error
 type error = MyReadonly2<Todo1, "title" | "invalid">;
 ```
@@ -48,7 +48,7 @@ type error = MyReadonly2<Todo1, "title" | "invalid">;
 그런데 문제에서 "K가 주어지지 않으면 단순히 `Readonly<T>`처럼 모든 프로퍼티를 읽기 전용으로 설정해야 합니다."라는 조건이 있기 때문에 K가 주어지지 않은 경우에 들어갈 기본값 역시 지정해주어야한다.
 K가 주어지지 않으면 모든 key를 readonly로 만들기 때문에 기본값을 T의 모든 key인 `keyof T`로 지정해준다.
 
-```TypeScript
+```ts
 {
   [P in keyof T as P extends K ? never : P]: T[P]
 } & {

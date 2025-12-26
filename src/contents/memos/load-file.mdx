@@ -18,7 +18,7 @@ tags:
 
 ### 코드
 
-```TypeScript
+```ts
 export const loadFile = (onLoad: (file: File) => void, accept?: string) => {
   if (!document) {
     return;
@@ -43,7 +43,7 @@ export const loadFile = (onLoad: (file: File) => void, accept?: string) => {
 
 ### **사용법**
 
-```TypeScript
+```ts
 // 기본 사용법
 loadFile((file) => {
   console.log('선택된 파일:', file.name);

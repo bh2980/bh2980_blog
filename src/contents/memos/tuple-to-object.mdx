@@ -9,7 +9,7 @@ tags:
 
 > 배열(튜플)을 받아, 각 원소의 값을 key/value로 갖는 오브젝트 타입을 반환하는 타입을 구현하세요.
 
-```TypeScript
+```ts
 const tuple = ["tesla", "model 3", "model X", "model Y"] as const;
 
 type result = TupleToObject<typeof tuple>; // expected { tesla: 'tesla', 'model 3': 'model 3', 'model X': 'model X', 'model Y': 'model Y'}
@@ -17,7 +17,7 @@ type result = TupleToObject<typeof tuple>; // expected { tesla: 'tesla', 'model 
 
 ## **풀이**
 
-```TypeScript
+```ts
 type TupleToObject<T extends readonly (string | number | symbol)[]> = {
   [P in T[number]]: P;
 };
@@ -25,7 +25,7 @@ type TupleToObject<T extends readonly (string | number | symbol)[]> = {
 
 문제를 하나씩 체크해보자.
 
-```TypeScript
+```ts
 // @ts-expect-error
 type error = TupleToObject<[[1, 2], {}]>;
 ```
@@ -34,7 +34,7 @@ type error = TupleToObject<[[1, 2], {}]>;
 위를 봤을 때, 하나의 tuple이 아닌 중첩 배열이 들어가있는데 타입이 정상적으로 동작하고 있다 (= 주석에 에러)
 즉, 튜플 혹은 배열 타입이 아니면 타입이 동작하지 않도록 T의 타입을 `(string | number | symbol)[]` 타입으로 제한해줄 필요가 있다.
 
-```TypeScript
+```ts
 {
   [P in T[number]] : P
 }
@@ -43,7 +43,7 @@ type error = TupleToObject<[[1, 2], {}]>;
 다음 이 부분인데, 먼저 짚고 넘어갈 부분은 JS에서 배열도 key가 숫자, value가 각 배열의 값으로 이루어진 객체이다.
 객체에서 `Object[key]`형태로 value에 접근하는 것처럼 배열도 숫자를 key로 `Array[0]`로 접근하는 것이다.
 
-```TypeScript
+```ts
 // 대충 이런 느낌
 ["A", "B", "C"] = { 0: "A", 1: "B", 2: "C" };
 ```
@@ -52,7 +52,7 @@ TS에서 중괄호 내 대괄호 `{ [ ] }`는 객체의 key의 타입을 지정�
 배열 타입인 T에 대해서 중괄호 내에서 `T[number]`라고 칭하면
 T 내부에 key의 타입이 number인 모든 key의 value를 가져온다는 말이 된다.
 
-```TypeScript
+```ts
 // 0, 1, 2가 number이므로
 T[number] = "A" | "B" | "C";
 ```
@@ -60,7 +60,7 @@ T[number] = "A" | "B" | "C";
 이렇게 배열 내의 value 값을 type으로 가져올 수 있다.
 (값 자체가 아니라 값을 type으로 가져옴에 유의, 'A' -> 'A'라는 리터럴 타입, symbol1 상수 -> typeof symbol1)
 
-```TypeScript
+```ts
 {
   [P in T[number]] : P
 }
