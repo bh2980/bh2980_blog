@@ -131,7 +131,7 @@ contract ZombieFactory{
 ### 함수 선언
 
 함수 선언은 아래와 같이 할 수 있다.
-함수 인자 명을 _(언더스코어)로 시작해서 전역 변수와 구분하는 것이 관례이다.
+함수 인자 명을 \_(언더스코어)로 시작해서 전역 변수와 구분하는 것이 관례이다.
 
 ```Solidity
 function createZombie(string _name, uint _dna){
@@ -146,7 +146,7 @@ Solidity에서 함수는 기본적으로 Public으로 선언된다.
 이를 막기 위해 함수를 `private`을 사용하여 private 함수로 선언할 수 있다.
 특이하게 접근제어자를 함수 선언 다음에 적는다.
 
-private 함수명 역시 public과 구분하기 위해 관례상 _를 붙여준다.
+private 함수명 역시 public과 구분하기 위해 관례상 \_를 붙여준다.
 
 ```Solidity
 //_ 추가 및 private 선언
@@ -234,7 +234,7 @@ contract ZombieFactory {
 ```
 
 예를 들어 위 코드에서는 NewZombie라는 이벤트를 등록하고,
-_createZombie 함수에서 이벤트를 발행하는 것을 볼 수 있다.
+\_createZombie 함수에서 이벤트를 발행하는 것을 볼 수 있다.
 
 ### 이벤트 구독
 
