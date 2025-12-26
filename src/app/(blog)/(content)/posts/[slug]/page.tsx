@@ -2,7 +2,7 @@ import Markdoc from "@markdoc/markdoc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import React from "react";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 interface BlogPostProps {
 	params: Promise<{ slug: string }>;
@@ -11,7 +11,9 @@ interface BlogPostProps {
 
 export default async function BlogPost({ params }: BlogPostProps) {
 	const { slug } = await params;
-	const rawPost = await reader.collections.post.read(slug);
+	const r = await reader();
+
+	const rawPost = await r.collections.post.read(slug);
 
 	if (!rawPost) {
 		notFound();

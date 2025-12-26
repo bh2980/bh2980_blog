@@ -30,4 +30,5 @@ export const memoSchema = collection({
 
 		content: fields.markdoc({ label: "내용" }),
 	},
+	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
 });

@@ -1,5 +1,5 @@
 import type { BasicFormField } from "@keystatic/core";
-import { basicFormFieldWithSimpleReaderParse, FieldDataError } from "@/keystatic/utils/custom-field";
+import { basicFormFieldWithSimpleReaderParse, FieldDataError } from "@/keystatic/libs/custom-field";
 import { ColorPickerFieldInput } from "./ui";
 
 export const colorPicker = ({

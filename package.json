@@ -4,7 +4,8 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-		"build": "next build",
+		"build": "rm -rf .next && next build",
+		"preview": "pnpm build && pnpm start",
 		"start": "next start",
 		"lint": "pnpm exec biome check . --write",
 		"prepare": "husky"
