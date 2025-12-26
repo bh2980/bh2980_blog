@@ -12,8 +12,11 @@ export async function GET(req: Request) {
 		return new Response("Missing branch or to params", { status: 400 });
 	}
 
-	(await draftMode()).enable();
-	(await cookies()).set("ks-branch", branch);
+	const dm = await draftMode();
+	const ck = await cookies();
+
+	dm.enable();
+	ck.set("ks-branch", branch);
 
 	const toUrl = new URL(to, url.origin);
 	toUrl.protocol = url.protocol;

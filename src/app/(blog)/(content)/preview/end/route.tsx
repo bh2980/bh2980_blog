@@ -1,3 +1,4 @@
+import { doesNotMatch } from "node:assert";
 import { cookies, draftMode } from "next/headers";
 
 export async function POST(req: Request) {
@@ -10,8 +11,11 @@ export async function POST(req: Request) {
 		return new Response("Missing Referer", { status: 400 });
 	}
 
-	(await draftMode()).disable();
-	(await cookies()).delete("ks-branch");
+	const dm = await draftMode();
+	const ck = await cookies();
+
+	dm.disable();
+	ck.delete("ks-branch");
 
 	return Response.redirect(referrer, 303);
 }

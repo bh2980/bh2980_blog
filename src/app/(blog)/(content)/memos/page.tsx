@@ -1,4 +1,3 @@
-import { draftMode, headers } from "next/headers";
 import Link from "next/link";
 import { reader } from "@/keystatic/utils/reader";
 
