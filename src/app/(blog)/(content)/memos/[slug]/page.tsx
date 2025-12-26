@@ -2,7 +2,7 @@ import Markdoc from "@markdoc/markdoc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import React from "react";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 interface MemoPostProps {
 	params: Promise<{ slug: string }>;
@@ -10,7 +10,9 @@ interface MemoPostProps {
 
 export default async function MemoPost({ params }: MemoPostProps) {
 	const { slug } = await params;
-	const rawMemo = await reader.collections.memo.read(slug);
+	const r = await reader();
+
+	const rawMemo = await r.collections.memo.read(slug);
 
 	if (!rawMemo) {
 		notFound();

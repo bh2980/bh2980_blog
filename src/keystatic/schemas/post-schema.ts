@@ -40,4 +40,5 @@ export const postSchema = collection({
 
 		content: fields.markdoc({ label: "내용" }),
 	},
+	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
 });

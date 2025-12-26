@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/utils/reader";
+import { reader } from "@/keystatic/libs/reader";
 
 export default async function SeriesPage() {
-	const [allPosts, allSeries] = await Promise.all([reader.collections.post.all(), reader.collections.series.all()]);
+	const r = await reader();
+
+	const [allPosts, allSeries] = await Promise.all([r.collections.post.all(), r.collections.series.all()]);
 
 	type PostItem = (typeof allPosts)[0]["entry"] & { slug: string };
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { cn } from "@/libs/cn";
+import { cn } from "@/utils/cn";
 
 interface NavigationProps {
 	className?: string;
@@ -69,7 +69,7 @@ export default function Navigation({ className }: NavigationProps) {
 								블로그
 							</Link>
 							<Link
-								href="/memo"
+								href="/memos"
 								className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
 							>
 								메모장
