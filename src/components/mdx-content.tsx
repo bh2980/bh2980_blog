@@ -1,5 +1,4 @@
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
-import { cn } from "@/utils/cn";
 
 interface MDXContentProps {
 	source: string;
@@ -13,7 +12,7 @@ export default function MDXContent({ source, options, className }: MDXContentPro
 			source={source}
 			options={options}
 			components={{
-				wrapper: ({ children }) => <div className={cn("prose dark:prose-invert", className)}>{children}</div>,
+				wrapper: ({ children }) => <div className={className}>{children}</div>,
 			}}
 		/>
 	);
