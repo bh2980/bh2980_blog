@@ -24,8 +24,6 @@
 			"@/components/*": ["./src/components/*"],
 			"@/libs/*": ["./src/libs/*"],
 			"@/contents": ["./src/contents"],
-			"@/content": ["./src/content"], // 추후 제거
-			"@/content/*": ["./src/content/*"], // 추후 제거
 			"@/root/*": ["./*"],
 			"@/*": ["./src/*"]
 		}
