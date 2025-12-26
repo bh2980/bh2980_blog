@@ -11,11 +11,11 @@ export const ColorPickerFieldInput = (props: ColorPickerFieldInputProps) => {
 			<div className="flex flex-col gap-1">
 				<span>
 					{props.label}
-					<div className="text-[var(--kui-color-foreground-critical)] text-2xl inline">*</div>
+					<div className="inline text-2xl text-[var(--kui-color-foreground-critical)]">*</div>
 				</span>
-				{!props.description && <span className="text-sm text-gray-500">{props.description}</span>}
+				{!props.description && <span className="text-gray-500 text-sm">{props.description}</span>}
 				<input
-					className="w-12 h-12"
+					className="h-12 w-12"
 					type="color"
 					value={props.value}
 					onChange={(e) => props.onChange(e.target.value)}

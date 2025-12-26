@@ -8,7 +8,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<Fragment>
-			<Navigation className="bg-white border-b dark:border-gray-800 border-gray-200 sticky top-0 z-10 dark:bg-gray-950 " />
+			<Navigation className="sticky top-0 z-10 border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-950" />
 			<main className="flex-1">{children}</main>
 		</Fragment>
 	);

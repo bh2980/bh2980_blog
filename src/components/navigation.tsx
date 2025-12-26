@@ -38,39 +38,39 @@ export default function Navigation({ className }: NavigationProps) {
 
 	return (
 		<nav className={cn(className)}>
-			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div className="flex justify-between items-center h-16">
+			<div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+				<div className="flex h-16 items-center justify-between">
 					<Link
 						href="/"
-						className="text-xl font-bold text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
+						className="font-bold text-gray-900 text-xl hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
 					>
 						bh2980.dev
 					</Link>
 
 					{/* 데스크톱 메뉴 */}
-					<div className="hidden md:flex items-center space-x-8">
+					<div className="hidden items-center space-x-8 md:flex">
 						<div className="flex space-x-6">
 							<Link
 								href="/"
-								className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 							>
 								홈
 							</Link>
 							<Link
 								href="/series"
-								className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 							>
 								시리즈
 							</Link>
 							<Link
 								href="/posts"
-								className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 							>
 								블로그
 							</Link>
 							<Link
 								href="/memos"
-								className="text-gray-600 hover:text-gray-900 font-medium dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 							>
 								메모장
 							</Link>
@@ -82,7 +82,7 @@ export default function Navigation({ className }: NavigationProps) {
 							type="button"
 						>
 							{theme === "dark" ? (
-								<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+								<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path
 										strokeLinecap="round"
 										strokeLinejoin="round"
@@ -91,7 +91,7 @@ export default function Navigation({ className }: NavigationProps) {
 									/>
 								</svg>
 							) : (
-								<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+								<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path
 										strokeLinecap="round"
 										strokeLinejoin="round"

@@ -30,11 +30,11 @@ export default async function BlogPost({ params }: BlogPostProps) {
 	const content = await post.content();
 
 	return (
-		<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 			{/* 뒤로 가기 링크 */}
 			<div className="mb-8">
-				<Link href="/posts" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
-					<svg className="mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+				<Link href="/posts" className="inline-flex items-center font-medium text-blue-600 hover:text-blue-700">
+					<svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
 					</svg>
 					뒤로 가기
@@ -43,21 +43,21 @@ export default async function BlogPost({ params }: BlogPostProps) {
 
 			<article className="prose prose-lg max-w-none">
 				{/* 메모 헤더 */}
-				<header className="mb-12 pb-8 border-b border-gray-200">
-					<div className="flex items-center gap-3 mb-4">
-						<span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+				<header className="mb-12 border-gray-200 border-b pb-8">
+					<div className="mb-4 flex items-center gap-3">
+						<span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800 text-sm dark:bg-blue-900/30 dark:text-blue-400">
 							{post.category}
 						</span>
 						<time className="text-gray-500">{post.publishedDate}</time>
 					</div>
 
-					<h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-gray-100">{post.title}</h1>
+					<h1 className="mb-6 font-bold text-3xl text-gray-900 dark:text-gray-100">{post.title}</h1>
 
 					<div className="flex flex-wrap gap-2">
 						{post.tags?.map((tag) => (
 							<span
 								key={tag}
-								className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
+								className="rounded bg-gray-100 px-3 py-1 text-gray-600 text-sm dark:bg-gray-800 dark:text-gray-400"
 							>
 								#{tag}
 							</span>

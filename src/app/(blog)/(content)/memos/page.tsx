@@ -58,26 +58,26 @@ export default async function MemoPage() {
 	const categoryList = Array.from(categoryMap, (v) => v[1]);
 
 	return (
-		<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-12">
-				<h1 className="text-3xl font-bold text-gray-900 mb-4 dark:text-gray-100">메모장 📝</h1>
-				<p className="text-lg text-gray-600 mb-8 dark:text-gray-300">
+				<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-gray-100">메모장 📝</h1>
+				<p className="mb-8 text-gray-600 text-lg dark:text-gray-300">
 					알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
 				</p>
 
 				{/* 카테고리 필터 탭 */}
-				<div className="flex flex-wrap gap-2 mb-8">
-					<div className="px-4 rounded-full text-sm flex justify-center items-center font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-						<span className="w-2 h-2 bg-slate-900 dark:bg-slate-300 rounded-full mr-2 inline-block" />
+				<div className="mb-8 flex flex-wrap gap-2">
+					<div className="flex items-center justify-center rounded-full bg-gray-100 px-4 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300">
+						<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						<span className="inline-block">전체</span>
 					</div>
 					{categoryList.map((category) => (
 						<div
 							key={category.slug}
-							className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+							className="rounded-full bg-gray-100 px-4 py-2 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300"
 						>
 							<span
-								className="w-2 h-2 rounded-full mr-2 inline-block"
+								className="mr-2 inline-block h-2 w-2 rounded-full"
 								style={{ backgroundColor: `${category.color}` }}
 							/>
 							<span className="inline-block">{category.name}</span>
@@ -89,22 +89,22 @@ export default async function MemoPage() {
 			<div className="flex flex-col gap-2">
 				{memoList.map((memo) => (
 					<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
-						<article className="flex gap-4 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-gray-300 transition-all h-full dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
-							<span className="w-1 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
+						<article className="flex h-full gap-4 rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
+							<span className="h-1 w-1 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
 							<div className="flex flex-col gap-1">
-								<time className="text-xs text-gray-500 dark:text-gray-400">{memo.publishedDate}</time>
-								<h2 className="font-semibold text-gray-900 mb-2 line-clamp-2 dark:text-gray-100">{memo.title}</h2>
-								<div className="flex flex-wrap gap-1 mt-auto">
+								<time className="text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
+								<h2 className="mb-2 line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
+								<div className="mt-auto flex flex-wrap gap-1">
 									{memo.tags.slice(0, 3).map((tag) => (
 										<span
 											key={tag.name}
-											className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400"
+											className="rounded bg-gray-100 px-2 py-1 text-gray-600 text-xs dark:bg-gray-800 dark:text-gray-400"
 										>
 											#{tag.name}
 										</span>
 									))}
 									{memo.tags.length > 3 && (
-										<span className="text-xs text-gray-400 dark:text-gray-500">+{memo.tags.length - 3}</span>
+										<span className="text-gray-400 text-xs dark:text-gray-500">+{memo.tags.length - 3}</span>
 									)}
 								</div>
 							</div>
@@ -114,7 +114,7 @@ export default async function MemoPage() {
 			</div>
 
 			{memoList.length === 0 && (
-				<div className="text-center py-12">
+				<div className="py-12 text-center">
 					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 메모가 없습니다.</p>
 				</div>
 			)}
