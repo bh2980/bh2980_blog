@@ -1,7 +1,6 @@
-import Markdoc from "@markdoc/markdoc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import React from "react";
+import MDXContent from "@/components/mdx-content";
 import { reader } from "@/keystatic/libs/reader";
 
 interface MemoPostProps {
@@ -28,13 +27,6 @@ export default async function MemoPost({ params }: MemoPostProps) {
 	};
 
 	const content = await memo.content();
-
-	// TODO : 추후 Mermaid 같은 커스텀 컴포넌트 추가
-	// 1) transform (태그/노드 커스텀 없으면 빈 config로도 동작)
-	const transformed = Markdoc.transform(content.node);
-
-	// 2) React로 렌더
-	const document = Markdoc.renderers.react(transformed, React);
 
 	return (
 		<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -71,7 +63,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
 						))}
 					</div>
 				</header>
-				<div className="prose prose-lg max-w-none">{document}</div>
+				<MDXContent source={content} />
 			</article>
 		</div>
 	);

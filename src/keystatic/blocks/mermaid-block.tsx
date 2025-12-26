@@ -1,6 +1,6 @@
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import Mermaid from "@/components/Mermaid";
+import Mermaid from "@/components/mermaid";
 
 export const mermaidBlock = block({
 	label: "Mermaid 차트",
