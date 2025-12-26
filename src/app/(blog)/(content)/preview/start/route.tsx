@@ -19,7 +19,5 @@ export async function GET(req: Request) {
 	ck.set("ks-branch", branch);
 
 	const toUrl = new URL(to, url.origin);
-	toUrl.protocol = url.protocol;
-	toUrl.host = url.host;
 	redirect(toUrl.toString());
 }

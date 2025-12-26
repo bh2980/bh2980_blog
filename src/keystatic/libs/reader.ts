@@ -9,7 +9,11 @@ export const reader = async () => {
 		const draftModeStore = await draftMode();
 
 		isDraftModeEnabled = draftModeStore.isEnabled;
-	} catch {}
+	} catch (error) {
+		if (process.env.NODE_ENV === "development") {
+			console.error(error);
+		}
+	}
 
 	if (isDraftModeEnabled) {
 		const branch = (await cookies()).get("ks-branch")?.value;
