@@ -1,23 +1,21 @@
-import { cookies, draftMode } from "next/headers";
-import { redirect } from "next/navigation";
+import { draftMode } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
 	const url = new URL(req.url);
-	const params = url.searchParams;
-
-	const branch = params.get("branch");
-	const to = params.get("to");
+	const branch = url.searchParams.get("branch");
+	const to = url.searchParams.get("to");
 
 	if (!branch || !to) {
 		return new Response("Missing branch or to params", { status: 400 });
 	}
 
 	const dm = await draftMode();
-	const ck = await cookies();
-
 	dm.enable();
-	ck.set("ks-branch", branch);
 
 	const toUrl = new URL(to, url.origin);
-	redirect(toUrl.toString());
+	const res = NextResponse.redirect(toUrl.toString());
+	res.cookies.set("ks-branch", branch, { path: "/" });
+
+	return res;
 }
