@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import Navigation from "@/components/Navigation";
+import Navigation from "@/components/layout-navigation";
 
 export default function RootLayout({
 	children,
