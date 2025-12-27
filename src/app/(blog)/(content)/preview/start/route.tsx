@@ -4,24 +4,26 @@ import keystaticConfig from "@/root/keystatic.config";
 
 export async function GET(req: Request) {
 	const url = new URL(req.url);
-	const branch = url.searchParams.get("branch");
-	const to = url.searchParams.get("to");
+	const origin = url.origin;
 
-	if (to && keystaticConfig.storage.kind === "local") {
-		const toUrl = new URL(to, url.origin);
+	const to = url.searchParams.get("to");
+	if (!to) return new Response("Missing branch or to params", { status: 400 });
+
+	const toUrl = new URL(to, origin);
+	if (toUrl.origin !== origin) {
+		return new Response("Invalid redirect URL", { status: 400 });
+	}
+
+	if (keystaticConfig.storage.kind === "local") {
 		return NextResponse.redirect(toUrl.toString());
 	}
 
-	if (!branch || !to) {
-		return new Response("Missing branch or to params", { status: 400 });
-	}
+	const branch = url.searchParams.get("branch");
+	if (!branch) return new Response("Missing branch or to params", { status: 400 });
 
-	const dm = await draftMode();
-	dm.enable();
+	(await draftMode()).enable();
 
-	const toUrl = new URL(to, url.origin);
 	const res = NextResponse.redirect(toUrl.toString());
 	res.cookies.set("ks-branch", branch, { path: "/" });
-
 	return res;
 }
