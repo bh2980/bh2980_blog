@@ -1,31 +1,8 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/libs/reader";
+import { getSeriesList } from "@/libs/contents/series";
 
 export default async function SeriesPage() {
-	const r = await reader();
-
-	const [allPosts, allSeries] = await Promise.all([r.collections.post.all(), r.collections.series.all()]);
-
-	type PostItem = (typeof allPosts)[0]["entry"] & { slug: string };
-
-	const seriesPostMap = new Map(
-		allSeries.map((series) => [series.slug, { ...series.entry, slug: series.slug, posts: [] as PostItem[] }]),
-	);
-
-	allPosts
-		.sort((a, b) => new Date(a.entry.publishedDate).getTime() - new Date(b.entry.publishedDate).getTime())
-		.forEach((rawPost) => {
-			if (rawPost.entry.series) {
-				const series = seriesPostMap.get(rawPost.entry.series);
-
-				if (series) {
-					const post = { ...rawPost.entry, slug: rawPost.slug };
-					series.posts.push(post);
-				}
-			}
-		});
-
-	const seriesList = Array.from(seriesPostMap, (v) => v[1]);
+	const seriesList = await getSeriesList();
 
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -35,7 +12,7 @@ export default async function SeriesPage() {
 			</div>
 
 			<div className="space-y-8">
-				{seriesList.map((series) => {
+				{seriesList.list.map((series) => {
 					return (
 						<section
 							key={series.slug}
@@ -113,7 +90,7 @@ export default async function SeriesPage() {
 				})}
 			</div>
 
-			{seriesList.length === 0 && (
+			{seriesList.total === 0 && (
 				<div className="py-12 text-center">
 					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 시리즈이 없습니다.</p>
 				</div>
