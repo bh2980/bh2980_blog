@@ -1,7 +1,20 @@
 import "server-only";
 import { getContentMap } from "./store";
+import type { ListResult, MemoCategorySummary, MemoCategoryView, PostCategorySummary, PostCategoryView } from "./types";
 
-export const getMemoCategoryList = async () => {
+export const getMemoCategory = async (slug: string): Promise<MemoCategoryView | null> => {
+	const { memoCategoryMap } = await getContentMap();
+
+	const category = memoCategoryMap.get(slug);
+
+	if (!category) {
+		return null;
+	}
+
+	return category;
+};
+
+export const getMemoCategoryList = async (): Promise<ListResult<MemoCategorySummary>> => {
 	const { memoCategoryMap, memoMap } = await getContentMap();
 
 	const count = Array.from(memoMap.values()).reduce((acc, memo) => {
@@ -21,7 +34,19 @@ export const getMemoCategoryList = async () => {
 	return { list: categoryList, total: memoMap.size };
 };
 
-export const getPostCategoryList = async () => {
+export const getPostCategory = async (slug: string): Promise<PostCategoryView | null> => {
+	const { postCategoryMap } = await getContentMap();
+
+	const category = postCategoryMap.get(slug);
+
+	if (!category) {
+		return null;
+	}
+
+	return category;
+};
+
+export const getPostCategoryList = async (): Promise<ListResult<PostCategorySummary>> => {
 	const { postCategoryMap, postMap } = await getContentMap();
 
 	const count = Array.from(postMap.values()).reduce((acc, post) => {

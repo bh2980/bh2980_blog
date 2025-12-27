@@ -1,5 +1,6 @@
 import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx";
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { Code } from "./code";
 import { Mermaid } from "./mermaid";
 
@@ -16,7 +17,7 @@ export default function MDXContent({ source, options, className }: MDXContentPro
 			options={{
 				...options,
 				mdxOptions: {
-					remarkPlugins: [[remarkCodeHike, chConfig]],
+					remarkPlugins: [remarkGfm, [remarkCodeHike, chConfig]],
 					recmaPlugins: [[recmaCodeHike, chConfig]],
 				},
 			}}
