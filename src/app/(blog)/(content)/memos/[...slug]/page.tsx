@@ -1,30 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
-import { reader } from "@/keystatic/libs/reader";
+import { getMemo } from "@/root/src/libs/contents/memos";
 
 interface MemoPostProps {
 	params: Promise<{ slug: Array<string> }>;
 }
 
 export default async function MemoPost({ params }: MemoPostProps) {
-	const { slug } = await params;
-	const r = await reader();
+	const slug = (await params).slug.join("/");
 
-	const rawMemo = await r.collections.memo.read(slug.join("/"));
+	const memo = await getMemo(slug);
 
-	if (!rawMemo) {
-		notFound();
+	if (!memo) {
+		return notFound();
 	}
-
-	const memo = {
-		...rawMemo,
-		publishedDate: new Date(rawMemo?.publishedDate).toLocaleString("ko-KR", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		}),
-	};
 
 	const content = await memo.content();
 
@@ -45,7 +35,7 @@ export default async function MemoPost({ params }: MemoPostProps) {
 				<header className="mb-12 border-gray-200 border-b pb-8">
 					<div className="mb-4 flex items-center gap-3">
 						<span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800 text-sm dark:bg-blue-900/30 dark:text-blue-400">
-							{memo.category}
+							{memo.category.name}
 						</span>
 						<time className="text-gray-500">{memo.publishedDate}</time>
 					</div>
@@ -55,10 +45,10 @@ export default async function MemoPost({ params }: MemoPostProps) {
 					<div className="flex flex-wrap gap-2">
 						{memo.tags?.map((tag) => (
 							<span
-								key={tag}
+								key={tag.slug}
 								className="rounded bg-gray-100 px-3 py-1 text-gray-600 text-sm dark:bg-gray-800 dark:text-gray-400"
 							>
-								#{tag}
+								#{tag.name}
 							</span>
 						))}
 					</div>

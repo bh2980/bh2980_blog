@@ -1,61 +1,18 @@
 import Link from "next/link";
 import { reader } from "@/keystatic/libs/reader";
-
-// TODO : 추후 post와 중복 제거
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
-
-const isDefined = <T,>(value: T | undefined | null): value is T => {
-	return value !== undefined && value !== null;
-};
+import { getMemoList } from "@/root/src/libs/contents/memos";
 
 export default async function MemoPage() {
 	const r = await reader();
 
-	const [allMemos, allMemoCategories, allTags] = await Promise.all([
-		r.collections.memo.all(),
-		r.collections.memoCategory.all(),
-		r.collections.tag.all(),
-	]);
+	const allMemoCategories = await r.collections.memoCategory.all();
 
 	const categoryMap = new Map(
 		allMemoCategories.map((category) => [category.slug, { ...category.entry, slug: category.slug }]),
 	);
-	const tagMap = new Map(allTags.map((tag) => [tag.slug, { name: tag.entry.name, slug: tag.slug }]));
-
-	const memoList = allMemos
-		.sort((a, b) => new Date(b.entry.publishedDate).getTime() - new Date(a.entry.publishedDate).getTime())
-		.map((memo) => {
-			const { entry, slug } = memo;
-
-			const category = categoryMap.get(entry.category);
-
-			const tags = (entry.tags || [])
-				.filter((tagSlug): tagSlug is string => !!tagSlug)
-				.map((tagSlug) => tagMap.get(tagSlug))
-				.filter(isDefined);
-
-			const publishedDate = new Date(memo.entry.publishedDate).toLocaleString("ko-KR", { dateStyle: "short" });
-
-			return {
-				slug,
-				title: entry.title,
-				content: entry.content,
-				publishedDate,
-				category,
-				tags,
-			};
-		})
-		.filter(
-			(
-				memo,
-			): memo is Expand<
-				Omit<typeof memo, "category"> & {
-					category: NonNullable<typeof memo.category>;
-				}
-			> => isDefined(memo.category),
-		);
-
 	const categoryList = Array.from(categoryMap, (v) => v[1]);
+
+	const memoList = await getMemoList();
 
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -94,19 +51,6 @@ export default async function MemoPage() {
 							<div className="flex flex-col gap-1">
 								<time className="text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
 								<h2 className="mb-2 line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
-								<div className="mt-auto flex flex-wrap gap-1">
-									{memo.tags.slice(0, 3).map((tag) => (
-										<span
-											key={tag.name}
-											className="rounded bg-gray-100 px-2 py-1 text-gray-600 text-xs dark:bg-gray-800 dark:text-gray-400"
-										>
-											#{tag.name}
-										</span>
-									))}
-									{memo.tags.length > 3 && (
-										<span className="text-gray-400 text-xs dark:text-gray-500">+{memo.tags.length - 3}</span>
-									)}
-								</div>
 							</div>
 						</article>
 					</Link>
