@@ -1,5 +1,10 @@
 export function sanitizeSlug(slug: string) {
 	if (!slug) return "";
 
-	return decodeURIComponent(slug).normalize("NFC").trim();
+	try {
+		return decodeURIComponent(slug).normalize("NFC").trim();
+	} catch (e) {
+		console.error(e);
+		throw e;
+	}
 }
