@@ -6,7 +6,7 @@ export const lineNumbers: AnnotationHandler = {
 		const width = props.totalLines.toString().length + 1;
 		return (
 			<div className="flex">
-				<span className="text-right opacity-50 select-none" style={{ minWidth: `${width}ch` }}>
+				<span className="select-none text-right opacity-50" style={{ minWidth: `${width}ch` }}>
 					{props.lineNumber}
 				</span>
 				<InnerLine merge={props} className="flex-1 pl-2" />

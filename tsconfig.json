@@ -23,6 +23,7 @@
 			"@/keystatic/*": ["./src/keystatic/*"],
 			"@/components/*": ["./src/components/*"],
 			"@/utils/*": ["src/utils/*"],
+			"@/libs/*": ["src/libs/*"],
 			"@/contents": ["./src/contents"],
 			"@/root/*": ["./*"],
 			"@/*": ["./src/*"]

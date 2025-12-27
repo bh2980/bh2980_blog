@@ -8,8 +8,8 @@ export default function RootLayout({
 }>) {
 	return (
 		<Fragment>
-			<Navigation className="absolute top-0 w-full z-10 bg-transparent" />
-			<main className="flex-1 flex flex-col">{children}</main>
+			<Navigation className="absolute top-0 z-10 w-full bg-transparent" />
+			<main className="flex flex-1 flex-col">{children}</main>
 		</Fragment>
 	);
 }
