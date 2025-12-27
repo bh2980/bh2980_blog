@@ -25,6 +25,7 @@
 			"style": {
 				"useFilenamingConvention": {
 					"level": "error",
+					"fix": "safe",
 					"options": {
 						"strictCase": true,
 						"filenameCases": ["kebab-case"]
