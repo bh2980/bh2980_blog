@@ -31,7 +31,7 @@ export const getMemo = async (slug: string) => {
 };
 
 // NOTE: parameter destructuring 시 undefined를 방지하기 위해 기본값 {}를 지정
-export const getMemoList = async ({ category, sort }: ListOptions = {}): Promise<ListResult<MemoSummary>> => {
+export const getMemoList = async ({ category }: ListOptions = {}): Promise<ListResult<MemoSummary>> => {
 	const { memoMap, memoCategoryMap } = await getContentMap();
 
 	let memos = Array.from(memoMap.values());
