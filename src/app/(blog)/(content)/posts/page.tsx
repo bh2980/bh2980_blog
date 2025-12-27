@@ -1,57 +1,10 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/libs/reader";
-
-// TODO : 추후 memo와 중복 제거
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
-
-const isDefined = <T,>(value: T | undefined | null): value is T => {
-	return value !== undefined && value !== null;
-};
+import { getPostCategoryList } from "@/root/src/libs/contents/category";
+import { getPostList } from "@/root/src/libs/contents/post";
 
 export default async function BlogPage() {
-	const r = await reader();
-	const [allPosts, allPostCategories, allTags] = await Promise.all([
-		r.collections.post.all(),
-		r.collections.postCategory.all(),
-		r.collections.tag.all(),
-	]);
-
-	const categoryMap = new Map(
-		allPostCategories.map((category) => [category.slug, { ...category.entry, slug: category.slug }]),
-	);
-	const tagMap = new Map(allTags.map((tag) => [tag.slug, { name: tag.entry.name, slug: tag.slug }]));
-
-	const postList = allPosts
-		.sort((a, b) => new Date(b.entry.publishedDate).getTime() - new Date(a.entry.publishedDate).getTime())
-		.map((post) => {
-			const { entry, slug } = post;
-			const category = categoryMap.get(entry.category);
-			const tags = (entry.tags || [])
-				.filter((tagSlug): tagSlug is string => !!tagSlug)
-				.map((tagSlug) => tagMap.get(tagSlug))
-				.filter(isDefined);
-
-			const publishedDate = new Date(post.entry.publishedDate).toLocaleString("ko-KR", { dateStyle: "short" });
-			return {
-				slug,
-				title: entry.title,
-				content: entry.content,
-				publishedDate,
-				category,
-				tags,
-			};
-		})
-		.filter(
-			(
-				post,
-			): post is Expand<
-				Omit<typeof post, "category"> & {
-					category: NonNullable<typeof post.category>;
-				}
-			> => isDefined(post.category),
-		);
-
-	const categoryList = Array.from(categoryMap, (v) => v[1]);
+	const categoryList = await getPostCategoryList();
+	const postList = await getPostList();
 
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -61,20 +14,22 @@ export default async function BlogPage() {
 
 				{/* 카테고리 필터 탭 */}
 				<div className="mb-8 flex flex-wrap gap-2">
-					<div className="flex items-center justify-center rounded-full bg-gray-100 px-4 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300">
+					<div className="rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300">
 						<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
-						<span className="inline-block">전체</span>
+						<span className="inline-block">전체 ({categoryList.total})</span>
 					</div>
-					{categoryList.map((category) => (
+					{categoryList.list.map((category) => (
 						<div
 							key={category.slug}
-							className="rounded-full bg-gray-100 px-4 py-2 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300"
+							className="flex items-center justify-center rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300"
 						>
 							<span
 								className="mr-2 inline-block h-2 w-2 rounded-full"
 								style={{ backgroundColor: `${category.color}` }}
 							/>
-							<span className="inline-block">{category.name}</span>
+							<span className="inline-block">
+								{category.name} ({category.count})
+							</span>
 						</div>
 					))}
 				</div>
@@ -92,19 +47,7 @@ export default async function BlogPage() {
 									<time className="text-gray-500 text-sm dark:text-gray-400">{post.publishedDate}</time>
 								</div>
 							</div>
-
 							<h2 className="mb-4 font-bold text-2xl text-gray-900 dark:text-gray-100">{post.title}</h2>
-
-							<div className="flex flex-wrap gap-2">
-								{post.tags.map((tag) => (
-									<span
-										key={tag.slug}
-										className="rounded bg-gray-100 px-3 py-1 text-gray-600 text-sm dark:bg-gray-800 dark:text-gray-400"
-									>
-										#{tag.name}
-									</span>
-								))}
-							</div>
 						</article>
 					</Link>
 				))}

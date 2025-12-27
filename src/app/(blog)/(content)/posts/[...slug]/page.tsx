@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
-import { reader } from "@/keystatic/libs/reader";
+import { getPost } from "@/root/src/libs/contents/post";
 
 interface BlogPostProps {
 	params: Promise<{ slug: Array<string> }>;
@@ -9,23 +9,12 @@ interface BlogPostProps {
 }
 
 export default async function BlogPost({ params }: BlogPostProps) {
-	const { slug } = await params;
-	const r = await reader();
+	const slug = (await params).slug.join("/");
+	const post = await getPost(slug);
 
-	const rawPost = await r.collections.post.read(slug.join("/"));
-
-	if (!rawPost) {
-		notFound();
+	if (!post) {
+		return notFound();
 	}
-
-	const post = {
-		...rawPost,
-		publishedDate: new Date(rawPost?.publishedDate).toLocaleString("ko-KR", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		}),
-	};
 
 	const content = await post.content();
 
@@ -46,7 +35,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
 				<header className="mb-12 border-gray-200 border-b pb-8">
 					<div className="mb-4 flex items-center gap-3">
 						<span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800 text-sm dark:bg-blue-900/30 dark:text-blue-400">
-							{post.category}
+							{post.category.name}
 						</span>
 						<time className="text-gray-500">{post.publishedDate}</time>
 					</div>
@@ -56,10 +45,10 @@ export default async function BlogPost({ params }: BlogPostProps) {
 					<div className="flex flex-wrap gap-2">
 						{post.tags?.map((tag) => (
 							<span
-								key={tag}
+								key={tag.slug}
 								className="rounded bg-gray-100 px-3 py-1 text-gray-600 text-sm dark:bg-gray-800 dark:text-gray-400"
 							>
-								#{tag}
+								#{tag.name}
 							</span>
 						))}
 					</div>
