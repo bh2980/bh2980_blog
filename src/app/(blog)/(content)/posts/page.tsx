@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getPostCategoryList } from "@/root/src/libs/contents/category";
-import { getPostList } from "@/root/src/libs/contents/post";
+import { getPostCategoryList } from "@/libs/contents/category";
+import { getPostList } from "@/libs/contents/post";
 
 export default async function BlogPage() {
 	const categoryList = await getPostCategoryList();
@@ -36,7 +36,7 @@ export default async function BlogPage() {
 			</div>
 
 			<div className="space-y-4">
-				{postList.map((post) => (
+				{postList.list.map((post) => (
 					<Link key={post.slug} href={`/posts/${post.slug}`} className="block">
 						<article className="rounded-lg border border-gray-200 bg-white p-8 transition-all hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
 							<div className="mb-4 flex items-center justify-between">
@@ -53,7 +53,7 @@ export default async function BlogPage() {
 				))}
 			</div>
 
-			{postList.length === 0 && (
+			{postList.total === 0 && (
 				<div className="py-12 text-center">
 					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 게시글이 없습니다.</p>
 				</div>

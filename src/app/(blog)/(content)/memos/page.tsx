@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getMemoCategoryList } from "@/root/src/libs/contents/category";
-import { getMemoList } from "@/root/src/libs/contents/memo";
+import { getMemoCategoryList } from "@/libs/contents/category";
+import { getMemoList } from "@/libs/contents/memo";
 
 export default async function MemoPage() {
 	const categoryList = await getMemoCategoryList();
@@ -38,7 +38,7 @@ export default async function MemoPage() {
 			</div>
 
 			<div className="flex flex-col gap-2">
-				{memoList.map((memo) => (
+				{memoList.list.map((memo) => (
 					<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
 						<article className="flex h-full items-center gap-4 rounded-lg bg-white p-4 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
 							<time className="w-14 text-end text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
@@ -49,7 +49,7 @@ export default async function MemoPage() {
 				))}
 			</div>
 
-			{memoList.length === 0 && (
+			{memoList.total === 0 && (
 				<div className="py-12 text-center">
 					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 메모가 없습니다.</p>
 				</div>
