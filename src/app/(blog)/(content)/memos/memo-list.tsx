@@ -58,7 +58,7 @@ export const MemoList = async ({
 					{memoList.list.map((memo) => (
 						<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
 							<article className="flex h-full items-center gap-4 rounded-lg bg-white p-4 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
-								<time className="w-14 text-end text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
+								<time className="w-16 text-end text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
 								<span className="h-2 w-2 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
 								<h2 className="line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
 							</article>
