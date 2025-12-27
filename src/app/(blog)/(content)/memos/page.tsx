@@ -1,16 +1,9 @@
 import Link from "next/link";
-import { reader } from "@/keystatic/libs/reader";
+import { getMemoCategoryList } from "@/root/src/libs/contents/category";
 import { getMemoList } from "@/root/src/libs/contents/memo";
 
 export default async function MemoPage() {
-	const r = await reader();
-
-	const allMemoCategories = await r.collections.memoCategory.all();
-
-	const categoryMap = new Map(
-		allMemoCategories.map((category) => [category.slug, { ...category.entry, slug: category.slug }]),
-	);
-	const categoryList = Array.from(categoryMap, (v) => v[1]);
+	const categoryList = await getMemoCategoryList();
 
 	const memoList = await getMemoList();
 
@@ -22,22 +15,23 @@ export default async function MemoPage() {
 					알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
 				</p>
 
-				{/* 카테고리 필터 탭 */}
 				<div className="mb-8 flex flex-wrap gap-2">
-					<div className="flex items-center justify-center rounded-full bg-gray-100 px-4 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300">
+					<div className="rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300">
 						<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
-						<span className="inline-block">전체</span>
+						<span className="inline-block">전체 ({categoryList.total})</span>
 					</div>
-					{categoryList.map((category) => (
+					{categoryList.list.map((category) => (
 						<div
 							key={category.slug}
-							className="rounded-full bg-gray-100 px-4 py-2 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300"
+							className="flex items-center justify-center rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300"
 						>
 							<span
 								className="mr-2 inline-block h-2 w-2 rounded-full"
 								style={{ backgroundColor: `${category.color}` }}
 							/>
-							<span className="inline-block">{category.name}</span>
+							<span className="inline-block">
+								{category.name} ({category.count})
+							</span>
 						</div>
 					))}
 				</div>
@@ -46,12 +40,10 @@ export default async function MemoPage() {
 			<div className="flex flex-col gap-2">
 				{memoList.map((memo) => (
 					<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
-						<article className="flex h-full gap-4 rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
-							<span className="h-1 w-1 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
-							<div className="flex flex-col gap-1">
-								<time className="text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
-								<h2 className="mb-2 line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
-							</div>
+						<article className="flex h-full items-center gap-4 rounded-lg bg-white p-4 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
+							<time className="w-14 text-end text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
+							<span className="h-2 w-2 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
+							<h2 className="line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
 						</article>
 					</Link>
 				))}
