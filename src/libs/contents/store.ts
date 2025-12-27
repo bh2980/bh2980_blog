@@ -34,4 +34,4 @@ const buildContentMap = async () => {
 	return { postMap, postCategoryMap, memoMap, memoCategoryMap, tagMap, projectMap, seriesMap };
 };
 
-export const getContentMap = cache(async () => await buildContentMap());
+export const getContentMap = cache(() => buildContentMap());
