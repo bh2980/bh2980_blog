@@ -7,7 +7,7 @@ export default async function MemoCategoryPage({ params }: { params: Promise<{ c
 
 	const categoryList = await getMemoCategoryList();
 
-	const memoList = await getMemoList();
+	const memoList = await getMemoList({ category });
 
 	return <MemoList currentCategory={category} categoryList={categoryList} memoList={memoList} />;
 }
