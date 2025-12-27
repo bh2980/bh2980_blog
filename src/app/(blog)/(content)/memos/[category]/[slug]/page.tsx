@@ -3,12 +3,8 @@ import MDXContent from "@/components/mdx-content";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
-interface MemoPostProps {
-	params: { category: string; slug: string };
-}
-
-export default async function MemoPost({ params }: MemoPostProps) {
-	const { category, slug } = params;
+export default async function MemoPost({ params }: { params: Promise<{ category: string; slug: string }> }) {
+	const { category, slug } = await params;
 
 	const memo = await getMemo(`${category}/${slug}`);
 
