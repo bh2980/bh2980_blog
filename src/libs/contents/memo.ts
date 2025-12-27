@@ -1,6 +1,7 @@
 import "server-only";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
+import type { ListResult, MemoSummary } from "./types";
 
 export const getMemo = async (slug: string) => {
 	const { memoMap, memoCategoryMap, tagMap } = await getContentMap();
@@ -29,7 +30,7 @@ export const getMemo = async (slug: string) => {
 	return { ...memo, category, tags, publishedDate };
 };
 
-export const getMemoList = async () => {
+export const getMemoList = async (): Promise<ListResult<MemoSummary>> => {
 	const { memoMap, memoCategoryMap } = await getContentMap();
 
 	const list = Array.from(memoMap.keys())

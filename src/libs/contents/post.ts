@@ -1,8 +1,9 @@
 import "server-only";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
+import type { ListResult, PostSummary, PostView } from "./types";
 
-export const getPost = async (slug: string) => {
+export const getPost = async (slug: string): Promise<PostView | null> => {
 	const { postMap, postCategoryMap, tagMap } = await getContentMap();
 
 	const post = postMap.get(slug);
@@ -29,7 +30,7 @@ export const getPost = async (slug: string) => {
 	return { ...post, category, tags, publishedDate };
 };
 
-export const getPostList = async () => {
+export const getPostList = async (): Promise<ListResult<PostSummary>> => {
 	const { postMap, postCategoryMap } = await getContentMap();
 
 	const list = Array.from(postMap.keys())
