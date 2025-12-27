@@ -7,7 +7,7 @@ const buildSlugMap = <T extends object>(items: Array<{ slug: string; entry: T }>
 	return new Map<string, T & { slug: string }>(items.map((item) => [item.slug, { ...item.entry, slug: item.slug }]));
 };
 
-export const buildContentMap = async () => {
+const buildContentMap = async () => {
 	const r = await reader();
 
 	const [posts, postCategories, memos, memoCategories, tags, projects, series] = await Promise.all([
