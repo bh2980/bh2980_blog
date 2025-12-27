@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
+import { sanitizeSlug } from "@/keystatic/libs/sanitize-slug";
 import { getPost } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string; category: string }> }) {
 	const { category, slug } = await params;
 
-	const post = await getPost(`${category}/${slug}`);
+	const post = await getPost(sanitizeSlug(`${category}/${slug}`));
 
 	if (!post) {
 		return notFound();

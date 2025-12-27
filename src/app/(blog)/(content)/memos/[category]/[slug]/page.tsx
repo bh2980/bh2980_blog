@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
+import { sanitizeSlug } from "@/keystatic/libs/sanitize-slug";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
 export default async function MemoPost({ params }: { params: Promise<{ category: string; slug: string }> }) {
 	const { category, slug } = await params;
 
-	const memo = await getMemo(`${category}/${slug}`);
+	const memo = await getMemo(sanitizeSlug(`${category}/${slug}`));
 
 	if (!memo) {
 		return notFound();
