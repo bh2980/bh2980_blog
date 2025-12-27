@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
-import { getMemo } from "@/root/src/libs/contents/memos";
+import { getMemo } from "@/root/src/libs/contents/memo";
 
 interface MemoPostProps {
 	params: Promise<{ slug: Array<string> }>;

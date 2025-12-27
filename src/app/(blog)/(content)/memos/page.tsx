@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { reader } from "@/keystatic/libs/reader";
-import { getMemoList } from "@/root/src/libs/contents/memos";
+import { getMemoList } from "@/root/src/libs/contents/memo";
 
 export default async function MemoPage() {
 	const r = await reader();
