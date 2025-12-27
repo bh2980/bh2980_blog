@@ -23,7 +23,7 @@ export const MemoList = async ({
 					<Link
 						href={"/memos"}
 						className={cn(
-							!currentCategory && "!bg-slate-400/25 dark:!bg-slate-100/25",
+							!currentCategory && "!bg-slate-400/25 dark:!bg-slate-100/20 border-slate-400 dark:border-slate-100/30",
 							"rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300",
 						)}
 					>
@@ -35,7 +35,8 @@ export const MemoList = async ({
 							href={`/memos/${category.slug}`}
 							key={category.slug}
 							className={cn(
-								currentCategory === category.slug && "!bg-[var(--cat-color)]/20",
+								currentCategory === category.slug &&
+									"!bg-[var(--cat-color)]/20 !border-[var(--cat-color)]/50 dark:!border-[var(--cat-color)]/40",
 								"flex items-center justify-center rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300",
 							)}
 							style={{ "--cat-color": category.color } as React.CSSProperties}
@@ -57,10 +58,10 @@ export const MemoList = async ({
 				<div className="flex flex-col gap-2">
 					{memoList.list.map((memo) => (
 						<Link key={memo.slug} href={`/memos/${memo.slug}`} className="block">
-							<article className="flex h-full items-center gap-4 rounded-lg bg-white p-4 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
-								<time className="w-16 text-end text-gray-500 text-xs dark:text-gray-400">{memo.publishedDate}</time>
+							<article className="flex h-full items-center gap-4 rounded-lg p-4">
+								<time className="w-16 text-end text-gray-500 text-xs dark:text-gray-300">{memo.publishedDate}</time>
 								<span className="h-2 w-2 rounded-full" style={{ backgroundColor: `${memo.category.color}` }} />
-								<h2 className="line-clamp-2 font-semibold text-gray-900 dark:text-gray-100">{memo.title}</h2>
+								<h2 className="line-clamp-2 font-semibold dark:text-gray-300">{memo.title}</h2>
 							</article>
 						</Link>
 					))}

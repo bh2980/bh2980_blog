@@ -32,7 +32,10 @@
 				}
 			},
 			"nursery": {
-				"useSortedClasses": "error"
+				"useSortedClasses": {
+					"fix": "safe",
+					"level": "error"
+				}
 			}
 		}
 	},
