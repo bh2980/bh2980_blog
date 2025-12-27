@@ -32,7 +32,7 @@ export const getMemo = async (slug: string) => {
 export const getMemoList = async () => {
 	const { memoMap, memoCategoryMap } = await getContentMap();
 
-	return Array.from(memoMap.keys())
+	const list = Array.from(memoMap.keys())
 		.map((slug) => {
 			const memo = memoMap.get(slug);
 			if (!memo) return null;
@@ -52,4 +52,6 @@ export const getMemoList = async () => {
 			};
 		})
 		.filter(isDefined);
+
+	return { list, total: list.length };
 };

@@ -32,7 +32,7 @@ export const getPost = async (slug: string) => {
 export const getPostList = async () => {
 	const { postMap, postCategoryMap } = await getContentMap();
 
-	return Array.from(postMap.keys())
+	const list = Array.from(postMap.keys())
 		.map((slug) => {
 			const post = postMap.get(slug);
 			if (!post) return null;
@@ -52,4 +52,6 @@ export const getPostList = async () => {
 			};
 		})
 		.filter(isDefined);
+
+	return { list, total: list.length };
 };
