@@ -9,7 +9,7 @@ export const diff: AnnotationHandler = {
 	},
 	Line: ({ annotation, ...props }) => (
 		<>
-			<div className="min-w-[1ch] box-content opacity-70 pl-2 select-none">{annotation?.query}</div>
+			<div className="box-content min-w-[1ch] select-none pl-2 opacity-70">{annotation?.query}</div>
 			<InnerLine merge={props} />
 		</>
 	),
