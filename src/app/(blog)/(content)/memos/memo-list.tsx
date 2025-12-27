@@ -23,7 +23,7 @@ export const MemoList = async ({
 					<Link
 						href={"/memos"}
 						className={cn(
-							!currentCategory && "!bg-slate-400/25 border-slate-400 dark:border-slate-100/30 dark:!bg-slate-100/20",
+							!currentCategory && "!bg-slate-400/25 dark:!bg-slate-100/20 border-slate-400 dark:border-slate-100/30",
 							"rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300",
 						)}
 					>
