@@ -1,3 +1,4 @@
+import "server-only";
 import { getContentMap } from "./store";
 
 export const getMemoCategoryList = async () => {
