@@ -3,12 +3,8 @@ import MDXContent from "@/components/mdx-content";
 import { getPost } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 
-interface BlogPostProps {
-	params: Promise<{ slug: string; category: string }>;
-}
-
-export default async function BlogPost({ params }: BlogPostProps) {
-	const { category, slug } = await params;
+export default async function BlogPost({ params }: { params: { slug: string; category: string } }) {
+	const { category, slug } = params;
 
 	const post = await getPost(`${category}/${slug}`);
 

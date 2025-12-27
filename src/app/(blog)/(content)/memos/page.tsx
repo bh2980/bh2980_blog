@@ -2,8 +2,8 @@ import { getMemoCategoryList } from "@/libs/contents/category";
 import { getMemoList } from "@/libs/contents/memo";
 import { MemoList } from "./memo-list";
 
-export default async function MemoPage({ params }: { params: Promise<{ category: string }> }) {
-	const category = (await params).category;
+export default async function MemoPage({ params }: { params: { category: string } }) {
+	const category = params.category;
 
 	const categoryList = await getMemoCategoryList();
 

@@ -4,11 +4,11 @@ import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
 interface MemoPostProps {
-	params: Promise<{ category: string; slug: string }>;
+	params: { category: string; slug: string };
 }
 
 export default async function MemoPost({ params }: MemoPostProps) {
-	const { category, slug } = await params;
+	const { category, slug } = params;
 
 	const memo = await getMemo(`${category}/${slug}`);
 
