@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
-import { getPost } from "@/root/src/libs/contents/post";
+import { getPost } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 
 interface BlogPostProps {
