@@ -49,7 +49,7 @@ export const PostList = ({
 
 			{postList.total === 0 ? (
 				<div className="py-12 text-center">
-					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 메모가 없습니다.</p>
+					<p className="text-gray-500 text-lg dark:text-gray-400">아직 작성된 게시글이 없습니다.</p>
 				</div>
 			) : (
 				<div className="flex flex-col gap-2">
