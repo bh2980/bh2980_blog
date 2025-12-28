@@ -1,7 +1,7 @@
 import { collection, fields } from "@keystatic/core";
 import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 
-const collectionOptionList = [
+const COLLECTION_OPTIONS_LIST = [
 	{ label: "시리즈", value: "series" },
 	{ label: "프로젝트", value: "project" },
 	{ label: "위키", value: "wiki" },
@@ -15,7 +15,8 @@ export const collectionCollection = collection({
 		name: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 			slug: {
-				generate: (name: string) => mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), collectionOptionList),
+				generate: (name: string) =>
+					mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), COLLECTION_OPTIONS_LIST),
 			},
 		}),
 		description: fields.text({ label: "설명", multiline: true }),
@@ -23,7 +24,7 @@ export const collectionCollection = collection({
 			fields.select({
 				label: "카테고리",
 				defaultValue: "series",
-				options: collectionOptionList,
+				options: COLLECTION_OPTIONS_LIST,
 			}),
 			{
 				series: fields.object(
