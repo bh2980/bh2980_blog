@@ -1,7 +1,7 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
 
-export const tagSchema = collection({
+export const tagCollection = collection({
 	label: "태그",
 	slugField: "name",
 	path: "src/contents/tags/*",

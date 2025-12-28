@@ -2,15 +2,15 @@ import { collection } from "@keystatic/core";
 import { fields } from "../fields";
 import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
 
-export const postSchema = collection({
-	label: "게시글",
+export const memoCollection = collection({
+	label: "메모",
 	slugField: "title",
-	path: "src/contents/posts/**",
+	path: "src/contents/memos/**",
 	entryLayout: "content",
 	format: { contentField: "content" }, // 본문 분리 저장
 	schema: {
 		category: fields.relationship({
-			collection: "postCategory",
+			collection: "memoCategory",
 			label: "카테고리",
 			validation: { isRequired: true },
 		}),
@@ -24,16 +24,6 @@ export const postSchema = collection({
 			validation: { isRequired: true },
 		}),
 
-		project: fields.relationship({
-			collection: "project",
-			label: "프로젝트 (선택)",
-		}),
-
-		series: fields.relationship({
-			collection: "series",
-			label: "시리즈 (선택)",
-		}),
-
 		tags: fields.array(fields.relationship({ collection: "tag", label: "태그" }), {
 			label: "태그",
 			itemLabel: (props) => props.value ?? "태그 선택",
@@ -41,8 +31,8 @@ export const postSchema = collection({
 
 		content: fields.mdx({
 			label: "내용",
-			options: { image: { directory: "public/assets/images/posts", publicPath: "/assets/images/posts" } },
+			options: { image: { directory: "public/assets/images/memos", publicPath: "/assets/images/memos" } },
 		}),
 	},
-	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
+	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
 });

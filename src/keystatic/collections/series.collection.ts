@@ -1,7 +1,7 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
 
-export const seriesSchema = collection({
+export const seriesCollection = collection({
 	label: "시리즈",
 	slugField: "title",
 	path: "src/contents/series/*",

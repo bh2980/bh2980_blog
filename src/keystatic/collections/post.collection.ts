@@ -2,15 +2,15 @@ import { collection } from "@keystatic/core";
 import { fields } from "../fields";
 import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
 
-export const memoSchema = collection({
-	label: "메모",
+export const postCollection = collection({
+	label: "게시글",
 	slugField: "title",
-	path: "src/contents/memos/**",
+	path: "src/contents/posts/**",
 	entryLayout: "content",
 	format: { contentField: "content" }, // 본문 분리 저장
 	schema: {
 		category: fields.relationship({
-			collection: "memoCategory",
+			collection: "postCategory",
 			label: "카테고리",
 			validation: { isRequired: true },
 		}),
@@ -31,8 +31,8 @@ export const memoSchema = collection({
 
 		content: fields.mdx({
 			label: "내용",
-			options: { image: { directory: "public/assets/images/memos", publicPath: "/assets/images/memos" } },
+			options: { image: { directory: "public/assets/images/posts", publicPath: "/assets/images/posts" } },
 		}),
 	},
-	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
+	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
 });
