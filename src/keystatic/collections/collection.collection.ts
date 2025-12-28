@@ -1,5 +1,11 @@
 import { collection, fields } from "@keystatic/core";
-import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
+import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
+
+const collectionOptionList = [
+	{ label: "시리즈", value: "series" },
+	{ label: "프로젝트", value: "project" },
+	{ label: "위키", value: "wiki" },
+] as const;
 
 export const collectionCollection = collection({
 	label: "모음집",
@@ -8,22 +14,18 @@ export const collectionCollection = collection({
 	schema: {
 		name: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
-			slug: { generate: getCategoryTitleSlug },
+			slug: {
+				generate: (name: string) => mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), collectionOptionList),
+			},
 		}),
 		description: fields.text({ label: "설명", multiline: true }),
 		meta: fields.conditional(
 			fields.select({
 				label: "카테고리",
-				defaultValue: "none",
-				options: [
-					{ label: "선택해주세요", value: "none" },
-					{ label: "시리즈", value: "series" },
-					{ label: "프로젝트", value: "project" },
-					{ label: "Index", value: "index" },
-				],
+				defaultValue: "series",
+				options: collectionOptionList,
 			}),
 			{
-				none: fields.empty(),
 				series: fields.object(
 					{
 						post: fields.array(fields.relationship({ label: "게시글", collection: "post" }), {
@@ -46,7 +48,7 @@ export const collectionCollection = collection({
 					},
 					{ label: "컨텐츠" },
 				),
-				index: fields.object(
+				wiki: fields.object(
 					{
 						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
 							label: "메모",
