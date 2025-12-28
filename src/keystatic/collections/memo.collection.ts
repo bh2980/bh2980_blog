@@ -1,6 +1,6 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
-import { getCategoryTitleSlug } from "../libs/get-category-title-slug";
+import { getSlugWithLabel } from "../libs/slug";
 
 export const memoCollection = collection({
 	label: "메모",
@@ -16,7 +16,7 @@ export const memoCollection = collection({
 		}),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
-			slug: { generate: getCategoryTitleSlug },
+			slug: { generate: getSlugWithLabel("카테고리") },
 		}),
 		publishedDate: fields.datetime({
 			label: "발행일",
