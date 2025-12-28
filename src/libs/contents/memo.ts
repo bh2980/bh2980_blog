@@ -5,7 +5,7 @@ import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
 import type { ListOptions, ListResult } from "./types";
 
-type MemoCategoryWithCount = MemoCategory & { count: number };
+export type MemoCategoryWithCount = MemoCategory & { count: number };
 
 const normalizeMemo = (
 	memo: MemoEntry,
@@ -45,7 +45,9 @@ export const getMemo = async (slug: string): Promise<Memo | null> => {
 export const getMemoList = async ({ category: categoryFilter }: ListOptions = {}): Promise<ListResult<Memo>> => {
 	const { memoMap, tagMap } = await getContentMap();
 
-	let memos = Array.from(memoMap.values());
+	let memos = Array.from(memoMap.values()).toSorted(
+		(a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime(),
+	);
 
 	if (categoryFilter) {
 		memos = memos.filter((memo) => memo.category === categoryFilter);
