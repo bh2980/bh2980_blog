@@ -1,3 +1,4 @@
 name: 문제 풀이
 description: 문제와 해답을 기록합니다.
-color: '#00fbff'
+order: 3
+color: '#1fbec1'

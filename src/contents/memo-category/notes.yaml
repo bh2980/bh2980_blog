@@ -1,3 +1,4 @@
 name: 학습 노트
 description: 학습한 내용을 간단하게 정리합니다.
-color: '#f57600'
+order: 1
+color: '#60cf5e'

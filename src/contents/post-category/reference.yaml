@@ -1,3 +1,4 @@
 name: 참조
 description: 필요할 때 다시 보기 위한 문서형 정리 및 기록합니다
-color: '#000000'
+order: 5
+color: '#71c8e5'

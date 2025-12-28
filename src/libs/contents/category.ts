@@ -29,7 +29,7 @@ export const getMemoCategoryList = async (): Promise<ListResult<MemoCategorySumm
 	const categoryList = Array.from(memoCategoryMap.values(), (category) => ({
 		...category,
 		count: count.get(category.slug) ?? 0,
-	}));
+	})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
 	return { list: categoryList, total: memoMap.size };
 };
@@ -61,7 +61,7 @@ export const getPostCategoryList = async (): Promise<ListResult<PostCategorySumm
 	const categoryList = Array.from(postCategoryMap.values(), (category) => ({
 		...category,
 		count: count.get(category.slug) ?? 0,
-	}));
+	})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
 	return { list: categoryList, total: postMap.size };
 };

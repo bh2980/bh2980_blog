@@ -1,3 +1,4 @@
 name: 탐구
 description: 기술의 원리와 내부 동작을 깊이 있게 파고듭니다
-color: '#000000'
+order: 2
+color: '#b489f5'

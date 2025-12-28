@@ -10,6 +10,7 @@ export const postCategoryCollection = collection({
 			name: { label: "카테고리 이름", validation: { isRequired: true } },
 		}),
 		description: fields.text({ label: "설명" }),
+		order: fields.number({ label: "순서", defaultValue: 0 }),
 		color: fields.colorPicker({ label: "색상", defaultValue: "#000000" }),
 	},
 });

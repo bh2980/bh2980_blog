@@ -21,6 +21,7 @@ export type MemoCategorySummary = {
 	name: string;
 	color: string;
 	count: number;
+	order: number | null;
 };
 
 export type PostCategoryView = {
@@ -34,6 +35,7 @@ export type PostCategorySummary = {
 	name: string;
 	color: string;
 	count: number;
+	order: number | null;
 };
 
 export type TagView = {
