@@ -57,12 +57,6 @@ export default function Navigation({ className }: NavigationProps) {
 								홈
 							</Link>
 							<Link
-								href="/series"
-								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
-							>
-								시리즈
-							</Link>
-							<Link
 								href="/posts"
 								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 							>

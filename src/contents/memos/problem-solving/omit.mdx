@@ -1,0 +1,51 @@
+---
+title: Omit
+publishedDate: 2023-09-17T19:51:00.000Z
+category: problem-solving
+tags:
+  - type-challenges
+  - typescript
+---
+## **3 - Omit**
+
+> T에서 K 프로퍼티만 제거해 새로운 오브젝트 타입을 만드는 내장 제네릭 `Omit<T, K>`를  
+> 이를 사용하지 않고 구현하세요.
+
+```ts
+interface Todo {
+  title: string;
+  description: string;
+  completed: boolean;
+}
+
+type TodoPreview = MyOmit<Todo, "description" | "title">;
+
+const todo: TodoPreview = {
+  completed: false,
+};
+```
+
+## **풀이**
+
+```ts
+type MyOmit<T, K extends keyof T> = {
+  [P in keyof T as P extends K ? never : P]: T[P];
+};
+```
+
+대부분은 Pick에서 사용했던 방법인데 문제는 P 중에서 K만 빼고 다시 작성해야한다는 부분이다.
+이는 TypeScript의 `as` 연산자를 통해 가능한데 객체 Key 부분에서 `as`를 사용하면 키를 다시 매핑할 수 있다.
+즉, P에서 K를 제외하고 싶다면, `as`를 통해 P를 다시 매핑해 P가 K에 할당가능한 경우에 `never`를 통해서 제거해버리면 된다.
+
+```ts
+type MyOmit<T, K extends keyof T> = {
+  [P in Exclude<keyof T, K>]: T[P];
+};
+```
+
+물론 `Exclude`를 이용해 이런 풀이도 가능하다.
+
+## Reference
+
+[Type Challenges, 3 - Omit](https://github.com/type-challenges/type-challenges/blob/main/questions/00003-easy-omit/README.ko.md)
+

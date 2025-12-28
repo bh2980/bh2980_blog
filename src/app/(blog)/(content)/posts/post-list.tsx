@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListResult, PostCategorySummary, PostSummary } from "@/libs/contents/types";
+import type { ListResult, Post, PostCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
@@ -8,8 +8,8 @@ export const PostList = ({
 	postList,
 }: {
 	currentCategory?: string;
-	categoryList: ListResult<PostCategorySummary>;
-	postList: ListResult<PostSummary>;
+	categoryList: ListResult<PostCategoryWithCount>;
+	postList: ListResult<Post>;
 }) => {
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -25,23 +25,26 @@ export const PostList = ({
 							"rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300",
 						)}
 					>
-						<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+						{!currentCategory && (
+							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+						)}
 						<span className="inline-block">전체 ({categoryList.total})</span>
 					</Link>
 					{categoryList.list.map((category) => (
 						<Link
-							href={`/posts/${category.slug}`}
-							key={category.slug}
+							href={`/posts/${category.value}`}
+							key={category.value}
 							className={cn(
-								currentCategory === category.slug &&
-									"!bg-[var(--cat-color)]/20 !border-[var(--cat-color)]/50 dark:!border-[var(--cat-color)]/40",
 								"flex items-center justify-center rounded-full border bg-gray-50 px-3 py-1.5 font-medium text-gray-700 text-sm dark:bg-gray-800 dark:text-gray-300",
+								currentCategory === category.value &&
+									"!bg-slate-400/25 dark:!bg-slate-100/20 border-slate-400 dark:border-slate-100/30",
 							)}
-							style={{ "--cat-color": category.color } as React.CSSProperties}
 						>
-							<span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
+							{currentCategory === category.value && (
+								<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+							)}
 							<span className="inline-block">
-								{category.name} ({category.count})
+								{category.label} ({category.count})
 							</span>
 						</Link>
 					))}
@@ -58,7 +61,6 @@ export const PostList = ({
 						<Link key={post.slug} href={`/posts/${post.slug}`} className="block">
 							<article className="flex h-full items-center gap-4 rounded-lg p-4">
 								<time className="w-16 text-end text-gray-500 text-xs dark:text-gray-400">{post.publishedDate}</time>
-								<span className="h-2 w-2 rounded-full" style={{ backgroundColor: `${post.category.color}` }} />
 								<h2 className="line-clamp-2 font-semibold dark:text-gray-300">{post.title}</h2>
 							</article>
 						</Link>
