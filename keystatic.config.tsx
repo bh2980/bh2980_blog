@@ -1,5 +1,6 @@
 import { type Config, config } from "@keystatic/core";
 import {
+	collectionCollection,
 	memoCategoryCollection,
 	memoCollection,
 	postCategoryCollection,
@@ -19,19 +20,22 @@ export default config({
 	collections: {
 		//공통
 		tag: tagCollection,
+		collection: collectionCollection,
 		//게시글
 		postCategory: postCategoryCollection,
 		post: postCollection,
-		series: seriesCollection,
-		project: projectCollection,
 		//메모
 		memoCategory: memoCategoryCollection,
 		memo: memoCollection,
+		//deprecated
+		series: seriesCollection,
+		project: projectCollection,
 	},
 	ui: {
 		navigation: {
-			게시글: ["postCategory", "post", "series", "project", "tag"],
-			메모: ["memoCategory", "memo", "tag"],
+			게시글: ["postCategory", "post"],
+			메모: ["memoCategory", "memo"],
+			공통: ["collection", "tag"],
 		},
 	},
 });
