@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
-import { sanitizeSlug } from "@/keystatic/libs/sanitize-slug";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 
