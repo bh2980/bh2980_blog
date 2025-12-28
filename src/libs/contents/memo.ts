@@ -1,11 +1,9 @@
 import "server-only";
-import { MEMO_CATEGORY_LIST, type MemoCategory } from "@/keystatic/collections";
+import { MEMO_CATEGORY_LIST } from "@/keystatic/collections";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Memo, Tag } from "./types";
-
-export type MemoCategoryWithCount = MemoCategory & { count: number };
+import type { ListOptions, ListResult, Memo, MemoCategoryWithCount, Tag } from "./types";
 
 const normalizeMemo = (
 	memo: MemoEntry,

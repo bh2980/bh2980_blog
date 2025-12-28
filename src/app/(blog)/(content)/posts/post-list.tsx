@@ -1,7 +1,5 @@
 import Link from "next/link";
-import type { Post } from "@/keystatic/types";
-import type { PostCategoryWithCount } from "@/libs/contents/post";
-import type { ListResult } from "@/libs/contents/types";
+import type { ListResult, Post, PostCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
