@@ -20,14 +20,8 @@ export default async function MemoPost({ params }: { params: Promise<{ category:
 			<article className="prose dark:prose-invert max-w-none">
 				<header className="flex flex-col gap-3 border-gray-200 border-b pb-6">
 					<h1 className="!m-0 !p-0 font-bold text-3xl text-gray-900 dark:text-gray-100">{memo.title}</h1>
-					<div
-						className={cn("flex items-center gap-3 text-sm")}
-						style={{ "--cat-color": memo.category.color } as React.CSSProperties}
-					>
-						<span>
-							<span className={cn("mr-2 inline-block h-2 w-2 rounded-full font-bold", "bg-[var(--cat-color)]")} />
-							{memo.category.name}
-						</span>
+					<div className={cn("flex items-center gap-3 text-sm")}>
+						<span>{memo.category.label}</span>
 						<span>·</span>
 						<time className="text-gray-500 dark:text-gray-400">{memo.publishedDate}</time>
 					</div>
