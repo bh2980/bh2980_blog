@@ -5,7 +5,7 @@ import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
 import type { ListOptions, ListResult } from "./types";
 
-type PostCategoryWithCount = PostCategory & { count: number };
+export type PostCategoryWithCount = PostCategory & { count: number };
 
 const normalizePost = (
 	post: PostEntry,
@@ -42,7 +42,9 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 export const getPostList = async ({ category: categoryFilter }: ListOptions = {}): Promise<ListResult<Post>> => {
 	const { postMap, tagMap } = await getContentMap();
 
-	let postList = Array.from(postMap.values());
+	let postList = Array.from(postMap.values()).toSorted(
+		(a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime(),
+	);
 
 	if (categoryFilter) {
 		postList = postList.filter((post) => post.category === categoryFilter);
