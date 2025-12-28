@@ -1,5 +1,14 @@
+import type { MemoCategory, PostCategory } from "@/keystatic/collections";
+import type { CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
+import type { Expand } from "@/utils/types";
+
 export type ListResult<T> = { list: T[]; total: number };
 
 export type ListOptions = {
 	category?: string;
 };
+
+export type Tag = TagEntry;
+export type Memo = Expand<Omit<MemoEntry, "tags" | "category"> & { category: MemoCategory; tags: Tag[] }>;
+export type Post = Expand<Omit<PostEntry, "tags" | "category"> & { category: PostCategory; tags: Tag[] }>;
+export type Collection = Expand<CollectionEntry>;

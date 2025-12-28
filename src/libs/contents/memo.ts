@@ -1,9 +1,9 @@
 import "server-only";
 import { MEMO_CATEGORY_LIST, type MemoCategory } from "@/keystatic/collections";
-import type { Memo, MemoEntry, Tag } from "@/keystatic/types";
+import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult } from "./types";
+import type { ListOptions, ListResult, Memo, Tag } from "./types";
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
 

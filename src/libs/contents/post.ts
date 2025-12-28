@@ -1,9 +1,9 @@
 import "server-only";
 import { POST_CATEGORIES, type PostCategory } from "@/keystatic/collections";
-import type { Post, PostEntry, Tag } from "@/keystatic/types";
+import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult } from "./types";
+import type { ListOptions, ListResult, Post, Tag } from "./types";
 
 export type PostCategoryWithCount = PostCategory & { count: number };
 

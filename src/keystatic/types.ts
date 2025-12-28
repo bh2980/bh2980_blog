@@ -12,8 +12,3 @@ export type TagEntry = Expand<EntryWithSlug<typeof keystaticConfig.collections.t
 export type MemoEntry = Expand<EntryWithSlug<typeof keystaticConfig.collections.memo>>;
 export type PostEntry = Expand<EntryWithSlug<typeof keystaticConfig.collections.post>>;
 export type CollectionEntry = Expand<EntryWithSlug<typeof keystaticConfig.collections.collection>>;
-
-export type Tag = TagEntry;
-export type Memo = Expand<Omit<MemoEntry, "tags" | "category"> & { category: MemoCategory; tags: Tag[] }>;
-export type Post = Expand<Omit<PostEntry, "tags" | "category"> & { category: PostCategory; tags: Tag[] }>;
-export type Collection = Expand<Entry<typeof keystaticConfig.collections.collection>>;
