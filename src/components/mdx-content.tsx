@@ -1,6 +1,5 @@
 import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx";
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
-import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { Code } from "./code";
@@ -19,7 +18,6 @@ export default function MDXContent({ source, options, className }: MDXContentPro
 			options={{
 				...options,
 				mdxOptions: {
-					rehypePlugins: [rehypeSlug],
 					remarkPlugins: [remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
 					recmaPlugins: [[recmaCodeHike, chConfig]],
 				},
