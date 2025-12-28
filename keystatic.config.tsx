@@ -5,8 +5,6 @@ import {
 	memoCollection,
 	postCategoryCollection,
 	postCollection,
-	projectCollection,
-	seriesCollection,
 	tagCollection,
 } from "@/keystatic/collections";
 
@@ -27,9 +25,6 @@ export default config({
 		//메모
 		memoCategory: memoCategoryCollection,
 		memo: memoCollection,
-		//deprecated
-		series: seriesCollection,
-		project: projectCollection,
 	},
 	ui: {
 		navigation: {

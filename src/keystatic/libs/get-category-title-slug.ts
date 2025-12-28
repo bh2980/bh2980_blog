@@ -7,7 +7,7 @@ export const getCategoryTitleSlug = (name: string) => {
 	const forId = (labelElement as HTMLLabelElement).htmlFor;
 	const categoryInput = document.getElementById(forId) as HTMLInputElement;
 
-	let category: string | undefined = categoryInput?.value;
+	let category: string | undefined | null = categoryInput?.value;
 
 	if (!forId || !categoryInput) {
 		const parentElement = labelElement.parentElement;

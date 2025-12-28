@@ -61,17 +61,6 @@ export type PostView = {
 	publishedDate: string;
 	category: PostCategoryView;
 	tags: TagSummary[];
-	project: string | null;
-	series: string | null;
 };
 
 export type PostSummary = Pick<PostView, "slug" | "title" | "publishedDate" | "category">;
-
-export type SeriesView = {
-	slug: string;
-	title: string;
-	description: string;
-	posts: PostSummary[];
-};
-
-export type SeriesSummary = SeriesView;
