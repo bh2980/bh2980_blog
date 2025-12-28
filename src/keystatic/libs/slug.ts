@@ -19,7 +19,7 @@ export const getSlugWithLabel = (label: string) => (name: string) => {
 		const categoryInput = parentElement?.querySelector("input") as HTMLInputElement | null;
 		const selectButton = parentElement?.querySelector('button[aria-haspopup="listbox"]') as HTMLButtonElement | null;
 
-		category = categoryInput?.value || selectButton?.textContent;
+		category = categoryInput?.value ?? selectButton?.textContent;
 	}
 
 	const title = getKoreanSlug(name);
