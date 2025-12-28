@@ -1,0 +1,26 @@
+---
+title: Unshift
+publishedDate: 2023-09-17T03:47:00.000Z
+category: problem-solving
+tags:
+  - type-challenges
+  - typescript
+---
+## **3060 - Unshift**
+
+> `Array.unshift`의 타입 버전을 구현하세요.
+
+```ts
+type Result = Unshift<[1, 2], 0>; // [0, 1, 2,]
+```
+
+## **풀이**
+
+```ts
+type Unshift<T, U> = T extends [...infer Rest] ? [U, ...Rest] : never;
+```
+
+## Reference
+
+[Type Challenges, 3060 - Unshift](https://github.com/type-challenges/type-challenges/blob/main/questions/03060-easy-unshift/README.ko.md)
+

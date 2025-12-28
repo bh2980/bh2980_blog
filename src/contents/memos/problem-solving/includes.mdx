@@ -1,0 +1,109 @@
+---
+title: Includes
+publishedDate: 2023-09-17T05:31:00.000Z
+category: problem-solving
+tags:
+  - type-challenges
+  - typescript
+---
+## **898 - Includes**
+
+> JavaScript의 `Array.includes` 함수를 타입 시스템에서 구현하세요.
+> 타입은 두 인수를 받고, `true` 또는 `false`를 반환해야 합니다.
+
+```ts
+type isPillarMen = Includes<["Kars", "Esidisi", "Wamuu", "Santana"], "Dio">; // expected to be false
+```
+
+## **풀이**
+
+```ts
+type IsEqual<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
+  ? true
+  : false;
+
+type Includes<T extends readonly any[], U> = T extends [
+  infer First,
+  ...infer Rest
+]
+  ? IsEqual<U, First> extends true
+    ? true
+    : Includes<Rest, U>
+  : false;
+```
+
+좀 어려운데 하나씩 짚어보자.
+
+```ts
+type IsEqual<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
+  ? true
+  : false;
+```
+
+`IsEqual` 타입은 X와 Y를 받아 두 타입이 같은지 검사하는 타입이다.
+그런데 갑자기 T는 왜 나오고 함수는 왜 나오고 1, 2는 뭘까?
+
+```ts
+<T>() => T extends X ? 1 : 2
+```
+
+먼저 위는 `<T>()`라는 매개변수를 받아 `T extends X ? 1 : 2`를 return하는 형태의 함수 타입이다.
+즉, 아무 매개변수를 받지 않고 T가 X에 할당할 수 있다면 1을 아니면 2를 return한다.
+
+```ts
+function <T>():
+    if T extends X:
+        return 1
+    else:
+        return 2
+```
+
+그런데 여기서 중요한 것은 T가 명확하게 주어져 있지 않다는 점이다.
+때문에 타입스크립트는 모든 타입 T에 대해서 위를 검사한다.
+즉, X에 할당 가능한 타입들은 `<T>() => 1`이라는 타입이 될 것이고, X에 할당 불가능한 타입들은 `<T>() => 2`라는 타입이 된다.
+결론적으로 위는 모든 타입들에 대해서 각 타입별로 `<T>() => 1` 혹은 `<T>() => 2`가 매칭되어있는 타입 집합이다.
+
+```ts
+(<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+```
+
+이제 이 코드를 보자.
+
+X와 Y에 대해 각각 모든 타입 T들에 대해서 `<T>() => 1` 혹은 `<T>() => 2`를 가지는 타입 집합을 비교한다.
+예를 들어 string을 검사했을 때 X에서는 `<string>() => 1`인데 Y에서는 `<string>() => 2`라면 이 두 타입은 일치하지 않는다.
+즉, X와 Y가 같다면 모든 타입 T에 대한 두 타입 집합이 정확히 일치할 것이므로 true를 아니면 false를 return한다.
+
+```ts
+type Includes<T extends readonly any[], U> = T extends [
+  infer First,
+  ...infer Rest
+]
+  ? IsEqual<U, First> extends true
+    ? true
+    : Includes<Rest, U>
+  : false;
+```
+
+이제 Includes 코드를 보자.
+
+- `T extends [infer First, ...infer Rest]`
+  먼저 infer를 통해 첫 번째 성분을 추출한다.
+
+- `IsEqual<U, First> extends true ? true`
+  만약 첫 번째 성분이 U와 같다면 true를 return한다.
+
+- `Includes<Rest, U>`
+  아니라면 재귀를 통해 두 번째 타입과 U를 비교할 수 있도록 뒤의 배열 성분과 U를 다시 Includes에 넣는다
+
+- `: false`
+  그렇게 돌고 돌다가 배열에서 더 이상 첫 번째 성분을 추출할 수 없다면,
+  즉, 배열이 비게되면 모든 배열 성분에 대해서 U와 일치하는 타입이 없는 것이므로 false를 return한다.
+
+## Reference
+
+[Type Challenges, 898 - Includes](https://github.com/type-challenges/type-challenges/blob/main/questions/00898-easy-includes/README.ko.md)
+

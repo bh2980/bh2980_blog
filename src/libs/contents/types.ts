@@ -1,77 +1,17 @@
+import type { MemoCategory, PostCategory } from "@/keystatic/collections";
+import type { CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
+import type { Expand } from "@/utils/types";
+
 export type ListResult<T> = { list: T[]; total: number };
 
 export type ListOptions = {
 	category?: string;
 };
 
-/** NOTE
-*View 타입은 본문, 디테일용
-*Summary 타입은 리스트, 요약용
-둘이 동일할 경우에도 일관적인 사용을 위해 구분, 추후 구분이 필요할 경우 수정
- */
+export type Tag = TagEntry;
+export type Memo = Expand<Omit<MemoEntry, "tags" | "category"> & { category: MemoCategory; tags: Tag[] }>;
+export type Post = Expand<Omit<PostEntry, "tags" | "category"> & { category: PostCategory; tags: Tag[] }>;
+export type Collection = Expand<CollectionEntry>;
 
-export type MemoCategoryView = {
-	slug: string;
-	name: string;
-	color: string;
-};
-
-export type MemoCategorySummary = {
-	slug: string;
-	name: string;
-	color: string;
-	count: number;
-};
-
-export type PostCategoryView = {
-	slug: string;
-	name: string;
-	color: string;
-};
-
-export type PostCategorySummary = {
-	slug: string;
-	name: string;
-	color: string;
-	count: number;
-};
-
-export type TagView = {
-	slug: string;
-	name: string;
-};
-
-export type TagSummary = TagView;
-
-export type MemoView = {
-	slug: string;
-	title: string;
-	content: () => Promise<string>;
-	publishedDate: string;
-	category: MemoCategoryView;
-	tags: TagSummary[];
-};
-
-export type MemoSummary = Pick<MemoView, "slug" | "title" | "publishedDate" | "category">;
-
-export type PostView = {
-	slug: string;
-	title: string;
-	content: () => Promise<string>;
-	publishedDate: string;
-	category: PostCategoryView;
-	tags: TagSummary[];
-	project: string | null;
-	series: string | null;
-};
-
-export type PostSummary = Pick<PostView, "slug" | "title" | "publishedDate" | "category">;
-
-export type SeriesView = {
-	slug: string;
-	title: string;
-	description: string;
-	posts: PostSummary[];
-};
-
-export type SeriesSummary = SeriesView;
+export type MemoCategoryWithCount = MemoCategory & { count: number };
+export type PostCategoryWithCount = PostCategory & { count: number };
