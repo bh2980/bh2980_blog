@@ -1,12 +1,5 @@
 import { type Config, config } from "@keystatic/core";
-import {
-	collectionCollection,
-	memoCategoryCollection,
-	memoCollection,
-	postCategoryCollection,
-	postCollection,
-	tagCollection,
-} from "@/keystatic/collections";
+import { collectionCollection, memoCollection, postCollection, tagCollection } from "@/keystatic/collections";
 
 const storage: Config["storage"] =
 	process.env.NODE_ENV === "development"
@@ -16,21 +9,9 @@ const storage: Config["storage"] =
 export default config({
 	storage,
 	collections: {
-		//공통
-		tag: tagCollection,
-		collection: collectionCollection,
-		//게시글
-		postCategory: postCategoryCollection,
 		post: postCollection,
-		//메모
-		memoCategory: memoCategoryCollection,
 		memo: memoCollection,
-	},
-	ui: {
-		navigation: {
-			게시글: ["postCategory", "post"],
-			메모: ["memoCategory", "memo"],
-			공통: ["collection", "tag"],
-		},
+		collection: collectionCollection,
+		tag: tagCollection,
 	},
 });
