@@ -26,10 +26,11 @@ const normalizePost = (
 	const publishedDate = publishedAt.toLocaleString("ko-KR", dateTimeOptions);
 
 	const isDeprecated = post.policy.discriminant === "deprecated";
-	const replacementPost = post.policy.value?.replacementPost ?? undefined;
+	const replacementPost = post.policy.value?.replacementPost || undefined;
 
+	const STALE_POST_YEARS_THRESHOLD = 2;
 	const yearsOld = differenceInYears(now, publishedAt);
-	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= 2;
+	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= STALE_POST_YEARS_THRESHOLD;
 
 	return { ...post, category, tags, publishedDate, isStale, isDeprecated, replacementPost };
 };
