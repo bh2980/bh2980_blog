@@ -1,5 +1,5 @@
 import { fields } from "@keystatic/core";
-
+import { codeBlock } from "../blocks/code-block";
 import { mermaidBlock } from "../blocks/mermaid-block";
 
 export const mdx = (_args: Parameters<typeof fields.mdx>[0]) => {
@@ -7,6 +7,8 @@ export const mdx = (_args: Parameters<typeof fields.mdx>[0]) => {
 		..._args,
 		components: _args.components ?? {
 			Mermaid: mermaidBlock,
+			Code: codeBlock,
 		},
+		options: { codeBlock: false },
 	});
 };

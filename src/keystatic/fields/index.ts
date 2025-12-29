@@ -9,3 +9,5 @@ export const fields = {
 	mdx,
 	colorPicker,
 };
+
+export * from "./code-preview";
