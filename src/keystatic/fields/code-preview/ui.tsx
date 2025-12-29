@@ -4,6 +4,37 @@ import type { FormFieldInputProps } from "@keystatic/core";
 import { type HighlightedCode, highlight, Pre, type RawCode } from "codehike/code";
 import { useCallback, useEffect, useState } from "react";
 import { collapse, collapseContent, collapseTrigger, diff, fold, lineNumbers, mark } from "@/components/code-handler";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+
+const EDITOR_LANG_OPTION = [
+	{ label: "TypeScript", value: "ts" },
+	{ label: "JavaScript", value: "js" },
+	{ label: "TSX", value: "tsx" },
+	{ label: "JSX", value: "jsx" },
+
+	{ label: "JSON", value: "json" },
+	{ label: "YAML", value: "yaml" },
+	{ label: "Markdown", value: "md" },
+
+	{ label: "HTML", value: "html" },
+	{ label: "CSS", value: "css" },
+	{ label: "SCSS", value: "scss" },
+
+	{ label: "Bash", value: "bash" },
+	{ label: "Shell", value: "sh" },
+
+	{ label: "Python", value: "py" },
+	{ label: "Go", value: "go" },
+	{ label: "Rust", value: "rs" },
+	{ label: "Java", value: "java" },
+
+	{ label: "SQL", value: "sql" },
+	{ label: "GraphQL", value: "graphql" },
+
+	{ label: "Dockerfile", value: "dockerfile" },
+	{ label: "Plain Text", value: "text" },
+];
 
 export function CodePreview({ codeblock }: { codeblock: RawCode }) {
 	const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
@@ -41,14 +72,23 @@ export function CodePreview({ codeblock }: { codeblock: RawCode }) {
 export function CodeInput(props: FormFieldInputProps<RawCode>) {
 	return (
 		<div className="flex flex-col gap-2">
-			<select
-				value={props.value?.lang ?? ""}
-				onChange={(e) => props.onChange({ value: props.value?.value, meta: props.value?.meta, lang: e.target.value })}
-			>
-				<option value="ts">TypeScript</option>
-				<option value="js">JavaScript</option>
-				<option value="python">Python</option>
-			</select>
+			<div className="flex gap-2">
+				<NativeSelect
+					className="min-w-[200px]"
+					value={props.value?.lang ?? ""}
+					onChange={(e) => props.onChange({ value: props.value?.value, meta: props.value?.meta, lang: e.target.value })}
+				>
+					{EDITOR_LANG_OPTION.map((option) => (
+						<NativeSelectOption value={option.value} key={option.value}>
+							{option.label}
+						</NativeSelectOption>
+					))}
+				</NativeSelect>
+				<Input
+					value={props.value?.meta ?? ""}
+					onChange={(e) => props.onChange({ value: props.value?.value, lang: props.value?.lang, meta: e.target.value })}
+				/>
+			</div>
 			<textarea
 				className="min-h-[240px] rounded-md border p-2 font-mono text-sm"
 				value={props.value?.value ?? ""}
