@@ -10,7 +10,15 @@ export type ListOptions = {
 
 export type Tag = TagEntry;
 export type Memo = Expand<Omit<MemoEntry, "tags" | "category"> & { category: MemoCategory; tags: Tag[] }>;
-export type Post = Expand<Omit<PostEntry, "tags" | "category"> & { category: PostCategory; tags: Tag[] }>;
+export type Post = Expand<
+	Omit<PostEntry, "tags" | "category"> & {
+		category: PostCategory;
+		tags: Tag[];
+		isStale?: boolean;
+		isDeprecated?: boolean;
+		replacementPost?: string;
+	}
+>;
 export type Collection = Expand<CollectionEntry>;
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
