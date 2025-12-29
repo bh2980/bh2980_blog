@@ -2,7 +2,7 @@ import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
 import { Mermaid } from "@/components/mermaid";
 
-export const mermaidBlock = block({
+export const editorMermaidBlock = block({
 	label: "Mermaid 차트",
 	schema: {
 		chart: fields.text({
