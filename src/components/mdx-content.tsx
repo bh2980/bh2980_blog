@@ -10,7 +10,6 @@ import { Mermaid } from "./mermaid";
 interface MDXContentProps {
 	source: string;
 	options?: MDXRemoteProps["options"];
-	className?: string;
 }
 
 export default function MDXContent({ source, options }: MDXContentProps) {
