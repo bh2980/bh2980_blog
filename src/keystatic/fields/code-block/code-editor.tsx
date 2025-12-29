@@ -65,7 +65,8 @@ const EDITOR_LANG_OPTION = [
 	{ label: "Plain Text", value: "text" },
 ];
 
-const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escapeHtml = (s: string) =>
+	s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
 export const CodeEditor = (props: FormFieldInputProps<{ value: string; lang: string; meta?: string }>) => {
 	const code = props.value?.value ?? "";
@@ -111,13 +112,15 @@ export const CodeEditor = (props: FormFieldInputProps<{ value: string; lang: str
 };
 
 export function CodeEditorWithLangSelector(props: FormFieldInputProps<{ value: string; lang: string; meta?: string }>) {
+	const value = props.value ?? { value: "", lang: "typescript", meta: "" };
+
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex gap-2">
 				<NativeSelect
 					className="min-w-[200px]"
-					value={props.value?.lang ?? ""}
-					onChange={(e) => props.onChange({ value: props.value?.value, meta: props.value?.meta, lang: e.target.value })}
+					value={value.lang}
+					onChange={(e) => props.onChange({ ...value, lang: e.target.value })}
 				>
 					{EDITOR_LANG_OPTION.map((option) => (
 						<NativeSelectOption value={option.value} key={option.value}>
@@ -126,8 +129,8 @@ export function CodeEditorWithLangSelector(props: FormFieldInputProps<{ value: s
 					))}
 				</NativeSelect>
 				<Input
-					value={props.value?.meta ?? ""}
-					onChange={(e) => props.onChange({ value: props.value?.value, lang: props.value?.lang, meta: e.target.value })}
+					value={value.meta ?? ""}
+					onChange={(e) => props.onChange({ ...value, meta: e.target.value })}
 					placeholder="ex) main.js"
 				/>
 			</div>
