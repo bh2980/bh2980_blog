@@ -19,6 +19,14 @@ export const postCollection = collection({
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {
+		status: fields.select({
+			label: "상태",
+			defaultValue: "draft",
+			options: [
+				{ label: "임시저장", value: "draft" },
+				{ label: "발행", value: "published" },
+			],
+		}),
 		category: fields.select({
 			label: "카테고리",
 			defaultValue: "deep-dive",
@@ -42,6 +50,11 @@ export const postCollection = collection({
 		content: fields.mdx({
 			label: "내용",
 			options: { image: { directory: "public/assets/images/posts", publicPath: "/assets/images/posts" } },
+		}),
+
+		replacedLink: fields.url({
+			label: "최신 글",
+			description: "최신 버전의 글을 작성한 경우 안내용 링크",
 		}),
 	},
 	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
