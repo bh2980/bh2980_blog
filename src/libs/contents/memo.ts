@@ -3,7 +3,7 @@ import { MEMO_CATEGORY_LIST } from "@/keystatic/collections";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Memo, MemoCategoryWithCount, Tag } from "./types";
+import type { ListOptions, ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount, Tag } from "./types";
 
 const normalizeMemo = (
 	memo: MemoEntry,
@@ -55,8 +55,6 @@ export const getMemoList = async ({ category: categoryFilter }: ListOptions = {}
 
 	return { list, total: list.length };
 };
-
-type MemoCategoryListMeta = { totalMemoCount: number };
 
 export const getMemoCategoryList = async (): Promise<ListResult<MemoCategoryWithCount, MemoCategoryListMeta>> => {
 	const { memoMap } = await getContentMap();

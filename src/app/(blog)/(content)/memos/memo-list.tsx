@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListResult, Memo, MemoCategoryWithCount } from "@/libs/contents/types";
+import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const MemoList = async ({
@@ -8,7 +8,7 @@ export const MemoList = async ({
 	memoList,
 }: {
 	currentCategory?: string;
-	categoryList: ListResult<MemoCategoryWithCount>;
+	categoryList: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
 	memoList: ListResult<Memo>;
 }) => {
 	return (

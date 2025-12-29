@@ -26,4 +26,7 @@ export type Post = Expand<
 export type Collection = Expand<CollectionEntry>;
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
+export type MemoCategoryListMeta = { totalMemoCount: number };
+
 export type PostCategoryWithCount = PostCategory & { count: number };
+export type PostCategoryListMeta = { totalPostCount: number };

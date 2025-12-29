@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListResult, Post, PostCategoryWithCount } from "@/libs/contents/types";
+import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
@@ -8,7 +8,7 @@ export const PostList = ({
 	postList,
 }: {
 	currentCategory?: string;
-	categoryList: ListResult<PostCategoryWithCount>;
+	categoryList: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
 	postList: ListResult<Post>;
 }) => {
 	return (
