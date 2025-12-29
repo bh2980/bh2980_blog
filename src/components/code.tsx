@@ -1,14 +1,66 @@
-import { type HighlightedCode, highlight, Pre } from "codehike/code";
-import { CopyButton, diff, fold, lineNumbers, mark } from "./code-handler";
+import { Block, CodeBlock, parseProps } from "codehike/blocks";
+import { highlight, Pre, type RawCode } from "codehike/code";
+import type { ComponentProps, ReactNode } from "react";
+import z from "zod";
+import { cn } from "@/utils";
+import {
+	CopyButton,
+	collapse,
+	collapseContent,
+	collapseTrigger,
+	diff,
+	fold,
+	lineNumbers,
+	mark,
+	tooltip,
+} from "./code-handler";
 
-export const Code = async ({ codeblock }: { codeblock: HighlightedCode }) => {
-	const highlighted = await highlight(codeblock, "dark-plus");
+export const CODE_THEME = "dark-plus" as const;
 
-	return (
-		<div className="relative overflow-hidden rounded-lg bg-zinc-950">
-			{codeblock.meta && <div className="py-2 text-center font-bold text-sm text-zinc-400">{codeblock.meta}</div>}
-			<Pre className="!m-0 !px-0" code={highlighted} handlers={[mark, lineNumbers, fold, diff]} />
-			<CopyButton text={highlighted.code} />
-		</div>
-	);
+export const CodeTemplate = ({
+	code,
+	className,
+	hideHeader,
+	handlers = [],
+}: ComponentProps<typeof Pre> & { hideHeader?: boolean }) => (
+	<div className={cn("relative overflow-hidden rounded-lg", className)}>
+		{code.meta && !hideHeader && (
+			<div className="bg-zinc-600 py-2 text-center font-bold text-sm text-zinc-200">{code.meta}</div>
+		)}
+		<Pre
+			className={cn("!my-0 !px-0", code.meta && "rounded-t-none")}
+			code={code}
+			handlers={[mark, diff, lineNumbers, fold, collapse, collapseContent, collapseTrigger, ...handlers]}
+		/>
+		<CopyButton text={code.code} />
+	</div>
+);
+
+export const Code = async ({ codeblock }: { codeblock: RawCode }) => {
+	const code = await highlight(codeblock, CODE_THEME);
+
+	return <CodeTemplate code={code} />;
 };
+
+const Schema = Block.extend({
+	code: CodeBlock,
+	tooltips: z.array(Block).optional(),
+});
+
+export async function CodeWithTooltips(props: unknown) {
+	const { code, tooltips = [] }: { code: RawCode; tooltips: { title: string; children: ReactNode }[] } = parseProps(
+		props,
+		Schema,
+	);
+	const highlighted = await highlight(code, "dark-plus");
+
+	highlighted.annotations = highlighted.annotations.map((a) => {
+		const tooltip = tooltips.find((t) => t.title === a.query);
+		if (!tooltip) return a;
+		return {
+			...a,
+			data: { ...a.data, children: tooltip.children },
+		};
+	});
+	return <CodeTemplate code={highlighted} handlers={[tooltip]} />;
+}
