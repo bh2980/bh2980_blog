@@ -13,6 +13,5 @@ export const mdx = (_args: Parameters<typeof fields.mdx>[0]) => {
 			CodeWithTabs: codeWithTabsBlock,
 			CodeWithTooltips: codeWithTooltipsBlock,
 		},
-		options: { codeBlock: false },
 	});
 };
