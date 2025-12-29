@@ -1,6 +1,6 @@
 import { block } from "@keystatic/core/content-components";
 import { codeBlockField } from "../fields/code-block";
-import { CodeBlock } from "../fields/code-block/ui";
+import { CodePreview } from "../fields/code-block/code-preview.client";
 
 export const editorCodeBlock = block({
 	label: "코드 블럭",
@@ -27,7 +27,7 @@ export const editorCodeBlock = block({
 				CODE PREVIEW
 			</div>
 			{value.codeblock.value ? (
-				<CodeBlock codeblock={value.codeblock} />
+				<CodePreview codeblock={value.codeblock} />
 			) : (
 				<div style={{ color: "#999", fontSize: "14px" }}>코드를 입력하면 미리보기가 생성됩니다.</div>
 			)}

@@ -1,7 +1,7 @@
 import type { BasicFormField } from "@keystatic/core";
 import type { RawCode } from "codehike/code";
 import { basicFormFieldWithSimpleReaderParse, FieldDataError } from "@/keystatic/libs/custom-field";
-import { CodeInput } from "./ui";
+import { CodeEditor } from "./code-editor";
 
 export const codeBlockField = ({
 	label,
@@ -13,13 +13,13 @@ export const codeBlockField = ({
 	return basicFormFieldWithSimpleReaderParse({
 		label,
 		Input(props) {
-			return <CodeInput {...props} />;
+			return <CodeEditor {...props} />;
 		},
 		defaultValue() {
-			return { value: "", lang: "ts", meta: "" };
+			return { value: "", lang: "typescript", meta: "" };
 		},
 		parse(value) {
-			if (value === undefined) return { lang: "ts", value: "", meta: "" };
+			if (value === undefined) return { lang: "typescript", value: "", meta: "" };
 			return value as RawCode;
 		},
 		validate(value) {
