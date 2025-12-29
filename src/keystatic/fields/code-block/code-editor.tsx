@@ -67,13 +67,50 @@ const EDITOR_LANG_OPTION = [
 
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export function CodeEditor(props: FormFieldInputProps<{ value: string; lang: string; meta?: string }>) {
+export const CodeEditor = (props: FormFieldInputProps<{ value: string; lang: string; meta?: string }>) => {
 	const code = props.value?.value ?? "";
 	const lang = props.value?.lang ?? "typescript";
 
 	const lineCount = Math.max(1, code.split("\n").length);
 	const lineNumbersText = Array.from({ length: lineCount }, (_, i) => String(i + 1)).join("\n");
 
+	return (
+		<div className="flex rounded-md border bg-zinc-800">
+			<pre
+				aria-hidden
+				className={cn([
+					"top-0 left-0 m-0 w-12",
+					"p-5 pr-3",
+					"text-right text-zinc-400",
+					"pointer-events-none select-none",
+					"whitespace-pre",
+					"border-white/10 border-r",
+					"font-mono",
+					"text-sm",
+					"leading-[21px]",
+				])}
+			>
+				{lineNumbersText}
+			</pre>
+			<Editor
+				value={code}
+				onValueChange={(next) => props.onChange({ ...(props.value ?? { lang, meta: "" }), value: next, lang })}
+				preClassName={lang !== "text" ? `language-${lang}` : ""}
+				highlight={(text) => {
+					if (lang === "text") return escapeHtml(text);
+					const grammar = Prism.languages[lang];
+					if (!grammar) return escapeHtml(text);
+					return Prism.highlight(text, grammar, lang);
+				}}
+				padding={20}
+				className="min-h-[200px] w-full leading-[21px]"
+				textareaClassName="focus:outline-none w-full caret-white"
+			/>
+		</div>
+	);
+};
+
+export function CodeEditorWithLangSelector(props: FormFieldInputProps<{ value: string; lang: string; meta?: string }>) {
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex gap-2">
@@ -94,38 +131,7 @@ export function CodeEditor(props: FormFieldInputProps<{ value: string; lang: str
 					placeholder="ex) main.js"
 				/>
 			</div>
-			<div className="flex rounded-md border bg-zinc-800">
-				<pre
-					aria-hidden
-					className={cn([
-						"top-0 left-0 m-0 w-12",
-						"p-5 pr-3",
-						"text-right text-zinc-400",
-						"pointer-events-none select-none",
-						"whitespace-pre",
-						"border-white/10 border-r",
-						"font-mono",
-						"text-sm",
-						"leading-[21px]",
-					])}
-				>
-					{lineNumbersText}
-				</pre>
-				<Editor
-					value={code}
-					onValueChange={(next) => props.onChange({ ...(props.value ?? { lang, meta: "" }), value: next, lang })}
-					preClassName={lang !== "text" ? `language-${lang}` : ""}
-					highlight={(text) => {
-						if (lang === "text") return escapeHtml(text);
-						const grammar = Prism.languages[lang];
-						if (!grammar) return escapeHtml(text);
-						return Prism.highlight(text, grammar, lang);
-					}}
-					padding={20}
-					className="min-h-[200px] w-full leading-[21px]"
-					textareaClassName="focus:outline-none w-full caret-white"
-				/>
-			</div>
+			<CodeEditor {...props} />
 		</div>
 	);
 }

@@ -1,11 +1,11 @@
 import { block } from "@keystatic/core/content-components";
-import { codeBlockField } from "../fields/code-block";
+import { multiLangCodeBlockField } from "../fields/code-block";
 import { CodePreview } from "../fields/code-block/code-preview.client";
 
 export const editorCodeBlock = block({
 	label: "코드 블럭",
 	schema: {
-		codeblock: codeBlockField({ label: "코드" }),
+		codeblock: multiLangCodeBlockField({ label: "코드" }),
 	},
 	ContentView: ({ value }) => (
 		<div
