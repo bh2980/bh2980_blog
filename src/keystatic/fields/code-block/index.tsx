@@ -23,7 +23,7 @@ export const codeBlockField = ({
 			return value as RawCode;
 		},
 		validate(value) {
-			if (validation?.isRequired && !value) {
+			if (validation?.isRequired && !value.value) {
 				throw new FieldDataError("Must not be empty");
 			}
 
