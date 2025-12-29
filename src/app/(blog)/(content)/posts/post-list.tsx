@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListResult, Post, PostCategoryWithCount } from "@/libs/contents/types";
+import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
@@ -8,7 +8,7 @@ export const PostList = ({
 	postList,
 }: {
 	currentCategory?: string;
-	categoryList: ListResult<PostCategoryWithCount>;
+	categoryList: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
 	postList: ListResult<Post>;
 }) => {
 	return (
@@ -28,7 +28,7 @@ export const PostList = ({
 						{!currentCategory && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({postList.total})</span>
+						<span className="inline-block">전체 ({categoryList.meta?.totalPostCount})</span>
 					</Link>
 					{categoryList.list.map((category) => (
 						<Link
