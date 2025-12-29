@@ -6,7 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function Code({ highlighted }: { highlighted: HighlightedCode[] }) {
 	const [selectedLang, setSelectedLang] = useState(highlighted[0].lang);
-	const selectedCode = highlighted.find((code) => code.lang === selectedLang)!;
+	const selectedCode = highlighted.find((code) => code.lang === selectedLang);
+
+	if (!selectedCode) {
+		return <div>코드를 불러올 수 없습니다.</div>;
+	}
 
 	return (
 		<div className="relative">
