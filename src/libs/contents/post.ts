@@ -1,4 +1,5 @@
 import "server-only";
+import { differenceInYears } from "date-fns";
 import { POST_CATEGORIES } from "@/keystatic/collections";
 import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
@@ -10,6 +11,8 @@ const normalizePost = (
 	tagMap: Map<string, Tag>,
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Post | null => {
+	if (post.status === "draft") return null;
+
 	const category = POST_CATEGORIES.find((category) => category.value === post.category);
 	if (!category) return null;
 
@@ -18,9 +21,17 @@ const normalizePost = (
 		.map((tag) => tagMap.get(tag))
 		.filter(isDefined);
 
-	const publishedDate = new Date(post.publishedDate).toLocaleString("ko-KR", dateTimeOptions);
+	const now = new Date();
+	const publishedAt = new Date(post.publishedDate);
+	const publishedDate = publishedAt.toLocaleString("ko-KR", dateTimeOptions);
 
-	return { ...post, category, tags, publishedDate };
+	const isDeprecated = post.policy.discriminant === "deprecated";
+	const replacementPost = post.policy.value?.replacementPost ?? undefined;
+
+	const yearsOld = differenceInYears(now, publishedAt);
+	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= 2;
+
+	return { ...post, category, tags, publishedDate, isStale, isDeprecated, replacementPost };
 };
 
 export const getPost = async (slug: string): Promise<Post | null> => {
