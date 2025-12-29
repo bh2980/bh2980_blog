@@ -65,19 +65,24 @@ export const getPostList = async ({ category: categoryFilter }: ListOptions = {}
 	return { list, total: list.length };
 };
 
-export const getPostCategoryList = async (): Promise<ListResult<PostCategoryWithCount>> => {
+type PostCategoryListMeta = { totalPostCount: number };
+
+export const getPostCategoryList = async (): Promise<ListResult<PostCategoryWithCount, PostCategoryListMeta>> => {
 	const { postMap } = await getContentMap();
 
 	const postCategoryMap = new Map(POST_CATEGORIES.map((category) => [category.value, { ...category, count: 0 }]));
 
+	let totalPostCount = 0;
+
 	postMap.forEach((post) => {
 		const category = postCategoryMap.get(post.category);
-		if (!category) return;
+		if (post.status === "draft" || !category) return;
 
 		category.count++;
+		totalPostCount++;
 	});
 
 	const list = Array.from(postCategoryMap.values());
 
-	return { list, total: list.length };
+	return { list, total: list.length, meta: { totalPostCount } };
 };
