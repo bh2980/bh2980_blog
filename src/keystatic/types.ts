@@ -2,7 +2,6 @@ import type { ComponentSchema, Collection as keystaticCollection } from "@keysta
 import type { Entry } from "@keystatic/core/reader";
 import type keystaticConfig from "@/root/keystatic.config";
 import type { Expand } from "@/utils/types";
-import type { MemoCategory, PostCategory } from "./collections";
 
 type EntryWithSlug<T extends keystaticCollection<Record<string, ComponentSchema>, string>> = Entry<T> & {
 	slug: string;

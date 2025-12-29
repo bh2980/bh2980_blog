@@ -2,30 +2,38 @@ import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { Code } from "./code";
+import { remarkCodeWithTabs, remarkCodeWithTooltips } from "@/keystatic/libs/mdx";
+import { Code, CodeWithTooltips } from "./code";
+import { CodeWithTabs } from "./code-handler";
 import { Mermaid } from "./mermaid";
 
 interface MDXContentProps {
 	source: string;
 	options?: MDXRemoteProps["options"];
-	className?: string;
 }
 
-export default function MDXContent({ source, options, className }: MDXContentProps) {
+export default function MDXContent({ source, options }: MDXContentProps) {
 	return (
 		<MDXRemote
 			source={source}
 			options={{
 				...options,
 				mdxOptions: {
-					remarkPlugins: [remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
+					remarkPlugins: [
+						remarkCodeWithTabs,
+						remarkCodeWithTooltips,
+						remarkBreaks,
+						remarkGfm,
+						[remarkCodeHike, chConfig],
+					],
 					recmaPlugins: [[recmaCodeHike, chConfig]],
 				},
 			}}
 			components={{
-				wrapper: ({ children }) => <div className={className}>{children}</div>,
 				Code,
 				Mermaid,
+				CodeWithTabs,
+				CodeWithTooltips,
 			}}
 		/>
 	);
