@@ -3,7 +3,7 @@ import { MEMO_CATEGORY_LIST } from "@/keystatic/collections";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Memo, MemoCategoryWithCount, Tag } from "./types";
+import type { ListOptions, ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount, Tag } from "./types";
 
 const normalizeMemo = (
 	memo: MemoEntry,
@@ -56,19 +56,22 @@ export const getMemoList = async ({ category: categoryFilter }: ListOptions = {}
 	return { list, total: list.length };
 };
 
-export const getMemoCategoryList = async (): Promise<ListResult<MemoCategoryWithCount>> => {
+export const getMemoCategoryList = async (): Promise<ListResult<MemoCategoryWithCount, MemoCategoryListMeta>> => {
 	const { memoMap } = await getContentMap();
 
-	const memoCateoryMap = new Map(MEMO_CATEGORY_LIST.map((category) => [category.value, { ...category, count: 0 }]));
+	const memoCategoryMap = new Map(MEMO_CATEGORY_LIST.map((category) => [category.value, { ...category, count: 0 }]));
+
+	let totalMemoCount = 0;
 
 	memoMap.forEach((memo) => {
-		const category = memoCateoryMap.get(memo.category);
+		const category = memoCategoryMap.get(memo.category);
 		if (!category) return;
 
 		category.count++;
+		totalMemoCount++;
 	});
 
-	const list = Array.from(memoCateoryMap.values());
+	const list = Array.from(memoCategoryMap.values());
 
-	return { list, total: list.length };
+	return { list, total: list.length, meta: { totalMemoCount } };
 };

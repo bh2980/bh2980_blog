@@ -2,7 +2,11 @@ import type { MemoCategory, PostCategory } from "@/keystatic/collections";
 import type { CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
 import type { Expand } from "@/utils/types";
 
-export type ListResult<T> = { list: T[]; total: number };
+export type ListResult<T, M extends Record<string, unknown> | undefined = undefined> = {
+	list: T[];
+	total: number;
+	meta?: M;
+};
 
 export type ListOptions = {
 	category?: string;
@@ -22,4 +26,7 @@ export type Post = Expand<
 export type Collection = Expand<CollectionEntry>;
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
+export type MemoCategoryListMeta = { totalMemoCount: number };
+
 export type PostCategoryWithCount = PostCategory & { count: number };
+export type PostCategoryListMeta = { totalPostCount: number };

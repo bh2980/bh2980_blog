@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListResult, Memo, MemoCategoryWithCount } from "@/libs/contents/types";
+import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const MemoList = async ({
@@ -8,7 +8,7 @@ export const MemoList = async ({
 	memoList,
 }: {
 	currentCategory?: string;
-	categoryList: ListResult<MemoCategoryWithCount>;
+	categoryList: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
 	memoList: ListResult<Memo>;
 }) => {
 	return (
@@ -30,7 +30,7 @@ export const MemoList = async ({
 						{!currentCategory && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({memoList.total})</span>
+						<span className="inline-block">전체 ({categoryList.meta?.totalMemoCount})</span>
 					</Link>
 					{categoryList.list.map((category) => (
 						<Link

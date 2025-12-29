@@ -4,7 +4,7 @@ import { POST_CATEGORIES } from "@/keystatic/collections";
 import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Post, PostCategoryWithCount, Tag } from "./types";
+import type { ListOptions, ListResult, Post, PostCategoryListMeta, PostCategoryWithCount, Tag } from "./types";
 
 const normalizePost = (
 	post: PostEntry,
@@ -65,19 +65,22 @@ export const getPostList = async ({ category: categoryFilter }: ListOptions = {}
 	return { list, total: list.length };
 };
 
-export const getPostCategoryList = async (): Promise<ListResult<PostCategoryWithCount>> => {
+export const getPostCategoryList = async (): Promise<ListResult<PostCategoryWithCount, PostCategoryListMeta>> => {
 	const { postMap } = await getContentMap();
 
 	const postCategoryMap = new Map(POST_CATEGORIES.map((category) => [category.value, { ...category, count: 0 }]));
 
+	let totalPostCount = 0;
+
 	postMap.forEach((post) => {
 		const category = postCategoryMap.get(post.category);
-		if (!category) return;
+		if (post.status === "draft" || !category) return;
 
 		category.count++;
+		totalPostCount++;
 	});
 
 	const list = Array.from(postCategoryMap.values());
 
-	return { list, total: list.length };
+	return { list, total: list.length, meta: { totalPostCount } };
 };
