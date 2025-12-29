@@ -28,7 +28,7 @@ export const PostList = ({
 						{!currentCategory && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({postList.total})</span>
+						<span className="inline-block">전체 ({categoryList.meta?.totalPostCount})</span>
 					</Link>
 					{categoryList.list.map((category) => (
 						<Link
