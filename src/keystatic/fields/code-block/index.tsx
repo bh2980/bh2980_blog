@@ -3,7 +3,7 @@ import type { RawCode } from "codehike/code";
 import { basicFormFieldWithSimpleReaderParse, FieldDataError } from "@/keystatic/libs/custom-field";
 import { CodeInput } from "./ui";
 
-export const codePreview = ({
+export const codeBlockField = ({
 	label,
 	validation,
 }: {

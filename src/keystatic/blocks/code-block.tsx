@@ -1,11 +1,11 @@
 import { block } from "@keystatic/core/content-components";
-import { codePreview } from "../fields/code-preview";
-import { CodePreview } from "../fields/code-preview/ui";
+import { codeBlockField } from "../fields";
+import { CodeBlock } from "../fields/code-block/ui";
 
-export const codeBlock = block({
+export const codeBlockBlock = block({
 	label: "코드 블럭",
 	schema: {
-		codeblock: codePreview({ label: "코드" }),
+		codeblock: codeBlockField({ label: "코드" }),
 	},
-	ContentView: ({ value }) => <CodePreview codeblock={value.codeblock} />,
+	ContentView: ({ value }) => <CodeBlock codeblock={value.codeblock} />,
 });

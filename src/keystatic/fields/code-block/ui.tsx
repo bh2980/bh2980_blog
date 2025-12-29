@@ -36,7 +36,7 @@ const EDITOR_LANG_OPTION = [
 	{ label: "Plain Text", value: "text" },
 ];
 
-export function CodePreview({ codeblock }: { codeblock: RawCode }) {
+export function CodeBlock({ codeblock }: { codeblock: RawCode }) {
 	const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
 
 	const setCode = useCallback(async (cb: RawCode) => {
@@ -95,7 +95,7 @@ export function CodeInput(props: FormFieldInputProps<RawCode>) {
 				onChange={(e) => props.onChange({ lang: props.value?.lang, meta: props.value?.meta, value: e.target.value })}
 			/>
 
-			<CodePreview codeblock={props.value} />
+			<CodeBlock codeblock={props.value} />
 		</div>
 	);
 }
