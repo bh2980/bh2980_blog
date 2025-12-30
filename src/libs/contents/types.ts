@@ -15,6 +15,7 @@ export type ListOptions = {
 export type WithSlug<T> = { slug: string } & T;
 
 export type Tag = Expand<WithSlug<TagEntry>>;
+export type Collection = Expand<WithSlug<CollectionEntry>>;
 export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & { category: MemoCategory; tags: Tag[] };
 export type Post = Expand<
 	Omit<WithSlug<PostEntry>, "tags" | "category"> & {
@@ -25,7 +26,6 @@ export type Post = Expand<
 		replacementPost?: string;
 	}
 >;
-export type Collection = Expand<CollectionEntry & { slug: string }>;
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
 export type MemoCategoryListMeta = { totalMemoCount: number };
