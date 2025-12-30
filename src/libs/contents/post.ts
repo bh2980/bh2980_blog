@@ -4,10 +4,18 @@ import { POST_CATEGORIES } from "@/keystatic/collections";
 import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Post, PostCategoryListMeta, PostCategoryWithCount, Tag } from "./types";
+import type {
+	ListOptions,
+	ListResult,
+	Post,
+	PostCategoryListMeta,
+	PostCategoryWithCount,
+	Tag,
+	WithSlug,
+} from "./types";
 
 const normalizePost = (
-	post: PostEntry,
+	post: WithSlug<PostEntry>,
 	tagMap: Map<string, Tag>,
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Post | null => {

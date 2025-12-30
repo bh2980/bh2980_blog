@@ -3,10 +3,18 @@ import { MEMO_CATEGORY_LIST } from "@/keystatic/collections";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListOptions, ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount, Tag } from "./types";
+import type {
+	ListOptions,
+	ListResult,
+	Memo,
+	MemoCategoryListMeta,
+	MemoCategoryWithCount,
+	Tag,
+	WithSlug,
+} from "./types";
 
 const normalizeMemo = (
-	memo: MemoEntry,
+	memo: WithSlug<MemoEntry>,
 	tagMap: Map<string, Tag>,
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Memo | null => {

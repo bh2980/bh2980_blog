@@ -30,13 +30,14 @@ export const postCollection = collection({
 
 		category: fields.select({
 			label: "카테고리",
-			defaultValue: "deep-dive",
+			defaultValue: "implementation",
 			options: POST_CATEGORIES,
 		}),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 			slug: { generate: (name) => mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), POST_CATEGORIES) },
 		}),
+		excerpt: fields.text({ label: "요약", description: "입력하지 않을 경우 자동 생성" }),
 		publishedDate: fields.datetime({
 			label: "발행일",
 			defaultValue: { kind: "now" },
