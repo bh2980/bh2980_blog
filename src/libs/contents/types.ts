@@ -12,10 +12,12 @@ export type ListOptions = {
 	category?: string;
 };
 
-export type Tag = TagEntry;
-export type Memo = Expand<Omit<MemoEntry, "tags" | "category"> & { category: MemoCategory; tags: Tag[] }>;
+export type WithSlug<T> = { slug: string } & T;
+
+export type Tag = Expand<WithSlug<TagEntry>>;
+export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & { category: MemoCategory; tags: Tag[] };
 export type Post = Expand<
-	Omit<PostEntry, "tags" | "category"> & {
+	Omit<WithSlug<PostEntry>, "tags" | "category"> & {
 		category: PostCategory;
 		tags: Tag[];
 		isStale?: boolean;
@@ -23,7 +25,7 @@ export type Post = Expand<
 		replacementPost?: string;
 	}
 >;
-export type Collection = Expand<CollectionEntry>;
+export type Collection = Expand<CollectionEntry & { slug: string }>;
 
 export type MemoCategoryWithCount = MemoCategory & { count: number };
 export type MemoCategoryListMeta = { totalMemoCount: number };
