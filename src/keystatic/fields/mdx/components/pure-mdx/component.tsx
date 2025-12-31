@@ -1,7 +1,7 @@
 // src/keystatic/fields/mdx-components/editor-pure-mdx-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import { Code, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { lazy, Suspense } from "react";
 
 const DEFAULT_MDX_SOURCE = [
@@ -57,7 +57,7 @@ const DEFAULT_MDX_SOURCE = [
 ].join("\n");
 
 const LazyPureMdxNodeView = lazy(() =>
-	import("./editor-pure-mdx-block.client").then((m) => ({
+	import("./node-view.client").then((m) => ({
 		default: m.PureMdxBlockNodeView,
 	})),
 );
@@ -70,7 +70,7 @@ function PureMdxNodeViewProxy(props: any) {
 	);
 }
 
-export const editorPureMdxBlock = block({
+export const pureMDX = block({
 	label: "MDX",
 	icon: <FileText />,
 	schema: {

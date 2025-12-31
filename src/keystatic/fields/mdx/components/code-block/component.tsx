@@ -3,10 +3,10 @@ import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
 import { Code } from "lucide-react";
 import { lazy, Suspense } from "react";
-import { EDITOR_LANG_OPTION } from "./editor-code-block.constants";
+import { EDITOR_LANG_OPTION } from "./constants";
 
 const LazyCodeBlockNodeView = lazy(() =>
-	import("./editor-code-block.client").then((m) => ({
+	import("./node-view.client").then((m) => ({
 		default: m.CodeBlockNodeView,
 	})),
 );
@@ -19,7 +19,7 @@ function CodeBlockNodeViewProxy(props: any) {
 	);
 }
 
-export const editorCodeBlock = block({
+export const codeblock = block({
 	label: "코드 블럭",
 	icon: <Code />,
 	schema: {

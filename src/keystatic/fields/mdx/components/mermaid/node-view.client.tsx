@@ -7,7 +7,7 @@ import { Mermaid } from "@/components/mermaid";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/utils/cn";
-import { CodeEditor } from "./code-editor";
+import { CodeEditor } from "../shared/code-editor";
 
 function stopBubble(e: any) {
 	e.stopPropagation?.();

@@ -6,7 +6,7 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
-import { CodeEditor } from "./code-editor";
+import { CodeEditor } from "../shared/code-editor";
 
 function stopBubble(e: any) {
 	e.stopPropagation?.();

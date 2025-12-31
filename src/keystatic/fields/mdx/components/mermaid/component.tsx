@@ -1,11 +1,11 @@
 // src/keystatic/fields/mdx-components/editor-mermaid-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import { ChartNetwork, Code } from "lucide-react";
+import { ChartNetwork } from "lucide-react";
 import { lazy, Suspense } from "react";
 
 const LazyMermaidBlockNodeView = lazy(() =>
-	import("./editor-mermaid-block.client").then((m) => ({
+	import("./node-view.client").then((m) => ({
 		default: m.MermaidBlockNodeView,
 	})),
 );
@@ -18,7 +18,7 @@ function MermaidBlockNodeViewProxy(props: any) {
 	);
 }
 
-export const editorMermaidBlock = block({
+export const mermaid = block({
 	label: "Mermaid 차트",
 	icon: <ChartNetwork />,
 	schema: {

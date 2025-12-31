@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/utils/cn";
-import { CodeEditor } from "./code-editor";
-import { CodePreview } from "./code-preview.client";
-import { type CodeBlockValue, EDITOR_LANG_OPTION, type EditorLang } from "./editor-code-block.constants";
+import { CodeEditor } from "../shared/code-editor";
+import { CodePreview } from "../shared/code-preview.client";
+import { type CodeBlockValue, EDITOR_LANG_OPTION, type EditorLang } from "./constants";
 
 function stopBubble(e: any) {
 	e.stopPropagation?.();
