@@ -60,7 +60,7 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 				</Button>
 			</div>
 
-			<Tabs defaultValue="preview" className="w-full">
+			<Tabs defaultValue="code" className="w-full">
 				<TabsList className="w-fit">
 					<TabsTrigger value="code">Code</TabsTrigger>
 					<TabsTrigger value="preview">Preview</TabsTrigger>

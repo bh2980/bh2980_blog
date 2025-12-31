@@ -72,7 +72,7 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 				</Button>
 			</div>
 
-			<Callout variant={calloutType} title={calloutType.toUpperCase()} description={value.description ?? ""}>
+			<Callout variant={calloutType} title={calloutType.toUpperCase()} description={value.description ?? ""} editor>
 				<div className="rounded-md border border-slate-200 bg-white/60 p-2">{children}</div>
 			</Callout>
 		</div>
