@@ -1,6 +1,6 @@
 import { fields as keystaticFields } from "@keystatic/core";
 import { colorPicker } from "./color-picker";
-import { mdx } from "./mdx";
+import { mdx } from "./mdx/mdx";
 import { slug } from "./slug";
 
 export const fields = {
@@ -9,5 +9,3 @@ export const fields = {
 	mdx,
 	colorPicker,
 };
-
-export * from "./code-block";

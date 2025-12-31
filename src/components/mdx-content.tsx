@@ -2,6 +2,7 @@ import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { Callout } from "./callout";
 import { Code, CodeWithTooltips } from "./code";
 import { CodeWithTabs } from "./code-handler";
 import { Mermaid } from "./mermaid";
@@ -28,6 +29,7 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 				CodeWithTabs,
 				CodeWithTooltips,
 				PureMdx: MDXContent,
+				Callout,
 			}}
 		/>
 	);

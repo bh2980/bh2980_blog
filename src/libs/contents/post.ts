@@ -2,6 +2,7 @@ import "server-only";
 import { differenceInYears } from "date-fns";
 import { POST_CATEGORIES } from "@/keystatic/collections";
 import type { PostEntry } from "@/keystatic/types";
+import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
 import type {
@@ -19,7 +20,7 @@ const normalizePost = (
 	tagMap: Map<string, Tag>,
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Post | null => {
-	if (post.status === "draft") return null;
+	if (keystaticConfig.storage.kind === "github" && post.status === "draft") return null;
 
 	const category = POST_CATEGORIES.find((category) => category.value === post.category);
 	if (!category) return null;
