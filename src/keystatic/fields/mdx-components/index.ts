@@ -6,6 +6,6 @@ import { editorPureMdxBlock } from "./editor-pure-mdx-block";
 export const components = {
 	Callout: editorCallout,
 	Code: editorCodeBlock,
-	// Mermaid: editorMermaidBlock,
+	Mermaid: editorMermaidBlock,
 	// PureMdx: editorPureMdxBlock,
 };

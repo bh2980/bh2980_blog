@@ -24,6 +24,7 @@ import "prismjs/components/prism-bash";
 import "prismjs/components/prism-sql";
 import "prismjs/components/prism-graphql";
 import "prismjs/components/prism-docker";
+import "prismjs/components/prism-mermaid";
 
 const escapeHtml = (s: string) =>
 	s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
