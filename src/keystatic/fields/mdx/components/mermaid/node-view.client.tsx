@@ -70,7 +70,7 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 					{/* blur 캡처로도 커밋되게(탭 전환/바깥 클릭 포함) */}
 					<div onBlurCapture={commit}>
 						<CodeEditor
-							lang={"mermaid" as any}
+							lang={"mermaid"}
 							code={local.chart}
 							onCodeChange={(next) => setLocal({ chart: next })}
 							onCommit={commit} // Cmd/Ctrl+Enter용
