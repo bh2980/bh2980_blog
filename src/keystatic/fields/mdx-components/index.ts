@@ -7,5 +7,5 @@ export const components = {
 	Callout: editorCallout,
 	Code: editorCodeBlock,
 	Mermaid: editorMermaidBlock,
-	// PureMdx: editorPureMdxBlock,
+	PureMdx: editorPureMdxBlock,
 };

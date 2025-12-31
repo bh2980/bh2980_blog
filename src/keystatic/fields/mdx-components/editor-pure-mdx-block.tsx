@@ -1,18 +1,80 @@
+// src/keystatic/fields/mdx-components/editor-pure-mdx-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import { CodePreview } from "./code-preview.client";
+import { Code } from "lucide-react";
+import { lazy, Suspense } from "react";
+
+const DEFAULT_MDX_SOURCE = [
+	"<CodeWithTabs>",
+	"",
+	"```js !!tabs main.js",
+	"function lorem(ipsum, dolor = 1) {",
+	"const sit = ipsum == null ? 0 : ipsum.sit",
+	"dolor = sit - amet(dolor)",
+	"return sit ? consectetur(ipsum) : []",
+	"}",
+	"```",
+	"",
+	"```css !!tabs styles.css",
+	"body {",
+	"margin: 0;",
+	"padding: 0;",
+	"}",
+	"```",
+	"",
+	"</CodeWithTabs>",
+	"",
+	"<CodeWithTooltips>",
+	"",
+	"```js !code",
+	"// !tooltip[/lorem/] description",
+	"function lorem(ipsum, dolor = 1) {",
+	"const sit = ipsum == null ? 0 : ipsum.sit",
+	"dolor = sit - amet(dolor)",
+	"// !tooltip[/consectetur/] inspect",
+	"return sit ? consectetur(ipsum) : []",
+	"}",
+	"```",
+	"",
+	"## !!tooltips description",
+	"",
+	"### Hello world",
+	"",
+	"Lorem ipsum **dolor** sit amet `consectetur`.",
+	"",
+	"Adipiscing elit _sed_ do eiusmod.",
+	"",
+	"## !!tooltips inspect",
+	"",
+	"```js",
+	"function consectetur(ipsum) {",
+	"const { a, b } = ipsum",
+	"return a + b",
+	"}",
+	"```",
+	"",
+	"</CodeWithTooltips>",
+].join("\n");
+
+const LazyPureMdxNodeView = lazy(() =>
+	import("./editor-pure-mdx-block.client").then((m) => ({
+		default: m.PureMdxBlockNodeView,
+	})),
+);
+
+function PureMdxNodeViewProxy(props: any) {
+	return (
+		<Suspense fallback={null}>
+			<LazyPureMdxNodeView {...props} />
+		</Suspense>
+	);
+}
 
 export const editorPureMdxBlock = block({
 	label: "MDX",
-	schema: { source: fields.text({ label: "source" }) },
-	ContentView: (props) => (
-		<div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-			<div className="mb-2 font-bold text-slate-500 text-xs uppercase">MDX PREVIEW</div>
-			{props.value.source ? (
-				<CodePreview codeblock={{ value: props.value.source, lang: "md", meta: "" }} />
-			) : (
-				<div className="text-slate-400 text-sm">코드를 입력하면 미리보기가 생성됩니다.</div>
-			)}
-		</div>
-	),
+	icon: <Code />,
+	schema: {
+		source: fields.text({ label: "source", multiline: true, defaultValue: DEFAULT_MDX_SOURCE }),
+	},
+	NodeView: PureMdxNodeViewProxy,
 });
