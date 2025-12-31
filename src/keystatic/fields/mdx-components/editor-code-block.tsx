@@ -1,12 +1,11 @@
 // src/keystatic/fields/mdx-components/editor-code-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import * as React from "react";
-
+import { Code } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { EDITOR_LANG_OPTION } from "./editor-code-block.constants";
 
-// 클라 전용 NodeView를 "정적 import"하지 않고 lazy로만 불러오기
-const LazyCodeBlockNodeView = React.lazy(() =>
+const LazyCodeBlockNodeView = lazy(() =>
 	import("./editor-code-block.client").then((m) => ({
 		default: m.CodeBlockNodeView,
 	})),
@@ -14,14 +13,15 @@ const LazyCodeBlockNodeView = React.lazy(() =>
 
 function CodeBlockNodeViewProxy(props: any) {
 	return (
-		<React.Suspense fallback={null}>
+		<Suspense fallback={null}>
 			<LazyCodeBlockNodeView {...props} />
-		</React.Suspense>
+		</Suspense>
 	);
 }
 
 export const editorCodeBlock = block({
 	label: "코드 블럭",
+	icon: <Code />,
 	schema: {
 		codeblock: fields.object({
 			lang: fields.select({
