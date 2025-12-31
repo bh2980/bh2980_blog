@@ -23,8 +23,9 @@ export const PostList = ({
 					<Link
 						href={"/posts"}
 						className={cn(
-							!currentCategory && "!bg-slate-400/25 dark:!bg-slate-100/20 border-slate-400 dark:border-slate-100/30",
-							"rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
+							!currentCategory && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
+							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
 						{!currentCategory && (
@@ -37,9 +38,10 @@ export const PostList = ({
 							href={`/posts/${category.value}`}
 							key={category.value}
 							className={cn(
-								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								currentCategory === category.value &&
-									"!bg-slate-400/25 dark:!bg-slate-100/20 border-slate-400 dark:border-slate-100/30",
+									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
+								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
 						>
 							{currentCategory === category.value && (
