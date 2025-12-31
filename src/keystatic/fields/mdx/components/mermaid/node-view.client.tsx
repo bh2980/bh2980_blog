@@ -62,19 +62,9 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 
 			<Tabs defaultValue="preview" className="w-full">
 				<TabsList className="w-fit">
-					<TabsTrigger value="preview">Preview</TabsTrigger>
 					<TabsTrigger value="code">Code</TabsTrigger>
+					<TabsTrigger value="preview">Preview</TabsTrigger>
 				</TabsList>
-
-				<TabsContent value="preview" className="mt-2">
-					<div className="rounded-md border bg-white p-3">
-						{local.chart ? (
-							<Mermaid chart={local.chart} />
-						) : (
-							<div className="text-slate-400 text-sm">코드를 입력하면 미리보기가 생성됩니다.</div>
-						)}
-					</div>
-				</TabsContent>
 
 				<TabsContent value="code" className="mt-2">
 					{/* blur 캡처로도 커밋되게(탭 전환/바깥 클릭 포함) */}
@@ -87,6 +77,16 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 						/>
 					</div>
 					<div className="mt-2 text-slate-500 text-xs">저장은 포커스가 해제되거나 Cmd/Ctrl+Enter에서만 반영됩니다.</div>
+				</TabsContent>
+
+				<TabsContent value="preview" className="mt-2">
+					<div className="rounded-md border bg-white p-3">
+						{local.chart ? (
+							<Mermaid chart={local.chart} />
+						) : (
+							<div className="text-slate-400 text-sm">코드를 입력하면 미리보기가 생성됩니다.</div>
+						)}
+					</div>
 				</TabsContent>
 			</Tabs>
 		</div>
