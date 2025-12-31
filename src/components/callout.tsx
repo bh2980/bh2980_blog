@@ -3,7 +3,7 @@ import type { VariantProps } from "class-variance-authority";
 import { AlertCircle, AlertOctagon, AlertTriangle, Info, Lightbulb } from "lucide-react";
 import type { PropsWithChildren } from "react";
 
-import { Alert, AlertTitle, type alertVariants } from "./ui/alert";
+import { Alert, AlertDescription, AlertTitle, type alertVariants } from "./ui/alert";
 
 type CalloutVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
 
@@ -28,10 +28,12 @@ export const Callout = ({
 	title,
 	description,
 	children,
+	preview = false,
 }: VariantProps<typeof alertVariants> &
 	PropsWithChildren<{
 		title?: string;
 		description?: string;
+		preview?: boolean;
 	}>) => {
 	const v = (variant as CalloutVariant) ?? "note";
 	const Icon = ICON_BY_VARIANT[v] ?? AlertCircle;
@@ -41,7 +43,11 @@ export const Callout = ({
 		<Alert variant={v}>
 			<Icon />
 			<AlertTitle>{resolvedTitle}</AlertTitle>
-			<div className="col-start-2">{children || description}</div>
+			{preview ? (
+				<div className="col-start-2">{children || description}</div>
+			) : (
+				<AlertDescription className="mt-1 [&_p]:m-0">{children || description}</AlertDescription>
+			)}
 		</Alert>
 	);
 };
