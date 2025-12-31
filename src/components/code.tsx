@@ -25,7 +25,7 @@ export const CodeTemplate = ({
 }: ComponentProps<typeof Pre> & { hideHeader?: boolean }) => (
 	<div className={cn("relative overflow-hidden rounded-lg", className)}>
 		{code.meta && !hideHeader && (
-			<div className="bg-zinc-600 py-2 text-center font-bold text-sm text-zinc-200">{code.meta}</div>
+			<div className="bg-slate-600 py-2 text-center font-bold text-slate-200 text-sm">{code.meta}</div>
 		)}
 		<Pre
 			className={cn("!my-0 !px-0", code.meta && "rounded-t-none")}

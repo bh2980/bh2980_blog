@@ -4,8 +4,8 @@ export default function Home() {
 	return (
 		<div className="flex flex-1 items-center justify-center">
 			<section className="text-center">
-				<h1 className="mb-4 font-bold text-4xl text-gray-900 dark:text-gray-100">안녕하세요, bh2980입니다 👋</h1>
-				<p className="mx-auto mb-8 max-w-2xl text-gray-600 text-xl dark:text-gray-300">
+				<h1 className="mb-4 font-bold text-4xl text-slate-900 dark:text-slate-100">안녕하세요, bh2980입니다 👋</h1>
+				<p className="mx-auto mb-8 max-w-2xl text-slate-600 text-xl dark:text-slate-300">
 					개발하면서 배운 것들과 경험을 공유하는 공간입니다.
 				</p>
 				<Link

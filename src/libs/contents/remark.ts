@@ -20,7 +20,7 @@ function hasRealText(node: Paragraph): boolean {
 	});
 }
 
-export function getSafeExcerpt(mdx: string, maxLength = 150) {
+export function getSafeExcerpt(mdx: string, maxLength = 200) {
 	if (!mdx) return "";
 
 	const tree = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).parse(mdx) as Root;
@@ -45,5 +45,5 @@ export function getSafeExcerpt(mdx: string, maxLength = 150) {
 	if (!text) return "";
 	if (text.length <= maxLength) return text;
 
-	return `${text.slice(0, maxLength).trim()}…`;
+	return `${text.slice(0, maxLength).trim()}`;
 }
