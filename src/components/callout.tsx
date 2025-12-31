@@ -28,12 +28,12 @@ export const Callout = ({
 	title,
 	description,
 	children,
-	edtior = false,
+	editor = false,
 }: VariantProps<typeof alertVariants> &
 	PropsWithChildren<{
 		title?: string;
 		description?: string;
-		edtior?: boolean;
+		editor?: boolean;
 	}>) => {
 	const v = variant ?? "note";
 	const Icon = ICON_BY_VARIANT[v];
@@ -43,7 +43,7 @@ export const Callout = ({
 		<Alert variant={v}>
 			<Icon />
 			<AlertTitle>{resolvedTitle}</AlertTitle>
-			{edtior ? (
+			{editor ? (
 				<div className="col-start-2 w-full">{children || description}</div>
 			) : (
 				<AlertDescription className="mt-1 [&_p]:m-0">{children || description}</AlertDescription>
