@@ -104,7 +104,7 @@ export function CodeBlockNodeView({ value, onChange, onRemove, isSelected }: Pro
 						onCodeChange={(next) => setLocal((p) => ({ ...p, value: next }))}
 						onCommit={commit} // Cmd/Ctrl+Enter용
 					/>
-					<div className="mt-2 text-slate-500 text-xs">저장은 포커스가 해제되거나 Cmd/Ctrl+Enter에서만 반영됩니다.</div>
+					<div className="mt-2 text-slate-500 text-xs">저장은 포커스가 해제될 때만 반영됩니다.</div>
 				</TabsContent>
 
 				<TabsContent value="preview" className="mt-2">

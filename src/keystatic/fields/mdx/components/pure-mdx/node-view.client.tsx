@@ -69,7 +69,7 @@ export function PureMdxBlockNodeView({ value, onChange, onRemove, isSelected }: 
 				/>
 			</div>
 
-			<div className="text-slate-500 text-xs">저장은 포커스가 해제되거나 Cmd/Ctrl+Enter에서만 반영됩니다.</div>
+			<div className="text-slate-500 text-xs">저장은 포커스가 해제될 때만 반영됩니다.</div>
 		</div>
 	);
 }
