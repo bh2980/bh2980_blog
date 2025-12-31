@@ -60,7 +60,7 @@ export default function Navigation({ className }: NavigationProps) {
 								href="/posts"
 								className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
 							>
-								게시글
+								블로그
 							</Link>
 							<Link
 								href="/memos"
