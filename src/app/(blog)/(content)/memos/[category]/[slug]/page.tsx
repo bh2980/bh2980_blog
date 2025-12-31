@@ -16,7 +16,7 @@ export default async function MemoPost({ params }: { params: Promise<{ category:
 	const content = await memo.content();
 
 	return (
-		<div className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-12">
+		<div className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-12">
 			<article className="prose dark:prose-invert max-w-none">
 				<header className="flex flex-col gap-3 border-slate-200 border-b pb-6">
 					<h1 className="!m-0 !p-0 font-bold text-3xl text-slate-900 dark:text-slate-100">{memo.title}</h1>
