@@ -74,7 +74,7 @@ export const PostList = ({
 										<time>{post.publishedDate}</time>
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-gray-300">{post.title}</h2>
-									<p className="line-clamp-2">{post.excerpt}</p>
+									<p className="line-clamp-2 text-muted-foreground text-sm">{post.excerpt}</p>
 								</article>
 							</Link>
 						</Fragment>
