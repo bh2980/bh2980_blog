@@ -14,8 +14,8 @@ export const MemoList = async ({
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-12">
-				<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-gray-100">메모장 📝</h1>
-				<p className="mb-8 text-gray-600 text-lg dark:text-gray-300">
+				<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-gray-100">메모장</h1>
+				<p className="mb-8 text-gray-600 dark:text-gray-300">
 					알고리즘 풀이, CSS 트릭, 간단한 개념 정리 등 작은 메모들을 모아둡니다.
 				</p>
 

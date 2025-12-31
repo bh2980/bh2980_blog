@@ -15,7 +15,7 @@ export const PostList = ({
 		<div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-12">
 				<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-gray-100">블로그</h1>
-				<p className="mb-8 text-gray-600 text-lg dark:text-gray-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
+				<p className="mb-8 text-gray-600 dark:text-gray-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
 
 				<div className="mb-8 flex flex-wrap gap-2">
 					<Link
