@@ -42,7 +42,7 @@ export default function Navigation({ className }: NavigationProps) {
 				<div className="flex h-16 items-center justify-between">
 					<Link
 						href="/"
-						className="font-bold text-gray-900 text-xl hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
+						className="font-bold text-slate-900 text-xl hover:text-slate-700 dark:text-slate-100 dark:hover:text-slate-300"
 					>
 						bh2980.dev
 					</Link>
@@ -52,26 +52,26 @@ export default function Navigation({ className }: NavigationProps) {
 						<div className="flex space-x-6">
 							<Link
 								href="/"
-								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
 							>
 								홈
 							</Link>
 							<Link
 								href="/posts"
-								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
 							>
 								게시글
 							</Link>
 							<Link
 								href="/memos"
-								className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+								className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
 							>
 								메모장
 							</Link>
 						</div>
 						<button
 							onClick={toggleTheme}
-							className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+							className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
 							aria-label="다크 모드 토글"
 							type="button"
 						>

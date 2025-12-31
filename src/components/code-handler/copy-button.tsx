@@ -19,7 +19,7 @@ export function CopyButton({ text }: { text: string }) {
 
 	return (
 		<button
-			className="absolute top-1 right-1 rounded p-2 text-zinc-200 hover:bg-gray-400/20"
+			className="absolute top-1 right-1 rounded p-2 text-slate-200 hover:bg-slate-400/20"
 			aria-label="클립보드에 복사하기"
 			onClick={handleCopy}
 			type="button"

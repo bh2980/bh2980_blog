@@ -13,7 +13,7 @@ export const ColorPickerFieldInput = (props: ColorPickerFieldInputProps) => {
 					{props.label}
 					<div className="inline text-2xl text-[var(--kui-color-foreground-critical)]">*</div>
 				</span>
-				{!props.description && <span className="text-gray-500 text-sm">{props.description}</span>}
+				{!props.description && <span className="text-slate-500 text-sm">{props.description}</span>}
 				<input
 					className="h-12 w-12"
 					type="color"

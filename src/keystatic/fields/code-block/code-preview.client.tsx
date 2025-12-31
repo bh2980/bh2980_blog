@@ -19,14 +19,14 @@ export function CodePreview({ codeblock }: { codeblock: RawCode }) {
 
 	if (!highlighted)
 		return (
-			<div className="relative overflow-hidden rounded-lg bg-zinc-950">
-				{codeblock.meta && <div className="py-2 text-center font-bold text-sm text-zinc-400">{codeblock.meta}</div>}
+			<div className="relative overflow-hidden rounded-lg bg-slate-950">
+				{codeblock.meta && <div className="py-2 text-center font-bold text-slate-400 text-sm">{codeblock.meta}</div>}
 			</div>
 		);
 
 	return (
-		<div className="relative overflow-hidden rounded-lg bg-zinc-950">
-			{codeblock.meta && <div className="py-2 text-center font-bold text-sm text-zinc-400">{codeblock.meta}</div>}
+		<div className="relative overflow-hidden rounded-lg bg-slate-950">
+			{codeblock.meta && <div className="py-2 text-center font-bold text-slate-400 text-sm">{codeblock.meta}</div>}
 			<Pre
 				className="overflow-auto"
 				code={highlighted}

@@ -76,13 +76,13 @@ export const CodeEditor = (props: FormFieldInputProps<{ value: string; lang: str
 	const lineNumbersText = Array.from({ length: lineCount }, (_, i) => String(i + 1)).join("\n");
 
 	return (
-		<div className="flex rounded-md border bg-zinc-800">
+		<div className="flex rounded-md border bg-slate-800">
 			<pre
 				aria-hidden
 				className={cn([
 					"top-0 left-0 m-0 w-12",
 					"p-5 pr-3",
-					"text-right text-zinc-400",
+					"text-right text-slate-400",
 					"pointer-events-none select-none",
 					"whitespace-pre",
 					"border-white/10 border-r",
