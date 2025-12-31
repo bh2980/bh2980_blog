@@ -1,6 +1,6 @@
 // components/callout.tsx
 import type { VariantProps } from "class-variance-authority";
-import { AlertCircle, AlertTriangle, Info, Lightbulb, XCircle } from "lucide-react";
+import { AlertCircle, AlertOctagon, AlertTriangle, Info, Lightbulb } from "lucide-react";
 import type { PropsWithChildren } from "react";
 
 import { Alert, AlertTitle, type alertVariants } from "./ui/alert";
@@ -12,7 +12,7 @@ const ICON_BY_VARIANT: Record<CalloutVariant, React.ComponentType<{ className?: 
 	tip: Lightbulb,
 	info: Info,
 	warning: AlertTriangle,
-	danger: XCircle,
+	danger: AlertOctagon,
 };
 
 const TITLE_BY_VARIANT: Record<CalloutVariant, string> = {
