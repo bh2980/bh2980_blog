@@ -47,22 +47,17 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 			<div className="flex items-center justify-between gap-2">
 				<div className="font-bold text-slate-500 text-xs uppercase">MERMAID</div>
 
-				<div className="flex items-center gap-2">
-					<Button type="button" variant="secondary" onClick={commit} onMouseDown={stopBubble}>
-						Save
-					</Button>
-					<Button
-						type="button"
-						variant="destructive"
-						size="icon"
-						onClick={onRemove}
-						onMouseDown={stopBubble}
-						data-ks-stop-event
-						aria-label="Remove mermaid block"
-					>
-						<Trash2 className="h-4 w-4" />
-					</Button>
-				</div>
+				<Button
+					type="button"
+					variant="destructive"
+					size="icon"
+					onClick={onRemove}
+					onMouseDown={stopBubble}
+					data-ks-stop-event
+					aria-label="Remove mermaid block"
+				>
+					<Trash2 className="h-4 w-4" />
+				</Button>
 			</div>
 
 			<Tabs defaultValue="preview" className="w-full">
@@ -91,7 +86,7 @@ export function MermaidBlockNodeView({ value, onChange, onRemove, isSelected }: 
 							onCommit={commit} // Cmd/Ctrl+Enter용
 						/>
 					</div>
-					<div className="mt-2 text-slate-500 text-xs">저장은 Save / blur / Cmd(Ctrl)+Enter에서만 반영됩니다.</div>
+					<div className="mt-2 text-slate-500 text-xs">저장은 포커스가 해제되거나 Cmd/Ctrl+Enter에서만 반영됩니다.</div>
 				</TabsContent>
 			</Tabs>
 		</div>

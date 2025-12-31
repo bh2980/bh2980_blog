@@ -46,23 +46,17 @@ export function PureMdxBlockNodeView({ value, onChange, onRemove, isSelected }: 
 			<div className="flex items-center justify-between gap-2">
 				<div className="font-bold text-slate-500 text-xs uppercase">MDX</div>
 
-				<div className="flex items-center gap-2">
-					<Button type="button" variant="secondary" onClick={commit} onMouseDown={stopBubble}>
-						Save
-					</Button>
-
-					<Button
-						type="button"
-						variant="destructive"
-						size="icon"
-						onClick={onRemove}
-						onMouseDown={stopBubble}
-						data-ks-stop-event
-						aria-label="Remove mdx block"
-					>
-						<Trash2 className="h-4 w-4" />
-					</Button>
-				</div>
+				<Button
+					type="button"
+					variant="destructive"
+					size="icon"
+					onClick={onRemove}
+					onMouseDown={stopBubble}
+					data-ks-stop-event
+					aria-label="Remove mdx block"
+				>
+					<Trash2 className="h-4 w-4" />
+				</Button>
 			</div>
 
 			{/* blur로도 저장되게(바깥 클릭/탭 이동 포함) */}
@@ -75,7 +69,7 @@ export function PureMdxBlockNodeView({ value, onChange, onRemove, isSelected }: 
 				/>
 			</div>
 
-			<div className="text-slate-500 text-xs">저장은 Save / blur / Cmd(Ctrl)+Enter에서만 반영됩니다.</div>
+			<div className="text-slate-500 text-xs">저장은 포커스가 해제되거나 Cmd/Ctrl+Enter에서만 반영됩니다.</div>
 		</div>
 	);
 }

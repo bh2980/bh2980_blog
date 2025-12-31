@@ -1,7 +1,7 @@
 // src/keystatic/fields/mdx-components/editor-pure-mdx-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import { Code } from "lucide-react";
+import { Code, FileText } from "lucide-react";
 import { lazy, Suspense } from "react";
 
 const DEFAULT_MDX_SOURCE = [
@@ -72,7 +72,7 @@ function PureMdxNodeViewProxy(props: any) {
 
 export const editorPureMdxBlock = block({
 	label: "MDX",
-	icon: <Code />,
+	icon: <FileText />,
 	schema: {
 		source: fields.text({ label: "source", multiline: true, defaultValue: DEFAULT_MDX_SOURCE }),
 	},

@@ -1,7 +1,7 @@
 // src/keystatic/fields/mdx-components/editor-mermaid-block.tsx
 import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
-import { Code } from "lucide-react";
+import { ChartNetwork, Code } from "lucide-react";
 import { lazy, Suspense } from "react";
 
 const LazyMermaidBlockNodeView = lazy(() =>
@@ -20,7 +20,7 @@ function MermaidBlockNodeViewProxy(props: any) {
 
 export const editorMermaidBlock = block({
 	label: "Mermaid 차트",
-	icon: <Code />,
+	icon: <ChartNetwork />,
 	schema: {
 		chart: fields.text({
 			label: "차트 코드",
