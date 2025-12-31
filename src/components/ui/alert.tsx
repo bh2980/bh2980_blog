@@ -8,11 +8,26 @@ export const alertVariants = cva(
 	{
 		variants: {
 			variant: {
-				note: "bg-card text-card-foreground border-border",
-				tip: "bg-emerald-50 text-emerald-900 border-emerald-200 [&>svg]:text-emerald-700",
-				info: "bg-sky-50 text-sky-900 border-sky-200 [&>svg]:text-sky-700",
-				warning: "bg-amber-50 text-amber-900 border-amber-200 [&>svg]:text-amber-700",
-				danger: "bg-red-50 text-red-900 border-red-200 [&>svg]:text-red-700",
+				note: [
+					"bg-slate-100 border-border text-slate-900",
+					"dark:bg-slate-800/70 dark:border-slate-500/60 dark:text-slate-50",
+				].join(" "),
+				tip: [
+					"bg-emerald-50 text-emerald-900 border-emerald-200 [&>svg]:text-emerald-700",
+					"dark:bg-emerald-400/25 dark:text-emerald-50 dark:border-emerald-300/70 dark:[&>svg]:text-emerald-100",
+				].join(" "),
+				info: [
+					"bg-sky-50 text-sky-900 border-sky-200 [&>svg]:text-sky-700",
+					"dark:bg-sky-400/25 dark:text-sky-50 dark:border-sky-300/70 dark:[&>svg]:text-sky-100",
+				].join(" "),
+				warning: [
+					"bg-amber-50 text-amber-900 border-amber-200 [&>svg]:text-amber-700",
+					"dark:bg-amber-400/25 dark:text-amber-50 dark:border-amber-300/70 dark:[&>svg]:text-amber-100",
+				].join(" "),
+				danger: [
+					"bg-red-50 text-red-900 border-red-200 [&>svg]:text-red-700",
+					"dark:bg-red-400/25 dark:text-red-50 dark:border-red-300/70 dark:[&>svg]:text-red-100",
+				].join(" "),
 			},
 		},
 		defaultVariants: {
