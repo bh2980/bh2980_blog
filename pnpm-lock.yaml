@@ -4,16 +4,21 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@keystatic/core':
+    hash: ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704
+    path: patches/@keystatic__core.patch
+
 importers:
 
   .:
     dependencies:
       '@keystatic/core':
         specifier: ^0.5.48
-        version: 0.5.48(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 0.5.48(patch_hash=ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@keystatic/next':
         specifier: ^5.0.4
-        version: 5.0.4(@keystatic/core@0.5.48(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 5.0.4(@keystatic/core@0.5.48(patch_hash=ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-collapsible':
         specifier: ^1.1.12
         version: 1.1.12(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4145,7 +4150,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@keystatic/core@0.5.48(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@keystatic/core@0.5.48(patch_hash=ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.4
       '@braintree/sanitize-url': 6.0.4
@@ -4223,10 +4228,10 @@ snapshots:
       - next
       - supports-color
 
-  '@keystatic/next@5.0.4(@keystatic/core@0.5.48(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@keystatic/next@5.0.4(@keystatic/core@0.5.48(patch_hash=ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.4
-      '@keystatic/core': 0.5.48(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@keystatic/core': 0.5.48(patch_hash=ab08a79c760d2c38836a304bbb375963868f8db6ae5ed739dc85d7d2b6a3a704)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react': 19.1.8
       chokidar: 3.6.0
       next: 16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
