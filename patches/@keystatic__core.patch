@@ -1,8 +1,30 @@
 diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
-index fc703c5a29949074cd161c49afad3b1a67c60520..02c317b1b428462ba75e8960e7452871691015cf 100644
+index fc703c5a29949074cd161c49afad3b1a67c60520..f1988daeae9e2c39a2727a16b15c34062fef3e71 100644
 --- a/dist/index-d59451fc.js
 +++ b/dist/index-d59451fc.js
-@@ -26822,35 +26822,190 @@ function placeholderPlugin(text) {
+@@ -24693,6 +24693,21 @@ function reactNodeViews(schema) {
+             pluginState.nodeViews.delete(key);
+             cb();
+           },
++          stopEvent(event) {
++            const t = event.target;
++            if (!(t instanceof HTMLElement)) return false;
++          
++            // wrapper의 실제 편집 영역(contentDOM) 안 이벤트는 에디터가 처리해야 함
++            if (contentDOM && contentDOM.contains(t)) return false;
++          
++            // NodeView 내부 입력 UI(폼 컨트롤) 이벤트는 에디터가 절대 처리하지 않게
++            if (t.closest('textarea,input,select,button,[data-ks-stop-event]')) return true;
++          
++            // contentEditable=false로 둔 UI도 에디터로 이벤트 올리지 않게
++            if (t.closest('[contenteditable="false"]')) return true;
++          
++            return false;
++          },
+           ignoreMutation(mutation) {
+             return !(contentDOM !== null && contentDOM !== void 0 && contentDOM.contains(mutation.target));
+           },
+@@ -26822,35 +26837,190 @@ function placeholderPlugin(text) {
    });
  }
  
