@@ -3,11 +3,9 @@ import { fields } from "../fields";
 import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 
 export const POST_CATEGORIES = [
-	{ label: "구현", value: "implementation" },
-	{ label: "탐구", value: "deep-dive" },
-	{ label: "생각", value: "thought" },
-	{ label: "리뷰", value: "review" },
-	{ label: "참조", value: "reference" },
+	{ label: "개발", value: "development" },
+	{ label: "에세이", value: "essay" },
+	{ label: "서평", value: "book" },
 ] as const;
 
 export type PostCategory = (typeof POST_CATEGORIES)[number];
@@ -30,7 +28,7 @@ export const postCollection = collection({
 
 		category: fields.select({
 			label: "카테고리",
-			defaultValue: "implementation",
+			defaultValue: "development",
 			options: POST_CATEGORIES,
 		}),
 		title: fields.slug({

@@ -13,7 +13,7 @@ const buildSlugMap = <T>(items: Array<{ slug: string; entry: T }>): Map<string, 
 const buildPostMap = async (posts: { slug: string; entry: PostEntry }[]): Promise<Map<string, WithSlug<PostEntry>>> => {
 	const pairs = await Promise.all(
 		posts.map(async ({ slug, entry }) => {
-			const excerpt = entry.excerpt ?? getSafeExcerpt(await entry.content());
+			const excerpt = entry.excerpt || getSafeExcerpt(await entry.content());
 
 			return [slug, { ...entry, slug, excerpt }] as const;
 		}),

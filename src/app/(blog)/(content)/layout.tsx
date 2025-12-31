@@ -9,7 +9,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<Fragment>
-			<Navigation className="sticky top-0 z-10 border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-950" />
+			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50 dark:bg-slate-900" />
 			<main className="flex-1">{children}</main>
 			<Footer />
 		</Fragment>

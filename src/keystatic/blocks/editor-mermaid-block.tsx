@@ -14,12 +14,12 @@ export const editorMermaidBlock = block({
 		const chartCode = props.value.chart;
 
 		return (
-			<div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-				<div className="mb-2 font-bold text-xs text-zinc-500 uppercase">MERMAID PREVIEW</div>
+			<div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+				<div className="mb-2 font-bold text-slate-500 text-xs uppercase">MERMAID PREVIEW</div>
 				{chartCode ? (
 					<Mermaid chart={chartCode} />
 				) : (
-					<div className="text-sm text-zinc-400">코드를 입력하면 미리보기가 생성됩니다.</div>
+					<div className="text-slate-400 text-sm">코드를 입력하면 미리보기가 생성됩니다.</div>
 				)}
 			</div>
 		);

@@ -21,7 +21,7 @@ export default function RootLayout({
 	return (
 		<html lang="ko">
 			<body
-				className={`${pretendardVariable.variable} flex min-h-screen flex-col bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100`}
+				className={`${pretendardVariable.variable} flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100`}
 			>
 				{children}
 			</body>
