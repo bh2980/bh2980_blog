@@ -7,7 +7,6 @@ export const MEMO_CATEGORY_LIST = [
 	{ label: "문제 풀이", value: "problem-solving" },
 	{ label: "스니펫", value: "snippets" },
 	{ label: "트러불슈팅", value: "troubleshooting" },
-	{ label: "회고", value: "reflection" },
 ] as const;
 
 export type MemoCategory = (typeof MEMO_CATEGORY_LIST)[number];

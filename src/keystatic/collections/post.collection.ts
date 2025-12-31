@@ -5,6 +5,7 @@ import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 export const POST_CATEGORIES = [
 	{ label: "개발", value: "development" },
 	{ label: "에세이", value: "essay" },
+	{ label: "서평", value: "book" },
 ] as const;
 
 export type PostCategory = (typeof POST_CATEGORIES)[number];
