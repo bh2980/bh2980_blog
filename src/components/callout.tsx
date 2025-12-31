@@ -35,8 +35,8 @@ export const Callout = ({
 		description?: string;
 		preview?: boolean;
 	}>) => {
-	const v = (variant as CalloutVariant) ?? "note";
-	const Icon = ICON_BY_VARIANT[v] ?? AlertCircle;
+	const v = variant ?? "note";
+	const Icon = ICON_BY_VARIANT[v];
 	const resolvedTitle = title ?? TITLE_BY_VARIANT[v];
 
 	return (
