@@ -1,6 +1,6 @@
 import { block } from "@keystatic/core/content-components";
-import { codeBlockField } from "../fields";
-import { CodePreview } from "../fields/code-block/code-preview.client";
+import { codeBlockField } from "..";
+import { CodePreview } from "../code-block/code-preview.client";
 
 export const editorPureMdxBlock = block({
 	label: "MDX",

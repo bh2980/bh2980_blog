@@ -1,6 +1,6 @@
 import { block } from "@keystatic/core/content-components";
-import { multiLangCodeBlockField } from "../fields/code-block";
-import { CodePreview } from "../fields/code-block/code-preview.client";
+import { multiLangCodeBlockField } from "../code-block";
+import { CodePreview } from "../code-block/code-preview.client";
 
 export const editorCodeBlock = block({
 	label: "코드 블럭",
