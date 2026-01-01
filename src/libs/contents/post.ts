@@ -58,7 +58,9 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 	});
 };
 
-export const getPostList = async ({ category: categoryFilter }: ListOptions = {}): Promise<ListResult<Post>> => {
+export const getPostList = async ({
+	category: categoryFilter,
+}: ListOptions = {}): Promise<ListResult<Omit<Post, "content">>> => {
 	const { postMap, tagMap } = await getContentMap();
 
 	let postList = Array.from(postMap.values()).toSorted(
@@ -69,7 +71,10 @@ export const getPostList = async ({ category: categoryFilter }: ListOptions = {}
 		postList = postList.filter((post) => post.category === categoryFilter);
 	}
 
-	const list = postList.map((post) => normalizePost(post, tagMap, { dateStyle: "short" })).filter(isDefined);
+	const list = postList
+		.map((post) => normalizePost(post, tagMap, { dateStyle: "short" }))
+		.filter(isDefined)
+		.map(({ content, ...rest }) => rest);
 
 	return { list, total: list.length };
 };

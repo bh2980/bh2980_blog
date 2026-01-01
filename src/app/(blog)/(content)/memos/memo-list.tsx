@@ -1,16 +1,21 @@
+"use client";
+
 import Link from "next/link";
+import { useQueryState } from "nuqs";
+import { Button } from "@/components/ui/button";
 import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
-export const MemoList = async ({
-	currentCategory,
-	categoryList,
-	memoList,
+export const MemoList = ({
+	categories,
+	memos,
 }: {
-	currentCategory?: string;
-	categoryList: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
-	memoList: ListResult<Memo>;
+	categories: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
+	memos: ListResult<Omit<Memo, "content">>;
 }) => {
+	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
+	const memoList = category === "all" ? memos.list : memos.list.filter((memo) => memo.category.value === category);
+
 	return (
 		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-8">
@@ -20,48 +25,48 @@ export const MemoList = async ({
 				</p>
 
 				<div className="mb-6 flex flex-wrap gap-2">
-					<Link
-						href={"/memos"}
+					<Button
+						onClick={() => setCategory("all")}
 						className={cn(
-							!currentCategory && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							category === "all" && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{!currentCategory && (
-							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+						{category === "all" && (
+							<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({categoryList.meta?.totalMemoCount})</span>
-					</Link>
-					{categoryList.list.map((category) => (
-						<Link
-							href={`/memos/${category.value}`}
-							key={category.value}
+						<span className="inline-block">전체 ({categories.meta?.totalMemoCount ?? 0})</span>
+					</Button>
+					{categories.list.map((categoryItem) => (
+						<Button
+							key={categoryItem.value}
+							onClick={() => setCategory(categoryItem.value)}
 							className={cn(
-								currentCategory === category.value &&
+								category === categoryItem.value &&
 									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
 						>
-							{currentCategory === category.value && (
-								<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+							{category === categoryItem.value && (
+								<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
-								{category.label} ({category.count})
+								{categoryItem.label} ({categoryItem.count})
 							</span>
-						</Link>
+						</Button>
 					))}
 				</div>
 			</div>
 
-			{memoList.total === 0 ? (
+			{memoList.length === 0 ? (
 				<div className="py-12 text-center">
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 메모가 없습니다.</p>
 				</div>
 			) : (
 				<div className="z-50 flex flex-col gap-2">
-					{memoList.list.map((memo) => (
+					{memoList.map((memo) => (
 						<Link
 							key={memo.slug}
 							href={`/memos/${memo.slug}`}
