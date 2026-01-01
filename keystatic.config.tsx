@@ -4,7 +4,11 @@ import { collectionCollection, memoCollection, postCollection, tagCollection } f
 const storage: Config["storage"] =
 	process.env.NODE_ENV === "development"
 		? { kind: "local" }
-		: { kind: "github", repo: { owner: "bh2980", name: "bh2980_blog" } };
+		: {
+				kind: "github",
+				repo: { owner: process.env.NEXT_PUBLIC_KEYSTATIC_OWNER, name: process.env.NEXT_PUBLIC_KEYSTATIC_REPO },
+				branchPrefix: "docs/",
+			};
 
 export default config({
 	storage,
