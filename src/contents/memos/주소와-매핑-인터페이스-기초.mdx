@@ -20,7 +20,7 @@ tags:
 매핑은 key-value 형태를 가지는 자료형이다.
 아래와 같이 mapping을 정의할 수 있다.
 
-```Solidity
+```solidity
 // 금융 앱용으로, 유저의 계좌 잔액을 보유하는 uint를 저장한다:
 mapping (address => uint) public accountBalance;
 // 혹은 userID로 유저 이름을 저장/검색하는 데 매핑을 쓸 수도 있다
@@ -31,7 +31,7 @@ mapping (uint => string) userIdToName;
 
 msg.sender는 전역 변수 중 하나로, 현재 함수를 호출한 사람(혹은 스마트 컨트랙트)의 주소를 담고 있다.
 
-```Solidity
+```solidity
 mapping (address => uint) favoriteNumber;
 
 function setMyNumber(uint _myNumber) public {
@@ -52,7 +52,7 @@ function whatIsMyNumber() public view returns (uint) {
 rerquire는 **참이 아닐 경우 에러**를 던진다.
 따로 괄호로 감싸지는 않고, 그냥 require 아래 작성된 코드가 참일 때 실행되는 코드이다.
 
-```Solidity
+```solidity
 function sayHiToVitalik(string _name) public returns (string) {
   // _name이 "Vitalik"인지 비교한다. 참이 아닐 경우 에러 메시지를 발생하고 함수를 벗어난다
   // (참고: 솔리디티는 고유의 스트링 비교 기능을 가지고 있지 않기 때문에
@@ -71,7 +71,7 @@ function sayHiToVitalik(string _name) public returns (string) {
 
 동일한 로직의 다수의 클래스로 분할해서 단순히 코드를 정리할 때도 사용하기도 한다.
 
-```Solidity
+```solidity
 contract Doge {
   function catchphrase() public returns (string) {
     return "So Wow CryptoDoge";
@@ -90,7 +90,7 @@ contract BabyDoge is Doge {
 다른 파일을 불러오고 싶다면 import를 활용하여 불러올 수 있다.
 (Solidity의 파일 확장자는 `.sol`이다)
 
-```Solidity
+```solidity
 pragma solidity ^0.4.19;
 
 import "./zombiefactory.sol";  // 같은 폴더의 다른 파일
@@ -111,7 +111,7 @@ solidity는 알아서 함수 외부에 선언된 상태 변수는 storage로 선
 
 단, 함수 내의 구조체나 배열을 처리할 경우에 이 키워드를 사용해야한다.
 
-```Solidity
+```solidity
 contract SandwichFactory {
   struct Sandwich {
     string name;
@@ -149,7 +149,7 @@ contract SandwichFactory {
 `internal`은 `private`과 동일하나 상속받은 contract에서 이 함수를 사용할 수 있다.(`protected`).
 반면 `external`은 `public`과 동일하나 contract 바깥에서만 사용할 수 있다.
 
-```Solidity
+```solidity
 contract Sandwich {
   uint private sandwichesEaten = 0;
 
@@ -175,7 +175,7 @@ contract BLT is Sandwich {
 혼동하지 말아야할 것이, 컨트랙트를 호출하는 쪽에서 호출 당하는 쪽의 인터페이스를 작성해둬야한다.
 호출 당하는 쪽이 작성해두는 것이 아니다.
 
-```Solidity
+```solidity
 contract LuckyNumber {
   mapping(address => uint) numbers;
 
@@ -195,13 +195,13 @@ contract LuckyNumber {
 
 인터페이스를 선언할 때는 함수의 선언부만 작성하고 중괄호를 포함한 본체는 작성하지 않는다.
 
-```Solidity
+```solidity
 contract NumberInterface { // interface 선언부
   function getNum(address _myAddress) public view returns (uint);
 }
 ```
 
-```Solidity
+```solidity
 contract MyContract { // MyContract에서 호출 시 사용 방법.
   address NumberInterfaceAddress = 0xab38...
   // ^ 이더리움상의 FavoriteNumber 컨트랙트 주소이다
@@ -218,7 +218,7 @@ contract MyContract { // MyContract에서 호출 시 사용 방법.
 
 ### 다수의 반환값 처리
 
-```Solidity
+```solidity
 function multipleReturns() internal returns(uint a, uint b, uint c) {
   return (1, 2, 3);
 }
@@ -243,7 +243,7 @@ function getLastReturnValue() external {
 
 JS의 if문과 동일하다
 
-```Solidity
+```solidity
 function eatBLT(string sandwich) public {
   // 스트링 간의 동일 여부를 판단하기 위해 keccak256 해시 함수를 이용해야 한다는 것을 기억하자
   if (keccak256(sandwich) == keccak256("BLT")) {

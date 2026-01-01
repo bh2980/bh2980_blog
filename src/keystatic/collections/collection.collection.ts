@@ -1,5 +1,4 @@
 import { collection, fields } from "@keystatic/core";
-import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 
 const COLLECTION_OPTIONS_LIST = [
 	{ label: "시리즈", value: "series" },
@@ -10,14 +9,10 @@ const COLLECTION_OPTIONS_LIST = [
 export const collectionCollection = collection({
 	label: "모음집",
 	slugField: "name",
-	path: "src/contents/collections/**",
+	path: "src/contents/collections/*",
 	schema: {
 		name: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
-			slug: {
-				generate: (name: string) =>
-					mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), COLLECTION_OPTIONS_LIST),
-			},
 		}),
 		description: fields.text({ label: "설명", multiline: true }),
 		meta: fields.conditional(
