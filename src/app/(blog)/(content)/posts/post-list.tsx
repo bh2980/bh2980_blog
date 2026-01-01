@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
 import { Fragment } from "react/jsx-runtime";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,18 +16,7 @@ export const PostList = ({
 	posts: ListResult<Omit<Post, "content">>;
 }) => {
 	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
-	const [postList, setPostList] = useState(posts);
-
-	const chagneCategory = (category: string) => {
-		setCategory(category);
-
-		if (category === "all") {
-			setPostList(posts);
-			return;
-		}
-
-		setPostList(() => ({ ...posts, list: posts.list.filter((post) => post.category.value === category) }));
-	};
+	const postList = category === "all" ? posts.list : posts.list.filter((post) => post.category.value === category);
 
 	return (
 		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
@@ -38,7 +26,7 @@ export const PostList = ({
 
 				<div className="mb-6 flex flex-wrap gap-2">
 					<Button
-						onClick={() => chagneCategory("all")}
+						onClick={() => setCategory("all")}
 						className={cn(
 							category === "all" && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
@@ -53,7 +41,7 @@ export const PostList = ({
 					{categories.list.map((categoryIem) => (
 						<Button
 							key={categoryIem.value}
-							onClick={() => chagneCategory(categoryIem.value)}
+							onClick={() => setCategory(categoryIem.value)}
 							className={cn(
 								category === categoryIem.value &&
 									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
@@ -72,13 +60,13 @@ export const PostList = ({
 				</div>
 			</div>
 
-			{postList.list.length === 0 ? (
+			{postList.length === 0 ? (
 				<div className="py-12 text-center">
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 게시글이 없습니다.</p>
 				</div>
 			) : (
 				<div className="flex flex-col gap-1">
-					{postList.list.map((post, index) => (
+					{postList.map((post, index) => (
 						<Fragment key={post.slug}>
 							{index !== 0 && <Separator />}
 							<Link
