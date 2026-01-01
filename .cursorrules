@@ -1,1 +1,1 @@
-Always respond in Korean. Write commit message in Korean. Follow semantic commit format when write commit message
+Always respond in Korean. Write commit message in Korean. Follow semantic commit format when write commit message as a single line like <type>: <description>, commit has no body.
