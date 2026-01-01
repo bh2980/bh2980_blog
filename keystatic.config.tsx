@@ -6,7 +6,8 @@ const storage: Config["storage"] =
 		? { kind: "local" }
 		: {
 				kind: "github",
-				repo: { owner: process.env.KEYSTATIC_OWNER, name: process.env.KEYSTATIC_REPO },
+				repo: { owner: process.env.NEXT_PUBLIC_KEYSTATIC_OWNER, name: process.env.NEXT_PUBLIC_KEYSTATIC_REPO },
+				branchPrefix: "docs/",
 			};
 
 export default config({

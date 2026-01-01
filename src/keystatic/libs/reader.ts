@@ -25,7 +25,7 @@ export const reader = async () => {
 			const cookieStore = await cookies();
 
 			return createGitHubReader(keystaticConfig, {
-				repo: `${process.env.KEYSTATIC_OWNER}/${process.env.KEYSTATIC_REPO}`,
+				repo: `${process.env.NEXT_PUBLIC_KEYSTATIC_OWNER}/${process.env.NEXT_PUBLIC_KEYSTATIC_REPO}`,
 				ref: branch,
 				token: cookieStore.get("keystatic-gh-access-token")?.value,
 			});
@@ -33,7 +33,7 @@ export const reader = async () => {
 	}
 
 	return createGitHubReader(keystaticConfig, {
-		repo: `${process.env.KEYSTATIC_OWNER}/${process.env.KEYSTATIC_REPO}`,
+		repo: `${process.env.NEXT_PUBLIC_KEYSTATIC_OWNER}/${process.env.NEXT_PUBLIC_KEYSTATIC_REPO}`,
 		token: process.env.GITHUB_PAT,
 	});
 };
