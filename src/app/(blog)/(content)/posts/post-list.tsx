@@ -1,18 +1,26 @@
+"use client";
+
 import Link from "next/link";
+import { useQueryState } from "nuqs";
 import { Fragment } from "react/jsx-runtime";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
-	currentCategory,
 	categoryList,
 	postList,
 }: {
-	currentCategory?: string;
 	categoryList: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
-	postList: ListResult<Post>;
+	postList: ListResult<Omit<Post, "content">>;
 }) => {
+	const [category, setCategory] = useQueryState("category");
+
+	const chagneCategory = (category: string) => {
+		setCategory(category);
+	};
+
 	return (
 		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-6">
@@ -23,34 +31,34 @@ export const PostList = ({
 					<Link
 						href={"/posts"}
 						className={cn(
-							!currentCategory && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{!currentCategory && (
+						{!category && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
 						<span className="inline-block">전체 ({categoryList.meta?.totalPostCount})</span>
 					</Link>
-					{categoryList.list.map((category) => (
-						<Link
-							href={`/posts/${category.value}`}
-							key={category.value}
+					{categoryList.list.map((categoryIem) => (
+						<Button
+							key={categoryIem.value}
+							onClick={() => chagneCategory(categoryIem.value)}
 							className={cn(
-								currentCategory === category.value &&
+								category === categoryIem.value &&
 									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
 						>
-							{currentCategory === category.value && (
+							{category === categoryIem.value && (
 								<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
-								{category.label} ({category.count})
+								{categoryIem.label} ({categoryIem.count})
 							</span>
-						</Link>
+						</Button>
 					))}
 				</div>
 			</div>

@@ -1,16 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { useQueryState } from "nuqs";
+import { Button } from "@/components/ui/button";
 import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
-export const MemoList = async ({
-	currentCategory,
+export const MemoList = ({
 	categoryList,
 	memoList,
 }: {
-	currentCategory?: string;
 	categoryList: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
-	memoList: ListResult<Memo>;
+	memoList: ListResult<Omit<Memo, "content">>;
 }) => {
+	const [category, setCategory] = useQueryState("category");
+
+	const chagneCategory = (category: string) => {
+		setCategory(category);
+	};
+
 	return (
 		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-8">
@@ -23,34 +31,34 @@ export const MemoList = async ({
 					<Link
 						href={"/memos"}
 						className={cn(
-							!currentCategory && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{!currentCategory && (
+						{!category && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
 						<span className="inline-block">전체 ({categoryList.meta?.totalMemoCount})</span>
 					</Link>
-					{categoryList.list.map((category) => (
-						<Link
-							href={`/memos/${category.value}`}
-							key={category.value}
+					{categoryList.list.map((categoryItem) => (
+						<Button
+							key={categoryItem.value}
+							onClick={() => chagneCategory(categoryItem.value)}
 							className={cn(
-								currentCategory === category.value &&
+								category === categoryItem.value &&
 									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
 						>
-							{currentCategory === category.value && (
+							{category === categoryItem.value && (
 								<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
-								{category.label} ({category.count})
+								{categoryItem.label} ({categoryItem.count})
 							</span>
-						</Link>
+						</Button>
 					))}
 				</div>
 			</div>
