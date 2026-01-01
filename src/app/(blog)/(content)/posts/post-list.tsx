@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
+import { useState } from "react";
 import { Fragment } from "react/jsx-runtime";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -9,16 +10,24 @@ import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } fr
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
-	categoryList,
-	postList,
+	categories,
+	posts,
 }: {
-	categoryList: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
-	postList: ListResult<Omit<Post, "content">>;
+	categories: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
+	posts: ListResult<Omit<Post, "content">>;
 }) => {
-	const [category, setCategory] = useQueryState("category");
+	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
+	const [postList, setPostList] = useState(posts);
 
 	const chagneCategory = (category: string) => {
 		setCategory(category);
+
+		if (category === "all") {
+			setPostList(posts);
+			return;
+		}
+
+		setPostList(() => ({ ...posts, list: posts.list.filter((post) => post.category.value === category) }));
 	};
 
 	return (
@@ -28,20 +37,20 @@ export const PostList = ({
 				<p className="mb-6 text-slate-600 dark:text-slate-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
 
 				<div className="mb-6 flex flex-wrap gap-2">
-					<Link
-						href={"/posts"}
+					<Button
+						onClick={() => chagneCategory("all")}
 						className={cn(
-							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							category === "all" && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{!category && (
+						{category === "all" && (
 							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({categoryList.meta?.totalPostCount})</span>
-					</Link>
-					{categoryList.list.map((categoryIem) => (
+						<span className="inline-block">전체 ({categories.meta?.totalPostCount})</span>
+					</Button>
+					{categories.list.map((categoryIem) => (
 						<Button
 							key={categoryIem.value}
 							onClick={() => chagneCategory(categoryIem.value)}
@@ -63,7 +72,7 @@ export const PostList = ({
 				</div>
 			</div>
 
-			{postList.total === 0 ? (
+			{postList.list.length === 0 ? (
 				<div className="py-12 text-center">
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 게시글이 없습니다.</p>
 				</div>

@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const MemoList = ({
-	categoryList,
-	memoList,
+	categories,
+	memos,
 }: {
-	categoryList: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
-	memoList: ListResult<Omit<Memo, "content">>;
+	categories: ListResult<MemoCategoryWithCount, MemoCategoryListMeta>;
+	memos: ListResult<Omit<Memo, "content">>;
 }) => {
-	const [category, setCategory] = useQueryState("category");
+	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
+	const [memoList, setMemoList] = useState(memos);
 
 	const chagneCategory = (category: string) => {
 		setCategory(category);
+
+		if (category === "all") {
+			setMemoList(memos);
+			return;
+		}
+
+		setMemoList(() => ({ ...memos, list: memos.list.filter((memo) => memo.category.value === category) }));
 	};
 
 	return (
@@ -28,20 +37,20 @@ export const MemoList = ({
 				</p>
 
 				<div className="mb-6 flex flex-wrap gap-2">
-					<Link
-						href={"/memos"}
+					<Button
+						onClick={() => chagneCategory("all")}
 						className={cn(
-							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							category === "all" && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{!category && (
-							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+						{category === "all" && (
+							<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
-						<span className="inline-block">전체 ({categoryList.meta?.totalMemoCount})</span>
-					</Link>
-					{categoryList.list.map((categoryItem) => (
+						<span className="inline-block">전체 ({categories.meta?.totalMemoCount ?? 0})</span>
+					</Button>
+					{categories.list.map((categoryItem) => (
 						<Button
 							key={categoryItem.value}
 							onClick={() => chagneCategory(categoryItem.value)}
@@ -63,7 +72,7 @@ export const MemoList = ({
 				</div>
 			</div>
 
-			{memoList.total === 0 ? (
+			{memoList.list.length === 0 ? (
 				<div className="py-12 text-center">
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 메모가 없습니다.</p>
 				</div>
