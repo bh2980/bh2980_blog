@@ -1,6 +1,5 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
-import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 
 export const POST_CATEGORIES = [
 	{ label: "개발", value: "development" },
@@ -13,7 +12,7 @@ export type PostCategory = (typeof POST_CATEGORIES)[number];
 export const postCollection = collection({
 	label: "게시글",
 	slugField: "title",
-	path: "src/contents/posts/**",
+	path: "src/contents/posts/*/",
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {
@@ -33,7 +32,6 @@ export const postCollection = collection({
 		}),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
-			slug: { generate: (name) => mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), POST_CATEGORIES) },
 		}),
 		excerpt: fields.text({ label: "요약", description: "입력하지 않을 경우 자동 생성" }),
 		publishedDate: fields.datetime({

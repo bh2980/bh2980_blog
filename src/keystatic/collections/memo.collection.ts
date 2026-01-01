@@ -1,6 +1,5 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
-import { getSlugWithLabel, mapLabelSlugToValueSlug } from "../libs/slug";
 
 export const MEMO_CATEGORY_LIST = [
 	{ label: "학습 노트", value: "study-notes" },
@@ -14,9 +13,9 @@ export type MemoCategory = (typeof MEMO_CATEGORY_LIST)[number];
 export const memoCollection = collection({
 	label: "메모",
 	slugField: "title",
-	path: "src/contents/memos/**",
+	path: "src/contents/memos/*/",
 	entryLayout: "content",
-	format: { contentField: "content" }, // 본문 분리 저장
+	format: { contentField: "content" },
 	schema: {
 		category: fields.select({
 			label: "카테고리",
@@ -25,7 +24,6 @@ export const memoCollection = collection({
 		}),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
-			slug: { generate: (name) => mapLabelSlugToValueSlug(getSlugWithLabel("카테고리")(name), MEMO_CATEGORY_LIST) },
 		}),
 		publishedDate: fields.datetime({
 			label: "발행일",
