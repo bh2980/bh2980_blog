@@ -13,7 +13,7 @@ export type MemoCategory = (typeof MEMO_CATEGORY_LIST)[number];
 export const memoCollection = collection({
 	label: "메모",
 	slugField: "title",
-	path: "src/contents/memos/*/",
+	path: "src/contents/memos/*",
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {

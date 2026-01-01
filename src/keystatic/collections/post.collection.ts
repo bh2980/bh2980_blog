@@ -12,7 +12,7 @@ export type PostCategory = (typeof POST_CATEGORIES)[number];
 export const postCollection = collection({
 	label: "게시글",
 	slugField: "title",
-	path: "src/contents/posts/*/",
+	path: "src/contents/posts/*",
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {
