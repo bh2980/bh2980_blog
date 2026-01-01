@@ -46,7 +46,7 @@ export const PostList = ({
 						)}
 					>
 						{category === "all" && (
-							<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+							<span className="ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
 						<span className="inline-block">전체 ({categories.meta?.totalPostCount})</span>
 					</Button>
@@ -62,7 +62,7 @@ export const PostList = ({
 							)}
 						>
 							{category === categoryIem.value && (
-								<span className="mr-2 ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+								<span className="ml-0.5 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
 								{categoryIem.label} ({categoryIem.count})

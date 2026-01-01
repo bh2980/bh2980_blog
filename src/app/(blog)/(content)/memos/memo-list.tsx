@@ -46,7 +46,7 @@ export const MemoList = ({
 						)}
 					>
 						{category === "all" && (
-							<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+							<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 						)}
 						<span className="inline-block">전체 ({categories.meta?.totalMemoCount ?? 0})</span>
 					</Button>
@@ -62,7 +62,7 @@ export const MemoList = ({
 							)}
 						>
 							{category === categoryItem.value && (
-								<span className="mr-2 inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
+								<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
 								{categoryItem.label} ({categoryItem.count})
