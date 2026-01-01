@@ -48,7 +48,9 @@ export const getMemo = async (slug: string): Promise<Memo | null> => {
 	});
 };
 
-export const getMemoList = async ({ category: categoryFilter }: ListOptions = {}): Promise<ListResult<Memo>> => {
+export const getMemoList = async ({
+	category: categoryFilter,
+}: ListOptions = {}): Promise<ListResult<Omit<Memo, "content">>> => {
 	const { memoMap, tagMap } = await getContentMap();
 
 	let memos = Array.from(memoMap.values()).toSorted(
@@ -59,7 +61,10 @@ export const getMemoList = async ({ category: categoryFilter }: ListOptions = {}
 		memos = memos.filter((memo) => memo.category === categoryFilter);
 	}
 
-	const list = memos.map((memo) => normalizeMemo(memo, tagMap, { dateStyle: "short" })).filter(isDefined);
+	const list = memos
+		.map((memo) => normalizeMemo(memo, tagMap, { dateStyle: "short" }))
+		.filter(isDefined)
+		.map(({ content, ...rest }) => rest);
 
 	return { list, total: list.length };
 };
