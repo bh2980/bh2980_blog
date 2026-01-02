@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Callout } from "@/components/callout";
 import MDXContent from "@/components/mdx-content";
@@ -46,7 +47,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 						{post.replacementPost && (
 							<>
 								{" "}
-								최신 글은 <a href={post.replacementPost}>여기</a>를 참조하세요
+								최신 글은 <Link href={{ pathname: post.replacementPost }}>여기</Link>를 참조하세요
 							</>
 						)}
 					</p>
