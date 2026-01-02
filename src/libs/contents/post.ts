@@ -57,7 +57,6 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 
 	return normalizePost(post, tagMap, {
 		dateStyle: "medium",
-		timeStyle: "short",
 	});
 };
 
@@ -74,7 +73,7 @@ export const getPostList = async ({
 		postList = postList.filter((post) => post.category === categoryFilter);
 	}
 
-	const list = (await Promise.all(postList.map((post) => normalizePost(post, tagMap, { dateStyle: "short" }))))
+	const list = (await Promise.all(postList.map((post) => normalizePost(post, tagMap, { dateStyle: "medium" }))))
 		.filter(isDefined)
 		.map(({ content, ...rest }) => rest);
 
