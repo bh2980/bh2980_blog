@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Callout } from "@/components/callout";
 import MDXContent from "@/components/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
@@ -17,7 +18,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 	const content = await post.content();
 
 	return (
-		<article className="prose dark:prose-invert mx-auto prose-ol:my-10 prose-ul:my-10 pt-8 pb-24 leading-loose">
+		<article className="prose dark:prose-invert mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md pt-8 pb-24 leading-loose">
 			<header className="flex flex-col items-start gap-5 border-slate-200">
 				<BackButton className="mb-4" />
 				<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
@@ -38,6 +39,22 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 				</div>
 				<Separator className="mt-3 w-full" />
 			</header>
+			{post.isDeprecated && (
+				<Callout variant={"danger"}>
+					<p>
+						이 글은 더 이상 업데이트 되지 않습니다.
+						{post.replacementPost && (
+							<>
+								{" "}
+								최신 글은 <a href={post.replacementPost}>여기</a>를 참조하세요
+							</>
+						)}
+					</p>
+				</Callout>
+			)}
+			{post.isStale && (
+				<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
+			)}
 			<MDXContent source={content} />
 		</article>
 	);
