@@ -65,20 +65,18 @@ export const MemoList = ({
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 메모가 없습니다.</p>
 				</div>
 			) : (
-				<div className="z-50 flex flex-col gap-2">
+				<ul className="z-50 flex flex-col gap-2">
 					{memoList.map((memo) => (
-						<Link
-							key={memo.slug}
-							href={`/memos/${memo.slug}`}
-							className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-						>
-							<article className="flex h-full items-center gap-4 rounded-lg p-4">
-								<time className="w-16 text-end text-slate-500 text-xs dark:text-slate-300">{memo.publishedDate}</time>
-								<h2 className="line-clamp-2 font-semibold dark:text-slate-300">{memo.title}</h2>
-							</article>
-						</Link>
+						<li key={memo.slug}>
+							<Link href={`/memos/${memo.slug}`} className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+								<article className="flex h-full items-center gap-4 rounded-lg p-4">
+									<time className="w-16 text-end text-slate-500 text-xs dark:text-slate-300">{memo.publishedDate}</time>
+									<h2 className="line-clamp-2 font-semibold dark:text-slate-300">{memo.title}</h2>
+								</article>
+							</Link>
+						</li>
 					))}
-				</div>
+				</ul>
 			)}
 		</div>
 	);
