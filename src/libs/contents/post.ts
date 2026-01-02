@@ -1,5 +1,6 @@
 import "server-only";
 import { differenceInYears } from "date-fns";
+import { draftMode } from "next/headers";
 import { POST_CATEGORIES } from "@/keystatic/collections";
 import type { PostEntry } from "@/keystatic/types";
 import keystaticConfig from "@/root/keystatic.config";
@@ -15,12 +16,14 @@ import type {
 	WithSlug,
 } from "./types";
 
-const normalizePost = (
+const normalizePost = async (
 	post: WithSlug<PostEntry>,
 	tagMap: Map<string, Tag>,
 	dateTimeOptions: Intl.DateTimeFormatOptions,
-): Post | null => {
-	if (keystaticConfig.storage.kind === "github" && post.status === "draft") return null;
+): Promise<Post | null> => {
+	const isDraftEnabled = (await draftMode()).isEnabled;
+
+	if (!isDraftEnabled && keystaticConfig.storage.kind === "github" && post.status === "draft") return null;
 
 	const category = POST_CATEGORIES.find((category) => category.value === post.category);
 	if (!category) return null;
@@ -54,7 +57,6 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 
 	return normalizePost(post, tagMap, {
 		dateStyle: "medium",
-		timeStyle: "short",
 	});
 };
 
@@ -71,8 +73,7 @@ export const getPostList = async ({
 		postList = postList.filter((post) => post.category === categoryFilter);
 	}
 
-	const list = postList
-		.map((post) => normalizePost(post, tagMap, { dateStyle: "short" }))
+	const list = (await Promise.all(postList.map((post) => normalizePost(post, tagMap, { dateStyle: "medium" }))))
 		.filter(isDefined)
 		.map(({ content, ...rest }) => rest);
 

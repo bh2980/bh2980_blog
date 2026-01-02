@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import MDXContent from "@/components/mdx-content";
+import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/memo";
-import { cn } from "@/utils/cn";
+import { BackButton } from "../../back-button";
 
 export default async function MemoPost({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
@@ -16,28 +17,28 @@ export default async function MemoPost({ params }: { params: Promise<{ slug: str
 	const content = await memo.content();
 
 	return (
-		<div className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-12">
-			<article className="prose dark:prose-invert max-w-none">
-				<header className="flex flex-col gap-3 border-slate-200 border-b pb-6">
-					<h1 className="!m-0 !p-0 font-bold text-3xl text-slate-900 dark:text-slate-100">{memo.title}</h1>
-					<div className={cn("flex items-center gap-3 text-sm")}>
-						<span>{memo.category.label}</span>
-						<span>·</span>
-						<time className="text-slate-500 dark:text-slate-400">{memo.publishedDate}</time>
-					</div>
-				</header>
-				<MDXContent source={content} />
-				<div className="mt-8 flex flex-wrap items-center gap-2 text-sm">
-					{memo.tags?.map((tag) => (
-						<span
-							key={tag.slug}
-							className="rounded bg-slate-100 px-2 py-1 text-slate-600 text-sm dark:bg-slate-800 dark:text-slate-400"
-						>
-							#{tag.name}
-						</span>
-					))}
+		<article className="prose dark:prose-invert mx-auto prose-ol:my-10 prose-ul:my-10 pt-8 pb-24 leading-loose">
+			<header className="flex flex-col items-start gap-5 border-slate-200">
+				<BackButton className="mb-4" />
+				<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
+					<span>{memo.category.label}</span>
+					<span>·</span>
+					<time>{memo.publishedDate}</time>
 				</div>
-			</article>
-		</div>
+				<div className="flex flex-col gap-4">
+					<h1 className="!m-0 !p-0 font-bold text-4xl text-slate-900 dark:text-slate-100">{memo.title}</h1>
+
+					<div className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
+						{memo.tags?.map((tag) => (
+							<span key={tag.slug} className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
+								{`#${tag.name}`}
+							</span>
+						))}
+					</div>
+				</div>
+				<Separator className="mt-3 w-full" />
+			</header>
+			<MDXContent source={content} />
+		</article>
 	);
 }
