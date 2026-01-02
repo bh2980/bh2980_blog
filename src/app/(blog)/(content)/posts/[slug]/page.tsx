@@ -6,8 +6,6 @@ import MDXContent from "@/components/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost } from "@/libs/contents/post";
-import { cn } from "@/utils/cn";
-import { BackButton } from "../../back-button";
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
