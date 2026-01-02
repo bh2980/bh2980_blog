@@ -69,7 +69,6 @@ export const PostList = ({
 						<li key={post.slug}>
 							{index !== 0 && <Separator />}
 							<Link
-								key={post.slug}
 								href={`/posts/${post.slug}`}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
