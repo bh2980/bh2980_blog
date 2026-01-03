@@ -51,13 +51,13 @@ export default async function BlogPost({
 					</div>
 					<div className="flex flex-col gap-4">
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
-						<div className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
+						<ul className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
 							{post.tags?.map((tag) => (
-								<span key={tag.slug} className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
+								<li key={tag.slug} className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
 									{`#${tag.name}`}
-								</span>
+								</li>
 							))}
-						</div>
+						</ul>
 					</div>
 					<Separator className="mt-3 w-full" />
 				</header>
