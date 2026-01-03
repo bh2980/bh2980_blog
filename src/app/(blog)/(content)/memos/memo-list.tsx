@@ -71,7 +71,7 @@ export const MemoList = ({
 							<Link href={`/memos/${memo.slug}`}>
 								<article className="flex h-full items-center gap-4 rounded-lg p-4">
 									<time
-										dateTime={memo.publishedAt}
+										dateTime={memo.publishedDateTimeISO}
 										className="w-16 text-end text-slate-500 text-xs dark:text-slate-300"
 									>
 										{memo.publishedAt}
