@@ -33,21 +33,21 @@ export default async function BlogPost({
 
 	return (
 		<div className="mx-auto flex max-w-2xl flex-col gap-12 px-4 py-12 sm:px-6 lg:px-8">
+			<nav aria-label="리스트로 돌아가기">
+				<Link
+					href={{ pathname: "/posts", query }}
+					className="flex items-center gap-1 text-slate-500 text-sm hover:underline dark:text-slate-400"
+				>
+					<ArrowLeft size={14} />
+					<span>돌아가기</span>
+				</Link>
+			</nav>
 			<article className="prose dark:prose-invert prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 leading-loose">
 				<header className="flex flex-col items-start gap-5 border-slate-200">
-					<Link
-						href={{ pathname: "/posts", query }}
-						className={
-							"m-0 inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-						}
-					>
-						<ArrowLeft />
-						<span>돌아가기</span>
-					</Link>
 					<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
 						<span>{post.category.label}</span>
 						<span>·</span>
-						<time>{post.publishedDate}</time>
+						<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
 					</div>
 					<div className="flex flex-col gap-4">
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
@@ -80,9 +80,9 @@ export default async function BlogPost({
 				<MDXContent source={content} />
 			</article>
 			<Separator />
-			<div className="flex">
+			<nav className="flex" aria-label="이전 다음 글">
 				{prevPost && (
-					<Link href={{ pathname: `/posts/${prevPost?.slug}`, query }} className="flex flex-col gap-2">
+					<Link href={{ pathname: `/posts/${prevPost?.slug}`, query }} className="flex flex-col gap-2 hover:underline">
 						<span className="inline-flex items-center gap-2 text-sm">
 							<ChevronLeft size={16} />
 							이전 글
@@ -94,7 +94,7 @@ export default async function BlogPost({
 				{nextPost && (
 					<Link
 						href={{ pathname: `/posts/${nextPost?.slug}`, query }}
-						className="ml-auto flex flex-col justify-end gap-2"
+						className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 					>
 						<span className="inline-flex items-center justify-end gap-2 text-sm">
 							다음 글
@@ -103,7 +103,7 @@ export default async function BlogPost({
 						<span>{nextPost?.title}</span>
 					</Link>
 				)}
-			</div>
+			</nav>
 		</div>
 	);
 }

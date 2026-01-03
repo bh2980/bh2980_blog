@@ -19,6 +19,7 @@ export type Collection = Expand<WithSlug<CollectionEntry>>;
 export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & { category: MemoCategory; tags: Tag[] };
 export type Post = Expand<
 	Omit<WithSlug<PostEntry>, "tags" | "category"> & {
+		publishedAt: string;
 		category: PostCategory;
 		tags: Tag[];
 		isStale?: boolean;

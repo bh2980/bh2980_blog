@@ -73,7 +73,7 @@ export const PostList = ({
 										<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 											<span>{post.category.label}</span>
 											<span>·</span>
-											<time>{post.publishedDate}</time>
+											<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
 										</span>
 										<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
 										<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
