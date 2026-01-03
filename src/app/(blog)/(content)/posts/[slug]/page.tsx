@@ -7,8 +7,15 @@ import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost } from "@/libs/contents/post";
 
-export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BlogPost({
+	params,
+	searchParams,
+}: {
+	params: Promise<{ slug: string }>;
+	searchParams: Promise<{ category: string }>;
+}) {
 	const { slug } = await params;
+	const category = (await searchParams)?.category;
 
 	const post = await getPost(sanitizeSlug(slug));
 
@@ -19,10 +26,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 	const content = await post.content();
 
 	return (
-		<article className="prose dark:prose-invert prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 pt-8 pb-24 leading-loose">
+		<article className="prose dark:prose-invert prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 px-4 pt-8 pb-24 leading-loose sm:px-6 lg:px-8">
 			<header className="flex flex-col items-start gap-5 border-slate-200">
 				<Link
-					href={"/posts"}
+					href={{ pathname: "/posts", query: { category } }}
 					className={
 						"m-0 inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
 					}
@@ -36,7 +43,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 					<time>{post.publishedDate}</time>
 				</div>
 				<div className="flex flex-col gap-4">
-					<h1 className="font-bold text-4xl text-slate-900 dark:text-slate-100">{post.title}</h1>
+					<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
 					<div className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
 						{post.tags?.map((tag) => (
 							<span key={tag.slug} className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
