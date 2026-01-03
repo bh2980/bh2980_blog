@@ -70,7 +70,7 @@ export const PostList = ({
 						<Fragment key={post.slug}>
 							{index !== 0 && <Separator />}
 							<li className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
-								<Link href={`/posts/${post.slug}`}>
+								<Link href={{ pathname: `/posts/${post.slug}`, query: { category } }}>
 									<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 										<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 											<span>{post.category.label}</span>
