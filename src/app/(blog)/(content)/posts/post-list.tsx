@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
-import { Fragment } from "react/jsx-runtime";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
