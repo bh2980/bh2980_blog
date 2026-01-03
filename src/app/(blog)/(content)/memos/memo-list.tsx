@@ -17,7 +17,7 @@ export const MemoList = ({
 	const memoList = category === "all" ? memos.list : memos.list.filter((memo) => memo.category.value === category);
 
 	return (
-		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-8">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">메모장</h1>
 				<p className="mb-6 text-slate-600 dark:text-slate-300">

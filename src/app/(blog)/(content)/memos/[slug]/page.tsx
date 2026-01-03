@@ -17,7 +17,7 @@ export default async function MemoPost({ params }: { params: Promise<{ slug: str
 	const content = await memo.content();
 
 	return (
-		<article className="prose dark:prose-invert prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 px-4 pt-8 pb-24 leading-loose sm:px-6 lg:px-8">
+		<article className="prose dark:prose-invert prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 max-w-2xl prose-img:rounded-md prose-h1:p-0 px-4 pt-8 pb-24 leading-loose sm:px-6 lg:px-8">
 			<header className="flex flex-col items-start gap-5 border-slate-200">
 				<BackButton className="mb-4" />
 				<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
