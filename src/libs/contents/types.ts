@@ -16,7 +16,11 @@ export type WithSlug<T> = { slug: string } & T;
 
 export type Tag = Expand<WithSlug<TagEntry>>;
 export type Collection = Expand<WithSlug<CollectionEntry>>;
-export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & { category: MemoCategory; tags: Tag[] };
+export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & {
+	category: MemoCategory;
+	tags: Tag[];
+	publishedAt: string;
+};
 export type Post = Expand<
 	Omit<WithSlug<PostEntry>, "tags" | "category"> & {
 		publishedAt: string;

@@ -70,7 +70,12 @@ export const MemoList = ({
 						<li key={memo.slug} className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
 							<Link href={`/memos/${memo.slug}`}>
 								<article className="flex h-full items-center gap-4 rounded-lg p-4">
-									<time className="w-16 text-end text-slate-500 text-xs dark:text-slate-300">{memo.publishedDate}</time>
+									<time
+										dateTime={memo.publishedAt}
+										className="w-16 text-end text-slate-500 text-xs dark:text-slate-300"
+									>
+										{memo.publishedAt}
+									</time>
 									<h2 className="line-clamp-2 font-semibold dark:text-slate-300">{memo.title}</h2>
 								</article>
 							</Link>
