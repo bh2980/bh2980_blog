@@ -25,7 +25,7 @@ export const memoCollection = collection({
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),
-		publishedDate: fields.datetime({
+		publishedDateTimeISO: fields.datetime({
 			label: "발행일",
 			defaultValue: { kind: "now" },
 			validation: { isRequired: true },
