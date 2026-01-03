@@ -26,7 +26,7 @@ export default async function MemoPost({ params }: { params: Promise<{ slug: str
 				<div className="flex flex-col gap-4">
 					<h1 className="font-bold text-4xl text-slate-900 dark:text-slate-100">{memo.title}</h1>
 
-					<ul className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
+					<ul className="!m-0 flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
 						{memo.tags?.map((tag) => (
 							<li key={tag.slug} className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
 								{`#${tag.name}`}
