@@ -83,7 +83,7 @@ export default async function BlogPost({
 			<nav className="flex" aria-label="이전 다음 글">
 				{prevPost && (
 					<Link href={{ pathname: `/posts/${prevPost?.slug}`, query }} className="flex flex-col gap-2 hover:underline">
-						<span className="inline-flex items-center gap-2 text-sm">
+						<span className="inline-flex items-center gap-1 text-sm">
 							<ChevronLeft size={16} />
 							이전 글
 						</span>
@@ -94,9 +94,9 @@ export default async function BlogPost({
 				{nextPost && (
 					<Link
 						href={{ pathname: `/posts/${nextPost?.slug}`, query }}
-						className="ml-auto flex flex-col justify-end gap-2 hover:underline"
+						className="ml-auto flex flex-col justify-end gap-21 hover:underline"
 					>
-						<span className="inline-flex items-center justify-end gap-2 text-sm">
+						<span className="inline-flex items-center justify-end gap-1 text-sm">
 							다음 글
 							<ChevronRight size={16} />
 						</span>
