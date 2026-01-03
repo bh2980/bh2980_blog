@@ -34,7 +34,7 @@ export const postCollection = collection({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),
 		excerpt: fields.text({ label: "요약", description: "입력하지 않을 경우 자동 생성" }),
-		publishedDate: fields.datetime({
+		publishedDateTimeISO: fields.datetime({
 			label: "발행일",
 			defaultValue: { kind: "now" },
 			validation: { isRequired: true },

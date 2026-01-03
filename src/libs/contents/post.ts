@@ -34,17 +34,17 @@ const normalizePost = async (
 		.filter(isDefined);
 
 	const now = new Date();
-	const publishedAt = new Date(post.publishedDate);
-	const publishedDate = publishedAt.toLocaleString("ko-KR", dateTimeOptions);
+	const publishedDate = new Date(post.publishedDateTimeISO);
+	const publishedAt = publishedDate.toLocaleString("ko-KR", dateTimeOptions);
 
 	const isDeprecated = post.policy.discriminant === "deprecated";
 	const replacementPost = post.policy.value?.replacementPost || undefined;
 
 	const STALE_POST_YEARS_THRESHOLD = 2;
-	const yearsOld = differenceInYears(now, publishedAt);
+	const yearsOld = differenceInYears(now, publishedDate);
 	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= STALE_POST_YEARS_THRESHOLD;
 
-	return { ...post, category, tags, publishedDate, isStale, isDeprecated, replacementPost };
+	return { ...post, category, tags, publishedAt, isStale, isDeprecated, replacementPost };
 };
 
 export const getPost = async (slug: string): Promise<Post | null> => {
@@ -66,7 +66,7 @@ export const getPostList = async ({
 	const { postMap, tagMap } = await getContentMap();
 
 	let postList = Array.from(postMap.values()).toSorted(
-		(a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime(),
+		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
 	);
 
 	if (categoryFilter) {

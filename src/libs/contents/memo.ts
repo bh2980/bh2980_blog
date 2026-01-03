@@ -29,9 +29,9 @@ const normalizeMemo = (
 		.map((tag) => tagMap.get(tag))
 		.filter(isDefined);
 
-	const publishedDate = new Date(memo.publishedDate).toLocaleString("ko-KR", dateTimeOptions);
+	const publishedAt = new Date(memo.publishedDateTimeISO).toLocaleString("ko-KR", dateTimeOptions);
 
-	return { ...memo, category, tags, publishedDate };
+	return { ...memo, category, tags, publishedAt };
 };
 
 export const getMemo = async (slug: string): Promise<Memo | null> => {
@@ -54,7 +54,7 @@ export const getMemoList = async ({
 	const { memoMap, tagMap } = await getContentMap();
 
 	let memos = Array.from(memoMap.values()).toSorted(
-		(a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime(),
+		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
 	);
 
 	if (categoryFilter) {

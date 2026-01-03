@@ -17,7 +17,7 @@ export const MemoList = ({
 	const memoList = category === "all" ? memos.list : memos.list.filter((memo) => memo.category.value === category);
 
 	return (
-		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-8">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">메모장</h1>
 				<p className="mb-6 text-slate-600 dark:text-slate-300">
@@ -67,10 +67,15 @@ export const MemoList = ({
 			) : (
 				<ul className="z-50 flex flex-col gap-2">
 					{memoList.map((memo) => (
-						<li key={memo.slug}>
-							<Link href={`/memos/${memo.slug}`} className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+						<li key={memo.slug} className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+							<Link href={`/memos/${memo.slug}`}>
 								<article className="flex h-full items-center gap-4 rounded-lg p-4">
-									<time className="w-16 text-end text-slate-500 text-xs dark:text-slate-300">{memo.publishedDate}</time>
+									<time
+										dateTime={memo.publishedDateTimeISO}
+										className="w-16 text-end text-slate-500 text-xs dark:text-slate-300"
+									>
+										{memo.publishedAt}
+									</time>
 									<h2 className="line-clamp-2 font-semibold dark:text-slate-300">{memo.title}</h2>
 								</article>
 							</Link>
