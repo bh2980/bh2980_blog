@@ -15,8 +15,8 @@ export const PostList = ({
 	categories: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
 	posts: ListResult<Omit<Post, "content">>;
 }) => {
-	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
-	const postList = category === "all" ? posts.list : posts.list.filter((post) => post.category.value === category);
+	const [category, setCategory] = useQueryState<string | null>("category", { parse: (value) => value || null });
+	const postList = category ? posts.list.filter((post) => post.category.value === category) : posts.list;
 
 	return (
 		<div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
@@ -26,16 +26,14 @@ export const PostList = ({
 
 				<div className="mb-6 flex flex-wrap gap-2">
 					<Button
-						onClick={() => setCategory("all")}
+						onClick={() => setCategory(null)}
 						className={cn(
-							category === "all" && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
 					>
-						{category === "all" && (
-							<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
-						)}
+						{!category && <span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />}
 						<span className="inline-block">전체 ({categories.meta?.totalPostCount})</span>
 					</Button>
 					{categories.list.map((categoryIem) => (
@@ -70,7 +68,7 @@ export const PostList = ({
 						<Fragment key={post.slug}>
 							{index !== 0 && <Separator />}
 							<li className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
-								<Link href={{ pathname: `/posts/${post.slug}`, query: { category } }}>
+								<Link href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}>
 									<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 										<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 											<span>{post.category.label}</span>
