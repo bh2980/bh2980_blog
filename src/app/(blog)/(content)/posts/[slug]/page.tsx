@@ -19,7 +19,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 	const content = await post.content();
 
 	return (
-		<article className="prose dark:prose-invert mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md pt-8 pb-24 leading-loose">
+		<article className="prose dark:prose-invert prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 pt-8 pb-24 leading-loose">
 			<header className="flex flex-col items-start gap-5 border-slate-200">
 				<Link
 					href={"/posts"}
@@ -36,8 +36,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 					<time>{post.publishedDate}</time>
 				</div>
 				<div className="flex flex-col gap-4">
-					<h1 className="!m-0 !p-0 font-bold text-4xl text-slate-900 dark:text-slate-100">{post.title}</h1>
-
+					<h1 className="font-bold text-4xl text-slate-900 dark:text-slate-100">{post.title}</h1>
 					<div className="flex flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
 						{post.tags?.map((tag) => (
 							<span key={tag.slug} className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
