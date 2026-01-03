@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
+import { Fragment } from "react/jsx-runtime";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
@@ -66,20 +67,22 @@ export const PostList = ({
 			) : (
 				<ul className="flex flex-col gap-1">
 					{postList.map((post, index) => (
-						<li key={post.slug} className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+						<Fragment key={post.slug}>
 							{index !== 0 && <Separator />}
-							<Link href={`/posts/${post.slug}`}>
-								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
-									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-										<span>{post.category.label}</span>
-										<span>·</span>
-										<time>{post.publishedDate}</time>
-									</span>
-									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
-									<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
-								</article>
-							</Link>
-						</li>
+							<li className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+								<Link href={`/posts/${post.slug}`}>
+									<article className="flex h-full flex-col gap-3 rounded-lg p-4">
+										<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
+											<span>{post.category.label}</span>
+											<span>·</span>
+											<time>{post.publishedDate}</time>
+										</span>
+										<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
+										<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
+									</article>
+								</Link>
+							</li>
+						</Fragment>
 					))}
 				</ul>
 			)}
