@@ -94,7 +94,7 @@ export default async function BlogPost({
 				{nextPost && (
 					<Link
 						href={{ pathname: `/posts/${nextPost?.slug}`, query }}
-						className="ml-auto flex flex-col justify-end gap-21 hover:underline"
+						className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 					>
 						<span className="inline-flex items-center justify-end gap-1 text-sm">
 							다음 글
