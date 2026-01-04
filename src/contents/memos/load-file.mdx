@@ -1,9 +1,10 @@
 ---
+category: type-script
 title: loadFile
 publishedDateTimeISO: 2025-08-07T19:17:00.000Z
-category: snippets
 tags:
   - typescript
+  - snippets
 ---
 ## **loadFile**
 
@@ -11,10 +12,10 @@ tags:
 
 ### **매개변수**
 
-| 속성     | 타입                   | 필수 | 기본값 | 설명                                         |
-| -------- | ---------------------- | ---- | ------ | -------------------------------------------- |
-| `onLoad` | `(file: File) => void` | ✅   | -      | 파일 선택 시 호출되는 콜백 함수              |
-| `accept` | `string`               | ❌   | -      | 허용할 파일 타입 (예: `"image/*"`, `".txt"`) |
+| 속성       | 타입                     | 필수 | 기본값 | 설명                                   |
+| -------- | ---------------------- | -- | --- | ------------------------------------ |
+| `onLoad` | `(file: File) => void` | ✅  | -   | 파일 선택 시 호출되는 콜백 함수                   |
+| `accept` | `string`               | ❌  | -   | 허용할 파일 타입 (예: `"image/*"`, `".txt"`) |
 
 ### 코드
 
@@ -54,4 +55,3 @@ loadFile((file) => {
   console.log('이미지 파일:', file.name);
 }, 'image/*');
 ```
-
