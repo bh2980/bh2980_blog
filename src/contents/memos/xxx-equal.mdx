@@ -1,0 +1,67 @@
+---
+category: type-script
+title: XXX - Equal
+publishedDateTimeISO: 2026-01-04T23:24:00.000Z
+tags:
+  - typescript
+  - type-challenges
+---
+### 질문
+
+두 타입이 완전히 동일한지 비교하는 Equal\<A, B> 타입을 구현하세요.
+
+예시:
+
+```ts
+type A = Equal<1, 1>            // true
+type B = Equal<1, number>       // false
+type C = Equal<true, boolean>   // false
+type D = Equal<{ a: number }, { a: number }> // true
+type E = Equal<{ a: number }, { readonly a: number }> // false
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Expect } from ‘@type-challenges/utils’
+
+type cases = [
+// primitive & literal
+Expect<Equal<Equal<1, 1>, true>>,
+Expect<Equal<Equal<1, number>, false>>,
+Expect<Equal<Equal<‘a’, ‘a’>, true>>,
+Expect<Equal<Equal<‘a’, string>, false>>,
+
+// boolean
+Expect<Equal<Equal<true, true>, true>>,
+Expect<Equal<Equal<true, boolean>, false>>,
+Expect<Equal<Equal<boolean, boolean>, true>>,
+
+// union
+Expect<Equal<Equal<1 | 2, 1 | 2>, true>>,
+Expect<Equal<Equal<1 | 2, 2 | 1>, true>>,
+Expect<Equal<Equal<1 | 2, 1>, false>>,
+Expect<Equal<Equal<1, 1 | 2>, false>>,
+
+// object
+Expect<Equal<Equal<{ a: number }, { a: number }>, true>>,
+Expect<Equal<Equal<{ a: number }, { readonly a: number }>, false>>,
+Expect<Equal<Equal<{ a: number }, { a: number; b: number }>, false>>,
+
+// tuple & array
+Expect<Equal<Equal<[1, 2], [1, 2]>, true>>,
+Expect<Equal<Equal<[1, 2], readonly [1, 2]>, false>>,
+Expect<Equal<Equal<number[], number[]>, true>>,
+Expect<Equal<Equal<number[], readonly number[]>, false>>,
+
+// function
+Expect<Equal<Equal<() => void, () => void>, true>>,
+Expect<Equal<Equal<(x: number) => void, (x: number) => void>, true>>,
+Expect<Equal<Equal<(x: number) => void, (x: string) => void>, false>>,
+
+// special types
+Expect<Equal<Equal<never, never>, true>>,
+Expect<Equal<Equal<any, any>, true>>,
+Expect<Equal<Equal<unknown, unknown>, true>>,
+Expect<Equal<Equal<any, number>, false>>,
+Expect<Equal<Equal<never, number>, false>>,
+Expect<Equal<Equal<unknown, number>, false>>,
+]
+```
