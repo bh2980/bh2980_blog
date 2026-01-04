@@ -37,8 +37,6 @@ type errors = [
 ]
 ```
 
-
-
 ### 사전 지식
 
 1. 조건부 타입 `extends`
@@ -55,10 +53,21 @@ type errors = [
    ```
 
    조건부 타입 내에서 사용할 수 있는 타입 추론 키워드. 매칭되는 타입을 변수처럼 추출할 수 있다.
-3. 튜플에서의 나머지 연산 `...`
+3. 배열의 나머지 연산 `...`
 
    ```ts
    [infer X, ...infer Rest]
    ```
 
-   `…` 연산자는 앞 부분과 나머지를 분리하여 이 위치 이후로의 모든 요소를 하나의 타입으로 묶는데 사용한다.
+   `...` 연산자는 앞 부분과 나머지를 분리하여 이 위치 이후로의 모든 요소를 하나의 타입으로 묶는데 사용한다.
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type First<T extends any[]> = T extends [infer A, ...infer rest] ? A : never
+  ```
+
+  1. `T extends [infer A, ...infer Rest]` : T가 1개 이상의 요소를 가진 배열이라면, 첫 번째 요소의 타입을 A로, 나머지를 Rest 타입으로 추출한다.
+  2. `? A : never` : 조건이 참일 경우, A를 return하고 아닐 경우 never를 return한다.
+</Collapsible>
