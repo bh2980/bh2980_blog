@@ -72,8 +72,7 @@ Expect<Equal<Equal<unknown, number>, false>>,
 
    <Code codeblock={{"lang":"typescript","value":"any extends string ? true : false // true\nstring extends any ? true : false // true"}} />
 
-   흔히 TypeScript의 타입 시스템은 집합에 비유되곤 하지만, `any`라는 특수 케이스 때문에 완벽히 동일하지는 않다.\
-   따라서 `A extends B`가 `true`이고 `B extends A`가 `true`라고 이 둘이 동일하다는 **동등성을 보장하지는 못한다.**
+   흔히 TypeScript의 타입 시스템은 집합에 비유되곤 하지만, `any`라는 특수 케이스 때문에 완벽히 동일하지는 않다. 따라서 `A extends B`가 `true`이고 `B extends A`가 `true`라고 이 둘이 동일하다는 **동등성을 보장하지는 못한다.**
 
 ### 풀이
 
