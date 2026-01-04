@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Callout } from "@/components/callout";
+import { Callout } from "@/components/mdx/callout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/utils/cn";

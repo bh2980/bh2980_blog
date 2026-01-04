@@ -3,7 +3,7 @@
 
 import { Trash2 } from "lucide-react";
 import * as React from "react";
-import { Mermaid } from "@/components/mermaid.client";
+import { Mermaid } from "@/components/mdx/mermaid.client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/utils/cn";
