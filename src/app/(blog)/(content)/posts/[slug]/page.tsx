@@ -6,6 +6,7 @@ import MDXContent from "@/components/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
+import { Comments } from "./comments.client";
 
 export default async function BlogPost({
 	params,
@@ -104,6 +105,7 @@ export default async function BlogPost({
 					</Link>
 				)}
 			</nav>
+			<Comments slug={slug} />
 		</div>
 	);
 }
