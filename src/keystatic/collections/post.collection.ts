@@ -1,15 +1,6 @@
 import { collection } from "@keystatic/core";
 import { fields } from "../fields";
 
-export const POST_CATEGORIES = [
-	{ label: "개발", value: "development" },
-	{ label: "가이드", value: "guide" },
-	{ label: "에세이", value: "essay" },
-	{ label: "서평", value: "book" },
-] as const;
-
-export type PostCategory = (typeof POST_CATEGORIES)[number];
-
 export const postCollection = collection({
 	label: "게시글",
 	slugField: "title",
@@ -26,11 +17,7 @@ export const postCollection = collection({
 			],
 		}),
 
-		category: fields.select({
-			label: "카테고리",
-			defaultValue: "development",
-			options: POST_CATEGORIES,
-		}),
+		category: fields.relationship({ collection: "postCategory", label: "카테고리" }),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),

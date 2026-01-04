@@ -14,7 +14,7 @@ export const MemoList = ({
 	memos: ListResult<Omit<Memo, "content">>;
 }) => {
 	const [category, setCategory] = useQueryState("category", { defaultValue: "all" });
-	const memoList = category === "all" ? memos.list : memos.list.filter((memo) => memo.category.value === category);
+	const memoList = category === "all" ? memos.list : memos.list.filter((memo) => memo.category.slug === category);
 
 	return (
 		<aside className="flex min-h-0 flex-col gap-4 border-slate-200 p-4 md:border-r dark:border-slate-800">
@@ -25,8 +25,8 @@ export const MemoList = ({
 				<SelectContent>
 					<SelectItem value="all">전체 ({memos.total})</SelectItem>
 					{categories.list.map((categoryItem) => (
-						<SelectItem key={categoryItem.value} value={categoryItem.value}>
-							{categoryItem.label} ({categoryItem.count})
+						<SelectItem key={categoryItem.slug} value={categoryItem.slug}>
+							{categoryItem.name} ({categoryItem.count})
 						</SelectItem>
 					))}
 				</SelectContent>
