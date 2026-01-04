@@ -1,0 +1,43 @@
+---
+category: type-script
+title: 3057 - Push
+publishedDateTimeISO: 2026-01-05T01:15:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+`Array.push`의 제네릭 버전을 구현하세요.
+
+예시:
+
+```typescript
+type Result = Push<[1, 2], '3'> // [1, 2, '3']
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Push<[], 1>, [1]>>,
+  Expect<Equal<Push<[1, 2], '3'>, [1, 2, '3']>>,
+  Expect<Equal<Push<['1', 2, '3'], boolean>, ['1', 2, '3', boolean]>>,
+]
+
+type errors = [
+  // @ts-expect-error
+  Expect<Equal<Push<number[], string>, string[]>>,
+  // @ts-expect-error
+  Expect<Equal<Push<string[], number>, [string, number]>>,
+]
+```
+
+
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type Push<T extends any[], U> = [...T, U]
+  ```
+</Collapsible>
