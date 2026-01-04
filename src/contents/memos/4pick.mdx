@@ -25,11 +25,37 @@ const todo: TodoPreview = {
     title: 'Clean room',
     completed: false,
 }
+
+// 테스트 케이스
+
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Expected1, MyPick<Todo, 'title'>>>,
+  Expect<Equal<Expected2, MyPick<Todo, 'title' | 'completed'>>>,
+  // @ts-expect-error
+  MyPick<Todo, 'title' | 'completed' | 'invalid'>,
+]
+
+interface Todo {
+  title: string
+  description: string
+  completed: boolean
+}
+
+interface Expected1 {
+  title: string
+}
+
+interface Expected2 {
+  title: string
+  completed: boolean
+}
 ```
 
 ## 선수 지식
 
-1. keyof T
+1. `keyof T`
 
    객체 타입 T의 모든 프로퍼티 이름을 유니온 타입으로 만든다.
 
@@ -43,6 +69,24 @@ const todo: TodoPreview = {
    keyof Todo
    // 'title' | 'description' | 'completed'
    ```
+2. 제네릭 제한
+
+   ```ts
+   // @ts-expect-error
+   MyPick<Todo, 'title' | 'completed' | 'invalid'>,
+   ```
+
+   코드를 보면 잘못된 key가 들어갈 경우 처음부터 에러를 내도록 기대하고 있다.\
+   따라서 애초에 넣을 때부터 올바른 키만 받도록 제한을 두어야한다.
+3. Mapped Type
+
+   ```ts
+   {
+     [P in K]: ...
+   }
+   ```
+
+
 
 ## 풀이
 
