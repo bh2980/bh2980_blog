@@ -1,0 +1,59 @@
+---
+category: type-script
+title: 898 - Includes
+publishedDateTimeISO: 2026-01-04T22:44:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+JavaScript의 `Array.includes` 함수를 타입 시스템에서 구현하세요. 타입은 두 인수를 받고, `true` 또는 `false`를 반환해야 합니다.
+
+예시:
+
+```ts
+type isPillarMen = Includes<['Kars', 'Esidisi', 'Wamuu', 'Santana'], 'Dio'> // expected to be `false`
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Includes<['Kars', 'Esidisi', 'Wamuu', 'Santana'], 'Kars'>, true>>,
+  Expect<Equal<Includes<['Kars', 'Esidisi', 'Wamuu', 'Santana'], 'Dio'>, false>>,
+  Expect<Equal<Includes<[1, 2, 3, 5, 6, 7], 7>, true>>,
+  Expect<Equal<Includes<[1, 2, 3, 5, 6, 7], 4>, false>>,
+  Expect<Equal<Includes<[1, 2, 3], 2>, true>>,
+  Expect<Equal<Includes<[1, 2, 3], 1>, true>>,
+  Expect<Equal<Includes<[{}], { a: 'A' }>, false>>,
+  Expect<Equal<Includes<[boolean, 2, 3, 5, 6, 7], false>, false>>,
+  Expect<Equal<Includes<[true, 2, 3, 5, 6, 7], boolean>, false>>,
+  Expect<Equal<Includes<[false, 2, 3, 5, 6, 7], false>, true>>,
+  Expect<Equal<Includes<[{ a: 'A' }], { readonly a: 'A' }>, false>>,
+  Expect<Equal<Includes<[{ readonly a: 'A' }], { a: 'A' }>, false>>,
+  Expect<Equal<Includes<[1], 1 | 2>, false>>,
+  Expect<Equal<Includes<[1 | 2], 1>, false>>,
+  Expect<Equal<Includes<[null], undefined>, false>>,
+  Expect<Equal<Includes<[undefined], null>, false>>,
+]
+```
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  import type { Equal } from '@type-challenges/utils'
+
+  type Includes<T extends readonly any[], U> = T extends [infer First, ...infer Rest] ? (Equal<First, U> extends true ? true : Includes<Rest, U>) : false
+  ```
+
+  이 문제는 `Equal`에 관한 문제가 아니기 때문에 타입 챌린지 상의 유틸인 `Equal`을 가져다 사용했다.
+
+  핵심은 재귀인데, 첫 번째 값을 뽑아서 그게 `U`와 동일하면 `true`를, 아니면 뒤의 배열 `Rest`에 대해서 다시 `Includes`를 실행한다. 그러면 `Rest`의 첫 번째(태초의 두번째) 요소에 대해서 다시 이 과정을 수행하고, 이를 반복하다 모든 요소를 지나서 **빈 배열**이 되면 최소 하나의 요소가 존재하는 튜플을 보장할 수 없어서 `T extends [infer First, ...infer Rest]` 조건이 `false`가 되고 이때 `false`를 반환한다.
+</Collapsible>
+
+
+
+### 부록
+
+Equal 구현하기

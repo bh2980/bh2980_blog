@@ -1,0 +1,43 @@
+---
+category: type-script
+title: 533 - Concat
+publishedDateTimeISO: 2026-01-04T22:35:00.000Z
+tags: []
+---
+### 질문
+
+JavaScript의 `Array.concat` 함수를 타입 시스템에서 구현하세요. 타입은 두 인수를 받고, 인수를 왼쪽부터 concat한 새로운 배열을 반환해야 합니다.
+
+예시:
+
+```ts
+type Result = Concat<[1], [2]> // expected to be [1, 2]
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+const tuple = [1] as const
+
+type cases = [
+  Expect<Equal<Concat<[], []>, []>>,
+  Expect<Equal<Concat<[], [1]>, [1]>>,
+  Expect<Equal<Concat<typeof tuple, typeof tuple>, [1, 1]>>,
+  Expect<Equal<Concat<[1, 2], [3, 4]>, [1, 2, 3, 4]>>,
+  Expect<Equal<Concat<['1', 2, '3'], [false, boolean, '4']>, ['1', 2, '3', false, boolean, '4']>>,
+]
+
+// @ts-expect-error
+type error = Concat<null, undefined>
+```
+
+### 사전 지식
+
+1. 혹시 까먹고 있지는 않은지? 튜플을 정의하는 방법 중 하나는 배열에 `as const`를 사용하는 것이고 이는 `readonly`이다.
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type Concat<T extends readonly any[], U extends readonly any[]> = [...T, ...U]
+  ```
+</Collapsible>
