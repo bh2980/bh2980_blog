@@ -101,8 +101,6 @@ interface Expected2 {
 <Collapsible>
   <Code codeblock={{"lang":"typescript","value":"type MyPick<T, K extends keyof T> = {\n  [P in K]: T[P]\n};"}} />
 
-  \
-  1\. `K extends keyof T` : 객체 `T`가 가진 프로퍼티만 가질 수 있도록 `K`에 대한을 둔다.
-
-  2. `[P in K]: T[P]` : `K`를 순회하면서 `P`를 꺼내 프로퍼티를 설정하고, 그 값을 `T`에서 가져온다.
+  1\. `K extends keyof T` : 객체 `T`가 가진 프로퍼티만 가질 수 있도록 `K`에 대한을 둔다.\
+  2\. `[P in K]: T[P]` : `K`를 순회하면서 `P`를 꺼내 프로퍼티를 설정하고, 그 값을 `T`에서 가져온다.
 </Collapsible>
