@@ -65,13 +65,11 @@ type errors = [
 
 <Collapsible>
   ```ts
-  type First<T extends any[]> = T extends [infer A, ...infer rest] ? A : never
+  type First<T extends any[]> = T extends [infer A, ...infer Rest] ? A : never
   ```
 
-  1. `T extends [infer A, ...infer Rest]` : T가 1개 이상의 요소를 가진 배열인지 검사하고, 맞을 경우 첫 번째 요소의 타입을 A로, 나머지를 Rest 타입으로 추출한다.
+  1. `T extends [infer A, ...infer Rest]` : T가 **1개 이상의 요소를 가진 튜플**인지 검사하고, 맞을 경우 첫 번째 요소의 타입을 A로, 나머지를 Rest 타입으로 추출한다.
   2. `? A : never` : 조건이 참일 경우 A를, 아닐 경우 never를 return한다.
-
-
 
   ```ts
   type First<T extends any[]> = T extends [] ? never : T[0]
@@ -80,5 +78,7 @@ type errors = [
   First<string[]> // string
   ```
 
-  위는 정답으로 인정되나 튜플이 아닌 일반 배열일 경우 정확한 길이를 알 수 없기 때문에 빈 배열이 들어와도 string을 return한다. 반면 infer를 사용할 경우, 첫 번째 요소의 존재 검증을 하기 때문에 올바른 정답이 나온다.
+  위는 정답으로 인정되나 `string[]`은 빈 배열일수도 있고 아닐수도 있기 때문에, 타입 수준에서 “첫 번째 요소가 반드시 존재한다”는 사실을 증명할 수 없다. 따라서 \`T\[0]\`의 결과 타입인 \`string\`이 그대로 평가된다.
+
+  infer를 쓰는 패턴은 T가 **1개 이상의 요소를 가진 튜플인**지 검사하기 때문에 **일반 배열**은 통과하지 못한다.
 </Collapsible>
