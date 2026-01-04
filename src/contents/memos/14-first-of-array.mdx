@@ -68,6 +68,6 @@ type errors = [
   type First<T extends any[]> = T extends [infer A, ...infer rest] ? A : never
   ```
 
-  1. `T extends [infer A, ...infer Rest]` : T가 1개 이상의 요소를 가진 배열이라면, 첫 번째 요소의 타입을 A로, 나머지를 Rest 타입으로 추출한다.
-  2. `? A : never` : 조건이 참일 경우, A를 return하고 아닐 경우 never를 return한다.
+  1. `T extends [infer A, ...infer Rest]` : T가 1개 이상의 요소를 가진 배열인지 검사하고, 맞을 경우 첫 번째 요소의 타입을 A로, 나머지를 Rest 타입으로 추출한다.
+  2. `? A : never` : 조건이 참일 경우 A를, 아닐 경우 never를 return한다.
 </Collapsible>
