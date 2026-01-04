@@ -1,8 +1,8 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Callout } from "@/components/callout";
-import MDXContent from "@/components/mdx-content";
+import { Callout } from "@/components/mdx/callout";
+import MDXContent from "@/components/mdx/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
@@ -33,7 +33,7 @@ export default async function BlogPost({
 	const content = await post.content();
 
 	return (
-		<div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
 			<nav aria-label="리스트로 돌아가기">
 				<Link
 					href={{ pathname: "/posts", query }}

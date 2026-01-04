@@ -18,7 +18,7 @@ export const PostList = ({
 	const postList = category ? posts.list.filter((post) => post.category.slug === category) : posts.list;
 
 	return (
-		<div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mb-6">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">블로그</h1>
 				<p className="mb-6 text-slate-600 dark:text-slate-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
