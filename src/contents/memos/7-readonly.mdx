@@ -1,0 +1,57 @@
+---
+category: type-script
+title: 7-Readonly
+publishedDateTimeISO: 2026-01-04T19:38:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+`T`의 모든 프로퍼티를 읽기 전용(재할당 불가)으로 바꾸는 내장 제네릭 `Readonly<T>`를 이를 사용하지 않고 구현하세요.
+
+예시:
+
+```ts
+interface Todo {
+  title: string
+  description: string
+}
+
+const todo: MyReadonly<Todo> = {
+  title: "Hey",
+  description: "foobar"
+}
+
+todo.title = "Hello" // Error: cannot reassign a readonly property
+todo.description = "barFoo" // Error: cannot reassign a readonly property
+
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<MyReadonly<Todo1>, Readonly<Todo1>>>,
+]
+
+interface Todo1 {
+  title: string
+  description: string
+  completed: boolean
+  meta: {
+    author: string
+  }
+}
+```
+
+
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type MyReadonly<T> = {
+    readonly [K in keyof T]: T[K]
+  }
+  ```
+</Collapsible>
