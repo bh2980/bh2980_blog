@@ -52,8 +52,6 @@ type cases = [
   핵심은 재귀인데, 첫 번째 값을 뽑아서 그게 `U`와 동일하면 `true`를, 아니면 뒤의 배열 `Rest`에 대해서 다시 `Includes`를 실행한다. 그러면 `Rest`의 첫 번째(태초의 두번째) 요소에 대해서 다시 이 과정을 수행하고, 이를 반복하다 모든 요소를 지나서 **빈 배열**이 되면 최소 하나의 요소가 존재하는 튜플을 보장할 수 없어서 `T extends [infer First, ...infer Rest]` 조건이 `false`가 되고 이때 `false`를 반환한다.
 </Collapsible>
 
-
-
 ### 부록
 
-Equal 구현하기
+[Equal 구현하기](https://www.bh2980.dev/memos/xxx-equal)
