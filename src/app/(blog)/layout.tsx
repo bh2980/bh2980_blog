@@ -1,5 +1,5 @@
 import { cookies, draftMode } from "next/headers";
-import { Fragment } from "react";
+import { ThemeProvider } from "next-themes";
 
 export default async function RootLayout({
 	children,
@@ -12,7 +12,7 @@ export default async function RootLayout({
 	const branch = ck.get("ks-branch")?.value;
 
 	return (
-		<Fragment>
+		<ThemeProvider attribute={"class"}>
 			{children}
 			{isEnabled && (
 				<div className="fixed inset-x-0 bottom-0 z-50">
@@ -31,6 +31,6 @@ export default async function RootLayout({
 					</div>
 				</div>
 			)}
-		</Fragment>
+		</ThemeProvider>
 	);
 }
