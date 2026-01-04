@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips } from "./code";
 import { CodeWithTabs } from "./code-handler";
+import { Collapsible } from "./collapsible";
 import { Mermaid } from "./mermaid.client";
 
 interface MDXContentProps {
@@ -30,6 +31,7 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 				CodeWithTooltips,
 				PureMdx: MDXContent,
 				Callout,
+				Collapsible,
 			}}
 		/>
 	);
