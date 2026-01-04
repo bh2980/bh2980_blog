@@ -1,0 +1,80 @@
+---
+category: type-script
+title: XXX - Equal
+publishedDateTimeISO: 2026-01-04T23:24:00.000Z
+tags:
+  - typescript
+  - type-challenges
+---
+<Callout variant="warning">
+  이 문항은 Type Challenges에 존재하지 않는 문항입니다.
+</Callout>
+
+### 질문
+
+두 타입이 완전히 동일한지 비교하는 `Equal<A, B>` 타입을 구현하세요.
+
+예시:
+
+```ts
+type A = Equal<1, 1>            // true
+type B = Equal<1, number>       // false
+type C = Equal<true, boolean>   // false
+type D = Equal<{ a: number }, { a: number }> // true
+type E = Equal<{ a: number }, { readonly a: number }> // false
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Expect } from ‘@type-challenges/utils’
+
+import type { Expect } from '@type-challenges/utils'
+
+type cases = [
+  // primitive & literal
+  Expect<Equal<Equal<1, 1>, true>>,
+  Expect<Equal<Equal<1, number>, false>>,
+
+  // union
+  Expect<Equal<Equal<1 | 2, 2 | 1>, true>>,
+  Expect<Equal<Equal<1 | 2, 1>, false>>,
+
+  // object (structural vs modifier)
+  Expect<Equal<Equal<{ a: number }, { a: number }>, true>>,
+  Expect<Equal<Equal<{ a: number }, { readonly a: number }>, false>>,
+
+  // special case: any
+  Expect<Equal<Equal<any, any>, true>>,
+  Expect<Equal<Equal<any, number>, false>>,
+]
+```
+
+### 사전 지식
+
+1. `extends`는 **할당(대입) 가능성**을 검사한다.
+
+   <Code codeblock={{"lang":"typescript","value":"any extends string ? true : false // true\nstring extends any ? true : false // true"}} />
+
+   흔히 TypeScript의 타입 시스템은 집합에 비유되곤 하지만, (\*<Tooltip content="제네릭이나 조건부 연산이 남아 있지 않아 컴파일러가 즉시 확정할 수 있는 타입">구체 타입</Tooltip>에 대하여)  `any`라는 특수 케이스 때문에 완벽히 동일하지는 않다. 따라서 `A extends B`가 `true`이고 `B extends A`가 `true`라고 이 둘이 동일하다는 **동등성을 보장하지는 못한다.**
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type Equal<A, B> =
+    (<T>() => T extends A ? 1 : 2) extends
+    (<T>() => T extends B ? 1 : 2)
+      ? true
+      : false;
+  ```
+
+  **해설**
+
+  먼저 위 코드는 모든 타입 `T`에 대하여 A와 B의 `extends` 결과가 동일한 결과를 내는지 평가한다.
+
+  `<T>() => T extends A ? 1 : 2`는 `<T>() =>`<Tooltip content="함수 반환 타입(=>)이 extends보다 결합력이 높기 때문">**`(T extends A ? 1 : 2)`**</Tooltip>로 봐야 한다.\
+  즉, `(모든 타입 extends A) extends (모든 타입 extends B)`가 되어 A와 B가 <Tooltip content="모든 타입을 평가할 때, 유니온 분배 법칙이 적용된다.">모든 타입</Tooltip>에 대해 개별적으로 같은 결과를 내는지 평가한다.
+
+  **왜 `T extends A`가 아닌 함수 `<T>() =>T extends A`의 함수 형태를 취하는가?**
+
+  TypeScript에는 “모든 타입에 대해”를 직접 표현하는 문법이 없다. 만약 `T extends A`를 사용한다면 제네릭으로 해석되어 외부에서 타입 `T`를 제공해주어야 한다. 대신 제네릭 함수 타입(`<T>() => T`)은 임의의 타입 `T`에 대해 항상 성립해야 하는 타입으로 해석되므로, 이를 이용해 모든 타입에 대한 검사를 간접적으로 수행한다.
+</Collapsible>
+

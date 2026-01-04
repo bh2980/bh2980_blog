@@ -1,0 +1,33 @@
+---
+category: type-script
+title: 3060 - Unshift
+publishedDateTimeISO: 2026-01-05T01:16:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+`Array.unshift`의 타입 버전을 구현하세요.
+
+예시:
+
+```typescript
+type Result = Unshift<[1, 2], 0> // [0, 1, 2]
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Unshift<[], 1>, [1]>>,
+  Expect<Equal<Unshift<[1, 2], 0>, [0, 1, 2]>>,
+  Expect<Equal<Unshift<['1', 2, '3'], boolean>, [boolean, '1', 2, '3']>>,
+]
+
+```
+
+### 풀이
+
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"type Unshift<T extends any[], U> = [U, ...T]"}} />
+</Collapsible>
