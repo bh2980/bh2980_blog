@@ -5,9 +5,7 @@ export const Tooltip = ({ content, children }: PropsWithChildren<{ content: stri
 	return (
 		<TooltipRoot>
 			<TooltipTrigger>{children}</TooltipTrigger>
-			<TooltipContent>
-				<p>{content}</p>
-			</TooltipContent>
+			<TooltipContent>{content}</TooltipContent>
 		</TooltipRoot>
 	);
 };
