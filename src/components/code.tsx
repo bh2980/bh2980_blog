@@ -1,6 +1,6 @@
 import { Block, CodeBlock, parseProps } from "codehike/blocks";
 import { highlight, Pre, type RawCode } from "codehike/code";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, PropsWithChildren, ReactNode } from "react";
 import z from "zod";
 import { cn } from "@/utils";
 import {
@@ -16,6 +16,14 @@ import {
 } from "./code-handler";
 
 export const CODE_THEME = "dark-plus" as const;
+
+export const InlineCode = ({ children }: PropsWithChildren) => {
+	return (
+		<code className="rounded-sm border bg-slate-100 p-1 before:content-none after:content-none dark:bg-slate-700">
+			{children}
+		</code>
+	);
+};
 
 export const CodeTemplate = ({
 	code,
