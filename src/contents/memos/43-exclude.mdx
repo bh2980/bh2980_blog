@@ -1,0 +1,42 @@
+---
+category: type-script
+title: 43-Exclude
+publishedDateTimeISO: 2026-01-04T21:26:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+`T`에서 `U`에 할당할 수 있는 타입을 제외하는 내장 제네릭 `Exclude<T, U>`를 이를 사용하지 않고 구현하세요.
+
+예시:
+
+```ts
+type Result = MyExclude<'a' | 'b' | 'c', 'a'> // 'b' | 'c'
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<MyExclude<'a' | 'b' | 'c', 'a'>, 'b' | 'c'>>,
+  Expect<Equal<MyExclude<'a' | 'b' | 'c', 'a' | 'b'>, 'c'>>,
+  Expect<Equal<MyExclude<string | number | (() => void), Function>, string | number>>,
+]
+```
+
+### 사전 지식
+
+1. 유니온의 분배 법칙
+
+   <Code codeblock={{"lang":"typescript","value":"T extends U ? A : B\n->\n(T1 extends U ? A : B)\n| (T2 extends U ? A : B)\n| (T3 extends U ? A : B)"}} />
+
+   T가 유니온이면 각 타입에 대해 조건이 분배되어 계산된다.
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type MyExclude<T, U> = T extends U ? never : T
+  ```
+</Collapsible>
