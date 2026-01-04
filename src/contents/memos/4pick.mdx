@@ -27,13 +27,22 @@ const todo: TodoPreview = {
 }
 ```
 
-
-
 ## 선수 지식
 
+1. keyof T
 
+   객체 타입 T의 모든 프로퍼티 이름을 유니온 타입으로 만든다.
 
+   ```ts
+   interface Todo {
+     title: string
+     description: string
+     completed: boolean
+   }
 
+   keyof Todo
+   // 'title' | 'description' | 'completed'
+   ```
 
 ## 풀이
 
