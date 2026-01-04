@@ -31,7 +31,7 @@ export const CodeTemplate = ({
 	hideHeader,
 	handlers = [],
 }: ComponentProps<typeof Pre> & { hideHeader?: boolean }) => (
-	<div className={cn("relative overflow-hidden rounded-lg", className)}>
+	<div className={cn("group relative overflow-hidden rounded-lg", className)}>
 		{code.meta && !hideHeader && (
 			<div className="bg-slate-600 py-2 text-center font-bold text-slate-200 text-sm">{code.meta}</div>
 		)}
@@ -40,7 +40,7 @@ export const CodeTemplate = ({
 			code={code}
 			handlers={[mark, diff, lineNumbers, fold, collapse, collapseContent, collapseTrigger, ...handlers]}
 		/>
-		<CopyButton text={code.code} />
+		<CopyButton text={code.code} className="hidden group-hover:block" />
 	</div>
 );
 
