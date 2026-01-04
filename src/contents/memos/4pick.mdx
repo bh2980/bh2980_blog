@@ -99,7 +99,7 @@ interface Expected2 {
 ## 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript"}} />
+  <Code codeblock={{"lang":"typescript","value":"type MyPick<T, K extends keyof T> = {\n  [P in K]: T[P]\n};"}} />
 
   \
   1\. `K extends keyof T` : 객체 `T`가 가진 프로퍼티만 가질 수 있도록 `K`에 대한을 둔다.
