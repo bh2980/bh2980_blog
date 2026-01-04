@@ -3,10 +3,12 @@ import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { Callout } from "./callout";
-import { Code, CodeWithTooltips } from "./code";
+import { Code, CodeWithTooltips, InlineCode } from "./code";
 import { CodeWithTabs } from "./code-handler";
 import { Collapsible } from "./collapsible";
 import { Mermaid } from "./mermaid.client";
+import { Tooltip } from "./tooltip";
+import { Underline } from "./underline";
 
 interface MDXContentProps {
 	source: string;
@@ -32,6 +34,9 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 				PureMdx: MDXContent,
 				Callout,
 				Collapsible,
+				code: InlineCode,
+				Tooltip,
+				Underline,
 			}}
 		/>
 	);

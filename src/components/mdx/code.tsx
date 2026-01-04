@@ -1,6 +1,6 @@
 import { Block, CodeBlock, parseProps } from "codehike/blocks";
 import { highlight, Pre, type RawCode } from "codehike/code";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, PropsWithChildren, ReactNode } from "react";
 import z from "zod";
 import { cn } from "@/utils";
 import {
@@ -17,13 +17,21 @@ import {
 
 export const CODE_THEME = "dark-plus" as const;
 
+export const InlineCode = ({ children }: PropsWithChildren) => {
+	return (
+		<code className="rounded-sm border bg-slate-100 p-1 before:content-none after:content-none dark:bg-slate-700">
+			{children}
+		</code>
+	);
+};
+
 export const CodeTemplate = ({
 	code,
 	className,
 	hideHeader,
 	handlers = [],
 }: ComponentProps<typeof Pre> & { hideHeader?: boolean }) => (
-	<div className={cn("relative overflow-hidden rounded-lg", className)}>
+	<div className={cn("group relative overflow-hidden rounded-lg", className)}>
 		{code.meta && !hideHeader && (
 			<div className="bg-slate-600 py-2 text-center font-bold text-slate-200 text-sm">{code.meta}</div>
 		)}
@@ -32,7 +40,7 @@ export const CodeTemplate = ({
 			code={code}
 			handlers={[mark, diff, lineNumbers, fold, collapse, collapseContent, collapseTrigger, ...handlers]}
 		/>
-		<CopyButton text={code.code} />
+		<CopyButton text={code.code} className="hidden group-hover:block" />
 	</div>
 );
 

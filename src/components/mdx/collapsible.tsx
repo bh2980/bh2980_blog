@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { CollapsibleContent, Collapsible as CollapsibleRoot, CollapsibleTrigger } from "./ui/collapsible";
+import { CollapsibleContent, Collapsible as CollapsibleRoot, CollapsibleTrigger } from "../ui/collapsible";
 
 export const Collapsible = ({ children }: { children: ReactNode }) => {
 	return (
