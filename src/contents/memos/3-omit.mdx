@@ -1,0 +1,106 @@
+---
+category: type-script
+title: 3 - Omit
+publishedDateTimeISO: 2026-01-05T01:59:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+`T`에서 `K` 프로퍼티만 제거해 새로운 오브젝트 타입을 만드는 내장 제네릭 `Omit<T, K>`를 이를 사용하지 않고 구현하세요.
+
+예시:
+
+```ts
+interface Todo {
+  title: string
+  description: string
+  completed: boolean
+}
+
+type TodoPreview = MyOmit<Todo, 'description' | 'title'>
+
+const todo: TodoPreview = {
+  completed: false,
+}
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Expected1, MyOmit<Todo, 'description'>>>,
+  Expect<Equal<Expected2, MyOmit<Todo, 'description' | 'completed'>>>,
+  Expect<Equal<Expected3, MyOmit<Todo1, 'description' | 'completed'>>>,
+]
+
+// @ts-expect-error
+type error = MyOmit<Todo, 'description' | 'invalid'>
+
+interface Todo {
+  title: string
+  description: string
+  completed: boolean
+}
+
+interface Todo1 {
+  readonly title: string
+  description: string
+  completed: boolean
+}
+
+interface Expected1 {
+  title: string
+  completed: boolean
+}
+
+interface Expected2 {
+  title: string
+}
+
+interface Expected3 {
+  readonly title: string
+}
+```
+
+### 선행 지식
+
+1. `readonly`의 보존
+
+   TypeScript의 `Mapped Type`은 원본 프로퍼티의 <Tooltip content="readonly, ?(optional)">modifier</Tooltip>를 자동으로 복사해줄 때가 있는데 원본 타입의 키를 <Underline>그대로 기반으로 순회</Underline>할 때 안정적으로 복사해준다. 만약 `Exclude<keyof T, K>`처럼 유니온을 한 번 가공한 결과로 순회할 경우 modifier의 복사가 깨질 수 있다.
+2. 키 재매핑 `as`
+
+   타입 단언의 `as`와 다른 문법으로, `Mapped Type`에서 키를 다시 매핑하고 싶을 때 사용된다.
+
+   ```ts
+   { [P in Keys as NewKey]: Value }
+   ```
+
+
+
+### 풀이
+
+<Collapsible>
+  ```ts
+  type MyOmit<T, K extends keyof T> = {
+    [P in keyof T as P extends K ? never : P]: T[P]
+  }
+  ```
+</Collapsible>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
