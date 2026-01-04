@@ -26,47 +26,24 @@ type E = Equal<{ a: number }, { readonly a: number }> // false
 /* _____________ 테스트 케이스 _____________ */
 import type { Expect } from ‘@type-challenges/utils’
 
+import type { Expect } from '@type-challenges/utils'
+
 type cases = [
-// primitive & literal
-Expect<Equal<Equal<1, 1>, true>>,
-Expect<Equal<Equal<1, number>, false>>,
-Expect<Equal<Equal<‘a’, ‘a’>, true>>,
-Expect<Equal<Equal<‘a’, string>, false>>,
+  // primitive & literal
+  Expect<Equal<Equal<1, 1>, true>>,
+  Expect<Equal<Equal<1, number>, false>>,
 
-// boolean
-Expect<Equal<Equal<true, true>, true>>,
-Expect<Equal<Equal<true, boolean>, false>>,
-Expect<Equal<Equal<boolean, boolean>, true>>,
+  // union
+  Expect<Equal<Equal<1 | 2, 2 | 1>, true>>,
+  Expect<Equal<Equal<1 | 2, 1>, false>>,
 
-// union
-Expect<Equal<Equal<1 | 2, 1 | 2>, true>>,
-Expect<Equal<Equal<1 | 2, 2 | 1>, true>>,
-Expect<Equal<Equal<1 | 2, 1>, false>>,
-Expect<Equal<Equal<1, 1 | 2>, false>>,
+  // object (structural vs modifier)
+  Expect<Equal<Equal<{ a: number }, { a: number }>, true>>,
+  Expect<Equal<Equal<{ a: number }, { readonly a: number }>, false>>,
 
-// object
-Expect<Equal<Equal<{ a: number }, { a: number }>, true>>,
-Expect<Equal<Equal<{ a: number }, { readonly a: number }>, false>>,
-Expect<Equal<Equal<{ a: number }, { a: number; b: number }>, false>>,
-
-// tuple & array
-Expect<Equal<Equal<[1, 2], [1, 2]>, true>>,
-Expect<Equal<Equal<[1, 2], readonly [1, 2]>, false>>,
-Expect<Equal<Equal<number[], number[]>, true>>,
-Expect<Equal<Equal<number[], readonly number[]>, false>>,
-
-// function
-Expect<Equal<Equal<() => void, () => void>, true>>,
-Expect<Equal<Equal<(x: number) => void, (x: number) => void>, true>>,
-Expect<Equal<Equal<(x: number) => void, (x: string) => void>, false>>,
-
-// special types
-Expect<Equal<Equal<never, never>, true>>,
-Expect<Equal<Equal<any, any>, true>>,
-Expect<Equal<Equal<unknown, unknown>, true>>,
-Expect<Equal<Equal<any, number>, false>>,
-Expect<Equal<Equal<never, number>, false>>,
-Expect<Equal<Equal<unknown, number>, false>>,
+  // special case: any
+  Expect<Equal<Equal<any, any>, true>>,
+  Expect<Equal<Equal<any, number>, false>>,
 ]
 ```
 
@@ -98,7 +75,6 @@ Expect<Equal<Equal<unknown, number>, false>>,
 
   **왜 `T extends A`가 아닌 함수 `<T>() =>T extends A`의 함수 형태를 취하는가?**
 
-  TS에는 모든 타입을 표시할 수 있는 방법이 없기 때문이다. 만약 `T extends A`라고 작성하면 `T`를 제네릭으로 인식하여 타입 외부에서 제네릭 `T`를 제공받아야 한다.&#x20;
-
-  하지만 `<T>() => T extends A`의 형태로 작성하게 되면 `<T>`를 통해 내부적으로 임의의 타입 `T`를 정의하여 외부에서 받지 않아도 되고, TS 컴파일러는 타입 `T`를 외부에서 받을 수 없으니 `T`에 모든 타입을 넣어 검사를 진행한다.
+  TypeScript에는 “모든 타입에 대해”를 직접 표현하는 문법이 없다. 만약 `T extends A`를 사용한다면 제네릭으로 해석되어 외부에서 타입 `T`를 제공해주어야 한다. 대신 제네릭 함수 타입(`<T>() => T`)은 임의의 타입 `T`에 대해 항상 성립해야 하는 타입으로 해석되므로, 이를 이용해 모든 타입에 대한 검사를 간접적으로 수행한다.
 </Collapsible>
+
