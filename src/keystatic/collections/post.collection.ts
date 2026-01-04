@@ -26,11 +26,7 @@ export const postCollection = collection({
 			],
 		}),
 
-		category: fields.select({
-			label: "카테고리",
-			defaultValue: "development",
-			options: POST_CATEGORIES,
-		}),
+		category: fields.relationship({ collection: "post-category", label: "카테고리" }),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),
