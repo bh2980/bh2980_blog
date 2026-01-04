@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import Footer from "@/components/footer";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/navigation.client";
 
 export default function RootLayout({
 	children,
