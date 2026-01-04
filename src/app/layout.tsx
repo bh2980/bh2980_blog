@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const pretendardVariable = localFont({
 	src: "../../public/PretendardVariable.woff2",
@@ -24,7 +25,9 @@ export default function RootLayout({
 			<body
 				className={`${pretendardVariable.variable} flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100`}
 			>
-				<NuqsAdapter>{children}</NuqsAdapter>
+				<TooltipProvider>
+					<NuqsAdapter>{children}</NuqsAdapter>
+				</TooltipProvider>
 			</body>
 		</html>
 	);
