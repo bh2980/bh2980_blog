@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Footer from "@/components/footer";
-import MDXContent from "@/components/mdx-content";
+import MDXContent from "@/components/mdx/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/memo";

@@ -1,8 +1,8 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Callout } from "@/components/callout";
-import MDXContent from "@/components/mdx-content";
+import { Callout } from "@/components/mdx/callout";
+import MDXContent from "@/components/mdx/mdx-content";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
