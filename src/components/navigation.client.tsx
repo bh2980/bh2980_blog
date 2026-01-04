@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { cn } from "@/utils/cn";
 
 interface NavigationProps {
@@ -9,31 +9,10 @@ interface NavigationProps {
 }
 
 export default function Navigation({ className }: NavigationProps) {
-	const [theme, setTheme] = useState<string | undefined>(undefined);
-
-	useEffect(() => {
-		const savedTheme = localStorage.getItem("theme");
-		if (savedTheme) {
-			setTheme(savedTheme);
-			document.documentElement.classList.add(savedTheme);
-		} else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-			setTheme("dark");
-			document.documentElement.classList.add("dark");
-		} else {
-			setTheme("light");
-		}
-	}, []);
+	const { resolvedTheme, setTheme } = useTheme();
 
 	const toggleTheme = () => {
-		if (theme === "dark") {
-			document.documentElement.classList.remove("dark");
-			localStorage.setItem("theme", "light");
-			setTheme("light");
-		} else {
-			document.documentElement.classList.add("dark");
-			localStorage.setItem("theme", "dark");
-			setTheme("dark");
-		}
+		setTheme(resolvedTheme === "dark" ? "light" : "dark");
 	};
 
 	return (
@@ -75,7 +54,7 @@ export default function Navigation({ className }: NavigationProps) {
 							aria-label="다크 모드 토글"
 							type="button"
 						>
-							{theme === "dark" ? (
+							{resolvedTheme === "dark" ? (
 								<svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path
 										strokeLinecap="round"
