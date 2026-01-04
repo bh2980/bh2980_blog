@@ -55,7 +55,7 @@ interface Expected2 {
 
 ## 선수 지식
 
-1. `keyof T`
+1. **`keyof T`**
 
    객체 타입 T의 모든 프로퍼티 이름을 유니온 타입으로 만든다.
 
@@ -69,7 +69,7 @@ interface Expected2 {
    keyof Todo
    // 'title' | 'description' | 'completed'
    ```
-2. 제네릭 제한
+2. **제네릭 제한**
 
    ```ts
    // @ts-expect-error
@@ -78,7 +78,7 @@ interface Expected2 {
 
    코드를 보면 잘못된 key가 들어갈 경우 처음부터 에러를 내도록 기대하고 있다.\
    따라서 애초에 넣을 때부터 올바른 키만 받도록 제한을 두어야한다.
-3. Mapped Type
+3. **Mapped Type**
 
    ```ts
    {
@@ -88,7 +88,7 @@ interface Expected2 {
 
    객체 타입을 키 기준으로 반복 생성할 때 사용하는 문법이다.\
    `K`에 들어 있는 각각의 키를 순회하면서, 새로운 객체 타입의 프로퍼티를 만든다.
-4. 인덱스 접근
+4. **인덱스 접근**
 
    ```ts
    T[P]
