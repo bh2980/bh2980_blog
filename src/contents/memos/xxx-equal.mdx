@@ -93,11 +93,9 @@ Expect<Equal<Equal<unknown, number>, false>>,
 
   먼저 위 코드는 모든 타입 `T`에 대하여 A와 B의 `extends` 결과가 동일한 결과를 내는지 평가한다.
 
-  `<T>() => T extends A ? 1 : 2`는 `<T>() => `**`(T extends A ? 1 : 2)`**&#xB85C; 봐야 한다. \
+  `<T>() => T extends A ? 1 : 2`는 `<T>() =>`**`(T extends A ? 1 : 2)`**&#xB85C; 봐야 한다. \
   (함수 반환 타입이 extends보다 결합력이 높기 때문)\
   즉, `(모든 타입 extends A) extends (모든타입 extends B)`가 되어 A와 B가 모든 타입에 대해 개별적으로 같은 결과를 내는지 평가한다.
-
-
 
   **왜 `T extends A`가 아닌 함수 `<T>() => T extends A`의 함수 형태를 취하는가?**
 
@@ -105,6 +103,3 @@ Expect<Equal<Equal<unknown, number>, false>>,
 
   하지만 `<T>() => T extends A`의 형태로 작성하게 되면 `<T>`를 통해 내부적으로 임의의 타입 `T`를 정의하게 되고, TS 컴파일러는 타입 `T`를 외부에서 받을 수 없으니 `T`에 모든 타입을 넣어 검사를 진행한다.
 </Collapsible>
-
-
-
