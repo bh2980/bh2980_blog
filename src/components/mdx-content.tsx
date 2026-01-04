@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips } from "./code";
 import { CodeWithTabs } from "./code-handler";
-import { Mermaid } from "./mermaid";
+import { Mermaid } from "./mermaid.client";
 
 interface MDXContentProps {
 	source: string;
