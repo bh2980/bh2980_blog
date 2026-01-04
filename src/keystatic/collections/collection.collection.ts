@@ -26,9 +26,11 @@ export const collectionCollection = collection({
 					{
 						post: fields.array(fields.relationship({ label: "게시글", collection: "post" }), {
 							label: "게시글",
+							itemLabel: (props) => props.value ?? "잘못된 게시글",
 						}),
 						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
 							label: "메모",
+							itemLabel: (props) => props.value ?? "잘못된 메모",
 						}),
 					},
 					{ label: "컨텐츠" },
@@ -37,9 +39,11 @@ export const collectionCollection = collection({
 					{
 						post: fields.array(fields.relationship({ label: "게시글", collection: "post" }), {
 							label: "게시글",
+							itemLabel: (props) => props.value ?? "잘못된 게시글",
 						}),
 						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
 							label: "메모",
+							itemLabel: (props) => props.value ?? "잘못된 메모",
 						}),
 					},
 					{ label: "컨텐츠" },
@@ -48,6 +52,7 @@ export const collectionCollection = collection({
 					{
 						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
 							label: "메모",
+							itemLabel: (props) => props.value ?? "잘못된 메모",
 						}),
 					},
 					{ label: "컨텐츠" },

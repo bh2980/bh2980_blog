@@ -30,7 +30,7 @@ export const postCollection = collection({
 
 		tags: fields.array(fields.relationship({ collection: "tag", label: "태그" }), {
 			label: "태그",
-			itemLabel: (props) => props.value ?? "태그 선택",
+			itemLabel: (props) => props.value ?? "잘못된 태그",
 		}),
 
 		content: fields.mdx({
