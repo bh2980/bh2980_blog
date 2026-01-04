@@ -1,0 +1,11 @@
+---
+category: type-script
+title: 4・Pick
+publishedDateTimeISO: 2026-01-04T16:37:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"type MyPick<T, K extends keyof T> = {\n  [P in K]: T[P]\n};"}} />
+</Collapsible>
