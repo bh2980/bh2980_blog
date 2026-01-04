@@ -1,5 +1,3 @@
-import { Fragment } from "react";
-import Footer from "@/components/footer";
 import Navigation from "@/components/navigation.client";
 
 export default function RootLayout({
@@ -8,10 +6,9 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<Fragment>
+		<>
 			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50 dark:bg-slate-900" />
-			<main className="flex-1">{children}</main>
-			<Footer />
-		</Fragment>
+			<div className="flex flex-1 flex-col">{children}</div>
+		</>
 	);
 }
