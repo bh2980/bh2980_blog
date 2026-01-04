@@ -1,6 +1,6 @@
 ---
 category: type-script
-title: 11-Tuple to Object
+title: 11 - Tuple to Object
 publishedDateTimeISO: 2026-01-04T19:55:00.000Z
 tags:
   - type-challenges
@@ -51,8 +51,6 @@ type error = TupleToObject<[[1, 2], {}]>
    <Code codeblock={{"lang":"typescript","value":"type T = ['a', 'b', 'c']\ntype U = T[number] // 'a' | 'b' | 'c'"}} />
 
    배열의 원소는 `[number]`를 사용하여 꺼내올 수 있다. 이 때 모든 배열 요소의 유니온 타입으로 추출된다.
-
-
 
 ### 풀이
 
