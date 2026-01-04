@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
 type CollapsibleNodeViewProps = {
-	value: {
-		readonly label: string;
-	};
-	onChange(value: { readonly label: string }): void;
+	value: object;
+	onChange(value: object): void;
 	onRemove(): void;
 	isSelected: boolean;
 	children: ReactNode;
