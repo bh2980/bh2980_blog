@@ -2,8 +2,9 @@
 
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/utils/cn";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, className }: { text: string; className?: string }) {
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = async () => {
@@ -19,7 +20,7 @@ export function CopyButton({ text }: { text: string }) {
 
 	return (
 		<button
-			className="absolute top-1 right-1 rounded p-2 text-slate-200 hover:bg-slate-400/20"
+			className={cn("absolute top-1 right-1 rounded p-2 text-slate-200 hover:bg-slate-400/20", className)}
 			aria-label="클립보드에 복사하기"
 			onClick={handleCopy}
 			type="button"

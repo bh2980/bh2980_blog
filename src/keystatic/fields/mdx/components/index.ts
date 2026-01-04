@@ -3,6 +3,8 @@ import { codeblock } from "./code-block";
 import { collapsible } from "./collapsible";
 import { mermaid } from "./mermaid";
 import { pureMDX } from "./pure-mdx";
+import { tooltip } from "./tooltip";
+import { underline } from "./underline";
 
 export const components = {
 	Callout: callout,
@@ -10,4 +12,6 @@ export const components = {
 	Code: codeblock,
 	Mermaid: mermaid,
 	PureMdx: pureMDX,
+	Tooltip: tooltip,
+	Underline: underline,
 };

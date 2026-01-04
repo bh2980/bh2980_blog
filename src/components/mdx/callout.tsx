@@ -3,7 +3,7 @@ import type { VariantProps } from "class-variance-authority";
 import { AlertCircle, AlertOctagon, AlertTriangle, Info, Lightbulb } from "lucide-react";
 import type { PropsWithChildren } from "react";
 
-import { Alert, AlertDescription, AlertTitle, type alertVariants } from "./ui/alert";
+import { Alert, AlertDescription, AlertTitle, type alertVariants } from "../ui/alert";
 
 type CalloutVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
 

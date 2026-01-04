@@ -2,7 +2,15 @@
 
 import { type HighlightedCode, highlight, Pre, type RawCode } from "codehike/code";
 import { useCallback, useEffect, useState } from "react";
-import { collapse, collapseContent, collapseTrigger, diff, fold, lineNumbers, mark } from "@/components/code-handler";
+import {
+	collapse,
+	collapseContent,
+	collapseTrigger,
+	diff,
+	fold,
+	lineNumbers,
+	mark,
+} from "@/components/mdx/code-handler";
 
 export function CodePreview({ codeblock }: { codeblock: RawCode }) {
 	const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
