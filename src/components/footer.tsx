@@ -1,7 +1,7 @@
 export default function Footer() {
 	return (
 		<footer className="border-slate-200 border-t bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-			<div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+			<div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
 				<div className="flex justify-between text-slate-600 text-sm dark:text-slate-400">
 					<p>{`© ${new Date().getFullYear()} bh2980's blog. All rights reserved.`}</p>
 					<div className="flex items-center gap-5 fill-slate-600 dark:fill-slate-400">
