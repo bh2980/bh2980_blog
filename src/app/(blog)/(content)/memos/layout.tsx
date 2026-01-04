@@ -9,7 +9,7 @@ export default async function MemosLayout({ children }: { children: ReactNode })
 	return (
 		<div className="h-[calc(100dvh-66px)] min-h-0 w-full overflow-hidden md:grid md:grid-cols-[360px_1fr]">
 			<MemoList categories={categories} memos={memos} />
-			<section className="min-w-0 overflow-y-auto">{children}</section>
+			<section className="flex min-w-0 flex-col overflow-y-auto">{children}</section>
 		</div>
 	);
 }

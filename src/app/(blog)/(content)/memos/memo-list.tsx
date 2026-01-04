@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQueryState } from "nuqs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ListResult, Memo, MemoCategoryListMeta, MemoCategoryWithCount } from "@/libs/contents/types";
+import { cn } from "@/utils/cn";
 
 export const MemoList = ({
 	categories,
@@ -39,7 +40,7 @@ export const MemoList = ({
 				) : (
 					<ul className="z-50 flex h-full flex-col gap-1 overflow-auto text-sm">
 						{memoList.map((memo) => (
-							<li key={memo.slug} className="rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+							<li key={memo.slug} className={cn("rounded-md hover:bg-slate-100 dark:hover:bg-slate-800")}>
 								<Link href={{ pathname: `/memos/${memo.slug}`, query: category ? { category } : undefined }}>
 									<article className="flex h-full items-center gap-4 rounded-lg p-2">
 										<h2 className="line-clamp-1 font-semibold dark:text-slate-300">{memo.title}</h2>
