@@ -36,5 +36,11 @@ type cases = [
 ### 풀이
 
 <Collapsible>
+  ```ts
+  type Last<T extends any[]> = T extends [...infer Rest, infer Last] ? Last : never
 
+  // 좀 더 재밌는 풀이로는
+
+  type Last<T extends any[]> = [never, ...T][T["length"]];
+  ```
 </Collapsible>
