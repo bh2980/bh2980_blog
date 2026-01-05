@@ -102,13 +102,11 @@ type Expected3 = {
   <PureMdx
     source="<CodeWithTooltips>
 
-```js !code
-// !tooltip[/lorem/] description
-function lorem(ipsum, dolor = 1) {
-const sit = ipsum == null ? 0 : ipsum.sit
-dolor = sit - amet(dolor)
-// !tooltip[/consectetur/] inspect
-return sit ? consectetur(ipsum) : []
+```ts !code
+type Chainable<S extends object = {}> = {
+// !tooltip[/K extends keyof S ? never : K/] description
+  option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
+  get: () => S
 }
 ```
 
@@ -119,15 +117,6 @@ return sit ? consectetur(ipsum) : []
 Lorem ipsum **dolor** sit amet `consectetur`.
 
 Adipiscing elit _sed_ do eiusmod.
-
-## !!tooltips inspect
-
-```js
-function consectetur(ipsum) {
-const { a, b } = ipsum
-return a + b
-}
-```
 
 </CodeWithTooltips>"
   />
