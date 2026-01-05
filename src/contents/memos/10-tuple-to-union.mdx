@@ -29,4 +29,4 @@ type cases = [
 
 ### 풀이
 
-<Code codeblock={{"lang":"typescript","value":"type TupleToUnion<T extends readonly any[]> = T[number]\n\n//or\n\nexport type TupleToUnion<T> =\n  T extends Array<infer Item> ? Item : never"}} />
+<Code codeblock={{"lang":"typescript","value":"type TupleToUnion<T extends readonly any[]> = T[number]\n\n//or\n\nexport type TupleToUnion<T extends readonly any[]> =\n  T extends readonly (infer U)[] ? U : never"}} />
