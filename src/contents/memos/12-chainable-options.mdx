@@ -105,9 +105,8 @@ type Expected3 = {
 ```ts !code
 type Chainable<S extends object = {}> = {
 // !tooltip[/key/] description
-  option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) 
-  => Chainable<Omit<S, K> & Record<K, V>>
-  get: () => S
+option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
+get: () => S
 }
 ```
 
