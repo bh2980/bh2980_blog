@@ -99,21 +99,21 @@ type Expected3 = {
 ### 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
+  ````ts
+  <CodeWithTooltips>
 
-```ts !code
-type Chainable<S extends object = {}> = {
-// !tooltip[/key/] description
-  option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
-  get: () => S
-}
-```
+  ```ts !code
+  type Chainable<S extends object = {}> = {
+  // !tooltip[/key/] description
+    option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
+    get: () => S
+  }
+  ```
 
-## !!tooltips description
+  ## !!tooltips description
 
-key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.
+  key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.
 
-</CodeWithTooltips>"
-  />
+  </CodeWithTooltips>
+  ````
 </Collapsible>
