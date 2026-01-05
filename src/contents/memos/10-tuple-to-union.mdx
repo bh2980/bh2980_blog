@@ -1,0 +1,32 @@
+---
+category: type-script
+title: 10 - Tuple to Union
+publishedDateTimeISO: 2026-01-05T19:38:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+튜플 값으로 유니온 타입을 생성하는 제네릭 `TupleToUnion<T>`를 구현하세요.
+
+예시:
+
+```ts
+type Arr = ['1', '2', '3']
+
+type Test = TupleToUnion<Arr> // expected to be '1' | '2' | '3'
+
+// !collapse(1:10) collapsed
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<TupleToUnion<[123, '456', true]>, 123 | '456' | true>>,
+  Expect<Equal<TupleToUnion<[123]>, 123>>,
+]
+```
+
+### 풀이
+
+<Code codeblock={{"lang":"typescript","value":"type TupleToUnion<T extends readonly any[]> = T[number]\n\n//or\n\nexport type TupleToUnion<T extends readonly any[]> =\n  T extends readonly (infer U)[] ? U : never"}} />

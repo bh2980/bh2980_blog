@@ -15,6 +15,7 @@ tags:
 ```ts
 type Result = MyExclude<'a' | 'b' | 'c', 'a'> // 'b' | 'c'
 
+// !collapse(1:30) collapsed
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 
