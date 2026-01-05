@@ -36,3 +36,9 @@ type cases = [
   Expect<Equal<Last<[() => 123, { a: string }]>, { a: string }>>,
 ]
 ```
+
+### 풀이
+
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"type Last<T extends any[]> = T extends [...infer Rest, infer Last] ? Last : never\n\n//아니면 조금 재미있는 원리로\n\ntype Last<T extends any[]> = [never, ...T][T[\"length\"]];"}} />
+</Collapsible>
