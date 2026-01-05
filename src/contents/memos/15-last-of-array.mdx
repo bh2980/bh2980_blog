@@ -1,0 +1,38 @@
+---
+category: type-script
+title: 15 - Last of Array
+publishedDateTimeISO: 2026-01-05T22:10:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+> 이 챌린지에는 TypeScript 4.0 사용이 권장됩니다.
+
+배열 `T`를 사용하고 마지막 요소를 반환하는 제네릭 `Last<T>`를 구현합니다.
+
+예시
+
+```ts
+type arr1 = ['a', 'b', 'c']
+type arr2 = [3, 2, 1]
+
+type tail1 = Last<arr1> // expected to be 'c'
+type tail2 = Last<arr2> // expected to be 1
+
+// !collapse(1, 20) collapsed
+/* _____________ 여기에 코드 입력 _____________ */
+
+type Last<T extends any[]> = [never, ...T][T["length"]];
+
+/* _____________ 테스트 케이스 _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<Last<[]>, never>>,
+  Expect<Equal<Last<[2]>, 2>>,
+  Expect<Equal<Last<[3, 2, 1]>, 1>>,
+  Expect<Equal<Last<[() => 123, { a: string }]>, { a: string }>>,
+]
+```
