@@ -19,3 +19,4 @@ meta:
       - 3312-parameters
       - 2-get-return-type
       - 3-omit
+      - 8-readonly-2
