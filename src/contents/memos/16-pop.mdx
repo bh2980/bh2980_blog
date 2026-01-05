@@ -21,6 +21,8 @@ type arr2 = [3, 2, 1]
 type re1 = Pop<arr1> // expected to be ['a', 'b', 'c']
 type re2 = Pop<arr2> // expected to be [3, 2]
 
+ **더보기**: 비슷하게 `Shift`, `Push` 그리고 `Unshift`도 구현할 수 있을까요?
+
 // !collaps(1,10) collapsed
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
@@ -31,3 +33,7 @@ type cases = [
   Expect<Equal<Pop<[]>, []>>,
 ]
 ```
+
+### 풀이
+
+<Code codeblock={{"lang":"typescript","value":"type Pop<T extends any[]> = T extends [...infer Rest, infer _] ? Rest : T\ntype Shift<T extends any[], U> = T extends [infer _, ...infer Rest] ? Rest : T\n\ntype Push<T extends any[], U> = [...T, U];\ntype Unshift<T extends any[]> = [U, ...T];"}} />
