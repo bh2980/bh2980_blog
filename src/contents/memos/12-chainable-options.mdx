@@ -100,53 +100,19 @@ type Expected3 = {
 
 <Collapsible>
   <PureMdx
-    source="<CodeWithTabs>
+    source="<CodeWithTooltips>
 
-```js !!tabs main.js
-function lorem(ipsum, dolor = 1) {
-const sit = ipsum == null ? 0 : ipsum.sit
-dolor = sit - amet(dolor)
-return sit ? consectetur(ipsum) : []
-}
-```
-
-```css !!tabs styles.css
-body {
-margin: 0;
-padding: 0;
-}
-```
-
-</CodeWithTabs>
-
-<CodeWithTooltips>
-
-```js !code
-// !tooltip[/lorem/] description
-function lorem(ipsum, dolor = 1) {
-const sit = ipsum == null ? 0 : ipsum.sit
-dolor = sit - amet(dolor)
-// !tooltip[/consectetur/] inspect
-return sit ? consectetur(ipsum) : []
+```ts !code
+type Chainable<S extends object = {}> = {
+// !tooltip[/key/] description
+  option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
+  get: () => S
 }
 ```
 
 ## !!tooltips description
 
-### Hello world
-
-Lorem ipsum **dolor** sit amet `consectetur`.
-
-Adipiscing elit _sed_ do eiusmod.
-
-## !!tooltips inspect
-
-```js
-function consectetur(ipsum) {
-const { a, b } = ipsum
-return a + b
-}
-```
+key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.
 
 </CodeWithTooltips>"
   />
