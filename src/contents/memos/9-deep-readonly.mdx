@@ -113,11 +113,6 @@ type Expected2 = { readonly a: string } | { readonly b: number }
    **할당(대입) 가능성 기준으로**, readonly 리스트 타입은 “쓰기 불필요”라 요구사항이 약하므로 **더 넓다**. 따라서 mutable 리스트는 readonly 리스트에 할당 가능하다.
 
    <Code codeblock={{"lang":"typescript","value":"any[] extends readonly any[] ? true : false // true"}} />
-4. Union의 `keyof`
-
-   유니온 타입에 keyof를 적용하면 **모든 멤버에 공통으로 존재하는 키만** 남는다.
-
-
 
 ### 풀이
 
