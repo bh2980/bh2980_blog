@@ -1,0 +1,22 @@
+name: Type Challenges
+description: 그동안 풀었던 타입 챌린지를 순서대로 모았습니다.
+meta:
+  discriminant: wiki
+  value:
+    memo:
+      - 4-pick
+      - 7-readonly
+      - 11-tuple-to-object
+      - 14-first-of-array
+      - 18-length-of-tuple
+      - 43-exclude
+      - 189-awaited
+      - 268-if
+      - 533-concat
+      - 898-includes
+      - 3057-push
+      - 3060-unshift
+      - 3312-parameters
+      - 2-get-return-type
+      - 3-omit
+      - 8-readonly-2

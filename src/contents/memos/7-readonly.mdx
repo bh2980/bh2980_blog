@@ -26,7 +26,7 @@ const todo: MyReadonly<Todo> = {
 todo.title = "Hello" // Error: cannot reassign a readonly property
 todo.description = "barFoo" // Error: cannot reassign a readonly property
 
-
+// !collapse(1:30) collapsed
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 

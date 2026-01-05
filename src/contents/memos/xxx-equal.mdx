@@ -23,6 +23,7 @@ type C = Equal<true, boolean>   // false
 type D = Equal<{ a: number }, { a: number }> // true
 type E = Equal<{ a: number }, { readonly a: number }> // false
 
+// !collapse(1:30) collapsed
 /* _____________ 테스트 케이스 _____________ */
 import type { Expect } from '@type-challenges/utils'
 
