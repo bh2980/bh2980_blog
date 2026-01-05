@@ -98,4 +98,56 @@ type Expected3 = {
 
 ### 풀이
 
-<Code codeblock={{"lang":"typescript","value":"<CodeWithTooltips>\n\n```ts !code\ntype Chainable<S extends object = {}> = {\n// !tooltip[/key/] description\n  option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>\n  get: () => S\n}\n```\n\n## !!tooltips description\n\nkey가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.\n\n</CodeWithTooltips>"}} />
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTabs>
+
+```js !!tabs main.js
+function lorem(ipsum, dolor = 1) {
+const sit = ipsum == null ? 0 : ipsum.sit
+dolor = sit - amet(dolor)
+return sit ? consectetur(ipsum) : []
+}
+```
+
+```css !!tabs styles.css
+body {
+margin: 0;
+padding: 0;
+}
+```
+
+</CodeWithTabs>
+
+<CodeWithTooltips>
+
+```js !code
+// !tooltip[/lorem/] description
+function lorem(ipsum, dolor = 1) {
+const sit = ipsum == null ? 0 : ipsum.sit
+dolor = sit - amet(dolor)
+// !tooltip[/consectetur/] inspect
+return sit ? consectetur(ipsum) : []
+}
+```
+
+## !!tooltips description
+
+### Hello world
+
+Lorem ipsum **dolor** sit amet `consectetur`.
+
+Adipiscing elit _sed_ do eiusmod.
+
+## !!tooltips inspect
+
+```js
+function consectetur(ipsum) {
+const { a, b } = ipsum
+return a + b
+}
+```
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
