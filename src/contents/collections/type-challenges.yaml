@@ -20,3 +20,9 @@ meta:
       - 2-get-return-type
       - 3-omit
       - 8-readonly-2
+      - 9-deep-readonly
+      - 10-tuple-to-union
+      - 12-chainable-options
+      - 15-last-of-array
+      - 16-pop
+      - 20-promiseall

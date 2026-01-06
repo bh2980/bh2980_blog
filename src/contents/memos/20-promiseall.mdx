@@ -1,0 +1,89 @@
+---
+category: type-script
+title: 20 - Promise.all
+publishedDateTimeISO: 2026-01-06T10:34:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### Question
+
+Type the function `PromiseAll` that accepts an array of PromiseLike objects, the returning value should be `Promise<T>` where `T` is the resolved result array.
+
+```ts
+const promise1 = Promise.resolve(3);
+const promise2 = 42;
+const promise3 = new Promise<string>((resolve, reject) => {
+  setTimeout(resolve, 100, 'foo');
+});
+
+// expected to be `Promise<[number, 42, string]>`
+const p = PromiseAll([promise1, promise2, promise3] as const)
+
+// !collapse(1:20) collapsed
+/* _____________ Test Cases _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+const promiseAllTest1 = PromiseAll([1, 2, 3] as const)  // 튜플
+const promiseAllTest2 = PromiseAll([1, 2, Promise.resolve(3)] as const)  // 튜플
+const promiseAllTest3 = PromiseAll([1, 2, Promise.resolve(3)])  // 배열
+const promiseAllTest4 = PromiseAll<Array<number | Promise<number>>>([1, 2, 3])  // 배열
+const promiseAllTest5 = PromiseAll<(number | Promise<string>)[]>([1, 2, Promise.resolve('3')])  // 배열
+
+type cases = [
+  Expect<Equal<typeof promiseAllTest1, Promise<[1, 2, 3]>>>,
+  Expect<Equal<typeof promiseAllTest2, Promise<[1, 2, number]>>>,
+  Expect<Equal<typeof promiseAllTest3, Promise<[number, number, number]>>>,
+  Expect<Equal<typeof promiseAllTest4, Promise<number[]>>>,
+  Expect<Equal<typeof promiseAllTest5, Promise<(number | string)[]>>>,
+]
+```
+
+### 선행 지식
+
+1. Variadic Tuple `[...T]`
+
+   배열 리터럴을 튜플처럼 추론시키는 파라미터 패턴
+
+   <Code codeblock={{"lang":"typescript","value":"const a = [1, 2, 3];            // 배열 리터럴 number[]\n\n// [...T] 형태의 파라미터 패턴을 사용하여 튜플로 추론하도록 유도\ndeclare function f<T extends readonly unknown[]>(x: readonly [...T]): T;\nconst t = f([1, 2, 3]);         // [number, number, number] (환경에 따라 튜플 유지)\n\n// as const면 확정 튜플\nconst t2 = f([1, 2, 3] as const); // [1, 2, 3]"}} />
+2. TypeScript에서 배열/튜플 순회
+
+   T\[number]는 “요소 타입”을 꺼내는 방식이라, 튜플에 쓰면 **각 자리 정보가 사라지고 유니온으로 뭉개진다.** 반대로 **각 자리(0, 1, 2 …)를 유지하며 변환**하려면 Mapped Type으로 keyof T를 순회한다.
+
+   <Code codeblock={{"lang":"typescript","value":"type Input = [\"A\", \"B\", \"C\"];\n\n// 1. T[number] : 튜플을 깨고 요소들을 유니온으로 뭉침\ntype AsUnion = Input[number]; \n// 결과: \"A\" | \"B\" | \"C\"\n\n// 2. T[number][] : 뭉쳐진 유니온을 다시 가변 길이 배열로 만듦\ntype AsArray = Input[number][]; \n// 결과: (\"A\" | \"B\" | \"C\")[] (길이 정보 사라짐)\n\n// 3. [K in keyof T] : 튜플 구조와 길이를 그대로 유지하며 순회\ntype AsMapped = { [K in keyof Input]: Input[K] }; \n// 결과: [\"A\", \"B\", \"C\"] (원래의 튜플 형태 유지)"}} />
+3. 조건부 타입에서 유니온의 분배(분배 조건부 타입)
+
+   조건부 타입(`T extends U ? X : Y`)에 유니온 타입이 전달될 때, 제네릭 `T`가 아무런 가공도 되지 않은 순수한 상태(Naked Type Parameter)일 때만 유니온의 각 요소가 개별적으로 분배되어 평가된다. 그렇지 않은 경우 유니온이 통째로 평가된다.
+
+   <Code codeblock={{"lang":"typescript","value":"type ToArray<T> = T extends any ? T[] : never;\ntype ToArrayNonDist<T> = [T] extends [any] ? T[] : never;\n\n// 1. 분배 발생: 순수한 타입 T를 그대로 사용\ntype Distributed = ToArray<string | number>;\n// 결과: string[] | number[] (각각 쪼개서 처리됨)\n\n// 2. 분배 방지: T를 [T]처럼 인덱싱/튜플로 감싸는 별개의 처리를 추가\ntype NonDistributed = ToArrayNonDist<string | number>;\n// 결과: (string | number)[] (통째로 평가됨)"}} />
+
+### 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```ts !code
+// !tooltip[/readonly any\[\]/] description 
+// !tooltip[/readonly \[\.\.\.T\]/] variadic
+declare function PromiseAll<T extends readonly any[]>(values: readonly [...T]): Promise<{
+// !tooltip[/Awaited<T\[P\]>/] extends
+&nbsp;&nbsp;[P in keyof T]: Awaited<T[P]>
+}>
+```
+
+## !!tooltips description
+
+입력 타입을 readonly any[]로 두어서 어떤 리스트도 받을 수 있도록 제한
+
+## !!tooltips variadic
+
+Variadic Tuple 파라미터 형태를 사용하여 리터럴 배열이 튜플로 추론되도록 유도(테스트 케이스 3)
+
+## !!tooltips extends
+
+Awaited 내부적으로 분배 조건부 타입을 사용하여 가공되지 않은 순수한 상태로 평가되도록 하여 각 요소가 개별적으로 Awaited 처리됨.
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
