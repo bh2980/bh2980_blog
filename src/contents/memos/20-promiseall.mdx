@@ -51,7 +51,7 @@ type cases = [
     source="<CodeWithTooltips>
 
 ```ts !code
-// !tooltip[/readonly\sany[]/] description
+// !tooltip[/any[]/] description
 declare function PromiseAll<T extends readonly any[]>(values: readonly [...T]): Promise<{
 [P in keyof T]: Awaited<T[P]>
 }>
