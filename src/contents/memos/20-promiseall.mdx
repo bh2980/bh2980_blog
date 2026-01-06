@@ -1,0 +1,70 @@
+---
+category: type-script
+title: 20 - Promise.all
+publishedDateTimeISO: 2026-01-06T10:34:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### Question
+
+Type the function `PromiseAll` that accepts an array of PromiseLike objects, the returning value should be `Promise<T>` where `T` is the resolved result array.
+
+```ts
+const promise1 = Promise.resolve(3);
+const promise2 = 42;
+const promise3 = new Promise<string>((resolve, reject) => {
+  setTimeout(resolve, 100, 'foo');
+});
+
+// expected to be `Promise<[number, 42, string]>`
+const p = PromiseAll([promise1, promise2, promise3] as const)
+
+// !collapse(1:20) collapsed
+/* _____________ Test Cases _____________ */
+import type { Equal, Expect } from '@type-challenges/utils'
+
+const promiseAllTest1 = PromiseAll([1, 2, 3] as const)  // 튜플
+const promiseAllTest2 = PromiseAll([1, 2, Promise.resolve(3)] as const)  // 튜플
+const promiseAllTest3 = PromiseAll([1, 2, Promise.resolve(3)])  // 배열
+const promiseAllTest4 = PromiseAll<Array<number | Promise<number>>>([1, 2, 3])  // 배열
+const promiseAllTest5 = PromiseAll<(number | Promise<string>)[]>([1, 2, Promise.resolve('3')])  // 배열
+
+type cases = [
+  Expect<Equal<typeof promiseAllTest1, Promise<[1, 2, 3]>>>,
+  Expect<Equal<typeof promiseAllTest2, Promise<[1, 2, number]>>>,
+  Expect<Equal<typeof promiseAllTest3, Promise<[number, number, number]>>>,
+  Expect<Equal<typeof promiseAllTest4, Promise<number[]>>>,
+  Expect<Equal<typeof promiseAllTest5, Promise<(number | string)[]>>>,
+]
+```
+
+### 선행 지식
+
+1. Variadic Tuple
+2. TypeScript에서 배열 순회
+
+### 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```ts !code
+// !tooltip[/readonly any[]/] description
+declare function PromiseAll<T extends readonly any[]>(values: readonly [...T]): Promise<{
+  [P in keyof T]: Awaited<T[P]>
+}>
+```
+
+## !!tooltips description
+
+### Hello world
+
+Lorem ipsum **dolor** sit amet `consectetur`.
+
+Adipiscing elit _sed_ do eiusmod.
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
