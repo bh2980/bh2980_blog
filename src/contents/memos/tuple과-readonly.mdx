@@ -16,7 +16,7 @@ Tuple의 정의는 불변 배열이 아니라, 길이와 Index와 매칭되는 �
 
 ## 타입 수준에서 배열과 튜플의 구분
 
-그렇다면 타입 수준에서 배열과 튜플을 구분하는 방법은 무엇인가? 바로 ength 프로퍼티의 타입을 보는 것이다.\
+그렇다면 타입 수준에서 배열과 튜플을 구분하는 방법은 무엇인가? 바로 length 프로퍼티의 타입을 보는 것이다.\
 튜플의 length는 숫자 리터럴로 1, 2, 3과 같은 정해진 숫자 값이 나오는 반면, 배열은 길이가 정해져있지 않으므로 number가 나온다.
 
 <Code codeblock={{"lang":"typescript","value":"type IsTupleArray<T extends readonly any[]> =\n  number extends T['length'] ? \"Array\" : \"Tuple\"\n  \nconst array = [1, 2, 3];\nconst tuple = [4, 5, 6] as const;\n\nIsTupleArray<typeof tuple>  // \"Tuple\"\nIsTupleArray<typeof array>  // \"Array\""}} />
