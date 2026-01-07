@@ -74,24 +74,24 @@ f.length // 3
 // !tooltip[/function/] curry
 function curry(fn) {
 // !tooltip[/function/] curried
-&nbsp;&nbsp;return function curried(...args){
+  return function curried(...args){
 // !tooltip[/fn\.length/] length
-&nbsp;&nbsp;&nbsp;&nbsp;if(args.length >= fn.length){
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return fn.call(this, ...args);
-&nbsp;&nbsp;&nbsp;&nbsp;}
+    if(args.length >= fn.length){
+      return fn.call(this, ...args);
+    }
 // !tooltip[/curried\.bind/] bind
-&nbsp;&nbsp;&nbsp;&nbsp;return curried.bind(this, ...args)
-&nbsp;&nbsp;}
+    return curried.bind(this, ...args)
+  }
 }
 ```
 
 ## !!tooltips curry
 
-`curry`는 wapper 역할만 하므로 화살표 함수여도 된다.
+curry는 wapper 역할만 하므로 화살표 함수여도 된다.
 
 ## !!tooltips curried
 
-`curried`는 실제 호출되는 함수이므로 function으로 선언해서 this를 호출 시점의 this와 바인딩 시켜줘야 한다.
+curried는 실제 호출되는 함수이므로 function으로 선언해서 this를 호출 시점의 this와 바인딩 시켜줘야 한다.
 
 ## !!tooltips length
 
