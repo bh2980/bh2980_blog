@@ -67,5 +67,40 @@ f.length // 3
 ## 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"function curry(fn) {\n  return function curried(...args){\n    if(args.length >= fn.length){\n      return fn.call(this, ...args);\n    }\n\n    return curried.bind(this, ...args)\n  }\n}"}} />
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```js !code
+// !tooltip[/function/] curry
+function curry(fn) {
+// !tooltip[/function/] curried
+&nbsp;&nbsp;return function curried(...args){
+// !tooltip[/fn\.length/] length
+&nbsp;&nbsp;&nbsp;&nbsp;if(args.length >= fn.length){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return fn.call(this, ...args);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+// !tooltip[/curried\.bind/] bind
+&nbsp;&nbsp;&nbsp;&nbsp;return curried.bind(this, ...args)
+&nbsp;&nbsp;}
+}
+```
+
+## !!tooltips curry
+
+`curry`는 wapper 역할만 하므로 화살표 함수여도 된다.
+
+## !!tooltips curried
+
+`curried`는 실제 호출되는 함수이므로 function으로 선언해서 this를 호출 시점의 this와 바인딩 시켜줘야 한다.
+
+## !!tooltips length
+
+함수 선언부의 파라미터 개수를 가져온다.
+
+## !!tooltips bind
+
+파라미터 개수가 다 채워지지 않았을 경우 지금까지 받은 파라미터를 미리 앞쪽에 고정시켜 curried의 파라미터를 누적한다.
+
+</CodeWithTooltips>"
+  />
 </Collapsible>
