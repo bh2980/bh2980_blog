@@ -53,10 +53,8 @@ this 바인딩을 위한 일반 함수 호출
 </CodeWithTooltips>"
   />
 
-
-
   <Collapsible>
-    <Mermaid />
+    <Mermaid chart="graph TD; A[&#x22;$(el) 단독 호출&#x22;]-->B[&#x22;$ 실행 컨텍스트 생성&#x22;]; B-->C[&#x22;$의 this = undefined (strict/module)&#x22;]; C-->D[&#x22;return { css: ... } 평가&#x22;]; D-->E{&#x22;css 함수 종류?&#x22;}; E--&#x22;화살표 함수&#x22;-->F[&#x22;css(arrow) 함수 객체 생성&#x22;]; F-->G[&#x22;상위 컨텍스트($)의 this 캡처/고정 (= undefined)&#x22;]; G-->H[&#x22;receiver = $(el)의 반환 객체&#x22;]; H-->I[&#x22;receiver.css(...) 호출&#x22;]; I-->J[&#x22;receiver를 this로 전달 시도&#x22;]; J-->K[&#x22;arrow는 호출 this를 받지 않음&#x22;]; K-->L[&#x22;캡처된 this(= undefined) 사용&#x22;]; E--&#x22;일반 function&#x22;-->M[&#x22;css(function) 함수 객체 생성 (this 캡처 없음)&#x22;]; M-->N[&#x22;receiver = $(el)의 반환 객체&#x22;]; N-->O[&#x22;receiver.css(...) 호출&#x22;]; O-->P[&#x22;엔진이 this = receiver로 설정 후 실행&#x22;];" />
 
     1. $(el) 호출
     2. $의 **실행 컨텍스트(execution context)** 가 생성되고, 단독 호출이라 $의 this가 undefined로 결정(대부분 strict 환경)
