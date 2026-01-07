@@ -21,20 +21,20 @@ jQuery 처럼 속성을 chaining해서 설정할 수 있는 wrapper `$`를 만�
 
 ```js !code
 function $(el) {
-  const element = el
+const element = el
 
-  return {
-    // !tooltip[/function/] function
-    css: function(propertyName, value) {
-      // !tooltip[/\[propertyName\]/] propertyName
-      element.style[propertyName] = value;
+return {
+// !tooltip[/function/] function
+css: function(propertyName, value) {
+// !tooltip[/\[propertyName\]/] propertyName
+element.style[propertyName] = value;
 
-      return {
-        // !tooltip[/this\.css/] css
-        css: this.css
-      };
-    }
-  }
+return {
+// !tooltip[/this\.css/] css
+css: this.css
+};
+}
+}
 }
 ```
 
@@ -53,10 +53,33 @@ this 바인딩을 위한 일반 함수 호출
 </CodeWithTooltips>"
   />
 
-  <Mermaid />
+  <Mermaid
+    chart="flowchart TD
+  A[&#x22;1) $(el) 호출&#x22;] --> B[&#x22;2) $ 실행 컨텍스트 생성&#x22;]
+  B --> C{&#x22;호출 형태가 단독 호출? ($(el))&#x22;}
+  C -->|예 (strict/module)| D[&#x22;$의 this = undefined&#x22;]
+  C -->|아니오 (obj.$(el) 등)| E[&#x22;$의 this = receiver(obj)&#x22;]
 
-  \
+  D --> F[&#x22;3) return { css: ... } 평가&#x22;]
+  E --> F
 
+  F --> G{&#x22;css가 어떤 함수인가?&#x22;}
+
+  %% Arrow branch
+  G -->|화살표 함수| H[&#x22;css 화살표 함수 객체 생성&#x22;]
+  H --> I[&#x22;상위 컨텍스트($)의 this 캡처(고정)&#x22;]
+  I --> J[&#x22;4) receiver.css(...) 호출&#x22;]
+  J --> K[&#x22;메서드 호출이므로 receiver를 this로 '전달'&#x22;]
+  K --> L[&#x22;하지만 화살표 함수는 호출로부터 this를 받지 않음&#x22;]
+  L --> M[&#x22;캡처된 this 사용 (예: undefined)&#x22;]
+
+  %% Function branch
+  G -->|일반 function| N[&#x22;css 함수 객체 생성 (this 캡처 없음)&#x22;]
+  N --> O[&#x22;4) receiver.css(...) 호출&#x22;]
+  O --> P[&#x22;엔진이 this = receiver로 설정하고 실행&#x22;]"
+  />
+
+  \\
 
   1. $(el) 호출
   2. $의 **실행 컨텍스트(execution context)** 가 생성되고, 단독 호출이라 $의 this가 undefined로 결정(대부분 strict 환경)
@@ -72,4 +95,3 @@ this 바인딩을 위한 일반 함수 호출
 
   4\. $(el).css('color', '#fff')를 호출하는 순간 엔진이 $(el)의 반환 객체를 css의 this로 지정하여 css 함수를 실행한다.
 </Collapsible>
-
