@@ -13,9 +13,7 @@ tags:
 
 ## 선행 지식
 
-구성은 괜찮고, “선행 지식”은 **커리 구현에 실제로 쓰는 포인트만** 짧게 정리하면 충분합니다. 아래처럼 채워 넣으면 바로 본문에 연결됩니다.
-
-### **Function.prototype.call(thisArg, ...args)**
+### **`Function.prototype.call(thisArg, ...args)`**
 
 * 함수를 **즉시 호출**한다.
 * 첫 인자: 함수 내부의 this로 사용할 값
@@ -25,7 +23,7 @@ tags:
 fn.call(obj, a, b) // fn을 즉시 실행, this=obj
 ```
 
-### **Function.prototype.apply(thisArg, argsArray)**
+### **`Function.prototype.apply(thisArg, argsArray)`**
 
 * call과 동일하게 **즉시 호출**한다.
 * 차이: 인자를 **배열(또는 유사 배열)**&#xB85C; 한 번에 넘긴다.
@@ -34,7 +32,7 @@ fn.call(obj, a, b) // fn을 즉시 실행, this=obj
 fn.apply(obj, [a, b])
 ```
 
-### **Function.prototype.bind(thisArg, ...args)**
+### **`Function.prototype.bind(thisArg, ...args)`**
 
 * 함수를 **즉시 실행하지 않고**, “새 함수(바인딩된 함수)”를 반환한다.
 * 반환된 함수는:
@@ -46,7 +44,7 @@ const g = fn.bind(obj, a) // 실행 X
 g(b) // 여기서 실행, fn(obj, a, b)
 ```
 
-### **function.length**
+### **`function.length`**
 
 * 함수 선언부의 **매개변수 개수**(arity)를 나타냄.
 
@@ -61,7 +59,7 @@ f.length // 3
 (a, b = 1, c) => {}.length // 1
 ```
 
-### **함수의 this (일반 함수 vs 화살표 함수)**
+### **`함수의 this (일반 함수 vs 화살표 함수)`**
 
 * **일반 함수**: 호출 방식에 따라 this가 결정됨 (obj.m(), call/apply/bind 등)
 * **화살표 함수**: 자신만의 this가 없고, **정의 시점의 상위 스코프 this를 캡처**
