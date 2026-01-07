@@ -8,6 +8,84 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { CodeEditor } from "../shared/code-editor";
 
+const NBSP = "&nbsp;";
+const TAB_SIZE = 2;
+
+// 코드펜스 내부 줄의 "선행 공백/탭"만 &nbsp;로 인코딩
+export function encodeLeadingIndentInFences(src: string) {
+	const lines = src.split("\n");
+	let inFence = false;
+	let fenceChar: "`" | "~" | null = null;
+	let fenceLen = 0;
+
+	return lines
+		.map((line) => {
+			const fence = line.match(/^(\s*)(```+|~~~+)/);
+			if (fence) {
+				const marker = fence[2];
+				const ch = marker[0] as "`" | "~";
+
+				if (!inFence) {
+					inFence = true;
+					fenceChar = ch;
+					fenceLen = marker.length;
+				} else if (fenceChar === ch && marker.length >= fenceLen) {
+					inFence = false;
+					fenceChar = null;
+					fenceLen = 0;
+				}
+				return line;
+			}
+
+			if (!inFence) return line;
+
+			return line.replace(/^[ \t]+/, (ws) => {
+				let out = "";
+				for (const c of ws) {
+					out += c === "\t" ? NBSP.repeat(TAB_SIZE) : NBSP;
+				}
+				return out;
+			});
+		})
+		.join("\n");
+}
+
+// 코드펜스 내부 줄의 선행 &nbsp;만 다시 공백으로 디코딩
+export function decodeLeadingIndentInFences(src: string) {
+	const lines = src.split("\n");
+	let inFence = false;
+	let fenceChar: "`" | "~" | null = null;
+	let fenceLen = 0;
+
+	return lines
+		.map((line) => {
+			const fence = line.match(/^(\s*)(```+|~~~+)/);
+			if (fence) {
+				const marker = fence[2];
+				const ch = marker[0] as "`" | "~";
+
+				if (!inFence) {
+					inFence = true;
+					fenceChar = ch;
+					fenceLen = marker.length;
+				} else if (fenceChar === ch && marker.length >= fenceLen) {
+					inFence = false;
+					fenceChar = null;
+					fenceLen = 0;
+				}
+				return line;
+			}
+
+			if (!inFence) return line;
+
+			return line.replace(new RegExp(`^(?:${NBSP})+`), (m) => {
+				const count = (m.match(/&nbsp;/g) ?? []).length;
+				return " ".repeat(count);
+			});
+		})
+		.join("\n");
+}
+
 function stopBubble(e: any) {
 	e.stopPropagation?.();
 }
@@ -21,17 +99,15 @@ type Props = {
 
 export function PureMdxBlockNodeView({ value, onChange, onRemove, isSelected }: Props) {
 	const [local, setLocal] = React.useState(() => ({
-		source: value.source ?? "",
+		source: decodeLeadingIndentInFences(value.source ?? ""),
 	}));
 
-	// undo/redo 등 외부 변경 동기화
 	React.useEffect(() => {
-		setLocal({ source: value.source ?? "" });
+		setLocal({ source: decodeLeadingIndentInFences(value.source ?? "") });
 	}, [value.source]);
 
-	// ✅ 트랜잭션은 여기서만
 	const commit = React.useCallback(() => {
-		onChange({ source: local.source });
+		onChange({ source: encodeLeadingIndentInFences(local.source) });
 	}, [onChange, local.source]);
 
 	return (
