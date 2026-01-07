@@ -1,0 +1,67 @@
+---
+category: bef-dev
+title: 6. implement basic debounce()
+publishedDateTimeISO: 2026-01-07T11:29:00.000Z
+tags:
+  - bfedev
+  - javascript
+  - snippets
+  - frontend
+---
+## [문제](https://bigfrontend.dev/problem/implement-basic-debounce)
+
+기본적인 `debounce(func, delay)` 함수를 구현해주세요. \
+이 함수는 `delay`마다 debounce된 함수를 리턴합니다.
+
+## 선행 지식
+
+### Debounce(디바운스)
+
+개념설명
+
+### setTimeout
+
+개념설명
+
+### clearTimeout
+
+개념설명
+
+## 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```js !code
+function debounce(func, wait) {
+  let timer = null;
+// !tooltip[/debounced/] debounced
+  return function debounced(...args){
+// !tooltip[/clearTimeout/] clearTimeout
+    clearTimeout(timer);
+// !tooltip[/setTimeout/] setTimeout
+    timer = setTimeout(() => func.call(this, ...args), wait);
+  }
+}
+```
+```
+
+## !!tooltips debounced
+
+debounced는 실제로 호출되는 함수이므로 this를 바인딩해줘야해 function 키워드를 사용해야 한다.
+
+## !!tooltips clearTimeout
+
+아직 처리되지 않은 타이머가(입력이) 있다면, 이전에 설정된 타이머를 지운다.
+
+## !!tooltips setTimeout
+
+wait초 후에 실행될 함수 func를 등록한다.
+
+
+```
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
