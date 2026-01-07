@@ -58,16 +58,11 @@ this 바인딩을 위한 일반 함수 호출
 
     1. $(el) 호출
     2. $의 **실행 컨텍스트(execution context)** 가 생성되고, 단독 호출이라 $의 this가 undefined로 결정(대부분 strict 환경)
-    3. return \{ css: (...) } 객체 리터럴을 **평가하는 순간** css의 **화살표 함수 객체가 생성**되고, 그때 상위 실행 컨텍스트($)의 this(이때는 undefined)를 **캡처**해서 고정
-    4. $(el).css('color', '#fff') 실행 시 엔진은 메소드 호출 형태이므로 css에 $(el)의 반환 객체를 this로 지정하려고 시도하지만, 화살표 함수에는 호출로부터 this를 받는 매커니즘이 없어서 무시된다.
-
-    \
-    1\. $(el) 호출
-
-    2\. $의 실행 컨텍스트(execution context)가 생성되고, 단독 호출이라 $의 this가 undefined로 결정(대부분 strict 환경)
-
-    3\. css객체는 생성되지만 this는 고정하지 않는다. 이는 호출 시점에 결정된다.
-
-    4\. $(el).css('color', '#fff')를 호출하는 순간 엔진이 $(el)의 반환 객체를 css의 this로 지정하여 css 함수를 실행한다.
+    3. 화살표 함수
+       1. return \{ css: (...) } 객체 리터럴을 **평가하는 순간** css의 **화살표 함수 객체가 생성**되고, 그때 상위 실행 컨텍스트($)의 this(이때는 undefined)를 **캡처**해서 고정
+       2. $(el).css('color', '#fff') 실행 시 엔진은 메소드 호출 형태이므로 css에 $(el)의 반환 객체를 this로 지정하려고 시도하지만, 화살표 함수에는 호출로부터 this를 받는 매커니즘이 없어서 무시된다.
+    4. function 함수
+       1. css객체는 생성되지만 this는 고정하지 않는다. 이는 호출 시점에 결정된다.
+       2. $(el).css('color', '#fff')를 호출하는 순간 엔진이 $(el)의 반환 객체를 css의 this로 지정하여 css 함수를 실행한다.
   </Collapsible>
 </Collapsible>
