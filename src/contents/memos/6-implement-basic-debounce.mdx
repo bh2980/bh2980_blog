@@ -8,7 +8,7 @@ tags:
   - snippets
   - frontend
 ---
-## [문제](https://bigfrontend.dev/problem/implement-basic-debounce)
+## 문제
 
 기본적인 `debounce(func, delay)` 함수를 구현해주세요. \
 이 함수는 `delay`마다 debounce된 함수를 리턴합니다.
@@ -35,29 +35,28 @@ tags:
 
 ```js !code
 function debounce(func, wait) {
-  let timer = null;
+let timer = null;
 // !tooltip[/debounced/] debounced
-  return function debounced(...args){
+return function debounced(...args){
 // !tooltip[/clearTimeout/] clearTimeout
-    clearTimeout(timer);
+clearTimeout(timer);
 // !tooltip[/setTimeout/] setTimeout
-    timer = setTimeout(() => func.call(this, ...args), wait);
-  }
+timer = setTimeout(() => func.call(this, ...args), wait);
 }
-```
+}
 ```
 
 ## !!tooltips debounced
 
-debounced는 실제로 호출되는 함수이므로 this를 바인딩해줘야해 function 키워드를 사용해야 한다.
+debounced는 “호출 시점의 this”를 그대로 받아서 func에 넘겨야 하므로, 화살표 함수가 아니라 function을 써서 동적 this를 받는다.
 
 ## !!tooltips clearTimeout
 
-아직 처리되지 않은 타이머가(입력이) 있다면, 이전에 설정된 타이머를 지운다.
+이전에 예약된 실행이 있으면 취소해서, 마지막 입력만 남게 만든다.
 
 ## !!tooltips setTimeout
 
-wait초 후에 실행될 함수 func를 등록한다.
+wait 후에 func를 실행하도록 예약하고, 반환된 타이머 id를 저장해 다음 입력에서 취소할 수 있게 한다.
 
 
 ```
@@ -65,3 +64,7 @@ wait초 후에 실행될 함수 func를 등록한다.
 </CodeWithTooltips>"
   />
 </Collapsible>
+
+### 출처
+
+[6. implement basic debounce()](https://bigfrontend.dev/problem/implement-basic-debounce)
