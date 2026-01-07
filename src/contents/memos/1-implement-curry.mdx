@@ -55,8 +55,7 @@ function f(a, b, c) {}
 f.length // 3
 ```
 
-* 주의:
-  * 기본값이 있으면 그 지점부터는 length가 줄어듦
+* 주의: 기본값이 있으면 그 지점부터는 length가 줄어듦
 
 ```js
 (a, b = 1, c) => {}.length // 1
@@ -72,4 +71,3 @@ f.length // 3
 <Collapsible>
   <Code codeblock={{"lang":"typescript","value":"function curry(fn) {\n  return function curried(...args){\n    if(args.length >= fn.length){\n      return fn.call(this, ...args);\n    }\n\n    return curried.bind(this, ...args)\n  }\n}"}} />
 </Collapsible>
-
