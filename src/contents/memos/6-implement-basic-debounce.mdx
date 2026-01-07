@@ -15,8 +15,6 @@ tags:
 
 ## 선행 지식
 
-
-
 ### **Debounce(디바운스)**
 
 짧은 시간에 이벤트가 연속으로 발생할 때, **마지막 입력 이후 일정 시간(delay) 동안 추가 입력이 없으면 그때 한 번만 실행**되게 만드는 패턴.
@@ -60,7 +58,7 @@ timer = setTimeout(() => func.call(this, ...args), wait);
 
 ## !!tooltips debounced
 
-debounced는 “호출 시점의 this”를 그대로 받아서 func에 넘겨야 하므로, 화살표 함수가 아니라 function을 써서 동적 this를 받는다.
+debounced는 호출 시점의 this를 그대로 받아서 func에 넘겨야 하므로, 화살표 함수가 아니라 function을 써서 동적 this를 받는다.
 
 ## !!tooltips clearTimeout
 
