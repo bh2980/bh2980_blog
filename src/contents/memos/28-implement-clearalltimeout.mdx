@@ -23,38 +23,40 @@ const originalClearTimeout = window.clearTimeout.bind(window);
 let timerSet = new Set();
 
 const clearAllTimeout = () => {
-&nbsp;&nbsp;timerSet.forEach(timer => originalClearTimeout(timer));
-&nbsp;&nbsp;timerSet.clear()
+  timerSet.forEach(timer => originalClearTimeout(timer));
+  timerSet.clear()
 }
 
 // !tooltip[/\.\.\.arguments/] arguments
 window.setTimeout = (handler, timeout, ...arguments) => {
-&nbsp;&nbsp;let timer;
-&nbsp;&nbsp;// !tooltip[/function/] function
-&nbsp;&nbsp;function callback(...args){
-&nbsp;&nbsp;&nbsp;&nbsp;try{
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;handler.apply(this, args);
-&nbsp;&nbsp;&nbsp;&nbsp;}finally{
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timerSet.delete(timer);
-&nbsp;&nbsp;&nbsp;&nbsp;}
-&nbsp;&nbsp;}
+  let timer;
+  // !tooltip[/function/] function
+  function callback(...args){
+    try{
+      handler.apply(this, args);
+    }finally{
+      timerSet.delete(timer);
+    }
+  }
 
-&nbsp;&nbsp;timer = originalSetTimeout(callback, timeout, ...arguments);
-&nbsp;&nbsp;timerSet.add(timer);
+  timer = originalSetTimeout(callback, timeout, ...arguments);
+  timerSet.add(timer);
 
-&nbsp;&nbsp;return timer;
+  return timer;
 }
 
 window.clearTimeout = (handle) => {
-&nbsp;&nbsp;timerSet.delete(handle);
-&nbsp;&nbsp;originalClearTimeout(handle);
+  timerSet.delete(handle);
+  originalClearTimeout(handle);
 }
 
 ```
 
 ## !!tooltips bind
 
-안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 이는 setTimeout이 단독호출처럼 보이지만 실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문
+안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 
+이는 setTimeout이 단독호출처럼 보이지만 
+실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문
 
 ## !!tooltips arguments
 
