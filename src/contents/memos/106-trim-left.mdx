@@ -1,0 +1,54 @@
+---
+category: type-script
+title: 106 - Trim Left
+publishedDateTimeISO: 2026-01-07T09:54:00.000Z
+tags:
+  - type-challenges
+  - typescript
+---
+### 질문
+
+정확한 문자열 타입이고 시작 부분의 공백이 제거된 새 문자열을 반환하는 `TrimLeft<T>`를 구현하십시오.
+
+예시
+
+```ts
+type trimmed = TrimLeft<'  Hello World  '> // 기대되는 결과는 'Hello World  '입니다.
+
+// !collapse(1:15) collapsed
+// 테스트 케이스
+import type { Equal, Expect } from '@type-challenges/utils'
+
+type cases = [
+  Expect<Equal<TrimLeft<'str'>, 'str'>>,
+  Expect<Equal<TrimLeft<' str'>, 'str'>>,
+  Expect<Equal<TrimLeft<'     str'>, 'str'>>,
+  Expect<Equal<TrimLeft<'     str     '>, 'str     '>>,
+  Expect<Equal<TrimLeft<'   \n\t foo bar '>, 'foo bar '>>,
+  Expect<Equal<TrimLeft<''>, ''>>,
+  Expect<Equal<TrimLeft<' \n\t'>, ''>>,
+]
+```
+
+### 선행 지식
+
+1. 템플릿 리터럴 타입 역시 `infer`를 통해 타입을 분해 가능하다.
+
+### 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```js !code
+// !tooltip[/\' \' \| \'\\t\' \| \'\\n\'/] description
+type TrimLeft<S extends string> = S extends `${' ' | '\t' | '\n'}${infer Rest}` ? TrimLeft<Rest> : S
+```
+
+## !!tooltips description
+
+공백 문자를 별도의 템플릿 리터럴 타입으로 분류하여 분리
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
