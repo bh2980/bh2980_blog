@@ -73,15 +73,15 @@ f.length // 3
 ```js !code
 // !tooltip[/function/] curry
 function curry(fn) {
-// !tooltip[/function/] curried
-  return function curried(...args){
-// !tooltip[/fn\.length/] length
-    if(args.length >= fn.length){
-      return fn.call(this, ...args);
-    }
-// !tooltip[/curried\.bind/] bind
-    return curried.bind(this, ...args)
-  }
+&nbsp;&nbsp;// !tooltip[/function/] curried
+&nbsp;&nbsp;return function curried(...args){
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/fn\.length/] length
+&nbsp;&nbsp;&nbsp;&nbsp;if(args.length >= fn.length){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return fn.call(this, ...args);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/curried\.bind/] bind
+&nbsp;&nbsp;&nbsp;&nbsp;return curried.bind(this, ...args)
+&nbsp;&nbsp;}
 }
 ```
 
