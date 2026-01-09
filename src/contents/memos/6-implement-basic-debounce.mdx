@@ -44,14 +44,14 @@ setTimeout으로 만든 예약을 **취소**하는 API
 
 ```js !code
 function debounce(func, wait) {
-let timer = null;
-// !tooltip[/debounced/] debounced
-return function debounced(...args){
-// !tooltip[/clearTimeout/] clearTimeout
-clearTimeout(timer);
-// !tooltip[/setTimeout/] setTimeout
-timer = setTimeout(() => func.call(this, ...args), wait);
-}
+&nbsp;&nbsp;let timer = null;
+&nbsp;&nbsp;// !tooltip[/debounced/] debounced
+&nbsp;&nbsp;return function debounced(...args){
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/clearTimeout/] clearTimeout
+&nbsp;&nbsp;&nbsp;&nbsp;clearTimeout(timer);
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/setTimeout/] setTimeout
+&nbsp;&nbsp;&nbsp;&nbsp;timer = setTimeout(() => func.call(this, ...args), wait);
+&nbsp;&nbsp;}
 }
 ```
 
