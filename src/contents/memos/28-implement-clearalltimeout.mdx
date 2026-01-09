@@ -23,31 +23,31 @@ const originalClearTimeout = window.clearTimeout.bind(window);
 let timerSet = new Set();
 
 const clearAllTimeout = () => {
-  timerSet.forEach(timer => originalClearTimeout(timer));
-  timerSet.clear()
+&nbsp;&nbsp;timerSet.forEach(timer => originalClearTimeout(timer));
+&nbsp;&nbsp;timerSet.clear()
 }
 
 // !tooltip[/\.\.\.arguments/] arguments
 window.setTimeout = (handler, timeout, ...arguments) => {
-  let timer;
-  // !tooltip[/function/] function
-  function callback(...args){
-    try{
-      handler.apply(this, args);
-    }finally{
-      timerSet.delete(timer);
-    }
-  }
+&nbsp;&nbsp;let timer;
+&nbsp;&nbsp;// !tooltip[/function/] function
+&nbsp;&nbsp;function callback(...args){
+&nbsp;&nbsp;&nbsp;&nbsp;try{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;handler.apply(this, args);
+&nbsp;&nbsp;&nbsp;&nbsp;}finally{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timerSet.delete(timer);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;}
 
-  timer = originalSetTimeout(callback, timeout, ...arguments);
-  timerSet.add(timer);
+&nbsp;&nbsp;timer = originalSetTimeout(callback, timeout, ...arguments);
+&nbsp;&nbsp;timerSet.add(timer);
 
-  return timer;
+&nbsp;&nbsp;return timer;
 }
 
 window.clearTimeout = (handle) => {
-  timerSet.delete(handle);
-  originalClearTimeout(handle);
+&nbsp;&nbsp;timerSet.delete(handle);
+&nbsp;&nbsp;originalClearTimeout(handle);
 }
 
 ```
