@@ -1,0 +1,22 @@
+---
+category: bef-dev
+title: 11. what is Composition? create a pipe()
+publishedDateTimeISO: 2026-01-07T12:49:00.000Z
+tags:
+  - bfedev
+  - javascript
+  - snippets
+---
+## 문제
+
+함수를 연결하여 합성하는 pipe 함수를 만들어주세요.
+
+## 풀이
+
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"function pipe(funcs) {\n\treturn function(arg){\n\t\treturn funcs.reduce((acc, func) => {\n\t\t\treturn func.call(this, acc)\n\t\t}, arg)\n\t}\n}"}} />
+</Collapsible>
+
+### 출처
+
+[11. what is Composition? create a pipe()](https://bigfrontend.dev/problem/what-is-composition-create-a-pipe)

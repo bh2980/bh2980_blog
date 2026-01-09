@@ -1,0 +1,77 @@
+---
+category: bef-dev
+title: 6. implement basic debounce()
+publishedDateTimeISO: 2026-01-07T11:29:00.000Z
+tags:
+  - bfedev
+  - javascript
+  - snippets
+  - frontend
+---
+## 문제
+
+기본적인 `debounce(func, delay)` 함수를 구현해주세요. \
+이 함수는 `delay`마다 debounce된 함수를 리턴합니다.
+
+## 선행 지식
+
+### **Debounce(디바운스)**
+
+짧은 시간에 이벤트가 연속으로 발생할 때, **마지막 입력 이후 일정 시간(delay) 동안 추가 입력이 없으면 그때 한 번만 실행**되게 만드는 패턴.
+
+* 키 입력, 검색어 자동완성, 리사이즈/스크롤 같은 “연속 이벤트”에서 호출 수를 줄여 성능/요청을 제어할 때 씀
+* 사용자가 a→ab→abc를 빠르게 입력하면 매번 실행하지 않고, <Underline>입력이 멈춘 뒤 delay가 지나면</Underline> abc로 한 번만 실행
+
+### **setTimeout**
+
+지정한 시간이 지난 뒤에 **함수를 한 번 실행하도록 예약**하는 API.
+
+* 반환값: “예약을 취소할 수 있는 핸들(타이머 ID)”
+* 그 핸들을 저장해두면 나중에 취소 가능
+* 정확히 “딱 그 시간에” 실행 보장은 아니고(이벤트 루프/작업량 영향), “그 시간 이후 가능한 시점”에 실행됨
+
+### **clearTimeout**
+
+setTimeout으로 만든 예약을 **취소**하는 API
+
+* 인자로 setTimeout이 반환한 타이머 핸들(ID)을 넣어야 함
+* 이미 실행된 타이머를 취소해도 효과는 없음
+
+## 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```js !code
+function debounce(func, wait) {
+let timer = null;
+// !tooltip[/debounced/] debounced
+return function debounced(...args){
+// !tooltip[/clearTimeout/] clearTimeout
+clearTimeout(timer);
+// !tooltip[/setTimeout/] setTimeout
+timer = setTimeout(() => func.call(this, ...args), wait);
+}
+}
+```
+
+## !!tooltips debounced
+
+debounced는 호출 시점의 this를 그대로 받아서 func에 넘겨야 하므로, 화살표 함수가 아니라 function을 써서 동적 this를 받는다.
+
+## !!tooltips clearTimeout
+
+이전에 예약된 실행이 있으면 취소해서, 마지막 입력만 남게 만든다.
+
+## !!tooltips setTimeout
+
+wait 후에 func를 실행하도록 예약하고, 반환된 타이머 id를 저장해 다음 입력에서 취소할 수 있게 한다.
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
+
+### 출처
+
+[6. implement basic debounce()](https://bigfrontend.dev/problem/implement-basic-debounce)

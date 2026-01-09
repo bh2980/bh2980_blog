@@ -1,0 +1,16 @@
+---
+category: type-script
+title: 8. can you shuffle() an array?
+publishedDateTimeISO: 2026-01-07T11:54:00.000Z
+tags:
+  - bfedev
+  - javascript
+  - snippets
+---
+## 문제
+
+배열을 인자로 받으면, 그 배열을 **제자리에서 수정**해 **모든 순열이 동일한 확률로 선택되는** 무작위 순열로 섞어야 한다.
+
+## 풀이
+
+<Code codeblock={{"lang":"typescript","value":"function shuffle(arr) {\n  for(let i = 0; i < arr.length; i++){\n    const targetIndex = i;\n    const randIndex = Math.floor(Math.random() * (arr.length - targetIndex)) + targetIndex;\n\n    [arr[targetIndex], arr[randIndex]] = [arr[randIndex], arr[targetIndex]];\n  }\n}"}} />
