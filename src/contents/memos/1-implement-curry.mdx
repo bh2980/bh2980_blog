@@ -1,10 +1,10 @@
 ---
-category: bef-dev
+category: java-script
 title: 1. implement curry()
 publishedDateTimeISO: 2026-01-07T10:07:00.000Z
 tags:
-  - javascript
   - bfedev
+  - javascript
   - snippets
 ---
 ## [문제](https://bigfrontend.dev/problem/implement-curry)
@@ -73,13 +73,13 @@ f.length // 3
 ```js !code
 // !tooltip[/function/] curry
 function curry(fn) {
-// !tooltip[/function/] curried
+&nbsp;&nbsp;// !tooltip[/function/] curried
 &nbsp;&nbsp;return function curried(...args){
-// !tooltip[/fn\.length/] length
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/fn\.length/] length
 &nbsp;&nbsp;&nbsp;&nbsp;if(args.length >= fn.length){
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return fn.call(this, ...args);
 &nbsp;&nbsp;&nbsp;&nbsp;}
-// !tooltip[/curried\.bind/] bind
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/curried\.bind/] bind
 &nbsp;&nbsp;&nbsp;&nbsp;return curried.bind(this, ...args)
 &nbsp;&nbsp;}
 }

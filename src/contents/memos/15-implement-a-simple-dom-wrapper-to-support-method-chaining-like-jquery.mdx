@@ -21,20 +21,20 @@ jQuery 처럼 속성을 chaining해서 설정할 수 있는 wrapper `$`를 만�
 
 ```js !code
 function $(el) {
-const element = el
+&nbsp;&nbsp;const element = el
 
-return {
-// !tooltip[/function/] function
-css: function(propertyName, value) {
-// !tooltip[/\[propertyName\]/] propertyName
-element.style[propertyName] = value;
+&nbsp;&nbsp;return {
+&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/function/] function
+&nbsp;&nbsp;&nbsp;&nbsp;css: function(propertyName, value) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/\[propertyName\]/] propertyName
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;element.style[propertyName] = value;
 
-return {
-// !tooltip[/this\.css/] css
-css: this.css
-};
-}
-}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/this\.css/] css
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;css: this.css
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;}
 }
 ```
 

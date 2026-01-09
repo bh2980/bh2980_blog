@@ -1,0 +1,72 @@
+---
+category: java-script
+title: 28. implement clearAllTimeout()
+publishedDateTimeISO: 2026-01-09T13:02:00.000Z
+tags:
+  - bfedev
+  - javascript
+---
+## 문제
+
+`clearAllTimeout()`을 구현해주세요. 단, `window.setTImeout`과 `window.clearTimeout`의 인터페이스는 동일해야합니다.
+
+## 풀이
+
+<Collapsible>
+  <PureMdx
+    source="<CodeWithTooltips>
+
+```js !code
+// !tooltip[/bind\(window\)/] bind
+const originalSetTimeout = window.setTimeout.bind(window);
+const originalClearTimeout = window.clearTimeout.bind(window);
+let timerSet = new Set();
+
+const clearAllTimeout = () => {
+&nbsp;&nbsp;timerSet.forEach(timer => originalClearTimeout(timer));
+&nbsp;&nbsp;timerSet.clear()
+}
+
+// !tooltip[/\.\.\.arguments/] arguments
+window.setTimeout = (handler, timeout, ...arguments) => {
+&nbsp;&nbsp;let timer;
+&nbsp;&nbsp;// !tooltip[/function/] function
+&nbsp;&nbsp;function callback(...args){
+&nbsp;&nbsp;&nbsp;&nbsp;try{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;handler.apply(this, args);
+&nbsp;&nbsp;&nbsp;&nbsp;}finally{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timerSet.delete(timer);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;}
+
+&nbsp;&nbsp;timer = originalSetTimeout(callback, timeout, ...arguments);
+&nbsp;&nbsp;timerSet.add(timer);
+
+&nbsp;&nbsp;return timer;
+}
+
+window.clearTimeout = (handle) => {
+&nbsp;&nbsp;timerSet.delete(handle);
+&nbsp;&nbsp;originalClearTimeout(handle);
+}
+
+```
+
+## !!tooltips bind
+
+안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 
+이는 setTimeout이 단독호출처럼 보이지만 
+실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문
+
+## !!tooltips arguments
+
+추후 callback의 arguments로 들어간다.
+
+## !!tooltips function
+
+시간이 지나 callback이 따로 실행되었을 때의 this를 보존하기 위해 function 키워드를 사용한다.
+
+
+</CodeWithTooltips>"
+  />
+</Collapsible>
