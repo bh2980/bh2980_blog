@@ -1,0 +1,22 @@
+---
+category: java-script
+title: 167. Intersection of unsorted arrays
+publishedDateTimeISO: 2026-01-12T12:40:00.000Z
+tags:
+  - bfedev
+  - javascript
+---
+## 문제
+
+정렬되지 않은 두 배열이 들어왔을 때, 교집합을 return하는 함수 `getIntersection`을 작성해주세요.
+
+
+
+## 풀이
+
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"function getIntersection(arr1, arr2) {\n  const long = arr1.length > arr2.length ? arr1 : arr2;\n  const short = arr1.length > arr2.length ? arr2 : arr1;\n\n  const shortSet = new Set(short);\n  const intersection = new Set();\n\n  for(const item of long){\n    if(shortSet.has(item)){\n      intersection.add(item)\n    }\n  }\n\n  return Array.from(intersection);\n}"}} />
+
+  long의 길이를 `L`, short의 길이를 `S`, intersection의 길이를 `I`라고 하면, 시간 복잡도는 `O(L+S)`, 공간 복잡도는 `O(S+I)`입니다.
+</Collapsible>
+
