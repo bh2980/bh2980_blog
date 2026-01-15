@@ -46,7 +46,7 @@ export default async function BlogPost({
 
 	const headingRegex = /(^#{2,3}) *([^#].+)/gm;
 	const tocList = Array.from(decodeNumericEntities(content).matchAll(headingRegex), (item) => ({
-		id: slugger.slug(item[2].trim()),
+		id: slugger.slug(item[2]),
 		level: item[1].length - 2,
 		content: item[2].trim(),
 	}));
