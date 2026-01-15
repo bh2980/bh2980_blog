@@ -1,12 +1,22 @@
+import GithubSlugger from "github-slugger";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Callout } from "@/components/mdx/callout";
 import MDXContent from "@/components/mdx/mdx-content";
+import { TableOfContents } from "@/components/table-of-contents";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
 import { Comments } from "./comments.client";
+
+const decodeNumericEntities = (str: string) =>
+	str.replace(/&#(?:x([0-9a-fA-F]+)|(\d+));/g, (_, hex, dec) => {
+		const codePoint = hex ? parseInt(hex, 16) : parseInt(dec, 10);
+		// 유효하지 않으면 원문 유지
+		if (!Number.isFinite(codePoint)) return _;
+		return String.fromCodePoint(codePoint);
+	});
 
 export default async function BlogPost({
 	params,
@@ -32,6 +42,15 @@ export default async function BlogPost({
 
 	const content = await post.content();
 
+	const slugger = new GithubSlugger();
+
+	const headingRegex = /(^#{2,3}) *([^#].+)/gm;
+	const tocList = Array.from(decodeNumericEntities(content).matchAll(headingRegex), (item) => ({
+		id: slugger.slug(item[2].trim()),
+		level: item[1].length - 2,
+		content: item[2].trim(),
+	}));
+
 	return (
 		<div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
 			<nav aria-label="리스트로 돌아가기">
@@ -43,6 +62,7 @@ export default async function BlogPost({
 					<span>돌아가기</span>
 				</Link>
 			</nav>
+
 			<article className="prose dark:prose-invert prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-img:rounded-md prose-h1:p-0 leading-loose">
 				<header className="flex flex-col items-start gap-5 border-slate-200">
 					<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
@@ -78,6 +98,8 @@ export default async function BlogPost({
 				{post.isStale && (
 					<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
 				)}
+				<TableOfContents contents={tocList} className="mt-12" />
+
 				<MDXContent source={content} />
 			</article>
 			<Separator />
