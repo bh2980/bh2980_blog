@@ -18,7 +18,8 @@ export const TableOfContents = ({
 	const handleTocItemSelect = (
 		e: React.MouseEvent<HTMLUListElement, MouseEvent> | React.KeyboardEvent<HTMLUListElement>,
 	) => {
-		const headingId = (e.target as HTMLAnchorElement)?.dataset.headingId;
+		const li = (e.target as HTMLElement)?.closest?.("li[data-heading-id]") as HTMLLIElement | null;
+		const headingId = li?.dataset.headingId;
 		if (!headingId) {
 			return;
 		}
