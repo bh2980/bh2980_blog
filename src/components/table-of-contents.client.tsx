@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { ClassNameValue } from "tailwind-merge";
 import { cn } from "../utils";
 
+const TRIGGER_STADARD_PX = 300;
+
 export const TableOfContents = ({
 	contents,
 	className,
@@ -27,21 +29,27 @@ export const TableOfContents = ({
 	};
 
 	useEffect(() => {
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach((entry) => {
-				if (entry.isIntersecting) {
-					setActiveId(entry.target.id);
-				}
-			});
-		});
-		contents
-			.map((item) => document.getElementById(item.id))
-			.forEach((element) => {
-				if (!element) return;
-				observer.observe(element);
-			});
+		const findTarget = () => {
+			const targetId = contents.reduce((acc, item) => {
+				const element = document.getElementById(item.id);
 
-		return () => observer.disconnect();
+				if (!element) return acc;
+
+				if (element.getBoundingClientRect().top < TRIGGER_STADARD_PX) {
+					return item.id;
+				}
+
+				return acc;
+			}, contents[0]?.id ?? "");
+
+			setActiveId(targetId);
+		};
+
+		findTarget();
+
+		window.addEventListener("scroll", findTarget);
+
+		return () => window.removeEventListener("scroll", findTarget);
 	}, [contents]);
 
 	return (
