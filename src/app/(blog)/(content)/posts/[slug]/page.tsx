@@ -133,9 +133,7 @@ export default async function BlogPost({
 				</nav>
 				<Comments slug={slug} />
 			</div>
-			<aside>
-				<TableOfContents contents={tocList} className="sticky top-32 max-w-72" />
-			</aside>
+			<aside>{tocList?.length && <TableOfContents contents={tocList} className="sticky top-32 max-w-72" />}</aside>
 		</div>
 	);
 }
