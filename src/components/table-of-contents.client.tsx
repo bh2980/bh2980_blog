@@ -1,47 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { TocItem } from "remark-flexible-toc";
 import type { ClassNameValue } from "tailwind-merge";
 import { cn } from "../utils";
 
 const TRIGGER_STADARD_PX = 300;
 
-export const TableOfContents = ({
-	contents,
-	className,
-}: {
-	contents: { id: string; level: number; content: string }[];
-	className?: ClassNameValue;
-}) => {
+export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?: ClassNameValue }) => {
 	const [activeId, setActiveId] = useState<string>();
 
-	const handleTocItemSelect = (
-		e: React.MouseEvent<HTMLUListElement, MouseEvent> | React.KeyboardEvent<HTMLUListElement>,
-	) => {
-		const li = (e.target as HTMLElement)?.closest?.("li[data-heading-id]") as HTMLLIElement | null;
-		const headingId = li?.dataset.headingId;
+	const handleTocItemSelect = (headingId: string) => {
 		if (!headingId) {
 			return;
 		}
 
-		const headingElement = document.getElementById(headingId);
+		const headingElement = document.getElementById(headingId.slice(1));
+
 		headingElement?.scrollIntoView();
-		history.pushState(null, "", `#${headingId}`);
+		history.pushState(null, "", headingId);
 	};
 
 	useEffect(() => {
 		const findTarget = () => {
-			const targetId = contents.reduce((acc, item) => {
-				const element = document.getElementById(item.id);
+			const targetId = toc.reduce((acc, item) => {
+				const element = document.getElementById(item.href.slice(1));
 
 				if (!element) return acc;
 
 				if (element.getBoundingClientRect().top < TRIGGER_STADARD_PX) {
-					return item.id;
+					return item.href;
 				}
 
 				return acc;
-			}, contents[0]?.id ?? "");
+			}, toc[0]?.href ?? "");
 
 			setActiveId(targetId);
 		};
@@ -51,7 +43,7 @@ export const TableOfContents = ({
 		window.addEventListener("scroll", findTarget);
 
 		return () => window.removeEventListener("scroll", findTarget);
-	}, [contents]);
+	}, [toc]);
 
 	return (
 		<ul
@@ -60,22 +52,20 @@ export const TableOfContents = ({
 				"dark:bg-slate-800 dark:text-slate-400",
 				className,
 			)}
-			onClick={handleTocItemSelect}
-			onKeyUp={handleTocItemSelect}
 		>
-			{contents.map((item) => (
+			{toc.map((item) => (
 				<li
-					key={item.id}
+					key={item.href}
 					className={cn(
 						"cursor-pointer hover:text-accent-foreground",
-						activeId === item.id && "font-bold text-slate-600 dark:text-slate-300",
+						activeId === item.href && "font-bold text-slate-600 dark:text-slate-300",
 					)}
 					style={{
-						marginLeft: `${item.level * 12}px`,
+						marginLeft: `${item.depth * 12}px`,
 					}}
-					data-heading-id={item.id}
+					onClick={() => handleTocItemSelect(item.href)}
 				>
-					{item.content}
+					{item.value}
 				</li>
 			))}
 		</ul>

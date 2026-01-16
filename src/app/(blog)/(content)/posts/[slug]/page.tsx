@@ -1,23 +1,14 @@
-import GithubSlugger from "github-slugger";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Callout } from "@/components/mdx/callout";
-import MDXContent from "@/components/mdx/mdx-content";
+import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
-
-const decodeNumericEntities = (str: string) =>
-	str.replace(/&#(?:x([0-9a-fA-F]+)|(\d+));/g, (_, hex, dec) => {
-		const codePoint = hex ? parseInt(hex, 16) : parseInt(dec, 10);
-		// 유효하지 않으면 원문 유지
-		if (!Number.isFinite(codePoint)) return _;
-		return String.fromCodePoint(codePoint);
-	});
 
 export default async function BlogPost({
 	params,
@@ -41,16 +32,8 @@ export default async function BlogPost({
 		return notFound();
 	}
 
-	const content = await post.content();
-
-	const slugger = new GithubSlugger();
-
-	const headingRegex = /(^#{2,3}) *([^#].+)/gm;
-	const tocList = Array.from(decodeNumericEntities(content).matchAll(headingRegex), (item) => ({
-		id: slugger.slug(item[2]),
-		level: item[1].length - 2,
-		content: item[2].trim(),
-	}));
+	const source = await post.content();
+	const { content, toc } = await renderMDX(source);
 
 	return (
 		<div className="mx-auto grid grid-cols-[1fr_min(48rem,100%)_1fr] gap-2 px-4 py-12 sm:px-6 lg:px-8">
@@ -90,7 +73,7 @@ export default async function BlogPost({
 						<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
 					)}
 
-					<MDXContent source={content} />
+					{content}
 				</article>
 				<Separator />
 				<nav className="flex" aria-label="이전 다음 글">
@@ -124,7 +107,7 @@ export default async function BlogPost({
 			</div>
 			<aside>
 				<div className="sticky top-32 flex max-w-72 flex-col gap-6">
-					{tocList?.length && <TableOfContents contents={tocList} />}
+					{toc?.length && <TableOfContents toc={toc} />}
 					<ul
 						className={cn(
 							"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
