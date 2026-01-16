@@ -100,9 +100,6 @@ export default async function BlogPost({
 
 					<MDXContent source={content} />
 				</article>
-				<aside className="absolute left-full ml-10 hidden w-64 xl:block">
-					<TableOfContents contents={tocList} className="right-24" />
-				</aside>
 				<Separator />
 				<nav className="flex" aria-label="이전 다음 글">
 					{prevPost && (
