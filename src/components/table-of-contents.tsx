@@ -25,7 +25,7 @@ export const TableOfContents = ({
 	return (
 		<ul
 			className={cn(
-				"not-prose flex flex-col gap-2 rounded-md bg-muted p-5 text-muted-foreground text-sm [&_li]:hover:text-accent-foreground",
+				"not-prose flex flex-col gap-2 rounded-md bg-muted p-5 text-muted-foreground text-sm [&_li]:cursor-pointer [&_li]:hover:text-accent-foreground",
 				className,
 			)}
 			onClick={handleTocItemSelect}
