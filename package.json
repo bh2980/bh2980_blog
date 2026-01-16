@@ -25,7 +25,6 @@
 		"clsx": "^2.1.1",
 		"codehike": "^1.0.7",
 		"date-fns": "^4.1.0",
-		"github-slugger": "^2.0.0",
 		"lucide-react": "^0.562.0",
 		"mdast-util-to-string": "^4.0.0",
 		"mermaid": "^11.9.0",
