@@ -8,6 +8,7 @@ import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, getPostList } from "@/libs/contents/post";
+import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 
 const decodeNumericEntities = (str: string) =>
@@ -72,13 +73,6 @@ export default async function BlogPost({
 						</div>
 						<div className="flex flex-col gap-4">
 							<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
-							<ul className="!m-0 !p-0 flex list-none flex-wrap items-center gap-1 text-slate-500 text-xs dark:text-slate-400">
-								{post.tags?.map((tag) => (
-									<li key={tag.slug} className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
-										{`#${tag.name}`}
-									</li>
-								))}
-							</ul>
 						</div>
 					</header>
 					{post.isDeprecated && (
@@ -130,7 +124,21 @@ export default async function BlogPost({
 				</nav>
 				<Comments slug={slug} />
 			</div>
-			<aside>{tocList?.length && <TableOfContents contents={tocList} className="sticky top-32 max-w-72" />}</aside>
+			<aside>
+				<div className="sticky top-32 flex max-w-72 flex-col gap-6">
+					{tocList?.length && <TableOfContents contents={tocList} />}
+					<ul
+						className={cn(
+							"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
+							"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
+						)}
+					>
+						{post.tags?.map((tag) => (
+							<li key={tag.slug}>{`#${tag.name}`}</li>
+						))}
+					</ul>
+				</div>
+			</aside>
 		</div>
 	);
 }
