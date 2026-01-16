@@ -1,8 +1,9 @@
 import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx";
-import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import { compileMDX, MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
+import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
@@ -17,6 +18,9 @@ interface MDXContentProps {
 	options?: MDXRemoteProps["options"];
 }
 
+/**
+ * @deprecated
+ */
 export default function MDXContent({ source, options }: MDXContentProps) {
 	return (
 		<MDXRemote
@@ -44,6 +48,42 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 		/>
 	);
 }
+
+export const renderMDX = async (source: string) => {
+	const tocRef: TocItem[] = [];
+
+	const { content } = await compileMDX({
+		source,
+		options: {
+			mdxOptions: {
+				remarkPlugins: [
+					remarkBreaks,
+					remarkGfm,
+					[remarkCodeHike, chConfig],
+					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
+				],
+				rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings],
+				recmaPlugins: [[recmaCodeHike, chConfig]],
+			},
+		},
+		components: {
+			Code,
+			Mermaid,
+			CodeWithTabs,
+			CodeWithTooltips,
+			PureMdx: MDXContent,
+			Callout,
+			Collapsible,
+			code: InlineCode,
+			Tooltip,
+			Underline,
+		},
+	});
+
+	const toc = tocRef.map((item) => ({ ...item, depth: (item.depth - 2) as HeadingDepth }));
+
+	return { content, toc };
+};
 
 const chConfig: CodeHikeConfig = {
 	components: { code: "Code" },
