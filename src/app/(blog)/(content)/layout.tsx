@@ -7,7 +7,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<>
-			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50 dark:bg-slate-900" />
+			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50/50 backdrop-blur-lg dark:bg-slate-900/50" />
 			<div className="flex flex-1 flex-col">{children}</div>
 		</>
 	);
