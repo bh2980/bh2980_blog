@@ -66,13 +66,11 @@ export default async function BlogPost({
 				</nav>
 				<article className="prose dark:prose-invert prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-headings:scroll-mt-32 prose-img:rounded-md prose-h1:p-0 leading-loose">
 					<header className="flex flex-col items-start gap-5 border-slate-200">
+						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
 						<div className="flex gap-2 pl-0.5 text-slate-500 text-xs leading-1 dark:text-slate-400">
 							<span>{post.category.name}</span>
 							<span>·</span>
 							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
-						</div>
-						<div className="flex flex-col gap-4">
-							<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
 						</div>
 					</header>
 					{post.isDeprecated && (
