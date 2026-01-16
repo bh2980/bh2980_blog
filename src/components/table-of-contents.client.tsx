@@ -10,14 +10,16 @@ const TRIGGER_STADARD_PX = 300;
 export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?: ClassNameValue }) => {
 	const [activeId, setActiveId] = useState<string>();
 
-	const handleTocItemSelect = (headingId: string) => {
+	const handleTocItemSelect = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, headingId: string) => {
+		e.preventDefault();
+
 		if (!headingId) {
 			return;
 		}
 
 		const headingElement = document.getElementById(headingId.slice(1));
 
-		headingElement?.scrollIntoView();
+		headingElement?.scrollIntoView({ behavior: "smooth", block: "start" });
 		history.pushState(null, "", headingId);
 	};
 
@@ -63,9 +65,10 @@ export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?
 					style={{
 						marginLeft: `${item.depth * 12}px`,
 					}}
-					onClick={() => handleTocItemSelect(item.href)}
 				>
-					{item.value}
+					<a href={item.href} onClick={(e) => handleTocItemSelect(e, item.href)}>
+						{item.value}
+					</a>
 				</li>
 			))}
 		</ul>
