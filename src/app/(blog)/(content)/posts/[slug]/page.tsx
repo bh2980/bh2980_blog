@@ -53,7 +53,7 @@ export default async function BlogPost({
 
 	return (
 		<div className="mx-auto grid grid-cols-[1fr_min(48rem,100%)_1fr] gap-2 px-4 py-12 sm:px-6 lg:px-8">
-			<div className="col-start-2 flex flex-col gap-8">
+			<div className="col-start-2 mx-auto flex flex-col gap-8">
 				<nav aria-label="리스트로 돌아가기">
 					<Link
 						href={{ pathname: "/posts", query }}
@@ -80,7 +80,6 @@ export default async function BlogPost({
 								))}
 							</ul>
 						</div>
-						<Separator className="mt-3 w-full" />
 					</header>
 					{post.isDeprecated && (
 						<Callout variant={"danger"}>
@@ -135,7 +134,7 @@ export default async function BlogPost({
 				<Comments slug={slug} />
 			</div>
 			<aside>
-				<TableOfContents contents={tocList} className="sticky top-28" />
+				<TableOfContents contents={tocList} className="sticky top-32 max-w-72" />
 			</aside>
 		</div>
 	);
