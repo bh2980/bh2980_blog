@@ -10,7 +10,9 @@ export const TableOfContents = ({
 	contents: { id: string; level: number; content: string }[];
 	className?: ClassNameValue;
 }) => {
-	const scrollTrigger = (e: React.MouseEvent<HTMLUListElement, MouseEvent> | React.KeyboardEvent<HTMLUListElement>) => {
+	const handleTocItemSelect = (
+		e: React.MouseEvent<HTMLUListElement, MouseEvent> | React.KeyboardEvent<HTMLUListElement>,
+	) => {
 		const headingId = (e.target as HTMLAnchorElement)?.dataset.headingId;
 		if (!headingId) {
 			return;
@@ -26,8 +28,8 @@ export const TableOfContents = ({
 				"not-prose flex flex-col gap-2 rounded-md bg-muted p-5 text-muted-foreground text-sm [&_li]:hover:text-accent-foreground",
 				className,
 			)}
-			onClick={scrollTrigger}
-			onKeyUp={scrollTrigger}
+			onClick={handleTocItemSelect}
+			onKeyUp={handleTocItemSelect}
 		>
 			{contents.map((item) => (
 				<li
