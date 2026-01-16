@@ -5,6 +5,7 @@ import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import { a } from "./a";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
 import { CodeWithTabs } from "./code-handler";
@@ -77,6 +78,7 @@ export const renderMDX = async (source: string) => {
 			code: InlineCode,
 			Tooltip,
 			Underline,
+			a,
 		},
 	});
 
