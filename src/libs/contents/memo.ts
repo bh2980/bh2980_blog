@@ -1,6 +1,7 @@
 import "server-only";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
+import { MemoList } from "../../app/(blog)/(content)/memos/memo-list";
 import { getContentMap } from "./store";
 import type {
 	ListOptions,
@@ -101,4 +102,22 @@ export const getMemoCategoryList = async (): Promise<ListResult<MemoCategoryWith
 	const list = Array.from(memoCategoryCountMap.values());
 
 	return { list, total: list.length, meta: { totalMemoCount } };
+};
+
+export const getMemoTagList = async (): Promise<ListResult<Tag>> => {
+	const { memoMap, tagMap } = await getContentMap();
+
+	const tagSet = new Set<string>();
+
+	memoMap.forEach((memo) => {
+		memo.tags.forEach((tag) => {
+			if (!tag) return;
+
+			tagSet.add(tag);
+		});
+	});
+
+	const list = Array.from(tagSet, (tag) => tagMap.get(tag)).filter(isDefined);
+
+	return { list, total: list.length };
 };
