@@ -64,9 +64,9 @@ const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
  */
 interface MultiSelectOption {
 	/** The text to display for the option. */
-	label: string;
-	/** The unique value associated with the option. */
-	value: string;
+	name: string;
+	/** The unique slug associated with the option. */
+	slug: string;
 	/** Optional icon component to display alongside the option. */
 	icon?: React.ComponentType<{ className?: string }>;
 	/** Whether this option is disabled */
@@ -242,7 +242,7 @@ interface MultiSelectProps
 	maxWidth?: string;
 
 	/**
-	 * If true, automatically removes duplicate options based on their value.
+	 * If true, automatically removes duplicate options based on their slug.
 	 * Optional, defaults to false (shows warning in dev mode instead).
 	 */
 	deduplicateOptions?: boolean;
@@ -506,39 +506,39 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			} else {
 				allOptions = options;
 			}
-			const valueSet = new Set<string>();
+			const slugSet = new Set<string>();
 			const duplicates: string[] = [];
 			const uniqueOptions: MultiSelectOption[] = [];
 			allOptions.forEach((option) => {
-				if (valueSet.has(option.value)) {
-					duplicates.push(option.value);
+				if (slugSet.has(option.slug)) {
+					duplicates.push(option.slug);
 					if (!deduplicateOptions) {
 						uniqueOptions.push(option);
 					}
 				} else {
-					valueSet.add(option.value);
+					slugSet.add(option.slug);
 					uniqueOptions.push(option);
 				}
 			});
 			if (process.env.NODE_ENV === "development" && duplicates.length > 0) {
 				const action = deduplicateOptions ? "automatically removed" : "detected";
 				console.warn(
-					`MultiSelect: Duplicate option values ${action}: ${duplicates.join(", ")}. ` +
+					`MultiSelect: Duplicate option slugs ${action}: ${duplicates.join(", ")}. ` +
 						`${
 							deduplicateOptions
 								? "Duplicates have been removed automatically."
-								: "This may cause unexpected behavior. Consider setting 'deduplicateOptions={true}' or ensure all option values are unique."
+								: "This may cause unexpected behavior. Consider setting 'deduplicateOptions={true}' or ensure all option slugs are unique."
 						}`,
 				);
 			}
 			return deduplicateOptions ? uniqueOptions : allOptions;
 		}, [options, deduplicateOptions, isGroupedOptions]);
 
-		const getOptionByValue = React.useCallback(
-			(value: string): MultiSelectOption | undefined => {
-				const option = getAllOptions().find((option) => option.value === value);
+		const getOptionBySlug = React.useCallback(
+			(slug: string): MultiSelectOption | undefined => {
+				const option = getAllOptions().find((option) => option.slug === slug);
 				if (!option && process.env.NODE_ENV === "development") {
-					console.warn(`MultiSelect: Option with value "${value}" not found in options list`);
+					console.warn(`MultiSelect: Option with slug "${slug}" not found in options list`);
 				}
 				return option;
 			},
@@ -554,16 +554,16 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 						...group,
 						options: group.options.filter(
 							(option) =>
-								option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-								option.value.toLowerCase().includes(searchValue.toLowerCase()),
+								option.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+								option.slug.toLowerCase().includes(searchValue.toLowerCase()),
 						),
 					}))
 					.filter((group) => group.options.length > 0);
 			}
 			return options.filter(
 				(option) =>
-					option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-					option.value.toLowerCase().includes(searchValue.toLowerCase()),
+					option.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+					option.slug.toLowerCase().includes(searchValue.toLowerCase()),
 			);
 		}, [options, searchValue, searchable, isGroupedOptions]);
 
@@ -578,13 +578,13 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			}
 		};
 
-		const toggleOption = (optionValue: string) => {
+		const toggleOption = (optionSlug: string) => {
 			if (disabled) return;
-			const option = getOptionByValue(optionValue);
+			const option = getOptionBySlug(optionSlug);
 			if (option?.disabled) return;
-			const newSelectedValues = selectedValues.includes(optionValue)
-				? selectedValues.filter((value) => value !== optionValue)
-				: [...selectedValues, optionValue];
+			const newSelectedValues = selectedValues.includes(optionSlug)
+				? selectedValues.filter((value) => value !== optionSlug)
+				: [...selectedValues, optionSlug];
 			setSelectedValues(newSelectedValues);
 			onValueChange(newSelectedValues);
 			if (closeOnSelect) {
@@ -616,7 +616,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			if (selectedValues.length === allOptions.length) {
 				handleClear();
 			} else {
-				const allValues = allOptions.map((option) => option.value);
+				const allValues = allOptions.map((option) => option.slug);
 				setSelectedValues(allValues);
 				onValueChange(allValues);
 			}
@@ -664,14 +664,14 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 				const diff = selectedCount - prevSelectedCount.current;
 				if (diff > 0) {
 					const addedItems = selectedValues.slice(-diff);
-					const addedLabels = addedItems
-						.map((value) => allOptions.find((opt) => opt.value === value)?.label)
+					const addedNames = addedItems
+						.map((value) => allOptions.find((opt) => opt.slug === value)?.name)
 						.filter(Boolean);
 
-					if (addedLabels.length === 1) {
-						announce(`${addedLabels[0]} selected. ${selectedCount} of ${totalOptions} options selected.`);
+					if (addedNames.length === 1) {
+						announce(`${addedNames[0]} selected. ${selectedCount} of ${totalOptions} options selected.`);
 					} else {
-						announce(`${addedLabels.length} options selected. ${selectedCount} of ${totalOptions} total selected.`);
+						announce(`${addedNames.length} options selected. ${selectedCount} of ${totalOptions} total selected.`);
 					}
 				} else if (diff < 0) {
 					announce(`Option removed. ${selectedCount} of ${totalOptions} options selected.`);
@@ -692,8 +692,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 				if (searchValue && isPopoverOpen) {
 					const filteredCount = allOptions.filter(
 						(opt) =>
-							opt.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-							opt.value.toLowerCase().includes(searchValue.toLowerCase()),
+							opt.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+							opt.slug.toLowerCase().includes(searchValue.toLowerCase()),
 					).length;
 
 					announce(`${filteredCount} option${filteredCount === 1 ? "" : "s"} found for "${searchValue}"`);
@@ -721,7 +721,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 						{selectedValues.length === 0
 							? "No options selected"
 							: `${selectedValues.length} option${selectedValues.length === 1 ? "" : "s"} selected: ${selectedValues
-									.map((value) => getOptionByValue(value)?.label)
+									.map((value) => getOptionBySlug(value)?.name)
 									.filter(Boolean)
 									.join(", ")}`}
 					</div>
@@ -772,7 +772,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 										{selectedValues
 											.slice(0, responsiveSettings.maxCount)
 											.map((value) => {
-												const option = getOptionByValue(value);
+												const option = getOptionBySlug(value);
 												const IconComponent = option?.icon;
 												const customStyle = option?.style;
 												if (!option) {
@@ -818,7 +818,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 																})}
 															/>
 														)}
-														<span className={cn(screenSize === "mobile" && "truncate")}>{option.label}</span>
+														<span className={cn(screenSize === "mobile" && "truncate")}>{option.name}</span>
 														<div
 															role="button"
 															tabIndex={0}
@@ -833,7 +833,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 																	toggleOption(value);
 																}
 															}}
-															aria-label={`Remove ${option.label} from selection`}
+															aria-label={`Remove ${option.name} from selection`}
 															className="-m-0.5 ml-2 h-4 w-4 cursor-pointer rounded-sm p-0.5 hover:bg-white/20 focus:outline-none focus:ring-1 focus:ring-white/50"
 														>
 															<XCircle className={cn("h-3 w-3", responsiveSettings.compactMode && "h-2.5 w-2.5")} />
@@ -982,15 +982,15 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 									filteredOptions.map((group) => (
 										<CommandGroup key={group.heading} heading={group.heading}>
 											{group.options.map((option) => {
-												const isSelected = selectedValues.includes(option.value);
+												const isSelected = selectedValues.includes(option.slug);
 												return (
 													<CommandItem
-														key={option.value}
-														onSelect={() => toggleOption(option.value)}
+														key={option.slug}
+														onSelect={() => toggleOption(option.slug)}
 														role="option"
 														aria-selected={isSelected}
 														aria-disabled={option.disabled}
-														aria-label={`${option.label}${
+														aria-label={`${option.name}${
 															isSelected ? ", selected" : ", not selected"
 														}${option.disabled ? ", disabled" : ""}`}
 														className={cn("cursor-pointer", option.disabled && "cursor-not-allowed opacity-50")}
@@ -1008,7 +1008,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 														{option.icon && (
 															<option.icon className="mr-2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
 														)}
-														<span>{option.label}</span>
+														<span>{option.name}</span>
 													</CommandItem>
 												);
 											})}
@@ -1017,15 +1017,15 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								) : (
 									<CommandGroup>
 										{filteredOptions.map((option) => {
-											const isSelected = selectedValues.includes(option.value);
+											const isSelected = selectedValues.includes(option.slug);
 											return (
 												<CommandItem
-													key={option.value}
-													onSelect={() => toggleOption(option.value)}
+													key={option.slug}
+													onSelect={() => toggleOption(option.slug)}
 													role="option"
 													aria-selected={isSelected}
 													aria-disabled={option.disabled}
-													aria-label={`${option.label}${
+													aria-label={`${option.name}${
 														isSelected ? ", selected" : ", not selected"
 													}${option.disabled ? ", disabled" : ""}`}
 													className={cn("cursor-pointer", option.disabled && "cursor-not-allowed opacity-50")}
@@ -1043,7 +1043,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 													{option.icon && (
 														<option.icon className="mr-2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
 													)}
-													<span>{option.label}</span>
+													<span>{option.name}</span>
 												</CommandItem>
 											);
 										})}
