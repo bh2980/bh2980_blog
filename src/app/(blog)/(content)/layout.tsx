@@ -1,3 +1,4 @@
+import Footer from "@/components/footer";
 import Navigation from "@/components/navigation.client";
 
 export default function RootLayout({
@@ -8,7 +9,8 @@ export default function RootLayout({
 	return (
 		<>
 			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50/50 backdrop-blur-lg dark:bg-slate-900/50" />
-			<div className="flex flex-1 flex-col">{children}</div>
+			<main className="flex-1">{children}</main>
+			<Footer />
 		</>
 	);
 }
