@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
-import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Memo, Tag } from "@/libs/contents/types";
@@ -16,7 +15,7 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 	);
 
 	return (
-		<div className="mx-auto w-full max-w-2xl px-4 py-12">
+		<div className="mx-auto w-full max-w-2xl px-6 py-8 xl:py-12">
 			<div className="mb-6">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">메모</h1>
 				<MultiSelect
