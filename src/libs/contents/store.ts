@@ -2,14 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { reader } from "@/keystatic/libs/reader";
-import type {
-	CollectionEntry,
-	MemoCategoryEntry,
-	MemoEntry,
-	PostCategoryEntry,
-	PostEntry,
-	TagEntry,
-} from "@/keystatic/types";
+import type { CollectionEntry, MemoEntry, PostCategoryEntry, PostEntry, TagEntry } from "@/keystatic/types";
 import { getSafeExcerpt } from "./remark";
 import type { WithSlug } from "./types";
 
@@ -34,17 +27,15 @@ const buildContentMap = async (): Promise<{
 	memoMap: Map<string, WithSlug<MemoEntry>>;
 	tagMap: Map<string, WithSlug<TagEntry>>;
 	collectionMap: Map<string, WithSlug<CollectionEntry>>;
-	memoCategoryMap: Map<string, WithSlug<MemoCategoryEntry>>;
 	postCategoryMap: Map<string, WithSlug<PostCategoryEntry>>;
 }> => {
 	const r = await reader();
 
-	const [posts, memos, tags, collection, memoCategories, postCategories] = await Promise.all([
+	const [posts, memos, tags, collection, postCategories] = await Promise.all([
 		r.collections.post.all(),
 		r.collections.memo.all(),
 		r.collections.tag.all(),
 		r.collections.collection.all(),
-		r.collections.memoCategory.all(),
 		r.collections.postCategory.all(),
 	]);
 
@@ -52,10 +43,9 @@ const buildContentMap = async (): Promise<{
 	const memoMap = buildSlugMap(memos);
 	const tagMap = buildSlugMap(tags);
 	const collectionMap = buildSlugMap(collection);
-	const memoCategoryMap = buildSlugMap(memoCategories);
 	const postCategoryMap = buildSlugMap(postCategories);
 
-	return { postMap, memoMap, tagMap, collectionMap, memoCategoryMap, postCategoryMap };
+	return { postMap, memoMap, tagMap, collectionMap, postCategoryMap };
 };
 
 export const getContentMap = cache(() => buildContentMap());

@@ -8,7 +8,6 @@ export const memoCollection = collection({
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {
-		category: fields.relationship({ collection: "memoCategory", label: "카테고리" }),
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),

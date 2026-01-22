@@ -2,32 +2,13 @@ import "server-only";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type {
-	ListOptions,
-	ListResult,
-	Memo,
-	MemoCategory,
-	MemoCategoryListMeta,
-	MemoCategoryWithCount,
-	Tag,
-	WithSlug,
-} from "./types";
+import type { ListResult, Memo, Tag, WithSlug } from "./types";
 
 const normalizeMemo = (
 	memo: WithSlug<MemoEntry>,
-	map: { memoCategoryMap: Map<string, MemoCategory>; tagMap: Map<string, Tag> },
+	map: { tagMap: Map<string, Tag> },
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Memo | null => {
-	if (!memo.category) {
-		return null;
-	}
-
-	const category = map.memoCategoryMap.get(memo.category);
-
-	if (!category) {
-		return null;
-	}
-
 	const tags = memo.tags
 		.filter(isDefined)
 		.map((tag) => map.tagMap.get(tag))
@@ -35,11 +16,11 @@ const normalizeMemo = (
 
 	const publishedAt = new Date(memo.publishedDateTimeISO).toLocaleString("ko-KR", dateTimeOptions);
 
-	return { ...memo, category, tags, publishedAt };
+	return { ...memo, tags, publishedAt };
 };
 
 export const getMemo = async (slug: string): Promise<Memo | null> => {
-	const { memoMap, tagMap, memoCategoryMap } = await getContentMap();
+	const { memoMap, tagMap } = await getContentMap();
 
 	const memo = memoMap.get(slug);
 	if (!memo) {
@@ -48,7 +29,7 @@ export const getMemo = async (slug: string): Promise<Memo | null> => {
 
 	return normalizeMemo(
 		memo,
-		{ memoCategoryMap, tagMap },
+		{ tagMap },
 		{
 			dateStyle: "medium",
 			timeStyle: "short",
@@ -56,51 +37,19 @@ export const getMemo = async (slug: string): Promise<Memo | null> => {
 	);
 };
 
-export const getMemoList = async ({
-	category: categoryFilter,
-}: ListOptions = {}): Promise<ListResult<Omit<Memo, "content">>> => {
-	const { memoMap, memoCategoryMap, tagMap } = await getContentMap();
+export const getMemoList = async (): Promise<ListResult<Omit<Memo, "content">>> => {
+	const { memoMap, tagMap } = await getContentMap();
 
-	let memos = Array.from(memoMap.values()).toSorted(
+	const memos = Array.from(memoMap.values()).toSorted(
 		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
 	);
 
-	if (categoryFilter) {
-		memos = memos.filter((memo) => memo.category === categoryFilter);
-	}
-
 	const list = memos
-		.map((memo) => normalizeMemo(memo, { memoCategoryMap, tagMap }, { dateStyle: "short" }))
+		.map((memo) => normalizeMemo(memo, { tagMap }, { dateStyle: "short" }))
 		.filter(isDefined)
 		.map(({ content, ...rest }) => rest);
 
 	return { list, total: list.length };
-};
-
-export const getMemoCategoryList = async (): Promise<ListResult<MemoCategoryWithCount, MemoCategoryListMeta>> => {
-	const { memoMap, memoCategoryMap } = await getContentMap();
-
-	const memoCategoryCountMap = new Map(
-		Array.from(memoCategoryMap.values()).map((category) => [category.slug, { ...category, count: 0 }]),
-	);
-
-	let totalMemoCount = 0;
-
-	memoMap.forEach((memo) => {
-		if (!memo.category) {
-			return;
-		}
-
-		const category = memoCategoryCountMap.get(memo.category);
-		if (!category) return;
-
-		category.count++;
-		totalMemoCount++;
-	});
-
-	const list = Array.from(memoCategoryCountMap.values());
-
-	return { list, total: list.length, meta: { totalMemoCount } };
 };
 
 export const getMemoTagList = async (): Promise<ListResult<Tag>> => {
