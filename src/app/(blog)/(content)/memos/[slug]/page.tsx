@@ -26,7 +26,7 @@ export default async function MemoPost({
 	const source = await memo.content();
 	const { content, toc } = await renderMDX(source);
 	return (
-		<div className="mx-auto grid grid-cols-[1fr_min(48rem,100%)_1fr] gap-2 px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto grid grid-cols-[1fr_min(42rem,100%)_1fr] gap-2 px-4 py-12 sm:px-6 lg:px-8">
 			<div className="col-start-2 mx-auto flex flex-col gap-8">
 				<nav aria-label="리스트로 돌아가기">
 					<Link
