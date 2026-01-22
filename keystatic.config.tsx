@@ -1,7 +1,6 @@
 import { type Config, config } from "@keystatic/core";
 import {
 	collectionCollection,
-	memoCategoryCollection,
 	memoCollection,
 	postCategoryCollection,
 	postCollection,
@@ -23,14 +22,13 @@ export default config({
 		post: postCollection,
 		postCategory: postCategoryCollection,
 		memo: memoCollection,
-		memoCategory: memoCategoryCollection,
 		collection: collectionCollection,
 		tag: tagCollection,
 	},
 	ui: {
 		navigation: {
 			게시글: ["postCategory", "post"],
-			메모: ["memoCategory", "memo"],
+			메모: ["memo"],
 			컬렉션: ["collection"],
 			태그: ["tag"],
 		},
