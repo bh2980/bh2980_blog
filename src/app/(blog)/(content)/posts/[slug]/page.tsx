@@ -127,7 +127,7 @@ export default async function BlogPost({
 				<Comments slug={slug} />
 			</div>
 			<aside className="hidden xl:block">
-				{toc?.length && <TableOfContents toc={toc} className="sticky top-28 max-w-68" />}
+				{toc?.length && <TableOfContents toc={toc} className="sticky top-22 max-w-68" />}
 			</aside>
 		</div>
 	);

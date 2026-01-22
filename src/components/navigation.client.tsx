@@ -63,14 +63,8 @@ export default function Navigation({ className }: NavigationProps) {
 	const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
 	return (
-		<header
-			className={cn(
-				"sticky top-0 z-50 border-slate-200/70 border-b bg-white/80 backdrop-blur",
-				"dark:border-slate-800/70 dark:bg-slate-950/70",
-				className,
-			)}
-		>
-			<div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+		<header className={cn("sticky top-0 z-50", className)}>
+			<div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4 md:px-0">
 				<Link
 					href="/"
 					className={cn(
