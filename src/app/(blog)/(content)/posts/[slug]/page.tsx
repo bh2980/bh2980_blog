@@ -37,7 +37,7 @@ export default async function BlogPost({
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
-			<div className="flex w-full min-w-0 flex-col gap-8 xl:col-start-2">
+			<div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-8 xl:col-start-2">
 				<article
 					className={cn(
 						"mx-auto w-full min-w-0 leading-loose",
@@ -96,7 +96,9 @@ export default async function BlogPost({
 					{toc?.length && <TableOfContents toc={toc} className="mt-4 xl:hidden" />}
 					{content}
 				</article>
+
 				<Separator />
+
 				<nav className="flex" aria-label="이전 다음 글">
 					{prevPost && (
 						<Link
