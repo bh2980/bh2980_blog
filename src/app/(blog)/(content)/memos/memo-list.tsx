@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Memo, Tag } from "@/libs/contents/types";
+import { cn } from "@/utils/cn";
 
 export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListResult<Omit<Memo, "content">> }) => {
 	const [tagFilter, setTagFilter] = useQueryState<string[]>("tags", parseAsNativeArrayOf(parseAsString));
@@ -23,6 +24,7 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 					onValueChange={setTagFilter}
 					defaultValue={tagFilter}
 					placeholder="태그 선택"
+					hideSelectAll
 				/>
 			</div>
 
@@ -44,11 +46,14 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 										<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{memo.title}</h2>
-									<ul className="flex flex-wrap gap-1">
-										{memo.tags.map((tag) => (
-											<li key={tag.slug}>
-												<Badge variant={"secondary"}>{tag.name}</Badge>
-											</li>
+									<ul
+										className={cn(
+											"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
+											"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
+										)}
+									>
+										{memo.tags?.map((tag) => (
+											<li key={tag.slug}>{`#${tag.name}`}</li>
 										))}
 									</ul>
 								</article>
