@@ -36,8 +36,8 @@ export default async function BlogPost({
 	const { content, toc } = await renderMDX(source);
 
 	return (
-		<div className="mx-auto flex justify-center gap-2 px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr]">
-			<div className="mx-auto flex flex-col gap-8 lg:col-start-2">
+		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
+			<div className="mx-auto flex w-full min-w-0 flex-col gap-8 xl:col-start-2">
 				<nav aria-label="리스트로 돌아가기" className="hidden xl:block">
 					<Link
 						href={{ pathname: "/posts", query }}
