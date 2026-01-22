@@ -64,7 +64,7 @@ export default function Navigation({ className }: NavigationProps) {
 
 	return (
 		<header className={cn("sticky top-0 z-50", className)}>
-			<div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+			<div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4 md:px-0">
 				<Link
 					href="/"
 					className={cn(
