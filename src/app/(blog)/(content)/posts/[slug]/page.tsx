@@ -37,23 +37,23 @@ export default async function BlogPost({
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
-			<div className="mx-auto flex w-full min-w-0 flex-col gap-8 xl:col-start-2">
-				<nav aria-label="리스트로 돌아가기" className="hidden xl:block">
-					<Link
-						href={{ pathname: "/posts", query }}
-						className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
-					>
-						<ArrowLeft size={16} />
-						<span>돌아가기</span>
-					</Link>
-				</nav>
+			<div className="flex w-full min-w-0 flex-col gap-8 xl:col-start-2">
 				<article
 					className={cn(
-						"prose prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-headings:scroll-mt-32 prose-img:rounded-md prose-h1:p-0 leading-loose",
+						"prose prose-h1:m-0 mx-auto prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-headings:scroll-mt-32 prose-img:rounded-md prose-h1:p-0 leading-loose",
 						"dark:prose-invert",
 					)}
 				>
 					<header className="flex flex-col items-start gap-5 border-slate-200">
+						<nav aria-label="리스트로 돌아가기" className="hidden md:block">
+							<Link
+								href={{ pathname: "/posts", query }}
+								className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
+							>
+								<ArrowLeft size={16} />
+								<span>돌아가기</span>
+							</Link>
+						</nav>
 						<div className="flex gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<span>{post.category.name}</span>
 							<span>·</span>
