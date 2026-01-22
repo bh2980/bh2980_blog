@@ -1,7 +1,6 @@
 import "server-only";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
-import { MemoList } from "../../app/(blog)/(content)/memos/memo-list";
 import { getContentMap } from "./store";
 import type {
 	ListOptions,
