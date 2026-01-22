@@ -5,5 +5,4 @@ export type TagEntry = Entry<typeof keystaticConfig.collections.tag>;
 export type MemoEntry = Entry<typeof keystaticConfig.collections.memo>;
 export type PostEntry = Entry<typeof keystaticConfig.collections.post>;
 export type CollectionEntry = Entry<typeof keystaticConfig.collections.collection>;
-export type MemoCategoryEntry = Entry<typeof keystaticConfig.collections.memoCategory>;
 export type PostCategoryEntry = Entry<typeof keystaticConfig.collections.postCategory>;

@@ -66,7 +66,7 @@ export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?
 						marginLeft: `${item.depth * 12}px`,
 					}}
 				>
-					<a href={item.href} onClick={(e) => handleTocItemSelect(e, item.href)}>
+					<a href={item.href} onClick={(e) => handleTocItemSelect(e, item.href)} className="line-clamp-1">
 						{item.value}
 					</a>
 				</li>
