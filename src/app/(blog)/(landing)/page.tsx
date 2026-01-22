@@ -8,19 +8,16 @@ import { getPostList } from "@/libs/contents/post";
 
 export default async function Home() {
 	const [posts, memos] = await Promise.all([getPostList(), getMemoList()]);
-	const latestPosts = posts.list.slice(0, 3);
-	const latestMemos = memos.list.slice(0, 3);
+	const LATEST_ITEMS_COUNT = 3;
+	const FEATURED_TAGS_COUNT = 10;
+	const latestPosts = posts.list.slice(0, LATEST_ITEMS_COUNT);
+	const latestMemos = memos.list.slice(0, LATEST_ITEMS_COUNT);
 	const tagCountMap = new Map<string, { slug: string; name: string; count: number }>();
 
-	for (const post of posts.list) {
-		for (const tag of post.tags ?? []) {
-			const existing = tagCountMap.get(tag.slug);
-			tagCountMap.set(tag.slug, { slug: tag.slug, name: tag.name, count: (existing?.count ?? 0) + 1 });
-		}
-	}
+	const allContent = [...posts.list, ...memos.list];
 
-	for (const memo of memos.list) {
-		for (const tag of memo.tags ?? []) {
+	for (const item of allContent) {
+		for (const tag of item.tags ?? []) {
 			const existing = tagCountMap.get(tag.slug);
 			tagCountMap.set(tag.slug, { slug: tag.slug, name: tag.name, count: (existing?.count ?? 0) + 1 });
 		}
@@ -28,7 +25,7 @@ export default async function Home() {
 
 	const featuredTags = Array.from(tagCountMap.values())
 		.toSorted((a, b) => b.count - a.count)
-		.slice(0, 10);
+		.slice(0, FEATURED_TAGS_COUNT);
 
 	return (
 		<div className="flex flex-1 flex-col">
