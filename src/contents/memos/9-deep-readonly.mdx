@@ -42,7 +42,6 @@ type cases = [
   Expect<Equal<DeepReadonly<X2>, Expected2>>,
 ]
 
-// !collapse(1:21) collapsed
 type X1 = {
   a: () => 22
   b: string
@@ -68,7 +67,6 @@ type X1 = {
 
 type X2 = { a: string } | { b: number }
 
-// !collapse(1:21) collapsed
 type Expected1 = {
   readonly a: () => 22
   readonly b: string
@@ -112,17 +110,3 @@ type Expected2 = { readonly a: string } | { readonly b: number }
    **할당(대입) 가능성 기준으로**, readonly 리스트 타입은 “쓰기 불필요”라 요구사항이 약하므로 **더 넓다**. 따라서 mutable 리스트는 readonly 리스트에 할당 가능하다.
 
    <Code codeblock={{"lang":"typescript","value":"any[] extends readonly any[] ? true : false // true"}} />
-
-### 풀이
-
-<Collapsible>
-  ```ts
-  type DeepReadonly<T> = {
-    readonly [K in keyof T]: T[K] extends Function      // 함수 필터링
-                                ? T[K] 
-                                : T[K] extends object   // 배열, 객체 필터링
-                                  ? DeepReadonly<T[K]>  // 재귀
-                                  : T[K]                // 원시값은 그대로 사용
-  }
-  ```
-</Collapsible>

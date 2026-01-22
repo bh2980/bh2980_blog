@@ -18,12 +18,11 @@ export const PostList = ({
 	const postList = category ? posts.list.filter((post) => post.category.slug === category) : posts.list;
 
 	return (
-		<div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto max-w-2xl px-6 py-8 xl:py-12">
 			<div className="mb-6">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">블로그</h1>
 				<p className="mb-6 text-slate-600 dark:text-slate-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
-
-				<div className="mb-6 flex flex-wrap gap-2">
+				<div className="flex flex-wrap gap-2">
 					<Button
 						onClick={() => setCategory(null)}
 						className={cn(
@@ -56,16 +55,15 @@ export const PostList = ({
 					))}
 				</div>
 			</div>
-
 			{postList.length === 0 ? (
 				<div className="py-12 text-center">
 					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 게시글이 없습니다.</p>
 				</div>
 			) : (
 				<ul className="flex flex-col">
-					{postList.map((post, index) => (
-						<li key={post.slug}>
-							{index !== 0 && <Separator className="my-1" />}
+					{postList.map((post) => (
+						<li key={post.slug} className="group">
+							<Separator className="my-1 group-first:hidden" />
 							<Link
 								href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"

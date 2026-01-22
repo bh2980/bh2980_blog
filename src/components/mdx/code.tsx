@@ -40,7 +40,7 @@ export const CodeTemplate = ({
 			code={code}
 			handlers={[mark, diff, lineNumbers, fold, collapse, collapseContent, collapseTrigger, ...handlers]}
 		/>
-		<CopyButton text={code.code} className="hidden group-hover:block" />
+		<CopyButton text={code.code} className="block xl:hidden xl:group-hover:block" />
 	</div>
 );
 

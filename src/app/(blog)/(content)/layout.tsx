@@ -8,7 +8,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<>
-			<Navigation className="sticky top-0 z-10 border border-b bg-slate-50/50 backdrop-blur-lg dark:bg-slate-900/50" />
+			<Navigation className="sticky top-0 z-10 border-b bg-slate-50/50 backdrop-blur-lg dark:bg-slate-900/50" />
 			<main className="flex-1">{children}</main>
 			<Footer />
 		</>
