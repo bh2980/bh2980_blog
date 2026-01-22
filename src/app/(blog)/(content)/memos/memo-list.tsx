@@ -16,7 +16,7 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 	);
 
 	return (
-		<div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+		<div className="mx-auto w-full max-w-2xl px-4 py-12">
 			<div className="mb-6">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">메모</h1>
 				<MultiSelect
@@ -34,14 +34,14 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 				</div>
 			) : (
 				<ul className="flex flex-col">
-					{memoList.map((memo, index) => (
-						<li key={memo.slug}>
-							{index !== 0 && <Separator className="my-1" />}
+					{memoList.map((memo) => (
+						<li key={memo.slug} className="group">
+							<Separator className="my-1 group-first:hidden" />
 							<Link
 								href={{ pathname: `/memos/${memo.slug}`, query: { tags: tagFilter } }}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
-								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
+								<article className="flex h-full flex-col gap-1 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 										<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 									</span>
