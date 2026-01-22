@@ -819,7 +819,10 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															/>
 														)}
 														<span className={cn(screenSize === "mobile" && "truncate")}>{option.name}</span>
-														<button
+														{/** biome-ignore lint/a11y/useSemanticElements: nexted button */}
+														<div
+															role="button"
+															tabIndex={0}
 															onClick={(event) => {
 																event.stopPropagation();
 																toggleOption(value);
@@ -833,10 +836,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															}}
 															aria-label={`Remove ${option.name} from selection`}
 															className="-m-0.5 ml-2 h-4 w-4 cursor-pointer rounded-sm p-0.5 hover:bg-white/20 focus:outline-none focus:ring-1 focus:ring-white/50"
-															type="button"
 														>
 															<XCircle className={cn("h-3 w-3", responsiveSettings.compactMode && "h-2.5 w-2.5")} />
-														</button>
+														</div>
 													</Badge>
 												);
 											})
@@ -871,7 +873,10 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 										)}
 									</div>
 									<div className="flex items-center justify-between">
-										<button
+										{/** biome-ignore lint/a11y/useSemanticElements: nexted button */}
+										<div
+											role="button"
+											tabIndex={0}
 											onClick={(event) => {
 												event.stopPropagation();
 												handleClear();
@@ -885,10 +890,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											}}
 											aria-label={`Clear all ${selectedValues.length} selected options`}
 											className="mx-2 flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-											type="button"
 										>
 											<XIcon className="h-4 w-4" />
-										</button>
+										</div>
 										<Separator orientation="vertical" className="flex h-full min-h-6" />
 										<ChevronDown className="mx-2 h-4 cursor-pointer text-muted-foreground" aria-hidden="true" />
 									</div>

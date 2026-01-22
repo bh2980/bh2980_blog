@@ -12,4 +12,6 @@ tags:
 
 ## 풀이
 
-<Code codeblock={{"lang":"typescript","value":"function shuffle(arr) {\n  for(let i = 0; i < arr.length; i++){\n    const targetIndex = i;\n    const randIndex = Math.floor(Math.random() * (arr.length - targetIndex)) + targetIndex;\n\n    [arr[targetIndex], arr[randIndex]] = [arr[randIndex], arr[targetIndex]];\n  }\n}"}} />
+<Collapsible>
+  <Code codeblock={{"lang":"typescript","value":"function shuffle(arr) {\n  for(let i = 0; i < arr.length; i++){\n    const targetIndex = i;\n    const randIndex = Math.floor(Math.random() * (arr.length - targetIndex)) + targetIndex;\n\n    [arr[targetIndex], arr[randIndex]] = [arr[randIndex], arr[targetIndex]];\n  }\n}"}} />
+</Collapsible>
