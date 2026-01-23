@@ -3,21 +3,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
-export default async function MemoPost({
-	params,
-	searchParams,
-}: {
+type MemoPageProps = {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ tags: string }>;
-}) {
+};
+
+export default async function MemoPost({ params, searchParams }: MemoPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
 
-	const memo = await getMemo(sanitizeSlug(slug));
+	const memo = await getMemo(slug);
 
 	if (!memo) {
 		return notFound();

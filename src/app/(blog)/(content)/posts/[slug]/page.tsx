@@ -10,17 +10,16 @@ import { getPost, getPostList } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 
-export default async function BlogPost({
-	params,
-	searchParams,
-}: {
+type BlogPageProps = {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ category: string }>;
-}) {
+};
+
+export default async function BlogPost({ params, searchParams }: BlogPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
 
-	const post = await getPost(sanitizeSlug(slug));
+	const post = await getPost(slug);
 	const postList = await getPostList(query);
 
 	const currentIndex = postList.list.findIndex((post) => sanitizeSlug(post.slug) === sanitizeSlug(slug));
