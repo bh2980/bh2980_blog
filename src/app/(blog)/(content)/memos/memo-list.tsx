@@ -18,6 +18,9 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 		<div className="mx-auto w-full max-w-2xl px-6 py-8 xl:py-12">
 			<div className="mb-6">
 				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">메모</h1>
+				<p className="mb-6 text-slate-600 dark:text-slate-300">
+					개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.
+				</p>
 				<MultiSelect
 					options={tags.list}
 					onValueChange={setTagFilter}
