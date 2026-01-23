@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	};
 }
 
+// TODO : searchParams 제거
 export default async function BlogPost({ params, searchParams }: BlogPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;

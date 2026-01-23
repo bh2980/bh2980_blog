@@ -30,6 +30,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 	};
 }
 
+// TODO : searchParams 제거
 export default async function MemoPage({ params, searchParams }: MemoPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
