@@ -1,6 +1,7 @@
 import "server-only";
 import { differenceInYears } from "date-fns";
 import { draftMode } from "next/headers";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { PostEntry } from "@/keystatic/types";
 import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
@@ -55,7 +56,7 @@ const normalizePost = async (
 export const getPost = async (slug: string): Promise<Post | null> => {
 	const { postMap, tagMap, postCategoryMap } = await getContentMap();
 
-	const post = postMap.get(slug);
+	const post = postMap.get(sanitizeSlug(slug));
 	if (!post) {
 		return null;
 	}

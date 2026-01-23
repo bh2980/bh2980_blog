@@ -1,4 +1,5 @@
 import "server-only";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
@@ -22,7 +23,7 @@ const normalizeMemo = (
 export const getMemo = async (slug: string): Promise<Memo | null> => {
 	const { memoMap, tagMap } = await getContentMap();
 
-	const memo = memoMap.get(slug);
+	const memo = memoMap.get(sanitizeSlug(slug));
 	if (!memo) {
 		return null;
 	}
