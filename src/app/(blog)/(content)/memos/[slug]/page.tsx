@@ -14,6 +14,9 @@ type MemoPageProps = {
 };
 
 export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
+	const HOST_URL = process.env.HOST_URL;
+	if (!HOST_URL) throw new Error("HOST_URL is required");
+
 	const { slug } = await params;
 	const memo = await getMemo(slug);
 
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 
 	return {
 		title: memo.title,
-		alternates: { canonical: `${process.env.HOST_URL}/memos/${sanitizeSlug(slug)}` },
+		alternates: { canonical: new URL(`/memos/${sanitizeSlug(slug)}`, HOST_URL).toString() },
 	};
 }
 
