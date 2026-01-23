@@ -1,8 +1,10 @@
 import { ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
@@ -11,7 +13,24 @@ type MemoPageProps = {
 	searchParams: Promise<{ tags: string }>;
 };
 
-export default async function MemoPost({ params, searchParams }: MemoPageProps) {
+export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
+	const { slug } = await params;
+	const memo = await getMemo(slug);
+
+	if (!memo) {
+		return {
+			title: "Not Found",
+			robots: { index: false, follow: true },
+		};
+	}
+
+	return {
+		title: memo.title,
+		alternates: { canonical: `${process.env.HOST_URL}/memos/${sanitizeSlug(slug)}` },
+	};
+}
+
+export default async function MemoPage({ params, searchParams }: MemoPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
 

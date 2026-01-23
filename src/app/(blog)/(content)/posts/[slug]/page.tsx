@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Callout } from "@/components/mdx/callout";
@@ -14,6 +15,24 @@ type BlogPageProps = {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ category: string }>;
 };
+
+export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+	const { slug } = await params;
+	const post = await getPost(slug);
+
+	if (!post) {
+		return {
+			title: "Not Found",
+			robots: { index: false, follow: true },
+		};
+	}
+
+	return {
+		title: post.title,
+		description: post.excerpt,
+		alternates: { canonical: `${process.env.HOST_URL}/posts/${sanitizeSlug(slug)}` },
+	};
+}
 
 export default async function BlogPost({ params, searchParams }: BlogPageProps) {
 	const { slug } = await params;
