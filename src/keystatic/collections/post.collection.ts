@@ -27,12 +27,7 @@ export const postCollection = collection({
 			defaultValue: { kind: "now" },
 			validation: { isRequired: true },
 		}),
-
-		tags: fields.array(fields.relationship({ collection: "tag", label: "태그" }), {
-			label: "태그",
-			itemLabel: (props) => props.value ?? "잘못된 태그",
-		}),
-
+		tags: fields.multiRelationship({ collection: "tag", label: "태그" }),
 		content: fields.mdx({
 			label: "내용",
 			options: { image: { directory: "public/assets/images/posts", publicPath: "/assets/images/posts" } },
