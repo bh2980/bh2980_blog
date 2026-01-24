@@ -45,6 +45,6 @@ ${itemsXml}
 </rss>`;
 
 	return new Response(rssFeed, {
-		headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
+		headers: { "Content-Type": "application/rss+xml; charset=utf-8", "X-Robots-Tag": "noindex" },
 	});
 }
