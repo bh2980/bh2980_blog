@@ -1,9 +1,16 @@
+import Link from "next/link";
+
 export default function Footer() {
 	return (
 		<footer className="border-slate-200 border-t bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
 			<div className="mx-auto max-w-2xl px-4 py-6">
 				<div className="flex justify-between text-slate-600 text-sm dark:text-slate-400">
-					<p>{`© ${new Date().getFullYear()} bh2980's blog. All rights reserved.`}</p>
+					<p>
+						<Link href={"/"} className="hover:underline">
+							bh2980.dev
+						</Link>
+						{` © ${new Date().getFullYear()}  All rights reserved.`}
+					</p>
 					<div className="flex items-center gap-5 fill-slate-600 dark:fill-slate-400">
 						<a href="https://bh2980.tistory.com/" target="_blank" rel="noopener noreferrer" className="h-4 w-4">
 							<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
