@@ -45,6 +45,39 @@ export default function Layout() {
                             height: auto !important;
                         }
 
+                        .ProseMirror a {
+                            color: inherit !important;
+                            text-decoration: underline !important;
+                            text-decoration-color: rgba(203, 213, 225, 0.5) !important;
+                            text-underline-offset: 4px !important;
+                            position: relative !important; /* 가상 요소 제어를 위해 추가 */
+                        }
+
+                        .ProseMirror a::after {
+                            content: "↗" !important;
+                            
+                            display: inline-block !important;
+                            text-decoration: none !important; 
+                            
+                            font-size: 0.85em !important;
+                            color: rgba(148, 163, 184, 0.6) !important;
+                            
+                            /* 3. 일부 브라우저에서 여전히 밑줄이 보인다면 이 속성이 해결사입니다 */
+                            position: relative !important;
+                            top: -1px !important; 
+                        }
+
+                        .ProseMirror a:hover {
+                            color: #0f172a !important;
+                            text-decoration-color: #0f172a !important;
+                        }
+
+                        .ProseMirror a:hover::after {
+                            color: #0f172a !important;
+                            /* 호버 시에도 밑줄이 생기지 않도록 다시 한번 명시 */
+                            text-decoration: none !important;
+                        }
+
                         /* 3. 커스텀 컴포넌트(Underline, Tooltip) 스타일 */
                         .ProseMirror span[data-component="Underline"],
                         .ProseMirror span[data-component="Tooltip"] {
