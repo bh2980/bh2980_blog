@@ -24,36 +24,21 @@ export const collectionCollection = collection({
 			{
 				series: fields.object(
 					{
-						post: fields.array(fields.relationship({ label: "게시글", collection: "post" }), {
-							label: "게시글",
-							itemLabel: (props) => props.value ?? "잘못된 게시글",
-						}),
-						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
-							label: "메모",
-							itemLabel: (props) => props.value ?? "잘못된 메모",
-						}),
+						post: fields.multiRelationship({ collection: "post", label: "게시글" }),
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
 					},
 					{ label: "컨텐츠" },
 				),
 				project: fields.object(
 					{
-						post: fields.array(fields.relationship({ label: "게시글", collection: "post" }), {
-							label: "게시글",
-							itemLabel: (props) => props.value ?? "잘못된 게시글",
-						}),
-						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
-							label: "메모",
-							itemLabel: (props) => props.value ?? "잘못된 메모",
-						}),
+						post: fields.multiRelationship({ collection: "post", label: "게시글" }),
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
 					},
 					{ label: "컨텐츠" },
 				),
 				wiki: fields.object(
 					{
-						memo: fields.array(fields.relationship({ label: "메모", collection: "memo" }), {
-							label: "메모",
-							itemLabel: (props) => props.value ?? "잘못된 메모",
-						}),
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
 					},
 					{ label: "컨텐츠" },
 				),
