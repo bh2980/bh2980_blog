@@ -12,7 +12,7 @@ export default async function RootLayout({
 	const branch = ck.get("ks-branch")?.value;
 
 	return (
-		<ThemeProvider attribute={"class"}>
+		<ThemeProvider attribute={"class"} disableTransitionOnChange>
 			{children}
 			{isEnabled && (
 				<div className="fixed inset-x-0 bottom-0 z-50">

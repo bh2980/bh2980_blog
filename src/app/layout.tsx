@@ -9,10 +9,30 @@ const pretendardVariable = localFont({
 	weight: "100 900",
 });
 
-export const metadata: Metadata = {
-	title: "bh2980.dev",
-	description: "bh2980.dev",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const HOST_URL = process.env.HOST_URL;
+	if (!HOST_URL) throw new Error("HOST_URL is required");
+
+	const GSC_VERIFICATION_TOKEN = process.env.GSC_VERIFICATION_TOKEN;
+	if (!GSC_VERIFICATION_TOKEN) throw new Error("GSC_VERIFICATION_TOKEN is required");
+
+	return {
+		metadataBase: new URL(HOST_URL),
+		title: "bh2980.dev",
+		description: "bh2980의 개발 블로그",
+		alternates: { canonical: "/" },
+		openGraph: {
+			title: "bh2980.dev",
+			description: "bh2980의 개발 블로그",
+			type: "website",
+			siteName: "bh2980.dev",
+			locale: "ko_KR",
+		},
+		verification: {
+			google: GSC_VERIFICATION_TOKEN,
+		},
+	};
+}
 
 export default function RootLayout({
 	children,

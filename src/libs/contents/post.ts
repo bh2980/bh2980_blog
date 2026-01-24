@@ -1,6 +1,8 @@
 import "server-only";
 import { differenceInYears } from "date-fns";
 import { draftMode } from "next/headers";
+import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { PostEntry } from "@/keystatic/types";
 import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
@@ -39,7 +41,8 @@ const normalizePost = async (
 		.filter(isDefined);
 
 	const now = new Date();
-	const publishedDate = new Date(post.publishedDateTimeISO);
+	const publishedDateTimeISO = normalizeKstIsoString(post.publishedDateTimeISO);
+	const publishedDate = new Date(publishedDateTimeISO);
 	const publishedAt = publishedDate.toLocaleString("ko-KR", dateTimeOptions);
 
 	const isDeprecated = post.policy.discriminant === "deprecated";
@@ -49,13 +52,13 @@ const normalizePost = async (
 	const yearsOld = differenceInYears(now, publishedDate);
 	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= STALE_POST_YEARS_THRESHOLD;
 
-	return { ...post, category, tags, publishedAt, isStale, isDeprecated, replacementPost };
+	return { ...post, category, tags, publishedDateTimeISO, publishedAt, isStale, isDeprecated, replacementPost };
 };
 
 export const getPost = async (slug: string): Promise<Post | null> => {
 	const { postMap, tagMap, postCategoryMap } = await getContentMap();
 
-	const post = postMap.get(slug);
+	const post = postMap.get(sanitizeSlug(slug));
 	if (!post) {
 		return null;
 	}

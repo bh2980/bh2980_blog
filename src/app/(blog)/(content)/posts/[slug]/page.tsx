@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Callout } from "@/components/mdx/callout";
@@ -10,17 +11,42 @@ import { getPost, getPostList } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 
-export default async function BlogPost({
-	params,
-	searchParams,
-}: {
+type BlogPageProps = {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ category: string }>;
-}) {
+};
+
+export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+	const { slug } = await params;
+	const post = await getPost(slug);
+
+	if (!post) {
+		return {
+			title: "Not Found",
+			robots: { index: false, follow: true },
+		};
+	}
+
+	const url = `/posts/${sanitizeSlug(slug)}`;
+
+	return {
+		title: post.title,
+		description: post.excerpt,
+		alternates: { canonical: url },
+		openGraph: {
+			title: post.title,
+			description: post.excerpt,
+			url,
+		},
+	};
+}
+
+// TODO : searchParams 제거
+export default async function BlogPost({ params, searchParams }: BlogPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
 
-	const post = await getPost(sanitizeSlug(slug));
+	const post = await getPost(slug);
 	const postList = await getPostList(query);
 
 	const currentIndex = postList.list.findIndex((post) => sanitizeSlug(post.slug) === sanitizeSlug(slug));
@@ -37,7 +63,7 @@ export default async function BlogPost({
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
-			<div className="flex w-full min-w-0 flex-col gap-8 xl:col-start-2">
+			<div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-8 xl:col-start-2">
 				<article
 					className={cn(
 						"mx-auto w-full min-w-0 leading-loose",
@@ -96,7 +122,9 @@ export default async function BlogPost({
 					{toc?.length && <TableOfContents toc={toc} className="mt-4 xl:hidden" />}
 					{content}
 				</article>
+
 				<Separator />
+
 				<nav className="flex" aria-label="이전 다음 글">
 					{prevPost && (
 						<Link
