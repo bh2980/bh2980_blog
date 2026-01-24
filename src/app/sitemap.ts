@@ -3,6 +3,7 @@ import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemoList } from "@/libs/contents/memo";
 import { getPostList } from "@/libs/contents/post";
 
+// TODO : 추후 updatedAt을 추가 후 수정
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const HOST_URL = process.env.HOST_URL;
 	if (!HOST_URL) throw new Error("HOST_URL is required");
