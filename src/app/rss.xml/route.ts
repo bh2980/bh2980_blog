@@ -1,6 +1,7 @@
 import { Feed } from "feed";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPostList } from "@/libs/contents/post";
+import { isDefined } from "@/utils/is-defined";
 
 export async function GET() {
 	const HOST_URL = process.env.HOST_URL;
@@ -11,9 +12,17 @@ export async function GET() {
 	const faviconUrl = new URL("/favicon.ico", siteUrl).href;
 
 	const postList = await getPostList();
-	const items = [...postList.list].sort((a, b) =>
-		(b.publishedDateTimeISO ?? "").localeCompare(a.publishedDateTimeISO ?? ""),
-	);
+	const items = [...postList.list]
+		.map((post) => {
+			if (!post.publishedDateTimeISO) return null;
+
+			const date = new Date(post.publishedDateTimeISO);
+			if (Number.isNaN(date.getTime())) return null;
+
+			return { ...post, date };
+		})
+		.filter(isDefined)
+		.sort((a, b) => a.date.getTime() - b.date.getTime());
 
 	const feed = new Feed({
 		title: "bh2980.dev",
@@ -29,15 +38,10 @@ export async function GET() {
 			link: siteUrl.href,
 		},
 		favicon: faviconUrl,
-		updated: items[0]?.publishedDateTimeISO ? new Date(items[0].publishedDateTimeISO) : new Date(),
+		updated: items[0]?.date ?? new Date(),
 	});
 
 	for (const post of items) {
-		if (!post.publishedDateTimeISO) continue;
-
-		const date = new Date(post.publishedDateTimeISO);
-		if (Number.isNaN(date.getTime())) continue;
-
 		const url = new URL(`/posts/${sanitizeSlug(post.slug)}`, siteUrl).href;
 
 		feed.addItem({
@@ -45,7 +49,7 @@ export async function GET() {
 			id: url,
 			link: url,
 			description: post.excerpt ?? "",
-			date,
+			date: post.date,
 		});
 	}
 
