@@ -6,7 +6,7 @@ import "./globals.css";
 const pretendardVariable = localFont({
 	src: "../../public/PretendardVariable.woff2",
 	variable: "--font-pretendard",
-	weight: "100 900",
+	weight: "45 920",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
