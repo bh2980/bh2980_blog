@@ -10,5 +10,6 @@ declare namespace NodeJS {
 		KEYSTATIC_GITHUB_CLIENT_SECRET: string;
 		KEYSTATIC_SECRET: string;
 		HOST_URL: string;
+		GSC_VERIFICATION_TOKEN: string;
 	}
 }
