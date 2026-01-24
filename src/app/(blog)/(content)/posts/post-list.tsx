@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useQueryState } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { ListResult, Post, PostCategoryListMeta, PostCategoryWithCount } from "@/libs/contents/types";
+import type { CategoryListMeta, CategoryWithCount, ListResult, Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
 export const PostList = ({
 	categories,
 	posts,
 }: {
-	categories: ListResult<PostCategoryWithCount, PostCategoryListMeta>;
+	categories: ListResult<CategoryWithCount, CategoryListMeta>;
 	posts: ListResult<Omit<Post, "content">>;
 }) => {
 	const [category, setCategory] = useQueryState<string | null>("category", { parse: (value) => value || null });

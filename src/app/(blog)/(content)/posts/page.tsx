@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getPostCategoryList, getPostList } from "@/libs/contents/post";
+import { getCategoryList } from "@/libs/contents/category";
+import { getPostList } from "@/libs/contents/post";
 import { PostList } from "./post-list";
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
-	const categories = await getPostCategoryList();
+	const categories = await getCategoryList();
 	const posts = await getPostList();
 
 	return <PostList categories={categories} posts={posts} />;

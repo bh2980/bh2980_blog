@@ -1,4 +1,4 @@
-import type { CollectionEntry, MemoEntry, PostCategoryEntry, PostEntry, TagEntry } from "@/keystatic/types";
+import type { CategoryEntry, CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
 import type { Expand } from "@/utils/types";
 
 export type ListResult<T, M extends Record<string, unknown> | undefined = undefined> = {
@@ -15,7 +15,7 @@ export type WithSlug<T> = { slug: string } & T;
 
 export type Tag = Expand<WithSlug<TagEntry>>;
 export type Collection = Expand<WithSlug<CollectionEntry>>;
-export type PostCategory = WithSlug<PostCategoryEntry>;
+export type Category = WithSlug<CategoryEntry>;
 
 export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & {
 	tags: Tag[];
@@ -24,7 +24,7 @@ export type Memo = Expand<Omit<WithSlug<MemoEntry>, "tags" | "category">> & {
 export type Post = Expand<
 	Omit<WithSlug<PostEntry>, "tags" | "category"> & {
 		publishedAt: string;
-		category: PostCategory;
+		category: Category;
 		tags: Tag[];
 		isStale?: boolean;
 		isDeprecated?: boolean;
@@ -32,5 +32,6 @@ export type Post = Expand<
 	}
 >;
 
-export type PostCategoryWithCount = PostCategory & { count: number };
-export type PostCategoryListMeta = { totalPostCount: number };
+export type CategoryWithCount = Category & { count: number };
+// TODO : total로 변경하거나 타입 정리
+export type CategoryListMeta = { totalPostCount: number };

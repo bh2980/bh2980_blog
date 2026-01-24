@@ -30,7 +30,7 @@ export const a = ({ children, href, ...props }: ComponentPropsWithRef<"a">) => {
 			rel={props.rel ?? "noreferrer noopener"}
 		>
 			{children}
-			<ArrowUpRight className="mr-1 size-4 text-slate-400/60 group-hover:text-slate-900 dark:group-hover:text-slate-300" />
+			<ArrowUpRight className="size-4 text-slate-400/60 group-hover:text-slate-900 dark:group-hover:text-slate-300" />
 		</a>
 	);
 };
