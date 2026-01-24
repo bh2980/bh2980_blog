@@ -48,7 +48,6 @@ export default function Layout() {
                         }
 
                         .ProseMirror a {
-                            color: inherit !important;
                             text-decoration: underline !important;
                             text-decoration-color: rgba(203, 213, 225, 0.5) !important;
                             text-underline-offset: 4px !important;
@@ -71,7 +70,6 @@ export default function Layout() {
                         }
 
                         .ProseMirror a:hover {
-                            color: #0f172a !important;
                             text-decoration-color: #0f172a !important;
                         }
 
