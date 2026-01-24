@@ -375,12 +375,15 @@
 		-webkit-font-feature-settings: var(--font-features-base);
 	}
 	.prose,
-	.prose *,
-	table {
-		font-feature-settings: var(--font-features-base),
-			"tnum" 1; /* 고정 폭 숫자 (숫자 너비를 똑같이 맞춰 정렬함) */
-		-webkit-font-feature-settings:
-			var(--font-features-base),
-			"tnum" 1; /* 고정 폭 숫자 (숫자 너비를 똑같이 맞춰 정렬함) */
+	.prose * {
+		font-feature-settings: var(--font-features-base);
+		-webkit-font-feature-settings: var(--font-features-base);
 	}
+
+	.prose table,
+    .prose ol,
+    .prose ul {
+        font-feature-settings: var(--font-features-base), "tnum" 1 !important;
+        -webkit-font-feature-settings: var(--font-features-base), "tnum" 1 !important;
+    }
 }
