@@ -93,4 +93,3 @@ export const getPostList = async ({
 
 	return { list, total: list.length };
 };
-
