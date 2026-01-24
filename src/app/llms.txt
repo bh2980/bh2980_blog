@@ -1,0 +1,19 @@
+# bh2980.dev
+
+> A personal Korean developer blog by bh2980.
+
+Posts: long-form development notes.  
+Memos: short notes (problem solving, troubleshooting, snippets, course summaries).
+
+## Sections
+- [Posts](https://bh2980.dev/posts): Long-form development notes
+- [Memos](https://bh2980.dev/memos): Short notes (problems, troubleshooting, snippets, course summaries)
+
+## Feeds
+- [RSS (Posts)](https://bh2980.dev/rss.xml)
+
+## Index
+- [Sitemap](https://bh2980.dev/sitemap.xml)
+
+## Notes
+- Canonical host: https://bh2980.dev

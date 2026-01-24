@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { renderMDX } from "@/components/mdx/mdx-content";
@@ -7,17 +8,40 @@ import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
-export default async function MemoPost({
-	params,
-	searchParams,
-}: {
+type MemoPageProps = {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ tags: string }>;
-}) {
+};
+
+export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
+	const { slug } = await params;
+	const memo = await getMemo(slug);
+
+	if (!memo) {
+		return {
+			title: "Not Found",
+			robots: { index: false, follow: true },
+		};
+	}
+
+	const url = `/memos/${sanitizeSlug(slug)}`;
+
+	return {
+		title: memo.title,
+		alternates: { canonical: url },
+		openGraph: {
+			title: memo.title,
+			url,
+		},
+	};
+}
+
+// TODO : searchParams 제거
+export default async function MemoPage({ params, searchParams }: MemoPageProps) {
 	const { slug } = await params;
 	const query = await searchParams;
 
-	const memo = await getMemo(sanitizeSlug(slug));
+	const memo = await getMemo(slug);
 
 	if (!memo) {
 		return notFound();

@@ -5,7 +5,7 @@ import type { TocItem } from "remark-flexible-toc";
 import type { ClassNameValue } from "tailwind-merge";
 import { cn } from "../utils";
 
-const TRIGGER_STADARD_PX = 300;
+const TRIGGER_STADARD_PX = 240;
 
 export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?: ClassNameValue }) => {
 	const [activeId, setActiveId] = useState<string>();
