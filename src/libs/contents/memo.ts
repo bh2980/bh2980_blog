@@ -1,4 +1,5 @@
 import "server-only";
+import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
@@ -15,9 +16,10 @@ const normalizeMemo = (
 		.map((tag) => map.tagMap.get(tag))
 		.filter(isDefined);
 
-	const publishedAt = new Date(memo.publishedDateTimeISO).toLocaleString("ko-KR", dateTimeOptions);
+	const publishedDateTimeISO = normalizeKstIsoString(memo.publishedDateTimeISO);
+	const publishedAt = new Date(publishedDateTimeISO).toLocaleString("ko-KR", dateTimeOptions);
 
-	return { ...memo, tags, publishedAt };
+	return { ...memo, tags, publishedAt, publishedDateTimeISO };
 };
 
 export const getMemo = async (slug: string): Promise<Memo | null> => {
