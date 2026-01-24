@@ -30,10 +30,17 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 		};
 	}
 
+	const url = new URL(`/posts/${sanitizeSlug(slug)}`, HOST_URL).toString();
+
 	return {
 		title: post.title,
 		description: post.excerpt,
-		alternates: { canonical: new URL(`/posts/${sanitizeSlug(slug)}`, HOST_URL).toString() },
+		alternates: { canonical: url },
+		openGraph: {
+			title: post.title,
+			description: post.excerpt,
+			url,
+		},
 	};
 }
 
