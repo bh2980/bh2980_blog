@@ -7,5 +7,6 @@ export default function robots(): MetadataRoute.Robots {
 			allow: "/",
 			disallow: ["/keystatic/", "/api/"],
 		},
+		sitemap: `${process.env.HOST_URL}/sitemap.xml`,
 	};
 }
