@@ -13,11 +13,7 @@ type MemoPageProps = {
 	searchParams: Promise<{ tags: string }>;
 };
 
-// TODO: metadata 정리 및 통합
 export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
-	const HOST_URL = process.env.HOST_URL;
-	if (!HOST_URL) throw new Error("HOST_URL is required");
-
 	const { slug } = await params;
 	const memo = await getMemo(slug);
 
@@ -28,7 +24,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 		};
 	}
 
-	const url = new URL(`/posts/${sanitizeSlug(slug)}`, HOST_URL).toString();
+	const url = `/memos/${sanitizeSlug(slug)}`;
 
 	return {
 		title: memo.title,

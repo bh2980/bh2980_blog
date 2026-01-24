@@ -17,9 +17,6 @@ type BlogPageProps = {
 };
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
-	const HOST_URL = process.env.HOST_URL;
-	if (!HOST_URL) throw new Error("HOST_URL is required");
-
 	const { slug } = await params;
 	const post = await getPost(slug);
 
@@ -30,7 +27,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 		};
 	}
 
-	const url = new URL(`/posts/${sanitizeSlug(slug)}`, HOST_URL).toString();
+	const url = `/posts/${sanitizeSlug(slug)}`;
 
 	return {
 		title: post.title,
