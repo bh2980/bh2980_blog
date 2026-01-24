@@ -8,19 +8,19 @@ import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
 import type {
+	Category,
+	CategoryListMeta,
+	CategoryWithCount,
 	ListOptions,
 	ListResult,
 	Post,
-	PostCategory,
-	PostCategoryListMeta,
-	PostCategoryWithCount,
 	Tag,
 	WithSlug,
 } from "./types";
 
 const normalizePost = async (
 	post: WithSlug<PostEntry>,
-	map: { postCategoryMap: Map<string, PostCategory>; tagMap: Map<string, Tag> },
+	map: { categoryMap: Map<string, Category>; tagMap: Map<string, Tag> },
 	dateTimeOptions: Intl.DateTimeFormatOptions,
 ): Promise<Post | null> => {
 	const isDraftEnabled = (await draftMode()).isEnabled;
@@ -31,7 +31,7 @@ const normalizePost = async (
 		return null;
 	}
 
-	const category = map.postCategoryMap.get(post.category);
+	const category = map.categoryMap.get(post.category);
 
 	if (!category) return null;
 
@@ -56,7 +56,7 @@ const normalizePost = async (
 };
 
 export const getPost = async (slug: string): Promise<Post | null> => {
-	const { postMap, tagMap, postCategoryMap } = await getContentMap();
+	const { postMap, tagMap, categoryMap } = await getContentMap();
 
 	const post = postMap.get(sanitizeSlug(slug));
 	if (!post) {
@@ -65,7 +65,7 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 
 	return normalizePost(
 		post,
-		{ postCategoryMap, tagMap },
+		{ categoryMap, tagMap },
 		{
 			dateStyle: "medium",
 		},
@@ -75,7 +75,7 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 export const getPostList = async ({
 	category: categoryFilter,
 }: ListOptions = {}): Promise<ListResult<Omit<Post, "content">>> => {
-	const { postMap, tagMap, postCategoryMap } = await getContentMap();
+	const { postMap, tagMap, categoryMap } = await getContentMap();
 
 	let postList = Array.from(postMap.values()).toSorted(
 		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
@@ -86,7 +86,7 @@ export const getPostList = async ({
 	}
 
 	const list = (
-		await Promise.all(postList.map((post) => normalizePost(post, { postCategoryMap, tagMap }, { dateStyle: "medium" })))
+		await Promise.all(postList.map((post) => normalizePost(post, { categoryMap, tagMap }, { dateStyle: "medium" })))
 	)
 		.filter(isDefined)
 		.map(({ content, ...rest }) => rest);
@@ -94,28 +94,3 @@ export const getPostList = async ({
 	return { list, total: list.length };
 };
 
-export const getPostCategoryList = async (): Promise<ListResult<PostCategoryWithCount, PostCategoryListMeta>> => {
-	const { postMap, postCategoryMap } = await getContentMap();
-
-	const postCategoryCountMap = new Map(
-		Array.from(postCategoryMap.values()).map((category) => [category.slug, { ...category, count: 0 }]),
-	);
-
-	let totalPostCount = 0;
-
-	postMap.forEach((post) => {
-		if (!post.category) {
-			return;
-		}
-
-		const category = postCategoryCountMap.get(post.category);
-		if (post.status === "draft" || !category) return;
-
-		category.count++;
-		totalPostCount++;
-	});
-
-	const list = Array.from(postCategoryCountMap.values());
-
-	return { list, total: list.length, meta: { totalPostCount } };
-};
