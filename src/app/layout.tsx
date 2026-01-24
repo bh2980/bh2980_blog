@@ -20,7 +20,12 @@ export async function generateMetadata(): Promise<Metadata> {
 		metadataBase: new URL(HOST_URL),
 		title: "bh2980.dev",
 		description: "bh2980의 개발 블로그",
-		alternates: { canonical: "/" },
+		alternates: {
+			canonical: "/",
+			types: {
+				"application/rss+xml": "/rss.xml",
+			},
+		},
 		openGraph: {
 			title: "bh2980.dev",
 			description: "bh2980의 개발 블로그",
