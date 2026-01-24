@@ -13,16 +13,18 @@ export default function Layout() {
 
                         /* 1. 에디터 캔버스 설정: 본문 수치 685.53px 반영 */
                         .ProseMirror[role="textbox"] {
+                            max-width: 685px !important;
+                            margin: 0 auto !important;
+                            padding: 2rem 2rem 50dvh !important;
+                            box-sizing: border-box !important;
+
                             font-family: var(--font-pretendard) !important;
                             line-height: 2 !important;
                             word-break: break-word !important;
                             font-feature-settings: 
                                 "liga" 1, "calt" 1, "case" 1, "zero" 1, "ss01" 1, "ss02" 1,
                                 "ss03" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1, "tnum" 1 !important;
-                            max-width: 685.53px !important;
-                            margin: 0 auto !important;
-                            padding: 2rem 2rem 50dvh !important;
-                            box-sizing: border-box !important;
+                            
                         }
 
                         /* 2. 커스텀된 prose 상세 스타일 이식 */
@@ -53,6 +55,7 @@ export default function Layout() {
                             position: relative !important; /* 가상 요소 제어를 위해 추가 */
                         }
 
+                        /* 3. 커스텀 컴포넌트(a, Underline, Tooltip) 스타일 */
                         .ProseMirror a::after {
                             content: "↗" !important;
                             
@@ -78,7 +81,6 @@ export default function Layout() {
                             text-decoration: none !important;
                         }
 
-                        /* 3. 커스텀 컴포넌트(Underline, Tooltip) 스타일 */
                         .ProseMirror span[data-component="Underline"],
                         .ProseMirror span[data-component="Tooltip"] {
                             text-decoration: underline !important;
