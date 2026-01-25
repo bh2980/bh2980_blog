@@ -4,6 +4,7 @@ import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { mermaid } from "./mermaid";
 import { pureMDX } from "./pure-mdx";
+import { Tab, Tabs } from "./tabs";
 import { tooltip } from "./tooltip";
 import { underline } from "./underline";
 
@@ -17,4 +18,6 @@ export const components = {
 	u: underline,
 	Columns,
 	Column,
+	Tabs,
+	Tab,
 };
