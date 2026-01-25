@@ -7,6 +7,11 @@ export const metadata: Metadata = {
 	title: "블로그",
 	description: "개발하면서 배운 것들과 경험을 기록합니다.",
 	alternates: { canonical: `/posts` },
+	openGraph: {
+		title: "블로그",
+		description: "개발하면서 배운 것들과 경험을 기록합니다.",
+		images: [{ url: "/opengraph-image" }],
+	},
 };
 
 export default async function BlogPage() {
