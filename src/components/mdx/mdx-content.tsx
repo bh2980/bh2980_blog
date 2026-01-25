@@ -12,6 +12,7 @@ import { CodeWithTabs } from "./code-handler";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Mermaid } from "./mermaid.client";
+import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
 interface MDXContentProps {
@@ -79,6 +80,8 @@ export const renderMDX = async (source: string) => {
 			a,
 			Columns,
 			Column,
+			Tabs,
+			Tab,
 		},
 	});
 
