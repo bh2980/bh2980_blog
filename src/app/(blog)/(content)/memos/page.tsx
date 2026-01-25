@@ -6,10 +6,6 @@ export const metadata: Metadata = {
 	title: "메모장",
 	description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
 	alternates: { canonical: `/memos` },
-	openGraph: {
-		title: "메모장",
-		description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
-	},
 };
 
 export default async function MemoPage() {
