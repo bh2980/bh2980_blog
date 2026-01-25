@@ -10,6 +10,7 @@ import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
 import { CodeWithTabs } from "./code-handler";
 import { Collapsible } from "./collapsible";
+import { Column, Columns } from "./columns";
 import { Mermaid } from "./mermaid.client";
 import { Tooltip } from "./tooltip";
 
@@ -76,6 +77,8 @@ export const renderMDX = async (source: string) => {
 			code: InlineCode,
 			Tooltip,
 			a,
+			Columns,
+			Column,
 		},
 	});
 
