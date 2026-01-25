@@ -1,6 +1,7 @@
 import { callout } from "./callout";
 import { codeblock } from "./code-block";
 import { collapsible } from "./collapsible";
+import { Column, Columns } from "./columns";
 import { mermaid } from "./mermaid";
 import { pureMDX } from "./pure-mdx";
 import { tooltip } from "./tooltip";
@@ -14,4 +15,6 @@ export const components = {
 	PureMdx: pureMDX,
 	Tooltip: tooltip,
 	u: underline,
+	Columns,
+	Column,
 };
