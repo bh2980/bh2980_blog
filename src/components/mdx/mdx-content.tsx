@@ -8,7 +8,6 @@ import remarkGfm from "remark-gfm";
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
-import { CodeWithTabs } from "./code-handler";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Mermaid } from "./mermaid.client";
@@ -38,7 +37,6 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 			components={{
 				Code,
 				Mermaid,
-				CodeWithTabs,
 				CodeWithTooltips,
 				PureMdx: MDXContent,
 				Callout,
@@ -70,7 +68,6 @@ export const renderMDX = async (source: string) => {
 		components: {
 			Code,
 			Mermaid,
-			CodeWithTabs,
 			CodeWithTooltips,
 			PureMdx: MDXContent,
 			Callout,
