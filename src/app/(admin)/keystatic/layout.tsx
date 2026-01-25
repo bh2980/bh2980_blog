@@ -108,7 +108,7 @@ export default function Layout() {
                         }
 
                         /* 커스텀 컴포넌트 */
-                        .ProseMirror span[data-component="Underline"],
+                        .ProseMirror span[data-component="u"],
                         .ProseMirror span[data-component="Tooltip"] {
                             text-decoration: underline !important;
                             text-underline-offset: 4px !important;

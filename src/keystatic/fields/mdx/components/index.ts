@@ -13,5 +13,5 @@ export const components = {
 	Mermaid: mermaid,
 	PureMdx: pureMDX,
 	Tooltip: tooltip,
-	Underline: underline,
+	u: underline,
 };
