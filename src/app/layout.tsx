@@ -27,7 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
 			},
 		},
 		openGraph: {
-			title: "bh2980.dev",
+			title: {
+				template: "%s | bh2980.dev",
+				default: "bh2980.dev",
+			},
 			description: "bh2980의 개발 블로그",
 			type: "website",
 			siteName: "bh2980.dev",
