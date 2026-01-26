@@ -1,9 +1,10 @@
 import { keymap } from "prosemirror-keymap";
-import { type Plugin, TextSelection } from "prosemirror-state";
+import type { Schema } from "prosemirror-model";
+import { type EditorState, type Plugin, TextSelection } from "prosemirror-state";
 
 export const CODE_BLOCK_NAME = "Codeblock";
 
-export function isInCodeblock(state: any) {
+export function isInCodeblock(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
@@ -12,7 +13,7 @@ export function isInCodeblock(state: any) {
 	return false;
 }
 
-function findCodeBlockDepth(state: any): number | null {
+function findCodeBlockDepth(state: EditorState): number | null {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
@@ -21,7 +22,7 @@ function findCodeBlockDepth(state: any): number | null {
 	return null;
 }
 
-export function codeBlockKeysPlugin(schema: any, indent = "\t"): Plugin {
+export function codeBlockKeysPlugin(schema: Schema, indent = "\t"): Plugin {
 	return keymap({
 		"Mod-a": (state, dispatch) => {
 			const depth = findCodeBlockDepth(state);

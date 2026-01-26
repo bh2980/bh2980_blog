@@ -1,4 +1,4 @@
-import { Fragment, Slice } from "prosemirror-model";
+import { Fragment, type Node, Slice } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
 import { isInCodeblock } from "./codeblock-keys";
 
@@ -21,7 +21,7 @@ export function codeBlockPasteAsHardBreakPlugin() {
 				const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 				const lines = normalized.split("\n"); // 빈 줄 포함
 
-				const nodes: any[] = [];
+				const nodes: Node[] = [];
 				for (let i = 0; i < lines.length; i++) {
 					const line = lines[i];
 					if (line.length > 0) nodes.push(pmSchema.text(line));
