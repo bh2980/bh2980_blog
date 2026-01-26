@@ -4,6 +4,5 @@ export * from "./diff";
 export * from "./fold";
 export * from "./line-number";
 export * from "./mark";
-export * from "./tabs";
 export * from "./token-transitions";
 export * from "./tooltips";

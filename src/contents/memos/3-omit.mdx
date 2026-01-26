@@ -67,7 +67,7 @@ interface Expected3 {
 
 1. `readonly`의 보존
 
-   TypeScript의 `Mapped Type`은 원본 프로퍼티의 <Tooltip content="readonly, ?(optional)">modifier</Tooltip>를 자동으로 복사해줄 때가 있는데 원본 타입의 키를 <Underline>그대로 기반으로 순회</Underline>할 때 안정적으로 복사해준다. 만약 `Exclude<keyof T, K>`처럼 유니온을 한 번 가공한 결과로 순회할 경우 modifier의 복사가 깨질 수 있다.
+   TypeScript의 `Mapped Type`은 원본 프로퍼티의 <Tooltip content="readonly, ?(optional)">modifier</Tooltip>를 자동으로 복사해줄 때가 있는데 원본 타입의 키를 <u>그대로 기반으로 순회</u>할 때 안정적으로 복사해준다. 만약 `Exclude<keyof T, K>`처럼 유니온을 한 번 가공한 결과로 순회할 경우 modifier의 복사가 깨질 수 있다.
 2. 키 재매핑 `as`
 
    타입 단언의 `as`와 다른 문법으로, `Mapped Type`에서 키를 다시 매핑하고 싶을 때 사용된다.

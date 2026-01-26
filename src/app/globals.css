@@ -372,6 +372,7 @@
 	.prose * {
 		font-feature-settings: var(--font-features-base);
 		-webkit-font-feature-settings: var(--font-features-base);
+		@apply underline-offset-4;
 	}
 
 	.prose table,
