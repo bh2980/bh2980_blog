@@ -65,7 +65,7 @@ const isMDXJSXTextElement = (node: RootContent): node is MdxJsxTextElement => {
 	return node.type === "mdxJsxTextElement";
 };
 
-export type Position =
+export type Annotation =
 	| {
 			type: Exclude<RootContent["type"], "mdxJsxTextElement">;
 			start: number;
@@ -85,7 +85,7 @@ export function remarkCodeblockAnnotation() {
 			if (node.name !== "Codeblock") return;
 
 			// extract codeblock code and annotation position information
-			const positions: Position[] = [];
+			const annotaions: Annotation[] = [];
 			let code = "";
 
 			function extractTextAndBreak(node: RootContent) {
@@ -107,7 +107,7 @@ export function remarkCodeblockAnnotation() {
 					});
 
 					if (isMDXJSXTextElement(node)) {
-						const position: Position = {
+						const annotation: Annotation = {
 							type: "mdxJsxTextElement",
 							name: node.name,
 							attributes: node.attributes,
@@ -115,16 +115,16 @@ export function remarkCodeblockAnnotation() {
 							end: code.length,
 						};
 
-						positions.push(position);
+						annotaions.push(annotation);
 					} else {
-						const position: Position = {
+						const annotation: Annotation = {
 							type: node.type as Exclude<RootContent["type"], "mdxJsxTextElement">,
 							start,
 							end: code.length,
 						};
 
 						if (!isParagraph(node)) {
-							positions.push(position);
+							annotaions.push(annotation);
 						}
 					}
 
@@ -140,22 +140,22 @@ export function remarkCodeblockAnnotation() {
 			node.children = [];
 
 			node.attributes = node.attributes.filter((a) => {
-				return !(a.type === "mdxJsxAttribute" && (a.name === "code" || a.name === "positions"));
+				return !(a.type === "mdxJsxAttribute" && (a.name === "code" || a.name === "annotations"));
 			});
 
 			const codeAttr: MdxJsxAttribute = {
 				type: "mdxJsxAttribute",
 				name: "code",
-				value: JSON.stringify(code), // \n 등은 자동 이스케이프됨
+				value: JSON.stringify(code),
 			};
 
-			const posAttr: MdxJsxAttribute = {
+			const annoAttr: MdxJsxAttribute = {
 				type: "mdxJsxAttribute",
-				name: "positions",
-				value: JSON.stringify(positions),
+				name: "annotations",
+				value: JSON.stringify(annotaions),
 			};
 
-			node.attributes.push(codeAttr, posAttr);
+			node.attributes.push(codeAttr, annoAttr);
 		});
 	};
 }
