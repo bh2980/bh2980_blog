@@ -40,7 +40,7 @@ export const Codeblock_unstable = wrapper({
 		lang: fields.select({
 			label: "언어",
 			options: EDITOR_LANG_OPTION,
-			defaultValue: "txt",
+			defaultValue: "typescript",
 		}),
 	},
 
