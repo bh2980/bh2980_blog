@@ -97,6 +97,9 @@ importers:
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
+      prosemirror-keymap:
+        specifier: ^1.2.3
+        version: 1.2.3
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -176,6 +179,9 @@ importers:
       micromark-extension-mdxjs:
         specifier: ^3.0.0
         version: 3.0.0
+      prosemirror-state:
+        specifier: ^1.4.4
+        version: 1.4.4
       shiki:
         specifier: ^3.21.0
         version: 3.21.0
