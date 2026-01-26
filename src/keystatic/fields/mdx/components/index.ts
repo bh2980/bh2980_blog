@@ -1,5 +1,6 @@
 import { callout } from "./callout";
 import { codeblock } from "./code-block";
+import { Codeblock_unstable } from "./code-block-temp";
 import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { mermaid } from "./mermaid";
@@ -20,4 +21,5 @@ export const components = {
 	Column,
 	Tabs,
 	Tab,
+	CodeBlock: Codeblock_unstable,
 };
