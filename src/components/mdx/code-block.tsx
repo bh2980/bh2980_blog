@@ -263,7 +263,11 @@ const renderTree = (nodes: TreeNode[], keyPrefix: string) =>
 		}
 
 		return (
-			<Tooltip key={key} content={node.content}>
+			<Tooltip
+				key={key}
+				content={node.content}
+				className="border-slate-200 bg-slate-200 text-slate-800 [&_svg]:bg-slate-200 [&_svg]:fill-slate-200"
+			>
 				{renderTree(node.children, key)}
 			</Tooltip>
 		);
