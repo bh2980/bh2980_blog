@@ -355,7 +355,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 						) : (
 							<>
 								<span key={folder} className="inline-flex items-center gap-1">
-									<Folder size={16} className="mt-1 stroke-2" />
+									<Folder size={16} className="stroke-2" />
 									{folder}
 								</span>
 								/
