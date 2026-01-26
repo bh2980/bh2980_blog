@@ -1,4 +1,3 @@
-import type { JSX } from "react";
 import { codeToTokens } from "shiki";
 import type { Annotation } from "@/libs/contents/remark";
 import { Tooltip } from "./tooltip";
@@ -57,8 +56,6 @@ type TreeNode =
 	| {
 			kind: "token";
 			token: PositionedToken;
-			start: number;
-			end: number;
 	  }
 	| {
 			kind: "style";
@@ -82,6 +79,12 @@ const STYLE_OUTER_PRIORITY: Record<StyleKind, number> = {
 	del: 3,
 };
 
+const STYLE_BY_TYPE: Record<string, StyleKind> = {
+	delete: "del",
+	strong: "strong",
+	emphasis: "em",
+};
+
 const STYLE_TAGS: Record<StyleKind, "del" | "strong" | "em" | "u"> = {
 	del: "del",
 	strong: "strong",
@@ -89,11 +92,13 @@ const STYLE_TAGS: Record<StyleKind, "del" | "strong" | "em" | "u"> = {
 	u: "u",
 };
 
+// Tooltip content 속성만 추출.
 const extractTooltipContent = (annotation: Extract<Annotation, { type: "mdxJsxTextElement" }>) => {
 	const attr = annotation.attributes.find((a) => a.type === "mdxJsxAttribute" && a.name === "content");
 	return typeof attr?.value === "string" ? attr.value : "";
 };
 
+// shiki 토큰(줄 단위)을 코드 전체 기준 start/end를 가진 토큰으로 변환.
 const buildPositionedTokens = (
 	codeblock: { content: string; color?: string; fontStyle?: number }[][],
 	codeStr: string,
@@ -119,6 +124,7 @@ const buildPositionedTokens = (
 	return tokens;
 };
 
+// annotation 경계(start/end)에서 토큰을 잘라 범위가 정확히 맞도록 조정.
 const splitTokensByBoundaries = (tokens: PositionedToken[], boundaries: Set<number>) => {
 	const boundaryList = Array.from(boundaries).sort((a, b) => a - b);
 	const splitTokens: PositionedToken[] = [];
@@ -146,55 +152,42 @@ const splitTokensByBoundaries = (tokens: PositionedToken[], boundaries: Set<numb
 	return splitTokens;
 };
 
+// mdast annotation을 렌더링에 필요한 형태(style/tooltip)로 정규화.
 const normalizeAnnotations = (annotationList: Annotation[]) => {
 	const normalized: NormalizedAnnotation[] = [];
 
 	for (const annotation of annotationList) {
 		if (annotation.start >= annotation.end) continue;
 
-		if (annotation.type === "delete") {
-			normalized.push({ kind: "style", style: "del", start: annotation.start, end: annotation.end });
+		const style = STYLE_BY_TYPE[annotation.type];
+		if (style) {
+			normalized.push({ kind: "style", style, start: annotation.start, end: annotation.end });
 			continue;
 		}
 
-		if (annotation.type === "strong") {
-			normalized.push({ kind: "style", style: "strong", start: annotation.start, end: annotation.end });
-			continue;
-		}
-
-		if (annotation.type === "emphasis") {
-			normalized.push({ kind: "style", style: "em", start: annotation.start, end: annotation.end });
-			continue;
-		}
-
-		if (annotation.type === "mdxJsxTextElement" && annotation.name === "u") {
-			normalized.push({ kind: "style", style: "u", start: annotation.start, end: annotation.end });
-			continue;
-		}
-
-		if (annotation.type === "mdxJsxTextElement" && annotation.name === "Tooltip") {
-			normalized.push({
-				kind: "tooltip",
-				content: extractTooltipContent(annotation),
-				start: annotation.start,
-				end: annotation.end,
-			});
+		if (annotation.type === "mdxJsxTextElement") {
+			if (annotation.name === "u") {
+				normalized.push({ kind: "style", style: "u", start: annotation.start, end: annotation.end });
+				continue;
+			}
+			if (annotation.name === "Tooltip") {
+				normalized.push({
+					kind: "tooltip",
+					content: extractTooltipContent(annotation),
+					start: annotation.start,
+					end: annotation.end,
+				});
+			}
 		}
 	}
 
 	return normalized;
 };
 
+// 정규화된 annotation을 토큰에 적용해 중첩 트리를 만든다.
 const buildAnnotationTree = (segments: PositionedToken[], annotations: NormalizedAnnotation[], codeLength: number) => {
-	const root = { kind: "root" as const, children: [] as TreeNode[], start: 0, end: codeLength };
-	const stack: {
-		kind: "root" | "style" | "tooltip";
-		children: TreeNode[];
-		start: number;
-		end: number;
-		style?: StyleKind;
-		content?: string;
-	}[] = [root];
+	const root = { children: [] as TreeNode[], start: 0, end: codeLength };
+	const stack: Array<{ children: TreeNode[]; start: number; end: number }> = [root];
 	const startMap = new Map<number, NormalizedAnnotation[]>();
 
 	for (const annotation of annotations) {
@@ -203,13 +196,11 @@ const buildAnnotationTree = (segments: PositionedToken[], annotations: Normalize
 		startMap.set(annotation.start, list);
 	}
 
+	const outerPriority = (annotation: NormalizedAnnotation) =>
+		annotation.kind === "tooltip" ? -1 : STYLE_OUTER_PRIORITY[annotation.style];
+
 	for (const list of startMap.values()) {
-		list.sort((a, b) => {
-			if (a.end !== b.end) return b.end - a.end;
-			const priorityA = a.kind === "tooltip" ? -1 : STYLE_OUTER_PRIORITY[a.style];
-			const priorityB = b.kind === "tooltip" ? -1 : STYLE_OUTER_PRIORITY[b.style];
-			return priorityA - priorityB;
-		});
+		list.sort((a, b) => (a.end !== b.end ? b.end - a.end : outerPriority(a) - outerPriority(b)));
 	}
 
 	for (const segment of segments) {
@@ -217,31 +208,31 @@ const buildAnnotationTree = (segments: PositionedToken[], annotations: Normalize
 		if (toOpen) {
 			for (const annotation of toOpen) {
 				if (annotation.kind === "style") {
-					const node = {
-						kind: "style" as const,
+					const node: TreeNode = {
+						kind: "style",
 						style: annotation.style,
 						start: annotation.start,
 						end: annotation.end,
-						children: [] as TreeNode[],
+						children: [],
 					};
 					stack[stack.length - 1].children.push(node);
 					stack.push(node);
 					continue;
 				}
 
-				const node = {
-					kind: "tooltip" as const,
+				const node: TreeNode = {
+					kind: "tooltip",
 					content: annotation.content,
 					start: annotation.start,
 					end: annotation.end,
-					children: [] as TreeNode[],
+					children: [],
 				};
 				stack[stack.length - 1].children.push(node);
 				stack.push(node);
 			}
 		}
 
-		stack[stack.length - 1].children.push({ kind: "token", token: segment, start: segment.start, end: segment.end });
+		stack[stack.length - 1].children.push({ kind: "token", token: segment });
 
 		while (stack.length > 1 && stack[stack.length - 1].end === segment.end) {
 			stack.pop();
@@ -251,30 +242,30 @@ const buildAnnotationTree = (segments: PositionedToken[], annotations: Normalize
 	return root.children;
 };
 
-const renderNodes = (nodes: TreeNode[], keyPrefix: string) => {
-	return nodes.map((node, index) => renderNode(node, `${keyPrefix}-${index}`));
-};
+// 트리를 재귀적으로 JSX로 변환.
+const renderTree = (nodes: TreeNode[], keyPrefix: string) =>
+	nodes.map((node, index) => {
+		const key = `${keyPrefix}-${index}`;
 
-const renderNode = (node: TreeNode, key: string): JSX.Element => {
-	if (node.kind === "token") {
+		if (node.kind === "token") {
+			return (
+				<span key={key} style={node.token.color ? { color: node.token.color } : undefined}>
+					{node.token.content}
+				</span>
+			);
+		}
+
+		if (node.kind === "style") {
+			const Tag = STYLE_TAGS[node.style];
+			return <Tag key={key}>{renderTree(node.children, key)}</Tag>;
+		}
+
 		return (
-			<span key={key} style={node.token.color ? { color: node.token.color } : undefined}>
-				{node.token.content}
-			</span>
+			<Tooltip key={key} content={node.content}>
+				{renderTree(node.children, key)}
+			</Tooltip>
 		);
-	}
-
-	if (node.kind === "style") {
-		const Tag = STYLE_TAGS[node.style];
-		return <Tag key={key}>{renderNodes(node.children, key)}</Tag>;
-	}
-
-	return (
-		<Tooltip key={key} content={node.content}>
-			{renderNodes(node.children, key)}
-		</Tooltip>
-	);
-};
+	});
 
 export const Codeblock = async ({ code, annotations, lang, useLineNumber, title }: CodeblockProps) => {
 	const codeStr = JSON.parse(code);
@@ -293,7 +284,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, title 
 
 	return (
 		<pre style={{ whiteSpace: "pre", overflowX: "auto" }}>
-			<code>{renderNodes(tree, "code")}</code>
+			<code>{renderTree(tree, "code")}</code>
 		</pre>
 	);
 };
