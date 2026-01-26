@@ -1,5 +1,6 @@
 import { codeToTokens } from "shiki";
 import type { Annotation } from "@/libs/contents/remark";
+import { cn } from "@/utils/cn";
 import { Tooltip } from "./tooltip";
 
 type CodeblockProps = {
@@ -25,7 +26,7 @@ type CodeblockProps = {
 		| "yaml"
 		| "text";
 	useLineNumber: boolean;
-	title: string;
+	meta: string;
 };
 
 type StyleKind = "del" | "strong" | "em" | "u";
@@ -267,7 +268,7 @@ const renderTree = (nodes: TreeNode[], keyPrefix: string) =>
 		);
 	});
 
-export const Codeblock = async ({ code, annotations, lang, useLineNumber, title }: CodeblockProps) => {
+export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }: CodeblockProps) => {
 	const codeStr = JSON.parse(code);
 	const annotationList = JSON.parse(annotations) as Annotation[];
 
@@ -282,9 +283,16 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, title 
 	const normalizedAnnotations = normalizeAnnotations(annotationList);
 	const tree = buildAnnotationTree(splitTokens, normalizedAnnotations, codeStr.length);
 
+	const title = meta.match(/title="(.+?)"/)?.[1]?.trim();
+
 	return (
-		<pre style={{ whiteSpace: "pre", overflowX: "auto" }}>
-			<code>{renderTree(tree, "code")}</code>
-		</pre>
+		<div className="flex flex-col">
+			{title && (
+				<div className="rounded-t-md bg-slate-600 py-1.5 text-center font-bold text-slate-200 text-sm">{title}</div>
+			)}
+			<pre style={{ whiteSpace: "pre", overflowX: "auto" }} className={cn(title && "m-0! rounded-t-none")}>
+				<code>{renderTree(tree, "code")}</code>
+			</pre>
+		</div>
 	);
 };
