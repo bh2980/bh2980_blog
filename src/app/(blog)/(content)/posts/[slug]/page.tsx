@@ -119,7 +119,7 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 								)}
 							</aside>
 						))}
-					{toc?.length && <TableOfContents toc={toc} className="mt-4 xl:hidden" />}
+					{toc?.length !== 0 ? <TableOfContents toc={toc} className="mt-4 xl:hidden" /> : null}
 					{content}
 				</article>
 
@@ -155,7 +155,7 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 				<Comments slug={slug} />
 			</div>
 			<aside className="hidden xl:block">
-				{toc?.length && <TableOfContents toc={toc} className="sticky top-22 max-w-68" />}
+				{toc?.length !== 0 ? <TableOfContents toc={toc} className="sticky top-22 max-w-68" /> : null}
 			</aside>
 		</div>
 	);
