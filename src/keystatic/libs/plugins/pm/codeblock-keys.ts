@@ -1,7 +1,9 @@
 import { keymap } from "prosemirror-keymap";
 import { type Plugin, TextSelection } from "prosemirror-state";
 
-export function isInCodeBlock(state: any) {
+export const CODE_BLOCK_NAME = "Codeblock";
+
+export function isInCodeblock(state: any) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
@@ -9,10 +11,9 @@ export function isInCodeBlock(state: any) {
 		const name = node.type?.name;
 		const attrs = node.attrs ?? {};
 
-		// TODO: 실제 형태에 맞춰 조정
-		if (name === "CodeBlock") return true;
+		if (name === CODE_BLOCK_NAME) return true;
 		if (name === "component" || name === "wrapper" || name === "contentComponent") {
-			if (attrs.component === "CodeBlock" || attrs.name === "CodeBlock") return true;
+			if (attrs.component === CODE_BLOCK_NAME || attrs.name === CODE_BLOCK_NAME) return true;
 		}
 	}
 	return false;
@@ -54,10 +55,10 @@ function findCodeBlockDepth(state: any) {
 		const name = node.type?.name;
 		const attrs = node.attrs ?? {};
 
-		if (name === "CodeBlock") return d;
+		if (name === CODE_BLOCK_NAME) return d;
 
 		if (name === "component" || name === "wrapper" || name === "contentComponent") {
-			if (attrs.component === "CodeBlock" || attrs.name === "CodeBlock") return d;
+			if (attrs.component === CODE_BLOCK_NAME || attrs.name === CODE_BLOCK_NAME) return d;
 		}
 	}
 	return null;
@@ -85,13 +86,13 @@ export function codeBlockKeysPlugin(schema: any, indent = "\t"): Plugin {
 			return true;
 		},
 		Tab: (state, dispatch) => {
-			if (!isInCodeBlock(state)) return false;
+			if (!isInCodeblock(state)) return false;
 			if (!dispatch) return true;
 			dispatch(state.tr.insertText(indent));
 			return true;
 		},
 		Enter: (state, dispatch) => {
-			if (!isInCodeBlock(state)) return false;
+			if (!isInCodeblock(state)) return false;
 			const br = schema.nodes?.hard_break;
 			if (!br) return false;
 

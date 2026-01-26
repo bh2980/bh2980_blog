@@ -1,15 +1,15 @@
 import { Fragment, Slice } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
-import { isInCodeBlock } from "./codeblock-keys";
+import { isInCodeblock } from "./codeblock-keys";
 
 export function codeBlockPasteAsHardBreakPlugin() {
 	return new Plugin({
 		props: {
 			handlePaste(view, event) {
 				if (!event.clipboardData) return false;
-				if (!isInCodeBlock(view.state)) return false;
+				if (!isInCodeblock(view.state)) return false;
 
-				const pmSchema = view.state.schema; // ✅ 진짜 ProseMirror Schema
+				const pmSchema = view.state.schema;
 				const br = pmSchema.nodes?.hard_break;
 				if (!br) return false;
 
@@ -24,7 +24,7 @@ export function codeBlockPasteAsHardBreakPlugin() {
 				const nodes: any[] = [];
 				for (let i = 0; i < lines.length; i++) {
 					const line = lines[i];
-					if (line.length > 0) nodes.push(pmSchema.text(line)); // ✅ 여기
+					if (line.length > 0) nodes.push(pmSchema.text(line));
 					if (i < lines.length - 1) nodes.push(br.create());
 				}
 
