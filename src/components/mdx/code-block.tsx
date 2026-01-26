@@ -336,8 +336,9 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 
 	const filePath = meta
 		.match(/title="(.+?)"/)?.[1]
-		?.trim()
-		?.split("/");
+		.trim()
+		.split("/")
+		.filter(Boolean);
 
 	const showTitlebar = filePath && filePath.length >= 0;
 
