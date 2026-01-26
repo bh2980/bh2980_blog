@@ -72,6 +72,7 @@
 		"lint-staged": "^16.2.7",
 		"mdast-util-from-markdown": "^2.0.2",
 		"mdast-util-mdx": "^3.0.0",
+		"mdast-util-mdx-jsx": "^3.2.0",
 		"micromark-extension-mdxjs": "^3.0.0",
 		"tailwindcss": "^4",
 		"tsx": "^4.21.0",
