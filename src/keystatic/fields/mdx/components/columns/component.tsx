@@ -11,7 +11,7 @@ export const Columns = repeating({
 	schema: {},
 	ContentView(props) {
 		return (
-			<div className="[&>span]:inline-flex! [&>span>span]:inline-flex! [&>span>span]:w-full! [&>span>span]:columns-2 [&>span]:w-full! [&_div]:m-0! [&_div]:w-full! [&_div]:flex-1!">
+			<div className="[&>span]:inline-flex! [&>span>span]:inline-flex! [&>span>span]:w-full! [&>span]:w-full! [&_div]:m-0! [&_div]:w-full! [&_div]:flex-1!">
 				{props.children}
 			</div>
 		);
