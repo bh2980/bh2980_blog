@@ -1,26 +1,28 @@
 import { keymap } from "prosemirror-keymap";
-import type { Plugin } from "prosemirror-state";
+import type { Schema } from "prosemirror-model";
+import type { EditorState, Plugin, Transaction } from "prosemirror-state";
 import { canJoin } from "prosemirror-transform";
 
-function isInAnyWrapper(state: any) {
+export function isInAnyWrapper(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		const node = $from.node(d);
-		const type = node.type;
+		const type = $from.node(d).type;
 
-		// Keystatic content component는 보통 group에 componentN이 들어감 (너 dump에 component3)
-		const isKeystaticComponent = (type.groups ?? []).some((g: string) => g.startsWith("component"));
+		// Keystatic content component는 보통 spec.group에 "componentN" 형태가 들어감
+		const groupStr = type.spec.group ?? "";
+		const isKeystaticComponent = groupStr.split(/\s+/).some((g) => g.startsWith("component"));
 
-		// wrapper는 content가 block+ 인 케이스가 많음 (너 Codeblock도 block+)
-		const isWrapperLike = type.spec?.content === "block+";
+		// wrapper류는 content가 block+ 인 케이스가 많음
+		const isWrapperLike = type.spec.content === "block+";
 
 		if (isKeystaticComponent && isWrapperLike) return true;
 	}
+
 	return false;
 }
 
-function deleteCharOrHardBreakBackward(state: any, dispatch: any, schema: any) {
+function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
 	const { from, empty } = state.selection;
 	if (!empty) return false;
 	if (from <= 0) return true; // 문서 시작: 아무 것도 안 하고 막기
@@ -63,11 +65,11 @@ function deleteCharOrHardBreakBackward(state: any, dispatch: any, schema: any) {
 	return true;
 }
 
-export function wrapperKeysPlugin(schema: any): Plugin {
+export function wrapperKeysPlugin(schema: Schema): Plugin {
 	return keymap({
 		Backspace: (state, dispatch) => {
-			console.log(isInAnyWrapper(state));
 			if (!isInAnyWrapper(state)) return false;
+			if (!dispatch) return false;
 			return deleteCharOrHardBreakBackward(state, dispatch, schema);
 		},
 	});
