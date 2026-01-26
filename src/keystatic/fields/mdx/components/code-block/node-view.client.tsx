@@ -15,6 +15,7 @@ import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
 import { escapeCodeHikeAnnotations } from "./libs";
 
 export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeViewProps) => {
+	// WARNING: Keystatic raw text 미제공 → children 내부 DOM에서 innerText 추출(업데이트 시 깨질 수 있음).
 	const textContent = (
 		((children as ReactElement).props as { node: HTMLSpanElement }).node.childNodes[0] as HTMLParagraphElement
 	).innerText;
