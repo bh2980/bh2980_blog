@@ -1,10 +1,15 @@
-import { Children, type PropsWithChildren, type ReactElement } from "react";
+import { Children, isValidElement, type PropsWithChildren, type ReactElement } from "react";
 import { TabsContent, TabsList, Tabs as TabsRoot, TabsTrigger } from "../ui/tabs";
 
 export const Tabs = ({ children, defaultValue }: PropsWithChildren & { defaultValue?: string }) => {
-	const childrenArray = Children.toArray(children) as ReactElement<{ label: string }>[];
-	const hasValidFirstTab = childrenArray.length > 0 && typeof childrenArray[0].props.label === "string";
+	const childrenArray = Children.toArray(children).filter((child): child is ReactElement<{ label: string }> => {
+		if (!isValidElement(child)) return false;
 
+		const props = (child as ReactElement<{ label?: unknown }>).props;
+		return props.label != null;
+	});
+
+	const hasValidFirstTab = childrenArray.length > 0 && typeof childrenArray[0].props.label === "string";
 	const tabDefault = defaultValue ?? (hasValidFirstTab ? childrenArray[0].props.label : undefined);
 
 	return (
