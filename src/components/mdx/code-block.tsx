@@ -344,7 +344,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 	return (
 		<div className="group relative flex flex-col">
 			{showTitlebar && (
-				<div className="flex items-center gap-1 rounded-t-md bg-slate-600 px-3 py-1.5 text-slate-300 text-sm">
+				<div className="flex items-center gap-1 rounded-t-xl bg-slate-600 px-3 py-1.5 text-slate-300 text-sm">
 					{filePath.map((folder, index, arr) => {
 						const isFile = arr.length - 1 === index;
 
@@ -364,7 +364,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 					})}
 				</div>
 			)}
-			<pre className={cn("overflow-x-auto whitespace-pre", showTitlebar && "m-0! rounded-t-none")}>
+			<pre className={cn("overflow-x-auto whitespace-pre rounded-xl", showTitlebar && "m-0! rounded-t-none")}>
 				<code>
 					{lines.map((line, index) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
