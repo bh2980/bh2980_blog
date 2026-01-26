@@ -1,5 +1,6 @@
 import { callout } from "./callout";
-import { codeblock } from "./code-block";
+import { codeblock as codeblock_deprecated } from "./code";
+import { Codeblock } from "./code-block";
 import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { mermaid } from "./mermaid";
@@ -11,7 +12,8 @@ import { underline } from "./underline";
 export const components = {
 	Callout: callout,
 	Collapsible: collapsible,
-	Code: codeblock,
+	Code: codeblock_deprecated,
+	Codeblock,
 	Mermaid: mermaid,
 	PureMdx: pureMDX,
 	Tooltip: tooltip,

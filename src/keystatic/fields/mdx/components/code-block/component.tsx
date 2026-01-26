@@ -1,17 +1,30 @@
-// src/keystatic/fields/mdx-components/editor-code-block.tsx
 import { fields } from "@keystatic/core";
-import { block } from "@keystatic/core/content-components";
-import { Code } from "lucide-react";
-import { lazy, Suspense } from "react";
-import { EDITOR_LANG_OPTION } from "./constants";
+import { wrapper } from "@keystatic/core/content-components";
+import { Code2 } from "lucide-react";
+import { lazy, type PropsWithChildren, Suspense } from "react";
+import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
+
+type NodeSchema = {
+	readonly title: string;
+	readonly value: string;
+	readonly useLineNumber: boolean;
+	readonly lang: EditorLang;
+};
+
+export type NodeViewProps = PropsWithChildren & {
+	value: NodeSchema;
+	onChange(value: NodeSchema): void;
+	onRemove(): void;
+	isSelected: boolean;
+};
 
 const LazyCodeBlockNodeView = lazy(() =>
 	import("./node-view.client").then((m) => ({
-		default: m.CodeBlockNodeView,
+		default: m.CodeblockNodeView,
 	})),
 );
 
-function CodeBlockNodeViewProxy(props: any) {
+function CodeBlockNodeViewProxy(props: NodeViewProps) {
 	return (
 		<Suspense fallback={null}>
 			<LazyCodeBlockNodeView {...props} />
@@ -19,18 +32,17 @@ function CodeBlockNodeViewProxy(props: any) {
 	);
 }
 
-export const codeblock = block({
+export const Codeblock = wrapper({
 	label: "코드 블럭",
-	icon: <Code />,
+	icon: <Code2 />,
 	schema: {
-		codeblock: fields.object({
-			lang: fields.select({
-				label: "언어",
-				defaultValue: "typescript",
-				options: EDITOR_LANG_OPTION.map((o) => ({ label: o.label, value: o.value })),
-			}),
-			value: fields.text({ label: "코드", multiline: true }),
-			meta: fields.text({ label: "메타데이터" }),
+		title: fields.text({ label: "제목" }),
+		value: fields.text({ label: "코드" }),
+		useLineNumber: fields.checkbox({ label: "라인 번호" }),
+		lang: fields.select({
+			label: "언어",
+			options: EDITOR_LANG_OPTION,
+			defaultValue: "typescript",
 		}),
 	},
 
