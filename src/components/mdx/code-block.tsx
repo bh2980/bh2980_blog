@@ -268,6 +268,50 @@ const renderTree = (nodes: TreeNode[], keyPrefix: string) =>
 		);
 	});
 
+// 라인별로 트리를 분리해 <span className="line">로 감싸기 위한 보조 함수.
+const splitTreeByLines = (nodes: TreeNode[]) => {
+	const lines: TreeNode[][] = [];
+	let currentLine: TreeNode[] = [];
+
+	const pushLine = () => {
+		lines.push(currentLine);
+		currentLine = [];
+	};
+
+	for (const node of nodes) {
+		if (node.kind === "token") {
+			if (node.token.content === "\n") {
+				pushLine();
+				continue;
+			}
+			currentLine.push(node);
+			continue;
+		}
+
+		const childLines = splitTreeByLines(node.children);
+
+		if (childLines.length === 1) {
+			if (childLines[0].length > 0) {
+				currentLine.push({ ...node, children: childLines[0] });
+			}
+			continue;
+		}
+
+		for (let i = 0; i < childLines.length; i += 1) {
+			const childLine = childLines[i];
+			if (childLine.length > 0) {
+				currentLine.push({ ...node, children: childLine });
+			}
+			if (i < childLines.length - 1) {
+				pushLine();
+			}
+		}
+	}
+
+	lines.push(currentLine);
+	return lines;
+};
+
 export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }: CodeblockProps) => {
 	const codeStr = JSON.parse(code);
 	const annotationList = JSON.parse(annotations) as Annotation[];
@@ -282,6 +326,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 	const splitTokens = splitTokensByBoundaries(positionedTokens, boundaries);
 	const normalizedAnnotations = normalizeAnnotations(annotationList);
 	const tree = buildAnnotationTree(splitTokens, normalizedAnnotations, codeStr.length);
+	const lines = splitTreeByLines(tree);
 
 	const title = meta.match(/title="(.+?)"/)?.[1]?.trim();
 
@@ -290,8 +335,16 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 			{title && (
 				<div className="rounded-t-md bg-slate-600 py-1.5 text-center font-bold text-slate-200 text-sm">{title}</div>
 			)}
-			<pre style={{ whiteSpace: "pre", overflowX: "auto" }} className={cn(title && "m-0! rounded-t-none")}>
-				<code>{renderTree(tree, "code")}</code>
+			<pre className={cn("overflow-x-auto whitespace-pre", title && "m-0! rounded-t-none")}>
+				<code>
+					{lines.map((line, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
+						<span key={`line-${index}`} className={cn(useLineNumber && "line")}>
+							{renderTree(line, `line-${index}`)}
+							{index < lines.length - 1 ? "\n" : null}
+						</span>
+					))}
+				</code>
 			</pre>
 		</div>
 	);

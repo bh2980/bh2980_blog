@@ -385,4 +385,14 @@
 			var(--font-features-base),
 			"tnum" 1 !important;
 	}
+
+	.prose pre code {
+		counter-reset: step;
+		counter-increment: step 0;
+	}
+
+	.prose pre code .line::before {
+		counter-increment: step;
+		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! text-white/50 content-[counter(step)];
+	}
 }
