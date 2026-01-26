@@ -5,9 +5,11 @@ import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import { remarkCodeblockAnnotation } from "@/libs/contents/remark";
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
+import { Codeblock } from "./code-block";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Mermaid } from "./mermaid.client";
@@ -29,7 +31,7 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 			options={{
 				...options,
 				mdxOptions: {
-					remarkPlugins: [remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
+					remarkPlugins: [remarkCodeblockAnnotation, remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
 					rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings],
 					recmaPlugins: [[recmaCodeHike, chConfig]],
 				},
@@ -42,6 +44,7 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 				Callout,
 				Collapsible,
 				code: InlineCode,
+				Codeblock,
 				Tooltip,
 			}}
 		/>
@@ -56,6 +59,7 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
+					remarkCodeblockAnnotation,
 					remarkBreaks,
 					remarkGfm,
 					[remarkCodeHike, chConfig],
@@ -79,6 +83,7 @@ export const renderMDX = async (source: string) => {
 			Column,
 			Tabs,
 			Tab,
+			Codeblock,
 		},
 	});
 

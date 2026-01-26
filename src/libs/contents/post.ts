@@ -7,16 +7,7 @@ import type { PostEntry } from "@/keystatic/types";
 import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type {
-	Category,
-	CategoryListMeta,
-	CategoryWithCount,
-	ListOptions,
-	ListResult,
-	Post,
-	Tag,
-	WithSlug,
-} from "./types";
+import type { Category, ListOptions, ListResult, Post, Tag, WithSlug } from "./types";
 
 const normalizePost = async (
 	post: WithSlug<PostEntry>,

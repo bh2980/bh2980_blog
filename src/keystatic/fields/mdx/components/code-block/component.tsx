@@ -5,8 +5,7 @@ import { lazy, type PropsWithChildren, Suspense } from "react";
 import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
 
 type NodeSchema = {
-	readonly title: string;
-	readonly value: string;
+	readonly meta: string;
 	readonly useLineNumber: boolean;
 	readonly lang: EditorLang;
 };
@@ -36,9 +35,8 @@ export const Codeblock = wrapper({
 	label: "코드 블럭",
 	icon: <Code2 />,
 	schema: {
-		title: fields.text({ label: "제목" }),
-		value: fields.text({ label: "코드" }),
-		useLineNumber: fields.checkbox({ label: "라인 번호" }),
+		meta: fields.text({ label: "meta", defaultValue: `title=""` }),
+		useLineNumber: fields.checkbox({ label: "줄 번호 사용" }),
 		lang: fields.select({
 			label: "언어",
 			options: EDITOR_LANG_OPTION,
