@@ -7,59 +7,16 @@ export function isInCodeblock(state: any) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		const node = $from.node(d);
-		const name = node.type?.name;
-		const attrs = node.attrs ?? {};
-
-		if (name === CODE_BLOCK_NAME) return true;
-		if (name === "component" || name === "wrapper" || name === "contentComponent") {
-			if (attrs.component === CODE_BLOCK_NAME || attrs.name === CODE_BLOCK_NAME) return true;
-		}
+		if ($from.node(d).type?.name === CODE_BLOCK_NAME) return true;
 	}
 	return false;
 }
 
-function deleteCharOrHardBreakBackward(state: any, dispatch: any, schema: any) {
-	const { from, empty } = state.selection;
-	if (!empty) return false;
-	if (from <= 0) return true; // 문서 시작: 아무 것도 안 하고 막기
-
-	const $from = state.doc.resolve(from);
-	const nodeBefore = $from.nodeBefore;
-
-	// 1) 바로 앞이 hard_break면 그걸 삭제(줄 합치기)
-	if (nodeBefore && nodeBefore.type === schema.nodes?.hard_break) {
-		if (!dispatch) return true;
-		dispatch(state.tr.delete(from - 1, from).scrollIntoView());
-		return true;
-	}
-
-	// 2) 바로 앞이 텍스트(또는 inline)면 한 글자 삭제
-	//    (text node일 때는 from-1..from 삭제가 안전)
-	if ($from.parentOffset > 0) {
-		if (!dispatch) return true;
-		dispatch(state.tr.delete(from - 1, from).scrollIntoView());
-		return true;
-	}
-
-	// 3) 여기까지 오면 보통 블록 경계(joinBackward) 케이스.
-	//    wrapper 삭제로 이어질 수 있으니 막음.
-	return true;
-}
-
-function findCodeBlockDepth(state: any) {
+function findCodeBlockDepth(state: any): number | null {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		const node = $from.node(d);
-		const name = node.type?.name;
-		const attrs = node.attrs ?? {};
-
-		if (name === CODE_BLOCK_NAME) return d;
-
-		if (name === "component" || name === "wrapper" || name === "contentComponent") {
-			if (attrs.component === CODE_BLOCK_NAME || attrs.name === CODE_BLOCK_NAME) return d;
-		}
+		if ($from.node(d).type?.name === CODE_BLOCK_NAME) return d;
 	}
 	return null;
 }
@@ -99,9 +56,6 @@ export function codeBlockKeysPlugin(schema: any, indent = "\t"): Plugin {
 			if (!dispatch) return true;
 			dispatch(state.tr.replaceSelectionWith(br.create()).scrollIntoView());
 			return true;
-		},
-		Backspace: (state, dispatch) => {
-			return deleteCharOrHardBreakBackward(state, dispatch, schema);
 		},
 	});
 }
