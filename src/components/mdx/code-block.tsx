@@ -1,3 +1,4 @@
+import { Folder } from "lucide-react";
 import { codeToTokens } from "shiki";
 import type { Annotation } from "@/libs/contents/remark";
 import { cn } from "@/utils/cn";
@@ -328,14 +329,37 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 	const tree = buildAnnotationTree(splitTokens, normalizedAnnotations, codeStr.length);
 	const lines = splitTreeByLines(tree);
 
-	const title = meta.match(/title="(.+?)"/)?.[1]?.trim();
+	const filePath = meta
+		.match(/title="(.+?)"/)?.[1]
+		?.trim()
+		?.split("/");
+
+	const showTitlebar = filePath && filePath.length >= 0;
 
 	return (
 		<div className="flex flex-col">
-			{title && (
-				<div className="rounded-t-md bg-slate-600 py-1.5 text-center font-bold text-slate-200 text-sm">{title}</div>
+			{showTitlebar && (
+				<div className="flex items-center gap-1 rounded-t-md bg-slate-600 px-3 py-1.5 text-slate-300 text-sm">
+					{filePath.map((folder, index, arr) => {
+						const isFile = arr.length - 1 === index;
+
+						return isFile ? (
+							<span key={folder} className="inline-flex items-center gap-1 font-semibold text-slate-50">
+								{folder}
+							</span>
+						) : (
+							<>
+								<span key={folder} className="inline-flex items-center gap-1">
+									<Folder size={16} className="mt-1 stroke-2" />
+									{folder}
+								</span>
+								/
+							</>
+						);
+					})}
+				</div>
 			)}
-			<pre className={cn("overflow-x-auto whitespace-pre", title && "m-0! rounded-t-none")}>
+			<pre className={cn("overflow-x-auto whitespace-pre", showTitlebar && "m-0! rounded-t-none")}>
 				<code>
 					{lines.map((line, index) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
