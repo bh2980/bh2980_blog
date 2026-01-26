@@ -2,7 +2,7 @@
 
 import { type HighlightedCode, highlight, Pre } from "codehike/code";
 import { CheckCircle2Icon, CircleX, ListOrdered, Trash2 } from "lucide-react";
-import { type ReactElement, useEffect, useRef, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useRef, useState } from "react";
 import { lineNumbers } from "@/components/mdx/code-handler";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -20,6 +20,8 @@ export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeV
 		((children as ReactElement).props as { node: HTMLSpanElement }).node.childNodes[0] as HTMLParagraphElement
 	).innerText;
 
+	const title = value.meta.match(/title="(.+?)"/)?.[1];
+
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const [commited, setCommited] = useState(true);
 	const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
@@ -27,10 +29,17 @@ export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeV
 	const handleLangChange = (lang: EditorLang) => onChange({ ...value, lang });
 	const handleLineNumberChange = (useLineNumber: boolean) => onChange({ ...value, useLineNumber });
 
-	const handleBlurTitle = (e: React.FocusEvent<HTMLInputElement>) => {
-		onChange({ ...value, title: e.target.value });
+	const handleBlurTitle = useCallback(() => {
+		if (!titleInputRef.current) {
+			return;
+		}
+
+		const newTitle = titleInputRef.current.value.trim();
+
+		const meta = value.meta.replace(/(title=")(.*?)(")/, `$1${newTitle}$3`);
+		onChange({ ...value, meta });
 		setCommited(true);
-	};
+	}, [value, onChange]);
 
 	useEffect(() => {
 		const setCode = async (code: string) => {
@@ -59,7 +68,7 @@ export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeV
 					</Select>
 					<div className="flex items-center gap-1">
 						<Input
-							defaultValue={value.title}
+							defaultValue={title}
 							className="h-8"
 							ref={titleInputRef}
 							onBlur={handleBlurTitle}

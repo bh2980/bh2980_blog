@@ -29,7 +29,7 @@ export default async function Home() {
 
 	return (
 		<div className="flex flex-1 flex-col">
-			<section className="relative overflow-hidden border-slate-200 border-b bg-gradient-to-b from-slate-50 via-white to-white dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
+			<section className="relative overflow-hidden border-slate-200 border-b bg-linear-to-b from-slate-50 via-white to-white dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
 				<div className="absolute inset-0">
 					<div className="pointer-events-none absolute -top-20 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-200/40 blur-3xl dark:bg-blue-500/10" />
 					<div className="pointer-events-none absolute right-[-5rem] -bottom-16 h-56 w-56 rounded-full bg-slate-200/60 blur-3xl dark:bg-slate-700/20" />
