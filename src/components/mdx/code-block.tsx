@@ -364,7 +364,7 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 					})}
 				</div>
 			)}
-			<pre className={cn("overflow-x-auto whitespace-pre rounded-xl", showTitlebar && "m-0! rounded-t-none")}>
+			<pre className={cn("relative overflow-x-auto whitespace-pre rounded-xl", showTitlebar && "m-0! rounded-t-none")}>
 				<code>
 					{lines.map((line, index) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
@@ -374,8 +374,8 @@ export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }
 						</span>
 					))}
 				</code>
+				<CopyButton text={codeStr} className="lg:hidden lg:group-hover:block" />
 			</pre>
-			<CopyButton text={codeStr} className="lg:hidden lg:group-hover:block" />
 		</div>
 	);
 };
