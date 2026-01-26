@@ -1,11 +1,16 @@
-import "server-only";
-
-import type { Paragraph, Root } from "mdast";
+import type { Break, Paragraph, Root, RootContent, Text } from "mdast";
+import type {
+	MdxJsxAttribute,
+	MdxJsxExpressionAttribute,
+	MdxJsxFlowElement,
+	MdxJsxTextElement,
+} from "mdast-util-mdx-jsx";
 import { toString as mdastToString } from "mdast-util-to-string";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { visit } from "unist-util-visit";
 
 function hasRealText(node: Paragraph): boolean {
 	return node.children.some((child) => {
@@ -46,4 +51,111 @@ export function getSafeExcerpt(mdx: string, maxLength = 200) {
 	if (text.length <= maxLength) return text;
 
 	return `${text.slice(0, maxLength).trim()}`;
+}
+
+const isText = (node: RootContent): node is Text => node.type === "text";
+const isBreak = (node: RootContent): node is Break => node.type === "break";
+const isParagraph = (node: RootContent): node is Paragraph => node.type === "paragraph";
+
+const hasChildren = (node: RootContent): node is RootContent & { children: RootContent[] } => {
+	return "children" in node;
+};
+
+const isMDXJSXTextElement = (node: RootContent): node is MdxJsxTextElement => {
+	return node.type === "mdxJsxTextElement";
+};
+
+export type Position =
+	| {
+			type: Exclude<RootContent["type"], "mdxJsxTextElement">;
+			start: number;
+			end: number;
+	  }
+	| {
+			type: "mdxJsxTextElement";
+			name: string | null;
+			attributes: (MdxJsxAttribute | MdxJsxExpressionAttribute)[];
+			start: number;
+			end: number;
+	  };
+
+export function remarkCodeblockAnnotation() {
+	return (tree: Root) => {
+		visit(tree, "mdxJsxFlowElement", (node: MdxJsxFlowElement) => {
+			if (node.name !== "Codeblock") return;
+
+			// extract codeblock code and annotation position information
+			const positions: Position[] = [];
+			let code = "";
+
+			function extractTextAndBreak(node: RootContent) {
+				if (isText(node)) {
+					code += node.value;
+					return;
+				}
+
+				if (isBreak(node)) {
+					code += "\n";
+					return;
+				}
+
+				if (hasChildren(node)) {
+					const start = code.length;
+
+					node.children.forEach((child) => {
+						extractTextAndBreak(child);
+					});
+
+					if (isMDXJSXTextElement(node)) {
+						const position: Position = {
+							type: "mdxJsxTextElement",
+							name: node.name,
+							attributes: node.attributes,
+							start,
+							end: code.length,
+						};
+
+						positions.push(position);
+					} else {
+						const position: Position = {
+							type: node.type as Exclude<RootContent["type"], "mdxJsxTextElement">,
+							start,
+							end: code.length,
+						};
+
+						if (!isParagraph(node)) {
+							positions.push(position);
+						}
+					}
+
+					return;
+				}
+			}
+
+			node.children.forEach((child: RootContent) => {
+				extractTextAndBreak(child);
+			});
+
+			// reset Codeblock
+			node.children = [];
+
+			node.attributes = node.attributes.filter((a) => {
+				return !(a.type === "mdxJsxAttribute" && (a.name === "code" || a.name === "positions"));
+			});
+
+			const codeAttr: MdxJsxAttribute = {
+				type: "mdxJsxAttribute",
+				name: "code",
+				value: JSON.stringify(code), // \n 등은 자동 이스케이프됨
+			};
+
+			const posAttr: MdxJsxAttribute = {
+				type: "mdxJsxAttribute",
+				name: "positions",
+				value: JSON.stringify(positions),
+			};
+
+			node.attributes.push(codeAttr, posAttr);
+		});
+	};
 }
