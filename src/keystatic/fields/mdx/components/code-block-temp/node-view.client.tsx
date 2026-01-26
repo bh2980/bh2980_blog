@@ -12,15 +12,12 @@ import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/utils/cn";
 import type { NodeViewProps } from "./component";
 import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
-import { encodeLeadingIndentInFences, escapeCodeHikeAnnotations } from "./libs";
+import { escapeCodeHikeAnnotations } from "./libs";
 
 export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeViewProps) => {
-	const textContent = Array.from(
-		((children as ReactElement).props as { node: HTMLSpanElement }).node.childNodes,
-		(node) => (node as HTMLParagraphElement).innerText,
-	)
-		.map((text, index, arr) => (text !== "\n" ? text : index === 0 || index === arr.length - 1 ? "\n" : " "))
-		.join("\n");
+	const textContent = (
+		((children as ReactElement).props as { node: HTMLSpanElement }).node.childNodes[0] as HTMLParagraphElement
+	).innerText;
 
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const [commited, setCommited] = useState(true);
@@ -41,8 +38,7 @@ export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeV
 		};
 
 		setCode(escapeCodeHikeAnnotations(textContent));
-		onChange({ ...value, value: encodeLeadingIndentInFences(textContent) });
-	}, [textContent, value, onChange]);
+	}, [textContent, value]);
 
 	return (
 		<div className="relative">
@@ -67,6 +63,9 @@ export const CodeblockNodeView = ({ children, onRemove, onChange, value }: NodeV
 							ref={titleInputRef}
 							onBlur={handleBlurTitle}
 							onChange={() => setCommited(false)}
+							onKeyDownCapture={(e) => e.stopPropagation()}
+							onKeyUpCapture={(e) => e.stopPropagation()}
+							onBeforeInputCapture={(e) => e.stopPropagation()}
 						/>
 						{commited ? (
 							<CheckCircle2Icon size={20} className="fill-green-600 stroke-white" />
