@@ -1,0 +1,310 @@
+diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
+index fc703c5a29949074cd161c49afad3b1a67c60520..1809588a533fc51a975b5d67de21f146741ae965 100644
+--- a/dist/index-d59451fc.js
++++ b/dist/index-d59451fc.js
+@@ -24693,6 +24693,21 @@ function reactNodeViews(schema) {
+             pluginState.nodeViews.delete(key);
+             cb();
+           },
++          stopEvent(event) {
++            const t = event.target;
++            if (!(t instanceof HTMLElement)) return false;
++          
++            // wrapper의 실제 편집 영역(contentDOM) 안 이벤트는 에디터가 처리해야 함
++            if (contentDOM && contentDOM.contains(t)) return false;
++          
++            // NodeView 내부 입력 UI(폼 컨트롤) 이벤트는 에디터가 절대 처리하지 않게
++            if (t.closest('textarea,input,select,button,[data-ks-stop-event]')) return true;
++          
++            // contentEditable=false로 둔 UI도 에디터로 이벤트 올리지 않게
++            if (t.closest('[contenteditable="false"]')) return true;
++          
++            return false;
++          },
+           ignoreMutation(mutation) {
+             return !(contentDOM !== null && contentDOM !== void 0 && contentDOM.contains(mutation.target));
+           },
+@@ -26671,6 +26686,27 @@ function markdocNodeToProseMirrorNode$1(node, parentType) {
+   return null;
+ }
+ 
++// 
++function preserveLeadingIndent(text) {
++  const TAB_SIZE = 2;
++  return text.replaceAll('\t', ' '.repeat(TAB_SIZE)).replace(/^( +)/gm, m => "\u00A0".repeat(m.length));
++}
++
++function preserveBlankLinesForCode(text) {
++  text = text.replace(/\r\n?/g, "\n");
++  return text
++    .split("\n")
++    .map((line) => (line === "" ? "\u00A0" : line))
++    .join("\n");
++}
++
++function isInsideCodeBlock($from) {
++  for (let d = $from.depth; d > 0; d--) {
++    if ($from.node(d).type.name === "CodeBlock") return true;
++  }
++  return false;
++}
++
+ function markdocClipboard() {
+   return new Plugin({
+     props: {
+@@ -26701,19 +26737,27 @@ function markdocClipboard() {
+         }
+       },
+       handlePaste(view, event) {
+-        if (view.props.editable && !view.props.editable(view.state)) {
+-          return false;
+-        }
+-        if (!event.clipboardData) {
+-          return false;
+-        }
+-        const html = event.clipboardData.getData('text/html');
+-        if (html && isProbablyHtmlFromVscode(html)) {
+-          const plain = event.clipboardData.getData('text/plain');
+-          view.pasteText(plain);
+-          return true;
+-        }
+-        return false;
++        if (view.props.editable && !view.props.editable(view.state)) return false;
++        if (!event.clipboardData) return false;
++        if (event.clipboardData.files && event.clipboardData.files.length) return false;
++
++        if (!isInsideCodeBlock(view.state.selection.$from)) return false;
++      
++        const plain = event.clipboardData.getData("text/plain");
++        if (!plain) return false;
++
++        event.preventDefault();
++
++        const converted = preserveBlankLinesForCode(preserveLeadingIndent(plain));
++      
++        const slice = defaultClipboardTextParser(
++          converted,
++          view.state.selection.$from,
++          true,
++          view
++        );
++        view.dispatch(view.state.tr.replaceSelection(slice));
++        return true;
+       }
+     }
+   });
+@@ -26822,35 +26866,190 @@ function placeholderPlugin(text) {
+   });
+ }
+ 
+-const cursorBuilder = user => {
+-  const cursor = document.createElement('span');
+-  cursor.classList.add('ProseMirror-yjs-cursor');
+-  cursor.style.borderColor = user.color;
+-  const userDiv = document.createElement('div');
+-  userDiv.style.backgroundColor = user.color;
+-  userDiv.insertBefore(document.createTextNode(user.name), null);
+-  cursor.insertBefore(userDiv, null);
+-  return cursor;
+-};
++// ===============================
++// Wrapper-safe Backspace/Delete handler
++// - No new imports
++// - Intercepts Backspace/Delete ONLY when cursor/selection is inside a wrapper node
++// - Performs ONLY "direct delete" inside wrapper bounds (no joinBackward/joinForward)
++// - Prevents unwrap while still allowing first-character deletion
++// ===============================
++
++function protectWrappersDeleteKeys(schema) {
++  // ✅ wrapper만: reactNodeView가 있고, content가 정확히 'block+'
++  const protectedTypes = new Set(
++    Object.values(schema.nodes).filter(
++      (t) => t.spec.reactNodeView && t.spec.content === "block+"
++    )
++  );
++
++  const nearestProtectedDepth = ($pos) => {
++    for (let d = $pos.depth; d > 0; d--) {
++      if (protectedTypes.has($pos.node(d).type)) return d;
++    }
++    return null;
++  };
++
++  // wrapper 경계 안에서만 delete를 허용
++  const safeDeleteBackward = (state, dispatch, depth) => {
++    const sel = state.selection;
++
++    if (sel instanceof NodeSelection) {
++      deleteSelection(state, dispatch);
++      return true;
++    }
++
++    // selection이 있으면 그냥 selection 삭제(이건 join을 안 탄다)
++    if (!sel.empty) {
++      return deleteSelection(state, dispatch);
++    }
++
++    const $from = sel.$from;
++
++    // wrapper content의 시작/끝
++    const wrapperStart = $from.start(depth); // wrapper 내부 시작
++    // const wrapperEnd = $from.end(depth);    // 필요하면 사용
++
++    const from = sel.from;
++
++    // wrapper 내부 시작점에서 Backspace는 wrapper 경계를 건드리니 막음
++    // (이걸 허용하면 wrapper 밖과 join/unwrap이 발생)
++    if (from <= wrapperStart + 1) return true; // "처리됨"으로 끝내서 기본 로직 못 타게
++
++    // wrapper 안에서만 1 step 삭제
++    if (dispatch) dispatch(state.tr.delete(from - 1, from));
++    return true;
++  };
++
++  const safeDeleteForward = (state, dispatch, depth) => {
++    const sel = state.selection;
++
++    if (sel instanceof NodeSelection) {
++      deleteSelection(state, dispatch);
++      return true;
++    }
++
++    if (!sel.empty) {
++      return deleteSelection(state, dispatch);
++    }
++
++    const $from = sel.$from;
++    const wrapperEnd = $from.end(depth);
++
++    const to = sel.to;
++
++    // wrapper 내부 끝점에서 Delete는 경계 건드리니 막음
++    if (to >= wrapperEnd - 1) return true;
++
++    if (dispatch) dispatch(state.tr.delete(to, to + 1));
++    return true;
++  };
++
++  return new Plugin({
++    props: {
++      // 데스크탑 keydown 경로
++      handleKeyDown(view, event) {
++        const key = event.key;
++        if (key !== "Backspace" && key !== "Delete") return false;
++
++        const state = view.state;
++        const depth = nearestProtectedDepth(state.selection.$from);
++        if (depth == null) return false; // wrapper 밖이면 노터치
++
++        // wrapper 안이면 기본 PM keymap/keydownHandler가 join을 타기 전에 우리가 처리
++        event.preventDefault();
++        event.stopPropagation();
++
++        if (key === "Backspace") {
++          safeDeleteBackward(state, view.dispatch, depth);
++        } else {
++          safeDeleteForward(state, view.dispatch, depth);
++        }
++        return true;
++      },
++
++      // 모바일/IME에서 beforeinput(deleteContent*) 경로
++      handleDOMEvents: {
++        beforeinput(view, event) {
++          const inputType = event && event.inputType;
++          if (
++            inputType !== "deleteContentBackward" &&
++            inputType !== "deleteContentForward"
++          ) {
++            return false;
++          }
++
++          const state = view.state;
++          const depth = nearestProtectedDepth(state.selection.$from);
++          if (depth == null) return false;
++
++          event.preventDefault();
++
++          if (inputType === "deleteContentBackward") {
++            safeDeleteBackward(state, view.dispatch, depth);
++          } else {
++            safeDeleteForward(state, view.dispatch, depth);
++          }
++          return true;
++        },
++      },
++    },
++  });
++}
++
++// ===============================
++// Apply in createEditorState()
++// - Put this BEFORE keydownHandler() and BEFORE keymap(keymapForSchema)
++// ===============================
+ function createEditorState(doc, selection, storedMarks, yXmlFragment, awareness) {
+   const schema = getEditorSchema(doc.type.schema);
+   return EditorState.create({
+     selection,
+     storedMarks,
+-    plugins: [pasteLinks(schema), imageDropPlugin(schema), keydownHandler(), ...(yXmlFragment && awareness ? [ySyncPlugin(yXmlFragment), yCursorPlugin(awareness, {
+-      cursorBuilder,
+-      awarenessStateFilter(userClientId, clientId, awarenessState) {
+-        const localState = awareness.getLocalState();
+-        return userClientId !== clientId && awarenessState.location === (localState === null || localState === void 0 ? void 0 : localState.location) && awarenessState.branch === (localState === null || localState === void 0 ? void 0 : localState.branch);
+-      }
+-    }), yUndoPlugin()] : [history()]), dropCursor({
+-      color: tokenSchema.color.alias.borderSelected,
+-      width: 2
+-    }), inputRules({
+-      rules: inputRulesForSchema(schema),
+-      enterRules: enterInputRulesForSchema(schema)
+-    }), gapCursor(), keymap(keymapForSchema(schema, !!(yXmlFragment && awareness))), markdocClipboard(), nodeInSelectionDecorations(), placeholderPlugin('Start writing or press "/" for commands…'), reactNodeViews(doc.type.schema), autocompleteDecoration(), tableEditing(), tableCellMenuPlugin(), codeBlockSyntaxHighlighting()],
+-    doc
++    plugins: [
++      pasteLinks(schema),
++      imageDropPlugin(schema),
++
++      // ✅ 가장 앞쪽에 넣어야 한다 (keydownHandler/keymap보다 먼저 잡아야 함)
++      protectWrappersDeleteKeys(schema),
++
++      keydownHandler(),
++      ...(yXmlFragment && awareness
++        ? [
++            ySyncPlugin(yXmlFragment),
++            yCursorPlugin(awareness, {
++              cursorBuilder,
++              awarenessStateFilter(userClientId, clientId, awarenessState) {
++                const localState = awareness.getLocalState();
++                return (
++                  userClientId !== clientId &&
++                  awarenessState.location === (localState?.location) &&
++                  awarenessState.branch === (localState?.branch)
++                );
++              },
++            }),
++            yUndoPlugin(),
++          ]
++        : [history()]),
++      dropCursor({ color: tokenSchema.color.alias.borderSelected, width: 2 }),
++      inputRules({
++        rules: inputRulesForSchema(schema),
++        enterRules: enterInputRulesForSchema(schema),
++      }),
++      gapCursor(),
++
++      // ✅ 기본 키맵은 그대로 두되, 위 플러그인이 먼저 처리하게 됨
++      keymap(keymapForSchema(schema, !!(yXmlFragment && awareness))),
++
++      markdocClipboard(),
++      nodeInSelectionDecorations(),
++      placeholderPlugin('Start writing or press "/" for commands…'),
++      reactNodeViews(doc.type.schema),
++      autocompleteDecoration(),
++      tableEditing(),
++      tableCellMenuPlugin(),
++      codeBlockSyntaxHighlighting(),
++    ],
++    doc,
+   });
+ }
+ 
