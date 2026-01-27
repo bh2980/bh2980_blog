@@ -31,7 +31,7 @@ function CodeBlockNodeViewProxy(props: CodeBlockNodeViewProps) {
 	);
 }
 
-export const CodeBlock = wrapper({
+export const EditorCodeBlock = wrapper({
 	label: "코드 블럭",
 	icon: <Code2 />,
 	schema: {

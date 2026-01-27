@@ -1,8 +1,7 @@
 import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, TextSelection } from "prosemirror-state";
-
-export const CODE_BLOCK_NAME = "Codeblock";
+import { CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 
 export function isInCodeblock(state: EditorState) {
 	const { $from } = state.selection;
