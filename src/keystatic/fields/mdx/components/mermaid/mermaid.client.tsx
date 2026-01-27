@@ -1,6 +1,5 @@
 "use client";
 
-import DOMPurify from "dompurify";
 import mermaid from "mermaid";
 import { useEffect, useRef, useState } from "react";
 import type { ClassNameValue } from "tailwind-merge";
@@ -28,7 +27,7 @@ export const Mermaid = ({ chart, className }: MermaidProps) => {
 				.render(id, chart)
 				.then(({ svg }) => {
 					if (ref.current) {
-						ref.current.innerHTML = DOMPurify.sanitize(svg);
+						ref.current.innerHTML = svg;
 					}
 				})
 				.catch((error) => setError(error));
