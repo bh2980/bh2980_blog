@@ -6,8 +6,9 @@ import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
 import { extractRangesPlainText } from "./extract-ranges";
 import { highlightCode } from "./shiki-code-view";
+import type { EditorCodeLang } from "./const";
 
-type NodeViewCodeEditorProps = { lang: string; useLineNumber?: boolean } & {
+type NodeViewCodeEditorProps = { lang: EditorCodeLang; useLineNumber?: boolean } & {
 	nodeViewChildren: ReactNode;
 	onCodeChange?: (code: string) => void;
 };

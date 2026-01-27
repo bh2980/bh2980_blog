@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Toggle } from "@/components/ui/toggle";
 import { BlurChangeInput } from "./blur-change-input.client";
 import type { CodeBlockNodeViewProps } from "./component";
-import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
+import { EDITOR_LANG_OPTION, type EditorCodeLang } from "./const";
 import { NodeViewCodeEditor } from "./node-view-code-editor.client";
 
 const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps) => {
 	const title = value.meta.match(/title="(.+?)"/)?.[1];
 
-	const handleLangChange = (lang: EditorLang) => onChange({ ...value, lang });
+	const handleLangChange = (lang: EditorCodeLang) => onChange({ ...value, lang });
 	const handleLineNumberChange = (useLineNumber: boolean) => onChange({ ...value, useLineNumber });
 
 	const handleBlurTitle = useCallback(
