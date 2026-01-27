@@ -2,7 +2,11 @@ import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
-import type { AnnotationConfig, AnnotationRule, ResolvedAnnotation } from "./code-block.libs";
+import type {
+	AnnotationConfig,
+	AnnotationRule,
+	ResolvedAnnotation,
+} from "@/keystatic/fields/mdx/components/code-block/libs";
 import {
 	DEFAULT_ANNOTATION_CONFIG,
 	buildAnnotationTree,
@@ -14,8 +18,8 @@ import {
 	splitTokensByBoundaries,
 	splitTreeByLines,
 	wrapLineWithAnnotations,
-} from "./code-block.libs";
-import { tokenizeAnnotatedCode } from "./code-block.tokenize";
+} from "@/keystatic/fields/mdx/components/code-block/libs";
+import { tokenizeAnnotatedCode } from "@/keystatic/fields/mdx/components/code-block/libs";
 import { codeToTokens } from "shiki";
 
 vi.mock("shiki", () => ({
