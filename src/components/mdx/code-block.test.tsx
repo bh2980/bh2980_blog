@@ -1,26 +1,26 @@
 import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { codeToTokens } from "shiki";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import type {
 	AnnotationConfig,
 	AnnotationRule,
 	ResolvedAnnotation,
 } from "@/keystatic/fields/mdx/components/code-block/libs";
 import {
-	DEFAULT_ANNOTATION_CONFIG,
 	buildAnnotationTree,
 	buildLineRanges,
 	buildPositionedTokens,
+	DEFAULT_ANNOTATION_CONFIG,
 	normalizeAnnotations,
 	renderAnnotatedLines,
 	renderTree,
 	splitTokensByBoundaries,
 	splitTreeByLines,
+	tokenizeAnnotatedCode,
 	wrapLineWithAnnotations,
 } from "@/keystatic/fields/mdx/components/code-block/libs";
-import { tokenizeAnnotatedCode } from "@/keystatic/fields/mdx/components/code-block/libs";
-import { codeToTokens } from "shiki";
+import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 
 vi.mock("shiki", () => ({
 	codeToTokens: vi.fn(),
@@ -136,9 +136,9 @@ describe("code-block internal helpers", () => {
 	});
 
 	it("wrapLineWithAnnotations는 규칙 인덱스 순으로 래퍼를 적용한다", () => {
-		const Wrapper = (name: string) => ({ children }: { children: ReactNode }) => (
-			<span data-name={name}>{children}</span>
-		);
+		const Wrapper =
+			(name: string) =>
+			({ children }: { children: ReactNode }) => <span data-name={name}>{children}</span>;
 
 		const wrappers: ResolvedAnnotation[] = [
 			{
@@ -160,9 +160,7 @@ describe("code-block internal helpers", () => {
 		];
 
 		const rendered = renderToStaticMarkup(<>{wrapLineWithAnnotations("X", wrappers, "line")}</>);
-		expect(rendered).toBe(
-			"<span data-name=\"outer-first\"><span data-name=\"outer-second\">X</span></span>",
-		);
+		expect(rendered).toBe('<span data-name="outer-first"><span data-name="outer-second">X</span></span>');
 	});
 
 	it("renderTree는 토큰 스타일을 병합하고 inline annotation을 전달받는다", () => {
@@ -287,7 +285,7 @@ describe("code-block internal helpers", () => {
 		);
 
 		const expected =
-			"<span class=\"line has-block\" data-block-count=\"1\"><span data-wrap=\"yes\"><span data-inline-count=\"1\">ab</span></span>\n</span><span class=\"line\" data-block-count=\"0\"><span data-inline-count=\"0\">cd</span></span>";
+			'<span class="line has-block" data-block-count="1"><span data-wrap="yes"><span data-inline-count="1">ab</span></span>\n</span><span class="line" data-block-count="0"><span data-inline-count="0">cd</span></span>';
 		expect(rendered).toBe(expected);
 	});
 
@@ -296,9 +294,9 @@ describe("code-block internal helpers", () => {
 		const codeblock = [[{ content: "abcd" }]];
 		const positioned = buildPositionedTokens(codeblock, code);
 
-		const Mark = (name: string) => ({ children }: { children: ReactNode }) => (
-			<span data-mark={name}>{children}</span>
-		);
+		const Mark =
+			(name: string) =>
+			({ children }: { children: ReactNode }) => <span data-mark={name}>{children}</span>;
 
 		const annotations: ResolvedAnnotation[] = [
 			{
@@ -381,7 +379,7 @@ describe("code-block internal helpers", () => {
 		);
 
 		const expected =
-			"<span class=\"line\" data-block-count=\"1\"><span data-wrap=\"line\"><span data-mark=\"outer\"><span data-inline-count=\"0\">a</span><span data-mark=\"inner\"><span data-inline-count=\"0\">b</span><span data-inline-count=\"1\">c</span></span><span data-inline-count=\"0\">d</span></span></span></span>";
+			'<span class="line" data-block-count="1"><span data-wrap="line"><span data-mark="outer"><span data-inline-count="0">a</span><span data-mark="inner"><span data-inline-count="0">b</span><span data-inline-count="1">c</span></span><span data-inline-count="0">d</span></span></span></span>';
 		expect(rendered).toBe(expected);
 	});
 });

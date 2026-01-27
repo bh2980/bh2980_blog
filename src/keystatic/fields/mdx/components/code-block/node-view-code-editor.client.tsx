@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
+import type { EditorCodeLang } from "./const";
 import { extractRangesPlainText } from "./extract-ranges";
 import { highlightCode } from "./shiki-code-view";
-import type { EditorCodeLang } from "./const";
 
 type NodeViewCodeEditorProps = { lang: EditorCodeLang; useLineNumber?: boolean } & {
 	nodeViewChildren: ReactNode;

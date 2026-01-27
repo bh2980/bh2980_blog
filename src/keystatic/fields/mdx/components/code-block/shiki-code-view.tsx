@@ -13,12 +13,8 @@ import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import { getSingletonHighlighterCore, type TokensResult } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
-import {
-	DEFAULT_ANNOTATION_CONFIG,
-	buildAnnotatedLinesFromTokens,
-	type EditorCodeLang,
-} from "./libs";
 import { EDITOR_CODE_BLOCK_THEME } from "./const";
+import { buildAnnotatedLinesFromTokens, DEFAULT_ANNOTATION_CONFIG, type EditorCodeLang } from "./libs";
 
 // 1) 싱글톤 하이라이터
 const highlighter = await getSingletonHighlighterCore({

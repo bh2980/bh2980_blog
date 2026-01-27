@@ -1,8 +1,8 @@
 import { Folder } from "lucide-react";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
-import { cn } from "@/utils/cn";
 import type { EditorCodeLang } from "@/keystatic/fields/mdx/components/code-block/const";
 import { buildAnnotatedLines, DEFAULT_ANNOTATION_CONFIG } from "@/keystatic/fields/mdx/components/code-block/libs";
+import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import { cn } from "@/utils/cn";
 import { CopyButton } from "./code-handler";
 
 type CodeblockProps = {
