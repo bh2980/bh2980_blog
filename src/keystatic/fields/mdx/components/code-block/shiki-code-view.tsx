@@ -9,7 +9,7 @@ import sql from "@shikijs/langs/sql";
 import tsTags from "@shikijs/langs/ts-tags";
 import tsx from "@shikijs/langs/tsx";
 import yaml from "@shikijs/langs/yaml";
-import githubDark from "@shikijs/themes/github-dark";
+import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import { getSingletonHighlighterCore, type TokensResult } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
@@ -21,7 +21,7 @@ import {
 
 // 1) 싱글톤 하이라이터
 const highlighter = await getSingletonHighlighterCore({
-	themes: [githubDark],
+	themes: [oneDarkPro],
 	langs: [tsTags, javascript, tsx, css, scss, python, solidity, jsonc, yaml, sql, bash],
 	engine: createJavaScriptRegexEngine(),
 });
@@ -85,18 +85,18 @@ export async function highlightCode({
 
 	// Shiki는 text를 fallback으로 쓸 수 있음  [oai_citation:5‡Shiki](https://shiki.style/languages?utm_source=chatgpt.com)
 	if (id === "text") {
-		tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
+		tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "one-dark-pro" });
 	} else if (!highlighter.getLoadedLanguages().includes(id)) {
 		const loader = LANG_LOADERS[id];
 		if (!loader) {
-			tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
+			tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "one-dark-pro" });
 		} else {
 			const mod = await loader();
 			await highlighter.loadLanguage(mod.default ?? mod);
-			tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "github-dark" });
+			tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "one-dark-pro" });
 		}
 	} else {
-		tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "github-dark" });
+		tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "one-dark-pro" });
 	}
 
 	const { tokens: codeblock, ...tokenMeta } = tokenResult;
