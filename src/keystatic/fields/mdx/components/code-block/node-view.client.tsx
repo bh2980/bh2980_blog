@@ -56,7 +56,7 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 	return (
-		<div>
+		<div className="flex flex-col gap-2">
 			<CodeBlockToolbar {...props} />
 			<NodeViewCodeEditor
 				nodeViewChildren={props.children}
