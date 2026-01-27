@@ -1,50 +1,45 @@
 import type { MdxJsxAttribute } from "mdast-util-mdx-jsx";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import { collectAnnotationRanges } from "@/libs/annotation/collect-annotation-ranges";
 
-const TYPE_TO_STYLE: Record<string, Annotation["type"]> = {
+type InlineStyleType = "strong" | "emphasis" | "delete";
+
+const TYPE_TO_STYLE: Record<string, InlineStyleType> = {
 	s: "delete",
 	strong: "strong",
 	em: "emphasis",
 };
 
-export function extractRangesPlainText(
-	html: string,
-	tagsToTrack = new Set(["strong", "em", "span", "s"]),
-) {
+export function extractRangesPlainText(html: string, tagsToTrack = new Set(["strong", "em", "span", "s"])) {
 	const tpl = document.createElement("template");
 	tpl.innerHTML = html;
 
-	let pos = 0;
-	const ranges: Annotation[] = [];
+	const { annotations } = collectAnnotationRanges<Node, Text>(Array.from(tpl.content.childNodes) as Node[], {
+		isTextNode: (node): node is Text => node.nodeType === Node.TEXT_NODE,
+		getText: (node) => node.nodeValue ?? "",
+		isLineBreak: (node) => node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === "br",
+		getChildren: (node) => {
+			if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+				return Array.from(node.childNodes) as Node[];
+			}
+			return null;
+		},
+		getAnnotation: (node, start, end) => {
+			if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
-	const walk = (node: Node) => {
-		if (node.nodeType === Node.TEXT_NODE) {
-			const v = node.nodeValue ?? "";
-			pos += v.length;
-			return;
-		}
-
-		if (node.nodeType === Node.ELEMENT_NODE) {
 			const el = node as Element;
 			const name = el.tagName.toLowerCase();
 			const component = el.getAttribute("data-component");
 			const track = tagsToTrack.has(name) || component === "u" || component === "Tooltip";
-			const start = pos;
-
-			el.childNodes.forEach(walk);
-
-			const end = pos;
-			if (!track || start >= end) return;
+			if (!track) return null;
 
 			if (component === "u") {
-				ranges.push({
+				return {
 					type: "mdxJsxTextElement",
 					name: "u",
 					attributes: [],
 					start,
 					end,
-				});
-				return;
+				};
 			}
 
 			if (component === "Tooltip") {
@@ -53,33 +48,25 @@ export function extractRangesPlainText(
 					? [{ type: "mdxJsxAttribute", name: "content", value: content }]
 					: [];
 
-				ranges.push({
+				return {
 					type: "mdxJsxTextElement",
 					name: "Tooltip",
 					attributes,
 					start,
 					end,
-				});
-				return;
+				};
 			}
 
 			const mapped = TYPE_TO_STYLE[name];
-			if (mapped) {
-				ranges.push({
-					type: mapped,
-					start,
-					end,
-				});
-			}
+			if (!mapped) return null;
 
-			return;
-		}
+			return {
+				type: mapped,
+				start,
+				end,
+			};
+		},
+	});
 
-		if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-			node.childNodes.forEach(walk);
-		}
-	};
-
-	walk(tpl.content);
-	return ranges;
+	return annotations;
 }

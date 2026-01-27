@@ -7,6 +7,7 @@ import type {
 } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
+import { collectAnnotationRanges } from "@/libs/annotation/collect-annotation-ranges";
 
 const isText = (node: RootContent): node is Text => node.type === "text";
 const isBreak = (node: RootContent): node is Break => node.type === "break";
@@ -40,55 +41,30 @@ export function remarkCodeBlockAnnotation() {
 			if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
 
 			// extract codeblock code and annotation position information
-			const annotaions: Annotation[] = [];
-			let code = "";
-
-			function extractTextAndBreak(node: RootContent) {
-				if (isText(node)) {
-					code += node.value;
-					return;
-				}
-
-				if (isBreak(node)) {
-					code += "\n";
-					return;
-				}
-
-				if (hasChildren(node)) {
-					const start = code.length;
-
-					node.children.forEach((child) => {
-						extractTextAndBreak(child);
-					});
-
-					if (isMDXJSXTextElement(node)) {
-						const annotation: Annotation = {
+			const { code, annotations } = collectAnnotationRanges<RootContent, Text>(node.children as RootContent[], {
+				isTextNode: isText,
+				getText: (current) => current.value,
+				isLineBreak: isBreak,
+				getChildren: (current) => (hasChildren(current) ? current.children : null),
+				getAnnotation: (current, start, end) => {
+					if (isMDXJSXTextElement(current)) {
+						return {
 							type: "mdxJsxTextElement",
-							name: node.name,
-							attributes: node.attributes,
+							name: current.name,
+							attributes: current.attributes,
 							start,
-							end: code.length,
+							end,
 						};
-
-						annotaions.push(annotation);
-					} else {
-						const annotation: Annotation = {
-							type: node.type as Exclude<RootContent["type"], "mdxJsxTextElement">,
-							start,
-							end: code.length,
-						};
-
-						if (!isParagraph(node)) {
-							annotaions.push(annotation);
-						}
 					}
 
-					return;
-				}
-			}
+					if (isParagraph(current)) return null;
 
-			node.children.forEach((child: RootContent) => {
-				extractTextAndBreak(child);
+					return {
+						type: current.type as Exclude<RootContent["type"], "mdxJsxTextElement">,
+						start,
+						end,
+					};
+				},
 			});
 
 			// reset Codeblock
@@ -107,7 +83,7 @@ export function remarkCodeBlockAnnotation() {
 			const annoAttr: MdxJsxAttribute = {
 				type: "mdxJsxAttribute",
 				name: "annotations",
-				value: JSON.stringify(annotaions),
+				value: JSON.stringify(annotations),
 			};
 
 			node.attributes.push(codeAttr, annoAttr);
