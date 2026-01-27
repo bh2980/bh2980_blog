@@ -2,8 +2,20 @@ import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
-import type { AnnotationConfig, AnnotationRule, ResolvedAnnotation } from "./code-block";
-import { DEFAULT_ANNOTATION_CONFIG, __testables } from "./code-block";
+import type { AnnotationConfig, AnnotationRule, ResolvedAnnotation } from "./code-block.libs";
+import {
+	DEFAULT_ANNOTATION_CONFIG,
+	buildAnnotationTree,
+	buildLineRanges,
+	buildPositionedTokens,
+	normalizeAnnotations,
+	renderAnnotatedLines,
+	renderTree,
+	splitTokensByBoundaries,
+	splitTreeByLines,
+	wrapLineWithAnnotations,
+} from "./code-block.libs";
+import { tokenizeAnnotatedCode } from "./code-block.tokenize";
 import { codeToTokens } from "shiki";
 
 vi.mock("shiki", () => ({
@@ -11,18 +23,6 @@ vi.mock("shiki", () => ({
 }));
 
 const codeToTokensMock = vi.mocked(codeToTokens);
-const {
-	buildPositionedTokens,
-	splitTokensByBoundaries,
-	normalizeAnnotations,
-	buildAnnotationTree,
-	splitTreeByLines,
-	buildLineRanges,
-	wrapLineWithAnnotations,
-	renderTree,
-	tokenizeAnnotatedCode,
-	renderAnnotatedLines,
-} = __testables;
 
 describe("code-block internal helpers", () => {
 	beforeEach(() => {
@@ -67,9 +67,7 @@ describe("code-block internal helpers", () => {
 			{
 				type: "mdxJsxTextElement",
 				name: "Tooltip",
-				attributes: [
-					{ type: "mdxJsxAttribute", name: "content", value: "tip" },
-				],
+				attributes: [{ type: "mdxJsxAttribute", name: "content", value: "tip" }],
 				start: 0,
 				end: 2,
 			},
