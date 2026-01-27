@@ -12,7 +12,7 @@ export const BlurChangeInput = ({
 	onBlur?: (value: string) => void;
 }) => {
 	const inputRef = useRef<HTMLInputElement>(null);
-	const [commited, setCommited] = useState(true);
+	const [committed, setCommitted] = useState(true);
 
 	const handleBlurInput = useCallback(() => {
 		if (!inputRef.current) {
@@ -22,7 +22,7 @@ export const BlurChangeInput = ({
 		const newValue = inputRef.current.value.trim();
 
 		onBlur?.(newValue);
-		setCommited(true);
+		setCommitted(true);
 	}, [onBlur]);
 
 	return (
@@ -32,12 +32,12 @@ export const BlurChangeInput = ({
 				className="h-8"
 				ref={inputRef}
 				onBlur={handleBlurInput}
-				onChange={() => setCommited(false)}
+				onChange={() => setCommitted(false)}
 				onKeyDownCapture={(e) => e.stopPropagation()}
 				onKeyUpCapture={(e) => e.stopPropagation()}
 				onBeforeInputCapture={(e) => e.stopPropagation()}
 			/>
-			{commited ? (
+			{committed ? (
 				<CheckCircle2Icon size={20} className="fill-green-600 stroke-white" />
 			) : (
 				<CircleX className="fill-red-600 stroke-white" size={20} />
