@@ -107,7 +107,14 @@ function hasRealText(node: Paragraph): boolean {
 export function getSafeExcerpt(mdx: string, maxLength = 200) {
 	if (!mdx) return "";
 
-	const tree = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).parse(mdx) as Root;
+	let tree: Root;
+
+	try {
+		tree = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).parse(mdx);
+	} catch (error) {
+		console.error("Failed to parse MDX", error);
+		return "";
+	}
 
 	const paragraphs: Paragraph[] = [];
 
