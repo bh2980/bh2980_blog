@@ -56,7 +56,7 @@ export const NodeViewCodeEditor = ({
 	}, [code, onCodeChange]);
 
 	return (
-		<div className="relative">
+		<div className="relative *:m-0!">
 			<pre
 				className={cn(
 					"absolute w-full [&_p]:m-0!",
