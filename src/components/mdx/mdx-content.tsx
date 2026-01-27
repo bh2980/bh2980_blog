@@ -1,18 +1,20 @@
 import { type CodeHikeConfig, recmaCodeHike, remarkCodeHike } from "codehike/mdx";
 import { compileMDX, MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeMermaid from "rehype-mermaid";
 import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { remarkCodeblockAnnotation } from "@/libs/contents/remark";
+import { rehypeMermaidDarkClass } from "@/libs/rehype/rehype-mermaid-dark-class";
+import { remarkCodeBlockAnnotation } from "@/libs/remark/remark-code-block-annotation";
+import { remarkMermaidComponentToCode } from "@/libs/remark/remark-mermaid-component-to-code";
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
 import { CodeBlock } from "./code-block";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
-import { Mermaid } from "./mermaid.client";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
@@ -31,14 +33,13 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 			options={{
 				...options,
 				mdxOptions: {
-					remarkPlugins: [remarkCodeblockAnnotation, remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
+					remarkPlugins: [remarkBreaks, remarkGfm, [remarkCodeHike, chConfig]],
 					rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings],
 					recmaPlugins: [[recmaCodeHike, chConfig]],
 				},
 			}}
 			components={{
 				Code,
-				Mermaid,
 				CodeWithTooltips,
 				PureMdx: MDXContent,
 				Callout,
@@ -59,19 +60,24 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
-					remarkCodeblockAnnotation,
+					remarkMermaidComponentToCode,
+					remarkCodeBlockAnnotation,
 					remarkBreaks,
 					remarkGfm,
 					[remarkCodeHike, chConfig],
 					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
 				],
-				rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings],
+				rehypePlugins: [
+					rehypeSlug,
+					rehypeAutolinkHeadings,
+					[rehypeMermaid, { strategy: "img-svg", dark: true }],
+					rehypeMermaidDarkClass,
+				],
 				recmaPlugins: [[recmaCodeHike, chConfig]],
 			},
 		},
 		components: {
 			Code,
-			Mermaid,
 			CodeWithTooltips,
 			PureMdx: MDXContent,
 			Callout,

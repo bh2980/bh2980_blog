@@ -1,6 +1,6 @@
 import { Folder } from "lucide-react";
 import { codeToTokens } from "shiki";
-import type { Annotation } from "@/libs/contents/remark";
+import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
 import { CopyButton } from "./code-handler";
 import { Tooltip } from "./tooltip";

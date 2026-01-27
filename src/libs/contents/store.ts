@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { reader } from "@/keystatic/libs/reader";
 import type { CategoryEntry, CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
-import { getSafeExcerpt } from "./remark";
+import { getSafeExcerpt } from "./post";
 import type { WithSlug } from "./types";
 
 const buildSlugMap = <T>(items: Array<{ slug: string; entry: T }>): Map<string, WithSlug<T>> => {
