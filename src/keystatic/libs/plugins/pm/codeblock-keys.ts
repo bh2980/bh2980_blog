@@ -2,12 +2,15 @@ import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, TextSelection } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
+import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
+
+const CODE_BLOCK_USE_BLOCK = [EDITOR_CODE_BLOCK_NAME, EDITOR_MERMAID_NAME];
 
 export function isInCodeblock(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		if ($from.node(d).type?.name === EDITOR_CODE_BLOCK_NAME) return true;
+		if (CODE_BLOCK_USE_BLOCK.some((name) => $from.node(d).type?.name === name)) return true;
 	}
 	return false;
 }
