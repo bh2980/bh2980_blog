@@ -1,13 +1,8 @@
 import { codeToTokens } from "shiki";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import {
-	buildAnnotationTree,
-	buildLineRanges,
-	buildPositionedTokens,
-	normalizeAnnotations,
-	renderAnnotatedLines,
-	splitTokensByBoundaries,
-	splitTreeByLines,
+	buildAnnotatedLinesFromTokens,
+	tokenizeAnnotationsFromTokens,
 	DEFAULT_ANNOTATION_CONFIG,
 	type AnnotationConfig,
 	type CodeLanguage,
@@ -24,31 +19,17 @@ export const tokenizeAnnotatedCode = async ({
 	annotationList: Annotation[];
 	annotationConfig: AnnotationConfig;
 }) => {
-	const normalizedAnnotations = normalizeAnnotations(annotationList, annotationConfig.rules);
-	const markAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "mark");
-	const inlineAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "inline");
-	const blockAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "block");
-	const wrapperAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "wrapper");
-
 	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: "dark-plus" });
-	const positionedTokens = buildPositionedTokens(codeblock, code);
-	const boundaries = new Set<number>();
-	for (const annotation of normalizedAnnotations) {
-		boundaries.add(annotation.start);
-		boundaries.add(annotation.end);
-	}
-	const splitTokens = splitTokensByBoundaries(positionedTokens, boundaries);
-	const tree = buildAnnotationTree(splitTokens, markAnnotations, code.length);
-	const lines = splitTreeByLines(tree);
-	const lineRanges = buildLineRanges(code);
+	const tokenized = tokenizeAnnotationsFromTokens({
+		code,
+		codeblock,
+		annotationList,
+		annotationConfig,
+	});
 
 	return {
 		tokenMeta,
-		lines,
-		lineRanges,
-		inlineAnnotations,
-		blockAnnotations,
-		wrapperAnnotations,
+		...tokenized,
 	};
 };
 
@@ -65,23 +46,17 @@ export const buildAnnotatedLines = async ({
 	useLineNumber: boolean;
 	annotationConfig?: AnnotationConfig;
 }) => {
-	const tokenized = await tokenizeAnnotatedCode({
+	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: "dark-plus" });
+	const annotated = buildAnnotatedLinesFromTokens({
 		code,
-		lang,
+		codeblock,
 		annotationList,
+		useLineNumber,
 		annotationConfig,
 	});
 
 	return {
-		...tokenized,
-		renderedLines: renderAnnotatedLines({
-			lines: tokenized.lines,
-			lineRanges: tokenized.lineRanges,
-			useLineNumber,
-			inlineAnnotations: tokenized.inlineAnnotations,
-			blockAnnotations: tokenized.blockAnnotations,
-			wrapperAnnotations: tokenized.wrapperAnnotations,
-			config: annotationConfig,
-		}),
+		tokenMeta,
+		...annotated,
 	};
 };
