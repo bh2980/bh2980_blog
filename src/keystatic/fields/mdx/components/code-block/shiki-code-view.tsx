@@ -6,14 +6,8 @@ import { getSingletonHighlighterCore, type TokensResult } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import {
-	buildAnnotationTree,
-	buildLineRanges,
-	buildPositionedTokens,
 	DEFAULT_ANNOTATION_CONFIG,
-	normalizeAnnotations,
-	renderAnnotatedLines,
-	splitTokensByBoundaries,
-	splitTreeByLines,
+	buildAnnotatedLinesFromTokens,
 } from "./libs";
 
 // 1) 싱글톤 하이라이터
@@ -76,31 +70,12 @@ export async function highlightCode({
 	}
 
 	const { tokens: codeblock, ...tokenMeta } = tokenResult;
-	const annotationConfig = DEFAULT_ANNOTATION_CONFIG;
-	const normalizedAnnotations = normalizeAnnotations(annotationList, annotationConfig.rules);
-	const markAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "mark");
-	const inlineAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "inline");
-	const blockAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "block");
-	const wrapperAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "wrapper");
-
-	const positionedTokens = buildPositionedTokens(codeblock, code);
-	const boundaries = new Set<number>();
-	for (const annotation of normalizedAnnotations) {
-		boundaries.add(annotation.start);
-		boundaries.add(annotation.end);
-	}
-	const splitTokens = splitTokensByBoundaries(positionedTokens, boundaries);
-	const tree = buildAnnotationTree(splitTokens, markAnnotations, code.length);
-	const lines = splitTreeByLines(tree);
-	const lineRanges = buildLineRanges(code);
-	const renderedLines = renderAnnotatedLines({
-		lines,
-		lineRanges,
+	const { renderedLines } = buildAnnotatedLinesFromTokens({
+		code,
+		codeblock,
+		annotationList,
 		useLineNumber,
-		inlineAnnotations,
-		blockAnnotations,
-		wrapperAnnotations,
-		config: annotationConfig,
+		annotationConfig: DEFAULT_ANNOTATION_CONFIG,
 	});
 
 	return { renderedLines, tokenMeta };
