@@ -49,8 +49,14 @@ function decodeMermaidLikeYourInput(input: string): string {
 
 	s = s.replace(/\\\s*\n/g, "\n");
 
-	s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)));
-	s = s.replace(/&#([0-9]+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)));
+	s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => {
+		const codePoint = parseInt(hex, 16);
+		return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : _;
+	});
+	s = s.replace(/&#([0-9]+);/g, (_, dec: string) => {
+		const codePoint = parseInt(dec, 10);
+		return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : _;
+	});
 
 	s = s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 
