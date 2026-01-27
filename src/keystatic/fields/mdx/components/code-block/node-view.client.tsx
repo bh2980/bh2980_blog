@@ -9,9 +9,9 @@ import { Toggle } from "@/components/ui/toggle";
 import { BlurChangeInput } from "./blur-change-input.client";
 import type { CodeBlockNodeViewProps } from "./component";
 import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
-import { NodeViewCodeEditor, type RenderToolbarParams } from "./node-view-code-editor.client";
+import { NodeViewCodeEditor } from "./node-view-code-editor.client";
 
-const CodeBlockToolbar = ({ value, onChange, onRemove }: RenderToolbarParams) => {
+const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps) => {
 	const title = value.meta.match(/title="(.+?)"/)?.[1];
 
 	const handleLangChange = (lang: EditorLang) => onChange({ ...value, lang });
@@ -55,5 +55,14 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: RenderToolbarParams) =>
 };
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
-	return <NodeViewCodeEditor renderToolbar={CodeBlockToolbar} nodeViewChildren={props.children} {...props} />;
+	return (
+		<div>
+			<CodeBlockToolbar {...props} />
+			<NodeViewCodeEditor
+				nodeViewChildren={props.children}
+				lang={props.value.lang}
+				useLineNumber={props.value.useLineNumber}
+			/>
+		</div>
+	);
 };

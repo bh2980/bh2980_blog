@@ -4,25 +4,19 @@ import { type HighlightedCode, highlight, Pre } from "codehike/code";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { lineNumbers } from "@/components/mdx/code-handler";
 import { cn } from "@/utils/cn";
-import type { CodeBlockNodeViewProps } from "./component";
 import { escapeCodeHikeAnnotations } from "./libs";
 
-export type RenderToolbarParams = Omit<CodeBlockNodeViewProps, "value" | "children"> & {
-	value: CodeBlockNodeViewProps["value"] & { code: string };
-};
-
-type NodeViewCodeEditorProps = Omit<CodeBlockNodeViewProps, "children"> & {
+type NodeViewCodeEditorProps = { lang: string; useLineNumber: boolean } & {
 	nodeViewChildren: ReactNode;
-	renderToolbar?: (value: RenderToolbarParams) => ReactNode;
 };
 
-export const NodeViewCodeEditor = ({ nodeViewChildren, value, renderToolbar, ...props }: NodeViewCodeEditorProps) => {
+export const NodeViewCodeEditor = ({ nodeViewChildren, lang, useLineNumber }: NodeViewCodeEditorProps) => {
 	const preRef = useRef<HTMLPreElement>(null);
 
 	const [code, setCode] = useState("");
 	const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
 
-	const handlers = useMemo(() => (value.useLineNumber ? [lineNumbers] : []), [value.useLineNumber]);
+	const handlers = useMemo(() => (useLineNumber ? [lineNumbers] : []), [useLineNumber]);
 
 	useLayoutEffect(() => {
 		const el = preRef.current;
@@ -42,24 +36,23 @@ export const NodeViewCodeEditor = ({ nodeViewChildren, value, renderToolbar, ...
 		let cancelled = false;
 
 		(async () => {
-			const h = await highlight({ value: escapeCodeHikeAnnotations(code), lang: value.lang, meta: "" }, "dark-plus");
+			const h = await highlight({ value: escapeCodeHikeAnnotations(code), lang, meta: "" }, "dark-plus");
 			if (!cancelled) setHighlighted(h);
 		})();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [code, value.lang]);
+	}, [code, lang]);
 
 	return (
 		<div className="relative">
-			{renderToolbar?.({ value: { ...value, code }, ...props })}
 			<pre
 				className={cn(
 					"absolute w-full [&_p]:m-0!",
 					"bg-transparent! text-transparent! caret-white!",
-					value.useLineNumber && "ml-[calc(2ch+0.5rem)]",
 					"**:data-[component=u]:decoration-white! [&_s]:decoration-1! [&_s]:decoration-white!",
+					useLineNumber && "ml-[calc(2ch+0.5rem)]",
 				)}
 				style={highlighted?.style}
 				ref={preRef}
