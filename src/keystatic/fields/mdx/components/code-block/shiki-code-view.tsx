@@ -7,8 +7,11 @@ import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import {
 	buildAnnotationTree,
+	buildLineRanges,
 	buildPositionedTokens,
+	DEFAULT_ANNOTATION_CONFIG,
 	normalizeAnnotations,
+	renderAnnotatedLines,
 	splitTokensByBoundaries,
 	splitTreeByLines,
 } from "./libs";
@@ -41,34 +44,64 @@ const LANG_LOADERS: Record<string, () => Promise<any>> = {
 	// 필요 언어만 계속 추가
 };
 
-export async function highlightCode(code: string, lang: string, annotationList: Annotation[] = []) {
+export async function highlightCode({
+	code,
+	lang,
+	annotationList = [],
+	useLineNumber = false,
+}: {
+	code: string;
+	lang: string;
+	annotationList?: Annotation[];
+	useLineNumber?: boolean;
+}) {
 	const id = normalizeLang(lang);
+
+	let tokenResult: TokensResult;
 
 	// Shiki는 text를 fallback으로 쓸 수 있음  [oai_citation:5‡Shiki](https://shiki.style/languages?utm_source=chatgpt.com)
 	if (id === "text") {
-		return highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
-	}
-
-	if (!highlighter.getLoadedLanguages().includes(id)) {
+		tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
+	} else if (!highlighter.getLoadedLanguages().includes(id)) {
 		const loader = LANG_LOADERS[id];
 		if (!loader) {
-			return highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
+			tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "github-dark" });
+		} else {
+			const mod = await loader();
+			await highlighter.loadLanguage(mod.default ?? mod);
+			tokenResult = highlighter.codeToTokens(code, { lang, theme: "github-dark" });
 		}
-		const mod = await loader();
-		await highlighter.loadLanguage(mod.default ?? mod);
+	} else {
+		tokenResult = highlighter.codeToTokens(code, { lang, theme: "github-dark" });
 	}
 
-	const { tokens: codeblock, ...meta } = highlighter.codeToTokens(code, { lang, theme: "github-dark" });
+	const { tokens: codeblock, ...tokenMeta } = tokenResult;
+	const annotationConfig = DEFAULT_ANNOTATION_CONFIG;
+	const normalizedAnnotations = normalizeAnnotations(annotationList, annotationConfig.rules);
+	const markAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "mark");
+	const inlineAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "inline");
+	const blockAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "block");
+	const wrapperAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "wrapper");
+
 	const positionedTokens = buildPositionedTokens(codeblock, code);
 	const boundaries = new Set<number>();
-	for (const annotation of annotationList) {
+	for (const annotation of normalizedAnnotations) {
 		boundaries.add(annotation.start);
 		boundaries.add(annotation.end);
 	}
 	const splitTokens = splitTokensByBoundaries(positionedTokens, boundaries);
-	const normalizedAnnotations = normalizeAnnotations(annotationList);
-	const tree = buildAnnotationTree(splitTokens, normalizedAnnotations, code.length);
-	const tokens = splitTreeByLines(tree);
+	const tree = buildAnnotationTree(splitTokens, markAnnotations, code.length);
+	const lines = splitTreeByLines(tree);
+	const lineRanges = buildLineRanges(code);
+	const renderedLines = renderAnnotatedLines({
+		lines,
+		lineRanges,
+		useLineNumber,
+		inlineAnnotations,
+		blockAnnotations,
+		wrapperAnnotations,
+		config: annotationConfig,
+	});
 
-	return { tokens, ...meta };
+	return { renderedLines, tokenMeta };
 }

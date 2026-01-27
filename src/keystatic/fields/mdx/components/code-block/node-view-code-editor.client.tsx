@@ -1,13 +1,26 @@
 "use client";
 
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { MdxJsxAttribute } from "mdast-util-mdx-jsx";
+import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
-import { renderTree } from "./libs";
 import { highlightCode } from "./shiki-code-view";
 
-type TagRange = { type: string; start: number; end: number };
+type NodeViewCodeEditorProps = { lang: string; useLineNumber?: boolean } & {
+	nodeViewChildren: ReactNode;
+	onCodeChange?: (code: string) => void;
+};
 
-const TYPE_TO_STYLE = {
+type TokenResult = {
+	renderedLines?: ReactNode[];
+	tokenMeta?: {
+		fg?: string;
+		bg?: string;
+	};
+};
+
+const TYPE_TO_STYLE: Record<string, Annotation["type"]> = {
 	s: "delete",
 	strong: "strong",
 	em: "emphasis",
@@ -18,7 +31,7 @@ function extractRangesPlainText(html: string, tagsToTrack = new Set(["strong", "
 	tpl.innerHTML = html;
 
 	let pos = 0;
-	const ranges: TagRange[] = [];
+	const ranges: Annotation[] = [];
 
 	const walk = (node: Node) => {
 		if (node.nodeType === Node.TEXT_NODE) {
@@ -30,14 +43,51 @@ function extractRangesPlainText(html: string, tagsToTrack = new Set(["strong", "
 		if (node.nodeType === Node.ELEMENT_NODE) {
 			const el = node as Element;
 			const name = el.tagName.toLowerCase();
-			const type = TYPE_TO_STYLE[name];
-			const track = tagsToTrack.has(name);
+			const component = el.getAttribute("data-component");
+			const track = tagsToTrack.has(name) || component === "u" || component === "Tooltip";
 			const start = pos;
 
 			el.childNodes.forEach(walk);
 
 			const end = pos;
-			if (track) ranges.push({ type: type ?? name, start, end });
+			if (!track || start >= end) return;
+
+			if (component === "u") {
+				ranges.push({
+					type: "mdxJsxTextElement",
+					name: "u",
+					attributes: [],
+					start,
+					end,
+				});
+				return;
+			}
+
+			if (component === "Tooltip") {
+				const content = el.getAttribute("data-content");
+				const attributes: MdxJsxAttribute[] = content
+					? [{ type: "mdxJsxAttribute", name: "content", value: content }]
+					: [];
+
+				ranges.push({
+					type: "mdxJsxTextElement",
+					name: "Tooltip",
+					attributes,
+					start,
+					end,
+				});
+				return;
+			}
+
+			const mapped = TYPE_TO_STYLE[name];
+			if (mapped) {
+				ranges.push({
+					type: mapped,
+					start,
+					end,
+				});
+			}
+
 			return;
 		}
 
@@ -50,11 +100,6 @@ function extractRangesPlainText(html: string, tagsToTrack = new Set(["strong", "
 	return ranges;
 }
 
-type NodeViewCodeEditorProps = { lang: string; useLineNumber?: boolean } & {
-	nodeViewChildren: ReactNode;
-	onCodeChange?: (code: string) => void;
-};
-
 export const NodeViewCodeEditor = ({
 	nodeViewChildren,
 	lang,
@@ -64,10 +109,15 @@ export const NodeViewCodeEditor = ({
 	const preRef = useRef<HTMLPreElement>(null);
 
 	const [code, setCode] = useState("");
-	const [tokenResult, setTokenResult] = useState({});
+	const [tokenResult, setTokenResult] = useState<TokenResult>({});
 
-	const updateShiki = async (code: string, lang: string, annotationList?: TagRange[]) => {
-		const result = await highlightCode(code, lang, annotationList);
+	const updateShiki = async (code: string, lang: string, annotationList?: Annotation[]) => {
+		const result = await highlightCode({
+			code,
+			lang,
+			annotationList,
+			useLineNumber: Boolean(useLineNumber),
+		});
 
 		setTokenResult(result);
 	};
@@ -97,7 +147,7 @@ export const NodeViewCodeEditor = ({
 		obs.observe(el, { subtree: true, childList: true, characterData: true });
 
 		return () => obs.disconnect();
-	}, []);
+	}, [lang, useLineNumber]);
 
 	useEffect(() => {
 		onCodeChange?.(code);
@@ -110,7 +160,7 @@ export const NodeViewCodeEditor = ({
 					"w-full [&_p]:m-0!",
 					"absolute bg-transparent! text-transparent! caret-white!",
 					"**:data-[component=u]:decoration-white! [&_s]:decoration-1! [&_s]:decoration-white!",
-					useLineNumber && "ml-[calc(2ch+0.5rem)]",
+					useLineNumber && "[&_p]:pl-7!",
 				)}
 				ref={preRef}
 			>
@@ -118,15 +168,9 @@ export const NodeViewCodeEditor = ({
 			</pre>
 			<pre
 				className="pointer-events-none! select-none!"
-				style={{ backgroundColor: tokenResult?.bg, color: tokenResult?.fg }}
+				style={{ backgroundColor: tokenResult?.tokenMeta?.bg, color: tokenResult?.tokenMeta?.fg }}
 			>
-				{tokenResult?.tokens?.map((line, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
-					<span key={`line-${index}`} className={cn(useLineNumber && "line")}>
-						{renderTree(line, `line-${index}`)}
-						{index < tokenResult?.tokens?.length - 1 ? "\n" : null}
-					</span>
-				))}
+				{tokenResult?.renderedLines}
 				<br />
 			</pre>
 		</div>

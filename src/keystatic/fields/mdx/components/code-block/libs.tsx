@@ -1,7 +1,9 @@
+import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { Tooltip } from "@/components/mdx/tooltip";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import { cn } from "@/utils/cn";
 
-type StyleKind = "del" | "strong" | "em" | "u";
+export type AnnotationKind = "inline" | "mark" | "wrapper" | "block";
 
 type PositionedToken = {
 	content: string;
@@ -11,19 +13,46 @@ type PositionedToken = {
 	end: number;
 };
 
-type NormalizedAnnotation =
-	| {
-			kind: "style";
-			style: StyleKind;
-			start: number;
-			end: number;
-	  }
-	| {
-			kind: "tooltip";
-			content: string;
-			start: number;
-			end: number;
-	  };
+type ResolvedAnnotationBase = {
+	kind: AnnotationKind;
+	start: number;
+	end: number;
+	raw: Annotation;
+	data?: Record<string, unknown>;
+	order: number;
+	name?: string;
+};
+
+type AnnotationWrapper = ComponentType<{
+	annotation: ResolvedAnnotationBase;
+	children: ReactNode;
+}>;
+
+export type ResolvedAnnotation = ResolvedAnnotationBase & {
+	wrap?: AnnotationWrapper;
+};
+
+export type AnnotationRule = {
+	kind: AnnotationKind;
+	match: (annotation: Annotation) => boolean;
+	wrap?: AnnotationWrapper;
+	data?: (annotation: Annotation) => Record<string, unknown>;
+	name?: string;
+};
+
+// inline/block annotation은 래핑하지 않으므로 props로만 전달된다.
+export type AnnotationConfig = {
+	rules: AnnotationRule[];
+	getTokenProps?: (args: {
+		token: PositionedToken;
+		annotations: ResolvedAnnotation[];
+	}) => HTMLAttributes<HTMLSpanElement> | undefined;
+	getLineProps?: (args: {
+		lineIndex: number;
+		blockAnnotations: ResolvedAnnotation[];
+		wrapperAnnotations: ResolvedAnnotation[];
+	}) => HTMLAttributes<HTMLSpanElement> | undefined;
+};
 
 type TreeNode =
 	| {
@@ -31,45 +60,77 @@ type TreeNode =
 			token: PositionedToken;
 	  }
 	| {
-			kind: "style";
-			style: StyleKind;
-			children: TreeNode[];
-			start: number;
-			end: number;
-	  }
-	| {
-			kind: "tooltip";
-			content: string;
+			kind: "mark";
+			annotation: ResolvedAnnotation;
 			children: TreeNode[];
 			start: number;
 			end: number;
 	  };
 
-const STYLE_OUTER_PRIORITY: Record<StyleKind, number> = {
-	u: 0,
-	em: 1,
-	strong: 2,
-	del: 3,
+const NoopWrapper: AnnotationWrapper = ({ children }) => <>{children}</>;
+
+const DelWrapper: AnnotationWrapper = ({ children }) => <del>{children}</del>;
+const StrongWrapper: AnnotationWrapper = ({ children }) => <strong>{children}</strong>;
+const EmWrapper: AnnotationWrapper = ({ children }) => <em>{children}</em>;
+const UnderlineWrapper: AnnotationWrapper = ({ children }) => <u>{children}</u>;
+
+const TooltipWrapper: AnnotationWrapper = ({ annotation, children }) => {
+	const content = typeof annotation.data?.content === "string" ? annotation.data.content : "";
+	return (
+		<Tooltip
+			content={content}
+			className="border-slate-200 bg-slate-200 text-slate-800 [&_svg]:bg-slate-200 [&_svg]:fill-slate-200"
+		>
+			{children}
+		</Tooltip>
+	);
 };
 
-const STYLE_BY_TYPE: Record<string, StyleKind> = {
-	delete: "del",
-	strong: "strong",
-	emphasis: "em",
-};
+export const DEFAULT_ANNOTATION_RULES: AnnotationRule[] = [
+	{
+		kind: "mark",
+		name: "Tooltip",
+		match: (annotation) => annotation.type === "mdxJsxTextElement" && annotation.name === "Tooltip",
+		data: (annotation) => ({
+			content: annotation.type === "mdxJsxTextElement" ? extractTooltipContent(annotation) : "",
+		}),
+		wrap: TooltipWrapper,
+	},
+	{
+		kind: "mark",
+		name: "underline",
+		match: (annotation) => annotation.type === "mdxJsxTextElement" && annotation.name === "u",
+		wrap: UnderlineWrapper,
+	},
+	{
+		kind: "mark",
+		name: "emphasis",
+		match: (annotation) => annotation.type === "emphasis",
+		wrap: EmWrapper,
+	},
+	{
+		kind: "mark",
+		name: "strong",
+		match: (annotation) => annotation.type === "strong",
+		wrap: StrongWrapper,
+	},
+	{
+		kind: "mark",
+		name: "delete",
+		match: (annotation) => annotation.type === "delete",
+		wrap: DelWrapper,
+	},
+];
 
-const STYLE_TAGS: Record<StyleKind, "del" | "strong" | "em" | "u"> = {
-	del: "del",
-	strong: "strong",
-	em: "em",
-	u: "u",
+export const DEFAULT_ANNOTATION_CONFIG: AnnotationConfig = {
+	rules: DEFAULT_ANNOTATION_RULES,
 };
 
 // Tooltip content 속성만 추출.
-export const extractTooltipContent = (annotation: Extract<Annotation, { type: "mdxJsxTextElement" }>) => {
+export function extractTooltipContent(annotation: Extract<Annotation, { type: "mdxJsxTextElement" }>) {
 	const attr = annotation.attributes.find((a) => a.type === "mdxJsxAttribute" && a.name === "content");
 	return typeof attr?.value === "string" ? attr.value : "";
-};
+}
 
 // shiki 토큰(줄 단위)을 코드 전체 기준 start/end를 가진 토큰으로 변환.
 export const buildPositionedTokens = (
@@ -125,33 +186,27 @@ export const splitTokensByBoundaries = (tokens: PositionedToken[], boundaries: S
 	return splitTokens;
 };
 
-// mdast annotation을 렌더링에 필요한 형태(style/tooltip)로 정규화.
-export const normalizeAnnotations = (annotationList: Annotation[]) => {
-	const normalized: NormalizedAnnotation[] = [];
+// mdast annotation을 렌더링에 필요한 형태(inline/mark/wrapper/block)로 정규화.
+export const normalizeAnnotations = (annotationList: Annotation[], rules: AnnotationRule[]) => {
+	const normalized: ResolvedAnnotation[] = [];
 
 	for (const annotation of annotationList) {
 		if (annotation.start >= annotation.end) continue;
 
-		const style = STYLE_BY_TYPE[annotation.type];
-		if (style) {
-			normalized.push({ kind: "style", style, start: annotation.start, end: annotation.end });
-			continue;
-		}
+		const ruleIndex = rules.findIndex((candidate) => candidate.match(annotation));
+		if (ruleIndex === -1) continue;
+		const rule = rules[ruleIndex];
 
-		if (annotation.type === "mdxJsxTextElement") {
-			if (annotation.name === "u") {
-				normalized.push({ kind: "style", style: "u", start: annotation.start, end: annotation.end });
-				continue;
-			}
-			if (annotation.name === "Tooltip") {
-				normalized.push({
-					kind: "tooltip",
-					content: extractTooltipContent(annotation),
-					start: annotation.start,
-					end: annotation.end,
-				});
-			}
-		}
+		normalized.push({
+			kind: rule.kind,
+			start: annotation.start,
+			end: annotation.end,
+			raw: annotation,
+			data: rule.data ? rule.data(annotation) : undefined,
+			wrap: rule.wrap,
+			order: ruleIndex,
+			name: rule.name,
+		});
 	}
 
 	return normalized;
@@ -160,12 +215,12 @@ export const normalizeAnnotations = (annotationList: Annotation[]) => {
 // 정규화된 annotation을 토큰에 적용해 중첩 트리를 만든다.
 export const buildAnnotationTree = (
 	segments: PositionedToken[],
-	annotations: NormalizedAnnotation[],
+	annotations: ResolvedAnnotation[],
 	codeLength: number,
 ) => {
 	const root = { children: [] as TreeNode[], start: 0, end: codeLength };
 	const stack: Array<{ children: TreeNode[]; start: number; end: number }> = [root];
-	const startMap = new Map<number, NormalizedAnnotation[]>();
+	const startMap = new Map<number, ResolvedAnnotation[]>();
 
 	for (const annotation of annotations) {
 		const list = startMap.get(annotation.start) ?? [];
@@ -173,33 +228,17 @@ export const buildAnnotationTree = (
 		startMap.set(annotation.start, list);
 	}
 
-	const outerPriority = (annotation: NormalizedAnnotation) =>
-		annotation.kind === "tooltip" ? -1 : STYLE_OUTER_PRIORITY[annotation.style];
-
 	for (const list of startMap.values()) {
-		list.sort((a, b) => (a.end !== b.end ? b.end - a.end : outerPriority(a) - outerPriority(b)));
+		list.sort((a, b) => (a.end !== b.end ? b.end - a.end : a.order - b.order));
 	}
 
 	for (const segment of segments) {
 		const toOpen = startMap.get(segment.start);
 		if (toOpen) {
 			for (const annotation of toOpen) {
-				if (annotation.kind === "style") {
-					const node: TreeNode = {
-						kind: "style",
-						style: annotation.style,
-						start: annotation.start,
-						end: annotation.end,
-						children: [],
-					};
-					stack[stack.length - 1].children.push(node);
-					stack.push(node);
-					continue;
-				}
-
 				const node: TreeNode = {
-					kind: "tooltip",
-					content: annotation.content,
+					kind: "mark",
+					annotation,
 					start: annotation.start,
 					end: annotation.end,
 					children: [],
@@ -219,34 +258,39 @@ export const buildAnnotationTree = (
 	return root.children;
 };
 
+export const coversRange = (annotation: ResolvedAnnotation, start: number, end: number) =>
+	annotation.start <= start && annotation.end >= end;
+
 // 트리를 재귀적으로 JSX로 변환.
-export const renderTree = (nodes: TreeNode[], keyPrefix: string) =>
+export const renderTree = (
+	nodes: TreeNode[],
+	keyPrefix: string,
+	inlineAnnotations: ResolvedAnnotation[] = [],
+	getTokenProps?: AnnotationConfig["getTokenProps"],
+) =>
 	nodes.map((node, index) => {
 		const key = `${keyPrefix}-${index}`;
 
-		console.log(node);
-
 		if (node.kind === "token") {
+			const tokenAnnotations = inlineAnnotations.filter((annotation) =>
+				coversRange(annotation, node.token.start, node.token.end),
+			);
+			const tokenProps = getTokenProps?.({ token: node.token, annotations: tokenAnnotations });
+			const { style, className, children: _children, ...rest } = tokenProps ?? {};
+			const mergedStyle = node.token.color ? { color: node.token.color, ...style } : style;
+
 			return (
-				<span key={key} style={node.token.color ? { color: node.token.color } : undefined}>
+				<span key={key} style={mergedStyle} className={className} {...rest}>
 					{node.token.content}
 				</span>
 			);
 		}
 
-		if (node.kind === "style") {
-			const Tag = STYLE_TAGS[node.style];
-			return <Tag key={key}>{renderTree(node.children, key)}</Tag>;
-		}
-
+		const Wrapper = node.annotation.wrap ?? NoopWrapper;
 		return (
-			<Tooltip
-				key={key}
-				content={node.content}
-				className="border-slate-200 bg-slate-200 text-slate-800 [&_svg]:bg-slate-200 [&_svg]:fill-slate-200"
-			>
-				{renderTree(node.children, key)}
-			</Tooltip>
+			<Wrapper key={key} annotation={node.annotation}>
+				{renderTree(node.children, key, inlineAnnotations, getTokenProps)}
+			</Wrapper>
 		);
 	});
 
@@ -293,3 +337,80 @@ export const splitTreeByLines = (nodes: TreeNode[]) => {
 	lines.push(currentLine);
 	return lines;
 };
+
+export const buildLineRanges = (codeStr: string) => {
+	const ranges: Array<{ start: number; end: number }> = [];
+	let lineStart = 0;
+
+	for (let i = 0; i < codeStr.length; i += 1) {
+		if (codeStr[i] === "\n") {
+			ranges.push({ start: lineStart, end: i });
+			lineStart = i + 1;
+		}
+	}
+
+	ranges.push({ start: lineStart, end: codeStr.length });
+	return ranges;
+};
+
+export const wrapLineWithAnnotations = (content: ReactNode, wrappers: ResolvedAnnotation[], keyPrefix: string) => {
+	if (wrappers.length === 0) return content;
+
+	const ordered = [...wrappers].sort((a, b) => {
+		if (a.end !== b.end) return b.end - a.end;
+		if (a.start !== b.start) return a.start - b.start;
+		return a.order - b.order;
+	});
+
+	return ordered.reduceRight<ReactNode>((acc, annotation, index) => {
+		const Wrapper = annotation.wrap ?? NoopWrapper;
+		return (
+			<Wrapper key={`${keyPrefix}-wrapper-${index}`} annotation={annotation}>
+				{acc}
+			</Wrapper>
+		);
+	}, content);
+};
+
+export const renderAnnotatedLines = ({
+	lines,
+	lineRanges,
+	useLineNumber,
+	inlineAnnotations,
+	blockAnnotations,
+	wrapperAnnotations,
+	config,
+}: {
+	lines: TreeNode[][];
+	lineRanges: Array<{ start: number; end: number }>;
+	useLineNumber: boolean;
+	inlineAnnotations: ResolvedAnnotation[];
+	blockAnnotations: ResolvedAnnotation[];
+	wrapperAnnotations: ResolvedAnnotation[];
+	config: AnnotationConfig;
+}) =>
+	lines.map((line, index) => {
+		const lineRange = lineRanges[index] ?? { start: 0, end: 0 };
+		const lineWrapperAnnotations = wrapperAnnotations.filter((annotation) =>
+			coversRange(annotation, lineRange.start, lineRange.end),
+		);
+		const lineBlockAnnotations = blockAnnotations.filter((annotation) =>
+			coversRange(annotation, lineRange.start, lineRange.end),
+		);
+		const lineProps = config.getLineProps?.({
+			lineIndex: index,
+			blockAnnotations: lineBlockAnnotations,
+			wrapperAnnotations: lineWrapperAnnotations,
+		});
+		const { className, style, children: _children, ...rest } = lineProps ?? {};
+		const lineContent = renderTree(line, `line-${index}`, inlineAnnotations, config.getTokenProps);
+		const wrappedLineContent = wrapLineWithAnnotations(lineContent, lineWrapperAnnotations, `line-${index}`);
+
+		return (
+			// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
+			<span key={`line-${index}`} className={cn(useLineNumber && "line", className)} style={style} {...rest}>
+				{wrappedLineContent}
+				{index < lines.length - 1 ? "\n" : null}
+			</span>
+		);
+	});
