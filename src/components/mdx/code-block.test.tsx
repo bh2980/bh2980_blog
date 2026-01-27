@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { codeToTokens } from "shiki";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -119,9 +119,13 @@ describe("code-block internal helpers", () => {
 
 		expect(lines).toHaveLength(2);
 		expect(lines[0][0].kind).toBe("mark");
+		if (lines[0][0].kind !== "mark") throw new Error("expected mark");
 		expect(lines[0][0].children[0].kind).toBe("token");
+		if (lines[0][0].children[0].kind !== "token") throw new Error("expected token");
 		expect(lines[0][0].children[0].token.content).toBe("ab");
 		expect(lines[1][0].kind).toBe("mark");
+		if (lines[1][0].kind !== "mark") throw new Error("expected mark");
+		if (lines[1][0].children[0].kind !== "token") throw new Error("expected token");
 		expect(lines[1][0].children[0].token.content).toBe("cd");
 	});
 
@@ -175,13 +179,13 @@ describe("code-block internal helpers", () => {
 
 		const nodes = [
 			{
-				kind: "token",
+				kind: "token" as const,
 				token: { content: "hi", start: 0, end: 2, color: "red" },
 			},
-		];
+		] satisfies Parameters<typeof renderTree>[0];
 
 		const rendered = renderTree(nodes, "t", [inlineAnnotation], getTokenProps);
-		const element = rendered[0] as ReactElement;
+		const element = rendered[0] as ReactElement<{ className?: string; style?: CSSProperties }>;
 
 		expect(getTokenProps).toHaveBeenCalledWith({
 			token: nodes[0].token,
@@ -193,7 +197,7 @@ describe("code-block internal helpers", () => {
 
 	it("tokenizeAnnotatedCode는 shiki의 토큰 메타데이터를 반환한다", async () => {
 		codeToTokensMock.mockResolvedValue({
-			tokens: [[{ content: "ab" }]],
+			tokens: [[{ content: "ab", offset: 0 }]],
 			fg: "#fff",
 			bg: "#000",
 		});
@@ -222,17 +226,17 @@ describe("code-block internal helpers", () => {
 		const lines = [
 			[
 				{
-					kind: "token",
+					kind: "token" as const,
 					token: { content: "ab", start: 0, end: 2 },
 				},
 			],
 			[
 				{
-					kind: "token",
+					kind: "token" as const,
 					token: { content: "cd", start: 3, end: 5 },
 				},
 			],
-		];
+		] satisfies Parameters<typeof renderAnnotatedLines>[0]["lines"];
 
 		const lineRanges = [
 			{ start: 0, end: 2 },
@@ -261,13 +265,15 @@ describe("code-block internal helpers", () => {
 
 		const config: AnnotationConfig = {
 			rules: [],
-			getLineProps: ({ blockAnnotations: blocks }) => ({
-				"data-block-count": String(blocks.length),
-				className: blocks.length ? "has-block" : undefined,
-			}),
-			getTokenProps: ({ annotations }) => ({
-				"data-inline-count": String(annotations.length),
-			}),
+			getLineProps: ({ blockAnnotations: blocks }) =>
+				({
+					"data-block-count": String(blocks.length),
+					className: blocks.length ? "has-block" : undefined,
+				}) as HTMLAttributes<HTMLSpanElement>,
+			getTokenProps: ({ annotations }) =>
+				({
+					"data-inline-count": String(annotations.length),
+				}) as HTMLAttributes<HTMLSpanElement>,
 		};
 
 		const rendered = renderToStaticMarkup(
@@ -356,12 +362,14 @@ describe("code-block internal helpers", () => {
 
 		const config: AnnotationConfig = {
 			rules: [],
-			getLineProps: ({ blockAnnotations }) => ({
-				"data-block-count": String(blockAnnotations.length),
-			}),
-			getTokenProps: ({ annotations: inline }) => ({
-				"data-inline-count": String(inline.length),
-			}),
+			getLineProps: ({ blockAnnotations }) =>
+				({
+					"data-block-count": String(blockAnnotations.length),
+				}) as HTMLAttributes<HTMLSpanElement>,
+			getTokenProps: ({ annotations: inline }) =>
+				({
+					"data-inline-count": String(inline.length),
+				}) as HTMLAttributes<HTMLSpanElement>,
 		};
 
 		const rendered = renderToStaticMarkup(
