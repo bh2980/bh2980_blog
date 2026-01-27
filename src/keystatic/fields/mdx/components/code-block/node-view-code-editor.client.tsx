@@ -21,6 +21,12 @@ type TokenResult = {
 	};
 };
 
+const decodeHtmlToText = (html: string) => {
+	const tpl = document.createElement("template");
+	tpl.innerHTML = html;
+	return tpl.content.textContent ?? "";
+};
+
 export const NodeViewCodeEditor = ({
 	nodeViewChildren,
 	lang,
@@ -32,7 +38,7 @@ export const NodeViewCodeEditor = ({
 	const [tokenResult, setTokenResult] = useState<TokenResult>({});
 
 	const updateShiki = useCallback(
-		async (code: string, lang: string, annotationList?: Annotation[]) => {
+		async (code: string, lang: EditorCodeLang, annotationList?: Annotation[]) => {
 			const result = await highlightCode({
 				code,
 				lang,
@@ -55,7 +61,7 @@ export const NodeViewCodeEditor = ({
 			const result = proseHtml.match(rawCodePattern)?.groups?.content.replaceAll("<br>", "\n") ?? "";
 
 			const annotationList = extractRangesPlainText(result);
-			const code = result.replaceAll(/<.+?>/g, "");
+			const code = decodeHtmlToText(result);
 
 			onCodeChange?.(code);
 			updateShiki(code, lang, annotationList);
