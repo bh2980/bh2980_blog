@@ -2,6 +2,7 @@
 
 import mermaid from "mermaid";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
 
 interface MermaidProps {
 	chart: string;
@@ -31,5 +32,9 @@ export const Mermaid = ({ chart }: MermaidProps) => {
 		}
 	}, [chart]);
 
-	return <div ref={ref}>{error && <span>{error.message}</span>}</div>;
+	return (
+		<div className={cn("flex justify-center", error && "min-h-24 items-center p-4")} ref={ref}>
+			{error && <span className="text-sm">ERROR : {error.message}</span>}
+		</div>
+	);
 };
