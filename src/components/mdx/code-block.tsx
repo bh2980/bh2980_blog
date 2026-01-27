@@ -318,7 +318,7 @@ const splitTreeByLines = (nodes: TreeNode[]) => {
 	return lines;
 };
 
-export const Codeblock = async ({ code, annotations, lang, useLineNumber, meta }: CodeblockProps) => {
+export const CodeBlock = async ({ code, annotations, lang, useLineNumber, meta }: CodeblockProps) => {
 	const codeStr = JSON.parse(code);
 	const annotationList = JSON.parse(annotations) as Annotation[];
 
