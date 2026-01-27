@@ -8,9 +8,15 @@ import { escapeCodeHikeAnnotations } from "./libs";
 
 type NodeViewCodeEditorProps = { lang: string; useLineNumber?: boolean } & {
 	nodeViewChildren: ReactNode;
+	onCodeChange?: (code: string) => void;
 };
 
-export const NodeViewCodeEditor = ({ nodeViewChildren, lang, useLineNumber }: NodeViewCodeEditorProps) => {
+export const NodeViewCodeEditor = ({
+	nodeViewChildren,
+	lang,
+	useLineNumber,
+	onCodeChange,
+}: NodeViewCodeEditorProps) => {
 	const preRef = useRef<HTMLPreElement>(null);
 
 	const [code, setCode] = useState("");
@@ -44,6 +50,10 @@ export const NodeViewCodeEditor = ({ nodeViewChildren, lang, useLineNumber }: No
 			cancelled = true;
 		};
 	}, [code, lang]);
+
+	useEffect(() => {
+		onCodeChange?.(code);
+	}, [code, onCodeChange]);
 
 	return (
 		<div className="relative">
