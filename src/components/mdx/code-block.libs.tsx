@@ -373,6 +373,43 @@ export const buildLineRanges = (codeStr: string) => {
 	return ranges;
 };
 
+export const tokenizeAnnotationsFromTokens = ({
+	code,
+	codeblock,
+	annotationList,
+	annotationConfig,
+}: {
+	code: string;
+	codeblock: { content: string; color?: string; fontStyle?: number }[][];
+	annotationList: Annotation[];
+	annotationConfig: AnnotationConfig;
+}) => {
+	const normalizedAnnotations = normalizeAnnotations(annotationList, annotationConfig.rules);
+	const markAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "mark");
+	const inlineAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "inline");
+	const blockAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "block");
+	const wrapperAnnotations = normalizedAnnotations.filter((annotation) => annotation.kind === "wrapper");
+
+	const positionedTokens = buildPositionedTokens(codeblock, code);
+	const boundaries = new Set<number>();
+	for (const annotation of normalizedAnnotations) {
+		boundaries.add(annotation.start);
+		boundaries.add(annotation.end);
+	}
+	const splitTokens = splitTokensByBoundaries(positionedTokens, boundaries);
+	const tree = buildAnnotationTree(splitTokens, markAnnotations, code.length);
+	const lines = splitTreeByLines(tree);
+	const lineRanges = buildLineRanges(code);
+
+	return {
+		lines,
+		lineRanges,
+		inlineAnnotations,
+		blockAnnotations,
+		wrapperAnnotations,
+	};
+};
+
 export const wrapLineWithAnnotations = (content: ReactNode, wrappers: ResolvedAnnotation[], keyPrefix: string) => {
 	if (wrappers.length === 0) return content;
 
@@ -434,3 +471,37 @@ export const renderAnnotatedLines = ({
 			</span>
 		);
 	});
+
+export const buildAnnotatedLinesFromTokens = ({
+	code,
+	codeblock,
+	annotationList,
+	useLineNumber,
+	annotationConfig = DEFAULT_ANNOTATION_CONFIG,
+}: {
+	code: string;
+	codeblock: { content: string; color?: string; fontStyle?: number }[][];
+	annotationList: Annotation[];
+	useLineNumber: boolean;
+	annotationConfig?: AnnotationConfig;
+}) => {
+	const tokenized = tokenizeAnnotationsFromTokens({
+		code,
+		codeblock,
+		annotationList,
+		annotationConfig,
+	});
+
+	return {
+		...tokenized,
+		renderedLines: renderAnnotatedLines({
+			lines: tokenized.lines,
+			lineRanges: tokenized.lineRanges,
+			useLineNumber,
+			inlineAnnotations: tokenized.inlineAnnotations,
+			blockAnnotations: tokenized.blockAnnotations,
+			wrapperAnnotations: tokenized.wrapperAnnotations,
+			config: annotationConfig,
+		}),
+	};
+};
