@@ -52,7 +52,7 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 			<TabsContent value="code">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="typescript"
+					lang="tsx"
 					useLineNumber={useLineNumber}
 					onCodeChange={handleChartChange}
 				/>
@@ -63,7 +63,7 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 			<TabsContent value="bothVertical">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="typescript"
+					lang="tsx"
 					useLineNumber={useLineNumber}
 					onCodeChange={handleChartChange}
 				/>
@@ -72,7 +72,7 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 			<TabsContent value="bothHorizontal" className="flex w-full *:flex-1">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="typescript"
+					lang="tsx"
 					useLineNumber={useLineNumber}
 					onCodeChange={handleChartChange}
 				/>
