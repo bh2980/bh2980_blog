@@ -6,11 +6,13 @@ import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
 
 const CODE_BLOCK_USE_BLOCK = [EDITOR_CODE_BLOCK_NAME, EDITOR_MERMAID_NAME];
 
+export const isCodeblock = (nodeName: string) => CODE_BLOCK_USE_BLOCK.some((name) => nodeName === name);
+
 export function isInCodeblock(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		if (CODE_BLOCK_USE_BLOCK.some((name) => $from.node(d).type?.name === name)) return true;
+		if (isCodeblock($from.node(d).type.name)) return true;
 	}
 	return false;
 }
@@ -19,7 +21,7 @@ function findCodeBlockDepth(state: EditorState): number | null {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		if ($from.node(d).type?.name === EDITOR_CODE_BLOCK_NAME) return d;
+		if (isCodeblock($from.node(d).type.name)) return d;
 	}
 	return null;
 }
