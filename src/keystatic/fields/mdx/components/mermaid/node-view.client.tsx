@@ -1,18 +1,17 @@
 // src/keystatic/fields/mdx-components/editor-mermaid-block.client.tsx
 "use client";
 
-import { Code2, Eye, ListOrdered, Trash2 } from "lucide-react";
+import { Code2, Eye, ListOrdered, SquareSplitHorizontal, SquareSplitVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
-import { BlurChangeInput } from "../code-block/blur-change-input.client";
 import { NodeViewCodeEditor } from "../code-block/node-view-code-editor.client";
 import type { MermaidNodeViewProps } from "./component";
 import { Mermaid } from "./mermaid.client";
 
-export function MermaidBlockNodeView({ children, onRemove, onChange, value }: MermaidNodeViewProps) {
+export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProps) {
 	const [chart, setChart] = useState<string>("");
 	const [useLineNumber, setUseLineNumber] = useState(false);
 
@@ -20,28 +19,27 @@ export function MermaidBlockNodeView({ children, onRemove, onChange, value }: Me
 		setUseLineNumber(pressed);
 	};
 
-	const handleBlurInput = (title: string) => {
-		onChange({ ...value, title });
-	};
-
 	const handleChartChange = (chart: string) => {
 		setChart(chart.trim());
 	};
 
 	return (
-		<Tabs defaultValue="code" className="w-full">
+		<Tabs defaultValue="bothVertical" className="w-full">
 			<div className="flex items-center justify-between gap-2">
-				<div className="flex gap-2">
-					<TabsList className="w-fit">
-						<TabsTrigger value="code">
-							<Code2 />
-						</TabsTrigger>
-						<TabsTrigger value="preview">
-							<Eye />
-						</TabsTrigger>
-					</TabsList>
-					<BlurChangeInput onBlur={handleBlurInput} />
-				</div>
+				<TabsList>
+					<TabsTrigger value="code">
+						<Code2 />
+					</TabsTrigger>
+					<TabsTrigger value="preview">
+						<Eye />
+					</TabsTrigger>
+					<TabsTrigger value="bothVertical">
+						<SquareSplitVertical />
+					</TabsTrigger>
+					<TabsTrigger value="bothHorizontal">
+						<SquareSplitHorizontal />
+					</TabsTrigger>
+				</TabsList>
 				<ButtonGroup>
 					<Toggle size={"sm"} variant={"outline"} pressed={useLineNumber} onPressedChange={handleLineNumberChange}>
 						<ListOrdered />
@@ -52,9 +50,32 @@ export function MermaidBlockNodeView({ children, onRemove, onChange, value }: Me
 				</ButtonGroup>
 			</div>
 			<TabsContent value="code">
-				<NodeViewCodeEditor nodeViewChildren={children} lang="typescript" onCodeChange={handleChartChange} />
+				<NodeViewCodeEditor
+					nodeViewChildren={children}
+					lang="typescript"
+					useLineNumber={useLineNumber}
+					onCodeChange={handleChartChange}
+				/>
 			</TabsContent>
-			<TabsContent value="preview" className="mt-2">
+			<TabsContent value="preview">
+				<Mermaid chart={chart} />
+			</TabsContent>
+			<TabsContent value="bothVertical">
+				<NodeViewCodeEditor
+					nodeViewChildren={children}
+					lang="typescript"
+					useLineNumber={useLineNumber}
+					onCodeChange={handleChartChange}
+				/>
+				<Mermaid chart={chart} />
+			</TabsContent>
+			<TabsContent value="bothHorizontal" className="flex w-full *:flex-1">
+				<NodeViewCodeEditor
+					nodeViewChildren={children}
+					lang="typescript"
+					useLineNumber={useLineNumber}
+					onCodeChange={handleChartChange}
+				/>
 				<Mermaid chart={chart} />
 			</TabsContent>
 		</Tabs>
