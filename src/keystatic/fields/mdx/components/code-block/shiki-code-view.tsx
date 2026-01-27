@@ -18,6 +18,7 @@ import {
 	buildAnnotatedLinesFromTokens,
 	type EditorCodeLang,
 } from "./libs";
+import { EDITOR_CODE_BLOCK_THEME } from "./const";
 
 // 1) 싱글톤 하이라이터
 const highlighter = await getSingletonHighlighterCore({
@@ -85,18 +86,18 @@ export async function highlightCode({
 
 	// Shiki는 text를 fallback으로 쓸 수 있음  [oai_citation:5‡Shiki](https://shiki.style/languages?utm_source=chatgpt.com)
 	if (id === "text") {
-		tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "one-dark-pro" });
+		tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: EDITOR_CODE_BLOCK_THEME });
 	} else if (!highlighter.getLoadedLanguages().includes(id)) {
 		const loader = LANG_LOADERS[id];
 		if (!loader) {
-			tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: "one-dark-pro" });
+			tokenResult = highlighter.codeToTokens(code, { lang: "text", theme: EDITOR_CODE_BLOCK_THEME });
 		} else {
 			const mod = await loader();
 			await highlighter.loadLanguage(mod.default ?? mod);
-			tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "one-dark-pro" });
+			tokenResult = highlighter.codeToTokens(code, { lang: id, theme: EDITOR_CODE_BLOCK_THEME });
 		}
 	} else {
-		tokenResult = highlighter.codeToTokens(code, { lang: id, theme: "one-dark-pro" });
+		tokenResult = highlighter.codeToTokens(code, { lang: id, theme: EDITOR_CODE_BLOCK_THEME });
 	}
 
 	const { tokens: codeblock, ...tokenMeta } = tokenResult;

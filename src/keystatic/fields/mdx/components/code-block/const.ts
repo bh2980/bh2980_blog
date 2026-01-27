@@ -46,3 +46,4 @@ export const EDITOR_LANG_OPTION = [
 export type EditorCodeLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
+export const EDITOR_CODE_BLOCK_THEME = "one-dark-pro" as const;

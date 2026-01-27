@@ -3,7 +3,7 @@ import { codeToTokens } from "shiki";
 import { Tooltip } from "@/components/mdx/tooltip";
 import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
-import type { EditorCodeLang } from "./const";
+import { EDITOR_CODE_BLOCK_THEME, type EditorCodeLang } from "./const";
 
 export type { EditorCodeLang } from "./const";
 
@@ -501,7 +501,7 @@ export const tokenizeAnnotatedCode = async ({
 	annotationList: Annotation[];
 	annotationConfig: AnnotationConfig;
 }) => {
-	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: "dark-plus" });
+	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: EDITOR_CODE_BLOCK_THEME });
 	const tokenized = tokenizeAnnotationsFromTokens({
 		code,
 		codeblock,
@@ -528,7 +528,7 @@ export const buildAnnotatedLines = async ({
 	useLineNumber: boolean;
 	annotationConfig?: AnnotationConfig;
 }) => {
-	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: "dark-plus" });
+	const { tokens: codeblock, ...tokenMeta } = await codeToTokens(code, { lang, theme: EDITOR_CODE_BLOCK_THEME });
 	const annotated = buildAnnotatedLinesFromTokens({
 		code,
 		codeblock,
