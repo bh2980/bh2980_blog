@@ -405,8 +405,9 @@ export const wrapLineWithAnnotations = (content: ReactNode, wrappers: ResolvedAn
 
 	return ordered.reduceRight<ReactNode>((acc, annotation, index) => {
 		const Wrapper = annotation.wrap ?? NoopWrapper;
+		const key = `${keyPrefix}-wrapper-${annotation.start}-${annotation.end}-${annotation.order ?? index}`;
 		return (
-			<Wrapper key={`${keyPrefix}-wrapper-${index}`} annotation={annotation}>
+			<Wrapper key={key} annotation={annotation}>
 				{acc}
 			</Wrapper>
 		);
@@ -432,6 +433,7 @@ export const renderAnnotatedLines = ({
 }) =>
 	lines.map((line, index) => {
 		const lineRange = lineRanges[index] ?? { start: 0, end: 0 };
+		const lineKey = `line-${lineRange.start}-${lineRange.end}`;
 		const lineWrapperAnnotations = wrapperAnnotations.filter((annotation) =>
 			coversRange(annotation, lineRange.start, lineRange.end),
 		);
@@ -444,12 +446,11 @@ export const renderAnnotatedLines = ({
 			wrapperAnnotations: lineWrapperAnnotations,
 		});
 		const { className, style, children: _children, ...rest } = lineProps ?? {};
-		const lineContent = renderTree(line, `line-${index}`, inlineAnnotations, config.getTokenProps);
-		const wrappedLineContent = wrapLineWithAnnotations(lineContent, lineWrapperAnnotations, `line-${index}`);
+		const lineContent = renderTree(line, lineKey, inlineAnnotations, config.getTokenProps);
+		const wrappedLineContent = wrapLineWithAnnotations(lineContent, lineWrapperAnnotations, lineKey);
 
 		return (
-			// biome-ignore lint/suspicious/noArrayIndexKey: 뷰어 역할로 항목의 추가, 삭제, 순서 변경이 이루어지지 않으므로 사용
-			<span key={`line-${index}`} className={cn(useLineNumber && "line", className)} style={style} {...rest}>
+			<span key={lineKey} className={cn(useLineNumber && "line", className)} style={style} {...rest}>
 				{wrappedLineContent}
 				{index < lines.length - 1 ? "\n" : null}
 			</span>
