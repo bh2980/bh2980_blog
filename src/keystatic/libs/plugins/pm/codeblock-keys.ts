@@ -1,14 +1,13 @@
 import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, TextSelection } from "prosemirror-state";
-
-export const CODE_BLOCK_NAME = "Codeblock";
+import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 
 export function isInCodeblock(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		if ($from.node(d).type?.name === CODE_BLOCK_NAME) return true;
+		if ($from.node(d).type?.name === EDITOR_CODE_BLOCK_NAME) return true;
 	}
 	return false;
 }
@@ -17,7 +16,7 @@ function findCodeBlockDepth(state: EditorState): number | null {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
-		if ($from.node(d).type?.name === CODE_BLOCK_NAME) return d;
+		if ($from.node(d).type?.name === EDITOR_CODE_BLOCK_NAME) return d;
 	}
 	return null;
 }

@@ -9,7 +9,7 @@ import { remarkCodeblockAnnotation } from "@/libs/contents/remark";
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Code, CodeWithTooltips, InlineCode } from "./code";
-import { Codeblock } from "./code-block";
+import { CodeBlock } from "./code-block";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Mermaid } from "./mermaid.client";
@@ -44,7 +44,7 @@ export default function MDXContent({ source, options }: MDXContentProps) {
 				Callout,
 				Collapsible,
 				code: InlineCode,
-				Codeblock,
+				CodeBlock,
 				Tooltip,
 			}}
 		/>
@@ -83,7 +83,7 @@ export const renderMDX = async (source: string) => {
 			Column,
 			Tabs,
 			Tab,
-			Codeblock,
+			CodeBlock,
 		},
 	});
 

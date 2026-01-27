@@ -11,6 +11,7 @@ import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 
 function hasRealText(node: Paragraph): boolean {
 	return node.children.some((child) => {
@@ -82,7 +83,7 @@ export type Annotation =
 export function remarkCodeblockAnnotation() {
 	return (tree: Root) => {
 		visit(tree, "mdxJsxFlowElement", (node: MdxJsxFlowElement) => {
-			if (node.name !== "Codeblock") return;
+			if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
 
 			// extract codeblock code and annotation position information
 			const annotaions: Annotation[] = [];

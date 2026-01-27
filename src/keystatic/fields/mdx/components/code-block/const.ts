@@ -28,3 +28,5 @@ export const EDITOR_LANG_OPTION = [
 ] as const;
 
 export type EditorLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
+
+export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
