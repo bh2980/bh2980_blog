@@ -40,10 +40,38 @@ export const EDITOR_LANG_OPTION = [
 	{ label: "Dockerfile", value: "docker" },
 	{ label: "Nginx", value: "nginx" },
 	{ label: "Env", value: "dotenv" },
-	{ label: "Mermaid", value: "mermaid" },
 ] as const;
 
 export type EditorCodeLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
 export const EDITOR_CODE_BLOCK_THEME = "one-dark-pro" as const;
+
+export const EDITOR_LANG_DEFAULTS = [
+	"text",
+	"ts-tags",
+	"javascript",
+	"tsx",
+	"css",
+	"scss",
+	"python",
+	"solidity",
+	"jsonc",
+	"yaml",
+	"sql",
+	"bash",
+] as const satisfies readonly EditorCodeLang[];
+
+export const EDITOR_LANG_GROUPS = [
+	{ label: "웹 생태계", values: ["vue", "svelte"] },
+	{ label: "마크업 & 스타일", values: ["html", "postcss"] },
+	{
+		label: "서버 & 시스템",
+		values: ["go", "rust", "java", "kotlin", "cpp", "csharp", "swift"],
+	},
+	{ label: "데이터 & 설정", values: ["toml", "csv", "mdx", "graphql"] },
+	{
+		label: "인프라 & 도구",
+		values: ["powershell", "docker", "nginx", "dotenv"],
+	},
+] as const satisfies ReadonlyArray<{ label: string; values: readonly EditorCodeLang[] }>;
