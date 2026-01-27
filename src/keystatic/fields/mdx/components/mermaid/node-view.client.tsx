@@ -76,7 +76,7 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 					useLineNumber={useLineNumber}
 					onCodeChange={handleChartChange}
 				/>
-				<Mermaid chart={chart} />
+				<Mermaid chart={chart} className="py-0" />
 			</TabsContent>
 		</Tabs>
 	);
