@@ -1,6 +1,6 @@
 import { callout } from "./callout";
 import { codeblock as codeblock_deprecated } from "./code";
-import { CODE_BLOCK_NAME, EditorCodeBlock } from "./code-block";
+import { EDITOR_CODE_BLOCK_NAME, EditorCodeBlock } from "./code-block";
 import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { mermaid } from "./mermaid";
@@ -17,7 +17,7 @@ export const components = {
 	PureMdx: pureMDX,
 	Tooltip: tooltip,
 	u: underline,
-	[CODE_BLOCK_NAME]: EditorCodeBlock,
+	[EDITOR_CODE_BLOCK_NAME]: EditorCodeBlock,
 	Columns,
 	Column,
 	Tabs,

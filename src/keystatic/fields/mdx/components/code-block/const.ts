@@ -29,4 +29,4 @@ export const EDITOR_LANG_OPTION = [
 
 export type EditorLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
 
-export const CODE_BLOCK_NAME = "CodeBlock";
+export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
