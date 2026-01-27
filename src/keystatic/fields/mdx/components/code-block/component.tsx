@@ -4,26 +4,26 @@ import { Code2 } from "lucide-react";
 import { lazy, type PropsWithChildren, Suspense } from "react";
 import { EDITOR_LANG_OPTION, type EditorLang } from "./const";
 
-type NodeSchema = {
+type CodeBlockSchema = {
 	readonly meta: string;
 	readonly useLineNumber: boolean;
 	readonly lang: EditorLang;
 };
 
-export type NodeViewProps = PropsWithChildren & {
-	value: NodeSchema;
-	onChange(value: NodeSchema): void;
+export type CodeBlockNodeViewProps = PropsWithChildren & {
+	value: CodeBlockSchema;
+	onChange(value: CodeBlockSchema): void;
 	onRemove(): void;
 	isSelected: boolean;
 };
 
 const LazyCodeBlockNodeView = lazy(() =>
 	import("./node-view.client").then((m) => ({
-		default: m.CodeblockNodeView,
+		default: m.CodeBlockNodeView,
 	})),
 );
 
-function CodeBlockNodeViewProxy(props: NodeViewProps) {
+function CodeBlockNodeViewProxy(props: CodeBlockNodeViewProps) {
 	return (
 		<Suspense fallback={null}>
 			<LazyCodeBlockNodeView {...props} />
@@ -31,7 +31,7 @@ function CodeBlockNodeViewProxy(props: NodeViewProps) {
 	);
 }
 
-export const Codeblock = wrapper({
+export const CodeBlock = wrapper({
 	label: "코드 블럭",
 	icon: <Code2 />,
 	schema: {
