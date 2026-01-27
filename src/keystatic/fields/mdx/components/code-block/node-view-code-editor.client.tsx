@@ -6,7 +6,7 @@ import { lineNumbers } from "@/components/mdx/code-handler";
 import { cn } from "@/utils/cn";
 import { escapeCodeHikeAnnotations } from "./libs";
 
-type NodeViewCodeEditorProps = { lang: string; useLineNumber: boolean } & {
+type NodeViewCodeEditorProps = { lang: string; useLineNumber?: boolean } & {
 	nodeViewChildren: ReactNode;
 };
 
