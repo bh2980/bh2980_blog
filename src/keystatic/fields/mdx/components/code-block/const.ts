@@ -1,77 +1,83 @@
+import type { IconType } from "react-icons";
+import { FaDatabase, FaFileCsv } from "react-icons/fa6";
+import { FiFileText } from "react-icons/fi";
+import { RiJavaFill, RiTerminalBoxLine } from "react-icons/ri";
+import {
+	SiCplusplus,
+	SiCss3,
+	SiDocker,
+	SiDotenv,
+	SiDotnet,
+	SiGnubash,
+	SiGo,
+	SiGraphql,
+	SiHtml5,
+	SiJavascript,
+	SiJson,
+	SiKotlin,
+	SiMdx,
+	SiNginx,
+	SiPostcss,
+	SiPython,
+	SiReact,
+	SiRust,
+	SiSass,
+	SiSolidity,
+	SiSvelte,
+	SiSwift,
+	SiToml,
+	SiTypescript,
+	SiVuedotjs,
+	SiYaml,
+} from "react-icons/si";
+
 export const EDITOR_LANG_OPTION = [
-	{ label: "Plain Text", value: "text" },
+	{ label: "TypeScript", value: "ts-tags", depth: 1, icon: SiTypescript },
+	{ label: "React", value: "tsx", depth: 1, icon: SiReact },
+	{ label: "SCSS", value: "scss", depth: 1, icon: SiSass },
+	{ label: "Python", value: "python", depth: 1, icon: SiPython },
+	{ label: "Solidity", value: "solidity", depth: 1, icon: SiSolidity },
+	{ label: "JSON", value: "jsonc", depth: 1, icon: SiJson },
+	{ label: "YAML", value: "yaml", depth: 1, icon: SiYaml },
+	{ label: "Bash", value: "bash", depth: 1, icon: SiGnubash },
+	{ label: "Plain Text", value: "text", depth: 1, icon: FiFileText },
 
-	// 웹 생태계 (각자의 개성이 강해 분리 권장)
-	{ label: "TypeScript", value: "ts-tags" }, // 기본
-	{ label: "JavaScript", value: "javascript" }, // 기본
-	{ label: "React", value: "tsx" }, // 기본
-	{ label: "Vue", value: "vue" },
-	{ label: "Svelte", value: "svelte" },
+	{ label: "JavaScript", value: "javascript", depth: 2, group: "웹 생태계", icon: SiJavascript },
+	{ label: "Vue", value: "vue", depth: 2, group: "웹 생태계", icon: SiVuedotjs },
+	{ label: "Svelte", value: "svelte", depth: 2, group: "웹 생태계", icon: SiSvelte },
 
-	// 마크업 & 스타일
-	{ label: "HTML", value: "html" },
-	{ label: "CSS", value: "css" }, // 기본
-	{ label: "SCSS", value: "scss" }, // 기본
-	{ label: "PostCSS", value: "postcss" },
+	{ label: "HTML", value: "html", depth: 2, group: "마크업 & 스타일", icon: SiHtml5 },
+	{ label: "CSS", value: "css", depth: 2, group: "마크업 & 스타일", icon: SiCss3 },
+	{ label: "PostCSS", value: "postcss", depth: 2, group: "마크업 & 스타일", icon: SiPostcss },
 
-	// 서버 & 시스템 (C# 분리)
-	{ label: "Python", value: "python" }, // 기본
-	{ label: "Go", value: "go" },
-	{ label: "Solidity", value: "solidity" }, // 기본
-	{ label: "Rust", value: "rust" },
-	{ label: "Java", value: "java" },
-	{ label: "Kotlin", value: "kotlin" },
-	{ label: "C / C++", value: "cpp" },
-	{ label: "C#", value: "csharp" },
-	{ label: "Swift", value: "swift" },
+	{ label: "Go", value: "go", depth: 2, group: "서버 & 시스템", icon: SiGo },
+	{ label: "Rust", value: "rust", depth: 2, group: "서버 & 시스템", icon: SiRust },
+	{ label: "Java", value: "java", depth: 2, group: "서버 & 시스템", icon: RiJavaFill },
+	{ label: "Kotlin", value: "kotlin", depth: 2, group: "서버 & 시스템", icon: SiKotlin },
+	{ label: "C / C++", value: "cpp", depth: 2, group: "서버 & 시스템", icon: SiCplusplus },
+	{ label: "C#", value: "csharp", depth: 2, group: "서버 & 시스템", icon: SiDotnet },
+	{ label: "Swift", value: "swift", depth: 2, group: "서버 & 시스템", icon: SiSwift },
 
-	// 데이터 & 설정 (TOML 분리)
-	{ label: "JSON", value: "jsonc" }, // 기본
-	{ label: "YAML", value: "yaml" }, // 기본
-	{ label: "TOML", value: "toml" },
-	{ label: "CSV", value: "csv" },
-	{ label: "Markdown/MDX", value: "mdx" },
-	{ label: "SQL", value: "sql" }, // 기본
-	{ label: "GraphQL", value: "graphql" },
+	{ label: "TOML", value: "toml", depth: 2, group: "데이터 & 설정", icon: SiToml },
+	{ label: "CSV", value: "csv", depth: 2, group: "데이터 & 설정", icon: FaFileCsv },
+	{ label: "Markdown/MDX", value: "mdx", depth: 2, group: "데이터 & 설정", icon: SiMdx },
+	{ label: "SQL", value: "sql", depth: 2, group: "데이터 & 설정", icon: FaDatabase },
+	{ label: "GraphQL", value: "graphql", depth: 2, group: "데이터 & 설정", icon: SiGraphql },
 
-	// 인프라 & 도구 (PowerShell 분리)
-	{ label: "Bash", value: "bash" }, // 기본
-	{ label: "PowerShell", value: "powershell" },
-	{ label: "Dockerfile", value: "docker" },
-	{ label: "Nginx", value: "nginx" },
-	{ label: "Env", value: "dotenv" },
-] as const;
+	{ label: "PowerShell", value: "powershell", depth: 2, group: "인프라 & 도구", icon: RiTerminalBoxLine },
+	{ label: "Dockerfile", value: "docker", depth: 2, group: "인프라 & 도구", icon: SiDocker },
+	{ label: "Nginx", value: "nginx", depth: 2, group: "인프라 & 도구", icon: SiNginx },
+	{ label: "Env", value: "dotenv", depth: 2, group: "인프라 & 도구", icon: SiDotenv },
+] as const satisfies ReadonlyArray<{
+	label: string;
+	value: string;
+	depth: 1 | 2;
+	group?: string;
+	icon: IconType;
+}>;
 
 export type EditorCodeLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
+export type EditorLangOption = (typeof EDITOR_LANG_OPTION)[number];
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
 export const EDITOR_CODE_BLOCK_THEME = "one-dark-pro" as const;
-
-export const EDITOR_LANG_DEFAULTS = [
-	"text",
-	"ts-tags",
-	"javascript",
-	"tsx",
-	"css",
-	"scss",
-	"python",
-	"solidity",
-	"jsonc",
-	"yaml",
-	"sql",
-	"bash",
-] as const satisfies readonly EditorCodeLang[];
-
-export const EDITOR_LANG_GROUPS = [
-	{ label: "웹 생태계", values: ["vue", "svelte"] },
-	{ label: "마크업 & 스타일", values: ["html", "postcss"] },
-	{
-		label: "서버 & 시스템",
-		values: ["go", "rust", "java", "kotlin", "cpp", "csharp", "swift"],
-	},
-	{ label: "데이터 & 설정", values: ["toml", "csv", "mdx", "graphql"] },
-	{
-		label: "인프라 & 도구",
-		values: ["powershell", "docker", "nginx", "dotenv"],
-	},
-] as const satisfies ReadonlyArray<{ label: string; values: readonly EditorCodeLang[] }>;
