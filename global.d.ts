@@ -1,3 +1,4 @@
+import type { Root } from "mdast";
 import type { Schema } from "prosemirror-model";
 import type { ExtraPluginsSlots } from "@/keystatic/plugins";
 
@@ -9,7 +10,7 @@ declare global {
 		| {
 				beforeParse?: (mdx: string, ctx: HookCtx) => string | undefined;
 				afterParse?: (doc: unknown, ctx: HookCtx) => unknown | undefined;
-				beforeSerialize?: (mdxAst: unknown, ctx: HookCtx) => unknown | undefined;
+				beforeSerialize?: (mdxAst: Root, ctx: HookCtx) => unknown | undefined;
 				afterSerialize?: (mdx: string, ctx: HookCtx) => string | undefined;
 		  }
 		| undefined;
