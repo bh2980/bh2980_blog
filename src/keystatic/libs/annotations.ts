@@ -5,30 +5,42 @@ import { SKIP, visit } from "unist-util-visit";
 import { Tooltip_unstable } from "@/components/mdx/tooltip";
 import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
 
-type AnnotationType = "dec" | "line" | "mark" | "block";
+enum AnnotationType {
+	BLOCK = 1,
+	LINE = 2,
+	MARK = 3,
+	DECORATION = 4,
+}
+
+const ANNOTATION_NAME: Record<AnnotationType, string> = {
+	[AnnotationType.DECORATION]: "dec",
+	[AnnotationType.LINE]: "line",
+	[AnnotationType.MARK]: "mark",
+	[AnnotationType.BLOCK]: "block",
+};
 
 export interface Decoration {
 	name: string;
 	class: string;
-	type?: "dec";
-}
-
-export interface Line {
-	name: string;
-	class: string;
-	type?: "line";
+	type?: AnnotationType.DECORATION;
 }
 
 export interface Mark<TData = unknown> {
 	name: string;
 	Component: ComponentType<{ data: TData; children: React.ReactNode }>;
-	type?: "mark";
+	type?: AnnotationType.MARK;
+}
+
+export interface Line {
+	name: string;
+	class: string;
+	type?: AnnotationType.LINE;
 }
 
 export interface Block<TData = unknown> {
 	name: string;
 	Component: ComponentType<{ data: TData; children: React.ReactNode }>;
-	type?: "block";
+	type?: AnnotationType.BLOCK;
 }
 
 export type AnnotationSpec = Decoration | Line | Mark | Block;
@@ -70,22 +82,22 @@ const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 
 	if (annotationConfig.decoration) {
 		for (const d of annotationConfig.decoration) {
-			annotationMap.set(d.name, { ...d, type: "dec" });
-		}
-	}
-	if (annotationConfig.line) {
-		for (const d of annotationConfig.line) {
-			annotationMap.set(d.name, { ...d, type: "line" });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.DECORATION });
 		}
 	}
 	if (annotationConfig.mark) {
 		for (const d of annotationConfig.mark) {
-			annotationMap.set(d.name, { ...d, type: "mark" });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.MARK });
+		}
+	}
+	if (annotationConfig.line) {
+		for (const d of annotationConfig.line) {
+			annotationMap.set(d.name, { ...d, type: AnnotationType.LINE });
 		}
 	}
 	if (annotationConfig.block) {
 		for (const d of annotationConfig.block) {
-			annotationMap.set(d.name, { ...d, type: "block" });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.BLOCK });
 		}
 	}
 
@@ -122,7 +134,6 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 		if (isBreak(node)) {
 			pureCode += "\n";
-
 			return;
 		}
 
@@ -163,44 +174,130 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 				};
 
 				annotations.push(annoataion);
-			} else {
-				const annoataion = {
-					type,
-					nodeType,
-					name: nodeType,
-					start,
-					end,
-				};
-
-				annotations.push(annoataion);
+				return;
 			}
+
+			const annoataion = {
+				type,
+				nodeType,
+				name: nodeType,
+				start,
+				end,
+			};
+
+			annotations.push(annoataion);
+			return;
 		}
 	}
 
 	recursiveBuildAnnotationInfo(node);
 
 	const sortedAnnotations = annotations.sort((a, b) => {
+		if (a.type !== b.type) return a.type - b.type;
+		if (a.name !== b.name) return a.name.localeCompare(b.name); // TODO 추후 우선순위가 생긴다면 우선순위 순으로 변경
 		if (a.start !== b.start) return a.start - b.start;
 		if (a.end !== b.end) return a.end - b.end;
 		return 0;
 	});
 
+	console.log("sortedAnnotations", sortedAnnotations);
+
 	return { code: pureCode, annotations: sortedAnnotations };
 };
 
-const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Annotation[]) => {};
+interface LineMeta {
+	value: string;
+	start: number;
+	end: number;
+	annotations: Annotation[];
+}
+
+// TODO: strong, delete, em과 Tooltip은 우선순위 문제가 발생한다. 추후 커스텀 컴포넌트로 만들어 우선순위 조절
+// TODO: line을 걸치는 경우는 일단 없다고 가정, 추후 개발 해야함
+const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Annotation[]) => {
+	const annotationPrefix = "//";
+
+	const lines = code.split("\n").reduce<[string, LineMeta[]]>(
+		(acc, line) => {
+			const lineStart = acc[0].length;
+
+			const lineWithNewLine = `${line}\n`;
+			acc[0] += lineWithNewLine;
+
+			const lineEnd = acc[0].length;
+			const lineItem = { value: line, start: lineStart, end: lineEnd, annotations: [] };
+			acc[1].push(lineItem);
+
+			return acc;
+		},
+		["", []],
+	)[1];
+
+	for (const ann of annotations) {
+		for (const line of lines) {
+			const lineTextEnd = line.end - 1; // '\n' 제외
+			const segStart = Math.max(ann.start, line.start);
+			const segEnd = Math.min(ann.end, lineTextEnd);
+
+			if (segStart < segEnd) {
+				line.annotations.push({ ...ann, start: segStart, end: segEnd });
+			}
+
+			// 성능 최적화(필수 아님)
+			if (ann.end <= lineTextEnd) break; // 이 라인에서 끝났으면 다음 라인 볼 필요 없음
+			if (ann.start >= line.end) continue; // 아직 시작도 안 했으면 다음 라인
+		}
+	}
+
+	const codeWithAnnotations = lines
+		.map((line) => {
+			if (line.annotations.length === 0) return line.value;
+
+			const annotationText = line.annotations
+				.map((annotation) => {
+					const type = `@${ANNOTATION_NAME[annotation.type]}`;
+					const name = annotation.name;
+
+					if (!name) {
+						return "";
+					}
+
+					const characterRange = `ch=${annotation.start - line.start}-${annotation.end - line.start}`;
+					const attributes =
+						annotation.attributes
+							?.map((attr) => ("name" in attr ? `${attr.name}=${JSON.stringify(attr.value)}` : ""))
+							.filter(Boolean)
+							.join(" ") ?? "";
+
+					return [annotationPrefix, type, name, characterRange, attributes].join(" ").trim();
+				})
+				.join("\n");
+
+			return [annotationText, line.value].join("\n");
+		})
+		.join("\n");
+
+	return codeWithAnnotations;
+};
 
 export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: AnnotationConfig) {
 	visit(mdxAst, "mdxJsxFlowElement", (node) => {
+		``;
 		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
+
+		const langAttr = node.attributes.find(
+			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "lang",
+		);
+		const lang = ((langAttr?.value as string) ?? "text").trim();
 
 		const result = extractAnnotationsFromAst(node, annotationConfig);
 		if (!result) return;
 
-		const { code: pureCode, annotations } = result;
+		const { code, annotations } = result;
 
-		console.log(pureCode);
-		console.log(annotations);
+		const codeWithAnotations = injectAnnotationsIntoCode(code, lang, annotations);
+
+		console.log(codeWithAnotations);
 
 		return SKIP;
 	});
