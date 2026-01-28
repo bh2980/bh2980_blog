@@ -213,7 +213,6 @@ interface LineMeta {
 }
 
 // TODO: strong, delete, em과 Tooltip은 우선순위 문제가 발생한다. 추후 커스텀 컴포넌트로 만들어 우선순위 조절
-// TODO: line을 걸치는 경우는 일단 없다고 가정, 추후 개발 해야함
 const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Annotation[]) => {
 	const annotationPrefix = "//";
 
