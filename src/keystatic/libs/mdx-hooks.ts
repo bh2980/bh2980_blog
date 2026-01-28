@@ -1,8 +1,8 @@
-import { annotationConfig, walkOnlyInsideCodeblock } from "./annotations";
+import { annotationConfig, walkOnlyInsideCodeblock } from "./serialize-annotations";
 
 globalThis.__KEYSTATIC_MDX_HOOKS__ = {
-	beforeParse(mdx) {
-		return mdx;
+	beforeParse(mdxAst) {
+		return mdxAst;
 	},
 
 	afterParse(doc) {
@@ -10,11 +10,8 @@ globalThis.__KEYSTATIC_MDX_HOOKS__ = {
 	},
 
 	beforeSerialize(mdxAst) {
-		console.group("beforeSerialize");
-
 		walkOnlyInsideCodeblock(mdxAst, annotationConfig);
 
-		console.groupEnd();
 		return mdxAst;
 	},
 
