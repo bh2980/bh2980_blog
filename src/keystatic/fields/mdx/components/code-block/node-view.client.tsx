@@ -17,10 +17,10 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { BlurChangeInput } from "./blur-change-input.client";
 import type { CodeBlockNodeViewProps } from "./component";
-import { EDITOR_LANG_OPTION, type EditorCodeLang, type EditorLangOption } from "./const";
+import { EDITOR_LANG_OPTIONS, type EditorCodeLang, type EditorLangOption } from "./constants";
 import { NodeViewCodeEditor } from "./node-view-code-editor.client";
 
-const LANG_OPTION_BY_VALUE = new Map(EDITOR_LANG_OPTION.map((option) => [option.value, option]));
+const LANG_OPTION_BY_VALUE = new Map(EDITOR_LANG_OPTIONS.map((option) => [option.value, option]));
 
 const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps) => {
 	const title = value.meta.match(/title="(.+?)"/)?.[1];
@@ -28,8 +28,8 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 	const selectedLabel = selectedOption?.label ?? value.lang;
 	const SelectedIcon = selectedOption?.icon;
 	const selectedColor = selectedOption?.color;
-	const defaultOptions = EDITOR_LANG_OPTION.filter((option) => option.depth === 1);
-	const groupedOptions = EDITOR_LANG_OPTION.filter((option) => option.depth === 2).reduce<
+	const defaultOptions = EDITOR_LANG_OPTIONS.filter((option) => option.depth === 1);
+	const groupedOptions = EDITOR_LANG_OPTIONS.filter((option) => option.depth === 2).reduce<
 		Array<{ label: string; items: EditorLangOption[] }>
 	>((groups, option) => {
 		const label = option.group ?? "기타";
