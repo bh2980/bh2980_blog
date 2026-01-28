@@ -24,8 +24,10 @@ const LANG_OPTION_BY_VALUE = new Map(EDITOR_LANG_OPTION.map((option) => [option.
 
 const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps) => {
 	const title = value.meta.match(/title="(.+?)"/)?.[1];
-	const selectedLabel = LANG_OPTION_BY_VALUE.get(value.lang)?.label ?? value.lang;
-	const SelectedIcon = LANG_OPTION_BY_VALUE.get(value.lang)?.icon;
+	const selectedOption = LANG_OPTION_BY_VALUE.get(value.lang);
+	const selectedLabel = selectedOption?.label ?? value.lang;
+	const SelectedIcon = selectedOption?.icon;
+	const selectedColor = selectedOption?.color;
 	const defaultOptions = EDITOR_LANG_OPTION.filter((option) => option.depth === 1);
 	const groupedOptions = EDITOR_LANG_OPTION.filter((option) => option.depth === 2).reduce<
 		Array<{ label: string; items: EditorLangOption[] }>
@@ -65,7 +67,7 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 				checked={value.lang === lang.value}
 				onCheckedChange={() => handleLangChange(lang.value)}
 			>
-				<Icon className="size-3" />
+				<Icon className="size-3" style={{ color: lang.color }} />
 				{lang.label}
 			</DropdownMenuCheckboxItem>
 		);
@@ -77,7 +79,7 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button type="button" variant="outline" size="sm" className="w-[140px] justify-start" onMouseDown={stop}>
-							{SelectedIcon ? <SelectedIcon className="size-3" /> : null}
+							{SelectedIcon ? <SelectedIcon className="size-3" style={{ color: selectedColor }} /> : null}
 							{selectedLabel}
 						</Button>
 					</DropdownMenuTrigger>
