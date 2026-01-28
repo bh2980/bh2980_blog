@@ -1,5 +1,5 @@
 diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
-index fc703c5a29949074cd161c49afad3b1a67c60520..b9ee83f30a36299b8ca10865de72a54691cf0fb5 100644
+index fc703c5a29949074cd161c49afad3b1a67c60520..35de2701906dbca4e5834d6d0df6bc5d51bfdad6 100644
 --- a/dist/index-d59451fc.js
 +++ b/dist/index-d59451fc.js
 @@ -26834,10 +26834,33 @@ const cursorBuilder = user => {
@@ -60,15 +60,15 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..b9ee83f30a36299b8ca10865de72a546
  function parseToEditorStateMDX(content, schema, files, otherFiles, slug) {
 +  const hooks = getKSMdxHooks();
 +
-+  if (hooks && typeof hooks.beforeParse === 'function') {
-+    const next = hooks.beforeParse(content, { slug });
-+    if (typeof next === 'string') content = next;
-+  }
-+
    const root = fromMarkdown(content, {
      extensions: [mdxjs(), gfmAutolinkLiteral(), gfmStrikethrough(), gfmTable()],
      mdastExtensions: [mdxFromMarkdown(), gfmAutolinkLiteralFromMarkdown(), gfmStrikethroughFromMarkdown(), gfmTableFromMarkdown()]
    });
++
++  if (hooks && typeof hooks.beforeParse === 'function') {
++    const next = hooks.beforeParse(root, { slug });
++    if (typeof next === 'string') content = next;
++  }
 +
    const doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
 +
