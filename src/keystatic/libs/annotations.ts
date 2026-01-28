@@ -285,9 +285,32 @@ export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: Annotati
 		``;
 		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
 
-		const meta = node.attributes.find(
+		const metaAttr = node.attributes.find(
 			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "meta",
-		)?.value as string;
+		);
+
+		let meta: any;
+
+		if (metaAttr && metaAttr.value) {
+			if (typeof metaAttr.value === "string") {
+				meta = metaAttr.value;
+			} else if ("value" in metaAttr.value && typeof metaAttr.value.value === "string") {
+				meta = metaAttr.value.value;
+			}
+		}
+
+		if (typeof meta === "string") {
+			try {
+				const stringifedMeta = Array.from(Object.entries(JSON.parse(meta)))
+					.filter(([_, value]) => !!value)
+					.map(([key, value]) => (value === true ? key : `${key}=${JSON.stringify(value)}`))
+					.join(" ");
+
+				meta = stringifedMeta;
+			} catch (e) {
+				console.warn("meta JSON 파싱 오류:", e);
+			}
+		}
 
 		const langAttr = node.attributes.find(
 			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "lang",
