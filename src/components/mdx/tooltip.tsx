@@ -13,3 +13,15 @@ export const Tooltip = ({
 		</TooltipRoot>
 	);
 };
+
+export const Tooltip_unstable = ({
+	data,
+	children,
+}: PropsWithChildren<{ data: { content: string; className?: string } }>) => {
+	return (
+		<TooltipRoot>
+			<TooltipTrigger className="underline decoration-border decoration-dotted">{children}</TooltipTrigger>
+			<TooltipContent className={data.className}>{data.content}</TooltipContent>
+		</TooltipRoot>
+	);
+};
