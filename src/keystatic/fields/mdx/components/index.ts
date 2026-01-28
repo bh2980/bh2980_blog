@@ -10,16 +10,21 @@ import { tooltip } from "./tooltip";
 import { underline } from "./underline";
 
 export const components = {
+	// wrapper
 	Callout: callout,
 	Collapsible: collapsible,
-	Code: codeblock_deprecated,
-	PureMdx: pureMDX,
-	Tooltip: tooltip,
-	u: underline,
-	[EDITOR_CODE_BLOCK_NAME]: EditorCodeBlock,
-	[EDITOR_MERMAID_NAME]: EditorMermaid,
 	Columns,
 	Column,
 	Tabs,
 	Tab,
+	[EDITOR_CODE_BLOCK_NAME]: EditorCodeBlock,
+	[EDITOR_MERMAID_NAME]: EditorMermaid,
+
+	// wrapper deprecated
+	Code: codeblock_deprecated,
+	PureMdx: pureMDX,
+
+	// mark : 위에 있을수록 우선 순위가 높다.
+	Tooltip: tooltip,
+	u: underline,
 };

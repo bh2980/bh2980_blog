@@ -121,6 +121,23 @@ export default function Layout() {
                             text-decoration-color: var(--border) !important;
 
                         }
+
+                        .ProseMirror pre {
+                            counter-reset: step;
+                            counter-increment: step 0;
+                        }
+
+                        .ProseMirror pre .line::before {
+                            counter-increment: step;
+
+                            margin-right: 0.75rem;
+                            display: inline-block;
+                            border-color: transparent;
+                            text-align: right !important;
+                            width: 2ch !important;
+                            color: rgb(255 255 255 / 0.5);
+                            content: counter(step);
+                            }
                     `,
 				}}
 			/>
