@@ -102,7 +102,7 @@ const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 	return { annotationMap, isAnnotation };
 };
 
-const extractAnnotation = (node: Node, annotationConfig: AnnotationConfig) => {
+const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfig) => {
 	const helper = buildAnnotationHelper(annotationConfig);
 
 	if (!helper) {
@@ -188,13 +188,13 @@ const extractAnnotation = (node: Node, annotationConfig: AnnotationConfig) => {
 	return { code: pureCode, annotations: sortedAnnotations };
 };
 
-const buildAnnotationComment = (code: string, lang: string, annotations: Annotation[]) => {};
+const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Annotation[]) => {};
 
 export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: AnnotationConfig) {
 	visit(mdxAst, "mdxJsxFlowElement", (node) => {
 		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
 
-		const result = extractAnnotation(node, annotationConfig);
+		const result = extractAnnotationsFromAst(node, annotationConfig);
 		if (!result) return;
 
 		const { code: pureCode, annotations } = result;
