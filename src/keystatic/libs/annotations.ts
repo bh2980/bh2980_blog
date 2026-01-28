@@ -267,7 +267,9 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 							.filter(Boolean)
 							.join(" ") ?? "";
 
-					return [annotationPrefix, type, name, characterRange, attributes, annotationPostfix].join(" ").trimEnd();
+					return [annotationPrefix, type, name, characterRange, attributes, annotationPostfix]
+						.filter((info) => !!info)
+						.join(" ");
 				})
 				.join("\n");
 
