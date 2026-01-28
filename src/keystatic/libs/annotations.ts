@@ -1,9 +1,9 @@
-import type { Break, Node, Root, Text } from "mdast";
+import type { Break, Code, Node, Root, Text } from "mdast";
 import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import type { ComponentType } from "react";
 import { SKIP, visit } from "unist-util-visit";
 import { Tooltip_unstable } from "@/components/mdx/tooltip";
-import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
+import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS, type EditorCodeLang } from "../fields/mdx/components/code-block";
 
 enum AnnotationType {
 	BLOCK = 1,
@@ -200,8 +200,6 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 		return 0;
 	});
 
-	console.log("sortedAnnotations", sortedAnnotations);
-
 	return { code: pureCode, annotations: sortedAnnotations };
 };
 
@@ -212,9 +210,11 @@ interface LineMeta {
 	annotations: Annotation[];
 }
 
-// TODO: strong, delete, em과 Tooltip은 우선순위 문제가 발생한다. 추후 커스텀 컴포넌트로 만들어 우선순위 조절
-const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Annotation[]) => {
-	const annotationPrefix = "//";
+const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotations: Annotation[]) => {
+	// TODO : 추후 외부에서 받도록 수정
+	const langOption = EDITOR_LANG_OPTIONS.find((option) => option.value === lang);
+	const annotationPrefix = langOption?.commentPrefix ?? "//";
+	const annotationPostfix = langOption && "commentPostfix" in langOption ? langOption.commentPostfix : "";
 
 	const lines = code.split("\n").reduce<[string, LineMeta[]]>(
 		(acc, line) => {
@@ -242,9 +242,8 @@ const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Anno
 				line.annotations.push({ ...ann, start: segStart, end: segEnd });
 			}
 
-			// 성능 최적화(필수 아님)
-			if (ann.end <= lineTextEnd) break; // 이 라인에서 끝났으면 다음 라인 볼 필요 없음
-			if (ann.start >= line.end) continue; // 아직 시작도 안 했으면 다음 라인
+			if (ann.end <= lineTextEnd) break;
+			if (ann.start >= line.end) continue;
 		}
 	}
 
@@ -268,7 +267,7 @@ const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Anno
 							.filter(Boolean)
 							.join(" ") ?? "";
 
-					return [annotationPrefix, type, name, characterRange, attributes].join(" ").trim();
+					return [annotationPrefix, type, name, characterRange, attributes, annotationPostfix].join(" ").trimEnd();
 				})
 				.join("\n");
 
@@ -280,14 +279,18 @@ const injectAnnotationsIntoCode = (code: string, lang: string, annotations: Anno
 };
 
 export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: AnnotationConfig) {
-	visit(mdxAst, "mdxJsxFlowElement", (node) => {
+	visit(mdxAst, "mdxJsxFlowElement", (node, index, parent) => {
 		``;
 		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
+
+		const meta = node.attributes.find(
+			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "meta",
+		)?.value as string;
 
 		const langAttr = node.attributes.find(
 			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "lang",
 		);
-		const lang = ((langAttr?.value as string) ?? "text").trim();
+		const lang = ((langAttr?.value as string) ?? "text").trim() as EditorCodeLang;
 
 		const result = extractAnnotationsFromAst(node, annotationConfig);
 		if (!result) return;
@@ -296,7 +299,14 @@ export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: Annotati
 
 		const codeWithAnotations = injectAnnotationsIntoCode(code, lang, annotations);
 
-		console.log(codeWithAnotations);
+		const codeNode: Code = {
+			type: "code",
+			lang,
+			value: codeWithAnotations,
+			meta,
+		};
+
+		if (parent && index !== undefined) parent.children.splice(index, 1, codeNode);
 
 		return SKIP;
 	});
