@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { AnnotationEvent, LineAnnotation } from "./parse-annotations";
-import { buildEvents, buildLineAst } from "./parse-annotations";
-import type { AnnotationSource } from "./serialize-annotations";
-import { AnnotationType } from "./serialize-annotations";
+import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
+import { buildEvents, buildLineAst } from "../parse-annotations";
+import type { AnnotationSource } from "../serialize-annotations";
+import { AnnotationType } from "../serialize-annotations";
 
 type AnnotationRegistryItem = {
 	type: AnnotationType;

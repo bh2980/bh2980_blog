@@ -20,6 +20,8 @@ import {
 	buildAnnotationHelper,
 } from "./serialize-annotations";
 
+export type FenceMetaValue = string | boolean;
+
 export type LineRange = { start: number; end: number };
 
 export type LineAnnotation = {
@@ -36,6 +38,20 @@ export type LineMeta = {
 	annotations: LineAnnotation[];
 };
 
+export type EventKind = "open" | "close";
+
+export type AnnotationEvent = {
+	pos: number; // line offset
+	kind: EventKind; // 같은 pos면 close 먼저
+	anno: LineAnnotation; // 원본 참조 or 동일 구조
+};
+
+// children을 가지는 PhrasingContent만 추출 (text 제외)
+type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
+
+// 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
+export type MdastNodeLike = Root | MdxJsxTextElement | PhrasingParent;
+
 const TYPE_RE = /@(?<tag>dec|mark|line|block)/;
 const NAME_RE = /(?<name>\w+)/;
 const RANGE_RE = /{(?<range>\d+-\d+)}/;
@@ -44,9 +60,165 @@ const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])
 
 const ANNOTATION_RE = new RegExp(`${TYPE_RE.source} ${NAME_RE.source} ${RANGE_RE.source}`);
 
-export type FenceMetaValue = string | boolean;
+const buildBreakNode = (): Break => ({
+	type: "break",
+});
 
-export function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
+const buildTextNode = (value: string): Text => ({
+	type: "text",
+	value,
+});
+
+const buildMdastNode = (name: string, children: PhrasingContent[] = []) =>
+	({ type: name, children }) as PhrasingContent;
+
+const buildMdxJsxAttribute = (name: string, value: any): MdxJsxAttribute => ({
+	type: "mdxJsxAttribute",
+	name,
+	value,
+});
+
+const buildMdxJsxTextElementNode = (
+	name: string,
+	attributes: AnnotationAttr[] = [],
+	children: PhrasingContent[] = [],
+): MdxJsxTextElement => {
+	return {
+		type: "mdxJsxTextElement",
+		name,
+		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, JSON.stringify(attr.value))),
+		children,
+	};
+};
+
+const buildMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
+	const json = JSON.stringify(value);
+
+	const program = parse(`(${json})`, {
+		ecmaVersion: "latest",
+		sourceType: "module",
+	});
+
+	const firstStmt = program.body[0];
+	if (!firstStmt || firstStmt.type !== "ExpressionStatement") {
+		throw new Error("Failed to parse expression: not an ExpressionStatement");
+	}
+
+	const expression = firstStmt.expression;
+
+	return {
+		type: "mdxJsxAttributeValueExpression",
+		value: json,
+		data: {
+			estree: {
+				type: "Program",
+				sourceType: "module",
+				body: [
+					{
+						type: "ExpressionStatement",
+						expression,
+					},
+				] as any,
+			},
+		},
+	};
+};
+
+export const buildEvents = (annotations: LineAnnotation[]) => {
+	const event = annotations
+		.flatMap((anntation) => {
+			const startEvent: AnnotationEvent = { kind: "open", anno: anntation, pos: anntation.range.start };
+			const endEvent: AnnotationEvent = { kind: "close", anno: anntation, pos: anntation.range.end };
+
+			if (startEvent.pos === endEvent.pos) {
+				return [];
+			}
+
+			return [startEvent, endEvent];
+		})
+		.sort((a, b) => {
+			if (a.pos !== b.pos) {
+				return a.pos - b.pos;
+			}
+
+			if (a.kind !== b.kind) {
+				return a.kind.localeCompare(b.kind);
+			}
+
+			if (a.kind === "open" && a.anno.range.end !== b.anno.range.end) {
+				return b.anno.range.end - a.anno.range.end;
+			}
+
+			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start) {
+				return b.anno.range.start - a.anno.range.start;
+			}
+
+			if (a.anno.type !== b.anno.type) {
+				return a.anno.type - b.anno.type;
+			}
+
+			return a.anno.priority - b.anno.priority;
+		});
+
+	return event;
+};
+
+// TODO : 추후 검증 로직 추가
+export const buildLineAst = (
+	line: string,
+	events: AnnotationEvent[],
+	registry: AnnotationRegistry,
+): PhrasingContent[] => {
+	if (line.length === 0) return [];
+
+	const root: MdastNodeLike = { type: "root", children: [] };
+	const stack: MdastNodeLike[] = [root];
+
+	let cursor = 0;
+
+	for (const event of events) {
+		// 만약 event의 pos가 이전 pos와 다르다면 textnode를 만들어서 현재 stack top의 자식으로 넣는다.
+		// 이후 event.pos를 다음 pos로 변경한다.
+		if (cursor < event.pos) {
+			const textNode = buildTextNode(line.slice(cursor, event.pos));
+			stack[stack.length - 1].children.push(textNode);
+			cursor = event.pos;
+		}
+
+		// event가 open라면 해당하는 노드를 만들고 노드를 stacktop의 children으로 넣고 stack에도 넣는다.
+		if (event.kind === "open") {
+			const annotation = event.anno;
+			const node = registry.get(event.anno.name);
+			if (!node) {
+				continue;
+			}
+
+			const { name, source } = node;
+
+			const mdastNode =
+				source === "mdast" ? buildMdastNode(name, []) : buildMdxJsxTextElementNode(name, annotation.attributes);
+
+			stack[stack.length - 1].children.push(mdastNode);
+			stack.push(mdastNode as MdastNodeLike);
+		}
+
+		// events가 close라면 stacktop을 제거한다.
+		if (event.kind === "close") {
+			stack.pop();
+		}
+	}
+
+	if (cursor !== line.length) {
+		const textNode = buildTextNode(line.slice(cursor));
+		root.children.push(textNode);
+	}
+
+	// root.children.push(buildBreakNode());
+
+	return root.children as PhrasingContent[];
+};
+
+function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
 	const parsed: Record<string, FenceMetaValue> = {};
 	const input = meta.trim();
 	let index = 0;
@@ -211,7 +383,7 @@ const parseLine = (code: string, lang: string) => {
 		} else {
 			const lineMeta = {
 				lineNumber: lineNo++,
-				value: line,
+				value: `${line}`,
 				annotations,
 			};
 
@@ -221,144 +393,6 @@ const parseLine = (code: string, lang: string) => {
 	}
 
 	return lines;
-};
-
-export type EventKind = "open" | "close";
-
-export type AnnotationEvent = {
-	pos: number; // line offset
-	kind: EventKind; // 같은 pos면 close 먼저
-	anno: LineAnnotation; // 원본 참조 or 동일 구조
-};
-
-export const buildEvents = (annotations: LineAnnotation[]) => {
-	const event = annotations
-		.flatMap((anntation) => {
-			const startEvent: AnnotationEvent = { kind: "open", anno: anntation, pos: anntation.range.start };
-			const endEvent: AnnotationEvent = { kind: "close", anno: anntation, pos: anntation.range.end };
-
-			if (startEvent.pos === endEvent.pos) {
-				return [];
-			}
-
-			return [startEvent, endEvent];
-		})
-		.sort((a, b) => {
-			if (a.pos !== b.pos) {
-				return a.pos - b.pos;
-			}
-
-			if (a.kind !== b.kind) {
-				return a.kind.localeCompare(b.kind);
-			}
-
-			if (a.kind === "open" && a.anno.range.end !== b.anno.range.end) {
-				return b.anno.range.end - a.anno.range.end;
-			}
-
-			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start) {
-				return b.anno.range.start - a.anno.range.start;
-			}
-
-			if (a.anno.type !== b.anno.type) {
-				return a.anno.type - b.anno.type;
-			}
-
-			return a.anno.priority - b.anno.priority;
-		});
-
-	return event;
-};
-
-const buildBreakNode = (): Break => ({
-	type: "break",
-});
-
-const buildTextNode = (value: string): Text => ({
-	type: "text",
-	value,
-});
-
-const buildMdastNode = (name: string, children: PhrasingContent[] = []) =>
-	({ type: name, children }) as PhrasingContent;
-
-const buildMdxJsxAttribute = (name: string, value: any): MdxJsxAttribute => ({
-	type: "mdxJsxAttribute",
-	name,
-	value,
-});
-
-const buildMdxJsxTextElementNode = (
-	name: string,
-	attributes: AnnotationAttr[] = [],
-	children: PhrasingContent[] = [],
-): MdxJsxTextElement => {
-	return {
-		type: "mdxJsxTextElement",
-		name,
-		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, JSON.stringify(attr.value))),
-		children,
-	};
-};
-
-// children을 가지는 PhrasingContent만 추출 (text 제외)
-type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
-
-// 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
-export type MdastNodeLike = Root | MdxJsxTextElement | PhrasingParent;
-
-export const buildLineAst = (
-	line: string,
-	events: AnnotationEvent[],
-	registry: AnnotationRegistry,
-): PhrasingContent[] => {
-	if (line.trim().length === 0) return [buildBreakNode()];
-
-	const root: MdastNodeLike = { type: "root", children: [] };
-	const stack: MdastNodeLike[] = [root];
-
-	let cursor = 0;
-
-	for (const event of events) {
-		// 만약 event의 pos가 이전 pos와 다르다면 textnode를 만들어서 현재 stack top의 자식으로 넣는다.
-		// 이후 event.pos를 다음 pos로 변경한다.
-		if (cursor < event.pos) {
-			const textNode = buildTextNode(line.slice(cursor, event.pos));
-			stack[stack.length - 1].children.push(textNode);
-			cursor = event.pos;
-		}
-
-		// event가 open라면 해당하는 노드를 만들고 노드를 stacktop의 children으로 넣고 stack에도 넣는다.
-		if (event.kind === "open") {
-			const annotation = event.anno;
-			const node = registry.get(event.anno.name);
-			if (!node) {
-				continue;
-			}
-
-			const { name, source } = node;
-
-			const mdastNode =
-				source === "mdast" ? buildMdastNode(name, []) : buildMdxJsxTextElementNode(name, annotation.attributes);
-
-			stack[stack.length - 1].children.push(mdastNode);
-			stack.push(mdastNode as MdastNodeLike);
-		}
-
-		// events가 close라면 stacktop을 제거한다.
-		if (event.kind === "close") {
-			stack.pop();
-		}
-	}
-
-	if (cursor !== line.length) {
-		const textNode = buildTextNode(line.slice(cursor));
-		root.children.push(textNode);
-	}
-
-	root.children.push(buildBreakNode());
-
-	return root.children as PhrasingContent[];
 };
 
 export const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
@@ -373,45 +407,12 @@ export const buildParagraphAst = (rawCode: string, lang: string, registry: Annot
 		const events = buildEvents(line.annotations);
 		const lineAst = buildLineAst(line.value, events, registry);
 
-		paragraph.children = [...paragraph.children, ...lineAst];
+		paragraph.children = [...paragraph.children, ...lineAst, buildBreakNode()];
 	});
 
 	paragraph.children.pop();
 
 	return paragraph;
-};
-
-export const buildMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
-	const json = JSON.stringify(value);
-
-	const program = parse(`(${json})`, {
-		ecmaVersion: "latest",
-		sourceType: "module",
-	});
-
-	const firstStmt = program.body[0];
-	if (!firstStmt || firstStmt.type !== "ExpressionStatement") {
-		throw new Error("Failed to parse expression: not an ExpressionStatement");
-	}
-
-	const expression = firstStmt.expression;
-
-	return {
-		type: "mdxJsxAttributeValueExpression",
-		value: json,
-		data: {
-			estree: {
-				type: "Program",
-				sourceType: "module",
-				body: [
-					{
-						type: "ExpressionStatement",
-						expression,
-					},
-				] as any,
-			},
-		},
-	};
 };
 
 export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: AnnotationConfig) {
@@ -427,8 +428,6 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 		const langAttr = buildMdxJsxAttribute("lang", lang);
 		const metaValue = buildMdxJsxAttributeValueExpression(meta);
 		const metaAttr = buildMdxJsxAttribute("meta", metaValue);
-
-		console.log(metaAttr);
 
 		const codeBlockNode: MdxJsxFlowElement = {
 			type: "mdxJsxFlowElement",
