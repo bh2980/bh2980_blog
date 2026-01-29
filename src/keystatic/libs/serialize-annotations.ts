@@ -42,12 +42,14 @@ export interface AnnotationConfig {
 	block?: AnnotationSpec[];
 }
 
-type AnnotationRegistryItem = {
+export type AnnotationRegistryItem = {
 	type: AnnotationType;
 	name: string;
 	source: AnnotationSource;
 	priority: number;
 };
+
+export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
 
 export type AbsRange = {
 	start: number;
@@ -79,7 +81,7 @@ const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type
 export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
 
 let annotationHelperSingleton: {
-	annotationMap: Map<string, AnnotationRegistryItem>;
+	annoRegistry: Map<string, AnnotationRegistryItem>;
 	isAnnotationNode: (node: Node) => boolean;
 };
 
@@ -123,9 +125,9 @@ export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 		return annotationMap.has(node.type);
 	};
 
-	annotationHelperSingleton = { annotationMap, isAnnotationNode };
+	annotationHelperSingleton = { annoRegistry: annotationMap, isAnnotationNode };
 
-	return { annotationMap, isAnnotationNode };
+	return { annoRegistry: annotationMap, isAnnotationNode };
 };
 
 const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfig) => {
@@ -135,7 +137,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 		return;
 	}
 
-	const { isAnnotationNode, annotationMap } = helper;
+	const { isAnnotationNode, annoRegistry } = helper;
 
 	const annotations: ExtractedAnnotation[] = [];
 	let pureCode = "";
@@ -166,7 +168,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 			}
 
 			const annotationKey = (isMDXJSXTextElement(node) ? node.name : nodeType) ?? "";
-			const type = annotationMap.get(annotationKey)?.type;
+			const type = annoRegistry.get(annotationKey)?.type;
 			if (!type) {
 				return;
 			}
