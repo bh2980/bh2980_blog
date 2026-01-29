@@ -197,7 +197,7 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 	return (
-		<div className="flex flex-col gap-2">
+		<div className={cn("flex flex-col gap-2 rounded-lg", props.isSelected && "outline-2 outline-offset-8")}>
 			<CodeBlockToolbar {...props} />
 			<NodeViewCodeEditor
 				nodeViewChildren={props.children}
