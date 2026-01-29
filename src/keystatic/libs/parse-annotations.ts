@@ -1,4 +1,5 @@
-import type { Root } from "mdast";
+import type { Break, PhrasingContent, Root, Text } from "mdast";
+import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
 import { isDefined } from "@/utils/is-defined";
 import {
@@ -6,6 +7,7 @@ import {
 	ANNOTATION_TYPE_BY_TAG,
 	type AnnotationAttr,
 	type AnnotationConfig,
+	type AnnotationRegistry,
 	type AnnotationTag,
 	type AnnotationType,
 	buildAnnotationHelper,
@@ -19,6 +21,12 @@ export type LineAnnotation = {
 	range: LineRange;
 	priority: number;
 	attributes?: AnnotationAttr[];
+};
+
+export type LineMeta = {
+	lineNumber: number;
+	value: string;
+	annotations: LineAnnotation[];
 };
 
 type MetaValue = string | number | boolean | null;
@@ -122,7 +130,7 @@ function parseAttrs(rest: string) {
 
 // TODO : 추후 파싱 시 검증 로직 추가
 const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
-	const { annotationMap } = buildAnnotationHelper();
+	const { annoRegistry: annotationMap } = buildAnnotationHelper();
 
 	try {
 		const result = annotationStr.match(ANNOTATION_RE);
@@ -201,6 +209,89 @@ export const buildEvents = (annotations: LineAnnotation[]) => {
 	return event;
 };
 
+const buildBreakNode = (): Break => ({
+	type: "break",
+});
+
+const buildTextNode = (value: string): Text => ({
+	type: "text",
+	value,
+});
+
+const buildMdastNode = (name: string, children: PhrasingContent[] = []) =>
+	({ type: name, children }) as PhrasingContent;
+
+const buildMdxJsxAttribute = (name: string, value: string): MdxJsxAttribute => ({
+	type: "mdxJsxAttribute",
+	name,
+	value,
+});
+
+const buildMdxJsxTextElementNode = (
+	name: string,
+	attributes: AnnotationAttr[] = [],
+	children: PhrasingContent[] = [],
+): MdxJsxTextElement => {
+	return {
+		type: "mdxJsxTextElement",
+		name,
+		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, JSON.stringify(attr.value))),
+		children,
+	};
+};
+
+// children을 가지는 PhrasingContent만 추출 (text 제외)
+type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
+
+// 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
+export type MdastNodeLike = Root | MdxJsxTextElement | PhrasingParent;
+
+export const buildLineAst = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry) => {
+	const root: MdastNodeLike = { type: "root", children: [] };
+	const stack: MdastNodeLike[] = [root];
+
+	let cursor = 0;
+
+	for (const event of events) {
+		// 만약 event의 pos가 이전 pos와 다르다면 textnode를 만들어서 현재 stack top의 자식으로 넣는다.
+		// 이후 event.pos를 다음 pos로 변경한다.
+		if (cursor < event.pos) {
+			const textNode = buildTextNode(line.slice(cursor, event.pos));
+			stack[stack.length - 1].children.push(textNode);
+			cursor = event.pos;
+		}
+
+		// event가 open라면 해당하는 노드를 만들고 노드를 stacktop의 children으로 넣고 stack에도 넣는다.
+		if (event.kind === "open") {
+			const annotation = event.anno;
+			const node = registry.get(event.anno.name);
+			if (!node) {
+				continue;
+			}
+
+			const { name, source } = node;
+
+			const mdastNode =
+				source === "mdast" ? buildMdastNode(name, []) : buildMdxJsxTextElementNode(name, annotation.attributes);
+
+			stack[stack.length - 1].children.push(mdastNode);
+			stack.push(mdastNode as MdastNodeLike);
+		}
+
+		// events가 close라면 stacktop을 제거한다.
+		if (event.kind === "close") {
+			stack.pop();
+		}
+	}
+
+	if (cursor !== line.length) {
+		const textNode = buildTextNode(line.slice(cursor));
+		root.children.push(textNode);
+	}
+
+	return root.children;
+};
+
 const parseLine = (code: string, lang: string) => {
 	// TODO : 추후 lang을 보고 지정
 	const commentPrefix = "//";
@@ -254,3 +345,88 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 		}
 	});
 }
+
+// {
+//     "type": "mdxJsxFlowElement",
+//     "name": "CodeBlock",
+//     "attributes": [
+//         {
+//             "type": "mdxJsxAttribute",
+//             "name": "meta",
+//             "value": {
+//                 "type": "mdxJsxAttributeValueExpression",
+//                 "value": "{\"showLineNumbers\":false}"
+//             }
+//         },
+//         {
+//             "type": "mdxJsxAttribute",
+//             "name": "useLineNumber",
+//             "value": {
+//                 "type": "mdxJsxAttributeValueExpression",
+//                 "value": "false"
+//             }
+//         },
+//         {
+//             "type": "mdxJsxAttribute",
+//             "name": "lang",
+//             "value": "ts-tags"
+//         }
+//     ],
+//     "children": [
+//         {
+//             "type": "paragraph",
+//             "children": [
+//                 {
+//                     "type": "text",
+//                     "value": "const he"
+//                 },
+//                 {
+//                     "type": "mdxJsxTextElement",
+//                     "name": "Tooltip",
+//                     "attributes": [
+//                         {
+//                             "type": "mdxJsxAttribute",
+//                             "name": "content",
+//                             "value": "cpmstemt"
+//                         }
+//                     ],
+//                     "children": [
+//                         {
+//                             "type": "text",
+//                             "value": "llo = \"hel"
+//                         }
+//                     ]
+//                 },
+//                 {
+//                     "type": "text",
+//                     "value": "lo\";"
+//                 },
+//                 {
+//                     "type": "break"
+//                 },
+//                 {
+//                     "type": "break"
+//                 },
+//                 {
+//                     "type": "text",
+//                     "value": "\t\tconsole.l"
+//                 },
+//                 {
+//                     "type": "mdxJsxTextElement",
+//                     "name": "u",
+//                     "attributes": [],
+//                     "children": [
+//                         {
+//                             "type": "text",
+//                             "value": "og(hello)"
+//                         }
+//                     ]
+//                 },
+//                 {
+//                     "type": "text",
+//                     "value": ";"
+//                 }
+//             ]
+//         }
+//     ]
+// }
