@@ -1,64 +1,45 @@
 import type { Break, Code, Node, Root, Text } from "mdast";
 import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import type { ComponentType } from "react";
 import { SKIP, visit } from "unist-util-visit";
-import { Tooltip_unstable } from "@/components/mdx/tooltip";
 import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS, type EditorCodeLang } from "../fields/mdx/components/code-block";
 
-enum AnnotationType {
+export type AnnotationSource = "mdast" | "mdx-text" | "mdx-flow";
+
+export type AnnotationTag = "dec" | "line" | "mark" | "block";
+
+export enum AnnotationType {
 	BLOCK = 1,
 	LINE = 2,
 	MARK = 3,
 	DECORATION = 4,
 }
 
-const ANNOTATION_NAME: Record<AnnotationType, string> = {
+export const ANNOTATION_TAG_BY_TYPE: Record<AnnotationType, AnnotationTag> = {
 	[AnnotationType.DECORATION]: "dec",
 	[AnnotationType.LINE]: "line",
 	[AnnotationType.MARK]: "mark",
 	[AnnotationType.BLOCK]: "block",
 };
 
-export interface Decoration {
+export type AnnotationSpec = {
 	name: string;
-	class: string;
-	type?: AnnotationType.DECORATION;
-}
-
-export interface Mark<TData = unknown> {
-	name: string;
-	Component: ComponentType<{ data: TData; children: React.ReactNode }>;
-	type?: AnnotationType.MARK;
-}
-
-export interface Line {
-	name: string;
-	class: string;
-	type?: AnnotationType.LINE;
-}
-
-export interface Block<TData = unknown> {
-	name: string;
-	Component: ComponentType<{ data: TData; children: React.ReactNode }>;
-	type?: AnnotationType.BLOCK;
-}
-
-export type AnnotationSpec = Decoration | Line | Mark | Block;
+	source: AnnotationSource;
+};
 
 export interface AnnotationConfig {
-	decoration?: Decoration[];
-	line?: Line[];
-	mark?: Mark<any>[];
-	block?: Block<any>[];
+	decoration?: AnnotationSpec[];
+	line?: AnnotationSpec[];
+	mark?: AnnotationSpec[];
+	block?: AnnotationSpec[];
 }
 
-const isText = (node: Node): node is Text => node.type === "text";
-const isBreak = (node: Node): node is Break => node.type === "break";
-const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
+type AnnotationRegistryItem = {
+	type: AnnotationType;
+	name: string;
+	source: AnnotationSource;
+};
 
-export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
-
-interface Annotation {
+interface ExtractedAnnotation {
 	type: AnnotationType;
 	nodeType: string;
 	name: string;
@@ -67,7 +48,23 @@ interface Annotation {
 	attributes?: MdxJsxTextElement["attributes"];
 }
 
-let annotationHelperSingleton: { annotationMap: Map<string, AnnotationSpec>; isAnnotation: (node: Node) => boolean };
+interface LineMeta {
+	value: string;
+	annotations: ExtractedAnnotation[];
+	start: number;
+	end: number;
+}
+
+const isText = (node: Node): node is Text => node.type === "text";
+const isBreak = (node: Node): node is Break => node.type === "break";
+const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
+
+export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
+
+let annotationHelperSingleton: {
+	annotationMap: Map<string, AnnotationRegistryItem>;
+	isAnnotation: (node: Node) => boolean;
+};
 
 const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 	if (annotationHelperSingleton) {
@@ -78,7 +75,7 @@ const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 		throw new Error("[buildAnnotationHelper] ERROR : annotationConfig is required");
 	}
 
-	const annotationMap = new Map<string, AnnotationSpec>();
+	const annotationMap = new Map<string, AnnotationRegistryItem>();
 
 	if (annotationConfig.decoration) {
 		for (const d of annotationConfig.decoration) {
@@ -123,7 +120,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 	const { isAnnotation, annotationMap } = helper;
 
-	const annotations: Annotation[] = [];
+	const annotations: ExtractedAnnotation[] = [];
 	let pureCode = "";
 
 	function recursiveBuildAnnotationInfo(node: Node) {
@@ -196,22 +193,16 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 		if (a.type !== b.type) return a.type - b.type;
 		if (a.name !== b.name) return a.name.localeCompare(b.name); // TODO 추후 우선순위가 생긴다면 우선순위 순으로 변경
 		if (a.start !== b.start) return a.start - b.start;
-		if (a.end !== b.end) return a.end - b.end;
+		if (a.end !== b.end) return b.end - a.end;
 		return 0;
 	});
 
 	return { code: pureCode, annotations: sortedAnnotations };
 };
 
-interface LineMeta {
-	value: string;
-	start: number;
-	end: number;
-	annotations: Annotation[];
-}
-
-const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotations: Annotation[]) => {
+const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotations: ExtractedAnnotation[]) => {
 	// TODO : 추후 외부에서 받도록 수정
+	const TAG_PREFIX = "@";
 	const langOption = EDITOR_LANG_OPTIONS.find((option) => option.value === lang);
 	const annotationPrefix = langOption?.commentPrefix ?? "//";
 	const annotationPostfix = langOption && "commentPostfix" in langOption ? langOption.commentPostfix : "";
@@ -253,14 +244,14 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 
 			const annotationText = line.annotations
 				.map((annotation) => {
-					const type = `@${ANNOTATION_NAME[annotation.type]}`;
+					const type = `${TAG_PREFIX}${ANNOTATION_TAG_BY_TYPE[annotation.type]}`;
 					const name = annotation.name;
 
 					if (!name) {
 						return "";
 					}
 
-					const characterRange = `ch=${annotation.start - line.start}-${annotation.end - line.start}`;
+					const characterRange = `{${annotation.start - line.start}-${annotation.end - line.start}}`;
 					const attributes =
 						annotation.attributes
 							?.map((attr) => ("name" in attr ? `${attr.name}=${JSON.stringify(attr.value)}` : ""))
@@ -282,7 +273,6 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 
 export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: AnnotationConfig) {
 	visit(mdxAst, "mdxJsxFlowElement", (node, index, parent) => {
-		``;
 		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
 
 		const metaAttr = node.attributes.find(
@@ -341,25 +331,25 @@ export const annotationConfig: AnnotationConfig = {
 	decoration: [
 		{
 			name: "strong",
-			class: "font-bold",
+			source: "mdast",
 		},
 		{
 			name: "emphasis",
-			class: "italic",
+			source: "mdast",
 		},
 		{
 			name: "delete",
-			class: "line-through",
+			source: "mdast",
 		},
 		{
 			name: "u",
-			class: "underline",
+			source: "mdx-text",
 		},
 	],
 	mark: [
 		{
 			name: "Tooltip",
-			Component: Tooltip_unstable,
+			source: "mdx-text",
 		},
 	],
 	line: [],
