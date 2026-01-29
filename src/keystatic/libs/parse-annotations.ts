@@ -281,9 +281,13 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 		const result = annotationStr.match(ANNOTATION_RE);
 		if (!result?.groups) return;
 
-		const { tag, name, range: rangeStr } = result.groups as { tag: AnnotationTag; name: string; range: string };
+		const {
+			typeName,
+			name,
+			range: rangeStr,
+		} = result.groups as { typeName: AnnotationTag; name: string; range: string };
 
-		const type = ANNOTATION_TYPE_BY_TAG[tag];
+		const type = ANNOTATION_TYPE_BY_TAG[typeName];
 
 		const [start, end] = rangeStr.split("-").map(Number);
 		const range = { start, end };
@@ -293,13 +297,17 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 		const idx = annotationStr.indexOf(rangeStr);
 		const rest = idx >= 0 ? annotationStr.slice(idx + rangeStr.length) : "";
 		const attributes = parseAttrs(rest);
-		const priority = annotationMap.get(name)?.priority;
+		const config = annotationMap.get(name);
 
-		if (!isDefined(priority)) {
+		if (!isDefined(config)) {
 			return;
 		}
 
-		const lineAnnotation = { type, name, range, attributes, priority };
+		if (!isDefined(config.priority)) {
+			return;
+		}
+
+		const lineAnnotation = { ...config, type, typeName, name, range, attributes };
 
 		return lineAnnotation;
 	} catch {
@@ -307,7 +315,8 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 	}
 };
 
-const parseCodeToAnnotationLines = (code: string, lang: string) => {
+export const parseCodeToAnnotationLines = (code: string, lang: string, config?: AnnotationConfig) => {
+	buildAnnotationHelper(config);
 	// TODO : 추후 lang을 보고 지정
 	const commentPrefix = "//";
 	const commentPostfix = "";
@@ -341,11 +350,7 @@ const parseCodeToAnnotationLines = (code: string, lang: string) => {
 };
 
 // TODO : 추후 검증 로직 추가
-export const buildLineAst = (
-	line: string,
-	events: AnnotationEvent[],
-	registry: AnnotationRegistry,
-): PhrasingContent[] => {
+const buildLineAst = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry): PhrasingContent[] => {
 	if (line.length === 0) return [];
 
 	const root: MdastNodeLike = { type: "root", children: [] };
@@ -395,7 +400,7 @@ export const buildLineAst = (
 	return root.children as PhrasingContent[];
 };
 
-export const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
+const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
 	const paragraph: Paragraph = {
 		type: "paragraph",
 		children: [],
