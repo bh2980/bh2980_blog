@@ -46,22 +46,28 @@ type AnnotationRegistryItem = {
 	source: AnnotationSource;
 };
 
+export type AbsRange = {
+	start: number;
+	end: number;
+};
+
+export type AnnotationAttr = {
+	name: string;
+	value: string | boolean | number;
+};
+
 export type ExtractedAnnotation = {
 	type: AnnotationType;
 	nodeType: string;
 	name: string;
-	range: {
-		start: number;
-		end: number;
-	};
-	attributes?: MdxJsxTextElement["attributes"];
+	range: AbsRange;
+	attributes?: AnnotationAttr[];
 };
 
 interface LineMeta {
 	value: string;
 	annotations: ExtractedAnnotation[];
-	start: number;
-	end: number;
+	range: AbsRange;
 }
 
 const isText = (node: Node): node is Text => node.type === "text";
@@ -174,8 +180,8 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 					nodeType,
 					name: node.name,
 					range: { start, end },
-					// TODO : [WARNING] attributes가 원소가 1개인 배열로 들어오는데 [0]을 해도 상관 없는지 확인할 것
-					attributes: node.attributes,
+					// TODO : as로 괜찮은지 체크
+					attributes: node.attributes as AnnotationAttr[],
 				};
 
 				annotations.push(annoataion);
@@ -222,7 +228,8 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 			acc[0] += lineWithNewLine;
 
 			const lineEnd = acc[0].length;
-			const lineItem = { value: line, start: lineStart, end: lineEnd, annotations: [] };
+			const range = { start: lineStart, end: lineEnd };
+			const lineItem = { value: line, range, annotations: [] };
 			acc[1].push(lineItem);
 
 			return acc;
@@ -232,10 +239,10 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 
 	for (const ann of annotations) {
 		for (const line of lines) {
-			const lineTextEnd = line.end - 1; // '\n' 제외
+			const lineTextEnd = line.range.end - 1; // '\n' 제외
 			const { start, end } = ann.range;
 
-			const segStart = Math.max(start, line.start);
+			const segStart = Math.max(start, line.range.start);
 			const segEnd = Math.min(end, lineTextEnd);
 
 			if (segStart < segEnd) {
@@ -243,7 +250,7 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 			}
 
 			if (end <= lineTextEnd) break;
-			if (start >= line.end) continue;
+			if (start >= line.range.end) continue;
 		}
 	}
 
@@ -261,7 +268,7 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 						return "";
 					}
 
-					const characterRange = `{${start - line.start}-${end - line.start}}`;
+					const characterRange = `{${start - line.range.start}-${end - line.range.start}}`;
 					const attributes =
 						annotation.attributes
 							?.map((attr) => ("name" in attr ? `${attr.name}=${JSON.stringify(attr.value)}` : ""))
