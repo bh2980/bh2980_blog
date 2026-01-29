@@ -53,12 +53,11 @@ export type AbsRange = {
 
 export type AnnotationAttr = {
 	name: string;
-	value: string | boolean | number;
+	value: unknown;
 };
 
 export type ExtractedAnnotation = {
 	type: AnnotationType;
-	nodeType: string;
 	name: string;
 	range: AbsRange;
 	attributes?: AnnotationAttr[];
@@ -177,7 +176,6 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 				const annoataion = {
 					type,
-					nodeType,
 					name: node.name,
 					range: { start, end },
 					// TODO : as로 괜찮은지 체크
@@ -190,7 +188,6 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 			const annoataion = {
 				type,
-				nodeType,
 				name: nodeType,
 				range: { start, end },
 			};
