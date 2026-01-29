@@ -1,7 +1,9 @@
+import { walkOnlyInsideCodeFence } from "./parse-annotations";
 import { annotationConfig, walkOnlyInsideCodeblock } from "./serialize-annotations";
 
 globalThis.__KEYSTATIC_MDX_HOOKS__ = {
 	beforeParse(mdxAst) {
+		walkOnlyInsideCodeFence(mdxAst, annotationConfig);
 		return mdxAst;
 	},
 
@@ -11,7 +13,6 @@ globalThis.__KEYSTATIC_MDX_HOOKS__ = {
 
 	beforeSerialize(mdxAst) {
 		walkOnlyInsideCodeblock(mdxAst, annotationConfig);
-
 		return mdxAst;
 	},
 
