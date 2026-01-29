@@ -21,6 +21,13 @@ export const ANNOTATION_TAG_BY_TYPE: Record<AnnotationType, AnnotationTag> = {
 	[AnnotationType.BLOCK]: "block",
 };
 
+export const ANNOTATION_TYPE_BY_TAG: Record<AnnotationTag, AnnotationType> = {
+	dec: AnnotationType.DECORATION,
+	line: AnnotationType.LINE,
+	mark: AnnotationType.MARK,
+	block: AnnotationType.BLOCK,
+};
+
 export type AnnotationSpec = {
 	name: string;
 	source: AnnotationSource;
@@ -39,14 +46,16 @@ type AnnotationRegistryItem = {
 	source: AnnotationSource;
 };
 
-interface ExtractedAnnotation {
+export type ExtractedAnnotation = {
 	type: AnnotationType;
 	nodeType: string;
 	name: string;
-	start: number;
-	end: number;
+	range: {
+		start: number;
+		end: number;
+	};
 	attributes?: MdxJsxTextElement["attributes"];
-}
+};
 
 interface LineMeta {
 	value: string;
@@ -164,8 +173,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 					type,
 					nodeType,
 					name: node.name,
-					start,
-					end,
+					range: { start, end },
 					// TODO : [WARNING] attributes가 원소가 1개인 배열로 들어오는데 [0]을 해도 상관 없는지 확인할 것
 					attributes: node.attributes,
 				};
@@ -178,8 +186,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 				type,
 				nodeType,
 				name: nodeType,
-				start,
-				end,
+				range: { start, end },
 			};
 
 			annotations.push(annoataion);
@@ -191,9 +198,9 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 	const sortedAnnotations = annotations.sort((a, b) => {
 		if (a.type !== b.type) return a.type - b.type;
-		if (a.name !== b.name) return a.name.localeCompare(b.name); // TODO 추후 우선순위가 생긴다면 우선순위 순으로 변경
-		if (a.start !== b.start) return a.start - b.start;
-		if (a.end !== b.end) return b.end - a.end;
+		if (a.name !== b.name) return a.name.localeCompare(b.name); // TODO 추후 name의 우선순위가 생긴다면 우선순위 순으로 변경
+		if (a.range.start !== b.range.start) return a.range.start - b.range.start;
+		if (a.range.end !== b.range.end) return a.range.end - b.range.end;
 		return 0;
 	});
 
@@ -226,15 +233,17 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 	for (const ann of annotations) {
 		for (const line of lines) {
 			const lineTextEnd = line.end - 1; // '\n' 제외
-			const segStart = Math.max(ann.start, line.start);
-			const segEnd = Math.min(ann.end, lineTextEnd);
+			const { start, end } = ann.range;
+
+			const segStart = Math.max(start, line.start);
+			const segEnd = Math.min(end, lineTextEnd);
 
 			if (segStart < segEnd) {
-				line.annotations.push({ ...ann, start: segStart, end: segEnd });
+				line.annotations.push({ ...ann, range: { start: segStart, end: segEnd } });
 			}
 
-			if (ann.end <= lineTextEnd) break;
-			if (ann.start >= line.end) continue;
+			if (end <= lineTextEnd) break;
+			if (start >= line.end) continue;
 		}
 	}
 
@@ -246,12 +255,13 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 				.map((annotation) => {
 					const type = `${TAG_PREFIX}${ANNOTATION_TAG_BY_TYPE[annotation.type]}`;
 					const name = annotation.name;
+					const { start, end } = annotation.range;
 
 					if (!name) {
 						return "";
 					}
 
-					const characterRange = `{${annotation.start - line.start}-${annotation.end - line.start}}`;
+					const characterRange = `{${start - line.start}-${end - line.start}}`;
 					const attributes =
 						annotation.attributes
 							?.map((attr) => ("name" in attr ? `${attr.name}=${JSON.stringify(attr.value)}` : ""))
