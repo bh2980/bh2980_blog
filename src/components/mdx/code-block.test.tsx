@@ -204,7 +204,7 @@ describe("code-block internal helpers", () => {
 
 		const result = await tokenizeAnnotatedCode({
 			code: "ab",
-			lang: "javascript",
+			lang: "js",
 			annotationList: [],
 			annotationConfig: DEFAULT_ANNOTATION_CONFIG,
 		});
