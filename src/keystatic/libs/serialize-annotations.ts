@@ -279,6 +279,7 @@ export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: Annotati
 			(attr) => attr.type === "mdxJsxAttribute" && "name" in attr && attr.name === "meta",
 		);
 
+		// TODO 추후 parseAttr 로 리팩토링
 		let meta: any;
 
 		if (metaAttr && metaAttr.value) {
