@@ -163,61 +163,6 @@ export const buildEvents = (annotations: LineAnnotation[]) => {
 	return event;
 };
 
-// TODO : 추후 검증 로직 추가
-export const buildLineAst = (
-	line: string,
-	events: AnnotationEvent[],
-	registry: AnnotationRegistry,
-): PhrasingContent[] => {
-	if (line.length === 0) return [];
-
-	const root: MdastNodeLike = { type: "root", children: [] };
-	const stack: MdastNodeLike[] = [root];
-
-	let cursor = 0;
-
-	for (const event of events) {
-		// 만약 event의 pos가 이전 pos와 다르다면 textnode를 만들어서 현재 stack top의 자식으로 넣는다.
-		// 이후 event.pos를 다음 pos로 변경한다.
-		if (cursor < event.pos) {
-			const textNode = buildTextNode(line.slice(cursor, event.pos));
-			stack[stack.length - 1].children.push(textNode);
-			cursor = event.pos;
-		}
-
-		// event가 open라면 해당하는 노드를 만들고 노드를 stacktop의 children으로 넣고 stack에도 넣는다.
-		if (event.kind === "open") {
-			const annotation = event.anno;
-			const node = registry.get(event.anno.name);
-			if (!node) {
-				continue;
-			}
-
-			const { name, source } = node;
-
-			const mdastNode =
-				source === "mdast" ? buildMdastNode(name, []) : buildMdxJsxTextElementNode(name, annotation.attributes);
-
-			stack[stack.length - 1].children.push(mdastNode);
-			stack.push(mdastNode as MdastNodeLike);
-		}
-
-		// events가 close라면 stacktop을 제거한다.
-		if (event.kind === "close") {
-			stack.pop();
-		}
-	}
-
-	if (cursor !== line.length) {
-		const textNode = buildTextNode(line.slice(cursor));
-		root.children.push(textNode);
-	}
-
-	// root.children.push(buildBreakNode());
-
-	return root.children as PhrasingContent[];
-};
-
 function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
 	const parsed: Record<string, FenceMetaValue> = {};
 	const input = meta.trim();
@@ -362,7 +307,7 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 	}
 };
 
-const parseLine = (code: string, lang: string) => {
+const parseCodeToAnnotationLines = (code: string, lang: string) => {
 	// TODO : 추후 lang을 보고 지정
 	const commentPrefix = "//";
 	const commentPostfix = "";
@@ -395,13 +340,68 @@ const parseLine = (code: string, lang: string) => {
 	return lines;
 };
 
+// TODO : 추후 검증 로직 추가
+export const buildLineAst = (
+	line: string,
+	events: AnnotationEvent[],
+	registry: AnnotationRegistry,
+): PhrasingContent[] => {
+	if (line.length === 0) return [];
+
+	const root: MdastNodeLike = { type: "root", children: [] };
+	const stack: MdastNodeLike[] = [root];
+
+	let cursor = 0;
+
+	for (const event of events) {
+		// 만약 event의 pos가 이전 pos와 다르다면 textnode를 만들어서 현재 stack top의 자식으로 넣는다.
+		// 이후 event.pos를 다음 pos로 변경한다.
+		if (cursor < event.pos) {
+			const textNode = buildTextNode(line.slice(cursor, event.pos));
+			stack[stack.length - 1].children.push(textNode);
+			cursor = event.pos;
+		}
+
+		// event가 open라면 해당하는 노드를 만들고 노드를 stacktop의 children으로 넣고 stack에도 넣는다.
+		if (event.kind === "open") {
+			const annotation = event.anno;
+			const node = registry.get(event.anno.name);
+			if (!node) {
+				continue;
+			}
+
+			const { name, source } = node;
+
+			const mdastNode =
+				source === "mdast" ? buildMdastNode(name, []) : buildMdxJsxTextElementNode(name, annotation.attributes);
+
+			stack[stack.length - 1].children.push(mdastNode);
+			stack.push(mdastNode as MdastNodeLike);
+		}
+
+		// events가 close라면 stacktop을 제거한다.
+		if (event.kind === "close") {
+			stack.pop();
+		}
+	}
+
+	if (cursor !== line.length) {
+		const textNode = buildTextNode(line.slice(cursor));
+		root.children.push(textNode);
+	}
+
+	// root.children.push(buildBreakNode());
+
+	return root.children as PhrasingContent[];
+};
+
 export const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
 	const paragraph: Paragraph = {
 		type: "paragraph",
 		children: [],
 	};
 
-	const lines = parseLine(rawCode, lang);
+	const lines = parseCodeToAnnotationLines(rawCode, lang);
 
 	lines.forEach((line) => {
 		const events = buildEvents(line.annotations);
