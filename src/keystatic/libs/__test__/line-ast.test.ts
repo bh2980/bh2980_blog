@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
-import { buildEvents, buildLineAst } from "../parse-annotations";
+import { __testable__ } from "../parse-annotations";
 import type { AnnotationSource } from "../serialize-annotations";
 import { AnnotationType } from "../serialize-annotations";
+
+const { buildEvents, buildLineAst } = __testable__;
 
 type AnnotationRegistryItem = {
 	type: AnnotationType;

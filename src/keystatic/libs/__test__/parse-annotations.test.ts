@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
-import { buildEvents } from "../parse-annotations";
+import { __testable__ } from "../parse-annotations";
 import { AnnotationType } from "../serialize-annotations";
+
+const { buildEvents } = __testable__;
 
 const proj = (e: AnnotationEvent) =>
 	`${e.pos}:${e.kind}:${e.anno.type}:${e.anno.priority}:${e.anno.name}{${e.anno.range.start}-${e.anno.range.end}}`;

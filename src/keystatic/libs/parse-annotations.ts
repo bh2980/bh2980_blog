@@ -124,7 +124,7 @@ const buildMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeVal
 	};
 };
 
-export const buildEvents = (annotations: LineAnnotation[]) => {
+const buildEvents = (annotations: LineAnnotation[]) => {
 	const event = annotations
 		.flatMap((anntation) => {
 			const startEvent: AnnotationEvent = { kind: "open", anno: anntation, pos: anntation.range.start };
@@ -446,3 +446,8 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 		return SKIP;
 	});
 }
+
+export const __testable__ = {
+	buildLineAst,
+	buildEvents,
+};
