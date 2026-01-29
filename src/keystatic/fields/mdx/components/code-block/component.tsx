@@ -38,7 +38,6 @@ export const EditorCodeBlock = wrapper({
 			title: fields.text({ label: "제목" }),
 			showLineNumbers: fields.checkbox({ label: "줄 번호 표시" }),
 		}),
-		useLineNumber: fields.checkbox({ label: "줄 번호 사용" }),
 		lang: fields.select({
 			label: "언어",
 			options: EDITOR_LANG_OPTIONS,
