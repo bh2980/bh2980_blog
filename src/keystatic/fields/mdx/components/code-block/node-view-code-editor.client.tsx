@@ -76,21 +76,30 @@ export const NodeViewCodeEditor = ({
 	}, [lang, onCodeChange, updateShiki]);
 
 	return (
-		<div className="relative *:m-0!">
+		<div
+			className="relative rounded-lg *:m-0!"
+			style={{
+				backgroundColor: tokenResult?.tokenMeta?.bg,
+				color: tokenResult?.tokenMeta?.fg,
+			}}
+		>
 			<pre
 				className={cn(
-					"w-full [&_p]:m-0!",
-					"absolute bg-transparent! text-transparent! caret-white!",
-					"**:data-[component=u]:decoration-white! [&_s]:decoration-1! [&_s]:decoration-white!",
+					"relative z-20 w-full outline-none",
+					"bg-transparent! text-transparent! caret-white!",
 					useLineNumber && "[&_p]:pl-7!",
 				)}
 				ref={preRef}
 			>
 				{nodeViewChildren}
 			</pre>
+
 			<pre
-				className="pointer-events-none! select-none!"
-				style={{ backgroundColor: tokenResult?.tokenMeta?.bg, color: tokenResult?.tokenMeta?.fg }}
+				className="pointer-events-none absolute top-0 left-0 z-10 w-full"
+				style={{
+					backgroundColor: tokenResult?.tokenMeta?.bg,
+					color: tokenResult?.tokenMeta?.fg,
+				}}
 			>
 				{tokenResult?.renderedLines}
 				<br />
