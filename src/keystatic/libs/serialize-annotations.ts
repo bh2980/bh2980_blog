@@ -46,6 +46,7 @@ type AnnotationRegistryItem = {
 	type: AnnotationType;
 	name: string;
 	source: AnnotationSource;
+	priority: number;
 };
 
 export type AbsRange = {
@@ -79,10 +80,10 @@ export const hasChildren = (node: Node | Root): node is Node & { children: Node[
 
 let annotationHelperSingleton: {
 	annotationMap: Map<string, AnnotationRegistryItem>;
-	isAnnotation: (node: Node) => boolean;
+	isAnnotationNode: (node: Node) => boolean;
 };
 
-const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
+export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 	if (annotationHelperSingleton) {
 		return annotationHelperSingleton;
 	}
@@ -94,27 +95,27 @@ const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 	const annotationMap = new Map<string, AnnotationRegistryItem>();
 
 	if (annotationConfig.decoration) {
-		for (const d of annotationConfig.decoration) {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.DECORATION });
-		}
+		annotationConfig.decoration.forEach((d, idx) => {
+			annotationMap.set(d.name, { ...d, type: AnnotationType.DECORATION, priority: idx });
+		});
 	}
 	if (annotationConfig.mark) {
-		for (const d of annotationConfig.mark) {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.MARK });
-		}
+		annotationConfig.mark.forEach((d, idx) => {
+			annotationMap.set(d.name, { ...d, type: AnnotationType.MARK, priority: idx });
+		});
 	}
 	if (annotationConfig.line) {
-		for (const d of annotationConfig.line) {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.LINE });
-		}
+		annotationConfig.line.forEach((d, idx) => {
+			annotationMap.set(d.name, { ...d, type: AnnotationType.LINE, priority: idx });
+		});
 	}
 	if (annotationConfig.block) {
-		for (const d of annotationConfig.block) {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.BLOCK });
-		}
+		annotationConfig.block.forEach((d, idx) => {
+			annotationMap.set(d.name, { ...d, type: AnnotationType.BLOCK, priority: idx });
+		});
 	}
 
-	const isAnnotation = (node: Node) => {
+	const isAnnotationNode = (node: Node) => {
 		if (isMDXJSXTextElement(node)) {
 			return annotationMap.has(node.name ?? "");
 		}
@@ -122,9 +123,9 @@ const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 		return annotationMap.has(node.type);
 	};
 
-	annotationHelperSingleton = { annotationMap, isAnnotation };
+	annotationHelperSingleton = { annotationMap, isAnnotationNode };
 
-	return { annotationMap, isAnnotation };
+	return { annotationMap, isAnnotationNode };
 };
 
 const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfig) => {
@@ -134,7 +135,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 		return;
 	}
 
-	const { isAnnotation, annotationMap } = helper;
+	const { isAnnotationNode, annotationMap } = helper;
 
 	const annotations: ExtractedAnnotation[] = [];
 	let pureCode = "";
@@ -160,7 +161,7 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 			const end = pureCode.length;
 			const nodeType = node.type;
 
-			if (!isAnnotation(node)) {
+			if (!isAnnotationNode(node)) {
 				return;
 			}
 
