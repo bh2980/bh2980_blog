@@ -14,6 +14,8 @@ export enum AnnotationType {
 	DECORATION = 4,
 }
 
+export const ANNOTATION_TAG_PREFIX = "@";
+
 export const ANNOTATION_TAG_BY_TYPE: Record<AnnotationType, AnnotationTag> = {
 	[AnnotationType.DECORATION]: "dec",
 	[AnnotationType.LINE]: "line",
@@ -212,7 +214,6 @@ const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfi
 
 const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotations: ExtractedAnnotation[]) => {
 	// TODO : 추후 외부에서 받도록 수정
-	const TAG_PREFIX = "@";
 	const langOption = EDITOR_LANG_OPTIONS.find((option) => option.value === lang);
 	const annotationPrefix = langOption?.commentPrefix ?? "//";
 	const annotationPostfix = langOption && "commentPostfix" in langOption ? langOption.commentPostfix : "";
@@ -257,7 +258,7 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 
 			const annotationText = line.annotations
 				.map((annotation) => {
-					const type = `${TAG_PREFIX}${ANNOTATION_TAG_BY_TYPE[annotation.type]}`;
+					const type = `${ANNOTATION_TAG_PREFIX}${ANNOTATION_TAG_BY_TYPE[annotation.type]}`;
 					const name = annotation.name;
 					const { start, end } = annotation.range;
 
