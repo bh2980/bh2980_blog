@@ -78,10 +78,10 @@ describe("buildEvents", () => {
 
 		const events = buildEvents(annotations);
 		expect(projAll(events)).toEqual([
-			"1:open:1:5:strong{1-4}",
 			"1:open:3:0:Tooltip{1-4}",
-			"4:close:1:5:strong{1-4}",
+			"1:open:4:5:strong{1-4}",
 			"4:close:3:0:Tooltip{1-4}",
+			"4:close:4:5:strong{1-4}",
 		]);
 	});
 
@@ -93,10 +93,10 @@ describe("buildEvents", () => {
 
 		const events = buildEvents(annotations);
 		expect(projAll(events)).toEqual([
-			"2:open:1:0:b{2-5}",
-			"2:open:1:2:a{2-5}",
-			"5:close:1:0:b{2-5}",
-			"5:close:1:2:a{2-5}",
+			"2:open:4:0:b{2-5}",
+			"2:open:4:2:a{2-5}",
+			"5:close:4:0:b{2-5}",
+			"5:close:4:2:a{2-5}",
 		]);
 	});
 
