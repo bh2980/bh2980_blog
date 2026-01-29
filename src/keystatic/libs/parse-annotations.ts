@@ -1,7 +1,14 @@
-import type { Break, PhrasingContent, Root, Text } from "mdast";
-import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import { visit } from "unist-util-visit";
+import { parse } from "acorn";
+import type { Break, Paragraph, PhrasingContent, Root, Text } from "mdast";
+import type {
+	MdxJsxAttribute,
+	MdxJsxAttributeValueExpression,
+	MdxJsxFlowElement,
+	MdxJsxTextElement,
+} from "mdast-util-mdx-jsx";
+import { SKIP, visit } from "unist-util-visit";
 import { isDefined } from "@/utils/is-defined";
+import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
 import {
 	ANNOTATION_TAG_PREFIX,
 	ANNOTATION_TYPE_BY_TAG,
@@ -29,17 +36,6 @@ export type LineMeta = {
 	annotations: LineAnnotation[];
 };
 
-type MetaValue = string | number | boolean | null;
-
-type Range =
-	| { start: number; end: number } // {6-21}
-	| { start: number }; // {3}
-
-type ParsedMeta = {
-	kv: Record<string, MetaValue>;
-	ranges: Range[];
-};
-
 const TYPE_RE = /@(?<tag>dec|mark|line|block)/;
 const NAME_RE = /(?<name>\w+)/;
 const RANGE_RE = /{(?<range>\d+-\d+)}/;
@@ -48,61 +44,93 @@ const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])
 
 const ANNOTATION_RE = new RegExp(`${TYPE_RE.source} ${NAME_RE.source} ${RANGE_RE.source}`);
 
-const META_RE = /(?<key>\w+)(?:=(?<val>(?:"[^"]*"|'[^']*'|[^\s]+)))?|(?<range>\{[^}]*\})/g;
+export type FenceMetaValue = string | boolean;
 
-function parseMetaValue(raw: string | undefined): MetaValue {
-	if (raw == null) return true; // flag
-	try {
-		return JSON.parse(raw);
-	} catch {
-		return raw;
-	}
-}
+export function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
+	const parsed: Record<string, FenceMetaValue> = {};
+	const input = meta.trim();
+	let index = 0;
 
-function parseRange(raw: string): Range | undefined {
-	// raw: "{6-21}" 또는 "{3}" (공백 허용)
-	const s = raw.trim();
+	const isWhitespace = (ch: string) => ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
 
-	// {n}
-	let m = s.match(/^\{\s*(-?\d+)\s*\}$/);
-	if (m) {
-		const start = Number(m[1]);
-		if (!Number.isFinite(start)) return undefined;
-		return { start };
-	}
+	const skipWhitespace = () => {
+		while (index < input.length && isWhitespace(input[index]!)) index++;
+	};
 
-	// {a-b}
-	m = s.match(/^\{\s*(-?\d+)\s*-\s*(-?\d+)\s*\}$/);
-	if (m) {
-		const start = Number(m[1]);
-		const end = Number(m[2]);
-		if (!Number.isFinite(start) || !Number.isFinite(end)) return undefined;
-		return { start, end };
-	}
+	const readKey = () => {
+		const start = index;
+		while (index < input.length) {
+			const ch = input[index]!;
+			if (ch === "=" || isWhitespace(ch)) break;
+			index++;
+		}
+		return input.slice(start, index);
+	};
 
-	return undefined;
-}
+	const readUnquotedValue = () => {
+		const start = index;
+		while (index < input.length && !isWhitespace(input[index]!)) index++;
+		return input.slice(start, index);
+	};
 
-export function parseFenceMeta(meta?: string | null): ParsedMeta {
-	const out: ParsedMeta = { kv: {}, ranges: [] };
-	if (!meta) return out;
+	const readQuotedValue = (quote: '"' | "'") => {
+		index++; // skip opening quote
+		let value = "";
 
-	for (const m of meta.matchAll(META_RE)) {
-		const g = m.groups as { key?: string; val?: string; range?: string } | undefined;
-		if (!g) continue;
+		while (index < input.length) {
+			const ch = input[index]!;
 
-		if (g.range) {
-			const r = parseRange(g.range);
-			if (r) out.ranges.push(r);
+			// minimal escapes: \" \' \\ \n \t
+			if (ch === "\\") {
+				const next = input[index + 1];
+				if (next == null) break;
+
+				if (next === "n") value += "\n";
+				else if (next === "t") value += "\t";
+				else value += next;
+
+				index += 2;
+				continue;
+			}
+
+			if (ch === quote) {
+				index++; // skip closing quote
+				return value;
+			}
+
+			value += ch;
+			index++;
+		}
+
+		// quote not closed; return collected text
+		return value;
+	};
+
+	while (index < input.length) {
+		skipWhitespace();
+		if (index >= input.length) break;
+
+		const key = readKey();
+		if (!key) break;
+
+		skipWhitespace();
+
+		// Flag token: `showLineNumbers`
+		if (input[index] !== "=") {
+			parsed[key] = true;
 			continue;
 		}
 
-		if (g.key) {
-			out.kv[g.key] = parseMetaValue(g.val);
-		}
+		index++; // skip '='
+		skipWhitespace();
+
+		const firstChar = input[index];
+		const value = firstChar === '"' || firstChar === "'" ? readQuotedValue(firstChar) : readUnquotedValue();
+
+		parsed[key] = value;
 	}
 
-	return out;
+	return parsed;
 }
 
 function parseAttrs(rest: string) {
@@ -160,6 +188,39 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 	} catch {
 		return;
 	}
+};
+
+const parseLine = (code: string, lang: string) => {
+	// TODO : 추후 lang을 보고 지정
+	const commentPrefix = "//";
+	const commentPostfix = "";
+
+	const isAnnotationComment = (line: string) => line.startsWith(`${commentPrefix} ${ANNOTATION_TAG_PREFIX}`);
+
+	let lineNo = 0;
+	const lines = [];
+
+	let annotations = [];
+
+	for (const line of code.split("\n")) {
+		if (isAnnotationComment(line)) {
+			const annotation = parseAnnotation(line);
+			if (annotation) {
+				annotations.push(annotation);
+			}
+		} else {
+			const lineMeta = {
+				lineNumber: lineNo++,
+				value: line,
+				annotations,
+			};
+
+			lines.push(lineMeta);
+			annotations = [];
+		}
+	}
+
+	return lines;
 };
 
 export type EventKind = "open" | "close";
@@ -221,7 +282,7 @@ const buildTextNode = (value: string): Text => ({
 const buildMdastNode = (name: string, children: PhrasingContent[] = []) =>
 	({ type: name, children }) as PhrasingContent;
 
-const buildMdxJsxAttribute = (name: string, value: string): MdxJsxAttribute => ({
+const buildMdxJsxAttribute = (name: string, value: any): MdxJsxAttribute => ({
 	type: "mdxJsxAttribute",
 	name,
 	value,
@@ -246,7 +307,13 @@ type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
 // 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
 export type MdastNodeLike = Root | MdxJsxTextElement | PhrasingParent;
 
-export const buildLineAst = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry) => {
+export const buildLineAst = (
+	line: string,
+	events: AnnotationEvent[],
+	registry: AnnotationRegistry,
+): PhrasingContent[] => {
+	if (line.trim().length === 0) return [buildBreakNode()];
+
 	const root: MdastNodeLike = { type: "root", children: [] };
 	const stack: MdastNodeLike[] = [root];
 
@@ -289,144 +356,89 @@ export const buildLineAst = (line: string, events: AnnotationEvent[], registry: 
 		root.children.push(textNode);
 	}
 
-	return root.children;
+	root.children.push(buildBreakNode());
+
+	return root.children as PhrasingContent[];
 };
 
-const parseLine = (code: string, lang: string) => {
-	// TODO : 추후 lang을 보고 지정
-	const commentPrefix = "//";
-	const commentPostfix = "";
+export const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
+	const paragraph: Paragraph = {
+		type: "paragraph",
+		children: [],
+	};
 
-	const isAnnotationComment = (line: string) => line.startsWith(`${commentPrefix} ${ANNOTATION_TAG_PREFIX}`);
+	const lines = parseLine(rawCode, lang);
 
-	let lineNo = 0;
-	const lines = [];
+	lines.forEach((line) => {
+		const events = buildEvents(line.annotations);
+		const lineAst = buildLineAst(line.value, events, registry);
 
-	let annotations = [];
+		paragraph.children = [...paragraph.children, ...lineAst];
+	});
 
-	for (const line of code.split("\n")) {
-		if (isAnnotationComment(line)) {
-			const annotation = parseAnnotation(line);
-			if (annotation) {
-				annotations.push(annotation);
-			}
-		} else {
-			const lineMeta = {
-				lineNumber: lineNo++,
-				value: line,
-				annotations,
-			};
+	paragraph.children.pop();
 
-			lines.push(lineMeta);
-			annotations = [];
-		}
+	return paragraph;
+};
+
+export const buildMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
+	const json = JSON.stringify(value);
+
+	const program = parse(`(${json})`, {
+		ecmaVersion: "latest",
+		sourceType: "module",
+	});
+
+	const firstStmt = program.body[0];
+	if (!firstStmt || firstStmt.type !== "ExpressionStatement") {
+		throw new Error("Failed to parse expression: not an ExpressionStatement");
 	}
 
-	return lines;
+	const expression = firstStmt.expression;
+
+	return {
+		type: "mdxJsxAttributeValueExpression",
+		value: json,
+		data: {
+			estree: {
+				type: "Program",
+				sourceType: "module",
+				body: [
+					{
+						type: "ExpressionStatement",
+						expression,
+					},
+				] as any,
+			},
+		},
+	};
 };
 
 export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: AnnotationConfig) {
-	buildAnnotationHelper(annotationConfig);
+	const { annoRegistry } = buildAnnotationHelper(annotationConfig);
 
 	visit(mdxAst, "code", (node, index, parent) => {
 		const lang = node.lang ?? "text";
-		const rawMeta = node.meta;
+		const meta = parseFenceMeta(node.meta ?? "");
 		const rawCodeWithAnnotations = node.value;
 
-		let meta: ParsedMeta | undefined;
+		const paragraph = buildParagraphAst(rawCodeWithAnnotations, lang, annoRegistry);
 
-		if (rawMeta) {
-			meta = parseFenceMeta(rawMeta);
-		}
+		const langAttr = buildMdxJsxAttribute("lang", lang);
+		const metaValue = buildMdxJsxAttributeValueExpression(meta);
+		const metaAttr = buildMdxJsxAttribute("meta", metaValue);
 
-		const lines = parseLine(rawCodeWithAnnotations, lang);
+		console.log(metaAttr);
 
-		for (const line of lines) {
-		}
+		const codeBlockNode: MdxJsxFlowElement = {
+			type: "mdxJsxFlowElement",
+			attributes: [metaAttr, langAttr],
+			name: EDITOR_CODE_BLOCK_NAME,
+			children: [paragraph],
+		};
+
+		if (parent && isDefined(index)) parent.children.splice(index, 1, codeBlockNode);
+
+		return SKIP;
 	});
 }
-
-// {
-//     "type": "mdxJsxFlowElement",
-//     "name": "CodeBlock",
-//     "attributes": [
-//         {
-//             "type": "mdxJsxAttribute",
-//             "name": "meta",
-//             "value": {
-//                 "type": "mdxJsxAttributeValueExpression",
-//                 "value": "{\"showLineNumbers\":false}"
-//             }
-//         },
-//         {
-//             "type": "mdxJsxAttribute",
-//             "name": "useLineNumber",
-//             "value": {
-//                 "type": "mdxJsxAttributeValueExpression",
-//                 "value": "false"
-//             }
-//         },
-//         {
-//             "type": "mdxJsxAttribute",
-//             "name": "lang",
-//             "value": "ts-tags"
-//         }
-//     ],
-//     "children": [
-//         {
-//             "type": "paragraph",
-//             "children": [
-//                 {
-//                     "type": "text",
-//                     "value": "const he"
-//                 },
-//                 {
-//                     "type": "mdxJsxTextElement",
-//                     "name": "Tooltip",
-//                     "attributes": [
-//                         {
-//                             "type": "mdxJsxAttribute",
-//                             "name": "content",
-//                             "value": "cpmstemt"
-//                         }
-//                     ],
-//                     "children": [
-//                         {
-//                             "type": "text",
-//                             "value": "llo = \"hel"
-//                         }
-//                     ]
-//                 },
-//                 {
-//                     "type": "text",
-//                     "value": "lo\";"
-//                 },
-//                 {
-//                     "type": "break"
-//                 },
-//                 {
-//                     "type": "break"
-//                 },
-//                 {
-//                     "type": "text",
-//                     "value": "\t\tconsole.l"
-//                 },
-//                 {
-//                     "type": "mdxJsxTextElement",
-//                     "name": "u",
-//                     "attributes": [],
-//                     "children": [
-//                         {
-//                             "type": "text",
-//                             "value": "og(hello)"
-//                         }
-//                     ]
-//                 },
-//                 {
-//                     "type": "text",
-//                     "value": ";"
-//                 }
-//             ]
-//         }
-//     ]
-// }
