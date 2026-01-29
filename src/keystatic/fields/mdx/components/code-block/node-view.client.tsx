@@ -39,9 +39,9 @@ function toThree<T>(items: readonly T[], fallback: Three<T>): Three<T> {
 function getFallbackThree(lang: EditorCodeLang): Three<EditorCodeLang> {
 	const unique = [...new Set<EditorCodeLang>([lang, ...FALLBACK_OPTIONS])];
 	// 항상 길이 3을 타입/런타임 모두에서 보장
-	const a0 = unique[0] ?? lang;
-	const a1 = unique[1] ?? "ts-tags";
-	const a2 = unique[2] ?? "tsx";
+	const a0 = unique[0];
+	const a1 = unique[1];
+	const a2 = unique[2];
 	return [a0, a1, a2];
 }
 
