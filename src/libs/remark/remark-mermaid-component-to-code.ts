@@ -1,7 +1,10 @@
 import type { Code, Root, RootContent } from "mdast";
 import { visit } from "unist-util-visit";
 import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
-import { hasChildren } from "./remark-code-block-annotation";
+
+export const hasChildren = (node: RootContent | Root): node is RootContent & { children: RootContent[] } => {
+	return "children" in node;
+};
 
 export const remarkMermaidComponentToCode =
 	() =>
