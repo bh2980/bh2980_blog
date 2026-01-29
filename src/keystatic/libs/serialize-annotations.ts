@@ -30,16 +30,26 @@ export const ANNOTATION_TYPE_BY_TAG: Record<AnnotationTag, AnnotationType> = {
 	block: AnnotationType.BLOCK,
 };
 
-export type AnnotationSpec = {
+export type AnnotationSpecBase = {
 	name: string;
 	source: AnnotationSource;
 };
 
+export type ClassAnnotationSpec = AnnotationSpecBase & {
+	class: string;
+};
+
+export type RenderAnnotationSpec = AnnotationSpecBase & {
+	render: string;
+};
+
+export type AnnotationSpec = ClassAnnotationSpec | RenderAnnotationSpec;
+
 export interface AnnotationConfig {
-	decoration?: AnnotationSpec[];
-	line?: AnnotationSpec[];
-	mark?: AnnotationSpec[];
-	block?: AnnotationSpec[];
+	decoration?: ClassAnnotationSpec[];
+	line?: ClassAnnotationSpec[];
+	mark?: RenderAnnotationSpec[];
+	block?: RenderAnnotationSpec[];
 }
 
 export type AnnotationRegistryItem = {
@@ -130,7 +140,7 @@ export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 	return { annoRegistry: annotationMap, isAnnotationNode };
 };
 
-const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfig) => {
+export const extractAnnotationsFromAst = (node: Node, annotationConfig: AnnotationConfig) => {
 	const helper = buildAnnotationHelper(annotationConfig);
 
 	if (!helper) {
@@ -347,28 +357,32 @@ export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: Annotati
 }
 
 export const annotationConfig: AnnotationConfig = {
-	decoration: [
-		{
-			name: "strong",
-			source: "mdast",
-		},
-		{
-			name: "emphasis",
-			source: "mdast",
-		},
-		{
-			name: "delete",
-			source: "mdast",
-		},
-		{
-			name: "u",
-			source: "mdx-text",
-		},
-	],
+	decoration: [],
 	mark: [
 		{
 			name: "Tooltip",
 			source: "mdx-text",
+			render: "Tooltip",
+		},
+		{
+			name: "strong",
+			source: "mdast",
+			render: "strong",
+		},
+		{
+			name: "emphasis",
+			source: "mdast",
+			render: "em",
+		},
+		{
+			name: "delete",
+			source: "mdast",
+			render: "del",
+		},
+		{
+			name: "u",
+			source: "mdx-text",
+			render: "u",
 		},
 	],
 	line: [],
