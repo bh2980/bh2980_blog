@@ -52,10 +52,9 @@ export interface AnnotationConfig {
 	block?: RenderAnnotationSpec[];
 }
 
-export type AnnotationRegistryItem = {
+export type AnnotationRegistryItem = AnnotationSpec & {
 	type: AnnotationType;
-	name: string;
-	source: AnnotationSource;
+	tag: AnnotationTag;
 	priority: number;
 };
 
@@ -68,7 +67,7 @@ export type AbsRange = {
 
 export type AnnotationAttr = {
 	name: string;
-	value: unknown;
+	value: any;
 };
 
 export type ExtractedAnnotation = {
@@ -108,22 +107,22 @@ export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 
 	if (annotationConfig.decoration) {
 		annotationConfig.decoration.forEach((d, idx) => {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.DECORATION, priority: idx });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.DECORATION, tag: "dec", priority: idx });
 		});
 	}
 	if (annotationConfig.mark) {
 		annotationConfig.mark.forEach((d, idx) => {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.MARK, priority: idx });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.MARK, tag: "mark", priority: idx });
 		});
 	}
 	if (annotationConfig.line) {
 		annotationConfig.line.forEach((d, idx) => {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.LINE, priority: idx });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.LINE, tag: "line", priority: idx });
 		});
 	}
 	if (annotationConfig.block) {
 		annotationConfig.block.forEach((d, idx) => {
-			annotationMap.set(d.name, { ...d, type: AnnotationType.BLOCK, priority: idx });
+			annotationMap.set(d.name, { ...d, type: AnnotationType.BLOCK, tag: "block", priority: idx });
 		});
 	}
 
