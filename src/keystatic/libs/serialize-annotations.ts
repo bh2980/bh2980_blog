@@ -1,5 +1,5 @@
 import type { Break, Code, Node, Root, Text } from "mdast";
-import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
+import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { SKIP, visit } from "unist-util-visit";
 import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS, type EditorCodeLang } from "../fields/mdx/components/code-block";
 
@@ -192,8 +192,12 @@ export const extractAnnotationsFromAst = (node: Node, annotationConfig: Annotati
 					type,
 					name: node.name,
 					range: { start, end },
-					// TODO : as로 괜찮은지 체크
-					attributes: node.attributes as AnnotationAttr[],
+					// TODO : 추후 MdxJsxExpressionAttribute 대응(fields.object 쓸 경우에 들어올 것으로 보임. name이 없고 value만 존재
+					attributes: node.attributes
+						.filter(
+							(attr): attr is MdxJsxAttribute => attr.type === "mdxJsxAttribute" && typeof attr.value === "string",
+						)
+						.map((attr) => ({ name: attr.name, value: JSON.parse(attr.value as string) })),
 				};
 
 				annotations.push(annoataion);
