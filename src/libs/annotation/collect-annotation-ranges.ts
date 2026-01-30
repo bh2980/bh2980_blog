@@ -1,4 +1,4 @@
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import type { Annotation } from "@/components/mdx/code-block";
 
 type RangeCollectorAdapter<TNode, TTextNode extends TNode> = {
 	isTextNode: (node: TNode) => node is TTextNode;

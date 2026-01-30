@@ -1,6 +1,6 @@
 // src/keystatic/fields/mdx-components/editor-code-block.constants.ts
 
-export const EDITOR_LANG_OPTION = [
+export const EDITOR_LANG_OPTIONS = [
 	{ label: "TypeScript", value: "typescript" },
 	{ label: "JavaScript", value: "javascript" },
 	{ label: "TSX", value: "tsx" },
@@ -27,7 +27,7 @@ export const EDITOR_LANG_OPTION = [
 	{ label: "Plain Text", value: "text" },
 ] as const;
 
-export type EditorLang = (typeof EDITOR_LANG_OPTION)[number]["value"];
+export type EditorLang = (typeof EDITOR_LANG_OPTIONS)[number]["value"];
 
 export type CodeBlockValue = {
 	lang: EditorLang;

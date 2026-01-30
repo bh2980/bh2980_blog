@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/utils/cn";
 import { CodeEditor } from "../shared/code-editor";
 import { CodePreview } from "../shared/code-preview.client";
-import { type CodeBlockValue, EDITOR_LANG_OPTION, type EditorLang } from "./constants";
+import { type CodeBlockValue, EDITOR_LANG_OPTIONS, type EditorLang } from "./constants";
 
 function stopBubble(e: any) {
 	e.stopPropagation?.();
@@ -59,7 +59,7 @@ export function CodeBlockNodeView({ value, onChange, onRemove, isSelected }: Pro
 							<SelectValue placeholder="언어" />
 						</SelectTrigger>
 						<SelectContent>
-							{EDITOR_LANG_OPTION.map((o) => (
+							{EDITOR_LANG_OPTIONS.map((o) => (
 								<SelectItem key={o.value} value={o.value}>
 									{o.label}
 								</SelectItem>

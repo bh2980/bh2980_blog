@@ -1,5 +1,5 @@
 diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
-index fc703c5a29949074cd161c49afad3b1a67c60520..1b4298de3ea69bf827e797306fa4cf66ebe9941b 100644
+index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8faa05752 100644
 --- a/dist/index-d59451fc.js
 +++ b/dist/index-d59451fc.js
 @@ -26834,10 +26834,33 @@ const cursorBuilder = user => {
@@ -49,3 +49,83 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1b4298de3ea69bf827e797306fa4cf66
      doc
    });
  }
+@@ -27404,27 +27430,74 @@ function serializeFromEditorState(value, slug) {
+     external
+   };
+ }
++function getKSMdxHooks() {
++  // 프로젝트에서 globalThis.__KEYSTATIC_MDX_HOOKS__ = { ... } 형태로 주입
++  return globalThis && globalThis.__KEYSTATIC_MDX_HOOKS__;
++}
+ function parseToEditorStateMDX(content, schema, files, otherFiles, slug) {
+-  const root = fromMarkdown(content, {
++  const hooks = getKSMdxHooks();
++
++  // (1) 문자열 전처리
++  if (typeof hooks?.beforeParse === "function") {
++    const next = hooks.beforeParse(content, { slug });
++    if (typeof next === "string") content = next;
++  }
++
++  // 파싱
++  let root = fromMarkdown(content, {
+     extensions: [mdxjs(), gfmAutolinkLiteral(), gfmStrikethrough(), gfmTable()],
+-    mdastExtensions: [mdxFromMarkdown(), gfmAutolinkLiteralFromMarkdown(), gfmStrikethroughFromMarkdown(), gfmTableFromMarkdown()]
++    mdastExtensions: [
++      mdxFromMarkdown(),
++      gfmAutolinkLiteralFromMarkdown(),
++      gfmStrikethroughFromMarkdown(),
++      gfmTableFromMarkdown(),
++    ],
+   });
+-  const doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
++
++  // (2) mdast 전처리 (새 훅)
++  if (typeof hooks?.afterMarkdownParse === "function") {
++    const next = hooks.afterMarkdownParse(root, { slug });
++    if (next) root = next; // 또는 next를 반환 안 하고 root를 mutate하는 스타일도 가능
++  }
++
++  let doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
++
++  // (3) ProseMirror doc 전처리
++  if (typeof hooks?.afterProseMirrorParse === "function") {
++    const next = hooks.afterParse(doc, { slug });
++    if (next) doc = next;
++  }
++
+   return createEditorState(doc);
+ }
+ function serializeFromEditorStateMDX(value, slug) {
++  const hooks = getKSMdxHooks();
++
+   const other = new Map();
+   const external = new Map();
+-  const mdxNode = proseMirrorToMDXRoot(value.doc, {
++
++  let mdxNode = proseMirrorToMDXRoot(value.doc, {
+     extraFiles: other,
+     otherFiles: external,
+     schema: getEditorSchema(value.schema),
+     slug
+   });
+-  const mdx = toMarkdown(mdxNode, {
++
++  if (hooks && typeof hooks.beforeSerialize === 'function') {
++    const next = hooks.beforeSerialize(mdxNode, { slug });
++    if (next) mdxNode = next;
++  }
++
++  let mdx = toMarkdown(mdxNode, {
+     extensions: [gfmAutolinkLiteralToMarkdown(), gfmStrikethroughToMarkdown(), gfmTableToMarkdown(), mdxToMarkdown()],
+     rule: '-'
+   });
++
++  if (hooks && typeof hooks.afterSerialize === 'function') {
++    const next = hooks.afterSerialize(mdx, { slug });
++    if (typeof next === 'string') mdx = next;
++  }
++
+   return {
+     content: mdx,
+     other,

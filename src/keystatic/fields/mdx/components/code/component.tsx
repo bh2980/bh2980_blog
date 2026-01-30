@@ -3,7 +3,7 @@ import { fields } from "@keystatic/core";
 import { block } from "@keystatic/core/content-components";
 import { Code } from "lucide-react";
 import { lazy, Suspense } from "react";
-import { EDITOR_LANG_OPTION } from "./constants";
+import { EDITOR_LANG_OPTIONS } from "./constants";
 
 const LazyCodeBlockNodeView = lazy(() =>
 	import("./node-view.client").then((m) => ({
@@ -27,7 +27,7 @@ export const codeblock = block({
 			lang: fields.select({
 				label: "언어",
 				defaultValue: "typescript",
-				options: EDITOR_LANG_OPTION.map((o) => ({ label: o.label, value: o.value })),
+				options: EDITOR_LANG_OPTIONS.map((o) => ({ label: o.label, value: o.value })),
 			}),
 			value: fields.text({ label: "코드", multiline: true }),
 			meta: fields.text({ label: "메타데이터" }),

@@ -1,9 +1,24 @@
 import { Folder } from "lucide-react";
-import type { EditorCodeLang } from "@/keystatic/fields/mdx/components/code-block/const";
+import type { RootContent } from "mdast";
+import type { MdxJsxAttribute, MdxJsxExpressionAttribute } from "mdast-util-mdx-jsx";
+import type { EditorCodeLang } from "@/keystatic/fields/mdx/components/code-block/constants";
 import { buildAnnotatedLines, DEFAULT_ANNOTATION_CONFIG } from "@/keystatic/fields/mdx/components/code-block/libs";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
 import { CopyButton } from "./code-handler";
+
+export type Annotation =
+	| {
+			type: Exclude<RootContent["type"], "mdxJsxTextElement">;
+			start: number;
+			end: number;
+	  }
+	| {
+			type: "mdxJsxTextElement";
+			name: string | null;
+			attributes: (MdxJsxAttribute | MdxJsxExpressionAttribute)[];
+			start: number;
+			end: number;
+	  };
 
 type CodeblockProps = {
 	code: string;
