@@ -12,7 +12,7 @@ type PreProps = PropsWithChildren<{
 export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) => {
 	const filePath = title?.trim().split("/").filter(Boolean);
 
-	const showTitlebar = filePath && filePath.length >= 0;
+	const showTitlebar = filePath && filePath.length > 0;
 
 	return (
 		<div className="group relative flex flex-col">
