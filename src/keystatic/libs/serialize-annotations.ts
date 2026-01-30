@@ -177,8 +177,8 @@ export const extractAnnotationsFromAst = (node: Node, annotationConfig: Annotati
 			}
 
 			const annotationKey = (isMDXJSXTextElement(node) ? node.name : nodeType) ?? "";
-			const type = annoRegistry.get(annotationKey)?.type;
-			if (!type) {
+			const anno = annoRegistry.get(annotationKey);
+			if (!anno) {
 				return;
 			}
 
@@ -189,7 +189,8 @@ export const extractAnnotationsFromAst = (node: Node, annotationConfig: Annotati
 				}
 
 				const annoataion = {
-					type,
+					...anno,
+					type: anno.type,
 					name: node.name,
 					range: { start, end },
 					// TODO : 추후 MdxJsxExpressionAttribute 대응(fields.object 쓸 경우에 들어올 것으로 보임. name이 없고 value만 존재
@@ -205,7 +206,8 @@ export const extractAnnotationsFromAst = (node: Node, annotationConfig: Annotati
 			}
 
 			const annoataion = {
-				type,
+				...anno,
+				type: anno.type,
 				name: nodeType,
 				range: { start, end },
 			};
