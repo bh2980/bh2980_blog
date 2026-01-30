@@ -34,6 +34,17 @@ const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 	},
 });
 
+const DENY_PROPS = new Set([
+	"dangerouslySetInnerHTML",
+	"children",
+	"ref",
+	"key",
+	"__proto__",
+	"prototype",
+	"constructor",
+	"srcDoc", // 필요하면 추가
+]);
+// TODO: deny list로 props 할당 제한을 통한 보안조치 필요
 const replaceToRenderTag = (): ShikiTransformer => ({
 	root(rootNode: Root) {
 		visit(rootNode, "element", (el) => {
