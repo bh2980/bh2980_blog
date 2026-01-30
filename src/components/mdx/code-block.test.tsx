@@ -20,7 +20,7 @@ import {
 	tokenizeAnnotatedCode,
 	wrapLineWithAnnotations,
 } from "@/keystatic/fields/mdx/components/code-block/libs";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import type { Annotation } from "./code-block";
 
 vi.mock("shiki", () => ({
 	codeToTokens: vi.fn(),

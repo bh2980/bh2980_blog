@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import type { Annotation } from "@/components/mdx/code-block";
 import { cn } from "@/utils/cn";
 import type { EditorCodeLang } from "./constants";
 import { extractRangesPlainText } from "./extract-ranges";

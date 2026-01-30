@@ -1,7 +1,7 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { codeToTokens } from "shiki";
+import type { Annotation } from "@/components/mdx/code-block";
 import { Tooltip } from "@/components/mdx/tooltip";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
 import { cn } from "@/utils/cn";
 import { EDITOR_CODE_BLOCK_THEME, type EditorCodeLang } from "./constants";
 
