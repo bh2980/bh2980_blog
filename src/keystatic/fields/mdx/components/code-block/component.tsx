@@ -5,6 +5,7 @@ import { lazy, type PropsWithChildren, Suspense } from "react";
 import { EDITOR_LANG_OPTIONS, type EditorCodeLang } from "./constants";
 
 type CodeBlockSchema = {
+	readonly id: string;
 	readonly meta: { readonly title: string; readonly showLineNumbers: boolean };
 	readonly lang: EditorCodeLang;
 };
@@ -34,6 +35,7 @@ export const EditorCodeBlock = wrapper({
 	label: "코드 블럭",
 	icon: <Code2 />,
 	schema: {
+		id: fields.text({ label: "코드블럭 ID" }),
 		meta: fields.object({
 			title: fields.text({ label: "제목" }),
 			showLineNumbers: fields.checkbox({ label: "줄 번호 표시" }),

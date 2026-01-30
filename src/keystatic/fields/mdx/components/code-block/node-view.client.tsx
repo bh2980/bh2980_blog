@@ -1,7 +1,7 @@
 "use client";
 
 import { ListOrdered, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -198,6 +198,17 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 };
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
+	const subscriptionId = useRef(crypto.randomUUID());
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: id가 없을 경우에 최초 부여용
+	useEffect(() => {
+		if (props.value.id) {
+			return;
+		}
+
+		props.onChange({ ...props.value, id: subscriptionId.current });
+	}, [props.value.id]);
+
 	return (
 		<div className={cn("flex flex-col gap-2 rounded-lg", props.isSelected && "outline-2 outline-offset-8")}>
 			<CodeBlockToolbar {...props} />
