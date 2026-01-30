@@ -21,13 +21,15 @@ function getLangFromCodeEl(codeEl: Element): string {
 	return lang || "text";
 }
 
-const addMetaToPre = (meta: Meta): ShikiTransformer => ({
+const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 	pre(node: Element) {
 		if (!node.properties) node.properties = {};
 		const preProperties = node.properties;
 
+		preProperties.code = code;
+
 		for (const [key, value] of Object.entries(meta)) {
-			preProperties[`data-${key.toLowerCase()}`] = value;
+			preProperties[key] = value;
 		}
 	},
 });
@@ -102,7 +104,7 @@ export function rehypeShikiDecorationRender(opts: { highlighter: Highlighter; th
 				lang,
 				theme: opts.theme,
 				decorations,
-				transformers: [replaceToRenderTag(), addMetaToPre(meta)],
+				transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
 			});
 
 			// codeToHast 결과는 Root(fragment). 보통 첫 element가 <pre>
