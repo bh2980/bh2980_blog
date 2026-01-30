@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
 import { __testable__ } from "../parse-annotations";
-import { AnnotationType } from "../serialize-annotations";
+import { ANNOTATION_TAG_BY_TYPE, AnnotationType } from "../serialize-annotations";
 
 const { buildEvents } = __testable__;
 
@@ -10,10 +10,32 @@ const proj = (e: AnnotationEvent) =>
 
 const projAll = (events: AnnotationEvent[]) => events.map(proj);
 
-const anno = (partial: Omit<LineAnnotation, "priority"> & { priority?: number }): LineAnnotation => ({
-	priority: 0,
-	...partial,
-});
+type AnnotationInput = {
+	type: AnnotationType;
+	name: string;
+	range: LineAnnotation["range"];
+	priority?: number;
+	attributes?: LineAnnotation["attributes"];
+	class?: string;
+	render?: string;
+};
+
+const anno = (partial: AnnotationInput): LineAnnotation => {
+	const base = {
+		type: partial.type,
+		tag: ANNOTATION_TAG_BY_TYPE[partial.type],
+		name: partial.name,
+		range: partial.range,
+		priority: partial.priority ?? 0,
+		attributes: partial.attributes,
+	};
+
+	if (partial.type === AnnotationType.MARK || partial.type === AnnotationType.BLOCK) {
+		return { ...base, render: partial.render ?? "render" };
+	}
+
+	return { ...base, class: partial.class ?? "class" };
+};
 
 describe("buildEvents", () => {
 	it("빈 입력은 빈 이벤트를 반환한다", () => {

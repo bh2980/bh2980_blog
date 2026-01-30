@@ -1,47 +1,113 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
 import { __testable__ } from "../parse-annotations";
-import type { AnnotationSource } from "../serialize-annotations";
-import { AnnotationType } from "../serialize-annotations";
+import type { AnnotationRegistry } from "../serialize-annotations";
+import { ANNOTATION_TAG_BY_TYPE, AnnotationType } from "../serialize-annotations";
+import type { PhrasingContent } from "mdast";
 
 const { buildEvents, buildLineAst } = __testable__;
 
-type AnnotationRegistryItem = {
-	type: AnnotationType;
-	name: string;
-	source: AnnotationSource;
-	priority: number;
-};
-
-type Registry = Map<string, AnnotationRegistryItem>;
-
-const registry: Registry = new Map([
-	["strong", { type: AnnotationType.DECORATION, name: "strong", source: "mdast", priority: 0 }],
-	["emphasis", { type: AnnotationType.DECORATION, name: "emphasis", source: "mdast", priority: 1 }],
-	["delete", { type: AnnotationType.DECORATION, name: "delete", source: "mdast", priority: 2 }],
-	["u", { type: AnnotationType.DECORATION, name: "u", source: "mdx-text", priority: 3 }],
-	["Tooltip", { type: AnnotationType.MARK, name: "Tooltip", source: "mdx-text", priority: 0 }],
+const registry: AnnotationRegistry = new Map([
+	[
+		"strong",
+		{
+			type: AnnotationType.DECORATION,
+			tag: ANNOTATION_TAG_BY_TYPE[AnnotationType.DECORATION],
+			name: "strong",
+			source: "mdast",
+			priority: 0,
+			class: "strong",
+		},
+	],
+	[
+		"emphasis",
+		{
+			type: AnnotationType.DECORATION,
+			tag: ANNOTATION_TAG_BY_TYPE[AnnotationType.DECORATION],
+			name: "emphasis",
+			source: "mdast",
+			priority: 1,
+			class: "emphasis",
+		},
+	],
+	[
+		"delete",
+		{
+			type: AnnotationType.DECORATION,
+			tag: ANNOTATION_TAG_BY_TYPE[AnnotationType.DECORATION],
+			name: "delete",
+			source: "mdast",
+			priority: 2,
+			class: "delete",
+		},
+	],
+	[
+		"u",
+		{
+			type: AnnotationType.DECORATION,
+			tag: ANNOTATION_TAG_BY_TYPE[AnnotationType.DECORATION],
+			name: "u",
+			source: "mdx-text",
+			priority: 3,
+			class: "u",
+		},
+	],
+	[
+		"Tooltip",
+		{
+			type: AnnotationType.MARK,
+			tag: ANNOTATION_TAG_BY_TYPE[AnnotationType.MARK],
+			name: "Tooltip",
+			source: "mdx-text",
+			priority: 0,
+			render: "Tooltip",
+		},
+	],
 ]);
 
-const anno = (partial: Omit<LineAnnotation, "priority"> & { priority?: number }): LineAnnotation => ({
-	priority: 0,
-	...partial,
-});
+type AnnotationInput = {
+	type: AnnotationType;
+	name: string;
+	range: LineAnnotation["range"];
+	priority?: number;
+	attributes?: LineAnnotation["attributes"];
+	class?: string;
+	render?: string;
+};
 
-const printAst = (nodes: any[]) => {
-	const printNodes = (items: any[]): string => items.map(printNode).join(" + ");
+const anno = (partial: AnnotationInput): LineAnnotation => {
+	const base = {
+		type: partial.type,
+		tag: ANNOTATION_TAG_BY_TYPE[partial.type],
+		name: partial.name,
+		range: partial.range,
+		priority: partial.priority ?? 0,
+		attributes: partial.attributes,
+	};
 
-	const printNode = (node: any): string => {
-		if (!node) return "";
+	if (partial.type === AnnotationType.MARK || partial.type === AnnotationType.BLOCK) {
+		return { ...base, render: partial.render ?? "render" };
+	}
+
+	return { ...base, class: partial.class ?? "class" };
+};
+
+const hasChildren = (node: PhrasingContent): node is PhrasingContent & { children: PhrasingContent[] } =>
+	"children" in node;
+
+const printAst = (nodes: PhrasingContent[]) => {
+	const printNodes = (items: PhrasingContent[]): string => items.map(printNode).join(" + ");
+
+	const printNode = (node: PhrasingContent): string => {
 		if (node.type === "text") return node.value ?? "";
 
 		if (node.type === "mdxJsxTextElement") {
 			const attrs =
-				node.attributes?.map((attr: { name: string; value: unknown }) => {
-					if (typeof attr.value === "string") {
+				node.attributes?.map((attr) => {
+					if (attr.type === "mdxJsxAttribute") {
 						return `${attr.name}=${JSON.stringify(attr.value)}`;
 					}
-					return `${attr.name}=${JSON.stringify(attr.value)}`;
+					return `{${attr.value}}`;
 				}) ?? [];
 			const childrenText = printNodes(node.children ?? []);
 			const attrText = attrs.join(", ");
@@ -50,7 +116,7 @@ const printAst = (nodes: any[]) => {
 			return `${node.name}(${childrenText})`;
 		}
 
-		const childrenText = printNodes(node.children ?? []);
+		const childrenText = hasChildren(node) ? printNodes(node.children ?? []) : "";
 		return `${node.type}(${childrenText})`;
 	};
 
