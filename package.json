@@ -12,7 +12,7 @@
 		"lint": "pnpm exec biome check . --write",
 		"typecheck": "pnpm exec tsc --noEmit",
 		"prepare": "husky",
-		"postinstall": "playwright install --with-deps chromium"
+		"postinstall": "playwright install chromium"
 	},
 	"dependencies": {
 		"@giscus/react": "^3.1.0",
@@ -31,12 +31,14 @@
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@shikijs/langs": "^3.21.0",
 		"@shikijs/themes": "^3.21.0",
+		"acorn": "^8.15.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"cmdk": "^1.1.1",
 		"codehike": "^1.0.7",
 		"date-fns": "^4.1.0",
 		"feed": "^5.2.0",
+		"hast-util-to-string": "^3.0.1",
 		"lucide-react": "^0.562.0",
 		"mdast-util-to-string": "^4.0.0",
 		"mermaid": "^11.9.0",

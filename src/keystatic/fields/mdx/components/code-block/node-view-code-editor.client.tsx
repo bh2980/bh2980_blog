@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { Annotation } from "@/libs/remark/remark-code-block-annotation";
+import type { Annotation } from "@/components/mdx/code-block";
 import { cn } from "@/utils/cn";
-import type { EditorCodeLang } from "./const";
+import type { EditorCodeLang } from "./constants";
 import { extractRangesPlainText } from "./extract-ranges";
 import { highlightCode } from "./shiki-code-view";
 
@@ -75,13 +75,20 @@ export const NodeViewCodeEditor = ({
 		return () => obs.disconnect();
 	}, [lang, onCodeChange, updateShiki]);
 
+	// TODO : tooltip 입력 시 내용물이 "가 포함되서 저장되는 문제가 있음
+	// TODO : tooltip 입력 시 본문을 수정하기 위해 모달을 띄우는 부분이 z-index에 밀려서 안보는 문제가 있음.
 	return (
-		<div className="relative *:m-0!">
+		<div
+			className="relative rounded-lg *:m-0!"
+			style={{
+				backgroundColor: tokenResult?.tokenMeta?.bg,
+				color: tokenResult?.tokenMeta?.fg,
+			}}
+		>
 			<pre
 				className={cn(
-					"w-full [&_p]:m-0!",
-					"absolute bg-transparent! text-transparent! caret-white!",
-					"**:data-[component=u]:decoration-white! [&_s]:decoration-1! [&_s]:decoration-white!",
+					"relative z-20 w-full outline-none",
+					"bg-transparent! text-transparent! caret-white!",
 					useLineNumber && "[&_p]:pl-7!",
 				)}
 				ref={preRef}
@@ -89,8 +96,11 @@ export const NodeViewCodeEditor = ({
 				{nodeViewChildren}
 			</pre>
 			<pre
-				className="pointer-events-none! select-none!"
-				style={{ backgroundColor: tokenResult?.tokenMeta?.bg, color: tokenResult?.tokenMeta?.fg }}
+				className="pointer-events-none absolute top-0 left-0 z-10 w-full"
+				style={{
+					backgroundColor: tokenResult?.tokenMeta?.bg,
+					color: tokenResult?.tokenMeta?.fg,
+				}}
 			>
 				{tokenResult?.renderedLines}
 				<br />
