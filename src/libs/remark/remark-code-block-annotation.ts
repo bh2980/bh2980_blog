@@ -1,25 +1,9 @@
-import type { Break, Paragraph, Root, RootContent, Text } from "mdast";
-import type {
-	MdxJsxAttribute,
-	MdxJsxExpressionAttribute,
-	MdxJsxFlowElement,
-	MdxJsxTextElement,
-} from "mdast-util-mdx-jsx";
+import type { Code, Root, RootContent } from "mdast";
+import type { MdxJsxAttribute, MdxJsxExpressionAttribute } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
-import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
-import { collectAnnotationRanges } from "@/libs/annotation/collect-annotation-ranges";
-
-const isText = (node: RootContent): node is Text => node.type === "text";
-const isBreak = (node: RootContent): node is Break => node.type === "break";
-const isParagraph = (node: RootContent): node is Paragraph => node.type === "paragraph";
-
-export const hasChildren = (node: RootContent | Root): node is RootContent & { children: RootContent[] } => {
-	return "children" in node;
-};
-
-const isMDXJSXTextElement = (node: RootContent): node is MdxJsxTextElement => {
-	return node.type === "mdxJsxTextElement";
-};
+import { type LineAnnotation, parseCodeToAnnotationLines, parseFenceMeta } from "@/keystatic/libs/parse-annotations";
+import type { AnnotationConfig } from "@/keystatic/libs/serialize-annotations";
+import type { ClassLineAnnotation, RenderLineAnnotation } from "./../../keystatic/libs/parse-annotations";
 
 export type Annotation =
 	| {
@@ -35,58 +19,62 @@ export type Annotation =
 			end: number;
 	  };
 
-export function remarkCodeBlockAnnotation() {
+const isClassAnnotation = (anno: LineAnnotation): anno is ClassLineAnnotation =>
+	(anno.tag === "dec" || anno.tag === "line") && "class" in anno;
+const isRenderAnnotation = (anno: LineAnnotation): anno is RenderLineAnnotation =>
+	(anno.tag === "mark" || anno.tag === "block") && "render" in anno;
+
+export function remarkCodeBlockAnnotation(annotationConfig: AnnotationConfig) {
 	return (tree: Root) => {
-		visit(tree, "mdxJsxFlowElement", (node: MdxJsxFlowElement) => {
-			if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
+		visit(tree, "code", (node: Code) => {
+			const rawCodeWithAnnotation = node.value;
+			const lang = node.lang ?? "text";
+			const meta = parseFenceMeta(node.meta ?? "");
 
-			// extract codeblock code and annotation position information
-			const { code, annotations } = collectAnnotationRanges<RootContent, Text>(node.children as RootContent[], {
-				isTextNode: isText,
-				getText: (current) => current.value,
-				isLineBreak: isBreak,
-				getChildren: (current) => (hasChildren(current) ? current.children : null),
-				getAnnotation: (current, start, end) => {
-					if (isMDXJSXTextElement(current)) {
-						return {
-							type: "mdxJsxTextElement",
-							name: current.name,
-							attributes: current.attributes,
-							start,
-							end,
-						};
-					}
+			const lineCode: string[] = [];
 
-					if (isParagraph(current)) return null;
+			const annotationList = parseCodeToAnnotationLines(rawCodeWithAnnotation, lang, annotationConfig).flatMap(
+				(line) => {
+					lineCode.push(line.value.length === 0 ? "" : line.value);
 
-					return {
-						type: current.type as Exclude<RootContent["type"], "mdxJsxTextElement">,
-						start,
-						end,
-					};
+					return line.annotations.flatMap((anno) => {
+						if (isClassAnnotation(anno)) {
+							return {
+								start: { line: line.lineNumber, character: anno.range.start },
+								end: { line: line.lineNumber, character: anno.range.end },
+								properties: { class: anno.class },
+							};
+						}
+						if (isRenderAnnotation(anno)) {
+							const dataProperties = [
+								[`data-anno-render`, anno.render],
+								...(anno.attributes?.map((attr) => [`data-anno-${attr.name}`, JSON.stringify(attr.value)]) ?? []),
+							];
+
+							return {
+								start: { line: line.lineNumber, character: anno.range.start },
+								end: { line: line.lineNumber, character: anno.range.end },
+								properties: Object.fromEntries(dataProperties),
+							};
+						}
+
+						return [];
+					});
 				},
-			});
+			);
 
-			// reset Codeblock
-			node.children = [];
+			node.value = lineCode.join("\n");
 
-			node.attributes = node.attributes.filter((a) => {
-				return !(a.type === "mdxJsxAttribute" && (a.name === "code" || a.name === "annotations"));
-			});
+			if (!node.data) {
+				node.data = {};
+			}
 
-			const codeAttr: MdxJsxAttribute = {
-				type: "mdxJsxAttribute",
-				name: "code",
-				value: JSON.stringify(code),
+			node.data.hProperties = {
+				...node.data.hProperties,
+				"data-annotations": JSON.stringify(annotationList),
+				"data-lang": lang,
+				"data-meta": JSON.stringify(meta),
 			};
-
-			const annoAttr: MdxJsxAttribute = {
-				type: "mdxJsxAttribute",
-				name: "annotations",
-				value: JSON.stringify(annotations),
-			};
-
-			node.attributes.push(codeAttr, annoAttr);
 		});
 	};
 }
