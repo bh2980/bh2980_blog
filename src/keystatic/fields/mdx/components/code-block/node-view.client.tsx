@@ -93,6 +93,12 @@ const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProps, "val
 
 	const handleLangChange = (lang: EditorCodeLang) => {
 		setSearchValue("");
+
+		// 문서 업데이트는 사용자 선택 시에만
+		if (value.lang !== lang) {
+			onChange({ ...value, lang });
+		}
+
 		setRecentUsed((prev) => {
 			const nextArr = [lang, ...prev.filter((recentLang) => recentLang !== lang)];
 			const next = toThree(nextArr, prev);
@@ -115,10 +121,6 @@ const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProps, "val
 			</DropdownMenuCheckboxItem>
 		);
 	};
-
-	useEffect(() => {
-		onChange({ ...value, lang: currentSelectLang });
-	}, [currentSelectLang, onChange, value]);
 
 	return (
 		<DropdownMenu>
