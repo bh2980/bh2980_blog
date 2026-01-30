@@ -10,7 +10,6 @@ import tsTags from "@shikijs/langs/ts-tags";
 import tsx from "@shikijs/langs/tsx";
 import yaml from "@shikijs/langs/yaml";
 import oneDarkPro from "@shikijs/themes/one-dark-pro";
-
 import { compileMDX, MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeMermaid from "rehype-mermaid";
@@ -20,7 +19,6 @@ import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexi
 import remarkGfm from "remark-gfm";
 import { getSingletonHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-
 import { annotationConfig } from "@/keystatic/libs/serialize-annotations";
 import { rehypeMermaidDarkClass } from "@/libs/rehype/rehype-mermaid-dark-class";
 import { rehypeShikiDecorationRender } from "@/libs/rehype/rehype-shiki-decoration-render";
@@ -32,6 +30,7 @@ import { Code, CodeWithTooltips, InlineCode } from "./code";
 import { CodeBlock } from "./code-block";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
+import { Pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
@@ -99,6 +98,7 @@ export const renderMDX = async (source: string) => {
 		},
 		components: {
 			a,
+			pre: Pre,
 			Callout,
 			Collapsible,
 			Columns,
