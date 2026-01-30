@@ -91,7 +91,7 @@ export function rehypeShikiDecorationRender(opts: { highlighter: Highlighter; th
 
 			const metaStr = (pre.properties?.["data-meta"] ?? codeEl.properties?.["data-meta"]) as string | undefined;
 
-			const decoratonStr = (pre.properties?.["data-annotations"] ?? codeEl.properties?.["data-annotations"]) as
+			const decoratonStr = (pre.properties?.["data-decorations"] ?? codeEl.properties?.["data-decorations"]) as
 				| string
 				| undefined;
 

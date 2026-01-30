@@ -68,7 +68,7 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 
 			node.data.hProperties = {
 				...node.data.hProperties,
-				"data-annotations": JSON.stringify(annotationList),
+				"data-decorations": JSON.stringify(annotationList),
 				"data-lang": lang,
 				"data-meta": JSON.stringify(meta),
 			};
