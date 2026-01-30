@@ -24,13 +24,24 @@ export type FenceMetaValue = string | boolean;
 
 export type LineRange = { start: number; end: number };
 
-export type LineAnnotation = {
+export type LineAnnotationBase = {
 	type: AnnotationType;
+	tag: AnnotationTag;
 	name: string;
 	range: LineRange;
 	priority: number;
 	attributes?: AnnotationAttr[];
 };
+
+export type ClassLineAnnotation = LineAnnotationBase & {
+	class: string;
+};
+
+export type RenderLineAnnotation = LineAnnotationBase & {
+	render: string;
+};
+
+export type LineAnnotation = ClassLineAnnotation | RenderLineAnnotation;
 
 export type LineMeta = {
 	lineNumber: number;
@@ -163,7 +174,7 @@ const buildEvents = (annotations: LineAnnotation[]) => {
 	return event;
 };
 
-function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
+export function parseFenceMeta(meta: string): Record<string, FenceMetaValue> {
 	const parsed: Record<string, FenceMetaValue> = {};
 	const input = meta.trim();
 	let index = 0;
@@ -281,13 +292,9 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 		const result = annotationStr.match(ANNOTATION_RE);
 		if (!result?.groups) return;
 
-		const {
-			typeName,
-			name,
-			range: rangeStr,
-		} = result.groups as { typeName: AnnotationTag; name: string; range: string };
+		const { tag, name, range: rangeStr } = result.groups as { tag: AnnotationTag; name: string; range: string };
 
-		const type = ANNOTATION_TYPE_BY_TAG[typeName];
+		const type = ANNOTATION_TYPE_BY_TAG[tag];
 
 		const [start, end] = rangeStr.split("-").map(Number);
 		const range = { start, end };
@@ -307,7 +314,7 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 			return;
 		}
 
-		const lineAnnotation = { ...config, type, typeName, name, range, attributes };
+		const lineAnnotation = { ...config, type, tag, name, range, attributes };
 
 		return lineAnnotation;
 	} catch {
@@ -326,7 +333,7 @@ export const parseCodeToAnnotationLines = (code: string, lang: string, config?: 
 	let lineNo = 0;
 	const lines = [];
 
-	let annotations = [];
+	let annotations: LineAnnotation[] = [];
 
 	for (const line of code.split("\n")) {
 		if (isAnnotationComment(line)) {
