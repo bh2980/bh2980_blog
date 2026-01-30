@@ -1,5 +1,5 @@
 diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
-index fc703c5a29949074cd161c49afad3b1a67c60520..35de2701906dbca4e5834d6d0df6bc5d51bfdad6 100644
+index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8faa05752 100644
 --- a/dist/index-d59451fc.js
 +++ b/dist/index-d59451fc.js
 @@ -26834,10 +26834,33 @@ const cursorBuilder = user => {
@@ -49,7 +49,7 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..35de2701906dbca4e5834d6d0df6bc5d
      doc
    });
  }
-@@ -27404,27 +27430,60 @@ function serializeFromEditorState(value, slug) {
+@@ -27404,27 +27430,74 @@ function serializeFromEditorState(value, slug) {
      external
    };
  }
@@ -58,23 +58,40 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..35de2701906dbca4e5834d6d0df6bc5d
 +  return globalThis && globalThis.__KEYSTATIC_MDX_HOOKS__;
 +}
  function parseToEditorStateMDX(content, schema, files, otherFiles, slug) {
+-  const root = fromMarkdown(content, {
 +  const hooks = getKSMdxHooks();
 +
-   const root = fromMarkdown(content, {
-     extensions: [mdxjs(), gfmAutolinkLiteral(), gfmStrikethrough(), gfmTable()],
-     mdastExtensions: [mdxFromMarkdown(), gfmAutolinkLiteralFromMarkdown(), gfmStrikethroughFromMarkdown(), gfmTableFromMarkdown()]
-   });
-+
-+  if (hooks && typeof hooks.beforeParse === 'function') {
-+    const next = hooks.beforeParse(root, { slug });
-+    if (typeof next === 'string') content = next;
++  // (1) 문자열 전처리
++  if (typeof hooks?.beforeParse === "function") {
++    const next = hooks.beforeParse(content, { slug });
++    if (typeof next === "string") content = next;
 +  }
 +
-   const doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
++  // 파싱
++  let root = fromMarkdown(content, {
+     extensions: [mdxjs(), gfmAutolinkLiteral(), gfmStrikethrough(), gfmTable()],
+-    mdastExtensions: [mdxFromMarkdown(), gfmAutolinkLiteralFromMarkdown(), gfmStrikethroughFromMarkdown(), gfmTableFromMarkdown()]
++    mdastExtensions: [
++      mdxFromMarkdown(),
++      gfmAutolinkLiteralFromMarkdown(),
++      gfmStrikethroughFromMarkdown(),
++      gfmTableFromMarkdown(),
++    ],
+   });
+-  const doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
 +
-+  if (hooks && typeof hooks.afterParse === 'function') {
++  // (2) mdast 전처리 (새 훅)
++  if (typeof hooks?.afterMarkdownParse === "function") {
++    const next = hooks.afterMarkdownParse(root, { slug });
++    if (next) root = next; // 또는 next를 반환 안 하고 root를 mutate하는 스타일도 가능
++  }
++
++  let doc = mdxToProseMirror(root, schema, files, otherFiles, slug);
++
++  // (3) ProseMirror doc 전처리
++  if (typeof hooks?.afterProseMirrorParse === "function") {
 +    const next = hooks.afterParse(doc, { slug });
-+    if (next) return createEditorState(next);
++    if (next) doc = next;
 +  }
 +
    return createEditorState(doc);
