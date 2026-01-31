@@ -15,8 +15,25 @@ export const subscribeCodeBlockMap = (listener: () => void) => {
 
 export const getCodeBlockMapSnapshot = () => snapshot;
 
-const emit = () => {
-	for (const l of listeners) l();
+// ✅ 동기 emit 금지 → 마이크로태스크로 미루고 coalesce
+// TODO 공부해보기
+/**
+ * ## Error Message
+Cannot update a component (CodeBlockNodeView) while rendering a different component (LocalItemPage). 
+To locate the bad setState() call inside LocalItemPage, follow the stack trace as described in https://react.dev/link/setstate-in-render
+
+at emit (src/keystatic/libs/find-codeblock-and-mapping.ts:19:29)
+ */
+let queued = false;
+const schedule = typeof queueMicrotask === "function" ? queueMicrotask : (cb: () => void) => Promise.resolve().then(cb);
+
+const emitAsync = () => {
+	if (queued) return;
+	queued = true;
+	schedule(() => {
+		queued = false;
+		for (const l of listeners) l();
+	});
 };
 
 export const findCodeBlockAndMapping = (root: Root) => {
@@ -34,5 +51,5 @@ export const findCodeBlockAndMapping = (root: Root) => {
 	});
 
 	snapshot = next;
-	emit();
+	emitAsync(); // ✅ 여기서 즉시 리스너 호출하지 않음
 };
