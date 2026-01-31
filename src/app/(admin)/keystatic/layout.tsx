@@ -56,7 +56,7 @@ export default function Layout() {
                         }
 
                         /* inline code */
-                        .ProseMirror code {
+                        .ProseMirror code:not(pre code) {
                             /* 배경 및 테두리 (변수 활용) */
                             background-color: var(--muted) !important;
                             border: 1px solid var(--border) !important;
@@ -74,7 +74,7 @@ export default function Layout() {
                             }
                         }
 
-                        .kui-scheme--dark .ProseMirror code {
+                        .kui-scheme--dark .ProseMirror code:not(pre code) {
                             background-color: oklch(0.3729 0.0306 259.7328) !important;
                             border-color: var(--color-gray-600) !important;
                         }
@@ -107,37 +107,19 @@ export default function Layout() {
                             text-decoration: none !important;
                         }
 
-                        /* 커스텀 컴포넌트 */
-                        .ProseMirror span[data-component="u"],
-                        .ProseMirror span[data-component="Tooltip"] {
-                            text-decoration: underline !important;
-                            text-underline-offset: 4px !important;
-                            text-decoration-thickness: 1.5px !important;
+                        .prose code:not(pre code) {
+                            @apply rounded-sm border bg-slate-100 p-1 before:content-none after:content-none dark:bg-slate-700
                         }
 
-                        .ProseMirror span[data-component="Tooltip"] {
-                            text-decoration-style: dotted !important;
-                            cursor: help !important;
-                            text-decoration-color: var(--border) !important;
-
-                        }
-
-                        .ProseMirror pre {
+                        .prose pre code {
                             counter-reset: step;
                             counter-increment: step 0;
                         }
 
-                        .ProseMirror pre .line::before {
+                        .prose pre[data-show-line-numbers] code .line::before {
                             counter-increment: step;
-
-                            margin-right: 0.75rem;
-                            display: inline-block;
-                            border-color: transparent;
-                            text-align: right !important;
-                            width: 2ch !important;
-                            color: rgb(255 255 255 / 0.5);
-                            content: counter(step);
-                            }
+                            @apply mr-3 inline-block border-transparent text-right! w-[2ch]! text-white/50 content-[counter(step)];
+                        }
                     `,
 				}}
 			/>
