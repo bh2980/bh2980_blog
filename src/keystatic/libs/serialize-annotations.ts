@@ -1,7 +1,8 @@
 import type { Break, Code, Node, Root, Text } from "mdast";
 import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { SKIP, visit } from "unist-util-visit";
-import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS, type EditorCodeLang } from "../fields/mdx/components/code-block";
+import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS } from "../fields/mdx/components/code-block";
+import type { EditorCodeLang } from "../fields/mdx/components/code-block/types";
 
 export type AnnotationSource = "mdast" | "mdx-text" | "mdx-flow";
 
