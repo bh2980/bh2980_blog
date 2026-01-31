@@ -1,8 +1,8 @@
 import type { Element, Root } from "hast";
 import { toString as hastToString } from "hast-util-to-string";
+import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import { highlight } from "../shiki/code-highligher";
-import type { ShikiDecoration } from "../shiki/remark-annotation-to-decoration";
+import { highlight } from "./code-highligher";
 
 type Meta = Record<string, any>;
 
@@ -44,7 +44,7 @@ export function rehypeShikiDecorationRender() {
 				| undefined;
 
 			const meta: Meta = metaStr ? JSON.parse(metaStr) : {};
-			const decorations: ShikiDecoration[] = decoratonStr ? JSON.parse(decoratonStr) : [];
+			const decorations: DecorationItem[] = decoratonStr ? JSON.parse(decoratonStr) : [];
 
 			const hast = highlight(code, lang, meta, decorations);
 
