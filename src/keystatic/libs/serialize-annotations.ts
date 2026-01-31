@@ -92,16 +92,9 @@ const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type
 
 export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
 
-let annotationHelperSingleton: {
-	annoRegistry: Map<string, AnnotationRegistryItem>;
-	isAnnotationNode: (node: Node) => boolean;
-};
-
+// TODO : 웹 브라우저에서 저장 시와 편집 시 다른 config를 사용하는데 싱글톤으로 하니까 덮어씌워서 정상 동작이 안됨.
+// 재사용하면서 환경별 config에 따라 변경되는 좋은 방법 생각하기
 export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
-	if (annotationHelperSingleton) {
-		return annotationHelperSingleton;
-	}
-
 	if (!annotationConfig) {
 		throw new Error("[buildAnnotationHelper] ERROR : annotationConfig is required");
 	}
@@ -136,8 +129,6 @@ export const buildAnnotationHelper = (annotationConfig?: AnnotationConfig) => {
 
 		return annotationMap.has(node.type);
 	};
-
-	annotationHelperSingleton = { annoRegistry: annotationMap, isAnnotationNode };
 
 	return { annoRegistry: annotationMap, isAnnotationNode };
 };
@@ -201,7 +192,7 @@ export const extractAnnotationsFromAst = (node: Node, annotationConfig: Annotati
 						.filter(
 							(attr): attr is MdxJsxAttribute => attr.type === "mdxJsxAttribute" && typeof attr.value === "string",
 						)
-						.map((attr) => ({ name: attr.name, value: JSON.parse(attr.value as string) })),
+						.map((attr) => ({ name: attr.name, value: attr.value })),
 				};
 
 				annotations.push(annoataion);
