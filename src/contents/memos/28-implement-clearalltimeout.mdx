@@ -12,60 +12,39 @@ tags:
 ## 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
+  ```js
+  // @mark Tooltip {27-58} content="안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 이는 setTimeout이 단독호출처럼 보이지만 실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문"
+  const originalSetTimeout = window.setTimeout.bind(window);
+  const originalClearTimeout = window.clearTimeout.bind(window);
+  let timerSet = new Set();
 
-```js !code
-// !tooltip[/bind\(window\)/] bind
-const originalSetTimeout = window.setTimeout.bind(window);
-const originalClearTimeout = window.clearTimeout.bind(window);
-let timerSet = new Set();
+  const clearAllTimeout = () => {
+    timerSet.forEach(timer => originalClearTimeout(timer));
+    timerSet.clear()
+  }
 
-const clearAllTimeout = () => {
-&nbsp;&nbsp;timerSet.forEach(timer => originalClearTimeout(timer));
-&nbsp;&nbsp;timerSet.clear()
-}
+  // @mark Tooltip {39-51} content="추후 callback의 arguments로 들어간다."
+  window.setTimeout = (handler, timeout, ...arguments) => {
+    let timer;
+  // @mark Tooltip {2-10} content="시간이 지나 callback이 따로 실행되었을 때의 this를 보존하기 위해 function 키워드를 사용한다."
+    function callback(...args){
+      try{
+        handler.apply(this, args);
+      }finally{
+        timerSet.delete(timer);
+      }
+    }
 
-// !tooltip[/\.\.\.arguments/] arguments
-window.setTimeout = (handler, timeout, ...arguments) => {
-&nbsp;&nbsp;let timer;
-&nbsp;&nbsp;// !tooltip[/function/] function
-&nbsp;&nbsp;function callback(...args){
-&nbsp;&nbsp;&nbsp;&nbsp;try{
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;handler.apply(this, args);
-&nbsp;&nbsp;&nbsp;&nbsp;}finally{
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timerSet.delete(timer);
-&nbsp;&nbsp;&nbsp;&nbsp;}
-&nbsp;&nbsp;}
+    timer = originalSetTimeout(callback, timeout, ...arguments);
+    timerSet.add(timer);
 
-&nbsp;&nbsp;timer = originalSetTimeout(callback, timeout, ...arguments);
-&nbsp;&nbsp;timerSet.add(timer);
+    return timer;
+  }
 
-&nbsp;&nbsp;return timer;
-}
-
-window.clearTimeout = (handle) => {
-&nbsp;&nbsp;timerSet.delete(handle);
-&nbsp;&nbsp;originalClearTimeout(handle);
-}
-
-```
-
-## !!tooltips bind
-
-안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 
-이는 setTimeout이 단독호출처럼 보이지만 
-실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문
-
-## !!tooltips arguments
-
-추후 callback의 arguments로 들어간다.
-
-## !!tooltips function
-
-시간이 지나 callback이 따로 실행되었을 때의 this를 보존하기 위해 function 키워드를 사용한다.
-
-
-</CodeWithTooltips>"
+  window.clearTimeout = (handle) => {
+    timerSet.delete(handle);
+    originalClearTimeout(handle);
+  }
+  ```
   />
 </Collapsible>

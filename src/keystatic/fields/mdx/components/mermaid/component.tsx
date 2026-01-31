@@ -1,8 +1,13 @@
+import { fields } from "@keystatic/core";
 import { wrapper } from "@keystatic/core/content-components";
 import { ChartNetwork } from "lucide-react";
 import { lazy, type PropsWithChildren, Suspense } from "react";
 
 export type MermaidNodeViewProps = PropsWithChildren & {
+	value: {
+		readonly id: string;
+	};
+	onChange(value: { readonly id: string }): void;
 	onRemove(): void;
 	isSelected: boolean;
 };
@@ -26,6 +31,8 @@ export const EDITOR_MERMAID_NAME = "Mermaid";
 export const EditorMermaid = wrapper({
 	label: "Mermaid 차트",
 	icon: <ChartNetwork />,
-	schema: {},
+	schema: {
+		id: fields.text({ label: "코드블럭 ID" }),
+	},
 	NodeView: MermaidBlockNodeViewProxy,
 });

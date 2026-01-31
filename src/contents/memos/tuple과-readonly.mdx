@@ -11,13 +11,74 @@ Tuple의 정의는 불변 배열이 아니라, 길이와 Index와 매칭되는 �
 
 따라서, readonly와 튜플의 여부는 별개이므로 `T extends readonly any[]`로 튜플과 배열을 구분할 수는 없다.
 
-<Code codeblock={{"lang":"typescript","value":"// -----------------------------\n// 1) mutable tuple (요소 변경 가능)\n// -----------------------------\nlet mt: [number, string] = [1, \"a\"];\n\nmt[0] = 2;       // OK (number)\nmt[1] = \"b\";     // OK (string)\n// mt[0] = \"x\";  // Error: string is not assignable to number\n\n\n// -----------------------------\n// 2) readonly tuple (요소 변경 불가)\n// -----------------------------\nlet rt: readonly [number, string] = [1, \"a\"];\n\n// rt[0] = 2;    // Error: Cannot assign to '0' because it is a read-only property\n// rt.push(\"x\") // Error: Property 'push' does not exist on type 'readonly [number, string]'\n\n\n// -----------------------------\n// 3) mutable array (요소 변경 가능)\n// -----------------------------\nlet ma: number[] = [1, 2, 3];\n\nma[0] = 10;       // OK\nma.push(4);       // OK\n\n\n// -----------------------------\n// 4) readonly array (요소 변경 불가)\n// -----------------------------\nlet ra: readonly number[] = [1, 2, 3];\n\n// ra[0] = 10;    // Error\n// ra.push(4);    // Error\n\n\n// -----------------------------\n// 5) readonly 여부와 tuple 여부는 별개 축이다.\n//    따라서 `T extends readonly any[]`는\n//    \"readonly 배열/튜플\"을 모두 포함하며,\n//    tuple vs array 구분이 되지 않는다.\n// -----------------------------\ntype IsReadonlyArrayLike<T> = T extends readonly any[] ? true : false;\n\ntype A = IsReadonlyArrayLike<number[]>;                 // true  (mutable array도 readonly any[]에 할당 가능)\ntype B = IsReadonlyArrayLike<readonly number[]>;        // true  (readonly array)\ntype C = IsReadonlyArrayLike<[number, string]>;         // true  (mutable tuple도 readonly any[]에 할당 가능)\ntype D = IsReadonlyArrayLike<readonly [number, string]>;// true  (readonly tuple)\n\n// 결론: `T extends readonly any[]`로는 tuple/array 구분 불가"}} />
+```ts
+// -----------------------------
+// 1) mutable tuple (요소 변경 가능)
+// -----------------------------
+let mt: [number, string] = [1, "a"];
+
+mt[0] = 2;       // OK (number)
+mt[1] = "b";     // OK (string)
+// mt[0] = "x";  // Error: string is not assignable to number
+
+
+// -----------------------------
+// 2) readonly tuple (요소 변경 불가)
+// -----------------------------
+let rt: readonly [number, string] = [1, "a"];
+
+// rt[0] = 2;    // Error: Cannot assign to '0' because it is a read-only property
+// rt.push("x") // Error: Property 'push' does not exist on type 'readonly [number, string]'
+
+
+// -----------------------------
+// 3) mutable array (요소 변경 가능)
+// -----------------------------
+let ma: number[] = [1, 2, 3];
+
+ma[0] = 10;       // OK
+ma.push(4);       // OK
+
+
+// -----------------------------
+// 4) readonly array (요소 변경 불가)
+// -----------------------------
+let ra: readonly number[] = [1, 2, 3];
+
+// ra[0] = 10;    // Error
+// ra.push(4);    // Error
+
+
+// -----------------------------
+// 5) readonly 여부와 tuple 여부는 별개 축이다.
+//    따라서 `T extends readonly any[]`는
+//    "readonly 배열/튜플"을 모두 포함하며,
+//    tuple vs array 구분이 되지 않는다.
+// -----------------------------
+type IsReadonlyArrayLike<T> = T extends readonly any[] ? true : false;
+
+type A = IsReadonlyArrayLike<number[]>;                 // true  (mutable array도 readonly any[]에 할당 가능)
+type B = IsReadonlyArrayLike<readonly number[]>;        // true  (readonly array)
+type C = IsReadonlyArrayLike<[number, string]>;         // true  (mutable tuple도 readonly any[]에 할당 가능)
+type D = IsReadonlyArrayLike<readonly [number, string]>;// true  (readonly tuple)
+
+// 결론: `T extends readonly any[]`로는 tuple/array 구분 불가
+```
 
 ## 타입 수준에서 배열과 튜플의 구분
 
 그렇다면 타입 수준에서 배열과 튜플을 구분하는 방법은 무엇인가? 바로 length 프로퍼티의 타입을 보는 것이다.\
 튜플의 length는 숫자 리터럴로 1, 2, 3과 같은 정해진 숫자 값이 나오는 반면, 배열은 길이가 정해져있지 않으므로 number가 나온다.
 
-<Code codeblock={{"lang":"typescript","value":"type IsTupleArray<T extends readonly any[]> =\n  number extends T['length'] ? \"Array\" : \"Tuple\"\n  \nconst array = [1, 2, 3];\nconst tuple = [4, 5, 6] as const;\n\nIsTupleArray<typeof tuple>  // \"Tuple\"\nIsTupleArray<typeof array>  // \"Array\""}} />
+```ts
+type IsTupleArray<T extends readonly any[]> =
+  number extends T['length'] ? "Array" : "Tuple"
+  
+const array = [1, 2, 3];
+const tuple = [4, 5, 6] as const;
+
+IsTupleArray<typeof tuple>  // "Tuple"
+IsTupleArray<typeof array>  // "Array"
+```
 
 숫자 리터럴은 number에 포함되기 때문에 역으로 `number extends T['length']`를 해준 것이 보인다.

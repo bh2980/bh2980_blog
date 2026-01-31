@@ -1,26 +1,26 @@
 import type { Code, Root } from "mdast";
+import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import { type LineAnnotation, parseCodeToAnnotationLines, parseFenceMeta } from "@/keystatic/libs/parse-annotations";
+import {
+	type ClassLineAnnotation,
+	type LineAnnotation,
+	parseCodeToAnnotationLines,
+	parseFenceMeta,
+	type RenderLineAnnotation,
+} from "@/keystatic/libs/parse-annotations";
 import type { AnnotationConfig } from "@/keystatic/libs/serialize-annotations";
-import type { ClassLineAnnotation, RenderLineAnnotation } from "../../keystatic/libs/parse-annotations";
-
-export type ShikiDecoration = {
-	start: { line: number; character: number };
-	end: { line: number; character: number };
-	properties?: Record<string, any>;
-};
 
 const isDecAnnotation = (anno: LineAnnotation): anno is ClassLineAnnotation => anno.tag === "dec" && "class" in anno;
 const isMarkAnnotation = (anno: LineAnnotation): anno is RenderLineAnnotation =>
 	anno.tag === "mark" && "render" in anno;
 
-const buildDecDecoration = (lineNumber: number, anno: ClassLineAnnotation): ShikiDecoration => ({
+const buildDecDecoration = (lineNumber: number, anno: ClassLineAnnotation): DecorationItem => ({
 	start: { line: lineNumber, character: anno.range.start },
 	end: { line: lineNumber, character: anno.range.end },
 	properties: { class: anno.class },
 });
 
-const buildMarkDecoration = (lineNumber: number, anno: RenderLineAnnotation): ShikiDecoration => {
+const buildMarkDecoration = (lineNumber: number, anno: RenderLineAnnotation): DecorationItem => {
 	const dataProperties = [
 		[`data-anno-render`, anno.render],
 		...(anno.attributes?.map((attr) => [`data-anno-${attr.name}`, JSON.stringify(attr.value)]) ?? []),

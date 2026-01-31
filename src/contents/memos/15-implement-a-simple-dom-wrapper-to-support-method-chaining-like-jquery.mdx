@@ -10,50 +10,54 @@ tags:
 
 jQuery 처럼 속성을 chaining해서 설정할 수 있는 wrapper `$`를 만들어주세요.
 
-<Code codeblock={{"lang":"typescript","value":"$('#button')\n  .css('color', '#fff')\n  .css('backgroundColor', '#000')\n  .css('fontWeight', 'bold')"}} />
+```js
+$('#button')
+  .css('color', '#fff')
+  .css('backgroundColor', '#000')
+  .css('fontWeight', 'bold')
+```
 
 ## 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
+  ```js
+  function $(el) {
+    const element = el
 
-```js !code
-function $(el) {
-&nbsp;&nbsp;const element = el
+    return {
+  // @mark Tooltip {9-17} content="this 바인딩을 위한 일반 함수 호출"
+      css: function(propertyName, value) {
+  // @mark Tooltip {20-32} content="동적으로 객체 키를 설정하기 위해 대괄호를 통한 객체 키 접근"
+        element.style[propertyName] = value;
 
-&nbsp;&nbsp;return {
-&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/function/] function
-&nbsp;&nbsp;&nbsp;&nbsp;css: function(propertyName, value) {
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/\[propertyName\]/] propertyName
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;element.style[propertyName] = value;
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return {
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// !tooltip[/this\.css/] css
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;css: this.css
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
-&nbsp;&nbsp;&nbsp;&nbsp;}
-&nbsp;&nbsp;}
-}
-```
-
-## !!tooltips function
-
-this 바인딩을 위한 일반 함수 호출
-
-## !!tooltips propertyName
-
-동적으로 객체 키를 설정하기 위해 대괄호를 통한 객체 키 접근
-
-## !!tooltips css
-
-이 때 this는 function 키워드를 통해 호출한 객체를 이어 받는다.
-
-</CodeWithTooltips>"
-  />
+        return {
+  // @mark Tooltip {8-21} content="이 때 this는 function 키워드를 통해 호출한 객체를 이어 받는다."
+          css: this.css
+        };
+      }
+    }
+  }
+  ```
 
   <Collapsible>
-    <Mermaid chart="graph TD; A[&#x22;$(el) 단독 호출&#x22;]-->B[&#x22;$ 실행 컨텍스트 생성&#x22;]; B-->C[&#x22;$의 this = undefined (strict/module)&#x22;]; C-->D[&#x22;return { css: ... } 평가&#x22;]; D-->E{&#x22;css 함수 종류?&#x22;}; E--&#x22;화살표 함수&#x22;-->F[&#x22;css(arrow) 함수 객체 생성&#x22;]; F-->G[&#x22;상위 컨텍스트($)의 this 캡처/고정 (= undefined)&#x22;]; G-->H[&#x22;receiver = $(el)의 반환 객체&#x22;]; H-->I[&#x22;receiver.css(...) 호출&#x22;]; I-->J[&#x22;receiver를 this로 전달 시도&#x22;]; J-->K[&#x22;arrow는 호출 this를 받지 않음&#x22;]; K-->L[&#x22;캡처된 this(= undefined) 사용&#x22;]; E--&#x22;일반 function&#x22;-->M[&#x22;css(function) 함수 객체 생성 (this 캡처 없음)&#x22;]; M-->N[&#x22;receiver = $(el)의 반환 객체&#x22;]; N-->O[&#x22;receiver.css(...) 호출&#x22;]; O-->P[&#x22;엔진이 this = receiver로 설정 후 실행&#x22;];" />
+    ```mermaid
+    graph TD;
+      A["$(el) 단독 호출"] --> B["$ 실행 컨텍스트 생성"];
+      B --> C["$의 this = undefined (strict/module)"];
+      C --> D["return { css: ... } 평가"];
+      D --> E{"css 함수 종류?"};
+      E -- "화살표 함수" --> F["css(arrow) 함수 객체 생성"];
+      F --> G["상위 컨텍스트($)의 this 캡처/고정 (= undefined)"];
+      G --> H["receiver = $(el)의 반환 객체"];
+      H --> I["receiver.css(...) 호출"];
+      I --> J["receiver를 this로 전달 시도"];
+      J --> K["arrow는 호출 this를 받지 않음"];
+      K --> L["캡처된 this(= undefined) 사용"];
+      E -- "일반 function" --> M["css(function) 함수 객체 생성 (this 캡처 없음)"];
+      M --> N["receiver = $(el)의 반환 객체"];
+      N --> O["receiver.css(...) 호출"];
+      O --> P["엔진이 this = receiver로 설정 후 실행"];
+    ```
 
     1. $(el) 호출
     2. $의 **실행 컨텍스트(execution context)** 가 생성되고, 단독 호출이라 $의 this가 undefined로 결정(대부분 strict 환경)

@@ -1,7 +1,7 @@
 import { Folder } from "lucide-react";
 import type { PropsWithChildren } from "react";
 import { cn } from "@/utils/cn";
-import { CopyButton } from "./code-handler";
+import { CopyButton } from "./copy-button.client";
 
 type PreProps = PropsWithChildren<{
 	title?: string;
@@ -42,8 +42,8 @@ export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) 
 				data-show-line-numbers={showLineNumbers}
 			>
 				{children}
-				<CopyButton text={code} className="lg:hidden lg:group-hover:block" />
 			</pre>
+			<CopyButton text={code} className="top-8 lg:hidden lg:group-hover:block" />
 		</div>
 	);
 };

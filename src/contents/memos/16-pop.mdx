@@ -36,5 +36,13 @@ type cases = [
 ### 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"type Pop<T extends any[]> = T extends [...infer Rest, infer _] ? Rest : T\ntype Shift<T extends any[], U> = T extends [infer _, ...infer Rest] ? Rest : T\n\ntype Push<T extends any[], U> = [...T, U];\ntype Unshift<T extends any[]> = [U, ...T];"}} />
+  ```ts
+  type Pop<T extends any[]> = T extends [...infer Rest, infer _] ? Rest : T;
+
+  type Shift<T extends any[]> = T extends [infer _, ...infer Rest] ? Rest : T;
+
+  type Push<T extends any[], U> = [...T, U];
+
+  type Unshift<T extends any[], U> = [U, ...T];
+  ```
 </Collapsible>

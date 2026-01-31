@@ -29,9 +29,17 @@ type cases = [
 
 1. 유니온의 분배 법칙
 
-   <Code codeblock={{"lang":"typescript","value":"T extends U ? A : B\n->\n(T1 extends U ? A : B)\n| (T2 extends U ? A : B)\n| (T3 extends U ? A : B)"}} />
+```ts
+// 1. 기본 공식 (정의)
+T extends U ? X : Y 
 
-   T가 유니온이면 각 타입에 대해 조건이 분배되어 계산된다.
+// 2. T에 유니온 타입 (A | B | C)이 들어올 경우의 실제 동작
+(A extends U ? X : Y) 
+| (B extends U ? X : Y) 
+| (C extends U ? X : Y)
+```
+
+T가 유니온이면 각 타입에 대해 조건이 분배되어 계산된다.
 
 ### 풀이
 

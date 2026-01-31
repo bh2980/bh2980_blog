@@ -36,18 +36,8 @@ type cases = [
 ### 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
-
-```js !code
-// !tooltip[/\' \' \| \'\\t\' \| \'\\n\'/] description
-type TrimLeft<S extends string> = S extends `${' ' | '\t' | '\n'}${infer Rest}` ? TrimLeft<Rest> : S
-```
-
-## !!tooltips description
-
-공백 문자를 별도의 템플릿 리터럴 타입으로 분류하여 분리
-
-</CodeWithTooltips>"
-  />
+  ```js
+  // @mark Tooltip {44-65} content="공백 문자를 별도의 템플릿 리터럴 타입으로 분류하여 분리"
+  type TrimLeft<S extends string> = S extends `${' ' | '\t' | '\n'}${infer Rest}` ? TrimLeft<Rest> : S
+  ```
 </Collapsible>

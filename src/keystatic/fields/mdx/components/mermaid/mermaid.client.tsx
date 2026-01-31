@@ -28,6 +28,7 @@ export const Mermaid = ({ chart, className }: MermaidProps) => {
 				.then(({ svg }) => {
 					if (ref.current) {
 						ref.current.innerHTML = svg;
+						setError(undefined);
 					}
 				})
 				.catch((error) => setError(error));
@@ -37,7 +38,8 @@ export const Mermaid = ({ chart, className }: MermaidProps) => {
 	}, [chart]);
 
 	return (
-		<div className={cn("flex justify-center p-4", className)} ref={ref} data-error={!!error}>
+		<div className={cn("flex justify-center p-4", className)} data-error={!!error}>
+			<div ref={ref} />
 			{error && <span className="text-sm">ERROR : {error.message}</span>}
 		</div>
 	);
