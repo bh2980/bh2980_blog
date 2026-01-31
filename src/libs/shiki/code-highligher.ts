@@ -30,13 +30,14 @@ import yaml from "@shikijs/langs/yaml";
 import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
-import { EDITOR_CODE_BLOCK_THEME } from "@/keystatic/fields/mdx/components/code-block";
 import { addMetaToPre, type Meta, replaceToRenderTag } from "./transformers";
+
+export const CODE_BLOCK_THEME = "one-dark-pro" as const;
 
 export const highlight = (code: string, lang: string, meta: Meta, decorations?: DecorationItem[]) =>
 	highlighter.codeToHast(code, {
 		lang,
-		theme: EDITOR_CODE_BLOCK_THEME,
+		theme: CODE_BLOCK_THEME,
 		decorations,
 		transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
 	});
@@ -87,5 +88,5 @@ const highlighter = await getSingletonHighlighterCore({
 		txt: "text",
 		plain: "text",
 	},
-	engine: createOnigurumaEngine(),
+	engine: await createOnigurumaEngine(import("shiki/wasm")),
 });
