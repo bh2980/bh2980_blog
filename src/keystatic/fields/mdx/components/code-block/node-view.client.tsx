@@ -1,16 +1,20 @@
 "use client";
 
+import type { Root } from "hast";
 import { ListOrdered, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-
 import { Toggle } from "@/components/ui/toggle";
+import { type AnnotationConfig, extractAnnotationsFromAst } from "@/keystatic/libs/serialize-annotations";
+import { highlight } from "@/libs/shiki/code-highligher";
 import { cn } from "@/utils/cn";
+import { isDefined } from "@/utils/is-defined";
+import { useLiveCodeBlockNode } from "../../hooks/use-live-code-block-node";
 import { BlurChangeInput } from "./blur-change-input.client";
 import type { CodeBlockNodeViewProps } from "./component";
+import { HastView } from "./hast-view";
 import { LanguageSelector } from "./language-selector";
-import { NodeViewCodeEditor } from "./node-view-code-editor.client";
 
 const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps) => {
 	const title = value.meta.title;
@@ -44,6 +48,8 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 	const subscriptionId = useRef(crypto.randomUUID());
+	const codeBlockNode = useLiveCodeBlockNode(subscriptionId.current);
+	const [hast, setHast] = useState<Root>();
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: id가 없을 경우에 최초 부여용
 	useEffect(() => {
@@ -54,14 +60,67 @@ export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 		props.onChange({ ...props.value, id: subscriptionId.current });
 	}, [props.value.id]);
 
+	useEffect(() => {
+		if (!codeBlockNode) {
+			return;
+		}
+
+		const result = extractAnnotationsFromAst(codeBlockNode, keystaticAnnotationConfig);
+
+		if (!isDefined(result?.code)) {
+			return;
+		}
+
+		const highlighedHast = highlight(result.code, props.value.lang, {});
+
+		setHast(highlighedHast);
+	}, [codeBlockNode, props.value.lang]);
+
 	return (
 		<div className={cn("flex flex-col gap-2 rounded-lg", props.isSelected && "outline-2 outline-offset-8")}>
 			<CodeBlockToolbar {...props} />
-			<NodeViewCodeEditor
-				nodeViewChildren={props.children}
-				lang={props.value.lang}
-				useLineNumber={props.value.meta.showLineNumbers}
-			/>
+			<div className="relative rounded-lg *:m-0!" style={{ backgroundColor: "rgb(40, 44, 52)" }}>
+				<pre
+					className={cn(
+						"relative z-20 w-full outline-none",
+						"bg-transparent! text-transparent! caret-white!",
+						props.value.meta.showLineNumbers && "[&_p]:pl-7!",
+					)}
+				>
+					{props.children}
+				</pre>
+				{hast && <HastView hast={hast} />}
+			</div>
 		</div>
 	);
+};
+
+export const keystaticAnnotationConfig: AnnotationConfig = {
+	decoration: [
+		{
+			name: "Tooltip",
+			source: "mdx-text",
+			class: "underline underline-dotted",
+		},
+		{
+			name: "strong",
+			source: "mdast",
+			class: "font-bold",
+		},
+		{
+			name: "emphasis",
+			source: "mdast",
+			class: "italic",
+		},
+		{
+			name: "delete",
+			source: "mdast",
+			class: "line-through",
+		},
+		{
+			name: "u",
+			source: "mdx-text",
+			class: "underline",
+		},
+	],
 };
