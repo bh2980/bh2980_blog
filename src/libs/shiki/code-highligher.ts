@@ -81,6 +81,11 @@ const highlighter = await getSingletonHighlighterCore({
 		css: "scss",
 		"c#": "csharp",
 		json: "jsonc",
+		yml: "yaml",
+		dockerfile: "docker",
+		md: "mdx",
+		txt: "text",
+		plain: "text",
 	},
 	engine: createOnigurumaEngine(),
 });
