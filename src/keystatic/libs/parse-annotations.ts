@@ -9,6 +9,7 @@ import type {
 import { SKIP, visit } from "unist-util-visit";
 import { isDefined } from "@/utils/is-defined";
 import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
+import { EDITOR_MERMAID_NAME } from "../fields/mdx/components/mermaid";
 import {
 	ANNOTATION_TAG_PREFIX,
 	ANNOTATION_TYPE_BY_TAG,
@@ -97,7 +98,7 @@ const buildMdxJsxTextElementNode = (
 	return {
 		type: "mdxJsxTextElement",
 		name,
-		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, JSON.stringify(attr.value))),
+		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, attr.value)),
 		children,
 	};
 };
@@ -285,8 +286,8 @@ function parseAttrs(rest: string) {
 }
 
 // TODO : 추후 파싱 시 검증 로직 추가
-const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
-	const { annoRegistry: annotationMap } = buildAnnotationHelper();
+const parseAnnotation = (annotationStr: string, config: AnnotationConfig): LineAnnotation | undefined => {
+	const { annoRegistry: annotationMap } = buildAnnotationHelper(config);
 
 	try {
 		const result = annotationStr.match(ANNOTATION_RE);
@@ -322,8 +323,7 @@ const parseAnnotation = (annotationStr: string): LineAnnotation | undefined => {
 	}
 };
 
-export const parseCodeToAnnotationLines = (code: string, lang: string, config?: AnnotationConfig) => {
-	buildAnnotationHelper(config);
+export const parseCodeToAnnotationLines = (code: string, lang: string, config: AnnotationConfig) => {
 	// TODO : 추후 lang을 보고 지정
 	const commentPrefix = "//";
 	const commentPostfix = "";
@@ -337,9 +337,18 @@ export const parseCodeToAnnotationLines = (code: string, lang: string, config?: 
 
 	for (const line of code.split("\n")) {
 		if (isAnnotationComment(line)) {
-			const annotation = parseAnnotation(line);
+			const annotation = parseAnnotation(line, config);
 			if (annotation) {
 				annotations.push(annotation);
+			} else {
+				const lineMeta = {
+					lineNumber: lineNo++,
+					value: `${line}`,
+					annotations,
+				};
+
+				lines.push(lineMeta);
+				annotations = [];
 			}
 		} else {
 			const lineMeta = {
@@ -407,13 +416,14 @@ const buildLineAst = (line: string, events: AnnotationEvent[], registry: Annotat
 	return root.children as PhrasingContent[];
 };
 
-const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRegistry) => {
+const buildParagraphAst = (rawCode: string, lang: string, config: AnnotationConfig) => {
+	const { annoRegistry: registry } = buildAnnotationHelper(config);
 	const paragraph: Paragraph = {
 		type: "paragraph",
 		children: [],
 	};
 
-	const lines = parseCodeToAnnotationLines(rawCode, lang);
+	const lines = parseCodeToAnnotationLines(rawCode, lang, config);
 
 	lines.forEach((line) => {
 		const events = buildEvents(line.annotations);
@@ -428,14 +438,14 @@ const buildParagraphAst = (rawCode: string, lang: string, registry: AnnotationRe
 };
 
 export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: AnnotationConfig) {
-	const { annoRegistry } = buildAnnotationHelper(annotationConfig);
-
 	visit(mdxAst, "code", (node, index, parent) => {
 		const lang = node.lang ?? "text";
+		if (lang === "mermaid") return;
+
 		const meta = parseFenceMeta(node.meta ?? "");
 		const rawCodeWithAnnotations = node.value;
 
-		const paragraph = buildParagraphAst(rawCodeWithAnnotations, lang, annoRegistry);
+		const paragraph = buildParagraphAst(rawCodeWithAnnotations, lang, annotationConfig);
 
 		const langAttr = buildMdxJsxAttribute("lang", lang);
 		const metaValue = buildMdxJsxAttributeValueExpression(meta);
@@ -450,7 +460,46 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 
 		if (parent && isDefined(index)) parent.children.splice(index, 1, codeBlockNode);
 
-		return SKIP;
+		return [SKIP, index];
+	});
+}
+
+export function walkOnlyMermaidCodeFence(mdxAst: Root) {
+	buildAnnotationHelper({});
+
+	visit(mdxAst, "code", (node, index, parent) => {
+		const lang = node.lang ?? "text";
+		if (lang !== "mermaid") return;
+
+		const rawCode = node.value;
+
+		const paragraphChildren = [];
+
+		for (const line of rawCode.split("\n")) {
+			const lineText = buildTextNode(line);
+
+			const breakText = buildBreakNode();
+
+			paragraphChildren.push(lineText, breakText);
+		}
+
+		paragraphChildren.pop();
+
+		const paragraph: Paragraph = {
+			type: "paragraph",
+			children: paragraphChildren,
+		};
+
+		const mermaidNode: MdxJsxFlowElement = {
+			type: "mdxJsxFlowElement",
+			name: EDITOR_MERMAID_NAME,
+			children: [paragraph],
+			attributes: [],
+		};
+
+		if (parent && isDefined(index)) parent.children.splice(index, 1, mermaidNode);
+
+		return [SKIP, index];
 	});
 }
 

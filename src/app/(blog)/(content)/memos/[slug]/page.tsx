@@ -56,7 +56,7 @@ export default async function MemoPage({ params, searchParams }: MemoPageProps) 
 				<article
 					className={cn(
 						"mx-auto w-full min-w-0 leading-loose",
-						"prose prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-ul:my-10 prose-headings:scroll-mt-32 prose-img:rounded-md prose-h1:p-0",
+						"prose prose-h1:m-0 prose-img:mx-auto prose-ol:my-10 prose-pre:my-0 prose-ul:my-10 prose-headings:scroll-mt-32 prose-img:rounded-md prose-h1:p-0",
 						"dark:prose-invert",
 					)}
 				>

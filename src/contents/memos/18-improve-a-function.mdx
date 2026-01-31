@@ -9,31 +9,72 @@ tags:
 
 아래 함수를 보고 제시된 질문에 답변을 해주세요.
 
-<Code codeblock={{"lang":"typescript","value":"// Given an input of array, \n// which is made of items with >= 3 properties\nlet items = [\n  {color: 'red', type: 'tv', age: 18}, \n  {color: 'silver', type: 'phone', age: 20},\n  {color: 'blue', type: 'book', age: 17}\n] \n// an exclude array made of key value pair\nconst excludes = [ \n  {k: 'color', v: 'silver'}, \n  {k: 'type', v: 'tv'}, \n  ...\n] \nfunction excludeItems(items, excludes) { \n  excludes.forEach( pair => { \n    items = items.filter(item => item[pair.k] === item[pair.v])\n  })\n \n  return items\n}"}} />
+```js
+// Given an input of array, 
+// which is made of items with >= 3 properties
+let items = [
+  {color: 'red', type: 'tv', age: 18}, 
+  {color: 'silver', type: 'phone', age: 20},
+  {color: 'blue', type: 'book', age: 17}
+];
 
+// an exclude array made of key value pair
+const excludes = [ 
+  {k: 'color', v: 'silver'}, 
+  {k: 'type', v: 'tv'}
+];
 
+function excludeItems(items, excludes) { 
+  excludes.forEach(pair => { 
+    // Logic fix: filter out items where key equals value
+    items = items.filter(item => item[pair.k] !== pair.v);
+  });
+ 
+  return items;
+}
+```
 
 1. `excludeItems` 함수는 어떤 역할을 하나요?
 2. 함수가 기대대로 동작하나요?
 3. 현재 함수의 시간 복잡도는 어떤가요?
 4. 어떻게 최적화 할 수 있을까요?
 
-
-
 ## 선행 지식
 
 1. `Object.entries()` vs `Set.prototype.entries()`
 
-   `Object.entries()`는 새로운 배열을 만들어서 return하는 반면, `Set.prototype.entries()`는 순회할 수 있도록 만드는 이터레이터 객체를 만들어 return한다.
-
-
+   `Object.entries()`는 새로운 배열을 만들어서 return하는 반면, `Set.prototype.entries()`는 순회할 수 있도록 만드는 이터레이터 객체를 만들어 return한다.&#x20;
 
 ## 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"function excludeItems(items, excludes) {\n  const excludeItemMap = excludes.reduce((acc, {k, v}) => {\n    if(acc.has(k)){\n      acc.get(k).add(v)\n\n      return acc;\n    }\n\n    acc.set(k, new Set([v]));\n\n    return acc;\n  }, new Map());\n\n  const newItems = items.filter(item => {\n    for(const k of excludeItemMap.keys()){\n      const vSet = excludeItemMap.get(k);\n      \n      if(vSet.has(item[k])){\n        return false;\n      }\n    }\n\n    return true;\n  })\n\n  return newItems\n}"}} />
+  ```ts
+  function excludeItems(items, excludes) {
+     const excludeItemMap = excludes.reduce((acc, { k, v }) => {
+        if (acc.has(k)) {
+           acc.get(k).add(v);
+           return acc;
+        }
 
+        acc.set(k, new Set([v]));
+        return acc;
+     }, new Map());
 
+     const newItems = items.filter(item => {
+        for (const k of excludeItemMap.keys()) {
+           const vSet = excludeItemMap.get(k);
+
+           if (vSet.has(item[k])) {
+           return false;
+           }
+        }
+
+        return true;
+     });
+
+     return newItems;
+  }
+  ```
 
   1. `excludeItems` 함수는 어떤 역할을 하나요?
 
@@ -50,7 +91,4 @@ tags:
 
      `excludes`를 먼저 순회하면서 `Map<string, Set>` 형태의 객체를 먼저 만들고, 이후 `items`를 순회하면서 제외 키 값에 해당하는 값을 `item`으로부터 꺼내어 `set`에 있는지 비교합니다.\
      이 때, 제외 키들의 개수를 `K`라고 하면, 전체 시간 복잡도는 `O(E + I * K)`입니다.
-
-
 </Collapsible>
-

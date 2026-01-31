@@ -9,13 +9,26 @@ tags:
 
 정렬되지 않은 두 배열이 들어왔을 때, 교집합을 return하는 함수 `getIntersection`을 작성해주세요.
 
-
-
 ## 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"function getIntersection(arr1, arr2) {\n  const long = arr1.length > arr2.length ? arr1 : arr2;\n  const short = arr1.length > arr2.length ? arr2 : arr1;\n\n  const shortSet = new Set(short);\n  const intersection = new Set();\n\n  for(const item of long){\n    if(shortSet.has(item)){\n      intersection.add(item)\n    }\n  }\n\n  return Array.from(intersection);\n}"}} />
+  ```ts
+  function getIntersection(arr1, arr2) {
+    const long = arr1.length > arr2.length ? arr1 : arr2;
+    const short = arr1.length > arr2.length ? arr2 : arr1;
+
+    const shortSet = new Set(short);
+    const intersection = new Set();
+
+    for(const item of long){
+      if(shortSet.has(item)){
+        intersection.add(item)
+      }
+    }
+
+    return Array.from(intersection);
+  }
+  ```
 
   long의 길이를 `L`, short의 길이를 `S`, intersection의 길이를 `I`라고 하면, 시간 복잡도는 `O(L+S)`, 공간 복잡도는 `O(S+I)`입니다.
 </Collapsible>
-

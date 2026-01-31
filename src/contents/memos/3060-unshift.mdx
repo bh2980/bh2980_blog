@@ -11,7 +11,7 @@ tags:
 
 예시:
 
-```typescript
+```ts
 type Result = Unshift<[1, 2], 0> // [0, 1, 2]
 
 // !collapse(1:30) collapsed
@@ -29,5 +29,7 @@ type cases = [
 ### 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"type Unshift<T extends any[], U> = [U, ...T]"}} />
+  ```ts
+  type Unshift<T extends any[], U> = [U, ...T]
+  ```
 </Collapsible>

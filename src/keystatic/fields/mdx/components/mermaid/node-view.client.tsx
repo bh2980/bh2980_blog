@@ -2,29 +2,39 @@
 "use client";
 
 import { Code2, Eye, ListOrdered, SquareSplitHorizontal, SquareSplitVertical, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
-import { NodeViewCodeEditor } from "../code-block/node-view-code-editor.client";
+import { extractAnnotationsFromAst } from "@/keystatic/libs/serialize-annotations";
+import { cn } from "@/utils/cn";
+import { useLiveCodeBlockNode } from "../../hooks/use-live-code-block-node";
+import { NodeViewCodeEditor } from "../code-block/components";
 import type { MermaidNodeViewProps } from "./component";
 import { Mermaid } from "./mermaid.client";
 
-export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProps) {
+export function MermaidBlockNodeView({ children, onRemove, onChange, isSelected, value }: MermaidNodeViewProps) {
+	const codeBlockNode = useLiveCodeBlockNode(value.id);
 	const [chart, setChart] = useState<string>("");
-	const [useLineNumber, setUseLineNumber] = useState(false);
+	const [showLineNumbers, setShowLineNumbers] = useState(false);
 
-	const handleLineNumberChange = (pressed: boolean) => {
-		setUseLineNumber(pressed);
+	const initProseMirrorId = (id: string) => {
+		onChange({ ...value, id });
 	};
 
-	const handleChartChange = (chart: string) => {
-		setChart(chart.trim());
-	};
+	useEffect(() => {
+		if (!codeBlockNode) {
+			return;
+		}
+
+		const result = extractAnnotationsFromAst(codeBlockNode, {});
+
+		setChart(result?.code ?? "");
+	}, [codeBlockNode]);
 
 	return (
-		<Tabs defaultValue="bothVertical" className="w-full">
+		<Tabs defaultValue="bothVertical" className={cn("w-full rounded-xl", isSelected && "outline-2 outline-offset-8")}>
 			<div className="flex items-center justify-between gap-2">
 				<TabsList>
 					<TabsTrigger value="code">
@@ -41,7 +51,7 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 					</TabsTrigger>
 				</TabsList>
 				<ButtonGroup>
-					<Toggle size={"sm"} variant={"outline"} pressed={useLineNumber} onPressedChange={handleLineNumberChange}>
+					<Toggle size={"sm"} variant={"outline"} pressed={showLineNumbers} onPressedChange={setShowLineNumbers}>
 						<ListOrdered />
 					</Toggle>
 					<Button type="button" variant="destructive" size="icon-sm" onClick={onRemove} aria-label="머메이드 블록 삭제">
@@ -52,9 +62,10 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 			<TabsContent value="code">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="tsx"
-					useLineNumber={useLineNumber}
-					onCodeChange={handleChartChange}
+					lang="mermaid"
+					showLineNumbers={showLineNumbers}
+					initProseMirrorId={initProseMirrorId}
+					proseMirrorId={value.id}
 				/>
 			</TabsContent>
 			<TabsContent value="preview">
@@ -63,18 +74,20 @@ export function MermaidBlockNodeView({ children, onRemove }: MermaidNodeViewProp
 			<TabsContent value="bothVertical">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="tsx"
-					useLineNumber={useLineNumber}
-					onCodeChange={handleChartChange}
+					lang="mermaid"
+					showLineNumbers={showLineNumbers}
+					initProseMirrorId={initProseMirrorId}
+					proseMirrorId={value.id}
 				/>
 				<Mermaid chart={chart} />
 			</TabsContent>
 			<TabsContent value="bothHorizontal" className="flex w-full *:flex-1">
 				<NodeViewCodeEditor
 					nodeViewChildren={children}
-					lang="tsx"
-					useLineNumber={useLineNumber}
-					onCodeChange={handleChartChange}
+					lang="mermaid"
+					showLineNumbers={showLineNumbers}
+					initProseMirrorId={initProseMirrorId}
+					proseMirrorId={value.id}
 				/>
 				<Mermaid chart={chart} className="py-0" />
 			</TabsContent>

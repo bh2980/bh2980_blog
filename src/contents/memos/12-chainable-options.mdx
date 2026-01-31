@@ -11,8 +11,6 @@ tags:
 
 이 챌린지에서는 `option(key, value)`과 `get()` 두가지 함수를 제공하는 객체(또는 클래스) 타입을 구현해야 합니다. 현재 타입을 `option`으로 지정된 키와 값으로 확장할 수 있고 `get`으로 최종 결과를 가져올 수 있어야 합니다.
 
-예시
-
 ```ts
 declare const config: Chainable
 
@@ -86,7 +84,16 @@ type Expected3 = {
 
 1. 메서드 타입 정의 방법
 
-   <Code codeblock={{"lang":"typescript","value":"type Example = {\n  test(): any\n}\n\n// or\n\ntype Example = {\n  test: () => any\n}"}} />
+   ```ts
+   type Example = {
+    test(): any\n}
+
+    // or
+    
+    type Example = {
+      test: () => any
+    }
+   ```
 
    메서드는 위처럼 2가지 형태로 타입을 정의할 수 있다.
 2. 타입 스크립트에서 에러 내기
@@ -98,21 +105,13 @@ type Expected3 = {
 ### 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
+  ```ts
+  type Chainable<S extends object = {}> = {
+  // @mark Tooltip {32-66} content="key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다."
+    option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
+    get: () => S
+  }
+  ```
 
-```ts !code
-type Chainable<S extends object = {}> = {
-// !tooltip[/key/] description
-&nbsp;&nbsp;option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
-&nbsp;&nbsp;get: () => S
-}
-```
-
-## !!tooltips description
-
-key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.
-
-</CodeWithTooltips>"
-  />
+  key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다.
 </Collapsible>
