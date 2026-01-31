@@ -9,6 +9,7 @@ import type {
 import { SKIP, visit } from "unist-util-visit";
 import { isDefined } from "@/utils/is-defined";
 import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
+import { EDITOR_MERMAID_NAME } from "../fields/mdx/components/mermaid";
 import {
 	ANNOTATION_TAG_PREFIX,
 	ANNOTATION_TYPE_BY_TAG,
@@ -432,6 +433,8 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 
 	visit(mdxAst, "code", (node, index, parent) => {
 		const lang = node.lang ?? "text";
+		if (lang === "mermaid") return;
+
 		const meta = parseFenceMeta(node.meta ?? "");
 		const rawCodeWithAnnotations = node.value;
 
@@ -450,7 +453,46 @@ export function walkOnlyInsideCodeFence(mdxAst: Root, annotationConfig: Annotati
 
 		if (parent && isDefined(index)) parent.children.splice(index, 1, codeBlockNode);
 
-		return SKIP;
+		return [SKIP, index];
+	});
+}
+
+export function walkOnlyMermaidCodeFence(mdxAst: Root) {
+	buildAnnotationHelper({});
+
+	visit(mdxAst, "code", (node, index, parent) => {
+		const lang = node.lang ?? "text";
+		if (lang !== "mermaid") return;
+
+		const rawCode = node.value;
+
+		const paragraphChildren = [];
+
+		for (const line of rawCode.split("\n")) {
+			const lineText = buildTextNode(line);
+
+			const breakText = buildBreakNode();
+
+			paragraphChildren.push(lineText, breakText);
+		}
+
+		paragraphChildren.pop();
+
+		const paragraph: Paragraph = {
+			type: "paragraph",
+			children: paragraphChildren,
+		};
+
+		const mermaidNode: MdxJsxFlowElement = {
+			type: "mdxJsxFlowElement",
+			name: EDITOR_MERMAID_NAME,
+			children: [paragraph],
+			attributes: [],
+		};
+
+		if (parent && isDefined(index)) parent.children.splice(index, 1, mermaidNode);
+
+		return [SKIP, index];
 	});
 }
 

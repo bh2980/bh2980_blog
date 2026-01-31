@@ -3,6 +3,8 @@ import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { SKIP, visit } from "unist-util-visit";
 import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS } from "../fields/mdx/components/code-block";
 import type { EditorCodeLang } from "../fields/mdx/components/code-block/types";
+import { EDITOR_MERMAID_NAME } from "../fields/mdx/components/mermaid";
+import { mdx } from "../fields/mdx/mdx";
 
 export type AnnotationSource = "mdast" | "mdx-text" | "mdx-flow";
 
@@ -358,7 +360,31 @@ export function walkOnlyInsideCodeblock(mdxAst: Root, annotationConfig: Annotati
 
 		if (parent && index !== undefined) parent.children.splice(index, 1, codeNode);
 
-		return SKIP;
+		return [SKIP, index];
+	});
+}
+
+export function walkOnlyMermaid(mdxAst: Root) {
+	visit(mdxAst, "mdxJsxFlowElement", (node, index, parent) => {
+		if (node.name !== EDITOR_MERMAID_NAME) {
+			return;
+		}
+
+		const result = extractAnnotationsFromAst(node, {});
+
+		if (!result) return;
+
+		const { code } = result;
+
+		const codeNode: Code = {
+			type: "code",
+			lang: "mermaid",
+			value: code,
+		};
+
+		if (parent && index !== undefined) parent.children.splice(index, 1, codeNode);
+
+		return [SKIP, index];
 	});
 }
 
