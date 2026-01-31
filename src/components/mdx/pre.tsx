@@ -1,7 +1,7 @@
 import { Folder } from "lucide-react";
 import type { PropsWithChildren } from "react";
 import { cn } from "@/utils/cn";
-import { CopyButton } from "./code-handler";
+import { CopyButton } from "./copy-button.client";
 
 type PreProps = PropsWithChildren<{
 	title?: string;

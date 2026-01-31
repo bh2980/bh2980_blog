@@ -1,4 +1,4 @@
-import { compileMDX, MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import { compileMDX } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeMermaid from "rehype-mermaid";
 import rehypeSlug from "rehype-slug";
@@ -12,46 +12,11 @@ import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoratio
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
-import { Code, CodeWithTooltips, InlineCode } from "./code";
-import { CodeBlock } from "./code-block";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
-
-interface MDXContentProps {
-	source: string;
-	options?: MDXRemoteProps["options"];
-}
-
-/**
- * @deprecated
- */
-export default function MDXContent({ source, options }: MDXContentProps) {
-	return (
-		<MDXRemote
-			source={source}
-			options={{
-				...options,
-				mdxOptions: {
-					remarkPlugins: [remarkBreaks, remarkGfm],
-					rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings],
-				},
-			}}
-			components={{
-				Code,
-				CodeWithTooltips,
-				PureMdx: MDXContent,
-				Callout,
-				Collapsible,
-				code: InlineCode,
-				CodeBlock,
-				Tooltip,
-			}}
-		/>
-	);
-}
 
 export const renderMDX = async (source: string) => {
 	const tocRef: TocItem[] = [];
@@ -83,15 +48,9 @@ export const renderMDX = async (source: string) => {
 			Collapsible,
 			Columns,
 			Column,
-			CodeBlock,
 			Tooltip,
 			Tabs,
 			Tab,
-
-			// deprecated
-			Code,
-			CodeWithTooltips,
-			PureMdx: MDXContent,
 		},
 	});
 
