@@ -54,16 +54,16 @@ export const NodeViewCodeEditor = ({
 
 	return (
 		<div className="relative rounded-lg *:m-0!" style={{ backgroundColor: "rgb(40, 44, 52)" }}>
+			{hast && <HastView hast={hast} showLineNumbers={showLineNumbers} />}
 			<pre
 				className={cn(
-					"relative z-20 w-full outline-none",
+					"relative w-full outline-none",
 					"bg-transparent! text-transparent! caret-white!",
 					showLineNumbers && "[&_p]:pl-7!",
 				)}
 			>
 				{nodeViewChildren}
 			</pre>
-			{hast && <HastView hast={hast} showLineNumbers={showLineNumbers} />}
 		</div>
 	);
 };
