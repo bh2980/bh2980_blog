@@ -1,9 +1,9 @@
+import type { PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import type { AnnotationEvent, LineAnnotation } from "../parse-annotations";
 import { __testable__ } from "../parse-annotations";
 import type { AnnotationRegistry } from "../serialize-annotations";
 import { ANNOTATION_TAG_BY_TYPE, AnnotationType } from "../serialize-annotations";
-import type { PhrasingContent } from "mdast";
 
 const { buildEvents, buildLineAst } = __testable__;
 
