@@ -44,7 +44,7 @@ export const EditorCodeBlock = wrapper({
 		lang: fields.select({
 			label: "언어",
 			options: EDITOR_LANG_OPTIONS,
-			defaultValue: "ts-tags",
+			defaultValue: "ts",
 		}),
 	},
 

@@ -15,6 +15,7 @@ import {
 	SiJavascript,
 	SiJson,
 	SiKotlin,
+	SiLit,
 	SiMdx,
 	SiMermaid,
 	SiNginx,
@@ -31,14 +32,24 @@ import {
 	SiYaml,
 } from "react-icons/si";
 
+// TODO : 나중에 shiki 쪽이랑 통합하면 편할 것 같은데, shiki 쪽에서 타입 제공 안해주나
+// TODO : comment prefix 나중에 제거
 export const EDITOR_LANG_OPTIONS = [
 	// 1. 웹 생태계
 	{
 		label: "TypeScript",
-		value: "ts-tags",
+		value: "ts",
 		group: "웹 생태계",
 		icon: SiTypescript,
 		color: "#3178C6",
+		commentPrefix: "//",
+	},
+	{
+		label: "Lit",
+		value: "lit",
+		group: "웹 생태계",
+		icon: SiLit,
+		color: "#324FFF",
 		commentPrefix: "//",
 	},
 	{
@@ -297,7 +308,5 @@ export const EDITOR_LANG_OPTIONS = [
 	commentPrefix: string;
 	commentPostfix?: string;
 }>;
-
-
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";

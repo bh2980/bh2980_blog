@@ -10,6 +10,7 @@ import html from "@shikijs/langs/html";
 import java from "@shikijs/langs/java";
 import jsonc from "@shikijs/langs/jsonc";
 import kotlin from "@shikijs/langs/kotlin";
+import lit from "@shikijs/langs/lit";
 import mdx from "@shikijs/langs/mdx";
 import mermaid from "@shikijs/langs/mermaid";
 import nginx from "@shikijs/langs/nginx";
@@ -23,7 +24,7 @@ import sql from "@shikijs/langs/sql";
 import svelte from "@shikijs/langs/svelte";
 import swift from "@shikijs/langs/swift";
 import toml from "@shikijs/langs/toml";
-import tsTags from "@shikijs/langs/ts-tags";
+import ts from "@shikijs/langs/ts";
 import tsx from "@shikijs/langs/tsx";
 import vue from "@shikijs/langs/vue";
 import yaml from "@shikijs/langs/yaml";
@@ -42,13 +43,27 @@ export const highlight = (code: string, lang: string, meta: Meta, decorations?: 
 		transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
 	});
 
+export const langAlias = {
+	javascript: "ts",
+	js: "ts",
+	css: "scss",
+	"c#": "csharp",
+	json: "jsonc",
+	yml: "yaml",
+	dockerfile: "docker",
+	md: "mdx",
+	txt: "text",
+	plain: "text",
+};
+
 const highlighter = await getSingletonHighlighterCore({
 	themes: [oneDarkPro],
 	langs: [
-		tsTags,
+		ts,
 		tsx,
 		vue,
 		svelte,
+		lit,
 		html,
 		scss,
 		postcss,
@@ -75,18 +90,6 @@ const highlighter = await getSingletonHighlighterCore({
 		dotenv,
 		mermaid,
 	],
-	langAlias: {
-		typescript: "ts-tags",
-		javascript: "ts-tags",
-		js: "ts-tags",
-		css: "scss",
-		"c#": "csharp",
-		json: "jsonc",
-		yml: "yaml",
-		dockerfile: "docker",
-		md: "mdx",
-		txt: "text",
-		plain: "text",
-	},
+	langAlias,
 	engine: await createOnigurumaEngine(import("shiki/wasm")),
 });

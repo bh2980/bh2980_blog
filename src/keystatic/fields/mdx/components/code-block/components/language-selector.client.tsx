@@ -20,7 +20,7 @@ import { EDITOR_LANG_OPTIONS } from "../constants";
 import type { CodeBlockNodeViewProps, EditorCodeLang, EditorLangOption } from "../types";
 
 const LANG_OPTION_BY_VALUE = new Map(EDITOR_LANG_OPTIONS.map((option) => [option.value, option]));
-const FALLBACK_OPTIONS: [EditorCodeLang, EditorCodeLang, EditorCodeLang] = ["ts-tags", "tsx", "python"];
+const FALLBACK_OPTIONS: [EditorCodeLang, EditorCodeLang, EditorCodeLang] = ["ts", "tsx", "python"];
 
 type Three<T> = readonly [T, T, T];
 
