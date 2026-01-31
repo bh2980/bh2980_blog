@@ -340,6 +340,15 @@ export const parseCodeToAnnotationLines = (code: string, lang: string, config: A
 			const annotation = parseAnnotation(line, config);
 			if (annotation) {
 				annotations.push(annotation);
+			} else {
+				const lineMeta = {
+					lineNumber: lineNo++,
+					value: `${line}`,
+					annotations,
+				};
+
+				lines.push(lineMeta);
+				annotations = [];
 			}
 		} else {
 			const lineMeta = {
