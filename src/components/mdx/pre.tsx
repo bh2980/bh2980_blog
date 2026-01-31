@@ -42,8 +42,8 @@ export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) 
 				data-show-line-numbers={showLineNumbers}
 			>
 				{children}
-				<CopyButton text={code} className="lg:hidden lg:group-hover:block" />
 			</pre>
+			<CopyButton text={code} className="top-8 lg:hidden lg:group-hover:block" />
 		</div>
 	);
 };
