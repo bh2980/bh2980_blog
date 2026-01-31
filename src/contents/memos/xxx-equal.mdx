@@ -13,8 +13,6 @@ tags:
 
 두 타입이 완전히 동일한지 비교하는 `Equal<A, B>` 타입을 구현하세요.
 
-예시:
-
 ```ts
 type A = Equal<1, 1>            // true
 type B = Equal<1, number>       // false
@@ -49,9 +47,12 @@ type cases = [
 
 1. `extends`는 **할당(대입) 가능성**을 검사한다.
 
-   <Code codeblock={{"lang":"typescript","value":"any extends string ? true : false // true\nstring extends any ? true : false // true"}} />
+```ts
+any extends string ? true : false // true
+string extends any ? true : false // true
+```
 
-   흔히 TypeScript의 타입 시스템은 집합에 비유되곤 하지만, (\*<Tooltip content="제네릭이나 조건부 연산이 남아 있지 않아 컴파일러가 즉시 확정할 수 있는 타입">구체 타입</Tooltip>에 대하여)  `any`라는 특수 케이스 때문에 완벽히 동일하지는 않다. 따라서 `A extends B`가 `true`이고 `B extends A`가 `true`라고 이 둘이 동일하다는 **동등성을 보장하지는 못한다.**
+흔히 TypeScript의 타입 시스템은 집합에 비유되곤 하지만, (\*<Tooltip content="제네릭이나 조건부 연산이 남아 있지 않아 컴파일러가 즉시 확정할 수 있는 타입">구체 타입</Tooltip>에 대하여)  `any`라는 특수 케이스 때문에 완벽히 동일하지는 않다. 따라서 `A extends B`가 `true`이고 `B extends A`가 `true`라고 이 둘이 동일하다는 **동등성을 보장하지는 못한다.**
 
 ### 풀이
 

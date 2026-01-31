@@ -9,8 +9,6 @@ tags:
 
 튜플 값으로 유니온 타입을 생성하는 제네릭 `TupleToUnion<T>`를 구현하세요.
 
-예시:
-
 ```ts
 type Arr = ['1', '2', '3']
 
@@ -29,5 +27,11 @@ type cases = [
 ### 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"type TupleToUnion<T extends readonly any[]> = T[number]\n\n//or\n\nexport type TupleToUnion<T extends readonly any[]> =\n  T extends readonly (infer U)[] ? U : never"}} />
+  ```ts
+  type TupleToUnion<T extends readonly any[]> = T[number]  
+
+  //or  
+   
+  export type TupleToUnion<T extends readonly any[]> =   T extends readonly (infer U)[] ? U : never
+  ```
 </Collapsible>

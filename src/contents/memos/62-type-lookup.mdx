@@ -48,23 +48,12 @@ type cases = [
 ]
 ```
 
-
-
 ## 풀이
 
 <Collapsible>
-  <PureMdx
-    source="<CodeWithTooltips>
+  ```js
+  // @mark Tooltip {20-41} content="최소한 type 프로퍼티가 있고 그 값 타입이 T여야 한다는 조건(필터)"
+  type LookUp<U, T> = U extends { type: T } ? U : never
+  ```
 
-```js !code
-// !tooltip[/U extends \{ type: T \}/] description
-type LookUp<U, T> = U extends { type: T } ? U : never
-```
-
-## !!tooltips description
-
-최소한 type 프로퍼티가 있고 그 값 타입이 T여야 한다는 조건(필터)
-
-</CodeWithTooltips>"
-  />
 </Collapsible>

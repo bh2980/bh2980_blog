@@ -15,7 +15,7 @@ tags:
 
 파이썬에서는 따옴표 앞에 붙이는 r을 사용한다.
 
-```py
+```python
 r'hey'
 ```
 
@@ -55,7 +55,9 @@ r'hey'
 문자 범위는 `[]` 내에서 정의되어야한다.\
 범위를 생성하기 위해서는 `-`를 사용한다.
 
-<Code codeblock={{"lang":"typescript","value":"/[0-9A-F]+/"}} />
+```js
+/[0-9A-F]+/
+```
 
 ## 부정 부호 \[^ ]
 
@@ -63,7 +65,9 @@ r'hey'
 
 `^`는 첫번째 문자여야한다.
 
-<Code codeblock={{"lang":"typescript","value":"/[A-Z][^\\.?!]+[\\.?!]/"}} />
+```js
+/[A-Z][^\\.?!]+[\\.?!]/
+```
 
 | `[A-Z]`    | 첫 글자는 대문자 영어로 시작해야한다.               |
 | ---------- | ----------------------------------- |
@@ -103,7 +107,12 @@ r'hey'
 
 정규식에서 위치를 제공하지만 실제로 문자와 매칭되는 것은 아님.(^, $)
 
-<Code codeblock={{"lang":"typescript","value":"/\\bstem\\b/\n\nThat rose has a lovely stem!  //stem 매칭됨\nLook at that solar system!  //매칭되지 않음\n"}} />
+```js
+/\bstem\b/
+
+That rose has a lovely stem!  //stem 매칭됨
+Look at that solar system!  //매칭되지 않음
+```
 
 ## 플래그
 
@@ -139,13 +148,21 @@ Lazy는 성능 문제가 있기 떄문에 모든 브라우저나 플랫폼에서
 
 `|` 을 사용해 다중 문자 문자열을 만들 수 있다.
 
-<Code codeblock={{"lang":"typescript","value":"/a|b|cad/"}} />
+```js
+/a|b|cad/
+```
 
 ## 그룹 ()
 
 괄호안에 있는 것은 그룹, 문자 모음과 달리 괄호 안에 있는 문자열을 인식하도록 한다.
 
-<Code codeblock={{"lang":"typescript","value":"/I want a (kittens|puppy)/\n/(kittens)+/    //그룹에 정량자를 사용할 수도 있다\n\n//24 시간 표시\n/([01]\\d|2[0-3]):[0-5]\\d/"}} />
+```js
+/I want a (kittens|puppy)/
+/(kittens)+/    //그룹에 정량자를 사용할 수도 있다
+
+//24 시간 표시
+/([01]\d|2[0-3]):[0-5]\d/
+```
 
 ## 캡쳐(추출) 그룹
 
@@ -169,7 +186,10 @@ Lazy는 성능 문제가 있기 떄문에 모든 브라우저나 플랫폼에서
 
 그룹 넘버는 정규식 내부에서 참조용으로 사용할 수 있다.
 
-<Code codeblock={{"lang":"typescript","value":"// html 태그 정규표현식\n/<(\\w+)>.*?<\\/\\1>/g   // 앞선 첫 번째 그룹인 (\\w+)를 받는다."}} />
+```js
+// html 태그 정규표현식
+/<(\w+)>.*?<\/(\1)>/g   // 앞선 첫 번째 그룹인 (\w+)를 받는다.
+```
 
 ## 네임드 그룹 (?\<이름>)
 
@@ -183,7 +203,11 @@ Lazy는 성능 문제가 있기 떄문에 모든 브라우저나 플랫폼에서
 
 그룹을 참고할 때는 `\`를 사용하지만 그룹을 대체할 때는 `$`를 사용한다.
 
-<Code codeblock={{"lang":"typescript","value":"const text = \"Freeman, Morgan\";\nconst result = text.replace(/(\\w+),\\s*(\\w+)/, \"$2 $1\");\nconsole.log(result); // \"Morgan Freeman\""}} />
+```js
+const text = "Freeman, Morgan";
+const result = text.replace(/(\w+),\s*(\w+)/, "$2 $1");
+console.log(result); // "Morgan Freeman"
+```
 
 ## 전방 탐색과 후방 탐색
 
@@ -198,4 +222,24 @@ Lazy는 성능 문제가 있기 떄문에 모든 브라우저나 플랫폼에서
 괄호 내에 있는 검사용 패턴을 기준으로 원하는 패턴이 있는지 검사.\
 괄호 안의 검사용 패턴은 정규식에 포함되지 않음으로 `^`나 `$`를 사용하려면 괄호 안에서 사용해야한다.
 
-<Code codeblock={{"lang":"typescript","value":"// 1) 전방 긍정 탐색: (검사용 패턴 ... ) \"앞에\" Match Pattern이 있어야 함\n// 숫자(\\d) \"앞에\" 있는 \"abc\"만 매치\n/abc(?=\\d)/g\n// \"abc1 abc\" -> [\"abc\"]\n\n// 2) 전방 부정 탐색: (검사용 패턴 ... ) \"앞에\" Match Pattern이 없어야 함\n// \"bar\" \"앞에\" 있는 \"foo\"는 제외하고, 그 외 \"foo\"만 매치\n/foo(?!bar)/g\n// \"foobar foo\" -> [\"foo\"]\n\n// 3) 후방 긍정 탐색: (검사용 패턴 ... ) \"뒤에\" Match Pattern이 있어야 함\n// \"$\" \"뒤에\" 있는 숫자만 매치\n/(?<=\\$)\\d+/g\n// \"$100 200\" -> [\"100\"]\n\n// 4) 후방 부정 탐색: (검사용 패턴 ... ) \"뒤에\" Match Pattern이 없어야 함\n// 줄 시작(^) \"뒤에\" 있는 단어는 제외하고, 나머지 단어만 매치\n/(?<!^)\\w+/gm\n// \"Hello\\nWorld\" -> [\"ello\", \"orld\"]"}} />
+```js
+// 1) 전방 긍정 탐색: (검사용 패턴 ... ) "앞에" Match Pattern이 있어야 함
+// 숫자(\d) "앞에" 있는 "abc"만 매치
+/abc(?=\d)/g
+// "abc1 abc" -> ["abc"]
+
+// 2) 전방 부정 탐색: (검사용 패턴 ... ) "앞에" Match Pattern이 없어야 함
+// "bar" "앞에" 있는 "foo"는 제외하고, 그 외 "foo"만 매치
+/foo(?!bar)/g
+// "foobar foo" -> ["foo"]
+
+// 3) 후방 긍정 탐색: (검사용 패턴 ... ) "뒤에" Match Pattern이 있어야 함
+// "$" "뒤에" 있는 숫자만 매치
+/(?<=\$)\d+/g
+// "$100 200" -> ["100"]
+
+// 4) 후방 부정 탐색: (검사용 패턴 ... ) "뒤에" Match Pattern이 없어야 함
+// 줄 시작(^) "뒤에" 있는 단어는 제외하고, 나머지 단어만 매치
+/(?<!^)\w+/gm
+// "Hello\nWorld" -> ["ello", "orld"]
+```

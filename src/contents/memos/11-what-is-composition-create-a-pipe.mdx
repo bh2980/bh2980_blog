@@ -13,7 +13,15 @@ tags:
 ## 풀이
 
 <Collapsible>
-  <Code codeblock={{"lang":"typescript","value":"function pipe(funcs) {\n\treturn function(arg){\n\t\treturn funcs.reduce((acc, func) => {\n\t\t\treturn func.call(this, acc)\n\t\t}, arg)\n\t}\n}"}} />
+  ```ts
+  function pipe(funcs) {
+    return function(arg){
+      return funcs.reduce((acc, func) => {
+        return func.call(this, acc)
+      }, arg)
+    }
+  }
+  ```
 </Collapsible>
 
 ### 출처
