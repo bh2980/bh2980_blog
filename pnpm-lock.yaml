@@ -82,6 +82,9 @@ importers:
       feed:
         specifier: ^5.2.0
         version: 5.2.0
+      hast-util-to-jsx-runtime:
+        specifier: ^2.3.6
+        version: 2.3.6
       hast-util-to-string:
         specifier: ^3.0.1
         version: 3.0.1
