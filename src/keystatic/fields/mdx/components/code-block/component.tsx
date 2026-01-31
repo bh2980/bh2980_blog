@@ -2,7 +2,8 @@ import { fields } from "@keystatic/core";
 import { wrapper } from "@keystatic/core/content-components";
 import { Code2 } from "lucide-react";
 import { lazy, type PropsWithChildren, Suspense } from "react";
-import { EDITOR_LANG_OPTIONS, type EditorCodeLang } from "./constants";
+import { EDITOR_LANG_OPTIONS } from "./constants";
+import type { EditorCodeLang } from "./types";
 
 type CodeBlockSchema = {
 	readonly id: string;

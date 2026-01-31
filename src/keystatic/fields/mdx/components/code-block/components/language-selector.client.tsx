@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/utils/cn";
-import type { CodeBlockNodeViewProps } from "./component";
-import { EDITOR_LANG_OPTIONS, type EditorCodeLang, type EditorLangOption } from "./constants";
+import { EDITOR_LANG_OPTIONS } from "../constants";
+import type { CodeBlockNodeViewProps, EditorCodeLang, EditorLangOption } from "../types";
 
 const LANG_OPTION_BY_VALUE = new Map(EDITOR_LANG_OPTIONS.map((option) => [option.value, option]));
 const FALLBACK_OPTIONS: [EditorCodeLang, EditorCodeLang, EditorCodeLang] = ["ts-tags", "tsx", "python"];

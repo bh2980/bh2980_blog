@@ -298,8 +298,6 @@ export const EDITOR_LANG_OPTIONS = [
 	commentPostfix?: string;
 }>;
 
-export type EditorCodeLang = (typeof EDITOR_LANG_OPTIONS)[number]["value"];
-export type EditorLangOption = (typeof EDITOR_LANG_OPTIONS)[number];
+
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
-export const EDITOR_CODE_BLOCK_THEME = "one-dark-pro" as const;
