@@ -7,7 +7,6 @@ import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexi
 import remarkGfm from "remark-gfm";
 import { annotationConfig } from "@/keystatic/libs/serialize-annotations";
 import { rehypeMermaidDarkClass } from "@/libs/mermaid/rehype-mermaid-dark-class";
-import { remarkMermaidComponentToCode } from "@/libs/mermaid/remark-mermaid-component-to-code";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
@@ -26,7 +25,6 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
-					remarkMermaidComponentToCode,
 					[remarkAnnotationToShikiDecoration, annotationConfig],
 					remarkBreaks,
 					remarkGfm,
