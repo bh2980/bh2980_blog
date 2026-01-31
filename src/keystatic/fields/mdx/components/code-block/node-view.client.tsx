@@ -89,7 +89,7 @@ export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 				>
 					{props.children}
 				</pre>
-				{hast && <HastView hast={hast} />}
+				{hast && <HastView hast={hast} showLineNumbers={props.value.meta.showLineNumbers} />}
 			</div>
 		</div>
 	);

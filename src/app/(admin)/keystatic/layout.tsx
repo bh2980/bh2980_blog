@@ -107,18 +107,20 @@ export default function Layout() {
                             text-decoration: none !important;
                         }
 
-                        .prose code:not(pre code) {
-                            @apply rounded-sm border bg-slate-100 p-1 before:content-none after:content-none dark:bg-slate-700
-                        }
-
-                        .prose pre code {
+                        .ProseMirror pre code {
                             counter-reset: step;
                             counter-increment: step 0;
                         }
 
-                        .prose pre[data-show-line-numbers] code .line::before {
+                        .ProseMirror pre[data-show-line-numbers] code .line::before {
                             counter-increment: step;
-                            @apply mr-3 inline-block border-transparent text-right! w-[2ch]! text-white/50 content-[counter(step)];
+                            margin-right: 0.75rem;            /* mr-3 */
+                            display: inline-block;            /* inline-block */
+                            border-color: transparent;        /* border-transparent */
+                            text-align: right !important;     /* text-right! */
+                            width: 2ch !important;            /* w-[2ch]! */
+                            color: rgba(255, 255, 255, 0.5);  /* text-white/50 */
+                            content: counter(step);           /* content-[counter(step)] */
                         }
                     `,
 				}}
