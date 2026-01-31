@@ -98,7 +98,7 @@ const buildMdxJsxTextElementNode = (
 	return {
 		type: "mdxJsxTextElement",
 		name,
-		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, JSON.stringify(attr.value))),
+		attributes: attributes.map((attr) => buildMdxJsxAttribute(attr.name, attr.value)),
 		children,
 	};
 };
