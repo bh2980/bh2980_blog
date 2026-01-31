@@ -2,7 +2,7 @@
 
 import type { Root } from "hast";
 import { ListOrdered, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Toggle } from "@/components/ui/toggle";
@@ -47,8 +47,7 @@ const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeViewProps)
 };
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
-	const subscriptionId = useRef(crypto.randomUUID());
-	const codeBlockNode = useLiveCodeBlockNode(subscriptionId.current);
+	const codeBlockNode = useLiveCodeBlockNode(props.value.id);
 	const [hast, setHast] = useState<Root>();
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: id가 없을 경우에 최초 부여용
@@ -57,7 +56,9 @@ export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 			return;
 		}
 
-		props.onChange({ ...props.value, id: subscriptionId.current });
+		const id = crypto.randomUUID();
+
+		props.onChange({ ...props.value, id });
 	}, [props.value.id]);
 
 	useEffect(() => {
