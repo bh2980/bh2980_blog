@@ -1,6 +1,5 @@
 "use client";
 
-import type { AnnotationConfig } from "@/keystatic/libs/serialize-annotations";
 import { cn } from "@/utils/cn";
 import type { CodeBlockNodeViewProps } from "./component";
 import { CodeBlockToolbar, NodeViewCodeEditor } from "./components";
