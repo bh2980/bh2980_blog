@@ -19,6 +19,12 @@
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
+	"[css]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
 	"typescript.preferences.autoImportFileExcludePatterns": ["**/@radix-ui/react-*", "**/@radix-ui/*"],
-	"javascript.preferences.autoImportFileExcludePatterns": ["**/@radix-ui/react-*", "**/@radix-ui/*"]
+	"javascript.preferences.autoImportFileExcludePatterns": ["**/@radix-ui/react-*", "**/@radix-ui/*"],
+	"css.validate": false,
+	"scss.validate": false,
+	"less.validate": false
 }
