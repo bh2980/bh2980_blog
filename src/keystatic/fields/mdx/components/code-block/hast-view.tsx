@@ -15,7 +15,7 @@ export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumber
 				<pre
 					{...props}
 					className={cn(props.className, "pointer-events-none absolute top-0 left-0 z-10 w-full")}
-					data-show-line-numbers={showLineNumbers}
+					data-show-line-numbers={showLineNumbers ? "true" : undefined}
 				/>
 			),
 		},
