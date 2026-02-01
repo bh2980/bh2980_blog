@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { cn } from "@/utils/cn";
 
+// TODO : white space pre and sync scroll
 export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumbers?: boolean }) {
 	return toJsxRuntime(hast, {
 		Fragment,
