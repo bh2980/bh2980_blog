@@ -368,6 +368,18 @@
 		font-feature-settings: var(--font-features-base);
 		-webkit-font-feature-settings: var(--font-features-base);
 	}
+
+	html.dark .shiki {
+		background-color: var(--shiki-dark-bg);
+		color: var(--shiki-dark);
+	}
+
+	html.dark .shiki,
+	html.dark .shiki span {
+		color: var(--shiki-dark) !important;
+		background-color: var(--shiki-dark-bg) !important;
+	}
+
 	.prose,
 	.prose * {
 		font-feature-settings: var(--font-features-base);
@@ -397,6 +409,6 @@
 
 	.prose pre[data-show-line-numbers] code .line::before {
 		counter-increment: step;
-		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! text-white/50 content-[counter(step)];
+		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[counter(step)];
 	}
 }

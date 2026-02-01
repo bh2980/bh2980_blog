@@ -64,7 +64,7 @@ type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
 // 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
 export type MdastNodeLike = Root | MdxJsxTextElement | PhrasingParent;
 
-const TYPE_RE = /@(?<tag>dec|mark|line|block)/;
+const TYPE_RE = new RegExp(`${ANNOTATION_TAG_PREFIX}(?<tag>dec|mark|line|block)`);
 const NAME_RE = /(?<name>\w+)/;
 const RANGE_RE = /{(?<range>\d+-\d+)}/;
 
@@ -323,12 +323,17 @@ const parseAnnotation = (annotationStr: string, config: AnnotationConfig): LineA
 	}
 };
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isAnnotationComment = (line: string, commentPrefix: string) => {
+	const re = new RegExp(String.raw`^\s*${escapeRegExp(commentPrefix)}\s*${TYPE_RE.source}\b`);
+	return re.test(line);
+};
+
 export const parseCodeToAnnotationLines = (code: string, lang: string, config: AnnotationConfig) => {
 	// TODO : 추후 lang을 보고 지정
 	const commentPrefix = "//";
 	const commentPostfix = "";
-
-	const isAnnotationComment = (line: string) => line.startsWith(`${commentPrefix} ${ANNOTATION_TAG_PREFIX}`);
 
 	let lineNo = 0;
 	const lines = [];
@@ -336,7 +341,7 @@ export const parseCodeToAnnotationLines = (code: string, lang: string, config: A
 	let annotations: LineAnnotation[] = [];
 
 	for (const line of code.split("\n")) {
-		if (isAnnotationComment(line)) {
+		if (isAnnotationComment(line, commentPrefix)) {
 			const annotation = parseAnnotation(line, config);
 			if (annotation) {
 				annotations.push(annotation);

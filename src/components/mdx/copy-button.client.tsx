@@ -20,7 +20,10 @@ export function CopyButton({ text, className }: { text: string; className?: stri
 
 	return (
 		<button
-			className={cn("absolute top-2 right-2 rounded p-2 text-slate-200 hover:bg-slate-400/20", className)}
+			className={cn(
+				"absolute top-2 right-2 rounded p-2 hover:bg-current/20 dark:text-slate-200 dark:hover:bg-slate-400/20",
+				className,
+			)}
 			aria-label="클립보드에 복사하기"
 			onClick={handleCopy}
 			type="button"

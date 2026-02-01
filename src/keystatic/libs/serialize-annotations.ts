@@ -263,12 +263,16 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 		}
 	}
 
+	const lineStartSpacingRegex = /^[\t ]+/;
+
 	const codeWithAnnotations = lines
 		.map((line) => {
 			if (line.annotations.length === 0) return line.value;
 
 			const annotationText = line.annotations
 				.map((annotation) => {
+					const lineIndent = line.value.match(lineStartSpacingRegex)?.[0] ?? "";
+
 					const type = `${ANNOTATION_TAG_PREFIX}${ANNOTATION_TAG_BY_TYPE[annotation.type]}`;
 					const name = annotation.name;
 					const { start, end } = annotation.range;
@@ -284,9 +288,11 @@ const injectAnnotationsIntoCode = (code: string, lang: EditorCodeLang, annotatio
 							.filter(Boolean)
 							.join(" ") ?? "";
 
-					return [annotationPrefix, type, name, characterRange, attributes, annotationPostfix]
+					const annotationStr = [annotationPrefix, type, name, characterRange, attributes, annotationPostfix]
 						.filter((info) => !!info)
 						.join(" ");
+
+					return `${lineIndent}${annotationStr}`;
 				})
 				.join("\n");
 

@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { cn } from "@/utils/cn";
 
+// TODO : white space pre and sync scroll
 export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumbers?: boolean }) {
 	return toJsxRuntime(hast, {
 		Fragment,
@@ -14,7 +15,7 @@ export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumber
 			pre: (props: ComponentProps<"pre">) => (
 				<pre
 					{...props}
-					className={cn(props.className, "pointer-events-none absolute top-0 left-0 w-full")}
+					className={cn(props.className, "pointer-events-none absolute top-0 left-0 w-full border")}
 					data-show-line-numbers={showLineNumbers ? "true" : undefined}
 				/>
 			),
