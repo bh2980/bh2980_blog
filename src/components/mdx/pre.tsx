@@ -38,12 +38,15 @@ export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) 
 				</div>
 			)}
 			<pre
-				className={cn("relative overflow-x-auto whitespace-pre rounded-xl", showTitlebar && "m-0! rounded-t-none")}
+				className={cn(
+					"shiki shiki-themes light dark relative overflow-x-auto whitespace-pre rounded-xl",
+					showTitlebar && "m-0! rounded-t-none",
+				)}
 				data-show-line-numbers={showLineNumbers}
 			>
 				{children}
 			</pre>
-			<CopyButton text={code} className="top-8 lg:hidden lg:group-hover:block" />
+			<CopyButton text={code} className="top-2 lg:hidden lg:group-hover:block" />
 		</div>
 	);
 };
