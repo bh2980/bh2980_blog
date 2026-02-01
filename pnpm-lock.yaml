@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@keystar/ui@0.7.19':
+    hash: 1f65910d63b246e1e8a3e76da30d6eaf6b7afb332dc5f3b775a7770bfe7f0243
+    path: patches/@keystar__ui@0.7.19.patch
   '@keystatic/core@0.5.48':
     hash: 3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b
     path: patches/@keystatic__core@0.5.48.patch
@@ -4790,7 +4793,7 @@ snapshots:
 
   '@juggle/resize-observer@3.4.0': {}
 
-  '@keystar/ui@0.7.19(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@keystar/ui@0.7.19(patch_hash=1f65910d63b246e1e8a3e76da30d6eaf6b7afb332dc5f3b775a7770bfe7f0243)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@emotion/css': 11.13.5
@@ -4894,7 +4897,7 @@ snapshots:
       '@emotion/weak-memoize': 0.3.1
       '@floating-ui/react': 0.24.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@internationalized/string': 3.2.7
-      '@keystar/ui': 0.7.19(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@keystar/ui': 0.7.19(patch_hash=1f65910d63b246e1e8a3e76da30d6eaf6b7afb332dc5f3b775a7770bfe7f0243)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@markdoc/markdoc': 0.4.0(@types/react@19.2.9)(react@19.2.3)
       '@react-aria/focus': 3.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@react-aria/i18n': 3.12.14(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

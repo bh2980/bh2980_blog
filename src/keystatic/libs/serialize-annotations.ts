@@ -4,7 +4,6 @@ import { SKIP, visit } from "unist-util-visit";
 import { EDITOR_CODE_BLOCK_NAME, EDITOR_LANG_OPTIONS } from "../fields/mdx/components/code-block";
 import type { EditorCodeLang } from "../fields/mdx/components/code-block/types";
 import { EDITOR_MERMAID_NAME } from "../fields/mdx/components/mermaid";
-import { mdx } from "../fields/mdx/mdx";
 
 export type AnnotationSource = "mdast" | "mdx-text" | "mdx-flow";
 
