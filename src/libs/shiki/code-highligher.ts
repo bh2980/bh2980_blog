@@ -34,8 +34,8 @@ import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import { addMetaToPre, type Meta, replaceToRenderTag } from "./transformers";
 
-export const CODE_BLOCK_THEME_DARK = "one-dark-pro" as const;
-export const CODE_BLOCK_THEME_LIGHT = "one-light" as const;
+export const CODE_BLOCK_THEME_DARK = oneDarkPro.name as typeof oneDarkPro.name;
+export const CODE_BLOCK_THEME_LIGHT = oneLight.name as typeof oneLight.name;
 
 export const highlight = (code: string, lang: string, meta: Meta, decorations?: DecorationItem[]) =>
 	highlighter.codeToHast(code, {
