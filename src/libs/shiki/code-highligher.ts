@@ -29,16 +29,21 @@ import tsx from "@shikijs/langs/tsx";
 import vue from "@shikijs/langs/vue";
 import yaml from "@shikijs/langs/yaml";
 import oneDarkPro from "@shikijs/themes/one-dark-pro";
+import oneLight from "@shikijs/themes/one-light";
 import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import { addMetaToPre, type Meta, replaceToRenderTag } from "./transformers";
 
-export const CODE_BLOCK_THEME = "one-dark-pro" as const;
+export const CODE_BLOCK_THEME_DARK = "one-dark-pro" as const;
+export const CODE_BLOCK_THEME_LIGHT = "one-light" as const;
 
 export const highlight = (code: string, lang: string, meta: Meta, decorations?: DecorationItem[]) =>
 	highlighter.codeToHast(code, {
 		lang,
-		theme: CODE_BLOCK_THEME,
+		themes: {
+			light: CODE_BLOCK_THEME_LIGHT,
+			dark: CODE_BLOCK_THEME_DARK,
+		},
 		decorations,
 		transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
 	});
@@ -57,7 +62,7 @@ export const langAlias = {
 };
 
 const highlighter = await getSingletonHighlighterCore({
-	themes: [oneDarkPro],
+	themes: [oneLight, oneDarkPro],
 	langs: [
 		ts,
 		tsx,

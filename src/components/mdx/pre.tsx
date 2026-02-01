@@ -1,5 +1,5 @@
 import { Folder } from "lucide-react";
-import type { PropsWithChildren } from "react";
+import type { CSSProperties, PropsWithChildren } from "react";
 import { cn } from "@/utils/cn";
 import { CopyButton } from "./copy-button.client";
 
@@ -7,9 +7,11 @@ type PreProps = PropsWithChildren<{
 	title?: string;
 	showLineNumbers?: boolean;
 	code: string;
+	className?: string;
+	style?: CSSProperties;
 }>;
 
-export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) => {
+export const Pre = async ({ children, title, showLineNumbers, code, className, style }: PreProps) => {
 	const filePath = title?.trim().split("/").filter(Boolean);
 
 	const showTitlebar = filePath && filePath.length > 0;
@@ -39,10 +41,12 @@ export const Pre = async ({ children, title, showLineNumbers, code }: PreProps) 
 			)}
 			<pre
 				className={cn(
-					"shiki shiki-themes light dark relative overflow-x-auto whitespace-pre rounded-xl",
+					"relative overflow-x-auto whitespace-pre rounded-xl",
 					showTitlebar && "m-0! rounded-t-none",
+					className,
 				)}
 				data-show-line-numbers={showLineNumbers}
+				style={style}
 			>
 				{children}
 			</pre>
