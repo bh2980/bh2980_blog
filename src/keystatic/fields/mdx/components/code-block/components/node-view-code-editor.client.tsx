@@ -58,7 +58,7 @@ export const NodeViewCodeEditor = ({
 			<pre
 				className={cn(
 					"relative w-full outline-none",
-					"bg-transparent! text-transparent! caret-white!",
+					"bg-transparent! text-transparent! caret-black!",
 					showLineNumbers && "[&_p]:pl-7!",
 				)}
 			>

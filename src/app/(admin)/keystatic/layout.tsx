@@ -119,7 +119,6 @@ export default function Layout() {
                             border-color: transparent;        /* border-transparent */
                             text-align: right !important;     /* text-right! */
                             width: 2ch !important;            /* w-[2ch]! */
-                            color: rgba(255, 255, 255, 0.5);  /* text-white/50 */
                             content: counter(step);           /* content-[counter(step)] */
                         }
                     `,
