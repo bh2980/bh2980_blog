@@ -409,6 +409,6 @@
 
 	.prose pre[data-show-line-numbers] code .line::before {
 		counter-increment: step;
-		@apply mr-3 inline-block border-transparent text-right! w-[2ch]!  content-[counter(step)];
+		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[counter(step)];
 	}
 }
