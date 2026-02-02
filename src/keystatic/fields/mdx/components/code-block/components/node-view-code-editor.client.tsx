@@ -98,7 +98,7 @@ export const NodeViewCodeEditor = ({
 	}, [codeBlockNode, lang]);
 
 	return (
-		<div className="relative rounded-lg *:m-0!" style={{ backgroundColor: "rgb(40, 44, 52)" }}>
+		<div className="relative rounded-lg *:m-0!">
 			{hast && <HastView hast={hast} showLineNumbers={showLineNumbers} />}
 			<pre
 				className={cn(
