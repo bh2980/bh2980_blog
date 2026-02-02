@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -116,6 +116,10 @@ export const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProp
 			</DropdownMenuCheckboxItem>
 		);
 	};
+
+	useEffect(() => {
+		onChange({ ...value, lang: currentSelectLang });
+	}, [currentSelectLang, onChange, value]);
 
 	return (
 		<DropdownMenu>
