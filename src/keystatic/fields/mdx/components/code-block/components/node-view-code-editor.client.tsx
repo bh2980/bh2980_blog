@@ -102,7 +102,7 @@ export const NodeViewCodeEditor = ({
 			{hast && <HastView hast={hast} showLineNumbers={showLineNumbers} />}
 			<pre
 				className={cn(
-					"relative w-full outline-none",
+					"relative w-full outline-none [&_p]:my-0!",
 					"bg-transparent! text-transparent! caret-black!",
 					showLineNumbers && "[&_p]:pl-7!",
 				)}
