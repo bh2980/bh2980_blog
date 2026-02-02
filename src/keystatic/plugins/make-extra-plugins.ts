@@ -1,7 +1,7 @@
 import type { Schema } from "prosemirror-model";
 import type { Plugin } from "prosemirror-state";
 import { codeBlockKeysPlugin } from "./pm/codeblock-keys";
-import { codeBlockPasteAsHardBreakPlugin } from "./pm/codeblock-paste";
+import { codeBlockPasteAsParagraphPlugin } from "./pm/codeblock-paste";
 import { wrapperKeysPlugin } from "./pm/wrapper-keys";
 
 export type ExtraPluginsSlots = {
@@ -12,7 +12,7 @@ export type ExtraPluginsSlots = {
 
 export function makeExtraPlugins(schema: Schema): ExtraPluginsSlots {
 	return {
-		beforeInput: [codeBlockPasteAsHardBreakPlugin()],
+		beforeInput: [codeBlockPasteAsParagraphPlugin()],
 		beforeKeydown: [wrapperKeysPlugin(schema), codeBlockKeysPlugin(schema)],
 	};
 }
