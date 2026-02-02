@@ -291,14 +291,6 @@ export const EDITOR_LANG_OPTIONS = [
 		color: "#ECD53F",
 		commentPrefix: "#",
 	},
-	{
-		label: "Mermaid",
-		value: "mermaid",
-		group: "인프라 & 도구",
-		icon: SiMermaid,
-		color: "#FF3670",
-		commentPrefix: "%%",
-	},
 ] as const satisfies ReadonlyArray<{
 	label: string;
 	value: string;
