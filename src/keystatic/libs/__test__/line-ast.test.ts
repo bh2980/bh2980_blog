@@ -154,7 +154,7 @@ describe("buildLineAst", () => {
 		];
 		const events = buildEvents(annotations);
 		const ast = buildLineAst(line, events, registry);
-		expect(printAst(ast)).toBe('Tooltip(content="\\"test\\"", hello) +  world');
+		expect(printAst(ast)).toBe('Tooltip(content="test", hello) +  world');
 	});
 
 	it("중첩(well-nested)", () => {
