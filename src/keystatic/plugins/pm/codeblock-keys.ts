@@ -109,7 +109,7 @@ const insertIndentWhenTab = (state: EditorState, dispatch?: (tr: Transaction) =>
 	return true;
 };
 
-export function codeBlockKeysPlugin(schema: Schema, indent = "\t"): Plugin {
+export function codeBlockKeysPlugin(schema: Schema): Plugin {
 	return keymap({
 		"Mod-Enter": exitWrapper,
 		"Ctrl-Enter": exitWrapper,
