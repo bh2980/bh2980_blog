@@ -2,7 +2,7 @@ import type { Paragraph } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../keystatic-annotation-manager";
-import { buildAnnotationRegistry } from "../libs";
+import { createAnnotationRegistry } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { buildLineFromParagraph } = __testable__;
@@ -20,7 +20,7 @@ const annotationConfig: AnnotationConfig = {
 	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
 };
 
-const registry = buildAnnotationRegistry(annotationConfig);
+const registry = createAnnotationRegistry(annotationConfig);
 
 const text = (value: string) => ({ type: "text", value });
 const paragraph = (children: any[]): Paragraph => ({ type: "paragraph", children });
@@ -36,6 +36,7 @@ const expectedInline = (
 	registryKey: string,
 	name: string,
 	range: Range,
+	order = 0,
 	attributes?: AnnotationAttr[],
 ): InlineAnnotation => {
 	const config = registry.get(registryKey);
@@ -51,6 +52,7 @@ const expectedInline = (
 			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
 			name,
 			range,
+			order,
 			...(attributes ? { attributes } : {}),
 		};
 	}
@@ -62,6 +64,7 @@ const expectedInline = (
 		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 		name,
 		range,
+		order,
 		...(attributes ? { attributes } : {}),
 	};
 };
@@ -102,7 +105,7 @@ describe("buildLineFromParagraph", () => {
 
 		expect(line).toEqual({
 			value: "abcd",
-			annotations: [expectedInline("Tooltip", "Tooltip", { start: 1, end: 3 }, [{ name: "title", value: "hint" }])],
+			annotations: [expectedInline("Tooltip", "Tooltip", { start: 1, end: 3 }, 0, [{ name: "title", value: "hint" }])],
 		});
 	});
 
@@ -130,9 +133,9 @@ describe("buildLineFromParagraph", () => {
 		expect(line.value).toBe("abcd");
 		expect(line.annotations).toEqual(
 			expect.arrayContaining([
-				expectedInline("strong", "strong", { start: 1, end: 2 }),
-				expectedInline("Tooltip", "Tooltip", { start: 2, end: 3 }, []),
-				expectedInline("u", "u", { start: 0, end: 3 }, []),
+				expectedInline("strong", "strong", { start: 1, end: 2 }, 0),
+				expectedInline("Tooltip", "Tooltip", { start: 2, end: 3 }, 1, []),
+				expectedInline("u", "u", { start: 0, end: 3 }, 2, []),
 			]),
 		);
 		expect(

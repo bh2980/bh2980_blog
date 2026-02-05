@@ -2,7 +2,7 @@ import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../keystatic-annotation-manager";
-import { buildAnnotationRegistry } from "../libs";
+import { createAnnotationRegistry, createEvents } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Line, Range } from "../types";
 
 const { parseParagraphFromLine, buildLineFromParagraph } = __testable__;
@@ -18,13 +18,14 @@ const annotationConfig: AnnotationConfig = {
 	lineWrap: [],
 };
 
-const registry = buildAnnotationRegistry(annotationConfig);
+const registry = createAnnotationRegistry(annotationConfig);
 
 const inlineWrap = (
 	name: string,
 	source: "mdast" | "mdx-text",
 	range: Range,
 	priority: number,
+	order: number,
 	attributes: AnnotationAttr[] = [],
 ): InlineAnnotation => ({
 	type: "inlineWrap",
@@ -34,6 +35,7 @@ const inlineWrap = (
 	name,
 	range,
 	priority,
+	order,
 	attributes,
 });
 
@@ -42,6 +44,7 @@ const inlineClass = (
 	source: "mdast" | "mdx-text",
 	range: Range,
 	priority: number,
+	order: number,
 	attributes: AnnotationAttr[] = [],
 ): InlineAnnotation => ({
 	type: "inlineClass",
@@ -51,10 +54,12 @@ const inlineClass = (
 	name,
 	range,
 	priority,
+	order,
 	attributes,
 });
 
 const line = (value: string, annotations: InlineAnnotation[] = []): Line => ({ value, annotations });
+const parse = (input: Line) => parseParagraphFromLine(input.value, createEvents(input.annotations), registry);
 
 const printParagraph = (paragraph: Paragraph): string => {
 	const hasChildren = (node: PhrasingContent): node is PhrasingContent & { children: PhrasingContent[] } =>
@@ -94,7 +99,10 @@ const normalizeInlineAnnotation = (annotation: InlineAnnotation) => ({
 	attributes: normalizeAttr(annotation.attributes),
 });
 
-const sortInlineAnnotation = (a: ReturnType<typeof normalizeInlineAnnotation>, b: ReturnType<typeof normalizeInlineAnnotation>) => {
+const sortInlineAnnotation = (
+	a: ReturnType<typeof normalizeInlineAnnotation>,
+	b: ReturnType<typeof normalizeInlineAnnotation>,
+) => {
 	if (a.range.start !== b.range.start) return a.range.start - b.range.start;
 	if (a.range.end !== b.range.end) return a.range.end - b.range.end;
 	if (a.name !== b.name) return a.name.localeCompare(b.name);
@@ -104,55 +112,91 @@ const sortInlineAnnotation = (a: ReturnType<typeof normalizeInlineAnnotation>, b
 
 describe("parseParagraphFromLine", () => {
 	it("텍스트만 있는 Line은 text child만 포함한 paragraph를 만든다", () => {
-		const paragraph = parseParagraphFromLine(line("console.log('x')"));
+		const paragraph = parse(line("console.log('x')"));
 
 		expect(paragraph.type).toBe("paragraph");
 		expect(printParagraph(paragraph)).toBe("console.log('x')");
 	});
 
 	it("mdast source inline annotation은 mdast phrasing wrapper로 만든다", () => {
-		const paragraph = parseParagraphFromLine(line("abcdef", [inlineWrap("strong", "mdast", { start: 1, end: 4 }, 1)]));
+		const paragraph = parse(line("abcdef", [inlineWrap("strong", "mdast", { start: 1, end: 4 }, 1, 0)]));
 
 		expect(printParagraph(paragraph)).toBe("a + strong(bcd) + ef");
 	});
 
 	it("mdx-text source inline annotation은 mdxJsxTextElement와 attributes를 만든다", () => {
-		const paragraph = parseParagraphFromLine(
-			line("hello", [inlineWrap("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
+		const paragraph = parse(
+			line("hello", [inlineWrap("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, 0, [{ name: "content", value: "tip" }])]),
 		);
 
 		expect(printParagraph(paragraph)).toBe('Tooltip{content="tip"}(hello)');
 	});
 
 	it("중첩 annotation은 range에 맞춰 계층 구조를 만든다", () => {
-		const paragraph = parseParagraphFromLine(
+		const paragraph = parse(
 			line("abcdefg", [
-				inlineWrap("u", "mdx-text", { start: 1, end: 6 }, 2),
-				inlineWrap("strong", "mdast", { start: 2, end: 5 }, 1),
+				inlineWrap("u", "mdx-text", { start: 1, end: 6 }, 2, 0),
+				inlineWrap("strong", "mdast", { start: 2, end: 5 }, 1, 1),
 			]),
 		);
 
 		expect(printParagraph(paragraph)).toBe("a + u(b + strong(cde) + f) + g");
 	});
 
-	it("동일 range는 priority 기준으로 중첩 순서를 만든다", () => {
-		const paragraph = parseParagraphFromLine(
+	it("동일 range는 priority가 아니라 order 기준으로 중첩 순서를 만든다", () => {
+		const paragraph = parse(
 			line("text", [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 4 }, 0),
-				inlineWrap("u", "mdx-text", { start: 0, end: 4 }, 4),
+				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 4 }, 999, 0),
+				inlineWrap("u", "mdx-text", { start: 0, end: 4 }, 0, 1),
 			]),
 		);
 
 		expect(printParagraph(paragraph)).toBe("Tooltip(u(text))");
 	});
 
+	it("동일 단어를 2개 wrapper가 감쌀 때 order 순으로 바깥->안쪽이 결정된다", () => {
+		const word = "target";
+
+		const orderAsc = parse(
+			line(word, [
+				inlineWrap("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 0),
+				inlineWrap("u", "mdx-text", { start: 0, end: word.length }, 0, 1),
+			]),
+		);
+		expect(printParagraph(orderAsc)).toBe("Tooltip(u(target))");
+
+		const orderDesc = parse(
+			line(word, [
+				inlineWrap("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 1),
+				inlineWrap("u", "mdx-text", { start: 0, end: word.length }, 0, 0),
+			]),
+		);
+		expect(printParagraph(orderDesc)).toBe("u(Tooltip(target))");
+	});
+
+	it("zero-length annotation(range start=end)은 무시한다", () => {
+		const paragraph = parse(line("abc", [inlineWrap("Tooltip", "mdx-text", { start: 1, end: 1 }, 0, 0)]));
+		expect(printParagraph(paragraph)).toBe("abc");
+	});
+
+	it("registry에 없는 annotation이 섞여 있어도 알려진 annotation 구조를 깨지 않는다", () => {
+		const paragraph = parse(
+			line("abcdef", [
+				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 6 }, 0, 0),
+				inlineWrap("Unknown", "mdx-text", { start: 1, end: 5 }, 99, 1),
+			]),
+		);
+
+		expect(printParagraph(paragraph)).toBe("Tooltip(a + bcde) + f");
+	});
+
 	it("buildLineFromParagraph와의 round-trip에서 Line 계약을 유지한다", () => {
 		const input = line("123456", [
-			inlineClass("emphasis", "mdast", { start: 1, end: 5 }, 0),
-			inlineWrap("Tooltip", "mdx-text", { start: 2, end: 4 }, 0, [{ name: "content", value: "x" }]),
+			inlineClass("emphasis", "mdast", { start: 1, end: 5 }, 0, 0),
+			inlineWrap("Tooltip", "mdx-text", { start: 2, end: 4 }, 0, 1, [{ name: "content", value: "x" }]),
 		]);
 
-		const paragraph = parseParagraphFromLine(input);
+		const paragraph = parse(input);
 		const reconstructed = buildLineFromParagraph(paragraph, registry);
 
 		expect(reconstructed.value).toBe(input.value);

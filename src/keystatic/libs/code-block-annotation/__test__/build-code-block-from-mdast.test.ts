@@ -1,8 +1,7 @@
-import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../keystatic-annotation-manager";
-import type { AnnotationConfig, InlineAnnotation, LineAnnotation, Range } from "../types";
+import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { buildCodeBlockDocumentFromMdast } = __testable__;
 
@@ -15,8 +14,11 @@ const annotationConfig: AnnotationConfig = {
 		{ name: "delete", source: "mdast", render: "del" },
 		{ name: "u", source: "mdx-text", render: "u" },
 	],
-	lineClass: [],
-	lineWrap: [{ name: "Collapsible", source: "mdast", render: "collapsible" }],
+	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
+	lineWrap: [
+		{ name: "Collapsible", source: "mdast", render: "collapsible" },
+		{ name: "Callout", source: "mdx-flow", render: "Callout" },
+	],
 };
 
 const text = (value: string) => ({ type: "text", value });
@@ -33,16 +35,24 @@ const flow = (name: string, children: any[] = []) => ({
 	attributes: [],
 	children,
 });
-const codeBlock = (children: any[]): Root => ({ type: "root", children });
+const codeBlock = (children: any[]): CodeBlockRoot => ({
+	type: "mdxJsxFlowElement",
+	name: "CodeBlock",
+	attributes: [],
+	children,
+});
 
 const inlineWrapByName = new Map(
 	(annotationConfig.inlineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+);
+const lineClassByName = new Map(
+	(annotationConfig.lineClass ?? []).map((item, priority) => [item.name, { ...item, priority }]),
 );
 const lineWrapByName = new Map(
 	(annotationConfig.lineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
 );
 
-const expectedInlineWrap = (name: string, range: Range): InlineAnnotation => {
+const expectedInlineWrap = (name: string, range: Range, order = 0): InlineAnnotation => {
 	const config = inlineWrapByName.get(name);
 	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
 
@@ -53,11 +63,12 @@ const expectedInlineWrap = (name: string, range: Range): InlineAnnotation => {
 		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 		name,
 		range,
+		order,
 		attributes: [],
 	};
 };
 
-const expectedLineWrap = (name: string, range: Range): LineAnnotation => {
+const expectedLineWrap = (name: string, range: Range, order = 0): LineAnnotation => {
 	const config = lineWrapByName.get(name);
 	if (!config) throw new Error(`Unknown lineWrap config: ${name}`);
 
@@ -68,6 +79,22 @@ const expectedLineWrap = (name: string, range: Range): LineAnnotation => {
 		tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
 		name,
 		range,
+		order,
+	};
+};
+
+const expectedLineClass = (name: string, range: Range, order = 0): LineAnnotation => {
+	const config = lineClassByName.get(name);
+	if (!config) throw new Error(`Unknown lineClass config: ${name}`);
+
+	return {
+		...config,
+		type: "lineClass" as const,
+		typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
+		tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
+		name,
+		range,
+		order,
 	};
 };
 
@@ -169,8 +196,8 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			{
 				value: "abcdefgh",
 				annotations: [
-					expectedInlineWrap("u", { start: 0, end: 2 }),
-					expectedInlineWrap("Tooltip", { start: 4, end: 7 }),
+					expectedInlineWrap("u", { start: 0, end: 2 }, 0),
+					expectedInlineWrap("Tooltip", { start: 4, end: 7 }, 1),
 				],
 			},
 		]);
@@ -218,8 +245,8 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			{
 				value: "ab",
 				annotations: [
-					expectedInlineWrap("Tooltip", { start: 1, end: 2 }),
-					expectedInlineWrap("u", { start: 0, end: 2 }),
+					expectedInlineWrap("Tooltip", { start: 1, end: 2 }, 0),
+					expectedInlineWrap("u", { start: 0, end: 2 }, 1),
 				],
 			},
 		]);
@@ -259,6 +286,29 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 		expect(document.lines).toEqual([
 			{ value: "outer-1", annotations: [] },
 			{ value: "outer-2", annotations: [] },
+		]);
+	});
+
+	it("lineClass(diff)와 lineWrap(Callout)을 각각 line annotation으로 추출한다", () => {
+		const node = codeBlock([
+			paragraph([text("before")]),
+			flow("diff", [paragraph([text("change-1")])]),
+			flow("Callout", [paragraph([text("note-1")]), paragraph([text("note-2")])]),
+			paragraph([text("after")]),
+		]);
+
+		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+
+		expect(document.annotations).toEqual([
+			expectedLineClass("diff", { start: 1, end: 2 }, 0),
+			expectedLineWrap("Callout", { start: 2, end: 4 }, 1),
+		]);
+		expect(document.lines).toEqual([
+			{ value: "before", annotations: [] },
+			{ value: "change-1", annotations: [] },
+			{ value: "note-1", annotations: [] },
+			{ value: "note-2", annotations: [] },
+			{ value: "after", annotations: [] },
 		]);
 	});
 
