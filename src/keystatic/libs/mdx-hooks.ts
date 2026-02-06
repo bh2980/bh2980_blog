@@ -1,6 +1,6 @@
 import type { Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
-import { annotationConfig as baseAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import {
 	buildCodeBlockDocumentFromCodeFence,
 	composeCodeFenceFromCodeBlockDocument,
@@ -13,15 +13,7 @@ import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-blo
 import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 
-const annotationConfig: AnnotationConfig = {
-	...baseAnnotationConfig,
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
-};
+const annotationConfig: AnnotationConfig = codeFenceAnnotationConfig;
 
 const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
 	visit(mdxAst, "code", (node, index, parent) => {

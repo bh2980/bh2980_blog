@@ -1,76 +1,121 @@
 import type { Code, Root } from "mdast";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import {
-	type ClassLineAnnotation,
-	type LineAnnotation,
-	parseCodeToAnnotationLines,
-	parseFenceMeta,
-	type RenderLineAnnotation,
-} from "@/keystatic/libs/parse-annotations";
-import type { AnnotationConfig } from "@/keystatic/libs/serialize-annotations";
+import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
+import type {
+	AnnotationAttr,
+	AnnotationConfig,
+	InlineAnnotation,
+	LineAnnotation,
+} from "@/libs/annotation/code-block/types";
 
-const isDecAnnotation = (anno: LineAnnotation): anno is ClassLineAnnotation => anno.tag === "dec" && "class" in anno;
-const isMarkAnnotation = (anno: LineAnnotation): anno is RenderLineAnnotation =>
-	anno.tag === "mark" && "render" in anno;
+const hasClass = (annotation: InlineAnnotation): annotation is InlineAnnotation & { class: string } =>
+	"class" in annotation && typeof annotation.class === "string";
 
-const buildDecDecoration = (lineNumber: number, anno: ClassLineAnnotation): DecorationItem => ({
-	start: { line: lineNumber, character: anno.range.start },
-	end: { line: lineNumber, character: anno.range.end },
-	properties: { class: anno.class },
-});
+const hasRender = (annotation: InlineAnnotation): annotation is InlineAnnotation & { render: string } =>
+	"render" in annotation && typeof annotation.render === "string";
 
-const buildMarkDecoration = (lineNumber: number, anno: RenderLineAnnotation): DecorationItem => {
-	const dataProperties = [
-		[`data-anno-render`, anno.render],
-		...(anno.attributes?.map((attr) => [`data-anno-${attr.name}`, JSON.stringify(attr.value)]) ?? []),
-	];
+const buildInlineDecoration = (lineNumber: number, annotation: InlineAnnotation): DecorationItem | undefined => {
+	if (annotation.range.start >= annotation.range.end) return undefined;
+
+	if (annotation.type === "inlineClass" && hasClass(annotation)) {
+		return {
+			start: { line: lineNumber, character: annotation.range.start },
+			end: { line: lineNumber, character: annotation.range.end },
+			properties: { class: annotation.class },
+		};
+	}
+
+	if (annotation.type === "inlineWrap" && hasRender(annotation)) {
+		const props: Record<string, string> = { "data-anno-render": annotation.render };
+		for (const attr of annotation.attributes ?? []) {
+			props[`data-anno-${attr.name}`] = JSON.stringify(attr.value);
+		}
+
+		return {
+			start: { line: lineNumber, character: annotation.range.start },
+			end: { line: lineNumber, character: annotation.range.end },
+			properties: props,
+		};
+	}
+
+	return undefined;
+};
+
+const toLineDecorationPayload = (annotation: LineAnnotation) => {
+	if (annotation.type !== "lineClass") return undefined;
+	if (!("class" in annotation) || typeof annotation.class !== "string") return undefined;
 
 	return {
-		start: { line: lineNumber, character: anno.range.start },
-		end: { line: lineNumber, character: anno.range.end },
-		properties: Object.fromEntries(dataProperties),
+		type: annotation.type,
+		typeId: annotation.typeId,
+		tag: annotation.tag,
+		name: annotation.name,
+		range: annotation.range,
+		order: annotation.order,
+		class: annotation.class,
+		attributes: annotation.attributes ?? [],
 	};
 };
 
-// TODO: line, block은 나중에 따로 추가.
+const toLineWrapperPayload = (annotation: LineAnnotation) => {
+	if (annotation.type !== "lineWrap") return undefined;
+	if (!("render" in annotation) || typeof annotation.render !== "string") return undefined;
+
+	return {
+		type: annotation.type,
+		typeId: annotation.typeId,
+		tag: annotation.tag,
+		name: annotation.name,
+		range: annotation.range,
+		order: annotation.order,
+		render: annotation.render,
+		attributes: annotation.attributes ?? [],
+	};
+};
+
+export type LineDecorationPayload = ReturnType<typeof toLineDecorationPayload> extends infer T
+	? Exclude<T, undefined>
+	: never;
+export type LineWrapperPayload = ReturnType<typeof toLineWrapperPayload> extends infer T ? Exclude<T, undefined> : never;
+
 export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationConfig) {
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
-			const rawCodeWithAnnotation = node.value;
-			const lang = node.lang ?? "text";
-			const meta = parseFenceMeta(node.meta ?? "");
+			const document = buildCodeBlockDocumentFromCodeFence(node, annotationConfig);
+			const inlineDecorations: DecorationItem[] = [];
+			const lineDecorations: LineDecorationPayload[] = [];
+			const lineWrappers: LineWrapperPayload[] = [];
 
-			const lineCode: string[] = [];
+			document.lines.forEach((line, lineNumber) => {
+				for (const annotation of line.annotations) {
+					const decoration = buildInlineDecoration(lineNumber, annotation);
+					if (decoration) inlineDecorations.push(decoration);
+				}
+			});
 
-			const annotationList = parseCodeToAnnotationLines(rawCodeWithAnnotation, lang, annotationConfig).flatMap(
-				(line) => {
-					lineCode.push(line.value.length === 0 ? "" : line.value);
+			document.annotations.forEach((annotation) => {
+				const lineDecoration = toLineDecorationPayload(annotation);
+				if (lineDecoration) {
+					lineDecorations.push(lineDecoration);
+					return;
+				}
 
-					return line.annotations.flatMap((anno) => {
-						if (isDecAnnotation(anno)) {
-							return buildDecDecoration(line.lineNumber, anno);
-						}
-						if (isMarkAnnotation(anno)) {
-							return buildMarkDecoration(line.lineNumber, anno);
-						}
+				const lineWrapper = toLineWrapperPayload(annotation);
+				if (lineWrapper) {
+					lineWrappers.push(lineWrapper);
+				}
+			});
 
-						return [];
-					});
-				},
-			);
-
-			node.value = lineCode.join("\n");
-
-			if (!node.data) {
-				node.data = {};
-			}
-
+			node.value = document.lines.map((line) => line.value).join("\n");
+			node.data ??= {};
 			node.data.hProperties = {
 				...node.data.hProperties,
-				"data-decorations": JSON.stringify(annotationList),
-				"data-lang": lang,
-				"data-meta": JSON.stringify(meta),
+				"data-decorations": JSON.stringify(inlineDecorations),
+				"data-line-decorations": JSON.stringify(lineDecorations),
+				"data-line-wrappers": JSON.stringify(lineWrappers),
+				"data-lang": document.lang,
+				"data-meta": JSON.stringify(document.meta),
 			};
 		});
 	};

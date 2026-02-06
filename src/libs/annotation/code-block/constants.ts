@@ -43,12 +43,33 @@ export const annotationConfig: AnnotationConfig = {
 			render: "u",
 		},
 	],
-	lineClass: [],
+	lineClass: [
+		{
+			name: "diff",
+			source: "mdx-flow",
+			class: "diff",
+		},
+	],
 	lineWrap: [
+		{
+			name: "Callout",
+			source: "mdx-flow",
+			render: "Callout",
+		},
 		{
 			name: "Collapsible",
 			source: "mdx-flow",
 			render: "Collapsible",
 		},
 	],
+};
+
+export const codeFenceAnnotationConfig: AnnotationConfig = {
+	...annotationConfig,
+	tagOverrides: {
+		inlineClass: "dec",
+		inlineWrap: "mark",
+		lineClass: "line",
+		lineWrap: "block",
+	},
 };
