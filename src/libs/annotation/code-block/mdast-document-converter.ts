@@ -179,7 +179,7 @@ const buildCodeBlockBodyFromMdast = (
 	return { lines, annotations };
 };
 
-const buildCodeBlockDocumentFromMdast = (
+export const buildCodeBlockDocumentFromMdast = (
 	mdxAst: CodeBlockRoot,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
@@ -315,7 +315,7 @@ const composeCodeBlockRootFromLines = (
 	return codeBlock;
 };
 
-const composeCodeBlockRootFromDocument = (
+export const composeCodeBlockRootFromDocument = (
 	document: CodeBlockDocument,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockRoot => {
