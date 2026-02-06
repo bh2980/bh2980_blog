@@ -119,7 +119,7 @@ export const createMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttr
 	};
 };
 
-export const createEvents = (annotations: Annotation[]) => {
+export const composeEventsFromAnnotations = (annotations: Annotation[]) => {
 	const event = annotations
 		.flatMap((anntation) => {
 			const startEvent: AnnotationEvent = { kind: "open", anno: anntation, pos: anntation.range.start };
