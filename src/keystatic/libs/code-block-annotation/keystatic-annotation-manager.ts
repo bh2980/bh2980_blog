@@ -1,5 +1,5 @@
 import type { Node, Paragraph } from "mdast";
-import type { MdxJsxAttribute } from "mdast-util-mdx-jsx";
+import type { MdxJsxAttribute, MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import {
 	composeEventsFromAnnotations,
 	createAnnotationRegistry,
@@ -142,6 +142,7 @@ const buildCodeBlockDocumentFromMdast = (
 			annotations.push(annotation);
 		}
 	});
+
 	return { lines, annotations };
 };
 
@@ -194,34 +195,78 @@ const composeParagraphFromLine = (line: string, events: AnnotationEvent[], regis
 	return paragraph;
 };
 
-const composeCodeBlockRootFromLines = () => {};
-
-const composeCodeBlockRootFromDocument = (
-	document: CodeBlockDocument,
-	annotationConfig: AnnotationConfig,
+const composeCodeBlockRootFromLines = (
+	lines: Line[],
+	events: AnnotationEvent[],
+	registry: AnnotationRegistry,
 ): CodeBlockRoot => {
-	const registry = createAnnotationRegistry(annotationConfig);
-
-	const CodeBlockRoot: CodeBlockRoot = {
+	const codeBlock: CodeBlockRoot = {
 		type: "mdxJsxFlowElement",
 		name: "CodeBlock",
 		children: [],
 		attributes: [],
 	};
 
-	const lineParagraphList: Paragraph[] = [];
+	const stack: (CodeBlockRoot | MdxJsxFlowElement)[] = [codeBlock];
+	let cursor = 0;
 
-	for (const line of document.lines) {
-		const eventList = composeEventsFromAnnotations(line.annotations);
-		const lineParagraph = composeParagraphFromLine(line.value, eventList, registry);
-		lineParagraphList.push(lineParagraph);
+	for (const event of events) {
+		// pos 이전 라인들을 paragraph로 변환해 현재 stack top에 추가한다.
+		if (cursor < event.pos) {
+			for (let idx = cursor; idx < event.pos; idx += 1) {
+				const line = lines[idx];
+				if (!line) continue;
+				const inlineEvents = composeEventsFromAnnotations(line.annotations);
+				const paragraph = composeParagraphFromLine(line.value, inlineEvents, registry);
+				stack[stack.length - 1]?.children.push(paragraph);
+			}
+
+			cursor = event.pos;
+		}
+
+		if (event.kind === "open") {
+			const node = registry.get(event.anno.name);
+			if (!node || (node.type !== "lineClass" && node.type !== "lineWrap")) {
+				continue;
+			}
+
+			const flowNode: MdxJsxFlowElement = {
+				type: "mdxJsxFlowElement",
+				name: node.name,
+				attributes: [],
+				children: [],
+			};
+
+			stack[stack.length - 1]?.children.push(flowNode);
+			stack.push(flowNode);
+			continue;
+		}
+
+		if (event.kind === "close") {
+			stack.pop();
+		}
 	}
 
-	const lineAnnotationList = composeEventsFromAnnotations(document.annotations);
+	if (cursor < lines.length) {
+		for (let idx = cursor; idx < lines.length; idx += 1) {
+			const line = lines[idx];
+			if (!line) continue;
+			const inlineEvents = composeEventsFromAnnotations(line.annotations);
+			const paragraph = composeParagraphFromLine(line.value, inlineEvents, registry);
+			stack[stack.length - 1]?.children.push(paragraph);
+		}
+	}
 
-	console.log(lineAnnotationList);
+	return codeBlock;
+};
 
-	return CodeBlockRoot;
+const composeCodeBlockRootFromDocument = (
+	document: CodeBlockDocument,
+	annotationConfig: AnnotationConfig,
+): CodeBlockRoot => {
+	const registry = createAnnotationRegistry(annotationConfig);
+	const lineAnnotationEvents = composeEventsFromAnnotations(document.annotations);
+	return composeCodeBlockRootFromLines(document.lines, lineAnnotationEvents, registry);
 };
 
 export const __testable__ = {
