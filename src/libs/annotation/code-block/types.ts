@@ -18,7 +18,7 @@ export type AnnotationTypePair = {
 	};
 }[keyof typeof ANNOTATION_TYPE_DEFINITION];
 
-export type AnnotationAttr = { name: string; value: string };
+export type AnnotationAttr = { name: string; value: unknown };
 
 export type Annotation = AnnotationTypePair & {
 	source: "mdast" | "mdx-text" | "mdx-flow";

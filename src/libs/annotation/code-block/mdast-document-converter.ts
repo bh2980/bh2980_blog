@@ -63,12 +63,10 @@ const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Lin
 					name: node.name,
 					range: { start, end },
 					order: annotations.length,
-					// TODO : 추후 MdxJsxExpressionAttribute 혹은 value가 string이 아닐 경우 대응
-					// (fields.object 쓸 경우에 들어올 것으로 보임. name이 없고 value만 존재
+					// mdxJsxExpressionAttribute(스프레드)는 제외하고, named attribute는 값 타입 그대로 보존한다.
 					attributes: node.attributes
 						.filter(
-							(attr): attr is MdxJsxAttribute & { name: string; value: string } =>
-								attr.type === "mdxJsxAttribute" && typeof attr.value === "string",
+							(attr): attr is MdxJsxAttribute & { name: string } => attr.type === "mdxJsxAttribute",
 						)
 						.map<AnnotationAttr>((attr) => ({ name: attr.name, value: attr.value })),
 				};
@@ -132,49 +130,48 @@ const buildCodeBlockBodyFromMdast = (
 	const lines: Line[] = [];
 	const annotations: LineAnnotation[] = [];
 
-	mdxAst.children.forEach((childNode) => {
-		if (childNode.type === "paragraph") {
-			const line = buildLineFromParagraph(childNode, registry);
+	const visitFlowChildren = (nodes: CodeBlockRoot["children"]) => {
+		nodes.forEach((childNode) => {
+			if (childNode.type === "paragraph") {
+				const line = buildLineFromParagraph(childNode, registry);
+				lines.push(line);
+				return;
+			}
 
-			lines.push(line);
+			if (childNode.type !== "mdxJsxFlowElement") {
+				return;
+			}
 
-			return;
-		}
-
-		if (childNode.type === "mdxJsxFlowElement") {
 			if (!childNode.name || childNode.children.length === 0) {
 				return;
 			}
 
 			const config = registry.get(childNode.name);
-
 			if (!config || config.type === "inlineClass" || config.type === "inlineWrap") {
 				return;
 			}
 
 			const start = lines.length;
-
-			childNode.children.forEach((node) => {
-				if (node.type === "paragraph") {
-					const line = buildLineFromParagraph(node, registry);
-					lines.push(line);
-				}
-			});
-
-			const end = lines.length;
-
+			const flowAttributes = childNode.attributes
+				.filter((attr): attr is MdxJsxAttribute & { name: string } => attr.type === "mdxJsxAttribute")
+				.map<AnnotationAttr>((attr) => ({ name: attr.name, value: attr.value }));
 			const annotation = {
 				...config,
 				range: {
 					start,
-					end,
+					end: start,
 				},
 				order: annotations.length,
+				attributes: flowAttributes.length > 0 ? flowAttributes : undefined,
 			};
 
 			annotations.push(annotation);
-		}
-	});
+			visitFlowChildren(childNode.children as CodeBlockRoot["children"]);
+			annotation.range.end = lines.length;
+		});
+	};
+
+	visitFlowChildren(mdxAst.children);
 
 	return { lines, annotations };
 };
@@ -288,7 +285,11 @@ const composeCodeBlockRootFromLines = (
 			const flowNode: MdxJsxFlowElement = {
 				type: "mdxJsxFlowElement",
 				name: node.name,
-				attributes: [],
+				attributes: (event.anno.attributes ?? []).map((attr) => ({
+					type: "mdxJsxAttribute",
+					name: attr.name,
+					value: attr.value as MdxJsxAttribute["value"],
+				})),
 				children: [],
 			};
 

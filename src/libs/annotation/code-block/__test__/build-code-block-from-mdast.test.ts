@@ -30,10 +30,10 @@ const inline = (name: string, children: any[] = []) => ({
 	attributes: [],
 	children,
 });
-const flow = (name: string, children: any[] = []) => ({
+const flow = (name: string, children: any[] = [], attributes: any[] = []) => ({
 	type: "mdxJsxFlowElement",
 	name,
-	attributes: [],
+	attributes,
 	children,
 });
 const codeBlock = (children: any[], attributes: any[] = []): CodeBlockRoot => ({
@@ -285,10 +285,44 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 
 		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
 
-		expect(document.annotations).toEqual([expectedLineWrap("Collapsible", { start: 0, end: 2 })]);
+		expect(document.annotations).toEqual([
+			expectedLineWrap("Collapsible", { start: 0, end: 3 }, 0),
+			expectedLineWrap("Collapsible", { start: 1, end: 2 }, 1),
+		]);
 		expect(document.lines).toEqual([
 			{ value: "outer-1", annotations: [] },
+			{ value: "inner-1", annotations: [] },
 			{ value: "outer-2", annotations: [] },
+		]);
+	});
+
+	it("lineWrap 내부의 중첩 lineWrap과 flow attributes를 재귀로 파싱한다", () => {
+		const node = codeBlock([
+			paragraph([text("첫 번째 줄")]),
+			flow("Collapsible", [
+				paragraph([text("두 번째 줄")]),
+				flow(
+					"Callout",
+					[
+						paragraph([text("callout 내부")]),
+					],
+					[{ type: "mdxJsxAttribute", name: "variant", value: "tip" }],
+				),
+			]),
+			paragraph([text("세번째 줄")]),
+		]);
+
+		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+
+		expect(document.annotations).toEqual([
+			expectedLineWrap("Collapsible", { start: 1, end: 3 }, 0),
+			{ ...expectedLineWrap("Callout", { start: 2, end: 3 }, 1), attributes: [{ name: "variant", value: "tip" }] },
+		]);
+		expect(document.lines).toEqual([
+			{ value: "첫 번째 줄", annotations: [] },
+			{ value: "두 번째 줄", annotations: [] },
+			{ value: "callout 내부", annotations: [] },
+			{ value: "세번째 줄", annotations: [] },
 		]);
 	});
 

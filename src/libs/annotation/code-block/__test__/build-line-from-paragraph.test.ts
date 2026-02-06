@@ -85,7 +85,7 @@ describe("buildLineFromParagraph", () => {
 		});
 	});
 
-	it("mdx-text inline annotation은 문자열 attribute만 포함한다", () => {
+	it("mdx-text inline annotation은 named attribute를 값 타입 그대로 보존한다", () => {
 		const line = buildLineFromParagraph(
 			paragraph([
 				text("a"),
@@ -105,7 +105,12 @@ describe("buildLineFromParagraph", () => {
 
 		expect(line).toEqual({
 			value: "abcd",
-			annotations: [expectedInline("Tooltip", "Tooltip", { start: 1, end: 3 }, 0, [{ name: "title", value: "hint" }])],
+			annotations: [
+				expectedInline("Tooltip", "Tooltip", { start: 1, end: 3 }, 0, [
+					{ name: "title", value: "hint" },
+					{ name: "enabled", value: true },
+				]),
+			],
 		});
 	});
 

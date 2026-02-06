@@ -188,7 +188,7 @@ const parseAnnotationLine = (line: string, commentPrefix: string) => {
 
 const serializeAnnotationLine = (
 	commentPrefix: string,
-	annotation: { tag: string; name: string; range: { start: number; end: number }; attributes?: { name: string; value: string }[] },
+	annotation: { tag: string; name: string; range: { start: number; end: number }; attributes?: { name: string; value: unknown }[] },
 ) => {
 	const attrs = (annotation.attributes ?? [])
 		.map((attr) => `${attr.name}=${JSON.stringify(attr.value)}`)

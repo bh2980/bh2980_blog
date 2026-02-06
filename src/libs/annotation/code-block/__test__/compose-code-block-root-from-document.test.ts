@@ -250,6 +250,29 @@ describe("composeCodeBlockRootFromDocument", () => {
 		expect(printCodeBlock(ast)).toBe("p:a\nflow:Callout[p:b | p:c]\np:d");
 	});
 
+	it("중첩 lineWrap의 flow attributes를 mdast에 보존한다", () => {
+		const ast = parse(documentOf({
+			lines: [line("첫 번째 줄"), line("두 번째 줄"), line("callout 내부"), line("세번째 줄")],
+			annotations: [
+				lineWrap("Collapsible", { start: 1, end: 3 }, 0),
+				{ ...lineWrap("Callout", { start: 2, end: 3 }, 1), attributes: [{ name: "variant", value: "tip" }] },
+			],
+		}));
+
+		expect(printCodeBlock(ast)).toBe("p:첫 번째 줄\nflow:Collapsible[p:두 번째 줄 | flow:Callout[p:callout 내부]]\np:세번째 줄");
+
+		const collapsible = ast.children[1];
+		expect(collapsible?.type).toBe("mdxJsxFlowElement");
+		expect(collapsible?.type === "mdxJsxFlowElement" && collapsible.name).toBe("Collapsible");
+
+		const callout = collapsible?.type === "mdxJsxFlowElement" ? collapsible.children[1] : undefined;
+		expect(callout?.type).toBe("mdxJsxFlowElement");
+		expect(callout?.type === "mdxJsxFlowElement" && callout.name).toBe("Callout");
+		expect(callout?.type === "mdxJsxFlowElement" ? callout.attributes : []).toEqual([
+			{ type: "mdxJsxAttribute", name: "variant", value: "tip" },
+		]);
+	});
+
 	it("동일 line range의 lineWrap은 order가 낮은 annotation이 바깥을 감싼다(Callout -> Collapsible)", () => {
 		const ast = parse(documentOf({
 			lines: [line("hello")],
