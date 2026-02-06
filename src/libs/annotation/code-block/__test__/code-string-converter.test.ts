@@ -17,6 +17,15 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 
+const customTagConfig: AnnotationConfig = {
+	...annotationConfig,
+	tagOverrides: {
+		inlineWrap: "iw",
+		lineClass: "lc",
+		lineWrap: "lw",
+	},
+};
+
 const inlineWrapByName = new Map(
 	(annotationConfig.inlineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
 );
@@ -202,5 +211,43 @@ describe("code-string converter", () => {
 		const output = composeCodeFenceFromCodeBlockDocument(document, annotationConfig);
 
 		expect(output).toEqual(input);
+	});
+
+	it("tagOverrides를 설정하면 custom tag로 파싱/직렬화한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: 'title="custom.ts"',
+			value: [`// @lw Callout {0-1}`, `// @iw Tooltip {0-5} content="tip"`, "hello", `// @lc diff {1-2}`, "world"].join(
+				"\n",
+			),
+		};
+
+		const document = buildCodeBlockDocumentFromCodeFence(input, customTagConfig);
+		const output = composeCodeFenceFromCodeBlockDocument(document, customTagConfig);
+
+		expect(document.annotations[0]?.tag).toBe("lw");
+		expect(document.annotations[1]?.tag).toBe("lc");
+		expect(document.lines[0]?.annotations[0]?.tag).toBe("iw");
+		expect(output.value).toContain("// @lw Callout {0-1}");
+		expect(output.value).toContain('// @iw Tooltip {0-5} content="tip"');
+		expect(output.value).toContain("// @lc diff {1-2}");
+	});
+
+	it("tagOverrides가 있어도 기본 tag 입력을 호환 파싱한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: [`// @${lnWrapTag} Callout {0-1}`, `// @${inWrapTag} Tooltip {0-5}`, "hello"].join("\n"),
+		};
+
+		const document = buildCodeBlockDocumentFromCodeFence(input, customTagConfig);
+		const output = composeCodeFenceFromCodeBlockDocument(document, customTagConfig);
+
+		expect(document.annotations[0]?.name).toBe("Callout");
+		expect(document.lines[0]?.annotations[0]?.name).toBe("Tooltip");
+		expect(output.value).toContain("// @lw Callout {0-1}");
+		expect(output.value).toContain("// @iw Tooltip {0-5}");
 	});
 });

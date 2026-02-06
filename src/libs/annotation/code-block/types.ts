@@ -14,7 +14,7 @@ export type AnnotationTypePair = {
 	[K in keyof typeof ANNOTATION_TYPE_DEFINITION]: {
 		type: K;
 		typeId: (typeof ANNOTATION_TYPE_DEFINITION)[K]["typeId"];
-		tag: (typeof ANNOTATION_TYPE_DEFINITION)[K]["tag"];
+		tag: string;
 	};
 }[keyof typeof ANNOTATION_TYPE_DEFINITION];
 
@@ -31,6 +31,7 @@ export type Annotation = AnnotationTypePair & {
 
 export type AnnotationType = Annotation["type"];
 export type AnnotationSource = Annotation["source"];
+export type AnnotationTagOverrides = Partial<Record<AnnotationType, string>>;
 
 export type AnnotationRegistryItem = Omit<Annotation, "range" | "attributes" | "order"> & AnnotationTypePair;
 export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
@@ -52,6 +53,7 @@ export interface AnnotationConfig {
 	inlineWrap?: RenderAnnotationConfigItem[];
 	lineClass?: ClassAnnotationConfigItem[];
 	lineWrap?: RenderAnnotationConfigItem[];
+	tagOverrides?: AnnotationTagOverrides;
 }
 
 export type InlineAnnotation = Extract<Annotation, { type: "inlineClass" | "inlineWrap" }>;

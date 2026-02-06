@@ -1,6 +1,6 @@
 import type { Code } from "mdast";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
-import { createAnnotationRegistry } from "./libs";
+import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
 import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
@@ -137,9 +137,20 @@ const parseAttributes = (rest: string) => {
 	return attrs;
 };
 
-const TAG_TO_TYPE: Record<string, AnnotationType> = Object.fromEntries(
-	Object.entries(ANNOTATION_TYPE_DEFINITION).map(([type, info]) => [info.tag, type]),
-) as Record<string, AnnotationType>;
+const createTagToTypeMap = (annotationConfig: AnnotationConfig) => {
+	const resolved = resolveAnnotationTypeDefinition(annotationConfig);
+	const tagToType: Record<string, AnnotationType> = {};
+
+	for (const [type, info] of Object.entries(ANNOTATION_TYPE_DEFINITION) as [AnnotationType, { tag: string }][]) {
+		tagToType[info.tag] = type;
+	}
+
+	for (const [type, info] of Object.entries(resolved) as [AnnotationType, { tag: string }][]) {
+		tagToType[info.tag] = type;
+	}
+
+	return tagToType;
+};
 
 const getStylePayload = (config: AnnotationRegistryItem) => {
 	const raw = config as AnnotationRegistryItem & { class?: string; render?: string };
@@ -192,6 +203,8 @@ export const buildCodeBlockDocumentFromCodeFence = (
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
+	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
+	const tagToType = createTagToTypeMap(annotationConfig);
 	const lang = codeNode.lang?.trim() || DEFAULT_CODE_LANG;
 	const meta = parseMeta(codeNode.meta ?? "");
 	const commentPrefix = getCommentPrefix(lang);
@@ -212,7 +225,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 			continue;
 		}
 
-		const type = TAG_TO_TYPE[parsed.tag];
+		const type = tagToType[parsed.tag];
 		const config = registry.get(parsed.name);
 
 		if (!type || !config || config.type !== type) {
@@ -237,7 +250,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 			annotations.push({
 				...base,
 				type: "lineClass",
-				...ANNOTATION_TYPE_DEFINITION.lineClass,
+				...typeDefinition.lineClass,
 				order: annotations.length,
 			});
 			continue;
@@ -247,7 +260,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 			annotations.push({
 				...base,
 				type: "lineWrap",
-				...ANNOTATION_TYPE_DEFINITION.lineWrap,
+				...typeDefinition.lineWrap,
 				order: annotations.length,
 			});
 			continue;
@@ -257,7 +270,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 			pendingInline.push({
 				...base,
 				type: "inlineClass",
-				...ANNOTATION_TYPE_DEFINITION.inlineClass,
+				...typeDefinition.inlineClass,
 				order: pendingInline.length,
 			});
 			continue;
@@ -266,7 +279,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 		pendingInline.push({
 			...base,
 			type: "inlineWrap",
-			...ANNOTATION_TYPE_DEFINITION.inlineWrap,
+			...typeDefinition.inlineWrap,
 			order: pendingInline.length,
 		});
 	}
@@ -279,6 +292,7 @@ export const composeCodeFenceFromCodeBlockDocument = (
 	annotationConfig: AnnotationConfig,
 ): Code => {
 	createAnnotationRegistry(annotationConfig);
+	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 	const commentPrefix = getCommentPrefix(document.lang);
 	const lineAnnotationByStart = new Map<number, CodeBlockDocument["annotations"]>();
@@ -295,12 +309,22 @@ export const composeCodeFenceFromCodeBlockDocument = (
 	document.lines.forEach((line, lineIndex) => {
 		const lineAnnotations = lineAnnotationByStart.get(lineIndex) ?? [];
 		for (const annotation of lineAnnotations) {
-			outputLines.push(serializeAnnotationLine(commentPrefix, annotation));
+			outputLines.push(
+				serializeAnnotationLine(commentPrefix, {
+					...annotation,
+					tag: typeDefinition[annotation.type].tag,
+				}),
+			);
 		}
 
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
 			if (annotation.range.start >= annotation.range.end) continue;
-			outputLines.push(serializeAnnotationLine(commentPrefix, annotation));
+			outputLines.push(
+				serializeAnnotationLine(commentPrefix, {
+					...annotation,
+					tag: typeDefinition[annotation.type].tag,
+				}),
+			);
 		}
 
 		outputLines.push(line.value);
