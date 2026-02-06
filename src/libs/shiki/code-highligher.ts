@@ -36,10 +36,10 @@ import {
 	addLineDecorations,
 	addLineWrappers,
 	addMetaToPre,
+	convertInlineAnnoToRenderTag,
 	type LineDecorationPayload,
 	type LineWrapperPayload,
 	type Meta,
-	replaceToRenderTag,
 } from "./transformers";
 
 export const CODE_BLOCK_THEME_DARK = oneDarkPro.name as typeof oneDarkPro.name;
@@ -67,7 +67,7 @@ export const highlight = (
 		},
 		decorations,
 		transformers: [
-			replaceToRenderTag(),
+			convertInlineAnnoToRenderTag(),
 			addLineDecorations(lineDecorations),
 			addLineWrappers(lineWrappers),
 			addMetaToPre(code, meta),

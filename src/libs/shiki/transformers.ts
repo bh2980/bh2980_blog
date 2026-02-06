@@ -189,17 +189,21 @@ const DENY_PROPS = new Set([
 	"constructor",
 	"srcDoc", // 필요하면 추가
 ]);
+
+const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
 // TODO: deny list로 props 할당 제한을 통한 보안조치 필요
-export const replaceToRenderTag = (): ShikiTransformer => ({
+export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
 	root(rootNode: Root) {
 		visit(rootNode, "element", (el) => {
-			const p = el.properties ?? {};
+			el.properties ??= {};
+			const p = el.properties;
 
 			const render = p["data-anno-render"] ?? p.dataAnnoRender;
 
 			if (!render) return;
+			if (typeof render !== "string" || !RENDER_TAG_RE.test(render)) return;
 
-			el.tagName = String(render);
+			el.tagName = render;
 
 			for (const [k, v] of Object.entries(p)) {
 				if (typeof k === "string") {
@@ -209,6 +213,7 @@ export const replaceToRenderTag = (): ShikiTransformer => ({
 
 					// prop 이름 만들기
 					const propName = k.slice("data-anno-".length);
+					if (!propName || DENY_PROPS.has(propName)) continue;
 
 					// 값 파싱(문자열일 때만 JSON.parse 시도)
 					let parsed = v;
