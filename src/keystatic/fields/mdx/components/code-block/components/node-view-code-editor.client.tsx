@@ -2,13 +2,13 @@
 
 import type { Root } from "hast";
 import { type ReactNode, useEffect, useState } from "react";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import { buildCodeBlockDocumentFromMdast } from "@/libs/annotation/code-block/mdast-document-converter";
-import type { CodeBlockRoot } from "@/libs/annotation/code-block/types";
+import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 import { highlight } from "@/libs/shiki/code-highligher";
 import { composeShikiAnnotationPayloadFromDocument } from "@/libs/shiki/remark-annotation-to-decoration";
 import { cn } from "@/utils/cn";
 import { useLiveCodeBlockNode } from "../../../hooks/use-live-code-block-node";
+import { EDITOR_CODE_BLOCK_ANNOTATION_CONFIG } from "../constants";
 import { HastView } from "./hast-view";
 
 export const NodeViewCodeEditor = ({
@@ -17,12 +17,14 @@ export const NodeViewCodeEditor = ({
 	initProseMirrorId,
 	proseMirrorId,
 	showLineNumbers,
+	annotationConfig = EDITOR_CODE_BLOCK_ANNOTATION_CONFIG,
 }: {
 	nodeViewChildren: ReactNode;
 	lang: string;
 	initProseMirrorId: (id: string) => void;
 	proseMirrorId?: string;
 	showLineNumbers?: boolean;
+	annotationConfig?: AnnotationConfig;
 }) => {
 	const codeBlockNode = useLiveCodeBlockNode(proseMirrorId);
 	const [hast, setHast] = useState<Root>();
@@ -43,16 +45,16 @@ export const NodeViewCodeEditor = ({
 			return;
 		}
 
-		const document = buildCodeBlockDocumentFromMdast(codeBlockNode as CodeBlockRoot, codeFenceAnnotationConfig);
+		const document = buildCodeBlockDocumentFromMdast(codeBlockNode as CodeBlockRoot, annotationConfig);
 		const payload = composeShikiAnnotationPayloadFromDocument(document);
 		const highlighedHast = highlight(payload.code, payload.lang || lang, payload.meta, {
 			decorations: payload.decorations,
 			lineDecorations: payload.lineDecorations,
-			lineWrappers: payload.lineWrappers,
+			lineWrappers: [],
 		});
 
 		setHast(highlighedHast);
-	}, [codeBlockNode, lang]);
+	}, [codeBlockNode, lang, annotationConfig]);
 
 	return (
 		<div className="relative rounded-lg *:m-0!">

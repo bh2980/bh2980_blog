@@ -31,6 +31,7 @@ import {
 	SiVuedotjs,
 	SiYaml,
 } from "react-icons/si";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 
 // TODO : 나중에 shiki 쪽이랑 통합하면 편할 것 같은데, shiki 쪽에서 타입 제공 안해주나
 // TODO : comment prefix 나중에 제거
@@ -302,3 +303,58 @@ export const EDITOR_LANG_OPTIONS = [
 }>;
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
+
+export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
+	inlineClass: [
+		{
+			name: "Tooltip",
+			source: "mdx-text",
+			class: "underline decoration-dotted underline-offset-4",
+		},
+		{
+			name: "strong",
+			source: "mdast",
+			class: "font-semibold",
+		},
+		{
+			name: "emphasis",
+			source: "mdast",
+			class: "italic",
+		},
+		{
+			name: "delete",
+			source: "mdast",
+			class: "line-through",
+		},
+		{
+			name: "u",
+			source: "mdx-text",
+			class: "underline",
+		},
+	],
+	lineClass: [
+		{
+			name: "diff",
+			source: "mdx-flow",
+			class: "bg-emerald-100/80 dark:bg-emerald-900/30",
+		},
+	],
+	lineWrap: [
+		{
+			name: "Callout",
+			source: "mdx-flow",
+			render: "Callout",
+		},
+		{
+			name: "Collapsible",
+			source: "mdx-flow",
+			render: "Collapsible",
+		},
+	],
+	tagOverrides: {
+		inlineClass: "dec",
+		inlineWrap: "mark",
+		lineClass: "line",
+		lineWrap: "block",
+	},
+};
