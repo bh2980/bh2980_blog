@@ -167,6 +167,7 @@ export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiT
 					if (DENY_PROPS.has(attribute.name)) continue;
 					properties[attribute.name] = toHastPropertyValue(attribute.value);
 				}
+				properties["data-code-block-wrapper"] = "true";
 
 				wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
 			}
