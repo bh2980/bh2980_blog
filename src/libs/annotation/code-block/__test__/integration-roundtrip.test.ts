@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } from "../code-string-converter";
-import { createMdxJsxAttributeValueExpression } from "../libs";
+import { __testable__ as codeStringTestable } from "../code-string-converter";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationConfig, CodeBlockDocument, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { buildCodeBlockDocumentFromMdast, composeCodeBlockRootFromDocument } = __testable__;
+const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = codeStringTestable;
+const { createMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],

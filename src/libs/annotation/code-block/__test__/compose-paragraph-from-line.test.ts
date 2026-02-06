@@ -2,10 +2,11 @@ import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
-import { composeEventsFromAnnotations, createAnnotationRegistry } from "../libs";
+import { __testable__ as libsTestable } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Line, Range } from "../types";
 
 const { composeParagraphFromLine, buildLineFromParagraph } = __testable__;
+const { composeEventsFromAnnotations, createAnnotationRegistry } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [{ name: "emphasis", source: "mdast", class: "italic" }],

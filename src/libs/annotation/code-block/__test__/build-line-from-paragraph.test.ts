@@ -2,10 +2,11 @@ import type { Paragraph } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
-import { createAnnotationRegistry } from "../libs";
+import { __testable__ as libsTestable } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { buildLineFromParagraph } = __testable__;
+const { createAnnotationRegistry } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [

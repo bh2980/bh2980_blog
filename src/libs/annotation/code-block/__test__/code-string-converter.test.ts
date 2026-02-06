@@ -1,8 +1,10 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } from "../code-string-converter";
+import { __testable__ } from "../code-string-converter";
 import type { AnnotationAttr, AnnotationConfig, CodeBlockDocument, InlineAnnotation, Line, LineAnnotation, Range } from "../types";
+
+const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = __testable__;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],

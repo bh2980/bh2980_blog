@@ -64,9 +64,9 @@ export const resolveAnnotationTypeDefinition = (annotationConfig: AnnotationConf
 	return resolved;
 };
 
-export function getTypePair<T extends AnnotationType>(type: T, definition: ResolvedAnnotationTypeDefinition) {
+const getTypePair = <T extends AnnotationType>(type: T, definition: ResolvedAnnotationTypeDefinition) => {
 	return { type, ...definition[type] } as { type: T } & ResolvedAnnotationTypeDefinition[T];
-}
+};
 
 export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) => {
 	if (!annotationConfig) {
@@ -107,7 +107,7 @@ export const isText = (node: Node): node is Text => node.type === "text";
 export const isBreak = (node: Node): node is Break => node.type === "break";
 export const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
 
-export const createBreakNode = (): Break => ({
+const createBreakNode = (): Break => ({
 	type: "break",
 });
 
@@ -208,4 +208,12 @@ export const composeEventsFromAnnotations = (annotations: Annotation[]) => {
 		});
 
 	return event;
+};
+
+export const __testable__ = {
+	getTypePair,
+	createBreakNode,
+	createAnnotationRegistry,
+	createMdxJsxAttributeValueExpression,
+	composeEventsFromAnnotations,
 };

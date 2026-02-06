@@ -3,7 +3,7 @@ import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
-import { createMdxJsxAttributeValueExpression } from "../libs";
+import { __testable__ as libsTestable } from "../libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -17,6 +17,7 @@ import type {
 
 const composeCodeBlockRootFromDocument = __testable__.composeCodeBlockRootFromDocument;
 const buildCodeBlockDocumentFromMdast = __testable__.buildCodeBlockDocumentFromMdast;
+const { createMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],

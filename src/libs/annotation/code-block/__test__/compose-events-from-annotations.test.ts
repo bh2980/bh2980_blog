@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { composeEventsFromAnnotations } from "../libs";
+import { __testable__ } from "../libs";
 import type { Annotation, Range } from "../types";
 
 type AnnotationTypeKey = keyof typeof ANNOTATION_TYPE_DEFINITION;
+const { composeEventsFromAnnotations } = __testable__;
 
 const makeAnnotation = <T extends AnnotationTypeKey>({
 	type,

@@ -338,3 +338,8 @@ export const composeCodeFenceFromCodeBlockDocument = (
 		value: outputLines.join("\n"),
 	};
 };
+
+export const __testable__ = {
+	buildCodeBlockDocumentFromCodeFence,
+	composeCodeFenceFromCodeBlockDocument,
+};
