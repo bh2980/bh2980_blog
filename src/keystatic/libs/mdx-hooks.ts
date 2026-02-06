@@ -13,8 +13,6 @@ import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-blo
 import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 
-const annotationConfig: AnnotationConfig = codeFenceAnnotationConfig;
-
 const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
 	visit(mdxAst, "code", (node, index, parent) => {
 		if (node.lang === "mermaid") return;
@@ -41,13 +39,14 @@ const walkOnlyInsideCodeblock = (mdxAst: Root, config: AnnotationConfig) => {
 
 globalThis.__KEYSTATIC_MDX_HOOKS__ = {
 	afterMarkdownParse(mdxAst) {
-		walkOnlyInsideCodeFence(mdxAst, annotationConfig);
+		walkOnlyInsideCodeFence(mdxAst, codeFenceAnnotationConfig);
+		findCodeBlockAndMapping(mdxAst);
 		return mdxAst;
 	},
 
 	beforeSerialize(mdxAst) {
-		findCodeBlockAndMapping(mdxAst);
-		walkOnlyInsideCodeblock(mdxAst, annotationConfig);
+		findCodeBlockAndMapping(mdxAst, { emit: false });
+		walkOnlyInsideCodeblock(mdxAst, codeFenceAnnotationConfig);
 		return mdxAst;
 	},
 };
