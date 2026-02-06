@@ -160,5 +160,47 @@ describe("code-string converter", () => {
 		expect(document.lines[0]?.annotations.map((annotation) => annotation.name)).toEqual(["Tooltip", "u"]);
 		expect(output.value).toBe(input.value);
 	});
-});
 
+	it("document -> code -> document 라운드트립에서 lang/meta/annotations를 보존한다", () => {
+		const input: CodeBlockDocument = {
+			lang: "ts",
+			meta: { title: "roundtrip.ts", showLineNumbers: true, fold: false },
+			annotations: [
+				lineWrap("Callout", { start: 0, end: 2 }, 0, [{ name: "tone", value: "info" }]),
+				lineClass("diff", { start: 1, end: 2 }, 1),
+			],
+			lines: [
+				line('const value = "hello"', [
+					inlineWrap("Tooltip", { start: 6, end: 11 }, 0, [{ name: "content", value: "tip" }]),
+					inlineWrap("u", { start: 14, end: 21 }, 1),
+				]),
+				line("return value"),
+			],
+		};
+
+		const code = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
+		const output = buildCodeBlockDocumentFromCodeFence(code, annotationConfig);
+
+		expect(output).toEqual(input);
+	});
+
+	it("code -> document -> code 라운드트립에서 canonical code fence를 보존한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: 'title="canon.ts" showLineNumbers fold=false',
+			value: [
+				`// @${lnWrapTag} Callout {0-2} tone="warn"`,
+				`// @${inWrapTag} Tooltip {6-11} content="tip"`,
+				'const value = "hello"',
+				`// @${lnClassTag} diff {1-2}`,
+				"return value",
+			].join("\n"),
+		};
+
+		const document = buildCodeBlockDocumentFromCodeFence(input, annotationConfig);
+		const output = composeCodeFenceFromCodeBlockDocument(document, annotationConfig);
+
+		expect(output).toEqual(input);
+	});
+});
