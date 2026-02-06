@@ -14,7 +14,7 @@ import type {
 	Range,
 } from "../types";
 
-const parseMdastFromCodeBlockDocument = __testable__.parseMdastFromCodeBlockDocument;
+const composeCodeBlockRootFromDocument = __testable__.composeCodeBlockRootFromDocument;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -89,8 +89,8 @@ const lineClass = (name: string, range: Range, order: number): LineAnnotation =>
 const line = (value: string, annotations: InlineAnnotation[] = []): Line => ({ value, annotations });
 
 const parse = (document: CodeBlockDocument) => {
-	expect(parseMdastFromCodeBlockDocument).toBeTypeOf("function");
-	return parseMdastFromCodeBlockDocument(document, annotationConfig);
+	expect(composeCodeBlockRootFromDocument).toBeTypeOf("function");
+	return composeCodeBlockRootFromDocument(document, annotationConfig);
 };
 
 const printPhrasing = (nodes: PhrasingContent[]): string => {
@@ -135,14 +135,14 @@ const printCodeBlock = (root: CodeBlockRoot): string => {
 	return root.children.map((node) => printBlock(node)).join("\n");
 };
 
-describe("parseMdastFromCodeBlockDocument", () => {
+describe("composeCodeBlockRootFromDocument", () => {
 	it("CodeBlockDocument -> CodeBlockRoot 변환 함수를 제공한다", () => {
-		expect(parseMdastFromCodeBlockDocument).toBeTypeOf("function");
+		expect(composeCodeBlockRootFromDocument).toBeTypeOf("function");
 	});
 
 	it("annotationConfig 없이 호출하면 에러를 던진다", () => {
 		const document: CodeBlockDocument = { lines: [], annotations: [] };
-		expect(() => parseMdastFromCodeBlockDocument(document, undefined as never)).toThrowError(
+		expect(() => composeCodeBlockRootFromDocument(document, undefined as never)).toThrowError(
 			"[buildAnnotationRegistry] ERROR : annotationConfig is required",
 		);
 	});

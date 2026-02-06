@@ -2,10 +2,10 @@ import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../keystatic-annotation-manager";
-import { createAnnotationRegistry, createEvents } from "../libs";
+import { composeEventsFromAnnotations, createAnnotationRegistry } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Line, Range } from "../types";
 
-const { parseParagraphFromLine, buildLineFromParagraph } = __testable__;
+const { composeParagraphFromLine, buildLineFromParagraph } = __testable__;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [{ name: "emphasis", source: "mdast", class: "italic" }],
@@ -59,7 +59,8 @@ const inlineClass = (
 });
 
 const line = (value: string, annotations: InlineAnnotation[] = []): Line => ({ value, annotations });
-const parse = (input: Line) => parseParagraphFromLine(input.value, createEvents(input.annotations), registry);
+const parse = (input: Line) =>
+	composeParagraphFromLine(input.value, composeEventsFromAnnotations(input.annotations), registry);
 
 const printParagraph = (paragraph: Paragraph): string => {
 	const hasChildren = (node: PhrasingContent): node is PhrasingContent & { children: PhrasingContent[] } =>
@@ -110,7 +111,7 @@ const sortInlineAnnotation = (
 	return a.priority - b.priority;
 };
 
-describe("parseParagraphFromLine", () => {
+describe("composeParagraphFromLine", () => {
 	it("텍스트만 있는 Line은 text child만 포함한 paragraph를 만든다", () => {
 		const paragraph = parse(line("console.log('x')"));
 
