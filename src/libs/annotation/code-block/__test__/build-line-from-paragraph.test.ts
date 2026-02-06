@@ -2,26 +2,84 @@ import type { Paragraph } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
-import { __testable__ as libsTestable } from "../libs";
-import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
+import type { AnnotationAttr, AnnotationRegistry, InlineAnnotation, Range } from "../types";
 
 const { buildLineFromParagraph } = __testable__;
-const { createAnnotationRegistry } = libsTestable;
 
-const annotationConfig: AnnotationConfig = {
-	inlineClass: [
-		{ name: "strong", source: "mdast", class: "font-bold" },
-		{ name: "emphasis", source: "mdast", class: "italic" },
+const registry: AnnotationRegistry = new Map([
+	[
+		"strong",
+		{
+			name: "strong",
+			source: "mdast",
+			class: "font-bold",
+			type: "inlineClass",
+			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
+			priority: 0,
+		},
 	],
-	inlineWrap: [
-		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
-		{ name: "u", source: "mdx-text", render: "u" },
+	[
+		"emphasis",
+		{
+			name: "emphasis",
+			source: "mdast",
+			class: "italic",
+			type: "inlineClass",
+			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
+			priority: 1,
+		},
 	],
-	lineClass: [{ name: "LineBadge", source: "mdx-text", class: "line-badge" }],
-	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
-};
-
-const registry = createAnnotationRegistry(annotationConfig);
+	[
+		"Tooltip",
+		{
+			name: "Tooltip",
+			source: "mdx-text",
+			render: "Tooltip",
+			type: "inlineWrap",
+			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+			priority: 0,
+		},
+	],
+	[
+		"u",
+		{
+			name: "u",
+			source: "mdx-text",
+			render: "u",
+			type: "inlineWrap",
+			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+			priority: 1,
+		},
+	],
+	[
+		"LineBadge",
+		{
+			name: "LineBadge",
+			source: "mdx-text",
+			class: "line-badge",
+			type: "lineClass",
+			typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
+			priority: 0,
+		},
+	],
+	[
+		"Collapsible",
+		{
+			name: "Collapsible",
+			source: "mdx-flow",
+			render: "Collapsible",
+			type: "lineWrap",
+			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
+			tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
+			priority: 0,
+		},
+	],
+]);
 
 const text = (value: string) => ({ type: "text", value });
 const paragraph = (children: any[]): Paragraph => ({ type: "paragraph", children });
