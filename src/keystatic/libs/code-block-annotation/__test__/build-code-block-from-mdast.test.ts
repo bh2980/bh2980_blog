@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../keystatic-annotation-manager";
+import { createMdxJsxAttributeValueExpression } from "../libs";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { buildCodeBlockDocumentFromMdast } = __testable__;
@@ -35,10 +36,10 @@ const flow = (name: string, children: any[] = []) => ({
 	attributes: [],
 	children,
 });
-const codeBlock = (children: any[]): CodeBlockRoot => ({
+const codeBlock = (children: any[], attributes: any[] = []): CodeBlockRoot => ({
 	type: "mdxJsxFlowElement",
 	name: "CodeBlock",
-	attributes: [],
+	attributes,
 	children,
 });
 
@@ -133,6 +134,8 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 		const document = buildCodeBlockDocumentFromMdast(codeBlockNode, annotationConfig);
 
 		expect(document).toEqual({
+			lang: "text",
+			meta: {},
 			annotations: [expectedLineWrap("Collapsible", { start: 1, end: 2 })],
 			lines: [
 				{
@@ -330,8 +333,30 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
 
 		expect(document).toEqual({
+			lang: "text",
+			meta: {},
 			annotations: [],
 			lines: [],
 		});
+	});
+
+	it("lang/meta attribute를 document로 파싱한다", () => {
+		const node = codeBlock(
+			[paragraph([text("const x = 1")])],
+			[
+				{ type: "mdxJsxAttribute", name: "id", value: "091515e6-933a-4bd2-b4c0-9a7e05a17009" },
+				{ type: "mdxJsxAttribute", name: "lang", value: "ts" },
+				{
+					type: "mdxJsxAttribute",
+					name: "meta",
+					value: createMdxJsxAttributeValueExpression({ filename: "demo.ts", showLineNumbers: true }),
+				},
+			],
+		);
+
+		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+
+		expect(document.lang).toBe("ts");
+		expect(document.meta).toEqual({ filename: "demo.ts", showLineNumbers: true });
 	});
 });

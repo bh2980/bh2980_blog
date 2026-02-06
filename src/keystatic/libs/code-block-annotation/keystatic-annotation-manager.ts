@@ -3,6 +3,7 @@ import type { MdxJsxAttribute, MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import {
 	composeEventsFromAnnotations,
 	createAnnotationRegistry,
+	createMdxJsxAttributeValueExpression,
 	createMdastNode,
 	createMdxJsxTextElementNode,
 	createTextNode,
@@ -16,12 +17,15 @@ import type {
 	AnnotationEvent,
 	AnnotationRegistry,
 	CodeBlockDocument,
+	CodeBlockMetaValue,
 	CodeBlockRoot,
 	InlineAnnotation,
 	Line,
 	LineAnnotation,
 	MdastNodeLike,
 } from "./types";
+
+const DEFAULT_CODE_LANG = "text";
 
 const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Line => {
 	let pureCode = "";
@@ -90,14 +94,43 @@ const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Lin
 	return { value: pureCode, annotations };
 };
 
-const buildCodeBlockDocumentFromMdast = (
+const extractCodeBlockHeaderFromMdast = (
 	mdxAst: CodeBlockRoot,
-	annotationConfig: AnnotationConfig,
-): CodeBlockDocument => {
+): Pick<CodeBlockDocument, "lang" | "meta"> => {
+	const langAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "lang");
+	const lang = langAttr?.type === "mdxJsxAttribute" && typeof langAttr.value === "string" ? langAttr.value : DEFAULT_CODE_LANG;
+	const metaAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "meta");
+	let meta: Record<string, CodeBlockMetaValue> = {};
+
+	if (metaAttr?.type === "mdxJsxAttribute") {
+		const rawMeta =
+			typeof metaAttr.value === "string"
+				? metaAttr.value
+				: metaAttr.value && typeof metaAttr.value === "object" && "value" in metaAttr.value
+					? metaAttr.value.value
+					: undefined;
+
+		if (typeof rawMeta === "string") {
+			try {
+				const parsed = JSON.parse(rawMeta);
+				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+					meta = parsed as Record<string, CodeBlockMetaValue>;
+				}
+			} catch {
+				meta = {};
+			}
+		}
+	}
+
+	return { lang, meta };
+};
+
+const buildCodeBlockBodyFromMdast = (
+	mdxAst: CodeBlockRoot,
+	registry: AnnotationRegistry,
+): Pick<CodeBlockDocument, "lines" | "annotations"> => {
 	const lines: Line[] = [];
 	const annotations: LineAnnotation[] = [];
-
-	const registry = createAnnotationRegistry(annotationConfig);
 
 	mdxAst.children.forEach((childNode) => {
 		if (childNode.type === "paragraph") {
@@ -144,6 +177,17 @@ const buildCodeBlockDocumentFromMdast = (
 	});
 
 	return { lines, annotations };
+};
+
+const buildCodeBlockDocumentFromMdast = (
+	mdxAst: CodeBlockRoot,
+	annotationConfig: AnnotationConfig,
+): CodeBlockDocument => {
+	const registry = createAnnotationRegistry(annotationConfig);
+	const { lang, meta } = extractCodeBlockHeaderFromMdast(mdxAst);
+	const { lines, annotations } = buildCodeBlockBodyFromMdast(mdxAst, registry);
+
+	return { lang, meta, lines, annotations };
 };
 
 const composeParagraphFromLine = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry): Paragraph => {
@@ -199,12 +243,23 @@ const composeCodeBlockRootFromLines = (
 	lines: Line[],
 	events: AnnotationEvent[],
 	registry: AnnotationRegistry,
+	options?: { lang?: string; meta?: Record<string, CodeBlockMetaValue> },
 ): CodeBlockRoot => {
+	const lang = options?.lang?.trim() || DEFAULT_CODE_LANG;
+	const meta = options?.meta ?? {};
+
 	const codeBlock: CodeBlockRoot = {
 		type: "mdxJsxFlowElement",
 		name: "CodeBlock",
 		children: [],
-		attributes: [],
+		attributes: [
+			{ type: "mdxJsxAttribute", name: "lang", value: lang },
+			{
+				type: "mdxJsxAttribute",
+				name: "meta",
+				value: createMdxJsxAttributeValueExpression(meta),
+			},
+		],
 	};
 
 	const stack: (CodeBlockRoot | MdxJsxFlowElement)[] = [codeBlock];
@@ -266,11 +321,16 @@ const composeCodeBlockRootFromDocument = (
 ): CodeBlockRoot => {
 	const registry = createAnnotationRegistry(annotationConfig);
 	const lineAnnotationEvents = composeEventsFromAnnotations(document.annotations);
-	return composeCodeBlockRootFromLines(document.lines, lineAnnotationEvents, registry);
+	return composeCodeBlockRootFromLines(document.lines, lineAnnotationEvents, registry, {
+		lang: document.lang,
+		meta: document.meta,
+	});
 };
 
 export const __testable__ = {
 	buildLineFromParagraph,
+	extractCodeBlockHeaderFromMdast,
+	buildCodeBlockBodyFromMdast,
 	buildCodeBlockDocumentFromMdast,
 	composeParagraphFromLine,
 	composeCodeBlockRootFromLines,

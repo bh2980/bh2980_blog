@@ -59,7 +59,11 @@ export type LineAnnotation = Extract<Annotation, { type: "lineClass" | "lineWrap
 
 export type Line = { value: string; annotations: InlineAnnotation[] };
 
+export type CodeBlockMetaValue = string | boolean;
+
 export type CodeBlockDocument = {
+	lang: string;
+	meta: Record<string, CodeBlockMetaValue>;
 	annotations: LineAnnotation[];
 	lines: Array<Line>;
 };
