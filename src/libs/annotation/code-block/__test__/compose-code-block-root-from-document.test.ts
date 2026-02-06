@@ -296,6 +296,27 @@ describe("composeCodeBlockRootFromDocument", () => {
 		expect(reconstructed.meta).toEqual(input.meta);
 	});
 
+	it("document -> mdast -> document 라운드트립에서 lines/annotations/order를 보존한다", () => {
+		const input = {
+			lang: "ts",
+			meta: { title: "roundtrip.ts", showLineNumbers: true },
+			lines: [
+				line("hello", [inlineWrap("Tooltip", { start: 0, end: 3 }, 0), inlineWrap("u", { start: 3, end: 5 }, 1)]),
+				line("world", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0)]),
+				line("tail"),
+			],
+			annotations: [
+				lineClass("diff", { start: 0, end: 1 }, 0),
+				lineWrap("Callout", { start: 1, end: 3 }, 1),
+			],
+		} satisfies CodeBlockDocument;
+
+		const ast = composeCodeBlockRootFromDocument(input, annotationConfig);
+		const reconstructed = buildCodeBlockDocumentFromMdast(ast, annotationConfig);
+
+		expect(reconstructed).toEqual(input);
+	});
+
 	it("복잡한 mdast는 mdast -> document -> mdast 라운드트립에서 유지된다", () => {
 		const input: CodeBlockRoot = {
 			type: "mdxJsxFlowElement",
