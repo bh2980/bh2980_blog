@@ -1,12 +1,12 @@
-import type { Element, Root } from "hast";
+import type { Element } from "hast";
 import { describe, expect, it } from "vitest";
 import { convertInlineAnnoToRenderTag } from "../transformers";
 
-const runRootHook = (root: Root) => {
+const runCodeHook = (codeEl: Element) => {
 	const transformer = convertInlineAnnoToRenderTag();
-	const hook = transformer.root;
+	const hook = transformer.code;
 	expect(hook).toBeTypeOf("function");
-	hook?.call({} as never, root);
+	hook?.call({} as never, codeEl);
 };
 
 const createInlineElement = (properties: Element["properties"]): Element => ({
@@ -23,9 +23,9 @@ describe("convertInlineAnnoToRenderTag", () => {
 			"data-anno-variant": '"tip"',
 			"data-anno-open": "true",
 		});
-		const root: Root = { type: "root", children: [node] };
+		const codeEl: Element = { type: "element", tagName: "code", properties: {}, children: [node] };
 
-		runRootHook(root);
+		runCodeHook(codeEl);
 
 		expect(node.tagName).toBe("Tooltip");
 		expect(node.properties.variant).toBe("tip");
@@ -40,9 +40,9 @@ describe("convertInlineAnnoToRenderTag", () => {
 			"data-anno-render": "Callout<script>",
 			"data-anno-variant": '"tip"',
 		});
-		const root: Root = { type: "root", children: [node] };
+		const codeEl: Element = { type: "element", tagName: "code", properties: {}, children: [node] };
 
-		runRootHook(root);
+		runCodeHook(codeEl);
 
 		expect(node.tagName).toBe("span");
 		expect(node.properties.variant).toBeUndefined();
@@ -58,9 +58,9 @@ describe("convertInlineAnnoToRenderTag", () => {
 			"data-anno-dangerouslySetInnerHTML": '{"__html":"<b>x</b>"}',
 			"data-anno-children": '"forbidden"',
 		});
-		const root: Root = { type: "root", children: [node] };
+		const codeEl: Element = { type: "element", tagName: "code", properties: {}, children: [node] };
 
-		runRootHook(root);
+		runCodeHook(codeEl);
 
 		const props = node.properties as Record<string, unknown>;
 		expect(node.tagName).toBe("Tooltip");

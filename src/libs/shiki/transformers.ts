@@ -1,4 +1,4 @@
-import type { Element, Root } from "hast";
+import type { Element } from "hast";
 import type { ShikiTransformer } from "shiki";
 import { visit } from "unist-util-visit";
 
@@ -193,8 +193,8 @@ const DENY_PROPS = new Set([
 const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
 // TODO: deny list로 props 할당 제한을 통한 보안조치 필요
 export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
-	root(rootNode: Root) {
-		visit(rootNode, "element", (el) => {
+	code(codeEl: Element) {
+		visit(codeEl, "element", (el) => {
 			el.properties ??= {};
 			const p = el.properties;
 
