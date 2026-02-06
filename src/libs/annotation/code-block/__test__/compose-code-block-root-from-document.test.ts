@@ -2,7 +2,7 @@ import type { PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../keystatic-annotation-manager";
+import { __testable__ } from "../mdast-document-converter";
 import { createMdxJsxAttributeValueExpression } from "../libs";
 import type {
 	AnnotationAttr,

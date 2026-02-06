@@ -1,7 +1,7 @@
 import type { Paragraph } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../keystatic-annotation-manager";
+import { __testable__ } from "../mdast-document-converter";
 import { createAnnotationRegistry } from "../libs";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
