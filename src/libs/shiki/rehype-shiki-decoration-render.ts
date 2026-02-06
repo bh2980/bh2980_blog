@@ -3,6 +3,7 @@ import { toString as hastToString } from "hast-util-to-string";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
 import { highlight } from "./code-highligher";
+import type { LineDecorationPayload, LineWrapperPayload } from "./transformers";
 
 type Meta = Record<string, any>;
 
@@ -42,11 +43,23 @@ export function rehypeShikiDecorationRender() {
 			const decoratonStr = (pre.properties?.["data-decorations"] ?? codeEl.properties?.["data-decorations"]) as
 				| string
 				| undefined;
+			const lineDecorationStr = (
+				pre.properties?.["data-line-decorations"] ?? codeEl.properties?.["data-line-decorations"]
+			) as string | undefined;
+			const lineWrapperStr = (pre.properties?.["data-line-wrappers"] ?? codeEl.properties?.["data-line-wrappers"]) as
+				| string
+				| undefined;
 
 			const meta: Meta = metaStr ? JSON.parse(metaStr) : {};
 			const decorations: DecorationItem[] = decoratonStr ? JSON.parse(decoratonStr) : [];
+			const lineDecorations: LineDecorationPayload[] = lineDecorationStr ? JSON.parse(lineDecorationStr) : [];
+			const lineWrappers: LineWrapperPayload[] = lineWrapperStr ? JSON.parse(lineWrapperStr) : [];
 
-			const hast = highlight(code, lang, meta, decorations);
+			const hast = highlight(code, lang, meta, {
+				decorations,
+				lineDecorations,
+				lineWrappers,
+			});
 
 			// codeToHast 결과는 Root(fragment). 보통 첫 element가 <pre>
 			const newPre = hast.children.find((n) => n.type === "element") as Element;

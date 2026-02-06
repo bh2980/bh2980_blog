@@ -3,7 +3,6 @@ import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
 import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
 import type {
-	AnnotationAttr,
 	AnnotationConfig,
 	InlineAnnotation,
 	LineAnnotation,
@@ -54,7 +53,6 @@ const toLineDecorationPayload = (annotation: LineAnnotation) => {
 		range: annotation.range,
 		order: annotation.order,
 		class: annotation.class,
-		attributes: annotation.attributes ?? [],
 	};
 };
 

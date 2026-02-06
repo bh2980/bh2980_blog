@@ -92,7 +92,7 @@ export const NodeViewCodeEditor = ({
 				return { start: anno.range.start, end: anno.range.end, properties: { class: anno.class } };
 			});
 
-		const highlighedHast = highlight(result.code, lang, {}, decorations);
+		const highlighedHast = highlight(result.code, lang, {}, { decorations });
 
 		setHast(highlighedHast);
 	}, [codeBlockNode, lang]);

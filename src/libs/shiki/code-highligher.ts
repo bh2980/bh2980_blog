@@ -32,21 +32,48 @@ import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import oneLight from "@shikijs/themes/one-light";
 import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
-import { addMetaToPre, type Meta, replaceToRenderTag } from "./transformers";
+import {
+	addLineDecorations,
+	addLineWrappers,
+	addMetaToPre,
+	type LineDecorationPayload,
+	type LineWrapperPayload,
+	type Meta,
+	replaceToRenderTag,
+} from "./transformers";
 
 export const CODE_BLOCK_THEME_DARK = oneDarkPro.name as typeof oneDarkPro.name;
 export const CODE_BLOCK_THEME_LIGHT = oneLight.name as typeof oneLight.name;
 
-export const highlight = (code: string, lang: string, meta: Meta, decorations?: DecorationItem[]) =>
-	highlighter.codeToHast(code, {
+export type AnnotationPayload = {
+	decorations?: DecorationItem[];
+	lineDecorations?: LineDecorationPayload[];
+	lineWrappers?: LineWrapperPayload[];
+};
+
+export const highlight = (
+	code: string,
+	lang: string,
+	meta: Meta,
+	annotationPayload: AnnotationPayload = {},
+) => {
+	const { decorations = [], lineDecorations = [], lineWrappers = [] } = annotationPayload;
+
+	return highlighter.codeToHast(code, {
 		lang,
 		themes: {
 			light: CODE_BLOCK_THEME_LIGHT,
 			dark: CODE_BLOCK_THEME_DARK,
 		},
 		decorations,
-		transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
+		transformers: [
+			replaceToRenderTag(),
+			addLineDecorations(lineDecorations),
+			addLineWrappers(lineWrappers),
+			addMetaToPre(code, meta),
+		],
 	});
+};
 
 export const langAlias = {
 	javascript: "ts",
