@@ -2,17 +2,39 @@
 "use client";
 
 import { Code2, Eye, ListOrdered, SquareSplitHorizontal, SquareSplitVertical, Trash2 } from "lucide-react";
+import { toString } from "mdast-util-to-string";
+import type { PhrasingContent } from "mdast";
+import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
-import { extractAnnotationsFromAst } from "@/keystatic/libs/serialize-annotations";
 import { cn } from "@/utils/cn";
 import { useLiveCodeBlockNode } from "../../hooks/use-live-code-block-node";
 import { NodeViewCodeEditor } from "../code-block/components";
 import type { MermaidNodeViewProps } from "./component";
 import { Mermaid } from "./mermaid.client";
+
+const extractMermaidCodeFromFlowElement = (node: MdxJsxFlowElement): string => {
+	const lines: string[] = [];
+
+	const visitFlowChildren = (children: MdxJsxFlowElement["children"]) => {
+		for (const child of children) {
+			if (child.type === "paragraph") {
+				lines.push(toString(child as unknown as { children: PhrasingContent[] }));
+				continue;
+			}
+
+			if (child.type === "mdxJsxFlowElement") {
+				visitFlowChildren(child.children as MdxJsxFlowElement["children"]);
+			}
+		}
+	};
+
+	visitFlowChildren(node.children);
+	return lines.join("\n");
+};
 
 export function MermaidBlockNodeView({ children, onRemove, onChange, isSelected, value }: MermaidNodeViewProps) {
 	const codeBlockNode = useLiveCodeBlockNode(value.id);
@@ -28,9 +50,7 @@ export function MermaidBlockNodeView({ children, onRemove, onChange, isSelected,
 			return;
 		}
 
-		const result = extractAnnotationsFromAst(codeBlockNode, {});
-
-		setChart(result?.code ?? "");
+		setChart(extractMermaidCodeFromFlowElement(codeBlockNode));
 	}, [codeBlockNode]);
 
 	return (
