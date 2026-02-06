@@ -173,7 +173,7 @@ describe("code-string converter", () => {
 	it("document -> code -> document 라운드트립에서 lang/meta/annotations를 보존한다", () => {
 		const input: CodeBlockDocument = {
 			lang: "ts",
-			meta: { title: "roundtrip.ts", showLineNumbers: true, fold: false },
+			meta: { title: "roundtrip.ts", showLineNumbers: true },
 			annotations: [
 				lineWrap("Callout", { start: 0, end: 2 }, 0, [{ name: "tone", value: "info" }]),
 				lineClass("diff", { start: 1, end: 2 }, 1),
@@ -197,7 +197,7 @@ describe("code-string converter", () => {
 		const input: Code = {
 			type: "code",
 			lang: "ts",
-			meta: 'title="canon.ts" showLineNumbers fold=false',
+			meta: 'title="canon.ts" showLineNumbers',
 			value: [
 				`// @${lnWrapTag} Callout {0-2} tone="warn"`,
 				`// @${inWrapTag} Tooltip {6-11} content="tip"`,
@@ -211,6 +211,22 @@ describe("code-string converter", () => {
 		const output = composeCodeFenceFromCodeBlockDocument(document, annotationConfig);
 
 		expect(output).toEqual(input);
+	});
+
+	it("meta boolean이 false인 값은 직렬화 시 제외한다", () => {
+		const input: CodeBlockDocument = {
+			lang: "ts",
+			meta: { title: "meta.ts", showLineNumbers: false, collapsed: true },
+			annotations: [],
+			lines: [line("console.log('x')")],
+		};
+
+		const output = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
+		const parsed = buildCodeBlockDocumentFromCodeFence(output, annotationConfig);
+
+		expect(output.meta).toBe('title="meta.ts" collapsed');
+		expect(parsed.meta).toEqual({ title: "meta.ts", collapsed: true });
+		expect(parsed.meta).not.toHaveProperty("showLineNumbers");
 	});
 
 	it("tagOverrides를 설정하면 custom tag로 파싱/직렬화한다", () => {

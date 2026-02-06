@@ -116,11 +116,12 @@ const serializeMeta = (meta: CodeBlockDocument["meta"]) => {
 	return Object.entries(meta)
 		.map(([key, value]) => {
 			if (typeof value === "boolean") {
-				return value ? key : `${key}=false`;
+				return value ? key : "";
 			}
 
 			return `${key}=${JSON.stringify(value)}`;
 		})
+		.filter((item) => item.length > 0)
 		.join(" ");
 };
 

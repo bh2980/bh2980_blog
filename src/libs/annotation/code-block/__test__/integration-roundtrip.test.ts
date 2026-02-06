@@ -81,7 +81,7 @@ describe("integration roundtrip (pure functions)", () => {
 	it("document -> code -> document -> mdast -> document 파이프라인에서 document를 보존한다", () => {
 		const input: CodeBlockDocument = {
 			lang: "ts",
-			meta: { title: "integration.ts", showLineNumbers: true, fold: false },
+			meta: { title: "integration.ts", showLineNumbers: true },
 			lines: [
 				{
 					value: "const alpha = 1",
