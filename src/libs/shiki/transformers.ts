@@ -151,8 +151,7 @@ export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiT
 			render: wrapper.render.trim(),
 			attributes: (wrapper.attributes ?? []).filter((attr) => typeof attr.name === "string" && attr.name.length > 0),
 		}))
-		.filter((wrapper) => wrapper.range.start < wrapper.range.end && wrapper.render.length > 0)
-		.sort((a, b) => a.order - b.order || a.range.start - b.range.start || b.range.end - a.range.end);
+		.filter((wrapper) => wrapper.range.start < wrapper.range.end && wrapper.render.length > 0);
 
 	return {
 		code(codeEl: Element) {
