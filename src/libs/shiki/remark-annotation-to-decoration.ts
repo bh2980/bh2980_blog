@@ -4,6 +4,7 @@ import { visit } from "unist-util-visit";
 import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
 import type {
 	AnnotationConfig,
+	CodeBlockDocument,
 	InlineAnnotation,
 	LineAnnotation,
 } from "@/libs/annotation/code-block/types";
@@ -77,44 +78,70 @@ export type LineDecorationPayload = ReturnType<typeof toLineDecorationPayload> e
 	: never;
 export type LineWrapperPayload = ReturnType<typeof toLineWrapperPayload> extends infer T ? Exclude<T, undefined> : never;
 
+export type ShikiAnnotationPayload = {
+	code: string;
+	lang: CodeBlockDocument["lang"];
+	meta: CodeBlockDocument["meta"];
+	decorations: DecorationItem[];
+	lineDecorations: LineDecorationPayload[];
+	lineWrappers: LineWrapperPayload[];
+};
+
+export const composeShikiAnnotationPayloadFromDocument = (document: CodeBlockDocument): ShikiAnnotationPayload => {
+	const decorations: DecorationItem[] = [];
+	const lineDecorations: LineDecorationPayload[] = [];
+	const lineWrappers: LineWrapperPayload[] = [];
+
+	document.lines.forEach((line, lineNumber) => {
+		for (const annotation of line.annotations) {
+			const decoration = buildInlineDecoration(lineNumber, annotation);
+			if (decoration) decorations.push(decoration);
+		}
+	});
+
+	document.annotations.forEach((annotation) => {
+		const lineDecoration = toLineDecorationPayload(annotation);
+		if (lineDecoration) {
+			lineDecorations.push(lineDecoration);
+			return;
+		}
+
+		const lineWrapper = toLineWrapperPayload(annotation);
+		if (lineWrapper) {
+			lineWrappers.push(lineWrapper);
+		}
+	});
+
+	return {
+		code: document.lines.map((line) => line.value).join("\n"),
+		lang: document.lang,
+		meta: document.meta,
+		decorations,
+		lineDecorations,
+		lineWrappers,
+	};
+};
+
 export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationConfig) {
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
 			const document = buildCodeBlockDocumentFromCodeFence(node, annotationConfig);
-			const inlineDecorations: DecorationItem[] = [];
-			const lineDecorations: LineDecorationPayload[] = [];
-			const lineWrappers: LineWrapperPayload[] = [];
+			const payload = composeShikiAnnotationPayloadFromDocument(document);
 
-			document.lines.forEach((line, lineNumber) => {
-				for (const annotation of line.annotations) {
-					const decoration = buildInlineDecoration(lineNumber, annotation);
-					if (decoration) inlineDecorations.push(decoration);
-				}
-			});
-
-			document.annotations.forEach((annotation) => {
-				const lineDecoration = toLineDecorationPayload(annotation);
-				if (lineDecoration) {
-					lineDecorations.push(lineDecoration);
-					return;
-				}
-
-				const lineWrapper = toLineWrapperPayload(annotation);
-				if (lineWrapper) {
-					lineWrappers.push(lineWrapper);
-				}
-			});
-
-			node.value = document.lines.map((line) => line.value).join("\n");
+			node.value = payload.code;
 			node.data ??= {};
 			node.data.hProperties = {
 				...node.data.hProperties,
-				"data-decorations": JSON.stringify(inlineDecorations),
-				"data-line-decorations": JSON.stringify(lineDecorations),
-				"data-line-wrappers": JSON.stringify(lineWrappers),
-				"data-lang": document.lang,
-				"data-meta": JSON.stringify(document.meta),
+				"data-decorations": JSON.stringify(payload.decorations),
+				"data-line-decorations": JSON.stringify(payload.lineDecorations),
+				"data-line-wrappers": JSON.stringify(payload.lineWrappers),
+				"data-lang": payload.lang,
+				"data-meta": JSON.stringify(payload.meta),
 			};
 		});
 	};
 }
+
+export const __testable__ = {
+	composeShikiAnnotationPayloadFromDocument,
+};
