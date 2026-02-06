@@ -74,11 +74,8 @@ const toHastPropertyValue = (value: unknown): HastPropertyValue => {
 	return JSON.stringify(value);
 };
 
-const hasClassName = (node: Element, className: string) => {
-	const current = node.properties?.className;
-	const list = Array.isArray(current) ? current.map(String) : typeof current === "string" ? [current] : [];
-	return list.includes(className);
-};
+const getTopLevelLineElements = (codeEl: Element) =>
+	codeEl.children.filter((node): node is Element => node.type === "element");
 
 const findPathToNode = (root: Element, target: Element): ElementPathItem[] | null => {
 	const walk = (current: Element, path: ElementPathItem[]): ElementPathItem[] | null => {
@@ -155,9 +152,7 @@ export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiT
 
 	return {
 		code(codeEl: Element) {
-			const lines = codeEl.children.filter(
-				(node): node is Element => node.type === "element" && hasClassName(node, "line"),
-			);
+			const lines = getTopLevelLineElements(codeEl);
 
 			for (const wrapper of normalized) {
 				const { start, end } = wrapper.range;
@@ -191,7 +186,6 @@ const DENY_PROPS = new Set([
 ]);
 
 const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
-// TODO: deny list로 props 할당 제한을 통한 보안조치 필요
 export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
 	code(codeEl: Element) {
 		visit(codeEl, "element", (el) => {
