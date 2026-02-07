@@ -24,17 +24,17 @@ export const annotationConfig: AnnotationConfig = {
 		},
 		{
 			name: "strong",
-			source: "mdast",
+			source: "mdx-text",
 			render: "strong",
 		},
 		{
-			name: "emphasis",
-			source: "mdast",
+			name: "em",
+			source: "mdx-text",
 			render: "em",
 		},
 		{
-			name: "delete",
-			source: "mdast",
+			name: "del",
+			source: "mdx-text",
 			render: "del",
 		},
 		{
