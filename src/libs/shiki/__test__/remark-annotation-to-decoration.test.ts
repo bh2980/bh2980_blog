@@ -231,12 +231,9 @@ describe("remarkAnnotationToShikiDecoration", () => {
 	});
 
 	it("실제 markdown code fence를 파싱한 mdast에서도 동일하게 동작해야 한다", () => {
-		const markdown = [
-			"```ts title=\"demo.ts\"",
-			"// @block Callout {0-1} variant=\"tip\"",
-			"const a = 1",
-			"```",
-		].join("\n");
+		const markdown = ['```ts title="demo.ts"', '// @block Callout {0-1} variant="tip"', "const a = 1", "```"].join(
+			"\n",
+		);
 		const root = fromMarkdown(markdown) as Root;
 
 		remarkAnnotationToShikiDecoration(fullConfig)(root);

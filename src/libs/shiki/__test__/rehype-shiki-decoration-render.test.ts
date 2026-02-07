@@ -63,7 +63,8 @@ describe("rehypeShikiDecorationRender", () => {
 			codeValue: "const a = 1;\n",
 			preData: {
 				"data-meta": '{"title":"demo.ts"}',
-				"data-decorations": '[{"start":{"line":0,"character":0},"end":{"line":0,"character":5},"properties":{"class":"diff"}}]',
+				"data-decorations":
+					'[{"start":{"line":0,"character":0},"end":{"line":0,"character":5},"properties":{"class":"diff"}}]',
 				"data-line-decorations": '[{"type":"lineClass","name":"diff","range":{"start":0,"end":1},"class":"diff"}]',
 				"data-line-wrappers":
 					'[{"type":"lineWrap","name":"Callout","range":{"start":0,"end":1},"order":0,"render":"Callout","attributes":[{"name":"variant","value":"tip"}]}]',
@@ -128,11 +129,16 @@ describe("rehypeShikiDecorationRender", () => {
 
 		await rehypeShikiDecorationRender()(tree);
 
-		expect(highlightMock).toHaveBeenCalledWith("print('hello')", "python", { showLineNumbers: true }, {
-			decorations: [],
-			lineDecorations: [],
-			lineWrappers: [],
-		});
+		expect(highlightMock).toHaveBeenCalledWith(
+			"print('hello')",
+			"python",
+			{ showLineNumbers: true },
+			{
+				decorations: [],
+				lineDecorations: [],
+				lineWrappers: [],
+			},
+		);
 	});
 
 	it("code child가 없으면 skip한다", async () => {

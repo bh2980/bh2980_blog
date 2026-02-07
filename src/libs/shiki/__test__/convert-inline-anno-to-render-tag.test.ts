@@ -67,7 +67,7 @@ describe("convertInlineAnnoToRenderTag", () => {
 		expect(props.variant).toBe("tip");
 		expect(props.dangerouslySetInnerHTML).toBeUndefined();
 		expect(props.children).toBeUndefined();
-		expect(Object.prototype.hasOwnProperty.call(props, "__proto__")).toBe(false);
+		expect(Object.hasOwn(props, "__proto__")).toBe(false);
 		expect("polluted" in props).toBe(false);
 	});
 });

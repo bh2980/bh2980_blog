@@ -2,8 +2,8 @@ import type { PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../mdast-document-converter";
 import { __testable__ as libsTestable } from "../libs";
+import { __testable__ } from "../mdast-document-converter";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -184,83 +184,106 @@ describe("composeCodeBlockRootFromDocument", () => {
 	});
 
 	it("line 정보만 있으면 paragraph 목록으로 변환한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("line-1"), line("line-2"), line("line-3")],
-			annotations: [],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("line-1"), line("line-2"), line("line-3")],
+				annotations: [],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("p:line-1\np:line-2\np:line-3");
 	});
 
 	it("inline annotation을 적용해 한 줄 paragraph phrasing을 구성한다", () => {
-		const ast = parse(documentOf({
-			lines: [
-				line("abcdef", [
-					inlineWrap("strong", { start: 1, end: 5 }, 0),
-					inlineWrap("Tooltip", { start: 2, end: 4 }, 1, [{ name: "content", value: "tip" }]),
-				]),
-			],
-			annotations: [],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [
+					line("abcdef", [
+						inlineWrap("strong", { start: 1, end: 5 }, 0),
+						inlineWrap("Tooltip", { start: 2, end: 4 }, 1, [{ name: "content", value: "tip" }]),
+					]),
+				],
+				annotations: [],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe('p:a + strong(b + Tooltip{content="tip"}(cd) + e) + f');
 	});
 
 	it("동일 range는 priority가 아니라 order 기준으로 중첩 순서를 유지한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("text", [inlineWrap("Tooltip", { start: 0, end: 4 }, 0), inlineWrap("u", { start: 0, end: 4 }, 1)])],
-			annotations: [],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [
+					line("text", [inlineWrap("Tooltip", { start: 0, end: 4 }, 0), inlineWrap("u", { start: 0, end: 4 }, 1)]),
+				],
+				annotations: [],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("p:Tooltip(u(text))");
 	});
 
 	it("lineWrap annotation을 mdxJsxFlowElement block으로 변환한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("before"), line("inside-1"), line("inside-2"), line("after")],
-			annotations: [lineWrap("Collapsible", { start: 1, end: 3 }, 0)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("before"), line("inside-1"), line("inside-2"), line("after")],
+				annotations: [lineWrap("Collapsible", { start: 1, end: 3 }, 0)],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("p:before\nflow:Collapsible[p:inside-1 | p:inside-2]\np:after");
 	});
 
 	it("중첩 lineWrap은 중첩 flow block으로 변환한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("outer-1"), line("inner-1"), line("outer-2")],
-			annotations: [lineWrap("Collapsible", { start: 0, end: 3 }, 0), lineWrap("Collapsible", { start: 1, end: 2 }, 1)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("outer-1"), line("inner-1"), line("outer-2")],
+				annotations: [
+					lineWrap("Collapsible", { start: 0, end: 3 }, 0),
+					lineWrap("Collapsible", { start: 1, end: 2 }, 1),
+				],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("flow:Collapsible[p:outer-1 | flow:Collapsible[p:inner-1] | p:outer-2]");
 	});
 
 	it("lineClass(diff) annotation도 flow block으로 변환한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("before"), line("changed"), line("after")],
-			annotations: [lineClass("diff", { start: 1, end: 2 }, 0)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("before"), line("changed"), line("after")],
+				annotations: [lineClass("diff", { start: 1, end: 2 }, 0)],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("p:before\nflow:diff[p:changed]\np:after");
 	});
 
 	it("lineWrap(Callout) annotation을 flow block으로 변환한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("a"), line("b"), line("c"), line("d")],
-			annotations: [lineWrap("Callout", { start: 1, end: 3 }, 0)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("a"), line("b"), line("c"), line("d")],
+				annotations: [lineWrap("Callout", { start: 1, end: 3 }, 0)],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("p:a\nflow:Callout[p:b | p:c]\np:d");
 	});
 
 	it("중첩 lineWrap의 flow attributes를 mdast에 보존한다", () => {
-		const ast = parse(documentOf({
-			lines: [line("첫 번째 줄"), line("두 번째 줄"), line("callout 내부"), line("세번째 줄")],
-			annotations: [
-				lineWrap("Collapsible", { start: 1, end: 3 }, 0),
-				{ ...lineWrap("Callout", { start: 2, end: 3 }, 1), attributes: [{ name: "variant", value: "tip" }] },
-			],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("첫 번째 줄"), line("두 번째 줄"), line("callout 내부"), line("세번째 줄")],
+				annotations: [
+					lineWrap("Collapsible", { start: 1, end: 3 }, 0),
+					{ ...lineWrap("Callout", { start: 2, end: 3 }, 1), attributes: [{ name: "variant", value: "tip" }] },
+				],
+			}),
+		);
 
-		expect(printCodeBlock(ast)).toBe("p:첫 번째 줄\nflow:Collapsible[p:두 번째 줄 | flow:Callout[p:callout 내부]]\np:세번째 줄");
+		expect(printCodeBlock(ast)).toBe(
+			"p:첫 번째 줄\nflow:Collapsible[p:두 번째 줄 | flow:Callout[p:callout 내부]]\np:세번째 줄",
+		);
 
 		const collapsible = ast.children[1];
 		expect(collapsible?.type).toBe("mdxJsxFlowElement");
@@ -275,19 +298,23 @@ describe("composeCodeBlockRootFromDocument", () => {
 	});
 
 	it("동일 line range의 lineWrap은 order가 낮은 annotation이 바깥을 감싼다(Callout -> Collapsible)", () => {
-		const ast = parse(documentOf({
-			lines: [line("hello")],
-			annotations: [lineWrap("Callout", { start: 0, end: 1 }, 0), lineWrap("Collapsible", { start: 0, end: 1 }, 1)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("hello")],
+				annotations: [lineWrap("Callout", { start: 0, end: 1 }, 0), lineWrap("Collapsible", { start: 0, end: 1 }, 1)],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("flow:Callout[flow:Collapsible[p:hello]]");
 	});
 
 	it("동일 line range의 lineWrap은 order 역전 시 중첩 순서도 역전된다(Collapsible -> Callout)", () => {
-		const ast = parse(documentOf({
-			lines: [line("hello")],
-			annotations: [lineWrap("Collapsible", { start: 0, end: 1 }, 0), lineWrap("Callout", { start: 0, end: 1 }, 1)],
-		}));
+		const ast = parse(
+			documentOf({
+				lines: [line("hello")],
+				annotations: [lineWrap("Collapsible", { start: 0, end: 1 }, 0), lineWrap("Callout", { start: 0, end: 1 }, 1)],
+			}),
+		);
 
 		expect(printCodeBlock(ast)).toBe("flow:Collapsible[flow:Callout[p:hello]]");
 	});
@@ -329,10 +356,7 @@ describe("composeCodeBlockRootFromDocument", () => {
 				line("world", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0)]),
 				line("tail"),
 			],
-			annotations: [
-				lineClass("diff", { start: 0, end: 1 }, 0),
-				lineWrap("Callout", { start: 1, end: 3 }, 1),
-			],
+			annotations: [lineClass("diff", { start: 0, end: 1 }, 0), lineWrap("Callout", { start: 1, end: 3 }, 1)],
 		} satisfies CodeBlockDocument;
 
 		const ast = composeCodeBlockRootFromDocument(input, annotationConfig);

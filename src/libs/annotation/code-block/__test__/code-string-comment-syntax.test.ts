@@ -1,8 +1,16 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../code-string-converter";
-import type { AnnotationAttr, AnnotationConfig, CodeBlockDocument, InlineAnnotation, Line, LineAnnotation, Range } from "../types";
+import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import type {
+	AnnotationAttr,
+	AnnotationConfig,
+	CodeBlockDocument,
+	InlineAnnotation,
+	Line,
+	LineAnnotation,
+	Range,
+} from "../types";
 
 const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = __testable__;
 
@@ -77,7 +85,10 @@ describe("code-string converter comment syntax", () => {
 			lang: "postcss",
 			meta: {},
 			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0, [{ name: "tone", value: "info" }])],
-			lines: [line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]), line("world")],
+			lines: [
+				line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
+				line("world"),
+			],
 		});
 	});
 
@@ -86,18 +97,18 @@ describe("code-string converter comment syntax", () => {
 			lang: "postcss",
 			meta: {},
 			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0)],
-			lines: [line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]), line("world")],
+			lines: [
+				line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
+				line("world"),
+			],
 		};
 
 		const output = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
 
 		expect(output.value).toBe(
-			[
-				`/* @${lnWrapTag} Callout {0-2} */`,
-				`/* @${inWrapTag} Tooltip {0-5} content="tip" */`,
-				"hello",
-				"world",
-			].join("\n"),
+			[`/* @${lnWrapTag} Callout {0-2} */`, `/* @${inWrapTag} Tooltip {0-5} content="tip" */`, "hello", "world"].join(
+				"\n",
+			),
 		);
 	});
 });

@@ -1,8 +1,16 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../code-string-converter";
-import type { AnnotationAttr, AnnotationConfig, CodeBlockDocument, InlineAnnotation, Line, LineAnnotation, Range } from "../types";
+import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import type {
+	AnnotationAttr,
+	AnnotationConfig,
+	CodeBlockDocument,
+	InlineAnnotation,
+	Line,
+	LineAnnotation,
+	Range,
+} from "../types";
 
 const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = __testable__;
 
@@ -117,7 +125,9 @@ describe("code-string converter", () => {
 				lineClass("diff", { start: 1, end: 2 }, 1),
 			],
 			lines: [
-				line('console.log("hello")', [inlineWrap("Tooltip", { start: 0, end: 7 }, 0, [{ name: "content", value: "tip" }])]),
+				line('console.log("hello")', [
+					inlineWrap("Tooltip", { start: 0, end: 7 }, 0, [{ name: "content", value: "tip" }]),
+				]),
 				line("return 1"),
 			],
 		});
@@ -129,7 +139,9 @@ describe("code-string converter", () => {
 			meta: { title: "hello.ts", showLineNumbers: true },
 			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0), lineClass("diff", { start: 1, end: 2 }, 1)],
 			lines: [
-				line('console.log("hello")', [inlineWrap("Tooltip", { start: 0, end: 7 }, 0, [{ name: "content", value: "tip" }])]),
+				line('console.log("hello")', [
+					inlineWrap("Tooltip", { start: 0, end: 7 }, 0, [{ name: "content", value: "tip" }]),
+				]),
 				line("return 1"),
 			],
 		};

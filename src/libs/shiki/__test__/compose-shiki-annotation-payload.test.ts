@@ -9,7 +9,13 @@ type ComposePayloadResult = {
 	lang: string;
 	meta: Record<string, unknown>;
 	decorations: DecorationItem[];
-	lineDecorations: Array<{ type: "lineClass"; name: string; range: { start: number; end: number }; class: string; order: number }>;
+	lineDecorations: Array<{
+		type: "lineClass";
+		name: string;
+		range: { start: number; end: number };
+		class: string;
+		order: number;
+	}>;
 	lineWrappers: Array<{
 		type: "lineWrap";
 		name: string;
@@ -58,7 +64,7 @@ describe("composeShikiAnnotationPayloadFromDocument", () => {
 				value: [
 					'// @mark Tooltip {6-11} content="tip"',
 					"const value = 1",
-					"// @block Callout {0-2} variant=\"tip\"",
+					'// @block Callout {0-2} variant="tip"',
 					"// @line diff {1-2}",
 					"const next = 2",
 				].join("\n"),

@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as codeStringTestable } from "../code-string-converter";
+import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as libsTestable } from "../libs";
 import { __testable__ } from "../mdast-document-converter";
-import type { AnnotationConfig, CodeBlockDocument, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
+import type {
+	AnnotationConfig,
+	CodeBlockDocument,
+	CodeBlockRoot,
+	InlineAnnotation,
+	LineAnnotation,
+	Range,
+} from "../types";
 
 const { buildCodeBlockDocumentFromMdast, composeCodeBlockRootFromDocument } = __testable__;
 const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = codeStringTestable;
@@ -33,7 +40,12 @@ const lineWrapByName = new Map(
 	(annotationConfig.lineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
 );
 
-const inlineWrap = (name: string, range: Range, order: number, attributes: { name: string; value: string }[] = []): InlineAnnotation => {
+const inlineWrap = (
+	name: string,
+	range: Range,
+	order: number,
+	attributes: { name: string; value: string }[] = [],
+): InlineAnnotation => {
 	const config = inlineWrapByName.get(name);
 	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
 

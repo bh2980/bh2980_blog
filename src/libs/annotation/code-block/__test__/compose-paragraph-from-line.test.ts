@@ -2,14 +2,7 @@ import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
-import type {
-	AnnotationAttr,
-	AnnotationEvent,
-	AnnotationRegistry,
-	InlineAnnotation,
-	Line,
-	Range,
-} from "../types";
+import type { AnnotationAttr, AnnotationEvent, AnnotationRegistry, InlineAnnotation, Line, Range } from "../types";
 
 const { composeParagraphFromLine, buildLineFromParagraph } = __testable__;
 
@@ -125,12 +118,14 @@ const composeInlineEventsFixture = (annotations: InlineAnnotation[]): Annotation
 			if (a.pos !== b.pos) return a.pos - b.pos;
 			if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
 			if (a.kind === "open" && a.anno.range.end !== b.anno.range.end) return b.anno.range.end - a.anno.range.end;
-			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start) return b.anno.range.start - a.anno.range.start;
+			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start)
+				return b.anno.range.start - a.anno.range.start;
 			if (a.anno.typeId !== b.anno.typeId) return a.anno.typeId - b.anno.typeId;
 			return a.anno.order - b.anno.order;
 		});
 
-const parse = (input: Line) => composeParagraphFromLine(input.value, composeInlineEventsFixture(input.annotations), registry);
+const parse = (input: Line) =>
+	composeParagraphFromLine(input.value, composeInlineEventsFixture(input.annotations), registry);
 
 const printParagraph = (paragraph: Paragraph): string => {
 	const hasChildren = (node: PhrasingContent): node is PhrasingContent & { children: PhrasingContent[] } =>
@@ -197,7 +192,9 @@ describe("composeParagraphFromLine", () => {
 
 	it("mdx-text source inline annotation은 mdxJsxTextElement와 attributes를 만든다", () => {
 		const paragraph = parse(
-			line("hello", [inlineWrap("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, 0, [{ name: "content", value: "tip" }])]),
+			line("hello", [
+				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, 0, [{ name: "content", value: "tip" }]),
+			]),
 		);
 
 		expect(printParagraph(paragraph)).toBe('Tooltip{content="tip"}(hello)');

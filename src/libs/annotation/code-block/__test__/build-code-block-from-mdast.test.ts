@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../mdast-document-converter";
 import { __testable__ as libsTestable } from "../libs";
+import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { buildCodeBlockDocumentFromMdast } = __testable__;
@@ -304,9 +304,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 				paragraph([text("두 번째 줄")]),
 				flow(
 					"Callout",
-					[
-						paragraph([text("callout 내부")]),
-					],
+					[paragraph([text("callout 내부")])],
 					[{ type: "mdxJsxAttribute", name: "variant", value: "tip" }],
 				),
 			]),
