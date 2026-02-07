@@ -109,7 +109,7 @@ const insertIndentWhenTab = (state: EditorState, dispatch?: (tr: Transaction) =>
 	return true;
 };
 
-export function codeBlockKeysPlugin(schema: Schema): Plugin {
+export function codeBlockKeysPlugin(): Plugin {
 	return keymap({
 		"Mod-Enter": exitWrapper,
 		"Ctrl-Enter": exitWrapper,

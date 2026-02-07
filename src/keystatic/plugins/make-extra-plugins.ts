@@ -13,6 +13,6 @@ export type ExtraPluginsSlots = {
 export function makeExtraPlugins(schema: Schema): ExtraPluginsSlots {
 	return {
 		beforeInput: [codeBlockPasteAsParagraphPlugin()],
-		beforeKeydown: [wrapperKeysPlugin(schema), codeBlockKeysPlugin(schema)],
+		beforeKeydown: [wrapperKeysPlugin(schema), codeBlockKeysPlugin()],
 	};
 }
