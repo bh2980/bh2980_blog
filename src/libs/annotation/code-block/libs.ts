@@ -1,5 +1,3 @@
-import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
-import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import type {
 	Annotation,
@@ -7,7 +5,6 @@ import type {
 	AnnotationEvent,
 	AnnotationRegistry,
 	AnnotationType,
-	CodeBlockRoot,
 } from "./types";
 
 type ResolvedAnnotationTypeDefinition = {
@@ -102,8 +99,6 @@ export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) =>
 	return registry;
 };
 
-export const isCodeBlock = (node: MdxJsxFlowElement): node is CodeBlockRoot => node.name === EDITOR_CODE_BLOCK_NAME;
-
 export const fromAnnotationsToEvents = (annotations: Annotation[]) => {
 	const event = annotations
 		.flatMap((anntation) => {
@@ -147,6 +142,5 @@ export const __testable__ = {
 	getTypePair,
 	createAnnotationRegistry,
 	resolveAnnotationTypeDefinition,
-	isCodeBlock,
 	fromAnnotationsToEvents,
 };

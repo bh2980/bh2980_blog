@@ -1,13 +1,16 @@
 import type { Root } from "mdast";
+import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { SKIP, visit } from "unist-util-visit";
+import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import { fromCodeBlockDocumentToMdast } from "@/libs/annotation/code-block/document-to-mdast";
 import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
-import { isCodeBlock } from "@/libs/annotation/code-block/libs";
-import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
+import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
+
+const isCodeBlock = (node: MdxJsxFlowElement): node is CodeBlockRoot => node.name === EDITOR_CODE_BLOCK_NAME;
 
 const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
 	visit(mdxAst, "code", (node, index, parent) => {

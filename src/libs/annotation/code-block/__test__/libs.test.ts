@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
 import type { AnnotationConfig } from "../types";
@@ -8,7 +7,6 @@ const {
 	getTypePair,
 	createAnnotationRegistry,
 	resolveAnnotationTypeDefinition,
-	isCodeBlock,
 	fromAnnotationsToEvents,
 } = __testable__;
 
@@ -111,28 +109,6 @@ describe("createAnnotationRegistry / getTypePair", () => {
 			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
 			tag: "block",
 		});
-	});
-});
-
-describe("isCodeBlock", () => {
-	it("CodeBlock 노드를 판별한다", () => {
-		expect(
-			isCodeBlock({
-				type: "mdxJsxFlowElement",
-				name: EDITOR_CODE_BLOCK_NAME,
-				attributes: [],
-				children: [],
-			}),
-		).toBe(true);
-
-		expect(
-			isCodeBlock({
-				type: "mdxJsxFlowElement",
-				name: "Callout",
-				attributes: [],
-				children: [],
-			}),
-		).toBe(false);
 	});
 });
 
