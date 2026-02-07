@@ -1,10 +1,12 @@
 import { parse } from "acorn";
 import type { Paragraph, PhrasingContent, Text } from "mdast";
-import type { MdxJsxAttribute, MdxJsxAttributeValueExpression, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import {
-	fromAnnotationsToEvents,
-	createAnnotationRegistry,
-} from "./libs";
+import type {
+	MdxJsxAttribute,
+	MdxJsxAttributeValueExpression,
+	MdxJsxFlowElement,
+	MdxJsxTextElement,
+} from "mdast-util-mdx-jsx";
+import { createAnnotationRegistry, fromAnnotationsToEvents } from "./libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,

@@ -116,11 +116,7 @@ const fromAttributeTextToAnnotationAttrs = (rest: string) => {
 		const unquotedRaw = match[4];
 		let value: unknown;
 
-		if (
-			doubleQuotedRaw === undefined &&
-			singleQuotedRaw === undefined &&
-			unquotedRaw === undefined
-		) {
+		if (doubleQuotedRaw === undefined && singleQuotedRaw === undefined && unquotedRaw === undefined) {
 			value = true;
 		} else if (typeof doubleQuotedRaw === "string" || typeof singleQuotedRaw === "string") {
 			const raw = (doubleQuotedRaw ?? singleQuotedRaw ?? "").replace(/\\(["'\\])/g, "$1");

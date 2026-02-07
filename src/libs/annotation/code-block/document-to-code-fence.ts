@@ -1,5 +1,5 @@
 import type { Code } from "mdast";
-import { formatAnnotationComment, type CommentSyntax, resolveCommentSyntax } from "./comment-syntax";
+import { type CommentSyntax, formatAnnotationComment, resolveCommentSyntax } from "./comment-syntax";
 import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
 import type { AnnotationConfig, CodeBlockDocument } from "./types";
 

@@ -409,23 +409,31 @@ describe("fromMdastToCodeBlockDocument", () => {
 	it("inline/line annotation의 expression attribute를 document 값으로 파싱한다", () => {
 		const node = codeBlock([
 			paragraph([
-				inline("Tooltip", [text("hello")], [
-					{ type: "mdxJsxAttribute", name: "content", value: "tip" },
+				inline(
+					"Tooltip",
+					[text("hello")],
+					[
+						{ type: "mdxJsxAttribute", name: "content", value: "tip" },
+						{ type: "mdxJsxAttribute", name: "open", value: toMdxAttrExpr(true) },
+						{ type: "mdxJsxAttribute", name: "count", value: toMdxAttrExpr(2) },
+						{ type: "mdxJsxAttribute", name: "meta", value: toMdxAttrExpr({ a: 1 }) },
+						{ type: "mdxJsxAttribute", name: "items", value: toMdxAttrExpr([1, "x"]) },
+						{ type: "mdxJsxAttribute", name: "collapsed", value: null },
+					],
+				),
+			]),
+			flow(
+				"Callout",
+				[paragraph([text("line")])],
+				[
+					{ type: "mdxJsxAttribute", name: "variant", value: "note" },
 					{ type: "mdxJsxAttribute", name: "open", value: toMdxAttrExpr(true) },
 					{ type: "mdxJsxAttribute", name: "count", value: toMdxAttrExpr(2) },
 					{ type: "mdxJsxAttribute", name: "meta", value: toMdxAttrExpr({ a: 1 }) },
 					{ type: "mdxJsxAttribute", name: "items", value: toMdxAttrExpr([1, "x"]) },
 					{ type: "mdxJsxAttribute", name: "collapsed", value: null },
-				]),
-			]),
-			flow("Callout", [paragraph([text("line")])], [
-				{ type: "mdxJsxAttribute", name: "variant", value: "note" },
-				{ type: "mdxJsxAttribute", name: "open", value: toMdxAttrExpr(true) },
-				{ type: "mdxJsxAttribute", name: "count", value: toMdxAttrExpr(2) },
-				{ type: "mdxJsxAttribute", name: "meta", value: toMdxAttrExpr({ a: 1 }) },
-				{ type: "mdxJsxAttribute", name: "items", value: toMdxAttrExpr([1, "x"]) },
-				{ type: "mdxJsxAttribute", name: "collapsed", value: null },
-			]),
+				],
+			),
 		]);
 
 		const document = fromMdastToCodeBlockDocument(node, annotationConfig);

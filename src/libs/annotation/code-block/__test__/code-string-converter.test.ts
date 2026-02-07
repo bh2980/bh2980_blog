@@ -1,8 +1,8 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
+import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
-import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -314,8 +314,8 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: "",
 			value: [
-				`// @${lnWrapTag} Callout {0-1} open=true count=2 meta={\"a\":1} items=[1,\"x\"] collapsed=null`,
-				`// @${inWrapTag} Tooltip {0-5} open=true count=2 meta={\"a\":1} items=[1,\"x\"] collapsed=null`,
+				`// @${lnWrapTag} Callout {0-1} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
+				`// @${inWrapTag} Tooltip {0-5} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
 				"hello",
 			].join("\n"),
 		};

@@ -1,11 +1,5 @@
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
-import type {
-	Annotation,
-	AnnotationConfig,
-	AnnotationEvent,
-	AnnotationRegistry,
-	AnnotationType,
-} from "./types";
+import type { Annotation, AnnotationConfig, AnnotationEvent, AnnotationRegistry, AnnotationType } from "./types";
 
 type ResolvedAnnotationTypeDefinition = {
 	[K in keyof typeof ANNOTATION_TYPE_DEFINITION]: {

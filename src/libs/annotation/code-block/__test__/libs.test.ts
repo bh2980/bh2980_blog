@@ -3,12 +3,8 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
 import type { AnnotationConfig } from "../types";
 
-const {
-	getTypePair,
-	createAnnotationRegistry,
-	resolveAnnotationTypeDefinition,
-	fromAnnotationsToEvents,
-} = __testable__;
+const { getTypePair, createAnnotationRegistry, resolveAnnotationTypeDefinition, fromAnnotationsToEvents } =
+	__testable__;
 
 describe("resolveAnnotationTypeDefinition", () => {
 	it("기본 tag definition을 그대로 반환한다", () => {
