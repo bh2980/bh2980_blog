@@ -2,7 +2,18 @@ import type { Element } from "hast";
 import type { ShikiTransformer } from "shiki";
 import { visit } from "unist-util-visit";
 
-export type Meta = Record<string, any>;
+type HastPropertyValue = string | number | boolean | Array<string | number> | null | undefined;
+
+const toHastPropertyValue = (value: unknown): HastPropertyValue => {
+	if (value == null) return value;
+	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+	if (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number")) {
+		return value;
+	}
+	return JSON.stringify(value);
+};
+
+export type Meta = Record<string, unknown>;
 export type LineDecorationPayload = {
 	type: "lineClass";
 	name: string;
@@ -26,7 +37,7 @@ export const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 		preProperties.code = code;
 
 		for (const [key, value] of Object.entries(meta)) {
-			preProperties[key] = value;
+			preProperties[key] = toHastPropertyValue(value);
 		}
 	},
 });
@@ -65,17 +76,6 @@ export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []
 type ElementPathItem = {
 	node: Element;
 	indexInParent: number;
-};
-
-type HastPropertyValue = string | number | boolean | Array<string | number> | null | undefined;
-
-const toHastPropertyValue = (value: unknown): HastPropertyValue => {
-	if (value == null) return value;
-	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
-	if (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number")) {
-		return value as Array<string | number>;
-	}
-	return JSON.stringify(value);
 };
 
 const getTopLevelLineElements = (codeEl: Element) =>
