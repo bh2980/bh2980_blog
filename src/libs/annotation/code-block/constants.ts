@@ -43,19 +43,7 @@ export const annotationConfig: AnnotationConfig = {
 			render: "u",
 		},
 	],
-	lineClass: [
-		{
-			name: "diff",
-			source: "mdx-flow",
-			class: "diff",
-		},
-	],
 	lineWrap: [
-		{
-			name: "Callout",
-			source: "mdx-flow",
-			render: "Callout",
-		},
 		{
 			name: "Collapsible",
 			source: "mdx-flow",
