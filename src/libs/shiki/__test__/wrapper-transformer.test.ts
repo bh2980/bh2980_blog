@@ -1,4 +1,4 @@
-import type { Element } from "hast";
+import type { Element, Root } from "hast";
 import type { ShikiTransformer } from "shiki";
 import { describe, expect, it } from "vitest";
 import * as transformerModule from "../transformers";
@@ -46,10 +46,14 @@ const createCodeElement = (values: string[]) => {
 	return { code, lines };
 };
 
-const runCodeHook = (transformer: ShikiTransformer, codeEl: Element) => {
-	const hook = transformer.code;
+const runRootHook = (transformer: ShikiTransformer, codeEl: Element) => {
+	const hook = transformer.root;
 	expect(hook).toBeTypeOf("function");
-	hook?.call({} as never, codeEl);
+	const root: Root = {
+		type: "root",
+		children: [{ type: "element", tagName: "pre", properties: {}, children: [codeEl] }],
+	};
+	hook?.call({} as never, root);
 };
 
 const createTransformer = (lineWrappers: LineWrapperPayload[], allowedRenderTags: string[] = ["Callout", "Collapsible"]) => {
@@ -60,7 +64,7 @@ const createTransformer = (lineWrappers: LineWrapperPayload[], allowedRenderTags
 	return addLineWrappers(lineWrappers, allowedRenderTags);
 };
 
-describe("transformers.code addLineWrappers", () => {
+describe("transformers.root addLineWrappers", () => {
 	it("line wrapper transformer를 제공한다", () => {
 		expect(addLineWrappers).toBeTypeOf("function");
 	});
@@ -77,7 +81,7 @@ describe("transformers.code addLineWrappers", () => {
 		]);
 
 		const { code, lines } = createCodeElement(["line1", "line2", "line3"]);
-		runCodeHook(transformer, code);
+		runRootHook(transformer, code);
 
 		expect(code.children[0]).toBe(lines[0]);
 		expect(code.children[1]).toEqual({ type: "text", value: "\n" });
@@ -108,7 +112,7 @@ describe("transformers.code addLineWrappers", () => {
 		]);
 
 		const { code, lines } = createCodeElement(["line"]);
-		runCodeHook(transformer, code);
+		runRootHook(transformer, code);
 
 		const outer = code.children[0] as Element;
 		expect(outer.tagName).toBe("Callout");
@@ -136,7 +140,7 @@ describe("transformers.code addLineWrappers", () => {
 		]);
 
 		const { code } = createCodeElement(["line"]);
-		runCodeHook(transformer, code);
+		runRootHook(transformer, code);
 
 		const wrapper = code.children[0] as Element;
 		expect(wrapper.properties.variant).toBe("tip");
@@ -157,7 +161,7 @@ describe("transformers.code addLineWrappers", () => {
 		]);
 
 		const { code, lines } = createCodeElement(["line1", "line2"]);
-		runCodeHook(transformer, code);
+		runRootHook(transformer, code);
 
 		expect(code.children[0]).toBe(lines[0]);
 		expect(code.children[2]).toBe(lines[1]);
@@ -178,7 +182,7 @@ describe("transformers.code addLineWrappers", () => {
 		);
 
 		const { code, lines } = createCodeElement(["line"]);
-		runCodeHook(transformer, code);
+		runRootHook(transformer, code);
 
 		expect(code.children[0]).toBe(lines[0]);
 	});

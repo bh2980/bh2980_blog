@@ -1,12 +1,16 @@
-import type { Element } from "hast";
+import type { Element, Root } from "hast";
 import { describe, expect, it } from "vitest";
 import { convertInlineAnnoToRenderTag } from "../transformers";
 
 const runCodeHook = (codeEl: Element, allowedRenderTags: string[] = ["Tooltip", "strong"]) => {
 	const transformer = convertInlineAnnoToRenderTag(allowedRenderTags);
-	const hook = transformer.code;
+	const hook = transformer.root;
 	expect(hook).toBeTypeOf("function");
-	hook?.call({} as never, codeEl);
+	const root: Root = {
+		type: "root",
+		children: [{ type: "element", tagName: "pre", properties: {}, children: [codeEl] }],
+	};
+	hook?.call({} as never, root);
 };
 
 const createInlineElement = (properties: Element["properties"]): Element => ({

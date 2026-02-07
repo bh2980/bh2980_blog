@@ -63,10 +63,11 @@ export const highlight = (code: string, lang: string, meta: Meta, annotationPayl
 		},
 		decorations,
 		transformers: [
-			convertInlineAnnoToRenderTag(allowedRenderTags),
+			// Phase order by hook: line -> pre -> root
 			addLineDecorations(lineDecorations),
-			addLineWrappers(lineWrappers, allowedRenderTags),
 			addMetaToPre(code, meta),
+			convertInlineAnnoToRenderTag(allowedRenderTags),
+			addLineWrappers(lineWrappers, allowedRenderTags),
 		],
 	});
 };
