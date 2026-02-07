@@ -56,7 +56,10 @@ const runRootHook = (transformer: ShikiTransformer, codeEl: Element) => {
 	hook?.call({} as never, root);
 };
 
-const createTransformer = (lineWrappers: LineWrapperPayload[], allowedRenderTags: string[] = ["Callout", "Collapsible"]) => {
+const createTransformer = (
+	lineWrappers: LineWrapperPayload[],
+	allowedRenderTags: string[] = ["Callout", "Collapsible"],
+) => {
 	if (typeof addLineWrappers !== "function") {
 		throw new Error("addLineWrappers is not implemented");
 	}

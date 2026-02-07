@@ -3,6 +3,11 @@ import { type CommentSyntax, formatAnnotationComment, resolveCommentSyntax } fro
 import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
 import type { AnnotationConfig, CodeBlockDocument } from "./types";
 
+const fromLineValueToLeadingIndent = (lineValue: string) => {
+	const match = lineValue.match(/^[\t ]*/);
+	return match?.[0] ?? "";
+};
+
 const fromDocumentMetaToCodeFenceMeta = (meta: CodeBlockDocument["meta"]) => {
 	return Object.entries(meta)
 		.map(([key, value]) => {
@@ -63,23 +68,24 @@ export const fromCodeBlockDocumentToCodeFence = (
 	const outputLines: string[] = [];
 
 	document.lines.forEach((line, lineIndex) => {
+		const leadingIndent = fromLineValueToLeadingIndent(line.value);
 		const lineAnnotations = lineAnnotationByStart.get(lineIndex) ?? [];
 		for (const annotation of lineAnnotations) {
 			outputLines.push(
-				fromAnnotationToCommentLine(commentSyntax, {
+				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
 					tag: typeDefinition[annotation.type].tag,
-				}),
+				})}`,
 			);
 		}
 
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
 			if (annotation.range.start >= annotation.range.end) continue;
 			outputLines.push(
-				fromAnnotationToCommentLine(commentSyntax, {
+				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
 					tag: typeDefinition[annotation.type].tag,
-				}),
+				})}`,
 			);
 		}
 
@@ -95,6 +101,7 @@ export const fromCodeBlockDocumentToCodeFence = (
 };
 
 export const __testable__ = {
+	fromLineValueToLeadingIndent,
 	fromDocumentMetaToCodeFenceMeta,
 	fromAnnotationToCommentLine,
 	fromCodeBlockDocumentToCodeFence,

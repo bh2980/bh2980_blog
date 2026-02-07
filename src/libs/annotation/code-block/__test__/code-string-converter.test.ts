@@ -308,6 +308,36 @@ describe("code-string converter", () => {
 		expect(inlineComment).not.toContain("collapsed");
 	});
 
+	it("document -> code에서 annotation comment는 대상 코드 라인의 들여쓰기를 보존한다", () => {
+		const input: CodeBlockDocument = {
+			lang: "ts",
+			meta: {},
+			annotations: [lineWrap("Callout", { start: 1, end: 3 }, 0), lineClass("diff", { start: 2, end: 3 }, 1)],
+			lines: [
+				line("if (ok) {"),
+				line("  const value = 1", [
+					inlineWrap("Tooltip", { start: 2, end: 7 }, 0, [{ name: "content", value: "tip" }]),
+				]),
+				line("    console.log(value)"),
+				line("}"),
+			],
+		};
+
+		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+
+		expect(output.value).toBe(
+			[
+				"if (ok) {",
+				`  // @${lnWrapTag} Callout {1-3}`,
+				`  // @${inWrapTag} Tooltip {2-7} content="tip"`,
+				"  const value = 1",
+				`    // @${lnClassTag} diff {2-3}`,
+				"    console.log(value)",
+				"}",
+			].join("\n"),
+		);
+	});
+
 	it("code -> document에서 annotation attribute의 JSON 타입을 복원한다", () => {
 		const input: Code = {
 			type: "code",
