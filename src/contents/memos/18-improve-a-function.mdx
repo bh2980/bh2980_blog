@@ -50,29 +50,29 @@ function excludeItems(items, excludes) {
 <Collapsible>
   ```ts
   function excludeItems(items, excludes) {
-     const excludeItemMap = excludes.reduce((acc, { k, v }) => {
-        if (acc.has(k)) {
-           acc.get(k).add(v);
-           return acc;
-        }
-
-        acc.set(k, new Set([v]));
+    const excludeItemMap = excludes.reduce((acc, { k, v }) => {
+      if (acc.has(k)) {
+        acc.get(k).add(v);
         return acc;
-     }, new Map());
+      }
 
-     const newItems = items.filter(item => {
-        for (const k of excludeItemMap.keys()) {
-           const vSet = excludeItemMap.get(k);
+      acc.set(k, new Set([v]));
+      return acc;
+    }, new Map());
 
-           if (vSet.has(item[k])) {
-           return false;
-           }
+    const newItems = items.filter(item => {
+      for (const k of excludeItemMap.keys()) {
+        const vSet = excludeItemMap.get(k);
+
+        if (vSet.has(item[k])) {
+          return false;
         }
+      }
 
-        return true;
-     });
+      return true;
+    });
 
-     return newItems;
+    return newItems;
   }
   ```
 
