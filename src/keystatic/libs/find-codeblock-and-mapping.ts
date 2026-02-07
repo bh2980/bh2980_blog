@@ -46,7 +46,7 @@ export const findCodeBlockAndMapping = (root: Root, options?: { emit?: boolean }
 	visit(root, "mdxJsxFlowElement", (node) => {
 		if (node.name !== EDITOR_CODE_BLOCK_NAME && node.name !== EDITOR_MERMAID_NAME) return;
 
-		const idAttr = node.attributes.find((attr): attr is any => attr.type === "mdxJsxAttribute" && attr.name === "id");
+		const idAttr = node.attributes.find((attr) => attr.type === "mdxJsxAttribute" && attr.name === "id");
 
 		const id = idAttr?.value;
 		if (typeof id !== "string" || !id) return;

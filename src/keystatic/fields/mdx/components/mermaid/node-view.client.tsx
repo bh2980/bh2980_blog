@@ -2,9 +2,9 @@
 "use client";
 
 import { Code2, Eye, ListOrdered, SquareSplitHorizontal, SquareSplitVertical, Trash2 } from "lucide-react";
-import { toString } from "mdast-util-to-string";
 import type { PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
+import { toString as mdastToString } from "mdast-util-to-string";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -22,7 +22,7 @@ const extractMermaidCodeFromFlowElement = (node: MdxJsxFlowElement): string => {
 	const visitFlowChildren = (children: MdxJsxFlowElement["children"]) => {
 		for (const child of children) {
 			if (child.type === "paragraph") {
-				lines.push(toString(child as unknown as { children: PhrasingContent[] }));
+				lines.push(mdastToString(child as unknown as { children: PhrasingContent[] }));
 				continue;
 			}
 

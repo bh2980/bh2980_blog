@@ -1,10 +1,10 @@
 import type { Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import {
 	buildCodeBlockDocumentFromCodeFence,
 	composeCodeFenceFromCodeBlockDocument,
 } from "@/libs/annotation/code-block/code-string-converter";
+import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import {
 	buildCodeBlockDocumentFromMdast,
 	composeCodeBlockRootFromDocument,
