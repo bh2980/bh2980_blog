@@ -245,6 +245,64 @@ describe("code-string converter", () => {
 		expect(parsed.meta).not.toHaveProperty("showLineNumbers");
 	});
 
+	it("document -> code에서 annotation attribute를 JSON 표현으로 직렬화한다", () => {
+		const input: CodeBlockDocument = {
+			lang: "ts",
+			meta: {},
+			annotations: [
+				lineWrap("Callout", { start: 0, end: 1 }, 0, [
+					{ name: "open", value: true },
+					{ name: "count", value: 2 },
+					{ name: "meta", value: { a: 1 } },
+					{ name: "items", value: [1, "x"] },
+					{ name: "collapsed", value: null },
+				]),
+			],
+			lines: [line("hello")],
+		};
+
+		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+		const first = output.value.split("\n")[0];
+
+		expect(first).toContain("open=true");
+		expect(first).toContain("count=2");
+		expect(first).toContain('meta={"a":1}');
+		expect(first).toContain('items=[1,"x"]');
+		expect(first).toContain("collapsed=null");
+	});
+
+	it("code -> document에서 annotation attribute의 JSON 타입을 복원한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: [
+				`// @${lnWrapTag} Callout {0-1} open=true count=2 meta={\"a\":1} items=[1,\"x\"] collapsed=null`,
+				`// @${inWrapTag} Tooltip {0-5} open=true count=2 meta={\"a\":1} items=[1,\"x\"] collapsed=null`,
+				"hello",
+			].join("\n"),
+		};
+
+		const output = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
+		const lineWrapAttrs = output.annotations[0]?.attributes;
+		const inlineAttrs = output.lines[0]?.annotations[0]?.attributes;
+
+		expect(lineWrapAttrs).toEqual([
+			{ name: "open", value: true },
+			{ name: "count", value: 2 },
+			{ name: "meta", value: { a: 1 } },
+			{ name: "items", value: [1, "x"] },
+			{ name: "collapsed", value: null },
+		]);
+		expect(inlineAttrs).toEqual([
+			{ name: "open", value: true },
+			{ name: "count", value: 2 },
+			{ name: "meta", value: { a: 1 } },
+			{ name: "items", value: [1, "x"] },
+			{ name: "collapsed", value: null },
+		]);
+	});
+
 	it("tagOverrides를 설정하면 custom tag로 파싱/직렬화한다", () => {
 		const input: Code = {
 			type: "code",

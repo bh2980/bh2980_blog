@@ -7,6 +7,14 @@ import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBloc
 const DEFAULT_CODE_LANG = "text";
 const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+))/g;
 
+const parseUnquotedAttrValue = (raw: string): unknown => {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return raw;
+	}
+};
+
 const fromCodeFenceMetaToDocumentMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
 	const input = meta.trim();
@@ -99,12 +107,22 @@ const fromCodeFenceMetaToDocumentMeta = (meta: string): CodeBlockDocument["meta"
 };
 
 const fromAttributeTextToAnnotationAttrs = (rest: string) => {
-	const attrs: { name: string; value: string }[] = [];
+	const attrs: { name: string; value: unknown }[] = [];
 
 	for (const match of rest.matchAll(ATTR_RE)) {
 		const name = match[1];
-		const raw = match[2] ?? match[3] ?? match[4] ?? "";
-		const value = raw.replace(/\\(["'\\])/g, "$1");
+		const doubleQuotedRaw = match[2];
+		const singleQuotedRaw = match[3];
+		const unquotedRaw = match[4];
+		let value: unknown;
+
+		if (typeof doubleQuotedRaw === "string" || typeof singleQuotedRaw === "string") {
+			const raw = (doubleQuotedRaw ?? singleQuotedRaw ?? "").replace(/\\(["'\\])/g, "$1");
+			value = raw;
+		} else {
+			value = parseUnquotedAttrValue(unquotedRaw ?? "");
+		}
+
 		attrs.push({ name, value });
 	}
 
