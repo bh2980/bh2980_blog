@@ -12,10 +12,12 @@ tags:
 예시
 
 ```ts
-type trimmed = Trim<'  Hello World  '> // 기대되는 결과는 'Hello World'입니다.
+type trimmed = Trim<'  Hello World  '> 
+// 기대되는 결과는 'Hello World'입니다.
 
-//!collapse(1:30) collapsed
+// @block Collapsible {3-17}
 /* _____________ 테스트 케이스 _____________ */
+
 import type { Equal, Expect } from '@type-challenges/utils'
 
 type cases = [

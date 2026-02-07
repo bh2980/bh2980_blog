@@ -21,8 +21,9 @@ const fn = (v: boolean) => {
 
 type a = MyReturnType<typeof fn> // should be "1 | 2"
 
-// !collapse(1:30) collapsed
+// @block Collapsible {9-31}
 /* _____________ 테스트 케이스 _____________ */
+
 import type { Equal, Expect } from '@type-challenges/utils'
 
 type cases = [
