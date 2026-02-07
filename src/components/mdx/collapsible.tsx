@@ -1,10 +1,56 @@
 import { ChevronRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
+import { cn } from "@/utils/cn";
 import { CollapsibleContent, Collapsible as CollapsibleRoot, CollapsibleTrigger } from "../ui/collapsible";
 
-export const Collapsible = ({ children }: { children: ReactNode }) => {
+const normalizeRestLines = (lines: ReactNode[]) => {
+	const first = lines[0];
+	if (typeof first !== "string" || !first.startsWith("\n")) {
+		return lines;
+	}
+
+	const trimmed = first.slice(1);
+	if (trimmed.length === 0) {
+		return lines.slice(1);
+	}
+
+	return [trimmed, ...lines.slice(1)];
+};
+
+const CodeBlockCollapsiblePreview = ({ children }: { children: ReactNode }) => {
+	const childNodes = Children.toArray(children);
+	const firstLine = childNodes[0] ?? null;
+	const restLines = normalizeRestLines(childNodes.slice(1));
+
 	return (
-		<CollapsibleRoot className="rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+		<CollapsibleRoot className="relative">
+			<CollapsibleTrigger className="group relative block w-full text-left" aria-label="Toggle code block collapsible">
+				<ChevronRight className="absolute top-1 -left-3 h-3 w-3 text-slate-400 transition-transform group-data-[state=open]:rotate-90 dark:text-slate-500" />
+				{firstLine}
+			</CollapsibleTrigger>
+			{restLines.length > 0 ? <CollapsibleContent>{restLines}</CollapsibleContent> : null}
+		</CollapsibleRoot>
+	);
+};
+
+export const Collapsible = ({
+	children,
+	"data-code-block-wrapper": dataCodeBlockWrapper,
+	className,
+}: {
+	children: ReactNode;
+	"data-code-block-wrapper"?: string | boolean;
+	className?: string;
+}) => {
+	const isCodeBlockWrapper = dataCodeBlockWrapper === true || dataCodeBlockWrapper === "true";
+	if (isCodeBlockWrapper) {
+		return <CodeBlockCollapsiblePreview>{children}</CodeBlockCollapsiblePreview>;
+	}
+
+	return (
+		<CollapsibleRoot
+			className={cn("rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900", className)}
+		>
 			<CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-slate-700 text-sm hover:bg-slate-100 data-[state=open]:bg-slate-100 dark:text-slate-200 dark:data-[state=open]:bg-slate-800 dark:hover:bg-slate-800">
 				<ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-data-[state=open]:rotate-90 dark:text-slate-400" />
 

@@ -30,23 +30,49 @@ import vue from "@shikijs/langs/vue";
 import yaml from "@shikijs/langs/yaml";
 import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import oneLight from "@shikijs/themes/one-light";
+import { transformerRenderIndentGuides } from "@shikijs/transformers";
 import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
-import { addMetaToPre, type Meta, replaceToRenderTag } from "./transformers";
+import {
+	addLineDecorations,
+	addLineWrappers,
+	addMetaToPre,
+	convertInlineAnnoToRenderTag,
+	type LineDecorationPayload,
+	type LineWrapperPayload,
+	type Meta,
+} from "./transformers";
 
 export const CODE_BLOCK_THEME_DARK = oneDarkPro.name as typeof oneDarkPro.name;
 export const CODE_BLOCK_THEME_LIGHT = oneLight.name as typeof oneLight.name;
 
-export const highlight = (code: string, lang: string, meta: Meta, decorations?: DecorationItem[]) =>
-	highlighter.codeToHast(code, {
+export type AnnotationPayload = {
+	decorations?: DecorationItem[];
+	lineDecorations?: LineDecorationPayload[];
+	lineWrappers?: LineWrapperPayload[];
+	allowedRenderTags?: string[];
+};
+
+export const highlight = (code: string, lang: string, meta: Meta, annotationPayload: AnnotationPayload = {}) => {
+	const { decorations = [], lineDecorations = [], lineWrappers = [], allowedRenderTags = [] } = annotationPayload;
+
+	return highlighter.codeToHast(code, {
 		lang,
 		themes: {
 			light: CODE_BLOCK_THEME_LIGHT,
 			dark: CODE_BLOCK_THEME_DARK,
 		},
 		decorations,
-		transformers: [replaceToRenderTag(), addMetaToPre(code, meta)],
+		transformers: [
+			// Phase order by hook: line -> pre -> root
+			transformerRenderIndentGuides(),
+			addLineDecorations(lineDecorations),
+			addMetaToPre(code, meta),
+			convertInlineAnnoToRenderTag(allowedRenderTags),
+			addLineWrappers(lineWrappers, allowedRenderTags),
+		],
 	});
+};
 
 export const langAlias = {
 	javascript: "ts",
