@@ -1,6 +1,5 @@
 import { splitBlock } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
