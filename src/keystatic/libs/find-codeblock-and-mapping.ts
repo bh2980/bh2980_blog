@@ -26,7 +26,10 @@ To locate the bad setState() call inside LocalItemPage, follow the stack trace a
 at emit (src/keystatic/libs/find-codeblock-and-mapping.ts:19:29)
  */
 let queued = false;
-const schedule = typeof queueMicrotask === "function" ? queueMicrotask : (cb: () => void) => Promise.resolve().then(cb);
+const schedule =
+	typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+		? (cb: () => void) => window.requestAnimationFrame(() => cb())
+		: (cb: () => void) => setTimeout(cb, 0);
 
 const emitAsync = () => {
 	if (queued) return;
@@ -37,13 +40,13 @@ const emitAsync = () => {
 	});
 };
 
-export const findCodeBlockAndMapping = (root: Root) => {
+export const findCodeBlockAndMapping = (root: Root, options?: { emit?: boolean }) => {
 	const next = new Map<string, MdxJsxFlowElement>();
 
 	visit(root, "mdxJsxFlowElement", (node) => {
 		if (node.name !== EDITOR_CODE_BLOCK_NAME && node.name !== EDITOR_MERMAID_NAME) return;
 
-		const idAttr = node.attributes.find((attr): attr is any => attr.type === "mdxJsxAttribute" && attr.name === "id");
+		const idAttr = node.attributes.find((attr) => attr.type === "mdxJsxAttribute" && attr.name === "id");
 
 		const id = idAttr?.value;
 		if (typeof id !== "string" || !id) return;
@@ -52,5 +55,7 @@ export const findCodeBlockAndMapping = (root: Root) => {
 	});
 
 	snapshot = next;
-	emitAsync(); // ✅ 여기서 즉시 리스너 호출하지 않음
+	if (options?.emit !== false) {
+		emitAsync(); // ✅ 여기서 즉시 리스너 호출하지 않음
+	}
 };

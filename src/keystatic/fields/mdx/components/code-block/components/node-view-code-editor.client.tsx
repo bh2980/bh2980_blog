@@ -1,50 +1,16 @@
 "use client";
 
 import type { Root } from "hast";
-import { type ReactNode, useEffect, useState } from "react";
-import type { DecorationItem } from "shiki";
-import {
-	type AnnotationConfig,
-	buildAnnotationHelper,
-	extractAnnotationsFromAst,
-} from "@/keystatic/libs/serialize-annotations";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
+import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 import { highlight } from "@/libs/shiki/code-highligher";
+import { createAllowedRenderTagsFromConfig } from "@/libs/shiki/render-policy";
+import { fromCodeBlockDocumentToShikiAnnotationPayload } from "@/libs/shiki/remark-annotation-to-decoration";
 import { cn } from "@/utils/cn";
-import { isDefined } from "@/utils/is-defined";
 import { useLiveCodeBlockNode } from "../../../hooks/use-live-code-block-node";
+import { EDITOR_CODE_BLOCK_ANNOTATION_CONFIG } from "../constants";
 import { HastView } from "./hast-view";
-
-export const keystaticAnnotationConfig: AnnotationConfig = {
-	decoration: [
-		{
-			name: "Tooltip",
-			source: "mdx-text",
-			class: "underline decoration-dotted underline-offset-4",
-		},
-		{
-			name: "strong",
-			source: "mdast",
-			class: "font-bold",
-		},
-		{
-			name: "emphasis",
-			source: "mdast",
-			class: "italic",
-		},
-		{
-			name: "delete",
-			source: "mdast",
-			class: "line-through",
-		},
-		{
-			name: "u",
-			source: "mdx-text",
-			class: "underline underline-offset-4",
-		},
-	],
-};
-
-const { annoRegistry } = buildAnnotationHelper(keystaticAnnotationConfig);
 
 export const NodeViewCodeEditor = ({
 	nodeViewChildren,
@@ -52,15 +18,18 @@ export const NodeViewCodeEditor = ({
 	initProseMirrorId,
 	proseMirrorId,
 	showLineNumbers,
+	annotationConfig = EDITOR_CODE_BLOCK_ANNOTATION_CONFIG,
 }: {
 	nodeViewChildren: ReactNode;
 	lang: string;
 	initProseMirrorId: (id: string) => void;
 	proseMirrorId?: string;
 	showLineNumbers?: boolean;
+	annotationConfig?: AnnotationConfig;
 }) => {
 	const codeBlockNode = useLiveCodeBlockNode(proseMirrorId);
 	const [hast, setHast] = useState<Root>();
+	const allowedRenderTags = useMemo(() => createAllowedRenderTagsFromConfig(annotationConfig), [annotationConfig]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: id가 없을 경우에 최초 부여용
 	useEffect(() => {
@@ -78,31 +47,24 @@ export const NodeViewCodeEditor = ({
 			return;
 		}
 
-		const result = extractAnnotationsFromAst(codeBlockNode, keystaticAnnotationConfig);
-
-		if (!isDefined(result?.code)) {
-			return;
-		}
-
-		// TODO : 추후 highlight 쪽으로 로직 통합 리팩토링(현재 line annotation에 대한 변환만 있음)
-		const decorations: DecorationItem[] = result.annotations
-			.map((anno) => ({ ...anno, ...annoRegistry.get(anno.name) }))
-			.filter((anno) => "class" in anno)
-			.map((anno) => {
-				return { start: anno.range.start, end: anno.range.end, properties: { class: anno.class } };
-			});
-
-		const highlighedHast = highlight(result.code, lang, {}, decorations);
+		const document = fromMdastToCodeBlockDocument(codeBlockNode as CodeBlockRoot, annotationConfig);
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+		const highlighedHast = highlight(payload.code, payload.lang || lang, payload.meta, {
+			decorations: payload.decorations,
+			lineDecorations: payload.lineDecorations,
+			lineWrappers: [],
+			allowedRenderTags,
+		});
 
 		setHast(highlighedHast);
-	}, [codeBlockNode, lang]);
+	}, [codeBlockNode, lang, annotationConfig, allowedRenderTags]);
 
 	return (
 		<div className="relative rounded-lg *:m-0!">
 			{hast && <HastView hast={hast} showLineNumbers={showLineNumbers} />}
 			<pre
 				className={cn(
-					"relative w-full outline-none",
+					"relative w-full outline-none [&_p]:my-0!",
 					"bg-transparent! text-transparent! caret-black!",
 					showLineNumbers && "[&_p]:pl-7!",
 				)}

@@ -1,8 +1,65 @@
 import type { Element, Root } from "hast";
 import type { ShikiTransformer } from "shiki";
 import { visit } from "unist-util-visit";
+import { isSafeRenderTag } from "./render-policy";
 
-export type Meta = Record<string, any>;
+type HastPropertyValue = string | number | boolean | Array<string | number> | null | undefined;
+
+const toHastPropertyValue = (value: unknown): HastPropertyValue => {
+	if (value == null) return value;
+	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+	if (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number")) {
+		return value;
+	}
+	return JSON.stringify(value);
+};
+
+const DENY_PROPS = new Set([
+	"dangerouslysetinnerhtml",
+	"children",
+	"ref",
+	"key",
+	"__proto__",
+	"prototype",
+	"constructor",
+	"srcdoc",
+]);
+
+const URL_PROPS = new Set(["src", "href", "xlink:href", "formaction", "action"]);
+
+const isUnsafeUrlValue = (value: string) => {
+	const normalized = value.trim().toLowerCase();
+	return normalized.startsWith("javascript:") || normalized.startsWith("vbscript:") || normalized.startsWith("data:");
+};
+
+const isForbiddenPropName = (name: string) => {
+	const normalized = name.trim().toLowerCase();
+	if (!normalized) return true;
+	if (normalized.startsWith("on")) return true;
+	return DENY_PROPS.has(normalized);
+};
+
+const isAllowedPropertyValue = (name: string, value: HastPropertyValue) => {
+	const normalizedName = name.trim().toLowerCase();
+	if (!URL_PROPS.has(normalizedName)) return true;
+	return typeof value !== "string" || !isUnsafeUrlValue(value);
+};
+
+export type Meta = Record<string, unknown>;
+export type LineDecorationPayload = {
+	type: "lineClass";
+	name: string;
+	range: { start: number; end: number };
+	class: string;
+};
+export type LineWrapperPayload = {
+	type: "lineWrap";
+	name: string;
+	range: { start: number; end: number };
+	order: number;
+	render: string;
+	attributes?: { name: string; value: unknown }[];
+};
 
 export const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 	pre(node: Element) {
@@ -12,59 +69,221 @@ export const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 		preProperties.code = code;
 
 		for (const [key, value] of Object.entries(meta)) {
-			preProperties[key] = value;
+			preProperties[key] = toHastPropertyValue(value);
 		}
 	},
 });
 
-const DENY_PROPS = new Set([
-	"dangerouslySetInnerHTML",
-	"children",
-	"ref",
-	"key",
-	"__proto__",
-	"prototype",
-	"constructor",
-	"srcDoc", // 필요하면 추가
-]);
-// TODO: deny list로 props 할당 제한을 통한 보안조치 필요
-export const replaceToRenderTag = (): ShikiTransformer => ({
-	root(rootNode: Root) {
-		visit(rootNode, "element", (el) => {
-			const p = el.properties ?? {};
+export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []): ShikiTransformer => {
+	const normalized = lineDecorations
+		.map((decoration) => ({
+			...decoration,
+			class: decoration.class.trim(),
+		}))
+		.filter((decoration) => decoration.range.start < decoration.range.end && decoration.class.length > 0);
 
-			const render = p["data-anno-render"] ?? p.dataAnnoRender;
+	return {
+		line(lineEl: Element, lineNumber: number) {
+			const lineIndex = lineNumber - 1;
+			const classNames = normalized
+				.filter((decoration) => decoration.range.start <= lineIndex && lineIndex < decoration.range.end)
+				.map((decoration) => decoration.class);
+			if (classNames.length === 0) return;
 
-			if (!render) return;
+			if (!lineEl.properties) {
+				lineEl.properties = {};
+			}
 
-			el.tagName = String(render);
+			const existing = lineEl.properties.className;
+			const existingList = Array.isArray(existing)
+				? existing.map(String)
+				: typeof existing === "string"
+					? [existing]
+					: [];
+			lineEl.properties.className = [...existingList, ...classNames];
+		},
+	};
+};
 
-			for (const [k, v] of Object.entries(p)) {
-				if (typeof k === "string") {
-					const isRender = k === "data-anno-render";
-					const isDash = k.startsWith("data-anno-");
-					if (!isDash || isRender) continue;
+type ElementPathItem = {
+	node: Element;
+	indexInParent: number;
+};
 
-					// prop 이름 만들기
-					const propName = k.slice("data-anno-".length);
+const getTopLevelLineElements = (codeEl: Element) =>
+	codeEl.children.filter((node): node is Element => node.type === "element");
 
-					// 값 파싱(문자열일 때만 JSON.parse 시도)
-					let parsed = v;
-					if (typeof v === "string") {
-						try {
-							parsed = JSON.parse(v);
-						} catch {
-							parsed = v; // JSON 아닌 경우 그대로
-						}
+const findPathToNode = (root: Element, target: Element): ElementPathItem[] | null => {
+	const walk = (current: Element, path: ElementPathItem[]): ElementPathItem[] | null => {
+		if (current === target) return path;
+
+		for (let index = 0; index < current.children.length; index += 1) {
+			const child = current.children[index];
+			if (child.type !== "element") continue;
+			const next = walk(child, [...path, { node: child, indexInParent: index }]);
+			if (next) return next;
+		}
+
+		return null;
+	};
+
+	return walk(root, [{ node: root, indexInParent: -1 }]);
+};
+
+const wrapRangeByLines = (
+	root: Element,
+	startLine: Element,
+	endLine: Element,
+	tagName: string,
+	properties: Record<string, HastPropertyValue>,
+) => {
+	const startPath = findPathToNode(root, startLine);
+	const endPath = findPathToNode(root, endLine);
+	if (!startPath || !endPath) return;
+
+	let lcaPathIndex = 0;
+	while (
+		lcaPathIndex < startPath.length &&
+		lcaPathIndex < endPath.length &&
+		startPath[lcaPathIndex].node === endPath[lcaPathIndex].node
+	) {
+		lcaPathIndex += 1;
+	}
+	lcaPathIndex -= 1;
+	if (lcaPathIndex < 0) return;
+
+	if (startLine === endLine && lcaPathIndex === startPath.length - 1) {
+		lcaPathIndex -= 1;
+		if (lcaPathIndex < 0) return;
+	}
+
+	const lca = startPath[lcaPathIndex].node;
+	const startEntry = startPath[lcaPathIndex + 1];
+	const endEntry = endPath[lcaPathIndex + 1];
+	if (!startEntry || !endEntry) return;
+
+	const from = Math.min(startEntry.indexInParent, endEntry.indexInParent);
+	const to = Math.max(startEntry.indexInParent, endEntry.indexInParent);
+	const targetChildren = lca.children.slice(from, to + 1);
+	if (targetChildren.length === 0) return;
+
+	const wrapper: Element = {
+		type: "element",
+		tagName,
+		properties,
+		children: targetChildren,
+	};
+
+	lca.children.splice(from, to - from + 1, wrapper);
+};
+
+export const applyLineWrappers = (
+	codeEl: Element,
+	lineWrappers: LineWrapperPayload[] = [],
+	allowedRenderTags: readonly string[] = [],
+): void => {
+	const allowedRenderTagSet = new Set(allowedRenderTags.map((tag) => tag.trim()).filter(isSafeRenderTag));
+	const normalized = lineWrappers
+		.map((wrapper) => ({
+			...wrapper,
+			render: wrapper.render.trim(),
+			attributes: (wrapper.attributes ?? []).filter((attr) => typeof attr.name === "string" && attr.name.length > 0),
+		}))
+		.filter(
+			(wrapper) =>
+				wrapper.range.start < wrapper.range.end &&
+				wrapper.render.length > 0 &&
+				allowedRenderTagSet.has(wrapper.render),
+		);
+
+	const lines = getTopLevelLineElements(codeEl);
+
+	for (const wrapper of normalized) {
+		const { start, end } = wrapper.range;
+		if (start < 0 || end > lines.length) continue;
+
+		const startLine = lines[start];
+		const endLine = lines[end - 1];
+		if (!startLine || !endLine) continue;
+
+		const properties: Record<string, HastPropertyValue> = {};
+		for (const attribute of wrapper.attributes) {
+			const propName = attribute.name.trim();
+			if (isForbiddenPropName(propName)) continue;
+			const propValue = toHastPropertyValue(attribute.value);
+			if (!isAllowedPropertyValue(propName, propValue)) continue;
+			properties[propName] = propValue;
+		}
+		properties["data-code-block-wrapper"] = "true";
+
+		wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
+	}
+};
+
+export const addLineWrappers = (
+	lineWrappers: LineWrapperPayload[] = [],
+	allowedRenderTags: readonly string[] = [],
+): ShikiTransformer => {
+	return {
+		root(root: Root) {
+			visit(root, "element", (el) => {
+				if (el.tagName !== "code") return;
+				applyLineWrappers(el, lineWrappers, allowedRenderTags);
+			});
+		},
+	};
+};
+export const applyInlineAnnoRenderTags = (codeEl: Element, allowedRenderTags: readonly string[] = []) => {
+	const allowedRenderTagSet = new Set(allowedRenderTags.map((tag) => tag.trim()).filter(isSafeRenderTag));
+
+	visit(codeEl, "element", (el) => {
+		el.properties ??= {};
+		const p = el.properties;
+
+		const render = p["data-anno-render"] ?? p.dataAnnoRender;
+
+		if (!render) return;
+		if (typeof render !== "string" || !isSafeRenderTag(render)) return;
+		if (!allowedRenderTagSet.has(render.trim())) return;
+
+		el.tagName = render;
+
+		for (const [k, v] of Object.entries(p)) {
+			if (typeof k === "string") {
+				const isRender = k === "data-anno-render";
+				const isDash = k.startsWith("data-anno-");
+				if (!isDash || isRender) continue;
+
+				// prop 이름 만들기
+				const propName = k.slice("data-anno-".length);
+				if (isForbiddenPropName(propName)) continue;
+
+				// 값 파싱(문자열일 때만 JSON.parse 시도)
+				let parsed = v;
+				if (typeof v === "string") {
+					try {
+						parsed = JSON.parse(v);
+					} catch {
+						parsed = v; // JSON 아닌 경우 그대로
 					}
-
-					p[propName] = parsed;
 				}
-			}
 
-			for (const k of Object.keys(p)) {
-				if (k.startsWith("data-anno-")) delete p[k];
+				if (!isAllowedPropertyValue(propName, parsed as HastPropertyValue)) continue;
+				p[propName] = parsed;
 			}
+		}
+
+		for (const k of Object.keys(p)) {
+			if (k.startsWith("data-anno-")) delete p[k];
+		}
+	});
+};
+
+export const convertInlineAnnoToRenderTag = (allowedRenderTags: readonly string[] = []): ShikiTransformer => ({
+	root(root: Root) {
+		visit(root, "element", (el) => {
+			if (el.tagName !== "code") return;
+			applyInlineAnnoRenderTags(el, allowedRenderTags);
 		});
 	},
 });

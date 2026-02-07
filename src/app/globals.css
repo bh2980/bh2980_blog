@@ -380,6 +380,30 @@
 		background-color: var(--shiki-dark-bg) !important;
 	}
 
+	.shiki .line .indent {
+		position: relative;
+		display: inline-block;
+		line-height: inherit;
+		min-height: 1lh;
+	}
+
+	.shiki .line .indent:empty {
+		width: 0;
+		vertical-align: top;
+	}
+
+	.shiki .line .indent::before {
+		content: "";
+		position: absolute;
+		left: var(--indent-offset, 0);
+		top: 0;
+		height: 1lh;
+		width: 0.5px;
+		background-color: rgb(100 116 139 / 0.22);
+		background-color: color-mix(in srgb, currentColor 16%, transparent);
+		pointer-events: none;
+	}
+
 	.prose,
 	.prose * {
 		font-feature-settings: var(--font-features-base);

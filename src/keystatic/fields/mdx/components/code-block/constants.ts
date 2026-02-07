@@ -17,7 +17,6 @@ import {
 	SiKotlin,
 	SiLit,
 	SiMdx,
-	SiMermaid,
 	SiNginx,
 	SiPostcss,
 	SiPython,
@@ -31,6 +30,7 @@ import {
 	SiVuedotjs,
 	SiYaml,
 } from "react-icons/si";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 
 // TODO : 나중에 shiki 쪽이랑 통합하면 편할 것 같은데, shiki 쪽에서 타입 제공 안해주나
 // TODO : comment prefix 나중에 제거
@@ -291,14 +291,6 @@ export const EDITOR_LANG_OPTIONS = [
 		color: "#ECD53F",
 		commentPrefix: "#",
 	},
-	{
-		label: "Mermaid",
-		value: "mermaid",
-		group: "인프라 & 도구",
-		icon: SiMermaid,
-		color: "#FF3670",
-		commentPrefix: "%%",
-	},
 ] as const satisfies ReadonlyArray<{
 	label: string;
 	value: string;
@@ -310,3 +302,46 @@ export const EDITOR_LANG_OPTIONS = [
 }>;
 
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
+
+export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
+	inlineClass: [
+		{
+			name: "Tooltip",
+			source: "mdx-text",
+			class: "underline decoration-dotted",
+		},
+		{
+			name: "strong",
+			source: "mdast",
+			class: "font-semibold",
+		},
+		{
+			name: "emphasis",
+			source: "mdast",
+			class: "italic",
+		},
+		{
+			name: "delete",
+			source: "mdast",
+			class: "line-through",
+		},
+		{
+			name: "u",
+			source: "mdx-text",
+			class: "underline",
+		},
+	],
+	lineWrap: [
+		{
+			name: "Collapsible",
+			source: "mdx-flow",
+			render: "Collapsible",
+		},
+	],
+	tagOverrides: {
+		inlineClass: "dec",
+		inlineWrap: "mark",
+		lineClass: "line",
+		lineWrap: "block",
+	},
+};
