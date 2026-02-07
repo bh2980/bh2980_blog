@@ -6,6 +6,7 @@ export const mdx = (_args: Parameters<typeof fields.mdx>[0]) => {
 		..._args,
 		components,
 		options: {
+			heading: [2, 3],
 			bold: false,
 			italic: false,
 			strikethrough: false,
