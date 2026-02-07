@@ -1,13 +1,26 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/utils/cn";
 import type { CodeBlockNodeViewProps } from "./component";
 import { CodeBlockToolbar, NodeViewCodeEditor } from "./components";
 
 export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
+	const latestValueRef = useRef(props.value);
+
+	useEffect(() => {
+		latestValueRef.current = props.value;
+	}, [props.value]);
+
 	const initProseMirrorId = (id: string) => {
-		props.onChange({ ...props.value, id });
+		const latestValue = latestValueRef.current;
+		if (latestValue.id === id) {
+			return;
+		}
+
+		props.onChange({ ...latestValue, id });
 	};
+
 	return (
 		<div className={cn("flex flex-col gap-2 rounded-lg", props.isSelected && "outline-2 outline-offset-8")}>
 			<CodeBlockToolbar {...props} />

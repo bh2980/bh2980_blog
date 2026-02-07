@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -42,6 +42,8 @@ function getFallbackThree(lang: EditorCodeLang): Three<EditorCodeLang> {
 
 export const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProps, "value" | "onChange">) => {
 	const fallback = getFallbackThree(value.lang);
+	const isNewBlockRef = useRef(!value.id);
+	const hasAutoAppliedLangRef = useRef(false);
 
 	const [recentUsed, setRecentUsed] = useState<Three<EditorCodeLang>>(() => {
 		try {
@@ -65,7 +67,7 @@ export const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProp
 		(lang) => lang.value.includes(searchValue) || lang.label.includes(searchValue),
 	);
 
-	const currentSelectLang = recentUsed[0];
+	const currentSelectLang = value.lang;
 	const selectedOption = LANG_OPTION_BY_VALUE.get(currentSelectLang);
 
 	const selectedLabel = selectedOption?.label;
@@ -118,8 +120,19 @@ export const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProp
 	};
 
 	useEffect(() => {
-		onChange({ ...value, lang: currentSelectLang });
-	}, [currentSelectLang, onChange, value]);
+		if (hasAutoAppliedLangRef.current) return;
+		if (!isNewBlockRef.current) return;
+		if (!value.id) return;
+
+		const recentLang = recentUsed[0];
+		if (!recentLang || recentLang === value.lang || value.lang !== "ts") {
+			hasAutoAppliedLangRef.current = true;
+			return;
+		}
+
+		onChange({ ...value, lang: recentLang });
+		hasAutoAppliedLangRef.current = true;
+	}, [onChange, recentUsed, value]);
 
 	return (
 		<DropdownMenu>
