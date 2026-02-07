@@ -312,17 +312,17 @@ export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
 		},
 		{
 			name: "strong",
-			source: "mdast",
-			class: "font-semibold",
+			source: "mdx-text",
+			class: "font-bold",
 		},
 		{
-			name: "emphasis",
-			source: "mdast",
+			name: "em",
+			source: "mdx-text",
 			class: "italic",
 		},
 		{
-			name: "delete",
-			source: "mdast",
+			name: "del",
+			source: "mdx-text",
 			class: "line-through",
 		},
 		{
