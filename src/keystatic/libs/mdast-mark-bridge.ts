@@ -34,8 +34,7 @@ const isMdastMark = (node: TreeNode): node is TreeNode & { type: MdastMarkName; 
 const isMdxMark = (
 	node: TreeNode,
 ): node is TreeNode & { type: "mdxJsxTextElement"; name: MdxMarkName; attributes: unknown[]; children: TreeNode[] } =>
-	node.type === "mdxJsxTextElement" &&
-	(node.name === "strong" || node.name === "del" || node.name === "em");
+	node.type === "mdxJsxTextElement" && (node.name === "strong" || node.name === "del" || node.name === "em");
 
 const walkAndReplace = (
 	nodes: TreeNode[],

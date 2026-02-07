@@ -5,7 +5,7 @@ import {
 	convertBodyMdastMarksToMdxJsxTextElement,
 	convertBodyMdxJsxTextElementToMdastMarks,
 } from "./mdast-mark-bridge";
-import { walkOnlyInsideCodeFence, walkOnlyInsideCodeblock } from "./mdx-code-block-walk";
+import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "./mdx-code-block-walk";
 
 const afterMarkdownParse = (mdxAst: Root) => {
 	walkOnlyInsideCodeFence(mdxAst, codeFenceAnnotationConfig);

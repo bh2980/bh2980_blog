@@ -111,4 +111,3 @@ describe("mdast mark bridge", () => {
 		expect(line.children[0]).toMatchObject({ type: "mdxJsxTextElement", name: "strong" });
 	});
 });
-

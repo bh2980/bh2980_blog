@@ -1,7 +1,7 @@
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
 import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
-import { walkOnlyInsideCodeFence, walkOnlyInsideCodeblock } from "../mdx-code-block-walk";
+import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../mdx-code-block-walk";
 
 describe("mdx code-block walk", () => {
 	it("walkOnlyInsideCodeFence: code fence를 CodeBlock mdast로 변환한다", () => {
@@ -84,4 +84,3 @@ describe("mdx code-block walk", () => {
 		expect(converted.value).toContain("hello");
 	});
 });
-

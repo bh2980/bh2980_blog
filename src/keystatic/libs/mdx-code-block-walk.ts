@@ -33,4 +33,3 @@ export const walkOnlyInsideCodeblock = (mdxAst: Root, config: AnnotationConfig) 
 		return [SKIP, index];
 	});
 };
-
