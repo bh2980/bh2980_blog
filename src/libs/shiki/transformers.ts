@@ -191,9 +191,7 @@ export const applyLineWrappers = (
 		}))
 		.filter(
 			(wrapper) =>
-				wrapper.range.start < wrapper.range.end &&
-				wrapper.render.length > 0 &&
-				allowedRenderTagSet.has(wrapper.render),
+				wrapper.range.start < wrapper.range.end && wrapper.render.length > 0 && allowedRenderTagSet.has(wrapper.render),
 		);
 
 	const lines = getTopLevelLineElements(codeEl);

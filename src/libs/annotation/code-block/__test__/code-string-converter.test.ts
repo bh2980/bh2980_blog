@@ -315,7 +315,9 @@ describe("code-string converter", () => {
 			annotations: [lineWrap("Callout", { start: 1, end: 3 }, 0), lineClass("diff", { start: 2, end: 3 }, 1)],
 			lines: [
 				line("if (ok) {"),
-				line("  const value = 1", [inlineWrap("Tooltip", { start: 2, end: 7 }, 0, [{ name: "content", value: "tip" }])]),
+				line("  const value = 1", [
+					inlineWrap("Tooltip", { start: 2, end: 7 }, 0, [{ name: "content", value: "tip" }]),
+				]),
 				line("    console.log(value)"),
 				line("}"),
 			],

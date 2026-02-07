@@ -19,19 +19,24 @@ const findElementByTagName = (root: Element, tagName: string): Element | undefin
 
 describe("highlight inline render integration", () => {
 	it("inline annotation decoration을 render tag로 변환한다", () => {
-		const hast = highlight("console.log('hello')", "ts", {}, {
-			decorations: [
-				{
-					start: { line: 0, character: 5 },
-					end: { line: 0, character: 17 },
-					properties: {
-						"data-anno-render": "Tooltip",
-						"data-anno-content": '"console.log"',
+		const hast = highlight(
+			"console.log('hello')",
+			"ts",
+			{},
+			{
+				decorations: [
+					{
+						start: { line: 0, character: 5 },
+						end: { line: 0, character: 17 },
+						properties: {
+							"data-anno-render": "Tooltip",
+							"data-anno-content": '"console.log"',
+						},
 					},
-				},
-			],
-			allowedRenderTags: ["Tooltip"],
-		});
+				],
+				allowedRenderTags: ["Tooltip"],
+			},
+		);
 
 		const pre = hast.children.find((node) => node.type === "element") as Element | undefined;
 		expect(pre).toBeDefined();
