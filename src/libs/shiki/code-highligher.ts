@@ -30,6 +30,7 @@ import vue from "@shikijs/langs/vue";
 import yaml from "@shikijs/langs/yaml";
 import oneDarkPro from "@shikijs/themes/one-dark-pro";
 import oneLight from "@shikijs/themes/one-light";
+import { transformerRenderIndentGuides } from "@shikijs/transformers";
 import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import {
@@ -64,6 +65,7 @@ export const highlight = (code: string, lang: string, meta: Meta, annotationPayl
 		decorations,
 		transformers: [
 			// Phase order by hook: line -> pre -> root
+			transformerRenderIndentGuides(),
 			addLineDecorations(lineDecorations),
 			addMetaToPre(code, meta),
 			convertInlineAnnoToRenderTag(allowedRenderTags),
