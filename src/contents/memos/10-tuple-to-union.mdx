@@ -14,8 +14,9 @@ type Arr = ['1', '2', '3']
 
 type Test = TupleToUnion<Arr> // expected to be '1' | '2' | '3'
 
-// !collapse(1:10) collapsed
+// @block Collapsible {4-12}
 /* _____________ 테스트 케이스 _____________ */
+
 import type { Equal, Expect } from '@type-challenges/utils'
 
 type cases = [
