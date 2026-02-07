@@ -10,7 +10,6 @@ export const mdx = (_args: Parameters<typeof fields.mdx>[0]) => {
 			bold: false,
 			italic: false,
 			strikethrough: false,
-			code: false,
 			codeBlock: false,
 		},
 	});
