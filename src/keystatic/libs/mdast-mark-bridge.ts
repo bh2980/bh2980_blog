@@ -1,4 +1,4 @@
-import type { Parents, Root, RootContent } from "mdast";
+import type { Root, RootContent } from "mdast";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 
 const MDX_MARK_BY_MDAST_MARK = {
@@ -17,16 +17,12 @@ type MdastMarkName = keyof typeof MDX_MARK_BY_MDAST_MARK;
 type MdxMarkName = keyof typeof MDAST_MARK_BY_MDX_MARK;
 type MdxTextElementNode = Extract<RootContent, { type: "mdxJsxTextElement" }>;
 type MdastMarkNode = Extract<RootContent, { type: MdastMarkName }>;
-type ParentContentNode = Extract<Parents, RootContent>;
-
+type ParentWithChildren = { children: unknown[] };
 type VisitFrame = {
-	parent: Parents;
+	parent: ParentWithChildren;
 	index: number;
-	insideCodeBlock: boolean;
+	phase: "enter" | "exit";
 };
-
-const hasChildren = (node: RootContent): node is ParentContentNode =>
-	"children" in node && Array.isArray(node.children);
 
 const isCodeBlockFlow = (node: RootContent) =>
 	node.type === "mdxJsxFlowElement" && node.name === EDITOR_CODE_BLOCK_NAME;
@@ -37,45 +33,48 @@ const isMdastMark = (node: RootContent): node is MdastMarkNode =>
 const isMdxMark = (node: RootContent): node is MdxTextElementNode & { name: MdxMarkName } =>
 	node.type === "mdxJsxTextElement" && (node.name === "strong" || node.name === "del" || node.name === "em");
 
-const walkAndReplace = (
-	root: Root,
-	replace: (node: RootContent, insideCodeBlock: boolean) => RootContent | null,
-) => {
+const hasChildren = (node: RootContent): node is RootContent & ParentWithChildren =>
+	"children" in node && Array.isArray(node.children);
+
+const isRootContent = (node: unknown): node is RootContent =>
+	typeof node === "object" && node !== null && "type" in node && typeof node.type === "string";
+
+const replaceByPostOrder = (root: Root, replace: (node: RootContent) => RootContent | null) => {
 	const stack: VisitFrame[] = [];
 
 	for (let index = root.children.length - 1; index >= 0; index -= 1) {
-		stack.push({ parent: root, index, insideCodeBlock: false });
+		stack.push({ parent: root as ParentWithChildren, index, phase: "enter" });
 	}
 
 	while (stack.length > 0) {
-		const current = stack.pop();
-		if (!current) continue;
+		const frame = stack.pop();
+		if (!frame) continue;
 
-		const node = current.parent.children[current.index];
-		if (!node) continue;
+		const rawNode = frame.parent.children[frame.index];
+		if (!isRootContent(rawNode)) continue;
 
-		const replaced = replace(node, current.insideCodeBlock);
-		const target = replaced ?? node;
-		if (replaced) {
-			current.parent.children[current.index] = replaced;
+		if (frame.phase === "enter") {
+			if (isCodeBlockFlow(rawNode)) continue;
+
+			stack.push({ parent: frame.parent, index: frame.index, phase: "exit" });
+
+			if (!hasChildren(rawNode)) continue;
+
+			for (let index = rawNode.children.length - 1; index >= 0; index -= 1) {
+				stack.push({ parent: rawNode as ParentWithChildren, index, phase: "enter" });
+			}
+			continue;
 		}
 
-		const nextInsideCodeBlock = current.insideCodeBlock || isCodeBlockFlow(target);
-		if (!hasChildren(target)) continue;
-
-		for (let index = target.children.length - 1; index >= 0; index -= 1) {
-			stack.push({
-				parent: target,
-				index,
-				insideCodeBlock: nextInsideCodeBlock,
-			});
-		}
+		const replaced = replace(rawNode);
+		if (!replaced) continue;
+		frame.parent.children[frame.index] = replaced;
 	}
 };
 
 export const convertBodyMdastMarksToMdxJsxTextElement = (mdxAst: Root) => {
-	walkAndReplace(mdxAst, (node, insideCodeBlock) => {
-		if (insideCodeBlock || !isMdastMark(node)) return null;
+	replaceByPostOrder(mdxAst, (node) => {
+		if (!isMdastMark(node)) return null;
 
 		return {
 			type: "mdxJsxTextElement",
@@ -87,8 +86,8 @@ export const convertBodyMdastMarksToMdxJsxTextElement = (mdxAst: Root) => {
 };
 
 export const convertBodyMdxJsxTextElementToMdastMarks = (mdxAst: Root) => {
-	walkAndReplace(mdxAst, (node, insideCodeBlock) => {
-		if (insideCodeBlock || !isMdxMark(node)) return null;
+	replaceByPostOrder(mdxAst, (node) => {
+		if (!isMdxMark(node)) return null;
 		if (node.attributes.length > 0) return null;
 
 		return {
