@@ -3,18 +3,24 @@ import { Children, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { CollapsibleContent, Collapsible as CollapsibleRoot, CollapsibleTrigger } from "../ui/collapsible";
 
+const normalizeRestLines = (lines: ReactNode[]) => {
+	const first = lines[0];
+	if (typeof first !== "string" || !first.startsWith("\n")) {
+		return lines;
+	}
+
+	const trimmed = first.slice(1);
+	if (trimmed.length === 0) {
+		return lines.slice(1);
+	}
+
+	return [trimmed, ...lines.slice(1)];
+};
+
 const CodeBlockCollapsiblePreview = ({ children }: { children: ReactNode }) => {
 	const childNodes = Children.toArray(children);
 	const firstLine = childNodes[0] ?? null;
-	const restLines = childNodes.slice(1);
-
-	if (typeof restLines[0] === "string" && restLines[0].startsWith("\n")) {
-		const trimmed = restLines[0].slice(1);
-		restLines[0] = trimmed;
-		if (trimmed.length === 0) {
-			restLines.shift();
-		}
-	}
+	const restLines = normalizeRestLines(childNodes.slice(1));
 
 	return (
 		<CollapsibleRoot className="relative">

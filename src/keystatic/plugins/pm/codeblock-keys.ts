@@ -60,7 +60,7 @@ const exitWrapper = (state: EditorState, dispatch?: (tr: Transaction) => void) =
 	if (!isTextCursorPlace || stillInCodeblock) {
 		const paragraphType = state.schema.nodes.paragraph;
 		const paragraph = paragraphType?.createAndFill();
-		if (paragraph && !paragraph.isText) {
+		if (paragraph) {
 			const $pos = tr.doc.resolve(posAfter);
 			const index = $pos.index();
 
