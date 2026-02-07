@@ -1,15 +1,11 @@
 import type { Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
-import {
-	fromCodeBlockDocumentToCodeFence,
-	fromCodeFenceToCodeBlockDocument,
-} from "@/libs/annotation/code-block/code-string-converter";
+import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
+import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { fromCodeBlockDocumentToMdast } from "@/libs/annotation/code-block/document-to-mdast";
+import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
 import { isCodeBlock } from "@/libs/annotation/code-block/libs";
-import {
-	fromCodeBlockDocumentToMdast,
-	fromMdastToCodeBlockDocument,
-} from "@/libs/annotation/code-block/mdast-document-converter";
 import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 

@@ -1,10 +1,12 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../mdast-document-converter";
+import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ as fromMdastToCodeBlockDocumentTestable } from "../mdast-to-document";
 import type { AnnotationAttr, AnnotationEvent, AnnotationRegistry, InlineAnnotation, Line, Range } from "../types";
 
-const { fromLineToParagraph, fromParagraphToLine } = __testable__;
+const { fromLineToParagraph } = fromCodeBlockDocumentToMdastTestable;
+const { fromParagraphToLine } = fromMdastToCodeBlockDocumentTestable;
 
 const registry: AnnotationRegistry = new Map([
 	[

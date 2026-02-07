@@ -1,95 +1,16 @@
-import type { Node, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
+import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
 import type { AnnotationConfig } from "../types";
 
 const {
-	hasChildren,
 	getTypePair,
 	createAnnotationRegistry,
 	resolveAnnotationTypeDefinition,
-	isText,
-	isBreak,
-	isMDXJSXTextElement,
-	createBreakNode,
-	createTextNode,
-	createMdastNode,
-	createMdxJsxTextElementNode,
-	toMdxJsxAttributeValueExpression,
+	isCodeBlock,
 	fromAnnotationsToEvents,
 } = __testable__;
-
-describe("type guard / node helper", () => {
-	it("hasChildren는 children 유무를 기준으로 판별한다", () => {
-		const textNode = { type: "text", value: "x" } as Node;
-		const paragraphNode = { type: "paragraph", children: [textNode] } as Node;
-
-		expect(hasChildren(textNode)).toBe(false);
-		expect(hasChildren(paragraphNode)).toBe(true);
-	});
-
-	it("isText / isBreak / isMDXJSXTextElement가 노드 타입을 정확히 판별한다", () => {
-		const textNode = createTextNode("hello");
-		const breakNode = createBreakNode();
-		const mdxTextNode = createMdxJsxTextElementNode("Tooltip", [], []);
-
-		expect(isText(textNode)).toBe(true);
-		expect(isBreak(textNode)).toBe(false);
-		expect(isMDXJSXTextElement(textNode)).toBe(false);
-
-		expect(isBreak(breakNode)).toBe(true);
-		expect(isText(breakNode)).toBe(false);
-
-		expect(isMDXJSXTextElement(mdxTextNode)).toBe(true);
-		expect(isText(mdxTextNode)).toBe(false);
-	});
-
-	it("createTextNode / createBreakNode / createMdastNode가 기본 노드를 생성한다", () => {
-		const textNode = createTextNode("abc");
-		const breakNode = createBreakNode();
-		const strongNode = createMdastNode("strong", [textNode]);
-
-		expect(textNode).toEqual({ type: "text", value: "abc" });
-		expect(breakNode).toEqual({ type: "break" });
-		expect(strongNode).toEqual({
-			type: "strong",
-			children: [{ type: "text", value: "abc" }],
-		});
-	});
-
-	it("createMdxJsxTextElementNode는 primitive/value-expression attribute를 모두 보존한다", () => {
-		const children: PhrasingContent[] = [createTextNode("hello")];
-		const node = createMdxJsxTextElementNode(
-			"Tooltip",
-			[
-				{ name: "content", value: "tip" },
-				{ name: "collapsed", value: null },
-				{ name: "optional", value: undefined },
-				{ name: "open", value: true },
-				{ name: "count", value: 1 },
-				{ name: "meta", value: { a: 1 } },
-				{ name: "items", value: [1, "x"] },
-			],
-			children,
-		);
-
-		expect(node.type).toBe("mdxJsxTextElement");
-		expect(node.name).toBe("Tooltip");
-		expect(node.children).toEqual(children);
-
-		const attrs = node.attributes.filter((attr) => attr.type === "mdxJsxAttribute");
-		const byName = Object.fromEntries(attrs.map((attr) => [attr.name, attr.value]));
-
-		expect(byName.content).toBe("tip");
-		expect(byName.collapsed).toBeNull();
-		expect(byName.optional).toBeUndefined();
-		expect(byName.open).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "true" });
-		expect(byName.count).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "1" });
-		expect(byName.meta).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: '{"a":1}' });
-		expect(byName.items).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: '[1,"x"]' });
-	});
-});
 
 describe("resolveAnnotationTypeDefinition", () => {
 	it("기본 tag definition을 그대로 반환한다", () => {
@@ -193,17 +114,25 @@ describe("createAnnotationRegistry / getTypePair", () => {
 	});
 });
 
-describe("toMdxJsxAttributeValueExpression", () => {
-	it("객체/스칼라 값을 mdxJsxAttributeValueExpression으로 변환한다", () => {
-		const objectValue = { title: "meta.ts", showLineNumbers: true };
-		const objectExpression = toMdxJsxAttributeValueExpression(objectValue);
-		expect(objectExpression.type).toBe("mdxJsxAttributeValueExpression");
-		expect(objectExpression.value).toBe('{"title":"meta.ts","showLineNumbers":true}');
-		expect(objectExpression.data?.estree?.type).toBe("Program");
-		expect(objectExpression.data?.estree?.body[0]?.type).toBe("ExpressionStatement");
+describe("isCodeBlock", () => {
+	it("CodeBlock 노드를 판별한다", () => {
+		expect(
+			isCodeBlock({
+				type: "mdxJsxFlowElement",
+				name: EDITOR_CODE_BLOCK_NAME,
+				attributes: [],
+				children: [],
+			}),
+		).toBe(true);
 
-		const scalarExpression = toMdxJsxAttributeValueExpression(true);
-		expect(scalarExpression.value).toBe("true");
+		expect(
+			isCodeBlock({
+				type: "mdxJsxFlowElement",
+				name: "Callout",
+				attributes: [],
+				children: [],
+			}),
+		).toBe(false);
 	});
 });
 

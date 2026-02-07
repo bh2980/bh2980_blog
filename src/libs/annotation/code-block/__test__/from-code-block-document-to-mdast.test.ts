@@ -2,8 +2,8 @@ import type { PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ as libsTestable } from "../libs";
-import { __testable__ } from "../mdast-document-converter";
+import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ as fromMdastToCodeBlockDocumentTestable } from "../mdast-to-document";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -15,9 +15,9 @@ import type {
 	Range,
 } from "../types";
 
-const fromCodeBlockDocumentToMdast = __testable__.fromCodeBlockDocumentToMdast;
-const fromMdastToCodeBlockDocument = __testable__.fromMdastToCodeBlockDocument;
-const { toMdxJsxAttributeValueExpression } = libsTestable;
+const fromCodeBlockDocumentToMdast = fromCodeBlockDocumentToMdastTestable.fromCodeBlockDocumentToMdast;
+const fromMdastToCodeBlockDocument = fromMdastToCodeBlockDocumentTestable.fromMdastToCodeBlockDocument;
+const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -405,6 +405,43 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		expect(reconstructed).toEqual(input);
 	});
 
+	it("document -> mdast -> document 라운드트립에서 attribute 값 타입을 보존한다", () => {
+		const input = {
+			lang: "ts",
+			meta: { title: "attrs.ts", showLineNumbers: true },
+			lines: [
+				line("hello", [
+					inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [
+						{ name: "content", value: "tip" },
+						{ name: "open", value: true },
+						{ name: "count", value: 2 },
+						{ name: "meta", value: { a: 1 } },
+						{ name: "items", value: [1, "x"] },
+						{ name: "collapsed", value: null },
+					]),
+				]),
+			],
+			annotations: [
+				{
+					...lineWrap("Callout", { start: 0, end: 1 }, 0),
+					attributes: [
+						{ name: "variant", value: "note" },
+						{ name: "open", value: true },
+						{ name: "count", value: 2 },
+						{ name: "meta", value: { a: 1 } },
+						{ name: "items", value: [1, "x"] },
+						{ name: "collapsed", value: null },
+					],
+				},
+			],
+		} satisfies CodeBlockDocument;
+
+		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
+		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
+
+		expect(reconstructed).toEqual(input);
+	});
+
 	it("복잡한 mdast는 mdast -> document -> mdast 라운드트립에서 유지된다", () => {
 		const input: CodeBlockRoot = {
 			type: "mdxJsxFlowElement",
@@ -414,7 +451,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: toMdxJsxAttributeValueExpression({ title: "meta.ts", showLineNumbers: true }),
+					value: toMdxAttrExpr({ title: "meta.ts", showLineNumbers: true }),
 				},
 			],
 			children: [

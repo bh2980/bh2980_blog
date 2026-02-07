@@ -1,24 +1,14 @@
-import { parse } from "acorn";
-import type { Break, Node, PhrasingContent, Root, Text } from "mdast";
-import type {
-	MdxJsxAttribute,
-	MdxJsxAttributeValueExpression,
-	MdxJsxFlowElement,
-	MdxJsxTextElement,
-} from "mdast-util-mdx-jsx";
+import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import type {
 	Annotation,
-	AnnotationAttr,
 	AnnotationConfig,
 	AnnotationEvent,
 	AnnotationRegistry,
 	AnnotationType,
 	CodeBlockRoot,
 } from "./types";
-
-export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
 
 type ResolvedAnnotationTypeDefinition = {
 	[K in keyof typeof ANNOTATION_TYPE_DEFINITION]: {
@@ -113,80 +103,6 @@ export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) =>
 };
 
 export const isCodeBlock = (node: MdxJsxFlowElement): node is CodeBlockRoot => node.name === EDITOR_CODE_BLOCK_NAME;
-export const isText = (node: Node): node is Text => node.type === "text";
-export const isBreak = (node: Node): node is Break => node.type === "break";
-export const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
-
-const createBreakNode = (): Break => ({
-	type: "break",
-});
-
-export const createTextNode = (value: string): Text => ({
-	type: "text",
-	value,
-});
-
-export const createMdastNode = (name: string, children: PhrasingContent[] = []) =>
-	({ type: name, children }) as PhrasingContent;
-
-type EstreeProgram = NonNullable<MdxJsxAttributeValueExpression["data"]>["estree"];
-
-export const toMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
-	const json = JSON.stringify(value);
-
-	const program = parse(`(${json})`, {
-		ecmaVersion: "latest",
-		sourceType: "module",
-	});
-
-	const firstStmt = program.body[0];
-	if (!firstStmt || firstStmt.type !== "ExpressionStatement") {
-		throw new Error("Failed to parse expression: not an ExpressionStatement");
-	}
-
-	const expression = firstStmt.expression;
-
-	return {
-		type: "mdxJsxAttributeValueExpression",
-		value: json,
-		data: {
-			estree: {
-				type: "Program",
-				sourceType: "module",
-				body: [
-					{
-						type: "ExpressionStatement",
-						expression,
-					},
-				],
-			} as unknown as EstreeProgram,
-		},
-	};
-};
-
-const toMdxJsxAttributeValue = (value: unknown): MdxJsxAttribute["value"] => {
-	if (value == null || typeof value === "string") return value;
-	return toMdxJsxAttributeValueExpression(value);
-};
-
-const createMdxJsxAttribute = (name: string, value: unknown): MdxJsxAttribute => ({
-	type: "mdxJsxAttribute",
-	name,
-	value: toMdxJsxAttributeValue(value),
-});
-
-export const createMdxJsxTextElementNode = (
-	name: string,
-	attributes: AnnotationAttr[] = [],
-	children: PhrasingContent[] = [],
-): MdxJsxTextElement => {
-	return {
-		type: "mdxJsxTextElement",
-		name,
-		attributes: attributes.map((attr) => createMdxJsxAttribute(attr.name, attr.value)),
-		children,
-	};
-};
 
 export const fromAnnotationsToEvents = (annotations: Annotation[]) => {
 	const event = annotations
@@ -228,17 +144,9 @@ export const fromAnnotationsToEvents = (annotations: Annotation[]) => {
 };
 
 export const __testable__ = {
-	hasChildren,
 	getTypePair,
 	createAnnotationRegistry,
 	resolveAnnotationTypeDefinition,
-	isText,
-	isBreak,
-	isMDXJSXTextElement,
-	createBreakNode,
-	createTextNode,
-	createMdastNode,
-	createMdxJsxTextElementNode,
-	toMdxJsxAttributeValueExpression,
+	isCodeBlock,
 	fromAnnotationsToEvents,
 };

@@ -1,7 +1,8 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
-import { __testable__ } from "../code-string-converter";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
+import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -12,7 +13,8 @@ import type {
 	Range,
 } from "../types";
 
-const { fromCodeFenceToCodeBlockDocument, fromCodeBlockDocumentToCodeFence } = __testable__;
+const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTestable;
+const { fromCodeBlockDocumentToCodeFence } = fromCodeBlockDocumentToCodeFenceTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],

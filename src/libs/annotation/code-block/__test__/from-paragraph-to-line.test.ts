@@ -2,7 +2,7 @@ import type { Paragraph, Text } from "mdast";
 import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ } from "../mdast-document-converter";
+import { __testable__ } from "../mdast-to-document";
 import type { AnnotationAttr, AnnotationRegistry, InlineAnnotation, Range } from "../types";
 
 const { fromParagraphToLine } = __testable__;

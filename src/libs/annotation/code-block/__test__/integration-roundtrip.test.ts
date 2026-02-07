@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { __testable__ as codeStringTestable } from "../code-string-converter";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ as libsTestable } from "../libs";
-import { __testable__ } from "../mdast-document-converter";
+import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
+import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
+import { __testable__ as fromMdastToCodeBlockDocumentTestable } from "../mdast-to-document";
 import type {
 	AnnotationConfig,
 	CodeBlockDocument,
@@ -12,9 +13,11 @@ import type {
 	Range,
 } from "../types";
 
-const { fromMdastToCodeBlockDocument, fromCodeBlockDocumentToMdast } = __testable__;
-const { fromCodeFenceToCodeBlockDocument, fromCodeBlockDocumentToCodeFence } = codeStringTestable;
-const { toMdxJsxAttributeValueExpression } = libsTestable;
+const { fromMdastToCodeBlockDocument } = fromMdastToCodeBlockDocumentTestable;
+const { fromCodeBlockDocumentToMdast } = fromCodeBlockDocumentToMdastTestable;
+const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTestable;
+const { fromCodeBlockDocumentToCodeFence } = fromCodeBlockDocumentToCodeFenceTestable;
+const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -130,7 +133,7 @@ describe("integration roundtrip (pure functions)", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: toMdxJsxAttributeValueExpression({ title: "pipe.ts", showLineNumbers: true }),
+					value: toMdxAttrExpr({ title: "pipe.ts", showLineNumbers: true }),
 				},
 			],
 			children: [

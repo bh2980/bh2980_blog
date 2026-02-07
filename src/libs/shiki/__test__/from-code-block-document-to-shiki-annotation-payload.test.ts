@@ -1,6 +1,6 @@
 import type { DecorationItem } from "shiki";
 import { describe, expect, it } from "vitest";
-import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-string-converter";
+import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import type { AnnotationConfig, CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import * as remarkModule from "../remark-annotation-to-decoration";
 

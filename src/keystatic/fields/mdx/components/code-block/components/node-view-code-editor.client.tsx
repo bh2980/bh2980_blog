@@ -2,7 +2,7 @@
 
 import type { Root } from "hast";
 import { type ReactNode, useEffect, useState } from "react";
-import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-document-converter";
+import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
 import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 import { highlight } from "@/libs/shiki/code-highligher";
 import { fromCodeBlockDocumentToShikiAnnotationPayload } from "@/libs/shiki/remark-annotation-to-decoration";

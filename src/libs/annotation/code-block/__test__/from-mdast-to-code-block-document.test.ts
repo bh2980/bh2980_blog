@@ -2,12 +2,12 @@ import type { Paragraph, Text } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
-import { __testable__ as libsTestable } from "../libs";
-import { __testable__ } from "../mdast-document-converter";
+import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ } from "../mdast-to-document";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { fromMdastToCodeBlockDocument } = __testable__;
-const { toMdxJsxAttributeValueExpression } = libsTestable;
+const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -27,10 +27,14 @@ const annotationConfig: AnnotationConfig = {
 
 const text = (value: string): Text => ({ type: "text", value });
 const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
-const inline = (name: string, children: MdxJsxTextElement["children"] = []): MdxJsxTextElement => ({
+const inline = (
+	name: string,
+	children: MdxJsxTextElement["children"] = [],
+	attributes: MdxJsxTextElement["attributes"] = [],
+): MdxJsxTextElement => ({
 	type: "mdxJsxTextElement",
 	name,
-	attributes: [],
+	attributes,
 	children,
 });
 const flow = (
@@ -391,7 +395,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: toMdxJsxAttributeValueExpression({ filename: "demo.ts", showLineNumbers: true }),
+					value: toMdxAttrExpr({ filename: "demo.ts", showLineNumbers: true }),
 				},
 			],
 		);
@@ -400,5 +404,49 @@ describe("fromMdastToCodeBlockDocument", () => {
 
 		expect(document.lang).toBe("ts");
 		expect(document.meta).toEqual({ filename: "demo.ts", showLineNumbers: true });
+	});
+
+	it("inline/line annotation의 expression attribute를 document 값으로 파싱한다", () => {
+		const node = codeBlock([
+			paragraph([
+				inline("Tooltip", [text("hello")], [
+					{ type: "mdxJsxAttribute", name: "content", value: "tip" },
+					{ type: "mdxJsxAttribute", name: "open", value: toMdxAttrExpr(true) },
+					{ type: "mdxJsxAttribute", name: "count", value: toMdxAttrExpr(2) },
+					{ type: "mdxJsxAttribute", name: "meta", value: toMdxAttrExpr({ a: 1 }) },
+					{ type: "mdxJsxAttribute", name: "items", value: toMdxAttrExpr([1, "x"]) },
+					{ type: "mdxJsxAttribute", name: "collapsed", value: null },
+				]),
+			]),
+			flow("Callout", [paragraph([text("line")])], [
+				{ type: "mdxJsxAttribute", name: "variant", value: "note" },
+				{ type: "mdxJsxAttribute", name: "open", value: toMdxAttrExpr(true) },
+				{ type: "mdxJsxAttribute", name: "count", value: toMdxAttrExpr(2) },
+				{ type: "mdxJsxAttribute", name: "meta", value: toMdxAttrExpr({ a: 1 }) },
+				{ type: "mdxJsxAttribute", name: "items", value: toMdxAttrExpr([1, "x"]) },
+				{ type: "mdxJsxAttribute", name: "collapsed", value: null },
+			]),
+		]);
+
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const inlineAttrs = document.lines[0]?.annotations[0]?.attributes;
+		const lineAttrs = document.annotations[0]?.attributes;
+
+		expect(inlineAttrs).toEqual([
+			{ name: "content", value: "tip" },
+			{ name: "open", value: true },
+			{ name: "count", value: 2 },
+			{ name: "meta", value: { a: 1 } },
+			{ name: "items", value: [1, "x"] },
+			{ name: "collapsed", value: null },
+		]);
+		expect(lineAttrs).toEqual([
+			{ name: "variant", value: "note" },
+			{ name: "open", value: true },
+			{ name: "count", value: 2 },
+			{ name: "meta", value: { a: 1 } },
+			{ name: "items", value: [1, "x"] },
+			{ name: "collapsed", value: null },
+		]);
 	});
 });

@@ -1,7 +1,7 @@
 import type { Code, Root } from "mdast";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-string-converter";
+import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import type {
 	AnnotationConfig,
 	CodeBlockDocument,
