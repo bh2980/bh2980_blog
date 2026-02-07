@@ -66,9 +66,11 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		const code = getCodeNode(root);
 		const hProperties = getHProperties(code);
 		const decorations = JSON.parse(String(hProperties["data-decorations"] ?? "[]"));
+		const renderTags = JSON.parse(String(hProperties["data-render-tags"] ?? "[]"));
 
 		expect(code.value).toBe("hello world");
 		expect(decorations).toHaveLength(1);
+		expect(renderTags).toEqual(expect.arrayContaining(["Tooltip"]));
 		expect(decorations[0]).toMatchObject({
 			start: { line: 0, character: 0 },
 			end: { line: 0, character: 5 },

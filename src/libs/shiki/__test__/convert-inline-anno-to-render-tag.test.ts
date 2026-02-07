@@ -2,8 +2,8 @@ import type { Element } from "hast";
 import { describe, expect, it } from "vitest";
 import { convertInlineAnnoToRenderTag } from "../transformers";
 
-const runCodeHook = (codeEl: Element) => {
-	const transformer = convertInlineAnnoToRenderTag();
+const runCodeHook = (codeEl: Element, allowedRenderTags: string[] = ["Tooltip", "strong"]) => {
+	const transformer = convertInlineAnnoToRenderTag(allowedRenderTags);
 	const hook = transformer.code;
 	expect(hook).toBeTypeOf("function");
 	hook?.call({} as never, codeEl);
@@ -57,6 +57,8 @@ describe("convertInlineAnnoToRenderTag", () => {
 			"data-anno-__proto__": '{"polluted":true}',
 			"data-anno-dangerouslySetInnerHTML": '{"__html":"<b>x</b>"}',
 			"data-anno-children": '"forbidden"',
+			"data-anno-onClick": '"alert(1)"',
+			"data-anno-href": '"javascript:alert(1)"',
 		});
 		const codeEl: Element = { type: "element", tagName: "code", properties: {}, children: [node] };
 
@@ -67,7 +69,22 @@ describe("convertInlineAnnoToRenderTag", () => {
 		expect(props.variant).toBe("tip");
 		expect(props.dangerouslySetInnerHTML).toBeUndefined();
 		expect(props.children).toBeUndefined();
+		expect(props.onClick).toBeUndefined();
+		expect(props.href).toBeUndefined();
 		expect(Object.hasOwn(props, "__proto__")).toBe(false);
 		expect("polluted" in props).toBe(false);
+	});
+
+	it("허용되지 않은 render tag면 변환하지 않는다", () => {
+		const node = createInlineElement({
+			"data-anno-render": "Callout",
+			"data-anno-variant": '"tip"',
+		});
+		const codeEl: Element = { type: "element", tagName: "code", properties: {}, children: [node] };
+
+		runCodeHook(codeEl, ["Tooltip"]);
+
+		expect(node.tagName).toBe("span");
+		expect(node.properties.variant).toBeUndefined();
 	});
 });

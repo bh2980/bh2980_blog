@@ -8,6 +8,7 @@ import type {
 	InlineAnnotation,
 	LineAnnotation,
 } from "@/libs/annotation/code-block/types";
+import { createAllowedRenderTagsFromConfig } from "./render-policy";
 
 const hasClass = (annotation: InlineAnnotation): annotation is InlineAnnotation & { class: string } =>
 	"class" in annotation && typeof annotation.class === "string";
@@ -123,6 +124,8 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 };
 
 export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationConfig) {
+	const allowedRenderTags = createAllowedRenderTagsFromConfig(annotationConfig);
+
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
 			const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig);
@@ -135,6 +138,7 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 				"data-decorations": JSON.stringify(payload.decorations),
 				"data-line-decorations": JSON.stringify(payload.lineDecorations),
 				"data-line-wrappers": JSON.stringify(payload.lineWrappers),
+				"data-render-tags": JSON.stringify(allowedRenderTags),
 				"data-lang": payload.lang,
 				"data-meta": JSON.stringify(payload.meta),
 			};

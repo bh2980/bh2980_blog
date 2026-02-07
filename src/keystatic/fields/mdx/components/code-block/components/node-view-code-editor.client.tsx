@@ -1,10 +1,11 @@
 "use client";
 
 import type { Root } from "hast";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
 import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 import { highlight } from "@/libs/shiki/code-highligher";
+import { createAllowedRenderTagsFromConfig } from "@/libs/shiki/render-policy";
 import { fromCodeBlockDocumentToShikiAnnotationPayload } from "@/libs/shiki/remark-annotation-to-decoration";
 import { cn } from "@/utils/cn";
 import { useLiveCodeBlockNode } from "../../../hooks/use-live-code-block-node";
@@ -28,6 +29,7 @@ export const NodeViewCodeEditor = ({
 }) => {
 	const codeBlockNode = useLiveCodeBlockNode(proseMirrorId);
 	const [hast, setHast] = useState<Root>();
+	const allowedRenderTags = useMemo(() => createAllowedRenderTagsFromConfig(annotationConfig), [annotationConfig]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: id가 없을 경우에 최초 부여용
 	useEffect(() => {
@@ -51,10 +53,11 @@ export const NodeViewCodeEditor = ({
 			decorations: payload.decorations,
 			lineDecorations: payload.lineDecorations,
 			lineWrappers: [],
+			allowedRenderTags,
 		});
 
 		setHast(highlighedHast);
-	}, [codeBlockNode, lang, annotationConfig]);
+	}, [codeBlockNode, lang, annotationConfig, allowedRenderTags]);
 
 	return (
 		<div className="relative rounded-lg *:m-0!">

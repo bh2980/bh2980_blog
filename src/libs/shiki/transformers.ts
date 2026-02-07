@@ -1,6 +1,7 @@
 import type { Element } from "hast";
 import type { ShikiTransformer } from "shiki";
 import { visit } from "unist-util-visit";
+import { isSafeRenderTag } from "./render-policy";
 
 type HastPropertyValue = string | number | boolean | Array<string | number> | null | undefined;
 
@@ -11,6 +12,37 @@ const toHastPropertyValue = (value: unknown): HastPropertyValue => {
 		return value;
 	}
 	return JSON.stringify(value);
+};
+
+const DENY_PROPS = new Set([
+	"dangerouslysetinnerhtml",
+	"children",
+	"ref",
+	"key",
+	"__proto__",
+	"prototype",
+	"constructor",
+	"srcdoc",
+]);
+
+const URL_PROPS = new Set(["src", "href", "xlink:href", "formaction", "action"]);
+
+const isUnsafeUrlValue = (value: string) => {
+	const normalized = value.trim().toLowerCase();
+	return normalized.startsWith("javascript:") || normalized.startsWith("vbscript:") || normalized.startsWith("data:");
+};
+
+const isForbiddenPropName = (name: string) => {
+	const normalized = name.trim().toLowerCase();
+	if (!normalized) return true;
+	if (normalized.startsWith("on")) return true;
+	return DENY_PROPS.has(normalized);
+};
+
+const isAllowedPropertyValue = (name: string, value: HastPropertyValue) => {
+	const normalizedName = name.trim().toLowerCase();
+	if (!URL_PROPS.has(normalizedName)) return true;
+	return typeof value !== "string" || !isUnsafeUrlValue(value);
 };
 
 export type Meta = Record<string, unknown>;
@@ -145,14 +177,23 @@ const wrapRangeByLines = (
 	lca.children.splice(from, to - from + 1, wrapper);
 };
 
-export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiTransformer => {
+export const addLineWrappers = (
+	lineWrappers: LineWrapperPayload[] = [],
+	allowedRenderTags: readonly string[] = [],
+): ShikiTransformer => {
+	const allowedRenderTagSet = new Set(allowedRenderTags.map((tag) => tag.trim()).filter(isSafeRenderTag));
 	const normalized = lineWrappers
 		.map((wrapper) => ({
 			...wrapper,
 			render: wrapper.render.trim(),
 			attributes: (wrapper.attributes ?? []).filter((attr) => typeof attr.name === "string" && attr.name.length > 0),
 		}))
-		.filter((wrapper) => wrapper.range.start < wrapper.range.end && wrapper.render.length > 0);
+		.filter(
+			(wrapper) =>
+				wrapper.range.start < wrapper.range.end &&
+				wrapper.render.length > 0 &&
+				allowedRenderTagSet.has(wrapper.render),
+		);
 
 	return {
 		code(codeEl: Element) {
@@ -168,8 +209,11 @@ export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiT
 
 				const properties: Record<string, HastPropertyValue> = {};
 				for (const attribute of wrapper.attributes) {
-					if (DENY_PROPS.has(attribute.name)) continue;
-					properties[attribute.name] = toHastPropertyValue(attribute.value);
+					const propName = attribute.name.trim();
+					if (isForbiddenPropName(propName)) continue;
+					const propValue = toHastPropertyValue(attribute.value);
+					if (!isAllowedPropertyValue(propName, propValue)) continue;
+					properties[propName] = propValue;
 				}
 				properties["data-code-block-wrapper"] = "true";
 
@@ -178,21 +222,10 @@ export const addLineWrappers = (lineWrappers: LineWrapperPayload[] = []): ShikiT
 		},
 	};
 };
-
-const DENY_PROPS = new Set([
-	"dangerouslySetInnerHTML",
-	"children",
-	"ref",
-	"key",
-	"__proto__",
-	"prototype",
-	"constructor",
-	"srcDoc", // 필요하면 추가
-]);
-
-const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
-export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
+export const convertInlineAnnoToRenderTag = (allowedRenderTags: readonly string[] = []): ShikiTransformer => ({
 	code(codeEl: Element) {
+		const allowedRenderTagSet = new Set(allowedRenderTags.map((tag) => tag.trim()).filter(isSafeRenderTag));
+
 		visit(codeEl, "element", (el) => {
 			el.properties ??= {};
 			const p = el.properties;
@@ -200,7 +233,8 @@ export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
 			const render = p["data-anno-render"] ?? p.dataAnnoRender;
 
 			if (!render) return;
-			if (typeof render !== "string" || !RENDER_TAG_RE.test(render)) return;
+			if (typeof render !== "string" || !isSafeRenderTag(render)) return;
+			if (!allowedRenderTagSet.has(render.trim())) return;
 
 			el.tagName = render;
 
@@ -212,7 +246,7 @@ export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
 
 					// prop 이름 만들기
 					const propName = k.slice("data-anno-".length);
-					if (!propName || DENY_PROPS.has(propName)) continue;
+					if (isForbiddenPropName(propName)) continue;
 
 					// 값 파싱(문자열일 때만 JSON.parse 시도)
 					let parsed = v;
@@ -224,6 +258,7 @@ export const convertInlineAnnoToRenderTag = (): ShikiTransformer => ({
 						}
 					}
 
+					if (!isAllowedPropertyValue(propName, parsed as HastPropertyValue)) continue;
 					p[propName] = parsed;
 				}
 			}

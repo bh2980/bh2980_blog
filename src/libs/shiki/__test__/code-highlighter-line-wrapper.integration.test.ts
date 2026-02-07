@@ -13,6 +13,7 @@ describe("highlight line wrapper integration", () => {
 			{},
 			{
 				lineWrappers: [{ type: "lineWrap", name: "Callout", range: { start: 0, end: 2 }, order: 0, render: "Callout" }],
+				allowedRenderTags: ["Callout"],
 			},
 		);
 		const pre = hast.children.find((node) => node.type === "element") as Element | undefined;

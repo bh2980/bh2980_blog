@@ -46,16 +46,21 @@ export function rehypeShikiDecorationRender() {
 			const lineWrapperStr = (pre.properties?.["data-line-wrappers"] ?? codeEl.properties?.["data-line-wrappers"]) as
 				| string
 				| undefined;
+			const renderTagsStr = (pre.properties?.["data-render-tags"] ?? codeEl.properties?.["data-render-tags"]) as
+				| string
+				| undefined;
 
 			const meta: Meta = metaStr ? JSON.parse(metaStr) : {};
 			const decorations: DecorationItem[] = decoratonStr ? JSON.parse(decoratonStr) : [];
 			const lineDecorations: LineDecorationPayload[] = lineDecorationStr ? JSON.parse(lineDecorationStr) : [];
 			const lineWrappers: LineWrapperPayload[] = lineWrapperStr ? JSON.parse(lineWrapperStr) : [];
+			const allowedRenderTags: string[] = renderTagsStr ? JSON.parse(renderTagsStr) : [];
 
 			const hast = highlight(code, lang, meta, {
 				decorations,
 				lineDecorations,
 				lineWrappers,
+				allowedRenderTags,
 			});
 
 			// codeToHast 결과는 Root(fragment). 보통 첫 element가 <pre>

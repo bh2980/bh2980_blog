@@ -68,6 +68,7 @@ describe("rehypeShikiDecorationRender", () => {
 				"data-line-decorations": '[{"type":"lineClass","name":"diff","range":{"start":0,"end":1},"class":"diff"}]',
 				"data-line-wrappers":
 					'[{"type":"lineWrap","name":"Callout","range":{"start":0,"end":1},"order":0,"render":"Callout","attributes":[{"name":"variant","value":"tip"}]}]',
+				"data-render-tags": '["Tooltip","Callout"]',
 			},
 		});
 		const tree = createTree(pre);
@@ -98,6 +99,7 @@ describe("rehypeShikiDecorationRender", () => {
 						attributes: [{ name: "variant", value: "tip" }],
 					},
 				],
+				allowedRenderTags: ["Tooltip", "Callout"],
 			},
 		);
 		expect(tree.children[0]).toBe(renderedPre);
@@ -123,6 +125,7 @@ describe("rehypeShikiDecorationRender", () => {
 				"data-decorations": "[]",
 				"data-line-decorations": "[]",
 				"data-line-wrappers": "[]",
+				"data-render-tags": '["Tooltip","Callout"]',
 			},
 		});
 		const tree = createTree(pre);
@@ -137,6 +140,7 @@ describe("rehypeShikiDecorationRender", () => {
 				decorations: [],
 				lineDecorations: [],
 				lineWrappers: [],
+				allowedRenderTags: ["Tooltip", "Callout"],
 			},
 		);
 	});

@@ -14,7 +14,7 @@ type LineWrapperPayload = {
 
 const addLineWrappers = (
 	transformerModule as unknown as {
-		addLineWrappers?: (lineWrappers: LineWrapperPayload[]) => ShikiTransformer;
+		addLineWrappers?: (lineWrappers: LineWrapperPayload[], allowedRenderTags?: string[]) => ShikiTransformer;
 	}
 ).addLineWrappers;
 
@@ -52,12 +52,12 @@ const runCodeHook = (transformer: ShikiTransformer, codeEl: Element) => {
 	hook?.call({} as never, codeEl);
 };
 
-const createTransformer = (lineWrappers: LineWrapperPayload[]) => {
+const createTransformer = (lineWrappers: LineWrapperPayload[], allowedRenderTags: string[] = ["Callout", "Collapsible"]) => {
 	if (typeof addLineWrappers !== "function") {
 		throw new Error("addLineWrappers is not implemented");
 	}
 
-	return addLineWrappers(lineWrappers);
+	return addLineWrappers(lineWrappers, allowedRenderTags);
 };
 
 describe("transformers.code addLineWrappers", () => {
@@ -129,6 +129,8 @@ describe("transformers.code addLineWrappers", () => {
 				attributes: [
 					{ name: "variant", value: "tip" },
 					{ name: "open", value: true },
+					{ name: "onClick", value: "alert(1)" },
+					{ name: "href", value: "javascript:alert(1)" },
 				],
 			},
 		]);
@@ -139,6 +141,8 @@ describe("transformers.code addLineWrappers", () => {
 		const wrapper = code.children[0] as Element;
 		expect(wrapper.properties.variant).toBe("tip");
 		expect(wrapper.properties.open).toBe(true);
+		expect(wrapper.properties.onClick).toBeUndefined();
+		expect(wrapper.properties.href).toBeUndefined();
 	});
 
 	it("유효하지 않은 range(start >= end)는 무시한다", () => {
@@ -157,5 +161,25 @@ describe("transformers.code addLineWrappers", () => {
 
 		expect(code.children[0]).toBe(lines[0]);
 		expect(code.children[2]).toBe(lines[1]);
+	});
+
+	it("허용되지 않은 render tag는 wrapper를 만들지 않는다", () => {
+		const transformer = createTransformer(
+			[
+				{
+					type: "lineWrap",
+					name: "Callout",
+					range: { start: 0, end: 1 },
+					order: 0,
+					render: "Callout",
+				},
+			],
+			["Collapsible"],
+		);
+
+		const { code, lines } = createCodeElement(["line"]);
+		runCodeHook(transformer, code);
+
+		expect(code.children[0]).toBe(lines[0]);
 	});
 });

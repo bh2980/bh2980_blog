@@ -49,10 +49,11 @@ export type AnnotationPayload = {
 	decorations?: DecorationItem[];
 	lineDecorations?: LineDecorationPayload[];
 	lineWrappers?: LineWrapperPayload[];
+	allowedRenderTags?: string[];
 };
 
 export const highlight = (code: string, lang: string, meta: Meta, annotationPayload: AnnotationPayload = {}) => {
-	const { decorations = [], lineDecorations = [], lineWrappers = [] } = annotationPayload;
+	const { decorations = [], lineDecorations = [], lineWrappers = [], allowedRenderTags = [] } = annotationPayload;
 
 	return highlighter.codeToHast(code, {
 		lang,
@@ -62,9 +63,9 @@ export const highlight = (code: string, lang: string, meta: Meta, annotationPayl
 		},
 		decorations,
 		transformers: [
-			convertInlineAnnoToRenderTag(),
+			convertInlineAnnoToRenderTag(allowedRenderTags),
 			addLineDecorations(lineDecorations),
-			addLineWrappers(lineWrappers),
+			addLineWrappers(lineWrappers, allowedRenderTags),
 			addMetaToPre(code, meta),
 		],
 	});
