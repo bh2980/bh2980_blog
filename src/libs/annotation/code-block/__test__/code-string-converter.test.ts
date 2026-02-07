@@ -264,11 +264,48 @@ describe("code-string converter", () => {
 		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 		const first = output.value.split("\n")[0];
 
-		expect(first).toContain("open=true");
+		expect(first).toContain("open");
+		expect(first).not.toContain("open=true");
 		expect(first).toContain("count=2");
 		expect(first).toContain('meta={"a":1}');
 		expect(first).toContain('items=[1,"x"]');
 		expect(first).toContain("collapsed=null");
+	});
+
+	it("document -> code에서 boolean attribute는 true면 key만, false면 생략한다", () => {
+		const input: CodeBlockDocument = {
+			lang: "ts",
+			meta: {},
+			annotations: [
+				lineWrap("Callout", { start: 0, end: 1 }, 0, [
+					{ name: "showLineNumbers", value: true },
+					{ name: "collapsed", value: false },
+					{ name: "count", value: 2 },
+				]),
+			],
+			lines: [
+				line("hello", [
+					inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [
+						{ name: "showLineNumbers", value: true },
+						{ name: "collapsed", value: false },
+					]),
+				]),
+			],
+		};
+
+		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+		const lines = output.value.split("\n");
+		const lineWrapComment = lines[0] ?? "";
+		const inlineComment = lines[1] ?? "";
+
+		expect(lineWrapComment).toContain("showLineNumbers");
+		expect(lineWrapComment).not.toContain("showLineNumbers=true");
+		expect(lineWrapComment).not.toContain("collapsed");
+		expect(lineWrapComment).toContain("count=2");
+
+		expect(inlineComment).toContain("showLineNumbers");
+		expect(inlineComment).not.toContain("showLineNumbers=true");
+		expect(inlineComment).not.toContain("collapsed");
 	});
 
 	it("code -> document에서 annotation attribute의 JSON 타입을 복원한다", () => {
@@ -301,6 +338,26 @@ describe("code-string converter", () => {
 			{ name: "items", value: [1, "x"] },
 			{ name: "collapsed", value: null },
 		]);
+	});
+
+	it("code -> document에서 boolean shorthand attribute를 true로 파싱한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: [
+				`// @${lnWrapTag} Callout {0-1} showLineNumbers`,
+				`// @${inWrapTag} Tooltip {0-5} showLineNumbers`,
+				"hello",
+			].join("\n"),
+		};
+
+		const output = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
+		const lineWrapAttrs = output.annotations[0]?.attributes;
+		const inlineAttrs = output.lines[0]?.annotations[0]?.attributes;
+
+		expect(lineWrapAttrs).toEqual([{ name: "showLineNumbers", value: true }]);
+		expect(inlineAttrs).toEqual([{ name: "showLineNumbers", value: true }]);
 	});
 
 	it("tagOverrides를 설정하면 custom tag로 파싱/직렬화한다", () => {

@@ -25,7 +25,16 @@ const fromAnnotationToCommentLine = (
 		attributes?: { name: string; value: unknown }[];
 	},
 ) => {
-	const attrs = (annotation.attributes ?? []).map((attr) => `${attr.name}=${JSON.stringify(attr.value)}`).join(" ");
+	const attrs = (annotation.attributes ?? [])
+		.map((attr) => {
+			if (typeof attr.value === "boolean") {
+				return attr.value ? attr.name : "";
+			}
+
+			return `${attr.name}=${JSON.stringify(attr.value)}`;
+		})
+		.filter((item) => item.length > 0)
+		.join(" ");
 
 	const body = [`@${annotation.tag}`, annotation.name, `{${annotation.range.start}-${annotation.range.end}}`, attrs]
 		.filter(Boolean)

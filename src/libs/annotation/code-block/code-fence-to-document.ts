@@ -5,7 +5,7 @@ import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./lib
 import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
-const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+))/g;
+const ATTR_RE = /([A-Za-z_][\w-]*)(?:\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+)))?/g;
 
 const parseUnquotedAttrValue = (raw: string): unknown => {
 	try {
@@ -116,7 +116,13 @@ const fromAttributeTextToAnnotationAttrs = (rest: string) => {
 		const unquotedRaw = match[4];
 		let value: unknown;
 
-		if (typeof doubleQuotedRaw === "string" || typeof singleQuotedRaw === "string") {
+		if (
+			doubleQuotedRaw === undefined &&
+			singleQuotedRaw === undefined &&
+			unquotedRaw === undefined
+		) {
+			value = true;
+		} else if (typeof doubleQuotedRaw === "string" || typeof singleQuotedRaw === "string") {
 			const raw = (doubleQuotedRaw ?? singleQuotedRaw ?? "").replace(/\\(["'\\])/g, "$1");
 			value = raw;
 		} else {
