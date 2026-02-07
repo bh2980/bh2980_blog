@@ -1,4 +1,4 @@
-import type { Root } from "mdast";
+import type { Parents, Root, RootContent } from "mdast";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 
 const MDX_MARK_BY_MDAST_MARK = {
@@ -15,49 +15,66 @@ const MDAST_MARK_BY_MDX_MARK = {
 
 type MdastMarkName = keyof typeof MDX_MARK_BY_MDAST_MARK;
 type MdxMarkName = keyof typeof MDAST_MARK_BY_MDX_MARK;
+type MdxTextElementNode = Extract<RootContent, { type: "mdxJsxTextElement" }>;
+type MdastMarkNode = Extract<RootContent, { type: MdastMarkName }>;
+type ParentContentNode = Extract<Parents, RootContent>;
 
-type TreeNode = {
-	type: string;
-	name?: string;
-	children?: TreeNode[];
-	attributes?: unknown[];
+type VisitFrame = {
+	parent: Parents;
+	index: number;
+	insideCodeBlock: boolean;
 };
 
-const hasChildren = (node: TreeNode): node is TreeNode & { children: TreeNode[] } => Array.isArray(node.children);
+const hasChildren = (node: RootContent): node is ParentContentNode =>
+	"children" in node && Array.isArray(node.children);
 
-const isCodeBlockFlow = (node: TreeNode): node is TreeNode & { name: string } =>
+const isCodeBlockFlow = (node: RootContent) =>
 	node.type === "mdxJsxFlowElement" && node.name === EDITOR_CODE_BLOCK_NAME;
 
-const isMdastMark = (node: TreeNode): node is TreeNode & { type: MdastMarkName; children: TreeNode[] } =>
+const isMdastMark = (node: RootContent): node is MdastMarkNode =>
 	node.type === "strong" || node.type === "delete" || node.type === "emphasis";
 
-const isMdxMark = (
-	node: TreeNode,
-): node is TreeNode & { type: "mdxJsxTextElement"; name: MdxMarkName; attributes: unknown[]; children: TreeNode[] } =>
+const isMdxMark = (node: RootContent): node is MdxTextElementNode & { name: MdxMarkName } =>
 	node.type === "mdxJsxTextElement" && (node.name === "strong" || node.name === "del" || node.name === "em");
 
 const walkAndReplace = (
-	nodes: TreeNode[],
-	replace: (node: TreeNode, insideCodeBlock: boolean) => TreeNode | null,
-	insideCodeBlock = false,
+	root: Root,
+	replace: (node: RootContent, insideCodeBlock: boolean) => RootContent | null,
 ) => {
-	for (let index = 0; index < nodes.length; index += 1) {
-		const current = nodes[index];
+	const stack: VisitFrame[] = [];
+
+	for (let index = root.children.length - 1; index >= 0; index -= 1) {
+		stack.push({ parent: root, index, insideCodeBlock: false });
+	}
+
+	while (stack.length > 0) {
+		const current = stack.pop();
 		if (!current) continue;
 
-		const nextInsideCodeBlock = insideCodeBlock || isCodeBlockFlow(current);
-		const replaced = replace(current, insideCodeBlock);
-		const target = replaced ?? current;
-		nodes[index] = target;
+		const node = current.parent.children[current.index];
+		if (!node) continue;
 
-		if (hasChildren(target)) {
-			walkAndReplace(target.children, replace, nextInsideCodeBlock);
+		const replaced = replace(node, current.insideCodeBlock);
+		const target = replaced ?? node;
+		if (replaced) {
+			current.parent.children[current.index] = replaced;
+		}
+
+		const nextInsideCodeBlock = current.insideCodeBlock || isCodeBlockFlow(target);
+		if (!hasChildren(target)) continue;
+
+		for (let index = target.children.length - 1; index >= 0; index -= 1) {
+			stack.push({
+				parent: target,
+				index,
+				insideCodeBlock: nextInsideCodeBlock,
+			});
 		}
 	}
 };
 
 export const convertBodyMdastMarksToMdxJsxTextElement = (mdxAst: Root) => {
-	walkAndReplace(mdxAst.children as TreeNode[], (node, insideCodeBlock) => {
+	walkAndReplace(mdxAst, (node, insideCodeBlock) => {
 		if (insideCodeBlock || !isMdastMark(node)) return null;
 
 		return {
@@ -70,7 +87,7 @@ export const convertBodyMdastMarksToMdxJsxTextElement = (mdxAst: Root) => {
 };
 
 export const convertBodyMdxJsxTextElementToMdastMarks = (mdxAst: Root) => {
-	walkAndReplace(mdxAst.children as TreeNode[], (node, insideCodeBlock) => {
+	walkAndReplace(mdxAst, (node, insideCodeBlock) => {
 		if (insideCodeBlock || !isMdxMark(node)) return null;
 		if (node.attributes.length > 0) return null;
 
