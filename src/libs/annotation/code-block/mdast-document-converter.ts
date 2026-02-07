@@ -3,8 +3,8 @@ import type { MdxJsxAttribute, MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import {
 	composeEventsFromAnnotations,
 	createAnnotationRegistry,
-	createMdxJsxAttributeValueExpression,
 	createMdastNode,
+	createMdxJsxAttributeValueExpression,
 	createMdxJsxTextElementNode,
 	createTextNode,
 	hasChildren,
@@ -65,9 +65,7 @@ const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Lin
 					order: annotations.length,
 					// mdxJsxExpressionAttribute(스프레드)는 제외하고, named attribute는 값 타입 그대로 보존한다.
 					attributes: node.attributes
-						.filter(
-							(attr): attr is MdxJsxAttribute & { name: string } => attr.type === "mdxJsxAttribute",
-						)
+						.filter((attr): attr is MdxJsxAttribute & { name: string } => attr.type === "mdxJsxAttribute")
 						.map<AnnotationAttr>((attr) => ({ name: attr.name, value: attr.value })),
 				};
 
@@ -92,11 +90,10 @@ const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Lin
 	return { value: pureCode, annotations };
 };
 
-const extractCodeBlockHeaderFromMdast = (
-	mdxAst: CodeBlockRoot,
-): Pick<CodeBlockDocument, "lang" | "meta"> => {
+const extractCodeBlockHeaderFromMdast = (mdxAst: CodeBlockRoot): Pick<CodeBlockDocument, "lang" | "meta"> => {
 	const langAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "lang");
-	const lang = langAttr?.type === "mdxJsxAttribute" && typeof langAttr.value === "string" ? langAttr.value : DEFAULT_CODE_LANG;
+	const lang =
+		langAttr?.type === "mdxJsxAttribute" && typeof langAttr.value === "string" ? langAttr.value : DEFAULT_CODE_LANG;
 	const metaAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "meta");
 	let meta: Record<string, CodeBlockMetaValue> = {};
 

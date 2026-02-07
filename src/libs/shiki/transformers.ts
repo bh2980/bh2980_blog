@@ -52,7 +52,11 @@ export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []
 			}
 
 			const existing = lineEl.properties.className;
-			const existingList = Array.isArray(existing) ? existing.map(String) : typeof existing === "string" ? [existing] : [];
+			const existingList = Array.isArray(existing)
+				? existing.map(String)
+				: typeof existing === "string"
+					? [existing]
+					: [];
 			lineEl.properties.className = [...existingList, ...classNames];
 		},
 	};

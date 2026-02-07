@@ -3,9 +3,7 @@ import { toString as hastToString } from "hast-util-to-string";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
 import { highlight } from "./code-highligher";
-import type { LineDecorationPayload, LineWrapperPayload } from "./transformers";
-
-type Meta = Record<string, any>;
+import type { LineDecorationPayload, LineWrapperPayload, Meta } from "./transformers";
 
 function findCodeChild(pre: Element): Element | null {
 	const child = pre.children?.find((c) => c?.type === "element" && c.tagName === "code");
@@ -43,9 +41,8 @@ export function rehypeShikiDecorationRender() {
 			const decoratonStr = (pre.properties?.["data-decorations"] ?? codeEl.properties?.["data-decorations"]) as
 				| string
 				| undefined;
-			const lineDecorationStr = (
-				pre.properties?.["data-line-decorations"] ?? codeEl.properties?.["data-line-decorations"]
-			) as string | undefined;
+			const lineDecorationStr = (pre.properties?.["data-line-decorations"] ??
+				codeEl.properties?.["data-line-decorations"]) as string | undefined;
 			const lineWrapperStr = (pre.properties?.["data-line-wrappers"] ?? codeEl.properties?.["data-line-wrappers"]) as
 				| string
 				| undefined;

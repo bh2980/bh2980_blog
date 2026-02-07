@@ -1,5 +1,10 @@
 import type { Code } from "mdast";
-import { buildAnnotationCommentPattern, formatAnnotationComment, resolveCommentSyntax, type CommentSyntax } from "./comment-syntax";
+import {
+	buildAnnotationCommentPattern,
+	type CommentSyntax,
+	formatAnnotationComment,
+	resolveCommentSyntax,
+} from "./comment-syntax";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
 import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument } from "./types";
@@ -15,13 +20,13 @@ const parseMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const isWhitespace = (ch: string) => ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
 
 	const skipWhitespace = () => {
-		while (index < input.length && isWhitespace(input[index]!)) index += 1;
+		while (index < input.length && isWhitespace(input[index])) index += 1;
 	};
 
 	const readKey = () => {
 		const start = index;
 		while (index < input.length) {
-			const ch = input[index]!;
+			const ch = input[index];
 			if (ch === "=" || isWhitespace(ch)) break;
 			index += 1;
 		}
@@ -30,7 +35,7 @@ const parseMeta = (meta: string): CodeBlockDocument["meta"] => {
 
 	const readUnquotedValue = () => {
 		const start = index;
-		while (index < input.length && !isWhitespace(input[index]!)) index += 1;
+		while (index < input.length && !isWhitespace(input[index])) index += 1;
 		return input.slice(start, index);
 	};
 
@@ -39,7 +44,7 @@ const parseMeta = (meta: string): CodeBlockDocument["meta"] => {
 		let value = "";
 
 		while (index < input.length) {
-			const ch = input[index]!;
+			const ch = input[index];
 
 			if (ch === "\\") {
 				const next = input[index + 1];
@@ -170,11 +175,14 @@ const parseAnnotationLine = (line: string, pattern: RegExp) => {
 
 const serializeAnnotationLine = (
 	commentSyntax: CommentSyntax,
-	annotation: { tag: string; name: string; range: { start: number; end: number }; attributes?: { name: string; value: unknown }[] },
+	annotation: {
+		tag: string;
+		name: string;
+		range: { start: number; end: number };
+		attributes?: { name: string; value: unknown }[];
+	},
 ) => {
-	const attrs = (annotation.attributes ?? [])
-		.map((attr) => `${attr.name}=${JSON.stringify(attr.value)}`)
-		.join(" ");
+	const attrs = (annotation.attributes ?? []).map((attr) => `${attr.name}=${JSON.stringify(attr.value)}`).join(" ");
 
 	const body = [`@${annotation.tag}`, annotation.name, `{${annotation.range.start}-${annotation.range.end}}`, attrs]
 		.filter(Boolean)

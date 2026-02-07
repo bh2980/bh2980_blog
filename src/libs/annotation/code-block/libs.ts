@@ -22,7 +22,9 @@ type ResolvedAnnotationTypeDefinition = {
 
 const TAG_FORMAT_RE = /^[A-Za-z][\w-]*$/;
 
-export const resolveAnnotationTypeDefinition = (annotationConfig: AnnotationConfig): ResolvedAnnotationTypeDefinition => {
+export const resolveAnnotationTypeDefinition = (
+	annotationConfig: AnnotationConfig,
+): ResolvedAnnotationTypeDefinition => {
 	const overrides = annotationConfig.tagOverrides ?? {};
 	const resolved: ResolvedAnnotationTypeDefinition = {
 		inlineClass: {

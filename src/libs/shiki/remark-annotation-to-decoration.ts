@@ -73,10 +73,10 @@ const toLineWrapperPayload = (annotation: LineAnnotation) => {
 	};
 };
 
-export type LineDecorationPayload = ReturnType<typeof toLineDecorationPayload> extends infer T
-	? Exclude<T, undefined>
-	: never;
-export type LineWrapperPayload = ReturnType<typeof toLineWrapperPayload> extends infer T ? Exclude<T, undefined> : never;
+export type LineDecorationPayload =
+	ReturnType<typeof toLineDecorationPayload> extends infer T ? Exclude<T, undefined> : never;
+export type LineWrapperPayload =
+	ReturnType<typeof toLineWrapperPayload> extends infer T ? Exclude<T, undefined> : never;
 
 export type ShikiAnnotationPayload = {
 	code: string;

@@ -1,4 +1,4 @@
-import type { Paragraph, PhrasingContent, Root } from "mdast";
+import type { Paragraph, PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import type { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block/constants";
 import type { ANNOTATION_TYPE_DEFINITION } from "./constants";

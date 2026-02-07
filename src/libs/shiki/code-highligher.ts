@@ -51,12 +51,7 @@ export type AnnotationPayload = {
 	lineWrappers?: LineWrapperPayload[];
 };
 
-export const highlight = (
-	code: string,
-	lang: string,
-	meta: Meta,
-	annotationPayload: AnnotationPayload = {},
-) => {
+export const highlight = (code: string, lang: string, meta: Meta, annotationPayload: AnnotationPayload = {}) => {
 	const { decorations = [], lineDecorations = [], lineWrappers = [] } = annotationPayload;
 
 	return highlighter.codeToHast(code, {
