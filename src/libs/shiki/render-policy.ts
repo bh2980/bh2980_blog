@@ -1,16 +1,7 @@
 import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 
 const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
-const BLOCKED_RENDER_TAGS = new Set([
-	"script",
-	"iframe",
-	"object",
-	"embed",
-	"style",
-	"link",
-	"meta",
-	"base",
-]);
+const BLOCKED_RENDER_TAGS = new Set(["script", "iframe", "object", "embed", "style", "link", "meta", "base"]);
 
 const normalizeRenderTag = (tag: string) => tag.trim();
 
