@@ -25,7 +25,7 @@ const CodeBlockCollapsiblePreview = ({ children }: { children: ReactNode }) => {
 	return (
 		<CollapsibleRoot className="relative">
 			<CollapsibleTrigger className="group relative block w-full text-left" aria-label="Toggle code block collapsible">
-				<ChevronRight className="absolute top-1 -left-3 h-3.5 w-3.5 text-slate-500 transition-transform group-data-[state=open]:rotate-90 dark:text-slate-300" />
+				<ChevronRight className="absolute top-1 -left-3 h-3 w-3 text-slate-400 transition-transform group-data-[state=open]:rotate-90 dark:text-slate-500" />
 				{firstLine}
 			</CollapsibleTrigger>
 			{restLines.length > 0 ? <CollapsibleContent>{restLines}</CollapsibleContent> : null}
