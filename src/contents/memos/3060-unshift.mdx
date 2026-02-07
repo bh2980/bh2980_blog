@@ -14,7 +14,7 @@ tags:
 ```ts
 type Result = Unshift<[1, 2], 0> // [0, 1, 2]
 
-// !collapse(1:30) collapsed
+// @block Collapsible {2-10}
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 
@@ -23,7 +23,6 @@ type cases = [
   Expect<Equal<Unshift<[1, 2], 0>, [0, 1, 2]>>,
   Expect<Equal<Unshift<['1', 2, '3'], boolean>, [boolean, '1', 2, '3']>>,
 ]
-
 ```
 
 ### 풀이
