@@ -33,7 +33,7 @@ type cases = [
   // @ts-expect-error
   MyPick<Todo, 'title' | 'completed' | 'invalid'>,
 ]
-
+ 
 interface Todo {
   title: string
   description: string
@@ -102,7 +102,7 @@ interface Expected2 {
   ```ts
   // @mark Tooltip {15-32} content="객체 `T`가 가진 프로퍼티만 가질 수 있도록 `K`에 대한을 둔다."
   type MyPick<T, K extends keyof T> = {
-  // @mark Tooltip {2-16} content="`K`를 순회하면서 `P`를 꺼내 프로퍼티를 설정하고, 그 값을 `T`에서 가져온다."
+    // @mark Tooltip {2-16} content="`K`를 순회하면서 `P`를 꺼내 프로퍼티를 설정하고, 그 값을 `T`에서 가져온다."
     [P in K]: T[P]
   }
   ```
