@@ -25,7 +25,7 @@ interface Dog {
 
 type MyDogType = LookUp<Cat | Dog, 'dog'> // 기대되는 결과는 `Dog`입니다.
 
-// !collapse(1:30) collapsed
+// @block Collapsible {13-33}
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 
@@ -55,5 +55,4 @@ type cases = [
   // @mark Tooltip {20-41} content="최소한 type 프로퍼티가 있고 그 값 타입이 T여야 한다는 조건(필터)"
   type LookUp<U, T> = U extends { type: T } ? U : never
   ```
-
 </Collapsible>
