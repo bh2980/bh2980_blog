@@ -1,8 +1,7 @@
 import type { DecorationItem } from "shiki";
 import { describe, expect, it } from "vitest";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
 import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
-import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
+import type { AnnotationConfig, CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import * as remarkModule from "../remark-annotation-to-decoration";
 
 type ComposePayloadResult = {
@@ -29,6 +28,18 @@ const composeShikiAnnotationPayloadFromDocument = (
 	}
 ).__testable__?.composeShikiAnnotationPayloadFromDocument;
 
+const testAnnotationConfig: AnnotationConfig = {
+	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
+	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
+	lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+	tagOverrides: {
+		inlineClass: "dec",
+		inlineWrap: "mark",
+		lineClass: "line",
+		lineWrap: "block",
+	},
+};
+
 describe("composeShikiAnnotationPayloadFromDocument", () => {
 	it("공통 payload 변환 함수를 제공해야 한다", () => {
 		expect(composeShikiAnnotationPayloadFromDocument).toBeTypeOf("function");
@@ -52,7 +63,7 @@ describe("composeShikiAnnotationPayloadFromDocument", () => {
 					"const next = 2",
 				].join("\n"),
 			},
-			codeFenceAnnotationConfig,
+			testAnnotationConfig,
 		);
 
 		const payload = composeShikiAnnotationPayloadFromDocument(document);
