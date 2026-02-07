@@ -17,7 +17,7 @@ import type {
 
 const composeCodeBlockRootFromDocument = __testable__.composeCodeBlockRootFromDocument;
 const buildCodeBlockDocumentFromMdast = __testable__.buildCodeBlockDocumentFromMdast;
-const { createMdxJsxAttributeValueExpression } = libsTestable;
+const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -210,6 +210,46 @@ describe("composeCodeBlockRootFromDocument", () => {
 		expect(printCodeBlock(ast)).toBe('p:a + strong(b + Tooltip{content="tip"}(cd) + e) + f');
 	});
 
+	it("inline attribute의 boolean/number/object는 mdx expression 값으로 보존한다", () => {
+		const ast = parse(
+			documentOf({
+				lines: [
+					line("hello", [
+						inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [
+							{ name: "content", value: "tip" },
+							{ name: "open", value: true },
+							{ name: "count", value: 1 },
+							{ name: "meta", value: { a: 1 } },
+							{ name: "collapsed", value: null },
+						]),
+					]),
+				],
+				annotations: [],
+			}),
+		);
+
+		const paragraph = ast.children[0];
+		expect(paragraph?.type).toBe("paragraph");
+		if (!paragraph || paragraph.type !== "paragraph") {
+			throw new Error("paragraph not found");
+		}
+
+		const tooltip = paragraph.children[0];
+		expect(tooltip?.type).toBe("mdxJsxTextElement");
+		if (!tooltip || tooltip.type !== "mdxJsxTextElement") {
+			throw new Error("tooltip node not found");
+		}
+
+		const attrs = tooltip.attributes.filter((attr) => attr.type === "mdxJsxAttribute");
+		const byName = Object.fromEntries(attrs.map((attr) => [attr.name, attr.value]));
+
+		expect(byName.content).toBe("tip");
+		expect(byName.collapsed).toBeNull();
+		expect(byName.open).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "true" });
+		expect(byName.count).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "1" });
+		expect(byName.meta).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: '{"a":1}' });
+	});
+
 	it("동일 range는 priority가 아니라 order 기준으로 중첩 순서를 유지한다", () => {
 		const ast = parse(
 			documentOf({
@@ -374,7 +414,7 @@ describe("composeCodeBlockRootFromDocument", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: createMdxJsxAttributeValueExpression({ title: "meta.ts", showLineNumbers: true }),
+					value: toMdxJsxAttributeValueExpression({ title: "meta.ts", showLineNumbers: true }),
 				},
 			],
 			children: [

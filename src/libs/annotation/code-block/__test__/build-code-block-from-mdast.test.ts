@@ -1,3 +1,5 @@
+import type { Paragraph, Text } from "mdast";
+import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as libsTestable } from "../libs";
@@ -5,7 +7,7 @@ import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
 const { buildCodeBlockDocumentFromMdast } = __testable__;
-const { createMdxJsxAttributeValueExpression } = libsTestable;
+const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -23,21 +25,28 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 
-const text = (value: string) => ({ type: "text", value });
-const paragraph = (children: any[]) => ({ type: "paragraph", children });
-const inline = (name: string, children: any[] = []) => ({
+const text = (value: string): Text => ({ type: "text", value });
+const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
+const inline = (name: string, children: MdxJsxTextElement["children"] = []): MdxJsxTextElement => ({
 	type: "mdxJsxTextElement",
 	name,
 	attributes: [],
 	children,
 });
-const flow = (name: string, children: any[] = [], attributes: any[] = []) => ({
+const flow = (
+	name: string,
+	children: MdxJsxFlowElement["children"] = [],
+	attributes: MdxJsxFlowElement["attributes"] = [],
+): MdxJsxFlowElement => ({
 	type: "mdxJsxFlowElement",
 	name,
 	attributes,
 	children,
 });
-const codeBlock = (children: any[], attributes: any[] = []): CodeBlockRoot => ({
+const codeBlock = (
+	children: CodeBlockRoot["children"],
+	attributes: CodeBlockRoot["attributes"] = [],
+): CodeBlockRoot => ({
 	type: "mdxJsxFlowElement",
 	name: "CodeBlock",
 	attributes,
@@ -382,7 +391,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: createMdxJsxAttributeValueExpression({ filename: "demo.ts", showLineNumbers: true }),
+					value: toMdxJsxAttributeValueExpression({ filename: "demo.ts", showLineNumbers: true }),
 				},
 			],
 		);

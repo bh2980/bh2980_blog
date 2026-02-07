@@ -14,7 +14,7 @@ import type {
 
 const { buildCodeBlockDocumentFromMdast, composeCodeBlockRootFromDocument } = __testable__;
 const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = codeStringTestable;
-const { createMdxJsxAttributeValueExpression } = libsTestable;
+const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -130,7 +130,7 @@ describe("integration roundtrip (pure functions)", () => {
 				{
 					type: "mdxJsxAttribute",
 					name: "meta",
-					value: createMdxJsxAttributeValueExpression({ title: "pipe.ts", showLineNumbers: true }),
+					value: toMdxJsxAttributeValueExpression({ title: "pipe.ts", showLineNumbers: true }),
 				},
 			],
 			children: [

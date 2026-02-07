@@ -1,4 +1,5 @@
-import type { Paragraph } from "mdast";
+import type { Paragraph, Text } from "mdast";
+import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
@@ -81,15 +82,23 @@ const registry: AnnotationRegistry = new Map([
 	],
 ]);
 
-const text = (value: string) => ({ type: "text", value });
-const paragraph = (children: any[]): Paragraph => ({ type: "paragraph", children });
-const inline = (name: string, children: any[] = [], attributes: any[] = []) => ({
+const text = (value: string): Text => ({ type: "text", value });
+const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
+type StrongNode = Extract<Paragraph["children"][number], { type: "strong" }>;
+type LooseMdxTextAttribute =
+	| { type: "mdxJsxAttribute"; name: string; value: unknown }
+	| Extract<MdxJsxTextElement["attributes"][number], { type: "mdxJsxExpressionAttribute" }>;
+const inline = (
+	name: string,
+	children: MdxJsxTextElement["children"] = [],
+	attributes: LooseMdxTextAttribute[] = [],
+): MdxJsxTextElement => ({
 	type: "mdxJsxTextElement",
 	name,
-	attributes,
+	attributes: attributes as MdxJsxTextElement["attributes"],
 	children,
 });
-const strong = (children: any[] = []) => ({ type: "strong", children });
+const strong = (children: StrongNode["children"] = []): StrongNode => ({ type: "strong", children });
 
 const expectedInline = (
 	registryKey: string,
