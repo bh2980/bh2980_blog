@@ -121,26 +121,9 @@ export const createTextNode = (value: string): Text => ({
 export const createMdastNode = (name: string, children: PhrasingContent[] = []) =>
 	({ type: name, children }) as PhrasingContent;
 
-const createMdxJsxAttribute = (name: string, value: any): MdxJsxAttribute => ({
-	type: "mdxJsxAttribute",
-	name,
-	value,
-});
+type EstreeProgram = NonNullable<MdxJsxAttributeValueExpression["data"]>["estree"];
 
-export const createMdxJsxTextElementNode = (
-	name: string,
-	attributes: AnnotationAttr[] = [],
-	children: PhrasingContent[] = [],
-): MdxJsxTextElement => {
-	return {
-		type: "mdxJsxTextElement",
-		name,
-		attributes: attributes.map((attr) => createMdxJsxAttribute(attr.name, attr.value)),
-		children,
-	};
-};
-
-export const createMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
+export const toMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttributeValueExpression => {
 	const json = JSON.stringify(value);
 
 	const program = parse(`(${json})`, {
@@ -167,9 +150,33 @@ export const createMdxJsxAttributeValueExpression = (value: unknown): MdxJsxAttr
 						type: "ExpressionStatement",
 						expression,
 					},
-				] as any,
-			},
+				],
+			} as unknown as EstreeProgram,
 		},
+	};
+};
+
+const toMdxJsxAttributeValue = (value: unknown): MdxJsxAttribute["value"] => {
+	if (value == null || typeof value === "string") return value;
+	return toMdxJsxAttributeValueExpression(value);
+};
+
+const createMdxJsxAttribute = (name: string, value: unknown): MdxJsxAttribute => ({
+	type: "mdxJsxAttribute",
+	name,
+	value: toMdxJsxAttributeValue(value),
+});
+
+export const createMdxJsxTextElementNode = (
+	name: string,
+	attributes: AnnotationAttr[] = [],
+	children: PhrasingContent[] = [],
+): MdxJsxTextElement => {
+	return {
+		type: "mdxJsxTextElement",
+		name,
+		attributes: attributes.map((attr) => createMdxJsxAttribute(attr.name, attr.value)),
+		children,
 	};
 };
 
@@ -213,9 +220,17 @@ export const composeEventsFromAnnotations = (annotations: Annotation[]) => {
 };
 
 export const __testable__ = {
+	hasChildren,
 	getTypePair,
-	createBreakNode,
 	createAnnotationRegistry,
-	createMdxJsxAttributeValueExpression,
+	resolveAnnotationTypeDefinition,
+	isText,
+	isBreak,
+	isMDXJSXTextElement,
+	createBreakNode,
+	createTextNode,
+	createMdastNode,
+	createMdxJsxTextElementNode,
+	toMdxJsxAttributeValueExpression,
 	composeEventsFromAnnotations,
 };

@@ -4,12 +4,12 @@ import {
 	composeEventsFromAnnotations,
 	createAnnotationRegistry,
 	createMdastNode,
-	createMdxJsxAttributeValueExpression,
 	createMdxJsxTextElementNode,
 	createTextNode,
 	hasChildren,
 	isMDXJSXTextElement,
 	isText,
+	toMdxJsxAttributeValueExpression,
 } from "./libs";
 import type {
 	AnnotationAttr,
@@ -251,7 +251,7 @@ const composeCodeBlockRootFromLines = (
 			{
 				type: "mdxJsxAttribute",
 				name: "meta",
-				value: createMdxJsxAttributeValueExpression(meta),
+				value: toMdxJsxAttributeValueExpression(meta),
 			},
 		],
 	};
