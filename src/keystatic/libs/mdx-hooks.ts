@@ -1,16 +1,16 @@
 import type { Root } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import {
-	buildCodeBlockDocumentFromCodeFence,
-	composeCodeFenceFromCodeBlockDocument,
+	fromCodeBlockDocumentToCodeFence,
+	fromCodeFenceToCodeBlockDocument,
 } from "@/libs/annotation/code-block/code-string-converter";
 import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { isCodeBlock } from "@/libs/annotation/code-block/libs";
 import {
-	buildCodeBlockDocumentFromMdast,
-	composeCodeBlockRootFromDocument,
+	fromCodeBlockDocumentToMdast,
+	fromMdastToCodeBlockDocument,
 } from "@/libs/annotation/code-block/mdast-document-converter";
-import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
-import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 
 const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
@@ -18,8 +18,8 @@ const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
 		if (node.lang === "mermaid") return;
 		if (index == null || !parent) return;
 
-		const document = buildCodeBlockDocumentFromCodeFence(node, config);
-		const codeBlockRoot = composeCodeBlockRootFromDocument(document, config);
+		const document = fromCodeFenceToCodeBlockDocument(node, config);
+		const codeBlockRoot = fromCodeBlockDocumentToMdast(document, config);
 		parent.children.splice(index, 1, codeBlockRoot);
 		return [SKIP, index];
 	});
@@ -27,11 +27,11 @@ const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) => {
 
 const walkOnlyInsideCodeblock = (mdxAst: Root, config: AnnotationConfig) => {
 	visit(mdxAst, "mdxJsxFlowElement", (node, index, parent) => {
-		if (node.name !== EDITOR_CODE_BLOCK_NAME) return;
+		if (!isCodeBlock(node)) return;
 		if (index == null || !parent) return;
 
-		const document = buildCodeBlockDocumentFromMdast(node as CodeBlockRoot, config);
-		const codeFence = composeCodeFenceFromCodeBlockDocument(document, config);
+		const document = fromMdastToCodeBlockDocument(node, config);
+		const codeFence = fromCodeBlockDocumentToCodeFence(document, config);
 		parent.children.splice(index, 1, codeFence);
 		return [SKIP, index];
 	});

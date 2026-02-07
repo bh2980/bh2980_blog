@@ -1,6 +1,12 @@
 import { parse } from "acorn";
 import type { Break, Node, PhrasingContent, Root, Text } from "mdast";
-import type { MdxJsxAttribute, MdxJsxAttributeValueExpression, MdxJsxTextElement } from "mdast-util-mdx-jsx";
+import type {
+	MdxJsxAttribute,
+	MdxJsxAttributeValueExpression,
+	MdxJsxFlowElement,
+	MdxJsxTextElement,
+} from "mdast-util-mdx-jsx";
+import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import type {
 	Annotation,
@@ -9,6 +15,7 @@ import type {
 	AnnotationEvent,
 	AnnotationRegistry,
 	AnnotationType,
+	CodeBlockRoot,
 } from "./types";
 
 export const hasChildren = (node: Node | Root): node is Node & { children: Node[] } => "children" in node;
@@ -51,12 +58,12 @@ export const resolveAnnotationTypeDefinition = (
 		const tag = info.tag.trim();
 
 		if (!TAG_FORMAT_RE.test(tag)) {
-			throw new Error(`[buildAnnotationRegistry] ERROR : invalid annotation tag "${info.tag}" for type "${type}"`);
+			throw new Error(`[createAnnotationRegistry] ERROR : invalid annotation tag "${info.tag}" for type "${type}"`);
 		}
 
 		const existingType = usedTags.get(tag);
 		if (existingType && existingType !== type) {
-			throw new Error(`[buildAnnotationRegistry] ERROR : duplicated annotation tag "${tag}"`);
+			throw new Error(`[createAnnotationRegistry] ERROR : duplicated annotation tag "${tag}"`);
 		}
 
 		usedTags.set(tag, type);
@@ -72,7 +79,7 @@ const getTypePair = <T extends AnnotationType>(type: T, definition: ResolvedAnno
 
 export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) => {
 	if (!annotationConfig) {
-		throw new Error("[buildAnnotationRegistry] ERROR : annotationConfig is required");
+		throw new Error("[createAnnotationRegistry] ERROR : annotationConfig is required");
 	}
 
 	const definition = resolveAnnotationTypeDefinition(annotationConfig);
@@ -105,6 +112,7 @@ export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) =>
 	return registry;
 };
 
+export const isCodeBlock = (node: MdxJsxFlowElement): node is CodeBlockRoot => node.name === EDITOR_CODE_BLOCK_NAME;
 export const isText = (node: Node): node is Text => node.type === "text";
 export const isBreak = (node: Node): node is Break => node.type === "break";
 export const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
@@ -180,7 +188,7 @@ export const createMdxJsxTextElementNode = (
 	};
 };
 
-export const composeEventsFromAnnotations = (annotations: Annotation[]) => {
+export const fromAnnotationsToEvents = (annotations: Annotation[]) => {
 	const event = annotations
 		.flatMap((anntation) => {
 			const startEvent: AnnotationEvent = { kind: "open", anno: anntation, pos: anntation.range.start };
@@ -232,5 +240,5 @@ export const __testable__ = {
 	createMdastNode,
 	createMdxJsxTextElementNode,
 	toMdxJsxAttributeValueExpression,
-	composeEventsFromAnnotations,
+	fromAnnotationsToEvents,
 };

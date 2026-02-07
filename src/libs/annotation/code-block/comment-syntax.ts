@@ -27,7 +27,7 @@ export const resolveCommentSyntax = (lang: string): CommentSyntax => {
 	return { prefix: "//", postfix: "" };
 };
 
-export const buildAnnotationCommentPattern = (commentSyntax: CommentSyntax): RegExp => {
+export const fromCommentSyntaxToAnnotationCommentPattern = (commentSyntax: CommentSyntax): RegExp => {
 	const prefix = commentSyntax.prefix.trim();
 	const postfix = commentSyntax.postfix.trim();
 

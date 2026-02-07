@@ -12,8 +12,8 @@ import type {
 	Range,
 } from "../types";
 
-const { buildCodeBlockDocumentFromMdast, composeCodeBlockRootFromDocument } = __testable__;
-const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = codeStringTestable;
+const { fromMdastToCodeBlockDocument, fromCodeBlockDocumentToMdast } = __testable__;
+const { fromCodeFenceToCodeBlockDocument, fromCodeBlockDocumentToCodeFence } = codeStringTestable;
 const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
@@ -113,10 +113,10 @@ describe("integration roundtrip (pure functions)", () => {
 			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0), lineClass("diff", { start: 2, end: 3 }, 1)],
 		};
 
-		const code = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
-		const documentFromCode = buildCodeBlockDocumentFromCodeFence(code, annotationConfig);
-		const mdast = composeCodeBlockRootFromDocument(documentFromCode, annotationConfig);
-		const output = buildCodeBlockDocumentFromMdast(mdast, annotationConfig);
+		const code = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+		const documentFromCode = fromCodeFenceToCodeBlockDocument(code, annotationConfig);
+		const mdast = fromCodeBlockDocumentToMdast(documentFromCode, annotationConfig);
+		const output = fromMdastToCodeBlockDocument(mdast, annotationConfig);
 
 		expect(output).toEqual(input);
 	});
@@ -172,11 +172,11 @@ describe("integration roundtrip (pure functions)", () => {
 			],
 		};
 
-		const document1 = buildCodeBlockDocumentFromMdast(mdastInput, annotationConfig);
-		const code = composeCodeFenceFromCodeBlockDocument(document1, annotationConfig);
-		const document2 = buildCodeBlockDocumentFromCodeFence(code, annotationConfig);
-		const mdastOutput = composeCodeBlockRootFromDocument(document2, annotationConfig);
-		const document3 = buildCodeBlockDocumentFromMdast(mdastOutput, annotationConfig);
+		const document1 = fromMdastToCodeBlockDocument(mdastInput, annotationConfig);
+		const code = fromCodeBlockDocumentToCodeFence(document1, annotationConfig);
+		const document2 = fromCodeFenceToCodeBlockDocument(code, annotationConfig);
+		const mdastOutput = fromCodeBlockDocumentToMdast(document2, annotationConfig);
+		const document3 = fromMdastToCodeBlockDocument(mdastOutput, annotationConfig);
 
 		expect(document3).toEqual(document1);
 	});

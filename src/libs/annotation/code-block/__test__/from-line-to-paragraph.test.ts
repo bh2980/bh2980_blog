@@ -4,7 +4,7 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationAttr, AnnotationEvent, AnnotationRegistry, InlineAnnotation, Line, Range } from "../types";
 
-const { composeParagraphFromLine, buildLineFromParagraph } = __testable__;
+const { fromLineToParagraph, fromParagraphToLine } = __testable__;
 
 const registry: AnnotationRegistry = new Map([
 	[
@@ -125,7 +125,7 @@ const composeInlineEventsFixture = (annotations: InlineAnnotation[]): Annotation
 		});
 
 const parse = (input: Line) =>
-	composeParagraphFromLine(input.value, composeInlineEventsFixture(input.annotations), registry);
+	fromLineToParagraph(input.value, composeInlineEventsFixture(input.annotations), registry);
 
 const printParagraph = (paragraph: Paragraph): string => {
 	const hasChildren = (node: PhrasingContent): node is PhrasingContent & { children: PhrasingContent[] } =>
@@ -176,7 +176,7 @@ const sortInlineAnnotation = (
 	return a.priority - b.priority;
 };
 
-describe("composeParagraphFromLine", () => {
+describe("fromLineToParagraph", () => {
 	it("텍스트만 있는 Line은 text child만 포함한 paragraph를 만든다", () => {
 		const paragraph = parse(line("console.log('x')"));
 
@@ -258,14 +258,14 @@ describe("composeParagraphFromLine", () => {
 		expect(printParagraph(paragraph)).toBe("Tooltip(a + bcde) + f");
 	});
 
-	it("buildLineFromParagraph와의 round-trip에서 Line 계약을 유지한다", () => {
+	it("fromParagraphToLine와의 round-trip에서 Line 계약을 유지한다", () => {
 		const input = line("123456", [
 			inlineClass("emphasis", "mdast", { start: 1, end: 5 }, 0, 0),
 			inlineWrap("Tooltip", "mdx-text", { start: 2, end: 4 }, 0, 1, [{ name: "content", value: "x" }]),
 		]);
 
 		const paragraph = parse(input);
-		const reconstructed = buildLineFromParagraph(paragraph, registry);
+		const reconstructed = fromParagraphToLine(paragraph, registry);
 
 		expect(reconstructed.value).toBe(input.value);
 		expect(reconstructed.annotations.map(normalizeInlineAnnotation).sort(sortInlineAnnotation)).toEqual(

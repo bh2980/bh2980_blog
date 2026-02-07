@@ -1,6 +1,6 @@
 import type { DecorationItem } from "shiki";
 import { describe, expect, it } from "vitest";
-import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
+import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-string-converter";
 import type { AnnotationConfig, CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import * as remarkModule from "../remark-annotation-to-decoration";
 
@@ -26,13 +26,13 @@ type ComposePayloadResult = {
 	}>;
 };
 
-const composeShikiAnnotationPayloadFromDocument = (
+const fromCodeBlockDocumentToShikiAnnotationPayload = (
 	remarkModule as unknown as {
 		__testable__?: {
-			composeShikiAnnotationPayloadFromDocument?: (document: CodeBlockDocument) => ComposePayloadResult;
+			fromCodeBlockDocumentToShikiAnnotationPayload?: (document: CodeBlockDocument) => ComposePayloadResult;
 		};
 	}
-).__testable__?.composeShikiAnnotationPayloadFromDocument;
+).__testable__?.fromCodeBlockDocumentToShikiAnnotationPayload;
 
 const testAnnotationConfig: AnnotationConfig = {
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
@@ -46,17 +46,17 @@ const testAnnotationConfig: AnnotationConfig = {
 	},
 };
 
-describe("composeShikiAnnotationPayloadFromDocument", () => {
+describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 	it("공통 payload 변환 함수를 제공해야 한다", () => {
-		expect(composeShikiAnnotationPayloadFromDocument).toBeTypeOf("function");
+		expect(fromCodeBlockDocumentToShikiAnnotationPayload).toBeTypeOf("function");
 	});
 
 	it("document를 shiki payload(decorations/lineDecorations/lineWrappers)로 변환해야 한다", () => {
-		if (typeof composeShikiAnnotationPayloadFromDocument !== "function") {
-			throw new Error("composeShikiAnnotationPayloadFromDocument is not implemented");
+		if (typeof fromCodeBlockDocumentToShikiAnnotationPayload !== "function") {
+			throw new Error("fromCodeBlockDocumentToShikiAnnotationPayload is not implemented");
 		}
 
-		const document = buildCodeBlockDocumentFromCodeFence(
+		const document = fromCodeFenceToCodeBlockDocument(
 			{
 				type: "code",
 				lang: "ts",
@@ -72,7 +72,7 @@ describe("composeShikiAnnotationPayloadFromDocument", () => {
 			testAnnotationConfig,
 		);
 
-		const payload = composeShikiAnnotationPayloadFromDocument(document);
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
 
 		expect(payload.code).toBe("const value = 1\nconst next = 2");
 		expect(payload.lang).toBe("ts");

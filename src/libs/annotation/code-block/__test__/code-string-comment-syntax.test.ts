@@ -12,7 +12,7 @@ import type {
 	Range,
 } from "../types";
 
-const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = __testable__;
+const { fromCodeFenceToCodeBlockDocument, fromCodeBlockDocumentToCodeFence } = __testable__;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -79,7 +79,7 @@ describe("code-string converter comment syntax", () => {
 			].join("\n"),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, annotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "postcss",
@@ -103,7 +103,7 @@ describe("code-string converter comment syntax", () => {
 			],
 		};
 
-		const output = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
+		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 
 		expect(output.value).toBe(
 			[`/* @${lnWrapTag} Callout {0-2} */`, `/* @${inWrapTag} Tooltip {0-5} content="tip" */`, "hello", "world"].join(

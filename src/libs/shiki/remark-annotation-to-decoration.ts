@@ -1,7 +1,7 @@
 import type { Code, Root } from "mdast";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import { buildCodeBlockDocumentFromCodeFence } from "@/libs/annotation/code-block/code-string-converter";
+import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-string-converter";
 import type {
 	AnnotationConfig,
 	CodeBlockDocument,
@@ -87,7 +87,7 @@ export type ShikiAnnotationPayload = {
 	lineWrappers: LineWrapperPayload[];
 };
 
-export const composeShikiAnnotationPayloadFromDocument = (document: CodeBlockDocument): ShikiAnnotationPayload => {
+export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBlockDocument): ShikiAnnotationPayload => {
 	const decorations: DecorationItem[] = [];
 	const lineDecorations: LineDecorationPayload[] = [];
 	const lineWrappers: LineWrapperPayload[] = [];
@@ -125,8 +125,8 @@ export const composeShikiAnnotationPayloadFromDocument = (document: CodeBlockDoc
 export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationConfig) {
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
-			const document = buildCodeBlockDocumentFromCodeFence(node, annotationConfig);
-			const payload = composeShikiAnnotationPayloadFromDocument(document);
+			const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig);
+			const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
 
 			node.value = payload.code;
 			node.data ??= {};
@@ -143,5 +143,5 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 }
 
 export const __testable__ = {
-	composeShikiAnnotationPayloadFromDocument,
+	fromCodeBlockDocumentToShikiAnnotationPayload,
 };

@@ -17,7 +17,7 @@ const {
 	createMdastNode,
 	createMdxJsxTextElementNode,
 	toMdxJsxAttributeValueExpression,
-	composeEventsFromAnnotations,
+	fromAnnotationsToEvents,
 } = __testable__;
 
 describe("type guard / node helper", () => {
@@ -118,7 +118,7 @@ describe("resolveAnnotationTypeDefinition", () => {
 			resolveAnnotationTypeDefinition({
 				tagOverrides: { inlineClass: "1bad" },
 			}),
-		).toThrowError('[buildAnnotationRegistry] ERROR : invalid annotation tag "1bad" for type "inlineClass"');
+		).toThrowError('[createAnnotationRegistry] ERROR : invalid annotation tag "1bad" for type "inlineClass"');
 	});
 
 	it("서로 다른 type에 동일 tag를 주면 에러를 던진다", () => {
@@ -129,14 +129,14 @@ describe("resolveAnnotationTypeDefinition", () => {
 					inlineWrap: "dup",
 				},
 			}),
-		).toThrowError('[buildAnnotationRegistry] ERROR : duplicated annotation tag "dup"');
+		).toThrowError('[createAnnotationRegistry] ERROR : duplicated annotation tag "dup"');
 	});
 });
 
 describe("createAnnotationRegistry / getTypePair", () => {
 	it("annotationConfig가 없으면 에러를 던진다", () => {
 		expect(() => createAnnotationRegistry(undefined)).toThrowError(
-			"[buildAnnotationRegistry] ERROR : annotationConfig is required",
+			"[createAnnotationRegistry] ERROR : annotationConfig is required",
 		);
 	});
 
@@ -207,9 +207,9 @@ describe("toMdxJsxAttributeValueExpression", () => {
 	});
 });
 
-describe("composeEventsFromAnnotations", () => {
+describe("fromAnnotationsToEvents", () => {
 	it("기본 이벤트 정렬 함수를 제공한다", () => {
-		const events = composeEventsFromAnnotations([
+		const events = fromAnnotationsToEvents([
 			{
 				type: "inlineWrap",
 				typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,

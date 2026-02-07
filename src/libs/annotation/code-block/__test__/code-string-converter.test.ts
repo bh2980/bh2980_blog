@@ -12,7 +12,7 @@ import type {
 	Range,
 } from "../types";
 
-const { buildCodeBlockDocumentFromCodeFence, composeCodeFenceFromCodeBlockDocument } = __testable__;
+const { fromCodeFenceToCodeBlockDocument, fromCodeBlockDocumentToCodeFence } = __testable__;
 
 const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
@@ -115,7 +115,7 @@ describe("code-string converter", () => {
 			].join("\n"),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, annotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "ts",
@@ -146,7 +146,7 @@ describe("code-string converter", () => {
 			],
 		};
 
-		const codeNode = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
+		const codeNode = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 
 		expect(codeNode.type).toBe("code");
 		expect(codeNode.lang).toBe("ts");
@@ -176,8 +176,8 @@ describe("code-string converter", () => {
 			].join("\n"),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, annotationConfig);
-		const output = composeCodeFenceFromCodeBlockDocument(document, annotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
+		const output = fromCodeBlockDocumentToCodeFence(document, annotationConfig);
 
 		expect(document.annotations.map((annotation) => annotation.name)).toEqual(["Callout", "Collapsible"]);
 		expect(document.lines[0]?.annotations.map((annotation) => annotation.name)).toEqual(["Tooltip", "u"]);
@@ -201,8 +201,8 @@ describe("code-string converter", () => {
 			],
 		};
 
-		const code = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
-		const output = buildCodeBlockDocumentFromCodeFence(code, annotationConfig);
+		const code = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+		const output = fromCodeFenceToCodeBlockDocument(code, annotationConfig);
 
 		expect(output).toEqual(input);
 	});
@@ -221,8 +221,8 @@ describe("code-string converter", () => {
 			].join("\n"),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, annotationConfig);
-		const output = composeCodeFenceFromCodeBlockDocument(document, annotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
+		const output = fromCodeBlockDocumentToCodeFence(document, annotationConfig);
 
 		expect(output).toEqual(input);
 	});
@@ -235,8 +235,8 @@ describe("code-string converter", () => {
 			lines: [line("console.log('x')")],
 		};
 
-		const output = composeCodeFenceFromCodeBlockDocument(input, annotationConfig);
-		const parsed = buildCodeBlockDocumentFromCodeFence(output, annotationConfig);
+		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
+		const parsed = fromCodeFenceToCodeBlockDocument(output, annotationConfig);
 
 		expect(output.meta).toBe('title="meta.ts" collapsed');
 		expect(parsed.meta).toEqual({ title: "meta.ts", collapsed: true });
@@ -253,8 +253,8 @@ describe("code-string converter", () => {
 			),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, customTagConfig);
-		const output = composeCodeFenceFromCodeBlockDocument(document, customTagConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
+		const output = fromCodeBlockDocumentToCodeFence(document, customTagConfig);
 
 		expect(document.annotations[0]?.tag).toBe("lw");
 		expect(document.annotations[1]?.tag).toBe("lc");
@@ -272,8 +272,8 @@ describe("code-string converter", () => {
 			value: [`// @${lnWrapTag} Callout {0-1}`, `// @${inWrapTag} Tooltip {0-5}`, "hello"].join("\n"),
 		};
 
-		const document = buildCodeBlockDocumentFromCodeFence(input, customTagConfig);
-		const output = composeCodeFenceFromCodeBlockDocument(document, customTagConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
+		const output = fromCodeBlockDocumentToCodeFence(document, customTagConfig);
 
 		expect(document.annotations[0]?.name).toBe("Callout");
 		expect(document.lines[0]?.annotations[0]?.name).toBe("Tooltip");

@@ -5,7 +5,7 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationAttr, AnnotationRegistry, InlineAnnotation, Range } from "../types";
 
-const { buildLineFromParagraph } = __testable__;
+const { fromParagraphToLine } = __testable__;
 
 const registry: AnnotationRegistry = new Map([
 	[
@@ -137,15 +137,15 @@ const expectedInline = (
 	};
 };
 
-describe("buildLineFromParagraph", () => {
+describe("fromParagraphToLine", () => {
 	it("paragraph 텍스트를 Line.value로 합친다", () => {
-		const line = buildLineFromParagraph(paragraph([text("hello"), text(" "), text("world")]), registry);
+		const line = fromParagraphToLine(paragraph([text("hello"), text(" "), text("world")]), registry);
 
 		expect(line).toEqual({ value: "hello world", annotations: [] });
 	});
 
 	it("mdast inline annotation은 InlineAnnotation으로 반환한다", () => {
-		const line = buildLineFromParagraph(paragraph([text("x"), strong([text("ab")]), text("y")]), registry);
+		const line = fromParagraphToLine(paragraph([text("x"), strong([text("ab")]), text("y")]), registry);
 
 		expect(line).toEqual({
 			value: "xaby",
@@ -154,7 +154,7 @@ describe("buildLineFromParagraph", () => {
 	});
 
 	it("mdx-text inline annotation은 named attribute를 값 타입 그대로 보존한다", () => {
-		const line = buildLineFromParagraph(
+		const line = fromParagraphToLine(
 			paragraph([
 				text("a"),
 				inline(
@@ -183,7 +183,7 @@ describe("buildLineFromParagraph", () => {
 	});
 
 	it("line 타입 registry 항목은 Line.annotations에 포함되지 않는다", () => {
-		const line = buildLineFromParagraph(
+		const line = fromParagraphToLine(
 			paragraph([inline("Collapsible", [text("x")]), inline("LineBadge", [text("y")])]),
 			registry,
 		);
@@ -192,13 +192,13 @@ describe("buildLineFromParagraph", () => {
 	});
 
 	it("알 수 없는 inline node는 annotation 없이 텍스트만 반영한다", () => {
-		const line = buildLineFromParagraph(paragraph([inline("Unknown", [text("a")]), text("b")]), registry);
+		const line = fromParagraphToLine(paragraph([inline("Unknown", [text("a")]), text("b")]), registry);
 
 		expect(line).toEqual({ value: "ab", annotations: [] });
 	});
 
 	it("중첩된 inline annotation도 모두 InlineAnnotation 타입으로 반환한다", () => {
-		const line = buildLineFromParagraph(
+		const line = fromParagraphToLine(
 			paragraph([inline("u", [text("a"), strong([text("b")]), inline("Tooltip", [text("c")])]), text("d")]),
 			registry,
 		);
@@ -217,7 +217,7 @@ describe("buildLineFromParagraph", () => {
 	});
 
 	it("빈 paragraph는 빈 Line을 반환한다", () => {
-		const line = buildLineFromParagraph(paragraph([]), registry);
+		const line = fromParagraphToLine(paragraph([]), registry);
 
 		expect(line).toEqual({ value: "", annotations: [] });
 	});

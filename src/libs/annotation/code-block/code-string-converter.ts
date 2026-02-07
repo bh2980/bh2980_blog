@@ -1,6 +1,6 @@
 import type { Code } from "mdast";
 import {
-	buildAnnotationCommentPattern,
+	fromCommentSyntaxToAnnotationCommentPattern,
 	type CommentSyntax,
 	formatAnnotationComment,
 	resolveCommentSyntax,
@@ -12,7 +12,7 @@ import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBloc
 const DEFAULT_CODE_LANG = "text";
 const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+))/g;
 
-const parseMeta = (meta: string): CodeBlockDocument["meta"] => {
+const fromCodeFenceMetaToDocumentMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
 	const input = meta.trim();
 	let index = 0;
@@ -103,7 +103,7 @@ const parseMeta = (meta: string): CodeBlockDocument["meta"] => {
 	return parsed;
 };
 
-const serializeMeta = (meta: CodeBlockDocument["meta"]) => {
+const fromDocumentMetaToCodeFenceMeta = (meta: CodeBlockDocument["meta"]) => {
 	return Object.entries(meta)
 		.map(([key, value]) => {
 			if (typeof value === "boolean") {
@@ -116,7 +116,7 @@ const serializeMeta = (meta: CodeBlockDocument["meta"]) => {
 		.join(" ");
 };
 
-const parseAttributes = (rest: string) => {
+const fromAttributeTextToAnnotationAttrs = (rest: string) => {
 	const attrs: { name: string; value: string }[] = [];
 
 	for (const match of rest.matchAll(ATTR_RE)) {
@@ -157,7 +157,7 @@ const getStylePayload = (config: AnnotationRegistryItem) => {
 	return {};
 };
 
-const parseAnnotationLine = (line: string, pattern: RegExp) => {
+const fromAnnotationCommentLineToParsedAnnotation = (line: string, pattern: RegExp) => {
 	const match = line.match(pattern);
 	if (!match?.groups) return;
 
@@ -169,11 +169,11 @@ const parseAnnotationLine = (line: string, pattern: RegExp) => {
 		tag: match.groups.tag,
 		name: match.groups.name,
 		range: { start, end },
-		attributes: parseAttributes(match.groups.attrs ?? ""),
+		attributes: fromAttributeTextToAnnotationAttrs(match.groups.attrs ?? ""),
 	};
 };
 
-const serializeAnnotationLine = (
+const fromAnnotationToCommentLine = (
 	commentSyntax: CommentSyntax,
 	annotation: {
 		tag: string;
@@ -191,7 +191,7 @@ const serializeAnnotationLine = (
 	return formatAnnotationComment(commentSyntax, body);
 };
 
-export const buildCodeBlockDocumentFromCodeFence = (
+export const fromCodeFenceToCodeBlockDocument = (
 	codeNode: Code,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
@@ -199,16 +199,16 @@ export const buildCodeBlockDocumentFromCodeFence = (
 	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 	const tagToType = createTagToTypeMap(annotationConfig);
 	const lang = codeNode.lang?.trim() || DEFAULT_CODE_LANG;
-	const meta = parseMeta(codeNode.meta ?? "");
+	const meta = fromCodeFenceMetaToDocumentMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
-	const annotationLinePattern = buildAnnotationCommentPattern(commentSyntax);
+	const annotationLinePattern = fromCommentSyntaxToAnnotationCommentPattern(commentSyntax);
 
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
 	const pendingInline: CodeBlockDocument["lines"][number]["annotations"] = [];
 
 	for (const lineText of codeNode.value.split("\n")) {
-		const parsed = parseAnnotationLine(lineText, annotationLinePattern);
+		const parsed = fromAnnotationCommentLineToParsedAnnotation(lineText, annotationLinePattern);
 
 		if (!parsed) {
 			lines.push({
@@ -281,7 +281,7 @@ export const buildCodeBlockDocumentFromCodeFence = (
 	return { lang, meta, lines, annotations };
 };
 
-export const composeCodeFenceFromCodeBlockDocument = (
+export const fromCodeBlockDocumentToCodeFence = (
 	document: CodeBlockDocument,
 	annotationConfig: AnnotationConfig,
 ): Code => {
@@ -304,7 +304,7 @@ export const composeCodeFenceFromCodeBlockDocument = (
 		const lineAnnotations = lineAnnotationByStart.get(lineIndex) ?? [];
 		for (const annotation of lineAnnotations) {
 			outputLines.push(
-				serializeAnnotationLine(commentSyntax, {
+				fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
 					tag: typeDefinition[annotation.type].tag,
 				}),
@@ -314,7 +314,7 @@ export const composeCodeFenceFromCodeBlockDocument = (
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
 			if (annotation.range.start >= annotation.range.end) continue;
 			outputLines.push(
-				serializeAnnotationLine(commentSyntax, {
+				fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
 					tag: typeDefinition[annotation.type].tag,
 				}),
@@ -327,12 +327,12 @@ export const composeCodeFenceFromCodeBlockDocument = (
 	return {
 		type: "code",
 		lang: document.lang,
-		meta: serializeMeta(document.meta),
+		meta: fromDocumentMetaToCodeFenceMeta(document.meta),
 		value: outputLines.join("\n"),
 	};
 };
 
 export const __testable__ = {
-	buildCodeBlockDocumentFromCodeFence,
-	composeCodeFenceFromCodeBlockDocument,
+	fromCodeFenceToCodeBlockDocument,
+	fromCodeBlockDocumentToCodeFence,
 };

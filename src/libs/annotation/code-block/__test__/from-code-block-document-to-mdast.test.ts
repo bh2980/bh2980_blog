@@ -15,8 +15,8 @@ import type {
 	Range,
 } from "../types";
 
-const composeCodeBlockRootFromDocument = __testable__.composeCodeBlockRootFromDocument;
-const buildCodeBlockDocumentFromMdast = __testable__.buildCodeBlockDocumentFromMdast;
+const fromCodeBlockDocumentToMdast = __testable__.fromCodeBlockDocumentToMdast;
+const fromMdastToCodeBlockDocument = __testable__.fromMdastToCodeBlockDocument;
 const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
@@ -92,8 +92,8 @@ const lineClass = (name: string, range: Range, order: number): LineAnnotation =>
 const line = (value: string, annotations: InlineAnnotation[] = []): Line => ({ value, annotations });
 
 const parse = (document: CodeBlockDocument) => {
-	expect(composeCodeBlockRootFromDocument).toBeTypeOf("function");
-	return composeCodeBlockRootFromDocument(document, annotationConfig);
+	expect(fromCodeBlockDocumentToMdast).toBeTypeOf("function");
+	return fromCodeBlockDocumentToMdast(document, annotationConfig);
 };
 
 const documentOf = (partial: Pick<CodeBlockDocument, "lines" | "annotations">): CodeBlockDocument => ({
@@ -162,15 +162,15 @@ const printCodeBlock = (root: CodeBlockRoot): string => {
 	return root.children.map((node) => printBlock(node)).join("\n");
 };
 
-describe("composeCodeBlockRootFromDocument", () => {
+describe("fromCodeBlockDocumentToMdast", () => {
 	it("CodeBlockDocument -> CodeBlockRoot 변환 함수를 제공한다", () => {
-		expect(composeCodeBlockRootFromDocument).toBeTypeOf("function");
+		expect(fromCodeBlockDocumentToMdast).toBeTypeOf("function");
 	});
 
 	it("annotationConfig 없이 호출하면 에러를 던진다", () => {
 		const document = documentOf({ lines: [], annotations: [] });
-		expect(() => composeCodeBlockRootFromDocument(document, undefined as never)).toThrowError(
-			"[buildAnnotationRegistry] ERROR : annotationConfig is required",
+		expect(() => fromCodeBlockDocumentToMdast(document, undefined as never)).toThrowError(
+			"[createAnnotationRegistry] ERROR : annotationConfig is required",
 		);
 	});
 
@@ -380,8 +380,8 @@ describe("composeCodeBlockRootFromDocument", () => {
 			annotations: [],
 		} satisfies CodeBlockDocument;
 
-		const ast = composeCodeBlockRootFromDocument(input, annotationConfig);
-		const reconstructed = buildCodeBlockDocumentFromMdast(ast, annotationConfig);
+		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
+		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
 
 		expect(reconstructed.lang).toBe(input.lang);
 		expect(reconstructed.meta).toEqual(input.meta);
@@ -399,8 +399,8 @@ describe("composeCodeBlockRootFromDocument", () => {
 			annotations: [lineClass("diff", { start: 0, end: 1 }, 0), lineWrap("Callout", { start: 1, end: 3 }, 1)],
 		} satisfies CodeBlockDocument;
 
-		const ast = composeCodeBlockRootFromDocument(input, annotationConfig);
-		const reconstructed = buildCodeBlockDocumentFromMdast(ast, annotationConfig);
+		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
+		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
 
 		expect(reconstructed).toEqual(input);
 	});
@@ -479,8 +479,8 @@ describe("composeCodeBlockRootFromDocument", () => {
 			],
 		};
 
-		const document = buildCodeBlockDocumentFromMdast(input, annotationConfig);
-		const output = composeCodeBlockRootFromDocument(document, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(input, annotationConfig);
+		const output = fromCodeBlockDocumentToMdast(document, annotationConfig);
 
 		expect(output).toEqual(input);
 	});

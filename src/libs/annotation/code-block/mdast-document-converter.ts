@@ -1,7 +1,7 @@
 import type { Node, Paragraph } from "mdast";
 import type { MdxJsxAttribute, MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import {
-	composeEventsFromAnnotations,
+	fromAnnotationsToEvents,
 	createAnnotationRegistry,
 	createMdastNode,
 	createMdxJsxTextElementNode,
@@ -27,7 +27,7 @@ import type {
 
 const DEFAULT_CODE_LANG = "text";
 
-const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Line => {
+const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line => {
 	let pureCode = "";
 	const annotations: InlineAnnotation[] = [];
 
@@ -90,7 +90,7 @@ const buildLineFromParagraph = (p: Paragraph, registry: AnnotationRegistry): Lin
 	return { value: pureCode, annotations };
 };
 
-const extractCodeBlockHeaderFromMdast = (mdxAst: CodeBlockRoot): Pick<CodeBlockDocument, "lang" | "meta"> => {
+const fromMdastToCodeBlockHeader = (mdxAst: CodeBlockRoot): Pick<CodeBlockDocument, "lang" | "meta"> => {
 	const langAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "lang");
 	const lang =
 		langAttr?.type === "mdxJsxAttribute" && typeof langAttr.value === "string" ? langAttr.value : DEFAULT_CODE_LANG;
@@ -120,7 +120,7 @@ const extractCodeBlockHeaderFromMdast = (mdxAst: CodeBlockRoot): Pick<CodeBlockD
 	return { lang, meta };
 };
 
-const buildCodeBlockBodyFromMdast = (
+const fromMdastToCodeBlockBody = (
 	mdxAst: CodeBlockRoot,
 	registry: AnnotationRegistry,
 ): Pick<CodeBlockDocument, "lines" | "annotations"> => {
@@ -130,7 +130,7 @@ const buildCodeBlockBodyFromMdast = (
 	const visitFlowChildren = (nodes: CodeBlockRoot["children"]) => {
 		nodes.forEach((childNode) => {
 			if (childNode.type === "paragraph") {
-				const line = buildLineFromParagraph(childNode, registry);
+				const line = fromParagraphToLine(childNode, registry);
 				lines.push(line);
 				return;
 			}
@@ -173,18 +173,18 @@ const buildCodeBlockBodyFromMdast = (
 	return { lines, annotations };
 };
 
-export const buildCodeBlockDocumentFromMdast = (
+export const fromMdastToCodeBlockDocument = (
 	mdxAst: CodeBlockRoot,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const { lang, meta } = extractCodeBlockHeaderFromMdast(mdxAst);
-	const { lines, annotations } = buildCodeBlockBodyFromMdast(mdxAst, registry);
+	const { lang, meta } = fromMdastToCodeBlockHeader(mdxAst);
+	const { lines, annotations } = fromMdastToCodeBlockBody(mdxAst, registry);
 
 	return { lang, meta, lines, annotations };
 };
 
-const composeParagraphFromLine = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry): Paragraph => {
+const fromLineToParagraph = (line: string, events: AnnotationEvent[], registry: AnnotationRegistry): Paragraph => {
 	const paragraph: Paragraph = {
 		type: "paragraph",
 		children: [],
@@ -233,7 +233,7 @@ const composeParagraphFromLine = (line: string, events: AnnotationEvent[], regis
 	return paragraph;
 };
 
-const composeCodeBlockRootFromLines = (
+const fromLinesToCodeBlockRoot = (
 	lines: Line[],
 	events: AnnotationEvent[],
 	registry: AnnotationRegistry,
@@ -265,8 +265,8 @@ const composeCodeBlockRootFromLines = (
 			for (let idx = cursor; idx < event.pos; idx += 1) {
 				const line = lines[idx];
 				if (!line) continue;
-				const inlineEvents = composeEventsFromAnnotations(line.annotations);
-				const paragraph = composeParagraphFromLine(line.value, inlineEvents, registry);
+				const inlineEvents = fromAnnotationsToEvents(line.annotations);
+				const paragraph = fromLineToParagraph(line.value, inlineEvents, registry);
 				stack[stack.length - 1]?.children.push(paragraph);
 			}
 
@@ -304,8 +304,8 @@ const composeCodeBlockRootFromLines = (
 		for (let idx = cursor; idx < lines.length; idx += 1) {
 			const line = lines[idx];
 			if (!line) continue;
-			const inlineEvents = composeEventsFromAnnotations(line.annotations);
-			const paragraph = composeParagraphFromLine(line.value, inlineEvents, registry);
+			const inlineEvents = fromAnnotationsToEvents(line.annotations);
+			const paragraph = fromLineToParagraph(line.value, inlineEvents, registry);
 			stack[stack.length - 1]?.children.push(paragraph);
 		}
 	}
@@ -313,24 +313,24 @@ const composeCodeBlockRootFromLines = (
 	return codeBlock;
 };
 
-export const composeCodeBlockRootFromDocument = (
+export const fromCodeBlockDocumentToMdast = (
 	document: CodeBlockDocument,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockRoot => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const lineAnnotationEvents = composeEventsFromAnnotations(document.annotations);
-	return composeCodeBlockRootFromLines(document.lines, lineAnnotationEvents, registry, {
+	const lineAnnotationEvents = fromAnnotationsToEvents(document.annotations);
+	return fromLinesToCodeBlockRoot(document.lines, lineAnnotationEvents, registry, {
 		lang: document.lang,
 		meta: document.meta,
 	});
 };
 
 export const __testable__ = {
-	buildLineFromParagraph,
-	extractCodeBlockHeaderFromMdast,
-	buildCodeBlockBodyFromMdast,
-	buildCodeBlockDocumentFromMdast,
-	composeParagraphFromLine,
-	composeCodeBlockRootFromLines,
-	composeCodeBlockRootFromDocument,
+	fromParagraphToLine,
+	fromMdastToCodeBlockHeader,
+	fromMdastToCodeBlockBody,
+	fromMdastToCodeBlockDocument,
+	fromLineToParagraph,
+	fromLinesToCodeBlockRoot,
+	fromCodeBlockDocumentToMdast,
 };

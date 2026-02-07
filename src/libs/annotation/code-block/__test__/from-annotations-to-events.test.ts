@@ -4,7 +4,7 @@ import { __testable__ } from "../libs";
 import type { Annotation, Range } from "../types";
 
 type AnnotationTypeKey = keyof typeof ANNOTATION_TYPE_DEFINITION;
-const { composeEventsFromAnnotations } = __testable__;
+const { fromAnnotationsToEvents } = __testable__;
 
 const makeAnnotation = <T extends AnnotationTypeKey>({
 	type,
@@ -35,9 +35,9 @@ const makeAnnotation = <T extends AnnotationTypeKey>({
 	} as Extract<Annotation, { type: T }>;
 };
 
-describe("composeEventsFromAnnotations", () => {
+describe("fromAnnotationsToEvents", () => {
 	it("range start=end인 annotation은 이벤트를 만들지 않는다", () => {
-		const events = composeEventsFromAnnotations([
+		const events = fromAnnotationsToEvents([
 			makeAnnotation({
 				type: "inlineWrap",
 				name: "noop",
@@ -63,7 +63,7 @@ describe("composeEventsFromAnnotations", () => {
 			order: 1,
 		});
 
-		const events = composeEventsFromAnnotations([a, b]).map((e) => `${e.kind}@${e.pos}:${e.anno.name}`);
+		const events = fromAnnotationsToEvents([a, b]).map((e) => `${e.kind}@${e.pos}:${e.anno.name}`);
 
 		expect(events).toEqual(["open@0:A", "close@2:A", "open@2:B", "close@4:B"]);
 	});
@@ -82,7 +82,7 @@ describe("composeEventsFromAnnotations", () => {
 			order: 1,
 		});
 
-		const opens = composeEventsFromAnnotations([inner, outer])
+		const opens = fromAnnotationsToEvents([inner, outer])
 			.filter((e) => e.kind === "open")
 			.map((e) => e.anno.name);
 
@@ -103,7 +103,7 @@ describe("composeEventsFromAnnotations", () => {
 			order: 1,
 		});
 
-		const closes = composeEventsFromAnnotations([outer, inner])
+		const closes = fromAnnotationsToEvents([outer, inner])
 			.filter((e) => e.kind === "close")
 			.map((e) => e.anno.name);
 
@@ -131,7 +131,7 @@ describe("composeEventsFromAnnotations", () => {
 			order: 1,
 		});
 
-		const opens = composeEventsFromAnnotations([wrapOrder1, wrapOrder0, classAnno])
+		const opens = fromAnnotationsToEvents([wrapOrder1, wrapOrder0, classAnno])
 			.filter((e) => e.kind === "open" && e.pos === 0)
 			.map((e) => e.anno.name);
 

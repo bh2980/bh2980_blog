@@ -6,7 +6,7 @@ import { __testable__ as libsTestable } from "../libs";
 import { __testable__ } from "../mdast-document-converter";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
-const { buildCodeBlockDocumentFromMdast } = __testable__;
+const { fromMdastToCodeBlockDocument } = __testable__;
 const { toMdxJsxAttributeValueExpression } = libsTestable;
 
 const annotationConfig: AnnotationConfig = {
@@ -109,7 +109,7 @@ const expectedLineClass = (name: string, range: Range, order = 0): LineAnnotatio
 	};
 };
 
-describe("buildCodeBlockDocumentFromMdast", () => {
+describe("fromMdastToCodeBlockDocument", () => {
 	it("기본: lineWrap annotation + line inlineWrap annotation을 문서로 변환한다", () => {
 		const codeBlockNode = codeBlock([
 			{
@@ -141,7 +141,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			},
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(codeBlockNode, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(codeBlockNode, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "text",
@@ -174,7 +174,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			},
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(codeBlockNode, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(codeBlockNode, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{ value: "line1", annotations: [] },
@@ -186,7 +186,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 	it("라인 value에는 태그 문자열이 들어가지 않고 텍스트만 포함한다", () => {
 		const node = codeBlock([paragraph([text("ab"), inline("u", [text("cd")]), text("ef")])]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -203,7 +203,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			paragraph([inline("u", [text("ab")]), text("cd"), inline("Tooltip", [text("efg")]), text("h")]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -219,7 +219,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 	it("inlineWrap range의 end는 exclusive다", () => {
 		const node = codeBlock([paragraph([inline("u", [text("abc")])])]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -235,7 +235,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			paragraph([inline("u", [text("b")]), text("2")]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -252,7 +252,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 	it("중첩 inlineWrap은 같은 라인에서 각자 range를 유지한다", () => {
 		const node = codeBlock([paragraph([inline("u", [text("a"), inline("Tooltip", [text("b")])])])]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -272,7 +272,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			paragraph([text("after")]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([expectedLineWrap("Collapsible", { start: 1, end: 4 })]);
 		expect(document.lines).toEqual([
@@ -293,7 +293,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineWrap("Collapsible", { start: 0, end: 3 }, 0),
@@ -320,7 +320,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			paragraph([text("세번째 줄")]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineWrap("Collapsible", { start: 1, end: 3 }, 0),
@@ -342,7 +342,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			paragraph([text("after")]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineClass("diff", { start: 1, end: 2 }, 0),
@@ -363,7 +363,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			flow("UnknownFlow", [paragraph([text("line2")])]),
 		]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([]);
 		expect(document.lines).toEqual([{ value: "xyz", annotations: [] }]);
@@ -372,7 +372,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 	it("CodeBlock children이 비어있으면 빈 document를 반환한다", () => {
 		const node = codeBlock([]);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "text",
@@ -396,7 +396,7 @@ describe("buildCodeBlockDocumentFromMdast", () => {
 			],
 		);
 
-		const document = buildCodeBlockDocumentFromMdast(node, annotationConfig);
+		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
 
 		expect(document.lang).toBe("ts");
 		expect(document.meta).toEqual({ filename: "demo.ts", showLineNumbers: true });
