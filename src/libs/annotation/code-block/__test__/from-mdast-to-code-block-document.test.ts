@@ -446,7 +446,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			{ name: "count", value: 2 },
 			{ name: "meta", value: { a: 1 } },
 			{ name: "items", value: [1, "x"] },
-			{ name: "collapsed", value: null },
+			{ name: "collapsed", value: true },
 		]);
 		expect(lineAttrs).toEqual([
 			{ name: "variant", value: "note" },
@@ -454,7 +454,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			{ name: "count", value: 2 },
 			{ name: "meta", value: { a: 1 } },
 			{ name: "items", value: [1, "x"] },
-			{ name: "collapsed", value: null },
+			{ name: "collapsed", value: true },
 		]);
 	});
 });
