@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-	WRAPPER_TOOLBAR_NODE_ID_ATTR,
 	createWrapperToolbarPortalStore,
 	resolveWrapperToolbarNodeId,
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
 } from "../wrapper-toolbar-portal-store";
 
 describe("wrapper-toolbar-portal-store", () => {
@@ -71,4 +71,3 @@ describe("resolveWrapperToolbarNodeId", () => {
 		expect(resolveWrapperToolbarNodeId(node)).toBeNull();
 	});
 });
-

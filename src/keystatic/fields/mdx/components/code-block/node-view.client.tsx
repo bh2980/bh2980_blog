@@ -2,7 +2,10 @@
 
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
-import { WRAPPER_TOOLBAR_NODE_ID_ATTR, useWrapperToolbarPortalSnapshot } from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
+import {
+	useWrapperToolbarPortalSnapshot,
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
+} from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
 import { cn } from "@/utils/cn";
 import type { CodeBlockNodeViewProps } from "./component";
 import { CodeBlockToolbar, NodeViewCodeEditor } from "./components";

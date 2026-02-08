@@ -1,8 +1,8 @@
 import { Plugin } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import {
-	WRAPPER_TOOLBAR_NODE_ID_ATTR,
 	resolveWrapperToolbarNodeId,
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
 	wrapperToolbarPortalStore,
 } from "./wrapper-toolbar-portal-store";
 

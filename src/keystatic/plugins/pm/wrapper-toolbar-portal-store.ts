@@ -69,11 +69,9 @@ export const useWrapperToolbarPortalSnapshot = () =>
 
 export const resolveWrapperToolbarNodeId = (nodeDom: unknown): string | null => {
 	if (!(nodeDom instanceof HTMLElement)) return null;
-	const root =
-		nodeDom.matches(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`)
-			? nodeDom
-			: nodeDom.querySelector<HTMLElement>(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`);
+	const root = nodeDom.matches(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`)
+		? nodeDom
+		: nodeDom.querySelector<HTMLElement>(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`);
 
 	return root?.getAttribute(WRAPPER_TOOLBAR_NODE_ID_ATTR) ?? null;
 };
-
