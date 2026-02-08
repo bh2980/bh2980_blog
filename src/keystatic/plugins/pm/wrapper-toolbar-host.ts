@@ -1,5 +1,10 @@
 import { Plugin } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
+import {
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
+	resolveWrapperToolbarNodeId,
+	wrapperToolbarPortalStore,
+} from "./wrapper-toolbar-portal-store";
 
 type WrapperNodeTypeLike = {
 	name: string;
@@ -20,9 +25,7 @@ type ActiveToolbarWrapper = {
 	depth: number;
 	nodeName: string;
 };
-
-const TOOLBAR_ACTIVE_ATTR = "data-wrapper-toolbar-active";
-const TOOLBAR_NODE_ATTR = "data-wrapper-toolbar-node";
+const TOOLBAR_HOST_ATTR = "data-wrapper-toolbar-host";
 
 export const TOOLBAR_WRAPPER_NODE_NAMES = new Set<string>([
 	EDITOR_CODE_BLOCK_NAME,
@@ -59,44 +62,59 @@ export const findActiveToolbarWrapperFromResolvedPos = (
 	return null;
 };
 
-const setToolbarActive = (nodeDom: unknown, active: boolean) => {
-	if (!(nodeDom instanceof HTMLElement)) return;
-	const wrapperRoot =
-		nodeDom.matches(`[${TOOLBAR_NODE_ATTR}]`) ? nodeDom : nodeDom.querySelector<HTMLElement>(`[${TOOLBAR_NODE_ATTR}]`);
-
-	if (!wrapperRoot) return;
-
-	if (active) {
-		wrapperRoot.setAttribute(TOOLBAR_ACTIVE_ATTR, "true");
-		return;
-	}
-	wrapperRoot.removeAttribute(TOOLBAR_ACTIVE_ATTR);
+const resolveWrapperToolbarRoot = (nodeDom: unknown) => {
+	if (!(nodeDom instanceof HTMLElement)) return null;
+	return nodeDom.matches(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`)
+		? nodeDom
+		: nodeDom.querySelector<HTMLElement>(`[${WRAPPER_TOOLBAR_NODE_ID_ATTR}]`);
 };
 
 export const wrapperToolbarHostPlugin = (nodeNames = TOOLBAR_WRAPPER_NODE_NAMES) =>
 	new Plugin({
 		view(view) {
 			let editorView = view;
-			let activePos: number | null = null;
+			const host = document.createElement("div");
+			host.setAttribute(TOOLBAR_HOST_ATTR, "true");
+			document.body.append(host);
+			wrapperToolbarPortalStore.setHost(host);
+
+			const syncHostPosition = (nodeDom: unknown) => {
+				const wrapperRoot = resolveWrapperToolbarRoot(nodeDom);
+				if (!wrapperRoot) {
+					host.style.display = "none";
+					return null;
+				}
+
+				const rect = wrapperRoot.getBoundingClientRect();
+				host.style.display = "block";
+				host.style.left = `${rect.left + rect.width / 2}px`;
+				host.style.top = `${rect.bottom + 8}px`;
+				return wrapperRoot;
+			};
 
 			const syncActiveWrapper = () => {
 				const activeWrapper = findActiveToolbarWrapperFromResolvedPos(editorView.state.selection.$from, nodeNames);
-				const nextPos = activeWrapper?.pos ?? null;
-
-				if (activePos != null && activePos !== nextPos) {
-					setToolbarActive(editorView.nodeDOM(activePos), false);
-				}
-
-				if (nextPos == null) {
-					activePos = null;
+				if (!activeWrapper) {
+					host.style.display = "none";
+					wrapperToolbarPortalStore.setActiveWrapperId(null);
 					return;
 				}
 
-				setToolbarActive(editorView.nodeDOM(nextPos), true);
-				activePos = nextPos;
+				const nodeDom = editorView.nodeDOM(activeWrapper.pos);
+				syncHostPosition(nodeDom);
+				const wrapperId = resolveWrapperToolbarNodeId(nodeDom);
+				wrapperToolbarPortalStore.setActiveWrapperId(wrapperId);
+			};
+			const syncOnViewportChange = () => {
+				const activeWrapper = findActiveToolbarWrapperFromResolvedPos(editorView.state.selection.$from, nodeNames);
+				if (!activeWrapper) return;
+				const nodeDom = editorView.nodeDOM(activeWrapper.pos);
+				syncHostPosition(nodeDom);
 			};
 
 			syncActiveWrapper();
+			window.addEventListener("scroll", syncOnViewportChange, true);
+			window.addEventListener("resize", syncOnViewportChange);
 
 			return {
 				update(nextView) {
@@ -104,8 +122,11 @@ export const wrapperToolbarHostPlugin = (nodeNames = TOOLBAR_WRAPPER_NODE_NAMES)
 					syncActiveWrapper();
 				},
 				destroy() {
-					if (activePos == null) return;
-					setToolbarActive(editorView.nodeDOM(activePos), false);
+					window.removeEventListener("scroll", syncOnViewportChange, true);
+					window.removeEventListener("resize", syncOnViewportChange);
+					wrapperToolbarPortalStore.setActiveWrapperId(null);
+					wrapperToolbarPortalStore.setHost(null);
+					host.remove();
 				},
 			};
 		},
