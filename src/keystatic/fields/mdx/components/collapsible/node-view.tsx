@@ -27,14 +27,13 @@ export const CollapsibleNodeView = ({ onRemove, children }: CollapsibleNodeViewP
 				<ChevronRight className="size-3 stroke-black" />
 			</span>
 			{children}
-			<div data-wrapper-toolbar-ui className="pointer-events-auto absolute right-2 bottom-2" data-ks-stop-event>
+			<div data-wrapper-toolbar-ui className="pointer-events-auto absolute right-2 bottom-2">
 				<Button
 					onClick={onRemove}
 					onMouseDown={stop}
 					variant={"destructive"}
 					size="icon-sm"
 					className="size-6"
-					data-ks-stop-event
 					aria-label="Remove collapsible"
 				>
 					<Trash2 className="size-3" />

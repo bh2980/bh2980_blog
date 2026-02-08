@@ -52,13 +52,12 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 			<div
 				data-wrapper-toolbar-ui
 				className="pointer-events-auto absolute right-3 bottom-3 left-3 items-center justify-between gap-3 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm"
-				data-ks-stop-event
 			>
 				<Select value={calloutType} onValueChange={(v) => onChange({ ...value, variant: v as CalloutType })}>
-					<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stop} data-ks-stop-event>
+					<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stop}>
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent onMouseDown={stop} data-ks-stop-event>
+					<SelectContent onMouseDown={stop}>
 						{CALLOUT_TYPES.map((typeOption) => (
 							<SelectItem key={typeOption.value} value={typeOption.value}>
 								{typeOption.label}
@@ -72,7 +71,6 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 					size="icon"
 					onClick={onRemove}
 					onMouseDown={stop}
-					data-ks-stop-event
 					aria-label="Remove callout"
 				>
 					<Trash2 className="h-4 w-4" />
