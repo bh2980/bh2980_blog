@@ -22,8 +22,10 @@ export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 	};
 
 	return (
-		<div className={cn("flex flex-col gap-2 rounded-lg", props.isSelected && "outline-2 outline-offset-8")}>
-			<CodeBlockToolbar {...props} />
+		<div
+			data-wrapper-toolbar-node="CodeBlock"
+			className={cn("relative flex flex-col gap-2 rounded-lg pb-14", props.isSelected && "outline-2 outline-offset-8")}
+		>
 			<NodeViewCodeEditor
 				nodeViewChildren={props.children}
 				lang={props.value.lang}
@@ -31,6 +33,13 @@ export const CodeBlockNodeView = (props: CodeBlockNodeViewProps) => {
 				proseMirrorId={props.value.id}
 				initProseMirrorId={initProseMirrorId}
 			/>
+			<div
+				data-wrapper-toolbar-ui
+				data-ks-stop-event
+				className="pointer-events-auto absolute right-2 bottom-2 left-2 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm"
+			>
+				<CodeBlockToolbar {...props} />
+			</div>
 		</div>
 	);
 };

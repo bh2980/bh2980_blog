@@ -1,5 +1,5 @@
 import { ChevronRight, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
@@ -12,15 +12,34 @@ type CollapsibleNodeViewProps = {
 };
 
 export const CollapsibleNodeView = ({ onRemove, children }: CollapsibleNodeViewProps) => {
+	const stop = (e: MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		e.nativeEvent?.stopImmediatePropagation?.();
+	};
+
 	return (
-		<div className={cn("relative flex flex-col rounded-sm", "outline-1 outline-border outline-t- outline-offset-2")}>
+		<div
+			data-wrapper-toolbar-node="Collapsible"
+			className={cn("relative flex flex-col rounded-sm pb-10", "outline-1 outline-border outline-t- outline-offset-2")}
+		>
 			<span className="absolute top-1 -left-3">
 				<ChevronRight className="size-3 stroke-black" />
 			</span>
-			<Button onClick={onRemove} variant={"destructive"} size="icon-sm" className="absolute top-0 right-0 size-5">
-				<Trash2 className="size-3" />
-			</Button>
 			{children}
+			<div data-wrapper-toolbar-ui className="pointer-events-auto absolute right-2 bottom-2" data-ks-stop-event>
+				<Button
+					onClick={onRemove}
+					onMouseDown={stop}
+					variant={"destructive"}
+					size="icon-sm"
+					className="size-6"
+					data-ks-stop-event
+					aria-label="Remove collapsible"
+				>
+					<Trash2 className="size-3" />
+				</Button>
+			</div>
 		</div>
 	);
 };

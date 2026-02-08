@@ -435,3 +435,11 @@
 		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[counter(step)];
 	}
 }
+
+[data-wrapper-toolbar-node] [data-wrapper-toolbar-ui] {
+	display: none;
+}
+
+[data-wrapper-toolbar-node][data-wrapper-toolbar-active="true"] [data-wrapper-toolbar-ui] {
+	display: flex;
+}
