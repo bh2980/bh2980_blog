@@ -1,44 +1,49 @@
-import { ChevronRight, Trash2 } from "lucide-react";
-import type { MouseEvent, ReactNode } from "react";
+"use client";
+
+import { ChevronRight, PanelTopOpen, Trash2 } from "lucide-react";
+import { useId } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Toggle } from "@/components/ui/toggle";
+import { WRAPPER_TOOLBAR_NODE_ID_ATTR, useWrapperToolbarPortalSnapshot } from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
 import { cn } from "@/utils/cn";
+import type { CollapsibleNodeViewProps } from "./component";
 
-type CollapsibleNodeViewProps = {
-	value: object;
-	onChange(value: object): void;
-	onRemove(): void;
-	isSelected: boolean;
-	children: ReactNode;
-};
-
-export const CollapsibleNodeView = ({ onRemove, children }: CollapsibleNodeViewProps) => {
-	const stop = (e: MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		e.nativeEvent?.stopImmediatePropagation?.();
-	};
+export const CollapsibleNodeView = ({ onRemove, children, isSelected, value, onChange }: CollapsibleNodeViewProps) => {
+	const wrapperNodeId = useId();
+	const toolbarState = useWrapperToolbarPortalSnapshot();
 
 	return (
 		<div
 			data-wrapper-toolbar-node="Collapsible"
-			className={cn("relative flex flex-col rounded-sm pb-10", "outline-1 outline-border outline-t- outline-offset-2")}
+			{...{ [WRAPPER_TOOLBAR_NODE_ID_ATTR]: wrapperNodeId }}
+			className={cn("relative flex flex-col rounded-sm border", isSelected && "outline-2 outline-offset-8")}
 		>
-			<span className="absolute top-1 -left-3">
+			<span className="absolute top-2.5 -left-3">
 				<ChevronRight className="size-3 stroke-black" />
 			</span>
 			{children}
-			<div data-wrapper-toolbar-ui className="pointer-events-auto absolute right-2 bottom-2">
-				<Button
-					onClick={onRemove}
-					onMouseDown={stop}
-					variant={"destructive"}
-					size="icon-sm"
-					className="size-6"
-					aria-label="Remove collapsible"
-				>
-					<Trash2 className="size-3" />
-				</Button>
-			</div>
+			{toolbarState.host && toolbarState.activeWrapperId === wrapperNodeId
+				? createPortal(
+						<div className="flex rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
+							<ButtonGroup>
+								<Toggle
+									size={"sm"}
+									variant={"outline"}
+									pressed={value.defaultOpen}
+									onPressedChange={(pressed) => onChange({ ...value, defaultOpen: pressed })}
+								>
+									<PanelTopOpen />
+								</Toggle>
+								<Button variant={"destructive"} onClick={onRemove} size="icon-sm">
+									<Trash2 />
+								</Button>
+							</ButtonGroup>
+						</div>,
+						toolbarState.host,
+					)
+				: null}
 		</div>
 	);
 };
