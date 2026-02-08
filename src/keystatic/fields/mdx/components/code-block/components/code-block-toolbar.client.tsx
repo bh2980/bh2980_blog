@@ -16,7 +16,10 @@ export const CodeBlockToolbar = ({ value, onChange, onRemove }: CodeBlockNodeVie
 	const handleBlurTitle = (title: string) => onChange({ ...value, meta: { ...value.meta, title } });
 
 	return (
-		<div className="flex justify-between">
+		<div
+			className="pointer-events-auto absolute right-2 -bottom-[120%] left-2 flex justify-between rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm"
+			data-wrapper-toolbar-ui
+		>
 			<div className="flex gap-2">
 				<LanguageSelector value={value} onChange={onChange} />
 				<BlurChangeInput defaultValue={title} onBlur={handleBlurTitle} />
