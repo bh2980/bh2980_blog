@@ -63,6 +63,7 @@ const toMdxAttrExpr = (value: unknown): MdxJsxAttributeValueExpression => {
 };
 
 const toMdxAttrValue = (value: unknown): MdxJsxAttribute["value"] => {
+	if (value === null) return toMdxAttrExpr(null);
 	if (value == null || typeof value === "string") return value;
 	return toMdxAttrExpr(value);
 };

@@ -435,3 +435,17 @@
 		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[counter(step)];
 	}
 }
+
+[data-wrapper-toolbar-host="true"] {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 70;
+	display: none;
+	pointer-events: none;
+	transform: translateX(-50%);
+}
+
+[data-wrapper-toolbar-host="true"] > * {
+	pointer-events: auto;
+}

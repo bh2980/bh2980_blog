@@ -20,6 +20,7 @@ const isText = (node: Node): node is Text => node.type === "text";
 const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
 
 const toDocAttrValue = (value: MdxJsxAttribute["value"]): unknown => {
+	if (value === null) return true;
 	if (value == null || typeof value === "string") return value;
 	if (typeof value !== "object") return value;
 	if (value.type !== "mdxJsxAttributeValueExpression" || typeof value.value !== "string") return value;
