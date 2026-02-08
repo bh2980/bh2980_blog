@@ -6,7 +6,10 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Toggle } from "@/components/ui/toggle";
-import { WRAPPER_TOOLBAR_NODE_ID_ATTR, useWrapperToolbarPortalSnapshot } from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
+import {
+	useWrapperToolbarPortalSnapshot,
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
+} from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
 import { cn } from "@/utils/cn";
 import type { CollapsibleNodeViewProps } from "./component";
 
@@ -20,7 +23,7 @@ export const CollapsibleNodeView = ({ onRemove, children, isSelected, value, onC
 			{...{ [WRAPPER_TOOLBAR_NODE_ID_ATTR]: wrapperNodeId }}
 			className={cn("relative flex flex-col rounded-sm border", isSelected && "outline-2 outline-offset-8")}
 		>
-			<span className="absolute top-2.5 -left-3">
+			<span className="absolute top-1 -left-3">
 				<ChevronRight className="size-3 stroke-black" />
 			</span>
 			{children}
@@ -31,7 +34,7 @@ export const CollapsibleNodeView = ({ onRemove, children, isSelected, value, onC
 								<Toggle
 									size={"sm"}
 									variant={"outline"}
-									pressed={value.defaultOpen}
+									pressed={value.defaultOpen ?? false}
 									onPressedChange={(pressed) => onChange({ ...value, defaultOpen: pressed })}
 								>
 									<PanelTopOpen />
