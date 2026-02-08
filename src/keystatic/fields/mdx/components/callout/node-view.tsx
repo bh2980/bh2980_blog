@@ -1,13 +1,17 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import { type MouseEvent, useId } from "react";
 import { createPortal } from "react-dom";
 import { Callout } from "@/components/mdx/callout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { WRAPPER_TOOLBAR_NODE_ID_ATTR, useWrapperToolbarPortalSnapshot } from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
+import {
+	useWrapperToolbarPortalSnapshot,
+	WRAPPER_TOOLBAR_NODE_ID_ATTR,
+} from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
 import { cn } from "@/utils/cn";
+import type { CalloutNodeViewProps, CalloutVariant } from "./component";
 
 const CALLOUT_TYPES = [
 	{ label: "NOTE", value: "note" },
@@ -17,31 +21,13 @@ const CALLOUT_TYPES = [
 	{ label: "DANGER", value: "danger" },
 ] as const;
 
-type CalloutType = (typeof CALLOUT_TYPES)[number]["value"];
-
-type CalloutNodeViewProps = {
-	value: {
-		readonly variant: "note" | "tip" | "info" | "warning" | "danger";
-		readonly description: string;
-	};
-	onChange(value: {
-		readonly variant: "note" | "tip" | "info" | "warning" | "danger";
-		readonly description: string;
-	}): void;
-	onRemove(): void;
-	isSelected: boolean;
-	children: ReactNode;
-};
-
 export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, children }: CalloutNodeViewProps) => {
-	const calloutType = (value.variant ?? "note") as CalloutType;
+	const calloutType = (value.variant ?? "note") as CalloutVariant;
 	const wrapperNodeId = useId();
 	const toolbarState = useWrapperToolbarPortalSnapshot();
-
-	const stop = (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		e.nativeEvent?.stopImmediatePropagation?.();
+	const stopEditorEvent = (event: MouseEvent) => {
+		event.preventDefault();
+		event.stopPropagation();
 	};
 
 	return (
@@ -49,7 +35,7 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 			data-wrapper-toolbar-node="Callout"
 			{...{ [WRAPPER_TOOLBAR_NODE_ID_ATTR]: wrapperNodeId }}
 			className={cn(
-				"relative flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4",
+				"relative flex flex-col gap-3 rounded-lg",
 				isSelected && "outline-2 outline-slate-500 outline-offset-2",
 			)}
 		>
@@ -58,12 +44,15 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 			</Callout>
 			{toolbarState.host && toolbarState.activeWrapperId === wrapperNodeId
 				? createPortal(
-						<div className="flex min-w-[320px] items-center justify-between gap-3 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
-							<Select value={calloutType} onValueChange={(nextValue) => onChange({ ...value, variant: nextValue as CalloutType })}>
-								<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stop}>
+						<div className="flex items-center justify-between gap-3 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
+							<Select
+								value={calloutType}
+								onValueChange={(nextValue) => onChange({ ...value, variant: nextValue as CalloutVariant })}
+							>
+								<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stopEditorEvent}>
 									<SelectValue />
 								</SelectTrigger>
-								<SelectContent onMouseDown={stop}>
+								<SelectContent className="z-80">
 									{CALLOUT_TYPES.map((typeOption) => (
 										<SelectItem key={typeOption.value} value={typeOption.value}>
 											{typeOption.label}
@@ -76,7 +65,7 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 								variant="destructive"
 								size="icon"
 								onClick={onRemove}
-								onMouseDown={stop}
+								onMouseDown={stopEditorEvent}
 								aria-label="Remove callout"
 							>
 								<Trash2 className="h-4 w-4" />
