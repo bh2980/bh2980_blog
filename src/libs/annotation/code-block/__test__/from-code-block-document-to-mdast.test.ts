@@ -244,7 +244,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		const byName = Object.fromEntries(attrs.map((attr) => [attr.name, attr.value]));
 
 		expect(byName.content).toBe("tip");
-		expect(byName.collapsed).toBeNull();
+		expect(byName.collapsed).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "null" });
 		expect(byName.open).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "true" });
 		expect(byName.count).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: "1" });
 		expect(byName.meta).toMatchObject({ type: "mdxJsxAttributeValueExpression", value: '{"a":1}' });
