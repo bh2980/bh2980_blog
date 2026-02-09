@@ -95,6 +95,25 @@ export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []
 		}))
 		.filter((decoration) => decoration.range.start < decoration.range.end && decoration.class.length > 0);
 
+	const toClassList = (value: unknown): string[] => {
+		if (Array.isArray(value)) {
+			return value
+				.map((item) => String(item))
+				.flatMap((item) => item.split(/\s+/))
+				.map((item) => item.trim())
+				.filter((item) => item.length > 0);
+		}
+
+		if (typeof value === "string") {
+			return value
+				.split(/\s+/)
+				.map((item) => item.trim())
+				.filter((item) => item.length > 0);
+		}
+
+		return [];
+	};
+
 	return {
 		line(lineEl: Element, lineNumber: number) {
 			const lineIndex = lineNumber - 1;
@@ -107,13 +126,10 @@ export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []
 				lineEl.properties = {};
 			}
 
-			const existing = lineEl.properties.className;
-			const existingList = Array.isArray(existing)
-				? existing.map(String)
-				: typeof existing === "string"
-					? [existing]
-					: [];
-			lineEl.properties.className = [...existingList, ...classNames];
+			const existingClassNames = toClassList(lineEl.properties.className);
+			const existingClasses = toClassList(lineEl.properties.class);
+			const merged = [...existingClasses, ...existingClassNames, ...classNames];
+			lineEl.properties.className = [...new Set(merged)];
 		},
 	};
 };

@@ -23,6 +23,13 @@ const createLineElement = (): Element => ({
 	children: [],
 });
 
+const createLineElementWithClassProp = (): Element => ({
+	type: "element",
+	tagName: "span",
+	properties: { class: "line" },
+	children: [],
+});
+
 const runLineHook = (transformer: ShikiTransformer, lineElement: Element, lineNumber: number) => {
 	const hook = transformer.line;
 	expect(hook).toBeTypeOf("function");
@@ -101,5 +108,21 @@ describe("transformers.line addLineDecorations", () => {
 		runLineHook(transformer, line2, 2);
 
 		expect(line2.properties.className).toEqual(["line"]);
+	});
+
+	it("기존 class 속성으로 들어온 기준 class도 유지한다", () => {
+		const transformer = createTransformer([
+			{
+				type: "lineClass",
+				name: "plus",
+				range: { start: 0, end: 1 },
+				class: "diff plus",
+			},
+		]);
+
+		const line1 = createLineElementWithClassProp();
+		runLineHook(transformer, line1, 1);
+
+		expect(line1.properties.className).toEqual(expect.arrayContaining(["line", "diff plus"]));
 	});
 });
