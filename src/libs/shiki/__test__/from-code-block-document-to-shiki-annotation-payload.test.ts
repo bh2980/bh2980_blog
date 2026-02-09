@@ -36,8 +36,8 @@ const fromCodeBlockDocumentToShikiAnnotationPayload = (
 
 const testAnnotationConfig: AnnotationConfig = {
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+	lineClass: [{ name: "diff", class: "diff" }],
+	lineWrap: [{ name: "Callout", render: "Callout" }],
 	tagOverrides: {
 		inlineClass: "dec",
 		inlineWrap: "mark",

@@ -15,7 +15,7 @@ const annotationConfig: AnnotationConfig = {
 		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
 		{ name: "u", source: "mdx-text", render: "u" },
 	],
-	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
+	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
 	tagOverrides: {
 		inlineClass: "dec",
 		inlineWrap: "mark",

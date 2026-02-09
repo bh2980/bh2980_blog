@@ -7,7 +7,7 @@ const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 
 const annotationConfig: AnnotationConfig = {
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
+	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
 	tagOverrides: {
 		inlineClass: "dec",
 		inlineWrap: "mark",

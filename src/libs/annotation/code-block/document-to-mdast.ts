@@ -110,10 +110,14 @@ const fromLineToParagraph = (line: string, events: AnnotationEvent[], registry: 
 				continue;
 			}
 
-			const { name, source } = node;
+			if (node.type === "lineClass" || node.type === "lineWrap") {
+				continue;
+			}
 
 			const mdastNode =
-				source === "mdast" ? createMdastNode(name, []) : createMdxJsxTextElementNode(name, annotation.attributes);
+				node.source === "mdast"
+					? createMdastNode(node.name, [])
+					: createMdxJsxTextElementNode(node.name, annotation.attributes);
 
 			stack[stack.length - 1].children.push(mdastNode);
 			stack.push(mdastNode as MdastNodeLike);

@@ -12,8 +12,8 @@ const annotationConfig: AnnotationConfig = {
 		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
 		{ name: "u", source: "mdx-text", render: "u" },
 	],
-	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
+	lineClass: [{ name: "diff", class: "diff" }],
+	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
 };
 
 const inlineWrap = (
@@ -38,7 +38,6 @@ const lineWrap = (name: string, range: { start: number; end: number }, order: nu
 	type: "lineWrap" as const,
 	typeId: 3,
 	tag: "lnWrap",
-	source: "mdx-flow" as const,
 	render: name,
 	name,
 	range,

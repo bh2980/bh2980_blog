@@ -6,7 +6,7 @@ const { fromCodeBlockDocumentToMdast } = documentToMdast;
 
 const annotationConfig: AnnotationConfig = {
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineWrap: [{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" }],
+	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
 };
 
 describe("single paragraph structure", () => {
@@ -48,7 +48,6 @@ it("line annotation 데이터가 있어도 flow wrapper를 만들지 않는다",
 				type: "lineWrap",
 				typeId: 3,
 				tag: "block",
-				source: "mdx-flow",
 				name: "Collapsible",
 				range: { start: 0, end: 1 },
 				priority: 0,

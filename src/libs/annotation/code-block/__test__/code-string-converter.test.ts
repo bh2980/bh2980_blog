@@ -22,10 +22,10 @@ const annotationConfig: AnnotationConfig = {
 		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
 		{ name: "u", source: "mdx-text", render: "u" },
 	],
-	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
+	lineClass: [{ name: "diff", class: "diff" }],
 	lineWrap: [
-		{ name: "Callout", source: "mdx-flow", render: "Callout" },
-		{ name: "Collapsible", source: "mdx-flow", render: "Collapsible" },
+		{ name: "Callout", render: "Callout" },
+		{ name: "Collapsible", render: "Collapsible" },
 	],
 };
 

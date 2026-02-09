@@ -56,14 +56,13 @@ const registry: AnnotationRegistry = new Map([
 			priority: 1,
 		},
 	],
-	[
-		"LineBadge",
-		{
-			name: "LineBadge",
-			source: "mdx-text",
-			class: "line-badge",
-			type: "lineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
+		[
+			"LineBadge",
+			{
+				name: "LineBadge",
+				class: "line-badge",
+				type: "lineClass",
+				typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
 			tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
 			priority: 0,
 		},
@@ -72,7 +71,6 @@ const registry: AnnotationRegistry = new Map([
 		"Collapsible",
 		{
 			name: "Collapsible",
-			source: "mdx-flow",
 			render: "Collapsible",
 			type: "lineWrap",
 			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,

@@ -5,7 +5,7 @@ describe("render-policy", () => {
 	it("config에서 inline/line wrapper render tag를 수집한다", () => {
 		const tags = createAllowedRenderTagsFromConfig({
 			inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-			lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+			lineWrap: [{ name: "Callout", render: "Callout" }],
 		});
 
 		expect(tags).toEqual(["Tooltip", "Callout"]);
@@ -18,7 +18,7 @@ describe("render-policy", () => {
 
 		const tags = createAllowedRenderTagsFromConfig({
 			inlineWrap: [{ name: "Danger", source: "mdx-text", render: "script" }],
-			lineWrap: [{ name: "Tooltip", source: "mdx-flow", render: "Tooltip" }],
+			lineWrap: [{ name: "Tooltip", render: "Tooltip" }],
 		});
 
 		expect(tags).toEqual(["Tooltip"]);

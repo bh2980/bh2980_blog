@@ -19,7 +19,7 @@ const markOnlyConfig: AnnotationConfig = {
 };
 
 const decOnlyConfig: AnnotationConfig = {
-	inlineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
+	inlineClass: [{ name: "diff", source: "mdx-text", class: "diff" }],
 	inlineWrap: [],
 	lineClass: [],
 	lineWrap: [],
@@ -32,10 +32,10 @@ const decOnlyConfig: AnnotationConfig = {
 };
 
 const fullConfig: AnnotationConfig = {
-	inlineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
+	inlineClass: [{ name: "diff", source: "mdx-text", class: "diff" }],
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+	lineClass: [{ name: "diff", class: "diff" }],
+	lineWrap: [{ name: "Callout", render: "Callout" }],
 	tagOverrides: {
 		inlineClass: "dec",
 		inlineWrap: "mark",

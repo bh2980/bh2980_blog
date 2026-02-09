@@ -9,7 +9,6 @@ import type {
 	CodeBlockMetaValue,
 	InlineAnnotation,
 	Line,
-	LineAnnotation,
 } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
@@ -203,55 +202,17 @@ const fromMdxFlowElementToCodeBody = (
 	registry: AnnotationRegistry,
 ): Pick<CodeBlockDocument, "lines" | "annotations"> => {
 	const lines: Line[] = [];
-	const annotations: LineAnnotation[] = [];
 
-	const visitFlowChildren = (nodes: MdxJsxFlowElement["children"]) => {
-		nodes.forEach((childNode) => {
-			if (childNode.type === "paragraph") {
-				const line = fromParagraphToLine(childNode, registry);
-				lines.push(...splitLineByHardBreak(line));
-				return;
-			}
+	for (const childNode of mdxAst.children) {
+		if (childNode.type !== "paragraph") {
+			continue;
+		}
 
-			if (childNode.type !== "mdxJsxFlowElement") {
-				return;
-			}
+		const line = fromParagraphToLine(childNode, registry);
+		lines.push(...splitLineByHardBreak(line));
+	}
 
-			if (!childNode.name || childNode.children.length === 0) {
-				return;
-			}
-
-			const config = registry.get(childNode.name);
-			if (!config || config.type === "inlineClass" || config.type === "inlineWrap") {
-				return;
-			}
-
-			const start = lines.length;
-			const flowAttributes = childNode.attributes
-				.filter((attr): attr is MdxJsxAttribute & { name: string } => attr.type === "mdxJsxAttribute")
-				.map<AnnotationAttr>((attr) => ({
-					name: attr.name,
-					value: toDocAttrValue(attr.value),
-				}));
-			const annotation = {
-				...config,
-				range: {
-					start,
-					end: start,
-				},
-				order: annotations.length,
-				attributes: flowAttributes.length > 0 ? flowAttributes : undefined,
-			};
-
-			annotations.push(annotation);
-			visitFlowChildren(childNode.children as MdxJsxFlowElement["children"]);
-			annotation.range.end = lines.length;
-		});
-	};
-
-	visitFlowChildren(mdxAst.children);
-
-	return { lines: toAbsoluteInlineRange(lines), annotations };
+	return { lines: toAbsoluteInlineRange(lines), annotations: [] };
 };
 
 export const fromMdxFlowElementToCodeDocument = (

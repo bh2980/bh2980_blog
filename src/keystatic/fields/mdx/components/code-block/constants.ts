@@ -334,7 +334,6 @@ export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
 	lineWrap: [
 		{
 			name: "Collapsible",
-			source: "mdx-flow",
 			render: "Collapsible",
 		},
 	],

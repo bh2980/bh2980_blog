@@ -20,8 +20,7 @@ export type AnnotationTypePair = {
 
 export type AnnotationAttr = { name: string; value: unknown };
 
-export type Annotation = AnnotationTypePair & {
-	source: "mdast" | "mdx-text" | "mdx-flow";
+type AnnotationBase = {
 	name: string;
 	range: Range;
 	priority: number; // 교차 겹침 시 well nested 정책 우선 순위
@@ -29,35 +28,67 @@ export type Annotation = AnnotationTypePair & {
 	attributes?: AnnotationAttr[];
 };
 
+export type InlineAnnotationSource = "mdast" | "mdx-text";
+
+type InlineAnnotationTypePair = Extract<AnnotationTypePair, { type: "inlineClass" | "inlineWrap" }>;
+type LineAnnotationTypePair = Extract<AnnotationTypePair, { type: "lineClass" | "lineWrap" }>;
+
+export type InlineAnnotation = InlineAnnotationTypePair &
+	AnnotationBase & {
+		source: InlineAnnotationSource;
+	};
+
+export type LineAnnotation = LineAnnotationTypePair & AnnotationBase;
+
+export type Annotation = InlineAnnotation | LineAnnotation;
+
 export type AnnotationType = Annotation["type"];
-export type AnnotationSource = Annotation["source"];
 export type AnnotationTagOverrides = Partial<Record<AnnotationType, string>>;
 
-export type AnnotationRegistryItem = Omit<Annotation, "range" | "attributes" | "order"> & AnnotationTypePair;
+export type AnnotationRegistryItem =
+	| (Omit<InlineAnnotation, "range" | "attributes" | "order"> & InlineAnnotationTypePair)
+	| (Omit<LineAnnotation, "range" | "attributes" | "order"> & LineAnnotationTypePair);
+
 export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
 
-export type AnnotationConfigItemBase = Pick<Annotation, "name" | "source">;
+type InlineAnnotationConfigItemBase = {
+	name: string;
+	source: InlineAnnotationSource;
+};
 
-export type ClassAnnotationConfigItem = AnnotationConfigItemBase & {
+type LineAnnotationConfigItemBase = {
+	name: string;
+};
+
+export type InlineClassAnnotationConfigItem = InlineAnnotationConfigItemBase & {
 	class: string;
 };
 
-export type RenderAnnotationConfigItem = AnnotationConfigItemBase & {
+export type InlineRenderAnnotationConfigItem = InlineAnnotationConfigItemBase & {
 	render: string;
 };
 
-export type AnnotationConfigItem = ClassAnnotationConfigItem | RenderAnnotationConfigItem;
+export type LineClassAnnotationConfigItem = LineAnnotationConfigItemBase & {
+	class: string;
+};
+
+export type LineRenderAnnotationConfigItem = LineAnnotationConfigItemBase & {
+	render: string;
+};
+
+export type AnnotationConfigItem =
+	| InlineClassAnnotationConfigItem
+	| InlineRenderAnnotationConfigItem
+	| LineClassAnnotationConfigItem
+	| LineRenderAnnotationConfigItem;
 
 export interface AnnotationConfig {
-	inlineClass?: ClassAnnotationConfigItem[];
-	inlineWrap?: RenderAnnotationConfigItem[];
-	lineClass?: ClassAnnotationConfigItem[];
-	lineWrap?: RenderAnnotationConfigItem[];
+	inlineClass?: InlineClassAnnotationConfigItem[];
+	inlineWrap?: InlineRenderAnnotationConfigItem[];
+	lineClass?: LineClassAnnotationConfigItem[];
+	lineWrap?: LineRenderAnnotationConfigItem[];
 	tagOverrides?: AnnotationTagOverrides;
 }
-
-export type InlineAnnotation = Extract<Annotation, { type: "inlineClass" | "inlineWrap" }>;
-export type LineAnnotation = Extract<Annotation, { type: "lineClass" | "lineWrap" }>;
 
 export type Line = { value: string; annotations: InlineAnnotation[] };
 

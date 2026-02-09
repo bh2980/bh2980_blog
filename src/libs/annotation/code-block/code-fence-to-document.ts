@@ -268,7 +268,6 @@ const pushLineMarkerAnnotation = (
 	if (marker.type === "lineClass") {
 		const annotation: LineAnnotation = {
 			...getStylePayload(marker.config),
-			source: marker.config.source,
 			priority: marker.config.priority,
 			type: "lineClass",
 			...typeDefinition.lineClass,
@@ -286,7 +285,6 @@ const pushLineMarkerAnnotation = (
 
 	const annotation: LineAnnotation = {
 		...getStylePayload(marker.config),
-		source: marker.config.source,
 		priority: marker.config.priority,
 		type: "lineWrap",
 		...typeDefinition.lineWrap,
@@ -452,7 +450,6 @@ const pushRangeAnnotation = ({
 
 	const base = {
 		...getStylePayload(config),
-		source: config.source,
 		priority: config.priority,
 		name: parsed.name,
 		range: parsed.range,
@@ -482,8 +479,10 @@ const pushRangeAnnotation = ({
 	}
 
 	if (type === "inlineClass") {
+		if (config.type !== "inlineClass") return false;
 		pendingInline.push({
 			...base,
+			source: config.source,
 			type: "inlineClass",
 			...typeDefinition.inlineClass,
 			order: pendingInline.length,
@@ -491,8 +490,10 @@ const pushRangeAnnotation = ({
 		return true;
 	}
 
+	if (config.type !== "inlineWrap") return false;
 	pendingInline.push({
 		...base,
+		source: config.source,
 		type: "inlineWrap",
 		...typeDefinition.inlineWrap,
 		order: pendingInline.length,

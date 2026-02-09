@@ -20,7 +20,7 @@ const annotationConfig: AnnotationConfig = {
 	inlineClass: [],
 	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
 	lineClass: [],
-	lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+	lineWrap: [{ name: "Callout", render: "Callout" }],
 };
 
 const inlineWrapByName = new Map(

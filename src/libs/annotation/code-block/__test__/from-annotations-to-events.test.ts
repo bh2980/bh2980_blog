@@ -19,15 +19,22 @@ const makeAnnotation = <T extends AnnotationTypeKey>({
 	range: Range;
 	order: number;
 	priority?: number;
-	source?: Annotation["source"];
+	source?: "mdast" | "mdx-text";
 }): Extract<Annotation, { type: T }> => {
 	const def = ANNOTATION_TYPE_DEFINITION[type];
+
+	const sourcePayload =
+		type === "inlineClass" || type === "inlineWrap"
+			? {
+					source,
+				}
+			: {};
 
 	return {
 		type,
 		typeId: def.typeId,
 		tag: def.tag,
-		source,
+		...sourcePayload,
 		name,
 		range,
 		priority,
