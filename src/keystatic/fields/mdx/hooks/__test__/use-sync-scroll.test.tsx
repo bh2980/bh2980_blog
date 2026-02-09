@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { useSyncScroll, type SyncScrollAxis } from "../use-sync-scroll";
 
@@ -12,6 +12,23 @@ function TestHarness({ axis = "both" }: { axis?: SyncScrollAxis }) {
 		<>
 			<div data-testid="a" ref={refA} />
 			<div data-testid="b" ref={refB} />
+		</>
+	);
+}
+
+function SyncOnHarness() {
+	const refA = useRef<HTMLDivElement>(null);
+	const refB = useRef<HTMLDivElement>(null);
+	const [tick, setTick] = useState(0);
+	useSyncScroll({ refA, refB, axis: "x", syncOn: tick });
+
+	return (
+		<>
+			<div data-testid="a" ref={refA} />
+			<div data-testid="b" ref={refB} />
+			<button data-testid="sync" type="button" onClick={() => setTick((v) => v + 1)}>
+				sync
+			</button>
 		</>
 	);
 }
@@ -78,5 +95,22 @@ describe("useSyncScroll", () => {
 		emitScroll(a, { left: 60, top: 210 });
 		expect(b.scrollLeft).toBe(0);
 		expect(b.scrollTop).toBe(210);
+	});
+
+	it("syncOn 값이 바뀌면 refA 기준으로 한 번 더 정렬한다", () => {
+		const { getByTestId } = render(<SyncOnHarness />);
+		const a = getByTestId("a");
+		const b = getByTestId("b");
+		const syncButton = getByTestId("sync");
+
+		defineScrollable(a);
+		defineScrollable(b);
+
+		(a as HTMLElement).scrollLeft = 140;
+		(b as HTMLElement).scrollLeft = 0;
+
+		fireEvent.click(syncButton);
+
+		expect((b as HTMLElement).scrollLeft).toBe(140);
 	});
 });

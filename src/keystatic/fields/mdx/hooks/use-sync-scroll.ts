@@ -7,10 +7,12 @@ export function useSyncScroll({
 	refA,
 	refB,
 	axis = "both",
+	syncOn,
 }: {
 	refA: RefObject<HTMLElement | null>;
 	refB: RefObject<HTMLElement | null>;
 	axis?: SyncScrollAxis;
+	syncOn?: unknown;
 }) {
 	useEffect(() => {
 		const elA = refA.current;
@@ -46,5 +48,19 @@ export function useSyncScroll({
 			elA.removeEventListener("scroll", onScrollA);
 			elB.removeEventListener("scroll", onScrollB);
 		};
-	}, [axis, refA, refB]);
+	});
+
+	useEffect(() => {
+		if (syncOn === undefined) return;
+		const elA = refA.current;
+		const elB = refB.current;
+		if (!elA || !elB || elA === elB) return;
+
+		if (axis !== "y") {
+			elB.scrollLeft = elA.scrollLeft;
+		}
+		if (axis !== "x") {
+			elB.scrollTop = elA.scrollTop;
+		}
+	}, [axis, refA, refB, syncOn]);
 }
