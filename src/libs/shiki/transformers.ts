@@ -61,6 +61,19 @@ export type LineWrapperPayload = {
 	attributes?: { name: string; value: unknown }[];
 };
 
+const toLineWrapperDedupKey = (wrapper: {
+	render: string;
+	range: { start: number; end: number };
+	attributes: { name: string; value: unknown }[];
+}) => {
+	return JSON.stringify({
+		render: wrapper.render,
+		start: wrapper.range.start,
+		end: wrapper.range.end,
+		attributes: wrapper.attributes,
+	});
+};
+
 export const addMetaToPre = (code: string, meta: Meta): ShikiTransformer => ({
 	pre(node: Element) {
 		if (!node.properties) node.properties = {};
@@ -191,12 +204,22 @@ export const applyLineWrappers = (
 		}))
 		.filter(
 			(wrapper) =>
-				wrapper.range.start < wrapper.range.end && wrapper.render.length > 0 && allowedRenderTagSet.has(wrapper.render),
-		);
+					wrapper.range.start < wrapper.range.end && wrapper.render.length > 0 && allowedRenderTagSet.has(wrapper.render),
+		)
+		.sort((a, b) => a.order - b.order);
+
+	const deduped: typeof normalized = [];
+	const seen = new Set<string>();
+	for (const wrapper of normalized) {
+		const key = toLineWrapperDedupKey(wrapper);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		deduped.push(wrapper);
+	}
 
 	const lines = getTopLevelLineElements(codeEl);
 
-	for (const wrapper of normalized) {
+	for (const wrapper of deduped) {
 		const { start, end } = wrapper.range;
 		if (start < 0 || end > lines.length) continue;
 

@@ -125,6 +125,34 @@ describe("transformers.root addLineWrappers", () => {
 		expect(inner.children[0]).toBe(lines[0]);
 	});
 
+	it("동일 render/동일 range wrapper 중복은 하나로 정규화한다", () => {
+		const transformer = createTransformer([
+			{
+				type: "lineWrap",
+				name: "Collapsible",
+				range: { start: 0, end: 2 },
+				order: 0,
+				render: "Collapsible",
+			},
+			{
+				type: "lineWrap",
+				name: "Collapsible",
+				range: { start: 0, end: 2 },
+				order: 1,
+				render: "Collapsible",
+			},
+		]);
+
+		const { code, lines } = createCodeElement(["line1", "line2"]);
+		runRootHook(transformer, code);
+
+		const outer = code.children[0] as Element;
+		expect(outer.tagName).toBe("Collapsible");
+		expect(outer.children).toContain(lines[0]);
+		expect(outer.children).toContain(lines[1]);
+		expect(outer.children.filter((child) => child.type === "element")).toEqual([lines[0], lines[1]]);
+	});
+
 	it("wrapper attributes를 element properties로 전달한다", () => {
 		const transformer = createTransformer([
 			{
