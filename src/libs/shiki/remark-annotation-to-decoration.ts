@@ -92,10 +92,30 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 	const decorations: DecorationItem[] = [];
 	const lineDecorations: LineDecorationPayload[] = [];
 	const lineWrappers: LineWrapperPayload[] = [];
+	const lineStartOffsets: number[] = [];
+	let lineStart = 0;
+
+	for (const line of document.lines) {
+		lineStartOffsets.push(lineStart);
+		lineStart += line.value.length + 1;
+	}
 
 	document.lines.forEach((line, lineNumber) => {
+		const lineOffset = lineStartOffsets[lineNumber] ?? 0;
 		for (const annotation of line.annotations) {
-			const decoration = buildInlineDecoration(lineNumber, annotation);
+			const isLocalRange =
+				annotation.range.start >= 0 &&
+				annotation.range.end >= annotation.range.start &&
+				annotation.range.end <= line.value.length;
+			const decoration = buildInlineDecoration(lineNumber, {
+				...annotation,
+				range: isLocalRange
+					? annotation.range
+					: {
+							start: annotation.range.start - lineOffset,
+							end: annotation.range.end - lineOffset,
+						},
+			});
 			if (decoration) decorations.push(decoration);
 		}
 	});
@@ -128,7 +148,7 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
-			const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig);
+			const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig, { parseLineAnnotations: true });
 			const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
 
 			node.value = payload.code;

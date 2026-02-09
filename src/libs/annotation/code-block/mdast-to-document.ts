@@ -1,4 +1,4 @@
-import type { Node, Paragraph, Text } from "mdast";
+import type { Break, Node, Paragraph, Text } from "mdast";
 import type { MdxJsxAttribute, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { createAnnotationRegistry } from "./libs";
 import type {
@@ -16,6 +16,7 @@ const DEFAULT_CODE_LANG = "text";
 
 const hasChildren = (node: Node): node is Node & { children: Node[] } => "children" in node;
 const isText = (node: Node): node is Text => node.type === "text";
+const isBreak = (node: Node): node is Break => node.type === "break";
 const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
 
 const toDocAttrValue = (value: MdxJsxAttribute["value"]): unknown => {
@@ -38,6 +39,11 @@ const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line =
 	function recursiveBuildAnnotationInfo(node: Node) {
 		if (isText(node)) {
 			pureCode += node.value;
+			return;
+		}
+
+		if (isBreak(node)) {
+			pureCode += "\n";
 			return;
 		}
 
@@ -96,6 +102,72 @@ const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line =
 	return { value: pureCode, annotations };
 };
 
+const splitLineByHardBreak = (line: Line): Line[] => {
+	if (!line.value.includes("\n")) {
+		return [line];
+	}
+
+	const chunks = line.value.split("\n");
+	const result: Line[] = [];
+	let base = 0;
+
+	for (const chunk of chunks) {
+		const lineStart = base;
+		const lineEnd = lineStart + chunk.length;
+
+		const annotations = line.annotations
+			.map((annotation, order) => {
+				const segStart = Math.max(annotation.range.start, lineStart);
+				const segEnd = Math.min(annotation.range.end, lineEnd);
+				if (segStart >= segEnd) return;
+
+				return {
+					...annotation,
+					range: {
+						start: segStart - lineStart,
+						end: segEnd - lineStart,
+					},
+					order,
+				};
+			})
+			.filter((annotation): annotation is Line["annotations"][number] => Boolean(annotation));
+
+		result.push({
+			value: chunk,
+			annotations,
+		});
+
+		base = lineEnd + 1;
+	}
+
+	return result;
+};
+
+const toAbsoluteInlineRange = (lines: Line[]): Line[] => {
+	const nextLines: Line[] = [];
+	let lineStart = 0;
+
+	for (const line of lines) {
+		const annotations = line.annotations.map((annotation, order) => ({
+			...annotation,
+			range: {
+				start: lineStart + annotation.range.start,
+				end: lineStart + annotation.range.end,
+			},
+			order,
+		}));
+
+		nextLines.push({
+			...line,
+			annotations,
+		});
+
+		lineStart += line.value.length + 1;
+	}
+
+	return nextLines;
+};
+
 const fromMdxFlowElementToCodeHeader = (mdxAst: MdxJsxFlowElement): Pick<CodeBlockDocument, "lang" | "meta"> => {
 	const langAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "lang");
 	const lang =
@@ -137,7 +209,7 @@ const fromMdxFlowElementToCodeBody = (
 		nodes.forEach((childNode) => {
 			if (childNode.type === "paragraph") {
 				const line = fromParagraphToLine(childNode, registry);
-				lines.push(line);
+				lines.push(...splitLineByHardBreak(line));
 				return;
 			}
 
@@ -179,7 +251,7 @@ const fromMdxFlowElementToCodeBody = (
 
 	visitFlowChildren(mdxAst.children);
 
-	return { lines, annotations };
+	return { lines: toAbsoluteInlineRange(lines), annotations };
 };
 
 export const fromMdxFlowElementToCodeDocument = (

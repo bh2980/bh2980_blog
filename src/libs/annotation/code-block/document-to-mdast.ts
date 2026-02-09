@@ -134,7 +134,6 @@ const fromLineToParagraph = (line: string, events: AnnotationEvent[], registry: 
 
 const fromLinesToCodeBlockRoot = (
 	lines: Line[],
-	events: AnnotationEvent[],
 	registry: AnnotationRegistry,
 	options?: { lang?: string; meta?: Record<string, CodeBlockMetaValue> },
 ): CodeBlockRoot => {
@@ -155,57 +154,47 @@ const fromLinesToCodeBlockRoot = (
 		],
 	};
 
-	const stack: (CodeBlockRoot | MdxJsxFlowElement)[] = [codeBlock];
-	let cursor = 0;
+	const paragraph: Paragraph = {
+		type: "paragraph",
+		children: [],
+	};
+	const lineStartOffsets: number[] = [];
+	let lineStart = 0;
 
-	for (const event of events) {
-		if (cursor < event.pos) {
-			for (let idx = cursor; idx < event.pos; idx += 1) {
-				const line = lines[idx];
-				if (!line) continue;
-				const inlineEvents = fromAnnotationsToEvents(line.annotations);
-				const paragraph = fromLineToParagraph(line.value, inlineEvents, registry);
-				stack[stack.length - 1]?.children.push(paragraph);
-			}
+	for (const line of lines) {
+		lineStartOffsets.push(lineStart);
+		lineStart += line.value.length + 1;
+	}
 
-			cursor = event.pos;
-		}
+	for (let idx = 0; idx < lines.length; idx += 1) {
+		const line = lines[idx];
+		if (!line) continue;
+		const lineOffset = lineStartOffsets[idx] ?? 0;
+		const localInlineAnnotations = line.annotations.map((annotation, order) => ({
+			...annotation,
+			range:
+				annotation.range.start >= 0 &&
+				annotation.range.end >= annotation.range.start &&
+				annotation.range.end <= line.value.length
+					? annotation.range
+					: {
+							start: annotation.range.start - lineOffset,
+							end: annotation.range.end - lineOffset,
+						},
+			order,
+		}));
 
-		if (event.kind === "open") {
-			const node = registry.get(event.anno.name);
-			if (!node || (node.type !== "lineClass" && node.type !== "lineWrap")) {
-				continue;
-			}
+		const inlineEvents = fromAnnotationsToEvents(localInlineAnnotations);
+		const lineParagraph = fromLineToParagraph(line.value, inlineEvents, registry);
+		paragraph.children.push(...lineParagraph.children);
 
-			const flowNode: MdxJsxFlowElement = {
-				type: "mdxJsxFlowElement",
-				name: node.name,
-				attributes: (event.anno.attributes ?? []).map((attr) => ({
-					type: "mdxJsxAttribute",
-					name: attr.name,
-					value: toMdxAttrValue(attr.value),
-				})),
-				children: [],
-			};
-
-			stack[stack.length - 1]?.children.push(flowNode);
-			stack.push(flowNode);
-			continue;
-		}
-
-		if (event.kind === "close") {
-			stack.pop();
+		if (idx < lines.length - 1) {
+			paragraph.children.push({ type: "break" });
 		}
 	}
 
-	if (cursor < lines.length) {
-		for (let idx = cursor; idx < lines.length; idx += 1) {
-			const line = lines[idx];
-			if (!line) continue;
-			const inlineEvents = fromAnnotationsToEvents(line.annotations);
-			const paragraph = fromLineToParagraph(line.value, inlineEvents, registry);
-			stack[stack.length - 1]?.children.push(paragraph);
-		}
+	if (paragraph.children.length > 0) {
+		codeBlock.children.push(paragraph);
 	}
 
 	return codeBlock;
@@ -216,8 +205,7 @@ export const fromCodeBlockDocumentToMdast = (
 	annotationConfig: AnnotationConfig,
 ): CodeBlockRoot => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const lineAnnotationEvents = fromAnnotationsToEvents(document.annotations);
-	return fromLinesToCodeBlockRoot(document.lines, lineAnnotationEvents, registry, {
+	return fromLinesToCodeBlockRoot(document.lines, registry, {
 		lang: document.lang,
 		meta: document.meta,
 	});

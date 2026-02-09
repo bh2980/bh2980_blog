@@ -178,6 +178,7 @@ const fromAnnotationCommentLineToParsedAnnotation = (line: string, pattern: RegE
 export const fromCodeFenceToCodeBlockDocument = (
 	codeNode: Code,
 	annotationConfig: AnnotationConfig,
+	options?: { parseLineAnnotations?: boolean },
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
 	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
@@ -186,20 +187,38 @@ export const fromCodeFenceToCodeBlockDocument = (
 	const meta = fromCodeFenceMetaToDocumentMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
 	const annotationLinePattern = fromCommentSyntaxToAnnotationCommentPattern(commentSyntax);
+	const parseLineAnnotations = options?.parseLineAnnotations ?? true;
 
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
 	const pendingInline: CodeBlockDocument["lines"][number]["annotations"] = [];
+	const stagedInline: Array<{
+		lineIndex: number;
+		annotation: CodeBlockDocument["lines"][number]["annotations"][number];
+	}> = [];
+
+	const commitCodeLine = (lineText: string) => {
+		const lineIndex = lines.length;
+		lines.push({
+			value: lineText,
+			annotations: [],
+		});
+
+		for (const annotation of pendingInline) {
+			stagedInline.push({
+				lineIndex,
+				annotation: { ...annotation },
+			});
+		}
+
+		pendingInline.length = 0;
+	};
 
 	for (const lineText of codeNode.value.split("\n")) {
 		const parsed = fromAnnotationCommentLineToParsedAnnotation(lineText, annotationLinePattern);
 
 		if (!parsed) {
-			lines.push({
-				value: lineText,
-				annotations: pendingInline.map((annotation, order) => ({ ...annotation, order })),
-			});
-			pendingInline.length = 0;
+			commitCodeLine(lineText);
 			continue;
 		}
 
@@ -207,11 +226,7 @@ export const fromCodeFenceToCodeBlockDocument = (
 		const config = registry.get(parsed.name);
 
 		if (!type || !config || config.type !== type) {
-			lines.push({
-				value: lineText,
-				annotations: pendingInline.map((annotation, order) => ({ ...annotation, order })),
-			});
-			pendingInline.length = 0;
+			commitCodeLine(lineText);
 			continue;
 		}
 
@@ -225,6 +240,11 @@ export const fromCodeFenceToCodeBlockDocument = (
 		};
 
 		if (type === "lineClass") {
+			if (!parseLineAnnotations) {
+				commitCodeLine(lineText);
+				continue;
+			}
+
 			annotations.push({
 				...base,
 				type: "lineClass",
@@ -235,6 +255,11 @@ export const fromCodeFenceToCodeBlockDocument = (
 		}
 
 		if (type === "lineWrap") {
+			if (!parseLineAnnotations) {
+				commitCodeLine(lineText);
+				continue;
+			}
+
 			annotations.push({
 				...base,
 				type: "lineWrap",
@@ -261,6 +286,30 @@ export const fromCodeFenceToCodeBlockDocument = (
 			order: pendingInline.length,
 		});
 	}
+
+	let lineStart = 0;
+	lines.forEach((line, lineIndex) => {
+		const lineEnd = lineStart + line.value.length;
+
+		const inlineForLine = stagedInline
+			.filter((item) => item.lineIndex === lineIndex)
+			.map((item, order) => {
+				const localRange = item.annotation.range;
+				const absRange = {
+					start: lineStart + localRange.start,
+					end: lineStart + localRange.end,
+				};
+
+				return {
+					...item.annotation,
+					range: absRange,
+					order,
+				};
+			});
+
+		line.annotations = inlineForLine;
+		lineStart = lineEnd + 1;
+	});
 
 	return { lang, meta, lines, annotations };
 };

@@ -66,9 +66,17 @@ export const fromCodeBlockDocumentToCodeFence = (
 	}
 
 	const outputLines: string[] = [];
+	const lineStartOffsets: number[] = [];
+	let lineStart = 0;
+
+	for (const line of document.lines) {
+		lineStartOffsets.push(lineStart);
+		lineStart += line.value.length + 1;
+	}
 
 	document.lines.forEach((line, lineIndex) => {
 		const leadingIndent = fromLineValueToLeadingIndent(line.value);
+		const lineOffset = lineStartOffsets[lineIndex] ?? 0;
 		const lineAnnotations = lineAnnotationByStart.get(lineIndex) ?? [];
 		for (const annotation of lineAnnotations) {
 			outputLines.push(
@@ -80,10 +88,22 @@ export const fromCodeBlockDocumentToCodeFence = (
 		}
 
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
-			if (annotation.range.start >= annotation.range.end) continue;
+			const isLocalRange =
+				annotation.range.start >= 0 &&
+				annotation.range.end >= annotation.range.start &&
+				annotation.range.end <= line.value.length;
+			const localRange = isLocalRange
+				? annotation.range
+				: {
+						start: annotation.range.start - lineOffset,
+						end: annotation.range.end - lineOffset,
+					};
+
+			if (localRange.start >= localRange.end) continue;
 			outputLines.push(
 				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
+					range: localRange,
 					tag: typeDefinition[annotation.type].tag,
 				})}`,
 			);

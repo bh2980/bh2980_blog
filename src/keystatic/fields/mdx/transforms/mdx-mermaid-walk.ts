@@ -22,7 +22,7 @@ export const walkOnlyInsideMermaidCodeFence = (mdxAst: Root) => {
 			children: [],
 		};
 
-		const document = fromCodeFenceToCodeBlockDocument(node, {});
+		const document = fromCodeFenceToCodeBlockDocument(node, {}, { parseLineAnnotations: false });
 
 		document.lines.forEach((line) => {
 			const paragraph: Paragraph = {
