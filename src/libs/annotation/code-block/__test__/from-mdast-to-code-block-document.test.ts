@@ -6,7 +6,7 @@ import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../documen
 import { __testable__ } from "../mdast-to-document";
 import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, LineAnnotation, Range } from "../types";
 
-const { fromMdastToCodeBlockDocument } = __testable__;
+const { fromMdxFlowElementToCodeDocument } = __testable__;
 const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
@@ -113,7 +113,7 @@ const expectedLineClass = (name: string, range: Range, order = 0): LineAnnotatio
 	};
 };
 
-describe("fromMdastToCodeBlockDocument", () => {
+describe("fromMdxFlowElementToCodeDocument", () => {
 	it("기본: lineWrap annotation + line inlineWrap annotation을 문서로 변환한다", () => {
 		const codeBlockNode = codeBlock([
 			{
@@ -145,7 +145,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			},
 		]);
 
-		const document = fromMdastToCodeBlockDocument(codeBlockNode, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "text",
@@ -178,7 +178,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			},
 		]);
 
-		const document = fromMdastToCodeBlockDocument(codeBlockNode, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{ value: "line1", annotations: [] },
@@ -190,7 +190,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 	it("라인 value에는 태그 문자열이 들어가지 않고 텍스트만 포함한다", () => {
 		const node = codeBlock([paragraph([text("ab"), inline("u", [text("cd")]), text("ef")])]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -207,7 +207,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			paragraph([inline("u", [text("ab")]), text("cd"), inline("Tooltip", [text("efg")]), text("h")]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -223,7 +223,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 	it("inlineWrap range의 end는 exclusive다", () => {
 		const node = codeBlock([paragraph([inline("u", [text("abc")])])]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -239,7 +239,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			paragraph([inline("u", [text("b")]), text("2")]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -256,7 +256,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 	it("중첩 inlineWrap은 같은 라인에서 각자 range를 유지한다", () => {
 		const node = codeBlock([paragraph([inline("u", [text("a"), inline("Tooltip", [text("b")])])])]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lines).toEqual([
 			{
@@ -276,7 +276,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			paragraph([text("after")]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([expectedLineWrap("Collapsible", { start: 1, end: 4 })]);
 		expect(document.lines).toEqual([
@@ -297,7 +297,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineWrap("Collapsible", { start: 0, end: 3 }, 0),
@@ -324,7 +324,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			paragraph([text("세번째 줄")]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineWrap("Collapsible", { start: 1, end: 3 }, 0),
@@ -346,7 +346,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			paragraph([text("after")]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([
 			expectedLineClass("diff", { start: 1, end: 2 }, 0),
@@ -367,7 +367,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			flow("UnknownFlow", [paragraph([text("line2")])]),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.annotations).toEqual([]);
 		expect(document.lines).toEqual([{ value: "xyz", annotations: [] }]);
@@ -376,7 +376,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 	it("CodeBlock children이 비어있으면 빈 document를 반환한다", () => {
 		const node = codeBlock([]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document).toEqual({
 			lang: "text",
@@ -400,7 +400,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			],
 		);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 
 		expect(document.lang).toBe("ts");
 		expect(document.meta).toEqual({ filename: "demo.ts", showLineNumbers: true });
@@ -436,7 +436,7 @@ describe("fromMdastToCodeBlockDocument", () => {
 			),
 		]);
 
-		const document = fromMdastToCodeBlockDocument(node, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 		const inlineAttrs = document.lines[0]?.annotations[0]?.attributes;
 		const lineAttrs = document.annotations[0]?.attributes;
 

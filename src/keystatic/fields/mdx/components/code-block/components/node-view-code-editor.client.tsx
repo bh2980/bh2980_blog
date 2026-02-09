@@ -2,8 +2,8 @@
 
 import type { Root } from "hast";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
-import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
+import { fromMdxFlowElementToCodeDocument } from "@/libs/annotation/code-block/mdast-to-document";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { highlight } from "@/libs/shiki/code-highligher";
 import { fromCodeBlockDocumentToShikiAnnotationPayload } from "@/libs/shiki/remark-annotation-to-decoration";
 import { createAllowedRenderTagsFromConfig } from "@/libs/shiki/render-policy";
@@ -47,7 +47,7 @@ export const NodeViewCodeEditor = ({
 			return;
 		}
 
-		const document = fromMdastToCodeBlockDocument(codeBlockNode as CodeBlockRoot, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
 		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
 		const highlighedHast = highlight(payload.code, payload.lang || lang, payload.meta, {
 			decorations: payload.decorations,

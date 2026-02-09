@@ -33,6 +33,7 @@ export const EditorMermaid = wrapper({
 	icon: <ChartNetwork />,
 	schema: {
 		id: fields.text({ label: "코드블럭 ID" }),
+		lang: fields.text({ label: "언어", defaultValue: "mermaid" }),
 	},
 	NodeView: MermaidBlockNodeViewProxy,
 });

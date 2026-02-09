@@ -1,8 +1,8 @@
 import type { Root } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
-import { EDITOR_CODE_BLOCK_NAME } from "../fields/mdx/components/code-block";
-import { EDITOR_MERMAID_NAME } from "../fields/mdx/components/mermaid";
+import { EDITOR_CODE_BLOCK_NAME } from "../components/code-block";
+import { EDITOR_MERMAID_NAME } from "../components/mermaid";
 
 type Snapshot = ReadonlyMap<string, MdxJsxFlowElement>;
 
@@ -23,7 +23,7 @@ export const getCodeBlockMapSnapshot = () => snapshot;
 Cannot update a component (CodeBlockNodeView) while rendering a different component (LocalItemPage). 
 To locate the bad setState() call inside LocalItemPage, follow the stack trace as described in https://react.dev/link/setstate-in-render
 
-at emit (src/keystatic/libs/find-codeblock-and-mapping.ts:19:29)
+at emit (src/keystatic/fields/mdx/runtime/find-codeblock-and-mapping.ts:19:29)
  */
 let queued = false;
 const schedule =

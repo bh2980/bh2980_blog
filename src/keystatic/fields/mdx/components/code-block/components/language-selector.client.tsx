@@ -142,7 +142,7 @@ export const LanguageSelector = ({ value, onChange }: Pick<CodeBlockNodeViewProp
 					{selectedLabel}
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent>
+			<DropdownMenuContent className="z-80">
 				<Input
 					autoFocus
 					className="h-7"
