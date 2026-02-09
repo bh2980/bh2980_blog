@@ -11,6 +11,7 @@ import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoratio
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
+import { Collapse } from "./code-block/collapse";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Pre } from "./pre";
@@ -43,6 +44,7 @@ export const renderMDX = async (source: string) => {
 			a,
 			pre: Pre,
 			Callout,
+			collapse: Collapse,
 			Collapsible,
 			Columns,
 			Column,

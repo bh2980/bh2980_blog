@@ -47,7 +47,12 @@ export const annotationConfig: AnnotationConfig = {
 		{
 			name: "Collapsible",
 			source: "mdx-flow",
-			render: "Collapsible",
+			render: "collapse",
+		},
+		{
+			name: "collapse",
+			source: "mdx-flow",
+			render: "collapse",
 		},
 	],
 };

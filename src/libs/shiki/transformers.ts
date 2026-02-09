@@ -228,17 +228,16 @@ export const applyLineWrappers = (
 		if (!startLine || !endLine) continue;
 
 		const properties: Record<string, HastPropertyValue> = {};
-		for (const attribute of wrapper.attributes) {
-			const propName = attribute.name.trim();
-			if (isForbiddenPropName(propName)) continue;
-			const propValue = toHastPropertyValue(attribute.value);
-			if (!isAllowedPropertyValue(propName, propValue)) continue;
-			properties[propName] = propValue;
-		}
-		properties["data-code-block-wrapper"] = "true";
+			for (const attribute of wrapper.attributes) {
+				const propName = attribute.name.trim();
+				if (isForbiddenPropName(propName)) continue;
+				const propValue = toHastPropertyValue(attribute.value);
+				if (!isAllowedPropertyValue(propName, propValue)) continue;
+				properties[propName] = propValue;
+			}
 
-		wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
-	}
+			wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
+		}
 };
 
 export const addLineWrappers = (
