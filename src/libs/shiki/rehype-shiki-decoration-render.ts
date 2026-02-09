@@ -36,6 +36,8 @@ export function rehypeShikiDecorationRender() {
 
 			const lang = getLangFromCodeEl(codeEl);
 
+			if (lang === "mermaid") return;
+
 			const metaStr = (pre.properties?.["data-meta"] ?? codeEl.properties?.["data-meta"]) as string | undefined;
 
 			const decoratonStr = (pre.properties?.["data-decorations"] ?? codeEl.properties?.["data-decorations"]) as
