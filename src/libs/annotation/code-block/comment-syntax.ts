@@ -27,24 +27,13 @@ export const resolveCommentSyntax = (lang: string): CommentSyntax => {
 	return { prefix: "//", postfix: "" };
 };
 
-export const buildAnnotationCommentPattern = (commentSyntax: CommentSyntax): RegExp => {
-	const prefix = commentSyntax.prefix.trim();
-	const postfix = commentSyntax.postfix.trim();
-
-	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
-	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
-
-	return new RegExp(
-		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)\s+\{(?<start>\d+)-(?<end>\d+)\}(?<attrs>.*?)${postfixPart}\s*$`,
-	);
-};
-
-// Backward compatible alias.
-export const fromCommentSyntaxToAnnotationCommentPattern = buildAnnotationCommentPattern;
-
 export const formatAnnotationComment = (commentSyntax: CommentSyntax, body: string) => {
 	const prefix = commentSyntax.prefix.trim();
 	const postfix = commentSyntax.postfix.trim();
 
 	return [prefix, body, postfix].filter((segment) => segment.length > 0).join(" ");
+};
+
+export const __testable__ = {
+	escapeRegExp,
 };

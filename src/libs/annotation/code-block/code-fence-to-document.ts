@@ -1,5 +1,5 @@
 import type { Code } from "mdast";
-import { buildAnnotationCommentPattern, resolveCommentSyntax } from "./comment-syntax";
+import { resolveCommentSyntax } from "./comment-syntax";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
 import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument, LineAnnotation } from "./types";
@@ -174,6 +174,17 @@ const parseRangeAnnotationComment = (line: string, pattern: RegExp) => {
 		range: { start, end },
 		attributes: parseAnnotationAttrs(match.groups.attrs ?? ""),
 	};
+};
+
+const buildRangeAnnotationPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
+	const prefix = commentSyntax.prefix.trim();
+	const postfix = commentSyntax.postfix.trim();
+	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
+	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
+
+	return new RegExp(
+		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)\s+\{(?<start>\d+)-(?<end>\d+)\}(?<attrs>.*?)${postfixPart}\s*$`,
+	);
 };
 
 const buildStartMarkerPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
@@ -599,7 +610,7 @@ export const fromCodeFenceToCodeBlockDocument = (
 	const meta = parseCodeFenceMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
 	const patterns: CommentPatterns = {
-		range: buildAnnotationCommentPattern(commentSyntax),
+		range: buildRangeAnnotationPattern(commentSyntax),
 		startMarker: buildStartMarkerPattern(commentSyntax),
 		endMarker: buildEndMarkerPattern(commentSyntax),
 	};
