@@ -6,23 +6,21 @@ import { codeFenceAnnotationConfig } from "../constants";
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 
 describe("runtime line class diff", () => {
-	it("@line plus/minus를 lineClass annotation으로 파싱한다", () => {
+	it("@line plus는 바로 아래 1줄 lineClass로 파싱한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
 			value: [
-				"// @line plus {0-1}",
+				"// @line plus",
 				"const added = 1",
-				"// @line minus",
-				"const removed = 2",
-				"// @end line minus",
+				"const untouched = 0",
 			].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);
 
-		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const removed = 2"]);
+		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const untouched = 0"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				type: "lineClass",
@@ -30,11 +28,31 @@ describe("runtime line class diff", () => {
 				class: "diff plus",
 				range: { start: 0, end: 1 },
 			}),
+		]);
+	});
+
+	it("@line minus range는 연속된 여러 라인으로 파싱한다", () => {
+		const codeNode: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: [
+				"// @line minus {1-3}",
+				"const kept = 0",
+				"const removed = 2",
+				"const removedToo = 3",
+			].join("\n"),
+		};
+
+		const document = fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);
+
+		expect(document.lines.map((line) => line.value)).toEqual(["const kept = 0", "const removed = 2", "const removedToo = 3"]);
+		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				type: "lineClass",
 				name: "minus",
 				class: "diff minus",
-				range: { start: 1, end: 2 },
+				range: { start: 1, end: 3 },
 			}),
 		]);
 	});

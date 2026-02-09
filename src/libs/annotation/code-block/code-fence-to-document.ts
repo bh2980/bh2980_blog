@@ -233,16 +233,21 @@ const parseEndMarkerComment = (line: string, pattern: RegExp) => {
 type PendingLineMarkerBase = {
 	tag: string;
 	name: string;
-	startLineIndex: number;
 	order: number;
 	attributes: { name: string; value: unknown }[];
 };
 
-type PendingLineMarker = PendingLineMarkerBase &
-	(
-		| { type: "lineClass"; config: Extract<AnnotationRegistryItem, { type: "lineClass" }> }
-		| { type: "lineWrap"; config: Extract<AnnotationRegistryItem, { type: "lineWrap" }> }
-	);
+type PendingLineWrapMarker = PendingLineMarkerBase & {
+	type: "lineWrap";
+	startLineIndex: number;
+	config: Extract<AnnotationRegistryItem, { type: "lineWrap" }>;
+};
+
+type PendingSingleLineClass = PendingLineMarkerBase & {
+	type: "lineClass";
+	targetLineIndex: number;
+	config: Extract<AnnotationRegistryItem, { type: "lineClass" }>;
+};
 
 type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinition>;
 type AnnotationRegistry = ReturnType<typeof createAnnotationRegistry>;
@@ -259,30 +264,12 @@ type CommentPatterns = {
 	endMarker: RegExp;
 };
 
-const pushLineMarkerAnnotation = (
+const pushLineWrapMarkerAnnotation = (
 	annotations: CodeBlockDocument["annotations"],
-	marker: PendingLineMarker,
+	marker: PendingLineWrapMarker,
 	endLineIndex: number,
 	typeDefinition: AnnotationTypeDefinition,
 ) => {
-	if (marker.type === "lineClass") {
-		const annotation: LineAnnotation = {
-			...getStylePayload(marker.config),
-			priority: marker.config.priority,
-			type: "lineClass",
-			...typeDefinition.lineClass,
-			name: marker.name,
-			range: {
-				start: marker.startLineIndex,
-				end: endLineIndex,
-			},
-			order: marker.order,
-			attributes: marker.attributes,
-		};
-		annotations.push(annotation);
-		return;
-	}
-
 	const annotation: LineAnnotation = {
 		...getStylePayload(marker.config),
 		priority: marker.config.priority,
@@ -300,16 +287,14 @@ const pushLineMarkerAnnotation = (
 };
 
 const findPendingLineMarkerIndex = (
-	pendingLineMarkers: PendingLineMarker[],
+	pendingLineMarkers: PendingLineWrapMarker[],
 	parsedEndMarker: NonNullable<ParsedEndMarker>,
-	type: "lineClass" | "lineWrap",
 ) => {
 	for (let idx = pendingLineMarkers.length - 1; idx >= 0; idx -= 1) {
 		const marker = pendingLineMarkers[idx];
 		if (!marker) continue;
 		if (marker.tag !== parsedEndMarker.tag) continue;
 		if (marker.name !== parsedEndMarker.name) continue;
-		if (marker.type !== type) continue;
 		return idx;
 	}
 
@@ -328,7 +313,7 @@ const tryCloseLineMarker = ({
 	lineText: string;
 	annotationEndMarkerPattern: RegExp;
 	tagToType: Record<string, AnnotationType>;
-	pendingLineMarkers: PendingLineMarker[];
+	pendingLineMarkers: PendingLineWrapMarker[];
 	annotations: CodeBlockDocument["annotations"];
 	linesLength: number;
 	typeDefinition: AnnotationTypeDefinition;
@@ -337,15 +322,16 @@ const tryCloseLineMarker = ({
 	if (!parsedEndMarker) return false;
 
 	const type = tagToType[parsedEndMarker.tag];
-	if (type !== "lineClass" && type !== "lineWrap") return false;
+	if (type === "lineClass") return true;
+	if (type !== "lineWrap") return false;
 
-	const matchedIndex = findPendingLineMarkerIndex(pendingLineMarkers, parsedEndMarker, type);
+	const matchedIndex = findPendingLineMarkerIndex(pendingLineMarkers, parsedEndMarker);
 	if (matchedIndex < 0) return false;
 
 	const [marker] = pendingLineMarkers.splice(matchedIndex, 1);
 	if (!marker) return false;
 
-	pushLineMarkerAnnotation(annotations, marker, linesLength, typeDefinition);
+	pushLineWrapMarkerAnnotation(annotations, marker, linesLength, typeDefinition);
 	return true;
 };
 
@@ -355,6 +341,7 @@ const tryOpenLineMarker = ({
 	tagToType,
 	registry,
 	pendingLineMarkers,
+	pendingSingleLineClasses,
 	linesLength,
 	nextOrder,
 }: {
@@ -362,7 +349,8 @@ const tryOpenLineMarker = ({
 	annotationStartMarkerPattern: RegExp;
 	tagToType: Record<string, AnnotationType>;
 	registry: AnnotationRegistry;
-	pendingLineMarkers: PendingLineMarker[];
+	pendingLineMarkers: PendingLineWrapMarker[];
+	pendingSingleLineClasses: PendingSingleLineClass[];
 	linesLength: number;
 	nextOrder: number;
 }) => {
@@ -372,12 +360,12 @@ const tryOpenLineMarker = ({
 	const type = tagToType[parsedStartMarker.tag];
 	const config = registry.get(parsedStartMarker.name);
 	if (type === "lineClass" && config?.type === "lineClass") {
-		pendingLineMarkers.push({
+		pendingSingleLineClasses.push({
 			tag: parsedStartMarker.tag,
 			name: parsedStartMarker.name,
 			type: "lineClass",
 			config,
-			startLineIndex: linesLength,
+			targetLineIndex: linesLength,
 			order: nextOrder,
 			attributes: parsedStartMarker.attributes,
 		});
@@ -402,12 +390,18 @@ const tryOpenLineMarker = ({
 
 const commitCodeLine = ({
 	lines,
+	annotations,
+	typeDefinition,
 	pendingInline,
+	pendingSingleLineClasses,
 	stagedInline,
 	lineText,
 }: {
 	lines: CodeBlockDocument["lines"];
+	annotations: CodeBlockDocument["annotations"];
+	typeDefinition: AnnotationTypeDefinition;
 	pendingInline: CodeBlockDocument["lines"][number]["annotations"];
+	pendingSingleLineClasses: PendingSingleLineClass[];
 	stagedInline: StagedInlineAnnotation[];
 	lineText: string;
 }) => {
@@ -425,6 +419,28 @@ const commitCodeLine = ({
 	}
 
 	pendingInline.length = 0;
+
+	for (let idx = pendingSingleLineClasses.length - 1; idx >= 0; idx -= 1) {
+		const marker = pendingSingleLineClasses[idx];
+		if (!marker || marker.targetLineIndex !== lineIndex) continue;
+
+		const annotation: LineAnnotation = {
+			...getStylePayload(marker.config),
+			priority: marker.config.priority,
+			type: "lineClass",
+			...typeDefinition.lineClass,
+			name: marker.name,
+			range: {
+				start: lineIndex,
+				end: lineIndex + 1,
+			},
+			order: annotations.length,
+			attributes: marker.attributes,
+		};
+
+		annotations.push(annotation);
+		pendingSingleLineClasses.splice(idx, 1);
+	}
 };
 
 const pushRangeAnnotation = ({
@@ -519,7 +535,8 @@ const parseCodeLines = ({
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
 	const pendingInline: CodeBlockDocument["lines"][number]["annotations"] = [];
-	const pendingLineMarkers: PendingLineMarker[] = [];
+	const pendingLineMarkers: PendingLineWrapMarker[] = [];
+	const pendingSingleLineClasses: PendingSingleLineClass[] = [];
 	const stagedInline: StagedInlineAnnotation[] = [];
 	let lineMarkerOrder = 0;
 
@@ -537,7 +554,15 @@ const parseCodeLines = ({
 			});
 
 			if (consumed) continue;
-			commitCodeLine({ lines, pendingInline, stagedInline, lineText });
+			commitCodeLine({
+				lines,
+				annotations,
+				typeDefinition,
+				pendingInline,
+				pendingSingleLineClasses,
+				stagedInline,
+				lineText,
+			});
 			continue;
 		}
 
@@ -559,6 +584,7 @@ const parseCodeLines = ({
 				tagToType,
 				registry,
 				pendingLineMarkers,
+				pendingSingleLineClasses,
 				linesLength: lines.length,
 				nextOrder: lineMarkerOrder,
 			});
@@ -568,11 +594,19 @@ const parseCodeLines = ({
 			}
 		}
 
-		commitCodeLine({ lines, pendingInline, stagedInline, lineText });
+		commitCodeLine({
+			lines,
+			annotations,
+			typeDefinition,
+			pendingInline,
+			pendingSingleLineClasses,
+			stagedInline,
+			lineText,
+		});
 	}
 
 	for (const marker of pendingLineMarkers) {
-		pushLineMarkerAnnotation(annotations, marker, lines.length, typeDefinition);
+		pushLineWrapMarkerAnnotation(annotations, marker, lines.length, typeDefinition);
 	}
 
 	return { lines, annotations, stagedInline };
