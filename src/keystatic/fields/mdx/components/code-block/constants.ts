@@ -331,6 +331,16 @@ export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
 			class: "underline",
 		},
 	],
+	lineClass: [
+		{
+			name: "plus",
+			class: "diff plus",
+		},
+		{
+			name: "minus",
+			class: "diff minus",
+		},
+	],
 	lineWrap: [
 		{
 			name: "Collapsible",

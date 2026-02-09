@@ -48,6 +48,16 @@ export const annotationConfig: AnnotationConfig = {
 			render: "fold",
 		},
 	],
+	lineClass: [
+		{
+			name: "plus",
+			class: "diff plus",
+		},
+		{
+			name: "minus",
+			class: "diff minus",
+		},
+	],
 	lineWrap: [
 		{
 			name: "Collapsible",
