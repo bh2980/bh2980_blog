@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
 	serverExternalPackages: [
 		"mermaid-isomorphic",
 		"mermaid",
-		"@fortawesome/fontawesome-free",
 		"playwright",
 		"playwright-core",
 	],
