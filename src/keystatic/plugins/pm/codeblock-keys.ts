@@ -1,5 +1,6 @@
 import { splitBlock } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
+import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
 import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
@@ -25,12 +26,6 @@ function findCodeBlockDepth(state: EditorState): number | null {
 	}
 	return null;
 }
-
-const addParagraphWhenEnter = (state: EditorState, dispatch?: (tr: Transaction) => void) => {
-	// 1. 만약 특정 조건(예: 코드블록 안)에서만 다르게 동작해야 한다면 여기에 로직 추가
-	// 2. 그 외에는 기본 splitBlock 커맨드를 실행
-	return splitBlock(state, dispatch);
-};
 
 const exitWrapper = (state: EditorState, dispatch?: (tr: Transaction) => void) => {
 	const depth = findCodeBlockDepth(state);
@@ -108,13 +103,23 @@ const insertIndentWhenTab = (state: EditorState, dispatch?: (tr: Transaction) =>
 	return true;
 };
 
-export function codeBlockKeysPlugin(): Plugin {
+const insertHardBreakWhenEnter = (state: EditorState, dispatch?: (tr: Transaction) => void) => {
+	if (!isInCodeblock(state)) return false;
+	const br = state.schema.nodes?.hard_break;
+	if (!br) return false;
+
+	if (!dispatch) return true;
+	dispatch(state.tr.replaceSelectionWith(br.create()).scrollIntoView());
+	return true;
+};
+
+export function codeBlockKeysPlugin(schema: Schema): Plugin {
 	return keymap({
 		"Mod-Enter": exitWrapper,
 		"Ctrl-Enter": exitWrapper,
 		"Mod-a": selectAllOnlyCodeBlock,
-		"Shift-Enter": addParagraphWhenEnter,
+		"Shift-Enter": splitBlock,
 		Tab: insertIndentWhenTab,
-		Enter: addParagraphWhenEnter,
+		Enter: insertHardBreakWhenEnter,
 	});
 }
