@@ -29,7 +29,12 @@ export const renderMDX = async (source: string) => {
 					remarkGfm,
 					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
 				],
-				rehypePlugins: [rehypeSlug, rehypeAutolinkHeadings, rehypeShikiDecorationRender, rehypeMermaidDarkClass],
+				rehypePlugins: [
+					rehypeSlug,
+					rehypeAutolinkHeadings,
+					[rehypeShikiDecorationRender, { ignoreLang: (lang: string) => lang.toLowerCase() === "mermaid" }],
+					rehypeMermaidDarkClass,
+				],
 			},
 		},
 		components: {

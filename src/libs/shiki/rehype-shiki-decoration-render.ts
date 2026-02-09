@@ -5,6 +5,10 @@ import { visit } from "unist-util-visit";
 import { highlight } from "./code-highligher";
 import type { LineDecorationPayload, LineWrapperPayload, Meta } from "./transformers";
 
+type RehypeShikiDecorationRenderOptions = {
+	ignoreLang?: (lang: string) => boolean;
+};
+
 function findCodeChild(pre: Element): Element | null {
 	const child = pre.children?.find((c) => c?.type === "element" && c.tagName === "code");
 	return (child as Element) ?? null;
@@ -20,7 +24,7 @@ function getLangFromCodeEl(codeEl: Element): string {
 	return lang || "text";
 }
 
-export function rehypeShikiDecorationRender() {
+export function rehypeShikiDecorationRender(options: RehypeShikiDecorationRenderOptions = {}) {
 	return async (tree: Root) => {
 		visit(tree, "element", (node, index, parent) => {
 			if (!parent || index == null) return;
@@ -36,7 +40,7 @@ export function rehypeShikiDecorationRender() {
 
 			const lang = getLangFromCodeEl(codeEl);
 
-			if (lang === "mermaid") return;
+			if (options.ignoreLang?.(lang)) return;
 
 			const metaStr = (pre.properties?.["data-meta"] ?? codeEl.properties?.["data-meta"]) as string | undefined;
 
