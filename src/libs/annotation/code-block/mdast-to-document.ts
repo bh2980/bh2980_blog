@@ -1,5 +1,5 @@
 import type { Node, Paragraph, Text } from "mdast";
-import type { MdxJsxAttribute, MdxJsxTextElement } from "mdast-util-mdx-jsx";
+import type { MdxJsxAttribute, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { createAnnotationRegistry } from "./libs";
 import type {
 	AnnotationAttr,
@@ -7,7 +7,6 @@ import type {
 	AnnotationRegistry,
 	CodeBlockDocument,
 	CodeBlockMetaValue,
-	CodeBlockRoot,
 	InlineAnnotation,
 	Line,
 	LineAnnotation,
@@ -97,7 +96,7 @@ const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line =
 	return { value: pureCode, annotations };
 };
 
-const fromMdastToCodeBlockHeader = (mdxAst: CodeBlockRoot): Pick<CodeBlockDocument, "lang" | "meta"> => {
+const fromMdxFlowElementToCodeHeader = (mdxAst: MdxJsxFlowElement): Pick<CodeBlockDocument, "lang" | "meta"> => {
 	const langAttr = mdxAst.attributes.find((node) => node.type === "mdxJsxAttribute" && node.name === "lang");
 	const lang =
 		langAttr?.type === "mdxJsxAttribute" && typeof langAttr.value === "string" ? langAttr.value : DEFAULT_CODE_LANG;
@@ -127,14 +126,14 @@ const fromMdastToCodeBlockHeader = (mdxAst: CodeBlockRoot): Pick<CodeBlockDocume
 	return { lang, meta };
 };
 
-const fromMdastToCodeBlockBody = (
-	mdxAst: CodeBlockRoot,
+const fromMdxFlowElementToCodeBody = (
+	mdxAst: MdxJsxFlowElement,
 	registry: AnnotationRegistry,
 ): Pick<CodeBlockDocument, "lines" | "annotations"> => {
 	const lines: Line[] = [];
 	const annotations: LineAnnotation[] = [];
 
-	const visitFlowChildren = (nodes: CodeBlockRoot["children"]) => {
+	const visitFlowChildren = (nodes: MdxJsxFlowElement["children"]) => {
 		nodes.forEach((childNode) => {
 			if (childNode.type === "paragraph") {
 				const line = fromParagraphToLine(childNode, registry);
@@ -173,7 +172,7 @@ const fromMdastToCodeBlockBody = (
 			};
 
 			annotations.push(annotation);
-			visitFlowChildren(childNode.children as CodeBlockRoot["children"]);
+			visitFlowChildren(childNode.children as MdxJsxFlowElement["children"]);
 			annotation.range.end = lines.length;
 		});
 	};
@@ -183,21 +182,21 @@ const fromMdastToCodeBlockBody = (
 	return { lines, annotations };
 };
 
-export const fromMdastToCodeBlockDocument = (
-	mdxAst: CodeBlockRoot,
+export const fromMdxFlowElementToCodeDocument = (
+	mdxAst: MdxJsxFlowElement,
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const { lang, meta } = fromMdastToCodeBlockHeader(mdxAst);
-	const { lines, annotations } = fromMdastToCodeBlockBody(mdxAst, registry);
+	const { lang, meta } = fromMdxFlowElementToCodeHeader(mdxAst);
+	const { lines, annotations } = fromMdxFlowElementToCodeBody(mdxAst, registry);
 
 	return { lang, meta, lines, annotations };
 };
 
 export const __testable__ = {
 	fromParagraphToLine,
-	fromMdastToCodeBlockHeader,
-	fromMdastToCodeBlockBody,
+	fromMdxFlowElementToCodeHeader,
+	fromMdxFlowElementToCodeBody,
 	toDocAttrValue,
-	fromMdastToCodeBlockDocument,
+	fromMdxFlowElementToCodeDocument,
 };

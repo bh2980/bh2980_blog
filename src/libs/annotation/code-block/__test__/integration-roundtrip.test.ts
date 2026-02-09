@@ -3,7 +3,7 @@ import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../cod
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
-import { __testable__ as fromMdastToCodeBlockDocumentTestable } from "../mdast-to-document";
+import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
 import type {
 	AnnotationConfig,
 	CodeBlockDocument,
@@ -13,7 +13,7 @@ import type {
 	Range,
 } from "../types";
 
-const { fromMdastToCodeBlockDocument } = fromMdastToCodeBlockDocumentTestable;
+const { fromMdxFlowElementToCodeDocument } = fromMdxFlowElementToCodeDocumentTestable;
 const { fromCodeBlockDocumentToMdast } = fromCodeBlockDocumentToMdastTestable;
 const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTestable;
 const { fromCodeBlockDocumentToCodeFence } = fromCodeBlockDocumentToCodeFenceTestable;
@@ -119,7 +119,7 @@ describe("integration roundtrip (pure functions)", () => {
 		const code = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 		const documentFromCode = fromCodeFenceToCodeBlockDocument(code, annotationConfig);
 		const mdast = fromCodeBlockDocumentToMdast(documentFromCode, annotationConfig);
-		const output = fromMdastToCodeBlockDocument(mdast, annotationConfig);
+		const output = fromMdxFlowElementToCodeDocument(mdast, annotationConfig);
 
 		expect(output).toEqual(input);
 	});
@@ -175,11 +175,11 @@ describe("integration roundtrip (pure functions)", () => {
 			],
 		};
 
-		const document1 = fromMdastToCodeBlockDocument(mdastInput, annotationConfig);
+		const document1 = fromMdxFlowElementToCodeDocument(mdastInput, annotationConfig);
 		const code = fromCodeBlockDocumentToCodeFence(document1, annotationConfig);
 		const document2 = fromCodeFenceToCodeBlockDocument(code, annotationConfig);
 		const mdastOutput = fromCodeBlockDocumentToMdast(document2, annotationConfig);
-		const document3 = fromMdastToCodeBlockDocument(mdastOutput, annotationConfig);
+		const document3 = fromMdxFlowElementToCodeDocument(mdastOutput, annotationConfig);
 
 		expect(document3).toEqual(document1);
 	});

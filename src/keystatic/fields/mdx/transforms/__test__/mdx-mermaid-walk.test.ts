@@ -25,6 +25,7 @@ describe("mdx mermaid walk", () => {
 		}
 
 		expect(converted.name).toBe("Mermaid");
+		expect(converted.attributes).toMatchObject([{ type: "mdxJsxAttribute", name: "lang", value: "mermaid" }]);
 		expect(converted.children).toHaveLength(2);
 		expect(converted.children[0]).toMatchObject({
 			type: "paragraph",
@@ -84,6 +85,36 @@ describe("mdx mermaid walk", () => {
 
 		expect(converted.lang).toBe("mermaid");
 		expect(converted.value).toBe(["graph TD;", "A-->B;"].join("\n"));
+	});
+
+	it("walkOnlyInsideMermaid: lang attribute가 없으면 mermaid를 기본 언어로 사용한다", () => {
+		const input: Root = {
+			type: "root",
+			children: [
+				{
+					type: "mdxJsxFlowElement",
+					name: "Mermaid",
+					attributes: [],
+					children: [
+						{
+							type: "paragraph",
+							children: [{ type: "text", value: "graph TD;" }],
+						},
+					],
+				},
+			],
+		};
+
+		walkOnlyInsideMermaid(input);
+
+		const converted = input.children[0];
+		expect(converted?.type).toBe("code");
+		if (!converted || converted.type !== "code") {
+			throw new Error("Expected converted node to be code");
+		}
+
+		expect(converted.lang).toBe("mermaid");
+		expect(converted.value).toBe("graph TD;");
 	});
 
 	it("walkOnlyInsideMermaid: Mermaid가 아닌 mdxJsxFlowElement는 변환하지 않는다", () => {

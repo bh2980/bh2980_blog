@@ -3,7 +3,7 @@ import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { SKIP, visit } from "unist-util-visit";
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
-import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
+import { fromMdxFlowElementToCodeDocument } from "@/libs/annotation/code-block/mdast-to-document";
 import { EDITOR_MERMAID_NAME } from "../components/mermaid";
 
 export type MermaidRoot = MdxJsxFlowElement & { name: typeof EDITOR_MERMAID_NAME };
@@ -18,7 +18,7 @@ export const walkOnlyInsideMermaidCodeFence = (mdxAst: Root) => {
 		const mermaidRoot: MdxJsxFlowElement = {
 			type: "mdxJsxFlowElement",
 			name: EDITOR_MERMAID_NAME,
-			attributes: [],
+			attributes: [{ type: "mdxJsxAttribute", name: "lang", value: "mermaid" }],
 			children: [],
 		};
 
@@ -48,7 +48,22 @@ export const walkOnlyInsideMermaid = (mdxAst: Root) => {
 		if (!isMermaid(node)) return;
 		if (index == null || !parent) return;
 
-		const document = fromMdastToCodeBlockDocument(node, {});
+		const mermaidLangAttribute: Extract<MdxJsxFlowElement["attributes"][number], { type: "mdxJsxAttribute" }> = {
+			type: "mdxJsxAttribute",
+			name: "lang",
+			value: "mermaid",
+		};
+		const hasStringLangAttribute = node.attributes.some(
+			(attr) => attr.type === "mdxJsxAttribute" && attr.name === "lang" && typeof attr.value === "string",
+		);
+		const normalizedNode = hasStringLangAttribute
+			? node
+			: {
+					...node,
+					attributes: [...node.attributes, mermaidLangAttribute],
+				};
+
+		const document = fromMdxFlowElementToCodeDocument(normalizedNode, {});
 		const codeFence = fromCodeBlockDocumentToCodeFence(document, {});
 
 		parent.children.splice(index, 1, codeFence);

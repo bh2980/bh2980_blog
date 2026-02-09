@@ -3,7 +3,7 @@ import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
-import { __testable__ as fromMdastToCodeBlockDocumentTestable } from "../mdast-to-document";
+import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -16,7 +16,7 @@ import type {
 } from "../types";
 
 const fromCodeBlockDocumentToMdast = fromCodeBlockDocumentToMdastTestable.fromCodeBlockDocumentToMdast;
-const fromMdastToCodeBlockDocument = fromMdastToCodeBlockDocumentTestable.fromMdastToCodeBlockDocument;
+const fromMdxFlowElementToCodeDocument = fromMdxFlowElementToCodeDocumentTestable.fromMdxFlowElementToCodeDocument;
 const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
@@ -381,7 +381,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		} satisfies CodeBlockDocument;
 
 		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
-		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
+		const reconstructed = fromMdxFlowElementToCodeDocument(ast, annotationConfig);
 
 		expect(reconstructed.lang).toBe(input.lang);
 		expect(reconstructed.meta).toEqual(input.meta);
@@ -400,7 +400,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		} satisfies CodeBlockDocument;
 
 		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
-		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
+		const reconstructed = fromMdxFlowElementToCodeDocument(ast, annotationConfig);
 
 		expect(reconstructed).toEqual(input);
 	});
@@ -437,7 +437,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		} satisfies CodeBlockDocument;
 
 		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
-		const reconstructed = fromMdastToCodeBlockDocument(ast, annotationConfig);
+		const reconstructed = fromMdxFlowElementToCodeDocument(ast, annotationConfig);
 
 		expect(reconstructed).toEqual(input);
 	});
@@ -516,7 +516,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 			],
 		};
 
-		const document = fromMdastToCodeBlockDocument(input, annotationConfig);
+		const document = fromMdxFlowElementToCodeDocument(input, annotationConfig);
 		const output = fromCodeBlockDocumentToMdast(document, annotationConfig);
 
 		expect(output).toEqual(input);
