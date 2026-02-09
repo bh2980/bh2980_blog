@@ -1,5 +1,6 @@
 import { compileMDX } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeMermaid from "rehype-mermaid";
 import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
@@ -33,6 +34,7 @@ export const renderMDX = async (source: string) => {
 					rehypeSlug,
 					rehypeAutolinkHeadings,
 					[rehypeShikiDecorationRender, { ignoreLang: (lang: string) => lang.toLowerCase() === "mermaid" }],
+					[rehypeMermaid, { strategy: "img-svg", dark: true }],
 					rehypeMermaidDarkClass,
 				],
 			},
