@@ -2,7 +2,7 @@ import type { Code } from "mdast";
 import { fromCommentSyntaxToAnnotationCommentPattern, resolveCommentSyntax } from "./comment-syntax";
 import { ANNOTATION_TYPE_DEFINITION } from "./constants";
 import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
-import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument } from "./types";
+import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument, LineAnnotation } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
 const ATTR_RE = /([A-Za-z_][\w-]*)(?:\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+)))?/g;
@@ -14,6 +14,7 @@ const parseUnquotedAttrValue = (raw: string): unknown => {
 		return raw;
 	}
 };
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const fromCodeFenceMetaToDocumentMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
@@ -175,6 +176,63 @@ const fromAnnotationCommentLineToParsedAnnotation = (line: string, pattern: RegE
 	};
 };
 
+const fromCommentSyntaxToAnnotationStartMarkerPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
+	const prefix = commentSyntax.prefix.trim();
+	const postfix = commentSyntax.postfix.trim();
+	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
+	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
+
+	return new RegExp(
+		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)(?<attrs>.*?)${postfixPart}\s*$`,
+	);
+};
+
+const fromCommentSyntaxToAnnotationEndMarkerPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
+	const prefix = commentSyntax.prefix.trim();
+	const postfix = commentSyntax.postfix.trim();
+	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
+	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
+
+	return new RegExp(
+		String.raw`^\s*${prefixPart}@end\s+(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)${postfixPart}\s*$`,
+	);
+};
+
+const fromAnnotationStartMarkerLine = (line: string, pattern: RegExp) => {
+	const match = line.match(pattern);
+	if (!match?.groups) return;
+
+	return {
+		tag: match.groups.tag,
+		name: match.groups.name,
+		attributes: fromAttributeTextToAnnotationAttrs(match.groups.attrs ?? ""),
+	};
+};
+
+const fromAnnotationEndMarkerLine = (line: string, pattern: RegExp) => {
+	const match = line.match(pattern);
+	if (!match?.groups) return;
+
+	return {
+		tag: match.groups.tag,
+		name: match.groups.name,
+	};
+};
+
+type PendingLineMarkerBase = {
+	tag: string;
+	name: string;
+	startLineIndex: number;
+	order: number;
+	attributes: { name: string; value: unknown }[];
+};
+
+type PendingLineMarker = PendingLineMarkerBase &
+	(
+		| { type: "lineClass"; config: Extract<AnnotationRegistryItem, { type: "lineClass" }> }
+		| { type: "lineWrap"; config: Extract<AnnotationRegistryItem, { type: "lineWrap" }> }
+	);
+
 export const fromCodeFenceToCodeBlockDocument = (
 	codeNode: Code,
 	annotationConfig: AnnotationConfig,
@@ -187,15 +245,19 @@ export const fromCodeFenceToCodeBlockDocument = (
 	const meta = fromCodeFenceMetaToDocumentMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
 	const annotationLinePattern = fromCommentSyntaxToAnnotationCommentPattern(commentSyntax);
+	const annotationStartMarkerPattern = fromCommentSyntaxToAnnotationStartMarkerPattern(commentSyntax);
+	const annotationEndMarkerPattern = fromCommentSyntaxToAnnotationEndMarkerPattern(commentSyntax);
 	const parseLineAnnotations = options?.parseLineAnnotations ?? true;
 
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
 	const pendingInline: CodeBlockDocument["lines"][number]["annotations"] = [];
+	const pendingLineMarkers: PendingLineMarker[] = [];
 	const stagedInline: Array<{
 		lineIndex: number;
 		annotation: CodeBlockDocument["lines"][number]["annotations"][number];
 	}> = [];
+	let lineMarkerOrder = 0;
 
 	const commitCodeLine = (lineText: string) => {
 		const lineIndex = lines.length;
@@ -214,10 +276,105 @@ export const fromCodeFenceToCodeBlockDocument = (
 		pendingInline.length = 0;
 	};
 
+	const pushLineMarkerAnnotation = (marker: PendingLineMarker, endLineIndex: number) => {
+		if (marker.type === "lineClass") {
+			const annotation: LineAnnotation = {
+				...getStylePayload(marker.config),
+				source: marker.config.source,
+				priority: marker.config.priority,
+				type: "lineClass",
+				...typeDefinition.lineClass,
+				name: marker.name,
+				range: {
+					start: marker.startLineIndex,
+					end: endLineIndex,
+				},
+				order: marker.order,
+				attributes: marker.attributes,
+			};
+			annotations.push(annotation);
+			return;
+		}
+
+		const annotation: LineAnnotation = {
+			...getStylePayload(marker.config),
+			source: marker.config.source,
+			priority: marker.config.priority,
+			type: "lineWrap",
+			...typeDefinition.lineWrap,
+			name: marker.name,
+			range: {
+				start: marker.startLineIndex,
+				end: endLineIndex,
+			},
+			order: marker.order,
+			attributes: marker.attributes,
+		};
+		annotations.push(annotation);
+	};
+
 	for (const lineText of codeNode.value.split("\n")) {
 		const parsed = fromAnnotationCommentLineToParsedAnnotation(lineText, annotationLinePattern);
 
 		if (!parsed) {
+			if (parseLineAnnotations) {
+				const parsedEndMarker = fromAnnotationEndMarkerLine(lineText, annotationEndMarkerPattern);
+				if (parsedEndMarker) {
+					const type = tagToType[parsedEndMarker.tag];
+					if (type === "lineClass" || type === "lineWrap") {
+						let matchedIndex = -1;
+						for (let idx = pendingLineMarkers.length - 1; idx >= 0; idx -= 1) {
+							const marker = pendingLineMarkers[idx];
+							if (!marker) continue;
+							if (marker.tag !== parsedEndMarker.tag) continue;
+							if (marker.name !== parsedEndMarker.name) continue;
+							if (marker.type !== type) continue;
+							matchedIndex = idx;
+							break;
+						}
+
+							if (matchedIndex >= 0) {
+								const [marker] = pendingLineMarkers.splice(matchedIndex, 1);
+								if (marker) {
+									pushLineMarkerAnnotation(marker, lines.length);
+									continue;
+								}
+							}
+					}
+				}
+
+					const parsedStartMarker = fromAnnotationStartMarkerLine(lineText, annotationStartMarkerPattern);
+					if (parsedStartMarker) {
+						const type = tagToType[parsedStartMarker.tag];
+						const config = registry.get(parsedStartMarker.name);
+						if (type === "lineClass" && config?.type === "lineClass") {
+							pendingLineMarkers.push({
+								tag: parsedStartMarker.tag,
+								name: parsedStartMarker.name,
+								type: "lineClass",
+								config,
+								startLineIndex: lines.length,
+								order: lineMarkerOrder++,
+								attributes: parsedStartMarker.attributes,
+							});
+							continue;
+						}
+
+						if (type === "lineWrap" && config?.type === "lineWrap") {
+							pendingLineMarkers.push({
+								tag: parsedStartMarker.tag,
+								name: parsedStartMarker.name,
+								type: "lineWrap",
+								config,
+								startLineIndex: lines.length,
+								order: lineMarkerOrder++,
+								attributes: parsedStartMarker.attributes,
+							});
+							continue;
+						}
+					}
+				}
+
 			commitCodeLine(lineText);
 			continue;
 		}
@@ -285,6 +442,10 @@ export const fromCodeFenceToCodeBlockDocument = (
 			...typeDefinition.inlineWrap,
 			order: pendingInline.length,
 		});
+	}
+
+	for (const marker of pendingLineMarkers) {
+		pushLineMarkerAnnotation(marker, lines.length);
 	}
 
 	let lineStart = 0;

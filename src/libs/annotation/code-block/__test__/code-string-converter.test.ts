@@ -427,4 +427,53 @@ describe("code-string converter", () => {
 		expect(output.value).toContain("// @lw Callout {0-1}");
 		expect(output.value).toContain("// @iw Tooltip {0-5}");
 	});
+
+	it("line marker 문법(@tag name ... @end tag name)으로 lineWrap range를 파싱한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: [
+				`// @${lnWrapTag} Collapsible`,
+				"line-1",
+				`// @${lnWrapTag} Collapsible`,
+				"line-2",
+				`// @end ${lnWrapTag} Collapsible`,
+				"line-3",
+				`// @end ${lnWrapTag} Collapsible`,
+				"line-4",
+			].join("\n"),
+		};
+
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
+
+		expect(document.lines.map((line) => line.value)).toEqual(["line-1", "line-2", "line-3", "line-4"]);
+		expect(document.annotations).toHaveLength(2);
+		expect(document.annotations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "Collapsible", range: { start: 0, end: 3 } }),
+				expect.objectContaining({ name: "Collapsible", range: { start: 1, end: 2 } }),
+			]),
+		);
+	});
+
+	it("tagOverride lineWrap(lw)에서도 marker 종료 문법(@end lw name)을 파싱한다", () => {
+		const input: Code = {
+			type: "code",
+			lang: "ts",
+			meta: "",
+			value: ["// @lw Callout", "alpha", "beta", "// @end lw Callout", "gamma"].join("\n"),
+		};
+
+		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
+
+		expect(document.lines.map((line) => line.value)).toEqual(["alpha", "beta", "gamma"]);
+		expect(document.annotations).toEqual([
+			expect.objectContaining({
+				tag: "lw",
+				name: "Callout",
+				range: { start: 0, end: 2 },
+			}),
+		]);
+	});
 });
