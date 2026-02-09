@@ -4,8 +4,8 @@ import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 import {
 	convertBodyMdastMarksToMdxJsxTextElement,
 	convertBodyMdxJsxTextElementToMdastMarks,
-} from "./mdast-mark-bridge";
-import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "./mdx-code-block-walk";
+} from "../transforms/mdast-mark-bridge";
+import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../transforms/mdx-code-block-walk";
 
 const afterMarkdownParse = (mdxAst: Root) => {
 	walkOnlyInsideCodeFence(mdxAst, codeFenceAnnotationConfig);
