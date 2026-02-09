@@ -27,7 +27,7 @@ export const resolveCommentSyntax = (lang: string): CommentSyntax => {
 	return { prefix: "//", postfix: "" };
 };
 
-export const fromCommentSyntaxToAnnotationCommentPattern = (commentSyntax: CommentSyntax): RegExp => {
+export const buildAnnotationCommentPattern = (commentSyntax: CommentSyntax): RegExp => {
 	const prefix = commentSyntax.prefix.trim();
 	const postfix = commentSyntax.postfix.trim();
 
@@ -38,6 +38,9 @@ export const fromCommentSyntaxToAnnotationCommentPattern = (commentSyntax: Comme
 		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)\s+\{(?<start>\d+)-(?<end>\d+)\}(?<attrs>.*?)${postfixPart}\s*$`,
 	);
 };
+
+// Backward compatible alias.
+export const fromCommentSyntaxToAnnotationCommentPattern = buildAnnotationCommentPattern;
 
 export const formatAnnotationComment = (commentSyntax: CommentSyntax, body: string) => {
 	const prefix = commentSyntax.prefix.trim();

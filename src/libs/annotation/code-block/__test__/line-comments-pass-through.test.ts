@@ -29,4 +29,22 @@ describe("line comment pass-through", () => {
 		expect(document.annotations).toEqual([]);
 		expect(document.lines.map((line) => line.value)).toEqual(["// @block Collapsible {0-1}", "const a = 1"]);
 	});
+
+	it("marker 문법도 parseLineAnnotations=false면 코드 라인으로 유지한다", () => {
+		const codeNode: Code = {
+			type: "code",
+			lang: "ts",
+			value: ["// @block Collapsible", "const a = 1", "// @end block Collapsible", "const b = 2"].join("\n"),
+		};
+
+		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
+
+		expect(document.annotations).toEqual([]);
+		expect(document.lines.map((line) => line.value)).toEqual([
+			"// @block Collapsible",
+			"const a = 1",
+			"// @end block Collapsible",
+			"const b = 2",
+		]);
+	});
 });
