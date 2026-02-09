@@ -198,17 +198,6 @@ const buildStartMarkerPattern = (commentSyntax: { prefix: string; postfix: strin
 	);
 };
 
-const buildEndMarkerPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
-	const prefix = commentSyntax.prefix.trim();
-	const postfix = commentSyntax.postfix.trim();
-	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
-	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
-
-	return new RegExp(
-		String.raw`^\s*${prefixPart}@end\s+(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)${postfixPart}\s*$`,
-	);
-};
-
 const parseStartMarkerComment = (line: string, pattern: RegExp) => {
 	const match = line.match(pattern);
 	if (!match?.groups) return;
@@ -217,16 +206,6 @@ const parseStartMarkerComment = (line: string, pattern: RegExp) => {
 		tag: match.groups.tag,
 		name: match.groups.name,
 		attributes: parseAnnotationAttrs(match.groups.attrs ?? ""),
-	};
-};
-
-const parseEndMarkerComment = (line: string, pattern: RegExp) => {
-	const match = line.match(pattern);
-	if (!match?.groups) return;
-
-	return {
-		tag: match.groups.tag,
-		name: match.groups.name,
 	};
 };
 
@@ -253,7 +232,6 @@ type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinitio
 type AnnotationRegistry = ReturnType<typeof createAnnotationRegistry>;
 type ParsedRangeAnnotation = ReturnType<typeof parseRangeAnnotationComment>;
 type ParsedStartMarker = ReturnType<typeof parseStartMarkerComment>;
-type ParsedEndMarker = ReturnType<typeof parseEndMarkerComment>;
 type StagedInlineAnnotation = {
 	lineIndex: number;
 	annotation: CodeBlockDocument["lines"][number]["annotations"][number];
@@ -261,7 +239,6 @@ type StagedInlineAnnotation = {
 type CommentPatterns = {
 	range: RegExp;
 	startMarker: RegExp;
-	endMarker: RegExp;
 };
 
 const pushLineWrapMarkerAnnotation = (
@@ -288,51 +265,17 @@ const pushLineWrapMarkerAnnotation = (
 
 const findPendingLineMarkerIndex = (
 	pendingLineMarkers: PendingLineWrapMarker[],
-	parsedEndMarker: NonNullable<ParsedEndMarker>,
+	target: { tag: string; name: string },
 ) => {
 	for (let idx = pendingLineMarkers.length - 1; idx >= 0; idx -= 1) {
 		const marker = pendingLineMarkers[idx];
 		if (!marker) continue;
-		if (marker.tag !== parsedEndMarker.tag) continue;
-		if (marker.name !== parsedEndMarker.name) continue;
+		if (marker.tag !== target.tag) continue;
+		if (marker.name !== target.name) continue;
 		return idx;
 	}
 
 	return -1;
-};
-
-const tryCloseLineMarker = ({
-	lineText,
-	annotationEndMarkerPattern,
-	tagToType,
-	pendingLineMarkers,
-	annotations,
-	linesLength,
-	typeDefinition,
-}: {
-	lineText: string;
-	annotationEndMarkerPattern: RegExp;
-	tagToType: Record<string, AnnotationType>;
-	pendingLineMarkers: PendingLineWrapMarker[];
-	annotations: CodeBlockDocument["annotations"];
-	linesLength: number;
-	typeDefinition: AnnotationTypeDefinition;
-}) => {
-	const parsedEndMarker = parseEndMarkerComment(lineText, annotationEndMarkerPattern);
-	if (!parsedEndMarker) return false;
-
-	const type = tagToType[parsedEndMarker.tag];
-	if (type === "lineClass") return true;
-	if (type !== "lineWrap") return false;
-
-	const matchedIndex = findPendingLineMarkerIndex(pendingLineMarkers, parsedEndMarker);
-	if (matchedIndex < 0) return false;
-
-	const [marker] = pendingLineMarkers.splice(matchedIndex, 1);
-	if (!marker) return false;
-
-	pushLineWrapMarkerAnnotation(annotations, marker, linesLength, typeDefinition);
-	return true;
 };
 
 const tryOpenLineMarker = ({
@@ -342,6 +285,8 @@ const tryOpenLineMarker = ({
 	registry,
 	pendingLineMarkers,
 	pendingSingleLineClasses,
+	annotations,
+	typeDefinition,
 	linesLength,
 	nextOrder,
 }: {
@@ -351,6 +296,8 @@ const tryOpenLineMarker = ({
 	registry: AnnotationRegistry;
 	pendingLineMarkers: PendingLineWrapMarker[];
 	pendingSingleLineClasses: PendingSingleLineClass[];
+	annotations: CodeBlockDocument["annotations"];
+	typeDefinition: AnnotationTypeDefinition;
 	linesLength: number;
 	nextOrder: number;
 }) => {
@@ -358,7 +305,27 @@ const tryOpenLineMarker = ({
 	if (!parsedStartMarker) return false;
 
 	const type = tagToType[parsedStartMarker.tag];
+	const hasEndAttr = parsedStartMarker.attributes.some((attr) => attr.name === "end" && attr.value === true);
+	const markerAttributes = parsedStartMarker.attributes.filter((attr) => attr.name !== "end");
 	const config = registry.get(parsedStartMarker.name);
+
+	if (hasEndAttr) {
+		if (type === "lineClass") return true;
+		if (type !== "lineWrap") return false;
+
+		const matchedIndex = findPendingLineMarkerIndex(pendingLineMarkers, {
+			tag: parsedStartMarker.tag,
+			name: parsedStartMarker.name,
+		});
+		if (matchedIndex < 0) return true;
+
+		const [marker] = pendingLineMarkers.splice(matchedIndex, 1);
+		if (!marker) return true;
+
+		pushLineWrapMarkerAnnotation(annotations, marker, linesLength, typeDefinition);
+		return true;
+	}
+
 	if (type === "lineClass" && config?.type === "lineClass") {
 		pendingSingleLineClasses.push({
 			tag: parsedStartMarker.tag,
@@ -367,7 +334,7 @@ const tryOpenLineMarker = ({
 			config,
 			targetLineIndex: linesLength,
 			order: nextOrder,
-			attributes: parsedStartMarker.attributes,
+			attributes: markerAttributes,
 		});
 		return true;
 	}
@@ -380,7 +347,7 @@ const tryOpenLineMarker = ({
 			config,
 			startLineIndex: linesLength,
 			order: nextOrder,
-			attributes: parsedStartMarker.attributes,
+			attributes: markerAttributes,
 		});
 		return true;
 	}
@@ -567,17 +534,6 @@ const parseCodeLines = ({
 		}
 
 		if (parseLineAnnotations) {
-			const closed = tryCloseLineMarker({
-				lineText,
-				annotationEndMarkerPattern: patterns.endMarker,
-				tagToType,
-				pendingLineMarkers,
-				annotations,
-				linesLength: lines.length,
-				typeDefinition,
-			});
-			if (closed) continue;
-
 			const opened = tryOpenLineMarker({
 				lineText,
 				annotationStartMarkerPattern: patterns.startMarker,
@@ -585,6 +541,8 @@ const parseCodeLines = ({
 				registry,
 				pendingLineMarkers,
 				pendingSingleLineClasses,
+				annotations,
+				typeDefinition,
 				linesLength: lines.length,
 				nextOrder: lineMarkerOrder,
 			});
@@ -647,7 +605,6 @@ export const fromCodeFenceToCodeBlockDocument = (
 	const patterns: CommentPatterns = {
 		range: buildRangeAnnotationPattern(commentSyntax),
 		startMarker: buildStartMarkerPattern(commentSyntax),
-		endMarker: buildEndMarkerPattern(commentSyntax),
 	};
 	const parseLineAnnotations = options?.parseLineAnnotations ?? true;
 	const parsed = parseCodeLines({

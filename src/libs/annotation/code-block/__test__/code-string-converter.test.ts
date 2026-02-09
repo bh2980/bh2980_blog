@@ -428,22 +428,22 @@ describe("code-string converter", () => {
 		expect(output.value).toContain("// @iw Tooltip {0-5}");
 	});
 
-	it("line marker 문법(@tag name ... @end tag name)으로 lineWrap range를 파싱한다", () => {
+	it("line marker 문법(@tag name ... @tag name end)으로 lineWrap range를 파싱한다", () => {
 		const input: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
 			value: [
-				`// @${lnWrapTag} Collapsible`,
-				"line-1",
-				`// @${lnWrapTag} Collapsible`,
-				"line-2",
-				`// @end ${lnWrapTag} Collapsible`,
-				"line-3",
-				`// @end ${lnWrapTag} Collapsible`,
-				"line-4",
-			].join("\n"),
-		};
+					`// @${lnWrapTag} Collapsible`,
+					"line-1",
+					`// @${lnWrapTag} Collapsible`,
+					"line-2",
+					`// @${lnWrapTag} Collapsible end`,
+					"line-3",
+					`// @${lnWrapTag} Collapsible end`,
+					"line-4",
+				].join("\n"),
+			};
 
 		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
 
@@ -457,12 +457,12 @@ describe("code-string converter", () => {
 		);
 	});
 
-	it("tagOverride lineWrap(lw)에서도 marker 종료 문법(@end lw name)을 파싱한다", () => {
+	it("tagOverride lineWrap(lw)에서도 marker 종료 문법(@lw name end)을 파싱한다", () => {
 		const input: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: ["// @lw Callout", "alpha", "beta", "// @end lw Callout", "gamma"].join("\n"),
+			value: ["// @lw Callout", "alpha", "beta", "// @lw Callout end", "gamma"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);

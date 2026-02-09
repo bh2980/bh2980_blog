@@ -34,7 +34,7 @@ describe("line comment pass-through", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
-			value: ["// @block Collapsible", "const a = 1", "// @end block Collapsible", "const b = 2"].join("\n"),
+			value: ["// @block Collapsible", "const a = 1", "// @block Collapsible end", "const b = 2"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
@@ -43,8 +43,27 @@ describe("line comment pass-through", () => {
 		expect(document.lines.map((line) => line.value)).toEqual([
 			"// @block Collapsible",
 			"const a = 1",
-			"// @end block Collapsible",
+			"// @block Collapsible end",
 			"const b = 2",
+		]);
+	});
+
+	it("marker 문법은 parseLineAnnotations=true일 때 @block name end로 닫힌다", () => {
+		const codeNode: Code = {
+			type: "code",
+			lang: "ts",
+			value: ["// @block Collapsible", "const a = 1", "// @block Collapsible end", "const b = 2"].join("\n"),
+		};
+
+		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: true });
+
+		expect(document.lines.map((line) => line.value)).toEqual(["const a = 1", "const b = 2"]);
+		expect(document.annotations).toEqual([
+			expect.objectContaining({
+				type: "lineWrap",
+				name: "Collapsible",
+				range: { start: 0, end: 1 },
+			}),
 		]);
 	});
 });
