@@ -162,4 +162,52 @@ describe("rehypeShikiDecorationRender", () => {
 
 		expect(highlightMock).not.toHaveBeenCalled();
 	});
+
+	it("기본값으로는 mermaid lang도 highlight한다", async () => {
+		const renderedPre: Element = {
+			type: "element",
+			tagName: "pre",
+			properties: {},
+			children: [],
+		};
+		highlightMock.mockReturnValue({
+			type: "root",
+			children: [renderedPre],
+		});
+
+		const pre = createPreWithCode({
+			codeValue: "graph TD;\nA-->B;\n",
+			codeClassName: ["language-mermaid"],
+		});
+		const tree = createTree(pre);
+
+		await rehypeShikiDecorationRender()(tree);
+
+		expect(highlightMock).toHaveBeenCalledTimes(1);
+		expect(highlightMock).toHaveBeenCalledWith(
+			"graph TD;\nA-->B;",
+			"mermaid",
+			{},
+			{
+				decorations: [],
+				lineDecorations: [],
+				lineWrappers: [],
+				allowedRenderTags: [],
+			},
+		);
+	});
+
+	it("ignoreLang 옵션으로 skip 조건을 커스터마이즈할 수 있다", async () => {
+		const pre = createPreWithCode({
+			codeValue: "const a = 1;\n",
+			codeClassName: ["language-ts"],
+		});
+		const tree = createTree(pre);
+
+		await rehypeShikiDecorationRender({
+			ignoreLang: (lang) => lang === "ts",
+		})(tree);
+
+		expect(highlightMock).not.toHaveBeenCalled();
+	});
 });

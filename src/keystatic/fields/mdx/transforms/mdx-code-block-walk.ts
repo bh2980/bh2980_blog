@@ -5,7 +5,7 @@ import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-b
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
 import { fromCodeBlockDocumentToMdast } from "@/libs/annotation/code-block/document-to-mdast";
-import { fromMdastToCodeBlockDocument } from "@/libs/annotation/code-block/mdast-to-document";
+import { fromMdxFlowElementToCodeDocument } from "@/libs/annotation/code-block/mdast-to-document";
 import type { AnnotationConfig, CodeBlockRoot } from "@/libs/annotation/code-block/types";
 
 const isCodeBlock = (node: MdxJsxFlowElement): node is CodeBlockRoot => node.name === EDITOR_CODE_BLOCK_NAME;
@@ -27,7 +27,7 @@ export const walkOnlyInsideCodeblock = (mdxAst: Root, config: AnnotationConfig) 
 		if (!isCodeBlock(node)) return;
 		if (index == null || !parent) return;
 
-		const document = fromMdastToCodeBlockDocument(node, config);
+		const document = fromMdxFlowElementToCodeDocument(node, config);
 		const codeFence = fromCodeBlockDocumentToCodeFence(document, config);
 		parent.children.splice(index, 1, codeFence);
 		return [SKIP, index];
