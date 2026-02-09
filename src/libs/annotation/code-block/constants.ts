@@ -42,16 +42,19 @@ export const annotationConfig: AnnotationConfig = {
 			source: "mdx-text",
 			render: "u",
 		},
+		{
+			name: "fold",
+			source: "mdx-text",
+			render: "fold",
+		},
 	],
 	lineWrap: [
 		{
 			name: "Collapsible",
-			source: "mdx-flow",
 			render: "collapse",
 		},
 		{
 			name: "collapse",
-			source: "mdx-flow",
 			render: "collapse",
 		},
 	],

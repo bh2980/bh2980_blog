@@ -12,6 +12,7 @@ import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotatio
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Collapse } from "./code-block/collapse";
+import { Fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { Pre } from "./pre";
@@ -45,6 +46,7 @@ export const renderMDX = async (source: string) => {
 			pre: Pre,
 			Callout,
 			collapse: Collapse,
+			fold: Fold,
 			Collapsible,
 			Columns,
 			Column,
