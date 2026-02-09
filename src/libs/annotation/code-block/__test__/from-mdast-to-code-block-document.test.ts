@@ -233,7 +233,7 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 		]);
 	});
 
-	it("라인 annotation range는 절대 오프셋이 아니라 라인 오프셋 기준이다", () => {
+	it("inline annotation range는 코드 블록 절대 오프셋 기준이다", () => {
 		const node = codeBlock([
 			paragraph([inline("u", [text("a")]), text("1")]),
 			paragraph([inline("u", [text("b")]), text("2")]),
@@ -248,7 +248,7 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 			},
 			{
 				value: "b2",
-				annotations: [expectedInlineWrap("u", { start: 0, end: 1 })],
+				annotations: [expectedInlineWrap("u", { start: 3, end: 4 })],
 			},
 		]);
 	});
