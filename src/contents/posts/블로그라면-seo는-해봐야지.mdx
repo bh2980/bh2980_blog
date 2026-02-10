@@ -79,6 +79,7 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     	const { slug } = await params;
     	const post = await getPost(slug);
 
+    	// @line highlight
     	const url = `/posts/${sanitizeSlug(slug)}`;
 
     	return {
