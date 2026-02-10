@@ -173,15 +173,10 @@ const fromLinesToCodeBlockRoot = (
 			.filter((annotation) => annotation.scope === "char")
 			.map((annotation, order) => ({
 				...annotation,
-				range:
-					annotation.range.start >= 0 &&
-					annotation.range.end >= annotation.range.start &&
-					annotation.range.end <= line.value.length
-						? annotation.range
-						: {
-								start: annotation.range.start - lineOffset,
-								end: annotation.range.end - lineOffset,
-							},
+				range: {
+					start: annotation.range.start - lineOffset,
+					end: annotation.range.end - lineOffset,
+				},
 				order,
 			}));
 

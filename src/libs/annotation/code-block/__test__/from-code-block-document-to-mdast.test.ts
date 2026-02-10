@@ -178,6 +178,24 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		expect(output.lines).toEqual(input.lines);
 	});
 
+	it("inline 절대 offset이 라인 길이 조건을 우연히 만족해도 로컬 변환은 항상 lineOffset 기준으로 계산한다", () => {
+		const input = toDocument([
+			{
+				value: "ab",
+				annotations: [],
+			},
+			{
+				value: "0123456789abcdefghijklmnopqrstuvwxyz",
+				annotations: [charRender("Tooltip", { start: 8, end: 12 }, 0)],
+			},
+		]);
+
+		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
+		const output = fromMdxFlowElementToCodeDocument(ast, annotationConfig);
+
+		expect(output.lines).toEqual(input.lines);
+	});
+
 	it("document -> mdast -> document 라운드트립에서 line annotation은 제거되고 inline만 유지된다", () => {
 		const input = toDocument(
 			[

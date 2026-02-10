@@ -142,24 +142,16 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (
 
 	document.lines.forEach((line, lineNumber) => {
 		const lineOffset = lineStartOffsets[lineNumber] ?? 0;
-		const lineAbsoluteStart = lineOffset;
-		const lineAbsoluteEnd = lineOffset + line.value.length;
 		for (const annotation of line.annotations) {
-			const isAbsoluteRangeForCurrentLine =
-				annotation.range.start >= lineAbsoluteStart &&
-				annotation.range.end >= annotation.range.start &&
-				annotation.range.end <= lineAbsoluteEnd;
 			const style = resolveStyle(registry, annotation);
 			const decoration = buildInlineDecoration(
 				lineNumber,
 				{
 					...annotation,
-					range: isAbsoluteRangeForCurrentLine
-						? {
-								start: annotation.range.start - lineOffset,
-								end: annotation.range.end - lineOffset,
-							}
-						: annotation.range,
+					range: {
+						start: annotation.range.start - lineOffset,
+						end: annotation.range.end - lineOffset,
+					},
 				},
 				style,
 			);
