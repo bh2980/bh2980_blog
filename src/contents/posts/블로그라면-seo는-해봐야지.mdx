@@ -122,18 +122,12 @@ export async function generateMetadata(): Promise<Metadata> {
 Next.js에서 캐노니컬의 값은 앞서 작성한 메타데이터의 `alternates` 속성에서 정의할 수 있습니다. 앞서 메타데이터를 먼저 살펴본 이유가 바로 이후 과정에서 이 메타데이터를 계속 확장하고 수정해 나가기 때문입니다.
 
 ```ts title="src/app/posts/[slug]/page.tsx"
-export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
-	const { slug } = await params;
-	const post = await getPost(slug);
-
-	// @char Tooltip {1-43} content="앞서 root metadata에서 metadataBase를 설정해놓았으므로 상대 경로로 지정이 가능"
-	const url = `/posts/${sanitizeSlug(slug)}`;
-
-	return {
-		title: post.title,
-		description: post.excerpt,
-		// @line plus
-		alternates: { canonical: url },
-	};
-}
+export const metadata: Metadata = {
+	title: "블로그",
+	description: "개발하면서 배운 것들과 경험을 기록합니다.",
+	// @line plus
+	alternates: { canonical: `/posts` },
+};
 ```
+
+위처럼&#x20;
