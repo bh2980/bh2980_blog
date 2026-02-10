@@ -113,7 +113,7 @@ const insertHardBreakWhenEnter = (state: EditorState, dispatch?: (tr: Transactio
 	return true;
 };
 
-export function codeBlockKeysPlugin(schema: Schema): Plugin {
+export function codeBlockKeysPlugin(_schema: Schema): Plugin {
 	return keymap({
 		"Mod-Enter": exitWrapper,
 		"Ctrl-Enter": exitWrapper,

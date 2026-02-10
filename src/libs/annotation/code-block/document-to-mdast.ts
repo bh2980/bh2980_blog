@@ -1,11 +1,6 @@
 import { parse } from "acorn";
 import type { Paragraph, PhrasingContent, Text } from "mdast";
-import type {
-	MdxJsxAttribute,
-	MdxJsxAttributeValueExpression,
-	MdxJsxFlowElement,
-	MdxJsxTextElement,
-} from "mdast-util-mdx-jsx";
+import type { MdxJsxAttribute, MdxJsxAttributeValueExpression, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { createAnnotationRegistry, fromAnnotationsToEvents, supportsAnnotationScope } from "./libs";
 import type {
 	AnnotationAttr,
@@ -18,6 +13,7 @@ import type {
 	Line,
 	MdastNodeLike,
 } from "./types";
+
 const DEFAULT_CODE_LANG = "text";
 
 const createTextNode = (value: string): Text => ({

@@ -70,10 +70,7 @@ const toDocAttrValue = (value: MdxJsxAttribute["value"]): unknown => {
 	}
 };
 
-const fromParagraphToLine = (
-	p: Paragraph,
-	registry: AnnotationRegistry,
-): Line => {
+const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line => {
 	let pureCode = "";
 	const annotations: InlineAnnotation[] = [];
 
@@ -162,7 +159,7 @@ const splitLineByHardBreak = (line: Line): Line[] => {
 			.map((annotation, order) => {
 				const segStart = Math.max(annotation.range.start, lineStart);
 				const segEnd = Math.min(annotation.range.end, lineEnd);
-				if (segStart >= segEnd) return;
+				if (segStart >= segEnd) return null;
 
 				return {
 					...annotation,
@@ -173,7 +170,7 @@ const splitLineByHardBreak = (line: Line): Line[] => {
 					order,
 				};
 			})
-			.filter((annotation): annotation is Line["annotations"][number] => Boolean(annotation));
+			.filter((annotation): annotation is Line["annotations"][number] => annotation !== null);
 
 		result.push({
 			value: chunk,
