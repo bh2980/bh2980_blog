@@ -340,23 +340,5 @@ export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
 			class: "underline",
 			scopes: ["char", "document"],
 		},
-		{
-			name: "plus",
-			kind: "class",
-			class: "diff plus",
-			scopes: ["line"],
-		},
-		{
-			name: "minus",
-			kind: "class",
-			class: "diff minus",
-			scopes: ["line"],
-		},
-		{
-			name: "Collapsible",
-			kind: "render",
-			render: "Collapsible",
-			scopes: ["line"],
-		},
 	],
 };
