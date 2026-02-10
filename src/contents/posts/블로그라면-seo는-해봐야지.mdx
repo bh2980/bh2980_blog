@@ -72,6 +72,7 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
   <Tab label="generateMetadata">
     ```ts
     import type { Metadata } from "next";
+    import { getMemo } from "@/libs/contents/memo";
 
     export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
     	const { slug } = await params;
