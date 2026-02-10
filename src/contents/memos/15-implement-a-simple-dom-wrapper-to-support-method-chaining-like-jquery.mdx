@@ -25,13 +25,13 @@ $('#button')
     const element = el
 
     return {
-  // @mark Tooltip {9-17} content="this 바인딩을 위한 일반 함수 호출"
+  // @char Tooltip {9-17} content="this 바인딩을 위한 일반 함수 호출"
       css: function(propertyName, value) {
-  // @mark Tooltip {20-32} content="동적으로 객체 키를 설정하기 위해 대괄호를 통한 객체 키 접근"
+  // @char Tooltip {20-32} content="동적으로 객체 키를 설정하기 위해 대괄호를 통한 객체 키 접근"
         element.style[propertyName] = value;
 
         return {
-  // @mark Tooltip {8-21} content="이 때 this는 function 키워드를 통해 호출한 객체를 이어 받는다."
+  // @char Tooltip {8-21} content="이 때 this는 function 키워드를 통해 호출한 객체를 이어 받는다."
           css: this.css
         };
       }
