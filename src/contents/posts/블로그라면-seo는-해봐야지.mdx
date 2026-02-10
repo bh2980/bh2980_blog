@@ -124,13 +124,17 @@ export async function generateMetadata(): Promise<Metadata> {
 Next.js에서 캐노니컬의 값은 앞서 작성한 메타데이터의 `alternates` 속성에서 정의할 수 있습니다.
 
 ```ts title="src/app/posts/page.tsx"
-export const metadata: Metadata = {
-	title: "블로그",
-	description: "개발하면서 배운 것들과 경험을 기록합니다.",
-	// @line plus
-	// @char Tooltip {26-33} content="앞서 layout.tsx의 메타 데이터에서 metadataBase를 지정해두었기에 상대 경로 사용 가능"
-	alternates: { canonical: `/posts` },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const HOST_URL = process.env.HOST_URL;
+	if (!HOST_URL) throw new Error("HOST_URL is required");
+
+	return {
+		metadataBase: new URL(HOST_URL),
+		title: "bh2980.dev",
+		description: "bh2980의 개발 블로그",
+		alternates: { canonical: "/" },
+	};
+}
 ```
 
 위와 같이 설정하면 `/posts` 페이지를 기준으로 `<link rel="canonical">` 태그가 자동으로 생성되며, `/posts?category=development`와 같은 쿼리 스트링이 붙은 URL들은 검색엔진 관점에서 모두 `/posts`의 변형으로 인식되어 색인과 평가 기준이 하나의 URL로 통합됩니다.
