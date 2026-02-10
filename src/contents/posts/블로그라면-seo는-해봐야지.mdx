@@ -119,7 +119,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 이 둘은 사용자에게는 분명히 다른 페이지이지만, 검색엔진 입장에서는 동일한 글 목록 페이지의 변형에 불과하므로 색인과 평가는 하나의 URL로 통합하는 편이 합리적입니다. 이럴 때 바로 캐노니컬 태그를 사용합니다.
 
-Next.js에서 캐노니컬의 값은 metadata의 `alternates`에서 정의할 수 있습니다. 앞서 metadata를 먼저 살펴본 이유는 이후 과정에서 이 메타데이터를 계속 확장하고 수정해 나가기 때문입니다.
+Next.js에서 캐노니컬의 값은 앞서 작성한 메타데이터의 `alternates` 속성에서 정의할 수 있습니다. 앞서 메타데이터를 먼저 살펴본 이유가 바로 이후 과정에서 이 메타데이터를 계속 확장하고 수정해 나가기 때문입니다.
 
 ```ts title="src/app/posts/[slug]/page.tsx"
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
