@@ -1,7 +1,11 @@
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
-import { annotationConfig } from "@/libs/annotation/code-block/constants";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../mdx-code-block-walk";
+
+const annotationConfig: AnnotationConfig = {
+	annotations: [{ name: "strong", kind: "render", source: "mdx-text", render: "strong", scopes: ["char"] }],
+};
 
 describe("mdx code-block walk", () => {
 	it("walkOnlyInsideCodeFence: code fence를 CodeBlock mdast로 변환한다", () => {

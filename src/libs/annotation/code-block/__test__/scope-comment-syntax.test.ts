@@ -1,9 +1,17 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
-import { annotationConfig } from "../constants";
+import type { AnnotationConfig } from "../types";
 
 const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTestable;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "plus", kind: "class", class: "diff plus", scopes: ["line"] },
+		{ name: "minus", kind: "class", class: "diff minus", scopes: ["line"] },
+		{ name: "collapse", kind: "render", render: "collapse", scopes: ["line"] },
+		{ name: "fold", kind: "render", source: "mdx-text", render: "fold", scopes: ["char", "document"] },
+	],
+};
 
 const parse = (value: string) => {
 	const codeNode: Code = {

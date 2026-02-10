@@ -1,9 +1,12 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
-import { annotationConfig } from "../constants";
 import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
+import type { AnnotationConfig } from "../types";
 
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
+const annotationConfig: AnnotationConfig = {
+	annotations: [{ name: "fold", kind: "render", source: "mdx-text", render: "fold", scopes: ["char", "document"] }],
+};
 
 describe("runtime fold inline annotation", () => {
 	it("@char fold 주석을 inlineWrap으로 파싱한다", () => {

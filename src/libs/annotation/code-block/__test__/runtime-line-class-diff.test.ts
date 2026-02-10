@@ -1,9 +1,15 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
-import { annotationConfig } from "../constants";
+import type { AnnotationConfig } from "../types";
 
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "plus", kind: "class", class: "diff plus", scopes: ["line"] },
+		{ name: "minus", kind: "class", class: "diff minus", scopes: ["line"] },
+	],
+};
 
 describe("runtime line class diff", () => {
 	it("@line plus는 바로 아래 1줄 lineClass로 파싱한다", () => {
