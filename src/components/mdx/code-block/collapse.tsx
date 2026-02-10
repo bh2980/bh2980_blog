@@ -26,6 +26,7 @@ export const collapse = ({ children, open }: { children: ReactNode; open?: boole
 				className={cn(
 					"group relative block cursor-pointer list-none text-left [&::-webkit-details-marker]:hidden",
 					"[&_.line]:anno-mark-base [&_.line]:anno-mark:content-['›']",
+					"group-open:[&_.line]:anno-mark:rotate-90 group-open:[&_.line]:anno-mark:transition-transform",
 				)}
 			>
 				{firstLine}
