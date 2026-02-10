@@ -126,6 +126,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	const { slug } = await params;
 	const post = await getPost(slug);
 
+	// @char Tooltip {1-43} content="앞서 root metadata에서 metadataBase를 설정해놓았으므로 상대 경로로 지정이 가능"
 	const url = `/posts/${sanitizeSlug(slug)}`;
 
 	return {
