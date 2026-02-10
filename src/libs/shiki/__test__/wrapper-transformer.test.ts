@@ -198,6 +198,28 @@ describe("transformers.root addLineWrappers", () => {
 		expect(code.children[2]).toBe(lines[1]);
 	});
 
+	it("range end가 라인 수를 초과하면 EOF까지 clamp해서 wrapper를 적용한다", () => {
+		const transformer = createTransformer([
+			{
+				type: "lineWrap",
+				name: "Callout",
+				range: { start: 1, end: 99 },
+				order: 0,
+				render: "Callout",
+			},
+		]);
+
+		const { code, lines } = createCodeElement(["line1", "line2", "line3"]);
+		runRootHook(transformer, code);
+
+		expect(code.children[0]).toBe(lines[0]);
+		const wrapper = code.children[2] as Element;
+		expect(wrapper.type).toBe("element");
+		expect(wrapper.tagName).toBe("Callout");
+		expect(wrapper.children).toContain(lines[1]);
+		expect(wrapper.children).toContain(lines[2]);
+	});
+
 	it("허용되지 않은 render tag는 wrapper를 만들지 않는다", () => {
 		const transformer = createTransformer(
 			[

@@ -54,4 +54,24 @@ describe("highlight line wrapper integration", () => {
 		const wrapper = code?.children.find((node) => node.type === "element" && node.tagName === "Callout");
 		expect(wrapper).toBeDefined();
 	});
+
+	it("line wrapper range end가 라인 수를 넘어도 EOF까지 적용한다", () => {
+		const hast = highlight(
+			"const a = 1\nconst b = 2",
+			"ts",
+			{},
+			{
+				lineWrappers: [{ type: "lineWrap", name: "Callout", range: { start: 1, end: 99 }, order: 0, render: "Callout" }],
+				allowedRenderTags: ["Callout"],
+			},
+		);
+
+		const pre = hast.children.find((node) => node.type === "element") as Element | undefined;
+		expect(pre).toBeDefined();
+		const code = pre ? findCode(pre) : undefined;
+		expect(code).toBeDefined();
+
+		const wrapper = code?.children.find((node) => node.type === "element" && node.tagName === "Callout");
+		expect(wrapper).toBeDefined();
+	});
 });

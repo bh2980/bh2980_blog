@@ -237,10 +237,12 @@ export const applyLineWrappers = (
 
 	for (const wrapper of deduped) {
 		const { start, end } = wrapper.range;
-		if (start < 0 || end > lines.length) continue;
+		if (start < 0) continue;
+		const clampedEnd = Math.min(end, lines.length);
+		if (clampedEnd <= start) continue;
 
 		const startLine = lines[start];
-		const endLine = lines[end - 1];
+		const endLine = lines[clampedEnd - 1];
 		if (!startLine || !endLine) continue;
 
 		const properties: Record<string, HastPropertyValue> = {};
