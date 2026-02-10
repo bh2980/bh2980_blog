@@ -101,4 +101,4 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 ```
 
-한 가지 특이한 속성이 있는데 바로 `metadataBase`입니다.
+한 가지 특이한 속성이 있는데 바로 `metadataBase`입니다. 이 속성은 canonical, alternates, openGraph, twitter 등 **절대 URL이 필요한 메타데이터에서 상대 경로를 사용할 수 있게 해주는 기준 URL**로, `/posts` 같은 값을 자동으로 `https://bh2980.dev/posts` 형태의 절대 URL로 변환해줍니다.
