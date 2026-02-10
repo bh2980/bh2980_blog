@@ -58,6 +58,12 @@ export const annotationConfig: AnnotationConfig = {
 			scopes: ["line"],
 		},
 		{
+			name: "highlight",
+			kind: "class",
+			class: "anno-mark-base bg-gray-400/20",
+			scopes: ["line"],
+		},
+		{
 			name: "collapse",
 			kind: "render",
 			render: "collapse",
