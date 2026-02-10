@@ -49,8 +49,6 @@ const toLineDecorationPayload = (annotation: LineAnnotation) => {
 
 	return {
 		type: annotation.type,
-		typeId: annotation.typeId,
-		tag: annotation.tag,
 		name: annotation.name,
 		range: annotation.range,
 		order: annotation.order,
@@ -64,8 +62,6 @@ const toLineWrapperPayload = (annotation: LineAnnotation) => {
 
 	return {
 		type: annotation.type,
-		typeId: annotation.typeId,
-		tag: annotation.tag,
 		name: annotation.name,
 		range: annotation.range,
 		order: annotation.order,

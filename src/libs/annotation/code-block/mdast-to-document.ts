@@ -1,6 +1,6 @@
 import type { Break, Node, Paragraph, Text } from "mdast";
 import type { MdxJsxAttribute, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import { createAnnotationRegistry, resolveAnnotationTypeByScope, resolveAnnotationTypeDefinition } from "./libs";
+import { createAnnotationRegistry, resolveAnnotationTypeByScope } from "./libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -18,7 +18,6 @@ const hasChildren = (node: Node): node is Node & { children: Node[] } => "childr
 const isText = (node: Node): node is Text => node.type === "text";
 const isBreak = (node: Node): node is Break => node.type === "break";
 const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
-type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinition>;
 
 const toInlineAnnotationFromConfig = ({
 	config,
@@ -26,14 +25,12 @@ const toInlineAnnotationFromConfig = ({
 	range,
 	order,
 	attributes,
-	typeDefinition,
 }: {
 	config: AnnotationRegistryItem;
 	name: string;
 	range: { start: number; end: number };
 	order: number;
 	attributes?: AnnotationAttr[];
-	typeDefinition: AnnotationTypeDefinition;
 }): InlineAnnotation | undefined => {
 	const annotationType = resolveAnnotationTypeByScope(config, "char");
 	if (annotationType !== "inlineClass" && annotationType !== "inlineWrap") return;
@@ -52,7 +49,6 @@ const toInlineAnnotationFromConfig = ({
 			...base,
 			class: config.class ?? "",
 			type: "inlineClass",
-			...typeDefinition.inlineClass,
 		};
 	}
 
@@ -60,7 +56,6 @@ const toInlineAnnotationFromConfig = ({
 		...base,
 		render: config.render ?? name,
 		type: "inlineWrap",
-		...typeDefinition.inlineWrap,
 	};
 };
 
@@ -80,7 +75,6 @@ const toDocAttrValue = (value: MdxJsxAttribute["value"]): unknown => {
 const fromParagraphToLine = (
 	p: Paragraph,
 	registry: AnnotationRegistry,
-	typeDefinition: AnnotationTypeDefinition,
 ): Line => {
 	let pureCode = "";
 	const annotations: InlineAnnotation[] = [];
@@ -128,7 +122,6 @@ const fromParagraphToLine = (
 							name: attr.name,
 							value: toDocAttrValue(attr.value),
 						})),
-					typeDefinition,
 				});
 				if (!annotation) return;
 
@@ -141,7 +134,6 @@ const fromParagraphToLine = (
 				name: nodeType,
 				range: { start, end },
 				order: annotations.length,
-				typeDefinition,
 			});
 			if (!annotation) return;
 
@@ -254,7 +246,6 @@ const fromMdxFlowElementToCodeHeader = (mdxAst: MdxJsxFlowElement): Pick<CodeBlo
 const fromMdxFlowElementToCodeBody = (
 	mdxAst: MdxJsxFlowElement,
 	registry: AnnotationRegistry,
-	typeDefinition: AnnotationTypeDefinition,
 ): Pick<CodeBlockDocument, "lines" | "annotations"> => {
 	const lines: Line[] = [];
 
@@ -263,7 +254,7 @@ const fromMdxFlowElementToCodeBody = (
 			continue;
 		}
 
-		const line = fromParagraphToLine(childNode, registry, typeDefinition);
+		const line = fromParagraphToLine(childNode, registry);
 		lines.push(...splitLineByHardBreak(line));
 	}
 
@@ -275,9 +266,8 @@ export const fromMdxFlowElementToCodeDocument = (
 	annotationConfig: AnnotationConfig,
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 	const { lang, meta } = fromMdxFlowElementToCodeHeader(mdxAst);
-	const { lines, annotations } = fromMdxFlowElementToCodeBody(mdxAst, registry, typeDefinition);
+	const { lines, annotations } = fromMdxFlowElementToCodeBody(mdxAst, registry);
 
 	return { lang, meta, lines, annotations };
 };

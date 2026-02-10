@@ -5,7 +5,7 @@ import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { rehypeMermaidDarkClass } from "@/libs/mermaid/rehype-mermaid-dark-class";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
@@ -27,7 +27,7 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
-					[remarkAnnotationToShikiDecoration, codeFenceAnnotationConfig],
+					[remarkAnnotationToShikiDecoration, annotationConfig],
 					remarkBreaks,
 					remarkGfm,
 					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],

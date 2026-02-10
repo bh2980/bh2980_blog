@@ -1,5 +1,5 @@
 import type { Root } from "mdast";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import {
 	convertBodyMdastMarksToMdxJsxTextElement,
 	convertBodyMdxJsxTextElementToMdastMarks,
@@ -10,7 +10,7 @@ import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 
 const afterMarkdownParse = (mdxAst: Root) => {
 	walkOnlyInsideMermaidCodeFence(mdxAst);
-	walkOnlyInsideCodeFence(mdxAst, codeFenceAnnotationConfig);
+	walkOnlyInsideCodeFence(mdxAst, annotationConfig);
 	convertBodyMdastMarksToMdxJsxTextElement(mdxAst);
 	findCodeBlockAndMapping(mdxAst);
 	return mdxAst;
@@ -19,7 +19,7 @@ const afterMarkdownParse = (mdxAst: Root) => {
 const beforeSerialize = (mdxAst: Root) => {
 	findCodeBlockAndMapping(mdxAst, { emit: false });
 	walkOnlyInsideMermaid(mdxAst);
-	walkOnlyInsideCodeblock(mdxAst, codeFenceAnnotationConfig);
+	walkOnlyInsideCodeblock(mdxAst, annotationConfig);
 	convertBodyMdxJsxTextElementToMdastMarks(mdxAst);
 	return mdxAst;
 };

@@ -1,7 +1,6 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import type { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block/constants";
-import type { ANNOTATION_TYPE_DEFINITION } from "./constants";
 
 export type CodeBlockRoot = MdxJsxFlowElement & { name: typeof EDITOR_CODE_BLOCK_NAME };
 
@@ -9,14 +8,6 @@ export type Range = {
 	start: number;
 	end: number;
 };
-
-export type AnnotationTypePair = {
-	[K in keyof typeof ANNOTATION_TYPE_DEFINITION]: {
-		type: K;
-		typeId: (typeof ANNOTATION_TYPE_DEFINITION)[K]["typeId"];
-		tag: string;
-	};
-}[keyof typeof ANNOTATION_TYPE_DEFINITION];
 
 export type AnnotationAttr = { name: string; value: unknown };
 
@@ -31,21 +22,18 @@ type AnnotationBase = {
 };
 
 export type InlineAnnotationSource = "mdast" | "mdx-text";
+export type AnnotationType = "inlineClass" | "inlineWrap" | "lineClass" | "lineWrap";
 
-type InlineAnnotationTypePair = Extract<AnnotationTypePair, { type: "inlineClass" | "inlineWrap" }>;
-type LineAnnotationTypePair = Extract<AnnotationTypePair, { type: "lineClass" | "lineWrap" }>;
+export type InlineAnnotation = AnnotationBase & {
+	type: "inlineClass" | "inlineWrap";
+	source: InlineAnnotationSource;
+};
 
-export type InlineAnnotation = InlineAnnotationTypePair &
-	AnnotationBase & {
-		source: InlineAnnotationSource;
-	};
-
-export type LineAnnotation = LineAnnotationTypePair & AnnotationBase;
+export type LineAnnotation = AnnotationBase & {
+	type: "lineClass" | "lineWrap";
+};
 
 export type Annotation = InlineAnnotation | LineAnnotation;
-
-export type AnnotationType = Annotation["type"];
-export type AnnotationTagOverrides = Partial<Record<AnnotationType, string>>;
 
 export type AnnotationScope = "char" | "line" | "document";
 export type AnnotationKind = "class" | "render";
@@ -62,7 +50,7 @@ export type AnnotationRegistryItem = {
 
 export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
 
-type UnifiedClassAnnotationConfigItem = {
+type ClassAnnotationConfigItem = {
 	name: string;
 	kind: "class";
 	class: string;
@@ -70,7 +58,7 @@ type UnifiedClassAnnotationConfigItem = {
 	scopes?: AnnotationScope[];
 };
 
-type UnifiedRenderAnnotationConfigItem = {
+type RenderAnnotationConfigItem = {
 	name: string;
 	kind: "render";
 	render: string;
@@ -78,12 +66,10 @@ type UnifiedRenderAnnotationConfigItem = {
 	scopes?: AnnotationScope[];
 };
 
-export type UnifiedAnnotationConfigItem = UnifiedClassAnnotationConfigItem | UnifiedRenderAnnotationConfigItem;
-export type AnnotationConfigItem = UnifiedAnnotationConfigItem;
+export type AnnotationConfigItem = ClassAnnotationConfigItem | RenderAnnotationConfigItem;
 
 export interface AnnotationConfig {
-	annotations?: UnifiedAnnotationConfigItem[];
-	tagOverrides?: AnnotationTagOverrides;
+	annotations?: AnnotationConfigItem[];
 }
 
 export type Line = { value: string; annotations: InlineAnnotation[] };

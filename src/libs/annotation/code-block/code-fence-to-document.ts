@@ -1,6 +1,6 @@
 import type { Code } from "mdast";
 import { resolveCommentSyntax } from "./comment-syntax";
-import { createAnnotationRegistry, resolveAnnotationTypeByScope, resolveAnnotationTypeDefinition } from "./libs";
+import { createAnnotationRegistry, resolveAnnotationTypeByScope } from "./libs";
 import type { AnnotationConfig, AnnotationRegistryItem, CodeBlockDocument, LineAnnotation } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
@@ -25,7 +25,6 @@ type ParsedScopeComment = {
 	attributes: { name: string; value: unknown }[];
 };
 
-type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinition>;
 type AnnotationRegistry = ReturnType<typeof createAnnotationRegistry>;
 
 type PendingScopeInlineDirective = {
@@ -342,7 +341,6 @@ const makeInlineAnnotationFromConfig = ({
 	name,
 	range,
 	attributes,
-	typeDefinition,
 	order,
 }: {
 	config: AnnotationRegistryItem;
@@ -350,7 +348,6 @@ const makeInlineAnnotationFromConfig = ({
 	name: string;
 	range: { start: number; end: number };
 	attributes: { name: string; value: unknown }[];
-	typeDefinition: AnnotationTypeDefinition;
 	order: number;
 }) => {
 	const annotationType = resolveInlineAnnotationTypeFromScope(config, scope);
@@ -370,14 +367,12 @@ const makeInlineAnnotationFromConfig = ({
 		return {
 			...base,
 			type: "inlineClass" as const,
-			...typeDefinition.inlineClass,
 		};
 	}
 
 	return {
 		...base,
 		type: "inlineWrap" as const,
-		...typeDefinition.inlineWrap,
 	};
 };
 
@@ -385,12 +380,10 @@ const pushScopeLineAnnotation = ({
 	annotations,
 	marker,
 	endLineIndex,
-	typeDefinition,
 }: {
 	annotations: CodeBlockDocument["annotations"];
 	marker: PendingScopeLineMarker;
 	endLineIndex: number;
-	typeDefinition: AnnotationTypeDefinition;
 }) => {
 	const annotationType = resolveLineAnnotationTypeFromScope(marker.config);
 	if (!annotationType) return;
@@ -406,7 +399,6 @@ const pushScopeLineAnnotation = ({
 			...getStylePayload(marker.config),
 			priority: marker.config.priority,
 			type: "lineClass",
-			...typeDefinition.lineClass,
 			name: marker.name,
 			range,
 			order: marker.order,
@@ -419,7 +411,6 @@ const pushScopeLineAnnotation = ({
 		...getStylePayload(marker.config),
 		priority: marker.config.priority,
 		type: "lineWrap",
-		...typeDefinition.lineWrap,
 		name: marker.name,
 		range,
 		order: marker.order,
@@ -450,13 +441,11 @@ const pushInlineDirectiveMatchesForLine = ({
 	lineText,
 	lineIndex,
 	stagedInline,
-	typeDefinition,
 }: {
 	directive: PendingScopeInlineDirective;
 	lineText: string;
 	lineIndex: number;
 	stagedInline: StagedInlineAnnotation[];
-	typeDefinition: AnnotationTypeDefinition;
 }) => {
 	const selector = directive.selector;
 	const ranges =
@@ -477,7 +466,6 @@ const pushInlineDirectiveMatchesForLine = ({
 			name: directive.name,
 			range: { start, end },
 			attributes: directive.attributes,
-			typeDefinition,
 			order: stagedInline.length,
 		});
 		if (!annotation) continue;
@@ -494,7 +482,6 @@ const tryConsumeScopeComment = ({
 	commentSyntax,
 	parseLineAnnotations,
 	registry,
-	typeDefinition,
 	linesLength,
 	pendingScopeInlineDirectives,
 	pendingScopeLineMarkers,
@@ -506,7 +493,6 @@ const tryConsumeScopeComment = ({
 	commentSyntax: { prefix: string; postfix: string };
 	parseLineAnnotations: boolean;
 	registry: AnnotationRegistry;
-	typeDefinition: AnnotationTypeDefinition;
 	linesLength: number;
 	pendingScopeInlineDirectives: PendingScopeInlineDirective[];
 	pendingScopeLineMarkers: PendingScopeLineMarker[];
@@ -561,7 +547,6 @@ const tryConsumeScopeComment = ({
 				...getStylePayload(config),
 				priority: config.priority,
 				type: "lineClass",
-				...typeDefinition.lineClass,
 				name: parsed.name,
 				range,
 				order: annotations.length,
@@ -574,7 +559,6 @@ const tryConsumeScopeComment = ({
 			...getStylePayload(config),
 			priority: config.priority,
 			type: "lineWrap",
-			...typeDefinition.lineWrap,
 			name: parsed.name,
 			range,
 			order: annotations.length,
@@ -602,7 +586,6 @@ const tryConsumeScopeComment = ({
 			annotations,
 			marker,
 			endLineIndex: linesLength,
-			typeDefinition,
 		});
 		return true;
 	}
@@ -634,13 +617,11 @@ const commitCodeLine = ({
 	lines,
 	pendingScopeInlineDirectives,
 	stagedInline,
-	typeDefinition,
 	lineText,
 }: {
 	lines: CodeBlockDocument["lines"];
 	pendingScopeInlineDirectives: PendingScopeInlineDirective[];
 	stagedInline: StagedInlineAnnotation[];
-	typeDefinition: AnnotationTypeDefinition;
 	lineText: string;
 }) => {
 	const lineIndex = lines.length;
@@ -655,7 +636,6 @@ const commitCodeLine = ({
 			lineText,
 			lineIndex,
 			stagedInline,
-			typeDefinition,
 		});
 	}
 	pendingScopeInlineDirectives.length = 0;
@@ -666,13 +646,11 @@ const parseCodeLines = ({
 	parseLineAnnotations,
 	commentSyntax,
 	registry,
-	typeDefinition,
 }: {
 	codeValue: string;
 	parseLineAnnotations: boolean;
 	commentSyntax: { prefix: string; postfix: string };
 	registry: AnnotationRegistry;
-	typeDefinition: AnnotationTypeDefinition;
 }) => {
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
@@ -685,11 +663,10 @@ const parseCodeLines = ({
 	for (const lineText of codeValue.split("\n")) {
 		const consumed = tryConsumeScopeComment({
 			lineText,
-			commentSyntax,
-			parseLineAnnotations,
-			registry,
-			typeDefinition,
-			linesLength: lines.length,
+				commentSyntax,
+				parseLineAnnotations,
+				registry,
+				linesLength: lines.length,
 			pendingScopeInlineDirectives,
 			pendingScopeLineMarkers,
 			pendingScopeDocumentDirectives,
@@ -702,12 +679,11 @@ const parseCodeLines = ({
 		}
 
 		commitCodeLine({
-			lines,
-			pendingScopeInlineDirectives,
-			stagedInline,
-			typeDefinition,
-			lineText,
-		});
+				lines,
+				pendingScopeInlineDirectives,
+				stagedInline,
+				lineText,
+			});
 	}
 
 	for (const marker of pendingScopeLineMarkers) {
@@ -717,7 +693,6 @@ const parseCodeLines = ({
 			annotations,
 			marker,
 			endLineIndex,
-			typeDefinition,
 		});
 	}
 
@@ -748,11 +723,9 @@ const applyAbsoluteInlineRanges = (lines: CodeBlockDocument["lines"], stagedInli
 const applyScopeDocumentDirectives = ({
 	lines,
 	directives,
-	typeDefinition,
 }: {
 	lines: CodeBlockDocument["lines"];
 	directives: PendingScopeDocumentDirective[];
-	typeDefinition: AnnotationTypeDefinition;
 }) => {
 	if (directives.length === 0 || lines.length === 0) return;
 	const fullText = lines.map((line) => line.value).join("\n");
@@ -789,15 +762,14 @@ const applyScopeDocumentDirectives = ({
 				const segEnd = Math.min(end, offsets.end);
 				if (segEnd <= segStart) continue;
 
-				const annotation = makeInlineAnnotationFromConfig({
-					config: directive.config,
-					scope: "document",
-					name: directive.name,
-					range: { start: segStart, end: segEnd },
-					attributes: directive.attributes,
-					typeDefinition,
-					order: line.annotations.length,
-				});
+					const annotation = makeInlineAnnotationFromConfig({
+						config: directive.config,
+						scope: "document",
+						name: directive.name,
+						range: { start: segStart, end: segEnd },
+						attributes: directive.attributes,
+						order: line.annotations.length,
+					});
 				if (!annotation) continue;
 				line.annotations.push(annotation);
 			}
@@ -811,7 +783,6 @@ export const fromCodeFenceToCodeBlockDocument = (
 	options?: { parseLineAnnotations?: boolean },
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
-	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 	const lang = codeNode.lang?.trim() || DEFAULT_CODE_LANG;
 	const meta = parseCodeFenceMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
@@ -821,14 +792,12 @@ export const fromCodeFenceToCodeBlockDocument = (
 		parseLineAnnotations,
 		commentSyntax,
 		registry,
-		typeDefinition,
 	});
 
 	applyAbsoluteInlineRanges(parsed.lines, parsed.stagedInline);
 	applyScopeDocumentDirectives({
 		lines: parsed.lines,
 		directives: parsed.pendingScopeDocumentDirectives,
-		typeDefinition,
 	});
 
 	return { lang, meta, lines: parsed.lines, annotations: parsed.annotations };

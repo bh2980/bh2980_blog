@@ -1,19 +1,5 @@
 import type { AnnotationConfig } from "./types";
 
-export enum AnnotationTypeEnum {
-	inlineClass = 0,
-	inlineWrap,
-	lineClass,
-	lineWrap,
-}
-
-export const ANNOTATION_TYPE_DEFINITION = {
-	inlineClass: { typeId: AnnotationTypeEnum.inlineClass, tag: "inClass" },
-	inlineWrap: { typeId: AnnotationTypeEnum.inlineWrap, tag: "inWrap" },
-	lineClass: { typeId: AnnotationTypeEnum.lineClass, tag: "lnClass" },
-	lineWrap: { typeId: AnnotationTypeEnum.lineWrap, tag: "lnWrap" },
-} as const;
-
 export const annotationConfig: AnnotationConfig = {
 	annotations: [
 		{
@@ -71,20 +57,10 @@ export const annotationConfig: AnnotationConfig = {
 			scopes: ["line"],
 		},
 		{
-			name: "Collapsible",
-			kind: "render",
-			render: "collapse",
-			scopes: ["line"],
-		},
-		{
 			name: "collapse",
 			kind: "render",
 			render: "collapse",
 			scopes: ["line"],
 		},
 	],
-};
-
-export const codeFenceAnnotationConfig: AnnotationConfig = {
-	...annotationConfig,
 };
