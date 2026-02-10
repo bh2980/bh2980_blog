@@ -37,8 +37,12 @@ const fromCodeBlockDocumentToShikiAnnotationPayload = (
 const testAnnotationConfig: AnnotationConfig = {
 	annotations: [
 		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "fold", kind: "render", source: "mdx-text", render: "fold", scopes: ["char", "document"] },
 		{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
 		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+		{ name: "plus", kind: "class", class: "plus", scopes: ["line"] },
+		{ name: "minus", kind: "class", class: "minus", scopes: ["line"] },
+		{ name: "highlight", kind: "class", class: "highlight", scopes: ["line"] },
 	],
 };
 
@@ -111,5 +115,42 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 				}),
 			]),
 		);
+	});
+
+	it("document scope regex + 선행 빈 줄이 있어도 absolute range를 올바르게 line-local로 변환한다", () => {
+		if (typeof fromCodeBlockDocumentToShikiAnnotationPayload !== "function") {
+			throw new Error("fromCodeBlockDocumentToShikiAnnotationPayload is not implemented");
+		}
+
+		const document = fromCodeFenceToCodeBlockDocument(
+			{
+				type: "code",
+				lang: "ts",
+				meta: "",
+				value: [
+					"// @document fold {re:/console/g}",
+					"",
+					"// @line plus",
+					"console.log",
+					"// @line minus",
+					"console.log",
+					"// @line highlight",
+					"console.log",
+					"console.log",
+				].join("\n"),
+			},
+			testAnnotationConfig,
+		);
+
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+		const foldDecorationOnFirstConsoleLine = payload.decorations.find(
+			(decoration) =>
+				decoration.start.line === 1 &&
+				decoration.end.line === 1 &&
+				decoration.start.character === 0 &&
+				decoration.end.character === 7,
+		);
+
+		expect(foldDecorationOnFirstConsoleLine).toBeDefined();
 	});
 });

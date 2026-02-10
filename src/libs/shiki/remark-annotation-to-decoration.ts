@@ -98,19 +98,21 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 
 	document.lines.forEach((line, lineNumber) => {
 		const lineOffset = lineStartOffsets[lineNumber] ?? 0;
+		const lineAbsoluteStart = lineOffset;
+		const lineAbsoluteEnd = lineOffset + line.value.length;
 		for (const annotation of line.annotations) {
-			const isLocalRange =
-				annotation.range.start >= 0 &&
+			const isAbsoluteRangeForCurrentLine =
+				annotation.range.start >= lineAbsoluteStart &&
 				annotation.range.end >= annotation.range.start &&
-				annotation.range.end <= line.value.length;
+				annotation.range.end <= lineAbsoluteEnd;
 			const decoration = buildInlineDecoration(lineNumber, {
 				...annotation,
-				range: isLocalRange
-					? annotation.range
-					: {
+				range: isAbsoluteRangeForCurrentLine
+					? {
 							start: annotation.range.start - lineOffset,
 							end: annotation.range.end - lineOffset,
-						},
+						}
+					: annotation.range,
 			});
 			if (decoration) decorations.push(decoration);
 		}
