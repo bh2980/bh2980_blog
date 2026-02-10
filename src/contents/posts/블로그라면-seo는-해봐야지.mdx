@@ -75,6 +75,7 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 
     export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
     	const { slug } = await params;
+    	// @line highlight
     	const post = await getPost(slug);
 
     	return {
