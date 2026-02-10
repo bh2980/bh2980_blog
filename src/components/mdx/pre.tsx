@@ -47,7 +47,6 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 			<pre
 				className={cn(
 					"relative overflow-x-auto whitespace-pre rounded-xl px-0!",
-					"[&_.line]:inline-block [&_.line]:w-full",
 					showLineNumbers ? "[&_.line]:px-2 [&_.line]:before:mr-5" : "[&_.line]:px-5",
 					showTitlebar && "m-0! rounded-t-none",
 					className,
