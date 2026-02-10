@@ -47,13 +47,14 @@ export const annotationConfig: AnnotationConfig = {
 		{
 			name: "plus",
 			kind: "class",
-			class: "diff plus",
+			class:
+				"anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 border-l-2 border-l-green-400",
 			scopes: ["line"],
 		},
 		{
 			name: "minus",
 			kind: "class",
-			class: "diff minus",
+			class: "anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 border-l-2 border-l-red-500",
 			scopes: ["line"],
 		},
 		{
