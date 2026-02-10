@@ -138,8 +138,8 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	return {
 		title: post.title,
 		description: post.excerpt,
+		// @line highlight
 		alternates: { canonical: url },
 	};
 }
 ```
-
