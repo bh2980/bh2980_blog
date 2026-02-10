@@ -6,12 +6,12 @@ import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 
 describe("runtime fold inline annotation", () => {
-	it("@mark fold 주석을 inlineWrap으로 파싱한다", () => {
+	it("@char fold 주석을 inlineWrap으로 파싱한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: ["// @mark fold {0-5}", "hello world"].join("\n"),
+			value: ["// @char fold {0-4}", "hello world"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);

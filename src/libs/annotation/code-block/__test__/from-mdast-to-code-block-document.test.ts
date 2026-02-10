@@ -4,24 +4,21 @@ import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
 import { __testable__ } from "../mdast-to-document";
-import type { AnnotationConfig, CodeBlockRoot, InlineAnnotation, Range } from "../types";
+import type { AnnotationConfig, AnnotationConfigItem, CodeBlockRoot, InlineAnnotation, Range } from "../types";
 
 const { fromMdxFlowElementToCodeDocument } = __testable__;
 const { toMdxAttrExpr } = fromCodeBlockDocumentToMdastTestable;
 
 const annotationConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [
-		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
-		{ name: "strong", source: "mdast", render: "strong" },
-		{ name: "emphasis", source: "mdast", render: "em" },
-		{ name: "delete", source: "mdast", render: "del" },
-		{ name: "u", source: "mdx-text", render: "u" },
-	],
-	lineClass: [{ name: "diff", class: "diff" }],
-	lineWrap: [
-		{ name: "Collapsible", render: "collapsible" },
-		{ name: "Callout", render: "Callout" },
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "strong", kind: "render", source: "mdast", render: "strong", scopes: ["char"] },
+		{ name: "emphasis", kind: "render", source: "mdast", render: "em", scopes: ["char"] },
+		{ name: "delete", kind: "render", source: "mdast", render: "del", scopes: ["char"] },
+		{ name: "u", kind: "render", source: "mdx-text", render: "u", scopes: ["char"] },
+		{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+		{ name: "Collapsible", kind: "render", render: "collapsible", scopes: ["line"] },
+		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
 	],
 };
 
@@ -58,7 +55,12 @@ const codeBlock = (
 });
 
 const inlineWrapByName = new Map(
-	(annotationConfig.inlineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(
+			(item): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
+				item.kind === "render" && (item.scopes ?? []).includes("char"),
+		)
+		.map((item, priority) => [item.name, { ...item, priority }]),
 );
 
 const expectedInlineWrap = (name: string, range: Range, order = 0): InlineAnnotation => {
@@ -66,10 +68,12 @@ const expectedInlineWrap = (name: string, range: Range, order = 0): InlineAnnota
 	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
 
 	return {
-		...config,
 		type: "inlineWrap" as const,
 		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+		source: config.source ?? "mdx-text",
+		render: config.render,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -133,6 +137,32 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 			{
 				value: "b2",
 				annotations: [expectedInlineWrap("u", { start: 3, end: 4 })],
+			},
+		]);
+	});
+
+	it("inline wrapper 내부 break는 줄 분리 후에도 absolute range를 유지한다", () => {
+		const node = codeBlock([
+			paragraph([
+				inline("u", [
+					text("ab"),
+					{ type: "break" },
+					text("cd"),
+				]),
+				text("!"),
+			]),
+		]);
+
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
+
+		expect(document.lines).toEqual([
+			{
+				value: "ab",
+				annotations: [expectedInlineWrap("u", { start: 0, end: 2 })],
+			},
+			{
+				value: "cd!",
+				annotations: [expectedInlineWrap("u", { start: 3, end: 5 })],
 			},
 		]);
 	});

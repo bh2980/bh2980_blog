@@ -5,7 +5,7 @@ import type { AnnotationConfig, CodeBlockRoot } from "../types";
 const { fromMdxFlowElementToCodeDocument } = mdastToDocument;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
+	annotations: [{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] }],
 };
 
 describe("hard break parse", () => {

@@ -8,12 +8,12 @@ const { fromCodeBlockDocumentToMdast } = documentToMdast;
 const { fromMdxFlowElementToCodeDocument } = mdastToDocument;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [
-		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
-		{ name: "u", source: "mdx-text", render: "u" },
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "u", kind: "render", source: "mdx-text", render: "u", scopes: ["char"] },
+		{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+		{ name: "Collapsible", kind: "render", render: "Collapsible", scopes: ["line"] },
 	],
-	lineClass: [{ name: "diff", class: "diff" }],
-	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
 };
 
 const inlineWrap = (
@@ -144,6 +144,28 @@ describe("fromCodeBlockDocumentToMdast", () => {
 
 		expect(output.lang).toBe(input.lang);
 		expect(output.meta).toEqual(input.meta);
+		expect(output.annotations).toEqual([]);
+		expect(output.lines).toEqual(input.lines);
+	});
+
+	it("document -> mdast -> document 라운드트립에서 line annotation은 제거되고 inline만 유지된다", () => {
+		const input = toDocument(
+			[
+				{
+					value: "hello",
+					annotations: [inlineWrap("Tooltip", { start: 0, end: 5 }, 0)],
+				},
+				{
+					value: "world",
+					annotations: [],
+				},
+			],
+			[lineWrap("Collapsible", { start: 0, end: 2 }, 0)],
+		);
+
+		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);
+		const output = fromMdxFlowElementToCodeDocument(ast, annotationConfig);
+
 		expect(output.annotations).toEqual([]);
 		expect(output.lines).toEqual(input.lines);
 	});

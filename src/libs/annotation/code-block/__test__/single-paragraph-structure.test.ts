@@ -5,8 +5,10 @@ import type { AnnotationConfig, CodeBlockDocument } from "../types";
 const { fromCodeBlockDocumentToMdast } = documentToMdast;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "Collapsible", kind: "render", render: "Collapsible", scopes: ["line"] },
+	],
 };
 
 describe("single paragraph structure", () => {

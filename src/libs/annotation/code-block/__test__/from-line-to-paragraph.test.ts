@@ -1,63 +1,24 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
 import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
 import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
-import type { AnnotationAttr, AnnotationEvent, AnnotationRegistry, InlineAnnotation, Line, Range } from "../types";
+import type { AnnotationAttr, AnnotationConfig, AnnotationEvent, InlineAnnotation, Line, Range } from "../types";
 
 const { fromLineToParagraph } = fromCodeBlockDocumentToMdastTestable;
 const { fromParagraphToLine } = fromMdxFlowElementToCodeDocumentTestable;
-
-const registry: AnnotationRegistry = new Map([
-	[
-		"emphasis",
-		{
-			name: "emphasis",
-			source: "mdast",
-			class: "italic",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 0,
-		},
+const { createAnnotationRegistry, resolveAnnotationTypeDefinition } = libsTestable;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "emphasis", kind: "class" as const, source: "mdast" as const, class: "italic", scopes: ["char"] },
+		{ name: "Tooltip", kind: "render" as const, source: "mdx-text" as const, render: "Tooltip", scopes: ["char"] },
+		{ name: "strong", kind: "render" as const, source: "mdast" as const, render: "strong", scopes: ["char"] },
+		{ name: "u", kind: "render" as const, source: "mdx-text" as const, render: "u", scopes: ["char"] },
 	],
-	[
-		"Tooltip",
-		{
-			name: "Tooltip",
-			source: "mdx-text",
-			render: "Tooltip",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 0,
-		},
-	],
-	[
-		"strong",
-		{
-			name: "strong",
-			source: "mdast",
-			render: "strong",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 1,
-		},
-	],
-	[
-		"u",
-		{
-			name: "u",
-			source: "mdx-text",
-			render: "u",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 2,
-		},
-	],
-]);
+};
+const registry = createAnnotationRegistry(annotationConfig);
+const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 const inlineWrap = (
 	name: string,
@@ -267,7 +228,7 @@ describe("fromLineToParagraph", () => {
 		]);
 
 		const paragraph = parse(input);
-		const reconstructed = fromParagraphToLine(paragraph, registry);
+		const reconstructed = fromParagraphToLine(paragraph, registry, typeDefinition);
 
 		expect(reconstructed.value).toBe(input.value);
 		expect(reconstructed.annotations.map(normalizeInlineAnnotation).sort(sortInlineAnnotation)).toEqual(

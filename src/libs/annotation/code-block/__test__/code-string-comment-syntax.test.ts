@@ -5,6 +5,7 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import type {
 	AnnotationAttr,
+	AnnotationConfigItem,
 	AnnotationConfig,
 	CodeBlockDocument,
 	InlineAnnotation,
@@ -17,31 +18,39 @@ const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTes
 const { fromCodeBlockDocumentToCodeFence } = fromCodeBlockDocumentToCodeFenceTestable;
 
 const annotationConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [],
-	lineWrap: [{ name: "Callout", render: "Callout" }],
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+	],
 };
 
+const isCharRender = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
+	item.kind === "render" && (item.scopes ?? []).includes("char");
+const isLineRender = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
+	item.kind === "render" && (item.scopes ?? []).includes("line");
+
 const inlineWrapByName = new Map(
-	(annotationConfig.inlineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(isCharRender)
+		.map((item, priority) => [item.name, { source: item.source ?? "mdx-text", render: item.render, priority }]),
 );
 const lineWrapByName = new Map(
-	(annotationConfig.lineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(isLineRender)
+		.map((item, priority) => [item.name, { render: item.render, priority }]),
 );
-
-const inWrapTag = ANNOTATION_TYPE_DEFINITION.inlineWrap.tag;
-const lnWrapTag = ANNOTATION_TYPE_DEFINITION.lineWrap.tag;
 
 const inlineWrap = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): InlineAnnotation => {
 	const config = inlineWrapByName.get(name);
 	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
 
 	return {
-		...config,
 		type: "inlineWrap",
 		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+		source: config.source,
+		render: config.render,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -54,10 +63,11 @@ const lineWrap = (name: string, range: Range, order: number, attributes: Annotat
 	if (!config) throw new Error(`Unknown lineWrap config: ${name}`);
 
 	return {
-		...config,
 		type: "lineWrap",
 		typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
+		render: config.render,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -74,8 +84,8 @@ describe("code-string converter comment syntax", () => {
 			lang: "postcss",
 			meta: "",
 			value: [
-				`/* @${lnWrapTag} Callout {0-2} tone="info" */`,
-				`/* @${inWrapTag} Tooltip {0-5} content="tip" */`,
+				`/* @line Callout {0-1} tone="info" */`,
+				`/* @char Tooltip {0-4} content="tip" */`,
 				"hello",
 				"world",
 			].join("\n"),
@@ -108,7 +118,7 @@ describe("code-string converter comment syntax", () => {
 		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 
 		expect(output.value).toBe(
-			[`/* @${lnWrapTag} Callout {0-2} */`, `/* @${inWrapTag} Tooltip {0-5} content="tip" */`, "hello", "world"].join(
+			[`/* @line Callout {0-1} */`, `/* @char Tooltip {0-4} content="tip" */`, "hello", "world"].join(
 				"\n",
 			),
 		);

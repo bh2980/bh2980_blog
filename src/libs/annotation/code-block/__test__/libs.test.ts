@@ -3,8 +3,13 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
 import type { AnnotationConfig } from "../types";
 
-const { getTypePair, createAnnotationRegistry, resolveAnnotationTypeDefinition, fromAnnotationsToEvents } =
-	__testable__;
+const {
+	getTypePair,
+	createAnnotationRegistry,
+	resolveAnnotationTypeDefinition,
+	resolveAnnotationTypeByScope,
+	fromAnnotationsToEvents,
+} = __testable__;
 
 describe("resolveAnnotationTypeDefinition", () => {
 	it("기본 tag definition을 그대로 반환한다", () => {
@@ -55,44 +60,50 @@ describe("createAnnotationRegistry / getTypePair", () => {
 		);
 	});
 
-	it("타입별 설정을 registry로 구성하고 priority를 배열 순서로 부여한다", () => {
+	it("통합 설정을 registry로 구성하고 scope별 type 매핑/priority를 부여한다", () => {
 		const config: AnnotationConfig = {
-			inlineClass: [
-				{ name: "strong", source: "mdast", class: "font-bold" },
-				{ name: "emphasis", source: "mdast", class: "italic" },
+			annotations: [
+				{ name: "strong", kind: "class", source: "mdast", class: "font-bold", scopes: ["char", "document"] },
+				{ name: "emphasis", kind: "class", source: "mdast", class: "italic", scopes: ["char", "document"] },
+				{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char", "document"] },
+				{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+				{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
 			],
-			inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-			lineClass: [{ name: "diff", class: "diff" }],
-			lineWrap: [{ name: "Callout", render: "Callout" }],
 		};
 
 		const registry = createAnnotationRegistry(config);
 
 		expect(registry.get("strong")).toMatchObject({
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
+			kind: "class",
+			scopes: ["char", "document"],
+			source: "mdast",
 			priority: 0,
 		});
 		expect(registry.get("emphasis")).toMatchObject({
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
+			kind: "class",
+			scopes: ["char", "document"],
 			priority: 1,
 		});
 		expect(registry.get("Tooltip")).toMatchObject({
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
+			kind: "render",
+			scopes: ["char", "document"],
 			priority: 0,
 		});
 		expect(registry.get("diff")).toMatchObject({
-			type: "lineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
+			kind: "class",
+			scopes: ["line"],
 			priority: 0,
 		});
 		expect(registry.get("Callout")).toMatchObject({
-			type: "lineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
+			kind: "render",
+			scopes: ["line"],
 			priority: 0,
 		});
+
+		expect(resolveAnnotationTypeByScope(registry.get("strong")!, "char")).toBe("inlineClass");
+		expect(resolveAnnotationTypeByScope(registry.get("Tooltip")!, "document")).toBe("inlineWrap");
+		expect(resolveAnnotationTypeByScope(registry.get("diff")!, "line")).toBe("lineClass");
+		expect(resolveAnnotationTypeByScope(registry.get("Callout")!, "line")).toBe("lineWrap");
 	});
 
 	it("getTypePair는 type별 typeId/tag를 정확히 매핑한다", () => {

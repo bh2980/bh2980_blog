@@ -8,13 +8,7 @@ const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 const { fromCodeBlockDocumentToCodeFence } = documentToCodeFence;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] }],
 };
 
 describe("inline absolute range", () => {
@@ -22,7 +16,7 @@ describe("inline absolute range", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
-			value: ["abcde", "// @mark Tooltip {1-3}", "vwxyz"].join("\n"),
+			value: ["abcde", "// @char Tooltip {1-2}", "vwxyz"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
@@ -43,7 +37,7 @@ describe("inline absolute range", () => {
 						{
 							type: "inlineWrap",
 							typeId: 1,
-							tag: "mark",
+							tag: "inWrap",
 							source: "mdx-text",
 							name: "Tooltip",
 							range: { start: 7, end: 9 },
@@ -59,6 +53,6 @@ describe("inline absolute range", () => {
 		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 		const lines = output.value.split("\n");
 
-		expect(lines[1]).toContain("@mark Tooltip {1-3}");
+		expect(lines[1]).toContain("@char Tooltip {1-2}");
 	});
 });

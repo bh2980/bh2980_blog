@@ -6,14 +6,10 @@ import type { AnnotationConfig } from "../types";
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "Collapsible", kind: "render", render: "Collapsible", scopes: ["line"] },
+	],
 };
 
 describe("line comment pass-through", () => {
@@ -21,38 +17,38 @@ describe("line comment pass-through", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
-			value: ["// @block Collapsible {0-1}", "const a = 1"].join("\n"),
+			value: ["// @line Collapsible {0-0}", "const a = 1"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
 
 		expect(document.annotations).toEqual([]);
-		expect(document.lines.map((line) => line.value)).toEqual(["// @block Collapsible {0-1}", "const a = 1"]);
+		expect(document.lines.map((line) => line.value)).toEqual(["// @line Collapsible {0-0}", "const a = 1"]);
 	});
 
 	it("marker 문법도 parseLineAnnotations=false면 코드 라인으로 유지한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
-			value: ["// @block Collapsible", "const a = 1", "// @block Collapsible end", "const b = 2"].join("\n"),
+			value: ["// @line Collapsible", "const a = 1", "// @line Collapsible end", "const b = 2"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
 
 		expect(document.annotations).toEqual([]);
 		expect(document.lines.map((line) => line.value)).toEqual([
-			"// @block Collapsible",
+			"// @line Collapsible",
 			"const a = 1",
-			"// @block Collapsible end",
+			"// @line Collapsible end",
 			"const b = 2",
 		]);
 	});
 
-	it("marker 문법은 parseLineAnnotations=true일 때 @block name end로 닫힌다", () => {
+	it("marker 문법은 parseLineAnnotations=true일 때 @line name end로 닫힌다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
-			value: ["// @block Collapsible", "const a = 1", "// @block Collapsible end", "const b = 2"].join("\n"),
+			value: ["// @line Collapsible", "const a = 1", "// @line Collapsible end", "const b = 2"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: true });

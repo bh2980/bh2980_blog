@@ -31,13 +31,13 @@ describe("runtime line class diff", () => {
 		]);
 	});
 
-	it("@line minus range는 연속된 여러 라인으로 파싱한다", () => {
+	it("@line minus range는 닫힌 구간 기준으로 연속된 여러 라인으로 파싱한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
 			value: [
-				"// @line minus {1-3}",
+				"// @line minus {1-2}",
 				"const kept = 0",
 				"const removed = 2",
 				"const removedToo = 3",

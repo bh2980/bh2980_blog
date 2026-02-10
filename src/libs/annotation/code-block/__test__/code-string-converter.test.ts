@@ -5,6 +5,7 @@ import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import type {
 	AnnotationAttr,
+	AnnotationConfigItem,
 	AnnotationConfig,
 	CodeBlockDocument,
 	InlineAnnotation,
@@ -17,50 +18,50 @@ const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTes
 const { fromCodeBlockDocumentToCodeFence } = fromCodeBlockDocumentToCodeFenceTestable;
 
 const annotationConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [
-		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
-		{ name: "u", source: "mdx-text", render: "u" },
-	],
-	lineClass: [{ name: "diff", class: "diff" }],
-	lineWrap: [
-		{ name: "Callout", render: "Callout" },
-		{ name: "Collapsible", render: "Collapsible" },
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "u", kind: "render", source: "mdx-text", render: "u", scopes: ["char"] },
+		{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+		{ name: "Collapsible", kind: "render", render: "Collapsible", scopes: ["line"] },
 	],
 };
 
-const customTagConfig: AnnotationConfig = {
-	...annotationConfig,
-	tagOverrides: {
-		inlineWrap: "iw",
-		lineClass: "lc",
-		lineWrap: "lw",
-	},
-};
+const isCharRender = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
+	item.kind === "render" && (item.scopes ?? []).includes("char");
+const isLineRender = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
+	item.kind === "render" && (item.scopes ?? []).includes("line");
+const isLineClass = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "class" }> =>
+	item.kind === "class" && (item.scopes ?? []).includes("line");
 
 const inlineWrapByName = new Map(
-	(annotationConfig.inlineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(isCharRender)
+		.map((item, priority) => [item.name, { source: item.source ?? "mdx-text", render: item.render, priority }]),
 );
 const lineClassByName = new Map(
-	(annotationConfig.lineClass ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(isLineClass)
+		.map((item, priority) => [item.name, { class: item.class, priority }]),
 );
 const lineWrapByName = new Map(
-	(annotationConfig.lineWrap ?? []).map((item, priority) => [item.name, { ...item, priority }]),
+	(annotationConfig.annotations ?? [])
+		.filter(isLineRender)
+		.map((item, priority) => [item.name, { render: item.render, priority }]),
 );
 
-const inWrapTag = ANNOTATION_TYPE_DEFINITION.inlineWrap.tag;
-const lnClassTag = ANNOTATION_TYPE_DEFINITION.lineClass.tag;
-const lnWrapTag = ANNOTATION_TYPE_DEFINITION.lineWrap.tag;
 
 const inlineWrap = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): InlineAnnotation => {
 	const config = inlineWrapByName.get(name);
 	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
 
 	return {
-		...config,
 		type: "inlineWrap",
 		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+		source: config.source,
+		render: config.render,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -73,10 +74,11 @@ const lineWrap = (name: string, range: Range, order: number, attributes: Annotat
 	if (!config) throw new Error(`Unknown lineWrap config: ${name}`);
 
 	return {
-		...config,
 		type: "lineWrap",
 		typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
+		render: config.render,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -89,10 +91,11 @@ const lineClass = (name: string, range: Range, order: number, attributes: Annota
 	if (!config) throw new Error(`Unknown lineClass config: ${name}`);
 
 	return {
-		...config,
 		type: "lineClass",
 		typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
 		tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
+		class: config.class,
+		priority: config.priority,
 		name,
 		range,
 		order,
@@ -109,10 +112,10 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: 'title="hello.ts" showLineNumbers',
 			value: [
-				`// @${lnWrapTag} Callout {0-2} tone="info"`,
-				`// @${inWrapTag} Tooltip {0-7} content="tip"`,
+				`// @line Callout {0-1} tone="info"`,
+				`// @char Tooltip {0-6} content="tip"`,
 				'console.log("hello")',
-				`// @${lnClassTag} diff {1-2}`,
+				`// @line diff {1-1}`,
 				"return 1",
 			].join("\n"),
 		};
@@ -155,10 +158,10 @@ describe("code-string converter", () => {
 		expect(codeNode.meta).toBe('title="hello.ts" showLineNumbers');
 		expect(codeNode.value).toBe(
 			[
-				`// @${lnWrapTag} Callout {0-2}`,
-				`// @${inWrapTag} Tooltip {0-7} content="tip"`,
+				`// @line Callout {0-1}`,
+				`// @char Tooltip {0-6} content="tip"`,
 				'console.log("hello")',
-				`// @${lnClassTag} diff {1-2}`,
+				`// @line diff {1-1}`,
 				"return 1",
 			].join("\n"),
 		);
@@ -170,10 +173,10 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: "",
 			value: [
-				`// @${lnWrapTag} Callout {0-1}`,
-				`// @${lnWrapTag} Collapsible {0-1}`,
-				`// @${inWrapTag} Tooltip {0-5}`,
-				`// @${inWrapTag} u {0-5}`,
+				`// @line Callout {0-0}`,
+				`// @line Collapsible {0-0}`,
+				`// @char Tooltip {0-4}`,
+				`// @char u {0-4}`,
 				"hello",
 			].join("\n"),
 		};
@@ -215,10 +218,10 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: 'title="canon.ts" showLineNumbers',
 			value: [
-				`// @${lnWrapTag} Callout {0-2} tone="warn"`,
-				`// @${inWrapTag} Tooltip {6-11} content="tip"`,
+				`// @line Callout {0-1} tone="warn"`,
+				`// @char Tooltip {6-10} content="tip"`,
 				'const value = "hello"',
-				`// @${lnClassTag} diff {1-2}`,
+				`// @line diff {1-1}`,
 				"return value",
 			].join("\n"),
 		};
@@ -328,10 +331,10 @@ describe("code-string converter", () => {
 		expect(output.value).toBe(
 			[
 				"if (ok) {",
-				`  // @${lnWrapTag} Callout {1-3}`,
-				`  // @${inWrapTag} Tooltip {2-7} content="tip"`,
+				`  // @line Callout {1-2}`,
+				`  // @char Tooltip {2-6} content="tip"`,
 				"  const value = 1",
-				`    // @${lnClassTag} diff {2-3}`,
+				`    // @line diff {2-2}`,
 				"    console.log(value)",
 				"}",
 			].join("\n"),
@@ -344,8 +347,8 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: "",
 			value: [
-				`// @${lnWrapTag} Callout {0-1} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
-				`// @${inWrapTag} Tooltip {0-5} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
+				`// @line Callout {0-0} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
+				`// @char Tooltip {0-4} open=true count=2 meta={"a":1} items=[1,"x"] collapsed=null`,
 				"hello",
 			].join("\n"),
 		};
@@ -376,8 +379,8 @@ describe("code-string converter", () => {
 			lang: "ts",
 			meta: "",
 			value: [
-				`// @${lnWrapTag} Callout {0-1} showLineNumbers`,
-				`// @${inWrapTag} Tooltip {0-5} showLineNumbers`,
+				`// @line Callout {0-0} showLineNumbers`,
+				`// @char Tooltip {0-4} showLineNumbers`,
 				"hello",
 			].join("\n"),
 		};
@@ -390,60 +393,22 @@ describe("code-string converter", () => {
 		expect(inlineAttrs).toEqual([{ name: "showLineNumbers", value: true }]);
 	});
 
-	it("tagOverrides를 설정하면 custom tag로 파싱/직렬화한다", () => {
-		const input: Code = {
-			type: "code",
-			lang: "ts",
-			meta: 'title="custom.ts"',
-			value: [`// @lw Callout {0-1}`, `// @iw Tooltip {0-5} content="tip"`, "hello", `// @lc diff {1-2}`, "world"].join(
-				"\n",
-			),
-		};
-
-		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
-		const output = fromCodeBlockDocumentToCodeFence(document, customTagConfig);
-
-		expect(document.annotations[0]?.tag).toBe("lw");
-		expect(document.annotations[1]?.tag).toBe("lc");
-		expect(document.lines[0]?.annotations[0]?.tag).toBe("iw");
-		expect(output.value).toContain("// @lw Callout {0-1}");
-		expect(output.value).toContain('// @iw Tooltip {0-5} content="tip"');
-		expect(output.value).toContain("// @lc diff {1-2}");
-	});
-
-	it("tagOverrides가 있어도 기본 tag 입력을 호환 파싱한다", () => {
-		const input: Code = {
-			type: "code",
-			lang: "ts",
-			meta: "",
-			value: [`// @${lnWrapTag} Callout {0-1}`, `// @${inWrapTag} Tooltip {0-5}`, "hello"].join("\n"),
-		};
-
-		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
-		const output = fromCodeBlockDocumentToCodeFence(document, customTagConfig);
-
-		expect(document.annotations[0]?.name).toBe("Callout");
-		expect(document.lines[0]?.annotations[0]?.name).toBe("Tooltip");
-		expect(output.value).toContain("// @lw Callout {0-1}");
-		expect(output.value).toContain("// @iw Tooltip {0-5}");
-	});
-
-	it("line marker 문법(@tag name ... @tag name end)으로 lineWrap range를 파싱한다", () => {
+	it("line marker 문법(@line name ... @line name end)으로 lineWrap range를 파싱한다", () => {
 		const input: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
 			value: [
-					`// @${lnWrapTag} Collapsible`,
-					"line-1",
-					`// @${lnWrapTag} Collapsible`,
-					"line-2",
-					`// @${lnWrapTag} Collapsible end`,
-					"line-3",
-					`// @${lnWrapTag} Collapsible end`,
-					"line-4",
-				].join("\n"),
-			};
+				`// @line Collapsible`,
+				"line-1",
+				`// @line Collapsible`,
+				"line-2",
+				`// @line Collapsible end`,
+				"line-3",
+				`// @line Collapsible end`,
+				"line-4",
+			].join("\n"),
+		};
 
 		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
 
@@ -457,22 +422,21 @@ describe("code-string converter", () => {
 		);
 	});
 
-	it("tagOverride lineWrap(lw)에서도 marker 종료 문법(@lw name end)을 파싱한다", () => {
+	it("line marker 문법은 미종료 lineWrap도 EOF까지 범위로 닫는다", () => {
 		const input: Code = {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: ["// @lw Callout", "alpha", "beta", "// @lw Callout end", "gamma"].join("\n"),
+			value: ["// @line Callout", "alpha", "beta", "gamma"].join("\n"),
 		};
 
-		const document = fromCodeFenceToCodeBlockDocument(input, customTagConfig);
+		const document = fromCodeFenceToCodeBlockDocument(input, annotationConfig);
 
 		expect(document.lines.map((line) => line.value)).toEqual(["alpha", "beta", "gamma"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				tag: "lw",
 				name: "Callout",
-				range: { start: 0, end: 2 },
+				range: { start: 0, end: 3 },
 			}),
 		]);
 	});

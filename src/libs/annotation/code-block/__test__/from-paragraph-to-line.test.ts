@@ -1,84 +1,24 @@
 import type { Paragraph, Text } from "mdast";
 import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ } from "../mdast-to-document";
-import type { AnnotationAttr, AnnotationRegistry, InlineAnnotation, Range } from "../types";
+import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { fromParagraphToLine } = __testable__;
-
-const registry: AnnotationRegistry = new Map([
-	[
-		"strong",
-		{
-			name: "strong",
-			source: "mdast",
-			class: "font-bold",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 0,
-		},
+const { createAnnotationRegistry, resolveAnnotationTypeByScope, resolveAnnotationTypeDefinition } = libsTestable;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "strong", kind: "class" as const, source: "mdast" as const, class: "font-bold", scopes: ["char"] },
+		{ name: "emphasis", kind: "class" as const, source: "mdast" as const, class: "italic", scopes: ["char"] },
+		{ name: "Tooltip", kind: "render" as const, source: "mdx-text" as const, render: "Tooltip", scopes: ["char"] },
+		{ name: "u", kind: "render" as const, source: "mdx-text" as const, render: "u", scopes: ["char"] },
+		{ name: "LineBadge", kind: "class" as const, class: "line-badge", scopes: ["line"] },
+		{ name: "Collapsible", kind: "render" as const, render: "Collapsible", scopes: ["line"] },
 	],
-	[
-		"emphasis",
-		{
-			name: "emphasis",
-			source: "mdast",
-			class: "italic",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 1,
-		},
-	],
-	[
-		"Tooltip",
-		{
-			name: "Tooltip",
-			source: "mdx-text",
-			render: "Tooltip",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 0,
-		},
-	],
-	[
-		"u",
-		{
-			name: "u",
-			source: "mdx-text",
-			render: "u",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 1,
-		},
-	],
-		[
-			"LineBadge",
-			{
-				name: "LineBadge",
-				class: "line-badge",
-				type: "lineClass",
-				typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
-			priority: 0,
-		},
-	],
-	[
-		"Collapsible",
-		{
-			name: "Collapsible",
-			render: "Collapsible",
-			type: "lineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
-			priority: 0,
-		},
-	],
-]);
+};
+const registry = createAnnotationRegistry(annotationConfig);
+const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 const text = (value: string): Text => ({ type: "text", value });
 const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
@@ -106,16 +46,19 @@ const expectedInline = (
 	attributes?: AnnotationAttr[],
 ): InlineAnnotation => {
 	const config = registry.get(registryKey);
-	if (!config || (config.type !== "inlineClass" && config.type !== "inlineWrap")) {
+	const annotationType = config ? resolveAnnotationTypeByScope(config, "char") : undefined;
+	if (!config || (annotationType !== "inlineClass" && annotationType !== "inlineWrap")) {
 		throw new Error(`Unknown inline annotation config: ${registryKey}`);
 	}
 
-	if (config.type === "inlineClass") {
+	if (annotationType === "inlineClass") {
 		return {
-			...config,
+			class: config.class ?? "",
+			source: config.source,
+			priority: config.priority,
 			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
+			typeId: typeDefinition.inlineClass.typeId,
+			tag: typeDefinition.inlineClass.tag,
 			name,
 			range,
 			order,
@@ -124,10 +67,12 @@ const expectedInline = (
 	}
 
 	return {
-		...config,
+		render: config.render ?? name,
+		source: config.source,
+		priority: config.priority,
 		type: "inlineWrap",
-		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+		typeId: typeDefinition.inlineWrap.typeId,
+		tag: typeDefinition.inlineWrap.tag,
 		name,
 		range,
 		order,
@@ -137,13 +82,13 @@ const expectedInline = (
 
 describe("fromParagraphToLine", () => {
 	it("paragraph 텍스트를 Line.value로 합친다", () => {
-		const line = fromParagraphToLine(paragraph([text("hello"), text(" "), text("world")]), registry);
+		const line = fromParagraphToLine(paragraph([text("hello"), text(" "), text("world")]), registry, typeDefinition);
 
 		expect(line).toEqual({ value: "hello world", annotations: [] });
 	});
 
 	it("mdast inline annotation은 InlineAnnotation으로 반환한다", () => {
-		const line = fromParagraphToLine(paragraph([text("x"), strong([text("ab")]), text("y")]), registry);
+		const line = fromParagraphToLine(paragraph([text("x"), strong([text("ab")]), text("y")]), registry, typeDefinition);
 
 		expect(line).toEqual({
 			value: "xaby",
@@ -167,6 +112,7 @@ describe("fromParagraphToLine", () => {
 				text("d"),
 			]),
 			registry,
+			typeDefinition,
 		);
 
 		expect(line).toEqual({
@@ -184,13 +130,14 @@ describe("fromParagraphToLine", () => {
 		const line = fromParagraphToLine(
 			paragraph([inline("Collapsible", [text("x")]), inline("LineBadge", [text("y")])]),
 			registry,
+			typeDefinition,
 		);
 
 		expect(line).toEqual({ value: "xy", annotations: [] });
 	});
 
 	it("알 수 없는 inline node는 annotation 없이 텍스트만 반영한다", () => {
-		const line = fromParagraphToLine(paragraph([inline("Unknown", [text("a")]), text("b")]), registry);
+		const line = fromParagraphToLine(paragraph([inline("Unknown", [text("a")]), text("b")]), registry, typeDefinition);
 
 		expect(line).toEqual({ value: "ab", annotations: [] });
 	});
@@ -199,6 +146,7 @@ describe("fromParagraphToLine", () => {
 		const line = fromParagraphToLine(
 			paragraph([inline("u", [text("a"), strong([text("b")]), inline("Tooltip", [text("c")])]), text("d")]),
 			registry,
+			typeDefinition,
 		);
 
 		expect(line.value).toBe("abcd");
@@ -215,7 +163,7 @@ describe("fromParagraphToLine", () => {
 	});
 
 	it("빈 paragraph는 빈 Line을 반환한다", () => {
-		const line = fromParagraphToLine(paragraph([]), registry);
+		const line = fromParagraphToLine(paragraph([]), registry, typeDefinition);
 
 		expect(line).toEqual({ value: "", annotations: [] });
 	});

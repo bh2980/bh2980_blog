@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
+import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as documentToCodeFence } from "../document-to-code-fence";
 import { __testable__ as documentToMdast } from "../document-to-mdast";
 import { __testable__ as mdastToDocument } from "../mdast-to-document";
@@ -11,23 +12,17 @@ const { fromCodeBlockDocumentToMdast } = documentToMdast;
 const { fromMdxFlowElementToCodeDocument } = mdastToDocument;
 
 const annotationConfig: AnnotationConfig = {
-	inlineWrap: [
-		{ name: "Tooltip", source: "mdx-text", render: "Tooltip" },
-		{ name: "u", source: "mdx-text", render: "u" },
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "u", kind: "render", source: "mdx-text", render: "u", scopes: ["char"] },
+		{ name: "Collapsible", kind: "render", render: "Collapsible", scopes: ["line"] },
 	],
-	lineWrap: [{ name: "Collapsible", render: "Collapsible" }],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
 };
 
 const inlineWrap = (name: string, range: { start: number; end: number }, order: number) => ({
 	type: "inlineWrap" as const,
 	typeId: 1,
-	tag: "mark",
+	tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 	source: "mdx-text" as const,
 	render: name,
 	name,
@@ -62,7 +57,7 @@ describe("integration roundtrip (new codeblock model)", () => {
 			type: "code" as const,
 			lang: "ts",
 			meta: "",
-			value: ["// @block Collapsible {0-2}", "const a = 1", "const b = 2"].join("\n"),
+			value: ["// @line Collapsible {0-1}", "const a = 1", "const b = 2"].join("\n"),
 		};
 
 		const parsed = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
@@ -70,8 +65,8 @@ describe("integration roundtrip (new codeblock model)", () => {
 		const output = fromMdxFlowElementToCodeDocument(mdast, annotationConfig);
 		const serialized = fromCodeBlockDocumentToCodeFence(output, annotationConfig);
 
-		expect(serialized.value).toContain("// @block Collapsible {0-2}");
+		expect(serialized.value).toContain("// @line Collapsible {0-1}");
 		expect(output.annotations).toEqual([]);
-		expect(output.lines[0]?.value).toBe("// @block Collapsible {0-2}");
+		expect(output.lines[0]?.value).toBe("// @line Collapsible {0-1}");
 	});
 });

@@ -35,15 +35,11 @@ const fromCodeBlockDocumentToShikiAnnotationPayload = (
 ).__testable__?.fromCodeBlockDocumentToShikiAnnotationPayload;
 
 const testAnnotationConfig: AnnotationConfig = {
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [{ name: "diff", class: "diff" }],
-	lineWrap: [{ name: "Callout", render: "Callout" }],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+	],
 };
 
 describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
@@ -62,10 +58,10 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 				lang: "ts",
 				meta: 'title="demo.ts" showLineNumbers',
 				value: [
-					'// @mark Tooltip {6-11} content="tip"',
+					'// @char Tooltip {6-10} content="tip"',
 					"const value = 1",
-					'// @block Callout {0-2} variant="tip"',
-					"// @line diff {1-2}",
+					'// @line Callout {0-1} variant="tip"',
+					"// @line diff {1-1}",
 					"const next = 2",
 				].join("\n"),
 			},

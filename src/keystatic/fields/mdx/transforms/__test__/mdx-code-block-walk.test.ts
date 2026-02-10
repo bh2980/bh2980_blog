@@ -12,7 +12,7 @@ describe("mdx code-block walk", () => {
 				{
 					type: "code",
 					lang: "ts",
-					value: ["// @mark strong {0-5}", "hello"].join("\n"),
+					value: ["// @char strong {0-4}", "hello"].join("\n"),
 				},
 			],
 		};
@@ -80,7 +80,7 @@ describe("mdx code-block walk", () => {
 		}
 
 		expect(converted.lang).toBe("ts");
-		expect(converted.value).toContain("@mark strong {0-5}");
+		expect(converted.value).toContain("@char strong {0-4}");
 		expect(converted.value).toContain("hello");
 	});
 });
