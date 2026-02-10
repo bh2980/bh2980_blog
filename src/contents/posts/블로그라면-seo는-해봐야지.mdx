@@ -53,3 +53,22 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 ```
 
 !\[브라우저 탭에 title이 들어간 모습]\()
+
+그렇다면 Next.js에서는 이를 어떻게 설정할 수 있을까요? 바로 [`metadata`](https://nextjs.org/docs/app/getting-started/metadata-and-og-images#static-metadata) 객체를 사용하거나 [`generateMetadata`](https://nextjs.org/docs/app/getting-started/metadata-and-og-images#generated-metadata) 함수를 사용하면 됩니다.
+
+<Tabs>
+  <Tab label="metadata">
+    ```ts
+    export const metadata: Metadata = {
+      title: "메모장",
+      description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
+      alternates: { canonical: `${process.env.HOST_URL}/memos` },
+    };
+    ```
+  </Tab>
+
+  <Tab label="generateMetadata">
+    ```ts
+    ```
+  </Tab>
+</Tabs>
