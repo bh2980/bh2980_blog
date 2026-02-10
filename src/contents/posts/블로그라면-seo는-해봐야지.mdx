@@ -114,8 +114,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 예를 들어 제 블로그의 글 목록 페이지는 category 기준으로 필터링할 수 있으며, 이 과정에서 category 쿼리 스트링이 URL에 추가됩니다.
 
-* https\://bh2980.dev/posts
-* https\://bh2980.dev/posts?category=development
+* [https://bh2980.dev/posts](https://bh2980.dev/posts)
+* [https://bh2980.dev/posts?category=development](https://bh2980.dev/posts?category=development)
 
 이 둘은 사용자에게는 분명히 다른 페이지이지만, 검색엔진 입장에서는 동일한 글 목록 페이지의 변형에 불과하므로 색인과 평가는 하나의 URL로 통합하는 편이 합리적입니다. 이럴 때 바로 캐노니컬 태그를 사용합니다.
 
@@ -132,7 +132,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	return {
 		title: post.title,
 		description: post.excerpt,
-		// @line highlight
+		// @line plus
 		alternates: { canonical: url },
 	};
 }
