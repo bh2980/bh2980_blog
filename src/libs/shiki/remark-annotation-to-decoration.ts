@@ -2,33 +2,75 @@ import type { Code, Root } from "mdast";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
+import { createAnnotationRegistry, supportsAnnotationScope } from "@/libs/annotation/code-block/libs";
 import type {
 	AnnotationConfig,
+	AnnotationRegistry,
+	CodeBlockAnnotation,
 	CodeBlockDocument,
-	InlineAnnotation,
 	LineAnnotation,
 } from "@/libs/annotation/code-block/types";
 import { createAllowedRenderTagsFromConfig } from "./render-policy";
 
-const hasClass = (annotation: InlineAnnotation): annotation is InlineAnnotation & { class: string } =>
+type AnnotationWithClass = { class: string };
+type AnnotationWithRender = { render: string };
+
+const hasClass = (annotation: { class?: string }): annotation is AnnotationWithClass =>
 	"class" in annotation && typeof annotation.class === "string";
 
-const hasRender = (annotation: InlineAnnotation): annotation is InlineAnnotation & { render: string } =>
+const hasRender = (annotation: { render?: string }): annotation is AnnotationWithRender =>
 	"render" in annotation && typeof annotation.render === "string";
 
-const buildInlineDecoration = (lineNumber: number, annotation: InlineAnnotation): DecorationItem | undefined => {
+type ResolvedAnnotationStyle = { class?: string; render?: string };
+
+const resolveStyleFromRule = (
+	registry: AnnotationRegistry | undefined,
+	annotation: Pick<CodeBlockAnnotation, "name" | "scope">,
+): ResolvedAnnotationStyle | undefined => {
+	if (!registry) return;
+	const rule = registry.get(annotation.name);
+	if (!rule || !supportsAnnotationScope(rule, annotation.scope)) return;
+
+	if (rule.kind === "class") {
+		if (typeof rule.class !== "string") return;
+		return { class: rule.class };
+	}
+
+	if (typeof rule.render !== "string") return;
+	return { render: rule.render };
+};
+
+// Temporary adapter: supports legacy payloads that still carry class/render on annotations.
+const resolveStyle = (
+	registry: AnnotationRegistry | undefined,
+	annotation: Pick<CodeBlockAnnotation, "name" | "scope"> & { class?: string; render?: string },
+): ResolvedAnnotationStyle | undefined => {
+	const fromRule = resolveStyleFromRule(registry, annotation);
+	if (fromRule) return fromRule;
+
+	const fallback: ResolvedAnnotationStyle = {};
+	if (typeof annotation.class === "string") fallback.class = annotation.class;
+	if (typeof annotation.render === "string") fallback.render = annotation.render;
+	return fallback.class || fallback.render ? fallback : undefined;
+};
+
+const buildInlineDecoration = (
+	lineNumber: number,
+	annotation: CodeBlockDocument["lines"][number]["annotations"][number],
+	style: ResolvedAnnotationStyle | undefined,
+): DecorationItem | undefined => {
 	if (annotation.range.start >= annotation.range.end) return undefined;
 
-	if (annotation.type === "inlineClass" && hasClass(annotation)) {
+	if (style && hasClass(style)) {
 		return {
 			start: { line: lineNumber, character: annotation.range.start },
 			end: { line: lineNumber, character: annotation.range.end },
-			properties: { class: annotation.class },
+			properties: { class: style.class },
 		};
 	}
 
-	if (annotation.type === "inlineWrap" && hasRender(annotation)) {
-		const props: Record<string, string> = { "data-anno-render": annotation.render };
+	if (style && hasRender(style)) {
+		const props: Record<string, string> = { "data-anno-render": style.render };
 		for (const attr of annotation.attributes ?? []) {
 			props[`data-anno-${attr.name}`] = JSON.stringify(attr.value);
 		}
@@ -43,29 +85,27 @@ const buildInlineDecoration = (lineNumber: number, annotation: InlineAnnotation)
 	return undefined;
 };
 
-const toLineDecorationPayload = (annotation: LineAnnotation) => {
-	if (annotation.type !== "lineClass") return undefined;
-	if (!("class" in annotation) || typeof annotation.class !== "string") return undefined;
+const toLineDecorationPayload = (annotation: LineAnnotation, style: ResolvedAnnotationStyle | undefined) => {
+	if (!style || !hasClass(style)) return undefined;
 
 	return {
-		type: annotation.type,
+		scope: annotation.scope,
 		name: annotation.name,
 		range: annotation.range,
 		order: annotation.order,
-		class: annotation.class,
+		class: style.class,
 	};
 };
 
-const toLineWrapperPayload = (annotation: LineAnnotation) => {
-	if (annotation.type !== "lineWrap") return undefined;
-	if (!("render" in annotation) || typeof annotation.render !== "string") return undefined;
+const toLineWrapperPayload = (annotation: LineAnnotation, style: ResolvedAnnotationStyle | undefined) => {
+	if (!style || !hasRender(style)) return undefined;
 
 	return {
-		type: annotation.type,
+		scope: annotation.scope,
 		name: annotation.name,
 		range: annotation.range,
 		order: annotation.order,
-		render: annotation.render,
+		render: style.render,
 		attributes: annotation.attributes ?? [],
 	};
 };
@@ -81,13 +121,17 @@ export type ShikiAnnotationPayload = {
 	meta: CodeBlockDocument["meta"];
 	decorations: DecorationItem[];
 	lineDecorations: LineDecorationPayload[];
-	lineWrappers: LineWrapperPayload[];
+	rowWrappers: LineWrapperPayload[];
 };
 
-export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBlockDocument): ShikiAnnotationPayload => {
+export const fromCodeBlockDocumentToShikiAnnotationPayload = (
+	document: CodeBlockDocument,
+	annotationConfig?: AnnotationConfig,
+): ShikiAnnotationPayload => {
 	const decorations: DecorationItem[] = [];
 	const lineDecorations: LineDecorationPayload[] = [];
-	const lineWrappers: LineWrapperPayload[] = [];
+	const rowWrappers: LineWrapperPayload[] = [];
+	const registry = annotationConfig ? createAnnotationRegistry(annotationConfig) : undefined;
 	const lineStartOffsets: number[] = [];
 	let lineStart = 0;
 
@@ -105,6 +149,7 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 				annotation.range.start >= lineAbsoluteStart &&
 				annotation.range.end >= annotation.range.start &&
 				annotation.range.end <= lineAbsoluteEnd;
+			const style = resolveStyle(registry, annotation);
 			const decoration = buildInlineDecoration(lineNumber, {
 				...annotation,
 				range: isAbsoluteRangeForCurrentLine
@@ -113,21 +158,22 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 							end: annotation.range.end - lineOffset,
 						}
 					: annotation.range,
-			});
+			}, style);
 			if (decoration) decorations.push(decoration);
 		}
 	});
 
 	document.annotations.forEach((annotation) => {
-		const lineDecoration = toLineDecorationPayload(annotation);
+		const style = resolveStyle(registry, annotation);
+		const lineDecoration = toLineDecorationPayload(annotation, style);
 		if (lineDecoration) {
 			lineDecorations.push(lineDecoration);
 			return;
 		}
 
-		const lineWrapper = toLineWrapperPayload(annotation);
-		if (lineWrapper) {
-			lineWrappers.push(lineWrapper);
+		const rowWrapper = toLineWrapperPayload(annotation, style);
+		if (rowWrapper) {
+			rowWrappers.push(rowWrapper);
 		}
 	});
 
@@ -137,7 +183,7 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (document: CodeBloc
 		meta: document.meta,
 		decorations,
 		lineDecorations,
-		lineWrappers,
+		rowWrappers,
 	};
 };
 
@@ -147,7 +193,7 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 	return (tree: Root) => {
 		visit(tree, "code", (node: Code) => {
 			const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig, { parseLineAnnotations: true });
-			const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+			const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
 
 			node.value = payload.code;
 			node.data ??= {};
@@ -155,7 +201,7 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 				...node.data.hProperties,
 				"data-decorations": JSON.stringify(payload.decorations),
 				"data-line-decorations": JSON.stringify(payload.lineDecorations),
-				"data-line-wrappers": JSON.stringify(payload.lineWrappers),
+				"data-line-wrappers": JSON.stringify(payload.rowWrappers),
 				"data-render-tags": JSON.stringify(allowedRenderTags),
 				"data-lang": payload.lang,
 				"data-meta": JSON.stringify(payload.meta),
@@ -166,4 +212,5 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 
 export const __testable__ = {
 	fromCodeBlockDocumentToShikiAnnotationPayload,
+	resolveStyleFromRule,
 };

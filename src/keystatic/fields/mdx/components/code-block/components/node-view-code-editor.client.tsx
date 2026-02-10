@@ -59,11 +59,11 @@ export const NodeViewCodeEditor = ({
 		}
 
 		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
-		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
 		const highlighedHast = highlight(payload.code, payload.lang || lang, payload.meta, {
 			decorations: payload.decorations,
 			lineDecorations: payload.lineDecorations,
-			lineWrappers: [],
+			rowWrappers: [],
 			allowedRenderTags,
 		});
 

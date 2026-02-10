@@ -12,7 +12,7 @@ describe("highlight line wrapper integration", () => {
 			"ts",
 			{},
 			{
-				lineWrappers: [{ type: "lineWrap", name: "Callout", range: { start: 0, end: 2 }, order: 0, render: "Callout" }],
+				rowWrappers: [{ scope: "line", name: "Callout", range: { start: 0, end: 2 }, order: 0, render: "Callout" }],
 				allowedRenderTags: ["Callout"],
 			},
 		);
@@ -41,7 +41,7 @@ describe("highlight line wrapper integration", () => {
 						},
 					},
 				],
-				lineWrappers: [{ type: "lineWrap", name: "Callout", range: { start: 0, end: 2 }, order: 0, render: "Callout" }],
+				rowWrappers: [{ scope: "line", name: "Callout", range: { start: 0, end: 2 }, order: 0, render: "Callout" }],
 				allowedRenderTags: ["Tooltip", "Callout"],
 			},
 		);
@@ -61,7 +61,7 @@ describe("highlight line wrapper integration", () => {
 			"ts",
 			{},
 			{
-				lineWrappers: [{ type: "lineWrap", name: "Callout", range: { start: 1, end: 99 }, order: 0, render: "Callout" }],
+				rowWrappers: [{ scope: "line", name: "Callout", range: { start: 1, end: 99 }, order: 0, render: "Callout" }],
 				allowedRenderTags: ["Callout"],
 			},
 		);

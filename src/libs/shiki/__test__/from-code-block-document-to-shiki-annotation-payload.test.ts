@@ -10,14 +10,14 @@ type ComposePayloadResult = {
 	meta: Record<string, unknown>;
 	decorations: DecorationItem[];
 	lineDecorations: Array<{
-		type: "lineClass";
+		scope: "line";
 		name: string;
 		range: { start: number; end: number };
 		class: string;
 		order: number;
 	}>;
-	lineWrappers: Array<{
-		type: "lineWrap";
+	rowWrappers: Array<{
+		scope: "line";
 		name: string;
 		range: { start: number; end: number };
 		render: string;
@@ -29,7 +29,10 @@ type ComposePayloadResult = {
 const fromCodeBlockDocumentToShikiAnnotationPayload = (
 	remarkModule as unknown as {
 		__testable__?: {
-			fromCodeBlockDocumentToShikiAnnotationPayload?: (document: CodeBlockDocument) => ComposePayloadResult;
+			fromCodeBlockDocumentToShikiAnnotationPayload?: (
+				document: CodeBlockDocument,
+				annotationConfig?: AnnotationConfig,
+			) => ComposePayloadResult;
 		};
 	}
 ).__testable__?.fromCodeBlockDocumentToShikiAnnotationPayload;
@@ -46,12 +49,15 @@ const testAnnotationConfig: AnnotationConfig = {
 	],
 };
 
+const isLinePosition = (value: DecorationItem["start"]): value is { line: number; character: number } =>
+	typeof value === "object" && value !== null && "line" in value && "character" in value;
+
 describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 	it("공통 payload 변환 함수를 제공해야 한다", () => {
 		expect(fromCodeBlockDocumentToShikiAnnotationPayload).toBeTypeOf("function");
 	});
 
-	it("document를 shiki payload(decorations/lineDecorations/lineWrappers)로 변환해야 한다", () => {
+	it("document를 shiki payload(decorations/lineDecorations/rowWrappers)로 변환해야 한다", () => {
 		if (typeof fromCodeBlockDocumentToShikiAnnotationPayload !== "function") {
 			throw new Error("fromCodeBlockDocumentToShikiAnnotationPayload is not implemented");
 		}
@@ -72,7 +78,7 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 			testAnnotationConfig,
 		);
 
-		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, testAnnotationConfig);
 
 		expect(payload.code).toBe("const value = 1\nconst next = 2");
 		expect(payload.lang).toBe("ts");
@@ -94,7 +100,7 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 		expect(payload.lineDecorations).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: "lineClass",
+					scope: "line",
 					name: "diff",
 					range: { start: 1, end: 2 },
 					class: "diff",
@@ -103,10 +109,10 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 			]),
 		);
 
-		expect(payload.lineWrappers).toEqual(
+		expect(payload.rowWrappers).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: "lineWrap",
+					scope: "line",
 					name: "Callout",
 					range: { start: 0, end: 2 },
 					render: "Callout",
@@ -142,9 +148,11 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 			testAnnotationConfig,
 		);
 
-		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document);
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, testAnnotationConfig);
 		const foldDecorationOnFirstConsoleLine = payload.decorations.find(
 			(decoration) =>
+				isLinePosition(decoration.start) &&
+				isLinePosition(decoration.end) &&
 				decoration.start.line === 1 &&
 				decoration.end.line === 1 &&
 				decoration.start.character === 0 &&
@@ -152,5 +160,80 @@ describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
 		);
 
 		expect(foldDecorationOnFirstConsoleLine).toBeDefined();
+	});
+
+	it("annotation에 class/render가 없어도 name+scope rule lookup으로 payload를 만든다", () => {
+		if (typeof fromCodeBlockDocumentToShikiAnnotationPayload !== "function") {
+			throw new Error("fromCodeBlockDocumentToShikiAnnotationPayload is not implemented");
+		}
+
+		const document: CodeBlockDocument = {
+			lang: "ts",
+			meta: {},
+			lines: [
+				{
+					value: "console.log(value)",
+					annotations: [
+						{
+							scope: "char",
+							name: "Tooltip",
+							range: { start: 0, end: 7 },
+							order: 0,
+							priority: 0,
+							source: "mdx-text",
+							attributes: [{ name: "content", value: "tip" }],
+						},
+					],
+				},
+			],
+			annotations: [
+				{
+					scope: "line",
+					name: "diff",
+					range: { start: 0, end: 1 },
+					order: 0,
+					priority: 0,
+				},
+				{
+					scope: "line",
+					name: "Callout",
+					range: { start: 0, end: 1 },
+					order: 1,
+					priority: 0,
+					attributes: [{ name: "variant", value: "tip" }],
+				},
+			],
+		};
+
+		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, testAnnotationConfig);
+
+		expect(payload.decorations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					properties: {
+						"data-anno-render": "Tooltip",
+						"data-anno-content": '"tip"',
+					},
+				}),
+			]),
+		);
+		expect(payload.lineDecorations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					scope: "line",
+					name: "diff",
+					class: "diff",
+				}),
+			]),
+		);
+		expect(payload.rowWrappers).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					scope: "line",
+					name: "Callout",
+					render: "Callout",
+				}),
+			]),
+		);
 	});
 });

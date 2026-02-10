@@ -185,10 +185,10 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		const code = getCodeNode(root);
 		const hProperties = getHProperties(code);
 		const lineDecorations = JSON.parse(String(hProperties["data-line-decorations"] ?? "[]"));
-		const lineWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
+		const rowWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
 
 		expect(code.value).toBe(["const first = 1", "const second = 2"].join("\n"));
-		expect(lineWrappers).toEqual(
+		expect(rowWrappers).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					name: "Callout",
@@ -217,12 +217,12 @@ describe("remarkAnnotationToShikiDecoration", () => {
 
 		const code = getCodeNode(root);
 		const hProperties = getHProperties(code);
-		const lineWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
+		const rowWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
 
 		expect(code.lang).toBe("ts");
 		expect(code.meta).toBe('title="demo.ts"');
 		expect(code.value).toBe("const a = 1");
-		expect(lineWrappers).toEqual(
+		expect(rowWrappers).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					name: "Callout",

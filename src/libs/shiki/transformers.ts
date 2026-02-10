@@ -47,13 +47,14 @@ const isAllowedPropertyValue = (name: string, value: HastPropertyValue) => {
 
 export type Meta = Record<string, unknown>;
 export type LineDecorationPayload = {
-	type: "lineClass";
+	scope: "line";
 	name: string;
 	range: { start: number; end: number };
+	order: number;
 	class: string;
 };
 export type LineWrapperPayload = {
-	type: "lineWrap";
+	scope: "line";
 	name: string;
 	range: { start: number; end: number };
 	order: number;
@@ -208,11 +209,11 @@ const wrapRangeByLines = (
 
 export const applyLineWrappers = (
 	codeEl: Element,
-	lineWrappers: LineWrapperPayload[] = [],
+	rowWrappers: LineWrapperPayload[] = [],
 	allowedRenderTags: readonly string[] = [],
 ): void => {
 	const allowedRenderTagSet = new Set(allowedRenderTags.map((tag) => tag.trim()).filter(isSafeRenderTag));
-	const normalized = lineWrappers
+	const normalized = rowWrappers
 		.map((wrapper) => ({
 			...wrapper,
 			render: wrapper.render.trim(),
@@ -259,14 +260,14 @@ export const applyLineWrappers = (
 };
 
 export const addLineWrappers = (
-	lineWrappers: LineWrapperPayload[] = [],
+	rowWrappers: LineWrapperPayload[] = [],
 	allowedRenderTags: readonly string[] = [],
 ): ShikiTransformer => {
 	return {
 		root(root: Root) {
 			visit(root, "element", (el) => {
 				if (el.tagName !== "code") return;
-				applyLineWrappers(el, lineWrappers, allowedRenderTags);
+				applyLineWrappers(el, rowWrappers, allowedRenderTags);
 			});
 		},
 	};
