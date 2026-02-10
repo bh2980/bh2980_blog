@@ -106,4 +106,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 ### 3. Canonical 태그
 
-캐노니컬 태그(canonical)는 여러 개의 URL 중에서 대표 URL이 무엇인지 정하는 태그입니다.
+```html
+<link rel="canonical" href="https://bh2980.dev/posts">
+```
+
+캐노니컬(canonical) 태그는 동일하거나 거의 동일한 콘텐츠를 가리키는 여러 URL 중에서 **검색엔진이 대표로 인식해야 할 URL을 지정하는 태그**입니다. 도메인 통합을 위한 설정과는 목적이 다르며, 하나의 콘텐츠에 대해 쿼리 스트링이나 필터링 파라미터 등으로 여러 URL이 생성되는 경우, 이 중 어떤 URL을 기준으로 색인할지를 명확히 지정하는 데 사용됩니다.
