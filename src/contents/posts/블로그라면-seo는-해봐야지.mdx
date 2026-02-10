@@ -59,6 +59,8 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 <Tabs>
   <Tab label="metadata">
     ```ts
+    import type { Metadata } from "next";
+
     export const metadata: Metadata = {
     	title: "메모장",
     	description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
@@ -69,6 +71,8 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 
   <Tab label="generateMetadata">
     ```ts
+    import type { Metadata } from "next";
+
     export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
     	const { slug } = await params;
     	const memo = await getMemo(slug);
