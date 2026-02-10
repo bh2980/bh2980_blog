@@ -62,9 +62,9 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     import type { Metadata } from "next";
 
     export const metadata: Metadata = {
-    	title: "메모장",
-    	description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
-    	alternates: { canonical: `${process.env.HOST_URL}/memos` },
+    	title: "블로그",
+    	description: "개발하면서 배운 것들과 경험을 기록합니다.",
+    	alternates: { canonical: `/posts` },
     };
     ```
   </Tab>
@@ -72,19 +72,24 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
   <Tab label="generateMetadata">
     ```ts
     import type { Metadata } from "next";
-    import { getMemo } from "@/libs/contents/memo";
+    import { getPost } from "@/libs/contents/post";
 
-    export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
+    export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
     	const { slug } = await params;
-    	const memo = await getMemo(slug);
+    	const post = await getPost(slug);
+
+    	const url = `/posts/${sanitizeSlug(slug)}`;
 
     	return {
-    		title: memo.title,
-    		alternates: { canonical: `${process.env.HOST_URL}/memos/${sanitizeSlug(slug)}` },
+    		title: post.title,
+    		description: post.excerpt,
+    		alternates: { canonical: url },
     	};
     }
     ```
   </Tab>
 </Tabs>
 
-이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이인데요.&#x20;
+이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이인데요. `metadata`와 달리 `generateMetadata`의 경우 `getPost` 함수를 통해 title과 excerpt를 가져와 metadata를 생성하고 있습니다.
+
+그런데 한 가지 특이한게 있는데 바로 url입니다.
