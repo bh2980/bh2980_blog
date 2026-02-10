@@ -16,13 +16,13 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 
-const inlineWrap = (
+const charRender = (
 	name: string,
 	range: { start: number; end: number },
 	order: number,
 	attributes: AnnotationAttr[] = [],
 ) => ({
-	type: "inlineWrap" as const,
+	scope: "char" as const,
 	source: "mdx-text" as const,
 	render: name,
 	name,
@@ -32,8 +32,8 @@ const inlineWrap = (
 	attributes,
 });
 
-const lineWrap = (name: string, range: { start: number; end: number }, order: number) => ({
-	type: "lineWrap" as const,
+const rowWrap = (name: string, range: { start: number; end: number }, order: number) => ({
+	scope: "line" as const,
 	render: name,
 	name,
 	range,
@@ -79,12 +79,38 @@ describe("fromCodeBlockDocumentToMdast", () => {
 
 	it("line annotation은 flow wrapper를 만들지 않는다", () => {
 		const ast = fromCodeBlockDocumentToMdast(
-			toDocument([{ value: "const a = 1", annotations: [] }], [lineWrap("Collapsible", { start: 0, end: 1 }, 0)]),
+			toDocument([{ value: "const a = 1", annotations: [] }], [rowWrap("Collapsible", { start: 0, end: 1 }, 0)]),
 			annotationConfig,
 		);
 
 		expect(ast.children).toHaveLength(1);
 		expect(ast.children.some((node) => node.type === "mdxJsxFlowElement")).toBe(false);
+	});
+
+	it("scope=document inline annotation은 mdast 변환에서 제외한다", () => {
+		const ast = fromCodeBlockDocumentToMdast(
+			toDocument([
+				{
+					value: "hello",
+					annotations: [
+						{
+							scope: "document",
+							source: "mdx-text",
+							render: "Tooltip",
+							name: "Tooltip",
+							range: { start: 0, end: 5 },
+							priority: 0,
+							order: 0,
+							attributes: [],
+						},
+					],
+				},
+			]),
+			annotationConfig,
+		);
+		const paragraph = getSingleParagraph(ast);
+
+		expect(paragraph.children).toEqual([{ type: "text", value: "hello" }]);
 	});
 
 	it("inline annotation attribute를 mdx attribute 값으로 보존한다", () => {
@@ -93,7 +119,7 @@ describe("fromCodeBlockDocumentToMdast", () => {
 				{
 					value: "hello",
 					annotations: [
-						inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [
+						charRender("Tooltip", { start: 0, end: 5 }, 0, [
 							{ name: "content", value: "tip" },
 							{ name: "open", value: true },
 							{ name: "count", value: 2 },
@@ -127,11 +153,11 @@ describe("fromCodeBlockDocumentToMdast", () => {
 		const input = toDocument([
 			{
 				value: "hello",
-				annotations: [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])],
+				annotations: [charRender("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])],
 			},
 			{
 				value: "world",
-				annotations: [inlineWrap("u", { start: 6, end: 11 }, 0)],
+				annotations: [charRender("u", { start: 6, end: 11 }, 0)],
 			},
 		]);
 
@@ -149,14 +175,14 @@ describe("fromCodeBlockDocumentToMdast", () => {
 			[
 				{
 					value: "hello",
-					annotations: [inlineWrap("Tooltip", { start: 0, end: 5 }, 0)],
+					annotations: [charRender("Tooltip", { start: 0, end: 5 }, 0)],
 				},
 				{
 					value: "world",
 					annotations: [],
 				},
 			],
-			[lineWrap("Collapsible", { start: 0, end: 2 }, 0)],
+			[rowWrap("Collapsible", { start: 0, end: 2 }, 0)],
 		);
 
 		const ast = fromCodeBlockDocumentToMdast(input, annotationConfig);

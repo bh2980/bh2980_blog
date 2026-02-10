@@ -12,6 +12,7 @@ export type Range = {
 export type AnnotationAttr = { name: string; value: unknown };
 
 type AnnotationBase = {
+	scope: AnnotationScope;
 	name: string;
 	range: Range;
 	priority: number; // 교차 겹침 시 well nested 정책 우선 순위
@@ -22,18 +23,16 @@ type AnnotationBase = {
 };
 
 export type InlineAnnotationSource = "mdast" | "mdx-text";
-export type AnnotationType = "inlineClass" | "inlineWrap" | "lineClass" | "lineWrap";
-
 export type InlineAnnotation = AnnotationBase & {
-	type: "inlineClass" | "inlineWrap";
+	scope: "char" | "document";
 	source: InlineAnnotationSource;
 };
 
 export type LineAnnotation = AnnotationBase & {
-	type: "lineClass" | "lineWrap";
+	scope: "line";
 };
 
-export type Annotation = InlineAnnotation | LineAnnotation;
+export type CodeBlockAnnotation = InlineAnnotation | LineAnnotation;
 
 export type AnnotationScope = "char" | "line" | "document";
 export type AnnotationKind = "class" | "render";
@@ -88,7 +87,7 @@ export type EventKind = "open" | "close";
 export type AnnotationEvent = {
 	pos: number; // line offset
 	kind: EventKind; // 같은 pos면 close 먼저
-	anno: Annotation; // 원본 참조 or 동일 구조
+	anno: CodeBlockAnnotation; // 원본 참조 or 동일 구조
 };
 
 // children을 가지는 PhrasingContent만 추출 (text 제외)

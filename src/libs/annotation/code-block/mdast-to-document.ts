@@ -1,6 +1,6 @@
 import type { Break, Node, Paragraph, Text } from "mdast";
 import type { MdxJsxAttribute, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import { createAnnotationRegistry, resolveAnnotationTypeByScope } from "./libs";
+import { createAnnotationRegistry, supportsAnnotationScope } from "./libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -32,30 +32,28 @@ const toInlineAnnotationFromConfig = ({
 	order: number;
 	attributes?: AnnotationAttr[];
 }): InlineAnnotation | undefined => {
-	const annotationType = resolveAnnotationTypeByScope(config, "char");
-	if (annotationType !== "inlineClass" && annotationType !== "inlineWrap") return;
+	if (!supportsAnnotationScope(config, "char")) return;
 
 	const base = {
 		name,
 		range,
 		order,
+		scope: "char" as const,
 		source: config.source,
 		priority: config.priority,
 		attributes,
 	};
 
-	if (annotationType === "inlineClass") {
+	if (config.kind === "class") {
 		return {
 			...base,
 			class: config.class ?? "",
-			type: "inlineClass",
 		};
 	}
 
 	return {
 		...base,
 		render: config.render ?? name,
-		type: "inlineWrap",
 	};
 };
 

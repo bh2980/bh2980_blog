@@ -12,7 +12,7 @@ const annotationConfig: AnnotationConfig = {
 };
 
 describe("runtime line class diff", () => {
-	it("@line plus는 바로 아래 1줄 lineClass로 파싱한다", () => {
+	it("@line plus는 바로 아래 1줄 line scope annotation으로 파싱한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
@@ -29,7 +29,7 @@ describe("runtime line class diff", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const untouched = 0"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineClass",
+				scope: "line",
 				name: "plus",
 				class: "diff plus",
 				range: { start: 0, end: 1 },
@@ -55,7 +55,7 @@ describe("runtime line class diff", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const kept = 0", "const removed = 2", "const removedToo = 3"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineClass",
+				scope: "line",
 				name: "minus",
 				class: "diff minus",
 				range: { start: 1, end: 3 },

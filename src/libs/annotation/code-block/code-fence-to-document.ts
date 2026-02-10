@@ -1,7 +1,13 @@
 import type { Code } from "mdast";
 import { resolveCommentSyntax } from "./comment-syntax";
-import { createAnnotationRegistry, resolveAnnotationTypeByScope } from "./libs";
-import type { AnnotationConfig, AnnotationRegistryItem, CodeBlockDocument, LineAnnotation } from "./types";
+import { createAnnotationRegistry, supportsAnnotationScope } from "./libs";
+import type {
+	AnnotationConfig,
+	AnnotationRegistryItem,
+	AnnotationScope,
+	CodeBlockDocument,
+	InlineAnnotation,
+} from "./types";
 
 const DEFAULT_CODE_LANG = "text";
 const ATTR_RE = /([A-Za-z_][\w-]*)(?:\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+)))?/g;
@@ -46,19 +52,11 @@ type PendingScopeLineMarkerBase = {
 	order: number;
 	attributes: { name: string; value: unknown }[];
 	startLineIndex: number;
-};
-
-type PendingScopeLineClassMarker = PendingScopeLineMarkerBase & {
-	type: "lineClass";
 	config: AnnotationRegistryItem;
+	kind: "class" | "render";
 };
 
-type PendingScopeLineWrapMarker = PendingScopeLineMarkerBase & {
-	type: "lineWrap";
-	config: AnnotationRegistryItem;
-};
-
-type PendingScopeLineMarker = PendingScopeLineClassMarker | PendingScopeLineWrapMarker;
+type PendingScopeLineMarker = PendingScopeLineMarkerBase;
 
 type StagedInlineAnnotation = {
 	lineIndex: number;
@@ -206,27 +204,6 @@ const getStylePayload = (config: AnnotationRegistryItem) => {
 	return {};
 };
 
-const resolveInlineAnnotationTypeFromScope = (
-	config: AnnotationRegistryItem,
-	scope: "char" | "document",
-): "inlineClass" | "inlineWrap" | undefined => {
-	const resolved = resolveAnnotationTypeByScope(config, scope);
-	if (resolved === "inlineClass" || resolved === "inlineWrap") {
-		return resolved;
-	}
-
-	return;
-};
-
-const resolveLineAnnotationTypeFromScope = (config: AnnotationRegistryItem): "lineClass" | "lineWrap" | undefined => {
-	const resolved = resolveAnnotationTypeByScope(config, "line");
-	if (resolved === "lineClass" || resolved === "lineWrap") {
-		return resolved;
-	}
-
-	return;
-};
-
 const extractCommentBody = (line: string, commentSyntax: { prefix: string; postfix: string }) => {
 	const trimmed = line.trim();
 	const prefix = commentSyntax.prefix.trim();
@@ -344,36 +321,28 @@ const makeInlineAnnotationFromConfig = ({
 	order,
 }: {
 	config: AnnotationRegistryItem;
-	scope: "char" | "document";
+	scope: Extract<AnnotationScope, "char" | "document">;
 	name: string;
 	range: { start: number; end: number };
 	attributes: { name: string; value: unknown }[];
 	order: number;
-}) => {
-	const annotationType = resolveInlineAnnotationTypeFromScope(config, scope);
-	if (!annotationType) return;
+}): InlineAnnotation | undefined => {
+	if (!supportsAnnotationScope(config, scope)) return;
+	const style = getStylePayload(config);
+	if (config.kind === "class" && typeof style.class !== "string") return;
+	if (config.kind === "render" && typeof style.render !== "string") return;
 
 	const base = {
-		...getStylePayload(config),
+		...style,
 		priority: config.priority,
+		scope,
 		name,
 		range,
 		attributes,
 		order,
 		source: config.source,
 	};
-
-	if (annotationType === "inlineClass") {
-		return {
-			...base,
-			type: "inlineClass" as const,
-		};
-	}
-
-	return {
-		...base,
-		type: "inlineWrap" as const,
-	};
+	return base;
 };
 
 const pushScopeLineAnnotation = ({
@@ -385,8 +354,10 @@ const pushScopeLineAnnotation = ({
 	marker: PendingScopeLineMarker;
 	endLineIndex: number;
 }) => {
-	const annotationType = resolveLineAnnotationTypeFromScope(marker.config);
-	if (!annotationType) return;
+	if (!supportsAnnotationScope(marker.config, "line")) return;
+	const style = getStylePayload(marker.config);
+	if (marker.kind === "class" && typeof style.class !== "string") return;
+	if (marker.kind === "render" && typeof style.render !== "string") return;
 
 	const range = {
 		start: marker.startLineIndex,
@@ -394,23 +365,10 @@ const pushScopeLineAnnotation = ({
 	};
 	if (range.end <= range.start) return;
 
-	if (annotationType === "lineClass") {
-		annotations.push({
-			...getStylePayload(marker.config),
-			priority: marker.config.priority,
-			type: "lineClass",
-			name: marker.name,
-			range,
-			order: marker.order,
-			attributes: marker.attributes,
-		});
-		return;
-	}
-
 	annotations.push({
-		...getStylePayload(marker.config),
+		...style,
 		priority: marker.config.priority,
-		type: "lineWrap",
+		scope: "line",
 		name: marker.name,
 		range,
 		order: marker.order,
@@ -421,15 +379,15 @@ const pushScopeLineAnnotation = ({
 const findScopeLineMarkerIndex = ({
 	pendingScopeLineMarkers,
 	targetName,
-	targetType,
+	targetKind,
 }: {
 	pendingScopeLineMarkers: PendingScopeLineMarker[];
 	targetName: string;
-	targetType: "lineClass" | "lineWrap";
+	targetKind: "class" | "render";
 }) => {
 	for (let idx = pendingScopeLineMarkers.length - 1; idx >= 0; idx -= 1) {
 		const marker = pendingScopeLineMarkers[idx];
-		if (!marker || marker.name !== targetName || marker.type !== targetType) continue;
+		if (!marker || marker.name !== targetName || marker.kind !== targetKind) continue;
 		return idx;
 	}
 
@@ -509,7 +467,7 @@ const tryConsumeScopeComment = ({
 	if (!config) return false;
 
 	if (parsed.scope === "char") {
-		if (!resolveInlineAnnotationTypeFromScope(config, "char")) return false;
+		if (!supportsAnnotationScope(config, "char")) return false;
 		pendingScopeInlineDirectives.push({
 			name: parsed.name,
 			attributes: markerAttributes,
@@ -521,7 +479,7 @@ const tryConsumeScopeComment = ({
 
 	if (parsed.scope === "document") {
 		if (!parseLineAnnotations) return false;
-		if (!resolveInlineAnnotationTypeFromScope(config, "document")) return false;
+		if (!supportsAnnotationScope(config, "document")) return false;
 
 		pendingScopeDocumentDirectives.push({
 			name: parsed.name,
@@ -533,8 +491,11 @@ const tryConsumeScopeComment = ({
 	}
 
 	if (!parseLineAnnotations) return false;
-	const lineAnnotationType = resolveLineAnnotationTypeFromScope(config);
-	if (!lineAnnotationType) return false;
+	if (!supportsAnnotationScope(config, "line")) return false;
+	const lineAnnotationKind = config.kind;
+	const style = getStylePayload(config);
+	if (lineAnnotationKind === "class" && typeof style.class !== "string") return false;
+	if (lineAnnotationKind === "render" && typeof style.render !== "string") return false;
 
 	if (parsed.selector?.kind === "range") {
 		const range = toHalfOpenRangeFromClosed({
@@ -542,23 +503,10 @@ const tryConsumeScopeComment = ({
 			end: parsed.selector.end,
 		});
 
-		if (lineAnnotationType === "lineClass") {
-			annotations.push({
-				...getStylePayload(config),
-				priority: config.priority,
-				type: "lineClass",
-				name: parsed.name,
-				range,
-				order: annotations.length,
-				attributes: markerAttributes,
-			});
-			return true;
-		}
-
 		annotations.push({
-			...getStylePayload(config),
+			...style,
 			priority: config.priority,
-			type: "lineWrap",
+			scope: "line",
 			name: parsed.name,
 			range,
 			order: annotations.length,
@@ -575,7 +523,7 @@ const tryConsumeScopeComment = ({
 		const matchedIndex = findScopeLineMarkerIndex({
 			pendingScopeLineMarkers,
 			targetName: parsed.name,
-			targetType: lineAnnotationType,
+			targetKind: lineAnnotationKind,
 		});
 		if (matchedIndex < 0) return true;
 
@@ -590,25 +538,13 @@ const tryConsumeScopeComment = ({
 		return true;
 	}
 
-	if (lineAnnotationType === "lineClass") {
-		pendingScopeLineMarkers.push({
-			name: parsed.name,
-			order: nextOrder,
-			attributes: markerAttributes,
-			startLineIndex: linesLength,
-			type: "lineClass",
-			config,
-		});
-		return true;
-	}
-
 	pendingScopeLineMarkers.push({
 		name: parsed.name,
 		order: nextOrder,
 		attributes: markerAttributes,
 		startLineIndex: linesLength,
-		type: "lineWrap",
 		config,
+		kind: lineAnnotationKind,
 	});
 	return true;
 };
@@ -687,8 +623,7 @@ const parseCodeLines = ({
 	}
 
 	for (const marker of pendingScopeLineMarkers) {
-		const endLineIndex =
-			marker.type === "lineClass" ? Math.min(lines.length, marker.startLineIndex + 1) : lines.length;
+		const endLineIndex = marker.kind === "class" ? Math.min(lines.length, marker.startLineIndex + 1) : lines.length;
 		pushScopeLineAnnotation({
 			annotations,
 			marker,

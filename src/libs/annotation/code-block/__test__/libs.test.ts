@@ -1,43 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { __testable__ } from "../libs";
-import type { Annotation, AnnotationConfig, Range } from "../types";
+import type { AnnotationConfig, CodeBlockAnnotation, Range } from "../types";
 
-const { normalizeConfigItems, createAnnotationRegistry, resolveAnnotationTypeByScope, fromAnnotationsToEvents } =
+const { normalizeConfigItems, createAnnotationRegistry, supportsAnnotationScope, fromAnnotationsToEvents } =
 	__testable__;
 
 const makeAnnotation = ({
-	type,
+	scope,
 	name,
 	range,
 	order,
 	priority = 0,
 	source = "mdx-text",
+	mode,
 }: {
-	type: Annotation["type"];
+	scope: CodeBlockAnnotation["scope"];
 	name: string;
 	range: Range;
 	order: number;
 	priority?: number;
 	source?: "mdast" | "mdx-text";
-}): Annotation => {
-	const base = {
-		type,
-		name,
-		range,
-		priority,
-		order,
-	};
+	mode?: "class" | "render";
+}): CodeBlockAnnotation => {
+	const resolvedMode = mode ?? (source === "mdast" ? "class" : "render");
+	if (scope === "line") {
+		const base = { scope, name, range, priority, order };
+		return resolvedMode === "class" ? { ...base, class: "line-c" } : { ...base, render: name };
+	}
 
-	if (type === "inlineClass") {
-		return { ...base, type, source, class: "c" };
-	}
-	if (type === "inlineWrap") {
-		return { ...base, type, source, render: name };
-	}
-	if (type === "lineClass") {
-		return { ...base, type, class: "line-c" };
-	}
-	return { ...base, type, render: name };
+	const base = { scope, name, range, priority, order, source };
+	return resolvedMode === "class" ? { ...base, class: "c" } : { ...base, render: name };
 };
 
 describe("normalizeConfigItems / createAnnotationRegistry", () => {
@@ -68,10 +60,12 @@ describe("normalizeConfigItems / createAnnotationRegistry", () => {
 		]);
 
 		const registry = createAnnotationRegistry(config);
-		expect(resolveAnnotationTypeByScope(registry.get("strong")!, "char")).toBe("inlineClass");
-		expect(resolveAnnotationTypeByScope(registry.get("Tooltip")!, "document")).toBe("inlineWrap");
-		expect(resolveAnnotationTypeByScope(registry.get("diff")!, "line")).toBe("lineClass");
-		expect(resolveAnnotationTypeByScope(registry.get("Callout")!, "line")).toBe("lineWrap");
+		expect(supportsAnnotationScope(registry.get("strong")!, "char")).toBe(true);
+		expect(supportsAnnotationScope(registry.get("Tooltip")!, "document")).toBe(true);
+		expect(supportsAnnotationScope(registry.get("diff")!, "line")).toBe(true);
+		expect(supportsAnnotationScope(registry.get("Callout")!, "line")).toBe(true);
+		expect(registry.get("strong")?.kind).toBe("class");
+		expect(registry.get("Tooltip")?.kind).toBe("render");
 	});
 
 	it("중복/잘못된 name은 에러를 던진다", () => {
@@ -96,7 +90,7 @@ describe("fromAnnotationsToEvents", () => {
 	it("range start=end인 annotation은 이벤트를 만들지 않는다", () => {
 		const events = fromAnnotationsToEvents([
 			makeAnnotation({
-				type: "inlineWrap",
+				scope: "char",
 				name: "noop",
 				range: { start: 1, end: 1 },
 				order: 0,
@@ -108,13 +102,13 @@ describe("fromAnnotationsToEvents", () => {
 
 	it("같은 pos에서 close가 open보다 먼저 온다", () => {
 		const a = makeAnnotation({
-			type: "inlineWrap",
+			scope: "char",
 			name: "A",
 			range: { start: 0, end: 2 },
 			order: 0,
 		});
 		const b = makeAnnotation({
-			type: "inlineWrap",
+			scope: "char",
 			name: "B",
 			range: { start: 2, end: 4 },
 			order: 1,
@@ -126,13 +120,13 @@ describe("fromAnnotationsToEvents", () => {
 
 	it("동일 range/pos 충돌 시 order를 마지막 tie-breaker로 사용한다", () => {
 		const a = makeAnnotation({
-			type: "inlineWrap",
+			scope: "char",
 			name: "wrap-0",
 			range: { start: 0, end: 2 },
 			order: 0,
 		});
 		const b = makeAnnotation({
-			type: "inlineClass",
+			scope: "char",
 			name: "class-1",
 			range: { start: 0, end: 2 },
 			order: 1,

@@ -25,7 +25,7 @@ const parse = (value: string) => {
 };
 
 describe("scope comment syntax", () => {
-	it("@line plus는 바로 아래 코드 1줄에 lineClass를 만든다", () => {
+	it("@line plus는 바로 아래 코드 1줄에 line scope annotation을 만든다", () => {
 		const document = parse([
 			"// @line plus",
 			"const added = 1",
@@ -35,7 +35,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const untouched = 0"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineClass",
+				scope: "line",
 				name: "plus",
 				class: "diff plus",
 				range: { start: 0, end: 1 },
@@ -54,7 +54,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineClass",
+				scope: "line",
 				name: "plus",
 				class: "diff plus",
 				range: { start: 0, end: 2 },
@@ -62,7 +62,7 @@ describe("scope comment syntax", () => {
 		]);
 	});
 
-	it("@line plus ... @line plus end는 연속 구간 lineClass로 파싱한다", () => {
+	it("@line plus ... @line plus end는 연속 구간 line scope annotation으로 파싱한다", () => {
 		const document = parse([
 			"// @line plus",
 			"const first = 1",
@@ -74,7 +74,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineClass",
+				scope: "line",
 				name: "plus",
 				class: "diff plus",
 				range: { start: 0, end: 2 },
@@ -82,7 +82,7 @@ describe("scope comment syntax", () => {
 		]);
 	});
 
-	it("@line collapse ... @line collapse end는 lineWrap 구간으로 파싱한다", () => {
+	it("@line collapse ... @line collapse end는 line scope wrapper 구간으로 파싱한다", () => {
 		const document = parse([
 			"// @line collapse",
 			"const first = 1",
@@ -94,7 +94,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
-				type: "lineWrap",
+				scope: "line",
 				name: "collapse",
 				render: "collapse",
 				range: { start: 0, end: 2 },
@@ -112,7 +112,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((item) => item.value)).toEqual([line]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				render: "fold",
 				range: { start: 0, end: 5 },
@@ -136,7 +136,7 @@ describe("scope comment syntax", () => {
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				render: "fold",
 				range: { start: 0, end: firstEnd },
@@ -144,7 +144,7 @@ describe("scope comment syntax", () => {
 		]);
 		expect(document.lines[1]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				render: "fold",
 				range: { start: secondStart, end: secondEnd },

@@ -6,7 +6,7 @@ import { __testable__ } from "../mdast-to-document";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { fromParagraphToLine } = __testable__;
-const { createAnnotationRegistry, resolveAnnotationTypeByScope } = libsTestable;
+const { createAnnotationRegistry, supportsAnnotationScope } = libsTestable;
 const annotationConfig: AnnotationConfig = {
 	annotations: [
 		{ name: "strong", kind: "class" as const, source: "mdast" as const, class: "font-bold", scopes: ["char"] },
@@ -45,17 +45,16 @@ const expectedInline = (
 	attributes?: AnnotationAttr[],
 ): InlineAnnotation => {
 	const config = registry.get(registryKey);
-	const annotationType = config ? resolveAnnotationTypeByScope(config, "char") : undefined;
-	if (!config || (annotationType !== "inlineClass" && annotationType !== "inlineWrap")) {
+	if (!config || !supportsAnnotationScope(config, "char")) {
 		throw new Error(`Unknown inline annotation config: ${registryKey}`);
 	}
 
-	if (annotationType === "inlineClass") {
+	if (config.kind === "class") {
 		return {
 			class: config.class ?? "",
 			source: config.source,
 			priority: config.priority,
-			type: "inlineClass",
+			scope: "char",
 			name,
 			range,
 			order,
@@ -67,7 +66,7 @@ const expectedInline = (
 		render: config.render ?? name,
 		source: config.source,
 		priority: config.priority,
-		type: "inlineWrap",
+		scope: "char",
 		name,
 		range,
 		order,
@@ -149,9 +148,7 @@ describe("fromParagraphToLine", () => {
 				expectedInline("u", "u", { start: 0, end: 3 }, 2, []),
 			]),
 		);
-		expect(
-			line.annotations.every((annotation) => annotation.type === "inlineClass" || annotation.type === "inlineWrap"),
-		).toBe(true);
+		expect(line.annotations.every((annotation) => annotation.scope === "char")).toBe(true);
 	});
 
 	it("빈 paragraph는 빈 Line을 반환한다", () => {

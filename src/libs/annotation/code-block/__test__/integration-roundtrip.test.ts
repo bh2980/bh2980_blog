@@ -18,8 +18,8 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 
-const inlineWrap = (name: string, range: { start: number; end: number }, order: number) => ({
-	type: "inlineWrap" as const,
+const charRender = (name: string, range: { start: number; end: number }, order: number) => ({
+	scope: "char" as const,
 	source: "mdx-text" as const,
 	render: name,
 	name,
@@ -35,8 +35,8 @@ describe("integration roundtrip (new codeblock model)", () => {
 			lang: "ts",
 			meta: { title: "integration.ts", showLineNumbers: true },
 			lines: [
-				{ value: "const alpha = 1", annotations: [inlineWrap("Tooltip", { start: 6, end: 11 }, 0)] },
-				{ value: "return alpha", annotations: [inlineWrap("u", { start: 22, end: 27 }, 0)] },
+				{ value: "const alpha = 1", annotations: [charRender("Tooltip", { start: 6, end: 11 }, 0)] },
+				{ value: "return alpha", annotations: [charRender("u", { start: 22, end: 27 }, 0)] },
 			],
 			annotations: [],
 		};
@@ -47,23 +47,5 @@ describe("integration roundtrip (new codeblock model)", () => {
 		const output = fromMdxFlowElementToCodeDocument(mdast, annotationConfig);
 
 		expect(output).toEqual(parsed);
-	});
-
-	it("에디터 경로(parseLineAnnotations=false)에서는 line 주석을 코드 라인으로 유지한다", () => {
-		const codeNode = {
-			type: "code" as const,
-			lang: "ts",
-			meta: "",
-			value: ["// @line Collapsible {0-1}", "const a = 1", "const b = 2"].join("\n"),
-		};
-
-		const parsed = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig, { parseLineAnnotations: false });
-		const mdast = fromCodeBlockDocumentToMdast(parsed, annotationConfig);
-		const output = fromMdxFlowElementToCodeDocument(mdast, annotationConfig);
-		const serialized = fromCodeBlockDocumentToCodeFence(output, annotationConfig);
-
-		expect(serialized.value).toContain("// @line Collapsible {0-1}");
-		expect(output.annotations).toEqual([]);
-		expect(output.lines[0]?.value).toBe("// @line Collapsible {0-1}");
 	});
 });

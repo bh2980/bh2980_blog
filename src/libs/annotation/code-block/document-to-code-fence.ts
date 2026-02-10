@@ -24,7 +24,7 @@ const fromDocumentMetaToCodeFenceMeta = (meta: CodeBlockDocument["meta"]) => {
 const fromAnnotationToCommentLine = (
 	commentSyntax: CommentSyntax,
 	annotation: {
-		scope: "char" | "line";
+		scope: "char" | "line" | "document";
 		name: string;
 		range: { start: number; end: number };
 		attributes?: { name: string; value: unknown }[];
@@ -98,23 +98,26 @@ export const fromCodeBlockDocumentToCodeFence = (
 		}
 
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
+			const isDocumentScope = annotation.scope === "document";
 			const isLocalRange =
 				annotation.range.start >= 0 &&
 				annotation.range.end >= annotation.range.start &&
 				annotation.range.end <= line.value.length;
-			const localRange = isLocalRange
+			const targetRange = isDocumentScope
 				? annotation.range
-				: {
-						start: annotation.range.start - lineOffset,
-						end: annotation.range.end - lineOffset,
-					};
+				: isLocalRange
+					? annotation.range
+					: {
+							start: annotation.range.start - lineOffset,
+							end: annotation.range.end - lineOffset,
+						};
 
-			const closedRange = toClosedRange(localRange);
+			const closedRange = toClosedRange(targetRange);
 			if (!closedRange) continue;
 			outputLines.push(
 				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
-					scope: "char",
+					scope: annotation.scope,
 					range: closedRange,
 				})}`,
 			);

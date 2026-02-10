@@ -47,7 +47,7 @@ it("line annotation 데이터가 있어도 flow wrapper를 만들지 않는다",
 		lines: [{ value: "const a = 1", annotations: [] }],
 		annotations: [
 			{
-				type: "lineWrap",
+				scope: "line",
 				name: "Collapsible",
 				range: { start: 0, end: 1 },
 				priority: 0,

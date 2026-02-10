@@ -53,7 +53,7 @@ const codeBlock = (
 	children,
 });
 
-const inlineWrapByName = new Map(
+const charRenderByName = new Map(
 	(annotationConfig.annotations ?? [])
 		.filter(
 			(item): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
@@ -62,12 +62,12 @@ const inlineWrapByName = new Map(
 		.map((item, priority) => [item.name, { ...item, priority }]),
 );
 
-const expectedInlineWrap = (name: string, range: Range, order = 0): InlineAnnotation => {
-	const config = inlineWrapByName.get(name);
-	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
+const expectedCharRender = (name: string, range: Range, order = 0): InlineAnnotation => {
+	const config = charRenderByName.get(name);
+	if (!config) throw new Error(`Unknown charRender config: ${name}`);
 
 	return {
-		type: "inlineWrap" as const,
+		scope: "char" as const,
 		source: config.source ?? "mdx-text",
 		render: config.render,
 		priority: config.priority,
@@ -95,7 +95,7 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 			lines: [
 				{
 					value: "line1",
-					annotations: [expectedInlineWrap("u", { start: 0, end: 1 })],
+					annotations: [expectedCharRender("u", { start: 0, end: 1 })],
 				},
 				{ value: "line3", annotations: [] },
 			],
@@ -129,11 +129,11 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 		expect(document.lines).toEqual([
 			{
 				value: "a1",
-				annotations: [expectedInlineWrap("u", { start: 0, end: 1 })],
+				annotations: [expectedCharRender("u", { start: 0, end: 1 })],
 			},
 			{
 				value: "b2",
-				annotations: [expectedInlineWrap("u", { start: 3, end: 4 })],
+				annotations: [expectedCharRender("u", { start: 3, end: 4 })],
 			},
 		]);
 	});
@@ -155,11 +155,11 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 		expect(document.lines).toEqual([
 			{
 				value: "ab",
-				annotations: [expectedInlineWrap("u", { start: 0, end: 2 })],
+				annotations: [expectedCharRender("u", { start: 0, end: 2 })],
 			},
 			{
 				value: "cd!",
-				annotations: [expectedInlineWrap("u", { start: 3, end: 5 })],
+				annotations: [expectedCharRender("u", { start: 3, end: 5 })],
 			},
 		]);
 	});

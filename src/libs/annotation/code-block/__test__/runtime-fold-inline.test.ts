@@ -9,7 +9,7 @@ const annotationConfig: AnnotationConfig = {
 };
 
 describe("runtime fold inline annotation", () => {
-	it("@char fold 주석을 inlineWrap으로 파싱한다", () => {
+	it("@char fold 주석을 charRender으로 파싱한다", () => {
 		const codeNode: Code = {
 			type: "code",
 			lang: "ts",
@@ -22,7 +22,7 @@ describe("runtime fold inline annotation", () => {
 		expect(document.lines.map((line) => line.value)).toEqual(["hello world"]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "char",
 				name: "fold",
 				render: "fold",
 				range: { start: 0, end: 5 },

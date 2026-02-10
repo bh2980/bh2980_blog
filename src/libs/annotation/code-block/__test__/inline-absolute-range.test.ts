@@ -35,7 +35,7 @@ describe("inline absolute range", () => {
 					value: "vwxyz",
 					annotations: [
 						{
-							type: "inlineWrap",
+							scope: "char",
 							source: "mdx-text",
 							name: "Tooltip",
 							range: { start: 7, end: 9 },

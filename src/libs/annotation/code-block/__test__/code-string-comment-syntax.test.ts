@@ -28,23 +28,23 @@ const isCharRender = (item: AnnotationConfigItem): item is Extract<AnnotationCon
 const isLineRender = (item: AnnotationConfigItem): item is Extract<AnnotationConfigItem, { kind: "render" }> =>
 	item.kind === "render" && (item.scopes ?? []).includes("line");
 
-const inlineWrapByName = new Map(
+const charRenderByName = new Map(
 	(annotationConfig.annotations ?? [])
 		.filter(isCharRender)
 		.map((item, priority) => [item.name, { source: item.source ?? "mdx-text", render: item.render, priority }]),
 );
-const lineWrapByName = new Map(
+const rowWrapByName = new Map(
 	(annotationConfig.annotations ?? [])
 		.filter(isLineRender)
 		.map((item, priority) => [item.name, { render: item.render, priority }]),
 );
 
-const inlineWrap = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): InlineAnnotation => {
-	const config = inlineWrapByName.get(name);
-	if (!config) throw new Error(`Unknown inlineWrap config: ${name}`);
+const charRender = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): InlineAnnotation => {
+	const config = charRenderByName.get(name);
+	if (!config) throw new Error(`Unknown charRender config: ${name}`);
 
 	return {
-		type: "inlineWrap",
+		scope: "char",
 		source: config.source,
 		render: config.render,
 		priority: config.priority,
@@ -55,12 +55,12 @@ const inlineWrap = (name: string, range: Range, order: number, attributes: Annot
 	};
 };
 
-const lineWrap = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): LineAnnotation => {
-	const config = lineWrapByName.get(name);
-	if (!config) throw new Error(`Unknown lineWrap config: ${name}`);
+const rowWrap = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): LineAnnotation => {
+	const config = rowWrapByName.get(name);
+	if (!config) throw new Error(`Unknown rowWrap config: ${name}`);
 
 	return {
-		type: "lineWrap",
+		scope: "line",
 		render: config.render,
 		priority: config.priority,
 		name,
@@ -91,9 +91,9 @@ describe("code-string converter comment syntax", () => {
 		expect(document).toEqual({
 			lang: "postcss",
 			meta: {},
-			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0, [{ name: "tone", value: "info" }])],
+			annotations: [rowWrap("Callout", { start: 0, end: 2 }, 0, [{ name: "tone", value: "info" }])],
 			lines: [
-				line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
+				line("hello", [charRender("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
 				line("world"),
 			],
 		});
@@ -103,9 +103,9 @@ describe("code-string converter comment syntax", () => {
 		const input: CodeBlockDocument = {
 			lang: "postcss",
 			meta: {},
-			annotations: [lineWrap("Callout", { start: 0, end: 2 }, 0)],
+			annotations: [rowWrap("Callout", { start: 0, end: 2 }, 0)],
 			lines: [
-				line("hello", [inlineWrap("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
+				line("hello", [charRender("Tooltip", { start: 0, end: 5 }, 0, [{ name: "content", value: "tip" }])]),
 				line("world"),
 			],
 		};

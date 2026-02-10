@@ -35,13 +35,13 @@ describe("regex annotation comment syntax", () => {
 		expect(document.lines[0]?.annotations).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					type: "inlineWrap",
+					scope: "char",
 					name: "fold",
 					render: "fold",
 					range: { start: first, end: first + 3 },
 				}),
 				expect.objectContaining({
-					type: "inlineWrap",
+					scope: "char",
 					name: "fold",
 					render: "fold",
 					range: { start: second, end: second + 3 },
@@ -65,7 +65,7 @@ describe("regex annotation comment syntax", () => {
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				render: "fold",
 				range: {
@@ -78,7 +78,7 @@ describe("regex annotation comment syntax", () => {
 		const secondLineStart = firstLine.length + 1;
 		expect(document.lines[1]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				render: "fold",
 				range: {
@@ -110,12 +110,12 @@ describe("regex annotation comment syntax", () => {
 		expect(document.lines.map((item) => item.value)).toEqual([line]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				range: { start: 0, end: 3 },
 			}),
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				range: { start: 8, end: 11 },
 			}),
@@ -134,14 +134,14 @@ describe("regex annotation comment syntax", () => {
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				range: { start: 4, end: 5 },
 			}),
 		]);
 		expect(document.lines[1]?.annotations).toEqual([
 			expect.objectContaining({
-				type: "inlineWrap",
+				scope: "document",
 				name: "fold",
 				range: { start: 6, end: 7 },
 			}),

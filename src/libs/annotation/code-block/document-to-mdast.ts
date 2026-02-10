@@ -6,7 +6,7 @@ import type {
 	MdxJsxFlowElement,
 	MdxJsxTextElement,
 } from "mdast-util-mdx-jsx";
-import { createAnnotationRegistry, fromAnnotationsToEvents, resolveAnnotationTypeByScope } from "./libs";
+import { createAnnotationRegistry, fromAnnotationsToEvents, supportsAnnotationScope } from "./libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -109,8 +109,7 @@ const fromLineToParagraph = (line: string, events: AnnotationEvent[], registry: 
 				continue;
 			}
 
-			const resolvedType = resolveAnnotationTypeByScope(node, "char");
-			if (resolvedType !== "inlineClass" && resolvedType !== "inlineWrap") {
+			if (!supportsAnnotationScope(node, "char")) {
 				continue;
 			}
 
@@ -174,19 +173,21 @@ const fromLinesToCodeBlockRoot = (
 		const line = lines[idx];
 		if (!line) continue;
 		const lineOffset = lineStartOffsets[idx] ?? 0;
-		const localInlineAnnotations = line.annotations.map((annotation, order) => ({
-			...annotation,
-			range:
-				annotation.range.start >= 0 &&
-				annotation.range.end >= annotation.range.start &&
-				annotation.range.end <= line.value.length
-					? annotation.range
-					: {
-							start: annotation.range.start - lineOffset,
-							end: annotation.range.end - lineOffset,
-						},
-			order,
-		}));
+		const localInlineAnnotations = line.annotations
+			.filter((annotation) => annotation.scope === "char")
+			.map((annotation, order) => ({
+				...annotation,
+				range:
+					annotation.range.start >= 0 &&
+					annotation.range.end >= annotation.range.start &&
+					annotation.range.end <= line.value.length
+						? annotation.range
+						: {
+								start: annotation.range.start - lineOffset,
+								end: annotation.range.end - lineOffset,
+							},
+				order,
+			}));
 
 		const inlineEvents = fromAnnotationsToEvents(localInlineAnnotations);
 		const lineParagraph = fromLineToParagraph(line.value, inlineEvents, registry);
