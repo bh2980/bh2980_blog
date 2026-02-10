@@ -92,4 +92,4 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 
 이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이인데요. `metadata`와 달리 `generateMetadata`의 경우 `getPost` 함수를 통해 title과 excerpt를 가져와 metadata를 생성하고 있습니다.
 
-그런데 한 가지 특이한게 있는데 바로 url입니다.
+그런데 한 가지 특이한게 있는데 바로 url입니다. 원래 url은 프로토콜과 host가 포함되어야하는데 위 코드에서는 상대 경로로 입력 중입니다.&#x20;
