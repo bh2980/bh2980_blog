@@ -106,20 +106,29 @@ export async function generateMetadata(): Promise<Metadata> {
 
 여기서 한 가지 특이한 속성이 있는데 바로 `metadataBase`입니다. 이 속성은 canonical, alternates, openGraph, twitter 등 **절대 URL이 필요한 메타데이터에서 상대 경로를 사용할 수 있게 해주는 기준 URL**로, `/posts` 같은 값을 자동으로 `https://bh2980.dev/posts` 형태의 절대 URL로 변환해줍니다. 설정해두면 편해서 해두는 것을 추천합니다.
 
-<Callout variant="warning">
-  ```ts
+<Callout variant="tip">
+  ```ts title="src/app/layout.tsx"
   import type { Metadata } from 'next'
    
   export const metadata: Metadata = {
-    title: {
-  	// @line highlight
-      template: '%s | Acme',
-      default: 'Acme',
-    },
+  	title: {
+  		// @line highlight
+  		template: '%s | bh2980.dev',
+  		default: 'bh2980.dev',
+  	},
   }
   ```
 
-  Next.js에서는 title에 template을 설정할 수 있습니다.
+  Next.js에서는 타이틀에 템플릿을 설정할 수 있습니다. 템플릿을 설정할 경우, 하위 라우트에서 타이틀 작성 시 템플릿에 들어가는 형태로 표시됩니다.
+
+  ```ts title="src/app/posts/page.tsx"
+  import type { Metadata } from "next";
+
+  export const metadata: Metadata = {
+  	title: "블로그", // "블로그 | bh2980.dev"
+  	description: "개발하면서 배운 것들과 경험을 기록합니다.",
+  };
+  ```
 </Callout>
 
 ### 3. Canonical 태그
