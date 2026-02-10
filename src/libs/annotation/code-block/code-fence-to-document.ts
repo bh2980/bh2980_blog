@@ -1,11 +1,76 @@
 import type { Code } from "mdast";
 import { resolveCommentSyntax } from "./comment-syntax";
-import { ANNOTATION_TYPE_DEFINITION } from "./constants";
-import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
-import type { AnnotationConfig, AnnotationRegistryItem, AnnotationType, CodeBlockDocument, LineAnnotation } from "./types";
+import { createAnnotationRegistry, resolveAnnotationTypeByScope, resolveAnnotationTypeDefinition } from "./libs";
+import type { AnnotationConfig, AnnotationRegistryItem, CodeBlockDocument, LineAnnotation } from "./types";
 
 const DEFAULT_CODE_LANG = "text";
 const ATTR_RE = /([A-Za-z_][\w-]*)(?:\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s]+)))?/g;
+
+type ScopeKeyword = "char" | "line" | "document";
+type ScopeSelector =
+	| {
+			kind: "range";
+			start: number;
+			end: number;
+	  }
+	| {
+			kind: "regex";
+			regex: RegExp;
+	  };
+
+type ParsedScopeComment = {
+	scope: ScopeKeyword;
+	name: string;
+	selector?: ScopeSelector;
+	attributes: { name: string; value: unknown }[];
+};
+
+type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinition>;
+type AnnotationRegistry = ReturnType<typeof createAnnotationRegistry>;
+
+type PendingScopeInlineDirective = {
+	name: string;
+	attributes: { name: string; value: unknown }[];
+	config: AnnotationRegistryItem;
+	selector?: ScopeSelector;
+};
+
+type PendingScopeDocumentDirective = {
+	name: string;
+	attributes: { name: string; value: unknown }[];
+	config: AnnotationRegistryItem;
+	selector?: ScopeSelector;
+};
+
+type PendingScopeLineMarkerBase = {
+	name: string;
+	order: number;
+	attributes: { name: string; value: unknown }[];
+	startLineIndex: number;
+};
+
+type PendingScopeLineClassMarker = PendingScopeLineMarkerBase & {
+	type: "lineClass";
+	config: AnnotationRegistryItem;
+};
+
+type PendingScopeLineWrapMarker = PendingScopeLineMarkerBase & {
+	type: "lineWrap";
+	config: AnnotationRegistryItem;
+};
+
+type PendingScopeLineMarker = PendingScopeLineClassMarker | PendingScopeLineWrapMarker;
+
+type StagedInlineAnnotation = {
+	lineIndex: number;
+	annotation: CodeBlockDocument["lines"][number]["annotations"][number];
+};
+
+const SCOPE_ALIASES: Record<string, ScopeKeyword> = {
+	char: "char",
+	line: "line",
+	document: "document",
+};
 
 const parseUnquotedAttrValue = (raw: string): unknown => {
 	try {
@@ -14,7 +79,6 @@ const parseUnquotedAttrValue = (raw: string): unknown => {
 		return raw;
 	}
 };
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
@@ -22,7 +86,6 @@ const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
 	let index = 0;
 
 	const isWhitespace = (ch: string) => ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
-
 	const skipWhitespace = () => {
 		while (index < input.length && isWhitespace(input[index])) index += 1;
 	};
@@ -132,244 +195,452 @@ const parseAnnotationAttrs = (rest: string) => {
 	return attrs;
 };
 
-const createTagToTypeMap = (annotationConfig: AnnotationConfig) => {
-	const resolved = resolveAnnotationTypeDefinition(annotationConfig);
-	const tagToType: Record<string, AnnotationType> = {};
-
-	for (const [type, info] of Object.entries(ANNOTATION_TYPE_DEFINITION) as [AnnotationType, { tag: string }][]) {
-		tagToType[info.tag] = type;
-	}
-
-	for (const [type, info] of Object.entries(resolved) as [AnnotationType, { tag: string }][]) {
-		tagToType[info.tag] = type;
-	}
-
-	return tagToType;
-};
-
 const getStylePayload = (config: AnnotationRegistryItem) => {
-	const raw = config as AnnotationRegistryItem & { class?: string; render?: string };
-	if (typeof raw.class === "string") {
-		return { class: raw.class };
+	if (typeof config.class === "string") {
+		return { class: config.class };
 	}
 
-	if (typeof raw.render === "string") {
-		return { render: raw.render };
+	if (typeof config.render === "string") {
+		return { render: config.render };
 	}
 
 	return {};
 };
 
-const parseRangeAnnotationComment = (line: string, pattern: RegExp) => {
-	const match = line.match(pattern);
-	if (!match?.groups) return;
+const resolveInlineAnnotationTypeFromScope = (
+	config: AnnotationRegistryItem,
+	scope: "char" | "document",
+): "inlineClass" | "inlineWrap" | undefined => {
+	const resolved = resolveAnnotationTypeByScope(config, scope);
+	if (resolved === "inlineClass" || resolved === "inlineWrap") {
+		return resolved;
+	}
 
-	const start = Number(match.groups.start);
-	const end = Number(match.groups.end);
-	if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+	return;
+};
+
+const resolveLineAnnotationTypeFromScope = (config: AnnotationRegistryItem): "lineClass" | "lineWrap" | undefined => {
+	const resolved = resolveAnnotationTypeByScope(config, "line");
+	if (resolved === "lineClass" || resolved === "lineWrap") {
+		return resolved;
+	}
+
+	return;
+};
+
+const extractCommentBody = (line: string, commentSyntax: { prefix: string; postfix: string }) => {
+	const trimmed = line.trim();
+	const prefix = commentSyntax.prefix.trim();
+	const postfix = commentSyntax.postfix.trim();
+	let body = trimmed;
+
+	if (prefix) {
+		if (!body.startsWith(prefix)) return;
+		body = body.slice(prefix.length).trimStart();
+	}
+
+	if (postfix) {
+		if (!body.endsWith(postfix)) return;
+		body = body.slice(0, body.length - postfix.length).trimEnd();
+	}
+
+	return body;
+};
+
+const parseRegexLiteral = (raw: string): RegExp | undefined => {
+	const match = raw.trim().match(/^\/((?:\\.|[^\\/])*)\/([a-z]*)$/i);
+	if (!match) return;
+
+	try {
+		return new RegExp(match[1], match[2]);
+	} catch {
+		return;
+	}
+};
+
+const parseScopeSelector = (raw: string): ScopeSelector | undefined => {
+	const trimmed = raw.trim();
+	const rangeMatch = trimmed.match(/^(?<start>\d+)\s*-\s*(?<end>\d+)$/);
+	if (rangeMatch?.groups) {
+		const start = Number(rangeMatch.groups.start);
+		const end = Number(rangeMatch.groups.end);
+		if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return;
+		return { kind: "range", start, end };
+	}
+
+	if (!trimmed.startsWith("re:")) return;
+	const regex = parseRegexLiteral(trimmed.slice(3));
+	if (!regex) return;
+	return { kind: "regex", regex };
+};
+
+const parseScopeComment = (line: string, commentSyntax: { prefix: string; postfix: string }): ParsedScopeComment | undefined => {
+	const body = extractCommentBody(line, commentSyntax);
+	if (!body?.startsWith("@")) return;
+
+	const raw = body.slice(1).trim();
+	const scopeMatch = raw.match(/^(?<scope>[A-Za-z][\w-]*)\s+(?<rest>.+)$/);
+	if (!scopeMatch?.groups) return;
+
+	const normalizedScope = SCOPE_ALIASES[scopeMatch.groups.scope];
+	if (!normalizedScope) return;
+
+	const rest = scopeMatch.groups.rest.trim();
+	const nameMatch = rest.match(/^(?<name>[A-Za-z_][\w-]*)(?<tail>[\s\S]*)$/);
+	if (!nameMatch?.groups) return;
+
+	const name = nameMatch.groups.name;
+	let tail = nameMatch.groups.tail.trim();
+	let selector: ScopeSelector | undefined;
+
+	if (tail.startsWith("{")) {
+		const selectorEnd = tail.indexOf("}");
+		if (selectorEnd < 0) return;
+		const selectorRaw = tail.slice(1, selectorEnd);
+		selector = parseScopeSelector(selectorRaw);
+		if (!selector) return;
+		tail = tail.slice(selectorEnd + 1).trim();
+	}
 
 	return {
-		tag: match.groups.tag,
-		name: match.groups.name,
-		range: { start, end },
-		attributes: parseAnnotationAttrs(match.groups.attrs ?? ""),
+		scope: normalizedScope,
+		name,
+		selector,
+		attributes: parseAnnotationAttrs(tail),
 	};
 };
 
-const buildRangeAnnotationPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
-	const prefix = commentSyntax.prefix.trim();
-	const postfix = commentSyntax.postfix.trim();
-	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
-	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
+const toHalfOpenRangeFromClosed = (range: { start: number; end: number }) => ({
+	start: range.start,
+	end: range.end + 1,
+});
 
-	return new RegExp(
-		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)\s+\{(?<start>\d+)-(?<end>\d+)\}(?<attrs>.*?)${postfixPart}\s*$`,
-	);
+const collectRegexRanges = (input: string, regex: RegExp) => {
+	const flags = regex.flags.includes("g") ? regex.flags : `${regex.flags}g`;
+	const matcher = new RegExp(regex.source, flags);
+	const ranges: Array<{ start: number; end: number }> = [];
+	let match = matcher.exec(input);
+
+	while (match) {
+		const start = match.index;
+		const text = match[0] ?? "";
+		const end = start + text.length;
+		if (end > start) {
+			ranges.push({ start, end });
+		} else {
+			matcher.lastIndex += 1;
+		}
+		match = matcher.exec(input);
+	}
+
+	return ranges;
 };
 
-const buildStartMarkerPattern = (commentSyntax: { prefix: string; postfix: string }): RegExp => {
-	const prefix = commentSyntax.prefix.trim();
-	const postfix = commentSyntax.postfix.trim();
-	const prefixPart = prefix ? `${escapeRegExp(prefix)}\\s*` : "";
-	const postfixPart = postfix ? `\\s*${escapeRegExp(postfix)}` : "";
-
-	return new RegExp(
-		String.raw`^\s*${prefixPart}@(?<tag>[A-Za-z][\w-]*)\s+(?<name>[A-Za-z_][\w-]*)(?<attrs>.*?)${postfixPart}\s*$`,
-	);
-};
-
-const parseStartMarkerComment = (line: string, pattern: RegExp) => {
-	const match = line.match(pattern);
-	if (!match?.groups) return;
-
-	return {
-		tag: match.groups.tag,
-		name: match.groups.name,
-		attributes: parseAnnotationAttrs(match.groups.attrs ?? ""),
-	};
-};
-
-type PendingLineMarkerBase = {
-	tag: string;
+const makeInlineAnnotationFromConfig = ({
+	config,
+	scope,
+	name,
+	range,
+	attributes,
+	typeDefinition,
+	order,
+}: {
+	config: AnnotationRegistryItem;
+	scope: "char" | "document";
 	name: string;
-	order: number;
+	range: { start: number; end: number };
 	attributes: { name: string; value: unknown }[];
+	typeDefinition: AnnotationTypeDefinition;
+	order: number;
+}) => {
+	const annotationType = resolveInlineAnnotationTypeFromScope(config, scope);
+	if (!annotationType) return;
+
+	const base = {
+		...getStylePayload(config),
+		priority: config.priority,
+		name,
+		range,
+		attributes,
+		order,
+		source: config.source,
+	};
+
+	if (annotationType === "inlineClass") {
+		return {
+			...base,
+			type: "inlineClass" as const,
+			...typeDefinition.inlineClass,
+		};
+	}
+
+	return {
+		...base,
+		type: "inlineWrap" as const,
+		...typeDefinition.inlineWrap,
+	};
 };
 
-type PendingLineWrapMarker = PendingLineMarkerBase & {
-	type: "lineWrap";
-	startLineIndex: number;
-	config: Extract<AnnotationRegistryItem, { type: "lineWrap" }>;
-};
+const pushScopeLineAnnotation = ({
+	annotations,
+	marker,
+	endLineIndex,
+	typeDefinition,
+}: {
+	annotations: CodeBlockDocument["annotations"];
+	marker: PendingScopeLineMarker;
+	endLineIndex: number;
+	typeDefinition: AnnotationTypeDefinition;
+}) => {
+	const annotationType = resolveLineAnnotationTypeFromScope(marker.config);
+	if (!annotationType) return;
 
-type PendingSingleLineClass = PendingLineMarkerBase & {
-	type: "lineClass";
-	targetLineIndex: number;
-	config: Extract<AnnotationRegistryItem, { type: "lineClass" }>;
-};
+	const range = {
+		start: marker.startLineIndex,
+		end: endLineIndex,
+	};
+	if (range.end <= range.start) return;
 
-type AnnotationTypeDefinition = ReturnType<typeof resolveAnnotationTypeDefinition>;
-type AnnotationRegistry = ReturnType<typeof createAnnotationRegistry>;
-type ParsedRangeAnnotation = ReturnType<typeof parseRangeAnnotationComment>;
-type ParsedStartMarker = ReturnType<typeof parseStartMarkerComment>;
-type StagedInlineAnnotation = {
-	lineIndex: number;
-	annotation: CodeBlockDocument["lines"][number]["annotations"][number];
-};
-type CommentPatterns = {
-	range: RegExp;
-	startMarker: RegExp;
-};
+	if (annotationType === "lineClass") {
+		annotations.push({
+			...getStylePayload(marker.config),
+			priority: marker.config.priority,
+			type: "lineClass",
+			...typeDefinition.lineClass,
+			name: marker.name,
+			range,
+			order: marker.order,
+			attributes: marker.attributes,
+		});
+		return;
+	}
 
-const pushLineWrapMarkerAnnotation = (
-	annotations: CodeBlockDocument["annotations"],
-	marker: PendingLineWrapMarker,
-	endLineIndex: number,
-	typeDefinition: AnnotationTypeDefinition,
-) => {
-	const annotation: LineAnnotation = {
+	annotations.push({
 		...getStylePayload(marker.config),
 		priority: marker.config.priority,
 		type: "lineWrap",
 		...typeDefinition.lineWrap,
 		name: marker.name,
-		range: {
-			start: marker.startLineIndex,
-			end: endLineIndex,
-		},
+		range,
 		order: marker.order,
 		attributes: marker.attributes,
-	};
-	annotations.push(annotation);
+	});
 };
 
-const findPendingLineMarkerIndex = (
-	pendingLineMarkers: PendingLineWrapMarker[],
-	target: { tag: string; name: string },
-) => {
-	for (let idx = pendingLineMarkers.length - 1; idx >= 0; idx -= 1) {
-		const marker = pendingLineMarkers[idx];
-		if (!marker) continue;
-		if (marker.tag !== target.tag) continue;
-		if (marker.name !== target.name) continue;
+const findScopeLineMarkerIndex = ({
+	pendingScopeLineMarkers,
+	targetName,
+	targetType,
+}: {
+	pendingScopeLineMarkers: PendingScopeLineMarker[];
+	targetName: string;
+	targetType: "lineClass" | "lineWrap";
+}) => {
+	for (let idx = pendingScopeLineMarkers.length - 1; idx >= 0; idx -= 1) {
+		const marker = pendingScopeLineMarkers[idx];
+		if (!marker || marker.name !== targetName || marker.type !== targetType) continue;
 		return idx;
 	}
 
 	return -1;
 };
 
-const tryOpenLineMarker = ({
+const pushInlineDirectiveMatchesForLine = ({
+	directive,
 	lineText,
-	annotationStartMarkerPattern,
-	tagToType,
+	lineIndex,
+	stagedInline,
+	typeDefinition,
+}: {
+	directive: PendingScopeInlineDirective;
+	lineText: string;
+	lineIndex: number;
+	stagedInline: StagedInlineAnnotation[];
+	typeDefinition: AnnotationTypeDefinition;
+}) => {
+	const selector = directive.selector;
+	const ranges =
+		selector?.kind === "range"
+			? [toHalfOpenRangeFromClosed({ start: selector.start, end: selector.end })]
+			: selector?.kind === "regex"
+				? collectRegexRanges(lineText, selector.regex)
+				: [{ start: 0, end: lineText.length }];
+
+	for (const range of ranges) {
+		const start = Math.max(0, range.start);
+		const end = Math.min(lineText.length, range.end);
+		if (end <= start) continue;
+
+		const annotation = makeInlineAnnotationFromConfig({
+			config: directive.config,
+			scope: "char",
+			name: directive.name,
+			range: { start, end },
+			attributes: directive.attributes,
+			typeDefinition,
+			order: stagedInline.length,
+		});
+		if (!annotation) continue;
+
+		stagedInline.push({
+			lineIndex,
+			annotation,
+		});
+	}
+};
+
+const tryConsumeScopeComment = ({
+	lineText,
+	commentSyntax,
+	parseLineAnnotations,
 	registry,
-	pendingLineMarkers,
-	pendingSingleLineClasses,
-	annotations,
 	typeDefinition,
 	linesLength,
+	pendingScopeInlineDirectives,
+	pendingScopeLineMarkers,
+	pendingScopeDocumentDirectives,
+	annotations,
 	nextOrder,
 }: {
 	lineText: string;
-	annotationStartMarkerPattern: RegExp;
-	tagToType: Record<string, AnnotationType>;
+	commentSyntax: { prefix: string; postfix: string };
+	parseLineAnnotations: boolean;
 	registry: AnnotationRegistry;
-	pendingLineMarkers: PendingLineWrapMarker[];
-	pendingSingleLineClasses: PendingSingleLineClass[];
-	annotations: CodeBlockDocument["annotations"];
 	typeDefinition: AnnotationTypeDefinition;
 	linesLength: number;
+	pendingScopeInlineDirectives: PendingScopeInlineDirective[];
+	pendingScopeLineMarkers: PendingScopeLineMarker[];
+	pendingScopeDocumentDirectives: PendingScopeDocumentDirective[];
+	annotations: CodeBlockDocument["annotations"];
 	nextOrder: number;
 }) => {
-	const parsedStartMarker = parseStartMarkerComment(lineText, annotationStartMarkerPattern);
-	if (!parsedStartMarker) return false;
+	const parsed = parseScopeComment(lineText, commentSyntax);
+	if (!parsed) return false;
 
-	const type = tagToType[parsedStartMarker.tag];
-	const hasEndAttr = parsedStartMarker.attributes.some((attr) => attr.name === "end" && attr.value === true);
-	const markerAttributes = parsedStartMarker.attributes.filter((attr) => attr.name !== "end");
-	const config = registry.get(parsedStartMarker.name);
+	const hasEndAttr = parsed.attributes.some((attr) => attr.name === "end" && attr.value === true);
+	const markerAttributes = parsed.attributes.filter((attr) => !(attr.name === "end" && attr.value === true));
+	const config = registry.get(parsed.name);
+	if (!config) return false;
+
+	if (parsed.scope === "char") {
+		if (!resolveInlineAnnotationTypeFromScope(config, "char")) return false;
+		pendingScopeInlineDirectives.push({
+			name: parsed.name,
+			attributes: markerAttributes,
+			config,
+			selector: parsed.selector,
+		});
+		return true;
+	}
+
+	if (parsed.scope === "document") {
+		if (!parseLineAnnotations) return false;
+		if (!resolveInlineAnnotationTypeFromScope(config, "document")) return false;
+
+		pendingScopeDocumentDirectives.push({
+			name: parsed.name,
+			attributes: markerAttributes,
+			config,
+			selector: parsed.selector,
+		});
+		return true;
+	}
+
+	if (!parseLineAnnotations) return false;
+	const lineAnnotationType = resolveLineAnnotationTypeFromScope(config);
+	if (!lineAnnotationType) return false;
+
+	if (parsed.selector?.kind === "range") {
+		const range = toHalfOpenRangeFromClosed({
+			start: parsed.selector.start,
+			end: parsed.selector.end,
+		});
+
+		if (lineAnnotationType === "lineClass") {
+			annotations.push({
+				...getStylePayload(config),
+				priority: config.priority,
+				type: "lineClass",
+				...typeDefinition.lineClass,
+				name: parsed.name,
+				range,
+				order: annotations.length,
+				attributes: markerAttributes,
+			});
+			return true;
+		}
+
+		annotations.push({
+			...getStylePayload(config),
+			priority: config.priority,
+			type: "lineWrap",
+			...typeDefinition.lineWrap,
+			name: parsed.name,
+			range,
+			order: annotations.length,
+			attributes: markerAttributes,
+		});
+		return true;
+	}
+
+	if (parsed.selector?.kind === "regex") {
+		return true;
+	}
 
 	if (hasEndAttr) {
-		if (type === "lineClass") return true;
-		if (type !== "lineWrap") return false;
-
-		const matchedIndex = findPendingLineMarkerIndex(pendingLineMarkers, {
-			tag: parsedStartMarker.tag,
-			name: parsedStartMarker.name,
+		const matchedIndex = findScopeLineMarkerIndex({
+			pendingScopeLineMarkers,
+			targetName: parsed.name,
+			targetType: lineAnnotationType,
 		});
 		if (matchedIndex < 0) return true;
 
-		const [marker] = pendingLineMarkers.splice(matchedIndex, 1);
+		const [marker] = pendingScopeLineMarkers.splice(matchedIndex, 1);
 		if (!marker) return true;
 
-		pushLineWrapMarkerAnnotation(annotations, marker, linesLength, typeDefinition);
+		pushScopeLineAnnotation({
+			annotations,
+			marker,
+			endLineIndex: linesLength,
+			typeDefinition,
+		});
 		return true;
 	}
 
-	if (type === "lineClass" && config?.type === "lineClass") {
-		pendingSingleLineClasses.push({
-			tag: parsedStartMarker.tag,
-			name: parsedStartMarker.name,
+	if (lineAnnotationType === "lineClass") {
+		pendingScopeLineMarkers.push({
+			name: parsed.name,
+			order: nextOrder,
+			attributes: markerAttributes,
+			startLineIndex: linesLength,
 			type: "lineClass",
 			config,
-			targetLineIndex: linesLength,
-			order: nextOrder,
-			attributes: markerAttributes,
 		});
 		return true;
 	}
 
-	if (type === "lineWrap" && config?.type === "lineWrap") {
-		pendingLineMarkers.push({
-			tag: parsedStartMarker.tag,
-			name: parsedStartMarker.name,
-			type: "lineWrap",
-			config,
-			startLineIndex: linesLength,
-			order: nextOrder,
-			attributes: markerAttributes,
-		});
-		return true;
-	}
-
-	return false;
+	pendingScopeLineMarkers.push({
+		name: parsed.name,
+		order: nextOrder,
+		attributes: markerAttributes,
+		startLineIndex: linesLength,
+		type: "lineWrap",
+		config,
+	});
+	return true;
 };
 
 const commitCodeLine = ({
 	lines,
-	annotations,
-	typeDefinition,
-	pendingInline,
-	pendingSingleLineClasses,
+	pendingScopeInlineDirectives,
 	stagedInline,
+	typeDefinition,
 	lineText,
 }: {
 	lines: CodeBlockDocument["lines"];
-	annotations: CodeBlockDocument["annotations"];
-	typeDefinition: AnnotationTypeDefinition;
-	pendingInline: CodeBlockDocument["lines"][number]["annotations"];
-	pendingSingleLineClasses: PendingSingleLineClass[];
+	pendingScopeInlineDirectives: PendingScopeInlineDirective[];
 	stagedInline: StagedInlineAnnotation[];
+	typeDefinition: AnnotationTypeDefinition;
 	lineText: string;
 }) => {
 	const lineIndex = lines.length;
@@ -378,196 +649,79 @@ const commitCodeLine = ({
 		annotations: [],
 	});
 
-	for (const annotation of pendingInline) {
-		stagedInline.push({
+	for (const directive of pendingScopeInlineDirectives) {
+		pushInlineDirectiveMatchesForLine({
+			directive,
+			lineText,
 			lineIndex,
-			annotation: { ...annotation },
+			stagedInline,
+			typeDefinition,
 		});
 	}
-
-	pendingInline.length = 0;
-
-	for (let idx = pendingSingleLineClasses.length - 1; idx >= 0; idx -= 1) {
-		const marker = pendingSingleLineClasses[idx];
-		if (!marker || marker.targetLineIndex !== lineIndex) continue;
-
-		const annotation: LineAnnotation = {
-			...getStylePayload(marker.config),
-			priority: marker.config.priority,
-			type: "lineClass",
-			...typeDefinition.lineClass,
-			name: marker.name,
-			range: {
-				start: lineIndex,
-				end: lineIndex + 1,
-			},
-			order: annotations.length,
-			attributes: marker.attributes,
-		};
-
-		annotations.push(annotation);
-		pendingSingleLineClasses.splice(idx, 1);
-	}
-};
-
-const pushRangeAnnotation = ({
-	parsed,
-	parseLineAnnotations,
-	tagToType,
-	registry,
-	typeDefinition,
-	annotations,
-	pendingInline,
-}: {
-	parsed: NonNullable<ParsedRangeAnnotation>;
-	parseLineAnnotations: boolean;
-	tagToType: Record<string, AnnotationType>;
-	registry: AnnotationRegistry;
-	typeDefinition: AnnotationTypeDefinition;
-	annotations: CodeBlockDocument["annotations"];
-	pendingInline: CodeBlockDocument["lines"][number]["annotations"];
-}) => {
-	const type = tagToType[parsed.tag];
-	const config = registry.get(parsed.name);
-	if (!type || !config || config.type !== type) return false;
-
-	const base = {
-		...getStylePayload(config),
-		priority: config.priority,
-		name: parsed.name,
-		range: parsed.range,
-		attributes: parsed.attributes,
-	};
-
-	if (type === "lineClass") {
-		if (!parseLineAnnotations) return false;
-		annotations.push({
-			...base,
-			type: "lineClass",
-			...typeDefinition.lineClass,
-			order: annotations.length,
-		});
-		return true;
-	}
-
-	if (type === "lineWrap") {
-		if (!parseLineAnnotations) return false;
-		annotations.push({
-			...base,
-			type: "lineWrap",
-			...typeDefinition.lineWrap,
-			order: annotations.length,
-		});
-		return true;
-	}
-
-	if (type === "inlineClass") {
-		if (config.type !== "inlineClass") return false;
-		pendingInline.push({
-			...base,
-			source: config.source,
-			type: "inlineClass",
-			...typeDefinition.inlineClass,
-			order: pendingInline.length,
-		});
-		return true;
-	}
-
-	if (config.type !== "inlineWrap") return false;
-	pendingInline.push({
-		...base,
-		source: config.source,
-		type: "inlineWrap",
-		...typeDefinition.inlineWrap,
-		order: pendingInline.length,
-	});
-	return true;
+	pendingScopeInlineDirectives.length = 0;
 };
 
 const parseCodeLines = ({
 	codeValue,
 	parseLineAnnotations,
-	patterns,
-	tagToType,
+	commentSyntax,
 	registry,
 	typeDefinition,
 }: {
 	codeValue: string;
 	parseLineAnnotations: boolean;
-	patterns: CommentPatterns;
-	tagToType: Record<string, AnnotationType>;
+	commentSyntax: { prefix: string; postfix: string };
 	registry: AnnotationRegistry;
 	typeDefinition: AnnotationTypeDefinition;
 }) => {
 	const lines: CodeBlockDocument["lines"] = [];
 	const annotations: CodeBlockDocument["annotations"] = [];
-	const pendingInline: CodeBlockDocument["lines"][number]["annotations"] = [];
-	const pendingLineMarkers: PendingLineWrapMarker[] = [];
-	const pendingSingleLineClasses: PendingSingleLineClass[] = [];
+	const pendingScopeInlineDirectives: PendingScopeInlineDirective[] = [];
+	const pendingScopeLineMarkers: PendingScopeLineMarker[] = [];
+	const pendingScopeDocumentDirectives: PendingScopeDocumentDirective[] = [];
 	const stagedInline: StagedInlineAnnotation[] = [];
 	let lineMarkerOrder = 0;
 
 	for (const lineText of codeValue.split("\n")) {
-		const parsedRange = parseRangeAnnotationComment(lineText, patterns.range);
-		if (parsedRange) {
-			const consumed = pushRangeAnnotation({
-				parsed: parsedRange,
-				parseLineAnnotations,
-				tagToType,
-				registry,
-				typeDefinition,
-				annotations,
-				pendingInline,
-			});
-
-			if (consumed) continue;
-			commitCodeLine({
-				lines,
-				annotations,
-				typeDefinition,
-				pendingInline,
-				pendingSingleLineClasses,
-				stagedInline,
-				lineText,
-			});
+		const consumed = tryConsumeScopeComment({
+			lineText,
+			commentSyntax,
+			parseLineAnnotations,
+			registry,
+			typeDefinition,
+			linesLength: lines.length,
+			pendingScopeInlineDirectives,
+			pendingScopeLineMarkers,
+			pendingScopeDocumentDirectives,
+			annotations,
+			nextOrder: lineMarkerOrder,
+		});
+		if (consumed) {
+			lineMarkerOrder += 1;
 			continue;
-		}
-
-		if (parseLineAnnotations) {
-			const opened = tryOpenLineMarker({
-				lineText,
-				annotationStartMarkerPattern: patterns.startMarker,
-				tagToType,
-				registry,
-				pendingLineMarkers,
-				pendingSingleLineClasses,
-				annotations,
-				typeDefinition,
-				linesLength: lines.length,
-				nextOrder: lineMarkerOrder,
-			});
-			if (opened) {
-				lineMarkerOrder += 1;
-				continue;
-			}
 		}
 
 		commitCodeLine({
 			lines,
-			annotations,
-			typeDefinition,
-			pendingInline,
-			pendingSingleLineClasses,
+			pendingScopeInlineDirectives,
 			stagedInline,
+			typeDefinition,
 			lineText,
 		});
 	}
 
-	for (const marker of pendingLineMarkers) {
-		pushLineWrapMarkerAnnotation(annotations, marker, lines.length, typeDefinition);
+	for (const marker of pendingScopeLineMarkers) {
+		const endLineIndex =
+			marker.type === "lineClass" ? Math.min(lines.length, marker.startLineIndex + 1) : lines.length;
+		pushScopeLineAnnotation({
+			annotations,
+			marker,
+			endLineIndex,
+			typeDefinition,
+		});
 	}
 
-	return { lines, annotations, stagedInline };
+	return { lines, annotations, stagedInline, pendingScopeDocumentDirectives };
 };
 
 const applyAbsoluteInlineRanges = (lines: CodeBlockDocument["lines"], stagedInline: StagedInlineAnnotation[]) => {
@@ -591,6 +745,66 @@ const applyAbsoluteInlineRanges = (lines: CodeBlockDocument["lines"], stagedInli
 	});
 };
 
+const applyScopeDocumentDirectives = ({
+	lines,
+	directives,
+	typeDefinition,
+}: {
+	lines: CodeBlockDocument["lines"];
+	directives: PendingScopeDocumentDirective[];
+	typeDefinition: AnnotationTypeDefinition;
+}) => {
+	if (directives.length === 0 || lines.length === 0) return;
+	const fullText = lines.map((line) => line.value).join("\n");
+
+	const lineOffsets: Array<{ start: number; end: number }> = [];
+	let offset = 0;
+	for (const line of lines) {
+		const start = offset;
+		const end = start + line.value.length;
+		lineOffsets.push({ start, end });
+		offset = end + 1;
+	}
+
+	for (const directive of directives) {
+		const selector = directive.selector;
+		const ranges =
+			selector?.kind === "range"
+				? [toHalfOpenRangeFromClosed({ start: selector.start, end: selector.end })]
+				: selector?.kind === "regex"
+					? collectRegexRanges(fullText, selector.regex)
+					: [{ start: 0, end: fullText.length }];
+
+		for (const range of ranges) {
+			const start = Math.max(0, range.start);
+			const end = Math.min(fullText.length, range.end);
+			if (end <= start) continue;
+
+			for (let lineIdx = 0; lineIdx < lines.length; lineIdx += 1) {
+				const line = lines[lineIdx];
+				const offsets = lineOffsets[lineIdx];
+				if (!line || !offsets) continue;
+
+				const segStart = Math.max(start, offsets.start);
+				const segEnd = Math.min(end, offsets.end);
+				if (segEnd <= segStart) continue;
+
+				const annotation = makeInlineAnnotationFromConfig({
+					config: directive.config,
+					scope: "document",
+					name: directive.name,
+					range: { start: segStart, end: segEnd },
+					attributes: directive.attributes,
+					typeDefinition,
+					order: line.annotations.length,
+				});
+				if (!annotation) continue;
+				line.annotations.push(annotation);
+			}
+		}
+	}
+};
+
 export const fromCodeFenceToCodeBlockDocument = (
 	codeNode: Code,
 	annotationConfig: AnnotationConfig,
@@ -598,31 +812,30 @@ export const fromCodeFenceToCodeBlockDocument = (
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
 	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
-	const tagToType = createTagToTypeMap(annotationConfig);
 	const lang = codeNode.lang?.trim() || DEFAULT_CODE_LANG;
 	const meta = parseCodeFenceMeta(codeNode.meta ?? "");
 	const commentSyntax = resolveCommentSyntax(lang);
-	const patterns: CommentPatterns = {
-		range: buildRangeAnnotationPattern(commentSyntax),
-		startMarker: buildStartMarkerPattern(commentSyntax),
-	};
 	const parseLineAnnotations = options?.parseLineAnnotations ?? true;
 	const parsed = parseCodeLines({
 		codeValue: codeNode.value,
 		parseLineAnnotations,
-		patterns,
-		tagToType,
+		commentSyntax,
 		registry,
 		typeDefinition,
 	});
 
 	applyAbsoluteInlineRanges(parsed.lines, parsed.stagedInline);
+	applyScopeDocumentDirectives({
+		lines: parsed.lines,
+		directives: parsed.pendingScopeDocumentDirectives,
+		typeDefinition,
+	});
+
 	return { lang, meta, lines: parsed.lines, annotations: parsed.annotations };
 };
 
 export const __testable__ = {
 	parseCodeFenceMeta,
 	parseAnnotationAttrs,
-	parseRangeAnnotationComment,
 	fromCodeFenceToCodeBlockDocument,
 };

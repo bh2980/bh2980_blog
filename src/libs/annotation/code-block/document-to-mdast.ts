@@ -6,7 +6,7 @@ import type {
 	MdxJsxFlowElement,
 	MdxJsxTextElement,
 } from "mdast-util-mdx-jsx";
-import { createAnnotationRegistry, fromAnnotationsToEvents } from "./libs";
+import { createAnnotationRegistry, fromAnnotationsToEvents, resolveAnnotationTypeByScope } from "./libs";
 import type {
 	AnnotationAttr,
 	AnnotationConfig,
@@ -18,7 +18,6 @@ import type {
 	Line,
 	MdastNodeLike,
 } from "./types";
-
 const DEFAULT_CODE_LANG = "text";
 
 const createTextNode = (value: string): Text => ({
@@ -110,7 +109,8 @@ const fromLineToParagraph = (line: string, events: AnnotationEvent[], registry: 
 				continue;
 			}
 
-			if (node.type === "lineClass" || node.type === "lineWrap") {
+			const resolvedType = resolveAnnotationTypeByScope(node, "char");
+			if (resolvedType !== "inlineClass" && resolvedType !== "inlineWrap") {
 				continue;
 			}
 

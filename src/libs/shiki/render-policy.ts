@@ -16,11 +16,17 @@ export const isSafeRenderTag = (tag: string) => {
 
 export const createAllowedRenderTagsFromConfig = (annotationConfig: AnnotationConfig): string[] => {
 	const tags = new Set<string>();
-	const items = [...(annotationConfig.inlineWrap ?? []), ...(annotationConfig.lineWrap ?? [])];
+	const renderValues: string[] = [];
 
-	for (const item of items) {
-		if (typeof item.render !== "string") continue;
-		const normalized = normalizeRenderTag(item.render);
+	for (const item of annotationConfig.annotations ?? []) {
+		if (item.kind === "render" && typeof item.render === "string") {
+			renderValues.push(item.render);
+		}
+	}
+
+	for (const renderValue of renderValues) {
+		if (typeof renderValue !== "string") continue;
+		const normalized = normalizeRenderTag(renderValue);
 		if (!isSafeRenderTag(normalized)) continue;
 		tags.add(normalized);
 	}

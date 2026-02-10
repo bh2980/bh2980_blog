@@ -25,6 +25,8 @@ type AnnotationBase = {
 	range: Range;
 	priority: number; // 교차 겹침 시 well nested 정책 우선 순위
 	order: number; // 작성 순서
+	class?: string;
+	render?: string;
 	attributes?: AnnotationAttr[];
 };
 
@@ -45,48 +47,42 @@ export type Annotation = InlineAnnotation | LineAnnotation;
 export type AnnotationType = Annotation["type"];
 export type AnnotationTagOverrides = Partial<Record<AnnotationType, string>>;
 
-export type AnnotationRegistryItem =
-	| (Omit<InlineAnnotation, "range" | "attributes" | "order"> & InlineAnnotationTypePair)
-	| (Omit<LineAnnotation, "range" | "attributes" | "order"> & LineAnnotationTypePair);
+export type AnnotationScope = "char" | "line" | "document";
+export type AnnotationKind = "class" | "render";
+
+export type AnnotationRegistryItem = {
+	name: string;
+	kind: AnnotationKind;
+	class?: string;
+	render?: string;
+	source: InlineAnnotationSource;
+	scopes: AnnotationScope[];
+	priority: number;
+};
 
 export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
 
-type InlineAnnotationConfigItemBase = {
+type UnifiedClassAnnotationConfigItem = {
 	name: string;
-	source: InlineAnnotationSource;
+	kind: "class";
+	class: string;
+	source?: InlineAnnotationSource;
+	scopes?: AnnotationScope[];
 };
 
-type LineAnnotationConfigItemBase = {
+type UnifiedRenderAnnotationConfigItem = {
 	name: string;
-};
-
-export type InlineClassAnnotationConfigItem = InlineAnnotationConfigItemBase & {
-	class: string;
-};
-
-export type InlineRenderAnnotationConfigItem = InlineAnnotationConfigItemBase & {
+	kind: "render";
 	render: string;
+	source?: InlineAnnotationSource;
+	scopes?: AnnotationScope[];
 };
 
-export type LineClassAnnotationConfigItem = LineAnnotationConfigItemBase & {
-	class: string;
-};
-
-export type LineRenderAnnotationConfigItem = LineAnnotationConfigItemBase & {
-	render: string;
-};
-
-export type AnnotationConfigItem =
-	| InlineClassAnnotationConfigItem
-	| InlineRenderAnnotationConfigItem
-	| LineClassAnnotationConfigItem
-	| LineRenderAnnotationConfigItem;
+export type UnifiedAnnotationConfigItem = UnifiedClassAnnotationConfigItem | UnifiedRenderAnnotationConfigItem;
+export type AnnotationConfigItem = UnifiedAnnotationConfigItem;
 
 export interface AnnotationConfig {
-	inlineClass?: InlineClassAnnotationConfigItem[];
-	inlineWrap?: InlineRenderAnnotationConfigItem[];
-	lineClass?: LineClassAnnotationConfigItem[];
-	lineWrap?: LineRenderAnnotationConfigItem[];
+	annotations?: UnifiedAnnotationConfigItem[];
 	tagOverrides?: AnnotationTagOverrides;
 }
 

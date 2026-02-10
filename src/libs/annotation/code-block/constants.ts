@@ -15,67 +15,76 @@ export const ANNOTATION_TYPE_DEFINITION = {
 } as const;
 
 export const annotationConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [
+	annotations: [
 		{
 			name: "Tooltip",
+			kind: "render",
 			source: "mdx-text",
 			render: "Tooltip",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "strong",
+			kind: "render",
 			source: "mdx-text",
 			render: "strong",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "em",
+			kind: "render",
 			source: "mdx-text",
 			render: "em",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "del",
+			kind: "render",
 			source: "mdx-text",
 			render: "del",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "u",
+			kind: "render",
 			source: "mdx-text",
 			render: "u",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "fold",
+			kind: "render",
 			source: "mdx-text",
 			render: "fold",
+			scopes: ["char", "document"],
 		},
-	],
-	lineClass: [
 		{
 			name: "plus",
+			kind: "class",
 			class: "diff plus",
+			scopes: ["line"],
 		},
 		{
 			name: "minus",
+			kind: "class",
 			class: "diff minus",
+			scopes: ["line"],
 		},
-	],
-	lineWrap: [
 		{
 			name: "Collapsible",
+			kind: "render",
 			render: "collapse",
+			scopes: ["line"],
 		},
 		{
 			name: "collapse",
+			kind: "render",
 			render: "collapse",
+			scopes: ["line"],
 		},
 	],
 };
 
 export const codeFenceAnnotationConfig: AnnotationConfig = {
 	...annotationConfig,
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
 };
