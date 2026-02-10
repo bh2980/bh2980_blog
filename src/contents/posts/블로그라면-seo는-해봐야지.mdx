@@ -64,7 +64,7 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     export const metadata: Metadata = {
     	title: "블로그",
     	description: "개발하면서 배운 것들과 경험을 기록합니다.",
-    	// @char u {26-33}
+    	// @line highlight
     	alternates: { canonical: `/posts` },
     };
     ```
@@ -79,7 +79,6 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     	const { slug } = await params;
     	const post = await getPost(slug);
 
-    	// @char u {1-43}
     	const url = `/posts/${sanitizeSlug(slug)}`;
 
     	return {
