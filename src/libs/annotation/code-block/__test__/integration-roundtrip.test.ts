@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as documentToCodeFence } from "../document-to-code-fence";
 import { __testable__ as documentToMdast } from "../document-to-mdast";
 import { __testable__ as mdastToDocument } from "../mdast-to-document";
@@ -21,8 +20,6 @@ const annotationConfig: AnnotationConfig = {
 
 const inlineWrap = (name: string, range: { start: number; end: number }, order: number) => ({
 	type: "inlineWrap" as const,
-	typeId: 1,
-	tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 	source: "mdx-text" as const,
 	render: name,
 	name,

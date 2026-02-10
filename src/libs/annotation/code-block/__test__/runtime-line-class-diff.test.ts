@@ -1,7 +1,7 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { __testable__ as codeFenceToDocument } from "../code-fence-to-document";
-import { codeFenceAnnotationConfig } from "../constants";
+import { annotationConfig } from "../constants";
 
 const { fromCodeFenceToCodeBlockDocument } = codeFenceToDocument;
 
@@ -18,7 +18,7 @@ describe("runtime line class diff", () => {
 			].join("\n"),
 		};
 
-		const document = fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
 
 		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const untouched = 0"]);
 		expect(document.annotations).toEqual([
@@ -44,7 +44,7 @@ describe("runtime line class diff", () => {
 			].join("\n"),
 		};
 
-		const document = fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);
+		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
 
 		expect(document.lines.map((line) => line.value)).toEqual(["const kept = 0", "const removed = 2", "const removedToo = 3"]);
 		expect(document.annotations).toEqual([

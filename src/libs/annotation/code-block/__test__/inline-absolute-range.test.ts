@@ -36,8 +36,6 @@ describe("inline absolute range", () => {
 					annotations: [
 						{
 							type: "inlineWrap",
-							typeId: 1,
-							tag: "inWrap",
 							source: "mdx-text",
 							name: "Tooltip",
 							range: { start: 7, end: 9 },

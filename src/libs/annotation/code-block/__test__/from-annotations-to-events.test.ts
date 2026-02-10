@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
 import type { Annotation, Range } from "../types";
 
-type AnnotationTypeKey = keyof typeof ANNOTATION_TYPE_DEFINITION;
 const { fromAnnotationsToEvents } = __testable__;
 
-const makeAnnotation = <T extends AnnotationTypeKey>({
+const makeAnnotation = ({
 	type,
 	name,
 	range,
@@ -14,32 +12,18 @@ const makeAnnotation = <T extends AnnotationTypeKey>({
 	priority = 0,
 	source = "mdx-text",
 }: {
-	type: T;
+	type: Annotation["type"];
 	name: string;
 	range: Range;
 	order: number;
 	priority?: number;
 	source?: "mdast" | "mdx-text";
-}): Extract<Annotation, { type: T }> => {
-	const def = ANNOTATION_TYPE_DEFINITION[type];
-
-	const sourcePayload =
-		type === "inlineClass" || type === "inlineWrap"
-			? {
-					source,
-				}
-			: {};
-
-	return {
-		type,
-		typeId: def.typeId,
-		tag: def.tag,
-		...sourcePayload,
-		name,
-		range,
-		priority,
-		order,
-	} as Extract<Annotation, { type: T }>;
+}): Annotation => {
+	const base = { type, name, range, priority, order };
+	if (type === "inlineClass") return { ...base, type, source, class: "c" };
+	if (type === "inlineWrap") return { ...base, type, source, render: name };
+	if (type === "lineClass") return { ...base, type, class: "line-c" };
+	return { ...base, type, render: name };
 };
 
 describe("fromAnnotationsToEvents", () => {
@@ -117,12 +101,12 @@ describe("fromAnnotationsToEvents", () => {
 		expect(closes).toEqual(["inner", "outer"]);
 	});
 
-	it("typeId가 order보다 우선되고, order가 마지막 tie-breaker로 동작한다", () => {
+	it("동일 pos/range 충돌 시 order가 마지막 tie-breaker로 동작한다", () => {
 		const classAnno = makeAnnotation({
 			type: "inlineClass",
 			name: "class",
 			range: { start: 0, end: 2 },
-			order: 0,
+			order: 2,
 			source: "mdast",
 		});
 		const wrapOrder0 = makeAnnotation({
@@ -142,6 +126,6 @@ describe("fromAnnotationsToEvents", () => {
 			.filter((e) => e.kind === "open" && e.pos === 0)
 			.map((e) => e.anno.name);
 
-		expect(opens).toEqual(["class", "wrap-0", "wrap-1"]);
+		expect(opens).toEqual(["wrap-0", "wrap-1", "class"]);
 	});
 });

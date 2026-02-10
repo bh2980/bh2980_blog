@@ -1,7 +1,6 @@
 import type { Paragraph, Text } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
 import { __testable__ } from "../mdast-to-document";
 import type { AnnotationConfig, AnnotationConfigItem, CodeBlockRoot, InlineAnnotation, Range } from "../types";
@@ -69,8 +68,6 @@ const expectedInlineWrap = (name: string, range: Range, order = 0): InlineAnnota
 
 	return {
 		type: "inlineWrap" as const,
-		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 		source: config.source ?? "mdx-text",
 		render: config.render,
 		priority: config.priority,

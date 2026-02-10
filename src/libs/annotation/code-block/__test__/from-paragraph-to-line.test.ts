@@ -6,7 +6,7 @@ import { __testable__ } from "../mdast-to-document";
 import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { fromParagraphToLine } = __testable__;
-const { createAnnotationRegistry, resolveAnnotationTypeByScope, resolveAnnotationTypeDefinition } = libsTestable;
+const { createAnnotationRegistry, resolveAnnotationTypeByScope } = libsTestable;
 const annotationConfig: AnnotationConfig = {
 	annotations: [
 		{ name: "strong", kind: "class" as const, source: "mdast" as const, class: "font-bold", scopes: ["char"] },
@@ -18,7 +18,6 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 const registry = createAnnotationRegistry(annotationConfig);
-const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 const text = (value: string): Text => ({ type: "text", value });
 const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
@@ -57,8 +56,6 @@ const expectedInline = (
 			source: config.source,
 			priority: config.priority,
 			type: "inlineClass",
-			typeId: typeDefinition.inlineClass.typeId,
-			tag: typeDefinition.inlineClass.tag,
 			name,
 			range,
 			order,
@@ -71,8 +68,6 @@ const expectedInline = (
 		source: config.source,
 		priority: config.priority,
 		type: "inlineWrap",
-		typeId: typeDefinition.inlineWrap.typeId,
-		tag: typeDefinition.inlineWrap.tag,
 		name,
 		range,
 		order,
@@ -82,13 +77,13 @@ const expectedInline = (
 
 describe("fromParagraphToLine", () => {
 	it("paragraph 텍스트를 Line.value로 합친다", () => {
-		const line = fromParagraphToLine(paragraph([text("hello"), text(" "), text("world")]), registry, typeDefinition);
+		const line = fromParagraphToLine(paragraph([text("hello"), text(" "), text("world")]), registry);
 
 		expect(line).toEqual({ value: "hello world", annotations: [] });
 	});
 
 	it("mdast inline annotation은 InlineAnnotation으로 반환한다", () => {
-		const line = fromParagraphToLine(paragraph([text("x"), strong([text("ab")]), text("y")]), registry, typeDefinition);
+		const line = fromParagraphToLine(paragraph([text("x"), strong([text("ab")]), text("y")]), registry);
 
 		expect(line).toEqual({
 			value: "xaby",
@@ -112,7 +107,6 @@ describe("fromParagraphToLine", () => {
 				text("d"),
 			]),
 			registry,
-			typeDefinition,
 		);
 
 		expect(line).toEqual({
@@ -130,14 +124,13 @@ describe("fromParagraphToLine", () => {
 		const line = fromParagraphToLine(
 			paragraph([inline("Collapsible", [text("x")]), inline("LineBadge", [text("y")])]),
 			registry,
-			typeDefinition,
 		);
 
 		expect(line).toEqual({ value: "xy", annotations: [] });
 	});
 
 	it("알 수 없는 inline node는 annotation 없이 텍스트만 반영한다", () => {
-		const line = fromParagraphToLine(paragraph([inline("Unknown", [text("a")]), text("b")]), registry, typeDefinition);
+		const line = fromParagraphToLine(paragraph([inline("Unknown", [text("a")]), text("b")]), registry);
 
 		expect(line).toEqual({ value: "ab", annotations: [] });
 	});
@@ -146,7 +139,6 @@ describe("fromParagraphToLine", () => {
 		const line = fromParagraphToLine(
 			paragraph([inline("u", [text("a"), strong([text("b")]), inline("Tooltip", [text("c")])]), text("d")]),
 			registry,
-			typeDefinition,
 		);
 
 		expect(line.value).toBe("abcd");
@@ -163,7 +155,7 @@ describe("fromParagraphToLine", () => {
 	});
 
 	it("빈 paragraph는 빈 Line을 반환한다", () => {
-		const line = fromParagraphToLine(paragraph([]), registry, typeDefinition);
+		const line = fromParagraphToLine(paragraph([]), registry);
 
 		expect(line).toEqual({ value: "", annotations: [] });
 	});

@@ -23,8 +23,6 @@ const inlineWrap = (
 	attributes: AnnotationAttr[] = [],
 ) => ({
 	type: "inlineWrap" as const,
-	typeId: 1,
-	tag: "inWrap",
 	source: "mdx-text" as const,
 	render: name,
 	name,
@@ -36,8 +34,6 @@ const inlineWrap = (
 
 const lineWrap = (name: string, range: { start: number; end: number }, order: number) => ({
 	type: "lineWrap" as const,
-	typeId: 3,
-	tag: "lnWrap",
 	render: name,
 	name,
 	range,

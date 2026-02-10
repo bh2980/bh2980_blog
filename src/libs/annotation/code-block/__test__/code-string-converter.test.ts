@@ -1,7 +1,6 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import type {
 	AnnotationAttr,
@@ -57,8 +56,6 @@ const inlineWrap = (name: string, range: Range, order: number, attributes: Annot
 
 	return {
 		type: "inlineWrap",
-		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 		source: config.source,
 		render: config.render,
 		priority: config.priority,
@@ -75,8 +72,6 @@ const lineWrap = (name: string, range: Range, order: number, attributes: Annotat
 
 	return {
 		type: "lineWrap",
-		typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
 		render: config.render,
 		priority: config.priority,
 		name,
@@ -92,8 +87,6 @@ const lineClass = (name: string, range: Range, order: number, attributes: Annota
 
 	return {
 		type: "lineClass",
-		typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
 		class: config.class,
 		priority: config.priority,
 		name,

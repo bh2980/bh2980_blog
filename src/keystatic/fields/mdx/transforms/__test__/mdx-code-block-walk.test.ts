@@ -1,6 +1,6 @@
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../mdx-code-block-walk";
 
 describe("mdx code-block walk", () => {
@@ -17,7 +17,7 @@ describe("mdx code-block walk", () => {
 			],
 		};
 
-		walkOnlyInsideCodeFence(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeFence(input, annotationConfig);
 
 		const converted = input.children[1];
 		expect(converted?.type).toBe("mdxJsxFlowElement");
@@ -42,7 +42,7 @@ describe("mdx code-block walk", () => {
 			],
 		};
 
-		walkOnlyInsideCodeFence(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeFence(input, annotationConfig);
 		expect(input.children[0]?.type).toBe("code");
 	});
 
@@ -71,7 +71,7 @@ describe("mdx code-block walk", () => {
 			],
 		};
 
-		walkOnlyInsideCodeblock(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeblock(input, annotationConfig);
 
 		const converted = input.children[0];
 		expect(converted?.type).toBe("code");

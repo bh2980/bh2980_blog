@@ -1,6 +1,5 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as libsTestable } from "../libs";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
 import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
@@ -8,7 +7,7 @@ import type { AnnotationAttr, AnnotationConfig, AnnotationEvent, InlineAnnotatio
 
 const { fromLineToParagraph } = fromCodeBlockDocumentToMdastTestable;
 const { fromParagraphToLine } = fromMdxFlowElementToCodeDocumentTestable;
-const { createAnnotationRegistry, resolveAnnotationTypeDefinition } = libsTestable;
+const { createAnnotationRegistry } = libsTestable;
 const annotationConfig: AnnotationConfig = {
 	annotations: [
 		{ name: "emphasis", kind: "class" as const, source: "mdast" as const, class: "italic", scopes: ["char"] },
@@ -18,7 +17,6 @@ const annotationConfig: AnnotationConfig = {
 	],
 };
 const registry = createAnnotationRegistry(annotationConfig);
-const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 const inlineWrap = (
 	name: string,
@@ -29,8 +27,6 @@ const inlineWrap = (
 	attributes: AnnotationAttr[] = [],
 ): InlineAnnotation => ({
 	type: "inlineWrap",
-	typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-	tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
 	source,
 	name,
 	range,
@@ -48,8 +44,6 @@ const inlineClass = (
 	attributes: AnnotationAttr[] = [],
 ): InlineAnnotation => ({
 	type: "inlineClass",
-	typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-	tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
 	source,
 	name,
 	range,
@@ -83,7 +77,6 @@ const composeInlineEventsFixture = (annotations: InlineAnnotation[]): Annotation
 			if (a.kind === "open" && a.anno.range.end !== b.anno.range.end) return b.anno.range.end - a.anno.range.end;
 			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start)
 				return b.anno.range.start - a.anno.range.start;
-			if (a.anno.typeId !== b.anno.typeId) return a.anno.typeId - b.anno.typeId;
 			return a.anno.order - b.anno.order;
 		});
 
@@ -228,7 +221,7 @@ describe("fromLineToParagraph", () => {
 		]);
 
 		const paragraph = parse(input);
-		const reconstructed = fromParagraphToLine(paragraph, registry, typeDefinition);
+		const reconstructed = fromParagraphToLine(paragraph, registry);
 
 		expect(reconstructed.value).toBe(input.value);
 		expect(reconstructed.annotations.map(normalizeInlineAnnotation).sort(sortInlineAnnotation)).toEqual(

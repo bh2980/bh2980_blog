@@ -1,7 +1,7 @@
 import type { Code } from "mdast";
 import { describe, expect, it } from "vitest";
 import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../code-fence-to-document";
-import { codeFenceAnnotationConfig } from "../constants";
+import { annotationConfig } from "../constants";
 
 const { fromCodeFenceToCodeBlockDocument } = fromCodeFenceToCodeBlockDocumentTestable;
 
@@ -13,7 +13,7 @@ const parse = (value: string) => {
 		value,
 	};
 
-	return fromCodeFenceToCodeBlockDocument(codeNode, codeFenceAnnotationConfig);
+	return fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
 };
 
 describe("scope comment syntax", () => {
