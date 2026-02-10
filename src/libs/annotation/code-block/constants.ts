@@ -48,14 +48,14 @@ export const annotationConfig: AnnotationConfig = {
 			name: "plus",
 			kind: "class",
 			class:
-				"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 border-l-2 border-l-green-400",
+				"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 shadow-[inset_2px_0_0_0_rgba(74,222,128,1)]",
 			scopes: ["line"],
 		},
 		{
 			name: "minus",
 			kind: "class",
 			class:
-				"inline-block w-full  anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 border-l-2 border-l-red-500",
+				"inline-block w-full anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 shadow-[inset_2px_0_0_0_rgba(239,68,68,1)]",
 			scopes: ["line"],
 		},
 		{
