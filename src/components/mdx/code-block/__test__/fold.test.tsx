@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Fold } from "../fold";
+import { fold as Fold } from "../fold";
 
 describe("CodeBlock Fold", () => {
 	it("checkbox+label 토글 구조를 렌더링한다", () => {

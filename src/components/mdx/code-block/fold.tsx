@@ -1,6 +1,6 @@
 import { type ReactNode, useId } from "react";
 
-export const Fold = ({ children, open }: { children: ReactNode; open?: boolean }) => {
+export const fold = ({ children, open }: { children: ReactNode; open?: boolean }) => {
 	const inputId = useId();
 
 	return (

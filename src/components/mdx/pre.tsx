@@ -11,7 +11,7 @@ type PreProps = PropsWithChildren<{
 	style?: CSSProperties;
 }>;
 
-export const Pre = async ({ children, title, showLineNumbers, code, className, style }: PreProps) => {
+export const pre = async ({ children, title, showLineNumbers, code, className, style }: PreProps) => {
 	const filePath = title?.trim().split("/").filter(Boolean);
 
 	const showTitlebar = filePath && filePath.length > 0;

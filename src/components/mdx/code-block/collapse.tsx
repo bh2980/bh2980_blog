@@ -1,5 +1,5 @@
-import { ChevronRight } from "lucide-react";
 import { Children, type ReactNode } from "react";
+import { cn } from "@/utils/cn";
 
 const normalizeRestLines = (lines: ReactNode[]) => {
 	const first = lines[0];
@@ -15,15 +15,19 @@ const normalizeRestLines = (lines: ReactNode[]) => {
 	return [trimmed, ...lines.slice(1)];
 };
 
-export const Collapse = ({ children, open }: { children: ReactNode; open?: boolean }) => {
+export const collapse = ({ children, open }: { children: ReactNode; open?: boolean }) => {
 	const childNodes = Children.toArray(children);
 	const firstLine = childNodes[0] ?? null;
 	const restLines = normalizeRestLines(childNodes.slice(1));
 
 	return (
 		<details className="group relative" open={open}>
-			<summary className="group relative block cursor-pointer list-none text-left [&::-webkit-details-marker]:hidden">
-				<ChevronRight className="absolute top-1 -left-3 h-3 w-3 text-slate-400 transition-transform group-open:rotate-90 dark:text-slate-500" />
+			<summary
+				className={cn(
+					"group relative block cursor-pointer list-none text-left [&::-webkit-details-marker]:hidden",
+					"[&_.line]:anno-mark-base [&_.line]:anno-mark:content-['›']",
+				)}
+			>
 				{firstLine}
 			</summary>
 			{restLines.length > 0 ? <div>{restLines}</div> : null}

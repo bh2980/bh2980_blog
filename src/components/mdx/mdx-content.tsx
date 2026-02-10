@@ -11,11 +11,11 @@ import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoratio
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
-import { Collapse } from "./code-block/collapse";
-import { Fold } from "./code-block/fold";
+import { collapse } from "./code-block/collapse";
+import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
-import { Pre } from "./pre";
+import { pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
@@ -43,10 +43,11 @@ export const renderMDX = async (source: string) => {
 		},
 		components: {
 			a,
-			pre: Pre,
+			pre,
+			collapse,
+			fold,
+
 			Callout,
-			collapse: Collapse,
-			fold: Fold,
 			Collapsible,
 			Columns,
 			Column,
