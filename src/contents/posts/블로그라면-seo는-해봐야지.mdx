@@ -141,7 +141,16 @@ export async function generateMetadata(): Promise<Metadata> {
     </Tab>
 
     <Tab label="Absolute">
+      ```ts
+      import type { Metadata } from "next";
 
+      export const metadata: Metadata = {
+      	title: {
+      		absolute: "블로그" // "블로그"
+      	},
+      	description: "개발하면서 배운 것들과 경험을 기록합니다.",
+      };
+      ```
     </Tab>
   </Tabs>
 </Callout>
