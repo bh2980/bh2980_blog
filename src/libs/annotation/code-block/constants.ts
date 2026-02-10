@@ -48,19 +48,32 @@ export const annotationConfig: AnnotationConfig = {
 			name: "plus",
 			kind: "class",
 			class:
-				"anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 border-l-2 border-l-green-400",
+				"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 border-l-2 border-l-green-400",
 			scopes: ["line"],
 		},
 		{
 			name: "minus",
 			kind: "class",
-			class: "anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 border-l-2 border-l-red-500",
+			class:
+				"inline-block w-full  anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 border-l-2 border-l-red-500",
 			scopes: ["line"],
 		},
 		{
 			name: "highlight",
 			kind: "class",
-			class: "anno-mark-base bg-gray-400/20",
+			class: "inline-block w-full anno-mark-base bg-gray-400/20",
+			scopes: ["line"],
+		},
+		{
+			name: "warning",
+			kind: "class",
+			class: "underline decoration-wavy decoration-yellow-400/80",
+			scopes: ["line"],
+		},
+		{
+			name: "error",
+			kind: "class",
+			class: "underline decoration-wavy decoration-red-500",
 			scopes: ["line"],
 		},
 		{
