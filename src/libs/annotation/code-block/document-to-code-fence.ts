@@ -1,6 +1,6 @@
 import type { Code } from "mdast";
 import { type CommentSyntax, formatAnnotationComment, resolveCommentSyntax } from "./comment-syntax";
-import { createAnnotationRegistry, resolveAnnotationTypeDefinition } from "./libs";
+import { createAnnotationRegistry } from "./libs";
 import type { AnnotationConfig, CodeBlockDocument } from "./types";
 
 const fromLineValueToLeadingIndent = (lineValue: string) => {
@@ -24,7 +24,7 @@ const fromDocumentMetaToCodeFenceMeta = (meta: CodeBlockDocument["meta"]) => {
 const fromAnnotationToCommentLine = (
 	commentSyntax: CommentSyntax,
 	annotation: {
-		tag: string;
+		scope: "char" | "line" | "document";
 		name: string;
 		range: { start: number; end: number };
 		attributes?: { name: string; value: unknown }[];
@@ -41,11 +41,19 @@ const fromAnnotationToCommentLine = (
 		.filter((item) => item.length > 0)
 		.join(" ");
 
-	const body = [`@${annotation.tag}`, annotation.name, `{${annotation.range.start}-${annotation.range.end}}`, attrs]
+	const body = [`@${annotation.scope}`, annotation.name, `{${annotation.range.start}-${annotation.range.end}}`, attrs]
 		.filter(Boolean)
 		.join(" ");
 
 	return formatAnnotationComment(commentSyntax, body);
+};
+
+const toClosedRange = (range: { start: number; end: number }) => {
+	if (range.end <= range.start) return;
+	return {
+		start: range.start,
+		end: range.end - 1,
+	};
 };
 
 export const fromCodeBlockDocumentToCodeFence = (
@@ -53,7 +61,6 @@ export const fromCodeBlockDocumentToCodeFence = (
 	annotationConfig: AnnotationConfig,
 ): Code => {
 	createAnnotationRegistry(annotationConfig);
-	const typeDefinition = resolveAnnotationTypeDefinition(annotationConfig);
 
 	const commentSyntax = resolveCommentSyntax(document.lang);
 	const lineAnnotationByStart = new Map<number, CodeBlockDocument["annotations"]>();
@@ -66,25 +73,52 @@ export const fromCodeBlockDocumentToCodeFence = (
 	}
 
 	const outputLines: string[] = [];
+	const lineStartOffsets: number[] = [];
+	let lineStart = 0;
+
+	for (const line of document.lines) {
+		lineStartOffsets.push(lineStart);
+		lineStart += line.value.length + 1;
+	}
 
 	document.lines.forEach((line, lineIndex) => {
 		const leadingIndent = fromLineValueToLeadingIndent(line.value);
+		const lineOffset = lineStartOffsets[lineIndex] ?? 0;
 		const lineAnnotations = lineAnnotationByStart.get(lineIndex) ?? [];
 		for (const annotation of lineAnnotations) {
+			const closedRange = toClosedRange(annotation.range);
+			if (!closedRange) continue;
 			outputLines.push(
 				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
-					tag: typeDefinition[annotation.type].tag,
+					scope: "line",
+					range: closedRange,
 				})}`,
 			);
 		}
 
 		for (const annotation of [...line.annotations].sort((a, b) => a.order - b.order)) {
-			if (annotation.range.start >= annotation.range.end) continue;
+			const isDocumentScope = annotation.scope === "document";
+			const isLocalRange =
+				annotation.range.start >= 0 &&
+				annotation.range.end >= annotation.range.start &&
+				annotation.range.end <= line.value.length;
+			const targetRange = isDocumentScope
+				? annotation.range
+				: isLocalRange
+					? annotation.range
+					: {
+							start: annotation.range.start - lineOffset,
+							end: annotation.range.end - lineOffset,
+						};
+
+			const closedRange = toClosedRange(targetRange);
+			if (!closedRange) continue;
 			outputLines.push(
 				`${leadingIndent}${fromAnnotationToCommentLine(commentSyntax, {
 					...annotation,
-					tag: typeDefinition[annotation.type].tag,
+					scope: annotation.scope,
+					range: closedRange,
 				})}`,
 			);
 		}

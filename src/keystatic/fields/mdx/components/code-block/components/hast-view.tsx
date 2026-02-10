@@ -1,6 +1,6 @@
 import type { Root } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
-import type { ComponentProps } from "react";
+import type { ComponentProps, Ref } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { cn } from "@/utils/cn";
 
@@ -9,7 +9,15 @@ const CollapsibleEditorPreview = ({ children }: ComponentProps<"span">) => <>{ch
 const CalloutEditorPreview = ({ children }: ComponentProps<"span"> & { variant?: unknown }) => <>{children}</>;
 
 // TODO : white space pre and sync scroll
-export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumbers?: boolean }) {
+export function HastView({
+	hast,
+	showLineNumbers,
+	preRef,
+}: {
+	hast: Root;
+	showLineNumbers?: boolean;
+	preRef?: Ref<HTMLPreElement>;
+}) {
 	return toJsxRuntime(hast, {
 		Fragment,
 		jsx,
@@ -24,8 +32,13 @@ export function HastView({ hast, showLineNumbers }: { hast: Root; showLineNumber
 
 				return (
 					<pre
+						ref={preRef}
 						{...domProps}
-						className={cn(props.className, "pointer-events-none absolute top-0 left-0 min-h-full w-full")}
+						className={cn(
+							props.className,
+							"whitespace-pre! overflow-x-auto overflow-y-hidden",
+							"pointer-events-none absolute top-0 left-0 min-h-full w-full",
+						)}
 						data-show-line-numbers={resolvedShowLineNumbers ? "true" : undefined}
 					/>
 				);

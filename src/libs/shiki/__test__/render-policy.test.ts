@@ -4,8 +4,10 @@ import { createAllowedRenderTagsFromConfig, isSafeRenderTag } from "../render-po
 describe("render-policy", () => {
 	it("config에서 inline/line wrapper render tag를 수집한다", () => {
 		const tags = createAllowedRenderTagsFromConfig({
-			inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-			lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
+			annotations: [
+				{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+				{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+			],
 		});
 
 		expect(tags).toEqual(["Tooltip", "Callout"]);
@@ -17,8 +19,10 @@ describe("render-policy", () => {
 		expect(isSafeRenderTag("Tooltip")).toBe(true);
 
 		const tags = createAllowedRenderTagsFromConfig({
-			inlineWrap: [{ name: "Danger", source: "mdx-text", render: "script" }],
-			lineWrap: [{ name: "Tooltip", source: "mdx-flow", render: "Tooltip" }],
+			annotations: [
+				{ name: "Danger", kind: "render", source: "mdx-text", render: "script", scopes: ["char"] },
+				{ name: "Tooltip", kind: "render", render: "Tooltip", scopes: ["line"] },
+			],
 		});
 
 		expect(tags).toEqual(["Tooltip"]);

@@ -19,7 +19,7 @@ const promise3 = new Promise<string>((resolve, reject) => {
 // expected to be `Promise<[number, 42, string]>`
 const p = PromiseAll([promise1, promise2, promise3] as const)
 
-// @block Collapsible {9-25}
+// @line collapse {9-25}
 /* _____________ Test Cases _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 
@@ -94,10 +94,10 @@ type cases = [
 
 <Collapsible>
   ```ts
-  // @mark Tooltip {39-53} content="입력 타입을 readonly any[]로 두어서 어떤 리스트도 받을 수 있도록 제한"
-  // @mark Tooltip {63-78} content="Variadic Tuple 파라미터 형태를 사용하여 리터럴 배열이 튜플로 추론되도록 유도(테스트 케이스 3)"
+  // @char Tooltip {39-53} content="입력 타입을 readonly any[]로 두어서 어떤 리스트도 받을 수 있도록 제한"
+  // @char Tooltip {63-78} content="Variadic Tuple 파라미터 형태를 사용하여 리터럴 배열이 튜플로 추론되도록 유도(테스트 케이스 3)"
    declare function PromiseAll<T extends readonly any[]>(values: readonly [...T]): Promise<{
-  // @mark Tooltip {17-30} content="Awaited 내부적으로 분배 조건부 타입을 사용하여 가공되지 않은 순수한 상태로 평가되도록 하여 각 요소가 개별적으로 Awaited 처리됨."
+  // @char Tooltip {17-30} content="Awaited 내부적으로 분배 조건부 타입을 사용하여 가공되지 않은 순수한 상태로 평가되도록 하여 각 요소가 개별적으로 Awaited 처리됨."
    [P in keyof T]: Awaited<T[P]>
    }>
   ```

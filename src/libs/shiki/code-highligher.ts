@@ -49,12 +49,12 @@ export const CODE_BLOCK_THEME_LIGHT = oneLight.name as typeof oneLight.name;
 export type AnnotationPayload = {
 	decorations?: DecorationItem[];
 	lineDecorations?: LineDecorationPayload[];
-	lineWrappers?: LineWrapperPayload[];
+	rowWrappers?: LineWrapperPayload[];
 	allowedRenderTags?: string[];
 };
 
 export const highlight = (code: string, lang: string, meta: Meta, annotationPayload: AnnotationPayload = {}) => {
-	const { decorations = [], lineDecorations = [], lineWrappers = [], allowedRenderTags = [] } = annotationPayload;
+	const { decorations = [], lineDecorations = [], rowWrappers = [], allowedRenderTags = [] } = annotationPayload;
 
 	return highlighter.codeToHast(code, {
 		lang,
@@ -69,7 +69,7 @@ export const highlight = (code: string, lang: string, meta: Meta, annotationPayl
 			addLineDecorations(lineDecorations),
 			addMetaToPre(code, meta),
 			convertInlineAnnoToRenderTag(allowedRenderTags),
-			addLineWrappers(lineWrappers, allowedRenderTags),
+			addLineWrappers(rowWrappers, allowedRenderTags),
 		],
 	});
 };

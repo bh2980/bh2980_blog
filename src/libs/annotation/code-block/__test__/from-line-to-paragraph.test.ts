@@ -1,96 +1,55 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
-import type { AnnotationAttr, AnnotationEvent, AnnotationRegistry, InlineAnnotation, Line, Range } from "../types";
+import type { AnnotationAttr, AnnotationConfig, AnnotationEvent, InlineAnnotation, Line, Range } from "../types";
 
 const { fromLineToParagraph } = fromCodeBlockDocumentToMdastTestable;
 const { fromParagraphToLine } = fromMdxFlowElementToCodeDocumentTestable;
+const { createAnnotationRegistry } = libsTestable;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "emphasis", kind: "class" as const, source: "mdast" as const, class: "italic", scopes: ["char"] },
+		{ name: "Tooltip", kind: "render" as const, source: "mdx-text" as const, render: "Tooltip", scopes: ["char"] },
+		{ name: "strong", kind: "render" as const, source: "mdast" as const, render: "strong", scopes: ["char"] },
+		{ name: "u", kind: "render" as const, source: "mdx-text" as const, render: "u", scopes: ["char"] },
+	],
+};
+const registry = createAnnotationRegistry(annotationConfig);
 
-const registry: AnnotationRegistry = new Map([
-	[
-		"emphasis",
-		{
-			name: "emphasis",
-			source: "mdast",
-			class: "italic",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 0,
-		},
-	],
-	[
-		"Tooltip",
-		{
-			name: "Tooltip",
-			source: "mdx-text",
-			render: "Tooltip",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 0,
-		},
-	],
-	[
-		"strong",
-		{
-			name: "strong",
-			source: "mdast",
-			render: "strong",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 1,
-		},
-	],
-	[
-		"u",
-		{
-			name: "u",
-			source: "mdx-text",
-			render: "u",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 2,
-		},
-	],
-]);
-
-const inlineWrap = (
+const charRender = (
 	name: string,
 	source: "mdast" | "mdx-text",
 	range: Range,
 	priority: number,
 	order: number,
 	attributes: AnnotationAttr[] = [],
+	render = name,
 ): InlineAnnotation => ({
-	type: "inlineWrap",
-	typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-	tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+	scope: "char",
 	source,
 	name,
+	render,
 	range,
 	priority,
 	order,
 	attributes,
 });
 
-const inlineClass = (
+const charClass = (
 	name: string,
 	source: "mdast" | "mdx-text",
 	range: Range,
 	priority: number,
 	order: number,
 	attributes: AnnotationAttr[] = [],
+	className = name,
 ): InlineAnnotation => ({
-	type: "inlineClass",
-	typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-	tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
+	scope: "char",
 	source,
 	name,
+	class: className,
 	range,
 	priority,
 	order,
@@ -122,7 +81,6 @@ const composeInlineEventsFixture = (annotations: InlineAnnotation[]): Annotation
 			if (a.kind === "open" && a.anno.range.end !== b.anno.range.end) return b.anno.range.end - a.anno.range.end;
 			if (a.kind === "close" && a.anno.range.start !== b.anno.range.start)
 				return b.anno.range.start - a.anno.range.start;
-			if (a.anno.typeId !== b.anno.typeId) return a.anno.typeId - b.anno.typeId;
 			return a.anno.order - b.anno.order;
 		});
 
@@ -159,11 +117,13 @@ const normalizeAttr = (attributes?: AnnotationAttr[]) =>
 	(attributes ?? []).map((attr) => ({ name: attr.name, value: attr.value }));
 
 const normalizeInlineAnnotation = (annotation: InlineAnnotation) => ({
-	type: annotation.type,
+	scope: annotation.scope,
 	source: annotation.source,
 	name: annotation.name,
 	range: annotation.range,
 	priority: annotation.priority,
+	class: annotation.class,
+	render: annotation.render,
 	attributes: normalizeAttr(annotation.attributes),
 });
 
@@ -174,7 +134,9 @@ const sortInlineAnnotation = (
 	if (a.range.start !== b.range.start) return a.range.start - b.range.start;
 	if (a.range.end !== b.range.end) return a.range.end - b.range.end;
 	if (a.name !== b.name) return a.name.localeCompare(b.name);
-	if (a.type !== b.type) return a.type.localeCompare(b.type);
+	if (a.scope !== b.scope) return a.scope.localeCompare(b.scope);
+	if ((a.class ?? "") !== (b.class ?? "")) return (a.class ?? "").localeCompare(b.class ?? "");
+	if ((a.render ?? "") !== (b.render ?? "")) return (a.render ?? "").localeCompare(b.render ?? "");
 	return a.priority - b.priority;
 };
 
@@ -187,7 +149,7 @@ describe("fromLineToParagraph", () => {
 	});
 
 	it("mdast source inline annotation은 mdast phrasing wrapper로 만든다", () => {
-		const paragraph = parse(line("abcdef", [inlineWrap("strong", "mdast", { start: 1, end: 4 }, 1, 0)]));
+		const paragraph = parse(line("abcdef", [charRender("strong", "mdast", { start: 1, end: 4 }, 1, 0)]));
 
 		expect(printParagraph(paragraph)).toBe("a + strong(bcd) + ef");
 	});
@@ -195,7 +157,7 @@ describe("fromLineToParagraph", () => {
 	it("mdx-text source inline annotation은 mdxJsxTextElement와 attributes를 만든다", () => {
 		const paragraph = parse(
 			line("hello", [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, 0, [{ name: "content", value: "tip" }]),
+				charRender("Tooltip", "mdx-text", { start: 0, end: 5 }, 0, 0, [{ name: "content", value: "tip" }]),
 			]),
 		);
 
@@ -205,8 +167,8 @@ describe("fromLineToParagraph", () => {
 	it("중첩 annotation은 range에 맞춰 계층 구조를 만든다", () => {
 		const paragraph = parse(
 			line("abcdefg", [
-				inlineWrap("u", "mdx-text", { start: 1, end: 6 }, 2, 0),
-				inlineWrap("strong", "mdast", { start: 2, end: 5 }, 1, 1),
+				charRender("u", "mdx-text", { start: 1, end: 6 }, 2, 0),
+				charRender("strong", "mdast", { start: 2, end: 5 }, 1, 1),
 			]),
 		);
 
@@ -216,8 +178,8 @@ describe("fromLineToParagraph", () => {
 	it("동일 range는 priority가 아니라 order 기준으로 중첩 순서를 만든다", () => {
 		const paragraph = parse(
 			line("text", [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 4 }, 999, 0),
-				inlineWrap("u", "mdx-text", { start: 0, end: 4 }, 0, 1),
+				charRender("Tooltip", "mdx-text", { start: 0, end: 4 }, 999, 0),
+				charRender("u", "mdx-text", { start: 0, end: 4 }, 0, 1),
 			]),
 		);
 
@@ -229,31 +191,31 @@ describe("fromLineToParagraph", () => {
 
 		const orderAsc = parse(
 			line(word, [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 0),
-				inlineWrap("u", "mdx-text", { start: 0, end: word.length }, 0, 1),
+				charRender("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 0),
+				charRender("u", "mdx-text", { start: 0, end: word.length }, 0, 1),
 			]),
 		);
 		expect(printParagraph(orderAsc)).toBe("Tooltip(u(target))");
 
 		const orderDesc = parse(
 			line(word, [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 1),
-				inlineWrap("u", "mdx-text", { start: 0, end: word.length }, 0, 0),
+				charRender("Tooltip", "mdx-text", { start: 0, end: word.length }, 999, 1),
+				charRender("u", "mdx-text", { start: 0, end: word.length }, 0, 0),
 			]),
 		);
 		expect(printParagraph(orderDesc)).toBe("u(Tooltip(target))");
 	});
 
 	it("zero-length annotation(range start=end)은 무시한다", () => {
-		const paragraph = parse(line("abc", [inlineWrap("Tooltip", "mdx-text", { start: 1, end: 1 }, 0, 0)]));
+		const paragraph = parse(line("abc", [charRender("Tooltip", "mdx-text", { start: 1, end: 1 }, 0, 0)]));
 		expect(printParagraph(paragraph)).toBe("abc");
 	});
 
 	it("registry에 없는 annotation이 섞여 있어도 알려진 annotation 구조를 깨지 않는다", () => {
 		const paragraph = parse(
 			line("abcdef", [
-				inlineWrap("Tooltip", "mdx-text", { start: 0, end: 6 }, 0, 0),
-				inlineWrap("Unknown", "mdx-text", { start: 1, end: 5 }, 99, 1),
+				charRender("Tooltip", "mdx-text", { start: 0, end: 6 }, 0, 0),
+				charRender("Unknown", "mdx-text", { start: 1, end: 5 }, 99, 1),
 			]),
 		);
 
@@ -262,8 +224,8 @@ describe("fromLineToParagraph", () => {
 
 	it("fromParagraphToLine와의 round-trip에서 Line 계약을 유지한다", () => {
 		const input = line("123456", [
-			inlineClass("emphasis", "mdast", { start: 1, end: 5 }, 0, 0),
-			inlineWrap("Tooltip", "mdx-text", { start: 2, end: 4 }, 0, 1, [{ name: "content", value: "x" }]),
+			charClass("emphasis", "mdast", { start: 1, end: 5 }, 0, 0, [], "italic"),
+			charRender("Tooltip", "mdx-text", { start: 2, end: 4 }, 0, 1, [{ name: "content", value: "x" }], "Tooltip"),
 		]);
 
 		const paragraph = parse(input);

@@ -1,7 +1,6 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import type { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block/constants";
-import type { ANNOTATION_TYPE_DEFINITION } from "./constants";
 
 export type CodeBlockRoot = MdxJsxFlowElement & { name: typeof EDITOR_CODE_BLOCK_NAME };
 
@@ -10,54 +9,67 @@ export type Range = {
 	end: number;
 };
 
-export type AnnotationTypePair = {
-	[K in keyof typeof ANNOTATION_TYPE_DEFINITION]: {
-		type: K;
-		typeId: (typeof ANNOTATION_TYPE_DEFINITION)[K]["typeId"];
-		tag: string;
-	};
-}[keyof typeof ANNOTATION_TYPE_DEFINITION];
-
 export type AnnotationAttr = { name: string; value: unknown };
 
-export type Annotation = AnnotationTypePair & {
-	source: "mdast" | "mdx-text" | "mdx-flow";
+type AnnotationBase = {
+	scope: AnnotationScope;
 	name: string;
 	range: Range;
 	priority: number; // 교차 겹침 시 well nested 정책 우선 순위
 	order: number; // 작성 순서
+	class?: string;
+	render?: string;
 	attributes?: AnnotationAttr[];
 };
 
-export type AnnotationType = Annotation["type"];
-export type AnnotationSource = Annotation["source"];
-export type AnnotationTagOverrides = Partial<Record<AnnotationType, string>>;
-
-export type AnnotationRegistryItem = Omit<Annotation, "range" | "attributes" | "order"> & AnnotationTypePair;
-export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
-
-export type AnnotationConfigItemBase = Pick<Annotation, "name" | "source">;
-
-export type ClassAnnotationConfigItem = AnnotationConfigItemBase & {
-	class: string;
+export type InlineAnnotationSource = "mdast" | "mdx-text";
+export type InlineAnnotation = AnnotationBase & {
+	scope: "char" | "document";
+	source: InlineAnnotationSource;
 };
 
-export type RenderAnnotationConfigItem = AnnotationConfigItemBase & {
+export type LineAnnotation = AnnotationBase & {
+	scope: "line";
+};
+
+export type CodeBlockAnnotation = InlineAnnotation | LineAnnotation;
+
+export type AnnotationScope = "char" | "line" | "document";
+export type AnnotationKind = "class" | "render";
+
+export type AnnotationRegistryItem = {
+	name: string;
+	kind: AnnotationKind;
+	class?: string;
+	render?: string;
+	source: InlineAnnotationSource;
+	scopes: AnnotationScope[];
+	priority: number;
+};
+
+export type AnnotationRegistry = Map<string, AnnotationRegistryItem>;
+
+type ClassAnnotationConfigItem = {
+	name: string;
+	kind: "class";
+	class: string;
+	source?: InlineAnnotationSource;
+	scopes?: AnnotationScope[];
+};
+
+type RenderAnnotationConfigItem = {
+	name: string;
+	kind: "render";
 	render: string;
+	source?: InlineAnnotationSource;
+	scopes?: AnnotationScope[];
 };
 
 export type AnnotationConfigItem = ClassAnnotationConfigItem | RenderAnnotationConfigItem;
 
 export interface AnnotationConfig {
-	inlineClass?: ClassAnnotationConfigItem[];
-	inlineWrap?: RenderAnnotationConfigItem[];
-	lineClass?: ClassAnnotationConfigItem[];
-	lineWrap?: RenderAnnotationConfigItem[];
-	tagOverrides?: AnnotationTagOverrides;
+	annotations?: AnnotationConfigItem[];
 }
-
-export type InlineAnnotation = Extract<Annotation, { type: "inlineClass" | "inlineWrap" }>;
-export type LineAnnotation = Extract<Annotation, { type: "lineClass" | "lineWrap" }>;
 
 export type Line = { value: string; annotations: InlineAnnotation[] };
 
@@ -75,7 +87,7 @@ export type EventKind = "open" | "close";
 export type AnnotationEvent = {
 	pos: number; // line offset
 	kind: EventKind; // 같은 pos면 close 먼저
-	anno: Annotation; // 원본 참조 or 동일 구조
+	anno: CodeBlockAnnotation; // 원본 참조 or 동일 구조
 };
 
 // children을 가지는 PhrasingContent만 추출 (text 제외)

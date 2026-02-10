@@ -5,15 +5,17 @@ import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { rehypeMermaidDarkClass } from "@/libs/mermaid/rehype-mermaid-dark-class";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
+import { collapse } from "./code-block/collapse";
+import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
-import { Pre } from "./pre";
+import { pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
@@ -25,7 +27,7 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
-					[remarkAnnotationToShikiDecoration, codeFenceAnnotationConfig],
+					[remarkAnnotationToShikiDecoration, annotationConfig],
 					remarkBreaks,
 					remarkGfm,
 					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
@@ -41,7 +43,10 @@ export const renderMDX = async (source: string) => {
 		},
 		components: {
 			a,
-			pre: Pre,
+			pre,
+			collapse,
+			fold,
+
 			Callout,
 			Collapsible,
 			Columns,
