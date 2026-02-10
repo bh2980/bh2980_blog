@@ -69,6 +69,24 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 
   <Tab label="generateMetadata">
     ```ts
+    export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
+    	const { slug } = await params;
+    	const memo = await getMemo(slug);
+
+    	if (!memo) {
+    		return {
+    			title: "Not Found",
+    			robots: { index: false, follow: true },
+    		};
+    	}
+
+    	return {
+    		title: memo.title,
+    		alternates: { canonical: `${process.env.HOST_URL}/memos/${sanitizeSlug(slug)}` },
+    	};
+    }
     ```
   </Tab>
 </Tabs>
+
+이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이인데요.&#x20;
