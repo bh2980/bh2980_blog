@@ -1,63 +1,86 @@
 import type { AnnotationConfig } from "./types";
 
-export enum AnnotationTypeEnum {
-	inlineClass = 0,
-	inlineWrap,
-	lineClass,
-	lineWrap,
-}
-
-export const ANNOTATION_TYPE_DEFINITION = {
-	inlineClass: { typeId: AnnotationTypeEnum.inlineClass, tag: "inClass" },
-	inlineWrap: { typeId: AnnotationTypeEnum.inlineWrap, tag: "inWrap" },
-	lineClass: { typeId: AnnotationTypeEnum.lineClass, tag: "lnClass" },
-	lineWrap: { typeId: AnnotationTypeEnum.lineWrap, tag: "lnWrap" },
-} as const;
-
 export const annotationConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [
+	annotations: [
 		{
 			name: "Tooltip",
+			kind: "render",
 			source: "mdx-text",
 			render: "Tooltip",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "strong",
+			kind: "render",
 			source: "mdx-text",
 			render: "strong",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "em",
+			kind: "render",
 			source: "mdx-text",
 			render: "em",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "del",
+			kind: "render",
 			source: "mdx-text",
 			render: "del",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "u",
+			kind: "render",
 			source: "mdx-text",
 			render: "u",
+			scopes: ["char", "document"],
 		},
-	],
-	lineWrap: [
 		{
-			name: "Collapsible",
-			source: "mdx-flow",
-			render: "Collapsible",
+			name: "fold",
+			kind: "render",
+			source: "mdx-text",
+			render: "fold",
+			scopes: ["char", "document"],
+		},
+		{
+			name: "plus",
+			kind: "class",
+			class:
+				"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 border-l-2 border-l-green-400",
+			scopes: ["line"],
+		},
+		{
+			name: "minus",
+			kind: "class",
+			class:
+				"inline-block w-full  anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 border-l-2 border-l-red-500",
+			scopes: ["line"],
+		},
+		{
+			name: "highlight",
+			kind: "class",
+			class: "inline-block w-full anno-mark-base bg-gray-400/20",
+			scopes: ["line"],
+		},
+		{
+			name: "warning",
+			kind: "class",
+			class: "underline decoration-wavy decoration-yellow-400/80",
+			scopes: ["line"],
+		},
+		{
+			name: "error",
+			kind: "class",
+			class: "underline decoration-wavy decoration-red-500",
+			scopes: ["line"],
+		},
+		{
+			name: "collapse",
+			kind: "render",
+			render: "collapse",
+			scopes: ["line"],
 		},
 	],
-};
-
-export const codeFenceAnnotationConfig: AnnotationConfig = {
-	...annotationConfig,
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
 };

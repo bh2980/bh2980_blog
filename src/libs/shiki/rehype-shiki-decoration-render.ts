@@ -49,7 +49,7 @@ export function rehypeShikiDecorationRender(options: RehypeShikiDecorationRender
 				| undefined;
 			const lineDecorationStr = (pre.properties?.["data-line-decorations"] ??
 				codeEl.properties?.["data-line-decorations"]) as string | undefined;
-			const lineWrapperStr = (pre.properties?.["data-line-wrappers"] ?? codeEl.properties?.["data-line-wrappers"]) as
+			const rowWrapperStr = (pre.properties?.["data-line-wrappers"] ?? codeEl.properties?.["data-line-wrappers"]) as
 				| string
 				| undefined;
 			const renderTagsStr = (pre.properties?.["data-render-tags"] ?? codeEl.properties?.["data-render-tags"]) as
@@ -59,13 +59,13 @@ export function rehypeShikiDecorationRender(options: RehypeShikiDecorationRender
 			const meta: Meta = metaStr ? JSON.parse(metaStr) : {};
 			const decorations: DecorationItem[] = decoratonStr ? JSON.parse(decoratonStr) : [];
 			const lineDecorations: LineDecorationPayload[] = lineDecorationStr ? JSON.parse(lineDecorationStr) : [];
-			const lineWrappers: LineWrapperPayload[] = lineWrapperStr ? JSON.parse(lineWrapperStr) : [];
+			const rowWrappers: LineWrapperPayload[] = rowWrapperStr ? JSON.parse(rowWrapperStr) : [];
 			const allowedRenderTags: string[] = renderTagsStr ? JSON.parse(renderTagsStr) : [];
 
 			const hast = highlight(code, lang, meta, {
 				decorations,
 				lineDecorations,
-				lineWrappers,
+				rowWrappers,
 				allowedRenderTags,
 			});
 

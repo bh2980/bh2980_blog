@@ -304,44 +304,41 @@ export const EDITOR_LANG_OPTIONS = [
 export const EDITOR_CODE_BLOCK_NAME = "CodeBlock";
 
 export const EDITOR_CODE_BLOCK_ANNOTATION_CONFIG: AnnotationConfig = {
-	inlineClass: [
+	annotations: [
 		{
 			name: "Tooltip",
+			kind: "class",
 			source: "mdx-text",
 			class: "underline decoration-dotted",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "strong",
+			kind: "class",
 			source: "mdx-text",
 			class: "font-bold",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "em",
+			kind: "class",
 			source: "mdx-text",
 			class: "italic",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "del",
+			kind: "class",
 			source: "mdx-text",
 			class: "line-through",
+			scopes: ["char", "document"],
 		},
 		{
 			name: "u",
+			kind: "class",
 			source: "mdx-text",
 			class: "underline",
+			scopes: ["char", "document"],
 		},
 	],
-	lineWrap: [
-		{
-			name: "Collapsible",
-			source: "mdx-flow",
-			render: "Collapsible",
-		},
-	],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
 };

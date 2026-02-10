@@ -15,7 +15,7 @@ export const walkOnlyInsideCodeFence = (mdxAst: Root, config: AnnotationConfig) 
 		if (node.lang === "mermaid") return;
 		if (index == null || !parent) return;
 
-		const document = fromCodeFenceToCodeBlockDocument(node, config);
+		const document = fromCodeFenceToCodeBlockDocument(node, config, { parseLineAnnotations: false });
 		const codeBlockRoot = fromCodeBlockDocumentToMdast(document, config);
 		parent.children.splice(index, 1, codeBlockRoot);
 		return [SKIP, index];

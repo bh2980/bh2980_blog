@@ -13,7 +13,7 @@ tags:
 
 <Collapsible>
   ```js
-  // @mark Tooltip {27-58} content="안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 이는 setTimeout이 단독호출처럼 보이지만 실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문"
+  // @char Tooltip {27-58} content="안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 이는 setTimeout이 단독호출처럼 보이지만 실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문"
   const originalSetTimeout = window.setTimeout.bind(window);
   const originalClearTimeout = window.clearTimeout.bind(window);
   let timerSet = new Set();
@@ -23,10 +23,10 @@ tags:
     timerSet.clear()
   }
 
-  // @mark Tooltip {39-51} content="추후 callback의 arguments로 들어간다."
+  // @char Tooltip {39-51} content="추후 callback의 arguments로 들어간다."
   window.setTimeout = (handler, timeout, ...arguments) => {
     let timer;
-  // @mark Tooltip {2-10} content="시간이 지나 callback이 따로 실행되었을 때의 this를 보존하기 위해 function 키워드를 사용한다."
+  // @char Tooltip {2-10} content="시간이 지나 callback이 따로 실행되었을 때의 this를 보존하기 위해 function 키워드를 사용한다."
     function callback(...args){
       try{
         handler.apply(this, args);

@@ -29,7 +29,7 @@ interface Result {
   }
 }
 
-// @block Collapsible {17-61}
+// @line collapse {17-61}
 /* _____________ 테스트 케이스 _____________ */
 import type { Alike, Expect } from '@type-challenges/utils'
 
@@ -107,7 +107,7 @@ type Expected3 = {
 <Collapsible>
   ```ts
   type Chainable<S extends object = {}> = {
-  // @mark Tooltip {32-66} content="key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다."
+  // @char Tooltip {32-66} content="key가 이미 있는 key일 경우 never로 만들어 타입 에러를 띄웁니다."
     option: <K extends string, V>(key: K extends keyof S ? never : K, value: V) => Chainable<Omit<S, K> & Record<K, V>>
     get: () => S
   }

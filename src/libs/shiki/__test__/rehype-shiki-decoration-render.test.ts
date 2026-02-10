@@ -65,9 +65,9 @@ describe("rehypeShikiDecorationRender", () => {
 				"data-meta": '{"title":"demo.ts"}',
 				"data-decorations":
 					'[{"start":{"line":0,"character":0},"end":{"line":0,"character":5},"properties":{"class":"diff"}}]',
-				"data-line-decorations": '[{"type":"lineClass","name":"diff","range":{"start":0,"end":1},"class":"diff"}]',
+				"data-line-decorations": '[{"scope":"line","name":"diff","range":{"start":0,"end":1},"class":"diff"}]',
 				"data-line-wrappers":
-					'[{"type":"lineWrap","name":"Callout","range":{"start":0,"end":1},"order":0,"render":"Callout","attributes":[{"name":"variant","value":"tip"}]}]',
+					'[{"scope":"line","name":"Callout","range":{"start":0,"end":1},"order":0,"render":"Callout","attributes":[{"name":"variant","value":"tip"}]}]',
 				"data-render-tags": '["Tooltip","Callout"]',
 			},
 		});
@@ -88,10 +88,10 @@ describe("rehypeShikiDecorationRender", () => {
 						properties: { class: "diff" },
 					},
 				],
-				lineDecorations: [{ type: "lineClass", name: "diff", range: { start: 0, end: 1 }, class: "diff" }],
-				lineWrappers: [
+				lineDecorations: [{ scope: "line", name: "diff", range: { start: 0, end: 1 }, class: "diff" }],
+				rowWrappers: [
 					{
-						type: "lineWrap",
+						scope: "line",
 						name: "Callout",
 						range: { start: 0, end: 1 },
 						order: 0,
@@ -139,7 +139,7 @@ describe("rehypeShikiDecorationRender", () => {
 			{
 				decorations: [],
 				lineDecorations: [],
-				lineWrappers: [],
+				rowWrappers: [],
 				allowedRenderTags: ["Tooltip", "Callout"],
 			},
 		);
@@ -191,7 +191,7 @@ describe("rehypeShikiDecorationRender", () => {
 			{
 				decorations: [],
 				lineDecorations: [],
-				lineWrappers: [],
+				rowWrappers: [],
 				allowedRenderTags: [],
 			},
 		);

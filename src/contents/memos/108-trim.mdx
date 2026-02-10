@@ -15,7 +15,7 @@ tags:
 type trimmed = Trim<'  Hello World  '> 
 // 기대되는 결과는 'Hello World'입니다.
 
-// @block Collapsible {3-17}
+// @line collapse {3-17}
 /* _____________ 테스트 케이스 _____________ */
 
 import type { Equal, Expect } from '@type-challenges/utils'
@@ -37,7 +37,7 @@ type cases = [
 <Collapsible>
   ```ts
   type Trim<S extends string> = 
-  // @mark Tooltip {13-32} content="공백 문자를 별도의 템플릿 리터럴 타입으로 분류하여 분리"
+  // @char Tooltip {13-32} content="공백 문자를 별도의 템플릿 리터럴 타입으로 분류하여 분리"
     S extends `${' ' | '\n' | '\t'}${infer Last}` 
       ? Trim<Last> 
       : S extends `${infer First}${' ' | '\n' | '\t'}` 

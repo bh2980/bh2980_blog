@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as transformerModule from "../transformers";
 
 type LineDecorationPayload = {
-	type: "lineClass";
+	scope: "line";
 	name: string;
 	range: { start: number; end: number };
 	class: string;
@@ -20,6 +20,13 @@ const createLineElement = (): Element => ({
 	type: "element",
 	tagName: "span",
 	properties: { className: ["line"] },
+	children: [],
+});
+
+const createLineElementWithClassProp = (): Element => ({
+	type: "element",
+	tagName: "span",
+	properties: { class: "line" },
 	children: [],
 });
 
@@ -45,7 +52,7 @@ describe("transformers.line addLineDecorations", () => {
 	it("range에 포함된 line(1-based 입력)에 class를 추가한다", () => {
 		const transformer = createTransformer([
 			{
-				type: "lineClass",
+				scope: "line",
 				name: "diff",
 				range: { start: 0, end: 2 },
 				class: "diff",
@@ -68,13 +75,13 @@ describe("transformers.line addLineDecorations", () => {
 	it("여러 line decoration이 겹치면 class를 병합한다", () => {
 		const transformer = createTransformer([
 			{
-				type: "lineClass",
+				scope: "line",
 				name: "diff",
 				range: { start: 0, end: 3 },
 				class: "diff",
 			},
 			{
-				type: "lineClass",
+				scope: "line",
 				name: "focus",
 				range: { start: 1, end: 2 },
 				class: "focus",
@@ -90,7 +97,7 @@ describe("transformers.line addLineDecorations", () => {
 	it("유효하지 않은 range(start >= end)는 무시한다", () => {
 		const transformer = createTransformer([
 			{
-				type: "lineClass",
+				scope: "line",
 				name: "invalid",
 				range: { start: 1, end: 1 },
 				class: "invalid",
@@ -101,5 +108,21 @@ describe("transformers.line addLineDecorations", () => {
 		runLineHook(transformer, line2, 2);
 
 		expect(line2.properties.className).toEqual(["line"]);
+	});
+
+	it("기존 class 속성으로 들어온 기준 class도 유지한다", () => {
+		const transformer = createTransformer([
+			{
+				scope: "line",
+				name: "plus",
+				range: { start: 0, end: 1 },
+				class: "diff plus",
+			},
+		]);
+
+		const line1 = createLineElementWithClassProp();
+		runLineHook(transformer, line1, 1);
+
+		expect(line1.properties.className).toEqual(expect.arrayContaining(["line", "diff plus"]));
 	});
 });

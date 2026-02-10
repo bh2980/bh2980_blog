@@ -11,7 +11,7 @@ type PreProps = PropsWithChildren<{
 	style?: CSSProperties;
 }>;
 
-export const Pre = async ({ children, title, showLineNumbers, code, className, style }: PreProps) => {
+export const pre = async ({ children, title, showLineNumbers, code, className, style }: PreProps) => {
 	const filePath = title?.trim().split("/").filter(Boolean);
 
 	const showTitlebar = filePath && filePath.length > 0;
@@ -46,7 +46,8 @@ export const Pre = async ({ children, title, showLineNumbers, code, className, s
 			</div>
 			<pre
 				className={cn(
-					"relative overflow-x-auto whitespace-pre rounded-xl",
+					"relative overflow-x-auto whitespace-pre rounded-xl px-0!",
+					showLineNumbers ? "[&_.line]:px-2 [&_.line]:before:mr-5" : "[&_.line]:px-5",
 					showTitlebar && "m-0! rounded-t-none",
 					className,
 				)}

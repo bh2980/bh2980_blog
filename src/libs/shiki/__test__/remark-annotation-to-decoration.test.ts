@@ -6,42 +6,19 @@ import { remarkAnnotationToShikiDecoration } from "../remark-annotation-to-decor
 type AnnotationConfig = Parameters<typeof remarkAnnotationToShikiDecoration>[0];
 
 const markOnlyConfig: AnnotationConfig = {
-	inlineClass: [],
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [],
-	lineWrap: [],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] }],
 };
 
 const decOnlyConfig: AnnotationConfig = {
-	inlineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	inlineWrap: [],
-	lineClass: [],
-	lineWrap: [],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [{ name: "diff", kind: "class", source: "mdx-text", class: "diff", scopes: ["char"] }],
 };
 
 const fullConfig: AnnotationConfig = {
-	inlineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-	lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-	lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
-	tagOverrides: {
-		inlineClass: "dec",
-		inlineWrap: "mark",
-		lineClass: "line",
-		lineWrap: "block",
-	},
+	annotations: [
+		{ name: "diff", kind: "class", source: "mdx-text", class: "diff", scopes: ["char", "line"] },
+		{ name: "Tooltip", kind: "render", source: "mdx-text", render: "Tooltip", scopes: ["char"] },
+		{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
+	],
 };
 
 const getCodeNode = (root: Root) => root.children[0] as Code;
@@ -56,7 +33,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					type: "code",
 					lang: "ts",
 					meta: 'title="demo.ts" showLineNumbers',
-					value: ['// @mark Tooltip {0-5} content="tip"', "hello world"].join("\n"),
+					value: ['// @char Tooltip {0-4} content="tip"', "hello world"].join("\n"),
 				},
 			],
 		};
@@ -89,7 +66,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					type: "code",
 					lang: "python",
 					meta: "",
-					value: ['# @mark Tooltip {0-5} content="tip"', "print('hello')"].join("\n"),
+					value: ['# @char Tooltip {0-4} content="tip"', "print('hello')"].join("\n"),
 				},
 			],
 		};
@@ -112,7 +89,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					type: "code",
 					lang: "postcss",
 					meta: "",
-					value: ['/* @mark Tooltip {0-5} content="tip" */', ".button {}"].join("\n"),
+					value: ['/* @char Tooltip {0-4} content="tip" */', ".button {}"].join("\n"),
 				},
 			],
 		};
@@ -131,7 +108,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		});
 	});
 
-	it("dec annotation은 inline class decoration으로 변환한다", () => {
+	it("inline annotation은 inline class decoration으로 변환한다", () => {
 		const root: Root = {
 			type: "root",
 			children: [
@@ -139,7 +116,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					type: "code",
 					lang: "ts",
 					meta: "",
-					value: ["// @dec diff {0-5}", "hello world"].join("\n"),
+					value: ["// @char diff {0-4}", "hello world"].join("\n"),
 				},
 			],
 		};
@@ -170,7 +147,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					type: "code",
 					lang: "ts",
 					meta: "",
-					value: ["// @mark Unknown {0-5}", "hello"].join("\n"),
+					value: ["// @char Unknown {0-4}", "hello"].join("\n"),
 				},
 			],
 		};
@@ -181,7 +158,7 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		const hProperties = getHProperties(code);
 		const decorations = JSON.parse(String(hProperties["data-decorations"] ?? "[]"));
 
-		expect(code.value).toBe(["// @mark Unknown {0-5}", "hello"].join("\n"));
+		expect(code.value).toBe(["// @char Unknown {0-4}", "hello"].join("\n"));
 		expect(decorations).toEqual([]);
 	});
 
@@ -194,8 +171,8 @@ describe("remarkAnnotationToShikiDecoration", () => {
 					lang: "ts",
 					meta: "",
 					value: [
-						'// @block Callout {0-2} variant="tip"',
-						"// @line diff {1-2}",
+						'// @line Callout {0-1} variant="tip"',
+						"// @line diff {1-1}",
 						"const first = 1",
 						"const second = 2",
 					].join("\n"),
@@ -208,13 +185,12 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		const code = getCodeNode(root);
 		const hProperties = getHProperties(code);
 		const lineDecorations = JSON.parse(String(hProperties["data-line-decorations"] ?? "[]"));
-		const lineWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
+		const rowWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
 
 		expect(code.value).toBe(["const first = 1", "const second = 2"].join("\n"));
-		expect(lineWrappers).toEqual(
+		expect(rowWrappers).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					tag: "block",
 					name: "Callout",
 					range: { start: 0, end: 2 },
 					attributes: [{ name: "variant", value: "tip" }],
@@ -224,7 +200,6 @@ describe("remarkAnnotationToShikiDecoration", () => {
 		expect(lineDecorations).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					tag: "line",
 					name: "diff",
 					range: { start: 1, end: 2 },
 				}),
@@ -233,21 +208,19 @@ describe("remarkAnnotationToShikiDecoration", () => {
 	});
 
 	it("실제 markdown code fence를 파싱한 mdast에서도 동일하게 동작해야 한다", () => {
-		const markdown = ['```ts title="demo.ts"', '// @block Callout {0-1} variant="tip"', "const a = 1", "```"].join(
-			"\n",
-		);
+		const markdown = ['```ts title="demo.ts"', '// @line Callout {0-0} variant="tip"', "const a = 1", "```"].join("\n");
 		const root = fromMarkdown(markdown) as Root;
 
 		remarkAnnotationToShikiDecoration(fullConfig)(root);
 
 		const code = getCodeNode(root);
 		const hProperties = getHProperties(code);
-		const lineWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
+		const rowWrappers = JSON.parse(String(hProperties["data-line-wrappers"] ?? "[]"));
 
 		expect(code.lang).toBe("ts");
 		expect(code.meta).toBe('title="demo.ts"');
 		expect(code.value).toBe("const a = 1");
-		expect(lineWrappers).toEqual(
+		expect(rowWrappers).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					name: "Callout",

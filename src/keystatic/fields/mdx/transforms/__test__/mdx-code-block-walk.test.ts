@@ -1,7 +1,11 @@
 import type { Root } from "mdast";
 import { describe, expect, it } from "vitest";
-import { codeFenceAnnotationConfig } from "@/libs/annotation/code-block/constants";
+import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../mdx-code-block-walk";
+
+const annotationConfig: AnnotationConfig = {
+	annotations: [{ name: "strong", kind: "render", source: "mdx-text", render: "strong", scopes: ["char"] }],
+};
 
 describe("mdx code-block walk", () => {
 	it("walkOnlyInsideCodeFence: code fence를 CodeBlock mdast로 변환한다", () => {
@@ -12,12 +16,12 @@ describe("mdx code-block walk", () => {
 				{
 					type: "code",
 					lang: "ts",
-					value: ["// @mark strong {0-5}", "hello"].join("\n"),
+					value: ["// @char strong {0-4}", "hello"].join("\n"),
 				},
 			],
 		};
 
-		walkOnlyInsideCodeFence(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeFence(input, annotationConfig);
 
 		const converted = input.children[1];
 		expect(converted?.type).toBe("mdxJsxFlowElement");
@@ -42,7 +46,7 @@ describe("mdx code-block walk", () => {
 			],
 		};
 
-		walkOnlyInsideCodeFence(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeFence(input, annotationConfig);
 		expect(input.children[0]?.type).toBe("code");
 	});
 
@@ -71,7 +75,7 @@ describe("mdx code-block walk", () => {
 			],
 		};
 
-		walkOnlyInsideCodeblock(input, codeFenceAnnotationConfig);
+		walkOnlyInsideCodeblock(input, annotationConfig);
 
 		const converted = input.children[0];
 		expect(converted?.type).toBe("code");
@@ -80,7 +84,7 @@ describe("mdx code-block walk", () => {
 		}
 
 		expect(converted.lang).toBe("ts");
-		expect(converted.value).toContain("@mark strong {0-5}");
+		expect(converted.value).toContain("@char strong {0-4}");
 		expect(converted.value).toContain("hello");
 	});
 });

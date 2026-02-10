@@ -15,7 +15,7 @@ const tuple = ['tesla', 'model 3', 'model X', 'model Y'] as const
 type result = TupleToObject<typeof tuple> 
 // expected { 'tesla': 'tesla', 'model 3': 'model 3', 'model X': 'model X', 'model Y': 'model Y'}
 
-// @block Collapsible {5-24}
+// @line collapse {5-24}
 /* _____________ 테스트 케이스 _____________ */
 import type { Equal, Expect } from '@type-challenges/utils'
 

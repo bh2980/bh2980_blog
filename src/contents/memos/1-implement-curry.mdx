@@ -67,15 +67,15 @@ f.length // 3
 
 <Collapsible>
   ```js
-  // @mark Tooltip {9-14} content="curry는 wapper 역할만 하므로 화살표 함수여도 된다."
+  // @char Tooltip {9-14} content="curry는 wapper 역할만 하므로 화살표 함수여도 된다."
   function curry(fn) {
-  // @mark Tooltip {17-24} content="curried는 실제 호출되는 함수이므로 function으로 선언해서 this를 호출 시점의 this와 바인딩 시켜줘야 한다."
+  // @char Tooltip {17-24} content="curried는 실제 호출되는 함수이므로 function으로 선언해서 this를 호출 시점의 this와 바인딩 시켜줘야 한다."
    return function curried(...args){
-  // @mark Tooltip {21-30} content="함수 선언부의 파라미터 개수를 가져온다."
+  // @char Tooltip {21-30} content="함수 선언부의 파라미터 개수를 가져온다."
      if(args.length >= fn.length){
        return fn.call(this, ...args);
      }
-  // @mark Tooltip {10-37} content="파라미터 개수가 다 채워지지 않았을 경우 지금까지 받은 파라미터를 미리 앞쪽에 고정시켜 curried의 파라미터를 누적한다."
+  // @char Tooltip {10-37} content="파라미터 개수가 다 채워지지 않았을 경우 지금까지 받은 파라미터를 미리 앞쪽에 고정시켜 curried의 파라미터를 누적한다."
      return curried.bind(this, ...args)
    }
   }

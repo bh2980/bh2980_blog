@@ -1,131 +1,155 @@
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
 import { __testable__ } from "../libs";
-import type { AnnotationConfig } from "../types";
+import type { AnnotationConfig, CodeBlockAnnotation, Range } from "../types";
 
-const { getTypePair, createAnnotationRegistry, resolveAnnotationTypeDefinition, fromAnnotationsToEvents } =
+const { normalizeConfigItems, createAnnotationRegistry, supportsAnnotationScope, fromAnnotationsToEvents } =
 	__testable__;
 
-describe("resolveAnnotationTypeDefinition", () => {
-	it("기본 tag definition을 그대로 반환한다", () => {
-		const resolved = resolveAnnotationTypeDefinition({});
+const makeAnnotation = ({
+	scope,
+	name,
+	range,
+	order,
+	priority = 0,
+	source = "mdx-text",
+	mode,
+}: {
+	scope: CodeBlockAnnotation["scope"];
+	name: string;
+	range: Range;
+	order: number;
+	priority?: number;
+	source?: "mdast" | "mdx-text";
+	mode?: "class" | "render";
+}): CodeBlockAnnotation => {
+	const resolvedMode = mode ?? (source === "mdast" ? "class" : "render");
+	if (scope === "line") {
+		const base = { scope, name, range, priority, order };
+		return resolvedMode === "class" ? { ...base, class: "line-c" } : { ...base, render: name };
+	}
 
-		expect(resolved.inlineClass).toEqual(ANNOTATION_TYPE_DEFINITION.inlineClass);
-		expect(resolved.inlineWrap).toEqual(ANNOTATION_TYPE_DEFINITION.inlineWrap);
-		expect(resolved.lineClass).toEqual(ANNOTATION_TYPE_DEFINITION.lineClass);
-		expect(resolved.lineWrap).toEqual(ANNOTATION_TYPE_DEFINITION.lineWrap);
-	});
+	const base = { scope, name, range, priority, order, source };
+	return resolvedMode === "class" ? { ...base, class: "c" } : { ...base, render: name };
+};
 
-	it("tagOverrides를 trim하여 반영한다", () => {
-		const resolved = resolveAnnotationTypeDefinition({
-			tagOverrides: {
-				inlineWrap: " mark ",
-				lineWrap: " block ",
-			},
-		});
-
-		expect(resolved.inlineWrap.tag).toBe("mark");
-		expect(resolved.lineWrap.tag).toBe("block");
-	});
-
-	it("유효하지 않은 tag 형식이면 에러를 던진다", () => {
-		expect(() =>
-			resolveAnnotationTypeDefinition({
-				tagOverrides: { inlineClass: "1bad" },
-			}),
-		).toThrowError('[createAnnotationRegistry] ERROR : invalid annotation tag "1bad" for type "inlineClass"');
-	});
-
-	it("서로 다른 type에 동일 tag를 주면 에러를 던진다", () => {
-		expect(() =>
-			resolveAnnotationTypeDefinition({
-				tagOverrides: {
-					inlineClass: "dup",
-					inlineWrap: "dup",
-				},
-			}),
-		).toThrowError('[createAnnotationRegistry] ERROR : duplicated annotation tag "dup"');
-	});
-});
-
-describe("createAnnotationRegistry / getTypePair", () => {
+describe("normalizeConfigItems / createAnnotationRegistry", () => {
 	it("annotationConfig가 없으면 에러를 던진다", () => {
 		expect(() => createAnnotationRegistry(undefined)).toThrowError(
 			"[createAnnotationRegistry] ERROR : annotationConfig is required",
 		);
 	});
 
-	it("타입별 설정을 registry로 구성하고 priority를 배열 순서로 부여한다", () => {
+	it("기본값(source/scopes)과 priority를 type 그룹별로 부여한다", () => {
 		const config: AnnotationConfig = {
-			inlineClass: [
-				{ name: "strong", source: "mdast", class: "font-bold" },
-				{ name: "emphasis", source: "mdast", class: "italic" },
+			annotations: [
+				{ name: "strong", kind: "class", class: "font-bold", source: "mdast", scopes: ["char", "document"] },
+				{ name: "emphasis", kind: "class", class: "italic", scopes: ["char"] },
+				{ name: "Tooltip", kind: "render", render: "Tooltip", scopes: ["char", "document"] },
+				{ name: "diff", kind: "class", class: "diff", scopes: ["line"] },
+				{ name: "Callout", kind: "render", render: "Callout", scopes: ["line"] },
 			],
-			inlineWrap: [{ name: "Tooltip", source: "mdx-text", render: "Tooltip" }],
-			lineClass: [{ name: "diff", source: "mdx-flow", class: "diff" }],
-			lineWrap: [{ name: "Callout", source: "mdx-flow", render: "Callout" }],
 		};
 
-		const registry = createAnnotationRegistry(config);
+		const normalized = normalizeConfigItems(config);
+		expect(normalized).toMatchObject([
+			{ name: "strong", source: "mdast", scopes: ["char", "document"], priority: 0, kind: "class" },
+			{ name: "emphasis", source: "mdx-text", scopes: ["char"], priority: 1, kind: "class" },
+			{ name: "Tooltip", source: "mdx-text", scopes: ["char", "document"], priority: 0, kind: "render" },
+			{ name: "diff", source: "mdx-text", scopes: ["line"], priority: 0, kind: "class" },
+			{ name: "Callout", source: "mdx-text", scopes: ["line"], priority: 0, kind: "render" },
+		]);
 
-		expect(registry.get("strong")).toMatchObject({
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			priority: 0,
-		});
-		expect(registry.get("emphasis")).toMatchObject({
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			priority: 1,
-		});
-		expect(registry.get("Tooltip")).toMatchObject({
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			priority: 0,
-		});
-		expect(registry.get("diff")).toMatchObject({
-			type: "lineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
-			priority: 0,
-		});
-		expect(registry.get("Callout")).toMatchObject({
-			type: "lineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
-			priority: 0,
-		});
+		const registry = createAnnotationRegistry(config);
+		const strong = registry.get("strong");
+		const tooltip = registry.get("Tooltip");
+		const diff = registry.get("diff");
+		const callout = registry.get("Callout");
+
+		expect(strong).toBeDefined();
+		expect(tooltip).toBeDefined();
+		expect(diff).toBeDefined();
+		expect(callout).toBeDefined();
+		if (!strong || !tooltip || !diff || !callout) {
+			throw new Error("Expected annotation registry items to exist");
+		}
+
+		expect(supportsAnnotationScope(strong, "char")).toBe(true);
+		expect(supportsAnnotationScope(tooltip, "document")).toBe(true);
+		expect(supportsAnnotationScope(diff, "line")).toBe(true);
+		expect(supportsAnnotationScope(callout, "line")).toBe(true);
+		expect(registry.get("strong")?.kind).toBe("class");
+		expect(registry.get("Tooltip")?.kind).toBe("render");
 	});
 
-	it("getTypePair는 type별 typeId/tag를 정확히 매핑한다", () => {
-		const definition = resolveAnnotationTypeDefinition({
-			tagOverrides: { lineWrap: "block" },
-		});
+	it("중복/잘못된 name은 에러를 던진다", () => {
+		expect(() =>
+			normalizeConfigItems({
+				annotations: [
+					{ name: "dup", kind: "class", class: "a" },
+					{ name: "dup", kind: "render", render: "X" },
+				],
+			}),
+		).toThrowError('[createAnnotationRegistry] ERROR : duplicated annotation name "dup"');
 
-		expect(getTypePair("lineWrap", definition)).toEqual({
-			type: "lineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
-			tag: "block",
-		});
+		expect(() =>
+			normalizeConfigItems({
+				annotations: [{ name: "1bad", kind: "class", class: "a" }],
+			}),
+		).toThrowError('[createAnnotationRegistry] ERROR : invalid annotation name "1bad"');
 	});
 });
 
 describe("fromAnnotationsToEvents", () => {
-	it("기본 이벤트 정렬 함수를 제공한다", () => {
+	it("range start=end인 annotation은 이벤트를 만들지 않는다", () => {
 		const events = fromAnnotationsToEvents([
-			{
-				type: "inlineWrap",
-				typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-				tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-				source: "mdx-text",
-				name: "Tooltip",
-				range: { start: 0, end: 4 },
-				priority: 0,
+			makeAnnotation({
+				scope: "char",
+				name: "noop",
+				range: { start: 1, end: 1 },
 				order: 0,
-			},
+			}),
 		]);
 
-		expect(events).toEqual([
-			expect.objectContaining({ kind: "open", pos: 0 }),
-			expect.objectContaining({ kind: "close", pos: 4 }),
-		]);
+		expect(events).toEqual([]);
+	});
+
+	it("같은 pos에서 close가 open보다 먼저 온다", () => {
+		const a = makeAnnotation({
+			scope: "char",
+			name: "A",
+			range: { start: 0, end: 2 },
+			order: 0,
+		});
+		const b = makeAnnotation({
+			scope: "char",
+			name: "B",
+			range: { start: 2, end: 4 },
+			order: 1,
+		});
+
+		const events = fromAnnotationsToEvents([a, b]).map((e) => `${e.kind}@${e.pos}:${e.anno.name}`);
+		expect(events).toEqual(["open@0:A", "close@2:A", "open@2:B", "close@4:B"]);
+	});
+
+	it("동일 range/pos 충돌 시 order를 마지막 tie-breaker로 사용한다", () => {
+		const a = makeAnnotation({
+			scope: "char",
+			name: "wrap-0",
+			range: { start: 0, end: 2 },
+			order: 0,
+		});
+		const b = makeAnnotation({
+			scope: "char",
+			name: "class-1",
+			range: { start: 0, end: 2 },
+			order: 1,
+			source: "mdast",
+		});
+
+		const opens = fromAnnotationsToEvents([b, a])
+			.filter((event) => event.kind === "open")
+			.map((event) => event.anno.name);
+
+		expect(opens).toEqual(["wrap-0", "class-1"]);
 	});
 });

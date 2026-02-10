@@ -1,86 +1,23 @@
 import type { Paragraph, Text } from "mdast";
 import type { MdxJsxTextElement } from "mdast-util-mdx-jsx";
 import { describe, expect, it } from "vitest";
-import { ANNOTATION_TYPE_DEFINITION } from "../constants";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ } from "../mdast-to-document";
-import type { AnnotationAttr, AnnotationRegistry, InlineAnnotation, Range } from "../types";
+import type { AnnotationAttr, AnnotationConfig, InlineAnnotation, Range } from "../types";
 
 const { fromParagraphToLine } = __testable__;
-
-const registry: AnnotationRegistry = new Map([
-	[
-		"strong",
-		{
-			name: "strong",
-			source: "mdast",
-			class: "font-bold",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 0,
-		},
+const { createAnnotationRegistry, supportsAnnotationScope } = libsTestable;
+const annotationConfig: AnnotationConfig = {
+	annotations: [
+		{ name: "strong", kind: "class" as const, source: "mdast" as const, class: "font-bold", scopes: ["char"] },
+		{ name: "emphasis", kind: "class" as const, source: "mdast" as const, class: "italic", scopes: ["char"] },
+		{ name: "Tooltip", kind: "render" as const, source: "mdx-text" as const, render: "Tooltip", scopes: ["char"] },
+		{ name: "u", kind: "render" as const, source: "mdx-text" as const, render: "u", scopes: ["char"] },
+		{ name: "LineBadge", kind: "class" as const, class: "line-badge", scopes: ["line"] },
+		{ name: "Collapsible", kind: "render" as const, render: "Collapsible", scopes: ["line"] },
 	],
-	[
-		"emphasis",
-		{
-			name: "emphasis",
-			source: "mdast",
-			class: "italic",
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
-			priority: 1,
-		},
-	],
-	[
-		"Tooltip",
-		{
-			name: "Tooltip",
-			source: "mdx-text",
-			render: "Tooltip",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 0,
-		},
-	],
-	[
-		"u",
-		{
-			name: "u",
-			source: "mdx-text",
-			render: "u",
-			type: "inlineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
-			priority: 1,
-		},
-	],
-	[
-		"LineBadge",
-		{
-			name: "LineBadge",
-			source: "mdx-text",
-			class: "line-badge",
-			type: "lineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.lineClass.tag,
-			priority: 0,
-		},
-	],
-	[
-		"Collapsible",
-		{
-			name: "Collapsible",
-			source: "mdx-flow",
-			render: "Collapsible",
-			type: "lineWrap",
-			typeId: ANNOTATION_TYPE_DEFINITION.lineWrap.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.lineWrap.tag,
-			priority: 0,
-		},
-	],
-]);
+};
+const registry = createAnnotationRegistry(annotationConfig);
 
 const text = (value: string): Text => ({ type: "text", value });
 const paragraph = (children: Paragraph["children"]): Paragraph => ({ type: "paragraph", children });
@@ -108,16 +45,16 @@ const expectedInline = (
 	attributes?: AnnotationAttr[],
 ): InlineAnnotation => {
 	const config = registry.get(registryKey);
-	if (!config || (config.type !== "inlineClass" && config.type !== "inlineWrap")) {
+	if (!config || !supportsAnnotationScope(config, "char")) {
 		throw new Error(`Unknown inline annotation config: ${registryKey}`);
 	}
 
-	if (config.type === "inlineClass") {
+	if (config.kind === "class") {
 		return {
-			...config,
-			type: "inlineClass",
-			typeId: ANNOTATION_TYPE_DEFINITION.inlineClass.typeId,
-			tag: ANNOTATION_TYPE_DEFINITION.inlineClass.tag,
+			class: config.class ?? "",
+			source: config.source,
+			priority: config.priority,
+			scope: "char",
 			name,
 			range,
 			order,
@@ -126,10 +63,10 @@ const expectedInline = (
 	}
 
 	return {
-		...config,
-		type: "inlineWrap",
-		typeId: ANNOTATION_TYPE_DEFINITION.inlineWrap.typeId,
-		tag: ANNOTATION_TYPE_DEFINITION.inlineWrap.tag,
+		render: config.render ?? name,
+		source: config.source,
+		priority: config.priority,
+		scope: "char",
 		name,
 		range,
 		order,
@@ -211,9 +148,7 @@ describe("fromParagraphToLine", () => {
 				expectedInline("u", "u", { start: 0, end: 3 }, 2, []),
 			]),
 		);
-		expect(
-			line.annotations.every((annotation) => annotation.type === "inlineClass" || annotation.type === "inlineWrap"),
-		).toBe(true);
+		expect(line.annotations.every((annotation) => annotation.scope === "char")).toBe(true);
 	});
 
 	it("빈 paragraph는 빈 Line을 반환한다", () => {
