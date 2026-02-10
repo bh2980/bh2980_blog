@@ -87,6 +87,6 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
   </Tab>
 </Tabs>
 
-이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이입니다. 정적 string만을 사용하는 `metadata`와 달리 `generateMetadata`의 경우 `getPost` 함수를 통해 타이틀(title)과 요약(excerpt)를 가져와 metadata를 생성하고 있습니다. 저는 /posts/\[slug] 형태의 라우
+이 둘의 차이는 메타 데이터가 정적인지 동적인지의 차이입니다. 저는 `/posts/[slug]` 형태의 라우터를 사용하기 때문에 글 본문의 페이지 파일에서 정적으로 메타데이터를 결정할 수 없습니다. 이럴 경우에 `metadata` 객체가 아니라 `generateMetadata`를 사용합니다.
 
 만약 메타 데이터를 설정하지 않은 페이지는 기본적으로 상위 라우트의 메타 데이터를 상속받습니다.
