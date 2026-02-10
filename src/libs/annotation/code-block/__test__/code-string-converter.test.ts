@@ -4,8 +4,8 @@ import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../cod
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import type {
 	AnnotationAttr,
-	AnnotationConfigItem,
 	AnnotationConfig,
+	AnnotationConfigItem,
 	CodeBlockDocument,
 	InlineAnnotation,
 	Line,
@@ -49,7 +49,6 @@ const rowWrapByName = new Map(
 		.filter(isLineRender)
 		.map((item, priority) => [item.name, { render: item.render, priority }]),
 );
-
 
 const charRender = (name: string, range: Range, order: number, attributes: AnnotationAttr[] = []): InlineAnnotation => {
 	const config = charRenderByName.get(name);
@@ -372,11 +371,7 @@ describe("code-string converter", () => {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: [
-				`// @line Callout {0-0} showLineNumbers`,
-				`// @char Tooltip {0-4} showLineNumbers`,
-				"hello",
-			].join("\n"),
+			value: [`// @line Callout {0-0} showLineNumbers`, `// @char Tooltip {0-4} showLineNumbers`, "hello"].join("\n"),
 		};
 
 		const output = fromCodeFenceToCodeBlockDocument(input, annotationConfig);

@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { useSyncScroll, type SyncScrollAxis } from "../use-sync-scroll";
+import { type SyncScrollAxis, useSyncScroll } from "../use-sync-scroll";
 
 function TestHarness({ axis = "both" }: { axis?: SyncScrollAxis }) {
 	const refA = useRef<HTMLDivElement>(null);

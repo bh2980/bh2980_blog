@@ -25,11 +25,7 @@ describe("regex annotation comment syntax", () => {
 		const nextLine = 'const tail = "foo"';
 		const first = line.indexOf("foo");
 		const second = line.indexOf("foo", first + 1);
-		const document = parse([
-			"// @char fold {re:/foo/g}",
-			line,
-			nextLine,
-		].join("\n"));
+		const document = parse(["// @char fold {re:/foo/g}", line, nextLine].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([line, nextLine]);
 		expect(document.lines[0]?.annotations).toEqual(
@@ -56,11 +52,9 @@ describe("regex annotation comment syntax", () => {
 		const secondLine = 'const b = <span className="gamma" />';
 		const firstCapture = "alpha beta";
 		const secondCapture = "gamma";
-		const document = parse([
-			'// @document fold {re:/(?<=className\\s*=\\s*")[^"]+(?=")/g}',
-			firstLine,
-			secondLine,
-		].join("\n"));
+		const document = parse(
+			['// @document fold {re:/(?<=className\\s*=\\s*")[^"]+(?=")/g}', firstLine, secondLine].join("\n"),
+		);
 
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([
@@ -91,10 +85,7 @@ describe("regex annotation comment syntax", () => {
 
 	it("regex가 매치되지 않으면 annotation을 만들지 않는다", () => {
 		const line = 'const value = "bar"';
-		const document = parse([
-			"// @char fold {re:/foo/g}",
-			line,
-		].join("\n"));
+		const document = parse(["// @char fold {re:/foo/g}", line].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([line]);
 		expect(document.lines[0]?.annotations).toEqual([]);
@@ -102,10 +93,7 @@ describe("regex annotation comment syntax", () => {
 
 	it("g 플래그가 없어도 document regex는 모든 매치를 range로 만든다", () => {
 		const line = "foo bar foo";
-		const document = parse([
-			"// @document fold {re:/foo/}",
-			line,
-		].join("\n"));
+		const document = parse(["// @document fold {re:/foo/}", line].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([line]);
 		expect(document.lines[0]?.annotations).toEqual([
@@ -125,11 +113,7 @@ describe("regex annotation comment syntax", () => {
 	it("줄바꿈을 가로지르는 document regex 매치는 라인별 absolute range로 분할된다", () => {
 		const firstLine = "hello";
 		const secondLine = "world";
-		const document = parse([
-			String.raw`// @document fold {re:/o\nw/g}`,
-			firstLine,
-			secondLine,
-		].join("\n"));
+		const document = parse([String.raw`// @document fold {re:/o\nw/g}`, firstLine, secondLine].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([

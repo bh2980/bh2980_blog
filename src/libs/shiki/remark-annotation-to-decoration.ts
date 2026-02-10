@@ -150,15 +150,19 @@ export const fromCodeBlockDocumentToShikiAnnotationPayload = (
 				annotation.range.end >= annotation.range.start &&
 				annotation.range.end <= lineAbsoluteEnd;
 			const style = resolveStyle(registry, annotation);
-			const decoration = buildInlineDecoration(lineNumber, {
-				...annotation,
-				range: isAbsoluteRangeForCurrentLine
-					? {
-							start: annotation.range.start - lineOffset,
-							end: annotation.range.end - lineOffset,
-						}
-					: annotation.range,
-			}, style);
+			const decoration = buildInlineDecoration(
+				lineNumber,
+				{
+					...annotation,
+					range: isAbsoluteRangeForCurrentLine
+						? {
+								start: annotation.range.start - lineOffset,
+								end: annotation.range.end - lineOffset,
+							}
+						: annotation.range,
+				},
+				style,
+			);
 			if (decoration) decorations.push(decoration);
 		}
 	});

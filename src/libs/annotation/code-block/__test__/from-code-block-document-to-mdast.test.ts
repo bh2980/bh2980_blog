@@ -1,8 +1,7 @@
-import type { AnnotationAttr } from "../types";
-import type { CodeBlockDocument, AnnotationConfig, CodeBlockRoot } from "../types";
 import { describe, expect, it } from "vitest";
 import { __testable__ as documentToMdast } from "../document-to-mdast";
 import { __testable__ as mdastToDocument } from "../mdast-to-document";
+import type { AnnotationAttr, AnnotationConfig, CodeBlockDocument, CodeBlockRoot } from "../types";
 
 const { fromCodeBlockDocumentToMdast } = documentToMdast;
 const { fromMdxFlowElementToCodeDocument } = mdastToDocument;
@@ -41,7 +40,10 @@ const rowWrap = (name: string, range: { start: number; end: number }, order: num
 	order,
 });
 
-const toDocument = (lines: CodeBlockDocument["lines"], annotations: CodeBlockDocument["annotations"] = []): CodeBlockDocument => ({
+const toDocument = (
+	lines: CodeBlockDocument["lines"],
+	annotations: CodeBlockDocument["annotations"] = [],
+): CodeBlockDocument => ({
 	lang: "ts",
 	meta: { title: "demo.ts", showLineNumbers: true },
 	lines,
@@ -67,7 +69,13 @@ describe("fromCodeBlockDocumentToMdast", () => {
 	});
 
 	it("line들을 단일 paragraph + hard break로 변환한다", () => {
-		const ast = fromCodeBlockDocumentToMdast(toDocument([{ value: "line-1", annotations: [] }, { value: "line-2", annotations: [] }]), annotationConfig);
+		const ast = fromCodeBlockDocumentToMdast(
+			toDocument([
+				{ value: "line-1", annotations: [] },
+				{ value: "line-2", annotations: [] },
+			]),
+			annotationConfig,
+		);
 		const paragraph = getSingleParagraph(ast);
 
 		expect(paragraph.children).toEqual([

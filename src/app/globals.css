@@ -5,20 +5,20 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @utility anno-mark-base {
-  & > *:first-of-type {
-    @apply relative;
-  }
+	& > *:first-of-type {
+		@apply relative;
+	}
 
-  & > *:first-of-type::before {
-    @apply absolute -left-3.5 top-1/2 -translate-y-1/2 select-none pointer-events-none;
-  }
+	& > *:first-of-type::before {
+		@apply absolute -left-3.5 top-1/2 -translate-y-1/2 select-none pointer-events-none;
+	}
 }
 
 @custom-variant anno-mark {
-  /* slot: anno-mark:<utility>들이 ::before에 주입 */
-  & > *:first-of-type::before {
-    @slot;
-  }
+	/* slot: anno-mark:<utility>들이 ::before에 주입 */
+	& > *:first-of-type::before {
+		@slot;
+	}
 }
 
 @theme inline {
@@ -386,7 +386,7 @@
 		-webkit-font-feature-settings: var(--font-features-base);
 	}
 
-	html.dark .shiki{
+	html.dark .shiki {
 		background-color: var(--shiki-dark-bg) !important;
 	}
 
@@ -463,4 +463,3 @@
 [data-wrapper-toolbar-host="true"] > * {
 	pointer-events: auto;
 }
-

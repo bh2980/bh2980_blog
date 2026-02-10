@@ -221,7 +221,7 @@ export const applyLineWrappers = (
 		}))
 		.filter(
 			(wrapper) =>
-					wrapper.range.start < wrapper.range.end && wrapper.render.length > 0 && allowedRenderTagSet.has(wrapper.render),
+				wrapper.range.start < wrapper.range.end && wrapper.render.length > 0 && allowedRenderTagSet.has(wrapper.render),
 		)
 		.sort((a, b) => a.order - b.order);
 
@@ -247,16 +247,16 @@ export const applyLineWrappers = (
 		if (!startLine || !endLine) continue;
 
 		const properties: Record<string, HastPropertyValue> = {};
-			for (const attribute of wrapper.attributes) {
-				const propName = attribute.name.trim();
-				if (isForbiddenPropName(propName)) continue;
-				const propValue = toHastPropertyValue(attribute.value);
-				if (!isAllowedPropertyValue(propName, propValue)) continue;
-				properties[propName] = propValue;
-			}
-
-			wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
+		for (const attribute of wrapper.attributes) {
+			const propName = attribute.name.trim();
+			if (isForbiddenPropName(propName)) continue;
+			const propValue = toHastPropertyValue(attribute.value);
+			if (!isAllowedPropertyValue(propName, propValue)) continue;
+			properties[propName] = propValue;
 		}
+
+		wrapRangeByLines(codeEl, startLine, endLine, wrapper.render, properties);
+	}
 };
 
 export const addLineWrappers = (

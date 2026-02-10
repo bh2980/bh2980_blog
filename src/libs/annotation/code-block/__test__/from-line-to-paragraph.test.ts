@@ -1,7 +1,7 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import { describe, expect, it } from "vitest";
-import { __testable__ as libsTestable } from "../libs";
 import { __testable__ as fromCodeBlockDocumentToMdastTestable } from "../document-to-mdast";
+import { __testable__ as libsTestable } from "../libs";
 import { __testable__ as fromMdxFlowElementToCodeDocumentTestable } from "../mdast-to-document";
 import type { AnnotationAttr, AnnotationConfig, AnnotationEvent, InlineAnnotation, Line, Range } from "../types";
 

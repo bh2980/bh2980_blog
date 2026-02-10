@@ -250,7 +250,10 @@ const parseScopeSelector = (raw: string): ScopeSelector | undefined => {
 	return { kind: "regex", regex };
 };
 
-const parseScopeComment = (line: string, commentSyntax: { prefix: string; postfix: string }): ParsedScopeComment | undefined => {
+const parseScopeComment = (
+	line: string,
+	commentSyntax: { prefix: string; postfix: string },
+): ParsedScopeComment | undefined => {
 	const body = extractCommentBody(line, commentSyntax);
 	if (!body?.startsWith("@")) return;
 
@@ -599,10 +602,10 @@ const parseCodeLines = ({
 	for (const lineText of codeValue.split("\n")) {
 		const consumed = tryConsumeScopeComment({
 			lineText,
-				commentSyntax,
-				parseLineAnnotations,
-				registry,
-				linesLength: lines.length,
+			commentSyntax,
+			parseLineAnnotations,
+			registry,
+			linesLength: lines.length,
 			pendingScopeInlineDirectives,
 			pendingScopeLineMarkers,
 			pendingScopeDocumentDirectives,
@@ -615,11 +618,11 @@ const parseCodeLines = ({
 		}
 
 		commitCodeLine({
-				lines,
-				pendingScopeInlineDirectives,
-				stagedInline,
-				lineText,
-			});
+			lines,
+			pendingScopeInlineDirectives,
+			stagedInline,
+			lineText,
+		});
 	}
 
 	for (const marker of pendingScopeLineMarkers) {
@@ -697,14 +700,14 @@ const applyScopeDocumentDirectives = ({
 				const segEnd = Math.min(end, offsets.end);
 				if (segEnd <= segStart) continue;
 
-					const annotation = makeInlineAnnotationFromConfig({
-						config: directive.config,
-						scope: "document",
-						name: directive.name,
-						range: { start: segStart, end: segEnd },
-						attributes: directive.attributes,
-						order: line.annotations.length,
-					});
+				const annotation = makeInlineAnnotationFromConfig({
+					config: directive.config,
+					scope: "document",
+					name: directive.name,
+					range: { start: segStart, end: segEnd },
+					attributes: directive.attributes,
+					order: line.annotations.length,
+				});
 				if (!annotation) continue;
 				line.annotations.push(annotation);
 			}

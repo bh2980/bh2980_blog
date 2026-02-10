@@ -103,11 +103,7 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 	});
 
 	it("빈 paragraph(children: [])는 빈 라인으로 포함한다", () => {
-		const codeBlockNode = codeBlock([
-			paragraph([text("line1")]),
-			paragraph([]),
-			paragraph([text("line3")]),
-		]);
+		const codeBlockNode = codeBlock([paragraph([text("line1")]), paragraph([]), paragraph([text("line3")])]);
 
 		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
 
@@ -139,16 +135,7 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 	});
 
 	it("inline wrapper 내부 break는 줄 분리 후에도 absolute range를 유지한다", () => {
-		const node = codeBlock([
-			paragraph([
-				inline("u", [
-					text("ab"),
-					{ type: "break" },
-					text("cd"),
-				]),
-				text("!"),
-			]),
-		]);
+		const node = codeBlock([paragraph([inline("u", [text("ab"), { type: "break" }, text("cd")]), text("!")])]);
 
 		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
 

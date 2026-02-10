@@ -26,11 +26,7 @@ const parse = (value: string) => {
 
 describe("scope comment syntax", () => {
 	it("@line plus는 바로 아래 코드 1줄에 line scope annotation을 만든다", () => {
-		const document = parse([
-			"// @line plus",
-			"const added = 1",
-			"const untouched = 0",
-		].join("\n"));
+		const document = parse(["// @line plus", "const added = 1", "const untouched = 0"].join("\n"));
 
 		expect(document.lines.map((line) => line.value)).toEqual(["const added = 1", "const untouched = 0"]);
 		expect(document.annotations).toEqual([
@@ -44,14 +40,15 @@ describe("scope comment syntax", () => {
 	});
 
 	it("@line plus {0-1}은 닫힌 구간 [0,1]로 해석되어 내부 range end가 +1 된다", () => {
-		const document = parse([
-			"// @line plus {0-1}",
+		const document = parse(
+			["// @line plus {0-1}", "const first = 1", "const second = 2", "const third = 3"].join("\n"),
+		);
+
+		expect(document.lines.map((line) => line.value)).toEqual([
 			"const first = 1",
 			"const second = 2",
 			"const third = 3",
-		].join("\n"));
-
-		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
+		]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				scope: "line",
@@ -63,15 +60,15 @@ describe("scope comment syntax", () => {
 	});
 
 	it("@line plus ... @line plus end는 연속 구간 line scope annotation으로 파싱한다", () => {
-		const document = parse([
-			"// @line plus",
+		const document = parse(
+			["// @line plus", "const first = 1", "const second = 2", "// @line plus end", "const third = 3"].join("\n"),
+		);
+
+		expect(document.lines.map((line) => line.value)).toEqual([
 			"const first = 1",
 			"const second = 2",
-			"// @line plus end",
 			"const third = 3",
-		].join("\n"));
-
-		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
+		]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				scope: "line",
@@ -83,15 +80,17 @@ describe("scope comment syntax", () => {
 	});
 
 	it("@line collapse ... @line collapse end는 line scope wrapper 구간으로 파싱한다", () => {
-		const document = parse([
-			"// @line collapse",
+		const document = parse(
+			["// @line collapse", "const first = 1", "const second = 2", "// @line collapse end", "const third = 3"].join(
+				"\n",
+			),
+		);
+
+		expect(document.lines.map((line) => line.value)).toEqual([
 			"const first = 1",
 			"const second = 2",
-			"// @line collapse end",
 			"const third = 3",
-		].join("\n"));
-
-		expect(document.lines.map((line) => line.value)).toEqual(["const first = 1", "const second = 2", "const third = 3"]);
+		]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				scope: "line",
@@ -104,10 +103,7 @@ describe("scope comment syntax", () => {
 
 	it("@document fold {0-4}는 닫힌 구간 [0,4]를 absolute inline range로 적용한다", () => {
 		const line = "hello world";
-		const document = parse([
-			"// @document fold {0-4}",
-			line,
-		].join("\n"));
+		const document = parse(["// @document fold {0-4}", line].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([line]);
 		expect(document.lines[0]?.annotations).toEqual([
@@ -127,11 +123,7 @@ describe("scope comment syntax", () => {
 		const secondStart = firstEnd + 1;
 		const secondEnd = secondStart + secondLine.length;
 
-		const document = parse([
-			"// @document fold",
-			firstLine,
-			secondLine,
-		].join("\n"));
+		const document = parse(["// @document fold", firstLine, secondLine].join("\n"));
 
 		expect(document.lines.map((item) => item.value)).toEqual([firstLine, secondLine]);
 		expect(document.lines[0]?.annotations).toEqual([

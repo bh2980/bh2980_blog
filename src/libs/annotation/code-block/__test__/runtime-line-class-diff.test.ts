@@ -17,11 +17,7 @@ describe("runtime line class diff", () => {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: [
-				"// @line plus",
-				"const added = 1",
-				"const untouched = 0",
-			].join("\n"),
+			value: ["// @line plus", "const added = 1", "const untouched = 0"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
@@ -42,17 +38,16 @@ describe("runtime line class diff", () => {
 			type: "code",
 			lang: "ts",
 			meta: "",
-			value: [
-				"// @line minus {1-2}",
-				"const kept = 0",
-				"const removed = 2",
-				"const removedToo = 3",
-			].join("\n"),
+			value: ["// @line minus {1-2}", "const kept = 0", "const removed = 2", "const removedToo = 3"].join("\n"),
 		};
 
 		const document = fromCodeFenceToCodeBlockDocument(codeNode, annotationConfig);
 
-		expect(document.lines.map((line) => line.value)).toEqual(["const kept = 0", "const removed = 2", "const removedToo = 3"]);
+		expect(document.lines.map((line) => line.value)).toEqual([
+			"const kept = 0",
+			"const removed = 2",
+			"const removedToo = 3",
+		]);
 		expect(document.annotations).toEqual([
 			expect.objectContaining({
 				scope: "line",

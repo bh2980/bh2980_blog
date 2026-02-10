@@ -17,11 +17,7 @@ describe("hard break parse", () => {
 			children: [
 				{
 					type: "paragraph",
-					children: [
-						{ type: "text", value: "const a = 1" },
-						{ type: "break" },
-						{ type: "text", value: "const b = 2" },
-					],
+					children: [{ type: "text", value: "const a = 1" }, { type: "break" }, { type: "text", value: "const b = 2" }],
 				},
 			],
 		};

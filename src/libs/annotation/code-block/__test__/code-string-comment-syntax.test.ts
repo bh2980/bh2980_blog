@@ -4,8 +4,8 @@ import { __testable__ as fromCodeFenceToCodeBlockDocumentTestable } from "../cod
 import { __testable__ as fromCodeBlockDocumentToCodeFenceTestable } from "../document-to-code-fence";
 import type {
 	AnnotationAttr,
-	AnnotationConfigItem,
 	AnnotationConfig,
+	AnnotationConfigItem,
 	CodeBlockDocument,
 	InlineAnnotation,
 	Line,
@@ -113,9 +113,7 @@ describe("code-string converter comment syntax", () => {
 		const output = fromCodeBlockDocumentToCodeFence(input, annotationConfig);
 
 		expect(output.value).toBe(
-			[`/* @line Callout {0-1} */`, `/* @char Tooltip {0-4} content="tip" */`, "hello", "world"].join(
-				"\n",
-			),
+			[`/* @line Callout {0-1} */`, `/* @char Tooltip {0-4} content="tip" */`, "hello", "world"].join("\n"),
 		);
 	});
 });
