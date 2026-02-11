@@ -287,7 +287,7 @@ Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를
 
 먼저 루트 레이아웃에서 공통으로 사용할 기본 OpenGraph 설정을 정의할 수 있습니다.
 
-```ts
+```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
 	return {
 		metadataBase: 'https://bh2980.dev',
