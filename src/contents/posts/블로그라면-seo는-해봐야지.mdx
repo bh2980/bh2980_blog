@@ -262,3 +262,42 @@ Next.js(App Router)에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robo
 
 robots.txt가 크롤러에게 페이지의 크롤링 정책을 안내하는 역할이라면, sitemap.xml은 사이트 내에서 크롤링 및 색인이 이루어지길 원하는 URL 목록을 검색엔진에 전달하는 역할을 합니다. robots.txt와는 상호보완적 관계라고 할 수 있겠네요.
 
+```ts
+import type { MetadataRoute } from "next";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { getMemoList } from "@/libs/contents/memo";
+import { getPostList } from "@/libs/contents/post";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+	const HOST_URL = process.env.HOST_URL;
+	if (!HOST_URL) throw new Error("HOST_URL is required");
+
+	const posts = await getPostList();
+	const memos = await getMemoList();
+
+	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => ({
+		url: new URL(`${HOST_URL}/posts/${sanitizeSlug(post.slug)}`).toString(),
+		lastModified: post.updatedAt,
+	}));
+
+	const memoSitemap = memos.list.map<MetadataRoute.Sitemap[number]>((memo) => ({
+		url: new URL(`${HOST_URL}/memos/${sanitizeSlug(memo.slug)}`).toString(),
+		lastModified: memo.updatedAt,
+	}));
+
+	return [
+		{
+			url: HOST_URL,
+		},
+		{
+			url: `${HOST_URL}/posts`,
+		},
+		{
+			url: `${HOST_URL}/memos`,
+		},
+		...postsSitemap,
+		...memoSitemap,
+	];
+}
+
+```
