@@ -230,7 +230,32 @@ Next.js(App Router)에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robo
 두 방식 모두 최종적으로 동일한 robots.txt를 생성합니다. 특별히 동적인 값이 필요하지 않다면 정적 파일만으로도 충분하지만, 저는 타입 지원과 일관된 메타데이터 관리 방식을 유지하기 위해 robots 함수를 사용하는 방식을 선택했습니다.
 
 <Callout variant="note">
-  사이트 전체에 대한 설정을 제어하는 robots.txt와 다르게 메타 데이터에서 robots 옵션을 통해  설정할 수 있습니다.
+  사이트 전체에 대한 설정을 제어하는 robots.txt와 다르게 메타 데이터에서 robots 옵션을 통해 페이지별 색인 여부와 링크 추적 여부를 설정할 수 있습니다.
+
+  ```ts
+  export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+  	const { slug } = await params;
+  	const post = await getPost(slug);
+
+  	if (!post) {
+  		return {
+  			title: "Not Found",
+  			// @line highlight
+  			robots: { index: false, follow: true },
+  		};
+  	}
+
+  	const url = `/posts/${sanitizeSlug(slug)}`;
+
+  	return {
+  		title: post.title,
+  		description: post.excerpt,
+  		alternates: { canonical: url },
+  	};
+  }
+  ```
 </Callout>
+
+
 
 ### 5. sitemap.xml
