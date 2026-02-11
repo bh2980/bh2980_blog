@@ -1,5 +1,5 @@
 import { Folder } from "lucide-react";
-import type { CSSProperties, PropsWithChildren } from "react";
+import { type CSSProperties, Fragment, type PropsWithChildren } from "react";
 import { cn } from "@/utils/cn";
 import { CopyButton } from "./copy-button.client";
 
@@ -34,13 +34,13 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 							{folder}
 						</span>
 					) : (
-						<>
-							<span key={folder} className="inline-flex items-center gap-1">
+						<Fragment key={folder}>
+							<span className="inline-flex items-center gap-1">
 								<Folder size={16} className="stroke-2" />
 								{folder}
 							</span>
 							<span>/</span>
-						</>
+						</Fragment>
 					);
 				})}
 			</div>
