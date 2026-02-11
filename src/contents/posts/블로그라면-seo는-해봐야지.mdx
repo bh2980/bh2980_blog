@@ -186,6 +186,13 @@ Next.js(App Router)에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robo
 
 <Callout variant="info">
   기존의 robots.txt와 별개로 메타 데이터에서 작성할 수 있는 robots 속성도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책 설정을 제어한다면, 메타 데이터의 robots 속성은 페이지별 색인 여부(index)와 링크 추적 여부(follow)를 설정한다는 점에서 다릅니다.
+
+  ```ts
+  const metadata = {
+  	title: "Not Found",
+  	robots: { index: false, follow: true },
+  }
+  ```
 </Callout>
 
 ### 5. sitemap.xml
