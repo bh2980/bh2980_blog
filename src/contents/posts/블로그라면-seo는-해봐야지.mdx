@@ -301,7 +301,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
 저는 sitemap 함수에 게시글과 메모 리스트를 가벼와서 넣어주는 방식으로 작성했는데요. 이렇게 하면 게시글이 추가될 때마다 사이트맵이 함께 갱신되므로, 수동으로 관리할 때 발생할 수 있는 누락 가능성을 줄일 수 있습니다.
 
-<Callout variant="warning">
+<Callout variant="info">
   하나의 사이트맵에 들어갈 수 있는 URL의 개수는 최대 50,000개입니다. 때문에 50,000개 이상의 URL을 사이트맵에 담으려면 [`getSitemaps`](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps) 함수를 이용해서 여러 개의 사이트맵으로 분할해 만들 필요가 있습니다.
 </Callout>
 
