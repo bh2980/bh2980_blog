@@ -188,3 +188,22 @@ export const metadata: Metadata = {
 위와 같이 설정하면 `/posts` 페이지를 기준으로 `<link rel="canonical">` 태그가 자동으로 생성되며, `/posts?category=development`와 같은 쿼리 스트링이 붙은 URL들은 검색엔진 관점에서 모두 `/posts`의 변형으로 인식되어 색인과 평가 기준이 하나의 URL로 통합됩니다.
 
 ### 4. robots.txt
+
+robots.txt는 검색 엔진이 어떤 경로를 크롤링 할 수 있는지 제어하는 역할을 합니다. 사이트의 루트 경로에 위치하고, 크롤러는 이 파일을 먼저 확인한 뒤 페이지를 탐색합니다.
+
+Next.js에서 robots.txt는 역시 정적인 방법과 동적인 방법으로 적용할 수 있습니다.&#x20;
+
+<Tabs>
+  <Tab label="robots.txt">
+    ```text title="src/app/robots.txt"
+    User-Agent: *
+    Allow: /
+    Disallow: /keystatic/
+    Disallow: /api/
+    ```
+  </Tab>
+
+  <Tab label="robots.ts">
+
+  </Tab>
+</Tabs>
