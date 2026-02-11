@@ -285,30 +285,6 @@ OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 �
 
 Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다. 저는 루트 레이아웃에서 기본 값을 설정해두고, 게시글 상세 페이지에서는 `generateMetadata`를 사용해 각 게시글의 제목과 요약을 OG에 반영하는 방식으로 구성했습니다.
 
-먼저 루트 레이아웃에서 공통으로 사용할 기본 OpenGraph 설정을 정의할 수 있습니다.
-
-```ts title="src/app/layout.tsx"
-export async function generateMetadata(): Promise<Metadata> {
-	return {
-		metadataBase: 'https://bh2980.dev',
-		title: "bh2980.dev",
-		description: "bh2980의 개발 블로그",
-		alternates: {
-			canonical: "/",
-		},
-		// @line plus
-		openGraph: {
-			type: "website",
-			siteName: "bh2980.dev",
-			locale: "ko_KR",
-		},
-		// @line plus end
-	};
-}
-```
-
-게시글 상세 페이지처럼 동적인 라우트에서는 generateMetadata를 활용해 게시글 데이터를 기반으로 OG 정보를 생성합니다. 이렇게 하면 게시글이 추가되거나 수정될 때마다 공유 카드 정보도 함께 갱신됩니다.
-
 ```ts title="src/app/posts/[slug]/page.tsx"
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
 	const { slug } = await params;
