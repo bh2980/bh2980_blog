@@ -185,7 +185,7 @@ Next.js(App Router)에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robo
 두 방식 모두 최종적으로 동일한 robots.txt를 생성합니다. 특별히 동적인 값이 필요하지 않다면 정적 파일만으로도 충분하지만, 저는 타입 지원과 일관된 메타데이터 관리 방식을 유지하기 위해 robots 함수를 사용하는 방식을 선택했습니다.
 
 <Callout variant="info">
-  기존의 robots.txt와 별개로 메타 데이터에서 작성할 수 있는 robots 속성도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책을 설정한다면, 메타 데이터의 robots 속성은 페이지별 색인 여부와 링크 추적 여부를 설정한다는 점에서 다릅니다.
+  기존의 robots.txt와 별개로 메타 데이터에서 작성할 수 있는 [robots 속성](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#robots)도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책을 설정한다면, 메타 데이터의 robots 속성은 페이지별 색인 여부와 링크 추적 여부를 설정한다는 점에서 다릅니다.
 
   ```ts
   const metadata = {
