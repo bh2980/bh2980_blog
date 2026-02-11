@@ -299,7 +299,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 ```
 
-저는 Next.js에서 제공하는 sitemap 함수에 게시글과 메모 리스트를 가져와 넣어주는 방식으로 작성했는데요. 이렇게 하면 게시글이 추가될 때마다 사이트맵이 함께 갱신되므로, 수동으로 관리할 때 발생할 수 있는 누락 가능성을 줄일 수 있습니다.
+저는 Next.js에서 제공하는 sitemap 함수에 게시글과 메모 리스트를 가져와 넣어주는 방식으로 작성했는데요. url과 필요한 정보가 있는 배열을 return하면 간편하게 사이트맵을 생성할 수 있습니다.&#x20;
+
+이렇게 하면 게시글이 추가될 때마다 사이트맵이 함께 갱신되므로, 수동으로 관리할 때 발생할 수 있는 누락 가능성을 줄일 수 있습니다.
 
 <Callout variant="info">
   `lastModified`에 들어가는 날짜의 형식은 ISO 8601 형식을 따라야합니다.
