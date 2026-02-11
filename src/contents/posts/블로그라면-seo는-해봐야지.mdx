@@ -275,6 +275,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
 	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => ({
 		url: new URL(`https://bh2980.dev/posts/${post.slug}`).toString(),
+		// @char Tooltip {2-30} content="`lastModified`에 들어가는 날짜의 형식은 ISO 8601 형식을 따라야합니다."
 		lastModified: post.updatedAt,
 	}));
 
@@ -351,8 +352,7 @@ export default function robots(): MetadataRoute.Robots {
 ```
 
 \
-\
-
+\\
 
 <Callout variant="info">
   하나의 사이트맵에 들어갈 수 있는 URL의 개수는 최대 50,000개입니다. 때문에 50,000개 이상의 URL을 사이트맵에 담으려면 [`getSitemaps`](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps) 함수를 이용해서 사이트맵을 여러 개로 분할해 만들 필요가 있습니다.
