@@ -5,18 +5,18 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @utility anno-mark-base {
-	& > *:first-of-type {
+	& > *:first-child {
 		@apply relative;
 	}
 
-	& > *:first-of-type::after {
+	& > *:first-child::after {
 		@apply absolute -left-3.25 top-1/2 -translate-y-1/2 select-none pointer-events-none;
 	}
 }
 
 @custom-variant anno-mark {
 	/* slot: anno-mark:<utility>들이 ::before에 주입 */
-	& > *:first-of-type::after {
+	& > *:first-child::after {
 		@slot;
 	}
 }
