@@ -13,7 +13,7 @@ export const Tabs = ({ children, defaultValue }: PropsWithChildren & { defaultVa
 	const tabDefault = defaultValue ?? (hasValidFirstTab ? childrenArray[0].props.label : undefined);
 
 	return (
-		<TabsRoot defaultValue={tabDefault} className="gap-0">
+		<TabsRoot defaultValue={tabDefault} className="w-full gap-0">
 			<TabsList className="relative rounded-b-none border">
 				{childrenArray.map((child) => (
 					<TabsTrigger key={child.props.label} value={child.props.label} className="data-[state=active]:border-border!">
