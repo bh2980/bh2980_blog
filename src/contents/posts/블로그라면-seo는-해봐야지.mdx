@@ -232,7 +232,7 @@ Next.js(App Router)에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robo
 <Callout variant="note">
   사이트 전체에 대한 설정을 제어하는 robots.txt와 다르게 메타 데이터에서 robots 옵션을 통해 **페이지별 색인 여부와 링크 추적 여부를 설정**할 수 있습니다.
 
-  ```ts
+  ```ts title="src/app/posts/[slug]/page.tsx"
   export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
   	const { slug } = await params;
   	const post = await getPost(slug);
