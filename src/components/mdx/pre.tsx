@@ -17,7 +17,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 	const showTitlebar = filePath && filePath.length > 0;
 
 	return (
-		<div className="group relative flex flex-col overflow-hidden rounded-md border">
+		<div className="group relative flex w-full flex-col overflow-hidden rounded-md border">
 			<div
 				className={cn(
 					"peer",
