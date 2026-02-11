@@ -264,7 +264,6 @@ robots.txt가 크롤러에게 페이지의 크롤링 정책을 안내하는 역�
 
 ```ts
 import type { MetadataRoute } from "next";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemoList } from "@/libs/contents/memo";
 import { getPostList } from "@/libs/contents/post";
 
@@ -276,12 +275,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const memos = await getMemoList();
 
 	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => ({
-		url: new URL(`${HOST_URL}/posts/${sanitizeSlug(post.slug)}`).toString(),
+		url: new URL(`${HOST_URL}/posts/${post.slug}`).toString(),
 		lastModified: post.updatedAt,
 	}));
 
 	const memoSitemap = memos.list.map<MetadataRoute.Sitemap[number]>((memo) => ({
-		url: new URL(`${HOST_URL}/memos/${sanitizeSlug(memo.slug)}`).toString(),
+		url: new URL(`${HOST_URL}/memos/${memo.slug}`).toString(),
 		lastModified: memo.updatedAt,
 	}));
 
