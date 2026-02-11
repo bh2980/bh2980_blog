@@ -98,27 +98,26 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 							))}
 						</ul>
 					</header>
-					{post.isDeprecated ||
-						(post.isStale && (
-							<aside className="mt-4">
-								{post.isDeprecated && (
-									<Callout variant={"danger"}>
-										<p>
-											이 글은 더 이상 업데이트 되지 않습니다.
-											{post.replacementPost && (
-												<>
-													{" "}
-													최신 글은 <Link href={{ pathname: post.replacementPost }}>여기</Link>를 참조하세요
-												</>
-											)}
-										</p>
-									</Callout>
-								)}
-								{post.isStale && (
-									<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
-								)}
-							</aside>
-						))}
+					{(post.isDeprecated || post.isStale) && (
+						<aside className="mt-8">
+							{post.isDeprecated && (
+								<Callout variant={"danger"}>
+									<p>
+										이 글은 더 이상 업데이트 되지 않습니다.
+										{post.replacementPost && (
+											<>
+												{" "}
+												최신 글은 <Link href={{ pathname: post.replacementPost }}>여기</Link>를 참조하세요
+											</>
+										)}
+									</p>
+								</Callout>
+							)}
+							{post.isStale && (
+								<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
+							)}
+						</aside>
+					)}
 					{toc?.length > 0 ? <TableOfContents toc={toc} className="mt-4 xl:hidden" /> : null}
 					{content}
 				</article>
