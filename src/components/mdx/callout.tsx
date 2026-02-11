@@ -40,13 +40,13 @@ export const Callout = ({
 	const resolvedTitle = title ?? TITLE_BY_VARIANT[v];
 
 	return (
-		<Alert variant={v}>
+		<Alert variant={v} className="w-full">
 			<Icon />
 			<AlertTitle>{resolvedTitle}</AlertTitle>
 			{editor ? (
 				<div className="col-start-2 w-full">{children || description}</div>
 			) : (
-				<AlertDescription className="mt-1 [&_p]:m-0">{children || description}</AlertDescription>
+				<AlertDescription className="mt-1 text-current [&_p]:m-0">{children || description}</AlertDescription>
 			)}
 		</Alert>
 	);

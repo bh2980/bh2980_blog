@@ -17,7 +17,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 	const showTitlebar = filePath && filePath.length > 0;
 
 	return (
-		<div className="group relative flex flex-col overflow-hidden rounded-xl border dark:border-none">
+		<div className="group relative flex flex-col overflow-hidden rounded-md border">
 			<div
 				className={cn(
 					"peer",
@@ -46,7 +46,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 			</div>
 			<pre
 				className={cn(
-					"relative overflow-x-auto whitespace-pre rounded-xl px-0!",
+					"relative overflow-x-auto whitespace-pre px-0!",
 					"[&_>_code]:block [&_>_code]:min-w-fit",
 					showLineNumbers ? "[&_.line]:px-2 [&_.line]:before:mr-5" : "[&_.line]:px-5",
 					showTitlebar && "m-0! rounded-t-none",
@@ -57,7 +57,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 			>
 				{children}
 			</pre>
-			<CopyButton text={code} className="peer-data-title:top-10! lg:hidden lg:group-hover:block" />
+			<CopyButton text={code} className="hidden peer-data-title:top-10! lg:group-hover:block" />
 		</div>
 	);
 };
