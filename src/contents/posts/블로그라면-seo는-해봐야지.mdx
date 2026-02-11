@@ -299,4 +299,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 ```
 
-하나의 sitemap에 들어갈 수 있는 URL의 개수는 최대 200개입니다. 때문에 200개 이상의 URL을 sitemap에 담으려면 [`getSitemaps`](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps) 함수를 이용해서 여러 개의 사이트맵으로 분할해 만들 필요가 있습니다.
+하나의 sitemap에 들어갈 수 있는 URL의 개수는 최대 50,000개입니다. 때문에 50,000개 이상의 URL을 sitemap에 담으려면 [`getSitemaps`](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps) 함수를 이용해서 여러 개의 사이트맵으로 분할해 만들 필요가 있습니다.
