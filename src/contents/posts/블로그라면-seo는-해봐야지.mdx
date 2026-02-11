@@ -222,9 +222,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		{
 			url: `${HOST_URL}/posts`,
 		},
-		{
-			url: `${HOST_URL}/memos`,
-		},
 		...postsSitemap,
 	];
 }
@@ -247,9 +244,6 @@ sitemap 함수를 이용하면 게시글이 추가될 때마다 사이트맵이 
 	</url>
 	<url>
 		<loc>https://bh2980.dev/posts</loc>
-	</url>
-	<url>
-		<loc>https://bh2980.dev/memos</loc>
 	</url>
 	<url>
 		<loc>https://bh2980.dev/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EB%8B%A4%EC%8B%9C-%EB%A7%8C%EB%93%A4%EB%A9%B4%EC%84%9C</loc>
