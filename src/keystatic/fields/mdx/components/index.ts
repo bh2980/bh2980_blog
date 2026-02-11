@@ -4,6 +4,7 @@ import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { del } from "./del";
 import { em } from "./em";
+import { IdeographicSpace } from "./ideographic-space";
 import { EDITOR_MERMAID_NAME, EditorMermaid } from "./mermaid";
 import { strong } from "./strong";
 import { sub } from "./sub";
@@ -31,4 +32,5 @@ export const components = {
 	del,
 	sup,
 	sub,
+	IdeographicSpace,
 };

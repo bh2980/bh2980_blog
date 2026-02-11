@@ -13,6 +13,7 @@ import { collapse } from "./code-block/collapse";
 import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
+import { IdeographicSpace } from "./ideographic-space";
 import { pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
@@ -38,6 +39,7 @@ export const renderMDX = async (source: string) => {
 			},
 		},
 		components: {
+			IdeographicSpace,
 			a,
 			pre,
 			collapse,
