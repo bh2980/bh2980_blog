@@ -268,19 +268,16 @@ import { getMemoList } from "@/libs/contents/memo";
 import { getPostList } from "@/libs/contents/post";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-	const HOST_URL = process.env.HOST_URL;
-	if (!HOST_URL) throw new Error("HOST_URL is required");
-
 	const posts = await getPostList();
 	const memos = await getMemoList();
 
 	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => ({
-		url: new URL(`${HOST_URL}/posts/${post.slug}`).toString(),
+		url: new URL(`https://bh2980.dev/posts/${post.slug}`).toString(),
 		lastModified: post.updatedAt,
 	}));
 
 	const memoSitemap = memos.list.map<MetadataRoute.Sitemap[number]>((memo) => ({
-		url: new URL(`${HOST_URL}/memos/${memo.slug}`).toString(),
+		url: new URL(`https://bh2980.dev/memos/${memo.slug}`).toString(),
 		lastModified: memo.updatedAt,
 	}));
 
