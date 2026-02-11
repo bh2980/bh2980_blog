@@ -310,7 +310,24 @@ export async function generateMetadata(): Promise<Metadata> {
 게시글 상세 페이지(/posts/\[slug])처럼 동적인 라우트에서는 generateMetadata를 활용해 게시글 데이터를 기반으로 OG 정보를 생성합니다. 이렇게 하면 게시글이 추가되거나 수정될 때마다 공유 카드 정보도 함께 갱신됩니다.
 
 ```ts
-[게시글 상세 페이지(src/app/posts/[slug]/page.tsx)에서 generateMetadata로 post.title, post.excerpt, openGraph, twitter를 반환하는 코드]
+export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+	const { slug } = await params;
+	const post = await getPost(slug);
+
+	return {
+		title: post.title,
+		description: post.excerpt,
+		alternates: { canonical: url },
+		// @line plus
+		openGraph: {
+			title: post.title,
+			description: post.excerpt,
+			url: `/posts/${slug}`,
+		},
+		// @line plus end
+	};
+}
+
 ```
 
 또한 OG 이미지(og:image)는 정적 이미지 파일을 사용할 수도 있고, 게시글 제목 등을 포함한 이미지를 동적으로 생성할 수도 있습니다. 정적 이미지를 사용할 경우 경로만 지정하면 되고, 동적으로 생성할 경우 별도의 라우트에서 이미지를 만들어 openGraph.images에 연결하면 됩니다.
