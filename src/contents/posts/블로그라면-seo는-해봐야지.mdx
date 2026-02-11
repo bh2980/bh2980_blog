@@ -204,22 +204,15 @@ Next.js에서 사이드맵을 작성할 때 이전과 마찬가지로 정적으�
 
 ```ts title="src/app/sitemap.ts"
 import type { MetadataRoute } from "next";
-import { getMemoList } from "@/libs/contents/memo";
 import { getPostList } from "@/libs/contents/post";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const posts = await getPostList();
-	const memos = await getMemoList();
 
 	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => ({
 		url: new URL(`https://bh2980.dev/posts/${post.slug}`).toString(),
 		// @char Tooltip {2-30} content="lastModified에 들어가는 날짜의 형식은 ISO 8601 형식을 따라야합니다."
 		lastModified: post.updatedAt,
-	}));
-
-	const memoSitemap = memos.list.map<MetadataRoute.Sitemap[number]>((memo) => ({
-		url: new URL(`https://bh2980.dev/memos/${memo.slug}`).toString(),
-		lastModified: memo.updatedAt,
 	}));
 
 	return [
@@ -233,7 +226,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 			url: `${HOST_URL}/memos`,
 		},
 		...postsSitemap,
-		...memoSitemap,
 	];
 }
 ```
