@@ -204,6 +204,20 @@ Next.js에서 robots.txt는 역시 정적인 방법과 동적인 방법으로 �
   </Tab>
 
   <Tab label="robots.ts">
+    ```ts title="src/app/robots.ts"
+    import type { MetadataRoute } from "next";
 
+    export default function robots(): MetadataRoute.Robots {
+    	return {
+    		rules: {
+    			userAgent: "*",
+    			allow: "/",
+    			disallow: ["/keystatic/", "/api/"],
+    		},
+    		sitemap: `${process.env.HOST_URL}/sitemap.xml`,
+    	};
+    }
+
+    ```
   </Tab>
 </Tabs>
