@@ -322,20 +322,6 @@ import { getPost } from "@/libs/contents/post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/
-export async function generateImageMetadata({ params }: { params: Promise<{ slug: string }> }) {
-	const { slug } = await params;
-	const post = await getPost(slug);
-	return [
-		{
-			id: "post-og",
-			alt: post?.title || 'bh2980.dev',
-			contentType,
-			size,
-		},
-	];
-}
-
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getPost(slug);
