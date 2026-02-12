@@ -322,31 +322,7 @@ import { getPost } from "@/libs/contents/post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const post = await getPost(slug);
-
-  return new ImageResponse(
-    <div style={{ fontSize: 64, display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
-      {post.title} | bh2980.dev
-    </div>,
-    { ...size }
-  );
-}
-```
-
-위는 동적 방식으로 대표 이미지를 설정한 코드인데요. `opengraph-image.tsx` 파일을 만들고 Next.js의 `Image` 함수와 `ImageResponse`를 사용한 것을 알 수 있습니다.
-
-동적 방식으로 설정할 경우 컴포넌트 코드처럼 작성할 수 있다는 특징이 있습니다. 하지만 모든 style 문법을 지원하는 것은 아니므로 스타일이 적용되는지 유의하며 사용해야 합니다.
-
-```ts title="src/app/posts/[slug]/opengraph-image.tsx"
-import { ImageResponse } from "next/og";
-import { getPost } from "@/libs/contents/post";
-
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-
-// @line plus
+// @line collapse
 export async function generateImageMetadata({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
 	const post = await getPost(slug);
@@ -359,7 +335,7 @@ export async function generateImageMetadata({ params }: { params: Promise<{ slug
 		},
 	];
 }
-// @line plus end
+// @line collapse end
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -373,3 +349,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   );
 }
 ```
+
+위는 동적 방식으로 대표 이미지를 설정한 코드인데요. `opengraph-image.tsx` 파일을 만들고 Next.js의 `Image` 함수와 `ImageResponse`를 사용한 것을 알 수 있습니다. 이미지와 별개로&#x20;
+
+동적 방식으로 설정할 경우 컴포넌트 코드처럼 작성할 수 있다는 특징이 있습니다. 하지만 모든 style 문법을 지원하는 것은 아니므로 스타일이 적용되는지 유의하며 사용해야 합니다.
