@@ -408,8 +408,6 @@ export async function GET() {
   });
 
   for (const post of list) {
-    if (!post.publishedDateTimeISO) continue;
-
     const url = new URL(`/posts/${post.slug}`, siteUrl).href;
     feed.addItem({
       title: post.title,
