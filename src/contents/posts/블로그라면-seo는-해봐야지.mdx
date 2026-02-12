@@ -93,11 +93,11 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
   </Tab>
 </Tabs>
 
-이 둘의 차이는 **메타 데이터가 정적인지 동적인지의 차이**입니다.&#x20;
+이 둘의 차이는 **메타데이터가 정적인지 동적인지의 차이**입니다.&#x20;
 
-저는 글 본문 페이지에 `/posts/[slug]` 형태의 라우트를 사용하기 때문에 글 본문의 페이지 파일에서 정적으로 메타데이터를 결정할 수 없습니다. 이 경우에 `metadata` 객체가 아니라 `generateMetadata`를 사용하면 각 게시글의 정보를 불러와 동적으로 메타 데이터를 생성할 수 있습니다.
+저는 글 본문 페이지에 `/posts/[slug]` 형태의 라우트를 사용하기 때문에 글 본문의 페이지 파일에서 정적으로 메타데이터를 결정할 수 없습니다. 이 경우에 `metadata` 객체가 아니라 `generateMetadata`를 사용하면 각 게시글의 정보를 불러와 동적으로 메타데이터를 생성할 수 있습니다.
 
-만약 메타 데이터를 설정하지 않은 페이지는 기본적으로 **상위 라우트의 메타 데이터를 상속**받습니다. 그래서 앱 루트 라우트 혹은 레이아웃 파일에서 기본 설정을 해두고, 필요한 라우트에만 다시 설정해주면 편합니다.
+만약 메타데이터를 설정하지 않은 페이지는 기본적으로 **상위 라우트의 메타데이터를 상속**받습니다. 그래서 앱 루트 라우트 혹은 레이아웃 파일에서 기본 설정을 해두고, 필요한 라우트에만 다시 설정해주면 편합니다.
 
 ```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
@@ -186,13 +186,13 @@ robots.txt는 **검색 엔진 크롤러가 어떤 경로를 크롤링 할 수 �
 
 Next.js에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robots.ts` 파일을 추가하면, 빌드 결과로 사이트 루트에 해당 파일이 생성됩니다.
 
-이 역시 메타 데이터와 마찬가지로 정적으로 정의할 경우 txt 파일로 정의하면 되고, 동적인 값이 필요한 경우 `robots` 함수를 활용해 정의 할 수 있습니다.&#x20;
+이 역시 메타데이터와 마찬가지로 정적으로 정의할 경우 txt 파일로 정의하면 되고, 동적인 값이 필요한 경우 `robots` 함수를 활용해 정의 할 수 있습니다.&#x20;
 
 두 방식 모두 최종적으로 동일한 robots.txt를 생성합니다. 특별히 동적인 값이 필요하지 않다면 정적 파일만으로도 충분하지만, 저는 타입 지원과 일관된 메타데이터 관리 방식을 유지하기 위해 robots 함수를 사용하는 방식을 선택했습니다.
 
 <Callout variant="info">
-  기존의 robots.txt와 별개로 메타 데이터에서 작성할 수 있는 [robots 속성](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#robots)도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책을 설정한다면, \
-  메타 데이터의 robots 속성은 **페이지별 색인 여부와 링크 추적 여부를 설정**한다는 점에서 다릅니다.
+  기존의 robots.txt와 별개로 메타데이터에서 작성할 수 있는 [robots 속성](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#robots)도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책을 설정한다면, \
+  메타데이터의 robots 속성은 **페이지별 색인 여부와 링크 추적 여부를 설정**한다는 점에서 다릅니다.
 
   ```ts
   const metadata = {
@@ -285,7 +285,7 @@ OpenGraph, 흔히 OG 태그라고 부르는 메타데이터는 링크를 공유�
 
 OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 색인을 직접 제어하는 요소는 아니지만, 공유 시점에 어떤 제목과 설명, 이미지를 보여줄지를 결정하기 때문에 클릭률 등 <u>간접적으로 SEO에 기여</u>한다고 볼 수 있습니다.
 
-Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다만, 설정하지 않을 시 기본적으로 메타데이터의 title과 description을 사용하게 되어있습니다. 그래서 저는 별도로 설정해주진 않았습니다. 만약 필요하다면 각 페이지의 메타 데이터에 openGraph 속성을 사용해 지정해주면 되겠습니다.
+Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다만, 설정하지 않을 시 기본적으로 메타데이터의 title과 description을 사용하게 되어있습니다. 그래서 저는 별도로 설정해주진 않았습니다. 만약 필요하다면 각 페이지의 메타데이터에 openGraph 속성을 사용해 지정해주면 되겠습니다.
 
 ```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
@@ -344,7 +344,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 }
 ```
 
-저는 동적 방식으로 대표 이미지를 설정해주었는데, `opengraph-image.tsx` 파일을 만들고 Next.js의 `Image` 함수와 `ImageResponse`를 사용하면 대표 이미지를 생성할 수 있습니다. 대표 이미지의 메타 데이터를 설정하려면, `generateImageMetadata` 함수를 사용하면 됩니다.
+저는 동적 방식으로 대표 이미지를 설정해주었는데, `opengraph-image.tsx` 파일을 만들고 Next.js의 `Image` 함수와 `ImageResponse`를 사용하면 대표 이미지를 생성할 수 있습니다. 대표 이미지의 메타데이터를 설정하려면, `generateImageMetadata` 함수를 사용하면 됩니다.
 
 이처럼 대표 이미지를 동적 방식으로 설정할 경우 컴포넌트 코드처럼 작성할 수 있다는 특징이 있습니다. 하지만 모든 style 문법을 지원하는 것은 아니므로 스타일이 적용되는지 유의하며 사용해야 합니다.
 
@@ -500,7 +500,7 @@ GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소
   </Column>
 </Columns>
 
-URL을 입력하고 계속을 누르면 meta 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타 데이터에 추가하면 소유권 인증 설정이 완료됩니다.
+URL을 입력하고 계속을 누르면 meta 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타데이터에 추가하면 소유권 인증 설정이 완료됩니다.
 
 ```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
