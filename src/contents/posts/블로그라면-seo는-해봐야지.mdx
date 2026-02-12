@@ -488,7 +488,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 [Google Search Console(이하 GSC)](https://search.google.com/search-console/)는 구글이 내 사이트를 어떻게 크롤링하고, 색인하고, 검색 결과에 노출하는지 확인할 수 있게 해주는 도구입니다. GSC 역시 설정을 적용하는 항목이라기 보다는 내가 적용한 SEO 설정들이 제대로 동작하는지 검증하는 용도에 가깝습니다.
 
-GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소유권 확인 방법은 여러 가지가 있지만, 저는 가장 간단한 **meta 태그 방식**을 사용했습니다.
+GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소유권 확인 방법은 여러 가지가 있지만, 저는 가장 간단한 **메타 태그 방식**을 사용했습니다.
 
 <Columns>
   <Column>
@@ -500,7 +500,7 @@ GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소
   </Column>
 </Columns>
 
-URL을 입력하고 계속을 누르면 meta 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타데이터에 추가하면 소유권 인증 설정이 완료됩니다.
+URL을 입력하고 계속을 누르면 메타 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타데이터에 추가하면 소유권 인증 설정이 완료됩니다.
 
 ```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
