@@ -42,7 +42,7 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 * [https://www.bh2980.dev](https://www.bh2980.dev)
 * [https://bh2980-blog.vercel.app](https://bh2980-blog.vercel.app)
 
-이 경우 `https://bh2980.dev/posts`와 `https://bh2980-blog.vercel.app/posts` 를 각각 다른 url로 인식하여 색인하기 때문에 결과가 분산되는 문제가 생깁니다. 이를 방지하기 위해 대표 도메인으로 정하고 나머지는 모두 `https://bh2980.dev`로 리다이렉트되도록 통일했습니다.
+이 경우 `https://bh2980.dev/posts`와 `https://bh2980-blog.vercel.app/posts` 를 각각 다른 URL로 인식하여 색인하기 때문에 결과가 분산되는 문제가 생깁니다. 이를 방지하기 위해 대표 도메인으로 정하고 나머지는 모두 `https://bh2980.dev`로 리다이렉트되도록 통일했습니다.
 
 ![](%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA%202026-02-12%20%E1%84%8B%E1%85%A9%E1%84%92%E1%85%AE%207.41.00.png)
 
@@ -126,14 +126,14 @@ export async function generateMetadata(): Promise<Metadata> {
 <link rel="canonical" href="https://bh2980.dev/posts">
 ```
 
-캐노니컬(canonical) 태그는 동일하거나 거의 동일한 콘텐츠를 가리키는 여러 URL 중에서 **검색엔진이 대표로 인식해야 할 URL을 지정하는 태그**입니다.
+캐노니컬(canonical) 태그는 동일하거나 거의 동일한 콘텐츠를 가리키는 여러 URL 중에서 **검색 엔진이 대표로 인식해야 할 URL을 지정하는 태그**입니다.
 
 예를 들어 제 블로그의 글 목록 페이지는 category 기준으로 필터링할 수 있으며, 이 과정에서 category 쿼리 스트링이 URL에 추가됩니다.
 
 * [https://bh2980.dev/posts](https://bh2980.dev/posts)
 * [https://bh2980.dev/posts?category=development](https://bh2980.dev/posts?category=development)
 
-이 둘은 사용자에게는 분명히 다른 페이지이지만, 검색엔진 입장에서는 동일한 글 목록 페이지의 변형에 불과하므로 색인과 평가는 하나의 URL로 통합하는 편이 합리적입니다. 이럴 때 바로 캐노니컬 태그를 사용합니다.
+이 둘은 사용자에게는 분명히 다른 페이지이지만, 검색 엔진 입장에서는 동일한 글 목록 페이지의 변형에 불과하므로 색인과 평가는 하나의 URL로 통합하는 편이 합리적입니다. 이럴 때 바로 캐노니컬 태그를 사용합니다.
 
 Next.js에서 캐노니컬의 값은 앞서 작성한 메타데이터의 `alternates` 속성에서 정의할 수 있습니다.
 
@@ -146,7 +146,7 @@ export const metadata: Metadata = {
 };
 ```
 
-위와 같이 설정하면 `/posts` 페이지를 기준으로 `<link rel="canonical">` 태그가 자동으로 생성되며, 쿼리 스트링이 붙은 URL들은 검색엔진 관점에서 모두 `/posts`의 변형으로 인식되어 색인과 평가 기준이 하나의 URL로 통합됩니다.
+위와 같이 설정하면 `/posts` 페이지를 기준으로 `<link rel="canonical">` 태그가 자동으로 생성되며, 쿼리 스트링이 붙은 URL들은 검색 엔진 관점에서 모두 `/posts`의 변형으로 인식되어 색인과 평가 기준이 하나의 URL로 통합됩니다.
 
 ### 4. robots.txt
 
@@ -204,7 +204,7 @@ Next.js에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robots.ts` 파�
 
 ### 5. sitemap.xml
 
-robots.txt가 크롤러에게 페이지의 크롤링 정책을 안내하는 역할이라면, sitemap.xml은 사이트 내에서 크롤링 및 색인이 이루어지길 원하는 URL 목록을 검색엔진에 전달하는 역할을 합니다. 즉, robots.txt와는 상호보완적 관계라고 할 수 있겠죠.
+robots.txt가 크롤러에게 페이지의 크롤링 정책을 안내하는 역할이라면, sitemap.xml은 사이트 내에서 크롤링 및 색인이 이루어지길 원하는 URL 목록을 검색 엔진에 전달하는 역할을 합니다. 즉, robots.txt와는 상호보완적 관계라고 할 수 있겠죠.
 
 Next.js에서 사이드맵을 작성할 때 이전과 마찬가지로 정적으로 적을 수도, 동적으로 적을 수도 있습니다만, 정적으로 적는 것은 추천하지 않습니다. 사이트맵에 적어야하는 파일이 많고 추가될 때마다 수정해주어야하기 때문에 누락이나 실수할 가능성이 높기 때문입니다.
 
@@ -233,7 +233,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 ```
 
-저는 Next.js에서 제공하는 sitemap 함수에 게시글과 메모 리스트를 가져와 넣어주는 방식으로 작성했는데요. url과 필요한 정보가 있는 배열을 return하면 간편하게 사이트맵을 생성할 수 있습니다.&#x20;
+저는 Next.js에서 제공하는 sitemap 함수에 게시글과 메모 리스트를 가져와 넣어주는 방식으로 작성했는데요. URL과 필요한 정보가 있는 배열을 return하면 간편하게 사이트맵을 생성할 수 있습니다.&#x20;
 
 sitemap 함수를 이용하면 게시글이 추가될 때마다 사이트맵이 함께 갱신되므로, 수동으로 관리할 때 발생할 수 있는 누락 가능성을 줄일 수 있습니다.
 
