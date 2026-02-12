@@ -285,35 +285,9 @@ OpenGraph, 흔히 OG 태그라고 부르는 메타데이터는 링크를 공유�
 
 OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 색인을 직접 제어하는 요소는 아니지만, 공유 시점에 어떤 제목과 설명, 이미지를 보여줄지를 결정하기 때문에 클릭률 등 <u>간접적으로 SEO에 기여</u>한다고 볼 수 있습니다.
 
-Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다. 저는 루트 레이아웃에서 기본 값을 설정해두고, 게시글 상세 페이지에서는 `generateMetadata`를 사용해 각 게시글의 제목과 요약을 OG에 반영하는 방식으로 구성했습니다.
+Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다만, 설정하지 않을 시 기본적으로 메타데이터의 title과 description을 사용하게 되어있습니다. 그래서 저는 별도로 설정해주진 않았습니다.
 
-```ts title="src/app/posts/[slug]/page.tsx"
-export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
-	const { slug } = await params;
-	const post = await getPost(slug);
-
-	return {
-		title: post.title,
-		description: post.excerpt,
-		alternates: { canonical: `posts/${slug}` },
-		// @line plus
-		openGraph: {
-			title: post.title,
-			description: post.excerpt,
-			url: `/posts/${slug}`,
-		},
-		// @line plus end
-	};
-}
-```
-
-<IdeographicSpace />
-
-<Callout variant="info">
-  openGraph 속성의 title과 description 속성을 지정하지 않을 경우, 메타 데이터의 title, description 속성을 상속 받습니다.
-</Callout>
-
-OpenGraph에는 중요한 항목이 하나 더 남아있습니다. 바로 대표 이미지인데요. 대표 이미지 역시 [정적 방식](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/opengraph-image#image-files-jpg-png-gif)과 동적 방식 중 필요한 방식으로 설정할 수 있습니다.
+하지만 OpenGraph에는 중요한 항목이 하나 더 남아있습니다. 바로 대표 이미지인데요. 대표 이미지 역시 [정적 방식](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/opengraph-image#image-files-jpg-png-gif)과 동적 방식 중 필요한 방식으로 설정할 수 있습니다.
 
 ```ts title="src/app/posts/[slug]/opengraph-image.tsx"
 import { ImageResponse } from "next/og";
@@ -357,3 +331,5 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 <Callout variant="info">
   ImageResponse 내에서 tailwind 문법을 사용하려면 className이 아닌 [tw 속성](https://vercel.com/kb/guide/using-tailwind)을 사용하면 됩니다. 단, 이 역시 모든 속성이 지원되는 것이 아니므로 유의하여 사용하여야 합니다.
 </Callout>
+
+그렇다면 만들어진 OpenGraph를 어떻게 확인하느냐
