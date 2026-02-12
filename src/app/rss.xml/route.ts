@@ -22,7 +22,7 @@ export async function GET() {
 			return { ...post, date };
 		})
 		.filter(isDefined)
-		.sort((a, b) => a.date.getTime() - b.date.getTime());
+		.sort((a, b) => b.date.getTime() - a.date.getTime());
 
 	const feed = new Feed({
 		title: "bh2980.dev",

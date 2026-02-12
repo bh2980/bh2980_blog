@@ -193,7 +193,15 @@ const wrapRangeByLines = (
 	if (!startEntry || !endEntry) return;
 
 	const from = Math.min(startEntry.indexInParent, endEntry.indexInParent);
-	const to = Math.max(startEntry.indexInParent, endEntry.indexInParent);
+	let to = Math.max(startEntry.indexInParent, endEntry.indexInParent);
+
+	// Keep the trailing newline token with the wrapped block so collapsed wrappers
+	// do not leave an empty visual line between the summary and next code line.
+	const trailingNode = lca.children[to + 1];
+	if (trailingNode?.type === "text" && trailingNode.value === "\n") {
+		to += 1;
+	}
+
 	const targetChildren = lca.children.slice(from, to + 1);
 	if (targetChildren.length === 0) return;
 
