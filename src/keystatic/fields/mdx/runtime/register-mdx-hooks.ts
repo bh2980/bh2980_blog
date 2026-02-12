@@ -6,9 +6,11 @@ import {
 } from "../transforms/mdast-mark-bridge";
 import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../transforms/mdx-code-block-walk";
 import { walkOnlyInsideMermaid, walkOnlyInsideMermaidCodeFence } from "../transforms/mdx-mermaid-walk";
+import { normalizeImageAssetUrls } from "../transforms/normalize-image-asset-url";
 import { findCodeBlockAndMapping } from "./find-codeblock-and-mapping";
 
 const afterMarkdownParse = (mdxAst: Root) => {
+	normalizeImageAssetUrls(mdxAst);
 	walkOnlyInsideMermaidCodeFence(mdxAst);
 	walkOnlyInsideCodeFence(mdxAst, annotationConfig);
 	convertBodyMdastMarksToMdxJsxTextElement(mdxAst);
@@ -17,6 +19,7 @@ const afterMarkdownParse = (mdxAst: Root) => {
 };
 
 const beforeSerialize = (mdxAst: Root) => {
+	normalizeImageAssetUrls(mdxAst);
 	findCodeBlockAndMapping(mdxAst, { emit: false });
 	walkOnlyInsideMermaid(mdxAst);
 	walkOnlyInsideCodeblock(mdxAst, annotationConfig);
