@@ -287,7 +287,7 @@ OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 �
 
 Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다만, 설정하지 않을 시 기본적으로 메타데이터의 title과 description을 사용하게 되어있습니다. 그래서 저는 별도로 설정해주진 않았습니다. 만약 필요하다면 openGraph 속성을 사용해 지정해주면 되겠습니다.
 
-```ts
+```ts title="src/app/layout.tsx"
 export async function generateMetadata(): Promise<Metadata> {
 	return {
 		metadataBase: 'https://bh2980.dev',
