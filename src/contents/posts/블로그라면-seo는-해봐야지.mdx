@@ -335,7 +335,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 }
 ```
 
-위는 동적 방식으로 대표 이미지를 설정한 예인데요.&#x20;
+위는 동적 방식으로 대표 이미지를 설정한 코드인데요. `opengraph-image.tsx` 파일을 만들고 Next.js의 `Image` 함수와 `ImageResponse`를 사용한 것을 알 수 있습니다.
+
+동적 방식으로 설정할 경우 컴포넌트 코드처럼 작성할 수 있다는 특징이 있습니다. 하지만 모든 style 문법을 지원하는 것은 아니므로 스타일이 적용되는지 유의하며 사용해야 합니다.
 
 ```ts title="src/app/posts/[slug]/opengraph-image.tsx"
 import { ImageResponse } from "next/og";
