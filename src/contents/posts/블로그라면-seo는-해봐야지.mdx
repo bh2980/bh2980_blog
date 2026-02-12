@@ -381,7 +381,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
 RSS는 Really Simple Syndication의 줄임말로, 사이트의 새 글 목록을 XML 형식으로 제공하는 피드입니다. 주로 특정 사이트를 구독하여 새 글이 올라올 때마다 받아보는 용도로 사용됩니다.
 
-RSS는 구독자를 위한 기능이지 직접적으로 SEO에 영향을 미치는 기능은 아닙니다만, <Tooltip content="공식적인 새 글 감지 방법은 sitemap.xml">일부 검색 엔진 크롤러는 RSS를 통해 새 글을 감지하기도 하기 때문에</Tooltip> 같이 해주면 좋습니다.
+RSS는 구독자를 위한 기능이지 직접적으로 SEO에 영향을 미치는 기능은 아닙니다만, <Tooltip content="공식적인 새 글 감지 방법은 sitemap.xml">일부 검색 엔진은 보조적으로 RSS를 통해 새 글을 감지하기도 하기 때문에</Tooltip> 같이 해주면 좋습니다.
 
 Next.js에서는 RSS를 위한 문법이 별도로 제공되진 않지만, [Route Handler를 통해 RSS를 제공하는 방법](https://nextjs.org/docs/app/guides/backend-for-frontend#content-types)을 소개하고 있습니다.
 
@@ -485,3 +485,4 @@ export async function generateMetadata(): Promise<Metadata> {
 ```
 
 ### 8. Google Search Console
+
