@@ -16,7 +16,17 @@ const normalizeRestLines = (lines: ReactNode[]) => {
 };
 
 export const collapse = ({ children, open }: { children: ReactNode; open?: boolean }) => {
-	const childNodes = Children.toArray(children);
+	const rawChildNodes = Children.toArray(children);
+	let firstContentIndex = 0;
+	while (firstContentIndex < rawChildNodes.length) {
+		const node = rawChildNodes[firstContentIndex];
+		if (typeof node === "string" && node.trim().length === 0) {
+			firstContentIndex += 1;
+			continue;
+		}
+		break;
+	}
+	const childNodes = rawChildNodes.slice(firstContentIndex);
 	const firstLine = childNodes[0] ?? null;
 	const restLines = normalizeRestLines(childNodes.slice(1));
 

@@ -1,5 +1,6 @@
 import type { Break, Node, Paragraph, Text } from "mdast";
 import type { MdxJsxAttribute, MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
+import { resolveCommentSyntax } from "./comment-syntax";
 import { createAnnotationRegistry, supportsAnnotationScope } from "./libs";
 import type {
 	AnnotationAttr,
@@ -18,6 +19,30 @@ const hasChildren = (node: Node): node is Node & { children: Node[] } => "childr
 const isText = (node: Node): node is Text => node.type === "text";
 const isBreak = (node: Node): node is Break => node.type === "break";
 const isMDXJSXTextElement = (node: Node): node is MdxJsxTextElement => node.type === "mdxJsxTextElement";
+
+const isScopeAnnotationCommentLine = (
+	lineText: string,
+	commentSyntax: {
+		prefix: string;
+		postfix: string;
+	},
+) => {
+	let body = lineText.trim();
+	const prefix = commentSyntax.prefix.trim();
+	const postfix = commentSyntax.postfix.trim();
+
+	if (prefix.length > 0) {
+		if (!body.startsWith(prefix)) return false;
+		body = body.slice(prefix.length).trimStart();
+	}
+
+	if (postfix.length > 0) {
+		if (!body.endsWith(postfix)) return false;
+		body = body.slice(0, body.length - postfix.length).trimEnd();
+	}
+
+	return /^@(char|line|document)\s+[A-Za-z_][\w-]*(?:\s+\{[^}]+\})?(?:\s+.*)?$/.test(body);
+};
 
 const toInlineAnnotationFromConfig = ({
 	config,
@@ -142,12 +167,21 @@ const fromParagraphToLine = (p: Paragraph, registry: AnnotationRegistry): Line =
 	return { value: pureCode, annotations };
 };
 
-const splitLineByHardBreak = (line: Line): Line[] => {
+const splitLineByHardBreak = (
+	line: Line,
+	commentSyntax: {
+		prefix: string;
+		postfix: string;
+	},
+): Line[] => {
 	if (!line.value.includes("\n")) {
 		return [line];
 	}
 
 	const chunks = line.value.split("\n");
+	if (chunks.at(-1) === "" && isScopeAnnotationCommentLine(chunks.at(-2) ?? "", commentSyntax)) {
+		chunks.pop();
+	}
 	const result: Line[] = [];
 	let base = 0;
 
@@ -241,6 +275,10 @@ const fromMdxFlowElementToCodeHeader = (mdxAst: MdxJsxFlowElement): Pick<CodeBlo
 const fromMdxFlowElementToCodeBody = (
 	mdxAst: MdxJsxFlowElement,
 	registry: AnnotationRegistry,
+	commentSyntax: {
+		prefix: string;
+		postfix: string;
+	},
 ): Pick<CodeBlockDocument, "lines" | "annotations"> => {
 	const lines: Line[] = [];
 
@@ -250,7 +288,7 @@ const fromMdxFlowElementToCodeBody = (
 		}
 
 		const line = fromParagraphToLine(childNode, registry);
-		lines.push(...splitLineByHardBreak(line));
+		lines.push(...splitLineByHardBreak(line, commentSyntax));
 	}
 
 	return { lines: toAbsoluteInlineRange(lines), annotations: [] };
@@ -262,7 +300,8 @@ export const fromMdxFlowElementToCodeDocument = (
 ): CodeBlockDocument => {
 	const registry = createAnnotationRegistry(annotationConfig);
 	const { lang, meta } = fromMdxFlowElementToCodeHeader(mdxAst);
-	const { lines, annotations } = fromMdxFlowElementToCodeBody(mdxAst, registry);
+	const commentSyntax = resolveCommentSyntax(lang);
+	const { lines, annotations } = fromMdxFlowElementToCodeBody(mdxAst, registry, commentSyntax);
 
 	return { lang, meta, lines, annotations };
 };
