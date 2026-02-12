@@ -500,3 +500,30 @@ GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소
   </Column>
 </Columns>
 
+URL을 입력하고 계속을 누르면 meta 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타 데이터에 추가하면 소유권 인증 설정이 완료됩니다.
+
+```ts title="src/app/layout.tsx"
+export async function generateMetadata(): Promise<Metadata> {
+	return {
+		metadataBase: "https://bh2980.dev",
+		title: "bh2980.dev",
+		description: "bh2980의 개발 블로그",
+		alternates: {
+			canonical: "/",
+			types: {
+				"application/rss+xml": "/rss.xml",
+			},
+		},
+		openGraph: {
+			type: "website",
+			siteName: "bh2980.dev",
+			locale: "ko_KR",
+		},
+		// @line plus
+		verification: {
+			google: "token 값",
+		},
+		// @line plus end
+	};
+}
+```
