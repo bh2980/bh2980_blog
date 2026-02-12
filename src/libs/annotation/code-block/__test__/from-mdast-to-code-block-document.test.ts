@@ -151,6 +151,31 @@ describe("fromMdxFlowElementToCodeDocument", () => {
 		]);
 	});
 
+	it("annotation comment line의 trailing hard break는 불필요한 빈 줄을 만들지 않는다", () => {
+		const node = codeBlock(
+			[paragraph([text("// @line collapse end"), { type: "break" }])],
+			[{ type: "mdxJsxAttribute", name: "lang", value: "ts" }],
+		);
+
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
+
+		expect(document.lines).toEqual([{ value: "// @line collapse end", annotations: [] }]);
+	});
+
+	it("일반 코드 line의 trailing hard break는 빈 줄로 유지한다", () => {
+		const node = codeBlock(
+			[paragraph([text("const a = 1"), { type: "break" }])],
+			[{ type: "mdxJsxAttribute", name: "lang", value: "ts" }],
+		);
+
+		const document = fromMdxFlowElementToCodeDocument(node, annotationConfig);
+
+		expect(document.lines).toEqual([
+			{ value: "const a = 1", annotations: [] },
+			{ value: "", annotations: [] },
+		]);
+	});
+
 	it("알 수 없는 inline/flow name은 annotation으로 분류하지 않고 텍스트만 반영한다", () => {
 		const node = codeBlock([
 			paragraph([inline("UnknownInline", [text("x")]), text("yz")]),
