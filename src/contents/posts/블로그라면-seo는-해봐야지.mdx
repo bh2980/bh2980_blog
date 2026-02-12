@@ -334,8 +334,8 @@ export async function generateImageMetadata({ params }: { params: Promise<{ slug
 			size,
 		},
 	];
+// @line collapse
 }
-// @line collapse end
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
