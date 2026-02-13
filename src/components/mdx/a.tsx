@@ -19,7 +19,6 @@ export const a = ({ children, href, ...props }: ComponentPropsWithRef<"a">) => {
 			href={href}
 			{...props}
 			className={cn(
-				"group items-center",
 				"text-current decoration-slate-300/50 underline-offset-4",
 				"hover:text-slate-900 hover:decoration-slate-900",
 				"dark:decoration-slate-500/50 dark:hover:text-slate-300 dark:hover:decoration-slate-300",
