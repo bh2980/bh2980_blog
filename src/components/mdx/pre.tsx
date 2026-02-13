@@ -21,7 +21,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 			<div
 				className={cn(
 					"peer",
-					"hidden items-center gap-1 border-b bg-gray-100 px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-slate-300",
+					"hidden items-center gap-1 border-b bg-muted px-3 py-1.5 text-muted-foreground text-sm",
 					showTitlebar && "flex",
 				)}
 				data-title={title}
@@ -50,6 +50,7 @@ export const pre = async ({ children, title, showLineNumbers, code, className, s
 					"[&_>_code]:block [&_>_code]:min-w-fit",
 					showLineNumbers ? "[&_.line]:px-2 [&_.line]:before:mr-5" : "[&_.line]:px-5",
 					showTitlebar && "m-0! rounded-t-none",
+					"dark:bg-slate-800!",
 					className,
 				)}
 				data-show-line-numbers={showLineNumbers}
