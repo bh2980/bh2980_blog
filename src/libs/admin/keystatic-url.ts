@@ -1,5 +1,5 @@
 const KEYSTATIC_HOME_PATH = "/keystatic";
-const getDefaultBranch = () => process.env.KEYSTATIC_DEFAULT_BRANCH || "main";
+const KEYSTATIC_DEFAULT_BRANCH = "main";
 
 export type KeystaticMode = "local" | "github";
 
@@ -12,7 +12,7 @@ const encodeSlug = (slug: string) => encodeURIComponent(slug);
 
 const getKeystaticBasePath = ({ mode = "github", branch }: EditPathOptions = {}) => {
 	if (mode === "local") return KEYSTATIC_HOME_PATH;
-	const resolvedBranch = branch || getDefaultBranch();
+	const resolvedBranch = branch || KEYSTATIC_DEFAULT_BRANCH;
 	return `/keystatic/branch/${encodeURIComponent(resolvedBranch)}`;
 };
 
