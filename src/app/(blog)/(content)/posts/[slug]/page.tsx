@@ -2,11 +2,13 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminEditLink } from "@/components/admin/admin-links";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { getAdminContext } from "@/libs/admin/context";
 import { getPost, getPostList } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
@@ -53,6 +55,8 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 		return notFound();
 	}
 
+	const { canManage, keystaticMode } = await getAdminContext();
+
 	const source = await post.content();
 	const { content, toc } = await renderMDX(source);
 
@@ -76,10 +80,20 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 								<span>돌아가기</span>
 							</Link>
 						</nav>
-						<div className="flex gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
+						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<span>{post.category.name}</span>
 							<span>·</span>
 							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
+							<AdminEditLink
+								canManage={canManage}
+								collection="post"
+								slug={post.slug}
+								mode={keystaticMode}
+								className={cn(
+									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
+									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+								)}
+							/>
 						</div>
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
 						<ul
