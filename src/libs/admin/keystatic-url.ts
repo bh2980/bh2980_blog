@@ -1,13 +1,30 @@
-const KEYSTATIC_BRANCH = "main";
-const KEYSTATIC_BASE_PATH = `/keystatic/branch/${encodeURIComponent(KEYSTATIC_BRANCH)}`;
+const KEYSTATIC_HOME_PATH = "/keystatic";
+const KEYSTATIC_DEFAULT_BRANCH = "main";
+
+export type KeystaticMode = "local" | "github";
+
+type EditPathOptions = {
+	mode?: KeystaticMode;
+	branch?: string;
+};
 
 const encodeSlug = (slug: string) => encodeURIComponent(slug);
 
-const getKeystaticCollectionItemPath = (collection: "post" | "memo", slug: string) =>
-	`${KEYSTATIC_BASE_PATH}/collection/${collection}/item/${encodeSlug(slug)}`;
+const getKeystaticBasePath = ({ mode = "github", branch = KEYSTATIC_DEFAULT_BRANCH }: EditPathOptions = {}) => {
+	if (mode === "local") return KEYSTATIC_HOME_PATH;
+	return `/keystatic/branch/${encodeURIComponent(branch)}`;
+};
 
-export const getKeystaticAdminHomePath = () => KEYSTATIC_BASE_PATH;
+const getKeystaticCollectionItemPath = (
+	collection: "post" | "memo",
+	slug: string,
+	options: EditPathOptions = {},
+) => `${getKeystaticBasePath(options)}/collection/${collection}/item/${encodeSlug(slug)}`;
 
-export const getKeystaticPostEditPath = (slug: string) => getKeystaticCollectionItemPath("post", slug);
+export const getKeystaticAdminHomePath = () => KEYSTATIC_HOME_PATH;
 
-export const getKeystaticMemoEditPath = (slug: string) => getKeystaticCollectionItemPath("memo", slug);
+export const getKeystaticPostEditPath = (slug: string, options?: EditPathOptions) =>
+	getKeystaticCollectionItemPath("post", slug, options);
+
+export const getKeystaticMemoEditPath = (slug: string, options?: EditPathOptions) =>
+	getKeystaticCollectionItemPath("memo", slug, options);

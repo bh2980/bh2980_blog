@@ -1,6 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import {
+	type KeystaticMode,
 	getKeystaticAdminHomePath,
 	getKeystaticMemoEditPath,
 	getKeystaticPostEditPath,
@@ -16,6 +17,7 @@ type AdminEditLinkProps = {
 	canManage: boolean;
 	collection: "post" | "memo";
 	slug: string;
+	mode?: KeystaticMode;
 	className?: string;
 	children?: React.ReactNode;
 };
@@ -32,10 +34,21 @@ export const AdminHeaderLink = ({ canManage, className }: AdminHeaderLinkProps) 
 	);
 };
 
-export const AdminEditLink = ({ canManage, collection, slug, className, children = "수정" }: AdminEditLinkProps) => {
+export const AdminEditLink = ({
+	canManage,
+	collection,
+	slug,
+	mode = "github",
+	className,
+	children = "수정",
+}: AdminEditLinkProps) => {
 	if (!canManage) return null;
 
-	const href = (collection === "post" ? getKeystaticPostEditPath(slug) : getKeystaticMemoEditPath(slug)) as Route;
+	const href = (
+		collection === "post"
+			? getKeystaticPostEditPath(slug, { mode })
+			: getKeystaticMemoEditPath(slug, { mode })
+	) as Route;
 
 	return (
 		<Link href={href} className={cn(className)}>
