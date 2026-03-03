@@ -1,14 +1,14 @@
 import { cookies } from "next/headers";
 import Footer from "@/components/footer";
 import Navigation from "@/components/navigation.client";
-import { hasKeystaticSession } from "@/libs/admin/keystatic-auth";
+import { hasVerifiedKeystaticSession } from "@/libs/admin/keystatic-auth";
 
 export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const canManage = hasKeystaticSession(await cookies());
+	const canManage = await hasVerifiedKeystaticSession(await cookies());
 
 	return (
 		<>

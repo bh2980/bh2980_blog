@@ -7,7 +7,7 @@ import { AdminEditLink } from "@/components/admin/admin-links";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { hasKeystaticSession } from "@/libs/admin/keystatic-auth";
+import { hasVerifiedKeystaticSession } from "@/libs/admin/keystatic-auth";
 import { getMemo } from "@/libs/contents/memo";
 import keystaticConfig from "@/root/keystatic.config";
 import { cn } from "@/utils/cn";
@@ -51,7 +51,7 @@ export default async function MemoPage({ params, searchParams }: MemoPageProps) 
 		return notFound();
 	}
 
-	const canManage = hasKeystaticSession(await cookies());
+	const canManage = await hasVerifiedKeystaticSession(await cookies());
 	const keystaticMode = keystaticConfig.storage.kind === "local" ? "local" : "github";
 
 	const source = await memo.content();

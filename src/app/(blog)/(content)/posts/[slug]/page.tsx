@@ -9,7 +9,7 @@ import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { hasKeystaticSession } from "@/libs/admin/keystatic-auth";
+import { hasVerifiedKeystaticSession } from "@/libs/admin/keystatic-auth";
 import { getPost, getPostList } from "@/libs/contents/post";
 import keystaticConfig from "@/root/keystatic.config";
 import { cn } from "@/utils/cn";
@@ -57,7 +57,7 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 		return notFound();
 	}
 
-	const canManage = hasKeystaticSession(await cookies());
+	const canManage = await hasVerifiedKeystaticSession(await cookies());
 	const keystaticMode = keystaticConfig.storage.kind === "local" ? "local" : "github";
 
 	const source = await post.content();
