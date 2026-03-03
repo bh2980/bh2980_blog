@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	getKeystaticAdminHomePath,
-	getKeystaticMemoEditPath,
-	getKeystaticPostEditPath,
-} from "../keystatic-url";
+import { getKeystaticAdminHomePath, getKeystaticMemoEditPath, getKeystaticPostEditPath } from "../keystatic-url";
 
 describe("keystatic url", () => {
 	it("관리자 홈 경로를 생성한다", () => {
@@ -32,6 +28,8 @@ describe("keystatic url", () => {
 	});
 
 	it("slug를 URL-safe하게 인코딩한다", () => {
-		expect(getKeystaticPostEditPath("hello world?")).toBe("/keystatic/branch/main/collection/post/item/hello%20world%3F");
+		expect(getKeystaticPostEditPath("hello world?")).toBe(
+			"/keystatic/branch/main/collection/post/item/hello%20world%3F",
+		);
 	});
 });

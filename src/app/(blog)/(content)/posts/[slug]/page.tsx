@@ -93,7 +93,7 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 								slug={post.slug}
 								mode={keystaticMode}
 								className={cn(
-									"not-prose ml-auto shrink-0 rounded px-2 py-0.5 border border-slate-300 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
+									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
 									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
 								)}
 							/>

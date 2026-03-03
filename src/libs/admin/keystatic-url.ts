@@ -15,11 +15,8 @@ const getKeystaticBasePath = ({ mode = "github", branch = KEYSTATIC_DEFAULT_BRAN
 	return `/keystatic/branch/${encodeURIComponent(branch)}`;
 };
 
-const getKeystaticCollectionItemPath = (
-	collection: "post" | "memo",
-	slug: string,
-	options: EditPathOptions = {},
-) => `${getKeystaticBasePath(options)}/collection/${collection}/item/${encodeSlug(slug)}`;
+const getKeystaticCollectionItemPath = (collection: "post" | "memo", slug: string, options: EditPathOptions = {}) =>
+	`${getKeystaticBasePath(options)}/collection/${collection}/item/${encodeSlug(slug)}`;
 
 export const getKeystaticAdminHomePath = () => KEYSTATIC_HOME_PATH;
 

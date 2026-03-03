@@ -1,10 +1,10 @@
 import type { Route } from "next";
 import Link from "next/link";
 import {
-	type KeystaticMode,
 	getKeystaticAdminHomePath,
 	getKeystaticMemoEditPath,
 	getKeystaticPostEditPath,
+	type KeystaticMode,
 } from "@/libs/admin/keystatic-url";
 import { cn } from "@/utils/cn";
 
@@ -45,9 +45,7 @@ export const AdminEditLink = ({
 	if (!canManage) return null;
 
 	const href = (
-		collection === "post"
-			? getKeystaticPostEditPath(slug, { mode })
-			: getKeystaticMemoEditPath(slug, { mode })
+		collection === "post" ? getKeystaticPostEditPath(slug, { mode }) : getKeystaticMemoEditPath(slug, { mode })
 	) as Route;
 
 	return (
