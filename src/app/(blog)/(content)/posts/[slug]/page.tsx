@@ -1,12 +1,15 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminEditLink } from "@/components/admin/admin-links";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { hasKeystaticSession } from "@/libs/admin/keystatic-auth";
 import { getPost, getPostList } from "@/libs/contents/post";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
@@ -53,6 +56,8 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 		return notFound();
 	}
 
+	const canManage = hasKeystaticSession(await cookies());
+
 	const source = await post.content();
 	const { content, toc } = await renderMDX(source);
 
@@ -81,7 +86,18 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 							<span>·</span>
 							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
 						</div>
-						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
+						<div className="flex w-full items-start justify-between gap-3">
+							<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
+							<AdminEditLink
+								canManage={canManage}
+								collection="post"
+								slug={post.slug}
+								className={cn(
+									"not-prose shrink-0 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-sm text-slate-700 transition hover:bg-slate-100 hover:text-slate-900",
+									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+								)}
+							/>
+						</div>
 						<ul
 							className={cn(
 								"not-prose flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",

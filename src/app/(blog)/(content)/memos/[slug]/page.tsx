@@ -1,10 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminEditLink } from "@/components/admin/admin-links";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { hasKeystaticSession } from "@/libs/admin/keystatic-auth";
 import { getMemo } from "@/libs/contents/memo";
 import { cn } from "@/utils/cn";
 
@@ -47,6 +50,8 @@ export default async function MemoPage({ params, searchParams }: MemoPageProps) 
 		return notFound();
 	}
 
+	const canManage = hasKeystaticSession(await cookies());
+
 	const source = await memo.content();
 	const { content, toc } = await renderMDX(source);
 
@@ -73,7 +78,18 @@ export default async function MemoPage({ params, searchParams }: MemoPageProps) 
 						<div className="flex gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 						</div>
-						<h1 className="font-bold text-slate-900 dark:text-slate-100">{memo.title}</h1>
+						<div className="flex w-full items-start justify-between gap-3">
+							<h1 className="font-bold text-slate-900 dark:text-slate-100">{memo.title}</h1>
+							<AdminEditLink
+								canManage={canManage}
+								collection="memo"
+								slug={memo.slug}
+								className={cn(
+									"not-prose shrink-0 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-sm text-slate-700 transition hover:bg-slate-100 hover:text-slate-900",
+									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+								)}
+							/>
+						</div>
 						<ul
 							className={cn(
 								"not-prose flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
