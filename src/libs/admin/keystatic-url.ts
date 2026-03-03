@@ -1,5 +1,5 @@
 const KEYSTATIC_HOME_PATH = "/keystatic";
-const KEYSTATIC_DEFAULT_BRANCH = "main";
+const getDefaultBranch = () => process.env.KEYSTATIC_DEFAULT_BRANCH || "main";
 
 export type KeystaticMode = "local" | "github";
 
@@ -10,9 +10,10 @@ type EditPathOptions = {
 
 const encodeSlug = (slug: string) => encodeURIComponent(slug);
 
-const getKeystaticBasePath = ({ mode = "github", branch = KEYSTATIC_DEFAULT_BRANCH }: EditPathOptions = {}) => {
+const getKeystaticBasePath = ({ mode = "github", branch }: EditPathOptions = {}) => {
 	if (mode === "local") return KEYSTATIC_HOME_PATH;
-	return `/keystatic/branch/${encodeURIComponent(branch)}`;
+	const resolvedBranch = branch || getDefaultBranch();
+	return `/keystatic/branch/${encodeURIComponent(resolvedBranch)}`;
 };
 
 const getKeystaticCollectionItemPath = (collection: "post" | "memo", slug: string, options: EditPathOptions = {}) =>
