@@ -1,14 +1,17 @@
 import { Fragment } from "react";
 import Navigation from "@/components/navigation.client";
+import { getAdminContext } from "@/libs/admin/context";
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const { canManage } = await getAdminContext();
+
 	return (
 		<Fragment>
-			<Navigation className="absolute top-0 z-10 w-full bg-transparent" />
+			<Navigation canManage={canManage} className="absolute top-0 z-10 w-full bg-transparent" />
 			<main className="flex flex-1 flex-col">{children}</main>
 		</Fragment>
 	);
