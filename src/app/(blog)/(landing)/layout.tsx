@@ -1,14 +1,13 @@
-import { cookies } from "next/headers";
 import { Fragment } from "react";
 import Navigation from "@/components/navigation.client";
-import { hasVerifiedKeystaticSession } from "@/libs/admin/keystatic-auth";
+import { getAdminContext } from "@/libs/admin/context";
 
 export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const canManage = await hasVerifiedKeystaticSession(await cookies());
+	const { canManage } = await getAdminContext();
 
 	return (
 		<Fragment>

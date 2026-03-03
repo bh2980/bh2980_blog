@@ -1,6 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminEditLink } from "@/components/admin/admin-links";
@@ -9,9 +8,8 @@ import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { hasVerifiedKeystaticSession } from "@/libs/admin/keystatic-auth";
+import { getAdminContext } from "@/libs/admin/context";
 import { getPost, getPostList } from "@/libs/contents/post";
-import keystaticConfig from "@/root/keystatic.config";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 
@@ -57,8 +55,7 @@ export default async function BlogPost({ params, searchParams }: BlogPageProps) 
 		return notFound();
 	}
 
-	const canManage = await hasVerifiedKeystaticSession(await cookies());
-	const keystaticMode = keystaticConfig.storage.kind === "local" ? "local" : "github";
+	const { canManage, keystaticMode } = await getAdminContext();
 
 	const source = await post.content();
 	const { content, toc } = await renderMDX(source);
