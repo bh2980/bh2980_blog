@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import {
@@ -50,7 +51,10 @@ export const AdminEditLink = ({
 
 	return (
 		<Link href={href} className={cn(className)}>
-			{children}
+			<span className="inline-flex items-center gap-1">
+				<Pencil aria-hidden className="h-2.5 w-2.5" />
+				<span>{children}</span>
+			</span>
 		</Link>
 	);
 };
