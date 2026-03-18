@@ -109,7 +109,7 @@ export default async function Home() {
 												<span>·</span>
 												<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
 											</div>
-											<h3 className="mt-2 line-clamp-2 font-semibold text-slate-900 dark:text-slate-100">
+											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{post.title}
 											</h3>
 											<p className="mt-1 line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
@@ -144,7 +144,7 @@ export default async function Home() {
 											<div className="text-slate-500 text-xs dark:text-slate-400">
 												<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 											</div>
-											<h3 className="mt-2 line-clamp-2 font-semibold text-slate-900 dark:text-slate-100">
+											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{memo.title}
 											</h3>
 											{memo.tags?.length ? (
