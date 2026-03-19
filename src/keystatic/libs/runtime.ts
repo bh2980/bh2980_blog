@@ -1,6 +1,9 @@
 import type { ContentAccessOptions } from "@/libs/contents/types";
 
-export const isRemotePreviewEnabled = () => process.env.KEYSTATIC_REMOTE_PREVIEW === "true";
+const hasRemoteKeystaticConfig = () =>
+	Boolean(process.env.NEXT_PUBLIC_KEYSTATIC_OWNER && process.env.NEXT_PUBLIC_KEYSTATIC_REPO);
+
+export const isRemotePreviewEnabled = () => process.env.NODE_ENV !== "development" && hasRemoteKeystaticConfig();
 
 export const shouldUseRemotePreview = (options: ContentAccessOptions = {}) =>
 	Boolean(options.preview && isRemotePreviewEnabled());
