@@ -27,9 +27,6 @@ export async function generateMetadata({ params }: PreviewMemoPageProps): Promis
 		title: memo.title,
 		robots: { index: false, follow: false },
 		alternates: { canonical: `/memos/${sanitizeSlug(slug)}` },
-		openGraph: {
-			title: memo.title,
-		},
 	};
 }
 
