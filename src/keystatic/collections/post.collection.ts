@@ -49,5 +49,5 @@ export const postCollection = collection({
 			},
 		),
 	},
-	previewUrl: `/preview/start?branch={branch}&to=/posts/{slug}`,
+	previewUrl: `/preview/start?branch={branch}&to=/preview/posts/{slug}`,
 });

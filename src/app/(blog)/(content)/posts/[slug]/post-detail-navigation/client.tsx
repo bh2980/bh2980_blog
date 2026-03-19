@@ -11,9 +11,16 @@ import type { Post } from "@/libs/contents/types";
 type PostDetailNavigationProps = {
 	currentSlug: string;
 	items: Omit<Post, "content">[];
+	detailPathnamePrefix?: string;
+	listPathname?: string;
 };
 
-export const PostDetailNavigationClient = ({ currentSlug, items }: PostDetailNavigationProps) => {
+export const PostDetailNavigationClient = ({
+	currentSlug,
+	items,
+	detailPathnamePrefix = "/posts",
+	listPathname = "/posts",
+}: PostDetailNavigationProps) => {
 	const searchParams = useSearchParams();
 	const category = searchParams.get("category");
 	const filteredItems = category ? items.filter((item) => item.category.slug === category) : items;
@@ -28,14 +35,14 @@ export const PostDetailNavigationClient = ({ currentSlug, items }: PostDetailNav
 			<nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
 				<div className="hidden md:block">
 					<QueryPreservingBackLink
-						pathname="/posts"
+						pathname={listPathname}
 						className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
 					/>
 				</div>
 				<div className="flex">
 					{prevPost && (
 						<Link
-							href={getHrefWithCurrentQuery(`/posts/${prevPost.slug}`, searchParams)}
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
 							className="flex flex-col gap-2 hover:underline"
 						>
 							<span className="inline-flex items-center gap-1 text-sm">
@@ -48,7 +55,7 @@ export const PostDetailNavigationClient = ({ currentSlug, items }: PostDetailNav
 
 					{nextPost && (
 						<Link
-							href={getHrefWithCurrentQuery(`/posts/${nextPost.slug}`, searchParams)}
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
 							className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 						>
 							<span className="inline-flex items-center justify-end gap-1 text-sm">

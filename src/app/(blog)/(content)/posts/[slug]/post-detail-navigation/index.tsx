@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import type { Post } from "@/libs/contents/types";
@@ -9,9 +10,18 @@ type PostDetailNavigationProps = {
 	items: Omit<Post, "content">[];
 	prevPost: Omit<Post, "content"> | null;
 	nextPost: Omit<Post, "content"> | null;
+	detailPathnamePrefix?: string;
+	listPathname?: string;
 };
 
-export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }: PostDetailNavigationProps) => {
+export const PostDetailNavigation = ({
+	currentSlug,
+	items,
+	prevPost,
+	nextPost,
+	detailPathnamePrefix = "/posts",
+	listPathname = "/posts",
+}: PostDetailNavigationProps) => {
 	return (
 		<Suspense
 			fallback={
@@ -20,7 +30,7 @@ export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }:
 					<nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
 						<div className="hidden md:block">
 							<Link
-								href="/posts"
+								href={listPathname as Route}
 								className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
 							>
 								<ArrowLeft size={16} />
@@ -29,7 +39,10 @@ export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }:
 						</div>
 						<div className="flex">
 							{prevPost && (
-								<Link href={`/posts/${prevPost.slug}`} className="flex flex-col gap-2 hover:underline">
+								<Link
+									href={`${detailPathnamePrefix}/${prevPost.slug}` as Route}
+									className="flex flex-col gap-2 hover:underline"
+								>
 									<span className="inline-flex items-center gap-1 text-sm">
 										<ChevronLeft size={16} />
 										이전 글
@@ -40,7 +53,7 @@ export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }:
 
 							{nextPost && (
 								<Link
-									href={`/posts/${nextPost.slug}`}
+									href={`${detailPathnamePrefix}/${nextPost.slug}` as Route}
 									className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 								>
 									<span className="inline-flex items-center justify-end gap-1 text-sm">
@@ -55,7 +68,12 @@ export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }:
 				</>
 			}
 		>
-			<PostDetailNavigationClient currentSlug={currentSlug} items={items} />
+			<PostDetailNavigationClient
+				currentSlug={currentSlug}
+				items={items}
+				detailPathnamePrefix={detailPathnamePrefix}
+				listPathname={listPathname}
+			/>
 		</Suspense>
 	);
 };
