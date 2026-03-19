@@ -26,7 +26,7 @@ export const PostList = ({
 					<Button
 						onClick={() => setCategory(null)}
 						className={cn(
-							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							!category && "border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
@@ -40,7 +40,7 @@ export const PostList = ({
 							onClick={() => setCategory(categoryItem.slug)}
 							className={cn(
 								category === categoryItem.slug &&
-									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+									"border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
 								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
