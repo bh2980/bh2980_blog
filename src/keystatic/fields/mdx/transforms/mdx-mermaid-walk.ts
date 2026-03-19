@@ -27,12 +27,15 @@ export const walkOnlyInsideMermaidCodeFence = (mdxAst: Root) => {
 		document.lines.forEach((line) => {
 			const paragraph: Paragraph = {
 				type: "paragraph",
-				children: [
-					{
-						type: "text",
-						value: line.value,
-					} as Text,
-				],
+				children:
+					line.value.length > 0
+						? [
+								{
+									type: "text",
+									value: line.value,
+								} as Text,
+							]
+						: [],
 			};
 
 			mermaidRoot.children.push(paragraph);
