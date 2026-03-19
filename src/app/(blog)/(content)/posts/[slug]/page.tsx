@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 export async function generateStaticParams() {
 	const slugs = await getPostSlugs();
 
-	return slugs.map((slug) => ({ slug: encodeURIComponent(slug) }));
+	return slugs.map((slug) => ({ slug }));
 }
 
 export default async function BlogPost({ params }: BlogPageProps) {
