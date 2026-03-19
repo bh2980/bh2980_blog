@@ -2,26 +2,26 @@ import "server-only";
 import { differenceInYears } from "date-fns";
 import type { Paragraph, Root } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
-import { draftMode } from "next/headers";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string";
+import { shouldHideDraftContent } from "@/keystatic/libs/runtime";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { Category, ListOptions, ListResult, Post, Tag, WithSlug } from "./types";
+import type { Category, ContentAccessOptions, ListOptions, ListResult, Post, Tag, WithSlug } from "./types";
 
-const normalizePost = async (
+const BUILD_TIME = new Date();
+const normalizePost = (
 	post: WithSlug<PostEntry>,
 	map: { categoryMap: Map<string, Category>; tagMap: Map<string, Tag> },
 	dateTimeOptions: Intl.DateTimeFormatOptions,
-): Promise<Post | null> => {
-	const isDraftEnabled = (await draftMode()).isEnabled;
-
-	if (!isDraftEnabled && process.env.NODE_ENV !== "development" && post.status === "draft") return null;
+	options: ContentAccessOptions = {},
+): Post | null => {
+	if (shouldHideDraftContent(options) && post.status === "draft") return null;
 
 	if (!post.category) {
 		return null;
@@ -36,7 +36,6 @@ const normalizePost = async (
 		.map((tag) => map.tagMap.get(tag))
 		.filter(isDefined);
 
-	const now = new Date();
 	const publishedDateTimeISO = normalizeKstIsoString(post.publishedDateTimeISO);
 	const publishedDate = new Date(publishedDateTimeISO);
 	const publishedAt = publishedDate.toLocaleString("ko-KR", dateTimeOptions);
@@ -45,14 +44,14 @@ const normalizePost = async (
 	const replacementPost = post.policy.value?.replacementPost || undefined;
 
 	const STALE_POST_YEARS_THRESHOLD = 2;
-	const yearsOld = differenceInYears(now, publishedDate);
+	const yearsOld = differenceInYears(BUILD_TIME, publishedDate);
 	const isStale = !isDeprecated && post.policy.discriminant !== "evergreen" && yearsOld >= STALE_POST_YEARS_THRESHOLD;
 
 	return { ...post, category, tags, publishedDateTimeISO, publishedAt, isStale, isDeprecated, replacementPost };
 };
 
-export const getPost = async (slug: string): Promise<Post | null> => {
-	const { postMap, tagMap, categoryMap } = await getContentMap();
+export const getPost = async (slug: string, options: ContentAccessOptions = {}): Promise<Post | null> => {
+	const { postMap, tagMap, categoryMap } = await getContentMap(options);
 
 	const post = postMap.get(sanitizeSlug(slug));
 	if (!post) {
@@ -65,13 +64,15 @@ export const getPost = async (slug: string): Promise<Post | null> => {
 		{
 			dateStyle: "medium",
 		},
+		options,
 	);
 };
 
-export const getPostList = async ({
-	category: categoryFilter,
-}: ListOptions = {}): Promise<ListResult<Omit<Post, "content">>> => {
-	const { postMap, tagMap, categoryMap } = await getContentMap();
+export const getPostList = async (
+	{ category: categoryFilter }: ListOptions = {},
+	options: ContentAccessOptions = {},
+): Promise<ListResult<Omit<Post, "content">>> => {
+	const { postMap, tagMap, categoryMap } = await getContentMap(options);
 
 	let postList = Array.from(postMap.values()).toSorted(
 		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
@@ -82,12 +83,22 @@ export const getPostList = async ({
 	}
 
 	const list = (
-		await Promise.all(postList.map((post) => normalizePost(post, { categoryMap, tagMap }, { dateStyle: "medium" })))
+		await Promise.all(
+			postList.map((post) => normalizePost(post, { categoryMap, tagMap }, { dateStyle: "medium" }, options)),
+		)
 	)
 		.filter(isDefined)
 		.map(({ content, ...rest }) => rest);
 
 	return { list, total: list.length };
+};
+
+export const getPostSlugs = async (options: ContentAccessOptions = {}): Promise<string[]> => {
+	const { postMap } = await getContentMap(options);
+
+	return Array.from(postMap.values())
+		.filter((post) => !(shouldHideDraftContent(options) && post.status === "draft"))
+		.map((post) => sanitizeSlug(post.slug));
 };
 
 function hasRealText(node: Paragraph): boolean {
