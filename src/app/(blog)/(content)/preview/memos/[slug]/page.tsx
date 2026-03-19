@@ -10,6 +10,8 @@ type PreviewMemoPageProps = {
 	params: Promise<{ slug: string }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: PreviewMemoPageProps): Promise<Metadata> {
 	const { slug } = await params;
 	const contentOptions = await getPreviewContentOptionsFromRequest();

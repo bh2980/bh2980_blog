@@ -1,5 +1,7 @@
 import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 
+export const dynamic = "force-dynamic";
+
 export default async function PreviewLayout({
 	children,
 }: Readonly<{

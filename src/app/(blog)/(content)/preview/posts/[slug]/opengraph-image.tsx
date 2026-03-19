@@ -2,6 +2,8 @@ import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-co
 import { createOgImageResponse, OG_ALTER_ALT, OG_CONTENT_TYPE, OG_SIZE } from "@/libs/contents/og";
 import { getPost } from "@/libs/contents/post";
 
+export const dynamic = "force-dynamic";
+
 export async function generateImageMetadata({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
 	const contentOptions = await getPreviewContentOptionsFromRequest();
