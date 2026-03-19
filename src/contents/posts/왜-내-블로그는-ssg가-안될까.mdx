@@ -36,4 +36,24 @@ export async function generateStaticParams() {
 
 하지만 여기서 알아둬야하는 사실이 있습니다. **명단을 제출했다고 해서 Next.js가 무조건 정적 페이지(SSG)로 만들어주는 건 아니라는 사실**입니다.
 
-Next.js는 페이지를 트리 형태로 관리합니다. 최상위 레이아웃부터 상세 페이지, 그리고 그 안의 작은 컴포넌트들까지 하나의 컴포넌트 트리를 구성합니다. 그런데 이 이 트리 중 어느 한 곳에서라도 동적 요소가 발견된다면, Next.js는 그 지점부터 아래로 이어지는 모든 경로를 Dynamic으로 판정해 버립니다.&#x20;
+Next.js는 페이지를 트리 형태로 관리합니다. 최상위 레이아웃부터 상세 페이지, 그리고 그 안의 작은 컴포넌트들까지 하나의 컴포넌트 트리를 구성합니다. 그런데 이 이 트리 중 어느 한 곳에서라도 동적 요소가 발견된다면, Next.js는 그 지점부터 아래로 이어지는 모든 경로를 Dynamic으로 판정해 버립니다.
+
+```mermaid
+graph TD
+    %% 노드 스타일 정의
+    classDef static fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#333;
+    classDef dynamic fill:#ffebee,stroke:#b71c1c,stroke-width:2px,color:#333;
+
+    %% 트리 구조 정의
+    Root["Root Layout"]:::static --> Common["공통 레이아웃"]:::static;
+    
+    %% 범인: Page 레이아웃 (여기서 동적 요소 사용)
+    Common --> PageLayout["Page 레이아웃 <br/> <b style='color:red'>(ƒ) Dynamic 호출 발생</b>"]:::dynamic;
+    
+    %% 결과: 하위 페이지들은 자동으로 Dynamic 확정
+    PageLayout --> PageList["Page 리스트 <br/> (ƒ)"]:::dynamic;
+    PageLayout --> PageDetail["Page 상세 페이지 <br/> (ƒ)"]:::dynamic;
+
+    %% 강조 선
+    style PageLayout stroke-width:4px,stroke:#b71c1c
+```
