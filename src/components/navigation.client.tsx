@@ -5,14 +5,13 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { AdminHeaderLink } from "@/components/admin/admin-links";
+import { AdminHeaderLinkClient } from "@/components/admin/admin-links.client";
 import { cn } from "@/utils/cn";
 import { Button } from "./ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 interface NavigationProps {
 	className?: string;
-	canManage?: boolean;
 }
 
 const NAV = [
@@ -58,7 +57,7 @@ function MobileSheetLink({ href, label, active }: { href: Route | URL; label: st
 	);
 }
 
-export default function Navigation({ className, canManage = false }: NavigationProps) {
+export default function Navigation({ className }: NavigationProps) {
 	const pathname = usePathname();
 	const { resolvedTheme, setTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
@@ -88,8 +87,7 @@ export default function Navigation({ className, canManage = false }: NavigationP
 							active={pathname?.startsWith(item.href) ?? false}
 						/>
 					))}
-					<AdminHeaderLink
-						canManage={canManage}
+					<AdminHeaderLinkClient
 						className={cn(
 							"rounded-md px-3 py-2 font-medium text-sm transition",
 							"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -146,20 +144,17 @@ export default function Navigation({ className, canManage = false }: NavigationP
 											active={pathname?.startsWith(item.href) ?? false}
 										/>
 									))}
-									{canManage && (
-										<SheetClose asChild>
-											<AdminHeaderLink
-												canManage={canManage}
-												className={cn(
-													"rounded-lg px-3 py-3 font-medium text-base transition",
-													"text-slate-700 hover:bg-slate-100",
-													"dark:text-slate-200 dark:hover:bg-slate-800",
-													pathname?.startsWith("/keystatic") && "bg-slate-100 dark:bg-slate-800",
-													"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-												)}
-											/>
-										</SheetClose>
-									)}
+									<SheetClose asChild>
+										<AdminHeaderLinkClient
+											className={cn(
+												"rounded-lg px-3 py-3 font-medium text-base transition",
+												"text-slate-700 hover:bg-slate-100",
+												"dark:text-slate-200 dark:hover:bg-slate-800",
+												pathname?.startsWith("/keystatic") && "bg-slate-100 dark:bg-slate-800",
+												"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
+											)}
+										/>
+									</SheetClose>
 								</div>
 							</nav>
 						</SheetContent>

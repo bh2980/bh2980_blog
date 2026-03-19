@@ -3,6 +3,7 @@ import Footer from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemoList } from "@/libs/contents/memo";
 import { getPostList } from "@/libs/contents/post";
 
@@ -101,7 +102,7 @@ export default async function Home() {
 									<li key={post.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
 										<Link
-											href={{ pathname: `/posts/${post.slug}` }}
+											href={{ pathname: `/posts/${sanitizeSlug(post.slug)}` }}
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
 											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
@@ -109,7 +110,7 @@ export default async function Home() {
 												<span>·</span>
 												<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
 											</div>
-											<h3 className="mt-2 line-clamp-2 font-semibold text-slate-900 dark:text-slate-100">
+											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{post.title}
 											</h3>
 											<p className="mt-1 line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
@@ -138,13 +139,13 @@ export default async function Home() {
 									<li key={memo.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
 										<Link
-											href={{ pathname: `/memos/${memo.slug}` }}
+											href={{ pathname: `/memos/${sanitizeSlug(memo.slug)}` }}
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
 											<div className="text-slate-500 text-xs dark:text-slate-400">
 												<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 											</div>
-											<h3 className="mt-2 line-clamp-2 font-semibold text-slate-900 dark:text-slate-100">
+											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{memo.title}
 											</h3>
 											{memo.tags?.length ? (

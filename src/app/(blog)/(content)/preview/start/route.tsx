@@ -1,6 +1,6 @@
 import { draftMode } from "next/headers";
 import { NextResponse } from "next/server";
-import keystaticConfig from "@/root/keystatic.config";
+import { isRemotePreviewEnabled } from "@/keystatic/libs/runtime";
 
 export async function GET(req: Request) {
 	const url = new URL(req.url);
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 		return new Response("Invalid redirect URL", { status: 400 });
 	}
 
-	if (keystaticConfig.storage.kind === "local") {
+	if (!isRemotePreviewEnabled()) {
 		return NextResponse.redirect(toUrl.toString());
 	}
 
