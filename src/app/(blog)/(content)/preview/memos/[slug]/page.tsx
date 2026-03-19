@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getAdminContext } from "@/libs/admin/context";
 import { getMemo } from "@/libs/contents/memo";
 import { MemoDetailPageContent } from "../../../memos/[slug]/memo-detail-page-content";
 
@@ -43,9 +42,5 @@ export default async function PreviewMemoPage({ params }: PreviewMemoPageProps) 
 		return notFound();
 	}
 
-	const { canManage, keystaticMode } = await getAdminContext();
-
-	return (
-		<MemoDetailPageContent memo={memo} canManage={canManage} keystaticMode={keystaticMode} listPathname="/memos" />
-	);
+	return <MemoDetailPageContent memo={memo} listPathname="/memos" />;
 }

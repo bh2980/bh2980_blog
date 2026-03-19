@@ -42,7 +42,7 @@ export const PostDetailNavigationClient = ({
 				<div className="flex">
 					{prevPost && (
 						<Link
-							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${sanitizeSlug(prevPost.slug)}`, searchParams)}
 							className="flex flex-col gap-2 hover:underline"
 						>
 							<span className="inline-flex items-center gap-1 text-sm">
@@ -55,7 +55,7 @@ export const PostDetailNavigationClient = ({
 
 					{nextPost && (
 						<Link
-							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${sanitizeSlug(nextPost.slug)}`, searchParams)}
 							className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 						>
 							<span className="inline-flex items-center justify-end gap-1 text-sm">

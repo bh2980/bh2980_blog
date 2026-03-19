@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getAdminContext } from "@/libs/admin/context";
 import { getPost, getPostList, getPostSlugs } from "@/libs/contents/post";
 import { PostDetailPageContent } from "./post-detail-page-content";
 
 type BlogPageProps = {
 	params: Promise<{ slug: string }>;
 };
+
+export const dynamic = "force-static";
+export const dynamicParams = false;
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
 	const { slug } = await params;
@@ -32,7 +34,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 export async function generateStaticParams() {
 	const slugs = await getPostSlugs();
 
-	return slugs.map((slug) => ({ slug }));
+	return slugs.map((slug) => ({ slug: encodeURIComponent(slug) }));
 }
 
 export default async function BlogPost({ params }: BlogPageProps) {
@@ -45,9 +47,5 @@ export default async function BlogPost({ params }: BlogPageProps) {
 		return notFound();
 	}
 
-	const { canManage, keystaticMode } = await getAdminContext();
-
-	return (
-		<PostDetailPageContent post={post} postList={postList.list} canManage={canManage} keystaticMode={keystaticMode} />
-	);
+	return <PostDetailPageContent post={post} postList={postList.list} />;
 }

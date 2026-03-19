@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { AdminEditLink } from "@/components/admin/admin-links";
+import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { KeystaticMode } from "@/libs/admin/keystatic-url";
 import type { Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
@@ -13,8 +12,6 @@ import { PostDetailNavigation } from "./post-detail-navigation";
 type PostDetailPageContentProps = {
 	post: Post;
 	postList: Omit<Post, "content">[];
-	canManage: boolean;
-	keystaticMode: KeystaticMode;
 	currentSlug?: string;
 	detailPathnamePrefix?: string;
 	listPathname?: string;
@@ -23,8 +20,6 @@ type PostDetailPageContentProps = {
 export const PostDetailPageContent = async ({
 	post,
 	postList,
-	canManage,
-	keystaticMode,
 	currentSlug = post.slug,
 	detailPathnamePrefix = "/posts",
 	listPathname = "/posts",
@@ -52,11 +47,9 @@ export const PostDetailPageContent = async ({
 							<span>{post.category.name}</span>
 							<span>·</span>
 							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
-							<AdminEditLink
-								canManage={canManage}
+							<AdminEditLinkClient
 								collection="post"
 								slug={post.slug}
-								mode={keystaticMode}
 								className={cn(
 									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
 									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",

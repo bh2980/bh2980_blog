@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getAdminContext } from "@/libs/admin/context";
 import { getMemo, getMemoSlugs } from "@/libs/contents/memo";
 import { MemoDetailPageContent } from "./memo-detail-page-content";
 
 type MemoPageProps = {
 	params: Promise<{ slug: string }>;
 };
+
+export const dynamic = "force-static";
+export const dynamicParams = false;
 
 export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {
 	const { slug } = await params;
@@ -47,7 +49,5 @@ export default async function MemoPage({ params }: MemoPageProps) {
 		return notFound();
 	}
 
-	const { canManage, keystaticMode } = await getAdminContext();
-
-	return <MemoDetailPageContent memo={memo} canManage={canManage} keystaticMode={keystaticMode} />;
+	return <MemoDetailPageContent memo={memo} />;
 }

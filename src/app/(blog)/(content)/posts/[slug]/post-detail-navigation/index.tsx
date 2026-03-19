@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { Post } from "@/libs/contents/types";
 import { PostDetailNavigationClient } from "./client";
 
@@ -40,7 +41,7 @@ export const PostDetailNavigation = ({
 						<div className="flex">
 							{prevPost && (
 								<Link
-									href={`${detailPathnamePrefix}/${prevPost.slug}` as Route}
+									href={`${detailPathnamePrefix}/${sanitizeSlug(prevPost.slug)}` as Route}
 									className="flex flex-col gap-2 hover:underline"
 								>
 									<span className="inline-flex items-center gap-1 text-sm">
@@ -53,7 +54,7 @@ export const PostDetailNavigation = ({
 
 							{nextPost && (
 								<Link
-									href={`${detailPathnamePrefix}/${nextPost.slug}` as Route}
+									href={`${detailPathnamePrefix}/${sanitizeSlug(nextPost.slug)}` as Route}
 									className="ml-auto flex flex-col justify-end gap-2 hover:underline"
 								>
 									<span className="inline-flex items-center justify-end gap-1 text-sm">
