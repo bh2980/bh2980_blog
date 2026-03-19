@@ -53,6 +53,33 @@ describe("mdx mermaid walk", () => {
 		expect(input.children[0]).toMatchObject({ type: "code", lang: "ts" });
 	});
 
+	it("walkOnlyInsideMermaidCodeFence: 빈 줄은 빈 paragraph로 유지한다", () => {
+		const input: Root = {
+			type: "root",
+			children: [
+				{
+					type: "code",
+					lang: "mermaid",
+					value: ["graph TD;", "", "A-->B;"].join("\n"),
+				},
+			],
+		};
+
+		walkOnlyInsideMermaidCodeFence(input);
+
+		const converted = input.children[0];
+		expect(converted?.type).toBe("mdxJsxFlowElement");
+		if (!converted || converted.type !== "mdxJsxFlowElement") {
+			throw new Error("Expected converted node to be mdxJsxFlowElement");
+		}
+
+		expect(converted.children).toHaveLength(3);
+		expect(converted.children[1]).toMatchObject({
+			type: "paragraph",
+			children: [],
+		});
+	});
+
 	it("walkOnlyInsideMermaid: Mermaid mdast를 mermaid code fence로 변환한다", () => {
 		const input: Root = {
 			type: "root",
