@@ -32,7 +32,7 @@ export async function generateStaticParams() {
 }
 ```
 
-`generateStaticParams` 함수는 동적 경로(`/[slug]`)에 대해서 예상 URL 리스트를 제출하여 이를 정적 경로로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 정적으로 생성해줘 라고 요청하는거죠.
+`generateStaticParams` 함수는 동적 경로(`/[slug]`)에 대해서 예상 URL 리스트를 제출하여 이를 정적 경로로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 미리 정적으로 생성해줘 라고 요청하는거죠.
 
 하지만 여기서 알아둬야하는 사실이 있습니다. **명단을 제출했다고 해서 Next.js가 무조건 정적 페이지(SSG)로 만들어주는 건 아니라는 사실**입니다.
 
@@ -57,3 +57,29 @@ graph TD
     %% 강조 선
     style PageLayout stroke-width:4px,stroke:#b71c1c
 ```
+
+그렇기 때문에 상세 페이지에도, 상세 페이지까지 오는 길에도 동적 요소가 없어야만 비로소 상세 페이지가 정적 페이지로 빌드될 수 있습니다.
+
+그렇다면 여기서 말하는 동적 요소(Dynamic Functions)란 대체 뭘까요? 이를 위해서는 여기서 말하는 정적(Static)과 동적(Dynamic)이 뭔지 아는게 좋습니다. 우리가 흔히 말하는 SSG와 SSR이 이 개념들의 다른 이름이거든요.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as "빌드 (Build)"
+    participant S as "서버 (Server)"
+    participant U as "사용자 (User)"
+
+    Note over B: [SSG ●] 미리 굽기
+    B->>B: 데이터 조회 및 HTML 생성
+    Note over B: 창고(CDN)에 HTML 저장 완료
+
+    Note over U, S: [SSR ƒ] 주문 즉시 굽기
+    U->>+S: 페이지 접속 요청
+    S->>S: 실시간 데이터 조회 및 렌더링
+    S-->>-U: 따끈따끈한 HTML 전달
+```
+
+SSG와 SSR은 페이지가 생성되는 시점이 다릅니다. SSG는 빌드 타임에 생성하는 반면, SSR은 사용자가 요청 시 서버에서 실시간으로 페이지를 만들어서 사용자에게 전달합니다. 때문에 SSG는 모든 데이터가 운영 중에 바뀌는 '실시간(Dynamic)'하지 않도록 빌드 시에 결정되어야 합니다.&#x20;
+
+그렇기 때문에 SSG(Static Site Generation)는 정적(Static)이고 SSR(Server Side Rendering)은 동적(Dynamic)입니다. 즉, Next.js에서 해당 페이지를&#x20;
+
