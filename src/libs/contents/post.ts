@@ -10,7 +10,6 @@ import { unified } from "unified";
 import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { PostEntry } from "@/keystatic/types";
-import keystaticConfig from "@/root/keystatic.config";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
 import type { Category, ListOptions, ListResult, Post, Tag, WithSlug } from "./types";
@@ -22,7 +21,7 @@ const normalizePost = async (
 ): Promise<Post | null> => {
 	const isDraftEnabled = (await draftMode()).isEnabled;
 
-	if (!isDraftEnabled && keystaticConfig.storage.kind === "github" && post.status === "draft") return null;
+	if (!isDraftEnabled && process.env.NODE_ENV !== "development" && post.status === "draft") return null;
 
 	if (!post.category) {
 		return null;
