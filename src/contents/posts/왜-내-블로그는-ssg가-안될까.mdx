@@ -32,7 +32,7 @@ export async function generateStaticParams() {
 }
 ```
 
-`generateStaticParams` 함수는 동적 경로(`[slug]`)에 대해서 예상 URL 리스트를 제출하여 이를 정적 경로로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 정적으로 생성해줘 라고 요청하는거죠.
+`generateStaticParams` 함수는 동적 경로(`/[slug]`)에 대해서 예상 URL 리스트를 제출하여 이를 정적 경로로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 정적으로 생성해줘 라고 요청하는거죠.
 
 하지만 여기서 알아둬야하는 사실이 있습니다. **명단을 제출했다고 해서 Next.js가 무조건 정적 페이지(SSG)로 만들어주는 건 아니라는 사실**입니다.
 
