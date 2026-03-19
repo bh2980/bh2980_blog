@@ -10,10 +10,7 @@ type MemoDetailPageContentProps = {
 	listPathname?: string;
 };
 
-export const MemoDetailPageContent = async ({
-	memo,
-	listPathname = "/memos",
-}: MemoDetailPageContentProps) => {
+export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: MemoDetailPageContentProps) => {
 	const source = await memo.content();
 	const { content, toc } = await renderMDX(source);
 

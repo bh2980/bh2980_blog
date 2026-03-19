@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
+import { Suspense } from "react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
