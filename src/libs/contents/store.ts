@@ -51,20 +51,16 @@ const buildContentMap = async (
 
 type ContentMap = Awaited<ReturnType<typeof buildContentMap>>;
 
-const contentMapCache = new Map<string, Promise<ContentMap>>();
-
-const getContentCacheKey = (options: ContentAccessOptions) => options.preview?.branch ?? "published";
+let publishedContentMapPromise: Promise<ContentMap> | null = null;
 
 export const getContentMap = async (options: ContentAccessOptions = {}): Promise<ContentMap> => {
-	const cacheKey = getContentCacheKey(options);
-	const cached = contentMapCache.get(cacheKey);
-
-	if (cached) {
-		return cached;
+	if (options.preview) {
+		return buildContentMap(options);
 	}
 
-	const mapPromise = buildContentMap(options);
-	contentMapCache.set(cacheKey, mapPromise);
+	if (!publishedContentMapPromise) {
+		publishedContentMapPromise = buildContentMap();
+	}
 
-	return mapPromise;
+	return publishedContentMapPromise;
 };

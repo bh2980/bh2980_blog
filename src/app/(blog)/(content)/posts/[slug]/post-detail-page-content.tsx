@@ -3,7 +3,6 @@ import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
@@ -24,11 +23,6 @@ export const PostDetailPageContent = async ({
 	detailPathnamePrefix = "/posts",
 	listPathname = "/posts",
 }: PostDetailPageContentProps) => {
-	const normalizedCurrentSlug = sanitizeSlug(currentSlug);
-	const currentIndex = postList.findIndex((item) => sanitizeSlug(item.slug) === normalizedCurrentSlug);
-	const prevPost = currentIndex > 0 ? postList[currentIndex - 1] : null;
-	const nextPost = currentIndex >= 0 && currentIndex + 1 < postList.length ? postList[currentIndex + 1] : null;
-
 	const source = await post.content();
 	const { content, toc } = await renderMDX(source);
 
@@ -95,8 +89,6 @@ export const PostDetailPageContent = async ({
 				<PostDetailNavigation
 					currentSlug={currentSlug}
 					items={postList}
-					prevPost={prevPost}
-					nextPost={nextPost}
 					detailPathnamePrefix={detailPathnamePrefix}
 					listPathname={listPathname}
 				/>
