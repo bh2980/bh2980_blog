@@ -4,7 +4,7 @@ import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
 import { getContentMap } from "./store";
-import type { ListResult, Memo, Tag, WithSlug } from "./types";
+import type { ContentAccessOptions, ListResult, Memo, Tag, WithSlug } from "./types";
 
 const normalizeMemo = (
 	memo: WithSlug<MemoEntry>,
@@ -22,8 +22,8 @@ const normalizeMemo = (
 	return { ...memo, tags, publishedAt, publishedDateTimeISO };
 };
 
-export const getMemo = async (slug: string): Promise<Memo | null> => {
-	const { memoMap, tagMap } = await getContentMap();
+export const getMemo = async (slug: string, options: ContentAccessOptions = {}): Promise<Memo | null> => {
+	const { memoMap, tagMap } = await getContentMap(options);
 
 	const memo = memoMap.get(sanitizeSlug(slug));
 	if (!memo) {
@@ -40,8 +40,8 @@ export const getMemo = async (slug: string): Promise<Memo | null> => {
 	);
 };
 
-export const getMemoList = async (): Promise<ListResult<Omit<Memo, "content">>> => {
-	const { memoMap, tagMap } = await getContentMap();
+export const getMemoList = async (options: ContentAccessOptions = {}): Promise<ListResult<Omit<Memo, "content">>> => {
+	const { memoMap, tagMap } = await getContentMap(options);
 
 	const memos = Array.from(memoMap.values()).toSorted(
 		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
@@ -55,8 +55,14 @@ export const getMemoList = async (): Promise<ListResult<Omit<Memo, "content">>> 
 	return { list, total: list.length };
 };
 
-export const getMemoTagList = async (): Promise<ListResult<Tag>> => {
-	const { memoMap, tagMap } = await getContentMap();
+export const getMemoSlugs = async (options: ContentAccessOptions = {}): Promise<string[]> => {
+	const { memoMap } = await getContentMap(options);
+
+	return Array.from(memoMap.values()).map((memo) => sanitizeSlug(memo.slug));
+};
+
+export const getMemoTagList = async (options: ContentAccessOptions = {}): Promise<ListResult<Tag>> => {
+	const { memoMap, tagMap } = await getContentMap(options);
 
 	const tagSet = new Set<string>();
 

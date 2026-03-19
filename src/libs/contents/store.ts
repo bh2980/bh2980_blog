@@ -1,10 +1,9 @@
 import "server-only";
 
-import { cache } from "react";
 import { reader } from "@/keystatic/libs/reader";
 import type { CategoryEntry, CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
 import { getSafeExcerpt } from "./post";
-import type { WithSlug } from "./types";
+import type { ContentAccessOptions, WithSlug } from "./types";
 
 const buildSlugMap = <T>(items: Array<{ slug: string; entry: T }>): Map<string, WithSlug<T>> => {
 	return new Map(items.map((item) => [item.slug, { ...item.entry, slug: item.slug }]));
@@ -22,14 +21,16 @@ const buildPostMap = async (posts: { slug: string; entry: PostEntry }[]): Promis
 	return new Map(pairs);
 };
 
-const buildContentMap = async (): Promise<{
+const buildContentMap = async (
+	options: ContentAccessOptions = {},
+): Promise<{
 	postMap: Map<string, WithSlug<PostEntry>>;
 	memoMap: Map<string, WithSlug<MemoEntry>>;
 	tagMap: Map<string, WithSlug<TagEntry>>;
 	collectionMap: Map<string, WithSlug<CollectionEntry>>;
 	categoryMap: Map<string, WithSlug<CategoryEntry>>;
 }> => {
-	const r = await reader();
+	const r = await reader(options);
 
 	const [posts, memos, tags, collection, categories] = await Promise.all([
 		r.collections.post.all(),
@@ -48,4 +49,18 @@ const buildContentMap = async (): Promise<{
 	return { postMap, memoMap, tagMap, collectionMap, categoryMap };
 };
 
-export const getContentMap = cache(() => buildContentMap());
+type ContentMap = Awaited<ReturnType<typeof buildContentMap>>;
+
+let publishedContentMapPromise: Promise<ContentMap> | null = null;
+
+export const getContentMap = async (options: ContentAccessOptions = {}): Promise<ContentMap> => {
+	if (options.preview) {
+		return buildContentMap(options);
+	}
+
+	if (!publishedContentMapPromise) {
+		publishedContentMapPromise = buildContentMap();
+	}
+
+	return publishedContentMapPromise;
+};

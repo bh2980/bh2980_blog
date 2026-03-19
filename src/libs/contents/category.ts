@@ -1,8 +1,11 @@
+import { shouldHideDraftContent } from "@/keystatic/libs/runtime";
 import { getContentMap } from "./store";
-import type { CategoryListMeta, CategoryWithCount, ListResult } from "./types";
+import type { CategoryListMeta, CategoryWithCount, ContentAccessOptions, ListResult } from "./types";
 
-export const getCategoryList = async (): Promise<ListResult<CategoryWithCount, CategoryListMeta>> => {
-	const { postMap, categoryMap } = await getContentMap();
+export const getCategoryList = async (
+	options: ContentAccessOptions = {},
+): Promise<ListResult<CategoryWithCount, CategoryListMeta>> => {
+	const { postMap, categoryMap } = await getContentMap(options);
 
 	const categoryCountMap = new Map(
 		Array.from(categoryMap.values()).map((category) => [category.slug, { ...category, count: 0 }]),
@@ -16,7 +19,7 @@ export const getCategoryList = async (): Promise<ListResult<CategoryWithCount, C
 		}
 
 		const category = categoryCountMap.get(post.category);
-		if (post.status === "draft" || !category) return;
+		if ((shouldHideDraftContent(options) && post.status === "draft") || !category) return;
 
 		category.count++;
 		totalPostCount++;

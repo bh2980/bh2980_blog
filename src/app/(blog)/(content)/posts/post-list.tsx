@@ -2,19 +2,24 @@
 
 import Link from "next/link";
 import { useQueryState } from "nuqs";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { CategoryListMeta, CategoryWithCount, ListResult, Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
-export const PostList = ({
-	categories,
-	posts,
-}: {
+type PostListProps = {
 	categories: ListResult<CategoryWithCount, CategoryListMeta>;
 	posts: ListResult<Omit<Post, "content">>;
-}) => {
-	const [category, setCategory] = useQueryState<string | null>("category", { parse: (value) => value || null });
+};
+
+type PostListContentProps = PostListProps & {
+	category: string | null;
+	setCategory?: (value: string | null) => void;
+};
+
+const PostListContent = ({ categories, posts, category, setCategory }: PostListContentProps) => {
 	const postList = category ? posts.list.filter((post) => post.category.slug === category) : posts.list;
 
 	return (
@@ -24,9 +29,9 @@ export const PostList = ({
 				<p className="mb-6 text-slate-600 dark:text-slate-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
 				<div className="flex flex-wrap gap-2">
 					<Button
-						onClick={() => setCategory(null)}
+						onClick={() => setCategory?.(null)}
 						className={cn(
-							!category && "!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+							!category && "border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
 							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 						)}
@@ -37,10 +42,10 @@ export const PostList = ({
 					{categories.list.map((categoryItem) => (
 						<Button
 							key={categoryItem.slug}
-							onClick={() => setCategory(categoryItem.slug)}
+							onClick={() => setCategory?.(categoryItem.slug)}
 							className={cn(
 								category === categoryItem.slug &&
-									"!bg-slate-400/20 dark:!bg-slate-100/15 border-slate-400 dark:border-slate-100/30",
+									"border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
 								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
 								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
 							)}
@@ -65,7 +70,7 @@ export const PostList = ({
 						<li key={post.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
 							<Link
-								href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
+								href={{ pathname: `/posts/${sanitizeSlug(post.slug)}`, query: category ? { category } : undefined }}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
@@ -83,5 +88,19 @@ export const PostList = ({
 				</ul>
 			)}
 		</div>
+	);
+};
+
+const PostListClient = ({ categories, posts }: PostListProps) => {
+	const [category, setCategory] = useQueryState<string | null>("category", { parse: (value) => value || null });
+
+	return <PostListContent categories={categories} posts={posts} category={category} setCategory={setCategory} />;
+};
+
+export const PostList = ({ categories, posts }: PostListProps) => {
+	return (
+		<Suspense fallback={<PostListContent categories={categories} posts={posts} category={null} />}>
+			<PostListClient categories={categories} posts={posts} />
+		</Suspense>
 	);
 };

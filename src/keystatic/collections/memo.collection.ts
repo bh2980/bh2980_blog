@@ -22,5 +22,5 @@ export const memoCollection = collection({
 			options: { image: { directory: "public/assets/images/memos", publicPath: "/assets/images/memos" } },
 		}),
 	},
-	previewUrl: `/preview/start?branch={branch}&to=/memos/{slug}`,
+	previewUrl: `/preview/start?branch={branch}&to=/preview/memos/{slug}`,
 });

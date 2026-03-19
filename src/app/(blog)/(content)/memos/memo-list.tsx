@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
+import { Suspense } from "react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { ListResult, Memo, Tag } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 
-export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListResult<Omit<Memo, "content">> }) => {
-	const [tagFilter, setTagFilter] = useQueryState<string[]>("tags", parseAsNativeArrayOf(parseAsString));
+type MemoListProps = {
+	tags: ListResult<Tag>;
+	memos: ListResult<Omit<Memo, "content">>;
+};
 
+type MemoListContentProps = MemoListProps & {
+	tagFilter?: string[];
+	setTagFilter?: (value: string[]) => void;
+};
+
+const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListContentProps) => {
 	const memoList = memos.list.filter(
 		(memo) => tagFilter?.every((tag) => memo.tags.find((memoTag) => memoTag.slug === tag)) ?? true,
 	);
@@ -23,7 +33,7 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 				</p>
 				<MultiSelect
 					options={tags.list}
-					onValueChange={setTagFilter}
+					onValueChange={setTagFilter ?? (() => {})}
 					defaultValue={tagFilter}
 					placeholder="태그 선택"
 					hideSelectAll
@@ -40,7 +50,7 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 						<li key={memo.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
 							<Link
-								href={{ pathname: `/memos/${memo.slug}`, query: { tags: tagFilter } }}
+								href={{ pathname: `/memos/${sanitizeSlug(memo.slug)}`, query: { tags: tagFilter } }}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
 								<article className="flex h-full flex-col gap-1 rounded-lg p-4">
@@ -65,5 +75,19 @@ export const MemoList = ({ memos, tags }: { tags: ListResult<Tag>; memos: ListRe
 				</ul>
 			)}
 		</div>
+	);
+};
+
+const MemoListClient = ({ memos, tags }: MemoListProps) => {
+	const [tagFilter, setTagFilter] = useQueryState<string[]>("tags", parseAsNativeArrayOf(parseAsString));
+
+	return <MemoListContent memos={memos} tags={tags} tagFilter={tagFilter ?? undefined} setTagFilter={setTagFilter} />;
+};
+
+export const MemoList = ({ memos, tags }: MemoListProps) => {
+	return (
+		<Suspense fallback={<MemoListContent memos={memos} tags={tags} />}>
+			<MemoListClient memos={memos} tags={tags} />
+		</Suspense>
 	);
 };

@@ -11,6 +11,13 @@ export type ListOptions = {
 	category?: string;
 };
 
+export type ContentAccessOptions = {
+	preview?: {
+		branch: string;
+		token: string;
+	} | null;
+};
+
 export type WithSlug<T> = { slug: string } & T;
 
 export type Tag = Expand<WithSlug<TagEntry>>;
