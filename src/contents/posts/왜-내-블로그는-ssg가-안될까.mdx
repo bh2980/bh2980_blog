@@ -95,5 +95,79 @@ graph TD
 
 그렇게 원인을 알았으니 다시 코드를 보러 갔습니다. 그리고 보았습니다. 수많은 동적 요소들이 상세 페이지를 렌더링하기 위해 애쓰고 있는 것을요. 이러니 `generateStaticParams` 조금 적었다고 SSG로 렌더링이 될리가 없었습니다.
 
+????? // 부드럽게 잇기
+
+### 관심사 분리하기
+
+가장 먼저 칼을 댄 곳은 데이터를 읽어오는 핵심 로직인 `reader`였습니다. 제 블로그는 Keystatic을 사용해 게시글을 관리하는데, 기존의 `reader` 함수는 단순한 데이터 조회를 넘어 너무 많은 '실시간성' 일을 하고 있었습니다.
+
+<Tabs>
+  <Tab label="Before">
+    ```ts
+    import { createReader } from "@keystatic/core/reader";
+    import { createGitHubReader } from "@keystatic/core/reader/github";
+    import { cookies, draftMode } from "next/headers";
+    import keystaticConfig from "@/root/keystatic.config";
+    import { isRemotePreviewEnabled } from "./runtime";
+
+    export const reader = async () => {
+    	let isDraftModeEnabled = false;
+
+    	try {
+    		const draftModeStore = await draftMode();
+
+    		isDraftModeEnabled = draftModeStore.isEnabled;
+    	} catch (error) {
+    		console.error(error);
+    	}
+
+    	if (isRemotePreviewEnabled() && isDraftModeEnabled) {
+    		const cookieStore = await cookies();
+    		const branch = cookieStore.get("ks-branch")?.value;
+
+    		if (branch) {
+    			return createGitHubReader(keystaticConfig, {
+    				repo: `${process.env.NEXT_PUBLIC_KEYSTATIC_OWNER}/${process.env.NEXT_PUBLIC_KEYSTATIC_REPO}`,
+    				ref: branch,
+    				token: cookieStore.get("keystatic-gh-access-token")?.value,
+    			});
+    		}
+    	}
+
+    	return createReader(process.cwd(), keystaticConfig);
+    };
+
+    ```
+  </Tab>
+
+  <Tab label="After">
+    ```ts
+    import { createReader } from "@keystatic/core/reader";
+    import { createGitHubReader } from "@keystatic/core/reader/github";
+    import type { ContentAccessOptions } from "@/libs/contents/types";
+    import keystaticConfig from "@/root/keystatic.config";
+    import { shouldUseRemotePreview } from "./runtime";
+
+    export const reader = async (options: ContentAccessOptions = {}) => {
+    	const preview = options.preview;
+
+    	if (preview && shouldUseRemotePreview(options)) {
+    		return createGitHubReader(keystaticConfig, {
+    			repo: `${process.env.NEXT_PUBLIC_KEYSTATIC_OWNER}/${process.env.NEXT_PUBLIC_KEYSTATIC_REPO}`,
+    			ref: preview.branch,
+    			token: preview.token,
+    		});
+    	}
+
+    	return createReader(process.cwd(), keystaticConfig);
+    };
+    ```
+  </Tab>
+</Tabs>
+
+이를 해결하기 위해 reader에서 draftMode나 cookies를 직접 참조하는 것이 아닌 `options` 파라미터로 받도록 하여
+
 ### searchParams 유배 보내기
+
+가장 먼저 한 일은 바로 상세 페이지에 있던 `searchParams`를 분리하는 일이었습니다. 제 블로그에는 카테고리나 태그를 url에 `searchParams`로 제공하여 필터링을 하는데, 뒤로 가기나 이전 글, 다음 글 시에도 이 카테고리를 유지하려 하다보니 정적이어야하는 상세 페이지에서도 이 값을 참조하는 문제가 발생한 것이었습니다.
 
