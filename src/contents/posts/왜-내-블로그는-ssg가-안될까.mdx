@@ -204,7 +204,8 @@ graph TD
     // 2. 클라이언트 컴포넌트 (PostDetailNavigation): 동적 처리를 전담
     'use client';
     export function PostDetailNavigation({ items }) {
-        const searchParams = useSearchParams(); // 👈 브라우저에서 실시간으로 쿼리 읽기
+    	// @line highlight
+        const searchParams = useSearchParams();
         const category = searchParams.get('category');
 
         // 사용자가 보고 있는 카테고리에 맞춰 이전/다음 글 링크를 클라이언트에서 계산
