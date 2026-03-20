@@ -289,3 +289,5 @@ export default async function PreviewLayout({ children }) {
 여기에 `export const dynamic = "force-dynamic"`까지 명시하면서, preview는 처음부터 정적 생성 대상이 아니라는 점도 분명히 했습니다. 공개 페이지는 정적으로 단단하게 굳히고, preview는 실시간성을 인정해 동적으로 열어두는 것. 결국 제가 해야 했던 일은 모든 페이지를 억지로 SSG로 만드는 것이 아니라, 각 경로가 제 성격대로 동작하도록 자리를 찾아주는 일이었습니다.
 
 ## 마무리 : 처음부터 잘하자
+
+단순히 `generateStaticParams`만 해주면 될거라고 기대했던 처음과 달리, SSG
