@@ -171,3 +171,46 @@ graph TD
 
 그 다음으로 한 일은 바로 상세 페이지에 있던 `searchParams`를 분리하는 일이었습니다. 제 블로그에는 카테고리나 태그를 url에 `searchParams`로 제공하여 필터링을 하는데, 뒤로 가기나 이전 글, 다음 글 시에도 이 카테고리를 유지하려 하다보니 정적이어야하는 상세 페이지에서도 이 값을 참조하는 문제가 발생한 것이었습니다.
 
+<Tabs>
+  <Tab label="Before">
+    ```ts title="app/posts/[slug]/page.tsx"
+    export default async function BlogPost({ params, searchParams }: BlogPageProps) {
+        const { slug } = await params;
+        const query = await searchParams;
+
+        const post = await getPost(slug);
+        // @highlight
+        const postList = await getPostList(query); 
+
+        return (
+            /* ... 생략 ... */
+            <Link href={{ pathname: `/posts/${prevPost.slug}`, query }}>이전 글</Link>
+        );
+    }
+    ```
+  </Tab>
+
+  <Tab label="After">
+    ```ts
+    // 1. 서버 컴포넌트
+    export default async function BlogPost({ params }: BlogPageProps) {
+        const { slug } = await params;
+        const post = await getPost(slug);
+        const postList = await getPostList(); // 쿼리 없이 전체 리스트를 가져옴
+
+        // 상세 페이지의 뼈대만 정적으로 렌더링
+        return <PostDetailPageContent post={post} postList={postList.list} />;
+    }
+
+    // 2. 클라이언트 컴포넌트 (PostDetailNavigation): 동적 처리를 전담
+    'use client';
+    export function PostDetailNavigation({ items }) {
+        const searchParams = useSearchParams(); // 👈 브라우저에서 실시간으로 쿼리 읽기
+        const category = searchParams.get('category');
+
+        // 사용자가 보고 있는 카테고리에 맞춰 이전/다음 글 링크를 클라이언트에서 계산
+        return <Link href={`/posts/${prev.slug}?category=${category}`}>이전 글</Link>;
+    }
+    ```
+  </Tab>
+</Tabs>
