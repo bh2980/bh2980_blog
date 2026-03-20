@@ -13,3 +13,37 @@ policy:
 예전에 모달 중앙 관리 관련 블로그 포스팅을 본 적 있습니다. 거기서도 글을 내릴 때마다 슬라이드 쇼처럼 코드가 알아서 자동으로 바뀌는 걸 보고 와 대단하다 라는 생각을 했었는데, 마침 추천 받은 라이브러리가 그 때 사용되었던 바로 이 라이브러리였죠. 안 써볼 수가 없었습니다.
 
 그런데 막상 써보니까 만족도가 높지 않더군요. 왜 그런지 고민해봤더니 에디터 환경에서 글을 작성하는게 큰 걸림돌이었습니다.
+
+````ts title="Code Hike 툴팁 예제"
+<CodeWithTooltips>
+
+```js !code
+// !tooltip[/lorem/] description
+function lorem(ipsum, dolor = 1) {
+  const sit = ipsum == null ? 0 : ipsum.sit
+  dolor = sit - amet(dolor)
+  // !tooltip[/consectetur/] inspect
+  return sit ? consectetur(ipsum) : []
+}
+```
+
+## !!tooltips description
+
+### Hello world
+
+Lorem ipsum **dolor** sit amet `consectetur`.
+
+Adipiscing elit _sed_ do eiusmod.
+
+## !!tooltips inspect
+
+```js
+function consectetur(ipsum) {
+  const { a, b } = ipsum
+  return a + b
+}
+```
+
+</CodeWithTooltips>
+
+````
