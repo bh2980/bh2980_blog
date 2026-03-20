@@ -53,4 +53,27 @@ function consectetur(ipsum) {
 
 ![](/assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%209.55.41.png)하지만 제 에디터에는 위처럼 버젓이 <Tooltip content="나는 툴팁">툴팁</Tooltip> 버튼이 있죠. 즉, 드래그해서 툴팁 버튼만 누르면 되는걸, 심지어 에디터에서 코드 블록 안에 자동 완성도 없이 작성하자니 굉장히 별로였습니다.
 
-또 다른 문제는 이렇게 툴팁을 작성해도 복잡한 렌더링 파이프라인을 거쳐야한다는 점이었습니다. Code Hike는 remark를 통해서 렌더링을 지원하는데 저는 에디터로 글을 작성하기 때문에 JSX를 그대로 작성하면 정규화가 되서 저장됩니다.&#x20;
+또 다른 문제는 이렇게 툴팁을 작성해도 복잡한 렌더링 파이프라인을 거쳐야한다는 점이었습니다.
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자 (에디터)
+    participant E as PureMdx 컴포넌트
+    participant R1 as 1차 renderMdx (Main)
+    participant R2 as 2차 renderMdx (Inner)
+    participant O as 최종 출력 (Code Hike 적용)
+
+    U->>E: 원본 코드 작성 (Wrapper 내 삽입)
+    Note over U,E: JSX 정규화를 피하기 위한 조치
+
+    R1->>E: 1차 파싱 중 PureMdx 발견
+    E->>R2: 내부의 원본 코드를 다시 넘김
+    Note right of R2: 여기서 Remark/Rehype 플러그인 작동
+    
+    R2->>R2: Code Hike 툴팁/하이라이트 처리
+    R2-->>E: 렌더링된 결과 반환
+    E-->>R1: 최종 결과 통합
+    R1->>O: 브라우저에 표시
+```
+
+Code Hike는 remark, rehype 플러그인을 통해서 렌더링을 지원하는데 저는 에디터로 글을 작성하기 때문에 JSX를 그대로 작성하면 정규화가 되서 저장됩니다. 따라서 본문을 보존하려면 코드블록을 사용하거나 별도의 컴포넌트를 만들어서 이를 다시 MDX 렌더링 파이프라인을 타게 만들어야하는데… 아무리 생각해도 이건 아닌 것 같았죠.
