@@ -286,8 +286,8 @@ export default async function PreviewLayout({ children }) {
 
 이렇게 하고 나니 구조가 훨씬 솔직해졌습니다. 공개 페이지는 preview 상태를 전혀 몰라도 되고, preview 경로에서만 관련 정보를 읽으면 됩니다. 예전에는 공개 페이지와 preview 페이지가 한집에 살며 서로의 짐을 억지로 나눠 들고 있었다면, 이제는 아예 주소를 갈라버린 셈입니다.
 
-여기에 `export const dynamic = "force-dynamic"`까지 명시하면서, preview는 처음부터 정적 생성 대상이 아니라는 점도 분명히 했습니다. 공개 페이지는 정적으로 단단하게 굳히고, preview는 실시간성을 인정해 동적으로 열어두는 것. 결국 제가 해야 했던 일은 모든 페이지를 억지로 SSG로 만드는 것이 아니라, 각 경로가 제 성격대로 동작하도록 자리를 찾아주는 일이었습니다.
+여기에 `export const dynamic = "force-dynamic"`까지 명시하면서, preview는 처음부터 정적 생성 대상이 아니라는 점도 분명히 했습니다.
 
-## 그러니까 처음부터 잘하자
+## 마무리 : 소제목
 
 단순히 `generateStaticParams`만 해주면 될거라고 기대했던 처음과 달리, SSG
