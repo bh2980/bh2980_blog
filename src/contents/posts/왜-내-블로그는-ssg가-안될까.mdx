@@ -167,143 +167,64 @@ graph TD
 
 ### searchParams 유배 보내기
 
-그 다음으로 끌어낸 것은 상세 페이지에 눌러앉아 있던 searchParams였습니다.
+그다음으로 수술대에 올린 것은 상세 페이지에 깊숙이 침투해 있던 `searchParams`였습니다.
 
-제 블로그는 카테고리 필터를 쿼리스트링으로 유지하는데, 문제는 이 상태를 상세 페이지에서도 끝까지 끌고 갔다는 점이었습니다. 뒤로 가기, 이전 글, 다음 글까지 전부 현재 쿼리를 기준으로 움직이다 보니, 정작 slug만 있으면 되어야 할 상세 페이지가 요청의 맥락까지 같이 책임지고 있었던 것입니다.
-
-원래 구조는 이랬습니다. 상세 페이지가 서버에서 searchParams를 직접 받고, 그 값으로 이전 글과 다음 글 목록까지 계산하고 있었습니다.
+제 블로그는 카테고리 필터를 쿼리 스트링(`?category=...`)으로 관리합니다. 문제는 이 상태값을 상세 페이지까지 끌고 들어오면서 발생했습니다. '뒤로 가기', '이전 글/다음 글' 링크가 모두 현재 쿼리를 기준으로 동작하다 보니, 정작 `slug`만 있으면 충분해야 할 상세 페이지가 "현재 사용자의 접속 맥락"까지 책임져야 하는 상황이 된 것입니다.
 
 ```tsx
 export default async function BlogPost({ params, searchParams }: BlogPageProps) {
   const { slug } = await params;
-  const query = await searchParams;
+  const query = await searchParams; // 이 시점부터 페이지는 요청 시점의 쿼리에 의존하게 됨
 
   const post = await getPost(slug);
-  const postList = await getPostList(query);
+  const postList = await getPostList(query); // 쿼리에 따라 결과가 달라짐
 
-  const currentIndex = postList.list.findIndex(
-    (post) => sanitizeSlug(post.slug) === sanitizeSlug(slug),
-  );
-
-  const nextPost = currentIndex + 1 < postList.total ? postList.list[currentIndex + 1] : null;
-  const prevPost = currentIndex - 1 >= 0 ? postList.list[currentIndex - 1] : null;
+  // ... 인덱스 계산 및 이전/다음 글 추출 로직 ...
 
   return (
-    <nav className="flex" aria-label="이전 다음 글">
-      {prevPost && (
-        <Link href={{ pathname: `/posts/${prevPost.slug}`, query }}>
-          이전 글
-        </Link>
-      )}
-      {nextPost && (
-        <Link href={{ pathname: `/posts/${nextPost.slug}`, query }}>
-          다음 글
-        </Link>
-      )}
+    <nav>
+      <Link href={{ pathname: `/posts/${prevPost.slug}`, query }}>이전 글</Link>
+      <Link href={{ pathname: `/posts/${nextPost.slug}`, query }}>다음 글</Link>
     </nav>
   );
 }
-
 ```
 
-이 상태에서는 상세 페이지가 글만 렌더링하는 페이지가 아니라, "지금 사용자가 어떤 카테고리 필터를 보고 있었는가"까지 알고 있어야 하는 페이지가 됩니다. 한마디로, 상세 페이지가 너무 많은 걸 알고 있었습니다.
+이 구조에서 상세 페이지는 단순히 글을 보여주는 곳이 아니라, "지금 사용자가 어떤 카테고리 필터를 활성화했는가"라는 실시간 상태를 감시해야 합니다. 결과적으로 이 구조에서는 상세 페이지가 빌드 시점에만 결정되는 페이지로 남기 어려워집니다.
 
 그래서 방향을 바꿨습니다. 상세 페이지는 글 내용과 기본 목록만 정적으로 들고 있게 두고, 현재 쿼리를 읽는 일은 아예 클라이언트 내비게이션으로 분리한 것입니다.
 
 ```tsx
 export default async function BlogPost({ params }: BlogPageProps) {
   const { slug } = await params;
-
   const post = await getPost(slug);
-  const postList = await getPostList();
+  const postList = await getPostList(); // 쿼리 없이 전체 리스트를 가져와 정적 생성 가능
 
-  return (
-    <PostDetailPageContent
-      post={post}
-      postList={postList.list}
-    />
-  );
+  return <PostDetailPageContent post={post} postList={postList.list} />;
 }
 ```
 
 대신 이전 글, 다음 글, 돌아가기 링크처럼 정말로 현재 쿼리가 필요한 부분만 클라이언트 컴포넌트로 따로 빼냈습니다.
 
-```tsx
-"use client";
-
-export const PostDetailNavigationClient = ({ currentSlug, items }: PostDetailNavigationProps) => {
-  const searchParams = useSearchParams();
-  const category = searchParams.get("category");
-
-  const filteredItems = category
-    ? items.filter((item) => item.category.slug === category)
-    : items;
-
-  const currentIndex = filteredItems.findIndex(
-    (item) => sanitizeSlug(item.slug) === sanitizeSlug(currentSlug),
-  );
-
-  const prevPost = currentIndex > 0 ? filteredItems[currentIndex - 1] : null;
-  const nextPost =
-    currentIndex >= 0 && currentIndex + 1 < filteredItems.length
-      ? filteredItems[currentIndex + 1]
-      : null;
-
-  return (
-    <nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
-      <div className="hidden md:block">
-        <QueryPreservingBackLink pathname="/posts" />
-      </div>
-
-      <div className="flex">
-        {prevPost && (
-          <Link href={getHrefWithCurrentQuery(`/posts/${prevPost.slug}`, searchParams)}>
-            이전 글
-          </Link>
-        )}
-        {nextPost && (
-          <Link href={getHrefWithCurrentQuery(`/posts/${nextPost.slug}`, searchParams)}>
-            다음 글
-          </Link>
-        )}
-      </div>
-    </nav>
-  );
-};
-```
-
-여기서 끝이 아니었습니다. useSearchParams()를 쓰는 컴포넌트를 그냥 꽂아 넣기만 하면, 정적으로 렌더링하고 싶은 경로에서도 그 경계가 흐려질 수 있습니다. 그래서 저는 이 내비게이션을 Suspense로 한 번 더 감쌌습니다.
+여기서 끝이 아니었습니다. `useSearchParams()`를 쓰는 컴포넌트를 그냥 꽂아 넣기만 하면, 정적으로 렌더링하고 싶은 경로에서도 그 경계가 흐려질 수 있습니다. 그래서 저는 이 내비게이션을 `Suspense`로 한 번 더 감쌌습니다.
 
 ```tsx
-export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }: PostDetailNavigationProps) => {
+export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost }) => {
   return (
-    <Suspense
-      fallback={
-        <>
-          <hr className="border-slate-200 dark:border-slate-800" />
-          <nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
-            <div className="hidden md:block">
-              <Link href="/posts" className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400">
-                <ArrowLeft size={16} />
-                <span>돌아가기</span>
-              </Link>
-            </div>
-
-            <div className="flex">
-              {prevPost && <Link href={`/posts/${prevPost.slug}`}>이전 글</Link>}
-              {nextPost && <Link href={`/posts/${nextPost.slug}`}>다음 글</Link>}
-            </div>
-          </nav>
-        </>
-      }
-    >
+    <Suspense fallback={<DefaultNavigation prevPost={prevPost} nextPost={nextPost} />}>
+      {/* 클라이언트 사이드에서만 쿼리를 읽어 링크를 보정함 */}
       <PostDetailNavigationClient currentSlug={currentSlug} items={items} />
     </Suspense>
   );
 };
 ```
 
+이렇게 하면 Next.js 빌드 엔진은 다음과 같이 동작합니다.
 
+1. 빌드 시점: 쿼리를 모르는 상태에서도 `fallback`에 정의된 '정적 껍데기'를 포함해 전체 페이지를 미리 HTML로 구워냅니다.
+2. 런타임(브라우저): 페이지가 로드된 후 클라이언트에서 `useSearchParams()`를 읽어, 사용자가 보고 있던 카테고리에 맞는 링크로 부드럽게 보정합니다.
+
+결국 `searchParams`를 없앤 것이 아니라, 정적이어야 하는 '본질'과 런타임에만 알아도 되는 '맥락'을 `Suspense`라는 경계선으로 확실히 갈라놓은 셈입니다. 이를 통해 상세 페이지는 이제 본연의 임무인 '글 보여주기'에만 집중하게 되었고, 흔들리는 정보들은 모두 클라이언트 쪽으로 밀어내 정적 렌더링 경계를 조금 더 분명하게 만들 수 있었습니다.
 
 ## 관리자 검증 로직 렌더 경로 밖으로 밀어내기
 
