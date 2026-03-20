@@ -226,10 +226,69 @@ export const PostDetailNavigation = ({ currentSlug, items, prevPost, nextPost })
 
 결국 `searchParams`를 없앤 것이 아니라, 정적이어야 하는 '본질'과 런타임에만 알아도 되는 '맥락'을 `Suspense`라는 경계선으로 확실히 갈라놓은 셈입니다. 이를 통해 상세 페이지는 이제 본연의 임무인 '글 보여주기'에만 집중하게 되었고, 흔들리는 정보들은 모두 클라이언트 쪽으로 밀어내 정적 렌더링 경계를 조금 더 분명하게 만들 수 있었습니다.
 
-## 관리자 검증 로직 렌더 경로 밖으로 밀어내기
+### 공통 layout에서 preview 떼어내기
 
-`searchParams`까지 유배 보내고 나니 끝난 줄 알았습니다만 여전히 빌드 결과는 𝓓𝔂𝓷𝓪𝓶𝓲𝓬했습니다. 할만큼 한 것 같은데 뭐가 문제인가 싶어서, 공개 페이지가 글만 얌전히 렌더링하면 될 일인데, 은근슬쩍 "지금 이 사용자가 관리자냐"까지 같이 판단하고 있었던 것입니다.
+reader를 수술했고 searchParams도 유배 보냈습니다. 이제는 정말 정적 페이지다운 영롱한 동그라미(●)가 나와줄 때도 됐는데, 이상하게도 블로그 전체에는 여전히 동적인 기운(ƒ)이 감돌고 있었습니다. 다시 코드를 훑어보니 범인은 상세 페이지가 아니라, 그 위를 넓게 덮고 있던 공통 레이아웃(Root Layout)이었습니다.
 
-기존 구조에서는 getAdminContext()를 레이아웃과 상세 페이지에서 직접 호출하고 있었습니다. 문제는 이 순간부터였습니다. 공개 페이지가 단순히 글을 보여주는 경로가 아니라, 현재 요청을 보고 관리자 여부까지 판별하는 경로가 되어버린 것이죠. 글을 보여주러 왔더니 갑자기 신분 조회까지 하고 있었던 셈입니다.
+당시 제 블로그의 공통 레이아웃은 단순히 테마만 입히는 곳이 아니었습니다. draftMode()와 cookies()를 직접 읽어 현재 preview 상태인지 확인하고, 화면 하단에 Draft 배너까지 띄우고 있었죠. 사용자 편의를 위한 기능이었지만, 문제는 이 로직이 모든 페이지의 부모인 공통 레이아웃에 붙어 있었다는 점이었습니다.
 
-그래서 이 판단을 공개 렌더 경로 밖으로 밀어냈습니다. 공개 페이지는 일단 정적으로 렌더링하고, 관리자 여부는 별도의 API에서 확인한 뒤 클라이언트에서 뒤늦게 주입하도록 바꾼 것입니다. 덕분에 관리자 링크는 필요할 때만 붙고, 적어도 공개 페이지의 기본 렌더 경로만큼은 "글을 보여주는 일"에만 집중할 수 있게 되었습니다.
+결국 공개 페이지와 preview 페이지가 같은 부모 아래에서 동적 로직을 억지로 공유하고 있었던 것입니다.
+
+```tsx title="layout.tsx"
+import { cookies, draftMode } from "next/headers";
+
+export default async function RootLayout({ children }) {
+  const { isEnabled } = await draftMode();
+  const cookieStore = await cookies();
+  const branch = cookieStore.get("ks-branch")?.value;
+
+  return (
+    <ThemeProvider>
+      {children}
+      {isEnabled && (
+        <div className="fixed bottom-0">Draft mode (branch: {branch})</div>
+      )}
+    </ThemeProvider>
+  );
+}
+
+```
+
+문제는 preview 기능이 있다는 사실 자체가 아니었습니다. 그 기능이 공개 경로의 부모 레이아웃에 기생하고 있었다는 점이 문제였습니다.
+
+```tsx
+export default function RootLayout({ children }) {
+  return (
+    <ThemeProvider attribute="class">
+      {children}
+    </ThemeProvider>
+  );
+}
+```
+
+먼저 공개 레이아웃에서 preview 관련 책임을 완전히 걷어냈습니다. 공개 페이지는 더 이상 draft mode가 켜졌는지, 어느 브랜치를 보고 있는지 알 필요가 없기 때문입니다.
+
+대신 preview에만 필요한 동적 처리는 preview 전용 레이아웃으로 따로 격리했습니다.
+
+```tsx
+export const dynamic = "force-dynamic";
+
+export default async function PreviewLayout({ children }) {
+  const contentOptions = await getPreviewContentOptionsFromRequest();
+  const branch = contentOptions.preview?.branch;
+
+  return (
+    <>
+      {children}
+      {branch && (
+        <div className="fixed bottom-0">Draft mode (branch: {branch})</div>
+      )}
+    </>
+  );
+}
+```
+
+
+
+
+
