@@ -5,6 +5,7 @@ import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
+import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
@@ -14,6 +15,7 @@ import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { IdeographicSpace } from "./ideographic-space";
+import { Mermaid } from "./mermaid.client";
 import { pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
@@ -27,6 +29,7 @@ export const renderMDX = async (source: string) => {
 			mdxOptions: {
 				remarkPlugins: [
 					[remarkAnnotationToShikiDecoration, annotationConfig],
+					remarkMermaidToMdx,
 					remarkBreaks,
 					remarkGfm,
 					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
@@ -42,6 +45,7 @@ export const renderMDX = async (source: string) => {
 			IdeographicSpace,
 			a,
 			pre,
+			Mermaid,
 			collapse,
 			fold,
 
