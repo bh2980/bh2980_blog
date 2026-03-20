@@ -20,17 +20,28 @@ const extractText = (node: ReactNode): string => {
 	return extractText(node.props.children);
 };
 
+const isDarkFromDom = (element: HTMLElement | null) => {
+	if (typeof document === "undefined") return false;
+
+	if (element?.closest(".kui-scheme--dark")) return true;
+	if (element?.closest(".kui-scheme--light")) return false;
+	if (document.documentElement.classList.contains("dark")) return true;
+	if (document.body.classList.contains("dark")) return true;
+
+	return typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
+};
+
 export const Mermaid = ({ children, className }: MermaidProps) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [error, setError] = useState<Error>();
 	const { resolvedTheme } = useTheme();
-	const isDark = resolvedTheme === "dark";
 	const chart = useMemo(() => Children.toArray(children).map(extractText).join("\n"), [children]);
 
 	useEffect(() => {
-		if (!ref.current || !chart.trim() || !resolvedTheme) return;
+		if (!ref.current || !chart.trim()) return;
 
 		let disposed = false;
+		const isDark = resolvedTheme ? resolvedTheme === "dark" : isDarkFromDom(ref.current);
 
 		try {
 			mermaid.initialize({
@@ -58,7 +69,7 @@ export const Mermaid = ({ children, className }: MermaidProps) => {
 		return () => {
 			disposed = true;
 		};
-	}, [chart, isDark, resolvedTheme]);
+	}, [chart, resolvedTheme]);
 
 	return (
 		<div className={cn("flex justify-center overflow-x-auto p-4", className)} data-error={!!error}>
