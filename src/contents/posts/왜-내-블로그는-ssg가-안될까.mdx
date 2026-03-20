@@ -176,11 +176,10 @@ graph TD
     ```ts title="app/posts/[slug]/page.tsx"
     export default async function BlogPost({ params, searchParams }: BlogPageProps) {
         const { slug } = await params;
+    	// @line highlight
         const query = await searchParams;
-
-        const post = await getPost(slug);
-        // @line highlight
         const postList = await getPostList(query); 
+    	// @line highlight end
 
         return (
             /* ... 생략 ... */
