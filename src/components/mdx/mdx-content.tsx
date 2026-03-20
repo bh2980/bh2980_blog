@@ -5,7 +5,6 @@ import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
-import { remarkImageToMdx } from "@/libs/mdx/remark-image-to-mdx";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
@@ -29,7 +28,6 @@ export const renderMDX = async (source: string) => {
 		options: {
 			mdxOptions: {
 				remarkPlugins: [
-					remarkImageToMdx,
 					[remarkAnnotationToShikiDecoration, annotationConfig],
 					remarkMermaidToMdx,
 					remarkBreaks,
