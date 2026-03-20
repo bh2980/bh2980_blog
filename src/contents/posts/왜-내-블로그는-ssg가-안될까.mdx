@@ -43,7 +43,7 @@ sequenceDiagram
     S-->>-U: 따끈따끈한 HTML 전달
 ```
 
-정적은 다른 말로 SSG(Static Site Generation), 그리고 동적이라고 SSR(Server Side Rendering)로 말할 수 있습니다. 그리고 이 둘의 차이는 페이지를 언제 생성할 것이냐에 따라 달라집니다.&#x20;
+**정적**은 다른 말로 <u>SSG(Static Site Generation)</u>, 그리고 **동적**은 <u>SSR(Server Side Rendering)</u>로 말할 수 있습니다. CSR(Client Side Rendering)과는 다소 다른 개념인 것 같은데 어떻게 이런 구분이 가능한걸까요? 그것 바로 이 두 방식의 페이지의 생성 시기가 다르기 때문입니다.
 
 SSG는 페이지를 빌드 시에 생성합니다. 때문에 SSG는 모든 데이터가 빌드할 때 고정되야하는 데이터로 구성되어야하며, 즉 정적(Static)입니다.&#x20;
 
@@ -59,7 +59,7 @@ export async function generateStaticParams() {
 }
 ```
 
-`generateStaticParams` 함수는 원래라면 운영 시에 실시간으로 바뀌는 동적 경로(`/[slug]`)에 대해서 URL 리스트를 제출하여 이를 정적 경로로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 미리 정적으로 생성해줘 라고 요청하는거죠.
+자, 그럼 다시 돌아와봅시다. `generateStaticParams` 함수는 원래라면 운영 시에 실시간으로 바뀌는 **동적 경로(`/[slug]`)**&#xC5D0; 대해서 URL 리스트를 제출하여 이를 **정적 경로**로 동작하게 만들어주는 역할을 합니다. 즉, 이런이런 URL이 있으니 이 URL들은 미리 정적으로 생성해줘 라고 요청하는거죠.
 
 하지만 여기서 알아둬야하는 사실이 있습니다. **명단을 제출했다고 해서 Next.js가 무조건 정적 페이지(SSG)로 만들어주는 건 아니라는 사실**입니다.
 
@@ -90,4 +90,3 @@ graph TD
 그렇다면 여기서 말하는 동적 요소(Dynamic Functions)란 대체 뭘까요? 아까 말했듯, 동적 요소는 운영 중에 실시간으로 바뀔 수 있는 요소를 말합니다. 대표적으로 [cookies, headers와 같은 함수를사용하거나 searchParams 같은 prop](https://nextjs-ko.org/docs/app/building-your-application/rendering/server-components#dynamic-functions)을 사용하는 경우가 있습니다.
 
 ## 동적 요소 제거하기
-
