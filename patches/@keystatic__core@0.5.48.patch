@@ -2,6 +2,76 @@ diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
 index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8faa05752 100644
 --- a/dist/index-d59451fc.js
 +++ b/dist/index-d59451fc.js
+@@ -18570,6 +18570,28 @@ function getSrcPrefix(publicPath, slug) {
+   return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
+ }
++
++function getFilenameCandidates(filename) {
++  const candidates = [filename];
++  try {
++    const normalized = [filename.normalize('NFC'), filename.normalize('NFD')];
++    for (const candidate of normalized) {
++      if (!candidates.includes(candidate)) {
++        candidates.push(candidate);
++      }
++    }
++  } catch {}
++  return candidates;
++}
++
++function getFileWithNormalizedLookup(fileMap, filename) {
++  if (!fileMap) return undefined;
++  for (const candidate of getFilenameCandidates(filename)) {
++    const content = fileMap.get(candidate);
++    if (content !== undefined) {
++      return content;
++    }
++  }
++  return undefined;
++}
+ 
+ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
+   return nodes.map(node => {
+@@ -18583,10 +18605,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, doc
+-    if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+-      var _ref;
++    if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+       const prefix = getSrcPrefixForImageBlock$1(documentFeatures, slug);
+       const filename = node.src.slice(prefix.length);
+-      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++      const fileMap = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files;
++      const content = getFileWithNormalizedLookup(fileMap, filename);
+       if (!content) {
+         return {
+           type: 'paragraph',
+@@ -20019,14 +20041,13 @@ function deserializeValue(value, schema) {
+     }, value, [], [], (schema, value) => {
+       if (schema.formKind === 'asset') {
+-        var _state$otherFiles$get;
+         const filename = schema.filename(value, {
+           slug: state.slug,
+           suggestedFilenamePrefix: undefined
+         });
+         return schema.parse(value, {
+-          asset: filename ? schema.directory ? (_state$otherFiles$get = state.otherFiles.get(schema.directory)) === null || _state$otherFiles$get === void 0 ? void 0 : _state$otherFiles$get.get(filename) : state.extraFiles.get(filename) : undefined,
++          asset: filename ? schema.directory ? getFileWithNormalizedLookup(state.otherFiles.get(schema.directory), filename) : getFileWithNormalizedLookup(state.extraFiles, filename) : undefined,
+           slug: state.slug
+         });
+       }
+@@ -26646,10 +26667,10 @@ function markdocToProseMirror(node, schema, files, otherFiles, slug) {
+-  if (node.type === 'image') {
+-    var _ref, _node$attributes$titl;
++  if (node.type === 'image') {
++    var _node$attributes$titl;
+     const prefix = getSrcPrefixForImageBlock(schema.config, getState$1().slug);
+     const fullFilename = decodeURIComponent(node.attributes.src);
+     const filename = fullFilename.slice(prefix.length);
+-    const content = (_ref = typeof schema.config.image === 'object' && typeof schema.config.image.directory === 'string' ? getState$1().otherFiles.get(fixPath(schema.config.image.directory)) : getState$1().extraFiles) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++    const fileMap = typeof schema.config.image === 'object' && typeof schema.config.image.directory === 'string' ? getState$1().otherFiles.get(fixPath(schema.config.image.directory)) : getState$1().extraFiles;
++    const content = getFileWithNormalizedLookup(fileMap, filename);
+     if (content && schema.nodes.image) {
+       return schema.nodes.image.createChecked({
+         src: content,
 @@ -26834,10 +26834,33 @@ const cursorBuilder = user => {
  };
  function createEditorState(doc, selection, storedMarks, yXmlFragment, awareness) {
@@ -49,6 +119,22 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
      doc
    });
  }
+@@ -27160,13 +27181,13 @@ function mdxToProseMirror(node, schema, files, otherFiles, slug) {
+-    var _ref;
+     const data = node.type === 'image' ? node : getState().definitions.get(node.identifier.toUpperCase());
+     if (!data) {
+       error(`Could not find definition for ${node.identifier}`);
+       return null;
+     }
+     const prefix = getSrcPrefixForImageBlock(schema.config, getState().slug);
+     const fullFilename = decodeURI(data.url);
+     const filename = fullFilename.slice(prefix.length);
+-    const content = (_ref = typeof schema.config.image === 'object' && typeof schema.config.image.directory === 'string' ? getState().otherFiles.get(fixPath(schema.config.image.directory)) : getState().extraFiles) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++    const fileMap = typeof schema.config.image === 'object' && typeof schema.config.image.directory === 'string' ? getState().otherFiles.get(fixPath(schema.config.image.directory)) : getState().extraFiles;
++    const content = getFileWithNormalizedLookup(fileMap, filename);
+     if (content && schema.nodes.image) {
+       return schema.nodes.image.createChecked({
+         src: content,
 @@ -27404,27 +27430,74 @@ function serializeFromEditorState(value, slug) {
      external
    };
