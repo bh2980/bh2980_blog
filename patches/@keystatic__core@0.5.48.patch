@@ -1,11 +1,11 @@
-diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
-index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8faa05752 100644
---- a/dist/index-d59451fc.js
-+++ b/dist/index-d59451fc.js
-@@ -18570,6 +18570,28 @@ function getSrcPrefix(publicPath, slug) {
+diff --git a/dist/index-360e5820.node.js b/dist/index-360e5820.node.js
+index 078c1062f04544e2e3d8c3f8521779d4a0de6b32..7a0431677bef873506418ec35112ae00725dfed8 100644
+--- a/dist/index-360e5820.node.js
++++ b/dist/index-360e5820.node.js
+@@ -735,6 +735,30 @@ function getSrcPrefix(publicPath, slug) {
    return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
  }
-+
+ 
 +function getFilenameCandidates(filename) {
 +  const candidates = [filename];
 +  try {
@@ -29,13 +29,275 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
 +  }
 +  return undefined;
 +}
- 
++
  function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
    return nodes.map(node => {
-@@ -18583,10 +18605,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, doc
--    if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+     if (node.type === 'component-block') {
+@@ -747,10 +771,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, docum
+       };
+     }
+     if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
 -      var _ref;
-+    if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+       const prefix = getSrcPrefixForImageBlock(documentFeatures, slug);
+       const filename = node.src.slice(prefix.length);
+-      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++      const fileMap = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files;
++      const content = getFileWithNormalizedLookup(fileMap, filename);
+       if (!content) {
+         return {
+           type: 'paragraph',
+@@ -786,7 +810,6 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+   return transformProps(schema, value, {
+     form: (schema, value) => {
+       if (schema.formKind === 'asset') {
+-        var _otherFiles$get;
+         if (mode === 'read') {
+           return schema.reader.parse(value);
+         }
+@@ -795,7 +818,7 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+           suggestedFilenamePrefix: undefined
+         });
+         return schema.parse(value, {
+-          asset: filename ? schema.directory ? (_otherFiles$get = otherFiles.get(schema.directory)) === null || _otherFiles$get === void 0 ? void 0 : _otherFiles$get.get(filename) : files.get(filename) : undefined,
++          asset: filename ? schema.directory ? getFileWithNormalizedLookup(otherFiles.get(schema.directory), filename) : getFileWithNormalizedLookup(files, filename) : undefined,
+           slug
+         });
+       }
+diff --git a/dist/index-382895ba.worker.js b/dist/index-382895ba.worker.js
+index 5f3d756b010cf27eacfd7711a53bf11de5649e5a..2bbccc48a8b90a7791f547aaf796b754b764cd00 100644
+--- a/dist/index-382895ba.worker.js
++++ b/dist/index-382895ba.worker.js
+@@ -734,6 +734,30 @@ function getSrcPrefix(publicPath, slug) {
+   return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
+ }
+ 
++function getFilenameCandidates(filename) {
++  const candidates = [filename];
++  try {
++    const normalized = [filename.normalize('NFC'), filename.normalize('NFD')];
++    for (const candidate of normalized) {
++      if (!candidates.includes(candidate)) {
++        candidates.push(candidate);
++      }
++    }
++  } catch {}
++  return candidates;
++}
++
++function getFileWithNormalizedLookup(fileMap, filename) {
++  if (!fileMap) return undefined;
++  for (const candidate of getFilenameCandidates(filename)) {
++    const content = fileMap.get(candidate);
++    if (content !== undefined) {
++      return content;
++    }
++  }
++  return undefined;
++}
++
+ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
+   return nodes.map(node => {
+     if (node.type === 'component-block') {
+@@ -746,10 +770,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, docum
+       };
+     }
+     if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+-      var _ref;
+       const prefix = getSrcPrefixForImageBlock(documentFeatures, slug);
+       const filename = node.src.slice(prefix.length);
+-      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++      const fileMap = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files;
++      const content = getFileWithNormalizedLookup(fileMap, filename);
+       if (!content) {
+         return {
+           type: 'paragraph',
+@@ -785,7 +809,6 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+   return transformProps(schema, value, {
+     form: (schema, value) => {
+       if (schema.formKind === 'asset') {
+-        var _otherFiles$get;
+         if (mode === 'read') {
+           return schema.reader.parse(value);
+         }
+@@ -794,7 +817,7 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+           suggestedFilenamePrefix: undefined
+         });
+         return schema.parse(value, {
+-          asset: filename ? schema.directory ? (_otherFiles$get = otherFiles.get(schema.directory)) === null || _otherFiles$get === void 0 ? void 0 : _otherFiles$get.get(filename) : files.get(filename) : undefined,
++          asset: filename ? schema.directory ? getFileWithNormalizedLookup(otherFiles.get(schema.directory), filename) : getFileWithNormalizedLookup(files, filename) : undefined,
+           slug
+         });
+       }
+diff --git a/dist/index-49bb61a8.react-server.js b/dist/index-49bb61a8.react-server.js
+index 80b8e3b26a05dac82dda10ff4bb186563d6ab373..37fe9af28e3b89798d5c5d2f4758036cfd555e00 100644
+--- a/dist/index-49bb61a8.react-server.js
++++ b/dist/index-49bb61a8.react-server.js
+@@ -734,6 +734,30 @@ function getSrcPrefix(publicPath, slug) {
+   return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
+ }
+ 
++function getFilenameCandidates(filename) {
++  const candidates = [filename];
++  try {
++    const normalized = [filename.normalize('NFC'), filename.normalize('NFD')];
++    for (const candidate of normalized) {
++      if (!candidates.includes(candidate)) {
++        candidates.push(candidate);
++      }
++    }
++  } catch {}
++  return candidates;
++}
++
++function getFileWithNormalizedLookup(fileMap, filename) {
++  if (!fileMap) return undefined;
++  for (const candidate of getFilenameCandidates(filename)) {
++    const content = fileMap.get(candidate);
++    if (content !== undefined) {
++      return content;
++    }
++  }
++  return undefined;
++}
++
+ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
+   return nodes.map(node => {
+     if (node.type === 'component-block') {
+@@ -746,10 +770,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, docum
+       };
+     }
+     if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+-      var _ref;
+       const prefix = getSrcPrefixForImageBlock(documentFeatures, slug);
+       const filename = node.src.slice(prefix.length);
+-      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++      const fileMap = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files;
++      const content = getFileWithNormalizedLookup(fileMap, filename);
+       if (!content) {
+         return {
+           type: 'paragraph',
+@@ -785,7 +809,6 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+   return transformProps(schema, value, {
+     form: (schema, value) => {
+       if (schema.formKind === 'asset') {
+-        var _otherFiles$get;
+         if (mode === 'read') {
+           return schema.reader.parse(value);
+         }
+@@ -794,7 +817,7 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+           suggestedFilenamePrefix: undefined
+         });
+         return schema.parse(value, {
+-          asset: filename ? schema.directory ? (_otherFiles$get = otherFiles.get(schema.directory)) === null || _otherFiles$get === void 0 ? void 0 : _otherFiles$get.get(filename) : files.get(filename) : undefined,
++          asset: filename ? schema.directory ? getFileWithNormalizedLookup(otherFiles.get(schema.directory), filename) : getFileWithNormalizedLookup(files, filename) : undefined,
+           slug
+         });
+       }
+diff --git a/dist/index-ca270311.node.react-server.js b/dist/index-ca270311.node.react-server.js
+index 27622edb012192ac35fc38d6c2f0261ab60e81a9..078fbdb2c846d8b94089c780f471ae5ce31680c3 100644
+--- a/dist/index-ca270311.node.react-server.js
++++ b/dist/index-ca270311.node.react-server.js
+@@ -735,6 +735,30 @@ function getSrcPrefix(publicPath, slug) {
+   return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
+ }
+ 
++function getFilenameCandidates(filename) {
++  const candidates = [filename];
++  try {
++    const normalized = [filename.normalize('NFC'), filename.normalize('NFD')];
++    for (const candidate of normalized) {
++      if (!candidates.includes(candidate)) {
++        candidates.push(candidate);
++      }
++    }
++  } catch {}
++  return candidates;
++}
++
++function getFileWithNormalizedLookup(fileMap, filename) {
++  if (!fileMap) return undefined;
++  for (const candidate of getFilenameCandidates(filename)) {
++    const content = fileMap.get(candidate);
++    if (content !== undefined) {
++      return content;
++    }
++  }
++  return undefined;
++}
++
+ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
+   return nodes.map(node => {
+     if (node.type === 'component-block') {
+@@ -747,10 +771,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, docum
+       };
+     }
+     if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+-      var _ref;
+       const prefix = getSrcPrefixForImageBlock(documentFeatures, slug);
+       const filename = node.src.slice(prefix.length);
+-      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
++      const fileMap = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files;
++      const content = getFileWithNormalizedLookup(fileMap, filename);
+       if (!content) {
+         return {
+           type: 'paragraph',
+@@ -786,7 +810,6 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+   return transformProps(schema, value, {
+     form: (schema, value) => {
+       if (schema.formKind === 'asset') {
+-        var _otherFiles$get;
+         if (mode === 'read') {
+           return schema.reader.parse(value);
+         }
+@@ -795,7 +818,7 @@ function deserializeProps(schema, value, files, otherFiles, mode, slug) {
+           suggestedFilenamePrefix: undefined
+         });
+         return schema.parse(value, {
+-          asset: filename ? schema.directory ? (_otherFiles$get = otherFiles.get(schema.directory)) === null || _otherFiles$get === void 0 ? void 0 : _otherFiles$get.get(filename) : files.get(filename) : undefined,
++          asset: filename ? schema.directory ? getFileWithNormalizedLookup(otherFiles.get(schema.directory), filename) : getFileWithNormalizedLookup(files, filename) : undefined,
+           slug
+         });
+       }
+diff --git a/dist/index-d59451fc.js b/dist/index-d59451fc.js
+index fc703c5a29949074cd161c49afad3b1a67c60520..8bd24766284e426be4f2b52154cd956ef17b2b96 100644
+--- a/dist/index-d59451fc.js
++++ b/dist/index-d59451fc.js
+@@ -18571,6 +18571,30 @@ function getSrcPrefix(publicPath, slug) {
+   return typeof publicPath === 'string' ? `${publicPath.replace(/\/*$/, '')}/${slug === undefined ? '' : slug + '/'}` : '';
+ }
+ 
++function getFilenameCandidates(filename) {
++  const candidates = [filename];
++  try {
++    const normalized = [filename.normalize('NFC'), filename.normalize('NFD')];
++    for (const candidate of normalized) {
++      if (!candidates.includes(candidate)) {
++        candidates.push(candidate);
++      }
++    }
++  } catch {}
++  return candidates;
++}
++
++function getFileWithNormalizedLookup(fileMap, filename) {
++  if (!fileMap) return undefined;
++  for (const candidate of getFilenameCandidates(filename)) {
++    const content = fileMap.get(candidate);
++    if (content !== undefined) {
++      return content;
++    }
++  }
++  return undefined;
++}
++
+ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, documentFeatures, slug) {
+   return nodes.map(node => {
+     if (node.type === 'component-block') {
+@@ -18583,10 +18607,10 @@ function deserializeFiles(nodes, componentBlocks, files, otherFiles, mode, docum
+       };
+     }
+     if (node.type === 'image' && typeof node.src === 'string' && mode === 'edit') {
+-      var _ref;
        const prefix = getSrcPrefixForImageBlock$1(documentFeatures, slug);
        const filename = node.src.slice(prefix.length);
 -      const content = (_ref = typeof documentFeatures.images === 'object' && typeof documentFeatures.images.directory === 'string' ? otherFiles.get(fixPath(documentFeatures.images.directory)) : files) === null || _ref === void 0 ? void 0 : _ref.get(filename);
@@ -44,7 +306,8 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
        if (!content) {
          return {
            type: 'paragraph',
-@@ -20019,14 +20041,13 @@ function deserializeValue(value, schema) {
+@@ -20017,13 +20041,12 @@ function deserializeProps$1(fields, value, state) {
+       fields
      }, value, [], [], (schema, value) => {
        if (schema.formKind === 'asset') {
 -        var _state$otherFiles$get;
@@ -58,10 +321,11 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
            slug: state.slug
          });
        }
-@@ -26646,10 +26667,10 @@ function markdocToProseMirror(node, schema, files, otherFiles, slug) {
--  if (node.type === 'image') {
+@@ -26643,11 +26666,12 @@ function markdocNodeToProseMirrorNode$1(node, parentType) {
+     return childrenToProseMirrorNodes$1(node.children, parentType);
+   }
+   if (node.type === 'image') {
 -    var _ref, _node$attributes$titl;
-+  if (node.type === 'image') {
 +    var _node$attributes$titl;
      const prefix = getSrcPrefixForImageBlock(schema.config, getState$1().slug);
      const fullFilename = decodeURIComponent(node.attributes.src);
@@ -72,7 +336,7 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
      if (content && schema.nodes.image) {
        return schema.nodes.image.createChecked({
          src: content,
-@@ -26834,10 +26834,33 @@ const cursorBuilder = user => {
+@@ -26834,10 +26858,33 @@ const cursorBuilder = user => {
  };
  function createEditorState(doc, selection, storedMarks, yXmlFragment, awareness) {
    const schema = getEditorSchema(doc.type.schema);
@@ -107,7 +371,7 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
        cursorBuilder,
        awarenessStateFilter(userClientId, clientId, awarenessState) {
          const localState = awareness.getLocalState();
-@@ -26849,7 +26872,10 @@ function createEditorState(doc, selection, storedMarks, yXmlFragment, awareness)
+@@ -26849,7 +26896,10 @@ function createEditorState(doc, selection, storedMarks, yXmlFragment, awareness)
      }), inputRules({
        rules: inputRulesForSchema(schema),
        enterRules: enterInputRulesForSchema(schema)
@@ -119,13 +383,15 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
      doc
    });
  }
-@@ -27160,13 +27181,13 @@ function mdxToProseMirror(node, schema, files, otherFiles, slug) {
+@@ -27132,7 +27182,6 @@ function markdocNodeToProseMirrorNode(node, parentType) {
+     return childrenToProseMirrorNodes('children' in node ? node.children : [], parentType);
+   }
+   if (node.type === 'image' || node.type === 'imageReference') {
 -    var _ref;
      const data = node.type === 'image' ? node : getState().definitions.get(node.identifier.toUpperCase());
      if (!data) {
        error(`Could not find definition for ${node.identifier}`);
-       return null;
-     }
+@@ -27141,7 +27190,8 @@ function markdocNodeToProseMirrorNode(node, parentType) {
      const prefix = getSrcPrefixForImageBlock(schema.config, getState().slug);
      const fullFilename = decodeURI(data.url);
      const filename = fullFilename.slice(prefix.length);
@@ -135,7 +401,7 @@ index fc703c5a29949074cd161c49afad3b1a67c60520..1d0973ec6660b6adc53564afa0ef22d8
      if (content && schema.nodes.image) {
        return schema.nodes.image.createChecked({
          src: content,
-@@ -27404,27 +27430,74 @@ function serializeFromEditorState(value, slug) {
+@@ -27404,27 +27454,74 @@ function serializeFromEditorState(value, slug) {
      external
    };
  }

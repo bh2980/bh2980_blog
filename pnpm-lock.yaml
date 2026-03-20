@@ -9,7 +9,7 @@ patchedDependencies:
     hash: 1f65910d63b246e1e8a3e76da30d6eaf6b7afb332dc5f3b775a7770bfe7f0243
     path: patches/@keystar__ui@0.7.19.patch
   '@keystatic/core@0.5.48':
-    hash: 3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b
+    hash: e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492
     path: patches/@keystatic__core@0.5.48.patch
 
 importers:
@@ -21,10 +21,10 @@ importers:
         version: 3.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@keystatic/core':
         specifier: ^0.5.48
-        version: 0.5.48(patch_hash=3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 0.5.48(patch_hash=e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@keystatic/next':
         specifier: ^5.0.4
-        version: 5.0.4(@keystatic/core@0.5.48(patch_hash=3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 5.0.4(@keystatic/core@0.5.48(patch_hash=e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-checkbox':
         specifier: ^1.3.3
         version: 1.3.3(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4972,7 +4972,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@keystatic/core@0.5.48(patch_hash=3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@keystatic/core@0.5.48(patch_hash=e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@braintree/sanitize-url': 6.0.4
@@ -5050,10 +5050,10 @@ snapshots:
       - next
       - supports-color
 
-  '@keystatic/next@5.0.4(@keystatic/core@0.5.48(patch_hash=3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@keystatic/next@5.0.4(@keystatic/core@0.5.48(patch_hash=e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.6
-      '@keystatic/core': 0.5.48(patch_hash=3f7e351bf1a0ed5c117b1937f3c3dc16ed46eca942fa1322d7b140707e2e657b)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@keystatic/core': 0.5.48(patch_hash=e2accf8c29c1cf6dadba48d97d31c3153c5ce24cba4b2c655be293d1a45e5492)(next@16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react': 19.2.9
       chokidar: 3.6.0
       next: 16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
