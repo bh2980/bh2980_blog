@@ -245,31 +245,35 @@ const hast = highlight(code, lang, meta, {
 
 이 구조를 만들고 나니 비로소 모든 흐름이 한 줄로 이어졌습니다. 에디터에서 지정한 인라인 블럭은 주석으로 저장되고, 저장된 주석은 다시 annotation 데이터로 파싱되며, 최종적으로는 Shiki의 decorations와 transformer를 통해 실제 코드 블록 UI로 렌더링되었습니다.
 
-```mermaid
-flowchart TD
-    subgraph Editor_Space ["에디터 공간 (Editing)"]
-        A["에디터 UI<br/>(선택 영역 + 인라인 블럭)"]
-    end
+<Collapsible defaultOpen={false}>
+  파이프라인 그래프
 
-    subgraph Storage_Space ["저장소 (Storage)"]
-        B["마크다운 파일<br/>(코드 블록 + 데이터 주석)"]
-    end
+  ```mermaid
+  flowchart TD
+      subgraph Editor_Space ["에디터 공간 (Editing)"]
+          A["에디터 UI<br/>(선택 영역 + 인라인 블럭)"]
+      end
 
-    subgraph Rendering_Space ["렌더링 공간 (Publishing)"]
-        C["Remark 단계<br/>(주석 파싱 & 데이터 추출)"]
-        D["Rehype + Shiki<br/>(Decorations 반영)"]
-        E["최종 게시글 코드 블록<br/>(Tooltip / Collapse / Diff)"]
-    end
+      subgraph Storage_Space ["저장소 (Storage)"]
+          B["마크다운 파일<br/>(코드 블록 + 데이터 주석)"]
+      end
 
-    %% 에디터 ↔ 파일 왕복 (Round-trip)
-    A <-->|"Serialize / Parse (Patch)"| B
+      subgraph Rendering_Space ["렌더링 공간 (Publishing)"]
+          C["Remark 단계<br/>(주석 파싱 & 데이터 추출)"]
+          D["Rehype + Shiki<br/>(Decorations 반영)"]
+          E["최종 게시글 코드 블록<br/>(Tooltip / Collapse / Diff)"]
+      end
 
-    %% 파일 → 게시글 렌더링 (One-way)
-    B --> C
-    C -->|"Shiki Payload"| D
-    D --> E
+      %% 에디터 ↔ 파일 왕복 (Round-trip)
+      A <-->|"Serialize / Parse (Patch)"| B
 
-    style A fill:#f9f,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style E fill:#bfb,stroke:#333
-```
+      %% 파일 → 게시글 렌더링 (One-way)
+      B --> C
+      C -->|"Shiki Payload"| D
+      D --> E
+
+      style A fill:#f9f,stroke:#333
+      style B fill:#bbf,stroke:#333
+      style E fill:#bfb,stroke:#333
+  ```
+</Collapsible>
