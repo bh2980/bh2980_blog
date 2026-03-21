@@ -6,14 +6,12 @@ type PostDetailNavigationProps = {
 	currentSlug: string;
 	items: Omit<Post, "content">[];
 	detailPathnamePrefix?: string;
-	listPathname?: string;
 };
 
 export const PostDetailNavigation = ({
 	currentSlug,
 	items,
 	detailPathnamePrefix = "/posts",
-	listPathname = "/posts",
 }: PostDetailNavigationProps) => {
 	return (
 		<Suspense
@@ -28,7 +26,6 @@ export const PostDetailNavigation = ({
 				currentSlug={currentSlug}
 				items={items}
 				detailPathnamePrefix={detailPathnamePrefix}
-				listPathname={listPathname}
 			/>
 		</Suspense>
 	);
