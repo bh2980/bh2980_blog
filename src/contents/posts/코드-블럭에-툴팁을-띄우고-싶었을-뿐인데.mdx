@@ -186,8 +186,8 @@ const beforeSerialize = (mdxAst: Root) => {
 
 이 기준으로 보면 annotation은 크게 두 종류로 나뉘었습니다. 특정 문자열 범위에 걸리는 인라인 annotation과, 줄 전체 혹은 여러 줄 구간에 적용되는 line annotation입니다. 그래서 문법의 첫 축은 자연스럽게 `@char`, `@line`, 경우에 따라서는 `@document` 같은 scope가 되었습니다. 그 뒤에는 annotation의 이름을 두고, 범위가 필요한 경우 `{start-end}` 형태로 위치를 적고, 추가 정보는 속성으로 붙이는 식으로 정리했습니다.
 
-```python title="문자 범위 annotation 예시"
-// @char Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
+```ts title="문자 범위 annotation 예시"
+//// @char Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
 User-Agent: *
 ```
 
