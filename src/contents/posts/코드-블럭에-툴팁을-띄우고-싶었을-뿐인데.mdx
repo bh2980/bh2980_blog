@@ -123,32 +123,33 @@ const html = await codeToHtml(code, {
 
 이제 남은 문제는 하나였습니다. 이 주석을 어떻게 다뤄야, 에디터에서는 다시 원래의 편집 가능한 구조처럼 복원할 수 있을까요?
 
-## 에디터와 주석의 Collaboration
+## 문제는 결국 에디터였다
 
-이 주석을 다시 편집 가능한 구조로 복원하려면, 먼저 에디터와 파일이 서로 다른 구조를 필요로 한다는 사실부터 받아들여야 했습니다.
+주석 문법을 어떻게 설계할지 고민하기 전에, 먼저 풀어야 할 문제는 에디터였습니다. 정확히 말하면, Keystatic의 기본 코드 블록이 어떤 구조로 MDX를 저장하고 다시 복원하는지부터 이해해야 했습니다. 제가 원한 건 코드 블록 안에서도 `strong`이나 `Tooltip` 같은 인라인 블럭을 일반 본문처럼 다루는 것이었는데, 기본 코드 블록 컴포넌트는 애초에 그런 편집 모델을 상정하고 있지 않았기 때문입니다.
 
-진짜 어려운 지점은 주석 문법 자체가 아니었습니다. 핵심은 에디터에서 선택한 인라인 블럭과, 저장 시점의 주석 표현 사이를 어떻게 자연스럽게 왕복하게 만들 것이냐였습니다. 사용자는 특정 범위를 드래그한 뒤 버튼을 누를 뿐이지만, 저장될 때는 그 정보가 주석으로 직렬화되고, 다시 열었을 때는 원래의 편집 가능한 구조로 복원되어야 했으니까요.
+그래서 가장 먼저 한 일은 Keystatic의 확장 지점을 여는 것이었습니다. 기본 상태로는 에디터가 MDX를 파싱하거나 직렬화하는 과정에 끼어들 수 있는 지점이 거의 없었기 때문에, 아예 `@keystatic/core`를 패치해서 MDX 훅과 ProseMirror 플러그인 주입 지점을 만들었습니다.
 
-즉 에디터와 파일은 서로 다른 구조를 필요로 했습니다. 에디터에게는 `Tooltip`이나 `strong`을 직접 다룰 수 있는 인라인 블럭 구조가 필요했고, 파일 입장에서는 그 정보를 코드 블록 안에 남겨둘 수 있는 텍스트 기반 표현이 필요했습니다. 저는 이 차이를 억지로 없애기보다, 중간에서 두 구조를 이어주는 왕복 파이프라인을 두는 편이 더 현실적이라고 판단했습니다.
-
-```mermaid
-flowchart LR
-    subgraph Editor ["에디터"]
-        E["선택 영역 + 인라인 블럭<br/>(strong / Tooltip)"]
-    end
-
-    subgraph Pipeline ["중간 표현"]
-        M["annotation<br/>range / type / attrs"]
-    end
-
-    subgraph Storage ["파일"]
-        F["코드 블록 + 주석"]
-    end
-
-    E -->|"serialize"| M
-    M -->|"write"| F
-    F -->|"parse"| M
-    M -->|"rehydrate"| E
+```ts title="keystatic/core에 globalThis로 훅 주입"
+globalThis.__KEYSTATIC_MDX_HOOKS__ = {
+  afterMarkdownParse,
+  beforeSerialize,
+};
 ```
 
-저장할 때는 에디터의 인라인 블럭 정보를 읽어 주석으로 직렬화하고, 다시 불러올 때는 그 주석을 파싱해 에디터가 이해할 수 있는 구조로 복원하는 방식입니다. 말은 간단하지만, 실제로는 Keystatic이 MDX를 어떤 구조로 다루는지 먼저 파악해야 했고, 기본 코드 블록 컴포넌트만으로는 원하는 동작이 나오지 않아 일부는 직접 패치도 해야 했습니다.
+이 훅이 열리고 나서야, 파일을 읽을 때와 저장할 때 각각 원하는 변환을 끼워 넣을 수 있었습니다. 읽는 쪽에서는 주석이 포함된 code fence를 에디터용 CodeBlock 구조로 바꾸고, 저장하는 쪽에서는 다시 그 CodeBlock 구조를 주석이 포함된 code fence로 되돌리는 식입니다.
+
+```ts
+const afterMarkdownParse = (mdxAst: Root) => {
+  walkOnlyInsideCodeFence(mdxAst, annotationConfig);
+  return mdxAst;
+};
+
+const beforeSerialize = (mdxAst: Root) => {
+  walkOnlyInsideCodeblock(mdxAst, annotationConfig);
+  return mdxAst;
+};
+```
+
+핵심은 결국 이 왕복 변환이었습니다. 에디터는 Tooltip이나 strong을 인라인 블럭처럼 다룰 수 있어야 했고, 파일은 그 정보를 주석이라는 텍스트 형태로 보관할 수 있어야 했습니다. 그래서 읽을 때는 code fence -> CodeBlock MDX 노드, 저장할 때는 CodeBlock MDX 노드 -> code fence라는 흐름을 만들었고, 그 사이에서 annotation 정보를 유지할 수 있는 중간 표현을 따로 두게 되었습니다.
+
+그리고 나서야 다음 질문이 구체적으로 보이기 시작했습니다. 에디터와 파일 사이를 오가는 이 왕복 흐름을 유지하려면, 주석은 어떤 형태로 설계되어야 할까?
