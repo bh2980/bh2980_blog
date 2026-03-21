@@ -125,9 +125,28 @@ const html = await codeToHtml(code, {
 
 ## 에디터와 주석의 Collaboration
 
-이 문제를 풀기 위해서는 Keystatic의 기본 코드 블록이 어떤 구조로 MDX를 저장하고 다시 복원하는지부터 이해해야 했습니다. 제가 원한 건 코드 블록 안에서도 strong이나 Tooltip 같은 인라인 블럭을 일반 본문처럼 다루는 것이었는데, 기본 코드 블록 컴포넌트는 애초에 그런 편집 모델을 상정하고 있지 않았기 때문입니다.
+이 주석을 다시 '편집 가능한 구조'로 되살려내는 유일한 방법은, 에디터와 파일이 서로 다른 언어를 쓰고 있음을 인정하는 것이었습니다. 에디터에게는 Tooltip이나 strong을 직접 핸들링할 수 있는 트리(Tree) 구조의 객체가 필요했지만, 마크다운 파일은 그저 텍스트 데이터만을 원했으니까요.
 
-그래서 가장 먼저 한 일은 Keystatic의 확장 지점을 여는 것이었습니다. 기본 상태로는 에디터가 MDX를 파싱하거나 직렬화하는 과정에 끼어들 수 있는 지점이 거의 없었기 때문에, 아예 `@keystatic/core`를 패치해서 MDX 훅과 ProseMirror 플러그인 주입 지점을 만들었습니다.
+이 간극을 메우기 위해 저는 Keystatic의 내부 깊숙한 곳을 건드려야 했습니다. 기본 코드 블록 컴포넌트는 애초에 이런 '인라인 블럭' 편집 모델을 상정하고 있지 않았기 때문입니다. 그래서 가장 먼저 한 일은 `@keystatic/core`를 직접 패치하여, 에디터가 MDX를 파싱하거나 직렬화하는 결정적인 순간에 제 로직을 끼워 넣을 수 있는 '훅(Hook)'을 강제로 개방하는 것이었습니다.
+
+```mermaid
+sequenceDiagram
+    participant F as Markdown File
+    participant H as __KEYSTATIC_MDX_HOOKS__
+    participant E as Keystatic Editor (ProseMirror)
+
+    Note over F, E: [파일 불러오기 흐름]
+    F->>F: MDX 파싱 (Standard)
+    F->>H: afterMarkdownParse 호출
+    Note right of H: 주석 → 인라인 블럭 변환
+    H->>E: 편집 가능한 AST 전달
+
+    Note over F, E: [파일 저장 흐름]
+    E->>H: beforeSerialize 호출
+    Note right of H: 인라인 블럭 → 주석 변환
+    H->>F: 직렬화된 MDX 전달
+    F->>F: 파일 저장
+```
 
 ```ts title="keystatic/core에 globalThis로 훅 주입"
 globalThis.__KEYSTATIC_MDX_HOOKS__ = {
