@@ -133,7 +133,7 @@ const html = await codeToHtml(code, {
 
 사용자가 드래그한 정확한 지점을 마킹합니다. 에디터는 드래그 범위를 계산해 주석을 생성하므로 사용자가 수치를 직접 입력할 일은 없지만, 파일 입장에서는 "이 위치에 툴팁이 있다"는 명확한 설계도가 됩니다.
 
-```ts title="문자 범위 annotation 예시"
+```ts
 // @𝖼𝗁𝖺𝗋 Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
 User-Agent: *
 ```
@@ -187,6 +187,47 @@ sequenceDiagram
 이 훅이 열리고 나서야 비로소 읽기와 쓰기 양쪽에 변환을 끼워 넣을 수 있게 되었습니다. 하지만 단순히 텍스트 주석과 에디터 노드를 1:1로 갈아 끼우는 방식은 한계가 명확했습니다. 주석은 단순 문자열이지만, 에디터는 드래그 범위와 속성이 포함된 정교한 트리 구조를 원했기 때문입니다.
 
 그래서 저는 이 둘 사이의 간극을 메워줄 중간 포맷(`Annotation Document`)을 설계했습니다.
+
+<Tabs>
+  <Tab label="주석">
+    ```ts
+    // @𝖼𝗁𝖺𝗋 Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
+    User-Agent: *
+    ```
+  </Tab>
+
+  <Tab label="내부 처리">
+    ```ts
+    const document: CodeBlockDocument = {
+      lang: "ts",
+      meta: {},
+      annotations: [],
+      lines: [
+        {
+          value: "User-Agent: *",
+          annotations: [
+            {
+              scope: "char",
+              source: "mdast",
+              name: "Tooltip",
+              range: { start: 0, end: 12 },
+              priority: 0,
+              order: 0,
+              render: "Tooltip",
+              attributes: [
+                {
+                  name: "content",
+                  value: "모든 검색엔진 크롤러를 대상으로 규칙 적용",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    ```
+  </Tab>
+</Tabs>
 
 읽을 때는 <u>주석을 분석해 범위(range), 타입(type), 속성(attrs)이 담긴 데이터 객체로 먼저 정리</u>하고, 저장할 때는 반대로 <u>에디터의 인라인 블록들을 이 객체 형태로 모은 뒤 다시 주석으로 직렬화</u>하는 식입니다.
 
