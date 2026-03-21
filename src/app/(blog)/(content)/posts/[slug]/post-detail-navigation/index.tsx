@@ -22,11 +22,7 @@ export const PostDetailNavigation = ({
 				</>
 			}
 		>
-			<PostDetailNavigationClient
-				currentSlug={currentSlug}
-				items={items}
-				detailPathnamePrefix={detailPathnamePrefix}
-			/>
+			<PostDetailNavigationClient currentSlug={currentSlug} items={items} detailPathnamePrefix={detailPathnamePrefix} />
 		</Suspense>
 	);
 };

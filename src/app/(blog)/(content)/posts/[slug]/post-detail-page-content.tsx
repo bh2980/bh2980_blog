@@ -88,11 +88,7 @@ export const PostDetailPageContent = async ({
 					{content}
 				</article>
 
-				<PostDetailNavigation
-					currentSlug={currentSlug}
-					items={postList}
-					detailPathnamePrefix={detailPathnamePrefix}
-				/>
+				<PostDetailNavigation currentSlug={currentSlug} items={postList} detailPathnamePrefix={detailPathnamePrefix} />
 				<Comments slug={post.slug} />
 			</div>
 			<aside className="hidden xl:block">
