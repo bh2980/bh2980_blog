@@ -246,7 +246,7 @@ const hast = highlight(code, lang, meta, {
 이 구조를 만들고 나니 비로소 모든 흐름이 한 줄로 이어졌습니다. 에디터에서 지정한 인라인 블럭은 주석으로 저장되고, 저장된 주석은 다시 annotation 데이터로 파싱되며, 최종적으로는 Shiki의 decorations와 transformer를 통해 실제 코드 블록 UI로 렌더링되었습니다.
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Editor_Space ["에디터 공간 (Editing)"]
         A["에디터 UI<br/>(선택 영역 + 인라인 블럭)"]
     end
