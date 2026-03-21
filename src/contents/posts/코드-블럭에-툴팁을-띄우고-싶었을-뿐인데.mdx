@@ -56,24 +56,16 @@ function consectetur(ipsum) {
 그래서 처음에는 간단하게 PureMdx라는 커스텀 컴포넌트를 도입해 해결했습니다. 컴포넌트의 속성은 정규화 대상이 아니었거든요. 하지만 또 다른 문제가 발생했는데, 컴포넌트를 사용할 경우 복잡한 렌더링 파이프라인을 거쳐야한다는 점이었습니다.
 
 ```mermaid
-sequenceDiagram
-    participant U as 사용자 (에디터)
-    participant E as PureMdx 컴포넌트
-    participant R1 as 1차 renderMdx (Main)
-    participant R2 as 2차 MdxRemote 컴포넌트 (Inner)
-    participant O as 최종 출력 (Code Hike 적용)
+flowchart TD
+    A["에디터에서 원본 작성"] --> B["일반 MDX처럼 바로 렌더링 불가"]
+    B --> C["PureMdx에 텍스트로 보관"]
+    C --> D["내부 본문을 다시 MDX로 재파싱"]
+    D --> E["Code Hike 플러그인 적용"]
+    E --> F["최종 코드 블록 렌더링"]
 
-    U->>E: 원본 코드 작성 (Wrapper 내 삽입)
-    Note over U,E: JSX 정규화를 피하기 위한 조치
-
-    R1->>E: 1차 파싱 중 PureMdx 발견
-    E->>R2: 내부의 원본 코드를 다시 넘김
-    Note right of R2: 여기서 Remark/Rehype 플러그인 작동
-    
-    R2->>R2: Code Hike 툴팁/하이라이트 처리
-    R2-->>E: 렌더링된 결과 반환
-    E-->>R1: 최종 결과 통합
-    R1->>O: 브라우저에 표시
+    style C fill:#fff4dd,stroke:#333
+    style D fill:#fff1f1,stroke:#ff9494,stroke-width:2px,stroke-dasharray: 5 5
+    style F fill:#e1f5fe,stroke:#01579b
 ```
 
 보기만 해도 복잡하지 않나요? 커스텀 컴포넌트는 정규화되지 않은 MDX 본문을 저장할 수 있었지만, 결국 MDX이기 때문에 이를 다시 꺼내 파이프라인을 타게 만들어야한다는 단점이 있었습니다. 때문에 제 코드에서는 `renderMdx`라는 렌더링 함수로 먼저 파싱을 하고, 추가로 내부 본문을 `MdxRemote`라는 컴포넌트를 통해 다시 파싱해주는 과정을 거쳐야했죠.
@@ -121,7 +113,7 @@ const html = await codeToHtml(code, {
 
 결국 돌고 돌아 찾은 답은 **주석**이었습니다. 주석은 코드 블록 안에 자연스럽게 남겨둘 수 있으면서도, annotation 정보를 원본 코드와 가장 가까운 위치에서 함께 관리할 수 있는 형식이었기 때문입니다. 단순히 익숙한 문법이라서가 아니라, 코드와 annotation을 분리하면서도 둘의 관계를 완전히 끊어놓지 않을 수 있는 저장 형식이었던 셈입니다.
 
-그리고 나서야 다음 질문이 구체적으로 보이기 시작했습니다. 에디터와 파일 사이를 오가는 이 긴 여정 속에서, 주석은 대체 어떤 형태로 설계되어야 다시 읽어 왔을 때 무리 없이 원래 구조로 복원할 수 있을까요?&#x20;
+이제 남은 건 이 annotation을 파일 안에 어떤 형태로 저장할지 정하는 일이었습니다.
 
 ## 주석 체계를 설계하자
 
@@ -154,7 +146,7 @@ export async function generateImageMetadata() {
 
 ## 에디터와 주석의 Collaboration
 
-주석의 형태가 결정되고 나니, 이제 남은 문제는 이 문법을 에디터와 어떻게 호환시킬 것인가였습니다. 에디터에게는 Tooltip이나 strong을 직접 핸들링할 수 있는 객체가 필요했지만, 우리가 설계한 주석 문법은 아직 마크다운 파일에서만 사용 가능했으니까요.
+주석의 형태가 결정되고 나니, 이제 남은 문제는 이 문법을 에디터와 어떻게 호환시킬 것인가였습니다. 에디터에게는 Tooltip이나 strong을 직접 다룰 수 있는 편집 가능한 인라인 블럭 구조가 필요했지만, 우리가 설계한 주석 문법은 아직 파일 안에 저장되는 텍스트 표현에 불과했기 때문입니다.
 
 ### 데이터 흐름에 개입하기
 
