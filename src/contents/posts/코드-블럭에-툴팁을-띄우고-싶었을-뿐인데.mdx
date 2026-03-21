@@ -88,8 +88,37 @@ sequenceDiagram
 
 대체 왜… 툴팁 하나를 띄우자고 이런 불편함을 감수해야하는 걸까요? 저는 이때 커스텀 주석 파싱 시스템을 개발하기로 마음 먹었습니다.
 
-## 내가 진짜로 원했던 것은
+## 2. 코드와 Annotation의 거리두기
 
-그렇다면 제가 진짜로 원했던 것은 뭘까요?&#x20;
+제가 정말 풀고 싶었던 문제는 심플했습니다. 코드 블록 안의 특정 단어를 드래그해서 `strong`을 먹이거나 `Tooltip`을 띄우는, 아주 기본적인 기능을 구현하고 싶었을 뿐이죠. 그런데 이걸 하려고 코드 본문을 복잡한 MDX 컴포넌트 문법으로 도배하고 싶지는 않았습니다. 코드는 코드답게 생겨야 하잖아요? 제가 원한 건 코드는 평소 쓰던 대로 가만히 두고, 그 위에 Annotation 정보만 살짝 얹어주는 방식이었습니다.
 
-그렇다면 이를 설계하기 위한 기술이 필요하겠죠. 저는 shiki의 Transformer에서 그 답을 찾았습니다.
+```ts
+import { codeToHtml } from 'shiki'
+
+const code = `
+const x = 10
+console.log(x)
+`.trim()
+
+const html = await codeToHtml(code, {
+  theme: 'vitesse-light',
+  lang: 'ts',
+  // @line highlight
+  decorations: [ 
+    {
+      start: { line: 1, character: 0 },
+      end: { line: 1, character: 11 },
+      properties: { class: 'highlighted-word' }
+    }
+  ]
+  // @line highlight end
+})
+```
+
+이 방향에 확신을 준 힌트가 바로 [Shiki의 decorations](https://shiki.style/guide/decorations)였습니다. 적어도 제가 보기엔 “코드 본문은 건드리지 말고, 별도의 범위 정보만 렌더링할 때 참고해!”라고 말하는 것처럼 느껴졌거든요. '아, 이거다!' 싶었죠. 하지만 문제는 그 Annotation 정보를 대체 어디에 저장하느냐였습니다.
+
+코드 블록 안에 제멋대로 마킹 문법을 집어넣자니 구문 강조(Syntax Highlighting)가 알록달록하게 깨질 게 뻔했고, 그렇다고 데이터를 코드 바깥으로 빼서 따로 관리하자니 코드를 한 줄이라도 수정하는 순간 위치 정보가 꼬여버리는 '싱크 지옥'이 기다리고 있었습니다.
+
+결국 돌고 돌아 찾은 답은 **주석**이었습니다. 주석은 코드 블록 안에 자연스럽게 스며들어 있으면서도, 원본 코드와 가장 가까운 곳에서 데이터를 보관할 수 있는 유일한 청정 구역이었거든요. 단순히 익숙한 문법이라서가 아니라, 코드와 Annotation을 분리하면서도 둘의 끈을 놓지 않을 수 있는 최적의 저장 형식이었던 셈입니다.&#x20;
+
+자, 이제 남은 건 이 주석을 어떻게 주물러서 에디터의 '편집 가능한 구조'로 되살려내느냐는 숙제였습니다.
