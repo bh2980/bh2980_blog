@@ -243,7 +243,7 @@ const hast = highlight(code, lang, meta, {
 });
 ```
 
-이 구조를 만들고 나니 비로소 모든 흐름이 한 줄로 이어졌습니다. 에디터에서 지정한 인라인 블럭은 주석으로 저장되고, 저장된 주석은 다시 annotation 데이터로 파싱되며, 최종적으로는 Shiki의 decorations와 transformer를 통해 실제 코드 블록 UI로 렌더링되었습니다.
+이 지점에 이르러서야 전체 구조가 비로소 하나로 닫히기 시작했습니다. 에디터에서 만든 의미는 주석으로 저장되고, 저장된 주석은 다시 annotation 데이터로 파싱되며, 최종적으로는 게시글 렌더링까지 이어졌습니다. 처음에는 그저 `Tooltip`과 `strong` 정도만 편하게 쓰고 싶었을 뿐인데, 결과적으로는 코드 블록 전체를 관통하는 annotation 파이프라인을 갖게 된 셈입니다.
 
 <Collapsible defaultOpen={false}>
   ```mermaid
@@ -274,4 +274,11 @@ const hast = highlight(code, lang, meta, {
       style B fill:#bbf,stroke:#333
       style E fill:#bfb,stroke:#333
   ```
+
+
 </Collapsible>
+
+## 작은 불편함이 시스템이 되기까지
+
+\
+\
