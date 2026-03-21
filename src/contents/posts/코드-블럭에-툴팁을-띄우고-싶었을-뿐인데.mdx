@@ -92,7 +92,7 @@ sequenceDiagram
 
 제가 정말 풀고 싶었던 문제는 심플했습니다. 코드 블록 안의 특정 단어를 드래그해서 `strong`을 먹이거나 `Tooltip`을 띄우는, 아주 기본적인 기능을 구현하고 싶었을 뿐이죠. 그런데 이걸 하려고 코드 본문을 복잡한 MDX 컴포넌트 문법으로 도배하고 싶지는 않았습니다. 코드는 코드답게 생겨야 하잖아요? 제가 원한 건 코드는 평소 쓰던 대로 가만히 두고, 그 위에 Annotation 정보만 살짝 얹어주는 방식이었습니다.
 
-```ts
+```ts title="shiki의 decorations 예제"
 import { codeToHtml } from 'shiki'
 
 const code = `
