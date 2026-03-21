@@ -65,7 +65,6 @@ flowchart TD
 
     style C fill:#fff4dd,stroke:#333,color:#000
     style D fill:#fff1f1,stroke:#ff9494,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style F fill:#e1f5fe,stroke:#01579b,color:#000
 ```
 
 보기만 해도 복잡하지 않나요? 커스텀 컴포넌트는 정규화되지 않은 MDX 본문을 저장할 수 있었지만, 결국 MDX이기 때문에 이를 다시 꺼내 파이프라인을 타게 만들어야한다는 단점이 있었습니다. 때문에 제 코드에서는 `renderMdx`라는 렌더링 함수로 먼저 파싱을 하고, 추가로 내부 본문을 `MdxRemote`라는 컴포넌트를 통해 다시 파싱해주는 과정을 거쳐야했죠.
