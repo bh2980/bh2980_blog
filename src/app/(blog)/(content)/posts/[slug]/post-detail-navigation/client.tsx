@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { getHrefWithCurrentQuery, QueryPreservingBackLink } from "@/components/query-preserving-back-link.client";
+import { getHrefWithCurrentQuery } from "@/components/query-preserving-back-link.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { Post } from "@/libs/contents/types";
@@ -12,14 +12,12 @@ type PostDetailNavigationProps = {
 	currentSlug: string;
 	items: Omit<Post, "content">[];
 	detailPathnamePrefix?: string;
-	listPathname?: string;
 };
 
 export const PostDetailNavigationClient = ({
 	currentSlug,
 	items,
 	detailPathnamePrefix = "/posts",
-	listPathname = "/posts",
 }: PostDetailNavigationProps) => {
 	const searchParams = useSearchParams();
 	const category = searchParams.get("category");
@@ -33,12 +31,6 @@ export const PostDetailNavigationClient = ({
 		<>
 			<Separator />
 			<nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
-				<div className="hidden md:block">
-					<QueryPreservingBackLink
-						pathname={listPathname}
-						className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
-					/>
-				</div>
 				<div className="flex">
 					{prevPost && (
 						<Link

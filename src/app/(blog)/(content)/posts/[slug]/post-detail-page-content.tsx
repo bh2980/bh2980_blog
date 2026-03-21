@@ -6,6 +6,7 @@ import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
+import { PostBackLink } from "./post-back-link";
 import { PostDetailNavigation } from "./post-detail-navigation";
 
 type PostDetailPageContentProps = {
@@ -37,6 +38,7 @@ export const PostDetailPageContent = async ({
 					)}
 				>
 					<header className="flex flex-col items-start gap-5 border-slate-200">
+						<PostBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<span>{post.category.name}</span>
 							<span>·</span>
@@ -86,12 +88,7 @@ export const PostDetailPageContent = async ({
 					{content}
 				</article>
 
-				<PostDetailNavigation
-					currentSlug={currentSlug}
-					items={postList}
-					detailPathnamePrefix={detailPathnamePrefix}
-					listPathname={listPathname}
-				/>
+				<PostDetailNavigation currentSlug={currentSlug} items={postList} detailPathnamePrefix={detailPathnamePrefix} />
 				<Comments slug={post.slug} />
 			</div>
 			<aside className="hidden xl:block">
