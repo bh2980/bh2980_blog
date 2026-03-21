@@ -196,7 +196,7 @@ sequenceDiagram
     ```
   </Tab>
 
-  <Tab label="내부 처리">
+  <Tab label="중간 포맷">
     ```ts
     const document: CodeBlockDocument = {
       lang: "ts",
@@ -267,25 +267,35 @@ flowchart TD
 
 먼저 remark 단계에서는 code fence 안에 들어 있는 주석을 읽어 중간 포맷으로 파싱한 뒤, 이를 다시 Shiki가 이해할 수 있는 payload로 바꿨습니다. 이 단계에서 문자 범위 annotation은 `decorations`로, 줄 단위 annotation은 `lineDecorations`나 `rowWrappers` 같은 형태로 정리되었습니다.
 
-```ts title="src/libs/shiki/remark-annotation-to-decoration.ts"
-visit(tree, "code", (node: Code) => {
-  const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig, { parseLineAnnotations: true });
-  const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
-
-  node.data ??= {};
-  node.data.hProperties = {
-    ...node.data.hProperties,
-    "data-decorations": JSON.stringify(payload.decorations),
-    "data-line-decorations": JSON.stringify(payload.lineDecorations),
-    "data-line-wrappers": JSON.stringify(payload.rowWrappers),
-  };
-});
+```ts
+{
+  code: "User-Agent: *",
+  lang: "ts",
+  meta: {},
+  decorations: [
+    {
+      start: { line: 0, character: 0 },
+      end: { line: 0, character: 12 },
+      properties: {
+        "data-anno-render": "Tooltip",
+        "data-anno-content": "\"모든 검색엔진 크롤러를 대상으로 규칙 적용\""
+      }
+    }
+  ],
+  lineDecorations: [],
+  rowWrappers: []
+}
 ```
 
 이후 rehype 단계에서는 remark가 미리 심어둔 이 `data-*` 정보를 읽어, 최종적으로 Shiki 하이라이터에 넘겼습니다. 즉 remark는 "주석을 읽어 렌더링용 데이터로 바꾸는 역할"을 맡고, rehype는 "그 데이터를 실제 코드 블록 HTML로 반영하는 역할"을 맡은 셈입니다.
 
 ```ts title="src/libs/shiki/rehype-shiki-decoration-render.ts"
-const hast = highlight(code, lang, meta, {
+const decorations = JSON.parse(code.properties["data-decorations"]);
+const lineDecorations = JSON.parse(code.properties["data-line-decorations"]);
+const rowWrappers = JSON.parse(code.properties["data-line-wrappers"]);
+const meta = JSON.parse(code.properties["data-meta"] ?? "{}");
+
+const hast = highlight(rawCode, lang, meta, {
   decorations,
   lineDecorations,
   rowWrappers,
