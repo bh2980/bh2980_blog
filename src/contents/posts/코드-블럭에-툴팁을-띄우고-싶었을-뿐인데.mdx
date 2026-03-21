@@ -125,9 +125,13 @@ const html = await codeToHtml(code, {
 
 ## 에디터와 주석의 Collaboration
 
-이 주석을 다시 '편집 가능한 구조'로 되살려내는 유일한 방법은, 에디터와 파일이 서로 다른 언어를 쓰고 있음을 인정하는 것이었습니다. 에디터에게는 Tooltip이나 strong을 직접 핸들링할 수 있는 트리(Tree) 구조의 객체가 필요했지만, 마크다운 파일은 그저 텍스트 데이터만을 원했으니까요.
+이 주석을 다시 '편집 가능한 구조'로 되살려내는 유일한 방법은, 에디터와 파일이 서로 다른 언어를 쓰고 있음을 인정하는 것이었습니다. 에디터에게는 Tooltip이나 strong을 직접 핸들링할 수 있는 트리 구조의 객체가 필요했지만, 마크다운 파일은 그저 텍스트 데이터만을 원했으니까요.
 
 이 간극을 메우기 위해 저는 Keystatic의 내부 깊숙한 곳을 건드려야 했습니다. 기본 코드 블록 컴포넌트는 애초에 이런 '인라인 블럭' 편집 모델을 상정하고 있지 않았기 때문입니다. 그래서 가장 먼저 한 일은 `@keystatic/core`를 직접 패치하여, 에디터가 MDX를 파싱하거나 직렬화하는 결정적인 순간에 제 로직을 끼워 넣을 수 있는 '훅(Hook)'을 강제로 개방하는 것이었습니다.
+
+### 데이터 흐름에 개입하기
+
+이 패치를 통해 파일이 에디터로 들어오기 직전(`afterMarkdownParse`), 그리고 에디터에서 파일로 나가기 직전(`beforeSerialize`)이라는 두 지점을 확보했습니다.
 
 ```mermaid
 sequenceDiagram
@@ -148,28 +152,33 @@ sequenceDiagram
     F->>F: 파일 저장
 ```
 
-```ts title="keystatic/core에 globalThis로 훅 주입"
-globalThis.__KEYSTATIC_MDX_HOOKS__ = {
-  afterMarkdownParse,
-  beforeSerialize,
-};
-```
+### 통역을 위한 훅 주입과 변환
 
 이 훅이 열리고 나서야, 파일을 읽을 때와 저장할 때 각각 원하는 변환을 끼워 넣을 수 있었습니다. 읽는 쪽에서는 주석이 포함된 code fence를 에디터용 CodeBlock 구조로 바꾸고, 저장하는 쪽에서는 다시 그 CodeBlock 구조를 주석이 포함된 code fence로 되돌리는 식입니다.
 
 ```ts
+// 1. Keystatic 내부 로직에 침투하기 위한 커스텀 훅 주입
+globalThis.__KEYSTATIC_MDX_HOOKS__ = {
+  afterMarkdownParse, 
+  beforeSerialize,    
+};
+
+// 2. 읽는 쪽: 주석 포함된 code fence -> 에디터용 인라인 블럭 구조
 const afterMarkdownParse = (mdxAst: Root) => {
   walkOnlyInsideCodeFence(mdxAst, annotationConfig);
   return mdxAst;
 };
 
+// 3. 저장하는 쪽: 에디터 구조 -> 주석 포함된 code fence
 const beforeSerialize = (mdxAst: Root) => {
   walkOnlyInsideCodeblock(mdxAst, annotationConfig);
   return mdxAst;
 };
 ```
 
-핵심은 결국 이 왕복 변환이었습니다. 에디터는 Tooltip이나 strong을 인라인 블럭처럼 다룰 수 있어야 했고, 파일은 그 정보를 주석이라는 텍스트 형태로 보관할 수 있어야 했습니다. 그래서 읽을 때는 code fence -> CodeBlock MDX 노드, 저장할 때는 CodeBlock MDX 노드 -> code fence라는 흐름을 만들었고, 그 사이에서 annotation 정보를 유지할 수 있는 중간 표현을 따로 두게 되었습니다.
+핵심은 결국 이 왕복 변환의 안정성이었습니다. 읽을 때는 `code fence → CodeBlock MDX 노드`, 저장할 때는 `CodeBlock MDX 노드 → code fence`라는 흐름을 만들고, 그 사이에서 Annotation 정보를 잃어버리지 않도록 튼튼한 중간 표현을 설계하는 데 집중했습니다.
+
+그리고 나서야 다음 질문이 구체적으로 보이기 시작했습니다. 에디터와 파일 사이를 오가는 이 긴 여정 속에서, 주석은 대체 어떤 형태로 설계되어야 다시 읽어 왔을 때 무리 없이 원래 구조로 복원할 수 있을까요?
 
 ## 소제목 고민
 
