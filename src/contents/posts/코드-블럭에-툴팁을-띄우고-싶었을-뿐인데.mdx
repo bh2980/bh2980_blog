@@ -217,7 +217,7 @@ export async function generateImageMetadata() {
 
 먼저 remark 단계에서는 code fence 안에 들어 있는 주석을 읽어 중간 표현으로 파싱한 뒤, 이를 다시 Shiki가 이해할 수 있는 payload로 바꿨습니다. 이 단계에서 문자 범위 annotation은 decorations로, 줄 단위 annotation은 lineDecorations나 rowWrappers 같은 형태로 정리되었습니다.
 
-```ts
+```ts title="src/libs/shiki/remark-annotation-to-decoration.ts"
 visit(tree, "code", (node: Code) => {
   const document = fromCodeFenceToCodeBlockDocument(node, annotationConfig, { parseLineAnnotations: true });
   const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
@@ -234,7 +234,7 @@ visit(tree, "code", (node: Code) => {
 
 이후 rehype 단계에서는 remark가 미리 심어둔 이 data-\* 정보를 읽어, 최종적으로 Shiki 하이라이터에 넘겼습니다. 즉 remark는 "주석을 읽어 렌더링용 데이터로 바꾸는 역할"을 맡고, rehype는 "그 데이터를 실제 코드 블록 HTML로 반영하는 역할"을 맡은 셈입니다.
 
-```ts
+```ts title="src/libs/shiki/rehype-shiki-decoration-render.ts"
 const hast = highlight(code, lang, meta, {
   decorations,
   lineDecorations,
