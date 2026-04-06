@@ -39,7 +39,54 @@ function isEqual(a, b) {
 console.log(isEqual(0.1 + 0.2, 0.3)) // true;
 ```
 
+<IdeographicSpace />
+
 <Callout variant="note">
   이런 오차에도 불구하고 64비트 부동 소수점 연산을 사용하는 이유는 성능과 표현의 범용성 때문이다. 먼저 현대의 대다수 CPU에서 IEEE 754 연산을 하드웨어적으로 지원해서 매우 빠른 연산이 가능하다. 둘째로, 64비트라는 제한된 메모리 공간 안에서 정수와 실수를 구분하지 않고 아주 작은 소수부터 매우 큰 정수까지 폭 넓게 표현할 수 있어 설계가 단순해지고 활용도가 높아진다.
 </Callout>
+
+## 매개변수 전달 방식
+
+Call by \*는 함수를 호출할 때 매개변수를 어떤 방식으로 전달하느냐를 의미하는 용어이다.
+
+### Call by Value
+
+함수를 호출할 때 값 자체를 복사해서 전달하는 방식. JS에서는 원시 타입이 Call by Value로 전달된다.
+
+### Call by Reference
+
+함수를 호출할 때 값이 저장된 메모리 주소(참조값)를 전달하는 방식.
+
+### Call by Sharing
+
+함수를 호출할 때 값이 저장된 메모리 주소(참조값)를 복사해서 전달하는 방식. JS에서 객체와 같은 참조 타입이 이와 같은 방식으로 전달된다.
+
+```ts
+function updateTeam(count, members, leader) {
+    // 1. 원시 타입(숫자) 재할당 시 이는 복사된 값이기 때문에 영향을 미치지 않음
+    count = 20; 
+
+    // 2. 참조 타입(배열)의 내부 요소 수정 시 원본 주소값은 유지한 채 내부 요소를 수정하는 것이기 때문에 원본 값에 영향을 미침.
+    members.push('Park'); 
+
+    // 3. 참조 타입(객체) 자체를 새로운 객체로 재할당하는 것은 매개변수가 가리키는 주소값만 변경할 뿐 원본값이 가리키는 주소값은 변하지 않아 원본값에 영향을 미치지 않음.
+    leader = { name: 'Choi', role: 'Senior' }; 
+}
+
+let memberCount = 10;
+let memberList = ['Lee', 'Kim'];
+let teamLeader = { name: 'Jung', role: 'Junior' };
+
+updateTeam(memberCount, memberList, teamLeader);
+
+console.log(memberCount); // 10
+console.log(memberList);  // ['Lee', 'Kim', 'Park']
+console.log(teamLeader);  // { name: 'Jung', role: 'Junior' }
+```
+
+
+
+
+
+
 
