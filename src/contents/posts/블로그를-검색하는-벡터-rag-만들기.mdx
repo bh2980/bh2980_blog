@@ -1,7 +1,7 @@
 ---
 status: draft
 category: development
-title: 블로그를 검색하는 Vector RAG 만들기
+title: 블로그를 검색하는 벡터 RAG 만들기
 excerpt: 더 나은 지식의 참조를 위하여
 publishedDateTimeISO: 2026-04-08T16:42:00.000Z
 tags:
@@ -51,7 +51,7 @@ flowchart LR
 
 문서 적재 파이프라인에서는 게시글을 임베딩 모델을 통해 벡터로 변환하고 Vector DB에 저장합니다. 처음 만드는 것이니만큼 복잡한 청킹 전략보다 전체 흐름이 동작하는 것을 우선으로 삼았고, 일단은 게시글 하나를 통째로 하나의 청크로 취급했습니다.
 
-저는 이 Vector DB를 사용하기 위해 Supabase를 선택했는데요. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요. 그리고 무엇보다 무료로 바로 시작할 수 있다는 점도 컸습니다.
+저는 이 벡터 DB를 사용하기 위해 Supabase를 선택했는데요. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요. 그리고 무엇보다 무료로 바로 시작할 수 있다는 점도 컸습니다.
 
 테이블은 아래처럼 정의했습니다. 청크의 내용과 임베딩 벡터를 함께 저장하고, slug로 원본 게시글을 참조할 수 있도록 했죠.
 
@@ -196,7 +196,7 @@ ${context}
 
 생성 모델로는 openai/gpt-oss-120b:free를 사용했습니다. 이유는 단순합니다. GPT라는 이름값과 무료였기 때문입니다.
 
-![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-vector-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%208.13.01.png)
+![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%208.13.01.png)
 
 이제 적절한 UI를 붙이면 위처럼 블로그의 내용을 바탕으로 설명해주는 RAG가 탄생합니다.
 
