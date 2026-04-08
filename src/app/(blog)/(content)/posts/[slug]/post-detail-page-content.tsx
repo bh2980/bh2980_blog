@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
+import { AdminEditLink } from "@/components/admin/admin-links";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
+import { getAdminContext } from "@/libs/admin/context";
 import type { Post } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
@@ -26,6 +27,7 @@ export const PostDetailPageContent = async ({
 }: PostDetailPageContentProps) => {
 	const source = await post.content();
 	const { content, toc } = await renderMDX(source);
+	const adminContext = await getAdminContext();
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
@@ -43,8 +45,10 @@ export const PostDetailPageContent = async ({
 							<span>{post.category.name}</span>
 							<span>·</span>
 							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
-							<AdminEditLinkClient
+							<AdminEditLink
+								canManage={adminContext.canManage}
 								collection="post"
+								mode={adminContext.keystaticMode}
 								slug={post.slug}
 								className={cn(
 									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",

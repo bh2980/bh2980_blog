@@ -5,13 +5,14 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { AdminHeaderLinkClient } from "@/components/admin/admin-links.client";
+import { AdminHeaderLink } from "@/components/admin/admin-links";
 import { cn } from "@/utils/cn";
 import { Button } from "./ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 interface NavigationProps {
 	className?: string;
+	canManage: boolean;
 }
 
 const NAV = [
@@ -57,7 +58,7 @@ function MobileSheetLink({ href, label, active }: { href: Route | URL; label: st
 	);
 }
 
-export default function Navigation({ className }: NavigationProps) {
+export default function Navigation({ className, canManage }: NavigationProps) {
 	const pathname = usePathname();
 	const { resolvedTheme, setTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
@@ -87,7 +88,8 @@ export default function Navigation({ className }: NavigationProps) {
 							active={pathname?.startsWith(item.href) ?? false}
 						/>
 					))}
-					<AdminHeaderLinkClient
+					<AdminHeaderLink
+						canManage={canManage}
 						className={cn(
 							"rounded-md px-3 py-2 font-medium text-sm transition",
 							"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -145,7 +147,8 @@ export default function Navigation({ className }: NavigationProps) {
 										/>
 									))}
 									<SheetClose asChild>
-										<AdminHeaderLinkClient
+										<AdminHeaderLink
+											canManage={canManage}
 											className={cn(
 												"rounded-lg px-3 py-3 font-medium text-base transition",
 												"text-slate-700 hover:bg-slate-100",
