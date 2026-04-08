@@ -1,64 +1,123 @@
 import { describe, expect, it } from "vitest";
-import { findActiveWrapperDepth, getActiveWrapperSelectionRange, isInAnyWrapper } from "../wrapper-keys";
+import { findActiveWrapperDepth, getActiveWrapperSelectionRange, isInAnyWrapper, isInList } from "../wrapper-keys";
 
-const createMockState = ({
-	depth,
-	start,
-	end,
-	group = "component3",
-	content = "block+",
-}: {
-	depth: number;
-	start: number;
-	end: number;
+type MockEntry = {
+	name: string;
 	group?: string;
 	content?: string;
-}) =>
+};
+
+const createState = (entries: MockEntry[]) =>
 	({
 		selection: {
 			$from: {
-				depth,
-				node: (currentDepth: number) => ({
-					type:
-						currentDepth === depth
-							? {
-									spec: { group, content },
-								}
-							: {
-									spec: {},
-								},
-				}),
-				start: () => start,
-				end: () => end,
+				depth: entries.length - 1,
+				node: (depth: number) => {
+					const entry = entries[depth];
+					if (!entry) throw new Error(`No entry at depth ${depth}`);
+
+					return {
+						type: {
+							name: entry.name,
+							spec: {
+								group: entry.group,
+								content: entry.content,
+							},
+						},
+					};
+				},
 			},
 		},
 	}) as never;
 
-describe("wrapper-keys", () => {
-	it("현재 selection이 wrapper 안에 있으면 depth를 찾는다", () => {
-		const state = createMockState({ depth: 3, start: 10, end: 24 });
+describe("wrapper-keys helpers", () => {
+	it("wrapper 내부의 리스트 컨텍스트를 감지한다", () => {
+		const state = createState([
+			{ name: "doc", content: "block+" },
+			{ name: "Collapsible", group: "component2", content: "block+" },
+			{ name: "ordered_list", group: "block", content: "list_item+" },
+			{ name: "list_item", content: "paragraph block*" },
+			{ name: "paragraph", group: "block", content: "inline*" },
+		]);
 
-		expect(findActiveWrapperDepth(state)).toBe(3);
 		expect(isInAnyWrapper(state)).toBe(true);
+		expect(findActiveWrapperDepth(state)).toBe(1);
+		expect(isInList(state)).toBe(true);
 	});
 
-	it("wrapper 내부만 선택하도록 범위를 계산한다", () => {
-		const state = createMockState({ depth: 2, start: 8, end: 20 });
+	it("unordered_list도 리스트 컨텍스트로 감지한다", () => {
+		const state = createState([
+			{ name: "doc", content: "block+" },
+			{ name: "Callout", group: "component2", content: "block+" },
+			{ name: "unordered_list", group: "block", content: "list_item+" },
+			{ name: "list_item", content: "paragraph block*" },
+			{ name: "paragraph", group: "block", content: "inline*" },
+		]);
+
+		expect(isInAnyWrapper(state)).toBe(true);
+		expect(findActiveWrapperDepth(state)).toBe(1);
+		expect(isInList(state)).toBe(true);
+	});
+
+	it("리스트가 아닌 일반 wrapper 문단은 기존대로 wrapper 컨텍스트만 감지한다", () => {
+		const state = createState([
+			{ name: "doc", content: "block+" },
+			{ name: "Callout", group: "component2", content: "block+" },
+			{ name: "paragraph", group: "block", content: "inline*" },
+		]);
+
+		expect(isInAnyWrapper(state)).toBe(true);
+		expect(findActiveWrapperDepth(state)).toBe(1);
+		expect(isInList(state)).toBe(false);
+	});
+
+	it("Mod-a 범위 계산은 일반 wrapper 내부만 잡는다", () => {
+		const state = {
+			selection: {
+				$from: {
+					depth: 2,
+					node: (depth: number) => {
+						const entries = [
+							{ name: "doc", content: "block+" },
+							{ name: "Callout", group: "component2", content: "block+" },
+							{ name: "paragraph", group: "block", content: "inline*" },
+						];
+						const entry = entries[depth];
+						if (!entry) throw new Error(`No entry at depth ${depth}`);
+						return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+					},
+					start: () => 8,
+					end: () => 20,
+				},
+			},
+		} as never;
 
 		expect(getActiveWrapperSelectionRange(state)).toEqual({ from: 9, to: 19 });
 	});
 
-	it("wrapper가 아니면 null을 반환한다", () => {
-		const state = createMockState({
-			depth: 2,
-			start: 8,
-			end: 20,
-			group: "block",
-			content: "inline*",
-		});
+	it("Mod-a 범위 계산은 리스트 안에서도 wrapper 바깥으로 새지 않는다", () => {
+		const state = {
+			selection: {
+				$from: {
+					depth: 4,
+					node: (depth: number) => {
+						const entries = [
+							{ name: "doc", content: "block+" },
+							{ name: "Collapsible", group: "component2", content: "block+" },
+							{ name: "ordered_list", group: "block", content: "list_item+" },
+							{ name: "list_item", content: "paragraph block*" },
+							{ name: "paragraph", group: "block", content: "inline*" },
+						];
+						const entry = entries[depth];
+						if (!entry) throw new Error(`No entry at depth ${depth}`);
+						return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+					},
+					start: (depth: number) => (depth === 1 ? 12 : 18),
+					end: (depth: number) => (depth === 1 ? 42 : 26),
+				},
+			},
+		} as never;
 
-		expect(findActiveWrapperDepth(state)).toBeNull();
-		expect(isInAnyWrapper(state)).toBe(false);
-		expect(getActiveWrapperSelectionRange(state)).toBeNull();
+		expect(getActiveWrapperSelectionRange(state)).toEqual({ from: 13, to: 41 });
 	});
 });

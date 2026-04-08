@@ -1,8 +1,10 @@
 import { keymap } from "prosemirror-keymap";
-import type { Schema } from "prosemirror-model";
+import { Fragment, NodeRange, type NodeType, type Schema, Slice } from "prosemirror-model";
 import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
-import { canJoin } from "prosemirror-transform";
+import { ReplaceAroundStep, canJoin, liftTarget } from "prosemirror-transform";
 import { isInCodeblock } from "./codeblock-keys";
+
+const LIST_NODE_NAMES = new Set(["ordered_list", "unordered_list", "list_item"]);
 
 export function findActiveWrapperDepth(state: EditorState) {
 	const { $from } = state.selection;
@@ -25,6 +27,124 @@ export function findActiveWrapperDepth(state: EditorState) {
 
 export function isInAnyWrapper(state: EditorState) {
 	return findActiveWrapperDepth(state) != null;
+}
+
+export function isInList(state: EditorState) {
+	const { $from } = state.selection;
+
+	for (let d = $from.depth; d > 0; d--) {
+		if (LIST_NODE_NAMES.has($from.node(d).type.name)) return true;
+	}
+
+	return false;
+}
+
+function isAtTextblockStart(state: EditorState) {
+	const { $cursor } = state.selection as TextSelection;
+	if (!$cursor) return false;
+	return $cursor.parent.isTextblock && $cursor.parentOffset === 0;
+}
+
+function liftToOuterList(
+	state: EditorState,
+	dispatch: (tr: Transaction) => void,
+	itemType: NodeType,
+	range: NodeRange,
+) {
+	let tr = state.tr;
+	let end = range.end;
+	const endOfList = range.$to.end(range.depth);
+
+	if (end < endOfList) {
+		tr.step(
+			new ReplaceAroundStep(
+				end - 1,
+				endOfList,
+				end,
+				endOfList,
+				new Slice(Fragment.from(itemType.create(null, range.parent.copy())), 1, 0),
+				1,
+				true,
+			),
+		);
+		range = new NodeRange(tr.doc.resolve(range.$from.pos), tr.doc.resolve(endOfList), range.depth);
+	}
+
+	const target = liftTarget(range);
+	if (target == null) return false;
+
+	tr.lift(range, target);
+	const after = tr.mapping.map(end, -1) - 1;
+	if (canJoin(tr.doc, after)) tr.join(after);
+	dispatch(tr.scrollIntoView());
+	return true;
+}
+
+function liftOutOfList(state: EditorState, dispatch: (tr: Transaction) => void, range: NodeRange) {
+	let tr = state.tr;
+	const list = range.parent;
+
+	for (let pos = range.end, i = range.endIndex - 1, e = range.startIndex; i > e; i -= 1) {
+		pos -= list.child(i).nodeSize;
+		tr.delete(pos - 1, pos + 1);
+	}
+
+	const $start = tr.doc.resolve(range.start);
+	const item = $start.nodeAfter;
+	if (!item) return false;
+	if (tr.mapping.map(range.end) !== range.start + item.nodeSize) return false;
+
+	const atStart = range.startIndex === 0;
+	const atEnd = range.endIndex === list.childCount;
+	const parent = $start.node(-1);
+	const indexBefore = $start.index(-1);
+
+	if (
+		!parent.canReplace(
+			indexBefore + (atStart ? 0 : 1),
+			indexBefore + 1,
+			item.content.append(atEnd ? Fragment.empty : Fragment.from(list)),
+		)
+	) {
+		return false;
+	}
+
+	const start = $start.pos;
+	const end = start + item.nodeSize;
+	tr.step(
+		new ReplaceAroundStep(
+			start - (atStart ? 1 : 0),
+			end + (atEnd ? 1 : 0),
+			start + 1,
+			end - 1,
+			new Slice(
+				(atStart ? Fragment.empty : Fragment.from(list.copy(Fragment.empty))).append(
+					atEnd ? Fragment.empty : Fragment.from(list.copy(Fragment.empty)),
+				),
+				atStart ? 0 : 1,
+				atEnd ? 0 : 1,
+			),
+			atStart ? 0 : 1,
+		),
+	);
+	dispatch(tr.scrollIntoView());
+	return true;
+}
+
+function liftListItemBackward(state: EditorState, dispatch: (tr: Transaction) => void) {
+	const itemType = state.schema.nodes.list_item;
+	if (!itemType) return false;
+	if (!state.selection.empty || !isAtTextblockStart(state)) return false;
+
+	const { $from, $to } = state.selection;
+	const range = $from.blockRange($to, (node) => node.childCount > 0 && node.firstChild?.type === itemType);
+	if (!range) return false;
+
+	if ($from.node(range.depth - 1).type === itemType) {
+		return liftToOuterList(state, dispatch, itemType, range);
+	}
+
+	return liftOutOfList(state, dispatch, range);
 }
 
 export function getActiveWrapperSelectionRange(state: EditorState) {
@@ -103,6 +223,11 @@ export function wrapperKeysPlugin(schema: Schema): Plugin {
 	return keymap({
 		Backspace: (state, dispatch) => {
 			if (!isInAnyWrapper(state)) return false;
+			if (isInList(state)) {
+				if (!dispatch) return false;
+				if (liftListItemBackward(state, dispatch)) return true;
+				return false;
+			}
 			if (!dispatch) return false;
 			return deleteCharOrHardBreakBackward(state, dispatch, schema);
 		},
