@@ -23,6 +23,8 @@ const TITLE_BY_VARIANT: Record<CalloutVariant, string> = {
 	danger: "DANGER",
 };
 
+export const getDefaultCalloutTitle = (variant: CalloutVariant) => TITLE_BY_VARIANT[variant];
+
 export const Callout = ({
 	variant = "note",
 	title,
@@ -37,16 +39,20 @@ export const Callout = ({
 	}>) => {
 	const v = variant ?? "note";
 	const Icon = ICON_BY_VARIANT[v];
-	const resolvedTitle = title ?? TITLE_BY_VARIANT[v];
+	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
 
 	return (
-		<Alert variant={v} className="w-full">
-			<Icon />
-			<AlertTitle>{resolvedTitle}</AlertTitle>
+		<Alert variant={v} className="not-prose w-full">
+			<div className="col-span-2 flex items-start gap-2">
+				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
+				<AlertTitle className="min-w-0">{resolvedTitle}</AlertTitle>
+			</div>
 			{editor ? (
-				<div className="col-start-2 w-full">{children || description}</div>
+				<div className="col-span-2 mt-2 w-full">{children || description}</div>
 			) : (
-				<AlertDescription className="mt-1 text-current [&_p]:m-0">{children || description}</AlertDescription>
+				<AlertDescription className="col-span-2 mt-2 text-current [&_p]:m-0">
+					{children || description}
+				</AlertDescription>
 			)}
 		</Alert>
 	);

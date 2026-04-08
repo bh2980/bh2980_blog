@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 
 export const BlurChangeInput = ({
 	defaultValue,
+	placeholder,
 	onBlur,
 }: {
 	defaultValue?: string;
+	placeholder?: string;
 	onBlur?: (value: string) => void;
 }) => {
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -29,6 +31,7 @@ export const BlurChangeInput = ({
 		<div className="flex items-center gap-1">
 			<Input
 				defaultValue={defaultValue}
+				placeholder={placeholder}
 				className="h-8"
 				ref={inputRef}
 				onBlur={handleBlurInput}

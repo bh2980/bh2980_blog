@@ -1,9 +1,10 @@
 import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
-import type { EditorState, Plugin, Transaction } from "prosemirror-state";
+import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { canJoin } from "prosemirror-transform";
+import { isInCodeblock } from "./codeblock-keys";
 
-export function isInAnyWrapper(state: EditorState) {
+export function findActiveWrapperDepth(state: EditorState) {
 	const { $from } = state.selection;
 
 	for (let d = $from.depth; d > 0; d--) {
@@ -16,10 +17,28 @@ export function isInAnyWrapper(state: EditorState) {
 		// wrapper류는 content가 block+ 인 케이스가 많음
 		const isWrapperLike = type.spec.content === "block+";
 
-		if (isKeystaticComponent && isWrapperLike) return true;
+		if (isKeystaticComponent && isWrapperLike) return d;
 	}
 
-	return false;
+	return null;
+}
+
+export function isInAnyWrapper(state: EditorState) {
+	return findActiveWrapperDepth(state) != null;
+}
+
+export function getActiveWrapperSelectionRange(state: EditorState) {
+	const depth = findActiveWrapperDepth(state);
+	if (depth == null) return null;
+
+	const { $from } = state.selection;
+	const start = $from.start(depth);
+	const end = $from.end(depth);
+
+	return {
+		from: Math.min(start + 1, end),
+		to: Math.max(end - 1, Math.min(start + 1, end)),
+	};
 }
 
 function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
@@ -65,6 +84,21 @@ function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transa
 	return true;
 }
 
+const selectAllWithinWrapper = (state: EditorState, dispatch?: (tr: Transaction) => void) => {
+	if (isInCodeblock(state) || !isInAnyWrapper(state)) return false;
+
+	const range = getActiveWrapperSelectionRange(state);
+	if (!range) return false;
+	if (!dispatch) return true;
+
+	const startSelection = Selection.findFrom(state.doc.resolve(range.from), 1);
+	const endSelection = Selection.findFrom(state.doc.resolve(range.to), -1);
+	if (!startSelection || !endSelection) return false;
+
+	dispatch(state.tr.setSelection(TextSelection.between(startSelection.$from, endSelection.$to)).scrollIntoView());
+	return true;
+};
+
 export function wrapperKeysPlugin(schema: Schema): Plugin {
 	return keymap({
 		Backspace: (state, dispatch) => {
@@ -72,5 +106,6 @@ export function wrapperKeysPlugin(schema: Schema): Plugin {
 			if (!dispatch) return false;
 			return deleteCharOrHardBreakBackward(state, dispatch, schema);
 		},
+		"Mod-a": selectAllWithinWrapper,
 	});
 }

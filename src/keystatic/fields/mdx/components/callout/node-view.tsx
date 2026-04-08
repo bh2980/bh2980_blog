@@ -3,7 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { type MouseEvent, useId } from "react";
 import { createPortal } from "react-dom";
-import { Callout } from "@/components/mdx/callout";
+import { Callout, getDefaultCalloutTitle } from "@/components/mdx/callout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -11,6 +11,7 @@ import {
 	WRAPPER_TOOLBAR_NODE_ID_ATTR,
 } from "@/keystatic/plugins/pm/wrapper-toolbar-portal-store";
 import { cn } from "@/utils/cn";
+import { BlurChangeInput } from "../code-block/components";
 import type { CalloutNodeViewProps, CalloutVariant } from "./component";
 
 const CALLOUT_TYPES = [
@@ -23,12 +24,14 @@ const CALLOUT_TYPES = [
 
 export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, children }: CalloutNodeViewProps) => {
 	const calloutType = (value.variant ?? "note") as CalloutVariant;
+	const defaultTitle = getDefaultCalloutTitle(calloutType);
 	const wrapperNodeId = useId();
 	const toolbarState = useWrapperToolbarPortalSnapshot();
 	const stopEditorEvent = (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
 	};
+	const handleBlurTitle = (title: string) => onChange({ ...value, title });
 
 	return (
 		<div
@@ -39,27 +42,34 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 				isSelected && "outline-2 outline-slate-500 outline-offset-2",
 			)}
 		>
-			<Callout variant={calloutType} title={calloutType.toUpperCase()} description={value.description ?? ""} editor>
+			<Callout variant={calloutType} title={value.title} description={value.description ?? ""} editor>
 				<div className="rounded-md border border-slate-200 bg-white/60 p-2">{children}</div>
 			</Callout>
 			{toolbarState.host && toolbarState.activeWrapperId === wrapperNodeId
 				? createPortal(
 						<div className="flex items-center justify-between gap-3 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
-							<Select
-								value={calloutType}
-								onValueChange={(nextValue) => onChange({ ...value, variant: nextValue as CalloutVariant })}
-							>
-								<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stopEditorEvent}>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent className="z-80">
-									{CALLOUT_TYPES.map((typeOption) => (
-										<SelectItem key={typeOption.value} value={typeOption.value}>
-											{typeOption.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<div className="flex items-center gap-2">
+								<Select
+									value={calloutType}
+									onValueChange={(nextValue) => onChange({ ...value, variant: nextValue as CalloutVariant })}
+								>
+									<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stopEditorEvent}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent className="z-80">
+										{CALLOUT_TYPES.map((typeOption) => (
+											<SelectItem key={typeOption.value} value={typeOption.value}>
+												{typeOption.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<BlurChangeInput
+									defaultValue={value.title}
+									placeholder={`기본값: ${defaultTitle}`}
+									onBlur={handleBlurTitle}
+								/>
+							</div>
 							<Button
 								type="button"
 								variant="destructive"
