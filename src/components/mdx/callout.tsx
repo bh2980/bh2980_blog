@@ -43,14 +43,16 @@ export const Callout = ({
 
 	return (
 		<Alert variant={v} className="not-prose w-full">
-			<div className="flex items-start gap-2">
+			<div className="col-span-2 flex items-start gap-2">
 				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
 				<AlertTitle className="min-w-0">{resolvedTitle}</AlertTitle>
 			</div>
 			{editor ? (
-				<div className="mt-2 w-full">{children || description}</div>
+				<div className="col-span-2 mt-2 w-full">{children || description}</div>
 			) : (
-				<AlertDescription className="mt-2 text-current [&_p]:m-0">{children || description}</AlertDescription>
+				<AlertDescription className="col-span-2 mt-2 text-current [&_p]:m-0">
+					{children || description}
+				</AlertDescription>
 			)}
 		</Alert>
 	);

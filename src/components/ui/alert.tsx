@@ -6,6 +6,8 @@ import { cn } from "@/utils";
 export const alertVariants = cva(
 	[
 		"relative w-full rounded-lg border px-4 py-3 text-sm",
+		"grid grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3 gap-y-1 items-start",
+		"[&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
 		"[&_:is(ul,ol)>li]:marker:text-slate-700",
 		"dark:[&_:is(ul,ol)>li]:marker:text-slate-200/80",
 	].join(" "),
@@ -45,14 +47,23 @@ function Alert({ className, variant, ...props }: React.ComponentProps<"div"> & V
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
-	return <div data-slot="alert-title" className={cn("min-h-4 font-medium tracking-tight", className)} {...props} />;
+	return (
+		<div
+			data-slot="alert-title"
+			className={cn("col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight", className)}
+			{...props}
+		/>
+	);
 }
 
 function AlertDescription({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="alert-description"
-			className={cn("grid justify-items-start gap-1 text-muted-foreground text-sm [&_p]:leading-relaxed", className)}
+			className={cn(
+				"col-start-2 grid justify-items-start gap-1 text-muted-foreground text-sm [&_p]:leading-relaxed",
+				className,
+			)}
 			{...props}
 		/>
 	);
