@@ -129,6 +129,35 @@ hello world
 
 쉽게 말하면, 코드 안에 “이 줄은 강조해”, “이 글자는 툴팁 붙여”, “이 구간은 접어”를 주석으로 적는 방식입니다.
 
+### regex selector
+
+숫자 범위 대신 정규표현식으로 범위를 지정할 수도 있습니다.
+
+```ts
+// @char fold {re:/foo/g}
+const value = "foo foo"
+```
+
+```ts
+// @document fold {re:/foo/}
+foo bar foo
+```
+
+규칙은 이렇습니다.
+
+- `@char ... {re:/.../flags}`: 바로 아래 한 줄에서만 매치를 찾습니다.
+- `@document ... {re:/.../flags}`: 코드 블록 전체에서 매치를 찾습니다.
+- `g` 플래그가 없어도 내부에서 전체 매치를 모두 수집합니다.
+- 줄바꿈을 가로지르는 정규식도 사용할 수 있습니다.
+
+예를 들면 JSX의 `className` 값만 접고 싶을 때도 이런 식으로 쓸 수 있습니다.
+
+```ts
+// @document fold {re:/(?<=className\s*=\s*")[^"]+(?=")/g}
+const a = <div className="alpha beta" />
+const b = <span className="gamma" />
+```
+
 ## Chart DSL 문법
 
 차트는 MDX에서 ```` ```chart ```` 코드펜스로 작성합니다.  
