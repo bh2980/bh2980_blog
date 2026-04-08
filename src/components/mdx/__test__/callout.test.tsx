@@ -36,4 +36,13 @@ describe("Callout", () => {
 
 		expect(container.firstElementChild?.className).toContain("not-prose");
 	});
+
+	it("실제 렌더링 본문도 에디터와 같은 박스 스타일을 가진다", () => {
+		render(<Callout variant="note">본문</Callout>);
+
+		const description = screen.getByText("본문").closest('[data-slot="alert-description"]');
+		expect(description?.className).toContain("rounded-md");
+		expect(description?.className).toContain("border");
+		expect(description?.className).toContain("bg-white/60");
+	});
 });

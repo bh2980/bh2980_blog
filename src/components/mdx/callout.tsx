@@ -50,7 +50,7 @@ export const Callout = ({
 			{editor ? (
 				<div className="col-span-2 mt-2 w-full">{children || description}</div>
 			) : (
-				<AlertDescription className="col-span-2 mt-2 text-current [&_p]:m-0">
+				<AlertDescription className="col-span-2 mt-2 rounded-md border border-slate-200 bg-white/60 p-2 text-current [&_p]:m-0 dark:border-slate-700/70 dark:bg-slate-950/20">
 					{children || description}
 				</AlertDescription>
 			)}
