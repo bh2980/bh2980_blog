@@ -15,6 +15,7 @@ const isChartThemeToken = (value: string): value is ChartThemeToken =>
 const splitTableRow = (line: string) => line.split("|").map((item) => item.trim());
 
 const toError = (line: number, message: string): ChartDslParseError => ({ line, message });
+const isBlankCell = (value: unknown) => typeof value === "string" && value.trim() === "";
 
 export const parseChartDsl = (source: string): ChartDslParseResult => {
 	const lines = source.replace(/\r\n/g, "\n").split("\n");
@@ -147,6 +148,14 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 
 		const data = parsed.rows.map((row, index) => {
 			const record = Object.fromEntries(parsed.tableHeaders.map((header, cellIndex) => [header, row[cellIndex] ?? ""]));
+			if (isBlankCell(record[valueKey])) {
+				errors.push(toError(rowStartLine + index, `숫자 필드 ${valueKey} 는 비어 있을 수 없습니다.`));
+				return {
+					[labelKey]: String(record[labelKey] ?? ""),
+					[valueKey]: Number.NaN,
+					fill: `var(--${CHART_THEME_TOKENS[index % CHART_THEME_TOKENS.length]})`,
+				};
+			}
 			const numericValue = Number(record[valueKey]);
 			if (!Number.isFinite(numericValue)) {
 				errors.push(toError(rowStartLine + index, `숫자 필드 ${valueKey} 는 숫자여야 합니다.`));
@@ -205,6 +214,10 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 		};
 
 		for (const series of parsed.series) {
+			if (isBlankCell(record[series.key])) {
+				errors.push(toError(rowStartLine + index, `숫자 필드 ${series.key} 는 비어 있을 수 없습니다.`));
+				continue;
+			}
 			const numericValue = Number(record[series.key]);
 			if (!Number.isFinite(numericValue)) {
 				errors.push(toError(rowStartLine + index, `숫자 필드 ${series.key} 는 숫자여야 합니다.`));

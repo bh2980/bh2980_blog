@@ -120,4 +120,24 @@ describe("parseChartDsl", () => {
 
 		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 visitors 는 숫자여야 합니다." }]);
 	});
+
+	it("cartesian chart의 빈 숫자 셀은 오류를 반환한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				["chart bar", "x month", "series views | 조회수 | chart-1", "", "data", "month | views", "Jan | "].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 views 는 비어 있을 수 없습니다." }]);
+	});
+
+	it("pie chart의 빈 숫자 셀은 오류를 반환한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				["chart pie", "label browser", "value visitors", "", "data", "browser | visitors", "Chrome | "].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 visitors 는 비어 있을 수 없습니다." }]);
+	});
 });
