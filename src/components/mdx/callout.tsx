@@ -50,9 +50,7 @@ export const Callout = ({
 			{editor ? (
 				<div className="mt-2 w-full">{children || description}</div>
 			) : (
-				<AlertDescription className="mt-2 text-current [&_p]:m-0">
-					{children || description}
-				</AlertDescription>
+				<AlertDescription className="mt-2 text-current [&_p]:m-0">{children || description}</AlertDescription>
 			)}
 		</Alert>
 	);

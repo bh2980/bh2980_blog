@@ -1,6 +1,6 @@
 import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
-import { TextSelection, type EditorState, type Plugin, type Transaction } from "prosemirror-state";
+import { type EditorState, type Plugin, TextSelection, type Transaction } from "prosemirror-state";
 import { canJoin } from "prosemirror-transform";
 import { isInCodeblock } from "./codeblock-keys";
 
