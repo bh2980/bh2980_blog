@@ -54,3 +54,179 @@ Next.js와 Keystatic을 기반으로 콘텐츠 관리 효율성과 구현 제어
 - **커스텀 주석 파서와 에디터 연동**: 코드 블록 주석 정보를 별도 구조로 파싱하고, 이를 Keystatic 코드 블록 에디터와 연결해 편집 흐름 안에서 다룰 수 있게 구성했습니다.
 - **콘텐츠 메타 자동화**: RSS, sitemap, Open Graph 이미지와 같은 배포 메타 정보를 코드 레벨에서 함께 생성합니다.
 - **콘텐츠 관리 흐름 분리**: 공개 페이지와 별도로 Keystatic 관리 화면 및 preview 흐름을 구성했습니다.
+
+## Custom Annotation 문법
+
+코드 블록 안에서는 별도 주석 문법으로 라인 강조, wrapper, 인라인 렌더를 지정할 수 있습니다.
+
+### 주석 prefix
+
+언어에 따라 annotation 주석 prefix가 달라집니다.
+
+| 언어 | 주석 문법 |
+| :--- | :--- |
+| `ts`, `tsx`, `js`, `jsx` 등 기본값 | `// @...` |
+| `python`, `yaml`, `toml`, `bash` | `# @...` |
+| `sql` | `-- @...` |
+| `postcss` | `/* @... */` |
+
+### 기본 형태
+
+```txt
+@line <name> {start-end} attr="value"
+@char <name> {start-end} attr="value"
+@document <name> {start-end} attr="value"
+```
+
+- `@line`: 줄 단위 annotation
+- `@char`: 한 줄 안의 문자 범위 annotation
+- `@document`: 코드 블록 전체 기준 absolute range annotation
+- `{start-end}`는 닫힌 구간입니다. 예를 들어 `{0-4}`는 내부적으로 `0`부터 `4`까지 포함합니다.
+
+### 자주 쓰는 line annotation
+
+```ts
+// @line plus
+const added = 1
+
+// @line minus
+const removed = 2
+
+// @line highlight {0-1}
+const first = 1
+const second = 2
+```
+
+- `plus`: 추가된 줄처럼 초록 강조
+- `minus`: 삭제된 줄처럼 빨강 강조
+- `highlight`: 중립 강조
+- `warning`, `error`: 물결 밑줄 강조
+
+연속 구간은 시작/종료 marker로도 쓸 수 있습니다.
+
+```ts
+// @line collapse
+const first = 1
+const second = 2
+// @line collapse end
+```
+
+### 자주 쓰는 inline/document annotation
+
+```ts
+// @char Tooltip {6-10} content="설명"
+const value = hello
+```
+
+```ts
+// @document fold {0-4}
+hello world
+```
+
+- `Tooltip`: 지정 범위를 툴팁으로 감쌉니다.
+- `fold`: 지정 범위를 접힘 형태로 렌더링합니다.
+- `strong`, `em`, `del`, `u`도 document/inline 범위에서 사용할 수 있습니다.
+
+쉽게 말하면, 코드 안에 “이 줄은 강조해”, “이 글자는 툴팁 붙여”, “이 구간은 접어”를 주석으로 적는 방식입니다.
+
+### regex selector
+
+숫자 범위 대신 정규표현식으로 범위를 지정할 수도 있습니다.
+
+```ts
+// @char fold {re:/foo/g}
+const value = "foo foo"
+```
+
+```ts
+// @document fold {re:/foo/}
+foo bar foo
+```
+
+규칙은 이렇습니다.
+
+- `@char ... {re:/.../flags}`: 바로 아래 한 줄에서만 매치를 찾습니다.
+- `@document ... {re:/.../flags}`: 코드 블록 전체에서 매치를 찾습니다.
+- `g` 플래그가 없어도 내부에서 전체 매치를 모두 수집합니다.
+- 줄바꿈을 가로지르는 정규식도 사용할 수 있습니다.
+
+예를 들면 JSX의 `className` 값만 접고 싶을 때도 이런 식으로 쓸 수 있습니다.
+
+```ts
+// @document fold {re:/(?<=className\s*=\s*")[^"]+(?=")/g}
+const a = <div className="alpha beta" />
+const b = <span className="gamma" />
+```
+
+## Chart DSL 문법
+
+차트는 MDX에서 ```` ```chart ```` 코드펜스로 작성합니다.  
+v1에서는 `bar`, `line`, `area`, `pie`만 지원합니다.
+
+### Cartesian 차트 (`bar`, `line`, `area`)
+
+```txt
+chart bar
+x month
+series views | 조회수 | chart-1
+series likes | 좋아요 | chart-2
+
+data
+month | views | likes
+Jan | 1200 | 180
+Feb | 1680 | 220
+Mar | 1940 | 260
+```
+
+규칙은 이렇습니다.
+
+- 첫 줄은 `chart <type>`
+- `x <field>`는 필수
+- `series <key> | <label> | <theme-token>`은 1개 이상 필요
+- 빈 줄 뒤에 `data`
+- 다음 줄은 테이블 헤더
+- 데이터 값은 `|`로 구분
+
+색상 토큰은 `chart-1`부터 `chart-5`까지만 허용합니다.
+
+### Pie 차트
+
+```txt
+chart pie
+label browser
+value visitors
+
+data
+browser | visitors
+Chrome | 412
+Safari | 248
+Edge | 132
+```
+
+규칙은 이렇습니다.
+
+- `label <field>`는 항목 이름 필드
+- `value <field>`는 숫자 값 필드
+- 색상은 행 순서대로 `chart-1` ~ `chart-5`가 자동 배정
+
+### 오류 처리
+
+문법이 잘못되면 차트가 조용히 깨지지 않고, 본문과 에디터 모두에서 오류 카드가 표시됩니다.
+
+예를 들어 이런 경우 에러가 납니다.
+
+```txt
+chart bar
+x month
+series views | 조회수 | chart-1
+
+data
+month | views
+Jan | nope
+```
+
+- 지원하지 않는 차트 타입
+- 필수 헤더 누락
+- `series`와 `data` 헤더 불일치
+- 숫자 필드에 숫자가 아닌 값 입력
+- 허용되지 않은 색상 토큰 사용
