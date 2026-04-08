@@ -150,8 +150,8 @@ const { text: rewrittenQuery } = await generateText({
 
 ```ts
 const { embedding } = await embed({
-  model: openrouter.textEmbeddingModel(EMBEDDING_MODEL, {
-    extraBody: { dimensions: EMBEDDING_DIMENSIONS },
+  model: openrouter.textEmbeddingModel("qwen/qwen3-embedding-8b", {
+    extraBody: { dimensions: 768 },
   }),
   value: `Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ${rewrittenQuery}`,
 });
