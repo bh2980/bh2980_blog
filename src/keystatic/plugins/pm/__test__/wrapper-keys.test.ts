@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	findActiveWrapperDepth,
 	getActiveWrapperSelectionRange,
+	getSelectedWholeWrapperRange,
 	hasPreviousSiblingWithinWrapper,
 	isInAnyWrapper,
 	isInList,
+	isWholeWrapperContentSelected,
 } from "../wrapper-keys";
 
 type MockEntry = {
@@ -33,6 +35,7 @@ const createState = (entries: MockEntry[]) =>
 					};
 				},
 				index: () => 0,
+				before: (depth: number) => depth,
 			},
 		},
 	}) as never;
@@ -95,6 +98,7 @@ describe("wrapper-keys helpers", () => {
 					},
 					start: () => 8,
 					end: () => 20,
+					before: (depth: number) => depth,
 				},
 			},
 		} as never;
@@ -121,6 +125,7 @@ describe("wrapper-keys helpers", () => {
 					},
 					start: (depth: number) => (depth === 1 ? 12 : 18),
 					end: (depth: number) => (depth === 1 ? 42 : 26),
+					before: (depth: number) => depth,
 				},
 			},
 		} as never;
@@ -154,10 +159,117 @@ describe("wrapper-keys helpers", () => {
 						return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
 					},
 					index: (depth: number) => (depth === 1 ? 1 : 0),
+					before: (depth: number) => depth,
 				},
 			},
 		} as never;
 
 		expect(hasPreviousSiblingWithinWrapper(stateAfterList)).toBe(true);
+	});
+
+	it("wrapper 내부 전체 선택일 때만 내용 삭제 보호가 걸린다", () => {
+		const $from = {
+			depth: 2,
+			node: (depth: number) => {
+				const entries = [
+					{ name: "doc", content: "block+" },
+					{ name: "Collapsible", group: "component2", content: "block+" },
+					{ name: "paragraph", group: "block", content: "inline*" },
+				];
+				const entry = entries[depth];
+				if (!entry) throw new Error(`No entry at depth ${depth}`);
+				return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+			},
+			start: () => 12,
+			end: () => 42,
+			before: (depth: number) => depth,
+		};
+
+		const state = {
+			selection: {
+				from: 13,
+				to: 41,
+				empty: false,
+				$from,
+				$to: $from,
+			},
+		} as never;
+
+		expect(isWholeWrapperContentSelected(state)).toBe(true);
+
+		const partialState = {
+			selection: {
+				from: 15,
+				to: 20,
+				empty: false,
+				$from,
+				$to: $from,
+			},
+		} as never;
+
+		expect(isWholeWrapperContentSelected(partialState)).toBe(false);
+	});
+
+	it("선택 끝점이 바깥 wrapper로 해석돼도 활성 wrapper 전체 선택 범위는 유지한다", () => {
+		const $from = {
+			depth: 5,
+			node: (depth: number) => {
+				const entries = [
+					{ name: "doc", content: "block+" },
+					{ name: "OuterCollapsible", group: "component2", content: "block+" },
+					{ name: "Collapsible", group: "component2", content: "block+" },
+					{ name: "Tabs", group: "component2", content: "block+" },
+					{ name: "paragraph", group: "block", content: "inline*" },
+					{ name: "text", group: "inline" },
+				];
+				const entry = entries[depth];
+				if (!entry) throw new Error(`No entry at depth ${depth}`);
+				return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+			},
+			start: (depth: number) => {
+				if (depth === 2) return 20;
+				if (depth === 3) return 21;
+				return 28;
+			},
+			end: (depth: number) => {
+				if (depth === 2) return 60;
+				if (depth === 3) return 40;
+				return 36;
+			},
+			before: (depth: number) => depth,
+		};
+
+		const $to = {
+			depth: 5,
+			node: (depth: number) => {
+				const entries = [
+					{ name: "doc", content: "block+" },
+					{ name: "OuterCollapsible", group: "component2", content: "block+" },
+					{ name: "Collapsible", group: "component2", content: "block+" },
+					{ name: "ordered_list", group: "block", content: "list_item+" },
+					{ name: "list_item", content: "paragraph block*" },
+					{ name: "paragraph", group: "block", content: "inline*" },
+				];
+				const entry = entries[depth];
+				if (!entry) throw new Error(`No entry at depth ${depth}`);
+				return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+			},
+			start: (depth: number) => (depth === 2 ? 20 : 44),
+			end: (depth: number) => (depth === 2 ? 60 : 56),
+			before: (depth: number) => depth,
+		};
+
+		const state = {
+			selection: {
+				from: 21,
+				to: 59,
+				empty: false,
+				$from,
+				$to,
+			},
+		} as never;
+
+		expect(isWholeWrapperContentSelected(state)).toBe(true);
+		expect(getSelectedWholeWrapperRange(state)).toEqual({ from: 21, to: 59 });
 	});
 });

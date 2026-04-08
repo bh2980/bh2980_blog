@@ -1,29 +1,64 @@
 import { joinTextblockBackward } from "prosemirror-commands";
-import { keymap } from "prosemirror-keymap";
+import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, NodeRange, type NodeType, type Schema, Slice } from "prosemirror-model";
-import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
+import {
+	type EditorState,
+	Plugin,
+	PluginKey,
+	Selection,
+	TextSelection,
+	type Transaction,
+} from "prosemirror-state";
 import { ReplaceAroundStep, canJoin, liftTarget } from "prosemirror-transform";
 import { isInCodeblock } from "./codeblock-keys";
 
 const LIST_NODE_NAMES = new Set(["ordered_list", "unordered_list", "list_item"]);
 
-export function findActiveWrapperDepth(state: EditorState) {
-	const { $from } = state.selection;
+type ActiveWrapperInfo = {
+	depth: number;
+	pos: number;
+	type: NodeType;
+};
 
-	for (let d = $from.depth; d > 0; d--) {
-		const type = $from.node(d).type;
+const wrapperSelectionPluginKey = new PluginKey<{ pos: number } | null>("wrapper-selection");
 
-		// Keystatic content component는 보통 spec.group에 "componentN" 형태가 들어감
+function findWrapperInfosAtPos($pos: EditorState["selection"]["$from"]) {
+	const infos: ActiveWrapperInfo[] = [];
+
+	for (let d = $pos.depth; d > 0; d -= 1) {
+		const type = $pos.node(d).type;
 		const groupStr = type.spec.group ?? "";
 		const isKeystaticComponent = groupStr.split(/\s+/).some((g) => g.startsWith("component"));
-
-		// wrapper류는 content가 block+ 인 케이스가 많음
 		const isWrapperLike = type.spec.content === "block+";
 
-		if (isKeystaticComponent && isWrapperLike) return d;
+		if (!isKeystaticComponent || !isWrapperLike) continue;
+
+		infos.push({
+			depth: d,
+			pos: $pos.before(d),
+			type,
+		});
 	}
 
-	return null;
+	return infos;
+}
+
+function findActiveWrapperInfoAtPos($pos: EditorState["selection"]["$from"]): ActiveWrapperInfo | null {
+	return findWrapperInfosAtPos($pos)[0] ?? null;
+}
+
+function getWrapperSelectionRange($pos: EditorState["selection"]["$from"], depth: number) {
+	const start = $pos.start(depth);
+	const end = $pos.end(depth);
+
+	return {
+		from: Math.min(start + 1, end),
+		to: Math.max(end - 1, Math.min(start + 1, end)),
+	};
+}
+
+export function findActiveWrapperDepth(state: EditorState) {
+	return findActiveWrapperInfoAtPos(state.selection.$from)?.depth ?? null;
 }
 
 export function isInAnyWrapper(state: EditorState) {
@@ -153,13 +188,7 @@ export function getActiveWrapperSelectionRange(state: EditorState) {
 	if (depth == null) return null;
 
 	const { $from } = state.selection;
-	const start = $from.start(depth);
-	const end = $from.end(depth);
-
-	return {
-		from: Math.min(start + 1, end),
-		to: Math.max(end - 1, Math.min(start + 1, end)),
-	};
+	return getWrapperSelectionRange($from, depth);
 }
 
 export function hasPreviousSiblingWithinWrapper(state: EditorState) {
@@ -172,6 +201,76 @@ export function hasPreviousSiblingWithinWrapper(state: EditorState) {
 	}
 
 	return false;
+}
+
+export function isWholeWrapperContentSelected(state: EditorState) {
+	return getSelectedWholeWrapperRange(state) != null;
+}
+
+export function getSelectedWholeWrapperRange(state: EditorState) {
+	if (state.selection.empty) return null;
+
+	const storedWrapper = wrapperSelectionPluginKey.getState(state);
+	if (storedWrapper) {
+		const resolvedPos = state.doc.resolve(Math.min(storedWrapper.pos + 1, state.doc.content.size));
+		const storedInfo = findWrapperInfosAtPos(resolvedPos).find((wrapper) => wrapper.pos === storedWrapper.pos);
+		if (storedInfo) {
+			return getWrapperSelectionRange(resolvedPos, storedInfo.depth);
+		}
+	}
+
+	const { from, to, $from, $to } = state.selection;
+	const toWrappers = new Set(findWrapperInfosAtPos($to).map((wrapper) => wrapper.pos));
+
+	for (const wrapper of findWrapperInfosAtPos($from)) {
+		if (!toWrappers.has(wrapper.pos)) continue;
+
+		const range = getWrapperSelectionRange($from, wrapper.depth);
+		if (from > range.from || to < range.to) continue;
+
+		return range;
+	}
+
+	return null;
+}
+
+function isSelectionWithinSingleWrapper(state: EditorState) {
+	const fromWrapper = findActiveWrapperInfoAtPos(state.selection.$from);
+	const toWrapper = findActiveWrapperInfoAtPos(state.selection.$to);
+	if (!fromWrapper || !toWrapper) return null;
+	if (fromWrapper.pos !== toWrapper.pos) return null;
+	return fromWrapper;
+}
+
+function clearWrapperContents(state: EditorState, dispatch: (tr: Transaction) => void) {
+	const paragraphType = state.schema.nodes.paragraph;
+	const paragraph = paragraphType?.createAndFill();
+	if (!paragraph) return false;
+	if (state.selection.empty) return false;
+
+	const wholeWrapperRange = getSelectedWholeWrapperRange(state);
+	if (wholeWrapperRange) {
+		let tr = state.tr.replaceWith(wholeWrapperRange.from, wholeWrapperRange.to, paragraph);
+		const cursorPos = Math.min(wholeWrapperRange.from + 1, tr.doc.content.size);
+		tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
+		dispatch(tr.scrollIntoView());
+		return true;
+	}
+
+	const wrapper = isSelectionWithinSingleWrapper(state);
+	if (!wrapper) return false;
+
+	const simulated = state.tr.deleteSelection();
+	const mappedWrapperPos = simulated.mapping.map(wrapper.pos, -1);
+	const mappedWrapperNode = simulated.doc.nodeAt(mappedWrapperPos);
+
+	if (mappedWrapperNode?.type === wrapper.type && mappedWrapperNode.childCount > 0) return false;
+
+	let tr = state.tr.replaceSelectionWith(paragraph);
+	const cursorPos = Math.min(tr.selection.from, tr.doc.content.size);
+	tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
+	dispatch(tr.scrollIntoView());
+	return true;
 }
 
 function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
@@ -210,6 +309,7 @@ const selectAllWithinWrapper = (state: EditorState, dispatch?: (tr: Transaction)
 	if (isInCodeblock(state) || !isInAnyWrapper(state)) return false;
 
 	const range = getActiveWrapperSelectionRange(state);
+	const wrapper = findActiveWrapperInfoAtPos(state.selection.$from);
 	if (!range) return false;
 	if (!dispatch) return true;
 
@@ -217,22 +317,46 @@ const selectAllWithinWrapper = (state: EditorState, dispatch?: (tr: Transaction)
 	const endSelection = Selection.findFrom(state.doc.resolve(range.to), -1);
 	if (!startSelection || !endSelection) return false;
 
-	dispatch(state.tr.setSelection(TextSelection.between(startSelection.$from, endSelection.$to)).scrollIntoView());
+	dispatch(
+		state.tr
+			.setSelection(TextSelection.between(startSelection.$from, endSelection.$to))
+			.setMeta(wrapperSelectionPluginKey, wrapper ? { pos: wrapper.pos } : null)
+			.scrollIntoView(),
+	);
 	return true;
 };
 
 export function wrapperKeysPlugin(schema: Schema): Plugin {
-	return keymap({
-		Backspace: (state, dispatch) => {
-			if (!isInAnyWrapper(state)) return false;
-			if (isInList(state)) {
-				if (!dispatch) return false;
-				if (liftListItemBackward(state, dispatch)) return true;
-				return false;
-			}
-			if (!dispatch) return false;
-			return deleteCharOrHardBreakBackward(state, dispatch, schema);
+	return new Plugin({
+		key: wrapperSelectionPluginKey,
+		state: {
+			init: () => null,
+			apply: (tr, value) => {
+				const meta = tr.getMeta(wrapperSelectionPluginKey);
+				if (meta !== undefined) return meta;
+				if (tr.selectionSet) return null;
+				return value;
+			},
 		},
-		"Mod-a": selectAllWithinWrapper,
+		props: {
+			handleKeyDown: keydownHandler({
+				Backspace: (state, dispatch) => {
+					if (!isInAnyWrapper(state)) return false;
+					if (!dispatch) return false;
+					if (clearWrapperContents(state, dispatch)) return true;
+					if (isInList(state)) {
+						if (liftListItemBackward(state, dispatch)) return true;
+						return false;
+					}
+					return deleteCharOrHardBreakBackward(state, dispatch, schema);
+				},
+				Delete: (state, dispatch) => {
+					if (!isInAnyWrapper(state)) return false;
+					if (!dispatch) return false;
+					return clearWrapperContents(state, dispatch);
+				},
+				"Mod-a": selectAllWithinWrapper,
+			}),
+		},
 	});
 }
