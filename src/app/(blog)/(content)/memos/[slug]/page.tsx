@@ -8,7 +8,6 @@ type MemoPageProps = {
 	params: Promise<{ slug: string }>;
 };
 
-export const dynamic = "force-static";
 export const dynamicParams = false;
 
 export async function generateMetadata({ params }: MemoPageProps): Promise<Metadata> {

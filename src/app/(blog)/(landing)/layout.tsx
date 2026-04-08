@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import Navigation from "@/components/navigation.client";
 import { getAdminContext } from "@/libs/admin/context";
 
@@ -10,9 +9,9 @@ export default async function RootLayout({
 	const adminContext = await getAdminContext();
 
 	return (
-		<Fragment>
+		<>
 			<Navigation canManage={adminContext.canManage} className="absolute top-0 z-10 w-full bg-transparent" />
 			<main className="flex flex-1 flex-col">{children}</main>
-		</Fragment>
+		</>
 	);
 }
