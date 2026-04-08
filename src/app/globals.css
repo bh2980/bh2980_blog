@@ -459,3 +459,14 @@
 [data-wrapper-toolbar-host="true"] > * {
 	pointer-events: auto;
 }
+
+.prose .katex-display {
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 0.25rem 0;
+}
+
+.prose .katex-display > .katex {
+	display: inline-block;
+	min-width: max-content;
+}

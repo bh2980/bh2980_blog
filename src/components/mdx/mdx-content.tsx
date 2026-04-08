@@ -1,9 +1,13 @@
+import type { Root, Text } from "mdast";
 import { compileMDX } from "next-mdx-remote/rsc";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeKatex from "rehype-katex";
 import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import { visit } from "unist-util-visit";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
@@ -20,6 +24,19 @@ import { pre } from "./pre";
 import { Tab, Tabs } from "./tabs";
 import { Tooltip } from "./tooltip";
 
+const remarkDisableInlineMath = () => {
+	return (tree: Root) => {
+		visit(tree, "inlineMath", (node, index, parent) => {
+			if (index == null || !parent) return;
+
+			parent.children.splice(index, 1, {
+				type: "text",
+				value: `$${node.value}$`,
+			} satisfies Text);
+		});
+	};
+};
+
 export const renderMDX = async (source: string) => {
 	const tocRef: TocItem[] = [];
 
@@ -29,6 +46,8 @@ export const renderMDX = async (source: string) => {
 			mdxOptions: {
 				remarkPlugins: [
 					[remarkAnnotationToShikiDecoration, annotationConfig],
+					remarkMath,
+					remarkDisableInlineMath,
 					remarkMermaidToMdx,
 					remarkBreaks,
 					remarkGfm,
@@ -37,6 +56,7 @@ export const renderMDX = async (source: string) => {
 				rehypePlugins: [
 					rehypeSlug,
 					rehypeAutolinkHeadings,
+					[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }],
 					[rehypeShikiDecorationRender, { ignoreLang: (lang: string) => lang.toLowerCase() === "mermaid" }],
 				],
 			},
