@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { findActiveWrapperDepth, getActiveWrapperSelectionRange, isInAnyWrapper, isInList } from "../wrapper-keys";
+import {
+	findActiveWrapperDepth,
+	getActiveWrapperSelectionRange,
+	hasPreviousSiblingWithinWrapper,
+	isInAnyWrapper,
+	isInList,
+} from "../wrapper-keys";
 
 type MockEntry = {
 	name: string;
@@ -26,6 +32,7 @@ const createState = (entries: MockEntry[]) =>
 						},
 					};
 				},
+				index: () => 0,
 			},
 		},
 	}) as never;
@@ -119,5 +126,38 @@ describe("wrapper-keys helpers", () => {
 		} as never;
 
 		expect(getActiveWrapperSelectionRange(state)).toEqual({ from: 13, to: 41 });
+	});
+
+	it("wrapper 안에서 앞선 형제가 있으면 기본 Backspace로 넘길 수 있다", () => {
+		const state = createState([
+			{ name: "doc", content: "block+" },
+			{ name: "Collapsible", group: "component2", content: "block+" },
+			{ name: "ordered_list", group: "block", content: "list_item+" },
+			{ name: "list_item", content: "paragraph block*" },
+			{ name: "paragraph", group: "block", content: "inline*" },
+		]);
+
+		expect(hasPreviousSiblingWithinWrapper(state)).toBe(false);
+
+		const stateAfterList = {
+			selection: {
+				$from: {
+					depth: 2,
+					node: (depth: number) => {
+						const entries = [
+							{ name: "doc", content: "block+" },
+							{ name: "Collapsible", group: "component2", content: "block+" },
+							{ name: "paragraph", group: "block", content: "inline*" },
+						];
+						const entry = entries[depth];
+						if (!entry) throw new Error(`No entry at depth ${depth}`);
+						return { type: { name: entry.name, spec: { group: entry.group, content: entry.content } } };
+					},
+					index: (depth: number) => (depth === 1 ? 1 : 0),
+				},
+			},
+		} as never;
+
+		expect(hasPreviousSiblingWithinWrapper(stateAfterList)).toBe(true);
 	});
 });

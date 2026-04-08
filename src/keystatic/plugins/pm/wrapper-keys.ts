@@ -1,3 +1,4 @@
+import { joinTextblockBackward } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Fragment, NodeRange, type NodeType, type Schema, Slice } from "prosemirror-model";
 import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
@@ -161,6 +162,18 @@ export function getActiveWrapperSelectionRange(state: EditorState) {
 	};
 }
 
+export function hasPreviousSiblingWithinWrapper(state: EditorState) {
+	const depth = findActiveWrapperDepth(state);
+	if (depth == null) return false;
+
+	const { $from } = state.selection;
+	for (let currentDepth = $from.depth; currentDepth > depth; currentDepth -= 1) {
+		if ($from.index(currentDepth - 1) > 0) return true;
+	}
+
+	return false;
+}
+
 function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
 	const { from, empty } = state.selection;
 	if (!empty) return false;
@@ -184,23 +197,12 @@ function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transa
 		return true;
 	}
 
-	// 3) 문단 맨 앞: 같은 wrapper 내부에서만 "joinBackward" 허용
-	//    (이전 형제가 있을 때만 join; 없으면 wrapper 밖으로 join될 수 있으니 막음)
-	const depth = $from.depth;
-	if (depth >= 1) {
-		const parentDepth = depth - 1;
-		const indexInParent = $from.index(parentDepth); // 현재 블록(문단)의 부모에서의 인덱스
-		if (indexInParent > 0) {
-			const joinPos = $from.before(depth); // 이전 블록과 현재 블록 사이의 위치
-			if (canJoin(state.doc, joinPos)) {
-				if (!dispatch) return true;
-				dispatch(state.tr.join(joinPos).scrollIntoView());
-				return true;
-			}
-		}
+	// 3) wrapper 내부에 앞선 형제가 있으면, 기본 keymap이 리스트/문단 병합을 처리하게 둔다.
+	if (hasPreviousSiblingWithinWrapper(state)) {
+		return joinTextblockBackward(state, dispatch);
 	}
 
-	// 4) 그 외(첫 문단 시작 등): wrapper 삭제로 튈 수 있으니 막기
+	// 4) wrapper의 진짜 첫 지점만 막아 wrapper 자체 삭제를 방지한다.
 	return true;
 }
 
