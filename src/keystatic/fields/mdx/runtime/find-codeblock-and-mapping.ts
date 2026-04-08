@@ -1,6 +1,7 @@
 import type { Root } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
+import { EDITOR_CHART_NAME } from "../components/chart";
 import { EDITOR_CODE_BLOCK_NAME } from "../components/code-block";
 import { EDITOR_MATH_NAME } from "../components/math";
 import { EDITOR_MERMAID_NAME } from "../components/mermaid";
@@ -45,7 +46,12 @@ export const findCodeBlockAndMapping = (root: Root, options?: { emit?: boolean }
 	const next = new Map<string, MdxJsxFlowElement>();
 
 	visit(root, "mdxJsxFlowElement", (node) => {
-		if (node.name !== EDITOR_CODE_BLOCK_NAME && node.name !== EDITOR_MATH_NAME && node.name !== EDITOR_MERMAID_NAME) {
+		if (
+			node.name !== EDITOR_CODE_BLOCK_NAME &&
+			node.name !== EDITOR_MATH_NAME &&
+			node.name !== EDITOR_MERMAID_NAME &&
+			node.name !== EDITOR_CHART_NAME
+		) {
 			return;
 		}
 

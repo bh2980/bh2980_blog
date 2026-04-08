@@ -16,6 +16,7 @@ import { HastView } from "./hast-view";
 export const NodeViewCodeEditor = ({
 	nodeViewChildren,
 	lang,
+	overrideHighlightLang,
 	initProseMirrorId,
 	proseMirrorId,
 	showLineNumbers,
@@ -23,6 +24,7 @@ export const NodeViewCodeEditor = ({
 }: {
 	nodeViewChildren: ReactNode;
 	lang: string;
+	overrideHighlightLang?: string;
 	initProseMirrorId: (id: string) => void;
 	proseMirrorId?: string;
 	showLineNumbers?: boolean;
@@ -60,7 +62,8 @@ export const NodeViewCodeEditor = ({
 
 		const document = fromMdxFlowElementToCodeDocument(codeBlockNode, annotationConfig);
 		const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
-		const highlighedHast = highlight(payload.code, payload.lang || lang, payload.meta, {
+		const highlightLang = overrideHighlightLang ?? (payload.lang || lang);
+		const highlighedHast = highlight(payload.code, highlightLang, payload.meta, {
 			decorations: payload.decorations,
 			lineDecorations: payload.lineDecorations,
 			rowWrappers: [],
@@ -68,7 +71,7 @@ export const NodeViewCodeEditor = ({
 		});
 
 		setHast(highlighedHast);
-	}, [codeBlockNode, lang, annotationConfig, allowedRenderTags]);
+	}, [codeBlockNode, lang, overrideHighlightLang, annotationConfig, allowedRenderTags]);
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {

@@ -1,4 +1,5 @@
 import { callout } from "./callout";
+import { EDITOR_CHART_NAME, EditorChart } from "./chart";
 import { EDITOR_CODE_BLOCK_NAME, EditorCodeBlock } from "./code-block";
 import { collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
@@ -22,6 +23,7 @@ export const components = {
 	Column,
 	Tabs,
 	Tab,
+	[EDITOR_CHART_NAME]: EditorChart,
 	[EDITOR_CODE_BLOCK_NAME]: EditorCodeBlock,
 	[EDITOR_MATH_NAME]: EditorMath,
 	[EDITOR_MERMAID_NAME]: EditorMermaid,

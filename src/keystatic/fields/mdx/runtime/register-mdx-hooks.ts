@@ -1,6 +1,7 @@
 import type { Root } from "mdast";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { replaceMathBlocksWithCodeFences, replaceMathCodeFencesWithBlocks } from "../transforms/math-block";
+import { walkOnlyInsideChart, walkOnlyInsideChartCodeFence } from "../transforms/mdx-chart-walk";
 import {
 	convertBodyMdastMarksToMdxJsxTextElement,
 	convertBodyMdxJsxTextElementToMdastMarks,
@@ -15,6 +16,7 @@ const beforeParse = (mdx: string) => replaceMathBlocksWithCodeFences(mdx);
 
 const afterMarkdownParse = (mdxAst: Root) => {
 	normalizeImageAssetUrls(mdxAst);
+	walkOnlyInsideChartCodeFence(mdxAst);
 	walkOnlyInsideMathCodeFence(mdxAst);
 	walkOnlyInsideMermaidCodeFence(mdxAst);
 	walkOnlyInsideCodeFence(mdxAst, annotationConfig);
@@ -26,6 +28,7 @@ const afterMarkdownParse = (mdxAst: Root) => {
 const beforeSerialize = (mdxAst: Root) => {
 	normalizeImageAssetUrls(mdxAst);
 	findCodeBlockAndMapping(mdxAst, { emit: false });
+	walkOnlyInsideChart(mdxAst);
 	walkOnlyInsideMath(mdxAst);
 	walkOnlyInsideMermaid(mdxAst);
 	walkOnlyInsideCodeblock(mdxAst, annotationConfig);
