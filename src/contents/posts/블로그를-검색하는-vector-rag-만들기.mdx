@@ -123,6 +123,80 @@ await supabase.from("chunks").insert({
 
 ### 쿼리 파이프라인
 
+이제 문서를 모두 적재했으니 사용자가 쿼리를 입력하고, 답변을 받아오는 코드를 작성해야했습니다. 제 블로그는 Next.js를 사용 중이라 간단하게 API Handler를 사용해 구현했습니다.
+
+쿼리 파이프라인에서 눈여겨볼 부분은 질문을 그대로 임베딩하지 않는다는 점입니다. 먼저 이전 대화 맥락을 반영해 벡터 검색에 최적화된 형태로 재작성하는 과정을 거칩니다.
+
+```ts
+const { text: rewrittenQuery } = await generateText({
+  model: openrouter(GENERATE_TEXT_MODEL),
+  messages: [
+    {
+      role: "system",
+      content: `이전 대화를 참고해서 마지막 질문을 벡터 검색에 최적화된 독립적인 쿼리로 재작성해줘.
+      - 이전 대화와 연결된 질문이면 맥락을 포함해서 재작성
+      - 새로운 주제면 그대로 유지
+      - 재작성된 쿼리만 출력, 다른 말 하지 마
+      - 한국어로 작성`,
+    },
+    ...(await convertToModelMessages(chatHistory)),
+    { role: "user", content: question },
+  ],
+});
+```
+
+그리고 재작성된 쿼리를 활용해 유사한 청크를 검색해 가져옵니다. 이때 모델마다 문서 임베딩용, 그리고 쿼리 작성용으로 전달해줘야하는 값이 다를 수 있습니다. qwen/qwen3-embedding-8b 모델의 경우는 쿼리 작성 시에는 Instruct: \~를 활용해서 임베딩하라고 하더라구요.
+
+```ts
+const { embedding } = await embed({
+  model: openrouter.textEmbeddingModel(EMBEDDING_MODEL, {
+    extraBody: { dimensions: EMBEDDING_DIMENSIONS },
+  }),
+  value: `Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ${rewrittenQuery}`,
+});
+
+// @char Tooltip {23-34} content="앞에서 정의했던 match_chunks 함수를 RPC로 호출합니다."
+const { data } = await supabase.rpc("match_chunks", {
+  query_embedding: embedding,
+  match_count: 5,
+  match_threshold: 0.5,
+});
+```
+
+그리고 마지막으로 검색된 청크를 컨텍스트로 묶어 생성 모델에 전달합니다.
+
+```ts
+const streamResponse = streamText({
+  model: openrouter(GENERATE_TEXT_MODEL),
+  messages: [
+    {
+      role: "system",
+      content: "너는 블로그 내용을 기반으로 질문에 답하는 어시스턴트야. 주어진 컨텍스트만 참고해서 질문에 답변해줘.",
+    },
+    ...(await convertToModelMessages(chatHistory)),
+    {
+      role: "user",
+      content: `
+너는 bh2980의 개발 블로그 내용을 기반으로 질문에 답하는 어시스턴트야.
+
+규칙:
+- 주어진 컨텍스트에 질문과 관련된 내용이 있으면 그것을 바탕으로 답변해
+- 컨텍스트에 관련 내용이 없거나 블로그와 무관한 질문이면 "블로그에서 관련 내용을 찾지 못했어요"라고 솔직하게 말해
+- 컨텍스트에 없는 내용을 지어내지 마
+
+컨텍스트
+
+${context}
+
+질문: ${question}
+      `.trim(),
+    },
+  ],
+});
+```
+
+생성 모델로는 openai/gpt-oss-120b:free를 사용했습니다. 이유는 단순합니다. GPT라는 이름값과 무료였기 때문입니다.
+
 ## 잘 되고 있는걸까?
 
 평가가 필요한 이유
