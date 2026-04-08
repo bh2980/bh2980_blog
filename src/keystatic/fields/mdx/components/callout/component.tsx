@@ -18,6 +18,7 @@ export type CalloutVariant = (typeof CALLOUT_TYPES)[number]["value"];
 
 type CalloutSchema = {
 	readonly variant: CalloutVariant;
+	readonly title: string;
 	readonly description: string;
 };
 
@@ -37,6 +38,7 @@ export const callout = wrapper({
 			options: CALLOUT_TYPES.map((t) => ({ label: t.label, value: t.value })),
 			defaultValue: "note",
 		}),
+		title: fields.text({ label: "제목" }),
 		// 백업용(렌더/편집 우선순위는 children)
 		description: fields.text({ label: "Description (backup)" }),
 	},
