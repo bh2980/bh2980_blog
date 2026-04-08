@@ -41,10 +41,10 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 				"relative flex flex-col gap-3 rounded-lg",
 				isSelected && "outline-2 outline-slate-500 outline-offset-2",
 			)}
-		>
-			<Callout variant={calloutType} title={value.title} description={value.description ?? ""} editor>
-				<div className="rounded-md border border-slate-200 bg-white/60 p-2">{children}</div>
-			</Callout>
+			>
+				<Callout variant={calloutType} title={value.title} description={value.description ?? ""} editor>
+					<div className="rounded-md border border-border bg-background/60 p-2 text-foreground">{children}</div>
+				</Callout>
 			{toolbarState.host && toolbarState.activeWrapperId === wrapperNodeId
 				? createPortal(
 						<div className="flex items-center justify-between gap-3 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
@@ -53,7 +53,7 @@ export const CalloutNodeView = ({ value, onChange, onRemove, isSelected, childre
 									value={calloutType}
 									onValueChange={(nextValue) => onChange({ ...value, variant: nextValue as CalloutVariant })}
 								>
-									<SelectTrigger className="h-9 w-[180px] bg-white" onMouseDown={stopEditorEvent}>
+									<SelectTrigger className="h-9 w-[180px] bg-background" onMouseDown={stopEditorEvent}>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent className="z-80">
