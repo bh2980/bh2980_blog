@@ -10,7 +10,7 @@ export default async function RootLayout({
 
 	return (
 		<>
-			<Navigation canManage={adminContext.canManage} className="absolute top-0 z-10 w-full bg-transparent" />
+			<Navigation initialCanManage={adminContext.canManage} className="absolute top-0 z-10 w-full bg-transparent" />
 			<main className="flex flex-1 flex-col">{children}</main>
 		</>
 	);

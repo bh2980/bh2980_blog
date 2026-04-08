@@ -5,14 +5,14 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { AdminHeaderLink } from "@/components/admin/admin-links";
+import { AdminHeaderLinkHydrated } from "@/components/admin/admin-links-hydrated.client";
 import { cn } from "@/utils/cn";
 import { Button } from "./ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 interface NavigationProps {
 	className?: string;
-	canManage: boolean;
+	initialCanManage?: boolean;
 }
 
 const NAV = [
@@ -58,7 +58,7 @@ function MobileSheetLink({ href, label, active }: { href: Route | URL; label: st
 	);
 }
 
-export default function Navigation({ className, canManage }: NavigationProps) {
+export default function Navigation({ className, initialCanManage = false }: NavigationProps) {
 	const pathname = usePathname();
 	const { resolvedTheme, setTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
@@ -88,8 +88,8 @@ export default function Navigation({ className, canManage }: NavigationProps) {
 							active={pathname?.startsWith(item.href) ?? false}
 						/>
 					))}
-					<AdminHeaderLink
-						canManage={canManage}
+					<AdminHeaderLinkHydrated
+						initialCanManage={initialCanManage}
 						className={cn(
 							"rounded-md px-3 py-2 font-medium text-sm transition",
 							"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -147,8 +147,8 @@ export default function Navigation({ className, canManage }: NavigationProps) {
 										/>
 									))}
 									<SheetClose asChild>
-										<AdminHeaderLink
-											canManage={canManage}
+										<AdminHeaderLinkHydrated
+											initialCanManage={initialCanManage}
 											className={cn(
 												"rounded-lg px-3 py-3 font-medium text-base transition",
 												"text-slate-700 hover:bg-slate-100",

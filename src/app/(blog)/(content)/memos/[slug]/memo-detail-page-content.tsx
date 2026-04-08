@@ -1,7 +1,6 @@
-import { AdminEditLink } from "@/components/admin/admin-links";
+import { AdminEditLinkHydrated } from "@/components/admin/admin-links-hydrated.client";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import { getAdminContext } from "@/libs/admin/context";
 import type { Memo } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
 import { MemoBackLink } from "./memo-back-link";
@@ -14,7 +13,6 @@ type MemoDetailPageContentProps = {
 export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: MemoDetailPageContentProps) => {
 	const source = await memo.content();
 	const { content, toc } = await renderMDX(source);
-	const adminContext = await getAdminContext();
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
@@ -30,11 +28,9 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 						<MemoBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
-							<AdminEditLink
-								canManage={adminContext.canManage}
-								collection="memo"
-								mode={adminContext.keystaticMode}
-								slug={memo.slug}
+								<AdminEditLinkHydrated
+									collection="memo"
+									slug={memo.slug}
 								className={cn(
 									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
 									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
