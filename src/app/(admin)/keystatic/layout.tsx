@@ -61,6 +61,8 @@ export default function Layout() {
                             background-color: var(--muted) !important;
                             border: 1px solid var(--border) !important;
                             border-radius: var(--radius-sm) !important;
+                            box-decoration-break: clone !important;
+                            -webkit-box-decoration-break: clone !important;
                             
                             /* 간격 및 폰트 */
                             padding: 0 0.25rem !important;
