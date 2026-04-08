@@ -9,11 +9,13 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
+import { remarkChartToMdx } from "@/libs/chart";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
+import { Chart } from "./chart";
 import { collapse } from "./code-block/collapse";
 import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
@@ -48,6 +50,7 @@ export const renderMDX = async (source: string) => {
 					[remarkAnnotationToShikiDecoration, annotationConfig],
 					remarkMath,
 					remarkDisableInlineMath,
+					remarkChartToMdx,
 					remarkMermaidToMdx,
 					remarkBreaks,
 					remarkGfm,
@@ -70,6 +73,7 @@ export const renderMDX = async (source: string) => {
 			fold,
 
 			Callout,
+			Chart,
 			Collapsible,
 			Columns,
 			Column,
