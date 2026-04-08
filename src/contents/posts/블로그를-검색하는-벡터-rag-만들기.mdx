@@ -122,7 +122,9 @@ await supabase.from("chunks").insert({
 
 임베딩 모델로는 qwen/qwen3-embedding-8b를 선택했습니다. OpenAI의 text-embedding-3-large나 Google의 Gemini Embedding도 고려했지만, 아무래도 오픈소스 모델이라 저렴하게 사용할 수 있다는 점이 가장 컸습니다. 거기다 다른 모델 대비 한국어 지원이 우수하고, 임베딩 차원을 유연하게 조정할 수 있으며, 필요하다면 로컬에서도 직접 서빙할 수 있다는 점도 물론 매력적이었고요.
 
-이제 이 스크립트를 실행해서 모든 파일을 읽어와 문서를 임베딩해 벡터로 변환, DB에 저장합니다.
+![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%2010.25.39.png)
+
+이제 이 스크립트를 실행해서 모든 파일을 읽어와 문서를 임베딩해 벡터로 변환, DB에 저장하면 위처럼 DB에 청크와 벡터 값이 저장되게 됩니다.
 
 ### 질의 응답 파이프라인
 
