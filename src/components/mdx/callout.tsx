@@ -32,13 +32,7 @@ type CalloutProps = PropsWithChildren<{
 	editor?: boolean;
 }>;
 
-export const Callout = ({
-	variant = "note",
-	title,
-	description,
-	children,
-	editor = false,
-}: CalloutProps) => {
+export const Callout = ({ variant = "note", title, description, children, editor = false }: CalloutProps) => {
 	const v = variant ?? "note";
 	const Icon = ICON_BY_VARIANT[v];
 	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
