@@ -6,13 +6,16 @@ import { cn } from "@/utils";
 export const alertVariants = cva(
 	[
 		"relative w-full rounded-lg border px-4 py-3 text-sm",
-		"grid grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3 gap-y-1 items-start",
 		"[&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
 		"[&_:is(ul,ol)>li]:marker:text-slate-700",
 		"dark:[&_:is(ul,ol)>li]:marker:text-slate-200/80",
 	].join(" "),
 	{
 		variants: {
+			layout: {
+				grid: "grid grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3 gap-y-1 items-start",
+				stack: "block",
+			},
 			variant: {
 				note: [
 					"bg-slate-100 border-border text-slate-900",
@@ -37,13 +40,26 @@ export const alertVariants = cva(
 			},
 		},
 		defaultVariants: {
+			layout: "grid",
 			variant: "note",
 		},
 	},
 );
 
-function Alert({ className, variant, ...props }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
-	return <div data-slot="alert" role="alert" className={cn(alertVariants({ variant }), className)} {...props} />;
+function Alert({
+	className,
+	layout,
+	variant,
+	...props
+}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+	return (
+		<div
+			data-slot="alert"
+			role="alert"
+			className={cn(alertVariants({ layout, variant }), className)}
+			{...props}
+		/>
+	);
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {

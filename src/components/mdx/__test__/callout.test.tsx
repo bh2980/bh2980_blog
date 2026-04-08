@@ -38,8 +38,10 @@ describe("Callout", () => {
 	});
 
 	it("실제 렌더링은 grid 대신 단순한 본문 영역을 사용한다", () => {
-		render(<Callout variant="note">본문</Callout>);
+		const { container } = render(<Callout variant="note">본문</Callout>);
 
+		expect(container.firstElementChild?.className).not.toContain("grid-cols-[");
+		expect(container.firstElementChild?.className).not.toContain("gap-x-3");
 		const description = screen.getByText("본문").closest('[data-slot="callout-body"]');
 		expect(description).toBeTruthy();
 		expect(description?.className).toContain("mt-2");
