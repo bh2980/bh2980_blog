@@ -25,24 +25,20 @@ const TITLE_BY_VARIANT: Record<CalloutVariant, string> = {
 
 export const getDefaultCalloutTitle = (variant: CalloutVariant) => TITLE_BY_VARIANT[variant];
 
-export const Callout = ({
-	variant = "note",
-	title,
-	description,
-	children,
-	editor = false,
-}: VariantProps<typeof alertVariants> &
-	PropsWithChildren<{
-		title?: string;
-		description?: string;
-		editor?: boolean;
-	}>) => {
+type CalloutProps = PropsWithChildren<{
+	variant?: CalloutVariant;
+	title?: string;
+	description?: string;
+	editor?: boolean;
+}>;
+
+export const Callout = ({ variant = "note", title, description, children, editor = false }: CalloutProps) => {
 	const v = variant ?? "note";
 	const Icon = ICON_BY_VARIANT[v];
 	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
 
 	return (
-		<Alert variant={v} className="not-prose block w-full">
+		<Alert variant={v} layout="stack" className="not-prose w-full">
 			<div className="flex items-start gap-2">
 				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
 				<div className="min-h-4 min-w-0 font-medium tracking-tight">{resolvedTitle}</div>
