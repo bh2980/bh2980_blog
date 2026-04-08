@@ -143,7 +143,7 @@ const { text: rewrittenQuery } = await generateText({
 });
 ```
 
-그리고 재작성된 쿼리를 활용해 유사한 청크를 검색해 가져옵니다. 이때 모델마다 문서 임베딩용, 그리고 쿼리 작성용으로 전달해줘야하는 값이 다를 수 있습니다. qwen/qwen3-embedding-8b 모델의 경우는 쿼리 작성 시에는 Instruct: \~를 활용해서 임베딩하라고 하더라구요.
+그리고 재작성된 쿼리를 임베딩해 유사한 청크를 검색합니다. 한 가지 주의할 점은 모델마다 문서용과 쿼리용 임베딩 방식이 다를 수 있다는 점입니다. qwen/qwen3-embedding-8b의 경우 쿼리 임베딩 시에는 앞에 `Instruct: ...` 형태의 지시문을 붙여야 검색 품질이 더 좋아집니다.
 
 ```ts
 const { embedding } = await embed({
