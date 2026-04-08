@@ -45,7 +45,7 @@ describe("wrapper-keys", () => {
 	it("wrapper 내부만 선택하도록 범위를 계산한다", () => {
 		const state = createMockState({ depth: 2, start: 8, end: 20 });
 
-		expect(getActiveWrapperSelectionRange(state)).toEqual({ from: 8, to: 20 });
+		expect(getActiveWrapperSelectionRange(state)).toEqual({ from: 9, to: 19 });
 	});
 
 	it("wrapper가 아니면 null을 반환한다", () => {

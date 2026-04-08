@@ -36,8 +36,8 @@ export function getActiveWrapperSelectionRange(state: EditorState) {
 	const end = $from.end(depth);
 
 	return {
-		from: start,
-		to: end,
+		from: Math.min(start + 1, end),
+		to: Math.max(end - 1, Math.min(start + 1, end)),
 	};
 }
 
