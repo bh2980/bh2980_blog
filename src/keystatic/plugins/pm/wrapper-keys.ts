@@ -109,6 +109,23 @@ function isAtTextblockStart(state: EditorState) {
 	return $cursor.parent.isTextblock && $cursor.parentOffset === 0;
 }
 
+function isAtFirstEditableBlockInListItem(state: EditorState) {
+	const listItemType = state.schema.nodes.list_item;
+	if (!listItemType) return false;
+
+	const { $from } = state.selection;
+	const listItemDepth = Array.from({ length: $from.depth }, (_, index) => $from.depth - index).find(
+		(depth) => $from.node(depth).type === listItemType,
+	);
+	if (!listItemDepth) return false;
+
+	for (let currentDepth = $from.depth; currentDepth > listItemDepth; currentDepth -= 1) {
+		if ($from.index(currentDepth - 1) > 0) return false;
+	}
+
+	return true;
+}
+
 function liftToOuterList(
 	state: EditorState,
 	dispatch: (tr: Transaction) => void,
@@ -199,6 +216,7 @@ function liftListItemBackward(state: EditorState, dispatch: (tr: Transaction) =>
 	const itemType = state.schema.nodes.list_item;
 	if (!itemType) return false;
 	if (!state.selection.empty || !isAtTextblockStart(state)) return false;
+	if (!isAtFirstEditableBlockInListItem(state)) return false;
 
 	const { $from, $to } = state.selection;
 	const range = $from.blockRange($to, (node) => node.childCount > 0 && node.firstChild?.type === itemType);
@@ -338,7 +356,11 @@ function deleteSelectionWithinWrapper(state: EditorState, dispatch?: (tr: Transa
 	return replaceWrapperContentsWithParagraph(state, dispatch, wrapper);
 }
 
-function deleteCharOrHardBreakBackward(state: EditorState, dispatch: ((tr: Transaction) => void) | undefined, schema: Schema) {
+function deleteCharOrHardBreakBackward(
+	state: EditorState,
+	dispatch: ((tr: Transaction) => void) | undefined,
+	schema: Schema,
+) {
 	const { from, empty } = state.selection;
 	if (!empty) return false;
 	if (from <= 0) return true; // 문서 시작: 아무 것도 안 하고 막기

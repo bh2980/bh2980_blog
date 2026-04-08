@@ -453,9 +453,9 @@ describe("wrapper-keys helpers", () => {
 						},
 					],
 				},
-				],
-			});
+			],
 		});
+	});
 
 	it("리스트 안에서 lift가 불가능해도 Backspace는 wrapper 내부 삭제 처리로 이어진다", () => {
 		const schema = createPmSchema();
@@ -498,6 +498,61 @@ describe("wrapper-keys helpers", () => {
 										{
 											type: "paragraph",
 											content: [{ type: "text", text: "ac" }],
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+	});
+
+	it("리스트 아이템의 두 번째 문단 시작점에서는 lift 대신 이전 문단과 합쳐진다", () => {
+		const schema = createPmSchema();
+		const plugin = wrapperKeysPlugin(schema);
+		const doc = schema.node("doc", null, [
+			schema.node("Collapsible", null, [
+				schema.node("ordered_list", null, [
+					schema.node("list_item", null, [
+						schema.node("paragraph", null, [schema.text("first")]),
+						schema.node("paragraph", null, [schema.text("second")]),
+					]),
+				]),
+			]),
+		]);
+		const initialState = EditorState.create({
+			schema,
+			doc,
+			plugins: [plugin],
+		});
+		const cursorPos = findTextCursorPos(initialState, "second", 0);
+		const view = createPmView(
+			EditorState.create({
+				schema,
+				doc,
+				selection: TextSelection.create(doc, cursorPos),
+				plugins: [plugin],
+			}),
+		);
+
+		expect(pressKey(plugin, view, "Backspace")).toBe(true);
+		expect(view.state.doc.toJSON()).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "Collapsible",
+					content: [
+						{
+							type: "ordered_list",
+							content: [
+								{
+									type: "list_item",
+									content: [
+										{
+											type: "paragraph",
+											content: [{ type: "text", text: "firstsecond" }],
 										},
 									],
 								},
