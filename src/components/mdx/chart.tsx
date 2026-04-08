@@ -73,71 +73,67 @@ const ChartErrorCard = ({ errors }: { errors: ChartRenderError[] }) => {
 	);
 };
 
+const cartesianChartComponents = {
+	bar: BarChart,
+	line: LineChart,
+	area: AreaChart,
+} satisfies Record<CartesianChartSpec["type"], typeof BarChart | typeof LineChart | typeof AreaChart>;
+
+const renderCartesianSeries = (spec: CartesianChartSpec) => {
+	switch (spec.type) {
+		case "bar":
+			return spec.series.map((series) => (
+				<Bar
+					key={series.key}
+					dataKey={series.key}
+					fill={`var(--color-${series.key})`}
+					radius={8}
+					isAnimationActive={false}
+				/>
+			));
+		case "line":
+			return spec.series.map((series) => (
+				<Line
+					key={series.key}
+					type="monotone"
+					dataKey={series.key}
+					stroke={`var(--color-${series.key})`}
+					strokeWidth={2}
+					dot={false}
+					isAnimationActive={false}
+				/>
+			));
+		case "area":
+			return spec.series.map((series) => (
+				<Area
+					key={series.key}
+					type="monotone"
+					dataKey={series.key}
+					stroke={`var(--color-${series.key})`}
+					fill={`var(--color-${series.key})`}
+					fillOpacity={0.24}
+					isAnimationActive={false}
+				/>
+			));
+	}
+};
+
 const CartesianChart = ({ spec }: { spec: CartesianChartSpec }) => {
 	const config = toChartConfig(spec);
+	const ChartComponent = cartesianChartComponents[spec.type];
 
 	return (
 		<ChartContainer
 			config={config}
 			className="not-prose my-6 w-full min-w-0 rounded-xl border border-border/60 bg-card/60 p-4"
 		>
-			{spec.type === "bar" ? (
-				<BarChart accessibilityLayer data={spec.data}>
-					<CartesianGrid vertical={false} />
-					<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
-					<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-					{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent />} /> : null}
-					{spec.series.map((series) => (
-						<Bar
-							key={series.key}
-							dataKey={series.key}
-							fill={`var(--color-${series.key})`}
-							radius={8}
-							isAnimationActive={false}
-						/>
-					))}
-				</BarChart>
-			) : null}
-
-			{spec.type === "line" ? (
-				<LineChart accessibilityLayer data={spec.data}>
-					<CartesianGrid vertical={false} />
-					<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
-					<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-					{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent />} /> : null}
-					{spec.series.map((series) => (
-						<Line
-							key={series.key}
-							type="monotone"
-							dataKey={series.key}
-							stroke={`var(--color-${series.key})`}
-							strokeWidth={2}
-							dot={false}
-							isAnimationActive={false}
-						/>
-					))}
-				</LineChart>
-			) : null}
-
-			{spec.type === "area" ? (
-				<AreaChart accessibilityLayer data={spec.data}>
-					<CartesianGrid vertical={false} />
-					<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
-					<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-					{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent />} /> : null}
-					{spec.series.map((series) => (
-						<Area
-							key={series.key}
-							type="monotone"
-							dataKey={series.key}
-							stroke={`var(--color-${series.key})`}
-							fill={`var(--color-${series.key})`}
-							fillOpacity={0.24}
-							isAnimationActive={false}
-						/>
-					))}
-				</AreaChart>
-			) : null}
+			<ChartComponent accessibilityLayer data={spec.data}>
+				<CartesianGrid vertical={false} />
+				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
+				<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+				{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent />} /> : null}
+				{renderCartesianSeries(spec)}
+			</ChartComponent>
 		</ChartContainer>
 	);
 };
