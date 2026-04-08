@@ -1,0 +1,157 @@
+"use client";
+
+import * as React from "react";
+import * as RechartsPrimitive from "recharts";
+import { cn } from "@/utils/cn";
+
+export type ChartConfig = Record<
+	string,
+	{
+		label?: React.ReactNode;
+		color?: string;
+	}
+>;
+
+const ChartContext = React.createContext<{ config: ChartConfig } | null>(null);
+
+const useChart = () => {
+	const context = React.useContext(ChartContext);
+	if (!context) {
+		throw new Error("useChart must be used within a <ChartContainer />");
+	}
+	return context;
+};
+
+export const ChartContainer = ({
+	id,
+	className,
+	children,
+	config,
+}: React.ComponentProps<"div"> & {
+	config: ChartConfig;
+	children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>["children"];
+}) => {
+	const uniqueId = React.useId();
+	const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
+
+	return (
+		<ChartContext.Provider value={{ config }}>
+			<div
+				data-slot="chart"
+				data-chart={chartId}
+				className={cn(
+					"flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/60 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-layer]:outline-hidden [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted/60 [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden",
+					className,
+				)}
+			>
+				<ChartStyle id={chartId} config={config} />
+				<RechartsPrimitive.ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 280 }}>
+					{children}
+				</RechartsPrimitive.ResponsiveContainer>
+			</div>
+		</ChartContext.Provider>
+	);
+};
+
+const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+	const colorConfig = Object.entries(config).filter(([, itemConfig]) => itemConfig.color);
+	if (colorConfig.length === 0) {
+		return null;
+	}
+
+	return (
+		<style
+			dangerouslySetInnerHTML={{
+				__html: `
+[data-chart=${id}] {
+${colorConfig.map(([key, itemConfig]) => `  --color-${key}: ${itemConfig.color};`).join("\n")}
+}
+`,
+			}}
+		/>
+	);
+};
+
+export const ChartTooltip = RechartsPrimitive.Tooltip;
+export const ChartLegend = RechartsPrimitive.Legend;
+
+export const ChartTooltipContent = ({
+	active,
+	payload,
+	label,
+	className,
+	hideLabel = false,
+	nameKey,
+}: React.ComponentProps<"div"> & {
+		active?: boolean;
+		payload?: Array<any>;
+		label?: string | number;
+		hideLabel?: boolean;
+		nameKey?: string;
+	}) => {
+	const { config } = useChart();
+
+	if (!active || !payload?.length) {
+		return null;
+	}
+
+	return (
+		<div className={cn("grid min-w-[8rem] gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl", className)}>
+			{!hideLabel && label ? <div className="font-medium">{String(config[String(label)]?.label ?? label)}</div> : null}
+			<div className="grid gap-1.5">
+				{(payload as Array<any>)
+					.filter((item) => item.type !== "none")
+					.map((item, index) => {
+						const key = String(nameKey ? item.payload?.[nameKey] : item.name ?? item.dataKey ?? "value");
+						const itemConfig = config[key] ?? config[String(item.name ?? item.dataKey ?? "value")];
+
+						return (
+							<div key={index} className="flex items-center gap-2">
+								<div className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: item.color ?? item.payload?.fill }} />
+								<div className="flex flex-1 items-center justify-between gap-3">
+									<span className="text-muted-foreground">{itemConfig?.label ?? key}</span>
+									<span className="font-mono font-medium text-foreground tabular-nums">
+										{typeof item.value === "number" ? item.value.toLocaleString() : String(item.value)}
+									</span>
+								</div>
+							</div>
+						);
+					})}
+			</div>
+		</div>
+	);
+};
+
+export const ChartLegendContent = ({
+	payload,
+	className,
+	nameKey,
+}: RechartsPrimitive.DefaultLegendContentProps &
+	React.ComponentProps<"div"> & {
+		nameKey?: string;
+	}) => {
+	const { config } = useChart();
+
+	if (!payload?.length) {
+		return null;
+	}
+
+	return (
+		<div className={cn("flex flex-wrap items-center justify-center gap-4 pt-3", className)}>
+			{(payload as Array<any>)
+				.filter((item) => item.type !== "none")
+				.map((item, index) => {
+					const payloadValue = item.payload as Record<string, unknown> | undefined;
+					const lookupKey = String(nameKey ? payloadValue?.[nameKey] : item.value ?? item.dataKey ?? "value");
+					const itemConfig = config[lookupKey] ?? config[String(item.dataKey ?? "value")];
+
+					return (
+						<div key={index} className="flex items-center gap-1.5">
+							<div className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: item.color }} />
+							<span>{itemConfig?.label ?? lookupKey}</span>
+						</div>
+					);
+				})}
+		</div>
+	);
+};
