@@ -104,7 +104,7 @@ export const NodeViewCodeEditor = ({
 			<pre
 				className={cn(
 					"relative w-full overflow-x-auto overflow-y-hidden whitespace-pre outline-none",
-					"bg-transparent! text-transparent! caret-black!",
+					"bg-transparent! text-transparent! caret-foreground!",
 					"[&_p]:whitespace-pre! [&_p]:my-0! [&_p]:min-w-fit!",
 					showLineNumbers && "[&_p]:pl-7!",
 				)}
