@@ -6,6 +6,7 @@ import { CollapsibleNodeView } from "./node-view";
 
 type CollapsibleSchema = {
 	readonly defaultOpen: boolean;
+	readonly title: string;
 };
 
 export type CollapsibleNodeViewProps = PropsWithChildren & {
@@ -22,6 +23,10 @@ export const collapsible = wrapper({
 		defaultOpen: fields.checkbox({
 			label: "기본으로 열기",
 			defaultValue: false,
+		}),
+		title: fields.text({
+			label: "제목",
+			defaultValue: "펼치기",
 		}),
 	},
 
