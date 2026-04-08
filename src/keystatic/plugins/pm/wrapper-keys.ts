@@ -1,15 +1,8 @@
 import { joinTextblockBackward } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, NodeRange, type NodeType, type Schema, Slice } from "prosemirror-model";
-import {
-	type EditorState,
-	Plugin,
-	PluginKey,
-	Selection,
-	TextSelection,
-	type Transaction,
-} from "prosemirror-state";
-import { ReplaceAroundStep, canJoin, liftTarget } from "prosemirror-transform";
+import { type EditorState, Plugin, PluginKey, Selection, TextSelection, type Transaction } from "prosemirror-state";
+import { canJoin, liftTarget, ReplaceAroundStep } from "prosemirror-transform";
 import { isInCodeblock } from "./codeblock-keys";
 
 const LIST_NODE_NAMES = new Set(["ordered_list", "unordered_list", "list_item"]);
@@ -122,8 +115,8 @@ function liftToOuterList(
 	itemType: NodeType,
 	range: NodeRange,
 ) {
-	let tr = state.tr;
-	let end = range.end;
+	const tr = state.tr;
+	const end = range.end;
 	const endOfList = range.$to.end(range.depth);
 
 	if (end < endOfList) {
@@ -152,7 +145,7 @@ function liftToOuterList(
 }
 
 function liftOutOfList(state: EditorState, dispatch: (tr: Transaction) => void, range: NodeRange) {
-	let tr = state.tr;
+	const tr = state.tr;
 	const list = range.parent;
 
 	for (let pos = range.end, i = range.endIndex - 1, e = range.startIndex; i > e; i -= 1) {

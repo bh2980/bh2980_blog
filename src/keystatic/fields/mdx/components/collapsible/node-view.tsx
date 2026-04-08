@@ -53,13 +53,15 @@ export const CollapsibleNodeView = ({ onRemove, children, isSelected, value, onC
 								>
 									<PanelTopOpen />
 								</Toggle>
-								<BlurChangeInput
-									defaultValue={value.title}
-									placeholder="기본값: 펼치기"
-									onBlur={handleBlurTitle}
-								/>
+								<BlurChangeInput defaultValue={value.title} placeholder="기본값: 펼치기" onBlur={handleBlurTitle} />
 							</div>
-							<Button type="button" variant={"destructive"} onClick={onRemove} size="icon-sm" aria-label="Remove collapsible">
+							<Button
+								type="button"
+								variant={"destructive"}
+								onClick={onRemove}
+								size="icon-sm"
+								aria-label="Remove collapsible"
+							>
 								<Trash2 />
 							</Button>
 						</div>,

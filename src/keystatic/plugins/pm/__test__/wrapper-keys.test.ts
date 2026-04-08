@@ -1,5 +1,5 @@
 import { Schema } from "prosemirror-model";
-import { type Plugin, EditorState, Selection, TextSelection, type Transaction } from "prosemirror-state";
+import { EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { describe, expect, it } from "vitest";
 import {
 	findActiveWrapperDepth,
