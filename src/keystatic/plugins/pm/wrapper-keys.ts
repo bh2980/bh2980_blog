@@ -1,6 +1,6 @@
 import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
-import { type EditorState, type Plugin, TextSelection, type Transaction } from "prosemirror-state";
+import { Selection, TextSelection, type EditorState, type Plugin, type Transaction } from "prosemirror-state";
 import { canJoin } from "prosemirror-transform";
 import { isInCodeblock } from "./codeblock-keys";
 
@@ -91,7 +91,11 @@ const selectAllWithinWrapper = (state: EditorState, dispatch?: (tr: Transaction)
 	if (!range) return false;
 	if (!dispatch) return true;
 
-	dispatch(state.tr.setSelection(TextSelection.create(state.doc, range.from, range.to)).scrollIntoView());
+	const startSelection = Selection.findFrom(state.doc.resolve(range.from), 1);
+	const endSelection = Selection.findFrom(state.doc.resolve(range.to), -1);
+	if (!startSelection || !endSelection) return false;
+
+	dispatch(state.tr.setSelection(TextSelection.between(startSelection.$from, endSelection.$to)).scrollIntoView());
 	return true;
 };
 
