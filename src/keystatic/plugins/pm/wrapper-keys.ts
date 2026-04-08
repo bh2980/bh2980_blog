@@ -295,7 +295,7 @@ function isSelectionWithinSingleWrapper(state: EditorState) {
 
 function replaceWrapperContentsWithParagraph(
 	state: EditorState,
-	dispatch: (tr: Transaction) => void,
+	dispatch: ((tr: Transaction) => void) | undefined,
 	wrapper: ActiveWrapperInfo,
 ) {
 	const paragraphType = state.schema.nodes.paragraph;
@@ -309,11 +309,12 @@ function replaceWrapperContentsWithParagraph(
 	let tr = state.tr.replaceWith(contentRange.from, contentRange.to, paragraph);
 	const cursorPos = Math.min(contentRange.from + 1, tr.doc.content.size);
 	tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
+	if (!dispatch) return true;
 	dispatch(tr.scrollIntoView());
 	return true;
 }
 
-function deleteSelectionWithinWrapper(state: EditorState, dispatch: (tr: Transaction) => void) {
+function deleteSelectionWithinWrapper(state: EditorState, dispatch?: (tr: Transaction) => void) {
 	if (state.selection.empty) return false;
 
 	const wholeWrapper = findSelectedWholeWrapperInfo(state);
@@ -329,6 +330,7 @@ function deleteSelectionWithinWrapper(state: EditorState, dispatch: (tr: Transac
 	const mappedWrapperNode = simulated.doc.nodeAt(mappedWrapperPos);
 
 	if (mappedWrapperNode?.type === wrapper.type && mappedWrapperNode.childCount > 0) {
+		if (!dispatch) return true;
 		dispatch(simulated.scrollIntoView());
 		return true;
 	}
@@ -336,7 +338,7 @@ function deleteSelectionWithinWrapper(state: EditorState, dispatch: (tr: Transac
 	return replaceWrapperContentsWithParagraph(state, dispatch, wrapper);
 }
 
-function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
+function deleteCharOrHardBreakBackward(state: EditorState, dispatch: ((tr: Transaction) => void) | undefined, schema: Schema) {
 	const { from, empty } = state.selection;
 	if (!empty) return false;
 	if (from <= 0) return true; // 문서 시작: 아무 것도 안 하고 막기
@@ -403,17 +405,14 @@ export function wrapperKeysPlugin(schema: Schema): Plugin {
 			handleKeyDown: keydownHandler({
 				Backspace: (state, dispatch) => {
 					if (!isInAnyWrapper(state)) return false;
-					if (!dispatch) return false;
 					if (deleteSelectionWithinWrapper(state, dispatch)) return true;
 					if (isInList(state)) {
-						if (liftListItemBackward(state, dispatch)) return true;
-						return false;
+						if (dispatch && liftListItemBackward(state, dispatch)) return true;
 					}
 					return deleteCharOrHardBreakBackward(state, dispatch, schema);
 				},
 				Delete: (state, dispatch) => {
 					if (!isInAnyWrapper(state)) return false;
-					if (!dispatch) return false;
 					return deleteSelectionWithinWrapper(state, dispatch);
 				},
 				"Mod-a": selectAllWithinWrapper,

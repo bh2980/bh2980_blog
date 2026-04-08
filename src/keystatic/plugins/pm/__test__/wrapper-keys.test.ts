@@ -106,6 +106,22 @@ const findTextSelectionRange = (state: EditorState) => {
 	};
 };
 
+const findTextCursorPos = (state: EditorState, text: string, offset: number) => {
+	let cursorPos: number | null = null;
+
+	state.doc.descendants((node, pos) => {
+		if (!node.isText) return;
+		if (node.text !== text) return;
+		cursorPos = pos + offset;
+	});
+
+	if (cursorPos == null) {
+		throw new Error(`Could not find text node: ${text}`);
+	}
+
+	return cursorPos;
+};
+
 describe("wrapper-keys helpers", () => {
 	it("wrapper 내부의 리스트 컨텍스트를 감지한다", () => {
 		const state = createState([
@@ -434,6 +450,58 @@ describe("wrapper-keys helpers", () => {
 						{
 							type: "paragraph",
 							content: [{ type: "text", text: "bc" }],
+						},
+					],
+				},
+				],
+			});
+		});
+
+	it("리스트 안에서 lift가 불가능해도 Backspace는 wrapper 내부 삭제 처리로 이어진다", () => {
+		const schema = createPmSchema();
+		const plugin = wrapperKeysPlugin(schema);
+		const doc = schema.node("doc", null, [
+			schema.node("Collapsible", null, [
+				schema.node("ordered_list", null, [
+					schema.node("list_item", null, [schema.node("paragraph", null, [schema.text("abc")])]),
+				]),
+			]),
+		]);
+		const initialState = EditorState.create({
+			schema,
+			doc,
+			plugins: [plugin],
+		});
+		const cursorPos = findTextCursorPos(initialState, "abc", 2);
+		const view = createPmView(
+			EditorState.create({
+				schema,
+				doc,
+				selection: TextSelection.create(doc, cursorPos),
+				plugins: [plugin],
+			}),
+		);
+
+		expect(pressKey(plugin, view, "Backspace")).toBe(true);
+		expect(view.state.doc.toJSON()).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "Collapsible",
+					content: [
+						{
+							type: "ordered_list",
+							content: [
+								{
+									type: "list_item",
+									content: [
+										{
+											type: "paragraph",
+											content: [{ type: "text", text: "ac" }],
+										},
+									],
+								},
+							],
 						},
 					],
 				},
