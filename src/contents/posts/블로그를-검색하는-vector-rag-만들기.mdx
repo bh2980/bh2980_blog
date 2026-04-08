@@ -24,7 +24,7 @@ policy:
 
 RAG(Retrieval-Augmented Generation)란, 질문이 들어오면 관련된 문서를 먼저 검색해서 가져온 뒤, 그 내용을 바탕으로 AI가 답변을 생성하는 방식입니다.
 
-핵심은 검색 방식에 있습니다. 기존 키워드 검색은 내가 찾고 싶은 단어를 정확히 알아야 하지만, <u>RAG는 텍스트를 의미 단위의 벡터로 변환해 조회하기 때문에 단어가 아니라 의도로 검색</u>할 수 있습니다. 즉, 이를 활용하면 블로그에 쌓인 글들이 단순한 아카이브가 아니라 나와 대화할 수 있는 지식 베이스가 되는 겁니다.
+핵심은 검색 방식에 있습니다. 기존 키워드 검색은 내가 찾고 싶은 단어를 정확히 알아야 하지만, RAG는 텍스트를 의미 단위의 벡터로 변환해 조회하기 때문에 <u>단어가 아니라 의도로 검색</u>할 수 있습니다. 즉, 이를 활용하면 블로그에 쌓인 글들이 단순한 아카이브가 아니라 나와 대화할 수 있는 지식 베이스가 되는 겁니다.
 
 ## 어떻게 만들까?
 
@@ -47,13 +47,13 @@ flowchart LR
     end
 ```
 
-그러면 지금부터 각 단계를 어떻게 구현했는지 하나씩 살펴보겠습니다.
-
 ### 문서 적재 파이프라인
 
-문서 적재 파이프라인에서는 게시글을 청크 단위로 분할한 뒤, 임베딩 모델을 통해 벡터로 변환하고 Vector DB에 저장합니다.&#x20;
+문서 적재 파이프라인에서는 게시글을 청크 단위로 분할한 뒤, 임베딩 모델을 통해 벡터로 변환하고 Vector DB에 저장합니다.
 
-저는 이 Vector DB로 Supabase를 선택했습니다. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요.
+저는 이 Vector DB를 사용하기 위해 Supabase를 선택했는데요. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요. 무엇보다 무료였습니다!
+
+테이블은 아래처럼 정의했습니다. 청크의 내용과 임베딩 벡터를 함께 저장하고, slug로 원본 게시글을 참조할 수 있도록 했죠.
 
 ```sql
 create table chunks (
@@ -67,7 +67,48 @@ create table chunks (
 );
 ```
 
-청크의 내용과 임베딩 벡터를 함께 저장하고, slug로 원본 게시글을 참조할 수 있도록 했습니다.
+또한 질문이 들어왔을 때 유사한 청크를 검색할 수 있는 함수도 정의했습니다. 코사인 유사도를 기준으로 threshold 이상인 청크만 가져오고, 최대 개수도 제한할 수 있도록 했어요.
+
+```sql
+create or replace function match_chunks(
+  query_embedding vector(768),
+  match_count int default 5,
+  match_threshold float default 0.5
+)
+returns table (
+  id uuid,
+  content text,
+  slug text,
+  heading text,
+  tags text[],
+  category text,
+  content_type text,
+  similarity float
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    chunks.id,
+    chunks.content,
+    chunks.slug,
+    chunks.heading,
+    chunks.tags,
+    chunks.category,
+    chunks.content_type,
+    1 - (chunks.embedding <=> query_embedding) as similarity
+  from chunks
+  where 1 - (chunks.embedding <=> query_embedding) > match_threshold
+  order by chunks.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
+
+
+
+
 
 ### 쿼리 파이프라인
 
