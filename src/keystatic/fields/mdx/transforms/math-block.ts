@@ -2,6 +2,7 @@ export const INTERNAL_MATH_FENCE_LANG = "__keystatic_math__";
 
 type FenceState = {
 	prefix: string;
+	quotePrefix: string;
 	marker: "`" | "~";
 	size: number;
 	info: string;
@@ -10,20 +11,39 @@ type FenceState = {
 
 type MathBlockState = {
 	prefix: string;
+	quotePrefix: string;
 	lines: string[];
 };
 
-const FENCE_RE = /^([>\t ]*)(`{3,}|~{3,})(.*)$/;
+const CONTAINER_PREFIX_RE = /^((?: {0,3}> ?)*)( {0,3})(.*)$/;
 
-const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
-const getFenceState = (line: string): FenceState | undefined => {
-	const match = line.match(FENCE_RE);
+const getContainerParts = (line: string) => {
+	const match = line.match(CONTAINER_PREFIX_RE);
 	if (!match) return;
 
-	const prefix = match[1] ?? "";
-	const markerText = match[2] ?? "";
-	const info = match[3] ?? "";
+	const quotePrefix = match[1] ?? "";
+	const indent = match[2] ?? "";
+	const rest = match[3] ?? "";
+
+	return {
+		quotePrefix,
+		indent,
+		prefix: `${quotePrefix}${indent}`,
+		rest,
+	};
+};
+
+const getFenceState = (line: string): FenceState | undefined => {
+	const parts = getContainerParts(line);
+	if (!parts) return;
+
+	const match = parts.rest.match(/^(`{3,}|~{3,})(.*)$/);
+	if (!match) return;
+
+	const markerText = match[1] ?? "";
+	const info = match[2] ?? "";
 	const marker = markerText[0];
 
 	if (marker !== "`" && marker !== "~") {
@@ -31,7 +51,8 @@ const getFenceState = (line: string): FenceState | undefined => {
 	}
 
 	return {
-		prefix,
+		prefix: parts.prefix,
+		quotePrefix: parts.quotePrefix,
 		marker,
 		size: markerText.length,
 		info,
@@ -40,17 +61,24 @@ const getFenceState = (line: string): FenceState | undefined => {
 };
 
 const isFenceClose = (line: string, fence: FenceState) => {
-	const closeRe = new RegExp(`^${escapeForRegExp(fence.prefix)}${escapeForRegExp(fence.marker)}{${fence.size},}\\s*$`);
+	const closeRe = new RegExp(
+		`^${escapeForRegExp(fence.quotePrefix)} {0,3}${escapeForRegExp(fence.marker)}{${fence.size},}\\s*$`,
+	);
 	return closeRe.test(line);
 };
 
 const getMathBlockPrefix = (line: string) => {
-	const match = line.match(/^([>\t ]*)\$\$\s*$/);
-	return match?.[1];
+	const parts = getContainerParts(line);
+	if (!parts || (parts.rest !== "$$" && !/^\$\$\s*$/.test(parts.rest))) return;
+
+	return {
+		prefix: parts.prefix,
+		quotePrefix: parts.quotePrefix,
+	};
 };
 
-const isMathBlockClose = (line: string, prefix: string) => {
-	const closeRe = new RegExp(`^${escapeForRegExp(prefix)}\\$\\$\\s*$`);
+const isMathBlockClose = (line: string, quotePrefix: string) => {
+	const closeRe = new RegExp(`^${escapeForRegExp(quotePrefix)} {0,3}\\$\\$\\s*$`);
 	return closeRe.test(line);
 };
 
@@ -68,7 +96,7 @@ export const replaceMathBlocksWithCodeFences = (mdx: string) => {
 
 	for (const line of lines) {
 		if (mathBlock) {
-			if (isMathBlockClose(line, mathBlock.prefix)) {
+			if (isMathBlockClose(line, mathBlock.quotePrefix)) {
 				output.push(
 					`${mathBlock.prefix}\`\`\`${INTERNAL_MATH_FENCE_LANG}`,
 					...mathBlock.lines,
@@ -98,8 +126,8 @@ export const replaceMathBlocksWithCodeFences = (mdx: string) => {
 		}
 
 		const mathPrefix = getMathBlockPrefix(line);
-		if (mathPrefix != null) {
-			mathBlock = { prefix: mathPrefix, lines: [] };
+		if (mathPrefix) {
+			mathBlock = { ...mathPrefix, lines: [] };
 			continue;
 		}
 

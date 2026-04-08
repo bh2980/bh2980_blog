@@ -20,6 +20,12 @@ describe("math block string transform", () => {
 		expect(replaceMathBlocksWithCodeFences(input)).toBe(input);
 	});
 
+	it("4칸 들여쓰기 코드 안의 $$는 수식 블럭으로 취급하지 않는다", () => {
+		const input = ["    $$", "    x", "    $$"].join("\n");
+
+		expect(replaceMathBlocksWithCodeFences(input)).toBe(input);
+	});
+
 	it("내부 math code fence를 다시 $$ block으로 복원한다", () => {
 		const input = ["before", `\`\`\`${INTERNAL_MATH_FENCE_LANG}`, "\\frac{a}{b}", "```", "after"].join("\n");
 
@@ -44,5 +50,13 @@ describe("math block string transform", () => {
 		const input = ["```math", "\\alpha + \\beta", "```"].join("\n");
 
 		expect(replaceMathCodeFencesWithBlocks(input)).toBe(input);
+	});
+
+	it("fenced code closer는 opener와 다른 최대 3칸 들여쓰기도 허용한다", () => {
+		const input = ["```ts", "const price = '$$';", "   ```", "$$", "x", "$$"].join("\n");
+
+		expect(replaceMathBlocksWithCodeFences(input)).toBe(
+			["```ts", "const price = '$$';", "   ```", `\`\`\`${INTERNAL_MATH_FENCE_LANG}`, "x", "```"].join("\n"),
+		);
 	});
 });
