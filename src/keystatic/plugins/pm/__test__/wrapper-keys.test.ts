@@ -1,3 +1,5 @@
+import { Schema } from "prosemirror-model";
+import { type Plugin, EditorState, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { describe, expect, it } from "vitest";
 import {
 	findActiveWrapperDepth,
@@ -7,6 +9,7 @@ import {
 	isInAnyWrapper,
 	isInList,
 	isWholeWrapperContentSelected,
+	wrapperKeysPlugin,
 } from "../wrapper-keys";
 
 type MockEntry = {
@@ -39,6 +42,69 @@ const createState = (entries: MockEntry[]) =>
 			},
 		},
 	}) as never;
+
+const createPmSchema = () =>
+	new Schema({
+		nodes: {
+			doc: { content: "block+" },
+			text: { group: "inline" },
+			paragraph: {
+				group: "block",
+				content: "text*",
+				toDOM: () => ["p", 0],
+			},
+			ordered_list: {
+				group: "block",
+				content: "list_item+",
+				toDOM: () => ["ol", 0],
+			},
+			unordered_list: {
+				group: "block",
+				content: "list_item+",
+				toDOM: () => ["ul", 0],
+			},
+			list_item: {
+				content: "paragraph block*",
+				toDOM: () => ["li", 0],
+			},
+			Collapsible: {
+				group: "component2 block",
+				content: "block+",
+				toDOM: () => ["div", 0],
+			},
+		},
+	});
+
+const createPmView = (initialState: EditorState) => {
+	let state = initialState;
+
+	return {
+		get state() {
+			return state;
+		},
+		dispatch(tr: Transaction) {
+			state = state.apply(tr);
+		},
+	};
+};
+
+const pressKey = (plugin: Plugin, view: ReturnType<typeof createPmView>, key: string, init?: KeyboardEventInit) => {
+	const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init });
+	return plugin.props.handleKeyDown?.call(plugin, view as never, event) ?? false;
+};
+
+const findTextSelectionRange = (state: EditorState) => {
+	const first = Selection.findFrom(state.doc.resolve(1), 1);
+	const last = Selection.findFrom(state.doc.resolve(state.doc.content.size), -1);
+	if (!first || !last) {
+		throw new Error("Could not find selectable text range");
+	}
+
+	return {
+		from: first.from,
+		to: last.to,
+	};
+};
 
 describe("wrapper-keys helpers", () => {
 	it("wrapper 내부의 리스트 컨텍스트를 감지한다", () => {
@@ -271,5 +337,107 @@ describe("wrapper-keys helpers", () => {
 
 		expect(isWholeWrapperContentSelected(state)).toBe(true);
 		expect(getSelectedWholeWrapperRange(state)).toEqual({ from: 21, to: 59 });
+	});
+
+	it("wrapper 내부 전체 선택 후 Delete를 누르면 단일 문단 wrapper는 빈 문단 하나만 남긴다", () => {
+		const schema = createPmSchema();
+		const plugin = wrapperKeysPlugin(schema);
+		const doc = schema.node("doc", null, [
+			schema.node("Collapsible", null, [schema.node("paragraph", null, [schema.text("abc")])]),
+		]);
+		const selectedRange = findTextSelectionRange(
+			EditorState.create({
+				schema,
+				doc,
+			}),
+		);
+		const view = createPmView(
+			EditorState.create({
+				schema,
+				doc,
+				selection: TextSelection.create(doc, selectedRange.from, selectedRange.to),
+				plugins: [plugin],
+			}),
+		);
+
+		expect(pressKey(plugin, view, "Delete")).toBe(true);
+		expect(view.state.doc.toJSON()).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "Collapsible",
+					content: [{ type: "paragraph" }],
+				},
+			],
+		});
+	});
+
+	it("wrapper 내부 전체 선택 후 Delete를 누르면 리스트만 있던 wrapper도 빈 기본 문단으로 초기화한다", () => {
+		const schema = createPmSchema();
+		const plugin = wrapperKeysPlugin(schema);
+		const doc = schema.node("doc", null, [
+			schema.node("Collapsible", null, [
+				schema.node("ordered_list", null, [
+					schema.node("list_item", null, [schema.node("paragraph", null, [schema.text("abc")])]),
+				]),
+			]),
+		]);
+		const selectedRange = findTextSelectionRange(
+			EditorState.create({
+				schema,
+				doc,
+			}),
+		);
+		const view = createPmView(
+			EditorState.create({
+				schema,
+				doc,
+				selection: TextSelection.create(doc, selectedRange.from, selectedRange.to),
+				plugins: [plugin],
+			}),
+		);
+
+		expect(pressKey(plugin, view, "Delete")).toBe(true);
+		expect(view.state.doc.toJSON()).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "Collapsible",
+					content: [{ type: "paragraph" }],
+				},
+			],
+		});
+	});
+
+	it("부분 선택 삭제는 wrapper를 유지한 채 선택된 내용만 지운다", () => {
+		const schema = createPmSchema();
+		const plugin = wrapperKeysPlugin(schema);
+		const doc = schema.node("doc", null, [
+			schema.node("Collapsible", null, [schema.node("paragraph", null, [schema.text("abc")])]),
+		]);
+		const view = createPmView(
+			EditorState.create({
+				schema,
+				doc,
+				selection: TextSelection.create(doc, 2, 3),
+				plugins: [plugin],
+			}),
+		);
+
+		expect(pressKey(plugin, view, "Delete")).toBe(true);
+		expect(view.state.doc.toJSON()).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "Collapsible",
+					content: [
+						{
+							type: "paragraph",
+							content: [{ type: "text", text: "bc" }],
+						},
+					],
+				},
+			],
+		});
 	});
 });

@@ -57,6 +57,41 @@ function getWrapperSelectionRange($pos: EditorState["selection"]["$from"], depth
 	};
 }
 
+function getWrapperContentRange($pos: EditorState["selection"]["$from"], depth: number) {
+	return {
+		from: $pos.start(depth),
+		to: $pos.end(depth),
+	};
+}
+
+function resolveWrapperInfoInState(state: EditorState, pos: number) {
+	const resolvedPos = state.doc.resolve(Math.min(pos + 1, state.doc.content.size));
+	const wrapper = findWrapperInfosAtPos(resolvedPos).find((candidate) => candidate.pos === pos);
+	if (!wrapper) return null;
+	return { $pos: resolvedPos, wrapper };
+}
+
+function getSelectableWrapperRangeFromInfo(state: EditorState, wrapper: ActiveWrapperInfo) {
+	const resolved = resolveWrapperInfoInState(state, wrapper.pos);
+	if (!resolved) return null;
+
+	const contentRange = getWrapperContentRange(resolved.$pos, resolved.wrapper.depth);
+	const startSelection = Selection.findFrom(state.doc.resolve(contentRange.from), 1);
+	const endSelection = Selection.findFrom(state.doc.resolve(contentRange.to), -1);
+	if (!startSelection || !endSelection) return null;
+
+	return {
+		from: startSelection.from,
+		to: endSelection.to,
+	};
+}
+
+function findStoredWholeWrapperInfo(state: EditorState) {
+	const storedWrapper = wrapperSelectionPluginKey.getState(state);
+	if (!storedWrapper) return null;
+	return resolveWrapperInfoInState(state, storedWrapper.pos)?.wrapper ?? null;
+}
+
 export function findActiveWrapperDepth(state: EditorState) {
 	return findActiveWrapperInfoAtPos(state.selection.$from)?.depth ?? null;
 }
@@ -210,12 +245,11 @@ export function isWholeWrapperContentSelected(state: EditorState) {
 export function getSelectedWholeWrapperRange(state: EditorState) {
 	if (state.selection.empty) return null;
 
-	const storedWrapper = wrapperSelectionPluginKey.getState(state);
-	if (storedWrapper) {
-		const resolvedPos = state.doc.resolve(Math.min(storedWrapper.pos + 1, state.doc.content.size));
-		const storedInfo = findWrapperInfosAtPos(resolvedPos).find((wrapper) => wrapper.pos === storedWrapper.pos);
-		if (storedInfo) {
-			return getWrapperSelectionRange(resolvedPos, storedInfo.depth);
+	const storedInfo = findStoredWholeWrapperInfo(state);
+	if (storedInfo) {
+		const resolved = resolveWrapperInfoInState(state, storedInfo.pos);
+		if (resolved) {
+			return getWrapperSelectionRange(resolved.$pos, resolved.wrapper.depth);
 		}
 	}
 
@@ -234,6 +268,30 @@ export function getSelectedWholeWrapperRange(state: EditorState) {
 	return null;
 }
 
+function findSelectedWholeWrapperInfo(state: EditorState) {
+	if (state.selection.empty) return null;
+
+	const storedInfo = findStoredWholeWrapperInfo(state);
+	if (storedInfo) {
+		return storedInfo;
+	}
+
+	const { from, to, $from, $to } = state.selection;
+	const toWrappers = new Set(findWrapperInfosAtPos($to).map((wrapper) => wrapper.pos));
+
+	for (const wrapper of findWrapperInfosAtPos($from)) {
+		if (!toWrappers.has(wrapper.pos)) continue;
+
+		const range = getSelectableWrapperRangeFromInfo(state, wrapper);
+		if (!range) continue;
+		if (from > range.from || to < range.to) continue;
+
+		return wrapper;
+	}
+
+	return null;
+}
+
 function isSelectionWithinSingleWrapper(state: EditorState) {
 	const fromWrapper = findActiveWrapperInfoAtPos(state.selection.$from);
 	const toWrapper = findActiveWrapperInfoAtPos(state.selection.$to);
@@ -242,19 +300,32 @@ function isSelectionWithinSingleWrapper(state: EditorState) {
 	return fromWrapper;
 }
 
-function clearWrapperContents(state: EditorState, dispatch: (tr: Transaction) => void) {
+function replaceWrapperContentsWithParagraph(
+	state: EditorState,
+	dispatch: (tr: Transaction) => void,
+	wrapper: ActiveWrapperInfo,
+) {
 	const paragraphType = state.schema.nodes.paragraph;
 	const paragraph = paragraphType?.createAndFill();
 	if (!paragraph) return false;
+
+	const resolved = resolveWrapperInfoInState(state, wrapper.pos);
+	if (!resolved) return false;
+
+	const contentRange = getWrapperContentRange(resolved.$pos, resolved.wrapper.depth);
+	let tr = state.tr.replaceWith(contentRange.from, contentRange.to, paragraph);
+	const cursorPos = Math.min(contentRange.from + 1, tr.doc.content.size);
+	tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
+	dispatch(tr.scrollIntoView());
+	return true;
+}
+
+function deleteSelectionWithinWrapper(state: EditorState, dispatch: (tr: Transaction) => void) {
 	if (state.selection.empty) return false;
 
-	const wholeWrapperRange = getSelectedWholeWrapperRange(state);
-	if (wholeWrapperRange) {
-		let tr = state.tr.replaceWith(wholeWrapperRange.from, wholeWrapperRange.to, paragraph);
-		const cursorPos = Math.min(wholeWrapperRange.from + 1, tr.doc.content.size);
-		tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
-		dispatch(tr.scrollIntoView());
-		return true;
+	const wholeWrapper = findSelectedWholeWrapperInfo(state);
+	if (wholeWrapper) {
+		return replaceWrapperContentsWithParagraph(state, dispatch, wholeWrapper);
 	}
 
 	const wrapper = isSelectionWithinSingleWrapper(state);
@@ -264,13 +335,12 @@ function clearWrapperContents(state: EditorState, dispatch: (tr: Transaction) =>
 	const mappedWrapperPos = simulated.mapping.map(wrapper.pos, -1);
 	const mappedWrapperNode = simulated.doc.nodeAt(mappedWrapperPos);
 
-	if (mappedWrapperNode?.type === wrapper.type && mappedWrapperNode.childCount > 0) return false;
+	if (mappedWrapperNode?.type === wrapper.type && mappedWrapperNode.childCount > 0) {
+		dispatch(simulated.scrollIntoView());
+		return true;
+	}
 
-	let tr = state.tr.replaceSelectionWith(paragraph);
-	const cursorPos = Math.min(tr.selection.from, tr.doc.content.size);
-	tr = tr.setSelection(TextSelection.near(tr.doc.resolve(cursorPos), 1));
-	dispatch(tr.scrollIntoView());
-	return true;
+	return replaceWrapperContentsWithParagraph(state, dispatch, wrapper);
 }
 
 function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transaction) => void, schema: Schema) {
@@ -308,19 +378,17 @@ function deleteCharOrHardBreakBackward(state: EditorState, dispatch: (tr: Transa
 const selectAllWithinWrapper = (state: EditorState, dispatch?: (tr: Transaction) => void) => {
 	if (isInCodeblock(state) || !isInAnyWrapper(state)) return false;
 
-	const range = getActiveWrapperSelectionRange(state);
 	const wrapper = findActiveWrapperInfoAtPos(state.selection.$from);
+	if (!wrapper) return false;
+
+	const range = getSelectableWrapperRangeFromInfo(state, wrapper);
 	if (!range) return false;
 	if (!dispatch) return true;
 
-	const startSelection = Selection.findFrom(state.doc.resolve(range.from), 1);
-	const endSelection = Selection.findFrom(state.doc.resolve(range.to), -1);
-	if (!startSelection || !endSelection) return false;
-
 	dispatch(
 		state.tr
-			.setSelection(TextSelection.between(startSelection.$from, endSelection.$to))
-			.setMeta(wrapperSelectionPluginKey, wrapper ? { pos: wrapper.pos } : null)
+			.setSelection(TextSelection.create(state.doc, range.from, range.to))
+			.setMeta(wrapperSelectionPluginKey, { pos: wrapper.pos })
 			.scrollIntoView(),
 	);
 	return true;
@@ -343,7 +411,7 @@ export function wrapperKeysPlugin(schema: Schema): Plugin {
 				Backspace: (state, dispatch) => {
 					if (!isInAnyWrapper(state)) return false;
 					if (!dispatch) return false;
-					if (clearWrapperContents(state, dispatch)) return true;
+					if (deleteSelectionWithinWrapper(state, dispatch)) return true;
 					if (isInList(state)) {
 						if (liftListItemBackward(state, dispatch)) return true;
 						return false;
@@ -353,7 +421,7 @@ export function wrapperKeysPlugin(schema: Schema): Plugin {
 				Delete: (state, dispatch) => {
 					if (!isInAnyWrapper(state)) return false;
 					if (!dispatch) return false;
-					return clearWrapperContents(state, dispatch);
+					return deleteSelectionWithinWrapper(state, dispatch);
 				},
 				"Mod-a": selectAllWithinWrapper,
 			}),
