@@ -51,7 +51,7 @@ flowchart LR
 
 문서 적재 파이프라인에서는 게시글을 청크 단위로 분할한 뒤, 임베딩 모델을 통해 벡터로 변환하고 Vector DB에 저장합니다.
 
-저는 이 Vector DB를 사용하기 위해 Supabase를 선택했는데요. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요. 그리고 가장 중요한 점으로, 무료이기도 했습니다.
+저는 이 Vector DB를 사용하기 위해 Supabase를 선택했는데요. 별도의 벡터 DB를 운영하는 것보다 RAG 서비스 자체에 집중하고 싶었고, Supabase는 pgvector를 지원하기 때문에 추가 인프라 없이 바로 시작할 수 있었거든요. 그리고 무엇보다 무료로 바로 시작할 수 있다는 점도 컸습니다.
 
 테이블은 아래처럼 정의했습니다. 청크의 내용과 임베딩 벡터를 함께 저장하고, slug로 원본 게시글을 참조할 수 있도록 했죠.
 
@@ -60,7 +60,7 @@ create table chunks (
   id uuid primary key default gen_random_uuid(),
   content text not null,
   embedding vector(768),
-  post_slug text not null,
+  slug text not null,
   created_at timestamptz default now(),
   tags text[],
   category text,
