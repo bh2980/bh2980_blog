@@ -3,7 +3,7 @@ import type { VariantProps } from "class-variance-authority";
 import { AlertCircle, AlertOctagon, AlertTriangle, Info, Lightbulb } from "lucide-react";
 import type { PropsWithChildren } from "react";
 
-import { Alert, AlertDescription, AlertTitle, type alertVariants } from "../ui/alert";
+import { Alert, type alertVariants } from "../ui/alert";
 
 type CalloutVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
 
@@ -42,17 +42,19 @@ export const Callout = ({
 	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
 
 	return (
-		<Alert variant={v} className="not-prose w-full">
-			<div className="col-span-2 flex items-start gap-2">
+		<Alert variant={v} className="not-prose block w-full">
+			<div className="flex items-start gap-2">
 				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
-				<AlertTitle className="min-w-0">{resolvedTitle}</AlertTitle>
+				<div className="min-h-4 min-w-0 font-medium tracking-tight">{resolvedTitle}</div>
 			</div>
 			{editor ? (
-				<div className="col-span-2 mt-2 w-full">{children || description}</div>
-			) : (
-				<AlertDescription className="col-span-2 mt-2 rounded-md border border-slate-200 bg-white/60 p-2 text-current [&_p]:m-0 dark:border-slate-700/70 dark:bg-slate-950/20">
+				<div data-slot="callout-body" className="mt-2 w-full">
 					{children || description}
-				</AlertDescription>
+				</div>
+			) : (
+				<div data-slot="callout-body" className="mt-2 text-current text-sm [&_p]:m-0 [&_p]:leading-relaxed">
+					{children || description}
+				</div>
 			)}
 		</Alert>
 	);
