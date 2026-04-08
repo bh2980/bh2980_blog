@@ -168,7 +168,7 @@ const { data } = await supabase.rpc("match_chunks", {
 });
 ```
 
-그리고 마지막으로 검색된 청크를 컨텍스트로 묶어 생성 모델에 전달합니다.
+그리고 마지막으로 검색된 청크를 컨텍스트로 묶어 생성 모델에 전달합니다. 생성 모델로는 openai/gpt-oss-120b:free를 사용했습니다. 이유는 단순한데요. GPT라는 이름값과 무료였기 때문입니다.
 
 ```ts title="api/rag/route.ts"
 const streamResponse = streamText({
@@ -200,11 +200,9 @@ ${context}
 });
 ```
 
-생성 모델로는 openai/gpt-oss-120b:free를 사용했습니다. 이유는 단순합니다. GPT라는 이름값과 무료였기 때문입니다. 이제 적절한 UI를 붙이면 아래처럼 블로그의 내용을 바탕으로 설명해주는 RAG가 탄생합니다.
+이제 프론트 쪽에서 이 응답을 받을 적절한 UI를 붙이면 아래처럼 블로그의 내용을 바탕으로 설명해주는 RAG가 탄생합니다.
 
 ![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%208.13.01.png)
-
-
 
 ## 마무리 - 이제 돌아가긴 하는데
 
