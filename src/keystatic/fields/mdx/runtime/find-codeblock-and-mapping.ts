@@ -2,6 +2,7 @@ import type { Root } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { visit } from "unist-util-visit";
 import { EDITOR_CODE_BLOCK_NAME } from "../components/code-block";
+import { EDITOR_MATH_NAME } from "../components/math";
 import { EDITOR_MERMAID_NAME } from "../components/mermaid";
 
 type Snapshot = ReadonlyMap<string, MdxJsxFlowElement>;
@@ -44,7 +45,9 @@ export const findCodeBlockAndMapping = (root: Root, options?: { emit?: boolean }
 	const next = new Map<string, MdxJsxFlowElement>();
 
 	visit(root, "mdxJsxFlowElement", (node) => {
-		if (node.name !== EDITOR_CODE_BLOCK_NAME && node.name !== EDITOR_MERMAID_NAME) return;
+		if (node.name !== EDITOR_CODE_BLOCK_NAME && node.name !== EDITOR_MATH_NAME && node.name !== EDITOR_MERMAID_NAME) {
+			return;
+		}
 
 		const idAttr = node.attributes.find((attr) => attr.type === "mdxJsxAttribute" && attr.name === "id");
 

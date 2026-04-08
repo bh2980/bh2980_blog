@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "katex/dist/katex.min.css";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";

@@ -3,9 +3,10 @@ import { keymap } from "prosemirror-keymap";
 import type { Schema } from "prosemirror-model";
 import { type EditorState, type Plugin, Selection, TextSelection, type Transaction } from "prosemirror-state";
 import { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block";
+import { EDITOR_MATH_NAME } from "@/keystatic/fields/mdx/components/math";
 import { EDITOR_MERMAID_NAME } from "@/keystatic/fields/mdx/components/mermaid";
 
-const CODE_BLOCK_USE_BLOCK = [EDITOR_CODE_BLOCK_NAME, EDITOR_MERMAID_NAME];
+const CODE_BLOCK_USE_BLOCK = [EDITOR_CODE_BLOCK_NAME, EDITOR_MATH_NAME, EDITOR_MERMAID_NAME];
 
 export const isCodeBlockType = (nodeName: string) => CODE_BLOCK_USE_BLOCK.some((name) => nodeName === name);
 

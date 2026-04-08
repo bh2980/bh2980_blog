@@ -5,6 +5,7 @@ import { Column, Columns } from "./columns";
 import { del } from "./del";
 import { em } from "./em";
 import { IdeographicSpace } from "./ideographic-space";
+import { EDITOR_MATH_NAME, EditorMath } from "./math";
 import { EDITOR_MERMAID_NAME, EditorMermaid } from "./mermaid";
 import { strong } from "./strong";
 import { sub } from "./sub";
@@ -22,6 +23,7 @@ export const components = {
 	Tabs,
 	Tab,
 	[EDITOR_CODE_BLOCK_NAME]: EditorCodeBlock,
+	[EDITOR_MATH_NAME]: EditorMath,
 	[EDITOR_MERMAID_NAME]: EditorMermaid,
 
 	// mark : 위에 있을수록 우선 순위가 높다.
