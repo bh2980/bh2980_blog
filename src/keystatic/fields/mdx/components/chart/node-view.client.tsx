@@ -11,8 +11,8 @@ import type { AnnotationConfig } from "@/libs/annotation/code-block/types";
 import { cn } from "@/utils/cn";
 import { useLiveCodeBlockNode } from "../../hooks/use-live-code-block-node";
 import { NodeViewCodeEditor } from "../code-block/components";
-import type { ChartNodeViewProps } from "./component";
 import { Chart } from "./chart.client";
+import type { ChartNodeViewProps } from "./component";
 
 const EMPTY_ANNOTATION_CONFIG: AnnotationConfig = { annotations: [] };
 

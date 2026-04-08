@@ -102,7 +102,9 @@ describe("parseChartDsl", () => {
 	it("data 헤더와 series key가 일치하지 않으면 정규화 오류를 반환한다", () => {
 		const normalized = normalizeChartDsl(
 			parseChartDsl(
-				["chart bar", "x month", "series views | 조회수 | chart-1", "", "data", "month | likes", "Jan | 1200"].join("\n"),
+				["chart bar", "x month", "series views | 조회수 | chart-1", "", "data", "month | likes", "Jan | 1200"].join(
+					"\n",
+				),
 			),
 		);
 

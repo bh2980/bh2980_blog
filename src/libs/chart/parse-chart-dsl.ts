@@ -190,7 +190,10 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 		return { errors };
 	}
 
-	if (!parsed.tableHeaders.includes(xKey) || !parsed.series.every((series) => parsed.tableHeaders.includes(series.key))) {
+	if (
+		!parsed.tableHeaders.includes(xKey) ||
+		!parsed.series.every((series) => parsed.tableHeaders.includes(series.key))
+	) {
 		errors.push(toError(dataHeaderLine, "data 헤더에 series key가 모두 포함되어야 합니다."));
 		return { errors };
 	}
@@ -219,11 +222,11 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 
 	return {
 		errors: [],
-			spec: {
-				type: parsed.type,
-				xKey,
-				data,
-				series: parsed.series.map((series) => ({
+		spec: {
+			type: parsed.type,
+			xKey,
+			data,
+			series: parsed.series.map((series) => ({
 				key: series.key,
 				label: series.label,
 				colorToken: series.colorToken as ChartThemeToken,

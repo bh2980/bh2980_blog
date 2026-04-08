@@ -1,18 +1,25 @@
 "use client";
 
-import { Children, isValidElement, type ReactNode, useMemo } from "react";
 import { AlertOctagon } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, XAxis, Line, LineChart } from "recharts";
+import { Children, isValidElement, type ReactNode, useMemo } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, XAxis } from "recharts";
 import {
-	normalizeChartDsl,
-	parseChartDsl,
 	type CartesianChartSpec,
 	type ChartRenderError,
 	type NormalizedChartSpec,
+	normalizeChartDsl,
 	type PieChartSpec,
+	parseChartDsl,
 } from "@/libs/chart";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "../ui/chart";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "../ui/chart";
 
 const extractText = (node: ReactNode): string => {
 	if (node == null || typeof node === "boolean") return "";
@@ -70,7 +77,10 @@ const CartesianChart = ({ spec }: { spec: CartesianChartSpec }) => {
 	const config = toChartConfig(spec);
 
 	return (
-		<ChartContainer config={config} className="not-prose my-6 w-full min-w-0 rounded-xl border border-border/60 bg-card/60 p-4">
+		<ChartContainer
+			config={config}
+			className="not-prose my-6 w-full min-w-0 rounded-xl border border-border/60 bg-card/60 p-4"
+		>
 			{spec.type === "bar" ? (
 				<BarChart accessibilityLayer data={spec.data}>
 					<CartesianGrid vertical={false} />
@@ -78,7 +88,13 @@ const CartesianChart = ({ spec }: { spec: CartesianChartSpec }) => {
 					<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 					{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent />} /> : null}
 					{spec.series.map((series) => (
-						<Bar key={series.key} dataKey={series.key} fill={`var(--color-${series.key})`} radius={8} isAnimationActive={false} />
+						<Bar
+							key={series.key}
+							dataKey={series.key}
+							fill={`var(--color-${series.key})`}
+							radius={8}
+							isAnimationActive={false}
+						/>
 					))}
 				</BarChart>
 			) : null}
@@ -130,7 +146,10 @@ const PieChartRenderer = ({ spec }: { spec: PieChartSpec }) => {
 	const config = toChartConfig(spec);
 
 	return (
-		<ChartContainer config={config} className="not-prose my-6 w-full min-w-0 rounded-xl border border-border/60 bg-card/60 p-4">
+		<ChartContainer
+			config={config}
+			className="not-prose my-6 w-full min-w-0 rounded-xl border border-border/60 bg-card/60 p-4"
+		>
 			<PieChart>
 				<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey={spec.labelKey} />} />
 				{spec.options.showLegend ? <ChartLegend content={<ChartLegendContent nameKey={spec.labelKey} />} /> : null}
@@ -148,7 +167,10 @@ const PieChartRenderer = ({ spec }: { spec: PieChartSpec }) => {
 };
 
 export const Chart = ({ children, source }: { children?: ReactNode; source?: string }) => {
-	const chartSource = useMemo(() => source ?? Children.toArray(children).map(extractText).join("\n"), [children, source]);
+	const chartSource = useMemo(
+		() => source ?? Children.toArray(children).map(extractText).join("\n"),
+		[children, source],
+	);
 	const normalized = useMemo(() => normalizeChartDsl(parseChartDsl(chartSource)), [chartSource]);
 
 	if (!normalized.spec) {

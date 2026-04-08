@@ -1,11 +1,11 @@
 import type { Root } from "mdast";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { replaceMathBlocksWithCodeFences, replaceMathCodeFencesWithBlocks } from "../transforms/math-block";
-import { walkOnlyInsideChart, walkOnlyInsideChartCodeFence } from "../transforms/mdx-chart-walk";
 import {
 	convertBodyMdastMarksToMdxJsxTextElement,
 	convertBodyMdxJsxTextElementToMdastMarks,
 } from "../transforms/mdast-mark-bridge";
+import { walkOnlyInsideChart, walkOnlyInsideChartCodeFence } from "../transforms/mdx-chart-walk";
 import { walkOnlyInsideCodeblock, walkOnlyInsideCodeFence } from "../transforms/mdx-code-block-walk";
 import { walkOnlyInsideMath, walkOnlyInsideMathCodeFence } from "../transforms/mdx-math-walk";
 import { walkOnlyInsideMermaid, walkOnlyInsideMermaidCodeFence } from "../transforms/mdx-mermaid-walk";

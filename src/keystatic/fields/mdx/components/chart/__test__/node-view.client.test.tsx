@@ -19,13 +19,7 @@ vi.mock("../../../hooks/use-live-code-block-node", () => ({
 }));
 
 vi.mock("../../code-block/components", () => ({
-	NodeViewCodeEditor: ({
-		lang,
-		overrideHighlightLang,
-	}: {
-		lang: string;
-		overrideHighlightLang?: string;
-	}) => (
+	NodeViewCodeEditor: ({ lang, overrideHighlightLang }: { lang: string; overrideHighlightLang?: string }) => (
 		<div data-testid="node-view-code-editor">
 			{lang}:{overrideHighlightLang}
 		</div>
@@ -39,12 +33,7 @@ vi.mock("../chart.client", () => ({
 describe("ChartNodeView", () => {
 	it("코드 에디터와 미리보기를 함께 렌더링한다", async () => {
 		render(
-			<ChartNodeView
-				value={{ id: "chart-1", lang: "chart" }}
-				onChange={vi.fn()}
-				onRemove={vi.fn()}
-				isSelected={false}
-			>
+			<ChartNodeView value={{ id: "chart-1", lang: "chart" }} onChange={vi.fn()} onRemove={vi.fn()} isSelected={false}>
 				chart source
 			</ChartNodeView>,
 		);

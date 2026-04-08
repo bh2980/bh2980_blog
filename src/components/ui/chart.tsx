@@ -22,6 +22,17 @@ const useChart = () => {
 	return context;
 };
 
+type ChartPayloadItem = {
+	type?: string;
+	name?: string | number;
+	dataKey?: string | number;
+	value?: string | number;
+	color?: string;
+	payload?: Record<string, unknown> & {
+		fill?: string;
+	};
+};
+
 export const ChartContainer = ({
 	id,
 	className,
@@ -33,42 +44,32 @@ export const ChartContainer = ({
 }) => {
 	const uniqueId = React.useId();
 	const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
+	const chartVars = Object.fromEntries(
+		Object.entries(config)
+			.filter(([, itemConfig]) => itemConfig.color)
+			.map(([key, itemConfig]) => [`--color-${key}`, itemConfig.color]),
+	) as React.CSSProperties;
 
 	return (
 		<ChartContext.Provider value={{ config }}>
 			<div
 				data-slot="chart"
 				data-chart={chartId}
+				style={chartVars}
 				className={cn(
 					"flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/60 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-layer]:outline-hidden [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted/60 [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden",
 					className,
 				)}
 			>
-				<ChartStyle id={chartId} config={config} />
-				<RechartsPrimitive.ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 280 }}>
+				<RechartsPrimitive.ResponsiveContainer
+					width="100%"
+					height="100%"
+					initialDimension={{ width: 520, height: 280 }}
+				>
 					{children}
 				</RechartsPrimitive.ResponsiveContainer>
 			</div>
 		</ChartContext.Provider>
-	);
-};
-
-const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-	const colorConfig = Object.entries(config).filter(([, itemConfig]) => itemConfig.color);
-	if (colorConfig.length === 0) {
-		return null;
-	}
-
-	return (
-		<style
-			dangerouslySetInnerHTML={{
-				__html: `
-[data-chart=${id}] {
-${colorConfig.map(([key, itemConfig]) => `  --color-${key}: ${itemConfig.color};`).join("\n")}
-}
-`,
-			}}
-		/>
 	);
 };
 
@@ -83,12 +84,12 @@ export const ChartTooltipContent = ({
 	hideLabel = false,
 	nameKey,
 }: React.ComponentProps<"div"> & {
-		active?: boolean;
-		payload?: Array<any>;
-		label?: string | number;
-		hideLabel?: boolean;
-		nameKey?: string;
-	}) => {
+	active?: boolean;
+	payload?: ChartPayloadItem[];
+	label?: string | number;
+	hideLabel?: boolean;
+	nameKey?: string;
+}) => {
 	const { config } = useChart();
 
 	if (!active || !payload?.length) {
@@ -96,21 +97,30 @@ export const ChartTooltipContent = ({
 	}
 
 	return (
-		<div className={cn("grid min-w-[8rem] gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl", className)}>
+		<div
+			className={cn(
+				"grid min-w-[8rem] gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
+				className,
+			)}
+		>
 			{!hideLabel && label ? <div className="font-medium">{String(config[String(label)]?.label ?? label)}</div> : null}
 			<div className="grid gap-1.5">
-				{(payload as Array<any>)
+				{payload
 					.filter((item) => item.type !== "none")
-					.map((item, index) => {
-						const key = String(nameKey ? item.payload?.[nameKey] : item.name ?? item.dataKey ?? "value");
+					.map((item) => {
+						const key = String(nameKey ? item.payload?.[nameKey] : (item.name ?? item.dataKey ?? "value"));
 						const itemConfig = config[key] ?? config[String(item.name ?? item.dataKey ?? "value")];
+						const itemKey = `${key}-${String(item.value ?? item.color ?? "")}`;
 
 						return (
-							<div key={index} className="flex items-center gap-2">
-								<div className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: item.color ?? item.payload?.fill }} />
+							<div key={itemKey} className="flex items-center gap-2">
+								<div
+									className="h-2.5 w-2.5 rounded-[2px]"
+									style={{ backgroundColor: item.color ?? item.payload?.fill }}
+								/>
 								<div className="flex flex-1 items-center justify-between gap-3">
 									<span className="text-muted-foreground">{itemConfig?.label ?? key}</span>
-									<span className="font-mono font-medium text-foreground tabular-nums">
+									<span className="font-medium font-mono text-foreground tabular-nums">
 										{typeof item.value === "number" ? item.value.toLocaleString() : String(item.value)}
 									</span>
 								</div>
@@ -131,22 +141,24 @@ export const ChartLegendContent = ({
 		nameKey?: string;
 	}) => {
 	const { config } = useChart();
+	const legendPayload = payload as ChartPayloadItem[] | undefined;
 
-	if (!payload?.length) {
+	if (!legendPayload?.length) {
 		return null;
 	}
 
 	return (
 		<div className={cn("flex flex-wrap items-center justify-center gap-4 pt-3", className)}>
-			{(payload as Array<any>)
+			{legendPayload
 				.filter((item) => item.type !== "none")
-				.map((item, index) => {
-					const payloadValue = item.payload as Record<string, unknown> | undefined;
-					const lookupKey = String(nameKey ? payloadValue?.[nameKey] : item.value ?? item.dataKey ?? "value");
+				.map((item) => {
+					const payloadValue = item.payload;
+					const lookupKey = String(nameKey ? payloadValue?.[nameKey] : (item.value ?? item.dataKey ?? "value"));
 					const itemConfig = config[lookupKey] ?? config[String(item.dataKey ?? "value")];
+					const itemKey = `${lookupKey}-${String(item.color ?? "")}`;
 
 					return (
-						<div key={index} className="flex items-center gap-1.5">
+						<div key={itemKey} className="flex items-center gap-1.5">
 							<div className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: item.color }} />
 							<span>{itemConfig?.label ?? lookupKey}</span>
 						</div>
