@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertOctagon } from "lucide-react";
-import { Children, isValidElement, type ReactNode, useMemo } from "react";
+import { Children, isValidElement, type ReactNode, useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, XAxis } from "recharts";
 import {
 	type CartesianChartSpec,
@@ -122,9 +122,9 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 	}
 };
 
-const ResponsivePie = ({ spec }: { spec: PieChartSpec }) => {
+const ResponsivePie = ({ spec, legendHeight }: { spec: PieChartSpec; legendHeight: number }) => {
 	const dimensions = useChartDimensions();
-	const geometry = resolvePieGeometry(dimensions, spec.options.showLegend);
+	const geometry = resolvePieGeometry(dimensions, spec.options.showLegend ? legendHeight : 0);
 
 	return (
 		<Pie data={spec.data} dataKey={spec.valueKey} nameKey={spec.labelKey} isAnimationActive={false} {...geometry} />
@@ -134,6 +134,7 @@ const ResponsivePie = ({ spec }: { spec: PieChartSpec }) => {
 const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; className?: string }) => {
 	const config = toChartConfig(spec);
 	const ChartComponent = cartesianChartComponents[spec.type];
+	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
 
 	return (
 		<ChartContainer config={config} className={cn("not-prose my-6 w-full min-w-0", className)}>
@@ -142,7 +143,11 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
 				<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 				{spec.options.showLegend ? (
-					<ChartLegend verticalAlign="bottom" height={CHART_LEGEND_HEIGHT} content={<ChartLegendContent />} />
+					<ChartLegend
+						verticalAlign="bottom"
+						height={legendHeight}
+						content={<ChartLegendContent onHeightChange={setLegendHeight} />}
+					/>
 				) : null}
 				{renderCartesianSeries(spec)}
 			</ChartComponent>
@@ -152,6 +157,7 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 
 const PieChartRenderer = ({ spec, className }: { spec: PieChartSpec; className?: string }) => {
 	const config = toChartConfig(spec);
+	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
 
 	return (
 		<ChartContainer config={config} className={cn("not-prose my-6 w-full min-w-0", className)}>
@@ -160,11 +166,11 @@ const PieChartRenderer = ({ spec, className }: { spec: PieChartSpec; className?:
 				{spec.options.showLegend ? (
 					<ChartLegend
 						verticalAlign="bottom"
-						height={CHART_LEGEND_HEIGHT}
-						content={<ChartLegendContent nameKey={spec.labelKey} />}
+						height={legendHeight}
+						content={<ChartLegendContent nameKey={spec.labelKey} onHeightChange={setLegendHeight} />}
 					/>
 				) : null}
-				<ResponsivePie spec={spec} />
+				<ResponsivePie spec={spec} legendHeight={legendHeight} />
 			</PieChart>
 		</ChartContainer>
 	);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
-import { type ChartDimensions, DEFAULT_CHART_DIMENSIONS } from "@/libs/chart";
+import { CHART_LEGEND_HEIGHT, type ChartDimensions, DEFAULT_CHART_DIMENSIONS } from "@/libs/chart";
 import { cn } from "@/utils/cn";
 
 export type ChartConfig = Record<
@@ -156,19 +156,51 @@ export const ChartLegendContent = ({
 	payload,
 	className,
 	nameKey,
+	onHeightChange,
 }: RechartsPrimitive.DefaultLegendContentProps &
 	React.ComponentProps<"div"> & {
 		nameKey?: string;
+		onHeightChange?: (height: number) => void;
 	}) => {
 	const { config } = useChart();
 	const legendPayload = payload as ChartPayloadItem[] | undefined;
+	const legendRef = React.useRef<HTMLDivElement | null>(null);
+
+	React.useEffect(() => {
+		const element = legendRef.current;
+		if (!element) {
+			return;
+		}
+
+		const syncHeight = () => {
+			const nextHeight = Math.max(Math.ceil(element.getBoundingClientRect().height), CHART_LEGEND_HEIGHT);
+
+			onHeightChange?.(nextHeight);
+		};
+
+		syncHeight();
+
+		if (typeof ResizeObserver === "undefined") {
+			return;
+		}
+
+		const observer = new ResizeObserver(() => {
+			syncHeight();
+		});
+
+		observer.observe(element);
+
+		return () => {
+			observer.disconnect();
+		};
+	}, [onHeightChange]);
 
 	if (!legendPayload?.length) {
 		return null;
 	}
 
 	return (
-		<div className={cn("flex flex-wrap items-center justify-center gap-4 pt-3", className)}>
+		<div ref={legendRef} className={cn("flex flex-wrap items-center justify-center gap-4 pt-3", className)}>
 			{legendPayload
 				.filter((item) => item.type !== "none")
 				.map((item) => {
