@@ -6,6 +6,9 @@ describe("parseChartDsl", () => {
 		const source = [
 			"chart bar",
 			"x month",
+			"show-values",
+			"hide-grid",
+			"y-range 0 2000",
 			"series views | 조회수 | chart-1",
 			"series likes | 좋아요 | chart-2",
 			"",
@@ -19,6 +22,9 @@ describe("parseChartDsl", () => {
 		expect(parsed.errors).toEqual([]);
 		expect(parsed.type).toBe("bar");
 		expect(parsed.xKey).toBe("month");
+		expect(parsed.showValues).toBe(true);
+		expect(parsed.hideGrid).toBe(true);
+		expect(parsed.yRange).toEqual({ min: 0, max: 2000 });
 		expect(parsed.series).toEqual([
 			{ key: "views", label: "조회수", colorToken: "chart-1" },
 			{ key: "likes", label: "좋아요", colorToken: "chart-2" },
@@ -29,7 +35,13 @@ describe("parseChartDsl", () => {
 		expect(normalized.spec).toMatchObject({
 			type: "bar",
 			xKey: "month",
-			options: { showTooltip: true, showLegend: true },
+			options: {
+				showTooltip: true,
+				showLegend: true,
+				showValues: true,
+				hideGrid: true,
+				yRange: { min: 0, max: 2000 },
+			},
 			series: [
 				{ key: "views", label: "조회수", colorToken: "chart-1" },
 				{ key: "likes", label: "좋아요", colorToken: "chart-2" },
@@ -56,6 +68,12 @@ describe("parseChartDsl", () => {
 		const normalized = normalizeChartDsl(parseChartDsl(source));
 		expect(normalized.errors).toEqual([]);
 		expect(normalized.spec?.options.showLegend).toBe(false);
+		expect(normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
+			? normalized.spec.options.showValues
+			: undefined).toBe(false);
+		expect(normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
+			? normalized.spec.options.hideGrid
+			: undefined).toBe(false);
 	});
 
 	it("pie chart DSL을 파싱하고 색상을 자동 배정한다", () => {
@@ -111,6 +129,54 @@ describe("parseChartDsl", () => {
 		expect(normalized.errors).toEqual([{ line: 6, message: "data 헤더에 series key가 모두 포함되어야 합니다." }]);
 	});
 
+	it("y-range 를 정규화 결과에 포함한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				[
+					"chart area",
+					"x month",
+					"y-range -10 10",
+					"series delta | 변화량 | chart-1",
+					"",
+					"data",
+					"month | delta",
+					"Jan | -2",
+					"Feb | 7",
+				].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([]);
+		expect(normalized.spec).toMatchObject({
+			type: "area",
+			options: { yRange: { min: -10, max: 10 }, showValues: false, hideGrid: false },
+		});
+	});
+
+	it("hide-grid 를 정규화 결과에 포함한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				[
+					"chart line",
+					"x month",
+					"hide-grid",
+					"series views | 조회수 | chart-1",
+					"",
+					"data",
+					"month | views",
+					"Jan | 1200",
+					"Feb | 1800",
+				].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([]);
+		expect(normalized.spec).toMatchObject({
+			type: "line",
+			options: { hideGrid: true, showValues: false },
+		});
+	});
+
 	it("숫자 필드에 숫자가 아닌 값이 오면 오류를 반환한다", () => {
 		const normalized = normalizeChartDsl(
 			parseChartDsl(
@@ -139,5 +205,50 @@ describe("parseChartDsl", () => {
 		);
 
 		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 visitors 는 비어 있을 수 없습니다." }]);
+	});
+
+	it("잘못된 y-range 문법이면 오류를 반환한다", () => {
+		const parsed = parseChartDsl(
+			["chart bar", "x month", "y-range low high", "series views | 조회수 | chart-1", "", "data", "month | views"].join(
+				"\n",
+			),
+		);
+
+		expect(parsed.errors).toEqual([{ line: 3, message: "y-range 값은 숫자여야 합니다." }]);
+	});
+
+	it("y-range 의 min/max 순서가 잘못되면 오류를 반환한다", () => {
+		const parsed = parseChartDsl(
+			["chart bar", "x month", "y-range 10 0", "series views | 조회수 | chart-1", "", "data", "month | views"].join(
+				"\n",
+			),
+		);
+
+		expect(parsed.errors).toEqual([{ line: 3, message: "y-range 는 min < max 이어야 합니다." }]);
+	});
+
+	it("pie chart에서 cartesian 전용 옵션을 쓰면 오류를 반환한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				[
+					"chart pie",
+					"show-values",
+					"hide-grid",
+					"y-range 0 100",
+					"label browser",
+					"value visitors",
+					"",
+					"data",
+					"browser | visitors",
+					"Chrome | 275",
+				].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([
+			{ line: 2, message: "pie 차트는 show-values 를 지원하지 않습니다." },
+			{ line: 3, message: "pie 차트는 hide-grid 를 지원하지 않습니다." },
+			{ line: 4, message: "pie 차트는 y-range 를 지원하지 않습니다." },
+		]);
 	});
 });

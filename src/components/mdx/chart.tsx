@@ -2,7 +2,7 @@
 
 import { AlertOctagon } from "lucide-react";
 import { Children, isValidElement, type ReactNode, useMemo, useState } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, XAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import {
 	type CartesianChartSpec,
 	CHART_LEGEND_HEIGHT,
@@ -83,6 +83,18 @@ const cartesianChartComponents = {
 	area: AreaChart,
 } satisfies Record<CartesianChartSpec["type"], typeof BarChart | typeof LineChart | typeof AreaChart>;
 
+const formatChartValue = (value: string | number | boolean | null | undefined) => {
+	if (value == null || value === false) {
+		return "";
+	}
+
+	if (typeof value !== "number") {
+		return String(value);
+	}
+
+	return value.toLocaleString();
+};
+
 const renderCartesianSeries = (spec: CartesianChartSpec) => {
 	switch (spec.type) {
 		case "bar":
@@ -93,7 +105,16 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					fill={`var(--color-${series.key})`}
 					radius={8}
 					isAnimationActive={false}
-				/>
+				>
+					{spec.options.showValues ? (
+						<LabelList
+							position="top"
+							offset={8}
+							formatter={formatChartValue}
+							className="fill-foreground text-[11px] font-medium"
+						/>
+					) : null}
+				</Bar>
 			));
 		case "line":
 			return spec.series.map((series) => (
@@ -105,7 +126,16 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					strokeWidth={2}
 					dot={false}
 					isAnimationActive={false}
-				/>
+				>
+					{spec.options.showValues ? (
+						<LabelList
+							position="top"
+							offset={10}
+							formatter={formatChartValue}
+							className="fill-foreground text-[11px] font-medium"
+						/>
+					) : null}
+				</Line>
 			));
 		case "area":
 			return spec.series.map((series) => (
@@ -117,7 +147,16 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					fill={`var(--color-${series.key})`}
 					fillOpacity={0.24}
 					isAnimationActive={false}
-				/>
+				>
+					{spec.options.showValues ? (
+						<LabelList
+							position="top"
+							offset={10}
+							formatter={formatChartValue}
+							className="fill-foreground text-[11px] font-medium"
+						/>
+					) : null}
+				</Area>
 			));
 	}
 };
@@ -138,9 +177,19 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 
 	return (
 		<ChartContainer config={config} className={cn("not-prose my-6 w-full min-w-0", className)}>
-			<ChartComponent accessibilityLayer data={spec.data}>
-				<CartesianGrid vertical={false} />
+			<ChartComponent
+				accessibilityLayer
+				data={spec.data}
+				margin={{ top: spec.options.showValues ? 28 : 12, right: 12, left: 12, bottom: 0 }}
+			>
+				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
 				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
+				<YAxis
+					tickLine={false}
+					tickMargin={10}
+					axisLine={false}
+					domain={spec.options.yRange ? [spec.options.yRange.min, spec.options.yRange.max] : undefined}
+				/>
 				<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 				{spec.options.showLegend ? (
 					<ChartLegend
