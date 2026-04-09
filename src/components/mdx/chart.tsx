@@ -193,7 +193,7 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 			<ChartComponent
 				accessibilityLayer
 				data={spec.data}
-				margin={{ top: spec.options.showValues ? 28 : 12, right: 12, left: 12, bottom: 0 }}
+				margin={{ top: spec.options.showValues ? 28 : 12, right: 12, left: 40, bottom: 24 }}
 			>
 				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
 				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
@@ -202,6 +202,7 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 					tickMargin={10}
 					axisLine={false}
 					domain={spec.options.yRange ? [spec.options.yRange.min, spec.options.yRange.max] : undefined}
+					allowDataOverflow={!!spec.options.yRange}
 				/>
 				<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 				{spec.options.showLegend ? (
