@@ -68,12 +68,16 @@ describe("parseChartDsl", () => {
 		const normalized = normalizeChartDsl(parseChartDsl(source));
 		expect(normalized.errors).toEqual([]);
 		expect(normalized.spec?.options.showLegend).toBe(false);
-		expect(normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
-			? normalized.spec.options.showValues
-			: undefined).toBe(false);
-		expect(normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
-			? normalized.spec.options.hideGrid
-			: undefined).toBe(false);
+		expect(
+			normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
+				? normalized.spec.options.showValues
+				: undefined,
+		).toBe(false);
+		expect(
+			normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
+				? normalized.spec.options.hideGrid
+				: undefined,
+		).toBe(false);
 	});
 
 	it("pie chart DSL을 파싱하고 색상을 자동 배정한다", () => {

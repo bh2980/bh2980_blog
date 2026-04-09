@@ -2,7 +2,20 @@
 
 import { AlertOctagon } from "lucide-react";
 import { Children, isValidElement, type ReactNode, useMemo, useState } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
+import {
+	Area,
+	AreaChart,
+	Bar,
+	BarChart,
+	CartesianGrid,
+	LabelList,
+	Line,
+	LineChart,
+	Pie,
+	PieChart,
+	XAxis,
+	YAxis,
+} from "recharts";
 import {
 	type CartesianChartSpec,
 	CHART_LEGEND_HEIGHT,
@@ -111,7 +124,7 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 							position="top"
 							offset={8}
 							formatter={formatChartValue}
-							className="fill-foreground text-[11px] font-medium"
+							className="fill-foreground font-medium text-[11px]"
 						/>
 					) : null}
 				</Bar>
@@ -132,7 +145,7 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 							position="top"
 							offset={10}
 							formatter={formatChartValue}
-							className="fill-foreground text-[11px] font-medium"
+							className="fill-foreground font-medium text-[11px]"
 						/>
 					) : null}
 				</Line>
@@ -153,7 +166,7 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 							position="top"
 							offset={10}
 							formatter={formatChartValue}
-							className="fill-foreground text-[11px] font-medium"
+							className="fill-foreground font-medium text-[11px]"
 						/>
 					) : null}
 				</Area>

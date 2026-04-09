@@ -16,9 +16,7 @@ const splitTableRow = (line: string) => line.split("|").map((item) => item.trim(
 
 const toError = (line: number, message: string): ChartDslParseError => ({ line, message });
 const isBlankCell = (value: unknown) => typeof value === "string" && value.trim() === "";
-type ParsedNumericRange =
-	| { ok: true; value: { min: number; max: number } }
-	| { ok: false; error: string };
+type ParsedNumericRange = { ok: true; value: { min: number; max: number } } | { ok: false; error: string };
 
 const parseNumericRange = (value: string) => {
 	const [rawMin = "", rawMax = "", ...rest] = value.split(/\s+/).filter(Boolean);
