@@ -21,6 +21,15 @@ export type ChartDslParseResult = {
 	xKey?: string;
 	labelKey?: string;
 	valueKey?: string;
+	showValues: boolean;
+	showValuesLine?: number;
+	hideGrid: boolean;
+	hideGridLine?: number;
+	yRange?: {
+		min: number;
+		max: number;
+	};
+	yRangeLine?: number;
 	series: ChartDslParseSeries[];
 	tableHeaders: string[];
 	rows: string[][];
@@ -44,6 +53,12 @@ export type CartesianChartSpec = {
 	options: {
 		showTooltip: boolean;
 		showLegend: boolean;
+		showValues: boolean;
+		hideGrid: boolean;
+		yRange?: {
+			min: number;
+			max: number;
+		};
 	};
 };
 
