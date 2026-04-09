@@ -7,14 +7,6 @@ import { TooltipContent, Tooltip as TooltipRoot, TooltipTrigger } from "../ui/to
 
 const tooltipTriggerClassName = "underline decoration-slate-900/30 decoration-dotted dark:decoration-slate-100/30";
 
-const isTouchLikeViewport = () => {
-	if (typeof window === "undefined") {
-		return false;
-	}
-
-	return window.matchMedia("(hover: none)").matches || window.matchMedia("(pointer: coarse)").matches;
-};
-
 export const Tooltip = ({
 	content,
 	className,
@@ -27,16 +19,27 @@ export const Tooltip = ({
 		const hoverNoneQuery = window.matchMedia("(hover: none)");
 		const pointerCoarseQuery = window.matchMedia("(pointer: coarse)");
 		const updateTouchLike = () => {
-			setIsTouchLike(isTouchLikeViewport());
+			setIsTouchLike(hoverNoneQuery.matches || pointerCoarseQuery.matches);
 		};
 
 		updateTouchLike();
-		hoverNoneQuery.addEventListener("change", updateTouchLike);
-		pointerCoarseQuery.addEventListener("change", updateTouchLike);
+
+		if ("addEventListener" in hoverNoneQuery && "addEventListener" in pointerCoarseQuery) {
+			hoverNoneQuery.addEventListener("change", updateTouchLike);
+			pointerCoarseQuery.addEventListener("change", updateTouchLike);
+
+			return () => {
+				hoverNoneQuery.removeEventListener("change", updateTouchLike);
+				pointerCoarseQuery.removeEventListener("change", updateTouchLike);
+			};
+		}
+
+		hoverNoneQuery.addListener(updateTouchLike);
+		pointerCoarseQuery.addListener(updateTouchLike);
 
 		return () => {
-			hoverNoneQuery.removeEventListener("change", updateTouchLike);
-			pointerCoarseQuery.removeEventListener("change", updateTouchLike);
+			hoverNoneQuery.removeListener(updateTouchLike);
+			pointerCoarseQuery.removeListener(updateTouchLike);
 		};
 	}, []);
 
@@ -47,7 +50,7 @@ export const Tooltip = ({
 		return (
 			<Popover>
 				<PopoverTrigger className={triggerClassName}>{triggerContent}</PopoverTrigger>
-				<PopoverContent className="w-[min(20rem,calc(100vw-2rem))] px-3 py-2 text-sm leading-6">
+				<PopoverContent className="w-fit max-w-[min(20rem,calc(100vw-2rem))] px-3 py-2 text-sm leading-6">
 					{content}
 				</PopoverContent>
 			</Popover>

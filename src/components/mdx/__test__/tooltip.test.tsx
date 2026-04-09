@@ -5,20 +5,32 @@ import { Tooltip } from "../tooltip";
 const mockMatchMedia = ({
 	hoverNone = false,
 	pointerCoarse = false,
+	supportsEventListener = true,
 }: {
 	hoverNone?: boolean;
 	pointerCoarse?: boolean;
+	supportsEventListener?: boolean;
 } = {}) =>
-	vi.fn().mockImplementation((query: string) => ({
-		matches: query === "(hover: none)" ? hoverNone : query === "(pointer: coarse)" ? pointerCoarse : false,
-		media: query,
-		onchange: null,
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		dispatchEvent: vi.fn(),
-	}));
+	vi.fn().mockImplementation((query: string) => {
+		const mediaQueryList = {
+			matches: query === "(hover: none)" ? hoverNone : query === "(pointer: coarse)" ? pointerCoarse : false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		};
+
+		if (supportsEventListener) {
+			return {
+				...mediaQueryList,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			};
+		}
+
+		return mediaQueryList;
+	});
 
 describe("MDX Tooltip", () => {
 	beforeEach(() => {
@@ -83,5 +95,40 @@ describe("MDX Tooltip", () => {
 		fireEvent.pointerDown(screen.getByRole("button", { name: "바깥" }));
 
 		expect(screen.queryByText("설명")).toBeNull();
+	});
+
+	it("구형 MediaQueryList 환경에서는 addListener fallback을 사용한다", () => {
+		const mediaQueryLists: Array<{
+			addListener: ReturnType<typeof vi.fn>;
+			removeListener: ReturnType<typeof vi.fn>;
+		}> = [];
+
+		window.matchMedia = vi.fn().mockImplementation((query: string) => {
+			const mediaQueryList = {
+				matches: query === "(hover: none)" || query === "(pointer: coarse)",
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			};
+
+			mediaQueryLists.push(mediaQueryList);
+			return mediaQueryList;
+		});
+
+		const { unmount } = render(<Tooltip content="설명">단어</Tooltip>);
+
+		expect(mediaQueryLists).toHaveLength(2);
+		for (const mediaQueryList of mediaQueryLists) {
+			expect(mediaQueryList.addListener).toHaveBeenCalledTimes(1);
+			expect(mediaQueryList.removeListener).not.toHaveBeenCalled();
+		}
+
+		unmount();
+
+		for (const mediaQueryList of mediaQueryLists) {
+			expect(mediaQueryList.removeListener).toHaveBeenCalledTimes(1);
+		}
 	});
 });
