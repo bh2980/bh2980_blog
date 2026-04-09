@@ -16,12 +16,34 @@ const splitTableRow = (line: string) => line.split("|").map((item) => item.trim(
 
 const toError = (line: number, message: string): ChartDslParseError => ({ line, message });
 const isBlankCell = (value: unknown) => typeof value === "string" && value.trim() === "";
+type ParsedNumericRange = { ok: true; value: { min: number; max: number } } | { ok: false; error: string };
+
+const parseNumericRange = (value: string) => {
+	const [rawMin = "", rawMax = "", ...rest] = value.split(/\s+/).filter(Boolean);
+	if (!rawMin || !rawMax || rest.length > 0) {
+		return { ok: false, error: "y-range 줄은 y-range <min> <max> 형식이어야 합니다." } satisfies ParsedNumericRange;
+	}
+
+	const min = Number(rawMin);
+	const max = Number(rawMax);
+	if (!Number.isFinite(min) || !Number.isFinite(max)) {
+		return { ok: false, error: "y-range 값은 숫자여야 합니다." } satisfies ParsedNumericRange;
+	}
+
+	if (min >= max) {
+		return { ok: false, error: "y-range 는 min < max 이어야 합니다." } satisfies ParsedNumericRange;
+	}
+
+	return { ok: true, value: { min, max } } satisfies ParsedNumericRange;
+};
 
 export const parseChartDsl = (source: string): ChartDslParseResult => {
 	const lines = source.replace(/\r\n/g, "\n").split("\n");
 	const errors: ChartDslParseError[] = [];
 	const result: ChartDslParseResult = {
 		source,
+		showValues: false,
+		hideGrid: false,
 		series: [],
 		tableHeaders: [],
 		rows: [],
@@ -66,6 +88,30 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 
 		if (trimmed.startsWith("value ")) {
 			result.valueKey = trimmed.slice(6).trim();
+			continue;
+		}
+
+		if (trimmed === "show-values") {
+			result.showValues = true;
+			result.showValuesLine = index + 1;
+			continue;
+		}
+
+		if (trimmed === "hide-grid") {
+			result.hideGrid = true;
+			result.hideGridLine = index + 1;
+			continue;
+		}
+
+		if (trimmed.startsWith("y-range ")) {
+			const parsedRange = parseNumericRange(trimmed.slice(8).trim());
+			if (!parsedRange.ok) {
+				errors.push(toError(index + 1, parsedRange.error));
+				continue;
+			}
+
+			result.yRange = parsedRange.value;
+			result.yRangeLine = index + 1;
 			continue;
 		}
 
@@ -127,6 +173,16 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 	const rowStartLine = (parsed.dataLine ?? 0) + 2;
 
 	if (parsed.type === "pie") {
+		if (parsed.showValues) {
+			errors.push(toError(parsed.showValuesLine ?? 2, "pie 차트는 show-values 를 지원하지 않습니다."));
+		}
+		if (parsed.hideGrid) {
+			errors.push(toError(parsed.hideGridLine ?? 2, "pie 차트는 hide-grid 를 지원하지 않습니다."));
+		}
+		if (parsed.yRange) {
+			errors.push(toError(parsed.yRangeLine ?? 2, "pie 차트는 y-range 를 지원하지 않습니다."));
+		}
+
 		const labelKey = parsed.labelKey;
 		const valueKey = parsed.valueKey;
 
@@ -247,6 +303,9 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 			options: {
 				showTooltip: true,
 				showLegend: parsed.series.length > 1,
+				showValues: parsed.showValues,
+				hideGrid: parsed.hideGrid,
+				yRange: parsed.yRange,
 			},
 		},
 	};

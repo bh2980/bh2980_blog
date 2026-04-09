@@ -168,6 +168,9 @@ v1에서는 `bar`, `line`, `area`, `pie`만 지원합니다.
 ```txt
 chart bar
 x month
+show-values
+hide-grid
+y-range 0 2400
 series views | 조회수 | chart-1
 series likes | 좋아요 | chart-2
 
@@ -182,12 +185,17 @@ Mar | 1940 | 260
 
 - 첫 줄은 `chart <type>`
 - `x <field>`는 필수
+- `show-values`를 넣으면 각 데이터 값이 차트 위에 표시됩니다.
+- `hide-grid`를 넣으면 배경 격자선을 숨깁니다.
+- `y-range <min> <max>`를 넣으면 y축 범위를 고정합니다.
 - `series <key> | <label> | <theme-token>`은 1개 이상 필요
 - 빈 줄 뒤에 `data`
 - 다음 줄은 테이블 헤더
 - 데이터 값은 `|`로 구분
 
 색상 토큰은 `chart-1`부터 `chart-5`까지만 허용합니다.
+
+쉽게 말하면, 기본 문법은 그대로 두고 필요할 때만 `show-values`, `hide-grid`, `y-range` 같은 줄을 추가해서 차트 모양을 조절하는 방식입니다.
 
 ### Pie 차트
 
@@ -208,6 +216,7 @@ Edge | 132
 - `label <field>`는 항목 이름 필드
 - `value <field>`는 숫자 값 필드
 - 색상은 행 순서대로 `chart-1` ~ `chart-5`가 자동 배정
+- `show-values`, `hide-grid`, `y-range`는 pie 차트에서 지원하지 않습니다.
 
 ### 오류 처리
 
@@ -230,3 +239,4 @@ Jan | nope
 - `series`와 `data` 헤더 불일치
 - 숫자 필드에 숫자가 아닌 값 입력
 - 허용되지 않은 색상 토큰 사용
+- pie 차트에서 cartesian 전용 옵션 사용
