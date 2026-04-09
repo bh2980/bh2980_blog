@@ -8,6 +8,7 @@ describe("parseChartDsl", () => {
 			"x month",
 			"show-values",
 			"hide-grid",
+			"hide-y-axis",
 			"y-range 0 2000",
 			"series views | 조회수 | chart-1",
 			"series likes | 좋아요 | chart-2",
@@ -24,6 +25,7 @@ describe("parseChartDsl", () => {
 		expect(parsed.xKey).toBe("month");
 		expect(parsed.showValues).toBe(true);
 		expect(parsed.hideGrid).toBe(true);
+		expect(parsed.hideYAxis).toBe(true);
 		expect(parsed.yRange).toEqual({ min: 0, max: 2000 });
 		expect(parsed.series).toEqual([
 			{ key: "views", label: "조회수", colorToken: "chart-1" },
@@ -40,6 +42,7 @@ describe("parseChartDsl", () => {
 				showLegend: true,
 				showValues: true,
 				hideGrid: true,
+				hideYAxis: true,
 				yRange: { min: 0, max: 2000 },
 			},
 			series: [
@@ -76,6 +79,11 @@ describe("parseChartDsl", () => {
 		expect(
 			normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
 				? normalized.spec.options.hideGrid
+				: undefined,
+		).toBe(false);
+		expect(
+			normalized.spec?.type === "line" || normalized.spec?.type === "area" || normalized.spec?.type === "bar"
+				? normalized.spec.options.hideYAxis
 				: undefined,
 		).toBe(false);
 	});
@@ -177,7 +185,31 @@ describe("parseChartDsl", () => {
 		expect(normalized.errors).toEqual([]);
 		expect(normalized.spec).toMatchObject({
 			type: "line",
-			options: { hideGrid: true, showValues: false },
+			options: { hideGrid: true, hideYAxis: false, showValues: false },
+		});
+	});
+
+	it("hide-y-axis 를 정규화 결과에 포함한다", () => {
+		const normalized = normalizeChartDsl(
+			parseChartDsl(
+				[
+					"chart line",
+					"x month",
+					"hide-y-axis",
+					"series views | 조회수 | chart-1",
+					"",
+					"data",
+					"month | views",
+					"Jan | 1200",
+					"Feb | 1800",
+				].join("\n"),
+			),
+		);
+
+		expect(normalized.errors).toEqual([]);
+		expect(normalized.spec).toMatchObject({
+			type: "line",
+			options: { hideGrid: false, hideYAxis: true, showValues: false },
 		});
 	});
 
@@ -238,6 +270,7 @@ describe("parseChartDsl", () => {
 					"chart pie",
 					"show-values",
 					"hide-grid",
+					"hide-y-axis",
 					"y-range 0 100",
 					"label browser",
 					"value visitors",
@@ -252,7 +285,8 @@ describe("parseChartDsl", () => {
 		expect(normalized.errors).toEqual([
 			{ line: 2, message: "pie 차트는 show-values 를 지원하지 않습니다." },
 			{ line: 3, message: "pie 차트는 hide-grid 를 지원하지 않습니다." },
-			{ line: 4, message: "pie 차트는 y-range 를 지원하지 않습니다." },
+			{ line: 4, message: "pie 차트는 hide-y-axis 를 지원하지 않습니다." },
+			{ line: 5, message: "pie 차트는 y-range 를 지원하지 않습니다." },
 		]);
 	});
 });

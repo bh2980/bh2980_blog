@@ -25,6 +25,8 @@ export type ChartDslParseResult = {
 	showValuesLine?: number;
 	hideGrid: boolean;
 	hideGridLine?: number;
+	hideYAxis: boolean;
+	hideYAxisLine?: number;
 	yRange?: {
 		min: number;
 		max: number;
@@ -55,6 +57,7 @@ export type CartesianChartSpec = {
 		showLegend: boolean;
 		showValues: boolean;
 		hideGrid: boolean;
+		hideYAxis: boolean;
 		yRange?: {
 			min: number;
 			max: number;

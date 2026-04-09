@@ -44,6 +44,7 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 		source,
 		showValues: false,
 		hideGrid: false,
+		hideYAxis: false,
 		series: [],
 		tableHeaders: [],
 		rows: [],
@@ -100,6 +101,12 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 		if (trimmed === "hide-grid") {
 			result.hideGrid = true;
 			result.hideGridLine = index + 1;
+			continue;
+		}
+
+		if (trimmed === "hide-y-axis") {
+			result.hideYAxis = true;
+			result.hideYAxisLine = index + 1;
 			continue;
 		}
 
@@ -178,6 +185,9 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 		}
 		if (parsed.hideGrid) {
 			errors.push(toError(parsed.hideGridLine ?? 2, "pie 차트는 hide-grid 를 지원하지 않습니다."));
+		}
+		if (parsed.hideYAxis) {
+			errors.push(toError(parsed.hideYAxisLine ?? 2, "pie 차트는 hide-y-axis 를 지원하지 않습니다."));
 		}
 		if (parsed.yRange) {
 			errors.push(toError(parsed.yRangeLine ?? 2, "pie 차트는 y-range 를 지원하지 않습니다."));
@@ -305,6 +315,7 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 				showLegend: parsed.series.length > 1,
 				showValues: parsed.showValues,
 				hideGrid: parsed.hideGrid,
+				hideYAxis: parsed.hideYAxis,
 				yRange: parsed.yRange,
 			},
 		},
