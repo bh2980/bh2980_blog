@@ -1,8 +1,10 @@
 import KeystaticApp from "./keystatic";
+import { KeystaticThemeBridge } from "./theme-bridge.client";
 
 export default function Layout() {
 	return (
 		<>
+			<KeystaticThemeBridge />
 			<style
 				// biome-ignore lint/security/noDangerouslySetInnerHtml: 본문 CSS 변수와 에디터 스타일 동기화
 				dangerouslySetInnerHTML={{
