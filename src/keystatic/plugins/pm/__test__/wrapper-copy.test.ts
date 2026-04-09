@@ -1,7 +1,7 @@
 import { Fragment, type Node as PMNode, Schema, Slice } from "prosemirror-model";
 import { NodeSelection, TextSelection } from "prosemirror-state";
 import { describe, expect, it } from "vitest";
-import { normalizeUnwrappedWrapperText, shouldUnwrapCopiedSelection, unwrapOpenWrapperSlice } from "../wrapper-copy";
+import { markSliceAsUnwrapped, shouldUnwrapCopiedSelection, unwrapOpenWrapperSlice, wasSliceUnwrapped } from "../wrapper-copy";
 
 const schema = new Schema({
 	nodes: {
@@ -52,10 +52,11 @@ describe("unwrapOpenWrapperSlice", () => {
 		expect(result.slice).toBe(slice);
 	});
 
-	it("wrapper 복사 후 serializer가 만든 hard break backslash는 제거한다", () => {
-		const input = "a,\\\nb,\\\nc";
+	it("unwrapped slice에는 복사 플래그를 태그할 수 있다", () => {
+		const slice = new Slice(Fragment.from(paragraph("hello")), 0, 0);
+		const tagged = markSliceAsUnwrapped(slice);
 
-		expect(normalizeUnwrappedWrapperText(input)).toBe("a,\nb,\nc");
+		expect(wasSliceUnwrapped(tagged)).toBe(true);
 	});
 
 	it("텍스트 선택일 때만 wrapper 벗기기를 허용한다", () => {

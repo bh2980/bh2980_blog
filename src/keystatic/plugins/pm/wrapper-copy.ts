@@ -3,7 +3,7 @@ import { Plugin, type Selection, TextSelection } from "prosemirror-state";
 import { isWrapperLikeNodeType } from "./wrapper-keys";
 
 const EMPTY_BLOCK_SEPARATOR = "\n\n";
-const MARKDOWN_HARD_BREAK_PATTERN = /\\\r?\n/g;
+const UNWRAPPED_COPY_SLICE = Symbol("unwrapped-copy-slice");
 
 const unwrapOpenWrapperSlice = (slice: Slice) => {
 	let content = slice.content;
@@ -49,34 +49,45 @@ const findNextClipboardTextSerializer = (view: ClipboardSerializerView, currentP
 	return undefined;
 };
 
-const normalizeUnwrappedWrapperText = (text: string) => text.replace(MARKDOWN_HARD_BREAK_PATTERN, "\n");
 const shouldUnwrapCopiedSelection = (selection: Selection) => selection instanceof TextSelection && !selection.empty;
+
+type TaggedSlice = Slice & {
+	[UNWRAPPED_COPY_SLICE]?: true;
+};
+
+const markSliceAsUnwrapped = (slice: Slice) => {
+	const tagged = slice as TaggedSlice;
+	tagged[UNWRAPPED_COPY_SLICE] = true;
+	return tagged;
+};
+
+const wasSliceUnwrapped = (slice: Slice) => (slice as TaggedSlice)[UNWRAPPED_COPY_SLICE] === true;
 
 export function wrapperCopyPlugin() {
 	let plugin: Plugin;
-	let lastCopyUnwrapped = false;
 
 	plugin = new Plugin({
 		props: {
 			transformCopied(slice, view) {
 				if (!shouldUnwrapCopiedSelection(view.state.selection)) {
-					lastCopyUnwrapped = false;
 					return slice;
 				}
 
 				const unwrapped = unwrapOpenWrapperSlice(slice);
-				lastCopyUnwrapped = unwrapped.changed;
-				return unwrapped.slice;
+				return unwrapped.changed ? markSliceAsUnwrapped(unwrapped.slice) : unwrapped.slice;
 			},
 			clipboardTextSerializer(slice, view) {
-				const nextSerializer = findNextClipboardTextSerializer(view, plugin);
-				const targetSlice = slice;
-				if (nextSerializer) {
-					const serialized = nextSerializer.serializer.call(nextSerializer.plugin, targetSlice, view);
-					return lastCopyUnwrapped ? normalizeUnwrappedWrapperText(serialized) : serialized;
+				if (wasSliceUnwrapped(slice)) {
+					return slice.content.textBetween(0, slice.content.size, EMPTY_BLOCK_SEPARATOR);
 				}
 
-				return targetSlice.content.textBetween(0, targetSlice.content.size, EMPTY_BLOCK_SEPARATOR);
+				const nextSerializer = findNextClipboardTextSerializer(view, plugin);
+				if (nextSerializer) {
+					const serialize = nextSerializer.serializer as (content: Slice, view: unknown) => string;
+					return serialize(slice, view);
+				}
+
+				return slice.content.textBetween(0, slice.content.size, EMPTY_BLOCK_SEPARATOR);
 			},
 		},
 	});
@@ -85,5 +96,6 @@ export function wrapperCopyPlugin() {
 }
 
 export { unwrapOpenWrapperSlice };
-export { normalizeUnwrappedWrapperText };
 export { shouldUnwrapCopiedSelection };
+export { markSliceAsUnwrapped };
+export { wasSliceUnwrapped };
