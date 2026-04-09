@@ -80,7 +80,7 @@ export function ChartNodeView({ children, onRemove, onChange, isSelected, value 
 				/>
 			</TabsContent>
 			<TabsContent value="preview">
-				<Chart source={chartSource} />
+				<Chart source={chartSource} className="my-0 rounded-xl border border-border/60 bg-card/60 p-4" />
 			</TabsContent>
 			<TabsContent value="bothVertical">
 				<NodeViewCodeEditor
@@ -91,7 +91,7 @@ export function ChartNodeView({ children, onRemove, onChange, isSelected, value 
 					proseMirrorId={value.id}
 					annotationConfig={EMPTY_ANNOTATION_CONFIG}
 				/>
-				<Chart source={chartSource} />
+				<Chart source={chartSource} className="my-0 rounded-xl border border-border/60 bg-card/60 p-4" />
 			</TabsContent>
 			<TabsContent value="bothHorizontal" className="flex w-full gap-3 *:flex-1">
 				<NodeViewCodeEditor
@@ -102,7 +102,7 @@ export function ChartNodeView({ children, onRemove, onChange, isSelected, value 
 					proseMirrorId={value.id}
 					annotationConfig={EMPTY_ANNOTATION_CONFIG}
 				/>
-				<Chart source={chartSource} />
+				<Chart source={chartSource} className="my-0 rounded-xl border border-border/60 bg-card/60 p-4" />
 			</TabsContent>
 		</Tabs>
 	);

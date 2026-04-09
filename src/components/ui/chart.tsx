@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import { type ChartDimensions, DEFAULT_CHART_DIMENSIONS } from "@/libs/chart";
 import { cn } from "@/utils/cn";
 
 export type ChartConfig = Record<
@@ -12,7 +13,10 @@ export type ChartConfig = Record<
 	}
 >;
 
-const ChartContext = React.createContext<{ config: ChartConfig } | null>(null);
+const ChartContext = React.createContext<{
+	config: ChartConfig;
+	dimensions: ChartDimensions;
+} | null>(null);
 
 const useChart = () => {
 	const context = React.useContext(ChartContext);
@@ -21,6 +25,8 @@ const useChart = () => {
 	}
 	return context;
 };
+
+export const useChartDimensions = () => useChart().dimensions;
 
 type ChartPayloadItem = {
 	type?: string;
@@ -44,6 +50,7 @@ export const ChartContainer = ({
 }) => {
 	const uniqueId = React.useId();
 	const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
+	const [dimensions, setDimensions] = React.useState<ChartDimensions>(DEFAULT_CHART_DIMENSIONS);
 	const chartVars = Object.fromEntries(
 		Object.entries(config)
 			.filter(([, itemConfig]) => itemConfig.color)
@@ -51,7 +58,7 @@ export const ChartContainer = ({
 	) as React.CSSProperties;
 
 	return (
-		<ChartContext.Provider value={{ config }}>
+		<ChartContext.Provider value={{ config, dimensions }}>
 			<div
 				data-slot="chart"
 				data-chart={chartId}
@@ -64,7 +71,20 @@ export const ChartContainer = ({
 				<RechartsPrimitive.ResponsiveContainer
 					width="100%"
 					height="100%"
-					initialDimension={{ width: 520, height: 280 }}
+					initialDimension={DEFAULT_CHART_DIMENSIONS}
+					onResize={(width, height) => {
+						if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+							return;
+						}
+
+						setDimensions((current) => {
+							if (current.width === width && current.height === height) {
+								return current;
+							}
+
+							return { width, height };
+						});
+					}}
 				>
 					{children}
 				</RechartsPrimitive.ResponsiveContainer>
