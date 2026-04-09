@@ -22,14 +22,18 @@ export const resolvePieGeometry = (dimensions: ChartDimensions, showLegend: bool
 	const width = resolveDimension(dimensions.width, DEFAULT_CHART_DIMENSIONS.width);
 	const height = resolveDimension(dimensions.height, DEFAULT_CHART_DIMENSIONS.height);
 	const legendSpace = showLegend ? CHART_LEGEND_HEIGHT : 0;
-	const pieAreaHeight = Math.max(height - legendSpace - 12, 96);
-	const maxRadius = Math.max(Math.min(width, pieAreaHeight) / 2, 40);
-	const outerRadius = Math.max(Math.round(maxRadius * 0.76), 36);
-	const innerRadius = Math.max(Math.round(outerRadius * 0.56), 20);
-	const cy = showLegend ? Math.round((height - legendSpace) / 2 - 4) : Math.round(height / 2);
+	const chartBottom = Math.max(height - legendSpace, 24);
+	const pieAreaHeight = Math.max(chartBottom - 12, 96);
+	const desiredOuterRadius = Math.max(Math.round((Math.min(width, pieAreaHeight) / 2) * 0.76), 36);
+	const cy = showLegend ? Math.round(chartBottom / 2 - 4) : Math.round(height / 2);
+	const cx = Math.round(width / 2);
+	const maxOuterRadius = Math.max(Math.min(cx - 8, width - cx - 8, cy - 8, chartBottom - cy - 8), 12);
+	const outerRadius = Math.min(desiredOuterRadius, maxOuterRadius);
+	const desiredInnerRadius = outerRadius <= 24 ? outerRadius - 8 : Math.max(Math.round(outerRadius * 0.56), 12);
+	const innerRadius = Math.max(Math.min(desiredInnerRadius, outerRadius - 6), 0);
 
 	return {
-		cx: Math.round(width / 2),
+		cx,
 		cy,
 		innerRadius,
 		outerRadius,

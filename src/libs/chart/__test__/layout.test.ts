@@ -24,4 +24,13 @@ describe("resolvePieGeometry", () => {
 
 		expect(invalid).toEqual(fallback);
 	});
+
+	it("아주 낮은 높이에서도 파이 차트가 위아래 경계를 넘지 않는다", () => {
+		const compact = resolvePieGeometry({ width: 180, height: 88 }, true);
+		const chartBottom = 88 - CHART_LEGEND_HEIGHT;
+
+		expect(compact.outerRadius).toBeLessThanOrEqual(compact.cy - 8);
+		expect(compact.outerRadius).toBeLessThanOrEqual(chartBottom - compact.cy - 8);
+		expect(compact.innerRadius).toBeLessThan(compact.outerRadius);
+	});
 });
