@@ -15,16 +15,20 @@ type ActiveWrapperInfo = {
 
 const wrapperSelectionPluginKey = new PluginKey<{ pos: number } | null>("wrapper-selection");
 
+export function isWrapperLikeNodeType(type: NodeType) {
+	const groupStr = type.spec.group ?? "";
+	const isKeystaticComponent = groupStr.split(/\s+/).some((g) => g.startsWith("component"));
+	const isWrapperLike = type.spec.content === "block+";
+
+	return isKeystaticComponent && isWrapperLike;
+}
+
 function findWrapperInfosAtPos($pos: EditorState["selection"]["$from"]) {
 	const infos: ActiveWrapperInfo[] = [];
 
 	for (let d = $pos.depth; d > 0; d -= 1) {
 		const type = $pos.node(d).type;
-		const groupStr = type.spec.group ?? "";
-		const isKeystaticComponent = groupStr.split(/\s+/).some((g) => g.startsWith("component"));
-		const isWrapperLike = type.spec.content === "block+";
-
-		if (!isKeystaticComponent || !isWrapperLike) continue;
+		if (!isWrapperLikeNodeType(type)) continue;
 
 		infos.push({
 			depth: d,
