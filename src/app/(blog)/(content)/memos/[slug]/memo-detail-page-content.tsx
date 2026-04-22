@@ -1,7 +1,7 @@
 import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import type { Memo } from "@/libs/contents/types/legacy";
+import type { Memo } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 import { MemoBackLink } from "./memo-back-link";
 
@@ -11,8 +11,7 @@ type MemoDetailPageContentProps = {
 };
 
 export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: MemoDetailPageContentProps) => {
-	const source = await memo.content();
-	const { content, toc } = await renderMDX(source);
+	const { content, toc } = await renderMDX(memo.contentMdx);
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
@@ -27,7 +26,7 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 					<header className="flex flex-col items-start gap-5 border-slate-200">
 						<MemoBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
-							<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
+							{memo.status === "published" && <time dateTime={memo.publishedAt}>{memo.publishedAt}</time>}
 							<AdminEditLinkClient
 								collection="memo"
 								slug={memo.slug}
@@ -45,7 +44,7 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 							)}
 						>
 							{memo.tags?.map((tag) => (
-								<li key={tag.slug}>{`#${tag.name}`}</li>
+								<li key={tag.slug}>{`#${tag.label}`}</li>
 							))}
 						</ul>
 					</header>

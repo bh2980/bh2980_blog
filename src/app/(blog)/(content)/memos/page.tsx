@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getMemoList, getMemoTagList } from "@/libs/contents/services/memo";
+import { listMemos } from "@/libs/contents/services/memo";
+import { listTags } from "@/libs/contents/services/tag";
 import { MemoList } from "./memo-list";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function MemoPage() {
-	const memos = await getMemoList();
-	const memoTags = await getMemoTagList();
+	const memos = await listMemos();
+	const memoTags = await listTags();
 
 	return <MemoList memos={memos} tags={memoTags} />;
 }

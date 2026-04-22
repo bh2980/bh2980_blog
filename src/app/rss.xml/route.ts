@@ -1,6 +1,6 @@
 import { Feed } from "feed";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getPostList } from "@/libs/contents/services/post";
+import { listPosts } from "@/libs/contents/services/post";
 import { isDefined } from "@/utils/is-defined";
 
 export async function GET() {
@@ -11,12 +11,12 @@ export async function GET() {
 	const feedUrl = new URL("/rss.xml", siteUrl).href;
 	const faviconUrl = new URL("/favicon.ico", siteUrl).href;
 
-	const postList = await getPostList();
+	const postList = await listPosts();
 	const items = [...postList.list]
 		.map((post) => {
-			if (!post.publishedDateTimeISO) return null;
+			if (!post.publishedAt) return null;
 
-			const date = new Date(post.publishedDateTimeISO);
+			const date = new Date(post.publishedAt);
 			if (Number.isNaN(date.getTime())) return null;
 
 			return { ...post, date };

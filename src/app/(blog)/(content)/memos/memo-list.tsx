@@ -6,12 +6,12 @@ import { Suspense } from "react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { ListResult, Memo, Tag } from "@/libs/contents/types/legacy";
+import type { ListResult, Memo, Tag } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 
 type MemoListProps = {
 	tags: ListResult<Tag>;
-	memos: ListResult<Omit<Memo, "content">>;
+	memos: ListResult<Memo>;
 };
 
 type MemoListContentProps = MemoListProps & {
@@ -55,7 +55,7 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 							>
 								<article className="flex h-full flex-col gap-1 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-										<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
+										{memo.status === "published" && <time dateTime={memo.publishedAt}>{memo.publishedAt}</time>}
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{memo.title}</h2>
 									<ul
@@ -65,7 +65,7 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 										)}
 									>
 										{memo.tags?.map((tag) => (
-											<li key={tag.slug}>{`#${tag.name}`}</li>
+											<li key={tag.slug}>{`#${tag.label}`}</li>
 										))}
 									</ul>
 								</article>

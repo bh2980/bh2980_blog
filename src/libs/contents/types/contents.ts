@@ -3,10 +3,14 @@ export type ListResult<T> = {
 	total: number;
 };
 
-type Publication = {
-	status: "draft" | "published";
-	publishedAt: string | null;
-};
+type Publication =
+	| {
+			status: "published";
+			publishedAt: string;
+	  }
+	| {
+			status: "draft";
+	  };
 
 export type Category = { slug: string; label: string };
 export type Tag = { slug: string; label: string };
@@ -18,6 +22,7 @@ export type Post = Publication & {
 	excerpt: string;
 	category: Category;
 	tags: Tag[];
+	isEvergreen?: boolean;
 };
 
 export type Memo = Publication & {

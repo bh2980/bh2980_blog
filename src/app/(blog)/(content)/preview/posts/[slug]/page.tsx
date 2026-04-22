@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getPost, getPostList } from "@/libs/contents/services/post";
+import { getPost, listPosts } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "../../../posts/[slug]/post-detail-page-content";
 
 type PreviewPostPageProps = {
@@ -13,8 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PreviewPostPageProps): Promise<Metadata> {
 	const { slug } = await params;
-	const contentOptions = await getPreviewContentOptionsFromRequest();
-	const post = await getPost(slug, contentOptions);
+	const post = await getPost(slug);
 
 	if (!post) {
 		return {
@@ -32,14 +30,13 @@ export async function generateMetadata({ params }: PreviewPostPageProps): Promis
 
 export default async function PreviewPostPage({ params }: PreviewPostPageProps) {
 	const { slug } = await params;
-	const contentOptions = await getPreviewContentOptionsFromRequest();
-	const post = await getPost(slug, contentOptions);
+	const post = await getPost(slug);
 
 	if (!post) {
 		return notFound();
 	}
 
-	const postList = await getPostList(undefined, contentOptions);
+	const postList = await listPosts();
 
 	return (
 		<PostDetailPageContent

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/services/memo";
 import { MemoDetailPageContent } from "../../../memos/[slug]/memo-detail-page-content";
@@ -13,8 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PreviewMemoPageProps): Promise<Metadata> {
 	const { slug } = await params;
-	const contentOptions = await getPreviewContentOptionsFromRequest();
-	const memo = await getMemo(slug, contentOptions);
+	const memo = await getMemo(slug);
 
 	if (!memo) {
 		return {
@@ -32,8 +30,7 @@ export async function generateMetadata({ params }: PreviewMemoPageProps): Promis
 
 export default async function PreviewMemoPage({ params }: PreviewMemoPageProps) {
 	const { slug } = await params;
-	const contentOptions = await getPreviewContentOptionsFromRequest();
-	const memo = await getMemo(slug, contentOptions);
+	const memo = await getMemo(slug);
 
 	if (!memo) {
 		return notFound();

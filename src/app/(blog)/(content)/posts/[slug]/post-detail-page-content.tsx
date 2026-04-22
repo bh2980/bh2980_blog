@@ -1,17 +1,20 @@
-import Link from "next/link";
 import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import type { Post } from "@/libs/contents/types/legacy";
+import type { Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 import { PostBackLink } from "./post-back-link";
 import { PostDetailNavigation } from "./post-detail-navigation";
 
+type PostDetailPost = Post & {
+	isStale: boolean;
+};
+
 type PostDetailPageContentProps = {
-	post: Post;
-	postList: Omit<Post, "content">[];
+	post: PostDetailPost;
+	postList: Post[];
 	currentSlug?: string;
 	detailPathnamePrefix?: string;
 	listPathname?: string;
@@ -24,8 +27,7 @@ export const PostDetailPageContent = async ({
 	detailPathnamePrefix = "/posts",
 	listPathname = "/posts",
 }: PostDetailPageContentProps) => {
-	const source = await post.content();
-	const { content, toc } = await renderMDX(source);
+	const { content, toc } = await renderMDX(post.contentMdx);
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
@@ -40,9 +42,13 @@ export const PostDetailPageContent = async ({
 					<header className="flex flex-col items-start gap-5 border-slate-200">
 						<PostBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
-							<span>{post.category.name}</span>
-							<span>·</span>
-							<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
+							<span>{post.category.label}</span>
+							{post.status === "published" && (
+								<>
+									<span>·</span>
+									<time dateTime={post.publishedAt}>{post.publishedAt}</time>
+								</>
+							)}
 							<AdminEditLinkClient
 								collection="post"
 								slug={post.slug}
@@ -60,28 +66,13 @@ export const PostDetailPageContent = async ({
 							)}
 						>
 							{post.tags?.map((tag) => (
-								<li key={tag.slug}>{`#${tag.name}`}</li>
+								<li key={tag.slug}>{`#${tag.label}`}</li>
 							))}
 						</ul>
 					</header>
-					{(post.isDeprecated || post.isStale) && (
+					{post.isStale && (
 						<aside className="mt-8">
-							{post.isDeprecated && (
-								<Callout variant={"danger"}>
-									<p>
-										이 글은 더 이상 업데이트 되지 않습니다.
-										{post.replacementPost && (
-											<>
-												{" "}
-												최신 글은 <Link href={{ pathname: post.replacementPost }}>여기</Link>를 참조하세요
-											</>
-										)}
-									</p>
-								</Callout>
-							)}
-							{post.isStale && (
-								<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
-							)}
+							<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
 						</aside>
 					)}
 					{toc?.length > 0 ? <TableOfContents toc={toc} className="mt-4 xl:hidden" /> : null}

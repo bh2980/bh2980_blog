@@ -2,6 +2,7 @@ import "server-only";
 
 import { getContentRepository } from "../get-content-repository";
 import type { ListResult, Memo } from "../types/contents";
+import type { MemoListQuery } from "../types/query";
 
 const contentRepository = getContentRepository();
 
@@ -11,8 +12,10 @@ export async function getMemo(slug: string) {
 	return memo;
 }
 
-export async function listMemos(): Promise<ListResult<Memo>> {
-	const memoList = await contentRepository.listMemos();
+export async function listMemos(query: MemoListQuery = {}): Promise<ListResult<Memo>> {
+	const memoList = await contentRepository.listMemos({
+		...query,
+	});
 
 	return { list: memoList, total: memoList.length };
 }

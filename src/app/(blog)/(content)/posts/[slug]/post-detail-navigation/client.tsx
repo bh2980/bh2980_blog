@@ -6,11 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { getHrefWithCurrentQuery } from "@/components/query-preserving-back-link.client";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { Post } from "@/libs/contents/types/legacy";
+import type { Post } from "@/libs/contents/types/contents";
 
 type PostDetailNavigationProps = {
 	currentSlug: string;
-	items: Omit<Post, "content">[];
+	items: Post[];
 	detailPathnamePrefix?: string;
 };
 

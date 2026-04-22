@@ -4,11 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getMemoList } from "@/libs/contents/services/memo";
-import { getPostList } from "@/libs/contents/services/post";
+import { listMemos } from "@/libs/contents/services/memo";
+import { listPosts } from "@/libs/contents/services/post";
 
 export default async function Home() {
-	const [posts, memos] = await Promise.all([getPostList(), getMemoList()]);
+	const [posts, memos] = await Promise.all([listPosts(), listMemos()]);
 	const LATEST_ITEMS_COUNT = 3;
 	const FEATURED_TAGS_COUNT = 10;
 	const latestPosts = posts.list.slice(0, LATEST_ITEMS_COUNT);
@@ -20,7 +20,7 @@ export default async function Home() {
 	for (const item of allContent) {
 		for (const tag of item.tags ?? []) {
 			const existing = tagCountMap.get(tag.slug);
-			tagCountMap.set(tag.slug, { slug: tag.slug, name: tag.name, count: (existing?.count ?? 0) + 1 });
+			tagCountMap.set(tag.slug, { slug: tag.slug, name: tag.label, count: (existing?.count ?? 0) + 1 });
 		}
 	}
 
@@ -106,9 +106,13 @@ export default async function Home() {
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
 											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-												<span>{post.category.name}</span>
-												<span>·</span>
-												<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
+												<span>{post.category.label}</span>
+												{post.status === "published" && (
+													<>
+														<span>·</span>
+														<time dateTime={post.publishedAt}>{post.publishedAt}</time>
+													</>
+												)}
 											</div>
 											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{post.title}
@@ -142,16 +146,18 @@ export default async function Home() {
 											href={{ pathname: `/memos/${sanitizeSlug(memo.slug)}` }}
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
-											<div className="text-slate-500 text-xs dark:text-slate-400">
-												<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
-											</div>
+											{memo.status === "published" && (
+												<div className="text-slate-500 text-xs dark:text-slate-400">
+													<time dateTime={memo.publishedAt}>{memo.publishedAt}</time>
+												</div>
+											)}
 											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{memo.title}
 											</h3>
 											{memo.tags?.length ? (
 												<ul className="mt-2 flex flex-wrap gap-2 text-slate-500 text-xs dark:text-slate-400 [&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800">
 													{memo.tags.map((tag) => (
-														<li key={tag.slug}>{`#${tag.name}`}</li>
+														<li key={tag.slug}>{`#${tag.label}`}</li>
 													))}
 												</ul>
 											) : (
@@ -177,7 +183,7 @@ export default async function Home() {
 						) : (
 							featuredTags.map((tag) => (
 								<Badge key={tag.slug} variant="outline" className="gap-1">
-									<span>{tag.name}</span>
+									<span>{tag.label}</span>
 									<span className="text-slate-400 text-xs">{`(${tag.count})`}</span>
 								</Badge>
 							))

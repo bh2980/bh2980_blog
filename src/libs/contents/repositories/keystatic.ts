@@ -4,6 +4,35 @@ import { reader } from "@/keystatic/libs/reader";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";
 import type { Category, Memo, Post, Series, Tag } from "../types/contents";
+import type { MemoListQuery, PostListQuery } from "../types/query";
+
+function applyPostListQuery(posts: Post[], query: PostListQuery): Post[] {
+	let result = posts;
+
+	if (query.status) {
+		result = result.filter((post) => post.status === query.status);
+	}
+
+	if (query.category) {
+		result = result.filter((post) => post.category.slug === query.category);
+	}
+
+	if (query.tag) {
+		result = result.filter((post) => post.tags.some((tag) => tag.slug === query.tag));
+	}
+
+	return result;
+}
+
+function applyMemoListQuery(memos: Memo[], query: MemoListQuery): Memo[] {
+	let result = memos;
+
+	if (query.tag) {
+		result = result.filter((memo) => memo.tags.some((tag) => tag.slug === query.tag));
+	}
+
+	return result;
+}
 
 export class KeystaticRepository implements ContentRepository {
 	async getPost(slug: string): Promise<Post | null> {
@@ -32,6 +61,8 @@ export class KeystaticRepository implements ContentRepository {
 
 		const contentMdx = await post.content();
 
+		const isEvergreen = post.policy.discriminant === "evergreen";
+
 		return {
 			slug,
 			status: post.status,
@@ -41,6 +72,7 @@ export class KeystaticRepository implements ContentRepository {
 			tags,
 			contentMdx,
 			publishedAt: post.publishedDateTimeISO,
+			isEvergreen,
 		};
 	}
 	async getMemo(slug: string): Promise<Memo | null> {
@@ -78,28 +110,28 @@ export class KeystaticRepository implements ContentRepository {
 
 		return { slug, items, label: series.name, description: series.description };
 	}
-	async listPosts(): Promise<Post[]> {
+	async listPosts(query: PostListQuery = {}): Promise<Post[]> {
 		const r = await reader();
 
 		const postSlugList = await r.collections.post.list();
 
 		const postList = (await Promise.all(postSlugList.map((postSlug) => this.getPost(postSlug)))).filter(isDefined);
 
-		return postList;
+		return applyPostListQuery(postList, query);
 	}
 	async listPostSlugs(): Promise<string[]> {
 		const r = await reader();
 
 		return await r.collections.post.list();
 	}
-	async listMemos(): Promise<Memo[]> {
+	async listMemos(query: MemoListQuery = {}): Promise<Memo[]> {
 		const r = await reader();
 
 		const memoSlugList = await r.collections.memo.list();
 
 		const memoList = (await Promise.all(memoSlugList.map((memoSlug) => this.getMemo(memoSlug)))).filter(isDefined);
 
-		return memoList;
+		return applyMemoListQuery(memoList, query);
 	}
 	async listMemoSlugs(): Promise<string[]> {
 		const r = await reader();

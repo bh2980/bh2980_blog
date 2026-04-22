@@ -1,7 +1,7 @@
 import { createReader } from "@keystatic/core/reader";
 import { createGitHubReader } from "@keystatic/core/reader/github";
-import type { ContentAccessOptions } from "@/libs/contents/types/legacy";
 import keystaticConfig from "@/root/keystatic.config";
+import type { ContentAccessOptions } from "./content-access-options";
 import { shouldUseRemotePreview } from "./runtime";
 
 export const reader = async (options: ContentAccessOptions = {}) => {
