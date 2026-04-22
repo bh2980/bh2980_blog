@@ -1,9 +1,9 @@
 import "server-only";
 
-import { KeystaticRepository } from "../repositories/keystatic";
+import { getContentRepository } from "../get-content-repository";
 import type { Category, ListResult } from "../types/contents";
 
-const contentRepository = new KeystaticRepository();
+const contentRepository = getContentRepository();
 
 export async function getCategoryList(): Promise<ListResult<Category>> {
 	const categoryList = await contentRepository.listCategories();
