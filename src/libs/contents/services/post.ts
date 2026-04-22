@@ -11,12 +11,12 @@ export async function getPost(slug: string) {
 	return post;
 }
 
-export async function getPostList(): Promise<ListResult<Post>> {
+export async function listPosts(): Promise<ListResult<Post>> {
 	const postList = await contentRepository.listPosts();
 
 	return { list: postList, total: postList.length };
 }
 
-export const getPostSlugs = async () => {
+export async function listPostSlugs() {
 	return await contentRepository.listPostSlugs();
-};
+}

@@ -5,7 +5,7 @@ import type { Category, ListResult } from "../types/contents";
 
 const contentRepository = getContentRepository();
 
-export async function getCategoryList(): Promise<ListResult<Category>> {
+export async function listCategories(): Promise<ListResult<Category>> {
 	const categoryList = await contentRepository.listCategories();
 
 	return {

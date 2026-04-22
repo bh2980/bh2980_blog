@@ -11,12 +11,12 @@ export async function getMemo(slug: string) {
 	return memo;
 }
 
-export async function getMemoList(): Promise<ListResult<Memo>> {
+export async function listMemos(): Promise<ListResult<Memo>> {
 	const memoList = await contentRepository.listMemos();
 
 	return { list: memoList, total: memoList.length };
 }
 
-export async function getMemoSlugList() {
+export async function listMemoSlugs() {
 	return await contentRepository.listMemoSlugs();
 }
