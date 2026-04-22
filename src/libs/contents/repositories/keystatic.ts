@@ -42,7 +42,7 @@ export class KeystaticRepository implements ContentRepository {
 			slug: normalizedSlug,
 			status: post.status,
 			title: post.title,
-			excerpt: post.excerpt,
+			excerpt: post.excerpt ?? "",
 			category: { label: category.name, slug: normalizedCategorySlug },
 			tags,
 			contentMdx,

@@ -87,11 +87,22 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 												</>
 											)}
 									</span>
-									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
-									<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
-								</article>
-							</Link>
-						</li>
+										<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
+										{post.tags?.length ? (
+											<ul
+												className={cn(
+													"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
+													"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
+												)}
+											>
+												{post.tags.map((tag) => (
+													<li key={tag.slug}>{`#${tag.label}`}</li>
+												))}
+											</ul>
+										) : null}
+									</article>
+								</Link>
+							</li>
 					))}
 				</ul>
 			)}
