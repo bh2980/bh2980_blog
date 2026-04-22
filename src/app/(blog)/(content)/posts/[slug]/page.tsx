@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getPost, listPostSlugs, listPosts } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "./post-detail-page-content";
 
@@ -22,7 +21,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 		};
 	}
 
-	const url = `/posts/${sanitizeSlug(slug)}`;
+	const url = `/posts/${post.slug}`;
 
 	return {
 		title: post.title,

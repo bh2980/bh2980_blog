@@ -1,5 +1,4 @@
 import { Feed } from "feed";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { listPosts } from "@/libs/contents/services/post";
 import { isDefined } from "@/utils/is-defined";
 
@@ -14,7 +13,7 @@ export async function GET() {
 	const postList = await listPosts();
 	const items = [...postList.list]
 		.map((post) => {
-			if (!post.publishedAt) return null;
+			if (post.status !== "published") return null;
 
 			const date = new Date(post.publishedAt);
 			if (Number.isNaN(date.getTime())) return null;
@@ -42,7 +41,7 @@ export async function GET() {
 	});
 
 	for (const post of items) {
-		const url = new URL(`/posts/${sanitizeSlug(post.slug)}`, siteUrl).href;
+		const url = new URL(`/posts/${post.slug}`, siteUrl).href;
 
 		feed.addItem({
 			title: post.title,

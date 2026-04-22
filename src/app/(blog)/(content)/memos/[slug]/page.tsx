@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo, listMemoSlugs } from "@/libs/contents/services/memo";
 import { MemoDetailPageContent } from "./memo-detail-page-content";
 
@@ -22,7 +21,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 		};
 	}
 
-	const url = `/memos/${sanitizeSlug(slug)}`;
+	const url = `/memos/${memo.slug}`;
 
 	return {
 		title: memo.title,

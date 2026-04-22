@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { getMemo } from "@/libs/contents/services/memo";
 import { MemoDetailPageContent } from "../../../memos/[slug]/memo-detail-page-content";
 
@@ -24,7 +23,7 @@ export async function generateMetadata({ params }: PreviewMemoPageProps): Promis
 	return {
 		title: memo.title,
 		robots: { index: false, follow: false },
-		alternates: { canonical: `/memos/${sanitizeSlug(slug)}` },
+		alternates: { canonical: `/memos/${memo.slug}` },
 	};
 }
 

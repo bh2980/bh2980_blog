@@ -3,7 +3,6 @@ import Footer from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
 
@@ -13,14 +12,14 @@ export default async function Home() {
 	const FEATURED_TAGS_COUNT = 10;
 	const latestPosts = posts.list.slice(0, LATEST_ITEMS_COUNT);
 	const latestMemos = memos.list.slice(0, LATEST_ITEMS_COUNT);
-	const tagCountMap = new Map<string, { slug: string; name: string; count: number }>();
+	const tagCountMap = new Map<string, { slug: string; label: string; count: number }>();
 
 	const allContent = [...posts.list, ...memos.list];
 
 	for (const item of allContent) {
 		for (const tag of item.tags ?? []) {
 			const existing = tagCountMap.get(tag.slug);
-			tagCountMap.set(tag.slug, { slug: tag.slug, name: tag.label, count: (existing?.count ?? 0) + 1 });
+			tagCountMap.set(tag.slug, { slug: tag.slug, label: tag.label, count: (existing?.count ?? 0) + 1 });
 		}
 	}
 
@@ -101,10 +100,10 @@ export default async function Home() {
 								{latestPosts.map((post) => (
 									<li key={post.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
-										<Link
-											href={{ pathname: `/posts/${sanitizeSlug(post.slug)}` }}
-											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-										>
+											<Link
+												href={{ pathname: `/posts/${post.slug}` }}
+												className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+											>
 											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 												<span>{post.category.label}</span>
 												{post.status === "published" && (
@@ -142,10 +141,10 @@ export default async function Home() {
 								{latestMemos.map((memo) => (
 									<li key={memo.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
-										<Link
-											href={{ pathname: `/memos/${sanitizeSlug(memo.slug)}` }}
-											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-										>
+											<Link
+												href={{ pathname: `/memos/${memo.slug}` }}
+												className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+											>
 											{memo.status === "published" && (
 												<div className="text-slate-500 text-xs dark:text-slate-400">
 													<time dateTime={memo.publishedAt}>{memo.publishedAt}</time>

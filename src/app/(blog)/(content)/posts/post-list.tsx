@@ -5,7 +5,6 @@ import { useQueryState } from "nuqs";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { Category, ListResult, Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 
@@ -73,10 +72,10 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 					{postList.map((post) => (
 						<li key={post.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
-							<Link
-								href={{ pathname: `/posts/${sanitizeSlug(post.slug)}`, query: category ? { category } : undefined }}
-								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-							>
+								<Link
+									href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
+									className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+								>
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 										<span>{post.category.label}</span>
