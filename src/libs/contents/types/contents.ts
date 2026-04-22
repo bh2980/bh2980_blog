@@ -3,19 +3,19 @@ export type ListResult<T> = {
 	total: number;
 };
 
-type Publication =
-	| {
-			status: "published";
-			publishedAt: string;
-	  }
-	| {
-			status: "draft";
-	  };
+export type DraftState = {
+	status: "draft";
+};
+
+export type PublishedState = {
+	status: "published";
+	publishedAt: string;
+};
 
 export type Category = { slug: string; label: string };
 export type Tag = { slug: string; label: string };
 
-export type Post = Publication & {
+type BasePost = {
 	slug: string;
 	title: string;
 	contentMdx: string;
@@ -25,12 +25,20 @@ export type Post = Publication & {
 	isEvergreen?: boolean;
 };
 
-export type Memo = Publication & {
+export type DraftPost = DraftState & BasePost;
+export type PublishedPost = PublishedState & BasePost;
+export type Post = DraftPost | PublishedPost;
+
+type BaseMemo = {
 	slug: string;
 	title: string;
 	contentMdx: string;
 	tags: Tag[];
 };
+
+export type DraftMemo = DraftState & BaseMemo;
+export type PublishedMemo = PublishedState & BaseMemo;
+export type Memo = DraftMemo | PublishedMemo;
 
 export type Series = {
 	slug: string;

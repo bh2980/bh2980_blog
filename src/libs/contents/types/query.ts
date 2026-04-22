@@ -6,10 +6,10 @@ export type ContentSort = {
 };
 
 export type PostListQuery = {
-	status?: "draft" | "published";
+	status?: "all" | "published";
 	category?: string;
 	tag?: string;
-	sort?: ContentSort;
+	// sort?: ContentSort;
 };
 
 export type MemoListQuery = {
