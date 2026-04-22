@@ -2,6 +2,7 @@ import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
+import { differenceInYears } from "date-fns";
 import type { Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
@@ -9,12 +10,18 @@ import { Comments } from "./comments.client";
 import { PostBackLink } from "./post-back-link";
 import { PostDetailNavigation } from "./post-detail-navigation";
 
-type PostDetailPost = Post & {
-	isStale: boolean;
-};
+const POST_STALE_THRESHOLD_YEARS = 2;
+
+function isStalePost(post: Post) {
+	return (
+		post.status === "published" &&
+		!post.isEvergreen &&
+		differenceInYears(Date.now(), post.publishedAt) >= POST_STALE_THRESHOLD_YEARS
+	);
+}
 
 type PostDetailPageContentProps = {
-	post: PostDetailPost;
+	post: Post;
 	postList: Post[];
 	currentSlug?: string;
 	detailPathnamePrefix?: string;
@@ -71,7 +78,7 @@ export const PostDetailPageContent = async ({
 							))}
 						</ul>
 					</header>
-					{post.isStale && (
+					{isStalePost(post) && (
 						<aside className="mt-8">
 							<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
 						</aside>
