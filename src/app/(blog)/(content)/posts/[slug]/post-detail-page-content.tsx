@@ -4,6 +4,7 @@ import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
+import { formatPublishedAt } from "@/utils/format-published-at";
 import { Comments } from "./comments.client";
 import { PostBackLink } from "./post-back-link";
 import { PostDetailNavigation } from "./post-detail-navigation";
@@ -43,12 +44,12 @@ export const PostDetailPageContent = async ({
 						<PostBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<span>{post.category.label}</span>
-							{post.status === "published" && (
-								<>
-									<span>·</span>
-									<time dateTime={post.publishedAt}>{post.publishedAt}</time>
-								</>
-							)}
+								{post.status === "published" && (
+									<>
+										<span>·</span>
+										<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+									</>
+								)}
 							<AdminEditLinkClient
 								collection="post"
 								slug={post.slug}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { Category, ListResult, Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
+import { formatPublishedAt } from "@/utils/format-published-at";
 
 type PostListCategory = Category & {
 	count: number;
@@ -79,12 +80,12 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 										<span>{post.category.label}</span>
-										{post.status === "published" && (
-											<>
-												<span>·</span>
-												<time dateTime={post.publishedAt}>{post.publishedAt}</time>
-											</>
-										)}
+											{post.status === "published" && (
+												<>
+													<span>·</span>
+													<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+												</>
+											)}
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
 									<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>

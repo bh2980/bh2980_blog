@@ -3,6 +3,7 @@ import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Memo } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
+import { formatPublishedAt } from "@/utils/format-published-at";
 import { MemoBackLink } from "./memo-back-link";
 
 type MemoDetailPageContentProps = {
@@ -26,7 +27,9 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 					<header className="flex flex-col items-start gap-5 border-slate-200">
 						<MemoBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
-							{memo.status === "published" && <time dateTime={memo.publishedAt}>{memo.publishedAt}</time>}
+								{memo.status === "published" && (
+									<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
+								)}
 							<AdminEditLinkClient
 								collection="memo"
 								slug={memo.slug}
