@@ -1,12 +1,14 @@
-import type { Category, ListResult, Memo, Post, Series, Tag } from "../types/contents";
+import type { Category, Memo, Post, Series, Tag } from "../types/contents";
 
 export interface ContentRepository {
 	getPost(slug: string): Promise<Post | null>;
 	getMemo(slug: string): Promise<Memo | null>;
 	getSeries(slug: string): Promise<Series | null>;
-	listPosts(): Promise<ListResult<Post>>;
-	listMemos(): Promise<ListResult<Memo>>;
-	listCategories(): Promise<ListResult<Category>>;
-	listTags(): Promise<ListResult<Tag>>;
-	listSeries(): Promise<ListResult<Series>>;
+	listPosts(): Promise<Post[]>;
+	listPostSlugs(): Promise<string[]>;
+	listMemos(): Promise<Memo[]>;
+	listMemoSlugs(): Promise<string[]>;
+	listCategories(): Promise<Category[]>;
+	listTags(): Promise<Tag[]>;
+	listSeries(): Promise<Series[]>;
 }

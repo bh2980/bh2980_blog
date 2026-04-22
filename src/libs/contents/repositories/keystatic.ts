@@ -1,7 +1,9 @@
+import "server-only";
+
 import { reader } from "@/keystatic/libs/reader";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";
-import type { Category, ListResult, Memo, Post, Series, Tag } from "../types/contents";
+import type { Category, Memo, Post, Series, Tag } from "../types/contents";
 
 export class KeystaticRepository implements ContentRepository {
 	async getPost(slug: string): Promise<Post | null> {
@@ -76,31 +78,35 @@ export class KeystaticRepository implements ContentRepository {
 
 		return { slug, items, label: series.name, description: series.description };
 	}
-	async listPosts(): Promise<ListResult<Post>> {
+	async listPosts(): Promise<Post[]> {
 		const r = await reader();
 
 		const postSlugList = await r.collections.post.list();
 
 		const postList = (await Promise.all(postSlugList.map((postSlug) => this.getPost(postSlug)))).filter(isDefined);
 
-		return {
-			list: postList,
-			total: postList.length,
-		};
+		return postList;
 	}
-	async listMemos(): Promise<ListResult<Memo>> {
+	async listPostSlugs(): Promise<string[]> {
+		const r = await reader();
+
+		return await r.collections.post.list();
+	}
+	async listMemos(): Promise<Memo[]> {
 		const r = await reader();
 
 		const memoSlugList = await r.collections.memo.list();
 
 		const memoList = (await Promise.all(memoSlugList.map((memoSlug) => this.getMemo(memoSlug)))).filter(isDefined);
 
-		return {
-			list: memoList,
-			total: memoList.length,
-		};
+		return memoList;
 	}
-	async listCategories(): Promise<ListResult<Category>> {
+	async listMemoSlugs(): Promise<string[]> {
+		const r = await reader();
+
+		return await r.collections.memo.list();
+	}
+	async listCategories(): Promise<Category[]> {
 		const r = await reader();
 
 		const categorySlugList = await r.collections.category.list();
@@ -118,12 +124,9 @@ export class KeystaticRepository implements ContentRepository {
 			)
 		).filter(isDefined<Category>);
 
-		return {
-			list: categoryList,
-			total: categoryList.length,
-		};
+		return categoryList;
 	}
-	async listTags(): Promise<ListResult<Tag>> {
+	async listTags(): Promise<Tag[]> {
 		const r = await reader();
 
 		const tagSlugList = await r.collections.tag.list();
@@ -141,12 +144,9 @@ export class KeystaticRepository implements ContentRepository {
 			)
 		).filter(isDefined<Tag>);
 
-		return {
-			list: tagList,
-			total: tagList.length,
-		};
+		return tagList;
 	}
-	async listSeries(): Promise<ListResult<Series>> {
+	async listSeries(): Promise<Series[]> {
 		const r = await reader();
 
 		const seriesSlugList = await r.collections.collection.list();
@@ -164,9 +164,6 @@ export class KeystaticRepository implements ContentRepository {
 			)
 		).filter(isDefined<Series>);
 
-		return {
-			list: seriesList,
-			total: seriesList.length,
-		};
+		return seriesList;
 	}
 }

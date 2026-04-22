@@ -1,80 +1,22 @@
 import "server-only";
-import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { MemoEntry } from "@/keystatic/types";
-import { isDefined } from "@/utils";
-import type { ContentAccessOptions, ListResult, Memo, Tag, WithSlug } from "../types/legacy";
-import { getContentMap } from "./store";
 
-const normalizeMemo = (
-	memo: WithSlug<MemoEntry>,
-	map: { tagMap: Map<string, Tag> },
-	dateTimeOptions: Intl.DateTimeFormatOptions,
-): Memo | null => {
-	const tags = memo.tags
-		.filter(isDefined)
-		.map((tag) => map.tagMap.get(tag))
-		.filter(isDefined);
+import { KeystaticRepository } from "../repositories/keystatic";
+import type { ListResult, Memo } from "../types/contents";
 
-	const publishedDateTimeISO = normalizeKstIsoString(memo.publishedDateTimeISO);
-	const publishedAt = new Date(publishedDateTimeISO).toLocaleString("ko-KR", dateTimeOptions);
+const contentRepository = new KeystaticRepository();
 
-	return { ...memo, tags, publishedAt, publishedDateTimeISO };
-};
+export async function getMemo(slug: string) {
+	const memo = await contentRepository.getMemo(slug);
 
-export const getMemo = async (slug: string, options: ContentAccessOptions = {}): Promise<Memo | null> => {
-	const { memoMap, tagMap } = await getContentMap(options);
+	return memo;
+}
 
-	const memo = memoMap.get(sanitizeSlug(slug));
-	if (!memo) {
-		return null;
-	}
+export async function getMemoList(): Promise<ListResult<Memo>> {
+	const memoList = await contentRepository.listMemos();
 
-	return normalizeMemo(
-		memo,
-		{ tagMap },
-		{
-			dateStyle: "medium",
-			timeStyle: "short",
-		},
-	);
-};
+	return { list: memoList, total: memoList.length };
+}
 
-export const getMemoList = async (options: ContentAccessOptions = {}): Promise<ListResult<Omit<Memo, "content">>> => {
-	const { memoMap, tagMap } = await getContentMap(options);
-
-	const memos = Array.from(memoMap.values()).toSorted(
-		(a, b) => new Date(b.publishedDateTimeISO).getTime() - new Date(a.publishedDateTimeISO).getTime(),
-	);
-
-	const list = memos
-		.map((memo) => normalizeMemo(memo, { tagMap }, { dateStyle: "short" }))
-		.filter(isDefined)
-		.map(({ content, ...rest }) => rest);
-
-	return { list, total: list.length };
-};
-
-export const getMemoSlugs = async (options: ContentAccessOptions = {}): Promise<string[]> => {
-	const { memoMap } = await getContentMap(options);
-
-	return Array.from(memoMap.values()).map((memo) => sanitizeSlug(memo.slug));
-};
-
-export const getMemoTagList = async (options: ContentAccessOptions = {}): Promise<ListResult<Tag>> => {
-	const { memoMap, tagMap } = await getContentMap(options);
-
-	const tagSet = new Set<string>();
-
-	memoMap.forEach((memo) => {
-		memo.tags.forEach((tag) => {
-			if (!tag) return;
-
-			tagSet.add(tag);
-		});
-	});
-
-	const list = Array.from(tagSet, (tag) => tagMap.get(tag)).filter(isDefined);
-
-	return { list, total: list.length };
-};
+export async function getMemoSlugList() {
+	return await contentRepository.listMemoSlugs();
+}

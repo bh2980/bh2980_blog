@@ -1,31 +1,15 @@
-import { shouldHideDraftContent } from "@/keystatic/libs/runtime";
-import type { CategoryListMeta, CategoryWithCount, ContentAccessOptions, ListResult } from "../types/legacy";
-import { getContentMap } from "./store";
+import "server-only";
 
-export const getCategoryList = async (
-	options: ContentAccessOptions = {},
-): Promise<ListResult<CategoryWithCount, CategoryListMeta>> => {
-	const { postMap, categoryMap } = await getContentMap(options);
+import { KeystaticRepository } from "../repositories/keystatic";
+import type { Category, ListResult } from "../types/contents";
 
-	const categoryCountMap = new Map(
-		Array.from(categoryMap.values()).map((category) => [category.slug, { ...category, count: 0 }]),
-	);
+const contentRepository = new KeystaticRepository();
 
-	let totalPostCount = 0;
+export async function getCategoryList(): Promise<ListResult<Category>> {
+	const categoryList = await contentRepository.listCategories();
 
-	postMap.forEach((post) => {
-		if (!post.category) {
-			return;
-		}
-
-		const category = categoryCountMap.get(post.category);
-		if ((shouldHideDraftContent(options) && post.status === "draft") || !category) return;
-
-		category.count++;
-		totalPostCount++;
-	});
-
-	const list = Array.from(categoryCountMap.values());
-
-	return { list, total: list.length, meta: { totalPostCount } };
-};
+	return {
+		list: categoryList,
+		total: categoryList.length,
+	};
+}
