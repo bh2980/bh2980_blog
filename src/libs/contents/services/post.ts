@@ -28,6 +28,13 @@ export async function listPosts(query: PostListQuery = {}): Promise<ListResult<P
 		...query,
 	});
 
+	postList.sort((a, b) => {
+		const aTime = a.status === "published" ? new Date(a.publishedAt).getTime() : 0;
+		const bTime = b.status === "published" ? new Date(b.publishedAt).getTime() : 0;
+
+		return bTime - aTime;
+	});
+
 	return { list: postList, total: postList.length };
 }
 

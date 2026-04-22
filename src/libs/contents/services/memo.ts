@@ -17,6 +17,13 @@ export async function listMemos(query: MemoListQuery = {}): Promise<ListResult<M
 		...query,
 	});
 
+	memoList.sort((a, b) => {
+		const aTime = a.status === "published" ? new Date(a.publishedAt).getTime() : 0;
+		const bTime = b.status === "published" ? new Date(b.publishedAt).getTime() : 0;
+
+		return bTime - aTime;
+	});
+
 	return { list: memoList, total: memoList.length };
 }
 
