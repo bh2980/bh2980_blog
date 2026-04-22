@@ -1,7 +1,7 @@
 import { reader } from "@/keystatic/libs/reader";
 import { isDefined } from "@/utils/is-defined";
-import type { Category, ListResult, Memo, Post, Series, Tag } from "./contents.types";
-import type { ContentRepository } from "./repository";
+import type { ContentRepository } from "../contracts/repository";
+import type { Category, ListResult, Memo, Post, Series, Tag } from "../types/contents";
 
 export class KeystaticRepository implements ContentRepository {
 	async getPost(slug: string): Promise<Post | null> {

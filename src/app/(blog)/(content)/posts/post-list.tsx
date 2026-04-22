@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { CategoryListMeta, CategoryWithCount, ListResult, Post } from "@/libs/contents/types";
+import type { CategoryListMeta, CategoryWithCount, ListResult, Post } from "@/libs/contents/types/legacy";
 import { cn } from "@/utils/cn";
 
 type PostListProps = {

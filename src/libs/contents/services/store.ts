@@ -2,8 +2,8 @@ import "server-only";
 
 import { reader } from "@/keystatic/libs/reader";
 import type { CategoryEntry, CollectionEntry, MemoEntry, PostEntry, TagEntry } from "@/keystatic/types";
+import type { ContentAccessOptions, WithSlug } from "../types/legacy";
 import { getSafeExcerpt } from "./post";
-import type { ContentAccessOptions, WithSlug } from "./types";
 
 const buildSlugMap = <T>(items: Array<{ slug: string; entry: T }>): Map<string, WithSlug<T>> => {
 	return new Map(items.map((item) => [item.slug, { ...item.entry, slug: item.slug }]));

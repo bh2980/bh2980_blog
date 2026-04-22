@@ -1,5 +1,5 @@
 import { cookies, draftMode } from "next/headers";
-import type { ContentAccessOptions } from "@/libs/contents/types";
+import type { ContentAccessOptions } from "@/libs/contents/types/legacy";
 import { isRemotePreviewEnabled } from "./runtime";
 
 export const getPreviewContentOptionsFromRequest = async (): Promise<ContentAccessOptions> => {

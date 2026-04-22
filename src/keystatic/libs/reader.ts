@@ -1,6 +1,6 @@
 import { createReader } from "@keystatic/core/reader";
 import { createGitHubReader } from "@keystatic/core/reader/github";
-import type { ContentAccessOptions } from "@/libs/contents/types";
+import type { ContentAccessOptions } from "@/libs/contents/types/legacy";
 import keystaticConfig from "@/root/keystatic.config";
 import { shouldUseRemotePreview } from "./runtime";
 

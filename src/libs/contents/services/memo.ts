@@ -3,8 +3,8 @@ import { normalizeKstIsoString } from "@/keystatic/libs/normalize-kst-iso-string
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { MemoEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
+import type { ContentAccessOptions, ListResult, Memo, Tag, WithSlug } from "../types/legacy";
 import { getContentMap } from "./store";
-import type { ContentAccessOptions, ListResult, Memo, Tag, WithSlug } from "./types";
 
 const normalizeMemo = (
 	memo: WithSlug<MemoEntry>,

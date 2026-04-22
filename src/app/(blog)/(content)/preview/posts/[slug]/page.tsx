@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getPost, getPostList } from "@/libs/contents/post";
+import { getPost, getPostList } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "../../../posts/[slug]/post-detail-page-content";
 
 type PreviewPostPageProps = {

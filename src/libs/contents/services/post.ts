@@ -11,8 +11,8 @@ import { shouldHideDraftContent } from "@/keystatic/libs/runtime";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
 import type { PostEntry } from "@/keystatic/types";
 import { isDefined } from "@/utils";
+import type { Category, ContentAccessOptions, ListOptions, ListResult, Post, Tag, WithSlug } from "../types/legacy";
 import { getContentMap } from "./store";
-import type { Category, ContentAccessOptions, ListOptions, ListResult, Post, Tag, WithSlug } from "./types";
 
 const BUILD_TIME = new Date();
 const normalizePost = (

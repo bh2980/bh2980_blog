@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { ListResult, Memo, Tag } from "@/libs/contents/types";
+import type { ListResult, Memo, Tag } from "@/libs/contents/types/legacy";
 import { cn } from "@/utils/cn";
 
 type MemoListProps = {

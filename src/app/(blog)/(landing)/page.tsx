@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getMemoList } from "@/libs/contents/memo";
-import { getPostList } from "@/libs/contents/post";
+import { getMemoList } from "@/libs/contents/services/memo";
+import { getPostList } from "@/libs/contents/services/post";
 
 export default async function Home() {
 	const [posts, memos] = await Promise.all([getPostList(), getMemoList()]);

@@ -3,7 +3,7 @@ import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import type { Post } from "@/libs/contents/types";
+import type { Post } from "@/libs/contents/types/legacy";
 import { cn } from "@/utils/cn";
 import { Comments } from "./comments.client";
 import { PostBackLink } from "./post-back-link";

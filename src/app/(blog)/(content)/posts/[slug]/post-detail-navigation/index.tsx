@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import type { Post } from "@/libs/contents/types";
+import type { Post } from "@/libs/contents/types/legacy";
 import { PostDetailNavigationClient } from "./client";
 
 type PostDetailNavigationProps = {

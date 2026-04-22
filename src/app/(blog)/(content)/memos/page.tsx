@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getMemoList, getMemoTagList } from "@/libs/contents/memo";
+import { getMemoList, getMemoTagList } from "@/libs/contents/services/memo";
 import { MemoList } from "./memo-list";
 
 export const metadata: Metadata = {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPreviewContentOptionsFromRequest } from "@/keystatic/libs/request-content-options";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getMemo } from "@/libs/contents/memo";
+import { getMemo } from "@/libs/contents/services/memo";
 import { MemoDetailPageContent } from "../../../memos/[slug]/memo-detail-page-content";
 
 type PreviewMemoPageProps = {

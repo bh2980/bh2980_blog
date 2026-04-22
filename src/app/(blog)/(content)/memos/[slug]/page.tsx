@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getMemo, getMemoSlugs } from "@/libs/contents/memo";
+import { getMemo, getMemoSlugs } from "@/libs/contents/services/memo";
 import { MemoDetailPageContent } from "./memo-detail-page-content";
 
 type MemoPageProps = {

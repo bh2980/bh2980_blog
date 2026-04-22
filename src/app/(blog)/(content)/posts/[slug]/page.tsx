@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getPost, getPostList, getPostSlugs } from "@/libs/contents/post";
+import { getPost, getPostList, getPostSlugs } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "./post-detail-page-content";
 
 type BlogPageProps = {

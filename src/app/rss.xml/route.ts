@@ -1,6 +1,6 @@
 import { Feed } from "feed";
 import { sanitizeSlug } from "@/keystatic/libs/slug";
-import { getPostList } from "@/libs/contents/post";
+import { getPostList } from "@/libs/contents/services/post";
 import { isDefined } from "@/utils/is-defined";
 
 export async function GET() {

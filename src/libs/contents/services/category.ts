@@ -1,6 +1,6 @@
 import { shouldHideDraftContent } from "@/keystatic/libs/runtime";
+import type { CategoryListMeta, CategoryWithCount, ContentAccessOptions, ListResult } from "../types/legacy";
 import { getContentMap } from "./store";
-import type { CategoryListMeta, CategoryWithCount, ContentAccessOptions, ListResult } from "./types";
 
 export const getCategoryList = async (
 	options: ContentAccessOptions = {},

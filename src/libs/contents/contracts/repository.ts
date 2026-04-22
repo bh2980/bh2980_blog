@@ -1,4 +1,4 @@
-import type { Category, ListResult, Memo, Post, Series, Tag } from "./contents.types";
+import type { Category, ListResult, Memo, Post, Series, Tag } from "../types/contents";
 
 export interface ContentRepository {
 	getPost(slug: string): Promise<Post | null>;

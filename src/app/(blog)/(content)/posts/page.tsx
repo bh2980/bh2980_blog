@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { getCategoryList } from "@/libs/contents/category";
-import { getPostList } from "@/libs/contents/post";
+import { getCategoryList } from "@/libs/contents/services/category";
+import { getPostList } from "@/libs/contents/services/post";
 import { PostList } from "./post-list";
 
 export const metadata: Metadata = {
