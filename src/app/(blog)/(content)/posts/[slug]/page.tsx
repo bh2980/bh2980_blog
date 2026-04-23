@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPost, listPostSlugs, listPosts } from "@/libs/contents/services/post";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { getPost, getPostList, getPostSlugs } from "@/libs/contents/post";
 import { PostDetailPageContent } from "./post-detail-page-content";
 
 type BlogPageProps = {
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 		};
 	}
 
-	const url = `/posts/${post.slug}`;
+	const url = `/posts/${sanitizeSlug(slug)}`;
 
 	return {
 		title: post.title,
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 }
 
 export async function generateStaticParams() {
-	const slugs = await listPostSlugs();
+	const slugs = await getPostSlugs();
 
 	return slugs.map((slug) => ({ slug }));
 }
@@ -40,7 +41,7 @@ export default async function BlogPost({ params }: BlogPageProps) {
 	const { slug } = await params;
 
 	const post = await getPost(slug);
-	const postList = await listPosts();
+	const postList = await getPostList();
 
 	if (!post) {
 		return notFound();

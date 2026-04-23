@@ -8,15 +8,6 @@ export const memoCollection = collection({
 	entryLayout: "content",
 	format: { contentField: "content" },
 	schema: {
-		status: fields.select({
-			label: "상태",
-			defaultValue: "draft",
-			options: [
-				{ label: "임시저장", value: "draft" },
-				{ label: "발행", value: "published" },
-			],
-		}),
-
 		title: fields.slug({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),

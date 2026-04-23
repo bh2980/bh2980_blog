@@ -1,5 +1,5 @@
 import { createOgImageResponse, OG_ALTER_ALT, OG_CONTENT_TYPE, OG_SIZE } from "@/libs/contents/og";
-import { getPost } from "@/libs/contents/services/post";
+import { getPost } from "@/libs/contents/post";
 
 export async function generateImageMetadata({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;

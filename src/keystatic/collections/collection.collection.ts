@@ -1,5 +1,11 @@
 import { collection, fields } from "@keystatic/core";
 
+const COLLECTION_OPTIONS_LIST = [
+	{ label: "시리즈", value: "series" },
+	{ label: "프로젝트", value: "project" },
+	{ label: "위키", value: "wiki" },
+] as const;
+
 export const collectionCollection = collection({
 	label: "모음집",
 	slugField: "name",
@@ -9,6 +15,34 @@ export const collectionCollection = collection({
 			name: { label: "제목", validation: { isRequired: true } },
 		}),
 		description: fields.text({ label: "설명", multiline: true }),
-		items: fields.multiRelationship({ collection: "post", label: "게시글" }),
+		meta: fields.conditional(
+			fields.select({
+				label: "카테고리",
+				defaultValue: "series",
+				options: COLLECTION_OPTIONS_LIST,
+			}),
+			{
+				series: fields.object(
+					{
+						post: fields.multiRelationship({ collection: "post", label: "게시글" }),
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
+					},
+					{ label: "컨텐츠" },
+				),
+				project: fields.object(
+					{
+						post: fields.multiRelationship({ collection: "post", label: "게시글" }),
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
+					},
+					{ label: "컨텐츠" },
+				),
+				wiki: fields.object(
+					{
+						memo: fields.multiRelationship({ collection: "memo", label: "메모" }),
+					},
+					{ label: "컨텐츠" },
+				),
+			},
+		),
 	},
 });

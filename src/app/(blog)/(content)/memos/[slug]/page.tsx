@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getMemo, listMemoSlugs } from "@/libs/contents/services/memo";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
+import { getMemo, getMemoSlugs } from "@/libs/contents/memo";
 import { MemoDetailPageContent } from "./memo-detail-page-content";
 
 type MemoPageProps = {
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 		};
 	}
 
-	const url = `/memos/${memo.slug}`;
+	const url = `/memos/${sanitizeSlug(slug)}`;
 
 	return {
 		title: memo.title,
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 }
 
 export async function generateStaticParams() {
-	const slugs = await listMemoSlugs();
+	const slugs = await getMemoSlugs();
 
 	return slugs.map((slug) => ({ slug }));
 }
