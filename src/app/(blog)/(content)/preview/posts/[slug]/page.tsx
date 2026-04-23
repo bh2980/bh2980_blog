@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPost, listPosts } from "@/libs/contents/services/post";
+import { getPreviewPost, listPreviewPosts } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "../../../posts/[slug]/post-detail-page-content";
 
 type PreviewPostPageProps = {
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PreviewPostPageProps): Promise<Metadata> {
 	const { slug } = await params;
-	const post = await getPost(slug);
+	const post = await getPreviewPost(slug);
 
 	if (!post) {
 		return {
@@ -29,13 +29,13 @@ export async function generateMetadata({ params }: PreviewPostPageProps): Promis
 
 export default async function PreviewPostPage({ params }: PreviewPostPageProps) {
 	const { slug } = await params;
-	const post = await getPost(slug);
+	const post = await getPreviewPost(slug);
 
 	if (!post) {
 		return notFound();
 	}
 
-	const postList = await listPosts();
+	const postList = await listPreviewPosts();
 
 	return (
 		<PostDetailPageContent
