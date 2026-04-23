@@ -1,31 +1,43 @@
 import "server-only";
 
+import { compareDesc } from "date-fns";
 import { getContentRepository } from "../get-content-repository";
-import type { ListResult, Post } from "../types/contents";
+import type { ListResult, Post, PublishedPost } from "../types/contents";
 import type { PostListQuery } from "../types/query";
 
 const contentRepository = getContentRepository();
 
 export async function getPost(slug: string) {
-	return await contentRepository.getPost(slug);
+	const post = await contentRepository.getPost(slug);
+
+	if (post?.status === "draft") return null;
+
+	return post;
 }
 
-export async function listPosts(query: PostListQuery = {}): Promise<ListResult<Post>> {
+export async function listPosts(query: Omit<PostListQuery, "status"> = {}): Promise<ListResult<PublishedPost>> {
 	const postList = await contentRepository.listPosts({
-		status: "published",
 		...query,
+		status: "published",
 	});
 
-	postList.sort((a, b) => {
-		const aTime = a.status === "published" ? new Date(a.publishedAt).getTime() : 0;
-		const bTime = b.status === "published" ? new Date(b.publishedAt).getTime() : 0;
+	const publishedPostList = postList
+		.filter((post): post is PublishedPost => post.status === "published")
+		.sort((a, b) => compareDesc(a.publishedAt, b.publishedAt));
 
-		return bTime - aTime;
-	});
-
-	return { list: postList, total: postList.length };
+	return { list: publishedPostList, total: publishedPostList.length };
 }
 
 export async function listPostSlugs() {
 	return await contentRepository.listPostSlugs();
+}
+
+export async function getPreviewPost(slug: string, token: string) {
+	return await contentRepository.getPost(slug);
+}
+
+export async function listPreviewPosts(query: PostListQuery = {}, token: string): Promise<ListResult<Post>> {
+	const postList = await contentRepository.listPosts(query);
+
+	return { list: postList, total: postList.length };
 }

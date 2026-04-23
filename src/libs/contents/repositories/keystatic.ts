@@ -38,15 +38,27 @@ export class KeystaticRepository implements ContentRepository {
 
 		const isEvergreen = post.policy.discriminant === "evergreen";
 
+		if (post.status === "published")
+			return {
+				slug: normalizedSlug,
+				status: "published",
+				title: post.title,
+				excerpt: post.excerpt ?? "",
+				category: { label: category.name, slug: normalizedCategorySlug },
+				tags,
+				contentMdx,
+				publishedAt: post.publishedDateTimeISO,
+				isEvergreen,
+			};
+
 		return {
 			slug: normalizedSlug,
-			status: post.status,
+			status: "draft",
 			title: post.title,
 			excerpt: post.excerpt ?? "",
 			category: { label: category.name, slug: normalizedCategorySlug },
 			tags,
 			contentMdx,
-			publishedAt: post.publishedDateTimeISO,
 			isEvergreen,
 		};
 	}
@@ -187,7 +199,7 @@ export class KeystaticRepository implements ContentRepository {
 function applyPostListQuery(posts: Post[], query: PostListQuery): Post[] {
 	let result = posts;
 
-	if (query.status) {
+	if (query.status === "published") {
 		result = result.filter((post) => post.status === query.status);
 	}
 
