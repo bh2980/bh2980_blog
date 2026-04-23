@@ -5,7 +5,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { AdminHeaderLinkClient } from "@/components/admin/admin-links.client";
+import { useIsAdmin } from "@/libs/admin/use-is-admin";
 import { cn } from "@/utils/cn";
 import { Button } from "./ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
@@ -62,6 +62,7 @@ export default function Navigation({ className }: NavigationProps) {
 	const { resolvedTheme, setTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
 	const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+	const isAdmin = useIsAdmin();
 
 	return (
 		<header className={cn("sticky top-0 z-50", className)}>
@@ -79,6 +80,21 @@ export default function Navigation({ className }: NavigationProps) {
 
 				{/* Desktop */}
 				<div className="hidden items-center gap-1 md:flex">
+					{isAdmin && (
+						<Link
+							href={"/keystatic" as Route}
+							className={cn(
+								"rounded-md px-3 py-2 font-medium text-sm transition",
+								"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+								"dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
+								pathname?.startsWith("/keystatic") &&
+									"bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
+							)}
+						>
+							관리자
+						</Link>
+					)}
 					{NAV.map((item) => (
 						<DesktopLink
 							key={item.href}
@@ -87,15 +103,6 @@ export default function Navigation({ className }: NavigationProps) {
 							active={pathname?.startsWith(item.href) ?? false}
 						/>
 					))}
-					<AdminHeaderLinkClient
-						className={cn(
-							"rounded-md px-3 py-2 font-medium text-sm transition",
-							"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-							"dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-							pathname?.startsWith("/keystatic") && "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
-						)}
-					/>
 
 					<Button
 						type="button"
@@ -144,17 +151,22 @@ export default function Navigation({ className }: NavigationProps) {
 											active={pathname?.startsWith(item.href) ?? false}
 										/>
 									))}
-									<SheetClose asChild>
-										<AdminHeaderLinkClient
-											className={cn(
-												"rounded-lg px-3 py-3 font-medium text-base transition",
-												"text-slate-700 hover:bg-slate-100",
-												"dark:text-slate-200 dark:hover:bg-slate-800",
-												pathname?.startsWith("/keystatic") && "bg-slate-100 dark:bg-slate-800",
-												"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-											)}
-										/>
-									</SheetClose>
+									{isAdmin && (
+										<SheetClose asChild>
+											<Link
+												href={"/keystatic" as Route}
+												className={cn(
+													"rounded-lg px-3 py-3 font-medium text-base transition",
+													"text-slate-700 hover:bg-slate-100",
+													"dark:text-slate-200 dark:hover:bg-slate-800",
+													pathname?.startsWith("/keystatic") && "bg-slate-100 dark:bg-slate-800",
+													"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
+												)}
+											>
+												관리자
+											</Link>
+										</SheetClose>
+									)}
 								</div>
 							</nav>
 						</SheetContent>

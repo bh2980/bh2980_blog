@@ -5,13 +5,17 @@ import { useQueryState } from "nuqs";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
-import type { CategoryListMeta, CategoryWithCount, ListResult, Post } from "@/libs/contents/types";
+import type { Category, ListResult, Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
+import { formatPublishedAt } from "@/utils/format-published-at";
+
+type PostListCategory = Category & {
+	count: number;
+};
 
 type PostListProps = {
-	categories: ListResult<CategoryWithCount, CategoryListMeta>;
-	posts: ListResult<Omit<Post, "content">>;
+	categories: PostListCategory[];
+	posts: ListResult<Post>;
 };
 
 type PostListContentProps = PostListProps & {
@@ -37,9 +41,9 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 						)}
 					>
 						{!category && <span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />}
-						<span className="inline-block">전체 ({categories.meta?.totalPostCount})</span>
+						<span className="inline-block">전체 ({posts.total})</span>
 					</Button>
-					{categories.list.map((categoryItem) => (
+					{categories.map((categoryItem) => (
 						<Button
 							key={categoryItem.slug}
 							onClick={() => setCategory?.(categoryItem.slug)}
@@ -54,7 +58,7 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 								<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
 							)}
 							<span className="inline-block">
-								{categoryItem.name} ({categoryItem.count})
+								{categoryItem.label} ({categoryItem.count})
 							</span>
 						</Button>
 					))}
@@ -70,17 +74,32 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 						<li key={post.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
 							<Link
-								href={{ pathname: `/posts/${sanitizeSlug(post.slug)}`, query: category ? { category } : undefined }}
+								href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-										<span>{post.category.name}</span>
-										<span>·</span>
-										<time dateTime={post.publishedDateTimeISO}>{post.publishedAt}</time>
+										<span>{post.category.label}</span>
+										{post.status === "published" && (
+											<>
+												<span>·</span>
+												<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+											</>
+										)}
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
-									<p className="line-clamp-2 text-slate-500 text-sm dark:text-slate-400">{post.excerpt}</p>
+									{post.tags?.length ? (
+										<ul
+											className={cn(
+												"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
+												"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
+											)}
+										>
+											{post.tags.map((tag) => (
+												<li key={tag.slug}>{`#${tag.label}`}</li>
+											))}
+										</ul>
+									) : null}
 								</article>
 							</Link>
 						</li>

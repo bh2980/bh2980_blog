@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import type { Post } from "@/libs/contents/types";
+import type { Post } from "@/libs/contents/types/contents";
 import { PostDetailNavigationClient } from "./client";
 
 type PostDetailNavigationProps = {
 	currentSlug: string;
-	items: Omit<Post, "content">[];
+	items: Post[];
 	detailPathnamePrefix?: string;
 };
 

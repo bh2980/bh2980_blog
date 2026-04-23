@@ -1,7 +1,12 @@
 import { Fragment, type Node as PMNode, Schema, Slice } from "prosemirror-model";
 import { NodeSelection, TextSelection } from "prosemirror-state";
 import { describe, expect, it } from "vitest";
-import { markSliceAsUnwrapped, shouldUnwrapCopiedSelection, unwrapOpenWrapperSlice, wasSliceUnwrapped } from "../wrapper-copy";
+import {
+	markSliceAsUnwrapped,
+	shouldUnwrapCopiedSelection,
+	unwrapOpenWrapperSlice,
+	wasSliceUnwrapped,
+} from "../wrapper-copy";
 
 const schema = new Schema({
 	nodes: {
