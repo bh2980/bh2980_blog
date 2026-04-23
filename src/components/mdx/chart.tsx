@@ -193,7 +193,12 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 			<ChartComponent
 				accessibilityLayer
 				data={spec.data}
-				margin={{ top: spec.options.showValues ? 28 : 12, right: 12, left: spec.options.hideYAxis ? 12 : 40, bottom: 24 }}
+				margin={{
+					top: spec.options.showValues ? 28 : 12,
+					right: 12,
+					left: spec.options.hideYAxis ? 12 : 40,
+					bottom: 24,
+				}}
 			>
 				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
 				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
