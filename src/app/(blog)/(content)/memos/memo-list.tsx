@@ -5,13 +5,13 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { Suspense } from "react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
-import type { ListResult, Memo, Tag } from "@/libs/contents/types/contents";
+import { sanitizeSlug } from "@/keystatic/libs/slug";
+import type { ListResult, Memo, Tag } from "@/libs/contents/types";
 import { cn } from "@/utils/cn";
-import { formatPublishedAt } from "@/utils/format-published-at";
 
 type MemoListProps = {
 	tags: ListResult<Tag>;
-	memos: ListResult<Memo>;
+	memos: ListResult<Omit<Memo, "content">>;
 };
 
 type MemoListContentProps = MemoListProps & {
@@ -32,7 +32,7 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 					개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.
 				</p>
 				<MultiSelect
-					options={tags.list.map((tag) => ({ ...tag, name: tag.label }))}
+					options={tags.list}
 					onValueChange={setTagFilter ?? (() => {})}
 					defaultValue={tagFilter}
 					placeholder="태그 선택"
@@ -49,15 +49,13 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 					{memoList.map((memo) => (
 						<li key={memo.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
-								<Link
-									href={{ pathname: `/memos/${memo.slug}`, query: { tags: tagFilter } }}
-									className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-								>
+							<Link
+								href={{ pathname: `/memos/${sanitizeSlug(memo.slug)}`, query: { tags: tagFilter } }}
+								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+							>
 								<article className="flex h-full flex-col gap-1 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-										{memo.status === "published" && (
-											<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
-										)}
+										<time dateTime={memo.publishedDateTimeISO}>{memo.publishedAt}</time>
 									</span>
 									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{memo.title}</h2>
 									<ul
@@ -67,7 +65,7 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 										)}
 									>
 										{memo.tags?.map((tag) => (
-											<li key={tag.slug}>{`#${tag.label}`}</li>
+											<li key={tag.slug}>{`#${tag.name}`}</li>
 										))}
 									</ul>
 								</article>
