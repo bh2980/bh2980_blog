@@ -1,8 +1,7 @@
-import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
+import { differenceInYears } from "date-fns";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
-import { differenceInYears } from "date-fns";
 import type { Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
@@ -51,20 +50,12 @@ export const PostDetailPageContent = async ({
 						<PostBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							<span>{post.category.label}</span>
-								{post.status === "published" && (
-									<>
-										<span>·</span>
-										<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
-									</>
-								)}
-							<AdminEditLinkClient
-								collection="post"
-								slug={post.slug}
-								className={cn(
-									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
-									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-								)}
-							/>
+							{post.status === "published" && (
+								<>
+									<span>·</span>
+									<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+								</>
+							)}
 						</div>
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{post.title}</h1>
 						<ul

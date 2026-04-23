@@ -1,4 +1,3 @@
-import { AdminEditLinkClient } from "@/components/admin/admin-links.client";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Memo } from "@/libs/contents/types/contents";
@@ -27,17 +26,9 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 					<header className="flex flex-col items-start gap-5 border-slate-200">
 						<MemoBackLink pathname={listPathname} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
-								{memo.status === "published" && (
-									<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
-								)}
-							<AdminEditLinkClient
-								collection="memo"
-								slug={memo.slug}
-								className={cn(
-									"not-prose ml-auto shrink-0 rounded border border-slate-300 px-2 py-0.5 font-medium text-[11px] text-slate-700 leading-5 transition hover:bg-slate-100 hover:text-slate-900",
-									"dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-								)}
-							/>
+							{memo.status === "published" && (
+								<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
+							)}
 						</div>
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{memo.title}</h1>
 						<ul
