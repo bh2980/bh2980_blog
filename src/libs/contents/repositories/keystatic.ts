@@ -84,13 +84,23 @@ export class KeystaticRepository implements ContentRepository {
 
 		const contentMdx = await memo.content();
 
+		if (memo.status === "published") {
+			return {
+				slug: normalizedSlug,
+				status: "published",
+				title: memo.title,
+				contentMdx,
+				tags,
+				publishedAt: memo.publishedDateTimeISO,
+			};
+		}
+
 		return {
 			slug: normalizedSlug,
-			status: "published",
+			status: "draft",
 			title: memo.title,
 			contentMdx,
 			tags,
-			publishedAt: memo.publishedDateTimeISO,
 		};
 	}
 	async getSeries(slug: string): Promise<Series | null> {
@@ -216,6 +226,10 @@ function applyPostListQuery(posts: Post[], query: PostListQuery): Post[] {
 
 function applyMemoListQuery(memos: Memo[], query: MemoListQuery): Memo[] {
 	let result = memos;
+
+	if (query.status === "published") {
+		result = result.filter((post) => post.status === query.status);
+	}
 
 	if (query.tag) {
 		result = result.filter((memo) => memo.tags.some((tag) => tag.slug === query.tag));

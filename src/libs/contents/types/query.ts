@@ -13,6 +13,7 @@ export type PostListQuery = {
 };
 
 export type MemoListQuery = {
+	status?: "all" | "published";
 	tag?: string;
 	// sort?: ContentSort;
 };
