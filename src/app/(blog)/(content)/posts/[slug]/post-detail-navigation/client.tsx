@@ -31,11 +31,11 @@ export const PostDetailNavigationClient = ({
 			<Separator />
 			<nav aria-label="상세 페이지 이동" className="flex flex-col gap-6">
 				<div className="flex">
-						{prevPost && (
-							<Link
-								href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
-								className="flex flex-col gap-2 hover:underline"
-							>
+					{prevPost && (
+						<Link
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
+							className="flex flex-col gap-2 hover:underline"
+						>
 							<span className="inline-flex items-center gap-1 text-sm">
 								<ChevronLeft size={16} />
 								이전 글
@@ -44,11 +44,11 @@ export const PostDetailNavigationClient = ({
 						</Link>
 					)}
 
-						{nextPost && (
-							<Link
-								href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
-								className="ml-auto flex flex-col justify-end gap-2 hover:underline"
-							>
+					{nextPost && (
+						<Link
+							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
+							className="ml-auto flex flex-col justify-end gap-2 hover:underline"
+						>
 							<span className="inline-flex items-center justify-end gap-1 text-sm">
 								다음 글
 								<ChevronRight size={16} />

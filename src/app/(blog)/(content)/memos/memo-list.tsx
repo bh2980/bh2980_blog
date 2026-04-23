@@ -49,10 +49,10 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 					{memoList.map((memo) => (
 						<li key={memo.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
-								<Link
-									href={{ pathname: `/memos/${memo.slug}`, query: { tags: tagFilter } }}
-									className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-								>
+							<Link
+								href={{ pathname: `/memos/${memo.slug}`, query: { tags: tagFilter } }}
+								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+							>
 								<article className="flex h-full flex-col gap-1 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 										{memo.status === "published" && (

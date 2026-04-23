@@ -101,32 +101,32 @@ export default async function Home() {
 								{latestPosts.map((post) => (
 									<li key={post.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
-											<Link
-												href={{ pathname: `/posts/${post.slug}` }}
-												className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-											>
+										<Link
+											href={{ pathname: `/posts/${post.slug}` }}
+											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+										>
 											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 												<span>{post.category.label}</span>
-													{post.status === "published" && (
-														<>
-															<span>·</span>
-															<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
-														</>
-													)}
+												{post.status === "published" && (
+													<>
+														<span>·</span>
+														<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+													</>
+												)}
 											</div>
-												<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
-													{post.title}
-												</h3>
-												{post.tags?.length ? (
-													<ul className="mt-2 flex flex-wrap gap-2 text-slate-500 text-xs dark:text-slate-400 [&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800">
-														{post.tags.map((tag) => (
-															<li key={tag.slug}>{`#${tag.label}`}</li>
-														))}
-													</ul>
-												) : null}
-											</Link>
-										</li>
-									))}
+											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
+												{post.title}
+											</h3>
+											{post.tags?.length ? (
+												<ul className="mt-2 flex flex-wrap gap-2 text-slate-500 text-xs dark:text-slate-400 [&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800">
+													{post.tags.map((tag) => (
+														<li key={tag.slug}>{`#${tag.label}`}</li>
+													))}
+												</ul>
+											) : null}
+										</Link>
+									</li>
+								))}
 							</ul>
 						)}
 					</div>
@@ -148,15 +148,15 @@ export default async function Home() {
 								{latestMemos.map((memo) => (
 									<li key={memo.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
-											<Link
-												href={{ pathname: `/memos/${memo.slug}` }}
-												className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-											>
-												{memo.status === "published" && (
-													<div className="text-slate-500 text-xs dark:text-slate-400">
-														<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
-													</div>
-												)}
+										<Link
+											href={{ pathname: `/memos/${memo.slug}` }}
+											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+										>
+											{memo.status === "published" && (
+												<div className="text-slate-500 text-xs dark:text-slate-400">
+													<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
+												</div>
+											)}
 											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
 												{memo.title}
 											</h3>

@@ -73,36 +73,36 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 					{postList.map((post) => (
 						<li key={post.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
-								<Link
-									href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
-									className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-								>
+							<Link
+								href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
+								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+							>
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
 									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
 										<span>{post.category.label}</span>
-											{post.status === "published" && (
-												<>
-													<span>·</span>
-													<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
-												</>
-											)}
+										{post.status === "published" && (
+											<>
+												<span>·</span>
+												<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+											</>
+										)}
 									</span>
-										<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
-										{post.tags?.length ? (
-											<ul
-												className={cn(
-													"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
-													"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
-												)}
-											>
-												{post.tags.map((tag) => (
-													<li key={tag.slug}>{`#${tag.label}`}</li>
-												))}
-											</ul>
-										) : null}
-									</article>
-								</Link>
-							</li>
+									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
+									{post.tags?.length ? (
+										<ul
+											className={cn(
+												"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
+												"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
+											)}
+										>
+											{post.tags.map((tag) => (
+												<li key={tag.slug}>{`#${tag.label}`}</li>
+											))}
+										</ul>
+									) : null}
+								</article>
+							</Link>
+						</li>
 					))}
 				</ul>
 			)}
