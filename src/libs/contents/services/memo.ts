@@ -17,9 +17,7 @@ export async function getMemo(slug: string) {
 }
 
 export async function listMemos(query: MemoListQuery = {}): Promise<ListResult<PublishedMemo>> {
-	const memoList = await contentRepository.listMemos({
-		...query,
-	});
+	const memoList = await contentRepository.listMemos({ ...query, status: "published" });
 
 	const publishedMemoList = memoList
 		.filter((memo) => memo.status === "published")
