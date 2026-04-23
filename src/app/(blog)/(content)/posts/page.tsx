@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { listCategories } from "@/libs/contents/services/category";
-import { listPosts } from "@/libs/contents/services/post";
+import { getCategoryList } from "@/libs/contents/category";
+import { getPostList } from "@/libs/contents/post";
 import { PostList } from "./post-list";
 
 export const metadata: Metadata = {
@@ -10,12 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
-	const [categories, posts] = await Promise.all([listCategories(), listPosts()]);
+	const categories = await getCategoryList();
+	const posts = await getPostList();
 
-	const categoriesWithCount = categories.list.map((category) => ({
-		...category,
-		count: posts.list.filter((post) => post.category.slug === category.slug).length,
-	}));
-
-	return <PostList categories={categoriesWithCount} posts={posts} />;
+	return <PostList categories={categories} posts={posts} />;
 }

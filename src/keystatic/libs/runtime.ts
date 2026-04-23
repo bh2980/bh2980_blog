@@ -1,4 +1,4 @@
-import type { ContentAccessOptions } from "./content-access-options";
+import type { ContentAccessOptions } from "@/libs/contents/types";
 
 const hasRemoteKeystaticConfig = () =>
 	Boolean(process.env.NEXT_PUBLIC_KEYSTATIC_OWNER && process.env.NEXT_PUBLIC_KEYSTATIC_REPO);
