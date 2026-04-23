@@ -15,7 +15,7 @@ function isStalePost(post: Post) {
 	return (
 		post.status === "published" &&
 		!post.isEvergreen &&
-		differenceInYears(Date.now(), post.publishedAt) >= POST_STALE_THRESHOLD_YEARS
+		differenceInYears(Date.now(), new Date(post.publishedAt)) >= POST_STALE_THRESHOLD_YEARS
 	);
 }
 
