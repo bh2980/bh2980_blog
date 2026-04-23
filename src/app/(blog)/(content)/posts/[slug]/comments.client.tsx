@@ -2,7 +2,6 @@
 
 import Giscus from "@giscus/react";
 import { useTheme } from "next-themes";
-import { sanitizeSlug } from "@/keystatic/libs/slug";
 
 export const Comments = ({ slug }: { slug: string }) => {
 	const { resolvedTheme } = useTheme();
@@ -15,7 +14,7 @@ export const Comments = ({ slug }: { slug: string }) => {
 			category="Comments"
 			categoryId={process.env.NEXT_PUBLIC_GISUS_CATEGORY_ID}
 			mapping="specific"
-			term={sanitizeSlug(slug)}
+			term={slug}
 			reactionsEnabled="1"
 			emitMetadata="0"
 			inputPosition="top"
