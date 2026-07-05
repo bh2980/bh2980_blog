@@ -50,25 +50,57 @@ tags: []
 
 [https://leetcode.com/problems/minimum-size-subarray-sum/](https://leetcode.com/problems/minimum-size-subarray-sum/)
 
-```python
-class Solution:
-    def minSubArrayLen(self, target: int, nums: List[int]) -> int:
-        min_length = sys.maxsize
-        window_sum = 0
+<Tabs>
+  <Tab label="[left, right]">
+    ```ts
+    class Solution:
+        def minSubArrayLen(self, target: int, nums: List[int]) -> int:
+            min_length = sys.maxsize
+            window_sum = 0
 
-        left = 0
+            left = 0
+            right = 0
 
-        for right in range(len(nums)):
-            window_sum += nums[right]
+            for right in range(len(nums)):
+                window_sum += nums[right]
 
-            while window_sum >= target:
-                min_length = min(min_length, right - left + 1)
+                while window_sum >= target:
+                    min_length = min(min_length, right - left + 1)
 
-                window_sum -= nums[left]
-                left += 1
+                    window_sum -= nums[left]
+                    left += 1
 
-        return 0 if min_length == sys.maxsize else min_length
+            return 0 if min_length == sys.maxsize else min_length
 
-# print(float('inf')) => null
-# print(sys.maxsize) => 9223372036854775807
-```
+    # print(float('inf')) => null
+    # print(sys.maxsize) => 9223372036854775807
+    ```
+  </Tab>
+
+  <Tab label="[left, right)">
+    ```ts
+    class Solution:
+        def minSubArrayLen(self, target: int, nums: List[int]) -> int:
+            min_length = sys.maxsize
+            window_sum = 0
+
+            left = 0
+            right = 0
+
+            while right < len(nums):
+                window_sum += nums[right]
+                right += 1
+
+                while window_sum >= target:
+                    min_length = min(min_length, right - left)
+
+                    window_sum -= nums[left]
+                    left += 1
+
+            return 0 if min_length == sys.maxsize else min_length
+
+    # print(float('inf')) => null
+    # print(sys.maxsize) => 9223372036854775807
+    ```
+  </Tab>
+</Tabs>
