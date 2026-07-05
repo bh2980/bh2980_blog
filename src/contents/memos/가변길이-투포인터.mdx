@@ -1,0 +1,74 @@
+---
+status: draft
+title: 가변길이 투포인터
+publishedDateTimeISO: 2026-07-06T00:24:00.000Z
+tags: []
+---
+<Callout variant="danger">
+  대충 적는 중
+</Callout>
+
+투 포인터 문제에서 가변 길이 윈도우일 경우 right가 끝나도 left가 바뀌어 윈도우가 줄어들 수 있으므로 이중 반복문을 쓰는 것이 타당하다.
+
+기존처럼 while + if left += 1, elif right += 1로 하는 건 별루.&#x20;
+
+1. \[left, right]처럼 right가 윈도우 안에 포함된 경우로 생각할 경우 (일단 이걸로 시작하자)
+
+   for + while 패턴이 편하다.
+
+   ```python
+   window_sum = 0 # 아직 window_sum에 right 미포함
+   left = 0
+
+   for right in range(len(nums)):
+       window_sum += nums[right] # right는 윈도우에 방금 들어감! [left, right]
+
+       while window_sum >= target: # right가 포함되면 이를 valid한 윈도우로 보고 평가
+           answer = min(answer, right - left + 1) # 먼저 비교 갱신
+   		# 후 left 갱신
+           window_sum -= nums[left]
+           left += 1
+   ```
+2. \[left, right)처럼 right가 윈도우 안에 미포함된 경우로 생각할 경우
+
+   while + while 패턴이 편하다.
+
+   ```python
+   window_sum = 0
+   right = 0
+   left = 0
+
+   while right < len(nums):
+       window_sum += nums[right] 
+       right += 1 # 이제 right는 윈도우에 포함되지 않음 [left, right)
+
+       while window_sum >= target:
+           answer = min(answer, right - left)
+           window_sum -= nums[left]
+           left += 1
+   ```
+
+[https://leetcode.com/problems/minimum-size-subarray-sum/](https://leetcode.com/problems/minimum-size-subarray-sum/)
+
+```python
+class Solution:
+    def minSubArrayLen(self, target: int, nums: List[int]) -> int:
+        min_length = sys.maxsize
+        window_sum = 0
+
+        left = 0
+
+        for right in range(len(nums)):
+            window_sum += nums[right]
+
+            while window_sum >= target:
+                min_length = min(min_length, right - left + 1)
+
+                window_sum -= nums[left]
+                left += 1
+
+        return 0 if min_length == sys.maxsize else min_length
+
+# print(float('inf')) => null
+# print(sys.maxsize) => 9223372036854775807
+```
