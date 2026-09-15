@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M1-TW-1 병합. 다음 배치는 M1-ED-1)  
+작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M1-ED-1 1차 타임아웃. 같은 슬롯에서 serialize 재배정)  
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -24,7 +24,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
 | M1-TW-1 | DONE | TW | 병합 후 삭제 | `499fd96` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
 | M1-TW-2 | TODO | TW | — | — | — |
-| M1-ED-1 | IN_PROGRESS | ED | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Editor` | — | — |
+| M1-ED-1 | IN_PROGRESS | ED | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Editor` | — | 1차 30m timeout. analyze/parse/expressions/frontmatter/jsx/registry/types만. toDocument/serialize/`index.ts` 없음 |
 | M1-ED-2 | TODO | ED | — | — | — |
 | M1-DA-1 | TODO | DA | — | — | — |
 | M1-RV-1 | TODO | RV | — | — | — |
@@ -82,6 +82,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-16: 사용자 요청으로 미커밋 `src/cms/**`, `docs/cms/**`, 게시글 폴더 스크린샷을 폐기했다. 기준 커밋은 `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md`, `env.d.ts`만. CMS 구현은 이 문서와 명세에서 다시 시작한다. M0-INV-1은 대상 파일이 없어 CANCELLED.
 - 2026-09-16: M0-INV-3 병합(`43e77e7`). 목록은 `CMS-CONTENT-INVENTORY.md`. 날짜 없음 0, status 없음 1, 빈 tags 1, 빈 alt 22장/상대 이미지 5파일, 표 4, 수식 2. 요약 JSX 숫자는 파일별 표와 달랐던 Tooltip/Callout만 Lead가 고침. M0-INV-2는 첫 CMS 코드와 같이 둔다. 다음 배치는 M1-TW-1(실패 테스트만).
 - 2026-09-16: M1-TW-1 병합(`499fd96`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
+- 2026-09-16: M1-ED-1 1차 배정이 30분 한도로 실패했다. 슬롯은 유지. 남은 파일: `analyze.ts` `parse.ts` `expressions.ts` `frontmatter.ts`(이미 `serializeFrontmatter`) `jsx.ts` `registry.ts` `types.ts`. 없는 것: `toDocument`, `serialize`, `src/cms/mdx/index.ts`. `__probe.ts`는 디버그 스크립트라 삭제. 구현은 재작성하지 말고 이어서 완성한다.
 
 ---
 
