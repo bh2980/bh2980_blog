@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (기준 문서는 spec·plan·env.d.ts만. `src/cms` 골격 폐기)  
+작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M0-INV-3 병합. 다음 배치는 M1-TW-1)  
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -20,9 +20,9 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | --- | --- | --- | --- | --- | --- |
 | M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
 | M0-INV-2 | READY | INF | — | — | 첫 CMS 코드(M1)와 함께 `pg`/`@tiptap` 고정 |
-| M0-INV-3 | IN_PROGRESS | JR | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Junior` | — | — |
+| M0-INV-3 | DONE | JR | 병합 후 삭제 | `43e77e7` | MDX 49=post 7+memo 42, `find`와 일치. JSX 요약은 표에 맞춰 Tooltip 8/Callout 6 |
 | M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
-| M1-TW-1 | TODO | TW | — | — | — |
+| M1-TW-1 | IN_PROGRESS | TW | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Test-Writer` | — | — |
 | M1-TW-2 | TODO | TW | — | — | — |
 | M1-ED-1 | TODO | ED | — | — | — |
 | M1-ED-2 | TODO | ED | — | — | — |
@@ -80,6 +80,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 숨은 의존성, 잘못된 선행, 파일 소유권 충돌, 층이 어긋난 테스트가 보이면 **임의로 우회 구현하지 않는다.** 작업을 멈추고 Lead가 이 문서를 고친 뒤에 계속한다. 예상 밖의 파일을 건드려야 할 때도 같다. 담당자가 소유 목록 밖의 파일을 먼저 수정하지 않고, Lead가 소유권을 옮기거나 선행 Task를 나눈 다음 재배정한다.
 
 - 2026-09-16: 사용자 요청으로 미커밋 `src/cms/**`, `docs/cms/**`, 게시글 폴더 스크린샷을 폐기했다. 기준 커밋은 `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md`, `env.d.ts`만. CMS 구현은 이 문서와 명세에서 다시 시작한다. M0-INV-1은 대상 파일이 없어 CANCELLED.
+- 2026-09-16: M0-INV-3 병합(`43e77e7`). 목록은 `CMS-CONTENT-INVENTORY.md`. 날짜 없음 0, status 없음 1, 빈 tags 1, 빈 alt 22장/상대 이미지 5파일, 표 4, 수식 2. 요약 JSX 숫자는 파일별 표와 달랐던 Tooltip/Callout만 Lead가 고침. M0-INV-2는 첫 CMS 코드와 같이 둔다. 다음 배치는 M1-TW-1(실패 테스트만).
 
 ---
 
