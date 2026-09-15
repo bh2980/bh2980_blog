@@ -20,8 +20,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | --- | --- | --- | --- | --- | --- |
 | M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
 | M0-INV-2 | READY | INF | — | — | 첫 CMS 코드(M1)와 함께 `pg`/`@tiptap` 고정 |
-| M0-INV-3 | READY | JR | — | — | — |
-| M0-BASE-1 | DONE | Lead | 통합 브랜치 | — | spec·plan·`env.d.ts`만. `.env.local` 제외 |
+| M0-INV-3 | IN_PROGRESS | JR | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Junior` | — | — |
+| M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
 | M1-TW-1 | TODO | TW | — | — | — |
 | M1-TW-2 | TODO | TW | — | — | — |
 | M1-ED-1 | TODO | ED | — | — | — |
