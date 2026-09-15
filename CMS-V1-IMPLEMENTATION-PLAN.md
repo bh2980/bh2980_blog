@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M1-ED-1 1차 타임아웃. 같은 슬롯에서 serialize 재배정)  
+작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M1-ED-1을 30분 슬라이스 1a/1b/1c로 분할. 현재 Editor 배정은 유지)  
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -24,7 +24,10 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
 | M1-TW-1 | DONE | TW | 병합 후 삭제 | `499fd96` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
 | M1-TW-2 | TODO | TW | — | — | — |
-| M1-ED-1 | IN_PROGRESS | ED | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Editor` | — | 1차 30m timeout. analyze/parse/expressions/frontmatter/jsx/registry/types만. toDocument/serialize/`index.ts` 없음 |
+| M1-ED-1 | IN_PROGRESS | ED | `/Users/bh2980/Desktop/bh2980_blog-worktrees/Editor` | — | 부모 Task. 1a+1b+1c가 모두 통과해야 DONE |
+| M1-ED-1a | IN_PROGRESS | ED | 같은 Editor 슬롯 | — | toDocument + `index.ts`. 현재 배정이 이 조각을 포함. 같은 슬롯에 추가 배정 금지 |
+| M1-ED-1b | TODO | ED | 같은 Editor 슬롯 | — | serialize. 표본 9파일 제외한 describe가 통과 |
+| M1-ED-1c | TODO | ED | 같은 Editor 슬롯 | — | 표본 9파일 firstDoc===secondDoc |
 | M1-ED-2 | TODO | ED | — | — | — |
 | M1-DA-1 | TODO | DA | — | — | — |
 | M1-RV-1 | TODO | RV | — | — | — |
@@ -83,6 +86,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-16: M0-INV-3 병합(`43e77e7`). 목록은 `CMS-CONTENT-INVENTORY.md`. 날짜 없음 0, status 없음 1, 빈 tags 1, 빈 alt 22장/상대 이미지 5파일, 표 4, 수식 2. 요약 JSX 숫자는 파일별 표와 달랐던 Tooltip/Callout만 Lead가 고침. M0-INV-2는 첫 CMS 코드와 같이 둔다. 다음 배치는 M1-TW-1(실패 테스트만).
 - 2026-09-16: M1-TW-1 병합(`499fd96`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
 - 2026-09-16: M1-ED-1 1차 배정이 30분 한도로 실패했다. 슬롯은 유지. 남은 파일: `analyze.ts` `parse.ts` `expressions.ts` `frontmatter.ts`(이미 `serializeFrontmatter`) `jsx.ts` `registry.ts` `types.ts`. 없는 것: `toDocument`, `serialize`, `src/cms/mdx/index.ts`. `__probe.ts`는 디버그 스크립트라 삭제. 구현은 재작성하지 말고 이어서 완성한다.
+- 2026-09-16: 사용자 요청으로 OpenMausBot 30분 핸드오프에 맞춰 M1-ED-1을 슬라이스한다. 한 배정에 한 슬라이스만. 같은 Editor 슬롯에 병렬 배정하지 않는다. 루틴도 다음 미완 슬라이스만 부여. 이미 나간 serialize 재배정은 취소하지 않는다.
 
 ---
 
@@ -210,13 +214,34 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ### M1-ED-1 MDX serialize
 
-- **목적:** DB에 저장할 원본 문자열을 문서 JSON에서 만든다.
+- **목적:** DB에 저장할 원본 문자열을 문서 JSON에서 만든다. 30분 핸드오프 때문에 **한 배정에 아래 슬라이스 하나만** 준다.
 - **주요 내용:** 일반 Markdown + 등록 JSX 컴포넌트 이름 유지. 코드/Mermaid/chart는 기존 언어 펜스. 주석 공백·범위 보존은 `src/libs/annotation/code-block` 재사용. 미지원 문법은 추측 변환하지 않는다. `TextAlign`/`Image`/`ContentLink` 계약(§4.4).
 - **선행:** M1-TW-1
-- **영향 파일:** `src/cms/mdx/` 신규 serialize + analyze 연결. `to-document.ts`/`registry.ts`는 필요 시에만
+- **영향 파일:** `src/cms/mdx/` (슬라이스별 파일은 1a/1b/1c)
 - **담당:** ED
-- **완료 조건:** M1-TW-1 `roundtrip.test.ts`가 통과한다. 보기만 토글하면 `analyze.source`가 원문 바이트와 같고 serialize를 호출하지 않는다.
+- **완료 조건:** 1a·1b·1c가 모두 DONE. `roundtrip.test.ts` 전체 skip 없이 통과. 보기만 토글하면 `analyze.source`가 원문 바이트와 같고 serialize를 호출하지 않는다.
 - **검증:** `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts`
+
+#### M1-ED-1a toDocument + barrel (30분)
+
+- **선행:** M1-TW-1. analyze 헬퍼가 슬롯에 있음.
+- **영향 파일:** `src/cms/mdx/to-document.ts`, `src/cms/mdx/index.ts`. 기존 analyze 헬퍼는 재작성하지 않음.
+- **완료 조건:** `import { analyze, toDocument, serialize } from "@/cms/mdx"`가 해석된다. `toDocument(analyze(mdx))`가 JSON 직렬화 가능한 `CmsNode` 문서를 반환한다. serialize는 1b에서 채워도 된다(스텁 허용). `__probe.ts` 삭제.
+- **검증:** 모듈 resolve + `toDocument`가 object. 전체 roundtrip 통과는 요구하지 않음.
+
+#### M1-ED-1b serialize (합성 픽스처, 30분)
+
+- **선행:** M1-ED-1a (`index.ts`와 `toDocument` 존재)
+- **영향 파일:** `src/cms/mdx/serialize.ts` (필요 시 to-document 보강만)
+- **완료 조건:** `roundtrip.test.ts`에서 **「실제 src/contents 표본」 describe를 제외한** 코드 펜스·중첩 JSX·표·블록 수식·원문 토글·미지원·메타데이터 블록이 skip 없이 통과.
+- **검증:** `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts -t "코드 펜스|중첩 JSX|표|블록 수식|원문 토글|미지원|메타데이터"`
+
+#### M1-ED-1c 표본 9파일 왕복 (30분)
+
+- **선행:** M1-ED-1b
+- **영향 파일:** serialize/to-document 보강만. 테스트·콘텐츠 원문 수정 금지.
+- **완료 조건:** 표본 9파일 `firstDoc`===`secondDoc`, analyze 오류 0.
+- **검증:** `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts -t "실제 src/contents"`
 
 ### M1-ED-2 변환기를 에디터 토글에 연결
 
