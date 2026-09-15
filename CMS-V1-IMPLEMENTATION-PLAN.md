@@ -1,0 +1,752 @@
+# CMS v1 구현 계획
+
+작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (기준 문서는 spec·plan·env.d.ts만. `src/cms` 골격 폐기)  
+대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
+명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
+통합 브랜치: `feature/new-cms`  
+Worktree 루트: `/Users/bh2980/Desktop/bh2980_blog-worktrees` (배치마다 생성·병합·삭제)
+
+이 문서는 실행 계획이다. 명세(`CMS-SPEC.md`)를 대체하지 않는다. 에이전트는 아래 진행표로 현재 위치를 확인하고, Task 본문은 착수하는 ID만 읽는다. 명세에 없는 기능, 이력 저장소(F12), 공동 편집, 예약 실행기 운영, 모바일 관리자 UX, 플러그인 마켓은 계획에 넣지 않는다.
+
+담당 약어: TW = Test Writer, ED = Editor, DA = Data, BE = Backend, FE = Frontend, JR = Junior, INF = Infra, RV = Reviewer.
+
+## 진행 상태
+
+상태: `TODO` 선행 미충족 · `READY` 착수 가능 · `IN_PROGRESS` 배정됨 · `BLOCKED` 외부 대기 · `DONE` 통합 브랜치에 병합·검증됨 · `CANCELLED` 계획 변경으로 하지 않음.
+
+Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `—`. worktree는 슬롯 경로, commit은 통합 브랜치 SHA, 검증은 실행한 명령과 결과 한 줄.
+
+| ID | 상태 | 담당 | worktree | commit | 검증 |
+| --- | --- | --- | --- | --- | --- |
+| M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
+| M0-INV-2 | READY | INF | — | — | 첫 CMS 코드(M1)와 함께 `pg`/`@tiptap` 고정 |
+| M0-INV-3 | READY | JR | — | — | — |
+| M0-BASE-1 | DONE | Lead | 통합 브랜치 | — | spec·plan·`env.d.ts`만. `.env.local` 제외 |
+| M1-TW-1 | TODO | TW | — | — | — |
+| M1-TW-2 | TODO | TW | — | — | — |
+| M1-ED-1 | TODO | ED | — | — | — |
+| M1-ED-2 | TODO | ED | — | — | — |
+| M1-DA-1 | TODO | DA | — | — | — |
+| M1-RV-1 | TODO | RV | — | — | — |
+| M2-INV-1 | TODO | INF | — | — | — |
+| M2-BE-1 | TODO | BE | — | — | — |
+| M2-BE-2 | TODO | BE | — | — | — |
+| M2-TW-1 | TODO | TW | — | — | — |
+| M2-BE-3 | TODO | BE | — | — | — |
+| M2-TW-2 | TODO | TW | — | — | — |
+| M2-DA-2 | TODO | DA | — | — | — |
+| M2-BE-4 | TODO | BE | — | — | — |
+| M2-BE-5 | TODO | JR | — | — | — |
+| M2-FE-1 | TODO | FE | — | — | — |
+| M2-FE-2 | TODO | FE | — | — | — |
+| M2-RV-1 | TODO | RV | — | — | — |
+| M3-TW-1 | TODO | TW | — | — | — |
+| M3-BE-1 | TODO | BE | — | — | — |
+| M3-FE-1 | TODO | FE | — | — | — |
+| M3-FE-2 | TODO | FE | — | — | — |
+| M3-ED-1 | TODO | ED | — | — | — |
+| M3-ED-2 | TODO | ED | — | — | — |
+| M3-INF-1 | TODO | INF | — | — | — |
+| M3-BE-2 | TODO | BE | — | — | — |
+| M3-FE-3 | TODO | FE | — | — | — |
+| M3-FE-4 | TODO | FE | — | — | — |
+| M3-RV-1 | TODO | RV | — | — | — |
+| M4-TW-1 | TODO | TW | — | — | — |
+| M4-FE-1 | TODO | FE | — | — | — |
+| M4-BE-1 | TODO | BE | — | — | — |
+| M4-BE-2 | TODO | BE | — | — | — |
+| M4-FE-2 | TODO | FE | — | — | — |
+| M4-ED-1 | TODO | ED | — | — | — |
+| M4-BE-3 | TODO | BE | — | — | — |
+| M4-BE-4 | TODO | BE | — | — | — |
+| M4-ED-2 | TODO | ED | — | — | — |
+| M4-RV-1 | TODO | RV | — | — | — |
+| M5-INV-1 | TODO | BE | — | — | — |
+| M5-BE-1 | TODO | BE | — | — | — |
+| M5-BE-2 | TODO | BE | — | — | — |
+| M5-FE-1 | TODO | FE | — | — | — |
+| M5-BE-3 | TODO | JR | — | — | — |
+| M5-BE-4 | TODO | BE | — | — | — |
+| M5-SEC-1 | TODO | Security QA | — | — | — |
+| M5-TW-1 | TODO | TW | — | — | — |
+| M5-LEAD-1 | TODO | Lead | — | — | — |
+| M5-BE-5 | TODO | BE | — | — | — |
+| M5-RV-1 | TODO | RV | — | — | — |
+
+## 계획 변경
+
+이 문서는 작업 순서와 파일 소유권의 기준이지만 절대 명세가 아니다. 제품 동작의 권위는 `CMS-SPEC.md`다.
+
+숨은 의존성, 잘못된 선행, 파일 소유권 충돌, 층이 어긋난 테스트가 보이면 **임의로 우회 구현하지 않는다.** 작업을 멈추고 Lead가 이 문서를 고친 뒤에 계속한다. 예상 밖의 파일을 건드려야 할 때도 같다. 담당자가 소유 목록 밖의 파일을 먼저 수정하지 않고, Lead가 소유권을 옮기거나 선행 Task를 나눈 다음 재배정한다.
+
+- 2026-09-16: 사용자 요청으로 미커밋 `src/cms/**`, `docs/cms/**`, 게시글 폴더 스크린샷을 폐기했다. 기준 커밋은 `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md`, `env.d.ts`만. CMS 구현은 이 문서와 명세에서 다시 시작한다. M0-INV-1은 대상 파일이 없어 CANCELLED.
+
+---
+
+## 0. 현재 코드베이스 조사 결과
+
+### 0.1 이미 있고 재사용할 것
+
+| 영역 | 위치 | 상태 |
+| --- | --- | --- |
+| 명세·계획 | `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md` | 기준 문서 |
+| env 타입 | `env.d.ts` | CMS DB/Auth/R2 키 이름만. 비밀값은 `.env.local`(gitignore) |
+| 공개 렌더 | `src/components/mdx/**`, `src/libs/{annotation,chart,mermaid,shiki}` | 기존 블로그 경로 |
+| 공개 조회 계약 | `src/libs/contents/contracts/repository.ts` | Keystatic 구현만 있음 |
+| 관리자 UI 키트 | `src/components/ui/**`, cmdk, Radix, Tailwind, next-themes | `/admin`이 재사용 |
+| 기존 콘텐츠 | `src/contents/**` | Keystatic MDX·YAML. 아직 DB가 원본이 아님 |
+
+`src/cms/**`와 `docs/cms/**`는 없다. 2026-09-16에 미커밋 골격을 폐기했다.
+
+### 0.2 없거나 미연결
+
+- CMS 코어·어댑터·MDX 변환·에디터·HTTP API·`/admin` 전부
+- `pg`, `@tiptap/*`, Auth.js, S3/R2 클라이언트, IndexedDB 헬퍼
+- 공개 `ContentRepository`의 DB 구현. post/memo는 `dynamic = "force-static"`
+- 이전 도구, OpenAPI, Keystatic 제거
+
+### 0.3 구현 전에 확인해야 하는 불일치
+
+1. 기존 관리자 인증은 Keystatic GitHub 로그인명(`NEXT_PUBLIC_KEYSTATIC_OWNER`)이다. CMS는 GitHub **숫자 ID**(`CMS_ADMIN_GITHUB_ID`)다.
+2. `package.json`에 `pg`/`@tiptap/*`가 없다. 첫 CMS 코드와 함께 넣는다(M0-INV-2 / M1).
+
+### 0.4 재사용하고 다시 만들지 말 것
+
+- 공개 MDX 컴포넌트·Shiki 주석·Chart DSL·Mermaid 파이프라인
+- 코드 fence 주석 변환 (`src/libs/annotation/code-block`)
+- 기존 `ContentRepository` 메서드 시그니처. 페이지가 기대하는 Post/Memo 타입은 호환 계층에서 맞춘다
+- 컬렉션·필드·템플릿의 **명세 내용**(§6.3, §6.4). 코드는 다시 작성한다
+
+---
+
+## 1. Milestone 개요
+
+명세 §12.1과 맞추되, 코드 현황 때문에 **M0(기준 고정)** 을 앞에 둔다.
+
+| ID | 이름 | 명세 단계 | 종료 조건 |
+| --- | --- | --- | --- |
+| M0 | 기준 고정 | (선행) | spec·plan·`env.d.ts`가 통합 브랜치에 있고, 기존 콘텐츠 목록이 있으며, 워킹 트리에 폐기된 CMS 골격이 없다 |
+| M1 | 핵심 검증 | §12.1-1 | 대표 MDX가 analyze→document→serialize→analyze로 의미를 보존하고, 실DB에서 초안/공개본 분리·충돌·롤백이 검증된다. 보기만 토글하면 원문 바이트가 유지된다 |
+| M2 | 관리 기반 | §12.1-2 | GitHub 숫자 ID 1명만 `/admin`과 `/api/cms/v1`에 들어가고, 목록/폴더/관계/record 저장이 API로 동작한다 |
+| M3 | 작성과 발행 | §12.1-3 | 편집 화면에서 자동 저장·충돌·원문 오류·발행·예약·이미지 업로드가 내용을 잃지 않는다 |
+| M4 | 운영 기능 | §12.1-4 | 미디어 라이브러리, 일괄 작업, 복제/템플릿, 내보내기/시험 이전이 사용처·삭제 규칙을 지킨다 |
+| M5 | 블로그 연결 | §12.1-5 | 공개 조회가 DB 공개본만 쓰고, 기존 49편 검수 보고서가 있으며, Keystatic 제거 준비와 전환 승인을 사용자에게 맡긴다 |
+
+각 Milestone 병합 후 Reviewer가 통합 브랜치를 검수한다. 운영 데이터 이전과 공개 전환은 M5 보고서 이후 **사용자 승인**이 따로 필요하다.
+
+---
+
+## M0. 기준 고정
+
+종료 조건: `feature/new-cms`에 spec·plan·`env.d.ts`가 있고, 기존 콘텐츠 목록(M0-INV-3)이 있다. `pg`/Tiptap lockfile은 첫 CMS 코드와 함께(M0-INV-2).
+
+### M0-INV-1 스키마 테스트와 마이그레이션 드리프트 확인
+
+- **상태:** CANCELLED. 대상이던 `src/cms/adapters/postgres`를 폐기했다. 스키마와 제약은 M1-DA-1에서 명세 §9 기준으로 새로 작성하고, 그때 실DB 테스트를 붙인다.
+
+### M0-INV-2 선언되지 않은 런타임 의존성
+
+- **목적:** 에디터·실DB 테스트가 패키지 설치만으로 재현되게 한다.
+- **주요 내용:** `@tiptap/core`, `@tiptap/react`, 사용 중인 `@tiptap/extension-*`, `@tiptap/pm`, `pg`(+ `@types/pg`)를 기존 Next 16 / React 19와 맞춰 lockfile에 고정. **쓰는 코드가 있는 배치에서만** 넣는다. Auth.js·R2 SDK는 해당 Task에서 넣는다. 유료 Tiptap 패키지 금지.
+- **선행:** M1-TW-1 또는 M1-TW-2와 같은 배치(첫 CMS 테스트/코드)
+- **영향 파일:** `package.json`, `pnpm-lock.yaml`
+- **담당:** INF
+- **완료 조건:** 깨끗한 설치 후 에디터 단위 테스트와 postgres 하네스의 `import("pg")`가 성공한다.
+- **검증:** `pnpm test:run src/cms/editor src/cms/adapters/postgres/__test__/schema.test.ts`
+
+### M0-INV-3 기존 콘텐츠 목록 재집계 (읽기 전용)
+
+- **목적:** 이전 검수의 분모를 추측하지 않는다. 명세 §11.2는 구현 시 다시 세라고 했다.
+- **주요 내용:** post/memo MDX 수, 이미지 경로(상대/외부), 표·수식·JSX 컴포넌트, slug, 카테고리/태그/모음집 관계, `publishedDateTimeISO` 유무를 표로 만든다. DB에 쓰지 않는다.
+- **선행:** 없음
+- **영향 파일:** `/Users/bh2980/Desktop/bh2980_blog/CMS-CONTENT-INVENTORY.md` (신규). `src/contents`는 읽기만
+- **담당:** JR
+- **완료 조건:** 파일 경로별 목록과 이슈 후보(빈 alt, 날짜 없음, 상대 이미지)가 있다.
+- **검증:** 보고서 숫자가 `src/contents` 파일 수와 일치한다.
+
+### M0-BASE-1 기준 문서 커밋
+
+- **목적:** worktree가 명세·계획·env 타입을 공유하게 한다.
+- **주요 내용:** `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md`, `env.d.ts`만 `feature/new-cms`에 커밋. `.env.local`·비밀값·`src/cms`·`docs/cms`·스크린샷은 넣지 않는다.
+- **선행:** 사용자 승인 (2026-09-16: spec·plan·env만, 나머지 폐기)
+- **영향 파일:** 위 세 파일
+- **담당:** Lead (작은 통합)
+- **완료 조건:** 세 파일이 추적되고, 폐기한 경로는 워킹 트리에 없다.
+- **검증:**
+  - `git ls-files CMS-SPEC.md CMS-V1-IMPLEMENTATION-PLAN.md env.d.ts`가 세 파일을 나열한다
+  - `git status --short`에 `src/cms`, `docs/cms`가 없다
+  - `test ! -e src/cms && test ! -e docs/cms`
+
+---
+
+## M1. 핵심 검증
+
+종료 조건: F10(공개 분리의 저장 측면)·F19(원문 토글)·이전 항의 “본문 의미 보존” 표본이 자동 테스트로 막힌다. 관리자 UI는 아직 없다.
+
+파일 소유권: TW = `__test__`와 시험 하네스만. ED = `src/cms/mdx/**` (에디터 UI 제외). DA = `src/cms/adapters/postgres/**` 구현·마이그레이션 (`__test__` 제외).
+
+### M1-TW-1 MDX 왕복 실패 테스트
+
+- **목적:** serialize가 없을 때 실패하는 완료 조건을 먼저 고정한다.
+- **주요 내용:** `analyze → document → serialize → analyze`. 코드 fence 주석 메타데이터, 중첩 Callout/Tabs/Columns, 표, 블록 수식, `src/contents` 기존 MDX 표본. 보기만 토글하면 원문 바이트 유지(§4.4).
+- **선행:** M0-BASE-1
+- **영향 파일:** `src/cms/mdx/__test__/roundtrip.test.ts` (신규). `src/contents`는 읽기만
+- **담당:** TW
+- **완료 조건:** serialize 미구현 시 테스트가 실패한다. 구현을 넣지 않는다.
+- **검증:** `vitest run src/cms/mdx/__test__/roundtrip.test.ts`
+
+### M1-TW-2 ContentStore 저장/공개 실패 테스트
+
+- **목적:** 초안/공개본·버전·롤백의 **도메인** 동작을 구현 전에 고정한다. HTTP 상태 코드는 이 테스트에 넣지 않는다.
+- **주요 내용:** 시험 하네스 `__test__/test-database.ts`는 테스트 전용으로 이 Task에서 새로 쓴다(`CMS_TEST_DATABASE_URL`만 읽음). `createEntry`, `saveWorking`(동일 내용이면 `updatedAt` 미변경), `publishEntry`(초안과 공개본 분리, `expectedVersion` 불일치 시 `CmsError` code `conflict` + `serverVersion`, 같은 해시 재발행은 공개본 미교체, 트랜잭션 실패 시 공개본 유지). Store 입력은 `expectedVersion`이 필수라 **버전 누락은 여기서 다루지 않는다**(M2-BE-3). skip되면 안 된다. 연결 문자열을 로그하지 않는다. `CMS_DATABASE_URL`을 읽지 않는다. `409`/`428`을 단언하지 않는다. **구현(`content-store.ts`, migrations)은 쓰지 않는다.**
+- **선행:** M0-BASE-1, M0-INV-2
+- **영향 파일:** `src/cms/adapters/postgres/__test__/content-store.test.ts`, `__test__/test-database.ts` (신규)
+- **담당:** TW
+- **완료 조건:** 실패하는 테스트와 완료 조건 매핑이 있다. Store 구현 파일을 고치지 않는다.
+- **검증:** `vitest run src/cms/adapters/postgres/__test__/content-store.test.ts`
+
+### M1-ED-1 MDX serialize
+
+- **목적:** DB에 저장할 원본 문자열을 문서 JSON에서 만든다.
+- **주요 내용:** 일반 Markdown + 등록 JSX 컴포넌트 이름 유지. 코드/Mermaid/chart는 기존 언어 펜스. 주석 공백·범위 보존은 `src/libs/annotation/code-block` 재사용. 미지원 문법은 추측 변환하지 않는다. `TextAlign`/`Image`/`ContentLink` 계약(§4.4).
+- **선행:** M1-TW-1
+- **영향 파일:** `src/cms/mdx/` 신규 serialize + analyze 연결. `to-document.ts`/`registry.ts`는 필요 시에만
+- **담당:** ED
+- **완료 조건:** M1-TW-1이 통과한다. 보기만 토글하는 경로에서 serialize를 호출하지 않는 기존 `source-toggle` 테스트가 유지된다.
+- **검증:** roundtrip 테스트 + 기존 `corpus.test.ts` + `source-toggle.test.ts`
+
+### M1-ED-2 변환기를 에디터 토글에 연결
+
+- **목적:** G1 토글이 mock이 아니라 실제 analyze/serialize를 쓰게 한다.
+- **주요 내용:** `SourceConverter` 구현체를 `src/cms/mdx`에서 export. 에디터 패키지가 MDX 내부를 우회 import하지 않게 한 파일만 공개.
+- **선행:** M1-ED-1
+- **영향 파일:** `src/cms/mdx` public export, `src/cms/editor`는 얇은 연결만
+- **담당:** ED
+- **완료 조건:** 실제 변환기로 보기만 토글하면 원문 바이트가 같다. 시각 편집 후에는 의미 보존 정규화를 허용한다.
+- **검증:** 에디터 테스트에 실제 converter fixture 추가
+
+### M1-DA-1 ContentStore create/save/publish 실DB 검증
+
+- **목적:** PostgreSQL ContentStore를 명세 §9대로 **새로** 작성한다. 범용 repository를 만들지 않는다.
+- **주요 내용:** M1-TW-2를 통과하도록 `createEntry`/`saveWorking`/`publishEntry`, 마이그레이션, 트랜잭션·버전 처리. 버전 불일치는 `CmsError` code `conflict` + `serverVersion`. HTTP 409/428 매핑은 하지 않는다.
+- **선행:** M1-TW-2
+- **영향 파일:** `src/cms/adapters/postgres/content-store.ts` (및 이 파일이 import하는 같은 폴더 헬퍼). 마이그레이션 변경이 필요하면 사용자에게 보고
+- **담당:** DA
+- **완료 조건:** M1-TW-2 통과. 공개본이 초안 저장에 바뀌지 않는다.
+- **검증:** content-store 테스트 + 기존 schema 테스트
+
+### M1-RV-1 Milestone 1 검수
+
+- **목적:** 왕복·공개 분리만 승인한다.
+- **선행:** M1-ED-2, M1-DA-1
+- **담당:** RV
+- **완료 조건:** 구체적 파일·재현으로 승인 또는 수정 요청.
+- **검증:** 통합 브랜치에서 해당 vitest + 타입검사
+
+---
+
+## M2. 관리 기반
+
+종료 조건: 로그인하지 않은 사용자와 다른 GitHub 계정은 관리자 API/화면에 못 들어간다. 컬렉션 목록·폴더·record 저장·관계 ID가 API로 동작한다. F01의 서버 목록/검색/필터, F02 폴더, F04의 Auth 경계, F08의 저장 측 참조.
+
+### M2-BE-1 Auth.js GitHub 게이트웨이
+
+- **목적:** Keystatic 로그인과 분리된 관리자 세션.
+- **주요 내용:** Auth.js JWT 세션(8시간). `CMS_ADMIN_GITHUB_ID`만 허용. `AuthGateway` 구현. 콜백 `/api/auth/callback/github`. CSRF·동일 출처. 실행기 토큰은 이 Task에서 스텁만 (`authorizeExecutor`는 토큰 없으면 false). DB 어댑터 없음.
+- **선행:** M1-RV-1
+- **영향 파일:** `src/cms/adapters/auth/**` (신규), `src/app/api/auth/**`, Auth.js 설정. `src/libs/admin/verify-access.ts`는 Keystatic용이므로 아직 삭제하지 않음
+- **담당:** BE
+- **완료 조건:** 비로그인 401, 다른 GitHub ID 403, 허용 ID만 통과. 사용자명을 권한에 쓰지 않는다.
+- **검증:** 게이트웨이 단위 테스트 + 라우트 테스트. 브라우저 로그인은 M2-FE-1에서
+
+### M2-INV-1 Auth.js와 Next 16 호환
+
+- **목적:** 패키지 메이저를 추측으로 고르지 않는다.
+- **주요 내용:** Next 16.1 / React 19에서 쓸 Auth.js 패키지명·설정 파일을 확인하고 M2-BE-1에 적는다.
+- **선행:** 없음 (M2-BE-1과 같은 배치에서 먼저)
+- **담당:** INF
+- **완료 조건:** 설치할 패키지 이름과 최소 설정 파일이 명시된다.
+- **검증:** 해당 버전 lock + 타입 검사
+
+### M2-BE-2 업무 서비스 — 초안 저장과 발행 준비
+
+- **목적:** HTTP와 ContentStore 사이에 MDX 분석·컬렉션 검증·slug·참조 인덱스를 둔다. UI가 Store를 직접 부르지 않는다.
+- **주요 내용:** PreparedSnapshot 생성(analyze + hash + refs). 초안은 빈 제목/오류 MDX 허용, stale 참조 유지. 발행 검증은 이 단계에 함수로만 두고 발행 API는 M3. slug NFC·금지문자(명세 §6.2). DB CHECK보다 넓은 거부는 서비스가 한다.
+- **선행:** M1-ED-1, M1-DA-1
+- **영향 파일:** `src/cms/services/**` (신규). Store/에디터 파일 금지
+- **담당:** BE
+- **완료 조건:** 초안 저장 입력이 Store가 받는 `PreparedSnapshot`으로 변환된다. 허용 목록 밖 필드 거부.
+- **검증:** 서비스 단위 테스트 (mock store 가능)
+
+### M2-TW-1 slug·관계 서비스 테스트
+
+- **목적:** slug 예약/중복, 미발행 대상 링크의 발행 차단을 구현 전에 고정.
+- **선행:** M1-RV-1
+- **영향 파일:** `src/cms/services/__test__/**`
+- **담당:** TW
+- **완료 조건:** 실패하는 테스트. 구현 없음.
+- **검증:** vitest. M2-BE-2/M3 발행과 나눠 매핑을 적는다.
+
+### M2-BE-3 HTTP API 골격과 엔트리 CRUD
+
+- **목적:** `/api/cms/v1`가 관리자 UI의 유일한 HTTP 계약이 되게 한다.
+- **주요 내용:** `GET /meta`, `GET/POST /entries`, `GET/PATCH /entries/:id`. 기존 `src/cms/core/api.ts` DTO 사용. Store/서비스 `CmsError`를 HTTP로 옮긴다. OpenAPI는 이 Milestone에서 초안만, 완성은 M5. 공개 블로그는 이 라우트를 호출하지 않고 서비스를 직접 호출한다.
+- **선행:** M2-BE-1, M2-BE-2
+- **영향 파일:** `src/app/api/cms/v1/**`, 얇은 라우트 헬퍼. core/api.ts는 DTO 추가만
+- **담당:** BE
+- **완료 조건:** 인증된 클라이언트가 글을 만들고 초안을 저장한다. version 없이 PATCH하면 428 `version_required`. Store `conflict`+`serverVersion`은 409.
+- **검증:** Route Handler 테스트에서 HTTP 409/428 매핑을 단언한다. Store 테스트에 상태 숫자를 넣지 않는다.
+
+### M2-DA-2 폴더·목록 쿼리 실DB 보강
+
+- **목적:** F01 서버 검색/필터/정렬과 F02 폴더 제약을 Store에서 막는다.
+- **주요 내용:** `listEntries` 검색(제목·slug·선택적 본문 ILIKE), 필터 AND/OR, 페이지, 폴더 CRUD·순환 거부·삭제 시 글/자식 이동. `updatedAt`은 폴더 이동에 안 바뀐다.
+- **선행:** M1-DA-1, TW가 폴더/목록 테스트를 같은 파일 또는 `folders.test.ts`에 추가한 뒤
+- **영향 파일:** `content-store.ts`, `src/cms/adapters/postgres/__test__/folders.test.ts` (TW가 테스트 파일 소유)
+- **담당:** DA 구현, TW 테스트 선행 (`M2-TW-2`)
+- **완료 조건:** 형제 이름 중복 거부, 폴더 삭제가 글을 지우지 않음, 목록 페이지에 누락/중복 없음.
+- **검증:** 실DB vitest
+
+### M2-TW-2 폴더·목록 실패 테스트
+
+- **선행:** M1-DA-1
+- **담당:** TW
+- **영향 파일:** `src/cms/adapters/postgres/__test__/folders.test.ts` 또는 list 테스트
+- **완료 조건:** 구현 전 실패. schema.test.ts 수정 금지.
+
+### M2-BE-4 record 컬렉션과 관계 API
+
+- **목적:** 태그/카테고리/모음집은 저장 즉시 반영. 관계 필드는 ID.
+- **주요 내용:** record workflow 저장, 사용처 조회 `GET /entries/:id/relations`, 사용 중 휴지통 이동 거부. 모음집 `items`는 post+memo 순서 유지.
+- **선행:** M2-BE-3, M2-DA-2
+- **영향 파일:** services + `/entries/:id/relations`, record save 경로
+- **담당:** BE
+- **완료 조건:** 태그 slug를 바꿔도 글의 관계 ID가 유지된다. 사용 중 태그는 삭제 거부.
+- **검증:** API/서비스 테스트
+
+### M2-FE-1 `/admin` 셸과 컬렉션 목록
+
+- **목적:** F01 목록 화면의 첫 사용 가능한 형태.
+- **주요 내용:** `/admin` 레이아웃, GitHub 로그인 화면, 왼쪽 컬렉션/폴더 트리, 오른쪽 테이블(기본 컬럼, 검색, 상태 필터, 수정일 정렬, 25/50/100). URL에 폴더·검색·필터·정렬·페이지. 컬럼 설정은 preferences API가 생기면 연결 (preferences는 M2-FE-2). 한국어 UI, 기존 토큰, 1280px 기준, 1024px에서 패널 접기.
+- **선행:** M2-BE-3, M2-DA-2
+- **영향 파일:** `src/app/(admin)/admin/**` (Keystatic 라우트는 아직 유지)
+- **담당:** FE
+- **완료 조건:** 로그인 후 post/memo 목록이 DB에서 온다. 빈/로딩/오류 구분. 색상만으로 상태를 전달하지 않음.
+- **검증:** 컴포넌트 테스트 + 브라우저에서 목록/필터/페이지
+
+### M2-FE-2 폴더 트리와 목록 설정 저장
+
+- **목적:** F02 UX + 컬럼/페이지 크기 기억.
+- **선행:** M2-FE-1, folders API, `GET/PUT /preferences`
+- **영향 파일:** admin 사이드바·폴더 메뉴. preferences 라우트는 BE 작은 Task `M2-BE-5`
+- **담당:** FE
+- **완료 조건:** 하위 폴더 생성/이름/이동, 글 드래그 이동이 수정일을 바꾸지 않음. 새로고침 후 컬럼 설정 유지.
+- **검증:** 브라우저 + API
+
+### M2-BE-5 preferences API
+
+- **선행:** M2-BE-1
+- **담당:** JR (기존 DTO `preferencesBodySchema` 그대로)
+- **영향 파일:** `/api/cms/v1/preferences`, ContentStore get/savePreferences 연결
+- **완료 조건:** 관리자 ID별로 분리. 크기 제한.
+- **검증:** 라우트 테스트
+
+### M2-RV-1 Milestone 2 검수
+
+- **선행:** M2-FE-2, M2-BE-4
+- **담당:** RV
+
+---
+
+## M3. 작성과 발행
+
+종료 조건: F03 날짜, F05 업로드 계약, F06/F17 블록 조작, F10 상태/예약, F11 자동 저장, F15 발행 검증, F16 내부 링크, F18 정렬/이미지 크기, F19 원문. 저장 실패·충돌·원문 오류에서 본문이 사라지지 않는다.
+
+### M3-TW-1 발행·상태·예약·날짜 테스트
+
+- **목적:** 상태기계와 날짜 표를 구현 전에 고정.
+- **주요 내용:** §5.3 전환, §5.5 날짜, 예약 잠금/중복 실행/이른 호출, 같은 해시 재발행. HTTP 428/409/422.
+- **선행:** M2-RV-1
+- **영향 파일:** services 및 postgres `__test__` (TW 소유 테스트 파일)
+- **담당:** TW
+- **완료 조건:** 실패하는 테스트. 구현 없음.
+
+### M3-BE-1 발행·보관·휴지통·예약 API
+
+- **목적:** 명시적 발행으로만 공개본을 교체한다.
+- **주요 내용:** validate/publish/archive/unarchive/trash/restore/DELETE, schedule CRUD, `GET /schedules/due`, `POST /schedules/:id/publish` (실행기 토큰). 실행기 미연결 시 관리자 표시용 플래그. `CMS_SCHEDULER_TOKEN` 없으면 실행 API 403 + UI “외부 실행기 연결 필요”.
+- **선행:** M3-TW-1, M2-BE-2
+- **영향 파일:** services + `/api/cms/v1/entries/**`, `/schedules/**`
+- **담당:** BE
+- **완료 조건:** M3-TW-1 통과. 보관 글은 공개 조회에서 빠진다.
+- **검증:** 실DB + 라우트 테스트
+
+### M3-FE-1 편집 화면 셸 (필드 + 에디터 마운트)
+
+- **목적:** 본문 집중 편집 레이아웃.
+- **주요 내용:** 제목, 접는 탐색/속성, 시각·MDX 토글, 저장/발행 버튼, 저장 상태 자리. Tiptap G1 + M1 변환기. 슬래시 메뉴는 M3-ED-1 이후.
+- **선행:** M2-FE-1, M1-ED-2, M2-BE-3
+- **영향 파일:** `src/app/(admin)/admin/**/edit/**`, 에디터 래퍼. `src/cms/editor` 코어는 ED만
+- **담당:** FE
+- **완료 조건:** 글 열기, 원문 토글, 속성 필드 표시. 자동 저장은 다음 Task.
+- **검증:** 브라우저 1280/1024
+
+### M3-FE-2 자동 저장과 IndexedDB 복구
+
+- **목적:** F11.
+- **주요 내용:** 2초 idle / 10초 상한, IME 중 지연, 문서당 1 inflight, changeSeq, 상태 문구 6종, 이탈 경고, 충돌 화면(덮어쓰기 금지, 양쪽 복사). IndexedDB 키 = 관리자ID+콘텐츠ID.
+- **선행:** M3-FE-1
+- **영향 파일:** admin 편집 클라이언트 상태. 에디터 스키마 파일 금지
+- **담당:** FE
+- **완료 조건:** 새로고침 후 미저장 복구 안내. 서버가 바뀌면 충돌 UI. 동일 내용 저장은 요청 생략(서버 규칙과 맞춤).
+- **검증:** 브라우저: 입력, 새로고침, 오프라인, 두 탭 충돌
+
+### M3-ED-1 슬래시 메뉴·명령 검색·블록 핸들
+
+- **목적:** F06, F17.
+- **주요 내용:** 빈 문단 `/`, 한글/영문 검색, 핸들 위·아래·복제·삭제, 키보드만으로 가능. 복제 시 블록 ID 갱신, 미디어/글 ID 유지. 기존 Keystatic PM 플러그인을 이식하지 말고 Tiptap 확장으로 구현. 재사용 가능한 동작만 `src/keystatic/plugins/pm`에서 읽어서 참고.
+- **선행:** M1-ED-2
+- **영향 파일:** `src/cms/editor/**` (FE 편집 페이지는 메뉴 컴포넌트만)
+- **담당:** ED
+- **완료 조건:** 중첩 블록이 부모가 허용하는 구조 안에서만 이동. 코드 영역에서 본문 단축키가 입력과 싸우지 않음.
+- **검증:** 에디터 단위/jsdom + 브라우저 IME
+
+### M3-ED-2 내부 링크와 이미지 노드 UX
+
+- **목적:** F16, F18의 에디터 쪽.
+- **주요 내용:** `[[` 및 링크 메뉴 → ContentLink(ID). 이미지 너비 px/%, 정렬, alt/caption은 삽입 위치 속성. 라이브러리 재사용은 M4 미디어와 맞출 인터페이스만.
+- **선행:** M3-ED-1, 엔트리 검색 API (목록 search)
+- **영향 파일:** `src/cms/editor/**`
+- **담당:** ED
+- **완료 조건:** 링크 문구는 삽입 시점 제목, 이후 대상 제목 변경에 자동 치환되지 않음.
+- **검증:** 에디터 테스트
+
+### M3-INF-1 R2 MediaStore
+
+- **목적:** F05 업로드 계약의 파일 쪽.
+- **주요 내용:** `prepareUpload` 서명 URL, `headFile`, `publicUrl`, `deleteFile`. 브라우저에 비밀키 없음. CORS는 사용자/INF가 버킷에 이미 넣었는지 확인만.
+- **선행:** M2-BE-1 (인증된 업로드 API가 필요하므로 M3-BE-2와 함께)
+- **영향 파일:** `src/cms/adapters/r2/**` (신규). ContentStore 미디어 메타는 DA가 이미 구현
+- **담당:** INF 또는 BE. 파일 저장 모듈이라 INF, API 연결은 BE `M3-BE-2`
+- **완료 조건:** 자격 증명 없이 head/put/delete 단위 테스트(mock). 실제 버킷 확인은 수동 1회.
+- **검증:** mock + 선택적 실버킷 smoke (비밀값 로그 금지)
+
+### M3-BE-2 미디어 업로드 API
+
+- **목적:** 준비 → 클라이언트 직접 PUT → complete → ready.
+- **주요 내용:** `/media/uploads`, `/media/:id/complete`, MIME/크기 서버 재검증. 실패 시 ready 아님. 본문 중계 금지.
+- **선행:** M3-INF-1, M2-BE-1
+- **영향 파일:** `/api/cms/v1/media/**`, services
+- **담당:** BE
+- **완료 조건:** 위조 MIME·10MiB 초과 415/413. 완료 전 발행 차단은 M3-BE-1 발행 검증과 연결.
+- **검증:** API 테스트
+
+### M3-FE-3 편집기 이미지 삽입과 업로드 진행 UI
+
+- **선행:** M3-BE-2, M3-ED-2, M3-FE-1
+- **담당:** FE
+- **영향 파일:** admin 편집 화면만
+- **완료 조건:** 드롭/붙여넣기/파일 선택 시 자리 유지, 실패 상태로 발행 버튼 차단.
+- **검증:** 브라우저
+
+### M3-FE-4 발행·예약·상태 UI
+
+- **선행:** M3-BE-1, M3-FE-2
+- **담당:** FE
+- **완료 조건:** 발행 검증 오류가 필드/본문 위치로 연결. 예약 중 본문 잠금, 해제 후 편집. 실행기 없으면 “연결 필요”/지난 예약은 “실행 대기”.
+- **검증:** 브라우저
+
+### M3-RV-1 Milestone 3 검수
+
+- **담당:** RV
+- **선행:** M3-FE-2, M3-FE-4, M3-ED-1, M3-BE-2
+
+---
+
+## M4. 운영 기능
+
+종료 조건: F07 확장 예제, F09 일괄, F13 복제/템플릿, F14 라이브러리, §11.3 1–6의 **시험** 이전 도구. 운영 전환은 하지 않는다.
+
+### M4-FE-1 미디어 라이브러리
+
+- **목적:** F14.
+- **주요 내용:** 썸네일, 검색, 형식/날짜/사용 여부, 상세(원본/공개 용량, 사용처 초안/공개본), 기본 alt/caption 수정이 기존 본문을 바꾸지 않음, 사용 중 삭제 거부, deleting 재시도.
+- **선행:** M3-BE-2
+- **영향 파일:** `/admin` 미디어 컬렉션 화면
+- **담당:** FE
+- **완료 조건:** 사용 중 삭제 시도가 사용처로 안내. 미분석 초안이 있으면 삭제 보류 메시지.
+- **검증:** 브라우저 + API
+
+### M4-BE-1 일괄 작업 API
+
+- **목적:** F09.
+- **주요 내용:** `POST /bulk`, 최대 100, 항목별 version, 항목 단위 원자성, 예약 중은 거부. 태그/카테고리는 초안에만, 공개본은 발행 통해.
+- **선행:** M3-BE-1, M2-TW 일괄 테스트 (`M4-TW-1`)
+- **영향 파일:** services + `/api/cms/v1/bulk`
+- **담당:** BE
+- **완료 조건:** 일부 실패가 전체 성공으로 안 보인다. 실패 항목만 재실행 가능.
+- **검증:** API 테스트
+
+### M4-TW-1 일괄·복제 실패 테스트
+
+- **선행:** M3-BE-1
+- **담당:** TW
+- **영향 파일:** services `__test__`
+
+### M4-BE-2 복제와 템플릿 생성
+
+- **목적:** F13.
+- **주요 내용:** `POST /entries/:id/duplicate`, `POST /entries`의 `templateId`. 새 ID, slug 빈 값, 상태/일정/공개본/날짜 비복사, 같은 폴더, 미디어 재업로드 없음. 템플릿은 코드 정의만.
+- **선행:** M4-TW-1
+- **담당:** BE
+- **완료 조건:** 복제 글이 초안이고 원본 공개본과 무관.
+- **검증:** API 테스트
+
+### M4-FE-2 목록 일괄 메뉴와 새 글 템플릿
+
+- **선행:** M4-BE-1, M4-BE-2, M2-FE-1
+- **담당:** FE
+- **완료 조건:** 현재 페이지 선택만. 새 글에서 빈 글/템플릿 3종.
+- **검증:** 브라우저
+
+### M4-ED-1 필드·블록 확장 예제 (F07)
+
+- **목적:** 코어를 수정하지 않고 필드/블록을 붙이는 경로를 문서와 최소 예제로 닫는다.
+- **주요 내용:** 색상 필드, slug 보조 버튼(`renderDefault`), 링크 object 필드, 코드 fence `defineBlock` 연결. 기존 `fields.ts`/`blocks.ts` API 사용. 마켓/로더 없음.
+- **선행:** M3-FE-1, M1-ED-1
+- **영향 파일:** `src/cms/core` 예제 등록, `docs/cms/extensions.md` (신규 문서만)
+- **담당:** ED + FE (입력 컴포넌트)
+- **완료 조건:** 예제 필드가 저장·재열기된다. React 함수가 `/meta` JSON에 안 실림 (기존 contracts.test).
+- **검증:** 계약 테스트 + 수동 저장/재열기
+
+### M4-BE-3 내보내기 API
+
+- **목적:** §11.4 관리자 내보내기.
+- **주요 내용:** manifest + 초안/공개본 MDX/JSON + ID/관계/폴더/미디어 목록. 바이너리는 목록만.
+- **선행:** M3-BE-1
+- **담당:** BE
+- **완료 조건:** 인증된 GET/POST `/export`. 초안이 공개 스키마로 안 나감.
+- **검증:** 픽스처 export 스냅샷
+
+### M4-BE-4 기존 콘텐츠 시험 가져오기 (쓰기 전 검사 포함)
+
+- **목적:** §11.3 단계 1–4를 시험 DB에서 수행.
+- **주요 내용:** 읽기 전용 보고서(M0-INV-3 갱신), 안정 ID 매핑, 재실행 시 중복 생성 없음, 공개 글은 working+published, 날짜 없으면 null, `importedAt`. 운영 DB 금지.
+- **선행:** M0-INV-3, M1-DA-1, M1-ED-1
+- **영향 파일:** `src/cms/migrate-from-files/**` (신규 스크립트)
+- **담당:** BE + DA (Store imported 경로 이미 있음)
+- **완료 조건:** 시험 스키마에 기존 post/memo/tag/category/collection이 올라가고 공개 slug가 유지된다. 원본 파일은 그대로.
+- **검증:** 시험 DB 카운트 vs 파일 목록, slug 집합 비교
+
+### M4-ED-2 이전 본문 왕복 검수 러너
+
+- **목적:** §11.3 단계 5. 표본이 아니라 전편.
+- **주요 내용:** 모든 MDX analyze→serialize→analyze→공개 렌더 안전 검사. 정규화 vs 손실을 구분한 보고서.
+- **선행:** M1-ED-1, M4-BE-4
+- **영향 파일:** `src/cms/mdx/__test__/corpus-roundtrip.test.ts` 또는 스크립트
+- **담당:** ED
+- **완료 조건:** 실패 목록이 비거나, 남은 항목이 전환 차단 이슈로 분류된다.
+- **검증:** CI에서 러너 실행
+
+### M4-RV-1 Milestone 4 검수
+
+- **담당:** RV
+
+---
+
+## M5. 블로그 연결과 전환 준비
+
+종료 조건: 공개 페이지가 DB 공개본만 보여주고, 보관/휴지통/초안이 RSS·sitemap·OG·목록에 없다. 전환 보고서가 있다. Keystatic **제거는 사용자 전환 승인 후** 별 Task. 이 Milestone에서 제거 준비와 플래그만 한다.
+
+### M5-INV-1 공개 페이지 캐시/동적 렌더 조사
+
+- **목적:** Next 16에서 `force-static` + `generateStaticParams`를 요청 시 DB 조회로 바꿀 때 캐시가 초안/보관을 남기지 않는지 확인.
+- **주요 내용:** post/memo/sitemap/rss/og 경로의 캐시 경계를 읽고, `force-dynamic` 또는 동등한 “공개 여부 항상 재확인” 안을 적는다. Vercel 전용 ISR을 필수로 두지 않는다.
+- **선행:** 없음
+- **담당:** BE
+- **완료 조건:** 적용할 페이지 파일 목록과 캐시 설정이 명시된다.
+- **검증:** 문서. 구현은 M5-BE-1
+
+### M5-BE-1 Postgres ContentRepository
+
+- **목적:** 기존 `ContentRepository`를 DB 공개본으로 구현. 페이지 타입은 유지.
+- **주요 내용:** `getContentRepository()`가 CMS 공개 조회 서비스를 쓰게. 초안 없음. 별칭은 308에 해당하는 정규 slug 정보. DB 장애는 5xx/일시 오류, 404로 위장 금지.
+- **선행:** M5-INV-1, M3-BE-1, M4-BE-4
+- **영향 파일:** `src/libs/contents/repositories/postgres.ts` (신규), `get-content-repository.ts`. 기존 keystatic repo는 전환 전까지 유지
+- **담당:** BE
+- **완료 조건:** 플래그 또는 명시적 교체로 시험 요청이 DB를 읽는다. 페이지 컴포넌트는 repository만 본다.
+- **검증:** repository 테스트 + 페이지가 초안 slug에 404
+
+### M5-BE-2 공개 라우트 동적화 (RSS, sitemap, 목록, 상세)
+
+- **선행:** M5-BE-1, M5-INV-1
+- **담당:** BE
+- **영향 파일:** `src/app/(blog)/**`, `rss.xml/route.ts`, `sitemap.ts`
+- **완료 조건:** 새 발행이 재배포 없이 다음 요청에 보인다. 보관 글은 목록·RSS·sitemap에서 제외, 주소 404.
+- **검증:** 시험 DB에서 발행/보관 후 요청
+
+### M5-FE-1 인증된 미리보기
+
+- **목적:** 공개 상태를 바꾸지 않는 미리보기.
+- **선행:** M2-BE-1, M5-BE-1
+- **담당:** FE
+- **영향 파일:** 기존 `src/app/(blog)/(content)/preview/**`를 CMS 세션에 연결하거나 교체
+- **완료 조건:** 비로그인은 미리보기 불가. 미리보기가 발행하지 않음.
+- **검증:** 브라우저
+
+### M5-BE-3 공개 HTTP `/public/entries`
+
+- **목적:** 제공자 독립 공개 계약. 외부용.
+- **선행:** M5-BE-1
+- **담당:** JR (서비스 재사용, 새 규칙 없음)
+- **영향 파일:** `/api/cms/v1/public/**`
+- **완료 조건:** 공개 스키마만. 관리자 필드·초안 없음.
+- **검증:** 계약 테스트 (`toPublicEntry`와 동일 규칙)
+
+### M5-BE-4 OpenAPI와 확장 문서
+
+- **선행:** M2–M4 API가 안정된 뒤
+- **담당:** BE
+- **영향 파일:** `docs/cms/openapi.yaml` 또는 동등, `docs/cms/extensions.md` 보강
+- **완료 조건:** §10.1 표의 경로가 문서에 있고 예제가 있다.
+- **검증:** 문서 ↔ 라우트 목록 대조
+
+### M5-SEC-1 권한·MDX 실행 경로 검수
+
+- **목적:** 권한/공개 완료 기준 + §4.4 서버 허용 규칙.
+- **선행:** M2-BE-1, M5-BE-1
+- **담당:** Security QA
+- **완료 조건:** 비로그인 쓰기 불가, 실행기 토큰으로 콘텐츠 쓰기 불가, 검증 안 된 MDX가 실행 컴파일러로 안 감.
+- **검증:** 독립 보고서. Lead가 수정 배정
+
+### M5-TW-1 전환 차단 회귀 테스트
+
+- **목적:** 파서 왕복, 원자적 발행, 참조/주소, 인증, 예약 중복, 저장 충돌.
+- **선행:** M4-ED-2, M3-BE-1, M2-BE-1
+- **담당:** TW
+- **완료 조건:** 핵심 경계 회귀가 CI에 남는다. 스타일 스냅샷 양산 없음.
+- **검증:** `pnpm test:run` 해당 경로
+
+### M5-LEAD-1 전환 보고서와 사용자 승인 게이트
+
+- **목적:** 운영 이전·Keystatic 제거를 구현 완료와 혼동하지 않는다.
+- **주요 내용:** 미해결 오류, 주소 비교, 이미지 체크섬, 남은 Keystatic 의존. 승인 전까지 기존 읽기 경로 유지.
+- **선행:** M5-BE-2, M4-ED-2, M5-SEC-1
+- **담당:** Lead
+- **완료 조건:** 사용자가 전환을 승인하거나 보류한다. 승인 없이 Keystatic을 제거하지 않는다.
+
+### M5-BE-5 Keystatic 제거 (전환 승인 후)
+
+- **목적:** 명세 교체 완료.
+- **주요 내용:** 패키지·lockfile·`src/app/(admin)/keystatic`·`src/app/api/keystatic`·`src/keystatic/**`·patches·전용 env. 공개 렌더에 필요한 범용 MDX는 `src/components/mdx`, `src/libs`에 남긴다. 콘텐츠 원본 파일은 백업으로 유지할지 사용자 확인.
+- **선행:** M5-LEAD-1 사용자 승인
+- **담당:** BE + INF
+- **완료 조건:** 검색·설치·빌드·테스트에 Keystatic이 없다. 공개 주소와 본문 의미가 유지된다.
+- **검증:** `pnpm typecheck`, `pnpm test:run`, `pnpm build`, 저장소 검색
+
+### M5-RV-1 최종 검수
+
+- **담당:** RV
+- **선행:** M5-BE-2, 전환 후에는 M5-BE-5
+
+---
+
+## 2. 전체 Milestone 순서
+
+```text
+M0 기준 고정
+ → M1 핵심 검증 (MDX serialize + ContentStore 실DB)
+ → M2 관리 기반 (Auth + API + 목록/폴더)
+ → M3 작성과 발행 (에디터 화면 + 자동저장 + 발행/예약 + 업로드)
+ → M4 운영 (라이브러리, 일괄, 복제, 시험 이전)
+ → M5 공개 조회 전환 → 보고서 → (사용자 승인) → Keystatic 제거
+```
+
+한 단계를 “v1 완료”로 부르지 않는다.
+
+---
+
+## 3. Critical Path
+
+다음이 막히면 전체가 멈춘다.
+
+1. M0-BASE-1 기준 문서 커밋  
+2. M0-INV-2 `pg` (실DB 테스트 전)  
+3. M1-TW-1 → M1-ED-1 serialize  
+4. M1-TW-2 → M1-DA-1 실DB 저장/공개  
+5. M2-BE-1 Auth  
+6. M2-BE-2 서비스 + M2-BE-3 HTTP  
+7. M3-FE-2 자동 저장 (내용 유실 방지)  
+8. M3-BE-1 발행/예약  
+9. M4-BE-4 시험 이전 + M4-ED-2 전편 왕복  
+10. M5-BE-1/2 공개 조회 전환  
+11. M5-LEAD-1 사용자 전환 승인  
+12. M5-BE-5 Keystatic 제거  
+
+Auth·serialize·실DB 공개 분리·이전 왕복·공개 조회 교체 중 하나라도 실패하면 다음 Milestone으로 가지 않는다.
+
+---
+
+## 4. 병렬 가능한 Task
+
+파일 소유권이 겹치지 않을 때만 같은 worktree 배치로 돌린다.
+
+| 배치 | 병렬 | 금지 |
+| --- | --- | --- |
+| M0 | INV-3(JR). INV-2는 M1 첫 코드와 함께 INF | INV-1 CANCELLED |
+| M1 | TW-1과 TW-2는 테스트 파일만 병렬. 구현은 테스트 병합 후 ED-1 ∥ DA-1 | ED와 DA가 같은 파일 |
+| M2 | TW-2(폴더 테스트) 후 DA-2 ∥ BE-1(Auth, INV-1 패키지 확인 후) . BE-5(preferences) ∥ FE는 API 이후 | FE가 API 전에 화면만 그려도 되나 완료는 API 연결 후 |
+| M3 | ED-1(에디터) ∥ BE-1(발행 API) ∥ INF-1(R2). FE-1은 API+에디터 마운트 후 | FE와 ED가 `src/cms/editor` 동시 수정 |
+| M4 | FE-1 라이브러리 ∥ BE-1 일괄 ∥ BE-2 복제 (테스트 병합 후) . BE-4 이전은 serialize 이후 | 이전 스크립트가 editor 코어를 수정 |
+| M5 | INV-1 ∥ SEC는 공개 조회 구현과 일부 겹침 → 조회 병합 후 SEC | Keystatic 제거와 공개 조회를 동시에 |
+
+Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
+
+---
+
+## 5. 초기에 검증해야 하는 기술 위험
+
+| 위험 | 왜 지금 | 담당 Task |
+| --- | --- | --- |
+| `pg` / `@tiptap/*` 미선언 | 첫 CMS 코드가 lockfile 없이 돌아가면 재현 불가 | M0-INV-2 |
+| MDX serialize 의미 손실 (코드 주석, 중첩 JSX) | 저장 원본이 MDX라 왕복이 안 되면 에디터/이전 전부 중단 | M1-TW-1, M1-ED-1 |
+| 초안 저장이 공개본을 덮음 | F10 핵심. Store를 처음부터 실DB로 검증 | M1-TW-2, M1-DA-1 |
+| Auth.js × Next 16 | 패키지 선택이 틀리면 M2 전체 재작업 | M2-INV-1 |
+| 기존 정적 생성 + 신규 글 무재배포 | 명세 §11.1. 캐시가 보관 글을 남기면 전환 실패 | M5-INV-1 |
+| 기존 상대 경로 이미지 vs R2 mediaId | 자동 다운로드 금지. 주소 유지가 우선 | M0-INV-3, M4-BE-4 |
+
+---
+
+## 6. 가장 먼저 수행할 Task 묶음 (배치 0–1)
+
+구현 코딩은 기준 문서 커밋 후에만 시작한다.
+
+**배치 0**  
+1. M0-BASE-1 완료: spec·plan·`env.d.ts`만 커밋. `src/cms` 폐기.  
+2. M0-INV-3 콘텐츠 목록 (JR, `CMS-CONTENT-INVENTORY.md`)
+
+**배치 1 (Test Writer + Infra)**  
+3. M0-INV-2 `pg`/`@tiptap` lockfile (INF, 첫 테스트와 함께)  
+4. M1-TW-1 MDX 왕복 실패 테스트  
+5. M1-TW-2 ContentStore 실패 테스트
+
+**배치 2 (테스트 병합 후 병렬 worktree)**  
+7. M1-ED-1 serialize (`src/cms/mdx`)  
+8. M1-DA-1 ContentStore 실DB (`content-store.ts`)
+
+그다음 M1-ED-2 연결 → M1-RV-1 → M2.
+
+오늘 하지 않는 것: Frontend/Backend 화면·API, R2 업로드, Keystatic 제거, 운영 DB 이전.
+
+---
+
+## 7. 에이전트 운영 규칙 (이 계획과 함께)
+
+- 다음 실행의 현재 위치는 맨 위 진행표다. 본문 전체를 다시 추론하지 않는다.
+- Task 하나 = 담당자 하나. 같은 파일을 두 봇에게 주지 않는다. 소유 밖 파일이 필요하면 우회하지 말고 Lead가 이 문서를 고친다.
+- 복잡한 핵심(왕복, 발행 트랜잭션, 예약, 일괄, 이전)은 TW 실패 테스트 다음 구현.
+- Store/서비스는 `CmsError` 코드(`conflict`, `version_required` 등)를 검증한다. HTTP 409/428은 Route Handler 테스트(M2-BE-3 이후)에서만 단언한다.
+- 병렬 시 `/Users/bh2980/Desktop/bh2980_blog-worktrees/<슬롯>`만 쓰고, 병합 후 슬롯을 지운다. 이번 배치에 일하는 봇만 만든다.
+- 브리프에 쓰기 루트 절대 경로를 넣는다. cwd를 재할당한다고 가정하지 않는다.
+- 비밀값·연결 문자열을 코드·로그·채팅에 쓰지 않는다.
+- Reviewer 요청이 오기 전에 Lead가 리뷰했다고 말하지 않는다.

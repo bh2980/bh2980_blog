@@ -1,5 +1,25 @@
 declare namespace NodeJS {
 	interface ProcessEnv {
+		HOST_URL: string;
+
+		CMS_DATABASE_URL: string;
+		CMS_TEST_DATABASE_URL?: string;
+		CMS_TEST_DATABASE_ALLOW_SCHEMA_CREATE?: string;
+
+		AUTH_SECRET: string;
+		AUTH_GITHUB_ID: string;
+		AUTH_GITHUB_SECRET: string;
+		AUTH_URL: string;
+		AUTH_TRUST_HOST?: string;
+		CMS_ADMIN_GITHUB_ID: string;
+
+		CMS_R2_ACCOUNT_ID: string;
+		CMS_R2_ACCESS_KEY_ID: string;
+		CMS_R2_SECRET_ACCESS_KEY: string;
+		CMS_R2_BUCKET: string;
+		CMS_R2_ENDPOINT: string;
+		CMS_R2_PUBLIC_BASE_URL: string;
+
 		NEXT_PUBLIC_GISUS_CATEGORY_ID: string;
 		NEXT_PUBLIC_GISUS_REPO_ID: string;
 		NEXT_PUBLIC_KEYSTATIC_REPO: string;
@@ -9,7 +29,6 @@ declare namespace NodeJS {
 		KEYSTATIC_GITHUB_CLIENT_ID: string;
 		KEYSTATIC_GITHUB_CLIENT_SECRET: string;
 		KEYSTATIC_SECRET: string;
-		HOST_URL: string;
 		GSC_VERIFICATION_TOKEN: string;
 	}
 }
