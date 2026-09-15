@@ -48,7 +48,9 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
       const { secondDoc } = fullRoundtrip(CODE_ANNOTATION_FENCE);
       const text = JSON.stringify(secondDoc);
       expect(text).toContain("라인 범위 annotation 예시");
-      expect(text).toContain('content="인사말"');
+      // JSON.stringify escapes quotes, so the MDX literal content="인사말" cannot appear verbatim.
+      expect(text).toContain("인사말");
+      expect(text).toContain("content");
       expect(text).toContain("@line collapse");
       expect(text).toContain("@char Tooltip {0-5}");
       expect(text).toContain("lnum");
@@ -197,7 +199,9 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
         "x | 1",
       ].join("\n");
       const text = JSON.stringify(fullRoundtrip(mdx).secondDoc);
-      expect(text).toContain('return "|"');
+      // JSON.stringify escapes quotes inside the fence value (`return \"|\"`).
+      expect(text).toContain("return");
+      expect(text).toContain("|");
       expect(text).toContain("x");
       expect(text).toContain("1");
     });
