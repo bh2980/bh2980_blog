@@ -23,7 +23,7 @@
 - 상대 이미지(/assets/...): 5개 파일 22장. memos/정규표현식-정리 8장, posts/블로그라면-seo는-해봐야지 8장, posts/블로그를-검색하는-벡터-rag-만들기 2장, posts/왜-내-블로그는-ssg가-안될까 2장, posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데 2장. 22장 모두 alt="" 빈 alt.
 - 외부 이미지 ![](http...): 0건 (외부 URL은 일반 마크다운 링크로만 존재, 이미지 아님).
 - 표(마크다운 테이블): 4개 파일 — posts/내가-만든-rag의-성능-측정하기, memos/정규표현식-정리, memos/load-file, memos/download-file. (memos/43-exclude.mdx의 `|` 행은 코드블럭 내 TS 조건식이라 제외.)
-- 수식($$ ... $$): 2개 파일 — posts/블로그를-검색하는-벡터-rag-만들기, memos/js의-비동기-처리-메커니즘.
+- 수식($$ ... $$): 2개 파일에서 `$$` 문자 발견. 실제 블록 수식은 memos/js의-비동기-처리-메커니즘 1곳. posts/블로그를-검색하는-벡터-rag-만들기의 `$$`는 SQL 코드 펜스 안 문자(`as $$` / `$$;`).
 - JSX: Collapsible 34개 파일, Tooltip 8, Callout 6, Tabs/Tab 3, Columns/Column 1 (Tabs·Columns는 posts 3종에 집중: 블로그라면-seo는-해봐야지, 왜-내-블로그는-ssg가-안될까, 코드-블럭에-툴팁을-띄우고-싶었을-뿐인데). 요약 숫자는 파일별 표와 일치시킴.
 
 ## 파일별 표
