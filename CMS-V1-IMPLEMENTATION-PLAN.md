@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-20 (M1-DA-1 병합. 전체 55 files/289 tests pass · typecheck pass)
+작성: 2026-09-16 · Lead · 갱신: 2026-09-20 (Milestone 1 완료. 전체 56 files/299 tests pass · typecheck pass)
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -19,7 +19,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | ID | 상태 | 담당 | worktree | commit | 검증 |
 | --- | --- | --- | --- | --- | --- |
 | M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
-| M0-INV-2 | DONE | INF | 통합 브랜치 | `48a502d` | `pg` 8.23.0 runtime + `@types/pg` 8.23.1 dev 설치; `@tiptap/*`는 M1-ED-2까지 유예 |
+| M0-INV-2 | DONE | INF | 통합 브랜치 | `48a502d` | `pg` 8.23.0 runtime + `@types/pg` 8.23.1 dev 설치; `@tiptap/*`는 M3-FE-1까지 유예 |
 | M0-INV-3 | DONE | JR | 병합 후 삭제 | `43e77e7` | MDX 49=post 7+memo 42, `find`와 일치. JSX 요약은 표에 맞춰 Tooltip 8/Callout 6 |
 | M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
 | M1-TW-1 | DONE | TW | 병합 후 삭제 | `499fd96` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
@@ -28,15 +28,15 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M1-ED-1a | DONE | ED | 병합 후 삭제 | `3380550` | `toDocument` + `index.ts` |
 | M1-ED-1b | DONE | ED | 병합 후 삭제 | `3380550` | serialize. 합성 픽스처 통과 |
 | M1-ED-1c | DONE | ED | 병합 후 삭제 | `3380550` | 표본 9파일 firstDoc===secondDoc |
-| M1-ED-2 | TODO | ED | — | — | — |
+| M1-ED-2 | DONE | ED | 통합 브랜치 | `53b1495` | 실제 SourceConverter/에디터 토글 테스트 10개 통과; 보기 전용 토글 시 원문 바이트 정확히 보존; 편집된 문서는 의미 보존 왕복; 유효하지 않거나 허용되지 않은 원문은 오류와 함께 보존; Codex Sol medium 최종 리뷰 이슈 없음 |
 | M1-DA-1 | DONE | DA | 통합 브랜치 | `9d19f9f` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
-| M1-RV-1 | TODO | RV | — | — | — |
-| M2-INV-1 | TODO | INF | — | — | — |
+| M1-RV-1 | DONE | RV | 통합 브랜치 | `53b1495` | 전체 명령 `node --env-file=.env.local node_modules/vitest/vitest.mjs run` => 56 files/299 tests passed; `pnpm typecheck` passed; M1-ED-2 변경 5개 파일 Biome 통과; Codex 최종 판정 OK |
+| M2-INV-1 | READY | INF | — | — | — |
 | M2-BE-1 | TODO | BE | — | — | — |
-| M2-BE-2 | TODO | BE | — | — | — |
-| M2-TW-1 | TODO | TW | — | — | — |
+| M2-BE-2 | READY | BE | — | — | — |
+| M2-TW-1 | READY | TW | — | — | — |
 | M2-BE-3 | TODO | BE | — | — | — |
-| M2-TW-2 | TODO | TW | — | — | — |
+| M2-TW-2 | READY | TW | — | — | — |
 | M2-DA-2 | TODO | DA | — | — | — |
 | M2-BE-4 | TODO | BE | — | — | — |
 | M2-BE-5 | TODO | JR | — | — | — |
@@ -87,7 +87,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-16: M1-TW-1 병합(`499fd96`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
 - 2026-09-16: M1-ED-1 1차 배정이 30분 한도로 실패했다. 슬롯은 유지. 남은 파일: `analyze.ts` `parse.ts` `expressions.ts` `frontmatter.ts`(이미 `serializeFrontmatter`) `jsx.ts` `registry.ts` `types.ts`. 없는 것: `toDocument`, `serialize`, `src/cms/mdx/index.ts`. `__probe.ts`는 디버그 스크립트라 삭제. 구현은 재작성하지 말고 이어서 완성한다.
 - 2026-09-16: 사용자 요청으로 OpenMausBot 30분 핸드오프에 맞춰 M1-ED-1을 슬라이스한다. 한 배정에 한 슬라이스만. 같은 Editor 슬롯에 병렬 배정하지 않는다. 루틴도 다음 미완 슬라이스만 부여. 이미 나간 serialize 재배정은 취소하지 않는다.
-- 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`f0746a6`)와 M1-DA-1(`9d19f9f`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2·M1-RV-1은 TODO이며 Milestone 1은 아직 완료하지 않는다.
+- 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`f0746a6`)와 M1-DA-1(`9d19f9f`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2와 M1-RV-1은 TODO.
+- 2026-09-20: M1-ED-2(커밋 `53b1495`)와 M1-RV-1이 DONE되어 Milestone 1이 완료되었다. 전체 56 files/299 tests 및 typecheck 통과, Codex 최종 판정 OK. M1-ED-2는 프레임워크 독립적 변환기/토글 경계이므로 Tiptap이 필요하지 않았으며, 따라서 Tiptap은 첫 실제 시각 에디터 작업인 M3-FE-1로 유예한다.
 
 ---
 
@@ -108,15 +109,15 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ### 0.2 없거나 미연결
 
-- CMS 코어·어댑터·MDX 변환·에디터·HTTP API·`/admin` 전부
-- `@tiptap/*`(M1-ED-2까지 미설치), Auth.js, S3/R2 클라이언트, IndexedDB 헬퍼
+- MDX 변환, 프레임워크 독립적 에디터 토글, PostgreSQL ContentStore는 구현됨; HTTP API, `/admin`, 실제 Tiptap 시각 UI는 없음
+- `@tiptap/*`(M3-FE-1까지 미설치), Auth.js, S3/R2 클라이언트, IndexedDB 헬퍼
 - `pg`는 설치됨; 공개 `ContentRepository`의 DB 구현은 없음. post/memo는 `dynamic = "force-static"`
 - 이전 도구, OpenAPI, Keystatic 제거
 
 ### 0.3 구현 전에 확인해야 하는 불일치
 
 1. 기존 관리자 인증은 Keystatic GitHub 로그인명(`NEXT_PUBLIC_KEYSTATIC_OWNER`)이다. CMS는 GitHub **숫자 ID**(`CMS_ADMIN_GITHUB_ID`)다.
-2. `package.json`에 `pg`는 설치됐고 `@tiptap/*`는 없다. Tiptap은 M1-ED-2 또는 첫 실제 에디터 구현 배치에서만 추가한다.
+2. `package.json`에 `pg`는 설치됐고 `@tiptap/*`는 없다. Tiptap은 M3-FE-1 또는 첫 실제 에디터 구현 배치에서만 추가한다.
 
 ### 0.4 재사용하고 다시 만들지 말 것
 
@@ -146,7 +147,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ## M0. 기준 고정
 
-종료 조건: `feature/new-cms`에 spec·plan·`env.d.ts`가 있고, 기존 콘텐츠 목록(M0-INV-3)이 있다. `pg`는 M0-INV-2에서 고정했으며, `@tiptap/*`는 M1-ED-2 또는 첫 실제 에디터 구현 배치에서만 추가한다.
+종료 조건: `feature/new-cms`에 spec·plan·`env.d.ts`가 있고, 기존 콘텐츠 목록(M0-INV-3)이 있다. `pg`는 M0-INV-2에서 고정했으며, `@tiptap/*`는 M3-FE-1 또는 첫 실제 시각 에디터 구현 배치에서만 추가한다.
 
 ### M0-INV-1 스키마 테스트와 마이그레이션 드리프트 확인
 
@@ -155,7 +156,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ### M0-INV-2 선언되지 않은 런타임 의존성
 
 - **목적:** 실DB 테스트가 패키지 설치만으로 재현되게 하고, 에디터 의존성은 실제 사용 시점까지 지연한다.
-- **주요 내용:** `pg` 8.23.0(runtime)과 `@types/pg` 8.23.1(dev)을 기존 Next 16 / React 19와 맞춰 설치·lockfile에 고정했다. 승인된 결정에 따라 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 추가하지 않는다. Auth.js·R2 SDK도 해당 Task에서 넣는다. 유료 Tiptap 패키지 금지.
+- **주요 내용:** `pg` 8.23.0(runtime)과 `@types/pg` 8.23.1(dev)을 기존 Next 16 / React 19와 맞춰 설치·lockfile에 고정했다. 승인된 결정에 따라 모든 `@tiptap` 패키지는 M3-FE-1(첫 실제 시각 에디터) 구현 시점까지 추가하지 않는다. Auth.js·R2 SDK도 해당 Task에서 넣는다. 유료 Tiptap 패키지 금지.
 - **선행:** M1-TW-2와 같은 배치(첫 실DB 테스트/코드)
 - **영향 파일:** `package.json`, `pnpm-lock.yaml`
 - **담당:** INF
@@ -722,7 +723,7 @@ Auth·serialize·실DB 공개 분리·이전 왕복·공개 조회 교체 중 �
 
 | 배치 | 병렬 | 금지 |
 | --- | --- | --- |
-| M0 | INV-3(JR) 완료. INV-2는 `pg`만 설치해 DONE; Tiptap은 M1-ED-2까지 지연 | INV-1 CANCELLED |
+| M0 | INV-3(JR) 완료. INV-2는 `pg`만 설치해 DONE; Tiptap은 M3-FE-1까지 지연 | INV-1 CANCELLED |
 | M1 | TW-1과 TW-2는 테스트 파일만 병렬. 구현은 테스트 병합 후 ED-1 ∥ DA-1 | ED와 DA가 같은 파일 |
 | M2 | TW-2(폴더 테스트) 후 DA-2 ∥ BE-1(Auth, INV-1 패키지 확인 후) . BE-5(preferences) ∥ FE는 API 이후 | FE가 API 전에 화면만 그려도 되나 완료는 API 연결 후 |
 | M3 | ED-1(에디터) ∥ BE-1(발행 API) ∥ INF-1(R2). FE-1은 API+에디터 마운트 후 | FE와 ED가 `src/cms/editor` 동시 수정 |
@@ -737,7 +738,7 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 
 | 위험 | 왜 지금 | 담당 Task |
 | --- | --- | --- |
-| `@tiptap/*`의 조기 설치 | 실제 에디터 구현 전에는 쓰이지 않아 미사용 의존성만 증가 | M1-ED-2 |
+| `@tiptap/*`의 조기 설치 | 실제 에디터 구현 전에는 쓰이지 않아 미사용 의존성만 증가 | M3-FE-1 |
 | MDX serialize 의미 손실 (코드 주석, 중첩 JSX) | 저장 원본이 MDX라 왕복이 안 되면 에디터/이전 전부 중단 | M1-TW-1, M1-ED-1 |
 | 초안 저장이 공개본을 덮음 | F10 핵심. Store를 처음부터 실DB로 검증 | M1-TW-2, M1-DA-1 |
 | Auth.js × Next 16 | 패키지 선택이 틀리면 M2 전체 재작업 | M2-INV-1 |
@@ -755,15 +756,17 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 2. M0-INV-3 콘텐츠 목록 (JR, `CMS-CONTENT-INVENTORY.md`)
 
 **배치 1 (Test Writer + Infra)**  
-3. M0-INV-2 완료: `pg`만 설치·고정(`48a502d`). `@tiptap/*`는 M1-ED-2 또는 첫 실제 에디터 구현까지 지연.
+3. M0-INV-2 완료: `pg`만 설치·고정(`48a502d`). `@tiptap/*`는 M3-FE-1(첫 실제 시각 에디터 구현)까지 지연.
 4. M1-TW-1 MDX 왕복 실패 테스트 완료
 5. M1-TW-2 ContentStore 실DB 실패·계약 테스트 완료
 
 **배치 2 (테스트 병합 후 병렬 worktree)**
-7. M1-ED-1 serialize 완료(`src/cms/mdx`)
-8. M1-DA-1 ContentStore 실DB 완료(`content-store.ts`)
+6. M1-ED-1 serialize 완료(`src/cms/mdx`)
+7. M1-DA-1 ContentStore 실DB 완료(`content-store.ts`)
+8. M1-ED-2 SourceConverter/에디터 토글 연결 완료(`53b1495`)
+9. M1-RV-1 Milestone 1 검수 완료(`53b1495`, Milestone 1 완료)
 
-그다음 M1-ED-2 연결 → M1-RV-1 → M2.
+다음 테스트 우선(test-first) 순서: M2-INV-1은 M2-TW-1, M2-TW-2와 병렬로 진행할 수 있다. M2-BE-2는 M2-TW-1 이후에 진행하고, M2-DA-2는 M2-TW-2 이후에 진행하며, M2-BE-1은 M2-INV-1 이후에 진행한다. (M2-BE-2는 계약 테스트 작성자와 병렬로 구현하지 않는다.)
 
 오늘 하지 않는 것: Frontend/Backend 화면·API, R2 업로드, Keystatic 제거, 운영 DB 이전.
 
