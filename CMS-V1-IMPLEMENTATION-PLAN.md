@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-16 (M1-ED-1 병합. 왕복 38 pass)  
+작성: 2026-09-16 · Lead · 갱신: 2026-09-20 (M1-DA-1 병합. 전체 55 files/289 tests pass · typecheck pass)
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -19,17 +19,17 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | ID | 상태 | 담당 | worktree | commit | 검증 |
 | --- | --- | --- | --- | --- | --- |
 | M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
-| M0-INV-2 | READY | INF | — | — | 첫 CMS 코드(M1)와 함께 `pg`/`@tiptap` 고정 |
+| M0-INV-2 | DONE | INF | 통합 브랜치 | `48a502d` | `pg` 8.23.0 runtime + `@types/pg` 8.23.1 dev 설치; `@tiptap/*`는 M1-ED-2까지 유예 |
 | M0-INV-3 | DONE | JR | 병합 후 삭제 | `43e77e7` | MDX 49=post 7+memo 42, `find`와 일치. JSX 요약은 표에 맞춰 Tooltip 8/Callout 6 |
 | M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
 | M1-TW-1 | DONE | TW | 병합 후 삭제 | `499fd96` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
-| M1-TW-2 | TODO | TW | — | — | — |
+| M1-TW-2 | DONE | TW | 통합 브랜치 | `f0746a6` | 실 PostgreSQL 13 passing, 0 skip; `CMS_TEST_DATABASE_URL`만 사용 |
 | M1-ED-1 | DONE | ED | 병합 후 삭제 | `3380550` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 38 passed, 0 skip |
 | M1-ED-1a | DONE | ED | 병합 후 삭제 | `3380550` | `toDocument` + `index.ts` |
 | M1-ED-1b | DONE | ED | 병합 후 삭제 | `3380550` | serialize. 합성 픽스처 통과 |
 | M1-ED-1c | DONE | ED | 병합 후 삭제 | `3380550` | 표본 9파일 firstDoc===secondDoc |
 | M1-ED-2 | TODO | ED | — | — | — |
-| M1-DA-1 | TODO | DA | — | — | — |
+| M1-DA-1 | DONE | DA | 통합 브랜치 | `9d19f9f` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
 | M1-RV-1 | TODO | RV | — | — | — |
 | M2-INV-1 | TODO | INF | — | — | — |
 | M2-BE-1 | TODO | BE | — | — | — |
@@ -87,7 +87,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-16: M1-TW-1 병합(`499fd96`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
 - 2026-09-16: M1-ED-1 1차 배정이 30분 한도로 실패했다. 슬롯은 유지. 남은 파일: `analyze.ts` `parse.ts` `expressions.ts` `frontmatter.ts`(이미 `serializeFrontmatter`) `jsx.ts` `registry.ts` `types.ts`. 없는 것: `toDocument`, `serialize`, `src/cms/mdx/index.ts`. `__probe.ts`는 디버그 스크립트라 삭제. 구현은 재작성하지 말고 이어서 완성한다.
 - 2026-09-16: 사용자 요청으로 OpenMausBot 30분 핸드오프에 맞춰 M1-ED-1을 슬라이스한다. 한 배정에 한 슬라이스만. 같은 Editor 슬롯에 병렬 배정하지 않는다. 루틴도 다음 미완 슬라이스만 부여. 이미 나간 serialize 재배정은 취소하지 않는다.
-- 2026-09-16: M1-ED-1 병합(`3380550`). 단언 수정은 `33069d5`. `JSON.stringify`가 따옴표를 이스케이프해서 `content="인사말"` / `return "|"` 연속 문자열은 어떤 JSON 문서로도 나올 수 없다. Lead가 표 단언과 같이 의미 조각(`인사말`/`content`, `return`/`|`)만 검사하게 고침. Editor 슬롯·`cms/wt/Editor-m1` 삭제. 무인 루틴 일시정지. 다음 배치는 M1-TW-2(ContentStore 실패 테스트). M1-ED-2·Auth·Keystatic 제거는 시작하지 않음.
+- 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`f0746a6`)와 M1-DA-1(`9d19f9f`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2·M1-RV-1은 TODO이며 Milestone 1은 아직 완료하지 않는다.
 
 ---
 
@@ -109,14 +109,14 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ### 0.2 없거나 미연결
 
 - CMS 코어·어댑터·MDX 변환·에디터·HTTP API·`/admin` 전부
-- `pg`, `@tiptap/*`, Auth.js, S3/R2 클라이언트, IndexedDB 헬퍼
-- 공개 `ContentRepository`의 DB 구현. post/memo는 `dynamic = "force-static"`
+- `@tiptap/*`(M1-ED-2까지 미설치), Auth.js, S3/R2 클라이언트, IndexedDB 헬퍼
+- `pg`는 설치됨; 공개 `ContentRepository`의 DB 구현은 없음. post/memo는 `dynamic = "force-static"`
 - 이전 도구, OpenAPI, Keystatic 제거
 
 ### 0.3 구현 전에 확인해야 하는 불일치
 
 1. 기존 관리자 인증은 Keystatic GitHub 로그인명(`NEXT_PUBLIC_KEYSTATIC_OWNER`)이다. CMS는 GitHub **숫자 ID**(`CMS_ADMIN_GITHUB_ID`)다.
-2. `package.json`에 `pg`/`@tiptap/*`가 없다. 첫 CMS 코드와 함께 넣는다(M0-INV-2 / M1).
+2. `package.json`에 `pg`는 설치됐고 `@tiptap/*`는 없다. Tiptap은 M1-ED-2 또는 첫 실제 에디터 구현 배치에서만 추가한다.
 
 ### 0.4 재사용하고 다시 만들지 말 것
 
@@ -146,7 +146,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ## M0. 기준 고정
 
-종료 조건: `feature/new-cms`에 spec·plan·`env.d.ts`가 있고, 기존 콘텐츠 목록(M0-INV-3)이 있다. `pg`/Tiptap lockfile은 첫 CMS 코드와 함께(M0-INV-2).
+종료 조건: `feature/new-cms`에 spec·plan·`env.d.ts`가 있고, 기존 콘텐츠 목록(M0-INV-3)이 있다. `pg`는 M0-INV-2에서 고정했으며, `@tiptap/*`는 M1-ED-2 또는 첫 실제 에디터 구현 배치에서만 추가한다.
 
 ### M0-INV-1 스키마 테스트와 마이그레이션 드리프트 확인
 
@@ -154,13 +154,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ### M0-INV-2 선언되지 않은 런타임 의존성
 
-- **목적:** 에디터·실DB 테스트가 패키지 설치만으로 재현되게 한다.
-- **주요 내용:** `@tiptap/core`, `@tiptap/react`, 사용 중인 `@tiptap/extension-*`, `@tiptap/pm`, `pg`(+ `@types/pg`)를 기존 Next 16 / React 19와 맞춰 lockfile에 고정. **쓰는 코드가 있는 배치에서만** 넣는다. Auth.js·R2 SDK는 해당 Task에서 넣는다. 유료 Tiptap 패키지 금지.
-- **선행:** M1-TW-1 또는 M1-TW-2와 같은 배치(첫 CMS 테스트/코드)
+- **목적:** 실DB 테스트가 패키지 설치만으로 재현되게 하고, 에디터 의존성은 실제 사용 시점까지 지연한다.
+- **주요 내용:** `pg` 8.23.0(runtime)과 `@types/pg` 8.23.1(dev)을 기존 Next 16 / React 19와 맞춰 설치·lockfile에 고정했다. 승인된 결정에 따라 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 추가하지 않는다. Auth.js·R2 SDK도 해당 Task에서 넣는다. 유료 Tiptap 패키지 금지.
+- **선행:** M1-TW-2와 같은 배치(첫 실DB 테스트/코드)
 - **영향 파일:** `package.json`, `pnpm-lock.yaml`
 - **담당:** INF
-- **완료 조건:** 깨끗한 설치 후 에디터 단위 테스트와 postgres 하네스의 `import("pg")`가 성공한다.
-- **검증:** `pnpm test:run src/cms/editor src/cms/adapters/postgres/__test__/schema.test.ts`
+- **완료 조건:** `pg` runtime/dev 타입이 설치됐고 postgres 하네스의 `import("pg")`가 성공한다. Tiptap 설치는 이 Task의 완료 조건이 아니다.
+- **검증:** `pg` 8.23.0, `@types/pg` 8.23.1 설치 확인; postgres 실DB 계약 테스트 통과
 
 ### M0-INV-3 기존 콘텐츠 목록 재집계 (읽기 전용)
 
@@ -210,8 +210,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - **선행:** M0-BASE-1, M0-INV-2
 - **영향 파일:** `src/cms/adapters/postgres/__test__/content-store.test.ts`, `__test__/test-database.ts` (신규)
 - **담당:** TW
-- **완료 조건:** 실패하는 테스트와 완료 조건 매핑이 있다. Store 구현 파일을 고치지 않는다.
-- **검증:** `vitest run src/cms/adapters/postgres/__test__/content-store.test.ts`
+- **완료 조건:** 실 PostgreSQL 계약 13개 테스트가 모두 통과하고 skip이 0이다. 초기 계약 커밋은 `b88a129`, `1b1900a`, 최종 테스트 커밋은 `f0746a6`이다.
+- **검증:** `node --env-file=.env.local node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/content-store.test.ts` → 13 passed, 0 skip; `CMS_TEST_DATABASE_URL`만 읽고 `CMS_DATABASE_URL`은 읽지 않음
 
 ### M1-ED-1 MDX serialize
 
@@ -261,8 +261,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - **선행:** M1-TW-2
 - **영향 파일:** `src/cms/adapters/postgres/content-store.ts` (및 이 파일이 import하는 같은 폴더 헬퍼). 마이그레이션 변경이 필요하면 사용자에게 보고
 - **담당:** DA
-- **완료 조건:** M1-TW-2 통과. 공개본이 초안 저장에 바뀌지 않는다.
-- **검증:** content-store 테스트 + 기존 schema 테스트
+- **완료 조건:** M1-TW-2의 실DB 13개 테스트가 통과한다. working/published 분리, conflict, concurrency, rollback, slug alias/non-reuse, timestamps, JSON boundary를 커버하며 Codex Sol medium 최종 리뷰에서 이슈가 보고되지 않았다.
+- **검증:** `node --env-file=.env.local node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/content-store.test.ts` → 13 passed, 0 skip; `CMS_TEST_DATABASE_URL`만 사용
 
 ### M1-RV-1 Milestone 1 검수
 
@@ -722,7 +722,7 @@ Auth·serialize·실DB 공개 분리·이전 왕복·공개 조회 교체 중 �
 
 | 배치 | 병렬 | 금지 |
 | --- | --- | --- |
-| M0 | INV-3(JR). INV-2는 M1 첫 코드와 함께 INF | INV-1 CANCELLED |
+| M0 | INV-3(JR) 완료. INV-2는 `pg`만 설치해 DONE; Tiptap은 M1-ED-2까지 지연 | INV-1 CANCELLED |
 | M1 | TW-1과 TW-2는 테스트 파일만 병렬. 구현은 테스트 병합 후 ED-1 ∥ DA-1 | ED와 DA가 같은 파일 |
 | M2 | TW-2(폴더 테스트) 후 DA-2 ∥ BE-1(Auth, INV-1 패키지 확인 후) . BE-5(preferences) ∥ FE는 API 이후 | FE가 API 전에 화면만 그려도 되나 완료는 API 연결 후 |
 | M3 | ED-1(에디터) ∥ BE-1(발행 API) ∥ INF-1(R2). FE-1은 API+에디터 마운트 후 | FE와 ED가 `src/cms/editor` 동시 수정 |
@@ -737,7 +737,7 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 
 | 위험 | 왜 지금 | 담당 Task |
 | --- | --- | --- |
-| `pg` / `@tiptap/*` 미선언 | 첫 CMS 코드가 lockfile 없이 돌아가면 재현 불가 | M0-INV-2 |
+| `@tiptap/*`의 조기 설치 | 실제 에디터 구현 전에는 쓰이지 않아 미사용 의존성만 증가 | M1-ED-2 |
 | MDX serialize 의미 손실 (코드 주석, 중첩 JSX) | 저장 원본이 MDX라 왕복이 안 되면 에디터/이전 전부 중단 | M1-TW-1, M1-ED-1 |
 | 초안 저장이 공개본을 덮음 | F10 핵심. Store를 처음부터 실DB로 검증 | M1-TW-2, M1-DA-1 |
 | Auth.js × Next 16 | 패키지 선택이 틀리면 M2 전체 재작업 | M2-INV-1 |
@@ -755,13 +755,13 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 2. M0-INV-3 콘텐츠 목록 (JR, `CMS-CONTENT-INVENTORY.md`)
 
 **배치 1 (Test Writer + Infra)**  
-3. M0-INV-2 `pg`/`@tiptap` lockfile (INF, 첫 테스트와 함께)  
-4. M1-TW-1 MDX 왕복 실패 테스트  
-5. M1-TW-2 ContentStore 실패 테스트
+3. M0-INV-2 완료: `pg`만 설치·고정(`48a502d`). `@tiptap/*`는 M1-ED-2 또는 첫 실제 에디터 구현까지 지연.
+4. M1-TW-1 MDX 왕복 실패 테스트 완료
+5. M1-TW-2 ContentStore 실DB 실패·계약 테스트 완료
 
-**배치 2 (테스트 병합 후 병렬 worktree)**  
-7. M1-ED-1 serialize (`src/cms/mdx`)  
-8. M1-DA-1 ContentStore 실DB (`content-store.ts`)
+**배치 2 (테스트 병합 후 병렬 worktree)**
+7. M1-ED-1 serialize 완료(`src/cms/mdx`)
+8. M1-DA-1 ContentStore 실DB 완료(`content-store.ts`)
 
 그다음 M1-ED-2 연결 → M1-RV-1 → M2.
 
