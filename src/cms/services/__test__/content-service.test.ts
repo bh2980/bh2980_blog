@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import type { PreparedSnapshot, Reference, ResolvedTargets, ServiceInput, StorePort } from "../index";
-import { createContentService, prepareSnapshot, validateForPublish } from "../index";
+import type { PreparedSnapshot, Reference, ResolvedTargets, SaveDraftInput, ServiceInput, StorePort } from "../index";
+import { createContentService, prepareSnapshot, ServiceError, validateForPublish } from "../index";
 
 describe("ContentService M2-TW-1 Contract", () => {
 	describe("1. Metadata Allowlists & Collection Rules", () => {
@@ -46,8 +47,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{ collection: "category", slug: "valid", metadata: { index: 1 }, mdx: "" },
 				"invalid_metadata_key",
 			],
-		])("rejects %s", async (_, input, expectedCode) => {
-			await expect(prepareSnapshot(input as ServiceInput)).rejects.toMatchObject({ code: expectedCode });
+		] satisfies Array<[string, unknown, string]>)("rejects %s", async (_, input, expectedCode) => {
+			await expect(prepareSnapshot(input as unknown as ServiceInput)).rejects.toMatchObject({ code: expectedCode });
 		});
 
 		it.each([
@@ -59,8 +60,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 					metadata: {
 						title: "T",
 						summary: "S",
-						categoryId: "c1",
-						tagIds: ["t1"],
+						categoryId: "123e4567-e89b-12d3-a456-426614174000",
+						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
 						publishedAt: "2023-01-01T00:00:00.000Z",
 						policy: "normal",
 					},
@@ -74,7 +75,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					slug: "m",
 					metadata: {
 						title: "T",
-						tagIds: ["t1"],
+						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
 						publishedAt: "2023-01-01T00:00:00.000Z",
 					},
 					mdx: "",
@@ -91,8 +92,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 					mdx: "",
 				},
 			],
-		])("permits canonical keys for %s", async (_, input) => {
-			const result = await prepareSnapshot(input as ServiceInput);
+		] satisfies Array<[string, ServiceInput]>)("permits canonical keys for %s", async (_, input) => {
+			const result = await prepareSnapshot(input);
 			expect(result.metadata).toEqual(input.metadata);
 		});
 
@@ -118,7 +119,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				slug: inputSlug,
 				metadata: {},
 				mdx: "",
-			} as ServiceInput);
+			});
 			expect(result.slug).toBe(expectedSlug);
 		});
 
@@ -172,7 +173,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{
 					collection: "post",
 					slug: "a",
-					metadata: { title: "A", tagIds: ["t2", "t1"] },
+					metadata: {
+						title: "A",
+						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
+					},
 					mdx: "Hello",
 				},
 				{ schemaVersion: 1 },
@@ -181,20 +185,34 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{
 					collection: "post",
 					slug: "a",
-					metadata: { tagIds: ["t2", "t1"], title: "A" },
+					metadata: {
+						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
+						title: "A",
+					},
 					mdx: "Hello",
 				},
 				{ schemaVersion: 1 },
 			);
 
-			expect(snap1.contentHash).toBe("f1c34bf326b9032ed575cfe96daf9237b228de370e2545c33dd9218b92706b13");
+			const expectedTuple = [
+				"cms-snapshot-v1",
+				1,
+				{ tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"], title: "A" },
+				"Hello",
+			];
+			const expectedHash = createHash("sha256").update(JSON.stringify(expectedTuple)).digest("hex");
+			expect(snap1.contentHash).toBe(expectedHash);
+			expect(snap1.contentHash).toBe("ce4f87281290c44253cb7844dd84e45cecc65aacb0bf2dfa5768da7e26ef921e");
 			expect(snap1.contentHash).toEqual(snap2.contentHash);
 
 			const snapDiffMdx = await prepareSnapshot(
 				{
 					collection: "post",
 					slug: "a",
-					metadata: { title: "A", tagIds: ["t2", "t1"] },
+					metadata: {
+						title: "A",
+						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
+					},
 					mdx: "Hello World",
 				},
 				{ schemaVersion: 1 },
@@ -205,7 +223,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{
 					collection: "post",
 					slug: "a",
-					metadata: { title: "B", tagIds: ["t2", "t1"] },
+					metadata: {
+						title: "B",
+						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
+					},
 					mdx: "Hello",
 				},
 				{ schemaVersion: 1 },
@@ -216,7 +237,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{
 					collection: "post",
 					slug: "a",
-					metadata: { title: "A", tagIds: ["t2", "t1"] },
+					metadata: {
+						title: "A",
+						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
+					},
 					mdx: "Hello",
 				},
 				{ schemaVersion: 2 },
@@ -232,7 +256,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				mdx: "Hello",
 				contentHash: "fakehash",
 			};
-			await expect(prepareSnapshot(input as ServiceInput)).rejects.toMatchObject({ code: "invalid_input" });
+			await expect(prepareSnapshot(input as unknown as ServiceInput)).rejects.toMatchObject({ code: "invalid_input" });
 		});
 	});
 
@@ -312,7 +336,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				isStale: false,
 			});
 			expect(snap.references[0].occurrences).toHaveLength(2);
-			expect(snap.references[0].occurrences[0]).toMatchObject({ line: 1, column: 1 });
+			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "mdx", line: 1, column: 1 });
 
 			expect(snap.references[1]).toMatchObject({
 				kind: "media",
@@ -339,7 +363,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174000",
 					isStale: false,
-					occurrences: [{ line: 1, column: 1 }],
+					occurrences: [{ type: "mdx", line: 1, column: 1 }],
 				},
 			];
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx }, { previousReferences });
@@ -361,7 +385,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					kind: "media",
 					targetId: "987e4567-e89b-12d3-a456-426614174000",
 					isStale: false,
-					occurrences: [{ line: 1, column: 1 }],
+					occurrences: [{ type: "mdx", line: 1, column: 1 }],
 				},
 			];
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx }, { previousReferences });
@@ -535,8 +559,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 				},
 				"invalid_reference_collection",
 			],
-		])("not ready when %s", (_, snap, resolved, expectedIssueCode) => {
-			const validation = validateForPublish(snap, resolved as ResolvedTargets);
+		] satisfies Array<
+			[string, PreparedSnapshot, ResolvedTargets, string]
+		>)("not ready when %s", (_, snap, resolved, expectedIssueCode) => {
+			const validation = validateForPublish(snap, resolved);
 			expect(validation.ready).toBe(false);
 			expect(validation.issues).toContainEqual(expect.objectContaining({ code: expectedIssueCode }));
 		});
@@ -561,11 +587,14 @@ describe("ContentService M2-TW-1 Contract", () => {
 				},
 				mdx: "",
 			});
-			expect(snap.metadata.itemIds).toEqual([
-				"123e4567-e89b-12d3-a456-426614174002",
-				"123e4567-e89b-12d3-a456-426614174001",
-				"123e4567-e89b-12d3-a456-426614174002",
-			]);
+			expect(Array.isArray(snap.metadata.itemIds)).toBe(true);
+			if (Array.isArray(snap.metadata.itemIds)) {
+				expect(snap.metadata.itemIds).toEqual([
+					"123e4567-e89b-12d3-a456-426614174002",
+					"123e4567-e89b-12d3-a456-426614174001",
+					"123e4567-e89b-12d3-a456-426614174002",
+				]);
+			}
 
 			const snapWithItems: PreparedSnapshot = {
 				collection: "collection",
@@ -676,7 +705,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					slug: "a",
 					metadata: {},
 					mdx: "",
-				} as ServiceInput),
+				} as unknown as SaveDraftInput),
 			).rejects.toBeDefined();
 
 			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
@@ -707,8 +736,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 			);
 
 			const callArgs = vi.mocked(storePort.createEntryWithReferences).mock.calls[0][0];
-			expect((callArgs as Record<string, unknown>).previousReferences).toBeUndefined();
-			expect((callArgs as Record<string, unknown>).contentHash).toBeUndefined();
+			expect(callArgs).not.toHaveProperty("previousReferences");
+			expect(callArgs).not.toHaveProperty("contentHash");
 
 			const exactError = { code: "slug_conflict", message: "Duplicate" };
 			const conflictPort: StorePort = {
@@ -733,7 +762,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					slug: "a",
 					metadata: {},
 					mdx: "",
-				} as ServiceInput),
+				} as unknown as ServiceInput),
 			).rejects.toBeDefined();
 			expect(conflictPort.createEntryWithReferences).toHaveBeenCalledTimes(1);
 		});
@@ -744,7 +773,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174000",
 					isStale: false,
-					occurrences: [{ line: 1, column: 1 }],
+					occurrences: [{ type: "mdx", line: 1, column: 1 }],
 				},
 			];
 			const storePort: StorePort = {
@@ -770,7 +799,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				kind: "entry",
 				targetId: "123e4567-e89b-12d3-a456-426614174000",
 				isStale: true,
-				occurrences: [{ line: 1, column: 1 }],
+				occurrences: [{ type: "mdx", line: 1, column: 1 }],
 			});
 		});
 
@@ -806,6 +835,288 @@ describe("ContentService M2-TW-1 Contract", () => {
 					references: expect.any(Array),
 				}),
 			);
+		});
+	});
+
+	describe("9. Exact Byte Limits & Structural Boundaries", () => {
+		it("accepts exact boundary and rejects +1-byte for mdx_too_large", async () => {
+			const mdxExact = "a".repeat(2097152);
+			const mdxTooLarge = "a".repeat(2097153);
+			await expect(
+				prepareSnapshot({ collection: "post", slug: "valid", metadata: {}, mdx: mdxExact }),
+			).resolves.toBeDefined();
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: {},
+					mdx: mdxTooLarge,
+				}),
+			).rejects.toMatchObject({ code: "mdx_too_large" });
+		});
+
+		it("accepts exact boundary and rejects +1-byte for metadata_too_large", async () => {
+			// Overhead of {"summary":""} is 14 bytes. 262144 - 14 = 262130
+			const boundaryString = "a".repeat(262130);
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: { summary: boundaryString },
+					mdx: "",
+				}),
+			).resolves.toBeDefined();
+			const tooLargeString = "a".repeat(262131);
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: { summary: tooLargeString },
+					mdx: "",
+				}),
+			).rejects.toMatchObject({ code: "metadata_too_large" });
+		});
+
+		it.each([
+			["missing slug", { collection: "post", metadata: {}, mdx: "" }, "invalid_input"],
+			["extra key", { collection: "post", slug: "valid", metadata: {}, mdx: "", extra: 1 }, "invalid_input"],
+			[
+				"prototype-inherited required fields",
+				Object.create(
+					{ slug: "valid" },
+					{
+						collection: { value: "post", enumerable: true },
+						metadata: { value: {}, enumerable: true },
+						mdx: { value: "", enumerable: true },
+					},
+				),
+				"invalid_input",
+			],
+			[
+				"symbol extra",
+				{ collection: "post", slug: "valid", metadata: {}, mdx: "", [Symbol("extra")]: 1 },
+				"invalid_input",
+			],
+			[
+				"non-enumerable extra",
+				Object.defineProperty({ collection: "post", slug: "valid", metadata: {}, mdx: "" }, "hidden", {
+					value: 1,
+					enumerable: false,
+				}),
+				"invalid_input",
+			],
+		])("rejects non-exact service inputs: %s", async (_, input, expectedCode) => {
+			await expect(prepareSnapshot(input as unknown as ServiceInput)).rejects.toMatchObject({ code: expectedCode });
+		});
+
+		it("prevents mutation of snapshot via caller input mutation and deep freezes snapshot", async () => {
+			const tagIds = ["123e4567-e89b-12d3-a456-426614174001"];
+			const snap = await prepareSnapshot({ collection: "post", slug: "valid", metadata: { tagIds }, mdx: "" });
+			const originalHash = snap.contentHash;
+
+			tagIds.push("123e4567-e89b-12d3-a456-426614174002");
+			expect(Array.isArray(snap.metadata.tagIds)).toBe(true);
+			if (Array.isArray(snap.metadata.tagIds)) {
+				expect(snap.metadata.tagIds).toHaveLength(1);
+			}
+
+			expect(() => {
+				(snap as unknown as { mdx: string }).mdx = "changed";
+			}).toThrow();
+			expect(() => {
+				(snap.metadata as unknown as { title: string }).title = "changed";
+			}).toThrow();
+			expect(() => {
+				(snap.references as unknown as { push: (a: unknown) => void }).push({});
+			}).toThrow();
+
+			// Regression assertion for pushing to metadata.tagIds
+			expect(() => {
+				(snap.metadata.tagIds as unknown as { push: (a: string) => void }).push("new-tag");
+			}).toThrow();
+
+			expect(snap.contentHash).toBe(originalHash);
+			expect(snap.references).toHaveLength(1); // just tag
+		});
+
+		it("rejects metadata with symbols without executing getter", async () => {
+			const meta = { title: "valid" };
+			Object.defineProperty(meta, Symbol("hidden"), { value: "invalid", enumerable: true });
+
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: meta,
+					mdx: "",
+				} as unknown as ServiceInput),
+			).rejects.toMatchObject({ code: "invalid_input" });
+		});
+
+		it("rejects metadata with getters without executing getter", async () => {
+			const spy = vi.fn();
+			const meta = { title: "valid" };
+			Object.defineProperty(meta, "summary", {
+				get: spy,
+				enumerable: true,
+			});
+
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: meta,
+					mdx: "",
+				} as unknown as ServiceInput),
+			).rejects.toMatchObject({ code: "invalid_input" });
+
+			expect(spy).not.toHaveBeenCalled();
+		});
+
+		it("rejects sparse arrays in metadata", async () => {
+			const sparseArray = ["123e4567-e89b-12d3-a456-426614174001"];
+			delete sparseArray[0];
+			await expect(
+				prepareSnapshot({
+					collection: "post",
+					slug: "valid",
+					metadata: { tagIds: sparseArray },
+					mdx: "",
+				} as unknown as ServiceInput),
+			).rejects.toMatchObject({ code: "invalid_metadata_type" });
+		});
+	});
+
+	describe("10. Service Input Structural & Accessor Defenses", () => {
+		it("createDraft(null) rejects with ServiceError code invalid_input, not native TypeError, and no port call", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				createEntryWithReferences: vi.fn(),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+
+			const promise = service.createDraft(null as unknown as ServiceInput);
+			await expect(promise).rejects.toThrowError(ServiceError);
+			await expect(promise).rejects.toMatchObject({ code: "invalid_input" });
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+		});
+
+		it("createDraft custom-prototype input rejects invalid_input and no port call", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				createEntryWithReferences: vi.fn(),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+
+			const customProtoInput = Object.create(
+				{ inherited: true },
+				{
+					collection: { value: "post", enumerable: true },
+					slug: { value: "valid", enumerable: true },
+					metadata: { value: {}, enumerable: true },
+					mdx: { value: "", enumerable: true },
+				},
+			);
+
+			const promise = service.createDraft(customProtoInput as unknown as ServiceInput);
+			await expect(promise).rejects.toThrowError(ServiceError);
+			await expect(promise).rejects.toMatchObject({ code: "invalid_input" });
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+		});
+
+		it("createDraft top-level accessor/getter property rejects without executing getter and no port call", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				createEntryWithReferences: vi.fn(),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+
+			const getterSpy = vi.fn(() => "post");
+			const inputWithGetter = {
+				get collection() {
+					return getterSpy();
+				},
+				slug: "valid",
+				metadata: {},
+				mdx: "",
+			};
+
+			const promise = service.createDraft(inputWithGetter as unknown as ServiceInput);
+			await expect(promise).rejects.toThrowError(ServiceError);
+			await expect(promise).rejects.toMatchObject({ code: "invalid_input" });
+			expect(getterSpy).not.toHaveBeenCalled();
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+		});
+
+		it("saveDraft null/custom-prototype input rejects invalid_input before getWorkingReferences or mutation", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				createEntryWithReferences: vi.fn(),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+
+			const promiseNull = service.saveDraft("entry-id", null as unknown as SaveDraftInput);
+			await expect(promiseNull).rejects.toThrowError(ServiceError);
+			await expect(promiseNull).rejects.toMatchObject({ code: "invalid_input" });
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+
+			const customProtoInput = Object.create(
+				{ inherited: true },
+				{
+					collection: { value: "post", enumerable: true },
+					slug: { value: "valid", enumerable: true },
+					metadata: { value: {}, enumerable: true },
+					mdx: { value: "", enumerable: true },
+					expectedVersion: { value: 1, enumerable: true },
+				},
+			);
+
+			const promiseProto = service.saveDraft("entry-id", customProtoInput as unknown as SaveDraftInput);
+			await expect(promiseProto).rejects.toThrowError(ServiceError);
+			await expect(promiseProto).rejects.toMatchObject({ code: "invalid_input" });
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+		});
+
+		it("saveDraft expectedVersion accessor getter rejects without executing getter or Store calls", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				createEntryWithReferences: vi.fn(),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+
+			const getterSpy = vi.fn(() => 1);
+			const inputWithGetter = {
+				collection: "post",
+				slug: "valid",
+				metadata: {},
+				mdx: "",
+				get expectedVersion() {
+					return getterSpy();
+				},
+			};
+
+			const promise = service.saveDraft("entry-id", inputWithGetter as unknown as SaveDraftInput);
+			await expect(promise).rejects.toThrowError(ServiceError);
+			await expect(promise).rejects.toMatchObject({ code: "invalid_input" });
+			expect(getterSpy).not.toHaveBeenCalled();
+			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
+			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
 		});
 	});
 });
