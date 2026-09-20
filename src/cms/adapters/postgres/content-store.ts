@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { Pool, PoolClient } from "pg";
+import type { PreparedSnapshot, Reference, ReferenceKind, ReferenceOccurrence } from "../../services/types";
 
 export class CmsError extends Error {
 	public readonly code: string;
@@ -112,6 +113,26 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			type TEXT NOT NULL CHECK (type IN ('reservation', 'current', 'alias', 'deleted')),
 			PRIMARY KEY (collection, slug)
 		);
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".media_assets (
+			id UUID PRIMARY KEY
+		);
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".entry_references (
+			entry_id UUID NOT NULL REFERENCES "${qSchema}".entries(id) ON DELETE CASCADE,
+			state TEXT NOT NULL CHECK (state IN ('working', 'published')),
+			kind TEXT NOT NULL CHECK (kind IN ('entry', 'media', 'category', 'tag')),
+			target_id UUID NOT NULL,
+			target_entry_id UUID REFERENCES "${qSchema}".entries(id),
+			target_media_id UUID REFERENCES "${qSchema}".media_assets(id),
+			is_stale BOOLEAN NOT NULL,
+			occurrences JSONB NOT NULL,
+			UNIQUE (entry_id, state, kind, target_id),
+			CHECK (
+				(kind = 'media' AND target_entry_id IS NULL AND target_media_id IS NOT NULL AND target_id = target_media_id) OR
+				(kind IN ('entry', 'category', 'tag') AND target_entry_id IS NOT NULL AND target_media_id IS NULL AND target_id = target_entry_id)
+			)
+		);
 	`);
 }
 
@@ -184,6 +205,13 @@ interface BodyRow {
 	updated_at: Date;
 }
 
+interface ReferenceRow {
+	kind: ReferenceKind;
+	target_id: string;
+	is_stale: boolean;
+	occurrences: readonly ReferenceOccurrence[];
+}
+
 async function loadEntry(client: Pool | PoolClient, id: string, qSchema: string): Promise<Entry> {
 	const res = await client.query<EntryRow>(
 		`SELECT
@@ -252,6 +280,32 @@ async function loadEntry(client: Pool | PoolClient, id: string, qSchema: string)
 	};
 }
 
+function isReferencesEqual(a: readonly Reference[], b: readonly Reference[]): boolean {
+	if (a.length !== b.length) return false;
+	const key = (r: Reference) => `${r.kind}:${r.targetId.toLowerCase()}`;
+	const mapA = new Map(a.map((r) => [key(r), r]));
+	const mapB = new Map(b.map((r) => [key(r), r]));
+	if (mapA.size !== mapB.size) return false;
+	for (const [k, refA] of mapA.entries()) {
+		const refB = mapB.get(k);
+		if (!refB) return false;
+		if (refA.isStale !== refB.isStale) return false;
+		if (!isDeepStrictEqual(refA.occurrences, refB.occurrences)) return false;
+	}
+	return true;
+}
+
+function isWorkingSlugConflict(err: unknown): boolean {
+	return (
+		typeof err === "object" &&
+		err !== null &&
+		"code" in err &&
+		err.code === "23505" &&
+		"constraint" in err &&
+		err.constraint === "content_addresses_pkey"
+	);
+}
+
 export function createContentStore(
 	pool: Pool,
 	options?: { schema?: string; beforePublishCommit?: ContentStoreHooks["beforePublishCommit"] },
@@ -260,6 +314,271 @@ export function createContentStore(
 	const hooks = { beforePublishCommit: options?.beforePublishCommit };
 
 	return {
+		createEntryWithReferences: async (params: {
+			snapshot: PreparedSnapshot;
+			references: readonly Reference[];
+		}): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				const metadata = normalizeMetadata(params.snapshot.metadata);
+				await client.query("BEGIN");
+				const id = randomUUID();
+				const version = 1;
+				const now = new Date();
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug)
+					 VALUES ($1, $2, $3, $4, $5, $6)`,
+					[id, params.snapshot.collection, version, now, now, params.snapshot.slug],
+				);
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at)
+					 VALUES ($1, 'working', $2, $3, $4, $5, $6)`,
+					[
+						id,
+						JSON.stringify(metadata),
+						params.snapshot.mdx,
+						params.snapshot.schemaVersion,
+						params.snapshot.contentHash,
+						now,
+					],
+				);
+
+				if (params.snapshot.slug !== null) {
+					await client.query(
+						`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type)
+						 VALUES ($1, $2, $3, 'reservation')`,
+						[params.snapshot.collection, params.snapshot.slug, id],
+					);
+				}
+
+				for (const ref of params.references) {
+					const targetEntryId =
+						ref.kind === "entry" || ref.kind === "category" || ref.kind === "tag" ? ref.targetId : null;
+					const targetMediaId = ref.kind === "media" ? ref.targetId : null;
+					await client.query(
+						`INSERT INTO "${qSchema}".entry_references
+						 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+						 VALUES ($1, 'working', $2, $3, $4, $5, $6, $7)`,
+						[id, ref.kind, ref.targetId, targetEntryId, targetMediaId, ref.isStale, JSON.stringify(ref.occurrences)],
+					);
+				}
+
+				const entry = await loadEntry(client, id, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				if (isWorkingSlugConflict(err)) {
+					throw new CmsError("Slug conflict", "slug_conflict");
+				}
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		saveWorkingWithReferences: async (params: {
+			entryId: string;
+			expectedVersion: number;
+			snapshot: PreparedSnapshot;
+			references: readonly Reference[];
+		}): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				const metadata = normalizeMetadata(params.snapshot.metadata);
+				await client.query("BEGIN");
+				const res = await client.query<{ version: number; collection: string }>(
+					`SELECT version, collection FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.entryId],
+				);
+				if (res.rows.length === 0) {
+					throw new CmsError("Entry not found", "not_found");
+				}
+
+				const currentVersion = res.rows[0].version;
+				const currentCollection = res.rows[0].collection;
+
+				if (currentCollection !== params.snapshot.collection) {
+					throw new CmsError("Collection mismatch", "invalid_input");
+				}
+
+				if (currentVersion !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", currentVersion);
+				}
+
+				const bodyRes = await client.query<BodyRow>(
+					`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies WHERE entry_id = $1 AND state = 'working'`,
+					[params.entryId],
+				);
+
+				const currentSlugRes = await client.query<{ slug: string }>(
+					`SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'current'`,
+					[params.entryId],
+				);
+				const currentSlug = currentSlugRes.rows.length > 0 ? currentSlugRes.rows[0].slug : null;
+
+				const entryMetaRes = await client.query<{ working_slug: string | null }>(
+					`SELECT working_slug FROM "${qSchema}".entries WHERE id = $1`,
+					[params.entryId],
+				);
+				const currentWorkingSlug = entryMetaRes.rows[0].working_slug;
+				const nextWorkingSlug = params.snapshot.slug !== undefined ? params.snapshot.slug : currentWorkingSlug;
+
+				const currentRefsRes = await client.query<ReferenceRow>(
+					`SELECT kind, target_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $1 AND state = 'working'`,
+					[params.entryId],
+				);
+				const currentRefs: Reference[] = currentRefsRes.rows.map((row) => ({
+					kind: row.kind,
+					targetId: row.target_id,
+					isStale: row.is_stale,
+					occurrences: row.occurrences,
+				}));
+
+				const refsEqual = isReferencesEqual(currentRefs, params.references);
+
+				let isBodyIdentical = false;
+				if (bodyRes.rows.length > 0) {
+					const curr = bodyRes.rows[0];
+					if (
+						curr.content_hash === params.snapshot.contentHash &&
+						curr.mdx === params.snapshot.mdx &&
+						curr.schema_version === params.snapshot.schemaVersion &&
+						currentWorkingSlug === nextWorkingSlug &&
+						isDeepStrictEqual(curr.metadata, metadata)
+					) {
+						isBodyIdentical = true;
+					}
+				}
+
+				if (isBodyIdentical && refsEqual) {
+					const entry = await loadEntry(client, params.entryId, qSchema);
+					await client.query("COMMIT");
+					return entry;
+				}
+
+				const newVersion = currentVersion + 1;
+				const now = new Date();
+
+				if (!isBodyIdentical) {
+					await client.query(
+						`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2, working_slug = $3 WHERE id = $4`,
+						[newVersion, now, nextWorkingSlug, params.entryId],
+					);
+
+					if (bodyRes.rows.length > 0) {
+						await client.query(
+							`UPDATE "${qSchema}".entry_bodies SET metadata = $1, mdx = $2, schema_version = $3, content_hash = $4, updated_at = $5 WHERE entry_id = $6 AND state = 'working'`,
+							[
+								JSON.stringify(metadata),
+								params.snapshot.mdx,
+								params.snapshot.schemaVersion,
+								params.snapshot.contentHash,
+								now,
+								params.entryId,
+							],
+						);
+					} else {
+						await client.query(
+							`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at) VALUES ($1, 'working', $2, $3, $4, $5, $6)`,
+							[
+								params.entryId,
+								JSON.stringify(metadata),
+								params.snapshot.mdx,
+								params.snapshot.schemaVersion,
+								params.snapshot.contentHash,
+								now,
+							],
+						);
+					}
+
+					if (params.snapshot.slug !== undefined) {
+						await client.query(
+							`DELETE FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'reservation'`,
+							[params.entryId],
+						);
+
+						if (params.snapshot.slug !== null && params.snapshot.slug !== currentSlug) {
+							const colRes = await client.query<{ collection: string }>(
+								`SELECT collection FROM "${qSchema}".entries WHERE id = $1`,
+								[params.entryId],
+							);
+							if (colRes.rows.length > 0) {
+								await client.query(
+									`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type) VALUES ($1, $2, $3, 'reservation')`,
+									[colRes.rows[0].collection, params.snapshot.slug, params.entryId],
+								);
+							}
+						}
+					}
+				} else {
+					await client.query(`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2 WHERE id = $3`, [
+						newVersion,
+						now,
+						params.entryId,
+					]);
+				}
+
+				if (!refsEqual) {
+					await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'working'`, [
+						params.entryId,
+					]);
+
+					for (const ref of params.references) {
+						const targetEntryId =
+							ref.kind === "entry" || ref.kind === "category" || ref.kind === "tag" ? ref.targetId : null;
+						const targetMediaId = ref.kind === "media" ? ref.targetId : null;
+						await client.query(
+							`INSERT INTO "${qSchema}".entry_references
+							 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+							 VALUES ($1, 'working', $2, $3, $4, $5, $6, $7)`,
+							[
+								params.entryId,
+								ref.kind,
+								ref.targetId,
+								targetEntryId,
+								targetMediaId,
+								ref.isStale,
+								JSON.stringify(ref.occurrences),
+							],
+						);
+					}
+				}
+
+				const entry = await loadEntry(client, params.entryId, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				if (isWorkingSlugConflict(err)) {
+					throw new CmsError("Slug conflict", "slug_conflict");
+				}
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		getWorkingReferences: async (params: { entryId: string }): Promise<Reference[]> => {
+			const res = await pool.query<ReferenceRow>(
+				`SELECT kind, target_id, is_stale, occurrences
+				 FROM "${qSchema}".entry_references
+				 WHERE entry_id = $1 AND state = 'working'
+				 ORDER BY kind ASC, target_id ASC`,
+				[params.entryId],
+			);
+			return res.rows.map((row) => ({
+				kind: row.kind,
+				targetId: row.target_id,
+				isStale: row.is_stale,
+				occurrences: row.occurrences,
+			}));
+		},
+
 		createEntry: async (data: CreateEntryInput): Promise<Entry> => {
 			const client = await pool.connect();
 			try {
