@@ -882,5 +882,60 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 
 		const refsAfterFail = await store.getWorkingReferences({ entryId: entryValid.id });
 		expect(refsAfterFail).toEqual(refsUpdated);
+	}, 15_000);
+
+	it("preserves reference occurrences, stale flag, normalized targetId casing and avoids false mutations", async () => {
+		const target = await store.createEntry({
+			collection: "category",
+			slug: `cat-norm-${randomUUID()}`,
+			metadata: { name: "Category Normalization Target" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "hash-cat-norm",
+		});
+
+		const upperTargetId = target.id.toUpperCase();
+		const refUpper = buildReference({
+			kind: "category",
+			targetId: upperTargetId,
+			isStale: true,
+			occurrences: [
+				{ type: "metadata", path: "category" },
+				{ type: "mdx", line: 42, column: 12 },
+			],
+		});
+
+		const originalSnapshot = buildSnapshot({
+			slug: `post-norm-${randomUUID()}`,
+			references: [refUpper],
+		});
+
+		const created = await store.createEntryWithReferences({
+			snapshot: originalSnapshot,
+			references: [refUpper],
+		});
+
+		const initialDbRefs = await store.getWorkingReferences({ entryId: created.id });
+		expect(initialDbRefs).toHaveLength(1);
+		expect(initialDbRefs[0].kind).toBe("category");
+		expect(initialDbRefs[0].isStale).toBe(true);
+		expect(initialDbRefs[0].occurrences).toEqual(refUpper.occurrences);
+		expect(initialDbRefs[0].targetId).toBe(target.id.toLowerCase());
+
+		const saved = await store.saveWorkingWithReferences({
+			entryId: created.id,
+			expectedVersion: created.version,
+			snapshot: originalSnapshot,
+			references: [refUpper],
+		});
+
+		expect(saved.version).toBe(created.version);
+		expect(saved.updatedAt).toEqual(created.updatedAt);
+		expect(saved.working.updatedAt).toEqual(created.working.updatedAt);
+		expect(saved.working.mdx).toBe(created.working.mdx);
+		expect(saved.workingSlug).toBe(created.workingSlug);
+
+		const subsequentDbRefs = await store.getWorkingReferences({ entryId: created.id });
+		expect(subsequentDbRefs).toEqual(initialDbRefs);
 	});
 });
