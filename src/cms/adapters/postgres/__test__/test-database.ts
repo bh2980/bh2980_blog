@@ -16,9 +16,13 @@ export async function createIsolatedTestPool(): Promise<{ pool: Pool; schemaName
 	const schemaName = `cms_test_${randomBytes(4).toString("hex")}`;
 	await rootPool.query(`CREATE SCHEMA "${schemaName}"`);
 
-	const poolUrl = new URL(url);
-	poolUrl.searchParams.set("options", `-c search_path=${schemaName}`);
-	const pool = new Pool({ connectionString: poolUrl.toString() });
+	const pool = new Pool({ connectionString: url, max: 1 });
+	const client = await pool.connect();
+	try {
+		await client.query(`SET search_path TO "${schemaName}"`);
+	} finally {
+		client.release();
+	}
 
 	return { pool, schemaName };
 }
