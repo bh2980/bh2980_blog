@@ -31,10 +31,12 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M1-ED-2 | DONE | ED | 통합 브랜치 | `53b1495` | 실제 SourceConverter/에디터 토글 테스트 10개 통과; 보기 전용 토글 시 원문 바이트 정확히 보존; 편집된 문서는 의미 보존 왕복; 유효하지 않거나 허용되지 않은 원문은 오류와 함께 보존; Codex Sol medium 최종 리뷰 이슈 없음 |
 | M1-DA-1 | DONE | DA | 통합 브랜치 | `9d19f9f` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
 | M1-RV-1 | DONE | RV | 통합 브랜치 | `53b1495` | 전체 명령 `node --env-file=.env.local node_modules/vitest/vitest.mjs run` => 56 files/299 tests passed; `pnpm typecheck` passed; M1-ED-2 변경 5개 파일 Biome 통과; Codex 최종 판정 OK |
-| M2-INV-1 | READY | INF | — | — | — |
-| M2-BE-1 | TODO | BE | — | — | — |
-| M2-BE-2 | READY | BE | — | — | — |
+| M2-INV-1 | DONE | INF | 통합 브랜치 | — | next-auth@5.0.0-beta.32 공식 조사 확인 |
+| M2-BE-1 | READY | BE | — | — | — |
+| M2-BE-2 | TODO | BE | — | — | — |
 | M2-TW-1 | READY | TW | — | — | — |
+| M2-TW-3 | TODO | TW | — | — | — |
+| M2-DA-1 | TODO | DA | — | — | — |
 | M2-BE-3 | TODO | BE | — | — | — |
 | M2-TW-2 | READY | TW | — | — | — |
 | M2-DA-2 | TODO | DA | — | — | — |
@@ -89,6 +91,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-16: 사용자 요청으로 OpenMausBot 30분 핸드오프에 맞춰 M1-ED-1을 슬라이스한다. 한 배정에 한 슬라이스만. 같은 Editor 슬롯에 병렬 배정하지 않는다. 루틴도 다음 미완 슬라이스만 부여. 이미 나간 serialize 재배정은 취소하지 않는다.
 - 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`f0746a6`)와 M1-DA-1(`9d19f9f`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2와 M1-RV-1은 TODO.
 - 2026-09-20: M1-ED-2(커밋 `53b1495`)와 M1-RV-1이 DONE되어 Milestone 1이 완료되었다. 전체 56 files/299 tests 및 typecheck 통과, Codex 최종 판정 OK. M1-ED-2는 프레임워크 독립적 변환기/토글 경계이므로 Tiptap이 필요하지 않았으며, 따라서 Tiptap은 첫 실제 시각 에디터 작업인 M3-FE-1로 유예한다.
+- 2026-09-20: 사용자 승인으로 M2 계약과 소유권을 수정했다. M2-INV-1 완료(next-auth@5.0.0-beta.32), M2-BE-1은 READY(INV-1 후 독립 진행 가능). M2-TW-1이 READY 상태인 동안 M2-BE-2는 TODO 상태를 유지한다. M2-BE-2는 PostgreSQL을 수정하지 않는 순수 서비스/발행 준비로 고정하고, M2-TW-3(참조 계약 및 slug_conflict 실패 테스트)와 M2-DA-1(이를 통과하는 참조 DB 구현)을 새로 추가하여 실행 순서(TW-1 → BE-2; TW-1 → TW-3 → DA-1; TW-2 → DA-2; BE-1은 INV-1 이후 독립 진행 가능; BE-3은 BE-1, BE-2, DA-1 대기)를 바로잡았다. M2-TW-3은 TW-1 이후 TODO, M2-DA-1은 TW-3 이후 TODO, M2-DA-2는 TW-2 이후 TODO이다. M2-BE-3의 선행 조건으로 BE-1, BE-2, DA-1을 명시하고 API DTO 소유권을 배정했다. 이 실행을 위한 현재 그린 엔드포인트(green endpoint)는 M2-INV-1 DONE; TW-1/BE-2 green; TW-3/DA-1 real-DB green; TW-2/DA-2 real-DB green 이다. M2-INV-1 외의 향후 구현 태스크들은 아직 완료 처리하지 않는다.
 
 ---
 
@@ -282,8 +285,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ### M2-BE-1 Auth.js GitHub 게이트웨이
 
 - **목적:** Keystatic 로그인과 분리된 관리자 세션.
-- **주요 내용:** Auth.js JWT 세션(8시간). `CMS_ADMIN_GITHUB_ID`만 허용. `AuthGateway` 구현. 콜백 `/api/auth/callback/github`. CSRF·동일 출처. 실행기 토큰은 이 Task에서 스텁만 (`authorizeExecutor`는 토큰 없으면 false). DB 어댑터 없음.
-- **선행:** M1-RV-1
+- **주요 내용:** Auth.js JWT 세션(8시간). `CMS_ADMIN_GITHUB_ID`만 허용. `AuthGateway` 구현. 콜백 `/api/auth/callback/github`. CSRF·동일 출처. DB 어댑터는 사용하지 않으며, JWT maxAge 28_800 롤링 세션과 불변의 GitHub 숫자 `profile.id`(10진수 문자열로 정규화)를 CMS 서버 경계마다 `CMS_ADMIN_GITHUB_ID`와 재검증한다. 프록시/미들웨어에만 권한 검사를 의존하지 않는다. 실행기 토큰은 이 Task에서 스텁만 (`authorizeExecutor`는 토큰 없으면 false).
+- **선행:** M1-RV-1, M2-INV-1 (BE-1은 INV-1 이후 독립 진행 가능)
 - **영향 파일:** `src/cms/adapters/auth/**` (신규), `src/app/api/auth/**`, Auth.js 설정. `src/libs/admin/verify-access.ts`는 Keystatic용이므로 아직 삭제하지 않음
 - **담당:** BE
 - **완료 조건:** 비로그인 401, 다른 GitHub ID 403, 허용 ID만 통과. 사용자명을 권한에 쓰지 않는다.
@@ -292,62 +295,85 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ### M2-INV-1 Auth.js와 Next 16 호환
 
 - **목적:** 패키지 메이저를 추측으로 고르지 않는다.
-- **주요 내용:** Next 16.1 / React 19에서 쓸 Auth.js 패키지명·설정 파일을 확인하고 M2-BE-1에 적는다.
+- **주요 내용:** 공식 App Router 패키지 후보로 `next-auth@5.0.0-beta.32`(Next 16/React 19 메타데이터 지원)를 조사·선정했다. 패키지는 사전에 설치하지 않고 실제 사용 시점인 M2-BE-1에서 의도적으로 설치하며, M2-BE-1 착수 직전에 최신 베타 버전 및 권고 사항을 다시 확인한다.
 - **선행:** 없음 (M2-BE-1과 같은 배치에서 먼저)
 - **담당:** INF
-- **완료 조건:** 설치할 패키지 이름과 최소 설정 파일이 명시된다.
-- **검증:** 해당 버전 lock + 타입 검사
+- **완료 조건:** M2-BE-1이 READY 상태가 되도록 증거와 결정을 남긴다.
+- **검증:** 공식 문서 및 npm 메타데이터 조사:
+  - 설치 안내: `https://authjs.dev/getting-started/installation?framework=Next.js`
+  - 레퍼런스: `https://authjs.dev/reference/nextjs`
+  - npm beta.32 메타데이터: `https://registry.npmjs.org/next-auth/5.0.0-beta.32`
 
 ### M2-BE-2 업무 서비스 — 초안 저장과 발행 준비
 
-- **목적:** HTTP와 ContentStore 사이에 MDX 분석·컬렉션 검증·slug·참조 인덱스를 둔다. UI가 Store를 직접 부르지 않는다.
-- **주요 내용:** PreparedSnapshot 생성(analyze + hash + refs). 초안은 빈 제목/오류 MDX 허용, stale 참조 유지. 발행 검증은 이 단계에 함수로만 두고 발행 API는 M3. slug NFC·금지문자(명세 §6.2). DB CHECK보다 넓은 거부는 서비스가 한다.
-- **선행:** M1-ED-1, M1-DA-1
+- **목적:** HTTP와 ContentStore 사이에 MDX 분석·컬렉션 검증·slug·참조 인덱스를 둔다. 완료 기준은 가짜(fake) Store 포트가 주입되었을 때 동작하는 실제 `ContentService` 구현과 순수(pure) 발행 검증/준비 로직이다. 이 단계에서는 PostgreSQL을 수정하지 않는다. (생산용 PostgreSQL 포트는 M2-DA-1에서 나중에 제공한다.)
+- **주요 내용:** PreparedSnapshot 생성(analyze + hash + refs). 초안은 빈 제목/오류 MDX 허용, stale 참조 유지. frontmatter 규칙 구현: `analysis.frontmatter !== null`일 때 구조화된 발행 검증 오류(structured publish-validation issue)를 생성하여 발행 준비(publication readiness)를 거부한다. 단, `analyze()` 자체를 변경하지 않으며, frontmatter가 포함된 초안의 영속화(draft persistence)를 거부하지 않고 바이트 단위로 보존하여 저장한다. 발행 검증은 이 단계에 함수로만 두고 발행 API는 M3. slug NFC·금지문자(명세 §6.2). DB CHECK보다 넓은 거부는 서비스가 한다.
+- **선행:** M2-TW-1 (TW-1 → BE-2)
 - **영향 파일:** `src/cms/services/**` (신규). Store/에디터 파일 금지
 - **담당:** BE
-- **완료 조건:** 초안 저장 입력이 Store가 받는 `PreparedSnapshot`으로 변환된다. 허용 목록 밖 필드 거부.
+- **완료 조건:** 초안 저장 입력이 가짜 Store에 `PreparedSnapshot`으로 제대로 변환 전달된다. 허용 목록 밖 필드 거부. frontmatter 포함 초안 저장 보존 및 발행 검증 거부 통과.
 - **검증:** 서비스 단위 테스트 (mock store 가능)
 
-### M2-TW-1 slug·관계 서비스 테스트
+### M2-TW-1 순수 서비스/발행 검증 테스트
 
-- **목적:** slug 예약/중복, 미발행 대상 링크의 발행 차단을 구현 전에 고정.
+- **목적:** slug 예약/중복, 미발행 대상 링크의 발행 차단, frontmatter 발행 거부 규칙을 구현 전에 고정. 이 테스트는 M2-BE-2의 순수 서비스 동작만 다루며 skip/todo 없이 유지한다. 실제 발행 돌연변이(mutation)와 HTTP 422 상태 코드는 M3에서 다룬다.
+- **주요 내용:** frontmatter가 포함된 초안은 바이트 단위로 보존(preserved byte-for-byte)되어 준비 및 저장(`prepare`/`save`)될 수 있으나, 구조화된 발행 검증 오류(structured publish-validation issue)를 발생시켜 발행 준비 상태(publication readiness)에서 거부됨을 테스트로 증명한다. 초안 영속화는 거부되지 않아야 한다.
 - **선행:** M1-RV-1
 - **영향 파일:** `src/cms/services/__test__/**`
 - **담당:** TW
 - **완료 조건:** 실패하는 테스트. 구현 없음.
-- **검증:** vitest. M2-BE-2/M3 발행과 나눠 매핑을 적는다.
+- **검증:** vitest
+
+### M2-TW-3 실DB 참조 계약 및 충돌 테스트
+
+- **목적:** Store 수준의 작업 참조(working references) 처리, `slug_conflict` 에러 정규화, 작업 스냅샷과 참조 인덱스의 원자적 교체, 'stale' 참조 유지 기능을 실제 PostgreSQL에서 검증한다.
+- **선행:** M2-TW-1 (TW-1 → TW-3)
+- **영향 파일:** `src/cms/adapters/postgres/__test__/references.test.ts` (신규)
+- **담당:** TW
+- **완료 조건:** 실제 PostgreSQL 환경에서 0 skip으로 실행되며, 초기에는 구현이 없어 테스트가 RED(실패) 상태여야 한다. 오직 `CMS_TEST_DATABASE_URL`만 사용하며 `CMS_DATABASE_URL`은 절대 사용하지 않는다.
+- **검증:** 실DB vitest 실행 후 실패 확인 (`CMS_TEST_DATABASE_URL`만 사용, 0 skip)
+
+### M2-DA-1 참조 데이터베이스 및 Store API 구현
+
+- **목적:** 최소한의 참조 테이블과 Store API를 구현하여 M2-TW-3 테스트를 통과시킨다. (이 포트가 M2-BE-3에서 엮인다.)
+- **선행:** M2-TW-3 (TW-3 → DA-1)
+- **영향 파일:** `src/cms/adapters/postgres/content-store.ts` 및 같은 폴더 헬퍼만 해당 (현재 마이그레이션은 임베디드 방식이며, 스키마 변경 시 보고 및 리뷰 필요)
+- **담당:** DA
+- **완료 조건:** M2-TW-3 테스트 통과 및 기존 ContentStore 회귀 테스트(13 passing)를 포함한 모든 실DB 테스트 통과.
+- **검증:** M2-TW-3 및 기존 `content-store.test.ts` 전체 통과 (0 skip, `CMS_TEST_DATABASE_URL`만 사용)
 
 ### M2-BE-3 HTTP API 골격과 엔트리 CRUD
 
 - **목적:** `/api/cms/v1`가 관리자 UI의 유일한 HTTP 계약이 되게 한다.
-- **주요 내용:** `GET /meta`, `GET/POST /entries`, `GET/PATCH /entries/:id`. 기존 `src/cms/core/api.ts` DTO 사용. Store/서비스 `CmsError`를 HTTP로 옮긴다. OpenAPI는 이 Milestone에서 초안만, 완성은 M5. 공개 블로그는 이 라우트를 호출하지 않고 서비스를 직접 호출한다.
-- **선행:** M2-BE-1, M2-BE-2
-- **영향 파일:** `src/app/api/cms/v1/**`, 얇은 라우트 헬퍼. core/api.ts는 DTO 추가만
+- **주요 내용:** `GET /meta`, `GET/POST /entries`, `GET/PATCH /entries/:id`. `src/cms/core/api.ts`에 누락된 DTO를 이 Task에서 생성하고 소유권을 갖는다. Store/서비스 `CmsError`를 HTTP로 옮긴다. OpenAPI는 이 Milestone에서 초안만, 완성은 M5. 공개 블로그는 이 라우트를 호출하지 않고 서비스를 직접 호출한다.
+- **선행:** M2-BE-1, M2-BE-2, M2-DA-1 (BE-3은 BE-1, BE-2, DA-1 대기)
+- **영향 파일:** `src/app/api/cms/v1/**`, 얇은 라우트 헬퍼, `src/cms/core/api.ts`
 - **담당:** BE
-- **완료 조건:** 인증된 클라이언트가 글을 만들고 초안을 저장한다. version 없이 PATCH하면 428 `version_required`. Store `conflict`+`serverVersion`은 409.
-- **검증:** Route Handler 테스트에서 HTTP 409/428 매핑을 단언한다. Store 테스트에 상태 숫자를 넣지 않는다.
+- **완료 조건:** 인증된 클라이언트가 글을 만들고 초안을 저장한다. version 없이 PATCH하면 428 `version_required`, 낙관적 잠금 충돌(Store `conflict` + `serverVersion`) 시 409, `slug_conflict` 시 409.
+- **검증:** Route Handler 테스트에서 missing version => 428 `version_required`, optimistic Store conflict with `serverVersion` => 409, `slug_conflict` => 409 HTTP 매핑을 단언한다. Store 테스트에 상태 숫자를 넣지 않는다.
 
 ### M2-DA-2 폴더·목록 쿼리 실DB 보강
 
 - **목적:** F01 서버 검색/필터/정렬과 F02 폴더 제약을 Store에서 막는다.
 - **주요 내용:** `listEntries` 검색(제목·slug·선택적 본문 ILIKE), 필터 AND/OR, 페이지, 폴더 CRUD·순환 거부·삭제 시 글/자식 이동. `updatedAt`은 폴더 이동에 안 바뀐다.
-- **선행:** M1-DA-1, TW가 폴더/목록 테스트를 같은 파일 또는 `folders.test.ts`에 추가한 뒤
-- **영향 파일:** `content-store.ts`, `src/cms/adapters/postgres/__test__/folders.test.ts` (TW가 테스트 파일 소유)
+- **선행:** M2-TW-2 (TW-2 → DA-2)
+- **영향 파일:** `content-store.ts` 및 관련 파일
 - **담당:** DA 구현, TW 테스트 선행 (`M2-TW-2`)
-- **완료 조건:** 형제 이름 중복 거부, 폴더 삭제가 글을 지우지 않음, 목록 페이지에 누락/중복 없음.
-- **검증:** 실DB vitest
+- **완료 조건:** 형제 이름 중복 거부, 폴더 삭제가 글을 지우지 않음, 목록 페이지에 누락/중복 없음. M2-TW-2 통과 및 기존 모든 ContentStore 회귀 테스트 통과.
+- **검증:** 실DB vitest (`CMS_TEST_DATABASE_URL`만 사용, 0 skip)
 
 ### M2-TW-2 폴더·목록 실패 테스트
 
+- **목적:** 리스트 항목과 폴더 제약 실패 테스트를 분리해서 구현 전에 고정한다.
 - **선행:** M1-DA-1
+- **영향 파일:** `src/cms/adapters/postgres/__test__/list-entries.test.ts`, `src/cms/adapters/postgres/__test__/folders.test.ts` (TW가 테스트 파일 소유, schema.test.ts 수정 금지)
 - **담당:** TW
-- **영향 파일:** `src/cms/adapters/postgres/__test__/folders.test.ts` 또는 list 테스트
-- **완료 조건:** 구현 전 실패. schema.test.ts 수정 금지.
+- **완료 조건:** 실제 PostgreSQL 대상, 0 skip, `CMS_TEST_DATABASE_URL`만 사용하며 구현 부재 상태에서 초기에 RED(실패) 상태 유지. `schema.test.ts` 수정 금지. 글로벌 DB 리소스를 닫지 않도록 스위트 로컬(suite-local) 풀/정리(cleanup) 요구사항을 포함해야 한다. (동시 실행 시 리소스 충돌 방지)
 
 ### M2-BE-4 record 컬렉션과 관계 API
 
 - **목적:** 태그/카테고리/모음집은 저장 즉시 반영. 관계 필드는 ID.
-- **주요 내용:** record workflow 저장, 사용처 조회 `GET /entries/:id/relations`, 사용 중 휴지통 이동 거부. 모음집 `items`는 post+memo 순서 유지.
+- **주요 내용:** record workflow 저장, 사용처 조회 `GET /entries/:id/relations`, 사용 중 휴지통 이동 거부. 모음집 메타데이터 통신 키는 정규 `itemIds`를 사용하며 게시글(post) 대상 순서를 유지한다(ordered post-only target semantics).
 - **선행:** M2-BE-3, M2-DA-2
 - **영향 파일:** services + `/entries/:id/relations`, record save 경로
 - **담당:** BE
@@ -394,8 +420,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 
 ### M3-TW-1 발행·상태·예약·날짜 테스트
 
-- **목적:** 상태기계와 날짜 표를 구현 전에 고정.
-- **주요 내용:** §5.3 전환, §5.5 날짜, 예약 잠금/중복 실행/이른 호출, 같은 해시 재발행. HTTP 428/409/422.
+- **목적:** 상태기계와 날짜 표, 공개 참조(published-reference) 계약을 구현 전에 고정.
+- **주요 내용:** §5.3 전환, §5.5 날짜, 예약 잠금/중복 실행/이른 호출, 같은 해시 재발행. HTTP 428/409/422. 공개 참조 소유권 테스트 추가: 작업 참조와 공개 참조의 분리(working/published reference separation), 발행 시 트랜잭션 내 대상 재검사 및 공개 참조 복사(transactional target recheck and copy during publish), 트랜잭션 실패 시 이전 발행 본문(prior published body)과 이전 발행 참조(published references)를 온전히 보존하는 롤백(rollback preserving prior published body and published references on failure)을 검증한다.
 - **선행:** M2-RV-1
 - **영향 파일:** services 및 postgres `__test__` (TW 소유 테스트 파일)
 - **담당:** TW
@@ -404,11 +430,11 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ### M3-BE-1 발행·보관·휴지통·예약 API
 
 - **목적:** 명시적 발행으로만 공개본을 교체한다.
-- **주요 내용:** validate/publish/archive/unarchive/trash/restore/DELETE, schedule CRUD, `GET /schedules/due`, `POST /schedules/:id/publish` (실행기 토큰). 실행기 미연결 시 관리자 표시용 플래그. `CMS_SCHEDULER_TOKEN` 없으면 실행 API 403 + UI “외부 실행기 연결 필요”.
+- **주요 내용:** validate/publish/archive/unarchive/trash/restore/DELETE, schedule CRUD, `GET /schedules/due`, `POST /schedules/:id/publish` (실행기 토큰). 실행기 미연결 시 관리자 표시용 플래그. `CMS_SCHEDULER_TOKEN` 없으면 실행 API 403 + UI “외부 실행기 연결 필요”. 공개 참조 소유권 구현: 단일 발행 트랜잭션 내에서 대상 재검사, 작업 참조를 공개 참조로 복사, 그리고 실패 시 이전 발행 본문과 이전 발행 참조를 그대로 보존하는 원자적 롤백을 소유하고 구현한다.
 - **선행:** M3-TW-1, M2-BE-2
 - **영향 파일:** services + `/api/cms/v1/entries/**`, `/schedules/**`
 - **담당:** BE
-- **완료 조건:** M3-TW-1 통과. 보관 글은 공개 조회에서 빠진다.
+- **완료 조건:** M3-TW-1 통과. 보관 글은 공개 조회에서 빠진다. 트랜잭션 실패 시 이전 공개 본문 및 공개 참조 보존.
 - **검증:** 실DB + 라우트 테스트
 
 ### M3-FE-1 편집 화면 셸 (필드 + 에디터 마운트)
@@ -704,8 +730,8 @@ M0 기준 고정
 2. M0-INV-2 `pg` (실DB 테스트 전)  
 3. M1-TW-1 → M1-ED-1 serialize  
 4. M1-TW-2 → M1-DA-1 실DB 저장/공개  
-5. M2-BE-1 Auth  
-6. M2-BE-2 서비스 + M2-BE-3 HTTP  
+5. M2 기반 흐름: TW-1 → BE-2; TW-1 → TW-3 → DA-1; TW-2 → DA-2; BE-1은 INV-1 이후 독립 진행 가능
+6. M2-BE-3 HTTP (BE-3은 BE-1, BE-2, DA-1 대기)
 7. M3-FE-2 자동 저장 (내용 유실 방지)  
 8. M3-BE-1 발행/예약  
 9. M4-BE-4 시험 이전 + M4-ED-2 전편 왕복  
@@ -725,7 +751,7 @@ Auth·serialize·실DB 공개 분리·이전 왕복·공개 조회 교체 중 �
 | --- | --- | --- |
 | M0 | INV-3(JR) 완료. INV-2는 `pg`만 설치해 DONE; Tiptap은 M3-FE-1까지 지연 | INV-1 CANCELLED |
 | M1 | TW-1과 TW-2는 테스트 파일만 병렬. 구현은 테스트 병합 후 ED-1 ∥ DA-1 | ED와 DA가 같은 파일 |
-| M2 | TW-2(폴더 테스트) 후 DA-2 ∥ BE-1(Auth, INV-1 패키지 확인 후) . BE-5(preferences) ∥ FE는 API 이후 | FE가 API 전에 화면만 그려도 되나 완료는 API 연결 후 |
+| M2 | BE-1은 INV-1 이후 독립 진행 가능 ∥ TW-1 → BE-2 ∥ TW-1 → TW-3 → DA-1 ∥ TW-2 → DA-2. BE-3은 BE-1, BE-2, DA-1 대기. BE-5(preferences) ∥ FE는 API 이후 | FE가 API 전에 화면만 그려도 되나 완료는 API 연결 후. TW 테스트 완료 전에 구현 착수 금지 |
 | M3 | ED-1(에디터) ∥ BE-1(발행 API) ∥ INF-1(R2). FE-1은 API+에디터 마운트 후 | FE와 ED가 `src/cms/editor` 동시 수정 |
 | M4 | FE-1 라이브러리 ∥ BE-1 일괄 ∥ BE-2 복제 (테스트 병합 후) . BE-4 이전은 serialize 이후 | 이전 스크립트가 editor 코어를 수정 |
 | M5 | INV-1 ∥ SEC는 공개 조회 구현과 일부 겹침 → 조회 병합 후 SEC | Keystatic 제거와 공개 조회를 동시에 |
@@ -766,7 +792,13 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 8. M1-ED-2 SourceConverter/에디터 토글 연결 완료(`53b1495`)
 9. M1-RV-1 Milestone 1 검수 완료(`53b1495`, Milestone 1 완료)
 
-다음 테스트 우선(test-first) 순서: M2-INV-1은 M2-TW-1, M2-TW-2와 병렬로 진행할 수 있다. M2-BE-2는 M2-TW-1 이후에 진행하고, M2-DA-2는 M2-TW-2 이후에 진행하며, M2-BE-1은 M2-INV-1 이후에 진행한다. (M2-BE-2는 계약 테스트 작성자와 병렬로 구현하지 않는다.)
+다음 테스트 우선(test-first) 순서:
+- TW-1 → BE-2 (M2-TW-1이 READY인 동안 M2-BE-2는 TODO 상태를 유지하며 TW-1 완료 후 착수)
+- TW-1 → TW-3 → DA-1 (M2-TW-3은 TW-1 이후 TODO, M2-DA-1은 TW-3 이후 TODO)
+- TW-2 → DA-2 (M2-DA-2는 TW-2 이후 TODO)
+- BE-1은 INV-1 이후 독립 진행 가능 (M2-BE-1 READY)
+- BE-3은 BE-1, BE-2, DA-1 대기 (M2-BE-3은 BE-1, BE-2, DA-1 완료를 대기하는 TODO)
+(계약 테스트 작성 완료 전에 구현 태스크를 병렬로 진행하지 않으며, 향후 구현 태스크를 미리 완료 처리하지 않는다.)
 
 오늘 하지 않는 것: Frontend/Backend 화면·API, R2 업로드, Keystatic 제거, 운영 DB 이전.
 
