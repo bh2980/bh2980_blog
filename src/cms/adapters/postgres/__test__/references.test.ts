@@ -579,4 +579,308 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		expect(currentRefs).toHaveLength(1);
 		expect(currentRefs[0]).toEqual(ref1);
 	});
+
+	it("collection mismatch on save rejects with CmsError invalid_input and leaves working entry and references unchanged", async () => {
+		const targetReal = await store.createEntry({
+			collection: "category",
+			slug: `target-${randomUUID()}`,
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "1",
+		});
+		const ref1 = buildReference({ kind: "category", targetId: targetReal.id });
+		const snapshot1 = buildSnapshot({ collection: "post", slug: "mismatch-source", references: [ref1] });
+		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [ref1] });
+		const priorRefs = await store.getWorkingReferences({ entryId: entry1.id });
+		const priorAddresses = await pool.query(
+			`SELECT collection, slug, entry_id, type FROM "${schemaName}".content_addresses WHERE entry_id = $1 ORDER BY collection, slug`,
+			[entry1.id],
+		);
+
+		const ref2 = buildReference({ kind: "entry", targetId: targetReal.id });
+		const snapshot2 = buildSnapshot({
+			collection: "tag",
+			slug: "mismatch-changed",
+			contentHash: "changed-hash",
+			mdx: "changed-mdx",
+			references: [ref2],
+		});
+
+		let err: unknown;
+		try {
+			await store.saveWorkingWithReferences({
+				entryId: entry1.id,
+				expectedVersion: entry1.version,
+				snapshot: snapshot2,
+				references: [ref2],
+			});
+		} catch (e) {
+			err = e;
+		}
+		expect(err).toBeDefined();
+		expect(err).toBeInstanceOf(CmsError);
+		expect((err as CmsError).code).toBe("invalid_input");
+
+		const saved = await store.getEntry(entry1.id);
+		expect(saved.collection).toBe("post");
+		expect(saved.version).toBe(entry1.version);
+		expect(saved.workingSlug).toBe(entry1.workingSlug);
+		expect(saved.working).toEqual(entry1.working);
+		expect(saved.updatedAt).toEqual(entry1.updatedAt);
+		expect(saved.working.updatedAt).toEqual(entry1.working.updatedAt);
+
+		const currentAddresses = await pool.query(
+			`SELECT collection, slug, entry_id, type FROM "${schemaName}".content_addresses WHERE entry_id = $1 ORDER BY collection, slug`,
+			[entry1.id],
+		);
+		expect(currentAddresses.rows).toEqual(priorAddresses.rows);
+
+		const currentRefs = await store.getWorkingReferences({ entryId: entry1.id });
+		expect(currentRefs).toEqual(priorRefs);
+	});
+
+	it("DB CHECK binds target_id to target_entry_id for entry kinds, rejecting mismatched identities", async () => {
+		const source = await store.createEntry({
+			collection: "post",
+			slug: `source-${randomUUID()}`,
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "src",
+		});
+		const targetA = await store.createEntry({
+			collection: "tag",
+			slug: `target-a-${randomUUID()}`,
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "ta",
+		});
+		const targetB = await store.createEntry({
+			collection: "tag",
+			slug: `target-b-${randomUUID()}`,
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "tb",
+		});
+
+		let err: unknown;
+		try {
+			await pool.query(
+				`INSERT INTO "${schemaName}".entry_references (entry_id, state, kind, target_id, target_entry_id, is_stale, occurrences)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
+				[source.id, "working", "tag", targetA.id, targetB.id, false, JSON.stringify([])],
+			);
+		} catch (e) {
+			err = e;
+		}
+		expect(err).toBeDefined();
+
+		const res = await pool.query(`SELECT COUNT(*) as count FROM "${schemaName}".entry_references WHERE entry_id = $1`, [
+			source.id,
+		]);
+		expect(res.rows[0].count).toBe("0");
+	});
+
+	it("media reference enforces DB identity via media_assets table, rejects invalid/mismatched targets, and roundtrips valid references", async () => {
+		const fkRes = await pool.query(
+			`
+			SELECT con.conname
+			FROM pg_catalog.pg_constraint con
+			JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
+			JOIN pg_catalog.pg_namespace ns ON cl.relnamespace = ns.oid
+			JOIN pg_catalog.pg_class fcl ON con.confrelid = fcl.oid
+			JOIN pg_catalog.pg_namespace fns ON fcl.relnamespace = fns.oid
+			JOIN pg_catalog.pg_attribute a ON a.attrelid = cl.oid AND a.attnum = ANY(con.conkey)
+			JOIN pg_catalog.pg_attribute fa ON fa.attrelid = fcl.oid AND fa.attnum = ANY(con.confkey)
+			WHERE con.contype = 'f'
+			  AND ns.nspname = $1
+			  AND cl.relname = 'entry_references'
+			  AND a.attname = 'target_media_id'
+			  AND fns.nspname = $1
+			  AND fcl.relname = 'media_assets'
+			  AND fa.attname = 'id'
+			`,
+			[schemaName],
+		);
+		expect(fkRes.rows.length).toBeGreaterThanOrEqual(1);
+
+		const checkRes = await pool.query(
+			`
+			SELECT con.conname, pg_get_constraintdef(con.oid) as def
+			FROM pg_catalog.pg_constraint con
+			JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
+			JOIN pg_catalog.pg_namespace ns ON cl.relnamespace = ns.oid
+			WHERE con.contype = 'c'
+			  AND ns.nspname = $1
+			  AND cl.relname = 'entry_references'
+			`,
+			[schemaName],
+		);
+		const hasMediaCheck = checkRes.rows.some(
+			(row) =>
+				row.def.toLowerCase().includes("target_media_id") &&
+				row.def.toLowerCase().includes("media") &&
+				row.def.toLowerCase().includes("target_id"),
+		);
+		expect(hasMediaCheck).toBe(true);
+
+		const source = await store.createEntry({
+			collection: "post",
+			slug: `media-src-${randomUUID()}`,
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "m-src",
+		});
+
+		const mediaIdA = randomUUID();
+		const mediaIdB = randomUUID();
+		await pool.query(`INSERT INTO "${schemaName}".media_assets (id) VALUES ($1), ($2)`, [mediaIdA, mediaIdB]);
+
+		let nullMediaErr: unknown;
+		try {
+			await pool.query(
+				`INSERT INTO "${schemaName}".entry_references (entry_id, state, kind, target_id, target_media_id, target_entry_id, is_stale, occurrences)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+				[source.id, "working", "media", mediaIdA, null, null, false, JSON.stringify([])],
+			);
+		} catch (e) {
+			nullMediaErr = e;
+		}
+		expect(nullMediaErr).toBeDefined();
+
+		const preMismatchCount = await pool.query(
+			`SELECT COUNT(*) as count FROM "${schemaName}".entry_references WHERE entry_id = $1`,
+			[source.id],
+		);
+		expect(preMismatchCount.rows[0].count).toBe("0");
+
+		let insertErr: unknown;
+		try {
+			await pool.query(
+				`INSERT INTO "${schemaName}".entry_references (entry_id, state, kind, target_id, target_media_id, target_entry_id, is_stale, occurrences)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+				[source.id, "working", "media", mediaIdA, mediaIdB, null, false, JSON.stringify([])],
+			);
+		} catch (e) {
+			insertErr = e;
+		}
+		expect(insertErr).toBeDefined();
+
+		const nonexistentMediaId = randomUUID();
+		const refInvalid = buildReference({ kind: "media", targetId: nonexistentMediaId });
+		const snapshotInvalid = buildSnapshot({ slug: `media-invalid-${randomUUID()}`, references: [refInvalid] });
+
+		let createErr: unknown;
+		try {
+			await store.createEntryWithReferences({ snapshot: snapshotInvalid, references: [refInvalid] });
+		} catch (e) {
+			createErr = e;
+		}
+		expect(createErr).toBeDefined();
+
+		const entryCount = await pool.query(
+			`SELECT COUNT(*) as count FROM "${schemaName}".entries WHERE working_slug = $1`,
+			[snapshotInvalid.slug],
+		);
+		expect(entryCount.rows[0].count).toBe("0");
+
+		const validMediaId = randomUUID();
+		await pool.query(`INSERT INTO "${schemaName}".media_assets (id) VALUES ($1)`, [validMediaId]);
+
+		const refValid = buildReference({ kind: "media", targetId: validMediaId });
+		const snapshotValid = buildSnapshot({ slug: `media-valid-${randomUUID()}`, references: [refValid] });
+
+		const entryValid = await store.createEntryWithReferences({ snapshot: snapshotValid, references: [refValid] });
+		expect(entryValid.id).toBeDefined();
+
+		const refs = await store.getWorkingReferences({ entryId: entryValid.id });
+		expect(refs).toHaveLength(1);
+		expect(refs[0]).toEqual(refValid);
+
+		const validMediaId2 = randomUUID();
+		await pool.query(`INSERT INTO "${schemaName}".media_assets (id) VALUES ($1)`, [validMediaId2]);
+
+		const refValid2 = buildReference({
+			kind: "media",
+			targetId: validMediaId2,
+			occurrences: [{ type: "metadata", path: "bannerId" }],
+		});
+		const snapshotValid2 = buildSnapshot({
+			collection: "post",
+			slug: `media-valid-2-${randomUUID()}`,
+			metadata: { title: "Media 2" },
+			mdx: "Updated media content",
+			schemaVersion: 2,
+			contentHash: "hash-media-2",
+			references: [refValid2],
+		});
+
+		const entryUpdated = await store.saveWorkingWithReferences({
+			entryId: entryValid.id,
+			expectedVersion: entryValid.version,
+			snapshot: snapshotValid2,
+			references: [refValid2],
+		});
+
+		expect(entryUpdated.version).toBe(entryValid.version + 1);
+		expect(entryUpdated.workingSlug).toBe(snapshotValid2.slug);
+		expect(entryUpdated.working.metadata).toEqual(snapshotValid2.metadata);
+		expect(entryUpdated.working.mdx).toEqual(snapshotValid2.mdx);
+		expect(entryUpdated.working.schemaVersion).toEqual(snapshotValid2.schemaVersion);
+		expect(entryUpdated.working.contentHash).toEqual(snapshotValid2.contentHash);
+
+		const refsUpdated = await store.getWorkingReferences({ entryId: entryValid.id });
+		expect(refsUpdated).toHaveLength(1);
+		expect(refsUpdated[0]).toEqual(refValid2);
+
+		const addressesSecond = await pool.query(
+			`SELECT collection, slug, entry_id, type FROM "${schemaName}".content_addresses WHERE entry_id = $1 ORDER BY collection, slug`,
+			[entryValid.id],
+		);
+
+		const nonexistentMediaId2 = randomUUID();
+		const refFail = buildReference({ kind: "media", targetId: nonexistentMediaId2 });
+		const snapshotFail = buildSnapshot({
+			collection: "post",
+			slug: `media-fail-${randomUUID()}`,
+			metadata: { title: "Media Fail" },
+			mdx: "Failed media content",
+			schemaVersion: 3,
+			contentHash: "hash-media-fail",
+			references: [refFail],
+		});
+
+		let saveErr: unknown;
+		try {
+			await store.saveWorkingWithReferences({
+				entryId: entryValid.id,
+				expectedVersion: entryUpdated.version,
+				snapshot: snapshotFail,
+				references: [refFail],
+			});
+		} catch (e) {
+			saveErr = e;
+		}
+		expect(saveErr).toBeDefined();
+
+		const savedAfterFail = await store.getEntry(entryValid.id);
+		expect(savedAfterFail.version).toBe(entryUpdated.version);
+		expect(savedAfterFail.updatedAt).toEqual(entryUpdated.updatedAt);
+		expect(savedAfterFail.working.updatedAt).toEqual(entryUpdated.working.updatedAt);
+		expect(savedAfterFail.workingSlug).toBe(entryUpdated.workingSlug);
+		expect(savedAfterFail.working).toEqual(entryUpdated.working);
+
+		const addressesAfterFail = await pool.query(
+			`SELECT collection, slug, entry_id, type FROM "${schemaName}".content_addresses WHERE entry_id = $1 ORDER BY collection, slug`,
+			[entryValid.id],
+		);
+		expect(addressesAfterFail.rows).toEqual(addressesSecond.rows);
+
+		const refsAfterFail = await store.getWorkingReferences({ entryId: entryValid.id });
+		expect(refsAfterFail).toEqual(refsUpdated);
+	});
 });
