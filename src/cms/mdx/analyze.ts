@@ -13,10 +13,13 @@ import { parseMdxAst } from "./parse";
 import { COLUMNS_MAX, COLUMNS_MIN, EVENT_HANDLER_NAME, TABS_MAX, TABS_MIN } from "./registry";
 import type { CmsMdxAnalysis, CmsMdxError } from "./types";
 
-type VisitNode = Root | RootContent | { type: string; [key: string]: unknown };
+type VisitNode =
+	| Root
+	| RootContent
+	| { type: string; position?: { start?: { line?: number; column?: number } }; [key: string]: unknown };
 
 const namedJsxChildren = (node: VisitNode, name: string) => {
-	const children = Array.isArray(node.children) ? node.children : [];
+	const children = "children" in node && Array.isArray(node.children) ? node.children : [];
 	const found: unknown[] = [];
 	const walk = (nodes: unknown[]) => {
 		for (const child of nodes) {
@@ -34,15 +37,13 @@ const namedJsxChildren = (node: VisitNode, name: string) => {
 	return found;
 };
 
-const pushError = (
-	errors: CmsMdxError[],
-	message: string,
-	node: { position?: { start?: { line?: number; column?: number } } },
-) => {
+type ErrorTarget = VisitNode | { position?: { start?: { line?: number; column?: number } } };
+
+const pushError = (errors: CmsMdxError[], message: string, node: ErrorTarget) => {
 	errors.push({ message, position: positionOf(node) });
 };
 
-const validateExpression = (errors: CmsMdxError[], estree: unknown, node: VisitNode, source: string) => {
+const validateExpression = (errors: CmsMdxError[], estree: unknown, node: ErrorTarget, source: string) => {
 	const expression = programExpression(estree);
 	if (hasSpread(expression)) {
 		pushError(errors, "본문에서 spread 속성은 허용되지 않습니다.", node);
@@ -64,7 +65,7 @@ const validateExpression = (errors: CmsMdxError[], estree: unknown, node: VisitN
 };
 
 const validateAttributes = (errors: CmsMdxError[], node: VisitNode) => {
-	const attributes = Array.isArray(node.attributes) ? node.attributes : [];
+	const attributes = "attributes" in node && Array.isArray(node.attributes) ? node.attributes : [];
 	for (const raw of attributes) {
 		const attribute = raw as {
 			type?: string;
@@ -118,7 +119,7 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 		}
 	}
 
-	const children = Array.isArray(node.children) ? node.children : [];
+	const children = "children" in node && Array.isArray(node.children) ? node.children : [];
 	for (const child of children) {
 		validateNode(errors, child as VisitNode);
 	}
