@@ -50,12 +50,12 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M3-FE-1 | DONE | FE | 통합 브랜치 | `665a0f9` | /admin/entries/[id]/edit 셸, Tiptap 에디터 마운트, M1 EditorToggle 연동; 빌드 통과 |
 | M3-FE-2 | DONE | FE | 통합 브랜치 | `6d83eef` | 2초 idle/10초 max 자동저장, IndexedDB 백업, IME 지연, 409 충돌 비교/복사 UI; reviewer 통과 |
 | M3-ED-1 | DONE | ED | 통합 브랜치 | `8fb382b` | 슬래시 메뉴(/) 및 블록 핸들(위/아래 이동, 복제, 삭제) 오버레이; reviewer 통과 |
-| M3-ED-2 | DONE | ED | 통합 브랜치 | `005ac94` | 내부 링크([[]) 스마트 자동완성 검색 팝업 및 키보드 네비게이션; reviewer 통과 |
-| M3-INF-1 | TODO | INF | — | — | — |
-| M3-BE-2 | TODO | BE | — | — | — |
-| M3-FE-3 | TODO | FE | — | — | — |
+| M3-ED-2 | DONE | ED | 통합 브랜치 | `05a1e44` | 내부 링크([[]) 및 Tiptap 커스텀 Image 노드(크기/정렬/alt/caption) + MDX 컴포넌트 변환; reviewer 통과 |
+| M3-INF-1 | DONE | INF | 통합 브랜치 | `1573d3c` | R2 MediaStore 어댑터(S3 호환 presigned PUT, promoteFile, head/delete/publicUrl); reviewer 통과 |
+| M3-BE-2 | DONE | BE | 통합 브랜치 | `1573d3c` | 미디어 업로드 준비/완료 API(/media/uploads, /media/:id/complete), 10MiB/MIME 매직바이트 검증; reviewer 통과 |
+| M3-FE-3 | DONE | FE | 통합 브랜치 | `05a1e44` | 에디터 내 이미지 드래그앤드롭/클립보드 붙여넣기/슬래시/툴바 삽입 및 프로그레스 UI; reviewer 통과 |
 | M3-FE-4 | DONE | FE | 통합 브랜치 | `dc74ab4` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
-| M3-RV-1 | IN_PROGRESS | RV | 통합 브랜치 | `005ac94` | M3 에디터 UI 전면 개편 및 ED-1, ED-2 통합 완료, reviewer 전 단계 승인 |
+| M3-RV-1 | DONE | RV | 통합 브랜치 | `05a1e44` | M3 전 작업(TW-1, BE-1, BE-2, FE-1~4, ED-1, ED-2, INF-1) 완료 및 reviewer 전 배치 무결함 승인 |
 | M4-TW-1 | TODO | TW | — | — | — |
 | M4-FE-1 | TODO | FE | — | — | — |
 | M4-BE-1 | TODO | BE | — | — | — |
@@ -109,6 +109,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   4) M3-ED-2: 내부 링크(`[[`) 스마트 자동완성 연동. `/api/cms/v1/entries` 검색 및 키보드(ArrowDown/Up, Enter, ESC) 선택 지원.
   5) reviewer 전 단계 검수 및 P0 지적(stale closure, Enter 키 swallow) 반영 후 "위험 없음" 최종 승인.
   6) 최종 검증: 69 files/441 tests 100% 통과, `pnpm typecheck`, `pnpm build` 통과. M3-ED-1, M3-ED-2를 DONE으로 갱신한다.
+- 2026-09-21: Milestone 3 미디어 업로드 파이프라인 및 에디터 이미지 연동(M3-INF-1, M3-BE-2, M3-ED-2, M3-FE-3)을 완료했다.
+  1) 사전 oracle 자문: Cloudflare R2 presigned PUT 구조, SVG XSS 보안 차단, staging key -> Magic Byte 검증 -> final key 승격(`promoteFile`) 및 DB 무결성 설계 고정.
+  2) M3-INF-1 / M3-BE-2: AWS SDK v3 기반 `R2MediaStore` 어댑터 구현 및 `/media/uploads`, `/media/:id/complete` API 구현. 10MiB 상한 및 실제 파일 헤더 검증(PNG/GIF/JPEG/WebP/AVIF 허용, SVG 거부). reviewer 1차 검수 "위험 없음" 승인 (`1573d3c`).
+  3) M3-ED-2 / M3-FE-3: Tiptap 커스텀 `CmsImageNode` 및 React NodeView(`CmsImageNodeView`) 구현(너비, 정렬, Alt, Caption 인라인 조작). 에디터 내 클립보드 이미지 붙여넣기(Ctrl+V), 파일 드래그앤드롭, 슬래시 메뉴 및 툴바 이미지 삽입 버튼 연동, 업로드 진행률 프로그레스 바 구현.
+  4) MDX `<Image mediaId="..." src="..." width="..." align="..." caption="..." />` 직렬화 및 역직렬화 왕복 테스트 통과.
+  5) reviewer 2차 검수 지적(직렬화 시 `src` 누락 위험 P0, figure 블록 핸들 셀렉터 누락) 반영(`05a1e44`) 후 재리뷰 "위험 없음" 최종 승인.
+  6) 최종 검증: 72 files/454 tests 100% 통과, `pnpm typecheck`, `pnpm build`(73 routes) 통과. Milestone 3 전 작업을 DONE으로 갱신한다.
 
 ---
 
