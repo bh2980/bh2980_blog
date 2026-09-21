@@ -2,8 +2,11 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { CmsMdxPreserver } from "./tiptap-schema";
+import { filterCommands, type SlashCommandItem } from "./slash-command";
+import { SlashMenuPopup } from "./slash-menu-popup";
+import { BlockHandleOverlay } from "./block-handle-overlay";
 
 interface CmsEditorProps {
 	content: string;
@@ -21,6 +24,18 @@ export function CmsEditor({
 	editable = true,
 }: CmsEditorProps) {
 	const isInternalUpdateRef = useRef(false);
+	const isComposingRef = useRef(false);
+
+	// Slash Menu State
+	const [slashOpen, setSlashOpen] = useState(false);
+	const [slashCoords, setSlashCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+	const [slashQuery, setSlashQuery] = useState("");
+	const [slashIndex, setSlashIndex] = useState(0);
+	const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
+
+	// Block Handle State
+	const [handleCoords, setHandleCoords] = useState<{ top: number; left: number } | null>(null);
+	const activeBlockPosRef = useRef<number | null>(null);
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -39,10 +54,66 @@ export function CmsEditor({
 				class:
 					"prose dark:prose-invert max-w-none min-h-[550px] p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
 			},
+			handleKeyDown: (view, event) => {
+				if (!slashOpen) return false;
+
+				// Korean IME safeguard: do not process keys while composing
+				if (view.composing || event.isComposing || event.keyCode === 229) {
+					return false;
+				}
+
+				const filtered = filterCommands(slashQuery);
+
+				if (event.key === "ArrowDown") {
+					event.preventDefault();
+					setSlashIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+					return true;
+				}
+				if (event.key === "ArrowUp") {
+					event.preventDefault();
+					setSlashIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+					return true;
+				}
+				if (event.key === "Enter") {
+					event.preventDefault();
+					if (filtered[slashIndex] && slashRangeRef.current) {
+						filtered[slashIndex].action(editor, slashRangeRef.current);
+						setSlashOpen(false);
+					}
+					return true;
+				}
+				if (event.key === "Escape") {
+					event.preventDefault();
+					setSlashOpen(false);
+					return true;
+				}
+				return false;
+			},
 		},
 		onUpdate: ({ editor }) => {
 			if (isInternalUpdateRef.current) return;
 			onChange(editor.getHTML());
+
+			// Check slash trigger condition
+			if (!isComposingRef.current) {
+				const { from } = editor.state.selection;
+				const textBefore = editor.state.doc.textBetween(Math.max(0, from - 20), from, "\n", "\0");
+				const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
+
+				if (slashMatch) {
+					const query = slashMatch[1] || "";
+					const slashPos = from - query.length - 1;
+					slashRangeRef.current = { from: slashPos, to: from };
+					setSlashQuery(query);
+					setSlashIndex(0);
+
+					const coords = editor.view.coordsAtPos(from);
+					setSlashCoords({ top: coords.top, left: coords.left });
+					setSlashOpen(true);
+				} else {
+					setSlashOpen(false);
+				}
+			}
 		},
 	});
 
@@ -60,18 +131,143 @@ export function CmsEditor({
 		editor.setEditable(editable);
 	}, [editable, editor]);
 
+	// Hover-based Block Handle Detection
+	const handleMouseMove = useCallback(
+		(e: React.MouseEvent<HTMLDivElement>) => {
+			if (!editor) return;
+			const target = e.target as HTMLElement;
+			const blockEl = target.closest(
+				".prose > p, .prose > h1, .prose > h2, .prose > h3, .prose > blockquote, .prose > pre, .prose > ul, .prose > ol, .prose > hr",
+			) as HTMLElement | null;
+
+			if (blockEl && editor.view.dom.contains(blockEl)) {
+				try {
+					const pos = editor.view.posAtDOM(blockEl, 0);
+					activeBlockPosRef.current = pos;
+					const rect = blockEl.getBoundingClientRect();
+					setHandleCoords({ top: rect.top, left: rect.left });
+				} catch {
+					// Ignore transient DOM resolution error
+				}
+			}
+		},
+		[editor],
+	);
+
+	// Block Action Handlers
+	const handleMoveUp = () => {
+		if (!editor || activeBlockPosRef.current === null) return;
+		const pos = activeBlockPosRef.current;
+		const $pos = editor.state.doc.resolve(pos);
+		const node = $pos.nodeAfter || $pos.parent;
+		if (!node) return;
+
+		const prevPos = $pos.before();
+		if (prevPos <= 0) return;
+
+		editor
+			.chain()
+			.focus()
+			.command(({ tr, dispatch }) => {
+				if (dispatch) {
+					// Swap with previous node
+					const nodeSize = node.nodeSize;
+					const slice = tr.doc.slice(pos, pos + nodeSize);
+					tr.delete(pos, pos + nodeSize);
+					tr.insert(prevPos, slice.content);
+				}
+				return true;
+			})
+			.run();
+	};
+
+	const handleMoveDown = () => {
+		if (!editor || activeBlockPosRef.current === null) return;
+		const pos = activeBlockPosRef.current;
+		const $pos = editor.state.doc.resolve(pos);
+		const node = $pos.nodeAfter || $pos.parent;
+		if (!node) return;
+
+		const nextPos = pos + node.nodeSize;
+		if (nextPos >= editor.state.doc.content.size) return;
+
+		editor
+			.chain()
+			.focus()
+			.command(({ tr, dispatch }) => {
+				if (dispatch) {
+					const nodeSize = node.nodeSize;
+					const slice = tr.doc.slice(pos, pos + nodeSize);
+					tr.delete(pos, pos + nodeSize);
+					// Insert after next node
+					const $next = tr.doc.resolve(pos);
+					const nextNodeSize = ($next.nodeAfter || $next.parent).nodeSize;
+					tr.insert(pos + nextNodeSize, slice.content);
+				}
+				return true;
+			})
+			.run();
+	};
+
+	const handleDuplicate = () => {
+		if (!editor || activeBlockPosRef.current === null) return;
+		const pos = activeBlockPosRef.current;
+		const $pos = editor.state.doc.resolve(pos);
+		const node = $pos.nodeAfter || $pos.parent;
+		if (!node) return;
+
+		editor
+			.chain()
+			.focus()
+			.command(({ tr, dispatch }) => {
+				if (dispatch) {
+					const nextPos = pos + node.nodeSize;
+					tr.insert(nextPos, node.copy(node.content));
+				}
+				return true;
+			})
+			.run();
+	};
+
+	const handleDeleteBlock = () => {
+		if (!editor || activeBlockPosRef.current === null) return;
+		const pos = activeBlockPosRef.current;
+		const $pos = editor.state.doc.resolve(pos);
+		const node = $pos.nodeAfter || $pos.parent;
+		if (!node) return;
+
+		editor
+			.chain()
+			.focus()
+			.command(({ tr, dispatch }) => {
+				if (dispatch) {
+					tr.delete(pos, pos + node.nodeSize);
+				}
+				return true;
+			})
+			.run();
+		setHandleCoords(null);
+	};
+
 	if (!editor) return null;
 
 	const setFormat = (fn: (e: any) => any) => (e: React.MouseEvent) => {
-		e.preventDefault(); // prevent focus loss
+		e.preventDefault();
 		fn(editor.chain().focus()).run();
 	};
 
 	return (
 		<div
-			className="w-full flex flex-col bg-white dark:bg-neutral-950"
-			onCompositionStart={onCompositionStart}
-			onCompositionEnd={onCompositionEnd}
+			className="w-full flex flex-col bg-white dark:bg-neutral-950 relative"
+			onCompositionStart={() => {
+				isComposingRef.current = true;
+				if (onCompositionStart) onCompositionStart();
+			}}
+			onCompositionEnd={() => {
+				isComposingRef.current = false;
+				if (onCompositionEnd) onCompositionEnd();
+			}}
+			onMouseMove={handleMouseMove}
 		>
 			{/* Fixed Sticky Rich Formatting Toolbar */}
 			<div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur px-4 py-2">
@@ -205,6 +401,32 @@ export function CmsEditor({
 			<div className="flex-1 w-full max-w-3xl mx-auto py-4">
 				<EditorContent editor={editor} />
 			</div>
+
+			{/* Slash Command Popup Portal */}
+			{slashOpen && (
+				<SlashMenuPopup
+					items={filterCommands(slashQuery)}
+					coords={slashCoords}
+					selectedIndex={slashIndex}
+					onSelect={(cmd) => {
+						if (slashRangeRef.current) {
+							cmd.action(editor, slashRangeRef.current);
+							setSlashOpen(false);
+						}
+					}}
+				/>
+			)}
+
+			{/* Block Handle Floating Overlay */}
+			{handleCoords && (
+				<BlockHandleOverlay
+					coords={handleCoords}
+					onMoveUp={handleMoveUp}
+					onMoveDown={handleMoveDown}
+					onDuplicate={handleDuplicate}
+					onDelete={handleDeleteBlock}
+				/>
+			)}
 		</div>
 	);
 }
