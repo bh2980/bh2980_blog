@@ -1,0 +1,165 @@
+import { describe, expect, it } from "vitest";
+import {
+	FIXTURE_TIME as FIXED_TIME,
+	fixtureBody,
+	makeExportFixtureSnapshot as makeSnapshot,
+} from "@/cms/services/__test__/export-fixture";
+import { buildExportArchive, canonicalJson, publicExportEntrySchema } from "@/cms/services/export-service";
+import { readZipArchive } from "@/cms/services/zip";
+
+const decoder = new TextDecoder();
+
+const readAll = (zip: Uint8Array) => {
+	const entries = readZipArchive(zip);
+	return {
+		paths: entries.map((entry) => entry.path).sort(),
+		text: (path: string) => {
+			const found = entries.find((entry) => entry.path === path);
+			if (!found) throw new Error(`missing ${path}`);
+			return decoder.decode(found.data);
+		},
+	};
+};
+
+describe("export archive builder", () => {
+	it("admin 아카이브는 초안과 공개본, 관계, 설정을 모두 담는다", () => {
+		const { manifest, zip } = buildExportArchive(makeSnapshot(), { scope: "admin", exportedAt: FIXED_TIME });
+		const archive = readAll(zip);
+
+		expect(archive.paths).toEqual(
+			[
+				"addresses.json",
+				"entries/memo/22222222-2222-4222-8222-222222222222/references.json",
+				"entries/memo/22222222-2222-4222-8222-222222222222/working.json",
+				"entries/memo/22222222-2222-4222-8222-222222222222/working.mdx",
+				"entries/post/11111111-1111-4111-8111-111111111111/published.json",
+				"entries/post/11111111-1111-4111-8111-111111111111/published.mdx",
+				"entries/post/11111111-1111-4111-8111-111111111111/references.json",
+				"entries/post/11111111-1111-4111-8111-111111111111/working.json",
+				"entries/post/11111111-1111-4111-8111-111111111111/working.mdx",
+				"folders.json",
+				"manifest.json",
+				"media.json",
+				"preferences.json",
+				"schedules.json",
+				"templates.json",
+			].sort(),
+		);
+		expect(archive.text("entries/memo/22222222-2222-4222-8222-222222222222/working.mdx")).toBe("draft secret body");
+		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/working.mdx")).toBe("working body");
+		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/published.mdx")).toBe("published body");
+		expect(manifest.counts).toMatchObject({
+			entries: 2,
+			workingBodies: 2,
+			publishedBodies: 1,
+			folders: 1,
+			templates: 1,
+			schedules: 1,
+			addresses: 1,
+			preferences: 1,
+			references: 2,
+		});
+		expect(manifest.entries).toHaveLength(2);
+		expect(manifest.entries[0]?.files.length).toBeGreaterThan(0);
+	});
+
+	it("public 아카이브는 초안 본문과 관리자 전용 값을 포함하지 않는다", () => {
+		const { manifest, zip } = buildExportArchive(makeSnapshot(), { scope: "public", exportedAt: FIXED_TIME });
+		const archive = readAll(zip);
+
+		expect(archive.paths).toEqual(
+			[
+				"entries/post/11111111-1111-4111-8111-111111111111/published.json",
+				"entries/post/11111111-1111-4111-8111-111111111111/published.mdx",
+				"manifest.json",
+				"media.json",
+			].sort(),
+		);
+		// 초안 전용 문자열이 어떤 파일에도 남지 않는다.
+		for (const path of archive.paths) {
+			expect(archive.text(path)).not.toContain("draft secret body");
+			expect(archive.text(path)).not.toContain("working body");
+		}
+		// 공개 항목에는 working 계열 키가 존재하지 않는다.
+		for (const path of archive.paths.filter((p) => p.endsWith(".json"))) {
+			expect(archive.text(path)).not.toContain('"working"');
+		}
+		expect(manifest.entries).toHaveLength(1);
+		expect(manifest.scope).toBe("public");
+		expect(manifest.counts).toMatchObject({
+			entries: 1,
+			workingBodies: 0,
+			publishedBodies: 1,
+			folders: 0,
+			templates: 0,
+			schedules: 0,
+			addresses: 0,
+			preferences: 0,
+			references: 0,
+		});
+		// 공개 미디어는 공개 글에서 참조된 것만 남는다(초안 전용 미디어 제외).
+		expect(JSON.parse(archive.text("media.json"))).toEqual([]);
+	});
+
+	it("같은 입력과 같은 exportedAt이면 바이트까지 동일하다", () => {
+		const first = buildExportArchive(makeSnapshot(), {
+			scope: "admin",
+			exportedAt: FIXED_TIME,
+			archiveModifiedAt: FIXED_TIME,
+		});
+		const second = buildExportArchive(makeSnapshot(), {
+			scope: "admin",
+			exportedAt: FIXED_TIME,
+			archiveModifiedAt: FIXED_TIME,
+		});
+		expect(Array.from(first.zip)).toEqual(Array.from(second.zip));
+	});
+
+	it("digest는 exportedAt에 영향받지 않고 내용이 바뀌면 달라진다", () => {
+		const base = buildExportArchive(makeSnapshot(), { scope: "admin", exportedAt: FIXED_TIME });
+		const later = buildExportArchive(makeSnapshot(), {
+			scope: "admin",
+			exportedAt: new Date("2026-09-23T00:00:00.000Z"),
+		});
+		expect(later.digest).toBe(base.digest);
+
+		const changed = makeSnapshot();
+		const firstEntry = changed.entries[0];
+		if (!firstEntry?.published) throw new Error("fixture");
+		changed.entries[0] = { ...firstEntry, published: fixtureBody("published body v2", "게시글", "hash-published-2") };
+		expect(buildExportArchive(changed, { scope: "admin", exportedAt: FIXED_TIME }).digest).not.toBe(base.digest);
+	});
+
+	it("공개 projection 스키마는 초안 필드가 섞이면 거부한다", () => {
+		const valid = publicExportEntrySchema.safeParse({
+			id: "11111111-1111-4111-8111-111111111111",
+			collection: "post",
+			slug: "s",
+			publishedAt: null,
+			updatedAt: "2026-09-22T00:00:00.000Z",
+			metadata: {},
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: "h",
+		});
+		expect(valid.success).toBe(true);
+
+		const withWorking = publicExportEntrySchema.safeParse({
+			id: "11111111-1111-4111-8111-111111111111",
+			collection: "post",
+			slug: "s",
+			publishedAt: null,
+			updatedAt: "2026-09-22T00:00:00.000Z",
+			metadata: {},
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: "h",
+			working: { mdx: "draft" },
+		});
+		expect(withWorking.success).toBe(false);
+	});
+
+	it("canonicalJson은 key 순서에 의존하지 않는다", () => {
+		expect(canonicalJson({ b: 1, a: [2, { d: 3, c: 4 }] })).toBe(canonicalJson({ a: [2, { c: 4, d: 3 }], b: 1 }));
+	});
+});

@@ -1,0 +1,391 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import type { ExportSnapshot, ExportSnapshotEntry } from "@/cms/adapters/postgres/content-store";
+import { createZipArchive, type ZipEntry } from "./zip";
+
+export const exportScopeSchema = z.enum(["admin", "public"]);
+export type ExportScope = z.infer<typeof exportScopeSchema>;
+
+/**
+ * 공개 projection 스키마. `working` 필드가 아예 없고 `.strict()`이므로 초안 본문이나
+ * 관리자 전용 값이 공개 아카이브에 섞이면 파싱 단계에서 실패한다.
+ */
+export const publicExportEntrySchema = z
+	.object({
+		id: z.string().uuid(),
+		collection: z.string(),
+		slug: z.string().nullable(),
+		publishedAt: z.string().nullable(),
+		updatedAt: z.string(),
+		metadata: z.record(z.string(), z.unknown()),
+		mdx: z.string(),
+		schemaVersion: z.number().int(),
+		contentHash: z.string(),
+	})
+	.strict();
+
+export type PublicExportEntry = z.infer<typeof publicExportEntrySchema>;
+
+export interface ExportManifestEntry {
+	id: string;
+	collection: string;
+	status: string;
+	version: number;
+	workingSlug: string | null;
+	publishedSlug: string | null;
+	folderId: string | null;
+	createdAt: string | null;
+	updatedAt: string | null;
+	firstPublishedAt: string | null;
+	lastPublishedAt: string | null;
+	publishedAt: string | null;
+	hasWorking: boolean;
+	hasPublished: boolean;
+	/** 상태 1건의 canonical digest. */
+	workingDigest: string | null;
+	publishedDigest: string | null;
+	/** 항목 전체(작업본+공개본) digest. 재실행 skip 판정에 쓴다. */
+	itemDigest: string;
+	files: string[];
+}
+
+export interface ExportManifest {
+	formatVersion: number;
+	scope: ExportScope;
+	exportedAt: string;
+	digest: string;
+	counts: {
+		entries: number;
+		workingBodies: number;
+		publishedBodies: number;
+		folders: number;
+		media: number;
+		templates: number;
+		schedules: number;
+		addresses: number;
+		preferences: number;
+		references: number;
+		files: number;
+	};
+	entries: ExportManifestEntry[];
+	files: string[];
+}
+
+export interface ExportArchive {
+	zip: Uint8Array;
+	manifest: ExportManifest;
+	digest: string;
+}
+
+const iso = (value: Date | null | undefined): string | null =>
+	value instanceof Date ? value.toISOString() : value === undefined ? null : value;
+
+/** key 순서에 의존하지 않는 canonical JSON. digest와 스냅샷 비교에 쓴다. */
+export const canonicalJson = (value: unknown): string => {
+	if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+	if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+	const entries = Object.entries(value as Record<string, unknown>)
+		.filter(([, item]) => item !== undefined)
+		.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+	return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+};
+
+const sha256 = (value: string): string => createHash("sha256").update(value, "utf8").digest("hex");
+
+/** 상태 1건의 canonical digest. 재실행 skip·충돌 판정의 단위다. */
+const stateDigest = (entry: ExportSnapshotEntry, state: "working" | "published"): string =>
+	sha256(
+		canonicalJson({
+			collection: entry.collection,
+			id: entry.id,
+			state,
+			slug: state === "working" ? entry.workingSlug : entry.publishedSlug,
+			metadata: state === "working" ? entry.working.metadata : entry.published?.metadata,
+			mdx: state === "working" ? entry.working.mdx : entry.published?.mdx,
+		}),
+	);
+
+/** 항목 전체(작업본+공개본) digest. 한쪽만 바뀌어도 달라져야 한다. */
+const entryDigest = (entry: ExportSnapshotEntry, scope: ExportScope): string =>
+	scope === "public"
+		? sha256(canonicalJson({ published: stateDigest(entry, "published") }))
+		: sha256(
+				canonicalJson({
+					working: stateDigest(entry, "working"),
+					published: entry.published ? stateDigest(entry, "published") : null,
+				}),
+			);
+
+const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): { json: string; mdx: string } => {
+	const body = state === "working" ? entry.working : entry.published;
+	if (!body) throw new Error(`Entry ${entry.id} has no ${state} body`);
+	return {
+		json: `${canonicalJson({
+			formatVersion: 1,
+			collection: entry.collection,
+			id: entry.id,
+			state,
+			status: entry.status,
+			slug: state === "working" ? entry.workingSlug : entry.publishedSlug,
+			metadata: body.metadata,
+			schemaVersion: body.schemaVersion,
+			contentHash: body.contentHash,
+			updatedAt: iso(body.updatedAt),
+			createdAt: iso(entry.createdAt),
+			updatedEntryAt: iso(entry.updatedAt),
+			firstPublishedAt: iso(entry.firstPublishedAt),
+			lastPublishedAt: iso(entry.lastPublishedAt),
+			publishedAt: iso(entry.publishedAt),
+			folderId: entry.folderId,
+		})}\n`,
+		mdx: body.mdx,
+	};
+};
+
+/** 공개 아카이브에는 공개본만 넣는다. 초안·보관·휴지통 본문은 파일을 만들지 않는다. */
+const publicEntry = (entry: ExportSnapshotEntry): PublicExportEntry | null => {
+	if (!entry.published) return null;
+	return publicExportEntrySchema.parse({
+		id: entry.id,
+		collection: entry.collection,
+		slug: entry.publishedSlug,
+		publishedAt: iso(entry.publishedAt),
+		updatedAt: iso(entry.published.updatedAt) ?? iso(entry.updatedAt) ?? "",
+		metadata: entry.published.metadata,
+		mdx: entry.published.mdx,
+		schemaVersion: entry.published.schemaVersion,
+		contentHash: entry.published.contentHash,
+	});
+};
+
+const sortEntries = (entries: readonly ExportSnapshotEntry[]): ExportSnapshotEntry[] =>
+	[...entries].sort((left, right) =>
+		left.collection === right.collection
+			? left.id < right.id
+				? -1
+				: left.id > right.id
+					? 1
+					: 0
+			: left.collection < right.collection
+				? -1
+				: 1,
+	);
+
+export interface BuildExportOptions {
+	scope: ExportScope;
+	exportedAt: Date;
+	/** 아카이브 내부 파일 시각. 스냅샷 테스트를 위해 고정값을 쓸 수 있다. */
+	archiveModifiedAt?: Date;
+}
+
+export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExportOptions): ExportArchive {
+	const { scope, exportedAt } = options;
+	const entries = sortEntries(snapshot.entries);
+	const files: ZipEntry[] = [];
+	const manifestEntries: ExportManifestEntry[] = [];
+
+	for (const entry of entries) {
+		const base = `entries/${entry.collection}/${entry.id}`;
+		const entryFiles: string[] = [];
+
+		if (scope === "admin") {
+			const working = bodyFile(entry, "working");
+			files.push({ path: `${base}/working.json`, data: new TextEncoder().encode(working.json) });
+			files.push({ path: `${base}/working.mdx`, data: new TextEncoder().encode(working.mdx) });
+			entryFiles.push(`${base}/working.json`, `${base}/working.mdx`);
+
+			if (entry.published) {
+				const published = bodyFile(entry, "published");
+				files.push({ path: `${base}/published.json`, data: new TextEncoder().encode(published.json) });
+				files.push({ path: `${base}/published.mdx`, data: new TextEncoder().encode(published.mdx) });
+				entryFiles.push(`${base}/published.json`, `${base}/published.mdx`);
+			}
+
+			const references = snapshot.references
+				.filter((reference) => reference.entryId === entry.id)
+				.map((reference) => ({
+					state: reference.state,
+					kind: reference.kind,
+					targetId: reference.targetId,
+					isStale: reference.isStale,
+					occurrences: reference.occurrences,
+				}));
+			files.push({ path: `${base}/references.json`, data: new TextEncoder().encode(`${canonicalJson(references)}\n`) });
+			entryFiles.push(`${base}/references.json`);
+
+			manifestEntries.push({
+				id: entry.id,
+				collection: entry.collection,
+				status: entry.status,
+				version: entry.version,
+				workingSlug: entry.workingSlug,
+				publishedSlug: entry.publishedSlug,
+				folderId: entry.folderId,
+				createdAt: iso(entry.createdAt),
+				updatedAt: iso(entry.updatedAt),
+				firstPublishedAt: iso(entry.firstPublishedAt),
+				lastPublishedAt: iso(entry.lastPublishedAt),
+				publishedAt: iso(entry.publishedAt),
+				hasWorking: true,
+				hasPublished: entry.published !== undefined,
+				workingDigest: stateDigest(entry, "working"),
+				publishedDigest: entry.published ? stateDigest(entry, "published") : null,
+				itemDigest: entryDigest(entry, "admin"),
+				files: entryFiles.sort(),
+			});
+			continue;
+		}
+
+		const projected = publicEntry(entry);
+		if (!projected) continue;
+		files.push({ path: `${base}/published.json`, data: new TextEncoder().encode(`${canonicalJson(projected)}\n`) });
+		files.push({ path: `${base}/published.mdx`, data: new TextEncoder().encode(projected.mdx) });
+		entryFiles.push(`${base}/published.json`, `${base}/published.mdx`);
+
+		manifestEntries.push({
+			id: entry.id,
+			collection: entry.collection,
+			status: "published",
+			version: 0,
+			workingSlug: null,
+			publishedSlug: entry.publishedSlug,
+			folderId: null,
+			createdAt: null,
+			updatedAt: iso(entry.published?.updatedAt),
+			firstPublishedAt: null,
+			lastPublishedAt: null,
+			publishedAt: iso(entry.publishedAt),
+			hasWorking: false,
+			hasPublished: true,
+			workingDigest: null,
+			publishedDigest: stateDigest(entry, "published"),
+			itemDigest: entryDigest(entry, "public"),
+			files: entryFiles.sort(),
+		});
+	}
+
+	const publishedIds = new Set(manifestEntries.map((entry) => entry.id));
+	const media =
+		scope === "admin"
+			? [...snapshot.media]
+					.sort((left, right) => (left.id < right.id ? -1 : 1))
+					.map((asset) => ({
+						id: asset.id,
+						status: asset.status,
+						filename: asset.filename,
+						mimeType: asset.mimeType,
+						byteSize: asset.byteSize,
+						width: asset.width,
+						height: asset.height,
+						storageKey: asset.storageKey,
+						stagingKey: asset.stagingKey,
+						createdAt: iso(asset.createdAt),
+						updatedAt: iso(asset.updatedAt),
+						readyAt: iso(asset.readyAt),
+					}))
+			: [...snapshot.media]
+					.filter((asset) =>
+						snapshot.references.some(
+							(reference) =>
+								reference.kind === "media" && reference.targetId === asset.id && publishedIds.has(reference.entryId),
+						),
+					)
+					.sort((left, right) => (left.id < right.id ? -1 : 1))
+					.map((asset) => ({
+						id: asset.id,
+						filename: asset.filename,
+						mimeType: asset.mimeType,
+						byteSize: asset.byteSize,
+						width: asset.width,
+						height: asset.height,
+					}));
+
+	if (scope === "admin") {
+		files.push({ path: "folders.json", data: jsonFile(snapshot.folders.map((folder) => ({ ...folder }))) });
+		files.push({ path: "addresses.json", data: jsonFile(snapshot.addresses.map((address) => ({ ...address }))) });
+		files.push({
+			path: "templates.json",
+			data: jsonFile(
+				snapshot.templates.map((template) => ({
+					id: template.id,
+					name: template.name,
+					forCollection: template.forCollection,
+					mdx: template.mdx,
+					version: template.version,
+					createdAt: iso(template.createdAt),
+					updatedAt: iso(template.updatedAt),
+				})),
+			),
+		});
+		files.push({
+			path: "schedules.json",
+			data: jsonFile(
+				snapshot.schedules.map((schedule) => ({
+					id: schedule.id,
+					entryId: schedule.entryId,
+					scheduledAt: iso(schedule.scheduledAt),
+					status: schedule.status,
+					createdAt: iso(schedule.createdAt),
+					completedAt: iso(schedule.completedAt),
+					failureCode: schedule.failureCode,
+					failureDetail: schedule.failureDetail,
+				})),
+			),
+		});
+		files.push({
+			path: "preferences.json",
+			data: jsonFile(
+				snapshot.preferences.map((preference) => ({
+					userId: preference.userId,
+					preferences: preference.preferences,
+					updatedAt: iso(preference.updatedAt),
+				})),
+			),
+		});
+	}
+
+	files.push({ path: "media.json", data: jsonFile(media) });
+	files.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
+
+	const digest = sha256(
+		manifestEntries.map((entry) => `${entry.collection}\u0000${entry.id}\u0000${entry.itemDigest}`).join("\n"),
+	);
+
+	const manifest: ExportManifest = {
+		formatVersion: 1,
+		scope,
+		exportedAt: exportedAt.toISOString(),
+		digest,
+		counts: {
+			entries: manifestEntries.length,
+			workingBodies: manifestEntries.filter((entry) => entry.hasWorking).length,
+			publishedBodies: manifestEntries.filter((entry) => entry.hasPublished).length,
+			folders: scope === "admin" ? snapshot.folders.length : 0,
+			media: media.length,
+			templates: scope === "admin" ? snapshot.templates.length : 0,
+			schedules: scope === "admin" ? snapshot.schedules.length : 0,
+			addresses: scope === "admin" ? snapshot.addresses.length : 0,
+			preferences: scope === "admin" ? snapshot.preferences.length : 0,
+			references: scope === "admin" ? snapshot.references.length : 0,
+			files: files.length + 1,
+		},
+		entries: manifestEntries,
+		files: ["manifest.json", ...files.map((file) => file.path)],
+	};
+
+	const allFiles: ZipEntry[] = [
+		{ path: "manifest.json", data: new TextEncoder().encode(`${canonicalJson(manifest)}\n`) },
+		...files,
+	];
+	allFiles.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
+
+	return {
+		zip: createZipArchive(allFiles, options.archiveModifiedAt ? { modifiedAt: options.archiveModifiedAt } : undefined),
+		manifest,
+		digest,
+	};
+}
+
+function jsonFile(value: unknown): Uint8Array {
+	return new TextEncoder().encode(`${canonicalJson(value)}\n`);
+}

@@ -191,6 +191,70 @@ export interface ListEntriesResult {
 	pageSize: number;
 }
 
+export interface ExportSnapshotBody {
+	metadata: EntryMetadata;
+	mdx: string;
+	schemaVersion: number;
+	contentHash: string;
+	updatedAt: Date;
+}
+
+export interface ExportSnapshotEntry {
+	id: string;
+	collection: string;
+	status: string;
+	version: number;
+	folderId: string | null;
+	workingSlug: string | null;
+	publishedSlug: string | null;
+	createdAt: Date;
+	updatedAt: Date;
+	firstPublishedAt: Date | null;
+	lastPublishedAt: Date | null;
+	publishedAt: Date | null;
+	working: ExportSnapshotBody;
+	published?: ExportSnapshotBody;
+}
+
+export interface ExportSnapshotReference {
+	entryId: string;
+	state: string;
+	kind: string;
+	targetId: string;
+	isStale: boolean;
+	occurrences: unknown;
+}
+
+export interface ExportSnapshotAddress {
+	collection: string;
+	slug: string;
+	entryId: string | null;
+	type: string;
+}
+
+export interface ExportSnapshotSchedule {
+	id: string;
+	entryId: string;
+	scheduledAt: Date;
+	status: string;
+	createdAt: Date;
+	completedAt: Date | null;
+	failureCode: string | null;
+	failureDetail: string | null;
+}
+
+/** 관리자 백업·공개 projection의 공통 원본. 단일 REPEATABLE READ READ ONLY 스냅샷이다. */
+export interface ExportSnapshot {
+	entries: ExportSnapshotEntry[];
+	references: ExportSnapshotReference[];
+	folders: Folder[];
+	addresses: ExportSnapshotAddress[];
+	media: MediaAssetRecord[];
+	templates: BodyTemplate[];
+	schedules: ExportSnapshotSchedule[];
+	preferences: { userId: string; preferences: JsonObject; updatedAt: Date }[];
+}
+
 function extractVisibleText(mdx: string): string {
 	if (!mdx) return "";
 	let t = mdx;
@@ -1237,10 +1301,9 @@ export function createContentStore(
 
 				for (const ref of workingRefsRes.rows) {
 					if (ref.kind === "media") {
-						const mRes = await client.query<{ id: string }>(
-							`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`,
-							[ref.target_id],
-						);
+						const mRes = await client.query<{ id: string }>(`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`, [
+							ref.target_id,
+						]);
 						if (mRes.rows.length === 0) {
 							throw new CmsError("Unresolved media reference", "invalid_reference");
 						}
@@ -1265,7 +1328,10 @@ export function createContentStore(
 					published_at: Date | null;
 					collection: string;
 					working_slug: string | null;
-				}>(`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`, [id]);
+				}>(
+					`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`,
+					[id],
+				);
 				const collection = entryRes.rows[0].collection;
 				const firstPublishedAt = entryRes.rows[0].first_published_at;
 				const currentPublishedAt = entryRes.rows[0].published_at;
@@ -1364,7 +1430,9 @@ export function createContentStore(
 				}
 
 				// Atomically copy working references to published references
-				await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'published'`, [id]);
+				await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'published'`, [
+					id,
+				]);
 				await client.query(
 					`INSERT INTO "${qSchema}".entry_references
 					 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
@@ -1479,13 +1547,10 @@ export function createContentStore(
 					}
 				}
 
-				await client.query(`UPDATE "${qSchema}".folders SET name = $1, parent_id = $2, position = $3, version = $4 WHERE id = $5`, [
-					newName,
-					newParentId,
-					newPosition,
-					newVersion,
-					params.id,
-				]);
+				await client.query(
+					`UPDATE "${qSchema}".folders SET name = $1, parent_id = $2, position = $3, version = $4 WHERE id = $5`,
+					[newName, newParentId, newPosition, newVersion, params.id],
+				);
 				await client.query("COMMIT");
 				return {
 					id: params.id,
@@ -1970,10 +2035,10 @@ export function createContentStore(
 					throw new CmsError("Conflict", "conflict", res.rows[0].version);
 				}
 				const newVersion = res.rows[0].version + 1;
-				await client.query(
-					`UPDATE "${qSchema}".entries SET status = 'archived', version = $1 WHERE id = $2`,
-					[newVersion, params.id],
-				);
+				await client.query(`UPDATE "${qSchema}".entries SET status = 'archived', version = $1 WHERE id = $2`, [
+					newVersion,
+					params.id,
+				]);
 				// Cancel pending schedule
 				await client.query(
 					`UPDATE "${qSchema}".schedules SET status = 'cancelled' WHERE entry_id = $1 AND status = 'pending'`,
@@ -2003,10 +2068,10 @@ export function createContentStore(
 					throw new CmsError("Conflict", "conflict", res.rows[0].version);
 				}
 				const newVersion = res.rows[0].version + 1;
-				await client.query(
-					`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`,
-					[newVersion, params.id],
-				);
+				await client.query(`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`, [
+					newVersion,
+					params.id,
+				]);
 				const entry = await loadEntry(client, params.id, qSchema);
 				await client.query("COMMIT");
 				return entry;
@@ -2031,10 +2096,10 @@ export function createContentStore(
 					throw new CmsError("Conflict", "conflict", res.rows[0].version);
 				}
 				const newVersion = res.rows[0].version + 1;
-				await client.query(
-					`UPDATE "${qSchema}".entries SET status = 'trashed', version = $1 WHERE id = $2`,
-					[newVersion, params.id],
-				);
+				await client.query(`UPDATE "${qSchema}".entries SET status = 'trashed', version = $1 WHERE id = $2`, [
+					newVersion,
+					params.id,
+				]);
 				// Cancel pending schedule
 				await client.query(
 					`UPDATE "${qSchema}".schedules SET status = 'cancelled' WHERE entry_id = $1 AND status = 'pending'`,
@@ -2064,10 +2129,10 @@ export function createContentStore(
 					throw new CmsError("Conflict", "conflict", res.rows[0].version);
 				}
 				const newVersion = res.rows[0].version + 1;
-				await client.query(
-					`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`,
-					[newVersion, params.id],
-				);
+				await client.query(`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`, [
+					newVersion,
+					params.id,
+				]);
 				const entry = await loadEntry(client, params.id, qSchema);
 				await client.query("COMMIT");
 				return entry;
@@ -2122,6 +2187,235 @@ export function createContentStore(
 				isStale: row.is_stale,
 				occurrences: row.occurrences,
 			}));
+		},
+
+		/** 내보내기용 읽기 전용 스냅샷. 항목 순서를 고정해 같은 데이터면 같은 결과를 만든다. */
+		readExportSnapshot: async (): Promise<ExportSnapshot> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+
+				const entriesRes = await client.query<{
+					id: string;
+					collection: string;
+					status: string;
+					version: number;
+					folder_id: string | null;
+					working_slug: string | null;
+					current_slug: string | null;
+					created_at: Date;
+					updated_at: Date;
+					first_published_at: Date | null;
+					last_published_at: Date | null;
+					published_at: Date | null;
+				}>(
+					`SELECT e.id, e.collection, e.status, e.version, e.folder_id, e.working_slug, e.created_at, e.updated_at,
+					        e.first_published_at, e.last_published_at, e.published_at,
+					        (SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') AS current_slug
+					 FROM "${qSchema}".entries e
+					 ORDER BY e.collection ASC, e.id ASC`,
+				);
+
+				const bodiesRes = await client.query<{
+					entry_id: string;
+					state: string;
+					metadata: EntryMetadata;
+					mdx: string;
+					schema_version: number;
+					content_hash: string;
+					updated_at: Date;
+				}>(
+					`SELECT entry_id, state, metadata, mdx, schema_version, content_hash, updated_at
+					 FROM "${qSchema}".entry_bodies ORDER BY entry_id ASC, state ASC`,
+				);
+
+				const referencesRes = await client.query<{
+					entry_id: string;
+					state: string;
+					kind: string;
+					target_id: string;
+					is_stale: boolean;
+					occurrences: unknown;
+				}>(
+					`SELECT entry_id, state, kind, target_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references ORDER BY entry_id ASC, state ASC, kind ASC, target_id ASC`,
+				);
+
+				const foldersRes = await client.query<FolderRow>(
+					`SELECT id, collection, parent_id, name, position, version FROM "${qSchema}".folders ORDER BY collection ASC, id ASC`,
+				);
+
+				const addressesRes = await client.query<{
+					collection: string;
+					slug: string;
+					entry_id: string | null;
+					type: string;
+				}>(
+					`SELECT collection, slug, entry_id, type FROM "${qSchema}".content_addresses ORDER BY collection ASC, slug ASC`,
+				);
+
+				const mediaRes = await client.query<{
+					id: string;
+					status: string;
+					filename: string;
+					mime_type: string | null;
+					byte_size: string | number | null;
+					width: number | null;
+					height: number | null;
+					staging_key: string | null;
+					storage_key: string | null;
+					created_at: Date;
+					updated_at: Date;
+					ready_at: Date | null;
+				}>(
+					`SELECT id, status, filename, mime_type, byte_size, width, height, staging_key, storage_key, created_at, updated_at, ready_at
+					 FROM "${qSchema}".media_assets ORDER BY id ASC`,
+				);
+
+				const templatesRes = await client.query<{
+					id: string;
+					name: string;
+					for_collection: string;
+					mdx: string;
+					version: number;
+					created_at: Date;
+					updated_at: Date;
+				}>(
+					`SELECT id, name, for_collection, mdx, version, created_at, updated_at
+					 FROM "${qSchema}".body_templates ORDER BY for_collection ASC, lower(name) ASC, id ASC`,
+				);
+
+				const schedulesRes = await client.query<{
+					id: string;
+					entry_id: string;
+					scheduled_at: Date;
+					status: string;
+					created_at: Date;
+					completed_at: Date | null;
+					failure_code: string | null;
+					failure_detail: string | null;
+				}>(
+					`SELECT id, entry_id, scheduled_at, status, created_at, completed_at, failure_code, failure_detail
+					 FROM "${qSchema}".schedules ORDER BY id ASC`,
+				);
+
+				const preferencesRes = await client.query<{ user_id: string; preferences: JsonObject; updated_at: Date }>(
+					`SELECT user_id, preferences, updated_at FROM "${qSchema}".user_preferences ORDER BY user_id ASC`,
+				);
+
+				await client.query("COMMIT");
+
+				const bodiesByEntry = new Map<string, ExportSnapshotBody>();
+				const bodiesByEntryPublished = new Map<string, ExportSnapshotBody>();
+				for (const row of bodiesRes.rows) {
+					const body: ExportSnapshotBody = {
+						metadata: row.metadata,
+						mdx: row.mdx,
+						schemaVersion: row.schema_version,
+						contentHash: row.content_hash,
+						updatedAt: row.updated_at,
+					};
+					if (row.state === "working") bodiesByEntry.set(row.entry_id, body);
+					else if (row.state === "published") bodiesByEntryPublished.set(row.entry_id, body);
+				}
+
+				const entries: ExportSnapshotEntry[] = [];
+				for (const row of entriesRes.rows) {
+					const working = bodiesByEntry.get(row.id);
+					if (!working) {
+						throw new CmsError(`Entry ${row.id} is missing working body`, "invalid_state");
+					}
+					entries.push({
+						id: row.id,
+						collection: row.collection,
+						status: row.status,
+						version: row.version,
+						folderId: row.folder_id,
+						workingSlug: row.working_slug,
+						publishedSlug: row.current_slug,
+						createdAt: row.created_at,
+						updatedAt: row.updated_at,
+						firstPublishedAt: row.first_published_at,
+						lastPublishedAt: row.last_published_at,
+						publishedAt: row.published_at,
+						working,
+						...(bodiesByEntryPublished.has(row.id) ? { published: bodiesByEntryPublished.get(row.id) } : {}),
+					});
+				}
+
+				return {
+					entries,
+					references: referencesRes.rows.map((row) => ({
+						entryId: row.entry_id,
+						state: row.state,
+						kind: row.kind,
+						targetId: row.target_id,
+						isStale: row.is_stale,
+						occurrences: row.occurrences,
+					})),
+					folders: foldersRes.rows.map((row) => ({
+						id: row.id,
+						collection: row.collection,
+						parentId: row.parent_id,
+						name: row.name,
+						position: row.position,
+						version: row.version ?? 1,
+					})),
+					addresses: addressesRes.rows.map((row) => ({
+						collection: row.collection,
+						slug: row.slug,
+						entryId: row.entry_id,
+						type: row.type,
+					})),
+					media: mediaRes.rows.map((row) => ({
+						id: row.id,
+						status: row.status as MediaAssetRecord["status"],
+						filename: row.filename,
+						mimeType: row.mime_type,
+						byteSize: row.byte_size === null ? null : Number(row.byte_size),
+						width: row.width,
+						height: row.height,
+						stagingKey: row.staging_key,
+						storageKey: row.storage_key,
+						createdAt: row.created_at,
+						updatedAt: row.updated_at,
+						readyAt: row.ready_at,
+					})),
+					templates: templatesRes.rows.map((row) => ({
+						id: row.id,
+						name: row.name,
+						forCollection: row.for_collection as BodyTemplate["forCollection"],
+						mdx: row.mdx,
+						version: row.version,
+						createdAt: row.created_at,
+						updatedAt: row.updated_at,
+					})),
+					schedules: schedulesRes.rows.map((row) => ({
+						id: row.id,
+						entryId: row.entry_id,
+						scheduledAt: row.scheduled_at,
+						status: row.status,
+						createdAt: row.created_at,
+						completedAt: row.completed_at,
+						failureCode: row.failure_code,
+						failureDetail: row.failure_detail,
+					})),
+					preferences: preferencesRes.rows.map((row) => ({
+						userId: row.user_id,
+						preferences: row.preferences,
+						updatedAt: row.updated_at,
+					})),
+				};
+			} catch (err) {
+				try {
+					await client.query("ROLLBACK");
+				} catch {
+					// 이미 종료된 트랜잭션은 무시한다.
+				}
+				throw err;
+			} finally {
+				client.release();
+			}
 		},
 
 		createSchedule: async (params: {
@@ -2218,10 +2512,9 @@ export function createContentStore(
 
 				for (const ref of workingRefsRes.rows) {
 					if (ref.kind === "media") {
-						const mRes = await client.query<{ id: string }>(
-							`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`,
-							[ref.target_id],
-						);
+						const mRes = await client.query<{ id: string }>(`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`, [
+							ref.target_id,
+						]);
 						if (mRes.rows.length === 0) {
 							throw new CmsError("Unresolved media reference", "invalid_reference");
 						}
@@ -2246,7 +2539,10 @@ export function createContentStore(
 					published_at: Date | null;
 					collection: string;
 					working_slug: string | null;
-				}>(`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`, [sched.entry_id]);
+				}>(
+					`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`,
+					[sched.entry_id],
+				);
 				const collection = entryRes.rows[0].collection;
 				const currentPublishedAt = entryRes.rows[0].published_at;
 				const targetSlug = entryRes.rows[0].working_slug;
@@ -2362,10 +2658,10 @@ export function createContentStore(
 				}
 
 				// Mark schedule completed
-				await client.query(
-					`UPDATE "${qSchema}".schedules SET status = 'completed', completed_at = $1 WHERE id = $2`,
-					[now, params.scheduleId],
-				);
+				await client.query(`UPDATE "${qSchema}".schedules SET status = 'completed', completed_at = $1 WHERE id = $2`, [
+					now,
+					params.scheduleId,
+				]);
 
 				await client.query("COMMIT");
 				return { status: "completed" };
@@ -2578,10 +2874,7 @@ export function createContentStore(
 				}
 
 				// 2. Delete media asset row
-				const delRes = await client.query(
-					`DELETE FROM "${qSchema}".media_assets WHERE id = $1 RETURNING id`,
-					[id],
-				);
+				const delRes = await client.query(`DELETE FROM "${qSchema}".media_assets WHERE id = $1 RETURNING id`, [id]);
 				if (delRes.rows.length === 0) {
 					throw new CmsError("Media asset not found", "not_found");
 				}

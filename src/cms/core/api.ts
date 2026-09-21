@@ -69,9 +69,7 @@ export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 
 export const bulkBodySchema = z.object({
 	op: z.enum(["tags.add", "tags.remove", "category.set", "folder.move", "archive", "unarchive", "trash", "publish"]),
-	items: z
-		.array(z.object({ id: z.string().min(1), expectedVersion: z.number().int() }))
-		.max(100),
+	items: z.array(z.object({ id: z.string().min(1), expectedVersion: z.number().int() })).max(100),
 	tagIds: z.array(z.string()).optional(),
 	categoryId: z.string().nullable().optional(),
 	folderId: z.string().nullable().optional(),
@@ -94,6 +92,18 @@ export const preferencesBodySchema = z.object({
 
 export type PreferencesBody = z.infer<typeof preferencesBodySchema>;
 
+export const exportQuerySchema = z.object({
+	scope: z.enum(["admin", "public"]).default("admin"),
+});
+
+export type ExportQuery = z.infer<typeof exportQuerySchema>;
+
+export const exportBodySchema = z.object({
+	scope: z.enum(["admin", "public"]).default("admin"),
+});
+
+export type ExportBody = z.infer<typeof exportBodySchema>;
+
 export const templateCollectionSchema = z.enum(["post", "memo"]);
 
 export const createTemplateBodySchema = z.object({
@@ -110,4 +120,3 @@ export const patchTemplateBodySchema = z.object({
 	mdx: z.string().optional(),
 });
 export type PatchTemplateBody = z.infer<typeof patchTemplateBodySchema>;
-
