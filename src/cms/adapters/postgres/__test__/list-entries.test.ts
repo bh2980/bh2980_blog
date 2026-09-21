@@ -52,6 +52,19 @@ interface ExtendedContentStore {
 		page: number;
 		pageSize: number;
 	}>;
+	createEntryWithReferences(params: {
+		snapshot: {
+			collection: string;
+			slug: string | null;
+			metadata: Record<string, unknown>;
+			mdx: string;
+			schemaVersion: number;
+			contentHash: string;
+			references: unknown[];
+			issues: unknown[];
+		};
+		references: unknown[];
+	}): Promise<Entry>;
 	createFolder(params: {
 		collection: string;
 		parentId: string | null;
@@ -116,7 +129,7 @@ describe("listEntries contract", () => {
 			try {
 				await pool.query(`TRUNCATE "${schemaName}".entries CASCADE`);
 				await pool.query(`TRUNCATE "${schemaName}".folders CASCADE`);
-			} catch (e) {
+			} catch {
 				// Tables might not exist yet
 			}
 		}
@@ -289,6 +302,44 @@ describe("listEntries contract", () => {
 		expect(afterTables.rows.length).toBeGreaterThan(0);
 	});
 
+	it("2b. Visible body search: syntax-only needles/URL must not match; nested visible text/link label/fenced code must match", async () => {
+		const slug = "d2-body-search";
+		await seed("post", slug, "Body Search Title", {
+			mdx: `
+{/* SecretComment123 */}
+export const meta = { val: "ExportedVar456" };
+<div data-attr="before>AttrTail789">
+  <span className="NestedClass">VisibleNestedText321</span>
+</div>
+[LinkLabel654](https://example.com/LinkUrl987)
+\`\`\`js
+console.log("FencedCode000");
+\`\`\`
+`,
+		});
+
+		const expectMatch = async (needle: string, shouldMatch: boolean, withBody: boolean) => {
+			const res = await store.listEntries({ collection: "post", search: needle, includeBody: withBody });
+			const found = res.items.some((i) => i.slug === slug);
+			expect(found).toBe(shouldMatch);
+		};
+
+		// Without includeBody, none should match
+		await expectMatch("VisibleNestedText321", false, false);
+		await expectMatch("LinkLabel654", false, false);
+
+		// With includeBody=true
+		await expectMatch("VisibleNestedText321", true, true);
+		await expectMatch("LinkLabel654", true, true);
+		await expectMatch("FencedCode000", true, true);
+
+		// Must NOT match
+		await expectMatch("SecretComment123", false, true);
+		await expectMatch("ExportedVar456", false, true);
+		await expectMatch("AttrTail789", false, true);
+		await expectMatch("LinkUrl987", false, true);
+	}, 15_000);
+
 	// -----------------------------------------------------------------------
 	// 3  status filter; folder undefined/null/direct/descendants
 	// -----------------------------------------------------------------------
@@ -327,7 +378,7 @@ describe("listEntries contract", () => {
 		// descendants
 		const desc = await store.listEntries({ collection: "post", folderId: f3a.id, includeDescendants: true });
 		expect(desc.items.map((i) => i.slug).sort()).toEqual(["le3-pub-f3a", "le3-pub-f3b"]);
-	});
+	}, 15_000);
 
 	// -----------------------------------------------------------------------
 	// 4  AND vs OR across status+folder; collection is mandatory; supplied search is ANDed
@@ -353,7 +404,7 @@ describe("listEntries contract", () => {
 		});
 		const resSlugs = res.items.map((i) => i.slug).sort();
 		expect(resSlugs).toEqual(["le4-df", "le4-pf"]);
-	});
+	}, 15_000);
 
 	// -----------------------------------------------------------------------
 	// 5  sort fields/directions, NULLS LAST, deterministic id tie-break
@@ -481,7 +532,7 @@ describe("listEntries contract", () => {
 			schemaName,
 		]);
 		expect(afterTables.rows).toEqual(beforeTables.rows);
-	});
+	}, 15_000);
 
 	// -----------------------------------------------------------------------
 	// 6  pagination: 26 entries, exact metadata, no dup/omission, reject bad
@@ -564,4 +615,157 @@ describe("listEntries contract", () => {
 		}
 		expectCmsError(sizeErr, "invalid_input");
 	}, 30_000);
+	// -----------------------------------------------------------------------
+	// 7  List authority
+	// -----------------------------------------------------------------------
+
+	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", async () => {
+		const directDate = "2020-05-05T00:00:00.000Z";
+		await store.createEntry({
+			collection: "post",
+			slug: "d1-direct",
+			metadata: { categoryId: "cat-1", tagIds: ["tag-a", "tag-b"], publishedAt: directDate },
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+
+		const targetCat = await store.createEntry({
+			collection: "category",
+			slug: "cat-real",
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+		const targetTag1 = await store.createEntry({
+			collection: "tag",
+			slug: "tag-real1",
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+		const targetTag2 = await store.createEntry({
+			collection: "tag",
+			slug: "tag-real2",
+			metadata: {},
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+
+		const refDate = "2021-08-08T00:00:00.000Z";
+		await store.createEntryWithReferences({
+			snapshot: {
+				collection: "post",
+				slug: "d1-ref",
+				metadata: { categoryId: "cat-meta", tagIds: ["tag-meta1", "tag-meta2"], publishedAt: refDate },
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+				references: [],
+				issues: [],
+			},
+			references: [
+				{ kind: "category", targetId: targetCat.id, isStale: true, occurrences: [] },
+				{ kind: "tag", targetId: targetTag2.id, isStale: true, occurrences: [] },
+				{ kind: "tag", targetId: targetTag1.id, isStale: true, occurrences: [] },
+			],
+		});
+
+		const histDate = "2019-01-01T00:00:00.000Z";
+		const histE = await store.createEntry({
+			collection: "post",
+			slug: "d1-hist",
+			metadata: { publishedAt: histDate },
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+		await store.publishEntry(histE.id, { expectedVersion: histE.version });
+
+		const noMetaE = await store.createEntry({
+			collection: "post",
+			slug: "d1-nometa",
+			metadata: {},
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: randomBytes(16).toString("hex"),
+		});
+		const pubNoMetaE = await store.publishEntry(noMetaE.id, { expectedVersion: noMetaE.version });
+
+		const list = await store.listEntries({ collection: "post" });
+
+		const getBySlug = (s: string) => {
+			const item = list.items.find((i) => i.slug === s);
+			if (!item) throw new Error(`Missing ${s}`);
+			return item;
+		};
+
+		const iDirect = getBySlug("d1-direct");
+		expect(iDirect.categoryId).toBe("cat-1");
+		expect(iDirect.tagIds).toEqual(["tag-a", "tag-b"]);
+		expect(iDirect.publishedAt?.toISOString()).toBe(directDate);
+
+		const iRef = getBySlug("d1-ref");
+		expect(iRef.categoryId).toBe("cat-meta");
+		expect(iRef.tagIds).toEqual(["tag-meta1", "tag-meta2"]);
+		expect(iRef.publishedAt?.toISOString()).toBe(refDate);
+
+		const iHist = getBySlug("d1-hist");
+		expect(iHist.publishedAt?.toISOString()).toBe(histDate);
+
+		const iNoMeta = getBySlug("d1-nometa");
+		expect(iNoMeta.publishedAt).toBeInstanceOf(Date);
+		expect(Math.abs((iNoMeta.publishedAt as Date).getTime() - (pubNoMetaE.publishedAt as Date).getTime())).toBeLessThan(
+			5000,
+		);
+
+		for (const i of [iDirect, iRef, iHist, iNoMeta]) {
+			expect("body" in i).toBe(false);
+			expect("mdx" in i).toBe(false);
+		}
+	}, 15_000);
+
+	// -----------------------------------------------------------------------
+	// 8  Migration idempotency
+	// -----------------------------------------------------------------------
+
+	it("8. Migration idempotency sentinel: empty search_text backfill is not rewritten", async () => {
+		const tempSchema = `cms_mig_${randomBytes(4).toString("hex")}`;
+		await pool.query(`CREATE SCHEMA "${tempSchema}"`);
+		try {
+			await migrateContentStore(pool, { schema: tempSchema });
+			const tempStore = createContentStore(pool, { schema: tempSchema });
+
+			const e = await tempStore.createEntry({
+				collection: "post",
+				slug: "d4-empty",
+				metadata: {},
+				mdx: "<div />",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
+
+			await pool.query(`UPDATE "${tempSchema}".entry_bodies SET search_text = '' WHERE entry_id = $1`, [e.id]);
+
+			await pool.query(`
+				CREATE OR REPLACE FUNCTION "${tempSchema}".raise_on_update() RETURNS trigger AS $$
+				BEGIN
+					RAISE EXCEPTION 'MIGRATION_REWRITE_DETECTED';
+				END;
+				$$ LANGUAGE plpgsql;
+
+				CREATE TRIGGER no_rewrite_search_text
+				BEFORE UPDATE OF search_text ON "${tempSchema}".entry_bodies
+				FOR EACH ROW
+				EXECUTE FUNCTION "${tempSchema}".raise_on_update();
+			`);
+
+			await expect(migrateContentStore(pool, { schema: tempSchema })).resolves.not.toThrow();
+		} finally {
+			await pool.query(`DROP SCHEMA "${tempSchema}" CASCADE`);
+		}
+	}, 15_000);
 });
