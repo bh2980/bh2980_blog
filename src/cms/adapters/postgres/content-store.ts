@@ -563,8 +563,8 @@ export function createContentStore(
 			try {
 				const metadata = normalizeMetadata(params.snapshot.metadata);
 				await client.query("BEGIN");
-				const res = await client.query<{ version: number; collection: string }>(
-					`SELECT version, collection FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+				const res = await client.query<{ version: number; collection: string; updated_at: Date }>(
+					`SELECT version, collection, updated_at FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
 					[params.entryId],
 				);
 				if (res.rows.length === 0) {
@@ -650,13 +650,17 @@ export function createContentStore(
 				const newVersion = currentVersion + 1;
 				const now = new Date();
 
-				const folderClause = folderChanged ? `, folder_id = '${params.folderId || null}'` : "";
-
 				if (!isBodyIdentical || folderChanged) {
 					if (params.folderId !== undefined) {
 						await client.query(
 							`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2, working_slug = $3, folder_id = $4 WHERE id = $5`,
-							[newVersion, isBodyIdentical ? res.rows[0].version : now, nextWorkingSlug, params.folderId ?? null, params.entryId],
+							[
+								newVersion,
+								isBodyIdentical ? res.rows[0].updated_at : now,
+								nextWorkingSlug,
+								params.folderId ?? null,
+								params.entryId,
+							],
 						);
 					} else {
 						await client.query(
@@ -1119,14 +1123,7 @@ export function createContentStore(
 					[id, params.collection, params.parentId, params.name, position, version],
 				);
 				await client.query("COMMIT");
-				const ret = { id, collection: params.collection, parentId: params.parentId, name: params.name, position };
-				Object.defineProperty(ret, "version", {
-					value: version,
-					enumerable: false,
-					writable: true,
-					configurable: true,
-				});
-				return ret as Folder;
+				return { id, collection: params.collection, parentId: params.parentId, name: params.name, position, version };
 			} catch (err) {
 				await client.query("ROLLBACK");
 				if (isFolderSiblingConflict(err)) {
@@ -1195,20 +1192,14 @@ export function createContentStore(
 					params.id,
 				]);
 				await client.query("COMMIT");
-				const ret = {
+				return {
 					id: params.id,
 					collection: curr.collection,
 					parentId: newParentId,
 					name: newName,
 					position: newPosition,
+					version: newVersion,
 				};
-				Object.defineProperty(ret, "version", {
-					value: newVersion,
-					enumerable: false,
-					writable: true,
-					configurable: true,
-				});
-				return ret as Folder;
 			} catch (err) {
 				await client.query("ROLLBACK");
 				if (isFolderSiblingConflict(err)) {
@@ -1270,22 +1261,14 @@ export function createContentStore(
 			`,
 				[params.collection],
 			);
-			return res.rows.map((row) => {
-				const item = {
-					id: row.id,
-					collection: row.collection,
-					parentId: row.parent_id,
-					name: row.name,
-					position: row.position,
-				};
-				Object.defineProperty(item, "version", {
-					value: row.version ?? 1,
-					enumerable: false,
-					writable: true,
-					configurable: true,
-				});
-				return item as Folder;
-			});
+			return res.rows.map((row) => ({
+				id: row.id,
+				collection: row.collection,
+				parentId: row.parent_id,
+				name: row.name,
+				position: row.position,
+				version: row.version ?? 1,
+			}));
 		},
 
 		moveEntryToFolder: async (params: {

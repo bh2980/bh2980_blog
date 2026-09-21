@@ -125,7 +125,7 @@ describe("Folders contract", () => {
 
 		// Exact returned keys
 		const keys = Object.keys(r1).sort();
-		expect(keys).toEqual(["collection", "id", "name", "parentId", "position"].sort());
+		expect(keys).toEqual(["collection", "id", "name", "parentId", "position", "version"].sort());
 		expect(r1.collection).toBe("fc1");
 		expect(r1.parentId).toBeNull();
 		expect(r1.name).toBe("Root1");

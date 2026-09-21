@@ -73,8 +73,12 @@ export function AdminClientDashboard() {
 		[router, searchParams],
 	);
 
-	// Load Preferences on initial mount if not overridden by explicit URL
+	// Load Preferences on initial mount only if not overridden by explicit URL
+	const preferencesLoadedRef = useRef(false);
 	useEffect(() => {
+		if (preferencesLoadedRef.current) return;
+		preferencesLoadedRef.current = true;
+
 		fetch("/api/cms/v1/preferences")
 			.then((res) => (res.ok ? res.json() : null))
 			.then((data) => {
@@ -89,7 +93,7 @@ export function AdminClientDashboard() {
 				}
 			})
 			.catch(() => {});
-	}, [searchParams]);
+	}, []); // mount only
 
 	// Save Preferences when changed
 	const savePreferences = (newSize?: 25 | 50 | 100, field?: string, dir?: string) => {
@@ -170,6 +174,19 @@ export function AdminClientDashboard() {
 	useEffect(() => {
 		fetchEntries();
 	}, [fetchEntries]);
+
+	// Debounced search input handler
+	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+	const handleSearchChange = (val: string) => {
+		setSearch(val);
+		setPage(1);
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+		}
+		searchDebounceRef.current = setTimeout(() => {
+			syncUrl({ search: val, page: 1 });
+		}, 300);
+	};
 
 	const handleCreateFolder = async (name: string, parentId: string | null) => {
 		const res = await fetch("/api/cms/v1/folders", {
@@ -280,11 +297,7 @@ export function AdminClientDashboard() {
 				sortDirection={sortDirection}
 				isLoading={isLoading}
 				errorMessage={errorMessage}
-				onSearchChange={(s) => {
-					setSearch(s);
-					setPage(1);
-					syncUrl({ search: s, page: 1 });
-				}}
+				onSearchChange={handleSearchChange}
 				onStatusChange={(st) => {
 					setStatusFilter(st);
 					setPage(1);
