@@ -45,17 +45,17 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M2-FE-1 | DONE | FE | 통합 브랜치 | `56b8675` | URL 쿼리 양방향 동기화, 오류/재시도 UI, AbortController 경합 방지, 검색 300ms 디바운스; 빌드 통과 |
 | M2-FE-2 | DONE | FE | 통합 브랜치 | `778a1a8` | 폴더 계층 트리/이름변경/삭제, preferences mount-once 자동 연동; 빌드 통과 |
 | M2-RV-1 | DONE | RV | 통합 브랜치 | `56b8675` | 오라클 감사(H1–H4) 반영 `778a1a8`, reviewer 재리뷰 P0/P1 반영 `f9aacab`, 최종 리뷰 "중대한 위험 없음"; 65 files/422 tests, typecheck, build 통과 |
-| M3-TW-1 | TODO | TW | — | — | — |
-| M3-BE-1 | TODO | BE | — | — | — |
-| M3-FE-1 | TODO | FE | — | — | — |
-| M3-FE-2 | TODO | FE | — | — | — |
+| M3-TW-1 | DONE | TW | 통합 브랜치 | `a225241` | 발행·상태·예약·날짜·공개참조 롤백 계약 테스트 11개; lifecycle.test.ts |
+| M3-BE-1 | DONE | BE | 통합 브랜치 | `963bf77` | publish/archive/restore/schedule API + executeSchedulePublish 슬러그/참조 원자적 승격; reviewer 통과 |
+| M3-FE-1 | DONE | FE | 통합 브랜치 | `665a0f9` | /admin/entries/[id]/edit 셸, Tiptap 에디터 마운트, M1 EditorToggle 연동; 빌드 통과 |
+| M3-FE-2 | DONE | FE | 통합 브랜치 | `6d83eef` | 2초 idle/10초 max 자동저장, IndexedDB 백업, IME 지연, 409 충돌 비교/복사 UI; reviewer 통과 |
 | M3-ED-1 | TODO | ED | — | — | — |
 | M3-ED-2 | TODO | ED | — | — | — |
 | M3-INF-1 | TODO | INF | — | — | — |
 | M3-BE-2 | TODO | BE | — | — | — |
 | M3-FE-3 | TODO | FE | — | — | — |
-| M3-FE-4 | TODO | FE | — | — | — |
-| M3-RV-1 | TODO | RV | — | — | — |
+| M3-FE-4 | DONE | FE | 통합 브랜치 | `dc74ab4` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
+| M3-RV-1 | IN_PROGRESS | RV | 통합 브랜치 | `dc74ab4` | M3 핵심 옵션 2(배치 1, 2, 3) reviewer 검수 통과 완료 |
 | M4-TW-1 | TODO | TW | — | — | — |
 | M4-FE-1 | TODO | FE | — | — | — |
 | M4-BE-1 | TODO | BE | — | — | — |
@@ -95,6 +95,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-21: M2 코어 서비스 및 데이터베이스 계약(M2-TW-1, M2-BE-2, M2-TW-3, M2-DA-1, M2-TW-2, M2-DA-2)이 통합 브랜치에 병합·검증 완료되어 DONE으로 최신화했다. `src/cms` 테스트 스위트 전체(7 suites / 165 tests)가 PostgreSQL 실환경에서 0 skip으로 통과하며 `pnpm typecheck` 및 `pnpm build` 통과를 확인했다. M2-BE-3은 DA-1, BE-2 선행 충족으로 착수 가능(READY), M2-BE-1도 READY 상태다.
 - 2026-09-21: Milestone 2의 전 작업(M2-BE-1, M2-BE-3, M2-BE-4, M2-BE-5, M2-FE-1, M2-FE-2, M2-RV-1) 1차 구현 후 oracle 독립 감사를 진행했다. 감사 결과 동일 출처/CSRF 검사 누락(H1), 엔트리 생성/수정과 폴더 이동의 비원자성으로 인한 버전 불일치(H2), 프론트엔드 URL 쿼리/에러 피드백/계층트리 미흡(H3), 폴더 낙관적 잠금 부재(H4) 등이 지적되어 M2를 IN_PROGRESS로 재오픈하고 피드백 반영 작업을 시작한다.
 - 2026-09-21: oracle 감사 피드백을 반영했다(`778a1a8`). `validateSameOrigin` 동일 출처/CSRF 가드, 엔트리 생성/수정+폴더 배정 단일 트랜잭션, 폴더 `version` 컬럼과 `expectedVersion` 기반 428/409 낙관적 잠금, GitHub ID BigInt canonical 검증과 비인가 403 루프 방지, URL 쿼리 양방향 동기화와 AbortController 경합 방지, 계층형 폴더 트리를 구현했다. 이어서 reviewer 독립 재리뷰에서 폴더 이동 시 `entries.updated_at`에 정수(version)가 주입되는 P0 결함, `folder.version` 비열거 프로퍼티로 인한 직렬화 누락 P1, CSRF fail-closed 미흡 P1, preferences useEffect 중복 실행 P1이 지적되어 모두 반영했다(`f9aacab`). reviewer에 "중대한 위험 존재 여부"를 재문의해 "위험 없음" 판정을 받았고, 비차단 P2(검색 입력 시 매 키입력 API 호출)를 디바운스로 해소했다(`56b8675`). 최종 검증: 65 files/422 tests passed, `pnpm typecheck`, `pnpm build` 통과. M2 전 작업을 DONE으로 갱신한다.
+- 2026-09-21: Milestone 3 핵심(옵션 2: M3-TW-1, M3-BE-1, M3-FE-1, M3-FE-2, M3-FE-4)을 구현·검증 완료했다. 
+  1) 착수 전 oracle 자문을 통해 트랜잭션 및 Tiptap/IndexedDB 설계 고정.
+  2) M3-TW-1: 11개 상태기계/예약/참조 롤백 계약 테스트 작성(`lifecycle.test.ts`).
+  3) M3-BE-1: publish/archive/restore/schedule API 구현(`a225241`) → reviewer 지적(executeSchedulePublish의 슬러그 승격 및 참조 재검사 누락 P0) 반영(`963bf77`) → reviewer 재리뷰 "위험 없음" 승인.
+  4) M3-FE-1 / M3-FE-2: Tiptap 3.31.3 설치, /admin/entries/[id]/edit 셸 마운트, 2초 idle/10초 max 자동저장, IndexedDB 백업, 409 충돌 비교/복사 UI 구현(`665a0f9`) → reviewer 지적(자동저장 stale closure P1) 반영(`6d83eef`) → reviewer 재리뷰 "위험 없음" 승인.
+  5) M3-FE-4: 발행·예약·보관·삭제 UI 및 예약 모달 구현(`dc74ab4`).
+  6) 최종 검증: 66 files/433 tests 100% 통과, typecheck 통과, build(71 routes) 통과. M3 해당 태스크들을 DONE으로 최신화한다.
 
 ---
 
