@@ -108,6 +108,9 @@ const collectFromItem = (item: LegacyContentItem) => {
 	let blockMathCount = 0;
 
 	const analysis = analyze(item.mdx, item.path);
+	const analyzeErrors = analysis.errors.map(
+		(error) => `${error.position.line}:${error.position.column} ${error.message}`,
+	);
 	if (analysis.tree) {
 		visit(analysis.tree, (node) => {
 			const typed = node as {
@@ -151,7 +154,15 @@ const collectFromItem = (item: LegacyContentItem) => {
 		});
 	}
 
-	return { images, codeFenceLanguages, codeFenceCount, tableCount, blockMathCount, jsxComponents: [...jsxComponents] };
+	return {
+		images,
+		codeFenceLanguages,
+		codeFenceCount,
+		tableCount,
+		blockMathCount,
+		jsxComponents: [...jsxComponents],
+		analyzeErrors,
+	};
 };
 
 /** 읽기 전용 검사. DB에 접근하지 않고 `src/contents`만 읽는다. */
@@ -174,6 +185,9 @@ export function inspectLegacyCorpus(root: string, options?: { corpus?: LegacyCor
 		tables += collected.tableCount;
 		blockMath += collected.blockMathCount;
 		for (const name of collected.jsxComponents) jsxNames.add(name);
+		for (const error of collected.analyzeErrors) {
+			blocking.push({ code: "mdx_error", path: item.path, message: error });
+		}
 		for (const image of collected.images) {
 			const existing = imageIndex.get(image.url);
 			if (existing) {

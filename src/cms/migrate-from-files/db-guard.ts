@@ -18,8 +18,11 @@ export function assertMigrationSchemaName(schemaName: string): void {
 /**
  * 마이그레이션 대상 DB를 정한다. 운영 DB 접속을 막기 위해 다음을 강제한다.
  * - `CMS_TEST_DATABASE_URL`만 사용한다(임의 `--url`을 받지 않는다).
- * - `CMS_DATABASE_URL`과 값이 같으면 즉시 실패한다.
+ * - `CMS_DATABASE_URL`과 같은 DB를 가리키면 즉시 실패한다.
  * - schema는 `cms_m6_*` 격리 schema만 허용한다.
+ *
+ * `CMS_DATABASE_URL`이 없으면 비교할 수 없으므로, 실제 보호는 쓰기가 항상 격리 schema로
+ * 한정된다는 점(schema-qualified SQL)에 둔다.
  */
 export interface MigrationEnv {
 	CMS_TEST_DATABASE_URL?: string | undefined;
@@ -36,8 +39,8 @@ export function resolveMigrationDatabase(options?: {
 		throw new Error("CMS_TEST_DATABASE_URL이 필요합니다. 이 도구는 운영 DB에 접속하지 않습니다.");
 	}
 	const productionUrl = env.CMS_DATABASE_URL?.trim();
-	if (productionUrl && productionUrl === testUrl) {
-		throw new Error("CMS_DATABASE_URL과 CMS_TEST_DATABASE_URL이 같습니다. 시험 DB가 아니므로 중단합니다.");
+	if (productionUrl && sameDatabase(productionUrl, testUrl)) {
+		throw new Error("CMS_DATABASE_URL과 CMS_TEST_DATABASE_URL이 같은 DB를 가리킵니다. 시험 DB가 아니므로 중단합니다.");
 	}
 
 	const schemaName = options?.schemaName ?? `${MIGRATION_SCHEMA_PREFIX}${randomBytes(4).toString("hex")}`;
@@ -57,4 +60,25 @@ export async function assertSchemaIsEmpty(pool: Pool, schemaName: string): Promi
 	if (count > 0) {
 		throw new Error(`시험 schema가 비어 있지 않습니다: ${schemaName} (tables=${count})`);
 	}
+}
+
+/** 격리 schema를 만들고 비어 있는지 확인한다. 존재하지만 비어 있지 않으면 중단한다. */
+export async function createMigrationSchema(pool: Pool, schemaName: string): Promise<void> {
+	assertMigrationSchemaName(schemaName);
+	await pool.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+	await assertSchemaIsEmpty(pool, schemaName);
+}
+
+/** 두 DSN이 같은 DB를 가리키는지 본다. 스킴 표기·기본 포트·후행 슬래시 차이를 흡수한다. */
+export function sameDatabase(left: string, right: string): boolean {
+	const normalize = (value: string): string => {
+		try {
+			const url = new URL(value);
+			const port = url.port === "" ? "5432" : url.port;
+			return `${url.hostname.toLowerCase()}:${port}${url.pathname.replace(/\/$/, "")}`;
+		} catch {
+			return value.trim();
+		}
+	};
+	return normalize(left) === normalize(right);
 }

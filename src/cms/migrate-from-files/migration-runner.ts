@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Pool } from "pg";
 import { createContentStore, migrateContentStore } from "@/cms/adapters/postgres/content-store";
-import { assertSchemaIsEmpty, resolveMigrationDatabase } from "./db-guard";
+import { createMigrationSchema, resolveMigrationDatabase } from "./db-guard";
 import { buildImportPlan, type ImportPlan } from "./import-plan";
 import { type InspectionReport, inspectLegacyCorpus } from "./inspect";
 import { readLegacyCorpus } from "./legacy-parser";
@@ -121,7 +121,7 @@ export async function runApply(options: ApplyOptions): Promise<{ report: ImportR
 		const target = resolveMigrationDatabase({ schemaName: options.schemaName });
 		const pool = new Pool({ connectionString: target.url });
 		try {
-			await assertSchemaIsEmpty(pool, target.schemaName);
+			await createMigrationSchema(pool, target.schemaName);
 			await migrateContentStore(pool, { schema: target.schemaName });
 			const store = createContentStore(pool, { schema: target.schemaName });
 

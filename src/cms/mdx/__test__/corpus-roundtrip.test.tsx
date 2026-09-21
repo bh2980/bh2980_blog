@@ -15,7 +15,26 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
  * 코드 펜스가 있는 문서를 정적 마크업으로 확인할 때만 같은 마크업의 동기 대체 컴포넌트를 쓴다.
  * 플러그인 체인과 나머지 컴포넌트는 공개 렌더와 완전히 같은 것을 쓴다.
  */
-const PreShim = ({ children }: { children?: ReactNode }) => <div data-audit-pre-shim>{children}</div>;
+const PreShim = ({
+	children,
+	title,
+	showLineNumbers,
+	code,
+}: {
+	children?: ReactNode;
+	title?: string;
+	showLineNumbers?: boolean;
+	code?: string;
+}) => (
+	<div
+		data-audit-pre-shim
+		data-title={title}
+		data-lnum={showLineNumbers ? "1" : "0"}
+		data-code-length={code?.length ?? 0}
+	>
+		{children}
+	</div>
+);
 
 const renderWithPreShim = async (source: string): Promise<string> => {
 	const { content } = await compileMDX({
@@ -94,6 +113,15 @@ describe("M6-ED-1 전편 왕복·공개 렌더 검수", () => {
 				checked: renders.length * 2,
 				failures: renderFailures,
 				shimmedCount: shimmed.length,
+				/** production 마크업으로 렌더된 문서의 원본 vs 왕복 HTML 길이 차이(참고용, 실패 조건 아님). */
+				productionMarkupLengthDiffs: renders
+					.filter((render) => render.original.mode === "production" && render.roundTripped.mode === "production")
+					.map((render) => ({
+						path: render.path,
+						original: render.original.htmlLength,
+						roundTripped: render.roundTripped.htmlLength,
+					}))
+					.filter((entry) => entry.original !== entry.roundTripped),
 				results: renders,
 			},
 			summary: {
@@ -110,6 +138,7 @@ describe("M6-ED-1 전편 왕복·공개 렌더 검수", () => {
 			},
 			notes: [
 				"구조 동등성은 analyze→toDocument→serialize→toDocument canonical 비교로 판정한다. 표기만 다른 경우는 normalizations로 분류한다.",
+				"classification.unclassified는 정규화로 분류되지 않은 표기 차이다. 구조 동등성이 이미 증명된 항목만 들어가며(전환 차단 아님), 파일별 목록과 surfaceSamples로 수동 확인할 수 있다.",
 				"공개 렌더는 production remark/rehype 체인과 실제 컴포넌트 표로 compileMDX를 실행하고, 마크업은 react-dom 정적 렌더러로 확인한다.",
 				"코드 펜스가 있는 문서는 async RSC 컴포넌트(pre) 때문에 정적 렌더러가 멈추므로 같은 플러그인·나머지 컴포넌트에 pre만 동기 대체한 shim으로 마크업을 확인한다(내용 문제 아님, 렌더러 제약).",
 			],
@@ -128,5 +157,7 @@ describe("M6-ED-1 전편 왕복·공개 렌더 검수", () => {
 		expect(audit.classification.blocking).toEqual([]);
 		expect(renderFailures).toEqual([]);
 		expect(audit.structuralMismatches).toBe(0);
+		// 구조 동일이 이미 증명된 표기 차이만 남는다. 임계값으로 고정하고 파일별 목록·샘플은 보고서에 남긴다.
+		expect(audit.classification.unclassified.length).toBeLessThanOrEqual(40);
 	}, 900_000);
 });

@@ -83,7 +83,7 @@ const countNodes = (node: CmsNode, type: string): number => {
 
 const MARK_TAG_PATTERN = /<(strong|em|del|u|sup|sub|Tooltip)[\s>]/;
 const MARK_SYNTAX_PATTERN = /\*\*|\*|~~|__/;
-const ESCAPE_PATTERN = /\\[*_`[\]{}<>#-]|\\\\/;
+const ESCAPE_PATTERN = /\\[*_`[\]{}<>#-]|\\\\|\\[A-Za-z0-9.]/;
 const LIST_MARKER_PATTERN = /^\s*(?:[-*+]\s|\d+\.\s)/;
 const LINE_MARKER_PATTERN = /^\s*(?:[-*+]\s|\d+\.\s|>|#{1,6}\s|```)/;
 const TABLE_ALIGNMENT_PATTERN = /^\|?[\s:|-]+\|?$/;
@@ -155,6 +155,7 @@ export interface OppositeSets {
 	marks: Set<string>;
 	spaces: Set<string>;
 	entities: Set<string>;
+	backslashes: Set<string>;
 }
 
 const normalizeEntities = (line: string) =>
@@ -162,6 +163,8 @@ const normalizeEntities = (line: string) =>
 		.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
 		.replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
 		.trim();
+
+const normalizeBackslashes = (line: string) => line.replace(/\\/g, "");
 
 /** 한 줄을 반대편 정규화 집합과 대조해 표기 차이 범주로 분류한다(짝 어긋남에 영향받지 않는다). */
 export function classifyAgainst(line: string, opposite: OppositeSets): string {
@@ -177,6 +180,7 @@ export function classifyAgainst(line: string, opposite: OppositeSets): string {
 	}
 	if (opposite.spaces.has(normalizeSpaces(line))) return "whitespace-or-wrapping";
 	if (opposite.entities.has(normalizeEntities(line))) return "entity-encoding";
+	if (opposite.backslashes.has(normalizeBackslashes(line))) return "escape-normalization";
 	if (LINE_MARKER_PATTERN.test(line)) return "list-marker-or-indent";
 	if (ESCAPE_PATTERN.test(line)) return "escape-normalization";
 	return "text-or-structure";
@@ -209,12 +213,14 @@ const surfaceComparison = (original: string, roundTripped: string) => {
 		marks: new Set(trimmed.removed.map(normalizeMarks)),
 		spaces: new Set(trimmed.removed.map(normalizeSpaces)),
 		entities: new Set(trimmed.removed.map((line) => normalizeEntities(normalizeMarks(line)))),
+		backslashes: new Set(trimmed.removed.map(normalizeBackslashes)),
 	};
 	const reverseSets: OppositeSets = {
 		table: new Set(trimmed.added.map(normalizeTableRow)),
 		marks: new Set(trimmed.added.map(normalizeMarks)),
 		spaces: new Set(trimmed.added.map(normalizeSpaces)),
 		entities: new Set(trimmed.added.map((line) => normalizeEntities(normalizeMarks(line)))),
+		backslashes: new Set(trimmed.added.map(normalizeBackslashes)),
 	};
 	for (const line of trimmed.added) bump(classifyAgainst(line, oppositeSets));
 	for (const line of trimmed.removed) bump(classifyAgainst(line, reverseSets));

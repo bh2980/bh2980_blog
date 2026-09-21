@@ -1,14 +1,19 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { ExportSnapshot, ExportSnapshotEntry } from "@/cms/adapters/postgres/content-store";
+import type {
+	ExportSnapshot,
+	ExportSnapshotEntry,
+	ExportSnapshotReference,
+} from "@/cms/adapters/postgres/content-store";
 import { createZipArchive, type ZipEntry } from "./zip";
 
 export const exportScopeSchema = z.enum(["admin", "public"]);
 export type ExportScope = z.infer<typeof exportScopeSchema>;
 
 /**
- * 공개 projection 스키마. `working` 필드가 아예 없고 `.strict()`이므로 초안 본문이나
- * 관리자 전용 값이 공개 아카이브에 섞이면 파싱 단계에서 실패한다.
+ * 공개 projection 스키마. `working` 필드가 아예 없고 `.strict()`이므로 항목 최상위에 초안 본문이나
+ * 관리자 전용 키가 섞이면 파싱 단계에서 실패한다(fail-closed).
+ * `metadata` 내부는 컬렉션 필드 자유도가 높아 재귀 allowlist까지는 하지 않는다(비차단 후속 항목).
  */
 export const publicExportEntrySchema = z
 	.object({
@@ -92,27 +97,43 @@ export const canonicalJson = (value: unknown): string => {
 
 const sha256 = (value: string): string => createHash("sha256").update(value, "utf8").digest("hex");
 
-/** 상태 1건의 canonical digest. 재실행 skip·충돌 판정의 단위다. */
-const stateDigest = (entry: ExportSnapshotEntry, state: "working" | "published"): string =>
+/** 상태 1건의 canonical digest. 내용·슬러그·상태·폴더·참조까지 포함해 skip/충돌 판정이 흔들리지 않게 한다. */
+const stateDigest = (
+	entry: ExportSnapshotEntry,
+	state: "working" | "published",
+	references: readonly ExportSnapshotReference[],
+): string =>
 	sha256(
 		canonicalJson({
 			collection: entry.collection,
 			id: entry.id,
 			state,
+			status: entry.status,
+			folderId: entry.folderId,
 			slug: state === "working" ? entry.workingSlug : entry.publishedSlug,
 			metadata: state === "working" ? entry.working.metadata : entry.published?.metadata,
 			mdx: state === "working" ? entry.working.mdx : entry.published?.mdx,
+			references: references
+				.filter((reference) => reference.entryId === entry.id && reference.state === state)
+				.map((reference) => ({ kind: reference.kind, targetId: reference.targetId, isStale: reference.isStale }))
+				.sort((left, right) =>
+					`${left.kind}\u0000${left.targetId}` < `${right.kind}\u0000${right.targetId}` ? -1 : 1,
+				),
 		}),
 	);
 
 /** 항목 전체(작업본+공개본) digest. 한쪽만 바뀌어도 달라져야 한다. */
-const entryDigest = (entry: ExportSnapshotEntry, scope: ExportScope): string =>
+const entryDigest = (
+	entry: ExportSnapshotEntry,
+	scope: ExportScope,
+	references: readonly ExportSnapshotReference[],
+): string =>
 	scope === "public"
-		? sha256(canonicalJson({ published: stateDigest(entry, "published") }))
+		? sha256(canonicalJson({ published: stateDigest(entry, "published", references) }))
 		: sha256(
 				canonicalJson({
-					working: stateDigest(entry, "working"),
-					published: entry.published ? stateDigest(entry, "published") : null,
+					working: stateDigest(entry, "working", references),
+					published: entry.published ? stateDigest(entry, "published", references) : null,
 				}),
 			);
 
@@ -142,8 +163,9 @@ const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): {
 	};
 };
 
-/** 공개 아카이브에는 공개본만 넣는다. 초안·보관·휴지통 본문은 파일을 만들지 않는다. */
+/** 공개 아카이브에는 현재 공개 상태인 항목의 공개본만 넣는다. 초안·보관·휴지통은 공개본이 남아 있어도 제외한다. */
 const publicEntry = (entry: ExportSnapshotEntry): PublicExportEntry | null => {
+	if (entry.status !== "published") return null;
 	if (!entry.published) return null;
 	return publicExportEntrySchema.parse({
 		id: entry.id,
@@ -228,9 +250,9 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 				publishedAt: iso(entry.publishedAt),
 				hasWorking: true,
 				hasPublished: entry.published !== undefined,
-				workingDigest: stateDigest(entry, "working"),
-				publishedDigest: entry.published ? stateDigest(entry, "published") : null,
-				itemDigest: entryDigest(entry, "admin"),
+				workingDigest: stateDigest(entry, "working", snapshot.references),
+				publishedDigest: entry.published ? stateDigest(entry, "published", snapshot.references) : null,
+				itemDigest: entryDigest(entry, "admin", snapshot.references),
 				files: entryFiles.sort(),
 			});
 			continue;
@@ -258,8 +280,8 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			hasWorking: false,
 			hasPublished: true,
 			workingDigest: null,
-			publishedDigest: stateDigest(entry, "published"),
-			itemDigest: entryDigest(entry, "public"),
+			publishedDigest: stateDigest(entry, "published", snapshot.references),
+			itemDigest: entryDigest(entry, "public", snapshot.references),
 			files: entryFiles.sort(),
 		});
 	}
@@ -287,7 +309,10 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 					.filter((asset) =>
 						snapshot.references.some(
 							(reference) =>
-								reference.kind === "media" && reference.targetId === asset.id && publishedIds.has(reference.entryId),
+								reference.kind === "media" &&
+								reference.state === "published" &&
+								reference.targetId === asset.id &&
+								publishedIds.has(reference.entryId),
 						),
 					)
 					.sort((left, right) => (left.id < right.id ? -1 : 1))

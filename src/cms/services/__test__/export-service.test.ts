@@ -37,6 +37,11 @@ describe("export archive builder", () => {
 				"entries/post/11111111-1111-4111-8111-111111111111/references.json",
 				"entries/post/11111111-1111-4111-8111-111111111111/working.json",
 				"entries/post/11111111-1111-4111-8111-111111111111/working.mdx",
+				"entries/post/88888888-8888-4888-8888-888888888888/published.json",
+				"entries/post/88888888-8888-4888-8888-888888888888/published.mdx",
+				"entries/post/88888888-8888-4888-8888-888888888888/references.json",
+				"entries/post/88888888-8888-4888-8888-888888888888/working.json",
+				"entries/post/88888888-8888-4888-8888-888888888888/working.mdx",
 				"folders.json",
 				"manifest.json",
 				"media.json",
@@ -48,18 +53,21 @@ describe("export archive builder", () => {
 		expect(archive.text("entries/memo/22222222-2222-4222-8222-222222222222/working.mdx")).toBe("draft secret body");
 		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/working.mdx")).toBe("working body");
 		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/published.mdx")).toBe("published body");
+		expect(archive.text("entries/post/88888888-8888-4888-8888-888888888888/published.mdx")).toBe(
+			"archived published body",
+		);
 		expect(manifest.counts).toMatchObject({
-			entries: 2,
-			workingBodies: 2,
-			publishedBodies: 1,
+			entries: 3,
+			workingBodies: 3,
+			publishedBodies: 2,
 			folders: 1,
 			templates: 1,
 			schedules: 1,
 			addresses: 1,
 			preferences: 1,
-			references: 2,
+			references: 4,
 		});
-		expect(manifest.entries).toHaveLength(2);
+		expect(manifest.entries).toHaveLength(3);
 		expect(manifest.entries[0]?.files.length).toBeGreaterThan(0);
 	});
 
@@ -97,8 +105,46 @@ describe("export archive builder", () => {
 			preferences: 0,
 			references: 0,
 		});
-		// 공개 미디어는 공개 글에서 참조된 것만 남는다(초안 전용 미디어 제외).
-		expect(JSON.parse(archive.text("media.json"))).toEqual([]);
+		// 공개 미디어는 공개 상태에서 참조된 것만 남는다(작업본 전용·초안 전용 제외).
+		const publicMedia = JSON.parse(archive.text("media.json")) as { id: string; filename: string }[];
+		expect(publicMedia.map((asset) => asset.id)).toEqual(["44444444-4444-4444-8444-444444444444"]);
+		expect(archive.text("media.json")).not.toContain("storageKey");
+		expect(archive.text("media.json")).not.toContain("working-only.png");
+	});
+
+	it("public 아카이브는 archived/trashed 항목의 잔여 공개본을 내보내지 않는다", () => {
+		const snapshot = makeSnapshot();
+		const archived = snapshot.entries.find((entry) => entry.status === "archived");
+		expect(archived?.published).toBeDefined();
+
+		const archivedTrashed = {
+			...snapshot,
+			entries: snapshot.entries.map((entry) => (entry.status === "archived" ? { ...entry, status: "trashed" } : entry)),
+		};
+
+		for (const candidate of [snapshot, archivedTrashed]) {
+			const { manifest, zip } = buildExportArchive(candidate, { scope: "public", exportedAt: FIXED_TIME });
+			const archive = readAll(zip);
+			expect(archive.paths.some((path) => path.includes("88888888"))).toBe(false);
+			expect(decoder.decode(zip)).not.toContain("archived published body");
+			expect(manifest.entries.some((entry) => entry.id === "88888888-8888-4888-8888-888888888888")).toBe(false);
+		}
+	});
+
+	it("참조만 바뀌어도 항목 digest가 달라진다", () => {
+		const snapshot = makeSnapshot();
+		const base = buildExportArchive(snapshot, { scope: "admin", exportedAt: FIXED_TIME });
+		const changedReferences = {
+			...snapshot,
+			references: snapshot.references.map((reference) =>
+				reference.entryId === "11111111-1111-4111-8111-111111111111" && reference.kind === "tag"
+					? { ...reference, targetId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
+					: reference,
+			),
+		};
+		const changed = buildExportArchive(changedReferences, { scope: "admin", exportedAt: FIXED_TIME });
+
+		expect(changed.digest).not.toBe(base.digest);
 	});
 
 	it("같은 입력과 같은 exportedAt이면 바이트까지 동일하다", () => {

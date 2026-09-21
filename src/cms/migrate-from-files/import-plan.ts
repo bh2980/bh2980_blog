@@ -149,6 +149,11 @@ export async function buildImportPlan(corpus: LegacyCorpus): Promise<ImportPlan>
 			const { metadata, blocking: metadataIssues } = metadataFor(item, ids);
 			blocking.push(...metadataIssues);
 
+			// inspect와 apply가 같은 기준으로 막도록 빈 본문을 여기서도 blocking으로 본다.
+			if ((item.kind === "post" || item.kind === "memo") && item.mdx.trim().length === 0) {
+				blocking.push({ code: "empty_body", path: item.path, message: "본문이 비어 있습니다." });
+			}
+
 			const snapshot = await prepareSnapshot({
 				collection: item.kind,
 				slug: item.slug,
