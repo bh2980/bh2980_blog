@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
 	Search,
 	Upload,
@@ -18,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { uploadImageFile } from "@/cms/editor/upload-helper";
+import { AdminSidebar } from "../admin-sidebar";
 
 interface MediaItem {
 	id: string;
@@ -150,15 +152,24 @@ export function MediaLibrary() {
 	};
 
 	return (
-		<div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-950 text-neutral-200">
-			{/* Top Header & Actions */}
-			<div className="border-b border-neutral-800 p-4 bg-neutral-900/50 flex flex-wrap items-center justify-between gap-4">
-				<div className="flex items-center gap-3">
-					<h1 className="text-lg font-semibold text-white">미디어 라이브러리</h1>
-					<span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full">
-						총 {total}개
-					</span>
-				</div>
+		<div className="flex h-screen overflow-hidden bg-neutral-950 text-neutral-100">
+			<AdminSidebar activeNav="media" />
+			<div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-950 text-neutral-200">
+				{/* Top Header & Actions */}
+				<div className="border-b border-neutral-800 p-4 bg-neutral-900/50 flex flex-wrap items-center justify-between gap-4">
+					<div className="flex items-center gap-3">
+						<Link
+							href="/admin"
+							className="text-xs font-medium text-neutral-400 hover:text-white transition"
+						>
+							대시보드
+						</Link>
+						<span className="text-neutral-600">/</span>
+						<h1 className="text-lg font-semibold text-white">미디어 라이브러리</h1>
+						<span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full">
+							총 {total}개
+						</span>
+					</div>
 
 				<div className="flex items-center gap-2">
 					<input
@@ -491,5 +502,6 @@ export function MediaLibrary() {
 				)}
 			</div>
 		</div>
+	</div>
 	);
 }

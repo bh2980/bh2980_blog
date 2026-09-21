@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { BodyTemplate } from "@/cms/adapters/postgres/content-store";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
+import { AdminSidebar } from "../admin-sidebar";
 
 export function TemplateManager() {
 	const [templates, setTemplates] = useState<BodyTemplate[]>([]);
@@ -150,33 +151,35 @@ export function TemplateManager() {
 	});
 
 	return (
-		<div className="flex h-screen w-full flex-col bg-neutral-950 text-neutral-200">
-			{/* Top Header */}
-			<header className="flex h-14 items-center justify-between border-b border-neutral-800 px-6">
-				<div className="flex items-center gap-4">
-					<Link
-						href="/admin"
-						className="text-xs font-medium text-neutral-400 hover:text-white transition"
+		<div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-200">
+			<AdminSidebar activeNav="templates" />
+			<div className="flex flex-1 flex-col overflow-hidden">
+				{/* Top Header */}
+				<header className="flex h-14 items-center justify-between border-b border-neutral-800 px-6">
+					<div className="flex items-center gap-3">
+						<Link
+							href="/admin"
+							className="text-xs font-medium text-neutral-400 hover:text-white transition"
+						>
+							대시보드
+						</Link>
+						<span className="text-neutral-600">/</span>
+						<h1 className="text-base font-semibold text-white">본문 템플릿 관리</h1>
+						<span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+							총 {templates.length}개
+						</span>
+					</div>
+					<button
+						type="button"
+						onClick={handleOpenNew}
+						className="rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-neutral-950 hover:bg-neutral-200 transition"
 					>
-						← 대시보드로 돌아가기
-					</Link>
-					<span className="text-neutral-700">/</span>
-					<h1 className="text-base font-semibold text-white">본문 템플릿 관리</h1>
-					<span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
-						총 {templates.length}개
-					</span>
-				</div>
-				<button
-					type="button"
-					onClick={handleOpenNew}
-					className="rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-neutral-950 hover:bg-neutral-200 transition"
-				>
-					+ 새 템플릿 만들기
-				</button>
-			</header>
+						+ 새 템플릿 만들기
+					</button>
+				</header>
 
-			{/* Main Workspace: Left List + Right Editor */}
-			<div className="flex flex-1 overflow-hidden">
+				{/* Main Workspace: Left List + Right Editor */}
+				<div className="flex flex-1 overflow-hidden">
 				{/* Left List Panel */}
 				<div className="w-80 border-r border-neutral-800 flex flex-col bg-neutral-900/30">
 					{/* Filter tabs */}
@@ -354,5 +357,6 @@ export function TemplateManager() {
 				</div>
 			</div>
 		</div>
+	</div>
 	);
 }
