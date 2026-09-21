@@ -69,10 +69,10 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M5-FE-2 | DONE | FE | 통합 브랜치 | `ce83822` | 인스펙터 태그/카테고리 picker, Record 모달 폼, 308 안내, Record 자동발행; reviewer 통과 |
 | M5-ED-1 | DONE | ED | 통합 브랜치 | `283164a` | collections.ts 단일 레지스트리, F07 확장 예제 4종, docs/cms/extensions.md; reviewer 통과 |
 | M5-RV-1 | DONE | RV | 통합 브랜치 | `9ad2f1c` | 마일스톤 5 전 배치 검수 통과, 80개 테스트 100% PASS, 브라우저 E2E 완료 |
-| M6-BE-1 | TODO | BE | — | — | 내보내기 API (ex-M4-BE-3) |
-| M6-BE-2 | TODO | BE | — | — | 기존 콘텐츠 시험 가져오기 (ex-M4-BE-4) |
-| M6-ED-1 | TODO | ED | — | — | 이전 본문 왕복 검수 러너 (ex-M4-ED-2) |
-| M6-RV-1 | TODO | RV | — | — | — |
+| M6-BE-1 | DONE | BE | `bh2980/m6-batch1` | `bf11fb4`, `6eeae51`, `7fbdc4a` | 인증 GET/POST `/api/cms/v1/export`, 결정적 ZIP(CRC32·고정 mtime·고정 정렬), 관리자/공개 분리 투영 + 컬렉션별 공개 metadata allowlist, 초안·보관본 공개 유출 차단, REPEATABLE READ READ ONLY 스냅샷, 전 페이로드 digest; reviewer 2회 통과 |
+| M6-BE-2 | WIP | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만, 운영 DB 가드(`cms_m6_*` 격리 + `CMS_MIGRATION_ALLOW=1` + 접속 DB 대조); 실DB 적재·멱등성 실행만 미검증 |
+| M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `1797e5f`, `6eeae51`, `7fbdc4a` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
+| M6-RV-1 | TODO | RV | — | — | M6-BE-2 실DB 검증 후 진행 |
 | M7-INV-1 | TODO | BE | — | — | — |
 | M7-BE-1 | TODO | BE | — | — | — |
 | M7-BE-2 | TODO | BE | — | — | — |
@@ -133,6 +133,14 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-21: M4 일괄 작업(TW-1, BE-1, FE-2, RV-1) DONE. 배치 1(메타데이터) `a10ac7d`, 배치 2(상태+예약 locked)+FE-2 `3914453`. 75 files/484 tests, typecheck·build(76 routes) 통과, 브라우저 E2E(폴더 이동 성공 1/실패 0) 확인.
 - 2026-09-21: M5 템플릿 아키텍처를 Oracle 자문 결과(방안 B)에 따라 재정의했다. entries 인프라 오염(발행·스케줄·미디어삭제가드·검색·일괄 누수)을 원천 차단하기 위해 독립 `body_templates` 테이블 및 전용 CRUD API(`M5-BE-2`)로 분리. 템플릿은 메타데이터 없이 순수 본문(MDX)만 다루며, 기본 2종(알고리즘, TS 챌린지)은 1회성 seed 처리. 관리 UI(`M5-FE-3`)와 에디터 툴바 적용 버튼(`M5-FE-1`), 복제(`M5-BE-1`)를 독립 태스크로 확정.
 - 2026-09-21: 외부 CMS(Keystatic/Strapi/Sanity/Contentful/WP/Ghost) 기능 조사 후 갭 4건을 계획표에 반영했다. 관심사를 다르게 나눠 `M5-FE-2 관계 선택기와 record 폼`(P0, 저작 확장)과 `M7-FE-2 SEO 메타 필드와 공개 메타 렌더`(P1, 공개 품질)로 분리 추가했다. 대표 이미지는 연기, 리비전·릴리스 묶음발행·계층 카테고리·감사로그는 1인 블로그 과잉으로 v1 제외 유지.
+- 2026-09-22: M6 이전·내보내기 검수를 진행했다(작업은 격리 worktree `scup`, 브랜치 `bh2980/m6-batch1`).
+  1) O1 oracle 자문으로 형식을 고정했다: 스트리밍 ZIP 아카이브, 관리자/공개 분리 투영, `REPEATABLE READ READ ONLY` 스냅샷, 명시적 ID 가져오기 + `kind + NUL + NFC(경로)` UUIDv5 안정 ID, `importedAt` 미저장, 이미지는 보고만, preflight + 단일 트랜잭션 all-or-nothing, canonical AST 동등 + 실제 공개 렌더 비교, 시험 DB 전용 가드. 결정 11건을 `CMS-M6-DEV-PLAN.md` 4장에 기록했다.
+  2) `M6-BE-1`(`bf11fb4`): `readExportSnapshot()`(반복 읽기 가능·읽기 전용·결정적 정렬), `services/zip.ts`(결정적 ZIP 작성/판독, CRC32, deflateRaw level 9, 1980-01-01 고정 mtime, UTF-8 플래그), `services/export-service.ts`(manifest + 항목 본문 + 참조/폴더/주소/템플릿/예약/환경설정/미디어), `GET·POST /api/cms/v1/export`(verifyAdmin + same-origin 검증, digest·scope 헤더). 공개 스키마는 zod strict 투영이며 컬렉션별 metadata allowlist로 중첩 키까지 제한한다.
+  3) `M6-BE-2`(`c0a4dc2`): `src/cms/migrate-from-files/**`(legacy 파서, UUIDv5 안정 ID, 가져오기 계획, 검사, DB 가드, 실행기, CLI)와 `cms:migration:inspect|apply|audit` 스크립트. 실코퍼스 계획 75항목·blocking 0·참조 126건, 검사 결과는 M0-INV-3와 일치. `importEntries()`는 단일 트랜잭션에서 같은 ID+같은 digest만 skip하고 충돌은 409로 중단한다.
+  4) `M6-ED-1`(`1797e5f`): 전편 러너와 분류 모듈. 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0. `mdx-content.tsx`가 렌더 체인을 단일 소스로 노출한다. `pre`는 async RSC라 동기 shim으로 렌더하고 `renderMode`로 보고서에 명시했다.
+  5) 리뷰·감사: R1(내보내기)은 P0(보관/휴지통 잔여 공개본 유출) 지적 후 `6eeae51`·`7fbdc4a`로 수정하고 재리뷰 통과, R2·R3는 중대 위험 없음. O2 oracle 감사는 4개 필수 항목(공개 metadata 재귀 allowlist, digest 범위, skip 판정, 미분류 분류)을 지적해 모두 반영했다.
+  6) 검증: DB 불필요 전체 81 files/487 tests 통과, `pnpm typecheck` 0 errors. **남은 블로커: 시험 DB DSN 미제공으로 실DB 적재·멱등성 실행 검증을 못 했다.** 제공되는 즉시 `cms:migration:apply`(격리 `cms_m6_*`)와 계약 테스트를 실행하고 `M6-BE-2`·`M6-RV-1`을 마감한다.
+  7) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단).
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 
 ---

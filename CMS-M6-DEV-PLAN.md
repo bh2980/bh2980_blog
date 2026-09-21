@@ -132,6 +132,26 @@ Milestone 종료 = §11.3 단계 1–6의 **시험** 도구 + §11.4 내보내�
 
 목적: M2 관행과 동일한 **독립 감사**. 구현 결과물을 대상으로 데이터 손실·초안 유출·멱등성·DB 안전·왕복 무손실 관점을 감사한다. 결과는 위험 등급별 수정 배치로 환산하고, 반영 후 reviewer 재리뷰로 넘긴다.
 
+### O2 결과 기록 (2026-09-22, oracle 독립 감사 완료)
+
+판정: **마일스톤 완료 불가** (필수 항목 4건 지적). 모두 반영했고, 남은 1건은 실행 환경 블로커다.
+
+| 구분 | 지적 | 반영 |
+| --- | --- | --- |
+| 필수 P1 | 공개 metadata의 재귀 allowlist 부족(최상위 `.strict()`만으로 불충분) — A2 결정 위반 | `PUBLIC_METADATA_KEYS` + `pickPublicMetadata()` 투영으로 컬렉션별 공개 키만 내보낸다 (`7fbdc4a`) |
+| 필수 P1 | `importEntries()` skip 판정이 참조·occurrences·folderId·schemaVersion·주소를 비교하지 않음 — O1 "같은 ID+같은 canonical digest일 때만 skip" 위반 | skip 조건에 주소·참조(occurrences 포함)·folderId·schemaVersion 비교 추가 (`7fbdc4a`) |
+| 필수 P1 | 아카이브 digest 범위 부족(항목만 덮음) | 실제 포함되는 모든 페이로드 파일(설정·미디어 목록 포함, manifest/exportedAt 제외)을 덮도록 확장 (`7fbdc4a`) |
+| 필수 P1 | 왕복 표기 차이 27건 미분류 — "정규화/손실 분류 완료" 증거 부족 | `combined-normalization` 범주 추가 → **미분류 0**, 정규화 10범주로 전량 분류 (`7fbdc4a`) |
+| 필수 P1 | 안전 가드 강화 + 실제 시험 DB 검증 실행 | 가드 강화 완료(`CMS_MIGRATION_ALLOW=1` opt-in, 접속 DB 대조, `sameDatabase` 정규화, `--reuse`). **실행 검증은 시험 DB DSN 미제공으로 불가** (아래 블로커) |
+| 비차단 P2 | `handleApiError`가 413/415/428/503 미표현, 이미지 R2 키·체크섬 대조, `pre` RSC 실제 렌더 재검증, ZIP 스트리밍 미구현 | M6 범위 밖 — M7 전 확인 목록으로 이관 |
+
+**블로커:** 격리 worktree `scup`에는 `.env.local`이 없다(샌드박스가 비밀 파일 복사를 차단). 사용자가 복사하면 다음을 실행하고 `M6-BE-2`·`M6-RV-1`을 마감한다.
+
+1. `node node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/import-entries.test.ts`
+2. `CMS_MIGRATION_ALLOW=1 pnpm cms:migration:apply` → `cms_m6_*` 격리 schema 적재 75건, 2차 실행 전부 skip, slug 집합 일치
+3. `CMS_MIGRATION_ALLOW=1 pnpm cms:migration:apply -- --reuse` → 프로세스 재기동 후 멱등성
+4. 실DB export 스모크(초안/보관 미포함, digest 안정)
+
 ### 추가 자문 트리거 (O1/O2 외)
 
 1. 배치 1·2 진행 중 스키마 변경(컬럼·인덱스 추가)이 필요해진 경우
