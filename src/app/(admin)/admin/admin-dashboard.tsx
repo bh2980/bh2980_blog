@@ -413,6 +413,16 @@ export function AdminClientDashboard() {
 				onCreateNew={handleCreateNew}
 				onRenameRecord={handleRenameRecord}
 				onRetry={fetchEntries}
+				currentFolderId={currentFolderId}
+				folders={folders}
+				onSelectFolder={(fId) => {
+					setCurrentFolderId(fId);
+					setPage(1);
+					syncUrl({ folderId: fId, page: 1 });
+				}}
+				onCreateFolder={handleCreateFolder}
+				onRenameFolder={handleRenameFolder}
+				onDeleteFolder={handleDeleteFolder}
 			/>
 			</div>
 
