@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
-import { auth, isAllowedAdminId } from "@/cms/adapters/auth";
+import { auth, isAllowedAdminId, isDevAuthBypassEnabled } from "@/cms/adapters/auth";
 import { AdminClientDashboard } from "./admin-dashboard";
 
 export default async function AdminPage() {
-	const session = await auth();
+	if (!isDevAuthBypassEnabled()) {
+		const session = await auth();
 
-	if (!session?.user?.githubId || !isAllowedAdminId(session.user.githubId)) {
-		redirect("/admin/login");
+		if (!session?.user?.githubId || !isAllowedAdminId(session.user.githubId)) {
+			redirect("/admin/login");
+		}
 	}
 
 	return <AdminClientDashboard />;

@@ -12,6 +12,8 @@ declare namespace NodeJS {
 		AUTH_URL: string;
 		AUTH_TRUST_HOST?: string;
 		CMS_ADMIN_GITHUB_ID: string;
+		/** 로컬 개발환경 한정 관리자 인증 우회. development 에서 "1"일 때만 유효. */
+		CMS_DEV_AUTH_BYPASS?: string;
 
 		CMS_R2_ACCOUNT_ID: string;
 		CMS_R2_ACCESS_KEY_ID: string;

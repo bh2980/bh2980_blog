@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
-import { auth, isAllowedAdminId, signIn, signOut } from "@/cms/adapters/auth";
+import { auth, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@/cms/adapters/auth";
 
 export default async function AdminLoginPage() {
+	if (isDevAuthBypassEnabled()) {
+		redirect("/admin");
+	}
+
 	const session = await auth();
 	const currentGithubId = session?.user?.githubId;
 
