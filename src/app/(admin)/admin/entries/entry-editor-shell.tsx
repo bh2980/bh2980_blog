@@ -40,8 +40,12 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 	const [isSlugTouched, setIsSlugTouched] = useState(false);
 	const [publishDate, setPublishDate] = useState("");
 	const [description, setDescription] = useState("");
-	const [tags, setTags] = useState("");
+	const [categoryId, setCategoryId] = useState<string | null>(null);
+	const [tagIds, setTagIds] = useState<string[]>([]);
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+
+	const categoryIdRef = useRef<string | null>(null);
+	const tagIdsRef = useRef<string[]>([]);
 
 	// Editor State
 	const [mdx, setMdx] = useState("");
@@ -137,8 +141,14 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 				currentVersionRef.current = data.version;
 
 				setDescription(data.working.metadata?.summary || "");
+				if (data.working.metadata?.categoryId) {
+					setCategoryId(data.working.metadata.categoryId);
+					categoryIdRef.current = data.working.metadata.categoryId;
+				}
 				if (Array.isArray(data.working.metadata?.tagIds)) {
-					setTags(data.working.metadata.tagIds.join(", "));
+					const ids = data.working.metadata.tagIds.filter((t: any) => typeof t === "string");
+					setTagIds(ids);
+					tagIdsRef.current = ids;
 				}
 
 				editorToggleRef.current = new EditorToggle(initialMdx);
@@ -185,6 +195,16 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 		const currentEntryId = entryIdRef.current;
 
 		try {
+			const metadataToSave: Record<string, any> = {
+				...(entry?.working.metadata || {}),
+				title: currentTitle || "제목 없음",
+			};
+			if (description.trim()) metadataToSave.summary = description.trim();
+			if (categoryIdRef.current) metadataToSave.categoryId = categoryIdRef.current;
+			else delete metadataToSave.categoryId;
+			if (tagIdsRef.current.length > 0) metadataToSave.tagIds = tagIdsRef.current;
+			else delete metadataToSave.tagIds;
+
 			if (!currentEntryId) {
 				// Initial lazy creation via POST
 				const res = await fetch("/api/cms/v1/entries", {
@@ -193,7 +213,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 					body: JSON.stringify({
 						collection,
 						slug: currentSlug || null,
-						metadata: { title: currentTitle || "제목 없음" },
+						metadata: metadataToSave,
 						mdx: currentMdx,
 					}),
 				});
@@ -230,7 +250,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 					body: JSON.stringify({
 						expectedVersion: currentVersionRef.current,
 						slug: currentSlug || null,
-						metadata: { ...(entry?.working.metadata || {}), title: currentTitle },
+						metadata: metadataToSave,
 						mdx: currentMdx,
 					}),
 				});
@@ -563,18 +583,32 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 				{/* Right Inspector Panel */}
 				{isInspectorOpen && (
 					<InspectorPanel
+						collection={collection}
 						title={title}
 						slug={slug}
 						isSlugTouched={isSlugTouched}
 						publishDate={publishDate}
 						description={description}
-						tags={tags}
+						categoryId={categoryId}
+						tagIds={tagIds}
 						onTitleChange={handleTitleChange}
 						onSlugChange={handleSlugChange}
 						onRegenerateSlug={handleRegenerateSlug}
 						onPublishDateChange={setPublishDate}
-						onDescriptionChange={setDescription}
-						onTagsChange={setTags}
+						onDescriptionChange={(desc) => {
+							setDescription(desc);
+							triggerSave();
+						}}
+						onCategoryIdChange={(newCatId) => {
+							setCategoryId(newCatId);
+							categoryIdRef.current = newCatId;
+							triggerSave();
+						}}
+						onTagIdsChange={(newTagIds) => {
+							setTagIds(newTagIds);
+							tagIdsRef.current = newTagIds;
+							triggerSave();
+						}}
 					/>
 				)}
 			</div>

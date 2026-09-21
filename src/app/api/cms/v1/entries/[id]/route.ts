@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 		const currentEntry = await store.getEntry(id);
 
 		const service = getCmsContentService();
-		const updated = await service.saveDraft(id, {
+		const saveDraftInput: any = {
 			collection: currentEntry.collection as any,
 			expectedVersion: parsed.data.expectedVersion,
 			slug: parsed.data.slug !== undefined ? parsed.data.slug : currentEntry.workingSlug,
@@ -59,8 +59,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 					? (parsed.data.metadata as any)
 					: currentEntry.working.metadata,
 			mdx: parsed.data.mdx !== undefined ? parsed.data.mdx : currentEntry.working.mdx,
-			folderId: parsed.data.folderId,
-		} as any);
+		};
+		if (parsed.data.folderId !== undefined) {
+			saveDraftInput.folderId = parsed.data.folderId;
+		}
+		const updated = (await service.saveDraft(id, saveDraftInput)) as { id: string; version: number };
+
+		// Record 컬렉션(tag, category, collection)은 수정 즉시 published 상태로 재발행 (명세 §5.2)
+		if (["tag", "category", "collection"].includes(currentEntry.collection)) {
+			const published = await store.publishEntry({ id: updated.id, expectedVersion: updated.version });
+			return NextResponse.json(published);
+		}
 
 		return NextResponse.json(updated);
 	} catch (error) {

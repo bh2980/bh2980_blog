@@ -279,8 +279,68 @@ export function AdminClientDashboard() {
 		void fetchEntries();
 	};
 
+	// Record Creation & Rename Modal State (Tag / Category / Collection)
+	const [recordModal, setRecordModal] = useState<{
+		mode: "create" | "rename";
+		id?: string;
+		title: string;
+		version?: number;
+	} | null>(null);
+
+	const isRecordCollection = currentCollection === "tag" || currentCollection === "category";
+
 	const handleCreateNew = () => {
+		if (isRecordCollection) {
+			setRecordModal({ mode: "create", title: "" });
+			return;
+		}
 		router.push(`/admin/entries/new?collection=${currentCollection}` as any);
+	};
+
+	const handleRenameRecord = async (id: string, currentTitle: string, version: number) => {
+		setRecordModal({ mode: "rename", id, title: currentTitle, version });
+	};
+
+	const handleRecordModalSubmit = async () => {
+		if (!recordModal || !recordModal.title.trim()) return;
+		const trimmed = recordModal.title.trim();
+
+		try {
+			if (recordModal.mode === "create") {
+				const res = await fetch("/api/cms/v1/entries", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						collection: currentCollection,
+						metadata: { title: trimmed },
+						mdx: "",
+					}),
+				});
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					alert(err.message || "생성 실패");
+					return;
+				}
+			} else if (recordModal.id && recordModal.version !== undefined) {
+				const res = await fetch(`/api/cms/v1/entries/${recordModal.id}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						expectedVersion: recordModal.version,
+						metadata: { title: trimmed },
+					}),
+				});
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					alert(err.message || "수정 실패");
+					return;
+				}
+			}
+			setRecordModal(null);
+			await fetchEntries();
+		} catch (err: any) {
+			alert(err.message || "처리 중 오류가 발생했습니다.");
+		}
 	};
 
 	return (
@@ -313,6 +373,7 @@ export function AdminClientDashboard() {
 					onDone={handleBulkDone}
 				/>
 				<AdminEntriesTable
+					collection={currentCollection}
 					items={items}
 					selectedIds={selectedIds}
 					onToggleSelect={toggleSelect}
@@ -350,9 +411,63 @@ export function AdminClientDashboard() {
 					savePreferences(newSize);
 				}}
 				onCreateNew={handleCreateNew}
+				onRenameRecord={handleRenameRecord}
 				onRetry={fetchEntries}
 			/>
 			</div>
+
+			{/* Record Form Modal (Tag / Category) */}
+			{recordModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-2xl">
+						<h3 className="text-base font-semibold text-white mb-1">
+							{recordModal.mode === "create"
+								? `새 ${currentCollection === "tag" ? "태그" : "카테고리"} 만들기`
+								: `${currentCollection === "tag" ? "태그" : "카테고리"} 이름 수정`}
+						</h3>
+						<p className="text-xs text-neutral-400 mb-4">
+							{recordModal.mode === "create"
+								? "목록 및 글 작성 시 선택할 수 있는 이름을 입력하세요."
+								: "이름을 변경하면 이 레코드를 참조하는 글들의 표시명이 즉시 갱신됩니다."}
+						</p>
+
+						<input
+							type="text"
+							autoFocus
+							value={recordModal.title}
+							onChange={(e) => setRecordModal({ ...recordModal, title: e.target.value })}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									handleRecordModalSubmit();
+								} else if (e.key === "Escape") {
+									setRecordModal(null);
+								}
+							}}
+							placeholder="이름 입력 (예: TypeScript)"
+							className="w-full text-sm px-3.5 py-2 rounded-lg border border-neutral-700 bg-neutral-950 text-white outline-none focus:border-neutral-500 mb-5"
+						/>
+
+						<div className="flex items-center justify-end gap-2">
+							<button
+								type="button"
+								onClick={() => setRecordModal(null)}
+								className="px-3.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition rounded-md"
+							>
+								취소
+							</button>
+							<button
+								type="button"
+								disabled={!recordModal.title.trim()}
+								onClick={handleRecordModalSubmit}
+								className="px-4 py-1.5 text-xs font-semibold text-neutral-950 bg-white hover:bg-neutral-200 transition rounded-md disabled:opacity-50"
+							>
+								{recordModal.mode === "create" ? "생성" : "수정 완료"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

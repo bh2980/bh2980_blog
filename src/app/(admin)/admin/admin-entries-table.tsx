@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 
 interface TableProps {
+	collection: string;
 	items: ListEntriesItem[];
 	selectedIds: Set<string>;
 	onToggleSelect: (id: string) => void;
@@ -23,10 +24,12 @@ interface TableProps {
 	onPageChange: (newPage: number) => void;
 	onPageSizeChange: (newSize: 25 | 50 | 100) => void;
 	onCreateNew: () => void;
+	onRenameRecord?: (id: string, newTitle: string, version: number) => Promise<void>;
 	onRetry: () => void;
 }
 
 export function AdminEntriesTable({
+	collection,
 	items,
 	selectedIds,
 	onToggleSelect,
@@ -46,6 +49,7 @@ export function AdminEntriesTable({
 	onPageChange,
 	onPageSizeChange,
 	onCreateNew,
+	onRenameRecord,
 	onRetry,
 }: TableProps) {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -170,12 +174,33 @@ export function AdminEntriesTable({
 										/>
 									</td>
 									<td className="px-4 py-3 font-medium text-white">
-										<Link
-											href={`/admin/entries/${item.id}/edit` as any}
-											className="hover:underline hover:text-blue-400"
-										>
-											{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
-										</Link>
+										{collection === "tag" || collection === "category" ? (
+											<div className="flex items-center gap-2">
+												<span>{item.title || <span className="text-neutral-500 italic">이름 없음</span>}</span>
+												{onRenameRecord && (
+													<button
+														type="button"
+														onClick={() => {
+															const next = prompt("이름 수정:", item.title || "");
+															if (next && next.trim() && next !== item.title) {
+																onRenameRecord(item.id, next.trim(), item.version);
+															}
+														}}
+														className="text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded border border-neutral-700 hover:border-neutral-500 bg-neutral-800 transition whitespace-nowrap"
+														title="이름 수정"
+													>
+														이름 수정
+													</button>
+												)}
+											</div>
+										) : (
+											<Link
+												href={`/admin/entries/${item.id}/edit` as any}
+												className="hover:underline hover:text-blue-400"
+											>
+												{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
+											</Link>
+										)}
 									</td>
 									<td className="px-4 py-3 text-neutral-400 font-mono text-xs">
 										{item.slug || <span className="text-neutral-600">-</span>}

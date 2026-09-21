@@ -34,6 +34,13 @@ vi.mock("@/cms/container", () => {
 				working: { metadata: { title: "Title" }, mdx: "Hello", schemaVersion: 1 },
 			});
 		}),
+		publishEntry: vi.fn().mockImplementation(({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
+			return Promise.resolve({
+				id,
+				version: expectedVersion + 1,
+				status: "published",
+			});
+		}),
 	};
 
 	const mockService = {

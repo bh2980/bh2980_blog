@@ -1,35 +1,149 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { slugify } from "./slugify";
 
+export interface CategoryOption {
+	id: string;
+	title: string;
+}
+
+export interface TagOption {
+	id: string;
+	title: string;
+}
+
 interface InspectorPanelProps {
+	collection: string;
 	title: string;
 	slug: string;
 	isSlugTouched: boolean;
 	publishDate: string;
 	description: string;
-	tags: string;
+	categoryId: string | null;
+	tagIds: string[];
 	onTitleChange: (title: string) => void;
 	onSlugChange: (slug: string) => void;
 	onRegenerateSlug: () => void;
 	onPublishDateChange: (date: string) => void;
 	onDescriptionChange: (desc: string) => void;
-	onTagsChange: (tags: string) => void;
+	onCategoryIdChange: (id: string | null) => void;
+	onTagIdsChange: (ids: string[]) => void;
 }
 
 export function InspectorPanel({
+	collection,
 	title,
 	slug,
 	publishDate,
 	description,
-	tags,
+	categoryId,
+	tagIds,
 	onTitleChange,
 	onSlugChange,
 	onRegenerateSlug,
 	onPublishDateChange,
 	onDescriptionChange,
-	onTagsChange,
+	onCategoryIdChange,
+	onTagIdsChange,
 }: InspectorPanelProps) {
+	const [categories, setCategories] = useState<CategoryOption[]>([]);
+	const [allTags, setAllTags] = useState<TagOption[]>([]);
+	const [newTagName, setNewTagName] = useState("");
+	const [isCreatingTag, setIsCreatingTag] = useState(false);
+	const [newCategoryName, setNewCategoryName] = useState("");
+	const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+	useEffect(() => {
+		if (collection === "post") {
+			fetch("/api/cms/v1/entries?collection=category&pageSize=100")
+				.then((res) => (res.ok ? res.json() : { items: [] }))
+				.then((data) => {
+					setCategories(
+						(data.items || []).map((i: any) => ({
+							id: i.id,
+							title: i.title || "이름 없음",
+						})),
+					);
+				})
+				.catch(() => {});
+		}
+
+		if (collection === "post" || collection === "memo") {
+			fetch("/api/cms/v1/entries?collection=tag&pageSize=100")
+				.then((res) => (res.ok ? res.json() : { items: [] }))
+				.then((data) => {
+					setAllTags(
+						(data.items || []).map((i: any) => ({
+							id: i.id,
+							title: i.title || "이름 없음",
+						})),
+					);
+				})
+				.catch(() => {});
+		}
+	}, [collection]);
+
+	const handleCreateNewTag = async () => {
+		const name = newTagName.trim();
+		if (!name) return;
+		setIsCreatingTag(true);
+		try {
+			const res = await fetch("/api/cms/v1/entries", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					collection: "tag",
+					metadata: { title: name },
+					mdx: "",
+				}),
+			});
+			if (res.ok) {
+				const created = await res.json();
+				const newTag: TagOption = { id: created.id, title: name };
+				setAllTags((prev) => [...prev, newTag]);
+				onTagIdsChange([...tagIds, created.id]);
+				setNewTagName("");
+			}
+		} finally {
+			setIsCreatingTag(false);
+		}
+	};
+
+	const handleCreateNewCategory = async () => {
+		const name = newCategoryName.trim();
+		if (!name) return;
+		setIsCreatingCategory(true);
+		try {
+			const res = await fetch("/api/cms/v1/entries", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					collection: "category",
+					metadata: { title: name },
+					mdx: "",
+				}),
+			});
+			if (res.ok) {
+				const created = await res.json();
+				const newCat: CategoryOption = { id: created.id, title: name };
+				setCategories((prev) => [...prev, newCat]);
+				onCategoryIdChange(created.id);
+				setNewCategoryName("");
+			}
+		} finally {
+			setIsCreatingCategory(false);
+		}
+	};
+
+	const handleToggleTag = (tagId: string) => {
+		if (tagIds.includes(tagId)) {
+			onTagIdsChange(tagIds.filter((id) => id !== tagId));
+		} else {
+			onTagIdsChange([...tagIds, tagId]);
+		}
+	};
+
 	return (
 		<div className="w-80 h-full border-l border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/30 overflow-y-auto p-5 space-y-6 text-sm">
 			<div className="border-b border-neutral-200 dark:border-neutral-800 pb-3">
@@ -71,7 +185,49 @@ export function InspectorPanel({
 					placeholder="url-friendly-slug"
 					className="w-full font-mono text-xs px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
 				/>
+				<p className="text-[11px] text-neutral-500 leading-tight">
+					※ 기존 슬러그를 변경해도 이전 주소는 308 영구 리다이렉트로 자동 보존됩니다.
+				</p>
 			</div>
+
+			{/* Category (Post only) */}
+			{collection === "post" && (
+				<div className="space-y-1.5">
+					<label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+						카테고리 <span className="text-red-500">*</span>
+					</label>
+					<select
+						value={categoryId || ""}
+						onChange={(e) => onCategoryIdChange(e.target.value ? e.target.value : null)}
+						className="w-full text-xs px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+					>
+						<option value="">카테고리 선택...</option>
+						{categories.map((cat) => (
+							<option key={cat.id} value={cat.id}>
+								{cat.title}
+							</option>
+						))}
+					</select>
+					{/* Inline Category Creator */}
+					<div className="flex items-center gap-1.5 pt-1">
+						<input
+							type="text"
+							value={newCategoryName}
+							onChange={(e) => setNewCategoryName(e.target.value)}
+							placeholder="새 카테고리 추가"
+							className="flex-1 text-xs px-2 py-1 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+						/>
+						<button
+							type="button"
+							disabled={isCreatingCategory || !newCategoryName.trim()}
+							onClick={handleCreateNewCategory}
+							className="text-xs px-2.5 py-1 rounded bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 disabled:opacity-40"
+						>
+							추가
+						</button>
+					</div>
+				</div>
+			)}
 
 			{/* Publish Date */}
 			<div className="space-y-1.5">
@@ -100,19 +256,83 @@ export function InspectorPanel({
 				/>
 			</div>
 
-			{/* Tags */}
-			<div className="space-y-1.5">
-				<label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400">
-					태그 (쉼표로 구분)
-				</label>
-				<input
-					type="text"
-					value={tags}
-					onChange={(e) => onTagsChange(e.target.value)}
-					placeholder="React, Next.js, Architecture"
-					className="w-full text-xs px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
-				/>
-			</div>
+			{/* Tag Picker (Post & Memo) */}
+			{(collection === "post" || collection === "memo") && (
+				<div className="space-y-2">
+					<label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+						태그 선택 (순서 보존)
+					</label>
+
+					{/* Selected Tags Chips */}
+					<div className="flex flex-wrap gap-1.5 min-h-6">
+						{tagIds.length === 0 && (
+							<span className="text-xs text-neutral-400 italic">선택된 태그 없음</span>
+						)}
+						{tagIds.map((id, index) => {
+							const matched = allTags.find((t) => t.id === id);
+							const name = matched ? matched.title : id.slice(0, 8);
+							return (
+								<span
+									key={id}
+									className="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300"
+								>
+									<span className="text-[10px] text-blue-400">{index + 1}.</span>
+									<span>{name}</span>
+									<button
+										type="button"
+										onClick={() => handleToggleTag(id)}
+										className="ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
+									>
+										×
+									</button>
+								</span>
+							);
+						})}
+					</div>
+
+					{/* All Tags Picker Checklist */}
+					{allTags.length > 0 && (
+						<div className="max-h-32 overflow-y-auto border border-neutral-200 dark:border-neutral-800 rounded p-1.5 flex flex-wrap gap-1 bg-white dark:bg-neutral-900/50">
+							{allTags.map((tag) => {
+								const isSelected = tagIds.includes(tag.id);
+								return (
+									<button
+										key={tag.id}
+										type="button"
+										onClick={() => handleToggleTag(tag.id)}
+										className={`text-xs px-2 py-0.5 rounded transition ${
+											isSelected
+												? "bg-blue-600 text-white font-medium"
+												: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+										}`}
+									>
+										{tag.title}
+									</button>
+								);
+							})}
+						</div>
+					)}
+
+					{/* Inline Tag Creator */}
+					<div className="flex items-center gap-1.5 pt-1">
+						<input
+							type="text"
+							value={newTagName}
+							onChange={(e) => setNewTagName(e.target.value)}
+							placeholder="새 태그 생성 후 즉시 추가"
+							className="flex-1 text-xs px-2 py-1 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+						/>
+						<button
+							type="button"
+							disabled={isCreatingTag || !newTagName.trim()}
+							onClick={handleCreateNewTag}
+							className="text-xs px-2.5 py-1 rounded bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 disabled:opacity-40"
+						>
+							생성
+						</button>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
