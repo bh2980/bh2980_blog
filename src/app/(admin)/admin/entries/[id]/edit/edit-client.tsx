@@ -250,6 +250,104 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 		}
 	};
 
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+	const [scheduleInputDate, setScheduleInputDate] = useState("");
+
+	const handlePublish = async () => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		try {
+			// First perform any pending auto-save
+			await performSave();
+			const res = await fetch(`/api/cms/v1/entries/${entryId}/publish`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ expectedVersion: currentVersionRef.current }),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				alert(err.message || "발행에 실패했습니다.");
+				return;
+			}
+			const published = await res.json();
+			setEntry((prev) => (prev ? { ...prev, status: "published", version: published.version } : null));
+			currentVersionRef.current = published.version;
+			alert("성공적으로 발행되었습니다!");
+		} catch (err) {
+			alert("네트워크 오류가 발생했습니다.");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const handleArchive = async () => {
+		if (!confirm("이 글을 보관하시겠습니까? 공개 블로그에서 즉시 비공개 처리됩니다.")) return;
+		setIsSubmitting(true);
+		try {
+			const res = await fetch(`/api/cms/v1/entries/${entryId}/archive`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ expectedVersion: currentVersionRef.current }),
+			});
+			if (!res.ok) throw new Error("보관 처리 실패");
+			const archived = await res.json();
+			setEntry((prev) => (prev ? { ...prev, status: "archived", version: archived.version } : null));
+			currentVersionRef.current = archived.version;
+			alert("보관 처리되었습니다.");
+		} catch (err) {
+			alert("오류가 발생했습니다.");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const handleTrash = async () => {
+		if (!confirm("이 글을 휴지통으로 이동하시겠습니까?")) return;
+		setIsSubmitting(true);
+		try {
+			const res = await fetch(`/api/cms/v1/entries/${entryId}?expectedVersion=${currentVersionRef.current}`, {
+				method: "DELETE",
+			});
+			if (!res.ok) throw new Error("휴지통 이동 실패");
+			alert("휴지통으로 이동되었습니다.");
+			window.location.href = "/admin";
+		} catch (err) {
+			alert("오류가 발생했습니다.");
+			setIsSubmitting(false);
+		}
+	};
+
+	const handleScheduleSubmit = async () => {
+		if (!scheduleInputDate) {
+			alert("예약 일시를 선택해주세요.");
+			return;
+		}
+		setIsSubmitting(true);
+		try {
+			await performSave();
+			const res = await fetch(`/api/cms/v1/entries/${entryId}/schedule`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					expectedVersion: currentVersionRef.current,
+					scheduledAt: new Date(scheduleInputDate).toISOString(),
+				}),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				alert(err.message || "예약 등록에 실패했습니다.");
+				return;
+			}
+			setScheduleModalOpen(false);
+			alert("발행 예약이 완료되었습니다.");
+		} catch (err) {
+			alert("오류가 발생했습니다.");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	if (isLoading) {
 		return <div className="p-8 text-neutral-500">문서를 불러오는 중...</div>;
 	}
@@ -305,6 +403,47 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 					>
 						{editorMode === "visual" ? "MDX 원문 보기" : "시각 에디터 보기"}
 					</button>
+
+					{/* Lifecycle & Publish Actions */}
+					<div className="flex items-center gap-1.5 border-l pl-3 border-neutral-200 dark:border-neutral-800">
+						<button
+							type="button"
+							onClick={handlePublish}
+							disabled={isSubmitting}
+							className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition disabled:opacity-50"
+						>
+							{entry.status === "published" ? "변경사항 발행" : "발행하기"}
+						</button>
+
+						<button
+							type="button"
+							onClick={() => setScheduleModalOpen(true)}
+							disabled={isSubmitting}
+							className="px-2.5 py-1 text-xs font-medium border border-neutral-300 dark:border-neutral-700 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-50"
+						>
+							예약
+						</button>
+
+						{entry.status === "published" && (
+							<button
+								type="button"
+								onClick={handleArchive}
+								disabled={isSubmitting}
+								className="px-2.5 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-md transition disabled:opacity-50"
+							>
+								보관
+							</button>
+						)}
+
+						<button
+							type="button"
+							onClick={handleTrash}
+							disabled={isSubmitting}
+							className="px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-md transition disabled:opacity-50"
+						>
+							삭제
+						</button>
+					</div>
 				</div>
 			</header>
 
@@ -377,6 +516,44 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 					)}
 				</div>
 			</div>
+
+			{/* Schedule Modal */}
+			{scheduleModalOpen && (
+				<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+					<div className="bg-white dark:bg-neutral-900 rounded-lg max-w-sm w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4">
+						<h3 className="text-lg font-bold">발행 예약 등록</h3>
+						<p className="text-sm text-neutral-600 dark:text-neutral-400">
+							지정한 미래 시각에 외부 실행기가 이 글을 자동으로 발행합니다. 예약 중에는 본문 편집이 잠깁니다.
+						</p>
+						<div>
+							<label className="block text-xs font-medium text-neutral-500 mb-1">예약 일시 (서울 시간)</label>
+							<input
+								type="datetime-local"
+								value={scheduleInputDate}
+								onChange={(e) => setScheduleInputDate(e.target.value)}
+								className="w-full text-sm p-2 border border-neutral-300 dark:border-neutral-700 rounded bg-transparent"
+							/>
+						</div>
+						<div className="flex justify-end gap-3 pt-2">
+							<button
+								type="button"
+								onClick={() => setScheduleModalOpen(false)}
+								className="px-4 py-2 text-xs font-medium border border-neutral-300 dark:border-neutral-700 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
+							>
+								취소
+							</button>
+							<button
+								type="button"
+								onClick={handleScheduleSubmit}
+								disabled={isSubmitting}
+								className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+							>
+								예약 완료
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Recovery Dialog */}
 			{recoveryPrompt && (
