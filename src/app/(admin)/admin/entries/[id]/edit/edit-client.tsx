@@ -49,6 +49,13 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 
 	const editorToggleRef = useRef<EditorToggle | null>(null);
 
+	const titleRef = useRef(title);
+	titleRef.current = title;
+	const slugRef = useRef(slug);
+	slugRef.current = slug;
+	const mdxRef = useRef(mdx);
+	mdxRef.current = mdx;
+
 	const computeFingerprint = (t: string, s: string, m: string) => {
 		return `${t}:::${s}:::${m}`;
 	};
@@ -116,11 +123,15 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 		inflightSeqRef.current = targetSeq;
 		setSaveStatus("저장 중");
 
+		const currentTitle = titleRef.current;
+		const currentSlug = slugRef.current;
+		const currentMdx = mdxRef.current;
+
 		const payload = {
 			expectedVersion: currentVersionRef.current,
-			slug: slug || null,
-			metadata: { ...(entry?.working.metadata || {}), title },
-			mdx,
+			slug: currentSlug || null,
+			metadata: { ...(entry?.working.metadata || {}), title: currentTitle },
+			mdx: currentMdx,
 		};
 
 		try {
@@ -154,7 +165,7 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 					const freshData = await freshRes.json();
 					setConflictData({
 						server: freshData,
-						local: { title, slug, mdx },
+						local: { title: titleRef.current, slug: slugRef.current, mdx: mdxRef.current },
 					});
 				}
 			} else {
@@ -168,19 +179,27 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 	}, [entryId, entry, title, slug, mdx]);
 
 	// Trigger Save (2s idle / 10s maxWait)
-	const triggerSave = useCallback(() => {
+	const triggerSave = useCallback((override?: { title?: string; slug?: string; mdx?: string }) => {
+		if (override?.title !== undefined) titleRef.current = override.title;
+		if (override?.slug !== undefined) slugRef.current = override.slug;
+		if (override?.mdx !== undefined) mdxRef.current = override.mdx;
+
+		const currentTitle = titleRef.current;
+		const currentSlug = slugRef.current;
+		const currentMdx = mdxRef.current;
+
 		setSaveStatus("미저장 변경");
 		changeSeqRef.current += 1;
 
 		// Save local IndexedDB backup immediately (within 500ms)
-		const fp = computeFingerprint(title, slug, mdx);
+		const fp = computeFingerprint(currentTitle, currentSlug, currentMdx);
 		saveLocalBackup({
 			key: `admin:${entryId}`,
 			entryId,
 			baseVersion: currentVersionRef.current,
 			baseFingerprint: baseFingerprintRef.current,
 			localFingerprint: fp,
-			snapshot: { title, slug: slug || null, metadata: {}, mdx },
+			snapshot: { title: currentTitle, slug: currentSlug || null, metadata: {}, mdx: currentMdx },
 			changeSeq: changeSeqRef.current,
 			savedAt: Date.now(),
 		});
@@ -200,7 +219,7 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 				performSave();
 			}, 10000);
 		}
-	}, [entryId, title, slug, mdx, performSave]);
+	}, [entryId, performSave]);
 
 	// BeforeUnload Warning
 	useEffect(() => {
@@ -296,8 +315,9 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 					type="text"
 					value={title}
 					onChange={(e) => {
-						setTitle(e.target.value);
-						triggerSave();
+						const val = e.target.value;
+						setTitle(val);
+						triggerSave({ title: val });
 					}}
 					placeholder="제목을 입력하세요"
 					className="w-full text-3xl font-bold bg-transparent border-none outline-none placeholder:text-neutral-400"
@@ -310,8 +330,9 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 						type="text"
 						value={slug}
 						onChange={(e) => {
-							setSlug(e.target.value);
-							triggerSave();
+							const val = e.target.value;
+							setSlug(val);
+							triggerSave({ slug: val });
 						}}
 						placeholder="auto-generated-slug"
 						className="flex-1 font-mono bg-transparent border-none outline-none text-neutral-700 dark:text-neutral-300 placeholder:text-neutral-400"
@@ -325,7 +346,7 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 							content={mdx}
 							onChange={(newContent) => {
 								setMdx(newContent);
-								triggerSave();
+								triggerSave({ mdx: newContent });
 							}}
 							onCompositionStart={() => {
 								isComposingRef.current = true;
@@ -339,8 +360,9 @@ export function EditEntryClient({ entryId }: { entryId: string }) {
 						<textarea
 							value={mdx}
 							onChange={(e) => {
-								setMdx(e.target.value);
-								triggerSave();
+								const val = e.target.value;
+								setMdx(val);
+								triggerSave({ mdx: val });
 							}}
 							onCompositionStart={() => {
 								isComposingRef.current = true;

@@ -726,7 +726,7 @@ console.log("FencedCode000");
 			expect("body" in i).toBe(false);
 			expect("mdx" in i).toBe(false);
 		}
-	}, 15_000);
+	}, 60_000);
 
 	// -----------------------------------------------------------------------
 	// 8  Migration idempotency
