@@ -44,7 +44,13 @@ export function CmsEditor({
 	const [linkCoords, setLinkCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 	const [linkQuery, setLinkQuery] = useState("");
 	const [linkIndex, setLinkIndex] = useState(0);
+	const [linkItems, setLinkItems] = useState<InternalLinkItem[]>([]);
+	const [isLinkLoading, setIsLinkLoading] = useState(false);
 	const linkRangeRef = useRef<{ from: number; to: number } | null>(null);
+	const linkItemsRef = useRef<InternalLinkItem[]>([]);
+	linkItemsRef.current = linkItems;
+	const linkIndexRef = useRef(linkIndex);
+	linkIndexRef.current = linkIndex;
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -70,14 +76,28 @@ export function CmsEditor({
 				}
 
 				if (linkOpen) {
+					const items = linkItemsRef.current;
 					if (event.key === "ArrowDown") {
 						event.preventDefault();
-						setLinkIndex((prev) => prev + 1);
+						setLinkIndex((prev) => (items.length > 0 ? (prev + 1) % items.length : 0));
 						return true;
 					}
 					if (event.key === "ArrowUp") {
 						event.preventDefault();
-						setLinkIndex((prev) => Math.max(0, prev - 1));
+						setLinkIndex((prev) => (items.length > 0 ? (prev - 1 + items.length) % items.length : 0));
+						return true;
+					}
+					if (event.key === "Enter") {
+						event.preventDefault();
+						const selected = items[linkIndexRef.current];
+						if (selected && linkRangeRef.current && view) {
+							const formatted = formatContentLinkMdx(selected);
+							const { tr } = view.state;
+							tr.delete(linkRangeRef.current.from, linkRangeRef.current.to);
+							tr.insertText(formatted);
+							view.dispatch(tr);
+							setLinkOpen(false);
+						}
 						return true;
 					}
 					if (event.key === "Escape") {
@@ -175,6 +195,43 @@ export function CmsEditor({
 		if (!editor) return;
 		editor.setEditable(editable);
 	}, [editable, editor]);
+
+	// Query internal link items from API
+	useEffect(() => {
+		if (!linkOpen) return;
+		let isMounted = true;
+		async function search() {
+			setIsLinkLoading(true);
+			try {
+				const params = new URLSearchParams();
+				params.set("collection", "post");
+				if (linkQuery) params.set("search", linkQuery);
+				params.set("pageSize", "10");
+
+				const res = await fetch(`/api/cms/v1/entries?${params.toString()}`);
+				if (res.ok && isMounted) {
+					const data = await res.json();
+					const mapped = data.items.map((i: any) => ({
+						id: i.id,
+						collection: i.collection,
+						title: i.title || "제목 없음",
+						slug: i.slug || "",
+					}));
+					setLinkItems(mapped);
+					linkItemsRef.current = mapped;
+					setLinkIndex(0);
+				}
+			} catch {
+				// Ignore
+			} finally {
+				if (isMounted) setIsLinkLoading(false);
+			}
+		}
+		search();
+		return () => {
+			isMounted = false;
+		};
+	}, [linkOpen, linkQuery]);
 
 	// Hover-based Block Handle Detection
 	const handleMouseMove = useCallback(
@@ -465,7 +522,8 @@ export function CmsEditor({
 			{/* Internal Link Popup Portal */}
 			{linkOpen && (
 				<InternalLinkPopup
-					query={linkQuery}
+					items={linkItems}
+					isLoading={isLinkLoading}
 					coords={linkCoords}
 					selectedIndex={linkIndex}
 					onSelect={(item) => {

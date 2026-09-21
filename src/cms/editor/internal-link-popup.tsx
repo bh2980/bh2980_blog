@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { InternalLinkItem } from "./internal-link";
 
 interface InternalLinkPopupProps {
-	query: string;
+	items: InternalLinkItem[];
+	isLoading: boolean;
 	coords: { top: number; left: number };
 	selectedIndex: number;
 	onSelect: (item: InternalLinkItem) => void;
@@ -13,49 +13,13 @@ interface InternalLinkPopupProps {
 }
 
 export function InternalLinkPopup({
-	query,
+	items,
+	isLoading,
 	coords,
 	selectedIndex,
 	onSelect,
 	onClose,
 }: InternalLinkPopupProps) {
-	const [items, setItems] = useState<InternalLinkItem[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
-
-	useEffect(() => {
-		let isMounted = true;
-		async function search() {
-			setIsLoading(true);
-			try {
-				const params = new URLSearchParams();
-				params.set("collection", "post");
-				if (query) params.set("search", query);
-				params.set("pageSize", "10");
-
-				const res = await fetch(`/api/cms/v1/entries?${params.toString()}`);
-				if (res.ok && isMounted) {
-					const data = await res.json();
-					setItems(
-						data.items.map((i: any) => ({
-							id: i.id,
-							collection: i.collection,
-							title: i.title || "제목 없음",
-							slug: i.slug || "",
-						})),
-					);
-				}
-			} catch {
-				// Ignore fetch error
-			} finally {
-				if (isMounted) setIsLoading(false);
-			}
-		}
-		search();
-		return () => {
-			isMounted = false;
-		};
-	}, [query]);
-
 	if (typeof window === "undefined") return null;
 
 	return createPortal(
