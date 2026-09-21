@@ -70,7 +70,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M5-ED-1 | DONE | ED | 통합 브랜치 | `283164a` | collections.ts 단일 레지스트리, F07 확장 예제 4종, docs/cms/extensions.md; reviewer 통과 |
 | M5-RV-1 | DONE | RV | 통합 브랜치 | `9ad2f1c` | 마일스톤 5 전 배치 검수 통과, 80개 테스트 100% PASS, 브라우저 E2E 완료 |
 | M6-BE-1 | DONE | BE | `bh2980/m6-batch1` | `bf11fb4`, `6eeae51`, `7fbdc4a` | 인증 GET/POST `/api/cms/v1/export`, 결정적 ZIP(CRC32·고정 mtime·고정 정렬), 관리자/공개 분리 투영 + 컬렉션별 공개 metadata allowlist, 초안·보관본 공개 유출 차단, REPEATABLE READ READ ONLY 스냅샷, 전 페이로드 digest; reviewer 2회 통과 |
-| M6-BE-2 | WIP | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만, 운영 DB 가드(`cms_m6_*` 격리 + `CMS_MIGRATION_ALLOW=1` + 접속 DB 대조); 실DB 적재·멱등성 실행만 미검증 |
+| M6-BE-2 | DONE | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a`, `798a027` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만. **실DB 검증 완료:** 격리 `cms_m6_apply1`에 1차 `imported=75 skipped=0` → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, 접속 DB 대조(neondb/neondb_owner/non-superuser), opt-in 없는 실행 차단, 원본 무변경, 검증 후 schema 정리 |
 | M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `1797e5f`, `6eeae51`, `7fbdc4a` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
 | M6-RV-1 | TODO | RV | — | — | M6-BE-2 실DB 검증 후 진행 |
 | M7-INV-1 | TODO | BE | — | — | — |
@@ -139,8 +139,9 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   3) `M6-BE-2`(`c0a4dc2`): `src/cms/migrate-from-files/**`(legacy 파서, UUIDv5 안정 ID, 가져오기 계획, 검사, DB 가드, 실행기, CLI)와 `cms:migration:inspect|apply|audit` 스크립트. 실코퍼스 계획 75항목·blocking 0·참조 126건, 검사 결과는 M0-INV-3와 일치. `importEntries()`는 단일 트랜잭션에서 같은 ID+같은 digest만 skip하고 충돌은 409로 중단한다.
   4) `M6-ED-1`(`1797e5f`): 전편 러너와 분류 모듈. 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0. `mdx-content.tsx`가 렌더 체인을 단일 소스로 노출한다. `pre`는 async RSC라 동기 shim으로 렌더하고 `renderMode`로 보고서에 명시했다.
   5) 리뷰·감사: R1(내보내기)은 P0(보관/휴지통 잔여 공개본 유출) 지적 후 `6eeae51`·`7fbdc4a`로 수정하고 재리뷰 통과, R2·R3는 중대 위험 없음. O2 oracle 감사는 4개 필수 항목(공개 metadata 재귀 allowlist, digest 범위, skip 판정, 미분류 분류)을 지적해 모두 반영했다.
-  6) 검증: DB 불필요 전체 81 files/487 tests 통과, `pnpm typecheck` 0 errors. **남은 블로커: 시험 DB DSN 미제공으로 실DB 적재·멱등성 실행 검증을 못 했다.** 제공되는 즉시 `cms:migration:apply`(격리 `cms_m6_*`)와 계약 테스트를 실행하고 `M6-BE-2`·`M6-RV-1`을 마감한다.
-  7) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단).
+  6) 검증: 전체(DB 포함) **89 files/554 tests 통과**, `pnpm typecheck` 0 errors, M6 변경 파일 `biome check` 0 errors.
+  7) 실DB 검증 완료(격리 schema `cms_m6_apply1`, 시험 전용 Neon 엔드포인트, 검증 후 schema 삭제): 실코퍼스 75건 1차 적재 → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, `CMS_MIGRATION_ALLOW=1` 없는 실행 차단, 원본 `src/contents` 무변경. 실DB export 스모크: admin 380파일/참조 251, public 150파일/74 mdx, digest는 `exportedAt`에 불변, 초안 경로·본문 유출 0, public metadata 키 `["title"]`(allowlist 투영 확인).
+  8) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단), 저장소 전체 `biome check`의 M4/M5 관리자 FE 기존 위반(base와 동일 파일, M6 범위 밖).
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 
 ---

@@ -142,15 +142,19 @@ Milestone 종료 = §11.3 단계 1–6의 **시험** 도구 + §11.4 내보내�
 | 필수 P1 | `importEntries()` skip 판정이 참조·occurrences·folderId·schemaVersion·주소를 비교하지 않음 — O1 "같은 ID+같은 canonical digest일 때만 skip" 위반 | skip 조건에 주소·참조(occurrences 포함)·folderId·schemaVersion 비교 추가 (`7fbdc4a`) |
 | 필수 P1 | 아카이브 digest 범위 부족(항목만 덮음) | 실제 포함되는 모든 페이로드 파일(설정·미디어 목록 포함, manifest/exportedAt 제외)을 덮도록 확장 (`7fbdc4a`) |
 | 필수 P1 | 왕복 표기 차이 27건 미분류 — "정규화/손실 분류 완료" 증거 부족 | `combined-normalization` 범주 추가 → **미분류 0**, 정규화 10범주로 전량 분류 (`7fbdc4a`) |
-| 필수 P1 | 안전 가드 강화 + 실제 시험 DB 검증 실행 | 가드 강화 완료(`CMS_MIGRATION_ALLOW=1` opt-in, 접속 DB 대조, `sameDatabase` 정규화, `--reuse`). **실행 검증은 시험 DB DSN 미제공으로 불가** (아래 블로커) |
+| 필수 P1 | 안전 가드 강화 + 실제 시험 DB 검증 실행 | 가드 강화: `CMS_MIGRATION_ALLOW=1` opt-in, 접속 DB 대조(`current_database()`), `sameDatabase` 정규화, `--reuse` 추가. **실행 검증 완료** — 별도 Neon 엔드포인트의 `cms_m6_apply1`에 75건 적재, 재실행·재기동 모두 75 skip, slug 집합 일치, 원본 무변경, opt-in 없이는 차단 (`7fbdc4a`, `798a027`) |
 | 비차단 P2 | `handleApiError`가 413/415/428/503 미표현, 이미지 R2 키·체크섬 대조, `pre` RSC 실제 렌더 재검증, ZIP 스트리밍 미구현 | M6 범위 밖 — M7 전 확인 목록으로 이관 |
 
-**블로커:** 격리 worktree `scup`에는 `.env.local`이 없다(샌드박스가 비밀 파일 복사를 차단). 사용자가 복사하면 다음을 실행하고 `M6-BE-2`·`M6-RV-1`을 마감한다.
+**검증 실행 기록 (2026-09-22, 완료):** 시험 DB는 운영 DB와 다른 Neon 엔드포인트(`ep-raspy-recipe-…` vs `ep-bitter-pine-pooler-…`)였다. DSN은 복사하지 않고 `node --env-file=/Users/bh2980/Desktop/bh2980_blog/.env.local`로 원본을 직접 참조해 실행했다.
 
-1. `node node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/import-entries.test.ts`
-2. `CMS_MIGRATION_ALLOW=1 pnpm cms:migration:apply` → `cms_m6_*` 격리 schema 적재 75건, 2차 실행 전부 skip, slug 집합 일치
-3. `CMS_MIGRATION_ALLOW=1 pnpm cms:migration:apply -- --reuse` → 프로세스 재기동 후 멱등성
-4. 실DB export 스모크(초안/보관 미포함, digest 안정)
+1. `node --env-file=<위 env> node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/` → 8 files/67 tests, 실패 1건(자체 테스트 단언 오류) 수정 후 import-entries 5/5 통과 (`798a027`)
+2. `CMS_MIGRATION_ALLOW=1 … cli.ts apply --schema cms_m6_apply1` → 1차 `imported=75 skipped=0`, 2차 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`
+3. `… apply --reuse --schema cms_m6_apply1`(프로세스 재기동) → `imported=0 skipped=75`, 검증 동일
+4. opt-in 없이 실행 → `시험 적재는 CMS_MIGRATION_ALLOW=1 로 명시적으로 허용해야 실행됩니다.`
+5. 실DB export 스모크 → admin 380파일/75항목/참조 251/템플릿 2, public 150파일/74항목/74 mdx, `digestStableAcrossExportedAt=true`, 초안 유출 0, public metadata 키 `["title"]`
+6. 원본 `src/contents` 무변경, 격리 schema `cms_m6_apply1` 삭제로 정리(검증 후 `cms_m6_*` 잔여 없음)
+
+보고서: `artifacts/cms/m6/2026-09-21T21-36-53-065Z/import-report.json` (connection: neondb / neondb_owner / isSuperuser=false)
 
 ### 추가 자문 트리거 (O1/O2 외)
 
