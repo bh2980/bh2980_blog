@@ -28,7 +28,7 @@ vi.mock("@/cms/container", () => ({
 
 const decoder = new TextDecoder();
 
-const request = (url: string, init?: RequestInit) => new NextRequest(url, init);
+const request = (url: string, init?: ConstructorParameters<typeof NextRequest>[1]) => new NextRequest(url, init);
 
 const findFile = (zip: Uint8Array, path: string): string => {
 	const entry = readZipArchive(zip).find((item) => item.path === path);
