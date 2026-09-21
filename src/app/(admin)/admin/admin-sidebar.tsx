@@ -135,6 +135,12 @@ export function AdminSidebar({
 							</button>
 						);
 					})}
+					<a
+						href="/admin/media"
+						className="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200 mt-1 border-t border-neutral-800/80 pt-2"
+					>
+						<span>미디어 라이브러리 (Media)</span>
+					</a>
 				</nav>
 			</div>
 
