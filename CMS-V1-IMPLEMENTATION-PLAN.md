@@ -49,13 +49,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M3-BE-1 | DONE | BE | 통합 브랜치 | `963bf77` | publish/archive/restore/schedule API + executeSchedulePublish 슬러그/참조 원자적 승격; reviewer 통과 |
 | M3-FE-1 | DONE | FE | 통합 브랜치 | `665a0f9` | /admin/entries/[id]/edit 셸, Tiptap 에디터 마운트, M1 EditorToggle 연동; 빌드 통과 |
 | M3-FE-2 | DONE | FE | 통합 브랜치 | `6d83eef` | 2초 idle/10초 max 자동저장, IndexedDB 백업, IME 지연, 409 충돌 비교/복사 UI; reviewer 통과 |
-| M3-ED-1 | TODO | ED | — | — | — |
-| M3-ED-2 | TODO | ED | — | — | — |
+| M3-ED-1 | DONE | ED | 통합 브랜치 | `8fb382b` | 슬래시 메뉴(/) 및 블록 핸들(위/아래 이동, 복제, 삭제) 오버레이; reviewer 통과 |
+| M3-ED-2 | DONE | ED | 통합 브랜치 | `005ac94` | 내부 링크([[]) 스마트 자동완성 검색 팝업 및 키보드 네비게이션; reviewer 통과 |
 | M3-INF-1 | TODO | INF | — | — | — |
 | M3-BE-2 | TODO | BE | — | — | — |
 | M3-FE-3 | TODO | FE | — | — | — |
 | M3-FE-4 | DONE | FE | 통합 브랜치 | `dc74ab4` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
-| M3-RV-1 | IN_PROGRESS | RV | 통합 브랜치 | `dc74ab4` | M3 핵심 옵션 2(배치 1, 2, 3) reviewer 검수 통과 완료 |
+| M3-RV-1 | IN_PROGRESS | RV | 통합 브랜치 | `005ac94` | M3 에디터 UI 전면 개편 및 ED-1, ED-2 통합 완료, reviewer 전 단계 승인 |
 | M4-TW-1 | TODO | TW | — | — | — |
 | M4-FE-1 | TODO | FE | — | — | — |
 | M4-BE-1 | TODO | BE | — | — | — |
@@ -102,6 +102,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   4) M3-FE-1 / M3-FE-2: Tiptap 3.31.3 설치, /admin/entries/[id]/edit 셸 마운트, 2초 idle/10초 max 자동저장, IndexedDB 백업, 409 충돌 비교/복사 UI 구현(`665a0f9`) → reviewer 지적(자동저장 stale closure P1) 반영(`6d83eef`) → reviewer 재리뷰 "위험 없음" 승인.
   5) M3-FE-4: 발행·예약·보관·삭제 UI 및 예약 모달 구현(`dc74ab4`).
   6) 최종 검증: 66 files/433 tests 100% 통과, typecheck 통과, build(71 routes) 통과. M3 해당 태스크들을 DONE으로 최신화한다.
+- 2026-09-21: CMS 에디터 UI 전면 개편 및 작성 기능 통합(M3-ED-1, M3-ED-2)을 완료했다.
+  1) 신규 작성 워크플로우: 팝업 모달 완전 폐기, `/admin/entries/new` 즉시 진입, 첫 입력 전까지 DB 레코드 미생성(Lazy Draft) 및 첫 입력 2초 idle 후 조용히 생성 후 `window.history.replaceState`로 URL 승격.
+  2) Keystatic 스타일 3단 레이아웃: 좌측 네비 + 중앙 도화지형 캔버스 + 고정 Tiptap 서식 툴바(H1~H3, B, I, S, Code, List, Quote, CodeBlock, Divider) + 우측 shadcn 메타데이터 인스펙터 패널(Title, Slug 자동생성/수동수정 잠금/Regenerate, PublishDate, Description, Tags) 분리.
+  3) M3-ED-1: 슬래시 메뉴(`/`) 및 블록 조작 핸들(위/아래 이동, 복제, 삭제)을 React Portal 오버레이로 구현. 한글 IME 조합 중 키 이벤트 가드 적용.
+  4) M3-ED-2: 내부 링크(`[[`) 스마트 자동완성 연동. `/api/cms/v1/entries` 검색 및 키보드(ArrowDown/Up, Enter, ESC) 선택 지원.
+  5) reviewer 전 단계 검수 및 P0 지적(stale closure, Enter 키 swallow) 반영 후 "위험 없음" 최종 승인.
+  6) 최종 검증: 69 files/441 tests 100% 통과, `pnpm typecheck`, `pnpm build` 통과. M3-ED-1, M3-ED-2를 DONE으로 갱신한다.
 
 ---
 
