@@ -1,9 +1,11 @@
+import type { Collection } from "../core/collections";
+
 export type Issue = {
 	readonly code: string;
 	readonly message?: string;
 };
 
-export type Collection = "post" | "memo" | "category" | "tag" | "collection";
+export type { Collection };
 export type ReferenceKind = "entry" | "media" | "category" | "tag";
 
 export type ReferenceOccurrence =

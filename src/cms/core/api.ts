@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { Collection } from "@/cms/services/types";
+import { COLLECTIONS, type Collection } from "./collections";
 
-export const collectionSchema = z.enum(["post", "memo", "category", "tag", "collection"]);
+export const collectionSchema = z.enum(COLLECTIONS);
 
 export const entryStatusSchema = z.enum(["draft", "published"]);
 

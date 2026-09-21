@@ -14,25 +14,7 @@ import {
 	type ServiceInput,
 	type StorePort,
 } from "./types";
-
-const SCHEMA: Record<Collection, Record<string, string>> = {
-	post: {
-		title: "string",
-		summary: "string",
-		categoryId: "string",
-		tagIds: "string[]",
-		publishedAt: "string",
-		policy: "string",
-	},
-	memo: { title: "string", tagIds: "string[]", publishedAt: "string" },
-	category: { title: "string" },
-	tag: { title: "string" },
-	collection: { title: "string", itemIds: "string[]" },
-};
-
-const isCollection = (value: unknown): value is Collection => {
-	return typeof value === "string" && Object.hasOwn(SCHEMA, value);
-};
+import { COLLECTION_FIELD_SCHEMAS as SCHEMA, isCollection } from "../core/collections";
 
 const isJsonArray = (value: unknown): value is readonly JsonValue[] => Array.isArray(value);
 

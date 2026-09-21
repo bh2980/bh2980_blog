@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { authGateway } from "@/cms/adapters/auth";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@/cms/core/collections";
+import { getSerializableExtensionsSchema } from "@/cms/core/extensions-example";
 import { handleApiError } from "../error-handler";
 
 export async function GET() {
@@ -8,11 +10,14 @@ export async function GET() {
 
 		return NextResponse.json({
 			version: "v1",
-			collections: ["post", "memo", "category", "tag", "collection"],
+			collections: COLLECTIONS,
+			definitions: COLLECTION_DEFINITIONS,
+			extensions: getSerializableExtensionsSchema(),
 			features: {
 				folders: true,
 				references: true,
 				search: true,
+				templates: true,
 			},
 		});
 	} catch (error) {
