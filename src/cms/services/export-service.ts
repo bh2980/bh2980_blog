@@ -71,7 +71,10 @@ export interface ExportManifestEntry {
 	/** 상태 1건의 canonical digest. */
 	workingDigest: string | null;
 	publishedDigest: string | null;
-	/** 항목 전체(작업본+공개본) digest. 재실행 skip 판정에 쓴다. */
+	/**
+	 * 항목 전체(작업본+공개본) digest. 아카이브 간 동일성 비교·감사용이다.
+	 * (가져오기 skip 판정은 이 문자열이 아니라 저장 필드 동등 비교로 한다. content-store.importEntries 참고)
+	 */
 	itemDigest: string;
 	files: string[];
 }

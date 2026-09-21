@@ -4,7 +4,13 @@ import {
 	fixtureBody,
 	makeExportFixtureSnapshot as makeSnapshot,
 } from "@/cms/services/__test__/export-fixture";
-import { buildExportArchive, canonicalJson, publicExportEntrySchema } from "@/cms/services/export-service";
+import {
+	buildExportArchive,
+	canonicalJson,
+	PUBLIC_METADATA_KEYS,
+	pickPublicMetadata,
+	publicExportEntrySchema,
+} from "@/cms/services/export-service";
 import { readZipArchive } from "@/cms/services/zip";
 
 const decoder = new TextDecoder();
@@ -250,5 +256,24 @@ describe("export archive builder", () => {
 			base.digest,
 		);
 		expect(buildExportArchive(changedFolders, { scope: "admin", exportedAt: FIXED_TIME }).digest).not.toBe(base.digest);
+	});
+	it("allowlist가 없는 컬렉션은 공개 투영에서 실패한다", () => {
+		expect(() => pickPublicMetadata("unknown-collection", { title: "x" })).toThrow(/allowlist/);
+	});
+
+	it("공개 metadata 키는 컬렉션 allowlist의 부분집합이다", () => {
+		const archive = buildExportArchive(makeSnapshot(), { scope: "public", exportedAt: FIXED_TIME });
+		const { paths, text } = readAll(archive.zip);
+		const publishedPaths = paths.filter((path) => path.endsWith("published.json"));
+
+		expect(publishedPaths.length).toBeGreaterThan(0);
+		for (const path of publishedPaths) {
+			const parsed = JSON.parse(text(path)) as { collection: string; metadata: Record<string, unknown> };
+			const allowed = PUBLIC_METADATA_KEYS[parsed.collection];
+			expect(allowed).toBeDefined();
+			for (const key of Object.keys(parsed.metadata)) {
+				expect(allowed).toContain(key);
+			}
+		}
 	});
 });
