@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { Pool, PoolClient, QueryResult } from "pg";
-import type { PreparedSnapshot, Reference, ReferenceKind, ReferenceOccurrence } from "../../services/types";
+import type {
+	PreparedSnapshot,
+	Reference,
+	ReferenceKind,
+	ReferenceOccurrence,
+	WorkingCopy,
+} from "../../services/types";
 
 export class CmsError extends Error {
 	public readonly code: string;
@@ -900,6 +906,35 @@ export function createContentStore(
 				isStale: row.is_stale,
 				occurrences: row.occurrences,
 			}));
+		},
+
+		getWorking: async (params: { entryId: string }): Promise<WorkingCopy> => {
+			const res = await pool.query<{
+				collection: string;
+				version: number;
+				working_slug: string | null;
+				folder_id: string | null;
+				metadata: Record<string, unknown>;
+				mdx: string;
+			}>(
+				`SELECT e.collection, e.version, e.working_slug, e.folder_id, b.metadata, b.mdx
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".entry_bodies b ON e.id = b.entry_id AND b.state = 'working'
+				 WHERE e.id = $1`,
+				[params.entryId],
+			);
+			if (res.rows.length === 0) {
+				throw new CmsError("Entry not found", "not_found");
+			}
+			const row = res.rows[0];
+			return {
+				collection: row.collection as WorkingCopy["collection"],
+				slug: row.working_slug,
+				metadata: row.metadata,
+				mdx: row.mdx,
+				version: row.version,
+				folderId: row.folder_id,
+			};
 		},
 
 		createEntry: async (data: CreateEntryInput): Promise<Entry> => {

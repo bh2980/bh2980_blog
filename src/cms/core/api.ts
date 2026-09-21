@@ -67,6 +67,17 @@ export const patchEntryBodySchema = z.object({
 
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 
+export const bulkBodySchema = z.object({
+	op: z.enum(["tags.add", "tags.remove", "category.set", "folder.move"]),
+	items: z
+		.array(z.object({ id: z.string().min(1), expectedVersion: z.number().int() }))
+		.max(100),
+	tagIds: z.array(z.string()).optional(),
+	categoryId: z.string().nullable().optional(),
+	folderId: z.string().nullable().optional(),
+});
+export type BulkBody = z.infer<typeof bulkBodySchema>;
+
 export const preferencesBodySchema = z.object({
 	columnVisibility: z.record(z.string(), z.boolean()).optional(),
 	defaultPageSize: z

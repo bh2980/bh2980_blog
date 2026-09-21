@@ -61,8 +61,18 @@ export type ResolvedTargets = {
 	media: { id: string }[];
 };
 
+export type WorkingCopy = {
+	readonly collection: Collection;
+	readonly slug: string | null;
+	readonly metadata: { readonly [key: string]: unknown };
+	readonly mdx: string;
+	readonly version: number;
+	readonly folderId: string | null;
+};
+
 export interface StorePort<T = unknown> {
 	getWorkingReferences(params: { entryId: string }): Promise<Reference[]>;
+	getWorking(params: { entryId: string }): Promise<WorkingCopy>;
 	createEntryWithReferences(params: {
 		snapshot: PreparedSnapshot;
 		references: readonly Reference[];
