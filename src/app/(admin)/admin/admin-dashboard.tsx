@@ -6,7 +6,6 @@ import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-st
 import type { Collection } from "@/cms/services/types";
 import { AdminEntriesTable } from "./admin-entries-table";
 import { AdminSidebar } from "./admin-sidebar";
-import { CreateEntryModal } from "./create-entry-modal";
 
 export function AdminClientDashboard() {
 	const router = useRouter();
@@ -251,35 +250,8 @@ export function AdminClientDashboard() {
 		}
 	};
 
-	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
 	const handleCreateNew = () => {
-		setIsCreateModalOpen(true);
-	};
-
-	const handleCreateSubmit = async (title: string) => {
-		try {
-			const res = await fetch("/api/cms/v1/entries", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					collection: currentCollection,
-					metadata: { title },
-					mdx: "",
-					folderId: currentFolderId,
-				}),
-			});
-			if (res.ok) {
-				const created = await res.json();
-				await fetchEntries();
-				router.push(`/admin/entries/${created.id}/edit` as any);
-			} else {
-				const err = await res.json();
-				alert("생성 실패: " + (err.message || "알 수 없는 오류"));
-			}
-		} catch (e) {
-			alert("생성 실패: " + String(e));
-		}
+		router.push(`/admin/entries/new?collection=${currentCollection}` as any);
 	};
 
 	return (
@@ -340,12 +312,6 @@ export function AdminClientDashboard() {
 				}}
 				onCreateNew={handleCreateNew}
 				onRetry={fetchEntries}
-			/>
-
-			<CreateEntryModal
-				isOpen={isCreateModalOpen}
-				onClose={() => setIsCreateModalOpen(false)}
-				onSubmit={handleCreateSubmit}
 			/>
 		</div>
 	);
