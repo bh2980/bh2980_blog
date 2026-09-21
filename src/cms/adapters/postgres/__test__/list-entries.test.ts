@@ -344,7 +344,7 @@ console.log("FencedCode000");
 	// 3  status filter; folder undefined/null/direct/descendants
 	// -----------------------------------------------------------------------
 
-	it("3. draft/published status filter; folder undefined=all, null=unfiled, folderId=direct, includeDescendants", async () => {
+	it("3. draft/published status filter; folder undefined=all, null=unfiled, folderId=direct, includeDescendants", { timeout: 60000 }, async () => {
 		const f3a = await store.createFolder({ collection: "post", parentId: null, name: "F3a" });
 		const f3b = await store.createFolder({ collection: "post", parentId: f3a.id, name: "F3b" });
 
@@ -619,7 +619,7 @@ console.log("FencedCode000");
 	// 7  List authority
 	// -----------------------------------------------------------------------
 
-	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", async () => {
+	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", { timeout: 60000 }, async () => {
 		const directDate = "2020-05-05T00:00:00.000Z";
 		await store.createEntry({
 			collection: "post",

@@ -1906,8 +1906,8 @@ export function createContentStore(
 			const client = await pool.connect();
 			try {
 				await client.query("BEGIN");
-				const sRes = await client.query<{ id: string; entry_id: string; status: string }>(
-					`SELECT id, entry_id, status FROM "${qSchema}".schedules WHERE id = $1 FOR UPDATE`,
+				const sRes = await client.query<{ id: string; entry_id: string; status: string; scheduled_at: Date }>(
+					`SELECT id, entry_id, status, scheduled_at FROM "${qSchema}".schedules WHERE id = $1 FOR UPDATE`,
 					[params.scheduleId],
 				);
 				if (sRes.rows.length === 0) throw new CmsError("Schedule not found", "not_found");
@@ -1928,8 +1928,6 @@ export function createContentStore(
 				);
 				if (eRes.rows.length === 0) throw new CmsError("Entry not found", "not_found");
 
-				// Publish the entry
-				// To reuse publishEntry logic within the same transaction:
 				const bodyRes = await client.query<BodyRow>(
 					`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies WHERE entry_id = $1 AND state = 'working'`,
 					[sched.entry_id],
@@ -1937,34 +1935,140 @@ export function createContentStore(
 				if (bodyRes.rows.length === 0) throw new CmsError("Working draft not found", "not_found");
 				const working = bodyRes.rows[0];
 
+				// --- Published References Target Recheck ---
+				const workingRefsRes = await client.query<ReferenceRow>(
+					`SELECT kind, target_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $1 AND state = 'working'
+					 ORDER BY target_id ASC`,
+					[sched.entry_id],
+				);
+
+				for (const ref of workingRefsRes.rows) {
+					if (ref.kind === "media") {
+						const mRes = await client.query<{ id: string }>(
+							`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`,
+							[ref.target_id],
+						);
+						if (mRes.rows.length === 0) {
+							throw new CmsError("Unresolved media reference", "invalid_reference");
+						}
+					} else {
+						const tRes = await client.query<{ id: string; status: string }>(
+							`SELECT id, status FROM "${qSchema}".entries WHERE id = $1`,
+							[ref.target_id],
+						);
+						if (tRes.rows.length === 0 || tRes.rows[0].status !== "published") {
+							throw new CmsError("Unpublished or missing reference target", "invalid_reference");
+						}
+					}
+				}
+
+				const pubRes = await client.query<BodyRow>(
+					`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies WHERE entry_id = $1 AND state = 'published'`,
+					[sched.entry_id],
+				);
+
+				const entryRes = await client.query<{
+					first_published_at: Date | null;
+					published_at: Date | null;
+					collection: string;
+					working_slug: string | null;
+				}>(`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`, [sched.entry_id]);
+				const collection = entryRes.rows[0].collection;
+				const currentPublishedAt = entryRes.rows[0].published_at;
+				const targetSlug = entryRes.rows[0].working_slug;
+
+				const currentSlugRes = await client.query<{ slug: string }>(
+					`SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'current'`,
+					[sched.entry_id],
+				);
+				const currentSlug = currentSlugRes.rows.length > 0 ? currentSlugRes.rows[0].slug : null;
+
+				let isRepublish = false;
+				if (pubRes.rows.length > 0) {
+					const pub = pubRes.rows[0];
+					if (
+						pub.content_hash === working.content_hash &&
+						pub.mdx === working.mdx &&
+						pub.schema_version === working.schema_version &&
+						pub.updated_at.getTime() === working.updated_at.getTime() &&
+						currentSlug === targetSlug &&
+						isDeepStrictEqual(pub.metadata, working.metadata)
+					) {
+						isRepublish = true;
+					}
+				}
+
 				const currentVersion = eRes.rows[0].version;
-				const newVersion = currentVersion + 1;
+				const newVersion = isRepublish ? currentVersion : currentVersion + 1;
 				const now = new Date();
+				const effectivePublishedAt = currentPublishedAt ?? sched.scheduled_at ?? now;
 
-				await client.query(
-					`UPDATE "${qSchema}".entries
-					 SET version = $1, status = 'published', last_published_at = $2,
-					     first_published_at = COALESCE(first_published_at, $3),
-					     published_at = COALESCE(published_at, $4)
-					 WHERE id = $5`,
-					[newVersion, now, now, now, sched.entry_id],
-				);
+				if (!isRepublish) {
+					await client.query(
+						`UPDATE "${qSchema}".entries
+						 SET version = $1, status = 'published', last_published_at = $2,
+						     first_published_at = COALESCE(first_published_at, $3),
+						     published_at = $4
+						 WHERE id = $5`,
+						[newVersion, now, now, effectivePublishedAt, sched.entry_id],
+					);
 
-				await client.query(
-					`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
-					 VALUES ($1, 'published', $2, $3, $4, $5, $6, $7)
-					 ON CONFLICT (entry_id, state) DO UPDATE
-					 SET metadata = $2, mdx = $3, schema_version = $4, content_hash = $5, updated_at = $6, search_text = $7`,
-					[
-						sched.entry_id,
-						JSON.stringify(working.metadata),
-						working.mdx,
-						working.schema_version,
-						working.content_hash,
-						working.updated_at,
-						extractVisibleText(working.mdx),
-					],
-				);
+					if (pubRes.rows.length > 0) {
+						await client.query(
+							`UPDATE "${qSchema}".entry_bodies SET metadata = $1, mdx = $2, schema_version = $3, content_hash = $4, updated_at = $5, search_text = $6 WHERE entry_id = $7 AND state = 'published'`,
+							[
+								JSON.stringify(working.metadata),
+								working.mdx,
+								working.schema_version,
+								working.content_hash,
+								working.updated_at,
+								extractVisibleText(working.mdx),
+								sched.entry_id,
+							],
+						);
+					} else {
+						await client.query(
+							`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text) VALUES ($1, 'published', $2, $3, $4, $5, $6, $7)`,
+							[
+								sched.entry_id,
+								JSON.stringify(working.metadata),
+								working.mdx,
+								working.schema_version,
+								working.content_hash,
+								working.updated_at,
+								extractVisibleText(working.mdx),
+							],
+						);
+					}
+
+					await client.query(
+						`DELETE FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'reservation'`,
+						[sched.entry_id],
+					);
+
+					if (currentSlug !== null && currentSlug !== targetSlug) {
+						await client.query(
+							`UPDATE "${qSchema}".content_addresses SET type = 'alias' WHERE entry_id = $1 AND type = 'current'`,
+							[sched.entry_id],
+						);
+					}
+
+					if (targetSlug !== null && targetSlug !== currentSlug) {
+						await client.query(
+							`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type) VALUES ($1, $2, $3, 'current')`,
+							[collection, targetSlug, sched.entry_id],
+						);
+					}
+				} else {
+					await client.query(
+						`UPDATE "${qSchema}".entries
+						 SET status = 'published'
+						 WHERE id = $1`,
+						[sched.entry_id],
+					);
+				}
 
 				// Copy references
 				await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'published'`, [
@@ -1978,6 +2082,12 @@ export function createContentStore(
 					 WHERE entry_id = $1 AND state = 'working'`,
 					[sched.entry_id],
 				);
+
+				const publishedEntry = await loadEntry(client, sched.entry_id, qSchema);
+
+				if (hooks.beforePublishCommit) {
+					await hooks.beforePublishCommit(publishedEntry, client);
+				}
 
 				// Mark schedule completed
 				await client.query(
