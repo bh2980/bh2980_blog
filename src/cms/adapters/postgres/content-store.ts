@@ -34,6 +34,7 @@ export interface EntryBody {
 export interface Entry {
 	id: string;
 	collection: string;
+	status: "draft" | "published" | "archived" | "trashed";
 	version: number;
 	createdAt: Date;
 	updatedAt: Date;
@@ -66,6 +67,7 @@ export interface SaveWorkingInput {
 
 export interface PublishEntryInput {
 	expectedVersion: number;
+	publishedAt?: Date;
 }
 
 export interface Folder {
@@ -82,7 +84,7 @@ export interface ListEntriesItem {
 	collection: string;
 	title: string | null;
 	slug: string | null;
-	status: "draft" | "published";
+	status: "draft" | "published" | "archived" | "trashed";
 	folderId: string | null;
 	categoryId: string | null;
 	tagIds: readonly string[];
@@ -95,7 +97,7 @@ export interface ListEntriesParams {
 	collection: string;
 	search?: string;
 	includeBody?: boolean;
-	statuses?: readonly ("draft" | "published")[];
+	statuses?: readonly ("draft" | "published" | "archived" | "trashed")[];
 	folderId?: string | null;
 	includeDescendants?: boolean;
 	sort?: {
@@ -170,7 +172,7 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		CREATE TABLE IF NOT EXISTS "${qSchema}".content_addresses (
 			collection TEXT NOT NULL,
 			slug TEXT NOT NULL,
-			entry_id UUID NOT NULL REFERENCES "${qSchema}".entries(id) ON DELETE CASCADE,
+			entry_id UUID REFERENCES "${qSchema}".entries(id) ON DELETE SET NULL,
 			type TEXT NOT NULL CHECK (type IN ('reservation', 'current', 'alias', 'deleted')),
 			PRIMARY KEY (collection, slug)
 		);
@@ -212,6 +214,26 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		);
 
 		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES "${qSchema}".folders(id) ON DELETE NO ACTION;
+
+		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived', 'trashed'));
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".schedules (
+			id UUID PRIMARY KEY,
+			entry_id UUID NOT NULL REFERENCES "${qSchema}".entries(id) ON DELETE CASCADE,
+			scheduled_at TIMESTAMPTZ NOT NULL,
+			status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled', 'failed')),
+			created_at TIMESTAMPTZ NOT NULL,
+			completed_at TIMESTAMPTZ,
+			failure_code TEXT,
+			failure_detail TEXT
+		);
+
+		CREATE INDEX IF NOT EXISTS schedules_due_idx ON "${qSchema}".schedules(scheduled_at) WHERE status = 'pending';
+		CREATE UNIQUE INDEX IF NOT EXISTS schedules_active_entry_idx ON "${qSchema}".schedules(entry_id) WHERE status = 'pending';
+
+		ALTER TABLE "${qSchema}".content_addresses ALTER COLUMN entry_id DROP NOT NULL;
+		ALTER TABLE "${qSchema}".content_addresses DROP CONSTRAINT IF EXISTS content_addresses_entry_id_fkey;
+		ALTER TABLE "${qSchema}".content_addresses ADD CONSTRAINT content_addresses_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES "${qSchema}".entries(id) ON DELETE SET NULL;
 
 		ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
 
@@ -284,6 +306,7 @@ export function normalizeMetadata(input: unknown): EntryMetadata {
 interface EntryRow {
 	id: string;
 	collection: string;
+	status: "draft" | "published" | "archived" | "trashed";
 	version: number;
 	created_at: Date;
 	entry_updated_at: Date;
@@ -365,7 +388,7 @@ interface DescFolderRow {
 async function loadEntry(client: Pool | PoolClient, id: string, qSchema: string): Promise<Entry> {
 	const res = await client.query<EntryRow>(
 		`SELECT
-			e.id, e.collection, e.version, e.created_at, e.updated_at as entry_updated_at,
+			e.id, e.collection, e.status, e.version, e.created_at, e.updated_at as entry_updated_at,
 			e.first_published_at, e.last_published_at, e.published_at, e.working_slug,
 			(SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') as current_slug,
 			b.state, b.metadata, b.mdx, b.schema_version, b.content_hash, b.updated_at as body_updated_at
@@ -417,6 +440,7 @@ async function loadEntry(client: Pool | PoolClient, id: string, qSchema: string)
 	return {
 		id: first.id,
 		collection: first.collection,
+		status: first.status || "draft",
 		version: first.version,
 		createdAt: first.created_at,
 		updatedAt: first.entry_updated_at,
@@ -582,6 +606,13 @@ export function createContentStore(
 					throw new CmsError("Conflict", "conflict", currentVersion);
 				}
 
+				// Check if entry has pending schedule (locks body editing, but allow folder-only move)
+				const schedRes = await client.query<{ id: string }>(
+					`SELECT id FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending'`,
+					[params.entryId],
+				);
+				const hasPendingSchedule = schedRes.rows.length > 0;
+
 				if (params.folderId) {
 					const fRes = await client.query<{ collection: string }>(
 						`SELECT collection FROM "${qSchema}".folders WHERE id = $1`,
@@ -640,6 +671,15 @@ export function createContentStore(
 				}
 
 				const folderChanged = params.folderId !== undefined;
+
+				if (hasPendingSchedule) {
+					// Compare next working slug and metadata/mdx
+					const slugChanged = currentWorkingSlug !== nextWorkingSlug;
+					const bodyChanged = bodyRes.rows.length === 0 || !isBodyIdentical;
+					if (slugChanged || bodyChanged || !refsEqual) {
+						throw new CmsError("Entry is scheduled and locked for editing", "locked");
+					}
+				}
 
 				if (isBodyIdentical && refsEqual && !folderChanged) {
 					const entry = await loadEntry(client, params.entryId, qSchema);
@@ -822,6 +862,9 @@ export function createContentStore(
 				return entry;
 			} catch (err) {
 				await client.query("ROLLBACK");
+				if (isWorkingSlugConflict(err)) {
+					throw new CmsError("Slug conflict", "slug_conflict");
+				}
 				throw err;
 			} finally {
 				client.release();
@@ -951,7 +994,13 @@ export function createContentStore(
 			}
 		},
 
-		publishEntry: async (id: string, data: PublishEntryInput): Promise<Entry> => {
+		publishEntry: async (
+			idOrParams: string | { id: string; expectedVersion: number; publishedAt?: Date },
+			dataParam?: PublishEntryInput,
+		): Promise<Entry> => {
+			const id = typeof idOrParams === "string" ? idOrParams : idOrParams.id;
+			const data: PublishEntryInput = typeof idOrParams === "string" ? (dataParam as PublishEntryInput) : idOrParams;
+
 			const client = await pool.connect();
 			try {
 				await client.query("BEGIN");
@@ -979,6 +1028,35 @@ export function createContentStore(
 
 				const working = bodyRes.rows[0];
 
+				// --- Published References Target Recheck ---
+				const workingRefsRes = await client.query<ReferenceRow>(
+					`SELECT kind, target_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $1 AND state = 'working'
+					 ORDER BY target_id ASC`,
+					[id],
+				);
+
+				for (const ref of workingRefsRes.rows) {
+					if (ref.kind === "media") {
+						const mRes = await client.query<{ id: string }>(
+							`SELECT id FROM "${qSchema}".media_assets WHERE id = $1`,
+							[ref.target_id],
+						);
+						if (mRes.rows.length === 0) {
+							throw new CmsError("Unresolved media reference", "invalid_reference");
+						}
+					} else {
+						const tRes = await client.query<{ id: string; status: string }>(
+							`SELECT id, status FROM "${qSchema}".entries WHERE id = $1`,
+							[ref.target_id],
+						);
+						if (tRes.rows.length === 0 || tRes.rows[0].status !== "published") {
+							throw new CmsError("Unpublished or missing reference target", "invalid_reference");
+						}
+					}
+				}
+
 				const pubRes = await client.query<BodyRow>(
 					`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies WHERE entry_id = $1 AND state = 'published'`,
 					[id],
@@ -986,11 +1064,13 @@ export function createContentStore(
 
 				const entryRes = await client.query<{
 					first_published_at: Date | null;
+					published_at: Date | null;
 					collection: string;
 					working_slug: string | null;
-				}>(`SELECT first_published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`, [id]);
+				}>(`SELECT first_published_at, published_at, collection, working_slug FROM "${qSchema}".entries WHERE id = $1`, [id]);
 				const collection = entryRes.rows[0].collection;
 				const firstPublishedAt = entryRes.rows[0].first_published_at;
+				const currentPublishedAt = entryRes.rows[0].published_at;
 				const targetSlug = entryRes.rows[0].working_slug;
 
 				const currentSlugRes = await client.query<{ slug: string }>(
@@ -1014,23 +1094,29 @@ export function createContentStore(
 					}
 				}
 
+				const newVersion = isRepublish ? currentVersion : currentVersion + 1;
+				const now = new Date();
+				const effectivePublishedAt = data.publishedAt ?? currentPublishedAt ?? now;
+
 				if (!isRepublish) {
-					const newVersion = currentVersion + 1;
-					const now = new Date();
+					await client.query(
+						`UPDATE "${qSchema}".entries
+						 SET version = $1, status = 'published', last_published_at = $2,
+						     first_published_at = COALESCE(first_published_at, $3),
+						     published_at = $4
+						 WHERE id = $5`,
+						[newVersion, now, now, effectivePublishedAt, id],
+					);
+				} else {
+					await client.query(
+						`UPDATE "${qSchema}".entries
+						 SET status = 'published'
+						 WHERE id = $1`,
+						[id],
+					);
+				}
 
-					if (!firstPublishedAt) {
-						await client.query(
-							`UPDATE "${qSchema}".entries SET version = $1, last_published_at = $2, first_published_at = $3, published_at = $4 WHERE id = $5`,
-							[newVersion, now, now, now, id],
-						);
-					} else {
-						await client.query(`UPDATE "${qSchema}".entries SET version = $1, last_published_at = $2 WHERE id = $3`, [
-							newVersion,
-							now,
-							id,
-						]);
-					}
-
+				if (!isRepublish) {
 					if (pubRes.rows.length > 0) {
 						await client.query(
 							`UPDATE "${qSchema}".entry_bodies SET metadata = $1, mdx = $2, schema_version = $3, content_hash = $4, updated_at = $5, search_text = $6 WHERE entry_id = $7 AND state = 'published'`,
@@ -1078,6 +1164,17 @@ export function createContentStore(
 						);
 					}
 				}
+
+				// Atomically copy working references to published references
+				await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'published'`, [id]);
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_references
+					 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+					 SELECT entry_id, 'published', kind, target_id, target_entry_id, target_media_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $1 AND state = 'working'`,
+					[id],
+				);
 
 				const entry = await loadEntry(client, id, qSchema);
 
@@ -1381,15 +1478,11 @@ export function createContentStore(
 			values.push(params.collection);
 
 			if (params.statuses && params.statuses.length > 0) {
-				if (params.statuses.includes("draft") && !params.statuses.includes("published")) {
-					conditions.push(
-						`NOT EXISTS (SELECT 1 FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'published')`,
-					);
-				} else if (!params.statuses.includes("draft") && params.statuses.includes("published")) {
-					conditions.push(
-						`EXISTS (SELECT 1 FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'published')`,
-					);
-				}
+				conditions.push(`e.status = ANY($${valIdx++}::text[])`);
+				values.push(params.statuses);
+			} else {
+				// Default list excludes trashed entries
+				conditions.push(`e.status != 'trashed'`);
 			}
 
 			if (params.folderId !== undefined) {
@@ -1462,7 +1555,7 @@ export function createContentStore(
 
 			const dataQuery = `
 				SELECT
-					e.id, e.collection, e.folder_id, e.created_at, e.updated_at, e.published_at, e.working_slug,
+					e.id, e.collection, e.status, e.folder_id, e.created_at, e.updated_at, e.published_at, e.working_slug,
 					(SELECT metadata->>'title' FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'working') as title,
 					EXISTS(SELECT 1 FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'published') as is_published,
 					(SELECT metadata FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'working') as working_metadata,
@@ -1510,7 +1603,7 @@ export function createContentStore(
 					collection: row.collection,
 					title: row.title ?? null,
 					slug: row.working_slug,
-					status: row.is_published ? "published" : "draft",
+					status: (row as any).status || (row.is_published ? "published" : "draft"),
 					folderId: row.folder_id,
 					categoryId,
 					tagIds,
@@ -1590,6 +1683,316 @@ export function createContentStore(
 			`,
 				[params.userId, JSON.stringify(normalized), now],
 			);
+		},
+
+		archiveEntry: async (params: { id: string; expectedVersion: number }): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+				const newVersion = res.rows[0].version + 1;
+				await client.query(
+					`UPDATE "${qSchema}".entries SET status = 'archived', version = $1 WHERE id = $2`,
+					[newVersion, params.id],
+				);
+				// Cancel pending schedule
+				await client.query(
+					`UPDATE "${qSchema}".schedules SET status = 'cancelled' WHERE entry_id = $1 AND status = 'pending'`,
+					[params.id],
+				);
+				const entry = await loadEntry(client, params.id, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		unarchiveEntry: async (params: { id: string; expectedVersion: number }): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<{ version: number; status: string }>(
+					`SELECT version, status FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+				const newVersion = res.rows[0].version + 1;
+				await client.query(
+					`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`,
+					[newVersion, params.id],
+				);
+				const entry = await loadEntry(client, params.id, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		trashEntry: async (params: { id: string; expectedVersion: number }): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+				const newVersion = res.rows[0].version + 1;
+				await client.query(
+					`UPDATE "${qSchema}".entries SET status = 'trashed', version = $1 WHERE id = $2`,
+					[newVersion, params.id],
+				);
+				// Cancel pending schedule
+				await client.query(
+					`UPDATE "${qSchema}".schedules SET status = 'cancelled' WHERE entry_id = $1 AND status = 'pending'`,
+					[params.id],
+				);
+				const entry = await loadEntry(client, params.id, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		restoreEntry: async (params: { id: string; expectedVersion: number }): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+				const newVersion = res.rows[0].version + 1;
+				await client.query(
+					`UPDATE "${qSchema}".entries SET status = 'draft', version = $1 WHERE id = $2`,
+					[newVersion, params.id],
+				);
+				const entry = await loadEntry(client, params.id, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		permanentDeleteEntry: async (params: { id: string; expectedVersion: number }): Promise<void> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+
+				// Mark content_addresses as deleted tombstone (preserved!)
+				await client.query(
+					`UPDATE "${qSchema}".content_addresses SET type = 'deleted', entry_id = NULL WHERE entry_id = $1`,
+					[params.id],
+				);
+
+				await client.query(`DELETE FROM "${qSchema}".entries WHERE id = $1`, [params.id]);
+				await client.query("COMMIT");
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		getPublishedReferences: async (entryId: string): Promise<Reference[]> => {
+			const res = await pool.query<ReferenceRow>(
+				`SELECT kind, target_id, is_stale, occurrences
+				 FROM "${qSchema}".entry_references
+				 WHERE entry_id = $1 AND state = 'published'
+				 ORDER BY kind ASC, target_id ASC`,
+				[entryId],
+			);
+			return res.rows.map((row) => ({
+				kind: row.kind,
+				targetId: row.target_id,
+				isStale: row.is_stale,
+				occurrences: row.occurrences,
+			}));
+		},
+
+		createSchedule: async (params: {
+			entryId: string;
+			expectedVersion: number;
+			scheduledAt: Date;
+		}): Promise<{ id: string; status: string; scheduledAt: Date }> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[params.entryId],
+				);
+				if (res.rows.length === 0) throw new CmsError("Not found", "not_found");
+				if (res.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", res.rows[0].version);
+				}
+
+				const id = randomUUID();
+				const now = new Date();
+				await client.query(
+					`INSERT INTO "${qSchema}".schedules (id, entry_id, scheduled_at, status, created_at)
+					 VALUES ($1, $2, $3, 'pending', $4)`,
+					[id, params.entryId, params.scheduledAt, now],
+				);
+				await client.query("COMMIT");
+				return { id, status: "pending", scheduledAt: params.scheduledAt };
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		cancelSchedule: async (params: { scheduleId: string; entryId: string }): Promise<void> => {
+			await pool.query(
+				`UPDATE "${qSchema}".schedules SET status = 'cancelled' WHERE id = $1 AND entry_id = $2 AND status = 'pending'`,
+				[params.scheduleId, params.entryId],
+			);
+		},
+
+		getDueSchedules: async (): Promise<Array<{ id: string; entryId: string; scheduledAt: Date }>> => {
+			const now = new Date();
+			const res = await pool.query<{ id: string; entry_id: string; scheduled_at: Date }>(
+				`SELECT id, entry_id, scheduled_at FROM "${qSchema}".schedules WHERE status = 'pending' AND scheduled_at <= $1 ORDER BY scheduled_at ASC`,
+				[now],
+			);
+			return res.rows.map((r) => ({ id: r.id, entryId: r.entry_id, scheduledAt: r.scheduled_at }));
+		},
+
+		executeSchedulePublish: async (params: { scheduleId: string }): Promise<{ status: string }> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const sRes = await client.query<{ id: string; entry_id: string; status: string }>(
+					`SELECT id, entry_id, status FROM "${qSchema}".schedules WHERE id = $1 FOR UPDATE`,
+					[params.scheduleId],
+				);
+				if (sRes.rows.length === 0) throw new CmsError("Schedule not found", "not_found");
+				const sched = sRes.rows[0];
+
+				if (sched.status === "completed") {
+					await client.query("COMMIT");
+					return { status: "completed" }; // Idempotent no-op
+				}
+
+				if (sched.status !== "pending") {
+					throw new CmsError(`Schedule cannot be executed in status: ${sched.status}`, "conflict");
+				}
+
+				const eRes = await client.query<VersionRow>(
+					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+					[sched.entry_id],
+				);
+				if (eRes.rows.length === 0) throw new CmsError("Entry not found", "not_found");
+
+				// Publish the entry
+				// To reuse publishEntry logic within the same transaction:
+				const bodyRes = await client.query<BodyRow>(
+					`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies WHERE entry_id = $1 AND state = 'working'`,
+					[sched.entry_id],
+				);
+				if (bodyRes.rows.length === 0) throw new CmsError("Working draft not found", "not_found");
+				const working = bodyRes.rows[0];
+
+				const currentVersion = eRes.rows[0].version;
+				const newVersion = currentVersion + 1;
+				const now = new Date();
+
+				await client.query(
+					`UPDATE "${qSchema}".entries
+					 SET version = $1, status = 'published', last_published_at = $2,
+					     first_published_at = COALESCE(first_published_at, $3),
+					     published_at = COALESCE(published_at, $4)
+					 WHERE id = $5`,
+					[newVersion, now, now, now, sched.entry_id],
+				);
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
+					 VALUES ($1, 'published', $2, $3, $4, $5, $6, $7)
+					 ON CONFLICT (entry_id, state) DO UPDATE
+					 SET metadata = $2, mdx = $3, schema_version = $4, content_hash = $5, updated_at = $6, search_text = $7`,
+					[
+						sched.entry_id,
+						JSON.stringify(working.metadata),
+						working.mdx,
+						working.schema_version,
+						working.content_hash,
+						working.updated_at,
+						extractVisibleText(working.mdx),
+					],
+				);
+
+				// Copy references
+				await client.query(`DELETE FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'published'`, [
+					sched.entry_id,
+				]);
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_references
+					 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+					 SELECT entry_id, 'published', kind, target_id, target_entry_id, target_media_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $1 AND state = 'working'`,
+					[sched.entry_id],
+				);
+
+				// Mark schedule completed
+				await client.query(
+					`UPDATE "${qSchema}".schedules SET status = 'completed', completed_at = $1 WHERE id = $2`,
+					[now, params.scheduleId],
+				);
+
+				await client.query("COMMIT");
+				return { status: "completed" };
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
 		},
 	};
 }

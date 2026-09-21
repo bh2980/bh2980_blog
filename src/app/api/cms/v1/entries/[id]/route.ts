@@ -67,3 +67,41 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 		return handleApiError(error);
 	}
 }
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+	try {
+		validateSameOrigin(request);
+		await authGateway.verifyAdmin();
+
+		const { id } = await context.params;
+		const { searchParams } = new URL(request.url);
+		const expectedVersionStr = searchParams.get("expectedVersion");
+		const permanent = searchParams.get("permanent") === "true";
+
+		if (!expectedVersionStr) {
+			return NextResponse.json(
+				{ code: "version_required", message: "expectedVersion is required" },
+				{ status: 428 },
+			);
+		}
+
+		const expectedVersion = parseInt(expectedVersionStr, 10);
+		if (isNaN(expectedVersion)) {
+			return NextResponse.json(
+				{ code: "invalid_input", message: "Invalid expectedVersion" },
+				{ status: 400 },
+			);
+		}
+
+		const store = getCmsContentStore();
+		if (permanent) {
+			await store.permanentDeleteEntry({ id, expectedVersion });
+			return new NextResponse(null, { status: 204 });
+		} else {
+			const trashed = await store.trashEntry({ id, expectedVersion });
+			return NextResponse.json(trashed);
+		}
+	} catch (error) {
+		return handleApiError(error);
+	}
+}

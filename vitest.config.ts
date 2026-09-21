@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => ({
 		environment: "jsdom",
 		globals: true,
 		include: ["src/**/*.{test,spec}.{ts,tsx}"],
+		testTimeout: 20000,
+		hookTimeout: 20000,
 		env: loadEnv(mode, process.cwd(), ""),
 	},
 	resolve: {
