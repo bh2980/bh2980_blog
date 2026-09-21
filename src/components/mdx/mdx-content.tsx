@@ -48,7 +48,8 @@ export const renderMDX = async (source: string) => {
 			mdxOptions: {
 				remarkPlugins: [
 					[remarkAnnotationToShikiDecoration, annotationConfig],
-					remarkMath,
+					// 본문의 단일 `$`(예: jQuery `$`)를 수식으로 오인하지 않게 CMS 파서와 동일하게 맞춘다.
+					[remarkMath, { singleDollarTextMath: false }],
 					remarkDisableInlineMath,
 					remarkChartToMdx,
 					remarkMermaidToMdx,

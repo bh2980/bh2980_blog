@@ -258,7 +258,10 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
 	}
 	closeTo(0);
 	if (!asParagraph) return result;
-	return result.replace(/^(\s*)([>#]|-{1,3}\s|\*{1,3}\s|\d+\.\s|```)/, "$1\\$2");
+	// 문단이 `1. `로 시작하면 재파싱 시 순서 목록으로 해석되므로 목록 기호를 이스케이프한다.
+	// 단, 백슬래시는 숫자가 아니라 마침표 앞에 붙여야 한다(`1\. `). `\1. `는 숫자를 이스케이프해 문자 그대로 남는다.
+	const withEscapedListMarker = result.replace(/^(\s*)(\d+)\.(\s)/, "$1$2\\.$3");
+	return withEscapedListMarker.replace(/^(\s*)([>#]|-{1,3}\s|\*{1,3}\s|```)/, "$1\\$2");
 };
 
 const serializeCodeBlock = (node: CmsNode, indent: string): string => {
@@ -322,7 +325,9 @@ const serializeListItem = (item: CmsNode, marker: string, indent: string): strin
 		if (block.type === "paragraph") return `${innerIndent}${serializeInlines(block.content ?? [], true)}`;
 		return serializeBlock(block, innerIndent);
 	});
-	return [head, ...extra].join("\n");
+	// listItem 안의 블록이 여러 개면(loose list) 빈 줄로 분리해야 문단 경계가 유지된다.
+	// 한 줄로 이어 붙이면 재파싱 시 하나의 문단으로 합쳐져 문단 구조가 사라진다.
+	return [head, ...extra].join("\n\n");
 };
 
 const serializeTable = (node: CmsNode): string => {
