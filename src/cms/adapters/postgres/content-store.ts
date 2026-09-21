@@ -243,6 +243,32 @@ export interface ExportSnapshotSchedule {
 	failureDetail: string | null;
 }
 
+/** 가져오기 전용 입력. 일반 createEntry와 달리 ID를 외부에서 지정한다. */
+export interface ImportEntryBodyInput {
+	metadata: unknown;
+	mdx: string;
+	schemaVersion: number;
+	contentHash: string;
+}
+
+export interface ImportEntryItem {
+	id: string;
+	collection: string;
+	slug: string | null;
+	status: "draft" | "published";
+	folderId?: string | null;
+	publishedAt?: Date | null;
+	working: ImportEntryBodyInput;
+	published?: ImportEntryBodyInput;
+	references: readonly Reference[];
+}
+
+export interface ImportEntriesResult {
+	imported: number;
+	skipped: number;
+	items: { id: string; collection: string; slug: string | null; outcome: "imported" | "skipped" }[];
+}
+
 /** 관리자 백업·공개 projection의 공통 원본. 단일 REPEATABLE READ READ ONLY 스냅샷이다. */
 export interface ExportSnapshot {
 	entries: ExportSnapshotEntry[];
@@ -2187,6 +2213,186 @@ export function createContentStore(
 				isStale: row.is_stale,
 				occurrences: row.occurrences,
 			}));
+		},
+
+		/**
+		 * 가져오기 전용 적재. 전체를 한 트랜잭션으로 처리한다.
+		 * - 같은 ID가 이미 있고 내용이 완전히 같으면 skip, 다르면 conflict로 중단한다(조용한 덮어쓰기 금지).
+		 * - slug가 다른 글에 이미 배정되어 있으면 conflict로 중단한다.
+		 * - 마이그레이션 실행 시각 같은 provenance는 저장하지 않는다(manifest/보고서에만 남긴다).
+		 */
+		importEntries: async (items: readonly ImportEntryItem[]): Promise<ImportEntriesResult> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const outcomes: ImportEntriesResult["items"] = [];
+				const pending: ImportEntryItem[] = [];
+
+				for (const item of items) {
+					const existing = await client.query<{
+						collection: string;
+						status: string;
+						working_slug: string | null;
+						published_at: Date | null;
+						state: string;
+						metadata: EntryMetadata;
+						mdx: string;
+						content_hash: string;
+					}>(
+						`SELECT e.collection, e.status, e.working_slug, e.published_at, b.state, b.metadata, b.mdx, b.content_hash
+						 FROM "${qSchema}".entries e
+						 LEFT JOIN "${qSchema}".entry_bodies b ON b.entry_id = e.id
+						 WHERE e.id = $1`,
+						[item.id],
+					);
+
+					if (existing.rows.length > 0) {
+						const head = existing.rows[0];
+						const workingRow = existing.rows.find((row) => row.state === "working");
+						const publishedRow = existing.rows.find((row) => row.state === "published");
+						const sameWorking =
+							workingRow !== undefined &&
+							workingRow.content_hash === item.working.contentHash &&
+							workingRow.mdx === item.working.mdx &&
+							isDeepStrictEqual(workingRow.metadata, normalizeMetadata(item.working.metadata));
+						const samePublished = item.published
+							? publishedRow !== undefined &&
+								publishedRow.content_hash === item.published.contentHash &&
+								publishedRow.mdx === item.published.mdx &&
+								isDeepStrictEqual(publishedRow.metadata, normalizeMetadata(item.published.metadata))
+							: publishedRow === undefined;
+						const samePublishedAt =
+							(item.publishedAt ?? null) === null
+								? head.published_at === null
+								: head.published_at instanceof Date && head.published_at.getTime() === item.publishedAt?.getTime();
+
+						const identical =
+							head.collection === item.collection &&
+							head.status === item.status &&
+							head.working_slug === item.slug &&
+							sameWorking &&
+							samePublished &&
+							samePublishedAt;
+
+						if (identical) {
+							outcomes.push({ id: item.id, collection: item.collection, slug: item.slug, outcome: "skipped" });
+							continue;
+						}
+						throw new CmsError(
+							`Import conflict: ${item.collection}/${item.slug ?? item.id} already exists with different content`,
+							"conflict",
+						);
+					}
+
+					if (item.slug !== null) {
+						const address = await client.query<{ entry_id: string | null }>(
+							`SELECT entry_id FROM "${qSchema}".content_addresses WHERE collection = $1 AND slug = $2`,
+							[item.collection, item.slug],
+						);
+						if (address.rows.length > 0) {
+							throw new CmsError(
+								`Import conflict: ${item.collection}/${item.slug} is already taken by another entry`,
+								"conflict",
+							);
+						}
+					}
+
+					pending.push(item);
+					outcomes.push({ id: item.id, collection: item.collection, slug: item.slug, outcome: "imported" });
+				}
+
+				const now = new Date();
+				for (const item of pending) {
+					await client.query(
+						`INSERT INTO "${qSchema}".entries
+						 (id, collection, status, version, created_at, updated_at, first_published_at, last_published_at, published_at, working_slug, folder_id)
+						 VALUES ($1, $2, $3, 1, $4, $4, NULL, NULL, $5, $6, $7)`,
+						[item.id, item.collection, item.status, now, item.publishedAt ?? null, item.slug, item.folderId ?? null],
+					);
+
+					const workingMetadata = normalizeMetadata(item.working.metadata);
+					await client.query(
+						`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
+						 VALUES ($1, 'working', $2, $3, $4, $5, $6, $7)`,
+						[
+							item.id,
+							JSON.stringify(workingMetadata),
+							item.working.mdx,
+							item.working.schemaVersion,
+							item.working.contentHash,
+							now,
+							extractVisibleText(item.working.mdx),
+						],
+					);
+
+					if (item.published) {
+						await client.query(
+							`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
+							 VALUES ($1, 'published', $2, $3, $4, $5, $6, $7)`,
+							[
+								item.id,
+								JSON.stringify(normalizeMetadata(item.published.metadata)),
+								item.published.mdx,
+								item.published.schemaVersion,
+								item.published.contentHash,
+								now,
+								extractVisibleText(item.published.mdx),
+							],
+						);
+					}
+
+					if (item.slug !== null) {
+						await client.query(
+							`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type)
+							 VALUES ($1, $2, $3, $4)`,
+							[item.collection, item.slug, item.id, item.published ? "current" : "reservation"],
+						);
+					}
+				}
+
+				// 참조는 모든 항목이 존재한 뒤에 넣어 FK 순서를 보장한다.
+				for (const item of pending) {
+					for (const ref of item.references) {
+						const targetEntryId =
+							ref.kind === "entry" || ref.kind === "category" || ref.kind === "tag" ? ref.targetId : null;
+						const targetMediaId = ref.kind === "media" ? ref.targetId : null;
+						for (const state of item.published ? (["working", "published"] as const) : (["working"] as const)) {
+							await client.query(
+								`INSERT INTO "${qSchema}".entry_references
+								 (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+								 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+								[
+									item.id,
+									state,
+									ref.kind,
+									ref.targetId,
+									targetEntryId,
+									targetMediaId,
+									ref.isStale,
+									JSON.stringify(ref.occurrences),
+								],
+							);
+						}
+					}
+				}
+
+				await client.query("COMMIT");
+
+				return {
+					imported: pending.length,
+					skipped: outcomes.length - pending.length,
+					items: outcomes,
+				};
+			} catch (err) {
+				try {
+					await client.query("ROLLBACK");
+				} catch {
+					// 이미 종료된 트랜잭션은 무시한다.
+				}
+				throw err;
+			} finally {
+				client.release();
+			}
 		},
 
 		/** 내보내기용 읽기 전용 스냅샷. 항목 순서를 고정해 같은 데이터면 같은 결과를 만든다. */
