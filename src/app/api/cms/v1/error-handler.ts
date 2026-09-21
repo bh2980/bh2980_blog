@@ -18,8 +18,8 @@ export function handleApiError(error: unknown): NextResponse {
 				{ status: 409 },
 			);
 		}
-		if (error.code === "slug_conflict") {
-			return NextResponse.json({ code: "slug_conflict", message: error.message }, { status: 409 });
+		if (error.code === "slug_conflict" || error.code === "in_use") {
+			return NextResponse.json({ code: error.code, message: error.message }, { status: 409 });
 		}
 		if (error.code === "not_found") {
 			return NextResponse.json({ code: "not_found", message: error.message }, { status: 404 });

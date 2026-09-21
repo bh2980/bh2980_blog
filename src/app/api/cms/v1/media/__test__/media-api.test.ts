@@ -4,6 +4,8 @@ import { AuthError } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as handleUploads } from "../uploads/route";
 import { POST as handleComplete } from "../[id]/complete/route";
+import { GET as handleListMedia } from "../route";
+import { DELETE as handleDeleteMedia } from "../[id]/route";
 
 const mockVerifyAdmin = vi.fn();
 
@@ -22,11 +24,14 @@ const mockCreateMediaAsset = vi.fn();
 const mockGetMediaAsset = vi.fn();
 const mockCompleteMediaAsset = vi.fn();
 const mockFailMediaAsset = vi.fn();
+const mockListMediaAssets = vi.fn();
+const mockDeleteMediaAsset = vi.fn();
 
 const mockPrepareUpload = vi.fn();
 const mockHeadFile = vi.fn();
 const mockReadFile = vi.fn();
 const mockPromoteFile = vi.fn();
+const mockDeleteFile = vi.fn();
 const mockGetPublicUrl = vi.fn();
 
 vi.mock("@/cms/container", () => ({
@@ -35,12 +40,15 @@ vi.mock("@/cms/container", () => ({
 		getMediaAsset: mockGetMediaAsset,
 		completeMediaAsset: mockCompleteMediaAsset,
 		failMediaAsset: mockFailMediaAsset,
+		listMediaAssets: mockListMediaAssets,
+		deleteMediaAsset: mockDeleteMediaAsset,
 	}),
 	getCmsMediaStore: () => ({
 		prepareUpload: mockPrepareUpload,
 		headFile: mockHeadFile,
 		readFile: mockReadFile,
 		promoteFile: mockPromoteFile,
+		deleteFile: mockDeleteFile,
 		getPublicUrl: mockGetPublicUrl,
 	}),
 }));
@@ -250,5 +258,103 @@ describe("Media Upload API Endpoints", () => {
 		expect(json.height).toBe(256);
 		expect(mockPromoteFile).toHaveBeenCalled();
 		expect(mockCompleteMediaAsset).toHaveBeenCalled();
+	});
+
+	// --- M4-BE-MEDIA-1 Contract Tests ---
+
+	it("GET /media returns list of media items with references join", async () => {
+		mockListMediaAssets.mockResolvedValue({
+			items: [
+				{
+					id: "media-1",
+					status: "ready",
+					filename: "pic.png",
+					mimeType: "image/png",
+					byteSize: 1024,
+					width: 800,
+					height: 600,
+					storageKey: "media/media-1/pic.png",
+					publicUrl: "https://media.example.com/media/media-1/pic.png",
+					createdAt: new Date(),
+					referencesCount: 2,
+					references: [
+						{ entryId: "entry-1", title: "First Post", collection: "post", state: "published" },
+						{ entryId: "entry-2", title: "Draft Memo", collection: "memo", state: "working" },
+					],
+				},
+			],
+			total: 1,
+			page: 1,
+			pageSize: 25,
+		});
+		mockGetPublicUrl.mockReturnValue("https://media.example.com/media/media-1/pic.png");
+
+		const req = new NextRequest("http://localhost/api/cms/v1/media?search=pic&used=all", {
+			method: "GET",
+		});
+
+		const res = await handleListMedia(req);
+		expect(res.status).toBe(200);
+		const json = await res.json();
+		expect(json.total).toBe(1);
+		expect(json.items[0].filename).toBe("pic.png");
+		expect(json.items[0].referencesCount).toBe(2);
+		expect(json.items[0].references[0].title).toBe("First Post");
+	});
+
+	it("DELETE /media/:id rejects deletion with 409 if media is in use", async () => {
+		mockGetMediaAsset.mockResolvedValue({
+			id: "media-1",
+			status: "ready",
+			storageKey: "media/media-1/pic.png",
+			filename: "pic.png",
+		});
+		mockDeleteMediaAsset.mockRejectedValue(
+			new CmsError("Media asset is in use by 1 entries", "in_use"),
+		);
+
+		const req = new NextRequest("http://localhost/api/cms/v1/media/media-1", {
+			method: "DELETE",
+			headers: {
+				origin: "http://localhost",
+				host: "localhost",
+			},
+		});
+
+		const res = await handleDeleteMedia(req, {
+			params: Promise.resolve({ id: "media-1" }),
+		});
+		expect(res.status).toBe(409);
+		const json = await res.json();
+		expect(json.code).toBe("in_use");
+		expect(mockDeleteFile).not.toHaveBeenCalled();
+	});
+
+	it("DELETE /media/:id safely deletes unused media from R2 storage and DB", async () => {
+		mockGetMediaAsset.mockResolvedValue({
+			id: "media-1",
+			status: "ready",
+			storageKey: "media/media-1/pic.png",
+			stagingKey: "staging/media-1/pic.png",
+			filename: "pic.png",
+		});
+		mockDeleteMediaAsset.mockResolvedValue(undefined);
+
+		const req = new NextRequest("http://localhost/api/cms/v1/media/media-1", {
+			method: "DELETE",
+			headers: {
+				origin: "http://localhost",
+				host: "localhost",
+			},
+		});
+
+		const res = await handleDeleteMedia(req, {
+			params: Promise.resolve({ id: "media-1" }),
+		});
+		expect(res.status).toBe(200);
+		const json = await res.json();
+		expect(json.success).toBe(true);
+		expect(mockDeleteFile).toHaveBeenCalledWith({ key: "media/media-1/pic.png" });
+		expect(mockDeleteMediaAsset).toHaveBeenCalledWith("media-1");
 	});
 });

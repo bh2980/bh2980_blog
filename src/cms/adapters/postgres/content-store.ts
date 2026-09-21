@@ -102,6 +102,33 @@ export interface CompleteMediaAssetInput {
 	height: number;
 }
 
+export interface MediaReferenceItem {
+	entryId: string;
+	title: string | null;
+	collection: string;
+	state: "working" | "published";
+}
+
+export interface ListMediaItem extends MediaAssetRecord {
+	referencesCount: number;
+	references: MediaReferenceItem[];
+}
+
+export interface ListMediaParams {
+	search?: string;
+	mimeType?: string;
+	used?: "all" | "used" | "unused";
+	page?: number;
+	pageSize?: number;
+}
+
+export interface ListMediaResult {
+	items: ListMediaItem[];
+	total: number;
+	page: number;
+	pageSize: number;
+}
+
 export interface Folder {
 	id: string;
 	collection: string;
@@ -2248,6 +2275,134 @@ export function createContentStore(
 				 WHERE id = $2`,
 				[now, id],
 			);
+		},
+
+		listMediaAssets: async (params: ListMediaParams = {}): Promise<ListMediaResult> => {
+			const page = Math.max(1, params.page || 1);
+			const pageSize = Math.max(1, Math.min(params.pageSize || 25, 100));
+			const offset = (page - 1) * pageSize;
+
+			const conditions: string[] = ["m.status = 'ready'"];
+			const values: any[] = [];
+
+			if (params.search && params.search.trim()) {
+				values.push(`%${params.search.trim()}%`);
+				conditions.push(`m.filename ILIKE $${values.length}`);
+			}
+
+			if (params.mimeType && params.mimeType.trim()) {
+				values.push(`${params.mimeType.trim()}%`);
+				conditions.push(`m.mime_type LIKE $${values.length}`);
+			}
+
+			const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+			// Subquery/CTE to calculate used references
+			const baseQuery = `
+				FROM "${qSchema}".media_assets m
+				LEFT JOIN "${qSchema}".entry_references r ON r.kind = 'media' AND r.target_media_id = m.id
+				${whereClause}
+				GROUP BY m.id
+			`;
+
+			let havingClause = "";
+			if (params.used === "used") {
+				havingClause = "HAVING COUNT(r.entry_id) > 0";
+			} else if (params.used === "unused") {
+				havingClause = "HAVING COUNT(r.entry_id) = 0";
+			}
+
+			// 1. Total count
+			const countRes = await pool.query(
+				`SELECT COUNT(*) FROM (
+					SELECT m.id
+					${baseQuery}
+					${havingClause}
+				) sub`,
+				values,
+			);
+			const total = Number(countRes.rows[0].count);
+
+			// 2. Fetch page items with aggregated references JSON
+			const itemsQuery = `
+				SELECT 
+					m.id, m.status, m.filename, m.mime_type, m.byte_size, m.width, m.height,
+					m.staging_key, m.storage_key, m.created_at, m.updated_at, m.ready_at,
+					COUNT(r.entry_id) as ref_count,
+					COALESCE(
+						json_agg(
+							json_build_object(
+								'entryId', r.entry_id,
+								'state', r.state,
+								'collection', e.collection,
+								'title', eb.metadata->>'title'
+							)
+						) FILTER (WHERE r.entry_id IS NOT NULL),
+						'[]'
+					) as references_json
+				FROM "${qSchema}".media_assets m
+				LEFT JOIN "${qSchema}".entry_references r ON r.kind = 'media' AND r.target_media_id = m.id
+				LEFT JOIN "${qSchema}".entries e ON e.id = r.entry_id
+				LEFT JOIN "${qSchema}".entry_bodies eb ON eb.entry_id = r.entry_id AND eb.state = r.state
+				${whereClause}
+				GROUP BY m.id
+				${havingClause}
+				ORDER BY m.created_at DESC, m.id DESC
+				LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+			`;
+
+			const res = await pool.query(itemsQuery, [...values, pageSize, offset]);
+
+			const items: ListMediaItem[] = res.rows.map((row) => ({
+				id: row.id,
+				status: row.status,
+				filename: row.filename,
+				mimeType: row.mime_type,
+				byteSize: row.byte_size ? Number(row.byte_size) : null,
+				width: row.width,
+				height: row.height,
+				stagingKey: row.staging_key,
+				storageKey: row.storage_key,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+				readyAt: row.ready_at,
+				referencesCount: Number(row.ref_count),
+				references: row.references_json || [],
+			}));
+
+			return { items, total, page, pageSize };
+		},
+
+		deleteMediaAsset: async (id: string): Promise<void> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				// 1. Check if referenced in any working or published entries
+				const refCheck = await client.query(
+					`SELECT COUNT(*) as count FROM "${qSchema}".entry_references WHERE kind = 'media' AND target_media_id = $1`,
+					[id],
+				);
+				const count = Number(refCheck.rows[0].count);
+				if (count > 0) {
+					throw new CmsError(`Media asset is in use by ${count} entries`, "in_use");
+				}
+
+				// 2. Delete media asset row
+				const delRes = await client.query(
+					`DELETE FROM "${qSchema}".media_assets WHERE id = $1 RETURNING id`,
+					[id],
+				);
+				if (delRes.rows.length === 0) {
+					throw new CmsError("Media asset not found", "not_found");
+				}
+
+				await client.query("COMMIT");
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
 		},
 	};
 }
