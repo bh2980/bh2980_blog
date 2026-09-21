@@ -31,6 +31,28 @@ export const publicExportEntrySchema = z
 
 export type PublicExportEntry = z.infer<typeof publicExportEntrySchema>;
 
+/**
+ * 공개 metadata allowlist. 컬렉션별 공개 필드만 골라 내보내므로
+ * 관리자 전용 키(storageKey 등)나 내부 값이 중첩 metadata에 섞여도 공개 아카이브에 나가지 않는다.
+ */
+export const PUBLIC_METADATA_KEYS: Record<string, readonly string[]> = {
+	post: ["title", "summary", "categoryId", "tagIds", "publishedAt", "policy"],
+	memo: ["title", "tagIds", "publishedAt"],
+	category: ["title"],
+	tag: ["title"],
+	collection: ["title", "itemIds"],
+};
+
+export function pickPublicMetadata(collection: string, metadata: Record<string, unknown>): Record<string, unknown> {
+	const allowed = PUBLIC_METADATA_KEYS[collection];
+	if (!allowed) throw new Error(`공개 metadata allowlist가 없는 컬렉션입니다: ${collection}`);
+	const picked: Record<string, unknown> = {};
+	for (const key of allowed) {
+		if (metadata[key] !== undefined) picked[key] = metadata[key];
+	}
+	return picked;
+}
+
 export interface ExportManifestEntry {
 	id: string;
 	collection: string;
@@ -96,6 +118,8 @@ export const canonicalJson = (value: unknown): string => {
 };
 
 const sha256 = (value: string): string => createHash("sha256").update(value, "utf8").digest("hex");
+
+const sha256Bytes = (value: Uint8Array): string => createHash("sha256").update(value).digest("hex");
 
 /** 상태 1건의 canonical digest. 내용·슬러그·상태·폴더·참조까지 포함해 skip/충돌 판정이 흔들리지 않게 한다. */
 const stateDigest = (
@@ -173,7 +197,7 @@ const publicEntry = (entry: ExportSnapshotEntry): PublicExportEntry | null => {
 		slug: entry.publishedSlug,
 		publishedAt: iso(entry.publishedAt),
 		updatedAt: iso(entry.published.updatedAt) ?? iso(entry.updatedAt) ?? "",
-		metadata: entry.published.metadata,
+		metadata: pickPublicMetadata(entry.collection, entry.published.metadata),
 		mdx: entry.published.mdx,
 		schemaVersion: entry.published.schemaVersion,
 		contentHash: entry.published.contentHash,
@@ -372,9 +396,9 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 	files.push({ path: "media.json", data: jsonFile(media) });
 	files.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
 
-	const digest = sha256(
-		manifestEntries.map((entry) => `${entry.collection}\u0000${entry.id}\u0000${entry.itemDigest}`).join("\n"),
-	);
+	// digest는 아카이브에 실제로 들어가는 모든 페이로드 파일을 덮는다(manifest.json과 exportedAt은 제외).
+	// 그래서 설정·미디어 목록·주소 같은 항목 외 데이터가 바뀌어도 digest가 달라진다.
+	const digest = sha256(files.map((file) => `${file.path}\u0000${sha256Bytes(file.data)}`).join("\n"));
 
 	const manifest: ExportManifest = {
 		formatVersion: 1,

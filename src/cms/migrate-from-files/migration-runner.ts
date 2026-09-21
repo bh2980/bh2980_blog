@@ -2,7 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Pool } from "pg";
 import { createContentStore, migrateContentStore } from "@/cms/adapters/postgres/content-store";
-import { createMigrationSchema, resolveMigrationDatabase } from "./db-guard";
+import {
+	assertConnectedToTestDatabase,
+	assertMigrationOptIn,
+	assertMigrationSchemaName,
+	createMigrationSchema,
+	resolveMigrationDatabase,
+} from "./db-guard";
 import { buildImportPlan, type ImportPlan } from "./import-plan";
 import { type InspectionReport, inspectLegacyCorpus } from "./inspect";
 import { readLegacyCorpus } from "./legacy-parser";
@@ -35,6 +41,7 @@ export interface ImportReport {
 		unexpectedSlugs: string[];
 	} | null;
 	notes: string[];
+	connection?: { database: string; role: string; isSuperuser: boolean } | null;
 }
 
 const runId = () => new Date().toISOString().replace(/[:.]/g, "-");
@@ -77,6 +84,8 @@ export interface ApplyOptions {
 	out?: string;
 	/** true면 DB에 쓰지 않고 계획까지만 세운다. */
 	dryRun?: boolean;
+	/** 이미 만든 격리 schema에 다시 실행해 멱등성을 확인한다(운영 schema는 여전히 거부). */
+	reuseSchema?: boolean;
 }
 
 /**
@@ -98,6 +107,7 @@ export async function runApply(options: ApplyOptions): Promise<{ report: ImportR
 	}
 
 	const dryRun = options.dryRun ?? false;
+	let connectionInfo: { database: string; role: string; isSuperuser: boolean } | null = null;
 	let report: ImportReport = {
 		formatVersion: 1,
 		startedAt,
@@ -118,11 +128,19 @@ export async function runApply(options: ApplyOptions): Promise<{ report: ImportR
 	};
 
 	if (!dryRun) {
+		assertMigrationOptIn();
 		const target = resolveMigrationDatabase({ schemaName: options.schemaName });
 		const pool = new Pool({ connectionString: target.url });
 		try {
-			await createMigrationSchema(pool, target.schemaName);
+			const connection = await assertConnectedToTestDatabase(pool, target.url);
+			if (options.reuseSchema) {
+				// 재실행 경로: 기존 격리 schema를 그대로 쓰고 중복 생성이 없는지 확인한다.
+				assertMigrationSchemaName(target.schemaName);
+			} else {
+				await createMigrationSchema(pool, target.schemaName);
+			}
 			await migrateContentStore(pool, { schema: target.schemaName });
+			connectionInfo = connection;
 			const store = createContentStore(pool, { schema: target.schemaName });
 
 			const first = await store.importEntries(plan.items);
@@ -142,6 +160,7 @@ export async function runApply(options: ApplyOptions): Promise<{ report: ImportR
 			report = {
 				...report,
 				schemaName: target.schemaName,
+				connection: connectionInfo,
 				firstRun: { imported: first.imported, skipped: first.skipped, items: first.items },
 				secondRun: { imported: second.imported, skipped: second.skipped },
 				verification: {

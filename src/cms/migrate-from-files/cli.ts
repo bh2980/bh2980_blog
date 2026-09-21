@@ -24,6 +24,7 @@ async function main(): Promise<void> {
 		await runApply({
 			root,
 			dryRun: args.includes("--dry-run"),
+			reuseSchema: args.includes("--reuse"),
 			...(out ? { out } : {}),
 			...(schemaName ? { schemaName } : {}),
 		});
@@ -34,9 +35,9 @@ async function main(): Promise<void> {
 		[
 			"사용법:",
 			"  tsx src/cms/migrate-from-files/cli.ts inspect [--out <path>] [--root <dir>]",
-			"  tsx src/cms/migrate-from-files/cli.ts apply [--dry-run] [--schema cms_m6_xxx] [--out <path>]",
+			"  tsx src/cms/migrate-from-files/cli.ts apply [--dry-run] [--reuse] [--schema cms_m6_xxx] [--out <path>]",
 			"",
-			"apply는 CMS_TEST_DATABASE_URL만 사용하고 CMS_DATABASE_URL과 같으면 중단한다.",
+			"apply는 CMS_TEST_DATABASE_URL과 cms_m6_* 격리 schema만 사용하고, CMS_MIGRATION_ALLOW=1 일 때만 실행한다.",
 		].join("\n"),
 	);
 	process.exit(1);

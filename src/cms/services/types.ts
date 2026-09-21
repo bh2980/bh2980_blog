@@ -39,7 +39,13 @@ export type ServiceInput =
 	| { collection: "memo"; slug: string | null; metadata: MemoMetadata; mdx: string; folderId?: string | null }
 	| { collection: "category"; slug: string | null; metadata: CategoryMetadata; mdx: string; folderId?: string | null }
 	| { collection: "tag"; slug: string | null; metadata: TagMetadata; mdx: string; folderId?: string | null }
-	| { collection: "collection"; slug: string | null; metadata: CollectionMetadata; mdx: string; folderId?: string | null };
+	| {
+			collection: "collection";
+			slug: string | null;
+			metadata: CollectionMetadata;
+			mdx: string;
+			folderId?: string | null;
+	  };
 
 export type SaveDraftInput = ServiceInput extends infer U
 	? U extends { collection: Collection }

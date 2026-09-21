@@ -156,7 +156,16 @@ export interface OppositeSets {
 	spaces: Set<string>;
 	entities: Set<string>;
 	backslashes: Set<string>;
+	/** mark·entity·escape·공백·표 정규화를 모두 적용한 형태. 여러 정규화가 겹친 줄을 받아낸다. */
+	combined: Set<string>;
 }
+
+/** 표시 차이를 판정할 때 쓰는 최대 정규화. 여러 정규화가 동시에 걸린 줄을 비교한다. */
+const normalizeCombined = (line: string): string =>
+	line
+		.replace(/\s*\|\s*/g, "|")
+		.replace(/\s+/g, " ")
+		.trim();
 
 const normalizeEntities = (line: string) =>
 	line
@@ -181,6 +190,9 @@ export function classifyAgainst(line: string, opposite: OppositeSets): string {
 	if (opposite.spaces.has(normalizeSpaces(line))) return "whitespace-or-wrapping";
 	if (opposite.entities.has(normalizeEntities(line))) return "entity-encoding";
 	if (opposite.backslashes.has(normalizeBackslashes(line))) return "escape-normalization";
+	if (opposite.combined.has(normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line)))))) {
+		return "combined-normalization";
+	}
 	if (LINE_MARKER_PATTERN.test(line)) return "list-marker-or-indent";
 	if (ESCAPE_PATTERN.test(line)) return "escape-normalization";
 	return "text-or-structure";
@@ -214,6 +226,9 @@ const surfaceComparison = (original: string, roundTripped: string) => {
 		spaces: new Set(trimmed.removed.map(normalizeSpaces)),
 		entities: new Set(trimmed.removed.map((line) => normalizeEntities(normalizeMarks(line)))),
 		backslashes: new Set(trimmed.removed.map(normalizeBackslashes)),
+		combined: new Set(
+			trimmed.removed.map((line) => normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line))))),
+		),
 	};
 	const reverseSets: OppositeSets = {
 		table: new Set(trimmed.added.map(normalizeTableRow)),
@@ -221,6 +236,9 @@ const surfaceComparison = (original: string, roundTripped: string) => {
 		spaces: new Set(trimmed.added.map(normalizeSpaces)),
 		entities: new Set(trimmed.added.map((line) => normalizeEntities(normalizeMarks(line)))),
 		backslashes: new Set(trimmed.added.map(normalizeBackslashes)),
+		combined: new Set(
+			trimmed.added.map((line) => normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line))))),
+		),
 	};
 	for (const line of trimmed.added) bump(classifyAgainst(line, oppositeSets));
 	for (const line of trimmed.removed) bump(classifyAgainst(line, reverseSets));

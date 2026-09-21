@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createBulkService } from "../bulk-service";
 import type { Reference } from "../index";
 import { ServiceError } from "../index";
-import { createBulkService } from "../bulk-service";
 
 /**
  * TW-1b (부분): 예약 글 처리(Q3) 결정과 무관한 케이스만 단언한다.
@@ -87,9 +87,9 @@ describe("M4-TW-1b Bulk lifecycle ops contract", () => {
 			e2: { version: 4, status: "draft" },
 		});
 		const bulk = createBulkService(store);
-		await expect(
-			bulk.run({ op: "unarchive", items: [{ id: "e1", expectedVersion: 1 }] }),
-		).resolves.toEqual({ results: [{ id: "e1", ok: true, version: 2 }] });
+		await expect(bulk.run({ op: "unarchive", items: [{ id: "e1", expectedVersion: 1 }] })).resolves.toEqual({
+			results: [{ id: "e1", ok: true, version: 2 }],
+		});
 		await expect(bulk.run({ op: "trash", items: [{ id: "e2", expectedVersion: 4 }] })).resolves.toEqual({
 			results: [{ id: "e2", ok: true, version: 5 }],
 		});

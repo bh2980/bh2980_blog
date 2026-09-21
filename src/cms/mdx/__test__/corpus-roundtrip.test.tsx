@@ -157,7 +157,7 @@ describe("M6-ED-1 전편 왕복·공개 렌더 검수", () => {
 		expect(audit.classification.blocking).toEqual([]);
 		expect(renderFailures).toEqual([]);
 		expect(audit.structuralMismatches).toBe(0);
-		// 구조 동일이 이미 증명된 표기 차이만 남는다. 임계값으로 고정하고 파일별 목록·샘플은 보고서에 남긴다.
-		expect(audit.classification.unclassified.length).toBeLessThanOrEqual(40);
+		// 표기 차이는 전부 정규화 범주로 분류되어야 한다(미분류 0).
+		expect(audit.classification.unclassified).toEqual([]);
 	}, 900_000);
 });

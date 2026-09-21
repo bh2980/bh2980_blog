@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isCollection, COLLECTION_FIELD_SCHEMAS as SCHEMA } from "../core/collections";
 import { analyze } from "../mdx";
 import {
 	type Collection,
@@ -14,7 +15,6 @@ import {
 	type ServiceInput,
 	type StorePort,
 } from "./types";
-import { COLLECTION_FIELD_SCHEMAS as SCHEMA, isCollection } from "../core/collections";
 
 const isJsonArray = (value: unknown): value is readonly JsonValue[] => Array.isArray(value);
 

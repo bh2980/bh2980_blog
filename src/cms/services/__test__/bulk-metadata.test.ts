@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createBulkService } from "../bulk-service";
 import type { PreparedSnapshot, Reference } from "../index";
 import { ServiceError } from "../index";
-import { createBulkService } from "../bulk-service";
 
 type Working = {
 	collection: "post" | "memo" | "category" | "tag" | "collection";
@@ -68,7 +68,11 @@ const newFakeStore = (seed: Record<string, Working>) => {
 const post = (over: Partial<Working> = {}): Working => ({
 	collection: "post",
 	slug: "hello",
-	metadata: { title: "Hello", categoryId: "11111111-1111-4111-8111-111111111111", tagIds: ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"] },
+	metadata: {
+		title: "Hello",
+		categoryId: "11111111-1111-4111-8111-111111111111",
+		tagIds: ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"],
+	},
 	mdx: "body",
 	version: 3,
 	folderId: null,
@@ -86,28 +90,42 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 	it("rejects more than 100 items", async () => {
 		const bulk = createBulkService(newFakeStore({}));
 		const items = Array.from({ length: 101 }, (_, i) => ({ id: `e-${i}`, expectedVersion: 1 }));
-		await expect(bulk.run({ op: "tags.add", items, tagIds: ["55555555-5555-4555-8555-555555555555"] })).rejects.toThrowError(
-			expect.objectContaining({ code: "too_many_items" }),
-		);
+		await expect(
+			bulk.run({ op: "tags.add", items, tagIds: ["55555555-5555-4555-8555-555555555555"] }),
+		).rejects.toThrowError(expect.objectContaining({ code: "too_many_items" }));
 	});
 
 	it("returns empty results for empty items", async () => {
 		const bulk = createBulkService(newFakeStore({}));
-		await expect(bulk.run({ op: "tags.add", items: [], tagIds: ["55555555-5555-4555-8555-555555555555"] })).resolves.toEqual({ results: [] });
+		await expect(
+			bulk.run({ op: "tags.add", items: [], tagIds: ["55555555-5555-4555-8555-555555555555"] }),
+		).resolves.toEqual({ results: [] });
 	});
 
 	it("tags.add merges and dedupes, bumping version", async () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
-		const out = await bulk.run({ op: "tags.add", items: [{ id: "e1", expectedVersion: 3 }], tagIds: ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"] });
+		const out = await bulk.run({
+			op: "tags.add",
+			items: [{ id: "e1", expectedVersion: 3 }],
+			tagIds: ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"],
+		});
 		expect(out).toEqual({ results: [{ id: "e1", ok: true, version: 4 }] });
-		expect(store.entries.get("e1")?.metadata.tagIds).toEqual(["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"]);
+		expect(store.entries.get("e1")?.metadata.tagIds).toEqual([
+			"33333333-3333-4333-8333-333333333333",
+			"44444444-4444-4444-8444-444444444444",
+			"55555555-5555-4555-8555-555555555555",
+		]);
 	});
 
 	it("tags.remove filters; removing absent tag is still ok", async () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
-		const out = await bulk.run({ op: "tags.remove", items: [{ id: "e1", expectedVersion: 3 }], tagIds: ["33333333-3333-4333-8333-333333333333", "99999999-9999-4999-8999-999999999999"] });
+		const out = await bulk.run({
+			op: "tags.remove",
+			items: [{ id: "e1", expectedVersion: 3 }],
+			tagIds: ["33333333-3333-4333-8333-333333333333", "99999999-9999-4999-8999-999999999999"],
+		});
 		expect(out).toEqual({ results: [{ id: "e1", ok: true, version: 4 }] });
 		expect(store.entries.get("e1")?.metadata.tagIds).toEqual(["44444444-4444-4444-8444-444444444444"]);
 	});
@@ -163,7 +181,11 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 	it("category.set replaces; null clears", async () => {
 		const store = newFakeStore({ e1: post(), e2: post() });
 		const bulk = createBulkService(store);
-		await bulk.run({ op: "category.set", items: [{ id: "e1", expectedVersion: 3 }], categoryId: "22222222-2222-4222-8222-222222222222" });
+		await bulk.run({
+			op: "category.set",
+			items: [{ id: "e1", expectedVersion: 3 }],
+			categoryId: "22222222-2222-4222-8222-222222222222",
+		});
 		expect(store.entries.get("e1")?.metadata.categoryId).toBe("22222222-2222-4222-8222-222222222222");
 		await bulk.run({ op: "category.set", items: [{ id: "e2", expectedVersion: 3 }], categoryId: null });
 		expect(store.entries.get("e2")?.metadata.categoryId).toBeUndefined();
@@ -183,7 +205,11 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 			c1: { collection: "category", slug: "cat", metadata: { title: "Cat" }, mdx: "", version: 1, folderId: null },
 		});
 		const bulk = createBulkService(store);
-		const out = await bulk.run({ op: "tags.add", items: [{ id: "c1", expectedVersion: 1 }], tagIds: ["55555555-5555-4555-8555-555555555555"] });
+		const out = await bulk.run({
+			op: "tags.add",
+			items: [{ id: "c1", expectedVersion: 1 }],
+			tagIds: ["55555555-5555-4555-8555-555555555555"],
+		});
 		expect(out).toEqual({ results: [{ id: "c1", ok: false, error: "invalid_input" }] });
 	});
 });

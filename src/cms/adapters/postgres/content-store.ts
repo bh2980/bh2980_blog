@@ -2234,12 +2234,14 @@ export function createContentStore(
 						status: string;
 						working_slug: string | null;
 						published_at: Date | null;
+						folder_id: string | null;
 						state: string;
 						metadata: EntryMetadata;
 						mdx: string;
+						schema_version: number;
 						content_hash: string;
 					}>(
-						`SELECT e.collection, e.status, e.working_slug, e.published_at, b.state, b.metadata, b.mdx, b.content_hash
+						`SELECT e.collection, e.status, e.working_slug, e.published_at, e.folder_id, b.state, b.metadata, b.mdx, b.schema_version, b.content_hash
 						 FROM "${qSchema}".entries e
 						 LEFT JOIN "${qSchema}".entry_bodies b ON b.entry_id = e.id
 						 WHERE e.id = $1`,
@@ -2253,11 +2255,13 @@ export function createContentStore(
 						const sameWorking =
 							workingRow !== undefined &&
 							workingRow.content_hash === item.working.contentHash &&
+							workingRow.schema_version === item.working.schemaVersion &&
 							workingRow.mdx === item.working.mdx &&
 							isDeepStrictEqual(workingRow.metadata, normalizeMetadata(item.working.metadata));
 						const samePublished = item.published
 							? publishedRow !== undefined &&
 								publishedRow.content_hash === item.published.contentHash &&
+								publishedRow.schema_version === item.published.schemaVersion &&
 								publishedRow.mdx === item.published.mdx &&
 								isDeepStrictEqual(publishedRow.metadata, normalizeMetadata(item.published.metadata))
 							: publishedRow === undefined;
@@ -2266,13 +2270,68 @@ export function createContentStore(
 								? head.published_at === null
 								: head.published_at instanceof Date && head.published_at.getTime() === item.publishedAt?.getTime();
 
+						// 폴더·현재 주소·참조(occurrences 포함)까지 같아야 skip한다.
+						const addresses = await client.query<{ slug: string; type: string }>(
+							`SELECT slug, type FROM "${qSchema}".content_addresses WHERE entry_id = $1`,
+							[item.id],
+						);
+						const expectedAddressType = item.published ? "current" : "reservation";
+						const sameAddresses =
+							item.slug === null
+								? addresses.rows.length === 0
+								: addresses.rows.length === 1 &&
+									addresses.rows[0]?.slug === item.slug &&
+									addresses.rows[0]?.type === expectedAddressType;
+
+						const storedReferences = await client.query<{
+							state: string;
+							kind: string;
+							target_id: string;
+							is_stale: boolean;
+							occurrences: unknown;
+						}>(
+							`SELECT state, kind, target_id, is_stale, occurrences FROM "${qSchema}".entry_references WHERE entry_id = $1`,
+							[item.id],
+						);
+						const expectedReferenceStates = item.published ? ["working", "published"] : ["working"];
+						const sortReferences = <T extends { state: string; kind: string; targetId: string }>(rows: T[]): T[] =>
+							rows.sort((left, right) =>
+								`${left.state}|${left.kind}|${left.targetId}` < `${right.state}|${right.kind}|${right.targetId}`
+									? -1
+									: 1,
+							);
+						const expectedReferences = sortReferences(
+							expectedReferenceStates.flatMap((state) =>
+								item.references.map((reference) => ({
+									state,
+									kind: reference.kind,
+									targetId: reference.targetId,
+									isStale: reference.isStale,
+									occurrences: reference.occurrences,
+								})),
+							),
+						);
+						const actualReferences = sortReferences(
+							storedReferences.rows.map((row) => ({
+								state: row.state,
+								kind: row.kind,
+								targetId: row.target_id,
+								isStale: row.is_stale,
+								occurrences: row.occurrences,
+							})),
+						);
+						const sameReferences = isDeepStrictEqual(actualReferences, expectedReferences);
+
 						const identical =
 							head.collection === item.collection &&
 							head.status === item.status &&
 							head.working_slug === item.slug &&
+							head.folder_id === (item.folderId ?? null) &&
 							sameWorking &&
 							samePublished &&
-							samePublishedAt;
+							samePublishedAt &&
+							sameAddresses &&
+							sameReferences;
 
 						if (identical) {
 							outcomes.push({ id: item.id, collection: item.collection, slug: item.slug, outcome: "skipped" });

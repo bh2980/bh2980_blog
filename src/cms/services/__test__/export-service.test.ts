@@ -208,4 +208,47 @@ describe("export archive builder", () => {
 	it("canonicalJson은 key 순서에 의존하지 않는다", () => {
 		expect(canonicalJson({ b: 1, a: [2, { d: 3, c: 4 }] })).toBe(canonicalJson({ a: [2, { c: 4, d: 3 }], b: 1 }));
 	});
+	it("public 아카이브는 중첩 metadata의 관리자 전용 키를 제거한다", () => {
+		const snapshot = makeSnapshot();
+		const withInternals = {
+			...snapshot,
+			entries: snapshot.entries.map((entry) =>
+				entry.id === "11111111-1111-4111-8111-111111111111" && entry.published
+					? {
+							...entry,
+							published: {
+								...entry.published,
+								metadata: { ...entry.published.metadata, storageKey: "media/secret.png", internalNote: "관리자 메모" },
+							},
+						}
+					: entry,
+			),
+		};
+
+		const admin = readAll(buildExportArchive(withInternals, { scope: "admin", exportedAt: FIXED_TIME }).zip);
+		expect(admin.text("entries/post/11111111-1111-4111-8111-111111111111/published.json")).toContain("internalNote");
+
+		const publicArchive = readAll(buildExportArchive(withInternals, { scope: "public", exportedAt: FIXED_TIME }).zip);
+		const publicJson = publicArchive.text("entries/post/11111111-1111-4111-8111-111111111111/published.json");
+		expect(publicJson).not.toContain("internalNote");
+		expect(publicJson).not.toContain("storageKey");
+		expect(JSON.parse(publicJson).metadata.title).toBe("게시글");
+	});
+
+	it("설정만 바뀌어도 아카이브 digest가 달라진다", () => {
+		const base = buildExportArchive(makeSnapshot(), { scope: "admin", exportedAt: FIXED_TIME });
+		const changedPreferences = {
+			...makeSnapshot(),
+			preferences: [{ userId: "admin", preferences: { defaultPageSize: 50 }, updatedAt: FIXED_TIME }],
+		};
+		const changedFolders = {
+			...makeSnapshot(),
+			folders: [{ ...makeSnapshot().folders[0], name: "바뀐 폴더" }],
+		};
+
+		expect(buildExportArchive(changedPreferences, { scope: "admin", exportedAt: FIXED_TIME }).digest).not.toBe(
+			base.digest,
+		);
+		expect(buildExportArchive(changedFolders, { scope: "admin", exportedAt: FIXED_TIME }).digest).not.toBe(base.digest);
+	});
 });

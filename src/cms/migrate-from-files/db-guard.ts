@@ -27,6 +27,43 @@ export function assertMigrationSchemaName(schemaName: string): void {
 export interface MigrationEnv {
 	CMS_TEST_DATABASE_URL?: string | undefined;
 	CMS_DATABASE_URL?: string | undefined;
+	/** 시험 적재를 명시적으로 허용하는 opt-in 스위치. "1"일 때만 쓰기를 허용한다. */
+	CMS_MIGRATION_ALLOW?: string | undefined;
+}
+
+/** 쓰기 작업은 명시적 opt-in 없이는 실행하지 않는다. */
+export function assertMigrationOptIn(env: MigrationEnv = process.env): void {
+	if (env.CMS_MIGRATION_ALLOW !== "1") {
+		throw new Error("시험 적재는 CMS_MIGRATION_ALLOW=1 로 명시적으로 허용해야 실행됩니다.");
+	}
+}
+
+/** DSN에서 데이터베이스 이름만 뽑는다. */
+export function databaseNameOf(url: string): string | null {
+	try {
+		const name = new URL(url).pathname.replace(/^\//, "");
+		return name.length > 0 ? name : null;
+	} catch {
+		return null;
+	}
+}
+
+/** 실제 접속한 DB가 시험 DSN의 DB와 같은지 확인한다. 다르면 DDL 이전에 중단한다. */
+export async function assertConnectedToTestDatabase(
+	pool: Pool,
+	testUrl: string,
+): Promise<{ database: string; role: string; isSuperuser: boolean }> {
+	const res = await pool.query<{ database: string; role: string; rolsuper: boolean | null }>(
+		`SELECT current_database() AS database, current_user AS role,
+		        (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS rolsuper`,
+	);
+	const row = res.rows[0];
+	const actual = row?.database ?? "";
+	const expected = databaseNameOf(testUrl);
+	if (expected !== null && actual !== expected) {
+		throw new Error(`연결된 DB(${actual})가 CMS_TEST_DATABASE_URL의 DB(${expected})와 다릅니다. 중단합니다.`);
+	}
+	return { database: actual, role: row?.role ?? "", isSuperuser: Boolean(row?.rolsuper) };
 }
 
 export function resolveMigrationDatabase(options?: {
