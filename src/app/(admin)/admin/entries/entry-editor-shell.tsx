@@ -55,6 +55,42 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 	const [scheduleInputDate, setScheduleInputDate] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	// Template Menu State
+	const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+	const [availableTemplates, setAvailableTemplates] = useState<{ id: string; name: string; mdx: string }[]>([]);
+	const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
+
+	const handleOpenTemplateMenu = async () => {
+		if (templateMenuOpen) {
+			setTemplateMenuOpen(false);
+			return;
+		}
+		setTemplateMenuOpen(true);
+		setIsTemplatesLoading(true);
+		try {
+			const res = await fetch(`/api/cms/v1/templates?forCollection=${collection}`);
+			if (res.ok) {
+				const data = await res.json();
+				setAvailableTemplates(data.items || []);
+			}
+		} catch (err) {
+			console.error("Failed to load templates", err);
+		} finally {
+			setIsTemplatesLoading(false);
+		}
+	};
+
+	const handleApplyTemplate = (templateMdx: string) => {
+		if (mdx.trim().length > 0) {
+			const ok = window.confirm("현재 본문 내용이 선택한 템플릿으로 교체됩니다. 계속하시겠습니까?");
+			if (!ok) return;
+		}
+		setMdx(templateMdx);
+		mdxRef.current = templateMdx;
+		triggerSave({ mdx: templateMdx });
+		setTemplateMenuOpen(false);
+	};
+
 	// Autosave Refs
 	const entryIdRef = useRef<string | null>(initialEntryId || null);
 	const currentVersionRef = useRef(1);
@@ -408,6 +444,57 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 					>
 						{editorMode === "visual" ? "MDX 원문" : "시각 모드"}
 					</button>
+
+					{/* Template Selector (for post and memo) */}
+					{(collection === "post" || collection === "memo") && (
+						<div className="relative">
+							<button
+								type="button"
+								onClick={handleOpenTemplateMenu}
+								className="px-2.5 py-1 text-xs border border-neutral-300 dark:border-neutral-700 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-1"
+							>
+								<span>템플릿</span>
+								<span className="text-[10px] text-neutral-400">▼</span>
+							</button>
+
+							{templateMenuOpen && (
+								<div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl z-50 p-1.5 text-xs">
+									<div className="px-2 py-1 text-[11px] font-semibold text-neutral-400 border-b border-neutral-100 dark:border-neutral-800 mb-1">
+										{collection} 템플릿
+									</div>
+									{isTemplatesLoading ? (
+										<div className="px-2 py-3 text-center text-neutral-400">불러오는 중...</div>
+									) : availableTemplates.length === 0 ? (
+										<div className="px-2 py-3 text-center text-neutral-400">
+											등록된 템플릿이 없습니다.
+										</div>
+									) : (
+										<div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto">
+											{availableTemplates.map((t) => (
+												<button
+													key={t.id}
+													type="button"
+													onClick={() => handleApplyTemplate(t.mdx)}
+													className="w-full text-left px-2 py-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-800 dark:text-neutral-200 font-medium truncate"
+												>
+													{t.name}
+												</button>
+											))}
+										</div>
+									)}
+									<div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+										<Link
+											href={"/admin/templates" as any}
+											target="_blank"
+											className="block w-full text-left px-2 py-1 text-[11px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+										>
+											⚙ 템플릿 관리 화면으로 이동
+										</Link>
+									</div>
+								</div>
+							)}
+						</div>
+					)}
 
 					{/* Publish Actions */}
 					<div className="flex items-center gap-1.5 border-l border-neutral-200 dark:border-neutral-800 pl-3">

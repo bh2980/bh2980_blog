@@ -141,6 +141,12 @@ export function AdminSidebar({
 					>
 						<span>미디어 라이브러리 (Media)</span>
 					</a>
+					<a
+						href="/admin/templates"
+						className="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
+					>
+						<span>본문 템플릿 (Templates)</span>
+					</a>
 				</nav>
 			</div>
 
