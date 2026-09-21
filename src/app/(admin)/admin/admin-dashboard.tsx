@@ -30,7 +30,12 @@ export function AdminClientDashboard() {
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(urlPage);
 	const [pageSize, setPageSize] = useState<25 | 50 | 100>(urlPageSize);
+	// Debounced search state: updates committed search only after 300ms idle,
+	// so fetchEntries (driven by the committed value) fires once per pause.
+	// Debounced search state: updates committedSearch only after 300ms idle,
+	// so fetchEntries (driven by committedSearch) fires once per pause.
 	const [search, setSearch] = useState(urlSearch);
+	const [committedSearch, setCommittedSearch] = useState(urlSearch);
 	const [statusFilter, setStatusFilter] = useState(urlStatus);
 	const [sortField, setSortField] = useState<"updatedAt" | "createdAt" | "title" | "slug">(urlSortField);
 	const [sortDirection, setSortDirection] = useState<"asc" | "desc">(urlSortDirection);
@@ -138,7 +143,7 @@ export function AdminClientDashboard() {
 		try {
 			const params = new URLSearchParams();
 			params.set("collection", currentCollection);
-			if (search) params.set("search", search);
+			if (committedSearch) params.set("search", committedSearch);
 			if (statusFilter) params.set("status", statusFilter);
 			if (currentFolderId) params.set("folderId", currentFolderId);
 			params.set("sortField", sortField);
@@ -165,7 +170,7 @@ export function AdminClientDashboard() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [currentCollection, currentFolderId, search, statusFilter, sortField, sortDirection, page, pageSize]);
+	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
 
 	useEffect(() => {
 		fetchFolders();
@@ -177,6 +182,11 @@ export function AdminClientDashboard() {
 
 	// Debounced search input handler
 	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+	useEffect(() => {
+		return () => {
+			if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+		};
+	}, []);
 	const handleSearchChange = (val: string) => {
 		setSearch(val);
 		setPage(1);
@@ -184,6 +194,7 @@ export function AdminClientDashboard() {
 			clearTimeout(searchDebounceRef.current);
 		}
 		searchDebounceRef.current = setTimeout(() => {
+			setCommittedSearch(val);
 			syncUrl({ search: val, page: 1 });
 		}, 300);
 	};
