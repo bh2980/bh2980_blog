@@ -7,6 +7,7 @@ import remarkBreaks from "remark-breaks";
 import remarkFlexibleToc, { type HeadingDepth, type TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import type { PluggableList } from "unified";
 import { visit } from "unist-util-visit";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { remarkChartToMdx } from "@/libs/chart";
@@ -39,6 +40,46 @@ const remarkDisableInlineMath = () => {
 	};
 };
 
+/** 공개 렌더 체인의 remark 플러그인. 검수 러너가 같은 구성을 재사용한다. */
+export const MDX_REMARK_PLUGINS = (tocRef: TocItem[] = []): PluggableList => [
+	[remarkAnnotationToShikiDecoration, annotationConfig],
+	// 본문의 단일 `$`(예: jQuery `$`)를 수식으로 오인하지 않게 CMS 파서와 동일하게 맞춘다.
+	[remarkMath, { singleDollarTextMath: false }],
+	remarkDisableInlineMath,
+	remarkChartToMdx,
+	remarkMermaidToMdx,
+	remarkBreaks,
+	remarkGfm,
+	[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
+];
+
+/** 공개 렌더 체인의 rehype 플러그인. */
+export const MDX_REHYPE_PLUGINS: PluggableList = [
+	rehypeSlug,
+	rehypeAutolinkHeadings,
+	[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }],
+	[rehypeShikiDecorationRender, { ignoreLang: (lang: string) => lang.toLowerCase() === "mermaid" }],
+];
+
+/** 공개 페이지가 쓰는 MDX 컴포넌트 표. */
+export const MDX_COMPONENTS = {
+	IdeographicSpace,
+	a,
+	pre,
+	Mermaid,
+	collapse,
+	fold,
+
+	Callout,
+	Chart,
+	Collapsible,
+	Columns,
+	Column,
+	Tooltip,
+	Tabs,
+	Tab,
+};
+
 export const renderMDX = async (source: string) => {
 	const tocRef: TocItem[] = [];
 
@@ -46,42 +87,11 @@ export const renderMDX = async (source: string) => {
 		source,
 		options: {
 			mdxOptions: {
-				remarkPlugins: [
-					[remarkAnnotationToShikiDecoration, annotationConfig],
-					// 본문의 단일 `$`(예: jQuery `$`)를 수식으로 오인하지 않게 CMS 파서와 동일하게 맞춘다.
-					[remarkMath, { singleDollarTextMath: false }],
-					remarkDisableInlineMath,
-					remarkChartToMdx,
-					remarkMermaidToMdx,
-					remarkBreaks,
-					remarkGfm,
-					[remarkFlexibleToc, { tocRef, maxDepth: 3 }],
-				],
-				rehypePlugins: [
-					rehypeSlug,
-					rehypeAutolinkHeadings,
-					[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }],
-					[rehypeShikiDecorationRender, { ignoreLang: (lang: string) => lang.toLowerCase() === "mermaid" }],
-				],
+				remarkPlugins: MDX_REMARK_PLUGINS(tocRef),
+				rehypePlugins: MDX_REHYPE_PLUGINS,
 			},
 		},
-		components: {
-			IdeographicSpace,
-			a,
-			pre,
-			Mermaid,
-			collapse,
-			fold,
-
-			Callout,
-			Chart,
-			Collapsible,
-			Columns,
-			Column,
-			Tooltip,
-			Tabs,
-			Tab,
-		},
+		components: MDX_COMPONENTS,
 	});
 
 	const toc = tocRef.map((item) => ({ ...item, depth: (item.depth - 2) as HeadingDepth }));

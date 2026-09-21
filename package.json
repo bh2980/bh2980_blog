@@ -6,6 +6,7 @@
 		"dev": "next dev",
 		"cms:migration:inspect": "tsx src/cms/migrate-from-files/cli.ts inspect",
 		"cms:migration:apply": "tsx src/cms/migrate-from-files/cli.ts apply",
+		"cms:migration:audit": "vitest run src/cms/mdx/__test__/corpus-roundtrip.test.tsx",
 		"build": "rm -rf .next && next build",
 		"preview": "pnpm build && pnpm start",
 		"start": "next start",
