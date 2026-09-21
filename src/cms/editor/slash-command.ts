@@ -78,6 +78,25 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
 			editor.chain().focus().deleteRange(range).setHorizontalRule().run();
 		},
 	},
+	{
+		title: "이미지 (Image)",
+		description: "사진 또는 그림 업로드",
+		keywords: ["이미지", "사진", "그림", "image", "img", "photo"],
+		action: (editor, range) => {
+			editor.chain().focus().deleteRange(range).run();
+			// Trigger file selection dialog
+			const input = document.createElement("input");
+			input.type = "file";
+			input.accept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+			input.onchange = async () => {
+				const file = input.files?.[0];
+				if (file) {
+					window.dispatchEvent(new CustomEvent("cms:upload-image", { detail: { file } }));
+				}
+			};
+			input.click();
+		},
+	},
 ];
 
 export function filterCommands(query: string): SlashCommandItem[] {

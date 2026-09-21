@@ -4,11 +4,14 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CmsMdxPreserver } from "./tiptap-schema";
+import { CmsImageNode } from "./image-node";
+import { uploadImageFile } from "./upload-helper";
 import { filterCommands, type SlashCommandItem } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { parseInternalLinkTrigger, formatContentLinkMdx, type InternalLinkItem } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
+import { Loader2, ImageIcon } from "lucide-react";
 
 interface CmsEditorProps {
 	content: string;
@@ -62,6 +65,10 @@ export function CmsEditor({
 
 	const editorRef = useRef<any>(null);
 
+	// Image Uploading State
+	const [isUploadingImage, setIsUploadingImage] = useState(false);
+	const [uploadProgress, setUploadProgress] = useState(0);
+
 	const editor = useEditor({
 		immediatelyRender: false,
 		editable,
@@ -71,6 +78,7 @@ export function CmsEditor({
 					levels: [1, 2, 3],
 				},
 			}),
+			CmsImageNode,
 			CmsMdxPreserver,
 		],
 		content,
@@ -250,6 +258,89 @@ export function CmsEditor({
 			isMounted = false;
 		};
 	}, [linkOpen, linkQuery]);
+
+	// Image Upload Handler
+	const handleUploadImage = useCallback(
+		async (file: File) => {
+			if (!editor) return;
+			setIsUploadingImage(true);
+			setUploadProgress(0);
+			try {
+				const uploaded = await uploadImageFile(file, (percent) => {
+					setUploadProgress(percent);
+				});
+
+				editor
+					.chain()
+					.focus()
+					.insertContent({
+						type: "image",
+						attrs: {
+							mediaId: uploaded.mediaId,
+							src: uploaded.publicUrl,
+							alt: file.name.replace(/\.[^/.]+$/, ""),
+							width: "100%",
+							align: "center",
+						},
+					})
+					.run();
+			} catch (err: any) {
+				alert(`이미지 업로드에 실패했습니다: ${err.message}`);
+			} finally {
+				setIsUploadingImage(false);
+				setUploadProgress(0);
+			}
+		},
+		[editor],
+	);
+
+	// Listen to custom upload events (e.g. from slash command)
+	useEffect(() => {
+		const listener = (e: Event) => {
+			const custom = e as CustomEvent<{ file: File }>;
+			if (custom.detail?.file) {
+				handleUploadImage(custom.detail.file);
+			}
+		};
+		window.addEventListener("cms:upload-image", listener);
+		return () => window.removeEventListener("cms:upload-image", listener);
+	}, [handleUploadImage]);
+
+	// Drag & Drop and Paste Handlers
+	const handlePaste = useCallback(
+		(e: React.ClipboardEvent<HTMLDivElement>) => {
+			const items = e.clipboardData.items;
+			for (let i = 0; i < items.length; i++) {
+				const item = items[i];
+				if (item.type.startsWith("image/")) {
+					const file = item.getAsFile();
+					if (file) {
+						e.preventDefault();
+						handleUploadImage(file);
+						return;
+					}
+				}
+			}
+		},
+		[handleUploadImage],
+	);
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent<HTMLDivElement>) => {
+			const files = e.dataTransfer.files;
+			if (files.length > 0) {
+				for (let i = 0; i < files.length; i++) {
+					const file = files[i];
+					if (file.type.startsWith("image/")) {
+						e.preventDefault();
+						handleUploadImage(file);
+						return;
+					}
+				}
+			}
+		},
+		[handleUploadImage],
+	);
 
 	// Hover-based Block Handle Detection
 	const handleMouseMove = useCallback(
@@ -515,10 +606,47 @@ export function CmsEditor({
 				>
 					구분선
 				</button>
+				<button
+					type="button"
+					onMouseDown={(e) => {
+						e.preventDefault();
+						const input = document.createElement("input");
+						input.type = "file";
+						input.accept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+						input.onchange = () => {
+							const file = input.files?.[0];
+							if (file) handleUploadImage(file);
+						};
+						input.click();
+					}}
+					className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-600 dark:text-neutral-400 flex items-center gap-1"
+				>
+					<ImageIcon className="h-3.5 w-3.5" />
+					이미지
+				</button>
 			</div>
 
+			{/* Image Uploading Progress Bar */}
+			{isUploadingImage && (
+				<div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800 px-4 py-1.5 flex items-center gap-3 text-xs text-blue-700 dark:text-blue-300">
+					<Loader2 className="h-3.5 w-3.5 animate-spin" />
+					<span>이미지 업로드 중... {uploadProgress}%</span>
+					<div className="flex-1 max-w-xs h-1.5 bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
+						<div
+							className="h-full bg-blue-600 transition-all duration-150"
+							style={{ width: `${uploadProgress}%` }}
+						/>
+					</div>
+				</div>
+			)}
+
 			{/* Borderless Canvas Area */}
-			<div className="flex-1 w-full max-w-3xl mx-auto py-4">
+			<div
+				className="flex-1 w-full max-w-3xl mx-auto py-4"
+				onPaste={handlePaste}
+				onDrop={handleDrop}
+				onDragOver={(e) => e.preventDefault()}
+			>
 				<EditorContent editor={editor} />
 			</div>
 

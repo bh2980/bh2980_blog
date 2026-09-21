@@ -162,8 +162,27 @@ const closeMark = (mark: CmsMark): string => {
 };
 
 const serializeImage = (node: CmsNode): string => {
-	const alt = String(node.attrs?.alt ?? "");
-	const src = String(node.attrs?.src ?? "");
+	const mediaId = node.attrs?.mediaId;
+	const src = node.attrs?.src ? String(node.attrs.src) : "";
+	const alt = node.attrs?.alt ? String(node.attrs.alt) : "";
+	const width = node.attrs?.width ? String(node.attrs.width) : undefined;
+	const align = node.attrs?.align ? String(node.attrs.align) : undefined;
+	const caption = node.attrs?.caption ? String(node.attrs.caption) : undefined;
+
+	// If it has mediaId or custom width/align/caption, serialize as <Image ... />
+	if (mediaId || width || align || caption) {
+		const props: string[] = [];
+		if (mediaId) props.push(`mediaId="${escapeAttr(String(mediaId))}"`);
+		else if (src) props.push(`src="${escapeAttr(src)}"`);
+
+		props.push(`alt="${escapeAttr(alt)}"`);
+		if (width) props.push(`width="${escapeAttr(width)}"`);
+		if (align) props.push(`align="${escapeAttr(align)}"`);
+		if (caption) props.push(`caption="${escapeAttr(caption)}"`);
+
+		return `<Image ${props.join(" ")} />`;
+	}
+
 	const title = node.attrs?.title;
 	if (typeof title === "string" && title.length > 0) return `![${alt}](${src} "${title}")`;
 	return `![${alt}](${src})`;

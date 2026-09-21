@@ -201,6 +201,17 @@ const convertCode = (node: MdastLike): CmsNode => {
 
 const convertJsx = (node: MdastLike): CmsNode => {
 	const name = node.name ?? "";
+	if (name === "Image") {
+		const rawAttrs = attributeRecord(readJsxAttributes(node.attributes));
+		const attrs: Record<string, CmsJsonValue> = {};
+		if (rawAttrs.mediaId) attrs.mediaId = rawAttrs.mediaId;
+		if (rawAttrs.src) attrs.src = rawAttrs.src;
+		if (rawAttrs.alt !== undefined) attrs.alt = rawAttrs.alt;
+		if (rawAttrs.width) attrs.width = rawAttrs.width;
+		if (rawAttrs.align) attrs.align = rawAttrs.align;
+		if (rawAttrs.caption) attrs.caption = rawAttrs.caption;
+		return { type: "image", attrs };
+	}
 	const type = name && (BLOCK_JSX_NAMES.has(name) || INLINE_JSX_MARKS[name]) ? name : "mdxJsx";
 	const content = convertJsxChildren(node.children ?? []);
 	const result: CmsNode = { type, attrs: jsxAttrs(node) };
