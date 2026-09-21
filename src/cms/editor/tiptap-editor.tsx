@@ -98,17 +98,20 @@ export function CmsEditor({
 						return true;
 					}
 					if (event.key === "Enter") {
-						event.preventDefault();
 						const selected = items[linkIndexRef.current];
 						if (selected && linkRangeRef.current && view) {
+							event.preventDefault();
 							const formatted = formatContentLinkMdx(selected);
 							const { tr } = view.state;
 							tr.delete(linkRangeRef.current.from, linkRangeRef.current.to);
 							tr.insertText(formatted);
 							view.dispatch(tr);
 							setLinkOpen(false);
+							return true;
 						}
-						return true;
+						// No item matched: close popup and let default Enter key through
+						setLinkOpen(false);
+						return false;
 					}
 					if (event.key === "Escape") {
 						event.preventDefault();
@@ -131,12 +134,16 @@ export function CmsEditor({
 						return true;
 					}
 					if (event.key === "Enter") {
-						event.preventDefault();
-						if (filtered[slashIndexRef.current] && slashRangeRef.current && editorRef.current) {
-							filtered[slashIndexRef.current].action(editorRef.current, slashRangeRef.current);
+						const cmd = filtered[slashIndexRef.current];
+						if (cmd && slashRangeRef.current && editorRef.current) {
+							event.preventDefault();
+							cmd.action(editorRef.current, slashRangeRef.current);
 							setSlashOpen(false);
+							return true;
 						}
-						return true;
+						// No command matched: close popup and let default Enter key through
+						setSlashOpen(false);
+						return false;
 					}
 					if (event.key === "Escape") {
 						event.preventDefault();
