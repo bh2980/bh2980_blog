@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { analyze, serialize, toDocument } from "../index";
 
 describe("MDX Image Component Roundtrip & Conversion", () => {
-	it("parses <Image mediaId='123' alt='Test' width='60%' align='center' caption='Cap' /> into image node", () => {
-		const mdx = `<Image mediaId="123e4567-e89b-12d3-a456-426614174000" alt="Test Image" width="60%" align="center" caption="My caption" />\n`;
+	it("parses <Image mediaId='123' alt='Test' width='60%' align='center' caption='Cap' /> into image node and serializes both mediaId and src", () => {
+		const mdx = `<Image mediaId="123e4567-e89b-12d3-a456-426614174000" src="https://media.example.com/pic.png" alt="Test Image" width="60%" align="center" caption="My caption" />\n`;
 		const parsed = analyze(mdx);
 		const doc = toDocument(parsed);
 
@@ -11,13 +11,15 @@ describe("MDX Image Component Roundtrip & Conversion", () => {
 		const imageNode = doc.content?.find((n) => n.type === "image");
 		expect(imageNode).toBeDefined();
 		expect(imageNode?.attrs?.mediaId).toBe("123e4567-e89b-12d3-a456-426614174000");
+		expect(imageNode?.attrs?.src).toBe("https://media.example.com/pic.png");
 		expect(imageNode?.attrs?.alt).toBe("Test Image");
 		expect(imageNode?.attrs?.width).toBe("60%");
 		expect(imageNode?.attrs?.align).toBe("center");
 		expect(imageNode?.attrs?.caption).toBe("My caption");
 
 		const serialized = serialize(doc);
-		expect(serialized).toContain('<Image mediaId="123e4567-e89b-12d3-a456-426614174000"');
+		expect(serialized).toContain('mediaId="123e4567-e89b-12d3-a456-426614174000"');
+		expect(serialized).toContain('src="https://media.example.com/pic.png"');
 		expect(serialized).toContain('alt="Test Image"');
 		expect(serialized).toContain('width="60%"');
 		expect(serialized).toContain('align="center"');

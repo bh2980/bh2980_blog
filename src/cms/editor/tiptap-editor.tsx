@@ -348,7 +348,7 @@ export function CmsEditor({
 			if (!editor) return;
 			const target = e.target as HTMLElement;
 			const blockEl = target.closest(
-				".prose > p, .prose > h1, .prose > h2, .prose > h3, .prose > blockquote, .prose > pre, .prose > ul, .prose > ol, .prose > hr",
+				".prose > p, .prose > h1, .prose > h2, .prose > h3, .prose > blockquote, .prose > pre, .prose > ul, .prose > ol, .prose > hr, .prose > figure",
 			) as HTMLElement | null;
 
 			if (blockEl && editor.view.dom.contains(blockEl)) {

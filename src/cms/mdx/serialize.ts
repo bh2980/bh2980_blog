@@ -173,7 +173,7 @@ const serializeImage = (node: CmsNode): string => {
 	if (mediaId || width || align || caption) {
 		const props: string[] = [];
 		if (mediaId) props.push(`mediaId="${escapeAttr(String(mediaId))}"`);
-		else if (src) props.push(`src="${escapeAttr(src)}"`);
+		if (src) props.push(`src="${escapeAttr(src)}"`);
 
 		props.push(`alt="${escapeAttr(alt)}"`);
 		if (width) props.push(`width="${escapeAttr(width)}"`);
