@@ -72,7 +72,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M6-BE-1 | DONE | BE | `bh2980/m6-batch1` | `bf11fb4`, `6eeae51`, `7fbdc4a` | 인증 GET/POST `/api/cms/v1/export`, 결정적 ZIP(CRC32·고정 mtime·고정 정렬), 관리자/공개 분리 투영 + 컬렉션별 공개 metadata allowlist, 초안·보관본 공개 유출 차단, REPEATABLE READ READ ONLY 스냅샷, 전 페이로드 digest; reviewer 2회 통과 |
 | M6-BE-2 | DONE | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a`, `798a027` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만. **실DB 검증 완료:** 격리 `cms_m6_apply1`에 1차 `imported=75 skipped=0` → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, 접속 DB 대조(neondb/neondb_owner/non-superuser), opt-in 없는 실행 차단, 원본 무변경, 검증 후 schema 정리 |
 | M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `1797e5f`, `6eeae51`, `7fbdc4a` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
-| M6-RV-1 | TODO | RV | — | — | M6-BE-2 실DB 검증 후 진행 |
+| M6-RV-1 | DONE | RV | `bh2980/m6-batch1` | `798a027`, `5544041` | reviewer 최종 검수 **승인**(중대 위험 6기준 전부 O, P0/P1 없음). P2 4건은 비차단 기록. 전체 89 files/556 tests, typecheck 0, M6 변경분 biome 0 errors, build 79 routes(운영 DSN 없이) |
 | M7-INV-1 | TODO | BE | — | — | — |
 | M7-BE-1 | TODO | BE | — | — | — |
 | M7-BE-2 | TODO | BE | — | — | — |
@@ -141,7 +141,9 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   5) 리뷰·감사: R1(내보내기)은 P0(보관/휴지통 잔여 공개본 유출) 지적 후 `6eeae51`·`7fbdc4a`로 수정하고 재리뷰 통과, R2·R3는 중대 위험 없음. O2 oracle 감사는 4개 필수 항목(공개 metadata 재귀 allowlist, digest 범위, skip 판정, 미분류 분류)을 지적해 모두 반영했다.
   6) 검증: 전체(DB 포함) **89 files/554 tests 통과**, `pnpm typecheck` 0 errors, M6 변경 파일 `biome check` 0 errors.
   7) 실DB 검증 완료(격리 schema `cms_m6_apply1`, 시험 전용 Neon 엔드포인트, 검증 후 schema 삭제): 실코퍼스 75건 1차 적재 → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, `CMS_MIGRATION_ALLOW=1` 없는 실행 차단, 원본 `src/contents` 무변경. 실DB export 스모크: admin 380파일/참조 251, public 150파일/74 mdx, digest는 `exportedAt`에 불변, 초안 경로·본문 유출 0, public metadata 키 `["title"]`(allowlist 투영 확인).
-  8) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단), 저장소 전체 `biome check`의 M4/M5 관리자 FE 기존 위반(base와 동일 파일, M6 범위 밖).
+  8) **M6-RV-1 최종 검수 승인**(`798a027`, `5544041`): 중대 위험 6기준(데이터 손실·운영 DB 접촉·초안 공개 노출·인증 누출·멱등성·왕복 무손실) 모두 O, P0/P1 없음. 비차단 P2: ① `pickPublicMetadata`는 최상위 키만 필터(현 스키마는 안전), ② `stateDigest` 참조에 `occurrences` 미포함(아카이브 digest는 `references.json` 바이트를 덮으므로 영향 없음), ③ `sameDatabase`는 host:port/path만 비교(Neon pooler 호스트 미정규화, `cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 단위 테스트 부재(전자는 `5544041`에서 보강).
+  9) 최종 게이트: 전체(DB 포함) **89 files/556 tests 통과**, `pnpm typecheck` 0 errors, M6 변경 파일 `biome check` 0 errors(저장소 전체는 M4/M5 관리자 FE 기존 위반), `pnpm build` **79 routes·exit 0**을 운영 DB DSN을 제거한 환경에서 통과(빌드가 DB에 접촉하지 않음을 함께 확인).
+  10) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단), `handleApiError`의 413/415/428/503 미표현.
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 
 ---

@@ -156,6 +156,23 @@ Milestone 종료 = §11.3 단계 1–6의 **시험** 도구 + §11.4 내보내�
 
 보고서: `artifacts/cms/m6/2026-09-21T21-36-53-065Z/import-report.json` (connection: neondb / neondb_owner / isSuperuser=false)
 
+### R4(M6-RV-1) 결과 기록 (2026-09-22, reviewer 최종 검수)
+
+판정: **승인** (중대 위험 6기준 전부 O, P0/P1 없음, P2 4건 비차단).
+
+| 기준 | 판정 | 근거 |
+| --- | --- | --- |
+| 데이터 손실·오염 | O | 이전 도구는 `src/contents` 읽기 전용, 쓰기는 `artifacts/**` 보고서뿐. 원문 MDX를 그대로 저장하고 conflict는 INSERT 전 throw + ROLLBACK |
+| 운영 DB 접촉 | O | 시험 DSN 부재/동일 DB/schema 이름 임의 3종 모두 차단, `CMS_MIGRATION_ALLOW=1` opt-in, 접속 후 `current_database()` 대조, schema-qualified SQL |
+| 초안·보관 공개 노출 | O | `publicEntry()`가 `status==="published"` + 공개본일 때만 생성, 공개 `media.json`은 `reference.state==="published"`만 |
+| 인증·관리자 정보 누출 | O | GET/POST 모두 `verifyAdmin`, POST `validateSameOrigin`, digest/scope 헤더, `pickPublicMetadata` allowlist |
+| 멱등성 | O | skip은 ID+본문 hash·schema_version·mdx·metadata·상태·slug·folder·주소·참조(occurrences) 전부 동일할 때만 |
+| 왕복 무손실 | O | 49/49 구조 동일, 미분류 0, 이전 적재는 원문 MDX 저장 |
+
+비차단 P2: ① `pickPublicMetadata` 최상위 키만 필터(현 스키마 안전), ② `stateDigest`에 `occurrences` 미포함(아카이브 digest가 `references.json`을 덮음), ③ `sameDatabase`가 Neon pooler 호스트를 미정규화(`cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 테스트 부재(전자는 `5544041`에서 보강).
+
+reviewer 세션에는 셸이 없어 전체 vitest·실DB apply·typecheck·build를 재실행하지 못했다(소스·테스트·기존 산출물 대조로 판정). 해당 실행 증거는 오케스트레이터 실행 기록과 `artifacts/cms/m6/**` 보고서로 남아 있다.
+
 ### 추가 자문 트리거 (O1/O2 외)
 
 1. 배치 1·2 진행 중 스키마 변경(컬럼·인덱스 추가)이 필요해진 경우
