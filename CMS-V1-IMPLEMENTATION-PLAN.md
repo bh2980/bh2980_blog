@@ -56,8 +56,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M3-FE-3 | DONE | FE | 통합 브랜치 | `05a1e44` | 에디터 내 이미지 드래그앤드롭/클립보드 붙여넣기/슬래시/툴바 삽입 및 프로그레스 UI; reviewer 통과 |
 | M3-FE-4 | DONE | FE | 통합 브랜치 | `dc74ab4` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
 | M3-RV-1 | DONE | RV | 통합 브랜치 | `05a1e44` | M3 전 작업(TW-1, BE-1, BE-2, FE-1~4, ED-1, ED-2, INF-1) 완료 및 reviewer 전 배치 무결함 승인 |
-| M4-BE-MEDIA-1 | TODO | BE | — | — | 미디어 목록 조회(검색/필터/사용처 조인) 및 안전 삭제 API; M4-FE-1의 선행 |
-| M4-FE-1 | TODO | FE | — | — | — |
+| M4-BE-MEDIA-1 | DONE | BE | 통합 브랜치 | `ed44c2d` | 미디어 목록 조회(검색/필터/사용처 조인) 및 안전 삭제 API; reviewer 통과 |
+| M4-FE-1 | DONE | FE | 통합 브랜치 | `1b83ced` | 미디어 라이브러리(/admin/media) 썸네일 그리드, 상세 인스펙터, 안전 삭제 UX; reviewer 통과 |
 | M4-TW-1 | TODO | TW | — | — | — |
 | M4-BE-1 | TODO | BE | — | — | — |
 | M4-BE-2 | TODO | BE | — | — | — |
@@ -117,6 +117,11 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   4) MDX `<Image mediaId="..." src="..." width="..." align="..." caption="..." />` 직렬화 및 역직렬화 왕복 테스트 통과.
   5) reviewer 2차 검수 지적(직렬화 시 `src` 누락 위험 P0, figure 블록 핸들 셀렉터 누락) 반영(`05a1e44`) 후 재리뷰 "위험 없음" 최종 승인.
   6) 최종 검증: 72 files/454 tests 100% 통과, `pnpm typecheck`, `pnpm build`(73 routes) 통과. Milestone 3 전 작업을 DONE으로 갱신한다.
+- 2026-09-21: Milestone 4 미디어 라이브러리(M4-BE-MEDIA-1, M4-FE-1)를 구현·검증 완료했다.
+  1) 백엔드 태스크 분리: 계획표에 M4-BE-MEDIA-1(미디어 목록 및 안전 삭제 API)을 정식 추가하고 M4-FE-1과의 선행 관계를 명시.
+  2) M4-BE-MEDIA-1: `content-store.ts`에 `listMediaAssets` 및 `deleteMediaAsset` 구현. `GET /api/cms/v1/media`(파일명 검색, MIME 필터, 사용 여부 필터, 사용된 글 `entry_references` 조인 집계) 및 `DELETE /api/cms/v1/media/:id`(사용 중인 미디어 409 차단, 미사용 미디어 R2 storageKey/stagingKey 삭제 후 DB 레코드 삭제) 구현. 계약 테스트 작성 및 reviewer 1차 검수 "위험 없음" 승인 (`ed44c2d`).
+  3) M4-FE-1: 사이드바에 미디어 메뉴 연동, `/admin/media` 미디어 라이브러리 화면 구현. 썸네일 그리드 뷰, 파일명 검색, 사용 여부(전체/사용 중/미사용) 필터링, 우측 미디어 상세 인스펙터 패널(공개 URL 복사, 해상도/크기, 사용처 글 목록 링크), 사용 중 미디어 삭제 버튼 비활성화 가드 및 미사용 고아 미디어 영구 삭제 UX 구현. reviewer 2차 검수 "위험 없음" 승인 (`1b83ced`).
+  4) 최종 검증: 72 files/457 tests 100% 통과, `pnpm typecheck`, `pnpm build`(75 routes) 통과. M4-BE-MEDIA-1, M4-FE-1을 DONE으로 갱신한다.
 
 ---
 
