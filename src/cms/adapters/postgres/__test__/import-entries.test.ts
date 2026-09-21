@@ -105,7 +105,7 @@ describe("M6-BE-2 importEntries / readExportSnapshot 계약", () => {
 
 		const collection = first.entries.find((entry) => entry.collection === "collection");
 		const itemIds = (collection?.working.metadata as { itemIds?: string[] }).itemIds;
-		const memoId = first.entries.find((entry) => entry.collection === "memo" && entry.status === "published")?.id;
+		const memoId = first.entries.find((entry) => entry.collection === "memo")?.id;
 		expect(itemIds).toContain(memoId);
 	});
 });
