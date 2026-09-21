@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+	ChevronRight,
+	ChevronDown,
+	Folder as FolderIcon,
+	FolderOpen,
+	Plus,
+	Edit2,
+	Trash2,
+} from "lucide-react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import type { Collection } from "@/cms/services/types";
 
@@ -22,7 +31,7 @@ interface SidebarProps {
 export function AdminSidebar({
 	currentCollection,
 	currentFolderId,
-	folders,
+	folders = [],
 	activeNav,
 	onSelectCollection,
 	onSelectFolder,
@@ -31,7 +40,10 @@ export function AdminSidebar({
 	onDeleteFolder,
 }: SidebarProps) {
 	const [newFolderName, setNewFolderName] = useState("");
-	const [isCreating, setIsCreating] = useState(false);
+	const [isCreatingRoot, setIsCreatingRoot] = useState(false);
+	const [creatingParentId, setCreatingParentId] = useState<string | null>(null);
+	const [subFolderName, setSubFolderName] = useState("");
+	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
 	const active: AdminNavId = activeNav ?? currentCollection ?? "post";
 
@@ -43,47 +55,125 @@ export function AdminSidebar({
 		{ id: "collection", label: "모음집 (Collections)" },
 	];
 
-	// Build folder hierarchy
-	const rootFolders = folders ? folders.filter((f) => !f.parentId) : [];
-	const getChildren = (parentId: string) => (folders ? folders.filter((f) => f.parentId === parentId) : []);
+	// 현재 선택된 폴더나 하위 폴더가 있으면 부모 폴더들을 자동으로 펼침
+	useEffect(() => {
+		if (!currentFolderId || folders.length === 0) return;
+		const toExpand = new Set(expandedIds);
+		let curr = folders.find((f) => f.id === currentFolderId);
+		while (curr?.parentId) {
+			toExpand.add(curr.parentId);
+			curr = folders.find((f) => f.id === curr!.parentId);
+		}
+		setExpandedIds(toExpand);
+	}, [currentFolderId, folders]);
 
-	const handleCreateFolder = async (e: React.FormEvent) => {
+	// 폴더 계층 구조 빌드
+	const rootFolders = folders.filter((f) => !f.parentId);
+	const getChildren = (parentId: string) => folders.filter((f) => f.parentId === parentId);
+
+	const toggleExpand = (folderId: string, e: React.MouseEvent) => {
+		e.stopPropagation();
+		setExpandedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(folderId)) {
+				next.delete(folderId);
+			} else {
+				next.add(folderId);
+			}
+			return next;
+		});
+	};
+
+	const handleCreateRootFolder = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newFolderName.trim() || !onCreateFolder) return;
 		try {
-			await onCreateFolder(newFolderName.trim(), currentFolderId ?? null);
+			await onCreateFolder(newFolderName.trim(), null);
 			setNewFolderName("");
-			setIsCreating(false);
-		} catch (err) {
-			alert("폴더 생성 실패: " + (err instanceof Error ? err.message : String(err)));
+			setIsCreatingRoot(false);
+		} catch (err: any) {
+			alert("폴더 생성 실패: " + (err.message || String(err)));
 		}
 	};
 
-	const renderFolderItem = (folder: Folder, depth: number = 0) => {
+	const handleCreateSubFolder = async (parentId: string, e: React.FormEvent) => {
+		e.preventDefault();
+		if (!subFolderName.trim() || !onCreateFolder) return;
+		try {
+			await onCreateFolder(subFolderName.trim(), parentId);
+			setSubFolderName("");
+			setCreatingParentId(null);
+			setExpandedIds((prev) => new Set(prev).add(parentId));
+		} catch (err: any) {
+			alert("하위 폴더 생성 실패: " + (err.message || String(err)));
+		}
+	};
+
+	const renderFolderItem = (folder: Folder) => {
 		const isFolderActive = currentFolderId === folder.id;
 		const children = getChildren(folder.id);
+		const hasChildren = children.length > 0;
+		const isExpanded = expandedIds.has(folder.id);
+		const isCreatingHere = creatingParentId === folder.id;
 
 		return (
 			<div key={folder.id} className="flex flex-col">
 				<div
-					className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition ${
+					className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition select-none ${
 						isFolderActive
 							? "bg-neutral-800 text-white font-medium"
 							: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
 					}`}
-					style={{ paddingLeft: `${depth * 12 + 8}px` }}
 				>
-					<button
-						type="button"
+					<div
+						className="flex flex-1 items-center gap-1 min-w-0 cursor-pointer"
 						onClick={() => onSelectFolder?.(folder.id)}
-						className="flex flex-1 items-center gap-1.5 truncate text-left"
 					>
-						<span>📁</span>
-						<span className="truncate">{folder.name}</span>
-					</button>
+						{/* 토글 화살표 */}
+						{hasChildren ? (
+							<button
+								type="button"
+								onClick={(e) => toggleExpand(folder.id, e)}
+								className="p-0.5 hover:bg-neutral-700/60 rounded text-neutral-400 hover:text-white transition"
+							>
+								{isExpanded ? (
+									<ChevronDown className="h-3 w-3" />
+								) : (
+									<ChevronRight className="h-3 w-3" />
+								)}
+							</button>
+						) : (
+							<span className="w-4" />
+						)}
 
+						{/* 폴더 아이콘 */}
+						{isExpanded && hasChildren ? (
+							<FolderOpen className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
+						) : (
+							<FolderIcon className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
+						)}
+
+						<span className="truncate text-xs font-normal">{folder.name}</span>
+					</div>
+
+					{/* 액션 버튼들 (호버 시 노출) */}
 					{onRenameFolder && onDeleteFolder && (
-						<div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+						<div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition flex-shrink-0">
+							{onCreateFolder && (
+								<button
+									type="button"
+									title="하위 폴더 추가"
+									onClick={(e) => {
+										e.stopPropagation();
+										setCreatingParentId(folder.id);
+										setSubFolderName("");
+										setExpandedIds((prev) => new Set(prev).add(folder.id));
+									}}
+									className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
+								>
+									<Plus className="h-3 w-3" />
+								</button>
+							)}
 							<button
 								type="button"
 								title="이름 변경"
@@ -94,9 +184,9 @@ export function AdminSidebar({
 										await onRenameFolder(folder.id, next.trim(), folder.version);
 									}
 								}}
-								className="text-[10px] text-neutral-400 hover:text-white px-1"
+								className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
 							>
-								수정
+								<Edit2 className="h-3 w-3" />
 							</button>
 							<button
 								type="button"
@@ -107,15 +197,44 @@ export function AdminSidebar({
 										await onDeleteFolder(folder.id, folder.version);
 									}
 								}}
-								className="text-[10px] text-red-400 hover:text-red-300 px-1"
+								className="p-1 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-700/60"
 							>
-								삭제
+								<Trash2 className="h-3 w-3" />
 							</button>
 						</div>
 					)}
 				</div>
 
-				{children.map((child) => renderFolderItem(child, depth + 1))}
+				{/* 하위 폴더 계층 (트리 세로 라인 & 들여쓰기) */}
+				{isExpanded && (
+					<div className="ml-3 pl-2.5 border-l border-neutral-800 flex flex-col gap-1 mt-0.5">
+						{/* 하위 폴더 생성 인라인 폼 */}
+						{isCreatingHere && (
+							<form
+								onSubmit={(e) => handleCreateSubFolder(folder.id, e)}
+								className="flex items-center gap-1 my-1 px-1"
+							>
+								<input
+									type="text"
+									placeholder="하위 폴더 이름"
+									value={subFolderName}
+									onChange={(e) => setSubFolderName(e.target.value)}
+									className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+									autoFocus
+								/>
+								<button
+									type="button"
+									onClick={() => setCreatingParentId(null)}
+									className="text-[11px] text-neutral-400 hover:text-white px-1"
+								>
+									취소
+								</button>
+							</form>
+						)}
+
+						{children.map((child) => renderFolderItem(child))}
+					</div>
+				)}
 			</div>
 		);
 	};
@@ -195,19 +314,20 @@ export function AdminSidebar({
 						{onCreateFolder && (
 							<button
 								type="button"
-								onClick={() => setIsCreating((prev) => !prev)}
+								onClick={() => setIsCreatingRoot((prev) => !prev)}
 								className="text-xs text-neutral-400 hover:text-white"
+								title="루트 폴더 추가"
 							>
 								+ 폴더
 							</button>
 						)}
 					</div>
 
-					{isCreating && onCreateFolder && (
-						<form onSubmit={handleCreateFolder} className="mb-2 px-2">
+					{isCreatingRoot && onCreateFolder && (
+						<form onSubmit={handleCreateRootFolder} className="mb-2 px-2">
 							<input
 								type="text"
-								placeholder="새 폴더 이름"
+								placeholder="루트 폴더 이름"
 								value={newFolderName}
 								onChange={(e) => setNewFolderName(e.target.value)}
 								className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
@@ -217,19 +337,22 @@ export function AdminSidebar({
 					)}
 
 					<div className="flex flex-col gap-1">
+						{/* 루트 버튼 */}
 						<button
 							type="button"
 							onClick={() => onSelectFolder(null)}
-							className={`text-left rounded-md px-3 py-1.5 text-xs transition ${
+							className={`text-left rounded-md px-3 py-1.5 text-xs transition flex items-center gap-1.5 ${
 								currentFolderId === null
 									? "bg-neutral-800 text-white font-medium"
 									: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
 							}`}
 						>
-							📁 전체 항목 (루트)
+							<FolderIcon className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0" />
+							<span>전체 항목 (루트)</span>
 						</button>
 
-						{rootFolders.map((f) => renderFolderItem(f, 0))}
+						{/* 재귀 계층 트리 렌더링 */}
+						{rootFolders.map((f) => renderFolderItem(f))}
 					</div>
 				</div>
 			) : (

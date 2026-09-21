@@ -311,7 +311,7 @@ export function AdminEntriesTable({
 									<td className="px-4 py-2.5 text-center text-sm">
 										📁
 									</td>
-									<td className="px-4 py-2.5 font-medium text-amber-200">
+									<td className="px-4 py-2.5 font-medium text-white">
 										<div className="flex items-center justify-between">
 											<span className="hover:underline flex items-center gap-1.5">
 												<span>{folder.name}</span>
