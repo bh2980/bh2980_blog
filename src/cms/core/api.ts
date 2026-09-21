@@ -50,7 +50,7 @@ export const createEntryBodySchema = z.object({
 	slug: z.string().nullable().optional().default(null),
 	metadata: z.record(z.string(), z.unknown()).default({}),
 	mdx: z.string().default(""),
-	folderId: z.string().nullable().optional(),
+	folderId: z.string().uuid().nullable().optional(),
 });
 
 export type CreateEntryBody = z.infer<typeof createEntryBodySchema>;
@@ -62,7 +62,7 @@ export const patchEntryBodySchema = z.object({
 	slug: z.string().nullable().optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
 	mdx: z.string().optional(),
-	folderId: z.string().nullable().optional(),
+	folderId: z.string().uuid().nullable().optional(),
 });
 
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;

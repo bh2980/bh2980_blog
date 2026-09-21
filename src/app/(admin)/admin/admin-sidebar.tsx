@@ -11,6 +11,8 @@ interface SidebarProps {
 	onSelectCollection: (col: Collection) => void;
 	onSelectFolder: (folderId: string | null) => void;
 	onCreateFolder: (name: string, parentId: string | null) => Promise<void>;
+	onRenameFolder: (id: string, name: string, version: number) => Promise<void>;
+	onDeleteFolder: (id: string, version: number) => Promise<void>;
 }
 
 export function AdminSidebar({
@@ -20,6 +22,8 @@ export function AdminSidebar({
 	onSelectCollection,
 	onSelectFolder,
 	onCreateFolder,
+	onRenameFolder,
+	onDeleteFolder,
 }: SidebarProps) {
 	const [newFolderName, setNewFolderName] = useState("");
 	const [isCreating, setIsCreating] = useState(false);
@@ -32,6 +36,10 @@ export function AdminSidebar({
 		{ id: "collection", label: "모음집 (Collections)" },
 	];
 
+	// Build folder hierarchy
+	const rootFolders = folders.filter((f) => !f.parentId);
+	const getChildren = (parentId: string) => folders.filter((f) => f.parentId === parentId);
+
 	const handleCreateFolder = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newFolderName.trim()) return;
@@ -40,8 +48,67 @@ export function AdminSidebar({
 			setNewFolderName("");
 			setIsCreating(false);
 		} catch (err) {
-			alert("폴더 생성에 실패했습니다: " + (err instanceof Error ? err.message : String(err)));
+			alert("폴더 생성 실패: " + (err instanceof Error ? err.message : String(err)));
 		}
+	};
+
+	const renderFolderItem = (folder: Folder, depth: number = 0) => {
+		const active = currentFolderId === folder.id;
+		const children = getChildren(folder.id);
+
+		return (
+			<div key={folder.id} className="flex flex-col">
+				<div
+					className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition ${
+						active
+							? "bg-neutral-800 text-white font-medium"
+							: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
+					}`}
+					style={{ paddingLeft: `${depth * 12 + 8}px` }}
+				>
+					<button
+						type="button"
+						onClick={() => onSelectFolder(folder.id)}
+						className="flex flex-1 items-center gap-1.5 truncate text-left"
+					>
+						<span>📂</span>
+						<span className="truncate">{folder.name}</span>
+					</button>
+
+					<div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+						<button
+							type="button"
+							title="이름 변경"
+							onClick={async (e) => {
+								e.stopPropagation();
+								const next = prompt("새 폴더 이름:", folder.name);
+								if (next && next.trim() && next !== folder.name) {
+									await onRenameFolder(folder.id, next.trim(), folder.version);
+								}
+							}}
+							className="text-[10px] text-neutral-400 hover:text-white px-1"
+						>
+							수정
+						</button>
+						<button
+							type="button"
+							title="삭제"
+							onClick={async (e) => {
+								e.stopPropagation();
+								if (confirm(`'${folder.name}' 폴더를 삭제하시겠습니까? (하위 글은 보존됩니다)`)) {
+									await onDeleteFolder(folder.id, folder.version);
+								}
+							}}
+							className="text-[10px] text-red-400 hover:text-red-300 px-1"
+						>
+							삭제
+						</button>
+					</div>
+				</div>
+
+				{children.map((child) => renderFolderItem(child, depth + 1))}
+			</div>
+		);
 	};
 
 	return (
@@ -109,24 +176,7 @@ export function AdminSidebar({
 						📁 전체 항목 (루트)
 					</button>
 
-					{folders.map((f) => {
-						const active = currentFolderId === f.id;
-						return (
-							<button
-								key={f.id}
-								type="button"
-								onClick={() => onSelectFolder(f.id)}
-								className={`text-left rounded-md px-3 py-1.5 text-xs transition flex items-center gap-1.5 ${
-									active
-										? "bg-neutral-800 text-white font-medium"
-										: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
-								}`}
-							>
-								<span>📂</span>
-								<span className="truncate">{f.name}</span>
-							</button>
-						);
-					})}
+					{rootFolders.map((f) => renderFolderItem(f, 0))}
 				</div>
 			</div>
 		</aside>

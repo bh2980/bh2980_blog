@@ -26,7 +26,20 @@ export function isAllowedAdminId(githubId: string | undefined | null): boolean {
 	if (!expected || !githubId) {
 		return false;
 	}
-	return String(githubId).trim() === expected.trim();
+
+	// Canonical decimal string normalization: strictly /^\d+$/
+	const trimmedTarget = String(githubId).trim();
+	const trimmedExpected = expected.trim();
+
+	if (!/^\d+$/.test(trimmedTarget) || !/^\d+$/.test(trimmedExpected)) {
+		return false;
+	}
+
+	// Normalize leading zeros away
+	const normTarget = BigInt(trimmedTarget).toString();
+	const normExpected = BigInt(trimmedExpected).toString();
+
+	return normTarget === normExpected;
 }
 
 export class NextAuthGateway implements AuthGateway {

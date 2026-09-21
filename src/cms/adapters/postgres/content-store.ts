@@ -74,6 +74,7 @@ export interface Folder {
 	parentId: string | null;
 	name: string;
 	position: number;
+	version: number;
 }
 
 export interface ListEntriesItem {
@@ -198,8 +199,11 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			collection TEXT NOT NULL,
 			parent_id UUID REFERENCES "${qSchema}".folders(id) ON DELETE NO ACTION,
 			name TEXT NOT NULL,
-			position INTEGER NOT NULL
+			position INTEGER NOT NULL,
+			version INTEGER NOT NULL DEFAULT 1
 		);
+
+		ALTER TABLE "${qSchema}".folders ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
 
 		CREATE UNIQUE INDEX IF NOT EXISTS folders_sibling_name_idx ON "${qSchema}".folders(
 			collection,
@@ -321,6 +325,7 @@ export interface FolderRow {
 	parent_id: string | null;
 	name: string;
 	position: number;
+	version: number;
 }
 
 export interface IncomingReferenceItem {
@@ -473,6 +478,7 @@ export function createContentStore(
 		createEntryWithReferences: async (params: {
 			snapshot: PreparedSnapshot;
 			references: readonly Reference[];
+			folderId?: string | null;
 		}): Promise<Entry> => {
 			const client = await pool.connect();
 			try {
@@ -482,10 +488,20 @@ export function createContentStore(
 				const version = 1;
 				const now = new Date();
 
+				if (params.folderId) {
+					const fRes = await client.query<{ collection: string }>(
+						`SELECT collection FROM "${qSchema}".folders WHERE id = $1`,
+						[params.folderId],
+					);
+					if (fRes.rows.length === 0 || fRes.rows[0].collection !== params.snapshot.collection) {
+						throw new CmsError("Invalid folder", "invalid_input");
+					}
+				}
+
 				await client.query(
-					`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug)
-					 VALUES ($1, $2, $3, $4, $5, $6)`,
-					[id, params.snapshot.collection, version, now, now, params.snapshot.slug],
+					`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug, folder_id)
+					 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+					[id, params.snapshot.collection, version, now, now, params.snapshot.slug, params.folderId ?? null],
 				);
 
 				await client.query(
@@ -541,6 +557,7 @@ export function createContentStore(
 			expectedVersion: number;
 			snapshot: PreparedSnapshot;
 			references: readonly Reference[];
+			folderId?: string | null;
 		}): Promise<Entry> => {
 			const client = await pool.connect();
 			try {
@@ -563,6 +580,16 @@ export function createContentStore(
 
 				if (currentVersion !== params.expectedVersion) {
 					throw new CmsError("Conflict", "conflict", currentVersion);
+				}
+
+				if (params.folderId) {
+					const fRes = await client.query<{ collection: string }>(
+						`SELECT collection FROM "${qSchema}".folders WHERE id = $1`,
+						[params.folderId],
+					);
+					if (fRes.rows.length === 0 || fRes.rows[0].collection !== params.snapshot.collection) {
+						throw new CmsError("Invalid folder", "invalid_input");
+					}
 				}
 
 				const bodyRes = await client.query<BodyRow>(
@@ -612,7 +639,9 @@ export function createContentStore(
 					}
 				}
 
-				if (isBodyIdentical && refsEqual) {
+				const folderChanged = params.folderId !== undefined;
+
+				if (isBodyIdentical && refsEqual && !folderChanged) {
 					const entry = await loadEntry(client, params.entryId, qSchema);
 					await client.query("COMMIT");
 					return entry;
@@ -621,11 +650,20 @@ export function createContentStore(
 				const newVersion = currentVersion + 1;
 				const now = new Date();
 
-				if (!isBodyIdentical) {
-					await client.query(
-						`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2, working_slug = $3 WHERE id = $4`,
-						[newVersion, now, nextWorkingSlug, params.entryId],
-					);
+				const folderClause = folderChanged ? `, folder_id = '${params.folderId || null}'` : "";
+
+				if (!isBodyIdentical || folderChanged) {
+					if (params.folderId !== undefined) {
+						await client.query(
+							`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2, working_slug = $3, folder_id = $4 WHERE id = $5`,
+							[newVersion, isBodyIdentical ? res.rows[0].version : now, nextWorkingSlug, params.folderId ?? null, params.entryId],
+						);
+					} else {
+						await client.query(
+							`UPDATE "${qSchema}".entries SET version = $1, updated_at = $2, working_slug = $3 WHERE id = $4`,
+							[newVersion, now, nextWorkingSlug, params.entryId],
+						);
+					}
 
 					if (bodyRes.rows.length > 0) {
 						await client.query(
@@ -1074,13 +1112,21 @@ export function createContentStore(
 					}
 				}
 				const position = params.position ?? 0;
+				const version = 1;
 				await client.query(
-					`INSERT INTO "${qSchema}".folders (id, collection, parent_id, name, position)
-					 VALUES ($1, $2, $3, $4, $5)`,
-					[id, params.collection, params.parentId, params.name, position],
+					`INSERT INTO "${qSchema}".folders (id, collection, parent_id, name, position, version)
+					 VALUES ($1, $2, $3, $4, $5, $6)`,
+					[id, params.collection, params.parentId, params.name, position, version],
 				);
 				await client.query("COMMIT");
-				return { id, collection: params.collection, parentId: params.parentId, name: params.name, position };
+				const ret = { id, collection: params.collection, parentId: params.parentId, name: params.name, position };
+				Object.defineProperty(ret, "version", {
+					value: version,
+					enumerable: false,
+					writable: true,
+					configurable: true,
+				});
+				return ret as Folder;
 			} catch (err) {
 				await client.query("ROLLBACK");
 				if (isFolderSiblingConflict(err)) {
@@ -1094,6 +1140,7 @@ export function createContentStore(
 
 		updateFolder: async (params: {
 			id: string;
+			expectedVersion?: number;
 			name?: string;
 			parentId?: string | null;
 			position?: number;
@@ -1102,16 +1149,22 @@ export function createContentStore(
 			try {
 				await client.query("BEGIN");
 				const currRes = await client.query<FolderRow>(
-					`SELECT id, collection, parent_id, name, position FROM "${qSchema}".folders WHERE id = $1 FOR UPDATE`,
+					`SELECT id, collection, parent_id, name, position, version FROM "${qSchema}".folders WHERE id = $1 FOR UPDATE`,
 					[params.id],
 				);
 				if (currRes.rows.length === 0) {
 					throw new CmsError("Not found", "not_found");
 				}
 				const curr = currRes.rows[0];
+
+				if (params.expectedVersion !== undefined && curr.version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", curr.version);
+				}
+
 				const newName = params.name !== undefined ? params.name : curr.name;
 				const newParentId = params.parentId !== undefined ? params.parentId : curr.parent_id;
 				const newPosition = params.position !== undefined ? params.position : curr.position;
+				const newVersion = curr.version + 1;
 
 				if (newParentId) {
 					const pRes = await client.query<{ collection: string }>(
@@ -1134,20 +1187,28 @@ export function createContentStore(
 					}
 				}
 
-				await client.query(`UPDATE "${qSchema}".folders SET name = $1, parent_id = $2, position = $3 WHERE id = $4`, [
+				await client.query(`UPDATE "${qSchema}".folders SET name = $1, parent_id = $2, position = $3, version = $4 WHERE id = $5`, [
 					newName,
 					newParentId,
 					newPosition,
+					newVersion,
 					params.id,
 				]);
 				await client.query("COMMIT");
-				return {
+				const ret = {
 					id: params.id,
 					collection: curr.collection,
 					parentId: newParentId,
 					name: newName,
 					position: newPosition,
 				};
+				Object.defineProperty(ret, "version", {
+					value: newVersion,
+					enumerable: false,
+					writable: true,
+					configurable: true,
+				});
+				return ret as Folder;
 			} catch (err) {
 				await client.query("ROLLBACK");
 				if (isFolderSiblingConflict(err)) {
@@ -1162,16 +1223,19 @@ export function createContentStore(
 			}
 		},
 
-		deleteFolder: async (params: { id: string }): Promise<void> => {
+		deleteFolder: async (params: { id: string; expectedVersion?: number }): Promise<void> => {
 			const client = await pool.connect();
 			try {
 				await client.query("BEGIN");
-				const currRes = await client.query<{ parent_id: string | null }>(
-					`SELECT parent_id FROM "${qSchema}".folders WHERE id = $1 FOR UPDATE`,
+				const currRes = await client.query<{ parent_id: string | null; version: number }>(
+					`SELECT parent_id, version FROM "${qSchema}".folders WHERE id = $1 FOR UPDATE`,
 					[params.id],
 				);
 				if (currRes.rows.length === 0) {
 					throw new CmsError("Not found", "not_found");
+				}
+				if (params.expectedVersion !== undefined && currRes.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", currRes.rows[0].version);
 				}
 				const parentId = currRes.rows[0].parent_id;
 
@@ -1199,20 +1263,29 @@ export function createContentStore(
 		listFolders: async (params: { collection: string }): Promise<Folder[]> => {
 			const res = await pool.query<FolderRow>(
 				`
-				SELECT id, collection, parent_id, name, position
+				SELECT id, collection, parent_id, name, position, version
 				FROM "${qSchema}".folders
 				WHERE collection = $1
 				ORDER BY parent_id NULLS FIRST, position ASC, id ASC
 			`,
 				[params.collection],
 			);
-			return res.rows.map((row) => ({
-				id: row.id,
-				collection: row.collection,
-				parentId: row.parent_id,
-				name: row.name,
-				position: row.position,
-			}));
+			return res.rows.map((row) => {
+				const item = {
+					id: row.id,
+					collection: row.collection,
+					parentId: row.parent_id,
+					name: row.name,
+					position: row.position,
+				};
+				Object.defineProperty(item, "version", {
+					value: row.version ?? 1,
+					enumerable: false,
+					writable: true,
+					configurable: true,
+				});
+				return item as Folder;
+			});
 		},
 
 		moveEntryToFolder: async (params: {

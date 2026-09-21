@@ -6,7 +6,7 @@ import { ServiceError } from "@/cms/services/types";
 export function handleApiError(error: unknown): NextResponse {
 	if (error instanceof AuthError) {
 		return NextResponse.json(
-			{ error: error.message, code: error.code },
+			{ code: error.code, message: error.message },
 			{ status: error.code === "unauthorized" ? 401 : 403 },
 		);
 	}
@@ -14,29 +14,29 @@ export function handleApiError(error: unknown): NextResponse {
 	if (error instanceof CmsError) {
 		if (error.code === "conflict") {
 			return NextResponse.json(
-				{ error: error.message, code: "conflict", serverVersion: error.serverVersion },
+				{ code: "conflict", message: error.message, serverVersion: error.serverVersion },
 				{ status: 409 },
 			);
 		}
 		if (error.code === "slug_conflict") {
-			return NextResponse.json({ error: error.message, code: "slug_conflict" }, { status: 409 });
+			return NextResponse.json({ code: "slug_conflict", message: error.message }, { status: 409 });
 		}
 		if (error.code === "not_found") {
-			return NextResponse.json({ error: error.message, code: "not_found" }, { status: 404 });
+			return NextResponse.json({ code: "not_found", message: error.message }, { status: 404 });
 		}
 		if (error.code === "invalid_input") {
-			return NextResponse.json({ error: error.message, code: "invalid_input" }, { status: 400 });
+			return NextResponse.json({ code: "invalid_input", message: error.message }, { status: 400 });
 		}
-		return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+		return NextResponse.json({ code: error.code, message: error.message }, { status: 400 });
 	}
 
 	if (error instanceof ServiceError) {
 		if (error.code === "slug_reserved") {
-			return NextResponse.json({ error: "Slug is reserved", code: error.code }, { status: 409 });
+			return NextResponse.json({ code: error.code, message: "Slug is reserved" }, { status: 409 });
 		}
-		return NextResponse.json({ error: error.message, code: error.code }, { status: 422 });
+		return NextResponse.json({ code: error.code, message: error.message }, { status: 422 });
 	}
 
 	console.error("Unhandled API error:", error);
-	return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+	return NextResponse.json({ code: "internal_error", message: "Internal server error" }, { status: 500 });
 }

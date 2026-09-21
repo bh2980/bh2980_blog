@@ -12,12 +12,14 @@ interface TableProps {
 	sortField: "updatedAt" | "createdAt" | "title" | "slug";
 	sortDirection: "asc" | "desc";
 	isLoading: boolean;
+	errorMessage: string | null;
 	onSearchChange: (val: string) => void;
 	onStatusChange: (val: string) => void;
 	onSortChange: (field: "updatedAt" | "createdAt" | "title" | "slug") => void;
 	onPageChange: (newPage: number) => void;
 	onPageSizeChange: (newSize: 25 | 50 | 100) => void;
 	onCreateNew: () => void;
+	onRetry: () => void;
 }
 
 export function AdminEntriesTable({
@@ -30,12 +32,14 @@ export function AdminEntriesTable({
 	sortField,
 	sortDirection,
 	isLoading,
+	errorMessage,
 	onSearchChange,
 	onStatusChange,
 	onSortChange,
 	onPageChange,
 	onPageSizeChange,
 	onCreateNew,
+	onRetry,
 }: TableProps) {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -83,6 +87,20 @@ export function AdminEntriesTable({
 					</button>
 				</div>
 			</div>
+
+			{/* Error Banner */}
+			{errorMessage && (
+				<div className="mt-4 flex items-center justify-between rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+					<span>{errorMessage}</span>
+					<button
+						type="button"
+						onClick={onRetry}
+						className="rounded border border-red-700 bg-red-900/60 px-2.5 py-1 text-xs font-medium hover:bg-red-800"
+					>
+						다시 시도
+					</button>
+				</div>
+			)}
 
 			{/* Table Content */}
 			<div className="flex-1 overflow-auto mt-4 rounded-lg border border-neutral-800 bg-neutral-900/30">

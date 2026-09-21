@@ -37,6 +37,7 @@ describe("M2-BE-5 Preferences API Contract", () => {
 
 		const putReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
 			method: "PUT",
+			headers: { origin: "http://localhost", "content-type": "application/json" },
 			body: JSON.stringify({
 				defaultPageSize: 50,
 				sort: { field: "title", direction: "asc" },
@@ -54,6 +55,7 @@ describe("M2-BE-5 Preferences API Contract", () => {
 	it("PUT /preferences rejects invalid pageSize with 400", async () => {
 		const putReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
 			method: "PUT",
+			headers: { origin: "http://localhost", "content-type": "application/json" },
 			body: JSON.stringify({
 				defaultPageSize: 30, // invalid: must be 25, 50, 100
 			}),

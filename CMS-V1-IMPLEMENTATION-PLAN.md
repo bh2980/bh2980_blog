@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-21 (Milestone 2 관리 기반 전체 완료. 전체 64 files/420 tests pass · typecheck pass · build pass)
+작성: 2026-09-16 · Lead · 갱신: 2026-09-21 (Milestone 2 오라클 검수 피드백 반영을 위해 IN_PROGRESS로 재오픈)
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -32,19 +32,19 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M1-DA-1 | DONE | DA | 통합 브랜치 | `9d19f9f` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
 | M1-RV-1 | DONE | RV | 통합 브랜치 | `53b1495` | 전체 명령 `node --env-file=.env.local node_modules/vitest/vitest.mjs run` => 56 files/299 tests passed; `pnpm typecheck` passed; M1-ED-2 변경 5개 파일 Biome 통과; Codex 최종 판정 OK |
 | M2-INV-1 | DONE | INF | 통합 브랜치 | — | next-auth@5.0.0-beta.32 공식 조사 확인 |
-| M2-BE-1 | DONE | BE | 통합 브랜치 | `local` | `next-auth@5.0.0-beta.32` 설치, NextAuthGateway, GitHub 숫자 ID 검증, `auth-gateway.test.ts` 6 passing |
+| M2-BE-1 | IN_PROGRESS | BE | 통합 브랜치 | — | CSRF 가드, strict decimal ID 검증, 비인가 로그인 루프 방지 보강 중 |
 | M2-BE-2 | DONE | BE | 통합 브랜치 | `6d05f43` | `src/cms/services/__test__/content-service.test.ts` 71 passing |
 | M2-TW-1 | DONE | TW | 통합 브랜치 | `0d8529a` | `src/cms/services/__test__/content-service.test.ts` 순수 서비스 계약 고정 |
 | M2-TW-3 | DONE | TW | 통합 브랜치 | `ef390fe` | `src/cms/adapters/postgres/__test__/references.test.ts` 작업 참조/충돌 계약 고정 |
 | M2-DA-1 | DONE | DA | 통합 브랜치 | `190d8ae` | 실 PostgreSQL 참조 무결성 및 references 16 passing |
-| M2-BE-3 | DONE | BE | 통합 브랜치 | `local` | `/api/cms/v1/{meta,entries}` CRUD 및 428/409 에러 매핑, `entries.test.ts` 7 passing |
+| M2-BE-3 | IN_PROGRESS | BE | 통합 브랜치 | — | 엔트리 생성/수정 + 폴더 배정 단일 원자적 트랜잭션 통합 및 에러 응답 규격 정비 중 |
 | M2-TW-2 | DONE | TW | 통합 브랜치 | `fbd27db` | folders.test.ts (8), list-entries.test.ts (9) 계약 고정 |
-| M2-DA-2 | DONE | DA | 통합 브랜치 | `9f78f09` | 실 PostgreSQL 목록/폴더 쿼리 구현, folders 8 / list-entries 9 passing, 전체 165 passing |
-| M2-BE-4 | DONE | BE | 통합 브랜치 | `local` | `/api/cms/v1/entries/:id/relations` 역참조 조회 구현 및 `relations.test.ts` 2 passing |
-| M2-BE-5 | DONE | JR | 통합 브랜치 | `local` | `/api/cms/v1/preferences` 영속화 및 `preferences.test.ts` 2 passing |
-| M2-FE-1 | DONE | FE | 통합 브랜치 | `local` | `/admin` 셸 레이아웃, 로그인 화면, 컬렉션 목록 테이블 구현 |
-| M2-FE-2 | DONE | FE | 통합 브랜치 | `local` | 폴더 트리 탐색/생성, preferences 자동 로드/저장 연동 |
-| M2-RV-1 | DONE | RV | 통합 브랜치 | `local` | Milestone 2 전 스위트 검증: 64 files / 420 tests pass, typecheck pass, build pass |
+| M2-DA-2 | IN_PROGRESS | DA | 통합 브랜치 | — | 폴더 버전 컬럼 추가 및 폴더 낙관적 락(expectedVersion) 지원 보강 중 |
+| M2-BE-4 | IN_PROGRESS | BE | 통합 브랜치 | — | relations 역참조 API 및 record 워크플로우 보강 중 |
+| M2-BE-5 | IN_PROGRESS | JR | 통합 브랜치 | — | preferences API 규격 보강 중 |
+| M2-FE-1 | IN_PROGRESS | FE | 통합 브랜치 | — | URL 쿼리 동기화, 에러 피드백, 반응형 테이블 보강 중 |
+| M2-FE-2 | IN_PROGRESS | FE | 통합 브랜치 | — | 폴더 계층 트리/이름변경/이동 및 preferences 자동 연동 보강 중 |
+| M2-RV-1 | IN_PROGRESS | RV | 통합 브랜치 | — | 오라클 코드 리뷰 피드백 반영 및 M2 재검수 진행 중 |
 | M3-TW-1 | TODO | TW | — | — | — |
 | M3-BE-1 | TODO | BE | — | — | — |
 | M3-FE-1 | TODO | FE | — | — | — |
@@ -93,7 +93,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-20: M1-ED-2(커밋 `53b1495`)와 M1-RV-1이 DONE되어 Milestone 1이 완료되었다. 전체 56 files/299 tests 및 typecheck 통과, Codex 최종 판정 OK. M1-ED-2는 프레임워크 독립적 변환기/토글 경계이므로 Tiptap이 필요하지 않았으며, 따라서 Tiptap은 첫 실제 시각 에디터 작업인 M3-FE-1로 유예한다.
 - 2026-09-20: 사용자 승인으로 M2 계약과 소유권을 수정했다. M2-INV-1 완료(next-auth@5.0.0-beta.32), M2-BE-1은 READY(INV-1 후 독립 진행 가능). M2-TW-1이 READY 상태인 동안 M2-BE-2는 TODO 상태를 유지한다. M2-BE-2는 PostgreSQL을 수정하지 않는 순수 서비스/발행 준비로 고정하고, M2-TW-3(참조 계약 및 slug_conflict 실패 테스트)와 M2-DA-1(이를 통과하는 참조 DB 구현)을 새로 추가하여 실행 순서(TW-1 → BE-2; TW-1 → TW-3 → DA-1; TW-2 → DA-2; BE-1은 INV-1 이후 독립 진행 가능; BE-3은 BE-1, BE-2, DA-1 대기)를 바로잡았다. M2-TW-3은 TW-1 이후 TODO, M2-DA-1은 TW-3 이후 TODO, M2-DA-2는 TW-2 이후 TODO이다. M2-BE-3의 선행 조건으로 BE-1, BE-2, DA-1을 명시하고 API DTO 소유권을 배정했다. 이 실행을 위한 현재 그린 엔드포인트(green endpoint)는 M2-INV-1 DONE; TW-1/BE-2 green; TW-3/DA-1 real-DB green; TW-2/DA-2 real-DB green 이다. M2-INV-1 외의 향후 구현 태스크들은 아직 완료 처리하지 않는다.
 - 2026-09-21: M2 코어 서비스 및 데이터베이스 계약(M2-TW-1, M2-BE-2, M2-TW-3, M2-DA-1, M2-TW-2, M2-DA-2)이 통합 브랜치에 병합·검증 완료되어 DONE으로 최신화했다. `src/cms` 테스트 스위트 전체(7 suites / 165 tests)가 PostgreSQL 실환경에서 0 skip으로 통과하며 `pnpm typecheck` 및 `pnpm build` 통과를 확인했다. M2-BE-3은 DA-1, BE-2 선행 충족으로 착수 가능(READY), M2-BE-1도 READY 상태다.
-- 2026-09-21: Milestone 2의 전 작업(M2-BE-1, M2-BE-3, M2-BE-4, M2-BE-5, M2-FE-1, M2-FE-2, M2-RV-1) 구현 및 검증 완료. `next-auth@5.0.0-beta.32`를 설치하고 `AuthGateway`로 관리자 GitHub 숫자 ID 검증 경계를 구축했으며, `/api/cms/v1/{meta, entries, folders, preferences, relations}` REST API를 완성했다. 프론트엔드에서는 `/admin` 관리자 셸, 로그인 화면, 컬렉션 목록 테이블, 폴더 트리 탐색 및 preferences 설정 영속화를 연동했다. 전체 64개 테스트 파일(420 passed), `pnpm typecheck`, `pnpm build`(70 routes 성공) 검증 완료하여 M2를 DONE으로 완결했다.
+- 2026-09-21: Milestone 2의 전 작업(M2-BE-1, M2-BE-3, M2-BE-4, M2-BE-5, M2-FE-1, M2-FE-2, M2-RV-1) 1차 구현 후 oracle 독립 감사를 진행했다. 감사 결과 동일 출처/CSRF 검사 누락(H1), 엔트리 생성/수정과 폴더 이동의 비원자성으로 인한 버전 불일치(H2), 프론트엔드 URL 쿼리/에러 피드백/계층트리 미흡(H3), 폴더 낙관적 잠금 부재(H4) 등이 지적되어 M2를 IN_PROGRESS로 재오픈하고 피드백 반영 작업을 시작한다.
 
 ---
 

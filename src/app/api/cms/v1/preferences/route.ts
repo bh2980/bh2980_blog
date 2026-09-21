@@ -3,6 +3,7 @@ import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
 import { preferencesBodySchema } from "@/cms/core/api";
 import { handleApiError } from "../error-handler";
+import { validateSameOrigin } from "../security";
 
 export async function GET() {
 	try {
@@ -18,13 +19,14 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
 	try {
+		validateSameOrigin(request);
 		const auth = await authGateway.verifyAdmin();
 		const body = await request.json();
 
 		const parsed = preferencesBodySchema.safeParse(body);
 		if (!parsed.success) {
 			return NextResponse.json(
-				{ error: "Invalid preferences body", details: parsed.error.issues },
+				{ code: "invalid_input", message: "Invalid preferences body", issues: parsed.error.issues },
 				{ status: 400 },
 			);
 		}

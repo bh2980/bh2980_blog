@@ -3,6 +3,7 @@ import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentService, getCmsContentStore } from "@/cms/container";
 import { patchEntryBodySchema } from "@/cms/core/api";
 import { handleApiError } from "../../error-handler";
+import { validateSameOrigin } from "../../security";
 
 interface RouteContext {
 	params: Promise<{ id: string }>;
@@ -24,6 +25,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
 	try {
+		validateSameOrigin(request);
 		await authGateway.verifyAdmin();
 
 		const { id } = await context.params;
@@ -31,7 +33,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 		if (body.expectedVersion === undefined) {
 			return NextResponse.json(
-				{ error: "version_required", code: "version_required" },
+				{ code: "version_required", message: "expectedVersion is required" },
 				{ status: 428 },
 			);
 		}
@@ -39,7 +41,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 		const parsed = patchEntryBodySchema.safeParse(body);
 		if (!parsed.success) {
 			return NextResponse.json(
-				{ error: "Invalid request body", details: parsed.error.issues },
+				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
 				{ status: 400 },
 			);
 		}
@@ -57,15 +59,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 					? (parsed.data.metadata as any)
 					: currentEntry.working.metadata,
 			mdx: parsed.data.mdx !== undefined ? parsed.data.mdx : currentEntry.working.mdx,
+			folderId: parsed.data.folderId,
 		} as any);
-
-		if (parsed.data.folderId !== undefined) {
-			await store.moveEntryToFolder({
-				entryId: id,
-				folderId: parsed.data.folderId,
-				expectedVersion: (updated as any).version,
-			});
-		}
 
 		return NextResponse.json(updated);
 	} catch (error) {

@@ -103,7 +103,14 @@ export async function prepareSnapshot(
 	input: ServiceInput,
 	options?: { schemaVersion?: number; previousReferences?: readonly Reference[] },
 ): Promise<PreparedSnapshot> {
-	validateExactRecord(input, SERVICE_INPUT_KEYS);
+	if (!input || typeof input !== "object" || Array.isArray(input)) {
+		throw new ServiceError("invalid_input");
+	}
+	if (input.folderId === undefined) {
+		validateExactRecord(input, SERVICE_INPUT_KEYS);
+	} else {
+		validateExactRecord(input, [...SERVICE_INPUT_KEYS, "folderId"]);
+	}
 
 	const rawCollection: unknown = input.collection;
 	if (typeof rawCollection !== "string") {
@@ -449,13 +456,31 @@ export function validateForPublish(
 export const createContentService = <T = unknown>(storePort: StorePort<T>) => {
 	return {
 		createDraft: async (input: ServiceInput) => {
-			validateExactRecord(input, SERVICE_INPUT_KEYS);
+			if (!input || typeof input !== "object" || Array.isArray(input)) {
+				throw new ServiceError("invalid_input");
+			}
+			if (input.folderId === undefined) {
+				validateExactRecord(input, SERVICE_INPUT_KEYS);
+			} else {
+				validateExactRecord(input, [...SERVICE_INPUT_KEYS, "folderId"]);
+			}
 			if ("expectedVersion" in input) throw new ServiceError("invalid_input");
 			const snapshot = await prepareSnapshot(input);
-			return storePort.createEntryWithReferences({ snapshot, references: snapshot.references });
+			return storePort.createEntryWithReferences({
+				snapshot,
+				references: snapshot.references,
+				folderId: input.folderId,
+			});
 		},
 		saveDraft: async (entryId: string, input: SaveDraftInput) => {
-			validateExactRecord(input, SAVE_DRAFT_KEYS);
+			if (!input || typeof input !== "object" || Array.isArray(input)) {
+				throw new ServiceError("invalid_input");
+			}
+			if (input.folderId === undefined) {
+				validateExactRecord(input, SAVE_DRAFT_KEYS);
+			} else {
+				validateExactRecord(input, [...SAVE_DRAFT_KEYS, "folderId"]);
+			}
 
 			const expectedVersion = input.expectedVersion;
 			if (typeof expectedVersion !== "number" || expectedVersion <= 0 || !Number.isInteger(expectedVersion)) {
@@ -490,6 +515,7 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => {
 				expectedVersion,
 				snapshot,
 				references: snapshot.references,
+				folderId: input.folderId,
 			});
 		},
 	};

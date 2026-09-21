@@ -3,18 +3,13 @@ import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
 import { z } from "zod";
 import { handleApiError } from "../error-handler";
+import { validateSameOrigin } from "../security";
 
 const createFolderSchema = z.object({
 	collection: z.enum(["post", "memo", "category", "tag", "collection"]),
 	name: z.string().min(1),
-	parentId: z.string().nullable().optional().default(null),
+	parentId: z.string().uuid().nullable().optional().default(null),
 	position: z.number().int().optional().default(0),
-});
-
-const patchFolderSchema = z.object({
-	name: z.string().min(1).optional(),
-	parentId: z.string().nullable().optional(),
-	position: z.number().int().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -24,7 +19,7 @@ export async function GET(request: NextRequest) {
 		const url = new URL(request.url);
 		const collection = url.searchParams.get("collection");
 		if (!collection) {
-			return NextResponse.json({ error: "collection is required" }, { status: 400 });
+			return NextResponse.json({ code: "invalid_input", message: "collection is required" }, { status: 400 });
 		}
 
 		const store = getCmsContentStore();
@@ -37,12 +32,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
+		validateSameOrigin(request);
 		await authGateway.verifyAdmin();
 
 		const body = await request.json();
 		const parsed = createFolderSchema.safeParse(body);
 		if (!parsed.success) {
-			return NextResponse.json({ error: "Invalid request body", details: parsed.error.issues }, { status: 400 });
+			return NextResponse.json(
+				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
+				{ status: 400 },
+			);
 		}
 
 		const store = getCmsContentStore();

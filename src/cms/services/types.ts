@@ -33,15 +33,15 @@ export type TagMetadata = { title?: string };
 export type CollectionMetadata = { title?: string; itemIds?: readonly string[] };
 
 export type ServiceInput =
-	| { collection: "post"; slug: string | null; metadata: PostMetadata; mdx: string }
-	| { collection: "memo"; slug: string | null; metadata: MemoMetadata; mdx: string }
-	| { collection: "category"; slug: string | null; metadata: CategoryMetadata; mdx: string }
-	| { collection: "tag"; slug: string | null; metadata: TagMetadata; mdx: string }
-	| { collection: "collection"; slug: string | null; metadata: CollectionMetadata; mdx: string };
+	| { collection: "post"; slug: string | null; metadata: PostMetadata; mdx: string; folderId?: string | null }
+	| { collection: "memo"; slug: string | null; metadata: MemoMetadata; mdx: string; folderId?: string | null }
+	| { collection: "category"; slug: string | null; metadata: CategoryMetadata; mdx: string; folderId?: string | null }
+	| { collection: "tag"; slug: string | null; metadata: TagMetadata; mdx: string; folderId?: string | null }
+	| { collection: "collection"; slug: string | null; metadata: CollectionMetadata; mdx: string; folderId?: string | null };
 
 export type SaveDraftInput = ServiceInput extends infer U
 	? U extends { collection: Collection }
-		? U & { expectedVersion: number }
+		? U & { expectedVersion: number; folderId?: string | null }
 		: never
 	: never;
 
@@ -63,12 +63,17 @@ export type ResolvedTargets = {
 
 export interface StorePort<T = unknown> {
 	getWorkingReferences(params: { entryId: string }): Promise<Reference[]>;
-	createEntryWithReferences(params: { snapshot: PreparedSnapshot; references: readonly Reference[] }): Promise<T>;
+	createEntryWithReferences(params: {
+		snapshot: PreparedSnapshot;
+		references: readonly Reference[];
+		folderId?: string | null;
+	}): Promise<T>;
 	saveWorkingWithReferences(params: {
 		entryId: string;
 		expectedVersion: number;
 		snapshot: PreparedSnapshot;
 		references: readonly Reference[];
+		folderId?: string | null;
 	}): Promise<T>;
 }
 

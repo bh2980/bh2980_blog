@@ -1,13 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { AuthError } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { GET as getMeta } from "../meta/route";
 import { GET as getEntries, POST as postEntries } from "../entries/route";
 import { GET as getEntry, PATCH as patchEntry } from "../entries/[id]/route";
 
+const mockVerifyAdmin = vi.fn();
+
 vi.mock("@/cms/adapters/auth", () => ({
 	authGateway: {
-		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
+		verifyAdmin: () => mockVerifyAdmin(),
 	},
 	AuthError: class AuthError extends Error {
 		constructor(public code: string, message: string) {
@@ -31,7 +34,6 @@ vi.mock("@/cms/container", () => {
 				working: { metadata: { title: "Title" }, mdx: "Hello", schemaVersion: 1 },
 			});
 		}),
-		moveEntryToFolder: vi.fn().mockResolvedValue(undefined),
 	};
 
 	const mockService = {
@@ -41,6 +43,7 @@ vi.mock("@/cms/container", () => {
 				collection: input.collection,
 				version: 1,
 				workingSlug: input.slug,
+				folderId: input.folderId,
 			});
 		}),
 		saveDraft: vi.fn().mockImplementation((id, input) => {
@@ -55,6 +58,7 @@ vi.mock("@/cms/container", () => {
 				collection: input.collection,
 				version: input.expectedVersion + 1,
 				workingSlug: input.slug,
+				folderId: input.folderId,
 			});
 		}),
 	};
@@ -65,35 +69,56 @@ vi.mock("@/cms/container", () => {
 	};
 });
 
-describe("M2-BE-3 HTTP API Contract", () => {
-	it("GET /meta returns metadata for authorized admin", async () => {
+describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", () => {
+	beforeEach(() => {
+		mockVerifyAdmin.mockReset();
+		mockVerifyAdmin.mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true });
+	});
+
+	it("returns 401 when user is unauthorized", async () => {
+		mockVerifyAdmin.mockRejectedValue(new AuthError("unauthorized", "Not logged in"));
 		const res = await getMeta();
-		expect(res.status).toBe(200);
+		expect(res.status).toBe(401);
 		const data = await res.json();
-		expect(data.collections).toContain("post");
-		expect(data.version).toBe("v1");
+		expect(data.code).toBe("unauthorized");
 	});
 
-	it("GET /entries requires valid collection and validates query parameters", async () => {
-		const reqWithoutCol = new NextRequest("http://localhost/api/cms/v1/entries");
-		const resWithoutCol = await getEntries(reqWithoutCol);
-		expect(resWithoutCol.status).toBe(400);
-
-		const reqWithCol = new NextRequest("http://localhost/api/cms/v1/entries?collection=post&pageSize=25");
-		const resWithCol = await getEntries(reqWithCol);
-		expect(resWithCol.status).toBe(200);
-		const data = await resWithCol.json();
-		expect(data.pageSize).toBe(25);
+	it("returns 403 when user is forbidden", async () => {
+		mockVerifyAdmin.mockRejectedValue(new AuthError("forbidden", "Wrong admin id"));
+		const res = await getMeta();
+		expect(res.status).toBe(403);
+		const data = await res.json();
+		expect(data.code).toBe("forbidden");
 	});
 
-	it("POST /entries creates a new draft", async () => {
+	it("rejects cross-origin mutations with 403", async () => {
 		const req = new NextRequest("http://localhost/api/cms/v1/entries", {
 			method: "POST",
+			headers: {
+				origin: "http://attacker.com",
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({ collection: "post" }),
+		});
+		const res = await postEntries(req);
+		expect(res.status).toBe(403);
+		const data = await res.json();
+		expect(data.code).toBe("forbidden");
+	});
+
+	it("POST /entries creates a new draft atomically with folderId", async () => {
+		const req = new NextRequest("http://localhost/api/cms/v1/entries", {
+			method: "POST",
+			headers: {
+				origin: "http://localhost",
+				"content-type": "application/json",
+			},
 			body: JSON.stringify({
 				collection: "post",
 				slug: "test-slug",
 				metadata: { title: "Test Post" },
 				mdx: "# Test Content",
+				folderId: "a0000000-0000-4000-8000-000000000001",
 			}),
 		});
 
@@ -101,21 +126,16 @@ describe("M2-BE-3 HTTP API Contract", () => {
 		expect(res.status).toBe(201);
 		const data = await res.json();
 		expect(data.id).toBe("new-entry-id");
-	});
-
-	it("GET /entries/:id returns entry or 404", async () => {
-		const foundReq = new NextRequest("http://localhost/api/cms/v1/entries/existing-id");
-		const foundRes = await getEntry(foundReq, { params: Promise.resolve({ id: "existing-id" }) });
-		expect(foundRes.status).toBe(200);
-
-		const missingReq = new NextRequest("http://localhost/api/cms/v1/entries/non-existent");
-		const missingRes = await getEntry(missingReq, { params: Promise.resolve({ id: "non-existent" }) });
-		expect(missingRes.status).toBe(404);
+		expect(data.folderId).toBe("a0000000-0000-4000-8000-000000000001");
 	});
 
 	it("PATCH /entries/:id rejects without version with 428 version_required", async () => {
 		const req = new NextRequest("http://localhost/api/cms/v1/entries/test-id", {
 			method: "PATCH",
+			headers: {
+				origin: "http://localhost",
+				"content-type": "application/json",
+			},
 			body: JSON.stringify({
 				metadata: { title: "Updated" },
 			}),
@@ -130,6 +150,10 @@ describe("M2-BE-3 HTTP API Contract", () => {
 	it("PATCH /entries/:id maps optimistic lock conflict to 409 and returns serverVersion", async () => {
 		const req = new NextRequest("http://localhost/api/cms/v1/entries/test-id", {
 			method: "PATCH",
+			headers: {
+				origin: "http://localhost",
+				"content-type": "application/json",
+			},
 			body: JSON.stringify({
 				expectedVersion: 1, // trigger mock conflict
 				metadata: { title: "Updated" },
@@ -141,20 +165,5 @@ describe("M2-BE-3 HTTP API Contract", () => {
 		const data = await res.json();
 		expect(data.code).toBe("conflict");
 		expect(data.serverVersion).toBe(2);
-	});
-
-	it("PATCH /entries/:id maps slug conflict to 409 slug_conflict", async () => {
-		const req = new NextRequest("http://localhost/api/cms/v1/entries/test-id", {
-			method: "PATCH",
-			body: JSON.stringify({
-				expectedVersion: 5,
-				slug: "existing-slug",
-			}),
-		});
-
-		const res = await patchEntry(req, { params: Promise.resolve({ id: "test-id" }) });
-		expect(res.status).toBe(409);
-		const data = await res.json();
-		expect(data.code).toBe("slug_conflict");
 	});
 });

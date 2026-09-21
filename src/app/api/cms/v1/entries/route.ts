@@ -3,6 +3,7 @@ import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentService, getCmsContentStore } from "@/cms/container";
 import { createEntryBodySchema, listEntriesQuerySchema } from "@/cms/core/api";
 import { handleApiError } from "../error-handler";
+import { validateSameOrigin } from "../security";
 
 export async function GET(request: NextRequest) {
 	try {
@@ -46,13 +47,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
+		validateSameOrigin(request);
 		await authGateway.verifyAdmin();
 
 		const body = await request.json();
 		const parsed = createEntryBodySchema.safeParse(body);
 		if (!parsed.success) {
 			return NextResponse.json(
-				{ error: "Invalid request body", details: parsed.error.issues },
+				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
 				{ status: 400 },
 			);
 		}
@@ -63,16 +65,8 @@ export async function POST(request: NextRequest) {
 			slug: parsed.data.slug ?? null,
 			metadata: parsed.data.metadata as any,
 			mdx: parsed.data.mdx ?? "",
+			folderId: parsed.data.folderId,
 		});
-
-		if (parsed.data.folderId !== undefined) {
-			const store = getCmsContentStore();
-			await store.moveEntryToFolder({
-				entryId: (entry as any).id,
-				folderId: parsed.data.folderId,
-				expectedVersion: (entry as any).version,
-			});
-		}
 
 		return NextResponse.json(entry, { status: 201 });
 	} catch (error) {
