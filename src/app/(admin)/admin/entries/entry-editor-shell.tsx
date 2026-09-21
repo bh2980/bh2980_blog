@@ -29,10 +29,15 @@ interface EntryEditorShellProps {
 	collection?: string;
 }
 
-export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: EntryEditorShellProps) {
+export function EntryEditorShell({ mode, initialEntryId, collection: propCollection = "post" }: EntryEditorShellProps) {
 	const [persistedId, setPersistedId] = useState<string | null>(initialEntryId || null);
 	const [entry, setEntry] = useState<EntryData | null>(null);
+	const [collection, setCollection] = useState(propCollection);
 	const [isLoading, setIsLoading] = useState(mode === "edit");
+
+	useEffect(() => {
+		setCollection(propCollection);
+	}, [propCollection]);
 
 	// Metadata Form State
 	const [title, setTitle] = useState("");
@@ -130,6 +135,9 @@ export function EntryEditorShell({ mode, initialEntryId, collection = "post" }: 
 				if (!isMounted) return;
 
 				setEntry(data);
+				if (data.collection) {
+					setCollection(data.collection);
+				}
 				const initialTitle = data.working.metadata?.title || "";
 				const initialSlug = data.workingSlug || "";
 				const initialMdx = data.working.mdx || "";
