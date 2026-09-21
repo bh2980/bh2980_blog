@@ -7,6 +7,8 @@ import { CmsMdxPreserver } from "./tiptap-schema";
 import { filterCommands, type SlashCommandItem } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { BlockHandleOverlay } from "./block-handle-overlay";
+import { parseInternalLinkTrigger, formatContentLinkMdx, type InternalLinkItem } from "./internal-link";
+import { InternalLinkPopup } from "./internal-link-popup";
 
 interface CmsEditorProps {
 	content: string;
@@ -37,6 +39,13 @@ export function CmsEditor({
 	const [handleCoords, setHandleCoords] = useState<{ top: number; left: number } | null>(null);
 	const activeBlockPosRef = useRef<number | null>(null);
 
+	// Internal Link ([[) State
+	const [linkOpen, setLinkOpen] = useState(false);
+	const [linkCoords, setLinkCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+	const [linkQuery, setLinkQuery] = useState("");
+	const [linkIndex, setLinkIndex] = useState(0);
+	const linkRangeRef = useRef<{ from: number; to: number } | null>(null);
+
 	const editor = useEditor({
 		immediatelyRender: false,
 		editable,
@@ -55,37 +64,55 @@ export function CmsEditor({
 					"prose dark:prose-invert max-w-none min-h-[550px] p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
 			},
 			handleKeyDown: (view, event) => {
-				if (!slashOpen) return false;
-
-				// Korean IME safeguard: do not process keys while composing
+				// Korean IME safeguard: do not process navigation keys while composing
 				if (view.composing || event.isComposing || event.keyCode === 229) {
 					return false;
 				}
 
-				const filtered = filterCommands(slashQuery);
-
-				if (event.key === "ArrowDown") {
-					event.preventDefault();
-					setSlashIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
-					return true;
-				}
-				if (event.key === "ArrowUp") {
-					event.preventDefault();
-					setSlashIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
-					return true;
-				}
-				if (event.key === "Enter") {
-					event.preventDefault();
-					if (filtered[slashIndex] && slashRangeRef.current) {
-						filtered[slashIndex].action(editor, slashRangeRef.current);
-						setSlashOpen(false);
+				if (linkOpen) {
+					if (event.key === "ArrowDown") {
+						event.preventDefault();
+						setLinkIndex((prev) => prev + 1);
+						return true;
 					}
-					return true;
+					if (event.key === "ArrowUp") {
+						event.preventDefault();
+						setLinkIndex((prev) => Math.max(0, prev - 1));
+						return true;
+					}
+					if (event.key === "Escape") {
+						event.preventDefault();
+						setLinkOpen(false);
+						return true;
+					}
 				}
-				if (event.key === "Escape") {
-					event.preventDefault();
-					setSlashOpen(false);
-					return true;
+
+				if (slashOpen) {
+					const filtered = filterCommands(slashQuery);
+
+					if (event.key === "ArrowDown") {
+						event.preventDefault();
+						setSlashIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+						return true;
+					}
+					if (event.key === "ArrowUp") {
+						event.preventDefault();
+						setSlashIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+						return true;
+					}
+					if (event.key === "Enter") {
+						event.preventDefault();
+						if (filtered[slashIndex] && slashRangeRef.current) {
+							filtered[slashIndex].action(editor, slashRangeRef.current);
+							setSlashOpen(false);
+						}
+						return true;
+					}
+					if (event.key === "Escape") {
+						event.preventDefault();
+						setSlashOpen(false);
+						return true;
+					}
 				}
 				return false;
 			},
@@ -94,12 +121,30 @@ export function CmsEditor({
 			if (isInternalUpdateRef.current) return;
 			onChange(editor.getHTML());
 
-			// Check slash trigger condition
+			// Check slash & internal link trigger condition
 			if (!isComposingRef.current) {
 				const { from } = editor.state.selection;
-				const textBefore = editor.state.doc.textBetween(Math.max(0, from - 20), from, "\n", "\0");
-				const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
+				const textBefore = editor.state.doc.textBetween(Math.max(0, from - 50), from, "\n", "\0");
 
+				// 1. Check Internal Link [[
+				const linkMatch = parseInternalLinkTrigger(textBefore);
+				if (linkMatch.active) {
+					const triggerPos = from - linkMatch.query.length - 2;
+					linkRangeRef.current = { from: triggerPos, to: from };
+					setLinkQuery(linkMatch.query);
+					setLinkIndex(0);
+
+					const coords = editor.view.coordsAtPos(from);
+					setLinkCoords({ top: coords.top, left: coords.left });
+					setLinkOpen(true);
+					setSlashOpen(false);
+					return;
+				} else {
+					setLinkOpen(false);
+				}
+
+				// 2. Check Slash Command /
+				const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
 				if (slashMatch) {
 					const query = slashMatch[1] || "";
 					const slashPos = from - query.length - 1;
@@ -414,6 +459,28 @@ export function CmsEditor({
 							setSlashOpen(false);
 						}
 					}}
+				/>
+			)}
+
+			{/* Internal Link Popup Portal */}
+			{linkOpen && (
+				<InternalLinkPopup
+					query={linkQuery}
+					coords={linkCoords}
+					selectedIndex={linkIndex}
+					onSelect={(item) => {
+						if (linkRangeRef.current) {
+							const formatted = formatContentLinkMdx(item);
+							editor
+								.chain()
+								.focus()
+								.deleteRange(linkRangeRef.current)
+								.insertContent(formatted)
+								.run();
+							setLinkOpen(false);
+						}
+					}}
+					onClose={() => setLinkOpen(false)}
 				/>
 			)}
 
