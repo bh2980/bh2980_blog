@@ -45,7 +45,6 @@ export function AdminSidebar({
 	const [subFolderName, setSubFolderName] = useState("");
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 	const [isFolderSectionOpen, setIsFolderSectionOpen] = useState(true);
-	const [isRootExpanded, setIsRootExpanded] = useState(true);
 	const prevFolderIdRef = useRef<string | null | undefined>(undefined);
 
 	const active: AdminNavId = activeNav ?? currentCollection ?? "post";
@@ -350,7 +349,7 @@ export function AdminSidebar({
 								type="button"
 								onClick={() => setIsCreatingRoot((prev) => !prev)}
 								className="text-xs text-neutral-400 hover:text-white"
-								title="루트 폴더 추가"
+								title="새 폴더 추가"
 							>
 								+ 폴더
 							</button>
@@ -358,98 +357,35 @@ export function AdminSidebar({
 					</div>
 
 					{isFolderSectionOpen && (
-						<>
-							<div className="flex flex-col gap-1">
-								{/* 루트 노드 (전체 항목) */}
-								<div
-									className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition select-none ${
-										currentFolderId === null
-											? "bg-neutral-800 text-white font-medium"
-											: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
-									}`}
-								>
-									<div
-										className="flex flex-1 items-center gap-1 min-w-0 cursor-pointer"
-										onClick={() => {
-											onSelectFolder(null);
-											if (rootFolders.length > 0) {
-												setIsRootExpanded((prev) => !prev);
-											}
-										}}
+						<div className="flex flex-col gap-1">
+							{isCreatingRoot && onCreateFolder && (
+								<form onSubmit={handleCreateRootFolder} className="flex items-center gap-1 my-1 px-1">
+									<input
+										type="text"
+										placeholder="새 폴더 이름"
+										value={newFolderName}
+										onChange={(e) => setNewFolderName(e.target.value)}
+										className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+										autoFocus
+									/>
+									<button
+										type="button"
+										onClick={() => setIsCreatingRoot(false)}
+										className="text-[11px] text-neutral-400 hover:text-white px-1"
 									>
-										{rootFolders.length > 0 ? (
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													setIsRootExpanded((prev) => !prev);
-												}}
-												className="p-0.5 hover:bg-neutral-700/60 rounded text-neutral-400 hover:text-white transition"
-											>
-												{isRootExpanded ? (
-													<ChevronDown className="h-3 w-3" />
-												) : (
-													<ChevronRight className="h-3 w-3" />
-												)}
-											</button>
-										) : (
-											<span className="w-4" />
-										)}
+										취소
+									</button>
+								</form>
+							)}
 
-										{isRootExpanded && rootFolders.length > 0 ? (
-											<FolderOpen className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
-										) : (
-											<FolderIcon className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
-										)}
-
-										<span className="truncate text-xs font-normal">전체 항목 (루트)</span>
-									</div>
-
-									{onCreateFolder && (
-										<button
-											type="button"
-											title="루트 폴더 추가"
-											onClick={(e) => {
-												e.stopPropagation();
-												setIsCreatingRoot(true);
-												setIsRootExpanded(true);
-											}}
-											className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60 transition"
-										>
-											<Plus className="h-3 w-3" />
-										</button>
-									)}
+							{rootFolders.length === 0 && !isCreatingRoot ? (
+								<div className="px-2 py-2 text-xs text-neutral-500">
+									생성된 폴더가 없습니다.
 								</div>
-
-								{/* 루트 하위 폴더 계층 (트리 세로 라인 & 들여쓰기) */}
-								{isRootExpanded && (
-									<div className="ml-3 pl-2.5 border-l border-neutral-800 flex flex-col gap-1 mt-0.5">
-										{isCreatingRoot && onCreateFolder && (
-											<form onSubmit={handleCreateRootFolder} className="flex items-center gap-1 my-1 px-1">
-												<input
-													type="text"
-													placeholder="루트 폴더 이름"
-													value={newFolderName}
-													onChange={(e) => setNewFolderName(e.target.value)}
-													className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-													autoFocus
-												/>
-												<button
-													type="button"
-													onClick={() => setIsCreatingRoot(false)}
-													className="text-[11px] text-neutral-400 hover:text-white px-1"
-												>
-													취소
-												</button>
-											</form>
-										)}
-
-										{/* 재귀 계층 트리 렌더링 */}
-										{rootFolders.map((f) => renderFolderItem(f))}
-									</div>
-								)}
-							</div>
-						</>
+							) : (
+								rootFolders.map((f) => renderFolderItem(f))
+							)}
+						</div>
 					)}
 				</div>
 			) : (
