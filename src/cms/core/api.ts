@@ -93,3 +93,21 @@ export const preferencesBodySchema = z.object({
 });
 
 export type PreferencesBody = z.infer<typeof preferencesBodySchema>;
+
+export const templateCollectionSchema = z.enum(["post", "memo"]);
+
+export const createTemplateBodySchema = z.object({
+	name: z.string().trim().min(1).max(100),
+	forCollection: templateCollectionSchema,
+	mdx: z.string().default(""),
+});
+export type CreateTemplateBody = z.infer<typeof createTemplateBodySchema>;
+
+export const patchTemplateBodySchema = z.object({
+	expectedVersion: z.number().int().positive(),
+	name: z.string().trim().min(1).max(100).optional(),
+	forCollection: templateCollectionSchema.optional(),
+	mdx: z.string().optional(),
+});
+export type PatchTemplateBody = z.infer<typeof patchTemplateBodySchema>;
+

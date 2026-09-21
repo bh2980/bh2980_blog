@@ -37,6 +37,16 @@ export interface EntryBody {
 	updatedAt: Date;
 }
 
+export interface BodyTemplate {
+	id: string;
+	name: string;
+	forCollection: "post" | "memo";
+	mdx: string;
+	version: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
 export interface Entry {
 	id: string;
 	collection: string;
@@ -331,7 +341,57 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			preferences JSONB NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL
 		);
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".cms_migrations (
+			name TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".body_templates (
+			id UUID PRIMARY KEY,
+			name TEXT NOT NULL,
+			for_collection TEXT NOT NULL CHECK (for_collection IN ('post', 'memo')),
+			mdx TEXT NOT NULL,
+			version INTEGER NOT NULL DEFAULT 1,
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL
+		);
+
+		CREATE UNIQUE INDEX IF NOT EXISTS body_templates_collection_name_idx
+		ON "${qSchema}".body_templates (for_collection, lower(name));
 	`);
+
+	// One-time seed for initial default body templates (idempotent; won't resurrect deleted templates)
+	const seedCheck = await pool.query(
+		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'seed_initial_body_templates'`,
+	);
+	if (seedCheck.rows.length === 0) {
+		const initialTemplates = [
+			{
+				id: "00000000-0000-4000-8000-000000000001",
+				name: "알고리즘 풀이",
+				forCollection: "memo",
+				mdx: "## 문제\n\n\n## 풀이\n\n```ts\n\n```\n",
+			},
+			{
+				id: "00000000-0000-4000-8000-000000000002",
+				name: "Type Challenge 풀이",
+				forCollection: "memo",
+				mdx: "### 질문\n\n\n```ts\n\n```\n\n### 풀이\n\n",
+			},
+		];
+		for (const t of initialTemplates) {
+			await pool.query(
+				`INSERT INTO "${qSchema}".body_templates (id, name, for_collection, mdx, version, created_at, updated_at)
+				 VALUES ($1, $2, $3, $4, 1, NOW(), NOW())
+				 ON CONFLICT DO NOTHING`,
+				[t.id, t.name, t.forCollection, t.mdx],
+			);
+		}
+		await pool.query(
+			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('seed_initial_body_templates') ON CONFLICT DO NOTHING`,
+		);
+	}
 
 	// Backfill rows where search_text IS NULL
 	// (search_text column defaults to empty string, but for newly added columns
@@ -578,6 +638,17 @@ function isFolderSiblingConflict(err: unknown): boolean {
 		err.code === "23505" &&
 		"constraint" in err &&
 		err.constraint === "folders_sibling_name_idx"
+	);
+}
+
+function isTemplateConflict(err: unknown): boolean {
+	return (
+		typeof err === "object" &&
+		err !== null &&
+		"code" in err &&
+		err.code === "23505" &&
+		"constraint" in err &&
+		(err.constraint === "body_templates_collection_name_idx" || err.constraint === "body_templates_pkey")
 	);
 }
 
@@ -1539,6 +1610,79 @@ export function createContentStore(
 			}
 		},
 
+		duplicateEntry: async (params: { id: string }): Promise<Entry> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const res = await client.query<{
+					collection: string;
+					folder_id: string | null;
+					metadata: Record<string, unknown>;
+					mdx: string;
+					schema_version: number;
+					content_hash: string;
+				}>(
+					`SELECT e.collection, e.folder_id, b.metadata, b.mdx, b.schema_version, b.content_hash
+					 FROM "${qSchema}".entries e
+					 JOIN "${qSchema}".entry_bodies b ON e.id = b.entry_id AND b.state = 'working'
+					 WHERE e.id = $1`,
+					[params.id],
+				);
+				if (res.rows.length === 0) {
+					throw new CmsError("Entry not found", "not_found");
+				}
+				const orig = res.rows[0];
+
+				const metadata = { ...(orig.metadata || {}) };
+				if (typeof metadata.title === "string" && metadata.title.trim()) {
+					metadata.title = `${metadata.title} (복사)`;
+				} else {
+					metadata.title = "제목 없음 (복사)";
+				}
+
+				const newId = randomUUID();
+				const now = new Date();
+				const version = 1;
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug, folder_id, status)
+					 VALUES ($1, $2, $3, $4, $5, NULL, $6, 'draft')`,
+					[newId, orig.collection, version, now, now, orig.folder_id],
+				);
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
+					 VALUES ($1, 'working', $2, $3, $4, $5, $6, $7)`,
+					[
+						newId,
+						JSON.stringify(normalizeMetadata(metadata)),
+						orig.mdx,
+						orig.schema_version,
+						orig.content_hash,
+						now,
+						extractVisibleText(orig.mdx),
+					],
+				);
+
+				await client.query(
+					`INSERT INTO "${qSchema}".entry_references (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+					 SELECT $1, 'working', kind, target_id, target_entry_id, target_media_id, is_stale, occurrences
+					 FROM "${qSchema}".entry_references
+					 WHERE entry_id = $2 AND state = 'working'`,
+					[newId, params.id],
+				);
+
+				const entry = await loadEntry(client, newId, qSchema);
+				await client.query("COMMIT");
+				return entry;
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
 		listEntries: async (params: ListEntriesParams): Promise<ListEntriesResult> => {
 			if (typeof params !== "object" || params === null || Array.isArray(params)) {
 				throw new CmsError("Invalid parameters", "invalid_input");
@@ -2442,6 +2586,218 @@ export function createContentStore(
 					throw new CmsError("Media asset not found", "not_found");
 				}
 
+				await client.query("COMMIT");
+			} catch (err) {
+				await client.query("ROLLBACK");
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		listTemplates: async (params?: { forCollection?: string }): Promise<BodyTemplate[]> => {
+			const where = params?.forCollection ? `WHERE for_collection = $1` : ``;
+			const values = params?.forCollection ? [params.forCollection] : [];
+			const res = await pool.query<{
+				id: string;
+				name: string;
+				for_collection: "post" | "memo";
+				mdx: string;
+				version: number;
+				created_at: Date;
+				updated_at: Date;
+			}>(
+				`SELECT id, name, for_collection, mdx, version, created_at, updated_at
+				 FROM "${qSchema}".body_templates
+				 ${where}
+				 ORDER BY created_at ASC`,
+				values,
+			);
+			return res.rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				forCollection: row.for_collection,
+				mdx: row.mdx,
+				version: row.version,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+			}));
+		},
+
+		getTemplate: async (id: string): Promise<BodyTemplate> => {
+			const res = await pool.query<{
+				id: string;
+				name: string;
+				for_collection: "post" | "memo";
+				mdx: string;
+				version: number;
+				created_at: Date;
+				updated_at: Date;
+			}>(
+				`SELECT id, name, for_collection, mdx, version, created_at, updated_at
+				 FROM "${qSchema}".body_templates
+				 WHERE id = $1`,
+				[id],
+			);
+			if (res.rows.length === 0) {
+				throw new CmsError("Template not found", "not_found");
+			}
+			const row = res.rows[0];
+			return {
+				id: row.id,
+				name: row.name,
+				forCollection: row.for_collection,
+				mdx: row.mdx,
+				version: row.version,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+			};
+		},
+
+		createTemplate: async (data: { name: string; forCollection: string; mdx: string }): Promise<BodyTemplate> => {
+			if (data.forCollection !== "post" && data.forCollection !== "memo") {
+				throw new CmsError("Invalid forCollection; must be 'post' or 'memo'", "invalid_input");
+			}
+			const name = (data.name || "").trim();
+			if (!name) {
+				throw new CmsError("Template name is required", "invalid_input");
+			}
+			const mdx = typeof data.mdx === "string" ? data.mdx : "";
+			const id = randomUUID();
+			const now = new Date();
+
+			try {
+				const res = await pool.query<{
+					id: string;
+					name: string;
+					for_collection: "post" | "memo";
+					mdx: string;
+					version: number;
+					created_at: Date;
+					updated_at: Date;
+				}>(
+					`INSERT INTO "${qSchema}".body_templates (id, name, for_collection, mdx, version, created_at, updated_at)
+					 VALUES ($1, $2, $3, $4, 1, $5, $5)
+					 RETURNING id, name, for_collection, mdx, version, created_at, updated_at`,
+					[id, name, data.forCollection, mdx, now],
+				);
+				const row = res.rows[0];
+				return {
+					id: row.id,
+					name: row.name,
+					forCollection: row.for_collection,
+					mdx: row.mdx,
+					version: row.version,
+					createdAt: row.created_at,
+					updatedAt: row.updated_at,
+				};
+			} catch (err) {
+				if (isTemplateConflict(err)) {
+					throw new CmsError("Template name already exists in collection", "conflict");
+				}
+				throw err;
+			}
+		},
+
+		updateTemplate: async (params: {
+			id: string;
+			expectedVersion: number;
+			name?: string;
+			mdx?: string;
+			forCollection?: string;
+		}): Promise<BodyTemplate> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const curRes = await client.query<{
+					name: string;
+					for_collection: "post" | "memo";
+					mdx: string;
+					version: number;
+				}>(
+					`SELECT name, for_collection, mdx, version
+					 FROM "${qSchema}".body_templates
+					 WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (curRes.rows.length === 0) {
+					throw new CmsError("Template not found", "not_found");
+				}
+				const cur = curRes.rows[0];
+				if (cur.version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", cur.version);
+				}
+
+				let nextCollection = cur.for_collection;
+				if (params.forCollection !== undefined) {
+					if (params.forCollection !== "post" && params.forCollection !== "memo") {
+						throw new CmsError("Invalid forCollection", "invalid_input");
+					}
+					nextCollection = params.forCollection as "post" | "memo";
+				}
+
+				let nextName = cur.name;
+				if (params.name !== undefined) {
+					nextName = params.name.trim();
+					if (!nextName) throw new CmsError("Template name cannot be empty", "invalid_input");
+				}
+
+				const nextMdx = params.mdx !== undefined ? params.mdx : cur.mdx;
+				const nextVersion = cur.version + 1;
+				const now = new Date();
+
+				const updRes = await client.query<{
+					id: string;
+					name: string;
+					for_collection: "post" | "memo";
+					mdx: string;
+					version: number;
+					created_at: Date;
+					updated_at: Date;
+				}>(
+					`UPDATE "${qSchema}".body_templates
+					 SET name = $1, for_collection = $2, mdx = $3, version = $4, updated_at = $5
+					 WHERE id = $6
+					 RETURNING id, name, for_collection, mdx, version, created_at, updated_at`,
+					[nextName, nextCollection, nextMdx, nextVersion, now, params.id],
+				);
+				await client.query("COMMIT");
+				const row = updRes.rows[0];
+				return {
+					id: row.id,
+					name: row.name,
+					forCollection: row.for_collection,
+					mdx: row.mdx,
+					version: row.version,
+					createdAt: row.created_at,
+					updatedAt: row.updated_at,
+				};
+			} catch (err) {
+				await client.query("ROLLBACK");
+				if (isTemplateConflict(err)) {
+					throw new CmsError("Template name already exists in collection", "conflict");
+				}
+				throw err;
+			} finally {
+				client.release();
+			}
+		},
+
+		deleteTemplate: async (params: { id: string; expectedVersion?: number }): Promise<void> => {
+			const client = await pool.connect();
+			try {
+				await client.query("BEGIN");
+				const curRes = await client.query<{ version: number }>(
+					`SELECT version FROM "${qSchema}".body_templates WHERE id = $1 FOR UPDATE`,
+					[params.id],
+				);
+				if (curRes.rows.length === 0) {
+					throw new CmsError("Template not found", "not_found");
+				}
+				if (params.expectedVersion !== undefined && curRes.rows[0].version !== params.expectedVersion) {
+					throw new CmsError("Conflict", "conflict", curRes.rows[0].version);
+				}
+				await client.query(`DELETE FROM "${qSchema}".body_templates WHERE id = $1`, [params.id]);
 				await client.query("COMMIT");
 			} catch (err) {
 				await client.query("ROLLBACK");
