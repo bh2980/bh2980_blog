@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getPost, listPostSlugs, listPosts } from "@/libs/contents/services/post";
+import { notFound, permanentRedirect } from "next/navigation";
+import { getPost, listPosts } from "@/libs/contents/services/post";
 import { PostDetailPageContent } from "./post-detail-page-content";
 
 type BlogPageProps = {
 	params: Promise<{ slug: string }>;
 };
 
-export const dynamic = "force-static";
-export const dynamicParams = false;
+// 공개 조회를 빌드 시점이 아니라 요청 시점에 수행한다(M7-BE-2).
+// 발행·보관·slug 변경이 재배포 없이 다음 요청에 반영된다.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
 	const { slug } = await params;
@@ -30,21 +31,22 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	};
 }
 
-export async function generateStaticParams() {
-	const slugs = await listPostSlugs();
-
-	return slugs.map((slug) => ({ slug }));
-}
-
 export default async function BlogPost({ params }: BlogPageProps) {
 	const { slug } = await params;
 
 	const post = await getPost(slug);
-	const postList = await listPosts();
 
 	if (!post) {
 		return notFound();
 	}
+
+	// 과거 주소(alias)로 들어온 요청은 정규 주소로 308 이동한다(M7 A8).
+	// 조회 결과의 slug는 정규 current slug다.
+	if (post.slug !== slug) {
+		permanentRedirect(`/posts/${post.slug}`);
+	}
+
+	const postList = await listPosts();
 
 	return <PostDetailPageContent post={post} postList={postList.list} />;
 }

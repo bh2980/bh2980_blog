@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
 
+// 공개 주소 목록을 요청 시점에 생성한다(M7-BE-2).
+export const dynamic = "force-dynamic";
+
 // TODO : 추후 updatedAt을 추가 후 수정
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const HOST_URL = process.env.HOST_URL;

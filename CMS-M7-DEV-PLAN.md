@@ -399,3 +399,32 @@ pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 
 | 2 | `content-service.ts`도 배치 1 파일 | 공개 읽기는 repository가 container의 store를 직접 사용 | `StorePort`는 좁은 구조적 타입이라 필수 메서드를 추가하면 무관한 M2 테스트 다수를 수정해야 한다. 공개 읽기에 도메인 규칙이 없다. 계획 M7-BE-1의 영향 파일 목록과도 일치 |
 | 3 | 별도 판별값 | `getPublishedEntryBySlug`가 판별형 union 반환 | O1 쟁점 2와 동일. slug 비교가 아니라 타입 수준에서 구분한다 |
 
+### 9.4 배치 2 (M7-BE-2) 결과
+
+상태: **구현 완료 · R1/R2 게이트와 실DB 검증 대기**
+
+| 파일 | 변경 |
+| --- | --- |
+| `(blog)/(content)/posts/[slug]/page.tsx` | `force-static`·`dynamicParams=false`·`generateStaticParams` 제거 → `force-dynamic`. alias 판정 시 `permanentRedirect`(308), 미공개는 `notFound()` |
+| `(blog)/(content)/memos/[slug]/page.tsx` | 동일 |
+| `(blog)/(content)/posts/page.tsx`, `memos/page.tsx` | `force-dynamic` 명시 |
+| `(blog)/(landing)/page.tsx` | `force-dynamic` 명시 |
+| `posts/[slug]/opengraph-image.tsx`, `memos/[slug]/opengraph-image.tsx` | `force-dynamic` + 미공개 slug는 `notFound()`(OG도 생성 안 함) |
+| `rss.xml/route.ts`, `sitemap.ts` | `force-dynamic` 명시 |
+
+- O1 A1에 따라 고정 문구 목록 OG 2종(`posts/opengraph-image.tsx`, `memos/opengraph-image.tsx`)은 **정적을 유지**했다.
+- `grep -rn "force-static\|generateStaticParams\|dynamicParams" src/app` 결과 0건: 빌드가 공개 조회를 위해 DB·Keystatic을 요구하지 않는다.
+- 상세 페이지에서 `listPosts()` 호출을 404/308 판정 뒤로 옮겨 비공개·별칭 요청의 불필요한 조회를 줄였다.
+- 상세 페이지의 본문 포함 조회 1회 + 분류 조회 1회로 요청당 쿼리 2회(별칭은 동일). 목록 페이지는 2회.
+
+**남은 검증(차단):** `CMS_TEST_DATABASE_URL`(via `.env.local`)이 이 worktree에 없어 ① 실DB 발행/보관 즉시 반영, ② 별칭 308 실제 응답, ③ `pnpm build` 라우트 표를 실행하지 못했다.
+
+### 9.5 현재 차단 항목(사용자 조치 필요)
+
+| # | 항목 | 필요한 조치 |
+| --- | --- | --- |
+| 1 | 실DB 테스트 9개 파일 + 배치 1·2 실DB 검증 | `cp ~/Desktop/bh2980_blog/.env.local ~/orca/workspaces/bh2980_blog/mullet/.env.local` (시크릿 파일은 에이전트가 접근할 수 없다) |
+| 2 | `pnpm build` 게이트 | 동일(Keystatic GitHub 모드 env 필요) |
+| 3 | D2 원격 백업 | GitHub email privacy 설정 또는 96+3 커밋 author email 재작성 결정 |
+
+

@@ -2,6 +2,9 @@ import { Feed } from "feed";
 import { listPosts } from "@/libs/contents/services/post";
 import { isDefined } from "@/utils/is-defined";
 
+// 공개 피드를 요청 시점에 생성한다(M7-BE-2). 공개 조회 서비스가 초안·보관을 제외한다.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
 	const HOST_URL = process.env.HOST_URL;
 	if (!HOST_URL) throw new Error("HOST_URL is required");

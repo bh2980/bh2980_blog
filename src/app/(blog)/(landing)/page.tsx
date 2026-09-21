@@ -7,6 +7,8 @@ import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
 import { formatPublishedAt } from "@/utils/format-published-at";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
 	const [posts, memos] = await Promise.all([listPosts(), listMemos()]);
 	const LATEST_ITEMS_COUNT = 3;

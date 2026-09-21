@@ -3,6 +3,9 @@ import { listMemos } from "@/libs/contents/services/memo";
 import { listTags } from "@/libs/contents/services/tag";
 import { MemoList } from "./memo-list";
 
+// 공개 목록을 요청 시점에 조회한다(M7-BE-2).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
 	title: "메모장",
 	description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
