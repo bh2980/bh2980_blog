@@ -1,6 +1,6 @@
 "use client";
 
-import { slugify } from "./slugify.test";
+import { slugify } from "./slugify";
 
 interface InspectorPanelProps {
 	title: string;

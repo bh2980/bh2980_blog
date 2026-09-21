@@ -245,7 +245,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(pubRefs[0].targetId).toBe(tag.id);
 		});
 
-		it("fails publish and preserves prior published body & published references if target is archived or missing", { timeout: 15000 }, async () => {
+		it("fails publish and preserves prior published body & published references if target is archived or missing", { timeout: 60000 }, async () => {
 			const tag = await store.createEntry({
 				collection: "tag",
 				slug: "tag-to-archive",

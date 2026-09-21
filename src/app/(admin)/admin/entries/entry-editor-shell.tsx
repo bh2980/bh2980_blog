@@ -6,7 +6,7 @@ import { CmsEditor } from "@/cms/editor/tiptap-editor";
 import { EditorToggle } from "@/cms/editor/editor-toggle";
 import { getLocalBackup, saveLocalBackup, deleteLocalBackup, type LocalBackupRecord } from "./[id]/edit/indexed-db";
 import { InspectorPanel } from "./inspector-panel";
-import { slugify } from "./slugify.test";
+import { slugify } from "./slugify";
 
 type SaveStatus = "저장됨" | "저장 중" | "미저장 변경" | "오류" | "오프라인" | "충돌";
 
