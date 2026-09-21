@@ -62,13 +62,13 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M4-BE-1 | DONE | BE | 통합 브랜치 | `3914453` | POST /bulk 8 ops, 항목별 원자성, 예약 locked (A); reviewer 통과 |
 | M4-FE-2 | DONE | FE | 통합 브랜치 | `3914453` | 체크박스 선택·일괄 바·실패 재실행, 브라우저 E2E; reviewer 통과 |
 | M4-RV-1 | DONE | RV | 통합 브랜치 | `3914453` | 배치 1~3 reviewer 전 배치 무결함 승인 |
-| M5-BE-1 | TODO | BE | — | — | 복제 API (POST /entries/:id/duplicate) |
-| M5-BE-2 | TODO | BE | — | — | 본문 템플릿 독립 백엔드 (body_templates 테이블, 기본 2종 seed, CRUD API) |
-| M5-FE-1 | TODO | FE | — | — | 에디터 툴바 템플릿 적용 버튼 (본문 교체, 자동저장) |
-| M5-FE-3 | TODO | FE | — | — | 템플릿 관리 UI (/admin/templates 목록·생성·수정·삭제, CmsEditor 재사용) |
-| M5-FE-2 | TODO | FE | — | — | 관계 선택기와 record 폼 (태그/카테고리/모음집 picker 및 간단 관리) |
-| M5-ED-1 | TODO | ED | — | — | 필드·블록 확장 예제 및 collections.ts 단일 레지스트리 |
-| M5-RV-1 | TODO | RV | — | — | — |
+| M5-BE-1 | DONE | BE | 통합 브랜치 | `7f95d00` | 복제 API (POST /entries/:id/duplicate), 최신 초안 복사, 제목 '(복사)', slug 비움; reviewer 통과 |
+| M5-BE-2 | DONE | BE | 통합 브랜치 | `7f95d00` | body_templates 테이블, 기본 2종 seed, CRUD API; reviewer 통과 |
+| M5-FE-1 | DONE | FE | 통합 브랜치 | `8fff2a7`, `9ad2f1c` | 에디터 툴바 템플릿 드롭다운, 본문 교체 확인 모달, collection 동기화, 자동저장; reviewer 통과 |
+| M5-FE-3 | DONE | FE | 통합 브랜치 | `8fff2a7` | /admin/templates 관리 UI (목록, 생성, 수정, 삭제), CmsEditor 재사용, 사이드바 메뉴; reviewer 통과 |
+| M5-FE-2 | DONE | FE | 통합 브랜치 | `ce83822` | 인스펙터 태그/카테고리 picker, Record 모달 폼, 308 안내, Record 자동발행; reviewer 통과 |
+| M5-ED-1 | DONE | ED | 통합 브랜치 | `283164a` | collections.ts 단일 레지스트리, F07 확장 예제 4종, docs/cms/extensions.md; reviewer 통과 |
+| M5-RV-1 | DONE | RV | 통합 브랜치 | `9ad2f1c` | 마일스톤 5 전 배치 검수 통과, 80개 테스트 100% PASS, 브라우저 E2E 완료 |
 | M6-BE-1 | TODO | BE | — | — | 내보내기 API (ex-M4-BE-3) |
 | M6-BE-2 | TODO | BE | — | — | 기존 콘텐츠 시험 가져오기 (ex-M4-BE-4) |
 | M6-ED-1 | TODO | ED | — | — | 이전 본문 왕복 검수 러너 (ex-M4-ED-2) |
@@ -133,6 +133,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-21: M4 일괄 작업(TW-1, BE-1, FE-2, RV-1) DONE. 배치 1(메타데이터) `a10ac7d`, 배치 2(상태+예약 locked)+FE-2 `3914453`. 75 files/484 tests, typecheck·build(76 routes) 통과, 브라우저 E2E(폴더 이동 성공 1/실패 0) 확인.
 - 2026-09-21: M5 템플릿 아키텍처를 Oracle 자문 결과(방안 B)에 따라 재정의했다. entries 인프라 오염(발행·스케줄·미디어삭제가드·검색·일괄 누수)을 원천 차단하기 위해 독립 `body_templates` 테이블 및 전용 CRUD API(`M5-BE-2`)로 분리. 템플릿은 메타데이터 없이 순수 본문(MDX)만 다루며, 기본 2종(알고리즘, TS 챌린지)은 1회성 seed 처리. 관리 UI(`M5-FE-3`)와 에디터 툴바 적용 버튼(`M5-FE-1`), 복제(`M5-BE-1`)를 독립 태스크로 확정.
 - 2026-09-21: 외부 CMS(Keystatic/Strapi/Sanity/Contentful/WP/Ghost) 기능 조사 후 갭 4건을 계획표에 반영했다. 관심사를 다르게 나눠 `M5-FE-2 관계 선택기와 record 폼`(P0, 저작 확장)과 `M7-FE-2 SEO 메타 필드와 공개 메타 렌더`(P1, 공개 품질)로 분리 추가했다. 대표 이미지는 연기, 리비전·릴리스 묶음발행·계층 카테고리·감사로그는 1인 블로그 과잉으로 v1 제외 유지.
+- 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 
 ---
 
