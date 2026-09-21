@@ -272,8 +272,15 @@ export function AdminEntriesTable({
 						{/* Explorer: 상위 폴더 (..) 이동 행 */}
 						{isExplorerMode && currentFolderId !== null && (
 							<tr
+								tabIndex={0}
 								onClick={() => onSelectFolder?.(parentFolderId)}
-								className="hover:bg-neutral-800/30 transition cursor-pointer text-neutral-400 select-none"
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onSelectFolder?.(parentFolderId);
+									}
+								}}
+								className="hover:bg-neutral-800/30 focus:bg-neutral-800/50 focus:outline-none transition cursor-pointer text-neutral-400 select-none"
 							>
 								<td className="px-4 py-2.5 text-center text-xs">📁</td>
 								<td className="px-4 py-2.5 font-medium text-neutral-300 flex items-center gap-2">
@@ -291,10 +298,17 @@ export function AdminEntriesTable({
 							subFolders.map((folder) => (
 								<tr
 									key={`folder-${folder.id}`}
+									tabIndex={0}
 									onClick={() => onSelectFolder?.(folder.id)}
-									className="group hover:bg-neutral-800/40 transition cursor-pointer select-none"
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											onSelectFolder?.(folder.id);
+										}
+									}}
+									className="group hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none transition cursor-pointer select-none"
 								>
-									<td className="px-4 py-2.5 text-center text-sm" onClick={(e) => e.stopPropagation()}>
+									<td className="px-4 py-2.5 text-center text-sm">
 										📁
 									</td>
 									<td className="px-4 py-2.5 font-medium text-amber-200">
