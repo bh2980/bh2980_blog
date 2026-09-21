@@ -341,7 +341,7 @@ export function TemplateManager() {
 								)}
 
 								{/* 꽉 찬 CmsEditor 캔버스: 조잡한 외곽 상자를 없애고 에디터가 전체 높이를 유려하게 채움 */}
-								<div className="flex-1 h-full overflow-y-auto bg-neutral-950">
+								<div className="flex-1 min-h-0 overflow-y-auto bg-neutral-950 flex flex-col">
 									<CmsEditor
 										content={editMdx}
 										onChange={(next) => setEditMdx(next)}

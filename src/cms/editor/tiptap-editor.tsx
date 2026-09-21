@@ -85,7 +85,7 @@ export function CmsEditor({
 		editorProps: {
 			attributes: {
 				class:
-					"prose dark:prose-invert max-w-none min-h-[550px] p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
+					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
 			},
 			handleKeyDown: (view, event) => {
 				// Korean IME safeguard: do not process navigation keys while composing
@@ -469,7 +469,7 @@ export function CmsEditor({
 
 	return (
 		<div
-			className="w-full flex flex-col bg-white dark:bg-neutral-950 relative"
+			className="min-h-full w-full flex-1 flex flex-col bg-white dark:bg-neutral-950 relative"
 			onCompositionStart={() => {
 				isComposingRef.current = true;
 				if (onCompositionStart) onCompositionStart();
@@ -642,12 +642,20 @@ export function CmsEditor({
 
 			{/* Borderless Canvas Area */}
 			<div
-				className="flex-1 w-full max-w-3xl mx-auto py-4"
+				className="flex-1 w-full max-w-3xl mx-auto py-6 px-4 flex flex-col cursor-text min-h-full"
+				onClick={() => {
+					if (editor && !editor.isFocused) {
+						editor.chain().focus("end").run();
+					}
+				}}
 				onPaste={handlePaste}
 				onDrop={handleDrop}
 				onDragOver={(e) => e.preventDefault()}
 			>
-				<EditorContent editor={editor} />
+				<EditorContent
+					editor={editor}
+					className="flex-1 flex flex-col min-h-full [&>.ProseMirror]:flex-1 [&>.ProseMirror]:min-h-[calc(100vh-240px)]"
+				/>
 			</div>
 
 			{/* Slash Command Popup Portal */}
