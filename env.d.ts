@@ -5,6 +5,8 @@ declare namespace NodeJS {
 		CMS_DATABASE_URL: string;
 		CMS_TEST_DATABASE_URL?: string;
 		CMS_TEST_DATABASE_ALLOW_SCHEMA_CREATE?: string;
+		/** 공개 조회 저장소 선택. `keystatic`(기본) | `postgres`. 미설정·오값 처리 규칙은 get-content-repository.ts 참조. */
+		CMS_PUBLIC_REPOSITORY?: string;
 
 		AUTH_SECRET: string;
 		AUTH_GITHUB_ID: string;

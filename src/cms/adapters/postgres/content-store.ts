@@ -29,6 +29,68 @@ export interface JsonObject {
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 export type EntryMetadata = JsonObject;
 
+/** 공개 조회가 읽을 수 있는 컬렉션. 여기 없는 컬렉션은 공개 계층에 노출하지 않는다. */
+export const PUBLIC_COLLECTIONS = ["post", "memo", "category", "tag", "collection"] as const;
+
+/** 공개 조회 전용 항목. 초안·보관·휴지통은 이 타입으로 표현되지 않는다. */
+export interface PublishedEntryRecord {
+	readonly id: string;
+	readonly collection: string;
+	readonly slug: string;
+	readonly metadata: EntryMetadata;
+	/** `includeBody: false`인 목록 조회에서는 빈 문자열이다. */
+	readonly mdx: string;
+	readonly publishedAt: Date | null;
+	readonly firstPublishedAt: Date | null;
+	readonly updatedAt: Date;
+}
+
+/**
+ * 공개 상세 조회 결과. `alias`는 과거 주소로 들어온 요청이며 `entry.slug`는 정규 current slug다.
+ * 호출자는 `alias`를 308(영구 이동)으로 처리한다. `reservation`·`deleted` 주소와
+ * current 주소가 없는 항목은 공개 계층에 존재하지 않으므로 `not_found`에 포함된다.
+ */
+export type PublishedEntryLookup =
+	| { readonly status: "current"; readonly entry: PublishedEntryRecord }
+	| { readonly status: "alias"; readonly entry: PublishedEntryRecord }
+	| { readonly status: "not_found" };
+function isPublicCollection(value: string): value is (typeof PUBLIC_COLLECTIONS)[number] {
+	return (PUBLIC_COLLECTIONS as readonly string[]).includes(value);
+}
+
+function assertPublicCollections(collections: readonly string[]): void {
+	if (!Array.isArray(collections) || collections.length === 0) {
+		throw new CmsError("Invalid collections", "invalid_input");
+	}
+	for (const collection of collections) {
+		if (typeof collection !== "string" || !isPublicCollection(collection)) {
+			throw new CmsError("Invalid collection", "invalid_input");
+		}
+	}
+}
+
+function mapPublishedEntryRow(row: {
+	id: string;
+	collection: string;
+	slug: string;
+	metadata: EntryMetadata;
+	mdx: string;
+	published_at: Date | null;
+	first_published_at: Date | null;
+	body_updated_at: Date;
+}): PublishedEntryRecord {
+	return {
+		id: row.id,
+		collection: row.collection,
+		slug: row.slug,
+		metadata: row.metadata,
+		mdx: row.mdx,
+		publishedAt: row.published_at,
+		firstPublishedAt: row.first_published_at,
+		updatedAt: row.body_updated_at,
+	};
+}
+
 export interface EntryBody {
 	metadata: EntryMetadata;
 	mdx: string;
@@ -1981,6 +2043,107 @@ export function createContentStore(
 				total,
 				page,
 				pageSize,
+			};
+		},
+
+		// --- 공개 조회 전용 (M7-BE-1) ---
+		// 공개 페이지·RSS·sitemap·OG가 요청마다 호출한다.
+		// published 본문(state='published')과 published 상태(e.status='published')를 모두 요구하므로
+		// 초안·보관·휴지통은 어떤 경로로도 반환되지 않는다.
+		listPublishedEntries: async (params: {
+			collections: readonly string[];
+			includeBody?: boolean;
+		}): Promise<PublishedEntryRecord[]> => {
+			if (typeof params !== "object" || params === null || Array.isArray(params)) {
+				throw new CmsError("Invalid parameters", "invalid_input");
+			}
+			assertPublicCollections(params.collections);
+			if (params.includeBody !== undefined && typeof params.includeBody !== "boolean") {
+				throw new CmsError("Invalid includeBody", "invalid_input");
+			}
+
+			const mdxExpr = params.includeBody === true ? "b.mdx" : "''::text";
+			const res = await pool.query<{
+				id: string;
+				collection: string;
+				slug: string;
+				metadata: EntryMetadata;
+				mdx: string;
+				published_at: Date | null;
+				first_published_at: Date | null;
+				body_updated_at: Date;
+			}>(
+				`SELECT e.id, e.collection, a.slug, b.metadata, ${mdxExpr} AS mdx,
+				        e.published_at, e.first_published_at, b.updated_at AS body_updated_at
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".content_addresses a
+				   ON a.entry_id = e.id AND a.collection = e.collection AND a.type = 'current'
+				 JOIN "${qSchema}".entry_bodies b
+				   ON b.entry_id = e.id AND b.state = 'published'
+				 WHERE e.status = 'published' AND e.collection = ANY($1::text[])
+				 ORDER BY b.updated_at DESC, e.id ASC`,
+				[params.collections],
+			);
+
+			return res.rows.map(mapPublishedEntryRow);
+		},
+
+		// 요청 slug가 과거 주소(alias)면 정규 current slug를 가진 항목을 반환한다.
+		// 같은 문자열이 alias와 current에 동시에 존재하면 current를 우선한다.
+		// current 주소가 없는 항목은 반환하지 않는다(A3: 예약·삭제 주소는 공개 계층에 없다).
+		getPublishedEntryBySlug: async (params: {
+			collection: string;
+			slug: string;
+			includeBody?: boolean;
+		}): Promise<PublishedEntryLookup> => {
+			if (typeof params !== "object" || params === null || Array.isArray(params)) {
+				throw new CmsError("Invalid parameters", "invalid_input");
+			}
+			if (typeof params.collection !== "string" || !isPublicCollection(params.collection)) {
+				throw new CmsError("Invalid collection", "invalid_input");
+			}
+			if (typeof params.slug !== "string" || params.slug.length === 0) {
+				throw new CmsError("Invalid slug", "invalid_input");
+			}
+			if (params.includeBody !== undefined && typeof params.includeBody !== "boolean") {
+				throw new CmsError("Invalid includeBody", "invalid_input");
+			}
+
+			const mdxExpr = params.includeBody !== false ? "b.mdx" : "''::text";
+			const res = await pool.query<{
+				id: string;
+				collection: string;
+				slug: string;
+				metadata: EntryMetadata;
+				mdx: string;
+				published_at: Date | null;
+				first_published_at: Date | null;
+				body_updated_at: Date;
+				is_alias: boolean;
+			}>(
+				`SELECT e.id, e.collection, cur.slug AS slug, b.metadata, ${mdxExpr} AS mdx,
+				        e.published_at, e.first_published_at, b.updated_at AS body_updated_at,
+				        (matched.type = 'alias') AS is_alias
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".content_addresses matched
+				   ON matched.entry_id = e.id AND matched.collection = e.collection
+				  AND matched.slug = $2 AND matched.type IN ('current', 'alias')
+				 JOIN "${qSchema}".content_addresses cur
+				   ON cur.entry_id = e.id AND cur.collection = e.collection AND cur.type = 'current'
+				 JOIN "${qSchema}".entry_bodies b
+				   ON b.entry_id = e.id AND b.state = 'published'
+				 WHERE e.status = 'published' AND e.collection = $1
+				 ORDER BY (matched.type = 'current') DESC
+				 LIMIT 1`,
+				[params.collection, params.slug],
+			);
+
+			const row = res.rows[0];
+			if (!row) return { status: "not_found" };
+
+			return {
+				status: row.is_alias ? "alias" : "current",
+				entry: mapPublishedEntryRow(row),
 			};
 		},
 

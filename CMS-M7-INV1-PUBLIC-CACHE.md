@@ -84,12 +84,16 @@ M6는 "build가 운영 DB에 접촉하지 않음"을 확인했다(79 routes). M7
 | 2 | 목록 페이지의 실제 요청 지연 수치 | 배치 2 완료 후 측정 |
 | 3 | `llms.txt`를 repository 기반으로 동적화할지 | 현행 정적 파일 유지(범위 밖). 필요 시 v2 |
 
-## 7. 최종 결정 (O1 반영)
-
-O1 결정을 반영해 아래를 확정한다. (미기입 = O1 대기)
+## 7. 최종 결정 (O1 반영, 2026-09-22)
 
 | 안건 | 결정 |
 | --- | --- |
-| A1 캐시 전략 | — |
-| A2 repository 교체 방식 | — |
-| A3 DB 오류 표현 | — |
+| A1 캐시 전략 | **CMS 의존 surface만 동적화**. 목록·상세·RSS·sitemap·slug별 OG는 `force-dynamic`/`no-store`. 내용이 고정된 목록 OG 2종(`posts/opengraph-image.tsx`, `memos/opengraph-image.tsx`)은 정적 유지. 보관 완료 후 **다음 요청부터** 404·제외. 태그 무효화는 v2 |
+| A2 repository 교체 방식 | 서버 전용 `CMS_PUBLIC_REPOSITORY=keystatic\|postgres` 명시 선택. **기본값은 승인 전까지 `keystatic`**. 알 수 없는 값은 조용히 대체하지 않고 시작 시 실패 |
+| A3 DB 오류 표현 | repository에서 그대로 throw → 5xx. `notFound()`는 정상 조회가 `not_found`일 때만. 상세 페이지의 `force-static`·`dynamicParams=false`·`generateStaticParams`는 배치 2에서 전부 제거 |
+
+추가로 O1이 확정한 사항(§3 선택지에 반영):
+
+- 공개 판독 기준은 `entries.status='published'` + `entry_bodies.state='published'` 존재 + current 주소 존재. archived/trashed/draft, reservation/deleted, published body 없는 불일치는 모두 제외
+- alias는 canonical current slug를 반환하고 별도 판별값으로 알린다. alias 대상이 비공개이거나 current 주소가 없으면 308이 아니라 404
+- 공개 metadata는 published body에서만 읽는다(working metadata 직접 조회 금지)
