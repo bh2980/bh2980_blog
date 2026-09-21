@@ -1,3 +1,12 @@
 patchedDependencies:
   '@keystar/ui@0.7.19': patches/@keystar__ui@0.7.19.patch
   '@keystatic/core@0.5.48': patches/@keystatic__core@0.5.48.patch
+
+# Keystatic(prosemirror ^1.27)와 Tiptap(prosemirror ^1.42.3)이 같은 prosemirror 패키지를
+# 서로 다른 버전으로 설치해, 두 버전의 타입이 한 파일에서 충돌했다(src/keystatic/plugins/pm/**).
+# Tiptap이 요구하는 버전으로 단일화한다. Keystatic은 제거 예정(M7-BE-5)이다.
+overrides:
+  prosemirror-view: 1.42.4
+  prosemirror-model: 1.25.11
+  prosemirror-state: 1.4.4
+  prosemirror-transform: 1.12.1
