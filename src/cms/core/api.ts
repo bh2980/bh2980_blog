@@ -68,7 +68,7 @@ export const patchEntryBodySchema = z.object({
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 
 export const bulkBodySchema = z.object({
-	op: z.enum(["tags.add", "tags.remove", "category.set", "folder.move"]),
+	op: z.enum(["tags.add", "tags.remove", "category.set", "folder.move", "archive", "unarchive", "trash", "publish"]),
 	items: z
 		.array(z.object({ id: z.string().min(1), expectedVersion: z.number().int() }))
 		.max(100),

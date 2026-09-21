@@ -150,6 +150,7 @@ export interface ListEntriesItem {
 	title: string | null;
 	slug: string | null;
 	status: "draft" | "published" | "archived" | "trashed";
+	version: number;
 	folderId: string | null;
 	categoryId: string | null;
 	tagIds: readonly string[];
@@ -454,6 +455,7 @@ export type ContentStore = ReturnType<typeof createContentStore>;
 interface ListEntryRow {
 	id: string;
 	collection: string;
+	version: number;
 	folder_id: string | null;
 	created_at: Date;
 	updated_at: Date;
@@ -906,6 +908,14 @@ export function createContentStore(
 				isStale: row.is_stale,
 				occurrences: row.occurrences,
 			}));
+		},
+
+		hasPendingSchedule: async (params: { entryId: string }): Promise<boolean> => {
+			const res = await pool.query(
+				`SELECT 1 FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending' LIMIT 1`,
+				[params.entryId],
+			);
+			return res.rows.length > 0;
 		},
 
 		getWorking: async (params: { entryId: string }): Promise<WorkingCopy> => {
@@ -1672,7 +1682,7 @@ export function createContentStore(
 
 			const dataQuery = `
 				SELECT
-					e.id, e.collection, e.status, e.folder_id, e.created_at, e.updated_at, e.published_at, e.working_slug,
+					e.id, e.collection, e.status, e.version, e.folder_id, e.created_at, e.updated_at, e.published_at, e.working_slug,
 					(SELECT metadata->>'title' FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'working') as title,
 					EXISTS(SELECT 1 FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'published') as is_published,
 					(SELECT metadata FROM "${qSchema}".entry_bodies b WHERE b.entry_id = e.id AND b.state = 'working') as working_metadata,
@@ -1721,6 +1731,7 @@ export function createContentStore(
 					title: row.title ?? null,
 					slug: row.working_slug,
 					status: (row as any).status || (row.is_published ? "published" : "draft"),
+					version: row.version,
 					folderId: row.folder_id,
 					categoryId,
 					tagIds,

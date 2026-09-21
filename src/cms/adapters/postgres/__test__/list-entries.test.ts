@@ -211,6 +211,7 @@ describe("listEntries contract", () => {
 				title: "Le1a Title",
 				slug: "le1a-slug",
 				status: "draft",
+				version: 1,
 				folderId: null,
 				categoryId: null,
 				tagIds: expect.any(Array),

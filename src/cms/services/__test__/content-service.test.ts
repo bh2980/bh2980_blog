@@ -405,6 +405,11 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const mdx = "---\ntitle: test\n---\nHello";
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
+hasPendingSchedule: vi.fn(),
+archiveEntry: vi.fn(),
+unarchiveEntry: vi.fn(),
+trashEntry: vi.fn(),
+publishEntry: vi.fn(),
 getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn().mockResolvedValue(undefined),
 				saveWorkingWithReferences: vi.fn().mockResolvedValue(undefined),
@@ -674,6 +679,11 @@ getWorking: vi.fn(),
 			const exactError = { code: "concurrent_modification", message: "Conflict" };
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue([]),
+hasPendingSchedule: vi.fn(),
+archiveEntry: vi.fn(),
+unarchiveEntry: vi.fn(),
+trashEntry: vi.fn(),
+publishEntry: vi.fn(),
 getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn().mockRejectedValue(exactError),
@@ -696,6 +706,11 @@ getWorking: vi.fn(),
 		it("saveDraft invalid input preparation proves saveWorkingWithReferences is not called", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue([]),
+hasPendingSchedule: vi.fn(),
+archiveEntry: vi.fn(),
+unarchiveEntry: vi.fn(),
+trashEntry: vi.fn(),
+publishEntry: vi.fn(),
 getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
@@ -717,6 +732,11 @@ getWorking: vi.fn(),
 		it("createDraft uses exactly one atomic call, no previous refs/contentHash, exact port error propagated", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
+hasPendingSchedule: vi.fn(),
+archiveEntry: vi.fn(),
+unarchiveEntry: vi.fn(),
+trashEntry: vi.fn(),
+publishEntry: vi.fn(),
 getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn().mockResolvedValue(undefined),
 				saveWorkingWithReferences: vi.fn(),
@@ -746,6 +766,11 @@ getWorking: vi.fn(),
 			const exactError = { code: "slug_conflict", message: "Duplicate" };
 			const conflictPort: StorePort = {
 				getWorkingReferences: vi.fn(),
+hasPendingSchedule: vi.fn(),
+archiveEntry: vi.fn(),
+unarchiveEntry: vi.fn(),
+trashEntry: vi.fn(),
+publishEntry: vi.fn(),
 getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn().mockRejectedValue(exactError),
 				saveWorkingWithReferences: vi.fn(),
@@ -783,7 +808,12 @@ getWorking: vi.fn(),
 			];
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue(previousRefs),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn().mockResolvedValue(undefined),
 			};
@@ -815,7 +845,12 @@ getWorking: vi.fn(),
 			];
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue(previousRefs),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn().mockResolvedValue(undefined),
 			};
@@ -998,7 +1033,12 @@ getWorking: vi.fn(),
 		it("createDraft(null) rejects with ServiceError code invalid_input, not native TypeError, and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
 			};
@@ -1015,7 +1055,12 @@ getWorking: vi.fn(),
 		it("createDraft custom-prototype input rejects invalid_input and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
 			};
@@ -1042,7 +1087,12 @@ getWorking: vi.fn(),
 		it("createDraft top-level accessor/getter property rejects without executing getter and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
 			};
@@ -1070,7 +1120,12 @@ getWorking: vi.fn(),
 		it("saveDraft null/custom-prototype input rejects invalid_input before getWorkingReferences or mutation", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
 			};
@@ -1105,7 +1160,12 @@ getWorking: vi.fn(),
 		it("saveDraft expectedVersion accessor getter rejects without executing getter or Store calls", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				getWorking: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+			getWorking: vi.fn(),
 				createEntryWithReferences: vi.fn(),
 				saveWorkingWithReferences: vi.fn(),
 			};

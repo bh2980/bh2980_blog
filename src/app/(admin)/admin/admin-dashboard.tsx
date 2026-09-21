@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import type { Collection } from "@/cms/services/types";
 import { AdminEntriesTable } from "./admin-entries-table";
+import { BulkBar } from "./entries/bulk-bar";
 import { AdminSidebar } from "./admin-sidebar";
 
 export function AdminClientDashboard() {
@@ -27,6 +28,7 @@ export function AdminClientDashboard() {
 	const [folders, setFolders] = useState<Folder[]>([]);
 
 	const [items, setItems] = useState<ListEntriesItem[]>([]);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [total, setTotal] = useState(0);
 	const [page, setPage] = useState(urlPage);
 	const [pageSize, setPageSize] = useState<25 | 50 | 100>(urlPageSize);
@@ -180,6 +182,11 @@ export function AdminClientDashboard() {
 		fetchEntries();
 	}, [fetchEntries]);
 
+	// Bulk selection is limited to the current page (M4-FE-2).
+	useEffect(() => {
+		setSelectedIds(new Set());
+	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
+
 	// Debounced search input handler
 	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 	useEffect(() => {
@@ -250,6 +257,28 @@ export function AdminClientDashboard() {
 		}
 	};
 
+	const toggleSelect = (id: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	};
+
+	const toggleSelectPage = (selectAll: boolean) => {
+		setSelectedIds(selectAll ? new Set(items.map((i) => i.id)) : new Set());
+	};
+
+	const selectedWithVersions = items
+		.filter((i) => selectedIds.has(i.id))
+		.map((i) => ({ id: i.id, expectedVersion: i.version }));
+
+	const handleBulkDone = (failedIds: string[]) => {
+		setSelectedIds(new Set(failedIds));
+		void fetchEntries();
+	};
+
 	const handleCreateNew = () => {
 		router.push(`/admin/entries/new?collection=${currentCollection}` as any);
 	};
@@ -276,8 +305,18 @@ export function AdminClientDashboard() {
 				onDeleteFolder={handleDeleteFolder}
 			/>
 
-			<AdminEntriesTable
-				items={items}
+			<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+				<BulkBar
+					selected={selectedWithVersions}
+					folders={folders}
+					onClearSelection={() => setSelectedIds(new Set())}
+					onDone={handleBulkDone}
+				/>
+				<AdminEntriesTable
+					items={items}
+					selectedIds={selectedIds}
+					onToggleSelect={toggleSelect}
+					onToggleSelectPage={toggleSelectPage}
 				total={total}
 				page={page}
 				pageSize={pageSize}
@@ -313,6 +352,7 @@ export function AdminClientDashboard() {
 				onCreateNew={handleCreateNew}
 				onRetry={fetchEntries}
 			/>
+			</div>
 		</div>
 	);
 }

@@ -5,6 +5,9 @@ import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 
 interface TableProps {
 	items: ListEntriesItem[];
+	selectedIds: Set<string>;
+	onToggleSelect: (id: string) => void;
+	onToggleSelectPage: (selectAll: boolean) => void;
 	total: number;
 	page: number;
 	pageSize: 25 | 50 | 100;
@@ -25,6 +28,9 @@ interface TableProps {
 
 export function AdminEntriesTable({
 	items,
+	selectedIds,
+	onToggleSelect,
+	onToggleSelectPage,
 	total,
 	page,
 	pageSize,
@@ -108,6 +114,15 @@ export function AdminEntriesTable({
 				<table className="w-full text-left text-sm text-neutral-300">
 					<thead className="border-b border-neutral-800 bg-neutral-900/80 text-xs uppercase text-neutral-400">
 						<tr>
+							<th className="px-4 py-3 w-10">
+								<input
+									type="checkbox"
+									checked={items.length > 0 && items.every((i) => selectedIds.has(i.id))}
+									onChange={(e) => onToggleSelectPage(e.target.checked)}
+									aria-label="현재 페이지 전체 선택"
+									className="accent-white"
+								/>
+							</th>
 							<th
 								className="px-4 py-3 cursor-pointer hover:text-white transition"
 								onClick={() => onSortChange("title")}
@@ -132,19 +147,28 @@ export function AdminEntriesTable({
 					<tbody className="divide-y divide-neutral-800/60">
 						{isLoading ? (
 							<tr>
-								<td colSpan={4} className="px-4 py-12 text-center text-neutral-500">
+								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
 									불러오는 중...
 								</td>
 							</tr>
 						) : items.length === 0 ? (
 							<tr>
-								<td colSpan={4} className="px-4 py-12 text-center text-neutral-500">
+								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
 									등록된 항목이 없습니다.
 								</td>
 							</tr>
 						) : (
 							items.map((item) => (
 								<tr key={item.id} className="hover:bg-neutral-800/40 transition">
+									<td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+										<input
+											type="checkbox"
+											checked={selectedIds.has(item.id)}
+											onChange={() => onToggleSelect(item.id)}
+											aria-label={`${item.title ?? item.id} 선택`}
+											className="accent-white"
+										/>
+									</td>
 									<td className="px-4 py-3 font-medium text-white">
 										<Link
 											href={`/admin/entries/${item.id}/edit` as any}

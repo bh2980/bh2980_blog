@@ -2,8 +2,19 @@ import { prepareSnapshot } from "./content-service";
 import type { ServiceInput, StorePort, WorkingCopy } from "./types";
 import { ServiceError } from "./types";
 
-export const BULK_OPS = ["tags.add", "tags.remove", "category.set", "folder.move"] as const;
+export const BULK_OPS = [
+	"tags.add",
+	"tags.remove",
+	"category.set",
+	"folder.move",
+	"archive",
+	"unarchive",
+	"trash",
+	"publish",
+] as const;
 export type BulkOp = (typeof BULK_OPS)[number];
+
+const LIFECYCLE_OPS: readonly BulkOp[] = ["archive", "unarchive", "trash", "publish"];
 
 export type BulkItem = { readonly id: string; readonly expectedVersion: number };
 export type BulkRequest = {
@@ -64,6 +75,24 @@ export const createBulkService = <T = unknown>(storePort: StorePort<T>) => ({
 				continue;
 			}
 			try {
+				if (LIFECYCLE_OPS.includes(request.op)) {
+					// Q3 (A): 예약 글은 실행하지 않고 항목별 실패로 표시, 나머지는 진행.
+					if (await storePort.hasPendingSchedule({ entryId: item.id })) {
+						results.push({ id: item.id, ok: false, error: "locked" });
+						continue;
+					}
+					const lifecycleParams = { id: item.id, expectedVersion: item.expectedVersion };
+					const acted =
+						request.op === "archive"
+							? await storePort.archiveEntry(lifecycleParams)
+							: request.op === "unarchive"
+								? await storePort.unarchiveEntry(lifecycleParams)
+								: request.op === "trash"
+									? await storePort.trashEntry(lifecycleParams)
+									: await storePort.publishEntry(lifecycleParams);
+					results.push({ id: item.id, ok: true, version: acted.version });
+					continue;
+				}
 				const working = await storePort.getWorking({ entryId: item.id });
 				const metadata: { [key: string]: unknown } = { ...working.metadata };
 				let folderId: string | null | undefined;

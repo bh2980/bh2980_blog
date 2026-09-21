@@ -43,6 +43,22 @@ vi.mock("@/cms/container", () => ({
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
 			return Promise.resolve({ version: 4, id: entryId });
 		}),
+		hasPendingSchedule: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
+			return Promise.resolve(entryId === "scheduled");
+		}),
+		archiveEntry: vi.fn().mockImplementation(({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
+			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
+			return Promise.resolve({ version: 4, id });
+		}),
+		unarchiveEntry: vi.fn().mockImplementation(({ id }: { id: string }) => {
+			return Promise.resolve({ version: 4, id });
+		}),
+		trashEntry: vi.fn().mockImplementation(({ id }: { id: string }) => {
+			return Promise.resolve({ version: 4, id });
+		}),
+		publishEntry: vi.fn().mockImplementation(({ id }: { id: string }) => {
+			return Promise.resolve({ version: 4, id });
+		}),
 	}),
 }));
 
@@ -94,5 +110,43 @@ describe("M4-BE-1a Bulk route contract", () => {
 	it("rejects unknown op with 400", async () => {
 		const res = await postBulk(postReq({ op: "nope", items: [] }));
 		expect(res.status).toBe(400);
+	});
+
+	it("dispatches lifecycle ops per item", async () => {
+		const res = await postBulk(
+			postReq({
+				op: "archive",
+				items: [
+					{ id: "e1", expectedVersion: 3 },
+					{ id: "e1", expectedVersion: 2 },
+				],
+			}),
+		);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			results: [
+				{ id: "e1", ok: true, version: 4 },
+				{ id: "e1", ok: false, error: "conflict" },
+			],
+		});
+	});
+
+	it("reports scheduled entries as locked without executing", async () => {
+		const res = await postBulk(
+			postReq({
+				op: "publish",
+				items: [
+					{ id: "e1", expectedVersion: 3 },
+					{ id: "scheduled", expectedVersion: 3 },
+				],
+			}),
+		);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			results: [
+				{ id: "e1", ok: true, version: 4 },
+				{ id: "scheduled", ok: false, error: "locked" },
+			],
+		});
 	});
 });

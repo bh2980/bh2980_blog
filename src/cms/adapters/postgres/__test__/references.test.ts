@@ -6,7 +6,7 @@ import type { Entry } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
-interface ExtendedStore extends ReturnType<typeof createContentStore>, StorePort<Entry> {}
+type ExtendedStore = ReturnType<typeof createContentStore> & StorePort<Entry>;
 
 function buildSnapshot(overrides: Partial<PreparedSnapshot> = {}): PreparedSnapshot {
 	const refs = overrides.references || [];

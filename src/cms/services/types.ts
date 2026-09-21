@@ -73,6 +73,12 @@ export type WorkingCopy = {
 export interface StorePort<T = unknown> {
 	getWorkingReferences(params: { entryId: string }): Promise<Reference[]>;
 	getWorking(params: { entryId: string }): Promise<WorkingCopy>;
+	hasPendingSchedule(params: { entryId: string }): Promise<boolean>;
+	archiveEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
+	unarchiveEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
+	trashEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
+	publishEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
+
 	createEntryWithReferences(params: {
 		snapshot: PreparedSnapshot;
 		references: readonly Reference[];
