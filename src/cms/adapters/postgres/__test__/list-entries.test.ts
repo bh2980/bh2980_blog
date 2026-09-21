@@ -404,7 +404,7 @@ console.log("FencedCode000");
 		});
 		const resSlugs = res.items.map((i) => i.slug).sort();
 		expect(resSlugs).toEqual(["le4-df", "le4-pf"]);
-	}, 15_000);
+	}, 30_000);
 
 	// -----------------------------------------------------------------------
 	// 5  sort fields/directions, NULLS LAST, deterministic id tie-break

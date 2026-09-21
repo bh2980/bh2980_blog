@@ -70,6 +70,38 @@ export interface PublishEntryInput {
 	publishedAt?: Date;
 }
 
+export interface MediaAssetRecord {
+	id: string;
+	status: "pending" | "ready" | "failed" | "deleting";
+	filename: string;
+	mimeType: string | null;
+	byteSize: number | null;
+	width: number | null;
+	height: number | null;
+	stagingKey: string | null;
+	storageKey: string | null;
+	createdAt: Date;
+	updatedAt: Date;
+	readyAt: Date | null;
+}
+
+export interface CreateMediaAssetInput {
+	id?: string;
+	filename: string;
+	mimeType: string;
+	byteSize: number;
+	stagingKey: string;
+}
+
+export interface CompleteMediaAssetInput {
+	id: string;
+	storageKey: string;
+	mimeType: string;
+	byteSize: number;
+	width: number;
+	height: number;
+}
+
 export interface Folder {
 	id: string;
 	collection: string;
@@ -178,8 +210,31 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		);
 
 		CREATE TABLE IF NOT EXISTS "${qSchema}".media_assets (
-			id UUID PRIMARY KEY
+			id UUID PRIMARY KEY,
+			status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'failed', 'deleting')),
+			filename TEXT NOT NULL DEFAULT '',
+			mime_type TEXT,
+			byte_size BIGINT,
+			width INTEGER,
+			height INTEGER,
+			staging_key TEXT,
+			storage_key TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			ready_at TIMESTAMPTZ
 		);
+
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'failed', 'deleting'));
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS filename TEXT NOT NULL DEFAULT '';
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS mime_type TEXT;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS byte_size BIGINT;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS width INTEGER;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS height INTEGER;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS staging_key TEXT;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS storage_key TEXT;
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ;
 
 		CREATE TABLE IF NOT EXISTS "${qSchema}".entry_references (
 			entry_id UUID NOT NULL REFERENCES "${qSchema}".entries(id) ON DELETE CASCADE,
@@ -2103,6 +2158,96 @@ export function createContentStore(
 			} finally {
 				client.release();
 			}
+		},
+
+		createMediaAsset: async (input: CreateMediaAssetInput): Promise<MediaAssetRecord> => {
+			const id = input.id ?? randomUUID();
+			const now = new Date();
+			const res = await pool.query(
+				`INSERT INTO "${qSchema}".media_assets (id, status, filename, mime_type, byte_size, staging_key, created_at, updated_at)
+				 VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7)
+				 RETURNING id, status, filename, mime_type, byte_size, width, height, staging_key, storage_key, created_at, updated_at, ready_at`,
+				[id, input.filename, input.mimeType, input.byteSize, input.stagingKey, now, now],
+			);
+			const row = res.rows[0];
+			return {
+				id: row.id,
+				status: row.status,
+				filename: row.filename,
+				mimeType: row.mime_type,
+				byteSize: row.byte_size ? Number(row.byte_size) : null,
+				width: row.width,
+				height: row.height,
+				stagingKey: row.staging_key,
+				storageKey: row.storage_key,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+				readyAt: row.ready_at,
+			};
+		},
+
+		getMediaAsset: async (id: string): Promise<MediaAssetRecord | null> => {
+			const res = await pool.query(
+				`SELECT id, status, filename, mime_type, byte_size, width, height, staging_key, storage_key, created_at, updated_at, ready_at
+				 FROM "${qSchema}".media_assets
+				 WHERE id = $1`,
+				[id],
+			);
+			if (res.rows.length === 0) return null;
+			const row = res.rows[0];
+			return {
+				id: row.id,
+				status: row.status,
+				filename: row.filename,
+				mimeType: row.mime_type,
+				byteSize: row.byte_size ? Number(row.byte_size) : null,
+				width: row.width,
+				height: row.height,
+				stagingKey: row.staging_key,
+				storageKey: row.storage_key,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+				readyAt: row.ready_at,
+			};
+		},
+
+		completeMediaAsset: async (input: CompleteMediaAssetInput): Promise<MediaAssetRecord> => {
+			const now = new Date();
+			const res = await pool.query(
+				`UPDATE "${qSchema}".media_assets
+				 SET status = 'ready', storage_key = $1, mime_type = $2, byte_size = $3, width = $4, height = $5, updated_at = $6, ready_at = $7
+				 WHERE id = $8
+				 RETURNING id, status, filename, mime_type, byte_size, width, height, staging_key, storage_key, created_at, updated_at, ready_at`,
+				[input.storageKey, input.mimeType, input.byteSize, input.width, input.height, now, now, input.id],
+			);
+			if (res.rows.length === 0) {
+				throw new CmsError("Media asset not found", "not_found");
+			}
+			const row = res.rows[0];
+			return {
+				id: row.id,
+				status: row.status,
+				filename: row.filename,
+				mimeType: row.mime_type,
+				byteSize: row.byte_size ? Number(row.byte_size) : null,
+				width: row.width,
+				height: row.height,
+				stagingKey: row.staging_key,
+				storageKey: row.storage_key,
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+				readyAt: row.ready_at,
+			};
+		},
+
+		failMediaAsset: async (id: string): Promise<void> => {
+			const now = new Date();
+			await pool.query(
+				`UPDATE "${qSchema}".media_assets
+				 SET status = 'failed', updated_at = $1
+				 WHERE id = $2`,
+				[now, id],
+			);
 		},
 	};
 }
