@@ -210,6 +210,12 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES "${qSchema}".folders(id) ON DELETE NO ACTION;
 
 		ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
+
+		CREATE TABLE IF NOT EXISTS "${qSchema}".user_preferences (
+			user_id TEXT PRIMARY KEY,
+			preferences JSONB NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL
+		);
 	`);
 
 	// Backfill rows where search_text IS NULL
@@ -309,13 +315,25 @@ interface ReferenceRow {
 	occurrences: readonly ReferenceOccurrence[];
 }
 
-interface FolderRow {
+export interface FolderRow {
 	id: string;
 	collection: string;
 	parent_id: string | null;
 	name: string;
 	position: number;
 }
+
+export interface IncomingReferenceItem {
+	sourceId: string;
+	sourceCollection: string;
+	sourceTitle: string | null;
+	sourceSlug: string | null;
+	kind: ReferenceKind;
+	isStale: boolean;
+	occurrences: readonly ReferenceOccurrence[];
+}
+
+export type ContentStore = ReturnType<typeof createContentStore>;
 
 interface ListEntryRow {
 	id: string;
@@ -1452,6 +1470,70 @@ export function createContentStore(
 				page,
 				pageSize,
 			};
+		},
+
+		getIncomingReferences: async (params: { targetId: string }): Promise<IncomingReferenceItem[]> => {
+			const res = await pool.query<{
+				source_id: string;
+				source_collection: string;
+				source_title: string | null;
+				source_slug: string | null;
+				kind: ReferenceKind;
+				is_stale: boolean;
+				occurrences: readonly ReferenceOccurrence[];
+			}>(
+				`
+				SELECT
+					e.id as source_id,
+					e.collection as source_collection,
+					(b.metadata->>'title') as source_title,
+					e.working_slug as source_slug,
+					r.kind,
+					r.is_stale,
+					r.occurrences
+				FROM "${qSchema}".entry_references r
+				JOIN "${qSchema}".entries e ON e.id = r.entry_id
+				LEFT JOIN "${qSchema}".entry_bodies b ON b.entry_id = e.id AND b.state = 'working'
+				WHERE r.target_id = $1 AND r.state = 'working'
+				ORDER BY e.updated_at DESC, e.id ASC
+			`,
+				[params.targetId],
+			);
+
+			return res.rows.map((row) => ({
+				sourceId: row.source_id,
+				sourceCollection: row.source_collection,
+				sourceTitle: row.source_title,
+				sourceSlug: row.source_slug,
+				kind: row.kind,
+				isStale: row.is_stale,
+				occurrences: row.occurrences,
+			}));
+		},
+
+		getPreferences: async (params: { userId: string }): Promise<JsonObject | null> => {
+			const res = await pool.query<{ preferences: JsonObject }>(
+				`SELECT preferences FROM "${qSchema}".user_preferences WHERE user_id = $1`,
+				[params.userId],
+			);
+			if (res.rows.length === 0) {
+				return null;
+			}
+			return res.rows[0].preferences;
+		},
+
+		savePreferences: async (params: { userId: string; preferences: JsonObject }): Promise<void> => {
+			const now = new Date();
+			const normalized = normalizeMetadata(params.preferences);
+			await pool.query(
+				`
+				INSERT INTO "${qSchema}".user_preferences (user_id, preferences, updated_at)
+				VALUES ($1, $2, $3)
+				ON CONFLICT (user_id)
+				DO UPDATE SET preferences = $2, updated_at = $3
+			`,
+				[params.userId, JSON.stringify(normalized), now],
+			);
 		},
 	};
 }
