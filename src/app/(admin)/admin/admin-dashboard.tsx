@@ -43,6 +43,7 @@ export function AdminClientDashboard() {
 	const [sortDirection, setSortDirection] = useState<"asc" | "desc">(urlSortDirection);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [recordModalError, setRecordModalError] = useState<string | null>(null);
 
 	// Sync state to URL search parameters
 	const syncUrl = useCallback(
@@ -233,11 +234,10 @@ export function AdminClientDashboard() {
 			}),
 		});
 		if (!res.ok) {
-			const err = await res.json();
-			alert("폴더 수정 실패: " + (err.message || "알 수 없는 오류"));
-		} else {
-			await fetchFolders();
+			const err = await res.json().catch(() => ({}));
+			throw new Error(err.message || "폴더 수정 실패");
 		}
+		await fetchFolders();
 	};
 
 	const handleDeleteFolder = async (id: string, version: number) => {
@@ -245,16 +245,15 @@ export function AdminClientDashboard() {
 			method: "DELETE",
 		});
 		if (!res.ok) {
-			const err = await res.json();
-			alert("폴더 삭제 실패: " + (err.message || "알 수 없는 오류"));
-		} else {
-			if (currentFolderId === id) {
-				setCurrentFolderId(null);
-				syncUrl({ folderId: null });
-			}
-			await fetchFolders();
-			await fetchEntries();
+			const err = await res.json().catch(() => ({}));
+			throw new Error(err.message || "폴더 삭제 실패");
 		}
+		if (currentFolderId === id) {
+			setCurrentFolderId(null);
+			syncUrl({ folderId: null });
+		}
+		await fetchFolders();
+		await fetchEntries();
 	};
 
 	const toggleSelect = (id: string) => {
@@ -291,6 +290,7 @@ export function AdminClientDashboard() {
 
 	const handleCreateNew = () => {
 		if (isRecordCollection) {
+			setRecordModalError(null);
 			setRecordModal({ mode: "create", title: "" });
 			return;
 		}
@@ -298,12 +298,14 @@ export function AdminClientDashboard() {
 	};
 
 	const handleRenameRecord = async (id: string, currentTitle: string, version: number) => {
+		setRecordModalError(null);
 		setRecordModal({ mode: "rename", id, title: currentTitle, version });
 	};
 
 	const handleRecordModalSubmit = async () => {
 		if (!recordModal || !recordModal.title.trim()) return;
 		const trimmed = recordModal.title.trim();
+		setRecordModalError(null);
 
 		try {
 			if (recordModal.mode === "create") {
@@ -318,7 +320,7 @@ export function AdminClientDashboard() {
 				});
 				if (!res.ok) {
 					const err = await res.json().catch(() => ({}));
-					alert(err.message || "생성 실패");
+					setRecordModalError(err.message || "생성에 실패했습니다.");
 					return;
 				}
 			} else if (recordModal.id && recordModal.version !== undefined) {
@@ -332,14 +334,14 @@ export function AdminClientDashboard() {
 				});
 				if (!res.ok) {
 					const err = await res.json().catch(() => ({}));
-					alert(err.message || "수정 실패");
+					setRecordModalError(err.message || "수정에 실패했습니다.");
 					return;
 				}
 			}
 			setRecordModal(null);
 			await fetchEntries();
 		} catch (err: any) {
-			alert(err.message || "처리 중 오류가 발생했습니다.");
+			setRecordModalError(err.message || "처리 중 오류가 발생했습니다.");
 		}
 	};
 
@@ -412,6 +414,15 @@ export function AdminClientDashboard() {
 				}}
 				onCreateNew={handleCreateNew}
 				onRenameRecord={handleRenameRecord}
+				onOpenEditRecord={(item) => {
+					setRecordModalError(null);
+					setRecordModal({
+						mode: "rename",
+						id: item.id,
+						title: item.title || "",
+						version: item.version,
+					});
+				}}
 				onRetry={fetchEntries}
 				currentFolderId={currentFolderId}
 				folders={folders}
@@ -455,10 +466,14 @@ export function AdminClientDashboard() {
 								}
 							}}
 							placeholder="이름 입력 (예: TypeScript)"
-							className="w-full text-sm px-3.5 py-2 rounded-lg border border-neutral-700 bg-neutral-950 text-white outline-none focus:border-neutral-500 mb-5"
+							className="w-full text-sm px-3.5 py-2 rounded-lg border border-neutral-700 bg-neutral-950 text-white outline-none focus:border-neutral-500 mb-2"
 						/>
 
-						<div className="flex items-center justify-end gap-2">
+						{recordModalError && (
+							<p className="text-xs text-red-400 mb-3">{recordModalError}</p>
+						)}
+
+						<div className="flex items-center justify-end gap-2 mt-3">
 							<button
 								type="button"
 								onClick={() => setRecordModal(null)}

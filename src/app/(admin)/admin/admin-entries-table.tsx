@@ -26,6 +26,7 @@ interface TableProps {
 	onPageSizeChange: (newSize: 25 | 50 | 100) => void;
 	onCreateNew: () => void;
 	onRenameRecord?: (id: string, newTitle: string, version: number) => Promise<void>;
+	onOpenEditRecord?: (item: ListEntriesItem) => void;
 	onRetry: () => void;
 
 	// Folder Explorer Navigation
@@ -59,6 +60,7 @@ export function AdminEntriesTable({
 	onPageSizeChange,
 	onCreateNew,
 	onRenameRecord,
+	onOpenEditRecord,
 	onRetry,
 	currentFolderId,
 	folders = [],
@@ -70,6 +72,12 @@ export function AdminEntriesTable({
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 	const [newFolderName, setNewFolderName] = useState("");
+
+	// Custom Dialog / Inline states replacing window.prompt/confirm/alert
+	const [renamingFolder, setRenamingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
+	const [renameInput, setRenameInput] = useState("");
+	const [deletingFolder, setDeletingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
+	const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
 	// Build breadcrumb trail from current folder up to root
 	const breadcrumb: Folder[] = [];
@@ -98,7 +106,33 @@ export function AdminEntriesTable({
 			setNewFolderName("");
 			setIsCreatingFolder(false);
 		} catch (err: any) {
-			alert("폴더 생성 실패: " + (err.message || String(err)));
+			setErrorDialogMsg("폴더 생성 실패: " + (err.message || String(err)));
+		}
+	};
+
+	const handleConfirmRename = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!renamingFolder || !onRenameFolder) return;
+		const trimmed = renameInput.trim();
+		if (!trimmed || trimmed === renamingFolder.name) {
+			setRenamingFolder(null);
+			return;
+		}
+		try {
+			await onRenameFolder(renamingFolder.id, trimmed, renamingFolder.version);
+			setRenamingFolder(null);
+		} catch (err: any) {
+			setErrorDialogMsg("폴더 이름 수정 실패: " + (err.message || String(err)));
+		}
+	};
+
+	const handleConfirmDelete = async () => {
+		if (!deletingFolder || !onDeleteFolder) return;
+		try {
+			await onDeleteFolder(deletingFolder.id, deletingFolder.version);
+			setDeletingFolder(null);
+		} catch (err: any) {
+			setErrorDialogMsg("폴더 삭제 실패: " + (err.message || String(err)));
 		}
 	};
 
@@ -312,42 +346,61 @@ export function AdminEntriesTable({
 										📁
 									</td>
 									<td className="px-4 py-2.5 font-medium text-white">
-										<div className="flex items-center justify-between">
-											<span className="hover:underline flex items-center gap-1.5">
-												<span>{folder.name}</span>
-											</span>
-
-											{onRenameFolder && onDeleteFolder && (
-												<div
-													className="opacity-0 group-hover:opacity-100 flex items-center gap-2 text-xs text-neutral-400"
-													onClick={(e) => e.stopPropagation()}
+										{renamingFolder?.id === folder.id ? (
+											<form onSubmit={handleConfirmRename} className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+												<input
+													type="text"
+													value={renameInput}
+													onChange={(e) => setRenameInput(e.target.value)}
+													className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
+													autoFocus
+													onKeyDown={(e) => {
+														if (e.key === "Escape") setRenamingFolder(null);
+													}}
+												/>
+												<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
+													저장
+												</button>
+												<button
+													type="button"
+													onClick={() => setRenamingFolder(null)}
+													className="text-[11px] text-neutral-400 hover:text-white px-1"
 												>
-													<button
-														type="button"
-														onClick={async () => {
-															const next = prompt("폴더 이름 수정:", folder.name);
-															if (next && next.trim() && next !== folder.name) {
-																await onRenameFolder(folder.id, next.trim(), folder.version);
-															}
-														}}
-														className="text-[11px] text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-700"
+													취소
+												</button>
+											</form>
+										) : (
+											<div className="flex items-center justify-between">
+												<span className="hover:underline flex items-center gap-1.5">
+													<span>{folder.name}</span>
+												</span>
+
+												{onRenameFolder && onDeleteFolder && (
+													<div
+														className="opacity-0 group-hover:opacity-100 flex items-center gap-2 text-xs text-neutral-400"
+														onClick={(e) => e.stopPropagation()}
 													>
-														이름 수정
-													</button>
-													<button
-														type="button"
-														onClick={async () => {
-															if (confirm(`'${folder.name}' 폴더를 삭제하시겠습니까? (하위 글은 보존됩니다)`)) {
-																await onDeleteFolder(folder.id, folder.version);
-															}
-														}}
-														className="text-[11px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-neutral-700"
-													>
-														삭제
-													</button>
-												</div>
-											)}
-										</div>
+														<button
+															type="button"
+															onClick={() => {
+																setRenamingFolder(folder);
+																setRenameInput(folder.name);
+															}}
+															className="text-[11px] text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-700"
+														>
+															이름 수정
+														</button>
+														<button
+															type="button"
+															onClick={() => setDeletingFolder(folder)}
+															className="text-[11px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-neutral-700"
+														>
+															삭제
+														</button>
+													</div>
+												)}
+											</div>
+										)}
 									</td>
 									<td className="px-4 py-2.5 text-xs text-neutral-500">폴더</td>
 									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
@@ -384,13 +437,14 @@ export function AdminEntriesTable({
 										{collection === "tag" || collection === "category" ? (
 											<div className="flex items-center gap-2">
 												<span>{item.title || <span className="text-neutral-500 italic">이름 없음</span>}</span>
-												{onRenameRecord && (
+												{(onOpenEditRecord || onRenameRecord) && (
 													<button
 														type="button"
 														onClick={() => {
-															const next = prompt("이름 수정:", item.title || "");
-															if (next && next.trim() && next !== item.title) {
-																onRenameRecord(item.id, next.trim(), item.version);
+															if (onOpenEditRecord) {
+																onOpenEditRecord(item);
+															} else if (onRenameRecord) {
+																onRenameRecord(item.id, item.title || "", item.version);
 															}
 														}}
 														className="text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded border border-neutral-700 hover:border-neutral-500 bg-neutral-800 transition whitespace-nowrap"
@@ -465,6 +519,54 @@ export function AdminEntriesTable({
 					</button>
 				</div>
 			</div>
+
+			{/* 삭제 확인 모달 (window.confirm 대체) */}
+			{deletingFolder && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
+						<h3 className="text-sm font-semibold text-white mb-2">폴더 삭제 확인</h3>
+						<p className="text-xs text-neutral-400 mb-5 leading-relaxed">
+							&apos;{deletingFolder.name}&apos; 폴더를 삭제하시겠습니까?<br />
+							<span className="text-neutral-500">폴더 안의 하위 글과 하위 폴더는 안전하게 보존됩니다.</span>
+						</p>
+						<div className="flex justify-end gap-2">
+							<button
+								type="button"
+								onClick={() => setDeletingFolder(null)}
+								className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition"
+							>
+								취소
+							</button>
+							<button
+								type="button"
+								onClick={handleConfirmDelete}
+								className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition"
+							>
+								삭제하기
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* 에러 알림 모달 (window.alert 대체) */}
+			{errorDialogMsg && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+					<div className="w-full max-w-sm rounded-xl border border-red-900/60 bg-neutral-900 p-5 shadow-2xl">
+						<h3 className="text-sm font-semibold text-red-400 mb-2">오류 발생</h3>
+						<p className="text-xs text-neutral-300 mb-5">{errorDialogMsg}</p>
+						<div className="flex justify-end">
+							<button
+								type="button"
+								onClick={() => setErrorDialogMsg(null)}
+								className="rounded-lg bg-neutral-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 transition"
+							>
+								확인
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</main>
 	);
 }
