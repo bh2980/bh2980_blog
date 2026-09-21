@@ -34,6 +34,12 @@ export function CmsEditor({
 	const [slashQuery, setSlashQuery] = useState("");
 	const [slashIndex, setSlashIndex] = useState(0);
 	const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
+	const slashOpenRef = useRef(slashOpen);
+	slashOpenRef.current = slashOpen;
+	const slashQueryRef = useRef(slashQuery);
+	slashQueryRef.current = slashQuery;
+	const slashIndexRef = useRef(slashIndex);
+	slashIndexRef.current = slashIndex;
 
 	// Block Handle State
 	const [handleCoords, setHandleCoords] = useState<{ top: number; left: number } | null>(null);
@@ -47,10 +53,14 @@ export function CmsEditor({
 	const [linkItems, setLinkItems] = useState<InternalLinkItem[]>([]);
 	const [isLinkLoading, setIsLinkLoading] = useState(false);
 	const linkRangeRef = useRef<{ from: number; to: number } | null>(null);
+	const linkOpenRef = useRef(linkOpen);
+	linkOpenRef.current = linkOpen;
 	const linkItemsRef = useRef<InternalLinkItem[]>([]);
 	linkItemsRef.current = linkItems;
 	const linkIndexRef = useRef(linkIndex);
 	linkIndexRef.current = linkIndex;
+
+	const editorRef = useRef<any>(null);
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -75,7 +85,7 @@ export function CmsEditor({
 					return false;
 				}
 
-				if (linkOpen) {
+				if (linkOpenRef.current) {
 					const items = linkItemsRef.current;
 					if (event.key === "ArrowDown") {
 						event.preventDefault();
@@ -107,8 +117,8 @@ export function CmsEditor({
 					}
 				}
 
-				if (slashOpen) {
-					const filtered = filterCommands(slashQuery);
+				if (slashOpenRef.current) {
+					const filtered = filterCommands(slashQueryRef.current);
 
 					if (event.key === "ArrowDown") {
 						event.preventDefault();
@@ -122,8 +132,8 @@ export function CmsEditor({
 					}
 					if (event.key === "Enter") {
 						event.preventDefault();
-						if (filtered[slashIndex] && slashRangeRef.current) {
-							filtered[slashIndex].action(editor, slashRangeRef.current);
+						if (filtered[slashIndexRef.current] && slashRangeRef.current && editorRef.current) {
+							filtered[slashIndexRef.current].action(editorRef.current, slashRangeRef.current);
 							setSlashOpen(false);
 						}
 						return true;
@@ -183,6 +193,7 @@ export function CmsEditor({
 	});
 
 	useEffect(() => {
+		editorRef.current = editor;
 		if (!editor) return;
 		if (editor.getHTML() !== content) {
 			isInternalUpdateRef.current = true;
