@@ -167,7 +167,12 @@ export function AdminSidebar({
 					}`}
 				>
 					{isRenamingHere ? (
-						<form onSubmit={handleConfirmRename} className="flex-1 flex items-center gap-1.5">
+						<form
+							onSubmit={handleConfirmRename}
+							className="flex-1 flex items-center gap-1.5"
+							onClick={(e) => e.stopPropagation()}
+							onKeyDown={(e) => e.stopPropagation()}
+						>
 							<input
 								type="text"
 								value={renameInput}
@@ -175,6 +180,7 @@ export function AdminSidebar({
 								className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
 								autoFocus
 								onKeyDown={(e) => {
+									e.stopPropagation();
 									if (e.key === "Escape") setRenamingFolder(null);
 								}}
 							/>

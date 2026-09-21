@@ -329,47 +329,59 @@ export function AdminEntriesTable({
 
 						{/* Explorer: 현재 폴더의 직속 하위 폴더 목록 */}
 						{isExplorerMode &&
-							subFolders.map((folder) => (
-								<tr
-									key={`folder-${folder.id}`}
-									tabIndex={0}
-									onClick={() => onSelectFolder?.(folder.id)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											onSelectFolder?.(folder.id);
-										}
-									}}
-									className="group hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none transition cursor-pointer select-none"
-								>
-									<td className="px-4 py-2.5 text-center text-sm">
-										📁
-									</td>
-									<td className="px-4 py-2.5 font-medium text-white">
-										{renamingFolder?.id === folder.id ? (
-											<form onSubmit={handleConfirmRename} className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-												<input
-													type="text"
-													value={renameInput}
-													onChange={(e) => setRenameInput(e.target.value)}
-													className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
-													autoFocus
-													onKeyDown={(e) => {
-														if (e.key === "Escape") setRenamingFolder(null);
-													}}
-												/>
-												<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
-													저장
-												</button>
-												<button
-													type="button"
-													onClick={() => setRenamingFolder(null)}
-													className="text-[11px] text-neutral-400 hover:text-white px-1"
+							subFolders.map((folder) => {
+								const isRenamingThis = renamingFolder?.id === folder.id;
+								return (
+									<tr
+										key={`folder-${folder.id}`}
+										tabIndex={isRenamingThis ? -1 : 0}
+										onClick={() => {
+											if (!isRenamingThis) onSelectFolder?.(folder.id);
+										}}
+										onKeyDown={(e) => {
+											if (!isRenamingThis && (e.key === "Enter" || e.key === " ")) {
+												e.preventDefault();
+												onSelectFolder?.(folder.id);
+											}
+										}}
+										className={`group hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none transition cursor-pointer select-none ${
+											isRenamingThis ? "bg-neutral-800/50" : ""
+										}`}
+									>
+										<td className="px-4 py-2.5 text-center text-sm">
+											📁
+										</td>
+										<td className="px-4 py-2.5 font-medium text-white">
+											{isRenamingThis ? (
+												<form
+													onSubmit={handleConfirmRename}
+													className="flex items-center gap-1.5"
+													onClick={(e) => e.stopPropagation()}
+													onKeyDown={(e) => e.stopPropagation()}
 												>
-													취소
-												</button>
-											</form>
-										) : (
+													<input
+														type="text"
+														value={renameInput}
+														onChange={(e) => setRenameInput(e.target.value)}
+														className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
+														autoFocus
+														onKeyDown={(e) => {
+															e.stopPropagation();
+															if (e.key === "Escape") setRenamingFolder(null);
+														}}
+													/>
+													<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
+														저장
+													</button>
+													<button
+														type="button"
+														onClick={() => setRenamingFolder(null)}
+														className="text-[11px] text-neutral-400 hover:text-white px-1"
+													>
+														취소
+													</button>
+												</form>
+											) : (
 											<div className="flex items-center justify-between">
 												<span className="hover:underline flex items-center gap-1.5">
 													<span>{folder.name}</span>
@@ -406,7 +418,8 @@ export function AdminEntriesTable({
 									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
 									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
 								</tr>
-							))}
+								);
+							})}
 
 						{/* 로딩 / 빈 목록 / 게시글 목록 */}
 						{isLoading ? (
