@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 
 interface TableProps {
@@ -145,7 +146,12 @@ export function AdminEntriesTable({
 							items.map((item) => (
 								<tr key={item.id} className="hover:bg-neutral-800/40 transition">
 									<td className="px-4 py-3 font-medium text-white">
-										{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
+										<Link
+											href={`/admin/entries/${item.id}/edit` as any}
+											className="hover:underline hover:text-blue-400"
+										>
+											{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
+										</Link>
 									</td>
 									<td className="px-4 py-3 text-neutral-400 font-mono text-xs">
 										{item.slug || <span className="text-neutral-600">-</span>}

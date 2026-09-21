@@ -344,7 +344,7 @@ console.log("FencedCode000");
 	// 3  status filter; folder undefined/null/direct/descendants
 	// -----------------------------------------------------------------------
 
-	it("3. draft/published status filter; folder undefined=all, null=unfiled, folderId=direct, includeDescendants", { timeout: 60000 }, async () => {
+	it("3. draft/published status filter; folder undefined=all, null=unfiled, folderId=direct, includeDescendants", async () => {
 		const f3a = await store.createFolder({ collection: "post", parentId: null, name: "F3a" });
 		const f3b = await store.createFolder({ collection: "post", parentId: f3a.id, name: "F3b" });
 
@@ -378,7 +378,7 @@ console.log("FencedCode000");
 		// descendants
 		const desc = await store.listEntries({ collection: "post", folderId: f3a.id, includeDescendants: true });
 		expect(desc.items.map((i) => i.slug).sort()).toEqual(["le3-pub-f3a", "le3-pub-f3b"]);
-	}, 15_000);
+	}, 60_000);
 
 	// -----------------------------------------------------------------------
 	// 4  AND vs OR across status+folder; collection is mandatory; supplied search is ANDed
@@ -619,7 +619,7 @@ console.log("FencedCode000");
 	// 7  List authority
 	// -----------------------------------------------------------------------
 
-	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", { timeout: 60000 }, async () => {
+	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", async () => {
 		const directDate = "2020-05-05T00:00:00.000Z";
 		await store.createEntry({
 			collection: "post",
