@@ -167,3 +167,112 @@ HOST_URL=https://example.com GSC_VERIFICATION_TOKEN=dummy \
 # 실DB(env 필요)
 node --env-file=.env.local node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/
 ```
+
+## 부록 C. 남은 Keystatic 의존 인벤토리 (배치 9 범위)
+
+| 구분 | 수량 |
+| --- | --- |
+| `src/keystatic/**` | 103 파일 |
+| `src/app/**/keystatic/**` (관리자 UI·API) | 4 파일 |
+| 그 외에서 keystatic을 참조하는 파일 | 12 |
+| package.json 의존 | `@keystatic/core ^0.5.48`, `@keystatic/next ^5.0.4` |
+| 전용 env | `KEYSTATIC_OWNER`(`NEXT_PUBLIC_KEYSTATIC_OWNER`), `KEYSTATIC_REPO`, 빌드 필수 `KEYSTATIC_GITHUB_CLIENT_ID`/`_SECRET`/`KEYSTATIC_SECRET` |
+
+그 외 참조 12개:
+
+```
+src/app/(admin)/admin/entries/slugify.test.ts
+src/app/(blog)/(content)/preview/__test__/start.test.ts
+src/app/(blog)/(content)/preview/start/route.tsx
+src/app/robots.ts
+src/components/navigation.client.tsx
+src/libs/admin/preview-access.ts
+src/libs/admin/verify-access.ts
+src/libs/annotation/code-block/types.ts
+src/libs/contents/__test__/get-content-repository.test.ts
+src/libs/contents/get-content-repository.ts
+src/libs/contents/repositories/keystatic.ts
+src/libs/contents/repositories/source.ts
+```
+
+주의: `src/libs/contents/repositories/keystatic.ts`·`source.ts`·`get-content-repository.ts`는 M7이 **의도적으로 남긴 폴백 경로**다. Keystatic 제거(배치 9)는 `CMS_PUBLIC_REPOSITORY` 기본값을 postgres로 바꾼 뒤에만 가능하다.
+
+## 부록 D. 이관 주소 대조 준비 (전 49편)
+
+레거시 기준 49주소 = posts 7 + memos 42. 아래 목록이 대조 기준이며, DB 측 결과는 `CMS_TEST_DATABASE_URL` 확보 후 채운다(현재 **미실행**).
+
+posts(7):
+
+```
+블로그를-다시-만들면서
+코드-블럭에-툴팁을-띄우고-싶었을-뿐인데
+블로그를-검색하는-벡터-rag-만들기
+왜-내-블로그는-ssg가-안될까
+내가-만든-rag의-성능-측정하기
+블로그라면-seo는-해봐야지
+ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면
+```
+
+memos(42):
+
+```
+정규표현식-정리
+1-implement-curry
+10-tuple-to-union
+106-trim-left
+108-trim
+11-tuple-to-object
+11-what-is-composition-create-a-pipe
+110-capitalize
+12-chainable-options
+14-first-of-array
+15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery
+15-last-of-array
+16-pop
+167-intersection-of-unsorted-arrays
+18-improve-a-function
+18-length-of-tuple
+189-awaited
+2-get-return-type
+20-promiseall
+268-if
+28-implement-clearalltimeout
+3-omit
+3057-push
+3060-unshift
+3312-parameters
+4-pick
+43-exclude
+533-concat
+6-implement-basic-debounce
+62-type-lookup
+7-readonly
+8-can-you-shuffle-an-array
+8-readonly-2
+898-includes
+9-deep-readonly
+download-file
+js의-코드-실행-메커니즘
+js의-비동기-처리-메커니즘
+js의-데이터-타입-및-메모리-관리
+load-file
+tuple과-readonly
+xxx-equal
+```
+
+DB 측 대조 SQL(공개 노출되는 주소):
+
+```sql
+-- 49행이 나와야 하고, 레거시 목록과 차집합이 0이어야 한다
+SELECT a.collection, a.slug
+FROM content_addresses a
+JOIN entries e ON e.id = a.entry_id
+JOIN entry_bodies b ON b.entry_id = e.id AND b.state = 'published'
+WHERE a.type = 'current' AND e.status = 'published'
+ORDER BY a.collection, a.slug;
+
+-- 별칭·삭제 주소 잔존 확인(공개 404 대상이어야 한다)
+SELECT collection, slug, type FROM content_addresses WHERE type IN ('alias','deleted') ORDER BY 1,2,3;
+```
+
+이미지 22장 R2 대조는 `media_assets`의 키·체크섬과 R2 오브젝트를 비교한다(env 필요, **미실행**).
