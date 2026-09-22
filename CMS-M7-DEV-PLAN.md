@@ -8,7 +8,7 @@
   2. 운영 데이터 이전·공개 전환·Keystatic 제거는 **사용자 승인 없이 하지 않는다**
   3. 기존 `ContentRepository` 계약과 M1–M6의 저장·발행·참조 규칙을 깨지 않는다. 교체는 플래그/명시적 교체 + 롤백 경로를 남긴다
   4. 캐시·성능 최적화보다 **초안·보관본 미노출**이 우선이다. 즉시성이 안 되면 캐시를 포기한다
-- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · **M7-RV-1 독립 검수 = 보류 → P1 수정 완료, 재검수 대기**(§9.19) · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거) 보류. 전체 게이트: typecheck 0 · tests **687 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **M7 이후 순서를 재정렬**: **M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18). 전환은 M9-LEAD-1 승인 후.
+- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · **M7-RV-1 독립 검수 = 승인**(1차 보류 P1 → 수정 `666f1d2` → 재검수 승인, §9.19) → **M7 종료** · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거)는 M9-BE-3으로 이동. 전체 게이트: typecheck 0 · tests **687 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **다음은 M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18).
 
 ---
 
@@ -215,6 +215,7 @@ M7 하나를 **10개 배치**로 묶는다. 배치 = 1 writer + 1 리뷰 게이�
 ### 배치 10 — M7-RV-1
 
 - 배치 1–9 전체 증거 + O2 감사 + SEC-1 + 승인 기록을 대상으로 최종 검수
+- **결과:** 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → P1 수정(`666f1d2`) → 2차 **승인**(OK with notes, P0/P1/P2 없음). 중대 위험 6기준 전부 X. **M7 종료.** (§9.19)
 
 ---
 
@@ -774,6 +775,12 @@ M7-RV-1 독립 검수(run `c1696247-0e24-4ac2-b895-c3987d94935b`, reviewer + `xa
 - **수정**: `createOgImageResponse(title, { noStore })` 옵션을 추가해 `cache-control: no-store`를 **소문자 키로** 덮어쓴다(대소문자가 다르면 `Headers`가 두 값을 합쳐 버린다). 슬러그 OG 2종만 이 옵션을 쓰고, 내용이 고정된 목록 OG 3종은 A1대로 정적을 유지한다. 테스트 `src/libs/contents/__test__/og.test.ts`(2건)가 덮어쓰기와 기본값 유지를 고정한다.
 - **게이트**: typecheck 0 · **107 files / 687 tests 전부 pass** · build exit 0.
 - **리뷰어가 확인하지 못한 것**(미검증): 프로덕션 응답 헤더 실측, HTML 문서의 프레임워크 `Cache-Control`.
+
+**재검수(2차, run `b2992736-d2df-42a4-bb9a-a0bef49fda75`): 판정 승인(OK with notes).** P0/P1/P2 없음, 중대 위험 6기준 **전부 X**. **M7-RV-1 통과 → M7 종료.**
+
+정정(2차가 밝힌 사실): 1차가 인용한 1년 immutable 문자열은 **내부 `@vercel/og` 기본값**이고, 실제로 서빙되던 값은 `next/og` 래퍼가 `headers.set`으로 덮은 `public, max-age=0, must-revalidate`였다(래퍼가 내부 헤더를 버리고 사용자 헤더를 `set`한다). 그래도 A1의 `no-store`는 아니었으므로 P1 판정과 수정은 유효하다. 고정 문구 OG 3종은 prerender manifest에서 `initialRevalidateSeconds: false`, `cache-control: public, max-age=0, must-revalidate`로 A1의 “정적 유지”와 맞다.
+
+미검증(2차도 확인하지 못함): 프로덕션 와이어 헤더, HTML 문서 `Cache-Control`, 배포 전 이미 저장된 CDN 엔트리.
 
 
 
