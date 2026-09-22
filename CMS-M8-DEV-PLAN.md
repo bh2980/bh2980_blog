@@ -457,6 +457,21 @@ pnpm build
 
 **리뷰어가 확인한 것(요약):** 의도적 잔류 4건 전부 정당(이관 도구 인식·fragment 생략·`empty_reference_id` 제거·글 전용 `/posts/` 고정). `br` 추가 필요충분. ContentLink 제거가 발행·저장을 깨지 않음. 문서 일치. §9.6의 "폐기 0건" 범위 한정이 타당.
 
+### 9.11 배치 5 진행 (O2 감사 + 수정)
+
+**O2 위임:** `oracle`(fork, `router/adviser-route:high`) — run `de4224b8-0e71-41b9-a255-73b6337fe911`, M8 전체 대상. **판정: "M8 종료 불가"** — 항목별: ①무음 손실 통과 ②이중 경로 통과(A6+매니페스트로 의도 충족) ③공개 등가 조건부(스모크 없음) ④왕복 실패(width 100% 1건) ⑤계약 조건부(§4.4 fallback 미명시) ⑥이미지 실패 경로 실패(표면 배선 없음). O1 A1~A8 중 A3·A6 부분 준수, 나머지 준수.
+
+**O2 수정 3묶음 중 완료 2건** (커밋 `12485fa`):
+
+1. **width 100% 보존** — `CmsImageNode` width 기본값을 `null`로 바꾸고 명시값을 보존한다(업로드 삽입 형태 포함). `align="center"` 생략은 유지한다(공개 기본값과 동일, R3 판정 유지). 공개 렌더 테스트(`image.test.tsx`) + 왕복 테스트 추가.
+2. **§4.4 fallback 명시** — CommonMark로 의미를 보존할 수 없는 자리의 `<strong>`·`<em>`·`<del>` 예외를 문서화했다.
+
+**검증(실행 증거):** `pnpm typecheck` 0 · `pnpm test:run` **116 files / 753 tests pass**.
+
+**49 URL 스모크** (`pnpm build` exit 0 후 `pnpm start` + sitemap 51 URL): **40 × 200, 11 × 500**. 500은 전부 `TypeError: Invalid character in header content ["location"]`(별칭 308의 한글 Location 미인코딩)이다. **M8 회귀가 아니다** — 근거: ① 라우트·조회·위생 코드가 main과 바이트 동일하다 ② `src/contents`는 46편 수정만 있고 경로 변경 0건이다 ③ 같은 본문 49편이 공개 체인 렌더·analyze를 전부 통과한다. 별칭 판정 발동 조건 자체는 미조사 — 후속 조치(리다이렉트 인코딩 + 발동 조건 조사)로 기록한다.
+
+**남은 결정 1건:** O2 항목 6(공개 resolver + 발행 API 경고 + R2 실제 확인 + UI 표시)을 M8에서 할지 M9로 미룰지 — 사용자 결정을 기다린다.
+
 ### 9.5 배치 3 / 9.6 배치 4 / 9.9 M8-RV-1
 
 (배치마다 추가)
