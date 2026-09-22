@@ -30,8 +30,10 @@ export const CmsImageNode = Node.create({
 			alt: {
 				default: "",
 			},
+			// 기본값은 null이다 — 명시하지 않은 이미지와 `width="100%"`을 구분해야 한다.
+			// `100%`를 기본값으로 두면 저장할 때 명시와 기본값을 가릴 수 없어 의미가 바뀐다(O2).
 			width: {
-				default: "100%",
+				default: null,
 			},
 			align: {
 				default: "center",

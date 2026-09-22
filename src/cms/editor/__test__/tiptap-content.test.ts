@@ -136,6 +136,31 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 		expect(serialize(second)).toContain("decorative");
 	});
 
+	it("명시적 width 100%를 보존한다", () => {
+		const first = toDocument(analyze('::image{src="/images/a.png" alt="설명" width="100%"}'));
+		const json = cmsNodeToTiptap(first);
+		const second = tiptapToCmsNode(throughSchema(json));
+		expect(second).toEqual(first);
+		expect(serialize(second)).toContain('width="100%"');
+	});
+
+	it("업로드 삽입 형태가 그대로 돌아온다", () => {
+		const first = toDocument(
+			analyze('::image{mediaId="uuid-1" src="https://r2.example/a.png" alt="a.png" width="100%" align="center"}'),
+		);
+		const second = tiptapToCmsNode(throughSchema(cmsNodeToTiptap(first)));
+		// `::image`는 전용 image 노드다(이름·attributes 래퍼 없음). `align="center"`만 빠진다.
+		expect(second).toEqual({
+			type: "doc",
+			content: [
+				{
+					type: "image",
+					attrs: { mediaId: "uuid-1", src: "https://r2.example/a.png", alt: "a.png", width: "100%" },
+				},
+			],
+		});
+	});
+
 	it("툴팁 mark 이름이 스키마와 같다", () => {
 		expect(schema.marks[TOOLTIP_MARK_NAME]).toBeDefined();
 		expect(schema.nodes[OPAQUE_BLOCK_NAME]).toBeDefined();
