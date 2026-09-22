@@ -417,14 +417,38 @@ pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 
 - 상세 페이지에서 `listPosts()` 호출을 404/308 판정 뒤로 옮겨 비공개·별칭 요청의 불필요한 조회를 줄였다.
 - 상세 페이지의 본문 포함 조회 1회 + 분류 조회 1회로 요청당 쿼리 2회(별칭은 동일). 목록 페이지는 2회.
 
-**남은 검증(차단):** `CMS_TEST_DATABASE_URL`(via `.env.local`)이 이 worktree에 없어 ① 실DB 발행/보관 즉시 반영, ② 별칭 308 실제 응답, ③ `pnpm build` 라우트 표를 실행하지 못했다.
+**남은 검증(차단):** `CMS_TEST_DATABASE_URL`(via `.env.local`)이 이 worktree에 없어 ① 실DB 발행/보관 즉시 반영, ② 별칭 308 실제 응답을 실행하지 못했다.
+
+#### 9.4.1 빌드 게이트 결과 — 회귀 1건 발견·수정
+
+`pnpm build`를 실제로 돌려 **배치 2의 빌드 파단 회귀를 찾았다.**
+
+| 항목 | 내용 |
+| --- | --- |
+| 증상 | `Error: NEXT_HTTP_ERROR_FALLBACK;404` → `Failed to collect page data for /memos/[slug]/opengraph-image-k6zr86/[__metadata_id__]` |
+| 원인 | `generateImageMetadata`가 **빌드 수집 단계에서도** 호출되는데 여기서 `notFound()`를 throw했다(미공개 slug는 빌드 시 항상 null) |
+| 수정 | `notFound()`를 `Image()`에만 남기고 `generateImageMetadata`는 `alt: post?.title \|\| OG_ALTER_ALT` 폴백으로 되돌렸다 |
+| 교훈 | 종료 조건의 “미공개 OG 404”는 **요청 시점** 규칙이며, 메타데이터 선언 단계에서 throw하면 빌드가 깨진다 |
+
+**수정 후 `pnpm build` 통과: 79 라우트(M6 기준선과 동일).** 빌드에 필요한 env는 더미로 공급했다(`HOST_URL`, `GSC_VERIFICATION_TOKEN`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, `KEYSTATIC_SECRET`). 빌드 시점에는 네트워크 호출이 없어 더미로 충분하다.
+
+라우트 분류 증거(`.next/routes-manifest.json` + `.next/prerender-manifest.json`):
+
+| 분류 | 경로 |
+| --- | --- |
+| `ƒ` 동적 (CMS 의존 공개 경로 전부) | `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/rss.xml`, `/sitemap.xml`, `/preview/*` |
+| 정적 | `/_not-found`, `/robots.txt`, 고정 문구 OG 3종(`/opengraph-image`, `/posts/opengraph-image-*`, `/memos/opengraph-image-*`) |
+| 동적 라우트로 등록 | `[slug]/opengraph-image/[__metadata_id__]` 4개 — `dynamicRoutes`에 있고 **`.body` 없음 → 정적 베이킹되지 않는다**(표의 `●` 표기는 메타데이터 id를 static param으로 잡기 때문) |
 
 ### 9.5 현재 차단 항목(사용자 조치 필요)
 
 | # | 항목 | 필요한 조치 |
 | --- | --- | --- |
-| 1 | 실DB 테스트 9개 파일 + 배치 1·2 실DB 검증 | `cp ~/Desktop/bh2980_blog/.env.local ~/orca/workspaces/bh2980_blog/mullet/.env.local` (시크릿 파일은 에이전트가 접근할 수 없다) |
-| 2 | `pnpm build` 게이트 | 동일(Keystatic GitHub 모드 env 필요) |
+| 1 | 실DB 테스트 9개 파일 + 배치 1·2 실DB 검증 | `.env.local`에 `CMS_TEST_DATABASE_URL` 추가. 현재 이 worktree의 `.env.local`(682B)은 Jev 도구용 stub이고 블로그·CMS 키가 0개다. 하네스는 `cms_test_*` 격리 schema를 만들기 때문에 운영 DB를 지정하면 안 된다(`CMS_DATABASE_URL`은 코드가 거부) |
+| 2 | `pnpm build` | 위 5개 키(`HOST_URL`, `GSC_VERIFICATION_TOKEN`, `KEYSTATIC_*` 3종). 더미 값으로는 이미 통과함 |
 | 3 | D2 원격 백업 | GitHub email privacy 설정 또는 96+3 커밋 author email 재작성 결정 |
+
+로컬 Postgres는 이 머신에 없다(5432 리스닝 없음, docker 컨테이너 없음, `psql` 미설치) → 테스트 DB는 원격 연결 문자열이어야 한다.
+
 
 
