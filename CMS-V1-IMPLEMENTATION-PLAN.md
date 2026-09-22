@@ -90,7 +90,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
 | M8-TW-1 | TODO | TW | — | — | 등록 이름 대조 + 미등록은 본문 텍스트 보존 검증 + 폐기 이름 제거 |
 | M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
-| M8-DA-1 | TODO | DA+TW | — | — | 레거시 43편 JSX→directive 변환 + 전후 대조 |
+| M8-DA-1 | TODO | DA+TW | — | — | 레거시 45편(컴포넌트 43 + `<u>`만 2) JSX→directive 변환 + 전후 대조 + `src/contents` 커밋 |
 | M8-RV-1 | TODO | RV | — | — | — |
 | M9-FE-1 | TODO | BE+FE | — | — | 미리보기 DB 초안 경로 (전환 선행 조건) |
 | M9-BE-1 | TODO | BE+INF | — | — | 이관 실행 + 49주소·이미지 대조 (카테고리 published 필수) |
@@ -168,6 +168,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-22: **에디터 확장 3개 설치 확정(사용자 결정).** Tiptap 우선 원칙에 따라 `@tiptap/extension-superscript`·`subscript`·`text-align`을 **3.31.3으로 설치**했다(설치본과 동일 버전). 설치된 소스 실측으로 호환성을 닫았다: sup/sub는 **mark**이고 이름이 정확히 `superscript`/`subscript`, `parseHTML`이 `<sup>`/`<sub>` — CMS의 `MARK_ORDER`·`INLINE_JSX_MARKS`가 이미 같은 이름을 쓰고 있어 매핑만 바꾸면 된다. `:u`·`:br`은 StarterKit v3에 `Underline`·`HardBreak`가 들어 있어 확장 추가가 필요 없다. **`text-align`은 저장 형식과 shape이 다르다:** 노드 **속성**(`textAlign`)이고 `renderHTML`이 클래스가 아니라 `style="text-align: …"`를 내며, `types` 기본값이 `[]`이라 **`['heading','paragraph']`를 지정해야 동작**하고 `alignments` 기본값에 `justify`가 들어 있다. 저장 형식은 `:::text-align` **컨테이너**이므로 ① 저장 시 속성 → 컨테이너 ② 읽기 시 컨테이너 → 자식 속성 변환을 우리가 쓴다(M8-FE-2·M8-ED-2). 설정은 `alignments: ['left','center','right']`, `defaultAlignment: null`. `CMS-SPEC.md` §4.5 인벤토리 표·설치 목록도 갱신했다.
 - 2026-09-22: **이미지 해석 실패 계약 확정(사용자 결정).** 실패 3경우(미디어 행 없음·`ready` 아님·허용되지 않는 `src`)에 **캡션만 남기고 `width`·`align`을 적용하지 않는다.** `alt` 글자로 대체하지 않고(문서 의미가 조용히 바뀌고 장식 이미지는 alt가 비어 있다) **발행을 막지도 않는다**(R2 장애 하나로 기존 글 발행이 막히는 것을 피한다). 대신 **발행 전 검사가 비차단 경고**로 알리고 **편집기는 깨진 자리표시자와 `alt`·`caption`을 보여준다.** 비용: 현재 `CmsMdxAnalysis`(`src/cms/mdx/types.ts:35`)와 발행 검사 계층(`src/cms/adapters/postgres/content-store.ts`)에는 **오류만 있고 경고 채널이 없다** — M8-FE-2에서 이 계약을 넓힌다. `CMS-SPEC.md` §4.4와 계획서 `M8-FE-2` 본문·완료 조건에 반영했다.
 - 2026-09-22: **M8-DA-1 변환 결과를 저장소에 커밋한다(사용자 결정).** 변환한 편을 `src/contents`에 커밋한다 — 저장소가 새 저장 계약과 일치하고, M8-ED-2의 저장 왕복·M8-TW-1의 폐기 이름 제거를 **실제 directive 파일 위에서** 검증하며, M9의 `migrate-from-files` 이관 입력이 그대로 준비된다. 위험도 분명하다: **directive를 처리하지 않는 체인은 아무것도 출력하지 않아** 공개 글이 조용히 비어 보이므로 M8-FE-1·FE-2(읽기) **뒤**에만 변환한다(계획 순서 그대로). 대신 M8-DA-1의 전후 대조에 **실제 공개 라우트 HTML 비교**를 포함시켜 M9-TW-1의 검사를 M8로 당긴다. 되돌리기·확인 절차는 새 문서 `CMS-M8-DA-1-CONVERSION-MEMO.md`에 남겼다(변환 커밋 SHA·편수·대조 결과를 나중에 채운다).
+- 2026-09-22: **M8-DA-1 대상 편수를 45편으로 확정(사용자 결정).** 계획서의 `43`은 **컴포넌트를 쓰는 파일** 기준이라 실측과 정확히 일치했다(Collapsible 34·Tooltip 8·Callout 6·IdeographicSpace 4편·Tab/Tabs 3·Column/Columns 1). `<u>`를 쓰는 11편 중 **2편은 컴포넌트 없이 `<u>`만** 쓴다(`memos/정규표현식-정리.mdx`, `posts/블로그를-검색하는-벡터-rag-만들기.mdx`). 그래서 태스크 제목·본문을 **45편(컴포넌트 43 + `<u>`만 2)** 으로 고치고, 45편 전체 목록을 `CMS-M8-DA-1-CONVERSION-MEMO.md`에 붙였다(실측 스크립트는 gitignore된 `.pi/legacy-scan.mjs`라 저장소에 없다). `<u>`는 **Tiptap StarterKit의 `underline` mark**에 대응하므로 추가 설치가 필요 없다 — §4.5 밑줄 행도 "없음(원문 작성)"에서 M8-FE-2 배선으로 고쳤다.
 
 ---
 
@@ -949,10 +950,10 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 - **완료 조건:** 에디터에서 만든 본문이 directive로 저장되고 다시 열면 동일하다.
 - **검증:** roundtrip 테스트 + 실DB 저장·재열기
 
-### M8-DA-1 레거시 43편 변환
+### M8-DA-1 레거시 45편 변환
 
 - **목적:** 저장 형식을 하나로 만든다.
-- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, Tab/Tabs 3/3, Column/Columns 1/1). 추가로 산문의 `<u>` 38쌍을 `:u[...]`로 바꾸고, `<IdeographicSpace />` 6곳(4편)은 **삭제**한다. `<br/>`(12건)·`<div>`(3건)는 **코드·머메이드 펜스 안**이라 변환 대상이 아니다. JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. 산문의 `:free를`·`:1로` 2건은 등록 이름만 파싱하는 규칙으로 자동 해결되므로 **본문을 고치지 않는다**(이스케이프 불필요). `&#x20;`(공백 인코딩) 35건은 같은 범주지만 v1에서 건드리지 않고 기록만 남긴다.
+- **주요 내용:** 49편 중 **45편**이 변환 대상이다 — 컴포넌트를 쓰는 43편(Collapsible 34, Tooltip 8, Callout 6, IdeographicSpace 4편, Tab/Tabs 3/3, Column/Columns 1/1)과 컴포넌트 없이 `<u>`만 쓰는 2편. 45편 전체 목록은 `CMS-M8-DA-1-CONVERSION-MEMO.md`에 있다(`<u>`는 Tiptap StarterKit의 `underline` mark에 대응하므로 추가 설치 불필요). 추가로 산문의 `<u>` 38쌍을 `:u[...]`로 바꾸고, `<IdeographicSpace />` 6곳(4편)은 **삭제**한다. `<br/>`(12건)·`<div>`(3건)는 **코드·머메이드 펜스 안**이라 변환 대상이 아니다. JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. 산문의 `:free를`·`:1로` 2건은 등록 이름만 파싱하는 규칙으로 자동 해결되므로 **본문을 고치지 않는다**(이스케이프 불필요). `&#x20;`(공백 인코딩) 35건은 같은 범주지만 v1에서 건드리지 않고 기록만 남긴다.
 - **변환 결과 커밋(2026-09-22 사용자 결정):** 변환한 편을 `src/contents`에 **커밋한다**. 저장소가 새 저장 계약과 일치하고, M8-ED-2의 저장 왕복·M8-TW-1의 폐기 이름 제거를 실제 directive 파일 위에서 검증하며, M9의 `migrate-from-files` 이관 입력이 그대로 준비된다. 순서는 반드시 **렌더러(M8-FE-1·FE-2) 뒤**여야 한다 — directive를 처리하지 않는 체인은 아무것도 출력하지 않아 공개 글이 조용히 비어 보인다. 되돌리기·확인 절차는 `CMS-M8-DA-1-CONVERSION-MEMO.md`에 기록한다.
 - **선행:** M8-FE-1(읽기), M8-ED-1
 - **담당:** DA + TW

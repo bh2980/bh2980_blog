@@ -332,7 +332,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | 굵게·기울임·취소선·인라인 코드 | 툴바 | Tiptap StarterKit(`bold`·`italic`·`strike`·`code`) | Markdown(`**`, `*`, `~~`, 백틱) |
 | 코드 블록 | 슬래시 메뉴·툴바 | Tiptap StarterKit(`code-block`) + 코드 펜스 주석 | 언어가 지정된 코드 펜스 |
 | 링크 | `[[` 제목 검색(내부). 외부 링크는 원문 작성 | Tiptap StarterKit(`link`) | Markdown 링크 |
-| 밑줄 | 없음(원문 작성) | Tiptap StarterKit(`underline`) | `:u[...]` |
+| 밑줄 | 툴바(M8-FE-2에서 배선) | Tiptap StarterKit(`underline`) — **추가 설치 불필요** | `:u[...]` |
 | 강제 줄바꿈 | 없음(원문 작성) | Tiptap StarterKit(`hard-break`) | `:br` |
 | 위첨자·아래첨자 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `superscript`·`subscript` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. mark 이름이 `superscript`/`subscript`, 기본 태그가 `<sup>`/`<sub>` | `:sup[...]`·`:sub[...]` |
 | 문단·제목 정렬 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `text-align` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. 아래 설정·shape 주의 | `:::text-align{align="..."}` |

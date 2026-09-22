@@ -20,12 +20,68 @@
 
 ## 무엇을 바꾸나
 
-- JSX 컴포넌트를 쓰는 편: 계획서 **43편** / 실측 **45편**(posts 6, memos 39) — 불일치. 착수할 때 목록으로 확정한다.
+- 대상 **45편**(posts 6, memos 39). 컴포넌트 기준으로는 **43편**이고(계획서 숫자와 일치), 컴포넌트 없이 `<u>`만 쓰는 **2편**이 더 있다 — `memos/정규표현식-정리.mdx`, `posts/블로그를-검색하는-벡터-rag-만들기.mdx`. 전체 목록은 아래 "대상 45편"에 있다.
+- `<u>`는 Tiptap StarterKit의 `underline` mark에 대응한다. **추가 설치가 필요 없다**(StarterKit v3에 포함). 저장은 `:u[...]`.
 - 산문의 `<u>` 38쌍 → `:u[...]`.
 - `<IdeographicSpace />` 6곳(4편)은 **삭제**하고 레지스트리에서도 뺀다.
 - 코드·머메이드 펜스 안의 `<br/>`(12건)·`<div>`(3건)는 변환 대상이 아니다(펜스 안이라 산문이 아님).
 - 산문의 `:free를`·`:1로` 2건은 **본문을 고치지 않는다.** 등록된 이름만 지시자로 인식하는 규칙이 자동으로 해결한다(이스케이프 불필요).
 - `&#x20;`(공백 인코딩) 35건은 `IdeographicSpace`와 같은 범주지만 v1에서 건드리지 않고 기록만 남긴다.
+
+## 대상 45편
+
+실측 스크립트: `.pi/legacy-scan.mjs`(gitignore 대상이라 저장소에는 없다). 산문의 코드 펜스·인라인 코드 안은 제외했다 — `<br/>` 12건·`<div>` 3건이 변환 대상이 아닌 이유다.
+
+총 45편 (posts 6, memos 39)
+
+### posts
+- `posts/ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면.mdx` — Tooltip
+- `posts/내가-만든-rag의-성능-측정하기.mdx` — Callout, IdeographicSpace, u
+- `posts/블로그라면-seo는-해봐야지.mdx` — Callout, Column, Columns, IdeographicSpace, Tab, Tabs, Tooltip, u
+- `posts/블로그를-검색하는-벡터-rag-만들기.mdx` — u
+- `posts/왜-내-블로그는-ssg가-안될까.mdx` — Tab, Tabs, u
+- `posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx` — Tab, Tabs, Tooltip, u
+
+### memos
+- `memos/1-implement-curry.mdx` — Collapsible
+- `memos/10-tuple-to-union.mdx` — Collapsible
+- `memos/106-trim-left.mdx` — Collapsible
+- `memos/108-trim.mdx` — Collapsible
+- `memos/11-tuple-to-object.mdx` — Collapsible
+- `memos/11-what-is-composition-create-a-pipe.mdx` — Collapsible
+- `memos/110-capitalize.mdx` — Collapsible
+- `memos/12-chainable-options.mdx` — Collapsible
+- `memos/14-first-of-array.mdx` — Collapsible
+- `memos/15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery.mdx` — Collapsible
+- `memos/15-last-of-array.mdx` — Collapsible
+- `memos/16-pop.mdx` — Collapsible
+- `memos/167-intersection-of-unsorted-arrays.mdx` — Collapsible
+- `memos/18-improve-a-function.mdx` — Collapsible
+- `memos/18-length-of-tuple.mdx` — Collapsible
+- `memos/189-awaited.mdx` — Collapsible
+- `memos/2-get-return-type.mdx` — Collapsible
+- `memos/20-promiseall.mdx` — Collapsible
+- `memos/268-if.mdx` — Collapsible
+- `memos/28-implement-clearalltimeout.mdx` — Collapsible
+- `memos/3-omit.mdx` — Collapsible, Tooltip, u
+- `memos/3057-push.mdx` — Collapsible
+- `memos/3060-unshift.mdx` — Collapsible
+- `memos/3312-parameters.mdx` — Collapsible
+- `memos/4-pick.mdx` — Collapsible
+- `memos/43-exclude.mdx` — Collapsible
+- `memos/533-concat.mdx` — Collapsible
+- `memos/6-implement-basic-debounce.mdx` — Collapsible, u
+- `memos/62-type-lookup.mdx` — Collapsible
+- `memos/7-readonly.mdx` — Collapsible
+- `memos/8-can-you-shuffle-an-array.mdx` — Collapsible
+- `memos/8-readonly-2.mdx` — Collapsible
+- `memos/898-includes.mdx` — Collapsible
+- `memos/9-deep-readonly.mdx` — Tooltip
+- `memos/js의-데이터-타입-및-메모리-관리.mdx` — Callout, IdeographicSpace, u
+- `memos/js의-비동기-처리-메커니즘.mdx` — Callout, Tooltip, u
+- `memos/js의-코드-실행-메커니즘.mdx` — Callout, Tooltip, u
+- `memos/xxx-equal.mdx` — Callout, Collapsible, IdeographicSpace, Tooltip
+- `memos/정규표현식-정리.mdx` — u
 
 ## 되돌리는 방법
 
