@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-23 (M8-RV-1 승인으로 M8 DONE · M9 전 항목 TODO, 착수 전)
+작성: 2026-09-16 · Lead · 갱신: 2026-09-23 (M8 DONE · M9 개발 계획 수립, 구현 착수 전)
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -187,7 +187,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-22: **M8-TW-1 완료(배치 4).** ① `ContentLink`·`IdeographicSpace`를 레지스트리·렌더러·참조 수집·Keystatic 컴포넌트에서 제거하고 `RETIRED_JSX_NAMES`로 묶었다 — 본문에 남아 있으면 `analyze`가 `폐기된 JSX 요소` 오류로 거부한다. ② `REGISTERED_JSX_NAMES`를 `analyze`에 배선했다(미등록 JSX 거부 — M6 한계 테스트를 계약으로 전환). 읽기 호환(`<u>`·`<br/>`·`<sup>`·`<sub>` 등)은 유지되며, 빠졌던 `br`을 등록 이름에 추가했다. ③ 에디터 내부링크 삽입을 `[제목](/entries/<UUID>)`에서 `[제목](/posts/{slug})`로 바꿨다(slug 없음 → 제목만). ④ 대조 테스트(정의표↔렌더러↔레지스트리)와 미등록 보존 핀(`:free를`·`:1로` 코퍼스)을 저장소에 남겼다. 이관 도구(변환기·감사기)의 레거시 이름 인식은 유지한다 — 아직 안 바꾼 원문을 읽어야 하므로.
 
 - 2026-09-23: **문서 정합성 갱신 — M8·M9를 반영했다.** ① 개요표(§1)에 M8·M9 행을 추가하고 승인 게이트 서술을 `M7 보고서` → `M9-LEAD-1`로 정정. ② Critical Path(§3) 끝이 이미 M9-BE-3으로 MOVED된 `M7-BE-5 Keystatic 제거`로 남아 있었다 → 실제 M8·M9 순차 체인으로 교체. ③ 병렬 표(§4)를 M5까지만 두지 않고 M6–M9까지 채웠다(M9는 병렬 없음). ④ 상단 갱신줄이 `M8-FE-1 READY`(진행표는 DONE)로 어긋나 있었다 → `M8 DONE · M9 전 항목 TODO`로 정정. ⑤ §6 배치 0–1 절을 역사 기록으로 표시.
-- 2026-09-23: **현재 위치 = M9 착수 전 (M0–M8 DONE).** 통합 브랜치 `feature/new-cms`의 `d617b0a`까지 M0–M8이 완료됐고 M6·M7·M8 DONE 근거 커밋은 전부 이 브랜치에 포함된다. 재개 지점은 **M9-FE-1(미리보기 DB 초안 경로)**이다. 코드로 확인한 미착수 근거: ① `src/cms`에 preview surface가 없다 — `getPreviewPost`/`listPreviewPosts`가 공개 repository(`getContentRepository()`)를 그대로 쓴다. ② `resolveContentRepositorySource`의 기본값이 `"keystatic"`이라 플래그 전환(M9-BE-2)이 안 됐다. ③ `src/app/(admin)/keystatic`·`src/app/api/keystatic`·`src/keystatic`과 `@keystatic` 의존성이 잔존한다(M9-BE-3). ④ `CMS-M9-DEV-PLAN.md`가 없다 — M9 배치는 별도 문서로 쪼갤 때 작성한다.
+- 2026-09-23: **현재 위치 = M9 착수 전 (M0–M8 DONE).** 통합 브랜치 `feature/new-cms`의 `d617b0a`까지 M0–M8이 완료됐고 M6·M7·M8 DONE 근거 커밋은 전부 이 브랜치에 포함된다. 재개 지점은 **M9-0 사전조사**이며, 운영 apply 설계를 확정한 뒤 M9-FE-1/M9-BE-1로 간다. 코드로 확인한 미착수 근거: ① `src/cms`에 preview surface가 없다 — `getPreviewPost`/`getPreviewMemo`/`listPreviewPosts`가 공개 repository(`getContentRepository()`)를 그대로 쓴다. ② `resolveContentRepositorySource`의 기본값이 `"keystatic"`이라 플래그 전환(M9-BE-2)이 안 됐다. ③ `src/app/(admin)/keystatic`·`src/app/api/keystatic`·`src/keystatic`과 `@keystatic` 의존성이 잔존한다(M9-BE-3). ④ M9 실행계획은 아직 없으므로 별도 문서가 필요하다.
+- 2026-09-23: **M9 실행계획 작성.** `CMS-M9-DEV-PLAN.md`에 M9-0부터 M9-RV-1까지 의존관계, Oracle O1–O3 고정 자문 시점, Reviewer R1–R6 및 최종 검수, 운영 이관/공개 전환/Keystatic 제거에 대한 독립 사용자 승인 게이트를 기록했다. 현재 M9 진행표 태스크는 전부 TODO이며 구현은 시작하지 않았다.
 
 ---
 
@@ -994,6 +995,8 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 
 ## M9. 이관과 전환
 
+개발 순서·Oracle O1–O3·Reviewer R1–R6·사용자 승인 게이트는 [`CMS-M9-DEV-PLAN.md`](CMS-M9-DEV-PLAN.md)를 따른다.
+
 **전환은 컴포넌트와 저장 형식이 끝난 뒤에만 한다.** M7의 “전환 준비”는 M9의 입력이다.
 
 ### M9-FE-1 미리보기 DB 초안 경로
@@ -1007,14 +1010,14 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M9-BE-1 이관 실행과 주소 대조
 
 - **목적:** 파일 49편·이미지 22장·카테고리·태그를 운영 DB로 옮긴다.
-- **주요 내용:** `migrate-from-files` apply. **카테고리를 published로 넣는다** — 아니면 published 글이 조용히 사라진다(`toPost`가 해석 가능한 published 카테고리 없으면 null). 49주소 대조(`content_addresses`), 이미지 R2 키·체크섬 대조, 초안 0 확인.
+- **주요 내용:** `migrate-from-files` apply. **카테고리를 published로 넣는다** — 아니면 published 글이 조용히 사라진다(`toPost`가 해석 가능한 published 카테고리 없으면 null). 49편의 원본 상태 매트릭스를 대조하고 published 주소(`content_addresses`)·이미지 R2 키/체크섬을 확인한다. 초안 0을 전제하지 않는다: status 없는 `memos/js의-비동기-처리-메커니즘.mdx`는 현재 Keystatic/import에서 draft로 취급되므로 M9-0에서 사용자와 의도 상태를 확정한다.
 - **담당:** BE + INF
-- **완료 조건:** 49편 전부 공개 조회 가능하고 주소·이미지가 일치한다.
+- **완료 조건:** 49편의 콘텐츠·관계·상태가 승인된 source inventory와 일치하고, published 주소와 이미지가 일치한다. draft는 공개되지 않는다.
 
 ### M9-TW-1 전후 공개 렌더 대조
 
 - **목적:** “이관하다가 클나는” 경우를 잡는다.
-- **주요 내용:** 같은 49편에 대해 **현재 Keystatic 공개 페이지 HTML ↔ DB 공개 페이지 HTML**을 대조한다. 주소 대조만으로는 부족하다. 불일치 0이어야 전환한다.
+- **주요 내용:** 49편의 승인된 상태 매트릭스에 따라 **published 콘텐츠의 Keystatic 공개 HTML ↔ DB 공개 HTML**을 대조한다. draft는 공개 HTML 비교 대상이 아니며 관리자 인증 미리보기로 별도 검증한다. 주소 대조만으로는 부족하다. 미분류 불일치 0이어야 전환한다.
 - **선행:** M9-BE-1
 - **담당:** TW
 
@@ -1085,7 +1088,7 @@ M0 기준 고정
 
 Auth·serialize·실DB 공개 분리·이전 왕복·공개 조회 교체 중 하나라도 실패하면 다음 Milestone으로 가지 않는다.
 
-M8은 “컴포넌트와 저장 형식”을, M9는 “이관과 전환”을 담당한다. M8이 없으면 M9의 공개 HTML 대조가 성립하지 않는다. M9는 승인 게이트(M9-LEAD-1)를 사이에 둔 순차 체인이며, 승인 전에 BE-2·BE-3을 착수하지 않는다.
+M8은 “컴포넌트와 저장 형식”을, M9는 “이관과 전환”을 담당한다. M8이 없으면 M9의 공개 HTML 대조가 성립하지 않는다. M9는 승인 게이트를 사이에 둔 순차 체인이다. M9-LEAD-1 뒤 사용자의 공개 전환 승인을 받기 전에는 BE-2, 별도의 Keystatic 제거 승인을 받기 전에는 BE-3을 착수하지 않는다.
 
 ---
 
