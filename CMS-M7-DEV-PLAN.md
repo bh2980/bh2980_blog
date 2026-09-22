@@ -683,6 +683,37 @@ runId `e1d1d73c-04b1-4f41-9fe3-d5a1fe1ff8b4` · 판정: **전환 승인 보류**
 - 확인 유지(정적): slug NFC 정규화 · RSS `no-store` · OG `generateImageMetadata`는 `notFound()` 미호출 · 스케줄러 토큰 `timingSafeEqual` · 관리자 쓰기 라우트 17/17 인증+CSRF.
 - 잔여(리뷰어 지적): `schedules_active_entry_idx` → 409 경로는 소스상 일치하나 **실제 pg `constraint` 이름 실측은 없다**(env 부재). 실DB 검증 목록에 포함됐다.
 
+### 9.16 M7-SEC-1 독립 검수 결과와 수정 (배치 7)
+
+- 실행: run `29516072-16a5-46a4-a1da-513192bb9e08`, native subagent + `model: "xai/grok-4.7"`. 이번에는 “Lead 자가 점검을 반증하라”고 지시한 적대적 검수였다.
+- 판정: **BLOCK (조건부).** 조건 1(비로그인·타 계정 쓰기 차단)·2(실행기 토큰)·4(공개 초안 0건)는 정적 증거로 충족, **조건 3(검증 안 된 MDX의 실행 컴파일러 진입)은 미충족**.
+
+#### P1 (확인함) — 검증 실패 MDX가 공개 컴파일러로 진입
+
+- 근거: `content-service.ts:225-233`가 `analyze()` 오류를 `issues`에 기록만 하고 `mdx: input.mdx`를 그대로 반환(348-354). `validateForPublish`는 **테스트에서만** 호출된다. `publishEntry`(content-store)·`bulk-service` 발행·`executeSchedulePublish`가 working 본문을 무검증 복사하고, `renderMDX`는 `analyze` 없이 `compileMDX`에 넣는다.
+- 재현: 관리자 세션으로 `analyze`가 거부하는 MDX를 저장 → `POST /entries/:id/publish` → 비로그인 공개 페이지가 그 본문을 컴파일. 관리자 세션 또는 기존 저장소 본문이 필요해 P0는 아니다.
+- **수정**: `content-store.ts`에 `assertPublishableMdx()`를 추가해 `publishEntry`·`executeSchedulePublish`가 참조 검증(`invalid_reference`)과 **같은 자리**에서 `CmsError("invalid_input")`로 거부한다(400). `renderMDX`는 `analyze` 오류가 있으면 컴파일하지 않고 실패한다(fail-closed). 기존 본문을 깨지 않는다는 근거: 코퍼스 테스트가 `files=49 analyzeErrors=0`을 출력하며 49편 전부 production 렌더 체인을 통과한다.
+
+#### P2 3건 (확인함·수정함)
+
+| # | 문제 | 수정 |
+| --- | --- | --- |
+| 1 | 예약 발행이 `scheduled_at`을 비교하지 않아 **이른 호출이 발행**됐다(스펙 F10 위반). `scheduled_at`은 SELECT만 하고 `effectivePublishedAt`에만 쓰였다 | `scheduled_at > now`면 `CmsError("conflict")` → 409 |
+| 2 | `a.tsx`가 `javascript:`·`data:`를 그대로 앵커 `href`로 출력 | http(s)·사이트 상대 경로(`/`, `//` 제외)·`#`만 링크로 만들고 나머지는 링크 없이 텍스트로 남김. 레거시 링크는 `https:` 37 + `/` 22뿐이라 기존 본문 무영향 |
+| 3 | `EVENT_HANDLER_NAME = /^on[A-Z]/`가 `onerror`(소문자)를 놓쳤다 | `/^on[a-z]/i` |
+
+#### 새 발견 (기록만, M8 안건)
+
+`REGISTERED_JSX_NAMES`는 `registry.ts`에 **정의만 되고 `analyze`에서 쓰이지 않는다**. 그래서 등록되지 않은 JSX(`<UnknownComponent />`)가 `analyze`를 통과하고 React 렌더 단계에서 실패한다(테스트로 고정). 코퍼스 전수 확인이 필요해 M7에서 고치지 않는다.
+
+#### 검증
+
+105 files / 675 tests / **592 pass** / 83 skip / 9 파일 실패(전부 env) — 직전 661/581/80 대비 +14 tests. typecheck 0 · `pnpm build` exit 0 · biome 신규 위반 0(기존 9 warnings 유지). 신규 테스트: 발행 경계 DB 3건(env 시 skip) · 컴파일러 게이트 4 · 앵커 5 · 이벤트 핸들러 2.
+
+#### 상태
+
+**SEC-1은 아직 미완이다.** P1·P2 수정 반영 후 **재검수**가 필요하고, 재검수 통과 전에는 전환을 승인하지 않는다.
+
 
 
 

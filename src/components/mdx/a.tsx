@@ -4,11 +4,22 @@ import { cn } from "@/utils/cn";
 export const a = ({ children, href, ...props }: ComponentPropsWithRef<"a">) => {
 	const h = typeof href === "string" ? href : "";
 	const isHash = h.startsWith("#");
+	const isRootRelative = h.startsWith("/") && !h.startsWith("//");
 	const isExternal = /^https?:\/\//.test(h);
 
-	if (isHash || !isExternal) {
+	// M7-SEC-1 P2: `javascript:`·`data:` 같은 스킴이 앵커로 나가지 않도록
+	// http(s)·사이트 상대 경로·`#`만 링크로 만든다. 그 밖의 값은 링크 없이 텍스트로 남긴다.
+	if (!isHash && !isRootRelative && !isExternal) {
 		return (
-			<a href={href} {...props} className={props.className}>
+			<a {...props} className={props.className}>
+				{children}
+			</a>
+		);
+	}
+
+	if (isHash || isRootRelative) {
+		return (
+			<a href={h} {...props} className={props.className}>
 				{children}
 			</a>
 		);
@@ -16,7 +27,7 @@ export const a = ({ children, href, ...props }: ComponentPropsWithRef<"a">) => {
 
 	return (
 		<a
-			href={href}
+			href={h}
 			{...props}
 			className={cn(
 				"text-current decoration-slate-300/50 underline-offset-4",

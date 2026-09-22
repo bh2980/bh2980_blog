@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { PluggableList } from "unified";
 import { visit } from "unist-util-visit";
+import { analyze } from "@/cms/mdx";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { remarkChartToMdx } from "@/libs/chart";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
@@ -81,6 +82,14 @@ export const MDX_COMPONENTS = {
 };
 
 export const renderMDX = async (source: string) => {
+	// M7-SEC-1 조건 3: 검증을 통과하지 못한 MDX는 실행 컴파일러에 넣지 않는다(fail-closed).
+	// 저장·발행 경계(`assertPublishableMdx`)를 지나온 본문이라도 여기서 한 번 더 막는다.
+	const errors = analyze(source).errors;
+
+	if (errors.length > 0) {
+		throw new Error(`MDX validation failed: ${errors[0]?.message ?? "unknown"}`);
+	}
+
 	const tocRef: TocItem[] = [];
 
 	const { content } = await compileMDX({

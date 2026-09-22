@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { Pool, PoolClient, QueryResult } from "pg";
+import { analyze } from "../../mdx";
 import type {
 	PreparedSnapshot,
 	Reference,
@@ -18,6 +19,21 @@ export class CmsError extends Error {
 		this.code = code;
 		this.serverVersion = serverVersion;
 		this.name = "CmsError";
+	}
+}
+
+/**
+ * M7-SEC-1 P1: 공개 발행 경계.
+ *
+ * `prepareSnapshot`은 `analyze()` 오류를 `issues`에 기록만 하고 본문을 그대로 돌려준다.
+ * 그래서 발행(`publishEntry`·`executeSchedulePublish`) 시점에 다시 검사해 검증 실패 본문이
+ * 공개 `compileMDX`까지 가는 것을 막는다. 참조 검증(`invalid_reference`)과 같은 자리에서 막는다.
+ */
+function assertPublishableMdx(mdx: string): void {
+	const errors = analyze(mdx).errors;
+
+	if (errors.length > 0) {
+		throw new CmsError(`MDX validation failed: ${errors[0]?.message ?? "unknown"}`, "invalid_input");
 	}
 }
 
@@ -1392,6 +1408,9 @@ export function createContentStore(
 				}
 
 				const working = bodyRes.rows[0];
+
+				// M7-SEC-1 P1: 검증 실패 본문은 공개로 복사하지 않는다.
+				assertPublishableMdx(working.mdx);
 
 				// --- Published References Target Recheck ---
 				const workingRefsRes = await client.query<ReferenceRow>(
@@ -2934,6 +2953,11 @@ export function createContentStore(
 					throw new CmsError(`Schedule cannot be executed in status: ${sched.status}`, "conflict");
 				}
 
+				// M7-SEC-1 P2: 예정 시각 전에 호출되면 발행하지 않는다(스펙 F10).
+				if (sched.scheduled_at.getTime() > Date.now()) {
+					throw new CmsError("Schedule is not due yet", "conflict");
+				}
+
 				const eRes = await client.query<VersionRow>(
 					`SELECT version FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
 					[sched.entry_id],
@@ -2946,6 +2970,9 @@ export function createContentStore(
 				);
 				if (bodyRes.rows.length === 0) throw new CmsError("Working draft not found", "not_found");
 				const working = bodyRes.rows[0];
+
+				// M7-SEC-1 P1: 예약 발행도 같은 경계를 지킨다.
+				assertPublishableMdx(working.mdx);
 
 				// --- Published References Target Recheck ---
 				const workingRefsRes = await client.query<ReferenceRow>(

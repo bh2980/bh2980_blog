@@ -520,4 +520,63 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(pub2.publishedAt).toEqual(userSpecifiedDate); // preserved unless overridden
 		});
 	});
+
+	describe("5. M7-SEC-1 발행 경계", () => {
+		it("analyze 오류가 있는 본문은 publishEntry가 거부하고 상태를 바꾸지 않는다", async () => {
+			const post = await store.createEntry({
+				collection: "post",
+				slug: "post-broken-mdx",
+				metadata: { title: "Broken" },
+				mdx: "<Callout>",
+				schemaVersion: 1,
+				contentHash: "broken-hash",
+			});
+
+			await expect(store.publishEntry({ id: post.id, expectedVersion: post.version })).rejects.toMatchObject({
+				name: "CmsError",
+				code: "invalid_input",
+			});
+
+			const after = await store.getEntry(post.id);
+			expect(after.status).toBe("draft");
+		});
+
+		it("예정 시각 전에는 예약 발행이 거부되고 본문이 공개되지 않는다", async () => {
+			const post = await store.createEntry({
+				collection: "post",
+				slug: "post-not-due",
+				metadata: { title: "Not due" },
+				mdx: "정상 본문",
+				schemaVersion: 1,
+				contentHash: "not-due-hash",
+			});
+
+			const schedule = await store.createSchedule({
+				entryId: post.id,
+				expectedVersion: post.version,
+				scheduledAt: new Date(Date.now() + 3600 * 1000),
+			});
+
+			await expect(store.executeSchedulePublish({ scheduleId: schedule.id })).rejects.toMatchObject({
+				code: "conflict",
+			});
+
+			const after = await store.getEntry(post.id);
+			expect(after.status).toBe("draft");
+		});
+
+		it("정상 본문은 그대로 발행된다(회귀 방지)", async () => {
+			const post = await store.createEntry({
+				collection: "post",
+				slug: "post-valid-mdx",
+				metadata: { title: "Valid" },
+				mdx: "## 제목\n\n본문 **강조**",
+				schemaVersion: 1,
+				contentHash: "valid-hash",
+			});
+
+			const published = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+			expect(published.status).toBe("published");
+		});
+	});
 });

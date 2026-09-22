@@ -54,4 +54,5 @@ export const TABS_MAX = 8;
 export const COLUMNS_MIN = 2;
 export const COLUMNS_MAX = 4;
 
-export const EVENT_HANDLER_NAME = /^on[A-Z]/;
+/** 이벤트 핸들러 속성 이름. React는 대소문자를 보존하지 않으므로 `onerror`도 막는다(M7-SEC-1 P2). */
+export const EVENT_HANDLER_NAME = /^on[a-z]/i;
