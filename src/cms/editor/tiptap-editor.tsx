@@ -563,6 +563,71 @@ export function CmsEditor({
 				>
 					{"</>"}
 				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.toggleUnderline())}
+					className={`px-2 py-1 text-xs underline rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive("underline") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					U
+				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.toggleSuperscript())}
+					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive("superscript") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					x²
+				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.toggleSubscript())}
+					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive("subscript") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					x₂
+				</button>
+
+				<div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-800 mx-1" />
+
+				{/* 정렬 (:::text-align) */}
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.setTextAlign("left"))}
+					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive({ textAlign: "left" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					왼쪽
+				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.setTextAlign("center"))}
+					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive({ textAlign: "center" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					가운데
+				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.setTextAlign("right"))}
+					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+						editor.isActive({ textAlign: "right" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					}`}
+				>
+					오른쪽
+				</button>
+				<button
+					type="button"
+					onMouseDown={setFormat((c) => c.unsetTextAlign())}
+					className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-600 dark:text-neutral-400"
+				>
+					자동
+				</button>
 
 				<div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-800 mx-1" />
 

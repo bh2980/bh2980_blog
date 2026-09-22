@@ -39,6 +39,10 @@ export const CmsImageNode = Node.create({
 			caption: {
 				default: "",
 			},
+			// 장식 표시(`decorative`). 참일 때만 저장한다.
+			decorative: {
+				default: null,
+			},
 			// Markdown 이미지의 타이틀(`![alt](src "title")`) 보존용. 화면에는 쓰지 않는다.
 			title: {
 				default: null,

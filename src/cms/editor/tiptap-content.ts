@@ -20,19 +20,6 @@ import { analyze, serialize, toDocument } from "../mdx";
 export const OPAQUE_BLOCK_NAME = "cmsOpaqueBlock";
 export const TOOLTIP_MARK_NAME = "cmsTooltip";
 
-/** Tiptap이 그대로 들고 다닐 수 있는 블록. 밖에 것은 상자로 보존한다. */
-const NATIVE_BLOCKS = new Set([
-	"paragraph",
-	"heading",
-	"codeBlock",
-	"blockquote",
-	"bulletList",
-	"orderedList",
-	"listItem",
-	"horizontalRule",
-	"image",
-]);
-
 /** Tiptap이 그대로 들고 다닐 수 있는 mark. `tooltip`은 전용 mark로 매핑한다. */
 const NATIVE_MARKS = new Set(["bold", "italic", "strike", "code", "link", "underline", "superscript", "subscript"]);
 const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip"]);
@@ -170,7 +157,10 @@ const withTextAlign = (node: CmsNode, content: JSONContent): JSONContent => {
 	return content;
 };
 
-const IMAGE_ATTRS = ["mediaId", "src", "alt", "width", "align", "caption", "title"] as const;
+const IMAGE_ATTRS = ["mediaId", "src", "alt", "width", "align", "caption", "decorative", "title"] as const;
+
+/** `decorative`는 참일 때만 싣는다 — 거짓·없음은 저장하지 않는다(§4.4). */
+const isDecorative = (value: unknown): boolean => value === true;
 
 const blockToTiptap = (node: CmsNode): JSONContent => {
 	if (!isMappableBlock(node)) return toOpaque(node);
@@ -216,7 +206,9 @@ const blockToTiptap = (node: CmsNode): JSONContent => {
 			const attrs: Record<string, CmsJsonValue> = {};
 			for (const key of IMAGE_ATTRS) {
 				const value = source[key];
-				if (value !== undefined && value !== null) attrs[key] = value;
+				if (value === undefined || value === null) continue;
+				if (key === "decorative" && !isDecorative(value)) continue;
+				attrs[key] = value;
 			}
 			return { type: "image", attrs };
 		}
@@ -355,10 +347,11 @@ const tiptapBlockToCms = (node: JSONContent): CmsNode[] => {
 			for (const key of IMAGE_ATTRS) {
 				const value = (source as Record<string, unknown>)[key];
 				if (value == null) continue;
+				if (key === "decorative" && !isDecorative(value)) continue;
 				// Tiptap 기본값은 저장하지 않는다 — 없으면 Markdown 이미지로 돌아가야 한다.
 				if (key === "width" && value === "100%") continue;
 				if (key === "align" && value === "center") continue;
-				if ((key === "alt" || key === "caption" || key === "title") && value === "") continue;
+				if ((key === "caption" || key === "title") && value === "") continue;
 				if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
 					attrs[key] = value;
 				}

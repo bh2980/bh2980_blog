@@ -73,6 +73,18 @@ describe("M8-ED-2 저장 형식 directive 전환", () => {
 		expect(write("![설명](/images/a.png)").trimEnd()).toBe("![설명](/images/a.png)");
 	});
 
+	it("이스케이프된 `:이름`은 글자로 유지된다", () => {
+		// 등록된 이름 뒤에 구분자가 오면 지시자로 읽히므로 `\:`로 끊는다(§4.4).
+		expect(write("글자로 쓰는 \\:u[괄호] 예문").trimEnd()).toBe("글자로 쓰는 \\:u\\[괄호] 예문");
+		expect(write("줄바꿈 글자 \\:br 입니다").trimEnd()).toBe("줄바꿈 글자 \\:br 입니다");
+		expect(write("자물쇠 \\:\\:image{alt=x} 글자").trimEnd()).toBe("자물쇠 :\\:image{alt=x} 글자");
+		// 미등록 이름·시각·URL의 콜론은 손대지 않는다.
+		expect(write("벡터 rag openai/gpt-oss-120b:free를 쓴다").trimEnd()).toBe(
+			"벡터 rag openai/gpt-oss-120b:free를 쓴다",
+		);
+		expect(write("낮 12:30에 만나요").trimEnd()).toBe("낮 12:30에 만나요");
+	});
+
 	it("쓴 문자열을 다시 써도 같은 문자열이다(멱등)", () => {
 		const samples = [
 			':::callout{variant="note"}\n\n본문 :u[밑줄] 과 :br[] 줄바꿈\n\n:::',

@@ -122,6 +122,20 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 		expect(tiptapToMdx(throughSchema(mdxToTiptap(once)))).toBe(once);
 	});
 
+	it("장식 이미지를 잃지 않는다", () => {
+		const first = toDocument(analyze('::image{src="/images/a.png" alt="" decorative}'));
+		const json = cmsNodeToTiptap(first);
+
+		expect(json.content?.[0]).toMatchObject({
+			type: "image",
+			attrs: expect.objectContaining({ decorative: true }),
+		});
+
+		const second = tiptapToCmsNode(throughSchema(json));
+		expect(second).toEqual(first);
+		expect(serialize(second)).toContain("decorative");
+	});
+
 	it("툴팁 mark 이름이 스키마와 같다", () => {
 		expect(schema.marks[TOOLTIP_MARK_NAME]).toBeDefined();
 		expect(schema.nodes[OPAQUE_BLOCK_NAME]).toBeDefined();
