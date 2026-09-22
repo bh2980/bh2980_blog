@@ -85,7 +85,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M7-LEAD-1 | DONE | Lead | `feature/M7` | `c5eef4d`, `2d615f8` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
 | M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
 | M7-RV-1 | TODO | RV | — | — | M7 구현분 최종 검수(리뷰 6회·SEC 검수로 대체 검증). 전환 검수는 M9-RV-1 |
-| M8-ED-1 | TODO | ED | — | — | §4.4 저장 형식을 directive로 개정 (중첩·이스케이프 규칙) |
+| M8-ED-1 | REVIEW | ED | `feature/M7` | — | §4.4를 전면 directive로 개정(초안 반영, 사용자 승인 대기) |
 | M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
 | M8-FE-2 | TODO | FE+BE | — | — | 누락 컴포넌트 TextAlign·Image·ContentLink + ID→공개주소 해석 |
 | M8-TW-1 | TODO | TW | — | — | 미등록 지시자·컴포넌트 거부 + 레지스트리 대조 |
@@ -161,6 +161,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 - 2026-09-23: **v1 커버리지 구멍 발견 — M8 등록.** §4.4의 `TextAlign`·`Image`·`ContentLink`는 F16(§6.2)·F18(§4.3)의 **v1 기능**이고 F18 수용 기준은 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구하는데(`CMS-SPEC.md:644`), **공개 렌더러 구현 태스크가 M1~M7 어디에도 없었다.** M1-ED-1은 serialize의 이름 유지, M3-ED-2는 편집기 삽입까지였고, 계획서는 공개 렌더를 “기존 블로그 경로 재사용”으로 전제했지만 그 컴포넌트는 저장소 역사상 한 번도 없었다(`git log --all --diff-filter=A` 결과 0건, `origin/main`도 동일). M6-ED-1 검수는 레거시 49편만 대상이라(사용 0건) 잡히지 않았다. **M8로 등록한다** — M7의 관심사(전환 준비)와 다르고, `ContentLink` 해석이 M7-BE-1에 의존하므로 순서상 M7 뒤가 맞다. 전환은 막지 않는다(49편 0건이므로 기존 글이 영향받지 않음). M7-LEAD-1 보고서에 “F16/F18 공개 렌더 미완”을 명시한다.
 - 2026-09-23: **M7 이후 재정렬(사용자 요청).** ① 순서 결함: 컴포넌트와 저장 형식이 없는데 DB 전환을 먼저 하는 계획이었다 → **M8(표현 계약)·M9(이관과 전환)**로 나누고 전환을 뒤로 옮겼다. ② 사용자 결정: 커스텀 컴포넌트를 **remark directive로 저장**한다(JSX 저장 폐기). `:이름` 충돌은 사용자가 패턴을 제한해 관리하고, 시스템은 미등록 지시자를 거부해 무음 손실을 막는다. 근거: micromark 문서 “If directives are not handled, they do not emit anything”, `[label]`은 선택이라 `:[`만 검사하면 안 된다(이름에 숫자 허용). 레거시 49편 **본문** 오인 패턴 실측 **2건**(`openai/gpt-oss-120b:free`, `1:1`). ③ 깨진 상태를 만들지 않는 순서 고정: **읽기(렌더러) → 파일 변환 → 쓰기(serializer·에디터) → 이관·전환**. 읽기 단계는 추가형이라 Keystatic이 읽는 현재 사이트에 영향이 없다. ④ 저장 형식 전환은 M1의 serialize 계약과 M6의 49/49 roundtrip 계약을 다시 연다(M8-ED-2·M8-DA-1). ⑤ 전환 검사에 **공개 HTML 대조**(M9-TW-1)를 추가했다 — 주소 대조만으로는 “이관하다 클나는” 경우를 못 잡는다. ⑥ M7-BE-5(Keystatic 제거)는 M9-BE-3으로 옮겼다.
+- 2026-09-23: **저장 형식을 전면 directive로 확정(사용자: “어차피 JSX 인라인도 읽기 어려워. 전면 directive”)**하고 `CMS-SPEC.md` §4.4를 개정했다. 확정 매핑: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`(텍스트). HTML 인라인(`u` 38쌍, `<br/>` 12건)은 컴포넌트가 아니므로 그대로 둔다. 코드·Mermaid·차트는 코드 펜스 유지(mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트라 directive 대상이 아니다. **주의:** `analyze`에 이름 검사를 배선할 때(M8-TW-1) 코드 스팬 밖의 원문 태그를 오검하지 않는지 실측해야 한다 — 그 전까지 `REGISTERED_JSX_NAMES`는 배선하지 않는다.
 
 ---
 
@@ -890,6 +891,10 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
   - 라벨에는 text construct(강조·코드 등)가 허용된다. 리프·컨테이너의 라벨·속성에는 줄바꿈을 쓸 수 없다.
   - 속성 표기는 HTML 속성과 같다(`content="..."`), `#id`/`.class` 단축 허용.
   - 이스케이프: 본문에 `:이름` 형태가 필요하면 `\:`로 쓴다. 위 실측 2건이 근거다.
+  - **전면 directive로 확정(사용자 결정).** 인라인까지 directive로 쓴다 — 하이브리드가 아니다. HTML 인라인 요소(`u`, `<br/>`)는 컴포넌트가 아니므로 그대로 둔다(밑줄은 Markdown 문법이 없어 `<u>`가 저장 형식이다).
+  - 매핑 확정: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`(텍스트).
+  - 저작 대상이 아닌 것: 코드·Mermaid·차트는 코드 펜스(실측 mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트.
+  - **초안을 `CMS-SPEC.md` §4.4에 반영했다(사용자 승인 대기).**
 - **선행:** 없음
 - **담당:** ED
 - **완료 조건:** §4.4가 directive 저장 계약·중첩·이스케이프 규칙을 명시한다.
@@ -941,7 +946,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M8-DA-1 레거시 43편 변환
 
 - **목적:** 저장 형식을 하나로 만든다.
-- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, IdeographicSpace 4, Tab/Tabs 3/3, Column/Columns 1/1). JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. `:free`·`1:1` 2건은 이스케이프한다.
+- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, IdeographicSpace 4, Tab/Tabs 3/3, Column/Columns 1/1). JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. `:free`·`1:1` 2건은 이스케이프한다. `<u>`(38쌍)·`<br/>`(12건)는 HTML이므로 변환하지 않는다.
 - **선행:** M8-FE-1(읽기), M8-ED-1
 - **담당:** DA + TW
 - **완료 조건:** 49편이 모두 directive로 저장되고 공개 렌더 결과가 변환 전과 같다.

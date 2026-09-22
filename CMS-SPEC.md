@@ -215,35 +215,109 @@ flowchart LR
 
 - DB에 저장하는 본문 원본은 MDX 문자열이다. 편집기의 JSON 문서는 편집 중 표현이며 별도의 콘텐츠 원본으로 병행 저장하지 않는다.
 - 경로: `MDX → remark/MDX AST → CMS 변환 → Tiptap 문서`, 저장은 역방향이다.
-- 일반 문법은 Markdown으로, 기존 등록 컴포넌트는 현재 MDX 컴포넌트 이름으로 저장한다.
+- 일반 문법은 Markdown으로 저장하고, 커스텀 표현은 remark directive로 저장한다(아래 계약).
 - 코드, Mermaid, 차트는 각각 기존 언어가 지정된 코드 펜스로 저장한다. 코드 주석의 내용·공백·범위를 보존한다.
 - 시각 모드를 열었다가 원문으로 돌아오는 것만으로 원문을 재직렬화하지 않는다. 실제 시각 편집 후에는 문법 포맷 정규화를 허용하되 텍스트·코드·블록 속성·중첩 구조의 의미를 보존한다.
-- 기존 이미지 `![alt](url)`를 읽는다. 크기·정렬·caption 또는 미디어 참조가 있는 이미지는 아래 `Image` 컴포넌트 형식을 사용한다.
-- 등록된 JSX 컴포넌트와 문자열·숫자·불리언·null·JSON 배열/객체의 정적 속성값을 지원한다. 기존 `defaultOpen={true}` 같은 리터럴은 허용한다.
+- 기존 이미지 `![alt](url)`를 읽는다. 크기·정렬·caption 또는 미디어 참조가 있는 이미지는 아래 `image` 리프로 저장한다.
+- directive 속성값은 문자열이다. 읽기 호환으로 JSX의 정적 리터럴(`defaultOpen={true}`, `decorative={true}`)도 받아들인다.
 - 본문에서 임의 함수 호출·변수 참조·spread 속성·import/export·스크립트·이벤트 핸들러는 실행하지 않는다. 코드 펜스 안의 프로그램 예제는 일반 텍스트이므로 허용한다.
 - 지원하지 않는 문법은 원문에서 그대로 보존하며 오류 위치를 표시한다. 그 문서의 시각 모드 전환과 발행을 제한하고, 초안 저장·원문 복사는 허용한다. 조용히 노드를 삭제하거나 임의의 HTML로 바꾸지 않는다.
 - 렌더링 전에 서버에서도 동일 허용 규칙을 검사한다. MDX 문자열을 사용자 입력 상태 그대로 실행 경로에 넘기지 않는다.
 - CMS에서 작성하는 MDX는 본문 중심(body-oriented)이다. frontmatter가 포함된 초안은 바이트 단위로 보존되고 저장될 수 있지만, 구조화된 검증 오류를 발생시키며 발행은 거부된다. 마이그레이션 도구는 나중에 기존 frontmatter를 파싱하고 제거할 수 있으나, M2 단계에서는 수행하지 않는다.
 
-추가 저장 문법의 계약:
+추가 저장 문법의 계약 — remark directive
+
+MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. JSX 태그 형식은 저장에 쓰지 않는다(읽기 호환만 아래에 적는다).
+
+블록 컨테이너는 여는 펜스와 **같은 수의 콜론**으로 닫는다.
 
 ```mdx
-<TextAlign align="center">
+:::callout{variant="note" title="제목"}
+본문
+:::
+
+:::collapsible{defaultOpen="false" title="펼치기"}
+본문
+:::
+
+:::text-align{align="center"}
 
 ## 가운데 제목
 
-</TextAlign>
+:::
 
-<Image mediaId="미디어-UUID" alt="설명" width="60%" align="center" caption="캡션" />
+::::tabs{defaultValue="두 번째"}
+:::tab{label="첫 번째"}
+본문
+:::
+:::tab{label="두 번째"}
+본문
+:::
+::::
 
-<ContentLink targetId="콘텐츠-UUID">직접 입력한 링크 텍스트</ContentLink>
+::::columns
+:::column
+본문
+:::
+:::column
+본문
+:::
+::::
 ```
 
-- `TextAlign`은 하나의 문단·제목을 감싸며 기본 왼쪽 정렬에는 생략한다. 제목의 텍스트·수준은 목차에 그대로 반영한다.
-- `Image`는 등록 미디어의 `mediaId` 또는 외부 이미지의 `src` 중 하나를 사용한다. 공개 주소 해석은 렌더러가 담당한다.
-- 장식 이미지는 `decorative={true}`와 빈 alt로 저장한다. 일반 링크와 이미지 주소는 허용된 http/https 또는 사이트 상대 경로만 사용하며 `javascript:` 같은 실행 가능한 URL은 거부한다.
-- `ContentLink`는 고정 ID로 현재 공개 주소를 구한다. 원문의 UUID를 편집 화면에서는 제목으로 표시한다.
-- 내보낼 때 현재 주소를 사용하는 일반 링크·이미지로 변환하는 옵션을 제공한다. 크기·정렬 등의 표현을 유지하려면 관련 컴포넌트 계약도 함께 제공한다.
+내용이 없는 리프와 문장 안의 텍스트 지시자:
+
+```mdx
+::image{mediaId="미디어-UUID" alt="설명" width="60%" align="center" caption="캡션"}
+
+::image{src="/images/example.png" alt="설명" decorative}
+
+::ideographic-space
+
+문장 안의 :tooltip[표시 텍스트]{content="설명"} 처럼 쓴다.
+
+이전 글 :entry-link[글 제목]{targetId="콘텐츠-UUID"} 을 참고한다.
+```
+
+| 저장 문법 | 종류 | 속성 |
+|---|---|---|
+| `:::callout{...}` | 컨테이너 | `variant`, `title`, `description` |
+| `:::collapsible{...}` | 컨테이너 | `defaultOpen`, `title` |
+| `:::text-align{...}` | 컨테이너 | `align`(필수, `left`·`center`·`right`) |
+| `::::tabs{...}` 안 `:::tab{...}` | 중첩 컨테이너 | `defaultValue` / `label`(필수) |
+| `::::columns` 안 `:::column` | 중첩 컨테이너 | 없음 |
+| `::image{...}` | 리프 | `mediaId` 또는 `src`(하나), `alt`, `width`, `align`, `caption`, `decorative` |
+| `::ideographic-space` | 리프 | 없음 |
+| `:tooltip[...]{...}` | 텍스트 | `content`(필수) |
+| `:entry-link[...]{...}` | 텍스트 | `targetId`(필수) |
+
+저장 규칙:
+
+- 이름은 소문자 케밥 형식이고 등록된 이름만 쓴다.
+- 불리언 속성은 이름만 쓰면 참이다(`{decorative}`). 거짓은 생략하거나 `="false"`로 쓴다.
+- 중첩할 때 바깥 컨테이너의 콜론이 더 많아야 한다. 구현은 `3 + 안에 중첩된 컨테이너 단계 수`로 센다.
+- 닫는 펜스가 없으면 그 컨테이너가 문서 끝까지 이어진다. 발행 전 검사에서 짝이 맞지 않는 컨테이너를 거부한다.
+- 라벨에는 강조·인라인 코드 같은 text construct를 쓸 수 있다. 리프·컨테이너의 라벨과 속성에는 줄바꿈을 쓸 수 없다.
+- 본문에 `:이름` 형태의 글자 자체가 필요하면 `\:`로 이스케이프한다.
+- 등록되지 않은 지시자는 조용히 버리지 않는다. 처리하지 않은 지시자는 아무것도 출력하지 않으므로, 발행 전 검사에서 **오류로 거부**한다.
+- 코드·Mermaid·차트는 기존처럼 언어가 지정된 코드 펜스로 저장한다. 코드 펜스 주석이 만들어 내는 `collapse`·`fold`는 저작 대상이 아니므로 directive로 쓰지 않는다.
+- HTML 인라인 요소는 그대로 쓴다. 밑줄은 Markdown 문법이 없으므로 `<u>텍스트</u>`가 저장 형식이고, 줄바꿈은 `<br/>`다.
+
+컴포넌트별 의미:
+
+- `callout`은 `variant`(기본 `note`)로 종류를 정하고 `title`·`description`을 선택적으로 쓴다.
+- `collapsible`은 `title`을 접힌 상태의 라벨로 쓰고 `defaultOpen`으로 초기 상태를 정한다.
+- `text-align`은 하나의 문단·제목을 감싸며 기본 왼쪽 정렬에는 쓰지 않는다. 제목의 텍스트·수준은 목차에 그대로 반영한다.
+- `tabs`/`tab`과 `columns`/`column`은 부모 안에만 쓴다. `tab`은 `label`이 필수이고 `tabs`의 `defaultValue`는 `label`과 맞아야 한다.
+- `image`는 등록 미디어의 `mediaId` 또는 외부 이미지의 `src` 중 하나를 사용한다. 공개 주소 해석은 렌더러가 담당한다. 장식 이미지는 `decorative`와 빈 alt로 저장한다. 이미지 주소는 허용된 http/https 또는 사이트 상대 경로만 쓰고 `javascript:` 같은 실행 가능한 URL은 거부한다.
+- `ideographic-space`는 전각 공백 한 칸이다. 리프로만 쓴다.
+- `tooltip`은 `content`를 설명으로 쓰고 라벨을 표시 텍스트로 쓴다.
+- `entry-link`는 고정 ID로 현재 공개 주소를 구한다. 원문의 UUID를 편집 화면에서는 제목으로 표시한다. 편집기가 만드는 `[제목](/entries/<UUID>)`도 같은 뜻으로 읽는다.
+
+읽기 호환:
+
+- 이전 JSX 형식(`<Callout variant="note">`, `<TextAlign>`, `<Image>`, `<ContentLink>`)은 읽을 수 있고, 저장할 때는 directive로 정규화한다.
+- 내보낼 때 현재 주소를 쓰는 일반 링크·이미지로 변환하는 옵션을 제공한다. 크기·정렬 같은 표현을 유지하려면 해당 directive를 함께 쓴다.
 
 ## 5. 저장·상태·발행
 
