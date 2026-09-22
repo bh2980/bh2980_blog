@@ -461,6 +461,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				},
 			],
 			issues: [],
+			imageSources: [],
 		};
 
 		const validResolvedTargets: ResolvedTargets = {
@@ -614,6 +615,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				contentHash: "hash",
 				references: [],
 				issues: [],
+				imageSources: [],
 			};
 
 			const validation = validateForPublish(snapWithItems, {
@@ -660,6 +662,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					},
 				],
 				issues: [],
+				imageSources: [],
 			};
 
 			const validation = validateForPublish(snapWithItems, {
@@ -1189,6 +1192,67 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
 			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
 			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+		});
+	});
+	describe("11. 이미지 소스와 발행 경고 (M8-FE-2 · A3)", () => {
+		const mediaId = "987e4567-e89b-12d3-a456-426614174000";
+		// `post`는 `categoryId`를 요구해 발행 검사가 먼저 차단한다. 이미지 경고만 보려면 `memo`를 쓴다.
+		const draft = (mdx: string) => ({ collection: "memo" as const, slug: "a", metadata: { title: "T" }, mdx });
+
+		it("directive로 쓴 이미지도 미디어 참조를 수집한다", async () => {
+			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}" alt="설명"}`));
+
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toHaveLength(1);
+			expect(snap.references[0]).toMatchObject({ kind: "media", targetId: mediaId });
+			expect(snap.imageSources).toEqual([{ mediaId, position: { line: 1, column: 1 } }]);
+		});
+
+		it("외부 src는 참조가 아니고 발행을 막지 않는다", async () => {
+			const snap = await prepareSnapshot(draft('::image{src="/images/a.png"}'));
+
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([]);
+			expect(snap.imageSources).toEqual([{ src: "/images/a.png", position: { line: 1, column: 1 } }]);
+		});
+
+		it("소스가 없는 이미지는 계속 차단한다(M7 무결성 유지)", async () => {
+			const snap = await prepareSnapshot(draft("::image{}"));
+
+			expect(snap.issues).toContainEqual(expect.objectContaining({ code: "missing_media_id" }));
+			expect(snap.imageSources).toEqual([]);
+		});
+
+		it("허용되지 않는 src는 비차단 경고다(ready 유지)", async () => {
+			const snap = await prepareSnapshot(draft('::image{src="javascript:alert(1)"}'));
+			const validation = validateForPublish(snap, { targets: [], media: [] });
+
+			expect(validation.ready).toBe(true);
+			expect(validation.warnings).toEqual([
+				expect.objectContaining({ code: "image_src_not_allowed", position: { line: 1, column: 1 } }),
+			]);
+		});
+
+		it("미디어 상태·저장소 키로 경고를 만들고, 행이 없으면 경고하지 않는다", async () => {
+			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}"}`));
+			const targets: ResolvedTargets["targets"] = [];
+
+			expect(validateForPublish(snap, { targets, media: [{ id: mediaId, status: "pending" }] }).warnings).toEqual([
+				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
+			]);
+			expect(
+				validateForPublish(snap, { targets, media: [{ id: mediaId, status: "ready", storageKey: null }] }).warnings,
+			).toEqual([expect.objectContaining({ code: "image_media_unresolved" })]);
+			expect(
+				validateForPublish(snap, { targets, media: [{ id: mediaId, status: "ready", storageKey: "k/a.png" }] })
+					.warnings,
+			).toEqual([]);
+
+			// 미디어 행이 아예 없는 경우는 경고 대상이 아니다 — 참조 확인이 먼저 차단한다.
+			const missing = validateForPublish(snap, { targets, media: [] });
+			expect(missing.warnings).toEqual([]);
+			expect(missing.ready).toBe(false);
+			expect(missing.issues).toContainEqual(expect.objectContaining({ code: "unresolved_media" }));
 		});
 	});
 });

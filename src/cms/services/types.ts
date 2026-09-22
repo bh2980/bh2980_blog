@@ -1,8 +1,11 @@
 import type { Collection } from "../core/collections";
+import type { CmsImageSource } from "../mdx/types";
 
 export type Issue = {
 	readonly code: string;
 	readonly message?: string;
+	/** 본문 위치를 알 수 있을 때만 채운다(이미지 경고 등). */
+	readonly position?: { readonly line: number; readonly column: number };
 };
 
 export type { Collection };
@@ -62,11 +65,17 @@ export type PreparedSnapshot = {
 	readonly contentHash: string;
 	readonly references: readonly Reference[];
 	readonly issues: readonly Issue[];
+	/** 본문 이미지 소스와 위치. 발행 전 검사가 비차단 경고를 만들 때 쓴다. */
+	readonly imageSources: readonly CmsImageSource[];
 };
 
 export type ResolvedTargets = {
 	targets: { id: string; isPublished: boolean; collection: string }[];
-	media: { id: string }[];
+	/**
+	 * 발행 전 검사의 이미지 경고가 미디어 상태를 본다.
+	 * `status`·`storageKey`는 선택이다 — 호출자가 안 채우면 그 경고만 건너뛴다(차단하지 않는다).
+	 */
+	media: { id: string; status?: string; storageKey?: string | null }[];
 };
 
 export type WorkingCopy = {

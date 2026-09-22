@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { isCollection, COLLECTION_FIELD_SCHEMAS as SCHEMA } from "../core/collections";
 import { analyze } from "../mdx";
+import { isAllowedImageSrc } from "../mdx/image-src";
+import type { CmsImageSource } from "../mdx/types";
 import {
 	type Collection,
 	type Issue,
@@ -232,6 +234,7 @@ export async function prepareSnapshot(
 	}
 
 	const mdxRefsToAdd: { kind: ReferenceKind; targetId: string; occ: ReferenceOccurrence }[] = [];
+	const imageSources: CmsImageSource[] = [];
 
 	type MdxNode = {
 		type?: unknown;
@@ -258,15 +261,28 @@ export async function prepareSnapshot(
 		if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
 			if (node.name === "ContentLink" || node.name === "Image") {
 				const isContentLink = node.name === "ContentLink";
-				const targetAttrKey = isContentLink ? "targetId" : "mediaId";
 				const attrs = Array.isArray(node.attributes) ? node.attributes : [];
-				const attr = attrs.find((a: unknown): a is MdxAttribute => isMdxAttribute(a) && a.name === targetAttrKey);
+				const readAttr = (key: string) =>
+					attrs.find((a: unknown): a is MdxAttribute => isMdxAttribute(a) && a.name === key);
+
+				// 이미지는 `mediaId`(등록 미디어) 또는 `src`(외부 주소) 중 하나를 쓴다(§4.4).
+				const mediaIdAttr = isContentLink ? undefined : readAttr("mediaId");
+				const srcAttr = isContentLink ? undefined : readAttr("src");
+				const attr = isContentLink ? readAttr("targetId") : (mediaIdAttr ?? srcAttr);
+				// `mediaId`만 참조 테이블 대상이다. `src`는 외부 주소라 참조가 아니다.
+				const collectsReference = isContentLink || attr === mediaIdAttr;
+				const pos = node.position?.start;
+				const occurrence: ReferenceOccurrence = {
+					type: "mdx",
+					line: typeof pos?.line === "number" ? pos.line : 1,
+					column: typeof pos?.column === "number" ? pos.column : 1,
+				};
 
 				if (!attr) {
 					mdxIssues.push({ code: isContentLink ? "empty_reference_id" : "missing_media_id" });
 					mdxHasError = true;
 				} else if (attr.value === null || attr.value === undefined || attr.value === "") {
-					mdxIssues.push({ code: "empty_reference_id" });
+					mdxIssues.push({ code: isContentLink ? "empty_reference_id" : "missing_media_id" });
 					mdxHasError = true;
 				} else if (typeof attr.value === "object") {
 					mdxIssues.push({ code: "dynamic_reference_id" });
@@ -274,20 +290,29 @@ export async function prepareSnapshot(
 				} else if (typeof attr.value !== "string") {
 					mdxIssues.push({ code: "dynamic_reference_id" });
 					mdxHasError = true;
-				} else if (!isValidUuid(attr.value)) {
-					mdxIssues.push({ code: "invalid_reference_id" });
-					mdxHasError = true;
-				} else {
-					const pos = node.position?.start;
-					mdxRefsToAdd.push({
-						kind: isContentLink ? "entry" : "media",
-						targetId: attr.value,
-						occ: {
-							type: "mdx",
-							line: typeof pos?.line === "number" ? pos.line : 1,
-							column: typeof pos?.column === "number" ? pos.column : 1,
-						},
-					});
+				} else if (collectsReference) {
+					if (!isValidUuid(attr.value)) {
+						mdxIssues.push({ code: "invalid_reference_id" });
+						mdxHasError = true;
+					} else {
+						mdxRefsToAdd.push({
+							kind: isContentLink ? "entry" : "media",
+							targetId: attr.value,
+							occ: occurrence,
+						});
+					}
+				}
+
+				// 이미지 소스는 위치와 함께 남긴다 — 발행 전 검사가 비차단 경고를 만들 때 쓴다(§4.4).
+				if (!isContentLink) {
+					const mediaId = typeof mediaIdAttr?.value === "string" ? mediaIdAttr.value : undefined;
+					const src = typeof srcAttr?.value === "string" ? srcAttr.value : undefined;
+					if (mediaId || src) {
+						imageSources.push({
+							...(mediaId ? { mediaId } : { src }),
+							position: { line: occurrence.line, column: occurrence.column },
+						});
+					}
 				}
 			}
 		}
@@ -342,6 +367,7 @@ export async function prepareSnapshot(
 		),
 	);
 	const finalIssues = Object.freeze(issues.map((i) => Object.freeze({ ...i })));
+	const finalImageSources = Object.freeze(imageSources.map((source) => Object.freeze({ ...source })));
 
 	return Object.freeze({
 		collection: input.collection,
@@ -352,13 +378,50 @@ export async function prepareSnapshot(
 		contentHash,
 		references: finalReferences,
 		issues: finalIssues,
+		imageSources: finalImageSources,
 	});
 }
+
+/**
+ * §4.4 이미지 경고. **비차단**이며 발행을 막지 않는다.
+ *
+ * 정상 데이터에서 실제로 발생하는 3가지만 본다: ① 미디어 행은 있으나 `ready` 아님
+ * ② `ready`인데 저장소 키가 없어 해석 불가 ③ 외부 `src`가 허용 규칙에 걸림.
+ * **미디어 행이 아예 없는 경우는 경고 대상이 아니다** — `entry_references`의 FK·CHECK와
+ * `validateForPublish`의 `unresolved_media`가 먼저 막는다(M7 무결성 계약, A3).
+ */
+const imageWarnings = (sources: readonly CmsImageSource[], media: ResolvedTargets["media"]): Issue[] => {
+	const warnings: Issue[] = [];
+
+	for (const source of sources) {
+		if (source.src !== undefined) {
+			if (!isAllowedImageSrc(source.src)) {
+				warnings.push({ code: "image_src_not_allowed", message: source.src, position: source.position });
+			}
+			continue;
+		}
+
+		if (source.mediaId === undefined) continue;
+		const row = media.find((m) => m.id === source.mediaId);
+		if (!row) continue;
+
+		if (row.status !== undefined && row.status !== "ready") {
+			warnings.push({ code: "image_media_not_ready", message: row.status, position: source.position });
+			continue;
+		}
+
+		if (row.storageKey !== undefined && !row.storageKey) {
+			warnings.push({ code: "image_media_unresolved", position: source.position });
+		}
+	}
+
+	return warnings;
+};
 
 export function validateForPublish(
 	snapshot: PreparedSnapshot,
 	resolved: ResolvedTargets,
-): { ready: boolean; issues: Issue[] } {
+): { ready: boolean; issues: Issue[]; warnings: Issue[] } {
 	let ready = true;
 	const issues: Issue[] = [...snapshot.issues];
 	const issueCodes = new Set(issues.map((i) => i.code));
@@ -432,7 +495,8 @@ export function validateForPublish(
 		ready = false;
 	}
 
-	return { ready, issues };
+	// 이미지 해석 실패는 경고일 뿐이다 — `ready`를 바꾸지 않는다.
+	return { ready, issues, warnings: imageWarnings(snapshot.imageSources, resolved.media) };
 }
 
 export const createContentService = <T = unknown>(storePort: StorePort<T>) => {

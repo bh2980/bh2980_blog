@@ -97,11 +97,28 @@ describe("미등록 directive 되돌리기", () => {
 });
 
 describe("등록 directive 처리", () => {
-	it("CMS 파서는 등록 이름을 directive로 유지한다(저장 형식 보존)", () => {
+	it("CMS 분석 트리도 등록 이름을 MDX 요소로 바꾼다(참조 수집·검증이 한 shape에서 돈다)", () => {
 		const tree = parseMdxAst(':::callout{title="제목"}\n본문\n:::');
 
-		expect(collectDirectiveNames(tree)).toEqual(["callout"]);
-		expect(collectJsx(tree)).toEqual([]);
+		// 저장 문자열은 그대로이고, 분석기가 보는 트리만 공개 체인과 같은 모양이 된다.
+		expect(collectDirectiveNames(tree)).toEqual([]);
+		expect(collectJsx(tree)).toEqual([
+			expect.objectContaining({ type: "mdxJsxFlowElement", name: "Callout", attributes: { title: "제목" } }),
+		]);
+	});
+
+	it("분석 트리와 공개 렌더 트리가 같은 요소를 낸다", () => {
+		const body = [
+			':::text-align{align="center"}',
+			"가운데 문단",
+			":::",
+			"",
+			"문장 안의 :u[밑줄] 과 줄바꿈:br[] 다음",
+			"",
+			'::image{mediaId="abc" width="60%"}',
+		].join("\n");
+
+		expect(collectJsx(parseMdxAst(body))).toEqual(collectJsx(renderTree(body)));
 	});
 
 	it("공개 렌더는 등록 이름을 MDX 요소로 바꾼다", () => {

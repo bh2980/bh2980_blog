@@ -3,7 +3,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CmsMdxPreserver } from "./tiptap-schema";
+import { CMS_SCHEMA_EXTENSIONS, CmsMdxPreserver } from "./tiptap-schema";
 import { CmsImageNode } from "./image-node";
 import { uploadImageFile } from "./upload-helper";
 import { filterCommands, type SlashCommandItem } from "./slash-command";
@@ -78,6 +78,7 @@ export function CmsEditor({
 					levels: [1, 2, 3],
 				},
 			}),
+			...CMS_SCHEMA_EXTENSIONS,
 			CmsImageNode,
 			CmsMdxPreserver,
 		],

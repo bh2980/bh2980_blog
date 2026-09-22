@@ -39,3 +39,15 @@ export type CmsMdxAnalysis = {
 	frontmatter: Record<string, CmsJsonValue> | null;
 	tree: Root | null;
 };
+
+/**
+ * 본문에 쓰인 이미지 소스. **DB 의미가 없는 순수 사실이다** — `mediaId`가 실제 미디어 행을
+ * 가리키는지, 그 행이 `ready`인지는 발행 전 검사가 판단한다.
+ */
+export type CmsImageSource = {
+	/** 등록 미디어 참조. `src`와 배타적이다. */
+	readonly mediaId?: string;
+	/** 외부 주소. */
+	readonly src?: string;
+	readonly position: CmsMdxPosition;
+};

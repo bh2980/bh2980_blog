@@ -18,6 +18,7 @@ function buildSnapshot(overrides: Partial<PreparedSnapshot> = {}): PreparedSnaps
 		schemaVersion: 1,
 		contentHash: `hash-${Math.random().toString(36).slice(2, 8)}`,
 		issues: [],
+		imageSources: [],
 		...overrides,
 		references: refs,
 	};
