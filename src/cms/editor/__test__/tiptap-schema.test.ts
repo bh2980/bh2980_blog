@@ -26,6 +26,16 @@ describe("에디터 스키마에 새 표현 확장 등록", () => {
 		expect(CmsTextAlign.options.types).toEqual(["heading", "paragraph"]);
 	});
 
+	it("쓰기 단축키를 켜지 않는다(배치 3까지 툴바·단축키 모두 금지)", () => {
+		// 세 확장 모두 기본으로 Mod-Shift-l/e/r·Mod-.·Mod-,를 등록한다. 스키마 등록만으로
+		// 실에디터에서 쓰기 명령이 동작하므로 배치 3까지 막는다.
+		for (const extension of CMS_SCHEMA_EXTENSIONS) {
+			const config = (extension as { config: { addKeyboardShortcuts?: () => Record<string, unknown> } }).config;
+			const shortcuts = config.addKeyboardShortcuts?.() ?? {};
+			expect(Object.keys(shortcuts)).toEqual([]);
+		}
+	});
+
 	it("에디터가 이 확장들을 실제로 싣는다", () => {
 		expect(CMS_SCHEMA_EXTENSIONS).toHaveLength(3);
 		expect(CMS_SCHEMA_EXTENSIONS.map((extension) => extension.name).sort()).toEqual([

@@ -9,8 +9,9 @@
  *    선례: `src/libs/mermaid/remark-mermaid-to-mdx.ts`, `src/libs/chart/remark-chart-to-mdx.ts`.
  *
  * 두 플러그인은 순서가 있다. demote를 먼저 돌려 미등록 이름을 걷어낸 뒤 변환한다.
- * CMS 파서(`parseMdxAst`)는 demote까지만 쓰고(저장 형식은 directive를 유지해야 한다),
- * 공개 렌더 체인은 둘 다 쓴다.
+ * **CMS 파서(`parseMdxAst`)와 공개 렌더 체인이 둘 다 쓴다.** 저장 문자열은 바뀌지 않고 분석기가 보는
+ * 트리만 공개 체인과 같은 모양이 된다 — 참조 수집·속성 검증이 **이름으로 노드를 찾으므로**
+ * 두 shape로 갈라지면 한쪽만 고치는 실수가 난다.
  */
 
 import type { Root, RootContent } from "mdast";
@@ -122,9 +123,14 @@ export const remarkDirectivesToMdx =
 			// 라벨/본문 자식을 그대로 넘긴다. 컨테이너는 블록, 텍스트는 인라인 문맥이라 타입이 다르지만
 			// 여기서는 remark-directive가 만든 노드를 그대로 옮기는 것이라 좁히지 않고 넘긴다.
 			const children = directive.children ?? [];
-			const replacement = (directive.type === "textDirective"
-				? { type: "mdxJsxTextElement", name: definition.component, attributes, children }
-				: { type: "mdxJsxFlowElement", name: definition.component, attributes, children }) as unknown as RootContent;
+			const replacement = {
+				// 위치를 복사한다. 잃으면 이미지 경고·미디어 참조 위치가 늘 1:1로 보고된다(R1 P2).
+				...(directive.position ? { position: directive.position } : {}),
+				type: directive.type === "textDirective" ? "mdxJsxTextElement" : "mdxJsxFlowElement",
+				name: definition.component,
+				attributes,
+				children,
+			} as unknown as RootContent;
 
 			(parent.children as RootContent[]).splice(index, 1, replacement);
 			return [SKIP, index];

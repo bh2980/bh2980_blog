@@ -21,10 +21,19 @@ export const CmsMdxPreserver = Extension.create({
  * A4: `alignments`에 `justify`를 넣지 않는다. 공개 렌더가 `left`·`center`·`right`만 고정 클래스로 지원한다.
  * Tiptap 내부는 인라인 `style`을 쓰지만(확장 기본 동작) 저장 형식은 `:::text-align{align=...}`이다.
  */
+/**
+ * 세 확장 모두 기본으로 **쓰기 명령 단축키**를 갖는다(`Mod-Shift-l/e/r`, `Mod-.`, `Mod-,`).
+ * 스키마에 등록하는 것만으로 실에디터에서 그 단축키가 동작하므로, 배치 3까지는 단축키를 막는다(R1 P2).
+ */
+const noKeyboardShortcuts = { addKeyboardShortcuts: () => ({}) } as const;
+
 export const CmsTextAlign = TextAlign.configure({
 	types: ["heading", "paragraph"],
 	alignments: ["left", "center", "right"],
 	defaultAlignment: null,
-});
+}).extend(noKeyboardShortcuts);
 
-export const CMS_SCHEMA_EXTENSIONS = [CmsTextAlign, Superscript, Subscript];
+export const CmsSuperscript = Superscript.extend(noKeyboardShortcuts);
+export const CmsSubscript = Subscript.extend(noKeyboardShortcuts);
+
+export const CMS_SCHEMA_EXTENSIONS = [CmsTextAlign, CmsSuperscript, CmsSubscript];

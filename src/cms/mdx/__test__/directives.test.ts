@@ -15,7 +15,11 @@ import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/
 const ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 const DIRECTIVE_TYPES = ["containerDirective", "leafDirective", "textDirective"];
 
-/** 공개 렌더 체인과 같은 순서로 두 플러그인을 돌린다(demote → 변환). */
+/**
+ * directive 두 플러그인의 **순서**를 공개 체인과 같게 둔 최소 재현 체인이다(demote → 변환).
+ * 공개 체인 전체(수식·차트·mermaid·breaks·gfm·toc)는 여기 없다 — 49편 실등가성은 실제
+ * `MDX_REMARK_PLUGINS`를 쓰는 `directive-render.test.tsx`가 검사한다.
+ */
 const renderTree = (body: string): Root => {
 	const processor = unified()
 		.use(remarkParse)
@@ -40,20 +44,33 @@ const collectDirectiveNames = (tree: Root): string[] => {
 	return names;
 };
 
-const collectJsx = (tree: Root): { type: string; name: string | null; attributes: Record<string, string | null> }[] => {
-	const found: { type: string; name: string | null; attributes: Record<string, string | null> }[] = [];
+const collectJsx = (
+	tree: Root,
+): {
+	type: string;
+	name: string | null;
+	attributes: Record<string, string | null>;
+	position?: { start?: { line?: number } };
+}[] => {
+	const found: {
+		type: string;
+		name: string | null;
+		attributes: Record<string, string | null>;
+		position?: { start?: { line?: number } };
+	}[] = [];
 	visit(tree, ["mdxJsxTextElement", "mdxJsxFlowElement"], (node) => {
 		const element = node as {
 			type: string;
 			name?: string | null;
 			attributes?: { name?: string; value?: unknown }[];
+			position?: { start?: { line?: number } };
 		};
 		const attributes: Record<string, string | null> = {};
 		for (const attribute of element.attributes ?? []) {
 			if (!attribute.name) continue;
 			attributes[attribute.name] = typeof attribute.value === "string" ? attribute.value : null;
 		}
-		found.push({ type: element.type, name: element.name ?? null, attributes });
+		found.push({ type: element.type, name: element.name ?? null, attributes, position: element.position });
 	});
 	return found;
 };
@@ -141,6 +158,15 @@ describe("등록 directive 처리", () => {
 		expect(jsx.map((element) => element.name)).toEqual(["TextAlign", "u", "sup", "sub", "br", "Image"]);
 		expect(jsx[0]).toMatchObject({ type: "mdxJsxFlowElement", attributes: { align: "center" } });
 		expect(jsx[5]).toMatchObject({ type: "mdxJsxFlowElement", attributes: { mediaId: "abc", width: "60%" } });
+	});
+
+	it("변환한 요소가 directive의 본문 위치를 보존한다(경고·참조 위치)", () => {
+		const body = ["첫 문단", "", "둘째 줄 :u[밑줄] 끝", "", '::image{mediaId="abc"}'].join("\n");
+		const jsx = collectJsx(parseMdxAst(body));
+
+		// 위치를 복사하지 않으면 이미지 경고·미디어 참조 위치가 늘 1:1로 보고된다.
+		expect(jsx.find((element) => element.name === "Image")).toMatchObject({ position: { start: { line: 5 } } });
+		expect(jsx.find((element) => element.name === "u")).toMatchObject({ position: { start: { line: 3 } } });
 	});
 
 	it("불리언 거짓은 속성을 만들지 않는다('false'가 truthy가 되는 함정 회피)", () => {
