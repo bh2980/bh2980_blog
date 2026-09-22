@@ -3,12 +3,22 @@
 import { useState } from "react";
 import type { NodeViewProps } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Trash2 } from "lucide-react";
+import { resolveImageUrl } from "@/cms/mdx/image-src";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
-	const { src, alt, width, align, caption } = node.attrs;
+	const { src, alt, width, align, caption, mediaId } = node.attrs;
 	const [isEditing, setIsEditing] = useState(false);
+	const resolved = resolveImageUrl(typeof src === "string" ? src : undefined);
+	const canRender = resolved !== null && "url" in resolved;
+	const resolveReason = !src
+		? mediaId
+			? "미디어가 아직 준비되지 않았거나 주소를 해석할 수 없습니다"
+			: "이미지 주소가 없습니다"
+		: resolved && "failure" in resolved
+			? "허용되지 않는 이미지 주소입니다"
+			: null;
 
 	const alignClasses = {
 		left: "mr-auto",
@@ -99,19 +109,18 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 
 			{/* Actual Image */}
 			<div className="relative overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
-				{src ? (
-					// biome-ignore lint/a11y/useAltText: dynamic alt passed via attributes
-					<img
-						src={src}
-						alt={alt || ""}
-						className="w-full h-auto object-contain rounded-md"
-					/>
+				{canRender ? (
+					// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible
+					<img src={src} alt={alt || ""} className="w-full h-auto object-contain rounded-md" />
 				) : (
 					<div className="w-full h-48 flex items-center justify-center text-neutral-400 text-sm">
 						이미지를 불러올 수 없습니다
 					</div>
 				)}
 			</div>
+			{resolveReason ? (
+				<p className="mt-1 text-center text-xs text-red-500 dark:text-red-400">{resolveReason}</p>
+			) : null}
 
 			{/* Caption Input / Display */}
 			<figcaption className="mt-2 text-center">

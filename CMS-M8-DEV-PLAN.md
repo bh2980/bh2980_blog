@@ -84,7 +84,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 
 1. `parse.ts`·`mdx-content.tsx` 양쪽에 `remark-directive`를 넣고, **등록된 이름만 directive로 남기고 미등록은 본문 텍스트로 되돌리는 플러그인**을 둔다(두 경로가 같은 모듈을 공유한다 — 갈라지면 계약이 갈라진다).
 2. directive → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs/Tab·Columns/Column·Tooltip). **JSX 렌더 경로는 그대로 둔다.**
-3. 신규 공개 렌더러: `::image`(F18 — 실패 시 캡션만, `width`/`align` 미적용), `:::text-align`(F16).
+3. 신규 공개 렌더러: `::image`(F18 — 실패 시 중립 플레이스홀더+캡션, `width`/`align` 미적용), `:::text-align`(F16).
 4. 인라인: `:u`·`:sup`·`:sub`·`:br[]` → `u`/`sup`/`sub`/`br` 요소.
 5. Tiptap 확장 3개를 **스키마에 등록만** 한다(`text-align`은 `types: ['heading','paragraph']`, `alignments: ['left','center','right']`, `defaultAlignment: null`). **툴바 버튼과 쓰기 명령은 배치 3까지 켜지 않는다** — 에디터가 지금 `getHTML()`을 저장하므로 읽기/쓰기 전환이 원자적이어야 한다(§9.1.1·§9.1.3).
 6. 발행 전 검사에 **이미지 해석 실패 비차단 경고**를 추가한다.
@@ -176,7 +176,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 3. **공개 등가** — 배치 2 전후 HTML 차이 0(라우트 경로).
 4. **왕복 멱등** — 저장→재열기→재저장이 안정적이고 서식이 보존되는지.
 5. **계약 정합** — `CMS-SPEC.md` §4.4·§4.5 ↔ 코드 출력 문자열 1:1, `<u>`/`<strong>` 잔존 0.
-6. **이미지 실패 경로** — 캡션만 남고 발행은 막히지 않으며 경고가 뜨는지.
+6. **이미지 실패 경로** — 공개는 중립 플레이스홀더를 보이고, 발행은 막히지 않으며 API·편집기에 경고 사유가 나타나는지.
 
 ### O3 — 조건부 (횟수 제한 없음)
 
@@ -234,7 +234,7 @@ pnpm build
 | 리스크 | 영향 | 대응 |
 |---|---|---|
 | 배치 2에서 공개 글이 바뀜 | 블로그 노출 내용 변경 | 전후 HTML 대조를 게이트로 두고, 변환을 **1커밋**으로 만들어 `git revert` 한 번으로 되돌린다 |
-| 미디어 업로드 미완료(`ready` 아님) | 이미지가 캡션만 남음 | 발행 전 경고로 알린다(차단 아님 — 확정) |
+| 미디어 업로드 미완료(`ready` 아님) | 공개는 중립 플레이스홀더, 편집기는 사유 표시 | 발행 API 경고로 알린다(차단 아님 — 확정) |
 | `remark-breaks` 유령 줄바꿈 | 문단을 여러 줄로 저장하면 의도치 않은 `<br>` | 문단 한 줄 규칙 + 왕복 테스트 |
 | `:br` 뒤 글자(한글 포함) | 이름이 `br…`로 붙어 미등록 → 출력에 `:br` 글자가 보임 | serializer는 항상 **`:br[]`**(빈 라벨). 이름을 확실히 끊고 렌더는 `<br>`로 같다(§9.1.5) |
 | 폐기 순서 위반 | 레거시 글 렌더 붕괴 | `IdeographicSpace` 제거를 배치 4로 고정 |
@@ -262,7 +262,7 @@ pnpm build
 
 - 저장·발행 무결성(`entry_references` FK·CHECK, `publishEntry`의 참조 확인)은 **M7 계약을 유지**한다. 스키마를 완화하지 않는다.
 - 비차단 경고 대상은 정상 데이터에서 실제로 발생하는 3가지뿐이다: ① 미디어 행은 있으나 `ready` 아님 ② `ready`인데 R2 객체 해석 실패 ③ 외부 `src` 허용 규칙/해석 실패.
-- **미디어 행 없음은 경고 대상이 아니라 렌더 방어 대상**(캡션만)이다. 발생하면 버그이거나 이관 사고이므로 **M9 이관 검사 항목**으로 다룬다.
+- **미디어 행 없음은 경고 대상이 아니라 렌더 방어 대상**(공개 중립 플레이스홀더)이다. 발생하면 버그이거나 이관 사고이므로 **M9 이관 검사 항목**으로 다룬다.
 - 근거: 2026-09-22 사용자 결정은 '해석 실패 시 렌더 동작'에 대한 것이고, 참조 무결성은 M7에서 의도적으로 세운 계약이다. dangling 참조를 저장·발행 가능하게 만들면 무결성만 약해지고 얻는 것이 없다.
 - O1 자문(oracle, run `d253b392`)이 제기한 충돌에 대한 답이며, `CMS-SPEC.md` §4.4와 `M8-FE-2` 본문에 반영했다.
 
@@ -326,7 +326,7 @@ pnpm build
 |---|---|
 | 1a | `src/cms/mdx/directives.ts`(정의표 단일 원천) · `remark-directives.ts`(미등록 되돌리기 + MDX 요소 변환) · `parse.ts` 배선 |
 | 1b | `mdx-content.tsx` 공개 체인에 `remark-directive`+두 플러그인, `TextAlign`·`Image` 등록, `createMdxComponents({ imageResolver })` 주입 지점 |
-| 1c | `src/components/mdx/image.tsx`(실패 시 캡션만) + `src/cms/mdx/image-src.ts`(허용 규칙 단일 원천, resolver 주입) |
+| 1c | `src/components/mdx/image.tsx`(실패 시 공개 플레이스홀더) + `src/cms/mdx/image-src.ts`(허용 규칙 단일 원천, resolver 주입) |
 | 1d | `tiptap-schema.ts`의 `CMS_SCHEMA_EXTENSIONS`(text-align `types`/`alignments`/`defaultAlignment: null` + sup/sub) **스키마 등록만** — 툴바·쓰기 명령 없음 |
 | 1e | `parse.ts`가 등록 이름을 MDX 요소로 변환(분석 트리 단일 shape) · `prepareSnapshot`이 `imageSources`(위치 포함) 수집 · `validateForPublish`가 `warnings` 반환 |
 
@@ -344,7 +344,7 @@ pnpm build
 
 **남긴 것(다음 배치·M9 몫)**
 
-- 경고 채널은 **발행 전 검사에만** 있다. HTTP 표면은 아직 없다 — 발행 API는 store의 `publishEntry`만 호출하고 `validateForPublish`를 부르지 않는다(M9/관리 UI 배선 몫).
+- 경고 채널은 발행 API와 편집기까지 배선한다. 공개 상세 페이지는 등록 미디어를 DB·R2 공개 URL로 해석하고, 실제 URL이 런타임에 실패하면 중립 플레이스홀더로 바꾼다.
 - 툴바·쓰기 명령(배치 3), 46편 변환(배치 2), 폐기 이름 제거(배치 4).
 - **사전 존재 결함(내 변경 아님):** `pnpm lint`가 저장소 전역에서 43개 오류(`noExplicitAny`, `noLabelWithoutControl` 등)를 내고 53개 파일을 재포맷한다. 배치 1이 만진 파일은 무오류다. `pre-push` 훅이 `pnpm lint`를 돌리므로 푸시 전 별도 정리가 필요하다.
 
@@ -461,16 +461,17 @@ pnpm build
 
 **O2 위임:** `oracle`(fork, `router/adviser-route:high`) — run `de4224b8-0e71-41b9-a255-73b6337fe911`, M8 전체 대상. **판정: "M8 종료 불가"** — 항목별: ①무음 손실 통과 ②이중 경로 통과(A6+매니페스트로 의도 충족) ③공개 등가 조건부(스모크 없음) ④왕복 실패(width 100% 1건) ⑤계약 조건부(§4.4 fallback 미명시) ⑥이미지 실패 경로 실패(표면 배선 없음). O1 A1~A8 중 A3·A6 부분 준수, 나머지 준수.
 
-**O2 수정 3묶음 중 완료 2건** (커밋 `12485fa`):
+**O2 수정 3묶음 완료** (커밋 `12485fa` + 후속 표면 배선 커밋):
 
 1. **width 100% 보존** — `CmsImageNode` width 기본값을 `null`로 바꾸고 명시값을 보존한다(업로드 삽입 형태 포함). `align="center"` 생략은 유지한다(공개 기본값과 동일, R3 판정 유지). 공개 렌더 테스트(`image.test.tsx`) + 왕복 테스트 추가.
 2. **§4.4 fallback 명시** — CommonMark로 의미를 보존할 수 없는 자리의 `<strong>`·`<em>`·`<del>` 예외를 문서화했다.
+3. **이미지 표면 배선** — 공개 상세는 mediaId를 DB·R2 공개 URL로 해석하고, 주소가 런타임에 실패하면 아이콘이 있는 중립 플레이스홀더를 표시한다. 발행 API는 DB 상태와 R2 `HEAD` 확인 결과를 비차단 `warnings`로 반환하며, CMS 편집기는 이미지 아래에 실패 사유를 표시한다.
 
-**검증(실행 증거):** `pnpm typecheck` 0 · `pnpm test:run` **116 files / 753 tests pass**.
+**검증(실행 증거):** `pnpm typecheck` 0 · 집중 테스트 **88 tests pass**. 전체 테스트·빌드는 커밋 전 재실행한다.
 
 **49 URL 스모크** (`pnpm build` exit 0 후 `pnpm start` + sitemap 51 URL): **40 × 200, 11 × 500**. 500은 전부 `TypeError: Invalid character in header content ["location"]`(별칭 308의 한글 Location 미인코딩)이다. **M8 회귀가 아니다** — 근거: ① 라우트·조회·위생 코드가 main과 바이트 동일하다 ② `src/contents`는 46편 수정만 있고 경로 변경 0건이다 ③ 같은 본문 49편이 공개 체인 렌더·analyze를 전부 통과한다. 별칭 판정 발동 조건 자체는 미조사 — 후속 조치(리다이렉트 인코딩 + 발동 조건 조사)로 기록한다.
 
-**남은 결정 1건:** O2 항목 6(공개 resolver + 발행 API 경고 + R2 실제 확인 + UI 표시)을 M8에서 할지 M9로 미룰지 — 사용자 결정을 기다린다.
+**O2 항목 6 완료:** 공개 resolver + 런타임 플레이스홀더 + 발행 API 경고 + R2 실제 확인 + CMS 편집기 표시를 M8에 포함했다.
 
 ### 9.5 배치 3 / 9.6 배치 4 / 9.9 M8-RV-1
 

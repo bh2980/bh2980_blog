@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { PreparedSnapshot, Reference, ResolvedTargets, SaveDraftInput, ServiceInput, StorePort } from "../index";
-import { createContentService, prepareSnapshot, ServiceError, validateForPublish } from "../index";
+import {
+	createContentService,
+	imageWarningsForPublish,
+	prepareSnapshot,
+	ServiceError,
+	validateForPublish,
+} from "../index";
 
 describe("ContentService M2-TW-1 Contract", () => {
 	describe("1. Metadata Allowlists & Collection Rules", () => {
@@ -1264,6 +1270,48 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(missing.warnings).toEqual([]);
 			expect(missing.ready).toBe(false);
 			expect(missing.issues).toContainEqual(expect.objectContaining({ code: "unresolved_media" }));
+		});
+
+		it("발행 응답용 경고는 DB 상태와 저장소 실물을 함께 본다", async () => {
+			const input = {
+				collection: "memo" as const,
+				slug: "a",
+				metadata: { title: "T" },
+				mdx: `::image{mediaId="${mediaId}"}`,
+				getMediaAsset: async () => ({ status: "pending", storageKey: null }),
+			};
+
+			expect(await imageWarningsForPublish(input)).toEqual([
+				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
+			]);
+			expect(
+				await imageWarningsForPublish({
+					...input,
+					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
+					headStorageKey: async () => true,
+				}),
+			).toEqual([]);
+			expect(
+				await imageWarningsForPublish({
+					...input,
+					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
+					headStorageKey: async () => false,
+				}),
+			).toEqual([expect.objectContaining({ code: "image_media_missing_in_storage", message: "k/a.png" })]);
+		});
+
+		it("경고 계산은 발행을 막지 않는다(실패 시 빈 배열)", async () => {
+			const warnings = await imageWarningsForPublish({
+				collection: "memo" as const,
+				slug: "a",
+				metadata: { title: "T" },
+				mdx: `::image{mediaId="${mediaId}"}`,
+				getMediaAsset: async () => {
+					throw new Error("db down");
+				},
+			});
+
+			expect(warnings).toEqual([]);
 		});
 	});
 });

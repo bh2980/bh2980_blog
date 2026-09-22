@@ -1,14 +1,10 @@
-import path from "node:path";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import remarkDirective from "remark-directive";
 import { describe, expect, it } from "vitest";
 import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/remark-directives";
-import { readLegacyCorpus } from "@/cms/migrate-from-files/legacy-parser";
 import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
-
-const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 
 /**
  * `pre`는 async RSC라 react-dom 정적 렌더러가 await하지 못한다(렌더러 제약). 비교 목적이므로
@@ -106,20 +102,23 @@ describe("배치 1 신규 directive 렌더", () => {
 		expect(html).toContain("width:60%");
 	});
 
-	it("해석할 수 없는 이미지는 캡션만 남기고 width·align 을 적용하지 않는다", async () => {
+	it("해석할 수 없는 이미지는 중립 플레이스홀더와 캡션을 남긴다", async () => {
 		const unresolved = await renderPublic(
 			'::image{mediaId="00000000-0000-0000-0000-000000000000" alt="대체텍스트" caption="캡션"}',
 		);
 		const rejected = await renderPublic('::image{src="javascript:alert(1)" alt="대체텍스트" caption="캡션"}');
 		const noCaption = await renderPublic('::image{mediaId="00000000-0000-0000-0000-000000000000"}');
 
-		for (const html of [unresolved, rejected]) {
+		for (const html of [unresolved, rejected, noCaption]) {
 			expect(html).not.toContain("<img");
-			expect(html).toContain("캡션");
-			// alt 글자로 대체하지 않는다.
+			// 내부 실패 사유·alt 글자로 대체하지 않는다. width·align도 적용하지 않는다.
+			expect(html).toContain("이미지를 표시할 수 없습니다");
 			expect(html).not.toContain("대체텍스트");
+			expect(html).not.toContain("width:");
 		}
-		expect(noCaption.trim()).toBe("");
+		expect(unresolved).toContain("캡션");
+		expect(rejected).toContain("캡션");
+		expect(noCaption).not.toContain("<figcaption");
 	});
 
 	it("미등록 이름은 본문 글자로 남는다(무음 손실 0)", async () => {

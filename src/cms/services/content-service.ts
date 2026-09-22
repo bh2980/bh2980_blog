@@ -417,6 +417,68 @@ const imageWarnings = (sources: readonly CmsImageSource[], media: ResolvedTarget
 	return warnings;
 };
 
+/**
+ * 발행 응답에 실어 보낼 이미지 경고만 모은다. **비차단**이며, 계산에 실패하면 빈 배열을 돌려준다.
+ *
+ * `ready` + `storageKey`가 있는 미디어는 `headStorageKey`가 있으면 저장소 실물을 한 번 더 확인한다.
+ * 실물이 없으면 `image_media_missing_in_storage` 경고를 추가한다. 인프라 오류 시에는 DB 판정으로 폴백한다.
+ */
+export async function imageWarningsForPublish(input: {
+	collection: Collection;
+	slug: string | null;
+	metadata: { readonly [key: string]: unknown };
+	mdx: string;
+	getMediaAsset: (id: string) => Promise<{ status?: string; storageKey?: string | null } | null>;
+	headStorageKey?: (storageKey: string) => Promise<boolean>;
+}): Promise<Issue[]> {
+	try {
+		const snapshot = await prepareSnapshot({
+			collection: input.collection,
+			slug: input.slug,
+			metadata: input.metadata,
+			mdx: input.mdx,
+		} as ServiceInput);
+		const mediaIds = [
+			...new Set(
+				snapshot.imageSources
+					.map((source) => source.mediaId)
+					.filter((value): value is string => typeof value === "string"),
+			),
+		];
+		const media: ResolvedTargets["media"] = [];
+		for (const id of mediaIds) {
+			const row = await input.getMediaAsset(id);
+			if (row) media.push({ id, status: row.status, storageKey: row.storageKey ?? null });
+		}
+		const warnings = [...imageWarnings(snapshot.imageSources, media)];
+		if (input.headStorageKey) {
+			const byId = new Map(media.map((row) => [row.id, row]));
+			for (const source of snapshot.imageSources) {
+				if (!source.mediaId) continue;
+				const row = byId.get(source.mediaId);
+				if (row?.status === "ready" && row.storageKey) {
+					let exists = true;
+					try {
+						exists = await input.headStorageKey(row.storageKey);
+					} catch {
+						exists = true;
+					}
+					if (!exists) {
+						warnings.push({
+							code: "image_media_missing_in_storage",
+							message: row.storageKey,
+							position: source.position,
+						});
+					}
+				}
+			}
+		}
+		return warnings;
+	} catch {
+		return [];
+	}
+}
+
 export function validateForPublish(
 	snapshot: PreparedSnapshot,
 	resolved: ResolvedTargets,

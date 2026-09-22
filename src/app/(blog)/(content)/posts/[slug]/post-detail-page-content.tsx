@@ -1,4 +1,5 @@
 import { differenceInYears } from "date-fns";
+import { createPublicImageResolver } from "@/cms/mdx/public-image-resolver";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
@@ -34,7 +35,8 @@ export const PostDetailPageContent = async ({
 	detailPathnamePrefix = "/posts",
 	listPathname = "/posts",
 }: PostDetailPageContentProps) => {
-	const { content, toc } = await renderMDX(post.contentMdx);
+	const imageResolver = await createPublicImageResolver(post.contentMdx);
+	const { content, toc } = await renderMDX(post.contentMdx, { imageResolver });
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">

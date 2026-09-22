@@ -416,7 +416,16 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 			const published = await res.json();
 			setEntry((prev) => (prev ? { ...prev, status: "published", version: published.version } : null));
 			currentVersionRef.current = published.version;
-			alert("발행되었습니다!");
+			const warnings = Array.isArray(published.warnings) ? published.warnings : [];
+			if (warnings.length > 0) {
+				const lines = warnings
+					.slice(0, 5)
+					.map((warning: { code: string; message?: string }) => `- ${warning.code}${warning.message ? `: ${warning.message}` : ""}`)
+					.join("\n");
+				alert(`발행되었습니다! 이미지 경고 ${warnings.length}건:\n${lines}`);
+			} else {
+				alert("발행되었습니다!");
+			}
 		} finally {
 			setIsSubmitting(false);
 		}
