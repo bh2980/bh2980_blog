@@ -111,7 +111,7 @@ describe("등록 directive 처리", () => {
 				"가운데 문단",
 				":::",
 				"",
-				"문장 안의 :u[밑줄] 과 :sup[위]·:sub[아래] 그리고 줄바꿈:br 다음",
+				"문장 안의 :u[밑줄] 과 :sup[위]·:sub[아래] 그리고 줄바꿈:br[] 다음",
 				"",
 				'::image{mediaId="abc" alt="설명" width="60%"}',
 			].join("\n"),
@@ -156,7 +156,10 @@ describe("레거시 코퍼스 불변식", () => {
 
 	it("실측된 오탐 2건이 본문에 그대로 남아 있다", () => {
 		const free = readFileSync(path.join(ROOT, "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx"), "utf8");
-		const ratio = readFileSync(path.join(ROOT, "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx"), "utf8");
+		const ratio = readFileSync(
+			path.join(ROOT, "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx"),
+			"utf8",
+		);
 
 		expect(collectText(parseMdxAst(free))).toContain(":free를");
 		expect(collectText(parseMdxAst(ratio))).toContain(":1로");

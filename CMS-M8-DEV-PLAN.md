@@ -38,7 +38,7 @@
 
 **현재 계약(바꿔야 할 지점):**
 
-- `src/cms/mdx/serialize.ts:210` — 하드브레이크를 `\`+줄바꿈으로 출력 → `:br`로 바꾼다.
+- `src/cms/mdx/serialize.ts:210` — 하드브레이크를 `\`+줄바꿈으로 출력 → `:br[]`로 바꾼다.
 - `serialize.ts:110-155` — `openMark`/`closeMark`가 `<u>`·`<sup>`·`<sub>`·`<strong>`·`<em>`·`<del>`·`<Tooltip>`을 출력 → directive/Markdown으로 바꾼다.
 - `src/cms/mdx/registry.ts` — `REGISTERED_JSX_NAMES`는 정의만 되고 `analyze`에서 쓰이지 않는다.
 - `CmsMdxAnalysis`(`types.ts:35`) — `errors`만 있고 **경고 채널이 없다**.
@@ -85,7 +85,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 1. `parse.ts`·`mdx-content.tsx` 양쪽에 `remark-directive`를 넣고, **등록된 이름만 directive로 남기고 미등록은 본문 텍스트로 되돌리는 플러그인**을 둔다(두 경로가 같은 모듈을 공유한다 — 갈라지면 계약이 갈라진다).
 2. directive → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs/Tab·Columns/Column·Tooltip). **JSX 렌더 경로는 그대로 둔다.**
 3. 신규 공개 렌더러: `::image`(F18 — 실패 시 캡션만, `width`/`align` 미적용), `:::text-align`(F16).
-4. 인라인: `:u`·`:sup`·`:sub`·`:br` → `u`/`sup`/`sub`/`br` 요소.
+4. 인라인: `:u`·`:sup`·`:sub`·`:br[]` → `u`/`sup`/`sub`/`br` 요소.
 5. Tiptap 확장 3개를 **스키마에 등록만** 한다(`text-align`은 `types: ['heading','paragraph']`, `alignments: ['left','center','right']`, `defaultAlignment: null`). **툴바 버튼과 쓰기 명령은 배치 3까지 켜지 않는다** — 에디터가 지금 `getHTML()`을 저장하므로 읽기/쓰기 전환이 원자적이어야 한다(§9.1.1·§9.1.3).
 6. 발행 전 검사에 **이미지 해석 실패 비차단 경고**를 추가한다.
 
@@ -103,7 +103,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 
 **산출물**
 
-- 45편 JSX → directive, `<u>` 38쌍 → `:u[...]`, 줄 끝 `\` 19곳 → `:br`, `<IdeographicSpace />` 6곳 삭제.
+- 45편 JSX → directive, `<u>` 38쌍 → `:u[...]`, 줄 끝 `\` 19곳 → `:br[]`, `<IdeographicSpace />` 6곳 삭제.
 - **변환은 한 커밋**으로 만든다(커밋 SHA를 변환 메모의 "실행 기록"에 적는다).
 - 전후 대조를 **저장소에 남는 테스트**로 추가한다(`src/cms/mdx/__test__/` — `.pi/`는 gitignore라 증거가 되지 못한다).
 
@@ -120,9 +120,9 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 
 **산출물**
 
-- serializer가 directive를 출력: `serialize.ts:210` 하드브레이크 → `:br`, `openMark`/`closeMark` → `:u[...]`/`:sup[...]`/`:sub[...]`/`:tooltip[...]{content=...}`, `**`/`*`/`~~`는 Markdown 유지.
+- serializer가 directive를 출력: `serialize.ts:210` 하드브레이크 → `:br[]`, `openMark`/`closeMark` → `:u[...]`/`:sup[...]`/`:sub[...]`/`:tooltip[...]{content=...}`, `**`/`*`/`~~`는 Markdown 유지.
 - `textAlign` 노드 속성 → `:::text-align` 컨테이너(배치 1의 shape 규칙의 저장 방향).
-- 문단은 **한 줄로 출력**하고 줄바꿈은 `:br`로만 표현. `:br` 뒤에 영숫자·하이픈이면 공백 하나.
+- 문단은 **한 줄로 출력**하고 줄바꿈은 `:br[]`로만 표현한다(빈 라벨, §9.1.5).
 - 에디터(Tiptap 노드 → MDX) 왕복 재작성. 이스케이프 규칙 적용. M1 serialize 계약 재정의. **에디터 배선(범위 확대, §9.1.3):** `tiptap-editor.tsx`가 `editor.getHTML()`을 `mdx`로 저장하는 현 구조를 `toDocument`/`serialize` 경로로 바꾼다 — 시각 에디터로 저장한 본문이 지금은 HTML이다. 툴바·쓰기 명령 활성화는 이 배치에서 한다.
 
 **완료 조건**
@@ -235,7 +235,7 @@ pnpm build
 | 배치 2에서 공개 글이 바뀜 | 블로그 노출 내용 변경 | 전후 HTML 대조를 게이트로 두고, 변환을 **1커밋**으로 만들어 `git revert` 한 번으로 되돌린다 |
 | 미디어 업로드 미완료(`ready` 아님) | 이미지가 캡션만 남음 | 발행 전 경고로 알린다(차단 아님 — 확정) |
 | `remark-breaks` 유령 줄바꿈 | 문단을 여러 줄로 저장하면 의도치 않은 `<br>` | 문단 한 줄 규칙 + 왕복 테스트 |
-| `:br` 뒤 영숫자 | 이름이 `br…`로 붙어 미등록 | serializer가 공백 하나 삽입(실측 0/19) |
+| `:br` 뒤 글자(한글 포함) | 이름이 `br…`로 붙어 미등록 → 출력에 `:br` 글자가 보임 | serializer는 항상 **`:br[]`**(빈 라벨). 이름을 확실히 끊고 렌더는 `<br>`로 같다(§9.1.5) |
 | 폐기 순서 위반 | 레거시 글 렌더 붕괴 | `IdeographicSpace` 제거를 배치 4로 고정 |
 | 리뷰어가 테스트를 실행하지 못함 | 증거 공백 | Lead가 실행 출력·SHA를 첨부 |
 
@@ -305,6 +305,13 @@ pnpm build
 
 - **신규:** `src/cms/mdx/directives.ts`, `src/components/mdx/image.tsx`, `src/components/mdx/text-align.tsx`, 단위 테스트.
 - **수정:** `src/cms/mdx/parse.ts`, `registry.ts`, `analyze.ts`, `to-document.ts`(읽기 지원만), `src/components/mdx/mdx-content.tsx`, `src/cms/services/types.ts`, `src/cms/services/content-service.ts`, `src/cms/adapters/postgres/content-store.ts`, 관련 service/store/MDX 테스트.
+
+### 9.1.5 Lead 추가 발견 — `:br` 표기를 `:br[]`로 정정 (배치 1 실측)
+
+- 지시자 이름은 뒤따르는 글자를 삼키고 **한글도 이름 문자**다(실측: `:free를` → 이름 `free를`, `:1로` → 이름 `1로`). 따라서 `:br` 뒤에 글자가 붙으면 이름이 `br특수문자를`이 되어 미등록 처리되고 **출력에 `:br` 글자가 그대로 보인다**(무음 손실은 아니지만 눈에 띄는 오출력).
+- serializer 출력을 **`:br[]`(빈 라벨)** 로 통일한다. 이름을 확실히 끊고 렌더는 `<br>` 하나로 같다. 읽기는 구분자 뒤의 맨 `:br`도 허용한다.
+- 대안 "공백 하나 삽입"은 렌더는 같지만 공개 HTML 문자열이 달라져 A6의 정확 비교에 예외를 만든다 → 버렸다.
+- 검증: `src/cms/mdx/__test__/directive-render.test.tsx`가 `:br[]`→`<br/>`와 `:br둘째`→`:br` 글자 노출을 함께 고정한다.
 
 ### 9.2 배치 0 결과
 

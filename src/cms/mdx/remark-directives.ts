@@ -56,24 +56,26 @@ const originalSource = (node: DirectiveNode, source: string): string => {
  * - 리프·컨테이너 directive → `paragraph(text)` (블록 문맥)
  * - 미등록 부모는 **subtree 전체를 원문으로 보존**하고 자식 순회를 멈춘다(내부를 변환하면 계약이 깨진다).
  */
-export const remarkDemoteUnknownDirectives = () => (tree: Root, file: VFile): undefined => {
-	const source = typeof file?.value === "string" ? file.value : "";
+export const remarkDemoteUnknownDirectives =
+	() =>
+	(tree: Root, file: VFile): undefined => {
+		const source = typeof file?.value === "string" ? file.value : "";
 
-	visit(tree, [...DIRECTIVE_TYPES], (node, index, parent) => {
-		const directive = asDirective(node);
-		if (DIRECTIVE_BY_NAME.has(directive.name)) return;
-		if (!parent || index == null) return;
+		visit(tree, [...DIRECTIVE_TYPES], (node, index, parent) => {
+			const directive = asDirective(node);
+			if (DIRECTIVE_BY_NAME.has(directive.name)) return;
+			if (!parent || index == null) return;
 
-		const original = originalSource(directive, source);
-		const replacement: RootContent =
-			directive.type === "textDirective"
-				? { type: "text", value: original }
-				: { type: "paragraph", children: [{ type: "text", value: original }] };
+			const original = originalSource(directive, source);
+			const replacement: RootContent =
+				directive.type === "textDirective"
+					? { type: "text", value: original }
+					: { type: "paragraph", children: [{ type: "text", value: original }] };
 
-		(parent.children as RootContent[]).splice(index, 1, replacement);
-		return [SKIP, index];
-	});
-};
+			(parent.children as RootContent[]).splice(index, 1, replacement);
+			return [SKIP, index];
+		});
+	};
 
 /**
  * 지시자 속성을 MDX 속성으로 바꾼다.
@@ -106,25 +108,25 @@ const toMdxAttributes = (
  *
  * `u`·`sup`·`sub`·`br`은 소문자 intrinsic 요소로, 나머지는 `MDX_COMPONENTS`에 등록된 컴포넌트 이름으로 매핑한다.
  */
-export const remarkDirectivesToMdx = () => (tree: Root): undefined => {
-	visit(tree, [...DIRECTIVE_TYPES], (node, index, parent) => {
-		const directive = asDirective(node);
-		const definition = DIRECTIVE_BY_NAME.get(directive.name);
-		// 등록되지 않은 이름은 demote가 이미 걷어갔다. 방어적으로 남긴다.
-		if (!definition) return;
-		if (!parent || index == null) return;
+export const remarkDirectivesToMdx =
+	() =>
+	(tree: Root): undefined => {
+		visit(tree, [...DIRECTIVE_TYPES], (node, index, parent) => {
+			const directive = asDirective(node);
+			const definition = DIRECTIVE_BY_NAME.get(directive.name);
+			// 등록되지 않은 이름은 demote가 이미 걷어갔다. 방어적으로 남긴다.
+			if (!definition) return;
+			if (!parent || index == null) return;
 
-		const attributes = toMdxAttributes(definition, directive.attributes);
-		// 라벨/본문 자식을 그대로 넘긴다. 컨테이너는 블록, 텍스트는 인라인 문맥이라 타입이 다르지만
-		// 여기서는 remark-directive가 만든 노드를 그대로 옮기는 것이라 좁히지 않고 넘긴다.
-		const children = directive.children ?? [];
-		const replacement = (
-			directive.type === "textDirective"
+			const attributes = toMdxAttributes(definition, directive.attributes);
+			// 라벨/본문 자식을 그대로 넘긴다. 컨테이너는 블록, 텍스트는 인라인 문맥이라 타입이 다르지만
+			// 여기서는 remark-directive가 만든 노드를 그대로 옮기는 것이라 좁히지 않고 넘긴다.
+			const children = directive.children ?? [];
+			const replacement = (directive.type === "textDirective"
 				? { type: "mdxJsxTextElement", name: definition.component, attributes, children }
-				: { type: "mdxJsxFlowElement", name: definition.component, attributes, children }
-		) as unknown as RootContent;
+				: { type: "mdxJsxFlowElement", name: definition.component, attributes, children }) as unknown as RootContent;
 
-		(parent.children as RootContent[]).splice(index, 1, replacement);
-		return [SKIP, index];
-	});
-};
+			(parent.children as RootContent[]).splice(index, 1, replacement);
+			return [SKIP, index];
+		});
+	};

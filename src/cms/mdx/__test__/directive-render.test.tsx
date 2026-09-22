@@ -1,0 +1,124 @@
+import path from "node:path";
+import { compileMDX } from "next-mdx-remote/rsc";
+import type { ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import remarkDirective from "remark-directive";
+import { describe, expect, it } from "vitest";
+import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/remark-directives";
+import { readLegacyCorpus } from "@/cms/migrate-from-files/legacy-parser";
+import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
+
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
+
+/**
+ * `pre`는 async RSC라 react-dom 정적 렌더러가 await하지 못한다(렌더러 제약). 비교 목적이므로
+ * 양쪽 체인에 같은 동기 대체 컴포넌트를 쓴다. 플러그인 체인은 실제 공개 체인과 같다.
+ */
+const PreShim = ({ children, title }: { children?: ReactNode; title?: string }) => (
+	<div data-audit-pre-shim data-title={title}>
+		{children}
+	</div>
+);
+
+const renderWith = async (source: string, plugins: ReturnType<typeof MDX_REMARK_PLUGINS>): Promise<string> => {
+	const { content } = await compileMDX({
+		source,
+		options: { mdxOptions: { remarkPlugins: plugins, rehypePlugins: MDX_REHYPE_PLUGINS } },
+		components: { ...MDX_COMPONENTS, pre: PreShim },
+	});
+
+	return renderToStaticMarkup(content);
+};
+
+const renderPublic = (source: string): Promise<string> => renderWith(source, MDX_REMARK_PLUGINS());
+
+/** 배치 1 이전 체인 — directive 플러그인 3개만 뺀 것. */
+const renderBeforeBatch1 = (source: string): Promise<string> =>
+	renderWith(
+		source,
+		MDX_REMARK_PLUGINS().filter((entry) => {
+			const plugin = Array.isArray(entry) ? entry[0] : entry;
+			return plugin !== remarkDirective && plugin !== remarkDemoteUnknownDirectives && plugin !== remarkDirectivesToMdx;
+		}),
+	);
+
+describe("배치 1 렌더 등가성 — directive를 쓰지 않는 글", () => {
+	it("49편의 공개 HTML이 directive 플러그인 도입 전과 완전히 같다", async () => {
+		const corpus = readLegacyCorpus(REPO_ROOT);
+		const items = [...corpus.posts, ...corpus.memos];
+
+		expect(items.length).toBe(49);
+
+		const mismatches: string[] = [];
+		for (const item of items) {
+			const [before, after] = await Promise.all([renderBeforeBatch1(item.mdx), renderPublic(item.mdx)]);
+			if (before !== after) mismatches.push(`${item.path} (before ${before.length}자, after ${after.length}자)`);
+		}
+
+		expect(mismatches).toEqual([]);
+	});
+});
+
+describe("배치 1 신규 directive 렌더", () => {
+	it("인라인 directive를 요소로 렌더한다", async () => {
+		const html = await renderPublic("밑줄은 :u[밑줄 친 부분] 이고 위는 :sup[위] 아래는 :sub[아래] 다.");
+
+		expect(html).toContain("<u>밑줄 친 부분</u>");
+		expect(html).toContain("<sup>위</sup>");
+		expect(html).toContain("<sub>아래</sub>");
+	});
+
+	it("강제 줄바꿈은 :br[] 로 렌더한다(뒤에 한글이 붙어도 안전한 형태)", async () => {
+		// 이름은 뒤따르는 글자를 삼킨다. 한글도 이름 문자라 `:br둘째`는 이름 `br둘째`가 되어
+		// 미등록으로 처리되고 `:br` 글자가 그대로 출력된다. 그래서 serializer는 항상 빈 라벨을 붙인다.
+		const safe = await renderPublic("첫 줄:br[]둘째 줄");
+		const ambiguous = await renderPublic("첫 줄:br둘째 줄");
+
+		expect(safe).toContain("<br/>");
+		expect(safe).not.toContain(":br");
+		expect(ambiguous).toContain(":br둘째");
+		expect(ambiguous).not.toContain("<br/>");
+	});
+
+	it(":::text-align 은 검증된 정렬 클래스만 출력한다", async () => {
+		const centered = await renderPublic(':::text-align{align="center"}\n가운데\n:::');
+		const bogus = await renderPublic(':::text-align{align="justify"}\n무시\n:::');
+
+		expect(centered).toContain("text-center");
+		expect(bogus).not.toContain("text-justify");
+	});
+
+	it("::image 는 src·alt·caption 을 렌더한다", async () => {
+		const html = await renderPublic('::image{src="/images/a.png" alt="설명" caption="캡션" width="60%"}');
+
+		expect(html).toContain('src="/images/a.png"');
+		expect(html).toContain('alt="설명"');
+		expect(html).toContain("<figcaption");
+		expect(html).toContain("캡션");
+		expect(html).toContain("width:60%");
+	});
+
+	it("해석할 수 없는 이미지는 캡션만 남기고 width·align 을 적용하지 않는다", async () => {
+		const unresolved = await renderPublic(
+			'::image{mediaId="00000000-0000-0000-0000-000000000000" alt="대체텍스트" caption="캡션"}',
+		);
+		const rejected = await renderPublic('::image{src="javascript:alert(1)" alt="대체텍스트" caption="캡션"}');
+		const noCaption = await renderPublic('::image{mediaId="00000000-0000-0000-0000-000000000000"}');
+
+		for (const html of [unresolved, rejected]) {
+			expect(html).not.toContain("<img");
+			expect(html).toContain("캡션");
+			// alt 글자로 대체하지 않는다.
+			expect(html).not.toContain("대체텍스트");
+		}
+		expect(noCaption.trim()).toBe("");
+	});
+
+	it("미등록 이름은 본문 글자로 남는다(무음 손실 0)", async () => {
+		const inline = await renderPublic("openai/gpt-oss-120b:free를 쓴다.");
+		const container = await renderPublic(":::unknown\n안쪽 :free를 그대로\n:::");
+
+		expect(inline).toContain("gpt-oss-120b:free를");
+		expect(container).toContain("안쪽 :free를 그대로");
+	});
+});
