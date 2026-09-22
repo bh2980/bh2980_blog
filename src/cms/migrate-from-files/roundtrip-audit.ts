@@ -141,6 +141,16 @@ const multisetDifference = (left: readonly string[], right: readonly string[]) =
 };
 
 const normalizeTableRow = (line: string) => line.replace(/\s*\|\s*/g, "|").trim();
+/**
+ * M8 저장 문법(directive)을 걷어낸다. 컨테이너 펜스 줄은 통째로 지우고, 텍스트 지시자는 라벨만 남긴다.
+ * 읽기 호환 JSX/HTML과 같은 의미면 같은 줄로 보기 위한 정규화다(구조 동등성은 별도로 판정한다).
+ */
+const normalizeDirectives = (line: string) =>
+	line
+		.replace(/^:{2,}\s*[\w-]+(?:\{[^}]*\})?\s*$/g, "")
+		.replace(/:\w+\[([^\]]*)\](?:\{[^}]*\})?/g, "$1")
+		.trim();
+
 const normalizeMarks = (line: string) =>
 	line
 		.replace(/<\/?(strong|em|del|u|sup|sub)>/g, "")
@@ -156,6 +166,8 @@ export interface OppositeSets {
 	spaces: Set<string>;
 	entities: Set<string>;
 	backslashes: Set<string>;
+	/** directive 표기를 걷어낸 형태. */
+	directives: Set<string>;
 	/** mark·entity·escape·공백·표 정규화를 모두 적용한 형태. 여러 정규화가 겹친 줄을 받아낸다. */
 	combined: Set<string>;
 }
@@ -183,6 +195,7 @@ export function classifyAgainst(line: string, opposite: OppositeSets): string {
 	if (/^```/.test(trimmed)) return "code-fence-marker-or-indent";
 	if (line.includes("<IdeographicSpace />") || line.includes("&#x20;")) return "leading-space-encoding";
 	if (opposite.table.has(normalizeTableRow(line))) return "table-cell-padding";
+	if (opposite.directives.has(normalizeDirectives(line))) return "directive-notation";
 	if (opposite.marks.has(normalizeMarks(line))) return "mark-to-html-tag";
 	if (/&#x?[0-9a-fA-F]+;/.test(line) && opposite.entities.has(normalizeMarks(normalizeEntities(line)))) {
 		return "entity-encoding";
@@ -190,7 +203,11 @@ export function classifyAgainst(line: string, opposite: OppositeSets): string {
 	if (opposite.spaces.has(normalizeSpaces(line))) return "whitespace-or-wrapping";
 	if (opposite.entities.has(normalizeEntities(line))) return "entity-encoding";
 	if (opposite.backslashes.has(normalizeBackslashes(line))) return "escape-normalization";
-	if (opposite.combined.has(normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line)))))) {
+	if (
+		opposite.combined.has(
+			normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(normalizeDirectives(line))))),
+		)
+	) {
 		return "combined-normalization";
 	}
 	if (LINE_MARKER_PATTERN.test(line)) return "list-marker-or-indent";
@@ -222,22 +239,28 @@ const surfaceComparison = (original: string, roundTripped: string) => {
 	const pairs = Math.max(trimmed.added.length, trimmed.removed.length);
 	const oppositeSets: OppositeSets = {
 		table: new Set(trimmed.removed.map(normalizeTableRow)),
+		directives: new Set(trimmed.removed.map(normalizeDirectives)),
 		marks: new Set(trimmed.removed.map(normalizeMarks)),
 		spaces: new Set(trimmed.removed.map(normalizeSpaces)),
 		entities: new Set(trimmed.removed.map((line) => normalizeEntities(normalizeMarks(line)))),
 		backslashes: new Set(trimmed.removed.map(normalizeBackslashes)),
 		combined: new Set(
-			trimmed.removed.map((line) => normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line))))),
+			trimmed.removed.map((line) =>
+				normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(normalizeDirectives(line))))),
+			),
 		),
 	};
 	const reverseSets: OppositeSets = {
 		table: new Set(trimmed.added.map(normalizeTableRow)),
+		directives: new Set(trimmed.added.map(normalizeDirectives)),
 		marks: new Set(trimmed.added.map(normalizeMarks)),
 		spaces: new Set(trimmed.added.map(normalizeSpaces)),
 		entities: new Set(trimmed.added.map((line) => normalizeEntities(normalizeMarks(line)))),
 		backslashes: new Set(trimmed.added.map(normalizeBackslashes)),
 		combined: new Set(
-			trimmed.added.map((line) => normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(line))))),
+			trimmed.added.map((line) =>
+				normalizeCombined(normalizeBackslashes(normalizeEntities(normalizeMarks(normalizeDirectives(line))))),
+			),
 		),
 	};
 	for (const line of trimmed.added) bump(classifyAgainst(line, oppositeSets));

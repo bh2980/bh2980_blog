@@ -97,5 +97,10 @@ export const DIRECTIVE_BY_NAME: ReadonlyMap<string, DirectiveDefinition> = new M
 
 export const isRegisteredDirective = (name: string): boolean => DIRECTIVE_BY_NAME.has(name);
 
+/** 컴포넌트 이름 → 정의. 쓰기 경로(serializer)가 JSX 이름으로 directive를 찾을 때 쓴다. */
+export const DIRECTIVE_BY_COMPONENT: ReadonlyMap<string, DirectiveDefinition> = new Map(
+	DIRECTIVES.map((definition) => [definition.component, definition]),
+);
+
 /** §4.4가 허용하는 정렬 값. `justify`는 쓰지 않는다(A4). */
 export const TEXT_ALIGN_VALUES = ["left", "center", "right"] as const;

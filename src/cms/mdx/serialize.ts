@@ -1,6 +1,7 @@
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
+import { DIRECTIVE_BY_COMPONENT, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS } from "./registry";
 import type { CmsJsonValue, CmsMark, CmsNode } from "./types";
@@ -11,9 +12,9 @@ const isIdent = (value: string) => /^[A-Za-z_][\w]*$/.test(value);
 
 const escapeAttr = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
-const escapeText = (value: string, inCode: boolean) => {
+const escapeText = (value: string, inCode: boolean, inLabel = false) => {
 	if (inCode) return value;
-	return value
+	const escaped = value
 		.replace(/\\/g, "\\\\")
 		.replace(/`/g, "\\`")
 		.replace(/\*/g, "\\*")
@@ -21,6 +22,8 @@ const escapeText = (value: string, inCode: boolean) => {
 		.replace(/\[/g, "\\[")
 		.replace(/\{/g, "\\{")
 		.replace(/</g, "\\<");
+	// directive 라벨은 `]`로 닫히므로 라벨 안에서는 `]`를 이스케이프한다(짝이 맞지 않으면 라벨이 깨진다).
+	return inLabel ? escaped.replace(/\]/g, "\\]") : escaped;
 };
 
 const fenceTicks = (value: string) => {
@@ -111,19 +114,19 @@ const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] =>
 const openMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
-			return `<Tooltip content="${escapeAttr(String(mark.attrs?.content ?? ""))}">`;
+			return ":tooltip[";
 		case "underline":
-			return "<u>";
+			return ":u[";
 		case "superscript":
-			return "<sup>";
+			return ":sup[";
 		case "subscript":
-			return "<sub>";
+			return ":sub[";
 		case "bold":
-			return "<strong>";
+			return "**";
 		case "italic":
-			return "<em>";
+			return "*";
 		case "strike":
-			return "<del>";
+			return "~~";
 		case "code":
 			return "`";
 		case "link":
@@ -136,19 +139,17 @@ const openMark = (mark: CmsMark): string => {
 const closeMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
-			return "</Tooltip>";
+			return `]{content="${escapeAttr(String(mark.attrs?.content ?? ""))}"}`;
 		case "underline":
-			return "</u>";
 		case "superscript":
-			return "</sup>";
 		case "subscript":
-			return "</sub>";
+			return "]";
 		case "bold":
-			return "</strong>";
+			return "**";
 		case "italic":
-			return "</em>";
+			return "*";
 		case "strike":
-			return "</del>";
+			return "~~";
 		case "code":
 			return "`";
 		case "link": {
@@ -161,6 +162,76 @@ const closeMark = (mark: CmsMark): string => {
 	}
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** JSX의 spread 속성은 directive로 표현할 수 없다 → JSX로 남긴다(조용한 손실 금지). */
+const hasSpread = (node: CmsNode): boolean =>
+	Array.isArray(node.attrs?.attributes) && node.attrs.attributes.some((item) => isRecord(item) && Boolean(item.spread));
+
+/** 노드가 directive로 저장되는지 판정한다. 이름은 컴포넌트 이름(`attrs.name` 또는 `type`)이다. */
+const directiveFor = (node: CmsNode): DirectiveDefinition | undefined =>
+	hasSpread(node) ? undefined : DIRECTIVE_BY_COMPONENT.get(jsxName(node));
+
+/**
+ * directive 속성 문자열(`{name="값"}`). 정의에 있는 속성을 표 순서대로 쓰고, 정의에 없는 속성도 뒤에 붙여 버리지 않는다.
+ * 불리언은 참이면 이름만 쓰고 거짓이면 생략한다(§4.4).
+ */
+const serializeDirectiveAttrs = (node: CmsNode, definition: DirectiveDefinition): string => {
+	const attrs = node.attrs ?? {};
+	const parts: string[] = [];
+	const done = new Set<string>();
+
+	const print = (name: string, value: CmsJsonValue | undefined) => {
+		if (done.has(name)) return;
+		done.add(name);
+		if (definition.attributes[name] === "boolean") {
+			// 없는 속성과 거짓은 쓰지 않는다(§4.4). 참일 때만 이름을 쓴다.
+			if (value === undefined || value === null || value === false || value === "false") return;
+			parts.push(name);
+			return;
+		}
+		if (value === undefined || value === null) return;
+		parts.push(`${name}="${escapeAttr(String(value))}"`);
+	};
+
+	for (const name of Object.keys(definition.attributes)) print(name, attrs[name]);
+	for (const [name, value] of Object.entries(attrs)) {
+		if (reservedAttrKeys.has(name)) continue;
+		print(name, value);
+	}
+
+	return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+};
+
+/** 감싼 컨테이너 단계 수. 콜론 수는 `3 + 단계`(§4.4) — 변환기와 같은 식을 쓴다. */
+const containerDepth = (node: CmsNode): number => {
+	let max = 0;
+	for (const child of node.content ?? []) {
+		const definition = directiveFor(child);
+		if (definition?.kind === "container") max = Math.max(max, 1 + containerDepth(child));
+		max = Math.max(max, containerDepth(child));
+	}
+	return max;
+};
+
+const serializeDirective = (node: CmsNode, definition: DirectiveDefinition, indent: string): string => {
+	const attrs = serializeDirectiveAttrs(node, definition);
+
+	if (definition.kind === "leaf") return `${indent}::${definition.name}${attrs}`;
+
+	if (definition.kind === "text") {
+		const label = serializeInlines(node.content ?? [], false, true);
+		// `:br`은 빈 라벨이 정본이다(§4.4). 라벨에 내용이 있으면 버리지 않고 보존한다.
+		return `${indent}:${definition.name}[${definition.name === "br" && label.length === 0 ? "" : label}]${attrs}`;
+	}
+
+	const inner = serializeBlocks(node.content ?? [], "");
+	const fence = ":".repeat(3 + containerDepth(node));
+	if (inner.length === 0) return `${indent}${fence}${definition.name}${attrs}\n${indent}${fence}`;
+	return `${indent}${fence}${definition.name}${attrs}\n${inner}\n${indent}${fence}`;
+};
+
 const serializeImage = (node: CmsNode): string => {
 	const mediaId = node.attrs?.mediaId;
 	const src = node.attrs?.src ? String(node.attrs.src) : "";
@@ -169,18 +240,12 @@ const serializeImage = (node: CmsNode): string => {
 	const align = node.attrs?.align ? String(node.attrs.align) : undefined;
 	const caption = node.attrs?.caption ? String(node.attrs.caption) : undefined;
 
-	// If it has mediaId or custom width/align/caption, serialize as <Image ... />
-	if (mediaId || width || align || caption) {
-		const props: string[] = [];
-		if (mediaId) props.push(`mediaId="${escapeAttr(String(mediaId))}"`);
-		if (src) props.push(`src="${escapeAttr(src)}"`);
+	const decorative = node.attrs?.decorative === true || node.attrs?.decorative === "true";
 
-		props.push(`alt="${escapeAttr(alt)}"`);
-		if (width) props.push(`width="${escapeAttr(width)}"`);
-		if (align) props.push(`align="${escapeAttr(align)}"`);
-		if (caption) props.push(`caption="${escapeAttr(caption)}"`);
-
-		return `<Image ${props.join(" ")} />`;
+	// §4.4: 미디어 참조·크기·정렬·캡션·장식 표시가 있으면 `image` 리프로, 없으면 Markdown 이미지로 저장한다.
+	if (mediaId || width || align || caption || decorative) {
+		const definition = DIRECTIVE_BY_COMPONENT.get("Image");
+		if (definition) return `::image${serializeDirectiveAttrs(node, definition)}`;
 	}
 
 	const title = node.attrs?.title;
@@ -188,50 +253,106 @@ const serializeImage = (node: CmsNode): string => {
 	return `![${alt}](${src})`;
 };
 
-const encodeLeadingSpaces = (value: string, inCode: boolean): string => {
+const encodeLeadingSpaces = (value: string, inCode: boolean, inLabel = false): string => {
 	const match = /^[ \t]+/.exec(value);
-	if (!match) return escapeText(value, inCode);
-	return `${"&#x20;".repeat(match[0].replace(/\t/g, " ").length)}${escapeText(value.slice(match[0].length), inCode)}`;
+	if (!match) return escapeText(value, inCode, inLabel);
+	return `${"&#x20;".repeat(match[0].replace(/\t/g, " ").length)}${escapeText(value.slice(match[0].length), inCode, inLabel)}`;
 };
 
-const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
-	let result = "";
-	const active: CmsMark[] = [];
+const EMPHASIS_MARKS = new Set(["bold", "italic", "strike"]);
+
+/**
+ * CommonMark 강조 구분자는 안쪽 첫/끝 글자가 공백·문장부호면 열리거나 닫히지 않는다
+ * (`**정적(Static)**과`는 강조가 아니라 별표가 글자로 남는다). 그런 경우만 JSX로 쓴다.
+ */
+const EMPHASIS_UNSAFE_EDGE = /^[\s\p{P}\p{S}]|[\s\p{P}\p{S}]$/u;
+
+const jsxOpenMark = (mark: CmsMark): string => {
+	switch (mark.type) {
+		case "bold":
+			return "<strong>";
+		case "italic":
+			return "<em>";
+		case "strike":
+			return "<del>";
+		default:
+			return openMark(mark);
+	}
+};
+
+const jsxCloseMark = (mark: CmsMark): string => {
+	switch (mark.type) {
+		case "bold":
+			return "</strong>";
+		case "italic":
+			return "</em>";
+		case "strike":
+			return "</del>";
+		default:
+			return closeMark(mark);
+	}
+};
+
+const serializeInlines = (nodes: CmsNode[], asParagraph = false, inLabel = false): string => {
+	const out: string[] = [];
+	// 열린 마크마다 여는 구분자의 조각 위치와 내용이 시작하는 조각 위치를 기억한다.
+	// 닫을 때 내용 앞뒤 글자를 보고 Markdown 강조가 성립하는지 판정한다.
+	const active: { mark: CmsMark; openIndex: number; contentIndex: number }[] = [];
 	let atLineStart = asParagraph;
+
+	const closeEntry = (entry: { mark: CmsMark; openIndex: number; contentIndex: number }) => {
+		if (EMPHASIS_MARKS.has(entry.mark.type)) {
+			const content = out.slice(entry.contentIndex).join("");
+			if (content.length === 0 || EMPHASIS_UNSAFE_EDGE.test(content)) {
+				out[entry.openIndex] = jsxOpenMark(entry.mark);
+				out.push(jsxCloseMark(entry.mark));
+				return;
+			}
+		}
+		out.push(closeMark(entry.mark));
+	};
 
 	const closeTo = (index: number) => {
 		while (active.length > index) {
-			const mark = active.pop();
-			if (mark) result += closeMark(mark);
+			const entry = active.pop();
+			if (entry) closeEntry(entry);
 		}
 	};
 
 	for (const node of nodes) {
 		if (node.type === "hardBreak") {
+			// 강제 줄바꿈은 `:br[]`로만 쓴다. `\`+줄바꿈은 원문 줄바꿈을 만들어 `remark-breaks`가
+			// 의도하지 않은 `<br>`을 찍으므로 쓰지 않는다(§4.4).
 			closeTo(0);
-			result += "\\\n";
-			atLineStart = true;
+			out.push(":br[]");
+			atLineStart = false;
 			continue;
 		}
 		if (node.type === "image") {
 			closeTo(0);
-			result += serializeImage(node);
+			out.push(serializeImage(node));
+			continue;
+		}
+		const directive = directiveFor(node);
+		if (directive) {
+			closeTo(0);
+			out.push(serializeDirective(node, directive, ""));
 			continue;
 		}
 		if (node.type === "mdxJsx" || BLOCK_JSX_NAMES.has(node.type) || INLINE_JSX_MARKS[node.type]) {
 			closeTo(0);
-			result += serializeJsx(node);
+			out.push(serializeJsx(node));
 			continue;
 		}
 		if (node.type === "mdxExpression") {
 			closeTo(0);
-			result += `{${String(node.attrs?.value ?? "")}}`;
+			out.push(`{${String(node.attrs?.value ?? "")}}`);
 			continue;
 		}
 		if (node.type !== "text") {
 			closeTo(0);
-			if (node.content) result += serializeInlines(node.content);
-			else if (node.text) result += escapeText(node.text, false);
+			if (node.content) out.push(serializeInlines(node.content, false, inLabel));
+			else if (node.text) out.push(escapeText(node.text, false, inLabel));
 			continue;
 		}
 
@@ -240,7 +361,7 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
 		while (
 			same < active.length &&
 			same < wanted.length &&
-			markKey(active[same] ?? { type: "" }) === markKey(wanted[same] ?? { type: "" })
+			markKey(active[same]?.mark ?? { type: "" }) === markKey(wanted[same] ?? { type: "" })
 		) {
 			same += 1;
 		}
@@ -248,15 +369,18 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
 		for (let index = same; index < wanted.length; index += 1) {
 			const mark = wanted[index];
 			if (!mark) continue;
-			active.push(mark);
-			result += openMark(mark);
+			const openIndex = out.length;
+			out.push(openMark(mark));
+			active.push({ mark, openIndex, contentIndex: openIndex + 1 });
 		}
 		const inCode = wanted.some((mark) => mark.type === "code");
 		const text = node.text ?? "";
-		result += atLineStart && !inCode ? encodeLeadingSpaces(text, inCode) : escapeText(text, inCode);
+		out.push(atLineStart && !inCode ? encodeLeadingSpaces(text, inCode, inLabel) : escapeText(text, inCode, inLabel));
 		atLineStart = false;
 	}
 	closeTo(0);
+
+	const result = out.join("");
 	if (!asParagraph) return result;
 	// 문단이 `1. `로 시작하면 재파싱 시 순서 목록으로 해석되므로 목록 기호를 이스케이프한다.
 	// 단, 백슬래시는 숫자가 아니라 마침표 앞에 붙여야 한다(`1\. `). `\1. `는 숫자를 이스케이프해 문자 그대로 남는다.
@@ -344,6 +468,9 @@ const serializeTable = (node: CmsNode): string => {
 };
 
 const serializeBlock = (node: CmsNode, indent = ""): string => {
+	const definition = directiveFor(node);
+	if (definition) return serializeDirective(node, definition, indent);
+
 	switch (node.type) {
 		case "paragraph":
 			return indent + serializeInlines(node.content ?? [], true);

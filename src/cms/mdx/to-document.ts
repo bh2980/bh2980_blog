@@ -210,6 +210,8 @@ const convertJsx = (node: MdastLike): CmsNode => {
 		if (rawAttrs.width) attrs.width = rawAttrs.width;
 		if (rawAttrs.align) attrs.align = rawAttrs.align;
 		if (rawAttrs.caption) attrs.caption = rawAttrs.caption;
+		// 장식 표시는 불리언으로 정규화한다(참만 의미가 있다 — §4.4).
+		if (rawAttrs.decorative === true || rawAttrs.decorative === "true") attrs.decorative = true;
 		return { type: "image", attrs };
 	}
 	const type = name && (BLOCK_JSX_NAMES.has(name) || INLINE_JSX_MARKS[name]) ? name : "mdxJsx";

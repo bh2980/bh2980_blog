@@ -78,10 +78,7 @@ const renderSafely = async (source: string): Promise<RenderResult> => {
 };
 
 describe("M6-ED-1 전편 왕복·공개 렌더 검수", () => {
-	// 배치 2에서 본문이 directive 저장 형식으로 바뀌었다. 이 검수는 쓰기 경로(`toDocument`/`serialize`)를
-	// 지나므로 배치 3(M8-ED-2)까지 실패한다. `it.fails`로 현재 상태를 고정한다 — 배치 3에서 통과하면
-	// 이 테스트가 실패하며 마커를 지우게 된다.
-	it.fails("49편 모두 구조 왕복이 동일하고 production 렌더 체인을 통과한다", async () => {
+	it("49편 모두 구조 왕복이 동일하고 production 렌더 체인을 통과한다", async () => {
 		const corpus = readLegacyCorpus(REPO_ROOT);
 		const items = [
 			...corpus.posts.map((item) => ({ item, kind: "post" as const })),
