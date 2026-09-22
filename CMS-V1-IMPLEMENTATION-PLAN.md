@@ -866,11 +866,13 @@ M6-ED-1의 공개 렌더 검수는 레거시 49편만 대상으로 했고 그 49
 
 - **목적:** §4.4 저장 문법을 공개 페이지가 실제로 렌더한다.
 - **주요 내용:**
-  - `TextAlign`: 문단·제목 감싸기, `align` left/center/right. 제목 수준·텍스트는 목차에 그대로 반영.
-  - `Image`: `mediaId`(등록 미디어) 또는 외부 `src`, `alt`·`width`(px/%)·`align`·`caption`·`decorative`. 공개 URL 해석은 렌더러가 담당. http(s)·사이트 상대 경로만 허용하고 `javascript:`는 거부.
-  - `ContentLink`: `targetId` → **렌더링 시점의 현재 공개본 주소**. 비공개 대상이면 링크 없는 텍스트(§7).
-  - 편집기가 실제로 넣는 형식 `[제목](/entries/<UUID>)`도 같은 해석을 탄다(`src/cms/editor/internal-link.ts`).
+  - **재사용 우선:** 에디터 쪽은 이미 있는 Tiptap 노드·공식 확장을 쓴다. 새 에디터 UI를 만들지 않는다.
+  - `TextAlign`: **현재 저장소에 없다.** `@tiptap/extension-text-align` 미설치(설치된 확장은 core/pm/react/starter-kit/suggestion뿐)이고 serializer·렌더러에도 `textAlign` 처리가 없다. 이미지 정렬(`CmsImageNode.align`, M3-ED-2)만 존재한다. 따라서 ① 공식 확장 추가 ② serializer의 `textAlign` → `<TextAlign align="...">` 변환 ③ 공개 렌더러가 필요하다.
+  - `Image`: **저장 경로는 이미 있다.** `serialize.ts:164-183`이 조건에 따라 `<Image mediaId="..." width="..." align="..." caption="..." />`를 내보내고, 편집기에는 `CmsImageNode`(alt·width·align·caption)가 있다. **남은 것은 공개 렌더러뿐이다** — 지금은 그 MDX를 렌더할 컴포넌트가 없어 발행한 글의 이미지 노드가 공개 페이지에 나오지 않는다.
+  - `ContentLink`: 편집기는 `<ContentLink>`가 아니라 **`[제목](/entries/<UUID>)` 형식**으로 넣는다(`src/cms/editor/internal-link.ts`). 두 형식 모두 해석해야 한다. `targetId` → **렌더링 시점의 현재 공개본 주소**이고, 비공개 대상이면 링크 없는 텍스트(§7).
+  - 공개 URL 해석은 렌더러가 담당한다. `mediaId`는 등록 미디어에서 `ready`일 때만 URL을 만들고, 외부 `src`는 http(s)·사이트 상대 경로만 허용하고 `javascript:`는 거부한다.
   - 해석은 `renderMDX`가 본문 단위로 **한 번에** 모아 동기 컴포넌트에 주입한다(동기 렌더 경로 유지, `pre` async RSC 제약 회피).
+  - Tiptap은 에디터 전용(ProseMirror node view)이라 **공개 렌더를 제공하지 않는다.** 공개 렌더러는 §4.4 출력 형식의 소비자로서 새로 필요하다.
 - **선행:** M7-BE-1(공개 repository), M3-ED-2(편집기 삽입)
 - **담당:** FE + BE
 - **완료 조건:** 세 컴포넌트가 공개 페이지에서 렌더되고, 비공개 `ContentLink`는 링크 없는 텍스트이며, 해석할 수 없는 이미지는 본문을 깨뜨리지 않는다. 레거시 49편 렌더 결과 불변.
