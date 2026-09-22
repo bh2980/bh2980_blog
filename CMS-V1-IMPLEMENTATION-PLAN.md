@@ -950,7 +950,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M8-ED-2 저장 형식 directive 전환 (serializer·에디터)
 
 - **목적:** 쓰기 경로를 directive로 맞춘다.
-- **주요 내용:** serializer가 directive를 출력, Tiptap 노드의 MDX 변환 재작성, `textAlign` 반영(**노드 속성 ↔ `:::text-align` 컨테이너 변환** — M8-FE-2의 shape 규칙을 저장 방향에서 구현), 이스케이프 규칙 적용, **M1의 serialize 계약 재정의**. 문단은 **한 줄로 출력**한다(공개 체인의 `remark-breaks`가 원문 줄바꿈을 `<br>`로 만든다 — §4.4). 현재 `serialize.ts:210`은 하드브레이크를 `\`+줄바꿈으로 출력한다(레거시 19곳이 이 경로로 저장됐다) — **`:br` 출력으로 바꾼다.** 인라인 정규화: `bold → <strong>`, `italic → <em>`, `strike → <del>`을 Markdown 표기로 바꾼다. `underline → <u>`는 `:u[...]`, `superscript`·`subscript`는 `:sup[...]`·`:sub[...]`, `tooltip → <Tooltip>`은 `:tooltip[...]{content=...}`로 바꾼다.
+- **주요 내용:** serializer가 directive를 출력, Tiptap 노드의 MDX 변환 재작성, `textAlign` 반영(**노드 속성 ↔ `:::text-align` 컨테이너 변환** — M8-FE-2의 shape 규칙을 저장 방향에서 구현), 이스케이프 규칙 적용, **M1의 serialize 계약 재정의**. 문단은 **한 줄로 출력**한다(공개 체인의 `remark-breaks`가 원문 줄바꿈을 `<br>`로 만든다 — §4.4). 현재 `serialize.ts:210`은 하드브레이크를 `\`+줄바꿈으로 출력한다(레거시 19곳이 이 경로로 저장됐다) — **`:br` 출력으로 바꾼다.** 인라인 정규화: `bold → <strong>`, `italic → <em>`, `strike → <del>`을 Markdown 표기로 바꾼다. `underline → <u>`는 `:u[...]`, `superscript`·`subscript`는 `:sup[...]`·`:sub[...]`, `tooltip → <Tooltip>`은 `:tooltip[...]{content=...}`로 바꾼다. **주의(O1 후 실측):** `tiptap-editor.tsx`는 현재 `editor.getHTML()`을 `mdx`로 저장하고 `toDocument`/`serialize`를 쓰지 않는다(비테스트 참조 0). 서버는 변환 없이 저장한다(`content-service.ts:225`는 `analyze`만 호출). 따라서 이 태스크는 출력 문자열 교체가 아니라 **에디터를 `toDocument`/`serialize` 경로에 배선하는 일**을 포함한다(시각 에디터로 저장한 본문이 지금은 HTML이다).
 - **선행:** M8-FE-1, M8-ED-1
 - **담당:** ED
 - **완료 조건:** 에디터에서 만든 본문이 directive로 저장되고 다시 열면 동일하다.

@@ -86,7 +86,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 2. directive → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs/Tab·Columns/Column·Tooltip). **JSX 렌더 경로는 그대로 둔다.**
 3. 신규 공개 렌더러: `::image`(F18 — 실패 시 캡션만, `width`/`align` 미적용), `:::text-align`(F16).
 4. 인라인: `:u`·`:sup`·`:sub`·`:br` → `u`/`sup`/`sub`/`br` 요소.
-5. Tiptap 확장 3개를 에디터 스키마에 등록한다(`text-align`은 `types: ['heading','paragraph']`, `alignments: ['left','center','right']`, `defaultAlignment: null`).
+5. Tiptap 확장 3개를 **스키마에 등록만** 한다(`text-align`은 `types: ['heading','paragraph']`, `alignments: ['left','center','right']`, `defaultAlignment: null`). **툴바 버튼과 쓰기 명령은 배치 3까지 켜지 않는다** — 에디터가 지금 `getHTML()`을 저장하므로 읽기/쓰기 전환이 원자적이어야 한다(§9.1.1·§9.1.3).
 6. 발행 전 검사에 **이미지 해석 실패 비차단 경고**를 추가한다.
 
 **금지**
@@ -123,7 +123,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 - serializer가 directive를 출력: `serialize.ts:210` 하드브레이크 → `:br`, `openMark`/`closeMark` → `:u[...]`/`:sup[...]`/`:sub[...]`/`:tooltip[...]{content=...}`, `**`/`*`/`~~`는 Markdown 유지.
 - `textAlign` 노드 속성 → `:::text-align` 컨테이너(배치 1의 shape 규칙의 저장 방향).
 - 문단은 **한 줄로 출력**하고 줄바꿈은 `:br`로만 표현. `:br` 뒤에 영숫자·하이픈이면 공백 하나.
-- 에디터(Tiptap 노드 → MDX) 왕복 재작성. 이스케이프 규칙 적용. M1 serialize 계약 재정의.
+- 에디터(Tiptap 노드 → MDX) 왕복 재작성. 이스케이프 규칙 적용. M1 serialize 계약 재정의. **에디터 배선(범위 확대, §9.1.3):** `tiptap-editor.tsx`가 `editor.getHTML()`을 `mdx`로 저장하는 현 구조를 `toDocument`/`serialize` 경로로 바꾼다 — 시각 에디터로 저장한 본문이 지금은 HTML이다. 툴바·쓰기 명령 활성화는 이 배치에서 한다.
 
 **완료 조건**
 
@@ -265,7 +265,46 @@ pnpm build
 - 근거: 2026-09-22 사용자 결정은 '해석 실패 시 렌더 동작'에 대한 것이고, 참조 무결성은 M7에서 의도적으로 세운 계약이다. dangling 참조를 저장·발행 가능하게 만들면 무결성만 약해지고 얻는 것이 없다.
 - O1 자문(oracle, run `d253b392`)이 제기한 충돌에 대한 답이며, `CMS-SPEC.md` §4.4와 `M8-FE-2` 본문에 반영했다.
 
-(A1·A2·A4~A8은 O1 완료 후 기록)
+**A1 — 미등록 directive 처리.** 공유 remark 플러그인이 `VFile.value`와 `node.position.offset`으로 **원문을 그대로 잘라** 문맥에 맞는 텍스트 노드로 교체한다. 미등록 텍스트 directive는 `text`, flow·leaf·container는 `paragraph(text)`. **CMS 파서도 transformer를 돌려야 한다** — 현재 `src/cms/mdx/parse.ts`는 `.parse(body)`만 호출하므로 `runSync()`(또는 `process`)가 필요하다(실측 확인). 금지: 정규식 처리, AST에서 directive 문자열 재조립, 공개/CMS 이중 구현.
+
+**A2 — directive → 컴포넌트 매핑.** **directive 정의표 하나**를 원천으로 자체 remark 플러그인이 등록 노드를 `mdxJsxTextElement`·`mdxJsxFlowElement`로 변환한다. 선례: `src/libs/mermaid/remark-mermaid-to-mdx.ts`, `src/libs/chart/remark-chart-to-mdx.ts`. `u`·`sup`·`sub`·`br`은 소문자 intrinsic, 나머지는 명시적 컴포넌트 이름. 금지: `data.hName` 의존, whitelist와 컴포넌트 맵 중복, `null` boolean을 문자열 `"true"`/`"false"`로 변환(`"false"`가 truthy가 된다).
+
+**A3 — 이미지 경고.** 위 A3 절(확정) 참조.
+
+**A4 — TextAlign 공개 출력.** 공개 렌더는 `left|center|right`만 검증해 **고정 Tailwind 클래스 맵**으로 출력하고, Tiptap 내부만 인라인 style을 쓴다. 금지: `align` 값을 그대로 `className`·`style`에 주입, `justify` 허용.
+
+**A5 — 중첩 미등록 처리.** top-down 판정. 등록 부모에서는 **자식도 각각 검사**하고, 미등록 부모는 **subtree 전체를 원문 텍스트로 보존**하며 자식 순회를 중단한다.
+
+**A6 — 전후 HTML 대조.** 변환 직전 **같은 프로세스에서** 원본과 메모리상 변환본을 production MDX 체인으로 정적 렌더해 body HTML을 **정확 비교**한다(정규화 없음). 변환 뒤 49개 공개 URL은 별도 200/런타임 오류 smoke test. 금지: 전체 공백 정규화, git parent에 의존하는 상시 테스트, Next 전체 HTML의 빌드 ID까지 byte 비교.
+
+**A7 — 변환 실행 형태.** `--check`/`--write`를 가진 **변환기를 저장소에 커밋**하고(기존 이관 도구 `src/cms/migrate-from-files/` 관행), 45편은 한 커밋으로 변환한다. 금지: 수동 편집, `.pi/`에만 스크립트 보관, 검증 전 `--write`.
+
+**A8 — 폐기 순서.** `ContentLink`·`IdeographicSpace` 모두 **배치 4**에서 함께 제거한다(한 게이트에서 registry·renderer·분석 정합성을 검증).
+
+### 9.1.1 배치 1 금지 목록 (O1 ①)
+
+- `src/contents` 변환, serializer 저장 형식 변경, 폐기 컴포넌트 제거.
+- JSX 읽기 경로 제거.
+- **Tiptap 쓰기 경로 활성화** — 툴바 버튼·쓰기 명령을 켜지 않는다(배치 3에서 원자적으로 전환).
+- media FK/CHECK 완화.
+
+### 9.1.2 O1 ② 놓친 위험 (수용)
+
+1. 배치 1에서 Tiptap 쓰기 UI를 켜면 "읽기 → 변환 → 쓰기" 계약 위반 → 금지 목록에 넣었다.
+2. **`Image` resolver 부재** — 정적 컴포넌트 표에는 `mediaId` 해석 context가 없다. DB를 컴포넌트에 직접 import하지 말고 **resolver를 주입**한다.
+3. `null` boolean 속성을 문자열로 바꾸면 `"false"`가 truthy가 된다.
+
+### 9.1.3 Lead 추가 발견 — 배치 3 범위 확대 (저장 경로 실측)
+
+- `src/cms/editor/tiptap-editor.tsx`는 `content`를 Tiptap에 그대로 넣고 `onChange(editor.getHTML())`으로 **HTML을 내보낸다**(`:167`, `:213`). 서버 저장 경로(`PATCH /api/cms/v1/entries/[id]`)는 `mdx` 문자열을 **변환 없이** 저장한다(`content-service.ts:225`는 `analyze`만 호출).
+- `toDocument`·`serialize`를 **에디터가 쓰지 않는다** — 비테스트 참조는 `converter.ts`, `migrate-from-files/roundtrip-audit.ts`, `index.ts`뿐이다.
+- 따라서 **시각 에디터로 저장한 본문은 HTML이다**(M7 종료 시점 운영 DB는 draft 8건이라 공개 영향 없음). **M8-ED-2는 "출력 문자열 교체"가 아니라 에디터를 `toDocument`/`serialize` 경로에 배선하는 일**을 포함한다 → 배치 3 범위에 명시했다.
+- 배치 1 영향: 없음(공개 렌더는 `src/contents` 파일 경로이고 그 파일들은 MDX/JSX다).
+
+### 9.1.4 배치 1 구현 파일 목록 (O1 ③, 참고)
+
+- **신규:** `src/cms/mdx/directives.ts`, `src/components/mdx/image.tsx`, `src/components/mdx/text-align.tsx`, 단위 테스트.
+- **수정:** `src/cms/mdx/parse.ts`, `registry.ts`, `analyze.ts`, `to-document.ts`(읽기 지원만), `src/components/mdx/mdx-content.tsx`, `src/cms/services/types.ts`, `src/cms/services/content-service.ts`, `src/cms/adapters/postgres/content-store.ts`, 관련 service/store/MDX 테스트.
 
 ### 9.2 배치 0 결과
 
