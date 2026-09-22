@@ -662,6 +662,17 @@ runId `e1d1d73c-04b1-4f41-9fe3-d5a1fe1ff8b4` · 판정: **전환 승인 보류**
 
 현재 상태: **사용자 승인 대기**. 승인 여부가 확정되면 본 계획서 §0 상태표와 이 항목에 기록한다. 승인 없이 `CMS_PUBLIC_REPOSITORY`를 `postgres`로 바꾸지 않고, Keystatic도 제거하지 않는다(배치 9 보류).
 
+### 9.14 M7-SEC-1 자가 점검 (배치 7 일부 — 독립 아님)
+
+`CMS-M7-SEC1-AUDIT.md` 작성. **배치 7은 완료로 표시하지 않는다**: 요건이 “독립 보고서”인데 리뷰어 레인 장애(§9.10)로 독립 검수를 받지 못했다. 이 문서는 범위·증거·수정 이력을 고정해 독립 검수의 입력으로 쓴다.
+
+핵심 결과:
+- 관리자 쓰기 라우트 **17/17**이 `verifyAdmin` + `validateSameOrigin`(fail-closed). 스케줄러 1곳만 Bearer 토큰 + `timingSafeEqual` + 길이 선검사.
+- 조건 판정: 비로그인·타 계정 쓰기 차단 **충족**, 실행기 토큰 쓰기 차단 **충족**, 검증 안 된 MDX 진입 **조건부 충족**, 공개 응답 초안 0건 **충족(단위 증거)**.
+- **수정 1건(F1, P2)**: `NextAuthGateway.authorizeExecutor`가 `===`로 토큰을 비교했다 → 길이 선검사 + `timingSafeEqual`. 테스트 4건 추가.
+- 기록만 한 지적: F2 `/preview/start`가 상태 변경 GET + `branch` 무검증(위험 낮음, 배치 9 대상), F3 공개 API 레이트 리밋·CDN 캐시 부재, F4 MDX는 실행 형식이다(M7이 만든 권한 상승 아님), F5 보안 헤더 부재, F6 `authorizeExecutor` 죽은 표면, F7 공개 API가 MDX 원문 `body`를 내보낸다.
+- **P0/P1 없음.** 미검증: 실DB 관통, DB 장애 5xx 실응답, 별칭 308 실동작, SEO head 실측, 세션 위조 거부 응답, next-auth beta 설정.
+
 
 
 

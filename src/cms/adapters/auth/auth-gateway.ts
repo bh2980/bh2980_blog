@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { auth } from "./auth-config";
 
 export interface AuthContext {
@@ -83,11 +84,19 @@ export class NextAuthGateway implements AuthGateway {
 	}
 
 	authorizeExecutor(token?: string | null): boolean {
-		const expected = process.env.CMS_SCHEDULER_TOKEN;
-		if (!expected || !token) {
+		const expected = process.env.CMS_SCHEDULER_TOKEN?.trim();
+		const provided = token?.trim();
+		if (!expected || !provided || provided.length !== expected.length) {
 			return false;
 		}
-		return token.trim() === expected.trim();
+
+		// M7-SEC-1: 스케줄러 라우트(`schedules/due`, `schedules/[id]/publish`)와 동일하게
+		// 길이 선검사 + 타이밍 안전 비교를 쓴다. 이전 구현은 `===` 였다.
+		try {
+			return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+		} catch {
+			return false;
+		}
 	}
 }
 

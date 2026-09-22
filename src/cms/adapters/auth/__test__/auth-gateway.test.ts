@@ -123,6 +123,12 @@ describe("M2-BE-1 AuthGateway Contract", () => {
 		expect(gateway.authorizeExecutor("wrong-token")).toBe(false);
 		expect(gateway.authorizeExecutor("secret-scheduler-token")).toBe(true);
 
+		// M7-SEC-1: 길이 선검사 분기. `timingSafeEqual`는 길이가 다르면 throw 한다.
+		expect(gateway.authorizeExecutor("secret-scheduler-token-longer")).toBe(false);
+		expect(gateway.authorizeExecutor("short")).toBe(false);
+		expect(gateway.authorizeExecutor("secret-scheduler-tokeX")).toBe(false);
+		expect(gateway.authorizeExecutor("  secret-scheduler-token  ")).toBe(true);
+
 		delete process.env.CMS_SCHEDULER_TOKEN;
 		expect(gateway.authorizeExecutor("secret-scheduler-token")).toBe(false);
 	});
