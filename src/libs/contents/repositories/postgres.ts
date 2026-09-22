@@ -3,6 +3,7 @@ import "server-only";
 import type { ContentStore, PublishedEntryRecord } from "@/cms/adapters/postgres/content-store";
 import { getCmsContentStore } from "@/cms/container";
 import { isDefined } from "@/utils/is-defined";
+import { sanitize } from "@/utils/sanitize";
 import type { ContentRepository } from "../contracts/repository";
 import { readSeoMetadata } from "../seo";
 import type { Category, Memo, Post, PublishedMemo, PublishedPost, Series, Tag } from "../types/contents";
@@ -39,6 +40,25 @@ function readMetadataStringArray(metadata: Metadata, key: string): string[] {
 
 function toLabel(entry: PublishedEntryRecord): string {
 	return readMetadataString(entry.metadata, "title") ?? entry.slug;
+}
+
+/**
+ * Keystatic 저장소와 같은 규칙으로 조회 전에 slug를 NFC로 정규화한다(R1 P2).
+ * 맥·우분투에서 온 NFD 한글 주소도 같은 글로 이어진다.
+ * 잘못된 퍼센트 인코딩은 정규화 없이 원문으로 조회해 404로 끝낸다(500으로 만들지 않는다).
+ */
+function normalizeSlug(slug: string): string {
+	const trimmed = slug.trim();
+	if (!trimmed) return trimmed;
+
+	// 퍼센트 인코딩이 없으면 디코딩은 무의미하다. 잘못된 인코딩의 예외·로그를 만들지 않는다.
+	if (!trimmed.includes("%")) return trimmed.normalize("NFC");
+
+	try {
+		return sanitize(trimmed);
+	} catch {
+		return trimmed;
+	}
 }
 
 /**
@@ -178,7 +198,7 @@ export class PostgresRepository implements ContentRepository {
 	async getPost(slug: string): Promise<Post | null> {
 		const lookup = await this.getStore().getPublishedEntryBySlug({
 			collection: "post",
-			slug,
+			slug: normalizeSlug(slug),
 			includeBody: true,
 		});
 
@@ -192,7 +212,7 @@ export class PostgresRepository implements ContentRepository {
 	async getMemo(slug: string): Promise<Memo | null> {
 		const lookup = await this.getStore().getPublishedEntryBySlug({
 			collection: "memo",
-			slug,
+			slug: normalizeSlug(slug),
 			includeBody: true,
 		});
 

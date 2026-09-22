@@ -335,4 +335,43 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 
 		expect(post?.seo).toEqual({ title: "제목" });
 	});
+
+	it("NFD로 들어온 한글 주소도 NFC로 정규화해 조회한다", async () => {
+		const entries = publishedPostsFixture();
+		entries.push(
+			record({
+				id: "post-hangul",
+				collection: "post",
+				slug: "한글-슬러그",
+				metadata: { title: "한글 글", categoryId: "cat-1" },
+			}),
+		);
+		const repository = repositoryWith(entries);
+
+		// 맥·우분투에서 넘어오는 NFD 주소. Keystatic 저장소와 동일하게 NFC로 맞춰 조회해야 한다.
+		const post = await repository.getPost("한글-슬러그".normalize("NFD"));
+
+		expect(post?.slug).toBe("한글-슬러그");
+		expect(post?.slug.normalize("NFC")).toBe(post?.slug);
+	});
+
+	it("메모 조회도 같은 정규화를 쓴다", async () => {
+		const entries = publishedPostsFixture();
+		entries.push(
+			record({ id: "memo-hangul", collection: "memo", slug: "메모-슬러그", metadata: { title: "한글 메모" } }),
+		);
+		const repository = repositoryWith(entries);
+
+		const memo = await repository.getMemo("메모-슬러그".normalize("NFD"));
+
+		expect(memo?.slug).toBe("메모-슬러그");
+	});
+
+	it("정규화로 찾지 못하면 404로 끝나고 예외를 던지지 않는다", async () => {
+		const repository = repositoryWith(publishedPostsFixture());
+
+		await expect(repository.getPost("없는-글".normalize("NFD"))).resolves.toBeNull();
+		// 잘못된 퍼센트 인코딩도 500이 아니라 조회 실패로 다룬다.
+		await expect(repository.getPost("100%-확실해")).resolves.toBeNull();
+	});
 });

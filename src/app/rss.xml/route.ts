@@ -56,6 +56,11 @@ export async function GET() {
 	}
 
 	return new Response(feed.rss2(), {
-		headers: { "Content-Type": "application/rss+xml; charset=utf-8", "X-Robots-Tag": "noindex, follow" },
+		headers: {
+			"Content-Type": "application/rss+xml; charset=utf-8",
+			"X-Robots-Tag": "noindex, follow",
+			// 피드도 캐시하지 않는다. 보관·slug 변경이 다음 요청에 반영되어야 한다(M7-BE-2 / R1 지적).
+			"Cache-Control": "no-store",
+		},
 	});
 }
