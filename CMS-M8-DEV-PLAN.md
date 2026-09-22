@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE**(`4ae05b7`, `ff586fe`, `a743c7e`) · **R1 대기** · 배치 2~5 TODO. M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **110 files / 713 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과**(`4ae05b7`, `ff586fe`, `a743c7e`, `2c7a289`, `3463d6f`) · 배치 2 진행 중 · 배치 3~5 TODO. M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **110 files / 713 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -347,6 +347,24 @@ pnpm build
 - 툴바·쓰기 명령(배치 3), 45편 변환(배치 2), 폐기 이름 제거(배치 4).
 - **사전 존재 결함(내 변경 아님):** `pnpm lint`가 저장소 전역에서 43개 오류(`noExplicitAny`, `noLabelWithoutControl` 등)를 내고 53개 파일을 재포맷한다. 배치 1이 만진 파일은 무오류다. `pre-push` 훅이 `pnpm lint`를 돌리므로 푸시 전 별도 정리가 필요하다.
 
-### 9.4 배치 2 / 9.5 배치 3 / 9.6 배치 4 / 9.7 R1–R4 리뷰 / 9.8 O2 / 9.9 M8-RV-1
+### 9.7 R1 리뷰 (배치 1)
+
+**위임:** `reviewer`(읽기 전용, `router/reviewer-route:high`) — run `1374f588-9e9c-43c3-98c2-2d0593cf9205`, 대상 `feature/new-cms` HEAD `2c7a289`(클린).
+
+**판정: "배치 2 진행 가능"(OK with notes).** 중대 위험 6개 전부 **없음**, **P1 0건**, P2 2건 → 같은 턴에 수정(`3463d6f`).
+
+| 등급 | 내용 | 처리 |
+|---|---|---|
+| P2 | directive→MDX 변환 시 `position`을 복사하지 않아 이미지 경고·미디어 참조 위치가 늘 1:1로 떨어짐 | `remark-directives.ts`가 `directive.position`을 복사 + 회귀 테스트(5행·3행 위치 확인) |
+| P2 | **스키마 등록만으로 쓰기 단축키가 켜짐**(`Mod-Shift-l/e/r`, `Mod-.`, `Mod-,`) — 배치 1 금지 목록("쓰기 명령은 배치 3까지") 위반 | `.extend({ addKeyboardShortcuts: () => ({}) })` + 확장 3개 단축키 0개 테스트 |
+| 관찰 | `remark-directives.ts` 헤더가 "CMS 파서는 demote까지만 쓴다"고 적혀 있었으나 실제로는 둘 다 씀 | 주석 정정 |
+| 관찰 | `directives.test.ts`의 `renderTree`는 공개 체인 **전체**가 아니라 최소 재현(주석이 부정확) | 주석 정정 — 49편 실등가성은 `directive-render.test.tsx`가 담당 |
+| 관찰 | 경고 ②는 실시간 R2 조회가 아니라 `storageKey` 공백 검사 · 발행 API는 `validateForPublish`를 부르지 않음 | §9.3에 이미 기록 |
+
+**미해결 관찰(차단 아님):** CMS 파서는 `remarkGfm`이 directive보다 **앞**이고 공개 체인은 **뒤**다(수식 플러그인 정책도 서로 다르다 — `singleDollarTextMath`). 49편 등가성과 **배치 2의 45편 전후 HTML 대조**가 이 순서 차이의 실제 영향 여부를 판정한다.
+
+**인프라(기록):** 첫 두 위임이 `model_verification_failed`(expected `router/reviewer-route:high`, observed `grok-4.7`)로 실패했다. `~/.pi/agent/extensions/subagent/config.json`의 `modelResponseAliases["router/reviewer-route"]`에 `grok-4.7`을 추가하고 **Pi 재시작** 후 성공했다(백업 `config.json.bak-before-grok47`).
+
+### 9.4 배치 2 / 9.5 배치 3 / 9.6 배치 4 / 9.8 O2 / 9.9 M8-RV-1
 
 (배치마다 추가)
