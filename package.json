@@ -38,6 +38,7 @@
 		"@shikijs/themes": "^3.21.0",
 		"@shikijs/transformers": "^3.22.0",
 		"@tiptap/core": "^3.31.3",
+		"@tiptap/extension-code-block": "^3.31.3",
 		"@tiptap/extension-subscript": "^3.31.3",
 		"@tiptap/extension-superscript": "^3.31.3",
 		"@tiptap/extension-text-align": "^3.31.3",

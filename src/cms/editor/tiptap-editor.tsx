@@ -3,7 +3,8 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CMS_SCHEMA_EXTENSIONS, CmsMdxPreserver } from "./tiptap-schema";
+import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
+import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
 import { CmsImageNode } from "./image-node";
 import { uploadImageFile } from "./upload-helper";
 import { filterCommands, type SlashCommandItem } from "./slash-command";
@@ -77,12 +78,13 @@ export function CmsEditor({
 				heading: {
 					levels: [1, 2, 3],
 				},
+				// `meta`를 보존하는 CmsCodeBlock을 쓴다(스키마의 CMS_SCHEMA_EXTENSIONS).
+				codeBlock: false,
 			}),
 			...CMS_SCHEMA_EXTENSIONS,
 			CmsImageNode,
-			CmsMdxPreserver,
 		],
-		content,
+		content: mdxToTiptap(content),
 		editorProps: {
 			attributes: {
 				class:
@@ -165,7 +167,7 @@ export function CmsEditor({
 		},
 		onUpdate: ({ editor }) => {
 			if (isInternalUpdateRef.current) return;
-			onChange(editor.getHTML());
+			onChange(tiptapToMdx(editor.getJSON()));
 
 			// Check slash & internal link trigger condition
 			if (!isComposingRef.current) {
@@ -211,9 +213,10 @@ export function CmsEditor({
 	useEffect(() => {
 		editorRef.current = editor;
 		if (!editor) return;
-		if (editor.getHTML() !== content) {
+		// 비교 기준은 저장 문자열(MDX)이다 — Tiptap JSON 객체 비교는 순서 때문에 깨진다.
+		if (tiptapToMdx(editor.getJSON()) !== content) {
 			isInternalUpdateRef.current = true;
-			editor.commands.setContent(content, { emitUpdate: false });
+			editor.commands.setContent(mdxToTiptap(content), { emitUpdate: false });
 			isInternalUpdateRef.current = false;
 		}
 	}, [content, editor]);

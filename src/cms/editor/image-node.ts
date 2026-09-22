@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { CmsImageNodeView } from "./image-node-view";
 
@@ -22,8 +22,7 @@ export const CmsImageNode = Node.create({
 			mediaId: {
 				default: null,
 				parseHTML: (element) => element.getAttribute("data-media-id"),
-				renderHTML: (attributes) =>
-					attributes.mediaId ? { "data-media-id": attributes.mediaId } : {},
+				renderHTML: (attributes) => (attributes.mediaId ? { "data-media-id": attributes.mediaId } : {}),
 			},
 			src: {
 				default: null,
@@ -39,6 +38,10 @@ export const CmsImageNode = Node.create({
 			},
 			caption: {
 				default: "",
+			},
+			// Markdown 이미지의 타이틀(`![alt](src "title")`) 보존용. 화면에는 쓰지 않는다.
+			title: {
+				default: null,
 			},
 		};
 	},
