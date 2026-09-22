@@ -334,8 +334,8 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | 링크 | `[[` 제목 검색(내부). 외부 링크는 원문 작성 | Tiptap StarterKit(`link`) | Markdown 링크 |
 | 밑줄 | 없음(원문 작성) | Tiptap StarterKit(`underline`) | `:u[...]` |
 | 강제 줄바꿈 | 없음(원문 작성) | Tiptap StarterKit(`hard-break`) | `:br` |
-| 위첨자·아래첨자 | 없음(원문 작성) | Tiptap 공식 `superscript`·`subscript` — **미설치, 필요할 때 추가** | `:sup[...]`·`:sub[...]` |
-| 문단·제목 정렬 | 없음(원문 작성) | Tiptap 공식 `text-align` — **미설치, 필요할 때 추가** | `:::text-align{align="..."}` |
+| 위첨자·아래첨자 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `superscript`·`subscript` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. mark 이름이 `superscript`/`subscript`, 기본 태그가 `<sup>`/`<sub>` | `:sup[...]`·`:sub[...]` |
+| 문단·제목 정렬 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `text-align` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. 아래 설정·shape 주의 | `:::text-align{align="..."}` |
 | 이미지 | 슬래시 메뉴·드래그·붙여넣기 | **커스텀 `CmsImageNode`** | `::image{...}` |
 | Tooltip | 없음(원문 작성) | **커스텀 mark** | `:tooltip[...]{content="..."}` |
 | Callout·Collapsible·Tabs/Tab·Columns/Column | 없음(원문 작성) | **커스텀 노드** | `:::callout` 등 |
@@ -343,7 +343,8 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 
 - 삽입 UI가 없는 요소는 원문 모드에서 직접 쓰고, 다시 열면 그대로 보존된다.
 - "없음(원문 작성)" 항목에 삽입 UI를 만들 때도 먼저 Tiptap 공식 확장을 확인한다.
-- 설치된 확장은 `@tiptap/starter-kit` v3가 포함하는 `blockquote`·`bold`·`bullet-list`·`code`·`code-block`·`document`·`dropcursor`·`gapcursor`·`hard-break`·`heading`·`horizontal-rule`·`italic`·`link`·`list`·`list-item`·`list-keymap`·`ordered-list`·`paragraph`·`strike`·`text`·`underline`, 그리고 `@tiptap/suggestion`·`@tiptap/react`·`@tiptap/core`·`@tiptap/pm`이다.
+- **`text-align`은 저장 형식과 shape이 다르다.** 공식 확장은 노드에 **속성**(`textAlign`)을 붙이는 방식이고 `renderHTML`이 클래스가 아니라 `style="text-align: …"`를 낸다. 노드가 아니라 문단·제목에 붙는 속성이므로, ① 저장할 때 속성을 `:::text-align` 컨테이너로 감싸고 ② 읽을 때 컨테이너를 감싼 자식의 속성으로 푼다. 설정은 `types: ['heading', 'paragraph']`(**기본값이 `[]`이라 지정하지 않으면 아무것도 하지 않는다**), `alignments: ['left', 'center', 'right']`(기본값에 `justify`가 들어 있다), `defaultAlignment: null`(기본 왼쪽에는 쓰지 않는다는 위 규칙 유지).
+- 설치된 확장은 `@tiptap/starter-kit` v3가 포함하는 `blockquote`·`bold`·`bullet-list`·`code`·`code-block`·`document`·`dropcursor`·`gapcursor`·`hard-break`·`heading`·`horizontal-rule`·`italic`·`link`·`list`·`list-item`·`list-keymap`·`ordered-list`·`paragraph`·`strike`·`text`·`underline`, 그리고 `@tiptap/suggestion`·`@tiptap/react`·`@tiptap/core`·`@tiptap/pm`, 그리고 `@tiptap/extension-superscript`·`@tiptap/extension-subscript`·`@tiptap/extension-text-align`(모두 3.31.3)이다.
 
 ## 5. 저장·상태·발행
 
