@@ -530,6 +530,64 @@ pnpm build                          # 운영 DB DSN 제거 환경. exit 0 (라�
 
 따라서 “무회귀” 판정은 빌드 성공 + 라우트 인벤토리 차이(추가 2·삭제 0) + 테스트 pass 증가로 한다.
 
+### 9.8 R1/R2 리뷰 결과 (배치 1·2)
+
+reviewer 에이전트 1회로 R1·R2를 함께 판정받았다. 라우터 모델 장애로 2회 실패한 뒤(아래 9.10) 모델을 `xai/grok-4.7`로 명시 고정해 실행했다.
+
+| 항목 | 결과 |
+| --- | --- |
+| R1 (`246064e`) | **조건부 통과** — “중대 위험 6기준 해당 없음” |
+| R2 (`71cc784`) | **조건부 통과** — 상세 308/404 분기가 읽은 페이지 코드와 일치 |
+| P0/P1 | 없음 |
+| P2 | 1건: 공개 단건 조회가 `sanitize()`를 쓰지 않아 NFD 한글 주소가 404가 될 수 있음 |
+| §9.3 편차 3건 | 셋 다 **허용 편차**로 판정 |
+| 리뷰 한계 | reviewer가 검증 명령을 실행하지 못했고, 리뷰 도중 `HEAD`가 배치 3·4 커밋으로 전진했다. 따라서 R1/R2는 **코드 열람 기반**이며 실행 증거는 이 계획서의 typecheck/test/build 기록으로 대체한다 |
+
+**P2 반영(수정 완료 `da65822`):** `PostgresRepository.getPost`/`getMemo`가 조회 전 `normalizeSlug()`로 NFC 정규화한다(Keystatic 저장소와 동일 규칙). 퍼센트 인코딩이 없는 주소는 `trim + NFC`만 하고, `%`가 있으면 기존 `sanitize()`를 쓰되 실패 시 원문으로 조회해 **500이 아니라 404**로 끝낸다. 테스트 3건 추가(NFD 한글 조회, 메모 동일 규칙, 미존재·잘못된 인코딩 → null).
+
+**R1/R2 부수 지적 처리:**
+
+- RSS 응답에 `Cache-Control: no-store`를 추가했다(피드도 캐시하지 않는다).
+- slug별 OG가 alias 요청에 308이 아니라 200 이미지를 만든다 → INV-1이 요구한 것은 “비공개 미생성”이므로 계약 위반 아님으로 기록만 남긴다.
+- reviewer가 실행하지 못한 명령의 실측값은 §9.9에 있다.
+
+### 9.9 배치 5 (M7-FE-1) 결과
+
+상태: **구현·단위 테스트 완료 · R5 게이트 대기**
+
+| 파일 | 변경 |
+| --- | --- |
+| `src/libs/admin/preview-access.ts` (신규) | 미리보기 접근 판정을 Keystatic 토큰이 아니라 **CMS 관리자 세션**으로 바꿘다(O1 A9). `checkPreviewAccess()`가 401/403을 구분하고, 인증과 무관한 오류는 감추지 않고 올린다 |
+| `src/libs/contents/services/post.ts`, `memo.ts` | 미리보기 서비스가 `canPreview()`를 쓴다. 세션이 없으면 저장소를 아예 건드리지 않고 `null`/빈 결과 |
+| `(blog)/(content)/preview/start/route.tsx` | `draftMode`를 켜기 **전에** 세션을 확인한다. 잘못된 `to` 값은 500이 아니라 400 |
+| `(blog)/(content)/preview/layout.tsx` | 세션이 없으면 `notFound()` — 미리보기 셸·배너를 렌더하지 않는다 |
+
+- `draftMode`는 “미리보기 의도 표시”로만 남긴다(O1 A9). `ks-branch`는 Keystatic 원격 미리보기용으로 유지하고 배치 9에서 제거한다.
+- **동작 변화:** 개발 모드에서도 미리보기에 세션이 필요하다. 예외는 명시적 opt-in `CMS_DEV_AUTH_BYPASS=1`뿐이다(기존에는 `NODE_ENV=development`이면 무조건 통과였다).
+- **확인된 한계(전환 시 필수):** `CMS_PUBLIC_REPOSITORY=postgres`로 바꾸면 미리보기가 읽는 공개 저장소가 초안을 반환하지 않아 **초안 미리보기가 404가 된다**. DB 초안(working body) 조회는 slug→entry 조회 surface가 필요해 M7 범위 밖으로 두었다 → M7-LEAD-1 전환 보고서에 필수 후속으로 기재한다.
+- 발행 부작용 없음: `ContentRepository`는 읽기 전용 계약이고, 미리보기 경로는 쓰기 메서드를 호출하지 않는다(테스트로 고정).
+
+검증:
+
+| 게이트 | 결과 |
+| --- | --- |
+| `pnpm typecheck` | 0 errors |
+| 미리보기 테스트 | 17건 통과(`preview-access` 4 · `preview-gate` 5 · `/preview/start` 8) |
+| `pnpm test:run` | 100 files / 643 tests / **564 pass** / 79 skip / 9 파일 실패(전부 env) |
+| `pnpm build` | exit 0 |
+
+### 9.10 reviewer 레인 장애 기록
+
+R1/R2 리뷰어 실행이 두 번 실패했다. 같은 프로토콜로 재시도만 했고 다른 프로토콜로 우회하지 않았다.
+
+| 회차 | 결과 |
+| --- | --- |
+| 1 | `[pi-router] No available model found for configured router/reviewer-route` + `上下游返回错误`. 19턴·55툴콜 후 중단, 작업 트리 오염 없음 |
+| 2 | `model_verification_failed: Expected 'router/reviewer-route:high' but observed 'grok-4.7'` |
+| 3 | 모델을 `xai/grok-4.7`로 명시 고정해 성공 |
+
+후속: 사용자 설정 `~/.pi/agent/extensions/subagent/config.json`의 `modelResponseAliases`에 `router/reviewer-route` → 실제 모델 매핑을 넣으면 명시 고정 없이도 게이트가 열린다. R3–R6도 같은 고정이 필요하다(기록용).
+
 
 
 

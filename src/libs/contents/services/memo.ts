@@ -1,7 +1,7 @@
 import "server-only";
 
 import { compareDesc } from "date-fns";
-import { verifyAccess } from "@/libs/admin/verify-access";
+import { canPreview } from "@/libs/admin/preview-access";
 import { getContentRepository } from "../get-content-repository";
 import type { ListResult, PublishedMemo } from "../types/contents";
 import type { MemoListQuery } from "../types/query";
@@ -30,8 +30,11 @@ export async function listMemoSlugs() {
 	return await contentRepository.listMemoSlugs();
 }
 
+/**
+ * 미리보기 조회. 권한 판정은 CMS 관리자 세션이다(M7-FE-1 / O1 A9).
+ */
 export async function getPreviewMemo(slug: string) {
-	const isAdmin = await verifyAccess();
+	const isAdmin = await canPreview();
 
 	if (!isAdmin) return null;
 

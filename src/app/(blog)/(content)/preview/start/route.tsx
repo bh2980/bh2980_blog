@@ -1,6 +1,7 @@
 import { draftMode } from "next/headers";
 import { NextResponse } from "next/server";
 import { isRemotePreviewEnabled } from "@/keystatic/libs/runtime";
+import { checkPreviewAccess } from "@/libs/admin/preview-access";
 
 export async function GET(req: Request) {
 	const url = new URL(req.url);
@@ -9,9 +10,20 @@ export async function GET(req: Request) {
 	const to = url.searchParams.get("to");
 	if (!to) return new Response("Missing branch or to params", { status: 400 });
 
-	const toUrl = new URL(to, origin);
+	let toUrl: URL;
+	try {
+		toUrl = new URL(to, origin);
+	} catch {
+		return new Response("Invalid redirect URL", { status: 400 });
+	}
 	if (toUrl.origin !== origin) {
 		return new Response("Invalid redirect URL", { status: 400 });
+	}
+
+	// 관리자 세션이 없으면 draftMode를 켜지 않는다(M7-FE-1 / O1 A9).
+	const access = await checkPreviewAccess();
+	if (!access.granted) {
+		return new Response("Preview requires an admin session", { status: access.status });
 	}
 
 	if (!isRemotePreviewEnabled()) {
