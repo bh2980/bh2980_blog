@@ -10,11 +10,11 @@ tags:
 policy:
   discriminant: normal
 ---
-<IdeographicSpace />
+:br[]
 
-<Callout variant="note">
+:::callout{variant="note"}
   이 글은 Next.js(App Router) 기준으로 작성되었습니다.
-</Callout>
+:::
 
 ## 드디어 때가 왔다
 
@@ -24,13 +24,13 @@ policy:
 
 ## SEO는 뭘까?
 
-SEO는 <u>Search Engine Optimization</u>의 줄임말로, 말 그대로 <u>검색 엔진을 위한 최적화</u>를 뜻합니다. 구글이나 네이버 같은 검색 엔진은 웹 사이트를 **발견하고**(Discovery), **가져가서**(Crawling), **색인에 넣고**(Indexing), 중복 URL이 있으면 **대표 주소를 고르는**(Canonicalization) 과정을 거쳐서 검색 결과를 노출합니다.
+SEO는 :u[Search Engine Optimization]의 줄임말로, 말 그대로 :u[검색 엔진을 위한 최적화]를 뜻합니다. 구글이나 네이버 같은 검색 엔진은 웹 사이트를 **발견하고**(Discovery), **가져가서**(Crawling), **색인에 넣고**(Indexing), 중복 URL이 있으면 **대표 주소를 고르는**(Canonicalization) 과정을 거쳐서 검색 결과를 노출합니다.
 
 즉, SEO를 적용한다는 건, 검색 엔진이 이 과정을 수월하게 진행할 수 있도록 필요한 힌트들을 정리해두는 작업이라고 보면 되겠죠. 이를 통해 검색 결과에서 더 상위에 노출되고 더 많은 트래픽을 받을 수 있게 될 겁니다.
 
 ### On-Page SEO와 Off-Page SEO
 
-SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 SEO를 구분해서 부르기도 하지만, 여기서는 둘을 합해 온 페이지 SEO로 칭합니다">**온 페이지 SEO**(On-Page SEO)</Tooltip>와 **오프 페이지 SEO**(Off-Page SEO)로 나눌 수 있습니다. 온 페이지 SEO는 title, metadata, sitemap.xml, robots.txt 등 사이트 내부에서 적용하는 SEO를 말하고, 오프 페이지 SEO는 <Tooltip content="다른 웹사이트가 내 웹 사이트 페이지를 걸어주는 링크">백링크</Tooltip>, 브랜딩, 커뮤니티 확산 등 페이지 외부에서 적용되는 SEO를 말합니다.&#x20;
+SEO는 크게 :tooltip[**온 페이지 SEO**(On-Page SEO)]{content="일부에서는 온 페이지 SEO와 기술적 SEO를 구분해서 부르기도 하지만, 여기서는 둘을 합해 온 페이지 SEO로 칭합니다"}와 **오프 페이지 SEO**(Off-Page SEO)로 나눌 수 있습니다. 온 페이지 SEO는 title, metadata, sitemap.xml, robots.txt 등 사이트 내부에서 적용하는 SEO를 말하고, 오프 페이지 SEO는 :tooltip[백링크]{content="다른 웹사이트가 내 웹 사이트 페이지를 걸어주는 링크"}, 브랜딩, 커뮤니티 확산 등 페이지 외부에서 적용되는 SEO를 말합니다.&#x20;
 
 이 글에서는 온 페이지 SEO 중 제가 Next.js에서 직접 적용해 본 항목들만 골라 정리해 보겠습니다.
 
@@ -64,8 +64,8 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
 
 그렇다면 Next.js에서는 이를 어떻게 설정할 수 있을까요? 바로 각 페이지나 레이아웃 파일에서 [`metadata`](https://nextjs.org/docs/app/getting-started/metadata-and-og-images#static-metadata) 객체를 사용하거나 [`generateMetadata`](https://nextjs.org/docs/app/getting-started/metadata-and-og-images#generated-metadata) 함수를 사용하면 됩니다.
 
-<Tabs>
-  <Tab label="metadata">
+::::tabs
+  :::tab{label="metadata"}
     ```ts title="src/app/posts/page.tsx"
     import type { Metadata } from "next";
 
@@ -74,9 +74,9 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     	description: "개발하면서 배운 것들과 경험을 기록합니다.",
     };
     ```
-  </Tab>
+:::
 
-  <Tab label="generateMetadata">
+  :::tab{label="generateMetadata"}
     ```ts title="src/app/posts/[slug]/page.tsx"
     import type { Metadata } from "next";
     import { getPost } from "@/libs/contents/post";
@@ -92,8 +92,8 @@ SEO는 크게 <Tooltip content="일부에서는 온 페이지 SEO와 기술적 S
     	};
     }
     ```
-  </Tab>
-</Tabs>
+:::
+::::
 
 이 둘의 차이는 **메타데이터가 정적인지 동적인지의 차이**입니다.&#x20;
 
@@ -114,13 +114,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 여기서 한 가지 특이한 속성이 있는데 바로 `metadataBase`입니다. 이 속성은 canonical, alternates, openGraph, twitter 등 **절대 URL이 필요한 메타데이터에서 상대 경로를 사용할 수 있게 해주는 기준 URL**로, `/posts` 같은 값을 자동으로 `https://bh2980.dev/posts` 형태의 절대 URL로 변환해줍니다. 설정해두면 편해서 해두는 것을 추천합니다.
 
-<Callout variant="info">
+:::callout{variant="info"}
   메타데이터 설정 시 타이틀에 [템플릿](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#template)을 설정할 수 있습니다.&#x20;
 
   템플릿을 설정할 경우, 하위 라우트에서 작성한 타이틀이 템플릿에 들어가는 형태로 표시됩니다.&#x20;
 
   하위 라우트에서 템플릿을 사용하고 싶지 않을 경우 [`absolute`](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#absolute) 속성을 사용할 수 있습니다.
-</Callout>
+:::
 
 ### 3. canonical
 
@@ -156,8 +156,8 @@ robots.txt는 **검색 엔진 크롤러가 어떤 경로를 크롤링 할 수 �
 
 예를 들어, 검색 결과에 노출될 필요가 없는 admin 페이지나 API 경로가 존재할 경우, 이를 Disallow에 등록하면  해당 경로는 크롤링 대상에서 제외됩니다. 다만 이는 접근을 아예 차단하는 설정이 아니라, 크롤러에게 해당 경로를 탐색하지 말도록 안내하는 규칙에 가깝습니다.
 
-<Tabs>
-  <Tab label="robots.txt">
+::::tabs
+  :::tab{label="robots.txt"}
     ```text title="src/app/robots.txt"
     // @char Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
     User-Agent: *
@@ -167,9 +167,9 @@ robots.txt는 **검색 엔진 크롤러가 어떤 경로를 크롤링 할 수 �
     Disallow: /keystatic/
     Disallow: /api/
     ```
-  </Tab>
+:::
 
-  <Tab label="robots.ts">
+  :::tab{label="robots.ts"}
     ```ts title="src/app/robots.ts"
     import type { MetadataRoute } from "next";
 
@@ -183,8 +183,8 @@ robots.txt는 **검색 엔진 크롤러가 어떤 경로를 크롤링 할 수 �
     	};
     }
     ```
-  </Tab>
-</Tabs>
+:::
+::::
 
 Next.js에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robots.ts` 파일을 추가하면, 빌드 결과로 사이트 루트에 해당 파일이 생성됩니다.
 
@@ -192,7 +192,7 @@ Next.js에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robots.ts` 파�
 
 두 방식 모두 최종적으로 동일한 robots.txt를 생성합니다. 특별히 동적인 값이 필요하지 않다면 정적 파일만으로도 충분하지만, 저는 타입 지원과 일관된 메타데이터 관리 방식을 유지하기 위해 robots 함수를 사용하는 방식을 선택했습니다.
 
-<Callout variant="info">
+:::callout{variant="info"}
   기존의 robots.txt와 별개로 메타데이터에서 작성할 수 있는 [robots 속성](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#robots)도 존재합니다. robots.txt가 사이트 전체에 대한 크롤링 정책을 설정한다면, 메타데이터의 robots 속성은 **페이지별 색인 여부와 링크 추적 여부를 설정**한다는 점에서 다릅니다.
 
   ```ts
@@ -201,7 +201,7 @@ Next.js에서는 `src/app` 디렉터리에 `robots.txt` 또는 `robots.ts` 파�
   	robots: { index: false, follow: true },
   }
   ```
-</Callout>
+:::
 
 ### 5. sitemap.xml
 
@@ -238,9 +238,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
 sitemap 함수를 이용하면 게시글이 추가될 때마다 사이트맵이 함께 갱신되므로, 수동으로 관리할 때 발생할 수 있는 누락 가능성을 줄일 수 있습니다.
 
-<Callout variant="info">
+:::callout{variant="info"}
   하나의 사이트맵에 들어갈 수 있는 URL의 개수는 최대 50,000개입니다. 만약 URL이 매우 많다면, [Next.js에서 제공하는 다중 사이트맵 생성 방식](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap#generating-multiple-sitemaps)을 이용해 사이트맵을 여러 개로 나누어 만들 필요가 있습니다.
-</Callout>
+:::
 
 이렇게 만든 사이트맵 파일은 사이트의 루트 경로에서 찾아볼 수 있습니다.
 
@@ -284,7 +284,7 @@ export default function robots(): MetadataRoute.Robots {
 
 OpenGraph, 흔히 OG 태그라고 부르는 메타데이터는 링크를 공유할 때 표시되는 **미리보기 카드(제목, 설명, 대표 이미지 등)의 내용을 정의**합니다. 카카오톡이나 디스코드, X(트위터) 같은 서비스는 페이지의 `<head>`에 포함된 OpenGraph 정보를 읽어, 링크를 카드 형태로 표시합니다.
 
-OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 색인을 직접 제어하는 요소는 아니지만, 공유 시점에 어떤 제목과 설명, 이미지를 보여줄지를 결정하기 때문에 클릭률 등 <u>간접적으로 SEO에 기여</u>한다고 볼 수 있습니다.
+OG 태그는 robots.txt나 sitemap.xml처럼 검색 엔진의 크롤링이나 색인을 직접 제어하는 요소는 아니지만, 공유 시점에 어떤 제목과 설명, 이미지를 보여줄지를 결정하기 때문에 클릭률 등 :u[간접적으로 SEO에 기여]한다고 볼 수 있습니다.
 
 Next.js에서는 메타데이터의 `openGraph` 속성을 정의해 OG 정보를 설정할 수 있습니다만, 설정하지 않을 시 기본적으로 메타데이터의 title과 description을 사용하게 되어있습니다. 만약 필요하다면 각 페이지의 메타데이터에 openGraph 속성을 사용해 지정해주면 되겠습니다.
 
@@ -349,9 +349,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
 이처럼 대표 이미지를 동적 방식으로 설정할 경우 컴포넌트 코드처럼 작성할 수 있다는 특징이 있습니다. 하지만 모든 CSS 문법을 지원하는 것은 아니므로 스타일이 적용되는지 유의하며 사용해야 합니다.
 
-<Callout variant="info">
+:::callout{variant="info"}
   ImageResponse 내에서 tailwind 문법을 사용하려면 className이 아닌 [tw 속성](https://vercel.com/kb/guide/using-tailwind)을 사용하면 됩니다. 단, 이 역시 모든 속성이 지원되는 것이 아니므로 유의하여 사용하여야 합니다.
-</Callout>
+:::
 
 그렇다면 만들어진 OpenGraph는 개발 과정에서는 확인하기 어렵다는 단점이 있는데요. 크롬 확장 프로그램인 [Social Share Preview](https://chromewebstore.google.com/detail/social-share-preview/ggnikicjfklimmffbkhknndafpdlabib)를 활용하면 쉽게 개발 과정에서 OpenGraph 태그가 어떻게 적용될지 확인할 수 있습니다.
 
@@ -372,11 +372,11 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 <meta property="og:type" content="website">
 ```
 
-<IdeographicSpace />
+:br[]
 
-<Callout variant="info">
+:::callout{variant="info"}
   twitter 태그 역시 OpenGraph와 동일한 방식으로 적용할 수 있습니다. 만약 twitter 태그를 별도로 지정하지 않을 경우 OpenGraph 속성의 정보를 사용하여 생성됩니다.
-</Callout>
+:::
 
 ### 7. RSS
 
@@ -491,15 +491,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 GSC를 사용하려면 먼저 사이트 소유권을 확인해야 합니다. 소유권 확인 방법은 여러 가지가 있지만, 저는 가장 간단한 **메타 태그 방식**을 사용했습니다.
 
-<Columns>
-  <Column>
+::::columns
+  :::column
     ![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.13.27.png)
-  </Column>
+:::
 
-  <Column>
+  :::column
     ![](/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.15.41.png)
-  </Column>
-</Columns>
+:::
+::::
 
 URL을 입력하고 계속을 누르면 메타 태그를 추가하라는 안내가 나옵니다. 이 태그의 값을 복사해서 앱 루트의 메타데이터에 추가하면 소유권 인증 설정이 완료됩니다.
 
@@ -555,7 +555,7 @@ URL 검사는 왼쪽 사이드바에서 URL 검색을 누르거나 검색창에 
 
 마지막으로 설정해볼 것은 llms.txt입니다. 전통적인 SEO 설정은 아니지만 AI 기반 검색 서비스가 빠르게 성장하고 있는 만큼 고려해볼 만한 설정이라 생각합니다.
 
-llms.txt는 <u>아직 공식 표준으로 확정된 규격은 아니며</u>, AI 모델이나 관련 크롤러가 **사이트의 구조와 맥락을 이해할 수 있도록 정보를 정리해두는 용도**로 제안된 파일입니다.
+llms.txt는 :u[아직 공식 표준으로 확정된 규격은 아니며], AI 모델이나 관련 크롤러가 **사이트의 구조와 맥락을 이해할 수 있도록 정보를 정리해두는 용도**로 제안된 파일입니다.
 
 기존 robots.txt가 검색 엔진 크롤러를 대상으로 한다면, llms.txt는 LLM 관련 크롤러를 대상으로 한다는 점에서 차이가 있습니다. 다만 강제성이 없기 때문에 모든 LLM이 준수하는 것은 아닙니다.&#x20;
 

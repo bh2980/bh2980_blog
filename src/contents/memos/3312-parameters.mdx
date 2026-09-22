@@ -34,8 +34,8 @@ type cases = [
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyParameters<T extends (...args: any[]) => any> = T extends (...args: infer Args) => any ? Args : never
   ```
-</Collapsible>
+:::

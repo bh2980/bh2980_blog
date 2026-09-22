@@ -56,8 +56,8 @@ type cases = [
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyAwaited<T> = T extends PromiseLike<infer A> ? A extends PromiseLike<infer B> ? MyAwaited<A> : A : never
   ```
-</Collapsible>
+:::

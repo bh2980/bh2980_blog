@@ -36,7 +36,7 @@ type cases = [
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type Pop<T extends any[]> = T extends [...infer Rest, infer _] ? Rest : T;
 
@@ -46,4 +46,4 @@ type cases = [
 
   type Unshift<T extends any[], U> = [U, ...T];
   ```
-</Collapsible>
+:::

@@ -12,7 +12,7 @@ tags:
 
 ## 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   function getIntersection(arr1, arr2) {
     const long = arr1.length > arr2.length ? arr1 : arr2;
@@ -32,4 +32,4 @@ tags:
   ```
 
   long의 길이를 `L`, short의 길이를 `S`, intersection의 길이를 `I`라고 하면, 시간 복잡도는 `O(L+S)`, 공간 복잡도는 `O(S+I)`입니다.
-</Collapsible>
+:::

@@ -70,7 +70,7 @@ interface Expected {
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyReadonly2<T, K extends keyof T = keyof T> = {
     readonly [P in keyof T as P extends K ? P : never]: T[P]
@@ -78,4 +78,4 @@ interface Expected {
     [P in keyof T as P extends K ? never : P]: T[P]
   }
   ```
-</Collapsible>
+:::

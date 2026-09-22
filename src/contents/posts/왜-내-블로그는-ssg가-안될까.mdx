@@ -45,11 +45,11 @@ sequenceDiagram
     S-->>-U: 따끈따끈한 HTML 전달
 ```
 
-Next.js에서 말하는 **정적**은 다른 말로 <u>SSG(Static Site Generation)</u>, 그리고 **동적**은 <u>SSR(Server Side Rendering)</u>로 말할 수 있습니다. CSR(Client Side Rendering)과는 다소 다른 개념인 것 같은데 어떻게 이런 구분이 가능한걸까요? 그건 바로 이 두 방식의 페이지의 생성 시점이 다르기 때문입니다.
+Next.js에서 말하는 **정적**은 다른 말로 :u[SSG(Static Site Generation)], 그리고 **동적**은 :u[SSR(Server Side Rendering)]로 말할 수 있습니다. CSR(Client Side Rendering)과는 다소 다른 개념인 것 같은데 어떻게 이런 구분이 가능한걸까요? 그건 바로 이 두 방식의 페이지의 생성 시점이 다르기 때문입니다.
 
-SSG는 페이지를 <u>빌드 시에 생성</u>합니다. 때문에 SSG는 모든 데이터가 빌드할 때 고정되야하는 데이터로 구성되어야하며, 즉 **정적(Static)**&#xC785;니다.&#x20;
+SSG는 페이지를 :u[빌드 시에 생성]합니다. 때문에 SSG는 모든 데이터가 빌드할 때 고정되야하는 데이터로 구성되어야하며, 즉 **정적(Static)**&#xC785;니다.&#x20;
 
-반대로 SSR은 사용자가 요청 시 서버에서 <u>실시간으로 페이지를 만들어서 사용자에게 전달</u>하기 때문에 그때그때 바뀌는 데이터를 참조할 수 있습니다. 즉, **동적(Dynamic)**&#xC785;니다.
+반대로 SSR은 사용자가 요청 시 서버에서 :u[실시간으로 페이지를 만들어서 사용자에게 전달]하기 때문에 그때그때 바뀌는 데이터를 참조할 수 있습니다. 즉, **동적(Dynamic)**&#xC785;니다.
 
 즉, Next.js에서 이 페이지는 정적 페이지이고, 이 페이지는 동적 페이지로 빌드되었다라는 표시는 이 페이지를 '언제 생성할 것이냐'를 구분했다는 의미입니다.
 
@@ -97,8 +97,8 @@ graph TD
 
 가장 먼저 칼을 댄 곳은 데이터를 읽어오는 핵심 로직인 `reader`였습니다. 제 블로그는 Keystatic을 사용해 게시글을 관리하는데, 기존의 `reader` 함수는 단순한 데이터 조회를 넘어 너무 많은 '실시간성' 일을 하고 있었습니다.
 
-<Tabs>
-  <Tab label="Before">
+::::tabs
+  :::tab{label="Before"}
     ```ts
     import { createReader } from "@keystatic/core/reader";
     import { createGitHubReader } from "@keystatic/core/reader/github";
@@ -134,9 +134,9 @@ graph TD
     };
 
     ```
-  </Tab>
+:::
 
-  <Tab label="After">
+  :::tab{label="After"}
     ```ts
     import { createReader } from "@keystatic/core/reader";
     import { createGitHubReader } from "@keystatic/core/reader/github";
@@ -158,8 +158,8 @@ graph TD
     	return createReader(process.cwd(), keystaticConfig);
     };
     ```
-  </Tab>
-</Tabs>
+:::
+::::
 
 기존 `reader`는 함수 내부에서 직접 `cookies()`와 `draftMode()`를 호출하고 있었습니다. 이 방식의 치명적인 단점은, 단순히 글 목록을 가져오고 싶어서 이 함수를 호출하기만 해도 해당 페이지 전체가 동적 렌더링(`ƒ`)으로 변해버린다는 것이었습니다. `reader`는 데이터를 읽는 함수인 척하면서, 사실상 "저 지금 요청 상태 같이 보고 있습니다"라고 광고하고 있었던 셈입니다. 이러니 공개 라우트까지 정적으로 굳질 못했던 것이죠.
 

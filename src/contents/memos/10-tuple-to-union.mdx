@@ -28,7 +28,7 @@ type cases = [
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type TupleToUnion<T extends readonly any[]> = T[number]  
 
@@ -36,4 +36,4 @@ type cases = [
 
   export type TupleToUnion<T extends readonly any[]> =   T extends readonly (infer U)[] ? U : never
   ```
-</Collapsible>
+:::

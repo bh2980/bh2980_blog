@@ -13,7 +13,6 @@
  * directive 정의표(`@/cms/mdx/directives`)를 단일 원천으로 쓴다 — 저장 문법이 갈라지지 않는다.
  */
 
-import type { RootContent } from "mdast";
 import { DIRECTIVES, type DirectiveDefinition } from "@/cms/mdx/directives";
 import { splitFrontmatter } from "@/cms/mdx/frontmatter";
 import { parseMdxAst } from "@/cms/mdx/parse";
@@ -24,10 +23,13 @@ const DIRECTIVE_BY_COMPONENT: ReadonlyMap<string, DirectiveDefinition> = new Map
 );
 
 /**
- * 이름은 폐기하지만 **글자는 남기는** 컴포넌트.
- * 값은 대체 글자다 — 간격용 독립 문단이라 요소를 지우면 공개 렌더의 빈 줄이 사라진다.
+ * directive로 옮기지 않고 **다른 표현으로 대체하는** 컴포넌트. 값은 대체 원문이다.
+ *
+ * `IdeographicSpace`는 보이지 않는 글자(한글 채움 문자)를 찍어 여백을 만들던 컴포넌트다.
+ * 그냥 지우면 저자가 만든 여백이 사라지므로 **빈 줄**로 바꾼다 — 홀로 쓴 `:br[]` 문단이 빈 줄이 된다.
+ * (보이지 않는 글자를 남기는 것보다 등록된 지시자를 쓰는 편이 계약·검색·복사에 깨끗하다.)
  */
-const REPLACED_COMPONENTS: ReadonlyMap<string, string> = new Map([["IdeographicSpace", "\u3164"]]);
+const REPLACED_COMPONENTS: ReadonlyMap<string, string> = new Map([["IdeographicSpace", ":br[]"]]);
 
 /** 정적 리터럴만 문자열 속성으로 옮긴다. 그 밖의 표현식은 옮기지 않고 기록한다. */
 const STATIC_LITERAL = /^(?:true|false|-?\d+(?:\.\d+)?|"([^"\\]*)"|'([^'\\]*)')$/;
@@ -74,7 +76,9 @@ const isContainer = (node: JsxNode): boolean => {
 	return definition?.kind === "container";
 };
 
-const nodeRange = (node: JsxNode): { start: number; end: number } | null => {
+const nodeRange = (node: {
+	position?: { start?: { offset?: number }; end?: { offset?: number } };
+}): { start: number; end: number } | null => {
 	const start = node.position?.start?.offset;
 	const end = node.position?.end?.offset;
 	return typeof start === "number" && typeof end === "number" ? { start, end } : null;
@@ -169,9 +173,8 @@ const formatAttributes = (node: JsxNode, definition: DirectiveDefinition, source
 /** 문단 안의 줄 끝 `\`(mdast `break`)와 등록 JSX를 directive로 바꾼다. */
 const collectEdits = (nodes: unknown[], source: string, ctx: Context, edits: Edit[]): void => {
 	for (const raw of nodes) {
-		const node = raw as RootContent & JsxNode;
-
-		if (isJsx(node)) {
+		if (isJsx(raw)) {
+			const node = raw;
 			const name = node.name as string;
 			const definition = DIRECTIVE_BY_COMPONENT.get(name);
 			const replaced = REPLACED_COMPONENTS.get(name);
@@ -200,6 +203,8 @@ const collectEdits = (nodes: unknown[], source: string, ctx: Context, edits: Edi
 			continue;
 		}
 
+		const node = raw as { type?: string; children?: unknown[]; position?: { start?: { offset?: number } } };
+
 		if (node.type === "break") {
 			const range = nodeRange(node);
 			if (range) {
@@ -209,8 +214,7 @@ const collectEdits = (nodes: unknown[], source: string, ctx: Context, edits: Edi
 			continue;
 		}
 
-		const children = (node as { children?: unknown[] }).children;
-		if (Array.isArray(children)) collectEdits(children, source, ctx, edits);
+		if (Array.isArray(node.children)) collectEdits(node.children, source, ctx, edits);
 	}
 };
 

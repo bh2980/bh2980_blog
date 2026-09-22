@@ -71,7 +71,7 @@ flowchart TD
 
 보기만 해도 복잡하지 않나요? 커스텀 컴포넌트는 정규화되지 않은 MDX 본문을 저장할 수 있었지만, 결국 MDX이기 때문에 이를 다시 꺼내 파이프라인을 타게 만들어야한다는 단점이 있었습니다. 때문에 제 코드에서는 `renderMdx`라는 렌더링 함수로 먼저 파싱을 하고, 추가로 내부 본문을 `MdxRemote`라는 컴포넌트를 통해 다시 파싱해주는 과정을 거쳐야했죠.
 
-설령 그렇게 해서 툴팁을 렌더링했다고 생각해봅시다. 그러고 나서 에디터를 바라보면 버젓이 <Tooltip content="나는 툴팁">툴팁</Tooltip> 버튼이 있는걸 볼 수 있습니다.
+설령 그렇게 해서 툴팁을 렌더링했다고 생각해봅시다. 그러고 나서 에디터를 바라보면 버젓이 :tooltip[툴팁]{content="나는 툴팁"} 버튼이 있는걸 볼 수 있습니다.
 
 ![](/assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2010.28.36.png)
 
@@ -170,15 +170,15 @@ globalThis.__KEYSTATIC_MDX_HOOKS__ = { afterMarkdownParse, beforeSerialize };
 
 그래서 저는 이 둘 사이의 간극을 메워줄 중간 포맷, 즉 `Annotation Document`를 따로 두었습니다.
 
-<Tabs>
-  <Tab label="주석">
+::::tabs
+  :::tab{label="주석"}
     ```ts
     // @𝖼𝗁𝖺𝗋 Tooltip {0-12} content="모든 검색엔진 크롤러를 대상으로 규칙 적용"
     User-Agent: *
     ```
-  </Tab>
+:::
 
-  <Tab label="중간 포맷">
+  :::tab{label="중간 포맷"}
     ```ts
     const document: CodeBlockDocument = {
       lang: "ts",
@@ -208,10 +208,10 @@ globalThis.__KEYSTATIC_MDX_HOOKS__ = { afterMarkdownParse, beforeSerialize };
       ],
     };
     ```
-  </Tab>
-</Tabs>
+:::
+::::
 
-읽을 때는 <u>주석을 분석해 범위(range), 타입(type), 속성(attrs)이 담긴 데이터 객체로 먼저 정리</u>하고, 저장할 때는 반대로 <u>에디터의 인라인 블록들을 이 객체 형태로 모은 뒤 다시 주석으로 직렬화</u>하는 식입니다.
+읽을 때는 :u[주석을 분석해 범위(range), 타입(type), 속성(attrs)이 담긴 데이터 객체로 먼저 정리]하고, 저장할 때는 반대로 :u[에디터의 인라인 블록들을 이 객체 형태로 모은 뒤 다시 주석으로 직렬화]하는 식입니다.
 
 ```mermaid
 flowchart TD

@@ -37,8 +37,8 @@ type error = Concat<null, undefined>
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type Concat<T extends readonly any[], U extends readonly any[]> = [...T, ...U]
   ```
-</Collapsible>
+:::

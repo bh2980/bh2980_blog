@@ -93,7 +93,7 @@ type cases = [
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   // @char Tooltip {39-53} content="입력 타입을 readonly any[]로 두어서 어떤 리스트도 받을 수 있도록 제한"
   // @char Tooltip {63-78} content="Variadic Tuple 파라미터 형태를 사용하여 리터럴 배열이 튜플로 추론되도록 유도(테스트 케이스 3)"
@@ -102,4 +102,4 @@ type cases = [
    [P in keyof T]: Awaited<T[P]>
    }>
   ```
-</Collapsible>
+:::

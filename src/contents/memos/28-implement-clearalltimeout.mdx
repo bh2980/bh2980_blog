@@ -12,7 +12,7 @@ tags:
 
 ## 풀이
 
-<Collapsible>
+:::collapsible
   ```js
   // @char Tooltip {27-58} content="안전하게 원래 호출될 때의 this인 window를 바인딩해준다. 이는 setTimeout이 단독호출처럼 보이지만 실제로는 window의 메서드인 window.setTimeout으로 호출되기 때문"
   const originalSetTimeout = window.setTimeout.bind(window);
@@ -48,4 +48,4 @@ tags:
   }
   ```
   />
-</Collapsible>
+:::

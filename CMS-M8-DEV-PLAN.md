@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과**(`4ae05b7`, `ff586fe`, `a743c7e`, `2c7a289`, `3463d6f`) · 배치 2 진행 중 · 배치 3~5 TODO. M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **110 files / 713 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과**(`4ae05b7`, `ff586fe`, `a743c7e`, `2c7a289`, `3463d6f`) · **배치 2 DONE**(46편 변환, R2 대기) · 배치 3~5 TODO. M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **110 files / 713 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -28,7 +28,7 @@
 
 | 항목 | 값 | 출처 |
 |---|---|---|
-| 변환 대상 | **45편** (posts 6, memos 39) = 컴포넌트 43 + `<u>`만 2 | `.pi/legacy-scan.mjs`, 목록은 변환 메모 |
+| 변환 대상 | **46편** (posts 6, memos 40) = 컴포넌트 43 + `<u>`만 2 + 하드브레이크만 1 | 변환기 `pnpm cms:convert --check`, 목록은 변환 메모 |
 | 컴포넌트 | Collapsible 34 · Tooltip 8 · Callout 6 · IdeographicSpace 4편 · Tab/Tabs 3 · Column/Columns 1 | 〃 |
 | `<u>` | 11편 38쌍 | 〃 |
 | 줄 끝 `\` 하드브레이크 | **19곳 / 6편**, soft 줄바꿈 0건 | `.pi/wrap-scan.mjs` |
@@ -53,7 +53,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 |---|---|---|---|---|
 | 0 | 착수 전 정리(구현 아님) + **O1** | Lead | — | 없음(기록만) |
 | 1 | **M8-FE-1 + M8-FE-2** (읽기: 렌더러) | FE | 배치 0, O1 | **R1** |
-| 2 | **M8-DA-1** (45편 파일 변환) | DA + TW | 배치 1 | **R2** + 전후 HTML 대조 |
+| 2 | **M8-DA-1** (46편 파일 변환) | DA + TW | 배치 1 | **R2** + 전후 HTML 대조 |
 | 3 | **M8-ED-2** (쓰기: serializer·에디터) | ED | 배치 1, 2 | **R3** |
 | 4 | **M8-TW-1** (이름 정합성 + 폐기 정리) | TW | 배치 3, **O2** | **R4** |
 | 5 | **M8-RV-1** (최종 검수) | RV | 배치 1–4 | **승인** |
@@ -103,7 +103,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 
 **산출물**
 
-- 45편 JSX → directive, `<u>` 38쌍 → `:u[...]`, 줄 끝 `\` 19곳 → `:br[]`, `<IdeographicSpace />` 6곳 삭제.
+- 46편 JSX → directive, `<u>` 38쌍 → `:u[...]`, 줄 끝 `\` 19곳 → `:br[]`, `<IdeographicSpace />` 6곳 → **홀로 쓴 `:br[]` 문단(빈 줄)**(§9.4 A6).
 - **변환은 한 커밋**으로 만든다(커밋 SHA를 변환 메모의 "실행 기록"에 적는다).
 - 전후 대조를 **저장소에 남는 테스트**로 추가한다(`src/cms/mdx/__test__/` — `.pi/`는 gitignore라 증거가 되지 못한다).
 
@@ -123,6 +123,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 - serializer가 directive를 출력: `serialize.ts:210` 하드브레이크 → `:br[]`, `openMark`/`closeMark` → `:u[...]`/`:sup[...]`/`:sub[...]`/`:tooltip[...]{content=...}`, `**`/`*`/`~~`는 Markdown 유지.
 - `textAlign` 노드 속성 → `:::text-align` 컨테이너(배치 1의 shape 규칙의 저장 방향).
 - 문단은 **한 줄로 출력**하고 줄바꿈은 `:br[]`로만 표현한다(빈 라벨, §9.1.5).
+- **`it.fails` 마커 제거**(§9.4): `roundtrip.test.ts` 표본 2건과 `corpus-roundtrip.test.tsx`가 directive를 왕복해야 한다.
 - 에디터(Tiptap 노드 → MDX) 왕복 재작성. 이스케이프 규칙 적용. M1 serialize 계약 재정의. **에디터 배선(범위 확대, §9.1.3):** `tiptap-editor.tsx`가 `editor.getHTML()`을 `mdx`로 저장하는 현 구조를 `toDocument`/`serialize` 경로로 바꾼다 — 시각 에디터로 저장한 본문이 지금은 HTML이다. 툴바·쓰기 명령 활성화는 이 배치에서 한다.
 
 **완료 조건**
@@ -191,7 +192,7 @@ M8을 **5개 배치 + 검수**로 묶는다. 배치 = 1 writer + 1 리뷰 게이
 | 게이트 | 대상 | 시점 | 필수 증거 |
 |---|---|---|---|
 | **R1** | 배치 1 diff | 배치 1 커밋 직후 | `pnpm typecheck`, `pnpm test:run`, 추가형 증명(49편 렌더 동일) |
-| **R2** | 배치 2 diff(45편 콘텐츠 포함) | 배치 2 커밋 직후 | 전후 HTML 대조 결과, 분석 오류 0, 파일별 변환 요약 |
+| **R2** | 배치 2 diff(46편 콘텐츠 포함) | 배치 2 커밋 직후 | 전후 HTML 대조 결과, 분석 오류 0, 파일별 변환 요약 |
 | **R3** | 배치 3 diff | 배치 3 커밋 직후 | 왕복 테스트, 실DB 저장·재열기, 49편 재직렬화 안정성 |
 | **R4** | 배치 4 diff | 배치 4 커밋 직후 | 레지스트리 대조, 폐기 이름 0건 검색, `analyze` 배선 실측 |
 | **RV** | 배치 1–4 전체 | O2 뒤 | §1 종료 조건 전부 + 최종 게이트 3종 |
@@ -277,7 +278,7 @@ pnpm build
 
 **A6 — 전후 HTML 대조.** 변환 직전 **같은 프로세스에서** 원본과 메모리상 변환본을 production MDX 체인으로 정적 렌더해 body HTML을 **정확 비교**한다(정규화 없음). 변환 뒤 49개 공개 URL은 별도 200/런타임 오류 smoke test. 금지: 전체 공백 정규화, git parent에 의존하는 상시 테스트, Next 전체 HTML의 빌드 ID까지 byte 비교.
 
-**A7 — 변환 실행 형태.** `--check`/`--write`를 가진 **변환기를 저장소에 커밋**하고(기존 이관 도구 `src/cms/migrate-from-files/` 관행), 45편은 한 커밋으로 변환한다. 금지: 수동 편집, `.pi/`에만 스크립트 보관, 검증 전 `--write`.
+**A7 — 변환 실행 형태.** `--check`/`--write`를 가진 **변환기를 저장소에 커밋**하고(기존 이관 도구 `src/cms/migrate-from-files/` 관행), 46편은 한 커밋으로 변환한다. 금지: 수동 편집, `.pi/`에만 스크립트 보관, 검증 전 `--write`.
 
 **A8 — 폐기 순서.** `ContentLink`·`IdeographicSpace` 모두 **배치 4**에서 함께 제거한다(한 게이트에서 registry·renderer·분석 정합성을 검증).
 
@@ -344,7 +345,7 @@ pnpm build
 **남긴 것(다음 배치·M9 몫)**
 
 - 경고 채널은 **발행 전 검사에만** 있다. HTTP 표면은 아직 없다 — 발행 API는 store의 `publishEntry`만 호출하고 `validateForPublish`를 부르지 않는다(M9/관리 UI 배선 몫).
-- 툴바·쓰기 명령(배치 3), 45편 변환(배치 2), 폐기 이름 제거(배치 4).
+- 툴바·쓰기 명령(배치 3), 46편 변환(배치 2), 폐기 이름 제거(배치 4).
 - **사전 존재 결함(내 변경 아님):** `pnpm lint`가 저장소 전역에서 43개 오류(`noExplicitAny`, `noLabelWithoutControl` 등)를 내고 53개 파일을 재포맷한다. 배치 1이 만진 파일은 무오류다. `pre-push` 훅이 `pnpm lint`를 돌리므로 푸시 전 별도 정리가 필요하다.
 
 ### 9.7 R1 리뷰 (배치 1)
@@ -361,10 +362,33 @@ pnpm build
 | 관찰 | `directives.test.ts`의 `renderTree`는 공개 체인 **전체**가 아니라 최소 재현(주석이 부정확) | 주석 정정 — 49편 실등가성은 `directive-render.test.tsx`가 담당 |
 | 관찰 | 경고 ②는 실시간 R2 조회가 아니라 `storageKey` 공백 검사 · 발행 API는 `validateForPublish`를 부르지 않음 | §9.3에 이미 기록 |
 
-**미해결 관찰(차단 아님):** CMS 파서는 `remarkGfm`이 directive보다 **앞**이고 공개 체인은 **뒤**다(수식 플러그인 정책도 서로 다르다 — `singleDollarTextMath`). 49편 등가성과 **배치 2의 45편 전후 HTML 대조**가 이 순서 차이의 실제 영향 여부를 판정한다.
+**미해결 관찰(차단 아님):** CMS 파서는 `remarkGfm`이 directive보다 **앞**이고 공개 체인은 **뒤**다(수식 플러그인 정책도 서로 다르다 — `singleDollarTextMath`). 49편 등가성과 **배치 2의 46편 전후 HTML 대조**가 이 순서 차이의 실제 영향 여부를 판정한다(결과: 정규화 후 불일치 0 — §9.4).
 
 **인프라(기록):** 첫 두 위임이 `model_verification_failed`(expected `router/reviewer-route:high`, observed `grok-4.7`)로 실패했다. `~/.pi/agent/extensions/subagent/config.json`의 `modelResponseAliases["router/reviewer-route"]`에 `grok-4.7`을 추가하고 **Pi 재시작** 후 성공했다(백업 `config.json.bak-before-grok47`).
 
-### 9.4 배치 2 / 9.5 배치 3 / 9.6 배치 4 / 9.8 O2 / 9.9 M8-RV-1
+### 9.4 배치 2 결과
+
+**커밋:** (다음 커밋에서 기록)
+
+**산출물**
+
+- 변환기 `src/cms/migrate-from-files/legacy-jsx-to-directive.ts` + CLI `pnpm cms:convert`(`--check` 기본 / `--write`) + 단위 테스트 11개. AST 오프셋 스플라이스로 바꿀 구간만 잘라내고 나머지는 바이트 그대로 둔다(frontmatter·코드 펜스·공백 보존).
+- `src/contents` **46편** 변환: tooltip 18 · u 38 · IdeographicSpace 6 · callout 13 · tab 8 · tabs 4 · column 2 · columns 1 · collapsible 35 · br 19.
+- 전후 대조를 저장소에 남긴다: `src/cms/mdx/__test__/legacy-conversion.test.tsx` + `__fixtures__/legacy-render-hashes.json`(변환 **전** 원본 렌더의 정규화 해시).
+
+**검증(실행 증거)**
+
+- `pnpm cms:convert` → 변환 예정 0편(멱등) · 잔여 이름 0 · 분석 오류 0.
+- A6 전후 대조: 46편 중 **38편 바이트 동일**, 8편은 아래 두 규칙만 다르고 **정규화 후 불일치 0**.
+  1. `IdeographicSpace` → 빈 줄: `<span>ㅤ</span>` ↔ `<p><br/></p>` (사용자 결정, 문단 마진만큼 간격이 조금 커진다)
+  2. `<br/>` 뒤 접히는 공백(`mdast` break가 붙이던 개행·다음 줄 들여쓰기) — 화면은 같다
+- `pnpm test:run` → **112 files / 728 tests pass** · `pnpm exec tsc --noEmit` 0.
+
+**배치 3으로 넘긴 것(명시)**
+
+- 쓰기 경로(`toDocument`/`serialize`)가 directive를 아직 모른다 → `roundtrip.test.ts`의 표본 2건과 `corpus-roundtrip.test.tsx`를 **`it.fails`로 현재 상태를 고정**했다. 배치 3에서 통과하면 그 테스트가 실패하며 마커를 지우게 된다.
+- 배치 1의 "49편 공개 HTML 등가성" 테스트는 코퍼스가 directive로 바뀌어 성립하지 않는다 → directive를 **쓰지 않는** 본문 표본으로 "추가형" 성질만 고정하도록 바꿨다(코퍼스 수준 등가성은 매니페스트 테스트가 담당).
+
+### 9.5 배치 3 / 9.6 배치 4 / 9.8 O2 / 9.9 M8-RV-1
 
 (배치마다 추가)

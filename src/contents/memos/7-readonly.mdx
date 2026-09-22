@@ -47,10 +47,10 @@ interface Todo1 {
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyReadonly<T> = {
     readonly [K in keyof T]: T[K]
   }
   ```
-</Collapsible>
+:::

@@ -20,7 +20,7 @@ $('#button')
 
 ## 풀이
 
-<Collapsible>
+::::collapsible
   ```js
   function $(el) {
     const element = el
@@ -40,7 +40,7 @@ $('#button')
   }
   ```
 
-  <Collapsible>
+  :::collapsible
     ```mermaid
     graph TD;
       A["$(el) 단독 호출"] --> B["$ 실행 컨텍스트 생성"];
@@ -68,5 +68,5 @@ $('#button')
     4. function 함수
        1. css객체는 생성되지만 this는 고정하지 않는다. 이는 호출 시점에 결정된다.
        2. $(el).css('color', '#fff')를 호출하는 순간 엔진이 $(el)의 반환 객체를 css의 this로 지정하여 css 함수를 실행한다.
-  </Collapsible>
-</Collapsible>
+:::
+::::

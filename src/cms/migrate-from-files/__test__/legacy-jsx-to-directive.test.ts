@@ -44,10 +44,10 @@ describe("레거시 JSX → directive 변환", () => {
 		expect(result.counts).toEqual({ br: 1 });
 	});
 
-	it("IdeographicSpace는 컴포넌트만 걷어내고 글자를 남긴다(간격 보존)", () => {
+	it("IdeographicSpace는 빈 줄(:br[])로 바꾼다(저자가 만든 여백 보존)", () => {
 		const result = convert("앞 문단\n\n<IdeographicSpace />\n\n뒤 문단");
 
-		expect(result.source).toBe("앞 문단\n\n\u3164\n\n뒤 문단");
+		expect(result.source).toBe("앞 문단\n\n:br[]\n\n뒤 문단");
 		expect(result.counts).toEqual({ IdeographicSpace: 1 });
 	});
 

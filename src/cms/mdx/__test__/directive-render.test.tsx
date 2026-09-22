@@ -43,16 +43,24 @@ const renderBeforeBatch1 = (source: string): Promise<string> =>
 	);
 
 describe("배치 1 렌더 등가성 — directive를 쓰지 않는 글", () => {
-	it("49편의 공개 HTML이 directive 플러그인 도입 전과 완전히 같다", async () => {
-		const corpus = readLegacyCorpus(REPO_ROOT);
-		const items = [...corpus.posts, ...corpus.memos];
-
-		expect(items.length).toBe(49);
+	it("directive를 쓰지 않는 본문은 directive 플러그인이 붙어도 렌더가 같다", async () => {
+		// 배치 1의 "49편 등가성"은 코퍼스가 directive로 변환된 뒤에는 성립하지 않는다 —
+		// 변환된 본문은 directive 플러그인 없이는 아무것도 출력하지 않는다(그게 그 플러그인의 존재 이유다).
+		// 그래서 **추가형** 성질은 directive를 쓰지 않는 본문으로 고정한다: 수식 `$`·표·코드 펜스·
+		// 레거시 JSX·하드브레이크·미등록 `:이름`이 섞인 표본.
+		const samples = [
+			"문장 안의 $기호와 `코드` 그리고 **강조**",
+			"| a | b |\n| --- | --- |\n| 1 | 2 |",
+			'<Callout variant="note">\n\n레거시 JSX도 그대로\n\n</Callout>',
+			"첫 줄\\\n둘째 줄",
+			"```ts\nconst a = 1;\n```",
+			"<u>밑줄</u>과 :free를 같은 산문",
+		];
 
 		const mismatches: string[] = [];
-		for (const item of items) {
-			const [before, after] = await Promise.all([renderBeforeBatch1(item.mdx), renderPublic(item.mdx)]);
-			if (before !== after) mismatches.push(`${item.path} (before ${before.length}자, after ${after.length}자)`);
+		for (const sample of samples) {
+			const [before, after] = await Promise.all([renderBeforeBatch1(sample), renderPublic(sample)]);
+			if (before !== after) mismatches.push(sample);
 		}
 
 		expect(mismatches).toEqual([]);

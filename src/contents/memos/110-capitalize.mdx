@@ -17,11 +17,11 @@ type capitalized = Capitalize<'hello world'>
 
 ## 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyCapitalize<S extends string> = 
     S extends `${infer C}${infer Rest}` 
       ? `${Uppercase<C>}${Rest}` 
       : S;
   ```
-</Collapsible>
+:::

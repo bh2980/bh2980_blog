@@ -7,8 +7,7 @@ tags:
 ---
 ## Tuple과 readonly는 별개의 개념이다
 
-Tuple의 정의는 불변 배열이 아니라, 길이와 Index와 매칭되는 값의 타입이 정해진 타입이다.\
-즉, readonly 튜플이 있을 수 있고, mutable 튜플이 있을 수 있고, readonly 배열, mutable 배열이 있을 수 있다.
+Tuple의 정의는 불변 배열이 아니라, 길이와 Index와 매칭되는 값의 타입이 정해진 타입이다.:br[]즉, readonly 튜플이 있을 수 있고, mutable 튜플이 있을 수 있고, readonly 배열, mutable 배열이 있을 수 있다.
 
 따라서, readonly와 튜플의 여부는 별개이므로 `T extends readonly any[]`로 튜플과 배열을 구분할 수는 없다.
 
@@ -68,8 +67,7 @@ type D = IsReadonlyArrayLike<readonly [number, string]>;// true  (readonly tuple
 
 ## 타입 수준에서 배열과 튜플의 구분
 
-그렇다면 타입 수준에서 배열과 튜플을 구분하는 방법은 무엇인가? 바로 length 프로퍼티의 타입을 보는 것이다.\
-튜플의 length는 숫자 리터럴로 1, 2, 3과 같은 정해진 숫자 값이 나오는 반면, 배열은 길이가 정해져있지 않으므로 number가 나온다.
+그렇다면 타입 수준에서 배열과 튜플을 구분하는 방법은 무엇인가? 바로 length 프로퍼티의 타입을 보는 것이다.:br[]튜플의 length는 숫자 리터럴로 1, 2, 3과 같은 정해진 숫자 값이 나오는 반면, 배열은 길이가 정해져있지 않으므로 number가 나온다.
 
 ```ts
 type IsTupleArray<T extends readonly any[]> =

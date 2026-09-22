@@ -49,8 +49,8 @@ const fn1 = (v: boolean, w: any) => v ? 1 : 2
 
 ### 풀이
 
-<Collapsible>
+:::collapsible
   ```ts
   type MyReturnType<T> = T extends (...args: any) => infer R ? R : never
   ```
-</Collapsible>
+:::
