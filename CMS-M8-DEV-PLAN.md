@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과** · **배치 4 DONE**(폐기 정리, R4 대기) · 배치 5 TODO. 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **115 files / 748 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과** · **배치 4 DONE + R4 통과**(`ec8076a`, 폐기 정리) · 배치 5 진행 중. 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **115 files / 748 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -429,7 +429,7 @@ pnpm build
 
 ### 9.6 배치 4 결과
 
-**커밋:** (다음 커밋에서 기록)
+**커밋:** `ec8076a`
 
 **산출물**
 
@@ -448,6 +448,14 @@ pnpm build
 
 - 이관 도구(변환기 `legacy-jsx-to-directive.ts`·감사기 `roundtrip-audit.ts`)의 레거시 이름 인식은 유지한다 — 아직 변환하지 않은 원문을 읽어야 하므로. "폐기 0건"은 레지스트리·렌더러·본문·전방향 문서 기준이다.
 - 라벨 없는 등록 텍스트 지시자(`:u ` 맨형태)의 읽기 증발은 미해결(배치 3 기록 유지).
+
+### 9.10 R4 리뷰 (배치 4)
+
+**위임:** `reviewer`(읽기 전용, `router/reviewer-route:high`) — run `9498f339-1d15-422a-9eb6-2c32b9dd63cf`, 대상 `ec8076a`.
+
+**판정: "배치 5 진행 가능". 지적 0건(clean pass).** 중대 위험 6개 전부 없음, 완료 조건 3개(미등록 보존·일치·폐기 0건) 충족.
+
+**리뷰어가 확인한 것(요약):** 의도적 잔류 4건 전부 정당(이관 도구 인식·fragment 생략·`empty_reference_id` 제거·글 전용 `/posts/` 고정). `br` 추가 필요충분. ContentLink 제거가 발행·저장을 깨지 않음. 문서 일치. §9.6의 "폐기 0건" 범위 한정이 타당.
 
 ### 9.5 배치 3 / 9.6 배치 4 / 9.9 M8-RV-1
 
