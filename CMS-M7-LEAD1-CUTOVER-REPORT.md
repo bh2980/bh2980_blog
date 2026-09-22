@@ -15,10 +15,10 @@ M7의 구현 배치(1–6)는 끝났고 게이트도 실측으로 통과했다. 
 | --- | --- |
 | 구현 배치 1–6 | 완료 (커밋 12개) |
 | 타입·단위 게이트 | `pnpm typecheck` 0 errors · `pnpm test:run` 659 tests / **579 pass** / 80 skip / 9 파일 실패(전부 env) · `pnpm build` exit 0 |
-| 실DB 계약 테스트 | **미실행** — `CMS_TEST_DATABASE_URL` 없음 (13건) |
-| 브라우저·실응답 검증 | **미실행** — 발행/보관 즉시 반영, 별칭 308, SEO head |
+| 실DB 계약 테스트 | **통과** — 106 files / 685 tests 전부 pass (0 fail · 0 skip) |
+| 브라우저·실응답 검증 | 부분 — repository 계층 통합 검증 완료(발행/보관/별칭/SEO). 실제 HTTP·head·CDN은 미실행 |
 | R3–R6 리뷰 | **미완** — reviewer 레인 장애(§7) |
-| M7-SEC-1 보안 검수 | **미완** (배치 7) |
+| M7-SEC-1 보안 검수 | **통과** — 독립 재검수 OK with notes, P0/P1 없음 (잔여 P2 3건) |
 | 미리보기 DB 초안 경로 | **미구현** — postgres 전환 시 초안 미리보기 404 |
 
 ---
@@ -39,9 +39,10 @@ M7의 구현 배치(1–6)는 끝났고 게이트도 실측으로 통과했다. 
 | 게이트 | 명령 | 결과 |
 | --- | --- | --- |
 | 타입 | `pnpm typecheck` | 0 errors |
-| 테스트 | `pnpm test:run` | 102 files · 659 tests · **579 pass** · 80 skip · 9 파일 실패 |
+| 테스트(env 미로드) | `pnpm test:run` | 106 files · 685 tests · 592 pass · 83 skip · 9 파일 실패 — **하네스가 `.env.local`을 읽지 않아 생기는 현상** |
+| 테스트(실DB env) | `node --env-file=<본 저장소>/.env.local node_modules/vitest/vitest.mjs run` | **106 files · 685 tests · 전부 pass · 0 fail · 0 skip** |
 | 기준선 대비 | `6a55aff` | 89/556/489/67/8 → **+103 tests**, 회귀 없음 |
-| 실패 원인 | — | 9개 파일 전부 `CMS_TEST_DATABASE_URL is not set` (skip 아니라 throw) |
+| 실패 원인 | — | 위 9개 파일은 `CMS_TEST_DATABASE_URL is not set`(skip 아니라 throw). 본 저장소 `.env.local`을 `--env-file`로 지정하면 **모두 통과**한다 |
 | 빌드 | `pnpm build`(env 5개 더미) | exit 0 · 공개 라우트 전부 `ƒ` 동적 · slug OG는 `dynamicRoutes`(정적 베이킹 없음, `.body` 없음) |
 | 린트 | `pnpm exec biome check` | 신규·변경 파일 clean. 기존 위반 수는 HEAD와 동일(신규 0) |
 | 문서 대조 | `openapi-contract.test.ts` | 문서 24경로·메서드 ↔ 실제 라우트 일치 |
@@ -75,7 +76,7 @@ M7의 구현 배치(1–6)는 끝났고 게이트도 실측으로 통과했다. 
 | --- | --- |
 | ① | 실DB 계약·실제 HTTP 동작(발행/보관/별칭/장애)이 한 번도 실행되지 않았다 |
 | ② | `CMS_PUBLIC_REPOSITORY=postgres`로 바꾸면 **초안 미리보기가 404**가 된다 |
-| ③ | R3–R6 리뷰와 M7-SEC-1 보안 검수가 끝나지 않았다 |
+| ③ | ~~R3–R6 리뷰와 M7-SEC-1 보안 검수가 끝나지 않았다~~ → **해소**(R1–R6 완료, SEC-1 독립 재검수 통과) |
 | ④ | 이관 무결성 대조(49편 주소, 22장 이미지 체크섬)가 남아 있다 |
 | ⑤ | 원격 백업·배포 가능 커밋이 없다(롤백 대상이 없다) |
 
@@ -99,7 +100,7 @@ O2가 요구한 승인 선행 조건 7개: 실DB 13건 pass·0 skip / postgres s
 | 항목 | 상태 | 필요한 것 |
 | --- | --- | --- |
 | reviewer 레인 | R3–R6 실행 실패. 모델 미고정 시 `上游返回错误`, `xai/grok-4.7` 고정 시 `model_verification_failed` | `~/.pi/agent/extensions/subagent/config.json`의 `modelResponseAliases`에 `router/reviewer-route` → 실제 모델 매핑 추가, **또는** 대체 리뷰어 에이전트 사용을 명시 승인 |
-| 실DB 검증 | `CMS_TEST_DATABASE_URL` 부재. 로컬 Postgres도 없음(5432 미리스닝·docker 없음·psql 미설치) | 원격 테스트 DB 연결 문자열 |
+| 실DB 검증 | ~~`CMS_TEST_DATABASE_URL` 부재~~ → **해소**. 키는 본 저장소 `/Users/bh2980/Desktop/bh2980_blog/.env.local`에 있고 워크트리에는 없다(worktree는 untracked 파일을 공유하지 않는다). `--env-file`로 그 파일을 지정해 685/685 통과 | — |
 | 작업 트리 | `.env.local`에 `JEV_PROVIDER`·`TYPESAFE_API_KEY`만 있고 CMS 키 0개 | 위 항목과 동일 |
 | 원격 백업 | 푸시 거부(GitHub email privacy). CMS 커밋 author가 `bh2980@naver.com` | GitHub에 해당 이메일 등록 또는 “명령줄 푸시에 이메일 노출 차단” 해제 |
 | pre-push 훅 | `pnpm lint`(= `biome check . --write`)가 기존 M4/M5 위반 40건으로 항상 실패하고 워킹트리를 자동 수정 | 푸시 시 `--no-verify` + 사유 기록 |
@@ -110,7 +111,7 @@ O2가 요구한 승인 선행 조건 7개: 실DB 13건 pass·0 skip / postgres s
 
 1. **DB 전환 승인**: (a) 승인 (b) 조건부 승인 (§6 미리보기 경로 + 실DB 13건 실행을 조건으로) (c) 보류
 2. **미리보기 DB 초안 경로를 지금 구현할지**: 권장 — 지금. 별도 소배치로 진행하며 전환의 유일한 기능 회귀를 제거한다.
-3. **검증 환경 제공**: 원격 Postgres 테스트 DB(`CMS_TEST_DATABASE_URL`) 제공 여부. 제공되면 13건 + staging 관통 검증을 즉시 실행한다.
+3. **검증 환경 제공**: ~~원격 Postgres 테스트 DB 제공 여부~~ → **확보됨**(본 저장소 `.env.local`), 685/685 통과. 남은 것은 실제 HTTP·head·CDN 실측과 이관 주소 대조다.
 4. **리뷰어 레인 복구 방식**: config 매핑 추가(권장) 또는 대체 리뷰어 명시 승인. R3–R6·SEC-1·RV가 여기에 걸려 있다.
 
 **운영 게이트(승인과 별개로 필수):** 원격 백업 없이는 전환하지 않는다(롤백 대상 부재).

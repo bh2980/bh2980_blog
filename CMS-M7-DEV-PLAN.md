@@ -714,6 +714,28 @@ runId `e1d1d73c-04b1-4f41-9fe3-d5a1fe1ff8b4` · 판정: **전환 승인 보류**
 
 **SEC-1은 아직 미완이다.** P1·P2 수정 반영 후 **재검수**가 필요하고, 재검수 통과 전에는 전환을 승인하지 않는다.
 
+### 9.17 SEC-1 재검수 통과와 실DB 통합 검증 (2026-09-22)
+
+#### 재검수 (run `8c39aea3`, native subagent + `xai/grok-4.7`)
+
+- 판정: **통과 가능(OK with notes).** 조건 3 **충족** — `analyze` 오류 본문은 발행 복사와 `compileMDX` 양쪽에서 거부된다.
+- working→published **무검증 복사 경로 없음**: published 본문을 쓰는 지점 3곳을 확인했다. `publishEntry`·`executeSchedulePublish`는 게이트 뒤, `importEntries`는 working 복사가 아니며 운영 호출자(`import-plan`/`migration-runner`)가 `mdx_error`를 먼저 차단한다.
+- `archive`/`unarchive`/`restore`/`duplicate`는 status나 working만 바꾸므로 해당 없음.
+- 남은 P2 3건: ① `a.tsx`의 `/\host` → **수정**(고정 origin 해석으로 교체) ② `REGISTERED_JSX_NAMES` 미사용 + `dangerouslySetInnerHTML` 정적 객체 속성 허용 → M8 ③ `importEntries`가 게이트 없이 published를 INSERT(HTTP 라우트 없음, 컴파일러 게이트가 막음) → M8.
+- 리뷰어 한계: 셸이 없어 실행 증거가 없다. 실행 증거는 아래 실측이다.
+
+#### 실DB 검증 — env 위치를 찾았다
+
+- 워크트리 `.env.local`(682B)에는 CMS 키가 **없다**. 본 저장소 `/Users/bh2980/Desktop/bh2980_blog/.env.local`(1733B)에 `CMS_TEST_DATABASE_URL` 등이 있다. worktree는 untracked 파일을 공유하지 않는다.
+- 실행: `node --env-file=/Users/bh2980/Desktop/bh2980_blog/.env.local node_modules/vitest/vitest.mjs run`
+- 결과: **106 files / 685 tests / 전부 pass / 0 fail / 0 skip.** env 부재로 실패하던 9개 파일과 배치 1의 store 계약 12건 + 예약 중복 1건이 모두 실제 Postgres에서 통과했다.
+- 신규 `src/libs/contents/repositories/__test__/postgres-repository.integration.test.ts`(9건): 실제 DB → `PostgresRepository` → 공개 조회. 발행 즉시 노출 · 초안 제외 · 보관/휴지통 → null(404) · 주소 변경 → 이전 주소가 정규 slug(페이지 308 판정) · 목록은 본문 미포함 · 메모 동일 · SEO 매핑 · 빈 `seo` 키 미생성.
+- **발견(이관 리스크, 테스트로 고정)**: `toPost`는 **해석 가능한 published 카테고리**가 없으면 글을 공개하지 않는다(`repositories/postgres.ts:88-92`). 이관 시 카테고리 레코드가 published여야 하고, 아니면 글이 조용히 사라진다. LEAD-1 전환 점검에 포함한다.
+
+#### O2 차단급 위험 해소
+
+① 실DB 계약 미검증 → **해소**(685/685). ② 미리보기 DB 초안 경로 → 미해결(승인 조건). ③ R3–R6 완료, SEC-1 재검수 통과 → **해소**. ④ 이관 무결성 대조 → 미해결. ⑤ 원격 백업 → 미해결.
+
 
 
 

@@ -23,6 +23,11 @@ describe("공개 앵커 스킴 제한", () => {
 		expect(renderToStaticMarkup(<Anchor href="//evil.example/a">본문</Anchor>)).not.toContain("href");
 	});
 
+	it("역슬래시가 섞인 /\\host도 링크로 만들지 않는다", () => {
+		// 브라우저는 `\`를 `/`로 보므로 `/\evil.example`은 `//evil.example`과 같다.
+		expect(renderToStaticMarkup(<Anchor href="/\\evil.example">본문</Anchor>)).not.toContain("href");
+	});
+
 	it("http(s) 링크는 새 창으로 연다", () => {
 		const html = renderToStaticMarkup(<Anchor href="https://example.com/a">본문</Anchor>);
 
