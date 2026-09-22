@@ -226,6 +226,9 @@ importers:
       unist-util-visit:
         specifier: ^5.0.0
         version: 5.1.0
+      vfile:
+        specifier: ^6.0.3
+        version: 6.0.3
       zod:
         specifier: ^4.2.1
         version: 4.3.6
