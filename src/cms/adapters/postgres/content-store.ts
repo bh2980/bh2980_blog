@@ -1256,6 +1256,32 @@ export function createContentStore(
 			return await loadEntry(pool, id, qSchema);
 		},
 
+		/**
+		 * M9-FE-1: 관리자 미리보기 전용 조회. working slug로 항목과 working 본문을 찾는다.
+		 *
+		 * 공개 조회(`getPublishedEntryBySlug`)와 달리 초안·보관·휴지통도 찾는다. 공개 계층은
+		 * 이 메서드를 쓰지 않으므로 초안이 공개로 새지 않는다. 상태를 걸러내지 않는 대신
+		 * 호출자가 관리자 인증을 먼저 통과해야 한다.
+		 */
+		getWorkingEntryBySlug: async (params: { collection: string; slug: string }): Promise<Entry | null> => {
+			if (typeof params?.collection !== "string" || typeof params?.slug !== "string") {
+				throw new CmsError("Invalid parameters", "invalid_input");
+			}
+			if (params.slug.trim().length === 0) {
+				throw new CmsError("Invalid slug", "invalid_input");
+			}
+
+			const res = await pool.query<{ id: string }>(
+				`SELECT id FROM "${qSchema}".entries WHERE collection = $1 AND working_slug = $2 LIMIT 1`,
+				[params.collection, params.slug],
+			);
+			if (res.rows.length === 0) {
+				return null;
+			}
+
+			return await loadEntry(pool, res.rows[0].id, qSchema);
+		},
+
 		saveWorking: async (id: string, data: SaveWorkingInput): Promise<Entry> => {
 			const client = await pool.connect();
 			try {

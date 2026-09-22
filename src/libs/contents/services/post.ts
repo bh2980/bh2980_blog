@@ -3,6 +3,7 @@ import "server-only";
 import { compareDesc } from "date-fns";
 import { canPreview } from "@/libs/admin/preview-access";
 import { getContentRepository } from "../get-content-repository";
+import { getDraftPreviewPost } from "../repositories/draft-preview";
 import type { ListResult, Post, PublishedPost } from "../types/contents";
 import type { PostListQuery } from "../types/query";
 
@@ -36,13 +37,19 @@ export async function listPostSlugs() {
 /**
  * 미리보기 조회. 권한 판정은 CMS 관리자 세션이다(M7-FE-1 / O1 A9).
  * 공개 `getPost`와 달리 초안을 막지 않는다. 대신 인증을 통과해야만 호출된다.
+ *
+ * M9-FE-1: postgres 공개 저장소는 계약상 초안을 돌려주지 않으므로, 공개 조회가 비어 있으면
+ * 관리자 전용 working 본문 경로를 한 번 더 본다. 공개 경로(`getPost`)는 그대로 초안을 숨긴다.
  */
 export async function getPreviewPost(slug: string) {
 	const isAdmin = await canPreview();
 
 	if (!isAdmin) return null;
 
-	return await contentRepository.getPost(slug);
+	const post = await contentRepository.getPost(slug);
+	if (post) return post as Post;
+
+	return await getDraftPreviewPost(slug);
 }
 
 export async function listPreviewPosts(query: PostListQuery = {}): Promise<ListResult<Post>> {
