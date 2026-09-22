@@ -35,6 +35,19 @@ describe("M7-FE-2 SEO metadata 해석", () => {
 		expect(normalizeCanonicalUrl(undefined)).toBeNull();
 	});
 
+	it("역슬래시가 섞인 경로는 다른 origin으로 해석되지 않는다", () => {
+		// 브라우저 URL 파서는 특수 스킴에서 `\`를 `/`로 본다 → `/\evil.example`은 `//evil.example`과 같다.
+		expect(normalizeCanonicalUrl("/\\evil.example")).toBeNull();
+		expect(normalizeCanonicalUrl("\\/evil.example")).toBeNull();
+		expect(normalizeCanonicalUrl("/posts/hello")).toBe("/posts/hello");
+	});
+
+	it("제어문자·공백은 canonical 경로에서 정리된 형태로만 남는다", () => {
+		expect(normalizeCanonicalUrl("/posts/\u0001a")).toBe("/posts/%01a");
+		expect(normalizeCanonicalUrl("/posts/\t b")).toBe("/posts/%20b");
+		expect(normalizeCanonicalUrl("https://example.com/a\\b")).not.toContain("\\");
+	});
+
 	it("잘못된 canonical만 있으면 나머지 SEO 값은 남기고 canonical만 버린다", () => {
 		expect(readSeoMetadata({ seoTitle: "제목", canonicalUrl: "javascript:alert(1)" })).toEqual({ title: "제목" });
 		expect(readSeoMetadata({ canonicalUrl: "javascript:alert(1)" })).toBeUndefined();

@@ -25,6 +25,17 @@ function readMetadataString(metadata: Record<string, unknown>, key: string): str
  * `javascript:` 같은 스킴이나 `//host`(프로토콜 상대)는 무시한다. 잘못된 값이 들어와도
  * canonical이 사라질 뿐 폴백 주소가 유지되므로 head가 깨지지 않는다.
  */
+/** 경로 형식 canonical을 해석할 때만 쓰는 고정 origin. 실제 사이트 origin과 비교하지 않는다. */
+const CANONICAL_PATH_BASE = "https://canonical.invalid";
+
+/**
+ * canonical로 쓸 수 있는 값만 통과시킨다.
+ * - 사이트 내 경로: `/posts/hello`
+ * - 절대 URL: `https://example.com/posts/hello`
+ *
+ * `javascript:` 같은 스킴이나 `//host`(프로토콜 상대)는 무시한다. 잘못된 값이 들어와도
+ * canonical이 사라질 뿐 폴백 주소가 유지되므로 head가 깨지지 않는다.
+ */
 export function normalizeCanonicalUrl(value: string | null | undefined): string | null {
 	if (!value) return null;
 
@@ -32,7 +43,16 @@ export function normalizeCanonicalUrl(value: string | null | undefined): string 
 	if (trimmed.length === 0) return null;
 	if (trimmed.startsWith("//")) return null;
 
-	if (trimmed.startsWith("/")) return trimmed;
+	if (trimmed.startsWith("/")) {
+		// WHATWG URL 파서는 특수 스킴에서 `\`를 `/`로 본다. 그래서 `/\evil.example`은 `//evil.example`과
+		// 같아져 프로토콜 상대 URL이 된다. 고정 origin으로 해석해 **같은 origin일 때만** 통과시키고,
+		// 제어문자·공백은 파서가 인코딩/제거한 경로를 그대로 쓴다(R3 리뷰 P2).
+		const resolved = new URL(trimmed, CANONICAL_PATH_BASE);
+
+		if (resolved.origin !== CANONICAL_PATH_BASE) return null;
+
+		return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+	}
 
 	try {
 		const url = new URL(trimmed);

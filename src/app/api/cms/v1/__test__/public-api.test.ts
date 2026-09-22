@@ -175,6 +175,7 @@ describe("M7-BE-3 공개 API 계약", () => {
 
 		expect(draft.status).toBe(404);
 		expect(missing.status).toBe(404);
+		expect(draft.headers.get("cache-control")).toBe("no-store");
 		expect(await draft.text()).not.toContain(DRAFT_BODY_SENTINEL);
 	});
 
@@ -197,6 +198,8 @@ describe("M7-BE-3 공개 API 계약", () => {
 
 		expect(badCollection.status).toBe(400);
 		expect(badQuery.status).toBe(400);
+		expect(badCollection.headers.get("cache-control")).toBe("no-store");
+		expect(badQuery.headers.get("cache-control")).toBe("no-store");
 	});
 
 	it("저장소 장애는 404가 아니라 503이고 내부 메시지를 노출하지 않는다", async () => {
@@ -206,6 +209,7 @@ describe("M7-BE-3 공개 API 계약", () => {
 		const board = await list.json();
 
 		expect(list.status).toBe(503);
+		expect(list.headers.get("cache-control")).toBe("no-store");
 		expect(board.code).toBe("unavailable");
 		expect(JSON.stringify(board)).not.toContain("ECONNREFUSED");
 		expect(list.status).not.toBe(404);

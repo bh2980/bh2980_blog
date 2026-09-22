@@ -1,7 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getContentRepository } from "@/libs/contents/get-content-repository";
 import { publicEntryCollectionSchema, toPublicAddress, toPublicMemo, toPublicPost } from "@/libs/contents/public-api";
-import { handlePublicApiError, publicJson } from "../../../errors";
+import { handlePublicApiError, publicError, publicJson } from "../../../errors";
 
 interface RouteContext {
 	params: Promise<{ collection: string; slug: string }>;
@@ -22,13 +22,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 		const parsed = publicEntryCollectionSchema.safeParse(collection);
 		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: `Unsupported collection: ${collection}` },
-				{ status: 400 },
-			);
+			return publicError("invalid_input", `Unsupported collection: ${collection}`);
 		}
 		if (!slug || slug.trim().length === 0) {
-			return NextResponse.json({ code: "invalid_input", message: "slug is required" }, { status: 400 });
+			return publicError("invalid_input", "slug is required");
 		}
 
 		const repository = getContentRepository();
@@ -38,7 +35,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 				: await repository.getMemo(slug).then((memo) => (memo ? toPublicMemo(memo, { includeBody: true }) : null));
 
 		if (!entry) {
-			return NextResponse.json({ code: "not_found", message: "Not found" }, { status: 404 });
+			return publicError("not_found", "Not found");
 		}
 
 		return publicJson({ entry, address: toPublicAddress(slug, entry.slug) });

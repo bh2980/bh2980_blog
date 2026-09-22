@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getContentRepository } from "@/libs/contents/get-content-repository";
 import {
 	type PublicEntryDto,
@@ -8,7 +8,7 @@ import {
 	toPublicPost,
 } from "@/libs/contents/public-api";
 import { isDefined } from "@/utils/is-defined";
-import { handlePublicApiError, publicJson } from "../errors";
+import { handlePublicApiError, publicError, publicJson } from "../errors";
 
 // 공개 목록은 요청 시점에 읽는다(M7-BE-2와 같은 원칙). 캐시하지 않는다.
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 		const parsed = publicEntriesQuerySchema.safeParse(rawQuery);
 		if (!parsed.success) {
-			return NextResponse.json({ code: "invalid_input", message: "Invalid query parameters" }, { status: 400 });
+			return publicError("invalid_input", "Invalid query parameters");
 		}
 
 		const { collection, category, tag, page, pageSize } = parsed.data;

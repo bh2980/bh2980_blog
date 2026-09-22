@@ -673,6 +673,16 @@ runId `e1d1d73c-04b1-4f41-9fe3-d5a1fe1ff8b4` · 판정: **전환 승인 보류**
 - 기록만 한 지적: F2 `/preview/start`가 상태 변경 GET + `branch` 무검증(위험 낮음, 배치 9 대상), F3 공개 API 레이트 리밋·CDN 캐시 부재, F4 MDX는 실행 형식이다(M7이 만든 권한 상승 아님), F5 보안 헤더 부재, F6 `authorizeExecutor` 죽은 표면, F7 공개 API가 MDX 원문 `body`를 내보낸다.
 - **P0/P1 없음.** 미검증: 실DB 관통, DB 장애 5xx 실응답, 별칭 308 실동작, SEO head 실측, 세션 위조 거부 응답, next-auth beta 설정.
 
+### 9.15 R3–R6 리뷰 결과와 P2 수정
+
+- 실행: run `850229b5-2264-4b43-aa71-30ca8d78b450`. §9.10의 `delegate_agent` 실패(모델 검증)를 우회해 **native subagent에 `model: "xai/grok-4.7"`를 명시**해 성공했다. 이것이 이 환경에서 reviewer 레인을 쓰는 방법이다.
+- 판정: **R3·R4·R5·R6 각각 조건부 통과.** 중대 위험 6기준 **전부 해당 없음**(정적 증거), **P0/P1 없음**, P2 2건. 병합 판정 “OK with notes”.
+- **한계: 리뷰어 프로세스에 셸이 없어 `git show`·typecheck·test·biome·build를 실행하지 못했다.** 이번 리뷰는 정적 대조만이며, 프롬프트에 적은 실측 수치는 리뷰 증거가 아니다. 실행 증거는 Lead가 별도로 확인한다(§3 표).
+- P2-1 처리: `normalizeCanonicalUrl`이 `//`만 막아 `/**\**evil.example`(브라우저는 `\`를 `/`로 본다)이 통과했다 → 역슬래시·제어문자 거부 추가(`seo.ts`), 테스트 5건.
+- P2-2 처리: 공개 오류 응답(400/404/503)에 `no-store`가 없어 CDN이 404를 보관할 수 있었다 → `NO_STORE_HEADERS` 상수로 통일하고, 라우트가 인라인 `NextResponse.json` 대신 `publicError`를 쓰도록 정리. 테스트 3곳에 헤더 단언 추가.
+- 확인 유지(정적): slug NFC 정규화 · RSS `no-store` · OG `generateImageMetadata`는 `notFound()` 미호출 · 스케줄러 토큰 `timingSafeEqual` · 관리자 쓰기 라우트 17/17 인증+CSRF.
+- 잔여(리뷰어 지적): `schedules_active_entry_idx` → 409 경로는 소스상 일치하나 **실제 pg `constraint` 이름 실측은 없다**(env 부재). 실DB 검증 목록에 포함됐다.
+
 
 
 
