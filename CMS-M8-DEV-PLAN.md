@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과** · **배치 4 DONE + R4 통과**(`ec8076a`, 폐기 정리) · 배치 5 진행 중. 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **115 files / 748 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과** · **배치 4 DONE + R4 통과**(`ec8076a`, 폐기 정리) · **배치 5 DONE + RV 승인**(`4367361e-66a0-49f6-ae15-d3b3012bd2b6`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **117 files / 760 tests pass** · `pnpm build` exit 0.
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -467,7 +467,9 @@ pnpm build
 2. **§4.4 fallback 명시** — CommonMark로 의미를 보존할 수 없는 자리의 `<strong>`·`<em>`·`<del>` 예외를 문서화했다.
 3. **이미지 표면 배선** — 공개 상세는 mediaId를 DB·R2 공개 URL로 해석하고, 주소가 런타임에 실패하면 아이콘이 있는 중립 플레이스홀더를 표시한다. 발행 API는 DB 상태와 R2 `HEAD` 확인 결과를 비차단 `warnings`로 반환하며, CMS 편집기는 이미지 아래에 실패 사유를 표시한다.
 
-**검증(실행 증거):** `pnpm typecheck` 0 · `pnpm test:run` **117 files / 758 tests pass** · `pnpm build` exit 0.
+**RV 수정 및 재검수 완료:** 이전 BLOCK 5건을 커밋 `2b1028a`에서 수정했다. 장식 이미지 성공 경로 보존+회귀 테스트, 메모 public resolver, mediaId 전용 에디터 상태 조회/API/OpenAPI, 1~4096px 공개 렌더를 반영했다. `pnpm typecheck` 0 · `pnpm test:run` **117 files / 760 tests pass** · `pnpm build` exit 0.
+
+**RV 재검수:** `reviewer` run `4367361e-66a0-49f6-ae15-d3b3012bd2b6` — **RV 승인 / Merge verdict: OK with notes**. 중대 위험 6종 없음, §1 종료 조건과 최종 게이트 3종 충족. 관찰 사항(경계값 직접 테스트 부족, resolver가 `HEAD` 없이 URL을 만들고 클라이언트 `onError`에 의존, 계획서 수치)은 모두 비차단이며 이 문서에서 수치를 갱신했다.
 
 **49 URL 스모크** (`pnpm build` exit 0 후 `pnpm start` + sitemap 51 URL): **40 × 200, 11 × 500**. 500은 전부 `TypeError: Invalid character in header content ["location"]`(별칭 308의 한글 Location 미인코딩)이다. **M8 회귀가 아니다** — 근거: ① 라우트·조회·위생 코드가 main과 바이트 동일하다 ② `src/contents`는 46편 수정만 있고 경로 변경 0건이다 ③ 같은 본문 49편이 공개 체인 렌더·analyze를 전부 통과한다. 별칭 판정 발동 조건 자체는 미조사 — 후속 조치(리다이렉트 인코딩 + 발동 조건 조사)로 기록한다.
 
