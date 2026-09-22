@@ -88,7 +88,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M8-ED-1 | DONE | ED | `feature/new-cms` | `475c2c6`, `b74c215`, `9963203` | §4.4를 전면 directive로 개정. **사용자 승인 2026-09-22** |
 | M8-FE-1 | DONE | FE | `feature/new-cms` | `4ae05b7`, `ff586fe` | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지). 선행 M8-ED-1 충족 |
 | M8-FE-2 | DONE | FE+BE | `feature/new-cms` | `ff586fe`, `a743c7e`, `3463d6f` | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
-| M8-TW-1 | TODO | TW | — | — | 등록 이름 대조 + 미등록은 본문 텍스트 보존 검증 + 폐기 이름 제거 |
+| M8-TW-1 | DONE | TW | `feature/new-cms` | (배치 4 커밋) | 등록 이름 대조 + 미등록은 본문 텍스트 보존 검증 + 폐기 이름 제거 |
 | M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
 | M8-DA-1 | DONE | DA+TW | `feature/new-cms` | `78aac7a`, `11287b9` | 레거시 46편(컴포넌트 43 + `<u>`만 2 + 하드브레이크만 1) JSX→directive 변환 + 전후 대조 + `src/contents` 커밋 |
 | M8-RV-1 | TODO | RV | — | — | — |
@@ -181,6 +181,10 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 ---
 
 - 2026-09-22: **M8-DA-1 대상을 46편으로 정정하고 `<IdeographicSpace />`를 `:br[]`로 바꾼다.** ① 편수: 계획서·메모의 45편(컴포넌트 43 + `<u>`만 2)에 **하드브레이크만 쓰는 1편**(`memos/tuple과-readonly.mdx`)이 빠져 있었다 — 컴포넌트도 `<u>`도 없어서 목록에서 누락됐고, 변환기 `pnpm cms:convert`의 `--check`가 잡아냈다(실측 변환 예정 46편). ② `IdeographicSpace`: 계획 원안은 "삭제"였으나 **원문 렌더가 독립 문단이 아니라 맨 인라인 요소**(`<span>ㅤ</span>`, 문단 마진 없음)라 그냥 지우면 저자가 만든 여백이 사라진다. 사용자 결정으로 **홀로 쓴 `:br[]` 문단**(= 빈 줄)으로 대체한다 — 등록된 지시자라 예외가 필요 없고 보이지 않는 글자를 남기지 않는다. ③ A6 대조: 46편 중 **38편 바이트 동일**, 8편은 두 규칙(`IdeographicSpace` 빈 줄, `<br/>` 뒤 접히는 공백)만 다르고 **정규화 후 불일치 0**이다. 증거는 `src/cms/mdx/__test__/legacy-conversion.test.tsx` + `__fixtures__/legacy-render-hashes.json`(변환 전 원본 렌더 해시)로 저장소에 남긴다. ④ 쓰기 경로(`toDocument`/`serialize`)가 directive를 배우기 전이라 `roundtrip.test.ts` 표본 2건과 `corpus-roundtrip.test.tsx`는 **배치 3까지 `it.fails`로 현재 상태를 고정**했다(배치 3에서 통과하면 마커를 지우게 된다).
+
+---
+
+- 2026-09-22: **M8-TW-1 완료(배치 4).** ① `ContentLink`·`IdeographicSpace`를 레지스트리·렌더러·참조 수집·Keystatic 컴포넌트에서 제거하고 `RETIRED_JSX_NAMES`로 묶었다 — 본문에 남아 있으면 `analyze`가 `폐기된 JSX 요소` 오류로 거부한다. ② `REGISTERED_JSX_NAMES`를 `analyze`에 배선했다(미등록 JSX 거부 — M6 한계 테스트를 계약으로 전환). 읽기 호환(`<u>`·`<br/>`·`<sup>`·`<sub>` 등)은 유지되며, 빠졌던 `br`을 등록 이름에 추가했다. ③ 에디터 내부링크 삽입을 `[제목](/entries/<UUID>)`에서 `[제목](/posts/{slug})`로 바꿨다(slug 없음 → 제목만). ④ 대조 테스트(정의표↔렌더러↔레지스트리)와 미등록 보존 핀(`:free를`·`:1로` 코퍼스)을 저장소에 남겼다. 이관 도구(변환기·감사기)의 레거시 이름 인식은 유지한다 — 아직 안 바꾼 원문을 읽어야 하므로.
 
 ---
 

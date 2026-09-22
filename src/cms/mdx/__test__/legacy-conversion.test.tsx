@@ -82,6 +82,18 @@ describe("M8-DA-1 변환 등가성", () => {
 		expect(mismatches).toEqual([]);
 	});
 
+	it("미등록 `:이름` 2건이 본문 글자로 남아 있다", () => {
+		// demote 규칙의 실측 근거 — 변환기가 손대지 않고 렌더가 보존한다(M8-TW-1).
+		const cases: [string, string][] = [
+			["src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx", ":free를"],
+			["src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx", ":1로"],
+		];
+		for (const [rel, text] of cases) {
+			const source = readFileSync(path.join(REPO_ROOT, rel), "utf8");
+			expect(source).toContain(text);
+		}
+	});
+
 	it("49편에 레거시 JSX 표기가 남지 않고 분석 오류가 0이다", () => {
 		const corpus = readLegacyCorpus(REPO_ROOT);
 		const items = [...corpus.posts, ...corpus.memos];

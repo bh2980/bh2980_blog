@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과**(`657b271`, `55500b7`, serializer directive 출력 + 에디터 배선) · 배치 4 진행 예정 · 배치 5 TODO. M8-ED-1 DONE. 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **114 files / 745 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE + R1 통과** · **배치 2 DONE + R2 통과** · **배치 3 DONE + R3 통과** · **배치 4 DONE**(폐기 정리, R4 대기) · 배치 5 TODO. 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **115 files / 748 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -426,6 +426,28 @@ pnpm build
 **인프라(기록):** 첫 위임이 업스트림 오류(`上游返回错误`)로 실패 → 같은 프로토콜 재시도에서 성공(R2와 동일 패턴).
 
 **알려진 제한(배치 4 이후 검토):** 라벨 없는 등록 텍스트 지시자(`:u `·`:br ` 맨형태)는 읽기 단계에서 지시자로 인식되어 증발한다. 쓰기 이스케이프와 별개이며 코퍼스·공개 렌더에 영향 없다.
+
+### 9.6 배치 4 결과
+
+**커밋:** (다음 커밋에서 기록)
+
+**산출물**
+
+- `RETIRED_JSX_NAMES`(`ContentLink`, `IdeographicSpace`) 신설 + 두 이름을 레지스트리 2종·`MDX_COMPONENTS`·Keystatic 컴포넌트·참조 수집에서 제거. 본문에 남아 있으면 `analyze`가 `폐기된 JSX 요소` 오류로 거부한다.
+- `REGISTERED_JSX_NAMES`를 `analyze`에 배선(미등록 JSX 거부). fragment(`<>`)는 이름이 없어 대조하지 않는다. 읽기 호환 완성을 위해 빠졌던 `br`을 등록 이름에 추가했다.
+- 참조 수집은 `Image` 전용으로 단순화(`empty_reference_id` 코드 제거, `missing_media_id` 유지 — 코드명 검토 결과 그대로 둔다).
+- 대조 테스트 `directive-registry.test.ts`(정의표↔렌더러↔레지스트리 + 폐기 잠금) + 미등록 보존 핀(`:free를`·`:1로` 코퍼스) + M6 한계 테스트의 계약 전환.
+- 에디터 내부링크 삽입 `[제목](/posts/{slug})`(R3 이관, slug 없음 → 제목만).
+
+**검증(실행 증거)**
+
+- `pnpm test:run` → **115 files / 748 tests pass** · `pnpm exec tsc --noEmit` 0.
+- 49편 전부 `analyze` 오류 0(미등록 거부 후에도 깨지는 본문 없음).
+
+**남긴 것(명시)**
+
+- 이관 도구(변환기 `legacy-jsx-to-directive.ts`·감사기 `roundtrip-audit.ts`)의 레거시 이름 인식은 유지한다 — 아직 변환하지 않은 원문을 읽어야 하므로. "폐기 0건"은 레지스트리·렌더러·본문·전방향 문서 기준이다.
+- 라벨 없는 등록 텍스트 지시자(`:u ` 맨형태)의 읽기 증발은 미해결(배치 3 기록 유지).
 
 ### 9.5 배치 3 / 9.6 배치 4 / 9.9 M8-RV-1
 

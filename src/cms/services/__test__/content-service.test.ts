@@ -324,14 +324,14 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[0].occurrences[1]).toMatchObject({ type: "metadata", path: "itemIds", ordinal: 1 });
 		});
 
-		it("extracts ordered/deduplicated refs with occurrences from ContentLink and Image", async () => {
+		it("extracts ordered/deduplicated refs with occurrences from Image", async () => {
 			const mdx =
-				'<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="987e4567-e89b-12d3-a456-426614174000" />\n<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />';
+				'<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="987e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />';
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
 			expect(snap.references).toHaveLength(2);
 
 			expect(snap.references[0]).toMatchObject({
-				kind: "entry",
+				kind: "media",
 				targetId: "123e4567-e89b-12d3-a456-426614174000",
 				isStale: false,
 			});
@@ -347,14 +347,25 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[1].occurrences[0]).toMatchObject({ line: 2, column: 1 });
 		});
 
-		it.each([
-			['<ContentLink targetId="" />', "empty_reference_id"],
-			["<Image mediaId={dynamicId} />", "dynamic_reference_id"],
-			['<ContentLink targetId="not-static" />', "invalid_reference_id"],
-		])("creates structured issues for empty/dynamic/invalid IDs: %s", async (mdx, expectedIssue) => {
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
-			expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
+		it("rejects retired ContentLink with a migration message", async () => {
+			const snap = await prepareSnapshot({
+				collection: "post",
+				slug: "a",
+				metadata: {},
+				mdx: '<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />',
+			});
+			expect(snap.issues).toContainEqual(
+				expect.objectContaining({ code: "mdx_error", message: expect.stringContaining("폐기된") }),
+			);
 		});
+
+		it.each([["<Image mediaId={dynamicId} />", "dynamic_reference_id"]])(
+			"creates structured issues for dynamic IDs: %s",
+			async (mdx, expectedIssue) => {
+				const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+				expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
+			},
+		);
 
 		it("retains trusted previous refs marked stale on MDX syntax error and keeps exact MDX unchanged", async () => {
 			const mdx = "</Invalid>";

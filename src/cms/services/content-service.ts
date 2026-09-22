@@ -259,18 +259,19 @@ export async function prepareSnapshot(
 	const traverse = (node: unknown) => {
 		if (!isMdxNode(node)) return;
 		if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
-			if (node.name === "ContentLink" || node.name === "Image") {
-				const isContentLink = node.name === "ContentLink";
+			// `ContentLink`는 배치 4에서 폐기했다 — 본문에 남아 있으면 위 `analyze`가 거부한다.
+			// 참조 수집은 `Image`(`mediaId`만 참조)만 다룬다. `src`는 외부 주소라 참조가 아니다.
+			if (node.name === "Image") {
 				const attrs = Array.isArray(node.attributes) ? node.attributes : [];
 				const readAttr = (key: string) =>
 					attrs.find((a: unknown): a is MdxAttribute => isMdxAttribute(a) && a.name === key);
 
 				// 이미지는 `mediaId`(등록 미디어) 또는 `src`(외부 주소) 중 하나를 쓴다(§4.4).
-				const mediaIdAttr = isContentLink ? undefined : readAttr("mediaId");
-				const srcAttr = isContentLink ? undefined : readAttr("src");
-				const attr = isContentLink ? readAttr("targetId") : (mediaIdAttr ?? srcAttr);
+				const mediaIdAttr = readAttr("mediaId");
+				const srcAttr = readAttr("src");
+				const attr = mediaIdAttr ?? srcAttr;
 				// `mediaId`만 참조 테이블 대상이다. `src`는 외부 주소라 참조가 아니다.
-				const collectsReference = isContentLink || attr === mediaIdAttr;
+				const collectsReference = attr === mediaIdAttr;
 				const pos = node.position?.start;
 				const occurrence: ReferenceOccurrence = {
 					type: "mdx",
@@ -279,10 +280,10 @@ export async function prepareSnapshot(
 				};
 
 				if (!attr) {
-					mdxIssues.push({ code: isContentLink ? "empty_reference_id" : "missing_media_id" });
+					mdxIssues.push({ code: "missing_media_id" });
 					mdxHasError = true;
 				} else if (attr.value === null || attr.value === undefined || attr.value === "") {
-					mdxIssues.push({ code: isContentLink ? "empty_reference_id" : "missing_media_id" });
+					mdxIssues.push({ code: "missing_media_id" });
 					mdxHasError = true;
 				} else if (typeof attr.value === "object") {
 					mdxIssues.push({ code: "dynamic_reference_id" });
@@ -296,7 +297,7 @@ export async function prepareSnapshot(
 						mdxHasError = true;
 					} else {
 						mdxRefsToAdd.push({
-							kind: isContentLink ? "entry" : "media",
+							kind: "media",
 							targetId: attr.value,
 							occ: occurrence,
 						});
@@ -304,15 +305,13 @@ export async function prepareSnapshot(
 				}
 
 				// 이미지 소스는 위치와 함께 남긴다 — 발행 전 검사가 비차단 경고를 만들 때 쓴다(§4.4).
-				if (!isContentLink) {
-					const mediaId = typeof mediaIdAttr?.value === "string" ? mediaIdAttr.value : undefined;
-					const src = typeof srcAttr?.value === "string" ? srcAttr.value : undefined;
-					if (mediaId || src) {
-						imageSources.push({
-							...(mediaId ? { mediaId } : { src }),
-							position: { line: occurrence.line, column: occurrence.column },
-						});
-					}
+				const mediaId = typeof mediaIdAttr?.value === "string" ? mediaIdAttr.value : undefined;
+				const src = typeof srcAttr?.value === "string" ? srcAttr.value : undefined;
+				if (mediaId || src) {
+					imageSources.push({
+						...(mediaId ? { mediaId } : { src }),
+						position: { line: occurrence.line, column: occurrence.column },
+					});
 				}
 			}
 		}

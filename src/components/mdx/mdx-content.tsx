@@ -26,7 +26,6 @@ import { collapse } from "./code-block/collapse";
 import { fold } from "./code-block/fold";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
-import { IdeographicSpace } from "./ideographic-space";
 import { CmsImage } from "./image";
 import { Mermaid } from "./mermaid.client";
 import { pre } from "./pre";
@@ -75,7 +74,6 @@ export const MDX_REHYPE_PLUGINS: PluggableList = [
 
 /** 공개 페이지가 쓰는 MDX 컴포넌트 표. */
 export const MDX_COMPONENTS = {
-	IdeographicSpace,
 	a,
 	pre,
 	Mermaid,

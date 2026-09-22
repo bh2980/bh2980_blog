@@ -13,7 +13,7 @@ describe("M3-ED-2 Internal Link ([[) Trigger & Format Contract", () => {
 		expect(parseInternalLinkTrigger("일반 텍스트 [단일 대괄호]").active).toBe(false);
 	});
 
-	it("formats ContentLink cleanly for markdown", () => {
+	it("formats internal links as plain markdown links", () => {
 		const item: InternalLinkItem = {
 			id: "123e4567-e89b-12d3-a456-426614174000",
 			collection: "post",
@@ -21,7 +21,8 @@ describe("M3-ED-2 Internal Link ([[) Trigger & Format Contract", () => {
 			slug: "nextjs-guide",
 		};
 
-		expect(formatContentLinkMdx(item)).toBe("[Next.js 완전 정복](/entries/123e4567-e89b-12d3-a456-426614174000)");
-		expect(formatContentLinkMdx(item, "가이드 보기")).toBe("[가이드 보기](/entries/123e4567-e89b-12d3-a456-426614174000)");
+		expect(formatContentLinkMdx(item)).toBe("[Next.js 완전 정복](/posts/nextjs-guide)");
+		expect(formatContentLinkMdx(item, "가이드 보기")).toBe("[가이드 보기](/posts/nextjs-guide)");
+		expect(formatContentLinkMdx({ ...item, slug: "" })).toBe("Next.js 완전 정복");
 	});
 });
