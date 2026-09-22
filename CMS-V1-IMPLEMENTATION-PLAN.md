@@ -87,8 +87,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M7-RV-1 | TODO | RV | — | — | M7 구현분 최종 검수(리뷰 6회·SEC 검수로 대체 검증). 전환 검수는 M9-RV-1 |
 | M8-ED-1 | REVIEW | ED | `feature/M7` | — | §4.4를 전면 directive로 개정(초안 반영, 사용자 승인 대기) |
 | M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
-| M8-FE-2 | TODO | FE+BE | — | — | 누락 컴포넌트 TextAlign·Image·ContentLink + ID→공개주소 해석 |
-| M8-TW-1 | TODO | TW | — | — | 미등록 지시자·컴포넌트 거부 + 레지스트리 대조 |
+| M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
+| M8-TW-1 | TODO | TW | — | — | 미등록 지시자·컴포넌트 거부 + 레지스트리 대조 + 폐기 이름 제거 |
 | M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
 | M8-DA-1 | TODO | DA+TW | — | — | 레거시 43편 JSX→directive 변환 + 전후 대조 |
 | M8-RV-1 | TODO | RV | — | — | — |
@@ -161,7 +161,9 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 - 2026-09-23: **v1 커버리지 구멍 발견 — M8 등록.** §4.4의 `TextAlign`·`Image`·`ContentLink`는 F16(§6.2)·F18(§4.3)의 **v1 기능**이고 F18 수용 기준은 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구하는데(`CMS-SPEC.md:644`), **공개 렌더러 구현 태스크가 M1~M7 어디에도 없었다.** M1-ED-1은 serialize의 이름 유지, M3-ED-2는 편집기 삽입까지였고, 계획서는 공개 렌더를 “기존 블로그 경로 재사용”으로 전제했지만 그 컴포넌트는 저장소 역사상 한 번도 없었다(`git log --all --diff-filter=A` 결과 0건, `origin/main`도 동일). M6-ED-1 검수는 레거시 49편만 대상이라(사용 0건) 잡히지 않았다. **M8로 등록한다** — M7의 관심사(전환 준비)와 다르고, `ContentLink` 해석이 M7-BE-1에 의존하므로 순서상 M7 뒤가 맞다. 전환은 막지 않는다(49편 0건이므로 기존 글이 영향받지 않음). M7-LEAD-1 보고서에 “F16/F18 공개 렌더 미완”을 명시한다.
 - 2026-09-23: **M7 이후 재정렬(사용자 요청).** ① 순서 결함: 컴포넌트와 저장 형식이 없는데 DB 전환을 먼저 하는 계획이었다 → **M8(표현 계약)·M9(이관과 전환)**로 나누고 전환을 뒤로 옮겼다. ② 사용자 결정: 커스텀 컴포넌트를 **remark directive로 저장**한다(JSX 저장 폐기). `:이름` 충돌은 사용자가 패턴을 제한해 관리하고, 시스템은 미등록 지시자를 거부해 무음 손실을 막는다. 근거: micromark 문서 “If directives are not handled, they do not emit anything”, `[label]`은 선택이라 `:[`만 검사하면 안 된다(이름에 숫자 허용). 레거시 49편 **본문** 오인 패턴 실측 **2건**(`openai/gpt-oss-120b:free`, `1:1`). ③ 깨진 상태를 만들지 않는 순서 고정: **읽기(렌더러) → 파일 변환 → 쓰기(serializer·에디터) → 이관·전환**. 읽기 단계는 추가형이라 Keystatic이 읽는 현재 사이트에 영향이 없다. ④ 저장 형식 전환은 M1의 serialize 계약과 M6의 49/49 roundtrip 계약을 다시 연다(M8-ED-2·M8-DA-1). ⑤ 전환 검사에 **공개 HTML 대조**(M9-TW-1)를 추가했다 — 주소 대조만으로는 “이관하다 클나는” 경우를 못 잡는다. ⑥ M7-BE-5(Keystatic 제거)는 M9-BE-3으로 옮겼다.
-- 2026-09-23: **저장 형식을 전면 directive로 확정(사용자: “어차피 JSX 인라인도 읽기 어려워. 전면 directive”)**하고 `CMS-SPEC.md` §4.4를 개정했다. 확정 매핑: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`·`u`·`sup`·`sub`·`br`(텍스트). 굵게·기울임·취소선은 Markdown 문법 유지. **HTML 인라인도 directive로 바꾼다(사용자: “:[u]나 :[br] 같은걸로 해주는게 난 좋아”)** — 실측상 산문의 HTML 인라인은 `<u>` 38쌍뿐이고, `<br/>`(12건)·`<div>`(3건)는 코드·머메이드 펜스 안이라 변환 대상이 아니다(`:br`은 앞으로의 원문 작성을 위해 정의만 둔다). 코드·Mermaid·차트는 코드 펜스 유지(mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트라 directive 대상이 아니다. **주의:** `analyze`에 이름 검사를 배선할 때(M8-TW-1) 코드 스팬 밖의 원문 태그를 오검하지 않는지 실측해야 한다 — 그 전까지 `REGISTERED_JSX_NAMES`는 배선하지 않는다.
+- 2026-09-23: **저장 형식을 전면 directive로 확정(사용자: “어차피 JSX 인라인도 읽기 어려워. 전면 directive”)**하고 `CMS-SPEC.md` §4.4를 개정했다. 확정 매핑: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`·`u`·`sup`·`sub`·`br`(텍스트). 굵게·기울임·취소선은 Markdown 문법 유지. **HTML 인라인도 directive로 바꾼다(사용자: “:[u]나 :[br] 같은걸로 해주는게 난 좋아”)** — 실측상 산문의 HTML 인라인은 `<u>` 38쌍뿐이고, `<br/>`(12건)·`<div>`(3건)는 코드·머메이드 펜스 안이라 변환 대상이 아니다(`:br`은 앞으로의 원문 작성을 위해 정의만 둔다).
+- 2026-09-23: **폐기 2건(사용자 결정).** ① `ContentLink` — CMS 기획 문서(`b96e514`·`24aa89e`)에서 생긴 이름이고 사용자는 만든 적이 없다. 공개 렌더러에 존재한 적도 없고, **레거시 49편의 내부 글 링크는 0건**이다(상대경로 22건은 전부 이미지). M7에서 별칭 308을 구현했으므로 slug 링크로 충분하다 → `:entry-link`·ID 해석 계층·참조 검증 경로를 모두 뺀다. ② `IdeographicSpace` — 구현은 `<span>ㅤ</span>`이고 감사 도구가 `&#x20;`와 같은 범주(`leading-space-encoding`)로 분류하는 **공백·여백 강제 hack**이다(`<br/>` 대체가 아니라 블록 여백). 본문 6곳(4편)을 삭제하고 레지스트리에서 뺀다. `&#x20;` 35건은 같은 범주지만 v1에서 건드리지 않는다.
+- 2026-09-23: **요소 인벤토리와 Tiptap 우선 원칙(사용자 지시).** “컴포넌트를 구현하기 전에 Tiptap에 있는지 보고 있으면 그걸 우선 사용하되 문서에 명시” → `CMS-SPEC.md` **§4.5 요소 인벤토리**를 추가했다. Tiptap이 제공: 문단·제목·목록·인용·구분선·코드블록·굵게·기울임·취소선·인라인코드·링크·밑줄·강제 줄바꿈. **미설치(필요 시 추가):** `superscript`·`subscript`·`text-align`. **커스텀:** 이미지 노드·Tooltip·Callout·Collapsible·Tabs/Tab·Columns/Column·Mermaid·차트. 실측상 **Callout·Collapsible·Tabs/Tab·Columns/Column·Tooltip은 에디터 삽입 UI가 없다**(슬래시 메뉴 11개·툴바 5개에 없음) — 원문 작성·보존만 된다. 코드·Mermaid·차트는 코드 펜스 유지(mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트라 directive 대상이 아니다. **주의:** `analyze`에 이름 검사를 배선할 때(M8-TW-1) 코드 스팬 밖의 원문 태그를 오검하지 않는지 실측해야 한다 — 그 전까지 `REGISTERED_JSX_NAMES`는 배선하지 않는다.
 
 ---
 
@@ -892,7 +894,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
   - 속성 표기는 HTML 속성과 같다(`content="..."`), `#id`/`.class` 단축 허용.
   - 이스케이프: 본문에 `:이름` 형태가 필요하면 `\:`로 쓴다. 위 실측 2건이 근거다.
   - **전면 directive로 확정(사용자 결정).** 인라인까지 directive로 쓴다 — 하이브리드가 아니다. HTML 인라인 요소도 directive로 바꾼다: `:u[...]`, `:sup[...]`, `:sub[...]`, `:br`(라벨 없음). 굵게·기울임·취소선은 Markdown 문법(`**`, `*`, `~~`)을 그대로 쓴다.
-  - 매핑 확정: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`·`u`·`sup`·`sub`·`br`(텍스트).
+  - 매핑 확정: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`(리프), `tooltip`·`u`·`sup`·`sub`·`br`(텍스트). **폐기(사용자 결정): `entry-link`(ContentLink), `ideographic-space`.**
   - 저작 대상이 아닌 것: 코드·Mermaid·차트는 코드 펜스(실측 mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트.
   - **초안을 `CMS-SPEC.md` §4.4에 반영했다(사용자 승인 대기).**
 - **선행:** 없음
@@ -903,32 +905,32 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M8-FE-1 공개 렌더러의 directive 읽기 (추가형)
 
 - **목적:** 현재 사이트를 깨뜨리지 않고 directive를 렌더할 수 있게 한다.
-- **주요 내용:** `remark-directive` + `mdast-util-directive` 추가, 지시자 → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs·Columns·IdeographicSpace·Tooltip 등). **JSX 렌더 경로는 그대로 둔다.**
+- **주요 내용:** `remark-directive` + `mdast-util-directive` 추가, 지시자 → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs·Columns·Tooltip 등). **JSX 렌더 경로는 그대로 둔다.**
 - **선행:** M8-ED-1
 - **담당:** FE
 - **완료 조건:** directive 본문이 JSX와 같은 마크업으로 렌더되고, 레거시 49편(JSX) 렌더 결과가 변하지 않는다.
 - **검증:** directive 표본 테스트 + 코퍼스 회귀(`files=49 analyzeErrors=0 renderFailures=0`)
 
-### M8-FE-2 누락 컴포넌트 3종 (TextAlign·Image·ContentLink)
+### M8-FE-2 공개 표현 컴포넌트 (Image·TextAlign·인라인 표기)
 
-- **목적:** §4.4·F16·F18의 공개 렌더 갭을 없앤다.
+- **목적:** §4.4·F18의 공개 렌더 갭을 없앤다.
 - **주요 내용:**
-  - **재사용 우선:** 에디터는 기존 Tiptap 노드·공식 확장을 쓴다. 새 에디터 UI를 만들지 않는다.
+  - **Tiptap 우선(사용자 지시):** 새 요소를 만들기 전에 Tiptap 공식 확장에 있는지 확인한다. 있으면 그것을 쓰고 `CMS-SPEC.md` §4.5 인벤토리에 적는다.
   - `TextAlign`: **현재 저장소에 없다.** `@tiptap/extension-text-align` 미설치(설치된 확장은 core/pm/react/starter-kit/suggestion뿐)이고 serializer·렌더러에도 `textAlign` 처리가 없다. 이미지 정렬(`CmsImageNode.align`, M3-ED-2)만 있다. ① 공식 확장 추가 ② serializer 변환 ③ 공개 렌더러가 필요하다.
   - `Image`: **저장 경로는 이미 있다.** `serialize.ts:164-183`이 조건에 따라 `<Image mediaId="..." width="..." align="..." caption="..." />`를 내보낸다. **남은 것은 공개 렌더러뿐이다.** `mediaId`는 등록 미디어가 `ready`일 때만 URL을 만들고, 외부 `src`는 http(s)·사이트 상대 경로만 허용하고 `javascript:`는 거부한다. 해석할 수 없으면 캡션만 남긴다.
-  - `ContentLink`: `targetId` → **렌더링 시점의 현재 공개본 주소**. 비공개 대상이면 링크 없는 텍스트(§7). 편집기가 실제로 넣는 `[제목](/entries/<UUID>)`도 같은 해석을 탄다(`src/cms/editor/internal-link.ts`).
-  - 해석은 `renderMDX`가 본문 단위로 **한 번에** 모아 동기 컴포넌트에 주입한다(동기 렌더 경로 유지, `pre` async RSC 제약 회피).
-  - ID→주소 해석은 공개 repository를 통해서만 한다(M7 규칙: 페이지는 repository만 본다).
-  - Tiptap은 에디터 전용이라 공개 렌더를 제공하지 않는다. 공개 렌더러는 저장 형식의 소비자다.
-- **선행:** M8-FE-1, M7-BE-1
+  - 인라인 표기: 굵게·기울임·취소선은 Tiptap 것을 쓰되 **저장은 Markdown**(`**`, `*`, `~~`)으로 맞춘다. 코퍼스 실측은 `**` 161건·`<strong>` 0건인데 serializer는 `<strong>`/`<em>`/`<del>`을 내보낸다. 밑줄 `:u[...]`, 위·아래첨자 `:sup[...]`·`:sub[...]`는 directive로 저장한다.
+  - **`ContentLink` 폐기(사용자 결정):** 고정 ID 내부 링크를 v1에서 뺀다. `REGISTERED_JSX_NAMES`·`content-service`의 참조 수집·`internal-link.ts`를 정리하고 편집기는 `[제목](/posts/<slug>)`를 삽입한다. 레거시 사용 0건이고 주소 변경은 별칭 308이 커버한다. ID→주소 해석 계층을 만들지 않는다.
+  - **`IdeographicSpace` 폐기(사용자 결정):** 공백·여백을 강제하려고 만든 `span`이다(감사상 `&#x20;`와 같은 범주). 본문 6곳은 M8-DA-1에서 삭제하고 레지스트리에서도 뺀다.
+  - Tiptap은 에디터 전용이라 **공개 렌더를 제공하지 않는다.** 공개 렌더러는 저장 형식의 소비자다.
+- **선행:** M8-FE-1
 - **담당:** FE + BE
-- **완료 조건:** 세 컴포넌트가 공개 페이지에서 렌더되고, 비공개 `ContentLink`는 링크 없는 텍스트이며, 해석할 수 없는 이미지는 본문을 깨뜨리지 않는다.
-- **검증:** 컴포넌트 테스트 + 실DB 해석 테스트
+- **완료 조건:** Image·TextAlign이 공개 페이지에서 렌더되고, 인라인 표기가 §4.4와 일치하며, 폐기 이름이 코드·문서에 없다.
+- **검증:** 컴포넌트 테스트 + 저장·재열기 + 저장소 검색
 
 ### M8-TW-1 미등록 지시자·컴포넌트 거부와 대조 테스트
 
 - **목적:** 무음 손실을 막는다(문서: “If directives are not handled, they do not emit anything”).
-- **주요 내용:** `analyze`가 미등록 지시자·JSX 이름을 **거부**한다(현재 `REGISTERED_JSX_NAMES`는 정의만 되고 `analyze`에서 쓰이지 않는다). 레지스트리 ↔ `MDX_COMPONENTS` 대조 테스트를 둔다. `:free`·`1:1` 같은 패턴이 조용히 사라지지 않는지도 검사한다.
+- **주요 내용:** `analyze`가 미등록 지시자·JSX 이름을 **거부**한다(현재 `REGISTERED_JSX_NAMES`는 정의만 되고 `analyze`에서 쓰이지 않는다). 레지스트리 ↔ `MDX_COMPONENTS` 대조 테스트를 둔다. `:free`·`1:1` 같은 패턴이 조용히 사라지지 않는지도 검사한다. 레지스트리에서 폐기 이름(`ContentLink`, `IdeographicSpace`)을 빼되 **파일 정리(M8-DA-1) 뒤에** 한다 — 먼저 지우면 레거시 본문이 발행 검사에서 막힌다.
 - **선행:** M8-FE-2
 - **담당:** TW
 - **완료 조건:** 등록되지 않은 이름이 발행 전에 거부되고, 레지스트리와 렌더러가 일치한다.
@@ -937,7 +939,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M8-ED-2 저장 형식 directive 전환 (serializer·에디터)
 
 - **목적:** 쓰기 경로를 directive로 맞춘다.
-- **주요 내용:** serializer가 directive를 출력, Tiptap 노드의 MDX 변환 재작성, `textAlign` 반영, 이스케이프 규칙 적용, **M1의 serialize 계약 재정의**.
+- **주요 내용:** serializer가 directive를 출력, Tiptap 노드의 MDX 변환 재작성, `textAlign` 반영, 이스케이프 규칙 적용, **M1의 serialize 계약 재정의**. 인라인 정규화: `bold → <strong>`, `italic → <em>`, `strike → <del>`을 Markdown 표기로 바꾼다. `underline → <u>`는 `:u[...]`, `superscript`·`subscript`는 `:sup[...]`·`:sub[...]`, `tooltip → <Tooltip>`은 `:tooltip[...]{content=...}`로 바꾼다.
 - **선행:** M8-FE-1, M8-ED-1
 - **담당:** ED
 - **완료 조건:** 에디터에서 만든 본문이 directive로 저장되고 다시 열면 동일하다.
@@ -946,7 +948,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
 ### M8-DA-1 레거시 43편 변환
 
 - **목적:** 저장 형식을 하나로 만든다.
-- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, IdeographicSpace 4, Tab/Tabs 3/3, Column/Columns 1/1). 추가로 산문의 `<u>` 38쌍을 `:u[...]`로 바꿔야 한다. `<br/>`(12건)·`<div>`(3건)는 **코드·머메이드 펜스 안**이라 변환 대상이 아니다. JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. `:free`·`1:1` 2건은 이스케이프한다.
+- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, Tab/Tabs 3/3, Column/Columns 1/1). 추가로 산문의 `<u>` 38쌍을 `:u[...]`로 바꾸고, `<IdeographicSpace />` 6곳(4편)은 **삭제**한다. `<br/>`(12건)·`<div>`(3건)는 **코드·머메이드 펜스 안**이라 변환 대상이 아니다. JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. `:free`·`1:1` 2건은 이스케이프한다. `&#x20;`(공백 인코딩) 35건은 같은 범주지만 v1에서 건드리지 않고 기록만 남긴다.
 - **선행:** M8-FE-1(읽기), M8-ED-1
 - **담당:** DA + TW
 - **완료 조건:** 49편이 모두 directive로 저장되고 공개 렌더 결과가 변환 전과 같다.

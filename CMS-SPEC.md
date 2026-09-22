@@ -183,7 +183,7 @@ flowchart LR
 - 문단, 제목 H2~H6, 굵게, 기울임, 취소선, 밑줄, 인라인 코드, 인용, 수평선, 링크, 줄바꿈.
 - 순서·비순서·체크 목록, 중첩 목록, 기본 표와 행·열 추가/삭제. 셀 병합은 v1 범위가 아니다.
 - 코드 블록: 언어, 제목, 줄 번호, 현재 코드 주석 문법에 의한 줄·문자 강조, 툴팁, 접기.
-- 기존 Callout, Collapsible, Tabs/Tab, Columns/Column, Tooltip, 위첨자·아래첨자·IdeographicSpace.
+- 기존 Callout, Collapsible, Tabs/Tab, Columns/Column, Tooltip, 위첨자·아래첨자.
 - Mermaid, 현재 Chart DSL의 bar/line/area/pie, 블록 수식.
 - 기존 `$...$`의 일반 텍스트 렌더링 정책은 유지한다. 블록 수식은 기존 `$$...$$` 형식을 유지한다.
 - 기존 이미지 문법과 새로운 크기·정렬이 있는 이미지 블록.
@@ -272,11 +272,9 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 
 ::image{src="/images/example.png" alt="설명" decorative}
 
-::ideographic-space
-
 문장 안의 :tooltip[표시 텍스트]{content="설명"} 처럼 쓴다.
 
-이전 글 :entry-link[글 제목]{targetId="콘텐츠-UUID"} 을 참고한다.
+이전 글 [글 제목](/posts/글-slug) 을 참고한다.
 
 밑줄은 :u[밑줄 친 부분] 이고, 강제 줄바꿈은 :br 이다.
 ```
@@ -289,9 +287,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | `::::tabs{...}` 안 `:::tab{...}` | 중첩 컨테이너 | `defaultValue` / `label`(필수) |
 | `::::columns` 안 `:::column` | 중첩 컨테이너 | 없음 |
 | `::image{...}` | 리프 | `mediaId` 또는 `src`(하나), `alt`, `width`, `align`, `caption`, `decorative` |
-| `::ideographic-space` | 리프 | 없음 |
 | `:tooltip[...]{...}` | 텍스트 | `content`(필수) |
-| `:entry-link[...]{...}` | 텍스트 | `targetId`(필수) |
 | `:u[...]` | 텍스트 | 없음 |
 | `:sup[...]` / `:sub[...]` | 텍스트 | 없음 |
 | `:br` | 텍스트(라벨 없음) | 없음 |
@@ -315,15 +311,39 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 - `text-align`은 하나의 문단·제목을 감싸며 기본 왼쪽 정렬에는 쓰지 않는다. 제목의 텍스트·수준은 목차에 그대로 반영한다.
 - `tabs`/`tab`과 `columns`/`column`은 부모 안에만 쓴다. `tab`은 `label`이 필수이고 `tabs`의 `defaultValue`는 `label`과 맞아야 한다.
 - `image`는 등록 미디어의 `mediaId` 또는 외부 이미지의 `src` 중 하나를 사용한다. 공개 주소 해석은 렌더러가 담당한다. 장식 이미지는 `decorative`와 빈 alt로 저장한다. 이미지 주소는 허용된 http/https 또는 사이트 상대 경로만 쓰고 `javascript:` 같은 실행 가능한 URL은 거부한다.
-- `ideographic-space`는 전각 공백 한 칸이다. 리프로만 쓴다.
 - `tooltip`은 `content`를 설명으로 쓰고 라벨을 표시 텍스트로 쓴다.
 - `u`·`sup`·`sub`는 라벨을 표시 텍스트로 쓰고 속성이 없다. `br`은 라벨 없이 홀로 쓰며, 같은 문단 안에서 줄을 바꾼다.
-- `entry-link`는 고정 ID로 현재 공개 주소를 구한다. 원문의 UUID를 편집 화면에서는 제목으로 표시한다. 편집기가 만드는 `[제목](/entries/<UUID>)`도 같은 뜻으로 읽는다.
+- 내부 글 링크는 일반 Markdown 링크(`[제목](/posts/글-slug)`)로 저장한다. 주소가 바뀌어도 이전 주소의 별칭이 308로 현재 주소를 안내하므로 본문을 고치지 않아도 된다. 고정 ID를 저장하는 별도 컴포넌트는 두지 않는다.
 
 읽기 호환:
 
-- 이전 JSX 형식(`<Callout variant="note">`, `<TextAlign>`, `<Image>`, `<ContentLink>`)과 HTML 인라인 요소(`<u>`, `<br/>`, `<sup>`, `<sub>`)는 읽을 수 있고, 저장할 때는 directive로 정규화한다.
+- 이전 JSX 형식(`<Callout variant="note">`, `<TextAlign>`, `<Image>`)과 HTML 인라인 요소(`<u>`, `<br/>`, `<sup>`, `<sub>`)는 읽을 수 있고, 저장할 때는 directive로 정규화한다.
+- 폐기: 초기 명세의 `ContentLink`와 편집기가 만들던 `[제목](/entries/<UUID>)`는 v1에서 쓰지 않는다. 본문에 남아 있으면 지원하지 않는 문법으로 표시하고 발행을 제한한다.
+- 폐기: `IdeographicSpace`는 공백·여백을 강제하려고 만든 `span`이다. v1에서 쓰지 않는다. 빈 줄이 필요하면 `br`을 쓰거나 렌더 CSS로 처리하고, 본문에 남아 있으면 삭제한다.
 - 내보낼 때 현재 주소를 쓰는 일반 링크·이미지로 변환하는 옵션을 제공한다. 크기·정렬 같은 표현을 유지하려면 해당 directive를 함께 쓴다.
+
+### 4.5 요소 인벤토리 (Tiptap 제공 vs 커스텀)
+
+**새 요소를 구현하기 전에 Tiptap 공식 확장에 있는지 먼저 확인한다.** 있으면 그것을 쓰고 이 표에 적는다. 이 표에 없는 요소를 추가할 때도 같은 절차를 따른다.
+
+| 요소 | 에디터에서 만드는 방법 | 구현 출처 | 저장 형식 |
+|---|---|---|---|
+| 문단·제목(H1–H3)·글머리/번호 목록·인용구·구분선 | 슬래시 메뉴 | Tiptap StarterKit | Markdown |
+| 굵게·기울임·취소선·인라인 코드 | 툴바 | Tiptap StarterKit(`bold`·`italic`·`strike`·`code`) | Markdown(`**`, `*`, `~~`, 백틱) |
+| 코드 블록 | 슬래시 메뉴·툴바 | Tiptap StarterKit(`code-block`) + 코드 펜스 주석 | 언어가 지정된 코드 펜스 |
+| 링크 | `[[` 제목 검색(내부). 외부 링크는 원문 작성 | Tiptap StarterKit(`link`) | Markdown 링크 |
+| 밑줄 | 없음(원문 작성) | Tiptap StarterKit(`underline`) | `:u[...]` |
+| 강제 줄바꿈 | 없음(원문 작성) | Tiptap StarterKit(`hard-break`) | `:br` |
+| 위첨자·아래첨자 | 없음(원문 작성) | Tiptap 공식 `superscript`·`subscript` — **미설치, 필요할 때 추가** | `:sup[...]`·`:sub[...]` |
+| 문단·제목 정렬 | 없음(원문 작성) | Tiptap 공식 `text-align` — **미설치, 필요할 때 추가** | `:::text-align{align="..."}` |
+| 이미지 | 슬래시 메뉴·드래그·붙여넣기 | **커스텀 `CmsImageNode`** | `::image{...}` |
+| Tooltip | 없음(원문 작성) | **커스텀 mark** | `:tooltip[...]{content="..."}` |
+| Callout·Collapsible·Tabs/Tab·Columns/Column | 없음(원문 작성) | **커스텀 노드** | `:::callout` 등 |
+| Mermaid·차트 | 없음(원문 작성) | 코드 펜스 → 렌더 변환 | 코드 펜스 |
+
+- 삽입 UI가 없는 요소는 원문 모드에서 직접 쓰고, 다시 열면 그대로 보존된다.
+- "없음(원문 작성)" 항목에 삽입 UI를 만들 때도 먼저 Tiptap 공식 확장을 확인한다.
+- 설치된 확장은 `@tiptap/starter-kit` v3가 포함하는 `blockquote`·`bold`·`bullet-list`·`code`·`code-block`·`document`·`dropcursor`·`gapcursor`·`hard-break`·`heading`·`horizontal-rule`·`italic`·`link`·`list`·`list-item`·`list-keymap`·`ordered-list`·`paragraph`·`strike`·`text`·`underline`, 그리고 `@tiptap/suggestion`·`@tiptap/react`·`@tiptap/core`·`@tiptap/pm`이다.
 
 ## 5. 저장·상태·발행
 
@@ -423,7 +443,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 - 초안 저장은 작업 스냅샷(working snapshot) 저장과 작업 참조(working references) 인덱스 교체를 원자적으로 처리한다. 공개 참조(published references)는 작업 참조와 분리되어 독립적으로 유지되며, M3 발행(publication) 시점에 트랜잭션 내에서 복사되고 재검증된다(기존의 최신 초안과 현재 공개본 사용처 구분은 엄격히 유지된다). MDX 분석에 오류가 발생하면 원본 소스를 보존하고 과거의 참조를 'stale(오래됨)'로 표시하여 유지한다. 과거 참조는 절대 HTTP 입력이 아닌 저장소에서 가져와야 한다. 서비스 전용 검증만으로는 이 영속성 보장을 충족할 수 없다. ID의 존재는 DB 외래 키로 보장하고, 허용 컬렉션·공개 조건은 서비스에서 검증한다.
 - 관련 컬렉션에 분석하지 못한 초안이 있으면 참조 검사를 완료하기 전까지 해당 유형의 영구 삭제를 막는다. 초안 저장 자체는 허용한다.
 - 사용 중인 태그·카테고리는 참조를 바꾸거나 제거하기 전까지 휴지통 이동·영구 삭제를 막는다. 공개본에서도 사용 중이면 해당 글의 변경사항을 발행해야 참조가 해제된다.
-- 게시글의 보관·휴지통 이동은 연결된 공개 글이 있으면 사용처를 보여준 뒤 진행한다. 이후 공개 렌더러는 비공개 대상을 향한 `ContentLink`를 링크 없는 텍스트로 표시하고, 관련 글 목록에서는 제외한다. 본문을 자동 수정하지 않는다.
+- 게시글의 보관·휴지통 이동은 연결된 공개 글이 있으면 사용처를 보여준 뒤 진행한다. 이후 그 글의 공개 주소는 404가 되고 관련 글 목록에서도 제외한다. 본문을 자동 수정하지 않는다.
 - 삭제된 대상을 참조하는 초안은 발행할 수 없다. 영구 삭제는 초안·공개본의 참조가 모두 해제되어야 가능하다. 사용 중인 대상을 강제로 연쇄 삭제하지 않는다.
 
 ### 6.2 slug와 내부 링크
@@ -434,7 +454,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 - record 컬렉션의 slug 변경은 명시적 저장 시 현재 주소와 별칭을 함께 갱신한다. 초안의 예약 slug를 다시 바꾸면 공개된 적 없는 이전 예약은 해제한다.
 - 이전 주소는 새 콘텐츠에 재사용하지 않는다. 별칭은 직접 ID를 가리켜 여러 번 변경해도 리다이렉트가 이어지지 않는다. 보관·휴지통 상태에서는 별칭도 404를 반환한다.
 - 영구 삭제된 공개 주소는 재사용 방지 기록만 남긴다. 제목·본문·미디어·과거 버전은 이 기록에 보관하지 않는다. 공개된 적 없는 초안의 예약 주소는 삭제 시 해제한다.
-- 에디터에서 `[[`를 입력하거나 링크 메뉴의 `내부 글`을 선택하면 제목 검색을 제공한다. 직접 URL을 찾지 않고 ID를 가진 `ContentLink`를 삽입한다.
+- 에디터에서 `[[`를 입력하거나 링크 메뉴의 `내부 글`을 선택하면 제목 검색을 제공한다. 선택하면 그 글의 현재 주소로 일반 Markdown 링크를 삽입한다. 고정 ID를 저장하지 않는다.
 - 기본 링크 텍스트는 삽입 당시 제목이며 직접 수정할 수 있다. 대상 제목이 바뀌어도 작성자의 링크 문구를 자동 교체하지 않는다. 대상 주소는 렌더링 시 현재 공개본에서 계산한다.
 - 초안 대상 링크는 편집 중 허용하되 상태를 표시한다. 발행 시에는 공개 가능한 대상을 요구한다. 일반 외부 링크도 함께 지원한다.
 
@@ -657,7 +677,7 @@ Next.js의 캐시/재검증은 페이지 생성 방식에 따라 동작이 달�
 | 확인 항목 | 결과 |
 | --- | --- |
 | 기존 본문 | post/memo 합계 MDX 49개, 사용 중인 remark/MDX 파서 기준 구문 오류 0개 |
-| JSX | Tooltip, u, IdeographicSpace, Callout, Tabs, Tab, Columns, Column, Collapsible |
+| JSX | Tooltip, u, Callout, Tabs, Tab, Columns, Column, Collapsible |
 | 코드 fence | 총 166개. TypeScript·JavaScript·TSX·HTML·Svelte·SQL·Python·MDX·text와 Mermaid·chart 포함 |
 | 기타 | 이미지 22개, 표 12개, 블록 수식 존재. 인라인 `$...$`는 현재 렌더러에서 일반 텍스트로 처리 |
 | 저장/조회 | Keystatic의 collection 설정 및 기존 ContentRepository 구현 사용 |
