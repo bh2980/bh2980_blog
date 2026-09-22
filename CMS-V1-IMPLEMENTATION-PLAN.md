@@ -73,21 +73,32 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M6-BE-2 | DONE | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a`, `798a027` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만. **실DB 검증 완료:** 격리 `cms_m6_apply1`에 1차 `imported=75 skipped=0` → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, 접속 DB 대조(neondb/neondb_owner/non-superuser), opt-in 없는 실행 차단, 원본 무변경, 검증 후 schema 정리 |
 | M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `1797e5f`, `6eeae51`, `7fbdc4a` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
 | M6-RV-1 | DONE | RV | `bh2980/m6-batch1` | `798a027`, `5544041` | reviewer 최종 검수 **승인**(중대 위험 6기준 전부 O, P0/P1 없음). P2 4건은 비차단 기록. 전체 89 files/556 tests, typecheck 0, M6 변경분 biome 0 errors, build 79 routes(운영 DSN 없이) |
-| M7-INV-1 | TODO | BE | — | — | — |
-| M7-BE-1 | TODO | BE | — | — | — |
-| M7-BE-2 | TODO | BE | — | — | — |
-| M7-FE-1 | TODO | FE | — | — | — |
-| M7-FE-2 | TODO | FE | — | — | SEO 메타 필드와 공개 메타 렌더 (갭 분석 반영) |
-| M7-BE-3 | TODO | JR | — | — | — |
-| M7-BE-4 | TODO | BE | — | — | — |
-| M7-SEC-1 | TODO | Security QA | — | — | — |
-| M7-TW-1 | TODO | TW | — | — | — |
-| M7-LEAD-1 | TODO | Lead | — | — | — |
-| M7-BE-5 | TODO | BE | — | — | — |
-| M7-RV-1 | TODO | RV | — | — | — |
-| M8-FE-1 | TODO | FE+BE | — | — | 공개 MDX 컴포넌트 TextAlign·Image·ContentLink (§4.4). **v1 누락 보완** |
-| M8-TW-1 | TODO | TW | — | — | 레지스트리↔렌더러 대조 테스트, 미등록 JSX 차단 |
+| M7-INV-1 | DONE | BE | `feature/M7` | `4936035` | 공개 캐시 조사(`CMS-M7-INV1-PUBLIC-CACHE.md`) |
+| M7-BE-1 | DONE | BE | `feature/M7` | `246064e` | 공개 repository(store surface 2개, 판별형 반환, 실DB 12건) |
+| M7-BE-2 | DONE | BE | `feature/M7` | `71cc784`, `6dc7306` | 공개 경로 force-dynamic, alias 308, 미공개 404 |
+| M7-FE-1 | DONE | FE | `feature/M7` | `5945613` | 인증 미리보기(401/403 구분), draftMode |
+| M7-FE-2 | DONE | FE | `feature/M7` | `0cf1728` | SEO 메타 저장·head canonical·sitemap 제외·관리자 입력 |
+| M7-BE-3 | DONE | JR | `feature/M7` | `1ba504a` | 공개 API `/public/entries**` + DTO fail-closed |
+| M7-BE-4 | DONE | BE | `feature/M7` | `1ba504a` | OpenAPI 24경로 + 정규식 대조 테스트 |
+| M7-SEC-1 | DONE | Security QA | `feature/M7` | `bb074eb`, `bb045fd`, `135188c` | 자가 점검 + 독립 검수 통과(P1 수정: 발행 MDX 게이트, 렌더 fail-closed) |
+| M7-TW-1 | DONE | TW | `feature/M7` | `c7778d4` | 예약 중복 409, `pre` 실제 RSC 렌더 검증 |
+| M7-LEAD-1 | DONE | Lead | `feature/M7` | `c5eef4d`, `2d615f8` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
+| M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
+| M7-RV-1 | TODO | RV | — | — | M7 구현분 최종 검수(리뷰 6회·SEC 검수로 대체 검증). 전환 검수는 M9-RV-1 |
+| M8-ED-1 | TODO | ED | — | — | §4.4 저장 형식을 directive로 개정 (중첩·이스케이프 규칙) |
+| M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
+| M8-FE-2 | TODO | FE+BE | — | — | 누락 컴포넌트 TextAlign·Image·ContentLink + ID→공개주소 해석 |
+| M8-TW-1 | TODO | TW | — | — | 미등록 지시자·컴포넌트 거부 + 레지스트리 대조 |
+| M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
+| M8-DA-1 | TODO | DA+TW | — | — | 레거시 43편 JSX→directive 변환 + 전후 대조 |
 | M8-RV-1 | TODO | RV | — | — | — |
+| M9-FE-1 | TODO | BE+FE | — | — | 미리보기 DB 초안 경로 (전환 선행 조건) |
+| M9-BE-1 | TODO | BE+INF | — | — | 이관 실행 + 49주소·이미지 대조 (카테고리 published 필수) |
+| M9-TW-1 | TODO | TW | — | — | Keystatic↔DB 공개 HTML 대조 |
+| M9-LEAD-1 | TODO | Lead | — | — | 전환 승인 보고서 |
+| M9-BE-2 | TODO | BE+INF | — | — | 플래그 전환 + 재배포 |
+| M9-BE-3 | TODO | BE+INF | — | — | Keystatic 제거 (승인 후) |
+| M9-RV-1 | TODO | RV | — | — | — |
 
 ## 계획 변경
 
@@ -149,6 +160,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   10) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단), `handleApiError`의 413/415/428/503 미표현.
 - 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 - 2026-09-23: **v1 커버리지 구멍 발견 — M8 등록.** §4.4의 `TextAlign`·`Image`·`ContentLink`는 F16(§6.2)·F18(§4.3)의 **v1 기능**이고 F18 수용 기준은 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구하는데(`CMS-SPEC.md:644`), **공개 렌더러 구현 태스크가 M1~M7 어디에도 없었다.** M1-ED-1은 serialize의 이름 유지, M3-ED-2는 편집기 삽입까지였고, 계획서는 공개 렌더를 “기존 블로그 경로 재사용”으로 전제했지만 그 컴포넌트는 저장소 역사상 한 번도 없었다(`git log --all --diff-filter=A` 결과 0건, `origin/main`도 동일). M6-ED-1 검수는 레거시 49편만 대상이라(사용 0건) 잡히지 않았다. **M8로 등록한다** — M7의 관심사(전환 준비)와 다르고, `ContentLink` 해석이 M7-BE-1에 의존하므로 순서상 M7 뒤가 맞다. 전환은 막지 않는다(49편 0건이므로 기존 글이 영향받지 않음). M7-LEAD-1 보고서에 “F16/F18 공개 렌더 미완”을 명시한다.
+- 2026-09-23: **M7 이후 재정렬(사용자 요청).** ① 순서 결함: 컴포넌트와 저장 형식이 없는데 DB 전환을 먼저 하는 계획이었다 → **M8(표현 계약)·M9(이관과 전환)**로 나누고 전환을 뒤로 옮겼다. ② 사용자 결정: 커스텀 컴포넌트를 **remark directive로 저장**한다(JSX 저장 폐기). `:이름` 충돌은 사용자가 패턴을 제한해 관리하고, 시스템은 미등록 지시자를 거부해 무음 손실을 막는다. 근거: micromark 문서 “If directives are not handled, they do not emit anything”, `[label]`은 선택이라 `:[`만 검사하면 안 된다(이름에 숫자 허용). 레거시 49편 **본문** 오인 패턴 실측 **2건**(`openai/gpt-oss-120b:free`, `1:1`). ③ 깨진 상태를 만들지 않는 순서 고정: **읽기(렌더러) → 파일 변환 → 쓰기(serializer·에디터) → 이관·전환**. 읽기 단계는 추가형이라 Keystatic이 읽는 현재 사이트에 영향이 없다. ④ 저장 형식 전환은 M1의 serialize 계약과 M6의 49/49 roundtrip 계약을 다시 연다(M8-ED-2·M8-DA-1). ⑤ 전환 검사에 **공개 HTML 대조**(M9-TW-1)를 추가했다 — 주소 대조만으로는 “이관하다 클나는” 경우를 못 잡는다. ⑥ M7-BE-5(Keystatic 제거)는 M9-BE-3으로 옮겼다.
 
 ---
 
@@ -834,7 +846,9 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - **담당:** Lead
 - **완료 조건:** 사용자가 전환을 승인하거나 보류한다. 승인 없이 Keystatic을 제거하지 않는다.
 
-### M7-BE-5 Keystatic 제거 (전환 승인 후)
+### M7-BE-5 Keystatic 제거 (→ M9-BE-3으로 이동)
+
+M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대로다.
 
 - **목적:** 명세 교체 완료.
 - **주요 내용:** 패키지·lockfile·`src/app/(admin)/keystatic`·`src/app/api/keystatic`·`src/keystatic/**`·patches·전용 env. 공개 렌더에 필요한 범용 MDX는 `src/components/mdx`, `src/libs`에 남긴다. 콘텐츠 원본 파일은 백업으로 유지할지 사용자 확인.
@@ -843,54 +857,152 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - **완료 조건:** 검색·설치·빌드·테스트에 Keystatic이 없다. 공개 주소와 본문 의미가 유지된다.
 - **검증:** `pnpm typecheck`, `pnpm test:run`, `pnpm build`, 저장소 검색
 
-### M7-RV-1 최종 검수
+### M7-RV-1 검수
 
 - **담당:** RV
-- **선행:** M7-BE-2, M7-FE-2, 전환 후에는 M7-BE-5
+- **선행:** M7-BE-2, M7-FE-2
+- **범위:** M7 구현분(배치 1~6) 검수. 전환·Keystatic 제거는 M9-RV-1로 옮겼다.
 
 ---
 
-## M8. 공개 표현 완성 (v1 누락 보완)
+## M8. 표현 계약 정비 (전환 전 필수)
 
-배경: 명세 F16(내부 글 검색과 링크 삽입, §6.2)과 F18(텍스트 정렬·이미지 크기·배치, §4.3)은 **v1 기능표에 있고**,
-F18 수용 기준은 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구한다(`CMS-SPEC.md:644`).
-그러나 §4.4가 정의한 `TextAlign`·`Image`·`ContentLink`의 **공개 렌더러 구현이 M1~M7 어느 태스크에도 배정되지 않았다.**
-계획서는 공개 렌더를 “기존 블로그 경로 재사용”으로 전제했지만 그 컴포넌트는 저장소 역사상 한 번도 구현된 적이 없다.
-M6-ED-1의 공개 렌더 검수는 레거시 49편만 대상으로 했고 그 49편이 이 컴포넌트를 0건 쓰므로 잡히지 않았다.
+**왜 M7 뒤에 새로 두는가**
+- §4.4의 `TextAlign`·`Image`·`ContentLink` 렌더러가 M1~M7 어느 태스크에도 없었다. F16(§6.2)·F18(§4.3)는 v1 기능이고, F18 수용 기준이 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구한다(`CMS-SPEC.md:644`).
+- **사용자 결정:** 커스텀 컴포넌트를 **remark directive로 저장**한다(JSX를 저장 형식으로 쓰지 않는다). `:이름` 패턴 충돌은 사용자가 쓰는 패턴을 제한해 관리하고, 시스템은 **미등록 지시자를 거부**해 무음 손실을 막는다.
+  - 근거: micromark 문서 — “If directives are not handled, they do not emit anything”. `[label]`은 선택이라 `:[`만 검사하면 안 된다(이름에 숫자 허용).
+  - 근거(실측): 레거시 49편 **본문**에서 지시자로 오인될 패턴 2건 — `openai/gpt-oss-120b:free`, `1:1`. 코드 블록·frontmatter 제외, 측정 스크립트 `.pi/directive-risk.mjs`.
+- 편집기(M3-ED-2)와 직렬화기(M1)는 JSX 기준으로 만들어져 있다. 저장 형식 변경은 그 둘을 다시 여는 일이다.
+- **컴포넌트가 없는데 DB로 전환하는 순서는 성립하지 않는다.** 그래서 M8·M9가 전환보다 앞선다.
 
-전환과의 관계: 레거시 49편이 0건이므로 **M7 전환을 막지 않는다.** 전환 후 새로 쓰는 글에서만 문제가 된다
-(편집기는 M3-ED-2에서 삽입을 이미 지원하므로, 렌더러가 없으면 공개 페이지가 그 노드를 렌더하지 못한다).
-따라서 M8은 **전환 승인 뒤**에 수행하고, M7-LEAD-1 보고서에 “F16/F18 공개 렌더 미완”을 명시한다.
+**깨진 상태를 만들지 않는 순서 (고정)**
+1. **읽기 먼저** — 렌더러가 directive를 읽게 한다(추가형). 기존 JSX도 계속 렌더되므로 현재 사이트(Keystatic이 `src/contents`를 읽는 중)는 영향받지 않는다.
+2. **파일 변환** — 43편 JSX → directive. 이 시점에는 두 형식 모두 렌더된다.
+3. **쓰기 전환** — serializer·에디터가 directive를 출력한다.
+4. **이관·전환** — M9.
 
-### M8-FE-1 공개 MDX 컴포넌트 (TextAlign·Image·ContentLink)
+### M8-ED-1 §4.4 저장 형식 개정 (directive)
 
-- **목적:** §4.4 저장 문법을 공개 페이지가 실제로 렌더한다.
+- **목적:** 저장 계약을 JSX에서 directive로 바꾼다. 명세가 제품 동작의 권위이므로 명세 개정이 먼저다.
 - **주요 내용:**
-  - **재사용 우선:** 에디터 쪽은 이미 있는 Tiptap 노드·공식 확장을 쓴다. 새 에디터 UI를 만들지 않는다.
-  - `TextAlign`: **현재 저장소에 없다.** `@tiptap/extension-text-align` 미설치(설치된 확장은 core/pm/react/starter-kit/suggestion뿐)이고 serializer·렌더러에도 `textAlign` 처리가 없다. 이미지 정렬(`CmsImageNode.align`, M3-ED-2)만 존재한다. 따라서 ① 공식 확장 추가 ② serializer의 `textAlign` → `<TextAlign align="...">` 변환 ③ 공개 렌더러가 필요하다.
-  - `Image`: **저장 경로는 이미 있다.** `serialize.ts:164-183`이 조건에 따라 `<Image mediaId="..." width="..." align="..." caption="..." />`를 내보내고, 편집기에는 `CmsImageNode`(alt·width·align·caption)가 있다. **남은 것은 공개 렌더러뿐이다** — 지금은 그 MDX를 렌더할 컴포넌트가 없어 발행한 글의 이미지 노드가 공개 페이지에 나오지 않는다.
-  - `ContentLink`: 편집기는 `<ContentLink>`가 아니라 **`[제목](/entries/<UUID>)` 형식**으로 넣는다(`src/cms/editor/internal-link.ts`). 두 형식 모두 해석해야 한다. `targetId` → **렌더링 시점의 현재 공개본 주소**이고, 비공개 대상이면 링크 없는 텍스트(§7).
-  - 공개 URL 해석은 렌더러가 담당한다. `mediaId`는 등록 미디어에서 `ready`일 때만 URL을 만들고, 외부 `src`는 http(s)·사이트 상대 경로만 허용하고 `javascript:`는 거부한다.
+  - 블록 컨테이너(`:::callout{...}`), 리프(`::ideographic-space`), 텍스트(`:tooltip[텍스트]{content="..."}`) 구분.
+  - 중첩은 바깥이 콜론을 더 많이 쓴다(`::::tabs` 안에 `:::tab`). 닫는 펜스를 빠뜨리면 **문서 끝까지 삼킨다** — 금지 규칙과 검사 방법을 명시.
+  - 라벨에는 text construct(강조·코드 등)가 허용된다. 리프·컨테이너의 라벨·속성에는 줄바꿈을 쓸 수 없다.
+  - 속성 표기는 HTML 속성과 같다(`content="..."`), `#id`/`.class` 단축 허용.
+  - 이스케이프: 본문에 `:이름` 형태가 필요하면 `\:`로 쓴다. 위 실측 2건이 근거다.
+- **선행:** 없음
+- **담당:** ED
+- **완료 조건:** §4.4가 directive 저장 계약·중첩·이스케이프 규칙을 명시한다.
+- **검증:** 명세 리뷰(사용자 승인)
+
+### M8-FE-1 공개 렌더러의 directive 읽기 (추가형)
+
+- **목적:** 현재 사이트를 깨뜨리지 않고 directive를 렌더할 수 있게 한다.
+- **주요 내용:** `remark-directive` + `mdast-util-directive` 추가, 지시자 → 기존 컴포넌트 매핑(Callout·Collapsible·Tabs·Columns·IdeographicSpace·Tooltip 등). **JSX 렌더 경로는 그대로 둔다.**
+- **선행:** M8-ED-1
+- **담당:** FE
+- **완료 조건:** directive 본문이 JSX와 같은 마크업으로 렌더되고, 레거시 49편(JSX) 렌더 결과가 변하지 않는다.
+- **검증:** directive 표본 테스트 + 코퍼스 회귀(`files=49 analyzeErrors=0 renderFailures=0`)
+
+### M8-FE-2 누락 컴포넌트 3종 (TextAlign·Image·ContentLink)
+
+- **목적:** §4.4·F16·F18의 공개 렌더 갭을 없앤다.
+- **주요 내용:**
+  - **재사용 우선:** 에디터는 기존 Tiptap 노드·공식 확장을 쓴다. 새 에디터 UI를 만들지 않는다.
+  - `TextAlign`: **현재 저장소에 없다.** `@tiptap/extension-text-align` 미설치(설치된 확장은 core/pm/react/starter-kit/suggestion뿐)이고 serializer·렌더러에도 `textAlign` 처리가 없다. 이미지 정렬(`CmsImageNode.align`, M3-ED-2)만 있다. ① 공식 확장 추가 ② serializer 변환 ③ 공개 렌더러가 필요하다.
+  - `Image`: **저장 경로는 이미 있다.** `serialize.ts:164-183`이 조건에 따라 `<Image mediaId="..." width="..." align="..." caption="..." />`를 내보낸다. **남은 것은 공개 렌더러뿐이다.** `mediaId`는 등록 미디어가 `ready`일 때만 URL을 만들고, 외부 `src`는 http(s)·사이트 상대 경로만 허용하고 `javascript:`는 거부한다. 해석할 수 없으면 캡션만 남긴다.
+  - `ContentLink`: `targetId` → **렌더링 시점의 현재 공개본 주소**. 비공개 대상이면 링크 없는 텍스트(§7). 편집기가 실제로 넣는 `[제목](/entries/<UUID>)`도 같은 해석을 탄다(`src/cms/editor/internal-link.ts`).
   - 해석은 `renderMDX`가 본문 단위로 **한 번에** 모아 동기 컴포넌트에 주입한다(동기 렌더 경로 유지, `pre` async RSC 제약 회피).
-  - Tiptap은 에디터 전용(ProseMirror node view)이라 **공개 렌더를 제공하지 않는다.** 공개 렌더러는 §4.4 출력 형식의 소비자로서 새로 필요하다.
-- **선행:** M7-BE-1(공개 repository), M3-ED-2(편집기 삽입)
+  - ID→주소 해석은 공개 repository를 통해서만 한다(M7 규칙: 페이지는 repository만 본다).
+  - Tiptap은 에디터 전용이라 공개 렌더를 제공하지 않는다. 공개 렌더러는 저장 형식의 소비자다.
+- **선행:** M8-FE-1, M7-BE-1
 - **담당:** FE + BE
-- **완료 조건:** 세 컴포넌트가 공개 페이지에서 렌더되고, 비공개 `ContentLink`는 링크 없는 텍스트이며, 해석할 수 없는 이미지는 본문을 깨뜨리지 않는다. 레거시 49편 렌더 결과 불변.
-- **검증:** 컴포넌트 테스트 + 실DB 해석 테스트 + 코퍼스 회귀
+- **완료 조건:** 세 컴포넌트가 공개 페이지에서 렌더되고, 비공개 `ContentLink`는 링크 없는 텍스트이며, 해석할 수 없는 이미지는 본문을 깨뜨리지 않는다.
+- **검증:** 컴포넌트 테스트 + 실DB 해석 테스트
 
-### M8-TW-1 레지스트리·렌더러 대조와 미등록 JSX 차단
+### M8-TW-1 미등록 지시자·컴포넌트 거부와 대조 테스트
 
-- **목적:** 같은 누락이 다시 조용히 통과하지 않게 한다.
-- **주요 내용:** `REGISTERED_JSX_NAMES`(허용 이름) ↔ `MDX_COMPONENTS`(렌더러) 대조 테스트를 추가한다. `analyze`에 이름 검사를 배선해 미등록 JSX를 저장·발행에서 거부한다(현재 `REGISTERED_JSX_NAMES`는 정의만 되고 쓰이지 않는다).
-- **선행:** M8-FE-1
+- **목적:** 무음 손실을 막는다(문서: “If directives are not handled, they do not emit anything”).
+- **주요 내용:** `analyze`가 미등록 지시자·JSX 이름을 **거부**한다(현재 `REGISTERED_JSX_NAMES`는 정의만 되고 `analyze`에서 쓰이지 않는다). 레지스트리 ↔ `MDX_COMPONENTS` 대조 테스트를 둔다. `:free`·`1:1` 같은 패턴이 조용히 사라지지 않는지도 검사한다.
+- **선행:** M8-FE-2
 - **담당:** TW
-- **완료 조건:** 이름 목록과 렌더러가 일치하고, 미등록 JSX가 발행 전에 거부된다.
+- **완료 조건:** 등록되지 않은 이름이 발행 전에 거부되고, 레지스트리와 렌더러가 일치한다.
 - **검증:** `pnpm test:run`
+
+### M8-ED-2 저장 형식 directive 전환 (serializer·에디터)
+
+- **목적:** 쓰기 경로를 directive로 맞춘다.
+- **주요 내용:** serializer가 directive를 출력, Tiptap 노드의 MDX 변환 재작성, `textAlign` 반영, 이스케이프 규칙 적용, **M1의 serialize 계약 재정의**.
+- **선행:** M8-FE-1, M8-ED-1
+- **담당:** ED
+- **완료 조건:** 에디터에서 만든 본문이 directive로 저장되고 다시 열면 동일하다.
+- **검증:** roundtrip 테스트 + 실DB 저장·재열기
+
+### M8-DA-1 레거시 43편 변환
+
+- **목적:** 저장 형식을 하나로 만든다.
+- **주요 내용:** 49편 중 43편이 JSX 컴포넌트를 쓴다(Collapsible 34, Tooltip 8, Callout 6, IdeographicSpace 4, Tab/Tabs 3/3, Column/Columns 1/1). JSX → directive 일회성 변환 후 분석 오류 0·렌더 실패 0·표기 차이 미분류 0. `:free`·`1:1` 2건은 이스케이프한다.
+- **선행:** M8-FE-1(읽기), M8-ED-1
+- **담당:** DA + TW
+- **완료 조건:** 49편이 모두 directive로 저장되고 공개 렌더 결과가 변환 전과 같다.
+- **검증:** 전후 HTML 대조 + 코퍼스 회귀(49/49)
 
 ### M8-RV-1 Milestone 8 검수
 
 - **담당:** RV
-- **선행:** M8-FE-1, M8-TW-1
+- **선행:** M8-FE-2, M8-TW-1, M8-ED-2, M8-DA-1
+
+---
+
+## M9. 이관과 전환
+
+**전환은 컴포넌트와 저장 형식이 끝난 뒤에만 한다.** M7의 “전환 준비”는 M9의 입력이다.
+
+### M9-FE-1 미리보기 DB 초안 경로
+
+- **목적:** 전환 후 관리자 미리보기가 404가 되는 문제를 없앤다(O2 위험 ②).
+- **주요 내용:** 관리자 store에 slug→working body 조회 surface 추가. 공개 store surface는 늘리지 않는다. 초안 slug 미리보기 200 / 비인증 401·403 / 공개 404. 발행 전후로 미리보기와 공개가 갈리는지 확인한다.
+- **담당:** BE + FE
+- **완료 조건:** DB 경로에서 인증된 초안 미리보기가 동작하고 공개 조회는 초안을 반환하지 않는다.
+- **검증:** 실DB 통합 테스트
+
+### M9-BE-1 이관 실행과 주소 대조
+
+- **목적:** 파일 49편·이미지 22장·카테고리·태그를 운영 DB로 옮긴다.
+- **주요 내용:** `migrate-from-files` apply. **카테고리를 published로 넣는다** — 아니면 published 글이 조용히 사라진다(`toPost`가 해석 가능한 published 카테고리 없으면 null). 49주소 대조(`content_addresses`), 이미지 R2 키·체크섬 대조, 초안 0 확인.
+- **담당:** BE + INF
+- **완료 조건:** 49편 전부 공개 조회 가능하고 주소·이미지가 일치한다.
+
+### M9-TW-1 전후 공개 렌더 대조
+
+- **목적:** “이관하다가 클나는” 경우를 잡는다.
+- **주요 내용:** 같은 49편에 대해 **현재 Keystatic 공개 페이지 HTML ↔ DB 공개 페이지 HTML**을 대조한다. 주소 대조만으로는 부족하다. 불일치 0이어야 전환한다.
+- **선행:** M9-BE-1
+- **담당:** TW
+
+### M9-LEAD-1 전환 승인 보고서
+
+- **목적:** 사용자 승인 게이트.
+- **주요 내용:** M8·M9 대조 결과, 남은 위험(v2 항목), 롤백 방법. `CMS-M7-LEAD1-CUTOVER-REPORT.md`를 승계해 갱신한다.
+- **선행:** M9-TW-1
+- **담당:** Lead
+
+### M9-BE-2 플래그 전환과 재배포
+
+- **주요 내용:** `CMS_PUBLIC_REPOSITORY=postgres` + **재배포**(서비스는 모듈 로드 시 repository가 고정된다). 전환 직후 공개 페이지·RSS·sitemap·OG를 확인한다.
+- **선행:** M9-LEAD-1 승인
+- **담당:** BE + INF
+
+### M9-BE-3 Keystatic 제거 (승인 후)
+
+- **주요 내용:** 패키지·lockfile·`src/app/(admin)/keystatic`·`src/app/api/keystatic`·`src/keystatic/**`·patches·전용 env 제거. 공개 렌더에 필요한 범용 MDX는 `src/components/mdx`, `src/libs`에 남긴다. 콘텐츠 원본 파일 유지 여부는 사용자 확인.
+- **선행:** M9-BE-2
+- **담당:** BE + INF
+
+### M9-RV-1 최종 검수
+
+- **담당:** RV
+- **선행:** M9-BE-2, M9-BE-3
 
 ---
 
@@ -904,8 +1016,9 @@ M0 기준 고정
  → M4 일괄 작업 (라이브러리 DONE, 목록 일괄 운영)
  → M5 복제·템플릿·저작 확장
  → M6 이전·내보내기 검수 (시험 이전)
- → M7 공개 조회 전환 → 보고서 → (사용자 승인) → Keystatic 제거
- → M8 공개 표현 완성 (v1 누락 보완: §4.4 TextAlign·Image·ContentLink)
+ → M7 공개 조회 기반 (구현·검수 완료)
+ → M8 표현 계약 정비 (directive 저장 + 누락 컴포넌트 + 43편 변환)
+ → M9 이관과 전환 → 보고서 → (사용자 승인) → Keystatic 제거
 ```
 
 한 단계를 “v1 완료”로 부르지 않는다.
