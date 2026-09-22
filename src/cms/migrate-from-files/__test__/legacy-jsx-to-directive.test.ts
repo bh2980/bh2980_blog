@@ -19,6 +19,17 @@ describe("레거시 JSX → directive 변환", () => {
 		expect(result.counts).toEqual({ tabs: 1, tab: 2 });
 	});
 
+	it("3단계 중첩이면 콜론이 5개가 된다(코퍼스에는 없지만 식은 같다)", () => {
+		const result = convert(
+			'<Tabs>\n<Tab label="a">\n<Columns>\n<Column>\n깊은 본문\n</Column>\n</Columns>\n</Tab>\n</Tabs>',
+		);
+
+		// 바깥으로 갈수록 콜론이 많아야 한다: 3 + 단계 수 → 6 · 5 · 4 · 3.
+		expect(result.source).toBe(
+			'::::::tabs\n:::::tab{label="a"}\n::::columns\n:::column\n깊은 본문\n:::\n::::\n:::::\n::::::',
+		);
+	});
+
 	it("문장 안 텍스트 directive로 바꾼다", () => {
 		expect(convert("문장 <u>밑줄</u> 끝").source).toBe("문장 :u[밑줄] 끝");
 		expect(convert('<Tooltip content="설명">라벨</Tooltip>').source).toBe(':tooltip[라벨]{content="설명"}');

@@ -50,10 +50,9 @@ for (const relative of listFiles()) {
 		totals[key] = (totals[key] ?? 0) + value;
 	}
 
-	const errors = changed ? analyze(result.source, relative).errors.map((error) => error.message) : [];
+	// 변환하지 않은 파일도 분석한다 — "바뀐 것만 검사"하면 변환 후 재검사가 아무것도 검사하지 않는다.
+	const errors = analyze(result.source, relative).errors.map((error) => error.message);
 	report.push({ path: relative, changed, counts: result.counts, leftovers: result.leftovers, errors });
-
-	if (write && changed) writeFileSync(absolute, result.source, "utf8");
 }
 
 const changedFiles = report.filter((file) => file.changed);
@@ -74,8 +73,16 @@ for (const file of withErrors) {
 }
 
 if (withLeftovers.length > 0 || withErrors.length > 0) {
-	console.error("변환 실패: 잔여 이름 또는 분석 오류가 있습니다.");
+	console.error("변환 실패: 잔여 이름 또는 분석 오류가 있습니다. 파일을 쓰지 않았습니다.");
 	process.exit(1);
 }
 
-console.log(write ? "변환 완료." : "검사 통과(잔여 이름 0 · 분석 오류 0).");
+// 검사를 모두 통과한 뒤에만 쓴다(실패한 변환을 디스크에 남기지 않는다).
+if (write) {
+	for (const file of changedFiles) {
+		const absolute = path.join(contentsRoot, file.path);
+		writeFileSync(absolute, convertLegacySource(readFileSync(absolute, "utf8")).source, "utf8");
+	}
+}
+
+console.log(write ? `변환 완료: ${changedFiles.length}편.` : "검사 통과(잔여 이름 0 · 분석 오류 0).");

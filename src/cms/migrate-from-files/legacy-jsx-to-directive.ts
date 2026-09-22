@@ -7,7 +7,7 @@
  * 변환 규칙(`CMS-M8-DA-1-CONVERSION-MEMO.md`):
  * - 등록 컴포넌트 → directive. 컨테이너 콜론 수는 `3 + 안에 중첩된 컨테이너 단계 수`(§4.4).
  * - 문단 안 줄 끝 `\`(mdast `break`) → `:br[]`. 문단이 한 줄로 합쳐진다.
- * - `IdeographicSpace` → 컴포넌트(span)만 걷어내고 **글자를 남긴다**. 독립 문단 간격이 사라지면 공개 렌더가 바뀐다.
+ * - `IdeographicSpace` → **홀로 쓴 `:br[]` 문단(빈 줄)**. 그냥 지우면 저자가 만든 여백이 사라진다(사용자 결정).
  * - 모르는 JSX는 **건드리지 않고** `leftovers`에 기록한다(무음 변환 금지).
  *
  * directive 정의표(`@/cms/mdx/directives`)를 단일 원천으로 쓴다 — 저장 문법이 갈라지지 않는다.

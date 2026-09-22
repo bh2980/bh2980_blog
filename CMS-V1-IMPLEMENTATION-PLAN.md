@@ -86,11 +86,11 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
 | M7-RV-1 | DONE | RV | `feature/M7` | `537573f` | 독립 검수 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → 수정 → 재검수 **승인**. 중대 위험 6기준 전부 X |
 | M8-ED-1 | DONE | ED | `feature/new-cms` | `475c2c6`, `b74c215`, `9963203` | §4.4를 전면 directive로 개정. **사용자 승인 2026-09-22** |
-| M8-FE-1 | READY | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지). 선행 M8-ED-1 충족 |
-| M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
+| M8-FE-1 | DONE | FE | `feature/new-cms` | `4ae05b7`, `ff586fe` | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지). 선행 M8-ED-1 충족 |
+| M8-FE-2 | DONE | FE+BE | `feature/new-cms` | `ff586fe`, `a743c7e`, `3463d6f` | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
 | M8-TW-1 | TODO | TW | — | — | 등록 이름 대조 + 미등록은 본문 텍스트 보존 검증 + 폐기 이름 제거 |
 | M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
-| M8-DA-1 | TODO | DA+TW | — | — | 레거시 46편(컴포넌트 43 + `<u>`만 2 + 하드브레이크만 1) JSX→directive 변환 + 전후 대조 + `src/contents` 커밋 |
+| M8-DA-1 | DONE | DA+TW | `feature/new-cms` | `78aac7a`, `11287b9` | 레거시 46편(컴포넌트 43 + `<u>`만 2 + 하드브레이크만 1) JSX→directive 변환 + 전후 대조 + `src/contents` 커밋 |
 | M8-RV-1 | TODO | RV | — | — | — |
 | M9-FE-1 | TODO | BE+FE | — | — | 미리보기 DB 초안 경로 (전환 선행 조건) |
 | M9-BE-1 | TODO | BE+INF | — | — | 이관 실행 + 49주소·이미지 대조 (카테고리 published 필수) |

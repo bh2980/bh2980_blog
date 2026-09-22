@@ -7,8 +7,9 @@ const ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 
 /**
  * 배치 2(M8-DA-1)에서 본문이 directive 저장 형식으로 바뀌었다. 쓰기 경로(`toDocument`/`serialize`)는
- * 배치 3(M8-ED-2)에서 directive를 배운다 — 인라인 directive(`:u`, `:br`)가 있는 표본의 왕복은 그때까지
- * 실패한다. `it.fails`로 **현재 상태를 고정**한다: 배치 3에서 통과하면 이 테스트가 실패하며 마커를 지우게 된다.
+ * 배치 3(M8-ED-2)에서 directive를 배운다. 아래 두 표본은 **현재 왕복이 깨진다**(다른 directive 표본은
+ * 이미 맞는다 — 왜 이 둘만 깨지는지는 배치 3에서 원인을 확인한다). `it.fails`로 현재 상태를 고정한다:
+ * 배치 3에서 통과하면 이 테스트가 실패하며 마커를 지우게 된다.
  */
 const ROUNDTRIP_PENDING_DIRECTIVE = new Set([
 	"src/contents/posts/내가-만든-rag의-성능-측정하기.mdx",
