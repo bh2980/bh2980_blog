@@ -17,6 +17,32 @@ describe("CmsImage width", () => {
 		expect(screen.getByAltText("설명").style.width).toBe("100%");
 	});
 
+	it("명시적 px width도 인라인 width로 렌더된다", () => {
+		render(
+			<CmsImage
+				src="https://example.com/a.png"
+				alt="설명"
+				width="600px"
+				resolve={() => ({ url: "https://example.com/a.png" })}
+			/>,
+		);
+
+		expect(screen.getByAltText("설명").style.width).toBe("600px");
+	});
+
+	it("장식 이미지도 주소가 있으면 이미지를 렌더한다", () => {
+		const { container } = render(
+			<CmsImage
+				src="https://example.com/a.png"
+				alt=""
+				decorative
+				resolve={() => ({ url: "https://example.com/a.png" })}
+			/>,
+		);
+
+		expect(container.querySelector("img")).toBeTruthy();
+	});
+
 	it("width 미지정에는 인라인 width를 적용하지 않는다(자연 크기)", () => {
 		render(
 			<CmsImage src="https://example.com/a.png" alt="설명" resolve={() => ({ url: "https://example.com/a.png" })} />,

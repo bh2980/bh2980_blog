@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NodeViewProps } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Trash2 } from "lucide-react";
 import { resolveImageUrl } from "@/cms/mdx/image-src";
@@ -10,15 +10,51 @@ import { Input } from "@/components/ui/input";
 export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
 	const { src, alt, width, align, caption, mediaId } = node.attrs;
 	const [isEditing, setIsEditing] = useState(false);
-	const resolved = resolveImageUrl(typeof src === "string" ? src : undefined);
+	const [mediaState, setMediaState] = useState<{ status: string; publicUrl: string | null } | null>(null);
+
+	useEffect(() => {
+		if (!mediaId || src) {
+			setMediaState(null);
+			return;
+		}
+		let cancelled = false;
+		setMediaState({ status: "checking", publicUrl: null });
+		fetch(`/api/cms/v1/media/${encodeURIComponent(mediaId)}`)
+			.then(async (response) => {
+				if (!response.ok) throw new Error("media_lookup_failed");
+				return (await response.json()) as { status?: string; publicUrl?: string | null };
+			})
+			.then((result) => {
+				if (!cancelled) setMediaState({ status: result.status ?? "unknown", publicUrl: result.publicUrl ?? null });
+			})
+			.catch(() => {
+				if (!cancelled) setMediaState({ status: "lookup-failed", publicUrl: null });
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [mediaId, src]);
+
+	const imageSrc = typeof src === "string" && src ? src : mediaState?.publicUrl;
+	const resolved = resolveImageUrl(typeof imageSrc === "string" ? imageSrc : undefined);
 	const canRender = resolved !== null && "url" in resolved;
-	const resolveReason = !src
-		? mediaId
-			? "미디어가 아직 준비되지 않았거나 주소를 해석할 수 없습니다"
-			: "이미지 주소가 없습니다"
-		: resolved && "failure" in resolved
+	const resolveReason = canRender
+		? null
+		: src
 			? "허용되지 않는 이미지 주소입니다"
-			: null;
+			: !mediaId
+			? "이미지 주소가 없습니다"
+			: mediaState?.status === "checking"
+				? "미디어 상태를 확인하는 중입니다"
+				: mediaState?.status === "pending"
+					? "미디어가 아직 준비되지 않았습니다"
+					: mediaState?.status === "failed"
+						? "미디어 업로드에 실패했습니다"
+						: mediaState?.status === "missing"
+							? "미디어 파일을 찾을 수 없습니다"
+							: mediaState?.status === "lookup-failed"
+								? "미디어 상태를 확인할 수 없습니다"
+								: "미디어 주소를 해석할 수 없습니다";
 
 	const alignClasses = {
 		left: "mr-auto",
@@ -111,7 +147,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 			<div className="relative overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
 				{canRender ? (
 					// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible
-					<img src={src} alt={alt || ""} className="w-full h-auto object-contain rounded-md" />
+					<img src={resolved && "url" in resolved ? resolved.url : ""} alt={alt || ""} className="w-full h-auto object-contain rounded-md" />
 				) : (
 					<div className="w-full h-48 flex items-center justify-center text-neutral-400 text-sm">
 						이미지를 불러올 수 없습니다

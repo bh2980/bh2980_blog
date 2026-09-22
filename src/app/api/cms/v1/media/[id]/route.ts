@@ -4,6 +4,36 @@ import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
 import { handleApiError } from "../../error-handler";
 import { validateSameOrigin } from "../../security";
 
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+	try {
+		await authGateway.verifyAdmin();
+		const { id } = await context.params;
+		if (!id) {
+			return NextResponse.json({ code: "invalid_input", message: "media id is required" }, { status: 400 });
+		}
+
+		const store = getCmsContentStore();
+		const media = await store.getMediaAsset(id);
+		if (!media) {
+			return NextResponse.json({ code: "not_found", message: "Media asset not found" }, { status: 404 });
+		}
+
+		if (media.status !== "ready" || !media.storageKey) {
+			return NextResponse.json({ mediaId: id, status: media.status, publicUrl: null });
+		}
+
+		const mediaStore = getCmsMediaStore();
+		const head = await mediaStore.headFile({ key: media.storageKey });
+		return NextResponse.json({
+			mediaId: id,
+			status: head ? "ready" : "missing",
+			publicUrl: head ? mediaStore.getPublicUrl(media.storageKey) : null,
+		});
+	} catch (error) {
+		return handleApiError(error);
+	}
+}
+
 export async function DELETE(
 	request: NextRequest,
 	context: { params: Promise<{ id: string }> },

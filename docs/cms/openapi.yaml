@@ -621,6 +621,28 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
 
   /media/{id}:
+    get:
+      tags: [media]
+      summary: 미디어 상태와 공개 주소 확인
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 미디어 상태
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mediaId, status, publicUrl]
+                properties:
+                  mediaId: { type: string, format: uuid }
+                  status: { type: string, enum: [pending, ready, failed, missing, deleting] }
+                  publicUrl: { type: string, nullable: true }
+        "404": { $ref: "#/components/responses/NotFound" }
+
     delete:
       tags: [media]
       summary: 미디어 삭제 (참조 중이면 409)

@@ -13,8 +13,15 @@ import { PublicImage } from "./public-image.client";
  * DB를 이 컴포넌트에서 직접 읽지 않는다. 주소 해석은 **호출자가 주입하는 resolver**의 책임이다.
  */
 
-/** `width`는 백분율만 받는다(`60%`). 그 밖의 값은 무시한다. */
-const PERCENT = /^\d{1,3}(?:\.\d+)?%$/;
+/** `width`는 1~100% 또는 1~4096px만 받는다. 그 밖의 값은 무시한다. */
+const widthStyle = (value?: string) => {
+	if (!value) return undefined;
+	const percent = /^(\d{1,3}(?:\.\d+)?)%$/.exec(value);
+	if (percent && Number(percent[1]) > 0 && Number(percent[1]) <= 100) return { width: value };
+	const pixels = /^(\d+)px$/.exec(value);
+	if (pixels && Number(pixels[1]) > 0 && Number(pixels[1]) <= 4096) return { width: value };
+	return undefined;
+};
 
 const ALIGN_CLASS: Record<string, string> = {
 	left: "items-start",
@@ -51,7 +58,7 @@ export const CmsImage = ({
 
 	// 해석 실패: 장식 이미지는 캡션만 남긴다. 본문 이미지는 중립 플레이스홀더와 캡션을 남긴다.
 	// 내부 사유·alt 대체·width·align 적용은 하지 않는다.
-	if (decorative) {
+	if (decorative && !url) {
 		return captionText ? <p className={cn("my-6", captionClassName, className)}>{captionText}</p> : null;
 	}
 	if (!url) {
@@ -74,11 +81,11 @@ export const CmsImage = ({
 	}
 
 	const figureClassName = cn("my-6 flex flex-col gap-2", ALIGN_CLASS[align ?? ""] ?? "items-center", className);
-	const widthStyle = width && PERCENT.test(width) ? { width } : undefined;
+	const imageWidthStyle = widthStyle(width);
 
 	return (
 		<figure className={figureClassName}>
-			<PublicImage src={url} alt={alt ?? ""} decorative={decorative} style={widthStyle} />
+			<PublicImage src={url} alt={alt ?? ""} decorative={decorative} style={imageWidthStyle} />
 			{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
 		</figure>
 	);

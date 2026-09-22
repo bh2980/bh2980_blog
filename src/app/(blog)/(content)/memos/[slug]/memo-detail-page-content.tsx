@@ -1,3 +1,4 @@
+import { createPublicImageResolver } from "@/cms/mdx/public-image-resolver";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Memo } from "@/libs/contents/types/contents";
@@ -11,7 +12,8 @@ type MemoDetailPageContentProps = {
 };
 
 export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: MemoDetailPageContentProps) => {
-	const { content, toc } = await renderMDX(memo.contentMdx);
+	const imageResolver = await createPublicImageResolver(memo.contentMdx);
+	const { content, toc } = await renderMDX(memo.contentMdx, { imageResolver });
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
