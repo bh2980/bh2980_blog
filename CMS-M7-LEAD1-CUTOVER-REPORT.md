@@ -1,7 +1,7 @@
 # CMS M7 전환 보고서 (M7-LEAD-1)
 
 - 작성일: 2026-09-22
-- 대상: `feature/M7` @ `c7778d4` (베이스 `6a55aff` = M0–M6 DONE)
+- 대상: `feature/M7` @ `1348fe1` (베이스 `2749eab` = M0–M6 DONE)
 - 판정: **조건부 — 지금 상태로 운영 전환을 승인하지 않는다.** 아래 “승인 요청” 4건에 대한 사용자 결정이 필요하다.
 - 근거: `CMS-M7-DEV-PLAN.md`(특히 §9 실행 기록), `CMS-M7-INV1-PUBLIC-CACHE.md`, O2 독립 감사(runId `e1d1d73c`)
 
@@ -41,7 +41,7 @@ M7의 구현 배치(1–6)는 끝났고 게이트도 실측으로 통과했다. 
 | 타입 | `pnpm typecheck` | 0 errors |
 | 테스트(env 미로드) | `pnpm test:run` | 106 files · 685 tests · 592 pass · 83 skip · 9 파일 실패 — **하네스가 `.env.local`을 읽지 않아 생기는 현상** |
 | 테스트(실DB env) | `node --env-file=<본 저장소>/.env.local node_modules/vitest/vitest.mjs run` | **106 files · 685 tests · 전부 pass · 0 fail · 0 skip** |
-| 기준선 대비 | `6a55aff` | 89/556/489/67/8 → **+103 tests**, 회귀 없음 |
+| 기준선 대비 | `2749eab` | 89/556/489/67/8 → **+103 tests**, 회귀 없음 |
 | 실패 원인 | — | 위 9개 파일은 `CMS_TEST_DATABASE_URL is not set`(skip 아니라 throw). 본 저장소 `.env.local`을 `--env-file`로 지정하면 **모두 통과**한다 |
 | 빌드 | `pnpm build`(env 5개 더미) | exit 0 · 공개 라우트 전부 `ƒ` 동적 · slug OG는 `dynamicRoutes`(정적 베이킹 없음, `.body` 없음) |
 | 린트 | `pnpm exec biome check` | 신규·변경 파일 clean. 기존 위반 수는 HEAD와 동일(신규 0) |
@@ -172,18 +172,18 @@ O2가 요구한 승인 선행 조건 7개: 실DB 13건 pass·0 skip / postgres s
 
 | 커밋 | 내용 |
 | --- | --- |
-| `ac6134c` | M7 배치 개발 계획 |
-| `830d03a` | 베이스라인 타입 게이트 복구(prosemirror 중복 버전) |
-| `4936035` | M7-INV-1 캐시·동적 렌더 조사 |
-| `246064e` | 배치 1 — 공개 published 읽기 + Postgres repository |
-| `2bdb017` | chore(.pi 추적 해제) |
-| `71cc784` | 배치 2 — 공개 라우트 요청 시 조회 전환 |
-| `6dc7306` | OG 메타데이터 단계 404 throw 제거(빌드 회귀 수정) |
-| `0cf1728` | 배치 3 — SEO 메타 저장·head·sitemap 제외 |
-| `1ba504a` | 배치 4 — 공개 API + OpenAPI 계약 문서 |
-| `da65822` | slug NFC 정규화 + RSS `no-store`(R1/R2 P2) |
-| `5945613` | 배치 5 — 미리보기 세션 제한 |
-| `c7778d4` | 배치 6 — 전환 차단 회귀 + `pre` RSC 실제 렌더 |
+| `b7c43a4` | M7 배치 개발 계획 |
+| `c8ac9b2` | 베이스라인 타입 게이트 복구(prosemirror 중복 버전) |
+| `15f67bd` | M7-INV-1 캐시·동적 렌더 조사 |
+| `bfff753` | 배치 1 — 공개 published 읽기 + Postgres repository |
+| `cd08777` | chore(.pi 추적 해제) |
+| `9859031` | 배치 2 — 공개 라우트 요청 시 조회 전환 |
+| `c76ba9d` | OG 메타데이터 단계 404 throw 제거(빌드 회귀 수정) |
+| `92d34d0` | 배치 3 — SEO 메타 저장·head·sitemap 제외 |
+| `90367e1` | 배치 4 — 공개 API + OpenAPI 계약 문서 |
+| `639692b` | slug NFC 정규화 + RSS `no-store`(R1/R2 P2) |
+| `b9d8040` | 배치 5 — 미리보기 세션 제한 |
+| `1348fe1` | 배치 6 — 전환 차단 회귀 + `pre` RSC 실제 렌더 |
 
 ## 부록 B. 재현 명령
 

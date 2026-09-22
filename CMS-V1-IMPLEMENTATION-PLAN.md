@@ -19,72 +19,72 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | ID | 상태 | 담당 | worktree | commit | 검증 |
 | --- | --- | --- | --- | --- | --- |
 | M0-INV-1 | CANCELLED | DA | — | — | `src/cms` 폐기. 스키마 드리프트 대상 없음 |
-| M0-INV-2 | DONE | INF | 통합 브랜치 | `48a502d` | `pg` 8.23.0 runtime + `@types/pg` 8.23.1 dev 설치; `@tiptap/*`는 M3-FE-1까지 유예 |
-| M0-INV-3 | DONE | JR | 병합 후 삭제 | `43e77e7` | MDX 49=post 7+memo 42, `find`와 일치. JSX 요약은 표에 맞춰 Tooltip 8/Callout 6 |
-| M0-BASE-1 | DONE | Lead | 통합 브랜치 | `24aa89e` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
-| M1-TW-1 | DONE | TW | 병합 후 삭제 | `499fd96` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
-| M1-TW-2 | DONE | TW | 통합 브랜치 | `f0746a6` | 실 PostgreSQL 13 passing, 0 skip; `CMS_TEST_DATABASE_URL`만 사용 |
-| M1-ED-1 | DONE | ED | 병합 후 삭제 | `3380550` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 38 passed, 0 skip |
-| M1-ED-1a | DONE | ED | 병합 후 삭제 | `3380550` | `toDocument` + `index.ts` |
-| M1-ED-1b | DONE | ED | 병합 후 삭제 | `3380550` | serialize. 합성 픽스처 통과 |
-| M1-ED-1c | DONE | ED | 병합 후 삭제 | `3380550` | 표본 9파일 firstDoc===secondDoc |
-| M1-ED-2 | DONE | ED | 통합 브랜치 | `53b1495` | 실제 SourceConverter/에디터 토글 테스트 10개 통과; 보기 전용 토글 시 원문 바이트 정확히 보존; 편집된 문서는 의미 보존 왕복; 유효하지 않거나 허용되지 않은 원문은 오류와 함께 보존; Codex Sol medium 최종 리뷰 이슈 없음 |
-| M1-DA-1 | DONE | DA | 통합 브랜치 | `9d19f9f` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
-| M1-RV-1 | DONE | RV | 통합 브랜치 | `53b1495` | 전체 명령 `node --env-file=.env.local node_modules/vitest/vitest.mjs run` => 56 files/299 tests passed; `pnpm typecheck` passed; M1-ED-2 변경 5개 파일 Biome 통과; Codex 최종 판정 OK |
+| M0-INV-2 | DONE | INF | 통합 브랜치 | `1f94560` | `pg` 8.23.0 runtime + `@types/pg` 8.23.1 dev 설치; `@tiptap/*`는 M3-FE-1까지 유예 |
+| M0-INV-3 | DONE | JR | 병합 후 삭제 | `cc4c76f` | MDX 49=post 7+memo 42, `find`와 일치. JSX 요약은 표에 맞춰 Tooltip 8/Callout 6 |
+| M0-BASE-1 | DONE | Lead | 통합 브랜치 | `c0c6936` | spec·plan·`env.d.ts`만. `.env.local` 제외 |
+| M1-TW-1 | DONE | TW | 병합 후 삭제 | `a33d286` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 1 failed suite, 0 pass/skip. `@/cms/mdx` 미구현 |
+| M1-TW-2 | DONE | TW | 통합 브랜치 | `4b87814` | 실 PostgreSQL 13 passing, 0 skip; `CMS_TEST_DATABASE_URL`만 사용 |
+| M1-ED-1 | DONE | ED | 병합 후 삭제 | `29d270d` | `pnpm test:run src/cms/mdx/__test__/roundtrip.test.ts` → 38 passed, 0 skip |
+| M1-ED-1a | DONE | ED | 병합 후 삭제 | `29d270d` | `toDocument` + `index.ts` |
+| M1-ED-1b | DONE | ED | 병합 후 삭제 | `29d270d` | serialize. 합성 픽스처 통과 |
+| M1-ED-1c | DONE | ED | 병합 후 삭제 | `29d270d` | 표본 9파일 firstDoc===secondDoc |
+| M1-ED-2 | DONE | ED | 통합 브랜치 | `f3f7ef7` | 실제 SourceConverter/에디터 토글 테스트 10개 통과; 보기 전용 토글 시 원문 바이트 정확히 보존; 편집된 문서는 의미 보존 왕복; 유효하지 않거나 허용되지 않은 원문은 오류와 함께 보존; Codex Sol medium 최종 리뷰 이슈 없음 |
+| M1-DA-1 | DONE | DA | 통합 브랜치 | `5689d0a` | 실DB 13 passing; Codex Sol medium 최종 리뷰 이슈 없음 |
+| M1-RV-1 | DONE | RV | 통합 브랜치 | `f3f7ef7` | 전체 명령 `node --env-file=.env.local node_modules/vitest/vitest.mjs run` => 56 files/299 tests passed; `pnpm typecheck` passed; M1-ED-2 변경 5개 파일 Biome 통과; Codex 최종 판정 OK |
 | M2-INV-1 | DONE | INF | 통합 브랜치 | — | next-auth@5.0.0-beta.32 공식 조사 확인 |
-| M2-BE-1 | DONE | BE | 통합 브랜치 | `778a1a8` | CSRF 가드(validateSameOrigin fail-closed), GitHub ID BigInt canonical 검증, 비인가 403 루프 방지; auth-gateway 테스트 통과 |
-| M2-BE-2 | DONE | BE | 통합 브랜치 | `6d05f43` | `src/cms/services/__test__/content-service.test.ts` 71 passing |
-| M2-TW-1 | DONE | TW | 통합 브랜치 | `0d8529a` | `src/cms/services/__test__/content-service.test.ts` 순수 서비스 계약 고정 |
-| M2-TW-3 | DONE | TW | 통합 브랜치 | `ef390fe` | `src/cms/adapters/postgres/__test__/references.test.ts` 작업 참조/충돌 계약 고정 |
-| M2-DA-1 | DONE | DA | 통합 브랜치 | `190d8ae` | 실 PostgreSQL 참조 무결성 및 references 16 passing |
-| M2-BE-3 | DONE | BE | 통합 브랜치 | `778a1a8` | 엔트리 생성/수정+폴더 배정 단일 트랜잭션, `{code,message,issues?,serverVersion?}` 오류 규격; entries API 테스트 통과 |
-| M2-TW-2 | DONE | TW | 통합 브랜치 | `fbd27db` | folders.test.ts (8), list-entries.test.ts (9) 계약 고정 |
-| M2-DA-2 | DONE | DA | 통합 브랜치 | `f9aacab` | folders.version 컬럼 + expectedVersion 428/409 낙관적 락, version 직렬화 복원; folders.test.ts 실DB 통과 |
-| M2-BE-4 | DONE | BE | 통합 브랜치 | `778a1a8` | relations 역참조 API; relations.test.ts 통과 |
-| M2-BE-5 | DONE | JR | 통합 브랜치 | `778a1a8` | preferences API 규격; preferences.test.ts 통과 |
-| M2-FE-1 | DONE | FE | 통합 브랜치 | `56b8675` | URL 쿼리 양방향 동기화, 오류/재시도 UI, AbortController 경합 방지, 검색 300ms 디바운스; 빌드 통과 |
-| M2-FE-2 | DONE | FE | 통합 브랜치 | `778a1a8` | 폴더 계층 트리/이름변경/삭제, preferences mount-once 자동 연동; 빌드 통과 |
-| M2-RV-1 | DONE | RV | 통합 브랜치 | `56b8675` | 오라클 감사(H1–H4) 반영 `778a1a8`, reviewer 재리뷰 P0/P1 반영 `f9aacab`, 최종 리뷰 "중대한 위험 없음"; 65 files/422 tests, typecheck, build 통과 |
-| M3-TW-1 | DONE | TW | 통합 브랜치 | `a225241` | 발행·상태·예약·날짜·공개참조 롤백 계약 테스트 11개; lifecycle.test.ts |
-| M3-BE-1 | DONE | BE | 통합 브랜치 | `963bf77` | publish/archive/restore/schedule API + executeSchedulePublish 슬러그/참조 원자적 승격; reviewer 통과 |
-| M3-FE-1 | DONE | FE | 통합 브랜치 | `665a0f9` | /admin/entries/[id]/edit 셸, Tiptap 에디터 마운트, M1 EditorToggle 연동; 빌드 통과 |
-| M3-FE-2 | DONE | FE | 통합 브랜치 | `6d83eef` | 2초 idle/10초 max 자동저장, IndexedDB 백업, IME 지연, 409 충돌 비교/복사 UI; reviewer 통과 |
-| M3-ED-1 | DONE | ED | 통합 브랜치 | `8fb382b` | 슬래시 메뉴(/) 및 블록 핸들(위/아래 이동, 복제, 삭제) 오버레이; reviewer 통과 |
-| M3-ED-2 | DONE | ED | 통합 브랜치 | `05a1e44` | 내부 링크([[]) 및 Tiptap 커스텀 Image 노드(크기/정렬/alt/caption) + MDX 컴포넌트 변환; reviewer 통과 |
-| M3-INF-1 | DONE | INF | 통합 브랜치 | `1573d3c` | R2 MediaStore 어댑터(S3 호환 presigned PUT, promoteFile, head/delete/publicUrl); reviewer 통과 |
-| M3-BE-2 | DONE | BE | 통합 브랜치 | `1573d3c` | 미디어 업로드 준비/완료 API(/media/uploads, /media/:id/complete), 10MiB/MIME 매직바이트 검증; reviewer 통과 |
-| M3-FE-3 | DONE | FE | 통합 브랜치 | `05a1e44` | 에디터 내 이미지 드래그앤드롭/클립보드 붙여넣기/슬래시/툴바 삽입 및 프로그레스 UI; reviewer 통과 |
-| M3-FE-4 | DONE | FE | 통합 브랜치 | `dc74ab4` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
-| M3-RV-1 | DONE | RV | 통합 브랜치 | `05a1e44` | M3 전 작업(TW-1, BE-1, BE-2, FE-1~4, ED-1, ED-2, INF-1) 완료 및 reviewer 전 배치 무결함 승인 |
-| M4-BE-MEDIA-1 | DONE | BE | 통합 브랜치 | `ed44c2d` | 미디어 목록 조회(검색/필터/사용처 조인) 및 안전 삭제 API; reviewer 통과 |
-| M4-FE-1 | DONE | FE | 통합 브랜치 | `1b83ced` | 미디어 라이브러리(/admin/media) 썸네일 그리드, 상세 인스펙터, 안전 삭제 UX; reviewer 통과 |
-| M4-TW-1 | DONE | TW | 통합 브랜치 | `3914453` | 일괄 메타데이터/상태 계약 테스트 20건; reviewer 통과 |
-| M4-BE-1 | DONE | BE | 통합 브랜치 | `3914453` | POST /bulk 8 ops, 항목별 원자성, 예약 locked (A); reviewer 통과 |
-| M4-FE-2 | DONE | FE | 통합 브랜치 | `3914453` | 체크박스 선택·일괄 바·실패 재실행, 브라우저 E2E; reviewer 통과 |
-| M4-RV-1 | DONE | RV | 통합 브랜치 | `3914453` | 배치 1~3 reviewer 전 배치 무결함 승인 |
-| M5-BE-1 | DONE | BE | 통합 브랜치 | `7f95d00` | 복제 API (POST /entries/:id/duplicate), 최신 초안 복사, 제목 '(복사)', slug 비움; reviewer 통과 |
-| M5-BE-2 | DONE | BE | 통합 브랜치 | `7f95d00` | body_templates 테이블, 기본 2종 seed, CRUD API; reviewer 통과 |
-| M5-FE-1 | DONE | FE | 통합 브랜치 | `8fff2a7`, `9ad2f1c` | 에디터 툴바 템플릿 드롭다운, 본문 교체 확인 모달, collection 동기화, 자동저장; reviewer 통과 |
-| M5-FE-3 | DONE | FE | 통합 브랜치 | `8fff2a7` | /admin/templates 관리 UI (목록, 생성, 수정, 삭제), CmsEditor 재사용, 사이드바 메뉴; reviewer 통과 |
-| M5-FE-2 | DONE | FE | 통합 브랜치 | `ce83822` | 인스펙터 태그/카테고리 picker, Record 모달 폼, 308 안내, Record 자동발행; reviewer 통과 |
-| M5-ED-1 | DONE | ED | 통합 브랜치 | `283164a` | collections.ts 단일 레지스트리, F07 확장 예제 4종, docs/cms/extensions.md; reviewer 통과 |
-| M5-RV-1 | DONE | RV | 통합 브랜치 | `9ad2f1c` | 마일스톤 5 전 배치 검수 통과, 80개 테스트 100% PASS, 브라우저 E2E 완료 |
-| M6-BE-1 | DONE | BE | `bh2980/m6-batch1` | `bf11fb4`, `6eeae51`, `7fbdc4a` | 인증 GET/POST `/api/cms/v1/export`, 결정적 ZIP(CRC32·고정 mtime·고정 정렬), 관리자/공개 분리 투영 + 컬렉션별 공개 metadata allowlist, 초안·보관본 공개 유출 차단, REPEATABLE READ READ ONLY 스냅샷, 전 페이로드 digest; reviewer 2회 통과 |
-| M6-BE-2 | DONE | BE | `bh2980/m6-batch1` | `c0a4dc2`, `7fbdc4a`, `798a027` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만. **실DB 검증 완료:** 격리 `cms_m6_apply1`에 1차 `imported=75 skipped=0` → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, 접속 DB 대조(neondb/neondb_owner/non-superuser), opt-in 없는 실행 차단, 원본 무변경, 검증 후 schema 정리 |
-| M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `1797e5f`, `6eeae51`, `7fbdc4a` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
-| M6-RV-1 | DONE | RV | `bh2980/m6-batch1` | `798a027`, `5544041` | reviewer 최종 검수 **승인**(중대 위험 6기준 전부 O, P0/P1 없음). P2 4건은 비차단 기록. 전체 89 files/556 tests, typecheck 0, M6 변경분 biome 0 errors, build 79 routes(운영 DSN 없이) |
-| M7-INV-1 | DONE | BE | `feature/M7` | `4936035` | 공개 캐시 조사(`CMS-M7-INV1-PUBLIC-CACHE.md`) |
-| M7-BE-1 | DONE | BE | `feature/M7` | `246064e` | 공개 repository(store surface 2개, 판별형 반환, 실DB 12건) |
-| M7-BE-2 | DONE | BE | `feature/M7` | `71cc784`, `6dc7306` | 공개 경로 force-dynamic, alias 308, 미공개 404 |
-| M7-FE-1 | DONE | FE | `feature/M7` | `5945613` | 인증 미리보기(401/403 구분), draftMode |
-| M7-FE-2 | DONE | FE | `feature/M7` | `0cf1728` | SEO 메타 저장·head canonical·sitemap 제외·관리자 입력 |
-| M7-BE-3 | DONE | JR | `feature/M7` | `1ba504a` | 공개 API `/public/entries**` + DTO fail-closed |
-| M7-BE-4 | DONE | BE | `feature/M7` | `1ba504a` | OpenAPI 24경로 + 정규식 대조 테스트 |
-| M7-SEC-1 | DONE | Security QA | `feature/M7` | `bb074eb`, `bb045fd`, `135188c` | 자가 점검 + 독립 검수 통과(P1 수정: 발행 MDX 게이트, 렌더 fail-closed) |
-| M7-TW-1 | DONE | TW | `feature/M7` | `c7778d4` | 예약 중복 409, `pre` 실제 RSC 렌더 검증 |
-| M7-LEAD-1 | DONE | Lead | `feature/M7` | `c5eef4d`, `2d615f8` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
+| M2-BE-1 | DONE | BE | 통합 브랜치 | `0c86e18` | CSRF 가드(validateSameOrigin fail-closed), GitHub ID BigInt canonical 검증, 비인가 403 루프 방지; auth-gateway 테스트 통과 |
+| M2-BE-2 | DONE | BE | 통합 브랜치 | `a629cbd` | `src/cms/services/__test__/content-service.test.ts` 71 passing |
+| M2-TW-1 | DONE | TW | 통합 브랜치 | `765f9ec` | `src/cms/services/__test__/content-service.test.ts` 순수 서비스 계약 고정 |
+| M2-TW-3 | DONE | TW | 통합 브랜치 | `7647123` | `src/cms/adapters/postgres/__test__/references.test.ts` 작업 참조/충돌 계약 고정 |
+| M2-DA-1 | DONE | DA | 통합 브랜치 | `fb5e504` | 실 PostgreSQL 참조 무결성 및 references 16 passing |
+| M2-BE-3 | DONE | BE | 통합 브랜치 | `0c86e18` | 엔트리 생성/수정+폴더 배정 단일 트랜잭션, `{code,message,issues?,serverVersion?}` 오류 규격; entries API 테스트 통과 |
+| M2-TW-2 | DONE | TW | 통합 브랜치 | `c3264f4` | folders.test.ts (8), list-entries.test.ts (9) 계약 고정 |
+| M2-DA-2 | DONE | DA | 통합 브랜치 | `157fd7a` | folders.version 컬럼 + expectedVersion 428/409 낙관적 락, version 직렬화 복원; folders.test.ts 실DB 통과 |
+| M2-BE-4 | DONE | BE | 통합 브랜치 | `0c86e18` | relations 역참조 API; relations.test.ts 통과 |
+| M2-BE-5 | DONE | JR | 통합 브랜치 | `0c86e18` | preferences API 규격; preferences.test.ts 통과 |
+| M2-FE-1 | DONE | FE | 통합 브랜치 | `3c34570` | URL 쿼리 양방향 동기화, 오류/재시도 UI, AbortController 경합 방지, 검색 300ms 디바운스; 빌드 통과 |
+| M2-FE-2 | DONE | FE | 통합 브랜치 | `0c86e18` | 폴더 계층 트리/이름변경/삭제, preferences mount-once 자동 연동; 빌드 통과 |
+| M2-RV-1 | DONE | RV | 통합 브랜치 | `3c34570` | 오라클 감사(H1–H4) 반영 `0c86e18`, reviewer 재리뷰 P0/P1 반영 `157fd7a`, 최종 리뷰 "중대한 위험 없음"; 65 files/422 tests, typecheck, build 통과 |
+| M3-TW-1 | DONE | TW | 통합 브랜치 | `c0524a9` | 발행·상태·예약·날짜·공개참조 롤백 계약 테스트 11개; lifecycle.test.ts |
+| M3-BE-1 | DONE | BE | 통합 브랜치 | `be73a1e` | publish/archive/restore/schedule API + executeSchedulePublish 슬러그/참조 원자적 승격; reviewer 통과 |
+| M3-FE-1 | DONE | FE | 통합 브랜치 | `0266afe` | /admin/entries/[id]/edit 셸, Tiptap 에디터 마운트, M1 EditorToggle 연동; 빌드 통과 |
+| M3-FE-2 | DONE | FE | 통합 브랜치 | `3879317` | 2초 idle/10초 max 자동저장, IndexedDB 백업, IME 지연, 409 충돌 비교/복사 UI; reviewer 통과 |
+| M3-ED-1 | DONE | ED | 통합 브랜치 | `4f931b9` | 슬래시 메뉴(/) 및 블록 핸들(위/아래 이동, 복제, 삭제) 오버레이; reviewer 통과 |
+| M3-ED-2 | DONE | ED | 통합 브랜치 | `c7ef7a6` | 내부 링크([[]) 및 Tiptap 커스텀 Image 노드(크기/정렬/alt/caption) + MDX 컴포넌트 변환; reviewer 통과 |
+| M3-INF-1 | DONE | INF | 통합 브랜치 | `bd267f8` | R2 MediaStore 어댑터(S3 호환 presigned PUT, promoteFile, head/delete/publicUrl); reviewer 통과 |
+| M3-BE-2 | DONE | BE | 통합 브랜치 | `bd267f8` | 미디어 업로드 준비/완료 API(/media/uploads, /media/:id/complete), 10MiB/MIME 매직바이트 검증; reviewer 통과 |
+| M3-FE-3 | DONE | FE | 통합 브랜치 | `c7ef7a6` | 에디터 내 이미지 드래그앤드롭/클립보드 붙여넣기/슬래시/툴바 삽입 및 프로그레스 UI; reviewer 통과 |
+| M3-FE-4 | DONE | FE | 통합 브랜치 | `005cf66` | 발행·예약·보관·삭제 상태 액션 UI 및 예약 다이얼로그; 빌드 통과 |
+| M3-RV-1 | DONE | RV | 통합 브랜치 | `c7ef7a6` | M3 전 작업(TW-1, BE-1, BE-2, FE-1~4, ED-1, ED-2, INF-1) 완료 및 reviewer 전 배치 무결함 승인 |
+| M4-BE-MEDIA-1 | DONE | BE | 통합 브랜치 | `5c5439e` | 미디어 목록 조회(검색/필터/사용처 조인) 및 안전 삭제 API; reviewer 통과 |
+| M4-FE-1 | DONE | FE | 통합 브랜치 | `7970a84` | 미디어 라이브러리(/admin/media) 썸네일 그리드, 상세 인스펙터, 안전 삭제 UX; reviewer 통과 |
+| M4-TW-1 | DONE | TW | 통합 브랜치 | `3b7bd49` | 일괄 메타데이터/상태 계약 테스트 20건; reviewer 통과 |
+| M4-BE-1 | DONE | BE | 통합 브랜치 | `3b7bd49` | POST /bulk 8 ops, 항목별 원자성, 예약 locked (A); reviewer 통과 |
+| M4-FE-2 | DONE | FE | 통합 브랜치 | `3b7bd49` | 체크박스 선택·일괄 바·실패 재실행, 브라우저 E2E; reviewer 통과 |
+| M4-RV-1 | DONE | RV | 통합 브랜치 | `3b7bd49` | 배치 1~3 reviewer 전 배치 무결함 승인 |
+| M5-BE-1 | DONE | BE | 통합 브랜치 | `a0dfe6f` | 복제 API (POST /entries/:id/duplicate), 최신 초안 복사, 제목 '(복사)', slug 비움; reviewer 통과 |
+| M5-BE-2 | DONE | BE | 통합 브랜치 | `a0dfe6f` | body_templates 테이블, 기본 2종 seed, CRUD API; reviewer 통과 |
+| M5-FE-1 | DONE | FE | 통합 브랜치 | `b135ce9`, `08b7d12` | 에디터 툴바 템플릿 드롭다운, 본문 교체 확인 모달, collection 동기화, 자동저장; reviewer 통과 |
+| M5-FE-3 | DONE | FE | 통합 브랜치 | `b135ce9` | /admin/templates 관리 UI (목록, 생성, 수정, 삭제), CmsEditor 재사용, 사이드바 메뉴; reviewer 통과 |
+| M5-FE-2 | DONE | FE | 통합 브랜치 | `ee3af2e` | 인스펙터 태그/카테고리 picker, Record 모달 폼, 308 안내, Record 자동발행; reviewer 통과 |
+| M5-ED-1 | DONE | ED | 통합 브랜치 | `304446f` | collections.ts 단일 레지스트리, F07 확장 예제 4종, docs/cms/extensions.md; reviewer 통과 |
+| M5-RV-1 | DONE | RV | 통합 브랜치 | `08b7d12` | 마일스톤 5 전 배치 검수 통과, 80개 테스트 100% PASS, 브라우저 E2E 완료 |
+| M6-BE-1 | DONE | BE | `bh2980/m6-batch1` | `ef7ed54`, `7e2cd3d`, `06b63a2` | 인증 GET/POST `/api/cms/v1/export`, 결정적 ZIP(CRC32·고정 mtime·고정 정렬), 관리자/공개 분리 투영 + 컬렉션별 공개 metadata allowlist, 초안·보관본 공개 유출 차단, REPEATABLE READ READ ONLY 스냅샷, 전 페이로드 digest; reviewer 2회 통과 |
+| M6-BE-2 | DONE | BE | `bh2980/m6-batch1` | `a933605`, `06b63a2`, `4baffaa` | 가져오기 계획 75항목(7+42+3+22+1), UUIDv5 안정 ID, 읽기 전용 검사(blocking 0, M0-INV-3 일치), 단일 트랜잭션 all-or-nothing, skip은 동일 digest(참조·주소·폴더·schemaVersion 포함)일 때만. **실DB 검증 완료:** 격리 `cms_m6_apply1`에 1차 `imported=75 skipped=0` → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, 접속 DB 대조(neondb/neondb_owner/non-superuser), opt-in 없는 실행 차단, 원본 무변경, 검증 후 schema 정리 |
+| M6-ED-1 | DONE | ED | `bh2980/m6-batch1` | `aa5083b`, `7e2cd3d`, `06b63a2` | 전편 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0(정규화 10범주로 전량 분류), 렌더 체인 단일 소스화; reviewer 통과 |
+| M6-RV-1 | DONE | RV | `bh2980/m6-batch1` | `4baffaa`, `6ec4957` | reviewer 최종 검수 **승인**(중대 위험 6기준 전부 O, P0/P1 없음). P2 4건은 비차단 기록. 전체 89 files/556 tests, typecheck 0, M6 변경분 biome 0 errors, build 79 routes(운영 DSN 없이) |
+| M7-INV-1 | DONE | BE | `feature/M7` | `15f67bd` | 공개 캐시 조사(`CMS-M7-INV1-PUBLIC-CACHE.md`) |
+| M7-BE-1 | DONE | BE | `feature/M7` | `bfff753` | 공개 repository(store surface 2개, 판별형 반환, 실DB 12건) |
+| M7-BE-2 | DONE | BE | `feature/M7` | `9859031`, `c76ba9d` | 공개 경로 force-dynamic, alias 308, 미공개 404 |
+| M7-FE-1 | DONE | FE | `feature/M7` | `b9d8040` | 인증 미리보기(401/403 구분), draftMode |
+| M7-FE-2 | DONE | FE | `feature/M7` | `92d34d0` | SEO 메타 저장·head canonical·sitemap 제외·관리자 입력 |
+| M7-BE-3 | DONE | JR | `feature/M7` | `90367e1` | 공개 API `/public/entries**` + DTO fail-closed |
+| M7-BE-4 | DONE | BE | `feature/M7` | `90367e1` | OpenAPI 24경로 + 정규식 대조 테스트 |
+| M7-SEC-1 | DONE | Security QA | `feature/M7` | `b5f783b`, `783f0d5`, `be63b14` | 자가 점검 + 독립 검수 통과(P1 수정: 발행 MDX 게이트, 렌더 fail-closed) |
+| M7-TW-1 | DONE | TW | `feature/M7` | `1348fe1` | 예약 중복 409, `pre` 실제 RSC 렌더 검증 |
+| M7-LEAD-1 | DONE | Lead | `feature/M7` | `065bb8f`, `e39704b` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
 | M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
-| M7-RV-1 | DONE | RV | `feature/M7` | `666f1d2` | 독립 검수 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → 수정 → 재검수 **승인**. 중대 위험 6기준 전부 X |
+| M7-RV-1 | DONE | RV | `feature/M7` | `537573f` | 독립 검수 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → 수정 → 재검수 **승인**. 중대 위험 6기준 전부 X |
 | M8-ED-1 | REVIEW | ED | `feature/M7` | — | §4.4를 전면 directive로 개정(초안 반영, 사용자 승인 대기) |
 | M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
 | M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
@@ -107,22 +107,22 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 숨은 의존성, 잘못된 선행, 파일 소유권 충돌, 층이 어긋난 테스트가 보이면 **임의로 우회 구현하지 않는다.** 작업을 멈추고 Lead가 이 문서를 고친 뒤에 계속한다. 예상 밖의 파일을 건드려야 할 때도 같다. 담당자가 소유 목록 밖의 파일을 먼저 수정하지 않고, Lead가 소유권을 옮기거나 선행 Task를 나눈 다음 재배정한다.
 
 - 2026-09-16: 사용자 요청으로 미커밋 `src/cms/**`, `docs/cms/**`, 게시글 폴더 스크린샷을 폐기했다. 기준 커밋은 `CMS-SPEC.md`, `CMS-V1-IMPLEMENTATION-PLAN.md`, `env.d.ts`만. CMS 구현은 이 문서와 명세에서 다시 시작한다. M0-INV-1은 대상 파일이 없어 CANCELLED.
-- 2026-09-16: M0-INV-3 병합(`43e77e7`). 목록은 `CMS-CONTENT-INVENTORY.md`. 날짜 없음 0, status 없음 1, 빈 tags 1, 빈 alt 22장/상대 이미지 5파일, 표 4, 수식 2. 요약 JSX 숫자는 파일별 표와 달랐던 Tooltip/Callout만 Lead가 고침. M0-INV-2는 첫 CMS 코드와 같이 둔다. 다음 배치는 M1-TW-1(실패 테스트만).
-- 2026-09-16: M1-TW-1 병합(`499fd96`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
+- 2026-09-16: M0-INV-3 병합(`cc4c76f`). 목록은 `CMS-CONTENT-INVENTORY.md`. 날짜 없음 0, status 없음 1, 빈 tags 1, 빈 alt 22장/상대 이미지 5파일, 표 4, 수식 2. 요약 JSX 숫자는 파일별 표와 달랐던 Tooltip/Callout만 Lead가 고침. M0-INV-2는 첫 CMS 코드와 같이 둔다. 다음 배치는 M1-TW-1(실패 테스트만).
+- 2026-09-16: M1-TW-1 병합(`a33d286`). 구현 파일 없음. 공개 API는 테스트가 `analyze`/`toDocument`/`serialize`를 `@/cms/mdx`에서 import하는 형태로 고정. Lead가 표 단언 `x | 1` 연속 문자열을 셀 `x`/`1`로 바꿈(파싱된 표를 막지 않기 위함). 코드 펜스 안 `$$`는 블록 수식이 아님 — 실제 블록 수식은 `memos/js의-비동기-처리-메커니즘` 1파일. M1-ED-1 검증은 폐기된 `corpus.test.ts`/`source-toggle.test.ts`가 아니라 `roundtrip.test.ts`만. M0-INV-2(`pg`/`@tiptap`)는 serialize가 기존 remark/mdast로 가능하므로 Data·에디터 UI 전까지 미룸.
 - 2026-09-16: M1-ED-1 1차 배정이 30분 한도로 실패했다. 슬롯은 유지. 남은 파일: `analyze.ts` `parse.ts` `expressions.ts` `frontmatter.ts`(이미 `serializeFrontmatter`) `jsx.ts` `registry.ts` `types.ts`. 없는 것: `toDocument`, `serialize`, `src/cms/mdx/index.ts`. `__probe.ts`는 디버그 스크립트라 삭제. 구현은 재작성하지 말고 이어서 완성한다.
 - 2026-09-16: 사용자 요청으로 OpenMausBot 30분 핸드오프에 맞춰 M1-ED-1을 슬라이스한다. 한 배정에 한 슬라이스만. 같은 Editor 슬롯에 병렬 배정하지 않는다. 루틴도 다음 미완 슬라이스만 부여. 이미 나간 serialize 재배정은 취소하지 않는다.
-- 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`f0746a6`)와 M1-DA-1(`9d19f9f`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2와 M1-RV-1은 TODO.
-- 2026-09-20: M1-ED-2(커밋 `53b1495`)와 M1-RV-1이 DONE되어 Milestone 1이 완료되었다. 전체 56 files/299 tests 및 typecheck 통과, Codex 최종 판정 OK. M1-ED-2는 프레임워크 독립적 변환기/토글 경계이므로 Tiptap이 필요하지 않았으며, 따라서 Tiptap은 첫 실제 시각 에디터 작업인 M3-FE-1로 유예한다.
+- 2026-09-20: 승인된 의존성 결정을 반영해 `pg`는 M0-INV-2에서 선설치했다. 모든 `@tiptap` 패키지는 M1-ED-2 또는 첫 실제 에디터 구현이 사용할 때까지 지연해 미사용 의존성을 추가하지 않는다. M1-TW-2(`4b87814`)와 M1-DA-1(`5689d0a`)은 실 PostgreSQL 계약 13개 통과(0 skip, `CMS_TEST_DATABASE_URL`만)로 DONE; M1-ED-2와 M1-RV-1은 TODO.
+- 2026-09-20: M1-ED-2(커밋 `f3f7ef7`)와 M1-RV-1이 DONE되어 Milestone 1이 완료되었다. 전체 56 files/299 tests 및 typecheck 통과, Codex 최종 판정 OK. M1-ED-2는 프레임워크 독립적 변환기/토글 경계이므로 Tiptap이 필요하지 않았으며, 따라서 Tiptap은 첫 실제 시각 에디터 작업인 M3-FE-1로 유예한다.
 - 2026-09-20: 사용자 승인으로 M2 계약과 소유권을 수정했다. M2-INV-1 완료(next-auth@5.0.0-beta.32), M2-BE-1은 READY(INV-1 후 독립 진행 가능). M2-TW-1이 READY 상태인 동안 M2-BE-2는 TODO 상태를 유지한다. M2-BE-2는 PostgreSQL을 수정하지 않는 순수 서비스/발행 준비로 고정하고, M2-TW-3(참조 계약 및 slug_conflict 실패 테스트)와 M2-DA-1(이를 통과하는 참조 DB 구현)을 새로 추가하여 실행 순서(TW-1 → BE-2; TW-1 → TW-3 → DA-1; TW-2 → DA-2; BE-1은 INV-1 이후 독립 진행 가능; BE-3은 BE-1, BE-2, DA-1 대기)를 바로잡았다. M2-TW-3은 TW-1 이후 TODO, M2-DA-1은 TW-3 이후 TODO, M2-DA-2는 TW-2 이후 TODO이다. M2-BE-3의 선행 조건으로 BE-1, BE-2, DA-1을 명시하고 API DTO 소유권을 배정했다. 이 실행을 위한 현재 그린 엔드포인트(green endpoint)는 M2-INV-1 DONE; TW-1/BE-2 green; TW-3/DA-1 real-DB green; TW-2/DA-2 real-DB green 이다. M2-INV-1 외의 향후 구현 태스크들은 아직 완료 처리하지 않는다.
 - 2026-09-21: M2 코어 서비스 및 데이터베이스 계약(M2-TW-1, M2-BE-2, M2-TW-3, M2-DA-1, M2-TW-2, M2-DA-2)이 통합 브랜치에 병합·검증 완료되어 DONE으로 최신화했다. `src/cms` 테스트 스위트 전체(7 suites / 165 tests)가 PostgreSQL 실환경에서 0 skip으로 통과하며 `pnpm typecheck` 및 `pnpm build` 통과를 확인했다. M2-BE-3은 DA-1, BE-2 선행 충족으로 착수 가능(READY), M2-BE-1도 READY 상태다.
 - 2026-09-21: Milestone 2의 전 작업(M2-BE-1, M2-BE-3, M2-BE-4, M2-BE-5, M2-FE-1, M2-FE-2, M2-RV-1) 1차 구현 후 oracle 독립 감사를 진행했다. 감사 결과 동일 출처/CSRF 검사 누락(H1), 엔트리 생성/수정과 폴더 이동의 비원자성으로 인한 버전 불일치(H2), 프론트엔드 URL 쿼리/에러 피드백/계층트리 미흡(H3), 폴더 낙관적 잠금 부재(H4) 등이 지적되어 M2를 IN_PROGRESS로 재오픈하고 피드백 반영 작업을 시작한다.
-- 2026-09-21: oracle 감사 피드백을 반영했다(`778a1a8`). `validateSameOrigin` 동일 출처/CSRF 가드, 엔트리 생성/수정+폴더 배정 단일 트랜잭션, 폴더 `version` 컬럼과 `expectedVersion` 기반 428/409 낙관적 잠금, GitHub ID BigInt canonical 검증과 비인가 403 루프 방지, URL 쿼리 양방향 동기화와 AbortController 경합 방지, 계층형 폴더 트리를 구현했다. 이어서 reviewer 독립 재리뷰에서 폴더 이동 시 `entries.updated_at`에 정수(version)가 주입되는 P0 결함, `folder.version` 비열거 프로퍼티로 인한 직렬화 누락 P1, CSRF fail-closed 미흡 P1, preferences useEffect 중복 실행 P1이 지적되어 모두 반영했다(`f9aacab`). reviewer에 "중대한 위험 존재 여부"를 재문의해 "위험 없음" 판정을 받았고, 비차단 P2(검색 입력 시 매 키입력 API 호출)를 디바운스로 해소했다(`56b8675`). 최종 검증: 65 files/422 tests passed, `pnpm typecheck`, `pnpm build` 통과. M2 전 작업을 DONE으로 갱신한다.
+- 2026-09-21: oracle 감사 피드백을 반영했다(`0c86e18`). `validateSameOrigin` 동일 출처/CSRF 가드, 엔트리 생성/수정+폴더 배정 단일 트랜잭션, 폴더 `version` 컬럼과 `expectedVersion` 기반 428/409 낙관적 잠금, GitHub ID BigInt canonical 검증과 비인가 403 루프 방지, URL 쿼리 양방향 동기화와 AbortController 경합 방지, 계층형 폴더 트리를 구현했다. 이어서 reviewer 독립 재리뷰에서 폴더 이동 시 `entries.updated_at`에 정수(version)가 주입되는 P0 결함, `folder.version` 비열거 프로퍼티로 인한 직렬화 누락 P1, CSRF fail-closed 미흡 P1, preferences useEffect 중복 실행 P1이 지적되어 모두 반영했다(`157fd7a`). reviewer에 "중대한 위험 존재 여부"를 재문의해 "위험 없음" 판정을 받았고, 비차단 P2(검색 입력 시 매 키입력 API 호출)를 디바운스로 해소했다(`3c34570`). 최종 검증: 65 files/422 tests passed, `pnpm typecheck`, `pnpm build` 통과. M2 전 작업을 DONE으로 갱신한다.
 - 2026-09-21: Milestone 3 핵심(옵션 2: M3-TW-1, M3-BE-1, M3-FE-1, M3-FE-2, M3-FE-4)을 구현·검증 완료했다. 
   1) 착수 전 oracle 자문을 통해 트랜잭션 및 Tiptap/IndexedDB 설계 고정.
   2) M3-TW-1: 11개 상태기계/예약/참조 롤백 계약 테스트 작성(`lifecycle.test.ts`).
-  3) M3-BE-1: publish/archive/restore/schedule API 구현(`a225241`) → reviewer 지적(executeSchedulePublish의 슬러그 승격 및 참조 재검사 누락 P0) 반영(`963bf77`) → reviewer 재리뷰 "위험 없음" 승인.
-  4) M3-FE-1 / M3-FE-2: Tiptap 3.31.3 설치, /admin/entries/[id]/edit 셸 마운트, 2초 idle/10초 max 자동저장, IndexedDB 백업, 409 충돌 비교/복사 UI 구현(`665a0f9`) → reviewer 지적(자동저장 stale closure P1) 반영(`6d83eef`) → reviewer 재리뷰 "위험 없음" 승인.
-  5) M3-FE-4: 발행·예약·보관·삭제 UI 및 예약 모달 구현(`dc74ab4`).
+  3) M3-BE-1: publish/archive/restore/schedule API 구현(`c0524a9`) → reviewer 지적(executeSchedulePublish의 슬러그 승격 및 참조 재검사 누락 P0) 반영(`be73a1e`) → reviewer 재리뷰 "위험 없음" 승인.
+  4) M3-FE-1 / M3-FE-2: Tiptap 3.31.3 설치, /admin/entries/[id]/edit 셸 마운트, 2초 idle/10초 max 자동저장, IndexedDB 백업, 409 충돌 비교/복사 UI 구현(`0266afe`) → reviewer 지적(자동저장 stale closure P1) 반영(`3879317`) → reviewer 재리뷰 "위험 없음" 승인.
+  5) M3-FE-4: 발행·예약·보관·삭제 UI 및 예약 모달 구현(`005cf66`).
   6) 최종 검증: 66 files/433 tests 100% 통과, typecheck 통과, build(71 routes) 통과. M3 해당 태스크들을 DONE으로 최신화한다.
 - 2026-09-21: CMS 에디터 UI 전면 개편 및 작성 기능 통합(M3-ED-1, M3-ED-2)을 완료했다.
   1) 신규 작성 워크플로우: 팝업 모달 완전 폐기, `/admin/entries/new` 즉시 진입, 첫 입력 전까지 DB 레코드 미생성(Lazy Draft) 및 첫 입력 2초 idle 후 조용히 생성 후 `window.history.replaceState`로 URL 승격.
@@ -133,36 +133,36 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
   6) 최종 검증: 69 files/441 tests 100% 통과, `pnpm typecheck`, `pnpm build` 통과. M3-ED-1, M3-ED-2를 DONE으로 갱신한다.
 - 2026-09-21: Milestone 3 미디어 업로드 파이프라인 및 에디터 이미지 연동(M3-INF-1, M3-BE-2, M3-ED-2, M3-FE-3)을 완료했다.
   1) 사전 oracle 자문: Cloudflare R2 presigned PUT 구조, SVG XSS 보안 차단, staging key -> Magic Byte 검증 -> final key 승격(`promoteFile`) 및 DB 무결성 설계 고정.
-  2) M3-INF-1 / M3-BE-2: AWS SDK v3 기반 `R2MediaStore` 어댑터 구현 및 `/media/uploads`, `/media/:id/complete` API 구현. 10MiB 상한 및 실제 파일 헤더 검증(PNG/GIF/JPEG/WebP/AVIF 허용, SVG 거부). reviewer 1차 검수 "위험 없음" 승인 (`1573d3c`).
+  2) M3-INF-1 / M3-BE-2: AWS SDK v3 기반 `R2MediaStore` 어댑터 구현 및 `/media/uploads`, `/media/:id/complete` API 구현. 10MiB 상한 및 실제 파일 헤더 검증(PNG/GIF/JPEG/WebP/AVIF 허용, SVG 거부). reviewer 1차 검수 "위험 없음" 승인 (`bd267f8`).
   3) M3-ED-2 / M3-FE-3: Tiptap 커스텀 `CmsImageNode` 및 React NodeView(`CmsImageNodeView`) 구현(너비, 정렬, Alt, Caption 인라인 조작). 에디터 내 클립보드 이미지 붙여넣기(Ctrl+V), 파일 드래그앤드롭, 슬래시 메뉴 및 툴바 이미지 삽입 버튼 연동, 업로드 진행률 프로그레스 바 구현.
   4) MDX `<Image mediaId="..." src="..." width="..." align="..." caption="..." />` 직렬화 및 역직렬화 왕복 테스트 통과.
-  5) reviewer 2차 검수 지적(직렬화 시 `src` 누락 위험 P0, figure 블록 핸들 셀렉터 누락) 반영(`05a1e44`) 후 재리뷰 "위험 없음" 최종 승인.
+  5) reviewer 2차 검수 지적(직렬화 시 `src` 누락 위험 P0, figure 블록 핸들 셀렉터 누락) 반영(`c7ef7a6`) 후 재리뷰 "위험 없음" 최종 승인.
   6) 최종 검증: 72 files/454 tests 100% 통과, `pnpm typecheck`, `pnpm build`(73 routes) 통과. Milestone 3 전 작업을 DONE으로 갱신한다.
 - 2026-09-21: Milestone 4 미디어 라이브러리(M4-BE-MEDIA-1, M4-FE-1)를 구현·검증 완료했다.
   1) 백엔드 태스크 분리: 계획표에 M4-BE-MEDIA-1(미디어 목록 및 안전 삭제 API)을 정식 추가하고 M4-FE-1과의 선행 관계를 명시.
-  2) M4-BE-MEDIA-1: `content-store.ts`에 `listMediaAssets` 및 `deleteMediaAsset` 구현. `GET /api/cms/v1/media`(파일명 검색, MIME 필터, 사용 여부 필터, 사용된 글 `entry_references` 조인 집계) 및 `DELETE /api/cms/v1/media/:id`(사용 중인 미디어 409 차단, 미사용 미디어 R2 storageKey/stagingKey 삭제 후 DB 레코드 삭제) 구현. 계약 테스트 작성 및 reviewer 1차 검수 "위험 없음" 승인 (`ed44c2d`).
-  3) M4-FE-1: 사이드바에 미디어 메뉴 연동, `/admin/media` 미디어 라이브러리 화면 구현. 썸네일 그리드 뷰, 파일명 검색, 사용 여부(전체/사용 중/미사용) 필터링, 우측 미디어 상세 인스펙터 패널(공개 URL 복사, 해상도/크기, 사용처 글 목록 링크), 사용 중 미디어 삭제 버튼 비활성화 가드 및 미사용 고아 미디어 영구 삭제 UX 구현. reviewer 2차 검수 "위험 없음" 승인 (`1b83ced`).
+  2) M4-BE-MEDIA-1: `content-store.ts`에 `listMediaAssets` 및 `deleteMediaAsset` 구현. `GET /api/cms/v1/media`(파일명 검색, MIME 필터, 사용 여부 필터, 사용된 글 `entry_references` 조인 집계) 및 `DELETE /api/cms/v1/media/:id`(사용 중인 미디어 409 차단, 미사용 미디어 R2 storageKey/stagingKey 삭제 후 DB 레코드 삭제) 구현. 계약 테스트 작성 및 reviewer 1차 검수 "위험 없음" 승인 (`5c5439e`).
+  3) M4-FE-1: 사이드바에 미디어 메뉴 연동, `/admin/media` 미디어 라이브러리 화면 구현. 썸네일 그리드 뷰, 파일명 검색, 사용 여부(전체/사용 중/미사용) 필터링, 우측 미디어 상세 인스펙터 패널(공개 URL 복사, 해상도/크기, 사용처 글 목록 링크), 사용 중 미디어 삭제 버튼 비활성화 가드 및 미사용 고아 미디어 영구 삭제 UX 구현. reviewer 2차 검수 "위험 없음" 승인 (`7970a84`).
   4) 최종 검증: 72 files/457 tests 100% 통과, `pnpm typecheck`, `pnpm build`(75 routes) 통과. M4-BE-MEDIA-1, M4-FE-1을 DONE으로 갱신한다.
 - 2026-09-21: 관심사 분산 해소를 위해 마일스톤을 명시 분리했다. M4는 일괄 작업만(TW-1, BE-1, FE-2 목록 일괄 메뉴) 남기고, 복제·템플릿은 M5(신설: BE-1, FE-1 에디터 툴바 템플릿 버튼, ED-1 확장 예제), 이전·내보내기는 M6(신설: BE-1 내보내기, BE-2 시험 가져오기, ED-1 왕복 러너), 기존 M5(블로그 연결·전환)는 M7로 이동했다. `M4-FE-2`의 에디터 템플릿 버튼 부분은 `M5-FE-1`로 분리했다. 마일스톤 1개 = 관심사 1개 = Goal 1개 원칙.
-- 2026-09-21: M4 일괄 작업(TW-1, BE-1, FE-2, RV-1) DONE. 배치 1(메타데이터) `a10ac7d`, 배치 2(상태+예약 locked)+FE-2 `3914453`. 75 files/484 tests, typecheck·build(76 routes) 통과, 브라우저 E2E(폴더 이동 성공 1/실패 0) 확인.
+- 2026-09-21: M4 일괄 작업(TW-1, BE-1, FE-2, RV-1) DONE. 배치 1(메타데이터) `2b3692a`, 배치 2(상태+예약 locked)+FE-2 `3b7bd49`. 75 files/484 tests, typecheck·build(76 routes) 통과, 브라우저 E2E(폴더 이동 성공 1/실패 0) 확인.
 - 2026-09-21: M5 템플릿 아키텍처를 Oracle 자문 결과(방안 B)에 따라 재정의했다. entries 인프라 오염(발행·스케줄·미디어삭제가드·검색·일괄 누수)을 원천 차단하기 위해 독립 `body_templates` 테이블 및 전용 CRUD API(`M5-BE-2`)로 분리. 템플릿은 메타데이터 없이 순수 본문(MDX)만 다루며, 기본 2종(알고리즘, TS 챌린지)은 1회성 seed 처리. 관리 UI(`M5-FE-3`)와 에디터 툴바 적용 버튼(`M5-FE-1`), 복제(`M5-BE-1`)를 독립 태스크로 확정.
 - 2026-09-21: 외부 CMS(Keystatic/Strapi/Sanity/Contentful/WP/Ghost) 기능 조사 후 갭 4건을 계획표에 반영했다. 관심사를 다르게 나눠 `M5-FE-2 관계 선택기와 record 폼`(P0, 저작 확장)과 `M7-FE-2 SEO 메타 필드와 공개 메타 렌더`(P1, 공개 품질)로 분리 추가했다. 대표 이미지는 연기, 리비전·릴리스 묶음발행·계층 카테고리·감사로그는 1인 블로그 과잉으로 v1 제외 유지.
 - 2026-09-22: M6 이전·내보내기 검수를 진행했다(작업은 격리 worktree `scup`, 브랜치 `bh2980/m6-batch1`).
   1) O1 oracle 자문으로 형식을 고정했다: 스트리밍 ZIP 아카이브, 관리자/공개 분리 투영, `REPEATABLE READ READ ONLY` 스냅샷, 명시적 ID 가져오기 + `kind + NUL + NFC(경로)` UUIDv5 안정 ID, `importedAt` 미저장, 이미지는 보고만, preflight + 단일 트랜잭션 all-or-nothing, canonical AST 동등 + 실제 공개 렌더 비교, 시험 DB 전용 가드. 결정 11건을 `CMS-M6-DEV-PLAN.md` 4장에 기록했다.
-  2) `M6-BE-1`(`bf11fb4`): `readExportSnapshot()`(반복 읽기 가능·읽기 전용·결정적 정렬), `services/zip.ts`(결정적 ZIP 작성/판독, CRC32, deflateRaw level 9, 1980-01-01 고정 mtime, UTF-8 플래그), `services/export-service.ts`(manifest + 항목 본문 + 참조/폴더/주소/템플릿/예약/환경설정/미디어), `GET·POST /api/cms/v1/export`(verifyAdmin + same-origin 검증, digest·scope 헤더). 공개 스키마는 zod strict 투영이며 컬렉션별 metadata allowlist로 중첩 키까지 제한한다.
-  3) `M6-BE-2`(`c0a4dc2`): `src/cms/migrate-from-files/**`(legacy 파서, UUIDv5 안정 ID, 가져오기 계획, 검사, DB 가드, 실행기, CLI)와 `cms:migration:inspect|apply|audit` 스크립트. 실코퍼스 계획 75항목·blocking 0·참조 126건, 검사 결과는 M0-INV-3와 일치. `importEntries()`는 단일 트랜잭션에서 같은 ID+같은 digest만 skip하고 충돌은 409로 중단한다.
-  4) `M6-ED-1`(`1797e5f`): 전편 러너와 분류 모듈. 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0. `mdx-content.tsx`가 렌더 체인을 단일 소스로 노출한다. `pre`는 async RSC라 동기 shim으로 렌더하고 `renderMode`로 보고서에 명시했다.
-  5) 리뷰·감사: R1(내보내기)은 P0(보관/휴지통 잔여 공개본 유출) 지적 후 `6eeae51`·`7fbdc4a`로 수정하고 재리뷰 통과, R2·R3는 중대 위험 없음. O2 oracle 감사는 4개 필수 항목(공개 metadata 재귀 allowlist, digest 범위, skip 판정, 미분류 분류)을 지적해 모두 반영했다.
+  2) `M6-BE-1`(`ef7ed54`): `readExportSnapshot()`(반복 읽기 가능·읽기 전용·결정적 정렬), `services/zip.ts`(결정적 ZIP 작성/판독, CRC32, deflateRaw level 9, 1980-01-01 고정 mtime, UTF-8 플래그), `services/export-service.ts`(manifest + 항목 본문 + 참조/폴더/주소/템플릿/예약/환경설정/미디어), `GET·POST /api/cms/v1/export`(verifyAdmin + same-origin 검증, digest·scope 헤더). 공개 스키마는 zod strict 투영이며 컬렉션별 metadata allowlist로 중첩 키까지 제한한다.
+  3) `M6-BE-2`(`a933605`): `src/cms/migrate-from-files/**`(legacy 파서, UUIDv5 안정 ID, 가져오기 계획, 검사, DB 가드, 실행기, CLI)와 `cms:migration:inspect|apply|audit` 스크립트. 실코퍼스 계획 75항목·blocking 0·참조 126건, 검사 결과는 M0-INV-3와 일치. `importEntries()`는 단일 트랜잭션에서 같은 ID+같은 digest만 skip하고 충돌은 409로 중단한다.
+  4) `M6-ED-1`(`aa5083b`): 전편 러너와 분류 모듈. 49/49 구조 왕복 동일, analyze/reparse 오류 0, 공개 렌더 실패 0, 표기 차이 미분류 0. `mdx-content.tsx`가 렌더 체인을 단일 소스로 노출한다. `pre`는 async RSC라 동기 shim으로 렌더하고 `renderMode`로 보고서에 명시했다.
+  5) 리뷰·감사: R1(내보내기)은 P0(보관/휴지통 잔여 공개본 유출) 지적 후 `7e2cd3d`·`06b63a2`로 수정하고 재리뷰 통과, R2·R3는 중대 위험 없음. O2 oracle 감사는 4개 필수 항목(공개 metadata 재귀 allowlist, digest 범위, skip 판정, 미분류 분류)을 지적해 모두 반영했다.
   6) 검증: 전체(DB 포함) **89 files/554 tests 통과**, `pnpm typecheck` 0 errors, M6 변경 파일 `biome check` 0 errors.
   7) 실DB 검증 완료(격리 schema `cms_m6_apply1`, 시험 전용 Neon 엔드포인트, 검증 후 schema 삭제): 실코퍼스 75건 1차 적재 → 재실행·`--reuse` 재기동 모두 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`, `CMS_MIGRATION_ALLOW=1` 없는 실행 차단, 원본 `src/contents` 무변경. 실DB export 스모크: admin 380파일/참조 251, public 150파일/74 mdx, digest는 `exportedAt`에 불변, 초안 경로·본문 유출 0, public metadata 키 `["title"]`(allowlist 투영 확인).
-  8) **M6-RV-1 최종 검수 승인**(`798a027`, `5544041`): 중대 위험 6기준(데이터 손실·운영 DB 접촉·초안 공개 노출·인증 누출·멱등성·왕복 무손실) 모두 O, P0/P1 없음. 비차단 P2: ① `pickPublicMetadata`는 최상위 키만 필터(현 스키마는 안전), ② `stateDigest` 참조에 `occurrences` 미포함(아카이브 digest는 `references.json` 바이트를 덮으므로 영향 없음), ③ `sameDatabase`는 host:port/path만 비교(Neon pooler 호스트 미정규화, `cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 단위 테스트 부재(전자는 `5544041`에서 보강).
+  8) **M6-RV-1 최종 검수 승인**(`4baffaa`, `6ec4957`): 중대 위험 6기준(데이터 손실·운영 DB 접촉·초안 공개 노출·인증 누출·멱등성·왕복 무손실) 모두 O, P0/P1 없음. 비차단 P2: ① `pickPublicMetadata`는 최상위 키만 필터(현 스키마는 안전), ② `stateDigest` 참조에 `occurrences` 미포함(아카이브 digest는 `references.json` 바이트를 덮으므로 영향 없음), ③ `sameDatabase`는 host:port/path만 비교(Neon pooler 호스트 미정규화, `cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 단위 테스트 부재(전자는 `6ec4957`에서 보강).
   9) 최종 게이트: 전체(DB 포함) **89 files/556 tests 통과**, `pnpm typecheck` 0 errors, M6 변경 파일 `biome check` 0 errors(저장소 전체는 M4/M5 관리자 FE 기존 위반), `pnpm build` **79 routes·exit 0**을 운영 DB DSN을 제거한 환경에서 통과(빌드가 DB에 접촉하지 않음을 함께 확인).
   10) M7 전 확인 항목(비차단): `pre` shim을 실제 RSC 렌더로 재검증, 이미지 22장의 예상 R2 키·체크섬 대조, legacy 상대경로 미디어의 `media.json` 의존성 명시, ZIP 스트리밍 미구현(현 규모 비차단), `handleApiError`의 413/415/428/503 미표현.
-- 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`7f95d00`), 템플릿 DB/API(`7f95d00`), 템플릿 관리 화면 및 에디터 툴바 적용(`8fff2a7`, `9ad2f1c`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ce83822`), collections.ts 단일 레지스트리 및 F07 확장 예제(`283164a`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
+- 2026-09-21: M5 저작 확장(BE-1, BE-2, FE-1, FE-3, FE-2, ED-1, RV-1) DONE. 복제 API(`a0dfe6f`), 템플릿 DB/API(`a0dfe6f`), 템플릿 관리 화면 및 에디터 툴바 적용(`b135ce9`, `08b7d12`), 관계 선택기 및 Record 폼·308안내·Record자동발행(`ee3af2e`), collections.ts 단일 레지스트리 및 F07 확장 예제(`304446f`). 80 files/501 tests 100% 통과, typecheck·build(78 routes) 통과, 브라우저 E2E 검증 완료. Reviewer 전 배치 무결함 승인.
 - 2026-09-23: **v1 커버리지 구멍 발견 — M8 등록.** §4.4의 `TextAlign`·`Image`·`ContentLink`는 F16(§6.2)·F18(§4.3)의 **v1 기능**이고 F18 수용 기준은 “공개 PC·모바일에서 컨테이너를 넘지 않고 비율이 보존된다”까지 요구하는데(`CMS-SPEC.md:644`), **공개 렌더러 구현 태스크가 M1~M7 어디에도 없었다.** M1-ED-1은 serialize의 이름 유지, M3-ED-2는 편집기 삽입까지였고, 계획서는 공개 렌더를 “기존 블로그 경로 재사용”으로 전제했지만 그 컴포넌트는 저장소 역사상 한 번도 없었다(`git log --all --diff-filter=A` 결과 0건, `origin/main`도 동일). M6-ED-1 검수는 레거시 49편만 대상이라(사용 0건) 잡히지 않았다. **M8로 등록한다** — M7의 관심사(전환 준비)와 다르고, `ContentLink` 해석이 M7-BE-1에 의존하므로 순서상 M7 뒤가 맞다. 전환은 막지 않는다(49편 0건이므로 기존 글이 영향받지 않음). M7-LEAD-1 보고서에 “F16/F18 공개 렌더 미완”을 명시한다.
 - 2026-09-23: **M7 이후 재정렬(사용자 요청).** ① 순서 결함: 컴포넌트와 저장 형식이 없는데 DB 전환을 먼저 하는 계획이었다 → **M8(표현 계약)·M9(이관과 전환)**로 나누고 전환을 뒤로 옮겼다. ② 사용자 결정: 커스텀 컴포넌트를 **remark directive로 저장**한다(JSX 저장 폐기). `:이름` 충돌은 사용자가 패턴을 제한해 관리하고, 시스템은 미등록 지시자를 거부해 무음 손실을 막는다. 근거: micromark 문서 “If directives are not handled, they do not emit anything”, `[label]`은 선택이라 `:[`만 검사하면 안 된다(이름에 숫자 허용). 레거시 49편 **본문** 오인 패턴 실측 **2건**(`openai/gpt-oss-120b:free`, `1:1`). ③ 깨진 상태를 만들지 않는 순서 고정: **읽기(렌더러) → 파일 변환 → 쓰기(serializer·에디터) → 이관·전환**. 읽기 단계는 추가형이라 Keystatic이 읽는 현재 사이트에 영향이 없다. ④ 저장 형식 전환은 M1의 serialize 계약과 M6의 49/49 roundtrip 계약을 다시 연다(M8-ED-2·M8-DA-1). ⑤ 전환 검사에 **공개 HTML 대조**(M9-TW-1)를 추가했다 — 주소 대조만으로는 “이관하다 클나는” 경우를 못 잡는다. ⑥ M7-BE-5(Keystatic 제거)는 M9-BE-3으로 옮겼다.
 - 2026-09-23: **저장 형식을 전면 directive로 확정(사용자: “어차피 JSX 인라인도 읽기 어려워. 전면 directive”)**하고 `CMS-SPEC.md` §4.4를 개정했다. 확정 매핑: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`·`ideographic-space`(리프), `tooltip`·`entry-link`·`u`·`sup`·`sub`·`br`(텍스트). 굵게·기울임·취소선은 Markdown 문법 유지. **HTML 인라인도 directive로 바꾼다(사용자: “:[u]나 :[br] 같은걸로 해주는게 난 좋아”)** — 실측상 산문의 HTML 인라인은 `<u>` 38쌍뿐이고, `<br/>`(12건)·`<div>`(3건)는 코드·머메이드 펜스 안이라 변환 대상이 아니다(`:br`은 앞으로의 원문 작성을 위해 정의만 둔다).
-- 2026-09-23: **폐기 2건(사용자 결정).** ① `ContentLink` — CMS 기획 문서(`b96e514`·`24aa89e`)에서 생긴 이름이고 사용자는 만든 적이 없다. 공개 렌더러에 존재한 적도 없고, **레거시 49편의 내부 글 링크는 0건**이다(상대경로 22건은 전부 이미지). M7에서 별칭 308을 구현했으므로 slug 링크로 충분하다 → `:entry-link`·ID 해석 계층·참조 검증 경로를 모두 뺀다. ② `IdeographicSpace` — 구현은 `<span>ㅤ</span>`이고 감사 도구가 `&#x20;`와 같은 범주(`leading-space-encoding`)로 분류하는 **공백·여백 강제 hack**이다(`<br/>` 대체가 아니라 블록 여백). 본문 6곳(4편)을 삭제하고 레지스트리에서 뺀다. `&#x20;` 35건은 같은 범주지만 v1에서 건드리지 않는다.
+- 2026-09-23: **폐기 2건(사용자 결정).** ① `ContentLink` — CMS 기획 문서(`187ace4`·`c0c6936`)에서 생긴 이름이고 사용자는 만든 적이 없다. 공개 렌더러에 존재한 적도 없고, **레거시 49편의 내부 글 링크는 0건**이다(상대경로 22건은 전부 이미지). M7에서 별칭 308을 구현했으므로 slug 링크로 충분하다 → `:entry-link`·ID 해석 계층·참조 검증 경로를 모두 뺀다. ② `IdeographicSpace` — 구현은 `<span>ㅤ</span>`이고 감사 도구가 `&#x20;`와 같은 범주(`leading-space-encoding`)로 분류하는 **공백·여백 강제 hack**이다(`<br/>` 대체가 아니라 블록 여백). 본문 6곳(4편)을 삭제하고 레지스트리에서 뺀다. `&#x20;` 35건은 같은 범주지만 v1에서 건드리지 않는다.
 - 2026-09-23: **요소 인벤토리와 Tiptap 우선 원칙(사용자 지시).** “컴포넌트를 구현하기 전에 Tiptap에 있는지 보고 있으면 그걸 우선 사용하되 문서에 명시” → `CMS-SPEC.md` **§4.5 요소 인벤토리**를 추가했다. Tiptap이 제공: 문단·제목·목록·인용·구분선·코드블록·굵게·기울임·취소선·인라인코드·링크·밑줄·강제 줄바꿈. **미설치(필요 시 추가):** `superscript`·`subscript`·`text-align`. **커스텀:** 이미지 노드·Tooltip·Callout·Collapsible·Tabs/Tab·Columns/Column·Mermaid·차트. 실측상 **Callout·Collapsible·Tabs/Tab·Columns/Column·Tooltip은 에디터 삽입 UI가 없다**(슬래시 메뉴 11개·툴바 5개에 없음) — 원문 작성·보존만 된다. 코드·Mermaid·차트는 코드 펜스 유지(mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트라 directive 대상이 아니다. **주의:** `analyze`에 이름 검사를 배선할 때(M8-TW-1) 코드 스팬 밖의 원문 태그를 오검하지 않는지 실측해야 한다 — 그 전까지 `REGISTERED_JSX_NAMES`는 배선하지 않는다.
 
 ---
@@ -288,7 +288,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 - **선행:** M0-BASE-1, M0-INV-2
 - **영향 파일:** `src/cms/adapters/postgres/__test__/content-store.test.ts`, `__test__/test-database.ts` (신규)
 - **담당:** TW
-- **완료 조건:** 실 PostgreSQL 계약 13개 테스트가 모두 통과하고 skip이 0이다. 초기 계약 커밋은 `b88a129`, `1b1900a`, 최종 테스트 커밋은 `f0746a6`이다.
+- **완료 조건:** 실 PostgreSQL 계약 13개 테스트가 모두 통과하고 skip이 0이다. 초기 계약 커밋은 `e622125`, `0272ada`, 최종 테스트 커밋은 `4b87814`이다.
 - **검증:** `node --env-file=.env.local node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/content-store.test.ts` → 13 passed, 0 skip; `CMS_TEST_DATABASE_URL`만 읽고 `CMS_DATABASE_URL`은 읽지 않음
 
 ### M1-ED-1 MDX serialize
@@ -1092,15 +1092,15 @@ Senior는 코딩 슬롯 없음. Reviewer는 통합 브랜치만.
 2. M0-INV-3 콘텐츠 목록 (JR, `CMS-CONTENT-INVENTORY.md`)
 
 **배치 1 (Test Writer + Infra)**  
-3. M0-INV-2 완료: `pg`만 설치·고정(`48a502d`). `@tiptap/*`는 M3-FE-1(첫 실제 시각 에디터 구현)까지 지연.
+3. M0-INV-2 완료: `pg`만 설치·고정(`1f94560`). `@tiptap/*`는 M3-FE-1(첫 실제 시각 에디터 구현)까지 지연.
 4. M1-TW-1 MDX 왕복 실패 테스트 완료
 5. M1-TW-2 ContentStore 실DB 실패·계약 테스트 완료
 
 **배치 2 (테스트 병합 후 병렬 worktree)**
 6. M1-ED-1 serialize 완료(`src/cms/mdx`)
 7. M1-DA-1 ContentStore 실DB 완료(`content-store.ts`)
-8. M1-ED-2 SourceConverter/에디터 토글 연결 완료(`53b1495`)
-9. M1-RV-1 Milestone 1 검수 완료(`53b1495`, Milestone 1 완료)
+8. M1-ED-2 SourceConverter/에디터 토글 연결 완료(`f3f7ef7`)
+9. M1-RV-1 Milestone 1 검수 완료(`f3f7ef7`, Milestone 1 완료)
 
 다음 테스트 우선(test-first) 순서:
 - TW-1 → BE-2 (M2-TW-1이 READY인 동안 M2-BE-2는 TODO 상태를 유지하며 TW-1 완료 후 착수)

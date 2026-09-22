@@ -2,13 +2,13 @@
 
 - 작성: 2026-09-22 · Lead
 - 기준 문서: `CMS-SPEC.md` §3.4 / §6.2 / §11 / §12.1-5 / §12.2, `CMS-V1-IMPLEMENTATION-PLAN.md` M7, `CMS-M6-DEV-PLAN.md`(배치·게이트 관행), `CMS-CONTENT-INVENTORY.md`
-- M6 기준선: `feature/new-cms` @ `6a55aff` (M0–M6 DONE · 89 files/556 tests · typecheck 0 errors · build 성공). 라우트 수 “79”는 M6 보고 문구이며 M7에서 재측정하지 않았다 → §9.7.1 참조
+- M6 기준선: `feature/new-cms` @ `2749eab` (M0–M6 DONE · 89 files/556 tests · typecheck 0 errors · build 성공). 라우트 수 “79”는 M6 보고 문구이며 M7에서 재측정하지 않았다 → §9.7.1 참조
 - 원칙
   1. **1 마일스톤 = 1 관심사**, **1 배치 = 1 writer = 1 worktree**(같은 cwd 동시 쓰기 금지)
   2. 운영 데이터 이전·공개 전환·Keystatic 제거는 **사용자 승인 없이 하지 않는다**
   3. 기존 `ContentRepository` 계약과 M1–M6의 저장·발행·참조 규칙을 깨지 않는다. 교체는 플래그/명시적 교체 + 롤백 경로를 남긴다
   4. 캐시·성능 최적화보다 **초안·보관본 미노출**이 우선이다. 즉시성이 안 되면 캐시를 포기한다
-- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · **M7-RV-1 독립 검수 = 승인**(1차 보류 P1 → 수정 `666f1d2` → 재검수 승인, §9.19) → **M7 종료** · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거)는 M9-BE-3으로 이동. 전체 게이트: typecheck 0 · tests **687 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **다음은 M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18).
+- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · **M7-RV-1 독립 검수 = 승인**(1차 보류 P1 → 수정 `537573f` → 재검수 승인, §9.19) → **M7 종료** · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거)는 M9-BE-3으로 이동. 전체 게이트: typecheck 0 · tests **687 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **다음은 M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18).
 
 ---
 
@@ -18,7 +18,7 @@
 
 | # | 항목 | 내용 | 담당 |
 | --- | --- | --- | --- |
-| D1 | 기준점 정렬 | 현재 `feature/M7` = `304c30e`(= main)로 **M0–M6 코드가 전혀 없다**. merge-base가 main HEAD와 동일하므로 `git merge --ff-only feature/new-cms`로 `6a55aff`에 붙인다(충돌 없음). 배치 1은 반드시 이 뒤에 시작한다 | Lead |
+| D1 | 기준점 정렬 | 현재 `feature/M7` = `4a603b4`(= main)로 **M0–M6 코드가 전혀 없다**. merge-base가 main HEAD와 동일하므로 `git merge --ff-only feature/new-cms`로 `2749eab`에 붙인다(충돌 없음). 배치 1은 반드시 이 뒤에 시작한다 | Lead |
 | D2 | 원격 백업 | `feature/new-cms`는 **로컬에만** 있고 `origin/main` 대비 96 커밋 앞이다. 원격 푸시 후 진행한다 | Lead |
 | D3 | M6 인계 항목 처리 방침 | (a) M6-RV-1 P2 4건과 (b) M7 인계 확인 5건을 "M7 처리 / v2 이관"으로 확정한다. **M6 미완 항목은 없다** | Lead + 사용자 |
 | D4 | 계획서 커밋 | 이 문서를 `M7-BASE` 커밋으로 올린다(코드 변경 없음) | Lead |
@@ -34,7 +34,7 @@
 | 1 | `pickPublicMetadata`가 최상위 키만 필터 | 현 스키마에서는 중첩 유출 없음 | 기록 유지. 배치 3(A6)에서 allowlist를 **확장할 때** 같은 형태를 유지하고 회귀 테스트를 먼저 붙인다 |
 | 2 | `stateDigest` 참조에 `occurrences` 미포함 | 아카이브 digest는 `references.json` 바이트를 덮으므로 영향 없음 | 기록만 |
 | 3 | `sameDatabase`가 host:port/path만 비교 | Neon pooler 호스트 미정규화, `cms_m6_*` 격리로 흡수 | 기록만 |
-| 4 | unknown collection throw · occurrences-only conflict 단위 테스트 부재 | 전자는 `5544041`에서 보강 완료 | 후자는 테스트 공백(결함 아님). 배치 6에서 여유가 있으면 승격 |
+| 4 | unknown collection throw · occurrences-only conflict 단위 테스트 부재 | 전자는 `6ec4957`에서 보강 완료 | 후자는 테스트 공백(결함 아님). 배치 6에서 여유가 있으면 승격 |
 
 **(b) M6 로그 item 10 "M7 전 확인 항목" — M6 작업이 아니라 M7 인계 확인/문서화 대상**
 
@@ -69,7 +69,7 @@
 
 ---
 
-## 2. 착수 전 사실 (코드베이스 조사 결과, `6a55aff` 기준)
+## 2. 착수 전 사실 (코드베이스 조사 결과, `2749eab` 기준)
 
 ### 2.1 재사용할 것
 
@@ -111,7 +111,7 @@
 
 `feature/new-cms`는 어떤 worktree에도 체크아웃되어 있지 않다(Desktop main worktree = `bh2980/quit`, Orca `mullet` = `feature/M7`).
 
-- 기본안: `mullet` worktree(`.../orca/workspaces/bh2980_blog/mullet`)를 `feature/M7` 통합 브랜치로 사용한다. 배치 0(D1)으로 `6a55aff`에 ff 정렬 → 배치마다 `cms/wt/m7-b<n>` worktree를 `feature/M7`에서 분기 → 배치 종료 시 `feature/M7`로 병합 → worktree 삭제
+- 기본안: `mullet` worktree(`.../orca/workspaces/bh2980_blog/mullet`)를 `feature/M7` 통합 브랜치로 사용한다. 배치 0(D1)으로 `2749eab`에 ff 정렬 → 배치마다 `cms/wt/m7-b<n>` worktree를 `feature/M7`에서 분기 → 배치 종료 시 `feature/M7`로 병합 → worktree 삭제
 - 최종 전환 시 `feature/M7` → `main` 병합 (그때 `feature/new-cms`는 동결 기준선으로 남긴다)
 - **사용자 확인 1건:** 통합 브랜치를 `feature/M7`로 갈지, 계속 `feature/new-cms`에 쌓을지. (권고: `feature/M7`)
 
@@ -215,7 +215,7 @@ M7 하나를 **10개 배치**로 묶는다. 배치 = 1 writer + 1 리뷰 게이�
 ### 배치 10 — M7-RV-1
 
 - 배치 1–9 전체 증거 + O2 감사 + SEC-1 + 승인 기록을 대상으로 최종 검수
-- **결과:** 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → P1 수정(`666f1d2`) → 2차 **승인**(OK with notes, P0/P1/P2 없음). 중대 위험 6기준 전부 X. **M7 종료.** (§9.19)
+- **결과:** 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → P1 수정(`537573f`) → 2차 **승인**(OK with notes, P0/P1/P2 없음). 중대 위험 6기준 전부 X. **M7 종료.** (§9.19)
 
 ---
 
@@ -365,10 +365,10 @@ pnpm build                          # 운영 DB DSN 제거 환경. exit 0 (라�
 
 | # | 항목 | 결과 |
 | --- | --- | --- |
-| D1 | 기준점 정렬 | `304c30e` → `6a55aff` (충돌 없음). untracked 이미지 1장이 동일 blob이라 삭제 후 병합 |
+| D1 | 기준점 정렬 | `4a603b4` → `2749eab` (충돌 없음). untracked 이미지 1장이 동일 blob이라 삭제 후 병합 |
 | D2 | 원격 백업 | **보류** — GitHub가 author email `bh2980@naver.com`을 거부(email privacy). 사용자 결정 필요 |
-| D4 | 계획서 커밋 | `ac6134c` |
-| D5 | **(신규) 베이스라인 타입 게이트 복구** | M6의 "typecheck 0 errors"가 커밋된 lockfile로 **재현되지 않았다**. `prosemirror-view` 1.41.5/1.42.4 중복으로 `src/keystatic/plugins/pm/wrapper-keys.ts`가 실패 → `pnpm-workspace.yaml` overrides로 단일화(`830d03a`). 계획에 없던 항목이므로 전환 보고서에 기록 |
+| D4 | 계획서 커밋 | `b7c43a4` |
+| D5 | **(신규) 베이스라인 타입 게이트 복구** | M6의 "typecheck 0 errors"가 커밋된 lockfile로 **재현되지 않았다**. `prosemirror-view` 1.41.5/1.42.4 중복으로 `src/keystatic/plugins/pm/wrapper-keys.ts`가 실패 → `pnpm-workspace.yaml` overrides로 단일화(`c8ac9b2`). 계획에 없던 항목이므로 전환 보고서에 기록 |
 | 실측 | 테스트·빌드 베이스 | 556 tests 중 489 pass / 67 skip / 8 파일 실패(실패는 전부 `CMS_TEST_DATABASE_URL` 미설정). `pnpm build`는 Keystatic GitHub env 부재로 실패. **둘 다 `.env.local` 필요** |
 
 #### D5 부수 관찰 (재발 방지 기록)
@@ -527,7 +527,7 @@ pnpm build                          # 운영 DB DSN 제거 환경. exit 0 (라�
 | 대체 근거 | 값 |
 | --- | --- |
 | `pnpm build` | exit 0 (더미 env 5개 공급) |
-| 라우트 소스 인벤토리 | `6a55aff` 49 → 현재 51. 추가 2건은 신규 공개 API `route.ts`, 삭제 0건 |
+| 라우트 소스 인벤토리 | `2749eab` 49 → 현재 51. 추가 2건은 신규 공개 API `route.ts`, 삭제 0건 |
 | 빌드 표 줄 수 | 배치 4 후 52줄(참고값. 표는 메타데이터 이미지 하위 경로를 따로 세는 등 라우트 파일 수와 1:1이 아니다) |
 
 따라서 “무회귀” 판정은 빌드 성공 + 라우트 인벤토리 차이(추가 2·삭제 0) + 테스트 pass 증가로 한다.
@@ -538,14 +538,14 @@ reviewer 에이전트 1회로 R1·R2를 함께 판정받았다. 라우터 모델
 
 | 항목 | 결과 |
 | --- | --- |
-| R1 (`246064e`) | **조건부 통과** — “중대 위험 6기준 해당 없음” |
-| R2 (`71cc784`) | **조건부 통과** — 상세 308/404 분기가 읽은 페이지 코드와 일치 |
+| R1 (`bfff753`) | **조건부 통과** — “중대 위험 6기준 해당 없음” |
+| R2 (`9859031`) | **조건부 통과** — 상세 308/404 분기가 읽은 페이지 코드와 일치 |
 | P0/P1 | 없음 |
 | P2 | 1건: 공개 단건 조회가 `sanitize()`를 쓰지 않아 NFD 한글 주소가 404가 될 수 있음 |
 | §9.3 편차 3건 | 셋 다 **허용 편차**로 판정 |
 | 리뷰 한계 | reviewer가 검증 명령을 실행하지 못했고, 리뷰 도중 `HEAD`가 배치 3·4 커밋으로 전진했다. 따라서 R1/R2는 **코드 열람 기반**이며 실행 증거는 이 계획서의 typecheck/test/build 기록으로 대체한다 |
 
-**P2 반영(수정 완료 `da65822`):** `PostgresRepository.getPost`/`getMemo`가 조회 전 `normalizeSlug()`로 NFC 정규화한다(Keystatic 저장소와 동일 규칙). 퍼센트 인코딩이 없는 주소는 `trim + NFC`만 하고, `%`가 있으면 기존 `sanitize()`를 쓰되 실패 시 원문으로 조회해 **500이 아니라 404**로 끝낸다. 테스트 3건 추가(NFD 한글 조회, 메모 동일 규칙, 미존재·잘못된 인코딩 → null).
+**P2 반영(수정 완료 `639692b`):** `PostgresRepository.getPost`/`getMemo`가 조회 전 `normalizeSlug()`로 NFC 정규화한다(Keystatic 저장소와 동일 규칙). 퍼센트 인코딩이 없는 주소는 `trim + NFC`만 하고, `%`가 있으면 기존 `sanitize()`를 쓰되 실패 시 원문으로 조회해 **500이 아니라 404**로 끝낸다. 테스트 3건 추가(NFD 한글 조회, 메모 동일 규칙, 미존재·잘못된 인코딩 → null).
 
 **R1/R2 부수 지적 처리:**
 

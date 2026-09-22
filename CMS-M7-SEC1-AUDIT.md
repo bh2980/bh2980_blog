@@ -6,7 +6,7 @@
 - 범위: M7이 새로 만든 공개·미리보기 표면 + 관리자 라우트 인증 회귀. 운영 배포·인프라(R2 자격증명, DB 접속 통제)는 범위 밖.
 - 방법: 정적 전수 점검(스크립트), 기존 계약 테스트, 타입·빌드 게이트. **침투 테스트·실DB·브라우저·부하 테스트는 미실행.**
 
-> **정정(2026-09-22, 독립 검수 후)** — 아래 조건 3의 “조건부 충족”과 F4의 “`content-service.ts:225`가 저장 전 거부한다”는 **틀렸다.** `prepareSnapshot`은 `analyze()` 오류를 `issues`에 기록만 하고 본문을 그대로 반환하며 `validateForPublish`는 테스트에서만 호출된다. 독립 검수(run `29516072`)가 이를 **P1**으로 판정했고 `bb045fd`에서 발행·컴파일 경계를 추가했다. 상세: `CMS-M7-DEV-PLAN.md` §9.16. 재검수(run `8c39aea3`) 대상이다.
+> **정정(2026-09-22, 독립 검수 후)** — 아래 조건 3의 “조건부 충족”과 F4의 “`content-service.ts:225`가 저장 전 거부한다”는 **틀렸다.** `prepareSnapshot`은 `analyze()` 오류를 `issues`에 기록만 하고 본문을 그대로 반환하며 `validateForPublish`는 테스트에서만 호출된다. 독립 검수(run `29516072`)가 이를 **P1**으로 판정했고 `783f0d5`에서 발행·컴파일 경계를 추가했다. 상세: `CMS-M7-DEV-PLAN.md` §9.16. 재검수(run `8c39aea3`) 대상이다.
 
 ---
 
@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | 비로그인·타 계정 쓰기 차단 | **충족(정적 증거)** | 관리자 쓰기 라우트 17곳 전부 `verifyAdmin()` + `validateSameOrigin()`. 예외는 스케줄러 1곳뿐이며 Bearer 토큰으로 인가 |
 | 실행기 토큰의 쓰기 차단 | **충족** | 스케줄러 2곳이 길이 선검사 + `timingSafeEqual`, 실패 시 403. 토큰 미설정이면 무조건 false(fail-closed) |
-| 검증 안 된 MDX가 실행 컴파일러로 진입 | ~~조건부 충족~~ → **미충족(독립 검수 P1, `bb045fd`에서 수정)** | `content-service.ts:225`가 저장 전 `analyze()`로 거부. 공개 렌더는 저장된 body만 컴파일. 단 MDX는 본질적으로 실행 형식이며 out-of-band SQL 삽입은 코드로 막을 수 없다(§4 F4) |
+| 검증 안 된 MDX가 실행 컴파일러로 진입 | ~~조건부 충족~~ → **미충족(독립 검수 P1, `783f0d5`에서 수정)** | `content-service.ts:225`가 저장 전 `analyze()`로 거부. 공개 렌더는 저장된 body만 컴파일. 단 MDX는 본질적으로 실행 형식이며 out-of-band SQL 삽입은 코드로 막을 수 없다(§4 F4) |
 | 공개 응답 초안 0건 | **충족(단위 증거)** | `toPublicPost`/`toPublicMemo`가 `status !== "published"`에서 null, 라우트가 404. 실DB 관통 증거는 없음(env 부재) |
 
 ---
@@ -45,7 +45,7 @@ for f in $(find src/app/api/cms/v1 -name 'route.ts'); do ... verifyAdmin / valid
 | --- | --- | --- |
 | 공개 상세 2종 | 초안·보관·휴지통 404, 과거 주소 308, DB 오류 5xx(404 위장 없음) | 코드·단위 테스트로 확인 |
 | 목록·랜딩·RSS·sitemap | `force-static` 0건, 전부 요청 시 조회, RSS `no-store` | 확인. CDN 헤더는 미확인 |
-| slug OG 2종 | 404를 `Image()`에서만 throw(빌드 수집 단계 예외) | 확인(`6dc7306`) |
+| slug OG 2종 | 404를 `Image()`에서만 throw(빌드 수집 단계 예외) | 확인(`c76ba9d`) |
 | SEO head | `canonicalUrl`은 `/...` 또는 http(s)만 통과(`javascript:`/`data:`/`ftp:`/`//host` → null) | `seo.ts` + 테스트 8건 |
 | `/public/entries` 2종 | 세션 없이 동작, 관리자 필드는 타입 수준 부재, 초안 fail-closed, 오류 400/404/503만, 내부 메시지 비노출, `pageSize ≤ 100` | 계약 테스트 20건 |
 | 미리보기 3종 | `/preview/start`(세션 확인 **후** `draftMode().enable()`), `layout.tsx`(`notFound()`), 서비스 2종(`canPreview()`); 쓰기 0건 | 테스트 17건 |
@@ -60,7 +60,7 @@ for f in $(find src/app/api/cms/v1 -name 'route.ts'); do ... verifyAdmin / valid
 | F1 | **P2** | `NextAuthGateway.authorizeExecutor`가 `timingSafeEqual`이 아니라 `===`로 토큰을 비교했다. 라우트 2곳의 구현과 불일치 | **수정**: 길이 선검사 + `timingSafeEqual` + try/catch → false. 테스트 4케이스 추가(다른 길이·같은 길이 오타·공백 trim·토큰 미설정) |
 | F2 | **P2** | `/preview/start`가 **상태를 바꾸는 GET**이다(`draftMode` 활성 + `ks-branch` 쿠키 설정). `branch` 파라미터는 무검증 | 위험 낮음: SameSite=Lax 쿠키는 교차 사이트 서브리소스 요청에 실리지 않고, 리다이렉트 대상도 같은 origin으로 제한된다. 영향은 “관리자 자신의 브라우저에서 미리보기 모드가 켜짐”뿐이다. **미수정**(Keystatic 경로라 배치 9 대상) · 권고: POST 전환 + `branch`를 `^[\w./-]+$`로 제한 |
 | F3 | **P2** | 공개 API에 레이트 리밋이 없고 `no-store`라 CDN 캐시도 없다. 무인증 대량 조회가 DB 부하로 직결 | M7 범위 밖 · 운영 후속. `pageSize` 상한 100이 최소 방어 |
-| F4 | 정보 → **P1로 정정** | **MDX는 실행 형식이다.** 공개 렌더러는 `compileMDX`(next-mdx-remote/rsc, `mdx-content.tsx:86`)라 expressions가 서버에서 평가된다. 즉 관리자 권한은 서버 코드 실행 권한과 같다 | M7 이전 Keystatic과 동일하며 **M7이 만든 권한 상승이 아니다**. 최초에 완화책으로 적은 “쓰기 경계 `content-service.ts:225`의 `analyze()` 거부”는 **존재하지 않았다**(독립 검수 P1). `bb045fd`로 발행·컴파일 경계를 추가했다. 사실로 확인된 완화: 2MiB 상한, 관리자 세션 전용, `rehype-raw` 미사용(원시 HTML 통과 없음). 남는 우회는 out-of-band SQL 삽입 → 운영 통제 |
+| F4 | 정보 → **P1로 정정** | **MDX는 실행 형식이다.** 공개 렌더러는 `compileMDX`(next-mdx-remote/rsc, `mdx-content.tsx:86`)라 expressions가 서버에서 평가된다. 즉 관리자 권한은 서버 코드 실행 권한과 같다 | M7 이전 Keystatic과 동일하며 **M7이 만든 권한 상승이 아니다**. 최초에 완화책으로 적은 “쓰기 경계 `content-service.ts:225`의 `analyze()` 거부”는 **존재하지 않았다**(독립 검수 P1). `783f0d5`로 발행·컴파일 경계를 추가했다. 사실로 확인된 완화: 2MiB 상한, 관리자 세션 전용, `rehype-raw` 미사용(원시 HTML 통과 없음). 남는 우회는 out-of-band SQL 삽입 → 운영 통제 |
 | F5 | 정보 | 보안 헤더(CSP·HSTS·`X-Frame-Options`) 설정이 없다(`next.config.ts`에 `headers` 없음, middleware 없음) | 전환 후 후속. 현재 XSS 방어는 React 이스케이프와 MDX 파이프라인에 의존 |
 | F6 | P3 | `authorizeExecutor`는 프로덕션 호출자가 없다(라우트 2곳이 자체 구현). 죽은 표면 | M8 정리 후보. F1 수정으로 보안 문제는 해소 |
 | F7 | P3 | 공개 API가 `body`로 MDX **원문**을 내보낸다 | 의도된 계약(§10.1). 소비자가 그대로 실행하면 소비자 책임이므로 문서에 명시 필요 |

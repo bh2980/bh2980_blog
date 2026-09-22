@@ -1,7 +1,7 @@
 # CMS M6 개발 계획 (이전·내보내기 검수)
 
 - 작성: 2026-09-22 · 기준 문서: `CMS-V1-IMPLEMENTATION-PLAN.md` M6, `CMS-SPEC.md` §10.1 / §11.3 / §11.4
-- 통합 브랜치: `feature/new-cms` @ `b78a9c8` (M0–M5 DONE)
+- 통합 브랜치: `feature/new-cms` @ `ca7fb7e` (M0–M5 DONE)
 - 원칙: **1 마일스톤 = 1 관심사(전환 예행연습)**. 운영 DB 접촉·운영 전환·Keystatic 제거는 하지 않는다.
 
 ## 1. 종료 조건
@@ -138,16 +138,16 @@ Milestone 종료 = §11.3 단계 1–6의 **시험** 도구 + §11.4 내보내�
 
 | 구분 | 지적 | 반영 |
 | --- | --- | --- |
-| 필수 P1 | 공개 metadata의 재귀 allowlist 부족(최상위 `.strict()`만으로 불충분) — A2 결정 위반 | `PUBLIC_METADATA_KEYS` + `pickPublicMetadata()` 투영으로 컬렉션별 공개 키만 내보낸다 (`7fbdc4a`) |
-| 필수 P1 | `importEntries()` skip 판정이 참조·occurrences·folderId·schemaVersion·주소를 비교하지 않음 — O1 "같은 ID+같은 canonical digest일 때만 skip" 위반 | skip 조건에 주소·참조(occurrences 포함)·folderId·schemaVersion 비교 추가 (`7fbdc4a`) |
-| 필수 P1 | 아카이브 digest 범위 부족(항목만 덮음) | 실제 포함되는 모든 페이로드 파일(설정·미디어 목록 포함, manifest/exportedAt 제외)을 덮도록 확장 (`7fbdc4a`) |
-| 필수 P1 | 왕복 표기 차이 27건 미분류 — "정규화/손실 분류 완료" 증거 부족 | `combined-normalization` 범주 추가 → **미분류 0**, 정규화 10범주로 전량 분류 (`7fbdc4a`) |
-| 필수 P1 | 안전 가드 강화 + 실제 시험 DB 검증 실행 | 가드 강화: `CMS_MIGRATION_ALLOW=1` opt-in, 접속 DB 대조(`current_database()`), `sameDatabase` 정규화, `--reuse` 추가. **실행 검증 완료** — 별도 Neon 엔드포인트의 `cms_m6_apply1`에 75건 적재, 재실행·재기동 모두 75 skip, slug 집합 일치, 원본 무변경, opt-in 없이는 차단 (`7fbdc4a`, `798a027`) |
+| 필수 P1 | 공개 metadata의 재귀 allowlist 부족(최상위 `.strict()`만으로 불충분) — A2 결정 위반 | `PUBLIC_METADATA_KEYS` + `pickPublicMetadata()` 투영으로 컬렉션별 공개 키만 내보낸다 (`06b63a2`) |
+| 필수 P1 | `importEntries()` skip 판정이 참조·occurrences·folderId·schemaVersion·주소를 비교하지 않음 — O1 "같은 ID+같은 canonical digest일 때만 skip" 위반 | skip 조건에 주소·참조(occurrences 포함)·folderId·schemaVersion 비교 추가 (`06b63a2`) |
+| 필수 P1 | 아카이브 digest 범위 부족(항목만 덮음) | 실제 포함되는 모든 페이로드 파일(설정·미디어 목록 포함, manifest/exportedAt 제외)을 덮도록 확장 (`06b63a2`) |
+| 필수 P1 | 왕복 표기 차이 27건 미분류 — "정규화/손실 분류 완료" 증거 부족 | `combined-normalization` 범주 추가 → **미분류 0**, 정규화 10범주로 전량 분류 (`06b63a2`) |
+| 필수 P1 | 안전 가드 강화 + 실제 시험 DB 검증 실행 | 가드 강화: `CMS_MIGRATION_ALLOW=1` opt-in, 접속 DB 대조(`current_database()`), `sameDatabase` 정규화, `--reuse` 추가. **실행 검증 완료** — 별도 Neon 엔드포인트의 `cms_m6_apply1`에 75건 적재, 재실행·재기동 모두 75 skip, slug 집합 일치, 원본 무변경, opt-in 없이는 차단 (`06b63a2`, `4baffaa`) |
 | 비차단 P2 | `handleApiError`가 413/415/428/503 미표현, 이미지 R2 키·체크섬 대조, `pre` RSC 실제 렌더 재검증, ZIP 스트리밍 미구현 | M6 범위 밖 — M7 전 확인 목록으로 이관 |
 
 **검증 실행 기록 (2026-09-22, 완료):** 시험 DB는 운영 DB와 다른 Neon 엔드포인트(`ep-raspy-recipe-…` vs `ep-bitter-pine-pooler-…`)였다. DSN은 복사하지 않고 `node --env-file=/Users/bh2980/Desktop/bh2980_blog/.env.local`로 원본을 직접 참조해 실행했다.
 
-1. `node --env-file=<위 env> node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/` → 8 files/67 tests, 실패 1건(자체 테스트 단언 오류) 수정 후 import-entries 5/5 통과 (`798a027`)
+1. `node --env-file=<위 env> node_modules/vitest/vitest.mjs run src/cms/adapters/postgres/__test__/` → 8 files/67 tests, 실패 1건(자체 테스트 단언 오류) 수정 후 import-entries 5/5 통과 (`4baffaa`)
 2. `CMS_MIGRATION_ALLOW=1 … cli.ts apply --schema cms_m6_apply1` → 1차 `imported=75 skipped=0`, 2차 `imported=0 skipped=75`, `entries=75 published=74 draft=1 slugSetsMatch=true`
 3. `… apply --reuse --schema cms_m6_apply1`(프로세스 재기동) → `imported=0 skipped=75`, 검증 동일
 4. opt-in 없이 실행 → `시험 적재는 CMS_MIGRATION_ALLOW=1 로 명시적으로 허용해야 실행됩니다.`
@@ -169,7 +169,7 @@ Milestone 종료 = §11.3 단계 1–6의 **시험** 도구 + §11.4 내보내�
 | 멱등성 | O | skip은 ID+본문 hash·schema_version·mdx·metadata·상태·slug·folder·주소·참조(occurrences) 전부 동일할 때만 |
 | 왕복 무손실 | O | 49/49 구조 동일, 미분류 0, 이전 적재는 원문 MDX 저장 |
 
-비차단 P2: ① `pickPublicMetadata` 최상위 키만 필터(현 스키마 안전), ② `stateDigest`에 `occurrences` 미포함(아카이브 digest가 `references.json`을 덮음), ③ `sameDatabase`가 Neon pooler 호스트를 미정규화(`cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 테스트 부재(전자는 `5544041`에서 보강).
+비차단 P2: ① `pickPublicMetadata` 최상위 키만 필터(현 스키마 안전), ② `stateDigest`에 `occurrences` 미포함(아카이브 digest가 `references.json`을 덮음), ③ `sameDatabase`가 Neon pooler 호스트를 미정규화(`cms_m6_*` 격리로 흡수), ④ unknown collection throw·occurrences-only conflict 테스트 부재(전자는 `6ec4957`에서 보강).
 
 reviewer 세션에는 셸이 없어 전체 vitest·실DB apply·typecheck·build를 재실행하지 못했다(소스·테스트·기존 산출물 대조로 판정). 해당 실행 증거는 오케스트레이터 실행 기록과 `artifacts/cms/m6/**` 보고서로 남아 있다.
 
