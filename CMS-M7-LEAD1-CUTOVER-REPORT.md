@@ -164,6 +164,7 @@ O2가 요구한 승인 선행 조건 7개: 실DB 13건 pass·0 skip / postgres s
 | 전환 차단급 | 실DB·실응답 미검증, 미리보기 초안 404, R3–R6·SEC-1 미완, 이관 대조 미완, 원격 백업 부재 |
 | 승인 후 후속 | 요청당 중복 조회(React `cache()` 미적용 — metadata와 본문이 다른 시점을 볼 수 있음), 관리자 API 500 vs §10.1의 503, OG alias 요청에 308 미적용 |
 | v2 | `ogImageId`의 head 반영, 공개 API의 record 컬렉션(category/tag/collection), 태그 기반 캐시 무효화, 이미지 R2 체크섬 대조 |
+| **v1 미완(전환 비차단)** | §4.4 공개 MDX 컴포넌트(`TextAlign`·`Image`·`ContentLink`) — F16/F18의 v1 기능인데 렌더러 태스크가 M1~M7에 없었다. **M8로 등록**(`CMS-V1-IMPLEMENTATION-PLAN.md`). 레거시 49편이 0건 사용하므로 전환은 막지 않고, 전환 후 새 글에서만 문제가 된다 |
 
 ---
 
