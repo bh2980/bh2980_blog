@@ -302,6 +302,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 - **등록된 이름만 지시자로 인식한다.** 등록되지 않은 `:이름`은 파싱 단계에서 본문 텍스트로 되돌려 그대로 보존한다. `remark-directive`는 이름 필터 옵션을 제공하지 않으므로("It exports no additional options.") 파싱 직후 등록 이름 대조로 처리한다. 실측 근거: 레거시 49편 전체를 이 파이프라인으로 파싱하면 오탐이 2건뿐이고(`openai/gpt-oss-120b:free를` → 이름 `free를`, `1:1로` → 이름 `1로`), 둘 다 미등록 이름이라 이 규칙으로 본문 수정 없이 해결된다. 이름은 뒤따르는 한글 조사를 삼키므로 한국어 산문에서는 `:` 뒤 영숫자가 흔하다.
 - 본문에 **등록된** 이름을 글자로 쓰고 싶으면 `\:`로 이스케이프한다(`:u`, `:br` 등). 미등록 이름은 이스케이프 없이 그대로 쓸 수 있다.
 - 코드·Mermaid·차트는 기존처럼 언어가 지정된 코드 펜스로 저장한다. 코드 펜스 주석이 만들어 내는 `collapse`·`fold`는 저작 대상이 아니므로 directive로 쓰지 않는다.
+- 강제 줄바꿈은 에디터에서 Shift+Enter(Tiptap StarterKit `hard-break`)로 만들고 `:br`로 저장한다. **공개 렌더 체인에 `remark-breaks`가 있어 원문의 줄바꿈 하나가 `<br>`로 렌더되므로, 문단은 저장할 때 한 줄로 출력한다** — 원문이 감기면 저자가 의도하지 않은 줄바꿈이 생긴다.
 - HTML 인라인 요소는 directive로 쓴다. 밑줄은 Markdown 문법이 없어 `:u[텍스트]`가 저장 형식이고, 강제 줄바꿈은 라벨 없이 `:br`로 쓴다. 굵게·기울임·취소선은 Markdown 문법(`**`, `*`, `~~`)을 그대로 쓴다.
 
 컴포넌트별 의미:
@@ -333,7 +334,7 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | 코드 블록 | 슬래시 메뉴·툴바 | Tiptap StarterKit(`code-block`) + 코드 펜스 주석 | 언어가 지정된 코드 펜스 |
 | 링크 | `[[` 제목 검색(내부). 외부 링크는 원문 작성 | Tiptap StarterKit(`link`) | Markdown 링크 |
 | 밑줄 | 툴바(M8-FE-2에서 배선) | Tiptap StarterKit(`underline`) — **추가 설치 불필요** | `:u[...]` |
-| 강제 줄바꿈 | 없음(원문 작성) | Tiptap StarterKit(`hard-break`) | `:br` |
+| 강제 줄바꿈 | Shift+Enter(M8-FE-2에서 배선) | Tiptap StarterKit(`hard-break`) — **추가 설치 불필요** | `:br` |
 | 위첨자·아래첨자 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `superscript`·`subscript` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. mark 이름이 `superscript`/`subscript`, 기본 태그가 `<sup>`/`<sub>` | `:sup[...]`·`:sub[...]` |
 | 문단·제목 정렬 | 툴바(M8-FE-2에서 배선) | Tiptap 공식 `text-align` — **설치됨(3.31.3, 사용자 결정 2026-09-22)**. 아래 설정·shape 주의 | `:::text-align{align="..."}` |
 | 이미지 | 슬래시 메뉴·드래그·붙여넣기 | **커스텀 `CmsImageNode`** | `::image{...}` |
