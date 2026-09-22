@@ -28,5 +28,5 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 		notFound();
 	}
 
-	return createOgImageResponse(post.title);
+	return createOgImageResponse(post.title, { noStore: true });
 }

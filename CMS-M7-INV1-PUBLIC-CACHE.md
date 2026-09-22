@@ -89,6 +89,7 @@ M6는 "build가 운영 DB에 접촉하지 않음"을 확인했다(79 routes). M7
 | 안건 | 결정 |
 | --- | --- |
 | A1 캐시 전략 | **CMS 의존 surface만 동적화**. 목록·상세·RSS·sitemap·slug별 OG는 `force-dynamic`/`no-store`. 내용이 고정된 목록 OG 2종(`posts/opengraph-image.tsx`, `memos/opengraph-image.tsx`)은 정적 유지. 보관 완료 후 **다음 요청부터** 404·제외. 태그 무효화는 v2 |
+| A1 이력(M7-RV-1) | **위반 1건 발견·수정.** `@vercel/og`가 프로덕션에서 `public, immutable, no-transform, max-age=31536000`을 기본으로 심어 슬러그 OG가 A1을 어겼다(`og.tsx`가 `headers`를 넘기지 않았다). `createOgImageResponse(title, { noStore })`로 `cache-control: no-store`를 소문자 키로 덮고, 슬러그 OG 2종만 이 옵션을 쓴다. `src/libs/contents/__test__/og.test.ts`가 덮어쓰기와 기본값 유지를 고정한다. **교훈:** 프레임워크·라이브러리 기본 헤더에 기대지 않는다는 원칙 4는 우리 코드뿐 아니라 **의존 라이브러리가 심는 기본값에도** 적용해야 한다 |
 | A2 repository 교체 방식 | 서버 전용 `CMS_PUBLIC_REPOSITORY=keystatic\|postgres` 명시 선택. **기본값은 승인 전까지 `keystatic`**. 알 수 없는 값은 조용히 대체하지 않고 시작 시 실패 |
 | A3 DB 오류 표현 | repository에서 그대로 throw → 5xx. `notFound()`는 정상 조회가 `not_found`일 때만. 상세 페이지의 `force-static`·`dynamicParams=false`·`generateStaticParams`는 배치 2에서 전부 제거 |
 

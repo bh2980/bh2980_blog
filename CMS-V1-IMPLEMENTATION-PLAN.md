@@ -84,7 +84,7 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M7-TW-1 | DONE | TW | `feature/M7` | `c7778d4` | 예약 중복 409, `pre` 실제 RSC 렌더 검증 |
 | M7-LEAD-1 | DONE | Lead | `feature/M7` | `c5eef4d`, `2d615f8` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
 | M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
-| M7-RV-1 | TODO | RV | — | — | M7 구현분 최종 검수(리뷰 6회·SEC 검수로 대체 검증). 전환 검수는 M9-RV-1 |
+| M7-RV-1 | REVIEW | RV | `feature/M7` | — | 독립 검수 판정 **보류**(P0 0·P1 1) → **P1 수정 완료**(슬러그 OG `no-store`), 재검수 대기 |
 | M8-ED-1 | REVIEW | ED | `feature/M7` | — | §4.4를 전면 directive로 개정(초안 반영, 사용자 승인 대기) |
 | M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
 | M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |

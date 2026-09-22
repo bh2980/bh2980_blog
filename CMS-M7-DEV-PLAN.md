@@ -8,7 +8,7 @@
   2. 운영 데이터 이전·공개 전환·Keystatic 제거는 **사용자 승인 없이 하지 않는다**
   3. 기존 `ContentRepository` 계약과 M1–M6의 저장·발행·참조 규칙을 깨지 않는다. 교체는 플래그/명시적 교체 + 롤백 경로를 남긴다
   4. 캐시·성능 최적화보다 **초안·보관본 미노출**이 우선이다. 즉시성이 안 되면 캐시를 포기한다
-- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거) 보류. 전체 게이트: typecheck 0 · tests **685 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **M7 이후 순서를 재정렬**: **M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18). 전환은 M9-LEAD-1 승인 후.
+- **진행 상태(2026-09-23 갱신)**: 배치 **1–6 구현·커밋 완료** · R1–R6 리뷰 완료 · SEC-1 독립 검수 **통과** · **M7-RV-1 독립 검수 = 보류 → P1 수정 완료, 재검수 대기**(§9.19) · 배치 8(LEAD-1) 보고서 작성됨 → `CMS-M7-LEAD1-CUTOVER-REPORT.md` · 배치 9(Keystatic 제거) 보류. 전체 게이트: typecheck 0 · tests **687 전부 pass**(실DB env 로드, 0 fail·0 skip) · build exit 0. 남은 차단: **이관 미실행**(운영 DB entries 8건 전부 draft) · 미리보기 DB 초안 경로 · 원격 백업 · 사용자 승인. **M7 이후 순서를 재정렬**: **M8 표현 계약 정비**(directive 저장 + 누락 컴포넌트 + 43편 변환) → **M9 이관과 전환**(§9.18). 전환은 M9-LEAD-1 승인 후.
 
 ---
 
@@ -763,6 +763,17 @@ M7 (완료)  공개 조회 기반 — 배치 1~6 구현·검수
 **깨진 상태를 만들지 않는 순서(고정):** 읽기(렌더러) → 파일 변환 → 쓰기(serializer·에디터) → 이관·전환. 읽기 단계는 추가형이라 Keystatic이 `src/contents`를 읽는 현재 사이트에 영향이 없다.
 
 **전환 검사 강화:** 같은 49편의 **Keystatic 공개 HTML ↔ DB 공개 HTML** 대조(M9-TW-1)를 통과해야 전환한다. 주소 대조만으로는 “이관하다 클나는” 경우를 못 잡는다.
+
+### 9.19 M7-RV-1 결과와 P1 수정
+
+M7-RV-1 독립 검수(run `c1696247-0e24-4ac2-b895-c3987d94935b`, reviewer + `xai/grok-4.7` 고정) 판정: **보류(BLOCK)**. P0 0건, **P1 1건**.
+
+중대 위험 6기준: ① 데이터 손실 X ② 운영 DB 접촉 X ③ 초안 공개 노출 X(조회 경로) ④ 인증·미리보기 X ⑤ **캐시 stale O** ⑥ 주소 계약 X.
+
+- **P1**: 슬러그별 OG가 `@vercel/og` 기본 헤더(`public, immutable, no-transform, max-age=31536000`)를 그대로 내보내 O1 A1의 `no-store`를 어겼다. `og.tsx`가 `headers`를 넘기지 않았고 라이브러리는 프로덕션에서만 이 기본값을 심는다(`node_modules/next/dist/compiled/@vercel/og/index.node.js`). 이미 받은 200은 보관·휴지통 이동 뒤에도 CDN·브라우저에 남을 수 있다. 초안 slug는 `notFound()`라 해당 없다.
+- **수정**: `createOgImageResponse(title, { noStore })` 옵션을 추가해 `cache-control: no-store`를 **소문자 키로** 덮어쓴다(대소문자가 다르면 `Headers`가 두 값을 합쳐 버린다). 슬러그 OG 2종만 이 옵션을 쓰고, 내용이 고정된 목록 OG 3종은 A1대로 정적을 유지한다. 테스트 `src/libs/contents/__test__/og.test.ts`(2건)가 덮어쓰기와 기본값 유지를 고정한다.
+- **게이트**: typecheck 0 · **107 files / 687 tests 전부 pass** · build exit 0.
+- **리뷰어가 확인하지 못한 것**(미검증): 프로덕션 응답 헤더 실측, HTML 문서의 프레임워크 `Cache-Control`.
 
 
 
