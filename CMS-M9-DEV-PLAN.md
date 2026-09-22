@@ -82,10 +82,10 @@ M9-FE-1 구현은 O1 이후 M9-BE-1의 코드 조사와 일부 병행할 수 있
 ### M9-BE-1 — 이관
 
 - 기존 M6 parser/import-plan/stable ID/all-or-nothing 로직을 재사용한다. 코퍼스 출력과 대상 DB 스키마가 바뀌지 않는지 계약 테스트로 고정한다.
-- 운영 적용을 위해 별도 승인 가능한 실행 경로가 필요하다면 O1에서 설계안을 결정한다. `CMS_TEST_DATABASE_URL` 보호·격리 검사를 우회하지 않는다. dry-run과 실제 apply를 구분하고, 사용자 승인 없이는 운영 대상에 쓰지 않는다.
+- 운영 적용을 위해 별도 승인 가능한 실행 경로가 필요하다면 O1에서 설계안을 결정한다. `CMS_TEST_DATABASE_URL` 보호·격리 검사를 우회하지 않는다. dry-run과 실제 apply를 구분하고, 사용자 승인 없이는 운영 대상에 쓰지 않는다. → **구현 완료:** `apply-production` 진입점(`production-guard.ts`·`production-runner.ts`). DDL 없음, 일회 적재, 지문 검사.
 - 시험 적용은 운영 DB와 명확히 격리된 DB/schema에서 반복 실행해 멱등성·재개·실패 원자성을 확인한다.
 - draft 후보는 status 필드가 없는 `src/contents/memos/js의-비동기-처리-메커니즘.mdx`다. 현재 Keystatic/import 경로 모두 이를 draft로 취급하므로, 의도된 상태인지 M9-0에서 사용자와 확인한다.
-- 실제 운영 apply 전: 사용자에게 대상 환경, 정확한 생성/변경 범위, 예상 건수, 백업/롤백 한계, 실행 명령(비밀값 제외)을 제시하고 명시 승인을 받는다.
+- 실제 운영 apply 전: 사용자에게 대상 환경, 정확한 생성/변경 범위, 예상 건수, 백업/롤백 한계, 실행 명령(비밀값 제외)을 제시하고 명시 승인을 받는다. dry-run에서 받은 원본 지문을 `--expect-digest`로 고정한다. **O1 결정 ⑤의 양쪽 콘텐츠 쓰기 동결이 시작됐는지 확인하고, 아니면 실행하지 않는다.**
 - 운영 apply 후 읽기 전용 대조로 49편의 원본 레코드·관계·승인된 상태 매트릭스, published 48편의 주소, `/assets` 이미지 22개 HTTP 200·SHA-256, 원본 미변경을 증명한다. 하나라도 불일치하면 플래그를 바꾸지 않는다.
 
 ### M9-TW-1 — Keystatic ↔ DB 공개 렌더 대조
@@ -234,7 +234,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | --- | --- | --- | --- |
 | M9-0 | DONE | Lead + BE + INF | O1 결정 5건 확정(§4). 남은 실행 항목은 운영 진입점 구현과 R2다 |
 | M9-FE-1 | DONE | BE + FE | `getWorkingEntryBySlug` + `draft-preview.ts`; 공개 계약 불변. 검증: 실DB 5건·서비스 5건 통과, 전체 119 files/770 tests, `pnpm typecheck` 0 errors |
-| M9-BE-1 | TODO | BE + INF | production-safe apply 설계·가드, 시험 적용, 운영 승인/이관 및 대조, R2 |
+| M9-BE-1 | IN_PROGRESS | BE + INF | 구현·시험 적용 완료(R2 대기). 운영 적재는 사용자 승인 전이라 미실행. 검증: 구현 테스트 실DB 14건, dry-run 75건(published 74/draft 1) 일치 |
 | M9-TW-1 | TODO | TW | 49편 전후 공개 HTML 대조, R3 |
 | M9-LEAD-1 | TODO | Lead | O2/R4 포함 전환 보고서와 cutover 승인 요청 |
 | M9-BE-2 | TODO | BE + INF | 승인된 공개 저장소 플래그 전환, 재배포/smoke/관찰, R5 |
@@ -252,6 +252,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 2026-09-23 | 계획 초안 | M9 Oracle O1–O3, Reviewer R1–R6, 사용자 승인 3게이트 및 운영 적용 차단 규칙을 명시 | 이 문서 |
 | 2026-09-23 | M9-0 / O1 | 자문 결과 5건 확정: 운영 전용 import 진입점, 이미지 `/assets` 유지, 경로별 미리보기 응답, published 48/draft 1, 양쪽 쓰기 동결 | 위 O1 결정 기록 |
 | 2026-09-23 | M9-FE-1 | 관리자 전용 working slug 조회와 초안 미리보기 폴백 구현. 공개 저장소 계약·공개 조회 동작 불변 | `working-entry-by-slug.test.ts`(실DB 5), `preview-draft-fallback.test.ts`(5), 전체 770 tests |
+| 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(7), dry-run 75건(published 74/draft 1) |
 
 ---
 

@@ -1,5 +1,14 @@
 import path from "node:path";
+import { Pool } from "pg";
 import { runApply, runInspect } from "./migration-runner";
+import {
+	assertCmsSchemaReady,
+	assertConnectedToCmsDatabase,
+	assertProductionOptIn,
+	PRODUCTION_APPLY_FLAG,
+	resolveProductionDatabase,
+} from "./production-guard";
+import { planProductionApply, runProductionApply } from "./production-runner";
 
 const args = process.argv.slice(2);
 const command = args[0] ?? "inspect";
@@ -31,13 +40,61 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	// M9-BE-1: 운영 DB 이관. 시험 경로와 완전히 분리되어 있고 opt-in이 따로다.
+	if (command === "apply-production") {
+		if (args.includes("--dry-run")) {
+			const { report, outputPath } = await planProductionApply({ root, ...(out ? { out } : {}) });
+			console.log("[apply-production:dry-run] DB에 접속하지 않았습니다.");
+			console.log(
+				`  계획 ${report.counts.items}건 (published=${report.counts.published} draft=${report.counts.draft})`,
+			);
+			console.log(`  원본 지문: ${report.planDigest}`);
+			console.log(`  보고서: ${outputPath}`);
+			return;
+		}
+
+		assertProductionOptIn();
+		const target = resolveProductionDatabase({ ...(schemaName ? { schemaName } : {}) });
+		const expectedDigest = readFlag("expect-digest");
+		const pool = new Pool({ connectionString: target.url });
+		try {
+			const connection = await assertConnectedToCmsDatabase(pool, target.url);
+			await assertCmsSchemaReady(pool, target.schemaName);
+			const { report, outputPath } = await runProductionApply({
+				root,
+				pool,
+				schemaName: target.schemaName,
+				connection,
+				...(expectedDigest ? { expectedDigest } : {}),
+				...(args.includes("--allow-existing") ? { allowExistingTarget: true } : {}),
+				...(out ? { out } : {}),
+			});
+			console.log(`[apply-production] schema=${report.schemaName} db=${connection.database} role=${connection.role}`);
+			console.log(`  원본 지문: ${report.planDigest}`);
+			console.log(`  적재: imported=${report.apply?.imported ?? 0} skipped=${report.apply?.skipped ?? 0}`);
+			if (report.verification) {
+				console.log(
+					`  검증: entries=${report.verification.entryCount} published=${report.verification.publishedEntryCount} draft=${report.verification.draftEntryCount} slugSetsMatch=${report.verification.slugSetsMatch}`,
+				);
+			}
+			console.log(`  보고서: ${outputPath}`);
+		} finally {
+			await pool.end();
+		}
+		return;
+	}
+
 	console.error(
 		[
 			"사용법:",
 			"  tsx src/cms/migrate-from-files/cli.ts inspect [--out <path>] [--root <dir>]",
 			"  tsx src/cms/migrate-from-files/cli.ts apply [--dry-run] [--reuse] [--schema cms_m6_xxx] [--out <path>]",
+			"  tsx src/cms/migrate-from-files/cli.ts apply-production --dry-run [--out <path>]",
+			"  tsx src/cms/migrate-from-files/cli.ts apply-production [--schema public] [--expect-digest <sha256>] [--allow-existing] [--out <path>]",
 			"",
 			"apply는 CMS_TEST_DATABASE_URL과 cms_m6_* 격리 schema만 사용하고, CMS_MIGRATION_ALLOW=1 일 때만 실행한다.",
+			`apply-production은 CMS_DATABASE_URL만 사용하고 DDL을 하지 않으며, ${PRODUCTION_APPLY_FLAG}=1 일 때만 실행한다.`,
+			"사용자 운영 이관 승인을 받은 뒤에만 실행한다.",
 		].join("\n"),
 	);
 	process.exit(1);
