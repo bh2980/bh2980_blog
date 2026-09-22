@@ -2,8 +2,13 @@ import type { ExportSnapshot } from "@/cms/adapters/postgres/content-store";
 
 export const FIXTURE_TIME = new Date("2026-09-22T00:00:00.000Z");
 
-export const fixtureBody = (mdx: string, title: string, contentHash: string) => ({
-	metadata: { title },
+export const fixtureBody = (
+	mdx: string,
+	title: string,
+	contentHash: string,
+	extraMetadata: Record<string, unknown> = {},
+) => ({
+	metadata: { title, ...extraMetadata },
 	mdx,
 	schemaVersion: 1,
 	contentHash,
@@ -27,7 +32,13 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			lastPublishedAt: null,
 			publishedAt: FIXTURE_TIME,
 			working: fixtureBody("working body", "게시글", "hash-working-1"),
-			published: fixtureBody("published body", "게시글", "hash-published-1"),
+			published: fixtureBody("published body", "게시글", "hash-published-1", {
+				// M7-FE-2 SEO 메타가 공개 아카이브에 살아남는지 확인하는 픽스처
+				seoTitle: "검색 제목",
+				seoDescription: "검색 설명",
+				canonicalUrl: "https://dev.to/crosspost",
+				ogImageId: "44444444-4444-4444-8444-444444444444",
+			}),
 		},
 		{
 			id: "22222222-2222-4222-8222-222222222222",

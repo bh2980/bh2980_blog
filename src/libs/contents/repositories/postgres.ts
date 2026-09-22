@@ -4,6 +4,7 @@ import type { ContentStore, PublishedEntryRecord } from "@/cms/adapters/postgres
 import { getCmsContentStore } from "@/cms/container";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";
+import { readSeoMetadata } from "../seo";
 import type { Category, Memo, Post, PublishedMemo, PublishedPost, Series, Tag } from "../types/contents";
 import type { MemoListQuery, PostListQuery } from "../types/query";
 
@@ -73,6 +74,9 @@ function toPost(
 	const publishedAt = resolvePublishedAt(entry);
 	if (!publishedAt) return null;
 
+	// SEO 미입력 글이면 seo 키 자체를 만들지 않는다(M7-FE-2).
+	const seo = readSeoMetadata(entry.metadata);
+
 	return {
 		slug: entry.slug,
 		status: "published",
@@ -83,6 +87,7 @@ function toPost(
 		contentMdx: entry.mdx,
 		publishedAt,
 		isEvergreen: readMetadataString(entry.metadata, "policy") === POLICY_EVERGREEN,
+		...(seo ? { seo } : {}),
 	};
 }
 
@@ -93,6 +98,8 @@ function toMemo(
 	const publishedAt = resolvePublishedAt(entry);
 	if (!publishedAt) return null;
 
+	const seo = readSeoMetadata(entry.metadata);
+
 	return {
 		slug: entry.slug,
 		status: "published",
@@ -100,6 +107,7 @@ function toMemo(
 		tags: resolveTags(entry, tagsById),
 		contentMdx: entry.mdx,
 		publishedAt,
+		...(seo ? { seo } : {}),
 	};
 }
 

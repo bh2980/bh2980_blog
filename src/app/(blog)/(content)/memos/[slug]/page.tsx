@@ -22,13 +22,23 @@ export async function generateMetadata({ params }: MemoPageProps): Promise<Metad
 	}
 
 	const url = `/memos/${memo.slug}`;
+	const title = memo.seo?.title ?? memo.title;
+	const description = memo.seo?.description;
 
 	return {
-		title: memo.title,
-		alternates: { canonical: url },
+		title,
+		...(description ? { description } : {}),
+		alternates: { canonical: memo.seo?.canonicalUrl ?? url },
 		openGraph: {
-			title: memo.title,
+			type: "article",
+			title,
 			url,
+			...(description ? { description } : {}),
+		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			...(description ? { description } : {}),
 		},
 	};
 }

@@ -263,4 +263,76 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 
 		expect(onList).toHaveBeenCalledTimes(1);
 	});
+
+	it("SEO metadata를 공개 seo 객체로 옮긴다", async () => {
+		const entries = publishedPostsFixture();
+		entries.push(
+			record({
+				id: "post-seo",
+				collection: "post",
+				slug: "seo-post",
+				metadata: {
+					title: "SEO 글",
+					categoryId: "cat-1",
+					seoTitle: "검색 제목",
+					seoDescription: "검색 설명",
+					canonicalUrl: "https://dev.to/crosspost",
+					ogImageId: "media-1",
+				},
+			}),
+		);
+		const repository = repositoryWith(entries);
+
+		const post = await repository.getPost("seo-post");
+
+		expect(post?.seo).toEqual({
+			title: "검색 제목",
+			description: "검색 설명",
+			canonicalUrl: "https://dev.to/crosspost",
+			ogImageId: "media-1",
+		});
+	});
+
+	it("메모의 SEO metadata도 공개 seo 객체로 옮긴다", async () => {
+		const entries = publishedPostsFixture();
+		entries.push(
+			record({
+				id: "memo-seo",
+				collection: "memo",
+				slug: "seo-memo",
+				metadata: { title: "SEO 메모", seoTitle: "메모 제목", canonicalUrl: "/memos/canonical" },
+			}),
+		);
+		const repository = repositoryWith(entries);
+
+		const memo = await repository.getMemo("seo-memo");
+
+		expect(memo?.seo).toEqual({ title: "메모 제목", canonicalUrl: "/memos/canonical" });
+	});
+
+	it("SEO를 입력하지 않은 글에는 seo 키가 생기지 않는다", async () => {
+		const repository = repositoryWith(publishedPostsFixture());
+
+		const post = await repository.getPost("first-post");
+
+		expect(post).not.toBeNull();
+		expect(Object.hasOwn(post as object, "seo")).toBe(false);
+	});
+
+	it("위험한 canonical은 버리고 나머지 SEO 값은 남긴다", async () => {
+		const entries = publishedPostsFixture();
+		entries.push(
+			record({
+				id: "post-bad-canonical",
+				collection: "post",
+				slug: "bad-canonical-post",
+				metadata: { title: "글", categoryId: "cat-1", seoTitle: "제목", canonicalUrl: "javascript:alert(1)" },
+			}),
+		);
+		const repository = repositoryWith(entries);
+
+		const post = await repository.getPost("bad-canonical-post");
+
+		expect(post?.seo).toEqual({ title: "제목" });
+	});
 });

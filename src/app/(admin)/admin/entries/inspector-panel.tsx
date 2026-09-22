@@ -20,6 +20,9 @@ interface InspectorPanelProps {
 	isSlugTouched: boolean;
 	publishDate: string;
 	description: string;
+	seoTitle: string;
+	seoDescription: string;
+	canonicalUrl: string;
 	categoryId: string | null;
 	tagIds: string[];
 	onTitleChange: (title: string) => void;
@@ -27,6 +30,9 @@ interface InspectorPanelProps {
 	onRegenerateSlug: () => void;
 	onPublishDateChange: (date: string) => void;
 	onDescriptionChange: (desc: string) => void;
+	onSeoTitleChange: (value: string) => void;
+	onSeoDescriptionChange: (value: string) => void;
+	onCanonicalUrlChange: (value: string) => void;
 	onCategoryIdChange: (id: string | null) => void;
 	onTagIdsChange: (ids: string[]) => void;
 }
@@ -37,6 +43,9 @@ export function InspectorPanel({
 	slug,
 	publishDate,
 	description,
+	seoTitle,
+	seoDescription,
+	canonicalUrl,
 	categoryId,
 	tagIds,
 	onTitleChange,
@@ -44,6 +53,9 @@ export function InspectorPanel({
 	onRegenerateSlug,
 	onPublishDateChange,
 	onDescriptionChange,
+	onSeoTitleChange,
+	onSeoDescriptionChange,
+	onCanonicalUrlChange,
 	onCategoryIdChange,
 	onTagIdsChange,
 }: InspectorPanelProps) {
@@ -255,6 +267,54 @@ export function InspectorPanel({
 					className="w-full text-xs p-2.5 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none resize-none focus:ring-1 focus:ring-blue-500"
 				/>
 			</div>
+
+			{/* SEO 메타 (M7-FE-2): 비워두면 head가 글 제목·요약으로 폴백한다 */}
+			{(collection === "post" || collection === "memo") && (
+				<div className="space-y-2 rounded-md border border-neutral-200 dark:border-neutral-800 p-2.5">
+					<div className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">SEO</div>
+
+					<div className="space-y-1">
+						<label className="block text-[11px] text-neutral-500 dark:text-neutral-400">
+							검색 제목 <span className="text-neutral-400">(미입력 시 글 제목)</span>
+						</label>
+						<input
+							type="text"
+							value={seoTitle}
+							onChange={(e) => onSeoTitleChange(e.target.value)}
+							placeholder={title || "글 제목"}
+							className="w-full text-xs px-2 py-1.5 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+						/>
+					</div>
+
+					<div className="space-y-1">
+						<label className="block text-[11px] text-neutral-500 dark:text-neutral-400">
+							검색 설명 <span className="text-neutral-400">(미입력 시 요약)</span>
+						</label>
+						<textarea
+							rows={2}
+							value={seoDescription}
+							onChange={(e) => onSeoDescriptionChange(e.target.value)}
+							placeholder={description || "요약"}
+							className="w-full text-xs p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none resize-none focus:ring-1 focus:ring-blue-500"
+						/>
+					</div>
+
+					<div className="space-y-1">
+						<label className="block text-[11px] text-neutral-500 dark:text-neutral-400">canonical URL</label>
+						<input
+							type="text"
+							value={canonicalUrl}
+							onChange={(e) => onCanonicalUrlChange(e.target.value)}
+							placeholder="/posts/slug 또는 https://..."
+							className="w-full text-xs px-2 py-1.5 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+						/>
+						<p className="text-[10px] text-neutral-400">
+							값을 넣으면 canonical이 이 주소가 되고 sitemap에서 빠집니다. 사이트 내 경로(/...)와 http(s) 주소만
+							반영됩니다.
+						</p>
+					</div>
+				</div>
+			)}
 
 			{/* Tag Picker (Post & Memo) */}
 			{(collection === "post" || collection === "memo") && (

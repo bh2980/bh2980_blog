@@ -25,6 +25,11 @@ export const COLLECTION_DEFINITIONS: Record<Collection, CollectionDefinition> = 
 			tagIds: "string[]",
 			publishedAt: "string",
 			policy: "string",
+			// M7-FE-2 SEO 메타(선택)
+			seoTitle: "string",
+			seoDescription: "string",
+			canonicalUrl: "string",
+			ogImageId: "string",
 		},
 		relations: [
 			{ field: "categoryId", kind: "category" },
@@ -38,6 +43,11 @@ export const COLLECTION_DEFINITIONS: Record<Collection, CollectionDefinition> = 
 			title: "string",
 			tagIds: "string[]",
 			publishedAt: "string",
+			// M7-FE-2 SEO 메타(선택)
+			seoTitle: "string",
+			seoDescription: "string",
+			canonicalUrl: "string",
+			ogImageId: "string",
 		},
 		relations: [{ field: "tagIds", kind: "tag" }],
 	},

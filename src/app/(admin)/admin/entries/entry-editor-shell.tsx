@@ -47,10 +47,17 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 	const [description, setDescription] = useState("");
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [tagIds, setTagIds] = useState<string[]>([]);
+	// SEO 메타(M7-FE-2). performSave의 의존성 배열에 값이 없어 ref로 최신값을 넘긴다.
+	const [seoTitle, setSeoTitle] = useState("");
+	const [seoDescription, setSeoDescription] = useState("");
+	const [canonicalUrl, setCanonicalUrl] = useState("");
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 
 	const categoryIdRef = useRef<string | null>(null);
 	const tagIdsRef = useRef<string[]>([]);
+	const seoTitleRef = useRef("");
+	const seoDescriptionRef = useRef("");
+	const canonicalUrlRef = useRef("");
 
 	// Editor State
 	const [mdx, setMdx] = useState("");
@@ -149,6 +156,15 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 				currentVersionRef.current = data.version;
 
 				setDescription(data.working.metadata?.summary || "");
+				const loadedSeoTitle = data.working.metadata?.seoTitle || "";
+				const loadedSeoDescription = data.working.metadata?.seoDescription || "";
+				const loadedCanonicalUrl = data.working.metadata?.canonicalUrl || "";
+				setSeoTitle(loadedSeoTitle);
+				seoTitleRef.current = loadedSeoTitle;
+				setSeoDescription(loadedSeoDescription);
+				seoDescriptionRef.current = loadedSeoDescription;
+				setCanonicalUrl(loadedCanonicalUrl);
+				canonicalUrlRef.current = loadedCanonicalUrl;
 				if (data.working.metadata?.categoryId) {
 					setCategoryId(data.working.metadata.categoryId);
 					categoryIdRef.current = data.working.metadata.categoryId;
@@ -212,6 +228,13 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 			else delete metadataToSave.categoryId;
 			if (tagIdsRef.current.length > 0) metadataToSave.tagIds = tagIdsRef.current;
 			else delete metadataToSave.tagIds;
+			// SEO 메타는 비우면 키를 지워 head가 title/summary 폴백으로 되돌아가게 한다.
+			if (seoTitleRef.current.trim()) metadataToSave.seoTitle = seoTitleRef.current.trim();
+			else delete metadataToSave.seoTitle;
+			if (seoDescriptionRef.current.trim()) metadataToSave.seoDescription = seoDescriptionRef.current.trim();
+			else delete metadataToSave.seoDescription;
+			if (canonicalUrlRef.current.trim()) metadataToSave.canonicalUrl = canonicalUrlRef.current.trim();
+			else delete metadataToSave.canonicalUrl;
 
 			if (!currentEntryId) {
 				// Initial lazy creation via POST
@@ -597,6 +620,9 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 						isSlugTouched={isSlugTouched}
 						publishDate={publishDate}
 						description={description}
+						seoTitle={seoTitle}
+						seoDescription={seoDescription}
+						canonicalUrl={canonicalUrl}
 						categoryId={categoryId}
 						tagIds={tagIds}
 						onTitleChange={handleTitleChange}
@@ -605,6 +631,21 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 						onPublishDateChange={setPublishDate}
 						onDescriptionChange={(desc) => {
 							setDescription(desc);
+							triggerSave();
+						}}
+						onSeoTitleChange={(value) => {
+							setSeoTitle(value);
+							seoTitleRef.current = value;
+							triggerSave();
+						}}
+						onSeoDescriptionChange={(value) => {
+							setSeoDescription(value);
+							seoDescriptionRef.current = value;
+							triggerSave();
+						}}
+						onCanonicalUrlChange={(value) => {
+							setCanonicalUrl(value);
+							canonicalUrlRef.current = value;
 							triggerSave();
 						}}
 						onCategoryIdChange={(newCatId) => {

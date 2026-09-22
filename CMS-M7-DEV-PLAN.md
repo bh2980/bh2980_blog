@@ -450,5 +450,38 @@ pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 
 
 로컬 Postgres는 이 머신에 없다(5432 리스닝 없음, docker 컨테이너 없음, `psql` 미설치) → 테스트 DB는 원격 연결 문자열이어야 한다.
 
+### 9.6 배치 3 (M7-FE-2) 결과
+
+상태: **실DB 외 검증 완료 · R3 게이트 대기**
+
+| 항목 | 내용 |
+| --- | --- |
+| 저장 | `entry_bodies.metadata`의 `seoTitle`/`seoDescription`/`canonicalUrl`/`ogImageId` (O1 A6) |
+| 계약 | `SeoMetadata` 추가, `BasePost`/`BaseMemo`에 선택 필드 `seo` |
+| 해석 | `src/libs/contents/seo.ts` — 공백 trim, canonical은 사이트 내 경로(`/...`)와 http(s) 절대 URL만 통과, `javascript:`·`//host`·해석 불가 값은 폐기 |
+| 매핑 | `repositories/postgres.ts` — metadata → `seo`. 값이 없으면 **`seo` 키를 만들지 않는다**(기존 글의 공개 객체 모양 불변) |
+| allowlist | `PUBLIC_METADATA_KEYS.post`/`.memo`에 4키 추가 |
+| 레지스트리 | `COLLECTION_DEFINITIONS` post/memo에 4필드 추가(없으면 `content-service`가 `invalid_metadata_key`로 저장을 거부한다) |
+| head | posts/memos `generateMetadata`: title·description·canonical·OG·Twitter. **canonical만** custom 값이 되고 OG url은 자기 주소를 유지한다 |
+| sitemap | `buildSitemapEntries`(신규 순수 모듈)로 분리, custom canonical 글 제외 |
+| 관리자 UI | InspectorPanel에 SEO 섹션(검색 제목·검색 설명·canonical). post/memo에만 노출해 record 컬렉션의 저장 거부를 피한다 |
+
+**O1 대비 의도적 편차 1건:** `ogImageId`는 저장·allowlist·매핑까지 했지만 head 반영은 v2다. media id → 공개 URL 해석에는 공개 store surface 추가가 필요한데 O1 A2가 공개 메서드를 2개로 고정했다. 사이트는 이미 글별 동적 OG 이미지(`[slug]/opengraph-image`)를 생성하므로 종료 조건의 “OG 출력”은 충족한다.
+
+검증:
+
+| 게이트 | 결과 |
+| --- | --- |
+| `pnpm typecheck` | 0 errors |
+| `pnpm test:run` | 94 files / 604 tests / **525 pass** / 79 skip / 9 파일 실패(전부 `CMS_TEST_DATABASE_URL` 미설정) |
+| 기준선 대비 | 89/556/489/67/8 → +48 tests, **회귀 없음** |
+| `pnpm build` | 통과(79 routes) |
+| biome | 신규·변경 파일 clean. 관리자 2파일은 HEAD와 동일한 기존 진단 19건(신규 위반 0) |
+
+#### 9.6.1 부수 발견 (M7 범위 밖, 기록만)
+
+`entry-editor-shell.tsx`의 `performSave`는 의존성 배열이 `[collection, entry]`인데 `description`을 state에서 읽는다 → 첫 저장에서 요약이 직전 값으로 저장될 수 있다(이후 `entry` 갱신으로 복구되지만 그 사이 변경은 다음 편집까지 반영되지 않는다). SEO 필드는 이 함정을 피해 ref로 최신값을 넘긴다. 기존 UI 결함은 M4/M5 소관이므로 이 배치에서 고치지 않고 v2로 넘긴다.
+
+
 
 

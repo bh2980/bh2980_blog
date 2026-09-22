@@ -276,4 +276,20 @@ describe("export archive builder", () => {
 			}
 		}
 	});
+
+	it("public 아카이브는 SEO metadata를 그대로 내보낸다", () => {
+		const { zip } = buildExportArchive(makeSnapshot(), { scope: "public", exportedAt: FIXED_TIME });
+		const archive = readAll(zip);
+		const parsed = JSON.parse(archive.text("entries/post/11111111-1111-4111-8111-111111111111/published.json")) as {
+			metadata: Record<string, unknown>;
+		};
+
+		expect(parsed.metadata.seoTitle).toBe("검색 제목");
+		expect(parsed.metadata.seoDescription).toBe("검색 설명");
+		expect(parsed.metadata.canonicalUrl).toBe("https://dev.to/crosspost");
+		expect(parsed.metadata.ogImageId).toBe("44444444-4444-4444-8444-444444444444");
+		// SEO 키는 컬렉션 allowlist에 있어야 하고, 관리자 컬렉션에는 열리지 않는다.
+		expect(PUBLIC_METADATA_KEYS.post).toEqual(expect.arrayContaining(["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"]));
+		expect(PUBLIC_METADATA_KEYS.category).not.toEqual(expect.arrayContaining(["seoTitle"]));
+	});
 });

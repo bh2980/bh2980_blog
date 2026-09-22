@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
+import { buildSitemapEntries } from "@/libs/contents/sitemap-entries";
 
 // 공개 주소 목록을 요청 시점에 생성한다(M7-BE-2).
 export const dynamic = "force-dynamic";
@@ -13,35 +14,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const posts = await listPosts();
 	const memos = await listMemos();
 
-	const postsSitemap = posts.list.map<MetadataRoute.Sitemap[number]>((post) => {
-		const lastModified = post.status === "published" ? post.publishedAt : undefined;
-
-		return {
-			url: new URL(`${HOST_URL}/posts/${post.slug}`).toString(),
-			lastModified,
-		};
-	});
-
-	const memoSitemap = memos.list.map<MetadataRoute.Sitemap[number]>((memo) => {
-		const lastModified = memo.status === "published" ? memo.publishedAt : undefined;
-
-		return {
-			url: new URL(`${HOST_URL}/memos/${memo.slug}`).toString(),
-			lastModified,
-		};
-	});
-
-	return [
-		{
-			url: HOST_URL,
-		},
-		{
-			url: `${HOST_URL}/posts`,
-		},
-		{
-			url: `${HOST_URL}/memos`,
-		},
-		...postsSitemap,
-		...memoSitemap,
-	];
+	return buildSitemapEntries({ hostUrl: HOST_URL, posts: posts.list, memos: memos.list });
 }
