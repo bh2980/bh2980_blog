@@ -2,7 +2,7 @@
 
 **기준 문서:** `CMS-SPEC.md` §4.4·§4.5 / §6.2(F16)·§4.3(F18), `CMS-V1-IMPLEMENTATION-PLAN.md` M8, `CMS-M8-DA-1-CONVERSION-MEMO.md`, `CMS-M7-DEV-PLAN.md`(배치·게이트 관행)
 
-**진행 상태(2026-09-22 착수 시점):** 배치 0 진행 중 · M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`) · M8-FE-1 READY · 나머지 TODO. 기준선 초록: `pnpm typecheck` 0 · `pnpm test:run` **107 files / 687 tests pass**(실DB 포함).
+**진행 상태(2026-09-22):** 배치 0 DONE · **배치 1 DONE**(`4ae05b7`, `ff586fe`, `a743c7e`) · **R1 대기** · 배치 2~5 TODO. M8-ED-1 DONE(`475c2c6`, `b74c215`, `9963203`, `db7a7d8`). 최신 초록: `pnpm typecheck` 0 · `pnpm test:run` **110 files / 713 tests pass**(실DB 포함 · 착수 전 107 files / 687 tests).
 
 ## 0. 운영 원칙 (M7 관행 + M8 차이)
 
@@ -41,9 +41,9 @@
 - `src/cms/mdx/serialize.ts:210` — 하드브레이크를 `\`+줄바꿈으로 출력 → `:br[]`로 바꾼다.
 - `serialize.ts:110-155` — `openMark`/`closeMark`가 `<u>`·`<sup>`·`<sub>`·`<strong>`·`<em>`·`<del>`·`<Tooltip>`을 출력 → directive/Markdown으로 바꾼다.
 - `src/cms/mdx/registry.ts` — `REGISTERED_JSX_NAMES`는 정의만 되고 `analyze`에서 쓰이지 않는다.
-- `CmsMdxAnalysis`(`types.ts:35`) — `errors`만 있고 **경고 채널이 없다**.
+- `CmsMdxAnalysis`(`types.ts:35`) — `errors`만 있고 경고 채널이 없다. **A3에 따라 여기 넣지 않는다**: 경고는 발행 전 검사(`validateForPublish`)가 `warnings`로 낸다(배치 1에서 구현).
 - 공개 체인 `src/components/mdx/mdx-content.tsx` — `MDX_REMARK_PLUGINS`에 `remarkBreaks`가 이미 포함(문단 줄바꿈이 `<br>`이 되는 이유).
-- `serialize.ts:164-183` — `Image` 저장 경로는 이미 있다. **공개 렌더러만 없다.**
+- `serialize.ts:164-183` — `Image` 저장 경로는 이미 있다. 공개 렌더러는 **배치 1에서 추가**했다(`src/components/mdx/image.tsx`).
 
 ## 3. 마일스톤 묶음과 순서
 
@@ -317,6 +317,36 @@ pnpm build
 
 (기록)
 
-### 9.3 배치 1 결과 / 9.4 배치 2 / 9.5 배치 3 / 9.6 배치 4 / 9.7 R1–R4 리뷰 / 9.8 O2 / 9.9 M8-RV-1
+### 9.3 배치 1 결과
+
+**커밋:** `4ae05b7`(1a) · `ff586fe`(1b·1c) · `a743c7e`(1d·1e)
+
+| 증분 | 내용 |
+|---|---|
+| 1a | `src/cms/mdx/directives.ts`(정의표 단일 원천) · `remark-directives.ts`(미등록 되돌리기 + MDX 요소 변환) · `parse.ts` 배선 |
+| 1b | `mdx-content.tsx` 공개 체인에 `remark-directive`+두 플러그인, `TextAlign`·`Image` 등록, `createMdxComponents({ imageResolver })` 주입 지점 |
+| 1c | `src/components/mdx/image.tsx`(실패 시 캡션만) + `src/cms/mdx/image-src.ts`(허용 규칙 단일 원천, resolver 주입) |
+| 1d | `tiptap-schema.ts`의 `CMS_SCHEMA_EXTENSIONS`(text-align `types`/`alignments`/`defaultAlignment: null` + sup/sub) **스키마 등록만** — 툴바·쓰기 명령 없음 |
+| 1e | `parse.ts`가 등록 이름을 MDX 요소로 변환(분석 트리 단일 shape) · `prepareSnapshot`이 `imageSources`(위치 포함) 수집 · `validateForPublish`가 `warnings` 반환 |
+
+**검증(실행 증거)**
+
+- `pnpm exec tsc --noEmit` → 0.
+- `pnpm test:run` → **110 files / 713 tests pass**(착수 전 107/687 대비 +3 files/+26 tests, 회귀 0).
+- **49편 공개 HTML 등가성**: `src/cms/mdx/__test__/directive-render.test.tsx`가 directive 플러그인을 뺀 체인과 **완전히 같은 문자열**을 낸다(추가형 증명).
+- 미등록 `:free를`·`:1로`가 본문 글자로 남는다(단위 + 코퍼스 49편 0건).
+- directive로 쓴 이미지도 **미디어 참조가 수집**된다(무결성 유지) · 외부 `src`는 참조가 아니고 차단하지 않는다 · 소스 없는 이미지는 계속 차단한다.
+
+**A3 이후 달라진 점**
+
+- 분석 트리는 directive를 **MDX 요소로 변환한 shape**를 쓴다. 그래야 참조 수집·`Tabs`/`Columns` 개수 검증·속성 검증이 directive용 코드를 따로 갖지 않는다(두 shape로 갈라지면 한쪽만 고치는 실수가 난다). 저장 문자열은 그대로다.
+
+**남긴 것(다음 배치·M9 몫)**
+
+- 경고 채널은 **발행 전 검사에만** 있다. HTTP 표면은 아직 없다 — 발행 API는 store의 `publishEntry`만 호출하고 `validateForPublish`를 부르지 않는다(M9/관리 UI 배선 몫).
+- 툴바·쓰기 명령(배치 3), 45편 변환(배치 2), 폐기 이름 제거(배치 4).
+- **사전 존재 결함(내 변경 아님):** `pnpm lint`가 저장소 전역에서 43개 오류(`noExplicitAny`, `noLabelWithoutControl` 등)를 내고 53개 파일을 재포맷한다. 배치 1이 만진 파일은 무오류다. `pre-push` 훅이 `pnpm lint`를 돌리므로 푸시 전 별도 정리가 필요하다.
+
+### 9.4 배치 2 / 9.5 배치 3 / 9.6 배치 4 / 9.7 R1–R4 리뷰 / 9.8 O2 / 9.9 M8-RV-1
 
 (배치마다 추가)
