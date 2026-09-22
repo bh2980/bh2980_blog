@@ -245,69 +245,73 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(pubRefs[0].targetId).toBe(tag.id);
 		});
 
-		it("fails publish and preserves prior published body & published references if target is archived or missing", { timeout: 60000 }, async () => {
-			const tag = await store.createEntry({
-				collection: "tag",
-				slug: "tag-to-archive",
-				metadata: { title: "Tag" },
-				mdx: "",
-				schemaVersion: 1,
-				contentHash: "tag-hash-arch",
-			});
-			const pubTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
+		it(
+			"fails publish and preserves prior published body & published references if target is archived or missing",
+			{ timeout: 60000 },
+			async () => {
+				const tag = await store.createEntry({
+					collection: "tag",
+					slug: "tag-to-archive",
+					metadata: { title: "Tag" },
+					mdx: "",
+					schemaVersion: 1,
+					contentHash: "tag-hash-arch",
+				});
+				const pubTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
 
-			const post = await store.createEntry({
-				collection: "post",
-				slug: "post-rollback-test",
-				metadata: { title: "Prior Title" },
-				mdx: "Prior MDX",
-				schemaVersion: 1,
-				contentHash: "post-prior-hash",
-			});
-
-			// 1st publish (clean, no refs)
-			const firstPub = await store.publishEntry({ id: post.id, expectedVersion: post.version });
-
-			// Archive the tag
-			await store.archiveEntry({ id: tag.id, expectedVersion: pubTag.version });
-
-			// Save draft on post referencing now-archived tag
-			await store.saveWorkingWithReferences({
-				entryId: post.id,
-				expectedVersion: firstPub.version,
-				snapshot: {
+				const post = await store.createEntry({
 					collection: "post",
 					slug: "post-rollback-test",
-					metadata: { title: "Broken Title" },
-					mdx: "Broken MDX",
+					metadata: { title: "Prior Title" },
+					mdx: "Prior MDX",
 					schemaVersion: 1,
-					contentHash: "post-broken-hash",
-					issues: [],
-					references: [],
-				},
-				references: [
-					{
-						kind: "tag",
-						targetId: tag.id,
-						isStale: false,
-						occurrences: [{ type: "metadata", path: "tags" }],
+					contentHash: "post-prior-hash",
+				});
+
+				// 1st publish (clean, no refs)
+				const firstPub = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+
+				// Archive the tag
+				await store.archiveEntry({ id: tag.id, expectedVersion: pubTag.version });
+
+				// Save draft on post referencing now-archived tag
+				await store.saveWorkingWithReferences({
+					entryId: post.id,
+					expectedVersion: firstPub.version,
+					snapshot: {
+						collection: "post",
+						slug: "post-rollback-test",
+						metadata: { title: "Broken Title" },
+						mdx: "Broken MDX",
+						schemaVersion: 1,
+						contentHash: "post-broken-hash",
+						issues: [],
+						references: [],
 					},
-				],
-			});
+					references: [
+						{
+							kind: "tag",
+							targetId: tag.id,
+							isStale: false,
+							occurrences: [{ type: "metadata", path: "tags" }],
+						},
+					],
+				});
 
-			// Attempt 2nd publish - MUST FAIL because referenced tag is archived!
-			await expect(
-				store.publishEntry({
-					id: post.id,
-					expectedVersion: firstPub.version + 1,
-				}),
-			).rejects.toThrow();
+				// Attempt 2nd publish - MUST FAIL because referenced tag is archived!
+				await expect(
+					store.publishEntry({
+						id: post.id,
+						expectedVersion: firstPub.version + 1,
+					}),
+				).rejects.toThrow();
 
-			// Verify prior published body is completely intact!
-			const current = await store.getEntry(post.id);
-			expect(current.published?.mdx).toBe("Prior MDX");
-			expect(current.published?.metadata.title).toBe("Prior Title");
-		});
+				// Verify prior published body is completely intact!
+				const current = await store.getEntry(post.id);
+				expect(current.published?.mdx).toBe("Prior MDX");
+				expect(current.published?.metadata.title).toBe("Prior Title");
+			},
+		);
 	});
 
 	describe("3. Scheduled Publishing (§5.4)", () => {
@@ -388,6 +392,40 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					references: [],
 				}),
 			).resolves.not.toThrow();
+		});
+
+		it("같은 항목에 pending 예약은 두 개 만들 수 없다", async () => {
+			const post = await store.createEntry({
+				collection: "post",
+				slug: "post-schedule-duplicate-1",
+				metadata: { title: "Duplicate Schedule" },
+				mdx: "Content",
+				schemaVersion: 1,
+				contentHash: "dup-sched-hash",
+			});
+
+			const first = await store.createSchedule({
+				entryId: post.id,
+				expectedVersion: post.version,
+				scheduledAt: new Date(Date.now() + 3600 * 1000),
+			});
+			expect(first.status).toBe("pending");
+
+			// M7-TW-1: schedules_active_entry_idx(partial unique)가 막고, store는 이를 conflict로 매핑한다(500이 아니라 409).
+			await expect(
+				store.createSchedule({
+					entryId: post.id,
+					expectedVersion: post.version,
+					scheduledAt: new Date(Date.now() + 7200 * 1000),
+				}),
+			).rejects.toMatchObject({ code: "conflict" });
+
+			const { rows } = await pool.query<{ id: string }>(
+				`SELECT id FROM "${schemaName}".schedules WHERE entry_id = $1 AND status = 'pending'`,
+				[post.id],
+			);
+			expect(rows).toHaveLength(1);
+			expect(rows[0].id).toBe(first.id);
 		});
 
 		it("executor idempotency: executing due schedule publishes entry and duplicate call returns no-op", async () => {

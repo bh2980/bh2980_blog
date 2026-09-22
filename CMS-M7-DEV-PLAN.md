@@ -588,6 +588,41 @@ R1/R2 리뷰어 실행이 두 번 실패했다. 같은 프로토콜로 재시도
 
 후속: 사용자 설정 `~/.pi/agent/extensions/subagent/config.json`의 `modelResponseAliases`에 `router/reviewer-route` → 실제 모델 매핑을 넣으면 명시 고정 없이도 게이트가 열린다. R3–R6도 같은 고정이 필요하다(기록용).
 
+### 9.11 배치 6 (M7-TW-1) 결과
+
+상태: **구현 완료 · R6 게이트 대기**
+
+**발견한 결함 1건(수정):** 같은 항목에 pending 예약을 두 번 만들면 `schedules_active_entry_idx`(partial unique)가 막지만, `createSchedule`이 pg 오류를 그대로 던져 **409가 아니라 500**이 됐다. `isScheduleConflict()`를 추가해 `CmsError("conflict")`로 매핑했다(§10.1의 “409 충돌/중복”).
+
+기존 회귀 자산 점검(6개 범주):
+
+| 범주 | 기존 자산 | 이번 배치 |
+| --- | --- | --- |
+| 파서 왕복 | `cms/mdx/__test__/roundtrip·corpus-roundtrip·image-roundtrip` | 추가 없음(이미 충분) |
+| 원자적 발행 | `content-store.test.ts`, `content-service.test.ts` | 추가 없음 |
+| 참조·주소 | `references.test.ts`, `lifecycle.test.ts` | 추가 없음 |
+| 인증 | `auth-gateway.test.ts` | 배치 5의 `preview-access` 4건 |
+| 예약 중복 | **없음**(lifecycle은 생성·실행·멱등만 다뤘다) | 실DB 1건 + 라우트 7건 |
+| 저장 충돌 | `content-service.test.ts`, `entries.test.ts` | 추가 없음 |
+| D3-1 `pre` RSC 렌더 | **없음** — 코퍼스 러너가 “suspended”일 때 동기 스텁(`PreShim`)으로 갈아 끼워 **실제 `pre`가 렌더된 적이 없었다** | 스트리밍 렌더 5건 |
+
+신규 테스트:
+
+- `src/cms/adapters/postgres/__test__/lifecycle.test.ts` §3 — pending 예약 중복 → conflict, pending 행 1개 유지 (**실DB, 현재 env로 미실행**)
+- `src/app/api/cms/v1/entries/[id]/schedule/__test__/schedule.test.ts` 7건 — 200·428·400·409·401·cross-origin 거부·204 (실행 통과)
+- `src/components/mdx/__test__/mdx-content.code-block.test.tsx` 5건 — 실제 `pre` 스트리밍 렌더, 동기 렌더 실패 사실 고정, fence meta→마크업, meta 없음, 언어 없음 (실행 통과)
+
+검증:
+
+| 게이트 | 결과 |
+| --- | --- |
+| `pnpm typecheck` | 0 errors |
+| `pnpm test:run` | 102 files / 659 tests / **579 pass** / 80 skip / 9 파일 실패(전부 env) |
+| 기준선 대비 | 89/556/489/67/8 → **+103 tests**, 회귀 없음 |
+| biome | 신규 파일 clean. 기존 파일 경고 수 불변(content-store 5건·lifecycle 4건을 HEAD와 대조) |
+
+한계: 실DB 테스트 1건(lifecycle 예약 중복)과 배치 1의 12건은 `CMS_TEST_DATABASE_URL` 없이는 실행되지 않는다.
+
 
 
 

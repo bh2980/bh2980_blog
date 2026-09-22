@@ -804,6 +804,21 @@ function isTemplateConflict(err: unknown): boolean {
 	);
 }
 
+/**
+ * M7-TW-1: 같은 항목에 pending 예약은 하나만 존재한다(schedules_active_entry_idx).
+ * DB가 막은 것을 그대로 올리면 500이 되므로 conflict로 매핑한다.
+ */
+function isScheduleConflict(err: unknown): boolean {
+	return (
+		typeof err === "object" &&
+		err !== null &&
+		"code" in err &&
+		err.code === "23505" &&
+		"constraint" in err &&
+		err.constraint === "schedules_active_entry_idx"
+	);
+}
+
 export function createContentStore(
 	pool: Pool,
 	options?: { schema?: string; beforePublishCommit?: ContentStoreHooks["beforePublishCommit"] },
@@ -2874,6 +2889,9 @@ export function createContentStore(
 				return { id, status: "pending", scheduledAt: params.scheduledAt };
 			} catch (err) {
 				await client.query("ROLLBACK");
+				if (isScheduleConflict(err)) {
+					throw new CmsError("Entry already has a pending schedule", "conflict");
+				}
 				throw err;
 			} finally {
 				client.release();
