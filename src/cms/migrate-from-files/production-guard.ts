@@ -139,3 +139,92 @@ export async function assertCmsSchemaReady(pool: Pool, schemaName: string): Prom
 
 	return [...present].sort();
 }
+
+export interface ProductionTargetInspection {
+	database: string;
+	role: string;
+	schemaName: string;
+	entryCounts: { collection: string; status: string; count: number }[];
+	addressCounts: { type: string; count: number }[];
+	mediaAssetCount: number;
+	folderCount: number;
+	scheduleCount: number;
+	migrations: string[];
+	/** 기존 항목이 이미 점유한 working slug. 이관 계획의 slug와 겹치면 중단해야 한다. */
+	existingWorkingSlugs: string[];
+	/** 공유 DB에 함께 있는 비 CMS 테이블(예: Payload). 우리가 건드리지 않는 대상임을 증명한다. */
+	foreignTables: string[];
+}
+
+/**
+ * 읽기 전용 대상 조사. 트랜잭션을 `READ ONLY`로 열어 이 함수가 쓰기를 할 수 없음을 강제한다.
+ * 승인 요청에 붙일 증거와 이관 후 대조에 같은 함수를 쓴다.
+ */
+export async function inspectProductionDatabase(pool: Pool, schemaName: string): Promise<ProductionTargetInspection> {
+	const client = await pool.connect();
+	try {
+		await client.query("BEGIN TRANSACTION READ ONLY");
+
+		const head = await client.query<{ database: string; role: string }>(
+			`SELECT current_database() AS database, current_user AS role`,
+		);
+		const entries = await client.query<{ collection: string; status: string; count: string }>(
+			`SELECT collection, status, COUNT(*)::text AS count FROM "${schemaName}".entries
+			 GROUP BY collection, status ORDER BY collection ASC, status ASC`,
+		);
+		const addresses = await client.query<{ type: string; count: string }>(
+			`SELECT type, COUNT(*)::text AS count FROM "${schemaName}".content_addresses GROUP BY type ORDER BY type ASC`,
+		);
+		const media = await client.query<{ count: string }>(
+			`SELECT COUNT(*)::text AS count FROM "${schemaName}".media_assets`,
+		);
+		const folders = await client.query<{ count: string }>(
+			`SELECT COUNT(*)::text AS count FROM "${schemaName}".folders`,
+		);
+		const schedules = await client.query<{ count: string }>(
+			`SELECT COUNT(*)::text AS count FROM "${schemaName}".schedules`,
+		);
+		const migrations = await client.query<{ name: string }>(
+			`SELECT name FROM "${schemaName}".cms_migrations ORDER BY name ASC`,
+		);
+		const workingSlugs = await client.query<{ working_slug: string | null }>(
+			`SELECT working_slug FROM "${schemaName}".entries WHERE working_slug IS NOT NULL ORDER BY working_slug ASC`,
+		);
+		const tables = await client.query<{ table_name: string }>(
+			`SELECT table_name FROM information_schema.tables WHERE table_schema = $1`,
+			[schemaName],
+		);
+
+		await client.query("COMMIT");
+
+		const cmsTables = new Set<string>(REQUIRED_CMS_TABLES);
+
+		return {
+			database: head.rows[0]?.database ?? "",
+			role: head.rows[0]?.role ?? "",
+			schemaName,
+			entryCounts: entries.rows.map((row) => ({
+				collection: row.collection,
+				status: row.status,
+				count: Number(row.count),
+			})),
+			addressCounts: addresses.rows.map((row) => ({ type: row.type, count: Number(row.count) })),
+			mediaAssetCount: Number(media.rows[0]?.count ?? "0"),
+			folderCount: Number(folders.rows[0]?.count ?? "0"),
+			scheduleCount: Number(schedules.rows[0]?.count ?? "0"),
+			migrations: migrations.rows.map((row) => row.name),
+			existingWorkingSlugs: workingSlugs.rows
+				.map((row) => row.working_slug)
+				.filter((slug): slug is string => slug !== null),
+			foreignTables: tables.rows
+				.map((row) => row.table_name)
+				.filter((name) => !cmsTables.has(name) && name !== "user_preferences")
+				.sort(),
+		};
+	} catch (error) {
+		await client.query("ROLLBACK").catch(() => undefined);
+		throw error;
+	} finally {
+		client.release();
+	}
+}

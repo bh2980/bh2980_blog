@@ -253,6 +253,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 2026-09-23 | M9-0 / O1 | 자문 결과 5건 확정: 운영 전용 import 진입점, 이미지 `/assets` 유지, 경로별 미리보기 응답, published 48/draft 1, 양쪽 쓰기 동결 | 위 O1 결정 기록 |
 | 2026-09-23 | M9-FE-1 | 관리자 전용 working slug 조회와 초안 미리보기 폴백 구현. 공개 저장소 계약·공개 조회 동작 불변 | `working-entry-by-slug.test.ts`(실DB 5), `preview-draft-fallback.test.ts`(5), 전체 770 tests |
 | 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(7), dry-run 75건(published 74/draft 1) |
+| 2026-09-23 | M9-0 정합성 | 원본 계획(75건, published 74/draft 1)과 운영 DB 읽기 전용 조사(주소 0, 기존 slug 0, 필수 테이블 준비 완료)를 대조. 충돌 위험 0 | §11, `artifacts/cms/m9/target-inspection-pre.json` |
 
 ---
 
@@ -271,7 +272,62 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 
 ---
 
-## 11. 범위 밖
+## 11. 대상 상태 매트릭스와 정합성 대조 (M9-0 증거)
+
+### 11.1 원본 → 이관 계획
+
+`pnpm cms:migration:plan:production` (2026-09-23, DB 미접속)
+
+| 컬렉션 | published | draft | 합계 |
+| --- | --- | --- | --- |
+| post | 7 | 0 | 7 |
+| memo | 41 | 1 | 42 |
+| category | 3 | 0 | 3 |
+| tag | 22 | 0 | 22 |
+| collection | 1 | 0 | 1 |
+| **합계** | **74** | **1** | **75** |
+
+- 원본 MDX 49편 = post 7 + memo 42. 그중 **published 48 / draft 1**.
+- draft 1편은 status 필드가 없는 `src/contents/memos/js의-비동기-처리-메커니즘.mdx`다(O1 결정 ④).
+- `blocking=0`, `warnings=0`.
+- 원본 지문: `00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`.
+
+### 11.2 운영 DB 현재 상태
+
+`tsx src/cms/migrate-from-files/cli.ts inspect-target` — **READ ONLY 트랜잭션**이라 쓰기가 불가능하다.
+
+| 항목 | 값 |
+| --- | --- |
+| database / role / superuser | `neondb` / `neondb_owner` / **false** |
+| schema / 테이블 준비 | `public` / `schemaReady=true` (필수 CMS 테이블 9개 존재, DDL 불필요) |
+| `entries` | 8건 — post draft 5, memo draft 1, tag draft 1, tag published 1 |
+| `content_addresses` | **0건** |
+| `media_assets` | 0건 |
+| `folders` / `schedules` | 1 / 0 |
+| `cms_migrations` | `seed_initial_body_templates` |
+| 기존 `working_slug` | **0건** |
+| 비 CMS 테이블 | 19개(Payload 계열). 이관 경로는 이들을 이름으로도 건드리지 않는다 |
+
+### 11.3 충돌 위험 판정
+
+| 확인 | 결과 |
+| --- | --- |
+| 계획 ID ↔ 기존 `entries.id` | **0건** (계획 ID는 경로 기반 UUIDv5, 기존 8건은 CMS가 만든 임의 UUID) |
+| 계획 slug ↔ 기존 `content_addresses` | **0건** (주소 자체가 0건) |
+| 계획 slug ↔ 기존 `working_slug` | **0건** (기존 항목에 slug 없음) |
+| 계획 건수 ↔ M6 시험 결과·O1 결정 ④ | **일치** (75건, published 74 / draft 1) |
+
+### 11.4 결론과 남은 조건
+
+이관 입력과 대상이 **깨끗하다**. 남은 조건은 데이터가 아니라 승인·동결이다.
+
+1. **사용자 운영 이관 승인** — O1 결정 ⑤의 콘텐츠 쓰기 동결 시작/해제 시점을 포함해 승인받는다.
+2. 승인 뒤 `apply-production --expect-digest 00dcccc1…`로 실행한다.
+3. 같은 `inspect-target`으로 사후 대조하고, M9-BE-1 항목의 `/assets` 이미지 22개 HTTP 200·SHA-256 대조를 더한다.
+
+---
+
+## 12. 범위 밖
 
 - 사용자 정의 컬렉션/스키마 빌더와 웹 기반 확장 시스템(M9 이후 별도 v2).
 - 과거 본문 버전 이력/복원 UI.
