@@ -1,6 +1,6 @@
 # CMS v1 구현 계획
 
-작성: 2026-09-16 · Lead · 갱신: 2026-09-21 (Milestone 2 oracle/reviewer 피드백 반영 완료로 전 작업 DONE 갱신)
+작성: 2026-09-16 · Lead · 갱신: 2026-09-22 (M8-ED-1 §4.4 directive 저장 계약 사용자 승인으로 DONE, M8-FE-1 READY)
 대상 저장소: `/Users/bh2980/Desktop/bh2980_blog`  
 명세: `CMS-SPEC.md` (v1 완료 = 기능 추적표 F01–F11, F13–F19 + 이전 + Keystatic 제거 + 권한/공개)  
 통합 브랜치: `feature/new-cms`  
@@ -85,8 +85,8 @@ Lead가 배정·차단·병합할 때마다 이 표만 고친다. 빈 칸은 `�
 | M7-LEAD-1 | DONE | Lead | `feature/M7` | `065bb8f`, `e39704b` | 전환 보고서 작성. 승인 게이트는 M9-LEAD-1로 이동 |
 | M7-BE-5 | MOVED | BE | — | — | M9-BE-3으로 이동 |
 | M7-RV-1 | DONE | RV | `feature/M7` | `537573f` | 독립 검수 1차 **보류**(P0 0·P1 1: 슬러그 OG 캐시) → 수정 → 재검수 **승인**. 중대 위험 6기준 전부 X |
-| M8-ED-1 | REVIEW | ED | `feature/M7` | — | §4.4를 전면 directive로 개정(초안 반영, 사용자 승인 대기) |
-| M8-FE-1 | TODO | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지) |
+| M8-ED-1 | DONE | ED | `feature/new-cms` | `475c2c6`, `b74c215`, `9963203` | §4.4를 전면 directive로 개정. **사용자 승인 2026-09-22** |
+| M8-FE-1 | READY | FE | — | — | 공개 렌더러 directive 읽기 (추가형, 기존 JSX 유지). 선행 M8-ED-1 충족 |
 | M8-FE-2 | TODO | FE+BE | — | — | Image 공개 렌더러·TextAlign(`text-align` 확장), 인라인 표기 정규화, ContentLink·IdeographicSpace 폐기 |
 | M8-TW-1 | TODO | TW | — | — | 미등록 지시자·컴포넌트 거부 + 레지스트리 대조 + 폐기 이름 제거 |
 | M8-ED-2 | TODO | ED | — | — | serializer·에디터 directive 출력 전환 (M1 계약 재정의) |
@@ -896,7 +896,7 @@ M8·M9 재정렬로 이 태스크는 `M9-BE-3`으로 옮겼다. 내용은 그대
   - **전면 directive로 확정(사용자 결정).** 인라인까지 directive로 쓴다 — 하이브리드가 아니다. HTML 인라인 요소도 directive로 바꾼다: `:u[...]`, `:sup[...]`, `:sub[...]`, `:br`(라벨 없음). 굵게·기울임·취소선은 Markdown 문법(`**`, `*`, `~~`)을 그대로 쓴다.
   - 매핑 확정: `callout`·`collapsible`·`text-align`(컨테이너), `tabs`/`tab`·`columns`/`column`(중첩 컨테이너), `image`(리프), `tooltip`·`u`·`sup`·`sub`·`br`(텍스트). **폐기(사용자 결정): `entry-link`(ContentLink), `ideographic-space`.**
   - 저작 대상이 아닌 것: 코드·Mermaid·차트는 코드 펜스(실측 mermaid 6·chart 1), `collapse`·`fold`는 코드 펜스 주석이 만드는 렌더 전용 컴포넌트.
-  - **초안을 `CMS-SPEC.md` §4.4에 반영했다(사용자 승인 대기).**
+  - **`CMS-SPEC.md` §4.4에 반영했고 2026-09-22 사용자 승인을 받았다. `M8-ED-1` DONE.**
 - **선행:** 없음
 - **담당:** ED
 - **완료 조건:** §4.4가 directive 저장 계약·중첩·이스케이프 규칙을 명시한다.
