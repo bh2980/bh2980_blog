@@ -2,7 +2,7 @@
 
 - 작성: 2026-09-22 · Lead
 - 기준 문서: `CMS-SPEC.md` §3.4 / §6.2 / §11 / §12.1-5 / §12.2, `CMS-V1-IMPLEMENTATION-PLAN.md` M7, `CMS-M6-DEV-PLAN.md`(배치·게이트 관행), `CMS-CONTENT-INVENTORY.md`
-- M6 기준선: `feature/new-cms` @ `6a55aff` (M0–M6 DONE · 89 files/556 tests · typecheck 0 errors · build 79 routes)
+- M6 기준선: `feature/new-cms` @ `6a55aff` (M0–M6 DONE · 89 files/556 tests · typecheck 0 errors · build 성공). 라우트 수 “79”는 M6 보고 문구이며 M7에서 재측정하지 않았다 → §9.7.1 참조
 - 원칙
   1. **1 마일스톤 = 1 관심사**, **1 배치 = 1 writer = 1 worktree**(같은 cwd 동시 쓰기 금지)
   2. 운영 데이터 이전·공개 전환·Keystatic 제거는 **사용자 승인 없이 하지 않는다**
@@ -299,7 +299,7 @@ node --env-file=.env.local node_modules/vitest/vitest.mjs run
 # 타입·린트·빌드
 pnpm typecheck
 pnpm exec biome check .            # M4/M5 관리자 FE 기존 위반 존재 → 변경 파일 기준으로도 확인
-pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 79 routes/exit 0
+pnpm build                          # 운영 DB DSN 제거 환경. exit 0 (라우트 인벤토리·표 실측은 §9.7.1)
 ```
 
 배치별 추가 확인:
@@ -430,7 +430,7 @@ pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 
 | 수정 | `notFound()`를 `Image()`에만 남기고 `generateImageMetadata`는 `alt: post?.title \|\| OG_ALTER_ALT` 폴백으로 되돌렸다 |
 | 교훈 | 종료 조건의 “미공개 OG 404”는 **요청 시점** 규칙이며, 메타데이터 선언 단계에서 throw하면 빌드가 깨진다 |
 
-**수정 후 `pnpm build` 통과: 79 라우트(M6 기준선과 동일).** 빌드에 필요한 env는 더미로 공급했다(`HOST_URL`, `GSC_VERIFICATION_TOKEN`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, `KEYSTATIC_SECRET`). 빌드 시점에는 네트워크 호출이 없어 더미로 충분하다.
+**수정 후 `pnpm build` 통과(exit 0).** 빌드에 필요한 env는 더미로 공급했다(`HOST_URL`, `GSC_VERIFICATION_TOKEN`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, `KEYSTATIC_SECRET`). 빌드 시점에는 네트워크 호출이 없어 더미로 충분하다.
 
 라우트 분류 증거(`.next/routes-manifest.json` + `.next/prerender-manifest.json`):
 
@@ -475,12 +475,61 @@ pnpm build                          # 운영 DB DSN 제거 환경. M6 기준선 
 | `pnpm typecheck` | 0 errors |
 | `pnpm test:run` | 94 files / 604 tests / **525 pass** / 79 skip / 9 파일 실패(전부 `CMS_TEST_DATABASE_URL` 미설정) |
 | 기준선 대비 | 89/556/489/67/8 → +48 tests, **회귀 없음** |
-| `pnpm build` | 통과(79 routes) |
+| `pnpm build` | 통과(exit 0) |
 | biome | 신규·변경 파일 clean. 관리자 2파일은 HEAD와 동일한 기존 진단 19건(신규 위반 0) |
 
 #### 9.6.1 부수 발견 (M7 범위 밖, 기록만)
 
 `entry-editor-shell.tsx`의 `performSave`는 의존성 배열이 `[collection, entry]`인데 `description`을 state에서 읽는다 → 첫 저장에서 요약이 직전 값으로 저장될 수 있다(이후 `entry` 갱신으로 복구되지만 그 사이 변경은 다음 편집까지 반영되지 않는다). SEO 필드는 이 함정을 피해 ref로 최신값을 넘긴다. 기존 UI 결함은 M4/M5 소관이므로 이 배치에서 고치지 않고 v2로 넘긴다.
+
+### 9.7 배치 4 (M7-BE-3 + M7-BE-4) 결과
+
+상태: **구현·계약 테스트 완료 · R4 게이트 대기**
+
+| 산출물 | 내용 |
+| --- | --- |
+| `GET /api/cms/v1/public/entries` | 공개본 목록. `collection`(post·memo)·`category`·`tag`·`page`·`pageSize`(≤100). 응답 `{items,total,page,pageSize}` + `Cache-Control: no-store` |
+| `GET /api/cms/v1/public/entries/{collection}/{slug}` | 공개본 단건. `{entry, address:{slug,isAlias}}` — 별칭이면 정규 주소를 알려준다(§10.1) |
+| `src/libs/contents/public-api.ts` | 공개 DTO·질의 스키마·페이지네이션·별칭 판정(순수 모듈) |
+| `src/app/api/cms/v1/public/errors.ts` | 공개 오류 매퍼. 400·404·503만 사용, 내부 메시지 비노출 |
+| `docs/cms/openapi.yaml` | §10.1 경로 24개 + 공개 응답 스키마·호출 예제 |
+| `docs/cms/extensions.md` | §5 “공개 반영” 표 추가(필드를 어디까지 공개로 내보내는지) |
+
+규칙(새 규칙 없이 재사용):
+
+- 업무 규칙은 기존 `ContentRepository`(= 공개 조회 계약)만 쓴다. 공개 API 전용 조회를 새로 만들지 않았다.
+- 직렬화는 `PublicEntryDto`로만 한다. **초안은 매퍼 단계에서 fail-closed로 제거**하므로 개발 모드 파일 저장소가 초안을 돌려줘도 목록에서 빠지고 단건은 404다(단위·라우트 테스트로 고정).
+- DB·설정 오류는 404로 위장하지 않고 503이며 응답에 원인 문자열이 없다.
+- 관리자 세션을 요구하지 않는다(인증 mock 없이 200을 받는 테스트로 고정).
+
+검증:
+
+| 게이트 | 결과 |
+| --- | --- |
+| `pnpm typecheck` | 0 errors |
+| `pnpm test:run` | 97 files / 626 tests / **547 pass** / 79 skip / 9 파일 실패(전부 `CMS_TEST_DATABASE_URL` 미설정) |
+| 기준선 대비 | 89/556/489/67/8 → +70 tests, **회귀 없음** |
+| `pnpm build` | 통과(exit 0). 신규 공개 라우트 2개가 `ƒ`(동적)로 등록 |
+| 문서 대조 | `src/cms/__test__/openapi-contract.test.ts`가 문서의 경로·메서드 ↔ 실제 라우트를 비교(불일치 시 실패) |
+| biome | 신규·변경 파일 clean |
+
+의도적 한계 2건:
+
+1. 공개 API 컬렉션은 `post`·`memo`만 지원한다. record 컬렉션(category·tag·collection) 공개는 v2다(사이트 head가 쓰는 분류값은 repository가 내부에서 이미 해석한다).
+2. §10.1은 DB 일시 장애를 503으로 적었다. 공개 경로는 503으로 맞췄고, 관리자 경로의 기존 `handleApiError`는 500을 쓴다(M2–M6 계약을 건드리지 않음) → O2 안건.
+
+### 9.7.1 라우트 수 문구 정정
+
+계획서 §0·§6이 인용한 “build 79 routes”는 M6 보고 문구를 그대로 옮긴 것이고 M7에서 재측정한 값이 아니다. 바탕이 된 지표가 불분명하므로 다음 실측 근거로 대체한다.
+
+| 대체 근거 | 값 |
+| --- | --- |
+| `pnpm build` | exit 0 (더미 env 5개 공급) |
+| 라우트 소스 인벤토리 | `6a55aff` 49 → 현재 51. 추가 2건은 신규 공개 API `route.ts`, 삭제 0건 |
+| 빌드 표 줄 수 | 배치 4 후 52줄(참고값. 표는 메타데이터 이미지 하위 경로를 따로 세는 등 라우트 파일 수와 1:1이 아니다) |
+
+따라서 “무회귀” 판정은 빌드 성공 + 라우트 인벤토리 차이(추가 2·삭제 0) + 테스트 pass 증가로 한다.
+
 
 
 

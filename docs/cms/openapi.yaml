@@ -1,0 +1,1113 @@
+openapi: 3.1.0
+info:
+  title: bh2980 CMS API
+  version: "1.0.0"
+  description: |
+    CMS HTTP 계약 (CMS-SPEC.md §10.1). 기본 경로는 `/api/cms/v1`이다.
+
+    - `adminSession`: GitHub OAuth로 로그인한 관리자 1명만 통과한다. 변경 요청은 Same-Origin 검사와
+      `Content-Type: application/json`을 함께 요구한다.
+    - 변경 요청은 조회 응답의 `version`을 `expectedVersion`으로 보내야 한다. 누락은 428, 불일치는 409다.
+    - `public` 태그가 붙은 경로는 관리자 세션이 필요 없고 **공개본만** 반환한다. 초안·보관·휴지통은
+      존재 여부를 구분하지 않고 404로 처리한다.
+    - 오류 응답은 `code`, `message`, 필요 시 `issues`·`serverVersion`을 담는다. 내부 오류 메시지와
+      DB 메시지는 노출하지 않는다.
+servers:
+  - url: /api/cms/v1
+tags:
+  - name: meta
+  - name: entries
+  - name: schedules
+  - name: bulk
+  - name: folders
+  - name: media
+  - name: preferences
+  - name: templates
+  - name: public
+    description: 공개 데이터만 읽는 제공자 독립 계약
+  - name: export
+
+security:
+  - adminSession: []
+
+paths:
+  /meta:
+    get:
+      tags: [meta]
+      summary: 컬렉션·직렬화 가능한 필드 정의, 템플릿 목록, 지원 기능·제한
+      responses:
+        "200":
+          description: 메타데이터
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      type: string
+                  definitions:
+                    type: object
+                    additionalProperties: true
+                  templates:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Template"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /entries:
+    get:
+      tags: [entries]
+      summary: 컬렉션별 목록/검색/필터/페이지
+      parameters:
+        - name: collection
+          in: query
+          required: true
+          schema: { type: string, enum: [post, memo, category, tag, collection] }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          description: 반복 지정할 수 있다. 허용값은 draft, published다.
+          schema: { type: array, items: { type: string, enum: [draft, published] } }
+        - name: folderId
+          in: query
+          schema: { type: string, nullable: true }
+        - name: includeDescendants
+          in: query
+          schema: { type: boolean }
+        - name: includeBody
+          in: query
+          schema: { type: boolean }
+        - name: sortField
+          in: query
+          schema: { type: string, enum: [updatedAt, createdAt, title, slug] }
+        - name: sortDirection
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, enum: [25, 50, 100], default: 25 }
+      responses:
+        "200":
+          description: 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Entry" } }
+                  total: { type: integer }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [entries]
+      summary: 항목 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [collection]
+              properties:
+                collection: { type: string, enum: [post, memo, category, tag, collection] }
+                slug: { type: string, nullable: true, default: null }
+                metadata: { type: object, additionalProperties: true, default: {} }
+                mdx: { type: string, default: "" }
+                folderId: { type: string, format: uuid, nullable: true }
+            example:
+              collection: post
+              slug: hello-world
+              metadata:
+                title: 첫 글
+                summary: 요약입니다
+                seoTitle: 검색에 노출될 제목
+                canonicalUrl: https://dev.to/hello-world
+              mdx: "# 본문"
+      responses:
+        "201":
+          description: 생성된 항목. record 컬렉션(tag, category, collection)은 생성 즉시 published다.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /entries/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntryId"
+    get:
+      tags: [entries]
+      summary: ID 조회
+      responses:
+        "200":
+          description: 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [entries]
+      summary: 최신 초안 저장 (record 컬렉션은 즉시 재발행)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+                slug: { type: string, nullable: true }
+                metadata: { type: object, additionalProperties: true }
+                mdx: { type: string }
+                folderId: { type: string, format: uuid, nullable: true }
+      responses:
+        "200":
+          description: 갱신된 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+    delete:
+      tags: [entries]
+      summary: 휴지통으로 이동
+      parameters:
+        - name: expectedVersion
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 휴지통으로 이동한 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/publish:
+    post:
+      tags: [entries]
+      summary: 명시적 발행
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+                publishedAt: { type: string, format: date-time }
+      responses:
+        "200":
+          description: 발행된 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/archive:
+    post:
+      tags: [entries]
+      summary: 보관
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: 보관된 항목. 공개 주소는 다음 요청부터 404가 된다.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+    delete:
+      tags: [entries]
+      summary: 보관 해제
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+        - name: expectedVersion
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 보관 해제된 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/restore:
+    post:
+      tags: [entries]
+      summary: 휴지통에서 복구
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: 복구된 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/duplicate:
+    post:
+      tags: [entries]
+      summary: 복제
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      responses:
+        "201":
+          description: 복제본
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /entries/{id}/relations:
+    get:
+      tags: [entries]
+      summary: 역방향 사용처 조회
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      responses:
+        "200":
+          description: 이 항목을 참조하는 항목 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  targetId: { type: string }
+                  incomingReferences: { type: array, items: { type: object, additionalProperties: true } }
+                  total: { type: integer }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /entries/{id}/schedule:
+    post:
+      tags: [schedules]
+      summary: 예약 등록·변경
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, scheduledAt]
+              properties:
+                expectedVersion: { type: integer }
+                scheduledAt: { type: string, format: date-time }
+      responses:
+        "200":
+          description: 예약
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+    delete:
+      tags: [schedules]
+      summary: 예약 취소
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+        - name: scheduleId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 취소 결과
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /schedules/due:
+    get:
+      tags: [schedules]
+      summary: 도래한 예약 조회 (외부 실행기)
+      description: 관리자 세션 대신 `Authorization: Bearer <CMS_SCHEDULER_TOKEN>`을 사용한다.
+      security:
+        - schedulerToken: []
+      responses:
+        "200":
+          description: 도래한 예약 목록. 실행 성공을 뜻하지 않는다.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /schedules/{id}/publish:
+    post:
+      tags: [schedules]
+      summary: 예약 1건 실행 (외부 실행기)
+      description: >
+        관리자 세션 대신 `Authorization: Bearer <CMS_SCHEDULER_TOKEN>`을 사용한다.
+        명세 §10.1은 이 경로를 `/schedules/:scheduleId/publish`로 적었고, 실제 라우트 세그먼트 이름은 `id`다.
+      security:
+        - schedulerToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 발행 결과
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /bulk:
+    post:
+      tags: [bulk]
+      summary: 여러 항목에 같은 작업 적용
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [op, items]
+              properties:
+                op:
+                  type: string
+                  enum: [tags.add, tags.remove, category.set, folder.move, archive, unarchive, trash, publish]
+                items:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [id, expectedVersion]
+                    properties:
+                      id: { type: string }
+                      expectedVersion: { type: integer }
+                tagIds: { type: array, items: { type: string } }
+                categoryId: { type: string, nullable: true }
+                folderId: { type: string, nullable: true }
+      responses:
+        "200":
+          description: 항목별 결과. 일부만 성공할 수 있다.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /folders:
+    get:
+      tags: [folders]
+      summary: 컬렉션별 폴더 트리
+      parameters:
+        - name: collection
+          in: query
+          required: true
+          schema: { type: string, enum: [post, memo, category, tag, collection] }
+      responses:
+        "200":
+          description: 폴더 목록
+          content:
+            application/json:
+              schema: { type: array, items: { type: object, additionalProperties: true } }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+    post:
+      tags: [folders]
+      summary: 폴더 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [collection, name]
+              properties:
+                collection: { type: string, enum: [post, memo, category, tag, collection] }
+                name: { type: string }
+                parentId: { type: string, format: uuid, nullable: true, default: null }
+                position: { type: integer, default: 0 }
+      responses:
+        "201":
+          description: 생성된 폴더
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /folders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [folders]
+      summary: 폴더 이름 변경·이동
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+                name: { type: string }
+                parentId: { type: string, format: uuid, nullable: true }
+                position: { type: integer }
+      responses:
+        "200":
+          description: 갱신된 폴더
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+    delete:
+      tags: [folders]
+      summary: 폴더 삭제
+      parameters:
+        - name: expectedVersion
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 삭제 결과
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /media:
+    get:
+      tags: [media]
+      summary: 미디어 검색·목록
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: mimeType
+          in: query
+          schema: { type: string }
+        - name: used
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 25 }
+      responses:
+        "200":
+          description: 미디어 목록. `storageKey` 같은 내부 키는 내려가지 않는다.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+
+  /media/uploads:
+    post:
+      tags: [media]
+      summary: 업로드 준비 (presigned URL 발급)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, mimeType, byteSize]
+              properties:
+                filename: { type: string }
+                mimeType:
+                  type: string
+                  description: 허용 이미지 MIME만 통과한다. 그 외는 415.
+                byteSize:
+                  type: integer
+                  description: 10MiB를 넘으면 413.
+            example:
+              filename: cover.png
+              mimeType: image/png
+              byteSize: 204800
+      responses:
+        "201":
+          description: 업로드 티켓
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mediaId: { type: string, format: uuid }
+                  uploadUrl: { type: string, format: uri }
+                  method: { type: string }
+                  requiredHeaders: { type: object, additionalProperties: { type: string } }
+                  expiresAt: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+
+  /media/{id}/complete:
+    post:
+      tags: [media]
+      summary: 업로드 완료 확인
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 완료된 미디어. 이미 ready면 같은 응답을 반복한다(멱등).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mediaId: { type: string }
+                  status: { type: string, enum: [pending, ready, failed, deleting] }
+                  publicUrl: { type: string, nullable: true }
+                  width: { type: integer, nullable: true }
+                  height: { type: integer, nullable: true }
+                  byteSize: { type: integer, nullable: true }
+                  mimeType: { type: string, nullable: true }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /media/{id}:
+    delete:
+      tags: [media]
+      summary: 미디어 삭제 (참조 중이면 409)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 삭제 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /preferences:
+    get:
+      tags: [preferences]
+      summary: 현재 관리자의 목록·편집 설정 조회
+      responses:
+        "200":
+          description: 설정
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Preferences" }
+    put:
+      tags: [preferences]
+      summary: 설정 저장
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Preferences" }
+      responses:
+        "200":
+          description: 저장된 설정
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Preferences" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+
+  /templates:
+    get:
+      tags: [templates]
+      summary: 본문 템플릿 목록
+      parameters:
+        - name: forCollection
+          in: query
+          schema: { type: string, enum: [post, memo] }
+      responses:
+        "200":
+          description: 템플릿 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Template" }
+    post:
+      tags: [templates]
+      summary: 템플릿 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, forCollection]
+              properties:
+                name: { type: string, maxLength: 100 }
+                forCollection: { type: string, enum: [post, memo] }
+                mdx: { type: string, default: "" }
+      responses:
+        "201":
+          description: 생성된 템플릿
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Template" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+
+  /templates/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [templates]
+      summary: 템플릿 조회
+      responses:
+        "200":
+          description: 템플릿
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Template" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [templates]
+      summary: 템플릿 수정
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+                name: { type: string, maxLength: 100 }
+                forCollection: { type: string, enum: [post, memo] }
+                mdx: { type: string }
+      responses:
+        "200":
+          description: 수정된 템플릿
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Template" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+    delete:
+      tags: [templates]
+      summary: 템플릿 삭제
+      parameters:
+        - name: expectedVersion
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 삭제 결과
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /public/entries:
+    get:
+      tags: [public]
+      summary: 공개본 목록
+      security: []
+      description: |
+        관리자 세션을 요구하지 않는다. 초안·보관·휴지통은 목록에 포함되지 않으며,
+        저장소가 초안을 돌려주더라도 직렬화 단계에서 제외된다. 응답은 캐시하지 않는다(`Cache-Control: no-store`).
+        목록 항목에는 본문(`body`)이 없다. 본문은 단건 조회로 받는다.
+      parameters:
+        - name: collection
+          in: query
+          schema: { type: string, enum: [post, memo], default: post }
+        - name: category
+          in: query
+          description: post에서만 의미가 있다.
+          schema: { type: string }
+        - name: tag
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        "200":
+          description: 공개 항목 페이지
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicEntryPage" }
+              example:
+                items:
+                  - collection: post
+                    slug: hello-world
+                    title: 첫 글
+                    publishedAt: "2026-03-01T12:00:00.000Z"
+                    excerpt: 요약입니다
+                    category: { slug: engineering, label: 엔지니어링 }
+                    tags: [{ slug: typescript, label: TypeScript }]
+                    isEvergreen: true
+                    seo: { title: 검색에 노출될 제목, canonicalUrl: https://dev.to/hello-world }
+                total: 1
+                page: 1
+                pageSize: 25
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /public/entries/{collection}/{slug}:
+    get:
+      tags: [public]
+      summary: 공개본 단건
+      security: []
+      description: |
+        공개본만 반환한다. 비공개·미존재·보관·휴지통은 모두 404이며 서로 구분해 알려주지 않는다.
+        과거 주소(별칭)로 조회하면 `address.slug`가 정규 주소이고 `address.isAlias`가 `true`다.
+        호출자는 정규 주소로 이동(308)해야 한다.
+      parameters:
+        - name: collection
+          in: path
+          required: true
+          schema: { type: string, enum: [post, memo] }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 공개 항목과 주소
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicEntryResponse" }
+              examples:
+                current:
+                  summary: 정규 주소로 조회
+                  value:
+                    entry:
+                      collection: post
+                      slug: hello-world
+                      title: 첫 글
+                      publishedAt: "2026-03-01T12:00:00.000Z"
+                      excerpt: 요약입니다
+                      category: { slug: engineering, label: 엔지니어링 }
+                      tags: [{ slug: typescript, label: TypeScript }]
+                      body: "# 본문"
+                    address: { slug: hello-world, isAlias: false }
+                alias:
+                  summary: 과거 주소로 조회
+                  value:
+                    entry:
+                      collection: post
+                      slug: hello-world
+                      title: 첫 글
+                      publishedAt: "2026-03-01T12:00:00.000Z"
+                      excerpt: 요약입니다
+                      category: { slug: engineering, label: 엔지니어링 }
+                      tags: []
+                      body: "# 본문"
+                    address: { slug: hello-world, isAlias: true }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /export:
+    get:
+      tags: [export]
+      summary: 구조화된 콘텐츠·설정 내보내기 (zip)
+      parameters:
+        - name: scope
+          in: query
+          schema: { type: string, enum: [admin, public], default: admin }
+      responses:
+        "200":
+          description: zip 아카이브
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+    post:
+      tags: [export]
+      summary: 내보내기 (본문으로 scope 지정)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope: { type: string, enum: [admin, public], default: admin }
+      responses:
+        "200":
+          description: zip 아카이브
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+
+components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: authjs.session-token
+      description: >
+        Auth.js(NextAuth) JWT 세션 쿠키. 운영 HTTPS에서는 `__Secure-` 접두사가 붙는다.
+        관리자 GitHub 숫자 ID 허용 목록에 있는 계정만 통과한다.
+    schedulerToken:
+      type: http
+      scheme: bearer
+      description: 서버 설정 `CMS_SCHEDULER_TOKEN`과 일치해야 한다. 브라우저나 URL에 넣지 않는다.
+
+  parameters:
+    EntryId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    InvalidInput:
+      description: 요청 형식 오류
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: invalid_input, message: Invalid request body }
+    Unauthorized:
+      description: 세션 만료 또는 미로그인
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: unauthorized, message: Authentication required }
+    Forbidden:
+      description: 권한 없음
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: forbidden, message: Forbidden }
+    NotFound:
+      description: 없음. 공개 경로에서는 비공개·미존재를 구분하지 않는다.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: not_found, message: Not found }
+    Conflict:
+      description: 버전 충돌 또는 중복
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: conflict, message: Version mismatch, serverVersion: 4 }
+    ValidationFailed:
+      description: 발행 검증 실패
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    VersionRequired:
+      description: expectedVersion 누락
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: version_required, message: expectedVersion is required }
+    PayloadTooLarge:
+      description: 크기 초과
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnsupportedMediaType:
+      description: 파일 형식 불가
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: >
+        DB·저장소·설정 오류. 404로 위장하지 않는다. 공개 경로는 내부 메시지를 노출하지 않는다.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: unavailable, message: Public content is temporarily unavailable }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        issues:
+          type: array
+          items: { type: object, additionalProperties: true }
+        serverVersion: { type: integer }
+      additionalProperties: true
+
+    Entry:
+      type: object
+      description: >
+        CMS 항목 record. 관리자 전용이므로 공개 응답에는 절대 쓰지 않는다(공개는 PublicEntry).
+      properties:
+        id: { type: string, format: uuid }
+        collection: { type: string, enum: [post, memo, category, tag, collection] }
+        status: { type: string, enum: [draft, published, archived, trashed] }
+        version: { type: integer }
+        folderId: { type: string, format: uuid, nullable: true }
+        workingSlug: { type: string, nullable: true }
+        publishedSlug: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        firstPublishedAt: { type: string, format: date-time, nullable: true }
+        lastPublishedAt: { type: string, format: date-time, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        working: { $ref: "#/components/schemas/EntryBody" }
+        published: { $ref: "#/components/schemas/EntryBody" }
+      additionalProperties: true
+
+    EntryBody:
+      type: object
+      nullable: true
+      properties:
+        metadata: { type: object, additionalProperties: true }
+        mdx: { type: string }
+        schemaVersion: { type: integer }
+        contentHash: { type: string }
+        updatedAt: { type: string, format: date-time }
+      additionalProperties: true
+
+    Template:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        forCollection: { type: string, enum: [post, memo] }
+        mdx: { type: string }
+        version: { type: integer }
+      additionalProperties: true
+
+    Preferences:
+      type: object
+      properties:
+        columnVisibility: { type: object, additionalProperties: { type: boolean } }
+        defaultPageSize: { type: integer, enum: [25, 50, 100] }
+        sort:
+          type: object
+          properties:
+            field: { type: string, enum: [updatedAt, createdAt, title, slug] }
+            direction: { type: string, enum: [asc, desc] }
+
+    PublicSeo:
+      type: object
+      description: 글별 SEO 메타. 모두 선택 항목이고 미입력 시 head는 title/summary로 폴백한다.
+      properties:
+        title: { type: string }
+        description: { type: string }
+        canonicalUrl:
+          type: string
+          description: 사이트 내 경로(`/...`) 또는 http(s) 절대 URL만 반영된다. 지정한 글은 sitemap에서 제외된다.
+        ogImageId: { type: string, description: 예약 키. head 반영은 v2다. }
+      additionalProperties: false
+
+    PublicEntry:
+      type: object
+      description: 공개 응답 전용 DTO. 관리자 전용 필드(version·folderId·상태 이력·내부 metadata)는 존재하지 않는다.
+      required: [collection, slug, title, publishedAt, tags]
+      properties:
+        collection: { type: string, enum: [post, memo] }
+        slug: { type: string }
+        title: { type: string }
+        publishedAt: { type: string, format: date-time }
+        tags:
+          type: array
+          items:
+            type: object
+            required: [slug, label]
+            properties:
+              slug: { type: string }
+              label: { type: string }
+        seo: { $ref: "#/components/schemas/PublicSeo" }
+        excerpt: { type: string, description: post에만 있다. }
+        category:
+          type: object
+          description: post에만 있다.
+          properties:
+            slug: { type: string }
+            label: { type: string }
+        isEvergreen: { type: boolean }
+        body: { type: string, description: 단건 조회에만 있다. 목록에는 없다. }
+      additionalProperties: false
+
+    PublicEntryPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/PublicEntry" } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+      additionalProperties: false
+
+    PublicEntryAddress:
+      type: object
+      required: [slug, isAlias]
+      properties:
+        slug: { type: string, description: 정규 현재 주소. }
+        isAlias: { type: boolean, description: 요청 slug가 과거 주소였는지. }
+      additionalProperties: false
+
+    PublicEntryResponse:
+      type: object
+      required: [entry, address]
+      properties:
+        entry: { $ref: "#/components/schemas/PublicEntry" }
+        address: { $ref: "#/components/schemas/PublicEntryAddress" }
+      additionalProperties: false

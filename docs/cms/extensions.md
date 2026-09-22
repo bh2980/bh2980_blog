@@ -88,3 +88,25 @@ export const calloutBlock = defineCustomBlock({
 
 - 저장 시 JSON 바이트 상한(메타데이터 256KB)을 준수합니다.
 - 서버 컴파일 시 허용되지 않은 임의의 JSX 실행은 차단되며 허용된 컴포넌트 화이트리스트만 MDX 렌더러에 공급됩니다.
+
+---
+
+## 5. 공개 반영 (Public Projection)
+
+필드를 추가할 때 **어디까지 공개로 내보낼지**에 따라 손대는 곳이 다릅니다. 저장만 하려면 한 곳, 공개 API까지 내보내려면 네 곳입니다.
+
+| 목적 | 손대는 곳 |
+| --- | --- |
+| 저장만 (관리자 전용) | `src/cms/core/collections.ts`의 해당 컬렉션 `fields` |
+| 공개 metadata로 내보내기(아카이브·이전) | `src/cms/services/export-service.ts`의 `PUBLIC_METADATA_KEYS` |
+| 블로그 head·sitemap에 반영 | `src/libs/contents/seo.ts`(해석) + `src/libs/contents/repositories/postgres.ts`(도메인 매핑) + 해당 페이지 `generateMetadata` |
+| 공개 HTTP API 응답에 반영 | `src/libs/contents/public-api.ts`의 `PublicEntryDto`와 매퍼 |
+
+주의할 점:
+
+- `COLLECTION_DEFINITIONS`에 없는 키는 `content-service`가 `invalid_metadata_key`로 **저장을 거부**합니다.
+- `PUBLIC_METADATA_KEYS`에 없는 키는 공개 아카이브에서 조용히 빠집니다(관리자 아카이브에는 남습니다).
+- 공개 HTTP 응답은 `PublicEntryDto`로만 직렬화하세요. 도메인 타입을 그대로 내보내면 나중에 관리자 필드가 따라 나갈 수 있습니다.
+- 공개 DTO·allowlist를 바꾸면 계약 테스트(`src/libs/contents/__test__/public-api.test.ts`, `src/cms/services/__test__/export-service.test.ts`)를 함께 갱신하세요.
+- 새 경로를 만들면 `docs/cms/openapi.yaml`을 갱신해야 합니다. `src/cms/__test__/openapi-contract.test.ts`가 문서와 실제 라우트 목록을 비교합니다.
+
