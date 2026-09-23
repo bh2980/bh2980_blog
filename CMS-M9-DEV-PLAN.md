@@ -273,6 +273,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 2026-09-23 | M9-FE-1 | 관리자 전용 working slug 조회와 초안 미리보기 폴백 구현. 공개 저장소 계약·공개 조회 동작 불변 | `working-entry-by-slug.test.ts`(실DB 5), `preview-draft-fallback.test.ts`(5), 전체 770 tests |
 | 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(10), dry-run 75건(published 74/draft 1) |
 | 2026-09-23 | M9-BE-1 · R2 | R2 1차 **부적합(BLOCK)**. P0 2건(비어 있지 않은 대상·승인 원본 미강제), P1 1건(schema 버전·사후 검증) 수정하고 재검수 대기 | R2 run `583b9a08`, 전체 122 files/793 tests, `pnpm typecheck` 0 |
+| 2026-09-23 | M9-TW-1 선행 | 격리 schema에서 운영 경로로 이관한 뒤 **공개 조회→렌더**가 원본과 같은지 검증. 48편 렌더 등가·slug 집합·메타데이터·draft 비공개·이미지 파일 존재 통과 | `public-parity.test.tsx` (5 tests, 실DB) |
 | 2026-09-23 | M9-0 정합성 | 원본 계획(75건, published 74/draft 1)과 운영 DB 읽기 전용 조사(주소 0, 기존 slug 0, 필수 테이블 준비 완료)를 대조. 충돌 위험 0 | §11, `artifacts/cms/m9/target-inspection-pre.json` |
 
 ---
