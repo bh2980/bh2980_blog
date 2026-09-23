@@ -28,8 +28,10 @@ export interface ProductionTargetState {
 	draftCount: number;
 	/** 이미 존재하는 계획 항목 ID. 비어 있어야 깨끗한 첫 적재다. */
 	existingEntryIds: string[];
-	/** 계획한 slug를 이미 다른 항목이 점유한 경우. 비어 있어야 한다. */
+	/** 계획한 slug를 이미 다른 항목이 점유한 경우(주소 행 또는 working_slug). 비어 있어야 한다. */
 	collidingSlugs: string[];
+	/** 대상에 있는 계획 밖 항목 수. 이관은 이들을 건드리지 않지만, 섞는 결정은 명시적이어야 한다. */
+	foreignEntryCount: number;
 }
 
 export interface ProductionApplyReport {
@@ -110,9 +112,17 @@ export async function inspectProductionTarget(pool: Pool, schemaName: string, pl
 	const plannedSlugs = plan.items
 		.map((item) => item.slug)
 		.filter((slug): slug is string => slug !== null && slug.length > 0);
+	// 주소 테이블과 working_slug를 둘 다 본다. 한쪽만 보면 점유된 slug를 놓칠 수 있다.
 	const collisions = await pool.query<{ slug: string }>(
-		`SELECT slug FROM "${schemaName}".content_addresses WHERE slug = ANY($1::text[])`,
+		`SELECT slug FROM "${schemaName}".content_addresses WHERE slug = ANY($1::text[])
+		 UNION
+		 SELECT working_slug AS slug FROM "${schemaName}".entries WHERE working_slug = ANY($1::text[])`,
 		[plannedSlugs],
+	);
+	// 대상에 있는 계획 밖 항목. 이관은 이들을 건드리지 않는다.
+	const foreign = await pool.query<{ count: string }>(
+		`SELECT COUNT(*)::text AS count FROM "${schemaName}".entries WHERE NOT (id = ANY($1::uuid[]))`,
+		[ids],
 	);
 
 	const row = totals.rows[0];
@@ -123,6 +133,7 @@ export async function inspectProductionTarget(pool: Pool, schemaName: string, pl
 		draftCount: Number(row?.draft ?? "0"),
 		existingEntryIds: existing.rows.map((entry) => entry.id).sort(),
 		collidingSlugs: collisions.rows.map((entry) => entry.slug).sort(),
+		foreignEntryCount: Number(foreign.rows[0]?.count ?? "0"),
 	} satisfies ProductionTargetState;
 }
 
@@ -177,9 +188,16 @@ export interface ProductionApplyOptions {
 	pool: Pool;
 	schemaName: string;
 	connection?: ProductionConnection;
-	/** 이전 dry-run에서 받은 지문. 주면 일치하지 않을 때 실행하지 않는다. */
-	expectedDigest?: string;
-	/** 기본 false. true여도 기존 내용을 덮어쓰지 않으며, importEntries가 충돌로 중단한다. */
+	/** **필수.** 사전조사/dry-run 보고서에서 읽은 원본 지문. 다르면 무쓰기 중단. */
+	expectedDigest: string;
+	/** **필수.** 계획 항목 수. 지문과 함께 "승인된 원본"을 고정한다. */
+	expectedItems: number;
+	/** **필수.** 실행 전 관찰한 대상 `entries` 수. 사전조사와 다르면 무쓰기 중단. */
+	expectedExistingEntries: number;
+	/**
+	 * 기본 false. true여도 내용을 덮어쓰지 않으며(`importEntries`가 충돌로 중단),
+	 * 계획 밖 항목이 있으면 여전히 중단한다.
+	 */
 	allowExistingTarget?: boolean;
 	out?: string;
 }
@@ -199,15 +217,50 @@ export async function runProductionApply(
 		);
 	}
 
+	// 승인된 원본을 강제한다. 이 두 값은 승인된 보고서에서 그대로 옮겨 적어야 한다.
+	if (!options.expectedDigest?.trim()) {
+		throw new Error("expectedDigest가 필요합니다. dry-run 보고서의 planDigest를 그대로 넘기세요.");
+	}
 	const digest = planDigest(plan);
-	if (options.expectedDigest && options.expectedDigest !== digest) {
+	if (options.expectedDigest !== digest) {
 		throw new Error(
 			`원본 지문이 승인된 값과 다릅니다. 실행하지 않습니다.\n  승인: ${options.expectedDigest}\n  현재: ${digest}`,
+		);
+	}
+	if (!Number.isInteger(options.expectedItems) || options.expectedItems !== plan.counts.items) {
+		throw new Error(
+			`예상 건수가 계획과 다릅니다. 실행하지 않습니다. 승인: ${options.expectedItems} / 현재: ${plan.counts.items}`,
 		);
 	}
 
 	// 쓰기 전에 읽기만 한다. 대상이 깨끗하지 않으면 여기서 멈춘다.
 	const targetState = await inspectProductionTarget(options.pool, options.schemaName, plan);
+
+	// 관찰한 대상이 사전조사와 다르면 누가 이미 쓴 것이다. 계산을 멈추고 사람이 다시 본다.
+	if (
+		!Number.isInteger(options.expectedExistingEntries) ||
+		options.expectedExistingEntries !== targetState.entryCount
+	) {
+		throw new Error(
+			[
+				"대상 `entries` 수가 사전조사와 다릅니다. 쓰지 않고 중단합니다.",
+				`  사전조사: ${options.expectedExistingEntries}건 / 현재: ${targetState.entryCount}건`,
+				"  inspect-target으로 다시 관찰하고 승인 범위를 재확인하세요.",
+			].join("\n"),
+		);
+	}
+
+	// 계획 밖 항목이 있는 대상에 섞어 넣지 않는다. 이건 별도 판단이 필요한 변경이다.
+	if (targetState.foreignEntryCount > 0) {
+		throw new Error(
+			[
+				`대상에 계획 밖 항목이 ${targetState.foreignEntryCount}건 있어 쓰지 않고 중단합니다.`,
+				"  이관은 기존 항목을 건드리지 않으므로 기술적으로는 가능하지만, 빈 DB가 아닌 곳에",
+				"  콘텐츠를 섞는 결정은 별도 승인이 필요합니다. 기존 항목을 정리한 뒤 다시 실행하세요.",
+			].join("\n"),
+		);
+	}
+
 	if (
 		!options.allowExistingTarget &&
 		(targetState.existingEntryIds.length > 0 || targetState.collidingSlugs.length > 0)
@@ -243,7 +296,7 @@ export async function runProductionApply(
 		schemaName: options.schemaName,
 		connection: options.connection ?? null,
 		planDigest: digest,
-		expectedDigest: options.expectedDigest ?? null,
+		expectedDigest: options.expectedDigest,
 		counts: plan.counts,
 		blocking: plan.blocking,
 		warnings: plan.warnings,
@@ -267,6 +320,27 @@ export async function runProductionApply(
 
 	const outputPath = options.out ?? defaultProductionReportPath(options.root, runId());
 	writeJsonReport(outputPath, report);
+
+	// 적재는 이미 커밋됐다(롤백 불가). 검증이 틀렸다면 조용히 성공으로 끝내지 않는다:
+	// 호출자가 0이 아닌 종료를 받아야 플래그를 켜지 않는다.
+	const verification = report.verification;
+	if (
+		verification &&
+		(!verification.slugSetsMatch ||
+			verification.missingSlugs.length > 0 ||
+			verification.unexpectedSlugs.length > 0 ||
+			verification.entryCount !== targetState.entryCount + applied.imported)
+	) {
+		throw new Error(
+			[
+				"적재 후 검증이 실패했습니다. **공개 저장소 플래그를 바꾸지 마세요.**",
+				`  slugSetsMatch=${verification.slugSetsMatch}`,
+				`  missingSlugs=${verification.missingSlugs.length} unexpectedSlugs=${verification.unexpectedSlugs.length}`,
+				`  entries=${verification.entryCount} (사전 ${targetState.entryCount} + 적재 ${applied.imported})`,
+				`  보고서: ${outputPath}`,
+			].join("\n"),
+		);
+	}
 
 	return { report, outputPath };
 }

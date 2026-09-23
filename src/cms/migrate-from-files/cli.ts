@@ -78,6 +78,24 @@ async function main(): Promise<void> {
 		assertProductionOptIn();
 		const target = resolveProductionDatabase({ ...(schemaName ? { schemaName } : {}) });
 		const expectedDigest = readFlag("expect-digest");
+		const expectedItems = readFlag("expect-items");
+		const expectedExisting = readFlag("expect-existing-entries");
+
+		// 승인된 보고서에서 그대로 옮겨 적어야 하는 값이다. 빠지면 실행하지 않는다.
+		const missing = [
+			["expect-digest", expectedDigest],
+			["expect-items", expectedItems],
+			["expect-existing-entries", expectedExisting],
+		]
+			.filter(([, value]) => !value)
+			.map(([name]) => `--${name}`);
+		if (missing.length > 0) {
+			throw new Error(
+				`승인 보고서에서 옮겨 적어야 하는 인자가 빠졌습니다: ${missing.join(", ")}.\n` +
+					"apply-production --dry-run의 planDigest·counts.items와 inspect-target의 entries 수를 그대로 넘기세요.",
+			);
+		}
+
 		const pool = new Pool({ connectionString: target.url });
 		try {
 			const connection = await assertConnectedToCmsDatabase(pool, target.url);
@@ -87,7 +105,9 @@ async function main(): Promise<void> {
 				pool,
 				schemaName: target.schemaName,
 				connection,
-				...(expectedDigest ? { expectedDigest } : {}),
+				expectedDigest: expectedDigest as string,
+				expectedItems: Number(expectedItems),
+				expectedExistingEntries: Number(expectedExisting),
 				...(args.includes("--allow-existing") ? { allowExistingTarget: true } : {}),
 				...(out ? { out } : {}),
 			});
@@ -112,13 +132,14 @@ async function main(): Promise<void> {
 			"  tsx src/cms/migrate-from-files/cli.ts inspect [--out <path>] [--root <dir>]",
 			"  tsx src/cms/migrate-from-files/cli.ts apply [--dry-run] [--reuse] [--schema cms_m6_xxx] [--out <path>]",
 			"  tsx src/cms/migrate-from-files/cli.ts apply-production --dry-run [--out <path>]",
-			"  tsx src/cms/migrate-from-files/cli.ts apply-production [--schema public] [--expect-digest <sha256>] [--allow-existing] [--out <path>]",
+			"  tsx src/cms/migrate-from-files/cli.ts apply-production [--schema public] --expect-digest <sha256> --expect-items <n> --expect-existing-entries <n> [--allow-existing] [--out <path>]",
 			"  tsx src/cms/migrate-from-files/cli.ts inspect-target [--schema public] [--out <path>]",
 			"",
 			"apply는 CMS_TEST_DATABASE_URL과 cms_m6_* 격리 schema만 사용하고, CMS_MIGRATION_ALLOW=1 일 때만 실행한다.",
 			`apply-production은 CMS_DATABASE_URL만 사용하고 DDL을 하지 않으며, ${PRODUCTION_APPLY_FLAG}=1 일 때만 실행한다.`,
+			"세 expect-* 인자는 승인된 보고서에서 그대로 옮겨 적어야 하며, 없으면 실행하지 않는다.",
 			"inspect-target은 READ ONLY 트랜잭션이라 쓰기를 할 수 없다.",
-			"사용자 운영 이관 승인을 받은 뒤에만 실행한다.",
+			"주의: 이 플래그들은 승인 기록이 아니다. 사용자 운영 이관 승인과 양쪽 콘텐츠 쓰기 동결은 사람이 지킨다.",
 		].join("\n"),
 	);
 	process.exit(1);

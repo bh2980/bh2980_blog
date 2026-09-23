@@ -122,6 +122,12 @@ export const REQUIRED_CMS_TABLES = [
 	"cms_migrations",
 ] as const;
 
+/**
+ * 이 스키마에서 기대하는 마이그레이션 표식. 이관은 DDL을 하지 않으므로,
+ * 스키마가 준비됐다는 것은 이 표식이 있다는 뜻이다.
+ */
+export const REQUIRED_MIGRATIONS = ["seed_initial_body_templates"] as const;
+
 export async function assertCmsSchemaReady(pool: Pool, schemaName: string): Promise<string[]> {
 	const res = await pool.query<{ table_name: string }>(
 		`SELECT table_name FROM information_schema.tables WHERE table_schema = $1`,
@@ -134,6 +140,18 @@ export async function assertCmsSchemaReady(pool: Pool, schemaName: string): Prom
 		throw new Error(
 			`대상 schema(${schemaName})에 CMS 테이블 ${missing.length}개가 없습니다: ${missing.join(", ")}. ` +
 				"이 경로는 DDL을 하지 않습니다. 먼저 승인된 마이그레이션 절차로 스키마를 준비하세요.",
+		);
+	}
+
+	// 테이블 이름만 보면 버전을 알 수 없다. 마이그레이션 표식까지 읽기만 해서 확인한다.
+	const migrations = await pool.query<{ name: string }>(`SELECT name FROM "${schemaName}".cms_migrations`);
+	const applied = new Set(migrations.rows.map((row) => row.name));
+	const missingMigrations = REQUIRED_MIGRATIONS.filter((name) => !applied.has(name));
+
+	if (missingMigrations.length > 0) {
+		throw new Error(
+			`대상 schema(${schemaName})에 기대하는 마이그레이션 표식이 없습니다: ${missingMigrations.join(", ")}. ` +
+				`적용된 표식: ${[...applied].sort().join(", ") || "(없음)"}`,
 		);
 	}
 

@@ -174,6 +174,25 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 
 **M9-FE-1 구현 결과:** 관리자 전용 working slug 조회 1개(`ContentStore.getWorkingEntryBySlug`)와 미리보기 전용 모듈(`src/libs/contents/repositories/draft-preview.ts`)만 추가했다. 공개 `ContentRepository` 계약은 넓히지 않았고, 초안 경로는 `CMS_PUBLIC_REPOSITORY=postgres`일 때만 동작한다.
 
+**M9-BE-1 구현 결과(O1 ①·⑤ 반영):** 시험 경로(`apply`)를 그대로 두고 운영 전용 진입점을 분리했다.
+
+- `production-guard.ts`: `CMS_MIGRATION_APPLY_PRODUCTION=1` opt-in, `CMS_DATABASE_URL`만 사용, 시험 DSN과 같은 DB면 중단, `cms_m6_*` schema 거부, 슈퍼유저 거부, **DDL 없이** CMS 테이블 9개 존재 + `cms_migrations` 기대 표식 확인.
+- `production-runner.ts`: 읽기 전용 사전조사 → 승인 원본·대상 수 검사 → 한 번만 적재 → 검증. `migrateContentStore()`를 부르지 않고 두 번 적재하지 않는다.
+- CLI: `apply-production --dry-run`(DB 미접속, 지문·건수만) / `apply-production --expect-digest --expect-items --expect-existing-entries` / `inspect-target`(READ ONLY 트랜잭션).
+- 실측: 계획 **75건(published 74/draft 1)**, 원본 지문 `00dcccc1…`, 대상 `entries` 8건. M6 결과·O1 결정 ④와 일치한다. 운영 적재는 승인 전이므로 하지 않았다.
+
+**R2 1차 판정: 부적합(BLOCK).** P0 2건·P1 1건을 고쳤다.
+
+| 지적 | 수정 |
+| --- | --- |
+| P0 · 비어 있지 않은 대상에 쓰는 것을 막지 못함(`entryCount`를 계산만 하고 판단에 안 씀) | 계획 밖 항목 수(`foreignEntryCount`)를 추가로 읽고 **있으면 쓰지 않고 중단**한다. 대상 `entries` 수는 `--expect-existing-entries`와 정확히 일치해야 한다 |
+| P0 · 승인된 원본이 강제되지 않음(`--expect-digest` 선택) | `--expect-digest`·`--expect-items`·`--expect-existing-entries`를 **필수**로 바꿨다. 하나라도 없거나 값이 다르면 무쓰기 중단 |
+| P1 · 스키마 버전을 확인하지 않음 | `assertCmsSchemaReady`가 `cms_migrations`의 기대 표식까지 읽기만 해서 확인한다 |
+| P1 · 사후 검증이 로그로만 끝남 | 검증 실패면 **보고서를 쓴 뒤 예외를 올려** 0이 아닌 종료를 낸다(플래그를 켜지 말라는 메시지 포함) |
+| P1 · 승인·동결은 사람 게이트 | 코드가 강제하는 척 하지 않도록 CLI 도움말과 이 문서에 명시했다(`PRODUCTION_APPLY_FLAG`는 승인 기록이 아니다) |
+
+**P0-1 수정의 결과:** 운영 DB에 계획 밖 초안 8건이 있어, 지금은 `apply-production`이 쓰기를 거부한다. 이 결정이 §11.5에 추가됐다. P0/P1 수정 후 **R2 재검수가 필요하다**(미완).
+
 ---
 
 ## 5. Reviewer 검수 — 각 게이트에서 반복
@@ -183,7 +202,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 리뷰 | 시점 | 검수 범위 / 통과 조건 |
 | --- | --- | --- |
 | R1 | M9-FE-1 구현 완료, 병합 전 | 미리보기 권한 분리, 초안 공개 차단, 공개 API surface 불변, 초안/발행 전후 회귀 테스트 |
-| R2 | M9-BE-1 코드·시험 적용 완료, 운영 apply 전 | 대상 DB fail-closed, 운영/테스트 대상 분리, 범위 제한, 트랜잭션/재실행, 카테고리 published, 상태/미디어 검증, 실패·중단 안전성. R2 승인 전 운영 DB 쓰기 금지 |
+| R2 | M9-BE-1 코드·시험 적용 완료, 운영 apply 전 | 대상 DB fail-closed, 운영/테스트 대상 분리, 범위 제한, 트랜잭션/재실행, 카테고리 published, 상태/미디어 검증, 실패·중단 안전성. R2 승인 전 운영 DB 쓰기 금지. **1차 부적합(BLOCK, P0 2·P1 1) → 수정 완료, 재검수 필요** |
 | R3 | 운영 이관 및 M9-TW-1 결과 완료 후 | inventory↔DB↔published 48 주소↔`/assets` 이미지 22개↔렌더 결과의 독립 대조, draft 1편 비공개·미리보기 확인, 누락/중복/허용 정규화의 정당성 |
 | R4 | M9-LEAD-1 보고서 확정 전 | 근거 링크, 승인 항목 분리, 롤백/관찰 계획, 잔여 위험·go/no-go 결론의 정확성 |
 | R5 | M9-BE-2 배포 smoke 완료 후, 관찰 종료 판정 전 | 실제 HTTP/SEO/RSS/sitemap/API/미리보기, 공개 초안 차단, rollback/redeploy 근거 |
@@ -234,7 +253,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | --- | --- | --- | --- |
 | M9-0 | DONE | Lead + BE + INF | O1 결정 5건 확정(§4). 남은 실행 항목은 운영 진입점 구현과 R2다 |
 | M9-FE-1 | DONE | BE + FE | `getWorkingEntryBySlug` + `draft-preview.ts`; 공개 계약 불변. 검증: 실DB 5건·서비스 5건 통과, 전체 119 files/770 tests, `pnpm typecheck` 0 errors |
-| M9-BE-1 | IN_PROGRESS | BE + INF | 구현·시험 적용 완료(R2 대기). 운영 적재는 사용자 승인 전이라 미실행. 검증: 구현 테스트 실DB 14건, dry-run 75건(published 74/draft 1) 일치 |
+| M9-BE-1 | IN_PROGRESS | BE + INF | 구현 완료(R2 재검수 대기). 운영 적재는 승인 전이라 미실행. 검증: 실DB 17건, 전체 793 tests, dry-run 75건 일치. **선행 결정: 계획 밖 초안 8건 처리(§11.5)** |
 | M9-TW-1 | TODO | TW | 49편 전후 공개 HTML 대조, R3 |
 | M9-LEAD-1 | TODO | Lead | O2/R4 포함 전환 보고서와 cutover 승인 요청 |
 | M9-BE-2 | TODO | BE + INF | 승인된 공개 저장소 플래그 전환, 재배포/smoke/관찰, R5 |
@@ -252,7 +271,8 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 2026-09-23 | 계획 초안 | M9 Oracle O1–O3, Reviewer R1–R6, 사용자 승인 3게이트 및 운영 적용 차단 규칙을 명시 | 이 문서 |
 | 2026-09-23 | M9-0 / O1 | 자문 결과 5건 확정: 운영 전용 import 진입점, 이미지 `/assets` 유지, 경로별 미리보기 응답, published 48/draft 1, 양쪽 쓰기 동결 | 위 O1 결정 기록 |
 | 2026-09-23 | M9-FE-1 | 관리자 전용 working slug 조회와 초안 미리보기 폴백 구현. 공개 저장소 계약·공개 조회 동작 불변 | `working-entry-by-slug.test.ts`(실DB 5), `preview-draft-fallback.test.ts`(5), 전체 770 tests |
-| 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(7), dry-run 75건(published 74/draft 1) |
+| 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(10), dry-run 75건(published 74/draft 1) |
+| 2026-09-23 | M9-BE-1 · R2 | R2 1차 **부적합(BLOCK)**. P0 2건(비어 있지 않은 대상·승인 원본 미강제), P1 1건(schema 버전·사후 검증) 수정하고 재검수 대기 | R2 run `583b9a08`, 전체 122 files/793 tests, `pnpm typecheck` 0 |
 | 2026-09-23 | M9-0 정합성 | 원본 계획(75건, published 74/draft 1)과 운영 DB 읽기 전용 조사(주소 0, 기존 slug 0, 필수 테이블 준비 완료)를 대조. 충돌 위험 0 | §11, `artifacts/cms/m9/target-inspection-pre.json` |
 
 ---
@@ -264,6 +284,8 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 운영 DB apply를 위한 안전한 실행 경로 | 방향 확정(O1 ①: 운영 전용 진입점) · 구현과 R2는 남음 | 구현 후 R2 통과 전 |
 | 이미지 22장의 R2 업로드·`media_assets` 등록 | M9 범위 밖으로 확정(O1 ②) | 별도 승인 변경 |
 | status 없는 memo 1편의 의도된 공개 상태 | `js의-비동기-처리-메커니즘.mdx`는 현재 draft 취급. 사용자 승인된 상태 매트릭스 필요 | M9-0/O1 |
+| **운영 DB의 계획 밖 초안 8건** | 이관이 거부된다(R2 P0-1 반영). 보관·삭제로 정리할지, 섞어 이관할지 사용자 결정 필요 | M9-BE-1 실행 전 |
+| R2 재검수 | P0 2건·P1 1건 수정 후 재검수 필요(미완) | 운영 apply 전 |
 | 2026-09-22 DB 스냅샷·원격 롤백 증거의 현재성 | 재측정 필요, 시크릿 없이 기록 | M9-0 |
 | 콘텐츠 원본 파일 보존 정책 | 사용자 별도 결정 전까지 보존 | O3/제거 승인 |
 | 공개 전환 후 안정화 관찰 기간 | 미정 | O1에서 권고, LEAD-1에서 승인값 확정 |
@@ -342,11 +364,22 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 대상 | Neon `neondb` · schema `public` · role `neondb_owner`(비슈퍼유저) |
 | 쓰기 범위 | **INSERT만.** `entries` 75행, `entry_bodies` 149행(working 75 + published 74), `content_addresses` 75행, `entry_references` 251행 → 총 **550행** |
 | 쓰지 않는 것 | Payload 테이블 19개, 기존 `entries` 8행, 기존 `folders` 1행, `media_assets`, `schedules`, 스키마(DDL 없음), 폴더 배정 |
-| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab` (불일치면 무쓰기 중단). 이 지문이 **Keystatic 측 동결을 강제**한다 — `src/contents`를 고치면 지문이 달라져 실행이 멈춘다 |
+| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`, `--expect-items 75`, `--expect-existing-entries 8` — 셋 다 필수이고 불일치면 무쓰기 중단. 지문이 **Keystatic 측 동결을 강제**한다(`src/contents`를 고치면 실행이 멈춘다) |
 | 실행 전 조건 | 대상이 깨끗할 때만 쓴다(§11.3, 위반 시 무쓰기 중단) + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
 | 실패 시 동작 | 쓰기 전 실패는 0행 변경. 트랜잭션 중 충돌은 전체 롤백(부분 적재 없음). 적재 후 검증 실패면 **플래그를 켜지 않으므로 공개 영향 0** |
 | 되돌리기 | `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포한다. 적재 행은 그 상태에서 공개에 쓰이지 않으므로 **삭제하지 않는다**(O1: 자동 삭제 금지) |
 | 이 승인이 여는 것 | M9-BE-1 실행만. **공개 전환(M9-BE-2)과 Keystatic 제거(M9-BE-3)는 별도 승인**이다 |
+
+#### 먼저 풀아야 할 결정: 운영 DB의 계획 밖 초안 8건
+
+현재 운영 DB에 이관 계획에 없는 CMS 초안 8건(post 5, memo 1, tag 2)이 있다(§11.2). R2 P0-1을 반영해 `apply-production`은 **계획 밖 항목이 있는 대상에 쓰기를 거부**한다. 따라서 지금 상태로는 이관이 실행되지 않는다.
+
+| 안 | 내용 | 필요한 후속 |
+| --- | --- | --- |
+| **A. 기존 초안 정리** (권장) | 개발 중 생긴 임시 초안을 보관·삭제해 `entries`를 0으로 만든 뒤 이관 | 초안 8건을 보존할지 확인하고, 삭제 전 목록·본문을 확인한다 |
+| B. 섞어서 이관 | 기존 초안을 두고 이관 | 가드를 완화하는 **별도 변경 + 독립 검수**가 필요하다. 지금은 지원하지 않는다 |
+
+두 안 모두 기존 초안은 이관 데이터와 ID·slug가 겹치지 않는다(§11.3). 차이는 "비어 있지 않은 DB에 새 콘텐츠를 섞는 것을 승인하느냐"뿐이고, 그래서 승인이 필요하다.
 
 승인 요청에는 동결 시작·해제 시점을 함께 확정해야 한다. 동결이 없으면 이관과 공개 결과가 실행 중에 달라진다.
 

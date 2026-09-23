@@ -17,9 +17,9 @@ import { createFixtureCorpus } from "./fixture-corpus";
 /**
  * M9-BE-1: 운영 이관 실행기.
  *
- * 실제 운영 대상은 `public`이지만, 여기서는 성질만 검증한다:
- * DDL 없음 / 사전조사에서 깨끗하지 않으면 쓰지 않음 / 같은 내용은 skip /
- * 내용이 다르면 **덮어쓰지 않고** 중단 / 원본 지문이 바뀌면 중단.
+ * 실제 운영 대상은 `public`이지만 여기서는 성질만 검증한다:
+ * DDL 없음 / 승인된 원본·대상이 아니면 무쓰기 중단 / 계획 밖 항목이 있는 대상에는 섞지 않음 /
+ * 같은 내용은 skip / 내용이 다르면 **덮어쓰지 않고** 중단 / 적재 후 검증 실패는 조용히 성공하지 않음.
  */
 const hasTestDatabase = Boolean(process.env.CMS_TEST_DATABASE_URL);
 const describeWithDb = hasTestDatabase ? describe : describe.skip;
@@ -102,23 +102,38 @@ describeWithDb("production apply runner (실DB)", () => {
 		}
 	});
 
-	const applyOptions = (extra: Record<string, unknown> = {}) => ({
-		root: fixture.root,
-		pool,
-		schemaName,
-		out: path.join(outDir, `${schemaName}-${Math.random().toString(16).slice(2)}.json`),
-		...extra,
-	});
+	/** 승인된 보고서에서 옮겨 적는 값을 그대로 흉내 낸다. */
+	const applyOptions = async (extra: Record<string, unknown> = {}) => {
+		const plan = await buildImportPlan(readLegacyCorpus(fixture.root));
+
+		return {
+			root: fixture.root,
+			pool,
+			schemaName,
+			out: path.join(outDir, `${schemaName}-${Math.random().toString(16).slice(2)}.json`),
+			expectedDigest: planDigest(plan),
+			expectedItems: plan.counts.items,
+			expectedExistingEntries: 0,
+			...extra,
+		};
+	};
 
 	const entriesOf = async () => {
 		const res = await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM "${schemaName}".entries`);
 		return Number(res.rows[0]?.count ?? "0");
 	};
 
+	const insertForeignEntry = async () => {
+		await pool.query(
+			`INSERT INTO "${schemaName}".entries (id, collection, status, version, created_at, updated_at)
+			 VALUES (gen_random_uuid(), 'post', 'draft', 1, now(), now())`,
+		);
+	};
+
 	it("깨끗한 대상에 한 번 적재하고 검증까지 통과한다", async () => {
 		const plan = await buildImportPlan(readLegacyCorpus(fixture.root));
 
-		const { report } = await runProductionApply(applyOptions());
+		const { report } = await runProductionApply(await applyOptions());
 
 		expect(report.apply?.imported).toBe(plan.counts.items);
 		expect(report.apply?.skipped).toBe(0);
@@ -131,31 +146,69 @@ describeWithDb("production apply runner (실DB)", () => {
 	});
 
 	it("원본 지문이 다르면 쓰지 않고 중단한다", async () => {
-		await expect(runProductionApply(applyOptions({ expectedDigest: "0".repeat(64) }))).rejects.toThrow(
+		await expect(runProductionApply(await applyOptions({ expectedDigest: "0".repeat(64) }))).rejects.toThrow(
 			/원본 지문이 승인된 값과 다릅니다/,
 		);
 
 		expect(await entriesOf()).toBe(0);
 	});
 
-	it("이미 적재된 대상은 기본값으로 다시 쓰지 않는다", async () => {
-		await runProductionApply(applyOptions());
+	it("지문·건수 인자가 없으면 쓰지 않고 중단한다", async () => {
+		await expect(
+			runProductionApply(await applyOptions({ expectedDigest: "", expectedItems: 0, expectedExistingEntries: 0 })),
+		).rejects.toThrow(/expectedDigest/);
+		await expect(runProductionApply(await applyOptions({ expectedItems: 999 }))).rejects.toThrow(/예상 건수가 계획과/);
 
-		await expect(runProductionApply(applyOptions())).rejects.toThrow(/깨끗하지 않아/);
+		expect(await entriesOf()).toBe(0);
+	});
+
+	it("사전조사와 대상 `entries` 수가 다르면 쓰지 않고 중단한다", async () => {
+		await expect(runProductionApply(await applyOptions({ expectedExistingEntries: 3 }))).rejects.toThrow(
+			/사전조사와 다릅니다/,
+		);
+
+		expect(await entriesOf()).toBe(0);
+	});
+
+	it("계획 밖 항목이 있는 대상에는 섞어 넣지 않는다", async () => {
+		// M7 보고서의 운영 DB처럼 주소도 working_slug도 없는 남의 초안이 있는 경우를 흉내 낸다.
+		await insertForeignEntry();
+		expect(await entriesOf()).toBe(1);
+
+		await expect(runProductionApply(await applyOptions({ expectedExistingEntries: 1 }))).rejects.toThrow(
+			/계획 밖 항목/,
+		);
+
+		// 남의 초안만 그대로 남아 있어야 한다.
+		expect(await entriesOf()).toBe(1);
+	});
+
+	it("이미 적재된 대상은 기본값으로 다시 쓰지 않는다", async () => {
+		const first = await runProductionApply(await applyOptions());
+		const imported = first.report.apply?.imported ?? 0;
+
+		await expect(runProductionApply(await applyOptions({ expectedExistingEntries: imported }))).rejects.toThrow(
+			/깨끗하지 않아/,
+		);
 	});
 
 	it("의도된 재실행은 같은 내용을 skip하고 새로 쓰지 않는다", async () => {
-		const first = await runProductionApply(applyOptions());
-		const second = await runProductionApply(applyOptions({ allowExistingTarget: true }));
+		const first = await runProductionApply(await applyOptions());
+		const imported = first.report.apply?.imported ?? 0;
+
+		const second = await runProductionApply(
+			await applyOptions({ allowExistingTarget: true, expectedExistingEntries: imported }),
+		);
 
 		expect(second.report.apply?.imported).toBe(0);
-		expect(second.report.apply?.skipped).toBe(first.report.apply?.imported);
-		expect(await entriesOf()).toBe(first.report.apply?.imported ?? -1);
+		expect(second.report.apply?.skipped).toBe(imported);
+		expect(await entriesOf()).toBe(imported);
 	});
 
 	it("대상이 편집돼 내용이 갈리면 덮어쓰지 않고 충돌로 중단한다", async () => {
 		const plan = await buildImportPlan(readLegacyCorpus(fixture.root));
-		await runProductionApply(applyOptions());
+		const first = await runProductionApply(await applyOptions());
+		const imported = first.report.apply?.imported ?? 0;
 
 		const targetId = plan.items[0]?.id as string;
 		await pool.query(
@@ -164,7 +217,9 @@ describeWithDb("production apply runner (실DB)", () => {
 			[targetId],
 		);
 
-		await expect(runProductionApply(applyOptions({ allowExistingTarget: true }))).rejects.toThrow(/conflict/);
+		await expect(
+			runProductionApply(await applyOptions({ allowExistingTarget: true, expectedExistingEntries: imported })),
+		).rejects.toThrow(/conflict/);
 
 		// 덮어쓰지 않았는지: 편집한 본문이 그대로 남아 있다.
 		const res = await pool.query<{ mdx: string }>(
