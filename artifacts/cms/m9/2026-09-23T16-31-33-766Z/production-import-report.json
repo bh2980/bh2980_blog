@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "mode": "production",
+  "startedAt": "2026-09-23T16:31:33.765Z",
+  "finishedAt": "2026-09-23T16:31:33.766Z",
+  "root": "/Users/bh2980/Desktop/bh2980_blog",
+  "schemaName": "(dry-run)",
+  "connection": null,
+  "planDigest": "70794ce90e83db05d5acb3f5d91bf7d10c2ffb012eae377669d632643c3cbbf4",
+  "expectedDigest": null,
+  "counts": {
+    "posts": 7,
+    "memos": 42,
+    "categories": 3,
+    "tags": 22,
+    "collections": 1,
+    "published": 74,
+    "draft": 1,
+    "items": 75
+  },
+  "blocking": [],
+  "warnings": [],
+  "targetState": null,
+  "apply": null,
+  "outcome": "dry_run",
+  "verification": null,
+  "notes": [
+    "dry-run: DB에 접속하지 않았다. 실제 적재는 이 지문을 승인한 뒤 apply-production으로 실행한다.",
+    "apply-production 실행 시 이 지문을 --expect-digest로 넘기면 원본이 바뀌었을 때 중단한다."
+  ]
+}
