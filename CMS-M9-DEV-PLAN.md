@@ -325,6 +325,21 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 2. 승인 뒤 `apply-production --expect-digest 00dcccc1…`로 실행한다.
 3. 같은 `inspect-target`으로 사후 대조하고, M9-BE-1 항목의 `/assets` 이미지 22개 HTTP 200·SHA-256 대조를 더한다.
 
+### 11.5 사용자 승인 요청 (M9-BE-1 실행 전)
+
+| 항목 | 내용 |
+| --- | --- |
+| 대상 | Neon `neondb` · schema `public` · role `neondb_owner`(비슈퍼유저) |
+| 쓰기 범위 | **INSERT만.** `entries` 75행, `entry_bodies` 149행(working 75 + published 74), `content_addresses` 75행, `entry_references` 251행 → 총 **550행** |
+| 쓰지 않는 것 | Payload 테이블 19개, 기존 `entries` 8행, 기존 `folders` 1행, `media_assets`, `schedules`, 스키마(DDL 없음), 폴더 배정 |
+| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab` (불일치면 무쓰기 중단) |
+| 실행 전 조건 | 대상이 깨끗할 때만 쓴다(§11.3, 위반 시 무쓰기 중단) + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
+| 실패 시 동작 | 쓰기 전 실패는 0행 변경. 트랜잭션 중 충돌은 전체 롤백(부분 적재 없음). 적재 후 검증 실패면 **플래그를 켜지 않으므로 공개 영향 0** |
+| 되돌리기 | `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포한다. 적재 행은 그 상태에서 공개에 쓰이지 않으므로 **삭제하지 않는다**(O1: 자동 삭제 금지) |
+| 이 승인이 여는 것 | M9-BE-1 실행만. **공개 전환(M9-BE-2)과 Keystatic 제거(M9-BE-3)는 별도 승인**이다 |
+
+승인 요청에는 동결 시작·해제 시점을 함께 확정해야 한다. 동결이 없으면 이관과 공개 결과가 실행 중에 달라진다.
+
 ---
 
 ## 12. 범위 밖
