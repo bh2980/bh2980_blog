@@ -1,6 +1,6 @@
 # CMS M9 전환 보고서 (M9-LEAD-1)
 
-작성: 2026-09-24 · 브랜치 `feature/new-cms` @ `3a0d45e` · 기준 문서 `CMS-M9-DEV-PLAN.md`
+작성: 2026-09-24 · 브랜치 `feature/new-cms` @ `47aaf12` · 기준 문서 `CMS-M9-DEV-PLAN.md`
 
 이 보고서는 **공개 트래픽 전환 승인 요청**을 위한 것이다. 운영 DB 이관은 이미 실행됐고,
 공개 전환과 Keystatic 제거는 **각각 별도 승인**이 필요하다.
@@ -114,8 +114,9 @@ CMS_MIGRATION_APPLY_PRODUCTION=1 … apply-production \
 | `/memos/[초안]` (공개) | **404** | 404 |
 | `/admin` | 307(로그인) | — |
 
-미리보기 경로는 `/preview/posts/[slug]`·`/preview/memos/[slug]`다. `getPreviewMemo`가
-`notFound()`로 fail-closed 한다. `/preview/start`는 Keystatic 라우트라 M9-BE-3 범위다.
+미리보기 경로는 `/preview/posts/[slug]`·`/preview/memos/[slug]`다. `getPreviewMemo`는 못 찾으면
+`null`을 돌려주고 페이지가 `notFound()`를 부른다(`preview/memos/[slug]/page.tsx`).
+`/preview/start`는 Keystatic 라우트라 M9-BE-3 범위다.
 
 ---
 
@@ -150,7 +151,8 @@ UTC 런타임(Vercel)에서 KST 벽시계 00:00~08:59 발행 **8편이 하루 �
 - 한 편의 DB 값은 현재 에디터 정규화 결과와 **정확히 일치**했다. 에디터 저장 흔적으로 보인다.
 - **`planDigest`는 계획 동결만 증명하고 이관 후 DB 쓰기를 탐지하지 못한다.** O2 지적이 맞았다.
 - 조치: 계획 원본으로 되돌렸고 **149/149 일치**를 확인했다.
-- 재발 방지: 운영 DB를 향한 dev 서버는 관리자 경로를 열지 않는다(에디터 자동저장이 운영 DB를 쓴다).
+- 재발 방지(운영 약속): 운영 DB를 향한 dev 서버는 관리자 경로를 열지 않는다(에디터 자동저장이 운영 DB를 쓴다).
+  이건 **코드 가드가 아니라 운영 규칙**이다. `planDigest`는 여전히 이관 후 DB 쓰기를 탐지하지 못한다.
 
 ### 4.4 레거시 모음집 계약 위반 (미해결 — §6 결정 필요)
 
@@ -163,7 +165,15 @@ UTC 런타임(Vercel)에서 KST 벽시계 00:00~08:59 발행 **8편이 하루 �
   `meta.discriminant: wiki` / `value.memo` 형태다(Keystatic 스키마는 `post` 관계를 선언)
 
 **공개 영향은 없다.** `listSeries`/`getSeries`에 공개 소비자가 없고, 이관 전에도
-`series.items`가 비어 있어 **양쪽 다 0개**다. 실제 영향은 **CMS에서 그 모음집을 재발행하면 막힌다**는 것이다.
+`series.items`가 비어 있어 **양쪽 다 0개**다. `toSeries`가 `postsById`에서만 찾으므로
+이관 후에도 `series.items`는 0개다.
+
+**발행은 막히지 않는다.** `validateForPublish`의 `invalid_item_collection`(`content-service.ts:528-534`)은
+**테스트에서만 호출된다.** 발행 API는 `store.publishEntry`만 부르고(`publish/route.ts:41`), 그 함수는
+참조 대상이 존재하고 `published`인지만 본다(`content-store.ts:1458-1464`) — 컬렉션이 post인지는 보지 않는다.
+이 22개는 발행된 memo이므로 이 검사를 통과한다.
+
+즉 **계약 함수는 위반으로 보지만 현재 발행 API는 막지 않는다.** 재발행해도 공개 `series.items`는 0이다.
 
 ### 4.5 모음집 `description` 누락 (미해결 — §6 결정 필요)
 
@@ -193,7 +203,9 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 
 ### 6.1 공개 트래픽 전환 승인 (별도)
 
-`CMS_PUBLIC_REPOSITORY=postgres`로 전환하고 배포한다. M9 커밋 59개는 **아직 원격에 없다**.
+`CMS_PUBLIC_REPOSITORY=postgres`로 전환하고 배포한다. `feature/new-cms`의 M9 커밋은 **아직 원격에 없다**
+(`origin/feature/new-cms`가 `origin/main`과 같은 `f03f92b`를 가리킨다). 개수는 커밋마다 변하므로
+기준은 **현재 HEAD SHA**로 잡는다.
 
 ### 6.2 관찰 기간 (미정)
 
@@ -204,7 +216,7 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 
 | 안 | 내용 | 대가 |
 | --- | --- | --- |
-| **A** | 그대로 둔다 | 공개 영향 0. CMS에서 그 모음집 재발행 불가 |
+| **A** | 그대로 둔다 | 공개 영향 0. CMS에서 재발행은 되지만 공개 `series.items`는 계속 0 |
 | **B** | 이관 시 memo `itemIds`를 버린다 | `CMS-SPEC`와 일치. "원본 관계를 버렸다"는 기록 필요 |
 
 `description` 누락도 같은 결정에 묶는다(되돌리려면 운영 DB 추가 쓰기).
@@ -220,7 +232,7 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 
 | 항목 | 값 |
 | --- | --- |
-| 원격 롤백 커밋 | **`origin/main` @ `f03f92b`** (현재 배포된 Keystatic 버전, 불변) |
+| 원격 롤백 커밋 | **`origin/main` @ `f03f92b`** (라이브가 쓰는 Keystatic 버전, 불변) |
 | 롤백 방법 | `CMS_PUBLIC_REPOSITORY`를 파일 기반으로 되돌리고 재배포 |
 | 적재 행 | **삭제하지 않는다.** 되돌려도 무해하다 |
 | 공유 DB 전체 복원 | **기본 롤백으로 제시하지 않는다** |
@@ -251,7 +263,7 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 ## 9. 전환 절차 (승인 시 제안)
 
 1. 동결 확인 — 양쪽 콘텐츠 쓰기 중단, 지문 재확인(`70794ce9…`)
-2. `feature/new-cms` 푸시·머지·배포 (M9 커밋 59개)
+2. `feature/new-cms` 푸시·머지·배포 (보고서 기준 HEAD `47aaf12`)
 3. 배포 smoke — HTTP/SEO/RSS/sitemap/API/미리보기, 공개 초안 차단, `/assets` 22장
 4. `CMS_PUBLIC_REPOSITORY=postgres` 전환 + 재배포
 5. **R5 검수** (실제 배포 대상 HTTP)
