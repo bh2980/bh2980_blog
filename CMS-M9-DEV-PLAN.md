@@ -273,6 +273,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 2026-09-23 | M9-FE-1 | 관리자 전용 working slug 조회와 초안 미리보기 폴백 구현. 공개 저장소 계약·공개 조회 동작 불변 | `working-entry-by-slug.test.ts`(실DB 5), `preview-draft-fallback.test.ts`(5), 전체 770 tests |
 | 2026-09-23 | M9-BE-1 | 운영 전용 이관 진입점 구현(가드·사전조사·지문·1회 적재·검증). 운영 적재는 승인 전이라 미실행 | `production-guard.test.ts`(7), `production-runner.test.ts`(10), dry-run 75건(published 74/draft 1) |
 | 2026-09-23 | M9-BE-1 · R2 | R2 1차 **부적합(BLOCK)**. P0 2건(비어 있지 않은 대상·승인 원본 미강제), P1 1건(schema 버전·사후 검증) 수정하고 재검수 대기 | R2 run `583b9a08`, 전체 122 files/793 tests, `pnpm typecheck` 0 |
+| 2026-09-23 | M9-BE-1 · R2 재검수 | 1차 재검수 런이 **인프라 실패**(`pi-router: No available model found for reviewer-route`, 검수 판정 아님). 라우터 복구 후 같은 프로토콜로 재시도 → run `45504275` 진행 중 | 실패 run `477dd097`, 재시도 run `45504275` |
 | 2026-09-23 | M9-TW-1 선행 | 격리 schema에서 운영 경로로 이관한 뒤 **공개 조회→렌더**가 원본과 같은지 검증. 48편 렌더 등가·slug 집합·메타데이터·draft 비공개·이미지 파일 존재 통과 | `public-parity.test.tsx` (5 tests, 실DB) |
 | 2026-09-23 | M9-0 정합성 | 원본 계획(75건, published 74/draft 1)과 운영 DB 읽기 전용 조사(주소 0, 기존 slug 0, 필수 테이블 준비 완료)를 대조. 충돌 위험 0 | §11, `artifacts/cms/m9/target-inspection-pre.json` |
 
@@ -286,7 +287,7 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 이미지 22장의 R2 업로드·`media_assets` 등록 | M9 범위 밖으로 확정(O1 ②) | 별도 승인 변경 |
 | status 없는 memo 1편의 의도된 공개 상태 | `js의-비동기-처리-메커니즘.mdx`는 현재 draft 취급. 사용자 승인된 상태 매트릭스 필요 | M9-0/O1 |
 | **운영 DB의 계획 밖 초안 8건** | 이관이 거부된다(R2 P0-1 반영). 보관·삭제로 정리할지, 섞어 이관할지 사용자 결정 필요 | M9-BE-1 실행 전 |
-| R2 재검수 | P0 2건·P1 1건 수정 후 재검수 필요(미완) | 운영 apply 전 |
+| R2 재검수 | P0 2건·P1 1건 수정 후 재검수 필요(미완). 1차 재검수 런은 인프라 실패(모델 라우팅), 재시도 run `45504275` 진행 중 | 운영 apply 전 |
 | 2026-09-22 DB 스냅샷·원격 롤백 증거의 현재성 | 재측정 필요, 시크릿 없이 기록 | M9-0 |
 | 콘텐츠 원본 파일 보존 정책 | 사용자 별도 결정 전까지 보존 | O3/제거 승인 |
 | 공개 전환 후 안정화 관찰 기간 | 미정 | O1에서 권고, LEAD-1에서 승인값 확정 |
