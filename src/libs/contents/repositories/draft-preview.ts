@@ -3,6 +3,7 @@ import "server-only";
 import type { Entry, EntryMetadata } from "@/cms/adapters/postgres/content-store";
 import { getCmsContentStore } from "@/cms/container";
 import { readSeoMetadata } from "../seo";
+import { normalizeSlug } from "../slug";
 import type { Category, DraftMemo, DraftPost, Tag } from "../types/contents";
 import { resolveContentRepositorySource } from "./source";
 
@@ -114,10 +115,11 @@ function isDraftPreviewSource(): boolean {
 export async function getDraftPreviewPost(slug: string): Promise<DraftPost | null> {
 	if (!isDraftPreviewSource()) return null;
 
-	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: slug.trim() });
+	const normalized = normalizeSlug(slug);
+	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: normalized });
 	if (!entry) return null;
 
-	const postSlug = entry.workingSlug ?? slug.trim();
+	const postSlug = entry.workingSlug ?? normalized;
 
 	return toDraftPost(entry, postSlug, await loadTaxonomyLabels());
 }
@@ -126,10 +128,11 @@ export async function getDraftPreviewPost(slug: string): Promise<DraftPost | nul
 export async function getDraftPreviewMemo(slug: string): Promise<DraftMemo | null> {
 	if (!isDraftPreviewSource()) return null;
 
-	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: slug.trim() });
+	const normalized = normalizeSlug(slug);
+	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: normalized });
 	if (!entry) return null;
 
-	const memoSlug = entry.workingSlug ?? slug.trim();
+	const memoSlug = entry.workingSlug ?? normalized;
 
 	return toDraftMemo(entry, memoSlug, await loadTaxonomyLabels());
 }
