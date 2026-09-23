@@ -292,6 +292,16 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 - `blocking=0`, `warnings=0`.
 - 원본 지문: `00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`.
 
+같은 원본의 이미지 검사(`tsx src/cms/migrate-from-files/cli.ts inspect`):
+
+| 항목 | 값 |
+| --- | --- |
+| 이미지 | **22장, missing=0** (전부 로컬에 있고 SHA-256 기록됨) |
+| 코퍼스 warning | 24건 (`emptyAlt=22` 포함) |
+| 코퍼스 blocking | 0 |
+
+`emptyAlt=22`는 기존 콘텐츠의 접근성 부채이지 이관 회귀가 아니다. v1 검수표의 alt 항목은 편집기 동작(F05/F14)을 말하므로 **비차단**으로 두고 M9-RV-1에 남긴다. 22장의 200응답·바이트 일치는 M9-BE-1 대조에서 확인한다.
+
 ### 11.2 운영 DB 현재 상태
 
 `tsx src/cms/migrate-from-files/cli.ts inspect-target` — **READ ONLY 트랜잭션**이라 쓰기가 불가능하다.
@@ -332,13 +342,15 @@ Reviewer와 Oracle이 통과해도 자동 전환하지 않는다. 사용자가 �
 | 대상 | Neon `neondb` · schema `public` · role `neondb_owner`(비슈퍼유저) |
 | 쓰기 범위 | **INSERT만.** `entries` 75행, `entry_bodies` 149행(working 75 + published 74), `content_addresses` 75행, `entry_references` 251행 → 총 **550행** |
 | 쓰지 않는 것 | Payload 테이블 19개, 기존 `entries` 8행, 기존 `folders` 1행, `media_assets`, `schedules`, 스키마(DDL 없음), 폴더 배정 |
-| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab` (불일치면 무쓰기 중단) |
+| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab` (불일치면 무쓰기 중단). 이 지문이 **Keystatic 측 동결을 강제**한다 — `src/contents`를 고치면 지문이 달라져 실행이 멈춘다 |
 | 실행 전 조건 | 대상이 깨끗할 때만 쓴다(§11.3, 위반 시 무쓰기 중단) + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
 | 실패 시 동작 | 쓰기 전 실패는 0행 변경. 트랜잭션 중 충돌은 전체 롤백(부분 적재 없음). 적재 후 검증 실패면 **플래그를 켜지 않으므로 공개 영향 0** |
 | 되돌리기 | `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포한다. 적재 행은 그 상태에서 공개에 쓰이지 않으므로 **삭제하지 않는다**(O1: 자동 삭제 금지) |
 | 이 승인이 여는 것 | M9-BE-1 실행만. **공개 전환(M9-BE-2)과 Keystatic 제거(M9-BE-3)는 별도 승인**이다 |
 
 승인 요청에는 동결 시작·해제 시점을 함께 확정해야 한다. 동결이 없으면 이관과 공개 결과가 실행 중에 달라진다.
+
+동결 범위는 양쪽이다. Keystatic 측(원본 파일)은 위 지문 검사가 기계적으로 막는다. **CMS 관리자 쓰기 측은 기계적으로 막을 수 없으므로 운영 약속으로 둔다** — 이관 직후부터 M9-BE-2 관찰 기간 종료까지 관리자 편집·발행을 멈춘다. 지문은 이미지 바이트까지는 덮지 않으므로, 이미지 원본 해시는 `cms:migration:inspect` 출력으로 함께 기록한다.
 
 ---
 
