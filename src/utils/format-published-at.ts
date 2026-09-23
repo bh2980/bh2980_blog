@@ -10,6 +10,9 @@ const publishedAtFormatter = new Intl.DateTimeFormat("ko-KR", {
 	timeZone: SEOUL_TIME_ZONE,
 });
 
+/** 검수용: 포맷터가 실제로 KST에 고정됐는지 확인할 수 있게 노출한다. */
+export { publishedAtFormatter };
+
 export function formatPublishedAt(value: string) {
 	const date = new Date(value);
 

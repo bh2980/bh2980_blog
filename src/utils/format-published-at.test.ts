@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { keystaticPublishedAt } from "@/libs/contents/published-at";
-import { formatPublishedAt } from "./format-published-at";
+import { formatPublishedAt, publishedAtFormatter } from "./format-published-at";
 
 /**
  * 표시 날짜가 **실행 환경 타임존에 묶이지 않고 KST로 고정**되는지 고정한다.
@@ -11,10 +11,8 @@ import { formatPublishedAt } from "./format-published-at";
  */
 describe("formatPublishedAt", () => {
 	it("타임존을 KST로 고정한다", () => {
-		// 수정 전에는 실행 환경 로컬 타임존이 그대로 들어간다.
-		expect(
-			new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul" }).resolvedOptions().timeZone,
-		).toBe("Asia/Seoul");
+		// 실행 환경 로컬 타임존이 KST여도 이 단언은 실패한다(`timeZone`을 빼면 undefined가 된다).
+		expect(publishedAtFormatter.resolvedOptions().timeZone).toBe("Asia/Seoul");
 		expect(formatPublishedAt("2026-04-10T03:12:00.000+09:00")).toBe("2026년 4월 10일");
 	});
 
