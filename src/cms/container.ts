@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { createContentStore, type ContentStore } from "./adapters/postgres/content-store";
+import { type ContentStore, createContentStore } from "./adapters/postgres/content-store";
 import { createR2MediaStore } from "./adapters/r2/media-store";
 import type { MediaStore } from "./adapters/r2/types";
 import { createContentService } from "./services/content-service";
@@ -27,7 +27,10 @@ export function getCmsPool(): Pool {
 export function getCmsContentStore(): ContentStore {
 	if (!global.__cmsStore) {
 		const pool = getCmsPool();
-		global.__cmsStore = createContentStore(pool);
+		// `CMS_SCHEMA`로 기본값(`public`)을 바꿀 수 있다. 같은 DB를 여러 스키마로 나눠 쓰는
+		// 미리보기/스테이징에서 쓴다. 운영은 미설정이므로 `public` 그대로다.
+		const schema = process.env.CMS_SCHEMA;
+		global.__cmsStore = createContentStore(pool, schema ? { schema } : undefined);
 	}
 	return global.__cmsStore;
 }
