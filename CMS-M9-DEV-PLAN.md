@@ -384,6 +384,7 @@ R2 2차가 남긴 P2 4건의 처리:
 | 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`, `--expect-items 75` — 둘 다 필수이고 불일치면 무쓰기 중단. 지문이 **Keystatic 측 동결을 강제**한다(`src/contents`를 고치면 실행이 멈춘다) |
 | 대상 수 고정 | `--expect-existing-entries`도 필수다. 값은 **실행 직전 `inspect-target`으로 다시 관찰한 값**을 쓴다. A안(초안 8건 정리)을 택하면 `0`, 정리하지 않으면 이관이 거부된다(계획 밖 항목 검사). **초안 8건이 남아 있으면 어느 값으로도 통과하지 않는다** |
 | 실행 전 조건 | 위 `inspect-target` 재관찰 + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
+| 계획 밖 초안 8건의 정체 | 2026-09-21에 생성된 **관리자 화면 테스트 데이터**. 전부 slug 없음. `memo/draft` “테스트 메모”, `post/draft` “제목” 1 + “제목 없음” 4, `tag/draft` “TypeScript”, `tag/published` “Nextjs15”(이 1건은 지금 공개 저장소를 켜면 노출된다). 목록: `artifacts/cms/m9/foreign-drafts-pre.txt` |
 | 실패 시 동작 | 쓰기 전 실패는 0행 변경. 트랜잭션 중 충돌은 전체 롤백(부분 적재 없음). 적재 후 검증 실패면 **플래그를 켜지 않으므로 공개 영향 0** |
 | 되돌리기 | `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포한다. 적재 행은 그 상태에서 공개에 쓰이지 않으므로 **삭제하지 않는다**(O1: 자동 삭제 금지) |
 | 이 승인이 여는 것 | M9-BE-1 실행만. **공개 전환(M9-BE-2)과 Keystatic 제거(M9-BE-3)는 별도 승인**이다 |
