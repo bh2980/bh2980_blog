@@ -260,6 +260,79 @@ Error [CmsError]: Invalid slug
 | `/rss.xml`·`/sitemap.xml` | **200** |
 | 활성 Keystatic 참조 | **0건** (남은 것은 주석과 이관용 헬퍼) |
 
+### 4.9 한글 slug 12건을 영문으로 교체 (사용자 지시)
+
+사용자 지시: "모든 slug를 내용에 맞는 영문으로 교체해줘. 이제 한글 slug도 안 쓰려고."
+
+**대상은 12건뿐이었다.** post 7(전부 한글), memo 5(한글), 나머지 category 3·tag 22·collection 1과
+memo 41건은 이미 의미 있는 ASCII(`4-pick`, `898-includes`, `download-file` 등)였다.
+
+| 옛 주소 | 새 주소 |
+| --- | --- |
+| `ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면` | `finding-your-way-through-ai-generated-code` |
+| `내가-만든-rag의-성능-측정하기` | `measuring-my-rag-performance` |
+| `블로그라면-seo는-해봐야지` | `seo-for-blogs` |
+| `블로그를-검색하는-벡터-rag-만들기` | `building-a-vector-rag-for-blog-search` |
+| `블로그를-다시-만들면서` | `rebuilding-my-blog` |
+| `왜-내-블로그는-ssg가-안될까` | `why-my-blog-cant-be-ssg` |
+| `코드-블럭에-툴팁을-띄우고-싶었을-뿐인데` | `tooltips-in-code-blocks` |
+| `js의-데이터-타입-및-메모리-관리` | `js-data-types-and-memory-management` |
+| `js의-코드-실행-메커니즘` | `js-code-execution-mechanism` |
+| `tuple과-readonly` | `tuple-and-readonly` |
+| `정규표현식-정리` | `regular-expression-notes` |
+| `js의-비동기-처리-메커니즘` (초안) | `js-async-processing-method` → `js-async-processing-mechanism` |
+
+**O3 사전 자문이 방식을 바꿔놓았다.**
+
+- **`content_addresses`만 바꾸면 안 된다.** 초안 조회와 다음 발행의 목표 주소는 `entries.working_slug`이라
+  12건 모두 같이 갱신해야 한다. 이것을 빼먹으면 새 초안 주소가 조회되지 않는다.
+- **`publishEntry`를 부르면 안 된다.** 그 함수는 working 본문을 published로 복사하므로
+  `ai가-뱉어낸-…`의 **미발행 편집이 라이브로 나간다**(그 글만 working≠published다).
+  그래서 주소만 직접 바꾸고 `entry_bodies`는 손대지 않았다.
+- **본문에 절대 URL 링크가 1건 있었다.** `내가-만든-rag…`가 `https://bh2980.dev/posts/블로그를-검색하는-벡터-rag-만들기`를
+  가리킨다. 308 별칭이 이를 살린다(검증함).
+- **`canonicalUrl` 수동 지정은 0건**이었다(있었으면 중단할 예정).
+
+**적용:** `artifacts/cms/m9/rename-slugs.mjs` (드라이런 기본, `--apply` + `CMS_SLUG_RENAME_APPLY=1` 필요).
+단일 `SERIALIZABLE` 트랜잭션, 영향 행 수 단언(11/11/1/12), 불변량 검증 실패 시 자동 ROLLBACK.
+
+- published 11건: 기존 `current` → `alias`, 새 slug를 `current`로 INSERT
+- 초안 1건: `reservation` 행의 slug만 UPDATE (공개 이력 없음 → alias 없음)
+- 12건 모두 `entries.working_slug`·`version+1`·`updated_at`만 갱신
+
+**검증 결과**
+
+| 항목 | 결과 |
+| --- | --- |
+| 주소 분포 | current 74 / reservation 1 / **alias 11** |
+| 본문 149행 지문 | **불변** (`00e33670…`) |
+| 참조 207행 | **불변** |
+| 상태 | 74 published / 1 draft **불변** |
+| `ai가-뱉어낸` working≠published | **유지** |
+| 신규 주소 11건 | **200** |
+| 옛 주소 11건 | **308 → 신규 주소** |
+| 초안 신규 공개 / 옛 주소 | **404 / 404** |
+| 초안 신규 미리보기(인증) | **200** |
+| 본문 절대링크(옛 주소) | **308 → 신규 주소** |
+| RSS·sitemap | 새 주소 사용, 옛 한글 주소 **잔존 0** |
+
+한글은 **current·reservation에서 0건**이지만, **alias에는 옛 URL을 살리기 위해 남긴다**(§457과 일치).
+
+### 4.10 P1 — 이미지 노드 뷰가 TipTap v3 계약을 어겼다 (수정 완료)
+
+사용자 보고: 브라우저에서 `Please use the NodeViewWrapper component for your node view`.
+
+**원인:** `src/cms/editor/image-node-view.tsx`가 `<figure>`를 그대로 반환했다.
+TipTap v3는 노드 뷰의 첫 자식이 `data-node-view-wrapper`를 가져야 한다
+(`@tiptap/react/dist/index.js:941`). 그 속성을 넣는 것이 `NodeViewWrapper`다.
+
+**M9 이전부터 있던 결함**이다(`2b1028a`, M9 커밋 아님). **이미지 있는 글 5건**에서 터졌다.
+
+**수정:** `<NodeViewWrapper as="figure" data-image-block …>`로 감쌌다.
+
+**검증(실제 Chrome, DB 모드):** 이미지 있는 글에서 `figure[data-image-block]` **2개**,
+`[data-node-view-wrapper]` **2개**, `img` **2개**, 깨진 이미지 문구 **0**, **콘솔 오류 0**.
+
 ---
 
 ## 5. O2 독립 감사 결과

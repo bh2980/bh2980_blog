@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { NodeViewProps } from "@tiptap/react";
+import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Trash2 } from "lucide-react";
 import { resolveImageUrl } from "@/cms/mdx/image-src";
 import { Button } from "@/components/ui/button";
@@ -62,8 +62,12 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 		right: "ml-auto",
 	}[align as "left" | "center" | "right"] || "mx-auto";
 
+	// TipTap v3는 노드 뷰의 첫 자식이 `data-node-view-wrapper`를 가져야 한다.
+	// 그 속성을 넣는 것이 `NodeViewWrapper`이고, 빠지면 "Please use the NodeViewWrapper
+	// component for your node view"로 런타임에 터진다(이미지 있는 글에서 발생).
 	return (
-		<figure
+		<NodeViewWrapper
+			as="figure"
 			data-image-block
 			className={`my-6 flex flex-col group relative rounded-lg transition-all ${alignClasses} ${
 				selected ? "ring-2 ring-blue-500" : ""
@@ -168,6 +172,6 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 					className="w-full text-center text-xs text-neutral-500 dark:text-neutral-400 bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
 				/>
 			</figcaption>
-		</figure>
+		</NodeViewWrapper>
 	);
 }
