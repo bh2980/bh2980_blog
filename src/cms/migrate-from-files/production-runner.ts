@@ -49,6 +49,12 @@ export interface ProductionApplyReport {
 	warnings: ImportPlan["warnings"];
 	targetState: ProductionTargetState | null;
 	apply: { imported: number; skipped: number; items: ProductionApplyReportItem[] } | null;
+	/**
+	 * 적재까지의 결과. `"verification_failed"`면 행은 이미 커밋됐지만 사후 검증이 틀렸다는 뜻이므로
+	 * 공개 저장소 플래그를 켜면 안 된다. `"dry_run"`은 쓰기가 없었다는 뜻이다.
+	 * JSON만 보고 성공 적재로 읽지 않도록 명시한다.
+	 */
+	outcome: "verified" | "verification_failed" | "dry_run";
 	verification: {
 		entryCount: number;
 		publishedEntryCount: number;
@@ -170,6 +176,7 @@ export async function planProductionApply(options: { root: string; out?: string 
 		warnings: plan.warnings,
 		targetState: null,
 		apply: null,
+		outcome: "dry_run",
 		verification: null,
 		notes: [
 			"dry-run: DB에 접속하지 않았다. 실제 적재는 이 지문을 승인한 뒤 apply-production으로 실행한다.",
@@ -287,6 +294,22 @@ export async function runProductionApply(
 		actualPublished.map((entry) => entry.publishedSlug).filter((slug): slug is string => slug !== null),
 	);
 
+	// 적재는 이미 커밋됐다(롤백 불가). 검증이 틀렸다면 조용히 성공으로 끝내지 않는다:
+	// 호출자가 0이 아닌 종료를 받아야 플래그를 켜지 않는다.
+	const verification = {
+		entryCount: snapshot.entries.length,
+		publishedEntryCount: actualPublished.length,
+		draftEntryCount: snapshot.entries.filter((entry) => entry.status === "draft").length,
+		slugSetsMatch: expectedSlugs.size === actualSlugs.size && [...expectedSlugs].every((slug) => actualSlugs.has(slug)),
+		missingSlugs: [...expectedSlugs].filter((slug) => !actualSlugs.has(slug)).sort(),
+		unexpectedSlugs: [...actualSlugs].filter((slug) => !expectedSlugs.has(slug)).sort(),
+	};
+	const verificationFailed =
+		!verification.slugSetsMatch ||
+		verification.missingSlugs.length > 0 ||
+		verification.unexpectedSlugs.length > 0 ||
+		verification.entryCount !== targetState.entryCount + applied.imported;
+
 	const report: ProductionApplyReport = {
 		formatVersion: 1,
 		mode: "production",
@@ -302,16 +325,14 @@ export async function runProductionApply(
 		warnings: plan.warnings,
 		targetState,
 		apply: { imported: applied.imported, skipped: applied.skipped, items: applied.items },
-		verification: {
-			entryCount: snapshot.entries.length,
-			publishedEntryCount: actualPublished.length,
-			draftEntryCount: snapshot.entries.filter((entry) => entry.status === "draft").length,
-			slugSetsMatch:
-				expectedSlugs.size === actualSlugs.size && [...expectedSlugs].every((slug) => actualSlugs.has(slug)),
-			missingSlugs: [...expectedSlugs].filter((slug) => !actualSlugs.has(slug)).sort(),
-			unexpectedSlugs: [...actualSlugs].filter((slug) => !expectedSlugs.has(slug)).sort(),
-		},
+		outcome: verificationFailed ? "verification_failed" : "verified",
+		verification,
 		notes: [
+			...(verificationFailed
+				? [
+						"**적재 후 검증 실패.** 행은 커밋됐지만 공개 저장소 플래그를 켜면 안 된다. inspect-target으로 대상을 재확인하세요.",
+					]
+				: []),
 			"이미지 바이너리는 옮기지 않는다. 기존 /assets 경로를 그대로 쓴다(M9 O1 결정).",
 			"DDL을 실행하지 않는다. 대상 스키마는 승인된 절차로 미리 준비돼 있어야 한다.",
 			"재실행은 같은 내용만 skip하고, 내용이 다르면 덮어쓰지 않고 충돌로 중단한다.",
@@ -321,16 +342,7 @@ export async function runProductionApply(
 	const outputPath = options.out ?? defaultProductionReportPath(options.root, runId());
 	writeJsonReport(outputPath, report);
 
-	// 적재는 이미 커밋됐다(롤백 불가). 검증이 틀렸다면 조용히 성공으로 끝내지 않는다:
-	// 호출자가 0이 아닌 종료를 받아야 플래그를 켜지 않는다.
-	const verification = report.verification;
-	if (
-		verification &&
-		(!verification.slugSetsMatch ||
-			verification.missingSlugs.length > 0 ||
-			verification.unexpectedSlugs.length > 0 ||
-			verification.entryCount !== targetState.entryCount + applied.imported)
-	) {
+	if (verificationFailed) {
 		throw new Error(
 			[
 				"적재 후 검증이 실패했습니다. **공개 저장소 플래그를 바꾸지 마세요.**",

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Pool } from "pg";
@@ -60,6 +60,7 @@ describe("production apply plan (DB 불필요)", () => {
 			});
 
 			expect(report.apply).toBeNull();
+			expect(report.outcome).toBe("dry_run");
 			expect(report.connection).toBeNull();
 			expect(report.schemaName).toBe("(dry-run)");
 			expect(report.counts.items).toBeGreaterThan(0);
@@ -190,6 +191,27 @@ describeWithDb("production apply runner (실DB)", () => {
 		await expect(runProductionApply(await applyOptions({ expectedExistingEntries: imported }))).rejects.toThrow(
 			/깨끗하지 않아/,
 		);
+	});
+
+	it("`allow-existing`를 켜도 계획 밖 항목이 있으면 쓰지 않는다", async () => {
+		// R2 지적: 약한 검사(깨끗함)를 끄는 플래그가 강한 검사(계획 밖 항목)까지 끄면 안 된다.
+		await insertForeignEntry();
+
+		await expect(
+			runProductionApply(await applyOptions({ allowExistingTarget: true, expectedExistingEntries: 1 })),
+		).rejects.toThrow(/계획 밖 항목/);
+
+		// 남의 초안 1건만 그대로다. 계획 항목은 하나도 들어가지 않았다.
+		expect(await entriesOf()).toBe(1);
+	});
+
+	it("성공한 적재 보고서에 결과 표식이 남는다", async () => {
+		const first = await runProductionApply(await applyOptions());
+
+		// JSON만 보고 성공 적재인지 판단할 수 있어야 한다.
+		expect(first.report.outcome).toBe("verified");
+		const written = JSON.parse(readFileSync(first.outputPath, "utf8"));
+		expect(written.outcome).toBe("verified");
 	});
 
 	it("의도된 재실행은 같은 내용을 skip하고 새로 쓰지 않는다", async () => {
