@@ -479,6 +479,25 @@ HTTP 수준 대조는 날짜(§12.2)와 RSC 스트리밍 placeholder 차이를 �
 돌려주는 등 **로컬 서버 자체가 신뢰할 수 없어** HTTP 대조를 확정 근거로 쓰지 않는다.
 전환 시점에 두 배포로 다시 대조한다.
 
+**커스텀 컴포넌트 전수 확인(실제 Chrome, DB 모드):**
+
+| 컴포넌트 | 공개 렌더 근거 |
+| --- | --- |
+| `Callout` (6편) | NOTE/TIP 박스, `.not-prose` 5개 |
+| `Tabs`/`Tab` (3편) | `role=tablist` 2·`role=tab` 4·`role=tabpanel` 4 (Radix) |
+| `Collapsible` (34편) | `aria-expanded` — 접기/펴기 동작 |
+| `:tooltip[...]` (8편) | Radix 트리거 `data-state="closed"` |
+| `mermaid` (8편) | SVG 렌더, 문법 오류 0 |
+| `chart` (1편) | Recharts 래퍼 + SVG |
+| `u`/`br` | 인라인 |
+
+에디터에서는 컴포넌트를 컴포넌트로 그리지 않고 **“원문 모드에서 편집” 카드**(opaque block, 총 130개)로
+보존한다. `:::collapsible`·`:::callout`·`:::tab`·`@char Tooltip`이 카드 안에 그대로 보이는 것을 확인했다.
+
+**`@char Tooltip` 코드블록 주석은 공개 화면에 안 그려진다 — 그러나 M9 회귀가 아니다.**
+`data-anno-*` 마크업이 0인데, **파일 기반(현재 운영) 모드에서도 같은 글이 0**이다. 주석 줄 자체는
+DB에 그대로 남아 있다(`@char` 4/4). 즉 이 기능은 지금도 공개 렌더에 나타나지 않는다.
+
 **검증 중 발견한 기존 결함(이관 차단 요소는 아님):** 에디터 우측 패널의 “발행 일시” 입력은
 `useState("")`로만 시작해 **로드된 값으로 초기화되지 않고 저장에도 쓰이지 않는다**(M9 이전
 `13e733a`부터). 이관된 날짜는 `published_at` 컬럼과 `metadata.publishedAt`에 있고,
