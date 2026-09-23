@@ -1,5 +1,4 @@
 import type { ContentRepository } from "./contracts/repository";
-import { KeystaticRepository } from "./repositories/keystatic";
 import { PostgresRepository } from "./repositories/postgres";
 import { resolveContentRepositorySource } from "./repositories/source";
 
@@ -9,10 +8,12 @@ export {
 	resolveContentRepositorySource,
 } from "./repositories/source";
 
-export function createContentRepository(source: ReturnType<typeof resolveContentRepositorySource>) {
-	return source === "postgres" ? new PostgresRepository() : new KeystaticRepository();
+export function createContentRepository(): ContentRepository {
+	return new PostgresRepository();
 }
 
 export function getContentRepository(): ContentRepository {
-	return createContentRepository(resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY));
+	// 플래그를 먼저 검증한다. 미설정·오값이면 여기서 실패한다(fail-closed).
+	resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY);
+	return createContentRepository();
 }

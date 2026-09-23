@@ -177,9 +177,14 @@ export class PostgresRepository implements ContentRepository {
 	}
 
 	async getPost(slug: string): Promise<Post | null> {
+		const normalized = normalizeSlug(slug);
+		// 빌드 수집 단계에서 빈 slug로 들어올 수 있다. 저장소를 부르지 않고 404로 끝낸다
+		// (파일 기반 경로의 `read("")`가 null을 돌려주던 동작과 같다).
+		if (!normalized) return null;
+
 		const lookup = await this.getStore().getPublishedEntryBySlug({
 			collection: "post",
-			slug: normalizeSlug(slug),
+			slug: normalized,
 			includeBody: true,
 		});
 
@@ -191,9 +196,13 @@ export class PostgresRepository implements ContentRepository {
 	}
 
 	async getMemo(slug: string): Promise<Memo | null> {
+		const normalized = normalizeSlug(slug);
+		// 빌드 수집 단계에서 빈 slug로 들어올 수 있다. 저장소를 부르지 않고 404로 끝낸다.
+		if (!normalized) return null;
+
 		const lookup = await this.getStore().getPublishedEntryBySlug({
 			collection: "memo",
-			slug: normalizeSlug(slug),
+			slug: normalized,
 			includeBody: true,
 		});
 

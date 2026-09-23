@@ -70,11 +70,11 @@ afterEach(() => {
 });
 
 describe("draft preview (M9-FE-1)", () => {
-	it("CMS_PUBLIC_REPOSITORY가 postgres가 아니면 저장소를 부르지 않고 null이다", async () => {
-		await expect(getDraftPreviewPost("draft-1")).resolves.toBeNull();
-		await expect(getDraftPreviewMemo("draft-1")).resolves.toBeNull();
+	it("CMS_PUBLIC_REPOSITORY가 없으면 저장소를 부르지 않고 실패한다(fail-closed)", async () => {
+		await expect(getDraftPreviewPost("draft-1")).rejects.toThrow(/CMS_PUBLIC_REPOSITORY/);
+		await expect(getDraftPreviewMemo("draft-1")).rejects.toThrow(/CMS_PUBLIC_REPOSITORY/);
 
-		// DB 연결을 요구하지 않는다. 설정 없는 배포에서 404가 500이 되지 않는다.
+		// DB 연결을 요구하지 않는다. 플래그 없는 배포는 조용히 404가 되지 않고 실패한다.
 		expect(state.slugCalls).toEqual([]);
 		expect(state.taxonomyCalls).toBe(0);
 	});

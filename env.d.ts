@@ -5,7 +5,11 @@ declare namespace NodeJS {
 		CMS_DATABASE_URL: string;
 		CMS_TEST_DATABASE_URL?: string;
 		CMS_TEST_DATABASE_ALLOW_SCHEMA_CREATE?: string;
-		/** 공개 조회 저장소 선택. `keystatic`(기본) | `postgres`. 미설정·오값 처리 규칙은 get-content-repository.ts 참조. */
+		/**
+		 * 공개 조회 저장소 선택. **`postgres`가 필수**다(M9-BE-3에서 Keystatic 저장소를 제거했다).
+		 * 미설정·오값이면 실패하며, 플래그 없이 배포하면 공개 경로가 오류가 난다(fail-closed).
+		 * 배포 전에 이 값을 설정하는 것이 필수 선행조건이다. 규칙은 repositories/source.ts 참조.
+		 */
 		CMS_PUBLIC_REPOSITORY?: string;
 		/** 기본 스키마(`public`)를 바꾼다. 미리보기/스테이징에서 같은 DB를 나눠 쓸 때 쓴다. */
 		CMS_SCHEMA?: string;
@@ -26,15 +30,6 @@ declare namespace NodeJS {
 		CMS_R2_ENDPOINT: string;
 		CMS_R2_PUBLIC_BASE_URL: string;
 
-		NEXT_PUBLIC_GISUS_CATEGORY_ID: string;
-		NEXT_PUBLIC_GISUS_REPO_ID: string;
-		NEXT_PUBLIC_KEYSTATIC_REPO: string;
-		NEXT_PUBLIC_KEYSTATIC_OWNER: string;
-		NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
-		GITHUB_PAT: string;
-		KEYSTATIC_GITHUB_CLIENT_ID: string;
-		KEYSTATIC_GITHUB_CLIENT_SECRET: string;
-		KEYSTATIC_SECRET: string;
 		GSC_VERIFICATION_TOKEN: string;
 	}
 }

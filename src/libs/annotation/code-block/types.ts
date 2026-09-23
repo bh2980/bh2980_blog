@@ -1,8 +1,10 @@
 import type { Paragraph, PhrasingContent } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import type { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block/constants";
 
-export type CodeBlockRoot = MdxJsxFlowElement & { name: typeof EDITOR_CODE_BLOCK_NAME };
+/** 편집기 코드블록 MDX 요소 이름. Keystatic 제거 후에도 원본 MDX가 이 이름을 쓴다. */
+export type CodeBlockElementName = "CodeBlock";
+
+export type CodeBlockRoot = MdxJsxFlowElement & { name: CodeBlockElementName };
 
 export type Range = {
 	start: number;

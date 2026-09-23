@@ -15,8 +15,8 @@ import { resolveContentRepositorySource } from "./source";
  * 공개 저장소 계약을 넓히지 않고 관리자 전용 경로만 추가한다.
  *
  * 안전 경계:
- * - `CMS_PUBLIC_REPOSITORY=postgres`일 때만 동작한다. Keystatic 저장소는 이미 초안을 돌려주고,
- *   CMS DB가 설정되지 않은 배포에서 DB 연결을 요구하면 404가 500으로 바뀐다.
+ * - 공개 저장소 규칙을 그대로 따른다. `CMS_PUBLIC_REPOSITORY`가 `postgres`가 아니면 실패한다
+ *   (M9-BE-3에서 Keystatic 저장소를 제거해 파일 기반 초안 경로가 사라졌다).
  * - 호출자(`getPreviewPost`/`getPreviewMemo`)가 관리자 세션을 먼저 확인한다. 이 모듈 자체는
  *   권한을 판정하지 않는다.
  * - 이 모듈은 쓰기를 하지 않는다.
@@ -103,17 +103,10 @@ function toDraftMemo(entry: Entry, slug: string, labels: TaxonomyLabels): DraftM
 	};
 }
 
-/**
- * DB 공개 저장소로 전환한 뒤에만 초안 경로를 쓴다. 그 전에는 Keystatic 저장소가
- * 초안을 직접 돌려주므로 이 경로가 필요 없고, CMS DB가 없는 배포를 깨뜨리지 않는다.
- */
-function isDraftPreviewSource(): boolean {
-	return resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY) === "postgres";
-}
-
 /** working slug로 초안 글을 읽는다. 없거나 분류가 없으면 null. */
 export async function getDraftPreviewPost(slug: string): Promise<DraftPost | null> {
-	if (!isDraftPreviewSource()) return null;
+	// 공개 경로와 같은 규칙으로 배포 설정을 먼저 검사한다(미설정이면 실패).
+	resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY);
 
 	const normalized = normalizeSlug(slug);
 	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: normalized });
@@ -126,7 +119,8 @@ export async function getDraftPreviewPost(slug: string): Promise<DraftPost | nul
 
 /** working slug로 초안 메모를 읽는다. 없으면 null. */
 export async function getDraftPreviewMemo(slug: string): Promise<DraftMemo | null> {
-	if (!isDraftPreviewSource()) return null;
+	// 공개 경로와 같은 규칙으로 배포 설정을 먼저 검사한다(미설정이면 실패).
+	resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY);
 
 	const normalized = normalizeSlug(slug);
 	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: normalized });

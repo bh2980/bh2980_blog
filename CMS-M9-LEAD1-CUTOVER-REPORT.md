@@ -190,6 +190,76 @@ UTC 런타임(Vercel)에서 KST 벽시계 00:00~08:59 발행 **8편이 하루 �
 곳이 없어 사용자 영향은 0이다. `description`은 `collection.collection.ts` 스키마에는 있으므로
 나중에 필요하면 관리자에서 직접 넣을 수 있다.
 
+### 4.6 M9-BE-3 Keystatic·Giscus 제거 (실행 완료)
+
+사용자가 제거를 승인했다: "keystatic이랑 gisus도 지워버려", "롤백을 왜하지?", "콘텐츠 원본은 보존".
+
+**제거한 것**
+
+| 대상 | 내용 |
+| --- | --- |
+| 패키지 | `@keystatic/core`, `@keystatic/next`, `@giscus/react` (239개 패키지 정리) |
+| 패치·설정 | `patches/` 2개, `pnpm-workspace.yaml`의 `patchedDependencies`·prosemirror overrides |
+| 소스 | `src/keystatic/**` 101개, `keystatic.config.ts`, `global.d.ts` |
+| 라우트 | `(admin)/keystatic/**`, `api/keystatic/**`, `preview/end`, `posts/[slug]/comments.client.tsx` |
+| 인증·설정 | `libs/admin/verify-access.ts`(Keystatic GitHub 쿠키), `tsconfig`의 `@/keystatic/*` alias, `env.d.ts`의 Keystatic·Giscus 변수 |
+| 그 외 | `robots.ts`의 `/keystatic/` 규칙, 네비게이션의 `/keystatic` 링크 → `/admin` |
+
+**보존한 것** — `src/contents/**` 75개 원본, `public/assets/**`, `artifacts/cms/m9/**`, 공개 MDX 렌더러
+(`src/components/mdx/**`), CMS TipTap 편집기·관리자·이관 코드, `keystaticPublishedAt`(이관 근거),
+초안 미리보기 경로 2개.
+
+**공유 의존 처리** — `libs/annotation/code-block/types.ts`가 `@/keystatic`의 타입 하나를 썼다.
+상수 파일을 살리지 않고 `CodeBlockElementName = "CodeBlock"` 리터럴로 대체했다.
+
+**`/preview/start`** — 404로 만들면 계획서 §13.4의 401/403과 충돌하므로 호환 라우트를 유지했다:
+비인증 **401/403**, 인증된 옛 URL은 **410 Gone**. 리다이렉트·`draftMode`·branch 쿠키는 하지 않는다.
+
+**`CMS_PUBLIC_REPOSITORY`** — `postgres`만 허용하고 **미설정·오값은 실패**한다(fail-closed).
+
+### 4.7 ⚠️ P1 — DB 경로에서 빈 slug가 빌드를 깨뜨렸다 (수정 완료)
+
+Keystatic을 지우고 플래그를 `postgres`로 켜서 **처음으로 `pnpm build`를 돌렸더니 빌드가 실패했다.**
+
+```
+TypeError: Cannot read properties of undefined (reading 'trim')
+  at getMemo → generateStaticParams
+Error [CmsError]: Invalid slug
+  at getPublishedEntryBySlug
+```
+
+**원인:** Next.js는 빌드 수집 단계에서 `generateImageMetadata`를 **`params` 없이** 부른다.
+
+| | 동작 |
+| --- | --- |
+| 파일 기반(제거 전) | `sanitize(slug)`가 `if (!str) return ""`로 막아 `read("")` → null |
+| DB 기반(제거 후) | `normalizeSlug(slug)`가 `slug.trim()`에서 터짐 |
+
+**이관 전에는 이 경로를 빌드가 타지 않아 드러나지 않은 기존 결함이다.** 그대로 배포했으면
+**운영 빌드가 실패**했을 것이다.
+
+**수정(근본 원인):**
+- `src/libs/contents/slug.ts` — `normalizeSlug`가 `undefined`/`null`을 받아 `""`를 돌려준다
+- `src/libs/contents/repositories/postgres.ts` — `getPost`/`getMemo`가 빈 slug면 저장소를 부르지 않고 `null`
+
+**검증:** `pnpm build` 통과, 회귀 테스트 `src/libs/contents/__test__/slug.test.ts` 추가.
+
+### 4.8 BE-3 검증 결과
+
+| 항목 | 결과 |
+| --- | --- |
+| `pnpm exec tsc --noEmit` | 통과 |
+| 테스트 | **742 tests / 113 files PASS** (`TZ=UTC`) |
+| `CMS_PUBLIC_REPOSITORY=postgres pnpm build` | **통과** |
+| ProseMirror 중복 버전 | **없음** (1.25.11/1.42.4/1.4.4/1.12.1 단일) |
+| TipTap 에디터 실제 로드 | **정상** — 본문 4,339자·문단 36·코드블록 1, 콘솔 오류 0 |
+| `/keystatic`·`/api/keystatic`·`/preview/end` | **404** |
+| `/preview/start` (관리자 세션) | **410** |
+| 공개 글 | **200**, `giscus`/`comments` 마크업 **0건** |
+| 공개 초안 | **404** |
+| `/rss.xml`·`/sitemap.xml` | **200** |
+| 활성 Keystatic 참조 | **0건** (남은 것은 주석과 이관용 헬퍼) |
+
 ---
 
 ## 5. O2 독립 감사 결과
@@ -231,20 +301,31 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 **다만 O3 자문(2026-09-24)은 관찰 기간 0이 R5나 제거 승인을 면제하지 않는다고 지적했다.**
 그 지적이 맞다. 앞서 이 보고서에 "저장소에 남는 작업은 없다"고 적었으나 **틀렸다.**
 
-### 6.3 남은 게이트 (계획서 §60~§63)
+### 6.3 게이트 상태 (계획서 §60~§63)
 
 | 순서 | 게이트 | 상태 |
 | --- | --- | --- |
-| 5 | M9-BE-2 플래그 전환 + 배포 | **미완** — 사용자가 직접 머지·배포 |
-| 6 | **R5** (배포 smoke) | **미완** — 배포 대상이 없어 검수 불가 |
-| 6 | **O3** (Keystatic 제거 자문) | **사전 자문만 완료** — 정식 O3는 BE-2/R5 후 (§6.5) |
-| 7 | **사용자 별도 Keystatic 제거 승인** | **미획득** |
-| 7 | M9-BE-3 Keystatic 제거 | **미착수** — 위 승인 전에는 삭제 금지 |
+| 5 | M9-BE-2 플래그 전환 + 배포 | **사용자 수행** — 머지·배포는 사용자 소관 |
+| 6 | **R5** (배포 smoke) | 배포 후 필요하면 수행 |
+| 6 | **O3** | **사전 자문 완료**(§6.5). 정식 O3는 BE-2 배포 후 |
+| 7 | **사용자 Keystatic 제거 승인** | **획득** (2026-09-24) |
+| 7 | M9-BE-3 Keystatic·Giscus 제거 | **실행 완료** (§4.6~§4.8) |
 | 8 | R6 → M9-RV-1 | 미착수 |
 
-**배포·머지가 사용자 소관인 것과 BE-3 제거 승인이 별개다.** 사용자가 "배포는 내가 한다"고 한 것은
-제거 승인이 아니다. 계획서 §159가 "제거 승인 없이는 패키지·라우트 삭제를 진행하지 않는다"고
-못박고 있다.
+사용자가 계획서의 게이트 순서(BE-2 배포 → R5 → O3 → 승인 → BE-3)를 앞당겨
+**제거를 먼저 승인·실행**했다. 롤백도 불필요로 결정했으므로 O3가 조건으로 든
+"롤백 방식 변경 승인" 문제는 종결됐다. R5·R6·M9-RV-1은 배포 후로 남는다.
+
+### 6.3.1 ⚠️ 필수 배포 선행조건
+
+**`CMS_PUBLIC_REPOSITORY=postgres`를 배포 환경에 설정해야 한다.** 빠뜨리면 사이트가 뜨지 않는다.
+
+- Keystatic 파일 저장소를 제거했으므로 **대체 경로가 없다.** 미설정·오값이면 `getContentRepository()`가
+  모듈 로드 시 실패한다(fail-closed).
+- **즉 "머지하면 기존 사이트가 유지된다"가 아니다.** 머지와 무중단 전환은 분리되지 않는다.
+  플래그를 같은 배포에서 같이 설정해야 한다.
+- 로컬 `.env.local`에도 같은 값이 필요하다(빌드가 이 플래그를 요구한다 — §4.7).
+- `CMS_DATABASE_URL`도 함께 필요하다.
 
 ### 6.4 레거시 모음집 처리 — 결정: B (적용 완료)
 
@@ -329,8 +410,9 @@ Oracle이 이를 지적했고 **그 지적이 맞다.** 따라서 이번 자문�
 | P2 | 에디터 "발행 일시" 입력이 로드값으로 초기화되지 않음(저장 시 지워지지는 않음, M9 이전 `13e733a`부터) |
 | P2 | `@char Tooltip` 코드블록 주석이 공개 렌더에 안 나옴 — **파일 기반 운영 모드도 동일** |
 | P2 | 모음집 `description`을 이관하지 않음(사용자 결정으로 되살리지 않음) |
-| P2 | `/preview/start`(Keystatic 라우트)가 M9-BE-3 범위로 남음 — 삭제 시 404가 되어 계획서 §13.4의 401/403과 충돌하므로 **호환 라우트 유지**가 필요(§6.5) |
-| P1(신규) | **Giscus가 `NEXT_PUBLIC_KEYSTATIC_OWNER/REPO`를 쓴다.** BE-3에서 무심코 지우면 **댓글이 깨진다** — 이전 또는 보존 필수(§6.5) |
+| P2 | `/preview/start`는 Keystatic 제거 후 호환 라우트다 — 비인증 401/403, 인증 410 (§4.6) |
+| P1(해소) | **DB 경로에서 빈 slug가 빌드를 깨뜨렸다** — `normalizeSlug`/`getPost`/`getMemo` 수정, 회귀 테스트 추가 (§4.7) |
+| 감수 | **`CMS_PUBLIC_REPOSITORY=postgres`를 배포에 설정하지 않으면 사이트가 뜨지 않는다** (§6.3.1) |
 | 감수 | 관찰 기간 0 → 전환 후 DB 쓰기가 있으면 플래그 롤백이 무손실이 아님(§6.2) |
 | 감수 | 롤백 재배포 소요 시간을 문서로 보장할 수 없음(§6.4) |
 
@@ -338,20 +420,17 @@ Oracle이 이를 지적했고 **그 지적이 맞다.** 따라서 이번 자문�
 
 ---
 
-## 9. 전환 절차
+## 9. 배포 절차
 
 **사용자가 수행:**
-1. `feature/new-cms`를 `main`에 머지·배포
-2. `CMS_PUBLIC_REPOSITORY=postgres` 설정 + 재배포
-3. 공개 확인 — 48편 200, 초안 404, `/admin` 로그인, RSS/sitemap, `/assets` 22장
-4. 문제가 있으면 `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포 (적재 행은 지우지 않는다)
+1. **배포 환경에 `CMS_PUBLIC_REPOSITORY=postgres`와 `CMS_DATABASE_URL` 설정** (필수 — §6.3.1)
+2. `feature/new-cms`를 `main`에 머지·배포
+3. 공개 확인 — 48편 200, 초안 404, `/admin` 로그인, RSS/sitemap, `/assets` 22장, 댓글 영역 없음
+4. 문제가 있으면 **BE-3 이전 커밋으로 되돌려 재배포** (플래그 롤백은 불가 — §7)
 
-**그 뒤 필수 게이트 (건너뛰지 않는다):**
-5. **R5** — 배포된 실제 URL의 HTTP/SEO/RSS/sitemap/API/미리보기, 공개 초안 차단
-6. **O3 정식 자문** — 롤백 방식 변경·보존 정책 확인
-7. **사용자 별도 Keystatic 제거 승인** (§6.3)
-8. **M9-BE-3** — 위 승인 후에만 패키지·라우트 삭제 (§6.5 목록)
-9. **R6** → **M9-RV-1** 최종 검수
+**그 뒤 선택:**
+5. **R5** — 배포된 실제 URL 검수
+6. **R6** → **M9-RV-1** 최종 검수
 
 **이관 계획 지문이 바뀌었다.** 모음집 항목을 버리면서 해시가 달라졌다:
 

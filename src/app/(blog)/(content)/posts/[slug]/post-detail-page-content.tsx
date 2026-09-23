@@ -6,7 +6,6 @@ import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Post } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
-import { Comments } from "./comments.client";
 import { PostBackLink } from "./post-back-link";
 import { PostDetailNavigation } from "./post-detail-navigation";
 
@@ -81,7 +80,6 @@ export const PostDetailPageContent = async ({
 				</article>
 
 				<PostDetailNavigation currentSlug={currentSlug} items={postList} detailPathnamePrefix={detailPathnamePrefix} />
-				<Comments slug={post.slug} />
 			</div>
 			<aside className="hidden xl:block">
 				{toc?.length > 0 ? <TableOfContents toc={toc} className="sticky top-22 max-w-68" /> : null}

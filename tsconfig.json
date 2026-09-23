@@ -20,7 +20,6 @@
 		],
 		"baseUrl": ".",
 		"paths": {
-			"@/keystatic/*": ["./src/keystatic/*"],
 			"@/components/*": ["./src/components/*"],
 			"@/utils/*": ["src/utils/*"],
 			"@/libs/*": ["src/libs/*"],

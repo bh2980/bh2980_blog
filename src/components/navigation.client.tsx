@@ -82,13 +82,13 @@ export default function Navigation({ className }: NavigationProps) {
 				<div className="hidden items-center gap-1 md:flex">
 					{isAdmin && (
 						<Link
-							href={"/keystatic" as Route}
+							href={"/admin" as Route}
 							className={cn(
 								"rounded-md px-3 py-2 font-medium text-sm transition",
 								"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
 								"dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
 								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-								pathname?.startsWith("/keystatic") &&
+								pathname?.startsWith("/admin") &&
 									"bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
 							)}
 						>
@@ -154,12 +154,12 @@ export default function Navigation({ className }: NavigationProps) {
 									{isAdmin && (
 										<SheetClose asChild>
 											<Link
-												href={"/keystatic" as Route}
+												href={"/admin" as Route}
 												className={cn(
 													"rounded-lg px-3 py-3 font-medium text-base transition",
 													"text-slate-700 hover:bg-slate-100",
 													"dark:text-slate-200 dark:hover:bg-slate-800",
-													pathname?.startsWith("/keystatic") && "bg-slate-100 dark:bg-slate-800",
+													pathname?.startsWith("/admin") && "bg-slate-100 dark:bg-slate-800",
 													"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
 												)}
 											>
