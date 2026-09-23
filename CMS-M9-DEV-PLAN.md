@@ -288,6 +288,8 @@ R2 2차가 남긴 P2 4건의 처리:
 | 2026-09-23 | M9-BE-1 · R2 2차 | **통과 — 중대한 결함/위험 없음(머지 가능).** 1차 P0 2건·P1 1건 닫힘 확인, 새 P0/P1 없음. P2 4건 처리(실패 표식, 문서 모순, 테스트 공백, 재호출 구조) | run `45504275`, `production-runner.test.ts` 12건 |
 | 2026-09-23 | M9-TW-1 선행 | 격리 schema에서 운영 경로로 이관한 뒤 **공개 조회→렌더**가 원본과 같은지 검증. 48편 렌더 등가·slug 집합·메타데이터·draft 비공개·이미지 파일 존재 통과 | `public-parity.test.tsx` (5 tests, 실DB) |
 | 2026-09-23 | M9-0 정합성 | 원본 계획(75건, published 74/draft 1)과 운영 DB 읽기 전용 조사(주소 0, 기존 slug 0, 필수 테이블 준비 완료)를 대조. 충돌 위험 0 | §11, `artifacts/cms/m9/target-inspection-pre.json` |
+| 2026-09-23 | M9-BE-1 · 정리 | 운영 DB의 계획 밖 초안 8건을 삭제(사용자 승인 A안). 정체는 2026-09-21 관리자 테스트 데이터(slug 없음). 8건끼리 참조하는 `entry_references` 1행을 먼저 지우고 `entries` 8행 삭제 → 네 테이블 모두 0. Payload·`folders` 미접촉 | `foreign-drafts-pre.txt`, `target-inspection-post-cleanup.json` |
+| 2026-09-23 | M9-BE-1 · 지문 재확인 | 삭제 후 dry-run 재실행. `planDigest 00dcccc1…`이 승인값과 **동일**하고 75건(published 74/draft 1)·blocking 0 유지 → 원본 동결이 유지되고 있음 | `dry-run-post-cleanup.json` |
 
 ---
 
@@ -298,7 +300,7 @@ R2 2차가 남긴 P2 4건의 처리:
 | 운영 DB apply를 위한 안전한 실행 경로 | 방향 확정(O1 ①: 운영 전용 진입점) · 구현과 R2는 남음 | 구현 후 R2 통과 전 |
 | 이미지 22장의 R2 업로드·`media_assets` 등록 | M9 범위 밖으로 확정(O1 ②) | 별도 승인 변경 |
 | status 없는 memo 1편의 의도된 공개 상태 | `js의-비동기-처리-메커니즘.mdx`는 현재 draft 취급. 사용자 승인된 상태 매트릭스 필요 | M9-0/O1 |
-| **운영 DB의 계획 밖 초안 8건** | 이관이 거부된다(R2 P0-1 반영). 보관·삭제로 정리할지, 섞어 이관할지 사용자 결정 필요 | M9-BE-1 실행 전 |
+| ~~**운영 DB의 계획 밖 초안 8건**~~ | **해결.** 관리자 테스트 데이터로 판명되어 2026-09-23 삭제(사용자 승인 A안). 대상이 빈 상태가 됐다 | 완료 |
 | R2 재검수 | **2차 통과**(중대한 결함/위험 없음). 1차 P0 2·P1 1 닫힘, P2 4건 처리 | 완료 |
 | 2026-09-22 DB 스냅샷·원격 롤백 증거의 현재성 | 재측정 필요, 시크릿 없이 기록 | M9-0 |
 | 콘텐츠 원본 파일 보존 정책 | 사용자 별도 결정 전까지 보존 | O3/제거 승인 |
@@ -365,9 +367,9 @@ R2 2차가 남긴 P2 4건의 처리:
 
 ### 11.4 결론과 남은 조건
 
-이관 입력과 대상은 **ID·slug 충돌이 0건**이다(§11.3). 그러나 그와 별개로, 대상에 **계획 밖 초안 8건**이 있어 R2 P0-1 반영 이후 `apply-production`은 **쓰기를 거부**한다. 즉 지금 상태로는 이관이 실행되지 않는다.
+이관 입력과 대상은 **ID·slug 충돌이 0건**이고, 계획 밖 초안 8건도 정리했다(§11.5). `inspect-target` 사후 조사에서 `entries`·`entry_bodies`·`content_addresses`·`entry_references`가 모두 0건이다. **지금 상태로 이관은 통과 가능하다.**
 
-남은 조건은 데이터가 아니라 **승인·동결·초안 8건 처리**다.
+남은 조건은 데이터가 아니라 **승인·동결**이다.
 
 1. **계획 밖 초안 8건 처리 결정** — 보관·삭제(A안) 또는 섞어 이관(B안, 별도 변경+독립 검수 필요). §11.5 참조.
 2. **사용자 운영 이관 승인** — O1 결정 ⑤의 콘텐츠 쓰기 동결 시작/해제 시점을 포함해 승인받는다.
@@ -382,9 +384,10 @@ R2 2차가 남긴 P2 4건의 처리:
 | 쓰기 범위 | **INSERT만.** `entries` 75행, `entry_bodies` 149행(working 75 + published 74), `content_addresses` 75행, `entry_references` 251행 → 총 **550행** |
 | 쓰지 않는 것 | Payload 테이블 19개, 기존 `entries` 8행, 기존 `folders` 1행, `media_assets`, `schedules`, 스키마(DDL 없음), 폴더 배정 |
 | 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`, `--expect-items 75` — 둘 다 필수이고 불일치면 무쓰기 중단. 지문이 **Keystatic 측 동결을 강제**한다(`src/contents`를 고치면 실행이 멈춘다) |
-| 대상 수 고정 | `--expect-existing-entries`도 필수다. 값은 **실행 직전 `inspect-target`으로 다시 관찰한 값**을 쓴다. A안(초안 8건 정리)을 택하면 `0`, 정리하지 않으면 이관이 거부된다(계획 밖 항목 검사). **초안 8건이 남아 있으면 어느 값으로도 통과하지 않는다** |
+| 대상 수 고정 | `--expect-existing-entries`도 필수다. 값은 **실행 직전 `inspect-target`으로 다시 관찰한 값**을 쓴다. 계획 밖 초안 8건을 정리했으므로 현재 **`0`**이다(`target-inspection-post-cleanup.json`) |
 | 실행 전 조건 | 위 `inspect-target` 재관찰 + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
-| 계획 밖 초안 8건의 정체 | 2026-09-21에 생성된 **관리자 화면 테스트 데이터**. 전부 slug 없음. `memo/draft` “테스트 메모”, `post/draft` “제목” 1 + “제목 없음” 4, `tag/draft` “TypeScript”, `tag/published` “Nextjs15”(이 1건은 지금 공개 저장소를 켜면 노출된다). 목록: `artifacts/cms/m9/foreign-drafts-pre.txt` |
+| 계획 밖 초안 8건의 정체 | 2026-09-21에 생성된 **관리자 화면 테스트 데이터**. 전부 slug 없음. `memo/draft` “테스트 메모”, `post/draft` “제목” 1 + “제목 없음” 4, `tag/draft` “TypeScript”, `tag/published` “Nextjs15”(이 1건은 지금 공개 저장소를 켜면 노출된다). 삭제 전 목록: `artifacts/cms/m9/foreign-drafts-pre.txt` |
+| 계획 밖 초안 8건 처리 | **2026-09-23 삭제 완료(A안, 사용자 승인).** `entry_references` 1행 + `entries` 8행 삭제 → `entries`/`entry_bodies`/`content_addresses`/`entry_references` 모두 0. `folderCount` 1·Payload 19개 테이블은 미접촉. 사후: `target-inspection-post-cleanup.json` |
 | 실패 시 동작 | 쓰기 전 실패는 0행 변경. 트랜잭션 중 충돌은 전체 롤백(부분 적재 없음). 적재 후 검증 실패면 **플래그를 켜지 않으므로 공개 영향 0** |
 | 되돌리기 | `CMS_PUBLIC_REPOSITORY`를 되돌리고 재배포한다. 적재 행은 그 상태에서 공개에 쓰이지 않으므로 **삭제하지 않는다**(O1: 자동 삭제 금지) |
 | 이 승인이 여는 것 | M9-BE-1 실행만. **공개 전환(M9-BE-2)과 Keystatic 제거(M9-BE-3)는 별도 승인**이다 |
