@@ -291,6 +291,7 @@ R2 2차가 남긴 P2 4건의 처리:
 | 2026-09-23 | M9-BE-1 · 정리 | 운영 DB의 계획 밖 초안 8건을 삭제(사용자 승인 A안). 정체는 2026-09-21 관리자 테스트 데이터(slug 없음). 8건끼리 참조하는 `entry_references` 1행을 먼저 지우고 `entries` 8행 삭제 → 네 테이블 모두 0. Payload·`folders` 미접촉 | `foreign-drafts-pre.txt`, `target-inspection-post-cleanup.json` |
 | 2026-09-23 | M9-BE-1 · 지문 재확인 | 삭제 후 dry-run 재실행. `planDigest 00dcccc1…`이 승인값과 **동일**하고 75건(published 74/draft 1)·blocking 0 유지 → 원본 동결이 유지되고 있음 | `dry-run-post-cleanup.json` |
 | 2026-09-23 | M9-TW-1 · 로컬 리허설 | 테스트 DB의 격리 schema(`cms_m6_preview`)에 이관하고 **두 모드로 사이트를 띄워 대조**했다. 이 과정에서 **P0 2건**을 찾아 수정: (1) 한글 slug가 전부 500이던 버그, (2) 게시일 해석 차이 25편 | `page.test.ts`(2), 전체 124 files/802 tests |
+| 2026-09-23 | M9-BE-1 · 게시일 | Keystatic이 한국 시간을 UTC로 잘못 저장한 값을 이관 시 KST로 되돌린다(B안 확정). 48편 전수 표시 날짜 불일치 0, RSS도 현재 사이트와 동일. **승인 지문 변경: `00dcccc1…` → `70794ce9…`** | `published-at-seoul.test.ts`(2), `verify-dates.mjs` |
 
 ---
 
@@ -384,7 +385,7 @@ R2 2차가 남긴 P2 4건의 처리:
 | 대상 | Neon `neondb` · schema `public` · role `neondb_owner`(비슈퍼유저) |
 | 쓰기 범위 | **INSERT만.** `entries` 75행, `entry_bodies` 149행(working 75 + published 74), `content_addresses` 75행, `entry_references` 251행 → 총 **550행** |
 | 쓰지 않는 것 | Payload 테이블 19개, 기존 `entries` 8행, 기존 `folders` 1행, `media_assets`, `schedules`, 스키마(DDL 없음), 폴더 배정 |
-| 원본 고정 | `--expect-digest 00dcccc1b7571a04ccb124aa6e10966afdb7208c8e8a346c42c5bf17ce8a88ab`, `--expect-items 75` — 둘 다 필수이고 불일치면 무쓰기 중단. 지문이 **Keystatic 측 동결을 강제**한다(`src/contents`를 고치면 실행이 멈춘다) |
+| 원본 고정 | `--expect-digest 70794ce90e83db05d5acb3f5d91bf7d10c2ffb012eae377669d632643c3cbbf4`, `--expect-items 75` — 둘 다 필수이고 불일치면 무쓰기 중단. 지문이 **Keystatic 측 동결을 강제**한다(`src/contents`를 고치면 실행이 멈춘다) |
 | 대상 수 고정 | `--expect-existing-entries`도 필수다. 값은 **실행 직전 `inspect-target`으로 다시 관찰한 값**을 쓴다. 계획 밖 초안 8건을 정리했으므로 현재 **`0`**이다(`target-inspection-post-cleanup.json`) |
 | 실행 전 조건 | 위 `inspect-target` 재관찰 + **O1 결정 ⑤ 양쪽 콘텐츠 쓰기 동결 시작** |
 | 계획 밖 초안 8건의 정체 | 2026-09-21에 생성된 **관리자 화면 테스트 데이터**. 전부 slug 없음. `memo/draft` “테스트 메모”, `post/draft` “제목” 1 + “제목 없음” 4, `tag/draft` “TypeScript”, `tag/published` “Nextjs15”(이 1건은 지금 공개 저장소를 켜면 노출된다). 삭제 전 목록: `artifacts/cms/m9/foreign-drafts-pre.txt` |
@@ -436,35 +437,35 @@ if (post.slug !== slug) permanentRedirect(`/posts/${post.slug}`);
 `encodeURIComponent`로 인코딩한다. `posts/[slug]`와 `memos/[slug]` 둘 다.
 회귀 테스트 `page.test.ts`는 수정 전 코드에서 실패하고 수정 후 통과한다.
 
-### 12.2 P0 · 게시일 해석 차이 — **사용자 결정 필요**
+### 12.2 P0 · 게시일 해석 차이 — **B안으로 확정(사용자 판단)**
 
-원본 frontmatter는 49편 전부 UTC를 명시한다(`publishedDateTimeISO: 2026-01-05T19:38:00.000Z`).
+원본 frontmatter는 49편 전부 `publishedDateTimeISO: 2026-01-05T19:38:00.000Z`처럼 UTC를 명시한다.
+그러나 **이 `Z`는 Keystatic의 버그로 한국 시간이 UTC로 잘못 저장된 값**이다(사용자 확인).
+실제 의도한 시각은 **19:38 KST**다.
 
-| | Keystatic(현재 운영) | DB(이관 후) |
-| --- | --- | --- |
-| 해석 | `Z`를 버리고 naive 문자열을 **지역시각**으로 읽음 | 원본의 UTC를 그대로 보존 |
-| 화면 날짜 | 2026년 1월 5일 | 2026년 1월 6일 |
-| RSS `pubDate` | `09 Apr 2026 18:12 GMT` | `10 Apr 2026 03:12 GMT` |
-| `dateTime` 속성 | `…T19:38` (분 단위) | `…T19:38:00.000Z` |
+| | Keystatic(현재 운영) | 수정 전 DB | 수정 후 DB |
+| --- | --- | --- | --- |
+| 해석 | `Z`를 버리고 naive를 지역시각으로 | 원본 UTC를 그대로 신뢰 | wall-clock을 KST로 해석 |
+| 화면 날짜 | 2026년 1월 5일 | 2026년 1월 6일 ✗ | **2026년 1월 5일** ✓ |
+| RSS `pubDate` | `09 Apr 18:12 GMT` | `10 Apr 03:12 GMT` ✗ | **`09 Apr 18:12 GMT`** ✓ |
 
-**발행 48편 중 25편의 화면 날짜가 하루 달라진다.** UTC 시각이 15:00 이후인 항목이 KST로 넘어가기 때문이다.
-RSS `pubDate`는 8건이 정확히 9시간(KST) 이동한다.
+**수정:** `import-plan.ts`의 `keystaticPublishedAt`이 오프셋을 떼고 `+09:00`을 붙인다.
+표시 날짜(`metadata.publishedAt`)와 공개 시각 컴럼 둘 다 같은 값을 쓴다. 오프셋을 명시하므로
+서버 타임존과 무관하게 같은 날짜가 나온다.
 
-원본이 `Z`를 명시하므로 **DB 쪽이 데이터에 충실**하지만, 지금 사이트가 보여주는 날짜와 달라지는 것은
-사실이다. 다음 중 하나를 골라야 한다.
+**검증:** 발행 **48편 전수에서 표시 날짜 불일치 0건**(`verify-dates.mjs`), RSS `pubDate`도 현재 사이트와 동일.
+회귀 테스트 `published-at-seoul.test.ts`(2건).
 
-| 안 | 내용 | 결과 |
-| --- | --- | --- |
-| **A** | DB를 그대로 둔다(원본 UTC 준수) | 25편 날짜가 하루 이동. 데이터에 충실 |
-| **B** | 이관 시 naive 부분을 KST로 해석 | 현재 사이트와 표시가 같음. 원본의 `Z`를 무시 |
+**승인 지문이 바뀌었다:** `00dcccc1…` → **`70794ce90e83db05d5acb3f5d91bf7d10c2ffb012eae377669d632643c3cbbf4`**.
+타임스탬프가 metadata를 거쳐 contentHash에 들어가기 때문이다. 승인은 **새 지문**으로 받아야 한다.
 
 ### 12.3 본문 등가성
 
 데이터 수준 대조(`public-parity.test.tsx`, 격리 schema에서 운영 경로로 이관)는 **48편 본문 렌더가
-원본과 동일**함을 이미 고정했다. HTTP 수준 대조는 날짜 차이(§12.2)와 RSC 스트리밍
-placeholder 차이를 제외하면 46/48 일치했고, 남은 2편은 로컬 Keystatic 서버가 프로덕션 모드에서
-GitHub 리더를 타 `<title>GitHub</title>`을 돌려주는 등 **로컬 서버 자체가 신뢰할 수 없어**
-HTTP 대조를 확정 근거로 쓰지 않는다. 전환 시점에 두 배포로 다시 대조한다.
+원본과 동일**함을 고정했다. HTTP 수준 대조는 날짜(§12.2)와 RSC 스트리밍 placeholder 차이를
+제외하면 46/48 일치했고, 남은 2편은 로컬 Keystatic 서버가 프로덕션 모드에서 GitHub 리더를 타
+`<title>GitHub</title>`을 돌려주는 등 **로컬 서버 자체가 신뢰할 수 없어** HTTP 대조를 확정 근거로
+쓰지 않는다. 전환 시점에 두 배포로 다시 대조한다.
 
 ### 12.4 부수적으로 추가한 것
 

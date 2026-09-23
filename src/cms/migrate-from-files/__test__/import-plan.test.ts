@@ -49,7 +49,9 @@ describe("import plan", () => {
 			const post = plan.items.find((item) => item.collection === "post");
 			expect(post?.status).toBe("published");
 			expect(post?.published).toBeDefined();
-			expect(post?.publishedAt?.toISOString()).toBe("2026-01-02T03:04:00.000Z");
+			// 원본은 `…T03:04:00.000Z`지만 Keystatic이 한국 시간을 UTC로 잘못 저장한 값이다.
+			// 이관은 wall-clock을 KST로 해석하므로 03:04 KST = 전날 18:04 UTC가 된다.
+			expect(post?.publishedAt?.toISOString()).toBe("2026-01-01T18:04:00.000Z");
 			expect(post?.working.metadata).toMatchObject({ title: "첫 글", policy: "normal" });
 
 			const memo = plan.items.find((item) => item.collection === "memo");
@@ -57,7 +59,7 @@ describe("import plan", () => {
 			expect(memo?.published).toBeUndefined();
 			// 초안이어도 원본 날짜는 작업본 메타데이터에만 남고 공개 시각 컬럼은 null이다.
 			expect(memo?.publishedAt).toBeNull();
-			expect(memo?.working.metadata).toMatchObject({ publishedAt: "2026-01-03T03:04:00.000Z" });
+			expect(memo?.working.metadata).toMatchObject({ publishedAt: "2026-01-03T03:04:00.000+09:00" });
 		} finally {
 			fixture.cleanup();
 		}

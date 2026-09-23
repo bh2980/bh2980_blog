@@ -37,13 +37,34 @@ const emptyIdMap = (): Record<LegacyKind, Map<string, string>> => ({
 	collection: new Map(),
 });
 
+/**
+ * Keystatic의 datetime 필드가 **한국 시간을 UTC로 잘못 저장**했다(사용자 확인, 2026-09-23).
+ *
+ * 원본 frontmatter는 `2026-01-05T19:38:00.000Z`라고 적혀 있지만 실제 의도한 시각은 **19:38 KST**다.
+ * 그대로 읽으면 `19:38Z` = 다음 날 04:38 KST가 되어, 발행 48편 중 25편의 표시 날짜가 하루 밀리고
+ * RSS `pubDate`가 9시간 이동한다. wall-clock을 KST로 다시 붙인다.
+ *
+ * 오프셋을 명시하므로 서버 타임존과 무관하게 같은 날짜가 나온다.
+ */
+const SEOUL_OFFSET = "+09:00";
+
+export function keystaticPublishedAt(value: string | null): string | null {
+	if (!value) return null;
+	const wallClock = value.replace(/(Z|[+-]\d{2}:?\d{2})$/, "");
+	if (!wallClock) return value;
+
+	const withSeoul = `${wallClock}${SEOUL_OFFSET}`;
+	return Number.isNaN(Date.parse(withSeoul)) ? value : withSeoul;
+}
+
 const metadataFor = (
 	item: LegacyContentItem,
 	ids: Record<LegacyKind, Map<string, string>>,
 ): { metadata: Record<string, unknown>; blocking: ImportPlanIssue[] } => {
 	const blocking: ImportPlanIssue[] = [];
 	// 초안도 원본 발행일을 작업본 메타데이터에만 남긴다(공개 시각 컬럼은 null).
-	const publishedAt = item.publishedAt ?? undefined;
+	// 표시 날짜는 이 문자열을 그대로 쓴다(§`keystaticPublishedAt`).
+	const publishedAt = keystaticPublishedAt(item.publishedAt) ?? undefined;
 
 	if (item.kind === "category" || item.kind === "tag") {
 		return { metadata: { title: item.title }, blocking };
@@ -181,7 +202,7 @@ export async function buildImportPlan(corpus: LegacyCorpus): Promise<ImportPlan>
 				schemaVersion: snapshot.schemaVersion,
 				contentHash: snapshot.contentHash,
 			};
-			const publishedAt = item.publishedAt ? new Date(item.publishedAt) : null;
+			const publishedAt = item.publishedAt ? new Date(keystaticPublishedAt(item.publishedAt) as string) : null;
 			const isPublished = item.status === "published";
 
 			items.push({
