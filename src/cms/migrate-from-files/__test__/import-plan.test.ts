@@ -65,13 +65,14 @@ describe("import plan", () => {
 		}
 	});
 
-	it("관계 참조를 metadata 기반으로 만들고 모음집 itemIds를 memo ID로 해석한다", async () => {
+	it("관계 참조를 metadata 기반으로 만들고 모음집은 memo 항목을 버린다", async () => {
 		const fixture = createFixtureCorpus();
 		try {
 			const plan = await buildImportPlan(readLegacyCorpus(fixture.root));
-			const memoId = plan.ids.memo.get("메모-하나") as string;
 			const collection = plan.items.find((item) => item.collection === "collection");
-			expect(collection?.working.metadata).toMatchObject({ itemIds: [memoId] });
+			// CMS-SPEC §6: itemIds는 게시글(post)만 대상이라 레거시 memo 관계는 이관하지 않는다.
+			expect(collection?.working.metadata).not.toHaveProperty("itemIds");
+			expect(plan.warnings.map((issue) => issue.code)).toContain("dropped_collection_items");
 
 			const post = plan.items.find((item) => item.collection === "post");
 			expect(post?.references.some((ref) => ref.kind === "category")).toBe(true);
@@ -82,14 +83,16 @@ describe("import plan", () => {
 		}
 	});
 
-	it("없는 태그·카테고리·모음집 항목은 blocking으로 보고한다", async () => {
+	it("없는 태그·카테고리는 blocking으로 보고하고, 모음집 항목은 버린다", async () => {
 		const fixture = createFixtureCorpus({ collectionItems: ["없는-메모"] });
 		try {
 			const plan = await buildImportPlan(readLegacyCorpus(fixture.root));
-			expect(plan.blocking.map((issue) => issue.code)).toContain("missing_collection_item");
+			// 레거시 memo 관계는 이관 대상이 아니므로 항목 미해결은 blocking이 아니다.
+			expect(plan.blocking.map((issue) => issue.code)).not.toContain("missing_collection_item");
+			expect(plan.warnings.map((issue) => issue.code)).toContain("dropped_collection_items");
 
-			const tags = plan.items.find((item) => item.collection === "collection");
-			expect(tags?.working.metadata).not.toHaveProperty("itemIds");
+			const collection = plan.items.find((item) => item.collection === "collection");
+			expect(collection?.working.metadata).not.toHaveProperty("itemIds");
 		} finally {
 			fixture.cleanup();
 		}

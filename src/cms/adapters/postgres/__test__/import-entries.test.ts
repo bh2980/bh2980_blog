@@ -106,8 +106,8 @@ describe("M6-BE-2 importEntries / readExportSnapshot 계약", () => {
 		expect(postRefs.some((reference) => reference.kind === "tag")).toBe(true);
 
 		const collection = first.entries.find((entry) => entry.collection === "collection");
-		const itemIds = (collection?.working.metadata as { itemIds?: string[] }).itemIds;
-		const memoId = first.entries.find((entry) => entry.collection === "memo")?.id;
-		expect(itemIds).toContain(memoId);
+		// CMS-SPEC §6: itemIds는 게시글(post)만 대상이다. 레거시 memo 관계는 이관하지 않는다.
+		expect(collection?.working.metadata).not.toHaveProperty("itemIds");
+		expect(first.references.some((reference) => reference.entryId === collection?.id)).toBe(false);
 	});
 });

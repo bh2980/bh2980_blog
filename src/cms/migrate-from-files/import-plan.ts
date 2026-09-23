@@ -52,31 +52,28 @@ export { keystaticPublishedAt } from "@/libs/contents/published-at";
 const metadataFor = (
 	item: LegacyContentItem,
 	ids: Record<LegacyKind, Map<string, string>>,
-): { metadata: Record<string, unknown>; blocking: ImportPlanIssue[] } => {
+): { metadata: Record<string, unknown>; blocking: ImportPlanIssue[]; warnings: ImportPlanIssue[] } => {
 	const blocking: ImportPlanIssue[] = [];
+	const warnings: ImportPlanIssue[] = [];
 	// 초안도 원본 발행일을 작업본 메타데이터에만 남긴다(공개 시각 컬럼은 null).
 	// 표시 날짜는 이 문자열을 그대로 쓴다(§`keystaticPublishedAt`).
 	const publishedAt = keystaticPublishedAt(item.publishedAt) ?? undefined;
 
 	if (item.kind === "category" || item.kind === "tag") {
-		return { metadata: { title: item.title }, blocking };
+		return { metadata: { title: item.title }, blocking, warnings };
 	}
 
 	if (item.kind === "collection") {
-		const itemIds: string[] = [];
-		for (const memoSlug of item.itemSlugs) {
-			const memoId = ids.memo.get(memoSlug);
-			if (!memoId) {
-				blocking.push({
-					code: "missing_collection_item",
-					path: item.path,
-					message: `모음집 항목을 찾을 수 없습니다: ${memoSlug}`,
-				});
-				continue;
-			}
-			itemIds.push(memoId);
+		// CMS-SPEC §6: itemIds는 게시글(post)만을 대상으로 한다. 원본 모음집의 관계는 레거시
+		// `meta.wiki.memo`(memo)라서 이관할 수 없다. 버리고 개수만 기록한다(사용자 결정, M9).
+		if (item.itemSlugs.length > 0) {
+			warnings.push({
+				code: "dropped_collection_items",
+				path: item.path,
+				message: `모음집 항목 ${item.itemSlugs.length}개를 버린다(memo는 itemIds 대상이 아니다)`,
+			});
 		}
-		return { metadata: { title: item.title, ...(itemIds.length > 0 ? { itemIds } : {}) }, blocking };
+		return { metadata: { title: item.title }, blocking, warnings };
 	}
 
 	const tagIds: string[] = [];
@@ -97,6 +94,7 @@ const metadataFor = (
 				...(publishedAt ? { publishedAt } : {}),
 			},
 			blocking,
+			warnings,
 		};
 	}
 
@@ -122,6 +120,7 @@ const metadataFor = (
 			...(item.policy ? { policy: item.policy } : {}),
 		},
 		blocking,
+		warnings,
 	};
 };
 
@@ -159,8 +158,9 @@ export async function buildImportPlan(corpus: LegacyCorpus): Promise<ImportPlan>
 	const items: ImportEntryItem[] = [];
 	for (const group of groups) {
 		for (const item of group.items) {
-			const { metadata, blocking: metadataIssues } = metadataFor(item, ids);
+			const { metadata, blocking: metadataIssues, warnings: metadataWarnings } = metadataFor(item, ids);
 			blocking.push(...metadataIssues);
+			warnings.push(...metadataWarnings);
 
 			// inspect와 apply가 같은 기준으로 막도록 빈 본문을 여기서도 blocking으로 본다.
 			if ((item.kind === "post" || item.kind === "memo") && item.mdx.trim().length === 0) {
