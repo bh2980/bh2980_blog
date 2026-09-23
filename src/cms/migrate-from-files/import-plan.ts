@@ -1,5 +1,6 @@
 import type { ImportEntryItem } from "@/cms/adapters/postgres/content-store";
 import { prepareSnapshot } from "@/cms/services/content-service";
+import { keystaticPublishedAt } from "@/libs/contents/published-at";
 import type { LegacyContentItem, LegacyCorpus, LegacyKind } from "./legacy-parser";
 import { stableId } from "./stable-id";
 
@@ -44,18 +45,9 @@ const emptyIdMap = (): Record<LegacyKind, Map<string, string>> => ({
  * 그대로 읽으면 `19:38Z` = 다음 날 04:38 KST가 되어, 발행 48편 중 25편의 표시 날짜가 하루 밀리고
  * RSS `pubDate`가 9시간 이동한다. wall-clock을 KST로 다시 붙인다.
  *
- * 오프셋을 명시하므로 서버 타임존과 무관하게 같은 날짜가 나온다.
+ * 파일 기반 조회(`keystatic` 저장소)도 같은 값을 써야 하므로 공유 모듈로 옮기고 여기서는 재수출만 한다.
  */
-const SEOUL_OFFSET = "+09:00";
-
-export function keystaticPublishedAt(value: string | null): string | null {
-	if (!value) return null;
-	const wallClock = value.replace(/(Z|[+-]\d{2}:?\d{2})$/, "");
-	if (!wallClock) return value;
-
-	const withSeoul = `${wallClock}${SEOUL_OFFSET}`;
-	return Number.isNaN(Date.parse(withSeoul)) ? value : withSeoul;
-}
+export { keystaticPublishedAt } from "@/libs/contents/published-at";
 
 const metadataFor = (
 	item: LegacyContentItem,

@@ -597,7 +597,37 @@ HTML을 받아 비교했다(script/style 제거 후 태그·공백 정규화).
 **주의:** 본문 안에 코드 예시로 `<title>GitHub</title>` 같은 문자열이 들어 있어, 응답에서
 첫 `<title>`만 보고 판단하면 오판한다. 페이지 제목은 `og:title`로 확인해야 한다.
 
-## 13. 범위 밖
+### 13.5 R3가 찾은 P1 · 표시 날짜가 실행 환경 타임존에 묶여 있었다 (수정 완료)
+
+`src/utils/format-published-at.ts`의 `Intl.DateTimeFormat`에 `timeZone`이 없어 **프로세스 로컬
+시간대**로 날짜를 그렸고, 저장소에 `TZ` 설정이 없었다. 이관 전에는 파일 경로가 Keystatic의 잘못된
+`Z` 값을 그대로 넘겨 UTC 런타임에서 **우연히** KST 벽시계가 보였지만, 이관 후 DB는 정확한 순간
+(`+09:00`)을 주므로 UTC 런타임에서 KST 벽시계 00:00~08:59 발행분이 **하루 앞당겨진다**.
+
+| | 파일 경로 | DB 경로 |
+| --- | --- | --- |
+| 저장 값 | `2026-02-13T00:21:00Z` (KST 벽시계를 UTC로 오표기) | `2026-02-13T00:21:00+09:00` |
+| 수정 전 UTC 런타임 | 2월 13일 (우연히 맞음) | **2월 12일 (회귀)** |
+| 수정 후 | 2월 13일 | 2월 13일 |
+
+수정:
+1. `formatPublishedAt`에 `timeZone: "Asia/Seoul"`을 고정했다.
+2. 파일 기반 조회도 같은 값을 쓰도록 `keystaticPublishedAt`을 `src/libs/contents/published-at.ts`로
+   옮기고 `keystatic.ts`에서 `publishedDateTimeISO`를 정규화했다(`import-plan.ts`는 재수출).
+   이 정규화가 없으면 파일 경로가 15시 이후 발행분에서 하루 밀린다.
+3. 회귀 테스트 `src/utils/format-published-at.test.ts` — **수정 전 코드에서 실패**하고
+   수정 후 통과한다(UTC에서 `2026년 4월 9일` → `2026년 4월 10일`).
+4. `memos/[slug]/page.test.ts` 추가 — posts와 같은 500 수정이 메모 쪽에만 테스트가 없었다.
+
+검증(둘 다 `TZ=UTC`, 운영 DB):
+- DB 경로 공개 48편 화면 날짜 **48/48** 일치
+- 파일 경로 공개 48편 화면 날짜 **48/48** 일치 → 전환 전 라이브 사이트도 깨지지 않는다
+- 전체 스위트 `TZ=UTC`에서 **809 tests / 126 files PASS**, `pnpm typecheck` 0
+
+R3의 나머지 지적도 함께 처리했다: 계획서 `## 13` 중복 제목을 `## 14`로 고쳤고,
+`preview-targets.json`의 초안 `slug: null`은 에디터 URL이 id라 동작에 영향이 없어 그대로 둔다.
+
+## 14. 범위 밖
 
 - 사용자 정의 컬렉션/스키마 빌더와 웹 기반 확장 시스템(M9 이후 별도 v2).
 - 과거 본문 버전 이력/복원 UI.

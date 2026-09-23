@@ -1,6 +1,7 @@
 import "server-only";
 
 import { reader } from "@/keystatic/libs/reader";
+import { keystaticPublishedAt } from "@/libs/contents/published-at";
 import { isDefined } from "@/utils/is-defined";
 import { sanitize } from "@/utils/sanitize";
 import type { ContentRepository } from "../contracts/repository";
@@ -47,7 +48,7 @@ export class KeystaticRepository implements ContentRepository {
 				category: { label: category.name, slug: normalizedCategorySlug },
 				tags,
 				contentMdx,
-				publishedAt: post.publishedDateTimeISO,
+				publishedAt: keystaticPublishedAt(post.publishedDateTimeISO) ?? post.publishedDateTimeISO,
 				isEvergreen,
 			};
 
@@ -91,7 +92,7 @@ export class KeystaticRepository implements ContentRepository {
 				title: memo.title,
 				contentMdx,
 				tags,
-				publishedAt: memo.publishedDateTimeISO,
+				publishedAt: keystaticPublishedAt(memo.publishedDateTimeISO) ?? memo.publishedDateTimeISO,
 			};
 		}
 
