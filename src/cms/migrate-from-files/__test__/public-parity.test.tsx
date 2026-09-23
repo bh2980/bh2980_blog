@@ -15,6 +15,7 @@ import { type ContentStore, createContentStore, migrateContentStore } from "@/cm
 import { buildImportPlan } from "@/cms/migrate-from-files/import-plan";
 import { type LegacyCorpus, readLegacyCorpus } from "@/cms/migrate-from-files/legacy-parser";
 import { planDigest, runProductionApply } from "@/cms/migrate-from-files/production-runner";
+import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
 import { PostgresRepository } from "@/libs/contents/repositories/postgres";
 
@@ -64,6 +65,14 @@ const imageSources = (html: string): string[] => {
 		found.add(match[1]);
 	}
 	return [...found].sort();
+};
+
+const collectNodeTypes = (node: unknown, out: Set<string>): void => {
+	if (!node || typeof node !== "object") return;
+	const current = node as { type?: string; content?: unknown[]; marks?: { type?: string }[] };
+	if (current.type) out.add(current.type);
+	for (const mark of current.marks ?? []) if (mark.type) out.add(mark.type);
+	for (const child of current.content ?? []) collectNodeTypes(child, out);
 };
 
 describeWithDb("M9-TW-1 이관 후 공개 렌더 등가성 (실DB)", () => {
@@ -185,6 +194,49 @@ describeWithDb("M9-TW-1 이관 후 공개 렌더 등가성 (실DB)", () => {
 
 		expect(sources.length).toBe(48);
 		expect(mismatches).toEqual([]);
+	}, 300_000);
+
+	it("적재된 본문이 TipTap 에디터로 그대로 로드되고 재저장해도 달라지지 않는다", async () => {
+		// 공개 렌더링만 보면 에디터가 못 여는 본문을 놓친다. 에디터가 쓰는 경로(mdxToTiptap)를
+		// 그대로 태워서, 열리지 않거나 저장할 때마다 본문이 바뀌는 항목을 잡는다.
+		const snapshot = await store.readExportSnapshot();
+		const bodies = snapshot.entries
+			.filter((entry) => entry.collection === "post" || entry.collection === "memo")
+			.flatMap((entry) =>
+				[entry.working, entry.published]
+					.filter((body) => body !== undefined)
+					.map((body) => ({ label: `${entry.collection}/${entry.publishedSlug ?? entry.id}`, mdx: body.mdx })),
+			);
+
+		const failures: string[] = [];
+		const nodeTypes = new Set<string>();
+
+		for (const { label, mdx } of bodies) {
+			try {
+				const doc = mdxToTiptap(mdx);
+				const content = (doc as { content?: unknown[] }).content;
+				if (!Array.isArray(content) || content.length === 0) {
+					failures.push(`${label}: 빈 문서`);
+					continue;
+				}
+				collectNodeTypes(doc, nodeTypes);
+
+				// 에디터가 저장할 때 본문이 달라지면 안 된다.
+				if (JSON.stringify(mdxToTiptap(tiptapToMdx(doc))) !== JSON.stringify(doc)) {
+					failures.push(`${label}: 재저장 시 문서가 달라짐`);
+				}
+			} catch (error) {
+				failures.push(`${label}: 변환 실패 ${(error as Error).message.slice(0, 80)}`);
+			}
+		}
+
+		expect(bodies.length).toBe(97); // 49편 × working + 48편 published
+		expect(failures).toEqual([]);
+		// 에디터가 못 그리는 블록도 보존돼야 한다(수식·표·mermaid 등).
+		expect(nodeTypes.has("cmsOpaqueBlock")).toBe(true);
+		expect(nodeTypes.has("cmsTooltip")).toBe(true);
+		expect(nodeTypes.has("image")).toBe(true);
+		expect(nodeTypes.has("codeBlock")).toBe(true);
 	}, 300_000);
 
 	it("공개 본문에 남은 이미지 경로가 실제 파일로 존재한다", async () => {
