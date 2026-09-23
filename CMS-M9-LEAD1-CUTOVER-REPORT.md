@@ -280,7 +280,7 @@ memo 41건은 이미 의미 있는 ASCII(`4-pick`, `898-includes`, `download-fil
 | `js의-코드-실행-메커니즘` | `js-code-execution-mechanism` |
 | `tuple과-readonly` | `tuple-and-readonly` |
 | `정규표현식-정리` | `regular-expression-notes` |
-| `js의-비동기-처리-메커니즘` (초안) | `js-async-processing-method` → `js-async-processing-mechanism` |
+| `js의-비동기-처리-메커니즘` (초안) | `js-async-processing-mechanism` |
 
 **O3 사전 자문이 방식을 바꿔놓았다.**
 
