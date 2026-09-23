@@ -515,6 +515,75 @@ DB에 그대로 남아 있다(`@char` 4/4). 즉 이 기능은 지금도 공개 �
 
 ---
 
+## 13. 운영 DB 이관 실행 결과 (M9-BE-1 완료)
+
+사용자 승인 후 실행했다. 실행 전 `apply-production --dry-run`으로 지문을 재확인해
+`70794ce90e83db05d5acb3f5d91bf7d10c2ffb012eae377669d632643c3cbbf4`가 승인값과 같음을
+확인했고(동결 유지), 그 값으로 1회 적재했다.
+
+```
+CMS_MIGRATION_APPLY_PRODUCTION=1 … apply-production \
+  --expect-digest 70794ce9… --expect-items 75 --expect-existing-entries 0
+
+[apply-production] schema=public db=neondb role=neondb_owner
+  원본 지문: 70794ce90e83db05d5acb3f5d91bf7d10c2ffb012eae377669d632643c3cbbf4
+  적재: imported=75 skipped=0
+  검증: entries=75 published=74 draft=1 slugSetsMatch=true
+```
+
+- 대상은 `CMS_DATABASE_URL`(운영 브랜치 `ep-bitter-pine…`)의 `public` schema다.
+  시험 브랜치(`ep-raspy-recipe…`)가 아니다 — 두 DSN은 호스트가 다르고, 운영 진입점은
+  `cms_m6_*` schema와 두 DSN이 같은 DB인 경우를 거부한다.
+- `outcome: verified`, `missingSlugs`·`unexpectedSlugs` 모두 0, `blocking` 없음.
+- Payload 19개 테이블 미접촉. `folders`=1(기존), `media_assets`=0, `schedules`=0.
+
+### 13.1 사후 대조 (READ ONLY)
+
+`inspect-target`은 `BEGIN TRANSACTION READ ONLY`로만 돈다.
+
+| 항목 | 값 |
+| --- | --- |
+| schemaReady / isSuperuser | true / false |
+| entries | 75 (post 7, memo 42, category 3, tag 22, collection 1) |
+| 상태 | published 74 / draft 1 |
+| addresses | current 74, reservation 1 |
+| media_assets / folders / schedules | 0 / 1 / 0 |
+
+draft 1건은 `reservation` 주소를 갖는다 — 초안 미리보기 조회가 이 주소로 해석된다.
+
+### 13.2 이미지 22장
+
+이미지 바이너리는 옮기지 않고 기존 `/assets` 경로를 그대로 쓴다(O1 결정 ②).
+
+| 검사 | 결과 |
+| --- | --- |
+| 본문 참조 고유 경로 | 22 |
+| `public/` 실제 파일 존재 | **22/22** |
+| SHA-256 | `artifacts/cms/m9/assets-sha256.txt`에 기록 |
+| HTTP 200 | **22/22** |
+
+경로는 본문에 퍼센트 인코딩돼 저장돼 있어, 대조 시 `unquote` 후 파일을 찾아야 한다.
+
+### 13.3 운영 DB를 읽는 구성으로 스모크 테스트
+
+`CMS_PUBLIC_REPOSITORY=postgres` + 운영 DB(`schema=public`)로 띄워 확인했다.
+
+| 경로 | 비인증 | 인증(dev bypass) |
+| --- | --- | --- |
+| `/posts/[발행글]` | 200 | 200 (제목·og:title 일치) |
+| `/memos/[발행글]` | 200 | 200 |
+| `/preview/memos/[초안]` | **404** | **200** |
+| `/memos/[초안]` (공개 경로) | **404** | 404 |
+| `/admin` | 307(로그인) | — |
+| `/assets/...` | 200 | — |
+
+미리보기 경로는 `/preview/posts/[slug]`·`/preview/memos/[slug]`다(`/preview/start`는 Keystatic 라우트라
+M9-BE-3 범위). 초안 미리보기 라우트가 없는 글에 200을 주지 않는 것은 `getPreviewMemo`가
+`notFound()`로 fail-closed 하기 때문이다.
+
+**주의:** 본문 안에 코드 예시로 `<title>GitHub</title>` 같은 문자열이 들어 있어, 응답에서
+첫 `<title>`만 보고 판단하면 오판한다. 페이지 제목은 `og:title`로 확인해야 한다.
+
 ## 13. 범위 밖
 
 - 사용자 정의 컬렉션/스키마 빌더와 웹 기반 확장 시스템(M9 이후 별도 v2).
