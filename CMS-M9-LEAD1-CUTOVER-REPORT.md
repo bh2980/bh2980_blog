@@ -90,11 +90,12 @@ CMS_MIGRATION_APPLY_PRODUCTION=1 … apply-production \
 
 | 검사 | 결과 |
 | --- | --- |
-| `public/` 파일 존재 · SHA-256 | 22/22 |
-| HTTP 200 · **응답 바이트** SHA-256 | 22/22 |
+| `public/` 파일 존재 · SHA-256 | 22/22 (`assets-sha256.txt`) |
+| HTTP 200 · **응답 바이트** SHA-256 | 22/22 (`assets-http-response-sha256.txt`) |
 
 경로는 본문에 퍼센트 인코딩돼 저장돼 있어 대조 시 `unquote` 후 파일을 찾아야 한다.
-**로컬 서버 기준이다.** 실제 배포 CDN 응답은 이 환경에서 `bh2980.dev` DNS가 해석되지 않아 확인하지 못했다.
+**로컬 서버(`next dev`, TZ=UTC, 운영 DB 구성) 기준이다.** 실제 배포 CDN 응답은 이 환경에서
+`bh2980.dev` DNS가 해석되지 않아 확인하지 못했다(§6.4).
 
 ### 3.4 실제 브라우저 전수 확인 (75건)
 
@@ -292,7 +293,8 @@ bca5a06 feat(cms): M9-BE-1 운영 전용 이관 진입점과 안전 가드를 �
 artifacts/cms/m9/production-apply.json           이관 실행 보고서 (outcome=verified)
 artifacts/cms/m9/target-inspection-applied.json  READ ONLY 사후 대조
 artifacts/cms/m9/dry-run-approval.json           승인 시점 계획·지문
-artifacts/cms/m9/assets-sha256.txt               이미지 22장 해시·바이트
+artifacts/cms/m9/assets-sha256.txt               이미지 22장 파일 해시·바이트
+artifacts/cms/m9/assets-http-response-sha256.txt 이미지 22장 HTTP 응답 바이트 해시(로컬)
 artifacts/cms/m9/restore-working-bodies.json     복원 대상 계획 원본
 artifacts/cms/m9/restore-working-bodies.mjs      복원 스크립트(드라이런 기본)
 artifacts/cms/m9/preview-targets.json            공개 48 + 에디터 49 목록

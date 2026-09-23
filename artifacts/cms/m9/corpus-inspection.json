@@ -1,0 +1,2205 @@
+{
+  "generatedAt": "2026-09-23T00:03:33.195Z",
+  "root": "/Users/bh2980/Desktop/bh2980_blog",
+  "counts": {
+    "posts": 7,
+    "memos": 42,
+    "categories": 3,
+    "tags": 22,
+    "collections": 1,
+    "mdxItems": 49,
+    "images": 22,
+    "imagesMissing": 0,
+    "imagesEmptyAlt": 22,
+    "codeFences": 166,
+    "tables": 12,
+    "blockMath": 1,
+    "jsxComponents": 9
+  },
+  "items": [
+    {
+      "kind": "post",
+      "path": "src/contents/posts/ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면.mdx",
+      "slug": "ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면",
+      "title": "AI가 뱉어낸 코드의 숲에서 길을 잃지 않으려면",
+      "status": "published",
+      "publishedAt": "2026-03-17T09:28:00.000Z",
+      "categorySlug": "essay",
+      "tagSlugs": [
+        "ai"
+      ],
+      "codeFenceLanguages": [
+        "mermaid"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Tooltip"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/내가-만든-rag의-성능-측정하기.mdx",
+      "slug": "내가-만든-rag의-성능-측정하기",
+      "title": "내가 만든 RAG의 성능 측정하기",
+      "status": "published",
+      "publishedAt": "2026-04-10T03:12:00.000Z",
+      "categorySlug": "development",
+      "tagSlugs": [
+        "ai"
+      ],
+      "codeFenceLanguages": [
+        "chart"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 3,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "u",
+        "br",
+        "Callout"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+      "slug": "블로그라면-seo는-해봐야지",
+      "title": "블로그라면 SEO는 해봐야지",
+      "status": "published",
+      "publishedAt": "2026-02-13T00:21:00.000Z",
+      "categorySlug": "development",
+      "tagSlugs": [
+        "blog",
+        "nextjs",
+        "seo"
+      ],
+      "codeFenceLanguages": [
+        "html",
+        "ts",
+        "ts",
+        "ts",
+        "html",
+        "ts",
+        "text",
+        "ts",
+        "ts",
+        "ts",
+        "svelte",
+        "ts",
+        "ts",
+        "ts",
+        "svelte",
+        "ts",
+        "svelte",
+        "ts",
+        "svelte",
+        "ts",
+        "svelte",
+        "mdx",
+        "mdx"
+      ],
+      "codeFenceCount": 23,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br",
+        "Callout",
+        "u",
+        "Tooltip",
+        "Tabs",
+        "Tab",
+        "Columns",
+        "Column"
+      ],
+      "imageCount": 8
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx",
+      "slug": "블로그를-검색하는-벡터-rag-만들기",
+      "title": "블로그를 검색하는 벡터 RAG 만들기",
+      "status": "published",
+      "publishedAt": "2026-04-08T16:42:00.000Z",
+      "categorySlug": "development",
+      "tagSlugs": [
+        "ai",
+        "blog"
+      ],
+      "codeFenceLanguages": [
+        "mermaid",
+        "sql",
+        "sql",
+        "ts",
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 7,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "u"
+      ],
+      "imageCount": 2
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/블로그를-다시-만들면서.mdx",
+      "slug": "블로그를-다시-만들면서",
+      "title": "블로그를 다시 만들면서",
+      "status": "published",
+      "publishedAt": "2026-01-02T18:42:00.000Z",
+      "categorySlug": "essay",
+      "tagSlugs": [
+        "blog"
+      ],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx",
+      "slug": "왜-내-블로그는-ssg가-안될까",
+      "title": "왜 내 블로그는 SSG가 안될까?",
+      "status": "published",
+      "publishedAt": "2026-03-18T23:20:00.000Z",
+      "categorySlug": "development",
+      "tagSlugs": [
+        "blog",
+        "nextjs",
+        "frontend"
+      ],
+      "codeFenceLanguages": [
+        "mermaid",
+        "ts",
+        "mermaid",
+        "ts",
+        "ts",
+        "tsx",
+        "tsx",
+        "tsx",
+        "tsx",
+        "tsx",
+        "tsx"
+      ],
+      "codeFenceCount": 11,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "u",
+        "Tabs",
+        "Tab"
+      ],
+      "imageCount": 2
+    },
+    {
+      "kind": "post",
+      "path": "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx",
+      "slug": "코드-블럭에-툴팁을-띄우고-싶었을-뿐인데",
+      "title": "코드 블럭에 툴팁을 띄우고 싶었을 뿐인데",
+      "status": "published",
+      "publishedAt": "2026-03-21T20:51:00.000Z",
+      "categorySlug": "development",
+      "tagSlugs": [
+        "blog"
+      ],
+      "codeFenceLanguages": [
+        "mdx",
+        "mermaid",
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "mermaid",
+        "ts",
+        "ts",
+        "mermaid"
+      ],
+      "codeFenceCount": 12,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Tooltip",
+        "Tabs",
+        "Tab",
+        "u"
+      ],
+      "imageCount": 2
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/1-implement-curry.mdx",
+      "slug": "1-implement-curry",
+      "title": "1. implement curry()",
+      "status": "published",
+      "publishedAt": "2026-01-07T10:07:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "js",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js"
+      ],
+      "codeFenceCount": 6,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/10-tuple-to-union.mdx",
+      "slug": "10-tuple-to-union",
+      "title": "10 - Tuple to Union",
+      "status": "published",
+      "publishedAt": "2026-01-05T19:38:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/106-trim-left.mdx",
+      "slug": "106-trim-left",
+      "title": "106 - Trim Left",
+      "status": "published",
+      "publishedAt": "2026-01-07T09:54:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "js"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/108-trim.mdx",
+      "slug": "108-trim",
+      "title": "108 - Trim",
+      "status": "published",
+      "publishedAt": "2026-01-12T12:08:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/11-tuple-to-object.mdx",
+      "slug": "11-tuple-to-object",
+      "title": "11 - Tuple to Object",
+      "status": "published",
+      "publishedAt": "2026-01-04T19:55:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 4,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/11-what-is-composition-create-a-pipe.mdx",
+      "slug": "11-what-is-composition-create-a-pipe",
+      "title": "11. what is Composition? create a pipe()",
+      "status": "published",
+      "publishedAt": "2026-01-07T12:49:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "ts"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/110-capitalize.mdx",
+      "slug": "110-capitalize",
+      "title": "110 - Capitalize",
+      "status": "published",
+      "publishedAt": "2026-01-12T12:12:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/12-chainable-options.mdx",
+      "slug": "12-chainable-options",
+      "title": "12 - Chainable Options",
+      "status": "published",
+      "publishedAt": "2026-01-05T19:49:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/14-first-of-array.mdx",
+      "slug": "14-first-of-array",
+      "title": "14 - First of Array",
+      "status": "published",
+      "publishedAt": "2026-01-04T20:38:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript",
+        "type-challenges"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 6,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery.mdx",
+      "slug": "15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery",
+      "title": "15. implement a simple DOM wrapper to support method chaining like jQuery",
+      "status": "published",
+      "publishedAt": "2026-01-07T13:13:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "js",
+        "js",
+        "mermaid"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/15-last-of-array.mdx",
+      "slug": "15-last-of-array",
+      "title": "15 - Last of Array",
+      "status": "published",
+      "publishedAt": "2026-01-05T22:10:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/16-pop.mdx",
+      "slug": "16-pop",
+      "title": "16 - Pop",
+      "status": "published",
+      "publishedAt": "2026-01-05T22:17:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/167-intersection-of-unsorted-arrays.mdx",
+      "slug": "167-intersection-of-unsorted-arrays",
+      "title": "167. Intersection of unsorted arrays",
+      "status": "published",
+      "publishedAt": "2026-01-12T12:40:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript"
+      ],
+      "codeFenceLanguages": [
+        "ts"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/18-improve-a-function.mdx",
+      "slug": "18-improve-a-function",
+      "title": "18. Improve a function",
+      "status": "published",
+      "publishedAt": "2026-01-09T12:20:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript"
+      ],
+      "codeFenceLanguages": [
+        "js",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible",
+        "br"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/18-length-of-tuple.mdx",
+      "slug": "18-length-of-tuple",
+      "title": "18 - Length of Tuple",
+      "status": "published",
+      "publishedAt": "2026-01-04T21:22:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/189-awaited.mdx",
+      "slug": "189-awaited",
+      "title": "189 - Awaited",
+      "status": "published",
+      "publishedAt": "2026-01-04T21:32:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/2-get-return-type.mdx",
+      "slug": "2-get-return-type",
+      "title": "2 - Get Return Type",
+      "status": "published",
+      "publishedAt": "2026-01-05T01:40:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript",
+        "type-challenges"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/20-promiseall.mdx",
+      "slug": "20-promiseall",
+      "title": "20 - Promise.all",
+      "status": "published",
+      "publishedAt": "2026-01-06T10:34:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 5,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/268-if.mdx",
+      "slug": "268-if",
+      "title": "268 - If",
+      "status": "published",
+      "publishedAt": "2026-01-04T22:32:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/28-implement-clearalltimeout.mdx",
+      "slug": "28-implement-clearalltimeout",
+      "title": "28. implement clearAllTimeout()",
+      "status": "published",
+      "publishedAt": "2026-01-09T13:02:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript"
+      ],
+      "codeFenceLanguages": [
+        "js"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/3-omit.mdx",
+      "slug": "3-omit",
+      "title": "3 - Omit",
+      "status": "published",
+      "publishedAt": "2026-01-05T01:59:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Tooltip",
+        "u",
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/3057-push.mdx",
+      "slug": "3057-push",
+      "title": "3057 - Push",
+      "status": "published",
+      "publishedAt": "2026-01-05T01:15:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/3060-unshift.mdx",
+      "slug": "3060-unshift",
+      "title": "3060 - Unshift",
+      "status": "published",
+      "publishedAt": "2026-01-05T01:16:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/3312-parameters.mdx",
+      "slug": "3312-parameters",
+      "title": "3312 - Parameters",
+      "status": "published",
+      "publishedAt": "2026-01-05T01:20:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/4-pick.mdx",
+      "slug": "4-pick",
+      "title": "4 - Pick",
+      "status": "published",
+      "publishedAt": "2026-01-04T16:37:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 6,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br",
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/43-exclude.mdx",
+      "slug": "43-exclude",
+      "title": "43 - Exclude",
+      "status": "published",
+      "publishedAt": "2026-01-04T21:26:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/533-concat.mdx",
+      "slug": "533-concat",
+      "title": "533 - Concat",
+      "status": "published",
+      "publishedAt": "2026-01-04T22:35:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/6-implement-basic-debounce.mdx",
+      "slug": "6-implement-basic-debounce",
+      "title": "6. implement basic debounce()",
+      "status": "published",
+      "publishedAt": "2026-01-07T11:29:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "javascript",
+        "bfedev",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "js"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br",
+        "u",
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/62-type-lookup.mdx",
+      "slug": "62-type-lookup",
+      "title": "62 - Type Lookup",
+      "status": "published",
+      "publishedAt": "2026-01-07T09:34:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "js"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/7-readonly.mdx",
+      "slug": "7-readonly",
+      "title": "7 - Readonly",
+      "status": "published",
+      "publishedAt": "2026-01-04T19:38:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/8-can-you-shuffle-an-array.mdx",
+      "slug": "8-can-you-shuffle-an-array",
+      "title": "8. can you shuffle() an array?",
+      "status": "published",
+      "publishedAt": "2026-01-07T11:54:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "bfedev",
+        "javascript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "ts"
+      ],
+      "codeFenceCount": 1,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/8-readonly-2.mdx",
+      "slug": "8-readonly-2",
+      "title": "8 - Readonly 2",
+      "status": "published",
+      "publishedAt": "2026-01-05T02:29:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/898-includes.mdx",
+      "slug": "898-includes",
+      "title": "898 - Includes",
+      "status": "published",
+      "publishedAt": "2026-01-04T22:44:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/9-deep-readonly.mdx",
+      "slug": "9-deep-readonly",
+      "title": "9 - Deep Readonly",
+      "status": "published",
+      "publishedAt": "2026-01-05T17:44:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "type-challenges",
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Tooltip"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/download-file.mdx",
+      "slug": "download-file",
+      "title": "downloadFile",
+      "status": "published",
+      "publishedAt": "2025-08-07T19:17:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 1,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/js의-데이터-타입-및-메모리-관리.mdx",
+      "slug": "js의-데이터-타입-및-메모리-관리",
+      "title": "JS의 데이터 타입과 메모리 관리",
+      "status": "published",
+      "publishedAt": "2026-04-06T19:02:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "frontend",
+        "javascript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Callout",
+        "br",
+        "u"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/js의-비동기-처리-메커니즘.mdx",
+      "slug": "js의-비동기-처리-메커니즘",
+      "title": "JS의 비동기 처리 메커니즘",
+      "status": "draft",
+      "publishedAt": "2026-04-11T20:29:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "javascript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 1,
+      "jsxComponents": [
+        "Tooltip",
+        "u",
+        "Callout"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/js의-코드-실행-메커니즘.mdx",
+      "slug": "js의-코드-실행-메커니즘",
+      "title": "JS의 코드 실행 메커니즘",
+      "status": "published",
+      "publishedAt": "2026-04-03T23:37:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "frontend",
+        "javascript"
+      ],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "Tooltip",
+        "u",
+        "Callout"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/load-file.mdx",
+      "slug": "load-file",
+      "title": "loadFile",
+      "status": "published",
+      "publishedAt": "2025-08-07T19:17:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript",
+        "snippets"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 1,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/tuple과-readonly.mdx",
+      "slug": "tuple과-readonly",
+      "title": "Tuple과 readonly",
+      "status": "published",
+      "publishedAt": "2026-01-06T10:17:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 2,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/xxx-equal.mdx",
+      "slug": "xxx-equal",
+      "title": "XXX - Equal",
+      "status": "published",
+      "publishedAt": "2026-01-04T23:24:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "typescript",
+        "type-challenges"
+      ],
+      "codeFenceLanguages": [
+        "ts",
+        "ts",
+        "ts"
+      ],
+      "codeFenceCount": 3,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br",
+        "Callout",
+        "Tooltip",
+        "Collapsible"
+      ],
+      "imageCount": 0
+    },
+    {
+      "kind": "memo",
+      "path": "src/contents/memos/정규표현식-정리.mdx",
+      "slug": "정규표현식-정리",
+      "title": "정규표현식 정리",
+      "status": "published",
+      "publishedAt": "2026-01-06T16:27:00.000Z",
+      "categorySlug": null,
+      "tagSlugs": [
+        "udemy",
+        "regex"
+      ],
+      "codeFenceLanguages": [
+        "js",
+        "python",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js",
+        "js"
+      ],
+      "codeFenceCount": 11,
+      "tableCount": 7,
+      "blockMathCount": 0,
+      "jsxComponents": [
+        "br",
+        "u"
+      ],
+      "imageCount": 8
+    },
+    {
+      "kind": "category",
+      "path": "src/contents/categories/development.yaml",
+      "slug": "development",
+      "title": "개발",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "category",
+      "path": "src/contents/categories/essay.yaml",
+      "slug": "essay",
+      "title": "에세이",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "category",
+      "path": "src/contents/categories/review.yaml",
+      "slug": "review",
+      "title": "서평",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/ai.yaml",
+      "slug": "ai",
+      "title": "AI",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/algorithm.yaml",
+      "slug": "algorithm",
+      "title": "알고리즘",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/backend.yaml",
+      "slug": "backend",
+      "title": "Backend",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/bfedev.yaml",
+      "slug": "bfedev",
+      "title": "BFE.dev",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/blog.yaml",
+      "slug": "blog",
+      "title": "Blog",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/browser.yaml",
+      "slug": "browser",
+      "title": "Browser",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/cryptozombies.yaml",
+      "slug": "cryptozombies",
+      "title": "CryptoZombies",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/css-battle.yaml",
+      "slug": "css-battle",
+      "title": "CSS Battle",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/css.yaml",
+      "slug": "css",
+      "title": "CSS",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/frontend.yaml",
+      "slug": "frontend",
+      "title": "Frontend",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/javascript.yaml",
+      "slug": "javascript",
+      "title": "JavaScript",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/learning.yaml",
+      "slug": "learning",
+      "title": "학습",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/nextjs.yaml",
+      "slug": "nextjs",
+      "title": "Next.js",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/react.yaml",
+      "slug": "react",
+      "title": "React",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/regex.yaml",
+      "slug": "regex",
+      "title": "regex",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/seo.yaml",
+      "slug": "seo",
+      "title": "SEO",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/snippets.yaml",
+      "slug": "snippets",
+      "title": "Snippets",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/solidity.yaml",
+      "slug": "solidity",
+      "title": "Solidity",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/troubleshooting.yaml",
+      "slug": "troubleshooting",
+      "title": "트러블슈팅",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/type-challenges.yaml",
+      "slug": "type-challenges",
+      "title": "Type Challenges",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/typescript.yaml",
+      "slug": "typescript",
+      "title": "TypeScript",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "tag",
+      "path": "src/contents/tags/udemy.yaml",
+      "slug": "udemy",
+      "title": "Udemy",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    },
+    {
+      "kind": "collection",
+      "path": "src/contents/collections/type-challenges.yaml",
+      "slug": "type-challenges",
+      "title": "Type Challenges",
+      "status": "published",
+      "publishedAt": null,
+      "categorySlug": null,
+      "tagSlugs": [],
+      "codeFenceLanguages": [],
+      "codeFenceCount": 0,
+      "tableCount": 0,
+      "blockMathCount": 0,
+      "jsxComponents": [],
+      "imageCount": 0
+    }
+  ],
+  "images": [
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-07%20%EC%98%A4%ED%9B%84%209.08.33.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-07 오후 9.08.33.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 27582,
+      "sha256": "da000274f4f429f40437bc5114c61f95e806261f187883f84221cf16859d347c",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-07%20%EC%98%A4%ED%9B%84%209.09.58.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-07 오후 9.09.58.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 27407,
+      "sha256": "64eb038846784f15dc110da30fc827ccc9e1184f6af562667aa7914382d6d566",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.31.36.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.31.36.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 43742,
+      "sha256": "bf8e95115dbc7d26e207ee2602400d6bc0cf53e55ec4dcc0d4bfa7ac6bebddea",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.31.52.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.31.52.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 67464,
+      "sha256": "0da7425a4300a6707fdcf3289d6ba6d4c169e69e06860c2861f7987446d369de",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.34.51.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.34.51.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 18159,
+      "sha256": "39b16ee2c3848b0837197beb5b9ffa93abc637118720152419de1a289a80929f",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.34.59.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.34.59.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 18911,
+      "sha256": "7e7c7545efe470b1d4d922d77ede2c169d4a5e4fe14cf0ddeafaa9589a4fa9e8",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.42.25.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.42.25.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 22522,
+      "sha256": "a3ae6d32984846b1c23698e59fd382b92dfe82d866e2266c9555e00c4a487d9b",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.42.39.png",
+      "localFile": "public/assets/images/memos/정규표현식-정리/스크린샷 2026-01-12 오후 4.42.39.png",
+      "referencedBy": [
+        "src/contents/memos/정규표현식-정리.mdx"
+      ],
+      "exists": true,
+      "byteSize": 27162,
+      "sha256": "a0161eb0079fb56933bdc6a88a32a55490566499b792b6dde5b7ca997493346d",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.13.27.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 11.13.27.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 33765,
+      "sha256": "7effaee540bc159b46a4b7fa793cb76034630b1e4e696a346d15af2f4df1b0fa",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.15.41.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 11.15.41.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 53761,
+      "sha256": "d8e1dd19e766ac70a9dce07e8f40a012eeaf34799dda18b1078a46493687dd8a",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.25.03.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 11.25.03.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 48359,
+      "sha256": "f6e33a96167f9e89c698d733863170ac53449961e90532a1503ebb26552ae13a",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.32.47.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 11.32.47.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 33183,
+      "sha256": "de24e87531cb0bba2fa5acc8955a077e1d3ed12af05882af260a5e6761a9f522",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.38.05.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 7.38.05.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 46541,
+      "sha256": "c4a2c08ebd5e984b091e5ae387f087499ce499f23723727c68cda11c5a0b3867",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.39.43.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 7.39.43.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 8161,
+      "sha256": "925a91aaf66a06dbebb5fab4085a2b87bb1dbd3568d7cc972627e69252bd1ae9",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.41.00.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 7.41.00.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 34660,
+      "sha256": "f3559b4d9a0cbf938093354040a17b6aa3a7823508ab0cde50f35e1dac582fea",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%209.33.13.png",
+      "localFile": "public/assets/images/posts/블로그라면-seo는-해봐야지/스크린샷 2026-02-12 오후 9.33.13.png",
+      "referencedBy": [
+        "src/contents/posts/블로그라면-seo는-해봐야지.mdx"
+      ],
+      "exists": true,
+      "byteSize": 70315,
+      "sha256": "72dfa973926933b3d21be3b0ea71b03498485b1ada36e17c9872a210b87325f7",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%2010.25.39.png",
+      "localFile": "public/assets/images/posts/블로그를-검색하는-벡터-rag-만들기/스크린샷 2026-04-08 오후 10.25.39.png",
+      "referencedBy": [
+        "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx"
+      ],
+      "exists": true,
+      "byteSize": 112852,
+      "sha256": "98103d2d143cbb5e7b768717c5f56c76293aaea391e3369ac115170794173048",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%208.13.01.png",
+      "localFile": "public/assets/images/posts/블로그를-검색하는-벡터-rag-만들기/스크린샷 2026-04-08 오후 8.13.01.png",
+      "referencedBy": [
+        "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx"
+      ],
+      "exists": true,
+      "byteSize": 78949,
+      "sha256": "e8a9d2d34c0727a101c9233ba4800d86daac80f03f973b1889fc960d64a65dcc",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EC%99%9C-%EB%82%B4-%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%8A%94-ssg%EA%B0%80-%EC%95%88%EB%90%A0%EA%B9%8C/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2012.26.17.png",
+      "localFile": "public/assets/images/posts/왜-내-블로그는-ssg가-안될까/스크린샷 2026-03-20 오후 12.26.17.png",
+      "referencedBy": [
+        "src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx"
+      ],
+      "exists": true,
+      "byteSize": 56138,
+      "sha256": "56da9071b1870f2250695e351d41a81f28acea677fa9730ee073653aa8c5d299",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EC%99%9C-%EB%82%B4-%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%8A%94-ssg%EA%B0%80-%EC%95%88%EB%90%A0%EA%B9%8C/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2012.27.29.png",
+      "localFile": "public/assets/images/posts/왜-내-블로그는-ssg가-안될까/스크린샷 2026-03-20 오후 12.27.29.png",
+      "referencedBy": [
+        "src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx"
+      ],
+      "exists": true,
+      "byteSize": 38647,
+      "sha256": "bad195bf71b84ab4e06518406558b3117ebd1cefde483aaf82452bd2199c5d05",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2010.28.36.png",
+      "localFile": "public/assets/images/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데/스크린샷 2026-03-20 오후 10.28.36.png",
+      "referencedBy": [
+        "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx"
+      ],
+      "exists": true,
+      "byteSize": 11451,
+      "sha256": "b8ec88e08ec143e05567b5c77865e21c8aa7b95372c6bf73eba1eafb6869ca06",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    },
+    {
+      "sourcePath": "/assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-09%20%EC%98%A4%EC%A0%84%203.03.26.png",
+      "localFile": "public/assets/images/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데/스크린샷 2026-04-09 오전 3.03.26.png",
+      "referencedBy": [
+        "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx"
+      ],
+      "exists": true,
+      "byteSize": 24633,
+      "sha256": "d817b9e7a12b4e1fee980156a34b10bee333d73d4840c79323656c49cd278a3f",
+      "mimeType": "image/png",
+      "alt": "",
+      "emptyAlt": true
+    }
+  ],
+  "issues": {
+    "blocking": [],
+    "warnings": [
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.41.00.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.39.43.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%207.38.05.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%209.33.13.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.13.27.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.15.41.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.25.03.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그라면-seo는-해봐야지.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%9D%BC%EB%A9%B4-seo%EB%8A%94-%ED%95%B4%EB%B4%90%EC%95%BC%EC%A7%80/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-02-12%20%EC%98%A4%ED%9B%84%2011.32.47.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%2010.25.39.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx",
+        "message": "빈 alt: /assets/images/posts/%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%A5%BC-%EA%B2%80%EC%83%89%ED%95%98%EB%8A%94-%EB%B2%A1%ED%84%B0-rag-%EB%A7%8C%EB%93%A4%EA%B8%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-08%20%EC%98%A4%ED%9B%84%208.13.01.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx",
+        "message": "빈 alt: /assets/images/posts/%EC%99%9C-%EB%82%B4-%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%8A%94-ssg%EA%B0%80-%EC%95%88%EB%90%A0%EA%B9%8C/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2012.27.29.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx",
+        "message": "빈 alt: /assets/images/posts/%EC%99%9C-%EB%82%B4-%EB%B8%94%EB%A1%9C%EA%B7%B8%EB%8A%94-ssg%EA%B0%80-%EC%95%88%EB%90%A0%EA%B9%8C/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2012.26.17.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx",
+        "message": "빈 alt: /assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-03-20%20%EC%98%A4%ED%9B%84%2010.28.36.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx",
+        "message": "빈 alt: /assets/images/posts/%EC%BD%94%EB%93%9C-%EB%B8%94%EB%9F%AD%EC%97%90-%ED%88%B4%ED%8C%81%EC%9D%84-%EB%9D%84%EC%9A%B0%EA%B3%A0-%EC%8B%B6%EC%97%88%EC%9D%84-%EB%BF%90%EC%9D%B8%EB%8D%B0/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-04-09%20%EC%98%A4%EC%A0%84%203.03.26.png"
+      },
+      {
+        "code": "empty_tags",
+        "path": "src/contents/memos/533-concat.mdx",
+        "message": "태그가 없습니다."
+      },
+      {
+        "code": "draft_status",
+        "path": "src/contents/memos/js의-비동기-처리-메커니즘.mdx",
+        "message": "status가 없거나 draft입니다."
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-07%20%EC%98%A4%ED%9B%84%209.08.33.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-07%20%EC%98%A4%ED%9B%84%209.09.58.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.31.36.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.31.52.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.34.51.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.34.59.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.42.25.png"
+      },
+      {
+        "code": "empty_image_alt",
+        "path": "src/contents/memos/정규표현식-정리.mdx",
+        "message": "빈 alt: /assets/images/memos/%EC%A0%95%EA%B7%9C%ED%91%9C%ED%98%84%EC%8B%9D-%EC%A0%95%EB%A6%AC/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-01-12%20%EC%98%A4%ED%9B%84%204.42.39.png"
+      }
+    ]
+  },
+  "slugSets": {
+    "posts": [
+      "ai가-뱉어낸-코드의-숲에서-길을-잃지-않으려면",
+      "내가-만든-rag의-성능-측정하기",
+      "블로그라면-seo는-해봐야지",
+      "블로그를-검색하는-벡터-rag-만들기",
+      "블로그를-다시-만들면서",
+      "왜-내-블로그는-ssg가-안될까",
+      "코드-블럭에-툴팁을-띄우고-싶었을-뿐인데"
+    ],
+    "memos": [
+      "1-implement-curry",
+      "10-tuple-to-union",
+      "106-trim-left",
+      "108-trim",
+      "11-tuple-to-object",
+      "11-what-is-composition-create-a-pipe",
+      "110-capitalize",
+      "12-chainable-options",
+      "14-first-of-array",
+      "15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery",
+      "15-last-of-array",
+      "16-pop",
+      "167-intersection-of-unsorted-arrays",
+      "18-improve-a-function",
+      "18-length-of-tuple",
+      "189-awaited",
+      "2-get-return-type",
+      "20-promiseall",
+      "268-if",
+      "28-implement-clearalltimeout",
+      "3-omit",
+      "3057-push",
+      "3060-unshift",
+      "3312-parameters",
+      "4-pick",
+      "43-exclude",
+      "533-concat",
+      "6-implement-basic-debounce",
+      "62-type-lookup",
+      "7-readonly",
+      "8-can-you-shuffle-an-array",
+      "8-readonly-2",
+      "898-includes",
+      "9-deep-readonly",
+      "download-file",
+      "js의-데이터-타입-및-메모리-관리",
+      "js의-비동기-처리-메커니즘",
+      "js의-코드-실행-메커니즘",
+      "load-file",
+      "tuple과-readonly",
+      "xxx-equal",
+      "정규표현식-정리"
+    ],
+    "categories": [
+      "development",
+      "essay",
+      "review"
+    ],
+    "tags": [
+      "ai",
+      "algorithm",
+      "backend",
+      "bfedev",
+      "blog",
+      "browser",
+      "cryptozombies",
+      "css",
+      "css-battle",
+      "frontend",
+      "javascript",
+      "learning",
+      "nextjs",
+      "react",
+      "regex",
+      "seo",
+      "snippets",
+      "solidity",
+      "troubleshooting",
+      "type-challenges",
+      "typescript",
+      "udemy"
+    ],
+    "collections": [
+      "type-challenges"
+    ]
+  },
+  "notes": [
+    "미디어는 이번 단계에서 보고만 한다. R2 키는 복사 시점에 media/<mediaId>/<uuid>.<ext> 규칙으로 배정한다.",
+    "이 보고서는 읽기 전용이며 DB에 접근하지 않는다."
+  ]
+}
