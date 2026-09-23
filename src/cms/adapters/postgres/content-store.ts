@@ -359,7 +359,7 @@ export interface ExportSnapshot {
 	preferences: { userId: string; preferences: JsonObject; updatedAt: Date }[];
 }
 
-function extractVisibleText(mdx: string): string {
+export function extractVisibleText(mdx: string): string {
 	if (!mdx) return "";
 	let t = mdx;
 	// 1. strip MDX/JSX comments: {/* ... */}
