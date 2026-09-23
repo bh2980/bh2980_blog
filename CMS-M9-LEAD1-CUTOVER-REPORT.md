@@ -193,7 +193,7 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 
 ### 6.1 공개 트래픽 전환 승인 (별도)
 
-`CMS_PUBLIC_REPOSITORY=postgres`로 전환하고 배포한다. M9 커밋 57개는 **아직 원격에 없다**.
+`CMS_PUBLIC_REPOSITORY=postgres`로 전환하고 배포한다. M9 커밋 59개는 **아직 원격에 없다**.
 
 ### 6.2 관찰 기간 (미정)
 
@@ -251,7 +251,7 @@ O2가 지적한 "7편을 RSC 순서 차이로 단정한 근거가 약하다"는 
 ## 9. 전환 절차 (승인 시 제안)
 
 1. 동결 확인 — 양쪽 콘텐츠 쓰기 중단, 지문 재확인(`70794ce9…`)
-2. `feature/new-cms` 푸시·머지·배포 (M9 커밋 57개)
+2. `feature/new-cms` 푸시·머지·배포 (M9 커밋 59개)
 3. 배포 smoke — HTTP/SEO/RSS/sitemap/API/미리보기, 공개 초안 차단, `/assets` 22장
 4. `CMS_PUBLIC_REPOSITORY=postgres` 전환 + 재배포
 5. **R5 검수** (실제 배포 대상 HTTP)
