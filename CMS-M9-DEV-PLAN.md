@@ -262,16 +262,21 @@ R2 2차가 남긴 P2 4건의 처리:
 
 | ID | 상태 | 담당 | 산출물/검증 |
 | --- | --- | --- | --- |
-| M9-0 | DONE | Lead + BE + INF | O1 결정 5건 확정(§4). 남은 실행 항목은 운영 진입점 구현과 R2다 |
-| M9-FE-1 | DONE | BE + FE | `getWorkingEntryBySlug` + `draft-preview.ts`; 공개 계약 불변. 검증: 실DB 5건·서비스 5건 통과, 전체 119 files/770 tests, `pnpm typecheck` 0 errors |
-| M9-BE-1 | DONE(운영 적재 전) | BE + INF | 구현·검수 완료(R2 2차 통과). 운영 적재는 승인 전이라 미실행. 검증: 실DB 18건, 전체 793 tests, dry-run 75건 일치. **선행 결정: 계획 밖 초안 8건 처리(§11.5)** |
-| M9-TW-1 | TODO | TW | 49편 전후 공개 HTML 대조, R3 |
-| M9-LEAD-1 | TODO | Lead | O2/R4 포함 전환 보고서와 cutover 승인 요청 |
-| M9-BE-2 | TODO | BE + INF | 승인된 공개 저장소 플래그 전환, 재배포/smoke/관찰, R5 |
-| M9-BE-3 | TODO | BE + INF | O3 및 제거 승인 후 Keystatic 제거, R6 |
-| M9-RV-1 | TODO | RV | v1 전체 최종 검수, 중대 위험 없음 판정 |
+| M9-0 | DONE | Lead + BE + INF | O1 결정 5건 확정(§4) |
+| M9-FE-1 | DONE | BE + FE | `getWorkingEntryBySlug` + `draft-preview.ts`; 공개 계약 불변 |
+| M9-BE-1 | DONE | BE + INF | 운영 진입점 + **운영 적재 완료**(75건, `outcome=verified`), R2 2차 통과 |
+| M9-TW-1 | DONE | TW | 공개 48편 DOM 구조 **48/48 동일**, R3 통과(재검수 포함) |
+| M9-LEAD-1 | DONE | Lead | O2/R4 포함 전환 보고서 `CMS-M9-LEAD1-CUTOVER-REPORT.md` |
+| M9-BE-2 | **TODO** | BE + INF | 승인된 공개 저장소 플래그 전환, 재배포/smoke/관찰, R5. **사용자가 직접 머지·배포하기로 결정** |
+| M9-BE-3 | DONE(코드) | BE + INF | Keystatic·Giscus 제거 완료. O3는 사전 자문만, R6 미착수 |
+| M9-RV-1 | **TODO** | RV | v1 전체 최종 검수, 중대 위험 없음 판정 |
+| (추가) | DONE | BE | 한글 slug 12건 영문 교체, 이미지 노드 뷰 `NodeViewWrapper` P1 수정 |
 
-현재 착수 위치는 **M9-BE-1 실행 대기**다. 코드·검수는 끝났고(R2 2차 통과), 운영 적재는 사용자 승인과 계획 밖 초안 8건 결정을 기다린다(§11.5).
+**남은 것은 배포뿐이다.** 코드·데이터·검수(R1–R4, O1–O2)는 끝났고, `origin/main`은 아직 `f03f92b`다.
+**라이브는 Keystatic으로 동작 중이며 전환은 아직 일어나지 않았다.**
+
+배포 전 필수: 배포 환경에 `CMS_PUBLIC_REPOSITORY=postgres` 설정(빠뜨리면 공개 경로가 오류).
+배포 후 필수: R5 → O3 정식 → R6 → M9-RV-1(§12.2 F01–F19 검수표).
 
 ---
 
