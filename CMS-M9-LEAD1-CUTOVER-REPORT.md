@@ -569,6 +569,67 @@ Oracle이 이를 지적했고 **그 지적이 맞다.** 따라서 이번 자문�
 
 ---
 
+## 11. shadcn/ui 중복 재구현 검증 (2026-09-24)
+
+`components.json`이 있고 `src/components/ui/`에 shadcn 컴포넌트 20개가 있지만, **관리자 UI는 shadcn을 거의 쓰지 않고 직접 다시 만들었다.**
+
+### 정량
+
+| 지표 | 값 |
+| --- | --- |
+| 관리자 UI가 shadcn에서 import하는 것 | **`button`·`input` 각 1파일뿐** (총 4곳) |
+| 관리자 UI의 원시 `<button>` | **77개** |
+| 관리자 UI의 원시 `<input>` | **23개** |
+| 설치됐지만 **import 0건**인 shadcn 컴포넌트 | **15개** — `alert` `button-group` `chart` `checkbox` `collapsible` `command` `dialog` `dropdown-menu` `native-select` `popover` `select` `sheet` `tabs` `toggle` `tooltip` |
+| 관리자 UI의 자체 모달(`fixed inset-0`) | **9곳** / 6파일 |
+| 그중 `role="dialog"`·`aria-modal` 보유 | **0곳** |
+
+### 같은 역할을 두 번 만든 곳
+
+| shadcn | 상태 | 자체 구현 | 근거 |
+| --- | --- | --- | --- |
+| `dialog` | 설치됨·**미사용** | 자체 모달 9곳 | `admin-entries-table.tsx:538,567`, `admin-sidebar.tsx:467,496`, `admin-dashboard.tsx:442`, `entry-editor-shell.tsx:676`, `edit-client.tsx:531,569,606` |
+| `alert-dialog` | **없음** | `window.confirm` | `edit-client.tsx`·`bulk-bar.tsx`·`template-manager.tsx`·`media-library.tsx` |
+| `sonner`/`toast` | **없음** | `window.alert` | **28곳** |
+| `alert` | 설치됨·**import 0건** | 자체 오류 모달 | `alert.tsx` 83줄이 사장 |
+| `select` | 설치됨·**미사용** | 원시 `<select>` **7곳** | `bulk-bar.tsx:114,144,160`, `inspector-panel.tsx:211`, `admin-entries-table.tsx:152,164`, `template-manager.tsx:302` |
+| `button` | 설치됨·1파일 | 원시 `<button>` **77개** | — |
+| `input` | 설치됨·1파일 | 원시 `<input>` **23개** | — |
+| `table` | **없음** | 원시 `<table>` | `admin-entries-table.tsx:272` |
+| `badge` | 설치됨·**블로그 랜딩에만** | 자체 상태 배지 | `admin-entries-table.tsx:490`이 `"공개"/"초안"`을 직접 그림 |
+| `breadcrumb` | **없음** | 자체 breadcrumb | `admin-entries-table.tsx:82-87,184`, `entry-editor-shell.tsx:468` |
+| `sidebar` | **없음** | `admin-sidebar.tsx` 자체 구현 | 파일 전체 |
+| `command`(cmdk) | 설치됨·**미사용** | 원시 검색 input | `admin-entries-table.tsx:146` |
+| `tabs` | 설치됨·**미사용** | 자체 컬렉션 탭 | `admin-sidebar.tsx:60` |
+| `tooltip` | 설치됨·**미사용** | 자체 툴팁 | — |
+| `label` | **없음** | 없음(그래서 라벨 누락) | 발행일 `INPUT[datetime-local]`에 라벨 없음 |
+| `card` | **없음** | 자체 div | 관리자 전반 |
+| `skeleton`/`spinner` | **없음** | `animate-pulse`/`animate-spin` | `entry-editor-shell.tsx:490`, `edit-client.tsx:398` |
+| `progress` | **없음** | `uploadPercent` 직접 | `media-library.tsx:191` |
+| `pagination` | **없음** | 자체 | `admin-entries-table.tsx` |
+| `sheet` `popover` `collapsible` `native-select` `checkbox` `toggle` `chart` `button-group` | 설치됨·**미사용** | — | — |
+
+### 중복이 아닌 것(정당한 자체 구현)
+
+- `src/cms/editor/**` — TipTap 편집기·슬래시 메뉴·이미지 노드뷰·블록 핸들. shadcn에 없는 영역
+- `src/libs/annotation/code-block`의 `Tooltip` — **본문 콘텐츠 애노테이션**이지 UI 크롬이 아니다
+- shadcn에 없는 도메인 컴포넌트(폴더 트리, 속성 패널 등)
+
+### 가장 비싼 대가
+
+자체 모달 9곳은 shadcn `dialog`(Radix)를 쓰면 공짜로 얻는 것을 전부 직접 떠안지 않는다.
+
+| Radix `dialog`가 주는 것 | 자체 모달 9곳 |
+| --- | --- |
+| `role="dialog"` + `aria-modal` | **없음** |
+| 포커스 트랩·복귀 | **없음** |
+| Esc 닫기 | **없음** |
+| Portal·스크롤 잠금 | **없음** |
+
+§10의 **P1-1(alert 28곳)과 P1-2가 사실 같은 뿌리**다. `window.alert`를 없애는 정석은 `sonner`(shadcn)를 붙이는 것이고, 자체 모달을 `dialog`/`alert-dialog`로 바꾸면 접근성까지 같이 해결된다.
+
+---
+
 ## 부록 A. 커밋
 
 ```
