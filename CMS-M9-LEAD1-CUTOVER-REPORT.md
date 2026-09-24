@@ -516,6 +516,59 @@ Oracle이 이를 지적했고 **그 지적이 맞다.** 따라서 이번 자문�
 
 ---
 
+## 10. §12.2 v1 검수표 F01–F19 실행 결과 (2026-09-24)
+
+환경: `next dev` DB 모드(`CMS_PUBLIC_REPOSITORY=postgres`), 실제 Chrome.
+쓰기 검수(F02·F09·F13 등)는 **시험 스키마(`cms_m6_preview`)에서만** 수행했다(운영 DB 보호).
+
+### 통과
+
+| 항목 | 근거 |
+| --- | --- |
+| F01 목록(부분) | 검색·상태 필터·정렬(4필드)·페이지 크기(25/50/100)·설정 유지·페이지네이션. 메모 42건 = 1페이지 25 + 2페이지 17, **중복 0** |
+| F02 폴더 | 생성, 글 이동 시 URL·상태·표시 발행일·생성일 **불변**, 삭제 시 글 미삭제+미분류 이동, 자식 폴더 최상위 이동, 이름 충돌 409 (§166·§167) |
+| F05/F14 미디어(부분) | MIME allowlist, `MAX_MEDIA_BYTE_SIZE`, 완료 시 **실제 바이트로 MIME 감지**(위조 차단), 사용 중 파일 삭제 `in_use` 차단 |
+| F07 확장 | `extensions.test.ts` — 코어 수정 없이 등록 |
+| F09 일괄(부분) | `bulk.test.ts`·`bulk-lifecycle.test.ts`·`bulk-metadata.test.ts` |
+| F10 예약(부분) | `schedule.test.ts` — 이른/중복/취소 후 호출 |
+| F11 복구(부분) | IndexedDB 로컬 백업(save/get/delete), 409 충돌 모달 + 서버/로컬 비교 |
+| F12 범위 | 이력 저장소·복원 UI **없음** ✅ (의도대로 부재) |
+| F18 표현(부분) | `TextAlign` types `["heading","paragraph"]`, left/center/right |
+| F19 원문 | `tiptap-content.test.ts`·`roundtrip.test.ts`·`corpus-roundtrip.test.tsx` |
+| 이전 | 공개 48편 DOM 48/48, 본문 해시 149/149, 참조 207/207 |
+| Keystatic 제거 | 패키지·라우트·설정·import·패치 **0건**, 빌드·테스트 통과 |
+| 권한/공개 | `authGateway.verifyAdmin()`가 모든 관리자 API에 적용, 초안 공개 404 |
+
+### 미구현·보완 필요
+
+**P1 — 사용자 지시 위반 / 명세 미충족**
+
+| # | 항목 | 내용 | 근거 |
+| --- | --- | --- | --- |
+| 1 | **`window.alert/confirm` 28곳 잔존** | 사용자 지시 "`window.alert/prompt/confirm` 금지"를 위반한다. `a820fbf`는 **3개 파일만**(dashboard·entries-table·sidebar) 고쳤고 나머지 6개 파일은 그대로다 | `entry-editor-shell.tsx` 7, `edit-client.tsx` 15, `bulk-bar.tsx` 1, `media-library.tsx` 2, `template-manager.tsx` 3, `tiptap-editor.tsx` 1 |
+| 2 | **F15 발행 전 검증 미연결** | `validateForPublish`(slug 중복·`invalid_item_collection`·미해결 미디어)는 **테스트에서만** 호출된다. 발행 API는 `imageWarningsForPublish`만 부르므로 **이미지 경고만** 나온다. "위치와 함께 안내"도 없다 | `publish/route.ts:26`, `content-service.ts:482` |
+| 3 | **F08/F16 역참조 UI 없음** | `/api/cms/v1/entries/[id]/relations` API는 있지만 **관리자 UI에 소비자가 0곳**이다. "역참조에 초안/공개본 사용처가 나타나고"를 확인할 화면이 없다 | `grep relations src/app/(admin)/admin` → 0 |
+
+**P2 — 보완 권장**
+
+| # | 항목 | 내용 |
+| --- | --- | --- |
+| 4 | F01 태그 컬럼·컬럼 조합 없음 | 컬럼은 이름/제목·SLUG·상태·수정일 4개뿐. 명세의 "태그를 확인하고 …컬럼을 조합한다"를 만족하지 못한다 |
+| 5 | F13 템플릿 2/3 | 명세 §469는 첫 예시로 **일반 게시글·알고리즘 풀이·Type Challenge 풀이** 3개를 요구하는데 시드에는 post 템플릿이 없다 |
+| 6 | F03 발행일 입력 스텁 | `publishDate`가 `useState("")`라 로드값으로 초기화되지 않고 저장에도 안 쓴다(M3 `13e733a`부터). 게다가 이 입력은 **라벨이 없다**(`INPUT[datetime-local]`) |
+| 7 | API 계약 불일치 | 목록은 `slug`, 상세는 `workingSlug`/`publishedSlug`만 반환한다. 같은 자원의 필드 이름이 다르다 |
+| 8 | UI 접근성 | 편집 화면 버튼 82개 중 **24개가 접근성 이름 없음**(아이콘 전용). Tab 순서는 정상(`tabindex=-1` 0개) |
+| 9 | 슬래시 메뉴 IME | `slash-command.ts`에 `isComposing`/`compositionend` 처리가 없다. 한글 IME 입력 중 `/` 명령 동작은 브라우저 확인이 더 필요하다 |
+
+### 검수하지 못한 항목
+
+- **R5** — 배포된 실제 URL이 없어 수행 불가
+- **F05/F14 실제 업로드** — R2 자격증명이 필요해 API 계약·코드 경로로만 확인했다
+- **F11 네트워크 단절·세션 만료·응답 유실** — 코드 경로는 있으나 실제 차단 상황을 만들지 않았다
+- **F10 공개 분리** — 자동저장이 공개본을 건드리지 않는지는 구조(working/published 분리 + 해시)로 확인했고 브라우저로 반복 검증하지는 않았다
+
+---
+
 ## 부록 A. 커밋
 
 ```
