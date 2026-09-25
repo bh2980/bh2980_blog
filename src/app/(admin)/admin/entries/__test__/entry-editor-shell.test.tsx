@@ -143,7 +143,9 @@ describe("live entry editor M10 feedback", () => {
 		const categoryInput = await screen.findByPlaceholderText("새 카테고리 추가");
 		fireEvent.change(categoryInput, { target: { value: "새 카테고리" } });
 		fireEvent.click(screen.getByRole("button", { name: "추가" }));
-		await waitFor(() => expect((screen.getByLabelText(/카테고리/) as HTMLSelectElement).value).toBe("cat-2"));
+		const categorySelect = await screen.findByRole("combobox", { name: /^카테고리/ });
+		await waitFor(() => expect((categorySelect as HTMLSelectElement).value).toBe("cat-2"));
+		expect(categorySelect.parentElement?.className).toContain("w-full");
 		fireEvent.change(screen.getByPlaceholderText("새 태그 생성 후 즉시 추가"), { target: { value: "새 태그" } });
 		fireEvent.click(screen.getByRole("button", { name: "생성" }));
 		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0));

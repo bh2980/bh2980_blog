@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { slugify } from "./slugify";
 
@@ -173,7 +176,7 @@ export function InspectorPanel({
 				<label htmlFor="cms-title" className="block font-semibold text-neutral-600 text-xs dark:text-neutral-400">
 					제목 (Title) <span className="text-red-500">*</span>
 				</label>
-				<input
+				<Input
 					id="cms-title"
 					aria-invalid={Boolean(fieldIssue("title")) || undefined}
 					aria-describedby={fieldIssue("title") ? "cms-title-error" : undefined}
@@ -181,7 +184,7 @@ export function InspectorPanel({
 					value={title}
 					onChange={(e) => onTitleChange(e.target.value)}
 					placeholder="글 제목을 입력하세요"
-					className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+					className="h-auto w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-neutral-900 text-sm shadow-none outline-none focus:ring-1 focus:ring-blue-500 focus-visible:border-neutral-300 focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus-visible:border-neutral-700"
 				/>
 				{fieldIssue("title") && (
 					<p id="cms-title-error" className="text-red-500 text-xs">
@@ -196,15 +199,17 @@ export function InspectorPanel({
 					<label htmlFor="cms-slug" className="block font-semibold text-neutral-600 text-xs dark:text-neutral-400">
 						슬러그 (Slug) <span className="text-red-500">*</span>
 					</label>
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="sm"
 						onClick={onRegenerateSlug}
-						className="text-blue-600 text-xs hover:underline dark:text-blue-400"
+						className="h-auto rounded-none bg-transparent px-0 py-0 text-blue-600 text-xs shadow-none hover:bg-transparent hover:underline focus-visible:ring-blue-500/50 dark:text-blue-400"
 					>
 						새로고침
-					</button>
+					</Button>
 				</div>
-				<input
+				<Input
 					id="cms-slug"
 					aria-invalid={Boolean(fieldIssue("slug")) || undefined}
 					aria-describedby={fieldIssue("slug") ? "cms-slug-error" : undefined}
@@ -212,7 +217,7 @@ export function InspectorPanel({
 					value={slug}
 					onChange={(e) => onSlugChange(e.target.value)}
 					placeholder="url-friendly-slug"
-					className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+					className="h-auto w-full rounded-md border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-xs md:text-xs shadow-none outline-none focus:ring-1 focus:ring-blue-500 focus-visible:border-neutral-300 focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus-visible:border-neutral-700"
 				/>
 				{fieldIssue("slug") && (
 					<p id="cms-slug-error" className="text-red-500 text-xs">
@@ -233,13 +238,14 @@ export function InspectorPanel({
 					>
 						카테고리 <span className="text-red-500">*</span>
 					</label>
-					<select
+					<NativeSelect
 						id="cms-categoryId"
+						wrapperClassName="w-full"
 						aria-invalid={Boolean(fieldIssue("categoryId")) || undefined}
 						aria-describedby={fieldIssue("categoryId") ? "cms-categoryId-error" : undefined}
 						value={categoryId || ""}
 						onChange={(e) => onCategoryIdChange(e.target.value ? e.target.value : null)}
-						className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+						className="h-auto w-full rounded-md border border-neutral-300 bg-white px-3 py-2 pr-9 text-neutral-900 text-xs shadow-none outline-none focus:ring-1 focus:ring-blue-500 focus-visible:border-neutral-300 focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus-visible:border-neutral-700 dark:hover:bg-neutral-900"
 					>
 						<option value="">카테고리 선택...</option>
 						{categories.map((cat) => (
@@ -247,7 +253,7 @@ export function InspectorPanel({
 								{cat.title}
 							</option>
 						))}
-					</select>
+					</NativeSelect>
 					{fieldIssue("categoryId") && (
 						<p id="cms-categoryId-error" className="text-red-500 text-xs">
 							{cmsIssueMessage(fieldIssue("categoryId")!)}
@@ -255,21 +261,24 @@ export function InspectorPanel({
 					)}
 					{/* Inline Category Creator */}
 					<div className="flex items-center gap-1.5 pt-1">
-						<input
+						<Input
 							type="text"
+							aria-label="새 카테고리 이름"
 							value={newCategoryName}
 							onChange={(e) => setNewCategoryName(e.target.value)}
 							placeholder="새 카테고리 추가"
-							className="flex-1 rounded border border-neutral-300 bg-white px-2 py-1 text-neutral-900 text-xs dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+							className="h-auto min-w-0 flex-1 rounded border-neutral-300 bg-white px-2 py-1 text-neutral-900 text-xs md:text-xs shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
 						/>
-						<button
+						<Button
 							type="button"
+							variant="secondary"
+							size="sm"
 							disabled={isCreatingCategory || !newCategoryName.trim()}
 							onClick={handleCreateNewCategory}
-							className="rounded bg-neutral-200 px-2.5 py-1 text-neutral-800 text-xs hover:bg-neutral-300 disabled:opacity-40 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+							className="h-auto rounded bg-neutral-200 px-2.5 py-1 text-neutral-800 text-xs shadow-none hover:bg-neutral-300 focus-visible:ring-neutral-500/50 disabled:opacity-40 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
 						>
 							추가
-						</button>
+						</Button>
 					</div>
 				</div>
 			)}
@@ -315,13 +324,13 @@ export function InspectorPanel({
 						<label htmlFor="cms-seo-title" className="block text-[11px] text-neutral-500 dark:text-neutral-400">
 							검색 제목 <span className="text-neutral-400">(미입력 시 글 제목)</span>
 						</label>
-						<input
+						<Input
 							id="cms-seo-title"
 							type="text"
 							value={seoTitle}
 							onChange={(e) => onSeoTitleChange(e.target.value)}
 							placeholder={title || "글 제목"}
-							className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-neutral-900 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+							className="h-auto w-full rounded border-neutral-300 bg-white px-2 py-1.5 text-neutral-900 text-xs md:text-xs shadow-none outline-none focus:ring-1 focus:ring-blue-500 focus-visible:border-neutral-300 focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus-visible:border-neutral-700"
 						/>
 					</div>
 
@@ -343,13 +352,13 @@ export function InspectorPanel({
 						<label htmlFor="cms-canonical-url" className="block text-[11px] text-neutral-500 dark:text-neutral-400">
 							canonical URL
 						</label>
-						<input
+						<Input
 							id="cms-canonical-url"
 							type="text"
 							value={canonicalUrl}
 							onChange={(e) => onCanonicalUrlChange(e.target.value)}
 							placeholder="/posts/slug 또는 https://..."
-							className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-neutral-900 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+							className="h-auto w-full rounded border-neutral-300 bg-white px-2 py-1.5 text-neutral-900 text-xs md:text-xs shadow-none outline-none focus:ring-1 focus:ring-blue-500 focus-visible:border-neutral-300 focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus-visible:border-neutral-700"
 						/>
 						<p className="text-[10px] text-neutral-400">
 							값을 넣으면 canonical이 이 주소가 되고 sitemap에서 빠집니다. 사이트 내 경로(/...)와 http(s) 주소만
@@ -427,21 +436,24 @@ export function InspectorPanel({
 
 					{/* Inline Tag Creator */}
 					<div className="flex items-center gap-1.5 pt-1">
-						<input
+						<Input
 							type="text"
+							aria-label="새 태그 이름"
 							value={newTagName}
 							onChange={(e) => setNewTagName(e.target.value)}
 							placeholder="새 태그 생성 후 즉시 추가"
-							className="flex-1 rounded border border-neutral-300 bg-white px-2 py-1 text-neutral-900 text-xs dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+							className="h-auto min-w-0 flex-1 rounded border-neutral-300 bg-white px-2 py-1 text-neutral-900 text-xs md:text-xs shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
 						/>
-						<button
+						<Button
 							type="button"
+							variant="secondary"
+							size="sm"
 							disabled={isCreatingTag || !newTagName.trim()}
 							onClick={handleCreateNewTag}
-							className="rounded bg-neutral-200 px-2.5 py-1 text-neutral-800 text-xs hover:bg-neutral-300 disabled:opacity-40 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+							className="h-auto rounded bg-neutral-200 px-2.5 py-1 text-neutral-800 text-xs shadow-none hover:bg-neutral-300 focus-visible:ring-neutral-500/50 disabled:opacity-40 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
 						>
 							생성
-						</button>
+						</Button>
 					</div>
 				</fieldset>
 			)}

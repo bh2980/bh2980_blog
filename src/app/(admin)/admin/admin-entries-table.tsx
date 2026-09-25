@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -11,6 +13,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface TableProps {
 	collection: string;
@@ -147,43 +151,46 @@ export function AdminEntriesTable({
 			{/* Top Bar: Controls */}
 			<div className="flex flex-wrap items-center justify-between gap-4 border-neutral-800 border-b pb-4">
 				<div className="flex flex-wrap items-center gap-3">
-					<input
+					<Input
 						type="text"
+						aria-label="제목, slug 검색"
 						placeholder="제목, slug 검색..."
 						value={search}
 						onChange={(e) => onSearchChange(e.target.value)}
-						className="w-64 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:border-neutral-600 focus:outline-none"
+						className="h-auto w-64 rounded-lg border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900"
 					/>
 
-					<select
+					<NativeSelect
+						aria-label="상태 필터"
 						value={statusFilter}
 						onChange={(e) => onStatusChange(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-neutral-300 text-sm focus:border-neutral-600 focus:outline-none"
+						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 pr-9 text-neutral-300 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 					>
 						<option value="">전체 상태</option>
 						<option value="draft">초안 (Draft)</option>
 						<option value="published">공개 (Published)</option>
-					</select>
+					</NativeSelect>
 				</div>
 
 				<div className="flex items-center gap-3">
-					<select
+					<NativeSelect
+						aria-label="페이지 크기"
 						value={pageSize}
 						onChange={(e) => onPageSizeChange(Number(e.target.value) as 25 | 50 | 100)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-neutral-300 text-sm focus:border-neutral-600 focus:outline-none"
+						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 pr-9 text-neutral-300 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 					>
 						<option value={25}>25개씩 보기</option>
 						<option value={50}>50개씩 보기</option>
 						<option value={100}>100개씩 보기</option>
-					</select>
+					</NativeSelect>
 
-					<button
+					<Button
 						type="button"
 						onClick={onCreateNew}
-						className="rounded-lg bg-white px-4 py-1.5 font-semibold text-neutral-950 text-sm transition hover:bg-neutral-200"
+						className="h-auto rounded-lg bg-white px-4 py-1.5 font-semibold text-neutral-950 text-sm shadow-none transition hover:bg-neutral-200 focus-visible:ring-neutral-500/50"
 					>
 						+ 새로 만들기
-					</button>
+					</Button>
 				</div>
 			</div>
 
@@ -221,13 +228,13 @@ export function AdminEntriesTable({
 						<div>
 							{isCreatingFolder ? (
 								<form onSubmit={handleFolderSubmit} className="flex items-center gap-1.5">
-									<input
+									<Input
 										type="text"
 										value={newFolderName}
 										onChange={(e) => setNewFolderName(e.target.value)}
 										aria-label="새 폴더 이름"
 										placeholder="새 폴더 이름"
-										className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs focus:border-neutral-500 focus:outline-none"
+										className="h-auto w-40 rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs md:text-xs shadow-none focus:border-neutral-500 focus:outline-none focus-visible:border-neutral-500 focus-visible:ring-0 dark:bg-neutral-800"
 									/>
 									<button
 										type="submit"
@@ -354,12 +361,12 @@ export function AdminEntriesTable({
 													onClick={(e) => e.stopPropagation()}
 													onKeyDown={(e) => e.stopPropagation()}
 												>
-													<input
+													<Input
 														type="text"
 														aria-label="폴더 이름 변경"
 														value={renameInput}
 														onChange={(e) => setRenameInput(e.target.value)}
-														className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs focus:border-neutral-400 focus:outline-none"
+														className="h-auto w-40 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs md:text-xs shadow-none focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900"
 														onKeyDown={(e) => {
 															e.stopPropagation();
 															if (e.key === "Escape") setRenamingFolder(null);
@@ -479,15 +486,16 @@ export function AdminEntriesTable({
 										{item.slug || <span className="text-neutral-600">-</span>}
 									</td>
 									<td className="px-4 py-3">
-										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${
+										<Badge
+											variant="outline"
+											className={
 												item.status === "published"
-													? "border border-emerald-800/50 bg-emerald-950/80 text-emerald-400"
-													: "border border-neutral-700 bg-neutral-800 text-neutral-300"
-											}`}
+													? "border-emerald-800/50 bg-emerald-950/80 text-emerald-400"
+													: "border-neutral-700 bg-neutral-800 text-neutral-300"
+											}
 										>
 											{item.status === "published" ? "공개" : "초안"}
-										</span>
+										</Badge>
 									</td>
 									<td className="px-4 py-3 text-neutral-400 text-xs">
 										{new Date(item.updatedAt).toLocaleString("ko-KR")}
@@ -509,25 +517,29 @@ export function AdminEntriesTable({
 				</div>
 
 				<div className="flex items-center gap-2">
-					<button
+					<Button
 						type="button"
+						variant="outline"
+						size="sm"
 						disabled={page <= 1}
 						onClick={() => onPageChange(page - 1)}
-						className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs hover:bg-neutral-800 disabled:opacity-40"
+						className="h-auto rounded border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs shadow-none hover:bg-neutral-800 hover:text-neutral-200 focus-visible:ring-neutral-500/50 disabled:opacity-40 dark:bg-neutral-900"
 					>
 						이전
-					</button>
+					</Button>
 					<span className="px-1 text-neutral-300">
 						{page} / {totalPages}
 					</span>
-					<button
+					<Button
 						type="button"
+						variant="outline"
+						size="sm"
 						disabled={page >= totalPages}
 						onClick={() => onPageChange(page + 1)}
-						className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs hover:bg-neutral-800 disabled:opacity-40"
+						className="h-auto rounded border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs shadow-none hover:bg-neutral-800 hover:text-neutral-200 focus-visible:ring-neutral-500/50 disabled:opacity-40 dark:bg-neutral-900"
 					>
 						다음
-					</button>
+					</Button>
 				</div>
 			</div>
 

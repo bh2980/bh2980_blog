@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -10,6 +11,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
 import { BULK_ERROR_LABEL, type BulkItemResult, type BulkOp, runBulk } from "./bulk-client";
 
 interface Option {
@@ -120,21 +122,28 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 		<div className="border-neutral-800 border-b bg-neutral-900/60 px-6 py-3">
 			<div className="flex flex-wrap items-center gap-3 text-sm">
 				<span className="font-semibold text-white">{selected.length}개 선택</span>
-				<button type="button" onClick={onClearSelection} className="text-neutral-400 text-xs hover:text-white">
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onClick={onClearSelection}
+					className="h-auto rounded-none bg-transparent px-0 py-0 text-neutral-400 text-xs shadow-none hover:bg-transparent hover:text-white focus-visible:ring-neutral-500/50"
+				>
 					선택 해제
-				</button>
+				</Button>
 
-				<select
+				<NativeSelect
+					aria-label="일괄 작업 종류"
 					value={action}
 					onChange={(e) => setAction(e.target.value as BulkOp)}
-					className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
+					className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 				>
 					{ACTIONS.map((a) => (
 						<option key={a.value} value={a.value}>
 							{a.label}
 						</option>
 					))}
-				</select>
+				</NativeSelect>
 
 				{needsMulti && (
 					<div className="flex max-h-24 flex-wrap items-center gap-2 overflow-auto">
@@ -154,10 +163,11 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 				)}
 
 				{action === "category.set" && (
-					<select
+					<NativeSelect
+						aria-label="대상 카테고리"
 						value={single}
 						onChange={(e) => setSingle(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
+						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 					>
 						<option value="">카테고리 선택</option>
 						<option value="__none__">지우기(없음)</option>
@@ -166,14 +176,15 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 								{o.title ?? o.id.slice(0, 8)}
 							</option>
 						))}
-					</select>
+					</NativeSelect>
 				)}
 
 				{action === "folder.move" && (
-					<select
+					<NativeSelect
+						aria-label="이동할 폴더"
 						value={single}
 						onChange={(e) => setSingle(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
+						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 					>
 						<option value="">폴더 선택</option>
 						<option value="__root__">최상위로</option>
@@ -182,20 +193,20 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 								{f.name}
 							</option>
 						))}
-					</select>
+					</NativeSelect>
 				)}
 
-				<button
+				<Button
 					type="button"
 					disabled={!canRun}
 					onClick={() => {
 						if (activeAction?.confirm) setConfirmMessage(activeAction.confirm);
 						else void run(selected);
 					}}
-					className="rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm transition hover:bg-neutral-200 disabled:opacity-40"
+					className="h-auto rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm shadow-none transition hover:bg-neutral-200 focus-visible:ring-neutral-500/50 disabled:opacity-40"
 				>
 					{isRunning ? "실행 중..." : "일괄 실행"}
-				</button>
+				</Button>
 
 				{results && (
 					<span className="text-neutral-300 text-xs">
@@ -203,13 +214,15 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					</span>
 				)}
 				{failures.length > 0 && (
-					<button
+					<Button
 						type="button"
+						variant="outline"
+						size="sm"
 						onClick={rerunFailures}
-						className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-neutral-200 text-xs hover:bg-neutral-700"
+						className="h-auto rounded border-neutral-700 bg-neutral-800 px-2.5 py-1 text-neutral-200 text-xs shadow-none hover:bg-neutral-700 hover:text-neutral-200 focus-visible:ring-neutral-500/50 dark:bg-neutral-800"
 					>
 						실패만 다시 실행
-					</button>
+					</Button>
 				)}
 			</div>
 
@@ -235,23 +248,25 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 						<DialogDescription>{confirmMessage}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<button
+						<Button
 							type="button"
+							variant="outline"
 							onClick={() => setConfirmMessage(null)}
-							className="rounded-md border px-3 py-2 text-sm"
+							className="h-auto rounded-md px-3 py-2 text-sm shadow-none focus-visible:ring-neutral-500/50"
 						>
 							취소
-						</button>
-						<button
+						</Button>
+						<Button
 							type="button"
+							variant="outline"
 							onClick={() => {
 								setConfirmMessage(null);
 								void run(selected);
 							}}
-							className="rounded-md border px-3 py-2 text-sm"
+							className="h-auto rounded-md px-3 py-2 text-sm shadow-none focus-visible:ring-neutral-500/50"
 						>
 							계속
-						</button>
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

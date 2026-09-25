@@ -13,6 +13,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { AdminSidebar } from "../admin-sidebar";
 
 export function TemplateManager() {
@@ -309,21 +311,23 @@ export function TemplateManager() {
 									{/* 에디터 상단 메타 바 */}
 									<div className="flex items-center justify-between border-neutral-800 border-b bg-neutral-900/30 px-8 py-3.5">
 										<div className="flex max-w-2xl flex-1 items-center gap-3">
-											<input
+											<Input
 												type="text"
+												aria-label="템플릿 이름"
 												value={editName}
 												onChange={(e) => setEditName(e.target.value)}
 												placeholder="템플릿 이름 (예: 알고리즘 풀이 메모)"
-												className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3.5 py-1.5 font-medium text-sm text-white placeholder-neutral-500 transition focus:border-neutral-400 focus:outline-none"
+												className="h-auto w-full min-w-0 flex-1 rounded-md border-neutral-700 bg-neutral-900 px-3.5 py-1.5 font-medium text-sm text-white placeholder-neutral-500 shadow-none transition focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900"
 											/>
-											<select
+											<NativeSelect
+												aria-label="대상 컬렉션"
 												value={editForCollection}
 												onChange={(e) => setEditForCollection(e.target.value as "post" | "memo")}
-												className="cursor-pointer rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 font-medium text-neutral-200 text-xs transition focus:border-neutral-400 focus:outline-none"
+												className="h-auto cursor-pointer rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 pr-9 font-medium text-neutral-200 text-xs shadow-none transition focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
 											>
 												<option value="memo">메모용 (memo)</option>
 												<option value="post">포스트용 (post)</option>
-											</select>
+											</NativeSelect>
 											<span className="hidden text-neutral-500 text-xs sm:inline">본문 MDX 골격</span>
 										</div>
 
