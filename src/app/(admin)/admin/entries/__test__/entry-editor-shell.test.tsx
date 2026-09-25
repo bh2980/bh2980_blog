@@ -99,7 +99,16 @@ describe("live entry editor M10 feedback", () => {
 		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
 			if (input.includes("?collection=")) return json({ items: [] });
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
-			if (input.endsWith("/publish")) return json({ issues: [{ code: "missing_title", path: "title" }] }, 422);
+			if (input.endsWith("/publish"))
+				return json(
+					{
+						issues: [
+							{ code: "missing_title", path: "title" },
+							{ code: "mdx_error", position: { line: 2, column: 2 } },
+						],
+					},
+					422,
+				);
 			throw new Error(`Unexpected fetch: ${input}`);
 		});
 		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
@@ -110,7 +119,41 @@ describe("live entry editor M10 feedback", () => {
 		fireEvent.click(issueButton);
 		const title = await screen.findByRole("textbox", { name: /제목 \(Title\)/ });
 		await waitFor(() => expect(document.activeElement).toBe(title));
+		expect(document.querySelector('textarea[aria-label="시각 본문"]')?.closest("[inert]")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: /MDX 본문 구문을 확인하세요.*수정할 곳으로 이동/ }));
+		const source = (await screen.findByRole("textbox", { name: "MDX 본문" })) as HTMLTextAreaElement;
+		await waitFor(() => expect(document.activeElement).toBe(source));
+		expect(screen.queryByRole("textbox", { name: /제목 \(Title\)/ })).toBeNull();
+		expect(source.closest("[inert]")).toBeNull();
 		vi.unstubAllGlobals();
+	});
+
+	it("sends slugs when adding a category and tag from the inspector", async () => {
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+			if (input.includes("?collection=")) return json({ items: [] });
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
+			if (init?.method === "PATCH") return json({ version: 5 });
+			if (input === "/api/cms/v1/entries" && init?.method === "POST") {
+				const data = JSON.parse(String(init.body));
+				return json({ id: data.collection === "category" ? "cat-2" : "tag-2" }, 201);
+			}
+			throw new Error(`Unexpected fetch: ${input}`);
+		});
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		const categoryInput = await screen.findByPlaceholderText("새 카테고리 추가");
+		fireEvent.change(categoryInput, { target: { value: "새 카테고리" } });
+		fireEvent.click(screen.getByRole("button", { name: "추가" }));
+		await waitFor(() => expect((screen.getByLabelText(/카테고리/) as HTMLSelectElement).value).toBe("cat-2"));
+		fireEvent.change(screen.getByPlaceholderText("새 태그 생성 후 즉시 추가"), { target: { value: "새 태그" } });
+		fireEvent.click(screen.getByRole("button", { name: "생성" }));
+		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0));
+		const creations = fetchMock.mock.calls
+			.filter(([input, init]) => input === "/api/cms/v1/entries" && init?.method === "POST")
+			.map(([, init]) => JSON.parse(String(init?.body)));
+		expect(creations).toEqual([
+			expect.objectContaining({ collection: "category", slug: "새-카테고리" }),
+			expect.objectContaining({ collection: "tag", slug: "새-태그" }),
+		]);
 	});
 
 	it("stops publish after an autosave conflict and offers a copy/reload dialog", async () => {

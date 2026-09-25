@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
+import { slugify } from "./slugify";
 
 export interface CategoryOption {
 	id: string;
@@ -109,6 +110,7 @@ export function InspectorPanel({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					collection: "tag",
+					slug: slugify(name),
 					metadata: { title: name },
 					mdx: "",
 				}),
@@ -135,6 +137,7 @@ export function InspectorPanel({
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					collection: "category",
+					slug: slugify(name),
 					metadata: { title: name },
 					mdx: "",
 				}),

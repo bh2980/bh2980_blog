@@ -61,8 +61,15 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 	const [seoDescription, setSeoDescription] = useState("");
 	const [canonicalUrl, setCanonicalUrl] = useState("");
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+	const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 	useEffect(() => {
-		if (window.matchMedia?.("(max-width: 639px)").matches) setIsInspectorOpen(false);
+		const media = window.matchMedia?.("(max-width: 639px)");
+		if (!media) return;
+		setIsNarrowScreen(media.matches);
+		if (media.matches) setIsInspectorOpen(false);
+		const update = () => setIsNarrowScreen(media.matches);
+		media.addEventListener?.("change", update);
+		return () => media.removeEventListener?.("change", update);
 	}, []);
 
 	const categoryIdRef = useRef<string | null>(null);
@@ -469,6 +476,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 
 	const focusIssue = (issue: CmsIssue) => {
 		if (issue.position || issue.path === "mdx" || issue.path === "frontmatter") {
+			if (isNarrowScreen) setIsInspectorOpen(false);
 			setPendingBodyPosition(issue.position ?? { line: 1, column: 1 });
 			setEditorMode("source");
 			return;
@@ -742,7 +750,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 			{/* Main Split Body: Left Canvas & Right Inspector */}
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				{/* Canvas Area */}
-				<div className="h-full min-w-0 flex-1 overflow-y-auto">
+				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					{editorMode === "visual" ? (
 						<div className="flex h-full flex-col">
 							{publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position)) && (
