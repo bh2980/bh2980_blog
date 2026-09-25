@@ -13,6 +13,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ContentStore;
+	let testCategoryId: string;
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -21,6 +22,16 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
+		const categoryDraft = await store.createEntry({
+			collection: "category",
+			slug: "public-read-test-category",
+			metadata: { title: "Public read category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "public-read-test-category-hash",
+		});
+		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+		testCategoryId = category.id;
 	});
 
 	afterAll(async () => {
@@ -30,18 +41,30 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		await closeGlobalPool();
 	});
 
-	async function createEntry(params: { collection: string; slug: string; metadata?: unknown; mdx?: string }) {
+	async function createEntry(params: {
+		collection: string;
+		slug: string;
+		metadata?: Record<string, unknown>;
+		mdx?: string;
+	}) {
+		const metadata = params.metadata ?? { title: params.slug };
 		return store.createEntry({
 			collection: params.collection,
 			slug: params.slug,
-			metadata: params.metadata ?? { title: params.slug },
+			metadata:
+				params.collection === "post" ? { ...metadata, categoryId: metadata.categoryId ?? testCategoryId } : metadata,
 			mdx: params.mdx ?? `# ${params.slug}`,
 			schemaVersion: 1,
 			contentHash: `hash-${params.slug}`,
 		});
 	}
 
-	async function createPublishedEntry(params: { collection: string; slug: string; metadata?: unknown; mdx?: string }) {
+	async function createPublishedEntry(params: {
+		collection: string;
+		slug: string;
+		metadata?: Record<string, unknown>;
+		mdx?: string;
+	}) {
 		const entry = await createEntry(params);
 
 		return store.publishEntry({ id: entry.id, expectedVersion: entry.version });
@@ -90,7 +113,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		if (lookup.status === "current") {
 			expect(lookup.entry.slug).toBe("live-post");
 			expect(lookup.entry.mdx).toBe("# 공개 본문");
-			expect(lookup.entry.metadata).toEqual({ title: "공개 글", summary: "요약" });
+			expect(lookup.entry.metadata).toEqual({ title: "공개 글", summary: "요약", categoryId: testCategoryId });
 			expect(lookup.entry.publishedAt).toBeInstanceOf(Date);
 		}
 	});
@@ -144,7 +167,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		const saved = await store.saveWorking(published.id, {
 			expectedVersion: published.version,
 			slug: "after-rename",
-			metadata: { title: "이름 변경" },
+			metadata: { title: "이름 변경", categoryId: testCategoryId },
 			mdx: "# 이름 변경",
 			schemaVersion: 1,
 			contentHash: "hash-renamed",
@@ -169,7 +192,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		const saved = await store.saveWorking(published.id, {
 			expectedVersion: published.version,
 			slug: "alias-then-archive-2",
-			metadata: { title: "이름 변경" },
+			metadata: { title: "이름 변경", categoryId: testCategoryId },
 			mdx: "# 이름 변경",
 			schemaVersion: 1,
 			contentHash: "hash-alias-archive",

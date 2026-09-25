@@ -1,18 +1,26 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
-import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
+import { ImageIcon, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CmsImageNode } from "./image-node";
-import { uploadImageFile } from "./upload-helper";
+import { formatContentLinkMdx, type InternalLinkItem, parseInternalLinkTrigger } from "./internal-link";
+import { InternalLinkPopup } from "./internal-link-popup";
 import { filterCommands, type SlashCommandItem } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
-import { BlockHandleOverlay } from "./block-handle-overlay";
-import { parseInternalLinkTrigger, formatContentLinkMdx, type InternalLinkItem } from "./internal-link";
-import { InternalLinkPopup } from "./internal-link-popup";
-import { Loader2, ImageIcon } from "lucide-react";
+import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
+import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
+import { uploadImageFile } from "./upload-helper";
 
 interface CmsEditorProps {
 	content: string;
@@ -69,6 +77,10 @@ export function CmsEditor({
 	// Image Uploading State
 	const [isUploadingImage, setIsUploadingImage] = useState(false);
 	const [uploadProgress, setUploadProgress] = useState(0);
+	const [pendingImage, setPendingImage] = useState<File | null>(null);
+	const [imageAlt, setImageAlt] = useState("");
+	const [isDecorativeImage, setIsDecorativeImage] = useState(false);
+	const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -263,40 +275,48 @@ export function CmsEditor({
 		};
 	}, [linkOpen, linkQuery]);
 
-	// Image Upload Handler
+	// Confirm image meaning before any new editor insertion.
 	const handleUploadImage = useCallback(
-		async (file: File) => {
-			if (!editor) return;
-			setIsUploadingImage(true);
-			setUploadProgress(0);
-			try {
-				const uploaded = await uploadImageFile(file, (percent) => {
-					setUploadProgress(percent);
-				});
-
-				editor
-					.chain()
-					.focus()
-					.insertContent({
-						type: "image",
-						attrs: {
-							mediaId: uploaded.mediaId,
-							src: uploaded.publicUrl,
-							alt: file.name.replace(/\.[^/.]+$/, ""),
-							width: "100%",
-							align: "center",
-						},
-					})
-					.run();
-			} catch (err: any) {
-				alert(`이미지 업로드에 실패했습니다: ${err.message}`);
-			} finally {
-				setIsUploadingImage(false);
-				setUploadProgress(0);
-			}
+		(file: File) => {
+			if (!editor?.isEditable) return;
+			setImageUploadError(null);
+			setImageAlt("");
+			setIsDecorativeImage(false);
+			setPendingImage(file);
 		},
 		[editor],
 	);
+
+	const confirmImageUpload = useCallback(async () => {
+		if (!editor || !pendingImage || (!isDecorativeImage && !imageAlt.trim())) return;
+		setIsUploadingImage(true);
+		setUploadProgress(0);
+		setImageUploadError(null);
+		try {
+			const uploaded = await uploadImageFile(pendingImage, setUploadProgress);
+			editor
+				.chain()
+				.focus()
+				.insertContent({
+					type: "image",
+					attrs: {
+						mediaId: uploaded.mediaId,
+						src: uploaded.publicUrl,
+						alt: isDecorativeImage ? "" : imageAlt.trim(),
+						decorative: isDecorativeImage,
+						width: "100%",
+						align: "center",
+					},
+				})
+				.run();
+			setPendingImage(null);
+		} catch (err) {
+			setImageUploadError(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
+		} finally {
+			setIsUploadingImage(false);
+			setUploadProgress(0);
+		}
+	}, [editor, imageAlt, isDecorativeImage, pendingImage]);
 
 	// Listen to custom upload events (e.g. from slash command)
 	useEffect(() => {
@@ -472,8 +492,9 @@ export function CmsEditor({
 	};
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and drag state
 		<div
-			className="min-h-full w-full flex-1 flex flex-col bg-white dark:bg-neutral-950 relative"
+			className="relative flex min-h-full w-full flex-1 flex-col bg-white dark:bg-neutral-950"
 			onCompositionStart={() => {
 				isComposingRef.current = true;
 				if (onCompositionStart) onCompositionStart();
@@ -485,13 +506,15 @@ export function CmsEditor({
 			onMouseMove={handleMouseMove}
 		>
 			{/* Fixed Sticky Rich Formatting Toolbar */}
-			<div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur px-4 py-2">
+			<div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-neutral-200 border-b bg-white/95 px-4 py-2 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
 				{/* Block Types */}
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.setParagraph())}
-					className={`px-2.5 py-1 text-xs font-medium rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("paragraph") ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2.5 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("paragraph")
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					본문
@@ -499,8 +522,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleHeading({ level: 1 }))}
-					className={`px-2 py-1 text-xs font-medium rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("heading", { level: 1 }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("heading", { level: 1 })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					H1
@@ -508,8 +533,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleHeading({ level: 2 }))}
-					className={`px-2 py-1 text-xs font-medium rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("heading", { level: 2 }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("heading", { level: 2 })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					H2
@@ -517,20 +544,22 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleHeading({ level: 3 }))}
-					className={`px-2 py-1 text-xs font-medium rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("heading", { level: 3 }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("heading", { level: 3 })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					H3
 				</button>
 
-				<div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-800 mx-1" />
+				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
 
 				{/* Inlines */}
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleBold())}
-					className={`px-2 py-1 text-xs font-bold rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+					className={`rounded px-2 py-1 font-bold text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
 						editor.isActive("bold") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
@@ -539,7 +568,7 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleItalic())}
-					className={`px-2 py-1 text-xs italic rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+					className={`rounded px-2 py-1 text-xs italic transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
 						editor.isActive("italic") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
@@ -548,7 +577,7 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleStrike())}
-					className={`px-2 py-1 text-xs line-through rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+					className={`rounded px-2 py-1 text-xs line-through transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
 						editor.isActive("strike") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
@@ -557,7 +586,7 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleCode())}
-					className={`px-2 py-1 text-xs font-mono rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
+					className={`rounded px-2 py-1 font-mono text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
 						editor.isActive("code") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
@@ -566,8 +595,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleUnderline())}
-					className={`px-2 py-1 text-xs underline rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("underline") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs underline transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("underline")
+							? "bg-neutral-200 dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					U
@@ -575,8 +606,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleSuperscript())}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("superscript") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("superscript")
+							? "bg-neutral-200 dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					x²
@@ -584,21 +617,25 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleSubscript())}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("subscript") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("subscript")
+							? "bg-neutral-200 dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					x₂
 				</button>
 
-				<div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-800 mx-1" />
+				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
 
 				{/* 정렬 (:::text-align) */}
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.setTextAlign("left"))}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive({ textAlign: "left" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive({ textAlign: "left" })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					왼쪽
@@ -606,8 +643,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.setTextAlign("center"))}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive({ textAlign: "center" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive({ textAlign: "center" })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					가운데
@@ -615,8 +654,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.setTextAlign("right"))}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive({ textAlign: "right" }) ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive({ textAlign: "right" })
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					오른쪽
@@ -624,19 +665,21 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.unsetTextAlign())}
-					className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-600 dark:text-neutral-400"
+					className="rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
 				>
 					자동
 				</button>
 
-				<div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-800 mx-1" />
+				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
 
 				{/* Lists & Blocks */}
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleBulletList())}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("bulletList") ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("bulletList")
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					• 목록
@@ -644,8 +687,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleOrderedList())}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("orderedList") ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("orderedList")
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					1. 순서목록
@@ -653,8 +698,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleBlockquote())}
-					className={`px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("blockquote") ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("blockquote")
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					“ 인용구
@@ -662,8 +709,10 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.toggleCodeBlock())}
-					className={`px-2 py-1 text-xs font-mono rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition ${
-						editor.isActive("codeBlock") ? "bg-neutral-200 dark:bg-neutral-800 font-bold" : "text-neutral-600 dark:text-neutral-400"
+					className={`rounded px-2 py-1 font-mono text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+						editor.isActive("codeBlock")
+							? "bg-neutral-200 font-bold dark:bg-neutral-800"
+							: "text-neutral-600 dark:text-neutral-400"
 					}`}
 				>
 					코드블록
@@ -671,7 +720,7 @@ export function CmsEditor({
 				<button
 					type="button"
 					onMouseDown={setFormat((c) => c.setHorizontalRule())}
-					className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-600 dark:text-neutral-400"
+					className="rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
 				>
 					구분선
 				</button>
@@ -688,30 +737,83 @@ export function CmsEditor({
 						};
 						input.click();
 					}}
-					className="px-2 py-1 text-xs rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-600 dark:text-neutral-400 flex items-center gap-1"
+					className="flex items-center gap-1 rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
 				>
 					<ImageIcon className="h-3.5 w-3.5" />
 					이미지
 				</button>
 			</div>
 
+			<Dialog open={Boolean(pendingImage)} onOpenChange={(open) => !open && !isUploadingImage && setPendingImage(null)}>
+				<DialogContent className="max-w-md" showCloseButton={!isUploadingImage}>
+					<DialogHeader>
+						<DialogTitle>이미지 대체 텍스트</DialogTitle>
+						<DialogDescription>
+							{pendingImage?.name} 이미지에 설명을 입력하거나 장식 이미지로 표시하세요.
+						</DialogDescription>
+					</DialogHeader>
+					<label htmlFor="image-alt" className="font-medium text-sm">
+						대체 텍스트
+					</label>
+					<input
+						id="image-alt"
+						aria-invalid={Boolean(imageUploadError) || undefined}
+						aria-describedby={imageUploadError ? "image-alt-error" : undefined}
+						value={imageAlt}
+						disabled={isDecorativeImage}
+						aria-required={!isDecorativeImage}
+						onChange={(event) => setImageAlt(event.target.value)}
+						className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
+					/>
+					<label className="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							checked={isDecorativeImage}
+							onChange={(event) => setIsDecorativeImage(event.target.checked)}
+						/>
+						장식 이미지 (스크린 리더에서 생략)
+					</label>
+					{imageUploadError && (
+						<p id="image-alt-error" role="alert" className="text-destructive text-sm">
+							이미지 업로드 실패: {imageUploadError}
+						</p>
+					)}
+					<DialogFooter>
+						<button
+							type="button"
+							disabled={isUploadingImage}
+							onClick={() => setPendingImage(null)}
+							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+						>
+							취소
+						</button>
+						<button
+							type="button"
+							disabled={isUploadingImage || (!isDecorativeImage && !imageAlt.trim())}
+							onClick={confirmImageUpload}
+							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+						>
+							업로드 및 삽입
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
 			{/* Image Uploading Progress Bar */}
 			{isUploadingImage && (
-				<div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800 px-4 py-1.5 flex items-center gap-3 text-xs text-blue-700 dark:text-blue-300">
+				<div className="flex items-center gap-3 border-blue-200 border-b bg-blue-50 px-4 py-1.5 text-blue-700 text-xs dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
 					<Loader2 className="h-3.5 w-3.5 animate-spin" />
 					<span>이미지 업로드 중... {uploadProgress}%</span>
-					<div className="flex-1 max-w-xs h-1.5 bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
-						<div
-							className="h-full bg-blue-600 transition-all duration-150"
-							style={{ width: `${uploadProgress}%` }}
-						/>
+					<div className="h-1.5 max-w-xs flex-1 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900">
+						<div className="h-full bg-blue-600 transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
 					</div>
 				</div>
 			)}
 
 			{/* Borderless Canvas Area */}
+			{/* biome-ignore lint/a11y: editor canvas click focuses the rich text editor */}
 			<div
-				className="flex-1 w-full max-w-3xl mx-auto py-6 px-4 flex flex-col cursor-text min-h-full"
+				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 py-6"
 				onClick={() => {
 					if (editor && !editor.isFocused) {
 						editor.chain().focus("end").run();
@@ -723,7 +825,7 @@ export function CmsEditor({
 			>
 				<EditorContent
 					editor={editor}
-					className="flex-1 flex flex-col min-h-full [&>.ProseMirror]:flex-1 [&>.ProseMirror]:min-h-[calc(100vh-240px)]"
+					className="flex min-h-full flex-1 flex-col [&>.ProseMirror]:min-h-[calc(100vh-240px)] [&>.ProseMirror]:flex-1"
 				/>
 			</div>
 
@@ -752,12 +854,7 @@ export function CmsEditor({
 					onSelect={(item) => {
 						if (linkRangeRef.current) {
 							const formatted = formatContentLinkMdx(item);
-							editor
-								.chain()
-								.focus()
-								.deleteRange(linkRangeRef.current)
-								.insertContent(formatted)
-								.run();
+							editor.chain().focus().deleteRange(linkRangeRef.current).insertContent(formatted).run();
 							setLinkOpen(false);
 						}
 					}}

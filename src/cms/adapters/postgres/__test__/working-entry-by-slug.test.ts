@@ -13,6 +13,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore>;
+	let testCategoryId: string;
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -21,6 +22,16 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
+		const categoryDraft = await store.createEntry({
+			collection: "category",
+			slug: "working-slug-test-category",
+			metadata: { title: "Working slug category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "working-slug-category-hash",
+		});
+		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+		testCategoryId = category.id;
 	});
 
 	afterAll(async () => {
@@ -31,10 +42,11 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	});
 
 	async function seedDraft(slug: string, mdx: string, metadata: Record<string, unknown> = { title: slug }) {
+		const postMetadata = { ...metadata, categoryId: metadata.categoryId ?? testCategoryId };
 		const entry = await store.createEntry({
 			collection: "post",
 			slug: null,
-			metadata,
+			metadata: postMetadata,
 			mdx,
 			schemaVersion: 1,
 			contentHash: `hash-${slug}`,
@@ -43,7 +55,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 		return await store.saveWorking(entry.id, {
 			expectedVersion: entry.version,
 			slug,
-			metadata,
+			metadata: postMetadata,
 			mdx,
 			schemaVersion: 1,
 			contentHash: `hash-${slug}-saved`,
@@ -58,7 +70,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 		expect(found?.status).toBe("draft");
 		expect(found?.workingSlug).toBe("draft-only-post");
 		expect(found?.working.mdx).toBe("초안 본문");
-		expect(found?.working.metadata).toEqual({ title: "draft-only-post" });
+		expect(found?.working.metadata).toEqual({ title: "draft-only-post", categoryId: testCategoryId });
 
 		// 공개 경로는 여전히 초안을 반환하지 않는다(이 변경으로 공개 계약이 넓어지지 않았다).
 		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "draft-only-post" })).toEqual({

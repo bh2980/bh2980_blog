@@ -9,9 +9,7 @@ export type BulkOp =
 	| "unarchive"
 	| "trash"
 	| "publish";
-export type BulkItemResult =
-	| { id: string; ok: true; version: number }
-	| { id: string; ok: false; error: string };
+export type BulkItemResult = { id: string; ok: true; version: number } | { id: string; ok: false; error: string };
 
 export async function runBulk(
 	op: BulkOp,
@@ -36,4 +34,8 @@ export const BULK_ERROR_LABEL: Record<string, string> = {
 	not_found: "삭제되었거나 없음",
 	invalid_input: "입력 오류",
 	locked: "예약 중이라 수정 불가",
+	publish_validation_failed: "발행 전 검증을 통과하지 못했습니다.",
+	slug_conflict: "같은 주소(slug)가 이미 사용 중입니다.",
+	in_use: "공개 중인 글에서 사용 중이어서 처리할 수 없습니다.",
+	invalid_reference: "참조 항목을 확인할 수 없습니다.",
 };

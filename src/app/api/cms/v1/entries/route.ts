@@ -17,10 +17,7 @@ export async function GET(request: NextRequest) {
 
 		const parsed = listEntriesQuerySchema.safeParse(rawQuery);
 		if (!parsed.success) {
-			return NextResponse.json(
-				{ error: "Invalid query parameters", details: parsed.error.issues },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.issues }, { status: 400 });
 		}
 
 		const store = getCmsContentStore();
@@ -69,15 +66,8 @@ export async function POST(request: NextRequest) {
 		if (parsed.data.folderId !== undefined) {
 			draftInput.folderId = parsed.data.folderId;
 		}
-		const entry = (await service.createDraft(draftInput)) as { id: string; version: number };
-
-		// Record 컬렉션(tag, category, collection)은 저장 즉시 published 상태로 발행 (명세 §5.2)
-		if (["tag", "category", "collection"].includes(parsed.data.collection)) {
-			const store = getCmsContentStore();
-			const published = await store.publishEntry({ id: entry.id, expectedVersion: entry.version });
-			return NextResponse.json(published, { status: 201 });
-		}
-
+		const publishImmediately = ["tag", "category", "collection"].includes(parsed.data.collection);
+		const entry = await service.createDraft(draftInput, { publishImmediately });
 		return NextResponse.json(entry, { status: 201 });
 	} catch (error) {
 		return handleApiError(error);

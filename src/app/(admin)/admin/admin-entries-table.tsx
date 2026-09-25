@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 
 interface TableProps {
 	collection: string;
@@ -94,9 +102,7 @@ export function AdminEntriesTable({
 
 	// Show subfolders when no search/status filters are active (Folder Explorer Mode)
 	const isExplorerMode = !search.trim() && !statusFilter && Boolean(onSelectFolder);
-	const subFolders = isExplorerMode
-		? folders.filter((f) => (f.parentId ?? null) === (currentFolderId ?? null))
-		: [];
+	const subFolders = isExplorerMode ? folders.filter((f) => (f.parentId ?? null) === (currentFolderId ?? null)) : [];
 
 	const handleFolderSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -137,22 +143,22 @@ export function AdminEntriesTable({
 	};
 
 	return (
-		<main className="flex-1 flex flex-col overflow-hidden bg-neutral-950 p-6">
+		<main className="flex flex-1 flex-col overflow-hidden bg-neutral-950 p-6">
 			{/* Top Bar: Controls */}
-			<div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+			<div className="flex flex-wrap items-center justify-between gap-4 border-neutral-800 border-b pb-4">
 				<div className="flex flex-wrap items-center gap-3">
 					<input
 						type="text"
 						placeholder="제목, slug 검색..."
 						value={search}
 						onChange={(e) => onSearchChange(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 w-64"
+						className="w-64 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:border-neutral-600 focus:outline-none"
 					/>
 
 					<select
 						value={statusFilter}
 						onChange={(e) => onStatusChange(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 focus:outline-none focus:border-neutral-600"
+						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-neutral-300 text-sm focus:border-neutral-600 focus:outline-none"
 					>
 						<option value="">전체 상태</option>
 						<option value="draft">초안 (Draft)</option>
@@ -164,7 +170,7 @@ export function AdminEntriesTable({
 					<select
 						value={pageSize}
 						onChange={(e) => onPageSizeChange(Number(e.target.value) as 25 | 50 | 100)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 focus:outline-none focus:border-neutral-600"
+						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-neutral-300 text-sm focus:border-neutral-600 focus:outline-none"
 					>
 						<option value={25}>25개씩 보기</option>
 						<option value={50}>50개씩 보기</option>
@@ -174,7 +180,7 @@ export function AdminEntriesTable({
 					<button
 						type="button"
 						onClick={onCreateNew}
-						className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-neutral-200 transition"
+						className="rounded-lg bg-white px-4 py-1.5 font-semibold text-neutral-950 text-sm transition hover:bg-neutral-200"
 					>
 						+ 새로 만들기
 					</button>
@@ -183,12 +189,12 @@ export function AdminEntriesTable({
 
 			{/* Folder Path Breadcrumb (파일 탐색기 스타일 경로 안내) */}
 			{onSelectFolder && (
-				<div className="flex items-center justify-between py-2.5 px-3 border-b border-neutral-800/60 bg-neutral-900/20 text-xs">
-					<div className="flex items-center gap-1.5 flex-wrap">
+				<div className="flex items-center justify-between border-neutral-800/60 border-b bg-neutral-900/20 px-3 py-2.5 text-xs">
+					<div className="flex flex-wrap items-center gap-1.5">
 						<button
 							type="button"
 							onClick={() => onSelectFolder(null)}
-							className={`flex items-center gap-1 hover:text-white transition ${
+							className={`flex items-center gap-1 transition hover:text-white ${
 								!currentFolderId ? "font-semibold text-white" : "text-neutral-400"
 							}`}
 						>
@@ -201,10 +207,8 @@ export function AdminEntriesTable({
 								<button
 									type="button"
 									onClick={() => onSelectFolder(f.id)}
-									className={`hover:text-white transition ${
-										i === breadcrumb.length - 1
-											? "font-semibold text-white"
-											: "text-neutral-400"
+									className={`transition hover:text-white ${
+										i === breadcrumb.length - 1 ? "font-semibold text-white" : "text-neutral-400"
 									}`}
 								>
 									{f.name}
@@ -221,20 +225,20 @@ export function AdminEntriesTable({
 										type="text"
 										value={newFolderName}
 										onChange={(e) => setNewFolderName(e.target.value)}
+										aria-label="새 폴더 이름"
 										placeholder="새 폴더 이름"
-										className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-500"
-										autoFocus
+										className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs focus:border-neutral-500 focus:outline-none"
 									/>
 									<button
 										type="submit"
-										className="rounded bg-neutral-700 px-2 py-0.5 text-xs text-white hover:bg-neutral-600"
+										className="rounded bg-neutral-700 px-2 py-0.5 text-white text-xs hover:bg-neutral-600"
 									>
 										확인
 									</button>
 									<button
 										type="button"
 										onClick={() => setIsCreatingFolder(false)}
-										className="text-xs text-neutral-400 hover:text-white px-1"
+										className="px-1 text-neutral-400 text-xs hover:text-white"
 									>
 										취소
 									</button>
@@ -243,7 +247,7 @@ export function AdminEntriesTable({
 								<button
 									type="button"
 									onClick={() => setIsCreatingFolder(true)}
-									className="text-xs text-neutral-400 hover:text-white flex items-center gap-1"
+									className="flex items-center gap-1 text-neutral-400 text-xs hover:text-white"
 								>
 									<span>+ 현재 위치에 새 폴더</span>
 								</button>
@@ -255,24 +259,20 @@ export function AdminEntriesTable({
 
 			{/* Error Alert */}
 			{errorMessage && (
-				<div className="mt-4 rounded-lg border border-red-800 bg-red-950/50 p-4 flex items-center justify-between text-sm text-red-200">
+				<div className="mt-4 flex items-center justify-between rounded-lg border border-red-800 bg-red-950/50 p-4 text-red-200 text-sm">
 					<span>{errorMessage}</span>
-					<button
-						type="button"
-						onClick={onRetry}
-						className="text-xs underline hover:text-white ml-4"
-					>
+					<button type="button" onClick={onRetry} className="ml-4 text-xs underline hover:text-white">
 						다시 시도
 					</button>
 				</div>
 			)}
 
 			{/* Entries & Folders Table */}
-			<div className="flex-1 overflow-y-auto mt-2 border border-neutral-800 rounded-lg">
-				<table className="w-full text-left text-sm text-neutral-300">
-					<thead className="bg-neutral-900/80 text-xs uppercase tracking-wider text-neutral-400 border-b border-neutral-800 sticky top-0 backdrop-blur z-10">
+			<div className="mt-2 flex-1 overflow-y-auto rounded-lg border border-neutral-800">
+				<table className="w-full text-left text-neutral-300 text-sm">
+					<thead className="sticky top-0 z-10 border-neutral-800 border-b bg-neutral-900/80 text-neutral-400 text-xs uppercase tracking-wider backdrop-blur">
 						<tr>
-							<th className="px-4 py-3 w-10">
+							<th className="w-10 px-4 py-3">
 								<input
 									type="checkbox"
 									checked={items.length > 0 && items.every((i) => selectedIds.has(i.id))}
@@ -282,20 +282,17 @@ export function AdminEntriesTable({
 								/>
 							</th>
 							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
+								className="cursor-pointer px-4 py-3 transition hover:text-white"
 								onClick={() => onSortChange("title")}
 							>
 								이름 / 제목 {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
 							</th>
-							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
-								onClick={() => onSortChange("slug")}
-							>
+							<th className="cursor-pointer px-4 py-3 transition hover:text-white" onClick={() => onSortChange("slug")}>
 								Slug {sortField === "slug" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
 							</th>
 							<th className="px-4 py-3">상태</th>
 							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
+								className="cursor-pointer px-4 py-3 transition hover:text-white"
 								onClick={() => onSortChange("updatedAt")}
 							>
 								수정일 {sortField === "updatedAt" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
@@ -314,16 +311,16 @@ export function AdminEntriesTable({
 										onSelectFolder?.(parentFolderId);
 									}
 								}}
-								className="hover:bg-neutral-800/30 focus:bg-neutral-800/50 focus:outline-none transition cursor-pointer text-neutral-400 select-none"
+								className="cursor-pointer select-none text-neutral-400 transition hover:bg-neutral-800/30 focus:bg-neutral-800/50 focus:outline-none"
 							>
 								<td className="px-4 py-2.5 text-center text-xs">📁</td>
-								<td className="px-4 py-2.5 font-medium text-neutral-300 flex items-center gap-2">
+								<td className="flex items-center gap-2 px-4 py-2.5 font-medium text-neutral-300">
 									<span>..</span>
-									<span className="text-xs text-neutral-500">(상위 폴더로 이동)</span>
+									<span className="text-neutral-500 text-xs">(상위 폴더로 이동)</span>
 								</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
+								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
+								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
+								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
 							</tr>
 						)}
 
@@ -344,13 +341,11 @@ export function AdminEntriesTable({
 												onSelectFolder?.(folder.id);
 											}
 										}}
-										className={`group hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none transition cursor-pointer select-none ${
+										className={`group cursor-pointer select-none transition hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none ${
 											isRenamingThis ? "bg-neutral-800/50" : ""
 										}`}
 									>
-										<td className="px-4 py-2.5 text-center text-sm">
-											📁
-										</td>
+										<td className="px-4 py-2.5 text-center text-sm">📁</td>
 										<td className="px-4 py-2.5 font-medium text-white">
 											{isRenamingThis ? (
 												<form
@@ -361,63 +356,66 @@ export function AdminEntriesTable({
 												>
 													<input
 														type="text"
+														aria-label="폴더 이름 변경"
 														value={renameInput}
 														onChange={(e) => setRenameInput(e.target.value)}
-														className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
-														autoFocus
+														className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs focus:border-neutral-400 focus:outline-none"
 														onKeyDown={(e) => {
 															e.stopPropagation();
 															if (e.key === "Escape") setRenamingFolder(null);
 														}}
 													/>
-													<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
+													<button
+														type="submit"
+														className="rounded bg-neutral-700 px-1.5 py-0.5 text-[11px] text-white hover:bg-neutral-600"
+													>
 														저장
 													</button>
 													<button
 														type="button"
 														onClick={() => setRenamingFolder(null)}
-														className="text-[11px] text-neutral-400 hover:text-white px-1"
+														className="px-1 text-[11px] text-neutral-400 hover:text-white"
 													>
 														취소
 													</button>
 												</form>
 											) : (
-											<div className="flex items-center justify-between">
-												<span className="hover:underline flex items-center gap-1.5">
-													<span>{folder.name}</span>
-												</span>
+												<div className="flex items-center justify-between">
+													<span className="flex items-center gap-1.5 hover:underline">
+														<span>{folder.name}</span>
+													</span>
 
-												{onRenameFolder && onDeleteFolder && (
-													<div
-														className="opacity-0 group-hover:opacity-100 flex items-center gap-2 text-xs text-neutral-400"
-														onClick={(e) => e.stopPropagation()}
-													>
-														<button
-															type="button"
-															onClick={() => {
-																setRenamingFolder(folder);
-																setRenameInput(folder.name);
-															}}
-															className="text-[11px] text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-700"
-														>
-															이름 수정
-														</button>
-														<button
-															type="button"
-															onClick={() => setDeletingFolder(folder)}
-															className="text-[11px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-neutral-700"
-														>
-															삭제
-														</button>
-													</div>
-												)}
-											</div>
-										)}
-									</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">폴더</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
-								</tr>
+													{onRenameFolder && onDeleteFolder && (
+														<div className="flex items-center gap-2 text-neutral-400 text-xs opacity-0 group-hover:opacity-100">
+															<button
+																type="button"
+																onClick={() => {
+																	setRenamingFolder(folder);
+																	setRenameInput(folder.name);
+																}}
+																className="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-700 hover:text-white"
+															>
+																이름 수정
+															</button>
+															<button
+																type="button"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setDeletingFolder(folder);
+																}}
+																className="rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-neutral-700 hover:text-red-300"
+															>
+																삭제
+															</button>
+														</div>
+													)}
+												</div>
+											)}
+										</td>
+										<td className="px-4 py-2.5 text-neutral-500 text-xs">폴더</td>
+										<td className="px-4 py-2.5 text-neutral-500 text-xs">-</td>
+										<td className="px-4 py-2.5 text-neutral-500 text-xs">-</td>
+									</tr>
 								);
 							})}
 
@@ -436,11 +434,12 @@ export function AdminEntriesTable({
 							</tr>
 						) : (
 							items.map((item) => (
-								<tr key={item.id} className="hover:bg-neutral-800/40 transition">
-									<td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+								<tr key={item.id} className="transition hover:bg-neutral-800/40">
+									<td className="px-4 py-3">
 										<input
 											type="checkbox"
 											checked={selectedIds.has(item.id)}
+											onClick={(e) => e.stopPropagation()}
 											onChange={() => onToggleSelect(item.id)}
 											aria-label={`${item.title ?? item.id} 선택`}
 											className="accent-white"
@@ -460,7 +459,7 @@ export function AdminEntriesTable({
 																onRenameRecord(item.id, item.title || "", item.version);
 															}
 														}}
-														className="text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded border border-neutral-700 hover:border-neutral-500 bg-neutral-800 transition whitespace-nowrap"
+														className="whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-neutral-500 text-xs transition hover:border-neutral-500 hover:text-white"
 														title="이름 수정"
 													>
 														이름 수정
@@ -470,27 +469,27 @@ export function AdminEntriesTable({
 										) : (
 											<Link
 												href={`/admin/entries/${item.id}/edit` as any}
-												className="hover:underline hover:text-blue-400"
+												className="hover:text-blue-400 hover:underline"
 											>
 												{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
 											</Link>
 										)}
 									</td>
-									<td className="px-4 py-3 text-neutral-400 font-mono text-xs">
+									<td className="px-4 py-3 font-mono text-neutral-400 text-xs">
 										{item.slug || <span className="text-neutral-600">-</span>}
 									</td>
 									<td className="px-4 py-3">
 										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+											className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${
 												item.status === "published"
-													? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/50"
-													: "bg-neutral-800 text-neutral-300 border border-neutral-700"
+													? "border border-emerald-800/50 bg-emerald-950/80 text-emerald-400"
+													: "border border-neutral-700 bg-neutral-800 text-neutral-300"
 											}`}
 										>
 											{item.status === "published" ? "공개" : "초안"}
 										</span>
 									</td>
-									<td className="px-4 py-3 text-xs text-neutral-400">
+									<td className="px-4 py-3 text-neutral-400 text-xs">
 										{new Date(item.updatedAt).toLocaleString("ko-KR")}
 									</td>
 								</tr>
@@ -501,12 +500,11 @@ export function AdminEntriesTable({
 			</div>
 
 			{/* Pagination Footer */}
-			<div className="flex items-center justify-between pt-4 text-xs text-neutral-400 border-t border-neutral-800 mt-2">
+			<div className="mt-2 flex items-center justify-between border-neutral-800 border-t pt-4 text-neutral-400 text-xs">
 				<div>
 					총 <span className="font-semibold text-white">{total}</span>개 항목 중{" "}
 					<span className="font-semibold text-white">
-						{items.length > 0 ? (page - 1) * pageSize + 1 : 0} -{" "}
-						{Math.min(page * pageSize, total)}
+						{items.length > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, total)}
 					</span>
 				</div>
 
@@ -533,53 +531,50 @@ export function AdminEntriesTable({
 				</div>
 			</div>
 
-			{/* 삭제 확인 모달 (window.confirm 대체) */}
-			{deletingFolder && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-white mb-2">폴더 삭제 확인</h3>
-						<p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-							&apos;{deletingFolder.name}&apos; 폴더를 삭제하시겠습니까?<br />
-							<span className="text-neutral-500">폴더 안의 하위 글과 하위 폴더는 안전하게 보존됩니다.</span>
-						</p>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setDeletingFolder(null)}
-								className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition"
-							>
-								취소
-							</button>
-							<button
-								type="button"
-								onClick={handleConfirmDelete}
-								className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition"
-							>
-								삭제하기
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+			<Dialog open={Boolean(deletingFolder)} onOpenChange={(open) => !open && setDeletingFolder(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>폴더 삭제 확인</DialogTitle>
+						<DialogDescription>
+							&apos;{deletingFolder?.name}&apos; 폴더를 삭제하시겠습니까? 폴더 안의 하위 글과 하위 폴더는 보존됩니다.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setDeletingFolder(null)}
+							className="rounded-lg border px-3 py-1.5 font-medium text-xs"
+						>
+							취소
+						</button>
+						<button
+							type="button"
+							onClick={handleConfirmDelete}
+							className="rounded-lg border px-3 py-1.5 font-semibold text-xs"
+						>
+							삭제하기
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-			{/* 에러 알림 모달 (window.alert 대체) */}
-			{errorDialogMsg && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-red-900/60 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-red-400 mb-2">오류 발생</h3>
-						<p className="text-xs text-neutral-300 mb-5">{errorDialogMsg}</p>
-						<div className="flex justify-end">
-							<button
-								type="button"
-								onClick={() => setErrorDialogMsg(null)}
-								className="rounded-lg bg-neutral-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 transition"
-							>
-								확인
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+			<Dialog open={Boolean(errorDialogMsg)} onOpenChange={(open) => !open && setErrorDialogMsg(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>오류 발생</DialogTitle>
+						<DialogDescription>{errorDialogMsg}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setErrorDialogMsg(null)}
+							className="rounded-lg border px-4 py-1.5 font-semibold text-xs"
+						>
+							확인
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</main>
 	);
 }

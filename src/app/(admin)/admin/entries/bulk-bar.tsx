@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
-import { BULK_ERROR_LABEL, runBulk, type BulkItemResult, type BulkOp } from "./bulk-client";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { BULK_ERROR_LABEL, type BulkItemResult, type BulkOp, runBulk } from "./bulk-client";
 
 interface Option {
 	id: string;
@@ -43,6 +51,7 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 	const [isRunning, setIsRunning] = useState(false);
 	const [results, setResults] = useState<BulkItemResult[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
 
 	const needsMulti = action === "tags.add" || action === "tags.remove";
 	const needsSingle = action === "category.set" || action === "folder.move";
@@ -53,9 +62,13 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 		setResults(null);
 		setError(null);
 		if (action === "tags.add" || action === "tags.remove") {
-			fetchOptions("tag").then(setOptions).catch(() => setOptions([]));
+			fetchOptions("tag")
+				.then(setOptions)
+				.catch(() => setOptions([]));
 		} else if (action === "category.set") {
-			fetchOptions("category").then(setOptions).catch(() => setOptions([]));
+			fetchOptions("category")
+				.then(setOptions)
+				.catch(() => setOptions([]));
 		}
 	}, [action]);
 
@@ -104,17 +117,17 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 	if (selected.length === 0 && !results) return null;
 
 	return (
-		<div className="border-b border-neutral-800 bg-neutral-900/60 px-6 py-3">
+		<div className="border-neutral-800 border-b bg-neutral-900/60 px-6 py-3">
 			<div className="flex flex-wrap items-center gap-3 text-sm">
 				<span className="font-semibold text-white">{selected.length}개 선택</span>
-				<button type="button" onClick={onClearSelection} className="text-xs text-neutral-400 hover:text-white">
+				<button type="button" onClick={onClearSelection} className="text-neutral-400 text-xs hover:text-white">
 					선택 해제
 				</button>
 
 				<select
 					value={action}
 					onChange={(e) => setAction(e.target.value as BulkOp)}
-					className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-200 focus:outline-none focus:border-neutral-600"
+					className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
 				>
 					{ACTIONS.map((a) => (
 						<option key={a.value} value={a.value}>
@@ -125,9 +138,9 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 
 				{needsMulti && (
 					<div className="flex max-h-24 flex-wrap items-center gap-2 overflow-auto">
-						{options.length === 0 && <span className="text-xs text-neutral-500">태그 없음</span>}
+						{options.length === 0 && <span className="text-neutral-500 text-xs">태그 없음</span>}
 						{options.map((o) => (
-							<label key={o.id} className="flex items-center gap-1 text-xs text-neutral-300">
+							<label key={o.id} className="flex items-center gap-1 text-neutral-300 text-xs">
 								<input
 									type="checkbox"
 									checked={checked.includes(o.id)}
@@ -144,7 +157,7 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					<select
 						value={single}
 						onChange={(e) => setSingle(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-200 focus:outline-none focus:border-neutral-600"
+						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
 					>
 						<option value="">카테고리 선택</option>
 						<option value="__none__">지우기(없음)</option>
@@ -160,7 +173,7 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					<select
 						value={single}
 						onChange={(e) => setSingle(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-200 focus:outline-none focus:border-neutral-600"
+						className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-neutral-200 text-sm focus:border-neutral-600 focus:outline-none"
 					>
 						<option value="">폴더 선택</option>
 						<option value="__root__">최상위로</option>
@@ -176,16 +189,16 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					type="button"
 					disabled={!canRun}
 					onClick={() => {
-						if (activeAction?.confirm && !window.confirm(activeAction.confirm)) return;
-						void run(selected);
+						if (activeAction?.confirm) setConfirmMessage(activeAction.confirm);
+						else void run(selected);
 					}}
-					className="rounded-lg bg-white px-3.5 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-neutral-200 transition disabled:opacity-40"
+					className="rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm transition hover:bg-neutral-200 disabled:opacity-40"
 				>
 					{isRunning ? "실행 중..." : "일괄 실행"}
 				</button>
 
 				{results && (
-					<span className="text-xs text-neutral-300">
+					<span className="text-neutral-300 text-xs">
 						성공 {successes} / 실패 {failures.length}
 					</span>
 				)}
@@ -193,25 +206,55 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					<button
 						type="button"
 						onClick={rerunFailures}
-						className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-200 hover:bg-neutral-700"
+						className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-neutral-200 text-xs hover:bg-neutral-700"
 					>
 						실패만 다시 실행
 					</button>
 				)}
 			</div>
 
-			{error && <div className="pt-2 text-xs text-red-400">{error}</div>}
+			{error && (
+				<div role="alert" className="pt-2 text-red-400 text-xs">
+					{error}
+				</div>
+			)}
 
 			{failures.length > 0 && (
-				<ul className="flex flex-col gap-1 pt-2 text-xs text-red-300">
+				<ul className="flex flex-col gap-1 pt-2 text-red-300 text-xs">
 					{failures.map((f) => (
 						<li key={f.id}>
-							<span className="font-mono">{f.id.slice(0, 8)}</span> —{" "}
-							{!f.ok && (BULK_ERROR_LABEL[f.error] ?? f.error)}
+							<span className="font-mono">{f.id.slice(0, 8)}</span> — {!f.ok && (BULK_ERROR_LABEL[f.error] ?? f.error)}
 						</li>
 					))}
 				</ul>
 			)}
+			<Dialog open={Boolean(confirmMessage)} onOpenChange={(open) => !open && setConfirmMessage(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>일괄 작업 확인</DialogTitle>
+						<DialogDescription>{confirmMessage}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setConfirmMessage(null)}
+							className="rounded-md border px-3 py-2 text-sm"
+						>
+							취소
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								setConfirmMessage(null);
+								void run(selected);
+							}}
+							className="rounded-md border px-3 py-2 text-sm"
+						>
+							계속
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

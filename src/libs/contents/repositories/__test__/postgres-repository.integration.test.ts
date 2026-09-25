@@ -158,8 +158,18 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 		expect(await publishedSlugs()).toContain("new-addr");
 	});
 
-	it("해석 가능한 published 카테고리가 없으면 공개되지 않는다", async () => {
-		await publish({ collection: "post", slug: "no-category", metadata: { title: "카테고리 없음" } });
+	it("해석 가능한 published 카테고리가 없으면 발행을 거부한다", async () => {
+		const draft = await store.createEntry({
+			collection: "post",
+			slug: "no-category",
+			metadata: { title: "카테고리 없음" },
+			mdx: "# 카테고리 없음",
+			schemaVersion: 1,
+			contentHash: "hash-no-category",
+		});
+		await expect(store.publishEntry({ id: draft.id, expectedVersion: draft.version })).rejects.toMatchObject({
+			code: "publish_validation_failed",
+		});
 
 		expect(await publishedSlugs()).not.toContain("no-category");
 		expect(await repository.getPost("no-category")).toBeNull();

@@ -37,6 +37,8 @@ export type CmsMdxAnalysis = {
 	errors: CmsMdxError[];
 	name?: string;
 	frontmatter: Record<string, CmsJsonValue> | null;
+	/** Number of source lines before the parsed MDX body (frontmatter offset). */
+	sourceLineOffset: number;
 	tree: Root | null;
 };
 

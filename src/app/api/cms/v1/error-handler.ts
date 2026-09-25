@@ -18,7 +18,7 @@ export function handleApiError(error: unknown): NextResponse {
 				{ status: 409 },
 			);
 		}
-		if (error.code === "slug_conflict" || error.code === "in_use") {
+		if (error.code === "slug_conflict" || error.code === "in_use" || error.code === "invalid_status") {
 			return NextResponse.json({ code: error.code, message: error.message }, { status: 409 });
 		}
 		if (error.code === "not_found") {
@@ -34,7 +34,7 @@ export function handleApiError(error: unknown): NextResponse {
 		if (error.code === "slug_reserved") {
 			return NextResponse.json({ code: error.code, message: "Slug is reserved" }, { status: 409 });
 		}
-		return NextResponse.json({ code: error.code, message: error.message }, { status: 422 });
+		return NextResponse.json({ code: error.code, message: error.message, issues: error.issues }, { status: 422 });
 	}
 
 	console.error("Unhandled API error:", error);

@@ -150,6 +150,7 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 
 export const analyze = (mdx: string, name?: string): CmsMdxAnalysis => {
 	const { raw, body } = splitFrontmatter(mdx);
+	const sourceLineOffset = raw === null ? 0 : mdx.slice(0, mdx.length - body.length).split(/\r?\n/).length - 1;
 	const errors: CmsMdxError[] = [];
 	let tree: Root | null = null;
 	let frontmatter: CmsMdxAnalysis["frontmatter"] = null;
@@ -168,9 +169,13 @@ export const analyze = (mdx: string, name?: string): CmsMdxAnalysis => {
 
 	return {
 		source: mdx,
-		errors,
+		errors: errors.map((error) => ({
+			...error,
+			position: { ...error.position, line: error.position.line + sourceLineOffset },
+		})),
 		name,
 		frontmatter,
+		sourceLineOffset,
 		tree,
 	};
 };

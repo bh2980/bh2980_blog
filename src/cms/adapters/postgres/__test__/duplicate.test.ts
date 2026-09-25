@@ -36,6 +36,24 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		});
 		const mediaId = media.id;
 		const folder = await store.createFolder({ collection: "post", name: "Tech" });
+		const categoryDraft = await store.createEntry({
+			collection: "category",
+			slug: "duplicate-category",
+			metadata: { title: "Category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomUUID(),
+		});
+		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+		const tagDraft = await store.createEntry({
+			collection: "tag",
+			slug: "duplicate-tag",
+			metadata: { title: "Tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomUUID(),
+		});
+		const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
 
 		// Seed a published entry with folder and working references
 		const original = await store.createEntryWithReferences({
@@ -44,8 +62,8 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 				slug: "orig-slug",
 				metadata: {
 					title: "Original Post",
-					categoryId: "00000000-0000-0000-0000-000000000001",
-					tagIds: ["00000000-0000-0000-0000-000000000002"],
+					categoryId: category.id,
+					tagIds: [tag.id],
 				},
 				mdx: "Hello world ![img](mediaId)",
 				schemaVersion: 1,
@@ -99,8 +117,8 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 
 		// 5. MDX and category/tag metadata preserved
 		expect(duplicated.working.mdx).toBe("Hello world ![img](mediaId)");
-		expect(duplicated.working.metadata.categoryId).toBe("00000000-0000-0000-0000-000000000001");
-		expect(duplicated.working.metadata.tagIds).toEqual(["00000000-0000-0000-0000-000000000002"]);
+		expect(duplicated.working.metadata.categoryId).toBe(category.id);
+		expect(duplicated.working.metadata.tagIds).toEqual([tag.id]);
 	});
 
 	it("throws not_found when duplicating non-existent entry", async () => {

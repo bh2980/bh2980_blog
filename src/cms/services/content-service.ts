@@ -5,6 +5,7 @@ import { isAllowedImageSrc } from "../mdx/image-src";
 import type { CmsImageSource } from "../mdx/types";
 import {
 	type Collection,
+	type InternalLinkSource,
 	type Issue,
 	type JsonValue,
 	type PreparedSnapshot,
@@ -50,6 +51,32 @@ class ReferenceCollector {
 
 const isValidUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 const isValidIsoDate = (s: string) => !Number.isNaN(Date.parse(s));
+
+function parseSupportedInternalLink(url: string): Omit<InternalLinkSource, "position"> | null {
+	let parsed: URL;
+	try {
+		parsed = new URL(url, "https://bh2980.dev");
+	} catch {
+		return null;
+	}
+	const relative = url.startsWith("/") && !url.startsWith("//");
+	const sameSite =
+		(url.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(url)) &&
+		(parsed.protocol === "http:" || parsed.protocol === "https:") &&
+		(parsed.hostname === "bh2980.dev" || parsed.hostname === "www.bh2980.dev");
+	if (!relative && !sameSite) return null;
+
+	const match = /^\/(posts|memos)\/([^/]+)\/?$/.exec(parsed.pathname);
+	if (!match) return null;
+	let slug: string;
+	try {
+		slug = decodeURIComponent(match[2] ?? "").normalize("NFC");
+	} catch {
+		return null;
+	}
+	if (!slug || slug.includes("/")) return null;
+	return { collection: match[1] === "posts" ? "post" : "memo", slug, url };
+}
 
 const SERVICE_INPUT_KEYS: readonly string[] = ["collection", "slug", "metadata", "mdx"];
 const SAVE_DRAFT_KEYS: readonly string[] = ["collection", "slug", "metadata", "mdx", "expectedVersion"];
@@ -229,16 +256,19 @@ export async function prepareSnapshot(
 	if (analysis.errors.length > 0) {
 		mdxHasError = true;
 		for (const e of analysis.errors) {
-			mdxIssues.push({ code: "mdx_error", message: e.message });
+			mdxIssues.push({ code: "mdx_error", message: e.message, position: e.position });
 		}
 	}
 
 	const mdxRefsToAdd: { kind: ReferenceKind; targetId: string; occ: ReferenceOccurrence }[] = [];
 	const imageSources: CmsImageSource[] = [];
+	const internalLinks: InternalLinkSource[] = [];
 
 	type MdxNode = {
 		type?: unknown;
 		name?: unknown;
+		url?: unknown;
+		identifier?: unknown;
 		attributes?: unknown;
 		children?: unknown;
 		position?: { start?: { line?: unknown; column?: unknown } };
@@ -256,8 +286,37 @@ export async function prepareSnapshot(
 		return typeof attr === "object" && attr !== null;
 	};
 
+	const definitions = new Map<string, string>();
+	const collectDefinitions = (node: unknown) => {
+		if (!isMdxNode(node)) return;
+		if (node.type === "definition" && typeof node.identifier === "string" && typeof node.url === "string") {
+			definitions.set(node.identifier, node.url);
+		}
+		if (Array.isArray(node.children)) node.children.forEach(collectDefinitions);
+	};
+	collectDefinitions(analysis.tree);
+
+	const addInternalLink = (url: unknown, node: MdxNode) => {
+		if (typeof url !== "string") return;
+		const parsed = parseSupportedInternalLink(url);
+		if (!parsed) return;
+		const pos = node.position?.start;
+		internalLinks.push({
+			...parsed,
+			position: {
+				line: (typeof pos?.line === "number" ? pos.line : 1) + analysis.sourceLineOffset,
+				column: typeof pos?.column === "number" ? pos.column : 1,
+			},
+		});
+	};
+
 	const traverse = (node: unknown) => {
 		if (!isMdxNode(node)) return;
+		if (node.type === "link") {
+			addInternalLink(node.url, node);
+		} else if (node.type === "linkReference" && typeof node.identifier === "string") {
+			addInternalLink(definitions.get(node.identifier), node);
+		}
 		if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
 			// `ContentLink`는 배치 4에서 폐기했다 — 본문에 남아 있으면 위 `analyze`가 거부한다.
 			// 참조 수집은 `Image`(`mediaId`만 참조)만 다룬다. `src`는 외부 주소라 참조가 아니다.
@@ -275,25 +334,34 @@ export async function prepareSnapshot(
 				const pos = node.position?.start;
 				const occurrence: ReferenceOccurrence = {
 					type: "mdx",
-					line: typeof pos?.line === "number" ? pos.line : 1,
+					line: (typeof pos?.line === "number" ? pos.line : 1) + analysis.sourceLineOffset,
 					column: typeof pos?.column === "number" ? pos.column : 1,
 				};
 
 				if (!attr) {
-					mdxIssues.push({ code: "missing_media_id" });
+					mdxIssues.push({ code: "missing_media_id", position: { line: occurrence.line, column: occurrence.column } });
 					mdxHasError = true;
 				} else if (attr.value === null || attr.value === undefined || attr.value === "") {
-					mdxIssues.push({ code: "missing_media_id" });
+					mdxIssues.push({ code: "missing_media_id", position: { line: occurrence.line, column: occurrence.column } });
 					mdxHasError = true;
 				} else if (typeof attr.value === "object") {
-					mdxIssues.push({ code: "dynamic_reference_id" });
+					mdxIssues.push({
+						code: "dynamic_reference_id",
+						position: { line: occurrence.line, column: occurrence.column },
+					});
 					mdxHasError = true;
 				} else if (typeof attr.value !== "string") {
-					mdxIssues.push({ code: "dynamic_reference_id" });
+					mdxIssues.push({
+						code: "dynamic_reference_id",
+						position: { line: occurrence.line, column: occurrence.column },
+					});
 					mdxHasError = true;
 				} else if (collectsReference) {
 					if (!isValidUuid(attr.value)) {
-						mdxIssues.push({ code: "invalid_reference_id" });
+						mdxIssues.push({
+							code: "invalid_reference_id",
+							position: { line: occurrence.line, column: occurrence.column },
+						});
 						mdxHasError = true;
 					} else {
 						mdxRefsToAdd.push({
@@ -339,7 +407,7 @@ export async function prepareSnapshot(
 
 	const issues: Issue[] = [...mdxIssues];
 	if (analysis.frontmatter !== null) {
-		issues.push({ code: "frontmatter_present" });
+		issues.push({ code: "frontmatter_present", path: "frontmatter", position: { line: 1, column: 1 } });
 	}
 
 	let schemaVersion = 1;
@@ -367,6 +435,9 @@ export async function prepareSnapshot(
 	);
 	const finalIssues = Object.freeze(issues.map((i) => Object.freeze({ ...i })));
 	const finalImageSources = Object.freeze(imageSources.map((source) => Object.freeze({ ...source })));
+	const finalInternalLinks = Object.freeze(
+		internalLinks.map((link) => Object.freeze({ ...link, position: Object.freeze({ ...link.position }) })),
+	);
 
 	return Object.freeze({
 		collection: input.collection,
@@ -377,6 +448,7 @@ export async function prepareSnapshot(
 		contentHash,
 		references: finalReferences,
 		issues: finalIssues,
+		internalLinks: finalInternalLinks,
 		imageSources: finalImageSources,
 	});
 }
@@ -483,86 +555,139 @@ export function validateForPublish(
 	snapshot: PreparedSnapshot,
 	resolved: ResolvedTargets,
 ): { ready: boolean; issues: Issue[]; warnings: Issue[] } {
-	let ready = true;
 	const issues: Issue[] = [...snapshot.issues];
-	const issueCodes = new Set(issues.map((i) => i.code));
+	const addIssue = (issue: Issue) => issues.push(issue);
+	const occurrenceIssue = (code: string, occurrence: ReferenceOccurrence | undefined, message?: string): Issue => ({
+		code,
+		...(message ? { message } : {}),
+		...(occurrence?.type === "mdx"
+			? { position: { line: occurrence.line, column: occurrence.column } }
+			: occurrence?.type === "metadata"
+				? { path: occurrence.path, ...(occurrence.ordinal === undefined ? {} : { ordinal: occurrence.ordinal }) }
+				: {}),
+	});
 
-	const addIssue = (code: string) => {
-		if (!issueCodes.has(code)) {
-			issues.push({ code });
-			issueCodes.add(code);
-		}
-	};
-
-	if (!snapshot.slug) {
-		addIssue("null_slug");
-	}
-
+	if (!snapshot.slug) addIssue({ code: "null_slug", path: "slug" });
 	if (["post", "memo", "category", "tag", "collection"].includes(snapshot.collection) && !snapshot.metadata.title) {
-		addIssue("missing_title");
+		addIssue({ code: "missing_title", path: "title" });
 	}
-
 	if (["post", "memo"].includes(snapshot.collection) && snapshot.mdx.trim() === "") {
-		addIssue("empty_body");
+		addIssue({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });
 	}
-
 	if (snapshot.collection === "post" && !("categoryId" in snapshot.metadata && snapshot.metadata.categoryId)) {
-		addIssue("missing_category");
-	}
-
-	if ("categoryId" in snapshot.metadata && typeof snapshot.metadata.categoryId === "string") {
-		const categoryId = "categoryId" in snapshot.metadata ? snapshot.metadata.categoryId : undefined;
-		const target = resolved.targets.find((t) => t.id === categoryId);
-		if (target && target.collection !== "category") {
-			addIssue("invalid_reference_collection");
-		}
-	}
-	if ("tagIds" in snapshot.metadata && Array.isArray(snapshot.metadata.tagIds)) {
-		for (const id of snapshot.metadata.tagIds) {
-			const target = resolved.targets.find((t) => t.id === id);
-			if (target && target.collection !== "tag") {
-				addIssue("invalid_reference_collection");
-			}
-		}
-	}
-	if ("itemIds" in snapshot.metadata && Array.isArray(snapshot.metadata.itemIds)) {
-		for (const id of snapshot.metadata.itemIds) {
-			const target = resolved.targets.find((t) => t.id === id);
-			if (target && target.collection !== "post") {
-				addIssue("invalid_item_collection");
-			}
-		}
+		addIssue({ code: "missing_category", path: "categoryId" });
 	}
 
 	for (const ref of snapshot.references) {
+		const occurrences = ref.occurrences.length > 0 ? ref.occurrences : [undefined];
 		if (ref.kind === "media") {
-			const media = resolved.media.find((m) => m.id === ref.targetId);
-			if (!media) {
-				addIssue("unresolved_media");
+			if (!resolved.media.some((m) => m.id === ref.targetId)) {
+				for (const occurrence of occurrences) addIssue(occurrenceIssue("unresolved_media", occurrence, ref.targetId));
 			}
-		} else {
-			const target = resolved.targets.find((t) => t.id === ref.targetId);
-			if (!target) {
-				addIssue("unresolved_reference");
-			} else {
-				if (!target.isPublished) {
-					addIssue("unpublished_reference");
-				}
-			}
+			continue;
+		}
+
+		const target = resolved.targets.find((t) => t.id === ref.targetId);
+		if (!target) {
+			for (const occurrence of occurrences) addIssue(occurrenceIssue("unresolved_reference", occurrence, ref.targetId));
+			continue;
+		}
+
+		const collectionItem =
+			snapshot.collection === "collection" &&
+			ref.kind === "entry" &&
+			target.collection === "post" &&
+			ref.occurrences.length > 0 &&
+			ref.occurrences.every((occurrence) => occurrence.type === "metadata" && occurrence.path === "itemIds");
+		const wrongCollection =
+			(ref.kind === "category" && target.collection !== "category") ||
+			(ref.kind === "tag" && target.collection !== "tag") ||
+			(ref.occurrences.some((occurrence) => occurrence.type === "metadata" && occurrence.path === "itemIds") &&
+				target.collection !== "post");
+		if (wrongCollection) {
+			const code = ref.kind === "entry" ? "invalid_item_collection" : "invalid_reference_collection";
+			for (const occurrence of occurrences) addIssue(occurrenceIssue(code, occurrence, ref.targetId));
+			continue;
+		}
+		if (!target.isPublished && !collectionItem) {
+			for (const occurrence of occurrences)
+				addIssue(occurrenceIssue("unpublished_reference", occurrence, ref.targetId));
 		}
 	}
 
-	if (issues.length > 0) {
-		ready = false;
+	const indexedMetadataReferences = new Set(
+		snapshot.references.flatMap((ref) =>
+			ref.occurrences
+				.filter((occurrence) => occurrence.type === "metadata")
+				.map((occurrence) => `${ref.kind}:${ref.targetId}:${occurrence.path}:${occurrence.ordinal ?? ""}`),
+		),
+	);
+	const validateMetadataTarget = (
+		kind: ReferenceKind,
+		id: string,
+		path: string,
+		ordinal: number | undefined,
+		expectedCollection: string,
+		allowDraftPost = false,
+	) => {
+		if (indexedMetadataReferences.has(`${kind}:${id}:${path}:${ordinal ?? ""}`)) return;
+		const occurrence: ReferenceOccurrence = { type: "metadata", path, ...(ordinal === undefined ? {} : { ordinal }) };
+		const target = resolved.targets.find((candidate) => candidate.id === id);
+		if (!target) addIssue(occurrenceIssue("unresolved_reference", occurrence, id));
+		else if (target.collection !== expectedCollection) {
+			addIssue(
+				occurrenceIssue(
+					path === "itemIds" ? "invalid_item_collection" : "invalid_reference_collection",
+					occurrence,
+					id,
+				),
+			);
+		} else if (!target.isPublished && !(allowDraftPost && target.collection === "post")) {
+			addIssue(occurrenceIssue("unpublished_reference", occurrence, id));
+		}
+	};
+	if (typeof snapshot.metadata.categoryId === "string") {
+		validateMetadataTarget("category", snapshot.metadata.categoryId, "categoryId", undefined, "category");
+	}
+	if (Array.isArray(snapshot.metadata.tagIds)) {
+		snapshot.metadata.tagIds.forEach((id, ordinal) => {
+			if (typeof id === "string") validateMetadataTarget("tag", id, "tagIds", ordinal, "tag");
+		});
+	}
+	if (Array.isArray(snapshot.metadata.itemIds)) {
+		snapshot.metadata.itemIds.forEach((id, ordinal) => {
+			if (typeof id === "string") {
+				validateMetadataTarget("entry", id, "itemIds", ordinal, "post", snapshot.collection === "collection");
+			}
+		});
+	}
+
+	for (const [index, source] of (snapshot.internalLinks ?? []).entries()) {
+		const target = resolved.internalLinks?.[index];
+		if (!target || target.addressType === "missing" || target.addressType === "deleted") {
+			addIssue({
+				code: "unresolved_internal_link",
+				message: source.url,
+				path: "mdx",
+				position: source.position,
+			});
+		} else if (target.addressType === "reservation" || !target.isPublished) {
+			addIssue({
+				code: "unpublished_internal_link",
+				message: source.url,
+				path: "mdx",
+				position: source.position,
+			});
+		}
 	}
 
 	// 이미지 해석 실패는 경고일 뿐이다 — `ready`를 바꾸지 않는다.
-	return { ready, issues, warnings: imageWarnings(snapshot.imageSources, resolved.media) };
+	return { ready: issues.length === 0, issues, warnings: imageWarnings(snapshot.imageSources, resolved.media) };
 }
 
 export const createContentService = <T = unknown>(storePort: StorePort<T>) => {
 	return {
-		createDraft: async (input: ServiceInput) => {
+		createDraft: async (input: ServiceInput, options?: { publishImmediately?: boolean; publishedAt?: Date }) => {
 			if (!input || typeof input !== "object" || Array.isArray(input)) {
 				throw new ServiceError("invalid_input");
 			}
@@ -577,9 +702,15 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => {
 				snapshot,
 				references: snapshot.references,
 				folderId: input.folderId,
+				publishImmediately: options?.publishImmediately,
+				publishedAt: options?.publishedAt,
 			});
 		},
-		saveDraft: async (entryId: string, input: SaveDraftInput) => {
+		saveDraft: async (
+			entryId: string,
+			input: SaveDraftInput,
+			options?: { publishImmediately?: boolean; publishedAt?: Date },
+		) => {
 			if (!input || typeof input !== "object" || Array.isArray(input)) {
 				throw new ServiceError("invalid_input");
 			}
@@ -623,6 +754,8 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => {
 				snapshot,
 				references: snapshot.references,
 				folderId: input.folderId,
+				publishImmediately: options?.publishImmediately,
+				publishedAt: options?.publishedAt,
 			});
 		},
 	};

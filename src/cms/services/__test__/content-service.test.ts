@@ -365,13 +365,12 @@ describe("ContentService M2-TW-1 Contract", () => {
 			);
 		});
 
-		it.each([["<Image mediaId={dynamicId} />", "dynamic_reference_id"]])(
-			"creates structured issues for dynamic IDs: %s",
-			async (mdx, expectedIssue) => {
-				const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
-				expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
-			},
-		);
+		it.each([
+			["<Image mediaId={dynamicId} />", "dynamic_reference_id"],
+		])("creates structured issues for dynamic IDs: %s", async (mdx, expectedIssue) => {
+			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
+		});
 
 		it("retains trusted previous refs marked stale on MDX syntax error and keeps exact MDX unchanged", async () => {
 			const mdx = "</Invalid>";
@@ -694,7 +693,73 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 	});
 
-	describe("8. Service Orchestration & Fake Port", () => {
+	describe("8. Publish preflight completeness", () => {
+		it("allows unpublished posts only through collection itemIds", async () => {
+			const id = "123e4567-e89b-12d3-a456-426614174099";
+			const snapshot = await prepareSnapshot({
+				collection: "collection",
+				slug: "series",
+				metadata: { title: "Series", itemIds: [id] },
+				mdx: "",
+			});
+			const validation = validateForPublish(snapshot, {
+				targets: [{ id, isPublished: false, collection: "post" }],
+				media: [],
+			});
+			expect(validation.ready).toBe(true);
+		});
+
+		it("reports every unresolved reference with metadata occurrence", async () => {
+			const ids = ["123e4567-e89b-12d3-a456-426614174091", "123e4567-e89b-12d3-a456-426614174092"];
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo", tagIds: ids },
+				mdx: "Body",
+			});
+			const validation = validateForPublish(snapshot, { targets: [], media: [] });
+			expect(validation.issues.filter((issue) => issue.code === "unresolved_reference")).toEqual([
+				expect.objectContaining({ path: "tagIds", ordinal: 0 }),
+				expect.objectContaining({ path: "tagIds", ordinal: 1 }),
+			]);
+		});
+
+		it("extracts only supported prose links and keeps source positions", async () => {
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo" },
+				mdx: [
+					"[relative](/posts/draft-post)",
+					"[absolute](https://bh2980.dev/memos/xxx-equal)",
+					"[www](https://www.bh2980.dev/posts/old%20slug)",
+					"[external](https://example.com/posts/not-internal)",
+					"```md",
+					"[code](/posts/not-a-link)",
+					"```",
+				].join("\n"),
+			});
+			expect((snapshot as any).internalLinks).toEqual([
+				expect.objectContaining({ collection: "post", slug: "draft-post", position: { line: 1, column: 1 } }),
+				expect.objectContaining({ collection: "memo", slug: "xxx-equal", position: { line: 2, column: 1 } }),
+				expect.objectContaining({ collection: "post", slug: "old slug", position: { line: 3, column: 1 } }),
+			]);
+		});
+
+		it("preserves MDX analyser positions in blocking issues", async () => {
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo" },
+				mdx: 'First line\n<ContentLink targetId="bad" />',
+			});
+			expect(snapshot.issues).toContainEqual(
+				expect.objectContaining({ code: "mdx_error", position: { line: 2, column: 1 } }),
+			);
+		});
+	});
+
+	describe("9. Service Orchestration & Fake Port", () => {
 		it("saveDraft propagates save port rejection exact error after one mutation attempt", async () => {
 			const exactError = { code: "concurrent_modification", message: "Conflict" };
 			const storePort: StorePort = {

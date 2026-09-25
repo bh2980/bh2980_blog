@@ -9,6 +9,7 @@ export interface CmsImageAttributes {
 	width?: string;
 	align?: "left" | "center" | "right";
 	caption?: string;
+	decorative?: boolean;
 }
 
 export const CmsImageNode = Node.create({

@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import {
-	ChevronRight,
+	AlertCircle,
 	ChevronDown,
+	ChevronRight,
+	Edit2,
 	Folder as FolderIcon,
 	FolderOpen,
 	Plus,
-	Edit2,
 	Trash2,
-	AlertCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import type { Collection } from "@/cms/services/types";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 
 export type AdminNavId = Collection | "media" | "templates";
 
@@ -160,45 +168,51 @@ export function AdminSidebar({
 		return (
 			<div key={folder.id} className="flex flex-col">
 				<div
-					className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition select-none ${
+					className={`group flex select-none items-center justify-between rounded-md px-2 py-1.5 text-xs transition ${
 						isFolderActive
-							? "bg-neutral-800 text-white font-medium"
+							? "bg-neutral-800 font-medium text-white"
 							: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
 					}`}
 				>
 					{isRenamingHere ? (
 						<form
 							onSubmit={handleConfirmRename}
-							className="flex-1 flex items-center gap-1.5"
+							className="flex flex-1 items-center gap-1.5"
 							onClick={(e) => e.stopPropagation()}
 							onKeyDown={(e) => e.stopPropagation()}
 						>
 							<input
 								type="text"
+								aria-label="폴더 이름 변경"
 								value={renameInput}
 								onChange={(e) => setRenameInput(e.target.value)}
-								className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
-								autoFocus
+								className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs focus:border-neutral-400 focus:outline-none"
 								onKeyDown={(e) => {
 									e.stopPropagation();
 									if (e.key === "Escape") setRenamingFolder(null);
 								}}
 							/>
-							<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
+							<button
+								type="submit"
+								className="rounded bg-neutral-700 px-1.5 py-0.5 text-[11px] text-white hover:bg-neutral-600"
+							>
 								저장
 							</button>
 							<button
 								type="button"
 								onClick={() => setRenamingFolder(null)}
-								className="text-[11px] text-neutral-400 hover:text-white px-1"
+								className="px-1 text-[11px] text-neutral-400 hover:text-white"
 							>
 								취소
 							</button>
 						</form>
 					) : (
 						<>
+							{/* biome-ignore lint/a11y/useSemanticElements: contains nested expand control */}
 							<div
-								className="flex flex-1 items-center gap-1.5 min-w-0 cursor-pointer"
+								role="button"
+								tabIndex={0}
+								className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
 								onClick={() => {
 									onSelectFolder?.(folder.id);
 									if (hasChildren) {
@@ -213,19 +227,21 @@ export function AdminSidebar({
 										});
 									}
 								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onSelectFolder?.(folder.id);
+									}
+								}}
 							>
 								{/* 토글 화살표: 자식이 있을 때만 노출. 1단계(isRootLevel)에서 자식이 없으면 gap(여백)을 전혀 주지 않음 */}
 								{hasChildren ? (
 									<button
 										type="button"
 										onClick={(e) => toggleExpand(folder.id, e)}
-										className="p-0.5 hover:bg-neutral-700/60 rounded text-neutral-400 hover:text-white transition flex-shrink-0"
+										className="flex-shrink-0 rounded p-0.5 text-neutral-400 transition hover:bg-neutral-700/60 hover:text-white"
 									>
-										{isExpanded ? (
-											<ChevronDown className="h-3 w-3" />
-										) : (
-											<ChevronRight className="h-3 w-3" />
-										)}
+										{isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
 									</button>
 								) : !isRootLevel ? (
 									<span className="w-3.5 flex-shrink-0" />
@@ -233,17 +249,17 @@ export function AdminSidebar({
 
 								{/* 폴더 아이콘 */}
 								{isExpanded && hasChildren ? (
-									<FolderOpen className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
+									<FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-neutral-400 group-hover:text-neutral-200" />
 								) : (
-									<FolderIcon className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
+									<FolderIcon className="h-3.5 w-3.5 flex-shrink-0 text-neutral-400 group-hover:text-neutral-200" />
 								)}
 
-								<span className="truncate text-xs font-normal">{folder.name}</span>
+								<span className="truncate font-normal text-xs">{folder.name}</span>
 							</div>
 
 							{/* 액션 버튼들 (호버 시 노출) */}
 							{onRenameFolder && onDeleteFolder && (
-								<div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition flex-shrink-0">
+								<div className="flex flex-shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
 									{onCreateFolder && (
 										<button
 											type="button"
@@ -254,7 +270,7 @@ export function AdminSidebar({
 												setSubFolderName("");
 												setExpandedIds((prev) => new Set(prev).add(folder.id));
 											}}
-											className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
+											className="rounded p-1 text-neutral-400 hover:bg-neutral-700/60 hover:text-white"
 										>
 											<Plus className="h-3 w-3" />
 										</button>
@@ -267,7 +283,7 @@ export function AdminSidebar({
 											setRenamingFolder(folder);
 											setRenameInput(folder.name);
 										}}
-										className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
+										className="rounded p-1 text-neutral-400 hover:bg-neutral-700/60 hover:text-white"
 									>
 										<Edit2 className="h-3 w-3" />
 									</button>
@@ -278,7 +294,7 @@ export function AdminSidebar({
 											e.stopPropagation();
 											setDeletingFolder(folder);
 										}}
-										className="p-1 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-700/60"
+										className="rounded p-1 text-neutral-400 hover:bg-neutral-700/60 hover:text-red-400"
 									>
 										<Trash2 className="h-3 w-3" />
 									</button>
@@ -290,25 +306,21 @@ export function AdminSidebar({
 
 				{/* 하위 폴더 계층 (트리 세로 라인 & 들여쓰기) */}
 				{isExpanded && (
-					<div className="ml-3 pl-2.5 border-l border-neutral-800 flex flex-col gap-1 mt-0.5">
+					<div className="mt-0.5 ml-3 flex flex-col gap-1 border-neutral-800 border-l pl-2.5">
 						{/* 하위 폴더 생성 인라인 폼 */}
 						{isCreatingHere && (
-							<form
-								onSubmit={(e) => handleCreateSubFolder(folder.id, e)}
-								className="flex items-center gap-1 my-1 px-1"
-							>
+							<form onSubmit={(e) => handleCreateSubFolder(folder.id, e)} className="my-1 flex items-center gap-1 px-1">
 								<input
 									type="text"
 									placeholder="하위 폴더 이름"
 									value={subFolderName}
 									onChange={(e) => setSubFolderName(e.target.value)}
-									className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-									autoFocus
+									className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
 								/>
 								<button
 									type="button"
 									onClick={() => setCreatingParentId(null)}
-									className="text-[11px] text-neutral-400 hover:text-white px-1"
+									className="px-1 text-[11px] text-neutral-400 hover:text-white"
 								>
 									취소
 								</button>
@@ -323,14 +335,11 @@ export function AdminSidebar({
 	};
 
 	return (
-		<aside className="w-64 flex-shrink-0 border-r border-neutral-800 bg-neutral-900/60 p-4 flex flex-col gap-6">
+		<aside className="flex w-64 flex-shrink-0 flex-col gap-6 border-neutral-800 border-r bg-neutral-900/60 p-4">
 			<div>
-				<div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 px-2 flex items-center justify-between">
+				<div className="mb-2 flex items-center justify-between px-2 font-semibold text-neutral-400 text-xs uppercase tracking-wider">
 					<span>컬렉션</span>
-					<Link
-						href="/admin"
-						className="text-[10px] font-normal text-neutral-500 hover:text-neutral-300 transition"
-					>
+					<Link href="/admin" className="font-normal text-[10px] text-neutral-500 transition hover:text-neutral-300">
 						대시보드 홈
 					</Link>
 				</div>
@@ -343,9 +352,9 @@ export function AdminSidebar({
 									key={col.id}
 									type="button"
 									onClick={() => onSelectCollection(col.id)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
+									className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 										isItemActive
-											? "bg-neutral-800 text-white font-semibold"
+											? "bg-neutral-800 font-semibold text-white"
 											: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
 									}`}
 								>
@@ -357,9 +366,9 @@ export function AdminSidebar({
 							<Link
 								key={col.id}
 								href={`/admin?collection=${col.id}`}
-								className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
+								className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 									isItemActive
-										? "bg-neutral-800 text-white font-semibold"
+										? "bg-neutral-800 font-semibold text-white"
 										: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
 								}`}
 							>
@@ -369,9 +378,9 @@ export function AdminSidebar({
 					})}
 					<Link
 						href="/admin/media"
-						className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition mt-1 border-t border-neutral-800/80 pt-2 ${
+						className={`mt-1 flex items-center justify-between rounded-md border-neutral-800/80 border-t px-3 py-2 pt-2 font-medium text-sm transition ${
 							active === "media"
-								? "bg-neutral-800 text-white font-semibold"
+								? "bg-neutral-800 font-semibold text-white"
 								: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
 						}`}
 					>
@@ -379,9 +388,9 @@ export function AdminSidebar({
 					</Link>
 					<Link
 						href="/admin/templates"
-						className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
+						className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 							active === "templates"
-								? "bg-neutral-800 text-white font-semibold"
+								? "bg-neutral-800 font-semibold text-white"
 								: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
 						}`}
 					>
@@ -392,18 +401,14 @@ export function AdminSidebar({
 
 			{folders && onSelectFolder ? (
 				<div className="flex-1 overflow-y-auto">
-					<div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 px-2">
+					<div className="mb-2 flex items-center justify-between px-2 font-semibold text-neutral-400 text-xs uppercase tracking-wider">
 						<button
 							type="button"
 							onClick={() => setIsFolderSectionOpen((prev) => !prev)}
-							className="flex items-center gap-1 hover:text-white transition"
+							className="flex items-center gap-1 transition hover:text-white"
 							title={isFolderSectionOpen ? "폴더 트리 접기" : "폴더 트리 펼치기"}
 						>
-							{isFolderSectionOpen ? (
-								<ChevronDown className="h-3.5 w-3.5" />
-							) : (
-								<ChevronRight className="h-3.5 w-3.5" />
-							)}
+							{isFolderSectionOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
 							<span>폴더 트리</span>
 						</button>
 
@@ -411,7 +416,7 @@ export function AdminSidebar({
 							<button
 								type="button"
 								onClick={() => setIsCreatingRoot((prev) => !prev)}
-								className="text-xs text-neutral-400 hover:text-white"
+								className="text-neutral-400 text-xs hover:text-white"
 								title="새 폴더 추가"
 							>
 								+ 폴더
@@ -422,19 +427,18 @@ export function AdminSidebar({
 					{isFolderSectionOpen && (
 						<div className="flex flex-col gap-1">
 							{isCreatingRoot && onCreateFolder && (
-								<form onSubmit={handleCreateRootFolder} className="flex items-center gap-1 my-1 px-1">
+								<form onSubmit={handleCreateRootFolder} className="my-1 flex items-center gap-1 px-1">
 									<input
 										type="text"
 										placeholder="새 폴더 이름"
 										value={newFolderName}
 										onChange={(e) => setNewFolderName(e.target.value)}
-										className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-										autoFocus
+										className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
 									/>
 									<button
 										type="button"
 										onClick={() => setIsCreatingRoot(false)}
-										className="text-[11px] text-neutral-400 hover:text-white px-1"
+										className="px-1 text-[11px] text-neutral-400 hover:text-white"
 									>
 										취소
 									</button>
@@ -442,9 +446,7 @@ export function AdminSidebar({
 							)}
 
 							{rootFolders.length === 0 && !isCreatingRoot ? (
-								<div className="px-2 py-2 text-xs text-neutral-500">
-									생성된 폴더가 없습니다.
-								</div>
+								<div className="px-2 py-2 text-neutral-500 text-xs">생성된 폴더가 없습니다.</div>
 							) : (
 								rootFolders.map((f) => renderFolderItem(f, true))
 							)}
@@ -452,66 +454,63 @@ export function AdminSidebar({
 					)}
 				</div>
 			) : (
-				<div className="mt-auto border-t border-neutral-800/80 pt-4">
+				<div className="mt-auto border-neutral-800/80 border-t pt-4">
 					<Link
 						href="/admin"
-						className="flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200 transition"
+						className="flex items-center gap-2 rounded-md px-3 py-2 font-medium text-neutral-400 text-xs transition hover:bg-neutral-800/50 hover:text-neutral-200"
 					>
 						<span>← 대시보드로 돌아가기</span>
 					</Link>
 				</div>
 			)}
 
-			{/* 삭제 확인 모달 (window.confirm 대체) */}
-			{deletingFolder && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-white mb-2">폴더 삭제 확인</h3>
-						<p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-							&apos;{deletingFolder.name}&apos; 폴더를 삭제하시겠습니까?<br />
-							<span className="text-neutral-500">폴더 안의 하위 글과 하위 폴더는 안전하게 보존됩니다.</span>
-						</p>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setDeletingFolder(null)}
-								className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition"
-							>
-								취소
-							</button>
-							<button
-								type="button"
-								onClick={handleConfirmDelete}
-								className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition"
-							>
-								삭제하기
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+			<Dialog open={Boolean(deletingFolder)} onOpenChange={(open) => !open && setDeletingFolder(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>폴더 삭제 확인</DialogTitle>
+						<DialogDescription>
+							&apos;{deletingFolder?.name}&apos; 폴더를 삭제하시겠습니까? 폴더 안의 하위 글과 하위 폴더는 보존됩니다.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setDeletingFolder(null)}
+							className="rounded-lg border px-3 py-1.5 font-medium text-xs"
+						>
+							취소
+						</button>
+						<button
+							type="button"
+							onClick={handleConfirmDelete}
+							className="rounded-lg border px-3 py-1.5 font-semibold text-xs"
+						>
+							삭제하기
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-			{/* 에러 알림 모달 (window.alert 대체) */}
-			{errorDialogMsg && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-red-900/60 bg-neutral-900 p-5 shadow-2xl">
-						<div className="flex items-center gap-2 text-red-400 mb-2">
+			<Dialog open={Boolean(errorDialogMsg)} onOpenChange={(open) => !open && setErrorDialogMsg(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
 							<AlertCircle className="h-4 w-4" />
-							<h3 className="text-sm font-semibold">오류 발생</h3>
-						</div>
-						<p className="text-xs text-neutral-300 mb-5">{errorDialogMsg}</p>
-						<div className="flex justify-end">
-							<button
-								type="button"
-								onClick={() => setErrorDialogMsg(null)}
-								className="rounded-lg bg-neutral-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 transition"
-							>
-								확인
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+							오류 발생
+						</DialogTitle>
+						<DialogDescription>{errorDialogMsg}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setErrorDialogMsg(null)}
+							className="rounded-lg border px-4 py-1.5 font-semibold text-xs"
+						>
+							확인
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</aside>
 	);
 }

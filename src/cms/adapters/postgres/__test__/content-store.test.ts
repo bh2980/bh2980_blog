@@ -1,5 +1,7 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createContentService } from "../../../services/content-service";
+import { ServiceError } from "../../../services/types";
 import type { Entry, EntryMetadata } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
@@ -8,6 +10,20 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore>;
+	let categorySequence = 0;
+
+	const createPublishedCategory = async () => {
+		const slug = `validation-category-${++categorySequence}`;
+		const draft = await store.createEntry({
+			collection: "category",
+			slug,
+			metadata: { title: "Validation category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: `category-hash-${categorySequence}`,
+		});
+		return store.publishEntry(draft.id, { expectedVersion: draft.version });
+	};
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -27,7 +43,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("creates a new entry with correct timestamp fields", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "test-timestamps",
 			metadata: { title: "Timestamps" },
 			mdx: "test",
@@ -143,7 +159,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("identical save leaves version, hash, and updatedAt unchanged", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "identical",
 			metadata: { title: "Draft" },
 			mdx: "draft content",
@@ -175,7 +191,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("same-hash correctness: changed metadata/MDX/schemaVersion with reused hash is published", async () => {
 		const entry = await store.createEntry({
-			collection: "memo",
+			collection: "test-memo",
 			slug: "republish-hash",
 			metadata: { title: "Hash Test" },
 			mdx: "hash test",
@@ -208,7 +224,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("metadata JSON boundary: invalid value rejected with invalid_input", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "json-boundary",
 			metadata: { title: "JSON Boundary" },
 			mdx: "json",
@@ -296,7 +312,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("stale expectedVersion throws CmsError with code conflict and serverVersion", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "stale-test",
 			metadata: { title: "Initial" },
 			mdx: "initial",
@@ -338,7 +354,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("keeps working and published snapshots separate", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "separation-test",
 			metadata: { title: "Initial Draft" },
 			mdx: "initial draft",
@@ -370,7 +386,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("republishing the same content hash does not replace the published snapshot", async () => {
 		const entry = await store.createEntry({
-			collection: "memo",
+			collection: "test-memo",
 			slug: "republish-hash-identical",
 			metadata: { title: "Hash Test" },
 			mdx: "hash test",
@@ -397,7 +413,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("a transaction failure during publish leaves the prior published snapshot intact", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "rollback-test",
 			metadata: { title: "First Publish" },
 			mdx: "first publish",
@@ -436,7 +452,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("published entry can explicitly clear its working slug and old public slug remains reserved", async () => {
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "clear-slug-test",
 			metadata: {},
 			mdx: "test",
@@ -464,7 +480,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		await expect(
 			store.createEntry({
-				collection: "post",
+				collection: "test-post",
 				slug: "clear-slug-test",
 				metadata: {},
 				mdx: "collision",
@@ -474,11 +490,117 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		).rejects.toThrow();
 	});
 
+	it("rejects invalid direct publication without creating a published snapshot", async () => {
+		const draft = await store.createEntry({
+			collection: "post",
+			slug: "validation-missing-category",
+			metadata: { title: "Missing category" },
+			mdx: "A valid body.",
+			schemaVersion: 1,
+			contentHash: "validation-missing-category-hash",
+		});
+
+		await expect(store.publishEntry(draft.id, { expectedVersion: draft.version })).rejects.toMatchObject({
+			code: "publish_validation_failed",
+			issues: expect.arrayContaining([expect.objectContaining({ code: "missing_category", path: "categoryId" })]),
+		});
+		const unchanged = await store.getEntry(draft.id);
+		expect(unchanged.status).toBe("draft");
+		expect(unchanged.published).toBeUndefined();
+	});
+
+	it("atomically publishes record creates and rolls invalid edits back", async () => {
+		const service = createContentService(store);
+		const badSlug = "validation-invalid-tag-create";
+		await expect(
+			service.createDraft(
+				{ collection: "tag", slug: badSlug, metadata: { title: "" }, mdx: "" },
+				{ publishImmediately: true },
+			),
+		).rejects.toBeInstanceOf(ServiceError);
+		const notCreated = await pool.query(
+			`SELECT id FROM "${schemaName}".entries WHERE collection = 'tag' AND working_slug = $1`,
+			[badSlug],
+		);
+		expect(notCreated.rows).toHaveLength(0);
+
+		const published = await service.createDraft(
+			{ collection: "tag", slug: "validation-valid-tag", metadata: { title: "Valid tag" }, mdx: "" },
+			{ publishImmediately: true },
+		);
+		expect(published.status).toBe("published");
+		expect(published.published).toBeDefined();
+		const before = await store.getEntry(published.id);
+
+		await expect(
+			service.saveDraft(
+				published.id,
+				{ collection: "tag", expectedVersion: before.version, slug: null, metadata: { title: "" }, mdx: "" },
+				{ publishImmediately: true },
+			),
+		).rejects.toBeInstanceOf(ServiceError);
+		const after = await store.getEntry(published.id);
+		expect(after.version).toBe(before.version);
+		expect(after.status).toBe("published");
+		expect(after.workingSlug).toBe(before.workingSlug);
+		expect(after.working.metadata).toEqual(before.working.metadata);
+	});
+
+	it("validates internal links against locked publication addresses", async () => {
+		const category = await createPublishedCategory();
+		const target = await store.createEntry({
+			collection: "post",
+			slug: "validation-link-target",
+			metadata: { title: "Target", categoryId: category.id },
+			mdx: "Target body.",
+			schemaVersion: 1,
+			contentHash: "validation-link-target-hash",
+		});
+		const source = await store.createEntry({
+			collection: "post",
+			slug: "validation-link-source",
+			metadata: { title: "Source", categoryId: category.id },
+			mdx: "[Target](/posts/validation-link-target)",
+			schemaVersion: 1,
+			contentHash: "validation-link-source-hash",
+		});
+
+		await expect(store.publishEntry(source.id, { expectedVersion: source.version })).rejects.toMatchObject({
+			code: "publish_validation_failed",
+			issues: expect.arrayContaining([expect.objectContaining({ code: "unpublished_internal_link" })]),
+		});
+		const publishedTarget = await store.publishEntry(target.id, { expectedVersion: target.version });
+		const publishedSource = await store.publishEntry(source.id, { expectedVersion: source.version });
+		expect(publishedTarget.status).toBe("published");
+		expect(publishedSource.status).toBe("published");
+	});
+
+	it("allows draft post references only for collection itemIds", async () => {
+		const category = await createPublishedCategory();
+		const draftPost = await store.createEntry({
+			collection: "post",
+			slug: "validation-collection-draft-item",
+			metadata: { title: "Draft item", categoryId: category.id },
+			mdx: "Draft body.",
+			schemaVersion: 1,
+			contentHash: "validation-collection-draft-item-hash",
+		});
+		const service = createContentService(store);
+		const collectionDraft = await service.createDraft({
+			collection: "collection",
+			slug: "validation-collection",
+			metadata: { title: "Reading list", itemIds: [draftPost.id] },
+			mdx: "",
+		});
+		const published = await store.publishEntry(collectionDraft.id, { expectedVersion: collectionDraft.version });
+		expect(published.status).toBe("published");
+	});
+
 	it("metadata accepts valid own JSON keys named constructor and __proto__", async () => {
 		const metadata = JSON.parse('{"constructor":"val1","__proto__":"val2"}');
 
 		const entry = await store.createEntry({
-			collection: "post",
+			collection: "test-post",
 			slug: "proto-test",
 			metadata,
 			mdx: "test",

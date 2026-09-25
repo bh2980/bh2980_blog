@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import type { Collection } from "@/cms/services/types";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { AdminEntriesTable } from "./admin-entries-table";
-import { BulkBar } from "./entries/bulk-bar";
 import { AdminSidebar } from "./admin-sidebar";
+import { cmsApiErrorMessage } from "./api-error-message";
+import { BulkBar } from "./entries/bulk-bar";
 
 export function AdminClientDashboard() {
 	const router = useRouter();
@@ -19,8 +28,7 @@ export function AdminClientDashboard() {
 	const urlStatus = searchParams.get("status") || "";
 	const urlPage = parseInt(searchParams.get("page") || "1", 10);
 	const urlPageSize = (parseInt(searchParams.get("pageSize") || "25", 10) as 25 | 50 | 100) || 25;
-	const urlSortField =
-		(searchParams.get("sortField") as "updatedAt" | "createdAt" | "title" | "slug") || "updatedAt";
+	const urlSortField = (searchParams.get("sortField") as "updatedAt" | "createdAt" | "title" | "slug") || "updatedAt";
 	const urlSortDirection = (searchParams.get("sortDirection") as "asc" | "desc") || "desc";
 
 	const [currentCollection, setCurrentCollection] = useState<Collection>(urlCollection);
@@ -83,6 +91,7 @@ export function AdminClientDashboard() {
 
 	// Load Preferences on initial mount only if not overridden by explicit URL
 	const preferencesLoadedRef = useRef(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: guarded one-time preference hydration
 	useEffect(() => {
 		if (preferencesLoadedRef.current) return;
 		preferencesLoadedRef.current = true;
@@ -184,6 +193,7 @@ export function AdminClientDashboard() {
 	}, [fetchEntries]);
 
 	// Bulk selection is limited to the current page (M4-FE-2).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selection must reset when the visible page query changes
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
@@ -320,7 +330,7 @@ export function AdminClientDashboard() {
 				});
 				if (!res.ok) {
 					const err = await res.json().catch(() => ({}));
-					setRecordModalError(err.message || "생성에 실패했습니다.");
+					setRecordModalError(cmsApiErrorMessage(err, "생성에 실패했습니다."));
 					return;
 				}
 			} else if (recordModal.id && recordModal.version !== undefined) {
@@ -334,7 +344,7 @@ export function AdminClientDashboard() {
 				});
 				if (!res.ok) {
 					const err = await res.json().catch(() => ({}));
-					setRecordModalError(err.message || "수정에 실패했습니다.");
+					setRecordModalError(cmsApiErrorMessage(err, "수정에 실패했습니다."));
 					return;
 				}
 			}
@@ -367,7 +377,7 @@ export function AdminClientDashboard() {
 				onDeleteFolder={handleDeleteFolder}
 			/>
 
-			<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 				<BulkBar
 					selected={selectedWithVersions}
 					folders={folders}
@@ -380,119 +390,115 @@ export function AdminClientDashboard() {
 					selectedIds={selectedIds}
 					onToggleSelect={toggleSelect}
 					onToggleSelectPage={toggleSelectPage}
-				total={total}
-				page={page}
-				pageSize={pageSize}
-				search={search}
-				statusFilter={statusFilter}
-				sortField={sortField}
-				sortDirection={sortDirection}
-				isLoading={isLoading}
-				errorMessage={errorMessage}
-				onSearchChange={handleSearchChange}
-				onStatusChange={(st) => {
-					setStatusFilter(st);
-					setPage(1);
-					syncUrl({ status: st, page: 1 });
-				}}
-				onSortChange={(field) => {
-					const newDir = sortField === field && sortDirection === "asc" ? "desc" : "asc";
-					setSortField(field);
-					setSortDirection(newDir);
-					syncUrl({ sortField: field, sortDirection: newDir });
-					savePreferences(pageSize, field, newDir);
-				}}
-				onPageChange={(p) => {
-					setPage(p);
-					syncUrl({ page: p });
-				}}
-				onPageSizeChange={(newSize) => {
-					setPageSize(newSize);
-					setPage(1);
-					syncUrl({ pageSize: newSize, page: 1 });
-					savePreferences(newSize);
-				}}
-				onCreateNew={handleCreateNew}
-				onRenameRecord={handleRenameRecord}
-				onOpenEditRecord={(item) => {
-					setRecordModalError(null);
-					setRecordModal({
-						mode: "rename",
-						id: item.id,
-						title: item.title || "",
-						version: item.version,
-					});
-				}}
-				onRetry={fetchEntries}
-				currentFolderId={currentFolderId}
-				folders={folders}
-				onSelectFolder={(fId) => {
-					setCurrentFolderId(fId);
-					setPage(1);
-					syncUrl({ folderId: fId, page: 1 });
-				}}
-				onCreateFolder={handleCreateFolder}
-				onRenameFolder={handleRenameFolder}
-				onDeleteFolder={handleDeleteFolder}
-			/>
+					total={total}
+					page={page}
+					pageSize={pageSize}
+					search={search}
+					statusFilter={statusFilter}
+					sortField={sortField}
+					sortDirection={sortDirection}
+					isLoading={isLoading}
+					errorMessage={errorMessage}
+					onSearchChange={handleSearchChange}
+					onStatusChange={(st) => {
+						setStatusFilter(st);
+						setPage(1);
+						syncUrl({ status: st, page: 1 });
+					}}
+					onSortChange={(field) => {
+						const newDir = sortField === field && sortDirection === "asc" ? "desc" : "asc";
+						setSortField(field);
+						setSortDirection(newDir);
+						syncUrl({ sortField: field, sortDirection: newDir });
+						savePreferences(pageSize, field, newDir);
+					}}
+					onPageChange={(p) => {
+						setPage(p);
+						syncUrl({ page: p });
+					}}
+					onPageSizeChange={(newSize) => {
+						setPageSize(newSize);
+						setPage(1);
+						syncUrl({ pageSize: newSize, page: 1 });
+						savePreferences(newSize);
+					}}
+					onCreateNew={handleCreateNew}
+					onRenameRecord={handleRenameRecord}
+					onOpenEditRecord={(item) => {
+						setRecordModalError(null);
+						setRecordModal({
+							mode: "rename",
+							id: item.id,
+							title: item.title || "",
+							version: item.version,
+						});
+					}}
+					onRetry={fetchEntries}
+					currentFolderId={currentFolderId}
+					folders={folders}
+					onSelectFolder={(fId) => {
+						setCurrentFolderId(fId);
+						setPage(1);
+						syncUrl({ folderId: fId, page: 1 });
+					}}
+					onCreateFolder={handleCreateFolder}
+					onRenameFolder={handleRenameFolder}
+					onDeleteFolder={handleDeleteFolder}
+				/>
 			</div>
 
-			{/* Record Form Modal (Tag / Category) */}
-			{recordModal && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-2xl">
-						<h3 className="text-base font-semibold text-white mb-1">
-							{recordModal.mode === "create"
+			<Dialog open={Boolean(recordModal)} onOpenChange={(open) => !open && setRecordModal(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>
+							{recordModal?.mode === "create"
 								? `새 ${currentCollection === "tag" ? "태그" : "카테고리"} 만들기`
 								: `${currentCollection === "tag" ? "태그" : "카테고리"} 이름 수정`}
-						</h3>
-						<p className="text-xs text-neutral-400 mb-4">
-							{recordModal.mode === "create"
+						</DialogTitle>
+						<DialogDescription>
+							{recordModal?.mode === "create"
 								? "목록 및 글 작성 시 선택할 수 있는 이름을 입력하세요."
 								: "이름을 변경하면 이 레코드를 참조하는 글들의 표시명이 즉시 갱신됩니다."}
+						</DialogDescription>
+					</DialogHeader>
+					<label htmlFor="record-title" className="sr-only">
+						이름
+					</label>
+					<input
+						id="record-title"
+						type="text"
+						autoFocus
+						value={recordModal?.title ?? ""}
+						onChange={(e) => recordModal && setRecordModal({ ...recordModal, title: e.target.value })}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								handleRecordModalSubmit();
+							}
+						}}
+						placeholder="이름 입력 (예: TypeScript)"
+						className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+					/>
+					{recordModalError && (
+						<p role="alert" className="whitespace-pre-wrap text-destructive text-sm">
+							{recordModalError}
 						</p>
-
-						<input
-							type="text"
-							autoFocus
-							value={recordModal.title}
-							onChange={(e) => setRecordModal({ ...recordModal, title: e.target.value })}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									handleRecordModalSubmit();
-								} else if (e.key === "Escape") {
-									setRecordModal(null);
-								}
-							}}
-							placeholder="이름 입력 (예: TypeScript)"
-							className="w-full text-sm px-3.5 py-2 rounded-lg border border-neutral-700 bg-neutral-950 text-white outline-none focus:border-neutral-500 mb-2"
-						/>
-
-						{recordModalError && (
-							<p className="text-xs text-red-400 mb-3">{recordModalError}</p>
-						)}
-
-						<div className="flex items-center justify-end gap-2 mt-3">
-							<button
-								type="button"
-								onClick={() => setRecordModal(null)}
-								className="px-3.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition rounded-md"
-							>
-								취소
-							</button>
-							<button
-								type="button"
-								disabled={!recordModal.title.trim()}
-								onClick={handleRecordModalSubmit}
-								className="px-4 py-1.5 text-xs font-semibold text-neutral-950 bg-white hover:bg-neutral-200 transition rounded-md disabled:opacity-50"
-							>
-								{recordModal.mode === "create" ? "생성" : "수정 완료"}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+					)}
+					<DialogFooter>
+						<button type="button" onClick={() => setRecordModal(null)} className="rounded-md border px-3 py-2 text-sm">
+							취소
+						</button>
+						<button
+							type="button"
+							disabled={!recordModal?.title.trim()}
+							onClick={handleRecordModalSubmit}
+							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+						>
+							{recordModal?.mode === "create" ? "생성" : "수정 완료"}
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

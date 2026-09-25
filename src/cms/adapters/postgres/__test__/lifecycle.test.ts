@@ -16,6 +16,32 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
+		const categoryDraft = await store.createEntry({
+			collection: "category",
+			slug: "lifecycle-test-category",
+			metadata: { title: "Lifecycle category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "lifecycle-category-hash",
+		});
+		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+		const createEntry = store.createEntry.bind(store);
+		store.createEntry = (input: Record<string, any>) => {
+			if (input.collection === "post" && !input.metadata?.categoryId) {
+				return createEntry({ ...input, metadata: { ...input.metadata, categoryId: category.id } });
+			}
+			return createEntry(input);
+		};
+		const saveWithReferences = store.saveWorkingWithReferences.bind(store);
+		store.saveWorkingWithReferences = (params: Record<string, any>) => {
+			if (params.snapshot?.collection === "post" && !params.snapshot.metadata?.categoryId) {
+				return saveWithReferences({
+					...params,
+					snapshot: { ...params.snapshot, metadata: { ...params.snapshot.metadata, categoryId: category.id } },
+				});
+			}
+			return saveWithReferences(params);
+		};
 	});
 
 	afterAll(async () => {
@@ -245,6 +271,189 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(pubRefs[0].targetId).toBe(tag.id);
 		});
 
+		it("prevents trashing or deleting a tag still used by published entries", async () => {
+			const tag = await store.createEntry({
+				collection: "tag",
+				slug: `tag-in-use-${randomUUID()}`,
+				metadata: { title: "In-use tag" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const publishedTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
+			const post = await store.createEntry({
+				collection: "post",
+				slug: `post-uses-tag-${randomUUID()}`,
+				metadata: { title: "Tagged post" },
+				mdx: "Tagged body.",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const saved = await store.saveWorkingWithReferences({
+				entryId: post.id,
+				expectedVersion: post.version,
+				snapshot: {
+					collection: "post",
+					slug: post.workingSlug,
+					metadata: { title: "Tagged post" },
+					mdx: "Tagged body.",
+					schemaVersion: 1,
+					contentHash: "tagged-post-with-reference",
+					issues: [],
+					references: [],
+				},
+				references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+			});
+			const publishedPost = await store.publishEntry({ id: post.id, expectedVersion: saved.version });
+
+			await expect(store.trashEntry({ id: tag.id, expectedVersion: publishedTag.version })).rejects.toMatchObject({
+				code: "in_use",
+			});
+			await expect(
+				store.permanentDeleteEntry({ id: tag.id, expectedVersion: publishedTag.version }),
+			).rejects.toMatchObject({
+				code: "in_use",
+			});
+			const stillPublished = await store.getEntry(publishedPost.id);
+			expect(stillPublished.status).toBe("published");
+
+			const editedWithoutTag = await store.saveWorkingWithReferences({
+				entryId: publishedPost.id,
+				expectedVersion: publishedPost.version,
+				snapshot: {
+					collection: "post",
+					slug: publishedPost.workingSlug,
+					metadata: { title: "Tagged post" },
+					mdx: "Tagged body.",
+					schemaVersion: 1,
+					contentHash: randomUUID(),
+					issues: [],
+					references: [],
+				},
+				references: [],
+			});
+			await expect(store.trashEntry({ id: tag.id, expectedVersion: publishedTag.version })).rejects.toMatchObject({
+				code: "in_use",
+			});
+			await store.publishEntry({ id: publishedPost.id, expectedVersion: editedWithoutTag.version });
+			const trashedTag = await store.trashEntry({ id: tag.id, expectedVersion: publishedTag.version });
+			expect(trashedTag.status).toBe("trashed");
+		});
+
+		it("does not publish or schedule a trashed entry", async () => {
+			const draft = await store.createEntry({
+				collection: "post",
+				slug: `trashed-entry-${randomUUID()}`,
+				metadata: { title: "Trashed entry" },
+				mdx: "Body.",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const trashed = await store.trashEntry({ id: draft.id, expectedVersion: draft.version });
+			await expect(store.publishEntry({ id: trashed.id, expectedVersion: trashed.version })).rejects.toMatchObject({
+				code: "invalid_status",
+			});
+			await expect(
+				store.createSchedule({
+					entryId: trashed.id,
+					expectedVersion: trashed.version,
+					scheduledAt: new Date(Date.now() + 60_000),
+				}),
+			).rejects.toMatchObject({ code: "invalid_status" });
+		});
+
+		it("serializes tag deletion against a concurrent draft reference save", async () => {
+			const tagDraft = await store.createEntry({
+				collection: "tag",
+				slug: `tag-race-${randomUUID()}`,
+				metadata: { title: "Race tag" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
+			const post = await store.createEntry({
+				collection: "post",
+				slug: `post-tag-race-${randomUUID()}`,
+				metadata: { title: "Concurrent draft" },
+				mdx: "Draft.",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const coordinator = await pool.connect();
+			try {
+				await coordinator.query("BEGIN");
+				await coordinator.query(`SELECT id FROM "${schemaName}".entries WHERE id = $1 FOR SHARE`, [tag.id]);
+				const trash = store.trashEntry({ id: tag.id, expectedVersion: tag.version });
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				const save = await store.saveWorkingWithReferences({
+					entryId: post.id,
+					expectedVersion: post.version,
+					snapshot: {
+						collection: "post",
+						slug: post.workingSlug,
+						metadata: { title: "Concurrent draft" },
+						mdx: "Draft.",
+						schemaVersion: 1,
+						contentHash: randomUUID(),
+						issues: [],
+						references: [],
+					},
+					references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+				});
+				await coordinator.query("COMMIT");
+				await expect(trash).rejects.toMatchObject({ code: "in_use" });
+				expect(save.version).toBeGreaterThan(post.version);
+			} catch (error) {
+				await coordinator.query("ROLLBACK").catch(() => undefined);
+				throw error;
+			} finally {
+				coordinator.release();
+			}
+		});
+
+		it("blocks trashing or deleting a tag referenced by a draft", async () => {
+			const tagDraft = await store.createEntry({
+				collection: "tag",
+				slug: `tag-draft-use-${randomUUID()}`,
+				metadata: { title: "Draft-used tag" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
+			const post = await store.createEntry({
+				collection: "post",
+				slug: `draft-uses-tag-${randomUUID()}`,
+				metadata: { title: "Draft using tag" },
+				mdx: "Draft body.",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			await store.saveWorkingWithReferences({
+				entryId: post.id,
+				expectedVersion: post.version,
+				snapshot: {
+					collection: "post",
+					slug: post.workingSlug,
+					metadata: { title: "Draft using tag" },
+					mdx: "Draft body.",
+					schemaVersion: 1,
+					contentHash: "draft-post-with-reference",
+					issues: [],
+					references: [],
+				},
+				references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+			});
+
+			await expect(store.trashEntry({ id: tag.id, expectedVersion: tag.version })).rejects.toMatchObject({
+				code: "in_use",
+			});
+			await expect(store.permanentDeleteEntry({ id: tag.id, expectedVersion: tag.version })).rejects.toMatchObject({
+				code: "in_use",
+			});
+		});
+
 		it(
 			"fails publish and preserves prior published body & published references if target is archived or missing",
 			{ timeout: 60000 },
@@ -428,6 +637,60 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(rows[0].id).toBe(first.id);
 		});
 
+		it("schedule registration refuses a body that cannot be published", async () => {
+			const post = await store.createEntry({
+				collection: "post",
+				slug: "post-invalid-schedule",
+				metadata: { title: "Invalid schedule" },
+				mdx: "<Callout>",
+				schemaVersion: 1,
+				contentHash: "invalid-schedule-hash",
+			});
+			await expect(
+				store.createSchedule({
+					entryId: post.id,
+					expectedVersion: post.version,
+					scheduledAt: new Date(Date.now() + 3600_000),
+				}),
+			).rejects.toMatchObject({ code: "publish_validation_failed" });
+			const schedules = await pool.query(`SELECT id FROM "${schemaName}".schedules WHERE entry_id = $1`, [post.id]);
+			expect(schedules.rows).toHaveLength(0);
+		});
+
+		it("revalidates scheduled publication and preserves the existing public body", async () => {
+			const categoryDraft = await store.createEntry({
+				collection: "category",
+				slug: `schedule-category-${randomUUID()}`,
+				metadata: { title: "Schedule category" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+			const post = await store.createEntry({
+				collection: "post",
+				slug: `schedule-revalidation-${randomUUID()}`,
+				metadata: { title: "Scheduled post", categoryId: category.id },
+				mdx: "Previously public.",
+				schemaVersion: 1,
+				contentHash: randomUUID(),
+			});
+			const published = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+			const schedule = await store.createSchedule({
+				entryId: post.id,
+				expectedVersion: published.version,
+				scheduledAt: new Date(Date.now() - 1000),
+			});
+			await store.archiveEntry({ id: category.id, expectedVersion: category.version });
+
+			await expect(store.executeSchedulePublish({ scheduleId: schedule.id })).rejects.toMatchObject({
+				code: "publish_validation_failed",
+			});
+			const unchanged = await store.getEntry(post.id);
+			expect(unchanged.status).toBe("published");
+			expect(unchanged.published?.mdx).toBe("Previously public.");
+		});
+
 		it("executor idempotency: executing due schedule publishes entry and duplicate call returns no-op", async () => {
 			const post = await store.createEntry({
 				collection: "post",
@@ -533,8 +796,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			});
 
 			await expect(store.publishEntry({ id: post.id, expectedVersion: post.version })).rejects.toMatchObject({
-				name: "CmsError",
-				code: "invalid_input",
+				code: "publish_validation_failed",
 			});
 
 			const after = await store.getEntry(post.id);

@@ -96,6 +96,7 @@ describe("listEntries contract", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore> & ExtendedContentStore;
+	let testCategoryId: string;
 
 	beforeAll(async () => {
 		const url = process.env.CMS_TEST_DATABASE_URL;
@@ -132,6 +133,16 @@ describe("listEntries contract", () => {
 			} catch {
 				// Tables might not exist yet
 			}
+			const categoryDraft = await store.createEntry({
+				collection: "category",
+				slug: "list-test-category",
+				metadata: { title: "List test category" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const category = await store.publishEntry(categoryDraft.id, { expectedVersion: categoryDraft.version });
+			testCategoryId = category.id;
 		}
 	});
 
@@ -158,7 +169,7 @@ describe("listEntries contract", () => {
 		const entry = await store.createEntry({
 			collection,
 			slug,
-			metadata: { title },
+			metadata: collection === "post" ? { title, categoryId: testCategoryId } : { title },
 			mdx: opts.mdx ?? "default body",
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
@@ -213,7 +224,7 @@ describe("listEntries contract", () => {
 				status: "draft",
 				version: 1,
 				folderId: null,
-				categoryId: null,
+				categoryId: testCategoryId,
 				tagIds: expect.any(Array),
 				publishedAt: null,
 				createdAt: expect.any(Date),
@@ -679,7 +690,7 @@ console.log("FencedCode000");
 		const histE = await store.createEntry({
 			collection: "post",
 			slug: "d1-hist",
-			metadata: { publishedAt: histDate },
+			metadata: { title: "Historical date", categoryId: testCategoryId, publishedAt: histDate },
 			mdx: "body",
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
@@ -689,7 +700,7 @@ console.log("FencedCode000");
 		const noMetaE = await store.createEntry({
 			collection: "post",
 			slug: "d1-nometa",
-			metadata: {},
+			metadata: { title: "No explicit published date", categoryId: testCategoryId },
 			mdx: "body",
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
