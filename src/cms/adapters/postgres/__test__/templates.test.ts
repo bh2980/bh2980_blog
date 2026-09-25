@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { createContentStore, migrateContentStore } from "../content-store";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 describe("M5-BE-2 Body Templates Store Contract", () => {
@@ -40,6 +41,11 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 		expect(tc.mdx).toContain("### 질문");
 		expect(tc.mdx).toContain("### 풀이");
 
+		const postDefault = templates.find((t: any) => t.name === "일반 게시글");
+		expect(postDefault).toBeDefined();
+		expect(postDefault.forCollection).toBe("post");
+		expect(postDefault.mdx).toContain("## 개요");
+
 		// Delete one template
 		await store.deleteTemplate({ id: algo.id, expectedVersion: algo.version });
 
@@ -50,6 +56,34 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 		const remaining = await store.listTemplates();
 		expect(remaining.find((t: any) => t.id === algo.id)).toBeUndefined();
 		expect(remaining.find((t: any) => t.id === tc.id)).toBeDefined();
+	});
+
+	it("M12 post seed preserves same-name user templates and never resurrects deletions", async () => {
+		const seeded = (await store.listTemplates({ forCollection: "post" })).find(
+			(template: any) => template.name === "일반 게시글",
+		);
+		expect(seeded).toBeDefined();
+
+		const userId = randomUUID();
+		await pool.query(`UPDATE "${schemaName}".body_templates SET id = $1, mdx = $2 WHERE id = $3`, [
+			userId,
+			"사용자가 수정한 본문",
+			seeded.id,
+		]);
+		await pool.query(`DELETE FROM "${schemaName}".cms_migrations WHERE name = 'seed_m12_default_post_template'`);
+		await migrateContentStore(pool, { schema: schemaName });
+
+		const preserved = (await store.listTemplates({ forCollection: "post" })).filter(
+			(template: any) => template.name === "일반 게시글",
+		);
+		expect(preserved).toHaveLength(1);
+		expect(preserved[0]).toMatchObject({ id: userId, mdx: "사용자가 수정한 본문" });
+
+		await store.deleteTemplate({ id: userId, expectedVersion: preserved[0].version });
+		await migrateContentStore(pool, { schema: schemaName });
+		expect(
+			(await store.listTemplates({ forCollection: "post" })).some((template: any) => template.name === "일반 게시글"),
+		).toBe(false);
 	});
 
 	it("2. supports CRUD with optimistic concurrency (version checking)", async () => {
@@ -108,9 +142,7 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 
 		// Delete succeeds with current version
 		await store.deleteTemplate({ id: created.id, expectedVersion: 2 });
-		await expect(store.getTemplate(created.id)).rejects.toThrowError(
-			expect.objectContaining({ code: "not_found" }),
-		);
+		await expect(store.getTemplate(created.id)).rejects.toThrowError(expect.objectContaining({ code: "not_found" }));
 	});
 
 	it("3. rejects invalid forCollection", async () => {

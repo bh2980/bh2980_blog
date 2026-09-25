@@ -245,6 +245,7 @@ export interface ListEntriesItem {
 	folderId: string | null;
 	categoryId: string | null;
 	tagIds: readonly string[];
+	tags: readonly { id: string; title: string }[];
 	publishedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -564,6 +565,26 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		);
 	}
 
+	// Add the general post template once; conflict handling never overwrites user templates.
+	const postTemplateSeedCheck = await pool.query(
+		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'seed_m12_default_post_template'`,
+	);
+	if (postTemplateSeedCheck.rows.length === 0) {
+		await pool.query(
+			`INSERT INTO "${qSchema}".body_templates (id, name, for_collection, mdx, version, created_at, updated_at)
+			 VALUES ($1, $2, 'post', $3, 1, NOW(), NOW())
+			 ON CONFLICT DO NOTHING`,
+			[
+				"00000000-0000-4000-8000-000000000003",
+				"일반 게시글",
+				"## 개요\n\n글의 핵심을 소개합니다.\n\n## 본문\n\n\n## 정리\n\n마무리 내용을 작성합니다.\n",
+			],
+		);
+		await pool.query(
+			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('seed_m12_default_post_template') ON CONFLICT DO NOTHING`,
+		);
+	}
+
 	// Backfill rows where search_text IS NULL
 	// (search_text column defaults to empty string, but for newly added columns
 	// or existing rows without search_text populated)
@@ -681,6 +702,7 @@ export interface FolderRow {
 }
 
 export interface IncomingReferenceItem {
+	state: "working" | "published";
 	sourceId: string;
 	sourceCollection: string;
 	sourceTitle: string | null;
@@ -995,6 +1017,13 @@ export function createContentStore(
 		const currentVersion = res.rows[0].version;
 		if (currentVersion !== data.expectedVersion) throw new CmsError("Conflict", "conflict", currentVersion);
 		if (res.rows[0].status === "trashed") throw new CmsError("A trashed entry cannot be published", "invalid_status");
+		const now = new Date();
+		if (data.publishedAt && !Number.isFinite(data.publishedAt.getTime())) {
+			throw new CmsError("Invalid publishedAt", "invalid_input");
+		}
+		if (data.publishedAt && data.publishedAt.getTime() > now.getTime()) {
+			throw new CmsError("publishedAt cannot be in the future", "invalid_input");
+		}
 
 		const collectionRes = await client.query<{ collection: string }>(
 			`SELECT collection FROM "${qSchema}".entries WHERE id = $1`,
@@ -1050,7 +1079,6 @@ export function createContentStore(
 				currentSlug === targetSlug &&
 				isDeepStrictEqual(pub.metadata, working.metadata),
 		);
-		const now = new Date();
 		const effectivePublishedAt = data.publishedAt ?? currentPublishedAt ?? now;
 		if (!isRepublish) {
 			await client.query(
@@ -2195,7 +2223,7 @@ export function createContentStore(
 				}
 			>(dataQuery, values);
 
-			const items: ListEntriesItem[] = dataRes.rows.map((row) => {
+			const baseItems = dataRes.rows.map((row) => {
 				const meta = row.working_metadata || {};
 				const categoryId = typeof meta.categoryId === "string" ? meta.categoryId : (row.ref_category_id ?? null);
 
@@ -2234,6 +2262,30 @@ export function createContentStore(
 					updatedAt: row.updated_at,
 				};
 			});
+
+			const tagIds = [...new Set(baseItems.flatMap((item) => item.tagIds))];
+			const tagTitleById = new Map<string, string>();
+			if (tagIds.length > 0) {
+				const tagsRes = await pool.query<{ id: string; title: string | null }>(
+					`SELECT e.id::text AS id,
+						COALESCE(NULLIF(w.metadata->>'title', ''), NULLIF(p.metadata->>'title', ''), e.working_slug) AS title
+					 FROM "${qSchema}".entries e
+					 LEFT JOIN "${qSchema}".entry_bodies w ON w.entry_id = e.id AND w.state = 'working'
+					 LEFT JOIN "${qSchema}".entry_bodies p ON p.entry_id = e.id AND p.state = 'published'
+					 WHERE e.collection = 'tag' AND e.id::text = ANY($1::text[])`,
+					[tagIds],
+				);
+				for (const row of tagsRes.rows) {
+					if (row.title) tagTitleById.set(row.id, row.title);
+				}
+			}
+			const items: ListEntriesItem[] = baseItems.map((item) => ({
+				...item,
+				tags: item.tagIds.flatMap((id) => {
+					const title = tagTitleById.get(id);
+					return title ? [{ id, title }] : [];
+				}),
+			}));
 
 			return {
 				items,
@@ -2346,6 +2398,7 @@ export function createContentStore(
 
 		getIncomingReferences: async (params: { targetId: string }): Promise<IncomingReferenceItem[]> => {
 			const res = await pool.query<{
+				state: "working" | "published";
 				source_id: string;
 				source_collection: string;
 				source_title: string | null;
@@ -2356,23 +2409,29 @@ export function createContentStore(
 			}>(
 				`
 				SELECT
+					r.state,
 					e.id as source_id,
 					e.collection as source_collection,
 					(b.metadata->>'title') as source_title,
-					e.working_slug as source_slug,
+					CASE WHEN r.state = 'published' THEN current_address.slug ELSE e.working_slug END as source_slug,
 					r.kind,
 					r.is_stale,
 					r.occurrences
 				FROM "${qSchema}".entry_references r
 				JOIN "${qSchema}".entries e ON e.id = r.entry_id
-				LEFT JOIN "${qSchema}".entry_bodies b ON b.entry_id = e.id AND b.state = 'working'
-				WHERE r.target_id = $1 AND r.state = 'working'
-				ORDER BY e.updated_at DESC, e.id ASC
+				LEFT JOIN "${qSchema}".entry_bodies b ON b.entry_id = e.id AND b.state = r.state
+				LEFT JOIN "${qSchema}".content_addresses current_address
+					ON current_address.entry_id = e.id AND current_address.collection = e.collection AND current_address.type = 'current'
+				WHERE r.target_id = $1 AND r.state IN ('working', 'published')
+					AND e.status <> 'trashed'
+					AND (r.state <> 'published' OR e.status = 'published')
+				ORDER BY CASE WHEN r.state = 'working' THEN 0 ELSE 1 END, e.updated_at DESC, e.id ASC
 			`,
 				[params.targetId],
 			);
 
 			return res.rows.map((row) => ({
+				state: row.state,
 				sourceId: row.source_id,
 				sourceCollection: row.source_collection,
 				sourceTitle: row.source_title,
@@ -2399,11 +2458,11 @@ export function createContentStore(
 			const normalized = normalizeMetadata(params.preferences);
 			await pool.query(
 				`
-				INSERT INTO "${qSchema}".user_preferences (user_id, preferences, updated_at)
+				INSERT INTO "${qSchema}".user_preferences AS stored (user_id, preferences, updated_at)
 				VALUES ($1, $2, $3)
 				ON CONFLICT (user_id)
 				DO UPDATE SET preferences = $2, updated_at = $3
-			`,
+				`,
 				[params.userId, JSON.stringify(normalized), now],
 			);
 		},

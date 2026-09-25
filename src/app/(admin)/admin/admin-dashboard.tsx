@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import type { AdminColumnSettings } from "@/cms/core/api";
 import type { Collection } from "@/cms/services/types";
 import {
 	Dialog,
@@ -52,6 +53,7 @@ export function AdminClientDashboard() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [recordModalError, setRecordModalError] = useState<string | null>(null);
+	const [columnSettings, setColumnSettings] = useState<Partial<Record<Collection, AdminColumnSettings>>>({});
 
 	// Sync state to URL search parameters
 	const syncUrl = useCallback(
@@ -100,6 +102,9 @@ export function AdminClientDashboard() {
 			.then((res) => (res.ok ? res.json() : null))
 			.then((data) => {
 				if (data) {
+					if (data.columnSettings) {
+						setColumnSettings((current) => ({ ...data.columnSettings, ...current }));
+					}
 					if (!searchParams.has("pageSize") && data.defaultPageSize) {
 						setPageSize(data.defaultPageSize);
 					}
@@ -124,6 +129,15 @@ export function AdminClientDashboard() {
 					direction: dir ?? sortDirection,
 				},
 			}),
+		}).catch(() => {});
+	};
+
+	const saveColumnSettings = (settings: AdminColumnSettings) => {
+		setColumnSettings((current) => ({ ...current, [currentCollection]: settings }));
+		fetch("/api/cms/v1/preferences", {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ columnSettings: { [currentCollection]: settings } }),
 		}).catch(() => {});
 	};
 
@@ -386,6 +400,8 @@ export function AdminClientDashboard() {
 				/>
 				<AdminEntriesTable
 					collection={currentCollection}
+					columnSettings={columnSettings[currentCollection]}
+					onColumnSettingsChange={saveColumnSettings}
 					items={items}
 					selectedIds={selectedIds}
 					onToggleSelect={toggleSelect}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keystaticPublishedAt } from "@/libs/contents/published-at";
+import { formatSeoulDateTimeInput, keystaticPublishedAt, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { formatPublishedAt, publishedAtFormatter } from "./format-published-at";
 
 /**
@@ -32,6 +32,15 @@ describe("formatPublishedAt", () => {
 		for (const [instant, expected] of cases) {
 			expect(formatPublishedAt(instant), instant).toBe(expected);
 		}
+	});
+
+	it("date-time input round-trips through UTC independently of process timezone", () => {
+		const input = "2026-01-05T01:15";
+		const utc = "2026-01-04T16:15:00.000Z";
+		expect(parseSeoulDateTimeInput(input)).toBe(utc);
+		expect(formatSeoulDateTimeInput(utc)).toBe(input);
+		expect(parseSeoulDateTimeInput("2026-02-30T01:15")).toBeNull();
+		expect(parseSeoulDateTimeInput("2026-01-05T24:00")).toBeNull();
 	});
 
 	it("파일 원문은 저장소가 KST로 정규화해야 한다", () => {

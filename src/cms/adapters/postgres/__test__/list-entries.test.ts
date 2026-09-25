@@ -17,6 +17,7 @@ interface ListEntriesItem {
 	folderId: string | null;
 	categoryId: string | null;
 	tagIds: readonly string[];
+	tags: readonly { id: string; title: string }[];
 	publishedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -739,6 +740,41 @@ console.log("FencedCode000");
 			expect("mdx" in i).toBe(false);
 		}
 	}, 60_000);
+
+	it("resolves tag names in metadata order without changing tag IDs", async () => {
+		const firstTag = await store.createEntry({
+			collection: "tag",
+			slug: "first-tag",
+			metadata: { title: "First tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: uniqueHash(),
+		});
+		const secondTag = await store.createEntry({
+			collection: "tag",
+			slug: "second-tag",
+			metadata: { title: "Second tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: uniqueHash(),
+		});
+		const post = await store.createEntry({
+			collection: "post",
+			slug: "tagged-post",
+			metadata: { title: "Tagged", tagIds: [secondTag.id, firstTag.id] },
+			mdx: "body",
+			schemaVersion: 1,
+			contentHash: uniqueHash(),
+		});
+
+		const result = await store.listEntries({ collection: "post" });
+		const item = result.items.find((entry) => entry.id === post.id);
+		expect(item?.tagIds).toEqual([secondTag.id, firstTag.id]);
+		expect(item?.tags).toEqual([
+			{ id: secondTag.id, title: "Second tag" },
+			{ id: firstTag.id, title: "First tag" },
+		]);
+	}, 30_000);
 
 	// -----------------------------------------------------------------------
 	// 8  Migration idempotency

@@ -55,6 +55,62 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		await closeGlobalPool();
 	});
 
+	it("returns working and current published incoming references separately", async () => {
+		const target = await store.createEntry({
+			collection: "tag",
+			slug: `incoming-tag-${randomUUID()}`,
+			metadata: { title: "Reference tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: `tag-${randomUUID()}`,
+		});
+		await store.publishEntry({ id: target.id, expectedVersion: target.version });
+
+		const occurrence = { type: "metadata" as const, path: "tagIds", ordinal: 0 };
+		const reference = buildReference({ kind: "tag", targetId: target.id, occurrences: [occurrence] });
+		const source = await store.createEntryWithReferences({
+			snapshot: buildSnapshot({
+				collection: "memo",
+				slug: `incoming-memo-${randomUUID()}`,
+				metadata: { title: "Published title", tagIds: [target.id] },
+				references: [reference],
+			}),
+			references: [reference],
+		});
+		const published = await store.publishEntry({ id: source.id, expectedVersion: source.version });
+		const draftSlug = `incoming-draft-${randomUUID()}`;
+		await store.saveWorkingWithReferences({
+			entryId: source.id,
+			expectedVersion: published.version,
+			snapshot: buildSnapshot({
+				collection: "memo",
+				slug: draftSlug,
+				metadata: { title: "Draft title", tagIds: [target.id] },
+				references: [reference],
+			}),
+			references: [reference],
+		});
+
+		const incoming = await store.getIncomingReferences({ targetId: target.id });
+		expect(incoming).toHaveLength(2);
+		expect(incoming).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					state: "working",
+					sourceTitle: "Draft title",
+					sourceSlug: draftSlug,
+					occurrences: [occurrence],
+				}),
+				expect.objectContaining({
+					state: "published",
+					sourceTitle: "Published title",
+					sourceSlug: source.workingSlug,
+					occurrences: [occurrence],
+				}),
+			]),
+		);
+	});
+
 	it("create atomically persists working snapshot + normalized working references, including multiple occurrences", async () => {
 		const targetCat = await store.createEntry({
 			collection: "category",

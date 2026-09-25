@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { describe, expect, it, vi } from "vitest";
+import { AuthError, authGateway } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { GET as getRelations } from "../route";
 
@@ -8,7 +9,10 @@ vi.mock("@/cms/adapters/auth", () => ({
 		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
 	},
 	AuthError: class AuthError extends Error {
-		constructor(public code: string, message: string) {
+		constructor(
+			public code: string,
+			message: string,
+		) {
 			super(message);
 		}
 	},
@@ -24,6 +28,7 @@ vi.mock("@/cms/container", () => {
 		}),
 		getIncomingReferences: vi.fn().mockResolvedValue([
 			{
+				state: "working",
 				sourceId: "post-1",
 				sourceCollection: "post",
 				sourceTitle: "Post 1",
@@ -50,6 +55,14 @@ describe("M2-BE-4 Relations API Contract", () => {
 		expect(data.targetId).toBe("tag-1");
 		expect(data.total).toBe(1);
 		expect(data.incomingReferences[0].sourceId).toBe("post-1");
+		expect(data.incomingReferences[0].state).toBe("working");
+	});
+
+	it("GET /entries/:id/relations requires admin access", async () => {
+		vi.mocked(authGateway.verifyAdmin).mockRejectedValueOnce(new AuthError("unauthorized", "Not logged in"));
+		const req = new NextRequest("http://localhost/api/cms/v1/entries/tag-1/relations");
+		const res = await getRelations(req, { params: Promise.resolve({ id: "tag-1" }) });
+		expect(res.status).toBe(401);
 	});
 
 	it("GET /entries/:id/relations returns 404 for nonexistent entry", async () => {

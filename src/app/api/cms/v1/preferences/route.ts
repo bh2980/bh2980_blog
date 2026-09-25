@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { authGateway } from "@/cms/adapters/auth";
+import type { JsonObject } from "@/cms/adapters/postgres/content-store";
 import { getCmsContentStore } from "@/cms/container";
 import { preferencesBodySchema } from "@/cms/core/api";
 import { handleApiError } from "../error-handler";
@@ -32,12 +33,22 @@ export async function PUT(request: NextRequest) {
 		}
 
 		const store = getCmsContentStore();
+		const existing = (await store.getPreferences({ userId: auth.userId })) ?? {};
+		const existingColumns =
+			existing.columnSettings && typeof existing.columnSettings === "object" && !Array.isArray(existing.columnSettings)
+				? existing.columnSettings
+				: {};
+		const preferences = {
+			...existing,
+			...parsed.data,
+			...(parsed.data.columnSettings ? { columnSettings: { ...existingColumns, ...parsed.data.columnSettings } } : {}),
+		};
 		await store.savePreferences({
 			userId: auth.userId,
-			preferences: parsed.data as any,
+			preferences: preferences as JsonObject,
 		});
 
-		return NextResponse.json({ success: true, preferences: parsed.data });
+		return NextResponse.json({ success: true, preferences });
 	} catch (error) {
 		return handleApiError(error);
 	}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Toaster, toast } from "sonner";
+import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
 import { EditorToggle } from "@/cms/editor/editor-toggle";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
 import {
@@ -13,6 +14,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { type CmsIssue, cmsApiErrorMessage, cmsApiIssues, cmsIssueMessage } from "../api-error-message";
 import { deleteLocalBackup, getLocalBackup, type LocalBackupRecord, saveLocalBackup } from "./[id]/edit/indexed-db";
 import { InspectorPanel } from "./inspector-panel";
@@ -25,6 +27,7 @@ interface EntryData {
 	collection: string;
 	status: "draft" | "published" | "archived" | "trashed";
 	version: number;
+	publishedAt?: string;
 	workingSlug: string | null;
 	publishedSlug: string | null;
 	working: {
@@ -41,12 +44,47 @@ interface EntryEditorShellProps {
 
 export function EntryEditorShell({ mode, initialEntryId, collection: propCollection = "post" }: EntryEditorShellProps) {
 	const [entry, setEntry] = useState<EntryData | null>(null);
+	const [incomingReferences, setIncomingReferences] = useState<IncomingReferenceItem[]>([]);
+	const [isLoadingIncomingReferences, setIsLoadingIncomingReferences] = useState(false);
+	const [incomingReferencesError, setIncomingReferencesError] = useState<string | null>(null);
+	const incomingReferencesRequestRef = useRef(0);
 	const [collection, setCollection] = useState(propCollection);
 	const [isLoading, setIsLoading] = useState(mode === "edit");
 
 	useEffect(() => {
 		setCollection(propCollection);
 	}, [propCollection]);
+
+	const refreshIncomingReferences = useCallback(async (targetId: string) => {
+		const requestId = ++incomingReferencesRequestRef.current;
+		setIsLoadingIncomingReferences(true);
+		setIncomingReferencesError(null);
+		try {
+			const res = await fetch(`/api/cms/v1/entries/${targetId}/relations`);
+			if (!res.ok) throw new Error("사용처를 불러오지 못했습니다.");
+			const data = await res.json();
+			if (requestId === incomingReferencesRequestRef.current) {
+				setIncomingReferences(Array.isArray(data.incomingReferences) ? data.incomingReferences : []);
+			}
+		} catch {
+			if (requestId === incomingReferencesRequestRef.current) {
+				setIncomingReferencesError("사용처를 불러오지 못했습니다.");
+			}
+		} finally {
+			if (requestId === incomingReferencesRequestRef.current) setIsLoadingIncomingReferences(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		if (entry?.id) {
+			void refreshIncomingReferences(entry.id);
+			return;
+		}
+		incomingReferencesRequestRef.current += 1;
+		setIncomingReferences([]);
+		setIncomingReferencesError(null);
+		setIsLoadingIncomingReferences(false);
+	}, [entry?.id, refreshIncomingReferences]);
 
 	// Metadata Form State
 	const [title, setTitle] = useState("");
@@ -163,12 +201,15 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 	slugRef.current = slug;
 	const mdxRef = useRef(mdx);
 	mdxRef.current = mdx;
+	const publishDateRef = useRef(publishDate);
+	publishDateRef.current = publishDate;
 	const isSlugTouchedRef = useRef(isSlugTouched);
 	isSlugTouchedRef.current = isSlugTouched;
 
 	const editorToggleRef = useRef<EditorToggle | null>(null);
 
-	const computeFingerprint = (t: string, s: string, m: string) => `${t}:::${s}:::${m}`;
+	const computeFingerprint = (t: string, s: string, m: string, date = publishDateRef.current) =>
+		date ? `${t}:::${s}:::${m}:::${date}` : `${t}:::${s}:::${m}`;
 
 	// Fetch existing entry if edit mode
 	// biome-ignore lint/correctness/useExhaustiveDependencies: fingerprint helper is pure and stable
@@ -189,12 +230,15 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 				const initialTitle = data.working.metadata?.title || "";
 				const initialSlug = data.workingSlug || "";
 				const initialMdx = data.working.mdx || "";
-				serverFingerprintRef.current = computeFingerprint(initialTitle, initialSlug, initialMdx);
+				const initialPublishDate = formatSeoulDateTimeInput(data.working.metadata?.publishedAt || data.publishedAt);
+				serverFingerprintRef.current = computeFingerprint(initialTitle, initialSlug, initialMdx, initialPublishDate);
 
 				setTitle(initialTitle);
 				setSlug(initialSlug);
 				setIsSlugTouched(true);
 				setMdx(initialMdx);
+				setPublishDate(initialPublishDate);
+				publishDateRef.current = initialPublishDate;
 				currentVersionRef.current = data.version;
 
 				setDescription(data.working.metadata?.summary || "");
@@ -289,6 +333,14 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 			else delete metadataToSave.seoDescription;
 			if (canonicalUrlRef.current.trim()) metadataToSave.canonicalUrl = canonicalUrlRef.current.trim();
 			else delete metadataToSave.canonicalUrl;
+			const publishedAt = publishDateRef.current ? parseSeoulDateTimeInput(publishDateRef.current) : null;
+			if (publishDateRef.current && !publishedAt) {
+				inflightSeqRef.current = null;
+				setSaveStatus("오류");
+				return;
+			}
+			if (publishedAt) metadataToSave.publishedAt = publishedAt;
+			else delete metadataToSave.publishedAt;
 
 			if (!currentEntryId) {
 				// Initial lazy creation via POST
@@ -379,14 +431,16 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 	// Trigger Save (2s idle / 10s maxWait)
 	// biome-ignore lint/correctness/useExhaustiveDependencies: fingerprint helper is pure and stable
 	const triggerSave = useCallback(
-		(override?: { title?: string; slug?: string; mdx?: string }) => {
+		(override?: { title?: string; slug?: string; mdx?: string; publishDate?: string }) => {
 			if (override?.title !== undefined) titleRef.current = override.title;
 			if (override?.slug !== undefined) slugRef.current = override.slug;
 			if (override?.mdx !== undefined) mdxRef.current = override.mdx;
+			if (override?.publishDate !== undefined) publishDateRef.current = override.publishDate;
 
 			const currentTitle = titleRef.current;
 			const currentSlug = slugRef.current;
 			const currentMdx = mdxRef.current;
+			const currentPublishDate = publishDateRef.current;
 
 			setSaveStatus("미저장 변경");
 			changeSeqRef.current += 1;
@@ -397,8 +451,13 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 				entryId: entryIdRef.current || "new",
 				baseVersion: currentVersionRef.current,
 				baseFingerprint: serverFingerprintRef.current,
-				localFingerprint: computeFingerprint(currentTitle, currentSlug, currentMdx),
-				snapshot: { title: currentTitle, slug: currentSlug || null, metadata: {}, mdx: currentMdx },
+				localFingerprint: computeFingerprint(currentTitle, currentSlug, currentMdx, currentPublishDate),
+				snapshot: {
+					title: currentTitle,
+					slug: currentSlug || null,
+					metadata: { publishDateInput: currentPublishDate },
+					mdx: currentMdx,
+				},
 				changeSeq: changeSeqRef.current,
 				savedAt: Date.now(),
 			});
@@ -442,6 +501,12 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 		setSlug(newSlug);
 		slugRef.current = newSlug;
 		triggerSave({ slug: newSlug });
+	};
+
+	const handlePublishDateChange = (value: string) => {
+		setPublishDate(value);
+		publishDateRef.current = value;
+		triggerSave({ publishDate: value });
 	};
 
 	const handleRegenerateSlug = () => {
@@ -511,11 +576,23 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 				setActionFeedback({ type: "error", message: "초안을 저장한 후 발행할 수 있습니다." });
 				return;
 			}
+			const publishedAt = publishDateRef.current ? parseSeoulDateTimeInput(publishDateRef.current) : undefined;
+			if (publishDateRef.current && !publishedAt) {
+				setActionFeedback({ type: "error", message: "발행 일시를 확인하세요." });
+				return;
+			}
+			if (publishedAt && new Date(publishedAt).getTime() > Date.now()) {
+				setActionFeedback({
+					type: "error",
+					message: "미래 시각은 발행일로 지정할 수 없습니다. 예약 기능을 사용하세요.",
+				});
+				return;
+			}
 
 			const res = await fetch(`/api/cms/v1/entries/${activeId}/publish`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ expectedVersion: currentVersionRef.current }),
+				body: JSON.stringify({ expectedVersion: currentVersionRef.current, ...(publishedAt ? { publishedAt } : {}) }),
 			});
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({}));
@@ -541,6 +618,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 			const published = await res.json();
 			setEntry((prev) => (prev ? { ...prev, status: "published", version: published.version } : null));
 			currentVersionRef.current = published.version;
+			await refreshIncomingReferences(activeId);
 			const warnings: CmsIssue[] = Array.isArray(published.warnings) ? published.warnings : [];
 			if (warnings.length > 0) {
 				toast.warning(`발행되었습니다. 이미지 경고 ${warnings.length}건`, {
@@ -816,6 +894,13 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 					<div className="absolute inset-0 z-10 sm:static sm:inset-auto sm:w-80">
 						<InspectorPanel
 							publishIssues={publishIssues}
+							targetEntryId={entry?.id ?? null}
+							incomingReferences={incomingReferences}
+							isLoadingIncomingReferences={isLoadingIncomingReferences}
+							incomingReferencesError={incomingReferencesError}
+							onRefreshIncomingReferences={() => {
+								if (entry?.id) void refreshIncomingReferences(entry.id);
+							}}
 							collection={collection}
 							title={title}
 							slug={slug}
@@ -830,7 +915,7 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 							onTitleChange={handleTitleChange}
 							onSlugChange={handleSlugChange}
 							onRegenerateSlug={handleRegenerateSlug}
-							onPublishDateChange={setPublishDate}
+							onPublishDateChange={handlePublishDateChange}
 							onDescriptionChange={(desc) => {
 								setDescription(desc);
 								triggerSave();
@@ -893,13 +978,24 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 							onClick={() => {
 								if (!recoveryPrompt) return;
 								const { title: recoveredTitle, slug: recoveredSlug, mdx: recoveredMdx } = recoveryPrompt.snapshot;
+								const recoveredPublishDate =
+									typeof recoveryPrompt.snapshot.metadata.publishDateInput === "string"
+										? recoveryPrompt.snapshot.metadata.publishDateInput
+										: "";
 								setTitle(recoveredTitle);
 								setSlug(recoveredSlug || "");
 								setIsSlugTouched(true);
 								isSlugTouchedRef.current = true;
 								setMdx(recoveredMdx);
+								setPublishDate(recoveredPublishDate);
+								publishDateRef.current = recoveredPublishDate;
 								setRecoveryPrompt(null);
-								triggerSave({ title: recoveredTitle, slug: recoveredSlug || "", mdx: recoveredMdx });
+								triggerSave({
+									title: recoveredTitle,
+									slug: recoveredSlug || "",
+									mdx: recoveredMdx,
+									publishDate: recoveredPublishDate,
+								});
 							}}
 							className="rounded-md border px-4 py-2 text-sm"
 						>

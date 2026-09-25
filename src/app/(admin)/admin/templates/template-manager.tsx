@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, FileText, LayoutTemplate, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
+import { LayoutTemplate, Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { BodyTemplate } from "@/cms/adapters/postgres/content-store";
@@ -40,7 +40,7 @@ export function TemplateManager() {
 			const res = await fetch("/api/cms/v1/templates");
 			if (!res.ok) throw new Error("템플릿 목록을 불러올 수 없습니다.");
 			const data = await res.json();
-			setTemplates(data.templates || []);
+			setTemplates(data.items || []);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "불러오기 실패");
 		} finally {

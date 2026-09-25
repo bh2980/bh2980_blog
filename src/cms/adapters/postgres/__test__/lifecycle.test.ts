@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { createContentStore, migrateContentStore } from "../content-store";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contracts", () => {
@@ -75,6 +75,28 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(published.publishedAt).toEqual(new Date("2026-03-01T12:00:00Z"));
 			expect(published.firstPublishedAt).toBeDefined();
 			expect(published.lastPublishedAt).toBeDefined();
+		});
+
+		it("rejects future publishedAt without changing the draft", async () => {
+			const entry = await store.createEntry({
+				collection: "post",
+				slug: "test-future-published-at",
+				metadata: { title: "Future date" },
+				mdx: "Content",
+				schemaVersion: 1,
+				contentHash: `hash-future-${randomUUID()}`,
+			});
+
+			await expect(
+				store.publishEntry({
+					id: entry.id,
+					expectedVersion: entry.version,
+					publishedAt: new Date("2999-01-01T00:00:00.000Z"),
+				}),
+			).rejects.toMatchObject({ code: "invalid_input" });
+			const unchanged = await store.getEntry(entry.id);
+			expect(unchanged.status).toBe("draft");
+			expect(unchanged.version).toBe(entry.version);
 		});
 
 		it("published -> archive closes public visibility and cancels any pending schedule", async () => {

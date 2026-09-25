@@ -5,7 +5,11 @@ import { AdminEntriesTable } from "../admin-entries-table";
 
 afterEach(cleanup);
 
-const item = (id: string, status: ListEntriesItem["status"]): ListEntriesItem => ({
+const item = (
+	id: string,
+	status: ListEntriesItem["status"],
+	fields: Partial<ListEntriesItem> = {},
+): ListEntriesItem => ({
 	id,
 	collection: "post",
 	title: id,
@@ -15,12 +19,17 @@ const item = (id: string, status: ListEntriesItem["status"]): ListEntriesItem =>
 	folderId: null,
 	categoryId: null,
 	tagIds: [],
+	tags: [],
 	publishedAt: null,
 	createdAt: new Date("2026-01-01T00:00:00Z"),
 	updatedAt: new Date("2026-01-01T00:00:00Z"),
+	...fields,
 });
 
-function renderTable() {
+function renderTable(
+	items = [item("published-entry", "published"), item("draft-entry", "draft")],
+	onColumnSettingsChange = vi.fn(),
+) {
 	const onSearchChange = vi.fn();
 	const onStatusChange = vi.fn();
 	const onPageSizeChange = vi.fn();
@@ -28,7 +37,9 @@ function renderTable() {
 	render(
 		<AdminEntriesTable
 			collection="post"
-			items={[item("published-entry", "published"), item("draft-entry", "draft")]}
+			items={items}
+			columnSettings={undefined}
+			onColumnSettingsChange={onColumnSettingsChange}
 			selectedIds={new Set()}
 			onToggleSelect={vi.fn()}
 			onToggleSelectPage={vi.fn()}
@@ -76,6 +87,26 @@ describe("admin entry list primitives", () => {
 		expect(published.className).toContain("text-emerald-400");
 		expect(draft.getAttribute("data-slot")).toBe("badge");
 		expect(draft.className).toContain("bg-neutral-800");
+	});
+
+	it("renders tag names and persists visibility and order changes", () => {
+		const onColumnSettingsChange = vi.fn();
+		renderTable(
+			[item("tagged-entry", "draft", { tags: [{ id: "tag-1", title: "TypeScript" }] })],
+			onColumnSettingsChange,
+		);
+
+		expect(screen.getByText("TypeScript")).toBeTruthy();
+		fireEvent.click(screen.getByText("열 설정"));
+		fireEvent.click(screen.getByRole("checkbox", { name: "태그 열 표시" }));
+		expect(onColumnSettingsChange).toHaveBeenLastCalledWith(
+			expect.objectContaining({ visibility: expect.objectContaining({ tags: false }) }),
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "태그 열 위로" }));
+		expect(onColumnSettingsChange).toHaveBeenLastCalledWith(
+			expect.objectContaining({ order: ["title", "tags", "slug", "status", "updatedAt"] }),
+		);
 	});
 
 	it("uses the shared search input and create button without changing callbacks", () => {

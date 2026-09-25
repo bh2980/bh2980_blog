@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import type { AdminColumnSettings, AdminListColumn } from "@/cms/core/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +17,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 
+const ADMIN_COLUMNS: AdminListColumn[] = ["title", "slug", "tags", "status", "updatedAt"];
+const ADMIN_COLUMN_LABELS: Record<AdminListColumn, string> = {
+	title: "이름 / 제목",
+	slug: "Slug",
+	tags: "태그",
+	status: "상태",
+	updatedAt: "수정일",
+};
+
 interface TableProps {
 	collection: string;
+	columnSettings?: AdminColumnSettings;
+	onColumnSettingsChange: (settings: AdminColumnSettings) => void;
 	items: ListEntriesItem[];
 	selectedIds: Set<string>;
 	onToggleSelect: (id: string) => void;
@@ -52,6 +64,8 @@ interface TableProps {
 
 export function AdminEntriesTable({
 	collection,
+	columnSettings,
+	onColumnSettingsChange,
 	items,
 	selectedIds,
 	onToggleSelect,
@@ -82,6 +96,16 @@ export function AdminEntriesTable({
 	onDeleteFolder,
 }: TableProps) {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	const availableColumns = ADMIN_COLUMNS.filter(
+		(column) => column !== "tags" || collection === "post" || collection === "memo",
+	);
+	const savedOrder = (columnSettings?.order ?? []).filter((column) => availableColumns.includes(column));
+	const columnOrder = [...new Set([...savedOrder, ...availableColumns])];
+	const columnVisibility = Object.fromEntries(
+		availableColumns.map((column) => [column, columnSettings?.visibility?.[column] ?? true]),
+	) as Record<AdminListColumn, boolean>;
+	const visibleColumns = columnOrder.filter((column) => columnVisibility[column] !== false);
+	const tableColumnCount = visibleColumns.length + 1;
 	const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 	const [newFolderName, setNewFolderName] = useState("");
 
@@ -146,6 +170,152 @@ export function AdminEntriesTable({
 		}
 	};
 
+	const updateColumnSettings = (order: AdminListColumn[], visibility = columnVisibility) => {
+		onColumnSettingsChange({ order, visibility });
+	};
+
+	const moveColumn = (column: AdminListColumn, direction: -1 | 1) => {
+		const index = columnOrder.indexOf(column);
+		const nextIndex = index + direction;
+		if (index < 0 || nextIndex < 0 || nextIndex >= columnOrder.length) return;
+		const nextOrder = [...columnOrder];
+		[nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
+		updateColumnSettings(nextOrder);
+	};
+
+	const renderEntryColumn = (item: ListEntriesItem, column: AdminListColumn) => {
+		switch (column) {
+			case "title":
+				return collection === "tag" || collection === "category" ? (
+					<div className="flex items-center gap-2">
+						<span>{item.title || <span className="text-neutral-500 italic">이름 없음</span>}</span>
+						{(onOpenEditRecord || onRenameRecord) && (
+							<button
+								type="button"
+								onClick={() => {
+									if (onOpenEditRecord) onOpenEditRecord(item);
+									else onRenameRecord?.(item.id, item.title || "", item.version);
+								}}
+								className="whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-neutral-500 text-xs transition hover:border-neutral-500 hover:text-white"
+								title="이름 수정"
+							>
+								이름 수정
+							</button>
+						)}
+					</div>
+				) : (
+					<Link href={`/admin/entries/${item.id}/edit` as any} className="hover:text-blue-400 hover:underline">
+						{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
+					</Link>
+				);
+			case "slug":
+				return (
+					<span className="font-mono text-neutral-400 text-xs">
+						{item.slug || <span className="text-neutral-600">-</span>}
+					</span>
+				);
+			case "tags":
+				return item.tags.length ? (
+					<div className="flex flex-wrap gap-1">
+						{item.tags.map((tag) => (
+							<span
+								key={tag.id}
+								className="max-w-32 truncate rounded border border-neutral-700 px-1.5 py-0.5 text-neutral-300 text-xs"
+							>
+								{tag.title}
+							</span>
+						))}
+					</div>
+				) : (
+					<span className="text-neutral-600">-</span>
+				);
+			case "status":
+				return (
+					<Badge
+						variant="outline"
+						className={
+							item.status === "published"
+								? "border-emerald-800/50 bg-emerald-950/80 text-emerald-400"
+								: "border-neutral-700 bg-neutral-800 text-neutral-300"
+						}
+					>
+						{item.status === "published" ? "공개" : "초안"}
+					</Badge>
+				);
+			case "updatedAt":
+				return <span className="text-neutral-400 text-xs">{new Date(item.updatedAt).toLocaleString("ko-KR")}</span>;
+		}
+	};
+
+	const renderFolderColumn = (folder: Folder, isRenamingThis: boolean, column: AdminListColumn) => {
+		if (column === "slug") return <span className="text-neutral-500 text-xs">폴더</span>;
+		if (column !== "title") return <span className="text-neutral-500 text-xs">-</span>;
+		if (isRenamingThis) {
+			return (
+				<form
+					onSubmit={handleConfirmRename}
+					className="flex items-center gap-1.5"
+					onClick={(e) => e.stopPropagation()}
+					onKeyDown={(e) => e.stopPropagation()}
+				>
+					<Input
+						type="text"
+						aria-label="폴더 이름 변경"
+						value={renameInput}
+						onChange={(e) => setRenameInput(e.target.value)}
+						className="h-auto w-40 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs shadow-none focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 md:text-xs dark:bg-neutral-900"
+						onKeyDown={(e) => {
+							e.stopPropagation();
+							if (e.key === "Escape") setRenamingFolder(null);
+						}}
+					/>
+					<button
+						type="submit"
+						className="rounded bg-neutral-700 px-1.5 py-0.5 text-[11px] text-white hover:bg-neutral-600"
+					>
+						저장
+					</button>
+					<button
+						type="button"
+						onClick={() => setRenamingFolder(null)}
+						className="px-1 text-[11px] text-neutral-400 hover:text-white"
+					>
+						취소
+					</button>
+				</form>
+			);
+		}
+		return (
+			<div className="flex items-center justify-between">
+				<span>{folder.name}</span>
+				{onRenameFolder && onDeleteFolder && (
+					<div className="flex items-center gap-2 text-neutral-400 text-xs opacity-0 group-hover:opacity-100">
+						<button
+							type="button"
+							onClick={() => {
+								setRenamingFolder(folder);
+								setRenameInput(folder.name);
+							}}
+							className="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-700 hover:text-white"
+						>
+							이름 수정
+						</button>
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								setDeletingFolder(folder);
+							}}
+							className="rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-neutral-700 hover:text-red-300"
+						>
+							삭제
+						</button>
+					</div>
+				)}
+			</div>
+		);
+	};
+
 	return (
 		<main className="flex flex-1 flex-col overflow-hidden bg-neutral-950 p-6">
 			{/* Top Bar: Controls */}
@@ -173,6 +343,67 @@ export function AdminEntriesTable({
 				</div>
 
 				<div className="flex items-center gap-3">
+					<details className="relative">
+						<summary className="cursor-pointer select-none whitespace-nowrap rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-neutral-300 text-sm hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500">
+							열 설정
+						</summary>
+						<div className="fixed inset-x-4 top-36 z-40 max-h-[calc(100vh-10rem)] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 p-3 shadow-xl sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-64">
+							<p className="mb-2 text-neutral-400 text-xs">
+								이름 / 제목 열은 필수입니다. 다른 열의 표시와 순서를 설정합니다.
+							</p>
+							<ul className="space-y-1">
+								{columnOrder.map((column, index) => {
+									const visible = columnVisibility[column] !== false;
+									const onlyVisibleColumn = visibleColumns.length <= 1;
+									return (
+										<li
+											key={column}
+											className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-neutral-800"
+										>
+											<label className="flex min-w-0 items-center gap-2 text-neutral-200 text-sm">
+												<input
+													type="checkbox"
+													checked={visible}
+													disabled={column === "title" || (visible && onlyVisibleColumn)}
+													aria-label={`${ADMIN_COLUMN_LABELS[column]} 열 표시`}
+													onChange={(event) => {
+														if (column === "title" || (visible && onlyVisibleColumn)) return;
+														updateColumnSettings(columnOrder, { ...columnVisibility, [column]: event.target.checked });
+													}}
+													className="accent-white"
+												/>
+												<span className="truncate">{ADMIN_COLUMN_LABELS[column]}</span>
+											</label>
+											<div className="flex shrink-0 gap-1">
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													aria-label={`${ADMIN_COLUMN_LABELS[column]} 열 위로`}
+													disabled={index === 0}
+													onClick={() => moveColumn(column, -1)}
+													className="h-7 w-7 border-neutral-700 bg-neutral-900 p-0 text-xs shadow-none"
+												>
+													↑
+												</Button>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													aria-label={`${ADMIN_COLUMN_LABELS[column]} 열 아래로`}
+													disabled={index === columnOrder.length - 1}
+													onClick={() => moveColumn(column, 1)}
+													className="h-7 w-7 border-neutral-700 bg-neutral-900 p-0 text-xs shadow-none"
+												>
+													↓
+												</Button>
+											</div>
+										</li>
+									);
+								})}
+							</ul>
+						</div>
+					</details>
 					<NativeSelect
 						aria-label="페이지 크기"
 						value={pageSize}
@@ -234,7 +465,7 @@ export function AdminEntriesTable({
 										onChange={(e) => setNewFolderName(e.target.value)}
 										aria-label="새 폴더 이름"
 										placeholder="새 폴더 이름"
-										className="h-auto w-40 rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs md:text-xs shadow-none focus:border-neutral-500 focus:outline-none focus-visible:border-neutral-500 focus-visible:ring-0 dark:bg-neutral-800"
+										className="h-auto w-40 rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-white text-xs shadow-none focus:border-neutral-500 focus:outline-none focus-visible:border-neutral-500 focus-visible:ring-0 md:text-xs dark:bg-neutral-800"
 									/>
 									<button
 										type="submit"
@@ -288,22 +519,27 @@ export function AdminEntriesTable({
 									className="accent-white"
 								/>
 							</th>
-							<th
-								className="cursor-pointer px-4 py-3 transition hover:text-white"
-								onClick={() => onSortChange("title")}
-							>
-								이름 / 제목 {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
-							<th className="cursor-pointer px-4 py-3 transition hover:text-white" onClick={() => onSortChange("slug")}>
-								Slug {sortField === "slug" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
-							<th className="px-4 py-3">상태</th>
-							<th
-								className="cursor-pointer px-4 py-3 transition hover:text-white"
-								onClick={() => onSortChange("updatedAt")}
-							>
-								수정일 {sortField === "updatedAt" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
+							{visibleColumns.map((column) => {
+								const sortableField = column === "title" || column === "slug" || column === "updatedAt" ? column : null;
+								return (
+									<th key={column} className="px-4 py-3">
+										{sortableField ? (
+											<button
+												type="button"
+												aria-label={`${ADMIN_COLUMN_LABELS[column]} 기준 정렬`}
+												aria-pressed={sortField === sortableField}
+												onClick={() => onSortChange(sortableField)}
+												className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+											>
+												{ADMIN_COLUMN_LABELS[column]}{" "}
+												{sortField === sortableField ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+											</button>
+										) : (
+											ADMIN_COLUMN_LABELS[column]
+										)}
+									</th>
+								);
+							})}
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-neutral-800/60">
@@ -321,13 +557,15 @@ export function AdminEntriesTable({
 								className="cursor-pointer select-none text-neutral-400 transition hover:bg-neutral-800/30 focus:bg-neutral-800/50 focus:outline-none"
 							>
 								<td className="px-4 py-2.5 text-center text-xs">📁</td>
-								<td className="flex items-center gap-2 px-4 py-2.5 font-medium text-neutral-300">
-									<span>..</span>
-									<span className="text-neutral-500 text-xs">(상위 폴더로 이동)</span>
-								</td>
-								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
-								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
-								<td className="px-4 py-2.5 text-neutral-600 text-xs">-</td>
+								{visibleColumns.map((column) => (
+									<td key={column} className="px-4 py-2.5 text-neutral-600 text-xs">
+										{column === "title" ? (
+											<span className="font-medium text-neutral-300">.. (상위 폴더로 이동)</span>
+										) : (
+											"-"
+										)}
+									</td>
+								))}
 							</tr>
 						)}
 
@@ -353,75 +591,11 @@ export function AdminEntriesTable({
 										}`}
 									>
 										<td className="px-4 py-2.5 text-center text-sm">📁</td>
-										<td className="px-4 py-2.5 font-medium text-white">
-											{isRenamingThis ? (
-												<form
-													onSubmit={handleConfirmRename}
-													className="flex items-center gap-1.5"
-													onClick={(e) => e.stopPropagation()}
-													onKeyDown={(e) => e.stopPropagation()}
-												>
-													<Input
-														type="text"
-														aria-label="폴더 이름 변경"
-														value={renameInput}
-														onChange={(e) => setRenameInput(e.target.value)}
-														className="h-auto w-40 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-white text-xs md:text-xs shadow-none focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900"
-														onKeyDown={(e) => {
-															e.stopPropagation();
-															if (e.key === "Escape") setRenamingFolder(null);
-														}}
-													/>
-													<button
-														type="submit"
-														className="rounded bg-neutral-700 px-1.5 py-0.5 text-[11px] text-white hover:bg-neutral-600"
-													>
-														저장
-													</button>
-													<button
-														type="button"
-														onClick={() => setRenamingFolder(null)}
-														className="px-1 text-[11px] text-neutral-400 hover:text-white"
-													>
-														취소
-													</button>
-												</form>
-											) : (
-												<div className="flex items-center justify-between">
-													<span className="flex items-center gap-1.5 hover:underline">
-														<span>{folder.name}</span>
-													</span>
-
-													{onRenameFolder && onDeleteFolder && (
-														<div className="flex items-center gap-2 text-neutral-400 text-xs opacity-0 group-hover:opacity-100">
-															<button
-																type="button"
-																onClick={() => {
-																	setRenamingFolder(folder);
-																	setRenameInput(folder.name);
-																}}
-																className="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-700 hover:text-white"
-															>
-																이름 수정
-															</button>
-															<button
-																type="button"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	setDeletingFolder(folder);
-																}}
-																className="rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-neutral-700 hover:text-red-300"
-															>
-																삭제
-															</button>
-														</div>
-													)}
-												</div>
-											)}
-										</td>
-										<td className="px-4 py-2.5 text-neutral-500 text-xs">폴더</td>
-										<td className="px-4 py-2.5 text-neutral-500 text-xs">-</td>
-										<td className="px-4 py-2.5 text-neutral-500 text-xs">-</td>
+										{visibleColumns.map((column) => (
+											<td key={column} className="px-4 py-2.5 font-medium text-white">
+												{renderFolderColumn(folder, isRenamingThis, column)}
+											</td>
+										))}
 									</tr>
 								);
 							})}
@@ -429,13 +603,13 @@ export function AdminEntriesTable({
 						{/* 로딩 / 빈 목록 / 게시글 목록 */}
 						{isLoading ? (
 							<tr>
-								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
+								<td colSpan={tableColumnCount} className="px-4 py-12 text-center text-neutral-500">
 									불러오는 중...
 								</td>
 							</tr>
 						) : items.length === 0 && subFolders.length === 0 ? (
 							<tr>
-								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
+								<td colSpan={tableColumnCount} className="px-4 py-12 text-center text-neutral-500">
 									등록된 항목이 없습니다.
 								</td>
 							</tr>
@@ -452,54 +626,11 @@ export function AdminEntriesTable({
 											className="accent-white"
 										/>
 									</td>
-									<td className="px-4 py-3 font-medium text-white">
-										{collection === "tag" || collection === "category" ? (
-											<div className="flex items-center gap-2">
-												<span>{item.title || <span className="text-neutral-500 italic">이름 없음</span>}</span>
-												{(onOpenEditRecord || onRenameRecord) && (
-													<button
-														type="button"
-														onClick={() => {
-															if (onOpenEditRecord) {
-																onOpenEditRecord(item);
-															} else if (onRenameRecord) {
-																onRenameRecord(item.id, item.title || "", item.version);
-															}
-														}}
-														className="whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-neutral-500 text-xs transition hover:border-neutral-500 hover:text-white"
-														title="이름 수정"
-													>
-														이름 수정
-													</button>
-												)}
-											</div>
-										) : (
-											<Link
-												href={`/admin/entries/${item.id}/edit` as any}
-												className="hover:text-blue-400 hover:underline"
-											>
-												{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
-											</Link>
-										)}
-									</td>
-									<td className="px-4 py-3 font-mono text-neutral-400 text-xs">
-										{item.slug || <span className="text-neutral-600">-</span>}
-									</td>
-									<td className="px-4 py-3">
-										<Badge
-											variant="outline"
-											className={
-												item.status === "published"
-													? "border-emerald-800/50 bg-emerald-950/80 text-emerald-400"
-													: "border-neutral-700 bg-neutral-800 text-neutral-300"
-											}
-										>
-											{item.status === "published" ? "공개" : "초안"}
-										</Badge>
-									</td>
-									<td className="px-4 py-3 text-neutral-400 text-xs">
-										{new Date(item.updatedAt).toLocaleString("ko-KR")}
-									</td>
+									{visibleColumns.map((column) => (
+										<td key={column} className="px-4 py-3 font-medium text-white">
+											{renderEntryColumn(item, column)}
+										</td>
+									))}
 								</tr>
 							))
 						)}

@@ -32,6 +32,7 @@ beforeEach(() => {
 	saveLocalBackup.mockResolvedValue(undefined);
 	fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
 		if (input.includes("?collection=")) return json({ items: [] });
+		if (input.endsWith("/relations")) return json({ incomingReferences: [] });
 		if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
 		if (input.endsWith("/publish")) return json({ version: 5, warnings: [] });
 		throw new Error(`Unexpected fetch: ${input}`);
@@ -44,6 +45,108 @@ afterEach(() => {
 });
 
 describe("live entry editor M10 feedback", () => {
+	it("loads, autosaves, publishes, and reopens the KST display date as UTC", async () => {
+		let savedEntry = {
+			...entry,
+			publishedAt: "2020-01-04T16:15:00.000Z",
+			working: {
+				...entry.working,
+				metadata: { ...entry.working.metadata, publishedAt: "2020-01-04T16:15:00.000Z" },
+			},
+		};
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(savedEntry);
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				savedEntry = {
+					...savedEntry,
+					version: 5,
+					working: { ...savedEntry.working, metadata: body.metadata },
+				};
+				return json({ version: 5 });
+			}
+			if (input.endsWith("/publish")) {
+				const body = JSON.parse(String(init?.body));
+				savedEntry = { ...savedEntry, version: 6, status: "published", publishedAt: body.publishedAt };
+				return json({ version: 6, warnings: [] });
+			}
+			throw new Error(`Unexpected fetch: ${input}`);
+		});
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		const publishDate = (await screen.findByLabelText("발행 일시 (서울 시간)")) as HTMLInputElement;
+		expect(publishDate.value).toBe("2020-01-05T01:15");
+		fireEvent.change(publishDate, { target: { value: "2020-02-03T04:05" } });
+		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
+
+		await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/publish"))).toBe(true));
+		const patchCall = fetchMock.mock.calls.find(
+			([input, init]) => String(input).endsWith("/entry-1") && init?.method === "PATCH",
+		);
+		const publishCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/publish"));
+		expect(JSON.parse(String(patchCall?.[1]?.body)).metadata.publishedAt).toBe("2020-02-02T19:05:00.000Z");
+		expect(JSON.parse(String(publishCall?.[1]?.body))).toEqual({
+			expectedVersion: 5,
+			publishedAt: "2020-02-02T19:05:00.000Z",
+		});
+
+		cleanup();
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		const reopenedDate = (await screen.findByLabelText("발행 일시 (서울 시간)")) as HTMLInputElement;
+		expect(reopenedDate.value).toBe("2020-02-03T04:05");
+	});
+
+	it("shows draft and published incoming references with their locations", async () => {
+		const references = [
+			{
+				state: "working",
+				sourceId: "draft-source",
+				sourceCollection: "post",
+				sourceTitle: "Draft referrer",
+				sourceSlug: "draft-referrer",
+				kind: "tag",
+				isStale: true,
+				occurrences: [
+					{ type: "mdx", line: 3, column: 2 },
+					{ type: "metadata", path: "tagIds", ordinal: 0 },
+				],
+			},
+			{
+				state: "published",
+				sourceId: "published-source",
+				sourceCollection: "memo",
+				sourceTitle: "Published referrer",
+				sourceSlug: "published-referrer",
+				kind: "tag",
+				isStale: false,
+				occurrences: [{ type: "mdx", line: 5, column: 1 }],
+			},
+		];
+		const relationRequests = vi.fn();
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) {
+				relationRequests();
+				return json({ incomingReferences: references });
+			}
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
+			throw new Error(`Unexpected fetch: ${input}`);
+		});
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+
+		expect(await screen.findByRole("heading", { name: "초안에서 사용" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "현재 공개본에서 사용" })).toBeTruthy();
+		expect(screen.getByRole("link", { name: "Draft referrer" }).getAttribute("href")).toBe(
+			"/admin/entries/draft-source/edit",
+		);
+		expect(screen.getByText("본문 3:2")).toBeTruthy();
+		expect(screen.getByText("tagIds · 1번째")).toBeTruthy();
+		expect(screen.getByText("대상 변경 확인 필요")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "사용처 새로고침" }));
+		await waitFor(() => expect(relationRequests).toHaveBeenCalledTimes(2));
+	});
+
 	it("renders the recoverable backup as an accessible dialog", async () => {
 		getLocalBackup.mockResolvedValue({
 			key: "admin:entry-1",
@@ -66,6 +169,7 @@ describe("live entry editor M10 feedback", () => {
 	it("binds blocking fields and moves positioned issues to the MDX source", async () => {
 		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
 			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
 			if (input.endsWith("/publish"))
 				return json(
@@ -98,6 +202,7 @@ describe("live entry editor M10 feedback", () => {
 		vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
 		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
 			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
 			if (input.endsWith("/publish"))
 				return json(
@@ -131,6 +236,7 @@ describe("live entry editor M10 feedback", () => {
 	it("sends slugs when adding a category and tag from the inspector", async () => {
 		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
 			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
 			if (init?.method === "PATCH") return json({ version: 5 });
 			if (input === "/api/cms/v1/entries" && init?.method === "POST") {
@@ -161,6 +267,7 @@ describe("live entry editor M10 feedback", () => {
 	it("stops publish after an autosave conflict and offers a copy/reload dialog", async () => {
 		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
 			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
 			if (init?.method === "PATCH") return json({ code: "conflict" }, 409);
 			if (input.endsWith("/publish")) throw new Error("Publish must not run after conflict");

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COLLECTIONS, type Collection } from "./collections";
+import { COLLECTIONS } from "./collections";
 
 export const collectionSchema = z.enum(COLLECTIONS);
 
@@ -67,6 +67,12 @@ export const patchEntryBodySchema = z.object({
 
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 
+export const publishEntryBodySchema = z.object({
+	expectedVersion: z.number().int().positive(),
+	publishedAt: z.string().datetime().optional(),
+});
+export type PublishEntryBody = z.infer<typeof publishEntryBodySchema>;
+
 export const bulkBodySchema = z.object({
 	op: z.enum(["tags.add", "tags.remove", "category.set", "folder.move", "archive", "unarchive", "trash", "publish"]),
 	items: z.array(z.object({ id: z.string().min(1), expectedVersion: z.number().int() })).max(100),
@@ -76,8 +82,38 @@ export const bulkBodySchema = z.object({
 });
 export type BulkBody = z.infer<typeof bulkBodySchema>;
 
+export const adminListColumnSchema = z.enum(["title", "slug", "tags", "status", "updatedAt"]);
+export type AdminListColumn = z.infer<typeof adminListColumnSchema>;
+
+export const adminColumnSettingsSchema = z
+	.object({
+		order: z.array(adminListColumnSchema).max(5).optional(),
+		visibility: z.record(z.string(), z.boolean()).optional(),
+	})
+	.superRefine((settings, ctx) => {
+		if (settings.order && new Set(settings.order).size !== settings.order.length) {
+			ctx.addIssue({ code: "custom", message: "Column order cannot contain duplicates", path: ["order"] });
+		}
+		for (const key of Object.keys(settings.visibility ?? {})) {
+			if (!adminListColumnSchema.safeParse(key).success) {
+				ctx.addIssue({ code: "custom", message: `Unknown column: ${key}`, path: ["visibility", key] });
+			}
+		}
+	});
+export type AdminColumnSettings = z.infer<typeof adminColumnSettingsSchema>;
+
 export const preferencesBodySchema = z.object({
 	columnVisibility: z.record(z.string(), z.boolean()).optional(),
+	columnSettings: z
+		.object({
+			post: adminColumnSettingsSchema.optional(),
+			memo: adminColumnSettingsSchema.optional(),
+			category: adminColumnSettingsSchema.optional(),
+			tag: adminColumnSettingsSchema.optional(),
+			collection: adminColumnSettingsSchema.optional(),
+		})
+		.partial()
+		.optional(),
 	defaultPageSize: z
 		.number()
 		.refine((v): v is 25 | 50 | 100 => v === 25 || v === 50 || v === 100)

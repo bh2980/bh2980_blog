@@ -57,6 +57,27 @@ describe("M10 publish HTTP contract", () => {
 		expect(publishEntry).toHaveBeenCalledWith({ id: "entry-1", expectedVersion: 4, publishedAt: undefined });
 	});
 
+	it("passes a valid past display date to the store", async () => {
+		const publishedAt = "2020-03-04T12:00:00.000Z";
+		const response = await POST(request({ expectedVersion: 4, publishedAt }), context);
+		expect(response.status).toBe(200);
+		expect(publishEntry).toHaveBeenCalledWith({
+			id: "entry-1",
+			expectedVersion: 4,
+			publishedAt: new Date(publishedAt),
+		});
+	});
+
+	it("rejects invalid and future publishedAt before reading or publishing", async () => {
+		const future = await POST(request({ expectedVersion: 4, publishedAt: "2999-01-01T00:00:00.000Z" }), context);
+		expect(future.status).toBe(400);
+		expect(await future.json()).toMatchObject({ code: "invalid_input" });
+		const invalid = await POST(request({ expectedVersion: 4, publishedAt: "not-a-date" }), context);
+		expect(invalid.status).toBe(400);
+		expect(getWorking).not.toHaveBeenCalled();
+		expect(publishEntry).not.toHaveBeenCalled();
+	});
+
 	it("does not publish when validation fails", async () => {
 		const issues = [{ code: "missing_title", path: "title" }];
 		publishEntry.mockRejectedValue(new ServiceError("publish_validation_failed", issues));
