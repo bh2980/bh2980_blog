@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Tooltip } from "../tooltip";
 
@@ -60,10 +60,13 @@ describe("MDX Tooltip", () => {
 		render(<Tooltip content="설명">단어</Tooltip>);
 
 		const trigger = screen.getByRole("button");
-		fireEvent.focus(trigger);
+		// 설명은 열기 전에도 트리거의 접근 가능한 설명으로 연결돼 있다.
+		const describedBy = trigger.getAttribute("aria-describedby");
+		expect(describedBy && document.getElementById(describedBy)?.textContent).toBe("설명");
+		await act(async () => trigger.focus());
 
-		const tooltip = await screen.findByRole("tooltip");
-		expect(tooltip.textContent).toContain("설명");
+		const popup = await screen.findByText("설명", { selector: "[data-slot=tooltip-content]" });
+		expect(popup.hasAttribute("data-open")).toBe(true);
 	});
 
 	it("모바일에서는 클릭으로 popover를 연다", async () => {
@@ -92,7 +95,11 @@ describe("MDX Tooltip", () => {
 		fireEvent.click(trigger);
 		await screen.findByText("설명");
 
-		fireEvent.pointerDown(screen.getByRole("button", { name: "바깥" }));
+		// Base UI는 바깥 누름을 click 단계에서 닫는다. 실제 탭과 같은 순서로 보낸다.
+		const outside = screen.getByRole("button", { name: "바깥" });
+		fireEvent.pointerDown(outside);
+		fireEvent.mouseDown(outside);
+		fireEvent.click(outside);
 
 		expect(screen.queryByText("설명")).toBeNull();
 	});

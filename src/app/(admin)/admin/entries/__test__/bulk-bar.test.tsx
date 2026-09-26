@@ -66,7 +66,7 @@ describe("bulk actions (§3.4)", () => {
 		);
 		fireEvent.change(screen.getByRole("combobox", { name: "일괄 작업 종류" }), { target: { value: "trash" } });
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
-		await screen.findByRole("dialog", { name: /휴지통 이동/ });
+		await screen.findByRole("alertdialog", { name: /휴지통 이동/ });
 		expect(payloads).toHaveLength(0);
 		fireEvent.click(screen.getByRole("button", { name: "계속" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));

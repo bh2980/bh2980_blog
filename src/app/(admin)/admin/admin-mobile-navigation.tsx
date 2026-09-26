@@ -15,10 +15,10 @@ export function AdminMobileNavigation({ children }: AdminMobileNavigationProps) 
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
-			<SheetTrigger asChild>
-				<Button type="button" variant="ghost" size="icon" aria-label="관리자 메뉴 열기" aria-expanded={open}>
-					<Menu aria-hidden="true" className="h-5 w-5" />
-				</Button>
+			<SheetTrigger
+				render={<Button type="button" variant="ghost" size="icon" aria-label="관리자 메뉴 열기" aria-expanded={open} />}
+			>
+				<Menu aria-hidden="true" className="h-5 w-5" />
 			</SheetTrigger>
 			<SheetContent side="left" className="w-64 max-w-[85vw] p-0">
 				<SheetHeader className="sr-only">

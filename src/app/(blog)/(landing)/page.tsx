@@ -51,11 +51,11 @@ export default async function Home() {
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-3">
-						<Button asChild size="lg">
-							<Link href="/posts">블로그 둘러보기</Link>
+						<Button size="lg" nativeButton={false} render={<Link href="/posts" />}>
+							블로그 둘러보기
 						</Button>
-						<Button asChild variant="outline" size="lg">
-							<Link href="/memos">메모 살펴보기</Link>
+						<Button variant="outline" size="lg" nativeButton={false} render={<Link href="/memos" />}>
+							메모 살펴보기
 						</Button>
 					</div>
 				</div>

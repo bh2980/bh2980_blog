@@ -44,13 +44,10 @@ export function useFolderActions({
 	const rememberFocus = () => {
 		returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 	};
-	const restoreFocus = (event: Event) => {
+	const restoreFocus = () => {
 		const target = returnFocusRef.current;
 		returnFocusRef.current = null;
-		if (target?.isConnected) {
-			event.preventDefault();
-			target.focus();
-		}
+		return target?.isConnected ? target : true;
 	};
 
 	const folderName = (id: string | null) => (id ? (folders.find((f) => f.id === id)?.name ?? "상위 폴더") : "최상위");
@@ -133,7 +130,7 @@ export function useFolderActions({
 	const dialogs = (
 		<>
 			<Dialog open={nameDialog !== null} onOpenChange={(open) => !open && setNameDialog(null)}>
-				<DialogContent className="max-w-sm" onCloseAutoFocus={restoreFocus}>
+				<DialogContent className="max-w-sm" finalFocus={restoreFocus}>
 					<DialogHeader>
 						<DialogTitle>{nameDialog?.mode === "rename" ? "폴더 이름 변경" : "새 폴더"}</DialogTitle>
 						<DialogDescription>
@@ -171,7 +168,7 @@ export function useFolderActions({
 			</Dialog>
 
 			<Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
-				<DialogContent className="max-w-sm" onCloseAutoFocus={restoreFocus}>
+				<DialogContent className="max-w-sm" finalFocus={restoreFocus}>
 					<DialogHeader>
 						<DialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</DialogTitle>
 						<DialogDescription>

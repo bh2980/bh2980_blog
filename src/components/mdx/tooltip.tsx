@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type PropsWithChildren, useEffect, useState } from "react";
+import { type CSSProperties, type PropsWithChildren, useEffect, useId, useState } from "react";
 import { cn } from "@/utils/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { TooltipContent, Tooltip as TooltipRoot, TooltipTrigger } from "../ui/tooltip";
@@ -14,6 +14,7 @@ export const Tooltip = ({
 	style,
 }: PropsWithChildren<{ content: string; className?: string; style?: CSSProperties }>) => {
 	const [isTouchLike, setIsTouchLike] = useState(false);
+	const descriptionId = useId();
 
 	useEffect(() => {
 		const hoverNoneQuery = window.matchMedia("(hover: none)");
@@ -57,10 +58,16 @@ export const Tooltip = ({
 		);
 	}
 
+	// Base UI Tooltip은 role="tooltip"·aria-describedby를 붙이지 않는다. 설명을 스크린 리더도 읽도록 숨긴 텍스트로 연결한다.
 	return (
 		<TooltipRoot>
-			<TooltipTrigger className={triggerClassName}>{triggerContent}</TooltipTrigger>
-			<TooltipContent sideOffset={6} className="text-sm">
+			<TooltipTrigger className={triggerClassName} aria-describedby={descriptionId}>
+				{triggerContent}
+			</TooltipTrigger>
+			<span id={descriptionId} className="sr-only">
+				{content}
+			</span>
+			<TooltipContent sideOffset={6} className="text-sm" aria-hidden>
 				{content}
 			</TooltipContent>
 		</TooltipRoot>

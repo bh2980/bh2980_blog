@@ -22,11 +22,11 @@ describe("AdminMobileNavigation", () => {
 		expect(trigger.getAttribute("aria-expanded")).toBe("true");
 		fireEvent.click(screen.getByRole("button", { name: "메모" }));
 
-		await waitFor(() => expect(dialog.getAttribute("data-state")).toBe("closed"));
+		await waitFor(() => expect(dialog.isConnected && !dialog.hasAttribute("data-closed")).toBe(false));
 		await waitFor(() => expect(trigger.getAttribute("aria-expanded")).toBe("false"));
 	});
 
-	it.each(["Enter", " "])("keeps the Sheet open for nested folder key %j", (key) => {
+	it.each(["Enter", " "])("keeps the Sheet open for nested folder key %j", async (key) => {
 		const folders: Folder[] = [
 			{ id: "parent", collection: "post", parentId: null, name: "상위", position: 0, version: 1 },
 			{ id: "child", collection: "post", parentId: "parent", name: "하위", position: 0, version: 1 },
@@ -47,11 +47,11 @@ describe("AdminMobileNavigation", () => {
 		);
 
 		fireEvent.click(screen.getByRole("button", { name: "관리자 메뉴 열기" }));
-		const dialog = screen.getByRole("dialog", { name: "관리자 메뉴" });
+		const dialog = await screen.findByRole("dialog", { name: "관리자 메뉴" });
 		const toggle = screen.getByRole("button", { name: "상위 하위 폴더 펼치기" });
 
 		fireEvent.keyDown(toggle, { key });
 
-		expect(dialog.getAttribute("data-state")).toBe("open");
+		expect(dialog.hasAttribute("data-open")).toBe(true);
 	});
 });

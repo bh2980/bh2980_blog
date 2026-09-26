@@ -40,6 +40,11 @@ const renderPublic = async (source: string): Promise<string> => {
  *
  * 그 밖의 차이는 허용하지 않는다. `__fixtures__/legacy-render-hashes.json`은 **변환 전** 원본 렌더로
  * 만든 정규화 해시이고, 이 테스트는 현재 본문 렌더가 그 값과 같은지 본다(M8-DA-1 A6).
+ *
+ * 렌더러 자체가 바뀌면 기록을 다시 만든다. v2 A0(2026-09-27)에서 UI primitive를 Radix → Base UI로 바꾸며
+ * 42편의 해시를 갱신했다. 46편 모두 보이는 텍스트는 이전 렌더와 같고, 차이는 Collapsible·Tabs·Tooltip의
+ * 상태 속성(`data-state` → `data-closed`·`data-panel-open` 등)과 닫힌 패널의 빈 요소를 렌더하지 않는 것,
+ * 그리고 Tooltip 설명을 스크린 리더용 숨긴 텍스트(`sr-only`, `aria-describedby`)로 함께 내보내는 것뿐이다.
  */
 const canonical = (html: string): string =>
 	html.replaceAll("<span>ㅤ</span>", "<p><br/></p>").replace(/<br\/>\s+/g, "<br/>");

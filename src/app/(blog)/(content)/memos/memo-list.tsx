@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { Suspense } from "react";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { MultiCombobox } from "@/components/multi-combobox";
 import { Separator } from "@/components/ui/separator";
 import type { ListResult, Memo, Tag } from "@/libs/contents/types/contents";
 import { cn } from "@/utils/cn";
@@ -31,12 +31,13 @@ const MemoListContent = ({ memos, tags, tagFilter, setTagFilter }: MemoListConte
 				<p className="mb-6 text-slate-600 dark:text-slate-300">
 					개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.
 				</p>
-				<MultiSelect
-					options={tags.list.map((tag) => ({ ...tag, name: tag.label }))}
+				<MultiCombobox
+					options={tags.list.map((tag) => ({ value: tag.slug, label: tag.label }))}
+					value={tagFilter ?? []}
 					onValueChange={setTagFilter ?? (() => {})}
-					defaultValue={tagFilter}
 					placeholder="태그 선택"
-					hideSelectAll
+					aria-label="태그로 메모 거르기"
+					emptyText="일치하는 태그가 없습니다."
 				/>
 			</div>
 
