@@ -54,6 +54,7 @@ export function InternalLinkPopup({
 						return (
 							<button
 								key={item.id}
+								aria-current={isSelected ? "true" : undefined}
 								type="button"
 								onMouseDown={(e) => e.preventDefault()}
 								onClick={() => onSelect(item)}
@@ -64,7 +65,13 @@ export function InternalLinkPopup({
 								}`}
 							>
 								<span className="truncate font-semibold">{item.title}</span>
-								<span className="truncate font-mono text-[10px] text-neutral-400">/{item.slug}</span>
+								<span className="truncate font-mono text-[10px] text-neutral-400">
+									{item.collection === "memo" ? "메모" : "글"} · /{item.slug || "(slug 없음)"}
+									{/* 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2). */}
+									{item.status && item.status !== "published"
+										? ` · ${item.status === "draft" ? "초안" : item.status}`
+										: ""}
+								</span>
 							</button>
 						);
 					})

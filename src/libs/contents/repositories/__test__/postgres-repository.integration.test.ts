@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { seedEntry, seedSave } from "@/cms/adapters/postgres/__test__/seed";
 import {
 	closeGlobalPool,
 	createIsolatedTestPool,
@@ -34,7 +35,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 		store = createContentStore(pool, { schema: schemaName });
 		repository = new PostgresRepository(() => store);
 
-		const category = await store.createEntry({
+		const category = await seedEntry(store, {
 			collection: "category",
 			slug: "engineering",
 			metadata: { title: "엔지니어링" },
@@ -62,7 +63,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 	}) {
 		const metadata =
 			params.metadata ?? (params.collection === "post" ? { title: params.slug, categoryId } : { title: params.slug });
-		const entry = await store.createEntry({
+		const entry = await seedEntry(store, {
 			collection: params.collection,
 			slug: params.slug,
 			metadata,
@@ -75,7 +76,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 	}
 
 	async function draft(params: { collection: "post" | "memo"; slug: string }) {
-		return store.createEntry({
+		return seedEntry(store, {
 			collection: params.collection,
 			slug: params.slug,
 			metadata: { title: "초안", categoryId },
@@ -137,7 +138,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 
 	it("주소를 바꾸면 이전 주소 조회가 정규 slug를 반환한다(페이지 308 판정)", async () => {
 		const published = await publish({ collection: "post", slug: "old-addr" });
-		const saved = await store.saveWorking(published.id, {
+		const saved = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "new-addr",
 			metadata: { title: "새 주소", categoryId },
@@ -159,7 +160,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 	});
 
 	it("해석 가능한 published 카테고리가 없으면 발행을 거부한다", async () => {
-		const draft = await store.createEntry({
+		const draft = await seedEntry(store, {
 			collection: "post",
 			slug: "no-category",
 			metadata: { title: "카테고리 없음" },

@@ -1,12 +1,10 @@
 import type {
 	AnnotationConfig,
 	AnnotationConfigItem,
-	AnnotationEvent,
 	AnnotationKind,
 	AnnotationRegistry,
 	AnnotationRegistryItem,
 	AnnotationScope,
-	CodeBlockAnnotation,
 } from "./types";
 
 const ANNOTATION_NAME_RE = /^[A-Za-z_][\w-]*$/;
@@ -112,34 +110,8 @@ export const createAnnotationRegistry = (annotationConfig?: AnnotationConfig) =>
 	return registry;
 };
 
-export const fromAnnotationsToEvents = (annotations: CodeBlockAnnotation[]) => {
-	return annotations
-		.flatMap((annotation) => {
-			const startEvent: AnnotationEvent = { kind: "open", anno: annotation, pos: annotation.range.start };
-			const endEvent: AnnotationEvent = { kind: "close", anno: annotation, pos: annotation.range.end };
-
-			if (startEvent.pos === endEvent.pos) {
-				return [];
-			}
-
-			return [startEvent, endEvent];
-		})
-		.sort((a, b) => {
-			if (a.pos !== b.pos) {
-				return a.pos - b.pos;
-			}
-
-			if (a.kind !== b.kind) {
-				return a.kind === "close" ? -1 : 1;
-			}
-
-			return a.kind === "open" ? a.anno.order - b.anno.order : b.anno.order - a.anno.order;
-		});
-};
-
 export const __testable__ = {
 	normalizeConfigItems,
 	supportsAnnotationScope,
 	createAnnotationRegistry,
-	fromAnnotationsToEvents,
 };

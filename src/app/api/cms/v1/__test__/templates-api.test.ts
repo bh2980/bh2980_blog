@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
+import { DELETE as deleteTemplate, GET as getTemplate, PATCH as patchTemplate } from "../templates/[id]/route";
 import { GET as getTemplates, POST as postTemplate } from "../templates/route";
-import {
-	DELETE as deleteTemplate,
-	GET as getTemplate,
-	PATCH as patchTemplate,
-} from "../templates/[id]/route";
 
 const mockVerifyAdmin = vi.fn();
 

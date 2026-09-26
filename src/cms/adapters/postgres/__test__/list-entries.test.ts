@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Entry } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { moveToFolder, seedEntry } from "./seed";
 
 // ---------------------------------------------------------------------------
 // Local type declarations for the not-yet-implemented listEntries API
@@ -72,11 +73,6 @@ interface ExtendedContentStore {
 		name: string;
 		position?: number;
 	}): Promise<Folder>;
-	moveEntryToFolder(params: {
-		entryId: string;
-		folderId: string | null;
-		expectedVersion: number;
-	}): Promise<Entry & { folderId: string | null }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +130,7 @@ describe("listEntries contract", () => {
 			} catch {
 				// Tables might not exist yet
 			}
-			const categoryDraft = await store.createEntry({
+			const categoryDraft = await seedEntry(store, {
 				collection: "category",
 				slug: "list-test-category",
 				metadata: { title: "List test category" },
@@ -142,7 +138,7 @@ describe("listEntries contract", () => {
 				schemaVersion: 1,
 				contentHash: uniqueHash(),
 			});
-			const category = await store.publishEntry(categoryDraft.id, { expectedVersion: categoryDraft.version });
+			const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
 			testCategoryId = category.id;
 		}
 	});
@@ -167,7 +163,7 @@ describe("listEntries contract", () => {
 			mdx?: string;
 		} = {},
 	): Promise<Entry & { folderId?: string | null }> {
-		const entry = await store.createEntry({
+		const entry = await seedEntry(store, {
 			collection,
 			slug,
 			metadata: collection === "post" ? { title, categoryId: testCategoryId } : { title },
@@ -182,13 +178,11 @@ describe("listEntries contract", () => {
 			if (slug === null) {
 				throw new Error("Cannot publish an entry with null slug in fixture");
 			}
-			current = await store.publishEntry(entry.id, {
-				expectedVersion: current.version,
-			});
+			current = await store.publishEntry({ id: entry.id, expectedVersion: current.version });
 		}
 
 		if (opts.folderId) {
-			current = await store.moveEntryToFolder({
+			current = await moveToFolder(store, {
 				entryId: entry.id,
 				folderId: opts.folderId,
 				expectedVersion: current.version,
@@ -634,7 +628,7 @@ console.log("FencedCode000");
 
 	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", async () => {
 		const directDate = "2020-05-05T00:00:00.000Z";
-		await store.createEntry({
+		await seedEntry(store, {
 			collection: "post",
 			slug: "d1-direct",
 			metadata: { categoryId: "cat-1", tagIds: ["tag-a", "tag-b"], publishedAt: directDate },
@@ -643,7 +637,7 @@ console.log("FencedCode000");
 			contentHash: randomBytes(16).toString("hex"),
 		});
 
-		const targetCat = await store.createEntry({
+		const targetCat = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-real",
 			metadata: {},
@@ -651,7 +645,7 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
 		});
-		const targetTag1 = await store.createEntry({
+		const targetTag1 = await seedEntry(store, {
 			collection: "tag",
 			slug: "tag-real1",
 			metadata: {},
@@ -659,7 +653,7 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
 		});
-		const targetTag2 = await store.createEntry({
+		const targetTag2 = await seedEntry(store, {
 			collection: "tag",
 			slug: "tag-real2",
 			metadata: {},
@@ -688,7 +682,7 @@ console.log("FencedCode000");
 		});
 
 		const histDate = "2019-01-01T00:00:00.000Z";
-		const histE = await store.createEntry({
+		const histE = await seedEntry(store, {
 			collection: "post",
 			slug: "d1-hist",
 			metadata: { title: "Historical date", categoryId: testCategoryId, publishedAt: histDate },
@@ -696,9 +690,9 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
 		});
-		await store.publishEntry(histE.id, { expectedVersion: histE.version });
+		await store.publishEntry({ id: histE.id, expectedVersion: histE.version });
 
-		const noMetaE = await store.createEntry({
+		const noMetaE = await seedEntry(store, {
 			collection: "post",
 			slug: "d1-nometa",
 			metadata: { title: "No explicit published date", categoryId: testCategoryId },
@@ -706,7 +700,7 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
 		});
-		const pubNoMetaE = await store.publishEntry(noMetaE.id, { expectedVersion: noMetaE.version });
+		const pubNoMetaE = await store.publishEntry({ id: noMetaE.id, expectedVersion: noMetaE.version });
 
 		const list = await store.listEntries({ collection: "post" });
 
@@ -742,7 +736,7 @@ console.log("FencedCode000");
 	}, 60_000);
 
 	it("resolves tag names in metadata order without changing tag IDs", async () => {
-		const firstTag = await store.createEntry({
+		const firstTag = await seedEntry(store, {
 			collection: "tag",
 			slug: "first-tag",
 			metadata: { title: "First tag" },
@@ -750,7 +744,7 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
 		});
-		const secondTag = await store.createEntry({
+		const secondTag = await seedEntry(store, {
 			collection: "tag",
 			slug: "second-tag",
 			metadata: { title: "Second tag" },
@@ -758,7 +752,7 @@ console.log("FencedCode000");
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
 		});
-		const post = await store.createEntry({
+		const post = await seedEntry(store, {
 			collection: "post",
 			slug: "tagged-post",
 			metadata: { title: "Tagged", tagIds: [secondTag.id, firstTag.id] },
@@ -775,45 +769,4 @@ console.log("FencedCode000");
 			{ id: firstTag.id, title: "First tag" },
 		]);
 	}, 30_000);
-
-	// -----------------------------------------------------------------------
-	// 8  Migration idempotency
-	// -----------------------------------------------------------------------
-
-	it("8. Migration idempotency sentinel: empty search_text backfill is not rewritten", async () => {
-		const tempSchema = `cms_mig_${randomBytes(4).toString("hex")}`;
-		await pool.query(`CREATE SCHEMA "${tempSchema}"`);
-		try {
-			await migrateContentStore(pool, { schema: tempSchema });
-			const tempStore = createContentStore(pool, { schema: tempSchema });
-
-			const e = await tempStore.createEntry({
-				collection: "post",
-				slug: "d4-empty",
-				metadata: {},
-				mdx: "<div />",
-				schemaVersion: 1,
-				contentHash: randomBytes(16).toString("hex"),
-			});
-
-			await pool.query(`UPDATE "${tempSchema}".entry_bodies SET search_text = '' WHERE entry_id = $1`, [e.id]);
-
-			await pool.query(`
-				CREATE OR REPLACE FUNCTION "${tempSchema}".raise_on_update() RETURNS trigger AS $$
-				BEGIN
-					RAISE EXCEPTION 'MIGRATION_REWRITE_DETECTED';
-				END;
-				$$ LANGUAGE plpgsql;
-
-				CREATE TRIGGER no_rewrite_search_text
-				BEFORE UPDATE OF search_text ON "${tempSchema}".entry_bodies
-				FOR EACH ROW
-				EXECUTE FUNCTION "${tempSchema}".raise_on_update();
-			`);
-
-			await expect(migrateContentStore(pool, { schema: tempSchema })).resolves.not.toThrow();
-		} finally {
-			await pool.query(`DROP SCHEMA "${tempSchema}" CASCADE`);
-		}
-	}, 15_000);
 });

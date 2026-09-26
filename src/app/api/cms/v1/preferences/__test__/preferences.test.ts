@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getPreferences, PUT as putPreferences } from "../route";
 
 vi.mock("@/cms/adapters/auth", () => ({
@@ -16,98 +16,77 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => {
-	let storedPrefs: any = null;
-	const mockStore = {
-		getPreferences: vi.fn().mockImplementation(() => Promise.resolve(storedPrefs)),
-		savePreferences: vi.fn().mockImplementation((params) => {
-			storedPrefs = {
-				...(storedPrefs ?? {}),
-				...params.preferences,
-				...(params.preferences.columnSettings
-					? { columnSettings: { ...(storedPrefs?.columnSettings ?? {}), ...params.preferences.columnSettings } }
-					: {}),
-			};
+const state = vi.hoisted(() => ({ stored: null as unknown }));
+
+vi.mock("@/cms/container", () => ({
+	getCmsContentStore: () => ({
+		getPreferences: vi.fn().mockImplementation(() => Promise.resolve(state.stored)),
+		savePreferences: vi.fn().mockImplementation((params: { preferences: unknown }) => {
+			state.stored = params.preferences;
 			return Promise.resolve();
 		}),
-	};
+	}),
+}));
 
-	return {
-		getCmsContentStore: () => mockStore,
-	};
-});
-
-describe("M2-BE-5 Preferences API Contract", () => {
-	it("GET and PUT /preferences saves and retrieves user preferences", async () => {
-		const getRes1 = await getPreferences();
-		expect(getRes1.status).toBe(200);
-		const initial = await getRes1.json();
-		expect(initial).toEqual({});
-
-		const putReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({
-				defaultPageSize: 50,
-				sort: { field: "title", direction: "asc" },
-			}),
-		});
-		const putRes = await putPreferences(putReq);
-		expect(putRes.status).toBe(200);
-
-		const putColumnsReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({
-				columnSettings: {
-					post: { order: ["title", "tags", "slug", "status", "updatedAt"], visibility: { tags: true } },
-				},
-			}),
-		});
-		const putColumnsRes = await putPreferences(putColumnsReq);
-		expect(putColumnsRes.status).toBe(200);
-
-		const putMemoColumnsReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({ columnSettings: { memo: { order: ["title", "tags"], visibility: {} } } }),
-		});
-		const putMemoColumnsRes = await putPreferences(putMemoColumnsReq);
-		expect(putMemoColumnsRes.status).toBe(200);
-
-		const getRes2 = await getPreferences();
-		const saved = await getRes2.json();
-		expect(saved.defaultPageSize).toBe(50);
-		expect(saved.sort).toEqual({ field: "title", direction: "asc" });
-		expect(saved.columnSettings.post.order).toEqual(["title", "tags", "slug", "status", "updatedAt"]);
-		expect(saved.columnSettings.memo.order).toEqual(["title", "tags"]);
+const getReq = () => new NextRequest("http://localhost/api/cms/v1/preferences");
+const putReq = (body: unknown) =>
+	new NextRequest("http://localhost/api/cms/v1/preferences", {
+		method: "PUT",
+		headers: { origin: "http://localhost", "content-type": "application/json" },
+		body: JSON.stringify(body),
 	});
 
-	it("PUT /preferences rejects invalid column IDs and duplicate order entries", async () => {
-		const putReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({ columnSettings: { post: { order: ["tags", "tags"] } } }),
-		});
-		expect((await putPreferences(putReq)).status).toBe(400);
-
-		const invalidIdReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({ columnSettings: { post: { visibility: { unknown: true } } } }),
-		});
-		expect((await putPreferences(invalidIdReq)).status).toBe(400);
+describe("Preferences API — 컬렉션별 목록 설정(§3.2)", () => {
+	beforeEach(() => {
+		state.stored = null;
 	});
 
-	it("PUT /preferences rejects invalid pageSize with 400", async () => {
-		const putReq = new NextRequest("http://localhost/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { origin: "http://localhost", "content-type": "application/json" },
-			body: JSON.stringify({
-				defaultPageSize: 30, // invalid: must be 25, 50, 100
-			}),
+	it("stores page size, sort and columns per collection and merges partial updates", async () => {
+		const initial = await (await getPreferences(getReq())).json();
+		expect(initial.collections.post).toEqual({});
+
+		const res = await putPreferences(
+			putReq({ collections: { post: { pageSize: 50, sort: { field: "publishedAt", direction: "asc" } } } }),
+		);
+		expect(res.status).toBe(200);
+		await putPreferences(
+			putReq({ collections: { post: { columns: { order: ["title", "category"], visibility: { slug: true } } } } }),
+		);
+		await putPreferences(putReq({ collections: { memo: { pageSize: 100 } } }));
+
+		const saved = await (await getPreferences(getReq())).json();
+		expect(saved.collections.post).toEqual({
+			pageSize: 50,
+			sort: { field: "publishedAt", direction: "asc" },
+			columns: { order: ["title", "category"], visibility: { slug: true } },
 		});
-		const putRes = await putPreferences(putReq);
-		expect(putRes.status).toBe(400);
+		expect(saved.collections.memo).toEqual({ pageSize: 100 });
+	});
+
+	it("reads the previous global shape as per-collection settings", async () => {
+		state.stored = {
+			defaultPageSize: 50,
+			sort: { field: "title", direction: "asc" },
+			columnSettings: { memo: { visibility: { tags: false } } },
+		};
+		const saved = await (await getPreferences(getReq())).json();
+		expect(saved.collections.memo).toEqual({
+			pageSize: 50,
+			sort: { field: "title", direction: "asc" },
+			columns: { visibility: { tags: false } },
+		});
+		expect(saved.collections.post).toEqual({ pageSize: 50, sort: { field: "title", direction: "asc" } });
+	});
+
+	it("rejects unknown columns, duplicate order entries and invalid page sizes with 400", async () => {
+		for (const body of [
+			{ collections: { post: { columns: { order: ["title", "title"] } } } },
+			{ collections: { post: { columns: { visibility: { nope: true } } } } },
+			{ collections: { post: { pageSize: 30 } } },
+			{ collections: { unknown: { pageSize: 25 } } },
+		]) {
+			const res = await putPreferences(putReq(body));
+			expect(res.status).toBe(400);
+		}
 	});
 });

@@ -27,7 +27,7 @@ vi.mock("@/cms/container", () => ({
 	getCmsContentStore: () => ({ getWorking, publishEntry, getMediaAsset: vi.fn() }),
 	getCmsMediaStore: () => ({ headFile: vi.fn() }),
 }));
-vi.mock("@/cms/services/content-service", () => ({ imageWarningsForPublish }));
+vi.mock("@/cms/core/snapshot", () => ({ imageWarningsForPublish }));
 
 function request(body: unknown = { expectedVersion: 4 }, origin = "http://localhost") {
 	return new NextRequest("http://localhost/api/cms/v1/entries/entry-1/publish", {
@@ -54,25 +54,17 @@ describe("M10 publish HTTP contract", () => {
 		const response = await POST(request(), context);
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({ status: "published", warnings });
-		expect(publishEntry).toHaveBeenCalledWith({ id: "entry-1", expectedVersion: 4, publishedAt: undefined });
+		expect(publishEntry).toHaveBeenCalledWith({ id: "entry-1", expectedVersion: 4 });
 	});
 
-	it("passes a valid past display date to the store", async () => {
-		const publishedAt = "2020-03-04T12:00:00.000Z";
-		const response = await POST(request({ expectedVersion: 4, publishedAt }), context);
+	it("ignores a request publishedAt; the display date comes from the saved draft metadata (§5.5)", async () => {
+		const response = await POST(request({ expectedVersion: 4, publishedAt: "2020-03-04T12:00:00.000Z" }), context);
 		expect(response.status).toBe(200);
-		expect(publishEntry).toHaveBeenCalledWith({
-			id: "entry-1",
-			expectedVersion: 4,
-			publishedAt: new Date(publishedAt),
-		});
+		expect(publishEntry).toHaveBeenCalledWith({ id: "entry-1", expectedVersion: 4 });
 	});
 
-	it("rejects invalid and future publishedAt before reading or publishing", async () => {
-		const future = await POST(request({ expectedVersion: 4, publishedAt: "2999-01-01T00:00:00.000Z" }), context);
-		expect(future.status).toBe(400);
-		expect(await future.json()).toMatchObject({ code: "invalid_input" });
-		const invalid = await POST(request({ expectedVersion: 4, publishedAt: "not-a-date" }), context);
+	it("rejects a non-integer expectedVersion before reading or publishing", async () => {
+		const invalid = await POST(request({ expectedVersion: "4" }), context);
 		expect(invalid.status).toBe(400);
 		expect(getWorking).not.toHaveBeenCalled();
 		expect(publishEntry).not.toHaveBeenCalled();

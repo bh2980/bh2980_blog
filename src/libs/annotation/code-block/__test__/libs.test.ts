@@ -1,36 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { __testable__ } from "../libs";
-import type { AnnotationConfig, CodeBlockAnnotation, Range } from "../types";
+import type { AnnotationConfig } from "../types";
 
-const { normalizeConfigItems, createAnnotationRegistry, supportsAnnotationScope, fromAnnotationsToEvents } =
-	__testable__;
-
-const makeAnnotation = ({
-	scope,
-	name,
-	range,
-	order,
-	priority = 0,
-	source = "mdx-text",
-	mode,
-}: {
-	scope: CodeBlockAnnotation["scope"];
-	name: string;
-	range: Range;
-	order: number;
-	priority?: number;
-	source?: "mdast" | "mdx-text";
-	mode?: "class" | "render";
-}): CodeBlockAnnotation => {
-	const resolvedMode = mode ?? (source === "mdast" ? "class" : "render");
-	if (scope === "line") {
-		const base = { scope, name, range, priority, order };
-		return resolvedMode === "class" ? { ...base, class: "line-c" } : { ...base, render: name };
-	}
-
-	const base = { scope, name, range, priority, order, source };
-	return resolvedMode === "class" ? { ...base, class: "c" } : { ...base, render: name };
-};
+const { normalizeConfigItems, createAnnotationRegistry, supportsAnnotationScope } = __testable__;
 
 describe("normalizeConfigItems / createAnnotationRegistry", () => {
 	it("annotationConfig가 없으면 에러를 던진다", () => {
@@ -96,60 +68,5 @@ describe("normalizeConfigItems / createAnnotationRegistry", () => {
 				annotations: [{ name: "1bad", kind: "class", class: "a" }],
 			}),
 		).toThrowError('[createAnnotationRegistry] ERROR : invalid annotation name "1bad"');
-	});
-});
-
-describe("fromAnnotationsToEvents", () => {
-	it("range start=end인 annotation은 이벤트를 만들지 않는다", () => {
-		const events = fromAnnotationsToEvents([
-			makeAnnotation({
-				scope: "char",
-				name: "noop",
-				range: { start: 1, end: 1 },
-				order: 0,
-			}),
-		]);
-
-		expect(events).toEqual([]);
-	});
-
-	it("같은 pos에서 close가 open보다 먼저 온다", () => {
-		const a = makeAnnotation({
-			scope: "char",
-			name: "A",
-			range: { start: 0, end: 2 },
-			order: 0,
-		});
-		const b = makeAnnotation({
-			scope: "char",
-			name: "B",
-			range: { start: 2, end: 4 },
-			order: 1,
-		});
-
-		const events = fromAnnotationsToEvents([a, b]).map((e) => `${e.kind}@${e.pos}:${e.anno.name}`);
-		expect(events).toEqual(["open@0:A", "close@2:A", "open@2:B", "close@4:B"]);
-	});
-
-	it("동일 range/pos 충돌 시 order를 마지막 tie-breaker로 사용한다", () => {
-		const a = makeAnnotation({
-			scope: "char",
-			name: "wrap-0",
-			range: { start: 0, end: 2 },
-			order: 0,
-		});
-		const b = makeAnnotation({
-			scope: "char",
-			name: "class-1",
-			range: { start: 0, end: 2 },
-			order: 1,
-			source: "mdast",
-		});
-
-		const opens = fromAnnotationsToEvents([b, a])
-			.filter((event) => event.kind === "open")
-			.map((event) => event.anno.name);
-
-		expect(opens).toEqual(["wrap-0", "class-1"]);
 	});
 });

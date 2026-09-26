@@ -7,11 +7,32 @@ import { resolveImageUrl } from "@/cms/mdx/image-src";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
+/** §4.3 너비 입력: 1~100% 또는 4096 이하의 양의 정수 px. 빈 값은 본문에 맞춤이다. */
+export const isValidImageWidth = (value: string) => {
+	const trimmed = value.trim();
+	if (!trimmed) return true;
+	const percent = /^(\d{1,3})%$/.exec(trimmed);
+	if (percent) return Number(percent[1]) >= 1 && Number(percent[1]) <= 100;
+	const px = /^(\d{1,4})(px)?$/.exec(trimmed);
+	return Boolean(px) && Number(px?.[1]) >= 1 && Number(px?.[1]) <= 4096;
+};
+
+const normalizeWidth = (value: string) => {
+	const trimmed = value.trim();
+	return /^\d+$/.test(trimmed) ? `${trimmed}px` : trimmed;
+};
+
+export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected, editor }: NodeViewProps) {
 	const widthInputId = useId();
 	const altInputId = useId();
-	const { src, alt, width, align, caption, mediaId } = node.attrs;
+	const widthErrorId = useId();
+	const { src, alt, width, align, caption, mediaId, decorative } = node.attrs;
 	const [isEditing, setIsEditing] = useState(false);
+	const [widthDraft, setWidthDraft] = useState<string>(width || "");
+	useEffect(() => setWidthDraft(width || ""), [width]);
+	const widthInvalid = !isValidImageWidth(widthDraft);
+	// 노드 뷰는 항상 편집기 안에서 그려지지만, 편집기 없이 그리는 경우(미리보기·테스트)도 막지 않는다.
+	const isEditable = editor?.isEditable ?? true;
 	const [mediaState, setMediaState] = useState<{ status: string; publicUrl: string | null } | null>(null);
 
 	useEffect(() => {
@@ -78,7 +99,10 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 			style={{ width: width || "100%", maxWidth: "100%" }}
 		>
 			{/* Image Controls Overlay */}
-			<div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md border border-neutral-200 bg-white/90 p-1 opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 dark:border-neutral-800 dark:bg-neutral-900/90">
+			<div
+				hidden={!isEditable}
+				className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md border border-neutral-200 bg-white/90 p-1 opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 dark:border-neutral-800 dark:bg-neutral-900/90"
+			>
 				<Button
 					type="button"
 					variant="ghost"
@@ -141,14 +165,26 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 				<div className="absolute top-12 right-2 z-20 flex w-64 flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 text-xs shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
 					<div className="flex flex-col gap-1">
 						<label htmlFor={widthInputId} className="font-medium text-neutral-600 dark:text-neutral-400">
-							너비 (예: 100%, 600px)
+							너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)
 						</label>
 						<Input
 							id={widthInputId}
-							value={width || "100%"}
-							onChange={(e) => updateAttributes({ width: e.target.value })}
+							value={widthDraft}
+							aria-invalid={widthInvalid || undefined}
+							aria-describedby={widthInvalid ? widthErrorId : undefined}
+							onChange={(e) => {
+								setWidthDraft(e.target.value);
+								if (isValidImageWidth(e.target.value)) {
+									updateAttributes({ width: e.target.value.trim() ? normalizeWidth(e.target.value) : null });
+								}
+							}}
 							className="h-7 text-xs"
 						/>
+						{widthInvalid && (
+							<p id={widthErrorId} className="text-red-500">
+								1~100% 또는 1~4096px로 입력하세요.
+							</p>
+						)}
 					</div>
 					<div className="flex flex-col gap-1">
 						<label htmlFor={altInputId} className="font-medium text-neutral-600 dark:text-neutral-400">
@@ -157,10 +193,22 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 						<Input
 							id={altInputId}
 							value={alt || ""}
+							disabled={decorative === true}
+							aria-invalid={(!decorative && !alt) || undefined}
 							onChange={(e) => updateAttributes({ alt: e.target.value })}
 							className="h-7 text-xs"
 							placeholder="이미지 설명"
 						/>
+						<label className="flex items-center gap-1.5">
+							<input
+								type="checkbox"
+								checked={decorative === true}
+								onChange={(e) =>
+									updateAttributes(e.target.checked ? { decorative: true, alt: "" } : { decorative: null })
+								}
+							/>
+							장식 이미지 (빈 alt로 저장)
+						</label>
 					</div>
 				</div>
 			)}
@@ -190,6 +238,8 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected 
 					type="text"
 					value={caption || ""}
 					placeholder="캡션 입력..."
+					aria-label="이미지 캡션"
+					readOnly={!isEditable}
 					onChange={(e) => updateAttributes({ caption: e.target.value })}
 					className="w-full border-none bg-transparent text-center text-neutral-500 text-xs placeholder:text-neutral-300 focus:outline-none focus:ring-0 dark:text-neutral-400 dark:placeholder:text-neutral-600"
 				/>

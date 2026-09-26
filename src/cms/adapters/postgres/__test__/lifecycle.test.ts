@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createContentStore, migrateContentStore } from "../content-store";
+import { moveToFolder, seedEntry } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contracts", () => {
@@ -16,7 +17,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		const categoryDraft = await store.createEntry({
+		const categoryDraft = await seedEntry(store, {
 			collection: "category",
 			slug: "lifecycle-test-category",
 			metadata: { title: "Lifecycle category" },
@@ -25,23 +26,17 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			contentHash: "lifecycle-category-hash",
 		});
 		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-		const createEntry = store.createEntry.bind(store);
-		store.createEntry = (input: Record<string, any>) => {
-			if (input.collection === "post" && !input.metadata?.categoryId) {
-				return createEntry({ ...input, metadata: { ...input.metadata, categoryId: category.id } });
-			}
-			return createEntry(input);
-		};
+		// 게시글 발행에는 카테고리가 필요하다. 이 파일의 시나리오는 카테고리와 무관하므로 기본값을 채운다.
+		const withCategory = (snapshot: Record<string, any>) =>
+			snapshot?.collection === "post" && !snapshot.metadata?.categoryId
+				? { ...snapshot, metadata: { ...snapshot.metadata, categoryId: category.id } }
+				: snapshot;
+		const createWithReferences = store.createEntryWithReferences.bind(store);
+		store.createEntryWithReferences = (params: Record<string, any>) =>
+			createWithReferences({ ...params, snapshot: withCategory(params.snapshot) });
 		const saveWithReferences = store.saveWorkingWithReferences.bind(store);
-		store.saveWorkingWithReferences = (params: Record<string, any>) => {
-			if (params.snapshot?.collection === "post" && !params.snapshot.metadata?.categoryId) {
-				return saveWithReferences({
-					...params,
-					snapshot: { ...params.snapshot, metadata: { ...params.snapshot.metadata, categoryId: category.id } },
-				});
-			}
-			return saveWithReferences(params);
-		};
+		store.saveWorkingWithReferences = (params: Record<string, any>) =>
+			saveWithReferences({ ...params, snapshot: withCategory(params.snapshot) });
 	});
 
 	afterAll(async () => {
@@ -53,10 +48,10 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 	describe("1. Lifecycle State Machine Transitions (§5.3)", () => {
 		it("draft -> published creates published body and sets status to published", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-publish-1",
-				metadata: { title: "Draft Post" },
+				metadata: { title: "Draft Post", publishedAt: "2026-03-01T12:00:00.000Z" },
 				mdx: "Content 1",
 				schemaVersion: 1,
 				contentHash: "hash-1",
@@ -64,12 +59,8 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 			expect(entry.status).toBe("draft");
 
-			// publishEntry must support publishedAt override or default
-			const published = await store.publishEntry({
-				id: entry.id,
-				expectedVersion: entry.version,
-				publishedAt: new Date("2026-03-01T12:00:00Z"),
-			});
+			// 표시 발행일은 초안 메타데이터의 `publishedAt`이다(§5.5).
+			const published = await store.publishEntry({ id: entry.id, expectedVersion: entry.version });
 
 			expect(published.status).toBe("published");
 			expect(published.publishedAt).toEqual(new Date("2026-03-01T12:00:00Z"));
@@ -78,29 +69,26 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("rejects future publishedAt without changing the draft", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-future-published-at",
-				metadata: { title: "Future date" },
+				metadata: { title: "Future date", publishedAt: "2999-01-01T00:00:00.000Z" },
 				mdx: "Content",
 				schemaVersion: 1,
 				contentHash: `hash-future-${randomUUID()}`,
 			});
 
-			await expect(
-				store.publishEntry({
-					id: entry.id,
-					expectedVersion: entry.version,
-					publishedAt: new Date("2999-01-01T00:00:00.000Z"),
-				}),
-			).rejects.toMatchObject({ code: "invalid_input" });
+			await expect(store.publishEntry({ id: entry.id, expectedVersion: entry.version })).rejects.toMatchObject({
+				code: "publish_validation_failed",
+				issues: expect.arrayContaining([expect.objectContaining({ code: "future_published_at" })]),
+			});
 			const unchanged = await store.getEntry(entry.id);
 			expect(unchanged.status).toBe("draft");
 			expect(unchanged.version).toBe(entry.version);
 		});
 
 		it("published -> archive closes public visibility and cancels any pending schedule", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-archive-1",
 				metadata: { title: "To Archive" },
@@ -124,7 +112,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("archived -> unarchive returns to draft without auto-publishing", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-unarchive-1",
 				metadata: { title: "To Unarchive" },
@@ -152,7 +140,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("draft/published/archived -> trash hides from active list and cancels schedule", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-trash-1",
 				metadata: { title: "To Trash" },
@@ -170,7 +158,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("trashed -> restore returns to draft (for publish collection)", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-restore-1",
 				metadata: { title: "To Restore" },
@@ -193,7 +181,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("trashed -> permanentDelete deletes entry but preserves address tombstone", async () => {
-			const entry = await store.createEntry({
+			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-perm-delete-1",
 				metadata: { title: "Perm Delete" },
@@ -221,7 +209,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 			// Slug should still be reserved / conflict
 			await expect(
-				store.createEntry({
+				seedEntry(store, {
 					collection: "post",
 					slug: "test-perm-delete-1",
 					metadata: { title: "Reuse Slug Attempt" },
@@ -235,7 +223,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 	describe("2. Transactional Target Recheck & Published References Rollback (§5.3)", () => {
 		it("publishes and copies working references to published references atomically", { timeout: 15000 }, async () => {
-			const tag = await store.createEntry({
+			const tag = await seedEntry(store, {
 				collection: "tag",
 				slug: "tag-active",
 				metadata: { title: "Active Tag" },
@@ -247,7 +235,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			// tag must be published or active
 			await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
 
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-with-ref",
 				metadata: { title: "Post" },
@@ -288,13 +276,16 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 			expect(pubPost.status).toBe("published");
 
-			const pubRefs = await store.getPublishedReferences?.(post.id);
-			expect(pubRefs).toHaveLength(1);
-			expect(pubRefs[0].targetId).toBe(tag.id);
+			const pubRefs = await pool.query<{ target_id: string }>(
+				`SELECT target_id FROM "${schemaName}".entry_references WHERE entry_id = $1 AND state = 'published'`,
+				[post.id],
+			);
+			expect(pubRefs.rows).toHaveLength(1);
+			expect(pubRefs.rows[0].target_id).toBe(tag.id);
 		});
 
 		it("prevents trashing or deleting a tag still used by published entries", async () => {
-			const tag = await store.createEntry({
+			const tag = await seedEntry(store, {
 				collection: "tag",
 				slug: `tag-in-use-${randomUUID()}`,
 				metadata: { title: "In-use tag" },
@@ -303,7 +294,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				contentHash: randomUUID(),
 			});
 			const publishedTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: `post-uses-tag-${randomUUID()}`,
 				metadata: { title: "Tagged post" },
@@ -331,10 +322,11 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			await expect(store.trashEntry({ id: tag.id, expectedVersion: publishedTag.version })).rejects.toMatchObject({
 				code: "in_use",
 			});
+			// 영구 삭제는 휴지통 항목만 대상이다(§5.3).
 			await expect(
 				store.permanentDeleteEntry({ id: tag.id, expectedVersion: publishedTag.version }),
 			).rejects.toMatchObject({
-				code: "in_use",
+				code: "invalid_status",
 			});
 			const stillPublished = await store.getEntry(publishedPost.id);
 			expect(stillPublished.status).toBe("published");
@@ -363,7 +355,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("does not publish or schedule a trashed entry", async () => {
-			const draft = await store.createEntry({
+			const draft = await seedEntry(store, {
 				collection: "post",
 				slug: `trashed-entry-${randomUUID()}`,
 				metadata: { title: "Trashed entry" },
@@ -385,7 +377,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("serializes tag deletion against a concurrent draft reference save", async () => {
-			const tagDraft = await store.createEntry({
+			const tagDraft = await seedEntry(store, {
 				collection: "tag",
 				slug: `tag-race-${randomUUID()}`,
 				metadata: { title: "Race tag" },
@@ -394,7 +386,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				contentHash: randomUUID(),
 			});
 			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: `post-tag-race-${randomUUID()}`,
 				metadata: { title: "Concurrent draft" },
@@ -435,7 +427,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("blocks trashing or deleting a tag referenced by a draft", async () => {
-			const tagDraft = await store.createEntry({
+			const tagDraft = await seedEntry(store, {
 				collection: "tag",
 				slug: `tag-draft-use-${randomUUID()}`,
 				metadata: { title: "Draft-used tag" },
@@ -444,7 +436,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				contentHash: randomUUID(),
 			});
 			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: `draft-uses-tag-${randomUUID()}`,
 				metadata: { title: "Draft using tag" },
@@ -472,15 +464,15 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				code: "in_use",
 			});
 			await expect(store.permanentDeleteEntry({ id: tag.id, expectedVersion: tag.version })).rejects.toMatchObject({
-				code: "in_use",
+				code: "invalid_status",
 			});
 		});
 
 		it(
-			"fails publish and preserves prior published body & published references if target is archived or missing",
+			"fails publish and preserves prior published body & published references if target is unpublished or missing",
 			{ timeout: 60000 },
 			async () => {
-				const tag = await store.createEntry({
+				const tag = await seedEntry(store, {
 					collection: "tag",
 					slug: "tag-to-archive",
 					metadata: { title: "Tag" },
@@ -488,9 +480,8 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					schemaVersion: 1,
 					contentHash: "tag-hash-arch",
 				});
-				const pubTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
-
-				const post = await store.createEntry({
+				// 레코드 컬렉션은 보관할 수 없다. 공개되지 않은(초안) 태그를 대상으로 쓴다.
+				const post = await seedEntry(store, {
 					collection: "post",
 					slug: "post-rollback-test",
 					metadata: { title: "Prior Title" },
@@ -502,10 +493,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				// 1st publish (clean, no refs)
 				const firstPub = await store.publishEntry({ id: post.id, expectedVersion: post.version });
 
-				// Archive the tag
-				await store.archiveEntry({ id: tag.id, expectedVersion: pubTag.version });
-
-				// Save draft on post referencing now-archived tag
+				// Save draft on post referencing the unpublished tag
 				await store.saveWorkingWithReferences({
 					entryId: post.id,
 					expectedVersion: firstPub.version,
@@ -529,7 +517,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					],
 				});
 
-				// Attempt 2nd publish - MUST FAIL because referenced tag is archived!
+				// Attempt 2nd publish - MUST FAIL because the referenced tag is not published
 				await expect(
 					store.publishEntry({
 						id: post.id,
@@ -547,7 +535,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 	describe("3. Scheduled Publishing (§5.4)", () => {
 		it("creates a schedule, locks entry body editing, allows folder move, and supports due execution", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-scheduled-1",
 				metadata: { title: "Scheduled Post" },
@@ -592,7 +580,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				parentId: null,
 			});
 
-			const moved = await store.moveEntryToFolder({
+			const moved = await moveToFolder(store, {
 				entryId: post.id,
 				folderId: folder.id,
 				expectedVersion: post.version,
@@ -626,7 +614,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("같은 항목에 pending 예약은 두 개 만들 수 없다", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-schedule-duplicate-1",
 				metadata: { title: "Duplicate Schedule" },
@@ -660,7 +648,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("schedule registration refuses a body that cannot be published", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-invalid-schedule",
 				metadata: { title: "Invalid schedule" },
@@ -679,21 +667,21 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(schedules.rows).toHaveLength(0);
 		});
 
-		it("revalidates scheduled publication and preserves the existing public body", async () => {
-			const categoryDraft = await store.createEntry({
-				collection: "category",
-				slug: `schedule-category-${randomUUID()}`,
-				metadata: { title: "Schedule category" },
-				mdx: "",
+		it("revalidates scheduled publication, preserves the public body and records the failure", async () => {
+			const target = await seedEntry(store, {
+				collection: "post",
+				slug: `schedule-link-target-${randomUUID()}`,
+				metadata: { title: "Link target" },
+				mdx: "Target body.",
 				schemaVersion: 1,
 				contentHash: randomUUID(),
 			});
-			const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-			const post = await store.createEntry({
+			const publishedTarget = await store.publishEntry({ id: target.id, expectedVersion: target.version });
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: `schedule-revalidation-${randomUUID()}`,
-				metadata: { title: "Scheduled post", categoryId: category.id },
-				mdx: "Previously public.",
+				metadata: { title: "Scheduled post" },
+				mdx: `Previously public. [link](/posts/${publishedTarget.publishedSlug})`,
 				schemaVersion: 1,
 				contentHash: randomUUID(),
 			});
@@ -702,19 +690,26 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				entryId: post.id,
 				expectedVersion: published.version,
 				scheduledAt: new Date(Date.now() - 1000),
+				now: new Date(Date.now() - 60_000),
 			});
-			await store.archiveEntry({ id: category.id, expectedVersion: category.version });
+			// 예약 중 링크 대상이 보관되면 실행은 실패해야 한다(§5.4).
+			await store.archiveEntry({ id: target.id, expectedVersion: publishedTarget.version });
 
 			await expect(store.executeSchedulePublish({ scheduleId: schedule.id })).rejects.toMatchObject({
 				code: "publish_validation_failed",
 			});
 			const unchanged = await store.getEntry(post.id);
 			expect(unchanged.status).toBe("published");
-			expect(unchanged.published?.mdx).toBe("Previously public.");
+			expect(unchanged.published?.mdx).toContain("Previously public.");
+
+			const { pending, last } = await store.getEntrySchedule({ entryId: post.id });
+			expect(pending).toBeNull();
+			expect(last).toMatchObject({ id: schedule.id, status: "failed", failureCode: "publish_validation_failed" });
+			expect(last?.failureDetail).toContain("unpublished_internal_link");
 		});
 
 		it("executor idempotency: executing due schedule publishes entry and duplicate call returns no-op", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-due-exec-1",
 				metadata: { title: "Due Post" },
@@ -728,6 +723,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				entryId: post.id,
 				expectedVersion: post.version,
 				scheduledAt: pastDate,
+				now: new Date(Date.now() - 60_000),
 			});
 
 			// Find due schedules
@@ -754,21 +750,17 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 	describe("4. Timestamps (§5.5)", () => {
 		it("preserves firstPublishedAt on re-publish, updates lastPublishedAt, and honors publishedAt override", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-timestamp-test",
-				metadata: { title: "Timestamp Post" },
+				metadata: { title: "Timestamp Post", publishedAt: "2025-01-01T00:00:00.000Z" },
 				mdx: "V1",
 				schemaVersion: 1,
 				contentHash: "ts-hash-1",
 			});
 
 			const userSpecifiedDate = new Date("2025-01-01T00:00:00Z");
-			const pub1 = await store.publishEntry({
-				id: post.id,
-				expectedVersion: post.version,
-				publishedAt: userSpecifiedDate,
-			});
+			const pub1 = await store.publishEntry({ id: post.id, expectedVersion: post.version });
 
 			const firstPubAt = pub1.firstPublishedAt;
 			expect(firstPubAt).toBeDefined();
@@ -808,7 +800,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 	describe("5. M7-SEC-1 발행 경계", () => {
 		it("analyze 오류가 있는 본문은 publishEntry가 거부하고 상태를 바꾸지 않는다", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-broken-mdx",
 				metadata: { title: "Broken" },
@@ -826,7 +818,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		});
 
 		it("예정 시각 전에는 예약 발행이 거부되고 본문이 공개되지 않는다", async () => {
-			const post = await store.createEntry({
+			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-not-due",
 				metadata: { title: "Not due" },
@@ -847,20 +839,6 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 
 			const after = await store.getEntry(post.id);
 			expect(after.status).toBe("draft");
-		});
-
-		it("정상 본문은 그대로 발행된다(회귀 방지)", async () => {
-			const post = await store.createEntry({
-				collection: "post",
-				slug: "post-valid-mdx",
-				metadata: { title: "Valid" },
-				mdx: "## 제목\n\n본문 **강조**",
-				schemaVersion: 1,
-				contentHash: "valid-hash",
-			});
-
-			const published = await store.publishEntry({ id: post.id, expectedVersion: post.version });
-			expect(published.status).toBe("published");
 		});
 	});
 });

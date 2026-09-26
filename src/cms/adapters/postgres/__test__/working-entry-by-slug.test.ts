@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { seedEntry, seedSave } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 /**
@@ -22,7 +23,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		const categoryDraft = await store.createEntry({
+		const categoryDraft = await seedEntry(store, {
 			collection: "category",
 			slug: "working-slug-test-category",
 			metadata: { title: "Working slug category" },
@@ -43,7 +44,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 
 	async function seedDraft(slug: string, mdx: string, metadata: Record<string, unknown> = { title: slug }) {
 		const postMetadata = { ...metadata, categoryId: metadata.categoryId ?? testCategoryId };
-		const entry = await store.createEntry({
+		const entry = await seedEntry(store, {
 			collection: "post",
 			slug: null,
 			metadata: postMetadata,
@@ -52,7 +53,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 			contentHash: `hash-${slug}`,
 		});
 
-		return await store.saveWorking(entry.id, {
+		return await seedSave(store, entry.id, {
 			expectedVersion: entry.version,
 			slug,
 			metadata: postMetadata,
@@ -81,10 +82,10 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	it("발행 뒤 working 본문을 수정하면 미리보기는 최신 working을 본다", async () => {
 		const draft = await seedDraft("edited-after-publish", "발행 전 본문");
 
-		await store.publishEntry(draft.id, { expectedVersion: draft.version });
+		await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
 
 		const edited = await store.getEntry(draft.id);
-		await store.saveWorking(draft.id, {
+		await seedSave(store, draft.id, {
 			expectedVersion: edited.version,
 			slug: "edited-after-publish",
 			metadata: { title: "편집된 제목" },
@@ -105,7 +106,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	});
 
 	it("다른 컬렉션의 같은 slug는 찾지 않는다", async () => {
-		const memo = await store.createEntry({
+		const memo = await seedEntry(store, {
 			collection: "memo",
 			slug: "shared-slug",
 			metadata: { title: "메모" },

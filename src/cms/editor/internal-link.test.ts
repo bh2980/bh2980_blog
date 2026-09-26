@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatContentLinkMdx, parseInternalLinkTrigger, type InternalLinkItem } from "./internal-link";
+import { formatContentLinkMdx, type InternalLinkItem, parseInternalLinkTrigger } from "./internal-link";
 
 describe("M3-ED-2 Internal Link ([[) Trigger & Format Contract", () => {
 	it("detects [[ trigger correctly", () => {
@@ -24,5 +24,8 @@ describe("M3-ED-2 Internal Link ([[) Trigger & Format Contract", () => {
 		expect(formatContentLinkMdx(item)).toBe("[Next.js 완전 정복](/posts/nextjs-guide)");
 		expect(formatContentLinkMdx(item, "가이드 보기")).toBe("[가이드 보기](/posts/nextjs-guide)");
 		expect(formatContentLinkMdx({ ...item, slug: "" })).toBe("Next.js 완전 정복");
+		expect(formatContentLinkMdx({ ...item, collection: "memo", slug: "한글 메모" })).toBe(
+			"[Next.js 완전 정복](/memos/한글%20메모)",
+		);
 	});
 });

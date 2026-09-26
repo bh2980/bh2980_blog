@@ -8,9 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminRootLayout({ children }: { children: ReactNode }) {
-	return (
-		<div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans">
-			{children}
-		</div>
-	);
+	return <div className="min-h-screen bg-neutral-950 font-sans text-neutral-100 antialiased">{children}</div>;
 }

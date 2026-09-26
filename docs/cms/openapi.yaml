@@ -34,7 +34,7 @@ paths:
   /meta:
     get:
       tags: [meta]
-      summary: 컬렉션·직렬화 가능한 필드 정의, 템플릿 목록, 지원 기능·제한
+      summary: API 버전, 컬렉션 정의, 직렬화 가능한 확장 예제, 지원 기능
       responses:
         "200":
           description: 메타데이터
@@ -43,17 +43,41 @@ paths:
               schema:
                 type: object
                 properties:
+                  version:
+                    type: string
+                    const: v1
                   collections:
                     type: array
                     items:
                       type: string
+                      enum: [post, memo, category, tag, collection]
                   definitions:
                     type: object
                     additionalProperties: true
-                  templates:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Template"
+                  extensions:
+                    type: object
+                    required: [fields, helpers, blocks]
+                    properties:
+                      fields:
+                        type: array
+                        items: { type: object, additionalProperties: true }
+                      helpers:
+                        type: array
+                        items: { type: object, additionalProperties: true }
+                      blocks:
+                        type: array
+                        items: { type: object, additionalProperties: true }
+                  features:
+                    type: object
+                    properties:
+                      folders: { type: boolean }
+                      references: { type: boolean }
+                      search: { type: boolean }
+                      templates: { type: boolean }
+                  limits:
+                    type: object
+                    description: 서버가 적용하는 제한(§5.6). 관리자 UI는 같은 값을 안내한다.
+                    additionalProperties: true
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -71,11 +95,34 @@ paths:
           schema: { type: string }
         - name: status
           in: query
-          description: 반복 지정할 수 있다. 허용값은 draft, published다.
-          schema: { type: array, items: { type: string, enum: [draft, published] } }
+          description: 반복 지정할 수 있다(OR). 생략하면 휴지통을 뺀 전체다.
+          schema: { type: array, items: { type: string, enum: [draft, published, archived, trashed] } }
         - name: folderId
           in: query
+          description: 폴더 ID. `null`이면 미분류만.
           schema: { type: string, nullable: true }
+        - name: tagId
+          in: query
+          description: 반복 지정할 수 있다(OR). 최신 초안의 태그 기준.
+          schema: { type: array, items: { type: string, format: uuid } }
+        - name: categoryId
+          in: query
+          description: 반복 지정할 수 있다(OR).
+          schema: { type: array, items: { type: string, format: uuid } }
+        - name: hasChanges
+          in: query
+          description: true면 `발행됨 · 수정 중`(공개본과 다른 초안)만.
+          schema: { type: boolean }
+        - name: scheduled
+          in: query
+          description: true면 대기 중인 예약이 있는 항목만.
+          schema: { type: boolean }
+        - { name: createdFrom, in: query, schema: { type: string, format: date-time } }
+        - { name: createdTo, in: query, schema: { type: string, format: date-time } }
+        - { name: updatedFrom, in: query, schema: { type: string, format: date-time } }
+        - { name: updatedTo, in: query, schema: { type: string, format: date-time } }
+        - { name: publishedFrom, in: query, schema: { type: string, format: date-time } }
+        - { name: publishedTo, in: query, schema: { type: string, format: date-time } }
         - name: includeDescendants
           in: query
           schema: { type: boolean }
@@ -84,7 +131,7 @@ paths:
           schema: { type: boolean }
         - name: sortField
           in: query
-          schema: { type: string, enum: [updatedAt, createdAt, title, slug] }
+          schema: { type: string, enum: [updatedAt, createdAt, publishedAt, title, slug] }
         - name: sortDirection
           in: query
           schema: { type: string, enum: [asc, desc] }
@@ -102,7 +149,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items: { type: array, items: { $ref: "#/components/schemas/Entry" } }
+                  items: { type: array, items: { $ref: "#/components/schemas/ListEntry" } }
                   total: { type: integer }
                   page: { type: integer }
                   pageSize: { type: integer }
@@ -135,7 +182,9 @@ paths:
               mdx: "# 본문"
       responses:
         "201":
-          description: 생성된 항목. record 컬렉션(tag, category, collection)은 생성 즉시 published다.
+          description: >
+            생성된 항목. record 컬렉션(tag, category, collection)은 생성 즉시 published이며,
+            slug를 비우면 제목에서 만든다.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
@@ -148,13 +197,18 @@ paths:
       - $ref: "#/components/parameters/EntryId"
     get:
       tags: [entries]
-      summary: ID 조회
+      summary: ID 조회 (편집 화면용 예약 상태 포함)
       responses:
         "200":
-          description: 항목
+          description: 항목과 `schedule`(대기 중·마지막 예약, 실행기 연결 여부)
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Entry" }
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Entry"
+                  - type: object
+                    properties:
+                      schedule: { $ref: "#/components/schemas/EntrySchedule" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [entries]
@@ -179,23 +233,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
         "400": { $ref: "#/components/responses/InvalidInput" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: 버전 충돌·slug 중복, 예약 잠금(`locked`), 휴지통 항목 편집(`invalid_status`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/ValidationFailed" }
         "428": { $ref: "#/components/responses/VersionRequired" }
     delete:
       tags: [entries]
-      summary: 휴지통으로 이동
+      summary: 영구 삭제 (휴지통 항목만)
+      description: >
+        휴지통 항목만 지운다. 다른 콘텐츠가 참조하면 `in_use`(409)와 사용처(`details.usages`)를 준다.
+        공개된 적 있는 주소는 재사용 방지 기록만 남기고, 공개된 적 없는 예약 주소는 해제한다.
       parameters:
         - name: expectedVersion
           in: query
           required: true
           schema: { type: integer }
       responses:
-        "200":
-          description: 휴지통으로 이동한 항목
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Entry" }
+        "204": { description: 삭제됨 }
+        "409": { $ref: "#/components/responses/Conflict" }
         "428": { $ref: "#/components/responses/VersionRequired" }
 
   /entries/{id}/publish:
@@ -213,10 +272,12 @@ paths:
               required: [expectedVersion]
               properties:
                 expectedVersion: { type: integer }
-                publishedAt: { type: string, format: date-time }
+      description: >
+        표시 발행일은 초안 메타데이터의 `publishedAt`이다(없으면 기존 값 또는 발행 시각). 미래 날짜는
+        `future_published_at` 이슈로 거부된다. 예약이 대기 중이면 수동 발행이 그 예약을 대신하고 취소한다.
       responses:
         "200":
-          description: 발행된 항목
+          description: 발행된 항목과 비차단 `warnings`
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
@@ -228,6 +289,7 @@ paths:
     post:
       tags: [entries]
       summary: 보관
+      description: "초안·발행 → 보관. 공개를 끝내고 예약을 취소한다. record 컬렉션과 다른 상태는 `invalid_status`."
       parameters:
         - $ref: "#/components/parameters/EntryId"
       requestBody:
@@ -241,34 +303,18 @@ paths:
                 expectedVersion: { type: integer }
       responses:
         "200":
-          description: 보관된 항목. 공개 주소는 다음 요청부터 404가 된다.
+          description: 바뀐 항목
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
         "409": { $ref: "#/components/responses/Conflict" }
         "428": { $ref: "#/components/responses/VersionRequired" }
-    delete:
-      tags: [entries]
-      summary: 보관 해제
-      parameters:
-        - $ref: "#/components/parameters/EntryId"
-        - name: expectedVersion
-          in: query
-          required: true
-          schema: { type: integer }
-      responses:
-        "200":
-          description: 보관 해제된 항목
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Entry" }
-        "400": { $ref: "#/components/responses/InvalidInput" }
-        "428": { $ref: "#/components/responses/VersionRequired" }
 
-  /entries/{id}/restore:
+  /entries/{id}/unarchive:
     post:
       tags: [entries]
-      summary: 휴지통에서 복구
+      summary: 보관 해제
+      description: "보관 → 초안. 자동으로 다시 공개하지 않는다."
       parameters:
         - $ref: "#/components/parameters/EntryId"
       requestBody:
@@ -282,7 +328,57 @@ paths:
                 expectedVersion: { type: integer }
       responses:
         "200":
-          description: 복구된 항목
+          description: 바뀐 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/trash:
+    post:
+      tags: [entries]
+      summary: 휴지통으로 이동
+      description: "공개를 끝내고 예약을 취소한다. 사용 중인 태그·카테고리는 `in_use`."
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: 바뀐 항목
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /entries/{id}/restore:
+    post:
+      tags: [entries]
+      summary: 휴지통에서 복원
+      description: "publish 컬렉션은 초안으로, record 컬렉션은 검증 후 활성 레코드로 되돌린다."
+      parameters:
+        - $ref: "#/components/parameters/EntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: 바뀐 항목
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
@@ -301,6 +397,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Entry" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /entries/{id}/relations:
@@ -325,7 +422,8 @@ paths:
   /entries/{id}/schedule:
     post:
       tags: [schedules]
-      summary: 예약 등록·변경
+      summary: 예약 등록
+      description: 저장된 초안을 발행 검증한 뒤 미래 시각만 받는다. 변경은 해제 후 다시 등록한다.
       parameters:
         - $ref: "#/components/parameters/EntryId"
       requestBody:
@@ -339,7 +437,7 @@ paths:
                 expectedVersion: { type: integer }
                 scheduledAt: { type: string, format: date-time }
       responses:
-        "200":
+        "201":
           description: 예약
           content:
             application/json:
@@ -349,7 +447,7 @@ paths:
         "428": { $ref: "#/components/responses/VersionRequired" }
     delete:
       tags: [schedules]
-      summary: 예약 취소
+      summary: 예약 해제 (`예약 해제 후 편집`)
       parameters:
         - $ref: "#/components/parameters/EntryId"
         - name: scheduleId
@@ -358,18 +456,22 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: 취소 결과
+          description: 해제 결과 `{ id, status: cancelled }`
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
         "400": { $ref: "#/components/responses/InvalidInput" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404":
+          description: 대기 중인 예약이 없다
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /schedules/due:
     get:
       tags: [schedules]
       summary: 도래한 예약 조회 (외부 실행기)
-      description: 관리자 세션 대신 `Authorization: Bearer <CMS_SCHEDULER_TOKEN>`을 사용한다.
+      description: "관리자 세션 대신 `Authorization: Bearer <CMS_SCHEDULER_TOKEN>`을 사용한다."
       security:
         - schedulerToken: []
       responses:
@@ -396,12 +498,14 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: 발행 결과
+          description: 발행 결과. 같은 예약의 중복 호출은 다시 발행하지 않는다.
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: 아직 이르거나 취소·실패한 예약 }
+        "422": { description: 발행 조건이 깨졌다. 예약은 `failed`로 남고 공개본은 유지된다. }
 
   /bulk:
     post:
@@ -425,11 +529,11 @@ paths:
                     type: object
                     required: [id, expectedVersion]
                     properties:
-                      id: { type: string }
+                      id: { type: string, format: uuid }
                       expectedVersion: { type: integer }
-                tagIds: { type: array, items: { type: string } }
-                categoryId: { type: string, nullable: true }
-                folderId: { type: string, nullable: true }
+                tagIds: { type: array, items: { type: string, format: uuid } }
+                categoryId: { type: string, format: uuid, nullable: true }
+                folderId: { type: string, format: uuid, nullable: true }
       responses:
         "200":
           description: 항목별 결과. 일부만 성공할 수 있다.
@@ -485,6 +589,19 @@ paths:
         in: path
         required: true
         schema: { type: string, format: uuid }
+    get:
+      tags: [folders]
+      summary: 삭제 전 미리보기 (직접 속한 글 수와 자식 폴더)
+      responses:
+        "200":
+          description: 폴더 내용물
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entryCount: { type: integer }
+                  childFolders: { type: array, items: { type: object, additionalProperties: true } }
     patch:
       tags: [folders]
       summary: 폴더 이름 변경·이동
@@ -539,16 +656,18 @@ paths:
           schema: { type: string }
         - name: used
           in: query
-          schema: { type: boolean }
+          schema: { type: string, enum: [all, used, unused], default: all }
+        - { name: uploadedFrom, in: query, schema: { type: string, format: date-time } }
+        - { name: uploadedTo, in: query, schema: { type: string, format: date-time } }
         - name: page
           in: query
           schema: { type: integer, minimum: 1, default: 1 }
         - name: pageSize
           in: query
-          schema: { type: integer, default: 25 }
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
       responses:
         "200":
-          description: 미디어 목록. `storageKey` 같은 내부 키는 내려가지 않는다.
+          description: 완료(`ready`)·삭제 중(`deleting`) 미디어 목록과 사용처
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
@@ -572,6 +691,12 @@ paths:
                 byteSize:
                   type: integer
                   description: 10MiB를 넘으면 413.
+                original:
+                  type: object
+                  description: 웹용 최적화를 고른 경우의 원본 파일. 같은 미디어 레코드에 함께 저장한다.
+                  properties:
+                    mimeType: { type: string }
+                    byteSize: { type: integer }
             example:
               filename: cover.png
               mimeType: image/png
@@ -589,6 +714,10 @@ paths:
                   method: { type: string }
                   requiredHeaders: { type: object, additionalProperties: { type: string } }
                   expiresAt: { type: string, format: date-time }
+                  original:
+                    type: object
+                    description: 원본 파일용 업로드 티켓(요청에 `original`이 있을 때만)
+                    additionalProperties: true
         "400": { $ref: "#/components/responses/InvalidInput" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
@@ -619,6 +748,19 @@ paths:
                   mimeType: { type: string, nullable: true }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "413": { description: 10MiB 또는 4천만 픽셀 초과 }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+
+  /media/cleanup:
+    post:
+      tags: [media]
+      summary: 24시간이 지난 미완료·실패 업로드 정리 (§7.2)
+      responses:
+        "200":
+          description: 정리 결과 `{ removed, failed[] }`
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
 
   /media/{id}:
     get:
@@ -641,11 +783,38 @@ paths:
                   mediaId: { type: string, format: uuid }
                   status: { type: string, enum: [pending, ready, failed, missing, deleting] }
                   publicUrl: { type: string, nullable: true }
+                  defaultAlt: { type: string }
+                  defaultCaption: { type: string }
         "404": { $ref: "#/components/responses/NotFound" }
-
+    patch:
+      tags: [media]
+      summary: 기본 alt·caption 수정 (이미 작성한 본문은 바뀌지 않는다)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                defaultAlt: { type: string }
+                defaultCaption: { type: string }
+      responses:
+        "200":
+          description: 갱신된 미디어
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [media]
-      summary: 미디어 삭제 (참조 중이면 409)
+      summary: 미디어 삭제 (참조·본문·템플릿에서 쓰이면 409)
+      description: >
+        `deleting`으로 바꾼 뒤 파일을 지우고 행을 제거한다. 저장소 삭제가 실패하면 `deleting`으로 남아 다시 시도할 수 있다.
       parameters:
         - name: id
           in: path
@@ -704,8 +873,9 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Template" }
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Template" } }
     post:
       tags: [templates]
       summary: 템플릿 생성
@@ -825,7 +995,7 @@ paths:
                     category: { slug: engineering, label: 엔지니어링 }
                     tags: [{ slug: typescript, label: TypeScript }]
                     isEvergreen: true
-                    seo: { title: 검색에 노출될 제목, canonicalUrl: https://dev.to/hello-world }
+                    seo: { title: "검색에 노출될 제목", canonicalUrl: "https://dev.to/hello-world" }
                 total: 1
                 page: 1
                 pageSize: 25
@@ -1031,6 +1201,7 @@ components:
         firstPublishedAt: { type: string, format: date-time, nullable: true }
         lastPublishedAt: { type: string, format: date-time, nullable: true }
         publishedAt: { type: string, format: date-time, nullable: true }
+        trashedAt: { type: string, format: date-time, nullable: true }
         working: { $ref: "#/components/schemas/EntryBody" }
         published: { $ref: "#/components/schemas/EntryBody" }
       additionalProperties: true
@@ -1058,14 +1229,61 @@ components:
 
     Preferences:
       type: object
+      description: 컬렉션별 목록 설정(§3.2)과 편집 화면 설정. PUT은 컬렉션 단위로 병합한다.
       properties:
-        columnVisibility: { type: object, additionalProperties: { type: boolean } }
-        defaultPageSize: { type: integer, enum: [25, 50, 100] }
-        sort:
+        collections:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              pageSize: { type: integer, enum: [25, 50, 100] }
+              sort:
+                type: object
+                properties:
+                  field: { type: string, enum: [updatedAt, createdAt, publishedAt, title, slug] }
+                  direction: { type: string, enum: [asc, desc] }
+              columns:
+                type: object
+                properties:
+                  order:
+                    type: array
+                    items: { type: string, enum: [title, status, category, tags, updatedAt, publishedAt, createdAt, slug, folder] }
+                  visibility: { type: object, additionalProperties: { type: boolean } }
+        editor:
           type: object
           properties:
-            field: { type: string, enum: [updatedAt, createdAt, title, slug] }
-            direction: { type: string, enum: [asc, desc] }
+            inspectorOpen: { type: boolean }
+
+    ListEntry:
+      type: object
+      description: 관리자 목록 행
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        slug: { type: string, nullable: true }
+        status: { type: string, enum: [draft, published, archived, trashed] }
+        version: { type: integer }
+        folderId: { type: string, format: uuid, nullable: true }
+        category: { type: object, nullable: true, additionalProperties: true }
+        tags: { type: array, items: { type: object, additionalProperties: true } }
+        hasUnpublishedChanges: { type: boolean }
+        scheduledAt: { type: string, format: date-time, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        trashedAt: { type: string, format: date-time, nullable: true }
+      additionalProperties: true
+
+    EntrySchedule:
+      type: object
+      properties:
+        pending: { type: object, nullable: true, additionalProperties: true }
+        last:
+          type: object
+          nullable: true
+          description: 마지막으로 끝난 예약. 실패면 `failureCode`·`failureDetail`이 있다.
+          additionalProperties: true
+        runnerConfigured: { type: boolean, description: 외부 실행기 토큰이 설정되어 있는지 }
 
     PublicSeo:
       type: object

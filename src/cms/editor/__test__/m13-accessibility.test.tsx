@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
-import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminSidebar } from "@/app/(admin)/admin/admin-sidebar";
+import { useFolderActions } from "@/app/(admin)/admin/shared/use-folder-actions";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import { BlockHandleOverlay } from "../block-handle-overlay";
 import { CmsImageNodeView } from "../image-node-view";
@@ -89,43 +89,41 @@ describe("M13 editor accessibility", () => {
 
 		for (const button of screen.getAllByRole("button", { name: /이미지 너비 설정/ })) fireEvent.click(button);
 
-		const widthInputs = screen.getAllByLabelText("너비 (예: 100%, 600px)");
+		const widthInputs = screen.getAllByLabelText("너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)");
 		const altInputs = screen.getAllByLabelText("대체 텍스트 (Alt)");
 		expect(new Set(widthInputs.map((input) => input.id)).size).toBe(2);
 		expect(new Set(altInputs.map((input) => input.id)).size).toBe(2);
 	});
 
-	it("keeps folder tree controls named and keyboard-expandable", () => {
+	it("keeps folder tree controls named and keyboard-operable", () => {
 		const onSelectFolder = vi.fn();
 		const folders: Folder[] = [
 			{ id: "folder-1", collection: "memo", parentId: null, name: "문서", position: 0, version: 1 },
 			{ id: "folder-2", collection: "memo", parentId: "folder-1", name: "하위", position: 0, version: 1 },
-			{ id: "folder-3", collection: "memo", parentId: "folder-2", name: "손자", position: 0, version: 1 },
 		];
 		render(
 			<AdminSidebar
 				currentCollection="memo"
-				currentFolderId={null}
+				currentFolder="all"
 				folders={folders}
 				onSelectFolder={onSelectFolder}
-				onCreateFolder={vi.fn()}
-				onRenameFolder={vi.fn()}
-				onDeleteFolder={vi.fn()}
+				folderActions={{ requestCreate: vi.fn(), requestRename: vi.fn(), requestDelete: vi.fn() }}
 			/>,
 		);
-
-		const folder = screen.getByRole("button", { name: "문서" });
-		expect(folder.getAttribute("aria-expanded")).toBe("false");
-		fireEvent.keyDown(folder, { key: "Enter" });
-		expect(onSelectFolder).toHaveBeenCalledWith("folder-1");
-		expect(folder.getAttribute("aria-expanded")).toBe("true");
-		expect(screen.getByRole("button", { name: "하위 하위 폴더 펼치기" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "문서 하위 폴더 추가" })).toBeTruthy();
+		const expand = screen.getByRole("button", { name: "문서 하위 폴더 펼치기" });
+		expect(expand.getAttribute("aria-expanded")).toBe("false");
+		fireEvent.click(expand);
+		expect(screen.getByRole("button", { name: "문서 하위 폴더 접기" }).getAttribute("aria-expanded")).toBe("true");
+		fireEvent.click(screen.getByRole("button", { name: "하위" }));
+		expect(onSelectFolder).toHaveBeenCalledWith("folder-2");
+		fireEvent.click(screen.getByRole("button", { name: "미분류" }));
+		expect(onSelectFolder).toHaveBeenCalledWith("unfiled");
+		expect(screen.getByRole("button", { name: "문서에 하위 폴더 추가" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "폴더 이름 변경: 문서" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "폴더 삭제: 문서" })).toBeTruthy();
 	});
 
-	it("returns focus to the folder action after dismissing its dialog", async () => {
+	it("previews folder contents before deleting and returns focus to the trigger on cancel", async () => {
 		const folder: Folder = {
 			id: "folder-1",
 			collection: "memo",
@@ -134,68 +132,52 @@ describe("M13 editor accessibility", () => {
 			position: 0,
 			version: 1,
 		};
-		render(
-			<AdminSidebar
-				currentCollection="memo"
-				currentFolderId={null}
-				folders={[folder]}
-				onSelectFolder={vi.fn()}
-				onCreateFolder={vi.fn()}
-				onRenameFolder={vi.fn()}
-				onDeleteFolder={vi.fn()}
-			/>,
-		);
-
-		const trigger = screen.getByRole("button", { name: "폴더 삭제: 문서" });
-		trigger.focus();
-		fireEvent.click(trigger);
-		let dialog = await screen.findByRole("dialog", { name: "폴더 삭제 확인" });
-		expect(dialog.contains(document.activeElement)).toBe(true);
-		fireEvent.click(screen.getByRole("button", { name: "취소" }));
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "폴더 삭제 확인" })).toBeNull());
-		expect(document.activeElement).toBe(trigger);
-
-		fireEvent.click(trigger);
-		dialog = await screen.findByRole("dialog", { name: "폴더 삭제 확인" });
-		expect(dialog.contains(document.activeElement)).toBe(true);
-		fireEvent.keyDown(document, { key: "Escape" });
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "폴더 삭제 확인" })).toBeNull());
-		expect(document.activeElement).toBe(trigger);
-	});
-
-	it("falls back to the folder tree when deleting removes the trigger", async () => {
-		const folder: Folder = {
-			id: "folder-1",
-			collection: "memo",
-			parentId: null,
-			name: "문서",
-			position: 0,
-			version: 1,
-		};
-		function SidebarWithRemovableFolder() {
-			const [folders, setFolders] = useState([folder]);
+		const fetchMock = vi.fn(async (_input: string, init?: RequestInit) => {
+			if (init?.method === "DELETE") return { ok: true, status: 200, json: async () => ({ success: true }) };
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ entryCount: 3, childFolders: [{ ...folder, id: "c1", name: "자식" }] }),
+			};
+		});
+		vi.stubGlobal("fetch", fetchMock);
+		const onChanged = vi.fn();
+		function Harness() {
+			const actions = useFolderActions({ collection: "memo", folders: [folder], onChanged });
 			return (
-				<AdminSidebar
-					currentCollection="memo"
-					currentFolderId={null}
-					folders={folders}
-					onSelectFolder={vi.fn()}
-					onCreateFolder={vi.fn()}
-					onRenameFolder={vi.fn()}
-					onDeleteFolder={async () => setFolders([])}
-				/>
+				<>
+					<AdminSidebar
+						currentCollection="memo"
+						currentFolder="all"
+						folders={[folder]}
+						onSelectFolder={vi.fn()}
+						folderActions={actions}
+					/>
+					{actions.dialogs}
+				</>
 			);
 		}
-		render(<SidebarWithRemovableFolder />);
+		render(<Harness />);
 		const trigger = screen.getByRole("button", { name: "폴더 삭제: 문서" });
 		trigger.focus();
 		fireEvent.click(trigger);
-		const dialog = await screen.findByRole("dialog", { name: "폴더 삭제 확인" });
+		const dialog = await screen.findByRole("dialog", { name: /'문서' 폴더 삭제/ });
+		expect(await screen.findByText("직접 속한 글 3개")).toBeTruthy();
+		expect(screen.getByText(/하위 폴더 1개: 자식/)).toBeTruthy();
 		expect(dialog.contains(document.activeElement)).toBe(true);
-		fireEvent.click(screen.getByRole("button", { name: "삭제하기" }));
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "폴더 삭제 확인" })).toBeNull());
-		expect(trigger.isConnected).toBe(false);
-		expect(document.activeElement).toBe(screen.getByRole("button", { name: "폴더 트리" }));
+		fireEvent.click(screen.getByRole("button", { name: "취소" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(document.activeElement).toBe(trigger);
+
+		fireEvent.click(trigger);
+		await screen.findByText("직접 속한 글 3개");
+		fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+		await waitFor(() => expect(onChanged).toHaveBeenCalledWith("folder-1"));
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/cms/v1/folders/folder-1?expectedVersion=1",
+			expect.objectContaining({ method: "DELETE" }),
+		);
+		vi.unstubAllGlobals();
 	});
 
 	it("lets keyboard-focused suggestions activate and close", async () => {

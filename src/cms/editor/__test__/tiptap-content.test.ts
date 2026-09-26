@@ -94,10 +94,20 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 		const json = cmsNodeToTiptap(first);
 
 		const names = (json.content ?? []).map((block) => block?.type);
-		expect(names).toEqual([OPAQUE_BLOCK_NAME, OPAQUE_BLOCK_NAME, OPAQUE_BLOCK_NAME, OPAQUE_BLOCK_NAME]);
+		// 표는 Tiptap 표로 편집한다(§4.1). 나머지는 원문 상자로 보존한다.
+		expect(names).toEqual([OPAQUE_BLOCK_NAME, OPAQUE_BLOCK_NAME, "table", OPAQUE_BLOCK_NAME]);
 
 		const second = tiptapToCmsNode(throughSchema(json));
 		expect(second).toEqual(first);
+	});
+
+	it("표(열 정렬 포함)와 체크 목록을 편집 가능한 노드로 옮기고 되돌린다", () => {
+		const first = toDocument(
+			analyze("| a | **b** |\n| :-: | --: |\n| 1 | `2` |\n\n- [ ] 할 일\n- [x] 끝남\n\n1. [ ] 번호 체크 항목"),
+		);
+		const json = cmsNodeToTiptap(first);
+		expect((json.content ?? []).map((block) => block?.type)).toEqual(["table", "taskList", OPAQUE_BLOCK_NAME]);
+		expect(tiptapToCmsNode(throughSchema(json))).toEqual(first);
 	});
 
 	it("이미지 속성을 잃지 않는다", () => {

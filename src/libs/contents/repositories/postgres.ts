@@ -22,6 +22,7 @@ import type { MemoListQuery, PostListQuery } from "../types/query";
 type Metadata = Record<string, unknown>;
 
 const POLICY_EVERGREEN = "evergreen";
+const POLICY_DEPRECATED = "deprecated";
 
 function readMetadataString(metadata: Metadata, key: string): string | null {
 	const value = metadata[key];
@@ -61,10 +62,21 @@ function resolveTags(entry: PublishedEntryRecord, tagsById: ReadonlyMap<string, 
 		.map((tag) => ({ slug: tag.slug, label: toLabel(tag) }));
 }
 
+function resolveDeprecation(
+	entry: PublishedEntryRecord,
+	postsById: ReadonlyMap<string, PublishedEntryRecord> | undefined,
+): PublishedPost["deprecation"] | undefined {
+	if (readMetadataString(entry.metadata, "policy") !== POLICY_DEPRECATED) return undefined;
+	const replacementId = readMetadataString(entry.metadata, "replacementPostId");
+	const replacement = replacementId ? postsById?.get(replacementId) : undefined;
+	return { replacement: replacement ? { slug: replacement.slug, title: toLabel(replacement) } : null };
+}
+
 function toPost(
 	entry: PublishedEntryRecord,
 	categoriesById: ReadonlyMap<string, PublishedEntryRecord>,
 	tagsById: ReadonlyMap<string, PublishedEntryRecord>,
+	postsById?: ReadonlyMap<string, PublishedEntryRecord>,
 ): PublishedPost | null {
 	const categoryId = readMetadataString(entry.metadata, "categoryId");
 	const categoryEntry = categoryId ? categoriesById.get(categoryId) : undefined;
@@ -77,6 +89,7 @@ function toPost(
 
 	// SEO 미입력 글이면 seo 키 자체를 만들지 않는다(M7-FE-2).
 	const seo = readSeoMetadata(entry.metadata);
+	const deprecation = resolveDeprecation(entry, postsById);
 
 	return {
 		slug: entry.slug,
@@ -88,6 +101,7 @@ function toPost(
 		contentMdx: entry.mdx,
 		publishedAt,
 		isEvergreen: readMetadataString(entry.metadata, "policy") === POLICY_EVERGREEN,
+		...(deprecation ? { deprecation } : {}),
 		...(seo ? { seo } : {}),
 	};
 }
@@ -113,9 +127,11 @@ function toMemo(
 }
 
 function toSeries(entry: PublishedEntryRecord, postsById: ReadonlyMap<string, PublishedPost>): Series {
+	const description = readMetadataString(entry.metadata, "summary");
 	return {
 		slug: entry.slug,
 		label: toLabel(entry),
+		...(description ? { description } : {}),
 		items: readMetadataStringArray(entry.metadata, "itemIds")
 			.map((itemId) => postsById.get(itemId))
 			.filter(isDefined<PublishedPost>),
@@ -167,9 +183,10 @@ export class PostgresRepository implements ContentRepository {
 			this.loadTaxonomy(),
 		]);
 		const postsById = new Map<string, PublishedPost>();
+		const rowsById = new Map(rows.map((row) => [row.id, row]));
 
 		for (const row of rows) {
-			const post = toPost(row, taxonomy.categoriesById, taxonomy.tagsById);
+			const post = toPost(row, taxonomy.categoriesById, taxonomy.tagsById, rowsById);
 			if (post) postsById.set(row.id, post);
 		}
 
@@ -190,9 +207,16 @@ export class PostgresRepository implements ContentRepository {
 
 		if (lookup.status === "not_found") return null;
 
-		const { categoriesById, tagsById } = await this.loadTaxonomy();
+		const [{ categoriesById, tagsById }, postsById] = await Promise.all([
+			this.loadTaxonomy(),
+			readMetadataString(lookup.entry.metadata, "policy") === POLICY_DEPRECATED
+				? this.getStore()
+						.listPublishedEntries({ collections: ["post"] })
+						.then((rows) => new Map(rows.map((row) => [row.id, row])))
+				: Promise.resolve(undefined),
+		]);
 
-		return toPost(lookup.entry, categoriesById, tagsById);
+		return toPost(lookup.entry, categoriesById, tagsById, postsById);
 	}
 
 	async getMemo(slug: string): Promise<Memo | null> {
@@ -219,8 +243,9 @@ export class PostgresRepository implements ContentRepository {
 			this.loadTaxonomy(),
 		]);
 
+		const rowsById = new Map(rows.map((row) => [row.id, row]));
 		const posts = rows
-			.map((row) => toPost(row, taxonomy.categoriesById, taxonomy.tagsById))
+			.map((row) => toPost(row, taxonomy.categoriesById, taxonomy.tagsById, rowsById))
 			.filter(isDefined<PublishedPost>);
 
 		return applyPostListQuery(posts, query);

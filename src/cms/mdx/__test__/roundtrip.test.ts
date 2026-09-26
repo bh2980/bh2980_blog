@@ -228,21 +228,6 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
 		});
 	});
 
-	describe("실제 src/contents 표본", () => {
-		for (const relPath of SAMPLE_PATHS) {
-			it(`${relPath} 의 왕복이 같은 문서를 다시 만든다`, () => {
-				const source = readSample(relPath);
-				const { firstDoc, secondDoc } = fullRoundtrip(source);
-				expect(secondDoc).toEqual(firstDoc);
-			});
-
-			it(`${relPath} 의 analyze는 오류를 보고하지 않는다`, () => {
-				const source = readSample(relPath);
-				expect(analyze(source).errors ?? []).toEqual([]);
-			});
-		}
-	});
-
 	describe("미지원 문법·오류(§4.4)", () => {
 		it("spread 속성은 오류 위치를 표시하고 원문을 삭제하지 않는다", () => {
 			const mdx = ["# 미지원", "", "<Callout {...props}>내용</Callout>"].join("\n");

@@ -1,394 +1,213 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { AdminColumnSettings } from "@/cms/core/api";
-import type { Collection } from "@/cms/services/types";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import type { AdminColumnSettings, CollectionPreferences, ListSortField, PreferencesBody } from "@/cms/core/api";
+import { type Collection, isRecordCollection } from "@/cms/core/collections";
+import { cmsFetch, errorText } from "./admin-api";
 import { AdminEntriesTable } from "./admin-entries-table";
 import { AdminMobileNavigation } from "./admin-mobile-navigation";
 import { AdminSidebar } from "./admin-sidebar";
-import { cmsApiErrorMessage } from "./api-error-message";
 import { BulkBar } from "./entries/bulk-bar";
+import { ListFilters } from "./list-filters";
+import {
+	isExplorerMode,
+	type ListState,
+	listStateToApiQuery,
+	listStateToSearchParams,
+	parseListState,
+} from "./list-state";
+import { RecordDialog, type RecordTarget } from "./record-dialog";
+import { ConfirmDialog, type ConfirmRequest } from "./shared/confirm-dialog";
+import type { DraggedEntry } from "./shared/entry-drag";
+import { useFolderActions } from "./shared/use-folder-actions";
+import { useTaxonomy } from "./shared/use-taxonomy";
 
+/** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
 export function AdminClientDashboard() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const parsed = useMemo(() => parseListState(new URLSearchParams(searchParams.toString())), [searchParams]);
+	const [preferences, setPreferences] = useState<PreferencesBody | null>(null);
 
-	// Initialize state from URL params
-	const urlCollection = (searchParams.get("collection") as Collection) || "post";
-	const urlFolderId = searchParams.get("folderId") || null;
-	const urlSearch = searchParams.get("search") || "";
-	const urlStatus = searchParams.get("status") || "";
-	const urlPage = parseInt(searchParams.get("page") || "1", 10);
-	const urlPageSize = (parseInt(searchParams.get("pageSize") || "25", 10) as 25 | 50 | 100) || 25;
-	const urlSortField = (searchParams.get("sortField") as "updatedAt" | "createdAt" | "title" | "slug") || "updatedAt";
-	const urlSortDirection = (searchParams.get("sortDirection") as "asc" | "desc") || "desc";
-
-	const [currentCollection, setCurrentCollection] = useState<Collection>(urlCollection);
-	const [currentFolderId, setCurrentFolderId] = useState<string | null>(urlFolderId);
-	const [folders, setFolders] = useState<Folder[]>([]);
+	// URL에 페이지 크기·정렬이 없으면 컬렉션별 저장 설정을 쓴다(§3.2).
+	const collectionPrefs: CollectionPreferences = preferences?.collections?.[parsed.collection] ?? {};
+	const state: ListState = useMemo(
+		() => ({
+			...parsed,
+			pageSize: parsed.explicit.pageSize ? parsed.pageSize : (collectionPrefs.pageSize ?? parsed.pageSize),
+			sortField: parsed.explicit.sort ? parsed.sortField : (collectionPrefs.sort?.field ?? parsed.sortField),
+			sortDirection: parsed.explicit.sort
+				? parsed.sortDirection
+				: (collectionPrefs.sort?.direction ?? parsed.sortDirection),
+		}),
+		[parsed, collectionPrefs],
+	);
+	const collection = state.collection;
 
 	const [items, setItems] = useState<ListEntriesItem[]>([]);
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [total, setTotal] = useState(0);
-	const [page, setPage] = useState(urlPage);
-	const [pageSize, setPageSize] = useState<25 | 50 | 100>(urlPageSize);
-	// Debounced search state: updates committed search only after 300ms idle,
-	// so fetchEntries (driven by the committed value) fires once per pause.
-	// Debounced search state: updates committedSearch only after 300ms idle,
-	// so fetchEntries (driven by committedSearch) fires once per pause.
-	const [search, setSearch] = useState(urlSearch);
-	const [committedSearch, setCommittedSearch] = useState(urlSearch);
-	const [statusFilter, setStatusFilter] = useState(urlStatus);
-	const [sortField, setSortField] = useState<"updatedAt" | "createdAt" | "title" | "slug">(urlSortField);
-	const [sortDirection, setSortDirection] = useState<"asc" | "desc">(urlSortDirection);
+	const [folders, setFolders] = useState<Folder[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [recordModalError, setRecordModalError] = useState<string | null>(null);
-	const [columnSettings, setColumnSettings] = useState<Partial<Record<Collection, AdminColumnSettings>>>({});
+	const [feedback, setFeedback] = useState<string | null>(null);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
+	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const tags = useTaxonomy("tag", collection === "post" || collection === "memo");
+	const categories = useTaxonomy("category", collection === "post");
 
-	// Sync state to URL search parameters
-	const syncUrl = useCallback(
-		(params: {
-			collection?: Collection;
-			folderId?: string | null;
-			search?: string;
-			status?: string;
-			page?: number;
-			pageSize?: number;
-			sortField?: string;
-			sortDirection?: string;
-		}) => {
-			const query = new URLSearchParams(searchParams.toString());
-			if (params.collection !== undefined) query.set("collection", params.collection);
-			if (params.folderId !== undefined) {
-				if (params.folderId) query.set("folderId", params.folderId);
-				else query.delete("folderId");
-			}
-			if (params.search !== undefined) {
-				if (params.search) query.set("search", params.search);
-				else query.delete("search");
-			}
-			if (params.status !== undefined) {
-				if (params.status) query.set("status", params.status);
-				else query.delete("status");
-			}
-			if (params.page !== undefined) query.set("page", String(params.page));
-			if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
-			if (params.sortField !== undefined) query.set("sortField", params.sortField);
-			if (params.sortDirection !== undefined) query.set("sortDirection", params.sortDirection);
-
-			router.replace(`?${query.toString()}`, { scroll: false });
+	const update = useCallback(
+		(patch: Partial<ListState>, options: { resetPage?: boolean } = { resetPage: true }) => {
+			const next = { ...state, ...(options.resetPage ? { page: 1 } : {}), ...patch };
+			router.replace(`?${listStateToSearchParams(next).toString()}`, { scroll: false });
 		},
-		[router, searchParams],
+		[router, state],
 	);
 
-	// Load Preferences on initial mount only if not overridden by explicit URL
-	const preferencesLoadedRef = useRef(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: guarded one-time preference hydration
 	useEffect(() => {
-		if (preferencesLoadedRef.current) return;
-		preferencesLoadedRef.current = true;
+		cmsFetch<PreferencesBody>("/api/cms/v1/preferences")
+			.then(setPreferences)
+			.catch(() => setPreferences({}));
+	}, []);
 
-		fetch("/api/cms/v1/preferences")
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data) => {
-				if (data) {
-					if (data.columnSettings) {
-						setColumnSettings((current) => ({ ...data.columnSettings, ...current }));
-					}
-					if (!searchParams.has("pageSize") && data.defaultPageSize) {
-						setPageSize(data.defaultPageSize);
-					}
-					if (!searchParams.has("sortField") && data.sort?.field) {
-						setSortField(data.sort.field);
-						setSortDirection(data.sort.direction);
-					}
-				}
-			})
-			.catch(() => {});
-	}, []); // mount only
-
-	// Save Preferences when changed
-	const savePreferences = (newSize?: 25 | 50 | 100, field?: string, dir?: string) => {
-		fetch("/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				defaultPageSize: newSize ?? pageSize,
-				sort: {
-					field: field ?? sortField,
-					direction: dir ?? sortDirection,
-				},
-			}),
-		}).catch(() => {});
+	const savePreferences = (patch: CollectionPreferences) => {
+		setPreferences((current) => ({
+			...current,
+			collections: { ...current?.collections, [collection]: { ...current?.collections?.[collection], ...patch } },
+		}));
+		void cmsFetch("/api/cms/v1/preferences", { method: "PUT", json: { collections: { [collection]: patch } } }).catch(
+			() => {
+				setFeedback("목록 설정을 저장하지 못했습니다.");
+			},
+		);
 	};
 
-	const saveColumnSettings = (settings: AdminColumnSettings) => {
-		setColumnSettings((current) => ({ ...current, [currentCollection]: settings }));
-		fetch("/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ columnSettings: { [currentCollection]: settings } }),
-		}).catch(() => {});
-	};
-
-	// Fetch Folders
 	const fetchFolders = useCallback(async () => {
 		try {
-			const res = await fetch(`/api/cms/v1/folders?collection=${currentCollection}`);
-			if (res.ok) {
-				const data = await res.json();
-				setFolders(data);
-			}
-		} catch (err) {
-			console.error("Failed to load folders", err);
+			setFolders(await cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`));
+		} catch {
+			setFolders([]);
 		}
-	}, [currentCollection]);
+	}, [collection]);
 
-	// Fetch Entries with Race Condition Cancellation
-	const abortControllerRef = useRef<AbortController | null>(null);
-
+	const apiQuery = listStateToApiQuery(state).toString();
+	const abortRef = useRef<AbortController | null>(null);
 	const fetchEntries = useCallback(async () => {
-		if (abortControllerRef.current) {
-			abortControllerRef.current.abort();
-		}
+		abortRef.current?.abort();
 		const controller = new AbortController();
-		abortControllerRef.current = controller;
-
+		abortRef.current = controller;
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const params = new URLSearchParams();
-			params.set("collection", currentCollection);
-			if (committedSearch) params.set("search", committedSearch);
-			if (statusFilter) params.set("status", statusFilter);
-			if (currentFolderId) params.set("folderId", currentFolderId);
-			params.set("sortField", sortField);
-			params.set("sortDirection", sortDirection);
-			params.set("page", String(page));
-			params.set("pageSize", String(pageSize));
-
-			const res = await fetch(`/api/cms/v1/entries?${params.toString()}`, {
+			const data = await cmsFetch<{ items: ListEntriesItem[]; total: number }>(`/api/cms/v1/entries?${apiQuery}`, {
 				signal: controller.signal,
+				fallback: "목록을 불러오지 못했습니다.",
 			});
-
-			if (res.ok) {
-				const data = await res.json();
-				setItems(data.items);
-				setTotal(data.total);
-			} else {
-				const err = await res.json().catch(() => ({}));
-				setErrorMessage(err.message || "목록을 불러오지 못했습니다.");
-			}
-		} catch (err) {
-			if ((err as Error).name !== "AbortError") {
-				setErrorMessage("네트워크 오류가 발생했습니다.");
-			}
+			setItems(data.items);
+			setTotal(data.total);
+		} catch (error) {
+			if ((error as Error).name !== "AbortError") setErrorMessage(errorText(error, "목록을 불러오지 못했습니다."));
 		} finally {
-			setIsLoading(false);
+			if (abortRef.current === controller) setIsLoading(false);
 		}
-	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
+	}, [apiQuery]);
 
 	useEffect(() => {
-		fetchFolders();
+		void fetchFolders();
 	}, [fetchFolders]);
-
 	useEffect(() => {
-		fetchEntries();
-	}, [fetchEntries]);
-
-	// Bulk selection is limited to the current page (M4-FE-2).
-	// biome-ignore lint/correctness/useExhaustiveDependencies: selection must reset when the visible page query changes
-	useEffect(() => {
-		setSelectedIds(new Set());
-	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
-
-	// Debounced search input handler
-	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
-	useEffect(() => {
-		return () => {
-			if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-		};
-	}, []);
-	const handleSearchChange = (val: string) => {
-		setSearch(val);
-		setPage(1);
-		if (searchDebounceRef.current) {
-			clearTimeout(searchDebounceRef.current);
-		}
-		searchDebounceRef.current = setTimeout(() => {
-			setCommittedSearch(val);
-			syncUrl({ search: val, page: 1 });
-		}, 300);
-	};
-
-	const handleCreateFolder = async (name: string, parentId: string | null) => {
-		const res = await fetch("/api/cms/v1/folders", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				collection: currentCollection,
-				name,
-				parentId,
-			}),
-		});
-		if (!res.ok) {
-			const err = await res.json();
-			throw new Error(err.message || "폴더 생성 실패");
-		}
-		await fetchFolders();
-	};
-
-	const handleRenameFolder = async (id: string, name: string, version: number) => {
-		const res = await fetch(`/api/cms/v1/folders/${id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				name,
-				expectedVersion: version,
-			}),
-		});
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({}));
-			throw new Error(err.message || "폴더 수정 실패");
-		}
-		await fetchFolders();
-	};
-
-	const handleDeleteFolder = async (id: string, version: number) => {
-		const res = await fetch(`/api/cms/v1/folders/${id}?expectedVersion=${version}`, {
-			method: "DELETE",
-		});
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({}));
-			throw new Error(err.message || "폴더 삭제 실패");
-		}
-		if (currentFolderId === id) {
-			setCurrentFolderId(null);
-			syncUrl({ folderId: null });
-		}
-		await fetchFolders();
-		await fetchEntries();
-	};
-
-	const toggleSelect = (id: string) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
-	};
-
-	const toggleSelectPage = (selectAll: boolean) => {
-		setSelectedIds(selectAll ? new Set(items.map((i) => i.id)) : new Set());
-	};
-
-	const selectedWithVersions = items
-		.filter((i) => selectedIds.has(i.id))
-		.map((i) => ({ id: i.id, expectedVersion: i.version }));
-
-	const handleBulkDone = (failedIds: string[]) => {
-		setSelectedIds(new Set(failedIds));
 		void fetchEntries();
-	};
+	}, [fetchEntries]);
+	// 전체 선택은 현재 페이지만 대상이다(§3.4). 목록이 바뀌면 선택을 비운다.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the visible query changes
+	useEffect(() => setSelectedIds(new Set()), [apiQuery]);
 
-	// Record Creation & Rename Modal State (Tag / Category / Collection)
-	const [recordModal, setRecordModal] = useState<{
-		mode: "create" | "rename";
-		id?: string;
-		title: string;
-		version?: number;
-	} | null>(null);
+	const folderActions = useFolderActions({
+		collection,
+		folders,
+		onChanged: async (deletedId) => {
+			await fetchFolders();
+			if (deletedId && state.folder === deletedId) update({ folder: "all" });
+			else await fetchEntries();
+		},
+	});
 
-	const isRecordCollection = currentCollection === "tag" || currentCollection === "category";
-
-	const handleCreateNew = () => {
-		if (isRecordCollection) {
-			setRecordModalError(null);
-			setRecordModal({ mode: "create", title: "" });
-			return;
-		}
-		router.push(`/admin/entries/new?collection=${currentCollection}` as any);
-	};
-
-	const handleRenameRecord = async (id: string, currentTitle: string, version: number) => {
-		setRecordModalError(null);
-		setRecordModal({ mode: "rename", id, title: currentTitle, version });
-	};
-
-	const handleRecordModalSubmit = async () => {
-		if (!recordModal || !recordModal.title.trim()) return;
-		const trimmed = recordModal.title.trim();
-		setRecordModalError(null);
-
+	const moveEntries = async (folderId: string | null, entries: DraggedEntry[]) => {
 		try {
-			if (recordModal.mode === "create") {
-				const res = await fetch("/api/cms/v1/entries", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						collection: currentCollection,
-						metadata: { title: trimmed },
-						mdx: "",
-					}),
-				});
-				if (!res.ok) {
-					const err = await res.json().catch(() => ({}));
-					setRecordModalError(cmsApiErrorMessage(err, "생성에 실패했습니다."));
-					return;
-				}
-			} else if (recordModal.id && recordModal.version !== undefined) {
-				const res = await fetch(`/api/cms/v1/entries/${recordModal.id}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						expectedVersion: recordModal.version,
-						metadata: { title: trimmed },
-					}),
-				});
-				if (!res.ok) {
-					const err = await res.json().catch(() => ({}));
-					setRecordModalError(cmsApiErrorMessage(err, "수정에 실패했습니다."));
-					return;
-				}
-			}
-			setRecordModal(null);
+			const data = await cmsFetch<{ results: { ok: boolean }[] }>("/api/cms/v1/bulk", {
+				method: "POST",
+				json: { op: "folder.move", items: entries, folderId },
+			});
+			const failed = data.results.filter((result) => !result.ok).length;
+			setFeedback(
+				failed
+					? `${entries.length - failed}개를 옮기고 ${failed}개는 옮기지 못했습니다.`
+					: `${entries.length}개를 옮겼습니다.`,
+			);
 			await fetchEntries();
-		} catch (err: any) {
-			setRecordModalError(err.message || "처리 중 오류가 발생했습니다.");
+		} catch (error) {
+			setFeedback(errorText(error, "폴더로 옮기지 못했습니다."));
 		}
 	};
+
+	const restore = async (item: ListEntriesItem) => {
+		try {
+			await cmsFetch(`/api/cms/v1/entries/${item.id}/restore`, {
+				method: "POST",
+				json: { expectedVersion: item.version },
+			});
+			setFeedback(`'${item.title ?? "제목 없음"}'을(를) 복원했습니다.`);
+			await fetchEntries();
+		} catch (error) {
+			setFeedback(errorText(error, "복원하지 못했습니다."));
+		}
+	};
+
+	const requestPermanentDelete = (item: ListEntriesItem) =>
+		setConfirm({
+			title: "영구 삭제",
+			description: `'${item.title ?? "제목 없음"}'을(를) 영구 삭제합니다. 되돌릴 수 없습니다.`,
+			confirmLabel: "영구 삭제",
+			destructive: true,
+			onConfirm: async () => {
+				try {
+					await cmsFetch(`/api/cms/v1/entries/${item.id}?expectedVersion=${item.version}`, { method: "DELETE" });
+					setFeedback("영구 삭제했습니다.");
+					await fetchEntries();
+				} catch (error) {
+					setFeedback(errorText(error, "삭제하지 못했습니다."));
+				}
+			},
+		});
+
+	const selectCollection = (next: Collection) => router.replace(`?collection=${next}`, { scroll: false });
+
+	const explorer = isExplorerMode(state)
+		? (() => {
+				const current = state.folder === "all" ? null : state.folder;
+				const currentFolder = current ? folders.find((folder) => folder.id === current) : undefined;
+				return {
+					folders: folders.filter((folder) => (folder.parentId ?? null) === current),
+					parent: current ? (currentFolder?.parentId ?? "all") : null,
+				};
+			})()
+		: null;
 
 	const renderSidebar = (onNavigate?: () => void) => (
 		<AdminSidebar
-			currentCollection={currentCollection}
-			currentFolderId={currentFolderId}
+			currentCollection={collection}
+			currentFolder={state.folder}
+			includeDescendants={state.includeDescendants}
 			folders={folders}
-			onSelectCollection={(col) => {
-				setCurrentCollection(col);
-				setCurrentFolderId(null);
-				setPage(1);
-				syncUrl({ collection: col, folderId: null, page: 1 });
-			}}
-			onSelectFolder={(fId) => {
-				setCurrentFolderId(fId);
-				setPage(1);
-				syncUrl({ folderId: fId, page: 1 });
-			}}
-			onCreateFolder={handleCreateFolder}
-			onRenameFolder={handleRenameFolder}
-			onDeleteFolder={handleDeleteFolder}
+			folderActions={folderActions}
+			onSelectCollection={selectCollection}
+			onSelectFolder={(folder) =>
+				update({ folder, includeDescendants: folder === "all" ? false : state.includeDescendants })
+			}
+			onIncludeDescendantsChange={(includeDescendants) => update({ includeDescendants })}
+			onDropEntries={(folderId, entries) => void moveEntries(folderId, entries)}
 			onNavigate={onNavigate}
 		/>
 	);
@@ -396,134 +215,100 @@ export function AdminClientDashboard() {
 	return (
 		<div className="flex h-screen w-full overflow-hidden">
 			<div className="hidden lg:flex">{renderSidebar()}</div>
-			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+			<main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-neutral-950">
 				<header className="flex h-12 shrink-0 items-center gap-3 border-neutral-800 border-b bg-neutral-900/40 px-3 lg:hidden">
 					<AdminMobileNavigation>{(close) => renderSidebar(close)}</AdminMobileNavigation>
 					<span className="font-medium text-neutral-200 text-sm">CMS 관리자</span>
 				</header>
+				<ListFilters
+					state={state}
+					tags={tags.options}
+					categories={categories.options}
+					onChange={update}
+					onCreateNew={() =>
+						isRecordCollection(collection)
+							? setRecordTarget({ collection, id: null })
+							: router.push(
+									`/admin/entries/new?collection=${collection}${state.folder !== "all" && state.folder !== "unfiled" ? `&folder=${state.folder}` : ""}`,
+								)
+					}
+				/>
+				{feedback && (
+					<output className="flex items-center justify-between border-neutral-800 border-b px-6 py-2 text-neutral-200 text-sm">
+						{feedback}
+						<button type="button" className="text-xs underline" onClick={() => setFeedback(null)}>
+							닫기
+						</button>
+					</output>
+				)}
 				<BulkBar
-					selected={selectedWithVersions}
+					collection={collection}
+					selected={items
+						.filter((item) => selectedIds.has(item.id))
+						.map((item) => ({ id: item.id, expectedVersion: item.version, title: item.title }))}
 					folders={folders}
 					onClearSelection={() => setSelectedIds(new Set())}
-					onDone={handleBulkDone}
+					onDone={(failedIds) => {
+						setSelectedIds(new Set(failedIds));
+						void fetchEntries();
+					}}
 				/>
 				<AdminEntriesTable
-					collection={currentCollection}
-					columnSettings={columnSettings[currentCollection]}
-					onColumnSettingsChange={saveColumnSettings}
+					collection={collection}
 					items={items}
+					folders={folders}
+					explorer={explorer}
+					columnSettings={collectionPrefs.columns}
+					onColumnSettingsChange={(columns: AdminColumnSettings) => savePreferences({ columns })}
 					selectedIds={selectedIds}
-					onToggleSelect={toggleSelect}
-					onToggleSelectPage={toggleSelectPage}
+					onToggleSelect={(id) =>
+						setSelectedIds((prev) => {
+							const next = new Set(prev);
+							if (next.has(id)) next.delete(id);
+							else next.add(id);
+							return next;
+						})
+					}
+					onToggleSelectPage={(all) => setSelectedIds(all ? new Set(items.map((item) => item.id)) : new Set())}
 					total={total}
-					page={page}
-					pageSize={pageSize}
-					search={search}
-					statusFilter={statusFilter}
-					sortField={sortField}
-					sortDirection={sortDirection}
+					page={state.page}
+					pageSize={state.pageSize}
+					sortField={state.sortField}
+					sortDirection={state.sortDirection}
 					isLoading={isLoading}
 					errorMessage={errorMessage}
-					onSearchChange={handleSearchChange}
-					onStatusChange={(st) => {
-						setStatusFilter(st);
-						setPage(1);
-						syncUrl({ status: st, page: 1 });
+					isTrashView={state.status === "trashed"}
+					folderActions={folderActions}
+					onSortChange={(field: ListSortField) => {
+						const direction = state.sortField === field && state.sortDirection === "desc" ? "asc" : "desc";
+						update({ sortField: field, sortDirection: direction });
+						savePreferences({ sort: { field, direction } });
 					}}
-					onSortChange={(field) => {
-						const newDir = sortField === field && sortDirection === "asc" ? "desc" : "asc";
-						setSortField(field);
-						setSortDirection(newDir);
-						syncUrl({ sortField: field, sortDirection: newDir });
-						savePreferences(pageSize, field, newDir);
+					onPageChange={(page) => update({ page }, { resetPage: false })}
+					onPageSizeChange={(pageSize) => {
+						update({ pageSize });
+						savePreferences({ pageSize });
 					}}
-					onPageChange={(p) => {
-						setPage(p);
-						syncUrl({ page: p });
-					}}
-					onPageSizeChange={(newSize) => {
-						setPageSize(newSize);
-						setPage(1);
-						syncUrl({ pageSize: newSize, page: 1 });
-						savePreferences(newSize);
-					}}
-					onCreateNew={handleCreateNew}
-					onRenameRecord={handleRenameRecord}
-					onOpenEditRecord={(item) => {
-						setRecordModalError(null);
-						setRecordModal({
-							mode: "rename",
-							id: item.id,
-							title: item.title || "",
-							version: item.version,
-						});
-					}}
-					onRetry={fetchEntries}
-					currentFolderId={currentFolderId}
-					folders={folders}
-					onSelectFolder={(fId) => {
-						setCurrentFolderId(fId);
-						setPage(1);
-						syncUrl({ folderId: fId, page: 1 });
-					}}
-					onCreateFolder={handleCreateFolder}
-					onRenameFolder={handleRenameFolder}
-					onDeleteFolder={handleDeleteFolder}
+					onSelectFolder={(folder) => update({ folder })}
+					onOpenRecord={(item) => setRecordTarget({ collection, id: item.id })}
+					onRestore={(item) => void restore(item)}
+					onPermanentDelete={requestPermanentDelete}
+					onRetry={() => void fetchEntries()}
 				/>
-			</div>
-
-			<Dialog open={Boolean(recordModal)} onOpenChange={(open) => !open && setRecordModal(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>
-							{recordModal?.mode === "create"
-								? `새 ${currentCollection === "tag" ? "태그" : "카테고리"} 만들기`
-								: `${currentCollection === "tag" ? "태그" : "카테고리"} 이름 수정`}
-						</DialogTitle>
-						<DialogDescription>
-							{recordModal?.mode === "create"
-								? "목록 및 글 작성 시 선택할 수 있는 이름을 입력하세요."
-								: "이름을 변경하면 이 레코드를 참조하는 글들의 표시명이 즉시 갱신됩니다."}
-						</DialogDescription>
-					</DialogHeader>
-					<label htmlFor="record-title" className="sr-only">
-						이름
-					</label>
-					<input
-						id="record-title"
-						type="text"
-						autoFocus
-						value={recordModal?.title ?? ""}
-						onChange={(e) => recordModal && setRecordModal({ ...recordModal, title: e.target.value })}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								handleRecordModalSubmit();
-							}
-						}}
-						placeholder="이름 입력 (예: TypeScript)"
-						className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-					/>
-					{recordModalError && (
-						<p role="alert" className="whitespace-pre-wrap text-destructive text-sm">
-							{recordModalError}
-						</p>
-					)}
-					<DialogFooter>
-						<button type="button" onClick={() => setRecordModal(null)} className="rounded-md border px-3 py-2 text-sm">
-							취소
-						</button>
-						<button
-							type="button"
-							disabled={!recordModal?.title.trim()}
-							onClick={handleRecordModalSubmit}
-							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-						>
-							{recordModal?.mode === "create" ? "생성" : "수정 완료"}
-						</button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			</main>
+			{folderActions.dialogs}
+			<RecordDialog
+				target={recordTarget}
+				onClose={() => setRecordTarget(null)}
+				onSaved={() => {
+					setRecordTarget(null);
+					setFeedback("저장했습니다. 공개 분류 정보에 반영되었습니다.");
+					void fetchEntries();
+					void tags.reload();
+					void categories.reload();
+				}}
+			/>
+			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
 		</div>
 	);
 }

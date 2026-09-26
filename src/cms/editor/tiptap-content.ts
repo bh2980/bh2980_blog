@@ -4,6 +4,8 @@ import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/d
 import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import type { CmsJsonValue, CmsMark, CmsNode } from "../mdx";
 import { analyze, serialize, toDocument } from "../mdx";
+import { TEXT_ALIGN_VALUES as ALIGN_VALUES } from "../mdx/directives";
+import { sortMarks } from "../mdx/registry";
 
 /**
  * CmsNode ↔ Tiptap JSONContent 변환. 시각 에디터의 적재/저장 경로다.
@@ -24,13 +26,7 @@ export const TOOLTIP_MARK_NAME = "cmsTooltip";
 const NATIVE_MARKS = new Set(["bold", "italic", "strike", "code", "link", "underline", "superscript", "subscript"]);
 const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip"]);
 
-/** 정렬 값. `to-document.ts`의 mark 순서와 같은 기준으로 맞춘다. */
-const TEXT_ALIGN_VALUES = new Set(["left", "center", "right"]);
-/** `to-document.ts:26`의 순서와 같다. 양쪽이 다르면 왕복 문서 비교가 순서 때문에 깨진다. */
-const MARK_ORDER = ["tooltip", "underline", "superscript", "subscript", "link", "bold", "italic", "strike", "code"];
-
-const sortMarks = (marks: CmsMark[]): CmsMark[] =>
-	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
+const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);
 
 const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
 
@@ -65,19 +61,45 @@ const isMappableInline = (node: CmsNode): boolean => {
 	return false;
 };
 
+/** 모든 항목이 `- [ ]`/`- [x]`인 비순서 목록. */
+const isTaskList = (node: CmsNode): boolean => {
+	const items = node.content ?? [];
+	return (
+		node.type === "bulletList" &&
+		items.length > 0 &&
+		items.every(
+			(item) =>
+				item.type === "listItem" &&
+				typeof item.attrs?.checked === "boolean" &&
+				(item.content ?? []).every((child) => isMappableBlock(child)),
+		)
+	);
+};
+
 const isMappableBlock = (node: CmsNode): boolean => {
 	switch (node.type) {
 		case "paragraph":
 		case "heading":
 			return (node.content ?? []).every(isMappableInline);
 		case "blockquote":
-		case "bulletList":
 		case "orderedList":
 			return (node.content ?? []).every(isMappableBlock);
+		case "bulletList":
+			// 모든 항목이 체크 항목이면 Tiptap 체크 목록으로 편집한다. 섞인 목록은 상자로 보존한다.
+			return isTaskList(node) || (node.content ?? []).every(isMappableBlock);
 		case "listItem":
-			// task 목록(`checked`)은 Tiptap TaskItem이 없어 상자로 보존한다.
+			// 체크 항목은 체크 목록(`isTaskList`) 안에서만 옮긴다. 번호 목록의 체크 항목은 상자로 보존한다.
 			if (node.attrs?.checked != null) return false;
 			return (node.content ?? []).every(isMappableBlock);
+		case "table":
+			// 셀 병합은 v1 범위가 아니다(§4.1). GFM 표는 셀마다 인라인만 담는다.
+			return (node.content ?? []).every(
+				(row) =>
+					row.type === "tableRow" &&
+					(row.content ?? []).every(
+						(cell) => cell.type === "tableCell" && (cell.content ?? []).every(isMappableInline),
+					),
+			);
 		case "codeBlock":
 		case "horizontalRule":
 		case "image":
@@ -178,7 +200,30 @@ const blockToTiptap = (node: CmsNode): JSONContent => {
 		case "blockquote":
 			return { type: "blockquote", content: (node.content ?? []).map(blockToTiptap) };
 		case "bulletList":
+			if (isTaskList(node)) {
+				return {
+					type: "taskList",
+					content: (node.content ?? []).map((item) => ({
+						type: "taskItem",
+						attrs: { checked: item.attrs?.checked === true },
+						content: (item.content ?? []).map(blockToTiptap),
+					})),
+				};
+			}
 			return { type: "bulletList", content: (node.content ?? []).map(blockToTiptap) };
+		case "table":
+			return {
+				type: "table",
+				...(Array.isArray(node.attrs?.align) ? { attrs: { align: node.attrs.align } } : {}),
+				content: (node.content ?? []).map((row, rowIndex) => ({
+					type: "tableRow",
+					content: (row.content ?? []).map((cell) => ({
+						// GFM 표의 첫 행은 머리글이다.
+						type: rowIndex === 0 ? "tableHeader" : "tableCell",
+						content: [{ type: "paragraph", content: inlineChildren(cell.content ?? []) }],
+					})),
+				})),
+			};
 		case "orderedList": {
 			const start = asNumber(node.attrs?.start);
 			return {
@@ -331,6 +376,35 @@ const tiptapBlockToCms = (node: JSONContent): CmsNode[] => {
 					: { type: "orderedList", content: children },
 			];
 		}
+		case "taskList":
+			return [
+				{
+					type: "bulletList",
+					content: (node.content ?? []).map((item) => ({
+						type: "listItem",
+						attrs: { checked: item.attrs?.checked === true },
+						content: (item.content ?? []).flatMap(tiptapBlockToCms),
+					})),
+				},
+			];
+		case "table":
+			return [
+				{
+					type: "table",
+					...(Array.isArray(node.attrs?.align) ? { attrs: { align: node.attrs.align as CmsJsonValue } } : {}),
+					content: (node.content ?? []).map((row) => ({
+						type: "tableRow",
+						content: (row.content ?? []).map((cell) => {
+							// 셀 안의 여러 문단은 GFM 표에 담을 수 없어 줄바꿈으로 잇는다.
+							const paragraphs = (cell.content ?? []).map((block) => tiptapInlineToCms(block.content));
+							const inline = paragraphs.flatMap((content, index) =>
+								index === 0 ? content : [brDirectiveNode(), ...content],
+							);
+							return { type: "tableCell", content: inline };
+						}),
+					})),
+				},
+			];
 		case "codeBlock": {
 			const value = (node.content ?? []).map((child) => (child?.type === "text" ? (child.text ?? "") : "")).join("");
 			const language = asString(node.attrs?.language);

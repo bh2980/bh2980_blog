@@ -44,6 +44,8 @@ type BasePost = BaseSeo & {
 	category: Category;
 	tags: Tag[];
 	isEvergreen?: boolean;
+	/** `policy: deprecated`인 글. 공개된 대체 글이 있으면 안내한다(§6.4). */
+	deprecation?: { replacement: { slug: string; title: string } | null };
 };
 
 export type DraftPost = DraftState & BasePost;

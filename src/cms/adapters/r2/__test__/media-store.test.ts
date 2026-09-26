@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-	createR2MediaStore,
-	detectImageDimensionsAndType,
-} from "../media-store";
-import type { MediaStore } from "../types";
+import { createR2MediaStore, detectImageDimensionsAndType } from "../media-store";
 
 describe("R2 MediaStore (Unit & Contract)", () => {
 	it("detectImageDimensionsAndType detects PNG signatures and dimensions", () => {
@@ -150,7 +146,7 @@ describe("R2 MediaStore (Unit & Contract)", () => {
 		});
 
 		const sentCommands: unknown[] = [];
-		const s3Client = (store as unknown as { s3?: { send: (cmd: unknown) => Promise<unknown> } }).s3;
+		const _s3Client = (store as unknown as { s3?: { send: (cmd: unknown) => Promise<unknown> } }).s3;
 		// @ts-expect-error accessing private client for unit test
 		store.s3 = {
 			send: vi.fn(async (cmd: unknown) => {
@@ -174,7 +170,9 @@ describe("R2 MediaStore (Unit & Contract)", () => {
 				contentType: "image/png",
 			});
 
-			const copyCmd = sentCommands.find((c) => c instanceof CopyObjectCommand) as InstanceType<typeof CopyObjectCommand>;
+			const copyCmd = sentCommands.find((c) => c instanceof CopyObjectCommand) as InstanceType<
+				typeof CopyObjectCommand
+			>;
 			expect(copyCmd).toBeDefined();
 			expect(copyCmd.input.CopySourceIfMatch).toBe('"staging-etag-123"');
 		} finally {

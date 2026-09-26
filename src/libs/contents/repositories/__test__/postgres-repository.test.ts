@@ -374,4 +374,28 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 		// 잘못된 퍼센트 인코딩도 500이 아니라 조회 실패로 다룬다.
 		await expect(repository.getPost("100%-확실해")).resolves.toBeNull();
 	});
+
+	it("points deprecated posts at their published replacement and describes collections", async () => {
+		const entries = [
+			...publishedPostsFixture(),
+			record({
+				id: "post-old",
+				collection: "post",
+				slug: "old-post",
+				mdx: "옛 글",
+				metadata: { title: "옛 글", categoryId: "cat-1", policy: "deprecated", replacementPostId: "post-1" },
+			}),
+			record({
+				id: "series-1",
+				collection: "collection",
+				slug: "series",
+				metadata: { title: "연재", summary: "연재 설명", itemIds: ["post-1"] },
+			}),
+		];
+		const repository = new PostgresRepository(() => createFakeStore(entries));
+		const post = await repository.getPost("old-post");
+		expect(post?.deprecation).toEqual({ replacement: { slug: "first-post", title: "첫 글" } });
+		expect((await repository.getPost("first-post"))?.deprecation).toBeUndefined();
+		expect((await repository.getSeries("series"))?.description).toBe("연재 설명");
+	});
 });

@@ -1,34 +1,214 @@
 "use client";
 
-import type { Editor } from "@tiptap/core";
+import type { Editor, Range } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { CmsBlockKeymap, deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
+import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { CmsImageNode } from "./image-node";
-import { formatContentLinkMdx, type InternalLinkItem, parseInternalLinkTrigger } from "./internal-link";
+import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
-import { filterCommands, type SlashCommandItem } from "./slash-command";
+import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
 import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
-import { uploadImageFile } from "./upload-helper";
 
 interface CmsEditorProps {
 	content: string;
 	onChange: (newContent: string) => void;
 	onCompositionStart?: () => void;
 	onCompositionEnd?: () => void;
+	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
 	editable?: boolean;
+}
+
+type Coords = { top: number; left: number };
+
+interface ToolbarItem {
+	label: string;
+	title?: string;
+	className?: string;
+	isActive?: (editor: Editor) => boolean;
+	run: (editor: Editor) => void;
+}
+
+const chain = (editor: Editor) => editor.chain().focus();
+
+const TOOLBAR_GROUPS: ToolbarItem[][] = [
+	[
+		{ label: "본문", isActive: (e) => e.isActive("paragraph"), run: (e) => chain(e).setParagraph().run() },
+		...([2, 3, 4] as const).map((level) => ({
+			label: `H${level}`,
+			title: `제목 ${level}`,
+			isActive: (e: Editor) => e.isActive("heading", { level }),
+			run: (e: Editor) => chain(e).toggleHeading({ level }).run(),
+		})),
+	],
+	[
+		{
+			label: "B",
+			title: "굵게",
+			className: "font-bold",
+			isActive: (e) => e.isActive("bold"),
+			run: (e) => chain(e).toggleBold().run(),
+		},
+		{
+			label: "i",
+			title: "기울임",
+			className: "italic",
+			isActive: (e) => e.isActive("italic"),
+			run: (e) => chain(e).toggleItalic().run(),
+		},
+		{
+			label: "S",
+			title: "취소선",
+			className: "line-through",
+			isActive: (e) => e.isActive("strike"),
+			run: (e) => chain(e).toggleStrike().run(),
+		},
+		{
+			label: "</>",
+			title: "인라인 코드",
+			className: "font-mono",
+			isActive: (e) => e.isActive("code"),
+			run: (e) => chain(e).toggleCode().run(),
+		},
+		{
+			label: "U",
+			title: "밑줄",
+			className: "underline",
+			isActive: (e) => e.isActive("underline"),
+			run: (e) => chain(e).toggleUnderline().run(),
+		},
+		{
+			label: "x²",
+			title: "위첨자",
+			isActive: (e) => e.isActive("superscript"),
+			run: (e) => chain(e).toggleSuperscript().run(),
+		},
+		{
+			label: "x₂",
+			title: "아래첨자",
+			isActive: (e) => e.isActive("subscript"),
+			run: (e) => chain(e).toggleSubscript().run(),
+		},
+	],
+	[
+		{
+			label: "왼쪽",
+			title: "왼쪽 정렬",
+			isActive: (e) => e.isActive({ textAlign: "left" }),
+			run: (e) => chain(e).setTextAlign("left").run(),
+		},
+		{
+			label: "가운데",
+			title: "가운데 정렬",
+			isActive: (e) => e.isActive({ textAlign: "center" }),
+			run: (e) => chain(e).setTextAlign("center").run(),
+		},
+		{
+			label: "오른쪽",
+			title: "오른쪽 정렬",
+			isActive: (e) => e.isActive({ textAlign: "right" }),
+			run: (e) => chain(e).setTextAlign("right").run(),
+		},
+		{ label: "자동", title: "정렬 해제", run: (e) => chain(e).unsetTextAlign().run() },
+	],
+	[
+		{
+			label: "• 목록",
+			title: "글머리 목록",
+			isActive: (e) => e.isActive("bulletList"),
+			run: (e) => chain(e).toggleBulletList().run(),
+		},
+		{
+			label: "1. 목록",
+			title: "번호 목록",
+			isActive: (e) => e.isActive("orderedList"),
+			run: (e) => chain(e).toggleOrderedList().run(),
+		},
+		{
+			label: "☑ 체크",
+			title: "체크 목록",
+			isActive: (e) => e.isActive("taskList"),
+			run: (e) => chain(e).toggleTaskList().run(),
+		},
+		{
+			label: "“ 인용",
+			title: "인용구",
+			isActive: (e) => e.isActive("blockquote"),
+			run: (e) => chain(e).toggleBlockquote().run(),
+		},
+		{
+			label: "코드블록",
+			className: "font-mono",
+			isActive: (e) => e.isActive("codeBlock"),
+			run: (e) => chain(e).toggleCodeBlock().run(),
+		},
+		{
+			label: "표",
+			title: "표 삽입",
+			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+		},
+		{ label: "구분선", run: (e) => chain(e).setHorizontalRule().run() },
+	],
+];
+
+/** 표 안에 있을 때만 보이는 행·열 도구(§4.1). 셀 병합은 v1 범위가 아니다. */
+const TABLE_TOOLS: ToolbarItem[] = [
+	{ label: "↑행", title: "위에 행 추가", run: (e) => chain(e).addRowBefore().run() },
+	{ label: "↓행", title: "아래에 행 추가", run: (e) => chain(e).addRowAfter().run() },
+	{ label: "←열", title: "왼쪽에 열 추가", run: (e) => chain(e).addColumnBefore().run() },
+	{ label: "→열", title: "오른쪽에 열 추가", run: (e) => chain(e).addColumnAfter().run() },
+	{ label: "행 삭제", run: (e) => chain(e).deleteRow().run() },
+	{ label: "열 삭제", run: (e) => chain(e).deleteColumn().run() },
+	{ label: "표 삭제", className: "text-red-600", run: (e) => chain(e).deleteTable().run() },
+];
+
+function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
+	const active = item.isActive?.(editor) ?? false;
+	return (
+		<button
+			type="button"
+			title={item.title ?? item.label}
+			aria-label={item.title ?? item.label}
+			aria-pressed={item.isActive ? active : undefined}
+			disabled={!editor.isEditable}
+			// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
+			onMouseDown={(event) => event.preventDefault()}
+			onClick={() => item.run(editor)}
+			className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 disabled:opacity-40 dark:hover:bg-neutral-800 ${
+				active ? "bg-neutral-200 font-bold dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
+			} ${item.className ?? ""}`}
+		>
+			{item.label}
+		</button>
+	);
+}
+
+async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
+	const search = async (collection: "post" | "memo") => {
+		const params = new URLSearchParams({ collection, pageSize: "25" });
+		if (query) params.set("search", query);
+		for (const status of ["draft", "published"]) params.append("status", status);
+		const res = await fetch(`/api/cms/v1/entries?${params.toString()}`);
+		if (!res.ok) return [];
+		const data = (await res.json()) as {
+			items: { id: string; collection: string; title: string | null; slug: string | null; status: string }[];
+		};
+		return data.items.map((item) => ({
+			id: item.id,
+			collection: item.collection,
+			title: item.title || "제목 없음",
+			slug: item.slug ?? "",
+			status: item.status,
+		}));
+	};
+	const [posts, memos] = await Promise.all([search("post"), search("memo")]);
+	return [...posts, ...memos].slice(0, 20);
 }
 
 export function CmsEditor({
@@ -40,82 +220,56 @@ export function CmsEditor({
 }: CmsEditorProps) {
 	const isInternalUpdateRef = useRef(false);
 	const isComposingRef = useRef(false);
+	const editorRef = useRef<Editor | null>(null);
 
-	// Slash Menu State
-	const [slashOpen, setSlashOpen] = useState(false);
-	const [slashCoords, setSlashCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-	const [slashQuery, setSlashQuery] = useState("");
-	const [slashIndex, setSlashIndex] = useState(0);
-	const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
-	const slashOpenRef = useRef(slashOpen);
-	slashOpenRef.current = slashOpen;
-	const slashQueryRef = useRef(slashQuery);
-	slashQueryRef.current = slashQuery;
-	const slashIndexRef = useRef(slashIndex);
-	slashIndexRef.current = slashIndex;
+	const [slash, setSlash] = useState<{ query: string; index: number; coords: Coords } | null>(null);
+	const slashRangeRef = useRef<Range | null>(null);
+	const slashRef = useRef(slash);
+	slashRef.current = slash;
 
-	// Block Handle State
-	const [handleCoords, setHandleCoords] = useState<{ top: number; left: number } | null>(null);
-	const activeBlockPosRef = useRef<number | null>(null);
-
-	// Internal Link ([[) State
-	const [linkOpen, setLinkOpen] = useState(false);
-	const [linkCoords, setLinkCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-	const [linkQuery, setLinkQuery] = useState("");
-	const [linkIndex, setLinkIndex] = useState(0);
+	const [link, setLink] = useState<{ query: string; index: number; coords: Coords } | null>(null);
 	const [linkItems, setLinkItems] = useState<InternalLinkItem[]>([]);
 	const [isLinkLoading, setIsLinkLoading] = useState(false);
-	const linkRangeRef = useRef<{ from: number; to: number } | null>(null);
-	const linkOpenRef = useRef(linkOpen);
-	linkOpenRef.current = linkOpen;
-	const linkItemsRef = useRef<InternalLinkItem[]>([]);
+	const linkRangeRef = useRef<Range | null>(null);
+	const linkRef = useRef(link);
+	linkRef.current = link;
+	const linkItemsRef = useRef(linkItems);
 	linkItemsRef.current = linkItems;
-	const linkIndexRef = useRef(linkIndex);
-	linkIndexRef.current = linkIndex;
 
-	const editorRef = useRef<any>(null);
+	const [handleCoords, setHandleCoords] = useState<Coords | null>(null);
+	const activeBlockPosRef = useRef<number | null>(null);
+	const [imageDialog, setImageDialog] = useState<{ file: File | null } | null>(null);
 
-	// Image Uploading State
-	const [isUploadingImage, setIsUploadingImage] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState(0);
-	const [pendingImage, setPendingImage] = useState<File | null>(null);
-	const [imageAlt, setImageAlt] = useState("");
-	const [isDecorativeImage, setIsDecorativeImage] = useState(false);
-	const [imageUploadError, setImageUploadError] = useState<string | null>(null);
-
-	const syncTriggerPopup = (currentEditor: Editor) => {
+	const syncTriggerPopup = (current: Editor) => {
 		if (isComposingRef.current) return;
-		const { from } = currentEditor.state.selection;
-		const textBefore = currentEditor.state.doc.textBetween(Math.max(0, from - 50), from, "\n", "\0");
+		const { from } = current.state.selection;
+		const textBefore = current.state.doc.textBetween(Math.max(0, from - 50), from, "\n", "\0");
 
 		const linkMatch = parseInternalLinkTrigger(textBefore);
 		if (linkMatch.active) {
-			const triggerPos = from - linkMatch.query.length - 2;
-			linkRangeRef.current = { from: triggerPos, to: from };
-			setLinkQuery(linkMatch.query);
-			setLinkIndex(0);
-			const coords = currentEditor.view.coordsAtPos(from);
-			setLinkCoords({ top: coords.top, left: coords.left });
-			setLinkOpen(true);
-			setSlashOpen(false);
+			linkRangeRef.current = { from: from - linkMatch.query.length - 2, to: from };
+			setLink({ query: linkMatch.query, index: 0, coords: current.view.coordsAtPos(from) });
+			setSlash(null);
 			return;
 		}
+		setLink(null);
 
-		setLinkOpen(false);
-		const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
-		if (!slashMatch) {
-			setSlashOpen(false);
+		// `/` 메뉴는 빈 문단의 시작에서만 연다(§4.2). 문장 안의 경로(`a/b`)를 명령으로 오인하지 않는다.
+		const slashMatch = textBefore.match(/(?:^|\n)\/([^\s/]*)$/);
+		if (!slashMatch || current.isActive("codeBlock")) {
+			setSlash(null);
 			return;
 		}
+		const query = slashMatch[1] ?? "";
+		slashRangeRef.current = { from: from - query.length - 1, to: from };
+		setSlash({ query, index: 0, coords: current.view.coordsAtPos(from) });
+	};
 
-		const query = slashMatch[1] || "";
-		const slashPos = from - query.length - 1;
-		slashRangeRef.current = { from: slashPos, to: from };
-		setSlashQuery(query);
-		setSlashIndex(0);
-		const coords = currentEditor.view.coordsAtPos(from);
-		setSlashCoords({ top: coords.top, left: coords.left });
-		setSlashOpen(true);
+	const chooseLink = (item: InternalLinkItem) => {
+		const current = editorRef.current;
+		if (!current || !linkRangeRef.current) return;
+		insertInternalLink(current, linkRangeRef.current, item);
+		setLink(null);
 	};
 
 	const editor = useEditor({
@@ -123,103 +277,89 @@ export function CmsEditor({
 		editable,
 		extensions: [
 			StarterKit.configure({
-				heading: {
-					levels: [1, 2, 3],
-				},
-				// `meta`를 보존하는 CmsCodeBlock을 쓴다(스키마의 CMS_SCHEMA_EXTENSIONS).
+				// 본문 삽입은 H2부터지만(§4.1) 이전 글의 H1·H5·H6도 원래 수준으로 보여 준다.
+				heading: { levels: [1, 2, 3, 4, 5, 6] },
+				// `meta`를 보존하는 CmsCodeBlock을 쓴다(CMS_SCHEMA_EXTENSIONS).
 				codeBlock: false,
+				link: { openOnClick: false },
 			}),
 			...CMS_SCHEMA_EXTENSIONS,
 			CmsImageNode,
+			CmsBlockKeymap,
 		],
 		content: mdxToTiptap(content),
 		editorProps: {
 			attributes: {
+				"aria-label": "본문 편집기",
 				class:
 					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
 			},
 			handleKeyDown: (view, event) => {
-				// Korean IME safeguard: do not process navigation keys while composing
-				if (view.composing || event.isComposing || event.keyCode === 229) {
-					return false;
-				}
+				// 한글 IME 조합 중에는 메뉴 탐색·확정을 처리하지 않는다(§4.2).
+				if (view.composing || event.isComposing || event.keyCode === 229) return false;
 
-				if (linkOpenRef.current) {
+				const openLink = linkRef.current;
+				if (openLink) {
 					const items = linkItemsRef.current;
-					if (event.key === "ArrowDown") {
+					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
-						setLinkIndex((prev) => (items.length > 0 ? (prev + 1) % items.length : 0));
-						return true;
-					}
-					if (event.key === "ArrowUp") {
-						event.preventDefault();
-						setLinkIndex((prev) => (items.length > 0 ? (prev - 1 + items.length) % items.length : 0));
+						const step = event.key === "ArrowDown" ? 1 : -1;
+						setLink({ ...openLink, index: items.length ? (openLink.index + step + items.length) % items.length : 0 });
 						return true;
 					}
 					if (event.key === "Enter") {
-						const selected = items[linkIndexRef.current];
-						if (selected && linkRangeRef.current && view) {
-							event.preventDefault();
-							const formatted = formatContentLinkMdx(selected);
-							const { tr } = view.state;
-							tr.delete(linkRangeRef.current.from, linkRangeRef.current.to);
-							tr.insertText(formatted);
-							view.dispatch(tr);
-							setLinkOpen(false);
-							return true;
+						const selected = items[openLink.index];
+						if (!selected) {
+							setLink(null);
+							return false;
 						}
-						// No item matched: close popup and let default Enter key through
-						setLinkOpen(false);
-						return false;
+						event.preventDefault();
+						chooseLink(selected);
+						return true;
 					}
 					if (event.key === "Escape") {
 						event.preventDefault();
-						setLinkOpen(false);
+						setLink(null);
 						return true;
 					}
 				}
 
-				if (slashOpenRef.current) {
-					const filtered = filterCommands(slashQueryRef.current);
-
-					if (event.key === "ArrowDown") {
+				const openSlash = slashRef.current;
+				if (openSlash) {
+					const filtered = filterCommands(openSlash.query);
+					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
-						setSlashIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
-						return true;
-					}
-					if (event.key === "ArrowUp") {
-						event.preventDefault();
-						setSlashIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+						const step = event.key === "ArrowDown" ? 1 : -1;
+						const size = Math.max(1, filtered.length);
+						setSlash({ ...openSlash, index: (openSlash.index + step + size) % size });
 						return true;
 					}
 					if (event.key === "Enter") {
-						const cmd = filtered[slashIndexRef.current];
-						if (cmd && slashRangeRef.current && editorRef.current) {
-							event.preventDefault();
-							cmd.action(editorRef.current, slashRangeRef.current);
-							setSlashOpen(false);
-							return true;
+						const command = filtered[openSlash.index];
+						if (!command || !slashRangeRef.current || !editorRef.current) {
+							setSlash(null);
+							return false;
 						}
-						// No command matched: close popup and let default Enter key through
-						setSlashOpen(false);
-						return false;
+						event.preventDefault();
+						command.action(editorRef.current, slashRangeRef.current);
+						setSlash(null);
+						return true;
 					}
 					if (event.key === "Escape") {
 						event.preventDefault();
-						setSlashOpen(false);
+						setSlash(null);
 						return true;
 					}
 				}
 				return false;
 			},
 		},
-		onUpdate: ({ editor }) => {
+		onUpdate: ({ editor: current }) => {
 			if (isInternalUpdateRef.current) return;
-			onChange(tiptapToMdx(editor.getJSON()));
-
-			// Refresh after compositionend too, since IMEs may not emit a final update.
-			syncTriggerPopup(editor);
+			onChange(tiptapToMdx(current.getJSON()));
+			syncTriggerPopup(current);
 		},
+		onSelectionUpdate: ({ editor: current }) => syncTriggerPopup(current),
 	});
 
 	useEffect(() => {
@@ -234,595 +374,172 @@ export function CmsEditor({
 	}, [content, editor]);
 
 	useEffect(() => {
-		if (!editor) return;
-		editor.setEditable(editable);
+		editor?.setEditable(editable);
 	}, [editable, editor]);
 
-	// Query internal link items from API
+	const linkQuery = link?.query;
 	useEffect(() => {
-		if (!linkOpen) return;
-		let isMounted = true;
-		async function search() {
-			setIsLinkLoading(true);
-			try {
-				const params = new URLSearchParams();
-				params.set("collection", "post");
-				if (linkQuery) params.set("search", linkQuery);
-				params.set("pageSize", "10");
-
-				const res = await fetch(`/api/cms/v1/entries?${params.toString()}`);
-				if (res.ok && isMounted) {
-					const data = await res.json();
-					const mapped = data.items.map((i: any) => ({
-						id: i.id,
-						collection: i.collection,
-						title: i.title || "제목 없음",
-						slug: i.slug || "",
-					}));
-					setLinkItems(mapped);
-					linkItemsRef.current = mapped;
-					setLinkIndex(0);
-				}
-			} catch {
-				// Ignore
-			} finally {
-				if (isMounted) setIsLinkLoading(false);
-			}
-		}
-		search();
+		if (linkQuery === undefined) return;
+		let cancelled = false;
+		setIsLinkLoading(true);
+		const timer = setTimeout(() => {
+			searchLinkTargets(linkQuery)
+				.then((items) => {
+					if (!cancelled) setLinkItems(items);
+				})
+				.catch(() => {
+					if (!cancelled) setLinkItems([]);
+				})
+				.finally(() => {
+					if (!cancelled) setIsLinkLoading(false);
+				});
+		}, 200);
 		return () => {
-			isMounted = false;
+			cancelled = true;
+			clearTimeout(timer);
 		};
-	}, [linkOpen, linkQuery]);
+	}, [linkQuery]);
 
-	// Confirm image meaning before any new editor insertion.
-	const handleUploadImage = useCallback(
-		(file: File) => {
-			if (!editor?.isEditable) return;
-			setImageUploadError(null);
-			setImageAlt("");
-			setIsDecorativeImage(false);
-			setPendingImage(file);
-		},
-		[editor],
-	);
+	useEffect(() => {
+		const open = () => setImageDialog({ file: null });
+		window.addEventListener(OPEN_IMAGE_DIALOG_EVENT, open);
+		return () => window.removeEventListener(OPEN_IMAGE_DIALOG_EVENT, open);
+	}, []);
 
-	const confirmImageUpload = useCallback(async () => {
-		if (!editor || !pendingImage || (!isDecorativeImage && !imageAlt.trim())) return;
-		setIsUploadingImage(true);
-		setUploadProgress(0);
-		setImageUploadError(null);
-		try {
-			const uploaded = await uploadImageFile(pendingImage, setUploadProgress);
+	const insertImage = useCallback(
+		(image: ImageInsertion) => {
 			editor
-				.chain()
+				?.chain()
 				.focus()
 				.insertContent({
 					type: "image",
+					// 등록 미디어는 `mediaId`만 저장한다. 공개 주소는 렌더러가 해석한다(§4.4, §7.1).
 					attrs: {
-						mediaId: uploaded.mediaId,
-						src: uploaded.publicUrl,
-						alt: isDecorativeImage ? "" : imageAlt.trim(),
-						decorative: isDecorativeImage,
+						mediaId: image.mediaId,
+						alt: image.alt,
+						decorative: image.decorative || null,
+						caption: image.caption,
 						width: "100%",
 						align: "center",
 					},
 				})
 				.run();
-			setPendingImage(null);
-		} catch (err) {
-			setImageUploadError(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
-		} finally {
-			setIsUploadingImage(false);
-			setUploadProgress(0);
+			setImageDialog(null);
+		},
+		[editor],
+	);
+
+	const imageFileFrom = (source: DataTransferItemList | FileList | null): File | null => {
+		if (!source) return null;
+		for (let i = 0; i < source.length; i++) {
+			const entry = source[i];
+			const file = entry instanceof File ? entry : entry?.kind === "file" ? entry.getAsFile() : null;
+			if (file?.type.startsWith("image/")) return file;
 		}
-	}, [editor, imageAlt, isDecorativeImage, pendingImage]);
+		return null;
+	};
 
-	// Listen to custom upload events (e.g. from slash command)
-	useEffect(() => {
-		const listener = (e: Event) => {
-			const custom = e as CustomEvent<{ file: File }>;
-			if (custom.detail?.file) {
-				handleUploadImage(custom.detail.file);
-			}
-		};
-		window.addEventListener("cms:upload-image", listener);
-		return () => window.removeEventListener("cms:upload-image", listener);
-	}, [handleUploadImage]);
-
-	// Drag & Drop and Paste Handlers
-	const handlePaste = useCallback(
-		(e: React.ClipboardEvent<HTMLDivElement>) => {
-			const items = e.clipboardData.items;
-			for (let i = 0; i < items.length; i++) {
-				const item = items[i];
-				if (item.type.startsWith("image/")) {
-					const file = item.getAsFile();
-					if (file) {
-						e.preventDefault();
-						handleUploadImage(file);
-						return;
-					}
-				}
-			}
-		},
-		[handleUploadImage],
-	);
-
-	const handleDrop = useCallback(
-		(e: React.DragEvent<HTMLDivElement>) => {
-			const files = e.dataTransfer.files;
-			if (files.length > 0) {
-				for (let i = 0; i < files.length; i++) {
-					const file = files[i];
-					if (file.type.startsWith("image/")) {
-						e.preventDefault();
-						handleUploadImage(file);
-						return;
-					}
-				}
-			}
-		},
-		[handleUploadImage],
-	);
-
-	// Hover-based Block Handle Detection
 	const handleMouseMove = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
+		(event: React.MouseEvent<HTMLDivElement>) => {
 			if (!editor) return;
-			const target = e.target as HTMLElement;
-			const blockEl = target.closest(
-				".prose > p, .prose > h1, .prose > h2, .prose > h3, .prose > blockquote, .prose > pre, .prose > ul, .prose > ol, .prose > hr, .prose > figure",
-			) as HTMLElement | null;
-
-			if (blockEl && editor.view.dom.contains(blockEl)) {
-				try {
-					const pos = editor.view.posAtDOM(blockEl, 0);
-					activeBlockPosRef.current = pos;
-					const rect = blockEl.getBoundingClientRect();
-					setHandleCoords({ top: rect.top, left: rect.left });
-				} catch {
-					// Ignore transient DOM resolution error
-				}
+			const root = editor.view.dom;
+			let block = event.target as HTMLElement | null;
+			while (block && block.parentElement !== root) block = block.parentElement;
+			if (!block) return;
+			try {
+				activeBlockPosRef.current = editor.view.posAtDOM(block, 0);
+				const rect = block.getBoundingClientRect();
+				setHandleCoords({ top: rect.top, left: rect.left });
+			} catch {
+				// DOM이 막 바뀌는 중이면 무시한다.
 			}
 		},
 		[editor],
 	);
 
-	// Block Action Handlers
-	const handleMoveUp = () => {
+	const withActiveBlock = (action: (current: Editor, pos: number) => boolean) => () => {
 		if (!editor || activeBlockPosRef.current === null) return;
-		const pos = activeBlockPosRef.current;
-		const $pos = editor.state.doc.resolve(pos);
-		const node = $pos.nodeAfter || $pos.parent;
-		if (!node) return;
-
-		const prevPos = $pos.before();
-		if (prevPos <= 0) return;
-
-		editor
-			.chain()
-			.focus()
-			.command(({ tr, dispatch }) => {
-				if (dispatch) {
-					// Swap with previous node
-					const nodeSize = node.nodeSize;
-					const slice = tr.doc.slice(pos, pos + nodeSize);
-					tr.delete(pos, pos + nodeSize);
-					tr.insert(prevPos, slice.content);
-				}
-				return true;
-			})
-			.run();
-	};
-
-	const handleMoveDown = () => {
-		if (!editor || activeBlockPosRef.current === null) return;
-		const pos = activeBlockPosRef.current;
-		const $pos = editor.state.doc.resolve(pos);
-		const node = $pos.nodeAfter || $pos.parent;
-		if (!node) return;
-
-		const nextPos = pos + node.nodeSize;
-		if (nextPos >= editor.state.doc.content.size) return;
-
-		editor
-			.chain()
-			.focus()
-			.command(({ tr, dispatch }) => {
-				if (dispatch) {
-					const nodeSize = node.nodeSize;
-					const slice = tr.doc.slice(pos, pos + nodeSize);
-					tr.delete(pos, pos + nodeSize);
-					// Insert after next node
-					const $next = tr.doc.resolve(pos);
-					const nextNodeSize = ($next.nodeAfter || $next.parent).nodeSize;
-					tr.insert(pos + nextNodeSize, slice.content);
-				}
-				return true;
-			})
-			.run();
-	};
-
-	const handleDuplicate = () => {
-		if (!editor || activeBlockPosRef.current === null) return;
-		const pos = activeBlockPosRef.current;
-		const $pos = editor.state.doc.resolve(pos);
-		const node = $pos.nodeAfter || $pos.parent;
-		if (!node) return;
-
-		editor
-			.chain()
-			.focus()
-			.command(({ tr, dispatch }) => {
-				if (dispatch) {
-					const nextPos = pos + node.nodeSize;
-					tr.insert(nextPos, node.copy(node.content));
-				}
-				return true;
-			})
-			.run();
-	};
-
-	const handleDeleteBlock = () => {
-		if (!editor || activeBlockPosRef.current === null) return;
-		const pos = activeBlockPosRef.current;
-		const $pos = editor.state.doc.resolve(pos);
-		const node = $pos.nodeAfter || $pos.parent;
-		if (!node) return;
-
-		editor
-			.chain()
-			.focus()
-			.command(({ tr, dispatch }) => {
-				if (dispatch) {
-					tr.delete(pos, pos + node.nodeSize);
-				}
-				return true;
-			})
-			.run();
-		setHandleCoords(null);
+		editor.commands.focus();
+		action(editor, activeBlockPosRef.current);
 	};
 
 	if (!editor) return null;
 
-	const setFormat = (fn: (e: any) => any) => (e: React.MouseEvent) => {
-		e.preventDefault();
-		fn(editor.chain().focus()).run();
-	};
-
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and drag state
+		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
 		<div
 			className="relative flex min-h-full w-full flex-1 flex-col bg-white dark:bg-neutral-950"
 			onCompositionStart={() => {
 				isComposingRef.current = true;
-				if (onCompositionStart) onCompositionStart();
+				onCompositionStart?.();
 			}}
 			onCompositionEnd={() => {
 				isComposingRef.current = false;
-				if (editor) syncTriggerPopup(editor);
-				if (onCompositionEnd) onCompositionEnd();
+				syncTriggerPopup(editor);
+				onCompositionEnd?.();
 			}}
 			onMouseMove={handleMouseMove}
 		>
-			{/* Fixed Sticky Rich Formatting Toolbar */}
-			<div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-neutral-200 border-b bg-white/95 px-4 py-2 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-				{/* Block Types */}
+			<div
+				role="toolbar"
+				aria-label="서식 도구"
+				className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-neutral-200 border-b bg-white/95 px-4 py-2 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+			>
+				{TOOLBAR_GROUPS.map((group, index) => (
+					<div key={group[0]?.label} className="flex items-center gap-1">
+						{index > 0 && <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />}
+						{group.map((item) => (
+							<ToolbarButton key={item.label} editor={editor} item={item} />
+						))}
+					</div>
+				))}
 				<button
 					type="button"
-					onMouseDown={setFormat((c) => c.setParagraph())}
-					className={`rounded px-2.5 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("paragraph")
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
+					disabled={!editable}
+					onClick={() => setImageDialog({ file: null })}
+					className="flex items-center gap-1 rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 disabled:opacity-40 dark:text-neutral-400 dark:hover:bg-neutral-800"
 				>
-					본문
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleHeading({ level: 1 }))}
-					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("heading", { level: 1 })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					H1
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleHeading({ level: 2 }))}
-					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("heading", { level: 2 })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					H2
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleHeading({ level: 3 }))}
-					className={`rounded px-2 py-1 font-medium text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("heading", { level: 3 })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					H3
-				</button>
-
-				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
-
-				{/* Inlines */}
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleBold())}
-					className={`rounded px-2 py-1 font-bold text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("bold") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					B
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleItalic())}
-					className={`rounded px-2 py-1 text-xs italic transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("italic") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					i
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleStrike())}
-					className={`rounded px-2 py-1 text-xs line-through transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("strike") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					S
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleCode())}
-					className={`rounded px-2 py-1 font-mono text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("code") ? "bg-neutral-200 dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					{"</>"}
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleUnderline())}
-					className={`rounded px-2 py-1 text-xs underline transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("underline")
-							? "bg-neutral-200 dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					U
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleSuperscript())}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("superscript")
-							? "bg-neutral-200 dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					x²
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleSubscript())}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("subscript")
-							? "bg-neutral-200 dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					x₂
-				</button>
-
-				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
-
-				{/* 정렬 (:::text-align) */}
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.setTextAlign("left"))}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive({ textAlign: "left" })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					왼쪽
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.setTextAlign("center"))}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive({ textAlign: "center" })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					가운데
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.setTextAlign("right"))}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive({ textAlign: "right" })
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					오른쪽
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.unsetTextAlign())}
-					className="rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-				>
-					자동
-				</button>
-
-				<div className="mx-1 h-4 w-[1px] bg-neutral-200 dark:border-neutral-800" />
-
-				{/* Lists & Blocks */}
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleBulletList())}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("bulletList")
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					• 목록
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleOrderedList())}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("orderedList")
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					1. 순서목록
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleBlockquote())}
-					className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("blockquote")
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					“ 인용구
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.toggleCodeBlock())}
-					className={`rounded px-2 py-1 font-mono text-xs transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-						editor.isActive("codeBlock")
-							? "bg-neutral-200 font-bold dark:bg-neutral-800"
-							: "text-neutral-600 dark:text-neutral-400"
-					}`}
-				>
-					코드블록
-				</button>
-				<button
-					type="button"
-					onMouseDown={setFormat((c) => c.setHorizontalRule())}
-					className="rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-				>
-					구분선
-				</button>
-				<button
-					type="button"
-					onMouseDown={(e) => {
-						e.preventDefault();
-						const input = document.createElement("input");
-						input.type = "file";
-						input.accept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
-						input.onchange = () => {
-							const file = input.files?.[0];
-							if (file) handleUploadImage(file);
-						};
-						input.click();
-					}}
-					className="flex items-center gap-1 rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-				>
-					<ImageIcon className="h-3.5 w-3.5" />
+					<ImageIcon className="h-3.5 w-3.5" aria-hidden />
 					이미지
 				</button>
+				{editor.isActive("table") && (
+					<fieldset className="flex items-center gap-1 border-0 p-0" aria-label="표 도구">
+						<div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+						{TABLE_TOOLS.map((item) => (
+							<ToolbarButton key={item.label} editor={editor} item={item} />
+						))}
+					</fieldset>
+				)}
 			</div>
 
-			<Dialog open={Boolean(pendingImage)} onOpenChange={(open) => !open && !isUploadingImage && setPendingImage(null)}>
-				<DialogContent className="max-w-md" showCloseButton={!isUploadingImage}>
-					<DialogHeader>
-						<DialogTitle>이미지 대체 텍스트</DialogTitle>
-						<DialogDescription>
-							{pendingImage?.name} 이미지에 설명을 입력하거나 장식 이미지로 표시하세요.
-						</DialogDescription>
-					</DialogHeader>
-					<label htmlFor="image-alt" className="font-medium text-sm">
-						대체 텍스트
-					</label>
-					<input
-						id="image-alt"
-						aria-invalid={Boolean(imageUploadError) || undefined}
-						aria-describedby={imageUploadError ? "image-alt-error" : undefined}
-						value={imageAlt}
-						disabled={isDecorativeImage}
-						aria-required={!isDecorativeImage}
-						onChange={(event) => setImageAlt(event.target.value)}
-						className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
-					/>
-					<label className="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							checked={isDecorativeImage}
-							onChange={(event) => setIsDecorativeImage(event.target.checked)}
-						/>
-						장식 이미지 (스크린 리더에서 생략)
-					</label>
-					{imageUploadError && (
-						<p id="image-alt-error" role="alert" className="text-destructive text-sm">
-							이미지 업로드 실패: {imageUploadError}
-						</p>
-					)}
-					<DialogFooter>
-						<button
-							type="button"
-							disabled={isUploadingImage}
-							onClick={() => setPendingImage(null)}
-							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-						>
-							취소
-						</button>
-						<button
-							type="button"
-							disabled={isUploadingImage || (!isDecorativeImage && !imageAlt.trim())}
-							onClick={confirmImageUpload}
-							className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-						>
-							업로드 및 삽입
-						</button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			<ImageInsertDialog
+				open={imageDialog !== null}
+				initialFile={imageDialog?.file ?? null}
+				onClose={() => setImageDialog(null)}
+				onInsert={insertImage}
+			/>
 
-			{/* Image Uploading Progress Bar */}
-			{isUploadingImage && (
-				<div className="flex items-center gap-3 border-blue-200 border-b bg-blue-50 px-4 py-1.5 text-blue-700 text-xs dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
-					<Loader2 className="h-3.5 w-3.5 animate-spin" />
-					<span>이미지 업로드 중... {uploadProgress}%</span>
-					<div className="h-1.5 max-w-xs flex-1 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900">
-						<div className="h-full bg-blue-600 transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
-					</div>
-				</div>
-			)}
-
-			{/* Borderless Canvas Area */}
-			{/* biome-ignore lint/a11y: editor canvas click focuses the rich text editor */}
+			{/* biome-ignore lint/a11y: canvas click focuses the rich text editor */}
 			<div
 				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 py-6"
 				onClick={() => {
-					if (editor && !editor.isFocused) {
-						editor.chain().focus("end").run();
+					if (!editor.isFocused) editor.chain().focus("end").run();
+				}}
+				onPaste={(event) => {
+					const file = imageFileFrom(event.clipboardData.items);
+					if (file && editable) {
+						event.preventDefault();
+						setImageDialog({ file });
 					}
 				}}
-				onPaste={handlePaste}
-				onDrop={handleDrop}
-				onDragOver={(e) => e.preventDefault()}
+				onDrop={(event) => {
+					const file = imageFileFrom(event.dataTransfer.files);
+					if (file && editable) {
+						event.preventDefault();
+						setImageDialog({ file });
+					}
+				}}
+				onDragOver={(event) => event.preventDefault()}
 			>
 				<EditorContent
 					editor={editor}
@@ -830,54 +547,46 @@ export function CmsEditor({
 				/>
 			</div>
 
-			{/* Slash Command Popup Portal */}
-			{slashOpen && (
+			{slash && (
 				<SlashMenuPopup
-					items={filterCommands(slashQuery)}
-					coords={slashCoords}
-					selectedIndex={slashIndex}
-					onSelect={(cmd) => {
-						if (slashRangeRef.current) {
-							cmd.action(editor, slashRangeRef.current);
-							setSlashOpen(false);
-						}
+					items={filterCommands(slash.query)}
+					coords={slash.coords}
+					selectedIndex={slash.index}
+					onSelect={(command) => {
+						if (slashRangeRef.current) command.action(editor, slashRangeRef.current);
+						setSlash(null);
 					}}
 					onClose={() => {
-						setSlashOpen(false);
+						setSlash(null);
 						editor.chain().focus().run();
 					}}
 				/>
 			)}
 
-			{/* Internal Link Popup Portal */}
-			{linkOpen && (
+			{link && (
 				<InternalLinkPopup
 					items={linkItems}
 					isLoading={isLinkLoading}
-					coords={linkCoords}
-					selectedIndex={linkIndex}
-					onSelect={(item) => {
-						if (linkRangeRef.current) {
-							const formatted = formatContentLinkMdx(item);
-							editor.chain().focus().deleteRange(linkRangeRef.current).insertContent(formatted).run();
-							setLinkOpen(false);
-						}
-					}}
+					coords={link.coords}
+					selectedIndex={link.index}
+					onSelect={chooseLink}
 					onClose={() => {
-						setLinkOpen(false);
+						setLink(null);
 						editor.chain().focus().run();
 					}}
 				/>
 			)}
 
-			{/* Block Handle Floating Overlay */}
-			{handleCoords && (
+			{handleCoords && editable && (
 				<BlockHandleOverlay
 					coords={handleCoords}
-					onMoveUp={handleMoveUp}
-					onMoveDown={handleMoveDown}
-					onDuplicate={handleDuplicate}
-					onDelete={handleDeleteBlock}
+					onMoveUp={withActiveBlock((current, pos) => moveBlock(current, pos, -1))}
+					onMoveDown={withActiveBlock((current, pos) => moveBlock(current, pos, 1))}
+					onDuplicate={withActiveBlock(duplicateBlock)}
+					onDelete={() => {
+						withActiveBlock(deleteBlock)();
+						setHandleCoords(null);
+					}}
 				/>
 			)}
 		</div>

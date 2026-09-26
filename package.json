@@ -4,6 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
+		"cms:db:migrate": "tsx --env-file=.env.local src/cms/adapters/postgres/migrate-cli.ts",
 		"cms:migration:inspect": "tsx src/cms/migrate-from-files/cli.ts inspect",
 		"cms:migration:apply": "tsx src/cms/migrate-from-files/cli.ts apply",
 		"cms:migration:plan:production": "tsx src/cms/migrate-from-files/cli.ts apply-production --dry-run",
@@ -38,8 +39,10 @@
 		"@shikijs/transformers": "^3.22.0",
 		"@tiptap/core": "^3.31.3",
 		"@tiptap/extension-code-block": "^3.31.3",
+		"@tiptap/extension-list": "3.31.3",
 		"@tiptap/extension-subscript": "^3.31.3",
 		"@tiptap/extension-superscript": "^3.31.3",
+		"@tiptap/extension-table": "3.31.3",
 		"@tiptap/extension-text-align": "^3.31.3",
 		"@tiptap/pm": "^3.31.3",
 		"@tiptap/react": "^3.31.3",

@@ -40,7 +40,7 @@ export function BlockHandleOverlay({ coords, onMoveUp, onMoveDown, onDuplicate, 
 
 			{/* Block Actions Dropdown */}
 			{menuOpen && (
-				<div className="absolute top-0 left-7 z-50 w-36 space-y-0.5 rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+				<div className="absolute top-0 left-7 z-50 w-44 space-y-0.5 rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
 					<button
 						type="button"
 						onClick={() => {
@@ -82,6 +82,9 @@ export function BlockHandleOverlay({ coords, onMoveUp, onMoveDown, onDuplicate, 
 					>
 						<span>✕</span> 삭제
 					</button>
+					<p className="border-neutral-200 border-t px-2.5 pt-1.5 text-[10px] text-neutral-400 dark:border-neutral-800">
+						키보드: Alt+↑/↓ 이동 · Mod+Shift+D 복제 · Mod+Shift+Backspace 삭제
+					</p>
 				</div>
 			)}
 		</div>,

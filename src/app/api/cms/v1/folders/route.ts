@@ -1,59 +1,18 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
-import { z } from "zod";
-import { handleApiError } from "../error-handler";
-import { validateSameOrigin } from "../security";
+import { collectionSchema, createFolderBodySchema } from "@/cms/core/api";
+import { adminRoute, json, parseWith, readJsonBody } from "../handler";
 
-const createFolderSchema = z.object({
-	collection: z.enum(["post", "memo", "category", "tag", "collection"]),
-	name: z.string().min(1),
-	parentId: z.string().uuid().nullable().optional().default(null),
-	position: z.number().int().optional().default(0),
+/** 컬렉션별 폴더 트리(§3.3). */
+export const GET = adminRoute(async ({ request }) => {
+	const collection = parseWith(
+		collectionSchema,
+		request.nextUrl.searchParams.get("collection"),
+		"collection is required",
+	);
+	return json(await getCmsContentStore().listFolders({ collection }));
 });
 
-export async function GET(request: NextRequest) {
-	try {
-		await authGateway.verifyAdmin();
-
-		const url = new URL(request.url);
-		const collection = url.searchParams.get("collection");
-		if (!collection) {
-			return NextResponse.json({ code: "invalid_input", message: "collection is required" }, { status: 400 });
-		}
-
-		const store = getCmsContentStore();
-		const folders = await store.listFolders({ collection });
-		return NextResponse.json(folders);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function POST(request: NextRequest) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const body = await request.json();
-		const parsed = createFolderSchema.safeParse(body);
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
-				{ status: 400 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		const folder = await store.createFolder({
-			collection: parsed.data.collection,
-			name: parsed.data.name,
-			parentId: parsed.data.parentId ?? null,
-			position: parsed.data.position,
-		});
-
-		return NextResponse.json(folder, { status: 201 });
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+export const POST = adminRoute(async ({ request }) => {
+	const body = parseWith(createFolderBodySchema, await readJsonBody(request));
+	return json(await getCmsContentStore().createFolder(body), { status: 201 });
+});

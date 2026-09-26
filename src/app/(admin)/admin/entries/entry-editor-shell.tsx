@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
-import { EditorToggle } from "@/cms/editor/editor-toggle";
+import { isRecordCollection } from "@/cms/core/collections";
+import { autoSummary } from "@/cms/core/plain-text";
+import { slugify } from "@/cms/core/slug";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
+import { analyze } from "@/cms/mdx";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -15,520 +20,225 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
-import { type CmsIssue, cmsApiErrorMessage, cmsApiIssues, cmsIssueMessage } from "../api-error-message";
-import { deleteLocalBackup, getLocalBackup, type LocalBackupRecord, saveLocalBackup } from "./[id]/edit/indexed-db";
+import { CmsApiError, cmsFetch, errorText } from "../admin-api";
+import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
+import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { describeEntryStatus } from "../shared/entry-status";
+import { CommandPalette, type PaletteCommand } from "./command-palette";
+import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
-import { slugify } from "./slugify";
-
-type SaveStatus = "저장됨" | "저장 중" | "미저장 변경" | "오류" | "오프라인" | "충돌";
-
-interface EntryData {
-	id: string;
-	collection: string;
-	status: "draft" | "published" | "archived" | "trashed";
-	version: number;
-	publishedAt?: string;
-	workingSlug: string | null;
-	publishedSlug: string | null;
-	working: {
-		metadata: Record<string, any>;
-		mdx: string;
-	};
-}
+import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
+import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
 interface EntryEditorShellProps {
 	mode: "new" | "edit";
 	initialEntryId?: string;
 	collection?: string;
+	/** 복구본 키에 쓰는 관리자 ID(§5.1). */
+	adminId: string;
+	/** 새 글을 만들 폴더(목록에서 연 위치). */
+	folderId?: string | null;
 }
 
-export function EntryEditorShell({ mode, initialEntryId, collection: propCollection = "post" }: EntryEditorShellProps) {
+type Recovery =
+	| { kind: "restore"; backup: LocalBackupRecord<EntryForm> }
+	| { kind: "conflict"; backup: LocalBackupRecord<EntryForm>; server: EntryData };
+
+type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
+
+const formatSeoul = (value: string | null | undefined) => formatSeoulDateTimeInput(value ?? null).replace("T", " ");
+
+/**
+ * 게시글·메모 편집 화면(§3.1, §5). 태그·카테고리·모음집(record 컬렉션)은 목록의 작은 폼에서 편집한다.
+ */
+export function EntryEditorShell({
+	mode,
+	initialEntryId,
+	collection: propCollection = "post",
+	adminId,
+	folderId,
+}: EntryEditorShellProps) {
+	const router = useRouter();
 	const [entry, setEntry] = useState<EntryData | null>(null);
-	const [incomingReferences, setIncomingReferences] = useState<IncomingReferenceItem[]>([]);
-	const [isLoadingIncomingReferences, setIsLoadingIncomingReferences] = useState(false);
-	const [incomingReferencesError, setIncomingReferencesError] = useState<string | null>(null);
-	const incomingReferencesRequestRef = useRef(0);
 	const [collection, setCollection] = useState(propCollection);
 	const [isLoading, setIsLoading] = useState(mode === "edit");
-
-	useEffect(() => {
-		setCollection(propCollection);
-	}, [propCollection]);
-
-	const refreshIncomingReferences = useCallback(async (targetId: string) => {
-		const requestId = ++incomingReferencesRequestRef.current;
-		setIsLoadingIncomingReferences(true);
-		setIncomingReferencesError(null);
-		try {
-			const res = await fetch(`/api/cms/v1/entries/${targetId}/relations`);
-			if (!res.ok) throw new Error("사용처를 불러오지 못했습니다.");
-			const data = await res.json();
-			if (requestId === incomingReferencesRequestRef.current) {
-				setIncomingReferences(Array.isArray(data.incomingReferences) ? data.incomingReferences : []);
-			}
-		} catch {
-			if (requestId === incomingReferencesRequestRef.current) {
-				setIncomingReferencesError("사용처를 불러오지 못했습니다.");
-			}
-		} finally {
-			if (requestId === incomingReferencesRequestRef.current) setIsLoadingIncomingReferences(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		if (entry?.id) {
-			void refreshIncomingReferences(entry.id);
-			return;
-		}
-		incomingReferencesRequestRef.current += 1;
-		setIncomingReferences([]);
-		setIncomingReferencesError(null);
-		setIsLoadingIncomingReferences(false);
-	}, [entry?.id, refreshIncomingReferences]);
-
-	// Metadata Form State
-	const [title, setTitle] = useState("");
-	const [slug, setSlug] = useState("");
-	const [isSlugTouched, setIsSlugTouched] = useState(false);
-	const [publishDate, setPublishDate] = useState("");
-	const [description, setDescription] = useState("");
-	const [categoryId, setCategoryId] = useState<string | null>(null);
-	const [tagIds, setTagIds] = useState<string[]>([]);
-	// SEO 메타(M7-FE-2). performSave의 의존성 배열에 값이 없어 ref로 최신값을 넘긴다.
-	const [seoTitle, setSeoTitle] = useState("");
-	const [seoDescription, setSeoDescription] = useState("");
-	const [canonicalUrl, setCanonicalUrl] = useState("");
+	const [loadError, setLoadError] = useState<string | null>(null);
+	const [editorMode, setEditorMode] = useState<"visual" | "source">("visual");
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 	const [isNarrowScreen, setIsNarrowScreen] = useState(false);
-	useEffect(() => {
-		const media = window.matchMedia?.("(max-width: 639px)");
-		if (!media) return;
-		setIsNarrowScreen(media.matches);
-		if (media.matches) setIsInspectorOpen(false);
-		const update = () => setIsNarrowScreen(media.matches);
-		media.addEventListener?.("change", update);
-		return () => media.removeEventListener?.("change", update);
-	}, []);
-
-	const categoryIdRef = useRef<string | null>(null);
-	const tagIdsRef = useRef<string[]>([]);
-	const seoTitleRef = useRef("");
-	const seoDescriptionRef = useRef("");
-	const canonicalUrlRef = useRef("");
-
-	// Editor State
-	const [mdx, setMdx] = useState("");
-	const [editorMode, setEditorMode] = useState<"visual" | "source">("visual");
-	const [saveStatus, setSaveStatus] = useState<SaveStatus>("저장됨");
-
-	// Modals
-	const [recoveryPrompt, setRecoveryPrompt] = useState<LocalBackupRecord | null>(null);
-	const [conflictData, setConflictData] = useState<{
-		server: EntryData;
-		local: { title: string; slug: string; mdx: string };
-	} | null>(null);
-	const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-	const [scheduleInputDate, setScheduleInputDate] = useState("");
+	const [isSlugTouched, setIsSlugTouched] = useState(mode === "edit");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [pendingTemplateMdx, setPendingTemplateMdx] = useState<string | null>(null);
 	const [actionFeedback, setActionFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
 	const [publishIssues, setPublishIssues] = useState<CmsIssue[]>([]);
 	const [pendingBodyPosition, setPendingBodyPosition] = useState<CmsIssue["position"]>();
 	const [pendingFieldPath, setPendingFieldPath] = useState<string | null>(null);
-
-	// Template Menu State
+	const [recovery, setRecovery] = useState<Recovery | null>(null);
+	const [conflict, setConflict] = useState<{ server: EntryData; local: EntryForm } | null>(null);
+	const [scheduleOpen, setScheduleOpen] = useState(false);
+	const [scheduleInput, setScheduleInput] = useState("");
 	const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
-	const [availableTemplates, setAvailableTemplates] = useState<{ id: string; name: string; mdx: string }[]>([]);
-	const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
+	const [templates, setTemplates] = useState<{ id: string; name: string; mdx: string }[] | null>(null);
+	const [pendingTemplateMdx, setPendingTemplateMdx] = useState<string | null>(null);
+	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const [paletteOpen, setPaletteOpen] = useState(false);
+	const [incoming, setIncoming] = useState<{ items: IncomingReferenceItem[]; loading: boolean; error: string | null }>({
+		items: [],
+		loading: false,
+		error: null,
+	});
 
-	const handleOpenTemplateMenu = async () => {
-		if (templateMenuOpen) {
-			setTemplateMenuOpen(false);
-			return;
-		}
-		setTemplateMenuOpen(true);
-		setIsTemplatesLoading(true);
+	const scheduleLocked = Boolean(entry?.schedule?.pending);
+	const isTrashed = entry?.status === "trashed";
+	const isReadOnly = scheduleLocked || isTrashed;
+
+	const autosave = useEntryAutosave({
+		adminId,
+		collection,
+		entry,
+		initialForm: EMPTY_FORM,
+		enabled: !isReadOnly,
+		newEntryFolderId: folderId,
+		onSaved: (saved) => setEntry((current) => ({ ...saved, schedule: current?.schedule ?? saved.schedule })),
+		onConflict: (server, local) => setConflict({ server, local }),
+	});
+	const { form, setForm } = autosave;
+
+	// §4.4: 해석할 수 없는 MDX나 frontmatter가 있는 본문은 시각 모드로 열지 않는다. 열면 빈 문서가 되어
+	// 입력 한 번에 원문이 덮어써진다. 원문 모드에서 고치거나 보존한 채 저장할 수 있다.
+	const deferredMdx = useDeferredValue(form.mdx);
+	const sourceProblems = useMemo<CmsIssue[]>(() => {
+		const analysis = analyze(deferredMdx);
+		const problems: CmsIssue[] = analysis.errors.map((error) => ({
+			code: "mdx_error",
+			message: error.message,
+			position: error.position,
+		}));
+		if (analysis.frontmatter !== null) problems.push({ code: "frontmatter_present", position: { line: 1, column: 1 } });
+		return problems;
+	}, [deferredMdx]);
+	const canUseVisual = sourceProblems.length === 0;
+	useEffect(() => {
+		if (!canUseVisual && editorMode === "visual") setEditorMode("source");
+	}, [canUseVisual, editorMode]);
+
+	useEffect(() => {
+		const media = window.matchMedia?.("(max-width: 1023px)");
+		if (!media) return;
+		const update = () => {
+			setIsNarrowScreen(media.matches);
+			// 1024px 이하에서는 본문을 우선한다(§3.1).
+			if (media.matches) setIsInspectorOpen(false);
+		};
+		update();
+		media.addEventListener?.("change", update);
+		return () => media.removeEventListener?.("change", update);
+	}, []);
+
+	const refreshIncoming = useCallback(async (targetId: string) => {
+		setIncoming((current) => ({ ...current, loading: true, error: null }));
 		try {
-			const res = await fetch(`/api/cms/v1/templates?forCollection=${collection}`);
-			if (res.ok) {
-				const data = await res.json();
-				setAvailableTemplates(data.items || []);
+			const data = await cmsFetch<{ incomingReferences: IncomingReferenceItem[] }>(
+				`/api/cms/v1/entries/${targetId}/relations`,
+			);
+			setIncoming({ items: data.incomingReferences ?? [], loading: false, error: null });
+		} catch {
+			setIncoming({ items: [], loading: false, error: "사용처를 불러오지 못했습니다." });
+		}
+	}, []);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: autosave methods are ref-backed and stable
+	const loadEntry = useCallback(
+		async (id: string) => {
+			const loaded = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, { fallback: "문서를 불러올 수 없습니다." });
+			if (isRecordCollection(loaded.collection)) {
+				// 태그·카테고리·모음집은 명시적 저장 폼을 쓴다(§5.2).
+				router.replace(`/admin?collection=${loaded.collection}`);
+				return null;
 			}
-		} catch (err) {
-			console.error("Failed to load templates", err);
-		} finally {
-			setIsTemplatesLoading(false);
-		}
-	};
-
-	const applyTemplate = (templateMdx: string) => {
-		setMdx(templateMdx);
-		mdxRef.current = templateMdx;
-		triggerSave({ mdx: templateMdx });
-		setTemplateMenuOpen(false);
-		setPendingTemplateMdx(null);
-	};
-
-	const handleApplyTemplate = (templateMdx: string) => {
-		if (mdx.trim().length > 0) {
-			setPendingTemplateMdx(templateMdx);
-			return;
-		}
-		applyTemplate(templateMdx);
-	};
-
-	// Autosave Refs
-	const entryIdRef = useRef<string | null>(initialEntryId || null);
-	const currentVersionRef = useRef(1);
-	const serverFingerprintRef = useRef("");
-	const changeSeqRef = useRef(0);
-	const lastAckSeqRef = useRef(0);
-	const inflightSeqRef = useRef<number | null>(null);
-	const isComposingRef = useRef(false);
-	const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-	const maxWaitTimerRef = useRef<NodeJS.Timeout | null>(null);
-	useEffect(
-		() => () => {
-			if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-			if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
+			const loadedForm = formFromEntry(loaded);
+			setEntry(loaded);
+			setCollection(loaded.collection);
+			autosave.resetFromServer(loaded, loadedForm);
+			void refreshIncoming(loaded.id);
+			return { loaded, loadedForm };
 		},
-		[],
+		[refreshIncoming, router],
 	);
 
-	const titleRef = useRef(title);
-	titleRef.current = title;
-	const slugRef = useRef(slug);
-	slugRef.current = slug;
-	const mdxRef = useRef(mdx);
-	mdxRef.current = mdx;
-	const publishDateRef = useRef(publishDate);
-	publishDateRef.current = publishDate;
-	const isSlugTouchedRef = useRef(isSlugTouched);
-	isSlugTouchedRef.current = isSlugTouched;
-
-	const editorToggleRef = useRef<EditorToggle | null>(null);
-
-	const computeFingerprint = (t: string, s: string, m: string, date = publishDateRef.current) =>
-		date ? `${t}:::${s}:::${m}:::${date}` : `${t}:::${s}:::${m}`;
-
-	// Fetch existing entry if edit mode
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fingerprint helper is pure and stable
+	// 편집 화면을 열 때 서버 값과 브라우저 복구본을 비교한다(§5.1).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per opened entry
 	useEffect(() => {
-		if (mode !== "edit" || !initialEntryId) return;
-		let isMounted = true;
-		async function load() {
-			try {
-				const res = await fetch(`/api/cms/v1/entries/${initialEntryId}`);
-				if (!res.ok) throw new Error("문서를 불러올 수 없습니다.");
-				const data: EntryData = await res.json();
-				if (!isMounted) return;
-
-				setEntry(data);
-				if (data.collection) {
-					setCollection(data.collection);
+		let cancelled = false;
+		const open = async () => {
+			if (mode === "new") {
+				if (isRecordCollection(propCollection)) {
+					router.replace(`/admin?collection=${propCollection}`);
+					return;
 				}
-				const initialTitle = data.working.metadata?.title || "";
-				const initialSlug = data.workingSlug || "";
-				const initialMdx = data.working.mdx || "";
-				const initialPublishDate = formatSeoulDateTimeInput(data.working.metadata?.publishedAt || data.publishedAt);
-				serverFingerprintRef.current = computeFingerprint(initialTitle, initialSlug, initialMdx, initialPublishDate);
-
-				setTitle(initialTitle);
-				setSlug(initialSlug);
-				setIsSlugTouched(true);
-				setMdx(initialMdx);
-				setPublishDate(initialPublishDate);
-				publishDateRef.current = initialPublishDate;
-				currentVersionRef.current = data.version;
-
-				setDescription(data.working.metadata?.summary || "");
-				const loadedSeoTitle = data.working.metadata?.seoTitle || "";
-				const loadedSeoDescription = data.working.metadata?.seoDescription || "";
-				const loadedCanonicalUrl = data.working.metadata?.canonicalUrl || "";
-				setSeoTitle(loadedSeoTitle);
-				seoTitleRef.current = loadedSeoTitle;
-				setSeoDescription(loadedSeoDescription);
-				seoDescriptionRef.current = loadedSeoDescription;
-				setCanonicalUrl(loadedCanonicalUrl);
-				canonicalUrlRef.current = loadedCanonicalUrl;
-				if (data.working.metadata?.categoryId) {
-					setCategoryId(data.working.metadata.categoryId);
-					categoryIdRef.current = data.working.metadata.categoryId;
+				const backup = await getLocalBackup<EntryForm>(backupKey(adminId, null, propCollection));
+				if (!cancelled && backup && backup.localFingerprint !== backup.baseFingerprint) {
+					setRecovery({ kind: "restore", backup });
 				}
-				if (Array.isArray(data.working.metadata?.tagIds)) {
-					const ids = data.working.metadata.tagIds.filter((t: any) => typeof t === "string");
-					setTagIds(ids);
-					tagIdsRef.current = ids;
-				}
-
-				editorToggleRef.current = new EditorToggle(initialMdx);
-
-				// IndexedDB check
-				const backup = await getLocalBackup(`admin:${initialEntryId}`);
-				if (backup) {
-					const fp = computeFingerprint(initialTitle, initialSlug, initialMdx);
-					if (backup.baseFingerprint === fp && backup.localFingerprint !== fp) {
-						setRecoveryPrompt(backup);
-					} else if (backup.localFingerprint === fp) {
-						await deleteLocalBackup(`admin:${initialEntryId}`);
-					}
-				}
-			} catch (err: any) {
-				console.error(err);
-			} finally {
-				if (isMounted) setIsLoading(false);
+				return;
 			}
-		}
-		load();
+			try {
+				const result = await loadEntry(initialEntryId as string);
+				if (!result || cancelled) return;
+				const key = backupKey(adminId, result.loaded.id, result.loaded.collection);
+				const backup = await getLocalBackup<EntryForm>(key);
+				if (!backup || cancelled) return;
+				if (backup.localFingerprint === formFingerprint(result.loadedForm)) {
+					await deleteLocalBackup(key);
+				} else if (backup.baseVersion === result.loaded.version) {
+					setRecovery({ kind: "restore", backup });
+				} else {
+					// 복구본 이후 서버도 바뀌었다. 덮어쓰지 않고 양쪽을 보여 준다.
+					setRecovery({ kind: "conflict", backup, server: result.loaded });
+				}
+			} catch (error) {
+				if (!cancelled) setLoadError(errorText(error, "문서를 불러올 수 없습니다."));
+			} finally {
+				if (!cancelled) setIsLoading(false);
+			}
+		};
+		void open();
 		return () => {
-			isMounted = false;
+			cancelled = true;
 		};
 	}, [mode, initialEntryId]);
 
-	useEffect(() => {
-		if (mode !== "new") return;
-		let active = true;
-		getLocalBackup(`admin:new:${collection}`).then((backup) => {
-			if (active && backup && backup.localFingerprint !== backup.baseFingerprint) setRecoveryPrompt(backup);
-		});
-		return () => {
-			active = false;
-		};
-	}, [mode, collection]);
+	const applyRecovered = (recovered: EntryForm) => {
+		setIsSlugTouched(true);
+		setForm(recovered);
+		setRecovery(null);
+	};
 
-	// Inflight Worker: handles either initial POST or subsequent PATCH
-	// biome-ignore lint/correctness/useExhaustiveDependencies: autosave worker and scheduler call each other through refs
-	const performSave = useCallback(async () => {
-		if (inflightSeqRef.current !== null) return;
-		if (changeSeqRef.current <= lastAckSeqRef.current) {
-			setSaveStatus("저장됨");
+	const handleTitleChange = (title: string) => setForm(isSlugTouched ? { title } : { title, slug: slugify(title) });
+
+	const focusIssue = (issue: CmsIssue) => {
+		if (issue.position || issue.path === "mdx" || issue.path === "frontmatter") {
+			if (isNarrowScreen) setIsInspectorOpen(false);
+			setPendingBodyPosition(issue.position ?? { line: 1, column: 1 });
+			setEditorMode("source");
 			return;
 		}
-		if (isComposingRef.current) return;
-
-		const targetSeq = changeSeqRef.current;
-		inflightSeqRef.current = targetSeq;
-		setSaveStatus("저장 중");
-
-		const currentTitle = titleRef.current;
-		const currentSlug = slugRef.current;
-		const currentMdx = mdxRef.current;
-
-		const currentEntryId = entryIdRef.current;
-
-		try {
-			const metadataToSave: Record<string, any> = {
-				...(entry?.working.metadata || {}),
-				title: currentTitle,
-			};
-			if (description.trim()) metadataToSave.summary = description.trim();
-			if (categoryIdRef.current) metadataToSave.categoryId = categoryIdRef.current;
-			else delete metadataToSave.categoryId;
-			if (tagIdsRef.current.length > 0) metadataToSave.tagIds = tagIdsRef.current;
-			else delete metadataToSave.tagIds;
-			// SEO 메타는 비우면 키를 지워 head가 title/summary 폴백으로 되돌아가게 한다.
-			if (seoTitleRef.current.trim()) metadataToSave.seoTitle = seoTitleRef.current.trim();
-			else delete metadataToSave.seoTitle;
-			if (seoDescriptionRef.current.trim()) metadataToSave.seoDescription = seoDescriptionRef.current.trim();
-			else delete metadataToSave.seoDescription;
-			if (canonicalUrlRef.current.trim()) metadataToSave.canonicalUrl = canonicalUrlRef.current.trim();
-			else delete metadataToSave.canonicalUrl;
-			const publishedAt = publishDateRef.current ? parseSeoulDateTimeInput(publishDateRef.current) : null;
-			if (publishDateRef.current && !publishedAt) {
-				inflightSeqRef.current = null;
-				setSaveStatus("오류");
-				return;
-			}
-			if (publishedAt) metadataToSave.publishedAt = publishedAt;
-			else delete metadataToSave.publishedAt;
-
-			if (!currentEntryId) {
-				// Initial lazy creation via POST
-				const res = await fetch("/api/cms/v1/entries", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						collection,
-						slug: currentSlug || null,
-						metadata: metadataToSave,
-						mdx: currentMdx,
-					}),
-				});
-
-				if (res.ok) {
-					const created: EntryData = await res.json();
-					entryIdRef.current = created.id;
-					setEntry(created);
-					currentVersionRef.current = created.version;
-					serverFingerprintRef.current = computeFingerprint(currentTitle, currentSlug, currentMdx);
-					lastAckSeqRef.current = targetSeq;
-					inflightSeqRef.current = null;
-
-					// Quietly promote URL without unmounting or triggering App Router remount
-					window.history.replaceState({ ...window.history.state }, "", `/admin/entries/${created.id}/edit`);
-
-					await deleteLocalBackup(`admin:new:${collection}`);
-
-					if (changeSeqRef.current === targetSeq) {
-						setSaveStatus("저장됨");
-					} else {
-						setSaveStatus("미저장 변경");
-						triggerSave();
-					}
-				} else {
-					inflightSeqRef.current = null;
-					setSaveStatus("오류");
-				}
-			} else {
-				// Standard PATCH update
-				const res = await fetch(`/api/cms/v1/entries/${currentEntryId}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						expectedVersion: currentVersionRef.current,
-						slug: currentSlug || null,
-						metadata: metadataToSave,
-						mdx: currentMdx,
-					}),
-				});
-
-				if (res.ok) {
-					const updated = await res.json();
-					currentVersionRef.current = updated.version;
-					serverFingerprintRef.current = computeFingerprint(currentTitle, currentSlug, currentMdx);
-					lastAckSeqRef.current = targetSeq;
-					inflightSeqRef.current = null;
-
-					if (changeSeqRef.current === targetSeq) {
-						setSaveStatus("저장됨");
-						await deleteLocalBackup(`admin:${currentEntryId}`);
-					} else {
-						setSaveStatus("미저장 변경");
-						triggerSave();
-					}
-				} else if (res.status === 409) {
-					inflightSeqRef.current = null;
-					setSaveStatus("충돌");
-					const freshRes = await fetch(`/api/cms/v1/entries/${currentEntryId}`);
-					if (freshRes.ok) {
-						const freshData = await freshRes.json();
-						setConflictData({
-							server: freshData,
-							local: { title: currentTitle, slug: currentSlug, mdx: currentMdx },
-						});
-					}
-				} else {
-					inflightSeqRef.current = null;
-					setSaveStatus("오류");
-				}
-			}
-		} catch {
-			inflightSeqRef.current = null;
-			setSaveStatus("오프라인");
+		if (issue.path) {
+			setPendingFieldPath(issue.path);
+			setIsInspectorOpen(true);
 		}
-	}, [collection, entry]);
-
-	// Trigger Save (2s idle / 10s maxWait)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fingerprint helper is pure and stable
-	const triggerSave = useCallback(
-		(override?: { title?: string; slug?: string; mdx?: string; publishDate?: string }) => {
-			if (override?.title !== undefined) titleRef.current = override.title;
-			if (override?.slug !== undefined) slugRef.current = override.slug;
-			if (override?.mdx !== undefined) mdxRef.current = override.mdx;
-			if (override?.publishDate !== undefined) publishDateRef.current = override.publishDate;
-
-			const currentTitle = titleRef.current;
-			const currentSlug = slugRef.current;
-			const currentMdx = mdxRef.current;
-			const currentPublishDate = publishDateRef.current;
-
-			setSaveStatus("미저장 변경");
-			changeSeqRef.current += 1;
-
-			const activeKey = entryIdRef.current ? `admin:${entryIdRef.current}` : `admin:new:${collection}`;
-			saveLocalBackup({
-				key: activeKey,
-				entryId: entryIdRef.current || "new",
-				baseVersion: currentVersionRef.current,
-				baseFingerprint: serverFingerprintRef.current,
-				localFingerprint: computeFingerprint(currentTitle, currentSlug, currentMdx, currentPublishDate),
-				snapshot: {
-					title: currentTitle,
-					slug: currentSlug || null,
-					metadata: { publishDateInput: currentPublishDate },
-					mdx: currentMdx,
-				},
-				changeSeq: changeSeqRef.current,
-				savedAt: Date.now(),
-			});
-
-			if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-			idleTimerRef.current = setTimeout(() => {
-				if (maxWaitTimerRef.current) {
-					clearTimeout(maxWaitTimerRef.current);
-					maxWaitTimerRef.current = null;
-				}
-				performSave();
-			}, 2000);
-
-			if (!maxWaitTimerRef.current) {
-				maxWaitTimerRef.current = setTimeout(() => {
-					maxWaitTimerRef.current = null;
-					performSave();
-				}, 10000);
-			}
-		},
-		[collection, performSave],
-	);
-
-	// Title / Slug Handlers
-	const handleTitleChange = (newTitle: string) => {
-		setTitle(newTitle);
-		titleRef.current = newTitle;
-		if (!isSlugTouchedRef.current) {
-			const autoSlug = slugify(newTitle);
-			setSlug(autoSlug);
-			slugRef.current = autoSlug;
-			triggerSave({ title: newTitle, slug: autoSlug });
-		} else {
-			triggerSave({ title: newTitle });
-		}
-	};
-
-	const handleSlugChange = (newSlug: string) => {
-		setIsSlugTouched(true);
-		isSlugTouchedRef.current = true;
-		setSlug(newSlug);
-		slugRef.current = newSlug;
-		triggerSave({ slug: newSlug });
-	};
-
-	const handlePublishDateChange = (value: string) => {
-		setPublishDate(value);
-		publishDateRef.current = value;
-		triggerSave({ publishDate: value });
-	};
-
-	const handleRegenerateSlug = () => {
-		const autoSlug = slugify(titleRef.current);
-		setIsSlugTouched(false);
-		isSlugTouchedRef.current = false;
-		setSlug(autoSlug);
-		slugRef.current = autoSlug;
-		triggerSave({ slug: autoSlug });
 	};
 
 	useEffect(() => {
 		if (!pendingBodyPosition || editorMode !== "source") return;
 		const textarea = document.getElementById("cms-mdx-source") as HTMLTextAreaElement | null;
 		if (!textarea) return;
-		const lines = mdx.split("\n");
+		const lines = form.mdx.split("\n");
 		const offset = lines.slice(0, pendingBodyPosition.line - 1).reduce((sum, line) => sum + line.length + 1, 0);
-		const index = Math.min(mdx.length, offset + pendingBodyPosition.column - 1);
+		const index = Math.min(form.mdx.length, offset + pendingBodyPosition.column - 1);
 		textarea.focus();
 		textarea.setSelectionRange(index, index);
 		setPendingBodyPosition(undefined);
-	}, [pendingBodyPosition, editorMode, mdx]);
+	}, [pendingBodyPosition, editorMode, form.mdx]);
 
 	useEffect(() => {
 		if (!pendingFieldPath || !isInspectorOpen) return;
@@ -539,160 +249,590 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 		}
 	}, [pendingFieldPath, isInspectorOpen]);
 
-	const focusIssue = (issue: CmsIssue) => {
-		if (issue.position || issue.path === "mdx" || issue.path === "frontmatter") {
-			if (isNarrowScreen) setIsInspectorOpen(false);
-			setPendingBodyPosition(issue.position ?? { line: 1, column: 1 });
-			setEditorMode("source");
-			return;
+	/** 대기 중인 저장을 끝내고 항목 ID를 돌려준다. 저장되지 않았으면 이유를 보여 주고 `null`이다. */
+	const ensureSaved = async (purpose: string) => {
+		if (autosave.status === "conflict") {
+			setActionFeedback({ type: "error", message: `편집 충돌을 해결한 후 ${purpose}할 수 있습니다.` });
+			return null;
 		}
-		if (issue.path && ["title", "slug", "categoryId", "tagIds"].includes(issue.path)) {
-			setPendingFieldPath(issue.path);
-			setIsInspectorOpen(true);
+		if (!(await autosave.flush())) {
+			setActionFeedback({
+				type: "error",
+				message: `변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.lastError ?? "저장 상태를 확인하세요."}`,
+			});
+			return null;
 		}
+		const id = autosave.getEntryId();
+		if (!id) setActionFeedback({ type: "error", message: `초안을 저장한 후 ${purpose}할 수 있습니다.` });
+		return id;
 	};
 
-	// Actions (Publish, Archive, Trash)
+	const handleSaveNow = async () => {
+		if (isReadOnly) return;
+		if (await autosave.flush()) toast.success("저장했습니다.");
+	};
+
 	const handlePublish = async () => {
-		if (saveStatus === "충돌") {
-			setActionFeedback({ type: "error", message: "편집 충돌을 해결한 후 발행할 수 있습니다." });
-			return;
-		}
+		if (isSubmitting || isReadOnly) return;
 		setPublishIssues([]);
 		setActionFeedback(null);
-		if (isSubmitting) return;
-		setIsSubmitting(true);
-		try {
-			await performSave();
-			if (inflightSeqRef.current !== null || changeSeqRef.current > lastAckSeqRef.current) {
-				setActionFeedback({
-					type: "error",
-					message: "변경사항이 저장되지 않아 발행하지 않았습니다. 저장 상태를 확인하세요.",
-				});
+		// §5.6: 게시글 요약이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
+		if (collection === "post" && !form.summary.trim()) {
+			const generated = autoSummary(form.mdx);
+			if (!generated) {
+				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: "summary" }]);
+				setActionFeedback({ type: "error", message: "요약을 만들 본문이 없습니다. 요약을 직접 입력하세요." });
 				return;
 			}
-			const activeId = entryIdRef.current;
-			if (!activeId) {
-				setActionFeedback({ type: "error", message: "초안을 저장한 후 발행할 수 있습니다." });
-				return;
-			}
-			const publishedAt = publishDateRef.current ? parseSeoulDateTimeInput(publishDateRef.current) : undefined;
-			if (publishDateRef.current && !publishedAt) {
-				setActionFeedback({ type: "error", message: "발행 일시를 확인하세요." });
-				return;
-			}
-			if (publishedAt && new Date(publishedAt).getTime() > Date.now()) {
+			setForm({ summary: generated });
+			toast.message("본문에서 요약을 만들었습니다. 속성 패널에서 고칠 수 있습니다.");
+		}
+		if (form.publishDate) {
+			const publishedAt = parseSeoulDateTimeInput(form.publishDate);
+			if (publishedAt && Date.parse(publishedAt) > Date.now()) {
 				setActionFeedback({
 					type: "error",
 					message: "미래 시각은 발행일로 지정할 수 없습니다. 예약 기능을 사용하세요.",
 				});
 				return;
 			}
-
-			const res = await fetch(`/api/cms/v1/entries/${activeId}/publish`, {
+		}
+		setIsSubmitting(true);
+		try {
+			const id = await ensureSaved("발행");
+			if (!id) return;
+			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ expectedVersion: currentVersionRef.current, ...(publishedAt ? { publishedAt } : {}) }),
+				json: { expectedVersion: autosave.getVersion() },
+				fallback: "발행하지 못했습니다.",
 			});
-			if (!res.ok) {
-				const err = await res.json().catch(() => ({}));
-				if (res.status === 409) {
-					setSaveStatus("충돌");
-					const freshRes = await fetch(`/api/cms/v1/entries/${activeId}`);
-					if (freshRes.ok) {
-						setConflictData({
-							server: await freshRes.json(),
-							local: { title: titleRef.current, slug: slugRef.current, mdx: mdxRef.current },
-						});
-						return;
-					}
-				}
-				const issues = cmsApiIssues(err);
-				setPublishIssues(issues);
-				setActionFeedback({
-					type: "error",
-					message: issues.length ? "발행할 수 없습니다. 아래 문제를 수정하세요." : cmsApiErrorMessage(err, "발행 실패"),
-				});
-				return;
-			}
-			const published = await res.json();
-			setEntry((prev) => (prev ? { ...prev, status: "published", version: published.version } : null));
-			currentVersionRef.current = published.version;
-			await refreshIncomingReferences(activeId);
-			const warnings: CmsIssue[] = Array.isArray(published.warnings) ? published.warnings : [];
+			autosave.setVersion(published.version);
+			// 수동 발행은 대기 중인 예약을 대신한다(서버가 예약을 취소한다).
+			setEntry((current) => ({
+				...published,
+				schedule: current?.schedule ? { ...current.schedule, pending: null } : published.schedule,
+			}));
+			void refreshIncoming(id);
+			const warnings = published.warnings ?? [];
 			if (warnings.length > 0) {
-				toast.warning(`발행되었습니다. 이미지 경고 ${warnings.length}건`, {
+				toast.warning(`발행되었습니다. 확인할 경고 ${warnings.length}건`, {
 					description: warnings.slice(0, 5).map(cmsIssueMessage).join("\n"),
 					duration: 10000,
-					action: warnings[0].position ? { label: "본문 이동", onClick: () => focusIssue(warnings[0]) } : undefined,
+					action: warnings[0]?.position
+						? { label: "본문 이동", onClick: () => focusIssue(warnings[0] as CmsIssue) }
+						: undefined,
 				});
 			} else {
 				toast.success("발행되었습니다.");
 			}
-		} catch (err) {
-			setActionFeedback({ type: "error", message: err instanceof Error ? err.message : "발행 실패" });
+		} catch (error) {
+			if (error instanceof CmsApiError && error.code === "conflict") {
+				const server = await cmsFetch<EntryData>(`/api/cms/v1/entries/${autosave.getEntryId()}`).catch(() => null);
+				if (server) setConflict({ server, local: form });
+				return;
+			}
+			if (error instanceof CmsApiError && error.issues.length > 0) {
+				setPublishIssues(error.issues);
+				setActionFeedback({ type: "error", message: "발행할 수 없습니다. 아래 문제를 수정하세요." });
+				return;
+			}
+			setActionFeedback({ type: "error", message: errorText(error, "발행하지 못했습니다.") });
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	const handleScheduleSubmit = async () => {
-		if (!scheduleInputDate || isSubmitting) return;
-		if (saveStatus === "충돌") {
-			setActionFeedback({ type: "error", message: "편집 충돌을 해결한 후 예약할 수 있습니다." });
+	const handleSchedule = async () => {
+		const scheduledAt = parseSeoulDateTimeInput(scheduleInput);
+		if (!scheduledAt || isSubmitting) {
+			setActionFeedback({ type: "error", message: "예약 일시(서울 시간)를 확인하세요." });
+			return;
+		}
+		if (Date.parse(scheduledAt) <= Date.now()) {
+			setActionFeedback({ type: "error", message: "예약은 미래 시각만 지정할 수 있습니다." });
 			return;
 		}
 		setIsSubmitting(true);
 		try {
-			await performSave();
-			if (inflightSeqRef.current !== null || changeSeqRef.current > lastAckSeqRef.current) {
-				setActionFeedback({
-					type: "error",
-					message: "변경사항이 저장되지 않아 예약하지 않았습니다. 저장 상태를 확인하세요.",
-				});
-				return;
-			}
-			const activeId = entryIdRef.current;
-			if (!activeId) {
-				setActionFeedback({ type: "error", message: "초안을 저장한 후 예약할 수 있습니다." });
-				return;
-			}
-
-			const res = await fetch(`/api/cms/v1/entries/${activeId}/schedule`, {
+			const id = await ensureSaved("예약");
+			if (!id) return;
+			await cmsFetch(`/api/cms/v1/entries/${id}/schedule`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					expectedVersion: currentVersionRef.current,
-					scheduledAt: new Date(scheduleInputDate).toISOString(),
-				}),
+				json: { expectedVersion: autosave.getVersion(), scheduledAt },
+				fallback: "예약하지 못했습니다.",
 			});
-			if (res.ok) {
-				setScheduleModalOpen(false);
-				setActionFeedback({ type: "success", message: "예약 등록 완료" });
-			} else {
-				const err = await res.json().catch(() => ({}));
-				setActionFeedback({ type: "error", message: cmsApiErrorMessage(err, "예약 실패") });
+			setScheduleOpen(false);
+			await loadEntry(id);
+			toast.success(`${formatSeoul(scheduledAt)}에 발행하도록 예약했습니다.`);
+		} catch (error) {
+			if (error instanceof CmsApiError && error.issues.length > 0) {
+				setPublishIssues(error.issues);
+				setScheduleOpen(false);
 			}
-		} catch (err) {
-			setActionFeedback({ type: "error", message: err instanceof Error ? err.message : "예약 실패" });
+			setActionFeedback({ type: "error", message: errorText(error, "예약하지 못했습니다.") });
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	if (isLoading) {
-		return <div className="p-8 text-neutral-500">문서를 불러오는 중...</div>;
+	const handleCancelSchedule = async () => {
+		const pending = entry?.schedule?.pending;
+		if (!entry || !pending) return;
+		try {
+			await cmsFetch(`/api/cms/v1/entries/${entry.id}/schedule?scheduleId=${pending.id}`, { method: "DELETE" });
+			await loadEntry(entry.id);
+			toast.success("예약을 해제했습니다. 이제 편집할 수 있습니다.");
+		} catch (error) {
+			setActionFeedback({ type: "error", message: errorText(error, "예약을 해제하지 못했습니다.") });
+		}
+	};
+
+	/** 보관·보관 해제·휴지통·복원(§5.3). */
+	const runLifecycle = async (action: LifecycleAction, successMessage: string) => {
+		if (!entry) return;
+		try {
+			if (action !== "restore" && !(await autosave.flush())) {
+				setActionFeedback({ type: "error", message: "저장되지 않은 변경이 있어 진행하지 않았습니다." });
+				return;
+			}
+			await cmsFetch(`/api/cms/v1/entries/${entry.id}/${action}`, {
+				method: "POST",
+				json: { expectedVersion: autosave.getVersion() },
+			});
+			await loadEntry(entry.id);
+			toast.success(successMessage);
+		} catch (error) {
+			setActionFeedback({ type: "error", message: errorText(error, "상태를 바꾸지 못했습니다.") });
+		}
+	};
+
+	/** 공개 상태가 바뀌는 전환은 확인을 받는다. 공개본에서 이 글을 쓰는 곳이 있으면 함께 알린다(§6.1). */
+	const confirmLifecycle = (action: LifecycleAction) => {
+		const publishedUsers = incoming.items.filter((item) => item.state === "published");
+		const usageNote =
+			publishedUsers.length > 0
+				? ` 이 글을 공개본에서 참조하는 콘텐츠가 ${publishedUsers.length}개 있습니다(속성 패널의 사용처).`
+				: "";
+		const requests: Record<LifecycleAction, ConfirmRequest> = {
+			archive: {
+				title: "글 보관",
+				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}`,
+				confirmLabel: "보관",
+				onConfirm: () => runLifecycle("archive", "보관했습니다."),
+			},
+			unarchive: {
+				title: "보관 해제",
+				description: "초안으로 돌아갑니다. 자동으로 다시 공개하지 않습니다.",
+				confirmLabel: "보관 해제",
+				onConfirm: () => runLifecycle("unarchive", "보관을 해제했습니다."),
+			},
+			trash: {
+				title: "휴지통으로 이동",
+				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}`,
+				confirmLabel: "휴지통으로 이동",
+				destructive: true,
+				onConfirm: () => runLifecycle("trash", "휴지통으로 옮겼습니다."),
+			},
+			restore: {
+				title: "휴지통에서 복원",
+				description: "초안으로 복원합니다. 다시 공개하려면 발행하세요.",
+				confirmLabel: "복원",
+				onConfirm: () => runLifecycle("restore", "복원했습니다."),
+			},
+		};
+		setConfirm(requests[action]);
+	};
+
+	const confirmPermanentDelete = () => {
+		if (!entry) return;
+		setConfirm({
+			title: "영구 삭제",
+			description: "되돌릴 수 없습니다. 공개된 적 있는 주소는 다른 글이 다시 쓸 수 없도록 기록만 남습니다.",
+			confirmLabel: "영구 삭제",
+			destructive: true,
+			onConfirm: async () => {
+				try {
+					await cmsFetch(`/api/cms/v1/entries/${entry.id}?expectedVersion=${autosave.getVersion()}`, {
+						method: "DELETE",
+					});
+					await deleteLocalBackup(backupKey(adminId, entry.id, entry.collection));
+					router.push(`/admin?collection=${entry.collection}&status=trashed`);
+				} catch (error) {
+					setActionFeedback({ type: "error", message: errorText(error, "삭제하지 못했습니다.") });
+				}
+			},
+		});
+	};
+
+	const handleDuplicate = async () => {
+		const id = await ensureSaved("복제");
+		if (!id) return;
+		try {
+			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, { method: "POST", json: {} });
+			router.push(`/admin/entries/${copy.id}/edit`);
+		} catch (error) {
+			setActionFeedback({ type: "error", message: errorText(error, "복제하지 못했습니다.") });
+		}
+	};
+
+	const openTemplates = async () => {
+		setTemplateMenuOpen((open) => !open);
+		if (templates) return;
+		try {
+			const data = await cmsFetch<{ items: { id: string; name: string; mdx: string }[] }>(
+				`/api/cms/v1/templates?forCollection=${collection}`,
+			);
+			setTemplates(data.items);
+		} catch {
+			setTemplates([]);
+		}
+	};
+
+	const applyTemplate = (mdx: string) => {
+		setForm({ mdx });
+		setTemplateMenuOpen(false);
+		setPendingTemplateMdx(null);
+	};
+
+	const previewHref = entry?.workingSlug
+		? `/preview/${collection === "memo" ? "memos" : "posts"}/${encodeURIComponent(entry.workingSlug)}`
+		: null;
+
+	const commands: PaletteCommand[] = [
+		{
+			id: "save",
+			group: "편집",
+			label: "지금 저장",
+			shortcut: "⌘S",
+			keywords: ["save", "저장"],
+			disabled: isReadOnly,
+			run: () => void handleSaveNow(),
+		},
+		{
+			id: "mode",
+			group: "편집",
+			label: editorMode === "visual" ? "MDX 원문으로 전환" : "시각 모드로 전환",
+			keywords: ["mdx", "source", "원문", "시각"],
+			disabled: editorMode === "source" && !canUseVisual,
+			run: () => setEditorMode(editorMode === "visual" ? "source" : "visual"),
+		},
+		{
+			id: "inspector",
+			group: "편집",
+			label: isInspectorOpen ? "속성 패널 닫기" : "속성 패널 열기",
+			keywords: ["inspector", "속성", "패널"],
+			run: () => setIsInspectorOpen((open) => !open),
+		},
+		{
+			id: "publish",
+			group: "발행",
+			label: entry?.status === "published" ? "변경사항 발행" : "발행",
+			keywords: ["publish", "발행"],
+			disabled: isReadOnly,
+			run: () => void handlePublish(),
+		},
+		{
+			id: "schedule",
+			group: "발행",
+			label: "발행 예약…",
+			keywords: ["schedule", "예약"],
+			disabled: isReadOnly,
+			run: () => setScheduleOpen(true),
+		},
+		...(scheduleLocked
+			? [
+					{
+						id: "unschedule",
+						group: "발행",
+						label: "예약 해제 후 편집",
+						keywords: ["예약", "해제", "unschedule"],
+						run: () => void handleCancelSchedule(),
+					},
+				]
+			: []),
+		...(previewHref
+			? [
+					{
+						id: "preview",
+						group: "보기",
+						label: "미리보기 열기",
+						keywords: ["preview", "미리보기"],
+						run: () => window.open(previewHref, "_blank"),
+					},
+				]
+			: []),
+		{
+			id: "duplicate",
+			group: "글",
+			label: "복제",
+			keywords: ["duplicate", "copy", "복제"],
+			disabled: !entry || isTrashed,
+			run: () => void handleDuplicate(),
+		},
+		{
+			id: "new",
+			group: "글",
+			label: "새 글",
+			keywords: ["new", "새"],
+			run: () => router.push(`/admin/entries/new?collection=${collection}`),
+		},
+		{
+			id: "list",
+			group: "글",
+			label: "목록으로",
+			keywords: ["list", "목록"],
+			run: () => router.push(`/admin?collection=${collection}`),
+		},
+	];
+
+	// Cmd/Ctrl+S 즉시 저장, Cmd/Ctrl+K 명령 검색(§4.2). 매 렌더의 최신 상태를 쓰도록 다시 등록한다.
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.altKey || event.isComposing) return;
+			const key = event.key.toLowerCase();
+			if (key === "s") {
+				event.preventDefault();
+				void handleSaveNow();
+			} else if (key === "k") {
+				event.preventDefault();
+				setPaletteOpen((open) => !open);
+			}
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	});
+
+	if (isLoading) return <div className="p-8 text-neutral-500">문서를 불러오는 중...</div>;
+	if (loadError) {
+		return (
+			<div className="space-y-3 p-8">
+				<p role="alert">{loadError}</p>
+				<Link href="/admin" className="underline">
+					목록으로
+				</Link>
+			</div>
+		);
 	}
+
+	const schedule = entry?.schedule;
+	const statusLabel = entry
+		? describeEntryStatus({ ...entry, scheduledAt: schedule?.pending?.scheduledAt ?? null })
+		: "새 글";
+	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
+	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
+	const headerButton =
+		"rounded border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800";
 
 	return (
 		<div className="flex h-screen w-full flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
 			<Toaster richColors closeButton position="bottom-right" />
+
+			<header className="z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-neutral-200 border-b bg-white/90 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-5 dark:border-neutral-800 dark:bg-neutral-950/90">
+				<nav aria-label="현재 위치" className="flex min-w-0 items-center gap-2 text-xs">
+					<Link
+						href={`/admin?collection=${collection}`}
+						className="text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+					>
+						목록으로
+					</Link>
+					<span aria-hidden className="text-neutral-300 dark:text-neutral-700">
+						/
+					</span>
+					<span className="max-w-[240px] truncate font-semibold">{form.title || "제목 없는 글"}</span>
+					<span className="text-neutral-500">· {statusLabel}</span>
+				</nav>
+
+				<div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap lg:w-auto">
+					<output aria-live="polite" className="flex items-center gap-1.5 text-neutral-500 text-xs">
+						<span
+							aria-hidden
+							className={`h-2 w-2 rounded-full ${
+								autosave.status === "saved"
+									? "bg-emerald-500"
+									: autosave.status === "saving"
+										? "animate-pulse bg-amber-500"
+										: ["conflict", "failed", "session-expired"].includes(autosave.status)
+											? "bg-red-500"
+											: "bg-neutral-400"
+							}`}
+						/>
+						{SAVE_STATUS_LABELS[autosave.status]}
+						{!autosave.backupAvailable && " · 브라우저 복구 불가"}
+					</output>
+					{canRetry && (
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className="h-7 text-xs"
+							onClick={() => void autosave.retry(true)}
+						>
+							다시 시도
+						</Button>
+					)}
+					{autosave.status === "session-expired" && (
+						<a href="/admin/login" target="_blank" rel="noreferrer" className="text-xs underline">
+							새 창에서 로그인
+						</a>
+					)}
+
+					<button
+						type="button"
+						aria-pressed={editorMode === "source"}
+						disabled={editorMode === "source" && !canUseVisual}
+						title={!canUseVisual ? "본문 오류를 고치면 시각 모드를 쓸 수 있습니다" : undefined}
+						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
+						className={headerButton}
+					>
+						{editorMode === "visual" ? "MDX 원문" : "시각 모드"}
+					</button>
+
+					<div className="relative">
+						<button
+							type="button"
+							aria-expanded={templateMenuOpen}
+							disabled={isReadOnly}
+							onClick={() => void openTemplates()}
+							className={headerButton}
+						>
+							템플릿 ▾
+						</button>
+						{templateMenuOpen && (
+							<div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-lg border bg-white p-1.5 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+								{templates === null ? (
+									<p className="px-2 py-3 text-center text-neutral-400">불러오는 중...</p>
+								) : templates.length === 0 ? (
+									<p className="px-2 py-3 text-center text-neutral-400">등록된 템플릿이 없습니다.</p>
+								) : (
+									templates.map((template) => (
+										<button
+											key={template.id}
+											type="button"
+											onClick={() =>
+												form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
+											}
+											className="w-full truncate rounded px-2 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+										>
+											{template.name}
+										</button>
+									))
+								)}
+								<Link
+									href="/admin/templates"
+									target="_blank"
+									className="mt-1 block border-t px-2 pt-1 text-[11px] text-neutral-500"
+								>
+									템플릿 관리
+								</Link>
+							</div>
+						)}
+					</div>
+
+					<button type="button" disabled={isReadOnly} onClick={() => void handleSaveNow()} className={headerButton}>
+						저장
+					</button>
+					<button
+						id="cms-publish"
+						type="button"
+						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
+						onClick={() => void handlePublish()}
+						className="rounded bg-emerald-600 px-3 py-1 font-semibold text-white text-xs hover:bg-emerald-500 disabled:opacity-50"
+					>
+						{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
+					</button>
+					<button
+						type="button"
+						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
+						onClick={() => {
+							setScheduleInput("");
+							setScheduleOpen(true);
+						}}
+						className={headerButton}
+					>
+						예약
+					</button>
+					<button type="button" onClick={() => setPaletteOpen(true)} className={headerButton}>
+						명령 <kbd className="text-neutral-400">⌘K</kbd>
+					</button>
+					<button
+						type="button"
+						aria-expanded={isInspectorOpen}
+						onClick={() => setIsInspectorOpen((open) => !open)}
+						className={headerButton}
+					>
+						{isInspectorOpen ? "속성 닫기" : "속성 열기"}
+					</button>
+				</div>
+			</header>
+
+			{schedule?.pending && (
+				<section
+					aria-label="예약"
+					className="flex flex-wrap items-center gap-2 border-b bg-blue-50 px-4 py-2 text-sm dark:bg-blue-950/30"
+				>
+					<span>
+						{formatSeoul(schedule.pending.scheduledAt)} 발행 예약됨 — 예약 중에는 본문과 속성을 편집할 수 없습니다.
+						{Date.parse(schedule.pending.scheduledAt) <= Date.now() && " 예정 시각이 지나 실행 대기 중입니다."}
+						{!schedule.runnerConfigured && " 외부 실행기 연결 필요: 연결되지 않으면 자동으로 발행되지 않습니다."}
+					</span>
+					<button type="button" onClick={() => void handleCancelSchedule()} className={headerButton}>
+						예약 해제 후 편집
+					</button>
+				</section>
+			)}
+			{!schedule?.pending && schedule?.last?.status === "failed" && (
+				<p role="alert" className="border-b bg-red-50 px-4 py-2 text-sm dark:bg-red-950/30">
+					{formatSeoul(schedule.last.scheduledAt)} 예약 발행이 실패해 공개본을 그대로 유지했습니다 (
+					{schedule.last.failureCode}).
+					{schedule.last.failureDetail ? ` ${schedule.last.failureDetail.slice(0, 200)}` : ""}
+				</p>
+			)}
+			{isTrashed && (
+				<section
+					aria-label="휴지통"
+					className="flex flex-wrap items-center gap-2 border-b bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-900"
+				>
+					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
+					<button type="button" onClick={() => confirmLifecycle("restore")} className={headerButton}>
+						복원
+					</button>
+					<button
+						type="button"
+						onClick={confirmPermanentDelete}
+						className="rounded bg-red-600 px-2.5 py-1 text-white text-xs hover:bg-red-500"
+					>
+						영구 삭제
+					</button>
+				</section>
+			)}
+			{entry?.status === "archived" && (
+				<section
+					aria-label="보관됨"
+					className="flex flex-wrap items-center gap-2 border-b bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-900"
+				>
+					<span>보관된 글입니다. 공개되지 않으며, 보관을 해제하면 초안으로 돌아갑니다.</span>
+					<button type="button" onClick={() => confirmLifecycle("unarchive")} className={headerButton}>
+						보관 해제
+					</button>
+				</section>
+			)}
+			{!canUseVisual && (
+				<output className="border-b bg-amber-50 px-4 py-2 text-sm dark:bg-amber-950/30">
+					해석할 수 없는 본문이 있어 원문 모드로만 편집합니다. 저장은 되지만 발행은 막힙니다 —{" "}
+					{sourceProblems[0] ? cmsIssueMessage(sourceProblems[0]) : ""}
+				</output>
+			)}
 			{actionFeedback && (
 				<p
 					role={actionFeedback.type === "error" ? "alert" : "status"}
 					className="whitespace-pre-wrap border-b px-4 py-2 text-sm"
 				>
 					{actionFeedback.message}
+				</p>
+			)}
+			{autosave.lastError && ["failed", "session-expired"].includes(autosave.status) && (
+				<p role="alert" className="border-b px-4 py-2 text-red-600 text-sm">
+					{autosave.lastError}
 				</p>
 			)}
 			{publishIssues.length > 0 && (
@@ -706,156 +846,28 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 					))}
 				</ul>
 			)}
-			{/* Top Header: Breadcrumb & Global Actions */}
-			<header className="z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-neutral-200 border-b bg-white/90 px-3 py-2 backdrop-blur sm:h-12 sm:flex-nowrap sm:justify-between sm:px-5 sm:py-0 dark:border-neutral-800 dark:bg-neutral-950/90">
-				<div className="flex items-center gap-2 text-xs">
-					<Link href="/admin" className="text-neutral-400 transition hover:text-neutral-900 dark:hover:text-white">
-						대시보드
-					</Link>
-					<span className="text-neutral-300 dark:text-neutral-700">/</span>
-					<span className="text-neutral-500 capitalize">{collection}</span>
-					<span className="text-neutral-300 dark:text-neutral-700">/</span>
-					<span className="max-w-[200px] truncate font-semibold text-neutral-800 dark:text-neutral-200">
-						{title || (mode === "new" ? "새 글 작성" : "제목 없음")}
-					</span>
-				</div>
 
-				<div className="flex w-full min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap sm:w-auto">
-					{/* Auto-save Status */}
-					<div className="flex items-center gap-1.5 text-neutral-500 text-xs">
-						<span
-							className={`h-2 w-2 rounded-full ${
-								saveStatus === "저장됨"
-									? "bg-emerald-500"
-									: saveStatus === "저장 중"
-										? "animate-pulse bg-amber-500"
-										: saveStatus === "충돌"
-											? "bg-red-500"
-											: "bg-neutral-400"
-							}`}
-						/>
-						<span>{saveStatus}</span>
-					</div>
-
-					{/* MDX Mode Toggle */}
-					<button
-						type="button"
-						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
-						className="rounded border border-neutral-300 px-2.5 py-1 text-xs transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-					>
-						{editorMode === "visual" ? "MDX 원문" : "시각 모드"}
-					</button>
-
-					{/* Template Selector (for post and memo) */}
-					{(collection === "post" || collection === "memo") && (
-						<div className="relative">
-							<button
-								type="button"
-								onClick={handleOpenTemplateMenu}
-								className="flex items-center gap-1 rounded border border-neutral-300 px-2.5 py-1 text-xs transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-							>
-								<span>템플릿</span>
-								<span className="text-[10px] text-neutral-400">▼</span>
-							</button>
-
-							{templateMenuOpen && (
-								<div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-lg border border-neutral-200 bg-white p-1.5 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-									<div className="mb-1 border-neutral-100 border-b px-2 py-1 font-semibold text-[11px] text-neutral-400 dark:border-neutral-800">
-										{collection} 템플릿
-									</div>
-									{isTemplatesLoading ? (
-										<div className="px-2 py-3 text-center text-neutral-400">불러오는 중...</div>
-									) : availableTemplates.length === 0 ? (
-										<div className="px-2 py-3 text-center text-neutral-400">등록된 템플릿이 없습니다.</div>
-									) : (
-										<div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto">
-											{availableTemplates.map((t) => (
-												<button
-													key={t.id}
-													type="button"
-													onClick={() => handleApplyTemplate(t.mdx)}
-													className="w-full truncate rounded px-2 py-1.5 text-left font-medium text-neutral-800 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-												>
-													{t.name}
-												</button>
-											))}
-										</div>
-									)}
-									<div className="mt-1 border-neutral-100 border-t pt-1 dark:border-neutral-800">
-										<Link
-											href={"/admin/templates" as any}
-											target="_blank"
-											className="block w-full px-2 py-1 text-left text-[11px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-										>
-											⚙ 템플릿 관리 화면으로 이동
-										</Link>
-									</div>
-								</div>
-							)}
-						</div>
-					)}
-
-					{/* Publish Actions */}
-					<div className="flex items-center gap-1.5 border-neutral-200 border-l pl-3 dark:border-neutral-800">
-						<button
-							id="cms-publish"
-							type="button"
-							onClick={handlePublish}
-							disabled={isSubmitting}
-							className="rounded bg-emerald-600 px-3 py-1 font-semibold text-white text-xs transition hover:bg-emerald-500 disabled:opacity-50"
-						>
-							{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
-						</button>
-						<button
-							type="button"
-							onClick={() => setScheduleModalOpen(true)}
-							disabled={isSubmitting}
-							className="rounded border border-neutral-300 px-2.5 py-1 text-xs transition hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-						>
-							예약
-						</button>
-						<button
-							type="button"
-							onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-							className="rounded border border-neutral-300 px-2.5 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
-						>
-							{isInspectorOpen ? "속성 닫기" : "속성 열기"}
-						</button>
-					</div>
-				</div>
-			</header>
-
-			{/* Main Split Body: Left Canvas & Right Inspector */}
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
-				{/* Canvas Area */}
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					{editorMode === "visual" ? (
-						<div className="flex h-full flex-col">
-							{publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position)) && (
-								<button
-									type="button"
-									onClick={() =>
-										focusIssue(publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position))!)
-									}
-									className="border-b p-2 text-left text-red-600 text-sm underline"
-								>
-									{cmsIssueMessage(publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position))!)} —
-									본문으로 이동
-								</button>
-							)}
+						<div className="mx-auto flex min-h-full max-w-[800px] flex-col">
+							<label htmlFor="cms-title-canvas" className="sr-only">
+								글 제목 (본문 위)
+							</label>
+							<input
+								id="cms-title-canvas"
+								value={form.title}
+								readOnly={isReadOnly}
+								onChange={(event) => handleTitleChange(event.target.value)}
+								placeholder="제목 없는 글"
+								className="mt-6 w-full bg-transparent px-10 font-bold text-3xl outline-none placeholder:text-neutral-300"
+							/>
 							<CmsEditor
-								content={mdx}
-								onChange={(newContent) => {
-									setMdx(newContent);
-									triggerSave({ mdx: newContent });
-								}}
-								onCompositionStart={() => {
-									isComposingRef.current = true;
-								}}
-								onCompositionEnd={() => {
-									isComposingRef.current = false;
-									triggerSave();
-								}}
+								content={form.mdx}
+								editable={!isReadOnly}
+								onChange={(mdx) => setForm({ mdx })}
+								onCompositionStart={() => autosave.setComposing(true)}
+								onCompositionEnd={() => autosave.setComposing(false)}
 							/>
 						</div>
 					) : (
@@ -863,201 +875,136 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 							<textarea
 								id="cms-mdx-source"
 								aria-label="MDX 본문"
-								aria-invalid={
-									publishIssues.some((issue) => issue.path === "mdx" || Boolean(issue.position)) || undefined
-								}
-								aria-describedby={
-									publishIssues.some((issue) => issue.path === "mdx" || Boolean(issue.position))
-										? "cms-mdx-error"
-										: undefined
-								}
-								value={mdx}
-								onChange={(e) => {
-									const val = e.target.value;
-									setMdx(val);
-									triggerSave({ mdx: val });
-								}}
+								aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
+								aria-describedby={bodyIssue ? "cms-mdx-error" : undefined}
+								value={form.mdx}
+								readOnly={isReadOnly}
+								onChange={(event) => setForm({ mdx: event.target.value })}
+								onCompositionStart={() => autosave.setComposing(true)}
+								onCompositionEnd={() => autosave.setComposing(false)}
 								placeholder="MDX 원문을 작성하세요..."
 								className="w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm outline-none"
 							/>
-							{publishIssues.some((issue) => issue.path === "mdx" || Boolean(issue.position)) && (
+							{bodyIssue && (
 								<p id="cms-mdx-error" className="text-red-500 text-sm">
-									{cmsIssueMessage(publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position))!)}
+									{cmsIssueMessage(bodyIssue)}
 								</p>
 							)}
 						</div>
 					)}
 				</div>
 
-				{/* Right Inspector Panel */}
 				{isInspectorOpen && (
-					<div className="absolute inset-0 z-10 sm:static sm:inset-auto sm:w-80">
+					<div className="absolute inset-0 z-10 lg:static lg:inset-auto lg:w-80">
 						<InspectorPanel
-							publishIssues={publishIssues}
-							targetEntryId={entry?.id ?? null}
-							incomingReferences={incomingReferences}
-							isLoadingIncomingReferences={isLoadingIncomingReferences}
-							incomingReferencesError={incomingReferencesError}
-							onRefreshIncomingReferences={() => {
-								if (entry?.id) void refreshIncomingReferences(entry.id);
-							}}
 							collection={collection}
-							title={title}
-							slug={slug}
-							isSlugTouched={isSlugTouched}
-							publishDate={publishDate}
-							description={description}
-							seoTitle={seoTitle}
-							seoDescription={seoDescription}
-							canonicalUrl={canonicalUrl}
-							categoryId={categoryId}
-							tagIds={tagIds}
+							form={form}
+							disabled={isReadOnly}
+							publishIssues={publishIssues}
+							autoSummaryPreview={collection === "post" && !form.summary.trim() ? autoSummary(deferredMdx) : ""}
+							entry={entry}
+							previewHref={previewHref}
+							incomingReferences={incoming.items}
+							isLoadingIncomingReferences={incoming.loading}
+							incomingReferencesError={incoming.error}
+							onRefreshIncomingReferences={() => {
+								if (entry) void refreshIncoming(entry.id);
+							}}
 							onTitleChange={handleTitleChange}
-							onSlugChange={handleSlugChange}
-							onRegenerateSlug={handleRegenerateSlug}
-							onPublishDateChange={handlePublishDateChange}
-							onDescriptionChange={(desc) => {
-								setDescription(desc);
-								triggerSave();
+							onSlugChange={(slug) => {
+								setIsSlugTouched(true);
+								setForm({ slug });
 							}}
-							onSeoTitleChange={(value) => {
-								setSeoTitle(value);
-								seoTitleRef.current = value;
-								triggerSave();
+							onRegenerateSlug={() => {
+								setIsSlugTouched(false);
+								setForm({ slug: slugify(form.title) });
 							}}
-							onSeoDescriptionChange={(value) => {
-								setSeoDescription(value);
-								seoDescriptionRef.current = value;
-								triggerSave();
-							}}
-							onCanonicalUrlChange={(value) => {
-								setCanonicalUrl(value);
-								canonicalUrlRef.current = value;
-								triggerSave();
-							}}
-							onCategoryIdChange={(newCatId) => {
-								setCategoryId(newCatId);
-								categoryIdRef.current = newCatId;
-								triggerSave();
-							}}
-							onTagIdsChange={(newTagIds) => {
-								setTagIds(newTagIds);
-								tagIdsRef.current = newTagIds;
-								triggerSave();
-							}}
+							onChange={setForm}
+							onDuplicate={() => void handleDuplicate()}
+							onLifecycle={confirmLifecycle}
+							onPermanentDelete={confirmPermanentDelete}
+							onClose={isNarrowScreen ? () => setIsInspectorOpen(false) : undefined}
 						/>
 					</div>
 				)}
 			</div>
 
-			<Dialog open={Boolean(recoveryPrompt)} onOpenChange={(open) => !open && setRecoveryPrompt(null)}>
-				<DialogContent
-					className="max-w-md"
-					onCloseAutoFocus={(event) => {
-						event.preventDefault();
-						document.getElementById("cms-publish")?.focus();
-					}}
-				>
+			<Dialog open={recovery !== null} onOpenChange={(open) => !open && setRecovery(null)}>
+				<DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>임시 저장된 로컬 복구본 발견</DialogTitle>
-						<DialogDescription>서버에 저장되지 않은 브라우저 복구본을 불러오시겠습니까?</DialogDescription>
+						<DialogTitle>
+							{recovery?.kind === "conflict"
+								? "브라우저 복구본과 서버 내용이 모두 바뀌었습니다"
+								: "브라우저 복구본 발견"}
+						</DialogTitle>
+						<DialogDescription>
+							{recovery?.kind === "conflict"
+								? "복구본을 만든 뒤 다른 곳에서 서버 내용이 바뀌었습니다. 덮어쓰지 않도록 양쪽을 확인하세요."
+								: `서버에 저장되지 않은 입력이 있습니다 (${recovery ? new Date(recovery.backup.savedAt).toLocaleString("ko-KR") : ""}).`}
+						</DialogDescription>
 					</DialogHeader>
+					{recovery?.kind === "conflict" && (
+						<ComparePanes
+							local={{ ...EMPTY_FORM, ...recovery.backup.snapshot }}
+							server={formFromEntry(recovery.server)}
+							serverVersion={recovery.server.version}
+						/>
+					)}
 					<DialogFooter>
-						<button
+						<Button
 							type="button"
+							variant="outline"
 							onClick={async () => {
-								if (recoveryPrompt) await deleteLocalBackup(recoveryPrompt.key);
-								setRecoveryPrompt(null);
+								if (recovery) await deleteLocalBackup(recovery.backup.key);
+								setRecovery(null);
 							}}
-							className="rounded-md border px-4 py-2 text-sm"
 						>
-							서버 본문 유지
-						</button>
-						<button
-							type="button"
-							onClick={() => {
-								if (!recoveryPrompt) return;
-								const { title: recoveredTitle, slug: recoveredSlug, mdx: recoveredMdx } = recoveryPrompt.snapshot;
-								const recoveredPublishDate =
-									typeof recoveryPrompt.snapshot.metadata.publishDateInput === "string"
-										? recoveryPrompt.snapshot.metadata.publishDateInput
-										: "";
-								setTitle(recoveredTitle);
-								setSlug(recoveredSlug || "");
-								setIsSlugTouched(true);
-								isSlugTouchedRef.current = true;
-								setMdx(recoveredMdx);
-								setPublishDate(recoveredPublishDate);
-								publishDateRef.current = recoveredPublishDate;
-								setRecoveryPrompt(null);
-								triggerSave({
-									title: recoveredTitle,
-									slug: recoveredSlug || "",
-									mdx: recoveredMdx,
-									publishDate: recoveredPublishDate,
-								});
-							}}
-							className="rounded-md border px-4 py-2 text-sm"
-						>
-							로컬 복구본 불러오기
-						</button>
+							서버 내용 유지 (복구본 삭제)
+						</Button>
+						{recovery?.kind === "restore" && (
+							<Button type="button" onClick={() => applyRecovered({ ...EMPTY_FORM, ...recovery.backup.snapshot })}>
+								복구본 불러오기
+							</Button>
+						)}
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			<Dialog open={Boolean(conflictData)} onOpenChange={(open) => !open && setConflictData(null)}>
-				<DialogContent
-					className="max-h-[90vh] max-w-4xl overflow-y-auto"
-					onCloseAutoFocus={(event) => {
-						event.preventDefault();
-						document.getElementById("cms-publish")?.focus();
-					}}
-				>
+			<Dialog open={conflict !== null} onOpenChange={(open) => !open && setConflict(null)}>
+				<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>편집 충돌 발생 — 자동 저장 중단됨</DialogTitle>
+						<DialogTitle>편집 충돌 — 자동 저장을 멈췄습니다</DialogTitle>
 						<DialogDescription>
-							다른 세션에서 변경했습니다. 내 변경사항을 복사한 뒤 서버 최신본으로 다시 여세요.
+							다른 탭이나 기기에서 먼저 저장했습니다. 내 입력은 브라우저에 남아 있습니다. 양쪽을 비교해 복사하거나
+							하나를 고르세요.
 						</DialogDescription>
 					</DialogHeader>
-					{conflictData && (
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div className="space-y-2 rounded border p-4">
-								<p className="font-semibold text-sm">내 로컬 변경사항</p>
-								<button
-									type="button"
-									onClick={() => navigator.clipboard.writeText(conflictData.local.mdx)}
-									className="text-sm underline"
-								>
-									내 본문 복사
-								</button>
-								<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{conflictData.local.mdx}</pre>
-							</div>
-							<div className="space-y-2 rounded border p-4">
-								<p className="font-semibold text-sm">서버 최신본 (v{conflictData.server.version})</p>
-								<button
-									type="button"
-									onClick={() => navigator.clipboard.writeText(conflictData.server.working.mdx)}
-									className="text-sm underline"
-								>
-									서버 본문 복사
-								</button>
-								<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
-									{conflictData.server.working.mdx}
-								</pre>
-							</div>
-						</div>
+					{conflict && (
+						<ComparePanes
+							local={conflict.local}
+							server={formFromEntry(conflict.server)}
+							serverVersion={conflict.server.version}
+						/>
 					)}
 					<DialogFooter>
-						<button type="button" onClick={() => setConflictData(null)} className="rounded-md border px-4 py-2 text-sm">
-							취소
-						</button>
-						<button
+						<Button type="button" variant="outline" onClick={() => setConflict(null)}>
+							닫기
+						</Button>
+						<Button type="button" variant="outline" onClick={() => window.location.reload()}>
+							서버 최신본으로 다시 열기
+						</Button>
+						<Button
 							type="button"
-							onClick={() => window.location.reload()}
-							className="rounded-md border px-4 py-2 text-sm"
+							variant="destructive"
+							onClick={() => {
+								if (!conflict) return;
+								const version = conflict.server.version;
+								setConflict(null);
+								void autosave.overwriteWithLocal(version);
+							}}
 						>
-							서버 최신본으로 새로고침
-						</button>
+							내 내용으로 덮어쓰기
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
@@ -1069,29 +1016,24 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 						<DialogDescription>현재 본문이 선택한 템플릿으로 교체됩니다. 계속하시겠습니까?</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<button
-							type="button"
-							onClick={() => setPendingTemplateMdx(null)}
-							className="rounded-md border px-3 py-2 text-sm"
-						>
+						<Button type="button" variant="outline" onClick={() => setPendingTemplateMdx(null)}>
 							취소
-						</button>
-						<button
-							type="button"
-							onClick={() => pendingTemplateMdx !== null && applyTemplate(pendingTemplateMdx)}
-							className="rounded-md border px-3 py-2 text-sm"
-						>
+						</Button>
+						<Button type="button" onClick={() => pendingTemplateMdx !== null && applyTemplate(pendingTemplateMdx)}>
 							적용
-						</button>
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			<Dialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
+			<Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
 						<DialogTitle>발행 예약</DialogTitle>
-						<DialogDescription>예약한 시각에 글을 발행합니다.</DialogDescription>
+						<DialogDescription>
+							저장된 초안을 검증한 뒤 예약합니다. 예약 중에는 편집이 잠깁니다. 정해진 시각의 실행은 외부 실행기가
+							맡습니다.
+						</DialogDescription>
 					</DialogHeader>
 					<label htmlFor="schedule-date" className="text-sm">
 						예약 일시 (서울 시간)
@@ -1099,24 +1041,58 @@ export function EntryEditorShell({ mode, initialEntryId, collection: propCollect
 					<input
 						id="schedule-date"
 						type="datetime-local"
-						value={scheduleInputDate}
-						onChange={(e) => setScheduleInputDate(e.target.value)}
+						value={scheduleInput}
+						onChange={(event) => setScheduleInput(event.target.value)}
 						className="w-full rounded-md border bg-background p-2 text-sm"
 					/>
+					{schedule && !schedule.runnerConfigured && (
+						<p className="text-amber-700 text-xs dark:text-amber-400">
+							외부 실행기 연결 필요: 연결 전에는 예약이 실행 대기로 남습니다.
+						</p>
+					)}
 					<DialogFooter>
-						<button
-							type="button"
-							onClick={() => setScheduleModalOpen(false)}
-							className="rounded-md border px-3 py-2 text-sm"
-						>
+						<Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>
 							취소
-						</button>
-						<button type="button" onClick={handleScheduleSubmit} className="rounded-md border px-3 py-2 text-sm">
+						</Button>
+						<Button type="button" disabled={!scheduleInput || isSubmitting} onClick={() => void handleSchedule()}>
 							예약 등록
-						</button>
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+			<CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
+		</div>
+	);
+}
+
+/** 충돌·복구 화면의 양쪽 비교(§5.1 "양쪽 내용을 확인·복사"). */
+function ComparePanes({
+	local,
+	server,
+	serverVersion,
+}: {
+	local: EntryForm;
+	server: EntryForm;
+	serverVersion: number;
+}) {
+	const pane = (label: string, value: EntryForm) => (
+		<div className="space-y-2 rounded border p-3">
+			<p className="font-semibold text-sm">{label}</p>
+			<p className="text-xs">
+				제목: {value.title || "(없음)"} · 주소: {value.slug || "(없음)"}
+			</p>
+			<button type="button" className="text-sm underline" onClick={() => void navigator.clipboard.writeText(value.mdx)}>
+				본문 복사
+			</button>
+			<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{value.mdx}</pre>
+		</div>
+	);
+	return (
+		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			{pane("내 입력(브라우저)", local)}
+			{pane(`서버 최신본 (v${serverVersion})`, server)}
 		</div>
 	);
 }

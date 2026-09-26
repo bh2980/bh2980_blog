@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
-import { POST as handleUploads } from "../uploads/route";
 import { POST as handleComplete } from "../[id]/complete/route";
-import { GET as handleListMedia } from "../route";
 import { DELETE as handleDeleteMedia } from "../[id]/route";
+import { GET as handleListMedia } from "../route";
+import { POST as handleUploads } from "../uploads/route";
 
 const mockVerifyAdmin = vi.fn();
 
@@ -14,7 +14,10 @@ vi.mock("@/cms/adapters/auth", () => ({
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
 	AuthError: class AuthError extends Error {
-		constructor(public code: string, message: string) {
+		constructor(
+			public code: string,
+			message: string,
+		) {
 			super(message);
 		}
 	},
@@ -25,7 +28,8 @@ const mockGetMediaAsset = vi.fn();
 const mockCompleteMediaAsset = vi.fn();
 const mockFailMediaAsset = vi.fn();
 const mockListMediaAssets = vi.fn();
-const mockDeleteMediaAsset = vi.fn();
+const mockBeginMediaDelete = vi.fn();
+const mockFinalizeMediaDelete = vi.fn();
 
 const mockPrepareUpload = vi.fn();
 const mockHeadFile = vi.fn();
@@ -41,7 +45,8 @@ vi.mock("@/cms/container", () => ({
 		completeMediaAsset: mockCompleteMediaAsset,
 		failMediaAsset: mockFailMediaAsset,
 		listMediaAssets: mockListMediaAssets,
-		deleteMediaAsset: mockDeleteMediaAsset,
+		beginMediaDelete: mockBeginMediaDelete,
+		finalizeMediaDelete: mockFinalizeMediaDelete,
 	}),
 	getCmsMediaStore: () => ({
 		prepareUpload: mockPrepareUpload,
@@ -157,17 +162,14 @@ describe("Media Upload API Endpoints", () => {
 	it("POST /media/:id/complete returns 404 for nonexistent media asset", async () => {
 		mockGetMediaAsset.mockResolvedValue(null);
 
-		const req = new NextRequest(
-			"http://localhost/api/cms/v1/media/00000000-0000-0000-0000-000000000000/complete",
-			{
-				method: "POST",
-				headers: {
-					origin: "http://localhost",
-					host: "localhost",
-					"content-type": "application/json",
-				},
+		const req = new NextRequest("http://localhost/api/cms/v1/media/00000000-0000-0000-0000-000000000000/complete", {
+			method: "POST",
+			headers: {
+				origin: "http://localhost",
+				host: "localhost",
+				"content-type": "application/json",
 			},
-		);
+		});
 
 		const res = await handleComplete(req, {
 			params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000000" }),
@@ -260,6 +262,66 @@ describe("Media Upload API Endpoints", () => {
 		expect(mockCompleteMediaAsset).toHaveBeenCalled();
 	});
 
+	it("POST /media/:id/complete rejects images over 40 megapixels and marks the upload failed", async () => {
+		mockGetMediaAsset.mockResolvedValue({
+			id: "media-2",
+			status: "pending",
+			stagingKey: "staging/huge.png",
+			filename: "huge.png",
+		});
+		mockHeadFile.mockResolvedValue({ key: "staging/huge.png", contentType: "image/png", contentLength: 24, etag: "e" });
+		const pngBytes = new Uint8Array(24);
+		pngBytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52], 0);
+		pngBytes.set([0x00, 0x00, 0x27, 0x10], 16); // width 10000
+		pngBytes.set([0x00, 0x00, 0x13, 0x88], 20); // height 5000 → 50MP
+		mockReadFile.mockResolvedValue(pngBytes);
+
+		const req = new NextRequest("http://localhost/api/cms/v1/media/media-2/complete", {
+			method: "POST",
+			headers: { origin: "http://localhost", host: "localhost", "content-type": "application/json" },
+		});
+		const res = await handleComplete(req, { params: Promise.resolve({ id: "media-2" }) });
+		expect(res.status).toBe(413);
+		expect((await res.json()).code).toBe("too_many_pixels");
+		expect(mockFailMediaAsset).toHaveBeenCalledWith("media-2");
+		expect(mockPromoteFile).not.toHaveBeenCalled();
+	});
+
+	it("POST /media/uploads prepares a second upload ticket for the original when optimised", async () => {
+		mockPrepareUpload.mockResolvedValue({
+			url: "https://r2/upload",
+			method: "PUT",
+			requiredHeaders: {},
+			expiresAt: new Date(),
+		});
+		mockCreateMediaAsset.mockResolvedValue({});
+		const req = new NextRequest("http://localhost/api/cms/v1/media/uploads", {
+			method: "POST",
+			headers: { origin: "http://localhost", host: "localhost", "content-type": "application/json" },
+			body: JSON.stringify({
+				filename: "photo.jpg",
+				mimeType: "image/webp",
+				byteSize: 1000,
+				original: { mimeType: "image/jpeg", byteSize: 5000 },
+			}),
+		});
+		const res = await handleUploads(req);
+		expect(res.status).toBe(201);
+		const body = await res.json();
+		expect(body.original.uploadUrl).toBe("https://r2/upload");
+		expect(mockPrepareUpload).toHaveBeenCalledTimes(2);
+		expect(mockCreateMediaAsset).toHaveBeenCalledWith(
+			expect.objectContaining({
+				mimeType: "image/webp",
+				stagingKey: expect.stringMatching(/\.webp$/),
+				original: expect.objectContaining({
+					mimeType: "image/jpeg",
+					stagingKey: expect.stringMatching(/original-.*\.jpg$/),
+				}),
+			}),
+		);
+	});
+
 	// --- M4-BE-MEDIA-1 Contract Tests ---
 
 	it("GET /media returns list of media items with references join", async () => {
@@ -309,9 +371,7 @@ describe("Media Upload API Endpoints", () => {
 			storageKey: "media/media-1/pic.png",
 			filename: "pic.png",
 		});
-		mockDeleteMediaAsset.mockRejectedValue(
-			new CmsError("Media asset is in use by 1 entries", "in_use"),
-		);
+		mockBeginMediaDelete.mockRejectedValue(new CmsError("Media asset is in use", "in_use"));
 
 		const req = new NextRequest("http://localhost/api/cms/v1/media/media-1", {
 			method: "DELETE",
@@ -328,17 +388,19 @@ describe("Media Upload API Endpoints", () => {
 		const json = await res.json();
 		expect(json.code).toBe("in_use");
 		expect(mockDeleteFile).not.toHaveBeenCalled();
+		expect(mockFinalizeMediaDelete).not.toHaveBeenCalled();
 	});
 
 	it("DELETE /media/:id safely deletes unused media from R2 storage and DB", async () => {
-		mockGetMediaAsset.mockResolvedValue({
+		mockBeginMediaDelete.mockResolvedValue({
 			id: "media-1",
-			status: "ready",
+			status: "deleting",
 			storageKey: "media/media-1/pic.png",
 			stagingKey: "staging/media-1/pic.png",
+			original: null,
 			filename: "pic.png",
 		});
-		mockDeleteMediaAsset.mockResolvedValue(undefined);
+		mockFinalizeMediaDelete.mockResolvedValue(undefined);
 
 		const req = new NextRequest("http://localhost/api/cms/v1/media/media-1", {
 			method: "DELETE",
@@ -355,6 +417,26 @@ describe("Media Upload API Endpoints", () => {
 		const json = await res.json();
 		expect(json.success).toBe(true);
 		expect(mockDeleteFile).toHaveBeenCalledWith({ key: "media/media-1/pic.png" });
-		expect(mockDeleteMediaAsset).toHaveBeenCalledWith("media-1");
+		expect(mockFinalizeMediaDelete).toHaveBeenCalledWith("media-1");
+	});
+
+	it("DELETE /media/:id keeps the deleting record when storage deletion fails so it can be retried", async () => {
+		mockBeginMediaDelete.mockResolvedValue({
+			id: "media-1",
+			status: "deleting",
+			storageKey: "media/media-1/pic.png",
+			stagingKey: null,
+			original: null,
+			filename: "pic.png",
+		});
+		mockDeleteFile.mockRejectedValue(new Error("R2 unavailable"));
+
+		const req = new NextRequest("http://localhost/api/cms/v1/media/media-1", {
+			method: "DELETE",
+			headers: { origin: "http://localhost", host: "localhost" },
+		});
+		const res = await handleDeleteMedia(req, { params: Promise.resolve({ id: "media-1" }) });
+		expect(res.status).toBe(500);
+		expect(mockFinalizeMediaDelete).not.toHaveBeenCalled();
 	});
 });

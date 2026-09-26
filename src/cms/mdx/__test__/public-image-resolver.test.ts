@@ -10,9 +10,7 @@ describe("createPublicImageResolver", () => {
 	});
 
 	it("미디어 저장소를 해석할 수 없으면 실패 결과를 반환한다", async () => {
-		const resolve = await createPublicImageResolver(
-			'::image{mediaId="00000000-0000-0000-0000-000000000000"}',
-		);
+		const resolve = await createPublicImageResolver('::image{mediaId="00000000-0000-0000-0000-000000000000"}');
 
 		expect(resolve({ mediaId: "00000000-0000-0000-0000-000000000000" })).toEqual({ failure: "unresolved" });
 	});

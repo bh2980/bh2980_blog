@@ -88,8 +88,7 @@ export default function Navigation({ className }: NavigationProps) {
 								"text-slate-600 hover:bg-slate-100 hover:text-slate-900",
 								"dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
 								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-								pathname?.startsWith("/admin") &&
-									"bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
+								pathname?.startsWith("/admin") && "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
 							)}
 						>
 							관리자

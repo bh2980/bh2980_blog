@@ -1,125 +1,162 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import type { BulkOp } from "@/cms/core/api";
+import { isRecordCollection } from "@/cms/core/collections";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
-import { BULK_ERROR_LABEL, type BulkItemResult, type BulkOp, runBulk } from "./bulk-client";
+import { cmsFetch, errorText } from "../admin-api";
+import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
+import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { useTaxonomy } from "../shared/use-taxonomy";
 
-interface Option {
-	id: string;
-	title: string | null;
-	name?: string;
+export type BulkItemResult =
+	| { id: string; ok: true; version: number }
+	| { id: string; ok: false; error: string; issues?: CmsIssue[] };
+
+export type BulkSelection = { id: string; expectedVersion: number; title?: string | null };
+
+const ACTIONS: { value: BulkOp; label: string; confirm?: string; content?: boolean; post?: boolean }[] = [
+	{ value: "tags.add", label: "태그 추가", content: true },
+	{ value: "tags.remove", label: "태그 제거", content: true },
+	{ value: "category.set", label: "카테고리 변경", post: true },
+	{ value: "folder.move", label: "폴더 이동" },
+	{
+		value: "publish",
+		label: "발행",
+		confirm: "선택한 글을 발행할까요? 각 글에 발행 검증을 적용하고 최신 초안이 공개됩니다.",
+		content: true,
+	},
+	{ value: "archive", label: "보관", confirm: "선택한 글을 보관할까요? 공개가 종료됩니다.", content: true },
+	{ value: "unarchive", label: "보관 해제", content: true },
+	{ value: "trash", label: "휴지통 이동", confirm: "선택한 항목을 휴지통으로 옮길까요? 공개가 종료됩니다." },
+];
+
+/** 작업별 실패 사유(§3.4 "성공·실패를 구분하고 실패한 항목만 다시 실행"). */
+export const BULK_ERROR_LABEL: Record<string, string> = {
+	conflict: "다른 곳에서 먼저 바뀌었습니다(버전 충돌). 목록을 새로고침한 뒤 다시 실행하세요.",
+	not_found: "삭제되었거나 없습니다.",
+	invalid_input: "이 항목에는 적용할 수 없습니다.",
+	invalid_status: "현재 상태에서는 할 수 없는 작업입니다.",
+	locked: "예약된 글입니다. 편집 화면에서 예약을 해제하세요.",
+	publish_validation_failed: "발행 검증을 통과하지 못했습니다.",
+	slug_conflict: "같은 주소(slug)가 이미 사용 중입니다.",
+	in_use: "다른 콘텐츠가 사용 중입니다.",
+	invalid_reference: "휴지통에 있는 항목을 참조합니다.",
+};
+
+async function runBulk(
+	op: BulkOp,
+	items: BulkSelection[],
+	params: { tagIds?: string[]; categoryId?: string | null; folderId?: string | null },
+): Promise<BulkItemResult[]> {
+	const data = await cmsFetch<{ results: BulkItemResult[] }>("/api/cms/v1/bulk", {
+		method: "POST",
+		json: { op, items: items.map(({ id, expectedVersion }) => ({ id, expectedVersion })), ...params },
+		fallback: "일괄 작업 요청이 실패했습니다.",
+	});
+	return data.results;
 }
 
-interface BulkBarProps {
-	selected: { id: string; expectedVersion: number }[];
+/**
+ * 일괄 작업(§3.4). 현재 페이지에서 고른 항목에만 적용하고, 항목마다 결과를 보여 준다.
+ * 실패한 항목만 다시 실행할 수 있다.
+ */
+export function BulkBar({
+	collection,
+	selected,
+	folders,
+	onClearSelection,
+	onDone,
+}: {
+	collection: string;
+	selected: BulkSelection[];
 	folders: Folder[];
 	onClearSelection: () => void;
 	onDone: (failedIds: string[]) => void;
-}
-
-const ACTIONS: { value: BulkOp; label: string; confirm?: string }[] = [
-	{ value: "tags.add", label: "태그 추가" },
-	{ value: "tags.remove", label: "태그 제거" },
-	{ value: "category.set", label: "카테고리 변경" },
-	{ value: "folder.move", label: "폴더 이동" },
-	{ value: "archive", label: "보관" },
-	{ value: "unarchive", label: "보관 해제" },
-	{ value: "trash", label: "휴지통 이동", confirm: "선택한 글을 휴지통으로 이동할까요?" },
-	{ value: "publish", label: "발행", confirm: "선택한 글을 발행할까요? 초안이 공개본에 반영됩니다." },
-];
-
-async function fetchOptions(collection: "tag" | "category"): Promise<Option[]> {
-	const res = await fetch(`/api/cms/v1/entries?collection=${collection}&pageSize=100`);
-	if (!res.ok) return [];
-	const data = await res.json();
-	return (data.items ?? []).map((i: any) => ({ id: i.id, title: i.title ?? null }));
-}
-
-export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBarProps) {
-	const [action, setAction] = useState<BulkOp>("tags.add");
-	const [options, setOptions] = useState<Option[]>([]);
+}) {
+	const isRecord = isRecordCollection(collection);
+	const actions = useMemo(
+		() => ACTIONS.filter((action) => (!action.content || !isRecord) && (!action.post || collection === "post")),
+		[isRecord, collection],
+	);
+	const [action, setAction] = useState<BulkOp>(actions[0]?.value ?? "trash");
 	const [checked, setChecked] = useState<string[]>([]);
-	const [single, setSingle] = useState<string>("");
+	const [single, setSingle] = useState("");
 	const [isRunning, setIsRunning] = useState(false);
 	const [results, setResults] = useState<BulkItemResult[] | null>(null);
+	const [ranItems, setRanItems] = useState<BulkSelection[]>([]);
 	const [error, setError] = useState<string | null>(null);
-	const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const tags = useTaxonomy("tag", !isRecord);
+	const categories = useTaxonomy("category", collection === "post");
 
-	const needsMulti = action === "tags.add" || action === "tags.remove";
-	const needsSingle = action === "category.set" || action === "folder.move";
+	useEffect(() => {
+		if (!actions.some((candidate) => candidate.value === action)) setAction(actions[0]?.value ?? "trash");
+	}, [actions, action]);
 
+	// 작업을 바꾸면 그 작업의 입력값을 비운다.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset keyed by action
 	useEffect(() => {
 		setChecked([]);
 		setSingle("");
-		setResults(null);
 		setError(null);
-		if (action === "tags.add" || action === "tags.remove") {
-			fetchOptions("tag")
-				.then(setOptions)
-				.catch(() => setOptions([]));
-		} else if (action === "category.set") {
-			fetchOptions("category")
-				.then(setOptions)
-				.catch(() => setOptions([]));
-		}
 	}, [action]);
 
-	const toggleCheck = (id: string) => {
-		setChecked((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
-	};
-
-	const activeAction = ACTIONS.find((a) => a.value === action);
-
+	const needsTags = action === "tags.add" || action === "tags.remove";
+	const needsSingle = action === "category.set" || action === "folder.move";
 	const canRun =
-		!isRunning && selected.length > 0 && (needsMulti ? checked.length > 0 : needsSingle ? single !== "" : true);
+		!isRunning && selected.length > 0 && (needsTags ? checked.length > 0 : needsSingle ? single !== "" : true);
+	const activeAction = actions.find((candidate) => candidate.value === action);
 
-	const run = async (items: { id: string; expectedVersion: number }[]) => {
+	const run = async (items: BulkSelection[]) => {
 		setIsRunning(true);
 		setError(null);
 		try {
-			const params =
-				action === "tags.add" || action === "tags.remove"
-					? { tagIds: checked }
-					: action === "category.set"
-						? { categoryId: single === "__none__" ? null : single }
-						: action === "folder.move"
-							? { folderId: single === "__root__" ? null : single }
-							: {};
+			const params = needsTags
+				? { tagIds: checked }
+				: action === "category.set"
+					? { categoryId: single === "__none__" ? null : single }
+					: action === "folder.move"
+						? { folderId: single === "__unfiled__" ? null : single }
+						: {};
 			const out = await runBulk(action, items, params);
 			setResults(out);
-			const failedIds = out.filter((r) => !r.ok).map((r) => r.id);
-			onDone(failedIds);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : "일괄 작업 실패");
+			setRanItems(items);
+			onDone(out.filter((result) => !result.ok).map((result) => result.id));
+		} catch (err) {
+			setError(errorText(err, "일괄 작업이 실패했습니다."));
 		} finally {
 			setIsRunning(false);
 		}
 	};
 
-	const failures = (results ?? []).filter((r) => !r.ok);
-	const successes = (results ?? []).filter((r) => r.ok).length;
-
-	const rerunFailures = () => {
-		const failedItems = failures
-			.map((f) => selected.find((s) => s.id === f.id))
-			.filter((s): s is { id: string; expectedVersion: number } => Boolean(s));
-		if (failedItems.length > 0) void run(failedItems);
+	const start = () => {
+		if (activeAction?.confirm) {
+			setConfirm({
+				title: `${activeAction.label} — ${selected.length}개`,
+				description: activeAction.confirm,
+				confirmLabel: "계속",
+				destructive: action === "trash",
+				onConfirm: () => run(selected),
+			});
+		} else {
+			void run(selected);
+		}
 	};
+
+	const failures = (results ?? []).filter((result): result is Extract<BulkItemResult, { ok: false }> => !result.ok);
+	const successes = (results ?? []).length - failures.length;
+	const titleOf = (id: string) => ranItems.find((item) => item.id === id)?.title || id.slice(0, 8);
 
 	if (selected.length === 0 && !results) return null;
 
+	const selectClass =
+		"h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none dark:bg-neutral-900";
+
 	return (
-		<div className="border-neutral-800 border-b bg-neutral-900/60 px-6 py-3">
+		<section aria-label="일괄 작업" className="border-neutral-800 border-b bg-neutral-900/60 px-6 py-3">
 			<div className="flex flex-wrap items-center gap-3 text-sm">
 				<span className="font-semibold text-white">{selected.length}개 선택</span>
 				<Button
@@ -127,7 +164,7 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					variant="ghost"
 					size="sm"
 					onClick={onClearSelection}
-					className="h-auto rounded-none bg-transparent px-0 py-0 text-neutral-400 text-xs shadow-none hover:bg-transparent hover:text-white focus-visible:ring-neutral-500/50"
+					className="h-7 text-neutral-400 text-xs"
 				>
 					선택 해제
 				</Button>
@@ -135,45 +172,49 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 				<NativeSelect
 					aria-label="일괄 작업 종류"
 					value={action}
-					onChange={(e) => setAction(e.target.value as BulkOp)}
-					className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
+					onChange={(event) => setAction(event.target.value as BulkOp)}
+					className={selectClass}
 				>
-					{ACTIONS.map((a) => (
-						<option key={a.value} value={a.value}>
-							{a.label}
+					{actions.map((candidate) => (
+						<option key={candidate.value} value={candidate.value}>
+							{candidate.label}
 						</option>
 					))}
 				</NativeSelect>
 
-				{needsMulti && (
-					<div className="flex max-h-24 flex-wrap items-center gap-2 overflow-auto">
-						{options.length === 0 && <span className="text-neutral-500 text-xs">태그 없음</span>}
-						{options.map((o) => (
-							<label key={o.id} className="flex items-center gap-1 text-neutral-300 text-xs">
+				{needsTags && (
+					<fieldset className="flex max-h-24 flex-wrap items-center gap-2 overflow-auto">
+						<legend className="sr-only">적용할 태그</legend>
+						{tags.options.length === 0 && <span className="text-neutral-500 text-xs">태그 없음</span>}
+						{tags.options.map((option) => (
+							<label key={option.id} className="flex items-center gap-1 text-neutral-300 text-xs">
 								<input
 									type="checkbox"
-									checked={checked.includes(o.id)}
-									onChange={() => toggleCheck(o.id)}
-									className="accent-white"
+									checked={checked.includes(option.id)}
+									onChange={() =>
+										setChecked((prev) =>
+											prev.includes(option.id) ? prev.filter((id) => id !== option.id) : [...prev, option.id],
+										)
+									}
 								/>
-								{o.title ?? o.id.slice(0, 8)}
+								{option.title}
 							</label>
 						))}
-					</div>
+					</fieldset>
 				)}
 
 				{action === "category.set" && (
 					<NativeSelect
 						aria-label="대상 카테고리"
 						value={single}
-						onChange={(e) => setSingle(e.target.value)}
-						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
+						onChange={(event) => setSingle(event.target.value)}
+						className={selectClass}
 					>
 						<option value="">카테고리 선택</option>
 						<option value="__none__">지우기(없음)</option>
-						{options.map((o) => (
-							<option key={o.id} value={o.id}>
-								{o.title ?? o.id.slice(0, 8)}
+						{categories.options.map((option) => (
+							<option key={option.id} value={option.id}>
+								{option.title}
 							</option>
 						))}
 					</NativeSelect>
@@ -183,14 +224,14 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 					<NativeSelect
 						aria-label="이동할 폴더"
 						value={single}
-						onChange={(e) => setSingle(e.target.value)}
-						className="h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none focus:border-neutral-600 focus:outline-none focus-visible:border-neutral-600 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
+						onChange={(event) => setSingle(event.target.value)}
+						className={selectClass}
 					>
 						<option value="">폴더 선택</option>
-						<option value="__root__">최상위로</option>
-						{folders.map((f) => (
-							<option key={f.id} value={f.id}>
-								{f.name}
+						<option value="__unfiled__">미분류</option>
+						{folders.map((folder) => (
+							<option key={folder.id} value={folder.id}>
+								{folder.name}
 							</option>
 						))}
 					</NativeSelect>
@@ -199,27 +240,24 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 				<Button
 					type="button"
 					disabled={!canRun}
-					onClick={() => {
-						if (activeAction?.confirm) setConfirmMessage(activeAction.confirm);
-						else void run(selected);
-					}}
-					className="h-auto rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm shadow-none transition hover:bg-neutral-200 focus-visible:ring-neutral-500/50 disabled:opacity-40"
+					onClick={start}
+					className="h-auto rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm hover:bg-neutral-200"
 				>
 					{isRunning ? "실행 중..." : "일괄 실행"}
 				</Button>
 
 				{results && (
-					<span className="text-neutral-300 text-xs">
+					<output className="text-neutral-300 text-xs">
 						성공 {successes} / 실패 {failures.length}
-					</span>
+					</output>
 				)}
 				{failures.length > 0 && (
 					<Button
 						type="button"
 						variant="outline"
 						size="sm"
-						onClick={rerunFailures}
-						className="h-auto rounded border-neutral-700 bg-neutral-800 px-2.5 py-1 text-neutral-200 text-xs shadow-none hover:bg-neutral-700 hover:text-neutral-200 focus-visible:ring-neutral-500/50 dark:bg-neutral-800"
+						className="h-7 text-xs"
+						onClick={() => void run(ranItems.filter((item) => failures.some((failure) => failure.id === item.id)))}
 					>
 						실패만 다시 실행
 					</Button>
@@ -227,49 +265,22 @@ export function BulkBar({ selected, folders, onClearSelection, onDone }: BulkBar
 			</div>
 
 			{error && (
-				<div role="alert" className="pt-2 text-red-400 text-xs">
+				<p role="alert" className="pt-2 text-red-400 text-xs">
 					{error}
-				</div>
+				</p>
 			)}
-
 			{failures.length > 0 && (
 				<ul className="flex flex-col gap-1 pt-2 text-red-300 text-xs">
-					{failures.map((f) => (
-						<li key={f.id}>
-							<span className="font-mono">{f.id.slice(0, 8)}</span> — {!f.ok && (BULK_ERROR_LABEL[f.error] ?? f.error)}
+					{failures.map((failure) => (
+						<li key={failure.id}>
+							<span className="font-medium">{titleOf(failure.id)}</span> —{" "}
+							{BULK_ERROR_LABEL[failure.error] ?? failure.error}
+							{failure.issues?.length ? ` (${failure.issues.slice(0, 3).map(cmsIssueMessage).join(", ")})` : ""}
 						</li>
 					))}
 				</ul>
 			)}
-			<Dialog open={Boolean(confirmMessage)} onOpenChange={(open) => !open && setConfirmMessage(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>일괄 작업 확인</DialogTitle>
-						<DialogDescription>{confirmMessage}</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setConfirmMessage(null)}
-							className="h-auto rounded-md px-3 py-2 text-sm shadow-none focus-visible:ring-neutral-500/50"
-						>
-							취소
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => {
-								setConfirmMessage(null);
-								void run(selected);
-							}}
-							className="h-auto rounded-md px-3 py-2 text-sm shadow-none focus-visible:ring-neutral-500/50"
-						>
-							계속
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</div>
+			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+		</section>
 	);
 }

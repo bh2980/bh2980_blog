@@ -5,10 +5,9 @@
 ![React](https://img.shields.io/badge/React-19.2.3-20232A?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![MDX](https://img.shields.io/badge/MDX-Content-1B1F24?style=flat-square&logo=mdx&logoColor=white)
-![Keystatic](https://img.shields.io/badge/Keystatic-CMS-1F6FEB?style=flat-square)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-CMS-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-개인 학습 기록과 지식 공유를 위한 기술 블로그 레포지토리입니다.  
-Next.js와 Keystatic을 기반으로 콘텐츠 관리 효율성과 구현 제어 범위를 함께 확보하는 방향으로 구성했습니다.
+개인 학습 기록과 지식 공유를 위한 기술 블로그입니다. Next.js 기반 공개 사이트와 PostgreSQL(Neon) 기반 자체 CMS를 함께 개발합니다.
 
 ## Tech Stack
 
@@ -16,25 +15,26 @@ Next.js와 Keystatic을 기반으로 콘텐츠 관리 효율성과 구현 제어
 | :--- | :--- |
 | Framework | Next.js (App Router), React |
 | Language | TypeScript |
-| CMS | Keystatic |
-| Content | MDX, Mermaid |
+| CMS | 자체 CMS (Next.js Route Handlers, `/admin`) |
+| Database | PostgreSQL (Neon), `pg` |
+| Editor | Tiptap, MDX |
+| Media | Cloudflare R2 어댑터 |
+| Content | MDX, Mermaid, KaTeX, 차트 DSL |
 | Interaction | giscus |
 | Metadata | RSS, Sitemap, Open Graph |
 
 ## Project Structure
 
-
 ```text
 .
-├── public
+├── docs/cms            # CMS API 계약과 확장 현황
+├── public              # 정적 에셋
 ├── src
-│   ├── app             # App Router 페이지, RSS, sitemap, OG 이미지
-│   ├── components      # UI와 MDX 렌더링 컴포넌트
-│   ├── contents        # 게시글, 메모, 태그, 카테고리 원본 데이터
-│   ├── keystatic       # 콘텐츠 편집기와 컬렉션 설정
-│   ├── libs            # 콘텐츠 조회, MDX, Mermaid 관련 로직
-│   └── utils           # 공통 유틸 함수
-├── keystatic.config.ts
+│   ├── app             # 공개 페이지, /admin, CMS API, RSS, sitemap
+│   ├── cms             # 인증·PostgreSQL·R2 어댑터, 편집기, MDX, 서비스
+│   ├── components      # 공통 UI와 MDX 렌더러
+│   ├── contents        # 파일 기반 CMS 이전 입력 및 회귀 테스트 자료
+│   └── libs            # 공개 콘텐츠 조회, 주석, 차트, Mermaid 등
 └── package.json
 ```
 
@@ -45,15 +45,37 @@ Next.js와 Keystatic을 기반으로 콘텐츠 관리 효율성과 구현 제어
 - **게시글 (Posts)**: 비교적 긴 호흡의 기술 문서와 정리 글. 카테고리 기반으로 분류합니다.
 - **메모 (Memos)**: 짧은 기록, 문제 해결 메모, 코드 스니펫. 태그 기반으로 탐색합니다.
 - **메타 데이터**: 태그, 카테고리, 발행일, OG 이미지, RSS, sitemap 정보를 함께 관리합니다.
-- **Admin UI**: Keystatic을 통해 로컬과 원격 환경 모두에서 GUI 기반으로 콘텐츠를 다룰 수 있습니다.
+- **Admin UI**: `/admin`의 자체 관리자 화면에서 콘텐츠를 작성·정리·발행합니다. PostgreSQL이 CMS 데이터의 원본이며, 기존 `src/contents` 파일은 이전·회귀 검증에 사용합니다.
 
 ## Key Implementations
 
-- **하이브리드 탐색 구조**: 게시글은 카테고리 기준, 메모는 다중 태그 기준으로 탐색할 수 있도록 분리했습니다.
-- **MDX 확장 렌더링**: Mermaid와 커스텀 MDX 컴포넌트를 지원해 글 안에서 표현 범위를 넓혔습니다.
-- **커스텀 주석 파서와 에디터 연동**: 코드 블록 주석 정보를 별도 구조로 파싱하고, 이를 Keystatic 코드 블록 에디터와 연결해 편집 흐름 안에서 다룰 수 있게 구성했습니다.
-- **콘텐츠 메타 자동화**: RSS, sitemap, Open Graph 이미지와 같은 배포 메타 정보를 코드 레벨에서 함께 생성합니다.
-- **콘텐츠 관리 흐름 분리**: 공개 페이지와 별도로 Keystatic 관리 화면 및 preview 흐름을 구성했습니다.
+- **콘텐츠 흐름 분리**: 초안·발행본을 구분하고 명시적 발행으로 공개 콘텐츠를 갱신합니다.
+- **MDX 시각 편집**: Tiptap 편집기와 MDX 변환·검증 경로를 제공하며 원문 편집도 지원합니다.
+- **콘텐츠 조회**: 공개 글·메모는 PostgreSQL 저장소에서 읽습니다. RSS, sitemap, SEO 메타데이터도 같은 공개 데이터를 사용합니다.
+- **미디어**: R2 어댑터를 통해 관리자 미디어 라이브러리와 업로드 흐름을 제공합니다.
+- **표현 기능**: Mermaid, KaTeX, 차트 DSL, 코드 주석과 커스텀 MDX 지시자를 렌더링합니다.
+
+## CMS 현황
+
+CMS 코드는 `feature/new-cms` 브랜치에 있으며 아직 `main` 병합 및 운영 전환 전입니다. F07 범용 필드·블록 확장 API는 v1 범위에서 제외하고 [`CMS-SPEC.md` §8](CMS-SPEC.md)에 v2 검토 메모로 남겼습니다. 현재 `/api/cms/v1/meta`의 확장 항목은 직렬화 예제이며, 실제 입력 UI나 저장 동작을 등록하지 않습니다. 실 OS 한글 IME 및 실제 R2 업로드 검증도 별도로 남아 있습니다.
+
+## Development
+
+`CMS_DATABASE_URL`에 Neon PostgreSQL 연결 문자열을 설정한 뒤 실행합니다. `CMS_SCHEMA`는 선택 항목이며, 생략하면 `public` 스키마를 사용합니다. 별도의 `CMS_PUBLIC_REPOSITORY` 설정은 필요하지 않습니다. 비밀값은 `.env.local`에 두고 저장소에 커밋하지 마세요. R2 업로드와 관리자 인증을 검증하려면 각 서비스의 서버 환경값도 필요합니다.
+
+```bash
+pnpm install
+pnpm cms:db:migrate   # CMS 테이블 생성·최신 스키마 반영(추가 전용, 여러 번 실행해도 안전)
+pnpm dev
+```
+
+주요 검증 명령(PostgreSQL 테스트는 운영 DB와 분리된 `CMS_TEST_DATABASE_URL`만 사용합니다):
+
+```bash
+TZ=UTC pnpm test:run
+pnpm typecheck
+pnpm build
+```
 
 ## Custom Annotation 문법
 

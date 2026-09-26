@@ -1,29 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
-import { handleApiError } from "../../../error-handler";
+import { adminRoute, json } from "../../../handler";
 
-interface RouteContext {
-	params: Promise<{ id: string }>;
-}
-
-export async function GET(_request: NextRequest, context: RouteContext) {
-	try {
-		await authGateway.verifyAdmin();
-
-		const { id } = await context.params;
-		const store = getCmsContentStore();
-
-		// Check if target entry exists
-		await store.getEntry(id);
-
-		const relations = await store.getIncomingReferences({ targetId: id });
-		return NextResponse.json({
-			targetId: id,
-			incomingReferences: relations,
-			total: relations.length,
-		});
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+/** 이 항목의 사용처(역참조). 초안과 공개본 사용처를 구분한다(§6.1). */
+export const GET = adminRoute<{ id: string }>(async ({ params }) => {
+	const store = getCmsContentStore();
+	await store.getEntry(params.id);
+	const relations = await store.getIncomingReferences({ targetId: params.id });
+	return json({ targetId: params.id, incomingReferences: relations, total: relations.length });
+});

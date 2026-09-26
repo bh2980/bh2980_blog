@@ -1,14 +1,11 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
+import type { NextRequest } from "next/server";
 import { getCmsContentStore } from "@/cms/container";
-import { exportBodySchema, exportQuerySchema } from "@/cms/core/api";
+import { exportScopeSchema } from "@/cms/core/api";
 import { buildExportArchive, type ExportScope } from "@/cms/services/export-service";
-import { handleApiError } from "../error-handler";
-import { validateSameOrigin } from "../security";
+import { adminRoute, parseWith, readJsonBody, readQuery } from "../handler";
 
 const buildResponse = async (scope: ExportScope): Promise<Response> => {
-	const store = getCmsContentStore();
-	const snapshot = await store.readExportSnapshot();
+	const snapshot = await getCmsContentStore().readExportSnapshot();
 	const exportedAt = new Date();
 	const archive = buildExportArchive(snapshot, { scope, exportedAt });
 
@@ -26,40 +23,9 @@ const buildResponse = async (scope: ExportScope): Promise<Response> => {
 	});
 };
 
-export async function GET(request: NextRequest) {
-	try {
-		await authGateway.verifyAdmin();
+const scopeFrom = (value: unknown) => parseWith(exportScopeSchema, value, "Invalid export scope").scope;
 
-		const parsed = exportQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid export scope", issues: parsed.error.issues },
-				{ status: 400 },
-			);
-		}
+/** 관리자 내보내기(§11.4). 링크로 받을 수 있게 GET도 연다. */
+export const GET = adminRoute(async ({ request }) => buildResponse(scopeFrom(readQuery(request as NextRequest))));
 
-		return await buildResponse(parsed.data.scope);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function POST(request: NextRequest) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const raw = await request.json().catch(() => ({}));
-		const parsed = exportBodySchema.safeParse(raw);
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid export scope", issues: parsed.error.issues },
-				{ status: 400 },
-			);
-		}
-
-		return await buildResponse(parsed.data.scope);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+export const POST = adminRoute(async ({ request }) => buildResponse(scopeFrom(await readJsonBody(request))));

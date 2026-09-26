@@ -2,7 +2,7 @@ import type { Code } from "mdast";
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { attributeRecord, readJsxAttributes } from "./jsx";
-import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS } from "./registry";
+import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
 import type { CmsJsonValue, CmsMark, CmsMdxAnalysis, CmsNode } from "./types";
 
 type MdastLike = {
@@ -23,12 +23,7 @@ type MdastLike = {
 	attributes?: unknown[];
 };
 
-const MARK_ORDER = ["tooltip", "underline", "superscript", "subscript", "link", "bold", "italic", "strike", "code"];
-
 const jsonClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-const sortMarks = (marks: CmsMark[]): CmsMark[] =>
-	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
 
 const textNode = (text: string, marks: CmsMark[]): CmsNode => {
 	const node: CmsNode = { type: "text", text };
@@ -287,8 +282,11 @@ const convertList = (node: MdastLike): CmsNode => {
 };
 
 const convertTable = (node: MdastLike): CmsNode => {
+	// GFM 열 정렬(`:-:` 등). 정렬이 하나도 없으면 속성을 두지 않는다.
+	const align = (node.align ?? []).map((value) => value ?? null);
 	return {
 		type: "table",
+		...(align.some((value) => value !== null) ? { attrs: { align } } : {}),
 		content: (node.children ?? []).map((row) => ({
 			type: "tableRow",
 			content: (row.children ?? []).map((cell) => ({

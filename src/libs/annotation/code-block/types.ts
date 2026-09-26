@@ -1,11 +1,3 @@
-import type { Paragraph, PhrasingContent } from "mdast";
-import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-
-/** 편집기 코드블록 MDX 요소 이름. Keystatic 제거 후에도 원본 MDX가 이 이름을 쓴다. */
-export type CodeBlockElementName = "CodeBlock";
-
-export type CodeBlockRoot = MdxJsxFlowElement & { name: CodeBlockElementName };
-
 export type Range = {
 	start: number;
 	end: number;
@@ -83,17 +75,3 @@ export type CodeBlockDocument = {
 	annotations: LineAnnotation[];
 	lines: Array<Line>;
 };
-
-export type EventKind = "open" | "close";
-
-export type AnnotationEvent = {
-	pos: number; // line offset
-	kind: EventKind; // 같은 pos면 close 먼저
-	anno: CodeBlockAnnotation; // 원본 참조 or 동일 구조
-};
-
-// children을 가지는 PhrasingContent만 추출 (text 제외)
-export type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
-
-// 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
-export type MdastNodeLike = Paragraph | MdxJsxTextElement | PhrasingParent;

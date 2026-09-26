@@ -84,7 +84,6 @@ const countNodes = (node: CmsNode, type: string): number => {
 const MARK_TAG_PATTERN = /<(strong|em|del|u|sup|sub|Tooltip)[\s>]/;
 const MARK_SYNTAX_PATTERN = /\*\*|\*|~~|__/;
 const ESCAPE_PATTERN = /\\[*_`[\]{}<>#-]|\\\\|\\[A-Za-z0-9.]/;
-const LIST_MARKER_PATTERN = /^\s*(?:[-*+]\s|\d+\.\s)/;
 const LINE_MARKER_PATTERN = /^\s*(?:[-*+]\s|\d+\.\s|>|#{1,6}\s|```)/;
 const TABLE_ALIGNMENT_PATTERN = /^\|?[\s:|-]+\|?$/;
 

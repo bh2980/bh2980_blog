@@ -61,7 +61,7 @@ describe("M7-TW-1 예약 API 회귀", () => {
 			context,
 		);
 
-		expect(response.status).toBe(200);
+		expect(response.status).toBe(201);
 		expect(mocks.createSchedule).toHaveBeenCalledTimes(1);
 		expect(mocks.createSchedule.mock.calls[0][0]).toMatchObject({ entryId, expectedVersion: 3 });
 		expect(mocks.createSchedule.mock.calls[0][0].scheduledAt).toBeInstanceOf(Date);
@@ -122,14 +122,17 @@ describe("M7-TW-1 예약 API 회귀", () => {
 		expect(mocks.createSchedule).not.toHaveBeenCalled();
 	});
 
-	it("예약 취소는 204이고 scheduleId가 없으면 400이다", async () => {
-		mocks.cancelSchedule.mockResolvedValue(undefined);
+	it("예약 해제는 200이고, 대기 중인 예약이 없으면 404, scheduleId가 없으면 400이다", async () => {
+		mocks.cancelSchedule.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 		const ok = await DELETE(request("DELETE", "?scheduleId=sched-1"), context);
+		const gone = await DELETE(request("DELETE", "?scheduleId=sched-1"), context);
 		const bad = await DELETE(request("DELETE"), context);
 
-		expect(ok.status).toBe(204);
+		expect(ok.status).toBe(200);
+		expect(await ok.json()).toEqual({ id: "sched-1", status: "cancelled" });
 		expect(mocks.cancelSchedule).toHaveBeenCalledWith({ scheduleId: "sched-1", entryId });
+		expect(gone.status).toBe(404);
 		expect(bad.status).toBe(400);
 	});
 });

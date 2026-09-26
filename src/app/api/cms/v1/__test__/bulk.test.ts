@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as postBulk } from "../bulk/route";
 
@@ -22,6 +22,10 @@ vi.mock("@/cms/adapters/auth", () => ({
 const CAT_1 = "11111111-1111-4111-8111-111111111111";
 const TAG_1 = "33333333-3333-4333-8333-333333333333";
 const TAG_2 = "44444444-4444-4444-8444-444444444444";
+const E1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const STALE = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const MISSING = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const SCHEDULED = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 const working = (version: number) => ({
 	collection: "post",
@@ -36,7 +40,7 @@ vi.mock("@/cms/container", () => ({
 	getCmsContentStore: () => ({
 		getWorkingReferences: vi.fn().mockResolvedValue([]),
 		getWorking: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
-			if (entryId === "missing") throw new CmsError("Entry not found", "not_found");
+			if (entryId === MISSING) throw new CmsError("Entry not found", "not_found");
 			return Promise.resolve(working(3));
 		}),
 		saveWorkingWithReferences: vi.fn().mockImplementation(({ entryId, expectedVersion }) => {
@@ -44,7 +48,7 @@ vi.mock("@/cms/container", () => ({
 			return Promise.resolve({ version: 4, id: entryId });
 		}),
 		hasPendingSchedule: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
-			return Promise.resolve(entryId === "scheduled");
+			return Promise.resolve(entryId === SCHEDULED);
 		}),
 		archiveEntry: vi.fn().mockImplementation(({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
@@ -79,9 +83,9 @@ describe("M4-BE-1a Bulk route contract", () => {
 			postReq({
 				op: "tags.add",
 				items: [
-					{ id: "e1", expectedVersion: 3 },
-					{ id: "stale", expectedVersion: 2 },
-					{ id: "missing", expectedVersion: 1 },
+					{ id: E1, expectedVersion: 3 },
+					{ id: STALE, expectedVersion: 2 },
+					{ id: MISSING, expectedVersion: 1 },
 				],
 				tagIds: [TAG_2],
 			}),
@@ -89,9 +93,9 @@ describe("M4-BE-1a Bulk route contract", () => {
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual({
 			results: [
-				{ id: "e1", ok: true, version: 4 },
-				{ id: "stale", ok: false, error: "conflict" },
-				{ id: "missing", ok: false, error: "not_found" },
+				{ id: E1, ok: true, version: 4 },
+				{ id: STALE, ok: false, error: "conflict" },
+				{ id: MISSING, ok: false, error: "not_found" },
 			],
 		});
 	});
@@ -100,10 +104,18 @@ describe("M4-BE-1a Bulk route contract", () => {
 		const res = await postBulk(
 			postReq({
 				op: "tags.add",
-				items: Array.from({ length: 101 }, (_, i) => ({ id: `e-${i}`, expectedVersion: 1 })),
+				items: Array.from({ length: 101 }, (_, i) => ({
+					id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+					expectedVersion: 1,
+				})),
 				tagIds: [TAG_1],
 			}),
 		);
+		expect(res.status).toBe(400);
+	});
+
+	it("rejects non-UUID item IDs with 400", async () => {
+		const res = await postBulk(postReq({ op: "archive", items: [{ id: "e1", expectedVersion: 1 }] }));
 		expect(res.status).toBe(400);
 	});
 
@@ -117,16 +129,16 @@ describe("M4-BE-1a Bulk route contract", () => {
 			postReq({
 				op: "archive",
 				items: [
-					{ id: "e1", expectedVersion: 3 },
-					{ id: "e1", expectedVersion: 2 },
+					{ id: E1, expectedVersion: 3 },
+					{ id: E1, expectedVersion: 2 },
 				],
 			}),
 		);
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual({
 			results: [
-				{ id: "e1", ok: true, version: 4 },
-				{ id: "e1", ok: false, error: "conflict" },
+				{ id: E1, ok: true, version: 4 },
+				{ id: E1, ok: false, error: "conflict" },
 			],
 		});
 	});
@@ -136,16 +148,16 @@ describe("M4-BE-1a Bulk route contract", () => {
 			postReq({
 				op: "publish",
 				items: [
-					{ id: "e1", expectedVersion: 3 },
-					{ id: "scheduled", expectedVersion: 3 },
+					{ id: E1, expectedVersion: 3 },
+					{ id: SCHEDULED, expectedVersion: 3 },
 				],
 			}),
 		);
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual({
 			results: [
-				{ id: "e1", ok: true, version: 4 },
-				{ id: "scheduled", ok: false, error: "locked" },
+				{ id: E1, ok: true, version: 4 },
+				{ id: SCHEDULED, ok: false, error: "locked" },
 			],
 		});
 	});

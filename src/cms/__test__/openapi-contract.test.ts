@@ -36,7 +36,7 @@ function toOpenApiPath(routeFile: string): string {
 }
 
 function methodsOf(routeFile: string): string[] {
-	return [...readFileSync(routeFile, "utf8").matchAll(/export async function (GET|POST|PATCH|PUT|DELETE)\b/g)]
+	return [...readFileSync(routeFile, "utf8").matchAll(/export (?:async function|const) (GET|POST|PATCH|PUT|DELETE)\b/g)]
 		.map((match) => match[1].toLowerCase())
 		.sort();
 }

@@ -20,7 +20,7 @@ describe("AdminMobileNavigation", () => {
 
 		const dialog = await screen.findByRole("dialog", { name: "관리자 메뉴" });
 		expect(trigger.getAttribute("aria-expanded")).toBe("true");
-		fireEvent.click(screen.getByRole("button", { name: "메모 (Memos)" }));
+		fireEvent.click(screen.getByRole("button", { name: "메모" }));
 
 		await waitFor(() => expect(dialog.getAttribute("data-state")).toBe("closed"));
 		await waitFor(() => expect(trigger.getAttribute("aria-expanded")).toBe("false"));

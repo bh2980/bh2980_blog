@@ -10,11 +10,6 @@ const runPreHook = (node: Element, code: string, meta: Record<string, unknown>) 
 };
 
 describe("addMetaToPre", () => {
-	it("pre transformer를 제공한다", () => {
-		const transformer = addMetaToPre("const a = 1", {});
-		expect(transformer.pre).toBeTypeOf("function");
-	});
-
 	it("code와 meta를 pre properties에 주입한다", () => {
 		const pre: Element = {
 			type: "element",

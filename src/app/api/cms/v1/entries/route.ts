@@ -1,75 +1,47 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentService, getCmsContentStore } from "@/cms/container";
-import { createEntryBodySchema, listEntriesQuerySchema } from "@/cms/core/api";
-import { handleApiError } from "../error-handler";
-import { validateSameOrigin } from "../security";
+import { createEntryBodySchema, LIST_ARRAY_QUERY_KEYS, listEntriesQuerySchema } from "@/cms/core/api";
+import type { ServiceInput } from "@/cms/services/types";
+import { adminRoute, json, parseWith, readJsonBody, readQuery } from "../handler";
 
-export async function GET(request: NextRequest) {
-	try {
-		await authGateway.verifyAdmin();
+/** 컬렉션별 목록·검색·필터·정렬·페이지(§3.2). */
+export const GET = adminRoute(async ({ request }) => {
+	const query = parseWith(
+		listEntriesQuerySchema,
+		readQuery(request, LIST_ARRAY_QUERY_KEYS),
+		"Invalid query parameters",
+	);
+	const range = (from?: Date, to?: Date) => (from || to ? { from, to } : undefined);
+	const result = await getCmsContentStore().listEntries({
+		collection: query.collection,
+		search: query.search,
+		includeBody: query.includeBody,
+		statuses: query.status,
+		folderId: query.folderId,
+		includeDescendants: query.includeDescendants,
+		tagIds: query.tagId,
+		categoryIds: query.categoryId,
+		hasUnpublishedChanges: query.hasChanges,
+		scheduled: query.scheduled,
+		createdAt: range(query.createdFrom, query.createdTo),
+		updatedAt: range(query.updatedFrom, query.updatedTo),
+		publishedAt: range(query.publishedFrom, query.publishedTo),
+		sort: query.sortField ? { field: query.sortField, direction: query.sortDirection ?? "desc" } : undefined,
+		page: query.page,
+		pageSize: query.pageSize,
+	});
+	return json(result);
+});
 
-		const url = new URL(request.url);
-		const rawQuery: Record<string, unknown> = {};
-		for (const [key, value] of url.searchParams.entries()) {
-			rawQuery[key] = value;
-		}
-
-		const parsed = listEntriesQuerySchema.safeParse(rawQuery);
-		if (!parsed.success) {
-			return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.issues }, { status: 400 });
-		}
-
-		const store = getCmsContentStore();
-		const result = await store.listEntries({
-			collection: parsed.data.collection,
-			search: parsed.data.search,
-			includeBody: parsed.data.includeBody,
-			statuses: parsed.data.status,
-			folderId: parsed.data.folderId,
-			includeDescendants: parsed.data.includeDescendants,
-			sort:
-				parsed.data.sortField && parsed.data.sortDirection
-					? { field: parsed.data.sortField, direction: parsed.data.sortDirection }
-					: undefined,
-			page: parsed.data.page,
-			pageSize: parsed.data.pageSize,
-		});
-
-		return NextResponse.json(result);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function POST(request: NextRequest) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const body = await request.json();
-		const parsed = createEntryBodySchema.safeParse(body);
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
-				{ status: 400 },
-			);
-		}
-
-		const service = getCmsContentService();
-		const draftInput: any = {
-			collection: parsed.data.collection,
-			slug: parsed.data.slug ?? null,
-			metadata: parsed.data.metadata as any,
-			mdx: parsed.data.mdx ?? "",
-		};
-		if (parsed.data.folderId !== undefined) {
-			draftInput.folderId = parsed.data.folderId;
-		}
-		const publishImmediately = ["tag", "category", "collection"].includes(parsed.data.collection);
-		const entry = await service.createDraft(draftInput, { publishImmediately });
-		return NextResponse.json(entry, { status: 201 });
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+/** 생성. record 컬렉션(태그·카테고리·모음집)은 서비스가 생성과 함께 공개 값에 반영한다(§5.2). */
+export const POST = adminRoute(async ({ request }) => {
+	const body = parseWith(createEntryBodySchema, await readJsonBody(request));
+	const input = {
+		collection: body.collection,
+		slug: body.slug ?? null,
+		metadata: body.metadata,
+		mdx: body.mdx,
+		...(body.folderId !== undefined ? { folderId: body.folderId } : {}),
+	} as ServiceInput;
+	const entry = await getCmsContentService().createDraft(input);
+	return json(entry, { status: 201 });
+});

@@ -57,10 +57,7 @@ export function OgTemplate({ title }: { title: string }) {
 	);
 }
 
-export async function createOgImageResponse(
-	title: string = "bh2980.dev",
-	options: { noStore?: boolean } = {},
-) {
+export async function createOgImageResponse(title: string = "bh2980.dev", options: { noStore?: boolean } = {}) {
 	const pretendardBold = await loadPretendardBold();
 	return new ImageResponse(<OgTemplate title={title} />, {
 		...OG_SIZE,

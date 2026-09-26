@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { Entry } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { moveToFolder, seedEntry } from "./seed";
 
 // ---------------------------------------------------------------------------
 // Local type declarations for the not-yet-implemented folder API
@@ -16,8 +16,6 @@ interface Folder {
 	position: number;
 }
 
-type ExtendedEntry = Entry & { folderId: string | null };
-
 interface ExtendedContentStore {
 	createFolder(params: {
 		collection: string;
@@ -28,11 +26,6 @@ interface ExtendedContentStore {
 	updateFolder(params: { id: string; name?: string; parentId?: string | null; position?: number }): Promise<Folder>;
 	deleteFolder(params: { id: string }): Promise<void>;
 	listFolders(params: { collection: string }): Promise<Folder[]>;
-	moveEntryToFolder(params: {
-		entryId: string;
-		folderId: string | null;
-		expectedVersion: number;
-	}): Promise<ExtendedEntry>;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +85,7 @@ describe("Folders contract", () => {
 			try {
 				await pool.query(`TRUNCATE "${schemaName}".entries CASCADE`);
 				await pool.query(`TRUNCATE "${schemaName}".folders CASCADE`);
-			} catch (e) {
+			} catch (_e) {
 				// Tables might not exist yet
 			}
 		}
@@ -177,7 +170,7 @@ describe("Folders contract", () => {
 		} catch (e) {
 			err1 = e;
 		}
-		expectCmsError(err1, "conflict");
+		expectCmsError(err1, "folder_name_conflict");
 
 		// Nested parent — duplicate under SAME nested parent (exact)
 		const nestedParent = await store.createFolder({ collection: "fc2", parentId: null, name: "Nested" });
@@ -190,7 +183,7 @@ describe("Folders contract", () => {
 		} catch (e) {
 			err3 = e;
 		}
-		expectCmsError(err3, "conflict");
+		expectCmsError(err3, "folder_name_conflict");
 
 		// Same name under different parent is OK
 		const otherParent = await store.createFolder({ collection: "fc2", parentId: null, name: "Other" });
@@ -256,7 +249,7 @@ describe("Folders contract", () => {
 		} catch (e) {
 			renameConflictErr = e;
 		}
-		expectCmsError(renameConflictErr, "conflict");
+		expectCmsError(renameConflictErr, "folder_name_conflict");
 		const afterRenameConflict = await store.listFolders({ collection: "fc3" });
 		expect(afterRenameConflict).toEqual(beforeDesc);
 
@@ -267,7 +260,7 @@ describe("Folders contract", () => {
 		} catch (e) {
 			moveConflictErr = e;
 		}
-		expectCmsError(moveConflictErr, "conflict");
+		expectCmsError(moveConflictErr, "folder_name_conflict");
 		const afterMoveConflict = await store.listFolders({ collection: "fc3" });
 		expect(afterMoveConflict).toEqual(beforeDesc);
 
@@ -301,10 +294,10 @@ describe("Folders contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("4. move entry into folder and null: exact +1 each, wrong expected => CmsError conflict/serverVersion, cross-collection folder => invalid_input; full entry field comparisons", async () => {
-		const f4 = await store.createFolder({ collection: "fc4", parentId: null, name: "F4" });
+		const f4 = await store.createFolder({ collection: "memo", parentId: null, name: "F4" });
 
-		const entry = await store.createEntry({
-			collection: "fc4",
+		const entry = await seedEntry(store, {
+			collection: "memo",
 			slug: "fc4-slug",
 			metadata: { title: "FC4" },
 			mdx: "body text",
@@ -313,7 +306,7 @@ describe("Folders contract", () => {
 		});
 
 		// Publish first so we can verify published address stability
-		const published = await store.publishEntry(entry.id, { expectedVersion: entry.version });
+		const published = await store.publishEntry({ id: entry.id, expectedVersion: entry.version });
 
 		const preMoveEntry = await store.getEntry(entry.id);
 		const preMoveAddress = await pool.query<{ slug: string; type: string }>(
@@ -322,7 +315,7 @@ describe("Folders contract", () => {
 		);
 
 		// Move into folder
-		const moved = await store.moveEntryToFolder({
+		const moved = await moveToFolder(store, {
 			entryId: entry.id,
 			folderId: f4.id,
 			expectedVersion: published.version,
@@ -338,13 +331,13 @@ describe("Folders contract", () => {
 		expect(moved.folderId).toBe(f4.id);
 
 		// Compare every Entry field except version
-		expect({ ...postMoveEntry, version: 0 }).toEqual({ ...preMoveEntry, version: 0 });
+		expect({ ...postMoveEntry, version: 0, folderId: null }).toEqual({ ...preMoveEntry, version: 0, folderId: null });
 		expect(postMoveAddress.rows).toEqual(preMoveAddress.rows);
 
 		// Wrong expectedVersion → conflict with serverVersion
 		let conflictErr: unknown;
 		try {
-			await store.moveEntryToFolder({ entryId: entry.id, folderId: null, expectedVersion: published.version });
+			await moveToFolder(store, { entryId: entry.id, folderId: null, expectedVersion: published.version });
 		} catch (e) {
 			conflictErr = e;
 		}
@@ -352,7 +345,7 @@ describe("Folders contract", () => {
 		expect((conflictErr as CmsError).serverVersion).toBe(moved.version);
 
 		// Move back to null (unfiled)
-		const unfiled = await store.moveEntryToFolder({
+		const unfiled = await moveToFolder(store, {
 			entryId: entry.id,
 			folderId: null,
 			expectedVersion: moved.version,
@@ -368,7 +361,11 @@ describe("Folders contract", () => {
 		expect(unfiled.folderId).toBeNull();
 
 		// Compare every Entry field except version
-		expect({ ...postUnfiledEntry, version: 0 }).toEqual({ ...postMoveEntry, version: 0 });
+		expect({ ...postUnfiledEntry, version: 0, folderId: null }).toEqual({
+			...postMoveEntry,
+			version: 0,
+			folderId: null,
+		});
 		expect(postUnfiledAddress.rows).toEqual(postMoveAddress.rows);
 
 		// Cross-collection folder → invalid_input
@@ -382,7 +379,7 @@ describe("Folders contract", () => {
 		const crossFolder = await store.createFolder({ collection: "fc4_other", parentId: null, name: "XF" });
 		let crossErr: unknown;
 		try {
-			await store.moveEntryToFolder({
+			await moveToFolder(store, {
 				entryId: entry.id,
 				folderId: crossFolder.id,
 				expectedVersion: unfiled.version,
@@ -409,20 +406,20 @@ describe("Folders contract", () => {
 
 	it("5. delete non-root folder reparents direct entries and child folders to deleted parent; delete root reparents to null; never deletes entries; snapshot full entries/addresses/folder exact unchanged", async () => {
 		// Build tree: root → mid → leaf  (entries in mid)
-		const root = await store.createFolder({ collection: "fc5", parentId: null, name: "Root5" });
-		const mid = await store.createFolder({ collection: "fc5", parentId: root.id, name: "Mid5" });
-		const leaf = await store.createFolder({ collection: "fc5", parentId: mid.id, name: "Leaf5" });
+		const root = await store.createFolder({ collection: "memo", parentId: null, name: "Root5" });
+		const mid = await store.createFolder({ collection: "memo", parentId: root.id, name: "Mid5" });
+		const leaf = await store.createFolder({ collection: "memo", parentId: mid.id, name: "Leaf5" });
 
-		const e5 = await store.createEntry({
-			collection: "fc5",
+		const e5 = await seedEntry(store, {
+			collection: "memo",
 			slug: "fc5-e",
 			metadata: { title: "E5" },
 			mdx: "e5 body",
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
 		});
-		const e5pub = await store.publishEntry(e5.id, { expectedVersion: e5.version });
-		const _e5moved = await store.moveEntryToFolder({
+		const e5pub = await store.publishEntry({ id: e5.id, expectedVersion: e5.version });
+		const _e5moved = await moveToFolder(store, {
 			entryId: e5.id,
 			folderId: mid.id,
 			expectedVersion: e5pub.version,
@@ -437,7 +434,7 @@ describe("Folders contract", () => {
 		// Delete mid → leaf reparents to root, entry reparents to root
 		await store.deleteFolder({ id: mid.id });
 
-		const folders5 = await store.listFolders({ collection: "fc5" });
+		const folders5 = await store.listFolders({ collection: "memo" });
 		expect(folders5.find((f) => f.id === mid.id)).toBeUndefined();
 
 		const leafAfter = folders5.find((f) => f.id === leaf.id);
@@ -447,7 +444,8 @@ describe("Folders contract", () => {
 		const e5After = await store.getEntry(e5.id);
 		expect(e5After).toBeDefined();
 
-		// Verify entry folderId via direct DB query (public Entry may lack folderId)
+		expect(e5After.folderId).toBe(root.id);
+		// Verify entry folderId via direct DB query
 		const dbRow = await pool.query<{ folder_id: string | null }>(
 			`SELECT folder_id FROM "${schemaName}".entries WHERE id = $1`,
 			[e5.id],
@@ -455,7 +453,7 @@ describe("Folders contract", () => {
 		expect(dbRow.rows[0].folder_id).toBe(root.id);
 
 		// Version and content exactly unchanged
-		expect(e5After).toEqual(preDeleteMidEntry);
+		expect({ ...e5After, folderId: null }).toEqual({ ...preDeleteMidEntry, folderId: null });
 
 		const postDeleteMidAddress = await pool.query<{ slug: string; type: string }>(
 			`SELECT slug, type FROM "${schemaName}".content_addresses WHERE entry_id = $1 ORDER BY slug`,
@@ -466,7 +464,7 @@ describe("Folders contract", () => {
 		// Now delete root → leaf reparents to null, entry reparents to null
 		await store.deleteFolder({ id: root.id });
 
-		const folders5b = await store.listFolders({ collection: "fc5" });
+		const folders5b = await store.listFolders({ collection: "memo" });
 		expect(folders5b.find((f) => f.id === root.id)).toBeUndefined();
 
 		const leafFinal = folders5b.find((f) => f.id === leaf.id);
@@ -479,7 +477,8 @@ describe("Folders contract", () => {
 		expect(dbRow2.rows[0].folder_id).toBeNull();
 
 		const e5Final = await store.getEntry(e5.id);
-		expect(e5Final).toEqual(preDeleteMidEntry);
+		expect(e5Final.folderId).toBeNull();
+		expect({ ...e5Final, folderId: null }).toEqual({ ...preDeleteMidEntry, folderId: null });
 	}, 30_000);
 
 	// -----------------------------------------------------------------------
@@ -487,32 +486,32 @@ describe("Folders contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("6. delete collision => exact conflict and atomically unchanged folders/entries", async () => {
-		const parent = await store.createFolder({ collection: "fc6", parentId: null, name: "P6" });
+		const parent = await store.createFolder({ collection: "memo", parentId: null, name: "P6" });
 
 		// "Dup" exists at root level
-		await store.createFolder({ collection: "fc6", parentId: null, name: "Dup" });
+		await store.createFolder({ collection: "memo", parentId: null, name: "Dup" });
 
 		// "Dup" also under parent (same name, different parent = OK)
-		await store.createFolder({ collection: "fc6", parentId: parent.id, name: "Dup" });
+		await store.createFolder({ collection: "memo", parentId: parent.id, name: "Dup" });
 
 		// Seed an entry in the to-be-deleted parent
-		const e6 = await store.createEntry({
-			collection: "fc6",
+		const e6 = await seedEntry(store, {
+			collection: "memo",
 			slug: "fc6-e",
 			metadata: { title: "E6" },
 			mdx: "e6 body",
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
 		});
-		const e6pub = await store.publishEntry(e6.id, { expectedVersion: e6.version });
-		const e6moved = await store.moveEntryToFolder({
+		const e6pub = await store.publishEntry({ id: e6.id, expectedVersion: e6.version });
+		const e6moved = await moveToFolder(store, {
 			entryId: e6.id,
 			folderId: parent.id,
 			expectedVersion: e6pub.version,
 		});
 
 		// Capture raw folder rows + entry state before deletion attempt
-		const beforeFolders = await store.listFolders({ collection: "fc6" });
+		const beforeFolders = await store.listFolders({ collection: "memo" });
 		const beforeEntry = await store.getEntry(e6.id);
 		const beforeEntryDb = await pool.query<{
 			folder_id: string | null;
@@ -539,10 +538,10 @@ describe("Folders contract", () => {
 		} catch (e) {
 			delErr = e;
 		}
-		expectCmsError(delErr, "conflict");
+		expectCmsError(delErr, "folder_name_conflict");
 
 		// All folders unchanged
-		const afterFolders = await store.listFolders({ collection: "fc6" });
+		const afterFolders = await store.listFolders({ collection: "memo" });
 		expect(afterFolders).toEqual(beforeFolders);
 
 		// Entry version, folder, timestamps, body, address all exactly unchanged

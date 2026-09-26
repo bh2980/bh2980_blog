@@ -53,10 +53,6 @@ const isLinePosition = (value: DecorationItem["start"]): value is { line: number
 	typeof value === "object" && value !== null && "line" in value && "character" in value;
 
 describe("fromCodeBlockDocumentToShikiAnnotationPayload", () => {
-	it("공통 payload 변환 함수를 제공해야 한다", () => {
-		expect(fromCodeBlockDocumentToShikiAnnotationPayload).toBeTypeOf("function");
-	});
-
 	it("document를 shiki payload(decorations/lineDecorations/rowWrappers)로 변환해야 한다", () => {
 		if (typeof fromCodeBlockDocumentToShikiAnnotationPayload !== "function") {
 			throw new Error("fromCodeBlockDocumentToShikiAnnotationPayload is not implemented");

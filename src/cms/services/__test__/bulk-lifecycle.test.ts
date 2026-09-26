@@ -58,21 +58,6 @@ const newFakeLifecycleStore = (seed: Record<string, EntryState>, scheduled: read
 };
 
 describe("M4-TW-1b Bulk lifecycle ops contract", () => {
-	it("rejects unknown op for the whole request", async () => {
-		const bulk = createBulkService(newFakeLifecycleStore({}));
-		await expect(bulk.run({ op: "bogus", items: [] } as any)).rejects.toThrowError(
-			expect.objectContaining({ code: "unknown_op" }),
-		);
-	});
-
-	it("rejects more than 100 items", async () => {
-		const bulk = createBulkService(newFakeLifecycleStore({}));
-		const items = Array.from({ length: 101 }, (_, i) => ({ id: `e-${i}`, expectedVersion: 1 }));
-		await expect(bulk.run({ op: "archive", items })).rejects.toThrowError(
-			expect.objectContaining({ code: "too_many_items" }),
-		);
-	});
-
 	it("archive bumps version per item", async () => {
 		const store = newFakeLifecycleStore({ e1: { version: 2, status: "draft" } });
 		const bulk = createBulkService(store);

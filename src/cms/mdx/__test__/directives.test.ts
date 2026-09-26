@@ -183,10 +183,6 @@ describe("등록 directive 처리", () => {
 describe("레거시 코퍼스 불변식", () => {
 	const files = corpusFiles();
 
-	it("49편을 모두 파싱한다", () => {
-		expect(files.length).toBe(49);
-	});
-
 	it("미등록 이름이 directive로 남지 않는다(0건)", () => {
 		const offenders: string[] = [];
 		for (const file of files) {

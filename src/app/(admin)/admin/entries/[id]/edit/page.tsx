@@ -1,4 +1,4 @@
-import { authGateway } from "@/cms/adapters/auth";
+import { requireAdminPage } from "../../../require-admin";
 import { EntryEditorShell } from "../../entry-editor-shell";
 
 interface PageProps {
@@ -6,8 +6,8 @@ interface PageProps {
 }
 
 export default async function EditEntryPage({ params }: PageProps) {
-	await authGateway.verifyAdmin();
+	const auth = await requireAdminPage();
 	const { id } = await params;
 
-	return <EntryEditorShell mode="edit" initialEntryId={id} />;
+	return <EntryEditorShell mode="edit" initialEntryId={id} adminId={auth.userId} />;
 }

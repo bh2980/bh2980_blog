@@ -1,10 +1,10 @@
 import { Pool } from "pg";
-import { type ContentStore, createContentStore } from "./adapters/postgres/content-store";
+import { type ContentStore, createContentStore, type Entry } from "./adapters/postgres/content-store";
 import { createR2MediaStore } from "./adapters/r2/media-store";
 import type { MediaStore } from "./adapters/r2/types";
 import { createContentService } from "./services/content-service";
 
-export type ContentService = ReturnType<typeof createContentService>;
+export type ContentService = ReturnType<typeof createContentService<Entry>>;
 
 declare global {
 	var __cmsPool: Pool | undefined;
@@ -38,7 +38,7 @@ export function getCmsContentStore(): ContentStore {
 export function getCmsContentService(): ContentService {
 	if (!global.__cmsService) {
 		const store = getCmsContentStore();
-		global.__cmsService = createContentService(store);
+		global.__cmsService = createContentService<Entry>(store);
 	}
 	return global.__cmsService;
 }

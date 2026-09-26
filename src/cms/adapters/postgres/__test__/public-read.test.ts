@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type ContentStore, createContentStore, migrateContentStore } from "../content-store";
+import { seedEntry, seedSave } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 /**
@@ -22,7 +23,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		const categoryDraft = await store.createEntry({
+		const categoryDraft = await seedEntry(store, {
 			collection: "category",
 			slug: "public-read-test-category",
 			metadata: { title: "Public read category" },
@@ -48,7 +49,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		mdx?: string;
 	}) {
 		const metadata = params.metadata ?? { title: params.slug };
-		return store.createEntry({
+		return seedEntry(store, {
 			collection: params.collection,
 			slug: params.slug,
 			metadata:
@@ -164,7 +165,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 
 	it("slug를 바꾸면 이전 주소는 alias로 판정되고 정규 slug를 반환한다", async () => {
 		const published = await createPublishedEntry({ collection: "post", slug: "before-rename" });
-		const saved = await store.saveWorking(published.id, {
+		const saved = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "after-rename",
 			metadata: { title: "이름 변경", categoryId: testCategoryId },
@@ -209,7 +210,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 			},
 			mdx: "# Published body",
 		});
-		const working = await store.saveWorking(published.id, {
+		const working = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "f10-working-snapshot",
 			metadata: {
@@ -258,7 +259,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 	});
 	it("비공개로 돌아간 주소는 alias로도 남지 않는다", async () => {
 		const published = await createPublishedEntry({ collection: "post", slug: "alias-then-archive" });
-		const saved = await store.saveWorking(published.id, {
+		const saved = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "alias-then-archive-2",
 			metadata: { title: "이름 변경", categoryId: testCategoryId },
@@ -279,7 +280,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		});
 	});
 
-	it("분류 레코드(tag/category)도 공개 조회되고 보관하면 제외된다", async () => {
+	it("분류 레코드(tag/category)도 공개 조회되고 휴지통으로 옮기면 제외된다", async () => {
 		const tag = await createPublishedEntry({ collection: "tag", slug: "public-tag", metadata: { title: "공개 태그" } });
 		await createPublishedEntry({ collection: "category", slug: "public-category", metadata: { title: "공개 분류" } });
 
@@ -287,7 +288,8 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 			expect.arrayContaining(["public-tag", "public-category"]),
 		);
 
-		await store.archiveEntry({ id: tag.id, expectedVersion: tag.version });
+		// record 컬렉션은 보관이 없고 활성/휴지통만 쓴다(§5.3).
+		await store.trashEntry({ id: tag.id, expectedVersion: tag.version });
 
 		expect(await publishedSlugs(["tag"])).not.toContain("public-tag");
 		expect(await publishedSlugs(["category"])).toContain("public-category");

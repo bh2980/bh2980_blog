@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { createContentStore, migrateContentStore } from "../content-store";
+import { seedEntry } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 describe("M5-BE-1 Duplicate Entry Contract", () => {
@@ -36,7 +37,7 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		});
 		const mediaId = media.id;
 		const folder = await store.createFolder({ collection: "post", name: "Tech" });
-		const categoryDraft = await store.createEntry({
+		const categoryDraft = await seedEntry(store, {
 			collection: "category",
 			slug: "duplicate-category",
 			metadata: { title: "Category" },
@@ -45,7 +46,7 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 			contentHash: randomUUID(),
 		});
 		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-		const tagDraft = await store.createEntry({
+		const tagDraft = await seedEntry(store, {
 			collection: "tag",
 			slug: "duplicate-tag",
 			metadata: { title: "Tag" },

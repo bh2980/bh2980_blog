@@ -1,19 +1,11 @@
-export type AllowedImageMime =
-	| "image/jpeg"
-	| "image/png"
-	| "image/webp"
-	| "image/gif"
-	| "image/avif";
+import { ALLOWED_IMAGE_MIME_TYPES, MAX_MEDIA_BYTES } from "../../core/api";
 
-export const ALLOWED_IMAGE_MIMES: readonly AllowedImageMime[] = [
-	"image/jpeg",
-	"image/png",
-	"image/webp",
-	"image/gif",
-	"image/avif",
-];
+export type AllowedImageMime = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
 
-export const MAX_MEDIA_BYTE_SIZE = 10 * 1024 * 1024; // 10 MiB
+/** 허용 형식·크기는 API 계약(`core/api`)이 원천이다. */
+export const ALLOWED_IMAGE_MIMES: readonly AllowedImageMime[] = ALLOWED_IMAGE_MIME_TYPES;
+
+export const MAX_MEDIA_BYTE_SIZE = MAX_MEDIA_BYTES;
 
 export interface StoredFileHead {
 	key: string;

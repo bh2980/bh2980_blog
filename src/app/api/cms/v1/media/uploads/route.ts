@@ -1,88 +1,75 @@
 import { randomUUID } from "node:crypto";
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
-import {
-	ALLOWED_IMAGE_MIMES,
-	type AllowedImageMime,
-	MAX_MEDIA_BYTE_SIZE,
-} from "@/cms/adapters/r2/types";
 import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { handleApiError } from "../../error-handler";
-import { validateSameOrigin } from "../../security";
+import { ALLOWED_IMAGE_MIME_TYPES, MAX_MEDIA_BYTES, mediaUploadBodySchema } from "@/cms/core/api";
+import { HttpError } from "../../error-handler";
+import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
+import { extensionFor, UPLOAD_URL_TTL_SECONDS } from "../media-files";
 
-export async function POST(request: NextRequest) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const body = await request.json();
-		const { filename, mimeType, byteSize } = body ?? {};
-
-		if (!filename || typeof filename !== "string") {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "filename is required" },
-				{ status: 400 },
-			);
+/**
+ * 업로드 준비(§7.2). 서버가 허용 형식·크기와 파일 키를 정하고 제한된 시간의 직접 업로드 URL을 준다.
+ * 자격 증명은 브라우저에 가지 않고 파일 본문은 앱 서버를 거치지 않는다.
+ */
+export const POST = adminRoute(async ({ request }) => {
+	const raw = (await readJsonBody(request)) as { mimeType?: unknown; original?: { mimeType?: unknown } };
+	// §10.1: 허용하지 않는 파일 형식은 415다(형식 오류 400과 구분한다).
+	for (const mimeType of [raw?.mimeType, raw?.original?.mimeType]) {
+		if (mimeType !== undefined && !(ALLOWED_IMAGE_MIME_TYPES as readonly unknown[]).includes(mimeType)) {
+			throw new HttpError(415, "unsupported_media_type", `Allowed image types: ${ALLOWED_IMAGE_MIME_TYPES.join(", ")}`);
 		}
-
-		if (!mimeType || !ALLOWED_IMAGE_MIMES.includes(mimeType as AllowedImageMime)) {
-			return NextResponse.json(
-				{
-					code: "unsupported_media_type",
-					message: `Disallowed or invalid image MIME type: ${mimeType}. Allowed: ${ALLOWED_IMAGE_MIMES.join(", ")}`,
-				},
-				{ status: 415 },
-			);
-		}
-
-		if (!byteSize || typeof byteSize !== "number" || byteSize <= 0) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "byteSize must be a positive integer" },
-				{ status: 400 },
-			);
-		}
-
-		if (byteSize > MAX_MEDIA_BYTE_SIZE) {
-			return NextResponse.json(
-				{
-					code: "payload_too_large",
-					message: `File size exceeds the 10MiB limit (${byteSize} bytes)`,
-				},
-				{ status: 413 },
-			);
-		}
-
-		const mediaId = randomUUID();
-		const ext = filename.split(".").pop()?.toLowerCase() || "bin";
-		const stagingKey = `staging/${mediaId}/${randomUUID()}.${ext}`;
-
-		const store = getCmsContentStore();
-		await store.createMediaAsset({
-			id: mediaId,
-			filename,
-			mimeType,
-			byteSize,
-			stagingKey,
-		});
-
-		const mediaStore = getCmsMediaStore();
-		const presigned = await mediaStore.prepareUpload({
-			stagingKey,
-			contentType: mimeType as AllowedImageMime,
-			expiresInSeconds: 600, // 10 minutes
-		});
-
-		return NextResponse.json(
-			{
-				mediaId,
-				uploadUrl: presigned.url,
-				method: presigned.method,
-				requiredHeaders: presigned.requiredHeaders,
-				expiresAt: presigned.expiresAt.toISOString(),
-			},
-			{ status: 201 },
-		);
-	} catch (error) {
-		return handleApiError(error);
 	}
-}
+	const body = parseWith(mediaUploadBodySchema, raw);
+	for (const file of [body, body.original]) {
+		if (file && file.byteSize > MAX_MEDIA_BYTES) {
+			throw new HttpError(413, "payload_too_large", `File size exceeds the 10MiB limit (${file.byteSize} bytes)`);
+		}
+	}
+
+	const mediaId = randomUUID();
+	const stagingKey = `staging/${mediaId}/${randomUUID()}.${extensionFor(body.mimeType)}`;
+	const originalStagingKey = body.original
+		? `staging/${mediaId}/original-${randomUUID()}.${extensionFor(body.original.mimeType)}`
+		: null;
+
+	await getCmsContentStore().createMediaAsset({
+		id: mediaId,
+		filename: body.filename,
+		mimeType: body.mimeType,
+		byteSize: body.byteSize,
+		stagingKey,
+		...(body.original && originalStagingKey
+			? {
+					original: {
+						mimeType: body.original.mimeType,
+						byteSize: body.original.byteSize,
+						stagingKey: originalStagingKey,
+					},
+				}
+			: {}),
+	});
+
+	const mediaStore = getCmsMediaStore();
+	const presigned = await mediaStore.prepareUpload({
+		stagingKey,
+		contentType: body.mimeType,
+		expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+	});
+	const original =
+		body.original && originalStagingKey
+			? await mediaStore.prepareUpload({
+					stagingKey: originalStagingKey,
+					contentType: body.original.mimeType,
+					expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+				})
+			: null;
+
+	const describe = (upload: typeof presigned) => ({
+		uploadUrl: upload.url,
+		method: upload.method,
+		requiredHeaders: upload.requiredHeaders,
+		expiresAt: upload.expiresAt.toISOString(),
+	});
+	return json(
+		{ mediaId, ...describe(presigned), ...(original ? { original: describe(original) } : {}) },
+		{ status: 201 },
+	);
+});

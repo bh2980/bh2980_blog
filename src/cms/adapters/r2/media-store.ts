@@ -8,8 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
-	type AllowedImageMime,
 	ALLOWED_IMAGE_MIMES,
+	type AllowedImageMime,
 	type MediaStore,
 	type MediaStoreConfig,
 	type PrepareUploadInput,
@@ -159,12 +159,7 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 		(buffer[11] === 0x66 || buffer[11] === 0x73)
 	) {
 		for (let i = 12; i <= buffer.length - 16; i++) {
-			if (
-				buffer[i] === 0x69 &&
-				buffer[i + 1] === 0x73 &&
-				buffer[i + 2] === 0x70 &&
-				buffer[i + 3] === 0x65
-			) {
+			if (buffer[i] === 0x69 && buffer[i + 1] === 0x73 && buffer[i + 2] === 0x70 && buffer[i + 3] === 0x65) {
 				const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 				const width = view.getUint32(i + 8, false);
 				const height = view.getUint32(i + 12, false);
@@ -232,8 +227,9 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					etag: res.ETag,
 					lastModified: res.LastModified,
 				};
-			} catch (err: any) {
-				if (err?.name === "NotFound" || err?.$metadata?.httpStatusCode === 404) {
+			} catch (err) {
+				const error = err as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
+				if (error?.name === "NotFound" || error?.$metadata?.httpStatusCode === 404) {
 					return null;
 				}
 				throw err;
@@ -253,7 +249,7 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 				return new Uint8Array(0);
 			}
 
-			const stream = res.Body as any;
+			const stream = res.Body as AsyncIterable<Uint8Array>;
 			const chunks: Uint8Array[] = [];
 			let totalBytes = 0;
 
@@ -331,8 +327,12 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					}),
 					{ abortSignal: input.signal },
 				);
-			} catch {
-				// Idempotent delete
+			} catch (error) {
+				// S3 DeleteObject는 없는 키에도 성공한다. 404만 이미 지워진 것으로 보고, 그 밖의 실패는 올려
+				// 호출자가 `deleting` 상태를 남겨 다시 시도하게 한다(§7.3).
+				const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+				if (status === 404) return;
+				throw error;
 			}
 		},
 

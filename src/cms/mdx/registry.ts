@@ -46,6 +46,25 @@ export const INLINE_JSX_MARKS: Record<string, string> = {
 	Tooltip: "tooltip",
 };
 
+/**
+ * mark 정렬 순서. 파서(`to-document`)·직렬화(`serialize`)·에디터 변환(`tiptap-content`)이 같은 순서를 써야
+ * 왕복 문서 비교가 순서 때문에 깨지지 않는다.
+ */
+export const MARK_ORDER = [
+	"tooltip",
+	"underline",
+	"superscript",
+	"subscript",
+	"link",
+	"bold",
+	"italic",
+	"strike",
+	"code",
+];
+
+export const sortMarks = <T extends { type: string }>(marks: readonly T[]): T[] =>
+	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
+
 export const TABS_MIN = 2;
 export const TABS_MAX = 8;
 export const COLUMNS_MIN = 2;

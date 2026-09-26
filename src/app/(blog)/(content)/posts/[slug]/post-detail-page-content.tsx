@@ -70,7 +70,24 @@ export const PostDetailPageContent = async ({
 							))}
 						</ul>
 					</header>
-					{isStalePost(post) && (
+					{post.deprecation && (
+						<aside className="mt-8">
+							<Callout variant="warning" title="더 이상 관리하지 않는 글입니다">
+								{post.deprecation.replacement ? (
+									<p>
+										최신 내용은{" "}
+										<a href={`${detailPathnamePrefix}/${post.deprecation.replacement.slug}`}>
+											{post.deprecation.replacement.title}
+										</a>
+										에서 확인하세요.
+									</p>
+								) : (
+									<p>내용이 현재와 다를 수 있습니다.</p>
+								)}
+							</Callout>
+						</aside>
+					)}
+					{!post.deprecation && isStalePost(post) && (
 						<aside className="mt-8">
 							<Callout variant="warning" description="이 글은 작성된 지 오래되어 최신 내용과 다를 수 있습니다." />
 						</aside>

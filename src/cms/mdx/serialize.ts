@@ -3,10 +3,8 @@ import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/d
 import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
-import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS } from "./registry";
+import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
 import type { CmsJsonValue, CmsMark, CmsNode } from "./types";
-
-const MARK_ORDER = ["tooltip", "underline", "superscript", "subscript", "link", "bold", "italic", "strike", "code"];
 
 const isIdent = (value: string) => /^[A-Za-z_][\w]*$/.test(value);
 
@@ -119,8 +117,7 @@ const jsxName = (node: CmsNode): string => {
 
 const markKey = (mark: CmsMark) => `${mark.type}:${JSON.stringify(mark.attrs ?? null)}`;
 
-const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] =>
-	[...(marks ?? [])].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
+const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] => sortMarks(marks ?? []);
 
 const openMark = (mark: CmsMark): string => {
 	switch (mark.type) {
@@ -473,7 +470,10 @@ const serializeTable = (node: CmsNode): string => {
 	});
 	if (serializedRows.length === 0) return "";
 	const columnCount = rows[0]?.content?.length ?? 1;
-	const separator = `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`;
+	const align = Array.isArray(node.attrs?.align) ? node.attrs.align : [];
+	const rule = (value: unknown) =>
+		value === "left" ? ":--" : value === "center" ? ":-:" : value === "right" ? "--:" : "---";
+	const separator = `| ${Array.from({ length: columnCount }, (_, index) => rule(align[index])).join(" | ")} |`;
 	const [header, ...body] = serializedRows;
 	return [header, separator, ...body].join("\n");
 };
