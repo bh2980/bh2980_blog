@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import type { InternalLinkItem } from "./internal-link";
 
 interface InternalLinkPopupProps {
@@ -12,6 +13,7 @@ interface InternalLinkPopupProps {
 	onClose: () => void;
 }
 
+/** `[[` 내부 글 링크 검색 결과(§6.2). 포커스와 방향키는 에디터가 맡고 강조할 항목만 `value`로 넘긴다. */
 export function InternalLinkPopup({
 	items,
 	isLoading,
@@ -38,45 +40,38 @@ export function InternalLinkPopup({
 					onClose();
 				}
 			}}
-			className="max-h-72 w-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+			className="w-72 rounded-xl border shadow-md"
 		>
-			<div className="flex items-center justify-between border-neutral-100 border-b px-2 py-1 font-semibold text-[10px] text-neutral-400 dark:border-neutral-800">
-				<span>내부 글 링크 (`[[`)</span>
-				{isLoading && <span>검색 중...</span>}
-			</div>
-
-			<div className="mt-1 space-y-0.5">
-				{items.length === 0 && !isLoading ? (
-					<div className="p-3 text-center text-neutral-400">검색 결과가 없습니다</div>
-				) : (
-					items.map((item, idx) => {
-						const isSelected = idx === selectedIndex;
-						return (
-							<button
+			<Command value={items[selectedIndex]?.id ?? ""} shouldFilter={false} loop={false}>
+				<div className="flex items-center justify-between px-2 py-1 font-semibold text-[10px] text-muted-foreground">
+					<span>내부 글 링크 (`[[`)</span>
+					{isLoading && <span>검색 중...</span>}
+				</div>
+				<CommandList className="max-h-72">
+					{!isLoading && <CommandEmpty className="py-3 text-xs">검색 결과가 없습니다</CommandEmpty>}
+					<CommandGroup>
+						{items.map((item, idx) => (
+							<CommandItem
 								key={item.id}
-								aria-current={isSelected ? "true" : undefined}
-								type="button"
-								onMouseDown={(e) => e.preventDefault()}
-								onClick={() => onSelect(item)}
-								className={`flex w-full flex-col rounded px-2.5 py-1.5 text-left transition ${
-									isSelected
-										? "bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100"
-										: "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800/60"
-								}`}
+								value={item.id}
+								aria-current={idx === selectedIndex ? "true" : undefined}
+								onMouseDown={(event) => event.preventDefault()}
+								onSelect={() => onSelect(item)}
+								className="flex-col items-start gap-0"
 							>
-								<span className="truncate font-semibold">{item.title}</span>
-								<span className="truncate font-mono text-[10px] text-neutral-400">
+								<span className="w-full truncate font-semibold text-xs">{item.title}</span>
+								<span className="w-full truncate font-mono text-[10px] text-muted-foreground">
 									{item.collection === "memo" ? "메모" : "글"} · /{item.slug || "(slug 없음)"}
 									{/* 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2). */}
 									{item.status && item.status !== "published"
 										? ` · ${item.status === "draft" ? "초안" : item.status}`
 										: ""}
 								</span>
-							</button>
-						);
-					})
-				)}
-			</div>
+							</CommandItem>
+						))}
+					</CommandGroup>
+				</CommandList>
+			</Command>
 		</section>,
 		document.body,
 	);

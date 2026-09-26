@@ -1,6 +1,6 @@
 # CMS v2 — A. UI 기반 작업 계획
 
-작성일: 2026-09-27 · 상태: **계획 합의 · 착수 전** · 브랜치: `feature/cms-v2`
+작성일: 2026-09-27 · 상태: **구현 완료(2026-09-27)** · 브랜치: `feature/cms-v2`
 
 > v2 전체 범위와 결정 기록은 [`CMS-V2-SPEC.md`](../../../CMS-V2-SPEC.md)에 있다. 이 문서는 그중 A(A0~A4)의 구체적인 작업 계획이다. 여기에 적지 않은 동작은 v1 명세 [`CMS-SPEC.md`](../../../CMS-SPEC.md)를 따른다.
 
@@ -117,8 +117,34 @@ shadcn `ContextMenu`를 쓴다.
 
 A0 → A1 → A2 → A3 → A4. API 변경(`/bulk` `permanentDelete`, `/preferences` `views`)은 OpenAPI와 계약 테스트를 함께 갱신한다.
 
-## 9. 확인이 남은 것
+## 9. 확인했던 것
 
-- Base UI에 대응이 없어 Radix를 남겨야 하는 컴포넌트가 있는지.
-- 공식 컴포넌트가 아닌 `multi-select`를 shadcn `Combobox`(다중 선택)로 대체할 수 있는지.
-- 전환 후 `components.json`의 `style` 값. 현재 `new-york`이며, CLI가 Base UI 기준으로 만드는 값을 따른다.
+- **Base UI에 대응이 없어 Radix를 남긴 컴포넌트:** 없다. 저장소의 `@radix-ui/*` 직접 의존성은 모두 지웠다. `cmdk`(Command)가 내부에서 `@radix-ui/react-dialog`를 쓰는 것만 간접 의존성으로 남는다.
+- **`multi-select` → `Combobox`:** 대체했다. `src/components/multi-combobox.tsx`(shadcn Combobox 다중 선택 래퍼)를 블로그 메모 태그 필터·일괄 작업·속성 패널 태그에 쓴다.
+- **`components.json` style:** `base-vega`. 기존 `new-york`과 모서리(`rounded-md`)·그림자(`shadow-xs`)가 같은 Base UI 스타일이다.
+
+## 10. 구현 결과 (2026-09-27)
+
+| 항목 | 결과 |
+| --- | --- |
+| A0 | 관리자·에디터 `.tsx`에서 직접 지정 색, 기본 checkbox·select·`<details>`·기본 `<button>`을 없앴다. 관리자 레이아웃에 `next-themes`·`TooltipProvider`·shadcn `Toaster`를 두고 라이트·다크를 지원한다. 목록·미디어·템플릿·휴지통은 shadcn `Sidebar` 기반 공통 셸(`shared/admin-shell.tsx`)을 쓴다 |
+| A1 | TanStack Table v9(`useTable`, 컬럼 표시·순서·행 선택)와 shadcn `Table`로 목록을 바꿨다. 컬럼 헤더 팝업에서 정렬과 필터(제목·주소 텍스트, 상태·수정 중·예약됨, 태그·카테고리, 날짜 범위)를 다룬다. 설정 표는 `list-columns.ts`. API에 `titleContains`·`slugContains`를 추가했다 |
+| A2 | `shared/action-menu.tsx`가 같은 메뉴 정의를 오른쪽 클릭(`ContextMenu`)과 `⋯`(`DropdownMenu`)에 함께 그린다. 사이드바 폴더·빈 곳, 목록 행·폴더 행·빈 곳, 휴지통 행, 미디어 타일, 템플릿 목록, 저장된 보기에 붙였다. 선택한 행을 오른쪽 클릭하면 선택 전체가 대상이다. F2(이름 변경)·Delete(휴지통·삭제 확인) 키를 지원한다 |
+| A3 | `/admin/trash` 전용 화면(컬렉션 링크 탭), 사이드바 배지, `POST /bulk` `permanentDelete`(항목별 참조 검증, 실패 시 `usages`로 `사용 중: ○○` 표시)를 추가했다. 목록의 상태 필터에서 휴지통을 뺐다 |
+| A4 | `/preferences` 컬렉션 설정에 `views`(최대 20개)를 추가했다. 보기는 검색·필터·정렬(`viewQueryOf`)과 컬럼 설정을 담고 폴더·페이지는 담지 않는다. 연 보기는 URL `view=`로 남아 `변경됨 · 저장 / 새 보기로 저장`을 계산한다 |
+
+**계획과 다르게 한 것.**
+
+- **날짜·시각 한 칸 입력:** 표시 발행일·예약 일시는 shadcn `Input type="datetime-local"`로 두었다. shadcn에 날짜+시각 선택기가 없고, 서울 시각 문자열·미래 제한(`max`)과 기존 동작을 그대로 지키기 위해서다. 날짜 범위 필터(목록·미디어)는 계획대로 `Calendar` 범위 + `Popover`다.
+- **휴지통 컬렉션 탭:** `Tabs` 대신 `aria-current`가 붙은 링크 묶음이다. 컬렉션 사이 이동(내비게이션)이라 링크가 의미상 맞고, 머리글의 Base UI `Tabs`가 서버·브라우저 ID 불일치(hydration 경고)를 냈다.
+- **오른쪽 클릭 메뉴는 hydration 뒤에 붙인다:** 서버에서 렌더한 Base UI `ContextMenu`가 뒤따르는 요소의 `useId`를 서버와 다르게 만들었다(사이드바 빈 곳 메뉴에서 재현). `ActionContextMenu`는 hydration 전에는 트리거 요소만 그리고, 그 뒤에 메뉴를 붙인다.
+- **링크는 `Button`이 아니라 `buttonVariants`:** Base UI `Button`에 `<a>`를 렌더하면 `role="button"`이 붙는다. 링크는 클래스만 입힌 `<a>`·`<Link>`로 둔다(블로그 첫 화면 버튼, 모바일 메뉴 링크 포함). 블로그 모바일 메뉴는 `SheetClose` 대신 제어형 `Sheet`로 닫는다.
+- **슬래시·내부 링크 제안 목록:** shadcn `Command`로 그리되 포커스와 방향키는 에디터가 맡는다(강조 항목만 `value`로 전달). 한글 IME 조합 중 포커스를 뺏지 않기 위해서다.
+- **MDX Tooltip 설명:** Base UI Tooltip은 `role="tooltip"`·`aria-describedby`를 붙이지 않아 설명을 `sr-only` 텍스트로 트리거에 연결했다.
+
+**남은 것(A 범위 밖).**
+
+- 블로그 코드 블록의 복사 버튼(`src/components/mdx/copy-button.client.tsx`)은 기본 `<button>`이다. 공개 블로그 부품이라 A에서 다루지 않았다.
+- shadcn `Pagination` 링크는 Base UI `Button`을 써서 `role="button"`이다. 목록은 페이지를 클라이언트에서 바꾸므로 그대로 둔다.
+
+**검증.** 타입 검사·Biome·전체 테스트(115개 파일)·프로덕션 빌드 통과. 격리 스키마(`cms_m6_*`, 테스트 DB)와 개발용 인증 우회로 목록·헤더 필터·저장된 보기·오른쪽 클릭 메뉴·휴지통 이동/복원·폴더 생성·편집 화면을 라이트·다크·모바일 폭에서 브라우저로 확인했다. 운영 DB에는 쓰지 않았다.

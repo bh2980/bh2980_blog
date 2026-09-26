@@ -3,10 +3,22 @@
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
-import { Button } from "@/components/ui/button";
+import { MultiCombobox } from "@/components/multi-combobox";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+	Field as UiField,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { formatSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { describeEntryStatus } from "../shared/entry-status";
@@ -27,8 +39,7 @@ const POLICY_OPTIONS = [
 	{ value: "deprecated", label: "지원 중단" },
 ];
 
-const fieldClass =
-	"h-auto w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-neutral-900 text-xs shadow-none md:text-xs dark:border-neutral-700 dark:bg-neutral-900 dark:text-white";
+const fieldClass = "h-8 text-xs md:text-xs";
 
 export type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
 
@@ -71,18 +82,14 @@ function Field({
 	children: ReactNode;
 }) {
 	return (
-		<div className="space-y-1.5">
-			<label htmlFor={id} className="block font-semibold text-neutral-600 text-xs dark:text-neutral-400">
-				{label} {required && <span className="text-red-500">*</span>}
-			</label>
+		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
+			<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
+				{label} {required && <span className="text-destructive">*</span>}
+			</FieldLabel>
 			{children}
-			{issue && (
-				<p id={`${id}-error`} className="text-red-500 text-xs">
-					{cmsIssueMessage(issue)}
-				</p>
-			)}
-			{help && <div className="text-[11px] text-neutral-500 leading-tight dark:text-neutral-400">{help}</div>}
-		</div>
+			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
+			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
+		</UiField>
 	);
 }
 
@@ -143,14 +150,14 @@ function ReplacementPicker({
 			<p className="text-xs">
 				현재: {selectedTitle ?? "지정 안 함"}
 				{value && !disabled && (
-					<button type="button" className="ml-2 underline" onClick={() => onChange(null)}>
+					<Button type="button" variant="link" size="xs" className="ml-1" onClick={() => onChange(null)}>
 						해제
-					</button>
+					</Button>
 				)}
 			</p>
-			<label htmlFor={searchId} className="sr-only">
+			<FieldLabel htmlFor={searchId} className="sr-only">
 				대체 글 검색
-			</label>
+			</FieldLabel>
 			<Input
 				id={searchId}
 				value={search}
@@ -160,19 +167,21 @@ function ReplacementPicker({
 				className={fieldClass}
 			/>
 			{results.length > 0 && (
-				<ul className="max-h-32 overflow-y-auto rounded border text-xs">
+				<ul className="max-h-32 overflow-y-auto rounded-md border text-xs">
 					{results.map((result) => (
 						<li key={result.id}>
-							<button
+							<Button
 								type="button"
-								className="w-full px-2 py-1 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+								variant="ghost"
+								size="xs"
+								className="w-full justify-start"
 								onClick={() => {
 									onChange(result.id);
 									setSearch("");
 								}}
 							>
 								{result.title}
-							</button>
+							</Button>
 						</li>
 					))}
 				</ul>
@@ -233,17 +242,16 @@ export function InspectorPanel({
 		}
 	};
 
-	const toggleTag = (tagId: string) =>
-		onChange({
-			tagIds: form.tagIds.includes(tagId) ? form.tagIds.filter((id) => id !== tagId) : [...form.tagIds, tagId],
-		});
-
 	const actionButton = "h-7 px-2 text-xs";
+	const categoryItems = [
+		{ value: "", label: "카테고리 선택..." },
+		...categories.options.map((option) => ({ value: option.id, label: option.title })),
+	];
 
 	return (
-		<div className="h-full w-full space-y-6 overflow-y-auto border-neutral-200 border-l bg-neutral-50 p-5 text-sm lg:w-80 dark:border-neutral-800 dark:bg-neutral-900">
-			<div className="flex items-center justify-between border-neutral-200 border-b pb-3 dark:border-neutral-800">
-				<h2 className="font-bold text-neutral-500 text-xs uppercase tracking-wider">속성</h2>
+		<div className="h-full w-full space-y-6 overflow-y-auto border-l bg-sidebar p-5 text-sm lg:w-80">
+			<div className="flex items-center justify-between border-b pb-3">
+				<h2 className="font-bold text-muted-foreground text-xs uppercase tracking-wider">속성</h2>
 				{onClose && (
 					<Button type="button" size="sm" variant="ghost" className={actionButton} onClick={onClose}>
 						닫기
@@ -258,7 +266,7 @@ export function InspectorPanel({
 						{describeEntryStatus({ ...entry, scheduledAt: entry.schedule?.pending?.scheduledAt })}
 					</p>
 					{entry.publishedSlug && entry.status === "published" && (
-						<p className="break-all text-neutral-500">
+						<p className="break-all text-muted-foreground">
 							공개 주소: /{collection === "memo" ? "memos" : "posts"}/{entry.publishedSlug}
 						</p>
 					)}
@@ -268,7 +276,7 @@ export function InspectorPanel({
 								href={previewHref}
 								target="_blank"
 								rel="noreferrer"
-								className="rounded border px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+								className={cn(buttonVariants({ variant: "outline", size: "sm" }), actionButton)}
 							>
 								미리보기
 							</a>
@@ -326,7 +334,7 @@ export function InspectorPanel({
 								type="button"
 								size="sm"
 								variant="outline"
-								className={`${actionButton} text-red-600`}
+								className={`${actionButton} text-destructive`}
 								onClick={() => onLifecycle("trash")}
 							>
 								휴지통
@@ -345,7 +353,7 @@ export function InspectorPanel({
 						value={form.title}
 						onChange={(event) => onTitleChange(event.target.value)}
 						placeholder="제목 없는 글"
-						className={`${fieldClass} text-sm md:text-sm`}
+						className="h-9 text-sm"
 					/>
 				</Field>
 
@@ -374,22 +382,28 @@ export function InspectorPanel({
 
 				{isPost && (
 					<Field id="cms-categoryId" label="카테고리" required issue={issueFor("categoryId")}>
-						<NativeSelect
-							id="cms-categoryId"
-							wrapperClassName="w-full"
-							aria-invalid={Boolean(issueFor("categoryId")) || undefined}
-							aria-describedby={describedBy("categoryId")}
+						<Select
 							value={form.categoryId ?? ""}
-							onChange={(event) => onChange({ categoryId: event.target.value || null })}
-							className={`${fieldClass} pr-9`}
+							items={categoryItems}
+							onValueChange={(value) => onChange({ categoryId: typeof value === "string" && value ? value : null })}
 						>
-							<option value="">카테고리 선택...</option>
-							{categories.options.map((option) => (
-								<option key={option.id} value={option.id}>
-									{option.title}
-								</option>
-							))}
-						</NativeSelect>
+							<SelectTrigger
+								id="cms-categoryId"
+								size="sm"
+								className="w-full"
+								aria-invalid={Boolean(issueFor("categoryId")) || undefined}
+								aria-describedby={describedBy("categoryId")}
+							>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{categoryItems.map((option) => (
+									<SelectItem key={option.value || "none"} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 						<div className="flex items-center gap-1.5 pt-1">
 							<Input
 								aria-label="새 카테고리 이름"
@@ -414,19 +428,22 @@ export function InspectorPanel({
 
 				{isPost && (
 					<Field id="cms-policy" label="정책" help="지원 중단 글은 공개 화면에서 대체 글을 안내합니다.">
-						<NativeSelect
-							id="cms-policy"
-							wrapperClassName="w-full"
+						<Select
 							value={form.policy}
-							onChange={(event) => onChange({ policy: event.target.value as EntryForm["policy"] })}
-							className={`${fieldClass} pr-9`}
+							items={POLICY_OPTIONS}
+							onValueChange={(value) => value && onChange({ policy: value as EntryForm["policy"] })}
 						>
-							{POLICY_OPTIONS.map((option) => (
-								<option key={option.value} value={option.value}>
-									{option.label}
-								</option>
-							))}
-						</NativeSelect>
+							<SelectTrigger id="cms-policy" size="sm" className="w-full">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{POLICY_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 						{form.policy === "deprecated" && (
 							<ReplacementPicker
 								value={form.replacementPostId}
@@ -445,14 +462,14 @@ export function InspectorPanel({
 						issue={issueFor("publishedAt")}
 						help="비워 두면 처음 발행한 시각을 씁니다. 미래 발행은 예약 기능을 쓰세요."
 					>
-						<input
+						<Input
 							id="cms-publishedAt"
 							type="datetime-local"
 							aria-describedby={describedBy("publishedAt")}
 							value={form.publishDate}
 							max={formatSeoulDateTimeInput(new Date())}
 							onChange={(event) => onChange({ publishDate: event.target.value })}
-							className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+							className={fieldClass}
 						/>
 					</Field>
 				)}
@@ -473,20 +490,22 @@ export function InspectorPanel({
 							))
 						}
 					>
-						<textarea
+						<Textarea
 							id="cms-summary"
 							rows={3}
 							value={form.summary}
 							onChange={(event) => onChange({ summary: event.target.value })}
 							placeholder="목록과 검색 결과에 보일 소개글"
-							className="w-full resize-none rounded-md border border-neutral-300 bg-white p-2.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+							className="min-h-16 resize-none text-xs md:text-xs"
 						/>
 					</Field>
 				)}
 
 				{isContent && (
-					<fieldset className="space-y-2 rounded-md border border-neutral-200 p-2.5 dark:border-neutral-800">
-						<legend className="px-1 font-semibold text-neutral-600 text-xs dark:text-neutral-400">SEO</legend>
+					<FieldSet className="gap-3 rounded-md border p-2.5">
+						<FieldLegend variant="label" className="px-1 font-semibold text-muted-foreground text-xs">
+							SEO
+						</FieldLegend>
 						<Field id="cms-seoTitle" label="검색 제목 (비우면 글 제목)">
 							<Input
 								id="cms-seoTitle"
@@ -497,12 +516,12 @@ export function InspectorPanel({
 							/>
 						</Field>
 						<Field id="cms-seoDescription" label="검색 설명 (비우면 요약)">
-							<textarea
+							<Textarea
 								id="cms-seoDescription"
 								rows={2}
 								value={form.seoDescription}
 								onChange={(event) => onChange({ seoDescription: event.target.value })}
-								className="w-full resize-none rounded border border-neutral-300 bg-white p-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+								className="min-h-12 resize-none text-xs md:text-xs"
 							/>
 						</Field>
 						<Field
@@ -518,7 +537,7 @@ export function InspectorPanel({
 								className={fieldClass}
 							/>
 						</Field>
-					</fieldset>
+					</FieldSet>
 				)}
 
 				{isContent && (
@@ -529,52 +548,24 @@ export function InspectorPanel({
 						aria-describedby={describedBy("tagIds")}
 						className="space-y-2"
 					>
-						<legend className="font-semibold text-neutral-600 text-xs dark:text-neutral-400">태그 (순서 보존)</legend>
+						<legend className="font-semibold text-muted-foreground text-xs">태그 (고른 순서 보존)</legend>
 						{issueFor("tagIds") && (
-							<p id="cms-tagIds-error" className="text-red-500 text-xs">
-								{cmsIssueMessage(issueFor("tagIds") as CmsIssue)}
-							</p>
+							<FieldError id="cms-tagIds-error">{cmsIssueMessage(issueFor("tagIds") as CmsIssue)}</FieldError>
 						)}
-						<div className="flex min-h-6 flex-wrap gap-1.5">
-							{form.tagIds.length === 0 && <span className="text-neutral-400 text-xs italic">선택된 태그 없음</span>}
-							{form.tagIds.map((id, index) => {
-								const name = tags.options.find((tag) => tag.id === id)?.title ?? id.slice(0, 8);
-								return (
-									<span
-										key={id}
-										className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700 text-xs dark:border-blue-800/60 dark:bg-blue-950/60 dark:text-blue-300"
-									>
-										<span className="text-[10px] text-blue-400">{index + 1}.</span>
-										{name}
-										<button type="button" aria-label={`${name} 태그 제거`} onClick={() => toggleTag(id)}>
-											×
-										</button>
-									</span>
-								);
-							})}
-						</div>
-						{tags.options.length > 0 && (
-							<div className="flex max-h-32 flex-wrap gap-1 overflow-y-auto rounded border border-neutral-200 bg-white p-1.5 dark:border-neutral-800 dark:bg-neutral-900/50">
-								{tags.options.map((tag) => {
-									const selected = form.tagIds.includes(tag.id);
-									return (
-										<button
-											key={tag.id}
-											type="button"
-											aria-pressed={selected}
-											onClick={() => toggleTag(tag.id)}
-											className={`rounded px-2 py-0.5 text-xs ${
-												selected
-													? "bg-blue-600 font-medium text-white"
-													: "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300"
-											}`}
-										>
-											{tag.title}
-										</button>
-									);
-								})}
-							</div>
-						)}
+						<MultiCombobox
+							aria-label="태그"
+							placeholder="태그 검색·선택"
+							emptyText="일치하는 태그가 없습니다. 아래에서 새로 만드세요."
+							options={[
+								...tags.options.map((tag) => ({ value: tag.id, label: tag.title })),
+								// 목록에 아직 없는 선택값(방금 만든 태그 등)도 칩으로 보이게 한다.
+								...form.tagIds
+									.filter((id) => !tags.options.some((tag) => tag.id === id))
+									.map((id) => ({ value: id, label: id.slice(0, 8) })),
+							]}
+							value={form.tagIds}
+							onValueChange={(tagIds) => onChange({ tagIds })}
+						/>
 						<div className="flex items-center gap-1.5 pt-1">
 							<Input
 								aria-label="새 태그 이름"
@@ -597,21 +588,16 @@ export function InspectorPanel({
 					</fieldset>
 				)}
 				{(createError || categories.error || tags.error) && (
-					<p role="alert" className="text-red-500 text-xs">
+					<p role="alert" className="text-destructive text-xs">
 						{createError ?? categories.error ?? tags.error}
 					</p>
 				)}
 			</fieldset>
 
-			<section
-				aria-labelledby="cms-incoming-references-heading"
-				className="space-y-3 border-neutral-200 border-t pt-4 dark:border-neutral-800"
-			>
+			<Separator />
+			<section aria-labelledby="cms-incoming-references-heading" className="space-y-3">
 				<div className="flex items-center justify-between gap-2">
-					<h3
-						id="cms-incoming-references-heading"
-						className="font-semibold text-neutral-700 text-xs dark:text-neutral-300"
-					>
+					<h3 id="cms-incoming-references-heading" className="font-semibold text-xs">
 						사용처
 					</h3>
 					<Button
@@ -627,13 +613,13 @@ export function InspectorPanel({
 					</Button>
 				</div>
 				{!entry ? (
-					<p className="text-neutral-500 text-xs">초안을 저장하면 사용처가 표시됩니다.</p>
+					<p className="text-muted-foreground text-xs">초안을 저장하면 사용처가 표시됩니다.</p>
 				) : incomingReferencesError ? (
-					<p role="alert" className="text-red-500 text-xs">
+					<p role="alert" className="text-destructive text-xs">
 						{incomingReferencesError}
 					</p>
 				) : incomingReferences.length === 0 ? (
-					<p className="text-neutral-500 text-xs">사용 중인 관계가 없습니다.</p>
+					<p className="text-muted-foreground text-xs">사용 중인 관계가 없습니다.</p>
 				) : (
 					[
 						{ title: "초안에서 사용", references: workingReferences },
@@ -641,26 +627,28 @@ export function InspectorPanel({
 					].map(({ title, references }) =>
 						references.length > 0 ? (
 							<div key={title} className="space-y-1.5">
-								<h4 className="font-medium text-[11px] text-neutral-600 dark:text-neutral-400">{title}</h4>
+								<h4 className="font-medium text-[11px] text-muted-foreground">{title}</h4>
 								<ul className="space-y-2">
 									{references.map((reference) => (
 										<li
 											key={`${reference.state}:${reference.sourceId}:${reference.kind}`}
-											className="rounded-md border border-neutral-200 bg-white p-2 text-xs dark:border-neutral-800 dark:bg-neutral-950/50"
+											className="rounded-md border bg-background p-2 text-xs"
 										>
 											<Link
 												href={`/admin/entries/${reference.sourceId}/edit`}
-												className="font-medium text-blue-700 hover:underline dark:text-blue-300"
+												className="font-medium text-primary hover:underline"
 											>
 												{reference.sourceTitle || reference.sourceSlug || reference.sourceId}
 											</Link>{" "}
-											<span className="text-neutral-500">
+											<span className="text-muted-foreground">
 												{COLLECTION_LABELS[reference.sourceCollection] ?? reference.sourceCollection} ·{" "}
 												{REFERENCE_KIND_LABELS[reference.kind]}
 											</span>
-											{reference.isStale && <span className="ml-1 text-amber-600">대상 변경 확인 필요</span>}
+											{reference.isStale && (
+												<span className="ml-1 text-amber-700 dark:text-amber-400">대상 변경 확인 필요</span>
+											)}
 											{reference.occurrences.length > 0 && (
-												<ul className="mt-1 space-y-0.5 text-[10px] text-neutral-500">
+												<ul className="mt-1 space-y-0.5 text-[10px] text-muted-foreground">
 													{reference.occurrences.map((occurrence) => (
 														<li
 															key={

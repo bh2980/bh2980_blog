@@ -219,7 +219,10 @@ describe("v2 A3 bulk permanentDelete", () => {
 
 	it("reports a stale version as a per-item conflict", async () => {
 		const store = newFakeLifecycleStore({ t1: { version: 5, status: "trashed" } });
-		const out = await createBulkService(store).run({ op: "permanentDelete", items: [{ id: "t1", expectedVersion: 4 }] });
+		const out = await createBulkService(store).run({
+			op: "permanentDelete",
+			items: [{ id: "t1", expectedVersion: 4 }],
+		});
 		expect(out.results).toEqual([{ id: "t1", ok: false, error: "conflict" }]);
 		expect(store.entries.has("t1")).toBe(true);
 	});

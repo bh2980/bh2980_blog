@@ -1,7 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -11,6 +21,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cmsFetch, errorText } from "../admin-api";
 
@@ -21,8 +32,24 @@ interface DeleteDialog {
 	contents: { entryCount: number; childFolders: Folder[] } | null;
 }
 
+/** `folder`와 그 자손을 뺀, 옮겨 갈 수 있는 부모 후보. 순환 구조는 서버도 거부한다(§3.3). */
+export function moveTargetsFor(folder: Folder, folders: Folder[]): Folder[] {
+	const blocked = new Set([folder.id]);
+	let grew = true;
+	while (grew) {
+		grew = false;
+		for (const candidate of folders) {
+			if (candidate.parentId && blocked.has(candidate.parentId) && !blocked.has(candidate.id)) {
+				blocked.add(candidate.id);
+				grew = true;
+			}
+		}
+	}
+	return folders.filter((candidate) => !blocked.has(candidate.id) && candidate.id !== folder.parentId);
+}
+
 /**
- * 가상 폴더 생성·이름 변경·삭제(§3.3). 사이드바 트리와 목록의 폴더 행이 같은 상태와 대화상자를 쓴다.
+ * 가상 폴더 생성·이름 변경·이동·삭제(§3.3). 사이드바 트리와 목록의 폴더 행이 같은 상태와 대화상자를 쓴다.
  * 삭제는 내용물을 미리 보여 준 뒤 진행한다. 직접 속한 글과 자식 폴더는 부모로 옮기고 글은 삭제하지 않는다.
  */
 export function useFolderActions({
@@ -75,6 +102,21 @@ export function useFolderActions({
 			setDeleteDialog({ folder, contents });
 		} catch (err) {
 			setError(errorText(err, "폴더 내용을 확인하지 못했습니다."));
+		}
+	};
+
+	/** 폴더를 다른 부모(또는 최상위)로 옮긴다. 같은 이름이 있으면 서버가 거부하고 안내한다. */
+	const moveFolder = async (folder: Folder, parentId: string | null) => {
+		try {
+			await cmsFetch(`/api/cms/v1/folders/${folder.id}`, {
+				method: "PATCH",
+				json: { parentId, expectedVersion: folder.version },
+				fallback: "폴더를 옮기지 못했습니다.",
+			});
+			toast.success(`'${folder.name}' 폴더를 ${folderName(parentId)}(으)로 옮겼습니다.`);
+			await onChanged();
+		} catch (err) {
+			toast.error(errorText(err, "폴더를 옮기지 못했습니다."));
 		}
 	};
 
@@ -144,17 +186,22 @@ export function useFolderActions({
 							event.preventDefault();
 							void submitName();
 						}}
-						className="space-y-2"
+						className="space-y-4"
 					>
-						<label htmlFor="folder-name" className="sr-only">
-							폴더 이름
-						</label>
-						<Input id="folder-name" autoFocus value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
-						{error && (
-							<p role="alert" className="text-destructive text-sm">
-								{error}
-							</p>
-						)}
+						<Field data-invalid={Boolean(error) || undefined}>
+							<FieldLabel htmlFor="folder-name" className="sr-only">
+								폴더 이름
+							</FieldLabel>
+							<Input
+								id="folder-name"
+								autoFocus
+								value={name}
+								maxLength={100}
+								aria-invalid={Boolean(error) || undefined}
+								onChange={(e) => setName(e.target.value)}
+							/>
+							{error && <FieldError>{error}</FieldError>}
+						</Field>
 						<DialogFooter>
 							<Button type="button" variant="outline" onClick={() => setNameDialog(null)}>
 								취소
@@ -167,14 +214,14 @@ export function useFolderActions({
 				</DialogContent>
 			</Dialog>
 
-			<Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
-				<DialogContent className="max-w-sm" finalFocus={restoreFocus}>
-					<DialogHeader>
-						<DialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</DialogTitle>
-						<DialogDescription>
+			<AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+				<AlertDialogContent finalFocus={restoreFocus}>
+					<AlertDialogHeader>
+						<AlertDialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</AlertDialogTitle>
+						<AlertDialogDescription>
 							글은 삭제하지 않습니다. 폴더 안의 내용은 {destination}(으)로 옮겨집니다.
-						</DialogDescription>
-					</DialogHeader>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
 					{deleteDialog?.contents ? (
 						<ul className="list-disc space-y-1 pl-5 text-sm">
 							<li>직접 속한 글 {deleteDialog.contents.entryCount}개</li>
@@ -192,10 +239,8 @@ export function useFolderActions({
 							{error}
 						</p>
 					)}
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => setDeleteDialog(null)}>
-							취소
-						</Button>
+					<AlertDialogFooter>
+						<AlertDialogCancel type="button">취소</AlertDialogCancel>
 						<Button
 							type="button"
 							variant="destructive"
@@ -204,16 +249,16 @@ export function useFolderActions({
 						>
 							삭제
 						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 
-	return { requestCreate, requestRename, requestDelete, dialogs };
+	return { requestCreate, requestRename, requestDelete, moveFolder, dialogs };
 }
 
 export type FolderActions = Pick<
 	ReturnType<typeof useFolderActions>,
-	"requestCreate" | "requestRename" | "requestDelete"
+	"requestCreate" | "requestRename" | "requestDelete" | "moveFolder"
 >;

@@ -4,11 +4,12 @@ import { Menu } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useIsAdmin } from "@/libs/admin/use-is-admin";
 import { cn } from "@/utils/cn";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 interface NavigationProps {
 	className?: string;
@@ -37,32 +38,41 @@ function DesktopLink({ href, label, active }: { href: Route | URL; label: string
 	);
 }
 
-function MobileSheetLink({ href, label, active }: { href: Route | URL; label: string; active: boolean }) {
+/** 모바일 메뉴의 링크. 링크 의미를 지키려고 `SheetClose`로 감싸지 않고, 누르면 시트를 닫는다. */
+function MobileSheetLink({
+	href,
+	label,
+	active,
+	onNavigate,
+}: {
+	href: Route | URL;
+	label: string;
+	active: boolean;
+	onNavigate: () => void;
+}) {
 	return (
-		<SheetClose
-			nativeButton={false}
-			render={
-				<Link
-					href={href}
-					aria-current={active ? "page" : undefined}
-					className={cn(
-						"rounded-lg px-3 py-3 font-medium text-base transition",
-						"text-slate-700 hover:bg-slate-100",
-						"dark:text-slate-200 dark:hover:bg-slate-800",
-						active && "bg-slate-100 dark:bg-slate-800",
-						"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-					)}
-				/>
-			}
+		<Link
+			href={href}
+			onClick={onNavigate}
+			aria-current={active ? "page" : undefined}
+			className={cn(
+				"rounded-lg px-3 py-3 font-medium text-base transition",
+				"text-slate-700 hover:bg-slate-100",
+				"dark:text-slate-200 dark:hover:bg-slate-800",
+				active && "bg-slate-100 dark:bg-slate-800",
+				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
+			)}
 		>
 			{label}
-		</SheetClose>
+		</Link>
 	);
 }
 
 export default function Navigation({ className }: NavigationProps) {
 	const pathname = usePathname();
 	const isAdmin = useIsAdmin();
+	const [menuOpen, setMenuOpen] = useState(false);
+	const closeMenu = () => setMenuOpen(false);
 
 	return (
 		<header className={cn("sticky top-0 z-50", className)}>
@@ -110,7 +120,7 @@ export default function Navigation({ className }: NavigationProps) {
 				<div className="flex items-center gap-1 md:hidden">
 					<ThemeToggle className="text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100" />
 
-					<Sheet>
+					<Sheet open={menuOpen} onOpenChange={setMenuOpen}>
 						<SheetTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="메뉴 열기" />}>
 							<Menu aria-hidden className="h-5 w-5" />
 						</SheetTrigger>
@@ -128,26 +138,23 @@ export default function Navigation({ className }: NavigationProps) {
 											href={item.href}
 											label={item.label}
 											active={pathname?.startsWith(item.href) ?? false}
+											onNavigate={closeMenu}
 										/>
 									))}
 									{isAdmin && (
-										<SheetClose
-											nativeButton={false}
-											render={
-												<Link
-													href={"/admin" as Route}
-													className={cn(
-														"rounded-lg px-3 py-3 font-medium text-base transition",
-														"text-slate-700 hover:bg-slate-100",
-														"dark:text-slate-200 dark:hover:bg-slate-800",
-														pathname?.startsWith("/admin") && "bg-slate-100 dark:bg-slate-800",
-														"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
-													)}
-												/>
-											}
+										<Link
+											href={"/admin" as Route}
+											onClick={closeMenu}
+											className={cn(
+												"rounded-lg px-3 py-3 font-medium text-base transition",
+												"text-slate-700 hover:bg-slate-100",
+												"dark:text-slate-200 dark:hover:bg-slate-800",
+												pathname?.startsWith("/admin") && "bg-slate-100 dark:bg-slate-800",
+												"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:focus-visible:ring-slate-500/60",
+											)}
 										>
 											관리자
-										</SheetClose>
+										</Link>
 									)}
 								</div>
 							</nav>

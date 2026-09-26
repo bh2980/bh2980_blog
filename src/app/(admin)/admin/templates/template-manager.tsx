@@ -1,22 +1,27 @@
 "use client";
 
-import { LayoutTemplate, Plus, Save, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { LayoutTemplate, Plus, Save } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { BodyTemplate } from "@/cms/adapters/postgres/content-store";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
-import { AdminMobileNavigation } from "../admin-mobile-navigation";
-import { AdminSidebar } from "../admin-sidebar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/utils/cn";
+import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
+import { AdminShell } from "../shared/admin-shell";
+import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+
+const COLLECTION_OPTIONS = [
+	{ value: "memo", label: "메모용 (memo)" },
+	{ value: "post", label: "포스트용 (post)" },
+];
 
 export function TemplateManager() {
 	const [templates, setTemplates] = useState<BodyTemplate[]>([]);
@@ -31,8 +36,7 @@ export function TemplateManager() {
 	const [editMdx, setEditMdx] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
-	const [pendingDelete, setPendingDelete] = useState<BodyTemplate | null>(null);
-	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 
 	const fetchTemplates = useCallback(async () => {
 		setIsLoading(true);
@@ -132,295 +136,198 @@ export function TemplateManager() {
 		}
 	};
 
-	const handleDelete = (template: BodyTemplate, event: React.MouseEvent) => {
-		event.stopPropagation();
-		setDeleteError(null);
-		setPendingDelete(template);
-	};
-
-	const confirmDelete = async () => {
-		const template = pendingDelete;
-		if (!template) return;
-		setPendingDelete(null);
+	const deleteTemplate = async (template: BodyTemplate) => {
 		try {
 			const res = await fetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
 				method: "DELETE",
 			});
 			if (!res.ok) {
 				const errData = await res.json().catch(() => ({}));
-				setDeleteError(errData.message || "삭제에 실패했습니다.");
+				toast.error(errData.message || "삭제에 실패했습니다.");
 				return;
 			}
 			if (activeTemplate?.id === template.id) setActiveTemplate(null);
+			toast.success(`'${template.name}' 템플릿을 삭제했습니다.`);
 			await fetchTemplates();
 		} catch (err) {
-			setDeleteError(err instanceof Error ? err.message : "삭제 중 오류가 발생했습니다.");
+			toast.error(err instanceof Error ? err.message : "삭제 중 오류가 발생했습니다.");
 		}
 	};
 
-	const filtered = templates.filter((t) => {
-		if (filterCollection === "all") return true;
-		return t.forCollection === filterCollection;
-	});
+	const requestDelete = (template: BodyTemplate) =>
+		setConfirm({
+			title: "템플릿 삭제",
+			description: `'${template.name}' 템플릿을 삭제하시겠습니까? 이 템플릿으로 작성된 글에는 영향이 없습니다.`,
+			confirmLabel: "삭제",
+			destructive: true,
+			onConfirm: () => deleteTemplate(template),
+		});
+
+	/** 템플릿 목록 줄의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
+	const templateMenu = (template: BodyTemplate): MenuAction[] => [
+		{ kind: "item", label: "열기", onSelect: () => handleSelectTemplate(template) },
+		{ kind: "separator" },
+		{ kind: "item", label: "삭제", shortcut: "Del", destructive: true, onSelect: () => requestDelete(template) },
+	];
+
+	const filtered = templates.filter((t) => filterCollection === "all" || t.forCollection === filterCollection);
 
 	return (
-		<>
-			<div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-200">
-				{/* 1단: 공통 글로벌 어드민 사이드바 */}
-				<div className="hidden lg:flex">
-					<AdminSidebar activeNav="templates" />
+		<AdminShell
+			title={
+				<span className="flex items-center gap-2">
+					본문 템플릿 <Badge variant="secondary">총 {templates.length}개</Badge>
+				</span>
+			}
+			sidebar={{ activeNav: "templates" }}
+			headerActions={
+				<Button type="button" size="sm" onClick={handleOpenNew}>
+					<Plus aria-hidden />새 템플릿 만들기
+				</Button>
+			}
+		>
+			{error && (
+				<Alert variant="danger" className="m-3 w-auto">
+					<AlertDescription className="col-start-auto">{error}</AlertDescription>
+				</Alert>
+			)}
+			<div className="flex min-h-0 flex-1 overflow-hidden">
+				<div className="flex w-80 shrink-0 flex-col border-r">
+					<div className="border-b p-2.5">
+						<Tabs value={filterCollection} onValueChange={(value) => setFilterCollection(String(value))}>
+							<TabsList className="w-full" aria-label="템플릿 대상">
+								<TabsTrigger value="all">전체</TabsTrigger>
+								<TabsTrigger value="memo">메모용</TabsTrigger>
+								<TabsTrigger value="post">포스트용</TabsTrigger>
+							</TabsList>
+						</Tabs>
+					</div>
+					<ul className="flex-1 divide-y overflow-y-auto" aria-label="템플릿 목록">
+						{isLoading ? (
+							Array.from({ length: 3 }, (_, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+								<li key={index} className="p-4" aria-hidden>
+									<Skeleton className="h-10 w-full" />
+								</li>
+							))
+						) : filtered.length === 0 ? (
+							<li className="p-8 text-center text-muted-foreground text-xs">등록된 템플릿이 없습니다.</li>
+						) : (
+							filtered.map((t) => {
+								const isSelected = activeTemplate?.id === t.id;
+								return (
+									<ActionContextMenu
+										key={t.id}
+										actions={templateMenu(t)}
+										trigger={
+											<li
+												className={cn(
+													"group flex items-center justify-between gap-2 px-3 py-2 transition-colors",
+													isSelected ? "bg-accent" : "hover:bg-accent/50",
+												)}
+											/>
+										}
+									>
+										<Button
+											variant="ghost"
+											type="button"
+											aria-current={isSelected ? "true" : undefined}
+											onClick={() => handleSelectTemplate(t)}
+											onKeyDown={(event) => {
+												if (event.key === "Delete") {
+													event.preventDefault();
+													requestDelete(t);
+												}
+											}}
+											className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
+										>
+											<span className="truncate font-medium text-sm">{t.name}</span>
+											<span className="flex items-center gap-2 text-muted-foreground text-xs">
+												<Badge variant="outline" className="text-[10px] uppercase">
+													{t.forCollection}
+												</Badge>
+												<span className="text-[11px]">{new Date(t.updatedAt).toLocaleDateString("ko-KR")}</span>
+											</span>
+										</Button>
+										<MoreActionsButton actions={templateMenu(t)} label={`'${t.name}' 템플릿 작업`} />
+									</ActionContextMenu>
+								);
+							})
+						)}
+					</ul>
 				</div>
 
 				<div className="flex flex-1 flex-col overflow-hidden">
-					{/* 상단 글로벌 헤더 */}
-					<header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-neutral-800 border-b bg-neutral-900/40 px-3 py-2 sm:px-6">
-						<div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-							<div className="lg:hidden">
-								<AdminMobileNavigation>
-									{(close) => <AdminSidebar activeNav="templates" onNavigate={close} />}
-								</AdminMobileNavigation>
-							</div>
-							<Link href="/admin" className="font-medium text-neutral-400 text-xs transition hover:text-white">
-								대시보드
-							</Link>
-							<span className="text-neutral-600">/</span>
-							<h1 className="flex items-center gap-2 font-semibold text-sm text-white">
-								<LayoutTemplate className="h-4 w-4 text-emerald-400" />
-								<span>본문 템플릿 관리</span>
-							</h1>
-							<span className="rounded-full bg-neutral-800 px-2 py-0.5 text-neutral-400 text-xs">
-								총 {templates.length}개
-							</span>
-						</div>
-						<button
-							type="button"
-							onClick={handleOpenNew}
-							className="inline-flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-xs shadow-sm transition hover:bg-neutral-200"
-						>
-							<Plus className="h-3.5 w-3.5" />
-							<span>새 템플릿 만들기</span>
-						</button>
-					</header>
-
-					{error && (
-						<p role="alert" className="border-neutral-800 border-b px-4 py-2 text-sm">
-							{error}
-						</p>
-					)}
-					{deleteError && (
-						<p role="alert" className="border-neutral-800 border-b px-4 py-2 text-sm">
-							{deleteError}
-						</p>
-					)}
-					{/* 2단 + 3단 본문 작업 영역 */}
-					<div className="flex flex-1 overflow-hidden">
-						{/* 2단: 템플릿 목록 패널 */}
-						<div className="flex w-80 flex-shrink-0 flex-col border-neutral-800 border-r bg-neutral-900/20">
-							{/* 필터 탭 */}
-							<div className="flex gap-1 border-neutral-800 border-b p-2.5 text-xs">
-								<button
-									type="button"
-									onClick={() => setFilterCollection("all")}
-									className={`flex-1 rounded-md py-1.5 font-medium transition ${
-										filterCollection === "all"
-											? "bg-neutral-800 font-semibold text-white"
-											: "text-neutral-400 hover:bg-neutral-800/40 hover:text-white"
-									}`}
-								>
-									전체
-								</button>
-								<button
-									type="button"
-									onClick={() => setFilterCollection("memo")}
-									className={`flex-1 rounded-md py-1.5 font-medium transition ${
-										filterCollection === "memo"
-											? "bg-neutral-800 font-semibold text-emerald-400"
-											: "text-neutral-400 hover:bg-neutral-800/40 hover:text-white"
-									}`}
-								>
-									메모용
-								</button>
-								<button
-									type="button"
-									onClick={() => setFilterCollection("post")}
-									className={`flex-1 rounded-md py-1.5 font-medium transition ${
-										filterCollection === "post"
-											? "bg-neutral-800 font-semibold text-blue-400"
-											: "text-neutral-400 hover:bg-neutral-800/40 hover:text-white"
-									}`}
-								>
-									포스트용
-								</button>
-							</div>
-
-							{/* 템플릿 리스트 */}
-							<div className="flex-1 divide-y divide-neutral-800/40 overflow-y-auto">
-								{isLoading ? (
-									<div className="p-8 text-center text-neutral-500 text-xs">불러오는 중...</div>
-								) : filtered.length === 0 ? (
-									<div className="p-8 text-center text-neutral-500 text-xs">등록된 템플릿이 없습니다.</div>
-								) : (
-									filtered.map((t) => {
-										const isSelected = activeTemplate?.id === t.id;
-										return (
-											// biome-ignore lint/a11y/useSemanticElements: row contains a nested delete button
-											<div
-												key={t.id}
-												role="button"
-												tabIndex={0}
-												onClick={() => handleSelectTemplate(t)}
-												onKeyDown={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														handleSelectTemplate(t);
-													}
-												}}
-												className={`group flex cursor-pointer items-center justify-between p-4 transition ${
-													isSelected
-														? "border-emerald-500 border-l-2 bg-neutral-800/90 pl-[14px] text-white"
-														: "text-neutral-300 hover:bg-neutral-800/40"
-												}`}
-											>
-												<div className="flex min-w-0 flex-col gap-1.5 pr-2">
-													<span className="truncate font-medium text-sm">{t.name}</span>
-													<div className="flex items-center gap-2 text-neutral-500 text-xs">
-														<span
-															className={`rounded px-1.5 py-0.5 font-semibold text-[10px] uppercase ${
-																t.forCollection === "post"
-																	? "border border-blue-800/60 bg-blue-950 text-blue-400"
-																	: "border border-emerald-800/60 bg-emerald-950 text-emerald-400"
-															}`}
-														>
-															{t.forCollection}
-														</span>
-														<span className="text-[11px]">{new Date(t.updatedAt).toLocaleDateString("ko-KR")}</span>
-													</div>
-												</div>
-												<button
-													type="button"
-													onClick={(e) => handleDelete(t, e)}
-													className="rounded p-1.5 text-neutral-500 opacity-0 transition hover:bg-neutral-700 hover:text-red-400 group-hover:opacity-100"
-													aria-label={`템플릿 삭제: ${t.name}`}
-													title="템플릿 삭제"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
-											</div>
-										);
-									})
-								)}
-							</div>
-						</div>
-
-						{/* 3단: 템플릿 에디터 패널 (게시글 에디터와 동일한 꽉 찬 풀 캔버스) */}
-						<div className="flex flex-1 flex-col overflow-hidden bg-neutral-950">
-							{activeTemplate ? (
-								<div className="flex h-full flex-1 flex-col overflow-hidden">
-									{/* 에디터 상단 메타 바 */}
-									<div className="flex items-center justify-between border-neutral-800 border-b bg-neutral-900/30 px-8 py-3.5">
-										<div className="flex max-w-2xl flex-1 items-center gap-3">
-											<Input
-												type="text"
-												aria-label="템플릿 이름"
-												value={editName}
-												onChange={(e) => setEditName(e.target.value)}
-												placeholder="템플릿 이름 (예: 알고리즘 풀이 메모)"
-												className="h-auto w-full min-w-0 flex-1 rounded-md border-neutral-700 bg-neutral-900 px-3.5 py-1.5 font-medium text-sm text-white placeholder-neutral-500 shadow-none transition focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900"
-											/>
-											<NativeSelect
-												aria-label="대상 컬렉션"
-												value={editForCollection}
-												onChange={(e) => setEditForCollection(e.target.value as "post" | "memo")}
-												className="h-auto cursor-pointer rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 pr-9 font-medium text-neutral-200 text-xs shadow-none transition focus:border-neutral-400 focus:outline-none focus-visible:border-neutral-400 focus-visible:ring-0 dark:bg-neutral-900 dark:hover:bg-neutral-900"
-											>
-												<option value="memo">메모용 (memo)</option>
-												<option value="post">포스트용 (post)</option>
-											</NativeSelect>
-											<span className="hidden text-neutral-500 text-xs sm:inline">본문 MDX 골격</span>
-										</div>
-
-										<div className="flex items-center gap-2">
-											<button
-												type="button"
-												onClick={handleCloseEditor}
-												className="rounded-md px-3 py-1.5 text-neutral-400 text-xs transition hover:bg-neutral-800 hover:text-white"
-											>
-												닫기
-											</button>
-											<button
-												type="button"
-												disabled={isSaving}
-												onClick={handleSave}
-												className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-1.5 font-semibold text-white text-xs shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
-											>
-												<Save className="h-3.5 w-3.5" />
-												<span>{isSaving ? "저장 중..." : activeTemplate.id ? "수정 완료" : "생성하기"}</span>
-											</button>
-										</div>
-									</div>
-
-									{saveError && (
-										<div className="border-red-800/80 border-b bg-red-950/60 px-8 py-2 text-red-300 text-xs">
-											{saveError}
-										</div>
-									)}
-
-									{/* 꽉 찬 CmsEditor 캔버스: 조잡한 외곽 상자를 없애고 에디터가 전체 높이를 유려하게 채움 */}
-									<div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-neutral-950">
-										<CmsEditor content={editMdx} onChange={(next) => setEditMdx(next)} />
-									</div>
+					{activeTemplate ? (
+						<div className="flex h-full flex-1 flex-col overflow-hidden">
+							<div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
+								<div className="flex max-w-2xl flex-1 items-center gap-3">
+									<Input
+										type="text"
+										aria-label="템플릿 이름"
+										value={editName}
+										onChange={(e) => setEditName(e.target.value)}
+										placeholder="템플릿 이름 (예: 알고리즘 풀이 메모)"
+										className="h-8 min-w-0 flex-1"
+									/>
+									<Select
+										value={editForCollection}
+										items={COLLECTION_OPTIONS}
+										onValueChange={(value) => value && setEditForCollection(value as "post" | "memo")}
+									>
+										<SelectTrigger size="sm" aria-label="대상 컬렉션">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{COLLECTION_OPTIONS.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<span className="hidden text-muted-foreground text-xs sm:inline">본문 MDX 골격</span>
 								</div>
-							) : (
-								/* 템플릿 미선택 Empty State */
-								<div className="flex flex-1 flex-col items-center justify-center bg-neutral-950 p-8 text-center">
-									<div className="flex max-w-md flex-col items-center rounded-2xl border border-neutral-800/80 bg-neutral-900/60 p-8 shadow-lg">
-										<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-800 text-emerald-400">
-											<LayoutTemplate className="h-6 w-6" />
-										</div>
-										<h2 className="mb-1.5 font-semibold text-base text-white">
-											본문 템플릿을 선택하거나 새로 만드세요
-										</h2>
-										<p className="mb-6 text-neutral-400 text-xs leading-relaxed">
-											좌측 목록에서 기존 템플릿을 선택해 수정하거나, 새 템플릿을 생성해 글 작성 시 빠르게 적용할 수
-											있습니다.
-										</p>
-										<button
-											type="button"
-											onClick={handleOpenNew}
-											className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 font-semibold text-neutral-950 text-xs shadow transition hover:bg-neutral-200"
-										>
-											<Plus className="h-4 w-4" />
-											<span>새 템플릿 만들기</span>
-										</button>
-									</div>
+								<div className="flex items-center gap-2">
+									<Button type="button" variant="ghost" size="sm" onClick={handleCloseEditor}>
+										닫기
+									</Button>
+									<Button type="button" size="sm" disabled={isSaving} onClick={handleSave}>
+										<Save aria-hidden />
+										{isSaving ? "저장 중..." : activeTemplate.id ? "수정 완료" : "생성하기"}
+									</Button>
 								</div>
+							</div>
+							{saveError && (
+								<p role="alert" className="border-b bg-destructive/10 px-6 py-2 text-destructive text-xs">
+									{saveError}
+								</p>
 							)}
+							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+								<CmsEditor content={editMdx} onChange={(next) => setEditMdx(next)} />
+							</div>
 						</div>
-					</div>
+					) : (
+						<Empty className="flex-1">
+							<EmptyHeader>
+								<EmptyMedia variant="icon">
+									<LayoutTemplate aria-hidden />
+								</EmptyMedia>
+								<EmptyTitle>본문 템플릿을 선택하거나 새로 만드세요</EmptyTitle>
+								<EmptyDescription>
+									왼쪽 목록에서 기존 템플릿을 골라 수정하거나, 새 템플릿을 만들어 글을 쓸 때 빠르게 적용할 수 있습니다.
+								</EmptyDescription>
+							</EmptyHeader>
+							<EmptyContent>
+								<Button type="button" onClick={handleOpenNew}>
+									<Plus aria-hidden />새 템플릿 만들기
+								</Button>
+							</EmptyContent>
+						</Empty>
+					)}
 				</div>
 			</div>
-			<Dialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && setPendingDelete(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>템플릿 삭제</DialogTitle>
-						<DialogDescription>
-							&apos;{pendingDelete?.name}&apos; 템플릿을 삭제하시겠습니까? 이 템플릿으로 작성된 글에는 영향이 없습니다.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<button
-							type="button"
-							onClick={() => setPendingDelete(null)}
-							className="rounded-md border px-3 py-2 text-sm"
-						>
-							취소
-						</button>
-						<button type="button" onClick={() => void confirmDelete()} className="rounded-md border px-3 py-2 text-sm">
-							삭제
-						</button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</>
+			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+		</AdminShell>
 	);
 }

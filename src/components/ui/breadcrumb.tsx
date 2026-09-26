@@ -5,7 +5,7 @@ import type * as React from "react";
 import { cn } from "@/utils";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
-	return <nav aria-label="breadcrumb" data-slot="breadcrumb" className={cn(className)} {...props} />;
+	return <nav aria-label="현재 위치" data-slot="breadcrumb" className={cn(className)} {...props} />;
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {

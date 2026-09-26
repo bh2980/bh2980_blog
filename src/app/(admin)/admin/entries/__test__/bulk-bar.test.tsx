@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import { chooseComboboxOption, chooseSelectOption } from "@/test/base-ui";
 import { BulkBar } from "../bulk-bar";
 
 afterEach(() => {
@@ -33,27 +34,35 @@ function stubBulkApi(results: unknown[] = [{ id: "entry-1", ok: true, version: 4
 	return payloads;
 }
 
+const choose = chooseSelectOption;
+
 describe("bulk actions (§3.4)", () => {
 	it("sends tag, category clear and unfiled folder payloads", async () => {
 		const payloads = stubBulkApi();
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
 		);
-		fireEvent.click(await screen.findByRole("checkbox", { name: "Tag One" }));
+		// 태그 목록을 불러온 뒤 Combobox(다중 선택)에서 고른다.
+		await waitFor(() =>
+			expect(
+				(fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+					String(url).includes("collection=tag"),
+				),
+			).toBe(true),
+		);
+		await chooseComboboxOption("적용할 태그", "Tag One");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "tags.add", items: [{ id: "entry-1", expectedVersion: 3 }], tagIds: ["tag-1"] });
 
-		fireEvent.change(screen.getByRole("combobox", { name: "일괄 작업 종류" }), { target: { value: "category.set" } });
-		fireEvent.change(await screen.findByRole("combobox", { name: "대상 카테고리" }), { target: { value: "__none__" } });
+		await choose("일괄 작업 종류", "카테고리 변경");
+		await choose("대상 카테고리", "지우기(없음)");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await waitFor(() => expect(payloads).toHaveLength(2));
 		expect(payloads[1]).toMatchObject({ op: "category.set", categoryId: null });
 
-		fireEvent.change(screen.getByRole("combobox", { name: "일괄 작업 종류" }), { target: { value: "folder.move" } });
-		fireEvent.change(await screen.findByRole("combobox", { name: "이동할 폴더" }), {
-			target: { value: "__unfiled__" },
-		});
+		await choose("일괄 작업 종류", "폴더 이동");
+		await choose("이동할 폴더", "미분류");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await waitFor(() => expect(payloads).toHaveLength(3));
 		expect(payloads[2]).toMatchObject({ op: "folder.move", folderId: null });
@@ -64,7 +73,7 @@ describe("bulk actions (§3.4)", () => {
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
 		);
-		fireEvent.change(screen.getByRole("combobox", { name: "일괄 작업 종류" }), { target: { value: "trash" } });
+		await choose("일괄 작업 종류", "휴지통 이동");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await screen.findByRole("alertdialog", { name: /휴지통 이동/ });
 		expect(payloads).toHaveLength(0);
@@ -86,7 +95,7 @@ describe("bulk actions (§3.4)", () => {
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={onDone} />,
 		);
-		fireEvent.change(screen.getByRole("combobox", { name: "일괄 작업 종류" }), { target: { value: "publish" } });
+		await choose("일괄 작업 종류", "발행");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		fireEvent.click(await screen.findByRole("button", { name: "계속" }));
 		expect(await screen.findByText(/첫 글/)).toBeTruthy();
@@ -95,12 +104,39 @@ describe("bulk actions (§3.4)", () => {
 		expect(onDone).toHaveBeenCalledWith(["entry-1"]);
 	});
 
-	it("offers only record-safe actions for record collections", () => {
+	it("offers only record-safe actions for record collections", async () => {
 		stubBulkApi();
 		render(<BulkBar collection="tag" selected={selected} folders={[]} onClearSelection={vi.fn()} onDone={vi.fn()} />);
-		const options = Array.from(
-			(screen.getByRole("combobox", { name: "일괄 작업 종류" }) as HTMLSelectElement).options,
-		).map((option) => option.value);
-		expect(options).toEqual(["folder.move", "trash"]);
+		fireEvent.click(screen.getByRole("combobox", { name: "일괄 작업 종류" }));
+		const labels = (await screen.findAllByRole("option")).map((option) => option.textContent);
+		expect(labels).toEqual(["폴더 이동", "휴지통 이동"]);
+	});
+
+	it("permanently deletes in bulk on the trash screen and names what still uses a blocked item (v2 A3)", async () => {
+		const payloads = stubBulkApi([
+			{
+				id: "entry-1",
+				ok: false,
+				error: "in_use",
+				usages: [{ entryId: "p1", title: "참조하는 글", collection: "post", state: "working" }],
+			},
+		]);
+		render(
+			<BulkBar
+				collection="post"
+				mode="trash"
+				selected={selected}
+				folders={[]}
+				onClearSelection={vi.fn()}
+				onDone={vi.fn()}
+			/>,
+		);
+		expect(screen.queryByRole("combobox", { name: "일괄 작업 종류" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		await screen.findByRole("alertdialog", { name: /영구 삭제/ });
+		fireEvent.click(screen.getByRole("button", { name: "계속" }));
+		await waitFor(() => expect(payloads).toHaveLength(1));
+		expect(payloads[0]).toEqual({ op: "permanentDelete", items: [{ id: "entry-1", expectedVersion: 3 }] });
+		expect(await screen.findByText(/사용 중: 참조하는 글/)).toBeTruthy();
 	});
 });

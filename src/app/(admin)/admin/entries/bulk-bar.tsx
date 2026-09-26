@@ -4,20 +4,32 @@ import { useEffect, useMemo, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import type { BulkOp } from "@/cms/core/api";
 import { isRecordCollection } from "@/cms/core/collections";
+import { MultiCombobox } from "@/components/multi-combobox";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { useTaxonomy } from "../shared/use-taxonomy";
 
+export type BulkUsage = { entryId: string; title: string | null; collection: string; state: string };
+
 export type BulkItemResult =
 	| { id: string; ok: true; version: number }
-	| { id: string; ok: false; error: string; issues?: CmsIssue[] };
+	| { id: string; ok: false; error: string; issues?: CmsIssue[]; usages?: BulkUsage[] };
 
 export type BulkSelection = { id: string; expectedVersion: number; title?: string | null };
 
-const ACTIONS: { value: BulkOp; label: string; confirm?: string; content?: boolean; post?: boolean }[] = [
+type ActionDef = {
+	value: BulkOp;
+	label: string;
+	confirm?: string;
+	content?: boolean;
+	post?: boolean;
+	destructive?: boolean;
+};
+
+const LIST_ACTIONS: ActionDef[] = [
 	{ value: "tags.add", label: "태그 추가", content: true },
 	{ value: "tags.remove", label: "태그 제거", content: true },
 	{ value: "category.set", label: "카테고리 변경", post: true },
@@ -30,7 +42,22 @@ const ACTIONS: { value: BulkOp; label: string; confirm?: string; content?: boole
 	},
 	{ value: "archive", label: "보관", confirm: "선택한 글을 보관할까요? 공개가 종료됩니다.", content: true },
 	{ value: "unarchive", label: "보관 해제", content: true },
-	{ value: "trash", label: "휴지통 이동", confirm: "선택한 항목을 휴지통으로 옮길까요? 공개가 종료됩니다." },
+	{
+		value: "trash",
+		label: "휴지통 이동",
+		confirm: "선택한 항목을 휴지통으로 옮길까요? 공개가 종료됩니다.",
+		destructive: true,
+	},
+];
+
+const TRASH_ACTIONS: ActionDef[] = [
+	{
+		value: "permanentDelete",
+		label: "영구 삭제",
+		confirm:
+			"선택한 항목을 영구 삭제할까요? 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 지우지 않고 사유를 보여 줍니다.",
+		destructive: true,
+	},
 ];
 
 /** 작업별 실패 사유(§3.4 "성공·실패를 구분하고 실패한 항목만 다시 실행"). */
@@ -46,10 +73,20 @@ export const BULK_ERROR_LABEL: Record<string, string> = {
 	invalid_reference: "휴지통에 있는 항목을 참조합니다.",
 };
 
-async function runBulk(
+/** 실패 한 건의 사유. 영구 삭제를 막은 사용처가 있으면 `사용 중: ○○`으로 이름을 댄다(v2 A3). */
+export function describeBulkFailure(failure: Extract<BulkItemResult, { ok: false }>): string {
+	if (failure.error === "in_use" && failure.usages?.length) {
+		const names = [...new Set(failure.usages.map((usage) => usage.title || "제목 없음"))];
+		return `사용 중: ${names.slice(0, 3).join(", ")}${names.length > 3 ? ` 외 ${names.length - 3}개` : ""}`;
+	}
+	const base = BULK_ERROR_LABEL[failure.error] ?? failure.error;
+	return failure.issues?.length ? `${base} (${failure.issues.slice(0, 3).map(cmsIssueMessage).join(", ")})` : base;
+}
+
+export async function runBulk(
 	op: BulkOp,
 	items: BulkSelection[],
-	params: { tagIds?: string[]; categoryId?: string | null; folderId?: string | null },
+	params: { tagIds?: string[]; categoryId?: string | null; folderId?: string | null } = {},
 ): Promise<BulkItemResult[]> {
 	const data = await cmsFetch<{ results: BulkItemResult[] }>("/api/cms/v1/bulk", {
 		method: "POST",
@@ -61,25 +98,30 @@ async function runBulk(
 
 /**
  * 일괄 작업(§3.4). 현재 페이지에서 고른 항목에만 적용하고, 항목마다 결과를 보여 준다.
- * 실패한 항목만 다시 실행할 수 있다.
+ * 실패한 항목만 다시 실행할 수 있다. 휴지통 화면(`mode="trash"`)에서는 일괄 영구 삭제만 제공한다.
  */
 export function BulkBar({
 	collection,
 	selected,
 	folders,
+	mode = "list",
 	onClearSelection,
 	onDone,
 }: {
 	collection: string;
 	selected: BulkSelection[];
 	folders: Folder[];
+	mode?: "list" | "trash";
 	onClearSelection: () => void;
 	onDone: (failedIds: string[]) => void;
 }) {
 	const isRecord = isRecordCollection(collection);
 	const actions = useMemo(
-		() => ACTIONS.filter((action) => (!action.content || !isRecord) && (!action.post || collection === "post")),
-		[isRecord, collection],
+		() =>
+			mode === "trash"
+				? TRASH_ACTIONS
+				: LIST_ACTIONS.filter((action) => (!action.content || !isRecord) && (!action.post || collection === "post")),
+		[isRecord, collection, mode],
 	);
 	const [action, setAction] = useState<BulkOp>(actions[0]?.value ?? "trash");
 	const [checked, setChecked] = useState<string[]>([]);
@@ -89,8 +131,8 @@ export function BulkBar({
 	const [ranItems, setRanItems] = useState<BulkSelection[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const tags = useTaxonomy("tag", !isRecord);
-	const categories = useTaxonomy("category", collection === "post");
+	const tags = useTaxonomy("tag", !isRecord && mode === "list");
+	const categories = useTaxonomy("category", collection === "post" && mode === "list");
 
 	useEffect(() => {
 		if (!actions.some((candidate) => candidate.value === action)) setAction(actions[0]?.value ?? "trash");
@@ -138,7 +180,7 @@ export function BulkBar({
 				title: `${activeAction.label} — ${selected.length}개`,
 				description: activeAction.confirm,
 				confirmLabel: "계속",
-				destructive: action === "trash",
+				destructive: activeAction.destructive,
 				onConfirm: () => run(selected),
 			});
 		} else {
@@ -152,102 +194,87 @@ export function BulkBar({
 
 	if (selected.length === 0 && !results) return null;
 
-	const selectClass =
-		"h-auto rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 pr-9 text-neutral-200 text-sm shadow-none dark:bg-neutral-900";
+	const categoryItems = [
+		{ value: "__none__", label: "지우기(없음)" },
+		...categories.options.map((option) => ({ value: option.id, label: option.title })),
+	];
+	const folderItems = [
+		{ value: "__unfiled__", label: "미분류" },
+		...folders.map((folder) => ({ value: folder.id, label: folder.name })),
+	];
 
 	return (
-		<section aria-label="일괄 작업" className="border-neutral-800 border-b bg-neutral-900/60 px-6 py-3">
+		<section aria-label="일괄 작업" className="border-b bg-muted/40 px-4 py-3 lg:px-6">
 			<div className="flex flex-wrap items-center gap-3 text-sm">
-				<span className="font-semibold text-white">{selected.length}개 선택</span>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={onClearSelection}
-					className="h-7 text-neutral-400 text-xs"
-				>
+				<span className="font-semibold">{selected.length}개 선택</span>
+				<Button type="button" variant="ghost" size="xs" onClick={onClearSelection}>
 					선택 해제
 				</Button>
 
-				<NativeSelect
-					aria-label="일괄 작업 종류"
-					value={action}
-					onChange={(event) => setAction(event.target.value as BulkOp)}
-					className={selectClass}
-				>
-					{actions.map((candidate) => (
-						<option key={candidate.value} value={candidate.value}>
-							{candidate.label}
-						</option>
-					))}
-				</NativeSelect>
+				{actions.length > 1 ? (
+					<Select
+						value={action}
+						items={actions.map((candidate) => ({ value: candidate.value, label: candidate.label }))}
+						onValueChange={(value) => value && setAction(value as BulkOp)}
+					>
+						<SelectTrigger size="sm" aria-label="일괄 작업 종류">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{actions.map((candidate) => (
+								<SelectItem key={candidate.value} value={candidate.value}>
+									{candidate.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				) : (
+					<span className="text-muted-foreground">{activeAction?.label}</span>
+				)}
 
 				{needsTags && (
-					<fieldset className="flex max-h-24 flex-wrap items-center gap-2 overflow-auto">
-						<legend className="sr-only">적용할 태그</legend>
-						{tags.options.length === 0 && <span className="text-neutral-500 text-xs">태그 없음</span>}
-						{tags.options.map((option) => (
-							<label key={option.id} className="flex items-center gap-1 text-neutral-300 text-xs">
-								<input
-									type="checkbox"
-									checked={checked.includes(option.id)}
-									onChange={() =>
-										setChecked((prev) =>
-											prev.includes(option.id) ? prev.filter((id) => id !== option.id) : [...prev, option.id],
-										)
-									}
-								/>
-								{option.title}
-							</label>
-						))}
-					</fieldset>
+					<MultiCombobox
+						aria-label="적용할 태그"
+						placeholder="태그 선택"
+						emptyText="태그가 없습니다."
+						options={tags.options.map((option) => ({ value: option.id, label: option.title }))}
+						value={checked}
+						onValueChange={setChecked}
+						className="min-w-56"
+					/>
 				)}
 
-				{action === "category.set" && (
-					<NativeSelect
-						aria-label="대상 카테고리"
-						value={single}
-						onChange={(event) => setSingle(event.target.value)}
-						className={selectClass}
+				{needsSingle && (
+					<Select
+						value={single || null}
+						items={action === "category.set" ? categoryItems : folderItems}
+						onValueChange={(value) => setSingle(typeof value === "string" ? value : "")}
 					>
-						<option value="">카테고리 선택</option>
-						<option value="__none__">지우기(없음)</option>
-						{categories.options.map((option) => (
-							<option key={option.id} value={option.id}>
-								{option.title}
-							</option>
-						))}
-					</NativeSelect>
-				)}
-
-				{action === "folder.move" && (
-					<NativeSelect
-						aria-label="이동할 폴더"
-						value={single}
-						onChange={(event) => setSingle(event.target.value)}
-						className={selectClass}
-					>
-						<option value="">폴더 선택</option>
-						<option value="__unfiled__">미분류</option>
-						{folders.map((folder) => (
-							<option key={folder.id} value={folder.id}>
-								{folder.name}
-							</option>
-						))}
-					</NativeSelect>
+						<SelectTrigger size="sm" aria-label={action === "category.set" ? "대상 카테고리" : "이동할 폴더"}>
+							<SelectValue placeholder={action === "category.set" ? "카테고리 선택" : "폴더 선택"} />
+						</SelectTrigger>
+						<SelectContent>
+							{(action === "category.set" ? categoryItems : folderItems).map((item) => (
+								<SelectItem key={item.value} value={item.value}>
+									{item.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				)}
 
 				<Button
 					type="button"
+					size="sm"
+					variant={activeAction?.destructive ? "destructive" : "default"}
 					disabled={!canRun}
 					onClick={start}
-					className="h-auto rounded-lg bg-white px-3.5 py-1.5 font-semibold text-neutral-950 text-sm hover:bg-neutral-200"
 				>
 					{isRunning ? "실행 중..." : "일괄 실행"}
 				</Button>
 
 				{results && (
-					<output className="text-neutral-300 text-xs">
+					<output className="text-muted-foreground text-xs">
 						성공 {successes} / 실패 {failures.length}
 					</output>
 				)}
@@ -255,8 +282,7 @@ export function BulkBar({
 					<Button
 						type="button"
 						variant="outline"
-						size="sm"
-						className="h-7 text-xs"
+						size="xs"
 						onClick={() => void run(ranItems.filter((item) => failures.some((failure) => failure.id === item.id)))}
 					>
 						실패만 다시 실행
@@ -265,17 +291,15 @@ export function BulkBar({
 			</div>
 
 			{error && (
-				<p role="alert" className="pt-2 text-red-400 text-xs">
+				<p role="alert" className="pt-2 text-destructive text-xs">
 					{error}
 				</p>
 			)}
 			{failures.length > 0 && (
-				<ul className="flex flex-col gap-1 pt-2 text-red-300 text-xs">
+				<ul className="flex flex-col gap-1 pt-2 text-destructive text-xs">
 					{failures.map((failure) => (
 						<li key={failure.id}>
-							<span className="font-medium">{titleOf(failure.id)}</span> —{" "}
-							{BULK_ERROR_LABEL[failure.error] ?? failure.error}
-							{failure.issues?.length ? ` (${failure.issues.slice(0, 3).map(cmsIssueMessage).join(", ")})` : ""}
+							<span className="font-medium">{titleOf(failure.id)}</span> — {describeBulkFailure(failure)}
 						</li>
 					))}
 				</ul>

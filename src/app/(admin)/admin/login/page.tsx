@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@/cms/adapters/auth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function AdminLoginPage() {
 	if (isDevAuthBypassEnabled()) {
@@ -18,49 +21,44 @@ export default async function AdminLoginPage() {
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center p-4">
-			<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-8 shadow-2xl">
-				<div className="mb-6 text-center">
-					<h1 className="font-bold text-2xl text-white tracking-tight">CMS 관리자</h1>
-					<p className="mt-2 text-neutral-400 text-sm">승인된 GitHub 관리자 계정으로 로그인해주세요.</p>
-				</div>
-
-				{isUnauthorizedUser && (
-					<div className="mb-6 rounded-lg border border-red-900/50 bg-red-950/40 p-4 text-center">
-						<p className="font-semibold text-red-400 text-xs">접근 권한이 없습니다 (403 Forbidden)</p>
-						<p className="mt-1 text-neutral-400 text-xs">
-							로그인된 GitHub ID({currentGithubId})는 관리자 권한이 없습니다.
-						</p>
+			<Card className="w-full max-w-sm">
+				<CardHeader className="text-center">
+					<CardTitle className="text-2xl">CMS 관리자</CardTitle>
+					<CardDescription>승인된 GitHub 관리자 계정으로 로그인해주세요.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{isUnauthorizedUser ? (
+						<Alert variant="danger" layout="stack" className="text-center">
+							<AlertTitle className="text-xs">접근 권한이 없습니다 (403 Forbidden)</AlertTitle>
+							<AlertDescription className="mt-1 text-xs">
+								로그인된 GitHub ID({currentGithubId})는 관리자 권한이 없습니다.
+							</AlertDescription>
+							<form
+								action={async () => {
+									"use server";
+									await signOut({ redirectTo: "/admin/login" });
+								}}
+								className="mt-3"
+							>
+								<Button type="submit" variant="link" size="xs">
+									다른 계정으로 로그인하기 (로그아웃)
+								</Button>
+							</form>
+						</Alert>
+					) : (
 						<form
 							action={async () => {
 								"use server";
-								await signOut({ redirectTo: "/admin/login" });
+								await signIn("github", { redirectTo: "/admin" });
 							}}
-							className="mt-3"
 						>
-							<button type="submit" className="text-red-300 text-xs underline hover:text-red-200">
-								다른 계정으로 로그인하기 (로그아웃)
-							</button>
+							<Button type="submit" className="w-full">
+								GitHub으로 로그인
+							</Button>
 						</form>
-					</div>
-				)}
-
-				{!isUnauthorizedUser && (
-					<form
-						action={async () => {
-							"use server";
-							await signIn("github", { redirectTo: "/admin" });
-						}}
-						className="flex flex-col gap-4"
-					>
-						<button
-							type="submit"
-							className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-2.5 font-semibold text-neutral-950 text-sm transition hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 focus:ring-offset-neutral-900"
-						>
-							GitHub으로 로그인
-						</button>
-					</form>
-				)}
-			</div>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

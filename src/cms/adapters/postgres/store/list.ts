@@ -26,7 +26,8 @@ function assertParams(params: ListEntriesParams) {
 		throw new CmsError("Invalid collection", "invalid_input");
 	}
 	for (const key of ["search", "titleContains", "slugContains"] as const) {
-		if (params[key] !== undefined && typeof params[key] !== "string") throw new CmsError(`Invalid ${key}`, "invalid_input");
+		if (params[key] !== undefined && typeof params[key] !== "string")
+			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
 	for (const key of ["includeBody", "includeDescendants", "hasUnpublishedChanges", "scheduled"] as const) {
 		if (params[key] !== undefined && typeof params[key] !== "boolean")

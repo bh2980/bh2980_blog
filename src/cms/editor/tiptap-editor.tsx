@@ -5,6 +5,11 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Toggle } from "@/components/ui/toggle";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
 import { CmsBlockKeymap, deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
@@ -165,27 +170,34 @@ const TABLE_TOOLS: ToolbarItem[] = [
 	{ label: "→열", title: "오른쪽에 열 추가", run: (e) => chain(e).addColumnAfter().run() },
 	{ label: "행 삭제", run: (e) => chain(e).deleteRow().run() },
 	{ label: "열 삭제", run: (e) => chain(e).deleteColumn().run() },
-	{ label: "표 삭제", className: "text-red-600", run: (e) => chain(e).deleteTable().run() },
+	{ label: "표 삭제", className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
 ];
 
 function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
 	const active = item.isActive?.(editor) ?? false;
+	const label = item.title ?? item.label;
+	const common = {
+		"aria-label": label,
+		disabled: !editor.isEditable,
+		// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
+		onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
+		className: cn("h-7 min-w-7 px-2 text-xs", item.className),
+	};
 	return (
-		<button
-			type="button"
-			title={item.title ?? item.label}
-			aria-label={item.title ?? item.label}
-			aria-pressed={item.isActive ? active : undefined}
-			disabled={!editor.isEditable}
-			// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
-			onMouseDown={(event) => event.preventDefault()}
-			onClick={() => item.run(editor)}
-			className={`rounded px-2 py-1 text-xs transition hover:bg-neutral-100 disabled:opacity-40 dark:hover:bg-neutral-800 ${
-				active ? "bg-neutral-200 font-bold dark:bg-neutral-800" : "text-neutral-600 dark:text-neutral-400"
-			} ${item.className ?? ""}`}
-		>
-			{item.label}
-		</button>
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					item.isActive ? (
+						<Toggle size="sm" pressed={active} onPressedChange={() => item.run(editor)} {...common} />
+					) : (
+						<Button type="button" variant="ghost" size="sm" onClick={() => item.run(editor)} {...common} />
+					)
+				}
+			>
+				{item.label}
+			</TooltipTrigger>
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -292,7 +304,7 @@ export function CmsEditor({
 			attributes: {
 				"aria-label": "본문 편집기",
 				class:
-					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-neutral-800 dark:text-neutral-200 text-base leading-relaxed selection:bg-blue-100 dark:selection:bg-blue-900/40",
+					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20",
 			},
 			handleKeyDown: (view, event) => {
 				// 한글 IME 조합 중에는 메뉴 탐색·확정을 처리하지 않는다(§4.2).
@@ -468,7 +480,7 @@ export function CmsEditor({
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
 		<div
-			className="relative flex min-h-full w-full flex-1 flex-col bg-white dark:bg-neutral-950"
+			className="relative flex min-h-full w-full flex-1 flex-col bg-background"
 			onCompositionStart={() => {
 				isComposingRef.current = true;
 				onCompositionStart?.();
@@ -483,28 +495,30 @@ export function CmsEditor({
 			<div
 				role="toolbar"
 				aria-label="서식 도구"
-				className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-neutral-200 border-b bg-white/95 px-4 py-2 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+				className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-background/95 px-4 py-2 backdrop-blur"
 			>
 				{TOOLBAR_GROUPS.map((group, index) => (
 					<div key={group[0]?.label} className="flex items-center gap-1">
-						{index > 0 && <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />}
+						{index > 0 && <Separator orientation="vertical" className="mx-1 data-vertical:h-4" />}
 						{group.map((item) => (
 							<ToolbarButton key={item.label} editor={editor} item={item} />
 						))}
 					</div>
 				))}
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="sm"
+					className="h-7 px-2 text-xs"
 					disabled={!editable}
 					onClick={() => setImageDialog({ file: null })}
-					className="flex items-center gap-1 rounded px-2 py-1 text-neutral-600 text-xs transition hover:bg-neutral-100 disabled:opacity-40 dark:text-neutral-400 dark:hover:bg-neutral-800"
 				>
-					<ImageIcon className="h-3.5 w-3.5" aria-hidden />
+					<ImageIcon aria-hidden />
 					이미지
-				</button>
+				</Button>
 				{editor.isActive("table") && (
 					<fieldset className="flex items-center gap-1 border-0 p-0" aria-label="표 도구">
-						<div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
+						<Separator orientation="vertical" className="mx-1 data-vertical:h-4" />
 						{TABLE_TOOLS.map((item) => (
 							<ToolbarButton key={item.label} editor={editor} item={item} />
 						))}

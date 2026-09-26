@@ -1,0 +1,105 @@
+import type { AdminListColumn, ListSortField } from "@/cms/core/api";
+import { ADMIN_LIST_COLUMNS } from "@/cms/core/api";
+import { isRecordCollection } from "@/cms/core/collections";
+import type { ListState } from "./list-state";
+
+type DateFromKey = "createdFrom" | "updatedFrom" | "publishedFrom";
+type DateToKey = "createdTo" | "updatedTo" | "publishedTo";
+
+/** 컬럼 헤더 팝업이 보여 줄 필터 종류(v2 A1). */
+export type ColumnFilter =
+	| { kind: "text"; key: "titleContains" | "slugContains"; placeholder: string }
+	| { kind: "status" }
+	| { kind: "taxonomy"; key: "tagIds" | "categoryIds"; source: "tag" | "category" }
+	| { kind: "date"; from: DateFromKey; to: DateToKey }
+	| { kind: "none" };
+
+export interface ColumnConfig {
+	label: string;
+	sortField?: ListSortField;
+	filter: ColumnFilter;
+}
+
+/**
+ * 컬럼별 라벨·정렬·필터를 정하는 한 곳. 헤더 팝업과 필터 칩이 이 표를 읽는다.
+ * v2 B1(중앙 스키마)이 들어오면 컬렉션 스키마에서 이 표를 만든다.
+ */
+export const COLUMN_CONFIG: Record<AdminListColumn, ColumnConfig> = {
+	title: {
+		label: "제목",
+		sortField: "title",
+		filter: { kind: "text", key: "titleContains", placeholder: "제목에 포함된 글자" },
+	},
+	status: { label: "상태", filter: { kind: "status" } },
+	category: { label: "카테고리", filter: { kind: "taxonomy", key: "categoryIds", source: "category" } },
+	tags: { label: "태그", filter: { kind: "taxonomy", key: "tagIds", source: "tag" } },
+	updatedAt: {
+		label: "수정일",
+		sortField: "updatedAt",
+		filter: { kind: "date", from: "updatedFrom", to: "updatedTo" },
+	},
+	publishedAt: {
+		label: "발행일",
+		sortField: "publishedAt",
+		filter: { kind: "date", from: "publishedFrom", to: "publishedTo" },
+	},
+	createdAt: {
+		label: "생성일",
+		sortField: "createdAt",
+		filter: { kind: "date", from: "createdFrom", to: "createdTo" },
+	},
+	slug: {
+		label: "주소",
+		sortField: "slug",
+		filter: { kind: "text", key: "slugContains", placeholder: "주소에 포함된 글자" },
+	},
+	// 폴더는 사이드바 탐색으로 거른다.
+	folder: { label: "폴더", filter: { kind: "none" } },
+};
+
+export const COLUMN_LABELS: Record<AdminListColumn, string> = Object.fromEntries(
+	ADMIN_LIST_COLUMNS.map((column) => [column, COLUMN_CONFIG[column].label]),
+) as Record<AdminListColumn, string>;
+
+/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). */
+export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
+	const isPost = collection === "post";
+	const isContent = isPost || collection === "memo";
+	const available = ADMIN_LIST_COLUMNS.filter((column) => {
+		if (column === "category") return isPost;
+		if (column === "tags" || column === "publishedAt") return isContent;
+		return true;
+	});
+	const defaults: AdminListColumn[] = isPost
+		? ["title", "status", "category", "tags", "updatedAt", "publishedAt"]
+		: isContent
+			? ["title", "status", "tags", "updatedAt", "publishedAt"]
+			: ["title", "slug", "status", "updatedAt"];
+	return { available, defaults };
+}
+
+/**
+ * 이 컬렉션에서 실제로 쓸 수 있는 필터. record 컬렉션은 활성/휴지통뿐이고,
+ * 휴지통 화면은 모든 항목이 휴지통 상태라 상태 필터가 없다.
+ */
+export function filterFor(collection: string, column: AdminListColumn, mode: "list" | "trash" = "list"): ColumnFilter {
+	const filter = COLUMN_CONFIG[column].filter;
+	if (filter.kind === "status" && (isRecordCollection(collection) || mode === "trash")) return { kind: "none" };
+	return filter;
+}
+
+/** 이 컬럼에 필터가 걸려 있는지. 숨긴 컬럼이어도 칩으로 계속 보인다. */
+export function isColumnFiltered(state: ListState, filter: ColumnFilter): boolean {
+	switch (filter.kind) {
+		case "text":
+			return state[filter.key].trim() !== "";
+		case "status":
+			return state.statuses.length > 0 || state.hasChanges || state.scheduled;
+		case "taxonomy":
+			return state[filter.key].length > 0;
+		case "date":
+			return Boolean(state[filter.from] || state[filter.to]);
+		case "none":
+			return false;
+	}
+}

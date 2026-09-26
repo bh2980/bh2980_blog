@@ -1,8 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -12,6 +12,10 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/utils/cn";
 import { formatBytes, type PreparedUpload, prepareUpload, uploadImageFile } from "./upload-helper";
 
 export interface ImageInsertion {
@@ -152,27 +156,20 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 					<DialogDescription>새 파일을 올리거나 미디어 라이브러리에서 고르세요.</DialogDescription>
 				</DialogHeader>
 
-				<div role="tablist" aria-label="이미지 출처" className="flex gap-1 border-b">
-					{(["upload", "library"] as const).map((value) => (
-						<button
-							key={value}
-							type="button"
-							role="tab"
-							aria-selected={tab === value}
-							disabled={isUploading}
-							onClick={() => setTab(value)}
-							className={`-mb-px border-b-2 px-3 py-1.5 text-sm ${
-								tab === value ? "border-foreground font-semibold" : "border-transparent text-muted-foreground"
-							}`}
-						>
-							{value === "upload" ? "업로드" : "라이브러리"}
-						</button>
-					))}
-				</div>
+				<Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
+					<TabsList variant="line" aria-label="이미지 출처">
+						<TabsTrigger value="upload" disabled={isUploading}>
+							업로드
+						</TabsTrigger>
+						<TabsTrigger value="library" disabled={isUploading}>
+							라이브러리
+						</TabsTrigger>
+					</TabsList>
+				</Tabs>
 
 				{tab === "upload" ? (
 					<div className="space-y-2 text-sm">
-						<input
+						<Input
 							type="file"
 							aria-label="이미지 파일"
 							accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
@@ -181,15 +178,14 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 						/>
 						{file && (
 							<>
-								<label className="flex items-center gap-2">
-									<input
-										type="checkbox"
+								<Label className="font-normal">
+									<Checkbox
 										checked={optimize}
 										disabled={isUploading}
-										onChange={(event) => setOptimize(event.target.checked)}
+										onCheckedChange={(checked) => setOptimize(checked === true)}
 									/>
 									웹용 최적화 (긴 변 2560px 이하 WebP, 원본도 보관)
-								</label>
+								</Label>
 								<p className="text-muted-foreground text-xs" aria-live="polite">
 									{prepared?.optimized
 										? `${formatBytes(file.size)} → ${formatBytes(prepared.file.size)} (${prepared.width}×${prepared.height})`
@@ -200,9 +196,9 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 					</div>
 				) : (
 					<div className="space-y-2">
-						<label htmlFor={searchId} className="sr-only">
+						<Label htmlFor={searchId} className="sr-only">
 							파일명 검색
-						</label>
+						</Label>
 						<Input
 							id={searchId}
 							value={search}
@@ -214,14 +210,16 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 								<p className="col-span-3 py-6 text-center text-muted-foreground text-sm">미디어가 없습니다.</p>
 							)}
 							{library.map((item) => (
-								<button
+								<Button
 									key={item.id}
 									type="button"
+									variant="outline"
 									aria-pressed={picked?.id === item.id}
 									onClick={() => pick(item)}
-									className={`overflow-hidden rounded border text-left text-xs ${
-										picked?.id === item.id ? "ring-2 ring-blue-500" : ""
-									}`}
+									className={cn(
+										"h-auto flex-col items-stretch gap-0 overflow-hidden p-0 text-left font-normal text-xs",
+										picked?.id === item.id && "ring-2 ring-primary",
+									)}
 								>
 									{item.publicUrl ? (
 										// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
@@ -230,16 +228,14 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 										<span className="flex h-20 items-center justify-center bg-muted">미리보기 없음</span>
 									)}
 									<span className="block truncate px-1 py-0.5">{item.filename}</span>
-								</button>
+								</Button>
 							))}
 						</div>
 					</div>
 				)}
 
 				<div className="space-y-2 text-sm">
-					<label htmlFor={altId} className="font-medium">
-						대체 텍스트
-					</label>
+					<Label htmlFor={altId}>대체 텍스트</Label>
 					<Input
 						id={altId}
 						value={alt}
@@ -248,18 +244,15 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 						aria-invalid={needsAlt || undefined}
 						onChange={(event) => setAlt(event.target.value)}
 					/>
-					<label className="flex items-center gap-2">
-						<input
-							type="checkbox"
+					<Label className="font-normal">
+						<Checkbox
 							checked={decorative}
 							disabled={isUploading}
-							onChange={(event) => setDecorative(event.target.checked)}
+							onCheckedChange={(checked) => setDecorative(checked === true)}
 						/>
 						장식 이미지 (스크린 리더에서 생략)
-					</label>
-					<label htmlFor={captionId} className="font-medium">
-						캡션 (선택)
-					</label>
+					</Label>
+					<Label htmlFor={captionId}>캡션 (선택)</Label>
 					<Input
 						id={captionId}
 						value={caption}
@@ -270,7 +263,7 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 
 				{isUploading && (
 					<output className="flex items-center gap-2 text-sm">
-						<Loader2 className="h-4 w-4 animate-spin" /> 업로드 중… {progress}%
+						<Spinner /> 업로드 중… {progress}%
 					</output>
 				)}
 				{error && (

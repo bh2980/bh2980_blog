@@ -142,7 +142,12 @@ describe("review regressions", () => {
 			metadata: { title: "참조하는 글", categoryId, policy: "deprecated", replacementPostId: target.id },
 			mdx: "x",
 		});
-		const loose = await service.createDraft({ collection: "memo", slug: unique("loose"), metadata: { title: "l" }, mdx: "l" });
+		const loose = await service.createDraft({
+			collection: "memo",
+			slug: unique("loose"),
+			metadata: { title: "l" },
+			mdx: "l",
+		});
 		const trashedTarget = await store.trashEntry({ id: target.id, expectedVersion: target.version });
 		const trashedLoose = await store.trashEntry({ id: loose.id, expectedVersion: loose.version });
 

@@ -1,8 +1,10 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import { AdminEntriesTable, columnsFor } from "../admin-entries-table";
+import { parseListState } from "../list-state";
+import { filterChips } from "../list-toolbar";
 
 afterEach(cleanup);
 
@@ -27,31 +29,28 @@ const item = (id: string, fields: Partial<ListEntriesItem> = {}): ListEntriesIte
 	...fields,
 });
 
+const options = { tags: [{ id: "t1", title: "React", slug: "react" }], categories: [] };
+
 function renderTable(overrides: Partial<ComponentProps<typeof AdminEntriesTable>> = {}) {
 	const props: ComponentProps<typeof AdminEntriesTable> = {
 		collection: "post",
 		items: [item("published", { status: "published", hasUnpublishedChanges: true }), item("draft")],
 		folders: [],
 		explorer: null,
+		state: parseListState(new URLSearchParams("collection=post")),
+		options,
+		onStateChange: vi.fn(),
 		onColumnSettingsChange: vi.fn(),
 		selectedIds: new Set(),
-		onToggleSelect: vi.fn(),
-		onToggleSelectPage: vi.fn(),
+		onSelectionChange: vi.fn(),
 		total: 2,
-		page: 1,
-		pageSize: 25,
-		sortField: "updatedAt",
-		sortDirection: "desc",
 		isLoading: false,
 		errorMessage: null,
-		isTrashView: false,
-		onSortChange: vi.fn(),
-		onPageChange: vi.fn(),
-		onPageSizeChange: vi.fn(),
+		rowMenu: () => [{ kind: "item", label: "휴지통으로", onSelect: vi.fn() }],
 		onSelectFolder: vi.fn(),
 		onOpenRecord: vi.fn(),
-		onRestore: vi.fn(),
-		onPermanentDelete: vi.fn(),
+		onPageChange: vi.fn(),
+		onPageSizeChange: vi.fn(),
 		onRetry: vi.fn(),
 		...overrides,
 	};
@@ -59,7 +58,7 @@ function renderTable(overrides: Partial<ComponentProps<typeof AdminEntriesTable>
 	return props;
 }
 
-describe("admin entry list", () => {
+describe("admin entry list (v2 A1 Data Table)", () => {
 	it("uses the spec default columns per collection (§3.2)", () => {
 		expect(columnsFor("post").defaults).toEqual(["title", "status", "category", "tags", "updatedAt", "publishedAt"]);
 		expect(columnsFor("memo").defaults).toEqual(["title", "status", "tags", "updatedAt", "publishedAt"]);
@@ -78,17 +77,35 @@ describe("admin entry list", () => {
 		expect(screen.getByText("초안 · 예약 2030-01-01 09:00")).toBeTruthy();
 	});
 
-	it("sorts through keyboard-reachable header buttons and exposes aria-sort", () => {
+	it("sorts from the column header popup and exposes aria-sort on the header cell", async () => {
 		const props = renderTable();
-		const header = screen.getByRole("columnheader", { name: /수정일/ });
-		expect(header.getAttribute("aria-sort")).toBe("descending");
-		fireEvent.click(screen.getByRole("button", { name: /^발행일\s*$/ }));
-		expect(props.onSortChange).toHaveBeenCalledWith("publishedAt");
+		expect(screen.getByRole("columnheader", { name: /수정일/ }).getAttribute("aria-sort")).toBe("descending");
+		fireEvent.click(screen.getByRole("button", { name: /^발행일 — 정렬·필터 열기$/ }));
+		fireEvent.click(await screen.findByRole("button", { name: "오름차순" }));
+		expect(props.onStateChange).toHaveBeenCalledWith({ sortField: "publishedAt", sortDirection: "asc" });
 	});
 
-	it("persists column visibility and order and keeps page size numeric", () => {
+	it("filters status like a spreadsheet header and marks the filtered header without relying on color", async () => {
+		const props = renderTable({ state: parseListState(new URLSearchParams("collection=post&changes=1")) });
+		const header = screen.getByRole("button", { name: /^상태, 필터 적용됨/ });
+		fireEvent.click(header);
+		fireEvent.click(await screen.findByRole("checkbox", { name: "초안" }));
+		expect(props.onStateChange).toHaveBeenCalledWith({ statuses: ["draft"] });
+		fireEvent.click(screen.getByRole("button", { name: "상태 필터 지우기" }));
+		expect(props.onStateChange).toHaveBeenLastCalledWith({ statuses: [], hasChanges: false, scheduled: false });
+	});
+
+	it("keeps filters on hidden columns visible as chips", () => {
+		const state = parseListState(new URLSearchParams("collection=post&slug=react&tag=t1&status=draft&changes=1"));
+		const labels = filterChips(state, options).map((chip) => chip.label);
+		// 주소(slug) 컬럼은 기본으로 숨겨져 있어도 칩으로 남는다.
+		expect(labels).toEqual(["상태: 초안, 수정 중", "태그: React", '주소: "react"']);
+	});
+
+	it("persists column visibility and order", async () => {
 		const props = renderTable();
-		fireEvent.click(screen.getByRole("checkbox", { name: "생성일" }));
+		fireEvent.click(screen.getByRole("button", { name: "컬럼 설정" }));
+		fireEvent.click(await screen.findByRole("checkbox", { name: "생성일" }));
 		expect(props.onColumnSettingsChange).toHaveBeenLastCalledWith(
 			expect.objectContaining({ visibility: expect.objectContaining({ createdAt: true }) }),
 		);
@@ -97,25 +114,57 @@ describe("admin entry list", () => {
 			"status",
 			"title",
 		]);
-		fireEvent.change(screen.getByRole("combobox", { name: "페이지 크기" }), { target: { value: "50" } });
-		expect(props.onPageSizeChange).toHaveBeenCalledWith(50);
 	});
 
-	it("offers restore and permanent delete in the trash view", () => {
+	it("selects rows through the Data Table checkboxes", () => {
+		const props = renderTable();
+		fireEvent.click(screen.getByRole("checkbox", { name: "draft 선택" }));
+		expect(props.onSelectionChange).toHaveBeenCalledWith(new Set(["draft"]));
+		fireEvent.click(screen.getByRole("checkbox", { name: "현재 페이지 전체 선택" }));
+		expect(props.onSelectionChange).toHaveBeenLastCalledWith(new Set(["published", "draft"]));
+	});
+
+	it("offers restore and permanent delete in the trash view and routes Delete to the handler", () => {
 		const trashed = item("trashed", { status: "trashed" });
-		const props = renderTable({ items: [trashed], isTrashView: true });
+		const onRestore = vi.fn();
+		const onPermanentDelete = vi.fn();
+		const onDeleteKey = vi.fn();
+		renderTable({ items: [trashed], mode: "trash", onRestore, onPermanentDelete, onDeleteKey });
 		const row = screen.getByRole("row", { name: /trashed/ });
 		fireEvent.click(within(row).getByRole("button", { name: "복원" }));
 		fireEvent.click(within(row).getByRole("button", { name: "영구 삭제" }));
-		expect(props.onRestore).toHaveBeenCalledWith(trashed);
-		expect(props.onPermanentDelete).toHaveBeenCalledWith(trashed);
+		expect(onRestore).toHaveBeenCalledWith(trashed);
+		expect(onPermanentDelete).toHaveBeenCalledWith(trashed);
+		fireEvent.keyDown(within(row).getByRole("button", { name: "복원" }), { key: "Delete" });
+		expect(onDeleteKey).toHaveBeenCalledWith(trashed);
+	});
+
+	it("opens the same row actions from right click and from the always-visible ⋯ button", async () => {
+		const onSelect = vi.fn();
+		renderTable({ rowMenu: () => [{ kind: "item", label: "보관", onSelect }] });
+		const row = screen.getByRole("row", { name: /draft/ });
+		await act(async () => {
+			fireEvent.contextMenu(row);
+		});
+		fireEvent.click(await screen.findByRole("menuitem", { name: "보관" }));
+		expect(onSelect).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(screen.queryByRole("menuitem", { name: "보관" })).toBeNull());
+
+		fireEvent.click(within(row).getByRole("button", { name: "draft 작업" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: "보관" }));
+		expect(onSelect).toHaveBeenCalledTimes(2);
 	});
 
 	it("opens record collections in their form instead of the editor", () => {
 		const tag = item("tag-1", { collection: "tag", title: "TypeScript", status: "published" });
-		const props = renderTable({ collection: "tag", items: [tag] });
+		const props = renderTable({
+			collection: "tag",
+			items: [tag],
+			state: parseListState(new URLSearchParams("collection=tag")),
+		});
 		fireEvent.click(screen.getByRole("button", { name: "TypeScript" }));
 		expect(props.onOpenRecord).toHaveBeenCalledWith(tag);
+		expect(screen.getByText("활성")).toBeTruthy();
 	});
 
 	it("shows child folders in explorer mode and navigates up", () => {

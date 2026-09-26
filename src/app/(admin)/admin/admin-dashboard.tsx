@@ -1,33 +1,69 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { AdminColumnSettings, CollectionPreferences, ListSortField, PreferencesBody } from "@/cms/core/api";
-import { type Collection, isRecordCollection } from "@/cms/core/collections";
+import type { AdminColumnSettings, CollectionPreferences, PreferencesBody, SavedView } from "@/cms/core/api";
+import { COLLECTION_DEFINITIONS, COLLECTIONS, isRecordCollection } from "@/cms/core/collections";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "./admin-api";
 import { AdminEntriesTable } from "./admin-entries-table";
-import { AdminMobileNavigation } from "./admin-mobile-navigation";
-import { AdminSidebar } from "./admin-sidebar";
-import { BulkBar } from "./entries/bulk-bar";
-import { ListFilters } from "./list-filters";
+import { BulkBar, type BulkItemResult, type BulkSelection, describeBulkFailure, runBulk } from "./entries/bulk-bar";
 import {
+	applyViewQuery,
 	isExplorerMode,
 	type ListState,
 	listStateToApiQuery,
 	listStateToSearchParams,
 	parseListState,
+	viewQueryOf,
 } from "./list-state";
+import { ListToolbar } from "./list-toolbar";
 import { RecordDialog, type RecordTarget } from "./record-dialog";
+import { SavedViews } from "./saved-views";
+import type { MenuAction } from "./shared/action-menu";
+import { AdminNavProvider, AdminShell, useAdminNav } from "./shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "./shared/confirm-dialog";
 import type { DraggedEntry } from "./shared/entry-drag";
 import { useFolderActions } from "./shared/use-folder-actions";
 import { useTaxonomy } from "./shared/use-taxonomy";
 
-/** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
-export function AdminClientDashboard() {
+type Mode = "list" | "trash";
+
+const toSelection = (item: ListEntriesItem): BulkSelection => ({
+	id: item.id,
+	expectedVersion: item.version,
+	title: item.title,
+});
+
+/** 일괄 결과를 알림으로 알린다. 실패는 항목 이름과 사유를 적는다. */
+function announce(label: string, results: BulkItemResult[], items: BulkSelection[]) {
+	const failures = results.filter((result): result is Extract<BulkItemResult, { ok: false }> => !result.ok);
+	const ok = results.length - failures.length;
+	if (failures.length === 0) {
+		toast.success(`${ok}개 항목을 ${label}했습니다.`);
+		return;
+	}
+	const titleOf = (id: string) => items.find((item) => item.id === id)?.title || "제목 없음";
+	toast.error(ok > 0 ? `${ok}개는 ${label}했고 ${failures.length}개는 하지 못했습니다.` : `${label}하지 못했습니다.`, {
+		description: failures
+			.slice(0, 3)
+			.map((failure) => `${titleOf(failure.id)} — ${describeBulkFailure(failure)}`)
+			.join("\n"),
+	});
+}
+
+/** 목록·휴지통 화면의 상태·데이터·작업. 셸(사이드바 폴더 탐색)과 본문이 함께 쓴다. */
+function useDashboard(mode: Mode) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const { refreshTrashCount } = useAdminNav();
+	const isTrash = mode === "trash";
+	const basePath = isTrash ? "/admin/trash" : "/admin";
 	const parsed = useMemo(() => parseListState(new URLSearchParams(searchParams.toString())), [searchParams]);
 	const [preferences, setPreferences] = useState<PreferencesBody | null>(null);
 
@@ -45,25 +81,33 @@ export function AdminClientDashboard() {
 		[parsed, collectionPrefs],
 	);
 	const collection = state.collection;
+	const isRecord = isRecordCollection(collection);
+	const isContent = collection === "post" || collection === "memo";
 
 	const [items, setItems] = useState<ListEntriesItem[]>([]);
 	const [total, setTotal] = useState(0);
 	const [folders, setFolders] = useState<Folder[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [feedback, setFeedback] = useState<string | null>(null);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const tags = useTaxonomy("tag", collection === "post" || collection === "memo");
+	const tags = useTaxonomy("tag", isContent);
 	const categories = useTaxonomy("category", collection === "post");
+	const options = useMemo(
+		() => ({ tags: tags.options, categories: categories.options }),
+		[tags.options, categories.options],
+	);
 
+	const navigate = useCallback(
+		(next: ListState) =>
+			router.replace(`${basePath}?${listStateToSearchParams(next).toString()}` as Route, { scroll: false }),
+		[router, basePath],
+	);
 	const update = useCallback(
-		(patch: Partial<ListState>, options: { resetPage?: boolean } = { resetPage: true }) => {
-			const next = { ...state, ...(options.resetPage ? { page: 1 } : {}), ...patch };
-			router.replace(`?${listStateToSearchParams(next).toString()}`, { scroll: false });
-		},
-		[router, state],
+		(patch: Partial<ListState>, options: { resetPage?: boolean } = { resetPage: true }) =>
+			navigate({ ...state, ...(options.resetPage ? { page: 1 } : {}), ...patch }),
+		[navigate, state],
 	);
 
 	useEffect(() => {
@@ -78,21 +122,20 @@ export function AdminClientDashboard() {
 			collections: { ...current?.collections, [collection]: { ...current?.collections?.[collection], ...patch } },
 		}));
 		void cmsFetch("/api/cms/v1/preferences", { method: "PUT", json: { collections: { [collection]: patch } } }).catch(
-			() => {
-				setFeedback("목록 설정을 저장하지 못했습니다.");
-			},
+			() => toast.error("목록 설정을 저장하지 못했습니다."),
 		);
 	};
 
 	const fetchFolders = useCallback(async () => {
+		if (isTrash) return;
 		try {
 			setFolders(await cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`));
 		} catch {
 			setFolders([]);
 		}
-	}, [collection]);
+	}, [collection, isTrash]);
 
-	const apiQuery = listStateToApiQuery(state).toString();
+	const apiQuery = listStateToApiQuery(state, { trash: isTrash }).toString();
 	const abortRef = useRef<AbortController | null>(null);
 	const fetchEntries = useCallback(async () => {
 		abortRef.current?.abort();
@@ -124,6 +167,12 @@ export function AdminClientDashboard() {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the visible query changes
 	useEffect(() => setSelectedIds(new Set()), [apiQuery]);
 
+	const refresh = async (failedIds: string[] = []) => {
+		setSelectedIds(new Set(failedIds));
+		await fetchEntries();
+		refreshTrashCount();
+	};
+
 	const folderActions = useFolderActions({
 		collection,
 		folders,
@@ -134,181 +183,392 @@ export function AdminClientDashboard() {
 		},
 	});
 
-	const moveEntries = async (folderId: string | null, entries: DraggedEntry[]) => {
+	const bulk = async (
+		op: Parameters<typeof runBulk>[0],
+		label: string,
+		targets: BulkSelection[],
+		params: Parameters<typeof runBulk>[2] = {},
+	) => {
 		try {
-			const data = await cmsFetch<{ results: { ok: boolean }[] }>("/api/cms/v1/bulk", {
-				method: "POST",
-				json: { op: "folder.move", items: entries, folderId },
-			});
-			const failed = data.results.filter((result) => !result.ok).length;
-			setFeedback(
-				failed
-					? `${entries.length - failed}개를 옮기고 ${failed}개는 옮기지 못했습니다.`
-					: `${entries.length}개를 옮겼습니다.`,
-			);
-			await fetchEntries();
+			const results = await runBulk(op, targets, params);
+			announce(label, results, targets);
+			await refresh(results.filter((result) => !result.ok).map((result) => result.id));
 		} catch (error) {
-			setFeedback(errorText(error, "폴더로 옮기지 못했습니다."));
+			toast.error(errorText(error, `${label}하지 못했습니다.`));
 		}
 	};
 
-	const restore = async (item: ListEntriesItem) => {
-		try {
-			await cmsFetch(`/api/cms/v1/entries/${item.id}/restore`, {
-				method: "POST",
-				json: { expectedVersion: item.version },
-			});
-			setFeedback(`'${item.title ?? "제목 없음"}'을(를) 복원했습니다.`);
-			await fetchEntries();
-		} catch (error) {
-			setFeedback(errorText(error, "복원하지 못했습니다."));
+	const moveEntries = (folderId: string | null, entries: DraggedEntry[]) =>
+		void bulk(
+			"folder.move",
+			"옮김",
+			entries.map((entry) => ({ ...entry, title: items.find((item) => item.id === entry.id)?.title })),
+			{ folderId },
+		);
+
+	const restore = async (targets: BulkSelection[]) => {
+		const results: BulkItemResult[] = [];
+		for (const target of targets) {
+			try {
+				await cmsFetch(`/api/cms/v1/entries/${target.id}/restore`, {
+					method: "POST",
+					json: { expectedVersion: target.expectedVersion },
+				});
+				results.push({ id: target.id, ok: true, version: target.expectedVersion + 1 });
+			} catch (error) {
+				const code = (error as { code?: string }).code ?? "internal";
+				results.push({ id: target.id, ok: false, error: code });
+			}
 		}
+		announce("복원", results, targets);
+		await refresh(results.filter((result) => !result.ok).map((result) => result.id));
 	};
 
-	const requestPermanentDelete = (item: ListEntriesItem) =>
+	const confirmTrash = (targets: BulkSelection[]) =>
 		setConfirm({
-			title: "영구 삭제",
-			description: `'${item.title ?? "제목 없음"}'을(를) 영구 삭제합니다. 되돌릴 수 없습니다.`,
-			confirmLabel: "영구 삭제",
+			title: `휴지통으로 이동 — ${targets.length}개`,
+			description:
+				targets.length === 1
+					? `'${targets[0]?.title || "제목 없음"}'을(를) 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.`
+					: "선택한 항목을 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.",
+			confirmLabel: "휴지통으로 이동",
 			destructive: true,
-			onConfirm: async () => {
-				try {
-					await cmsFetch(`/api/cms/v1/entries/${item.id}?expectedVersion=${item.version}`, { method: "DELETE" });
-					setFeedback("영구 삭제했습니다.");
-					await fetchEntries();
-				} catch (error) {
-					setFeedback(errorText(error, "삭제하지 못했습니다."));
-				}
-			},
+			onConfirm: () => bulk("trash", "휴지통으로 이동", targets),
 		});
 
-	const selectCollection = (next: Collection) => router.replace(`?collection=${next}`, { scroll: false });
+	const confirmPermanentDelete = (targets: BulkSelection[]) =>
+		setConfirm({
+			title: `영구 삭제 — ${targets.length}개`,
+			description:
+				targets.length === 1
+					? `'${targets[0]?.title || "제목 없음"}'을(를) 영구 삭제합니다. 되돌릴 수 없습니다.`
+					: "선택한 항목을 영구 삭제합니다. 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 지우지 않고 사유를 보여 줍니다.",
+			confirmLabel: "영구 삭제",
+			destructive: true,
+			onConfirm: () => bulk("permanentDelete", "영구 삭제", targets),
+		});
 
-	const explorer = isExplorerMode(state)
-		? (() => {
-				const current = state.folder === "all" ? null : state.folder;
-				const currentFolder = current ? folders.find((folder) => folder.id === current) : undefined;
-				return {
-					folders: folders.filter((folder) => (folder.parentId ?? null) === current),
-					parent: current ? (currentFolder?.parentId ?? "all") : null,
-				};
-			})()
-		: null;
+	const duplicate = async (item: ListEntriesItem) => {
+		try {
+			const copy = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${item.id}/duplicate`, {
+				method: "POST",
+				fallback: "복제하지 못했습니다.",
+			});
+			toast.success(`'${item.title || "제목 없음"}'을(를) 복제했습니다.`);
+			router.push(`/admin/entries/${copy.id}/edit` as Route);
+		} catch (error) {
+			toast.error(errorText(error, "복제하지 못했습니다."));
+		}
+	};
 
-	const renderSidebar = (onNavigate?: () => void) => (
-		<AdminSidebar
-			currentCollection={collection}
-			currentFolder={state.folder}
-			includeDescendants={state.includeDescendants}
-			folders={folders}
-			folderActions={folderActions}
-			onSelectCollection={selectCollection}
-			onSelectFolder={(folder) =>
-				update({ folder, includeDescendants: folder === "all" ? false : state.includeDescendants })
-			}
-			onIncludeDescendantsChange={(includeDescendants) => update({ includeDescendants })}
-			onDropEntries={(folderId, entries) => void moveEntries(folderId, entries)}
-			onNavigate={onNavigate}
-		/>
-	);
+	const createNew = () =>
+		isRecord
+			? setRecordTarget({ collection, id: null })
+			: router.push(
+					`/admin/entries/new?collection=${collection}${state.folder !== "all" && state.folder !== "unfiled" ? `&folder=${state.folder}` : ""}` as Route,
+				);
 
-	return (
-		<div className="flex h-screen w-full overflow-hidden">
-			<div className="hidden lg:flex">{renderSidebar()}</div>
-			<main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-neutral-950">
-				<header className="flex h-12 shrink-0 items-center gap-3 border-neutral-800 border-b bg-neutral-900/40 px-3 lg:hidden">
-					<AdminMobileNavigation>{(close) => renderSidebar(close)}</AdminMobileNavigation>
-					<span className="font-medium text-neutral-200 text-sm">CMS 관리자</span>
-				</header>
-				<ListFilters
-					state={state}
-					tags={tags.options}
-					categories={categories.options}
-					onChange={update}
-					onCreateNew={() =>
-						isRecordCollection(collection)
-							? setRecordTarget({ collection, id: null })
-							: router.push(
-									`/admin/entries/new?collection=${collection}${state.folder !== "all" && state.folder !== "unfiled" ? `&folder=${state.folder}` : ""}`,
-								)
+	/** 행 메뉴(v2 A2). 선택한 행을 오른쪽 클릭하면 선택 전체를 대상으로 한다. */
+	const rowMenu = (item: ListEntriesItem): MenuAction[] => {
+		const group =
+			selectedIds.has(item.id) && selectedIds.size > 1 ? items.filter((row) => selectedIds.has(row.id)) : [item];
+		const targets = group.map(toSelection);
+		const single = group.length === 1;
+		const header: MenuAction[] = single ? [] : [{ kind: "label", label: `${group.length}개 항목` }];
+
+		if (isTrash) {
+			return [
+				...header,
+				{ kind: "item", label: "복원", onSelect: () => void restore(targets) },
+				{ kind: "separator" },
+				{
+					kind: "item",
+					label: "영구 삭제",
+					shortcut: "Del",
+					destructive: true,
+					onSelect: () => confirmPermanentDelete(targets),
+				},
+			];
+		}
+
+		const editHref = `/admin/entries/${item.id}/edit`;
+		const open: MenuAction[] = single
+			? isRecord
+				? [{ kind: "item", label: "열기", onSelect: () => setRecordTarget({ collection, id: item.id }) }]
+				: [
+						{ kind: "item", label: "열기", onSelect: () => router.push(editHref as Route) },
+						{ kind: "item", label: "새 탭에서 열기", onSelect: () => window.open(editHref, "_blank", "noopener") },
+						{ kind: "item", label: "복제", onSelect: () => void duplicate(item) },
+					]
+			: [];
+		const allArchived = group.every((row) => row.status === "archived");
+		return [
+			...header,
+			...open,
+			{ kind: "separator" },
+			{
+				kind: "sub",
+				label: "폴더로 이동",
+				items: [
+					{
+						kind: "item",
+						label: "미분류",
+						onSelect: () => void bulk("folder.move", "옮김", targets, { folderId: null }),
+					},
+					...folders.map((folder) => ({
+						kind: "item" as const,
+						label: folder.name,
+						onSelect: () => void bulk("folder.move", "옮김", targets, { folderId: folder.id }),
+					})),
+				],
+			},
+			...(isContent
+				? [
+						{
+							kind: "sub" as const,
+							label: "태그 추가",
+							emptyLabel: "태그가 없습니다",
+							items: tags.options.map((tag) => ({
+								kind: "item" as const,
+								label: tag.title,
+								onSelect: () => void bulk("tags.add", "태그를 추가", targets, { tagIds: [tag.id] }),
+							})),
+						},
+						{ kind: "separator" as const },
+						allArchived
+							? {
+									kind: "item" as const,
+									label: "보관 해제",
+									onSelect: () => void bulk("unarchive", "보관 해제", targets),
+								}
+							: { kind: "item" as const, label: "보관", onSelect: () => void bulk("archive", "보관", targets) },
+					]
+				: [{ kind: "separator" as const }]),
+			{
+				kind: "item",
+				label: "휴지통으로",
+				shortcut: "Del",
+				destructive: true,
+				onSelect: () => confirmTrash(targets),
+			},
+		];
+	};
+
+	const onDeleteKey = (item: ListEntriesItem) => {
+		const group =
+			selectedIds.has(item.id) && selectedIds.size > 1 ? items.filter((row) => selectedIds.has(row.id)) : [item];
+		if (isTrash) confirmPermanentDelete(group.map(toSelection));
+		else confirmTrash(group.map(toSelection));
+	};
+
+	const explorer =
+		!isTrash && isExplorerMode(state)
+			? (() => {
+					const current = state.folder === "all" ? null : state.folder;
+					const currentFolder = current ? folders.find((folder) => folder.id === current) : undefined;
+					return {
+						folders: folders.filter((folder) => (folder.parentId ?? null) === current),
+						parent: current ? (currentFolder?.parentId ?? "all") : null,
+					};
+				})()
+			: null;
+
+	const views: SavedView[] = collectionPrefs.views ?? [];
+	const activeView = views.find((view) => view.id === state.view);
+	// 보기에 저장된 컬럼 설정이 있으면 그 보기를 여는 동안 쓴다.
+	const columnSettings = activeView?.columns ?? collectionPrefs.columns;
+	const label = COLLECTION_DEFINITIONS[collection].label;
+
+	const body = (
+		<>
+			<ListToolbar
+				state={state}
+				options={options}
+				onChange={update}
+				searchOnly={isTrash}
+				onCreateNew={isTrash ? undefined : createNew}
+				views={
+					isTrash ? undefined : (
+						<SavedViews
+							views={views}
+							activeId={activeView ? activeView.id : ""}
+							currentQuery={viewQueryOf(state)}
+							currentColumns={columnSettings}
+							onOpen={(view) => navigate(applyViewQuery(state, view.query, view.id))}
+							onOpenAll={() => navigate(applyViewQuery(state, "", ""))}
+							onChange={(next, openId) => {
+								savePreferences({ views: next });
+								if (openId !== undefined) update({ view: openId }, { resetPage: false });
+								else if (state.view && !next.some((view) => view.id === state.view)) update({ view: "" });
+							}}
+						/>
+					)
+				}
+			/>
+			<BulkBar
+				collection={collection}
+				mode={mode}
+				selected={items.filter((item) => selectedIds.has(item.id)).map(toSelection)}
+				folders={folders}
+				onClearSelection={() => setSelectedIds(new Set())}
+				onDone={(failedIds) => void refresh(failedIds)}
+			/>
+			<AdminEntriesTable
+				collection={collection}
+				items={items}
+				folders={folders}
+				explorer={explorer}
+				state={state}
+				options={options}
+				onStateChange={(patch) => {
+					update(patch);
+					if (patch.sortField || patch.sortDirection) {
+						savePreferences({
+							sort: {
+								field: patch.sortField ?? state.sortField,
+								direction: patch.sortDirection ?? state.sortDirection,
+							},
+						});
 					}
-				/>
-				{feedback && (
-					<output className="flex items-center justify-between border-neutral-800 border-b px-6 py-2 text-neutral-200 text-sm">
-						{feedback}
-						<button type="button" className="text-xs underline" onClick={() => setFeedback(null)}>
-							닫기
-						</button>
-					</output>
-				)}
-				<BulkBar
-					collection={collection}
-					selected={items
-						.filter((item) => selectedIds.has(item.id))
-						.map((item) => ({ id: item.id, expectedVersion: item.version, title: item.title }))}
-					folders={folders}
-					onClearSelection={() => setSelectedIds(new Set())}
-					onDone={(failedIds) => {
-						setSelectedIds(new Set(failedIds));
-						void fetchEntries();
-					}}
-				/>
-				<AdminEntriesTable
-					collection={collection}
-					items={items}
-					folders={folders}
-					explorer={explorer}
-					columnSettings={collectionPrefs.columns}
-					onColumnSettingsChange={(columns: AdminColumnSettings) => savePreferences({ columns })}
-					selectedIds={selectedIds}
-					onToggleSelect={(id) =>
-						setSelectedIds((prev) => {
-							const next = new Set(prev);
-							if (next.has(id)) next.delete(id);
-							else next.add(id);
-							return next;
-						})
-					}
-					onToggleSelectPage={(all) => setSelectedIds(all ? new Set(items.map((item) => item.id)) : new Set())}
-					total={total}
-					page={state.page}
-					pageSize={state.pageSize}
-					sortField={state.sortField}
-					sortDirection={state.sortDirection}
-					isLoading={isLoading}
-					errorMessage={errorMessage}
-					isTrashView={state.status === "trashed"}
-					folderActions={folderActions}
-					onSortChange={(field: ListSortField) => {
-						const direction = state.sortField === field && state.sortDirection === "desc" ? "asc" : "desc";
-						update({ sortField: field, sortDirection: direction });
-						savePreferences({ sort: { field, direction } });
-					}}
-					onPageChange={(page) => update({ page }, { resetPage: false })}
-					onPageSizeChange={(pageSize) => {
-						update({ pageSize });
-						savePreferences({ pageSize });
-					}}
-					onSelectFolder={(folder) => update({ folder })}
-					onOpenRecord={(item) => setRecordTarget({ collection, id: item.id })}
-					onRestore={(item) => void restore(item)}
-					onPermanentDelete={requestPermanentDelete}
-					onRetry={() => void fetchEntries()}
-				/>
-			</main>
+				}}
+				columnSettings={columnSettings}
+				onColumnSettingsChange={(columns: AdminColumnSettings) =>
+					// 보기를 연 동안의 컬럼 변경은 `변경됨`으로 보여 주고, 저장하면 보기에 들어간다.
+					activeView
+						? savePreferences({
+								views: views.map((view) => (view.id === activeView.id ? { ...view, columns } : view)),
+							})
+						: savePreferences({ columns })
+				}
+				selectedIds={selectedIds}
+				onSelectionChange={setSelectedIds}
+				total={total}
+				isLoading={isLoading}
+				errorMessage={errorMessage}
+				mode={mode}
+				folderActions={isTrash ? undefined : folderActions}
+				rowMenu={rowMenu}
+				blankMenu={
+					isTrash
+						? undefined
+						: [
+								{
+									kind: "item",
+									label: "새 폴더",
+									onSelect: () =>
+										folderActions.requestCreate(
+											state.folder === "all" || state.folder === "unfiled" ? null : state.folder,
+										),
+								},
+								{ kind: "item", label: `새 ${label}`, onSelect: createNew },
+							]
+				}
+				onDeleteKey={onDeleteKey}
+				onSelectFolder={(folder) => update({ folder })}
+				onOpenRecord={(item) => setRecordTarget({ collection, id: item.id })}
+				onRestore={(item) => void restore([toSelection(item)])}
+				onPermanentDelete={(item) => confirmPermanentDelete([toSelection(item)])}
+				onPageChange={(page) => update({ page }, { resetPage: false })}
+				onPageSizeChange={(pageSize) => {
+					update({ pageSize });
+					savePreferences({ pageSize });
+				}}
+				onRetry={() => void fetchEntries()}
+			/>
 			{folderActions.dialogs}
 			<RecordDialog
 				target={recordTarget}
 				onClose={() => setRecordTarget(null)}
 				onSaved={() => {
 					setRecordTarget(null);
-					setFeedback("저장했습니다. 공개 분류 정보에 반영되었습니다.");
+					toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
 					void fetchEntries();
 					void tags.reload();
 					void categories.reload();
 				}}
 			/>
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
-		</div>
+		</>
+	);
+
+	return { body, state, folders, folderActions, moveEntries, update, createNew, label };
+}
+
+/** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
+export function AdminClientDashboard() {
+	return (
+		<AdminNavProvider>
+			<ListPage />
+		</AdminNavProvider>
+	);
+}
+
+/** 휴지통 전용 화면(v2 A3). 컬렉션 탭으로 나누고 복원·영구 삭제만 제공한다. */
+export function AdminTrashDashboard() {
+	return (
+		<AdminNavProvider>
+			<TrashPage />
+		</AdminNavProvider>
+	);
+}
+
+function TrashPage() {
+	const { body, state } = useDashboard("trash");
+	return (
+		<AdminShell
+			title="휴지통"
+			sidebar={{ activeNav: "trash" }}
+			headerActions={
+				<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
+					{COLLECTIONS.map((item) => (
+						<Link
+							key={item}
+							href={`/admin/trash?collection=${item}` as Route}
+							aria-current={state.collection === item ? "page" : undefined}
+							className={cn(
+								buttonVariants({ variant: "ghost", size: "xs" }),
+								"text-muted-foreground aria-[current=page]:bg-background aria-[current=page]:text-foreground aria-[current=page]:shadow-sm",
+							)}
+						>
+							{COLLECTION_DEFINITIONS[item].label}
+						</Link>
+					))}
+				</nav>
+			}
+		>
+			{body}
+		</AdminShell>
+	);
+}
+
+function ListPage() {
+	const { state, folders, folderActions, moveEntries, update, createNew, label, body } = useDashboard("list");
+	const folderLabel =
+		state.folder === "unfiled"
+			? " · 미분류"
+			: state.folder !== "all"
+				? ` · ${folders.find((folder) => folder.id === state.folder)?.name ?? ""}`
+				: "";
+	return (
+		<AdminShell
+			title={`${label}${folderLabel}`}
+			sidebar={{
+				activeNav: state.collection,
+				folderNav: {
+					collection: state.collection,
+					currentFolder: state.folder,
+					includeDescendants: state.includeDescendants,
+					folders,
+					folderActions,
+					onSelectFolder: (folder) =>
+						update({ folder, includeDescendants: folder === "all" ? false : state.includeDescendants }),
+					onIncludeDescendantsChange: (includeDescendants) => update({ includeDescendants }),
+					onDropEntries: moveEntries,
+					onCreateEntry: createNew,
+				},
+			}}
+		>
+			{body}
+		</AdminShell>
 	);
 }

@@ -1,6 +1,6 @@
 # bh2980 블로그 CMS v2 — 범위와 설계 메모
 
-작성일: 2026-09-27 · 상태: **범위 합의 중 · A 계획 분리 완료** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
+작성일: 2026-09-27 · 상태: **A(UI 기반) 구현 완료 · B 이후 착수 전** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
 
 > v1 명세는 [`CMS-SPEC.md`](CMS-SPEC.md)다. 이 문서는 v1 위에 더하거나 바꾸는 것만 적는다. 여기에 적지 않은 동작은 v1 명세를 따른다.
 
@@ -38,7 +38,7 @@
 
 ## 2. A — UI 기반
 
-상세 작업 계획은 [`docs/cms/v2/a-ui-foundation.md`](docs/cms/v2/a-ui-foundation.md)에 있다. 여기에는 v2 전체에 적용되는 원칙만 둔다.
+상세 작업 계획과 구현 결과(2026-09-27 완료)는 [`docs/cms/v2/a-ui-foundation.md`](docs/cms/v2/a-ui-foundation.md)에 있다. 여기에는 v2 전체에 적용되는 원칙만 둔다.
 
 - **shadcn에 있는 컴포넌트를 우선 쓴다.** 필요한 컴포넌트는 shadcn CLI로 받아 설치한다(사용자 허가 2026-09-27).
 - **primitive는 Radix에서 Base UI로 옮긴다.** 관리자와 블로그가 함께 쓰는 `src/components/ui` 전체가 대상이다.
@@ -115,7 +115,7 @@ v1 명세 §11.3·§12.2의 전환 절차와 검수를 v2 결과물에 대해 �
 
 - B2 반대 방향 편집의 저장 방식(§3.2 제안).
 - C2 크롭·회전 저장 방식, C6 셀 병합 directive 문법.
-- A의 남은 확인 사항은 [`docs/cms/v2/a-ui-foundation.md`](docs/cms/v2/a-ui-foundation.md) §9에 있다.
+- A의 확인 사항은 [`docs/cms/v2/a-ui-foundation.md`](docs/cms/v2/a-ui-foundation.md) §9에 답을 적었다.
 
 ## 8. v3 메모
 

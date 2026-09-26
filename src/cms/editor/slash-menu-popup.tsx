@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import type { SlashCommandItem } from "./slash-command";
 
 interface SlashMenuPopupProps {
@@ -12,6 +13,10 @@ interface SlashMenuPopupProps {
 	onClose: () => void;
 }
 
+/**
+ * `/` 블록 삽입 메뉴(§4.2). shadcn Command로 그리되 포커스와 방향키는 에디터가 맡고,
+ * 강조할 항목만 `value`로 넘긴다(한글 IME 조합 중 포커스를 뺏지 않는다).
+ */
 export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose }: SlashMenuPopupProps) {
 	const [mounted, setMounted] = useState(false);
 
@@ -37,30 +42,26 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose
 					onClose();
 				}
 			}}
-			className="max-h-80 w-64 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
+			className="w-64 rounded-xl border shadow-md"
 		>
-			<div className="px-2 py-1.5 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">블록 추가</div>
-			<div className="space-y-0.5">
-				{items.map((item, idx) => {
-					const isSelected = idx === selectedIndex;
-					return (
-						<button
-							key={item.title}
-							type="button"
-							onMouseDown={(e) => e.preventDefault()}
-							onClick={() => onSelect(item)}
-							className={`flex w-full flex-col rounded px-2.5 py-1.5 text-left transition ${
-								isSelected
-									? "bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100"
-									: "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800/60"
-							}`}
-						>
-							<span className="font-semibold">{item.title}</span>
-							<span className="text-[10px] text-neutral-500 dark:text-neutral-400">{item.description}</span>
-						</button>
-					);
-				})}
-			</div>
+			<Command value={items[selectedIndex]?.title ?? ""} shouldFilter={false} loop={false}>
+				<CommandList className="max-h-80">
+					<CommandGroup heading="블록 추가">
+						{items.map((item) => (
+							<CommandItem
+								key={item.title}
+								value={item.title}
+								onMouseDown={(event) => event.preventDefault()}
+								onSelect={() => onSelect(item)}
+								className="flex-col items-start gap-0"
+							>
+								<span className="font-semibold text-xs">{item.title}</span>
+								<span className="text-[10px] text-muted-foreground">{item.description}</span>
+							</CommandItem>
+						))}
+					</CommandGroup>
+				</CommandList>
+			</Command>
 		</section>,
 		document.body,
 	);

@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
 import { isRecordCollection } from "@/cms/core/collections";
 import { autoSummary } from "@/cms/core/plain-text";
 import { slugify } from "@/cms/core/slug";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
 import { analyze } from "@/cms/mdx";
-import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -19,7 +29,20 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { cn } from "@/utils/cn";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
@@ -475,9 +498,9 @@ export function EntryEditorShell({
 		}
 	};
 
-	const openTemplates = async () => {
-		setTemplateMenuOpen((open) => !open);
-		if (templates) return;
+	const openTemplates = async (open: boolean) => {
+		setTemplateMenuOpen(open);
+		if (!open || templates) return;
 		try {
 			const data = await cmsFetch<{ items: { id: string; name: string; mdx: string }[] }>(
 				`/api/cms/v1/templates?forCollection=${collection}`,
@@ -602,12 +625,23 @@ export function EntryEditorShell({
 		return () => window.removeEventListener("keydown", onKeyDown);
 	});
 
-	if (isLoading) return <div className="p-8 text-neutral-500">문서를 불러오는 중...</div>;
+	if (isLoading) {
+		return (
+			<div className="space-y-4 p-8" aria-busy>
+				<span className="sr-only">문서를 불러오는 중...</span>
+				<Skeleton className="h-8 w-1/2" />
+				<Skeleton className="h-4 w-full" />
+				<Skeleton className="h-4 w-5/6" />
+			</div>
+		);
+	}
 	if (loadError) {
 		return (
 			<div className="space-y-3 p-8">
-				<p role="alert">{loadError}</p>
-				<Link href="/admin" className="underline">
+				<Alert variant="danger">
+					<AlertDescription className="col-start-auto">{loadError}</AlertDescription>
+				</Alert>
+				<Link href="/admin" className={buttonVariants({ variant: "outline" })}>
 					목록으로
 				</Link>
 			</div>
@@ -620,204 +654,184 @@ export function EntryEditorShell({
 		: "새 글";
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
-	const headerButton =
-		"rounded border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800";
 
 	return (
-		<div className="flex h-screen w-full flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
-			<Toaster richColors closeButton position="bottom-right" />
-
-			<header className="z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-neutral-200 border-b bg-white/90 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-5 dark:border-neutral-800 dark:bg-neutral-950/90">
-				<nav aria-label="현재 위치" className="flex min-w-0 items-center gap-2 text-xs">
-					<Link
-						href={`/admin?collection=${collection}`}
-						className="text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-					>
-						목록으로
-					</Link>
-					<span aria-hidden className="text-neutral-300 dark:text-neutral-700">
-						/
-					</span>
-					<span className="max-w-[240px] truncate font-semibold">{form.title || "제목 없는 글"}</span>
-					<span className="text-neutral-500">· {statusLabel}</span>
-				</nav>
+		<div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
+			<header className="z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b bg-background/90 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-5">
+				<Breadcrumb aria-label="현재 위치" className="min-w-0 text-xs">
+					<BreadcrumbList className="flex-nowrap text-xs">
+						<BreadcrumbItem>
+							<BreadcrumbLink render={<Link href={`/admin?collection=${collection}`} />}>목록으로</BreadcrumbLink>
+						</BreadcrumbItem>
+						<BreadcrumbSeparator />
+						<BreadcrumbItem className="min-w-0">
+							<BreadcrumbPage className="max-w-[240px] truncate font-semibold">
+								{form.title || "제목 없는 글"}
+							</BreadcrumbPage>
+						</BreadcrumbItem>
+						<BreadcrumbItem>
+							<span className="text-muted-foreground">· {statusLabel}</span>
+						</BreadcrumbItem>
+					</BreadcrumbList>
+				</Breadcrumb>
 
 				<div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap lg:w-auto">
-					<output aria-live="polite" className="flex items-center gap-1.5 text-neutral-500 text-xs">
+					<output aria-live="polite" className="flex items-center gap-1.5 text-muted-foreground text-xs">
 						<span
 							aria-hidden
-							className={`h-2 w-2 rounded-full ${
+							className={cn(
+								"size-2 rounded-full",
 								autosave.status === "saved"
 									? "bg-emerald-500"
 									: autosave.status === "saving"
 										? "animate-pulse bg-amber-500"
 										: ["conflict", "failed", "session-expired"].includes(autosave.status)
-											? "bg-red-500"
-											: "bg-neutral-400"
-							}`}
+											? "bg-destructive"
+											: "bg-muted-foreground/50",
+							)}
 						/>
 						{SAVE_STATUS_LABELS[autosave.status]}
 						{!autosave.backupAvailable && " · 브라우저 복구 불가"}
 					</output>
 					{canRetry && (
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							className="h-7 text-xs"
-							onClick={() => void autosave.retry(true)}
-						>
+						<Button type="button" size="xs" variant="outline" onClick={() => void autosave.retry(true)}>
 							다시 시도
 						</Button>
 					)}
 					{autosave.status === "session-expired" && (
-						<a href="/admin/login" target="_blank" rel="noreferrer" className="text-xs underline">
+						<a
+							href="/admin/login"
+							target="_blank"
+							rel="noreferrer"
+							className={buttonVariants({ variant: "link", size: "xs" })}
+						>
 							새 창에서 로그인
 						</a>
 					)}
 
-					<button
+					<Button
 						type="button"
+						size="xs"
+						variant="outline"
 						aria-pressed={editorMode === "source"}
 						disabled={editorMode === "source" && !canUseVisual}
 						title={!canUseVisual ? "본문 오류를 고치면 시각 모드를 쓸 수 있습니다" : undefined}
 						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
-						className={headerButton}
 					>
 						{editorMode === "visual" ? "MDX 원문" : "시각 모드"}
-					</button>
+					</Button>
 
-					<div className="relative">
-						<button
-							type="button"
-							aria-expanded={templateMenuOpen}
-							disabled={isReadOnly}
-							onClick={() => void openTemplates()}
-							className={headerButton}
-						>
+					<DropdownMenu open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
+						<DropdownMenuTrigger render={<Button type="button" size="xs" variant="outline" disabled={isReadOnly} />}>
 							템플릿 ▾
-						</button>
-						{templateMenuOpen && (
-							<div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-lg border bg-white p-1.5 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-								{templates === null ? (
-									<p className="px-2 py-3 text-center text-neutral-400">불러오는 중...</p>
-								) : templates.length === 0 ? (
-									<p className="px-2 py-3 text-center text-neutral-400">등록된 템플릿이 없습니다.</p>
-								) : (
-									templates.map((template) => (
-										<button
-											key={template.id}
-											type="button"
-											onClick={() =>
-												form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
-											}
-											className="w-full truncate rounded px-2 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
-										>
-											{template.name}
-										</button>
-									))
-								)}
-								<Link
-									href="/admin/templates"
-									target="_blank"
-									className="mt-1 block border-t px-2 pt-1 text-[11px] text-neutral-500"
-								>
-									템플릿 관리
-								</Link>
-							</div>
-						)}
-					</div>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							{templates === null ? (
+								<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
+							) : templates.length === 0 ? (
+								<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
+							) : (
+								templates.map((template) => (
+									<DropdownMenuItem
+										key={template.id}
+										onClick={() =>
+											form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
+										}
+									>
+										<span className="truncate">{template.name}</span>
+									</DropdownMenuItem>
+								))
+							)}
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
+								템플릿 관리
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
-					<button type="button" disabled={isReadOnly} onClick={() => void handleSaveNow()} className={headerButton}>
+					<Button type="button" size="xs" variant="outline" disabled={isReadOnly} onClick={() => void handleSaveNow()}>
 						저장
-					</button>
-					<button
+					</Button>
+					<Button
 						id="cms-publish"
 						type="button"
+						size="xs"
 						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
 						onClick={() => void handlePublish()}
-						className="rounded bg-emerald-600 px-3 py-1 font-semibold text-white text-xs hover:bg-emerald-500 disabled:opacity-50"
 					>
 						{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
+						size="xs"
+						variant="outline"
 						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
 						onClick={() => {
 							setScheduleInput("");
 							setScheduleOpen(true);
 						}}
-						className={headerButton}
 					>
 						예약
-					</button>
-					<button type="button" onClick={() => setPaletteOpen(true)} className={headerButton}>
-						명령 <kbd className="text-neutral-400">⌘K</kbd>
-					</button>
-					<button
+					</Button>
+					<Button type="button" size="xs" variant="outline" onClick={() => setPaletteOpen(true)}>
+						명령 <Kbd>⌘K</Kbd>
+					</Button>
+					<Button
 						type="button"
+						size="xs"
+						variant="outline"
 						aria-expanded={isInspectorOpen}
 						onClick={() => setIsInspectorOpen((open) => !open)}
-						className={headerButton}
 					>
 						{isInspectorOpen ? "속성 닫기" : "속성 열기"}
-					</button>
+					</Button>
+					<ThemeToggle className="size-7" />
 				</div>
 			</header>
 
 			{schedule?.pending && (
 				<section
 					aria-label="예약"
-					className="flex flex-wrap items-center gap-2 border-b bg-blue-50 px-4 py-2 text-sm dark:bg-blue-950/30"
+					className="flex flex-wrap items-center gap-2 border-b bg-primary/10 px-4 py-2 text-sm"
 				>
 					<span>
 						{formatSeoul(schedule.pending.scheduledAt)} 발행 예약됨 — 예약 중에는 본문과 속성을 편집할 수 없습니다.
 						{Date.parse(schedule.pending.scheduledAt) <= Date.now() && " 예정 시각이 지나 실행 대기 중입니다."}
 						{!schedule.runnerConfigured && " 외부 실행기 연결 필요: 연결되지 않으면 자동으로 발행되지 않습니다."}
 					</span>
-					<button type="button" onClick={() => void handleCancelSchedule()} className={headerButton}>
+					<Button type="button" size="xs" variant="outline" onClick={() => void handleCancelSchedule()}>
 						예약 해제 후 편집
-					</button>
+					</Button>
 				</section>
 			)}
 			{!schedule?.pending && schedule?.last?.status === "failed" && (
-				<p role="alert" className="border-b bg-red-50 px-4 py-2 text-sm dark:bg-red-950/30">
+				<p role="alert" className="border-b bg-destructive/10 px-4 py-2 text-destructive text-sm">
 					{formatSeoul(schedule.last.scheduledAt)} 예약 발행이 실패해 공개본을 그대로 유지했습니다 (
 					{schedule.last.failureCode}).
 					{schedule.last.failureDetail ? ` ${schedule.last.failureDetail.slice(0, 200)}` : ""}
 				</p>
 			)}
 			{isTrashed && (
-				<section
-					aria-label="휴지통"
-					className="flex flex-wrap items-center gap-2 border-b bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-900"
-				>
+				<section aria-label="휴지통" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
 					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
-					<button type="button" onClick={() => confirmLifecycle("restore")} className={headerButton}>
+					<Button type="button" size="xs" variant="outline" onClick={() => confirmLifecycle("restore")}>
 						복원
-					</button>
-					<button
-						type="button"
-						onClick={confirmPermanentDelete}
-						className="rounded bg-red-600 px-2.5 py-1 text-white text-xs hover:bg-red-500"
-					>
+					</Button>
+					<Button type="button" size="xs" variant="destructive" onClick={confirmPermanentDelete}>
 						영구 삭제
-					</button>
+					</Button>
 				</section>
 			)}
 			{entry?.status === "archived" && (
-				<section
-					aria-label="보관됨"
-					className="flex flex-wrap items-center gap-2 border-b bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-900"
-				>
+				<section aria-label="보관됨" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
 					<span>보관된 글입니다. 공개되지 않으며, 보관을 해제하면 초안으로 돌아갑니다.</span>
-					<button type="button" onClick={() => confirmLifecycle("unarchive")} className={headerButton}>
+					<Button type="button" size="xs" variant="outline" onClick={() => confirmLifecycle("unarchive")}>
 						보관 해제
-					</button>
+					</Button>
 				</section>
 			)}
 			{!canUseVisual && (
-				<output className="border-b bg-amber-50 px-4 py-2 text-sm dark:bg-amber-950/30">
+				<output className="border-b bg-amber-500/10 px-4 py-2 text-sm">
 					해석할 수 없는 본문이 있어 원문 모드로만 편집합니다. 저장은 되지만 발행은 막힙니다 —{" "}
 					{sourceProblems[0] ? cmsIssueMessage(sourceProblems[0]) : ""}
 				</output>
@@ -825,13 +839,16 @@ export function EntryEditorShell({
 			{actionFeedback && (
 				<p
 					role={actionFeedback.type === "error" ? "alert" : "status"}
-					className="whitespace-pre-wrap border-b px-4 py-2 text-sm"
+					className={cn(
+						"whitespace-pre-wrap border-b px-4 py-2 text-sm",
+						actionFeedback.type === "error" && "text-destructive",
+					)}
 				>
 					{actionFeedback.message}
 				</p>
 			)}
 			{autosave.lastError && ["failed", "session-expired"].includes(autosave.status) && (
-				<p role="alert" className="border-b px-4 py-2 text-red-600 text-sm">
+				<p role="alert" className="border-b px-4 py-2 text-destructive text-sm">
 					{autosave.lastError}
 				</p>
 			)}
@@ -839,9 +856,15 @@ export function EntryEditorShell({
 				<ul className="max-h-36 overflow-y-auto border-b px-4 py-2 text-sm" aria-label="발행 검증 문제">
 					{publishIssues.map((issue) => (
 						<li key={JSON.stringify(issue)}>
-							<button type="button" onClick={() => focusIssue(issue)} className="text-left underline">
+							<Button
+								type="button"
+								variant="link"
+								size="xs"
+								className="h-auto whitespace-normal px-0 text-left"
+								onClick={() => focusIssue(issue)}
+							>
 								{cmsIssueMessage(issue)} — 수정할 곳으로 이동
-							</button>
+							</Button>
 						</li>
 					))}
 				</ul>
@@ -851,16 +874,16 @@ export function EntryEditorShell({
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					{editorMode === "visual" ? (
 						<div className="mx-auto flex min-h-full max-w-[800px] flex-col">
-							<label htmlFor="cms-title-canvas" className="sr-only">
+							<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
 								글 제목 (본문 위)
-							</label>
-							<input
+							</FieldLabel>
+							<Input
 								id="cms-title-canvas"
 								value={form.title}
 								readOnly={isReadOnly}
 								onChange={(event) => handleTitleChange(event.target.value)}
 								placeholder="제목 없는 글"
-								className="mt-6 w-full bg-transparent px-10 font-bold text-3xl outline-none placeholder:text-neutral-300"
+								className="mt-6 h-auto w-full rounded-none border-0 bg-transparent px-10 py-1 font-bold text-3xl shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-3xl dark:bg-transparent"
 							/>
 							<CmsEditor
 								content={form.mdx}
@@ -872,7 +895,7 @@ export function EntryEditorShell({
 						</div>
 					) : (
 						<div className="mx-auto flex h-full w-full max-w-3xl flex-col p-6">
-							<textarea
+							<Textarea
 								id="cms-mdx-source"
 								aria-label="MDX 본문"
 								aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
@@ -883,10 +906,10 @@ export function EntryEditorShell({
 								onCompositionStart={() => autosave.setComposing(true)}
 								onCompositionEnd={() => autosave.setComposing(false)}
 								placeholder="MDX 원문을 작성하세요..."
-								className="w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm outline-none"
+								className="w-full flex-1 resize-none p-4 font-mono text-sm md:text-sm"
 							/>
 							{bodyIssue && (
-								<p id="cms-mdx-error" className="text-red-500 text-sm">
+								<p id="cms-mdx-error" className="text-destructive text-sm">
 									{cmsIssueMessage(bodyIssue)}
 								</p>
 							)}
@@ -1035,16 +1058,15 @@ export function EntryEditorShell({
 							맡습니다.
 						</DialogDescription>
 					</DialogHeader>
-					<label htmlFor="schedule-date" className="text-sm">
-						예약 일시 (서울 시간)
-					</label>
-					<input
-						id="schedule-date"
-						type="datetime-local"
-						value={scheduleInput}
-						onChange={(event) => setScheduleInput(event.target.value)}
-						className="w-full rounded-md border bg-background p-2 text-sm"
-					/>
+					<Field>
+						<FieldLabel htmlFor="schedule-date">예약 일시 (서울 시간)</FieldLabel>
+						<Input
+							id="schedule-date"
+							type="datetime-local"
+							value={scheduleInput}
+							onChange={(event) => setScheduleInput(event.target.value)}
+						/>
+					</Field>
 					{schedule && !schedule.runnerConfigured && (
 						<p className="text-amber-700 text-xs dark:text-amber-400">
 							외부 실행기 연결 필요: 연결 전에는 예약이 실행 대기로 남습니다.
@@ -1083,9 +1105,15 @@ function ComparePanes({
 			<p className="text-xs">
 				제목: {value.title || "(없음)"} · 주소: {value.slug || "(없음)"}
 			</p>
-			<button type="button" className="text-sm underline" onClick={() => void navigator.clipboard.writeText(value.mdx)}>
+			<Button
+				type="button"
+				variant="link"
+				size="xs"
+				className="px-0"
+				onClick={() => void navigator.clipboard.writeText(value.mdx)}
+			>
 				본문 복사
-			</button>
+			</Button>
 			<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{value.mdx}</pre>
 		</div>
 	);

@@ -296,9 +296,11 @@ export function RecordDialog({
 									<ul className="max-h-32 overflow-y-auto rounded border text-xs">
 										{results.map((result) => (
 											<li key={result.id}>
-												<button
+												<Button
 													type="button"
-													className="w-full px-2 py-1 text-left hover:bg-muted"
+													variant="ghost"
+													size="xs"
+													className="w-full justify-start"
 													onClick={() => {
 														setItems([...items, result]);
 														setSearch("");
@@ -307,7 +309,7 @@ export function RecordDialog({
 												>
 													{result.title}
 													{result.status !== "published" && ` (${result.status})`}
-												</button>
+												</Button>
 											</li>
 										))}
 									</ul>

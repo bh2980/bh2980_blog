@@ -258,8 +258,9 @@ describe("entry editor shell", () => {
 		renderEdit();
 		fireEvent.change(await screen.findByLabelText("새 카테고리 이름"), { target: { value: "새 카테고리" } });
 		fireEvent.click(screen.getByRole("button", { name: "추가" }));
+		// Base UI Select는 네이티브 select가 아니라 트리거에 고른 항목 이름을 보여 준다.
 		await waitFor(() =>
-			expect((screen.getByRole("combobox", { name: /카테고리/ }) as HTMLSelectElement).value).toBe("cat-2"),
+			expect(screen.getByRole("combobox", { name: /카테고리/ }).textContent).toContain("새 카테고리"),
 		);
 		fireEvent.change(screen.getByLabelText("새 태그 이름"), { target: { value: "새 태그" } });
 		fireEvent.click(screen.getByRole("button", { name: "생성" }));

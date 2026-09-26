@@ -3,8 +3,9 @@ import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminSidebar } from "@/app/(admin)/admin/admin-sidebar";
-import { useFolderActions } from "@/app/(admin)/admin/shared/use-folder-actions";
+import { type FolderActions, useFolderActions } from "@/app/(admin)/admin/shared/use-folder-actions";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { BlockHandleOverlay } from "../block-handle-overlay";
 import { CmsImageNodeView } from "../image-node-view";
 import { InternalLinkPopup } from "../internal-link-popup";
@@ -28,7 +29,7 @@ vi.mock("@tiptap/react", async (importOriginal) => {
 afterEach(cleanup);
 
 describe("M13 editor accessibility", () => {
-	it("names image and block controls and exposes alignment state", () => {
+	it("names image and block controls and exposes alignment state", async () => {
 		const updateAttributes = vi.fn();
 		const deleteNode = vi.fn();
 		const nodeViewProps = {
@@ -70,10 +71,10 @@ describe("M13 editor accessibility", () => {
 		expect(blockMenu.getAttribute("aria-expanded")).toBe("false");
 		fireEvent.click(blockMenu);
 		expect(blockMenu.getAttribute("aria-expanded")).toBe("true");
-		expect(screen.getByRole("button", { name: /위로 이동/ })).toBeTruthy();
+		expect(await screen.findByRole("menuitem", { name: /위로 이동/ })).toBeTruthy();
 	});
 
-	it("assigns unique IDs to each image editor field", () => {
+	it("assigns unique IDs to each image editor field", async () => {
 		const props = {
 			node: { attrs: { src: "/test-image.png", alt: "", width: "100%", align: "center", caption: "", mediaId: null } },
 			updateAttributes: vi.fn(),
@@ -87,43 +88,74 @@ describe("M13 editor accessibility", () => {
 			</>,
 		);
 
-		for (const button of screen.getAllByRole("button", { name: /이미지 너비 설정/ })) fireEvent.click(button);
-
-		const widthInputs = screen.getAllByLabelText("너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)");
-		const altInputs = screen.getAllByLabelText("대체 텍스트 (Alt)");
-		expect(new Set(widthInputs.map((input) => input.id)).size).toBe(2);
-		expect(new Set(altInputs.map((input) => input.id)).size).toBe(2);
+		// 설정 팝오버는 한 번에 하나만 열린다. 차례로 열어 각 입력의 ID를 모은다.
+		const widthIds: string[] = [];
+		const altIds: string[] = [];
+		for (const button of screen.getAllByRole("button", { name: /이미지 너비 설정/ })) {
+			fireEvent.click(button);
+			const width = await screen.findByLabelText("너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)");
+			widthIds.push(width.id);
+			altIds.push(screen.getByLabelText("대체 텍스트 (Alt)").id);
+			fireEvent.keyDown(width, { key: "Escape" });
+			await waitFor(() => expect(screen.queryByLabelText("대체 텍스트 (Alt)")).toBeNull());
+		}
+		expect(new Set(widthIds).size).toBe(2);
+		expect(new Set(altIds).size).toBe(2);
 	});
 
-	it("keeps folder tree controls named and keyboard-operable", () => {
+	const folderNav = (folders: Folder[], folderActions: FolderActions, onSelectFolder = vi.fn()) => ({
+		collection: "memo" as const,
+		currentFolder: "all",
+		includeDescendants: false,
+		folders,
+		folderActions,
+		onSelectFolder,
+		onIncludeDescendantsChange: vi.fn(),
+		onDropEntries: vi.fn(),
+		onCreateEntry: vi.fn(),
+	});
+	const fakeActions = (): FolderActions => ({
+		requestCreate: vi.fn(),
+		requestRename: vi.fn(),
+		requestDelete: vi.fn(),
+		moveFolder: vi.fn(),
+	});
+
+	it("keeps folder tree controls named and keyboard-operable (v2 A2 file-explorer keys)", async () => {
 		const onSelectFolder = vi.fn();
+		const actions = fakeActions();
 		const folders: Folder[] = [
 			{ id: "folder-1", collection: "memo", parentId: null, name: "문서", position: 0, version: 1 },
 			{ id: "folder-2", collection: "memo", parentId: "folder-1", name: "하위", position: 0, version: 1 },
 		];
 		render(
-			<AdminSidebar
-				currentCollection="memo"
-				currentFolder="all"
-				folders={folders}
-				onSelectFolder={onSelectFolder}
-				folderActions={{ requestCreate: vi.fn(), requestRename: vi.fn(), requestDelete: vi.fn() }}
-			/>,
+			<SidebarProvider>
+				<AdminSidebar activeNav="memo" folderNav={folderNav(folders, actions, onSelectFolder)} />
+			</SidebarProvider>,
 		);
 		const expand = screen.getByRole("button", { name: "문서 하위 폴더 펼치기" });
 		expect(expand.getAttribute("aria-expanded")).toBe("false");
 		fireEvent.click(expand);
 		expect(screen.getByRole("button", { name: "문서 하위 폴더 접기" }).getAttribute("aria-expanded")).toBe("true");
-		fireEvent.click(screen.getByRole("button", { name: "하위" }));
+		fireEvent.click(await screen.findByRole("button", { name: "하위" }));
 		expect(onSelectFolder).toHaveBeenCalledWith("folder-2");
 		fireEvent.click(screen.getByRole("button", { name: "미분류" }));
 		expect(onSelectFolder).toHaveBeenCalledWith("unfiled");
-		expect(screen.getByRole("button", { name: "문서에 하위 폴더 추가" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "폴더 이름 변경: 문서" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "폴더 삭제: 문서" })).toBeTruthy();
+
+		const folderButton = screen.getByRole("button", { name: "문서" });
+		fireEvent.keyDown(folderButton, { key: "F2" });
+		expect(actions.requestRename).toHaveBeenCalledWith(folders[0]);
+		fireEvent.keyDown(folderButton, { key: "Delete" });
+		expect(actions.requestDelete).toHaveBeenCalledWith(folders[0]);
+
+		// 오른쪽 클릭 메뉴와 같은 항목을 항상 보이는 ⋯ 버튼으로도 연다.
+		fireEvent.click(screen.getByRole("button", { name: "'문서' 폴더 작업" }));
+		expect(await screen.findByRole("menuitem", { name: "새 하위 폴더" })).toBeTruthy();
+		expect(screen.getByRole("menuitem", { name: /이름 변경/ })).toBeTruthy();
+		expect(screen.getByRole("menuitem", { name: /삭제/ })).toBeTruthy();
 	});
 
-	it("previews folder contents before deleting and returns focus to the trigger on cancel", async () => {
+	it("previews folder contents before deleting and returns focus to the folder on cancel", async () => {
 		const folder: Folder = {
 			id: "folder-1",
 			collection: "memo",
@@ -145,31 +177,25 @@ describe("M13 editor accessibility", () => {
 		function Harness() {
 			const actions = useFolderActions({ collection: "memo", folders: [folder], onChanged });
 			return (
-				<>
-					<AdminSidebar
-						currentCollection="memo"
-						currentFolder="all"
-						folders={[folder]}
-						onSelectFolder={vi.fn()}
-						folderActions={actions}
-					/>
+				<SidebarProvider>
+					<AdminSidebar activeNav="memo" folderNav={folderNav([folder], actions)} />
 					{actions.dialogs}
-				</>
+				</SidebarProvider>
 			);
 		}
 		render(<Harness />);
-		const trigger = screen.getByRole("button", { name: "폴더 삭제: 문서" });
+		const trigger = screen.getByRole("button", { name: "문서" });
 		trigger.focus();
-		fireEvent.click(trigger);
-		const dialog = await screen.findByRole("dialog", { name: /'문서' 폴더 삭제/ });
+		fireEvent.keyDown(trigger, { key: "Delete" });
+		const dialog = await screen.findByRole("alertdialog", { name: /'문서' 폴더 삭제/ });
 		expect(await screen.findByText("직접 속한 글 3개")).toBeTruthy();
 		expect(screen.getByText(/하위 폴더 1개: 자식/)).toBeTruthy();
-		expect(dialog.contains(document.activeElement)).toBe(true);
+		await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
 		fireEvent.click(screen.getByRole("button", { name: "취소" }));
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		expect(document.activeElement).toBe(trigger);
+		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => expect(document.activeElement).toBe(trigger));
 
-		fireEvent.click(trigger);
+		fireEvent.keyDown(trigger, { key: "Delete" });
 		await screen.findByText("직접 속한 글 3개");
 		fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 		await waitFor(() => expect(onChanged).toHaveBeenCalledWith("folder-1"));
@@ -192,7 +218,8 @@ describe("M13 editor accessibility", () => {
 				onClose={onCloseSlash}
 			/>,
 		);
-		const slashOption = await screen.findByRole("button", { name: /문단 \(Paragraph\)/ });
+		const slashOption = await screen.findByRole("option", { name: /문단 \(Paragraph\)/ });
+		expect(slashOption.getAttribute("aria-selected")).toBe("true");
 		fireEvent.mouseDown(slashOption);
 		expect(onSelectSlash).not.toHaveBeenCalled();
 		fireEvent.click(slashOption);
@@ -212,7 +239,7 @@ describe("M13 editor accessibility", () => {
 				onClose={onCloseLink}
 			/>,
 		);
-		const linkOption = screen.getByRole("button", { name: /테스트 글/ });
+		const linkOption = screen.getByRole("option", { name: /테스트 글/ });
 		fireEvent.mouseDown(linkOption);
 		expect(onSelectLink).not.toHaveBeenCalled();
 		fireEvent.click(linkOption);

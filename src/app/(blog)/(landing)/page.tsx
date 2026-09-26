@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
@@ -51,12 +51,12 @@ export default async function Home() {
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-3">
-						<Button size="lg" nativeButton={false} render={<Link href="/posts" />}>
+						<Link href="/posts" className={buttonVariants({ size: "lg" })}>
 							블로그 둘러보기
-						</Button>
-						<Button variant="outline" size="lg" nativeButton={false} render={<Link href="/memos" />}>
+						</Link>
+						<Link href="/memos" className={buttonVariants({ variant: "outline", size: "lg" })}>
 							메모 살펴보기
-						</Button>
+						</Link>
 					</div>
 				</div>
 			</section>
