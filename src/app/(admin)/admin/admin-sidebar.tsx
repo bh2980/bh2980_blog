@@ -35,6 +35,7 @@ interface SidebarProps {
 	onCreateFolder?: (name: string, parentId: string | null) => Promise<void>;
 	onRenameFolder?: (id: string, name: string, version: number) => Promise<void>;
 	onDeleteFolder?: (id: string, version: number) => Promise<void>;
+	onNavigate?: () => void;
 }
 
 export function AdminSidebar({
@@ -47,6 +48,7 @@ export function AdminSidebar({
 	onCreateFolder,
 	onRenameFolder,
 	onDeleteFolder,
+	onNavigate,
 }: SidebarProps) {
 	const [newFolderName, setNewFolderName] = useState("");
 	const [isCreatingRoot, setIsCreatingRoot] = useState(false);
@@ -61,6 +63,8 @@ export function AdminSidebar({
 	const [renameInput, setRenameInput] = useState("");
 	const [deletingFolder, setDeletingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
 	const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+	const deleteDialogReturnFocusRef = useRef<HTMLButtonElement | null>(null);
+	const folderSectionToggleRef = useRef<HTMLButtonElement | null>(null);
 
 	const active: AdminNavId = activeNav ?? currentCollection ?? "post";
 
@@ -93,17 +97,18 @@ export function AdminSidebar({
 	const rootFolders = folders.filter((f) => !f.parentId);
 	const getChildren = (parentId: string) => folders.filter((f) => f.parentId === parentId);
 
-	const toggleExpand = (folderId: string, e: React.MouseEvent) => {
-		e.stopPropagation();
+	const toggleExpanded = (folderId: string) => {
 		setExpandedIds((prev) => {
 			const next = new Set(prev);
-			if (next.has(folderId)) {
-				next.delete(folderId);
-			} else {
-				next.add(folderId);
-			}
+			if (next.has(folderId)) next.delete(folderId);
+			else next.add(folderId);
 			return next;
 		});
+	};
+
+	const toggleExpand = (folderId: string, e: React.MouseEvent) => {
+		e.stopPropagation();
+		toggleExpanded(folderId);
 	};
 
 	const handleCreateRootFolder = async (e: React.FormEvent) => {
@@ -164,7 +169,6 @@ export function AdminSidebar({
 		const isExpanded = expandedIds.has(folder.id);
 		const isCreatingHere = creatingParentId === folder.id;
 		const isRenamingHere = renamingFolder?.id === folder.id;
-
 		return (
 			<div key={folder.id} className="flex flex-col">
 				<div
@@ -211,8 +215,10 @@ export function AdminSidebar({
 							{/* biome-ignore lint/a11y/useSemanticElements: contains nested expand control */}
 							<div
 								role="button"
+								data-folder-navigation="true"
 								tabIndex={0}
-								className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
+								aria-expanded={hasChildren ? isExpanded : undefined}
+								className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
 								onClick={() => {
 									onSelectFolder?.(folder.id);
 									if (hasChildren) {
@@ -228,9 +234,11 @@ export function AdminSidebar({
 									}
 								}}
 								onKeyDown={(e) => {
+									if (e.target !== e.currentTarget) return;
 									if (e.key === "Enter" || e.key === " ") {
 										e.preventDefault();
 										onSelectFolder?.(folder.id);
+										if (hasChildren) toggleExpanded(folder.id);
 									}
 								}}
 							>
@@ -238,6 +246,8 @@ export function AdminSidebar({
 								{hasChildren ? (
 									<button
 										type="button"
+										aria-label={`${folder.name} 하위 폴더 ${isExpanded ? "접기" : "펼치기"}`}
+										aria-expanded={isExpanded}
 										onClick={(e) => toggleExpand(folder.id, e)}
 										className="flex-shrink-0 rounded p-0.5 text-neutral-400 transition hover:bg-neutral-700/60 hover:text-white"
 									>
@@ -259,10 +269,11 @@ export function AdminSidebar({
 
 							{/* 액션 버튼들 (호버 시 노출) */}
 							{onRenameFolder && onDeleteFolder && (
-								<div className="flex flex-shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+								<div className="flex flex-shrink-0 items-center gap-0.5 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
 									{onCreateFolder && (
 										<button
 											type="button"
+											aria-label={`${folder.name} 하위 폴더 추가`}
 											title="하위 폴더 추가"
 											onClick={(e) => {
 												e.stopPropagation();
@@ -277,6 +288,7 @@ export function AdminSidebar({
 									)}
 									<button
 										type="button"
+										aria-label={`폴더 이름 변경: ${folder.name}`}
 										title="이름 변경"
 										onClick={(e) => {
 											e.stopPropagation();
@@ -289,9 +301,11 @@ export function AdminSidebar({
 									</button>
 									<button
 										type="button"
+										aria-label={`폴더 삭제: ${folder.name}`}
 										title="삭제"
 										onClick={(e) => {
 											e.stopPropagation();
+											deleteDialogReturnFocusRef.current = e.currentTarget;
 											setDeletingFolder(folder);
 										}}
 										className="rounded p-1 text-neutral-400 hover:bg-neutral-700/60 hover:text-red-400"
@@ -335,11 +349,30 @@ export function AdminSidebar({
 	};
 
 	return (
-		<aside className="flex w-64 flex-shrink-0 flex-col gap-6 border-neutral-800 border-r bg-neutral-900/60 p-4">
+		<aside
+			className="flex h-full min-h-0 w-64 flex-shrink-0 flex-col gap-6 overflow-y-auto border-neutral-800 border-r bg-neutral-900/60 p-4"
+			onClick={(event) => {
+				if (event.target instanceof Element && event.target.closest("[data-folder-navigation]")) onNavigate?.();
+			}}
+			onKeyDown={(event) => {
+				if (
+					(event.key === "Enter" || event.key === " ") &&
+					event.target instanceof Element &&
+					!event.target.closest("button, input, form") &&
+					event.target.closest("[data-folder-navigation]")
+				) {
+					onNavigate?.();
+				}
+			}}
+		>
 			<div>
 				<div className="mb-2 flex items-center justify-between px-2 font-semibold text-neutral-400 text-xs uppercase tracking-wider">
 					<span>컬렉션</span>
-					<Link href="/admin" className="font-normal text-[10px] text-neutral-500 transition hover:text-neutral-300">
+					<Link
+						href="/admin"
+						onClick={onNavigate}
+						className="font-normal text-[10px] text-neutral-500 transition hover:text-neutral-300"
+					>
 						대시보드 홈
 					</Link>
 				</div>
@@ -351,7 +384,10 @@ export function AdminSidebar({
 								<button
 									key={col.id}
 									type="button"
-									onClick={() => onSelectCollection(col.id)}
+									onClick={() => {
+										onSelectCollection(col.id);
+										onNavigate?.();
+									}}
 									className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 										isItemActive
 											? "bg-neutral-800 font-semibold text-white"
@@ -366,6 +402,7 @@ export function AdminSidebar({
 							<Link
 								key={col.id}
 								href={`/admin?collection=${col.id}`}
+								onClick={onNavigate}
 								className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 									isItemActive
 										? "bg-neutral-800 font-semibold text-white"
@@ -378,6 +415,7 @@ export function AdminSidebar({
 					})}
 					<Link
 						href="/admin/media"
+						onClick={onNavigate}
 						className={`mt-1 flex items-center justify-between rounded-md border-neutral-800/80 border-t px-3 py-2 pt-2 font-medium text-sm transition ${
 							active === "media"
 								? "bg-neutral-800 font-semibold text-white"
@@ -388,6 +426,7 @@ export function AdminSidebar({
 					</Link>
 					<Link
 						href="/admin/templates"
+						onClick={onNavigate}
 						className={`flex items-center justify-between rounded-md px-3 py-2 font-medium text-sm transition ${
 							active === "templates"
 								? "bg-neutral-800 font-semibold text-white"
@@ -403,7 +442,9 @@ export function AdminSidebar({
 				<div className="flex-1 overflow-y-auto">
 					<div className="mb-2 flex items-center justify-between px-2 font-semibold text-neutral-400 text-xs uppercase tracking-wider">
 						<button
+							ref={folderSectionToggleRef}
 							type="button"
+							aria-expanded={isFolderSectionOpen}
 							onClick={() => setIsFolderSectionOpen((prev) => !prev)}
 							className="flex items-center gap-1 transition hover:text-white"
 							title={isFolderSectionOpen ? "폴더 트리 접기" : "폴더 트리 펼치기"}
@@ -457,6 +498,7 @@ export function AdminSidebar({
 				<div className="mt-auto border-neutral-800/80 border-t pt-4">
 					<Link
 						href="/admin"
+						onClick={onNavigate}
 						className="flex items-center gap-2 rounded-md px-3 py-2 font-medium text-neutral-400 text-xs transition hover:bg-neutral-800/50 hover:text-neutral-200"
 					>
 						<span>← 대시보드로 돌아가기</span>
@@ -465,7 +507,16 @@ export function AdminSidebar({
 			)}
 
 			<Dialog open={Boolean(deletingFolder)} onOpenChange={(open) => !open && setDeletingFolder(null)}>
-				<DialogContent className="max-w-sm">
+				<DialogContent
+					className="max-w-sm"
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						const trigger = deleteDialogReturnFocusRef.current;
+						if (trigger?.isConnected) trigger.focus();
+						else folderSectionToggleRef.current?.focus();
+						deleteDialogReturnFocusRef.current = null;
+					}}
+				>
 					<DialogHeader>
 						<DialogTitle>폴더 삭제 확인</DialogTitle>
 						<DialogDescription>

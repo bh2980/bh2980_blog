@@ -160,10 +160,12 @@ describe("live entry editor M10 feedback", () => {
 		});
 		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
 		const dialog = await screen.findByRole("dialog", { name: "임시 저장된 로컬 복구본 발견" });
+		expect(dialog.contains(document.activeElement)).toBe(true);
 		expect(within(dialog).getByRole("button", { name: "로컬 복구본 불러오기" })).toBeTruthy();
 		fireEvent.click(within(dialog).getByRole("button", { name: "서버 본문 유지" }));
 		await waitFor(() => expect(deleteLocalBackup).toHaveBeenCalledWith("admin:entry-1"));
 		await waitFor(() => expect(screen.queryByRole("dialog", { name: "임시 저장된 로컬 복구본 발견" })).toBeNull());
+		expect(document.activeElement).toBe(document.getElementById("cms-publish"));
 	});
 
 	it("binds blocking fields and moves positioned issues to the MDX source", async () => {
@@ -278,10 +280,13 @@ describe("live entry editor M10 feedback", () => {
 		fireEvent.change(title, { target: { value: "로컬 수정" } });
 		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
 		const dialog = await screen.findByRole("dialog", { name: /편집 충돌 발생/ });
+		expect(dialog.contains(document.activeElement)).toBe(true);
 		expect(within(dialog).getByRole("button", { name: "내 본문 복사" })).toBeTruthy();
 		expect(within(dialog).getByRole("button", { name: "서버 최신본으로 새로고침" })).toBeTruthy();
 		expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/publish"))).toBe(false);
 		fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
+		await waitFor(() => expect(screen.queryByRole("dialog", { name: /편집 충돌 발생/ })).toBeNull());
+		expect(document.activeElement).toBe(document.getElementById("cms-publish"));
 		fireEvent.click(screen.getByRole("button", { name: "예약" }));
 		const scheduleDialog = await screen.findByRole("dialog", { name: "발행 예약" });
 		fireEvent.change(within(scheduleDialog).getByLabelText("예약 일시 (서울 시간)"), {
@@ -289,5 +294,81 @@ describe("live entry editor M10 feedback", () => {
 		});
 		fireEvent.click(within(scheduleDialog).getByRole("button", { name: "예약 등록" }));
 		expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/schedule"))).toBe(false);
+	});
+
+	it("keeps a retryable backup for offline, server, and expired-session failures", async () => {
+		const patchErrors = [
+			new Error("offline"),
+			json({ message: "server error" }, 500),
+			json({ message: "session expired" }, 401),
+		];
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(entry);
+			if (init?.method === "PATCH") {
+				const failure = patchErrors.shift();
+				if (failure instanceof Error) throw failure;
+				return failure;
+			}
+			throw new Error(`Unexpected fetch: ${input}`);
+		});
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		const titleInput = (await screen.findByRole("textbox", { name: /제목 \(Title\)/ })) as HTMLInputElement;
+
+		for (const [index, nextTitle] of ["오프라인 수정", "서버 오류 수정", "세션 만료 수정"].entries()) {
+			fireEvent.change(titleInput, { target: { value: nextTitle } });
+			await waitFor(
+				() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(index + 1),
+				{ timeout: 4000 },
+			);
+			await waitFor(() => expect(screen.getByText(index === 0 ? "오프라인" : "오류")).toBeTruthy());
+		}
+
+		expect(saveLocalBackup).toHaveBeenCalledTimes(3);
+		expect(saveLocalBackup).toHaveBeenLastCalledWith(
+			expect.objectContaining({ snapshot: expect.objectContaining({ title: "세션 만료 수정" }) }),
+		);
+	});
+
+	it("does not resend an old backup after a save succeeded but its response was lost", async () => {
+		let serverEntry = { ...entry };
+		let localBackup: unknown;
+		saveLocalBackup.mockImplementation(async (backup) => {
+			localBackup = backup;
+		});
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+			if (input.includes("?collection=")) return json({ items: [] });
+			if (input.endsWith("/relations")) return json({ incomingReferences: [] });
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(serverEntry);
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				serverEntry = {
+					...serverEntry,
+					version: 5,
+					working: { ...serverEntry.working, metadata: body.metadata, mdx: body.mdx },
+				};
+				throw new Error("PATCH committed, response lost");
+			}
+			throw new Error(`Unexpected fetch: ${input}`);
+		});
+
+		const firstRender = render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		const titleInput = (await screen.findByRole("textbox", { name: /제목 \(Title\)/ })) as HTMLInputElement;
+		fireEvent.change(titleInput, { target: { value: "응답 유실 수정" } });
+		await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true), {
+			timeout: 4000,
+		});
+		await waitFor(() => expect(screen.getByText("오프라인")).toBeTruthy(), { timeout: 4000 });
+		expect(localBackup).toBeTruthy();
+		firstRender.unmount();
+
+		getLocalBackup.mockResolvedValue(localBackup);
+		const patchCountBeforeReload = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH").length;
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-1" />);
+		await waitFor(() => expect(screen.getByDisplayValue("응답 유실 수정")).toBeTruthy());
+		await waitFor(() => expect(deleteLocalBackup).toHaveBeenCalledWith("admin:entry-1"));
+		expect(screen.queryByRole("dialog", { name: "임시 저장된 로컬 복구본 발견" })).toBeNull();
+		expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(patchCountBeforeReload);
 	});
 });

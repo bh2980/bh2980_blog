@@ -15,14 +15,14 @@ export type SitemapSource = {
  */
 export function buildSitemapEntries({ hostUrl, posts, memos }: SitemapSource): MetadataRoute.Sitemap {
 	const postEntries = posts
-		.filter((post) => !post.seo?.canonicalUrl)
+		.filter((post) => post.status === "published" && !post.seo?.canonicalUrl)
 		.map<MetadataRoute.Sitemap[number]>((post) => ({
 			url: new URL(`${hostUrl}/posts/${post.slug}`).toString(),
 			lastModified: post.status === "published" ? post.publishedAt : undefined,
 		}));
 
 	const memoEntries = memos
-		.filter((memo) => !memo.seo?.canonicalUrl)
+		.filter((memo) => memo.status === "published" && !memo.seo?.canonicalUrl)
 		.map<MetadataRoute.Sitemap[number]>((memo) => ({
 			url: new URL(`${hostUrl}/memos/${memo.slug}`).toString(),
 			lastModified: memo.status === "published" ? memo.publishedAt : undefined,

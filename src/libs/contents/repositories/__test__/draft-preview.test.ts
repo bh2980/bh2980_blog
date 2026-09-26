@@ -1,12 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * M9-FE-1: 관리자 전용 초안 미리보기 모듈.
  *
- * 이 테스트가 직접 증명해야 하는 두 가지(R1 P2):
- * 1. `CMS_PUBLIC_REPOSITORY`가 postgres가 아니면 **저장소를 아예 부르지 않고** null을 돌려준다.
- *    CMS DB가 설정되지 않은 배포에서 404가 500으로 바뀌지 않는다.
- * 2. 공개 조회와 **같은 slug 정규화**를 쓴다. NFD 한글 slug도 초안 미리보기가 찾는다.
+ * 공개 조회와 **같은 slug 정규화**를 쓰고, PostgreSQL 초안을 미리보기에서 읽는다.
  */
 const state = vi.hoisted(() => ({
 	slugCalls: [] as { collection: string; slug: string }[],
@@ -48,8 +45,6 @@ const workingEntry = (metadata: Record<string, unknown>, mdx = "편집 중 본�
 	},
 });
 
-const previousSource = process.env.CMS_PUBLIC_REPOSITORY;
-
 beforeEach(() => {
 	state.slugCalls = [];
 	state.taxonomyCalls = 0;
@@ -58,29 +53,21 @@ beforeEach(() => {
 		{ id: "cat-1", collection: "category", slug: "dev", metadata: { title: "개발" } },
 		{ id: "tag-1", collection: "tag", slug: "ts", metadata: { title: "TypeScript" } },
 	];
-	delete process.env.CMS_PUBLIC_REPOSITORY;
-});
-
-afterEach(() => {
-	if (previousSource === undefined) {
-		delete process.env.CMS_PUBLIC_REPOSITORY;
-	} else {
-		process.env.CMS_PUBLIC_REPOSITORY = previousSource;
-	}
 });
 
 describe("draft preview (M9-FE-1)", () => {
-	it("CMS_PUBLIC_REPOSITORY가 없으면 저장소를 부르지 않고 실패한다(fail-closed)", async () => {
-		await expect(getDraftPreviewPost("draft-1")).rejects.toThrow(/CMS_PUBLIC_REPOSITORY/);
-		await expect(getDraftPreviewMemo("draft-1")).rejects.toThrow(/CMS_PUBLIC_REPOSITORY/);
+	it("환경변수 없이도 관리자 초안을 미리 볼 수 있다", async () => {
+		state.entries.set("memo:draft-1", workingEntry({ title: "초안 메모" }, "미리보기 본문", "draft-1"));
 
-		// DB 연결을 요구하지 않는다. 플래그 없는 배포는 조용히 404가 되지 않고 실패한다.
-		expect(state.slugCalls).toEqual([]);
-		expect(state.taxonomyCalls).toBe(0);
+		await expect(getDraftPreviewMemo("draft-1")).resolves.toMatchObject({
+			status: "draft",
+			title: "초안 메모",
+			contentMdx: "미리보기 본문",
+		});
+		expect(state.slugCalls).toEqual([{ collection: "memo", slug: "draft-1" }]);
 	});
 
-	it("postgres일 때만 working 항목을 읽어 초안 글을 만든다", async () => {
-		process.env.CMS_PUBLIC_REPOSITORY = "postgres";
+	it("working 항목에서 초안 글을 만든다", async () => {
 		state.entries.set(
 			"post:draft-1",
 			workingEntry(
@@ -118,7 +105,6 @@ describe("draft preview (M9-FE-1)", () => {
 	});
 
 	it("NFD 한글 slug도 공개 조회와 같은 NFC 규칙으로 찾는다", async () => {
-		process.env.CMS_PUBLIC_REPOSITORY = "postgres";
 		const nfc = "한글-초안";
 		const nfd = nfc.normalize("NFD");
 		expect(nfd).not.toBe(nfc);
@@ -132,14 +118,12 @@ describe("draft preview (M9-FE-1)", () => {
 	});
 
 	it("분류가 없는 초안 글은 공개 렌더가 성립하지 않으므로 null이다", async () => {
-		process.env.CMS_PUBLIC_REPOSITORY = "postgres";
 		state.entries.set("post:no-category", workingEntry({ title: "분류 없음" }, "본문", "no-category"));
 
 		await expect(getDraftPreviewPost("no-category")).resolves.toBeNull();
 	});
 
 	it("메모 초안은 분류 없이도 만들어진다", async () => {
-		process.env.CMS_PUBLIC_REPOSITORY = "postgres";
 		state.entries.set(
 			"memo:memo-draft",
 			workingEntry({ title: "메모 제목", tagIds: ["tag-1"] }, "메모 본문", "memo-draft"),
@@ -157,8 +141,6 @@ describe("draft preview (M9-FE-1)", () => {
 	});
 
 	it("없는 항목은 null이다", async () => {
-		process.env.CMS_PUBLIC_REPOSITORY = "postgres";
-
 		await expect(getDraftPreviewPost("missing")).resolves.toBeNull();
 		await expect(getDraftPreviewMemo("missing")).resolves.toBeNull();
 	});

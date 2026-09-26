@@ -1,27 +1,26 @@
-import { describe, expect, it } from "vitest";
-import { CONTENT_REPOSITORY_SOURCES, resolveContentRepositorySource } from "../repositories/source";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("공개 조회 저장소 플래그 (M9-BE-3: Keystatic 제거 후 postgres 필수)", () => {
-	it("postgres를 선택할 수 있고 앞뒤 공백을 무시한다", () => {
-		expect(resolveContentRepositorySource("postgres")).toBe("postgres");
-		expect(resolveContentRepositorySource("  postgres  ")).toBe("postgres");
-	});
+vi.mock("../repositories/postgres", () => ({
+	PostgresRepository: class PostgresRepository {},
+}));
 
-	it("미설정이면 조용히 대체하지 않고 실패한다", () => {
-		expect(() => resolveContentRepositorySource(undefined)).toThrow(/CMS_PUBLIC_REPOSITORY/);
-		expect(() => resolveContentRepositorySource("")).toThrow(/CMS_PUBLIC_REPOSITORY/);
-		expect(() => resolveContentRepositorySource("   ")).toThrow(/CMS_PUBLIC_REPOSITORY/);
-	});
+import { getContentRepository } from "../get-content-repository";
+import { PostgresRepository } from "../repositories/postgres";
 
-	it("제거된 keystatic을 명시하면 실패한다", () => {
-		expect(() => resolveContentRepositorySource("keystatic")).toThrow(/CMS_PUBLIC_REPOSITORY/);
-	});
+const previousSource = process.env.CMS_PUBLIC_REPOSITORY;
 
-	it("알 수 없는 값은 조용히 대체하지 않고 실패한다", () => {
-		expect(() => resolveContentRepositorySource("mysql")).toThrow(/CMS_PUBLIC_REPOSITORY/);
-	});
+afterEach(() => {
+	if (previousSource === undefined) {
+		delete process.env.CMS_PUBLIC_REPOSITORY;
+	} else {
+		process.env.CMS_PUBLIC_REPOSITORY = previousSource;
+	}
+});
 
-	it("허용 목록은 postgres뿐이다", () => {
-		expect([...CONTENT_REPOSITORY_SOURCES]).toEqual(["postgres"]);
+describe("공개 콘텐츠 저장소", () => {
+	it("환경변수 없이 PostgreSQL 저장소를 사용한다", () => {
+		delete process.env.CMS_PUBLIC_REPOSITORY;
+
+		expect(getContentRepository()).toBeInstanceOf(PostgresRepository);
 	});
 });

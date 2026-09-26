@@ -14,6 +14,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { AdminEntriesTable } from "./admin-entries-table";
+import { AdminMobileNavigation } from "./admin-mobile-navigation";
 import { AdminSidebar } from "./admin-sidebar";
 import { cmsApiErrorMessage } from "./api-error-message";
 import { BulkBar } from "./entries/bulk-bar";
@@ -369,29 +370,37 @@ export function AdminClientDashboard() {
 		}
 	};
 
+	const renderSidebar = (onNavigate?: () => void) => (
+		<AdminSidebar
+			currentCollection={currentCollection}
+			currentFolderId={currentFolderId}
+			folders={folders}
+			onSelectCollection={(col) => {
+				setCurrentCollection(col);
+				setCurrentFolderId(null);
+				setPage(1);
+				syncUrl({ collection: col, folderId: null, page: 1 });
+			}}
+			onSelectFolder={(fId) => {
+				setCurrentFolderId(fId);
+				setPage(1);
+				syncUrl({ folderId: fId, page: 1 });
+			}}
+			onCreateFolder={handleCreateFolder}
+			onRenameFolder={handleRenameFolder}
+			onDeleteFolder={handleDeleteFolder}
+			onNavigate={onNavigate}
+		/>
+	);
+
 	return (
 		<div className="flex h-screen w-full overflow-hidden">
-			<AdminSidebar
-				currentCollection={currentCollection}
-				currentFolderId={currentFolderId}
-				folders={folders}
-				onSelectCollection={(col) => {
-					setCurrentCollection(col);
-					setCurrentFolderId(null);
-					setPage(1);
-					syncUrl({ collection: col, folderId: null, page: 1 });
-				}}
-				onSelectFolder={(fId) => {
-					setCurrentFolderId(fId);
-					setPage(1);
-					syncUrl({ folderId: fId, page: 1 });
-				}}
-				onCreateFolder={handleCreateFolder}
-				onRenameFolder={handleRenameFolder}
-				onDeleteFolder={handleDeleteFolder}
-			/>
-
+			<div className="hidden lg:flex">{renderSidebar()}</div>
 			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+				<header className="flex h-12 shrink-0 items-center gap-3 border-neutral-800 border-b bg-neutral-900/40 px-3 lg:hidden">
+					<AdminMobileNavigation>{(close) => renderSidebar(close)}</AdminMobileNavigation>
+					<span className="font-medium text-neutral-200 text-sm">CMS 관리자</span>
+				</header>
 				<BulkBar
 					selected={selectedWithVersions}
 					folders={folders}

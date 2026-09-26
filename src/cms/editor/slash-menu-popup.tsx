@@ -9,9 +9,10 @@ interface SlashMenuPopupProps {
 	coords: { top: number; left: number };
 	selectedIndex: number;
 	onSelect: (item: SlashCommandItem) => void;
+	onClose: () => void;
 }
 
-export function SlashMenuPopup({ items, coords, selectedIndex, onSelect }: SlashMenuPopupProps) {
+export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose }: SlashMenuPopupProps) {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -21,18 +22,24 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect }: Slash
 	if (!mounted || items.length === 0) return null;
 
 	return createPortal(
-		<div
+		<section
 			style={{
 				position: "fixed",
 				top: `${coords.top + 24}px`,
 				left: `${coords.left}px`,
 				zIndex: 9999,
 			}}
-			className="w-64 max-h-80 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-xl p-1 text-xs"
+			aria-label="블록 추가"
+			aria-live="polite"
+			onKeyDown={(event) => {
+				if (event.key === "Escape") {
+					event.preventDefault();
+					onClose();
+				}
+			}}
+			className="max-h-80 w-64 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
 		>
-			<div className="px-2 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-				블록 추가
-			</div>
+			<div className="px-2 py-1.5 font-bold text-[10px] text-neutral-400 uppercase tracking-wider">블록 추가</div>
 			<div className="space-y-0.5">
 				{items.map((item, idx) => {
 					const isSelected = idx === selectedIndex;
@@ -40,14 +47,12 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect }: Slash
 						<button
 							key={item.title}
 							type="button"
-							onMouseDown={(e) => {
-								e.preventDefault();
-								onSelect(item);
-							}}
-							className={`w-full text-left px-2.5 py-1.5 rounded flex flex-col transition ${
+							onMouseDown={(e) => e.preventDefault()}
+							onClick={() => onSelect(item)}
+							className={`flex w-full flex-col rounded px-2.5 py-1.5 text-left transition ${
 								isSelected
-									? "bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100"
-									: "hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-800 dark:text-neutral-200"
+									? "bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100"
+									: "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800/60"
 							}`}
 						>
 							<span className="font-semibold">{item.title}</span>
@@ -56,7 +61,7 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect }: Slash
 					);
 				})}
 			</div>
-		</div>,
+		</section>,
 		document.body,
 	);
 }

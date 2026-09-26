@@ -98,7 +98,12 @@ beforeEach(() => {
 
 describe("M7-BE-3 공개 API 계약", () => {
 	it("목록은 공개본만 반환하고 페이지 정보와 no-store를 담는다", async () => {
-		repo.state.posts = [publishedPost("a"), draftPost("b")];
+		repo.state.posts = [
+			publishedPost("a"),
+			draftPost("b"),
+			{ ...draftPost("archived"), status: "archived" },
+			{ ...draftPost("trashed"), status: "trash" },
+		];
 
 		const response = await listPublicEntries(request("/api/cms/v1/public/entries?collection=post"));
 		const body = await response.json();
@@ -165,15 +170,30 @@ describe("M7-BE-3 공개 API 계약", () => {
 	});
 
 	it("초안 slug와 없는 slug는 404다", async () => {
-		repo.state.posts = [publishedPost("hello"), draftPost("draft-slug")];
+		repo.state.posts = [
+			publishedPost("hello"),
+			draftPost("draft-slug"),
+			{ ...draftPost("archived-slug"), status: "archived" },
+			{ ...draftPost("trashed-slug"), status: "trash" },
+		];
 
 		const draft = await getPublicEntry(
 			request("/api/cms/v1/public/entries/post/draft-slug"),
 			context("post", "draft-slug"),
 		);
+		const archived = await getPublicEntry(
+			request("/api/cms/v1/public/entries/post/archived-slug"),
+			context("post", "archived-slug"),
+		);
+		const trashed = await getPublicEntry(
+			request("/api/cms/v1/public/entries/post/trashed-slug"),
+			context("post", "trashed-slug"),
+		);
 		const missing = await getPublicEntry(request("/api/cms/v1/public/entries/post/nope"), context("post", "nope"));
 
 		expect(draft.status).toBe(404);
+		expect(archived.status).toBe(404);
+		expect(trashed.status).toBe(404);
 		expect(missing.status).toBe(404);
 		expect(draft.headers.get("cache-control")).toBe("no-store");
 		expect(await draft.text()).not.toContain(DRAFT_BODY_SENTINEL);

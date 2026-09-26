@@ -42,6 +42,12 @@ describe("posts/[slug] 페이지의 alias 판정", () => {
 		expect(redirects).toEqual([]);
 	});
 
+	it("returns notFound for a private or draft slug", async () => {
+		getPost.mockResolvedValue(null);
+
+		await expect(BlogPost({ params: Promise.resolve({ slug: "draft-secret" }) })).rejects.toThrow("NOT_FOUND");
+	});
+
 	it("과거 주소는 정규 주소로 308 이동하되 헤더에 넣을 수 있게 인코딩한다", async () => {
 		redirects.length = 0;
 		getPost.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목" });

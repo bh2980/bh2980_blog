@@ -50,6 +50,19 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(detail?.lastModified).toBe("2026-03-01T12:00:00.000Z");
 	});
 
+	it("실수로 비공개 상태가 전달되어도 sitemap에 넣지 않는다", () => {
+		const statuses = ["draft", "archived", "trash"] as const;
+		const posts = statuses.map((status) => ({ ...post(`post-${status}`), status }) as unknown as Post);
+		const memos = statuses.map((status) => ({ ...memo(`memo-${status}`), status }) as unknown as Memo);
+		const entries = buildSitemapEntries({ hostUrl: HOST, posts, memos });
+		const urls = entries.map((entry) => entry.url);
+
+		for (const status of statuses) {
+			expect(urls).not.toContain(`${HOST}/posts/post-${status}`);
+			expect(urls).not.toContain(`${HOST}/memos/memo-${status}`);
+		}
+	});
+
 	it("custom canonical을 지정한 글은 sitemap에서 제외한다", () => {
 		const entries = buildSitemapEntries({
 			hostUrl: HOST,

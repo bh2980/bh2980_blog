@@ -187,6 +187,75 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		}
 	});
 
+	it("공개 글의 working 수정은 재발행 전까지 기존 published snapshot을 보존한다", async () => {
+		const publishedTag = await createPublishedEntry({
+			collection: "tag",
+			slug: "f10-published-tag",
+			metadata: { title: "Published tag" },
+		});
+		const workingTag = await createPublishedEntry({
+			collection: "tag",
+			slug: "f10-working-tag",
+			metadata: { title: "Working tag" },
+		});
+		const published = await createPublishedEntry({
+			collection: "post",
+			slug: "f10-published-snapshot",
+			metadata: {
+				title: "Published title",
+				summary: "Published summary",
+				categoryId: testCategoryId,
+				tagIds: [publishedTag.id],
+			},
+			mdx: "# Published body",
+		});
+		const working = await store.saveWorking(published.id, {
+			expectedVersion: published.version,
+			slug: "f10-working-snapshot",
+			metadata: {
+				title: "Working title",
+				summary: "Working summary",
+				categoryId: testCategoryId,
+				tagIds: [workingTag.id],
+			},
+			mdx: "# Working body",
+			schemaVersion: 1,
+			contentHash: "f10-working-content",
+		});
+
+		expect(working.status).toBe("published");
+		expect(await publishedSlugs(["post"])).toContain("f10-published-snapshot");
+		expect(await publishedSlugs(["post"])).not.toContain("f10-working-snapshot");
+		const beforeRepublish = await store.getPublishedEntryBySlug({
+			collection: "post",
+			slug: "f10-published-snapshot",
+		});
+		expect(beforeRepublish.status).toBe("current");
+		if (beforeRepublish.status === "current") {
+			expect(beforeRepublish.entry.slug).toBe("f10-published-snapshot");
+			expect(beforeRepublish.entry.mdx).toBe("# Published body");
+			expect(beforeRepublish.entry.metadata).toEqual({
+				title: "Published title",
+				summary: "Published summary",
+				categoryId: testCategoryId,
+				tagIds: [publishedTag.id],
+			});
+		}
+		await expect(store.getPublishedEntryBySlug({ collection: "post", slug: "f10-working-snapshot" })).resolves.toEqual({
+			status: "not_found",
+		});
+
+		const republished = await store.publishEntry({ id: working.id, expectedVersion: working.version });
+		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "f10-published-snapshot" })).toMatchObject({
+			status: "alias",
+			entry: { slug: "f10-working-snapshot", mdx: "# Working body" },
+		});
+		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "f10-working-snapshot" })).toMatchObject({
+			status: "current",
+			entry: { slug: "f10-working-snapshot", mdx: "# Working body", metadata: { title: "Working title" } },
+		});
+		expect(republished.status).toBe("published");
+	});
 	it("비공개로 돌아간 주소는 alias로도 남지 않는다", async () => {
 		const published = await createPublishedEntry({ collection: "post", slug: "alias-then-archive" });
 		const saved = await store.saveWorking(published.id, {

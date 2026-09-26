@@ -27,6 +27,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AdminMobileNavigation } from "../admin-mobile-navigation";
 import { AdminSidebar } from "../admin-sidebar";
 
 interface MediaItem {
@@ -158,11 +159,18 @@ export function MediaLibrary() {
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-neutral-950 text-neutral-100">
-			<AdminSidebar activeNav="media" />
-			<div className="flex h-full flex-1 flex-col overflow-hidden bg-neutral-950 text-neutral-200">
+			<div className="hidden lg:flex">
+				<AdminSidebar activeNav="media" />
+			</div>
+			<div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-neutral-950 text-neutral-200">
 				{/* Top Header & Actions */}
 				<div className="flex flex-wrap items-center justify-between gap-4 border-neutral-800 border-b bg-neutral-900/50 p-4">
-					<div className="flex items-center gap-3">
+					<div className="flex min-w-0 items-center gap-3">
+						<div className="lg:hidden">
+							<AdminMobileNavigation>
+								{(close) => <AdminSidebar activeNav="media" onNavigate={close} />}
+							</AdminMobileNavigation>
+						</div>
 						<Link href="/admin" className="font-medium text-neutral-400 text-xs transition hover:text-white">
 							대시보드
 						</Link>
@@ -195,6 +203,7 @@ export function MediaLibrary() {
 							variant="outline"
 							size="sm"
 							onClick={() => fetchMedia()}
+							aria-label="미디어 목록 새로고침"
 							className="h-8 w-8 border-neutral-700 p-0 text-neutral-400 hover:text-white"
 						>
 							<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
@@ -212,6 +221,7 @@ export function MediaLibrary() {
 					<div className="relative min-w-[200px] max-w-sm flex-1">
 						<Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-neutral-500" />
 						<Input
+							aria-label="파일명 검색"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 							placeholder="파일명 검색..."
@@ -375,6 +385,7 @@ export function MediaLibrary() {
 								</span>
 								<button
 									type="button"
+									aria-label="미디어 상세 정보 닫기"
 									onClick={() => setSelectedMedia(null)}
 									className="text-neutral-400 hover:text-white"
 								>
@@ -409,6 +420,7 @@ export function MediaLibrary() {
 											type="button"
 											variant="outline"
 											size="sm"
+											aria-label={copiedUrl ? "미디어 주소 복사됨" : "미디어 주소 복사"}
 											className="h-7 border-neutral-800 px-2 hover:text-white"
 											onClick={() => copyToClipboard(selectedMedia.publicUrl!)}
 										>
@@ -416,6 +428,7 @@ export function MediaLibrary() {
 										</Button>
 										<a
 											href={selectedMedia.publicUrl}
+											aria-label={`새 탭에서 열기: ${selectedMedia.filename}`}
 											target="_blank"
 											rel="noreferrer"
 											className="p-1.5 text-neutral-400 hover:text-white"
@@ -481,9 +494,9 @@ export function MediaLibrary() {
 
 									{selectedMedia.referencesCount > 0 ? (
 										<div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">
-											{selectedMedia.references.map((ref, idx) => (
+											{selectedMedia.references.map((ref) => (
 												<a
-													key={`${ref.entryId}-${ref.state}-${idx}`}
+													key={`${ref.entryId}-${ref.state}`}
 													href={`/admin/entries/${ref.entryId}/edit`}
 													className="flex flex-col gap-0.5 rounded border border-neutral-800 bg-neutral-950 p-2 text-xs transition hover:bg-neutral-800/80"
 												>

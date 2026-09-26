@@ -5,7 +5,6 @@ import { getCmsContentStore } from "@/cms/container";
 import { readSeoMetadata } from "../seo";
 import { normalizeSlug } from "../slug";
 import type { Category, DraftMemo, DraftPost, Tag } from "../types/contents";
-import { resolveContentRepositorySource } from "./source";
 
 /**
  * M9-FE-1: 관리자 미리보기 전용 초안 조회.
@@ -15,8 +14,6 @@ import { resolveContentRepositorySource } from "./source";
  * 공개 저장소 계약을 넓히지 않고 관리자 전용 경로만 추가한다.
  *
  * 안전 경계:
- * - 공개 저장소 규칙을 그대로 따른다. `CMS_PUBLIC_REPOSITORY`가 `postgres`가 아니면 실패한다
- *   (M9-BE-3에서 Keystatic 저장소를 제거해 파일 기반 초안 경로가 사라졌다).
  * - 호출자(`getPreviewPost`/`getPreviewMemo`)가 관리자 세션을 먼저 확인한다. 이 모듈 자체는
  *   권한을 판정하지 않는다.
  * - 이 모듈은 쓰기를 하지 않는다.
@@ -105,9 +102,6 @@ function toDraftMemo(entry: Entry, slug: string, labels: TaxonomyLabels): DraftM
 
 /** working slug로 초안 글을 읽는다. 없거나 분류가 없으면 null. */
 export async function getDraftPreviewPost(slug: string): Promise<DraftPost | null> {
-	// 공개 경로와 같은 규칙으로 배포 설정을 먼저 검사한다(미설정이면 실패).
-	resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY);
-
 	const normalized = normalizeSlug(slug);
 	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: normalized });
 	if (!entry) return null;
@@ -119,9 +113,6 @@ export async function getDraftPreviewPost(slug: string): Promise<DraftPost | nul
 
 /** working slug로 초안 메모를 읽는다. 없으면 null. */
 export async function getDraftPreviewMemo(slug: string): Promise<DraftMemo | null> {
-	// 공개 경로와 같은 규칙으로 배포 설정을 먼저 검사한다(미설정이면 실패).
-	resolveContentRepositorySource(process.env.CMS_PUBLIC_REPOSITORY);
-
 	const normalized = normalizeSlug(slug);
 	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: normalized });
 	if (!entry) return null;

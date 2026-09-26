@@ -11,13 +11,7 @@ interface BlockHandleOverlayProps {
 	onDelete: () => void;
 }
 
-export function BlockHandleOverlay({
-	coords,
-	onMoveUp,
-	onMoveDown,
-	onDuplicate,
-	onDelete,
-}: BlockHandleOverlayProps) {
+export function BlockHandleOverlay({ coords, onMoveUp, onMoveDown, onDuplicate, onDelete }: BlockHandleOverlayProps) {
 	const [menuOpen, setMenuOpen] = useState(false);
 
 	if (typeof window === "undefined") return null;
@@ -36,7 +30,9 @@ export function BlockHandleOverlay({
 			<button
 				type="button"
 				onClick={() => setMenuOpen(!menuOpen)}
-				className="w-6 h-6 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-xs font-mono select-none"
+				aria-label="블록 조작 메뉴"
+				aria-expanded={menuOpen}
+				className="flex h-6 w-6 select-none items-center justify-center rounded font-mono text-neutral-400 text-xs transition hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
 				title="블록 조작"
 			>
 				⋮⋮
@@ -44,14 +40,14 @@ export function BlockHandleOverlay({
 
 			{/* Block Actions Dropdown */}
 			{menuOpen && (
-				<div className="absolute left-7 top-0 w-36 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-xl p-1 text-xs space-y-0.5 z-50">
+				<div className="absolute top-0 left-7 z-50 w-36 space-y-0.5 rounded-lg border border-neutral-200 bg-white p-1 text-xs shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
 					<button
 						type="button"
 						onClick={() => {
 							onMoveUp();
 							setMenuOpen(false);
 						}}
-						className="w-full text-left px-2.5 py-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+						className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						<span>↑</span> 위로 이동
 					</button>
@@ -61,7 +57,7 @@ export function BlockHandleOverlay({
 							onMoveDown();
 							setMenuOpen(false);
 						}}
-						className="w-full text-left px-2.5 py-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+						className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						<span>↓</span> 아래로 이동
 					</button>
@@ -71,18 +67,18 @@ export function BlockHandleOverlay({
 							onDuplicate();
 							setMenuOpen(false);
 						}}
-						className="w-full text-left px-2.5 py-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+						className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						<span>⎘</span> 블록 복제
 					</button>
-					<div className="border-t border-neutral-200 dark:border-neutral-800 my-1" />
+					<div className="my-1 border-neutral-200 border-t dark:border-neutral-800" />
 					<button
 						type="button"
 						onClick={() => {
 							onDelete();
 							setMenuOpen(false);
 						}}
-						className="w-full text-left px-2.5 py-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 transition flex items-center gap-2"
+						className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/40"
 					>
 						<span>✕</span> 삭제
 					</button>

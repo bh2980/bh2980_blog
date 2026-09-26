@@ -429,6 +429,7 @@ export function InspectorPanel({
 									<span>{name}</span>
 									<button
 										type="button"
+										aria-label={`${name} 태그 제거`}
 										onClick={() => handleToggleTag(id)}
 										className="ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
 									>
@@ -448,6 +449,7 @@ export function InspectorPanel({
 									<button
 										key={tag.id}
 										type="button"
+										aria-pressed={isSelected}
 										onClick={() => handleToggleTag(tag.id)}
 										className={`rounded px-2 py-0.5 text-xs transition ${
 											isSelected

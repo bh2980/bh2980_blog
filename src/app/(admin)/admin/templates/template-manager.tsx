@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { AdminMobileNavigation } from "../admin-mobile-navigation";
 import { AdminSidebar } from "../admin-sidebar";
 
 export function TemplateManager() {
@@ -166,12 +167,19 @@ export function TemplateManager() {
 		<>
 			<div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-200">
 				{/* 1단: 공통 글로벌 어드민 사이드바 */}
-				<AdminSidebar activeNav="templates" />
+				<div className="hidden lg:flex">
+					<AdminSidebar activeNav="templates" />
+				</div>
 
 				<div className="flex flex-1 flex-col overflow-hidden">
 					{/* 상단 글로벌 헤더 */}
-					<header className="flex h-14 items-center justify-between border-neutral-800 border-b bg-neutral-900/40 px-6">
-						<div className="flex items-center gap-3">
+					<header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-neutral-800 border-b bg-neutral-900/40 px-3 py-2 sm:px-6">
+						<div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+							<div className="lg:hidden">
+								<AdminMobileNavigation>
+									{(close) => <AdminSidebar activeNav="templates" onNavigate={close} />}
+								</AdminMobileNavigation>
+							</div>
 							<Link href="/admin" className="font-medium text-neutral-400 text-xs transition hover:text-white">
 								대시보드
 							</Link>

@@ -50,6 +50,7 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 
 	// 2. GIF: GIF87a or GIF89a
 	if (
+		buffer.length >= 10 &&
 		buffer[0] === 0x47 &&
 		buffer[1] === 0x49 &&
 		buffer[2] === 0x46 &&
@@ -63,10 +64,11 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 		if (width > 0 && height > 0) {
 			return { mimeType: "image/gif", width, height };
 		}
+		return null;
 	}
 
 	// 3. JPEG: FF D8 FF
-	if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+	if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
 		let offset = 2;
 		while (offset < buffer.length - 8) {
 			if (buffer[offset] !== 0xff) {
@@ -85,14 +87,15 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 				break;
 			}
 			const len = (buffer[offset + 2] << 8) | buffer[offset + 3];
+			if (len < 2) break;
 			offset += 2 + len;
 		}
-		// Fallback for JPEG without parsed markers
-		return { mimeType: "image/jpeg", width: 800, height: 600 };
+		return null;
 	}
 
 	// 4. WebP: RIFF .... WEBP
 	if (
+		buffer.length >= 16 &&
 		buffer[0] === 0x52 &&
 		buffer[1] === 0x49 &&
 		buffer[2] === 0x46 &&
@@ -108,8 +111,11 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 			if (buffer.length >= 30) {
 				const width = view.getUint16(26, true) & 0x3fff;
 				const height = view.getUint16(28, true) & 0x3fff;
-				return { mimeType: "image/webp", width, height };
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
 			}
+			return null;
 		}
 		// VP8L (lossless)
 		if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x4c) {
@@ -120,13 +126,27 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 				const b4 = buffer[24];
 				const width = 1 + (((b2 & 0x3f) << 8) | b1);
 				const height = 1 + (((b4 & 0x0f) << 10) | (b3 << 2) | ((b2 & 0xc0) >> 6));
-				return { mimeType: "image/webp", width, height };
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
 			}
+			return null;
 		}
-		return { mimeType: "image/webp", width: 800, height: 600 };
+		// VP8X (extended)
+		if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x58) {
+			if (buffer.length >= 30) {
+				const width = 1 + (buffer[24] | (buffer[25] << 8) | (buffer[26] << 16));
+				const height = 1 + (buffer[27] | (buffer[28] << 8) | (buffer[29] << 16));
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
+			}
+			return null;
+		}
+		return null;
 	}
 
-	// 5. AVIF: .... ftypavif
+	// 5. AVIF: .... ftypavif or ftypavis
 	if (
 		buffer.length >= 12 &&
 		buffer[4] === 0x66 &&
@@ -136,9 +156,24 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 		buffer[8] === 0x61 &&
 		buffer[9] === 0x76 &&
 		buffer[10] === 0x69 &&
-		buffer[11] === 0x66
+		(buffer[11] === 0x66 || buffer[11] === 0x73)
 	) {
-		return { mimeType: "image/avif", width: 800, height: 600 };
+		for (let i = 12; i <= buffer.length - 16; i++) {
+			if (
+				buffer[i] === 0x69 &&
+				buffer[i + 1] === 0x73 &&
+				buffer[i + 2] === 0x70 &&
+				buffer[i + 3] === 0x65
+			) {
+				const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+				const width = view.getUint32(i + 8, false);
+				const height = view.getUint32(i + 12, false);
+				if (width > 0 && height > 0 && width < 65536 && height < 65536) {
+					return { mimeType: "image/avif", width, height };
+				}
+			}
+		}
+		return null;
 	}
 
 	return null;
@@ -245,7 +280,7 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 				throw new Error(`Disallowed image mime type: ${input.contentType}`);
 			}
 
-			// 1. Copy from staging to final key
+			// 1. Copy from staging to final key with ETag precondition
 			await s3.send(
 				new CopyObjectCommand({
 					Bucket: config.bucket,
@@ -254,6 +289,7 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					ContentType: input.contentType,
 					CacheControl: input.cacheControl || "public, max-age=31536000, immutable",
 					MetadataDirective: "REPLACE",
+					...(input.expectedEtag ? { CopySourceIfMatch: input.expectedEtag } : {}),
 				}),
 			);
 

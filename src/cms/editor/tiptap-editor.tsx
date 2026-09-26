@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { ImageIcon, Loader2 } from "lucide-react";
@@ -81,6 +82,41 @@ export function CmsEditor({
 	const [imageAlt, setImageAlt] = useState("");
 	const [isDecorativeImage, setIsDecorativeImage] = useState(false);
 	const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+
+	const syncTriggerPopup = (currentEditor: Editor) => {
+		if (isComposingRef.current) return;
+		const { from } = currentEditor.state.selection;
+		const textBefore = currentEditor.state.doc.textBetween(Math.max(0, from - 50), from, "\n", "\0");
+
+		const linkMatch = parseInternalLinkTrigger(textBefore);
+		if (linkMatch.active) {
+			const triggerPos = from - linkMatch.query.length - 2;
+			linkRangeRef.current = { from: triggerPos, to: from };
+			setLinkQuery(linkMatch.query);
+			setLinkIndex(0);
+			const coords = currentEditor.view.coordsAtPos(from);
+			setLinkCoords({ top: coords.top, left: coords.left });
+			setLinkOpen(true);
+			setSlashOpen(false);
+			return;
+		}
+
+		setLinkOpen(false);
+		const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
+		if (!slashMatch) {
+			setSlashOpen(false);
+			return;
+		}
+
+		const query = slashMatch[1] || "";
+		const slashPos = from - query.length - 1;
+		slashRangeRef.current = { from: slashPos, to: from };
+		setSlashQuery(query);
+		setSlashIndex(0);
+		const coords = currentEditor.view.coordsAtPos(from);
+		setSlashCoords({ top: coords.top, left: coords.left });
+		setSlashOpen(true);
+	};
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -181,44 +217,8 @@ export function CmsEditor({
 			if (isInternalUpdateRef.current) return;
 			onChange(tiptapToMdx(editor.getJSON()));
 
-			// Check slash & internal link trigger condition
-			if (!isComposingRef.current) {
-				const { from } = editor.state.selection;
-				const textBefore = editor.state.doc.textBetween(Math.max(0, from - 50), from, "\n", "\0");
-
-				// 1. Check Internal Link [[
-				const linkMatch = parseInternalLinkTrigger(textBefore);
-				if (linkMatch.active) {
-					const triggerPos = from - linkMatch.query.length - 2;
-					linkRangeRef.current = { from: triggerPos, to: from };
-					setLinkQuery(linkMatch.query);
-					setLinkIndex(0);
-
-					const coords = editor.view.coordsAtPos(from);
-					setLinkCoords({ top: coords.top, left: coords.left });
-					setLinkOpen(true);
-					setSlashOpen(false);
-					return;
-				} else {
-					setLinkOpen(false);
-				}
-
-				// 2. Check Slash Command /
-				const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
-				if (slashMatch) {
-					const query = slashMatch[1] || "";
-					const slashPos = from - query.length - 1;
-					slashRangeRef.current = { from: slashPos, to: from };
-					setSlashQuery(query);
-					setSlashIndex(0);
-
-					const coords = editor.view.coordsAtPos(from);
-					setSlashCoords({ top: coords.top, left: coords.left });
-					setSlashOpen(true);
-				} else {
-					setSlashOpen(false);
-				}
-			}
+			// Refresh after compositionend too, since IMEs may not emit a final update.
+			syncTriggerPopup(editor);
 		},
 	});
 
@@ -501,6 +501,7 @@ export function CmsEditor({
 			}}
 			onCompositionEnd={() => {
 				isComposingRef.current = false;
+				if (editor) syncTriggerPopup(editor);
 				if (onCompositionEnd) onCompositionEnd();
 			}}
 			onMouseMove={handleMouseMove}
@@ -841,6 +842,10 @@ export function CmsEditor({
 							setSlashOpen(false);
 						}
 					}}
+					onClose={() => {
+						setSlashOpen(false);
+						editor.chain().focus().run();
+					}}
 				/>
 			)}
 
@@ -858,7 +863,10 @@ export function CmsEditor({
 							setLinkOpen(false);
 						}
 					}}
-					onClose={() => setLinkOpen(false)}
+					onClose={() => {
+						setLinkOpen(false);
+						editor.chain().focus().run();
+					}}
 				/>
 			)}
 
