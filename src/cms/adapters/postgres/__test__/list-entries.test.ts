@@ -28,6 +28,8 @@ interface ListEntriesParams {
 	collection: string;
 	search?: string;
 	includeBody?: boolean;
+	titleContains?: string;
+	slugContains?: string;
 	statuses?: readonly ("draft" | "published")[];
 	folderId?: string | null;
 	includeDescendants?: boolean;
@@ -346,6 +348,31 @@ console.log("FencedCode000");
 		await expectMatch("AttrTail789", false, true);
 		await expectMatch("LinkUrl987", false, true);
 	}, 15_000);
+
+	// -----------------------------------------------------------------------
+	// 2b  column header filters: title only / slug only, ANDed with search
+	// -----------------------------------------------------------------------
+
+	it("2b. titleContains matches only the title and slugContains only the slug; both AND with search", async () => {
+		await seed("post", "alpha-slug", "베타 제목");
+		await seed("post", "beta-slug", "알파 제목");
+
+		const byTitle = await store.listEntries({ collection: "post", titleContains: "베타" });
+		expect(byTitle.items.map((item) => item.slug)).toEqual(["alpha-slug"]);
+
+		const bySlug = await store.listEntries({ collection: "post", slugContains: "beta" });
+		expect(bySlug.items.map((item) => item.slug)).toEqual(["beta-slug"]);
+
+		// 제목 필터는 slug를, 주소 필터는 제목을 보지 않는다.
+		expect((await store.listEntries({ collection: "post", titleContains: "slug" })).items).toHaveLength(0);
+		expect((await store.listEntries({ collection: "post", slugContains: "제목" })).items).toHaveLength(0);
+
+		const anded = await store.listEntries({ collection: "post", search: "알파", slugContains: "alpha" });
+		expect(anded.items).toHaveLength(0);
+
+		const literal = await store.listEntries({ collection: "post", titleContains: "%" });
+		expect(literal.items).toHaveLength(0);
+	});
 
 	// -----------------------------------------------------------------------
 	// 3  status filter; folder undefined/null/direct/descendants

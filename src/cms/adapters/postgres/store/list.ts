@@ -25,8 +25,9 @@ function assertParams(params: ListEntriesParams) {
 	if (!(COLLECTIONS as readonly string[]).includes(params.collection)) {
 		throw new CmsError("Invalid collection", "invalid_input");
 	}
-	if (params.search !== undefined && typeof params.search !== "string")
-		throw new CmsError("Invalid search", "invalid_input");
+	for (const key of ["search", "titleContains", "slugContains"] as const) {
+		if (params[key] !== undefined && typeof params[key] !== "string") throw new CmsError(`Invalid ${key}`, "invalid_input");
+	}
 	for (const key of ["includeBody", "includeDescendants", "hasUnpublishedChanges", "scheduled"] as const) {
 		if (params[key] !== undefined && typeof params[key] !== "boolean")
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
@@ -114,6 +115,12 @@ export function createListOps(ctx: StoreContext) {
 						params.includeBody ? ` OR w.search_text ILIKE ${token}` : ""
 					})`,
 				);
+			}
+			if (params.titleContains) {
+				conditions.push(`w.metadata->>'title' ILIKE ${bind(escapeLike(params.titleContains))}`);
+			}
+			if (params.slugContains) {
+				conditions.push(`e.working_slug ILIKE ${bind(escapeLike(params.slugContains))}`);
 			}
 			if (params.tagIds && params.tagIds.length > 0) {
 				conditions.push(`COALESCE(w.metadata->'tagIds', '[]'::jsonb) ?| ${bind(params.tagIds)}::text[]`);

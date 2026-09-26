@@ -129,6 +129,14 @@ paths:
         - name: includeBody
           in: query
           schema: { type: boolean }
+        - name: titleContains
+          in: query
+          description: 제목만 부분 일치로 거른다(컬럼 헤더 필터). `search`와 함께 쓰면 AND다.
+          schema: { type: string }
+        - name: slugContains
+          in: query
+          description: 주소(slug)만 부분 일치로 거른다(컬럼 헤더 필터).
+          schema: { type: string }
         - name: sortField
           in: query
           schema: { type: string, enum: [updatedAt, createdAt, publishedAt, title, slug] }
@@ -521,7 +529,10 @@ paths:
               properties:
                 op:
                   type: string
-                  enum: [tags.add, tags.remove, category.set, folder.move, archive, unarchive, trash, publish]
+                  description: >
+                    `permanentDelete`는 휴지통 항목만 영구 삭제한다. 참조가 남은 항목은 `in_use`로 실패하고
+                    결과의 `usages`에 참조하는 콘텐츠를 담는다.
+                  enum: [tags.add, tags.remove, category.set, folder.move, archive, unarchive, trash, publish, permanentDelete]
                 items:
                   type: array
                   maxItems: 100
@@ -539,7 +550,31 @@ paths:
           description: 항목별 결과. 일부만 성공할 수 있다.
           content:
             application/json:
-              schema: { type: object, additionalProperties: true }
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, ok]
+                      properties:
+                        id: { type: string }
+                        ok: { type: boolean }
+                        version: { type: integer, description: 성공한 항목의 새 버전. 영구 삭제는 요청한 버전을 돌려준다. }
+                        error: { type: string, description: 실패 코드(conflict, locked, in_use, invalid_status 등). }
+                        issues: { type: array, items: { type: object, additionalProperties: true } }
+                        usages:
+                          type: array
+                          description: "`in_use` 실패일 때 이 항목을 참조하는 콘텐츠."
+                          items:
+                            type: object
+                            properties:
+                              entryId: { type: string, format: uuid }
+                              title: { type: string, nullable: true }
+                              collection: { type: string }
+                              state: { type: string, enum: [working, published] }
         "400": { $ref: "#/components/responses/InvalidInput" }
         "409": { $ref: "#/components/responses/Conflict" }
 
@@ -1249,6 +1284,22 @@ components:
                     type: array
                     items: { type: string, enum: [title, status, category, tags, updatedAt, publishedAt, createdAt, slug, folder] }
                   visibility: { type: object, additionalProperties: { type: boolean } }
+              views:
+                type: array
+                maxItems: 20
+                description: 이름 붙인 저장된 보기(v2 A4). 배열 순서가 표시 순서이며 PUT은 배열 전체를 바꾼다.
+                items:
+                  type: object
+                  required: [id, name, query]
+                  properties:
+                    id: { type: string, maxLength: 64 }
+                    name: { type: string, maxLength: 60 }
+                    query: { type: string, maxLength: 2000, description: 목록 URL의 검색·필터·정렬 부분. 폴더·페이지는 담지 않는다. }
+                    columns:
+                      type: object
+                      properties:
+                        order: { type: array, items: { type: string } }
+                        visibility: { type: object, additionalProperties: { type: boolean } }
         editor:
           type: object
           properties:

@@ -129,6 +129,40 @@ describe("review regressions", () => {
 		expect((await store.getEntry(post.id)).working.metadata.tagIds).toEqual([tag.id]);
 	});
 
+	it("permanently deletes trashed items in bulk and names the entries that still reference a blocked one (v2 A3)", async () => {
+		const target = await service.createDraft({
+			collection: "post",
+			slug: unique("replaced"),
+			metadata: { title: "대체될 글", categoryId },
+			mdx: "x",
+		});
+		const referrer = await service.createDraft({
+			collection: "post",
+			slug: unique("referrer"),
+			metadata: { title: "참조하는 글", categoryId, policy: "deprecated", replacementPostId: target.id },
+			mdx: "x",
+		});
+		const loose = await service.createDraft({ collection: "memo", slug: unique("loose"), metadata: { title: "l" }, mdx: "l" });
+		const trashedTarget = await store.trashEntry({ id: target.id, expectedVersion: target.version });
+		const trashedLoose = await store.trashEntry({ id: loose.id, expectedVersion: loose.version });
+
+		const { results } = await createBulkService(store).run({
+			op: "permanentDelete",
+			items: [
+				{ id: target.id, expectedVersion: trashedTarget.version },
+				{ id: loose.id, expectedVersion: trashedLoose.version },
+				{ id: referrer.id, expectedVersion: referrer.version },
+			],
+		});
+
+		expect(results[0]).toMatchObject({ id: target.id, ok: false, error: "in_use" });
+		expect(results[0]?.ok === false && results[0].usages?.map((usage) => usage.title)).toEqual(["참조하는 글"]);
+		expect(results[1]).toEqual({ id: loose.id, ok: true, version: trashedLoose.version });
+		expect(results[2]).toMatchObject({ id: referrer.id, ok: false, error: "invalid_status" });
+		await expect(store.getEntry(loose.id)).rejects.toMatchObject({ code: "not_found" });
+		expect((await store.getEntry(target.id)).status).toBe("trashed");
+	});
+
 	it("blocks publishing blocks without required attributes (§5.6)", async () => {
 		const cases: [string, string][] = [
 			["::::tabs\n:::tab\n첫\n:::\n:::tab\n둘\n:::\n::::", "missing_block_attribute"],

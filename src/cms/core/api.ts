@@ -40,6 +40,8 @@ export const listEntriesQuerySchema = z.object({
 	collection: collectionSchema,
 	search: z.string().optional(),
 	includeBody: booleanQuery,
+	titleContains: z.string().optional(),
+	slugContains: z.string().optional(),
 	status: z.array(entryStatusSchema).optional(),
 	folderId: z
 		.string()
@@ -101,6 +103,7 @@ export const BULK_OPS = [
 	"unarchive",
 	"trash",
 	"publish",
+	"permanentDelete",
 ] as const;
 export type BulkOp = (typeof BULK_OPS)[number];
 
@@ -144,11 +147,34 @@ export const adminColumnSettingsSchema = z
 	});
 export type AdminColumnSettings = z.infer<typeof adminColumnSettingsSchema>;
 
+export const MAX_SAVED_VIEWS = 20;
+
+/**
+ * 이름 붙인 저장된 보기(v2 A4). `query`는 목록 URL의 검색·필터·정렬 부분이며 폴더·페이지는 담지 않는다.
+ * 배열 순서가 표시 순서다.
+ */
+export const savedViewSchema = z.object({
+	id: z.string().trim().min(1).max(64),
+	name: z.string().trim().min(1).max(60),
+	query: z.string().max(2000),
+	columns: adminColumnSettingsSchema.optional(),
+});
+export type SavedView = z.infer<typeof savedViewSchema>;
+
 /** 컬렉션별 목록 설정(§3.2 "컬럼 설정·페이지 크기는 컬렉션별 사용자 설정에 저장"). */
 export const collectionPreferencesSchema = z.object({
 	columns: adminColumnSettingsSchema.optional(),
 	pageSize: pageSizeSchema.optional(),
 	sort: z.object({ field: listSortFieldSchema, direction: sortDirectionSchema }).optional(),
+	views: z
+		.array(savedViewSchema)
+		.max(MAX_SAVED_VIEWS)
+		.superRefine((views, ctx) => {
+			if (new Set(views.map((view) => view.id)).size !== views.length) {
+				ctx.addIssue({ code: "custom", message: "View ids must be unique" });
+			}
+		})
+		.optional(),
 });
 export type CollectionPreferences = z.infer<typeof collectionPreferencesSchema>;
 

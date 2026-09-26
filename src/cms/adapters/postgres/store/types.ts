@@ -188,6 +188,10 @@ export interface ListEntriesParams {
 	collection: string;
 	search?: string;
 	includeBody?: boolean;
+	/** 컬럼 헤더 필터: 제목만(부분 일치). `search`와 AND로 함께 쓴다. */
+	titleContains?: string;
+	/** 컬럼 헤더 필터: 주소(slug)만(부분 일치). */
+	slugContains?: string;
 	statuses?: readonly EntryStatus[];
 	folderId?: string | null;
 	includeDescendants?: boolean;
