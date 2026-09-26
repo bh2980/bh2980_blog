@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	applyViewQuery,
-	isExplorerMode,
-	listStateToApiQuery,
-	listStateToSearchParams,
-	parseListState,
-	viewQueryOf,
-} from "../list-state";
+import { isExplorerMode, listStateToApiQuery, listStateToSearchParams, parseListState } from "../list-state";
 
 describe("관리자 목록 상태(§3.2)", () => {
 	it("round-trips filters through the URL", () => {
@@ -76,32 +69,5 @@ describe("관리자 목록 상태(§3.2)", () => {
 		const trash = listStateToApiQuery(state, { trash: true });
 		expect(trash.getAll("status")).toEqual(["trashed"]);
 		expect(trash.has("folderId")).toBe(false);
-	});
-
-	it("saves views without folder or page and applies them in the current folder (v2 A4)", () => {
-		const source = parseListState(
-			new URLSearchParams(
-				"collection=memo&folder=f1&page=3&pageSize=50&changes=1&tag=t1&sortField=title&sortDirection=asc",
-			),
-		);
-		const query = viewQueryOf(source);
-		expect(new URLSearchParams(query).has("folder")).toBe(false);
-		expect(new URLSearchParams(query).has("page")).toBe(false);
-		expect(new URLSearchParams(query).has("pageSize")).toBe(false);
-
-		const here = parseListState(new URLSearchParams("collection=memo&folder=f2&page=4&pageSize=100&search=x"));
-		const applied = applyViewQuery(here, query);
-		expect(applied).toMatchObject({
-			collection: "memo",
-			folder: "f2",
-			page: 1,
-			pageSize: 100,
-			search: "",
-			hasChanges: true,
-			tagIds: ["t1"],
-			sortField: "title",
-			sortDirection: "asc",
-		});
-		expect(viewQueryOf(applied)).toBe(query);
 	});
 });

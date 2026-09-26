@@ -1,11 +1,10 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { clearPatchFor } from "./column-header";
 import { COLUMN_CONFIG, type ColumnFilter, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
@@ -75,26 +74,18 @@ export function filterChips(
 	return chips;
 }
 
-/** 목록 위 도구 막대: 전체 검색, 저장된 보기, 새로 만들기, 적용된 필터 칩. */
-export function ListToolbar({
+/** 머리글의 검색칸(§3.2). 입력이 멈추면 서버 검색을 보낸다. 게시글·메모는 본문 검색을 켤 수 있다. */
+export function ListSearch({
 	state,
-	options,
 	onChange,
-	onCreateNew,
-	views,
-	searchOnly = false,
+	allowBody = true,
 }: {
 	state: ListState;
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
 	onChange: (patch: Partial<ListState>) => void;
-	onCreateNew?: () => void;
-	views?: ReactNode;
-	/** 휴지통 화면처럼 검색만 두는 경우. */
-	searchOnly?: boolean;
+	allowBody?: boolean;
 }) {
 	const [search, setSearch] = useState(state.search);
 	useEffect(() => setSearch(state.search), [state.search]);
-	// 입력이 멈추면 서버 검색을 한 번 보낸다.
 	useEffect(() => {
 		if (search === state.search) return;
 		const timer = setTimeout(() => onChange({ search }), 300);
@@ -102,77 +93,84 @@ export function ListToolbar({
 	}, [search, state.search, onChange]);
 
 	const isContent = state.collection === "post" || state.collection === "memo";
-	const chips = filterChips(state, options);
-
 	return (
-		<div className="space-y-2 border-b px-4 py-3 lg:px-6">
-			<div className="flex flex-wrap items-center gap-2">
-				<Input
+		<div className="flex items-center gap-3">
+			<InputGroup className="h-8 w-64">
+				<InputGroupAddon>
+					<Search aria-hidden />
+				</InputGroupAddon>
+				<InputGroupInput
 					type="search"
 					aria-label="제목·주소 검색"
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
 					placeholder={state.includeBody ? "제목·주소·본문 검색" : "제목·주소 검색"}
-					className="h-8 w-60"
 				/>
-				{isContent && !searchOnly && (
-					<Label className="font-normal text-muted-foreground text-xs">
-						<Checkbox
-							checked={state.includeBody}
-							onCheckedChange={(checked) => onChange({ includeBody: checked === true })}
-						/>
-						본문 포함
-					</Label>
-				)}
-				<div className="ml-auto flex items-center gap-2">
-					{views}
-					{onCreateNew && (
-						<Button type="button" size="sm" onClick={onCreateNew}>
-							<Plus aria-hidden />
-							새로 만들기
-						</Button>
-					)}
-				</div>
-			</div>
-			{chips.length > 0 && (
-				<ul aria-label="적용된 필터" className="flex flex-wrap items-center gap-1.5">
-					{chips.map((chip) => (
-						<li key={chip.key}>
-							<Badge variant="secondary" className="h-6 gap-1 pr-0.5">
-								<span className="max-w-72 truncate">{chip.label}</span>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-xs"
-									aria-label={`${chip.label} 필터 지우기`}
-									onClick={() => onChange(chip.clear)}
-								>
-									<X aria-hidden />
-								</Button>
-							</Badge>
-						</li>
-					))}
-					<li>
+			</InputGroup>
+			{isContent && allowBody && (
+				<Label className="font-normal text-muted-foreground text-xs">
+					<Checkbox
+						checked={state.includeBody}
+						onCheckedChange={(checked) => onChange({ includeBody: checked === true })}
+					/>
+					본문 포함
+				</Label>
+			)}
+		</div>
+	);
+}
+
+/** 적용된 필터 칩 줄. 필터가 하나도 없으면 그리지 않는다. */
+export function FilterChipBar({
+	state,
+	options,
+	onChange,
+}: {
+	state: ListState;
+	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
+	onChange: (patch: Partial<ListState>) => void;
+}) {
+	const chips = filterChips(state, options);
+	if (chips.length === 0) return null;
+	return (
+		<ul aria-label="적용된 필터" className="flex min-h-11 flex-wrap items-center gap-1.5 border-b px-5 py-2">
+			{chips.map((chip) => (
+				<li key={chip.key}>
+					<span className="inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 pr-0.5 pl-2 font-medium text-primary text-xs">
+						<span className="max-w-72 truncate">{chip.label}</span>
 						<Button
 							type="button"
 							variant="ghost"
-							size="xs"
-							onClick={() => {
-								const {
-									collection: _c,
-									folder: _f,
-									includeDescendants: _d,
-									pageSize: _p,
-									...cleared
-								} = clearFilters(state);
-								onChange(cleared);
-							}}
+							size="icon-xs"
+							className="size-5 text-primary hover:bg-primary/15 hover:text-primary"
+							aria-label={`${chip.label} 필터 지우기`}
+							onClick={() => onChange(chip.clear)}
 						>
-							모두 지우기
+							<X aria-hidden />
 						</Button>
-					</li>
-				</ul>
-			)}
-		</div>
+					</span>
+				</li>
+			))}
+			<li>
+				<Button
+					type="button"
+					variant="ghost"
+					size="xs"
+					className="text-muted-foreground"
+					onClick={() => {
+						const {
+							collection: _c,
+							folder: _f,
+							includeDescendants: _d,
+							pageSize: _p,
+							...cleared
+						} = clearFilters(state);
+						onChange(cleared);
+					}}
+				>
+					모두 지우기
+				</Button>
+			</li>
+		</ul>
 	);
 }

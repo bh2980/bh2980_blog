@@ -1,17 +1,33 @@
 "use client";
 
-import { ChevronRight, FileImage, Folder as FolderIcon, FolderOpen, LayoutTemplate, Plus, Trash2 } from "lucide-react";
+import {
+	ChevronRight,
+	FileImage,
+	FileText,
+	Folder as FolderIcon,
+	FolderOpen,
+	Globe,
+	Layers,
+	LayoutTemplate,
+	NotebookPen,
+	Plus,
+	Shapes,
+	Tag,
+	Trash2,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { type KeyboardEvent, useEffect, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@/cms/core/collections";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import {
 	Sidebar,
 	SidebarContent,
+	SidebarFooter,
 	SidebarGroup,
 	SidebarGroupAction,
 	SidebarGroupContent,
@@ -32,6 +48,14 @@ import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/ent
 import { type FolderActions, moveTargetsFor } from "./shared/use-folder-actions";
 
 export type AdminNavId = Collection | "media" | "templates" | "trash";
+
+const COLLECTION_ICONS: Record<Collection, React.ReactNode> = {
+	post: <FileText />,
+	memo: <NotebookPen />,
+	category: <Shapes />,
+	tag: <Tag />,
+	collection: <Layers />,
+};
 
 /** 목록 화면에서만 쓰는 폴더 탐색(§3.3). */
 export interface FolderNavigation {
@@ -268,9 +292,9 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 				{/* 빈 곳의 오른쪽 클릭 메뉴(v2 A2). 폴더 줄의 메뉴와 겹치지 않도록 목록 아래 빈 영역에만 붙인다. */}
 				<ActionContextMenu
 					actions={blankActions}
-					trigger={<div className="min-h-16 flex-1 px-2 pt-3 text-[10px] text-muted-foreground" />}
+					trigger={<div className="min-h-16 flex-1 px-2 pt-3 text-[11px] text-muted-foreground/80 leading-relaxed" />}
 				>
-					목록의 글을 폴더로 끌어 옮길 수 있습니다. 빈 곳을 오른쪽 클릭하면 새 폴더를 만들 수 있습니다.
+					글을 끌어 폴더로 옮기거나, 빈 곳을 오른쪽 클릭해 새 폴더를 만드세요.
 				</ActionContextMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>
@@ -301,9 +325,16 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 
 	return (
 		<Sidebar>
-			<SidebarHeader>
-				<Link href="/admin" onClick={closeMobile} className="px-2 py-1 font-semibold text-sm">
-					CMS 관리자
+			<SidebarHeader className="px-3 pt-3.5">
+				<Link href="/admin" onClick={closeMobile} className="flex items-center gap-2.5 rounded-md px-1.5 py-1">
+					<span
+						aria-hidden
+						className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary font-semibold text-sidebar-primary-foreground text-xs"
+					>
+						b
+					</span>
+					<span className="font-semibold text-[13px] text-sidebar-accent-foreground">bh2980.dev</span>
+					<span className="ml-auto text-[11px] text-muted-foreground">CMS</span>
 				</Link>
 			</SidebarHeader>
 			<SidebarContent>
@@ -312,7 +343,12 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 					<SidebarGroupContent>
 						<SidebarMenu aria-label="컬렉션">
 							{COLLECTIONS.map((collection) =>
-								navLink(`/admin?collection=${collection}`, collection, COLLECTION_DEFINITIONS[collection].label),
+								navLink(
+									`/admin?collection=${collection}`,
+									collection,
+									COLLECTION_DEFINITIONS[collection].label,
+									COLLECTION_ICONS[collection],
+								),
 							)}
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -337,6 +373,16 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				</SidebarGroup>
 				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
 			</SidebarContent>
+			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2">
+				<Link
+					href="/"
+					className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+				>
+					<Globe aria-hidden className="size-4" />
+					블로그 보기
+				</Link>
+				<ThemeToggle className="size-8 text-muted-foreground" />
+			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
 	);

@@ -38,8 +38,6 @@ export interface ListState {
 	sortDirection: "asc" | "desc";
 	page: number;
 	pageSize: PageSize;
-	/** 지금 연 저장된 보기의 ID(v2 A4). 조건을 바꾸면 `변경됨`을 보여 주는 기준이다. */
-	view: string;
 }
 
 export const DEFAULT_LIST_STATE: Omit<ListState, "collection"> = {
@@ -64,7 +62,6 @@ export const DEFAULT_LIST_STATE: Omit<ListState, "collection"> = {
 	sortDirection: "desc",
 	page: 1,
 	pageSize: 25,
-	view: "",
 };
 
 export const DATE_KEYS = [
@@ -106,7 +103,6 @@ export function parseListState(
 		sortDirection: params.get("sortDirection") === "asc" ? "asc" : "desc",
 		page: Number.isInteger(page) && page > 0 ? page : 1,
 		pageSize: pageSize === 50 || pageSize === 100 ? pageSize : 25,
-		view: params.get("view") ?? "",
 	};
 	for (const key of DATE_KEYS) {
 		const value = params.get(key) ?? "";
@@ -115,7 +111,7 @@ export function parseListState(
 	return { ...state, explicit: { pageSize: params.has("pageSize"), sort: params.has("sortField") } };
 }
 
-/** 검색·필터·정렬만 URL 질의로 쓴다. 저장된 보기(v2 A4)의 `query`가 이 모양이다. */
+/** 검색·필터·정렬을 URL 질의로 쓴다. */
 function appendFilterParams(params: URLSearchParams, state: ListState) {
 	const set = (key: string, value: string, fallback: string) => {
 		if (value !== fallback) params.set(key, value);
@@ -142,30 +138,7 @@ export function listStateToSearchParams(state: ListState): URLSearchParams {
 	appendFilterParams(params, state);
 	if (state.page !== 1) params.set("page", String(state.page));
 	params.set("pageSize", String(state.pageSize));
-	if (state.view) params.set("view", state.view);
 	return params;
-}
-
-/** 저장된 보기에 담을 부분(검색·필터·정렬). 폴더·페이지·페이지 크기는 담지 않는다(2026-09-27 결정). */
-export function viewQueryOf(state: ListState): string {
-	const params = new URLSearchParams();
-	appendFilterParams(params, state);
-	return params.toString();
-}
-
-/** 저장된 보기를 현재 목록에 적용한다. 컬렉션·폴더·페이지 크기는 그대로 두고 1쪽으로 간다. */
-export function applyViewQuery(state: ListState, query: string, viewId = ""): ListState {
-	const params = new URLSearchParams(query);
-	params.set("collection", state.collection);
-	const { explicit: _explicit, ...parsed } = parseListState(params);
-	return {
-		...parsed,
-		folder: state.folder,
-		includeDescendants: state.includeDescendants,
-		pageSize: state.pageSize,
-		page: 1,
-		view: viewId,
-	};
 }
 
 const seoulDayBoundary = (date: string, end: boolean) => {

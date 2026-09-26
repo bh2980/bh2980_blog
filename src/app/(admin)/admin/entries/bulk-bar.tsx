@@ -204,9 +204,9 @@ export function BulkBar({
 	];
 
 	return (
-		<section aria-label="일괄 작업" className="border-b bg-muted/40 px-4 py-3 lg:px-6">
-			<div className="flex flex-wrap items-center gap-3 text-sm">
-				<span className="font-semibold">{selected.length}개 선택</span>
+		<section aria-label="일괄 작업" className="border-b bg-primary/5 px-5 py-2">
+			<div className="flex min-h-7 flex-wrap items-center gap-2 text-sm">
+				<span className="font-medium text-primary">{selected.length}개 선택</span>
 				<Button type="button" variant="ghost" size="xs" onClick={onClearSelection}>
 					선택 해제
 				</Button>

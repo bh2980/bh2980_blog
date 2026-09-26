@@ -15,7 +15,7 @@ export default function AdminRootLayout({ children }: { children: ReactNode }) {
 	return (
 		<ThemeProvider attribute="class" disableTransitionOnChange>
 			<TooltipProvider>
-				<div className="min-h-screen bg-background font-sans text-foreground antialiased">{children}</div>
+				<div className="cms-admin min-h-screen bg-background text-foreground">{children}</div>
 				<Toaster richColors closeButton position="bottom-right" />
 			</TooltipProvider>
 		</ThemeProvider>

@@ -249,9 +249,9 @@ export function InspectorPanel({
 	];
 
 	return (
-		<div className="h-full w-full space-y-6 overflow-y-auto border-l bg-sidebar p-5 text-sm lg:w-80">
-			<div className="flex items-center justify-between border-b pb-3">
-				<h2 className="font-bold text-muted-foreground text-xs uppercase tracking-wider">속성</h2>
+		<div className="h-full w-full space-y-5 overflow-y-auto border-l bg-background px-5 py-4 text-sm lg:w-80">
+			<div className="flex h-7 items-center justify-between">
+				<h2 className="font-medium text-muted-foreground text-xs">속성</h2>
 				{onClose && (
 					<Button type="button" size="sm" variant="ghost" className={actionButton} onClick={onClose}>
 						닫기

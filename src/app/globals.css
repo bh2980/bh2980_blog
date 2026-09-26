@@ -480,3 +480,82 @@
 	display: inline-block;
 	min-width: max-content;
 }
+
+/*
+ * CMS 관리자 화면 토큰(v2 A 개편, "조용한 작업 도구" 방향). 블로그 토큰은 건드리지 않는다.
+ * 팝업·메뉴는 body로 포털되므로 관리자 컨테이너가 있는 문서 전체(html)에 건다.
+ */
+html:has(.cms-admin) {
+	--background: #ffffff;
+	--foreground: #18181b;
+	--card: #ffffff;
+	--card-foreground: #18181b;
+	--popover: #ffffff;
+	--popover-foreground: #18181b;
+	--primary: #4f46e5;
+	--primary-foreground: #ffffff;
+	--secondary: #f4f4f5;
+	--secondary-foreground: #18181b;
+	--muted: #f4f4f5;
+	--muted-foreground: #71717a;
+	--accent: #f0f0f2;
+	--accent-foreground: #18181b;
+	--destructive: #dc2626;
+	--border: #ececef;
+	--input: #e4e4e7;
+	--ring: #6366f1;
+	--sidebar: #f7f7f8;
+	--sidebar-foreground: #3f3f46;
+	--sidebar-primary: #18181b;
+	--sidebar-primary-foreground: #fafafa;
+	--sidebar-accent: #ececee;
+	--sidebar-accent-foreground: #18181b;
+	--sidebar-border: #e7e7ea;
+	--sidebar-ring: #6366f1;
+	--radius: 0.5rem;
+	--shadow-xs: 0 1px 2px rgb(24 24 27 / 0.04);
+	--shadow-sm: 0 1px 3px rgb(24 24 27 / 0.06);
+	--shadow-md: 0 4px 16px rgb(24 24 27 / 0.08);
+	--shadow-lg: 0 12px 32px rgb(24 24 27 / 0.12);
+}
+
+html.dark:has(.cms-admin) {
+	--background: #0c0c0e;
+	--foreground: #f4f4f5;
+	--card: #111113;
+	--card-foreground: #f4f4f5;
+	--popover: #151518;
+	--popover-foreground: #f4f4f5;
+	--primary: #6366f1;
+	--primary-foreground: #ffffff;
+	--secondary: #1c1c20;
+	--secondary-foreground: #f4f4f5;
+	--muted: #1c1c20;
+	--muted-foreground: #a1a1aa;
+	--accent: #1f1f24;
+	--accent-foreground: #f4f4f5;
+	--destructive: #f87171;
+	--border: #232328;
+	--input: #2a2a30;
+	--ring: #818cf8;
+	--sidebar: #0f0f12;
+	--sidebar-foreground: #d4d4d8;
+	--sidebar-primary: #f4f4f5;
+	--sidebar-primary-foreground: #0c0c0e;
+	--sidebar-accent: #1f1f24;
+	--sidebar-accent-foreground: #f4f4f5;
+	--sidebar-border: #1f1f24;
+	--sidebar-ring: #818cf8;
+	--shadow-md: 0 4px 16px rgb(0 0 0 / 0.4);
+	--shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
+}
+
+.cms-admin {
+	font-size: 14px;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* 표의 숫자·날짜는 자릿수를 맞춘다. */
+.cms-admin .tabular {
+	font-variant-numeric: tabular-nums;
+}

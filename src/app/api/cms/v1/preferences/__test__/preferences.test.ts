@@ -89,29 +89,4 @@ describe("Preferences API — 컬렉션별 목록 설정(§3.2)", () => {
 			expect(res.status).toBe(400);
 		}
 	});
-
-	it("replaces saved views as a whole per collection and keeps the other settings (v2 A4)", async () => {
-		await putPreferences(putReq({ collections: { post: { pageSize: 50 } } }));
-		const views = [
-			{ id: "v1", name: "수정 중인 글", query: "changes=1", columns: { visibility: { slug: true } } },
-			{ id: "v2", name: "초안", query: "status=draft" },
-		];
-		expect((await putPreferences(putReq({ collections: { post: { views } } }))).status).toBe(200);
-		expect((await putPreferences(putReq({ collections: { post: { views: [views[1]] } } }))).status).toBe(200);
-
-		const saved = await (await getPreferences(getReq())).json();
-		expect(saved.collections.post).toEqual({ pageSize: 50, views: [views[1]] });
-	});
-
-	it("rejects duplicate view ids, blank names and too many views with 400", async () => {
-		const view = (id: string) => ({ id, name: `보기 ${id}`, query: "" });
-		for (const body of [
-			{ collections: { post: { views: [view("a"), view("a")] } } },
-			{ collections: { post: { views: [{ id: "a", name: "  ", query: "" }] } } },
-			{ collections: { post: { views: Array.from({ length: 21 }, (_, index) => view(String(index))) } } },
-		]) {
-			const res = await putPreferences(putReq(body));
-			expect(res.status).toBe(400);
-		}
-	});
 });

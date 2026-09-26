@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, PanelRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -657,26 +658,32 @@ export function EntryEditorShell({
 
 	return (
 		<div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
-			<header className="z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b bg-background/90 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-5">
-				<Breadcrumb aria-label="현재 위치" className="min-w-0 text-xs">
-					<BreadcrumbList className="flex-nowrap text-xs">
+			<header className="z-20 flex min-h-13 shrink-0 flex-wrap items-center gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-4">
+				<Breadcrumb aria-label="현재 위치" className="min-w-0">
+					<BreadcrumbList className="flex-nowrap text-[13px]">
 						<BreadcrumbItem>
-							<BreadcrumbLink render={<Link href={`/admin?collection=${collection}`} />}>목록으로</BreadcrumbLink>
+							<BreadcrumbLink
+								render={<Link href={`/admin?collection=${collection}`} />}
+								className="flex items-center gap-1 text-muted-foreground"
+							>
+								<ChevronLeft aria-hidden className="size-4" />
+								목록으로
+							</BreadcrumbLink>
 						</BreadcrumbItem>
 						<BreadcrumbSeparator />
 						<BreadcrumbItem className="min-w-0">
-							<BreadcrumbPage className="max-w-[240px] truncate font-semibold">
+							<BreadcrumbPage className="max-w-[320px] truncate font-medium">
 								{form.title || "제목 없는 글"}
 							</BreadcrumbPage>
 						</BreadcrumbItem>
 						<BreadcrumbItem>
-							<span className="text-muted-foreground">· {statusLabel}</span>
+							<span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">{statusLabel}</span>
 						</BreadcrumbItem>
 					</BreadcrumbList>
 				</Breadcrumb>
 
-				<div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap lg:w-auto">
-					<output aria-live="polite" className="flex items-center gap-1.5 text-muted-foreground text-xs">
+				<div className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap lg:w-auto">
+					<output aria-live="polite" className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs">
 						<span
 							aria-hidden
 							className={cn(
@@ -694,7 +701,13 @@ export function EntryEditorShell({
 						{!autosave.backupAvailable && " · 브라우저 복구 불가"}
 					</output>
 					{canRetry && (
-						<Button type="button" size="xs" variant="outline" onClick={() => void autosave.retry(true)}>
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							className="text-muted-foreground"
+							onClick={() => void autosave.retry(true)}
+						>
 							다시 시도
 						</Button>
 					)}
@@ -711,8 +724,9 @@ export function EntryEditorShell({
 
 					<Button
 						type="button"
-						size="xs"
-						variant="outline"
+						size="sm"
+						variant="ghost"
+						className="text-muted-foreground"
 						aria-pressed={editorMode === "source"}
 						disabled={editorMode === "source" && !canUseVisual}
 						title={!canUseVisual ? "본문 오류를 고치면 시각 모드를 쓸 수 있습니다" : undefined}
@@ -722,7 +736,17 @@ export function EntryEditorShell({
 					</Button>
 
 					<DropdownMenu open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
-						<DropdownMenuTrigger render={<Button type="button" size="xs" variant="outline" disabled={isReadOnly} />}>
+						<DropdownMenuTrigger
+							render={
+								<Button
+									type="button"
+									size="sm"
+									variant="ghost"
+									className="text-muted-foreground"
+									disabled={isReadOnly}
+								/>
+							}
+						>
 							템플릿 ▾
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
@@ -749,22 +773,21 @@ export function EntryEditorShell({
 						</DropdownMenuContent>
 					</DropdownMenu>
 
-					<Button type="button" size="xs" variant="outline" disabled={isReadOnly} onClick={() => void handleSaveNow()}>
+					<Button
+						type="button"
+						size="sm"
+						variant="ghost"
+						className="text-muted-foreground"
+						disabled={isReadOnly}
+						onClick={() => void handleSaveNow()}
+					>
 						저장
 					</Button>
 					<Button
-						id="cms-publish"
 						type="button"
-						size="xs"
-						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
-						onClick={() => void handlePublish()}
-					>
-						{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
-					</Button>
-					<Button
-						type="button"
-						size="xs"
-						variant="outline"
+						size="sm"
+						variant="ghost"
+						className="text-muted-foreground"
 						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
 						onClick={() => {
 							setScheduleInput("");
@@ -773,19 +796,37 @@ export function EntryEditorShell({
 					>
 						예약
 					</Button>
-					<Button type="button" size="xs" variant="outline" onClick={() => setPaletteOpen(true)}>
-						명령 <Kbd>⌘K</Kbd>
+					<Button
+						type="button"
+						size="sm"
+						variant="ghost"
+						className="text-muted-foreground"
+						aria-label="명령 검색"
+						onClick={() => setPaletteOpen(true)}
+					>
+						<Kbd>⌘K</Kbd>
+					</Button>
+					<Button
+						id="cms-publish"
+						type="button"
+						size="sm"
+						className="ml-1"
+						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
+						onClick={() => void handlePublish()}
+					>
+						{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
 					</Button>
 					<Button
 						type="button"
-						size="xs"
-						variant="outline"
+						size="icon-sm"
+						variant={isInspectorOpen ? "secondary" : "ghost"}
+						aria-label={isInspectorOpen ? "속성 닫기" : "속성 열기"}
 						aria-expanded={isInspectorOpen}
 						onClick={() => setIsInspectorOpen((open) => !open)}
 					>
-						{isInspectorOpen ? "속성 닫기" : "속성 열기"}
+						<PanelRight aria-hidden />
 					</Button>
-					<ThemeToggle className="size-7" />
+					<ThemeToggle className="size-8 text-muted-foreground" />
 				</div>
 			</header>
 
@@ -873,7 +914,7 @@ export function EntryEditorShell({
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					{editorMode === "visual" ? (
-						<div className="mx-auto flex min-h-full max-w-[800px] flex-col">
+						<div className="mx-auto flex min-h-full max-w-[760px] flex-col">
 							<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
 								글 제목 (본문 위)
 							</FieldLabel>
@@ -883,7 +924,7 @@ export function EntryEditorShell({
 								readOnly={isReadOnly}
 								onChange={(event) => handleTitleChange(event.target.value)}
 								placeholder="제목 없는 글"
-								className="mt-6 h-auto w-full rounded-none border-0 bg-transparent px-10 py-1 font-bold text-3xl shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-3xl dark:bg-transparent"
+								className="mt-12 h-auto w-full rounded-none border-0 bg-transparent px-10 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
 							/>
 							<CmsEditor
 								content={form.mdx}

@@ -219,7 +219,7 @@ export function ColumnHeader({
 						type="button"
 						variant="ghost"
 						size="sm"
-						className={cn("-ml-2 h-7 gap-1 px-2 font-medium text-muted-foreground", filtered && "text-foreground")}
+						className={cn("-ml-2 h-7 gap-1 px-2 font-normal text-muted-foreground text-xs", filtered && "text-primary")}
 						aria-label={`${config.label}${sorted ? `, ${sorted === "asc" ? "오름차순" : "내림차순"} 정렬` : ""}${filtered ? ", 필터 적용됨" : ""} — 정렬·필터 열기`}
 					/>
 				}

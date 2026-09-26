@@ -1,10 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { COLLECTIONS } from "@/cms/core/collections";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cmsFetch } from "../admin-api";
 import { AdminSidebar, type AdminSidebarProps } from "../admin-sidebar";
@@ -51,11 +48,14 @@ export function AdminNavProvider({ children }: { children: ReactNode }) {
  */
 export function AdminShell({
 	title,
+	count,
 	sidebar,
 	headerActions,
 	children,
 }: {
 	title: ReactNode;
+	/** 제목 옆에 흐리게 보이는 항목 수. */
+	count?: number;
 	sidebar: AdminSidebarProps;
 	headerActions?: ReactNode;
 	children: ReactNode;
@@ -64,7 +64,7 @@ export function AdminShell({
 	if (!nav) {
 		return (
 			<AdminNavProvider>
-				<AdminShell title={title} sidebar={sidebar} headerActions={headerActions}>
+				<AdminShell title={title} count={count} sidebar={sidebar} headerActions={headerActions}>
 					{children}
 				</AdminShell>
 			</AdminNavProvider>
@@ -75,15 +75,13 @@ export function AdminShell({
 		<SidebarProvider className="h-svh overflow-hidden">
 			<AdminSidebar {...sidebar} trashCount={nav.trashCount} />
 			<SidebarInset className="min-w-0 overflow-hidden">
-				<header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-					<SidebarTrigger aria-label="사이드바 열고 닫기" />
-					<Separator orientation="vertical" className="mr-1 data-vertical:h-4" />
-					<div className="min-w-0 flex-1 truncate font-medium text-sm">{title}</div>
-					{headerActions}
-					<Link href="/" className="rounded-md px-2 py-1 text-muted-foreground text-xs hover:text-foreground">
-						블로그
-					</Link>
-					<ThemeToggle />
+				<header className="flex h-13 shrink-0 items-center gap-3 border-b px-4 lg:px-5">
+					<SidebarTrigger aria-label="사이드바 열고 닫기" className="-ml-1 text-muted-foreground" />
+					<h1 className="flex min-w-0 flex-1 items-baseline gap-2 truncate font-semibold text-[15px]">
+						<span className="truncate">{title}</span>
+						{count !== undefined && <span className="tabular font-normal text-muted-foreground text-sm">{count}</span>}
+					</h1>
+					<div className="flex items-center gap-2">{headerActions}</div>
 				</header>
 				<div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
 			</SidebarInset>

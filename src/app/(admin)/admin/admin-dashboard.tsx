@@ -1,30 +1,28 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { AdminColumnSettings, CollectionPreferences, PreferencesBody, SavedView } from "@/cms/core/api";
+import type { AdminColumnSettings, CollectionPreferences, PreferencesBody } from "@/cms/core/api";
 import { COLLECTION_DEFINITIONS, COLLECTIONS, isRecordCollection } from "@/cms/core/collections";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "./admin-api";
 import { AdminEntriesTable } from "./admin-entries-table";
 import { BulkBar, type BulkItemResult, type BulkSelection, describeBulkFailure, runBulk } from "./entries/bulk-bar";
 import {
-	applyViewQuery,
 	isExplorerMode,
 	type ListState,
 	listStateToApiQuery,
 	listStateToSearchParams,
 	parseListState,
-	viewQueryOf,
 } from "./list-state";
-import { ListToolbar } from "./list-toolbar";
+import { FilterChipBar, ListSearch } from "./list-toolbar";
 import { RecordDialog, type RecordTarget } from "./record-dialog";
-import { SavedViews } from "./saved-views";
 import type { MenuAction } from "./shared/action-menu";
 import { AdminNavProvider, AdminShell, useAdminNav } from "./shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "./shared/confirm-dialog";
@@ -373,38 +371,23 @@ function useDashboard(mode: Mode) {
 				})()
 			: null;
 
-	const views: SavedView[] = collectionPrefs.views ?? [];
-	const activeView = views.find((view) => view.id === state.view);
-	// 보기에 저장된 컬럼 설정이 있으면 그 보기를 여는 동안 쓴다.
-	const columnSettings = activeView?.columns ?? collectionPrefs.columns;
+	const columnSettings = collectionPrefs.columns;
 	const label = COLLECTION_DEFINITIONS[collection].label;
+
+	const headerActions = (
+		<>
+			<ListSearch state={state} onChange={update} allowBody={!isTrash} />
+			{!isTrash && (
+				<Button type="button" size="sm" onClick={createNew}>
+					<Plus aria-hidden />새 {label}
+				</Button>
+			)}
+		</>
+	);
 
 	const body = (
 		<>
-			<ListToolbar
-				state={state}
-				options={options}
-				onChange={update}
-				searchOnly={isTrash}
-				onCreateNew={isTrash ? undefined : createNew}
-				views={
-					isTrash ? undefined : (
-						<SavedViews
-							views={views}
-							activeId={activeView ? activeView.id : ""}
-							currentQuery={viewQueryOf(state)}
-							currentColumns={columnSettings}
-							onOpen={(view) => navigate(applyViewQuery(state, view.query, view.id))}
-							onOpenAll={() => navigate(applyViewQuery(state, "", ""))}
-							onChange={(next, openId) => {
-								savePreferences({ views: next });
-								if (openId !== undefined) update({ view: openId }, { resetPage: false });
-								else if (state.view && !next.some((view) => view.id === state.view)) update({ view: "" });
-							}}
-						/>
-					)
-				}
-			/>
+			<FilterChipBar state={state} options={options} onChange={update} />
 			<BulkBar
 				collection={collection}
 				mode={mode}
@@ -432,14 +415,7 @@ function useDashboard(mode: Mode) {
 					}
 				}}
 				columnSettings={columnSettings}
-				onColumnSettingsChange={(columns: AdminColumnSettings) =>
-					// 보기를 연 동안의 컬럼 변경은 `변경됨`으로 보여 주고, 저장하면 보기에 들어간다.
-					activeView
-						? savePreferences({
-								views: views.map((view) => (view.id === activeView.id ? { ...view, columns } : view)),
-							})
-						: savePreferences({ columns })
-				}
+				onColumnSettingsChange={(columns: AdminColumnSettings) => savePreferences({ columns })}
 				selectedIds={selectedIds}
 				onSelectionChange={setSelectedIds}
 				total={total}
@@ -491,7 +467,7 @@ function useDashboard(mode: Mode) {
 		</>
 	);
 
-	return { body, state, folders, folderActions, moveEntries, update, createNew, label };
+	return { body, headerActions, total, state, folders, folderActions, moveEntries, update, createNew, label };
 }
 
 /** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
@@ -513,27 +489,31 @@ export function AdminTrashDashboard() {
 }
 
 function TrashPage() {
-	const { body, state } = useDashboard("trash");
+	const { body, state, total, headerActions } = useDashboard("trash");
 	return (
 		<AdminShell
 			title="휴지통"
+			count={total}
 			sidebar={{ activeNav: "trash" }}
 			headerActions={
-				<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
-					{COLLECTIONS.map((item) => (
-						<Link
-							key={item}
-							href={`/admin/trash?collection=${item}` as Route}
-							aria-current={state.collection === item ? "page" : undefined}
-							className={cn(
-								buttonVariants({ variant: "ghost", size: "xs" }),
-								"text-muted-foreground aria-[current=page]:bg-background aria-[current=page]:text-foreground aria-[current=page]:shadow-sm",
-							)}
-						>
-							{COLLECTION_DEFINITIONS[item].label}
-						</Link>
-					))}
-				</nav>
+				<>
+					{headerActions}
+					<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
+						{COLLECTIONS.map((item) => (
+							<Link
+								key={item}
+								href={`/admin/trash?collection=${item}` as Route}
+								aria-current={state.collection === item ? "page" : undefined}
+								className={cn(
+									buttonVariants({ variant: "ghost", size: "xs" }),
+									"text-muted-foreground aria-[current=page]:bg-background aria-[current=page]:text-foreground aria-[current=page]:shadow-sm",
+								)}
+							>
+								{COLLECTION_DEFINITIONS[item].label}
+							</Link>
+						))}
+					</nav>
+				</>
 			}
 		>
 			{body}
@@ -542,7 +522,8 @@ function TrashPage() {
 }
 
 function ListPage() {
-	const { state, folders, folderActions, moveEntries, update, createNew, label, body } = useDashboard("list");
+	const { state, folders, folderActions, moveEntries, update, createNew, label, body, headerActions, total } =
+		useDashboard("list");
 	const folderLabel =
 		state.folder === "unfiled"
 			? " · 미분류"
@@ -552,6 +533,8 @@ function ListPage() {
 	return (
 		<AdminShell
 			title={`${label}${folderLabel}`}
+			count={total}
+			headerActions={headerActions}
 			sidebar={{
 				activeNav: state.collection,
 				folderNav: {

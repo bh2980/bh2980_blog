@@ -1284,22 +1284,6 @@ components:
                     type: array
                     items: { type: string, enum: [title, status, category, tags, updatedAt, publishedAt, createdAt, slug, folder] }
                   visibility: { type: object, additionalProperties: { type: boolean } }
-              views:
-                type: array
-                maxItems: 20
-                description: 이름 붙인 저장된 보기(v2 A4). 배열 순서가 표시 순서이며 PUT은 배열 전체를 바꾼다.
-                items:
-                  type: object
-                  required: [id, name, query]
-                  properties:
-                    id: { type: string, maxLength: 64 }
-                    name: { type: string, maxLength: 60 }
-                    query: { type: string, maxLength: 2000, description: 목록 URL의 검색·필터·정렬 부분. 폴더·페이지는 담지 않는다. }
-                    columns:
-                      type: object
-                      properties:
-                        order: { type: array, items: { type: string } }
-                        visibility: { type: object, additionalProperties: { type: boolean } }
         editor:
           type: object
           properties:

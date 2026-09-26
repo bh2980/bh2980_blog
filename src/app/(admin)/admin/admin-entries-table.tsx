@@ -52,7 +52,65 @@ export { COLUMN_LABELS, columnsFor };
 const features = tableFeatures({ columnVisibilityFeature, columnOrderingFeature, rowSelectionFeature });
 const helper = createColumnHelper<typeof features, ListEntriesItem>();
 
-const formatDate = (value: Date | string | null) => (value ? new Date(value).toLocaleString("ko-KR") : "—");
+/** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
+const formatDate = (value: Date | string | null) => {
+	if (!value) return "—";
+	const date = new Date(value);
+	const sameYear = date.getFullYear() === new Date().getFullYear();
+	return sameYear
+		? date.toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+		: date.toLocaleDateString("ko-KR");
+};
+
+/** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
+function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
+	const label = isRecord && item.status === "published" ? "활성" : describeEntryStatus(item);
+	const tone = item.scheduledAt
+		? "text-primary"
+		: item.status === "published"
+			? item.hasUnpublishedChanges
+				? "text-amber-600 dark:text-amber-400"
+				: "text-emerald-600 dark:text-emerald-400"
+			: "text-muted-foreground";
+	const icon = item.scheduledAt ? (
+		<>
+			<circle cx="8" cy="8" r="5.5" />
+			<path d="M8 5.5V8l1.8 1.1" />
+		</>
+	) : item.status === "published" ? (
+		item.hasUnpublishedChanges ? (
+			<>
+				<circle cx="8" cy="8" r="5.5" />
+				<path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none" />
+			</>
+		) : (
+			<circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="none" />
+		)
+	) : item.status === "archived" || item.status === "trashed" ? (
+		<>
+			<circle cx="8" cy="8" r="5.5" />
+			<path d="M5 8h6" />
+		</>
+	) : (
+		<circle cx="8" cy="8" r="5.5" strokeDasharray="2.4 2.4" />
+	);
+	return (
+		<span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-foreground/80">
+			<svg
+				aria-hidden="true"
+				focusable="false"
+				viewBox="0 0 16 16"
+				className={cn("size-3.5 shrink-0", tone)}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.6"
+			>
+				{icon}
+			</svg>
+			{label}
+		</span>
+	);
+}
 const resolve = <T,>(updater: Updater<T>, current: T): T =>
 	typeof updater === "function" ? (updater as (old: T) => T)(current) : updater;
 
@@ -154,7 +212,7 @@ export function AdminEntriesTable({
 					) : (
 						<Link
 							href={`/admin/entries/${item.id}/edit` as Route}
-							className="font-medium hover:text-primary hover:underline"
+							className="block max-w-[28rem] truncate font-medium text-foreground hover:text-primary"
 						>
 							{title}
 						</Link>
@@ -162,29 +220,33 @@ export function AdminEntriesTable({
 				}
 				case "status":
 					// 색상만으로 상태를 전달하지 않는다(§3.2).
-					return (
-						<span className={cn(item.status === "published" && "text-emerald-700 dark:text-emerald-400")}>
-							{isRecord && item.status === "published" ? "활성" : describeEntryStatus(item)}
-						</span>
-					);
+					return <StatusLabel item={item} isRecord={isRecord} />;
 				case "category":
 					return item.category?.title ?? <span className="text-muted-foreground">—</span>;
 				case "tags":
-					return item.tags.length ? (
-						<span className="flex flex-wrap gap-1">
-							{item.tags.map((tag) => (
-								<span key={tag.id} className="max-w-32 truncate rounded border px-1.5 py-0.5 text-xs">
+					if (!item.tags.length) return <span className="text-muted-foreground">—</span>;
+					return (
+						<span
+							className="flex items-center gap-1 whitespace-nowrap"
+							title={item.tags.map((tag) => tag.title).join(", ")}
+						>
+							{item.tags.slice(0, 2).map((tag) => (
+								<span
+									key={tag.id}
+									className="max-w-24 truncate rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs"
+								>
 									{tag.title}
 								</span>
 							))}
+							{item.tags.length > 2 && <span className="text-muted-foreground text-xs">+{item.tags.length - 2}</span>}
 						</span>
-					) : (
-						<span className="text-muted-foreground">—</span>
 					);
 				case "updatedAt":
 				case "createdAt":
 				case "publishedAt":
-					return <span className="text-muted-foreground text-xs">{formatDate(item[column])}</span>;
+					return (
+						<span className="tabular whitespace-nowrap text-muted-foreground text-xs">{formatDate(item[column])}</span>
+					);
 				case "slug":
 					return <span className="font-mono text-muted-foreground text-xs">{item.slug || "—"}</span>;
 				case "folder":
@@ -330,75 +392,9 @@ export function AdminEntriesTable({
 	const pageHref = (page: number) => `?page=${page}`;
 
 	return (
-		<section aria-label="항목 목록" className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4 lg:px-6">
-			<div className="flex items-center justify-end gap-2 py-2">
-				<Popover>
-					<PopoverTrigger render={<Button type="button" variant="outline" size="sm" />}>
-						<Columns3 aria-hidden />
-						컬럼 설정
-					</PopoverTrigger>
-					<PopoverContent align="end" className="w-64 p-3">
-						<p className="mb-2 text-muted-foreground text-xs">
-							제목은 항상 보입니다. 표시와 순서는 컬렉션별로 저장됩니다.
-						</p>
-						<ul className="space-y-1">
-							{order.map((column, index) => (
-								<li key={column} className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-accent">
-									<Label className="font-normal">
-										<Checkbox
-											checked={visibility[column] ?? false}
-											disabled={column === "title"}
-											onCheckedChange={(checked) => table.getColumn(column)?.toggleVisibility(checked === true)}
-										/>
-										{COLUMN_LABELS[column]}
-									</Label>
-									<span className="flex gap-1">
-										<Button
-											type="button"
-											size="icon-xs"
-											variant="outline"
-											aria-label={`${COLUMN_LABELS[column]} 컬럼 위로`}
-											disabled={index === 0}
-											onClick={() => moveColumn(column, -1)}
-										>
-											<ArrowUp aria-hidden />
-										</Button>
-										<Button
-											type="button"
-											size="icon-xs"
-											variant="outline"
-											aria-label={`${COLUMN_LABELS[column]} 컬럼 아래로`}
-											disabled={index === order.length - 1}
-											onClick={() => moveColumn(column, 1)}
-										>
-											<ArrowDown aria-hidden />
-										</Button>
-									</span>
-								</li>
-							))}
-						</ul>
-					</PopoverContent>
-				</Popover>
-				<Select
-					value={String(state.pageSize)}
-					items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개씩 보기` }))}
-					onValueChange={(value) => value && onPageSizeChange(Number(value) as PageSize)}
-				>
-					<SelectTrigger size="sm" aria-label="페이지 크기">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						{PAGE_SIZES.map((size) => (
-							<SelectItem key={size} value={String(size)}>
-								{size}개씩 보기
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
-
+		<section aria-label="항목 목록" className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			{errorMessage && (
-				<Alert variant="danger" className="mb-2 flex items-center justify-between">
+				<Alert variant="danger" className="mx-5 mt-3 flex w-auto items-center justify-between">
 					<AlertDescription className="col-start-auto">{errorMessage}</AlertDescription>
 					<Button type="button" variant="outline" size="xs" onClick={onRetry}>
 						다시 시도
@@ -406,9 +402,9 @@ export function AdminEntriesTable({
 				</Alert>
 			)}
 
-			<div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-lg border">
-				<Table>
-					<TableHeader className="sticky top-0 z-10 bg-background">
+			<div className="flex min-h-0 flex-1 flex-col overflow-auto">
+				<Table className="[&_td:first-child]:pl-5 [&_td:last-child]:pr-4 [&_th:first-child]:pl-5 [&_th:last-child]:pr-4">
+					<TableHeader className="sticky top-0 z-10 bg-background [&_tr]:border-b">
 						{table.getHeaderGroups().map((group) => (
 							<TableRow key={group.id}>
 								{group.headers.map((header) => {
@@ -418,6 +414,7 @@ export function AdminEntriesTable({
 										<TableHead
 											key={header.id}
 											className={cn(
+												"h-9 font-normal text-muted-foreground text-xs",
 												header.column.id === "select" && "w-10",
 												// 작업 칸은 좁은 화면에서 가로로 스크롤해도 오른쪽에 남긴다.
 												header.column.id === "actions" && "sticky right-0 z-10 bg-background",
@@ -499,6 +496,7 @@ export function AdminEntriesTable({
 									actions={rowMenu(row.original)}
 									trigger={
 										<TableRow
+											className="h-11 data-[state=selected]:bg-primary/5"
 											data-state={row.getIsSelected() ? "selected" : undefined}
 											draggable={!isTrash}
 											onDragStart={(event) => {
@@ -533,44 +531,114 @@ export function AdminEntriesTable({
 				)}
 			</div>
 
-			<div className="flex items-center justify-between gap-2 pt-3 text-muted-foreground text-xs">
-				<span>
-					총 <span className="font-semibold text-foreground">{total}</span>개 중{" "}
+			<div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-5 text-muted-foreground text-xs">
+				<span className="tabular">
+					{total}개 중{" "}
 					{items.length > 0
 						? `${(state.page - 1) * state.pageSize + 1}–${Math.min(state.page * state.pageSize, total)}`
 						: "0"}
 				</span>
-				<Pagination className="mx-0 w-auto">
-					<PaginationContent>
-						<PaginationItem>
-							<PaginationPrevious
-								href={pageHref(state.page - 1)}
-								aria-disabled={state.page <= 1}
-								className={cn(state.page <= 1 && "pointer-events-none opacity-50")}
-								onClick={(event) => {
-									event.preventDefault();
-									if (state.page > 1) onPageChange(state.page - 1);
-								}}
-							/>
-						</PaginationItem>
-						<PaginationItem>
-							<span className="px-2 tabular-nums">
-								{state.page} / {totalPages}
-							</span>
-						</PaginationItem>
-						<PaginationItem>
-							<PaginationNext
-								href={pageHref(state.page + 1)}
-								aria-disabled={state.page >= totalPages}
-								className={cn(state.page >= totalPages && "pointer-events-none opacity-50")}
-								onClick={(event) => {
-									event.preventDefault();
-									if (state.page < totalPages) onPageChange(state.page + 1);
-								}}
-							/>
-						</PaginationItem>
-					</PaginationContent>
-				</Pagination>
+				<div className="flex items-center gap-2">
+					<Popover>
+						<PopoverTrigger
+							render={<Button type="button" variant="ghost" size="xs" className="text-muted-foreground" />}
+						>
+							<Columns3 aria-hidden />
+							컬럼 설정
+						</PopoverTrigger>
+						<PopoverContent align="end" className="w-64 p-3">
+							<p className="mb-2 text-muted-foreground text-xs">
+								제목은 항상 보입니다. 표시와 순서는 컬렉션별로 저장됩니다.
+							</p>
+							<ul className="space-y-1">
+								{order.map((column, index) => (
+									<li
+										key={column}
+										className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-accent"
+									>
+										<Label className="font-normal">
+											<Checkbox
+												checked={visibility[column] ?? false}
+												disabled={column === "title"}
+												onCheckedChange={(checked) => table.getColumn(column)?.toggleVisibility(checked === true)}
+											/>
+											{COLUMN_LABELS[column]}
+										</Label>
+										<span className="flex gap-1">
+											<Button
+												type="button"
+												size="icon-xs"
+												variant="outline"
+												aria-label={`${COLUMN_LABELS[column]} 컬럼 위로`}
+												disabled={index === 0}
+												onClick={() => moveColumn(column, -1)}
+											>
+												<ArrowUp aria-hidden />
+											</Button>
+											<Button
+												type="button"
+												size="icon-xs"
+												variant="outline"
+												aria-label={`${COLUMN_LABELS[column]} 컬럼 아래로`}
+												disabled={index === order.length - 1}
+												onClick={() => moveColumn(column, 1)}
+											>
+												<ArrowDown aria-hidden />
+											</Button>
+										</span>
+									</li>
+								))}
+							</ul>
+						</PopoverContent>
+					</Popover>
+					<Select
+						value={String(state.pageSize)}
+						items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개씩 보기` }))}
+						onValueChange={(value) => value && onPageSizeChange(Number(value) as PageSize)}
+					>
+						<SelectTrigger size="sm" aria-label="페이지 크기" className="h-7 border-0 text-xs shadow-none">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{PAGE_SIZES.map((size) => (
+								<SelectItem key={size} value={String(size)}>
+									{size}개씩 보기
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Pagination className="mx-0 w-auto">
+						<PaginationContent>
+							<PaginationItem>
+								<PaginationPrevious
+									href={pageHref(state.page - 1)}
+									aria-disabled={state.page <= 1}
+									className={cn(state.page <= 1 && "pointer-events-none opacity-50")}
+									onClick={(event) => {
+										event.preventDefault();
+										if (state.page > 1) onPageChange(state.page - 1);
+									}}
+								/>
+							</PaginationItem>
+							<PaginationItem>
+								<span className="px-2 tabular-nums">
+									{state.page} / {totalPages}
+								</span>
+							</PaginationItem>
+							<PaginationItem>
+								<PaginationNext
+									href={pageHref(state.page + 1)}
+									aria-disabled={state.page >= totalPages}
+									className={cn(state.page >= totalPages && "pointer-events-none opacity-50")}
+									onClick={(event) => {
+										event.preventDefault();
+										if (state.page < totalPages) onPageChange(state.page + 1);
+									}}
+								/>
+							</PaginationItem>
+						</PaginationContent>
+					</Pagination>
+				</div>
 			</div>
 		</section>
 	);
