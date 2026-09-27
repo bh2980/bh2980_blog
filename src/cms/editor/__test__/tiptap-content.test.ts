@@ -5,7 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
 import { analyze, serialize, toDocument } from "@/cms/mdx";
 import { readLegacyCorpus } from "@/cms/migrate-from-files/legacy-parser";
-import { CmsImageNode } from "../image-node";
+import { BLOCK_NODE_VIEWS } from "../block-views";
 import {
 	cmsNodeToTiptap,
 	mdxToTiptap,
@@ -25,7 +25,7 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 const schema = getSchema([
 	StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
 	...CMS_SCHEMA_EXTENSIONS,
-	CmsImageNode,
+	...Object.values(BLOCK_NODE_VIEWS),
 ]);
 
 /** Tiptap 스키마를 통과하는지 확인한다 — 통과하지 못하면 실에디터가 조용히 버린다. */
@@ -88,7 +88,7 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 			':::callout{variant="note"}\n\n보존\n\n:::',
 			'::::tabs\n:::tab{label="a"}\nA\n:::\n:::tab{label="b"}\nB\n:::\n::::',
 			"| a | b |\n| --- | --- |\n| 1 | 2 |",
-			"$$\nx^2\n$$",
+			"::::columns\n:::column\n단\n:::\n::::",
 		].join("\n\n");
 		const first = toDocument(analyze(source));
 		const json = cmsNodeToTiptap(first);

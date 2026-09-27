@@ -70,7 +70,7 @@ const isTaskList = (node: CmsNode): boolean => {
 };
 
 const isMappableBlock = (node: CmsNode): boolean => {
-	const converter = converterForCms(node.type);
+	const converter = converterForCms(node.type, node);
 	if (converter) return converter.isMappable(node, context);
 	switch (node.type) {
 		case "paragraph":
@@ -155,7 +155,7 @@ const withTextAlign = (node: CmsNode, content: JSONContent): JSONContent => {
 
 const blockToTiptap = (node: CmsNode): JSONContent => {
 	if (!isMappableBlock(node)) return toOpaque(node);
-	const converter = converterForCms(node.type);
+	const converter = converterForCms(node.type, node);
 	if (converter) return converter.toTiptap(node, context);
 	switch (node.type) {
 		case "paragraph":

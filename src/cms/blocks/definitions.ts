@@ -140,7 +140,7 @@ export const mermaid = defineBlock({
 	syntax: { kind: "fence", lang: "mermaid" },
 	component: "Mermaid",
 	attributes: {},
-	editor: { view: "opaque", insertable: false, keywords: ["mermaid", "다이어그램", "흐름도"] },
+	editor: { view: "node", nodeView: "mermaid", insertable: true, keywords: ["mermaid", "다이어그램", "흐름도"] },
 });
 
 export const chart = defineBlock({
@@ -149,7 +149,7 @@ export const chart = defineBlock({
 	syntax: { kind: "fence", lang: "chart" },
 	component: "Chart",
 	attributes: {},
-	editor: { view: "opaque", insertable: false, keywords: ["chart", "차트", "그래프"] },
+	editor: { view: "node", nodeView: "chart", insertable: true, keywords: ["chart", "차트", "그래프"] },
 });
 
 export const math = defineBlock({
@@ -159,7 +159,7 @@ export const math = defineBlock({
 	component: "Math",
 	renderedBy: "rehype-katex",
 	attributes: {},
-	editor: { view: "opaque", insertable: false, keywords: ["math", "수식", "katex"] },
+	editor: { view: "node", nodeView: "math", insertable: true, keywords: ["math", "수식", "katex"] },
 });
 
 /** 선언 순서가 `/meta`와 문서의 순서다. */

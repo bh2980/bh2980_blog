@@ -1,4 +1,5 @@
 import type { Node } from "@tiptap/core";
+import { CmsChartNode, CmsMathNode, CmsMermaidNode } from "./blocks/fence-preview";
 import { CmsImageNode } from "./image-node";
 
 /**
@@ -10,4 +11,7 @@ import { CmsImageNode } from "./image-node";
  */
 export const BLOCK_NODE_VIEWS: Readonly<Record<string, Node>> = {
 	image: CmsImageNode,
+	mermaid: CmsMermaidNode,
+	chart: CmsChartNode,
+	math: CmsMathNode,
 };

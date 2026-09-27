@@ -23,6 +23,8 @@ export interface BlockConverter {
 	readonly cmsTypes: readonly string[];
 	/** 이 변환기가 받는 Tiptap 노드 이름. */
 	readonly tiptapTypes: readonly string[];
+	/** 같은 cmsType 후보 중 특정 노드(예: 언어가 mermaid·chart인 codeBlock)를 가려낼 때 쓴다. */
+	matches?(node: CmsNode): boolean;
 	isMappable(node: CmsNode, ctx: ConverterContext): boolean;
 	toTiptap(node: CmsNode, ctx: ConverterContext): JSONContent;
 	toCms(node: JSONContent, ctx: ConverterContext): CmsNode[];
