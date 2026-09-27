@@ -1,6 +1,6 @@
 "use client";
 
-import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
 import { Check, Copy, Info, ListOrdered, MessageSquare, Underline as UnderlineIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 	const [tooltipText, setTooltipText] = useState("");
 	const [tooltipOpen, setTooltipOpen] = useState(false);
 	const id = useId();
+	// NodeView는 선택만 바뀌면 재렌더되지 않는다. 주석 도구 활성 상태는 선택을 구독한다.
+	useEditorState({ editor, selector: ({ editor: current }) => current?.state.selection });
 
 	const language = (node.attrs.language as string) || "text";
 	const metaString = (node.attrs.meta as string) || "";
@@ -332,6 +334,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 					<span
 						contentEditable={false}
 						aria-hidden="true"
+						style={{ whiteSpace: "pre" }}
 						className="mr-4 select-none border-border border-r pr-2 text-right text-muted-foreground"
 					>
 						{Array.from({ length: node.textContent.split("\n").length }, (_, index) => index + 1).join("\n")}

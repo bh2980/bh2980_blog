@@ -2,7 +2,7 @@
 
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -381,6 +381,16 @@ export function CmsEditor({
 		onSelectionUpdate: ({ editor: current }) => syncTriggerPopup(current),
 	});
 
+	// 서식 도구는 선택 변경에도 갱신돼야 한다. useEditor만으로는 표 셀 클릭 시 재렌더되지 않는다.
+	const tableSelection = useEditorState({
+		editor,
+		selector: ({ editor: current }) => {
+			if (!current?.isActive("table")) return "";
+			const selection = current.state.selection;
+			return `${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
+		},
+	});
+
 	useEffect(() => {
 		editorRef.current = editor;
 		if (!editor) return;
@@ -543,7 +553,7 @@ export function CmsEditor({
 					<ImageIcon aria-hidden />
 					이미지
 				</Button>
-				{editor.isActive("table") && (
+				{tableSelection && (
 					<fieldset className="flex items-center gap-1 border-0 p-0" aria-label="표 도구">
 						<Separator orientation="vertical" className="mx-1 data-vertical:h-4" />
 						{TABLE_TOOLS.map((item) => (

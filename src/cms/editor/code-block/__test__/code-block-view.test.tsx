@@ -9,6 +9,13 @@ vi.mock("@tiptap/react", async (importOriginal) => {
 	const react = await import("react");
 	return {
 		...actual,
+		useEditorState: ({
+			editor,
+			selector,
+		}: {
+			editor: NodeViewProps["editor"];
+			selector: (state: { editor: NodeViewProps["editor"] }) => unknown;
+		}) => selector({ editor }),
 		NodeViewWrapper: ({
 			as = "div",
 			children,
