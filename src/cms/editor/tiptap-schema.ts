@@ -1,10 +1,10 @@
 import { Mark, mergeAttributes, Node } from "@tiptap/core";
-import { CodeBlock } from "@tiptap/extension-code-block";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Subscript } from "@tiptap/extension-subscript";
 import { Superscript } from "@tiptap/extension-superscript";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
+import { CmsCodeBlock } from "./code-block";
 
 /**
  * Tiptap 스키마에 없는 CMS 블록(수식·차트·콜아웃·탭·머메이드·병합된 표 등)을 보존하는 읽기 전용 상자.
@@ -92,18 +92,11 @@ export const CmsSuperscript = Superscript;
 export const CmsSubscript = Subscript;
 
 /**
- * 코드 펜스 정보 문자열(` ```ts title="..." `)의 `meta`를 들고 다닌다.
+ * 코드 펜스 정보 문자열(` ```ts title="..." `)의 `meta`와 주석(밑줄·툴팁)을 들고 다닌다.
  * StarterKit의 코드블록에는 `language`만 있어 `meta`가 조용히 사라지므로,
  * StarterKit에서는 끄고(`codeBlock: false`) 이 확장을 쓴다.
  */
-export const CmsCodeBlock = CodeBlock.extend({
-	addAttributes() {
-		return {
-			...this.parent?.(),
-			meta: { default: null },
-		};
-	},
-});
+export { CmsCodeBlock };
 
 /**
  * GFM 표(§4.1 "기본 표와 행·열 추가/삭제"). 셀 병합은 v1 범위가 아니라 명령을 노출하지 않는다.

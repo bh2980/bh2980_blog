@@ -77,7 +77,7 @@ const parseUnquotedAttrValue = (raw: string): unknown => {
 	}
 };
 
-const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
+export const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
 	const input = meta.trim();
 	let index = 0;
