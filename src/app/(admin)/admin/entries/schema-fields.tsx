@@ -27,6 +27,7 @@ import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import { type EntryForm, type EntryFormPatch, type FormValue, recordTranslationKey } from "./entry-form";
 import {
+	BacklinkInput,
 	EntryPicker,
 	FIELD_INPUTS,
 	type FieldContext,
@@ -103,7 +104,7 @@ function RecordRelationInput({ name, field, id, value, invalid, describedBy, con
 			onChange(relation.many ? [...selected, created.id] : created.id);
 			setDraft("");
 		} catch (error) {
-			setCreateError(errorText(error, `${relation.label}를 만들지 못했습니다.`));
+			setCreateError(errorText(error, "만들지 못했습니다."));
 		}
 	};
 
@@ -114,7 +115,7 @@ function RecordRelationInput({ name, field, id, value, invalid, describedBy, con
 				value={draft}
 				disabled={context.disabled}
 				onChange={(event) => setDraft(event.target.value)}
-				placeholder={relation.many ? `새 ${relation.label}를 만들고 바로 추가` : `새 ${relation.label} 추가`}
+				placeholder={relation.many ? `새 ${relation.label} 만들고 바로 추가` : `새 ${relation.label} 추가`}
 				className={inputClass}
 			/>
 			<Button
@@ -141,7 +142,7 @@ function RecordRelationInput({ name, field, id, value, invalid, describedBy, con
 				<MultiCombobox
 					aria-label={relation.label}
 					placeholder={relation.placeholder ?? `${relation.label} 검색·선택`}
-					emptyText={`일치하는 ${relation.label}가 없습니다.`}
+					emptyText="일치하는 항목이 없습니다."
 					options={[
 						...records.options.map((option) => ({ value: option.id, label: option.title })),
 						// 목록에 아직 없는 선택값(방금 만든 항목 등)도 칩으로 보이게 한다.
@@ -295,7 +296,7 @@ export function SchemaFields({
 	};
 
 	/** 번역본에서 원문 값을 보여 주는 공통 필드인가. */
-	const isLocked = (field: Field) => Boolean(locked) && !field.localized;
+	const isLocked = (field: Field) => Boolean(locked) && field.kind !== "backlink" && !field.localized;
 
 	const renderValue = (name: string, field: ValueField, readOnly = false) => {
 		if (field.hidden) return null;
@@ -405,6 +406,34 @@ export function SchemaFields({
 		if (!field) return null;
 		if (field.kind === "slug") return renderSlug(name, field);
 		if (field.kind === "conditional") return renderConditional(name, field);
+		if (field.kind === "backlink") {
+			// 번역본에서는 원문 값을 보여 주기만 한다(관계는 원문을 가리킨다).
+			const readOnly = Boolean(locked);
+			const targetId = context.groupId ?? context.entryId;
+			return (
+				<FieldRow
+					key={name}
+					id={fieldId(name)}
+					label={field.label}
+					help={readOnly && locked ? locked.note : field.description}
+				>
+					<BacklinkInput
+						field={field}
+						targetId={targetId}
+						disabled={context.disabled || readOnly}
+						shared={
+							targetId === context.entryId && context.incomingReferences && context.refreshIncomingReferences
+								? {
+										references: context.incomingReferences,
+										loading: Boolean(context.incomingReferencesLoading),
+										refresh: context.refreshIncomingReferences,
+									}
+								: undefined
+						}
+					/>
+				</FieldRow>
+			);
+		}
 		return renderValue(name, field, isLocked(field));
 	};
 

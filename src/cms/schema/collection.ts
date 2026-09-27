@@ -1,4 +1,4 @@
-import type { Field, SlugField, ValueField, ValueOf } from "./fields";
+import type { BacklinkField, Field, SlugField, ValueField, ValueOf } from "./fields";
 
 /**
  * §5.2 저장 방식. `publish`는 초안과 공개본을 나누고 명시적 발행으로 공개한다.
@@ -44,7 +44,7 @@ export function collection<const Fields extends Readonly<Record<string, Field>>>
 }
 
 type Stored<Fields> = {
-	[K in keyof Fields as Fields[K] extends SlugField ? never : K]: Fields[K];
+	[K in keyof Fields as Fields[K] extends SlugField | BacklinkField ? never : K]: Fields[K];
 };
 
 /** 조건부 필드에 딸린 필드를 최상위로 펼친다(저장 형식과 같다). */

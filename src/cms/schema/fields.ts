@@ -85,9 +85,25 @@ export interface ConditionalField<Option extends string = string> extends Omit<B
 	readonly values: { readonly [K in Option]?: Readonly<Record<string, ValueField>> };
 }
 
+/**
+ * 반대 방향 관계(v2 B2). 이 콘텐츠에는 저장하지 않고, 다른 컬렉션(`from`)의 여러 개 관계 필드(`via`)가
+ * 이 콘텐츠를 가리키는지를 보여 주고 바꾼다. 예: 게시글 속성 패널의 `모음집`은 모음집의 `itemIds`를 편집한다.
+ * 입력은 누르는 즉시 상대 레코드에 저장한다(이 콘텐츠의 초안·발행과 별개).
+ */
+export interface BacklinkField extends Omit<BaseField, "required" | "localized"> {
+	readonly kind: "backlink";
+	readonly from: RelationTarget;
+	readonly via: string;
+	/** 없는 대상을 이 콘텐츠를 담은 채로 바로 만든다. */
+	readonly createInline?: boolean;
+	readonly placeholder?: string;
+	readonly localized?: undefined;
+	readonly required?: undefined;
+}
+
 /** 값 하나를 저장하는 필드. */
 export type ValueField = TextField | RelationField | DateTimeField | SelectField;
-export type Field = ValueField | SlugField | ConditionalField;
+export type Field = ValueField | SlugField | ConditionalField | BacklinkField;
 export type FieldKind = Field["kind"];
 
 type Options<F extends { kind: string }> = Omit<F, "kind">;
@@ -96,6 +112,7 @@ export const fields = {
 	text: <const O extends Options<TextField>>(options: O) => ({ kind: "text", ...options }) as const,
 	slug: <const O extends Options<SlugField>>(options: O) => ({ kind: "slug", ...options }) as const,
 	relation: <const O extends Options<RelationField>>(options: O) => ({ kind: "relation", ...options }) as const,
+	backlink: <const O extends Options<BacklinkField>>(options: O) => ({ kind: "backlink", ...options }) as const,
 	datetime: <const O extends Options<DateTimeField>>(options: O) => ({ kind: "datetime", ...options }) as const,
 	select: <const O extends Options<SelectField>>(options: O) => ({ kind: "select", ...options }) as const,
 	conditional: <const D extends SelectField, const V extends ConditionalField["values"]>(discriminant: D, values: V) =>

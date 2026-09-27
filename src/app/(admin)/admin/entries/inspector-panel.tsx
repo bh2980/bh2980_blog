@@ -173,7 +173,15 @@ export function InspectorPanel({
 						collection={collection}
 						form={form}
 						issues={publishIssues}
-						context={{ entryId: entry?.id, autoSummaryPreview, disabled }}
+						context={{
+							entryId: entry?.id,
+							groupId: entry?.translationGroupId,
+							autoSummaryPreview,
+							disabled,
+							incomingReferences: incomingReferences,
+							incomingReferencesLoading: isLoadingIncomingReferences,
+							refreshIncomingReferences: onRefreshIncomingReferences,
+						}}
 						onChange={onChange}
 						onSourceChange={onTitleChange}
 						onSlugChange={onSlugChange}

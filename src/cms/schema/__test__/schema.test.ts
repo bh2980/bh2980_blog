@@ -38,6 +38,18 @@ describe("컬렉션 정의(v2 B1)", () => {
 		}
 	});
 
+	it("반대 방향 관계는 상대 컬렉션의 여러 개 관계가 이 컬렉션을 가리키고, 저장 필드가 아니다(v2 B2)", () => {
+		for (const [name, schema] of Object.entries(SCHEMAS)) {
+			for (const [fieldName, field] of Object.entries(schema.fields)) {
+				if (field.kind !== "backlink") continue;
+				const via = storedFields(field.from).find((stored) => stored.name === field.via)?.field;
+				expect(via, `${name}.${fieldName}`).toMatchObject({ kind: "relation", many: true, to: name });
+				expect(storedFields(name as keyof typeof SCHEMAS).some((stored) => stored.name === fieldName)).toBe(false);
+			}
+		}
+		expect(SCHEMAS.post.fields.series).toMatchObject({ kind: "backlink", from: "collection", via: "itemIds" });
+	});
+
 	it("v1 모양의 정의를 그대로 만든다", () => {
 		expect(COLLECTION_DEFINITIONS.post.fields).toEqual({
 			title: "string",

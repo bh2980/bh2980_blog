@@ -1,13 +1,15 @@
 "use client";
 
 import { ArrowDown, ArrowUp, X } from "lucide-react";
-import { type ComponentType, useEffect, useState } from "react";
-import type { RelationField, ValueField } from "@/cms/schema/fields";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
+import type { BacklinkField, RelationField, ValueField } from "@/cms/schema/fields";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cmsFetch } from "../admin-api";
+import { CmsApiError, cmsFetch, errorText } from "../admin-api";
+import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { FormValue } from "./entry-form";
 
 /** 입력이 필드 밖에서 알아야 하는 값. 편집 화면이 채운다. */
@@ -17,6 +19,12 @@ export interface FieldContext {
 	/** 요약이 비었을 때 발행하면 쓸 자동 요약(§5.6). */
 	autoSummaryPreview?: string;
 	disabled: boolean;
+	/** 번역 묶음 ID(원문 ID). 반대 방향 관계는 원문을 가리킨다(v2 B2·B4). */
+	groupId?: string;
+	/** 속성 패널이 이미 불러온 이 글의 사용처. 반대 방향 관계가 같은 글이면 다시 부르지 않는다. */
+	incomingReferences?: readonly IncomingReference[];
+	incomingReferencesLoading?: boolean;
+	refreshIncomingReferences?: () => void;
 }
 
 export interface FieldInputProps {
@@ -278,6 +286,232 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 					setSearch("");
 				}}
 			/>
+		</div>
+	);
+}
+
+type RecordEntry = {
+	id: string;
+	version: number;
+	workingSlug: string | null;
+	working: { metadata: Record<string, unknown> };
+};
+export type IncomingReference = {
+	state: "working" | "published";
+	sourceId: string;
+	sourceCollection: string;
+	sourceTitle: string | null;
+	occurrences: readonly { type: string; path?: string }[];
+};
+
+/**
+ * 반대 방향 관계 입력(v2 B2). 예: 게시글의 `모음집`. 상대 레코드(모음집)의 여러 개 관계 필드(`itemIds`)를
+ * 누르는 즉시 저장한다 — 이 글의 초안·발행과 별개다. 추가하면 끝에 들어가고, 빼면 이 글이 든 자리를 모두 뺀다.
+ * 버전이 어긋나면(다른 곳에서 먼저 바뀜) 최신 값을 다시 읽어 한 번 더 시도한다.
+ */
+export function BacklinkInput({
+	field,
+	targetId,
+	disabled,
+	shared,
+}: {
+	field: BacklinkField;
+	/** 이 글의 ID. 번역본이면 원문 ID다(관계는 원문을 가리킨다). 새 글이면 없다. */
+	targetId: string | undefined;
+	disabled: boolean;
+	/** 속성 패널이 불러온 같은 글의 사용처. 있으면 그것을 쓰고, 저장 뒤에는 `refresh`로 다시 부른다. */
+	shared?: { references: readonly IncomingReference[]; loading: boolean; refresh: () => void };
+}) {
+	const records = useTaxonomy(field.from as RecordCollection, Boolean(targetId));
+	const [fetched, setFetched] = useState<{ id: string; title: string }[] | null>(null);
+	const [draft, setDraft] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const membersOf = useCallback(
+		(references: readonly IncomingReference[]) => {
+			const found = new Map<string, string>();
+			for (const reference of references) {
+				const viaField = reference.occurrences.some((occurrence) => occurrence.path === field.via);
+				if (reference.state === "working" && reference.sourceCollection === field.from && viaField) {
+					found.set(reference.sourceId, reference.sourceTitle || "이름 없음");
+				}
+			}
+			return [...found].map(([id, title]) => ({ id, title }));
+		},
+		[field.from, field.via],
+	);
+
+	const refreshShared = shared?.refresh;
+	const load = useCallback(async () => {
+		if (!targetId) return;
+		if (refreshShared) {
+			refreshShared();
+			return;
+		}
+		try {
+			const data = await cmsFetch<{ incomingReferences: IncomingReference[] }>(
+				`/api/cms/v1/entries/${targetId}/relations`,
+			);
+			setFetched(membersOf(data.incomingReferences));
+		} catch (loadError) {
+			setError(errorText(loadError, "목록을 불러오지 못했습니다."));
+		}
+	}, [targetId, refreshShared, membersOf]);
+
+	// 속성 패널이 같은 글의 사용처를 이미 불러오면 따로 부르지 않는다.
+	const usesShared = Boolean(shared);
+	useEffect(() => {
+		if (!usesShared) void load();
+	}, [usesShared, load]);
+
+	const members = shared
+		? shared.loading && shared.references.length === 0
+			? null
+			: membersOf(shared.references)
+		: fetched;
+
+	/** 상대 레코드의 관계 목록을 바꿔 바로 저장한다. record 컬렉션은 저장이 곧 공개 반영이다. */
+	const update = async (recordId: string, change: (ids: string[]) => string[]) => {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const record = await cmsFetch<RecordEntry>(`/api/cms/v1/entries/${recordId}`);
+			const current = record.working.metadata[field.via];
+			const ids = Array.isArray(current) ? current.filter((id): id is string => typeof id === "string") : [];
+			try {
+				await cmsFetch(`/api/cms/v1/entries/${recordId}`, {
+					method: "PATCH",
+					json: {
+						expectedVersion: record.version,
+						slug: record.workingSlug,
+						metadata: { ...record.working.metadata, [field.via]: change(ids) },
+					},
+					fallback: "저장하지 못했습니다.",
+				});
+				return;
+			} catch (saveError) {
+				if (!(saveError instanceof CmsApiError && saveError.code === "conflict") || attempt === 1) throw saveError;
+			}
+		}
+	};
+
+	const run = async (action: () => Promise<void>, fallback: string) => {
+		if (busy || !targetId) return;
+		setBusy(true);
+		setError(null);
+		try {
+			await action();
+			await load();
+		} catch (actionError) {
+			setError(errorText(actionError, fallback));
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	if (!targetId) {
+		return <p className="text-muted-foreground text-xs">초안을 저장하면 {field.label}에 넣을 수 있습니다.</p>;
+	}
+
+	const addable = records.options.filter((option) => !members?.some((member) => member.id === option.id));
+	const items = [
+		{ value: "", label: field.placeholder ?? `${field.label}에 추가` },
+		...addable.map((option) => ({ value: option.id, label: option.title })),
+	];
+	const locked = disabled || busy;
+
+	return (
+		<div className="space-y-2">
+			{members === null ? (
+				<p className="text-muted-foreground text-xs">불러오는 중...</p>
+			) : members.length === 0 ? (
+				<p className="text-muted-foreground text-xs">아직 넣은 곳이 없습니다.</p>
+			) : (
+				<ul className="flex flex-wrap gap-1.5">
+					{members.map((member) => (
+						<li
+							key={member.id}
+							className="flex items-center gap-1 rounded-md border bg-muted/40 py-0.5 pr-0.5 pl-2 text-xs"
+						>
+							{member.title}
+							<Button
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								aria-label={`${member.title}에서 빼기`}
+								disabled={locked}
+								onClick={() =>
+									void run(
+										() => update(member.id, (ids) => ids.filter((id) => id !== targetId)),
+										`${field.label}에서 빼지 못했습니다.`,
+									)
+								}
+							>
+								<X />
+							</Button>
+						</li>
+					))}
+				</ul>
+			)}
+			{addable.length > 0 && (
+				<Select
+					value=""
+					items={items}
+					disabled={locked}
+					onValueChange={(next) => {
+						if (typeof next === "string" && next) {
+							void run(() => update(next, (ids) => [...ids, targetId]), `${field.label}에 넣지 못했습니다.`);
+						}
+					}}
+				>
+					<SelectTrigger size="sm" className="w-full" aria-label={`${field.label}에 추가`}>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{items.map((option) => (
+							<SelectItem key={option.value || "none"} value={option.value} disabled={!option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			)}
+			{field.createInline && !disabled && (
+				<div className="flex items-center gap-1.5">
+					<Input
+						aria-label={`새 ${field.label} 이름`}
+						value={draft}
+						disabled={locked}
+						onChange={(event) => setDraft(event.target.value)}
+						placeholder={`새 ${field.label} 만들고 이 글 넣기`}
+						className={inputClass}
+					/>
+					<Button
+						type="button"
+						size="sm"
+						variant="secondary"
+						className="h-7 px-2 text-xs"
+						disabled={locked || !draft.trim()}
+						onClick={() =>
+							void run(async () => {
+								await cmsFetch("/api/cms/v1/entries", {
+									method: "POST",
+									json: { collection: field.from, metadata: { title: draft.trim(), [field.via]: [targetId] }, mdx: "" },
+									fallback: "만들지 못했습니다.",
+								});
+								setDraft("");
+								await records.reload();
+							}, "만들지 못했습니다.")
+						}
+					>
+						만들기
+					</Button>
+				</div>
+			)}
+			{error && (
+				<p role="alert" className="text-destructive text-xs">
+					{error}
+				</p>
+			)}
 		</div>
 	);
 }

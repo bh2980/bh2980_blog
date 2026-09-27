@@ -68,6 +68,14 @@ export const post = collection({
 		}),
 		categoryId: fields.relation({ label: "카테고리", to: "category", required: "publish", createInline: true }),
 		tagIds,
+		series: fields.backlink({
+			label: "모음집",
+			from: "collection",
+			via: "itemIds",
+			createInline: true,
+			description: "누르는 즉시 모음집에 저장됩니다(글의 초안·발행과 별개). 추가하면 모음집 끝에 들어갑니다.",
+			placeholder: "모음집에 추가",
+		}),
 		publishedAt,
 		policy: fields.conditional(
 			fields.select({
@@ -92,7 +100,7 @@ export const post = collection({
 	},
 	layout: [
 		{ fields: ["title", "slug", "summary"] },
-		{ group: "분류", fields: ["categoryId", "tagIds"] },
+		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "발행", fields: ["publishedAt", "policy"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "canonicalUrl"], collapsed: true },
 	],
