@@ -48,3 +48,58 @@ export const hasBalancedLabelBrackets = (value: string): boolean => {
 	}
 	return depth === 0;
 };
+
+/** 열 너비 한 칸의 허용 범위(px). 그 밖의 값은 무시한다. */
+export const MAX_TABLE_COLUMN_WIDTH = 4096;
+
+/** `widths="120,,200"`을 열별 px 배열로 읽는다. 비운 칸이나 잘못된 값은 null이다. */
+export const parseTableWidths = (value: unknown): Array<number | null> => {
+	if (typeof value !== "string") return [];
+	const widths = value
+		.split(",")
+		.slice(0, MAX_TABLE_COLUMNS)
+		.map((part) => {
+			const width = Number(part.trim());
+			return part.trim() !== "" && Number.isSafeInteger(width) && width > 0 && width <= MAX_TABLE_COLUMN_WIDTH
+				? width
+				: null;
+		});
+	return widths.some((width) => width !== null) ? widths : [];
+};
+
+/** 열별 px 배열을 `widths` 속성 문자열로 쓴다. 너비가 하나도 없으면 빈 문자열이다. */
+export const formatTableWidths = (widths: readonly unknown[]): string => {
+	const values = widths.map((width) =>
+		typeof width === "number" && Number.isSafeInteger(width) && width > 0 && width <= MAX_TABLE_COLUMN_WIDTH
+			? String(width)
+			: "",
+	);
+	while (values.length > 0 && values.at(-1) === "") values.pop();
+	return values.join(",");
+};
+
+export const tableWidths = (node: { attrs?: Record<string, unknown> | null }): Array<number | null> =>
+	Array.isArray(node.attrs?.widths) ? node.attrs.widths.map((width) => (typeof width === "number" ? width : null)) : [];
+
+/**
+ * rowspan·colspan을 반영해 각 셀이 시작하는 격자 열 번호를 구한다.
+ * 결과는 `rows[행][셀]`과 같은 모양이다.
+ */
+export const tableCellColumns = (rows: TableCellLike[][]): number[][] => {
+	const occupied: boolean[][] = [];
+	return rows.map((cells, rowIndex) => {
+		let column = 0;
+		return cells.map((cell) => {
+			while (occupied[rowIndex]?.[column]) column += 1;
+			const start = column;
+			const colspan = boundedTableSpan(cell.attrs?.colspan, MAX_TABLE_COLUMNS - start);
+			const rowspan = boundedTableSpan(cell.attrs?.rowspan, rows.length - rowIndex);
+			for (let r = rowIndex; r < rowIndex + rowspan; r += 1) {
+				occupied[r] ??= [];
+				for (let c = start; c < start + colspan; c += 1) occupied[r][c] = true;
+			}
+			column = start + colspan;
+			return start;
+		});
+	});
+};

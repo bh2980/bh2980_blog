@@ -99,8 +99,8 @@ export const CmsSubscript = Subscript;
 export { CmsCodeBlock };
 
 /**
- * GFM 표(§4.1 "기본 표와 행·열 추가/삭제"). 셀 병합은 v1 범위가 아니라 명령을 노출하지 않는다.
- * 열 너비 조절은 Markdown 표에 저장할 수 없어 끈다.
+ * 표(§4.1 "기본 표와 행·열 추가/삭제", v2 C6 셀 병합·열 너비).
+ * 열 너비를 조절한 표는 `::::table{widths="..."}` directive로 저장한다(c-editor.md §1.2).
  */
 export const CmsTable = Table.extend({
 	addAttributes() {
@@ -110,7 +110,7 @@ export const CmsTable = Table.extend({
 			align: { default: null, rendered: false },
 		};
 	},
-}).configure({ resizable: false, allowTableNodeSelection: true });
+}).configure({ resizable: true, allowTableNodeSelection: true });
 
 /** `- [ ]`·`- [x]` 체크 목록(§4.1). */
 export const CmsTaskItem = TaskItem.configure({ nested: true });

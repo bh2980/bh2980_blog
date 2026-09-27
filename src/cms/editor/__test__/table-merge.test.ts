@@ -166,4 +166,44 @@ describe("C6 편집기 표 셀 병합 및 분할", () => {
 		].join("\n");
 		expect(tiptapToMdx(mdxToTiptap(source)).trim()).toBe(source);
 	});
+
+	it("열 너비를 셀 colwidth로 불러오고 조절한 너비를 widths로 저장한다", () => {
+		const source = [
+			'::::table{widths="80,160"}',
+			":::row",
+			"::cell[합친 머리글]{header colspan=2}",
+			":::",
+			":::row",
+			"::cell[a]",
+			"::cell[b]",
+			":::",
+			"::::",
+		].join("\n");
+		const json = mdxToTiptap(source);
+		const firstRow = json.content?.[0]?.content?.[0];
+		const secondRow = json.content?.[0]?.content?.[1];
+		expect(firstRow?.content?.[0]?.attrs?.colwidth).toEqual([80, 160]);
+		expect(secondRow?.content?.[1]?.attrs?.colwidth).toEqual([160]);
+		expect(tiptapToMdx(json).trim()).toBe(source);
+
+		// 병합 없는 GFM 표에서 열 너비를 조절하면 머리글을 명시한 directive 표로 저장한다.
+		const gfm = ["| a | b |", "| --- | --- |", "| 1 | 2 |"].join("\n");
+		const instance = createTableEditor(mdxToTiptap(gfm));
+		instance.commands.setTextSelection(3);
+		instance.commands.setCellAttribute("colwidth", [150]);
+		expect(tiptapToMdx(instance.getJSON()).trim()).toBe(
+			[
+				'::::table{widths="150"}',
+				":::row",
+				"::cell[a]{header}",
+				"::cell[b]{header}",
+				":::",
+				":::row",
+				"::cell[1]",
+				"::cell[2]",
+				":::",
+				"::::",
+			].join("\n"),
+		);
+	});
 });

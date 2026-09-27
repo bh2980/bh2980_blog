@@ -14,9 +14,9 @@
 - 공개 렌더러(`src/components/mdx/image.tsx`)와 에디터가 같은 계산 함수(`src/cms/mdx/image-transform.ts`)로 CSS를 만든다. 잘못된 값은 무시한다(너비 규칙과 같음).
 - 너비 조절은 모서리 핸들로 기존 `width`(px·%) 규칙에 쓴다.
 
-### 1.2 C6 셀 병합 문법 — 병합이 있는 표만 `table` directive
+### 1.2 C6 셀 병합·열 너비 문법 — GFM으로 표현할 수 없는 표만 `table` directive
 
-병합 없는 표는 GFM 그대로. 병합이 하나라도 있으면:
+병합·열 너비가 없고 첫 행만 머리글인 표는 GFM 그대로. 병합이나 열 너비가 있거나 머리글 배치가 GFM과 다르면:
 
 ```md
 ::::table{align="left,center"}
@@ -31,12 +31,15 @@
 ```
 
 - 확정 문법:
-  - 표: 컨테이너 지시자 `::::table{align="..."}`. `align`은 열 정렬(left, center, right)을 쉼표로 잇는다.
+  - 표: 컨테이너 지시자 `::::table{align="..." widths="..."}`. `align`은 열 정렬(left, center, right)을 쉼표로 잇는다. `widths`는 편집기에서 조절한 열 너비(px 정수, 1~4096)를 쉼표로 잇고 비운 칸은 자동 너비다(예: `widths="120,,200"`).
   - 행: 컨테이너 지시자 `:::row`.
   - 셀: 리프 지시자 `::cell[인라인]{header colspan=N rowspan=N}`. 인라인 서식(`**굵게**`, `*기울임*`, `` `코드` ``, `:br[]` 줄바꿈 등)을 온전히 보존한다.
   - 속성: `header`(불리언 참일 때만 이름 기재), `colspan`(2 이상일 때만 기재), `rowspan`(2 이상일 때만 기재).
-  - 병합 없는 표는 기존 GFM 표(`| a | b |`)로 저장되며 바이트 불변을 보장한다.
-  - 병합 표에서 모든 병합을 해제하면 자동으로 GFM 표로 복귀한다.
+  - 병합·열 너비가 없고 첫 행만 머리글인 표는 기존 GFM 표(`| a | b |`)로 저장되며 바이트 불변을 보장한다.
+  - 병합 표에서 모든 병합을 해제하면 자동으로 GFM 표로 복귀한다(열 너비가 없고 머리글이 첫 행일 때).
+  - 병합 없는 표도 첫 열 머리글·머리글 없는 표처럼 GFM이 표현할 수 없는 배치는 directive로 남긴다.
+  - 셀 라벨의 대괄호 짝이 맞지 않아 directive 라벨로 쓸 수 없으면(예: 인라인 코드 `` `]` ``) 같은 뜻의 `<Table>`/`<TableRow>`/`<TableCell>` JSX로 저장한다.
+  - span은 최대 64열·남은 행 수로 제한해 편집기와 공개 렌더가 같은 격자를 쓴다.
 - B3 블록 정의(`src/cms/blocks/definitions.ts`)에 `table`, `row`, `cell` 정의를 추가하고 parent/children 관계를 명시한다.
 - 발행 전 검사(`src/cms/core/snapshot.ts`)에서 rowspan의 전체 행 수 초과, 병합 영역 중복, 행별 열 수 불일치, 0 이하의 span 값을 감지하여 `invalid_table_span` 경고를 보고한다.
 - 공개 렌더러(`src/components/mdx/table.tsx`)에서 `Table`, `TableRow`, `TableCell`을 구현하고, 표 격자 구조를 계산해 각 셀에 올바른 열 정렬(`align`)을 주입한다.
@@ -134,4 +137,12 @@ C3에서 도입되는 컨테이너 NodeView(Callout, Collapsible, Tabs, Columns 
 - **C4:** Mermaid·차트·수식은 원자 노드에서 공개 렌더러를 지연 로드해 미리 본다. 원문 편집 칸과 에러 표시를 제공한다.
 - **C5:** Shiki 하이라이팅, 언어·파일명·줄 번호 도구, 코드 밑줄·툴팁 주석, 들여쓰기·붙여넣기 키 처리를 지원한다. 저장은 기존 펜스 주석 문법을 사용한다. 미지원 주석은 원문을 보존한다.
 - **검증:** `pnpm test:run`, `pnpm typecheck`, `pnpm exec biome check .`, `pnpm build`, `pnpm cms:migration:audit` 모두 성공. 브라우저(CDP)에서 C1~C6을 조작하고 `.pi/c-review/c1-drag.png`, `c2-crop-resize.png`, `c3-tabs-insert.png`, `c4-chart-math.png`, `c5-code-annotation.png`, `c6-table-merge.png`를 남겼다(`.pi/`는 로컬 검증 산출물). 한글 IME의 OS 수준 검증은 E 운영 전환에 남긴다.
-- **남은 비차단 사항:** C2 공개 이미지의 로드 후 레이아웃 이동, C6 Tiptap `colwidth` 왕복·공개 `th scope`, C1 기본 Dropcursor의 거부 위치 표시선은 후속 UI 품질 작업에서 다룬다.
+
+### 4.4 Opus 리뷰 반영과 후속 품질 작업 (2026-09-28)
+
+- **Opus 리뷰 수정(`5c3fc68f`):** Shiki 여러 줄 토큰 오프셋 이중 계산, 코드 하이라이트 캐시 상한(LRU 50), 병합 표 셀 라벨의 짝 없는 대괄호 → JSX 표 대체 저장, 비GFM 머리글 배치 보존, span 상한 공통화, 크롭 모서리 기준 반올림, 수식·다이어그램 입력의 IME 조합 중 디바운스 커밋 중단, 컨테이너 체크박스 `aria-label`, 미리보기 입력 `useId`.
+- **C2 이미지 자리 잡기:** 공개 해석기가 등록 미디어의 원본 크기(`media_assets.width/height`)를 넘긴다. 일반 이미지는 `<img width height>`로, 크롭·회전 이미지는 로드 전부터 올바른 비율 상자로 자리를 잡아 로드 후 레이아웃 이동이 없다. 크기를 모르는 외부 `src`는 로드 후 비율을 읽는다(캐시 로드는 ref로 보완).
+- **C6 열 너비:** 편집기에서 열 경계를 끌어 너비를 조절한다(prosemirror-tables columnResizing). 조절한 너비는 표의 `widths` 속성으로 저장·복원하고, 공개 렌더는 `<colgroup>`으로 같은 너비를 적용한다.
+- **C6 머리글 접근성:** 공개 표의 머리글 셀에 `scope`를 붙인다. GFM 표의 첫 행과 directive 표 첫 행의 열 머리글은 `col`, 그 밖의 머리글은 `row`다. `colspan`·`rowspan`은 HTML 머리글 배정 규칙에 맡긴다.
+- **C1 드롭 표시:** 블록 드래그 중에는 기본 Dropcursor를 막고, 스키마 검사를 통과한 실제 놓일 위치에만 가로선을 그린다. 놓을 수 없는 위치에서는 표시가 사라진다. 표시선은 문서 흐름 밖에 그려 드래그 중 레이아웃이 움직이지 않는다.
+- **검증:** 브라우저(CDP)에서 열 너비 조절 → `widths="136"` 저장 → 새로고침 후 복원, 드롭 표시선의 유효·거부 위치를 확인했다(`.pi/c-review/c6-column-resize.png`, `c1-drop-indicator.png`). 공개 이미지 자리 잡기·캐시된 외부 이미지 비율 및 `scope`는 단위 테스트로 검증했다. 테스트 게시글의 `/preview/posts/...` 경로는 404를 반환해 공개 화면 자체는 브라우저에서 확인하지 못했다.

@@ -58,7 +58,9 @@ export async function createPublicImageResolver(source: string) {
 						urls.set(mediaId, { failure: "unresolved" });
 						return;
 					}
-					urls.set(mediaId, { url: mediaStore.getPublicUrl(media.storageKey) });
+					const url = mediaStore.getPublicUrl(media.storageKey);
+					const { width, height } = media;
+					urls.set(mediaId, width && height && width > 0 && height > 0 ? { url, width, height } : { url });
 				}),
 			);
 		} catch {

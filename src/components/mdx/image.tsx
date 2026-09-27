@@ -63,6 +63,10 @@ export const CmsImage = ({
 }) => {
 	const resolved = resolve ? resolve({ mediaId, src }) : resolveImageUrl(src);
 	const url = resolved && "url" in resolved ? resolved.url : null;
+	const intrinsicSize =
+		resolved && "url" in resolved && resolved.width && resolved.height
+			? { width: resolved.width, height: resolved.height }
+			: undefined;
 	const captionText = caption?.trim();
 	const captionClassName = "text-center text-slate-500 text-sm dark:text-slate-400";
 
@@ -103,6 +107,7 @@ export const CmsImage = ({
 				crop={crop}
 				rotate={rotate}
 				title={title}
+				intrinsicSize={intrinsicSize}
 			/>
 			{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
 		</figure>

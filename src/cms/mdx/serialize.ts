@@ -4,10 +4,17 @@ import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
-import { hasBalancedLabelBrackets, hasNonGfmHeaderLayout, tableHasMergedCells } from "./table-layout";
+import {
+	formatTableWidths,
+	hasBalancedLabelBrackets,
+	hasNonGfmHeaderLayout,
+	tableHasMergedCells,
+	tableWidths,
+} from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsNode } from "./types";
 
-const usesDirectiveTable = (node: CmsNode) => tableHasMergedCells(node) || hasNonGfmHeaderLayout(node);
+const usesDirectiveTable = (node: CmsNode) =>
+	tableHasMergedCells(node) || hasNonGfmHeaderLayout(node) || formatTableWidths(tableWidths(node)) !== "";
 
 const isIdent = (value: string) => /^[A-Za-z_][\w]*$/.test(value);
 
@@ -510,6 +517,16 @@ const tableCellAttrs = (cell: CmsNode): string[] => {
 	return attrs;
 };
 
+/** 표 속성(`align`, `widths`)을 저장 순서대로 모은다. */
+const tableAttrs = (node: CmsNode): Array<[string, string]> => {
+	const attrs: Array<[string, string]> = [];
+	const align = tableAlign(node);
+	if (align) attrs.push(["align", align]);
+	const widths = formatTableWidths(tableWidths(node));
+	if (widths) attrs.push(["widths", widths]);
+	return attrs;
+};
+
 const tableAlign = (node: CmsNode): string => {
 	const align = Array.isArray(node.attrs?.align) ? (node.attrs.align as Array<string | null>) : [];
 	const value = align.map((v) => v ?? "").join(",");
@@ -518,8 +535,8 @@ const tableAlign = (node: CmsNode): string => {
 
 // directive 라벨 대괄호가 맞지 않으면 파서가 셀을 잃으므로 같은 의미의 JSX 표로 저장한다.
 const serializeJsxTable = (node: CmsNode, rows: string[][]): string => {
-	const align = tableAlign(node);
-	const lines = [`<Table${align ? ` align="${escapeAttr(align)}"` : ""}>`];
+	const attrs = tableAttrs(node).map(([name, value]) => ` ${name}="${escapeAttr(value)}"`);
+	const lines = [`<Table${attrs.join("")}>`];
 	(node.content ?? []).forEach((row, rowIndex) => {
 		lines.push("<TableRow>");
 		(row.content ?? []).forEach((cell, cellIndex) => {
@@ -542,8 +559,8 @@ const serializeDirectiveTable = (node: CmsNode): string => {
 	if (labels.some((row) => row.some((label) => !hasBalancedLabelBrackets(label)))) {
 		return serializeJsxTable(node, labels);
 	}
-	const align = tableAlign(node);
-	const lines: string[] = [`::::table${align ? `{align="${align}"}` : ""}`];
+	const attrs = tableAttrs(node).map(([name, value]) => `${name}="${value}"`);
+	const lines: string[] = [`::::table${attrs.length ? `{${attrs.join(" ")}}` : ""}`];
 	rows.forEach((row, rowIndex) => {
 		lines.push(":::row");
 		(row.content ?? []).forEach((cell, cellIndex) => {

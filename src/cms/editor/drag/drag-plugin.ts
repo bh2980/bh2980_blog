@@ -6,7 +6,56 @@ import { calculateDropPosition, moveBlockNode } from "./drag-commands";
 
 export const BLOCK_DRAG_MIME_TYPE = "application/x-cms-block-drag";
 
-export const cmsBlockDragPluginKey = new PluginKey("cmsBlockDrag");
+export const cmsBlockDragPluginKey = new PluginKey<{ dropPos: number | null }>("cmsBlockDrag");
+
+/** 블록 드래그 중 실제로 놓일 위치만 표시한다. 놓을 수 없는 곳이면 표시를 지운다. */
+function setDropIndicator(view: EditorView, dropPos: number | null) {
+	if (cmsBlockDragPluginKey.getState(view.state)?.dropPos === dropPos) return;
+	view.dispatch(view.state.tr.setMeta(cmsBlockDragPluginKey, { dropPos }).setMeta("addToHistory", false));
+}
+
+/**
+ * 놓일 위치에 가로선을 그린다. 문서 흐름 밖(offsetParent 기준 absolute)에 두어
+ * 블록 사이 여백·첫 블록 규칙을 바꾸지 않는다(드래그 중 레이아웃 이동 없음).
+ */
+function createDropIndicatorView(editorView: EditorView) {
+	let element: HTMLElement | null = null;
+
+	const remove = () => {
+		element?.remove();
+		element = null;
+	};
+
+	const update = (view: EditorView) => {
+		const dropPos = cmsBlockDragPluginKey.getState(view.state)?.dropPos;
+		if (dropPos === null || dropPos === undefined) return remove();
+		const $pos = view.state.doc.resolve(dropPos);
+		const beforeDom = $pos.nodeBefore ? view.nodeDOM(dropPos - $pos.nodeBefore.nodeSize) : null;
+		const afterDom = $pos.nodeAfter ? view.nodeDOM(dropPos) : null;
+		const before = beforeDom instanceof HTMLElement ? beforeDom.getBoundingClientRect() : null;
+		const after = afterDom instanceof HTMLElement ? afterDom.getBoundingClientRect() : null;
+		const box = after ?? before;
+		if (!box) return remove();
+		const y = before && after ? (before.bottom + after.top) / 2 : after ? after.top : box.bottom;
+
+		const parent = (view.dom.offsetParent as HTMLElement | null) ?? view.dom.parentElement;
+		if (!parent) return remove();
+		const parentRect = parent.getBoundingClientRect();
+		if (!element) {
+			element = document.createElement("div");
+			element.setAttribute("aria-hidden", "true");
+			element.dataset.cmsDropIndicator = "";
+			element.className = "pointer-events-none absolute z-50 h-0.5 -translate-y-1/2 rounded-full bg-primary";
+			parent.appendChild(element);
+		}
+		element.style.left = `${box.left - parentRect.left + parent.scrollLeft}px`;
+		element.style.top = `${y - parentRect.top + parent.scrollTop}px`;
+		element.style.width = `${box.width}px`;
+	};
+
+	update(editorView);
+	return { update, destroy: remove };
+}
 
 /**
  * 블록 핸들 dragstart 시 호출되어 ProseMirror 드래그 상태와 dataTransfer를 초기화한다.
@@ -58,6 +107,8 @@ export function endBlockDrag(view: EditorView): void {
 	const dragging = viewAny.dragging;
 	// 핸들 드래그만 정리한다(에디터 자체 드래그는 ProseMirror가 정리한다).
 	// 일부 브라우저는 drop보다 dragend를 먼저 보내므로 ProseMirror처럼 잠시 기다렸다가 지운다.
+	// 이동 트랜잭션 뒤 ProseMirror가 dragging을 새 객체로 바꿔 cmsBlockPos가 사라질 수 있으므로 표시는 먼저 지운다.
+	if (!view.isDestroyed) setDropIndicator(view, null);
 	if (!dragging || dragging.cmsBlockPos === undefined) return;
 	setTimeout(() => {
 		if (viewAny.dragging === dragging) viewAny.dragging = null;
@@ -75,27 +126,48 @@ export const CmsBlockDrag = Extension.create({
 		return [
 			new Plugin({
 				key: cmsBlockDragPluginKey,
+				state: {
+					init: () => ({ dropPos: null as number | null }),
+					apply(tr, value) {
+						const meta = tr.getMeta(cmsBlockDragPluginKey) as { dropPos: number | null } | undefined;
+						if (meta) return meta;
+						if (value.dropPos === null || !tr.docChanged) return value;
+						return { dropPos: tr.mapping.map(value.dropPos) };
+					},
+				},
+				view: createDropIndicatorView,
 				props: {
 					handleDOMEvents: {
 						dragover(view, event) {
 							const viewAny = view as unknown as { dragging?: { cmsBlockPos?: number; slice?: Slice } };
 							const dragging = viewAny.dragging;
 							if (dragging && dragging.cmsBlockPos !== undefined && event.dataTransfer) {
+								// 기본 Dropcursor는 스키마 거부를 모르고 다른 위치를 가리킨다. 블록 드래그에서는 막고 직접 표시한다.
+								event.stopImmediatePropagation();
 								const coords = { left: event.clientX, top: event.clientY };
 								const target = view.posAtCoords(coords);
-								if (target) {
-									const validPos = calculateDropPosition(
-										view.state.doc,
-										dragging.cmsBlockPos,
-										target.pos,
-										dragging.slice,
-									);
-									if (validPos === null) {
-										event.dataTransfer.dropEffect = "none";
-										return false;
-									}
-									event.dataTransfer.dropEffect = "move";
-								}
+								const validPos = target
+									? calculateDropPosition(view.state.doc, dragging.cmsBlockPos, target.pos, dragging.slice)
+									: null;
+								setDropIndicator(view, validPos);
+								event.dataTransfer.dropEffect = validPos === null ? "none" : "move";
+							}
+							return false;
+						},
+						dragleave(view, event) {
+							const related = event.relatedTarget;
+							if (related instanceof Node) {
+								if (!view.dom.contains(related)) setDropIndicator(view, null);
+							} else {
+								// Safari는 자식 경계에서도 relatedTarget=null을 줄 수 있다. 실제로 편집기 밖일 때만 지운다.
+								const rect = view.dom.getBoundingClientRect();
+								if (
+									event.clientX < rect.left ||
+									event.clientX > rect.right ||
+									event.clientY < rect.top ||
+									event.clientY > rect.bottom
+								)
+									setDropIndicator(view, null);
 							}
 							return false;
 						},

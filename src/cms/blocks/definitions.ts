@@ -169,11 +169,12 @@ export const math = defineBlock({
 export const table = defineBlock({
 	name: "table",
 	label: "표",
-	description: "셀 병합이 있는 표",
+	description: "셀 병합이나 열 너비가 있는 표",
 	syntax: { kind: "container", directive: "table" },
 	component: "Table",
 	attributes: {
 		align: { type: "string", label: "열 정렬", description: "left, center, right 쉼표 구분" },
+		widths: { type: "string", label: "열 너비", description: "px 정수 쉼표 구분(비우면 자동)" },
 	},
 	children: { blocks: ["row"], min: 1 },
 	editor: { view: "opaque", insertable: false, keywords: ["table", "표"] },

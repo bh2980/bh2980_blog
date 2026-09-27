@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CmsImage } from "../image";
 
 /** O2: 명시적 `width="100%"`는 인라인 width로 렌더된다(미지정과 다르다). */
@@ -159,5 +159,46 @@ describe("CmsImage 변환 이미지(v2 C2)", () => {
 		const wrapper = img.parentElement as HTMLElement;
 		expect(wrapper.style.width).toBe("60px");
 		expect(wrapper.style.maxWidth).toBe("100%");
+	});
+
+	it("캐시된 외부 이미지는 load 이벤트가 없어도 실제 비율로 자리를 잡는다", () => {
+		const complete = vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
+		const width = vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(800);
+		const height = vi.spyOn(HTMLImageElement.prototype, "naturalHeight", "get").mockReturnValue(400);
+		try {
+			const { container } = render(
+				<CmsImage
+					src="https://example.com/cached.png"
+					alt="캐시됨"
+					crop="0,0,50,100"
+					resolve={() => ({ url: "https://example.com/cached.png" })}
+				/>,
+			);
+			const wrapper = container.querySelector<HTMLElement>('[data-slot="image-transform-wrapper"]');
+			expect(wrapper?.style.aspectRatio).toBe("1");
+			expect(wrapper?.style.width).toBe("400px");
+		} finally {
+			complete.mockRestore();
+			width.mockRestore();
+			height.mockRestore();
+		}
+	});
+
+	it("미디어 원본 크기를 알면 로드 전에 이미지 자리를 잡는다", () => {
+		const resolve = () => ({ url: "https://example.com/a.png", width: 800, height: 400 });
+		const { container } = render(
+			<>
+				<CmsImage mediaId="plain" alt="일반" resolve={resolve} />
+				<CmsImage mediaId="cropped" alt="자름" crop="0,0,50,100" resolve={resolve} />
+			</>,
+		);
+
+		const plain = screen.getByAltText("일반");
+		expect(plain.getAttribute("width")).toBe("800");
+		expect(plain.getAttribute("height")).toBe("400");
+		const wrapper = container.querySelector<HTMLElement>('[data-slot="image-transform-wrapper"]');
+		// 800×400의 왼쪽 절반 → 400×400
+		expect(wrapper?.style.aspectRatio).toBe("1");
+		expect(wrapper?.style.width).toBe("400px");
 	});
 });

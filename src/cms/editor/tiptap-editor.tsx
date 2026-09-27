@@ -311,7 +311,9 @@ export function CmsEditor({
 			attributes: {
 				"aria-label": "본문 편집기",
 				class:
-					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20",
+					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20 " +
+					// 표 열 너비 조절 손잡이(prosemirror-tables columnResizing)
+					"[&_.tableWrapper]:overflow-x-auto [&_td]:relative [&_th]:relative [&.resize-cursor]:cursor-col-resize [&_.column-resize-handle]:pointer-events-none [&_.column-resize-handle]:absolute [&_.column-resize-handle]:-right-0.5 [&_.column-resize-handle]:top-0 [&_.column-resize-handle]:-bottom-px [&_.column-resize-handle]:w-1 [&_.column-resize-handle]:bg-primary",
 			},
 			handleKeyDown: (view, event) => {
 				// 한글 IME 조합 중에는 메뉴 탐색·확정을 처리하지 않는다(§4.2).

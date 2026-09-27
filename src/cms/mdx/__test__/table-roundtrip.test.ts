@@ -189,4 +189,45 @@ describe("C6 표 셀 병합 MDX 파싱·직렬화", () => {
 		const doc = toDocument(analyze("::::table\n:::row\n::cell[a]{colspan=1000000000 rowspan=9}\n:::\n::::"));
 		expect(doc.content?.[0]?.content?.[0]?.content?.[0]?.attrs).toEqual({ colspan: 64 });
 	});
+
+	it("열 너비가 있는 표는 widths 속성과 함께 바이트 그대로 왕복한다", () => {
+		const sources = [
+			[
+				'::::table{align="left,right" widths="120,,200"}',
+				":::row",
+				"::cell[이름]{header}",
+				"::cell[값]{header}",
+				"::cell[비고]{header}",
+				":::",
+				":::row",
+				"::cell[a]",
+				"::cell[1]",
+				"::cell[b]",
+				":::",
+				"::::",
+			],
+			[
+				'::::table{widths="80,160"}',
+				":::row",
+				"::cell[합친 머리글]{header colspan=2}",
+				":::",
+				":::row",
+				"::cell[a]",
+				"::cell[b]",
+				":::",
+				"::::",
+			],
+		].map((lines) => lines.join("\n"));
+		for (const source of sources) {
+			const doc = toDocument(analyze(source));
+			expect(serialize(doc).trim()).toBe(source);
+		}
+		expect(toDocument(analyze(sources[0] ?? "")).content?.[0]?.attrs?.widths).toEqual([120, null, 200]);
+	});
+
+	it("잘못된 열 너비는 버리고 GFM 표 규칙을 따른다", () => {
+		const source = '::::table{widths="0,abc,99999"}\n:::row\n::cell[a]{header}\n:::\n:::row\n::cell[b]\n:::\n::::';
+		const saved = serialize(toDocument(analyze(source))).trim();
+		expect(saved).toBe("| a |\n| --- |\n| b |");
+	});
 });

@@ -3,7 +3,13 @@ import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/c
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { attributeRecord, readJsxAttributes } from "./jsx";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
-import { boundedTableSpan, hasGfmHeaderLayout, MAX_TABLE_COLUMNS, tableHasMergedCells } from "./table-layout";
+import {
+	boundedTableSpan,
+	hasGfmHeaderLayout,
+	MAX_TABLE_COLUMNS,
+	parseTableWidths,
+	tableHasMergedCells,
+} from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsMdxAnalysis, CmsNode } from "./types";
 
 type MdastLike = {
@@ -260,9 +266,13 @@ const convertDirectiveTable = (node: MdastLike): CmsNode => {
 		}
 	}
 
+	const attrs: Record<string, CmsJsonValue> = {};
+	if (align?.some((v) => v !== null)) attrs.align = align;
+	const widths = parseTableWidths(rawAttrs.widths);
+	if (widths.length > 0) attrs.widths = widths;
 	return {
 		type: "table",
-		...(align?.some((v) => v !== null) ? { attrs: { align } } : {}),
+		...(Object.keys(attrs).length > 0 ? { attrs } : {}),
 		content,
 	};
 };

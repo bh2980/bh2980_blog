@@ -171,7 +171,7 @@ export const post = collection({
 - **C3 커스텀 블록 삽입 UI:** Callout·Collapsible·Tabs·Columns·Tooltip·Mermaid·차트를 슬래시 메뉴와 설정 폼으로 삽입·편집한다. B3 위에서 만든다.
 - **C4 미리보기:** Mermaid·차트·수식을 편집기 안에서 렌더링한다.
 - **C5 코드 블록:** 하이라이팅, 코드 안 밑줄·툴팁 등 주석 편집, 줄 번호·언어 선택 UI, 들여쓰기·붙여넣기 키 처리. Keystatic 제거 커밋 `002720d3`에서 지운 `src/keystatic/fields/mdx/components/code-block/**`·`plugins/pm/codeblock-keys.ts`·`codeblock-paste.ts`를 참고한다. 저장 형식은 기존 코드 펜스 주석 문법(`src/libs/annotation/code-block`)을 유지한다.
-- **C6 표 셀 병합:** GFM으로 표현할 수 없으므로 병합이 있는 표만 새 directive로 저장하고, 병합 없는 표는 GFM을 유지한다. 병합 표는 `::::table`·`:::row`·`::cell[인라인]{colspan rowspan header}`로 저장한다([C 구현 계획](docs/cms/v2/c-editor.md) §1.2).
+- **C6 표 셀 병합·열 너비:** GFM으로 표현할 수 없으므로 병합·열 너비가 있는 표만 새 directive로 저장하고, 나머지는 GFM을 유지한다. 이런 표는 `::::table{align widths}`·`:::row`·`::cell[인라인]{colspan rowspan header}`로 저장한다([C 구현 계획](docs/cms/v2/c-editor.md) §1.2).
 
 ## 5. D — AI 보조
 

@@ -45,6 +45,7 @@ const renderPublic = async (source: string): Promise<string> => {
  * 42편의 해시를 갱신했다. 46편 모두 보이는 텍스트는 이전 렌더와 같고, 차이는 Collapsible·Tabs·Tooltip의
  * 상태 속성(`data-state` → `data-closed`·`data-panel-open` 등)과 닫힌 패널의 빈 요소를 렌더하지 않는 것,
  * 그리고 Tooltip 설명을 스크린 리더용 숨긴 텍스트(`sr-only`, `aria-describedby`)로 함께 내보내는 것뿐이다.
+ * v2 C6 후속(2026-09-27): GFM `<th>`에 `scope="col"`을 부여해 해당 표가 있는 2편의 해시를 갱신했다.
  */
 const canonical = (html: string): string =>
 	html.replaceAll("<span>ㅤ</span>", "<p><br/></p>").replace(/<br\/>\s+/g, "<br/>");

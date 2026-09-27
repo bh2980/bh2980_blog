@@ -14,6 +14,7 @@ export function PublicImage({
 	crop,
 	rotate,
 	title,
+	intrinsicSize,
 }: {
 	src: string;
 	alt: string;
@@ -23,9 +24,11 @@ export function PublicImage({
 	style?: CSSProperties;
 	crop?: string;
 	rotate?: string | number;
+	/** 서버가 아는 원본 픽셀 크기. 로드 전 비율 자리를 잡아 레이아웃 이동을 막는다. */
+	intrinsicSize?: { width: number; height: number };
 }) {
 	const [failed, setFailed] = useState(false);
-	const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
+	const [natural, setNatural] = useState<{ width: number; height: number } | null>(intrinsicSize ?? null);
 	const readNaturalSize = (image: HTMLImageElement) => {
 		const { naturalWidth, naturalHeight } = image;
 		if (naturalWidth <= 0 || naturalHeight <= 0) return;
@@ -96,11 +99,13 @@ export function PublicImage({
 		<img
 			alt={decorative ? "" : alt}
 			className="h-auto max-w-full rounded-md"
+			height={intrinsicSize?.height}
 			loading="lazy"
 			onError={() => setFailed(true)}
 			src={src}
 			style={style}
 			title={title}
+			width={intrinsicSize?.width}
 		/>
 	);
 }

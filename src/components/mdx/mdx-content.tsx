@@ -96,6 +96,8 @@ export const MDX_COMPONENTS = {
 	Table,
 	TableRow,
 	TableCell,
+	// GFM 표의 첫 행 머리글은 열 머리글이다. directive 표는 TableCell에서 행·열을 판별한다.
+	th: ({ scope, ...props }: ComponentProps<"th">) => <th {...props} scope={scope ?? "col"} />,
 };
 
 /**

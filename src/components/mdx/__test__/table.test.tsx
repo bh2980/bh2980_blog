@@ -127,4 +127,57 @@ describe("C6 공개 표 컴포넌트 (Table, TableRow, TableCell)", () => {
 		expect(container.querySelector("tr > td")?.getAttribute("colspan")).toBe("2");
 		expect(container.querySelector("tr p, tr br")).toBeNull();
 	});
+
+	it("머리글 셀에 열·행 scope를 붙인다", () => {
+		render(
+			<Table>
+				<TableRow>
+					<TableCell header colspan={2}>
+						분기
+					</TableCell>
+				</TableRow>
+				<TableRow>
+					<TableCell header>1월</TableCell>
+					<TableCell>10</TableCell>
+				</TableRow>
+			</Table>,
+		);
+		expect(screen.getByText("분기").getAttribute("scope")).toBe("col");
+		expect(screen.getByText("1월").getAttribute("scope")).toBe("row");
+		expect(screen.getByText("10").hasAttribute("scope")).toBe(false);
+	});
+
+	it("GFM 머리글에도 scope=col을 붙인다", async () => {
+		const { content } = await renderMDX("| 이름 | 값 |\n| --- | --- |\n| a | 1 |");
+		const { container } = render(content);
+		expect([...container.querySelectorAll("th")].map((cell) => cell.getAttribute("scope"))).toEqual(["col", "col"]);
+	});
+
+	it("widths로 열 너비와 표 폭을 적용한다", async () => {
+		const mdx = [
+			'::::table{widths="120,200"}',
+			":::row",
+			"::cell[a]{header}",
+			"::cell[b]{header}",
+			":::",
+			":::row",
+			"::cell[1]",
+			"::cell[2]",
+			":::",
+			"::::",
+		].join("\n");
+		const { content } = await renderMDX(mdx);
+		const { container } = render(content);
+		const cols = [...container.querySelectorAll("col")].map((col) => (col as HTMLElement).style.width);
+		expect(cols).toEqual(["120px", "200px"]);
+		expect(container.querySelector("table")?.style.width).toBe("320px");
+	});
+
+	it("격자 밖의 여분 열 너비는 빈 열을 만들지 않는다", async () => {
+		const mdx = '::::table{widths="100,200,300"}\n:::row\n::cell[a]{header}\n::cell[b]{header}\n:::\n::::';
+		const { content } = await renderMDX(mdx);
+		const { container } = render(content);
+		expect(container.querySelectorAll("col")).toHaveLength(2);
+		expect(container.querySelector("table")?.style.width).toBe("300px");
+	});
 });
