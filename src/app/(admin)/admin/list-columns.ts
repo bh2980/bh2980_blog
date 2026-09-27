@@ -1,6 +1,7 @@
 import type { AdminListColumn, ListSortField } from "@/cms/core/api";
 import { ADMIN_LIST_COLUMNS } from "@/cms/core/api";
-import { isRecordCollection } from "@/cms/core/collections";
+import { isCollection, isRecordCollection } from "@/cms/core/collections";
+import { schemaOf, storedField } from "@/cms/schema/derive";
 import type { ListState } from "./list-state";
 
 type DateFromKey = "createdFrom" | "updatedFrom" | "publishedFrom";
@@ -61,20 +62,35 @@ export const COLUMN_LABELS: Record<AdminListColumn, string> = Object.fromEntries
 	ADMIN_LIST_COLUMNS.map((column) => [column, COLUMN_CONFIG[column].label]),
 ) as Record<AdminListColumn, string>;
 
-/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). */
+/**
+ * 필드 컬럼 → 그 컬럼이 보여 주는 필드. 목록 API의 컬럼·필터 매개변수는 v1 그대로라
+ * 이 표에 있는 필드만 목록 컬럼이 될 수 있다. 나머지 컬럼(상태·날짜·폴더)은 콘텐츠 자체의 값이다.
+ */
+const FIELD_COLUMNS: Partial<Record<AdminListColumn, string>> = {
+	title: "title",
+	slug: "slug",
+	category: "categoryId",
+	tags: "tagIds",
+	publishedAt: "publishedAt",
+};
+
+const columnOf = (name: string): AdminListColumn | undefined =>
+	(Object.keys(FIELD_COLUMNS) as AdminListColumn[]).find((column) => FIELD_COLUMNS[column] === name) ??
+	((ADMIN_LIST_COLUMNS as readonly string[]).find((column) => column === name && !(column in FIELD_COLUMNS)) as
+		| AdminListColumn
+		| undefined);
+
+/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`에서 만든다. */
 export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
-	const isPost = collection === "post";
-	const isContent = isPost || collection === "memo";
+	if (!isCollection(collection)) return { available: [...ADMIN_LIST_COLUMNS], defaults: ["title", "status"] };
+	const schema = schemaOf(collection);
 	const available = ADMIN_LIST_COLUMNS.filter((column) => {
-		if (column === "category") return isPost;
-		if (column === "tags" || column === "publishedAt") return isContent;
-		return true;
+		const field = FIELD_COLUMNS[column];
+		return field === undefined || Object.hasOwn(schema.fields, field) || storedField(collection, field) !== undefined;
 	});
-	const defaults: AdminListColumn[] = isPost
-		? ["title", "status", "category", "tags", "updatedAt", "publishedAt"]
-		: isContent
-			? ["title", "status", "tags", "updatedAt", "publishedAt"]
-			: ["title", "slug", "status", "updatedAt"];
+	const defaults = schema.list.columns
+		.map(columnOf)
+		.filter((column): column is AdminListColumn => column !== undefined && available.includes(column));
 	return { available, defaults };
 }
 

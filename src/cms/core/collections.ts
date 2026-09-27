@@ -1,19 +1,20 @@
+import type { CollectionWorkflow } from "../schema/collection";
+import { relationsOf, schemaOf, storageTypes } from "../schema/derive";
+import type { StorageType } from "../schema/fields";
+
 export const COLLECTIONS = ["post", "memo", "category", "tag", "collection"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 
-/**
- * §5.2 저장 방식. `publish`는 초안과 공개본을 나누고 명시적 발행으로 공개한다.
- * `record`는 작은 폼에서 명시적으로 저장하면 곧바로 현재 값(공개)에 반영한다.
- */
-export type CollectionWorkflow = "publish" | "record";
+export type { CollectionWorkflow } from "../schema/collection";
 
-export type FieldType = "string" | "string[]";
+export type FieldType = StorageType;
 
 export interface CollectionRelation {
 	readonly field: string;
 	readonly kind: "category" | "tag" | "entry";
 }
 
+/** v1 모양의 컬렉션 요약. 필드·관계는 `src/cms/schema/definitions.ts`의 정의에서 만든다(v2 B1). */
 export interface CollectionDefinition {
 	readonly name: Collection;
 	readonly label: string;
@@ -22,71 +23,22 @@ export interface CollectionDefinition {
 	readonly relations?: readonly CollectionRelation[];
 }
 
-const SEO_FIELDS = {
-	seoTitle: "string",
-	seoDescription: "string",
-	canonicalUrl: "string",
-	ogImageId: "string",
-} as const satisfies Record<string, FieldType>;
-
-export const COLLECTION_DEFINITIONS: Readonly<Record<Collection, CollectionDefinition>> = {
-	post: {
-		name: "post",
-		label: "게시글",
-		workflow: "publish",
-		fields: {
-			title: "string",
-			summary: "string",
-			categoryId: "string",
-			tagIds: "string[]",
-			publishedAt: "string",
-			policy: "string",
-			/** `policy: deprecated`일 때 독자를 안내할 최신 글(§6.4 "대체 글 관계"). */
-			replacementPostId: "string",
-			...SEO_FIELDS,
-		},
-		relations: [
-			{ field: "categoryId", kind: "category" },
-			{ field: "tagIds", kind: "tag" },
-			{ field: "replacementPostId", kind: "entry" },
-		],
-	},
-	memo: {
-		name: "memo",
-		label: "메모",
-		workflow: "publish",
-		fields: {
-			title: "string",
-			tagIds: "string[]",
-			publishedAt: "string",
-			...SEO_FIELDS,
-		},
-		relations: [{ field: "tagIds", kind: "tag" }],
-	},
-	category: {
-		name: "category",
-		label: "카테고리",
-		workflow: "record",
-		fields: { title: "string" },
-	},
-	tag: {
-		name: "tag",
-		label: "태그",
-		workflow: "record",
-		fields: { title: "string" },
-	},
-	collection: {
-		name: "collection",
-		label: "모음집",
-		workflow: "record",
-		fields: {
-			title: "string",
-			summary: "string",
-			itemIds: "string[]",
-		},
-		relations: [{ field: "itemIds", kind: "entry" }],
-	},
-};
+export const COLLECTION_DEFINITIONS: Readonly<Record<Collection, CollectionDefinition>> = Object.fromEntries(
+	COLLECTIONS.map((name) => {
+		const schema = schemaOf(name);
+		const relations = relationsOf(name).map(({ field, kind }) => ({ field, kind }));
+		return [
+			name,
+			{
+				name,
+				label: schema.label,
+				workflow: schema.workflow,
+				fields: storageTypes(name),
+				...(relations.length > 0 ? { relations } : {}),
+			},
+		];
+	}),
+) as Record<Collection, CollectionDefinition>;
 
 export function isCollection(val: unknown): val is Collection {
 	return typeof val === "string" && (COLLECTIONS as readonly string[]).includes(val);

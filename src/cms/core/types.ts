@@ -1,4 +1,6 @@
 import type { CmsImageSource } from "../mdx/types";
+import type { MetadataOf } from "../schema/collection";
+import type { SCHEMAS } from "../schema/definitions";
 import type { Collection } from "./collections";
 
 /**
@@ -31,19 +33,12 @@ export type Reference = {
 
 export type JsonValue = string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
-export type PostMetadata = {
-	title?: string;
-	summary?: string;
-	categoryId?: string;
-	tagIds?: readonly string[];
-	publishedAt?: string;
-	policy?: string;
-	replacementPostId?: string;
-};
-export type MemoMetadata = { title?: string; tagIds?: readonly string[]; publishedAt?: string };
-export type CategoryMetadata = { title?: string };
-export type TagMetadata = { title?: string };
-export type CollectionMetadata = { title?: string; summary?: string; itemIds?: readonly string[] };
+/** 컬렉션별 메타데이터. `src/cms/schema/definitions.ts`의 정의에서 만든다(v2 B1). */
+export type PostMetadata = MetadataOf<typeof SCHEMAS.post>;
+export type MemoMetadata = MetadataOf<typeof SCHEMAS.memo>;
+export type CategoryMetadata = MetadataOf<typeof SCHEMAS.category>;
+export type TagMetadata = MetadataOf<typeof SCHEMAS.tag>;
+export type CollectionMetadata = MetadataOf<typeof SCHEMAS.collection>;
 
 type InputFor<C extends Collection, M> = {
 	collection: C;

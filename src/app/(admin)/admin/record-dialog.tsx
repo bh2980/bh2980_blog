@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { COLLECTION_DEFINITIONS, type Collection } from "@/cms/core/collections";
 import { slugify } from "@/cms/core/slug";
 import { Button } from "@/components/ui/button";
@@ -12,24 +12,24 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { CmsApiError, cmsFetch, errorText } from "./admin-api";
 import { cmsIssueMessage } from "./api-error-message";
+import {
+	EMPTY_FORM,
+	type EntryData,
+	type EntryForm,
+	type EntryFormPatch,
+	formFromEntry,
+	metadataFromForm,
+} from "./entries/entry-form";
+import { SchemaFields } from "./entries/schema-fields";
 
 export type RecordTarget = { collection: Collection; id: string | null };
 
-interface RecordEntry {
-	id: string;
-	version: number;
-	workingSlug: string | null;
-	working: { metadata: { title?: string; summary?: string; itemIds?: string[] } };
-}
-
-type PostOption = { id: string; title: string; status: string };
-
 /**
  * record 컬렉션 폼(§5.2). `저장`이 검증 후 곧바로 공개 값에 반영된다. 자동 저장은 하지 않는다.
- * 모음집은 설명과 게시글 순서를 편집한다. 아직 공개되지 않은 글도 담을 수 있고 공개 목록에서만 빠진다(§6.4).
+ * 입력은 컬렉션 정의(v2 B1)에서 그린다. 모음집은 설명과 게시글 순서를 편집한다.
+ * 아직 공개되지 않은 글도 담을 수 있고 공개 목록에서만 빠진다(§6.4).
  */
 export function RecordDialog({
 	target,
@@ -40,90 +40,42 @@ export function RecordDialog({
 	onClose: () => void;
 	onSaved: () => void;
 }) {
-	const titleId = useId();
-	const slugId = useId();
-	const summaryId = useId();
-	const searchId = useId();
-	const [loaded, setLoaded] = useState<RecordEntry | null>(null);
-	const [title, setTitle] = useState("");
-	const [slug, setSlug] = useState("");
-	const [summary, setSummary] = useState("");
-	const [items, setItems] = useState<PostOption[]>([]);
-	const [search, setSearch] = useState("");
-	const [results, setResults] = useState<PostOption[]>([]);
+	const [loaded, setLoaded] = useState<EntryData | null>(null);
+	const [form, setFormState] = useState<EntryForm>(EMPTY_FORM);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
 
 	const collection = target?.collection ?? "tag";
-	const isSeries = collection === "collection";
 	const label = COLLECTION_DEFINITIONS[collection].label;
+	const title = form.title;
 
 	useEffect(() => {
 		setLoaded(null);
-		setTitle("");
-		setSlug("");
-		setSummary("");
-		setItems([]);
-		setSearch("");
+		setFormState(EMPTY_FORM);
 		setError(null);
 		setIsDirty(false);
 		setConfirmDiscard(false);
 		if (!target?.id) return;
 		let cancelled = false;
-		(async () => {
-			try {
-				const entry = await cmsFetch<RecordEntry>(`/api/cms/v1/entries/${target.id}`);
+		cmsFetch<EntryData>(`/api/cms/v1/entries/${target.id}`)
+			.then((entry) => {
 				if (cancelled) return;
 				setLoaded(entry);
-				setTitle(entry.working.metadata.title ?? "");
-				setSlug(entry.workingSlug ?? "");
-				setSummary(entry.working.metadata.summary ?? "");
-				const ids = entry.working.metadata.itemIds ?? [];
-				const resolved = await Promise.all(
-					ids.map((id) =>
-						cmsFetch<{ status: string; working: { metadata: { title?: string } } }>(`/api/cms/v1/entries/${id}`)
-							.then((post) => ({ id, title: post.working.metadata.title || "제목 없음", status: post.status }))
-							.catch(() => ({ id, title: "(찾을 수 없음)", status: "missing" })),
-					),
-				);
-				if (!cancelled) setItems(resolved);
-			} catch (err) {
+				setFormState(formFromEntry(entry));
+			})
+			.catch((err) => {
 				if (!cancelled) setError(errorText(err, `${label}을(를) 불러오지 못했습니다.`));
-			}
-		})();
+			});
 		return () => {
 			cancelled = true;
 		};
 	}, [target, label]);
 
-	useEffect(() => {
-		if (!isSeries || !search.trim()) {
-			setResults([]);
-			return;
-		}
-		const timer = setTimeout(() => {
-			const params = new URLSearchParams({ collection: "post", search: search.trim(), pageSize: "25" });
-			cmsFetch<{ items: { id: string; title: string | null; status: string }[] }>(`/api/cms/v1/entries?${params}`)
-				.then((data) =>
-					setResults(
-						data.items.map((item) => ({ id: item.id, title: item.title || "제목 없음", status: item.status })),
-					),
-				)
-				.catch(() => setResults([]));
-		}, 250);
-		return () => clearTimeout(timer);
-	}, [isSeries, search]);
-
-	const touch = () => setIsDirty(true);
-	const move = (index: number, direction: -1 | 1) => {
-		const next = [...items];
-		const target = index + direction;
-		if (target < 0 || target >= next.length) return;
-		[next[index], next[target]] = [next[target] as PostOption, next[index] as PostOption];
-		setItems(next);
-		touch();
+	const setForm = (patch: EntryFormPatch) => {
+		setFormState((current) => ({ ...current, ...patch }) as EntryForm);
+		setIsDirty(true);
 	};
 
 	const close = () => {
@@ -137,13 +89,15 @@ export function RecordDialog({
 
 	const save = async () => {
 		if (!target || !title.trim()) return;
+		const built = metadataFromForm({ ...form, title: title.trim() }, collection, loaded?.working.metadata ?? {});
+		if ("error" in built) {
+			setError(built.error);
+			return;
+		}
+		const { metadata } = built;
 		setIsSaving(true);
 		setError(null);
-		const metadata: Record<string, unknown> = { title: title.trim() };
-		if (isSeries) {
-			if (summary.trim()) metadata.summary = summary.trim();
-			if (items.length > 0) metadata.itemIds = items.map((item) => item.id);
-		}
+		const slug = form.slug;
 		try {
 			if (target.id && loaded) {
 				await cmsFetch(`/api/cms/v1/entries/${target.id}`, {
@@ -185,137 +139,15 @@ export function RecordDialog({
 						void save();
 					}}
 				>
-					<div className="space-y-1">
-						<label htmlFor={titleId} className="font-medium">
-							이름
-						</label>
-						<Input
-							id={titleId}
-							autoFocus
-							value={title}
-							onChange={(event) => {
-								setTitle(event.target.value);
-								touch();
-							}}
-						/>
-					</div>
-					<div className="space-y-1">
-						<label htmlFor={slugId} className="font-medium">
-							주소 (slug)
-						</label>
-						<Input
-							id={slugId}
-							value={slug}
-							placeholder={slugify(title) || "비우면 이름에서 만듭니다"}
-							onChange={(event) => {
-								setSlug(event.target.value);
-								touch();
-							}}
-							className="font-mono"
-						/>
-						{target?.id && (
-							<p className="text-muted-foreground text-xs">주소를 바꾸면 이전 주소는 새 주소로 연결됩니다.</p>
-						)}
-					</div>
-					{isSeries && (
-						<>
-							<div className="space-y-1">
-								<label htmlFor={summaryId} className="font-medium">
-									설명
-								</label>
-								<textarea
-									id={summaryId}
-									rows={2}
-									value={summary}
-									onChange={(event) => {
-										setSummary(event.target.value);
-										touch();
-									}}
-									className="w-full rounded-md border bg-background p-2"
-								/>
-							</div>
-							<fieldset className="space-y-2">
-								<legend className="font-medium">게시글 (순서대로)</legend>
-								{items.length === 0 && <p className="text-muted-foreground text-xs">담긴 글이 없습니다.</p>}
-								<ol className="space-y-1">
-									{items.map((item, index) => (
-										<li key={`${item.id}-${index}`} className="flex items-center gap-1 rounded border px-2 py-1">
-											<span className="min-w-0 flex-1 truncate">
-												{index + 1}. {item.title}
-												{item.status !== "published" && (
-													<span className="ml-1 text-amber-600 text-xs">
-														({item.status === "missing" ? "없음" : "비공개 — 공개 목록에서 빠짐"})
-													</span>
-												)}
-											</span>
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												aria-label={`${item.title} 위로`}
-												disabled={index === 0}
-												onClick={() => move(index, -1)}
-											>
-												↑
-											</Button>
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												aria-label={`${item.title} 아래로`}
-												disabled={index === items.length - 1}
-												onClick={() => move(index, 1)}
-											>
-												↓
-											</Button>
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												aria-label={`${item.title} 빼기`}
-												onClick={() => {
-													setItems(items.filter((_, i) => i !== index));
-													touch();
-												}}
-											>
-												×
-											</Button>
-										</li>
-									))}
-								</ol>
-								<label htmlFor={searchId} className="sr-only">
-									추가할 글 검색
-								</label>
-								<Input
-									id={searchId}
-									value={search}
-									placeholder="추가할 게시글 검색"
-									onChange={(event) => setSearch(event.target.value)}
-								/>
-								{results.length > 0 && (
-									<ul className="max-h-32 overflow-y-auto rounded border text-xs">
-										{results.map((result) => (
-											<li key={result.id}>
-												<Button
-													type="button"
-													variant="ghost"
-													size="xs"
-													className="w-full justify-start"
-													onClick={() => {
-														setItems([...items, result]);
-														setSearch("");
-														touch();
-													}}
-												>
-													{result.title}
-													{result.status !== "published" && ` (${result.status})`}
-												</Button>
-											</li>
-										))}
-									</ul>
-								)}
-							</fieldset>
-						</>
+					<SchemaFields
+						collection={collection}
+						form={form}
+						context={{ entryId: target?.id ?? undefined, disabled: isSaving }}
+						onChange={setForm}
+						slugPlaceholder={slugify(title) || "비우면 이름에서 만듭니다"}
+					/>
+					{target?.id && (
+						<p className="text-muted-foreground text-xs">주소를 바꾸면 이전 주소는 새 주소로 연결됩니다.</p>
 					)}
 					{confirmDiscard && (
 						<p role="alert" className="text-amber-700 dark:text-amber-400">

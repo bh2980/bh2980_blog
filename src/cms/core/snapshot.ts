@@ -3,6 +3,13 @@ import { analyze } from "../mdx/analyze";
 import { DIRECTIVE_BY_COMPONENT, TEXT_ALIGN_VALUES } from "../mdx/directives";
 import { isAllowedImageSrc } from "../mdx/image-src";
 import type { CmsImageSource } from "../mdx/types";
+import {
+	fieldValueError,
+	metadataReferences,
+	missingRequiredIssues,
+	relationRule,
+	storedField,
+} from "../schema/derive";
 import { COLLECTION_DEFINITIONS, isCollection } from "./collections";
 import { isUuid } from "./ids";
 import { normalizeSlugInput } from "./slug";
@@ -28,7 +35,6 @@ import {
 export const MAX_MDX_BYTES = 2 * 1024 * 1024;
 export const MAX_METADATA_BYTES = 256 * 1024;
 export const MAX_TITLE_LENGTH = 200;
-const POLICIES = ["normal", "evergreen", "deprecated"];
 const SITE_HOSTS = new Set(["bh2980.dev", "www.bh2980.dev"]);
 
 const isJsonArray = (value: unknown): value is readonly JsonValue[] => Array.isArray(value);
@@ -67,25 +73,17 @@ class ReferenceCollector {
 	}
 }
 
-const isValidIsoDate = (s: string) => !Number.isNaN(Date.parse(s));
-
-/** 메타데이터 관계 필드(`categoryId`·`tagIds`·`itemIds`)를 참조로 모은다. 순서·중복을 보존한다. */
-function addMetadataReferences(collector: ReferenceCollector, metadata: PreparedSnapshot["metadata"]) {
-	if (typeof metadata.categoryId === "string") {
-		collector.add("category", metadata.categoryId, { type: "metadata", path: "categoryId" });
-	}
-	if (typeof metadata.replacementPostId === "string") {
-		collector.add("entry", metadata.replacementPostId, { type: "metadata", path: "replacementPostId" });
-	}
-	const lists: [string, ReferenceKind][] = [
-		["tagIds", "tag"],
-		["itemIds", "entry"],
-	];
-	for (const [path, kind] of lists) {
-		const ids = metadata[path];
-		if (!Array.isArray(ids)) continue;
-		ids.forEach((id, ordinal) => {
-			if (typeof id === "string") collector.add(kind, id, { type: "metadata", path, ordinal });
+/** 메타데이터 관계 필드를 컬렉션 정의 순서대로 참조로 모은다. 순서·중복을 보존한다. */
+function addMetadataReferences(
+	collector: ReferenceCollector,
+	collection: Collection,
+	metadata: PreparedSnapshot["metadata"],
+) {
+	for (const ref of metadataReferences(collection, metadata)) {
+		collector.add(ref.kind, ref.targetId, {
+			type: "metadata",
+			path: ref.path,
+			...(ref.ordinal === undefined ? {} : { ordinal: ref.ordinal }),
 		});
 	}
 }
@@ -170,10 +168,12 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 		if (Array.from(titleValue).length > MAX_TITLE_LENGTH) throw new ServiceError("title_too_long");
 	}
 
+	// 허용 키·저장 형식·값 규칙은 컬렉션 정의(v2 B1)에서 온다.
 	const rules = COLLECTION_DEFINITIONS[collection].fields;
 	const metadata: Record<string, string | readonly string[]> = {};
 	for (const [k, v] of Object.entries(input)) {
-		if (!Object.hasOwn(rules, k)) throw new ServiceError("invalid_metadata_key");
+		const stored = storedField(collection, k);
+		if (!stored || !Object.hasOwn(rules, k)) throw new ServiceError("invalid_metadata_key");
 		if (rules[k] === "string") {
 			if (typeof v !== "string") throw new ServiceError("invalid_metadata_type");
 			metadata[k] = v;
@@ -190,14 +190,9 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 			metadata[k] = Object.freeze([...v]);
 		}
 
-		if (k === "policy" && !POLICIES.includes(v as string)) throw new ServiceError("invalid_metadata_value");
-		if (k === "publishedAt" && !isValidIsoDate(v as string)) throw new ServiceError("invalid_metadata_value");
-		if (k === "categoryId" || k === "tagIds" || k === "itemIds" || k === "replacementPostId") {
-			const ids = metadata[k];
-			for (const id of Array.isArray(ids) ? ids : [ids]) {
-				if (!isUuid(id)) throw new ServiceError("invalid_metadata_value");
-			}
-		}
+		const value = metadata[k];
+		const error = value === undefined ? null : fieldValueError(stored.field, k, value);
+		if (error) throw new ServiceError(error);
 	}
 
 	if (Buffer.byteLength(JSON.stringify(sortKeys(metadata)), "utf8") > MAX_METADATA_BYTES) {
@@ -336,7 +331,7 @@ export async function prepareSnapshot(
 	const metadata = validateMetadata(rawCollection, input.metadata);
 
 	const collector = new ReferenceCollector();
-	addMetadataReferences(collector, metadata);
+	addMetadataReferences(collector, rawCollection, metadata);
 
 	const analysis = analyze(input.mdx);
 	const mdxIssues: Issue[] = analysis.errors.map((e) => ({
@@ -558,14 +553,10 @@ export function validateForPublish(
 				: {}),
 	});
 
-	if (!snapshot.slug) issues.push({ code: "null_slug", path: "slug" });
-	if (!snapshot.metadata.title) issues.push({ code: "missing_title", path: "title" });
+	issues.push(...missingRequiredIssues(snapshot.collection, snapshot));
 	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
 	if (isContent && snapshot.mdx.trim() === "") {
 		issues.push({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });
-	}
-	if (snapshot.collection === "post" && !snapshot.metadata.categoryId) {
-		issues.push({ code: "missing_category", path: "categoryId" });
 	}
 	const publishedAt = snapshot.metadata.publishedAt;
 	if (typeof publishedAt === "string" && Date.parse(publishedAt) > now.getTime()) {
@@ -573,15 +564,9 @@ export function validateForPublish(
 		issues.push({ code: "future_published_at", path: "publishedAt" });
 	}
 
-	const expectedCollection: Record<Exclude<ReferenceKind, "media">, string> = {
-		category: "category",
-		tag: "tag",
-		entry: "post",
-	};
-
 	// 메타데이터 관계는 스냅샷의 참조 목록과 무관하게 항상 검사한다(호출자가 참조를 비워 보내도 새지 않게).
 	const metadataRefs = new ReferenceCollector();
-	addMetadataReferences(metadataRefs, snapshot.metadata);
+	addMetadataReferences(metadataRefs, snapshot.collection, snapshot.metadata);
 	const occurrenceKey = (kind: string, target: string, o: ReferenceOccurrence) =>
 		`${kind}|${target}|${JSON.stringify(o)}`;
 	const seen = new Set(
@@ -609,14 +594,18 @@ export function validateForPublish(
 			addForAll("unresolved_reference");
 			continue;
 		}
-		const isItem = ref.occurrences.some((o) => o.type === "metadata" && o.path === "itemIds");
-		if (target.collection !== expectedCollection[ref.kind]) {
-			addForAll(isItem ? "invalid_item_collection" : "invalid_reference_collection");
+		// 기대 대상 컬렉션과 미공개 허용은 관계 필드 정의에서 온다. 본문 링크(`entry`)는 게시글을 기대한다.
+		const rule = ref.occurrences
+			.map((o) => (o.type === "metadata" ? relationRule(snapshot.collection, o.path) : undefined))
+			.find((found) => found !== undefined);
+		const expected = rule?.to ?? (ref.kind === "entry" ? "post" : ref.kind);
+		if (target.collection !== expected) {
+			// 모음집 항목처럼 미공개를 허용하는 목록 관계는 v1부터 별도 코드로 알린다.
+			addForAll(rule?.allowUnpublished ? "invalid_item_collection" : "invalid_reference_collection");
 			continue;
 		}
 		// 모음집은 아직 공개되지 않은 게시글도 담을 수 있다(§6.4). 공개 목록에서만 뺀다.
-		const draftItemAllowed = snapshot.collection === "collection" && isItem;
-		if (!target.isPublished && !draftItemAllowed) addForAll("unpublished_reference");
+		if (!target.isPublished && !rule?.allowUnpublished) addForAll("unpublished_reference");
 	}
 
 	for (const [index, source] of (snapshot.internalLinks ?? []).entries()) {

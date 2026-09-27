@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CmsApiError, cmsFetch } from "../admin-api";
-import { type EntryData, type EntryForm, formFingerprint, metadataFromForm } from "./entry-form";
+import { type EntryData, type EntryForm, type EntryFormPatch, formFingerprint, metadataFromForm } from "./entry-form";
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
 
 /** §5.1 저장 상태. */
@@ -261,7 +261,7 @@ export function useEntryAutosave({
 	/** 폼 일부를 바꾼다. 복구본을 즉시 남기고 서버 저장을 예약한다. */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: helpers read refs only
 	const setForm = useCallback(
-		(patch: Partial<EntryForm>) => {
+		(patch: EntryFormPatch) => {
 			const next = { ...formRef.current, ...patch };
 			formRef.current = next;
 			setFormState(next);

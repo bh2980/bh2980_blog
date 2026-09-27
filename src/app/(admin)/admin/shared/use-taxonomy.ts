@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { COLLECTION_DEFINITIONS } from "@/cms/core/collections";
 import { cmsFetch } from "../admin-api";
+
+/** 이름만으로 만들 수 있는 record 컬렉션(§5.2). 관계 필드의 선택지와 바로 만들기(v2 B2)에 쓴다. */
+export type RecordCollection = "tag" | "category" | "collection";
 
 export interface TaxonomyOption {
 	id: string;
@@ -11,8 +15,8 @@ export interface TaxonomyOption {
 
 type ListResponse = { items: { id: string; title: string | null; slug: string | null }[]; total: number };
 
-/** 활성(공개) 태그·카테고리 전체. 100개를 넘으면 다음 페이지도 읽는다. */
-async function loadAll(collection: "tag" | "category"): Promise<TaxonomyOption[]> {
+/** 활성(공개) record 전체. 100개를 넘으면 다음 페이지도 읽는다. */
+async function loadAll(collection: RecordCollection): Promise<TaxonomyOption[]> {
 	const options: TaxonomyOption[] = [];
 	for (let page = 1; page < 50; page++) {
 		const params = new URLSearchParams({
@@ -33,10 +37,10 @@ async function loadAll(collection: "tag" | "category"): Promise<TaxonomyOption[]
 }
 
 /**
- * 편집 화면·일괄 작업·목록 필터가 함께 쓰는 태그·카테고리 선택지.
+ * 편집 화면·일괄 작업·목록 필터가 함께 쓰는 태그·카테고리 등 record 선택지.
  * `create`는 제목만으로 새 레코드를 만든다(slug는 서버가 제목에서 만든다).
  */
-export function useTaxonomy(collection: "tag" | "category", enabled = true) {
+export function useTaxonomy(collection: RecordCollection, enabled = true) {
 	const [options, setOptions] = useState<TaxonomyOption[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +49,7 @@ export function useTaxonomy(collection: "tag" | "category", enabled = true) {
 			setOptions(await loadAll(collection));
 			setError(null);
 		} catch {
-			setError(`${collection === "tag" ? "태그" : "카테고리"} 목록을 불러오지 못했습니다.`);
+			setError(`${COLLECTION_DEFINITIONS[collection].label} 목록을 불러오지 못했습니다.`);
 		}
 	}, [collection]);
 

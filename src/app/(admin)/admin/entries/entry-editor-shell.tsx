@@ -49,7 +49,7 @@ import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
 import { CommandPalette, type PaletteCommand } from "./command-palette";
-import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry } from "./entry-form";
+import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry, formText } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
@@ -301,7 +301,7 @@ export function EntryEditorShell({
 		setPublishIssues([]);
 		setActionFeedback(null);
 		// §5.6: 게시글 요약이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
-		if (collection === "post" && !form.summary.trim()) {
+		if (collection === "post" && !formText(form, "summary").trim()) {
 			const generated = autoSummary(form.mdx);
 			if (!generated) {
 				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: "summary" }]);
@@ -311,8 +311,8 @@ export function EntryEditorShell({
 			setForm({ summary: generated });
 			toast.message("본문에서 요약을 만들었습니다. 속성 패널에서 고칠 수 있습니다.");
 		}
-		if (form.publishDate) {
-			const publishedAt = parseSeoulDateTimeInput(form.publishDate);
+		if (formText(form, "publishedAt")) {
+			const publishedAt = parseSeoulDateTimeInput(formText(form, "publishedAt"));
 			if (publishedAt && Date.parse(publishedAt) > Date.now()) {
 				setActionFeedback({
 					type: "error",
@@ -965,7 +965,9 @@ export function EntryEditorShell({
 							form={form}
 							disabled={isReadOnly}
 							publishIssues={publishIssues}
-							autoSummaryPreview={collection === "post" && !form.summary.trim() ? autoSummary(deferredMdx) : ""}
+							autoSummaryPreview={
+								collection === "post" && !formText(form, "summary").trim() ? autoSummary(deferredMdx) : ""
+							}
 							entry={entry}
 							previewHref={previewHref}
 							incomingReferences={incoming.items}

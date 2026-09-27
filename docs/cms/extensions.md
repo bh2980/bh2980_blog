@@ -4,6 +4,10 @@
 
 ## 현재 상태
 
+**컬렉션 필드는 v2 B1부터 코드 한 곳에서 정의합니다.** [`src/cms/schema/definitions.ts`](../../src/cms/schema/definitions.ts)의 `collection({ fields: { title: fields.text(...), ... } })` 정의 하나에서 타입, 서버 검증·저장, 속성 패널 입력, 목록 컬럼, 관계 참조 추적을 만듭니다. 입력을 바꾸려면 필드에 `input: "이름"`을 적고 [`field-inputs.tsx`](../../src/app/(admin)/admin/entries/field-inputs.tsx)의 입력 등록부에 컴포넌트를 둡니다. 자세한 규칙은 [`docs/cms/v2/b1-schema.md`](./v2/b1-schema.md)에 있습니다.
+
+아래 `/meta`의 `extensions` 예제와 블록 확장은 아직 v1 상태이며, 블록은 v2 B3에서 정의 규격으로 바꿉니다.
+
 **v1에는 범용 필드·블록 등록 API가 없습니다.** 저장소에는 `defineCustomField`, `defineFieldHelper`, `defineObjectField`, `defineCustomBlock` 같은 등록 함수나 실행 중인 확장 레지스트리가 없습니다. 기존 문서에 있던 해당 import 예제는 실제 API가 아니어서 제거했습니다.
 
 현재 구현은 [`src/cms/core/extensions-example.ts`](../../src/cms/core/extensions-example.ts)에 정적 예제 네 개를 정의하고, 관리자 인증이 필요한 `GET /api/cms/v1/meta`에서 JSON으로 제공합니다.
@@ -54,7 +58,7 @@
 
 ## 서로 다른 확장 지점
 
-- **저장할 컬렉션 필드:** `COLLECTION_DEFINITIONS`와 콘텐츠 서비스의 서버 검증·관리자 폼을 함께 갱신해야 합니다.
+- **저장할 컬렉션 필드:** `src/cms/schema/definitions.ts`만 고칩니다. 공개 블로그에 보이려면 공개 템플릿은 따로 고칩니다.
 - **MDX 지시자:** `src/cms/mdx/directives.ts`, 편집기 변환, 공개 렌더러와 검증 테스트가 별도 계약을 이룹니다. 지시자 목록에 추가하는 것만으로 범용 필드가 등록되지는 않습니다.
 - **`/meta` 예제:** `extensions-example.ts`만 바꾸면 직렬화된 설명 데이터가 바뀝니다. 입력 UI나 저장 기능은 바뀌지 않습니다.
 

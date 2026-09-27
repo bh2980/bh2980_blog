@@ -34,7 +34,7 @@ paths:
   /meta:
     get:
       tags: [meta]
-      summary: API 버전, 컬렉션 정의, 직렬화 가능한 확장 예제, 지원 기능
+      summary: API 버전, 컬렉션 정의(스키마), 직렬화 가능한 확장 예제, 지원 기능
       responses:
         "200":
           description: 메타데이터
@@ -53,7 +53,37 @@ paths:
                       enum: [post, memo, category, tag, collection]
                   definitions:
                     type: object
+                    description: v1 모양의 컬렉션 요약(필드 이름 → 저장 형식, 관계 목록). `schemas`에서 만든다.
                     additionalProperties: true
+                  schemas:
+                    type: object
+                    description: |
+                      코드로 정의한 컬렉션 스키마(v2 B1). 컬렉션 이름 → `label`·`workflow`·`body`·`fields`·`layout`·`list`.
+                      필드는 `kind`(text·slug·relation·datetime·select·conditional)와 옵션을 가진다.
+                      JSON으로 직렬화할 수 있는 값만 담는다. 입력 교체(`input`)와 액션(`actions`)은 이름만 싣는다.
+                    additionalProperties:
+                      type: object
+                      required: [label, workflow, body, fields, list]
+                      properties:
+                        label: { type: string }
+                        workflow: { type: string, enum: [publish, record] }
+                        body: { type: boolean }
+                        fields:
+                          type: object
+                          additionalProperties:
+                            type: object
+                            required: [kind, label]
+                            properties:
+                              kind: { type: string, enum: [text, slug, relation, datetime, select, conditional] }
+                              label: { type: string }
+                            additionalProperties: true
+                        layout:
+                          type: array
+                          items: { type: object, additionalProperties: true }
+                        list:
+                          type: object
+                          properties:
+                            columns: { type: array, items: { type: string } }
                   extensions:
                     type: object
                     required: [fields, helpers, blocks]
