@@ -97,6 +97,7 @@ export function ContainerNodeView({ node, updateAttributes, selected, editor, ge
 									{attribute.type === "boolean" ? (
 										<input
 											type="checkbox"
+											aria-label={attribute.label}
 											checked={values[name] === true}
 											onChange={(event) => setValue(name, event.target.checked)}
 										/>

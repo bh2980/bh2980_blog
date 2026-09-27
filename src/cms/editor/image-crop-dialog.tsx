@@ -10,6 +10,7 @@ import {
 	parseCrop,
 	parseRotate,
 	type RotateDegree,
+	roundCropBox,
 } from "@/cms/mdx/image-transform";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,12 +139,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 				const width = Math.abs(currentXPercent - startXPercent);
 				const height = Math.abs(currentYPercent - startYPercent);
 				if (width >= 2 && height >= 2) {
-					setCropDraft({
-						x: round2(x),
-						y: round2(y),
-						width: round2(width),
-						height: round2(height),
-					});
+					setCropDraft(roundCropBox({ x, y, width, height }));
 				}
 				return;
 			}
@@ -151,30 +147,26 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 			if (handle === "move") {
 				const newX = clamp(initialCrop.x + deltaX, 0, 100 - initialCrop.width);
 				const newY = clamp(initialCrop.y + deltaY, 0, 100 - initialCrop.height);
-				setCropDraft({
-					...initialCrop,
-					x: round2(newX),
-					y: round2(newY),
-				});
+				setCropDraft(roundCropBox({ ...initialCrop, x: newX, y: newY }));
 				return;
 			}
 
 			if (handle === "se") {
 				const newWidth = clamp(initialCrop.width + deltaX, 2, 100 - initialCrop.x);
 				const newHeight = clamp(initialCrop.height + deltaY, 2, 100 - initialCrop.y);
-				setCropDraft({ ...initialCrop, width: round2(newWidth), height: round2(newHeight) });
+				setCropDraft(roundCropBox({ ...initialCrop, width: newWidth, height: newHeight }));
 			} else if (handle === "sw") {
 				const maxLeft = initialCrop.x + initialCrop.width - 2;
 				const newX = clamp(initialCrop.x + deltaX, 0, maxLeft);
 				const newWidth = initialCrop.x + initialCrop.width - newX;
 				const newHeight = clamp(initialCrop.height + deltaY, 2, 100 - initialCrop.y);
-				setCropDraft({ x: round2(newX), y: initialCrop.y, width: round2(newWidth), height: round2(newHeight) });
+				setCropDraft(roundCropBox({ x: newX, y: initialCrop.y, width: newWidth, height: newHeight }));
 			} else if (handle === "ne") {
 				const newWidth = clamp(initialCrop.width + deltaX, 2, 100 - initialCrop.x);
 				const maxTop = initialCrop.y + initialCrop.height - 2;
 				const newY = clamp(initialCrop.y + deltaY, 0, maxTop);
 				const newHeight = initialCrop.y + initialCrop.height - newY;
-				setCropDraft({ x: initialCrop.x, y: round2(newY), width: round2(newWidth), height: round2(newHeight) });
+				setCropDraft(roundCropBox({ x: initialCrop.x, y: newY, width: newWidth, height: newHeight }));
 			} else if (handle === "nw") {
 				const maxLeft = initialCrop.x + initialCrop.width - 2;
 				const maxTop = initialCrop.y + initialCrop.height - 2;
@@ -182,7 +174,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 				const newY = clamp(initialCrop.y + deltaY, 0, maxTop);
 				const newWidth = initialCrop.x + initialCrop.width - newX;
 				const newHeight = initialCrop.y + initialCrop.height - newY;
-				setCropDraft({ x: round2(newX), y: round2(newY), width: round2(newWidth), height: round2(newHeight) });
+				setCropDraft(roundCropBox({ x: newX, y: newY, width: newWidth, height: newHeight }));
 			}
 		};
 

@@ -71,6 +71,15 @@ interface CachedToken {
 }
 
 const highlightCache = new Map<string, CachedToken[]>();
+const MAX_HIGHLIGHT_CACHE_ENTRIES = 50;
+const cacheHighlight = (key: string, tokens: CachedToken[]) => {
+	highlightCache.delete(key);
+	highlightCache.set(key, tokens);
+	if (highlightCache.size > MAX_HIGHLIGHT_CACHE_ENTRIES) {
+		const oldest = highlightCache.keys().next().value;
+		if (oldest !== undefined) highlightCache.delete(oldest);
+	}
+};
 const pendingRequests = new Set<string>();
 
 async function requestHighlight(view: EditorView, lang: string, code: string, cacheKey: string) {
@@ -92,7 +101,7 @@ async function requestHighlight(view: EditorView, lang: string, code: string, ca
 		const resolvedLang = highlighter.getLoadedLanguages().includes(normalized) ? normalized : "text";
 
 		if (resolvedLang === "text") {
-			highlightCache.set(cacheKey, []);
+			cacheHighlight(cacheKey, []);
 			pendingRequests.delete(cacheKey);
 			return;
 		}
@@ -106,7 +115,6 @@ async function requestHighlight(view: EditorView, lang: string, code: string, ca
 		});
 
 		const tokens: CachedToken[] = [];
-		let lineOffset = 0;
 
 		for (const line of tokensByLine) {
 			for (const token of line) {
@@ -121,17 +129,16 @@ async function requestHighlight(view: EditorView, lang: string, code: string, ca
 					.join(" ");
 
 				tokens.push({
-					from: lineOffset + token.offset,
-					to: lineOffset + token.offset + token.content.length,
+					from: token.offset,
+					to: token.offset + token.content.length,
 					style,
 				});
 			}
-			lineOffset += line.reduce((acc, t) => acc + t.content.length, 0) + 1; // +1 for '\n'
 		}
 
-		highlightCache.set(cacheKey, tokens);
+		cacheHighlight(cacheKey, tokens);
 	} catch {
-		highlightCache.set(cacheKey, []);
+		cacheHighlight(cacheKey, []);
 	} finally {
 		pendingRequests.delete(cacheKey);
 		// 뷰가 아직 살아있다면 트랜잭션 메타로 갱신 트리거

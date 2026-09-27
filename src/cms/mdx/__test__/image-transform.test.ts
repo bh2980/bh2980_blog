@@ -8,6 +8,7 @@ import {
 	isValidRotate,
 	parseCrop,
 	parseRotate,
+	roundCropBox,
 } from "../image-transform";
 
 describe("image-transform pure functions (c-editor.md §1.1)", () => {
@@ -154,5 +155,11 @@ describe("intrinsicDisplayWidth", () => {
 		expect(intrinsicDisplayWidth({ crop: { x: 0, y: 0, width: 100, height: 50 }, rotate: 90 }, natural)).toBe(100);
 		expect(intrinsicDisplayWidth({ crop: null, rotate: 180 }, natural)).toBe(400);
 		expect(intrinsicDisplayWidth({ crop: null, rotate: 90 }, null)).toBeNull();
+	});
+
+	it("반올림 동률에서도 자르기 영역이 오른쪽·아래 경계를 넘지 않는다", () => {
+		const crop = roundCropBox({ x: 12.125, y: 12.125, width: 87.875, height: 87.875 });
+		expect(crop).toEqual({ x: 12.13, y: 12.13, width: 87.87, height: 87.87 });
+		expect(parseCrop(`${crop.x},${crop.y},${crop.width},${crop.height}`)).toEqual(crop);
 	});
 });

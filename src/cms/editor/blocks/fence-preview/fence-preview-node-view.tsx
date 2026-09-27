@@ -1,7 +1,7 @@
 "use client";
 
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/utils/cn";
 import { ChartPreview, MathPreview, MermaidPreview } from "./preview-renderers";
 
@@ -50,6 +50,7 @@ export function FencePreviewNodeView({ node, updateAttributes, selected, editor 
 	const [draft, setDraft] = useState<string>(node.attrs.value ?? "");
 	const [previewValue, setPreviewValue] = useState<string>(node.attrs.value ?? "");
 	const lastCommittedRef = useRef<string>(node.attrs.value ?? "");
+	const inputId = useId();
 	const isComposingRef = useRef(false);
 	const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const draftRef = useRef<string>(draft);
@@ -90,8 +91,8 @@ export function FencePreviewNodeView({ node, updateAttributes, selected, editor 
 
 	useEffect(() => {
 		return () => {
-			if (!debounceTimerRef.current) return;
-			clearTimeout(debounceTimerRef.current);
+			if (!debounceTimerRef.current && !isComposingRef.current) return;
+			if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 			debounceTimerRef.current = null;
 			// 사라지기 전에 아직 커밋하지 않은 입력을 문서에 넣는다. 노드가 이미 지워졌으면 넣을 곳이 없다.
 			if (draftRef.current === lastCommittedRef.current) return;
@@ -128,9 +129,13 @@ export function FencePreviewNodeView({ node, updateAttributes, selected, editor 
 		setDraft(val);
 		if (debounceTimerRef.current) {
 			clearTimeout(debounceTimerRef.current);
+			debounceTimerRef.current = null;
 		}
+		// 조합 중에는 compositionend가 최종값을 커밋한다.
+		if (isComposingRef.current || (e.nativeEvent as InputEvent).isComposing) return;
 		// 약 400ms 디바운스 후 커밋 및 미리보기 갱신
 		debounceTimerRef.current = setTimeout(() => {
+			if (isComposingRef.current) return;
 			commitValue(val);
 		}, 400);
 	};
@@ -200,11 +205,11 @@ export function FencePreviewNodeView({ node, updateAttributes, selected, editor 
 
 					{/* 원문 입력 칸 (모노, IME 안전) */}
 					<div className="space-y-1">
-						<label htmlFor={`fence-input-${kind}`} className="font-mono text-[11px] text-muted-foreground">
+						<label htmlFor={inputId} className="font-mono text-[11px] text-muted-foreground">
 							원문 코드
 						</label>
 						<textarea
-							id={`fence-input-${kind}`}
+							id={inputId}
 							ref={textareaRef}
 							value={draft}
 							placeholder={meta.placeholder}

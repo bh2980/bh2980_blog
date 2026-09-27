@@ -3,6 +3,7 @@ import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/c
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { attributeRecord, readJsxAttributes } from "./jsx";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
+import { boundedTableSpan, hasGfmHeaderLayout, MAX_TABLE_COLUMNS, tableHasMergedCells } from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsMdxAnalysis, CmsNode } from "./types";
 
 type MdastLike = {
@@ -215,7 +216,7 @@ const convertDirectiveTable = (node: MdastLike): CmsNode => {
 		}
 	}
 
-	const content: CmsNode[] = rows.map((row) => {
+	const content: CmsNode[] = rows.map((row, rowIndex) => {
 		const cells: MdastLike[] = [];
 		for (const child of row.children ?? []) {
 			if (child.name === "TableCell") {
@@ -232,8 +233,8 @@ const convertDirectiveTable = (node: MdastLike): CmsNode => {
 			content: cells.map((cell) => {
 				const cellAttrs = attributeRecord(readJsxAttributes(cell.attributes));
 				const attrs: Record<string, CmsJsonValue> = {};
-				const colspan = Number(cellAttrs.colspan ?? 1);
-				const rowspan = Number(cellAttrs.rowspan ?? 1);
+				const colspan = boundedTableSpan(cellAttrs.colspan, MAX_TABLE_COLUMNS);
+				const rowspan = boundedTableSpan(cellAttrs.rowspan, rows.length - rowIndex);
 				if (colspan > 1) attrs.colspan = colspan;
 				if (rowspan > 1) attrs.rowspan = rowspan;
 				if (cellAttrs.header === true || cellAttrs.header === "true" || cellAttrs.header === "") {
@@ -248,6 +249,16 @@ const convertDirectiveTable = (node: MdastLike): CmsNode => {
 			}),
 		};
 	});
+
+	const headerRows = content.map((row) => (row.content ?? []).map((cell) => cell.attrs?.header === true));
+	if (!tableHasMergedCells({ content }) && !hasGfmHeaderLayout(headerRows)) {
+		// 병합 없는 directive 표의 비GFM 머리글 배치를 명시해 저장 시 GFM 첫 행 머리글로 바뀌지 않게 한다.
+		for (const row of content) {
+			for (const cell of row.content ?? []) {
+				if (cell.attrs?.header !== true) cell.attrs = { ...cell.attrs, header: false };
+			}
+		}
+	}
 
 	return {
 		type: "table",

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { boundedTableSpan, MAX_TABLE_COLUMNS } from "@/cms/mdx/table-layout";
 import { cn } from "@/utils";
 
 export interface TableProps extends Omit<React.ComponentProps<"table">, "align"> {
@@ -40,12 +41,8 @@ export function Table({ align, className, children, ...props }: TableProps) {
 				colIndex += 1;
 			}
 			const cellProps = cellElement.props as TableCellProps;
-			const boundedSpan = (value: unknown, max: number) => {
-				const number = Number(value ?? 1);
-				return Number.isSafeInteger(number) && number > 0 ? Math.min(number, max) : 1;
-			};
-			const cs = boundedSpan(cellProps.colspan ?? cellProps.colSpan, Math.max(1, 64 - colIndex));
-			const rs = boundedSpan(cellProps.rowspan ?? cellProps.rowSpan, Math.max(1, rowList.length - rowIndex));
+			const cs = boundedTableSpan(cellProps.colspan ?? cellProps.colSpan, MAX_TABLE_COLUMNS - colIndex);
+			const rs = boundedTableSpan(cellProps.rowspan ?? cellProps.rowSpan, rowList.length - rowIndex);
 
 			for (let r = 0; r < rs; r += 1) {
 				for (let c = 0; c < cs; c += 1) {
@@ -62,6 +59,8 @@ export function Table({ align, className, children, ...props }: TableProps) {
 			const existingAlign = (cellElement.props as { align?: string } | undefined)?.align;
 			return React.cloneElement(cellElement, {
 				align: existingAlign ?? cellAlign,
+				colspan: cs,
+				rowspan: rs,
 			} as Record<string, unknown>);
 		});
 
@@ -87,7 +86,17 @@ export function TableRow({ className, children, ...props }: TableRowProps) {
 	);
 }
 
-export function TableCell({ header, colspan, rowspan, align, className, children, ...props }: TableCellProps) {
+export function TableCell({
+	header,
+	colspan,
+	rowspan,
+	colSpan,
+	rowSpan,
+	align,
+	className,
+	children,
+	...props
+}: TableCellProps) {
 	const isHeader = header === true || header === "true" || header === "";
 	const Tag = isHeader ? "th" : "td";
 
@@ -96,8 +105,8 @@ export function TableCell({ header, colspan, rowspan, align, className, children
 
 	return (
 		<Tag
-			colSpan={colspan ? Number(colspan) : undefined}
-			rowSpan={rowspan ? Number(rowspan) : undefined}
+			colSpan={Number(colspan ?? colSpan) > 1 ? Number(colspan ?? colSpan) : undefined}
+			rowSpan={Number(rowspan ?? rowSpan) > 1 ? Number(rowspan ?? rowSpan) : undefined}
 			className={cn(
 				"border border-border p-2 align-middle",
 				isHeader && "bg-muted/50 font-medium text-foreground",

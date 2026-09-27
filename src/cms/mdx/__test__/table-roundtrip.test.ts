@@ -139,4 +139,54 @@ describe("C6 표 셀 병합 MDX 파싱·직렬화", () => {
 		const doc = toDocument(analyze(source));
 		expect(serialize(doc).trim()).toBe(source);
 	});
+
+	it("인라인 코드의 짝 없는 대괄호는 JSX 표로 저장해 셀을 잃지 않는다", () => {
+		for (const text of ["]", "["]) {
+			const doc = toDocument(
+				analyze(
+					[
+						"<Table>",
+						"<TableRow>",
+						`<TableCell colspan="2">\`${text}\`</TableCell>`,
+						"</TableRow>",
+						"<TableRow>",
+						"<TableCell>a</TableCell>",
+						"<TableCell>b</TableCell>",
+						"</TableRow>",
+						"</Table>",
+					].join("\n"),
+				),
+			);
+			const saved = serialize(doc);
+			expect(saved).toContain(`<TableCell colspan="2">\`${text}\`</TableCell>`);
+			expect(toDocument(analyze(saved))).toEqual(doc);
+		}
+	});
+
+	it("병합 없는 표도 GFM으로 표현할 수 없는 머리글 배치는 directive로 보존한다", () => {
+		const sources = [
+			[
+				"::::table",
+				":::row",
+				"::cell[이름]{header}",
+				"::cell[값]",
+				":::",
+				":::row",
+				"::cell[나이]{header}",
+				"::cell[3]",
+				":::",
+				"::::",
+			],
+			["::::table", ":::row", "::cell[a]", "::cell[b]", ":::", ":::row", "::cell[c]", "::cell[d]", ":::", "::::"],
+		].map((lines) => lines.join("\n"));
+		for (const source of sources) {
+			const saved = serialize(toDocument(analyze(source))).trim();
+			expect(saved).toBe(source);
+		}
+	});
+
+	it("과도한 span은 표 크기 안으로 제한한다", () => {
+		const doc = toDocument(analyze("::::table\n:::row\n::cell[a]{colspan=1000000000 rowspan=9}\n:::\n::::"));
+		expect(doc.content?.[0]?.content?.[0]?.content?.[0]?.attrs).toEqual({ colspan: 64 });
+	});
 });

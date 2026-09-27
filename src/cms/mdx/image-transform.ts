@@ -30,6 +30,18 @@ const CROP_REGEX =
 	/^\s*(\d+(?:\.\d{1,2})?)\s*,\s*(\d+(?:\.\d{1,2})?)\s*,\s*(\d+(?:\.\d{1,2})?)\s*,\s*(\d+(?:\.\d{1,2})?)\s*$/;
 const ROTATE_REGEX = /^(?:0|90|180|270)$/;
 
+/** 모서리를 기준으로 반올림해 `x + width`, `y + height`가 100%를 넘지 않게 한다. */
+export function roundCropBox(box: CropBox): CropBox {
+	const x = round2(box.x);
+	const y = round2(box.y);
+	return {
+		x,
+		y,
+		width: round2(Math.min(round2(box.x + box.width), 100) - x),
+		height: round2(Math.min(round2(box.y + box.height), 100) - y),
+	};
+}
+
 /** `crop="x,y,w,h"` 문자열을 파싱한다. 잘못된 형식이면 null을 반환한다. */
 export function parseCrop(value: unknown): CropBox | null {
 	if (typeof value !== "string") return null;

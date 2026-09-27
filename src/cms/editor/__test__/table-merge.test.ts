@@ -150,4 +150,20 @@ describe("C6 편집기 표 셀 병합 및 분할", () => {
 		// 기본 커서 선택 상태 (TextSelection)
 		expect(instance.state.selection instanceof CellSelection).toBe(false);
 	});
+
+	it("병합을 풀어도 첫 열 머리글 배치를 첫 행 머리글로 바꾸지 않는다", () => {
+		const source = [
+			"::::table",
+			":::row",
+			"::cell[이름]{header}",
+			"::cell[값]",
+			":::",
+			":::row",
+			"::cell[나이]{header}",
+			"::cell[3]",
+			":::",
+			"::::",
+		].join("\n");
+		expect(tiptapToMdx(mdxToTiptap(source)).trim()).toBe(source);
+	});
 });

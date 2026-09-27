@@ -26,6 +26,15 @@ export function PublicImage({
 }) {
 	const [failed, setFailed] = useState(false);
 	const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
+	const readNaturalSize = (image: HTMLImageElement) => {
+		const { naturalWidth, naturalHeight } = image;
+		if (naturalWidth <= 0 || naturalHeight <= 0) return;
+		setNatural((current) =>
+			current?.width === naturalWidth && current.height === naturalHeight
+				? current
+				: { width: naturalWidth, height: naturalHeight },
+		);
+	};
 	const aspectRatio = natural ? natural.width / natural.height : null;
 	const { t } = useTranslate();
 
@@ -69,11 +78,10 @@ export function PublicImage({
 					className="rounded-md"
 					loading="lazy"
 					onError={() => setFailed(true)}
-					onLoad={(e) => {
-						const { naturalWidth, naturalHeight } = e.currentTarget;
-						if (naturalWidth > 0 && naturalHeight > 0) {
-							setNatural({ width: naturalWidth, height: naturalHeight });
-						}
+					onLoad={(e) => readNaturalSize(e.currentTarget)}
+					ref={(image) => {
+						// 캐시된 이미지는 hydration 전에 load가 끝나 onLoad가 누락될 수 있다.
+						if (image?.complete) readNaturalSize(image);
 					}}
 					src={src}
 					style={transform.imageStyle}

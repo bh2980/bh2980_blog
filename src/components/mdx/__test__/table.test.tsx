@@ -92,4 +92,39 @@ describe("C6 공개 표 컴포넌트 (Table, TableRow, TableCell)", () => {
 		expect(item1.tagName).toBe("TD");
 		expect(item1.getAttribute("rowspan")).toBe("2");
 	});
+
+	it("공개 셀에도 정렬 격자와 같은 제한된 span을 적용한다", () => {
+		render(
+			<Table>
+				<TableRow>
+					<TableCell colSpan={1000} rowspan="9">
+						큰 셀
+					</TableCell>
+				</TableRow>
+			</Table>,
+		);
+		const cell = screen.getByText("큰 셀");
+		expect(cell.getAttribute("colspan")).toBe("64");
+		expect(cell.hasAttribute("rowspan")).toBe(false);
+	});
+
+	it("대체 저장된 JSX 표도 셀을 행의 직계 자식으로 렌더한다", async () => {
+		const mdx = [
+			"<Table>",
+			"<TableRow>",
+			'<TableCell colspan="2">`]`</TableCell>',
+			"</TableRow>",
+			"<TableRow>",
+			"<TableCell>a</TableCell>",
+			"<TableCell>b</TableCell>",
+			"</TableRow>",
+			"</Table>",
+		].join("\n");
+		const { content } = await renderMDX(mdx);
+		const { container } = render(content);
+		const rows = container.querySelectorAll("tr");
+		expect([...rows].map((row) => [...row.children].map((cell) => cell.tagName))).toEqual([["TD"], ["TD", "TD"]]);
+		expect(container.querySelector("tr > td")?.getAttribute("colspan")).toBe("2");
+		expect(container.querySelector("tr p, tr br")).toBeNull();
+	});
 });

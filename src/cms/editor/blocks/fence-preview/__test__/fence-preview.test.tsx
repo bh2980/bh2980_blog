@@ -106,6 +106,7 @@ describe("FencePreviewNodeView", () => {
 	});
 
 	it("IME 조합 중에는 커밋되지 않고, 조합 완료(compositionend) 시 즉시 커밋된다", () => {
+		vi.useFakeTimers();
 		const updateAttributes = vi.fn();
 		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
 		const { container } = render(<FencePreviewNodeView {...props} />);
@@ -116,13 +117,27 @@ describe("FencePreviewNodeView", () => {
 		// IME 입력 시작
 		fireEvent.compositionStart(textarea);
 		fireEvent.change(textarea, { target: { value: "x = 한" } });
-		// 조합 중에는 updateAttributes가 즉시 호출되지 않음
+		act(() => {
+			vi.advanceTimersByTime(500);
+		});
+		// 디바운스 시간이 지나도 조합 중 값은 커밋하지 않음
 		expect(updateAttributes).not.toHaveBeenCalled();
 
 		// IME 입력 완료
 		textarea.value = "x = 한글";
 		fireEvent.compositionEnd(textarea);
 		expect(updateAttributes).toHaveBeenCalledWith({ value: "x = 한글" });
+	});
+
+	it("IME 조합 중 언마운트되면 입력 중인 값을 잃지 않는다", () => {
+		const updateAttributes = vi.fn();
+		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
+		const { container, unmount } = render(<FencePreviewNodeView {...props} />);
+		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+		fireEvent.compositionStart(textarea);
+		fireEvent.change(textarea, { target: { value: "x = 한" } });
+		unmount();
+		expect(updateAttributes).toHaveBeenCalledWith({ value: "x = 한" });
 	});
 
 	it("커서 키와 Mod 조합은 입력 칸 안에 두고, 저장(Mod-s)만 대기 중 입력을 커밋한 뒤 통과시킨다", () => {

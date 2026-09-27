@@ -4,7 +4,10 @@ import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
+import { hasBalancedLabelBrackets, hasNonGfmHeaderLayout, tableHasMergedCells } from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsNode } from "./types";
+
+const usesDirectiveTable = (node: CmsNode) => tableHasMergedCells(node) || hasNonGfmHeaderLayout(node);
 
 const isIdent = (value: string) => /^[A-Za-z_][\w]*$/.test(value);
 
@@ -226,7 +229,7 @@ const containerDepth = (node: CmsNode): number => {
 	let max = 0;
 	for (const child of node.content ?? []) {
 		// 병합 표는 4콜론(table) 안에 3콜론(row)을 쓴다. 바깥 컨테이너는 최소 5콜론이어야 한다.
-		if (child.type === "table" && hasMergedCells(child)) max = Math.max(max, 2);
+		if (child.type === "table" && usesDirectiveTable(child)) max = Math.max(max, 2);
 		const definition = directiveFor(child);
 		if (definition?.kind === "container") max = Math.max(max, 1 + containerDepth(child));
 		max = Math.max(max, containerDepth(child));
@@ -481,18 +484,6 @@ const serializeListItem = (item: CmsNode, marker: string, indent: string): strin
 	return [head, ...extra].join("\n\n");
 };
 
-const hasMergedCells = (node: CmsNode): boolean => {
-	const rows = node.content ?? [];
-	for (const row of rows) {
-		for (const cell of row.content ?? []) {
-			const colspan = Number(cell.attrs?.colspan ?? 1);
-			const rowspan = Number(cell.attrs?.rowspan ?? 1);
-			if (colspan > 1 || rowspan > 1) return true;
-		}
-	}
-	return false;
-};
-
 const serializeGfmTable = (node: CmsNode): string => {
 	const rows = node.content ?? [];
 	const serializedRows = rows.map((row) => {
@@ -509,41 +500,65 @@ const serializeGfmTable = (node: CmsNode): string => {
 	return [header, separator, ...body].join("\n");
 };
 
+const tableCellAttrs = (cell: CmsNode): string[] => {
+	const attrs: string[] = [];
+	if (cell.attrs?.header === true || cell.attrs?.header === "true") attrs.push("header");
+	const colspan = Number(cell.attrs?.colspan ?? 1);
+	if (colspan > 1) attrs.push(`colspan=${colspan}`);
+	const rowspan = Number(cell.attrs?.rowspan ?? 1);
+	if (rowspan > 1) attrs.push(`rowspan=${rowspan}`);
+	return attrs;
+};
+
+const tableAlign = (node: CmsNode): string => {
+	const align = Array.isArray(node.attrs?.align) ? (node.attrs.align as Array<string | null>) : [];
+	const value = align.map((v) => v ?? "").join(",");
+	return value.replace(/,/g, "").length > 0 ? value : "";
+};
+
+// directive 라벨 대괄호가 맞지 않으면 파서가 셀을 잃으므로 같은 의미의 JSX 표로 저장한다.
+const serializeJsxTable = (node: CmsNode, rows: string[][]): string => {
+	const align = tableAlign(node);
+	const lines = [`<Table${align ? ` align="${escapeAttr(align)}"` : ""}>`];
+	(node.content ?? []).forEach((row, rowIndex) => {
+		lines.push("<TableRow>");
+		(row.content ?? []).forEach((cell, cellIndex) => {
+			const attrs = tableCellAttrs(cell).map((attr) => attr.replace(/=(\d+)$/, '="$1"'));
+			lines.push(
+				`<TableCell${attrs.length ? ` ${attrs.join(" ")}` : ""}>${rows[rowIndex]?.[cellIndex] ?? ""}</TableCell>`,
+			);
+		});
+		lines.push("</TableRow>");
+	});
+	lines.push("</Table>");
+	return lines.join("\n");
+};
+
 const serializeDirectiveTable = (node: CmsNode): string => {
 	const rows = node.content ?? [];
-	const align = Array.isArray(node.attrs?.align) ? (node.attrs.align as Array<string | null>) : [];
-	const alignStr = align.map((v) => v ?? "").join(",");
-	const hasAlign = alignStr.replace(/,/g, "").length > 0;
-	const tableAttr = hasAlign ? `{align="${alignStr}"}` : "";
-
-	const lines: string[] = [`::::table${tableAttr}`];
-	for (const row of rows) {
-		lines.push(":::row");
-		for (const cell of row.content ?? []) {
-			const inline = serializeInlines(cell.content ?? [], false, true);
-			const cellAttrs: string[] = [];
-			if (cell.attrs?.header === true || cell.attrs?.header === "true") {
-				cellAttrs.push("header");
-			}
-			const colspan = Number(cell.attrs?.colspan ?? 1);
-			if (colspan > 1) {
-				cellAttrs.push(`colspan=${colspan}`);
-			}
-			const rowspan = Number(cell.attrs?.rowspan ?? 1);
-			if (rowspan > 1) {
-				cellAttrs.push(`rowspan=${rowspan}`);
-			}
-			const attrStr = cellAttrs.length > 0 ? `{${cellAttrs.join(" ")}}` : "";
-			lines.push(`::cell[${inline}]${attrStr}`);
-		}
-		lines.push(":::");
+	const labels = rows.map((row) =>
+		(row.content ?? []).map((cell) => serializeInlines(cell.content ?? [], false, true)),
+	);
+	if (labels.some((row) => row.some((label) => !hasBalancedLabelBrackets(label)))) {
+		return serializeJsxTable(node, labels);
 	}
+	const align = tableAlign(node);
+	const lines: string[] = [`::::table${align ? `{align="${align}"}` : ""}`];
+	rows.forEach((row, rowIndex) => {
+		lines.push(":::row");
+		(row.content ?? []).forEach((cell, cellIndex) => {
+			const cellAttrs = tableCellAttrs(cell);
+			const attrStr = cellAttrs.length > 0 ? `{${cellAttrs.join(" ")}}` : "";
+			lines.push(`::cell[${labels[rowIndex]?.[cellIndex] ?? ""}]${attrStr}`);
+		});
+		lines.push(":::");
+	});
 	lines.push("::::");
 	return lines.join("\n");
 };
 
 const serializeTable = (node: CmsNode): string => {
-	if (hasMergedCells(node)) {
+	if (usesDirectiveTable(node)) {
 		return serializeDirectiveTable(node);
 	}
 	return serializeGfmTable(node);

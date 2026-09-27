@@ -1,10 +1,11 @@
 import { Editor } from "@tiptap/core";
+import type { DecorationSet } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { codeBlockConverter } from "../../converters/code-block";
 import type { ConverterContext } from "../../converters/types";
 import { CmsCodeBlock } from "../code-block-extension";
-import { getShikiHighlighter } from "../highlight-plugin";
+import { codeBlockHighlightPluginKey, getShikiHighlighter } from "../highlight-plugin";
 import { handleEnterKey, handleModAKey, handlePaste, handleTabKey, isComposing } from "../keys";
 import type { CodeBlockAnnotationItem } from "../types";
 
@@ -380,5 +381,18 @@ describe("C5 코드 블록: 편집 시 주석 오프셋 트랜잭션 매핑", ()
 		// 하이라이팅 데코레이션이 텍스트 본문(순수 텍스트)을 오염시키지 않는다
 		const instance = createTestEditor(code, { language: "ts" });
 		expect(instance.state.doc.child(0).textContent).toBe(code);
+	});
+
+	it("여러 줄 코드의 Shiki 토큰 오프셋을 한 번만 더해 둘째 줄에 데코레이션한다", async () => {
+		const code = "const a = 1;\nconst b = 2;";
+		const instance = createTestEditor(code, { language: "ts" });
+		await vi.waitFor(() => {
+			const plugin = codeBlockHighlightPluginKey.get(instance.state);
+			const decorations = plugin?.props.decorations?.call(plugin, instance.state) as DecorationSet | undefined;
+			const secondConst = decorations
+				?.find(14, 19)
+				.find((decoration) => decoration.from === 14 && decoration.to === 19);
+			expect(secondConst).toBeDefined();
+		});
 	});
 });
