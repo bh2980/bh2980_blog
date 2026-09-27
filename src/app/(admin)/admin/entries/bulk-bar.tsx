@@ -265,7 +265,7 @@ export function BulkBar({
 		...categories.options.map((option) => ({ value: option.id, label: option.title })),
 	];
 	const folderItems = [
-		{ value: "__unfiled__", label: "미분류" },
+		{ value: "__unfiled__", label: "최상위" },
 		...folders.map((folder) => ({ value: folder.id, label: folder.name })),
 	];
 

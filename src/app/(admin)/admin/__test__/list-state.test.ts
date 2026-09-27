@@ -38,12 +38,11 @@ describe("관리자 목록 상태(§3.2)", () => {
 
 	it("builds the API query with OR-able repeats and Seoul day boundaries", () => {
 		const state = parseListState(
-			new URLSearchParams(
-				"collection=post&folder=unfiled&tag=t1&tag=t2&category=c1&publishedFrom=2026-03-01&publishedTo=2026-03-01",
-			),
+			new URLSearchParams("collection=post&tag=t1&tag=t2&category=c1&publishedFrom=2026-03-01&publishedTo=2026-03-01"),
 		);
 		const query = listStateToApiQuery(state);
-		expect(query.get("folderId")).toBe("null");
+		// 필터가 있으면 최상위에서도 모든 폴더를 가로질러 찾는다.
+		expect(query.get("folderId")).toBeNull();
 		expect(query.getAll("tagId")).toEqual(["t1", "t2"]);
 		expect(query.getAll("categoryId")).toEqual(["c1"]);
 		expect(query.get("publishedFrom")).toBe("2026-02-28T15:00:00.000Z");
@@ -53,7 +52,22 @@ describe("관리자 목록 상태(§3.2)", () => {
 	it("shows folders only when no search or filter narrows the list", () => {
 		expect(isExplorerMode(parseListState(new URLSearchParams("collection=post")))).toBe(true);
 		expect(isExplorerMode(parseListState(new URLSearchParams("collection=post&search=a")))).toBe(false);
-		expect(isExplorerMode(parseListState(new URLSearchParams("collection=post&folder=unfiled")))).toBe(false);
+		expect(isExplorerMode(parseListState(new URLSearchParams("collection=post&descendants=1")))).toBe(false);
+	});
+
+	it("browses the root like a file explorer and flattens only when asked (v2 folders)", () => {
+		const q = (search: string) => listStateToApiQuery(parseListState(new URLSearchParams(search)));
+		// 최상위 탐색: 폴더 밖 항목만.
+		expect(q("collection=memo").get("folderId")).toBe("null");
+		// 최상위에서 하위 폴더 포함: 전체.
+		expect(q("collection=memo&descendants=1").get("folderId")).toBeNull();
+		// 폴더 탐색: 바로 든 항목만.
+		expect(q("collection=memo&folder=f1").get("folderId")).toBe("f1");
+		expect(q("collection=memo&folder=f1").get("includeDescendants")).toBeNull();
+		// 폴더 안에서 검색: 그 폴더 아래 전체.
+		expect(q("collection=memo&folder=f1&search=a").get("includeDescendants")).toBe("true");
+		// 예전 주소의 미분류는 최상위로 읽는다.
+		expect(parseListState(new URLSearchParams("collection=memo&folder=unfiled")).folder).toBe("all");
 	});
 
 	it("sends header filters and asks for trashed items only on the trash screen", () => {

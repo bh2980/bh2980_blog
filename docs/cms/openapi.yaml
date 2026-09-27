@@ -99,7 +99,7 @@ paths:
           schema: { type: array, items: { type: string, enum: [draft, published, archived, trashed] } }
         - name: folderId
           in: query
-          description: 폴더 ID. `null`이면 미분류만.
+          description: 폴더 ID. `null`이면 폴더 밖(최상위) 항목만.
           schema: { type: string, nullable: true }
         - name: tagId
           in: query

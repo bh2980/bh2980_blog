@@ -139,8 +139,9 @@ describe("M13 editor accessibility", () => {
 		expect(screen.getByRole("button", { name: "문서 하위 폴더 접기" }).getAttribute("aria-expanded")).toBe("true");
 		fireEvent.click(await screen.findByRole("button", { name: "하위" }));
 		expect(onSelectFolder).toHaveBeenCalledWith("folder-2");
-		fireEvent.click(screen.getByRole("button", { name: "미분류" }));
-		expect(onSelectFolder).toHaveBeenCalledWith("unfiled");
+		// 미분류 대신 컬렉션 이름의 최상위가 트리의 뿌리다.
+		fireEvent.click(screen.getByRole("button", { name: "메모" }));
+		expect(onSelectFolder).toHaveBeenCalledWith("all");
 
 		const folderButton = screen.getByRole("button", { name: "문서" });
 		fireEvent.keyDown(folderButton, { key: "F2" });
@@ -188,15 +189,16 @@ describe("M13 editor accessibility", () => {
 		trigger.focus();
 		fireEvent.keyDown(trigger, { key: "Delete" });
 		const dialog = await screen.findByRole("alertdialog", { name: /'문서' 폴더 삭제/ });
-		expect(await screen.findByText("직접 속한 글 3개")).toBeTruthy();
+		expect(await screen.findByText("바로 든 메모 3개")).toBeTruthy();
 		expect(screen.getByText(/하위 폴더 1개: 자식/)).toBeTruthy();
+		expect(dialog.textContent).toContain("휴지통으로 가지 않고 '메모' 최상위로 옮겨집니다");
 		await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
 		fireEvent.click(screen.getByRole("button", { name: "취소" }));
 		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
 		await waitFor(() => expect(document.activeElement).toBe(trigger));
 
 		fireEvent.keyDown(trigger, { key: "Delete" });
-		await screen.findByText("직접 속한 글 3개");
+		await screen.findByText("바로 든 메모 3개");
 		fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 		await waitFor(() => expect(onChanged).toHaveBeenCalledWith("folder-1"));
 		expect(fetchMock).toHaveBeenCalledWith(

@@ -263,7 +263,7 @@ function useDashboard(mode: Mode) {
 		isRecord
 			? setRecordTarget({ collection, id: null })
 			: router.push(
-					`/admin/entries/new?collection=${collection}${state.folder !== "all" && state.folder !== "unfiled" ? `&folder=${state.folder}` : ""}` as Route,
+					`/admin/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}` as Route,
 				);
 
 	/** 행 메뉴(v2 A2). 선택한 행을 오른쪽 클릭하면 선택 전체를 대상으로 한다. */
@@ -310,7 +310,7 @@ function useDashboard(mode: Mode) {
 				items: [
 					{
 						kind: "item",
-						label: "미분류",
+						label: "최상위",
 						onSelect: () => void bulk("folder.move", "옮김", targets, { folderId: null }),
 					},
 					...folders.map((folder) => ({
@@ -431,10 +431,7 @@ function useDashboard(mode: Mode) {
 								{
 									kind: "item",
 									label: "새 폴더",
-									onSelect: () =>
-										folderActions.requestCreate(
-											state.folder === "all" || state.folder === "unfiled" ? null : state.folder,
-										),
+									onSelect: () => folderActions.requestCreate(state.folder === "all" ? null : state.folder),
 								},
 								{ kind: "item", label: `새 ${label}`, onSelect: createNew },
 							]
@@ -525,11 +522,7 @@ function ListPage() {
 	const { state, folders, folderActions, moveEntries, update, createNew, label, body, headerActions, total } =
 		useDashboard("list");
 	const folderLabel =
-		state.folder === "unfiled"
-			? " · 미분류"
-			: state.folder !== "all"
-				? ` · ${folders.find((folder) => folder.id === state.folder)?.name ?? ""}`
-				: "";
+		state.folder !== "all" ? ` · ${folders.find((folder) => folder.id === state.folder)?.name ?? ""}` : "";
 	return (
 		<AdminShell
 			title={`${label}${folderLabel}`}
@@ -543,8 +536,7 @@ function ListPage() {
 					includeDescendants: state.includeDescendants,
 					folders,
 					folderActions,
-					onSelectFolder: (folder) =>
-						update({ folder, includeDescendants: folder === "all" ? false : state.includeDescendants }),
+					onSelectFolder: (folder) => update({ folder }),
 					onIncludeDescendantsChange: (includeDescendants) => update({ includeDescendants }),
 					onDropEntries: moveEntries,
 					onCreateEntry: createNew,

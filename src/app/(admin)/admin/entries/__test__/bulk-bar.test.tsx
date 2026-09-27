@@ -37,7 +37,7 @@ function stubBulkApi(results: unknown[] = [{ id: "entry-1", ok: true, version: 4
 const choose = chooseSelectOption;
 
 describe("bulk actions (§3.4)", () => {
-	it("sends tag, category clear and unfiled folder payloads", async () => {
+	it("sends tag, category clear and root folder payloads", async () => {
 		const payloads = stubBulkApi();
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
@@ -68,7 +68,7 @@ describe("bulk actions (§3.4)", () => {
 		expect(payloads[1]).toMatchObject({ op: "category.set", categoryId: null });
 
 		await choose("일괄 작업 종류", "폴더 이동");
-		await choose("이동할 폴더", "미분류");
+		await choose("이동할 폴더", "최상위");
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await waitFor(() => expect(payloads).toHaveLength(3));
 		expect(payloads[2]).toMatchObject({ op: "folder.move", folderId: null });

@@ -46,7 +46,7 @@ import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus } from "./shared/entry-status";
-import type { FolderActions } from "./shared/use-folder-actions";
+import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOption } from "./shared/use-taxonomy";
 
 export { COLUMN_LABELS, columnsFor };
@@ -270,7 +270,19 @@ export function AdminEntriesTable({
 		]),
 	);
 	const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
-	const folderName = (id: string | null) => (id ? (folders.find((folder) => folder.id === id)?.name ?? "—") : "미분류");
+	/** `상위 / 하위`처럼 최상위부터의 폴더 경로. 폴더 밖 항목은 `—`. */
+	const folderName = (id: string | null) => {
+		const names: string[] = [];
+		let folder = id ? folders.find((candidate) => candidate.id === id) : undefined;
+		while (folder && names.length < 8) {
+			names.unshift(folder.name);
+			const parentId = folder.parentId;
+			folder = parentId ? folders.find((candidate) => candidate.id === parentId) : undefined;
+		}
+		return names.length > 0 ? names.join(" / ") : "—";
+	};
+	// 폴더 구분 없이 평평하게 볼 때(검색·필터·하위 폴더 포함) 폴더 컬럼이 꺼져 있으면 제목 옆에 폴더 경로를 작게 붙인다.
+	const showFolderBesideTitle = !explorer && !isTrash && !isRecord && folders.length > 0 && visibility.folder === false;
 
 	// TanStack Table은 컬럼 정의가 렌더마다 새로 만들어지지 않기를 기대한다. 셀이 읽는 값이 바뀔 때만 다시 만든다.
 	const availableKey = available.join();
@@ -292,12 +304,23 @@ export function AdminEntriesTable({
 							{title}
 						</Button>
 					) : (
-						<Link
-							href={`/admin/entries/${item.id}/edit` as Route}
-							className="block truncate font-medium text-foreground hover:text-primary"
-						>
-							{title}
-						</Link>
+						<span className="flex min-w-0 items-center gap-2">
+							<Link
+								href={`/admin/entries/${item.id}/edit` as Route}
+								className="truncate font-medium text-foreground hover:text-primary"
+							>
+								{title}
+							</Link>
+							{showFolderBesideTitle && item.folderId && (
+								<span className="flex min-w-0 shrink items-center gap-1 text-muted-foreground text-xs">
+									<FolderIcon aria-hidden className="size-3 shrink-0" />
+									<span className="truncate">
+										<span className="sr-only">폴더: </span>
+										{folderName(item.folderId)}
+									</span>
+								</span>
+							)}
+						</span>
 					);
 				}
 				case "status":
@@ -418,6 +441,7 @@ export function AdminEntriesTable({
 		onOpenRecord,
 		onRestore,
 		onPermanentDelete,
+		showFolderBesideTitle,
 	]);
 
 	const rowSelection: RowSelectionState = Object.fromEntries([...selectedIds].map((id) => [id, true]));
@@ -551,19 +575,13 @@ export function AdminEntriesTable({
 		onDeleteKey(item);
 	};
 
+	// 사이드바 트리와 같은 폴더 메뉴에 `열기`를 더한다.
 	const folderRowMenu = (folder: Folder): MenuAction[] =>
 		folderActions
 			? [
 					{ kind: "item", label: "열기", onSelect: () => onSelectFolder(folder.id) },
-					{ kind: "item", label: "이름 변경", shortcut: "F2", onSelect: () => folderActions.requestRename(folder) },
 					{ kind: "separator" },
-					{
-						kind: "item",
-						label: "삭제",
-						shortcut: "Del",
-						destructive: true,
-						onSelect: () => void folderActions.requestDelete(folder),
-					},
+					...folderMenuActions(folder, folders, folderActions),
 				]
 			: [];
 

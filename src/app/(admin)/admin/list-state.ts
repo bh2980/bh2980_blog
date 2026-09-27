@@ -13,7 +13,10 @@ export const LIST_STATUSES: readonly ListStatus[] = ["draft", "published", "arch
  */
 export interface ListState {
 	collection: Collection;
-	/** `all`은 전체, `unfiled`는 미분류, 그 밖은 폴더 ID다(§3.3). */
+	/**
+	 * `all`은 최상위(폴더의 뿌리), 그 밖은 폴더 ID다(§3.3). 탐색 모드에서 최상위는 최상위 폴더와 폴더 밖 항목만 보여 준다.
+	 * 예전 주소의 `unfiled`(미분류)는 최상위로 읽는다.
+	 */
 	folder: string;
 	includeDescendants: boolean;
 	search: string;
@@ -88,7 +91,7 @@ export function parseListState(
 	const state: ListState = {
 		...DEFAULT_LIST_STATE,
 		collection: isCollection(collection) ? collection : "post",
-		folder: params.get("folder") || "all",
+		folder: !params.get("folder") || params.get("folder") === "unfiled" ? "all" : (params.get("folder") as string),
 		includeDescendants: params.get("descendants") === "1",
 		search: params.get("search") ?? "",
 		includeBody: params.get("body") === "1",
@@ -160,10 +163,13 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 		pageSize: String(state.pageSize),
 	});
 	if (!options.trash) {
-		if (state.folder === "unfiled") query.set("folderId", "null");
-		else if (state.folder !== "all") {
+		// 탐색 모드는 현재 위치에 바로 든 항목만, 검색·필터나 "하위 폴더 포함"은 현재 위치 아래 전체를 본다.
+		const flat = !isExplorerMode(state);
+		if (state.folder === "all") {
+			if (!flat) query.set("folderId", "null");
+		} else {
 			query.set("folderId", state.folder);
-			if (state.includeDescendants) query.set("includeDescendants", "true");
+			if (flat) query.set("includeDescendants", "true");
 		}
 	}
 	if (state.search.trim()) query.set("search", state.search.trim());
@@ -197,9 +203,12 @@ export const activeFilterCount = (state: ListState) =>
 		...DATE_KEYS.map((key) => state[key]),
 	].filter(Boolean).length;
 
-/** 폴더 탐색 모드: 검색·필터가 없을 때 현재 폴더의 하위 폴더를 목록 위에 보여 준다. */
+/**
+ * 폴더 탐색 모드: 검색·필터가 없고 "하위 폴더 포함"을 끄면, 파일 탐색기처럼 현재 위치의 하위 폴더와 바로 든 항목만 보여 준다.
+ * 그 밖에는 현재 위치 아래의 모든 항목을 폴더 구분 없이 평평하게 보여 준다.
+ */
 export function isExplorerMode(state: ListState): boolean {
-	return !state.search.trim() && activeFilterCount(state) === 0 && state.folder !== "unfiled";
+	return !state.search.trim() && activeFilterCount(state) === 0 && !state.includeDescendants;
 }
 
 /** 모든 검색·필터를 지운 상태(정렬·폴더·페이지 크기는 유지). */

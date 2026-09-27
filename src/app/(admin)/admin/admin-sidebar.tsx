@@ -45,7 +45,7 @@ import {
 import { cn } from "@/utils/cn";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
-import { type FolderActions, moveTargetsFor } from "./shared/use-folder-actions";
+import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 
 export type AdminNavId = Collection | "media" | "templates" | "trash";
 
@@ -60,14 +60,14 @@ const COLLECTION_ICONS: Record<Collection, React.ReactNode> = {
 /** 목록 화면에서만 쓰는 폴더 탐색(§3.3). */
 export interface FolderNavigation {
 	collection: Collection;
-	/** `all`·`unfiled`·폴더 ID. */
+	/** `all`(최상위)·폴더 ID. */
 	currentFolder: string;
 	includeDescendants: boolean;
 	folders: Folder[];
 	folderActions: FolderActions;
 	onSelectFolder: (folder: string) => void;
 	onIncludeDescendantsChange: (value: boolean) => void;
-	/** 목록 행을 폴더(또는 미분류)로 끌어 놓았을 때. */
+	/** 목록 행을 폴더(또는 최상위)로 끌어 놓았을 때. */
 	onDropEntries: (folderId: string | null, entries: DraggedEntry[]) => void;
 	onCreateEntry: () => void;
 }
@@ -76,44 +76,6 @@ export interface AdminSidebarProps {
 	activeNav: AdminNavId;
 	folderNav?: FolderNavigation;
 	trashCount?: number | null;
-}
-
-/** 폴더 줄의 오른쪽 클릭·`⋯` 메뉴. 이동 대상은 자기 자신과 자손을 뺀 폴더다. */
-function folderMenu(folder: Folder, nav: FolderNavigation): MenuAction[] {
-	const targets = moveTargetsFor(folder, nav.folders);
-	return [
-		{ kind: "item", label: "새 하위 폴더", onSelect: () => nav.folderActions.requestCreate(folder.id) },
-		{ kind: "item", label: "이름 변경", shortcut: "F2", onSelect: () => nav.folderActions.requestRename(folder) },
-		{
-			kind: "sub",
-			label: "이동",
-			emptyLabel: "옮길 수 있는 폴더가 없습니다",
-			items: [
-				...(folder.parentId
-					? [
-							{
-								kind: "item" as const,
-								label: "최상위",
-								onSelect: () => void nav.folderActions.moveFolder(folder, null),
-							},
-						]
-					: []),
-				...targets.map((target) => ({
-					kind: "item" as const,
-					label: target.name,
-					onSelect: () => void nav.folderActions.moveFolder(folder, target.id),
-				})),
-			],
-		},
-		{ kind: "separator" },
-		{
-			kind: "item",
-			label: "삭제",
-			shortcut: "Del",
-			destructive: true,
-			onSelect: () => void nav.folderActions.requestDelete(folder),
-		},
-	];
 }
 
 /** 파일 탐색기처럼 F2는 이름 변경, Delete는 삭제(확인 대화상자)를 연다. */
@@ -129,6 +91,14 @@ export function folderKeyHandler(folder: Folder, actions: FolderActions) {
 	};
 }
 
+/**
+ * 트리 연결선. 각 줄 왼쪽에 세로선과 `ㄴ`자 가로선을 그리고, 마지막 줄의 세로선은 가로선에서 끊는다.
+ * 줄 높이(28px)의 절반인 14px에 가로선을 둔다. 세로선은 부모의 펼침 단추(또는 최상위 아이콘) 가운데에 온다.
+ */
+const TREE_LIST = "mx-0 translate-x-0 gap-0 border-l-0 py-0 pr-0 pl-6";
+const TREE_ITEM =
+	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-sidebar-border after:absolute after:top-3.5 after:h-px after:w-3 after:bg-sidebar-border last:before:h-3.5";
+
 function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: () => void }) {
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 	const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -136,7 +106,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 
 	// 선택한 폴더의 조상 경로를 펼친다.
 	useEffect(() => {
-		if (currentFolder === "all" || currentFolder === "unfiled") return;
+		if (currentFolder === "all") return;
 		setExpandedIds((prev) => {
 			const next = new Set(prev);
 			let folder = folders.find((f) => f.id === currentFolder);
@@ -172,7 +142,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 		const children = folders.filter((f) => f.parentId === folder.id);
 		const isExpanded = expandedIds.has(folder.id);
 		const isActive = currentFolder === folder.id;
-		const actions = folderMenu(folder, nav);
+		const actions = folderMenuActions(folder, nav.folders, nav.folderActions);
 		return (
 			<Collapsible
 				key={folder.id}
@@ -185,7 +155,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 						return next;
 					})
 				}
-				render={<SidebarMenuSubItem />}
+				render={<SidebarMenuSubItem className={TREE_ITEM} />}
 			>
 				<ActionContextMenu
 					actions={actions}
@@ -228,7 +198,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 				</ActionContextMenu>
 				{children.length > 0 && (
 					<CollapsibleContent>
-						<SidebarMenuSub className="mr-0 pr-0">{children.map(renderFolder)}</SidebarMenuSub>
+						<SidebarMenuSub className={cn(TREE_LIST, "ml-0")}>{children.map(renderFolder)}</SidebarMenuSub>
 					</CollapsibleContent>
 				)}
 			</Collapsible>
@@ -250,37 +220,28 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 			<SidebarGroupContent className="flex flex-1 flex-col">
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton
-							size="sm"
-							isActive={currentFolder === "all"}
-							aria-current={currentFolder === "all" ? "true" : undefined}
-							onClick={() => select("all")}
-						>
-							전체 {label}
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							size="sm"
-							{...dropProps("unfiled", null)}
-							isActive={currentFolder === "unfiled"}
-							aria-current={currentFolder === "unfiled" ? "true" : undefined}
-							onClick={() => select("unfiled")}
-							className={cn(dropTarget === "unfiled" && "ring-2 ring-sidebar-ring")}
-						>
-							미분류
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					{folders.length > 0 && (
-						<SidebarMenuItem>
-							<SidebarMenuSub className="mx-0 border-l-0 px-0">
+						<ActionContextMenu actions={blankActions} trigger={<div />}>
+							<SidebarMenuButton
+								size="sm"
+								{...dropProps("root", null)}
+								isActive={currentFolder === "all"}
+								aria-current={currentFolder === "all" ? "true" : undefined}
+								onClick={() => select("all")}
+								className={cn(dropTarget === "root" && "ring-2 ring-sidebar-ring")}
+							>
+								{COLLECTION_ICONS[nav.collection]}
+								<span>{label}</span>
+							</SidebarMenuButton>
+						</ActionContextMenu>
+						{folders.length > 0 && (
+							<SidebarMenuSub aria-label={`${label} 폴더`} className={cn(TREE_LIST, "ml-1")}>
 								{folders.filter((f) => !f.parentId).map(renderFolder)}
 							</SidebarMenuSub>
-						</SidebarMenuItem>
-					)}
+						)}
+					</SidebarMenuItem>
 				</SidebarMenu>
 				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">만든 폴더가 없습니다.</p>}
-				{currentFolder !== "all" && currentFolder !== "unfiled" && (
+				{folders.length > 0 && (
 					<Label className="mt-3 px-2 font-normal text-muted-foreground text-xs">
 						<Checkbox
 							checked={nav.includeDescendants}

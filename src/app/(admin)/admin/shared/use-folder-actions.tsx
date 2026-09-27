@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
+import { COLLECTION_DEFINITIONS, isCollection } from "@/cms/core/collections";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -24,6 +25,7 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cmsFetch, errorText } from "../admin-api";
+import type { MenuAction } from "./action-menu";
 
 type NameDialog = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: Folder };
 
@@ -46,6 +48,41 @@ export function moveTargetsFor(folder: Folder, folders: Folder[]): Folder[] {
 		}
 	}
 	return folders.filter((candidate) => !blocked.has(candidate.id) && candidate.id !== folder.parentId);
+}
+
+/**
+ * 폴더의 오른쪽 클릭·`⋯` 메뉴. 사이드바 트리와 목록의 폴더 줄이 같은 메뉴를 쓴다.
+ * 이동 대상은 자기 자신과 자손을 뺀 폴더다.
+ */
+export function folderMenuActions(folder: Folder, folders: Folder[], actions: FolderActions): MenuAction[] {
+	const targets = moveTargetsFor(folder, folders);
+	return [
+		{ kind: "item", label: "새 하위 폴더", onSelect: () => actions.requestCreate(folder.id) },
+		{ kind: "item", label: "이름 변경", shortcut: "F2", onSelect: () => actions.requestRename(folder) },
+		{
+			kind: "sub",
+			label: "이동",
+			emptyLabel: "옮길 수 있는 폴더가 없습니다",
+			items: [
+				...(folder.parentId
+					? [{ kind: "item" as const, label: "최상위", onSelect: () => void actions.moveFolder(folder, null) }]
+					: []),
+				...targets.map((target) => ({
+					kind: "item" as const,
+					label: target.name,
+					onSelect: () => void actions.moveFolder(folder, target.id),
+				})),
+			],
+		},
+		{ kind: "separator" },
+		{
+			kind: "item",
+			label: "삭제",
+			shortcut: "Del",
+			destructive: true,
+			onSelect: () => void actions.requestDelete(folder),
+		},
+	];
 }
 
 /**
@@ -77,7 +114,11 @@ export function useFolderActions({
 		return target?.isConnected ? target : true;
 	};
 
-	const folderName = (id: string | null) => (id ? (folders.find((f) => f.id === id)?.name ?? "상위 폴더") : "최상위");
+	const itemLabel = isCollection(collection) ? COLLECTION_DEFINITIONS[collection].label : "글";
+	const folderName = (id: string | null) =>
+		id ? `'${folders.find((f) => f.id === id)?.name ?? "상위 폴더"}'` : `'${itemLabel}' 최상위`;
+	/** 옮겨 갈 곳 + 조사. 폴더 이름은 받침을 알 수 없어 `(으)로`를 붙인다. */
+	const toFolder = (id: string | null) => (id ? `${folderName(id)}(으)로` : `${folderName(id)}로`);
 
 	const requestCreate = (parentId: string | null) => {
 		rememberFocus();
@@ -113,7 +154,7 @@ export function useFolderActions({
 				json: { parentId, expectedVersion: folder.version },
 				fallback: "폴더를 옮기지 못했습니다.",
 			});
-			toast.success(`'${folder.name}' 폴더를 ${folderName(parentId)}(으)로 옮겼습니다.`);
+			toast.success(`'${folder.name}' 폴더를 ${toFolder(parentId)} 옮겼습니다.`);
 			await onChanged();
 		} catch (err) {
 			toast.error(errorText(err, "폴더를 옮기지 못했습니다."));
@@ -157,6 +198,14 @@ export function useFolderActions({
 				fallback: "폴더를 삭제하지 못했습니다.",
 			});
 			const deletedId = deleteDialog.folder.id;
+			const moved = deleteDialog.contents;
+			toast.success(
+				`'${deleteDialog.folder.name}' 폴더를 지웠습니다.${
+					moved && moved.entryCount + moved.childFolders.length > 0
+						? ` 안의 내용은 ${toFolder(deleteDialog.folder.parentId)} 옮겼습니다.`
+						: ""
+				}`,
+			);
 			setDeleteDialog(null);
 			await onChanged(deletedId);
 		} catch (err) {
@@ -167,7 +216,7 @@ export function useFolderActions({
 		}
 	};
 
-	const destination = deleteDialog ? folderName(deleteDialog.folder.parentId) : "";
+	const destination = deleteDialog ? toFolder(deleteDialog.folder.parentId) : "";
 
 	const dialogs = (
 		<>
@@ -219,12 +268,14 @@ export function useFolderActions({
 					<AlertDialogHeader>
 						<AlertDialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</AlertDialogTitle>
 						<AlertDialogDescription>
-							글은 삭제하지 않습니다. 폴더 안의 내용은 {destination}(으)로 옮겨집니다.
+							폴더만 지웁니다. 안의 {itemLabel}·하위 폴더는 휴지통으로 가지 않고 {destination} 옮겨집니다.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					{deleteDialog?.contents ? (
 						<ul className="list-disc space-y-1 pl-5 text-sm">
-							<li>직접 속한 글 {deleteDialog.contents.entryCount}개</li>
+							<li>
+								바로 든 {itemLabel} {deleteDialog.contents.entryCount}개
+							</li>
 							<li>
 								하위 폴더 {deleteDialog.contents.childFolders.length}개
 								{deleteDialog.contents.childFolders.length > 0 &&
