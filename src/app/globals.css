@@ -550,9 +550,45 @@ html.dark:has(.cms-admin) {
 	--shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
 }
 
+/* 스크롤바·기본 입력 요소가 테마를 따르게 한다(다크에서 밝은 기본 스크롤바가 흰 선처럼 보이던 문제). */
+html:has(.cms-admin) {
+	color-scheme: light;
+}
+html.dark:has(.cms-admin) {
+	color-scheme: dark;
+}
+/* 블로그 body 배경(slate)이 관리자 가장자리에 비치지 않게 한다. */
+html:has(.cms-admin) body {
+	background-color: var(--background);
+}
+
 .cms-admin {
 	font-size: 14px;
 	-webkit-font-smoothing: antialiased;
+}
+
+/* 얇고 눈에 띄지 않는 스크롤바. 막대는 가리킬 때만 진해진다. */
+.cms-admin,
+.cms-admin * {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+.cms-admin *:hover {
+	scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
+}
+.cms-admin ::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+.cms-admin ::-webkit-scrollbar-track {
+	background: transparent;
+}
+.cms-admin ::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 999px;
+}
+.cms-admin *:hover::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
 }
 
 /* 표의 숫자·날짜는 자릿수를 맞춘다. */

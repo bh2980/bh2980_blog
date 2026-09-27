@@ -116,6 +116,23 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		]);
 	});
 
+	it("resizes a column from its header handle and pins the flexible title so only that column grows", () => {
+		vi.useFakeTimers();
+		try {
+			const props = renderTable();
+			const handle = screen.getByRole("separator", { name: "태그 열 너비 조절" });
+			expect(handle.getAttribute("aria-valuenow")).toBe("200");
+			fireEvent.keyDown(handle, { key: "ArrowRight" });
+			expect(handle.getAttribute("aria-valuenow")).toBe("216");
+			act(() => vi.advanceTimersByTime(400));
+			expect(props.onColumnSettingsChange).toHaveBeenLastCalledWith(
+				expect.objectContaining({ sizes: { title: 320, tags: 216 } }),
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("selects rows through the Data Table checkboxes", () => {
 		const props = renderTable();
 		fireEvent.click(screen.getByRole("checkbox", { name: "draft 선택" }));

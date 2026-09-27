@@ -3,9 +3,16 @@
 import type * as React from "react";
 import { cn } from "@/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+	className,
+	containerClassName,
+	...props
+}: React.ComponentProps<"table"> & {
+	/** 표를 감싸는 스크롤 영역. 바깥이 스크롤을 맡으면 `overflow-visible`로 둬야 sticky 머리글이 동작한다. */
+	containerClassName?: string;
+}) {
 	return (
-		<div data-slot="table-container" className="relative w-full overflow-x-auto">
+		<div data-slot="table-container" className={cn("relative w-full overflow-x-auto", containerClassName)}>
 			<table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
 		</div>
 	);

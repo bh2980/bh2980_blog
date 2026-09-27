@@ -2,8 +2,11 @@
 
 import {
 	type ColumnOrderState,
+	type ColumnSizingState,
 	type ColumnVisibilityState,
 	columnOrderingFeature,
+	columnResizingFeature,
+	columnSizingFeature,
 	columnVisibilityFeature,
 	createColumnHelper,
 	type RowSelectionState,
@@ -15,7 +18,7 @@ import {
 import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderUp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { type KeyboardEvent, useMemo } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import { type AdminColumnSettings, type AdminListColumn, PAGE_SIZES, type PageSize } from "@/cms/core/api";
 import { isRecordCollection } from "@/cms/core/collections";
@@ -49,7 +52,28 @@ import type { TaxonomyOption } from "./shared/use-taxonomy";
 export { COLUMN_LABELS, columnsFor };
 
 // Data Table(v2 A1): 컬럼 표시·순서와 행 선택은 TanStack Table이 다루고, 검색·정렬·필터·페이지는 서버가 처리한다.
-const features = tableFeatures({ columnVisibilityFeature, columnOrderingFeature, rowSelectionFeature });
+const features = tableFeatures({
+	columnVisibilityFeature,
+	columnOrderingFeature,
+	columnSizingFeature,
+	columnResizingFeature,
+	rowSelectionFeature,
+});
+
+/** 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다. */
+const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
+	status: 132,
+	category: 112,
+	tags: 200,
+	updatedAt: 132,
+	publishedAt: 132,
+	createdAt: 132,
+	slug: 200,
+	folder: 140,
+};
+const DEFAULT_TITLE_SIZE = 320;
+const MIN_COLUMN_SIZE = 72;
+const MAX_COLUMN_SIZE = 960;
 const helper = createColumnHelper<typeof features, ListEntriesItem>();
 
 /** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
@@ -61,6 +85,64 @@ const formatDate = (value: Date | string | null) => {
 		? date.toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
 		: date.toLocaleDateString("ko-KR");
 };
+
+/**
+ * 폭이 모자랄 때 먼저 숨기는 컬럼과 그 순서. 사용자가 켠 컬럼이라도 제목이 최소 너비를 못 받으면 이 순서로 숨긴다.
+ * 제목·상태·카테고리·수정일은 숨기지 않는다.
+ */
+const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "tags"] as const;
+const TITLE_MIN_WIDTH = 240;
+
+/**
+ * 열 너비 조절 손잡이. 헤더 오른쪽 가장자리를 끌거나, 초점을 두고 ←/→로 16px씩 바꾼다. 두 번 누르면 기본 너비로 돌아간다.
+ */
+function ColumnResizeHandle({
+	label,
+	width,
+	resizing,
+	onStart,
+	onNudge,
+	onReset,
+}: {
+	label: string;
+	width: number;
+	resizing: boolean;
+	onStart: (event: unknown) => void;
+	onNudge: (delta: number) => void;
+	onReset: () => void;
+}) {
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: 열 너비 조절은 hr가 아니라 조작 가능한 분리자다
+		<div
+			role="separator"
+			aria-orientation="vertical"
+			aria-label={`${label} 열 너비 조절`}
+			aria-valuenow={width}
+			aria-valuemin={MIN_COLUMN_SIZE}
+			aria-valuemax={MAX_COLUMN_SIZE}
+			aria-valuetext={`${width}px`}
+			tabIndex={0}
+			onMouseDown={onStart}
+			onTouchStart={onStart}
+			onDoubleClick={onReset}
+			onKeyDown={(event) => {
+				if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+					event.preventDefault();
+					onNudge(event.key === "ArrowLeft" ? -16 : 16);
+				}
+			}}
+			className="absolute top-0 right-0 z-10 flex h-full w-2 cursor-col-resize touch-none select-none justify-center outline-none"
+		>
+			<span
+				className={cn(
+					"h-full w-px bg-transparent transition-colors group-hover/th:bg-border",
+					resizing && "bg-primary group-hover/th:bg-primary",
+					"[div:focus-visible>&]:bg-ring",
+				)}
+			/>
+		</div>
+	);
+}
 
 /** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
 function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
@@ -212,7 +294,7 @@ export function AdminEntriesTable({
 					) : (
 						<Link
 							href={`/admin/entries/${item.id}/edit` as Route}
-							className="block max-w-[28rem] truncate font-medium text-foreground hover:text-primary"
+							className="block truncate font-medium text-foreground hover:text-primary"
 						>
 							{title}
 						</Link>
@@ -257,6 +339,8 @@ export function AdminEntriesTable({
 		return helper.columns([
 			helper.display({
 				id: "select",
+				size: 44,
+				enableResizing: false,
 				header: ({ table }) => (
 					<Checkbox
 						checked={table.getIsAllPageRowsSelected()}
@@ -277,6 +361,9 @@ export function AdminEntriesTable({
 				helper.display({
 					id: column,
 					enableHiding: column !== "title",
+					size: DEFAULT_COLUMN_SIZE[column] ?? DEFAULT_TITLE_SIZE,
+					minSize: MIN_COLUMN_SIZE,
+					maxSize: MAX_COLUMN_SIZE,
 					header: () => (
 						<ColumnHeader
 							column={column}
@@ -291,6 +378,8 @@ export function AdminEntriesTable({
 			),
 			helper.display({
 				id: "actions",
+				size: 52,
+				enableResizing: false,
 				header: () => <span className="sr-only">작업</span>,
 				cell: ({ row }) => (
 					<div className="flex items-center justify-end gap-1 whitespace-nowrap">
@@ -334,19 +423,99 @@ export function AdminEntriesTable({
 	const rowSelection: RowSelectionState = Object.fromEntries([...selectedIds].map((id) => [id, true]));
 	const columnOrder: ColumnOrderState = ["select", ...order, "actions"];
 
+	// 끄는 동안은 로컬 상태로 바로 반영하고, 멈추면 목록 설정에 저장한다.
+	const savedSizes = columnSettings?.sizes;
+	const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(savedSizes ?? {});
+	useEffect(() => setColumnSizing(savedSizes ?? {}), [savedSizes]);
+	const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const persistSizes = (next: ColumnSizingState) => {
+		if (saveTimer.current) clearTimeout(saveTimer.current);
+		saveTimer.current = setTimeout(() => {
+			const sizes = Object.fromEntries(
+				Object.entries(next)
+					.filter(([id]) => available.includes(id as AdminListColumn))
+					.map(([id, size]) => [id, Math.round(Math.min(MAX_COLUMN_SIZE, Math.max(MIN_COLUMN_SIZE, size)))]),
+			);
+			onColumnSettingsChange({ order, visibility, sizes });
+		}, 400);
+	};
+	const updateSizing = (updater: Updater<ColumnSizingState>) =>
+		setColumnSizing((current) => {
+			const next = resolve(updater, current);
+			persistSizes(next);
+			return next;
+		});
+
+	// 스크롤 영역의 실제 폭. 표 너비와 좁을 때 숨길 컬럼을 이 값으로 정한다.
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const [containerWidth, setContainerWidth] = useState(0);
+	useEffect(() => {
+		const element = scrollRef.current;
+		if (!element) return;
+		setContainerWidth(element.clientWidth);
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(([entry]) => setContainerWidth(Math.floor(entry?.contentRect.width ?? 0)));
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, []);
+
+	// 좁을 때 숨길 컬럼은 기본 너비와 제목 최소 너비로만 정한다. 사용자가 넓힌 너비는 숨김을 부르지 않고 가로 스크롤이 된다
+	// (끄는 도중 다른 컬럼이 사라져 손잡이가 튀지 않도록).
+	const defaultSizeOf = (id: string) =>
+		id === "select" ? 44 : id === "actions" ? 52 : (DEFAULT_COLUMN_SIZE[id] ?? DEFAULT_TITLE_SIZE);
+	const visibleIds = columnOrder.filter((id) => visibility[id] !== false);
+	const autoHidden = new Set<string>();
+	const naturalWidth = () =>
+		visibleIds
+			.filter((id) => !autoHidden.has(id))
+			.reduce((sum, id) => sum + (id === "title" ? TITLE_MIN_WIDTH : defaultSizeOf(id)), 0);
+	if (containerWidth > 0) {
+		for (const id of HIDE_ORDER_WHEN_NARROW) {
+			if (naturalWidth() <= containerWidth) break;
+			if (visibleIds.includes(id)) autoHidden.add(id);
+		}
+	}
+	const isShown = (id: string) => !autoHidden.has(id);
+	// 제목은 너비를 정하지 않았으면 남는 폭을 채운다. 어느 컬럼이든 끌기 시작하면 그 순간의 제목 너비를 고정해서,
+	// 끄는 컬럼만 커지고 손잡이가 커서를 그대로 따라가게 한다. 그 뒤 남는 폭은 작업 칸 앞의 빈 칸이 받는다.
+	const flexTitleWidth =
+		containerWidth > 0
+			? Math.min(
+					MAX_COLUMN_SIZE,
+					Math.max(
+						TITLE_MIN_WIDTH,
+						containerWidth -
+							visibleIds
+								.filter((id) => id !== "title" && isShown(id))
+								.reduce((sum, id) => sum + (columnSizing[id] ?? defaultSizeOf(id)), 0),
+					),
+				)
+			: DEFAULT_TITLE_SIZE;
+	const tableSizing: ColumnSizingState =
+		columnSizing.title === undefined ? { ...columnSizing, title: flexTitleWidth } : columnSizing;
+	const freezeTitle = () => {
+		if (columnSizing.title === undefined) setColumnSizing((current) => ({ ...current, title: flexTitleWidth }));
+	};
+
 	const table = useTable({
 		features,
 		data: items,
 		columns,
 		getRowId: (row) => row.id,
-		state: { columnVisibility: visibility, columnOrder, rowSelection },
+		columnResizeMode: "onChange",
+		state: { columnVisibility: visibility, columnOrder, rowSelection, columnSizing: tableSizing },
+		onColumnSizingChange: updateSizing,
 		onColumnVisibilityChange: (updater) =>
-			onColumnSettingsChange({ order, visibility: resolve(updater, visibility) as Record<string, boolean> }),
+			onColumnSettingsChange({
+				order,
+				visibility: resolve(updater, visibility) as Record<string, boolean>,
+				sizes: savedSizes,
+			}),
 		onColumnOrderChange: (updater) => {
 			const next = resolve(updater, columnOrder).filter((id): id is AdminListColumn =>
 				available.includes(id as AdminListColumn),
 			);
-			onColumnSettingsChange({ order: next, visibility });
+			onColumnSettingsChange({ order: next, visibility, sizes: savedSizes });
 		},
 		// 선택 해제는 값이 false인 키로 올 수 있어 true인 ID만 남긴다.
 		onRowSelectionChange: (updater) => {
@@ -361,10 +530,19 @@ export function AdminEntriesTable({
 		if (target < 0 || target >= order.length) return;
 		const next = [...order];
 		[next[index], next[target]] = [next[target] as AdminListColumn, next[index] as AdminListColumn];
-		onColumnSettingsChange({ order: next, visibility });
+		onColumnSettingsChange({ order: next, visibility, sizes: savedSizes });
 	};
 
-	const visibleCount = table.getVisibleLeafColumns().length;
+	const leafColumns = table.getVisibleLeafColumns();
+	const tableWidth =
+		containerWidth > 0
+			? Math.max(
+					containerWidth,
+					leafColumns.filter((column) => isShown(column.id)).reduce((sum, column) => sum + column.getSize(), 0),
+				)
+			: undefined;
+	// 빈 칸까지 센 칸 수.
+	const visibleCount = leafColumns.length - autoHidden.size + 1;
 	const rowKeyDown = (item: ListEntriesItem) => (event: KeyboardEvent) => {
 		if (event.key !== "Delete" || !onDeleteKey) return;
 		const target = event.target as HTMLElement;
@@ -402,29 +580,63 @@ export function AdminEntriesTable({
 				</Alert>
 			)}
 
-			<div className="flex min-h-0 flex-1 flex-col overflow-auto">
-				<Table className="[&_td:first-child]:pl-5 [&_td:last-child]:pr-4 [&_th:first-child]:pl-5 [&_th:last-child]:pr-4">
+			<div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-auto">
+				<Table
+					containerClassName="overflow-visible"
+					style={tableWidth ? { width: tableWidth } : undefined}
+					className="table-fixed [&_td:first-child]:pl-5 [&_td:last-child]:pr-4 [&_th:first-child]:pl-5 [&_th:last-child]:pr-4"
+				>
 					<TableHeader className="sticky top-0 z-10 bg-background [&_tr]:border-b">
 						{table.getHeaderGroups().map((group) => (
 							<TableRow key={group.id}>
-								{group.headers.map((header) => {
-									const sortField = COLUMN_CONFIG[header.column.id as AdminListColumn]?.sortField;
-									const active = sortField !== undefined && sortField === state.sortField;
-									return (
-										<TableHead
-											key={header.id}
-											className={cn(
-												"h-9 font-normal text-muted-foreground text-xs",
-												header.column.id === "select" && "w-10",
-												// 작업 칸은 좁은 화면에서 가로로 스크롤해도 오른쪽에 남긴다.
-												header.column.id === "actions" && "sticky right-0 z-10 bg-background",
-											)}
-											aria-sort={active ? (state.sortDirection === "asc" ? "ascending" : "descending") : undefined}
-										>
-											{header.isPlaceholder ? null : <table.FlexRender header={header} />}
-										</TableHead>
-									);
-								})}
+								{group.headers
+									.filter((header) => isShown(header.column.id))
+									.map((header) => {
+										const sortField = COLUMN_CONFIG[header.column.id as AdminListColumn]?.sortField;
+										const active = sortField !== undefined && sortField === state.sortField;
+										return (
+											<Fragment key={header.id}>
+												{header.column.id === "actions" && <TableHead aria-hidden className="p-0" />}
+												<TableHead
+													style={{ width: header.getSize() }}
+													className={cn(
+														"group/th relative h-9 font-normal text-muted-foreground text-xs",
+														header.column.id === "select" && "w-10",
+													)}
+													aria-sort={active ? (state.sortDirection === "asc" ? "ascending" : "descending") : undefined}
+												>
+													{header.isPlaceholder ? null : <table.FlexRender header={header} />}
+													{header.column.getCanResize() && (
+														<ColumnResizeHandle
+															label={COLUMN_LABELS[header.column.id as AdminListColumn] ?? header.column.id}
+															width={header.getSize()}
+															resizing={header.column.getIsResizing()}
+															onStart={(event) => {
+																freezeTitle();
+																header.getResizeHandler()(event);
+															}}
+															onNudge={(delta) =>
+																updateSizing((current) => ({
+																	...tableSizing,
+																	...current,
+																	[header.column.id]: Math.min(
+																		MAX_COLUMN_SIZE,
+																		Math.max(MIN_COLUMN_SIZE, header.getSize() + delta),
+																	),
+																}))
+															}
+															onReset={() =>
+																updateSizing((current) => {
+																	const { [header.column.id]: _removed, ...rest } = current;
+																	return rest;
+																})
+															}
+														/>
+													)}
+												</TableHead>
+											</Fragment>
+										);
+									})}
 							</TableRow>
 						))}
 					</TableHeader>
@@ -513,14 +725,17 @@ export function AdminEntriesTable({
 										/>
 									}
 								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell
-											key={cell.id}
-											className={cn(cell.column.id === "actions" && "sticky right-0 bg-background")}
-										>
-											<table.FlexRender cell={cell} />
-										</TableCell>
-									))}
+									{row
+										.getVisibleCells()
+										.filter((cell) => isShown(cell.column.id))
+										.map((cell) => (
+											<Fragment key={cell.id}>
+												{cell.column.id === "actions" && <TableCell aria-hidden className="p-0" />}
+												<TableCell className="overflow-hidden text-ellipsis whitespace-nowrap">
+													<table.FlexRender cell={cell} />
+												</TableCell>
+											</Fragment>
+										))}
 								</ActionContextMenu>
 							))
 						)}

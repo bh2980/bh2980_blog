@@ -134,12 +134,14 @@ export const adminColumnSettingsSchema = z
 	.object({
 		order: z.array(adminListColumnSchema).max(ADMIN_LIST_COLUMNS.length).optional(),
 		visibility: z.record(z.string(), z.boolean()).optional(),
+		/** 사용자가 끌어서 바꾼 열 너비(px). 없는 컬럼은 기본 너비를 쓴다. */
+		sizes: z.record(z.string(), z.number().int().min(48).max(960)).optional(),
 	})
 	.superRefine((settings, ctx) => {
 		if (settings.order && new Set(settings.order).size !== settings.order.length) {
 			ctx.addIssue({ code: "custom", message: "Column order cannot contain duplicates", path: ["order"] });
 		}
-		for (const key of Object.keys(settings.visibility ?? {})) {
+		for (const key of [...Object.keys(settings.visibility ?? {}), ...Object.keys(settings.sizes ?? {})]) {
 			if (!adminListColumnSchema.safeParse(key).success) {
 				ctx.addIssue({ code: "custom", message: `Unknown column: ${key}`, path: ["visibility", key] });
 			}
