@@ -10,6 +10,29 @@ describe("블록 변환기 등록부(v2 C0)", () => {
 		expect(new Set(tiptap).size).toBe(tiptap.length);
 	});
 
+	it("기본 분기가 맡는 타입을 등록부가 가리지 않는다", () => {
+		const reserved = [
+			"doc",
+			"paragraph",
+			"heading",
+			"blockquote",
+			"bulletList",
+			"orderedList",
+			"listItem",
+			"taskList",
+			"taskItem",
+			"horizontalRule",
+			"TextAlign",
+			"tableRow",
+			"tableCell",
+			"tableHeader",
+			"cmsOpaqueBlock",
+			"text",
+		];
+		const claimed = BLOCK_CONVERTERS.flatMap((c) => [...c.cmsTypes, ...c.tiptapTypes]);
+		expect(claimed.filter((type) => reserved.includes(type))).toEqual([]);
+	});
+
 	it("타입으로 변환기를 찾는다", () => {
 		expect(converterForCms("image")?.name).toBe("image");
 		expect(converterForTiptap("codeBlock")?.name).toBe("codeBlock");
