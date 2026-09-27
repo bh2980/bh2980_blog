@@ -1,8 +1,10 @@
+import { directiveBlocks } from "../blocks/derive";
+
 /**
  * 지시자 이름 정의표.
  *
- * 저장 형식(`CMS-SPEC.md` §4.4)과 렌더러가 함께 보는 **단일 원천**이다.
- * 이름을 추가할 때는 이 표만 고치고 `CMS-SPEC.md` §4.4를 함께 갱신한다.
+ * 저장 형식(`CMS-SPEC.md` §4.4)과 렌더러가 함께 보는 표다. v2 B3부터 블록 정의
+ * (`src/cms/blocks/definitions.ts`)에서 만든다. 블록을 더할 때는 블록 정의를 고치고 `CMS-SPEC.md` §4.4를 함께 갱신한다.
  *
  * 등록된 이름만 지시자로 인식한다. 미등록 `:이름`은 파싱 단계에서 본문 텍스트로 되돌린다
  * (`remark-directive`에는 이름 필터 옵션이 없다 — "It exports no additional options.").
@@ -25,71 +27,19 @@ export type DirectiveDefinition = {
 	required: readonly string[];
 };
 
-export const DIRECTIVES: readonly DirectiveDefinition[] = [
-	{
-		name: "callout",
-		kind: "container",
-		component: "Callout",
-		attributes: { variant: "string", title: "string", description: "string" },
-		required: [],
-	},
-	{
-		name: "collapsible",
-		kind: "container",
-		component: "Collapsible",
-		attributes: { title: "string", defaultOpen: "boolean" },
-		required: [],
-	},
-	{
-		name: "text-align",
-		kind: "container",
-		component: "TextAlign",
-		attributes: { align: "string" },
-		required: ["align"],
-	},
-	{
-		name: "tabs",
-		kind: "container",
-		component: "Tabs",
-		attributes: { defaultValue: "string" },
-		required: [],
-	},
-	{
-		name: "tab",
-		kind: "container",
-		component: "Tab",
-		attributes: { label: "string" },
-		required: ["label"],
-	},
-	{ name: "columns", kind: "container", component: "Columns", attributes: {}, required: [] },
-	{ name: "column", kind: "container", component: "Column", attributes: {}, required: [] },
-	{
-		name: "image",
-		kind: "leaf",
-		component: "Image",
-		attributes: {
-			mediaId: "string",
-			src: "string",
-			alt: "string",
-			width: "string",
-			align: "string",
-			caption: "string",
-			decorative: "boolean",
-		},
-		required: [],
-	},
-	{
-		name: "tooltip",
-		kind: "text",
-		component: "Tooltip",
-		attributes: { content: "string" },
-		required: ["content"],
-	},
-	{ name: "u", kind: "text", component: "u", attributes: {}, required: [] },
-	{ name: "sup", kind: "text", component: "sup", attributes: {}, required: [] },
-	{ name: "sub", kind: "text", component: "sub", attributes: {}, required: [] },
-	{ name: "br", kind: "text", component: "br", attributes: {}, required: [] },
-];
+/** 블록 정의(v2 B3, `src/cms/blocks/definitions.ts`)에서 만든 지시자 표. */
+export const DIRECTIVES: readonly DirectiveDefinition[] = directiveBlocks().map((block) => {
+	const syntax = block.syntax as { kind: DirectiveKind; directive: string };
+	return {
+		name: syntax.directive,
+		kind: syntax.kind,
+		component: block.component,
+		attributes: Object.fromEntries(Object.entries(block.attributes).map(([name, attribute]) => [name, attribute.type])),
+		required: Object.entries(block.attributes)
+			.filter(([, attribute]) => attribute.required)
+			.map(([name]) => name),
+	};
+});
 
 export const DIRECTIVE_BY_NAME: ReadonlyMap<string, DirectiveDefinition> = new Map(
 	DIRECTIVES.map((definition) => [definition.name, definition]),
@@ -105,5 +55,4 @@ export const DIRECTIVE_BY_COMPONENT: ReadonlyMap<string, DirectiveDefinition> = 
 	DIRECTIVES.map((definition) => [definition.component, definition]),
 );
 
-/** §4.4가 허용하는 정렬 값. `justify`는 쓰지 않는다(A4). */
-export const TEXT_ALIGN_VALUES = ["left", "center", "right"] as const;
+export { TEXT_ALIGN_VALUES } from "../blocks/derive";

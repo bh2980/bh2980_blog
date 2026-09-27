@@ -65,10 +65,8 @@ export const MARK_ORDER = [
 export const sortMarks = <T extends { type: string }>(marks: readonly T[]): T[] =>
 	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
 
-export const TABS_MIN = 2;
-export const TABS_MAX = 8;
-export const COLUMNS_MIN = 2;
-export const COLUMNS_MAX = 4;
+/** 자식 개수 규칙은 블록 정의(v2 B3)에서 온다. */
+export { COLUMNS_MAX, COLUMNS_MIN, TABS_MAX, TABS_MIN } from "../blocks/derive";
 
 /** 배치 4에서 제거한 이름. 본문에 남아 있으면 `analyze`가 거부한다(읽기 호환도 끝). */
 export const RETIRED_JSX_NAMES = new Set(["ContentLink", "IdeographicSpace"]);

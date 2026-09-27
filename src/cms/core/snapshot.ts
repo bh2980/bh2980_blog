@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { PREFIXED_LOCALES } from "@/libs/i18n/locales";
+import { BLOCK_BY_NAME, invalidOptionAttributes } from "../blocks/derive";
 import { analyze } from "../mdx/analyze";
-import { DIRECTIVE_BY_COMPONENT, TEXT_ALIGN_VALUES } from "../mdx/directives";
+import { DIRECTIVE_BY_COMPONENT } from "../mdx/directives";
 import { isAllowedImageSrc } from "../mdx/image-src";
 import type { CmsImageSource } from "../mdx/types";
 import {
@@ -271,10 +272,17 @@ function checkBlockAttributes(
 		}
 	}
 
-	if (name === "TextAlign") {
-		const align = readAttrValue(node, "align");
-		if (typeof align === "string" && align && !(TEXT_ALIGN_VALUES as readonly string[]).includes(align)) {
-			issues.push({ code: "invalid_block_attribute", message: `text-align.align=${align}`, path: "mdx", position });
+	// 선택 값이 정해진 속성(정렬·콜아웃 종류 등)은 블록 정의(v2 B3)의 값만 받는다.
+	const block = BLOCK_BY_NAME.get(definition.name);
+	if (block) {
+		const values = Object.fromEntries(Object.keys(block.attributes).map((key) => [key, readAttrValue(node, key)]));
+		for (const key of invalidOptionAttributes(block, values)) {
+			issues.push({
+				code: "invalid_block_attribute",
+				message: `${definition.name}.${key}=${String(values[key])}`,
+				path: "mdx",
+				position,
+			});
 		}
 	}
 

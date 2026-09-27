@@ -12,8 +12,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/utils/cn";
 import { CmsBlockKeymap, deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
+import { BLOCK_NODE_VIEWS } from "./block-views";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
-import { CmsImageNode } from "./image-node";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
@@ -296,7 +296,7 @@ export function CmsEditor({
 				link: { openOnClick: false },
 			}),
 			...CMS_SCHEMA_EXTENSIONS,
-			CmsImageNode,
+			...Object.values(BLOCK_NODE_VIEWS),
 			CmsBlockKeymap,
 		],
 		content: mdxToTiptap(content),

@@ -34,7 +34,7 @@ paths:
   /meta:
     get:
       tags: [meta]
-      summary: API 버전, 컬렉션 정의(스키마), 직렬화 가능한 확장 예제, 지원 기능
+      summary: API 버전, 컬렉션 정의(스키마), 본문 블록 정의, 지원 기능
       responses:
         "200":
           description: 메타데이터
@@ -84,19 +84,24 @@ paths:
                           type: object
                           properties:
                             columns: { type: array, items: { type: string } }
-                  extensions:
-                    type: object
-                    required: [fields, helpers, blocks]
-                    properties:
-                      fields:
-                        type: array
-                        items: { type: object, additionalProperties: true }
-                      helpers:
-                        type: array
-                        items: { type: object, additionalProperties: true }
-                      blocks:
-                        type: array
-                        items: { type: object, additionalProperties: true }
+                  blocks:
+                    type: array
+                    description: |
+                      본문 블록 정의(v2 B3). 저장 문법(`syntax`: 지시자·코드 펜스·수식), 설정 속성(`attributes`: 종류·필수·선택 값),
+                      자식 규칙(`children`), 부모(`parent`), 편집 방식(`editor`), 공개 렌더러 이름(`component`)을 담는다.
+                      JSON으로 직렬화할 수 있는 값만 싣는다. v1의 `extensions` 예제를 대신한다.
+                    items:
+                      type: object
+                      required: [name, label, syntax, component, attributes, editor]
+                      properties:
+                        name: { type: string }
+                        label: { type: string }
+                        syntax: { type: object, additionalProperties: true }
+                        component: { type: string }
+                        attributes: { type: object, additionalProperties: true }
+                        children: { type: object, additionalProperties: true }
+                        parent: { type: string }
+                        editor: { type: object, additionalProperties: true }
                   features:
                     type: object
                     properties:
