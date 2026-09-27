@@ -133,6 +133,7 @@ export const remarkDirectivesToMdx =
 			} as unknown as RootContent;
 
 			(parent.children as RootContent[]).splice(index, 1, replacement);
-			return [SKIP, index];
+			// 등록된 컨테이너의 자식도 순회한다(콜아웃 안 병합 표 등). 미등록 지시자는 demote 단계에서 SKIP한다.
+			return definition.kind === "container" ? index : [SKIP, index];
 		});
 	};

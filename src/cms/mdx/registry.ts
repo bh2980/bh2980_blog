@@ -19,6 +19,9 @@ export const REGISTERED_JSX_NAMES = new Set([
 	"Mermaid",
 	"CodeBlock",
 	"Math",
+	"Table",
+	"TableRow",
+	"TableCell",
 ]);
 
 export const BLOCK_JSX_NAMES = new Set([
@@ -34,6 +37,9 @@ export const BLOCK_JSX_NAMES = new Set([
 	"Mermaid",
 	"CodeBlock",
 	"Math",
+	"Table",
+	"TableRow",
+	"TableCell",
 ]);
 
 export const INLINE_JSX_MARKS: Record<string, string> = {

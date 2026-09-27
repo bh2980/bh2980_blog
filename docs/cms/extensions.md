@@ -28,7 +28,7 @@ v2부터 컬렉션 필드(B1)와 본문 블록(B3)을 코드 한 곳에서 정�
   - 에디터 NodeView — [`block-views.ts`](../../src/cms/editor/block-views.ts)의 `BLOCK_NODE_VIEWS`
 - 정의 테스트(`src/cms/blocks/__test__/blocks.test.ts`)가 등록부 누락, 자식·부모 이름, 직렬화, 지시자 표를 확인합니다.
 
-지금 전용 NodeView가 있는 블록은 이미지뿐이고, 나머지는 원문 보존 상자로 편집합니다. 콜아웃·접기·탭·단·툴팁·Mermaid·차트의 삽입 UI와 NodeView는 C3에서 이 규격 위에 만듭니다.
+지금 전용 NodeView가 있는 블록은 이미지뿐이고, 표는 Tiptap 네이티브 표로 편집하며(C6 셀 병합 지원), 나머지는 원문 보존 상자로 편집합니다. 콜아웃·접기·탭·단·툴팁·Mermaid·차트의 삽입 UI와 NodeView는 C3에서 이 규격 위에 만듭니다.
 
 ## 3. `/meta`
 

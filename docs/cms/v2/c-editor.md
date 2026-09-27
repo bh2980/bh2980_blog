@@ -30,8 +30,17 @@
 ::::
 ```
 
-- 실제 문법 세부(리프/컨테이너 선택)는 기존 directive 파서가 인라인 내용을 가장 손실 없이 왕복하는 형태로 C6 작업자가 확정하고 이 문서 §4에 적는다. 요구사항: 셀 내용은 인라인만(GFM 표와 같음), `colspan`·`rowspan`·`header` 속성, 열 정렬 보존, 병합을 모두 풀면 GFM으로 돌아감.
-- B3 블록 정의에 `table`(및 자식) 정의를 더하고 공개 렌더러를 둔다. D2 번역은 이 directive 구조를 보존한다.
+- 확정 문법:
+  - 표: 컨테이너 지시자 `::::table{align="..."}`. `align`은 열 정렬(left, center, right)을 쉼표로 잇는다.
+  - 행: 컨테이너 지시자 `:::row`.
+  - 셀: 리프 지시자 `::cell[인라인]{header colspan=N rowspan=N}`. 인라인 서식(`**굵게**`, `*기울임*`, `` `코드` ``, `:br[]` 줄바꿈 등)을 온전히 보존한다.
+  - 속성: `header`(불리언 참일 때만 이름 기재), `colspan`(2 이상일 때만 기재), `rowspan`(2 이상일 때만 기재).
+  - 병합 없는 표는 기존 GFM 표(`| a | b |`)로 저장되며 바이트 불변을 보장한다.
+  - 병합 표에서 모든 병합을 해제하면 자동으로 GFM 표로 복귀한다.
+- B3 블록 정의(`src/cms/blocks/definitions.ts`)에 `table`, `row`, `cell` 정의를 추가하고 parent/children 관계를 명시한다.
+- 발행 전 검사(`src/cms/core/snapshot.ts`)에서 rowspan의 전체 행 수 초과, 병합 영역 중복, 행별 열 수 불일치, 0 이하의 span 값을 감지하여 `invalid_table_span` 경고를 보고한다.
+- 공개 렌더러(`src/components/mdx/table.tsx`)에서 `Table`, `TableRow`, `TableCell`을 구현하고, 표 격자 구조를 계산해 각 셀에 올바른 열 정렬(`align`)을 주입한다.
+- 편집기(`src/cms/editor/converters/table.ts` 및 `tiptap-editor.tsx`)에서 `CmsTable`을 통해 colspan/rowspan을 보존하고, `CellSelection` 시 활성화되는 '셀 병합'·'셀 나누기' 도구를 제공한다.
 
 ### 1.3 C3 편집 방식
 
@@ -91,6 +100,29 @@ C3에서 도입되는 컨테이너 NodeView(Callout, Collapsible, Tabs, Columns 
    - 마우스 커서가 `[data-node-view-wrapper]` 내부이지만 `[data-node-view-content]` 바깥(예: 컨테이너 헤더, 타이틀 영역, 접기/펼치기 버튼, 테두리 여백)에 위치하면, 컨테이너 NodeView 자체를 이동 단위로 인식하여 핸들을 표시한다.
 3. **스키마 수용성 검증 규약:**
    - 컨테이너 내부로 다른 블록을 드롭하거나, 컨테이너 내부의 블록을 외부/다른 컨테이너로 드롭할 때 `parent.canReplaceWith` 및 `contentMatch`를 통해 대상 컨테이너의 `content` 스키마 제약(예: `content: "block+"`, Tabs/Columns 자식 제약 등)을 사전에 검사한다.
-   - 컨테이너가 허용하지 않는 노드 타입은 드롭이 무시되며, 드래그 중 드롭커서 표시 역시 차단된다.
+   - 컨테이너가 허용하지 않는 노드 타입은 드롭이 무시되며, 드롭 자체가 거부된다(기본 Dropcursor 표시선은 뜰 수 있다).
 4. **원자적 이동 및 Undo 일관성:**
    - 컨테이너 안팎의 블록 이동은 항상 `moveBlockNode` 순수 함수를 거쳐 단일 트랜잭션으로 커밋되므로, 컨테이너에서 꺼내거나 집어넣는 동작도 정확히 1회의 `Undo`로 원상복구된다.
+
+### 4.2 C6 표 셀 병합 구현 완료 (2026-09-27)
+
+1. **확정 저장 문법:**
+   - 표 컨테이너: `::::table{align="left,center"}` (정렬 없을 시 `::::table`)
+   - 행 컨테이너: `:::row` ... `:::`
+   - 셀 리프: `::cell[인라인 내용]{header colspan=2 rowspan=2}`
+   - 병합(colspan > 1 또는 rowspan > 1)이 있는 경우에만 directive로 저장, 병합이 없으면 기존 GFM 표 바이트 그대로 유지.
+   - 모든 병합 해제 시 자동으로 GFM 표로 복귀.
+
+2. **구현 모듈:**
+   - 블록 정의: `src/cms/blocks/definitions.ts` (`table`, `row`, `cell`), `src/cms/mdx/registry.ts`
+   - MDX 파싱/직렬화: `src/cms/mdx/to-document.ts`, `src/cms/mdx/serialize.ts`
+   - 발행 전 검사: `src/cms/core/snapshot.ts` (`checkTableSpans`, `invalid_table_span` 경고)
+   - 편집기 연동: `src/cms/editor/converters/table.ts` (colspan/rowspan/header 보존), `src/cms/editor/tiptap-editor.tsx` (셀 병합/셀 나누기 버튼, CellSelection 활성)
+   - 공개 렌더러: `src/components/mdx/table.tsx` (`Table`, `TableRow`, `TableCell`), `src/components/mdx/mdx-content.tsx` 등록
+
+3. **테스트:**
+   - `src/cms/mdx/__test__/table-roundtrip.test.ts` (MDX 왕복, GFM 복귀, 바이트 불변)
+   - `src/cms/core/__test__/table-validation.test.ts` (span 초과/중복/불일치 경고)
+   - `src/cms/editor/__test__/table-merge.test.ts` (편집기 병합/나누기 및 직렬화)
+   - `src/components/mdx/__test__/table.test.tsx` (공개 컴포넌트 렌더 및 정렬 분배)
+>>>>>>> theirs

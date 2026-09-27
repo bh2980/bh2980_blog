@@ -194,8 +194,73 @@ const convertCode = (node: MdastLike): CmsNode => {
 	return { type: "codeBlock", attrs };
 };
 
+const convertDirectiveTable = (node: MdastLike): CmsNode => {
+	const rawAttrs = attributeRecord(readJsxAttributes(node.attributes));
+	let align: Array<string | null> | null = null;
+	if (typeof rawAttrs.align === "string") {
+		align = rawAttrs.align.split(",").map((s) => {
+			const trimmed = s.trim();
+			return trimmed.length > 0 ? trimmed : null;
+		});
+	}
+
+	const rows: MdastLike[] = [];
+	for (const child of node.children ?? []) {
+		if (child.name === "TableRow") {
+			rows.push(child);
+		} else if (child.type === "paragraph" && child.children) {
+			for (const grandChild of child.children) {
+				if (grandChild.name === "TableRow") rows.push(grandChild);
+			}
+		}
+	}
+
+	const content: CmsNode[] = rows.map((row) => {
+		const cells: MdastLike[] = [];
+		for (const child of row.children ?? []) {
+			if (child.name === "TableCell") {
+				cells.push(child);
+			} else if (child.type === "paragraph" && child.children) {
+				for (const grandChild of child.children) {
+					if (grandChild.name === "TableCell") cells.push(grandChild);
+				}
+			}
+		}
+
+		return {
+			type: "tableRow",
+			content: cells.map((cell) => {
+				const cellAttrs = attributeRecord(readJsxAttributes(cell.attributes));
+				const attrs: Record<string, CmsJsonValue> = {};
+				const colspan = Number(cellAttrs.colspan ?? 1);
+				const rowspan = Number(cellAttrs.rowspan ?? 1);
+				if (colspan > 1) attrs.colspan = colspan;
+				if (rowspan > 1) attrs.rowspan = rowspan;
+				if (cellAttrs.header === true || cellAttrs.header === "true" || cellAttrs.header === "") {
+					attrs.header = true;
+				}
+				const cellContent = trimTrailingText(convertPhrasing(cell.children ?? []));
+				return {
+					type: "tableCell",
+					...(Object.keys(attrs).length > 0 ? { attrs } : {}),
+					content: cellContent,
+				};
+			}),
+		};
+	});
+
+	return {
+		type: "table",
+		...(align?.some((v) => v !== null) ? { attrs: { align } } : {}),
+		content,
+	};
+};
+
 const convertJsx = (node: MdastLike): CmsNode => {
 	const name = node.name ?? "";
+	if (name === "Table") {
+		return convertDirectiveTable(node);
+	}
 	if (name === "Image") {
 		const rawAttrs = attributeRecord(readJsxAttributes(node.attributes));
 		const attrs: Record<string, CmsJsonValue> = {};

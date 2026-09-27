@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor, Range } from "@tiptap/core";
+import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +38,7 @@ interface ToolbarItem {
 	title?: string;
 	className?: string;
 	isActive?: (editor: Editor) => boolean;
+	isDisabled?: (editor: Editor) => boolean;
 	run: (editor: Editor) => void;
 }
 
@@ -162,7 +164,9 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 	],
 ];
 
-/** 표 안에 있을 때만 보이는 행·열 도구(§4.1). 셀 병합은 v1 범위가 아니다. */
+const isCellSelection = (editor: Editor): boolean => editor.state.selection instanceof CellSelection;
+
+/** 표 안에 있을 때 보이는 표 조작 도구(§4.1, v2 C6). */
 const TABLE_TOOLS: ToolbarItem[] = [
 	{ label: "↑행", title: "위에 행 추가", run: (e) => chain(e).addRowBefore().run() },
 	{ label: "↓행", title: "아래에 행 추가", run: (e) => chain(e).addRowAfter().run() },
@@ -170,15 +174,28 @@ const TABLE_TOOLS: ToolbarItem[] = [
 	{ label: "→열", title: "오른쪽에 열 추가", run: (e) => chain(e).addColumnAfter().run() },
 	{ label: "행 삭제", run: (e) => chain(e).deleteRow().run() },
 	{ label: "열 삭제", run: (e) => chain(e).deleteColumn().run() },
+	{
+		label: "셀 병합",
+		title: "선택한 셀 병합",
+		isDisabled: (e) => !isCellSelection(e) || !e.can().mergeCells(),
+		run: (e) => chain(e).mergeCells().run(),
+	},
+	{
+		label: "셀 나누기",
+		title: "병합된 셀 나누기",
+		isDisabled: (e) => !isCellSelection(e) || !e.can().splitCell(),
+		run: (e) => chain(e).splitCell().run(),
+	},
 	{ label: "표 삭제", className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
 ];
 
 function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
 	const active = item.isActive?.(editor) ?? false;
+	const disabled = !editor.isEditable || (item.isDisabled?.(editor) ?? false);
 	const label = item.title ?? item.label;
 	const common = {
 		"aria-label": label,
-		disabled: !editor.isEditable,
+		disabled,
 		// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
 		onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
 		className: cn("h-7 min-w-7 px-2 text-xs", item.className),

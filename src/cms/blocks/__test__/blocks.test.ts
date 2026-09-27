@@ -63,7 +63,15 @@ describe("블록 정의(v2 B3)", () => {
 			["sup", "text", "sup", []],
 			["sub", "text", "sub", []],
 			["br", "text", "br", []],
+			["table", "container", "Table", []],
+			["row", "container", "TableRow", []],
+			["cell", "leaf", "TableCell", []],
 		]);
+		expect(DIRECTIVES.find((directive) => directive.name === "cell")?.attributes).toEqual({
+			colspan: "string",
+			rowspan: "string",
+			header: "boolean",
+		});
 		expect(DIRECTIVES.find((directive) => directive.name === "image")?.attributes).toEqual({
 			mediaId: "string",
 			src: "string",

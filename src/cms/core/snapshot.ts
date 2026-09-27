@@ -240,6 +240,155 @@ const readAttrValue = (node: MdxNode, key: string): string | true | undefined =>
 	return typeof attr.value === "string" ? attr.value : undefined;
 };
 
+function findNamedJsxChildren(node: MdxNode, name: string): MdxNode[] {
+	const found: MdxNode[] = [];
+	const walk = (children: unknown) => {
+		for (const child of Array.isArray(children) ? children : []) {
+			if (!isMdxNode(child)) continue;
+			if (isJsxElement(child) && child.name === name) {
+				found.push(child);
+			} else if (child.type === "paragraph" && Array.isArray(child.children)) {
+				walk(child.children);
+			}
+		}
+	};
+	walk(node.children);
+	return found;
+}
+
+/**
+ * 표의 셀 병합(colspan·rowspan) 및 격자 구조를 검사하여 잘못된 span에 대해 경고한다(v2 C6).
+ */
+function checkTableSpans(tableNode: MdxNode, position: { line: number; column: number }, warnings: Issue[]) {
+	const rows = findNamedJsxChildren(tableNode, "TableRow");
+	const totalRows = rows.length;
+	if (totalRows === 0) return;
+
+	const grid: boolean[][] = [];
+	for (let r = 0; r < totalRows; r += 1) {
+		grid.push([]);
+	}
+
+	let hasSpanIssue = false;
+
+	for (let r = 0; r < totalRows; r += 1) {
+		const row = rows[r];
+		if (!row) continue;
+		const cells = findNamedJsxChildren(row, "TableCell");
+		let c = 0;
+
+		for (const cell of cells) {
+			while (grid[r]?.[c]) {
+				c += 1;
+			}
+
+			const colspanRaw = readAttrValue(cell, "colspan");
+			const rowspanRaw = readAttrValue(cell, "rowspan");
+
+			let cs = 1;
+			if (colspanRaw !== undefined && typeof colspanRaw === "string") {
+				const parsed = Number.parseInt(colspanRaw, 10);
+				if (Number.isNaN(parsed) || parsed < 1 || String(parsed) !== colspanRaw.trim()) {
+					warnings.push({
+						code: "invalid_table_span",
+						message: `잘못된 colspan 값입니다: ${colspanRaw}`,
+						path: "mdx",
+						position,
+					});
+					hasSpanIssue = true;
+				} else {
+					cs = parsed;
+				}
+			}
+
+			let rs = 1;
+			if (rowspanRaw !== undefined && typeof rowspanRaw === "string") {
+				const parsed = Number.parseInt(rowspanRaw, 10);
+				if (Number.isNaN(parsed) || parsed < 1 || String(parsed) !== rowspanRaw.trim()) {
+					warnings.push({
+						code: "invalid_table_span",
+						message: `잘못된 rowspan 값입니다: ${rowspanRaw}`,
+						path: "mdx",
+						position,
+					});
+					hasSpanIssue = true;
+				} else {
+					rs = parsed;
+				}
+			}
+
+			// 외부 MDX의 거대한 span이 격자 계산을 폭증시키지 않도록 제한한다.
+			if (cs > 64 || rs > 64 || c + cs > 64 || r + rs > totalRows) {
+				warnings.push({
+					code: "invalid_table_span",
+					message:
+						r + rs > totalRows
+							? `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`
+							: "셀 병합 범위가 표의 허용 크기(64열·64행)를 넘습니다.",
+					path: "mdx",
+					position,
+				});
+				hasSpanIssue = true;
+				continue;
+			}
+
+			if (r + rs > totalRows) {
+				warnings.push({
+					code: "invalid_table_span",
+					message: `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`,
+					path: "mdx",
+					position,
+				});
+				hasSpanIssue = true;
+			}
+
+			let overlap = false;
+			for (let dr = 0; dr < rs; dr += 1) {
+				for (let dc = 0; dc < cs; dc += 1) {
+					const targetR = r + dr;
+					const targetC = c + dc;
+					if (targetR < totalRows) {
+						if (grid[targetR]?.[targetC]) overlap = true;
+						if (!grid[targetR]) grid[targetR] = [];
+						grid[targetR][targetC] = true;
+					}
+				}
+			}
+			if (overlap) {
+				warnings.push({
+					code: "invalid_table_span",
+					message: "표 셀의 병합 영역이 겹칩니다.",
+					path: "mdx",
+					position,
+				});
+				hasSpanIssue = true;
+			}
+
+			c += cs;
+		}
+	}
+
+	if (!hasSpanIssue) {
+		const rowWidths = grid.map((row) => row.length);
+		const maxWidth = Math.max(...rowWidths, 0);
+		const hasGapOrMismatch = grid.some((row) => {
+			if (row.length !== maxWidth) return true;
+			for (let i = 0; i < maxWidth; i += 1) {
+				if (!row[i]) return true;
+			}
+			return false;
+		});
+		if (hasGapOrMismatch) {
+			warnings.push({
+				code: "invalid_table_span",
+				message: "표의 행마다 열 수가 일치하지 않거나 빈 칸이 있습니다.",
+				path: "mdx",
+				position,
+			});
+		}
+	}
+}
+
 /**
  * 블록 속성 규칙(§4.4, §5.6 "블록별 필수 속성"). 발행만 막고 초안 저장·시각 편집은 막지 않는다.
  * 저장 문법(directive)과 읽기 호환 JSX가 같은 컴포넌트 이름으로 파싱되므로 한 번만 검사한다.
@@ -311,6 +460,10 @@ function checkBlockAttributes(
 				});
 			}
 		}
+	}
+
+	if (name === "Table") {
+		checkTableSpans(node, position, warnings);
 	}
 
 	if (name === "Image") {

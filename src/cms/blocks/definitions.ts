@@ -166,6 +166,44 @@ export const math = defineBlock({
 	editor: { view: "node", nodeView: "math", insertable: true, keywords: ["math", "수식", "katex"] },
 });
 
+export const table = defineBlock({
+	name: "table",
+	label: "표",
+	description: "셀 병합이 있는 표",
+	syntax: { kind: "container", directive: "table" },
+	component: "Table",
+	attributes: {
+		align: { type: "string", label: "열 정렬", description: "left, center, right 쉼표 구분" },
+	},
+	children: { blocks: ["row"], min: 1 },
+	editor: { view: "opaque", insertable: false, keywords: ["table", "표"] },
+});
+
+export const row = defineBlock({
+	name: "row",
+	label: "행",
+	syntax: { kind: "container", directive: "row" },
+	component: "TableRow",
+	attributes: {},
+	children: { blocks: ["cell"], min: 1 },
+	parent: "table",
+	editor: { view: "opaque" },
+});
+
+export const cell = defineBlock({
+	name: "cell",
+	label: "셀",
+	syntax: { kind: "leaf", directive: "cell" },
+	component: "TableCell",
+	attributes: {
+		colspan: { type: "string", label: "열 병합" },
+		rowspan: { type: "string", label: "행 병합" },
+		header: { type: "boolean", label: "머리글", defaultValue: false },
+	},
+	parent: "row",
+	editor: { view: "opaque" },
+});
+
 /** 선언 순서가 `/meta`와 문서의 순서다. */
 export const BLOCKS = [
 	callout,
@@ -184,4 +222,7 @@ export const BLOCKS = [
 	mermaid,
 	chart,
 	math,
+	table,
+	row,
+	cell,
 ] as const;

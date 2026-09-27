@@ -31,6 +31,7 @@ import { Column, Columns } from "./columns";
 import { CmsImage } from "./image";
 import { Mermaid } from "./mermaid.client";
 import { pre } from "./pre";
+import { Table, TableCell, TableRow } from "./table";
 import { Tab, Tabs } from "./tabs";
 import { TextAlign } from "./text-align";
 import { Tooltip } from "./tooltip";
@@ -92,6 +93,9 @@ export const MDX_COMPONENTS = {
 	Tab,
 	TextAlign,
 	Image: CmsImage,
+	Table,
+	TableRow,
+	TableCell,
 };
 
 /**
