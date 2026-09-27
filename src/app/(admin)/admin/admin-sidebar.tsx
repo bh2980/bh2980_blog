@@ -93,11 +93,11 @@ export function folderKeyHandler(folder: Folder, actions: FolderActions) {
 
 /**
  * 트리 연결선. 각 줄 왼쪽에 세로선과 `ㄴ`자 가로선을 그리고, 마지막 줄의 세로선은 가로선에서 끊는다.
- * 줄 높이(28px)의 절반인 14px에 가로선을 둔다. 세로선은 부모의 펼침 단추(또는 최상위 아이콘) 가운데에 온다.
+ * 줄 높이(28px)의 절반인 14px에 가로선을 둔다. 세로선은 부모 폴더 아이콘(또는 최상위 아이콘) 가운데에 온다.
  */
 const TREE_LIST = "mx-0 translate-x-0 gap-0 border-l-0 py-0 pr-0 pl-6";
 const TREE_ITEM =
-	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-sidebar-border after:absolute after:top-3.5 after:h-px after:w-3 after:bg-sidebar-border last:before:h-3.5";
+	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-sidebar-foreground/20 after:absolute after:top-3.5 after:h-px after:w-3.5 after:bg-sidebar-foreground/20 last:before:h-3.5";
 
 function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: () => void }) {
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -162,22 +162,35 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					trigger={
 						<div
 							{...dropProps(folder.id, folder.id)}
+							data-active={isActive || undefined}
 							className={cn(
-								"group/folder flex items-center gap-0.5 rounded-md",
+								"group/folder flex h-7 items-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground",
 								dropTarget === folder.id && "ring-2 ring-sidebar-ring",
 							)}
 						/>
 					}
 				>
+					{/* 폴더 아이콘이 펼침 단추를 겸한다. 하위 폴더가 있으면 올려 두거나 초점을 주면 화살표로 바뀐다. */}
 					{children.length > 0 ? (
 						<CollapsibleTrigger
 							aria-label={`${folder.name} 하위 폴더 ${isExpanded ? "접기" : "펼치기"}`}
-							className="flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
+							className="group/toggle flex size-6 shrink-0 items-center justify-center rounded-md outline-hidden hover:bg-sidebar-foreground/10 focus-visible:ring-2 focus-visible:ring-sidebar-ring [&_svg]:size-4"
 						>
-							<ChevronRight className={cn("size-3.5 transition-transform", isExpanded && "rotate-90")} />
+							<span className="group-hover/toggle:hidden group-focus-visible/toggle:hidden">
+								{isExpanded ? <FolderOpen aria-hidden /> : <FolderIcon aria-hidden />}
+							</span>
+							<ChevronRight
+								aria-hidden
+								className={cn(
+									"hidden transition-transform group-hover/toggle:block group-focus-visible/toggle:block",
+									isExpanded && "rotate-90",
+								)}
+							/>
 						</CollapsibleTrigger>
 					) : (
-						<span className="w-6 shrink-0" />
+						<span aria-hidden className="flex size-6 shrink-0 items-center justify-center">
+							<FolderIcon className="size-4" />
+						</span>
 					)}
 					<SidebarMenuButton
 						size="sm"
@@ -185,9 +198,8 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 						aria-current={isActive ? "true" : undefined}
 						onClick={() => select(folder.id)}
 						onKeyDown={folderKeyHandler(folder, nav.folderActions)}
-						className="min-w-0 flex-1"
+						className="min-w-0 flex-1 bg-transparent pl-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
 					>
-						{isExpanded ? <FolderOpen /> : <FolderIcon />}
 						<span>{folder.name}</span>
 					</SidebarMenuButton>
 					<MoreActionsButton
@@ -251,12 +263,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					</Label>
 				)}
 				{/* 빈 곳의 오른쪽 클릭 메뉴(v2 A2). 폴더 줄의 메뉴와 겹치지 않도록 목록 아래 빈 영역에만 붙인다. */}
-				<ActionContextMenu
-					actions={blankActions}
-					trigger={<div className="min-h-16 flex-1 px-2 pt-3 text-[11px] text-muted-foreground/80 leading-relaxed" />}
-				>
-					글을 끌어 폴더로 옮기거나, 빈 곳을 오른쪽 클릭해 새 폴더를 만드세요.
-				</ActionContextMenu>
+				<ActionContextMenu actions={blankActions} trigger={<div aria-hidden className="min-h-16 flex-1" />} />
 			</SidebarGroupContent>
 		</SidebarGroup>
 	);

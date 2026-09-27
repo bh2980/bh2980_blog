@@ -46,6 +46,7 @@ import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus } from "./shared/entry-status";
+import { FittingTags } from "./shared/fitting-tags";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOption } from "./shared/use-taxonomy";
 
@@ -330,22 +331,7 @@ export function AdminEntriesTable({
 					return item.category?.title ?? <span className="text-muted-foreground">—</span>;
 				case "tags":
 					if (!item.tags.length) return <span className="text-muted-foreground">—</span>;
-					return (
-						<span
-							className="flex items-center gap-1 whitespace-nowrap"
-							title={item.tags.map((tag) => tag.title).join(", ")}
-						>
-							{item.tags.slice(0, 2).map((tag) => (
-								<span
-									key={tag.id}
-									className="max-w-24 truncate rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs"
-								>
-									{tag.title}
-								</span>
-							))}
-							{item.tags.length > 2 && <span className="text-muted-foreground text-xs">+{item.tags.length - 2}</span>}
-						</span>
-					);
+					return <FittingTags tags={item.tags} />;
 				case "updatedAt":
 				case "createdAt":
 				case "publishedAt":
