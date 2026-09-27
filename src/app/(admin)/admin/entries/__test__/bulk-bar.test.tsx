@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
-import { chooseComboboxOption, chooseSelectOption } from "@/test/base-ui";
+import { chooseSelectOption } from "@/test/base-ui";
 import { BulkBar } from "../bulk-bar";
 
 afterEach(() => {
@@ -42,7 +42,7 @@ describe("bulk actions (§3.4)", () => {
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
 		);
-		// 태그 목록을 불러온 뒤 Combobox(다중 선택)에서 고른다.
+		// 태그 목록을 불러온 뒤 작은 태그 버튼을 열어 체크 목록에서 고른다.
 		await waitFor(() =>
 			expect(
 				(fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
@@ -50,7 +50,13 @@ describe("bulk actions (§3.4)", () => {
 				),
 			).toBe(true),
 		);
-		await chooseComboboxOption("적용할 태그", "Tag One");
+		fireEvent.click(screen.getByRole("button", { name: "적용할 태그: 없음" }));
+		fireEvent.click(await screen.findByRole("option", { name: "Tag One" }));
+		await waitFor(() =>
+			expect(screen.getByRole("button", { name: "적용할 태그: Tag One" }).textContent).toBe("Tag One"),
+		);
+		fireEvent.keyDown(screen.getByPlaceholderText("태그 검색"), { key: "Escape" });
+		await waitFor(() => expect(screen.queryByPlaceholderText("태그 검색")).toBeNull());
 		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "tags.add", items: [{ id: "entry-1", expectedVersion: 3 }], tagIds: ["tag-1"] });

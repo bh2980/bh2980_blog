@@ -1,12 +1,16 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import type { BulkOp } from "@/cms/core/api";
 import { isRecordCollection } from "@/cms/core/collections";
-import { MultiCombobox } from "@/components/multi-combobox";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
@@ -94,6 +98,68 @@ export async function runBulk(
 		fallback: "일괄 작업 요청이 실패했습니다.",
 	});
 	return data.results;
+}
+
+/**
+ * 일괄 작업 줄의 태그 선택. 폴더·카테고리 선택처럼 작은 버튼 하나로 두고, 누르면 검색과 체크 목록이 열린다.
+ * 버튼에는 고른 태그를 `React 외 2개`처럼 줄여 보여 줘서 줄이 넘치지 않는다.
+ */
+function TagPicker({
+	options,
+	value,
+	onValueChange,
+}: {
+	options: { id: string; title: string }[];
+	value: string[];
+	onValueChange: (value: string[]) => void;
+}) {
+	const names = value.map((id) => options.find((option) => option.id === id)?.title ?? id);
+	const summary =
+		names.length === 0 ? "태그 선택" : names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}개`;
+	const toggle = (id: string) =>
+		onValueChange(value.includes(id) ? value.filter((item) => item !== id) : [...value, id]);
+	return (
+		<Popover>
+			<PopoverTrigger
+				render={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						aria-label={`적용할 태그: ${names.length === 0 ? "없음" : names.join(", ")}`}
+						className={cn(
+							"max-w-56 justify-between gap-1.5 font-normal",
+							names.length === 0 && "text-muted-foreground",
+						)}
+					/>
+				}
+			>
+				<span className="truncate">{summary}</span>
+				<ChevronDownIcon aria-hidden className="size-4 text-muted-foreground" />
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-64 p-0">
+				<Command>
+					<CommandInput placeholder="태그 검색" aria-label="태그 검색" />
+					<CommandList className="max-h-64">
+						<CommandEmpty>일치하는 태그가 없습니다.</CommandEmpty>
+						<CommandGroup>
+							{options.map((option) => (
+								<CommandItem key={option.id} value={`${option.title} ${option.id}`} onSelect={() => toggle(option.id)}>
+									<Checkbox
+										checked={value.includes(option.id)}
+										tabIndex={-1}
+										aria-hidden
+										className="pointer-events-none"
+									/>
+									{option.title}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
 }
 
 /**
@@ -232,17 +298,7 @@ export function BulkBar({
 					<span className="text-muted-foreground">{activeAction?.label}</span>
 				)}
 
-				{needsTags && (
-					<MultiCombobox
-						aria-label="적용할 태그"
-						placeholder="태그 선택"
-						emptyText="태그가 없습니다."
-						options={tags.options.map((option) => ({ value: option.id, label: option.title }))}
-						value={checked}
-						onValueChange={setChecked}
-						className="min-w-56"
-					/>
-				)}
+				{needsTags && <TagPicker options={tags.options} value={checked} onValueChange={setChecked} />}
 
 				{needsSingle && (
 					<Select
