@@ -1,4 +1,11 @@
 import type { Editor, Range } from "@tiptap/core";
+import type { BlockDefinition } from "../blocks/define";
+import { BLOCKS } from "../blocks/definitions";
+import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
+import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
+
+export { OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
+export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export interface SlashCommandItem {
 	title: string;
@@ -6,9 +13,6 @@ export interface SlashCommandItem {
 	keywords: string[];
 	action: (editor: Editor, range: Range) => void;
 }
-
-/** 이미지 삽입 대화상자를 여는 이벤트. 편집기 컴포넌트가 듣는다. */
-export const OPEN_IMAGE_DIALOG_EVENT = "cms:open-image-dialog";
 
 const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashCommandItem => ({
 	title: `제목 ${level} (H${level})`,
@@ -20,10 +24,9 @@ const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashC
 });
 
 /**
- * `/` 블록 삽입 메뉴(§4.2). 한국어·영문 이름으로 검색한다.
- * 글 제목이 본문 위의 H1이므로 본문 제목은 H2부터 쓴다(§4.1).
+ * 기본 서식 및 인라인 슬래시 커맨드.
  */
-export const SLASH_COMMANDS: SlashCommandItem[] = [
+export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	{
 		title: "문단 (Paragraph)",
 		description: "일반 텍스트 본문",
@@ -108,7 +111,59 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
 			editor.chain().focus().deleteRange(range).insertContent("[[").run();
 		},
 	},
+	{
+		title: "툴팁 (Tooltip)",
+		description: "선택한 텍스트에 부가 설명 추가 (텍스트 선택 필요)",
+		keywords: ["툴팁", "tooltip", "설명", "주석"],
+		action: (editor, range) => {
+			// 슬래시는 빈 문단에서 입력하므로 선택 영역이 없다. 라벨 예시를 선택해 편집·설명 입력을 시작한다.
+			editor.chain().focus().deleteRange(range).insertContent("툴팁 텍스트").run();
+			const to = editor.state.selection.from;
+			editor.commands.setTextSelection({ from: to - "툴팁 텍스트".length, to });
+			window.dispatchEvent(new CustomEvent(OPEN_TOOLTIP_EVENT));
+		},
+	},
 ];
+
+const DEFAULT_BLOCK_DESCRIPTIONS: Record<string, string> = {
+	mermaid: "다이어그램·흐름도 삽입",
+	chart: "차트·그래프 삽입",
+	math: "LaTeX 수식 삽입",
+};
+
+/**
+ * 블록 정의(BLOCKS) 중 `editor.insertable === true`이고 `editor.view === 'node'`인 것 중
+ * 삽입 액션이 등록된 블록에 대한 슬래시 커맨드 목록을 생성한다(v2 C3a).
+ */
+export function buildBlockSlashCommands(
+	definitions: readonly BlockDefinition[] = BLOCKS,
+	actions: Record<string, BlockInsertAction> = BLOCK_INSERT_ACTIONS,
+): SlashCommandItem[] {
+	const items: SlashCommandItem[] = [];
+	for (const block of definitions) {
+		if (block.editor.insertable !== true || block.editor.view !== "node") continue;
+		const nodeView = block.editor.nodeView;
+		if (!nodeView) continue;
+		// 이미지는 기존 하드코딩 항목이 있으므로 중복 제외
+		if (nodeView === "image" || block.name === "image") continue;
+		const action = actions[nodeView];
+		if (!action) continue;
+
+		items.push({
+			title: block.label,
+			description: block.description ?? DEFAULT_BLOCK_DESCRIPTIONS[nodeView] ?? `${block.label} 삽입`,
+			keywords: block.editor.keywords ? [...block.editor.keywords] : [block.label, block.name],
+			action,
+		});
+	}
+	return items;
+}
+
+/**
+ * `/` 블록 삽입 메뉴(§4.2). 한국어·영문 이름으로 검색한다.
+ * 글 제목이 본문 위의 H1이므로 본문 제목은 H2부터 쓴다(§4.1).
+ */
+export const SLASH_COMMANDS: SlashCommandItem[] = [...BASE_SLASH_COMMANDS, ...buildBlockSlashCommands()];
 
 export function filterCommands(query: string): SlashCommandItem[] {
 	if (!query) return SLASH_COMMANDS;

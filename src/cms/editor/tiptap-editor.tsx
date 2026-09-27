@@ -19,6 +19,7 @@ import { InternalLinkPopup } from "./internal-link-popup";
 import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
+import { TooltipPopover } from "./tooltip-popover";
 
 interface CmsEditorProps {
 	content: string;
@@ -511,6 +512,7 @@ export function CmsEditor({
 						{group.map((item) => (
 							<ToolbarButton key={item.label} editor={editor} item={item} />
 						))}
+						{index === 1 && <TooltipPopover editor={editor} />}
 					</div>
 				))}
 				<Button

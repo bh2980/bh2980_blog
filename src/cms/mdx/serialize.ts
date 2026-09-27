@@ -396,7 +396,11 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false, inLabel = false
 		}
 		const inCode = wanted.some((mark) => mark.type === "code");
 		const text = node.text ?? "";
-		out.push(atLineStart && !inCode ? encodeLeadingSpaces(text, inCode, inLabel) : escapeText(text, inCode, inLabel));
+		out.push(
+			atLineStart && !inCode
+				? encodeLeadingSpaces(text, inCode, inLabel || wanted.some((mark) => mark.type === "tooltip"))
+				: escapeText(text, inCode, inLabel || wanted.some((mark) => mark.type === "tooltip")),
+		);
 		atLineStart = false;
 	}
 	closeTo(0);
