@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Copy, GripVertical, Trash2 } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +22,21 @@ interface BlockHandleOverlayProps {
 	onMoveDown: () => void;
 	onDuplicate: () => void;
 	onDelete: () => void;
+	onDragStart?: (event: React.DragEvent<HTMLElement>) => void;
+	onDragEnd?: (event: React.DragEvent<HTMLElement>) => void;
 }
 
-/** 블록 왼쪽의 ⋮⋮ 핸들과 블록 메뉴(§4.2). 메뉴는 shadcn DropdownMenu라 키보드로도 조작한다. */
-export function BlockHandleOverlay({ coords, onMoveUp, onMoveDown, onDuplicate, onDelete }: BlockHandleOverlayProps) {
+/** 블록 왼쪽의 ⋮⋮ 핸들과 블록 메뉴(§4.2). 메뉴는 shadcn DropdownMenu(Base UI 기반 render prop)라 키보드로도 조작하며, 핸들을 끌어 블록을 드래그 이동한다. */
+export function BlockHandleOverlay({
+	coords,
+	onMoveUp,
+	onMoveDown,
+	onDuplicate,
+	onDelete,
+	onDragStart,
+	onDragEnd,
+}: BlockHandleOverlayProps) {
+	const [open, setOpen] = useState(false);
 	if (typeof window === "undefined") return null;
 
 	return createPortal(
@@ -36,16 +49,24 @@ export function BlockHandleOverlay({ coords, onMoveUp, onMoveDown, onDuplicate, 
 			}}
 			className="flex items-center"
 		>
-			<DropdownMenu>
+			{/* 모달이 아니어야 한다: 핸들을 누르면 메뉴가 열리는데, 모달 배경이 dragover·drop을 가로채면 드래그가 끝나지 않는다. */}
+			<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
 				<DropdownMenuTrigger
 					render={
 						<Button
 							type="button"
 							variant="ghost"
 							size="icon-xs"
+							draggable
+							onDragStart={(event) => {
+								// 누를 때 열린 메뉴는 끌기 시작하면 닫는다.
+								setOpen(false);
+								onDragStart?.(event);
+							}}
+							onDragEnd={onDragEnd}
 							aria-label="블록 조작 메뉴"
-							title="블록 조작"
-							className="text-muted-foreground"
+							title="블록 조작 (드래그하여 이동)"
+							className="cursor-grab text-muted-foreground active:cursor-grabbing"
 						/>
 					}
 				>

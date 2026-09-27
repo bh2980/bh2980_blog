@@ -69,4 +69,28 @@ Keystatic 제거 커밋 `002720d3`에서 지운 코드 블록 NodeView·툴바·
 
 ## 4. 구현 결과
 
-(단계별로 채운다.)
+### 4.1 C1 노션식 블록 드래그 앤 드롭 결과
+
+- **구현 요약:**
+  - 핸들 오버레이(`src/cms/editor/block-handle-overlay.tsx`)의 메뉴를 Base UI 기반 shadcn `DropdownMenu`의 render prop 구조로 교체하고 `draggable={true}`와 드래그 이벤트를 연동함.
+  - 마우스 클릭 시에는 기존처럼 블록 메뉴(위/아래 이동, 복제, 삭제)가 열리며, 드래그 시에는 ProseMirror의 `NodeSelection` 및 드래그 상태(`view.dragging = { slice, move: true, cmsBlockPos }`)를 설정하여 드롭 연산을 개시함.
+  - 드래그 중 드롭 위치 표시는 Tiptap StarterKit의 `Dropcursor`를 사용해 삽입 위치를 표시함.
+  - 드래그 이동 명령을 순수 함수(`src/cms/editor/drag/drag-commands.ts`)로 분리하여 `canDropBlockNode`, `calculateDropPosition`, `moveBlockNode`를 통해 스키마 제약(`canReplaceWith` / `contentMatch`)을 엄격히 검증함. 스키마가 허용하지 않는 위치(예: 코드 블록 내부, 문서 루트의 listItem, 원자 노드 내부 등)는 드롭을 거부(무시)함. 표시선은 Tiptap 기본 Dropcursor 규칙을 따르므로 거부 위치에도 보일 수 있음.
+  - 단일 ProseMirror 트랜잭션(`tr.delete` + `tr.insert`)으로 원자적 이동을 수행하여 '한 드래그 = 한 undo'를 보장함.
+  - 원자 노드(이미지 `image`, 원문 보존 상자 `cmsOpaqueBlock`, `cmsMermaid` 등) 및 중첩 블록(목록 항목 `listItem`/`taskItem`, 인용구 `blockquote` 내부 문단) 모두 핸들이 가리키는 블록 단위로 이동 가능함. 기존 키보드 단축키(`Alt+↑/↓` 등)는 v1처럼 최상위 블록 단위 이동을 유지함.
+
+#### NodeView 컨테이너 드래그 규약 (C3 연계)
+
+C3에서 도입되는 컨테이너 NodeView(Callout, Collapsible, Tabs, Columns 등 content hole을 가진 블록)는 다음 규약을 따른다:
+
+1. **DOM 계층 구조 규약:**
+   - 컨테이너 루트 래퍼 요소에는 TipTap 표준 `[data-node-view-wrapper]` 속성을 둔다.
+   - 자식 블록들이 편집되는 content hole(contentDOM) 요소에는 `[data-node-view-content]` 속성 또는 `ProseMirror-content` 클래스를 둔다.
+2. **핸들 대상 블록 감지 우선순위 (`findBlockDOM`):**
+   - 마우스 커서가 `[data-node-view-content]` 내부의 자식 요소 위에 위치하면, 해당 자식 블록(예: Callout 안의 문단, 컬럼 안의 목록 등)을 이동 단위로 인식하여 핸들을 표시한다.
+   - 마우스 커서가 `[data-node-view-wrapper]` 내부이지만 `[data-node-view-content]` 바깥(예: 컨테이너 헤더, 타이틀 영역, 접기/펼치기 버튼, 테두리 여백)에 위치하면, 컨테이너 NodeView 자체를 이동 단위로 인식하여 핸들을 표시한다.
+3. **스키마 수용성 검증 규약:**
+   - 컨테이너 내부로 다른 블록을 드롭하거나, 컨테이너 내부의 블록을 외부/다른 컨테이너로 드롭할 때 `parent.canReplaceWith` 및 `contentMatch`를 통해 대상 컨테이너의 `content` 스키마 제약(예: `content: "block+"`, Tabs/Columns 자식 제약 등)을 사전에 검사한다.
+   - 컨테이너가 허용하지 않는 노드 타입은 드롭이 무시되며, 드래그 중 드롭커서 표시 역시 차단된다.
+4. **원자적 이동 및 Undo 일관성:**
+   - 컨테이너 안팎의 블록 이동은 항상 `moveBlockNode` 순수 함수를 거쳐 단일 트랜잭션으로 커밋되므로, 컨테이너에서 꺼내거나 집어넣는 동작도 정확히 1회의 `Undo`로 원상복구된다.

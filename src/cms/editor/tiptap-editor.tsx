@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
+import { endBlockDrag, findBlockDOM, resolveTargetBlock, startBlockDrag } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
@@ -247,6 +248,7 @@ export function CmsEditor({
 	linkItemsRef.current = linkItems;
 
 	const [handleCoords, setHandleCoords] = useState<Coords | null>(null);
+	const activeBlockRectRef = useRef<DOMRect | null>(null);
 	const activeBlockPosRef = useRef<number | null>(null);
 	const [imageDialog, setImageDialog] = useState<{ file: File | null } | null>(null);
 
@@ -442,19 +444,38 @@ export function CmsEditor({
 		(event: React.MouseEvent<HTMLDivElement>) => {
 			if (!editor) return;
 			const root = editor.view.dom;
-			let block = event.target as HTMLElement | null;
-			while (block && block.parentElement !== root) block = block.parentElement;
+			// 블록에서 왼쪽 핸들로 가는 길(블록 왼쪽 여백, 목록 들여쓰기)에서는 대상을 바꾸지 않는다.
+			// 그러지 않으면 목록 항목에서 핸들로 가는 동안 대상이 목록 전체로 바뀐다.
+			const active = activeBlockRectRef.current;
+			if (active && event.clientX < active.left && event.clientY >= active.top && event.clientY <= active.bottom)
+				return;
+			const block = findBlockDOM(root, event.target as HTMLElement | null);
 			if (!block) return;
 			try {
-				activeBlockPosRef.current = editor.view.posAtDOM(block, 0);
-				const rect = block.getBoundingClientRect();
-				setHandleCoords({ top: rect.top, left: rect.left });
+				const resolved = resolveTargetBlock(editor.view, block);
+				if (!resolved) return;
+				activeBlockPosRef.current = resolved.pos;
+				activeBlockRectRef.current = resolved.rect;
+				setHandleCoords({ top: resolved.rect.top, left: resolved.rect.left });
 			} catch {
 				// DOM이 막 바뀌는 중이면 무시한다.
 			}
 		},
 		[editor],
 	);
+
+	const handleDragStart = useCallback(
+		(event: React.DragEvent<HTMLElement>) => {
+			if (!editor || activeBlockPosRef.current === null) return;
+			startBlockDrag(editor.view, activeBlockPosRef.current, event);
+		},
+		[editor],
+	);
+
+	const handleDragEnd = useCallback(() => {
+		if (!editor) return;
+		endBlockDrag(editor.view);
+	}, [editor]);
 
 	const withActiveBlock = (action: (current: Editor, pos: number) => boolean) => () => {
 		if (!editor || activeBlockPosRef.current === null) return;
@@ -588,6 +609,8 @@ export function CmsEditor({
 						withActiveBlock(deleteBlock)();
 						setHandleCoords(null);
 					}}
+					onDragStart={handleDragStart}
+					onDragEnd={handleDragEnd}
 				/>
 			)}
 		</div>

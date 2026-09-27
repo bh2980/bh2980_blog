@@ -1,6 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import { CmsBlockKeymap } from "./block-commands";
 import { BLOCK_NODE_VIEWS } from "./block-views";
+import { CmsBlockDrag } from "./drag";
 import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
 
 /**
@@ -20,5 +21,6 @@ export function buildEditorExtensions() {
 		...CMS_SCHEMA_EXTENSIONS,
 		...Object.values(BLOCK_NODE_VIEWS),
 		CmsBlockKeymap,
+		CmsBlockDrag,
 	];
 }

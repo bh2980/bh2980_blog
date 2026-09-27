@@ -42,6 +42,27 @@ describe("최상위 블록 조작(§4.2)", () => {
 	});
 });
 
+describe("중첩 블록 조작(v2 C1)", () => {
+	it("moves nested list items within parent list", () => {
+		const listEditor = new Editor({
+			extensions: [StarterKit],
+			content: "<ul><li><p>Item 1</p></li><li><p>Item 2</p></li><li><p>Item 3</p></li></ul>",
+		});
+		const list = listEditor.state.doc.child(0);
+		const item2Pos = 1 + list.child(0).nodeSize + 1;
+		expect(moveBlock(listEditor, item2Pos, -1)).toBe(true);
+
+		const updatedList = listEditor.state.doc.child(0);
+		expect([
+			updatedList.child(0).textContent,
+			updatedList.child(1).textContent,
+			updatedList.child(2).textContent,
+		]).toEqual(["Item 2", "Item 1", "Item 3"]);
+
+		listEditor.destroy();
+	});
+});
+
 describe("이미지 너비(§4.3)와 업로드 최적화(§7.1)", () => {
 	it("accepts 1–100% or 1–4096px only", () => {
 		for (const ok of ["", "1%", "100%", "600", "600px", "4096px"]) expect(isValidImageWidth(ok), ok).toBe(true);
