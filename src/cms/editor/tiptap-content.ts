@@ -70,6 +70,8 @@ const isTaskList = (node: CmsNode): boolean => {
 };
 
 const isMappableBlock = (node: CmsNode): boolean => {
+	// Tab·Column은 전용 부모(Tabs·Columns) 밖에서 유효하지 않다. 부모 변환기가 자식을 직접 검증한다.
+	if (node.type === "Tab" || node.type === "Column") return false;
 	const converter = converterForCms(node.type, node);
 	if (converter) return converter.isMappable(node, context);
 	switch (node.type) {

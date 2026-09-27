@@ -20,9 +20,9 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(titles).not.toContain("이미지");
 
 		// insertable이 false이거나 view가 node가 아닌 블록은 제외되어야 한다.
-		expect(titles).not.toContain("콜아웃");
-		expect(titles).not.toContain("탭");
-		expect(titles).not.toContain("단 나누기");
+		expect(titles).toContain("콜아웃");
+		expect(titles).toContain("탭");
+		expect(titles).toContain("단 나누기");
 		expect(titles).not.toContain("정렬");
 
 		const mermaidCmd = commands.find((c) => c.title === "다이어그램(Mermaid)");

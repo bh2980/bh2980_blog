@@ -1,4 +1,12 @@
 import type { Node } from "@tiptap/core";
+import {
+	CmsCalloutNode,
+	CmsCollapsibleNode,
+	CmsColumnNode,
+	CmsColumnsNode,
+	CmsTabNode,
+	CmsTabsNode,
+} from "./blocks/containers";
 import { CmsChartNode, CmsMathNode, CmsMermaidNode } from "./blocks/fence-preview";
 import { CmsImageNode } from "./image-node";
 
@@ -11,6 +19,12 @@ import { CmsImageNode } from "./image-node";
  */
 export const BLOCK_NODE_VIEWS: Readonly<Record<string, Node>> = {
 	image: CmsImageNode,
+	callout: CmsCalloutNode,
+	collapsible: CmsCollapsibleNode,
+	tabs: CmsTabsNode,
+	tab: CmsTabNode,
+	columns: CmsColumnsNode,
+	column: CmsColumnNode,
 	mermaid: CmsMermaidNode,
 	chart: CmsChartNode,
 	math: CmsMathNode,

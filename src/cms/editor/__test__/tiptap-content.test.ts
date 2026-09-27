@@ -94,8 +94,8 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 		const json = cmsNodeToTiptap(first);
 
 		const names = (json.content ?? []).map((block) => block?.type);
-		// 표는 Tiptap 표로 편집한다(§4.1). 나머지는 원문 상자로 보존한다.
-		expect(names).toEqual([OPAQUE_BLOCK_NAME, OPAQUE_BLOCK_NAME, "table", OPAQUE_BLOCK_NAME]);
+		// 유효한 Callout·Tabs는 편집하고, 자식이 하나뿐인 Columns는 규격 밖이므로 원문 상자로 보존한다.
+		expect(names).toEqual(["cmsCallout", "cmsTabs", "table", OPAQUE_BLOCK_NAME]);
 
 		const second = tiptapToCmsNode(throughSchema(json));
 		expect(second).toEqual(first);

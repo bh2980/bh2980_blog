@@ -1,4 +1,5 @@
 import type { CmsNode } from "../../mdx";
+import { CONTAINER_CONVERTERS } from "../blocks/containers";
 import { codeBlockConverter } from "./code-block";
 import { chartConverter, mathConverter, mermaidConverter } from "./fence-preview";
 import { imageConverter } from "./image";
@@ -19,6 +20,7 @@ export const BLOCK_CONVERTERS: readonly BlockConverter[] = [
 	mathConverter,
 	codeBlockConverter,
 	tableConverter,
+	...CONTAINER_CONVERTERS,
 ];
 
 const CMS_CONVERTERS_BY_TYPE = new Map<string, BlockConverter[]>();

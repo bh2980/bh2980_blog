@@ -10,7 +10,15 @@ import type { EditorView } from "@tiptap/pm/view";
  * 자식 블록을 하나씩 옮길 수 있는 컨테이너 노드 이름. C3의 컨테이너 NodeView(콜아웃·접기·탭·단 등)는 여기에 이름을 더한다.
  * 이 목록에 없는 부모(표 셀 등)의 자식은 따로 옮기지 않고 부모 블록 단위로 옮긴다.
  */
-export const DRAG_CONTAINER_NODES = new Set<string>(["blockquote"]);
+export const DRAG_CONTAINER_NODES = new Set<string>([
+	"blockquote",
+	"cmsCallout",
+	"cmsCollapsible",
+	"cmsTabs",
+	"cmsTab",
+	"cmsColumns",
+	"cmsColumn",
+]);
 
 export interface TargetBlock {
 	node: PmNode;

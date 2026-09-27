@@ -52,6 +52,55 @@ export const BLOCK_INSERT_ACTIONS: Record<string, BlockInsertAction> = {
 			})
 			.run();
 	},
+	callout: (editor, range) =>
+		editor
+			.chain()
+			.focus()
+			.deleteRange(range)
+			.insertContent({
+				type: "cmsCallout",
+				attrs: { values: { variant: "info" } },
+				content: [{ type: "paragraph", content: [{ type: "text", text: "내용을 입력하세요" }] }],
+			})
+			.run(),
+	collapsible: (editor, range) =>
+		editor
+			.chain()
+			.focus()
+			.deleteRange(range)
+			.insertContent({
+				type: "cmsCollapsible",
+				attrs: { values: { title: "접기 제목" } },
+				content: [{ type: "paragraph", content: [{ type: "text", text: "내용을 입력하세요" }] }],
+			})
+			.run(),
+	tabs: (editor, range) =>
+		editor
+			.chain()
+			.focus()
+			.deleteRange(range)
+			.insertContent({
+				type: "cmsTabs",
+				content: ["첫 번째", "두 번째"].map((label) => ({
+					type: "cmsTab",
+					attrs: { values: { label } },
+					content: [{ type: "paragraph", content: [{ type: "text", text: "내용을 입력하세요" }] }],
+				})),
+			})
+			.run(),
+	columns: (editor, range) =>
+		editor
+			.chain()
+			.focus()
+			.deleteRange(range)
+			.insertContent({
+				type: "cmsColumns",
+				content: Array.from({ length: 2 }, () => ({
+					type: "cmsColumn",
+					content: [{ type: "paragraph", content: [{ type: "text", text: "내용을 입력하세요" }] }],
+				})),
+			})
+			.run(),
 	math: (editor, range) => {
 		editor
 			.chain()

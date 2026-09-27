@@ -55,6 +55,8 @@ export function duplicateBlock(editor: Editor, pos: number): boolean {
 	const { state } = editor;
 	const target = targetBlockAt(state.doc, pos) ?? topLevelBlockAt(state.doc, pos);
 	if (!target) return false;
+	const $target = state.doc.resolve(target.start);
+	if (!$target.parent.canReplaceWith($target.index() + 1, $target.index() + 1, target.node.type)) return false;
 	const tr = state.tr.insert(target.end, target.node.copy(target.node.content));
 	tr.setSelection(selectionInside(tr.doc, target.end)).scrollIntoView();
 	editor.view.dispatch(tr);
@@ -65,6 +67,8 @@ export function deleteBlock(editor: Editor, pos: number): boolean {
 	const { state } = editor;
 	const target = targetBlockAt(state.doc, pos) ?? topLevelBlockAt(state.doc, pos);
 	if (!target) return false;
+	const $target = state.doc.resolve(target.start);
+	if (!$target.parent.canReplace($target.index(), $target.index() + 1)) return false;
 	const tr = state.tr.delete(target.start, target.end);
 	if (tr.doc.childCount > 0) tr.setSelection(selectionInside(tr.doc, Math.min(target.start, tr.doc.content.size - 1)));
 	editor.view.dispatch(tr);

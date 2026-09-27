@@ -24,7 +24,7 @@ export const callout = defineBlock({
 		title: { type: "string", label: "제목" },
 		description: { type: "string", label: "설명", input: "textarea" },
 	},
-	editor: { view: "opaque", insertable: false, keywords: ["callout", "콜아웃", "알림"] },
+	editor: { view: "node", nodeView: "callout", insertable: true, keywords: ["callout", "콜아웃", "알림"] },
 });
 
 export const collapsible = defineBlock({
@@ -37,7 +37,7 @@ export const collapsible = defineBlock({
 		title: { type: "string", label: "제목" },
 		defaultOpen: { type: "boolean", label: "처음부터 펼치기", defaultValue: false },
 	},
-	editor: { view: "opaque", insertable: false, keywords: ["collapsible", "접기", "펼치기"] },
+	editor: { view: "node", nodeView: "collapsible", insertable: true, keywords: ["collapsible", "접기", "펼치기"] },
 });
 
 export const textAlign = defineBlock({
@@ -60,7 +60,7 @@ export const tabs = defineBlock({
 		defaultValue: { type: "string", label: "처음 열 탭", description: "탭 이름 중 하나. 비우면 첫 탭이다." },
 	},
 	children: { blocks: ["tab"], min: 2, max: 8 },
-	editor: { view: "opaque", insertable: false, keywords: ["tabs", "탭"] },
+	editor: { view: "node", nodeView: "tabs", insertable: true, keywords: ["tabs", "탭"] },
 });
 
 export const tab = defineBlock({
@@ -70,7 +70,7 @@ export const tab = defineBlock({
 	component: "Tab",
 	attributes: { label: { type: "string", label: "탭 이름", required: true } },
 	parent: "tabs",
-	editor: { view: "opaque" },
+	editor: { view: "node", nodeView: "tab" },
 });
 
 export const columns = defineBlock({
@@ -81,7 +81,7 @@ export const columns = defineBlock({
 	component: "Columns",
 	attributes: {},
 	children: { blocks: ["column"], min: 2, max: 4 },
-	editor: { view: "opaque", insertable: false, keywords: ["columns", "단", "나란히"] },
+	editor: { view: "node", nodeView: "columns", insertable: true, keywords: ["columns", "단", "나란히"] },
 });
 
 export const column = defineBlock({
@@ -91,7 +91,7 @@ export const column = defineBlock({
 	component: "Column",
 	attributes: {},
 	parent: "columns",
-	editor: { view: "opaque" },
+	editor: { view: "node", nodeView: "column" },
 });
 
 export const image = defineBlock({
