@@ -1,11 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
-import { annotationConfig } from "@/libs/annotation/code-block/constants";
-import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
-import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
 import type { CmsJsonValue, CmsMark, CmsNode } from "../mdx";
 import { analyze, serialize, toDocument } from "../mdx";
 import { TEXT_ALIGN_VALUES as ALIGN_VALUES } from "../mdx/directives";
 import { sortMarks } from "../mdx/registry";
+import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
+import { asNumber, asString, brDirectiveNode } from "./converters/shared";
 
 /**
  * CmsNode ↔ Tiptap JSONContent 변환. 시각 에디터의 적재/저장 경로다.
@@ -28,8 +27,6 @@ const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip"]);
 
 const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);
 
-const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
-
 /**
  * `to-document.ts`의 `jsxAttrs`와 같은 모양으로 JSX 노드를 만든다.
  * `{type: 이름, attrs: {펼친 속성, name, attributes}}` — 키 순서는 비교에 영향 없다.
@@ -40,10 +37,6 @@ const jsxCmsNode = (name: string, record: Record<string, CmsJsonValue>): CmsNode
 		.map(([attrName, value]) => ({ name: attrName, value: value as CmsJsonValue }));
 	return { type: name, attrs: { ...record, name, attributes } };
 };
-
-/** `:br[]`를 읽으면 `to-document`가 만드는 노드와 같은 모양이다(줄바꿈의 정본). */
-const brDirectiveNode = (): CmsNode => ({ type: "mdxJsx", attrs: { name: "br", attributes: [] } });
-const asNumber = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);
 
 /** 서브트리를 상자로 감싼다. `source`는 그 서브트리의 저장 문자열(되돌릴 때 다시 파싱한다). */
 const toOpaque = (node: CmsNode): JSONContent => {
@@ -77,6 +70,8 @@ const isTaskList = (node: CmsNode): boolean => {
 };
 
 const isMappableBlock = (node: CmsNode): boolean => {
+	const converter = converterForCms(node.type);
+	if (converter) return converter.isMappable(node, context);
 	switch (node.type) {
 		case "paragraph":
 		case "heading":
@@ -91,18 +86,7 @@ const isMappableBlock = (node: CmsNode): boolean => {
 			// 체크 항목은 체크 목록(`isTaskList`) 안에서만 옮긴다. 번호 목록의 체크 항목은 상자로 보존한다.
 			if (node.attrs?.checked != null) return false;
 			return (node.content ?? []).every(isMappableBlock);
-		case "table":
-			// 셀 병합은 v1 범위가 아니다(§4.1). GFM 표는 셀마다 인라인만 담는다.
-			return (node.content ?? []).every(
-				(row) =>
-					row.type === "tableRow" &&
-					(row.content ?? []).every(
-						(cell) => cell.type === "tableCell" && (cell.content ?? []).every(isMappableInline),
-					),
-			);
-		case "codeBlock":
 		case "horizontalRule":
-		case "image":
 			return true;
 		case "TextAlign": {
 			const align = asString(node.attrs?.align);
@@ -161,16 +145,6 @@ const inlineChildren = (nodes: CmsNode[]): JSONContent[] => {
 	return out;
 };
 
-const codeBlockValue = (node: CmsNode): string => {
-	const value = asString(node.attrs?.value);
-	if (value != null) return value;
-	const document = node.attrs?.codeDocument;
-	if (document && typeof document === "object" && !Array.isArray(document)) {
-		return fromCodeBlockDocumentToCodeFence(document as unknown as CodeBlockDocument, annotationConfig).value;
-	}
-	return "";
-};
-
 const withTextAlign = (node: CmsNode, content: JSONContent): JSONContent => {
 	const align = asString(node.attrs?.textAlign);
 	if (align && TEXT_ALIGN_VALUES.has(align)) {
@@ -179,13 +153,10 @@ const withTextAlign = (node: CmsNode, content: JSONContent): JSONContent => {
 	return content;
 };
 
-const IMAGE_ATTRS = ["mediaId", "src", "alt", "width", "align", "caption", "decorative", "title"] as const;
-
-/** `decorative`는 참일 때만 싣는다 — 거짓·없음은 저장하지 않는다(§4.4). */
-const isDecorative = (value: unknown): boolean => value === true;
-
 const blockToTiptap = (node: CmsNode): JSONContent => {
 	if (!isMappableBlock(node)) return toOpaque(node);
+	const converter = converterForCms(node.type);
+	if (converter) return converter.toTiptap(node, context);
 	switch (node.type) {
 		case "paragraph":
 			return withTextAlign(node, { type: "paragraph", content: inlineChildren(node.content ?? []) });
@@ -211,19 +182,6 @@ const blockToTiptap = (node: CmsNode): JSONContent => {
 				};
 			}
 			return { type: "bulletList", content: (node.content ?? []).map(blockToTiptap) };
-		case "table":
-			return {
-				type: "table",
-				...(Array.isArray(node.attrs?.align) ? { attrs: { align: node.attrs.align } } : {}),
-				content: (node.content ?? []).map((row, rowIndex) => ({
-					type: "tableRow",
-					content: (row.content ?? []).map((cell) => ({
-						// GFM 표의 첫 행은 머리글이다.
-						type: rowIndex === 0 ? "tableHeader" : "tableCell",
-						content: [{ type: "paragraph", content: inlineChildren(cell.content ?? []) }],
-					})),
-				})),
-			};
 		case "orderedList": {
 			const start = asNumber(node.attrs?.start);
 			return {
@@ -234,29 +192,8 @@ const blockToTiptap = (node: CmsNode): JSONContent => {
 		}
 		case "listItem":
 			return { type: "listItem", content: (node.content ?? []).map(blockToTiptap) };
-		case "codeBlock": {
-			const language = asString(node.attrs?.language) ?? null;
-			const meta = asString(node.attrs?.meta) ?? null;
-			const value = codeBlockValue(node);
-			return {
-				type: "codeBlock",
-				attrs: { language, meta },
-				content: value.length > 0 ? [{ type: "text", text: value }] : [],
-			};
-		}
 		case "horizontalRule":
 			return { type: "horizontalRule" };
-		case "image": {
-			const source = node.attrs ?? {};
-			const attrs: Record<string, CmsJsonValue> = {};
-			for (const key of IMAGE_ATTRS) {
-				const value = source[key];
-				if (value === undefined || value === null) continue;
-				if (key === "decorative" && !isDecorative(value)) continue;
-				attrs[key] = value;
-			}
-			return { type: "image", attrs };
-		}
 		case "TextAlign": {
 			const child = (node.content ?? [])[0] as CmsNode;
 			const converted = blockToTiptap(child);
@@ -334,6 +271,8 @@ const tiptapInlineToCms = (nodes: JSONContent[] | undefined): CmsNode[] => {
 
 const tiptapBlockToCms = (node: JSONContent): CmsNode[] => {
 	if (!node || typeof node.type !== "string") return [];
+	const converter = converterForTiptap(node.type);
+	if (converter) return converter.toCms(node, context);
 	switch (node.type) {
 		case "paragraph":
 		case "text": {
@@ -387,52 +326,10 @@ const tiptapBlockToCms = (node: JSONContent): CmsNode[] => {
 					})),
 				},
 			];
-		case "table":
-			return [
-				{
-					type: "table",
-					...(Array.isArray(node.attrs?.align) ? { attrs: { align: node.attrs.align as CmsJsonValue } } : {}),
-					content: (node.content ?? []).map((row) => ({
-						type: "tableRow",
-						content: (row.content ?? []).map((cell) => {
-							// 셀 안의 여러 문단은 GFM 표에 담을 수 없어 줄바꿈으로 잇는다.
-							const paragraphs = (cell.content ?? []).map((block) => tiptapInlineToCms(block.content));
-							const inline = paragraphs.flatMap((content, index) =>
-								index === 0 ? content : [brDirectiveNode(), ...content],
-							);
-							return { type: "tableCell", content: inline };
-						}),
-					})),
-				},
-			];
-		case "codeBlock": {
-			const value = (node.content ?? []).map((child) => (child?.type === "text" ? (child.text ?? "") : "")).join("");
-			const language = asString(node.attrs?.language);
-			const meta = asString(node.attrs?.meta);
-			return [{ type: "codeBlock", attrs: { ...(language ? { language } : {}), ...(meta ? { meta } : {}), value } }];
-		}
 		case "horizontalRule":
 			return [{ type: "horizontalRule" }];
 		case "hardBreak":
 			return [brDirectiveNode()];
-		case "image": {
-			const source = node.attrs ?? {};
-			const attrs: Record<string, CmsJsonValue> = {};
-			for (const key of IMAGE_ATTRS) {
-				const value = (source as Record<string, unknown>)[key];
-				if (value == null) continue;
-				if (key === "decorative" && !isDecorative(value)) continue;
-				// Tiptap 기본값은 저장하지 않는다 — 없으면 Markdown 이미지로 돌아가야 한다.
-				// `align="center"`는 공개 기본값과 같아 생략한다(R3). `width`는 생략하지 않는다 —
-				// 명시적 `100%`와 미지정은 공개 렌더가 다르다(인라인 width 유무, O2).
-				if (key === "align" && value === "center") continue;
-				if ((key === "caption" || key === "title") && value === "") continue;
-				if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-					attrs[key] = value;
-				}
-			}
-			return [{ type: "image", attrs }];
-		}
 		case OPAQUE_BLOCK_NAME: {
 			const source = asString(node.attrs?.source) ?? "";
 			if (!source) return [];
@@ -442,6 +339,16 @@ const tiptapBlockToCms = (node: JSONContent): CmsNode[] => {
 			// Tiptap 스키마 밖의 노드는 getJSON에 나타날 수 없다(방어: 버린다).
 			return [];
 	}
+};
+
+/** 변환기 등록부(`./converters`)에 넘기는 재귀 변환 함수. 함수 선언 뒤에 두지만 호출은 실행 시점이라 안전하다. */
+const context: ConverterContext = {
+	blockToTiptap: (node) => blockToTiptap(node),
+	tiptapBlockToCms: (node) => tiptapBlockToCms(node),
+	isMappableBlock: (node) => isMappableBlock(node),
+	isMappableInline: (node) => isMappableInline(node),
+	inlineToTiptap: (nodes) => inlineChildren(nodes),
+	inlineToCms: (nodes) => tiptapInlineToCms(nodes),
 };
 
 /** Tiptap `getJSON()` → CmsNode. 저장용이다. */

@@ -2,7 +2,6 @@
 
 import type { Editor, Range } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,16 +9,15 @@ import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
-import { CmsBlockKeymap, deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
+import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
-import { BLOCK_NODE_VIEWS } from "./block-views";
+import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
-import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
 
 interface CmsEditorProps {
 	content: string;
@@ -287,18 +285,7 @@ export function CmsEditor({
 	const editor = useEditor({
 		immediatelyRender: false,
 		editable,
-		extensions: [
-			StarterKit.configure({
-				// 본문 삽입은 H2부터지만(§4.1) 이전 글의 H1·H5·H6도 원래 수준으로 보여 준다.
-				heading: { levels: [1, 2, 3, 4, 5, 6] },
-				// `meta`를 보존하는 CmsCodeBlock을 쓴다(CMS_SCHEMA_EXTENSIONS).
-				codeBlock: false,
-				link: { openOnClick: false },
-			}),
-			...CMS_SCHEMA_EXTENSIONS,
-			...Object.values(BLOCK_NODE_VIEWS),
-			CmsBlockKeymap,
-		],
+		extensions: buildEditorExtensions(),
 		content: mdxToTiptap(content),
 		editorProps: {
 			attributes: {
