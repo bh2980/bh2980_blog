@@ -1,18 +1,39 @@
 import { getCmsContentService, getCmsContentStore } from "@/cms/container";
 import { patchEntryBodySchema } from "@/cms/core/api";
+import { isRecordCollection } from "@/cms/core/collections";
 import type { SaveDraftInput } from "@/cms/services/types";
 import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../handler";
 
 type IdParams = { id: string };
 
-/** 항목과 편집 화면에 필요한 예약 상태(§5.4). */
+/**
+ * 항목과 편집 화면에 필요한 예약 상태(§5.4), 번역 묶음(v2 B4).
+ * 번역본이면 원문의 최신 초안 메타데이터(`source`)를 함께 준다. 번역본 속성 패널이 공통 값을 읽기 전용으로 보여 준다.
+ */
 export const GET = adminRoute<IdParams>(async ({ params }) => {
 	const store = getCmsContentStore();
 	const entry = await store.getEntry(params.id);
 	const schedule = await store.getEntrySchedule({ entryId: params.id });
+	const translations = isRecordCollection(entry.collection)
+		? null
+		: await store.getTranslationGroup({ entryId: entry.id });
+	const source =
+		entry.translationGroupId !== entry.id ? await store.getEntry(entry.translationGroupId).catch(() => null) : null;
 	return json({
 		...entry,
 		schedule: { ...schedule, runnerConfigured: Boolean(process.env.CMS_SCHEDULER_TOKEN?.trim()) },
+		translations: translations?.members ?? [],
+		...(source
+			? {
+					source: {
+						id: source.id,
+						locale: source.locale,
+						status: source.status,
+						workingSlug: source.workingSlug,
+						metadata: source.working.metadata,
+					},
+				}
+			: {}),
 	});
 });
 

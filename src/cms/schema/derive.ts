@@ -154,9 +154,12 @@ const isEmptyValue = (value: unknown) =>
 export function missingRequiredIssues(
 	collection: SchemaCollection,
 	snapshot: { slug: string | null; metadata: { readonly [key: string]: unknown } },
+	options: { localizedOnly?: boolean } = {},
 ): { code: string; path: string }[] {
 	const issues: { code: string; path: string }[] = [];
-	const required = (field: Field) => "required" in field && field.required === "publish";
+	// 번역본은 언어별 값만 가지므로 공통 필수값(카테고리 등)은 원문에서 검사한다(v2 B4).
+	const required = (field: Field) =>
+		"required" in field && field.required === "publish" && (!options.localizedOnly || Boolean(field.localized));
 	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
 		if (field.kind !== "slug" || !required(field)) continue;
 		if (!snapshot.slug) issues.push({ code: LEGACY_REQUIRED_CODES.slug ?? "missing_field", path: name });
@@ -180,4 +183,85 @@ export function localizedFieldNames(collection: SchemaCollection): { own: string
 		else if (field.localized === "inherit") inherit.push(name);
 	}
 	return { own, inherit };
+}
+
+/** 번역본이 가지면 안 되는 공통 필드 키(v2 B4). 정의에서 `localized`가 없는 저장 필드다. */
+export function commonFieldKeys(collection: SchemaCollection, metadata: { readonly [key: string]: unknown }): string[] {
+	const { own, inherit } = localizedFieldNames(collection);
+	const localized = new Set([...own, ...inherit]);
+	return Object.keys(metadata).filter((key) => !localized.has(key));
+}
+
+/** 원문 메타데이터에서 번역본으로 옮길 언어별 값만 고른다. */
+export function pickLocalizedMetadata<T>(
+	collection: SchemaCollection,
+	metadata: { readonly [key: string]: T },
+): Record<string, T> {
+	const { own, inherit } = localizedFieldNames(collection);
+	const localized = new Set([...own, ...inherit]);
+	return Object.fromEntries(Object.entries(metadata).filter(([key]) => localized.has(key)));
+}
+
+/** 번역본 공개 메타데이터 = 원문의 공통 값 + 번역본의 언어별 값. */
+export function mergeTranslationMetadata<T>(
+	collection: SchemaCollection,
+	source: { readonly [key: string]: T },
+	translation: { readonly [key: string]: T },
+): Record<string, T> {
+	const { own, inherit } = localizedFieldNames(collection);
+	const localized = new Set([...own, ...inherit]);
+	const common = Object.fromEntries(Object.entries(source).filter(([key]) => !localized.has(key)));
+	return { ...common, ...translation };
+}
+
+/**
+ * record 컬렉션(카테고리·태그·모음집)의 언어별 값을 담는 메타데이터 키(v2 B4).
+ * `{ en: { title: "..." }, ja: { ... } }`. 주소와 연결 관계는 공통이라 레코드는 언어마다 나누지 않는다.
+ */
+export const RECORD_TRANSLATIONS_KEY = "translations";
+
+export type RecordTranslations = { readonly [locale: string]: { readonly [field: string]: string } };
+
+/** 언어별 값을 가질 수 있는 record 컬렉션의 텍스트 필드. */
+export function recordLocalizedFields(collection: SchemaCollection): string[] {
+	const schema = schemaOf(collection);
+	if (schema.workflow !== "record") return [];
+	return Object.entries(schema.fields)
+		.filter(([, field]) => field.kind === "text" && field.localized === true)
+		.map(([name]) => name);
+}
+
+/**
+ * record 언어별 값을 검사하고 정리한다. 기본 언어가 아닌 언어와 정의의 언어별 텍스트 필드만 받는다.
+ * 빈 값과 빈 언어는 지운다. 잘못된 모양이면 v1 오류 코드를 던질 수 있게 `error`를 돌려준다.
+ */
+export function normalizeRecordTranslations(
+	collection: SchemaCollection,
+	value: unknown,
+	locales: readonly string[],
+): { value: RecordTranslations } | { error: string } {
+	const fieldsAllowed = recordLocalizedFields(collection);
+	const isPlain = (item: unknown): item is Record<string, unknown> =>
+		typeof item === "object" &&
+		item !== null &&
+		!Array.isArray(item) &&
+		(Object.getPrototypeOf(item) === Object.prototype || Object.getPrototypeOf(item) === null);
+	if (fieldsAllowed.length === 0) return { error: "invalid_metadata_key" };
+	if (!isPlain(value)) return { error: "invalid_metadata_type" };
+	const result: Record<string, Record<string, string>> = {};
+	for (const [locale, values] of Object.entries(value)) {
+		if (!locales.includes(locale)) return { error: "invalid_metadata_value" };
+		if (!isPlain(values)) return { error: "invalid_metadata_type" };
+		const cleaned: Record<string, string> = {};
+		for (const [name, text] of Object.entries(values)) {
+			const field = storedField(collection, name)?.field;
+			if (!fieldsAllowed.includes(name) || field?.kind !== "text") return { error: "invalid_metadata_key" };
+			if (typeof text !== "string") return { error: "invalid_metadata_type" };
+			const error = fieldValueError(field, name, text);
+			if (error) return { error };
+			if (text.trim()) cleaned[name] = text.trim();
+		}
+		if (Object.keys(cleaned).length > 0) result[locale] = cleaned;
+	}
+	return { value: result };
 }

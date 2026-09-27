@@ -44,6 +44,7 @@ const seo = {
 	seoDescription: fields.text({ label: "검색 설명 (비우면 요약)", multiline: true, localized: true }),
 	canonicalUrl: fields.text({
 		label: "canonical URL",
+		localized: true,
 		placeholder: "/posts/slug 또는 https://...",
 		description:
 			"값을 넣으면 canonical이 이 주소가 되고 sitemap에서 빠집니다. 사이트 경로(/...)와 http(s) 주소만 반영됩니다.",

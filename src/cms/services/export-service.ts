@@ -62,6 +62,9 @@ export function pickPublicMetadata(collection: string, metadata: Record<string, 
 export interface ExportManifestEntry {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 원문이면 묶음 ID가 자기 ID다. */
+	locale: string;
+	translationGroupId: string;
 	status: string;
 	version: number;
 	workingSlug: string | null;
@@ -271,6 +274,8 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			manifestEntries.push({
 				id: entry.id,
 				collection: entry.collection,
+				locale: entry.locale,
+				translationGroupId: entry.translationGroupId,
 				status: entry.status,
 				version: entry.version,
 				workingSlug: entry.workingSlug,
@@ -300,6 +305,8 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 		manifestEntries.push({
 			id: entry.id,
 			collection: entry.collection,
+			locale: entry.locale,
+			translationGroupId: entry.translationGroupId,
 			status: "published",
 			version: 0,
 			workingSlug: null,

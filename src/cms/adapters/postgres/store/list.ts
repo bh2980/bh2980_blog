@@ -1,3 +1,4 @@
+import { isLocale } from "@/libs/i18n/locales";
 import { COLLECTIONS } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import type { StoreContext } from "./context";
@@ -37,6 +38,9 @@ function assertParams(params: ListEntriesParams) {
 		if (!Array.isArray(params.statuses) || params.statuses.some((s) => !STATUSES.includes(s))) {
 			throw new CmsError("Invalid status", "invalid_input");
 		}
+	}
+	if (params.locales !== undefined && (!Array.isArray(params.locales) || params.locales.some((l) => !isLocale(l)))) {
+		throw new CmsError("Invalid locale", "invalid_input");
 	}
 	for (const key of ["tagIds", "categoryIds"] as const) {
 		const ids = params[key];
@@ -123,11 +127,15 @@ export function createListOps(ctx: StoreContext) {
 			if (params.slugContains) {
 				conditions.push(`e.working_slug ILIKE ${bind(escapeLike(params.slugContains))}`);
 			}
+			if (params.locales && params.locales.length > 0) {
+				conditions.push(`e.locale = ANY(${bind(params.locales)}::text[])`);
+			}
+			// 태그·카테고리는 공통 값이라 번역본은 원문 초안의 값으로 거른다(v2 B4). 원문은 `sw`가 자기 초안이다.
 			if (params.tagIds && params.tagIds.length > 0) {
-				conditions.push(`COALESCE(w.metadata->'tagIds', '[]'::jsonb) ?| ${bind(params.tagIds)}::text[]`);
+				conditions.push(`COALESCE(sw.metadata->'tagIds', '[]'::jsonb) ?| ${bind(params.tagIds)}::text[]`);
 			}
 			if (params.categoryIds && params.categoryIds.length > 0) {
-				conditions.push(`w.metadata->>'categoryId' = ANY(${bind(params.categoryIds)}::text[])`);
+				conditions.push(`sw.metadata->>'categoryId' = ANY(${bind(params.categoryIds)}::text[])`);
 			}
 			if (params.hasUnpublishedChanges !== undefined) {
 				const changed =
@@ -158,6 +166,7 @@ export function createListOps(ctx: StoreContext) {
 			const from = `
 				FROM "${qSchema}".entries e
 				JOIN "${qSchema}".entry_bodies w ON w.entry_id = e.id AND w.state = 'working'
+				JOIN "${qSchema}".entry_bodies sw ON sw.entry_id = COALESCE(e.translation_group_id, e.id) AND sw.state = 'working'
 				LEFT JOIN "${qSchema}".entry_bodies p ON p.entry_id = e.id AND p.state = 'published'
 				LEFT JOIN "${qSchema}".content_addresses cur ON cur.entry_id = e.id AND cur.type = 'current'
 				LEFT JOIN "${qSchema}".schedules sch ON sch.entry_id = e.id AND sch.status = 'pending'
@@ -169,6 +178,8 @@ export function createListOps(ctx: StoreContext) {
 			const dataRes = await pool.query<{
 				id: string;
 				collection: string;
+				locale: string;
+				translation_group_id: string;
 				status: EntryStatus;
 				version: number;
 				folder_id: string | null;
@@ -178,11 +189,13 @@ export function createListOps(ctx: StoreContext) {
 				trashed_at: Date | null;
 				working_slug: string | null;
 				metadata: Record<string, unknown>;
+				source_metadata: Record<string, unknown>;
 				has_changes: boolean;
 				scheduled_at: Date | null;
 			}>(
-				`SELECT e.id, e.collection, e.status, e.version, e.folder_id, e.created_at, e.updated_at, e.published_at,
-				        e.trashed_at, e.working_slug, w.metadata,
+				`SELECT e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
+				        e.status, e.version, e.folder_id, e.created_at, e.updated_at, e.published_at,
+				        e.trashed_at, e.working_slug, w.metadata, sw.metadata AS source_metadata,
 				        (p.entry_id IS NOT NULL AND (p.content_hash <> w.content_hash OR e.working_slug IS DISTINCT FROM cur.slug)) AS has_changes,
 				        sch.scheduled_at
 				 ${from}
@@ -193,17 +206,23 @@ export function createListOps(ctx: StoreContext) {
 
 			const baseItems = dataRes.rows.map((row) => {
 				const meta = row.metadata ?? {};
-				const tagIds = Array.isArray(meta.tagIds) ? meta.tagIds.filter((t): t is string => typeof t === "string") : [];
-				const metaDate = typeof meta.publishedAt === "string" ? new Date(meta.publishedAt) : null;
+				// 공통 값(태그·카테고리·표시 발행일)은 원문 초안에서 읽는다(v2 B4).
+				const common = row.source_metadata ?? meta;
+				const tagIds = Array.isArray(common.tagIds)
+					? common.tagIds.filter((t): t is string => typeof t === "string")
+					: [];
+				const metaDate = typeof common.publishedAt === "string" ? new Date(common.publishedAt) : null;
 				return {
 					id: row.id,
 					collection: row.collection,
+					locale: row.locale,
+					translationGroupId: row.translation_group_id,
 					title: typeof meta.title === "string" ? meta.title : null,
 					slug: row.working_slug,
 					status: row.status,
 					version: row.version,
 					folderId: row.folder_id,
-					categoryId: typeof meta.categoryId === "string" ? meta.categoryId : null,
+					categoryId: typeof common.categoryId === "string" ? common.categoryId : null,
 					tagIds,
 					hasUnpublishedChanges: row.has_changes,
 					scheduledAt: row.scheduled_at,

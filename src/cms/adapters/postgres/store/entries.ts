@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
-import { isRecordCollection } from "../../../core/collections";
+import { DEFAULT_LOCALE, isLocale } from "@/libs/i18n/locales";
+import { isCollection, isRecordCollection } from "../../../core/collections";
 import { computeContentHash } from "../../../core/snapshot";
 import type { PreparedSnapshot, Reference, WorkingCopy } from "../../../core/types";
+import { commonFieldKeys } from "../../../schema/derive";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
@@ -17,7 +19,7 @@ import {
 	readReferences,
 	writeBody,
 } from "./rows";
-import type { Entry, IncomingReferenceItem } from "./types";
+import type { Entry, IncomingReferenceItem, TranslationGroup } from "./types";
 
 export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 	const { pool, qSchema } = ctx;
@@ -36,23 +38,61 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 	 * 초안의 slug를 예약한다(§6.2). 공개된 적 없는 이전 예약은 풀고, 자기 자신의 current·alias 주소로
 	 * 되돌아가는 경우는 새로 예약하지 않는다(발행 때 current로 올린다). 다른 항목의 주소면 409다.
 	 */
-	const reserveSlug = async (client: PoolClient, entryId: string, collection: string, slug: string | null) => {
+	const reserveSlug = async (
+		client: PoolClient,
+		entryId: string,
+		collection: string,
+		locale: string,
+		slug: string | null,
+	) => {
 		await client.query(`DELETE FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'reservation'`, [
 			entryId,
 		]);
 		if (slug === null) return;
+		// 주소 고유성은 컬렉션 + 언어 + slug다(v2 B4). 번역본은 원문과 같은 slug를 쓸 수 있다.
 		const existing = await client.query<{ entry_id: string | null }>(
-			`SELECT entry_id FROM "${qSchema}".content_addresses WHERE collection = $1 AND slug = $2`,
-			[collection, slug],
+			`SELECT entry_id FROM "${qSchema}".content_addresses WHERE collection = $1 AND locale = $2 AND slug = $3`,
+			[collection, locale, slug],
 		);
 		if (existing.rows.length > 0) {
 			if (existing.rows[0]?.entry_id === entryId) return;
 			throw new CmsError("Slug conflict", "slug_conflict");
 		}
 		await client.query(
-			`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type) VALUES ($1, $2, $3, 'reservation')`,
-			[collection, slug, entryId],
+			`INSERT INTO "${qSchema}".content_addresses (collection, locale, slug, entry_id, type) VALUES ($1, $2, $3, $4, 'reservation')`,
+			[collection, locale, slug, entryId],
 		);
+	};
+
+	/**
+	 * 번역본을 만들 원문을 확인하고 잠근다(v2 B4). 원문은 번역 묶음의 원문이어야 하고(번역본의 번역본은 없다),
+	 * 본문을 쓰는 컬렉션이어야 하며, 휴지통에 있으면 안 된다. 같은 언어 번역본은 고유 인덱스가 막는다.
+	 */
+	const assertTranslationSource = async (client: PoolClient, sourceId: string, collection: string, locale: string) => {
+		const res = await client.query<{ collection: string; status: string; locale: string; group_id: string | null }>(
+			`SELECT collection, status, locale, translation_group_id AS group_id
+			 FROM "${qSchema}".entries WHERE id = $1 FOR SHARE`,
+			[sourceId],
+		);
+		const source = res.rows[0];
+		if (!source) throw new CmsError("Source entry not found", "not_found");
+		if (source.collection !== collection || isRecordCollection(collection)) {
+			throw new CmsError("Only content collections have translations", "invalid_input");
+		}
+		if (source.group_id !== null) throw new CmsError("Translate the source entry, not a translation", "invalid_input");
+		if (source.status === "trashed") throw new CmsError("A trashed entry cannot be translated", "invalid_status");
+		if (source.locale === locale) {
+			throw new CmsError("A translation for this locale already exists", "translation_exists");
+		}
+	};
+
+	/** 번역본은 언어별 값만 저장한다(v2 B4). 공통 필드는 원문이 가진다. */
+	const assertTranslationMetadata = (collection: string, isTranslation: boolean, metadata: Record<string, unknown>) => {
+		if (!isTranslation || !isCollection(collection)) return;
+		const common = commonFieldKeys(collection, metadata);
+		if (common.length > 0) {
+			throw new CmsError(`Common fields belong to the source: ${common.join(", ")}`, "invalid_input");
+		}
 	};
 
 	return {
@@ -61,6 +101,10 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 			references: readonly Reference[];
 			folderId?: string | null;
 			publishImmediately?: boolean;
+			/** 콘텐츠 언어. 없으면 기본 언어다. */
+			locale?: string;
+			/** 번역본이면 원문 ID(번역 묶음 ID). */
+			translationOf?: string;
 		}): Promise<Entry> =>
 			withTransaction(
 				pool,
@@ -70,11 +114,25 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					await assertFolder(client, params.folderId, params.snapshot.collection);
 					const id = randomUUID();
 					const now = new Date();
+					const locale = params.locale ?? DEFAULT_LOCALE;
+					if (!isLocale(locale)) throw new CmsError("Unknown locale", "invalid_input");
+					if (params.translationOf) {
+						await assertTranslationSource(client, params.translationOf, params.snapshot.collection, locale);
+						assertTranslationMetadata(params.snapshot.collection, true, params.snapshot.metadata);
+					}
 
 					await client.query(
-						`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug, folder_id)
-						 VALUES ($1, $2, 1, $3, $3, $4, $5)`,
-						[id, params.snapshot.collection, now, params.snapshot.slug, params.folderId ?? null],
+						`INSERT INTO "${qSchema}".entries (id, collection, version, created_at, updated_at, working_slug, folder_id, locale, translation_group_id)
+						 VALUES ($1, $2, 1, $3, $3, $4, $5, $6, $7)`,
+						[
+							id,
+							params.snapshot.collection,
+							now,
+							params.snapshot.slug,
+							params.folderId ?? null,
+							locale,
+							params.translationOf ?? null,
+						],
 					);
 					await writeBody(client, qSchema, id, "working", {
 						metadata,
@@ -83,7 +141,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 						contentHash: params.snapshot.contentHash,
 						updatedAt: now,
 					});
-					await reserveSlug(client, id, params.snapshot.collection, params.snapshot.slug);
+					await reserveSlug(client, id, params.snapshot.collection, locale, params.snapshot.slug);
 					await insertReferences(client, qSchema, id, "working", params.references);
 
 					return params.publishImmediately
@@ -120,6 +178,11 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					if (locked.status === "trashed") {
 						throw new CmsError("A trashed entry must be restored before editing", "invalid_status");
 					}
+					assertTranslationMetadata(
+						locked.collection,
+						locked.translation_group_id !== params.entryId,
+						params.snapshot.metadata,
+					);
 
 					const pending = await client.query(
 						`SELECT 1 FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending'`,
@@ -177,7 +240,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 								updatedAt: now,
 							});
 							if (locked.working_slug !== nextSlug) {
-								await reserveSlug(client, params.entryId, locked.collection, nextSlug);
+								await reserveSlug(client, params.entryId, locked.collection, locked.locale, nextSlug);
 							}
 						}
 						if (!refsEqual) {
@@ -213,10 +276,13 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				version: number;
 				working_slug: string | null;
 				folder_id: string | null;
+				locale: string;
+				translation_group_id: string;
 				metadata: Record<string, unknown>;
 				mdx: string;
 			}>(
-				`SELECT e.collection, e.version, e.working_slug, e.folder_id, b.metadata, b.mdx
+				`SELECT e.collection, e.version, e.working_slug, e.folder_id, e.locale,
+				        COALESCE(e.translation_group_id, e.id) AS translation_group_id, b.metadata, b.mdx
 				 FROM "${qSchema}".entries e
 				 JOIN "${qSchema}".entry_bodies b ON e.id = b.entry_id AND b.state = 'working'
 				 WHERE e.id = $1`,
@@ -231,6 +297,46 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				mdx: row.mdx,
 				version: row.version,
 				folderId: row.folder_id,
+				locale: row.locale,
+				translationGroupId: row.translation_group_id,
+			};
+		},
+
+		/**
+		 * 번역 묶음(v2 B4). 원문과 번역본을 언어 순서로 준다. 편집 화면의 언어 이동과 `번역본 만들기`가 쓴다.
+		 */
+		getTranslationGroup: async (params: { entryId: string }): Promise<TranslationGroup> => {
+			const res = await pool.query<{
+				id: string;
+				locale: string;
+				status: Entry["status"];
+				is_source: boolean;
+				group_id: string;
+				title: string | null;
+				working_slug: string | null;
+			}>(
+				`SELECT m.id, m.locale, m.status, (m.translation_group_id IS NULL) AS is_source,
+				        COALESCE(m.translation_group_id, m.id) AS group_id,
+				        b.metadata->>'title' AS title, m.working_slug
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".entries m
+				   ON COALESCE(m.translation_group_id, m.id) = COALESCE(e.translation_group_id, e.id)
+				 JOIN "${qSchema}".entry_bodies b ON b.entry_id = m.id AND b.state = 'working'
+				 WHERE e.id = $1
+				 ORDER BY m.translation_group_id IS NOT NULL, m.locale`,
+				[params.entryId],
+			);
+			if (res.rows.length === 0) throw new CmsError("Entry not found", "not_found");
+			return {
+				groupId: res.rows[0]?.group_id ?? params.entryId,
+				members: res.rows.map((row) => ({
+					id: row.id,
+					locale: row.locale,
+					status: row.status,
+					isSource: row.is_source,
+					title: row.title,
+					workingSlug: row.working_slug,
+				})),
 			};
 		},
 

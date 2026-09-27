@@ -14,6 +14,9 @@ export type EntryStatus = "draft" | "published" | "archived" | "trashed";
 export interface PublishedEntryRecord {
 	readonly id: string;
 	readonly collection: string;
+	/** 콘텐츠 언어(v2 B4). 번역본의 메타데이터는 원문의 공통 값과 합친 것이다. */
+	readonly locale: string;
+	readonly translationGroupId: string;
 	readonly slug: string;
 	readonly metadata: EntryMetadata;
 	/** `includeBody: false`인 목록 조회에서는 빈 문자열이다. */
@@ -54,6 +57,10 @@ export interface BodyTemplate {
 export interface Entry {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어(v2 B4). */
+	locale: string;
+	/** 번역 묶음 ID. 원문의 ID와 같고, 원문이면 자기 ID다. */
+	translationGroupId: string;
 	status: EntryStatus;
 	version: number;
 	folderId: string | null;
@@ -67,6 +74,19 @@ export interface Entry {
 	publishedSlug: string | null;
 	working: EntryBody;
 	published?: EntryBody;
+}
+
+/** 번역 묶음(v2 B4). `members`의 첫 항목이 원문이다. */
+export interface TranslationGroup {
+	groupId: string;
+	members: {
+		id: string;
+		locale: string;
+		status: EntryStatus;
+		isSource: boolean;
+		title: string | null;
+		workingSlug: string | null;
+	}[];
 }
 
 export interface MediaOriginalFile {
@@ -157,6 +177,9 @@ export interface Folder {
 export interface ListEntriesItem {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 태그·카테고리·표시 발행일은 원문 초안의 값이다. */
+	locale: string;
+	translationGroupId: string;
 	title: string | null;
 	slug: string | null;
 	status: EntryStatus;
@@ -193,6 +216,8 @@ export interface ListEntriesParams {
 	/** 컬럼 헤더 필터: 주소(slug)만(부분 일치). */
 	slugContains?: string;
 	statuses?: readonly EntryStatus[];
+	/** 이 언어들만(v2 B4). 없으면 모든 언어다. */
+	locales?: readonly string[];
 	folderId?: string | null;
 	includeDescendants?: boolean;
 	/** 같은 필터의 여러 값은 OR, 다른 필터끼리는 AND다(§3.2). */
@@ -253,6 +278,9 @@ export interface ExportSnapshotBody {
 export interface ExportSnapshotEntry {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 원문이면 묶음 ID가 자기 ID다. */
+	locale: string;
+	translationGroupId: string;
 	status: string;
 	version: number;
 	folderId: string | null;
@@ -278,6 +306,7 @@ export interface ExportSnapshotReference {
 
 export interface ExportSnapshotAddress {
 	collection: string;
+	locale: string;
 	slug: string;
 	entryId: string | null;
 	type: string;
@@ -305,6 +334,10 @@ export interface ImportEntryBodyInput {
 export interface ImportEntryItem {
 	id: string;
 	collection: string;
+	/** 없으면 기본 언어다(v2 B4). */
+	locale?: string;
+	/** 번역본이면 원문 ID. 원문이 같은 가져오기에 있거나 이미 있어야 한다. */
+	translationOf?: string | null;
 	slug: string | null;
 	status: "draft" | "published";
 	folderId?: string | null;

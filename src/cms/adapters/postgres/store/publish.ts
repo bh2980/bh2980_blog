@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
+import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
 import { isUuid } from "../../../core/ids";
 import { prepareSnapshot, validateForPublish } from "../../../core/snapshot";
 import { type Collection, type Reference, ServiceError } from "../../../core/types";
@@ -22,12 +23,28 @@ export function createPublishing(ctx: StoreContext) {
 
 	/** 저장된 최신 초안을 트랜잭션 안에서 다시 검증한다. 참조 대상·내부 링크 주소를 잠근다. */
 	const validateStoredWorkingForPublish = async (client: PoolClient, entryId: string) => {
-		const entryRes = await client.query<{ collection: Collection; working_slug: string | null; version: number }>(
-			`SELECT collection, working_slug, version FROM "${qSchema}".entries WHERE id = $1`,
-			[entryId],
-		);
+		const entryRes = await client.query<{
+			collection: Collection;
+			working_slug: string | null;
+			version: number;
+			translation_group_id: string | null;
+		}>(`SELECT collection, working_slug, version, translation_group_id FROM "${qSchema}".entries WHERE id = $1`, [
+			entryId,
+		]);
 		const entry = entryRes.rows[0];
 		if (!entry) throw new CmsError("Entry not found", "not_found");
+		// 번역본은 원문을 잠그고 공개 상태를 본다(v2 B4). 발행 중에 원문이 공개에서 빠지지 않게 한다.
+		const translation = entry.translation_group_id
+			? {
+					sourcePublished:
+						(
+							await client.query<{ status: string }>(
+								`SELECT status FROM "${qSchema}".entries WHERE id = $1 FOR SHARE`,
+								[entry.translation_group_id],
+							)
+						).rows[0]?.status === "published",
+				}
+			: undefined;
 		const body = await readBody(client, qSchema, entryId, "working");
 		if (!body) throw new CmsError("Working draft not found", "not_found");
 		const previousReferences = await readReferences(client, qSchema, entryId, "working");
@@ -55,11 +72,12 @@ export function createPublishing(ctx: StoreContext) {
 		const findAddresses = async (lock: boolean) => {
 			if (links.length === 0) return [] as AddressRow[];
 			const result = await client.query<AddressRow>(
+				// 본문 링크(`/posts/slug`)는 기본 언어 주소다. 다른 언어 번역본으로는 렌더할 때 바꾼다(v2 B4).
 				`SELECT a.collection, a.slug, a.type, a.entry_id
 				 FROM "${qSchema}".content_addresses a
-				 WHERE (a.collection, a.slug) IN (SELECT * FROM unnest($1::text[], $2::text[]))
+				 WHERE a.locale = $3 AND (a.collection, a.slug) IN (SELECT * FROM unnest($1::text[], $2::text[]))
 				 ORDER BY a.collection, a.slug${lock ? " FOR SHARE" : ""}`,
-				[links.map((link) => link.collection), links.map((link) => link.slug)],
+				[links.map((link) => link.collection), links.map((link) => link.slug), DEFAULT_LOCALE],
 			);
 			return result.rows;
 		};
@@ -121,6 +139,7 @@ export function createPublishing(ctx: StoreContext) {
 					isPublished: target?.collection === link.collection && target.status === "published",
 				};
 			}),
+			...(translation ? { translation } : {}),
 		});
 		if (!validation.ready) throw new ServiceError("publish_validation_failed", validation.issues);
 		return snapshot;
@@ -195,14 +214,14 @@ export function createPublishing(ctx: StoreContext) {
 			if (targetSlug !== null && targetSlug !== currentSlug) {
 				// 과거 별칭으로 되돌아오는 경우 그 주소를 다시 current로 올린다.
 				await client.query(
-					`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type) VALUES ($1, $2, $3, 'current')
-					 ON CONFLICT (collection, slug) DO UPDATE SET type = 'current'
+					`INSERT INTO "${qSchema}".content_addresses (collection, locale, slug, entry_id, type) VALUES ($1, $2, $3, $4, 'current')
+					 ON CONFLICT (collection, locale, slug) DO UPDATE SET type = 'current'
 					 WHERE "${qSchema}".content_addresses.entry_id = EXCLUDED.entry_id`,
-					[locked.collection, targetSlug, id],
+					[locked.collection, locked.locale, targetSlug, id],
 				);
 				const check = await client.query<{ entry_id: string | null; type: string }>(
-					`SELECT entry_id, type FROM "${qSchema}".content_addresses WHERE collection = $1 AND slug = $2`,
-					[locked.collection, targetSlug],
+					`SELECT entry_id, type FROM "${qSchema}".content_addresses WHERE collection = $1 AND locale = $2 AND slug = $3`,
+					[locked.collection, locked.locale, targetSlug],
 				);
 				if (check.rows[0]?.entry_id !== id || check.rows[0]?.type !== "current") {
 					throw new CmsError("Slug conflict", "slug_conflict");

@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
 import { validateSchemaName } from "./context";
 
 /**
@@ -158,6 +159,24 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS original_width INTEGER;
 		ALTER TABLE "${qSchema}".media_assets ADD COLUMN IF NOT EXISTS original_height INTEGER;
 		CREATE INDEX IF NOT EXISTS media_assets_pending_idx ON "${qSchema}".media_assets(created_at) WHERE status IN ('pending', 'failed');
+
+		-- v2 B4 다국어: 언어별 문서 + 번역 묶음. 번역 묶음 ID는 원문의 ID이고, 원문은 NULL(자기 자신)로 둔다.
+		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT '${DEFAULT_LOCALE}';
+		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS translation_group_id UUID REFERENCES "${qSchema}".entries(id) ON DELETE NO ACTION;
+		CREATE UNIQUE INDEX IF NOT EXISTS entries_translation_locale_key
+		ON "${qSchema}".entries ((COALESCE(translation_group_id, id)), locale);
+		ALTER TABLE "${qSchema}".content_addresses ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT '${DEFAULT_LOCALE}';
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.key_column_usage
+				WHERE table_schema = '${qSchema}' AND table_name = 'content_addresses'
+				  AND constraint_name = 'content_addresses_pkey' AND column_name = 'locale'
+			) THEN
+				ALTER TABLE "${qSchema}".content_addresses DROP CONSTRAINT content_addresses_pkey;
+				ALTER TABLE "${qSchema}".content_addresses ADD CONSTRAINT content_addresses_pkey PRIMARY KEY (collection, locale, slug);
+			END IF;
+		END $$;
 	`);
 
 	// One-time seed for initial default body templates (idempotent; won't resurrect deleted templates)

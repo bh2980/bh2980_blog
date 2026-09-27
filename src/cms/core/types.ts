@@ -1,6 +1,7 @@
 import type { CmsImageSource } from "../mdx/types";
 import type { MetadataOf } from "../schema/collection";
 import type { SCHEMAS } from "../schema/definitions";
+import type { RecordTranslations } from "../schema/derive";
 import type { Collection } from "./collections";
 
 /**
@@ -31,14 +32,22 @@ export type Reference = {
 	readonly occurrences: readonly ReferenceOccurrence[];
 };
 
+/** 저장 메타데이터 값. record 컬렉션의 언어별 값(`translations`)만 객체다(v2 B4). */
+export type MetadataValue =
+	| string
+	| readonly string[]
+	| { readonly [locale: string]: { readonly [field: string]: string } };
+
 export type JsonValue = string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
 /** 컬렉션별 메타데이터. `src/cms/schema/definitions.ts`의 정의에서 만든다(v2 B1). */
 export type PostMetadata = MetadataOf<typeof SCHEMAS.post>;
 export type MemoMetadata = MetadataOf<typeof SCHEMAS.memo>;
-export type CategoryMetadata = MetadataOf<typeof SCHEMAS.category>;
-export type TagMetadata = MetadataOf<typeof SCHEMAS.tag>;
-export type CollectionMetadata = MetadataOf<typeof SCHEMAS.collection>;
+/** record 컬렉션은 언어별 이름을 `translations`에 둔다(v2 B4). */
+type WithRecordTranslations<M> = M & { translations?: RecordTranslations };
+export type CategoryMetadata = WithRecordTranslations<MetadataOf<typeof SCHEMAS.category>>;
+export type TagMetadata = WithRecordTranslations<MetadataOf<typeof SCHEMAS.tag>>;
+export type CollectionMetadata = WithRecordTranslations<MetadataOf<typeof SCHEMAS.collection>>;
 
 type InputFor<C extends Collection, M> = {
 	collection: C;
@@ -74,7 +83,7 @@ export type ResolvedInternalLink = {
 export type PreparedSnapshot = {
 	readonly collection: Collection;
 	readonly slug: string | null;
-	readonly metadata: { readonly [key: string]: string | readonly string[] };
+	readonly metadata: { readonly [key: string]: MetadataValue };
 	readonly mdx: string;
 	readonly schemaVersion: number;
 	readonly contentHash: string;
@@ -96,6 +105,10 @@ export type ResolvedTargets = {
 	 */
 	media: { id: string; status?: string; storageKey?: string | null }[];
 	internalLinks?: ResolvedInternalLink[];
+	/**
+	 * 번역본 발행이면 원문 상태(v2 B4). 번역본은 언어별 필수값만 검사하고, 공통 값을 가진 원문이 공개돼 있어야 한다.
+	 */
+	translation?: { sourcePublished: boolean };
 };
 
 export type WorkingCopy = {
@@ -105,6 +118,9 @@ export type WorkingCopy = {
 	readonly mdx: string;
 	readonly version: number;
 	readonly folderId: string | null;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 원문이면 묶음 ID가 자기 ID다. */
+	readonly locale?: string;
+	readonly translationGroupId?: string;
 };
 
 export class ServiceError extends Error {

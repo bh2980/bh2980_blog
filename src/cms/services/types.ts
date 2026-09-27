@@ -17,6 +17,8 @@ export interface StorePort<T = unknown> {
 		references: readonly Reference[];
 		folderId?: string | null;
 		publishImmediately?: boolean;
+		locale?: string;
+		translationOf?: string;
 	}): Promise<T>;
 	saveWorkingWithReferences(params: {
 		entryId: string;

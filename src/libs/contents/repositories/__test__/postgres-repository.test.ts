@@ -9,6 +9,8 @@ function record(
 	overrides: Partial<PublishedEntryRecord> & { id: string; collection: string; slug: string },
 ): PublishedEntryRecord {
 	return {
+		locale: "ko",
+		translationGroupId: overrides.id,
 		metadata: {},
 		mdx: "",
 		publishedAt: DATE,

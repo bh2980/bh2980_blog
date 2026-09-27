@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { PREFIXED_LOCALES } from "@/libs/i18n/locales";
 import { analyze } from "../mdx/analyze";
 import { DIRECTIVE_BY_COMPONENT, TEXT_ALIGN_VALUES } from "../mdx/directives";
 import { isAllowedImageSrc } from "../mdx/image-src";
@@ -7,6 +8,8 @@ import {
 	fieldValueError,
 	metadataReferences,
 	missingRequiredIssues,
+	normalizeRecordTranslations,
+	RECORD_TRANSLATIONS_KEY,
 	relationRule,
 	storedField,
 } from "../schema/derive";
@@ -18,6 +21,7 @@ import {
 	type InternalLinkSource,
 	type Issue,
 	type JsonValue,
+	type MetadataValue,
 	type PreparedSnapshot,
 	type Reference,
 	type ReferenceKind,
@@ -146,7 +150,7 @@ export function validateExactRecord(
 
 export const SERVICE_INPUT_KEYS: readonly string[] = ["collection", "slug", "metadata", "mdx"];
 
-function validateMetadata(collection: Collection, raw: unknown): Record<string, string | readonly string[]> {
+function validateMetadata(collection: Collection, raw: unknown): Record<string, MetadataValue> {
 	if (
 		!raw ||
 		typeof raw !== "object" ||
@@ -170,8 +174,15 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 
 	// 허용 키·저장 형식·값 규칙은 컬렉션 정의(v2 B1)에서 온다.
 	const rules = COLLECTION_DEFINITIONS[collection].fields;
-	const metadata: Record<string, string | readonly string[]> = {};
+	const metadata: Record<string, MetadataValue> = {};
 	for (const [k, v] of Object.entries(input)) {
+		if (k === RECORD_TRANSLATIONS_KEY) {
+			// record 컬렉션의 언어별 이름(v2 B4). 기본 언어 값은 필드 자체에 둔다.
+			const normalized = normalizeRecordTranslations(collection, v, PREFIXED_LOCALES);
+			if ("error" in normalized) throw new ServiceError(normalized.error);
+			if (Object.keys(normalized.value).length > 0) metadata[k] = normalized.value;
+			continue;
+		}
 		const stored = storedField(collection, k);
 		if (!stored || !Object.hasOwn(rules, k)) throw new ServiceError("invalid_metadata_key");
 		if (rules[k] === "string") {
@@ -191,7 +202,7 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 		}
 
 		const value = metadata[k];
-		const error = value === undefined ? null : fieldValueError(stored.field, k, value);
+		const error = typeof value === "string" || Array.isArray(value) ? fieldValueError(stored.field, k, value) : null;
 		if (error) throw new ServiceError(error);
 	}
 
@@ -553,7 +564,13 @@ export function validateForPublish(
 				: {}),
 	});
 
-	issues.push(...missingRequiredIssues(snapshot.collection, snapshot));
+	issues.push(
+		...missingRequiredIssues(snapshot.collection, snapshot, { localizedOnly: Boolean(resolved.translation) }),
+	);
+	if (resolved.translation && !resolved.translation.sourcePublished) {
+		// 공개 화면의 카테고리·태그·발행일은 원문 공개본에서 온다.
+		issues.push({ code: "source_not_published", path: "translationGroupId" });
+	}
 	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
 	if (isContent && snapshot.mdx.trim() === "") {
 		issues.push({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });

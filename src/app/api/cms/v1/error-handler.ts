@@ -27,6 +27,8 @@ const CMS_ERROR_STATUS: Record<string, number> = {
 	invalid_status: 409,
 	locked: 409,
 	folder_name_conflict: 409,
+	translation_exists: 409,
+	has_translations: 409,
 	invalid_input: 400,
 	invalid_reference: 400,
 	invalid_state: 500,

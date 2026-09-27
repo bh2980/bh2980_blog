@@ -18,6 +18,7 @@ export const GET = adminRoute(async ({ request }) => {
 		titleContains: query.titleContains?.trim() || undefined,
 		slugContains: query.slugContains?.trim() || undefined,
 		statuses: query.status,
+		locales: query.locale,
 		folderId: query.folderId,
 		includeDescendants: query.includeDescendants,
 		tagIds: query.tagId,

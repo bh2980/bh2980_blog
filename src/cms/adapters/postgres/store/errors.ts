@@ -37,6 +37,10 @@ export function isTransactionConflict(err: unknown): boolean {
 /** 콘텐츠 쓰기 트랜잭션의 공통 오류 매핑. */
 export function mapEntryWriteError(err: unknown): unknown {
 	if (isUniqueViolation(err, "content_addresses_pkey")) return new CmsError("Slug conflict", "slug_conflict");
+	// v2 B4: 한 번역 묶음에는 언어마다 콘텐츠가 하나다(휴지통 포함).
+	if (isUniqueViolation(err, "entries_translation_locale_key")) {
+		return new CmsError("A translation for this locale already exists", "translation_exists");
+	}
 	if (isTransactionConflict(err)) return new CmsError("Concurrent publish conflict", "conflict");
 	return err;
 }

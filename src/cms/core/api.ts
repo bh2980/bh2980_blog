@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LOCALES } from "@/libs/i18n/locales";
 import { COLLECTIONS } from "./collections";
 
 /**
@@ -34,7 +35,7 @@ const dateQuery = z.iso
 	.transform((val) => (val ? new Date(val) : undefined));
 
 /** 같은 키를 여러 번 쓸 수 있는 목록 질의 키. 라우트는 이 키만 `getAll`로 읽는다. */
-export const LIST_ARRAY_QUERY_KEYS = ["status", "tagId", "categoryId"] as const;
+export const LIST_ARRAY_QUERY_KEYS = ["status", "tagId", "categoryId", "locale"] as const;
 
 export const listEntriesQuerySchema = z.object({
 	collection: collectionSchema,
@@ -43,6 +44,8 @@ export const listEntriesQuerySchema = z.object({
 	titleContains: z.string().optional(),
 	slugContains: z.string().optional(),
 	status: z.array(entryStatusSchema).optional(),
+	/** 콘텐츠 언어(v2 B4). 여러 번 쓸 수 있고 없으면 모든 언어다. */
+	locale: z.array(z.enum(LOCALES)).optional(),
 	folderId: z
 		.string()
 		.optional()

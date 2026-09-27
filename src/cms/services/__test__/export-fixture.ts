@@ -21,6 +21,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "11111111-1111-4111-8111-111111111111",
 			collection: "post",
+			locale: "ko",
+			translationGroupId: "11111111-1111-4111-8111-111111111111",
 			status: "published",
 			version: 3,
 			folderId: null,
@@ -43,6 +45,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "22222222-2222-4222-8222-222222222222",
 			collection: "memo",
+			locale: "ko",
+			translationGroupId: "22222222-2222-4222-8222-222222222222",
 			status: "draft",
 			version: 1,
 			folderId: null,
@@ -59,6 +63,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			// 보관된 글. published 본문이 남아 있어도 공개 아카이브에는 나가면 안 된다.
 			id: "88888888-8888-4888-8888-888888888888",
 			collection: "post",
+			locale: "ko",
+			translationGroupId: "88888888-8888-4888-8888-888888888888",
 			status: "archived",
 			version: 2,
 			folderId: null,
@@ -119,7 +125,15 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			version: 1,
 		},
 	],
-	addresses: [{ collection: "post", slug: "old-slug", entryId: "11111111-1111-4111-8111-111111111111", type: "alias" }],
+	addresses: [
+		{
+			collection: "post",
+			locale: "ko",
+			slug: "old-slug",
+			entryId: "11111111-1111-4111-8111-111111111111",
+			type: "alias",
+		},
+	],
 	media: [
 		{
 			id: "44444444-4444-4444-8444-444444444444",

@@ -11,6 +11,8 @@ afterEach(cleanup);
 const item = (id: string, fields: Partial<ListEntriesItem> = {}): ListEntriesItem => ({
 	id,
 	collection: "post",
+	locale: "ko",
+	translationGroupId: id,
 	title: id,
 	slug: id,
 	status: "draft",

@@ -106,6 +106,16 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 					throw new CmsError("Only trashed entries can be permanently deleted", "invalid_status", locked.version);
 				}
 				await publishing.assertNotReferenced(client, params.id, { ignoreTrashedSources: false });
+				// 원문을 지우면 번역본이 공통 값을 잃는다(v2 B4). 번역본을 먼저 지워야 한다.
+				const translations = await client.query<{ id: string; locale: string }>(
+					`SELECT id, locale FROM "${qSchema}".entries WHERE translation_group_id = $1 ORDER BY locale`,
+					[params.id],
+				);
+				if (translations.rows.length > 0) {
+					throw new CmsError("Delete the translations first", "has_translations", locked.version, {
+						translations: translations.rows,
+					});
+				}
 				await client.query(`DELETE FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'reservation'`, [
 					params.id,
 				]);

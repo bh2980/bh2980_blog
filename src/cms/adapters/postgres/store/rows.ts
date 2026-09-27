@@ -116,6 +116,8 @@ export const mapReferenceRow = (row: ReferenceRow): Reference => ({
 export function mapPublishedEntryRow(row: {
 	id: string;
 	collection: string;
+	locale: string;
+	translation_group_id: string;
 	slug: string;
 	metadata: EntryMetadata;
 	mdx: string;
@@ -126,6 +128,8 @@ export function mapPublishedEntryRow(row: {
 	return {
 		id: row.id,
 		collection: row.collection,
+		locale: row.locale,
+		translationGroupId: row.translation_group_id,
 		slug: row.slug,
 		metadata: row.metadata,
 		mdx: row.mdx,
@@ -338,6 +342,8 @@ export async function writeBody(
 interface EntryRow {
 	id: string;
 	collection: string;
+	locale: string;
+	translation_group_id: string;
 	status: Entry["status"];
 	version: number;
 	folder_id: string | null;
@@ -360,7 +366,8 @@ interface EntryRow {
 export async function loadEntry(client: Queryable, id: string, qSchema: string): Promise<Entry> {
 	const res = await client.query<EntryRow>(
 		`SELECT
-			e.id, e.collection, e.status, e.version, e.folder_id, e.created_at, e.updated_at as entry_updated_at,
+			e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
+			e.status, e.version, e.folder_id, e.created_at, e.updated_at as entry_updated_at,
 			e.first_published_at, e.last_published_at, e.published_at, e.trashed_at, e.working_slug,
 			(SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') as current_slug,
 			b.state, b.metadata, b.mdx, b.schema_version, b.content_hash, b.updated_at as body_updated_at
@@ -392,6 +399,8 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 	return {
 		id: first.id,
 		collection: first.collection,
+		locale: first.locale,
+		translationGroupId: first.translation_group_id,
 		status: first.status || "draft",
 		version: first.version,
 		folderId: first.folder_id,
@@ -408,27 +417,28 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 	};
 }
 
+export interface LockedEntryRow {
+	version: number;
+	collection: string;
+	locale: string;
+	/** 번역 묶음 ID. 원문이면 자기 ID다. */
+	translation_group_id: string;
+	status: Entry["status"];
+	updated_at: Date;
+	working_slug: string | null;
+}
+
 /** 버전 검사와 함께 항목 행을 잠근다. 없으면 404, 버전이 다르면 409다. */
 export async function lockEntryForUpdate(
 	client: PoolClient,
 	qSchema: string,
 	id: string,
 	expectedVersion?: number,
-): Promise<{
-	version: number;
-	collection: string;
-	status: Entry["status"];
-	updated_at: Date;
-	working_slug: string | null;
-}> {
-	const res = await client.query<{
-		version: number;
-		collection: string;
-		status: Entry["status"];
-		updated_at: Date;
-		working_slug: string | null;
-	}>(
-		`SELECT version, collection, status, updated_at, working_slug FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
+): Promise<LockedEntryRow> {
+	const res = await client.query<LockedEntryRow>(
+		`SELECT version, collection, locale, COALESCE(translation_group_id, id) AS translation_group_id,
+		        status, updated_at, working_slug
+		 FROM "${qSchema}".entries WHERE id = $1 FOR UPDATE`,
 		[id],
 	);
 	const row = res.rows[0];

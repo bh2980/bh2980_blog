@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError } from "./errors";
 import {
@@ -155,8 +156,8 @@ export function createTransferOps(ctx: StoreContext) {
 
 					if (item.slug !== null) {
 						const address = await client.query<{ entry_id: string | null }>(
-							`SELECT entry_id FROM "${qSchema}".content_addresses WHERE collection = $1 AND slug = $2`,
-							[item.collection, item.slug],
+							`SELECT entry_id FROM "${qSchema}".content_addresses WHERE collection = $1 AND locale = $2 AND slug = $3`,
+							[item.collection, item.locale ?? DEFAULT_LOCALE, item.slug],
 						);
 						if (address.rows.length > 0) {
 							throw new CmsError(
@@ -171,12 +172,24 @@ export function createTransferOps(ctx: StoreContext) {
 				}
 
 				const now = new Date();
+				// 번역본은 원문을 가리키므로(FK) 원문을 먼저 넣는다(v2 B4).
+				pending.sort((left, right) => Number(Boolean(left.translationOf)) - Number(Boolean(right.translationOf)));
 				for (const item of pending) {
 					await client.query(
 						`INSERT INTO "${qSchema}".entries
-						 (id, collection, status, version, created_at, updated_at, first_published_at, last_published_at, published_at, working_slug, folder_id)
-						 VALUES ($1, $2, $3, 1, $4, $4, NULL, NULL, $5, $6, $7)`,
-						[item.id, item.collection, item.status, now, item.publishedAt ?? null, item.slug, item.folderId ?? null],
+						 (id, collection, status, version, created_at, updated_at, first_published_at, last_published_at, published_at, working_slug, folder_id, locale, translation_group_id)
+						 VALUES ($1, $2, $3, 1, $4, $4, NULL, NULL, $5, $6, $7, $8, $9)`,
+						[
+							item.id,
+							item.collection,
+							item.status,
+							now,
+							item.publishedAt ?? null,
+							item.slug,
+							item.folderId ?? null,
+							item.locale ?? DEFAULT_LOCALE,
+							item.translationOf ?? null,
+						],
 					);
 
 					await writeBody(client, qSchema, item.id, "working", {
@@ -198,9 +211,15 @@ export function createTransferOps(ctx: StoreContext) {
 
 					if (item.slug !== null) {
 						await client.query(
-							`INSERT INTO "${qSchema}".content_addresses (collection, slug, entry_id, type)
-							 VALUES ($1, $2, $3, $4)`,
-							[item.collection, item.slug, item.id, item.published ? "current" : "reservation"],
+							`INSERT INTO "${qSchema}".content_addresses (collection, locale, slug, entry_id, type)
+							 VALUES ($1, $2, $3, $4, $5)`,
+							[
+								item.collection,
+								item.locale ?? DEFAULT_LOCALE,
+								item.slug,
+								item.id,
+								item.published ? "current" : "reservation",
+							],
 						);
 					}
 				}
@@ -226,6 +245,8 @@ export function createTransferOps(ctx: StoreContext) {
 					const entriesRes = await client.query<{
 						id: string;
 						collection: string;
+						locale: string;
+						translation_group_id: string;
 						status: string;
 						version: number;
 						folder_id: string | null;
@@ -237,7 +258,8 @@ export function createTransferOps(ctx: StoreContext) {
 						last_published_at: Date | null;
 						published_at: Date | null;
 					}>(
-						`SELECT e.id, e.collection, e.status, e.version, e.folder_id, e.working_slug, e.created_at, e.updated_at,
+						`SELECT e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
+					        e.status, e.version, e.folder_id, e.working_slug, e.created_at, e.updated_at,
 					        e.first_published_at, e.last_published_at, e.published_at,
 					        (SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') AS current_slug
 					 FROM "${qSchema}".entries e
@@ -275,11 +297,13 @@ export function createTransferOps(ctx: StoreContext) {
 
 					const addressesRes = await client.query<{
 						collection: string;
+						locale: string;
 						slug: string;
 						entry_id: string | null;
 						type: string;
 					}>(
-						`SELECT collection, slug, entry_id, type FROM "${qSchema}".content_addresses ORDER BY collection ASC, slug ASC`,
+						`SELECT collection, locale, slug, entry_id, type FROM "${qSchema}".content_addresses
+						 ORDER BY collection ASC, locale ASC, slug ASC`,
 					);
 
 					const mediaRes = await client.query<MediaRow>(
@@ -332,6 +356,8 @@ export function createTransferOps(ctx: StoreContext) {
 						entries.push({
 							id: row.id,
 							collection: row.collection,
+							locale: row.locale,
+							translationGroupId: row.translation_group_id,
 							status: row.status,
 							version: row.version,
 							folderId: row.folder_id,
@@ -360,6 +386,7 @@ export function createTransferOps(ctx: StoreContext) {
 						folders: foldersRes.rows.map(mapFolderRow),
 						addresses: addressesRes.rows.map((row) => ({
 							collection: row.collection,
+							locale: row.locale,
 							slug: row.slug,
 							entryId: row.entry_id,
 							type: row.type,

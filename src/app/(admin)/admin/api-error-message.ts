@@ -31,12 +31,16 @@ const ISSUE_LABELS: Record<string, string> = {
 	missing_media_id: "이미지 주소(mediaId 또는 src)가 없습니다.",
 	invalid_reference_id: "미디어 ID 형식이 올바르지 않습니다.",
 	dynamic_reference_id: "미디어 ID는 문자열이어야 합니다.",
+	missing_field: "필수 항목을 입력하세요.",
+	source_not_published: "원문을 먼저 발행하세요. 번역본의 카테고리·태그·발행일은 원문 공개본에서 옵니다.",
 };
 
 /** API 오류 `code`의 안내 문구(§10.1). 응답 `message`보다 이 문구를 먼저 보여 준다. */
 const ERROR_LABELS: Record<string, string> = {
 	conflict: "다른 곳에서 먼저 바뀌었습니다. 최신 내용을 확인한 뒤 다시 시도하세요.",
 	slug_conflict: "이미 쓰이고 있는 주소(slug)입니다.",
+	translation_exists: "이 언어의 번역본이 이미 있습니다(휴지통 포함).",
+	has_translations: "번역본이 있는 원문입니다. 번역본을 먼저 영구 삭제하세요.",
 	in_use: "다른 콘텐츠가 사용 중이라 진행할 수 없습니다. 사용처를 먼저 정리하세요.",
 	invalid_status: "현재 상태에서는 할 수 없는 작업입니다.",
 	locked: "예약된 글입니다. 예약을 해제한 뒤 편집하세요.",
