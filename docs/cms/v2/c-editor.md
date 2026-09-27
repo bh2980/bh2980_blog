@@ -1,6 +1,6 @@
 # CMS v2 — C. 에디터 작업 계획
 
-작성일: 2026-09-27 · 상태: **진행 중** · 브랜치: `feature/cms-v2`
+작성일: 2026-09-27 · 상태: **C1~C6 구현 완료(2026-09-27), C7 제외** · 브랜치: `feature/cms-v2`
 
 > 범위는 [`CMS-V2-SPEC.md`](../../../CMS-V2-SPEC.md) §4. 이 문서는 결정·구현 설계·순서·결과다. 여기에 적지 않은 동작은 v1 명세 [`CMS-SPEC.md`](../../../CMS-SPEC.md) §4를 따른다. **C7(에디터 UI·디자인 개선)은 이번 범위에서 뺀다**(2026-09-27 사용자 결정).
 
@@ -125,4 +125,13 @@ C3에서 도입되는 컨테이너 NodeView(Callout, Collapsible, Tabs, Columns 
    - `src/cms/core/__test__/table-validation.test.ts` (span 초과/중복/불일치 경고)
    - `src/cms/editor/__test__/table-merge.test.ts` (편집기 병합/나누기 및 직렬화)
    - `src/components/mdx/__test__/table.test.tsx` (공개 컴포넌트 렌더 및 정렬 분배)
->>>>>>> theirs
+
+### 4.3 C0·C2·C3·C4·C5 통합 결과
+
+- **C0:** 확장 조립(`editor/extensions.ts`)과 이미지·코드 블록·표 변환기(`editor/converters/`)를 분리했다. 기존 문서의 저장 문법은 바꾸지 않았다.
+- **C2:** 이미지 모서리 핸들로 px·% 너비를 조절한다. `::image`의 `crop="x,y,w,h"`(원본 기준 %)·`rotate="90|180|270"`은 원본 미디어를 수정하지 않는다. 공개 렌더러와 편집기는 `mdx/image-transform.ts`를 공유하며 이미지 제목도 보존한다.
+- **C3:** Callout·Collapsible·Tabs(2~8)·Columns(2~4)의 본문은 contentDOM에서 직접 편집한다. 정의 속성 설정 폼, 자식 추가·제거, 정의 기반 슬래시 삽입과 Tooltip 마크 설정·수정·제거를 제공한다. 스키마에 맞지 않는 컨테이너는 원문 보존 상자로 남긴다.
+- **C4:** Mermaid·차트·수식은 원자 노드에서 공개 렌더러를 지연 로드해 미리 본다. 원문 편집 칸과 에러 표시를 제공한다.
+- **C5:** Shiki 하이라이팅, 언어·파일명·줄 번호 도구, 코드 밑줄·툴팁 주석, 들여쓰기·붙여넣기 키 처리를 지원한다. 저장은 기존 펜스 주석 문법을 사용한다. 미지원 주석은 원문을 보존한다.
+- **검증:** `pnpm test:run`, `pnpm typecheck`, `pnpm exec biome check .`, `pnpm build`, `pnpm cms:migration:audit` 모두 성공. 브라우저(CDP)에서 C1~C6을 조작하고 `.pi/c-review/c1-drag.png`, `c2-crop-resize.png`, `c3-tabs-insert.png`, `c4-chart-math.png`, `c5-code-annotation.png`, `c6-table-merge.png`를 남겼다(`.pi/`는 로컬 검증 산출물). 한글 IME의 OS 수준 검증은 E 운영 전환에 남긴다.
+- **남은 비차단 사항:** C2 공개 이미지의 로드 후 레이아웃 이동, C6 Tiptap `colwidth` 왕복·공개 `th scope`, C1 기본 Dropcursor의 거부 위치 표시선은 후속 UI 품질 작업에서 다룬다.

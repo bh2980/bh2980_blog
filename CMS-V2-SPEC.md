@@ -1,6 +1,6 @@
 # bh2980 블로그 CMS v2 — 범위와 설계 메모
 
-작성일: 2026-09-27 · 상태: **A(UI 기반)·B(스키마와 확장: B1·B2·B3·B4) 구현 완료 · C 착수 전** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
+작성일: 2026-09-27 · 상태: **A·B·C(C1~C6) 구현 완료 · C7 제외(사용자 결정)** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
 
 > v1 명세는 [`CMS-SPEC.md`](CMS-SPEC.md)다. 이 문서는 v1 위에 더하거나 바꾸는 것만 적는다. 여기에 적지 않은 동작은 v1 명세를 따른다.
 
@@ -167,11 +167,11 @@ export const post = collection({
 ## 4. C — 에디터
 
 - **C1 드래그 앤 드롭:** ⋮⋮ 핸들을 끌어 블록을 옮긴다. 기존 키보드 이동·메뉴는 유지하고 메뉴는 `DropdownMenu`로 바꾼다. 중첩 이동은 부모가 허용하는 구조 안에서만 한다(v1 §4.2).
-- **C2 이미지:** 모서리 핸들로 너비를 조절한다(기존 px·% 규칙). 크롭·회전을 추가한다. 크롭·회전의 저장 방식(새 파일 생성 vs 표시 속성)은 C 구체화 때 정한다.
+- **C2 이미지:** 모서리 핸들로 너비를 조절한다(기존 px·% 규칙). 크롭·회전을 추가한다. 크롭·회전은 원본 파일을 수정하지 않고 `::image`의 표시 속성(`crop`, `rotate`)으로 저장한다([C 구현 계획](docs/cms/v2/c-editor.md) §1.1).
 - **C3 커스텀 블록 삽입 UI:** Callout·Collapsible·Tabs·Columns·Tooltip·Mermaid·차트를 슬래시 메뉴와 설정 폼으로 삽입·편집한다. B3 위에서 만든다.
 - **C4 미리보기:** Mermaid·차트·수식을 편집기 안에서 렌더링한다.
 - **C5 코드 블록:** 하이라이팅, 코드 안 밑줄·툴팁 등 주석 편집, 줄 번호·언어 선택 UI, 들여쓰기·붙여넣기 키 처리. Keystatic 제거 커밋 `002720d3`에서 지운 `src/keystatic/fields/mdx/components/code-block/**`·`plugins/pm/codeblock-keys.ts`·`codeblock-paste.ts`를 참고한다. 저장 형식은 기존 코드 펜스 주석 문법(`src/libs/annotation/code-block`)을 유지한다.
-- **C6 표 셀 병합:** GFM으로 표현할 수 없으므로 병합이 있는 표만 새 directive로 저장하고, 병합 없는 표는 GFM을 유지한다. 문법은 C 구체화 때 정한다.
+- **C6 표 셀 병합:** GFM으로 표현할 수 없으므로 병합이 있는 표만 새 directive로 저장하고, 병합 없는 표는 GFM을 유지한다. 병합 표는 `::::table`·`:::row`·`::cell[인라인]{colspan rowspan header}`로 저장한다([C 구현 계획](docs/cms/v2/c-editor.md) §1.2).
 
 ## 5. D — AI 보조
 
