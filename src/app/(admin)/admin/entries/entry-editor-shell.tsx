@@ -51,6 +51,7 @@ import { describeEntryStatus } from "../shared/entry-status";
 import { CommandPalette, type PaletteCommand } from "./command-palette";
 import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry, formText } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
+import { LanguageMenu } from "./language-menu";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
@@ -71,6 +72,16 @@ type Recovery =
 type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
 
 const formatSeoul = (value: string | null | undefined) => formatSeoulDateTimeInput(value ?? null).replace("T", " ");
+
+/**
+ * 저장·발행 응답에는 번역 묶음 정보(v2 B4)가 없다. 불러올 때 받은 값을 유지하고 이 콘텐츠의 상태만 갱신한다.
+ */
+function keepTranslationGroup(current: EntryData | null, next: EntryData): Pick<EntryData, "translations" | "source"> {
+	const translations = (current?.translations ?? next.translations)?.map((member) =>
+		member.id === next.id ? { ...member, status: next.status } : member,
+	);
+	return { translations, source: current?.source ?? next.source };
+}
 
 /**
  * 게시글·메모 편집 화면(§3.1, §5). 태그·카테고리·모음집(record 컬렉션)은 목록의 작은 폼에서 편집한다.
@@ -122,7 +133,13 @@ export function EntryEditorShell({
 		initialForm: EMPTY_FORM,
 		enabled: !isReadOnly,
 		newEntryFolderId: folderId,
-		onSaved: (saved) => setEntry((current) => ({ ...saved, schedule: current?.schedule ?? saved.schedule })),
+		// 저장 응답에는 예약·번역 묶음 정보가 없다. 불러올 때 받은 값을 유지한다.
+		onSaved: (saved) =>
+			setEntry((current) => ({
+				...saved,
+				schedule: current?.schedule ?? saved.schedule,
+				...keepTranslationGroup(current, saved),
+			})),
 		onConflict: (server, local) => setConflict({ server, local }),
 	});
 	const { form, setForm } = autosave;
@@ -335,6 +352,7 @@ export function EntryEditorShell({
 			setEntry((current) => ({
 				...published,
 				schedule: current?.schedule ? { ...current.schedule, pending: null } : published.schedule,
+				...keepTranslationGroup(current, published),
 			}));
 			void refreshIncoming(id);
 			const warnings = published.warnings ?? [];
@@ -679,6 +697,11 @@ export function EntryEditorShell({
 						<BreadcrumbItem>
 							<span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">{statusLabel}</span>
 						</BreadcrumbItem>
+						{entry && !isRecordCollection(collection) && (
+							<BreadcrumbItem>
+								<LanguageMenu entry={entry} disabled={isReadOnly} onBeforeCreate={() => autosave.flush()} />
+							</BreadcrumbItem>
+						)}
 					</BreadcrumbList>
 				</Breadcrumb>
 

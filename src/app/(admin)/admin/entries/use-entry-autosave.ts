@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CmsApiError, cmsFetch } from "../admin-api";
-import { type EntryData, type EntryForm, type EntryFormPatch, formFingerprint, metadataFromForm } from "./entry-form";
+import {
+	type EntryData,
+	type EntryForm,
+	type EntryFormPatch,
+	formFingerprint,
+	isTranslationEntry,
+	metadataFromForm,
+} from "./entry-form";
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
 
 /** §5.1 저장 상태. */
@@ -64,6 +71,8 @@ export function useEntryAutosave({
 	const entryIdRef = useRef<string | null>(entry?.id ?? null);
 	const versionRef = useRef(entry?.version ?? 0);
 	const baseMetadataRef = useRef<Record<string, unknown>>(entry?.working.metadata ?? {});
+	/** 번역본은 언어별 값만 저장한다(v2 B4). */
+	const translationRef = useRef(isTranslationEntry(entry));
 	const serverFingerprintRef = useRef(formFingerprint(initialForm));
 	const changeSeqRef = useRef(0);
 	const ackSeqRef = useRef(0);
@@ -98,6 +107,7 @@ export function useEntryAutosave({
 			entryIdRef.current = loaded.id;
 			versionRef.current = loaded.version;
 			baseMetadataRef.current = loaded.working.metadata ?? {};
+			translationRef.current = isTranslationEntry(loaded);
 			serverFingerprintRef.current = formFingerprint(loadedForm);
 			formRef.current = loadedForm;
 			setFormState(loadedForm);
@@ -127,7 +137,9 @@ export function useEntryAutosave({
 
 		const targetSeq = changeSeqRef.current;
 		const snapshot = formRef.current;
-		const built = metadataFromForm(snapshot, collection, baseMetadataRef.current);
+		const built = metadataFromForm(snapshot, collection, baseMetadataRef.current, {
+			translation: translationRef.current,
+		});
 		if ("error" in built) {
 			setLastError(built.error);
 			updateStatus("failed");

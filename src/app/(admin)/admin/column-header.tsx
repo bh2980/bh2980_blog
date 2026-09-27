@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { COLUMN_CONFIG, type ColumnFilter, isColumnFiltered } from "./list-columns";
 import { LIST_STATUSES, type ListState } from "./list-state";
@@ -86,6 +87,25 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 			<Separator className="my-1" />
 			<CheckRow label="수정 중" checked={state.hasChanges} onChange={(on) => onChange({ hasChanges: on })} />
 			<CheckRow label="예약됨" checked={state.scheduled} onChange={(on) => onChange({ scheduled: on })} />
+		</fieldset>
+	);
+}
+
+/** 언어 체크 목록(v2 B4). 여러 개를 고르면 하나라도 맞는 항목을 보여 준다. */
+function LocaleFilter({ state, onChange }: { state: ListState; onChange: (patch: Partial<ListState>) => void }) {
+	return (
+		<fieldset className="space-y-0.5">
+			<legend className="sr-only">언어 — 여러 개를 고르면 하나라도 맞는 항목을 보여 줍니다</legend>
+			{LOCALES.map((locale) => (
+				<CheckRow
+					key={locale}
+					label={LOCALE_INFO[locale].adminName}
+					checked={state.locales.includes(locale)}
+					onChange={(on) =>
+						onChange({ locales: on ? [...state.locales, locale] : state.locales.filter((item) => item !== locale) })
+					}
+				/>
+			))}
 		</fieldset>
 	);
 }
@@ -167,6 +187,8 @@ export function clearPatchFor(filter: ColumnFilter): Partial<ListState> {
 			return { statuses: [], hasChanges: false, scheduled: false };
 		case "taxonomy":
 			return { [filter.key]: [] };
+		case "locale":
+			return { locales: [] };
 		case "date":
 			return { [filter.from]: "", [filter.to]: "" };
 		case "none":
@@ -251,6 +273,7 @@ export function ColumnHeader({
 					/>
 				)}
 				{filter.kind === "status" && <StatusFilter state={state} onChange={onChange} />}
+				{filter.kind === "locale" && <LocaleFilter state={state} onChange={onChange} />}
 				{filter.kind === "taxonomy" && (
 					<TaxonomyFilter
 						label={config.label}

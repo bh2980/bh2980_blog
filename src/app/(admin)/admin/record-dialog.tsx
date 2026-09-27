@@ -22,7 +22,7 @@ import {
 	formFromEntry,
 	metadataFromForm,
 } from "./entries/entry-form";
-import { SchemaFields } from "./entries/schema-fields";
+import { RecordTranslationFields, SchemaFields } from "./entries/schema-fields";
 
 export type RecordTarget = { collection: Collection; id: string | null };
 
@@ -146,6 +146,7 @@ export function RecordDialog({
 						onChange={setForm}
 						slugPlaceholder={slugify(title) || "비우면 이름에서 만듭니다"}
 					/>
+					<RecordTranslationFields collection={collection} form={form} disabled={isSaving} onChange={setForm} />
 					{target?.id && (
 						<p className="text-muted-foreground text-xs">주소를 바꾸면 이전 주소는 새 주소로 연결됩니다.</p>
 					)}

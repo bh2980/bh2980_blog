@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
+import { LOCALE_INFO } from "@/libs/i18n/locales";
 import { clearPatchFor } from "./column-header";
 import { COLUMN_CONFIG, type ColumnFilter, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
 import { clearFilters, type ListState } from "./list-state";
@@ -39,6 +40,8 @@ function describe(
 			const source = filter.source === "tag" ? options.tags : options.categories;
 			return state[filter.key].map((id) => nameOf(source, id)).join(", ");
 		}
+		case "locale":
+			return state.locales.map((locale) => LOCALE_INFO[locale].adminName).join(", ");
 		case "date":
 			return `${state[filter.from] || "처음"} ~ ${state[filter.to] || "끝"}`;
 		case "none":

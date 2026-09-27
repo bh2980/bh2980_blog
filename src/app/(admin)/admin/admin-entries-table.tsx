@@ -38,6 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
@@ -64,6 +65,7 @@ const features = tableFeatures({
 /** 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다. */
 const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
 	status: 132,
+	locale: 80,
 	category: 112,
 	tags: 200,
 	updatedAt: 132,
@@ -76,6 +78,8 @@ const DEFAULT_TITLE_SIZE = 320;
 const MIN_COLUMN_SIZE = 72;
 const MAX_COLUMN_SIZE = 960;
 const helper = createColumnHelper<typeof features, ListEntriesItem>();
+
+const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
 /** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
 const formatDate = (value: Date | string | null) => {
@@ -91,7 +95,7 @@ const formatDate = (value: Date | string | null) => {
  * 폭이 모자랄 때 먼저 숨기는 컬럼과 그 순서. 사용자가 켠 컬럼이라도 제목이 최소 너비를 못 받으면 이 순서로 숨긴다.
  * 제목·상태·카테고리·수정일은 숨기지 않는다.
  */
-const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "tags"] as const;
+const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "locale", "tags"] as const;
 const TITLE_MIN_WIDTH = 240;
 
 /**
@@ -327,6 +331,16 @@ export function AdminEntriesTable({
 				case "status":
 					// 색상만으로 상태를 전달하지 않는다(§3.2).
 					return <StatusLabel item={item} isRecord={isRecord} />;
+				case "locale":
+					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
+					return (
+						<span className="text-muted-foreground text-xs">
+							<abbr title={localeName(item.locale)} className="font-medium no-underline">
+								{item.locale.toUpperCase()}
+							</abbr>
+							{item.translationGroupId !== item.id && <span className="ml-1">번역</span>}
+						</span>
+					);
 				case "category":
 					return item.category?.title ?? <span className="text-muted-foreground">—</span>;
 				case "tags":

@@ -62,8 +62,17 @@ function renderTable(overrides: Partial<ComponentProps<typeof AdminEntriesTable>
 
 describe("admin entry list (v2 A1 Data Table)", () => {
 	it("uses the spec default columns per collection (§3.2)", () => {
-		expect(columnsFor("post").defaults).toEqual(["title", "status", "category", "tags", "updatedAt", "publishedAt"]);
-		expect(columnsFor("memo").defaults).toEqual(["title", "status", "tags", "updatedAt", "publishedAt"]);
+		expect(columnsFor("post").defaults).toEqual([
+			"title",
+			"status",
+			"locale",
+			"category",
+			"tags",
+			"updatedAt",
+			"publishedAt",
+		]);
+		expect(columnsFor("memo").defaults).toEqual(["title", "status", "locale", "tags", "updatedAt", "publishedAt"]);
+		expect(columnsFor("tag").available).not.toContain("locale");
 		expect(columnsFor("memo").available).not.toContain("category");
 		expect(columnsFor("tag").available).not.toContain("tags");
 	});

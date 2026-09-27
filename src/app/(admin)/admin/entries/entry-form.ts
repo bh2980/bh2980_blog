@@ -1,6 +1,14 @@
 import { isCollection } from "@/cms/core/collections";
-import { type SchemaCollection, type StoredField, storedFields } from "@/cms/schema/derive";
+import {
+	localizedFieldNames,
+	RECORD_TRANSLATIONS_KEY,
+	recordLocalizedFields,
+	type SchemaCollection,
+	type StoredField,
+	storedFields,
+} from "@/cms/schema/derive";
 import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { PREFIXED_LOCALES } from "@/libs/i18n/locales";
 
 /** 폼 입력 하나의 값. 텍스트·한 개 관계·선택·날짜는 문자열(관계는 비면 `null`), 여러 개 관계는 배열이다. */
 export type FormValue = string | string[] | null;
@@ -16,9 +24,31 @@ export type EntryFormPatch = { readonly [field: string]: FormValue };
 
 export const EMPTY_FORM: EntryForm = { title: "", slug: "", mdx: "" };
 
+/** 같은 번역 묶음의 콘텐츠(v2 B4). */
+export interface TranslationMember {
+	id: string;
+	locale: string;
+	status: EntryData["status"];
+	isSource: boolean;
+	title: string | null;
+	workingSlug: string | null;
+}
+
 export interface EntryData {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 원문이면 묶음 ID가 자기 ID다. */
+	locale?: string;
+	translationGroupId?: string;
+	translations?: TranslationMember[];
+	/** 번역본이면 원문의 최신 초안 메타데이터. 공통 값을 읽기 전용으로 보여 준다. */
+	source?: {
+		id: string;
+		locale: string;
+		status: EntryData["status"];
+		workingSlug: string | null;
+		metadata: Record<string, unknown>;
+	};
 	status: "draft" | "published" | "archived" | "trashed";
 	version: number;
 	folderId: string | null;
@@ -54,8 +84,18 @@ export const formList = (form: EntryForm, name: string): string[] => {
 	return Array.isArray(value) ? value : [];
 };
 
-const fieldsOf = (collection: string): readonly StoredField[] =>
-	isCollection(collection) ? storedFields(collection as SchemaCollection) : [];
+/** 번역본인가(v2 B4). 번역본은 언어별 값만 폼으로 다룬다. */
+export const isTranslationEntry = (entry: Pick<EntryData, "id" | "translationGroupId"> | null | undefined) =>
+	Boolean(entry?.translationGroupId && entry.translationGroupId !== entry.id);
+
+/** 폼이 다루는 저장 필드. 번역본이면 정의에서 `localized`인 필드만이다(공통 값은 원문이 가진다). */
+const fieldsOf = (collection: string, translation = false): readonly StoredField[] => {
+	if (!isCollection(collection)) return [];
+	const fields = storedFields(collection as SchemaCollection);
+	if (!translation) return fields;
+	const { own, inherit } = localizedFieldNames(collection as SchemaCollection);
+	return fields.filter(({ name }) => own.includes(name) || inherit.includes(name));
+};
 
 /** 저장 값 → 입력 값. */
 function toFormValue({ field }: StoredField, value: unknown): FormValue {
@@ -75,12 +115,37 @@ function toFormValue({ field }: StoredField, value: unknown): FormValue {
 export function formFromEntry(entry: EntryData): EntryForm {
 	const metadata = entry.working.metadata ?? {};
 	const form: EntryForm = { title: text(metadata.title), slug: entry.workingSlug ?? "", mdx: entry.working.mdx ?? "" };
-	for (const stored of fieldsOf(entry.collection)) {
+	for (const stored of fieldsOf(entry.collection, isTranslationEntry(entry))) {
 		if (stored.name === "title" || stored.field.hidden) continue;
 		// 표시 발행일의 원천은 초안 메타데이터다. 없으면 이전 발행에서 정해진 값을 보여 준다(§5.5).
 		const value =
 			stored.name === "publishedAt" ? text(metadata.publishedAt) || entry.publishedAt : metadata[stored.name];
 		form[stored.name] = toFormValue(stored, value);
+	}
+	Object.assign(form, recordTranslationsToForm(entry.collection, metadata));
+	return form;
+}
+
+/** record 컬렉션 언어별 값의 폼 키(v2 B4). 예: `title@en`. */
+export const recordTranslationKey = (field: string, locale: string) => `${field}@${locale}`;
+
+function recordTranslationsToForm(collection: string, metadata: Record<string, unknown>): Record<string, string> {
+	if (!isCollection(collection)) return {};
+	const translations = (metadata[RECORD_TRANSLATIONS_KEY] ?? {}) as Record<string, Record<string, unknown>>;
+	const values: Record<string, string> = {};
+	for (const field of recordLocalizedFields(collection as SchemaCollection)) {
+		for (const locale of PREFIXED_LOCALES)
+			values[recordTranslationKey(field, locale)] = text(translations[locale]?.[field]);
+	}
+	return values;
+}
+
+/** 원문 메타데이터를 폼 값으로 바꾼다. 번역본 속성 패널이 공통 값을 읽기 전용으로 보여 줄 때 쓴다(v2 B4). */
+export function formFromSourceMetadata(collection: string, metadata: Record<string, unknown>): EntryForm {
+	const form: EntryForm = { title: text(metadata.title), slug: "", mdx: "" };
+	for (const stored of fieldsOf(collection)) {
+		if (stored.name === "title" || stored.field.hidden) continue;
+		form[stored.name] = toFormValue(stored, metadata[stored.name]);
 	}
 	return form;
 }
@@ -100,8 +165,9 @@ export function metadataFromForm(
 	form: EntryForm,
 	collection: string,
 	base: Record<string, unknown> = {},
+	options: { translation?: boolean } = {},
 ): { metadata: Record<string, unknown> } | { error: string } {
-	const fields = fieldsOf(collection);
+	const fields = fieldsOf(collection, options.translation);
 	const metadata: Record<string, unknown> = {};
 	for (const { name } of fields) {
 		if (Object.hasOwn(base, name)) metadata[name] = base[name];
@@ -149,6 +215,20 @@ export function metadataFromForm(
 				break;
 			}
 		}
+	}
+
+	// record 컬렉션의 언어별 이름·설명(v2 B4). 빈 언어는 넣지 않는다.
+	const localizedRecordFields = isCollection(collection) ? recordLocalizedFields(collection as SchemaCollection) : [];
+	if (localizedRecordFields.length > 0) {
+		const translations: Record<string, Record<string, string>> = {};
+		for (const locale of PREFIXED_LOCALES) {
+			for (const field of localizedRecordFields) {
+				const value = text(values[recordTranslationKey(field, locale)]).trim();
+				if (value) translations[locale] = { ...translations[locale], [field]: value };
+			}
+		}
+		if (Object.keys(translations).length > 0) metadata[RECORD_TRANSLATIONS_KEY] = translations;
+		else delete metadata[RECORD_TRANSLATIONS_KEY];
 	}
 	return { metadata };
 }

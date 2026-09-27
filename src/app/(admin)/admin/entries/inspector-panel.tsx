@@ -5,13 +5,16 @@ import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-stor
 import { COLLECTION_DEFINITIONS, isCollection } from "@/cms/core/collections";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import type { CmsIssue } from "../api-error-message";
 import { describeEntryStatus } from "../shared/entry-status";
-import type { EntryData, EntryForm, EntryFormPatch } from "./entry-form";
+import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
 
 const REFERENCE_KIND_LABELS = { entry: "글", media: "미디어", category: "카테고리", tag: "태그" };
+
+const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
 export type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
 
@@ -171,6 +174,24 @@ export function InspectorPanel({
 						onSourceChange={onTitleChange}
 						onSlugChange={onSlugChange}
 						onRegenerateSlug={onRegenerateSlug}
+						locked={
+							entry?.source
+								? {
+										values: formFromSourceMetadata(collection, entry.source.metadata),
+										note: (
+											<>
+												원문({localeName(entry.source.locale)}) 값입니다.{" "}
+												<Link
+													href={`/admin/entries/${entry.source.id}/edit`}
+													className="text-primary underline-offset-2 hover:underline"
+												>
+													원문에서 바꿉니다
+												</Link>
+											</>
+										),
+									}
+								: undefined
+						}
 					/>
 				)}
 			</fieldset>

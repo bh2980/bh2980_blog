@@ -11,6 +11,7 @@ type DateToKey = "createdTo" | "updatedTo" | "publishedTo";
 export type ColumnFilter =
 	| { kind: "text"; key: "titleContains" | "slugContains"; placeholder: string }
 	| { kind: "status" }
+	| { kind: "locale" }
 	| { kind: "taxonomy"; key: "tagIds" | "categoryIds"; source: "tag" | "category" }
 	| { kind: "date"; from: DateFromKey; to: DateToKey }
 	| { kind: "none" };
@@ -32,6 +33,7 @@ export const COLUMN_CONFIG: Record<AdminListColumn, ColumnConfig> = {
 		filter: { kind: "text", key: "titleContains", placeholder: "제목에 포함된 글자" },
 	},
 	status: { label: "상태", filter: { kind: "status" } },
+	locale: { label: "언어", filter: { kind: "locale" } },
 	category: { label: "카테고리", filter: { kind: "taxonomy", key: "categoryIds", source: "category" } },
 	tags: { label: "태그", filter: { kind: "taxonomy", key: "tagIds", source: "tag" } },
 	updatedAt: {
@@ -85,6 +87,8 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 	if (!isCollection(collection)) return { available: [...ADMIN_LIST_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
 	const available = ADMIN_LIST_COLUMNS.filter((column) => {
+		// record 컬렉션은 언어별 문서가 없다(이름만 언어별 값, v2 B4).
+		if (column === "locale") return schema.workflow === "publish";
 		const field = FIELD_COLUMNS[column];
 		return field === undefined || Object.hasOwn(schema.fields, field) || storedField(collection, field) !== undefined;
 	});
@@ -113,6 +117,8 @@ export function isColumnFiltered(state: ListState, filter: ColumnFilter): boolea
 			return state.statuses.length > 0 || state.hasChanges || state.scheduled;
 		case "taxonomy":
 			return state[filter.key].length > 0;
+		case "locale":
+			return state.locales.length > 0;
 		case "date":
 			return Boolean(state[filter.from] || state[filter.to]);
 		case "none":

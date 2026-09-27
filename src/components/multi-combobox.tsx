@@ -28,6 +28,7 @@ interface MultiComboboxProps {
 	emptyText?: string;
 	"aria-label"?: string;
 	className?: string;
+	disabled?: boolean;
 }
 
 /** shadcn Combobox(다중 선택)를 `value` 문자열 배열로 다루는 얇은 래퍼. 선택한 항목은 칩으로 보인다. */
@@ -39,6 +40,7 @@ export function MultiCombobox({
 	emptyText = "항목이 없습니다.",
 	"aria-label": ariaLabel,
 	className,
+	disabled,
 }: MultiComboboxProps) {
 	const anchor = useComboboxAnchor();
 	const byValue = useMemo(() => new Map(options.map((option) => [option.value, option])), [options]);
@@ -48,6 +50,7 @@ export function MultiCombobox({
 		<Combobox
 			items={options}
 			multiple
+			disabled={disabled}
 			value={selected}
 			onValueChange={(next) => onValueChange(next.map((option) => option.value))}
 			itemToStringLabel={(option) => option.label}

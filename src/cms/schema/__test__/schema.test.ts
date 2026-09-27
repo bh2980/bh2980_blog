@@ -3,6 +3,7 @@ import { metadataFromForm } from "@/app/(admin)/admin/entries/entry-form";
 import { COLLECTION_DEFINITIONS, COLLECTIONS } from "../../core/collections";
 import { prepareSnapshot, validateForPublish } from "../../core/snapshot";
 import type { PostMetadata } from "../../core/types";
+import { SYSTEM_LIST_COLUMNS } from "../collection";
 import { SCHEMAS } from "../definitions";
 import { metadataReferences, missingRequiredIssues, relationsOf, storedFields } from "../derive";
 
@@ -26,7 +27,7 @@ describe("컬렉션 정의(v2 B1)", () => {
 	});
 
 	it("배치·목록 컬럼은 실제 필드만 가리킨다", () => {
-		const system = ["status", "updatedAt", "createdAt", "folder"];
+		const system: readonly string[] = SYSTEM_LIST_COLUMNS;
 		for (const schema of Object.values(SCHEMAS)) {
 			for (const group of schema.layout ?? []) {
 				for (const name of group.fields) expect(Object.keys(schema.fields)).toContain(name);

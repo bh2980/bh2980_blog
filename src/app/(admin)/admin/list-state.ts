@@ -1,6 +1,7 @@
 import type { ListSortField, PageSize } from "@/cms/core/api";
 import { type Collection, isCollection } from "@/cms/core/collections";
 import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { isLocale, type Locale } from "@/libs/i18n/locales";
 import type { EntryStatus } from "./shared/entry-status";
 
 /** 목록에서 거를 수 있는 상태. 휴지통은 전용 화면(v2 A3)에서만 본다. */
@@ -30,6 +31,8 @@ export interface ListState {
 	scheduled: boolean;
 	tagIds: string[];
 	categoryIds: string[];
+	/** 콘텐츠 언어(v2 B4). 비어 있으면 모든 언어다. */
+	locales: Locale[];
 	/** `YYYY-MM-DD`(서울 날짜). */
 	createdFrom: string;
 	createdTo: string;
@@ -55,6 +58,7 @@ export const DEFAULT_LIST_STATE: Omit<ListState, "collection"> = {
 	scheduled: false,
 	tagIds: [],
 	categoryIds: [],
+	locales: [],
 	createdFrom: "",
 	createdTo: "",
 	updatedFrom: "",
@@ -102,6 +106,7 @@ export function parseListState(
 		scheduled: params.get("scheduled") === "1",
 		tagIds: params.getAll("tag"),
 		categoryIds: params.getAll("category"),
+		locales: [...new Set(params.getAll("locale"))].filter(isLocale),
 		sortField: SORT_FIELDS.includes(sortField) ? (sortField as ListSortField) : DEFAULT_LIST_STATE.sortField,
 		sortDirection: params.get("sortDirection") === "asc" ? "asc" : "desc",
 		page: Number.isInteger(page) && page > 0 ? page : 1,
@@ -128,6 +133,7 @@ function appendFilterParams(params: URLSearchParams, state: ListState) {
 	if (state.scheduled) params.set("scheduled", "1");
 	for (const id of state.tagIds) params.append("tag", id);
 	for (const id of state.categoryIds) params.append("category", id);
+	for (const locale of state.locales) params.append("locale", locale);
 	for (const key of DATE_KEYS) set(key, state[key], "");
 	params.set("sortField", state.sortField);
 	params.set("sortDirection", state.sortDirection);
@@ -182,6 +188,7 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 	if (state.scheduled) query.set("scheduled", "true");
 	for (const id of state.tagIds) query.append("tagId", id);
 	for (const id of state.categoryIds) query.append("categoryId", id);
+	for (const locale of state.locales) query.append("locale", locale);
 	for (const key of DATE_KEYS) {
 		if (!state[key]) continue;
 		const boundary = seoulDayBoundary(state[key], key.endsWith("To"));
@@ -200,6 +207,7 @@ export const activeFilterCount = (state: ListState) =>
 		state.scheduled,
 		state.tagIds.length > 0,
 		state.categoryIds.length > 0,
+		state.locales.length > 0,
 		...DATE_KEYS.map((key) => state[key]),
 	].filter(Boolean).length;
 
@@ -224,6 +232,7 @@ export function clearFilters(state: ListState): ListState {
 		scheduled: false,
 		tagIds: [],
 		categoryIds: [],
+		locales: [],
 		createdFrom: "",
 		createdTo: "",
 		updatedFrom: "",

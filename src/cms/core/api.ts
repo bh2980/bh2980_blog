@@ -122,6 +122,7 @@ export type BulkBody = z.infer<typeof bulkBodySchema>;
 export const ADMIN_LIST_COLUMNS = [
 	"title",
 	"status",
+	"locale",
 	"category",
 	"tags",
 	"updatedAt",

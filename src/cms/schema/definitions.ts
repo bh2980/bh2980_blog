@@ -96,7 +96,7 @@ export const post = collection({
 		{ group: "발행", fields: ["publishedAt", "policy"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "canonicalUrl"], collapsed: true },
 	],
-	list: { columns: ["title", "status", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
+	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 export const memo = collection({
@@ -109,7 +109,7 @@ export const memo = collection({
 		{ group: "발행", fields: ["publishedAt"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "canonicalUrl"], collapsed: true },
 	],
-	list: { columns: ["title", "status", "tagIds", "updatedAt", "publishedAt"] },
+	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 /** 이름만 언어별 값이고 주소와 연결 관계는 공통이다(v2 B4). */

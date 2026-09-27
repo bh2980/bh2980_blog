@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { isRecordCollection } from "@/cms/core/collections";
 import type { LayoutGroup } from "@/cms/schema/collection";
-import { type SchemaCollection, schemaOf } from "@/cms/schema/derive";
+import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@/cms/schema/derive";
 import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@/cms/schema/fields";
 import { MultiCombobox } from "@/components/multi-combobox";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { LOCALE_INFO, PREFIXED_LOCALES } from "@/libs/i18n/locales";
 import { errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
-import type { EntryForm, EntryFormPatch, FormValue } from "./entry-form";
+import { type EntryForm, type EntryFormPatch, type FormValue, recordTranslationKey } from "./entry-form";
 import {
 	EntryPicker,
 	FIELD_INPUTS,
@@ -51,6 +52,10 @@ interface SchemaFieldsProps {
 	slugPlaceholder?: string;
 	/** 이 필드는 그리지 않는다(편집 화면 본문 위의 제목처럼 다른 곳에 입력이 있을 때). */
 	omit?: readonly string[];
+	/**
+	 * 번역본 편집(v2 B4). 언어별 값이 아닌 필드(공통 값)는 `values`(원문 값)로 읽기 전용으로 그리고 `note`를 붙인다.
+	 */
+	locked?: { values: EntryForm; note: ReactNode };
 }
 
 /** 필드 하나의 라벨·필수 표시·오류·도움말. */
@@ -102,7 +107,7 @@ function RecordRelationInput({ name, field, id, value, invalid, describedBy, con
 		}
 	};
 
-	const createRow = relation.createInline && (
+	const createRow = relation.createInline && !context.disabled && (
 		<div className="flex items-center gap-1.5 pt-1">
 			<Input
 				aria-label={`새 ${relation.label} 이름`}
@@ -145,6 +150,7 @@ function RecordRelationInput({ name, field, id, value, invalid, describedBy, con
 							.map((selectedId) => ({ value: selectedId, label: selectedId.slice(0, 8) })),
 					]}
 					value={selected}
+					disabled={context.disabled}
 					onValueChange={(next) => onChange(next)}
 				/>
 				{createRow}
@@ -276,6 +282,7 @@ export function SchemaFields({
 	onRegenerateSlug,
 	slugPlaceholder,
 	omit = [],
+	locked,
 }: SchemaFieldsProps) {
 	const schema = schemaOf(collection);
 	const issueFor = (path: string) => issues.find((issue) => issue.path === path);
@@ -287,19 +294,24 @@ export function SchemaFields({
 		else onChange({ [name]: value });
 	};
 
-	const renderValue = (name: string, field: ValueField) => {
+	/** 번역본에서 원문 값을 보여 주는 공통 필드인가. */
+	const isLocked = (field: Field) => Boolean(locked) && !field.localized;
+
+	const renderValue = (name: string, field: ValueField, readOnly = false) => {
 		if (field.hidden) return null;
-		const issue = issueFor(name);
+		const issue = readOnly ? undefined : issueFor(name);
+		const source = readOnly && locked ? locked.values : form;
 		const props: FieldInputProps = {
 			name,
 			field,
 			id: fieldId(name),
-			value: name === "title" ? form.title : (form[name] ?? null),
+			value: name === "title" ? source.title : (source[name] ?? null),
 			invalid: Boolean(issue),
 			describedBy: describedBy(name),
-			context,
-			onChange: (value) => setValue(name, value),
+			context: readOnly ? { ...context, disabled: true } : context,
+			onChange: readOnly ? () => {} : (value) => setValue(name, value),
 		};
+		const help = readOnly && locked ? locked.note : field.description;
 		// 여러 개 관계는 입력이 여럿이라 묶음 자체에 초점을 줄 수 있게 한다(발행 문제로 이동).
 		if (field.kind === "relation" && field.many && isRecordCollection(field.to)) {
 			return (
@@ -315,8 +327,10 @@ export function SchemaFields({
 						{field.label} {field.required && <span className="text-destructive">*</span>}
 					</legend>
 					{issue && <FieldError id={`${fieldId(name)}-error`}>{cmsIssueMessage(issue)}</FieldError>}
-					<DefaultInput {...props} />
-					{field.description && <FieldDescription className="text-[11px]">{field.description}</FieldDescription>}
+					<fieldset disabled={readOnly} className="space-y-2">
+						<DefaultInput {...props} />
+					</fieldset>
+					{help && <FieldDescription className="text-[11px]">{help}</FieldDescription>}
 				</fieldset>
 			);
 		}
@@ -325,9 +339,9 @@ export function SchemaFields({
 				key={name}
 				id={fieldId(name)}
 				label={field.label}
-				required={Boolean(field.required)}
+				required={Boolean(field.required) && !readOnly}
 				issue={issue}
-				help={field.description}
+				help={help}
 			>
 				<DefaultInput {...props} />
 			</FieldRow>
@@ -373,12 +387,14 @@ export function SchemaFields({
 	};
 
 	const renderConditional = (name: string, field: ConditionalField) => {
-		const selected = typeof form[name] === "string" ? (form[name] as string) : field.discriminant.defaultValue;
+		const readOnly = isLocked(field);
+		const source = readOnly && locked ? locked.values : form;
+		const selected = typeof source[name] === "string" ? (source[name] as string) : field.discriminant.defaultValue;
 		const nested = field.values[selected] ?? {};
 		return (
 			<div key={name} className="space-y-3">
-				{renderValue(name, field.discriminant)}
-				{Object.entries(nested).map(([nestedName, nestedField]) => renderValue(nestedName, nestedField))}
+				{renderValue(name, field.discriminant, readOnly)}
+				{Object.entries(nested).map(([nestedName, nestedField]) => renderValue(nestedName, nestedField, readOnly))}
 			</div>
 		);
 	};
@@ -389,7 +405,7 @@ export function SchemaFields({
 		if (!field) return null;
 		if (field.kind === "slug") return renderSlug(name, field);
 		if (field.kind === "conditional") return renderConditional(name, field);
-		return renderValue(name, field);
+		return renderValue(name, field, isLocked(field));
 	};
 
 	const placed = new Set((schema.layout ?? []).flatMap((group) => group.fields));
@@ -456,5 +472,69 @@ function LayoutSection({ title, defaultOpen, children }: { title: string; defaul
 				<CollapsibleContent className="space-y-4">{children}</CollapsibleContent>
 			</FieldSet>
 		</Collapsible>
+	);
+}
+
+/**
+ * record 컬렉션(카테고리·태그·모음집)의 다른 언어 이름·설명(v2 B4). 비우면 공개 화면이 기본 언어 값을 쓴다.
+ */
+export function RecordTranslationFields({
+	collection,
+	form,
+	disabled,
+	onChange,
+}: {
+	collection: SchemaCollection;
+	form: EntryForm;
+	disabled: boolean;
+	onChange: (patch: EntryFormPatch) => void;
+}) {
+	const fields = recordLocalizedFields(collection);
+	if (fields.length === 0) return null;
+	const schema = schemaOf(collection);
+	const filled = PREFIXED_LOCALES.some((locale) =>
+		fields.some((field) => Boolean(form[recordTranslationKey(field, locale)])),
+	);
+	return (
+		<LayoutSection title="다른 언어" defaultOpen={filled}>
+			<p className="text-[11px] text-muted-foreground leading-tight">
+				비워 두면 그 언어 화면에서도 기본 언어 값을 씁니다. 주소와 연결은 모든 언어가 같습니다.
+			</p>
+			{PREFIXED_LOCALES.map((locale) => (
+				<div key={locale} className="space-y-2">
+					{fields.map((field) => {
+						const key = recordTranslationKey(field, locale);
+						const definition = schema.fields[field];
+						const label = `${definition?.label ?? field} (${LOCALE_INFO[locale].adminName})`;
+						const multiline = definition?.kind === "text" && definition.multiline;
+						const value = typeof form[key] === "string" ? (form[key] as string) : "";
+						return (
+							<FieldRow key={key} id={fieldId(key)} label={label}>
+								{multiline ? (
+									<Textarea
+										id={fieldId(key)}
+										rows={2}
+										lang={locale}
+										value={value}
+										disabled={disabled}
+										onChange={(event) => onChange({ [key]: event.target.value })}
+										className="min-h-12 resize-none text-xs md:text-xs"
+									/>
+								) : (
+									<Input
+										id={fieldId(key)}
+										lang={locale}
+										value={value}
+										disabled={disabled}
+										onChange={(event) => onChange({ [key]: event.target.value })}
+										className={inputClass}
+									/>
+								)}
+							</FieldRow>
+						);
+					})}
+				</div>
+			))}
+		</LayoutSection>
 	);
 }
