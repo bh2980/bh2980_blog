@@ -10,6 +10,8 @@ export interface CmsImageAttributes {
 	align?: "left" | "center" | "right";
 	caption?: string;
 	decorative?: boolean;
+	crop?: string;
+	rotate?: string | number;
 }
 
 export const CmsImageNode = Node.create({
@@ -49,6 +51,16 @@ export const CmsImageNode = Node.create({
 			// Markdown 이미지의 타이틀(`![alt](src "title")`) 보존용. 화면에는 쓰지 않는다.
 			title: {
 				default: null,
+			},
+			crop: {
+				default: null,
+				parseHTML: (element) => element.getAttribute("data-crop"),
+				renderHTML: (attributes) => (attributes.crop ? { "data-crop": attributes.crop } : {}),
+			},
+			rotate: {
+				default: null,
+				parseHTML: (element) => element.getAttribute("data-rotate"),
+				renderHTML: (attributes) => (attributes.rotate ? { "data-rotate": String(attributes.rotate) } : {}),
 			},
 		};
 	},

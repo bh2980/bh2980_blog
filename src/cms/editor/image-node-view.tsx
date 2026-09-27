@@ -1,9 +1,11 @@
 "use client";
 
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { AlignCenter, AlignLeft, AlignRight, Trash2 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { AlignCenter, AlignLeft, AlignRight, Crop, Trash2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { resolveImageUrl } from "@/cms/mdx/image-src";
+import { computeImageTransform } from "@/cms/mdx/image-transform";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -11,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/utils/cn";
+import { ImageCropDialog } from "./image-crop-dialog";
 
 /** §4.3 너비 입력: 1~100% 또는 4096 이하의 양의 정수 px. 빈 값은 본문에 맞춤이다. */
 export const isValidImageWidth = (value: string) => {
@@ -31,14 +34,29 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 	const widthInputId = useId();
 	const altInputId = useId();
 	const widthErrorId = useId();
-	const { src, alt, width, align, caption, mediaId, decorative } = node.attrs;
+	const { src, alt, width, align, caption, mediaId, decorative, crop, rotate } = node.attrs;
 	const [isEditing, setIsEditing] = useState(false);
+	const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+	const [previewWidth, setPreviewWidth] = useState<string | null>(null);
+	const [aspectRatio, setAspectRatio] = useState<number | null>(null);
 	const [widthDraft, setWidthDraft] = useState<string>(width || "");
 	useEffect(() => setWidthDraft(width || ""), [width]);
 	const widthInvalid = !isValidImageWidth(widthDraft);
+	const activeResizeCleanupRef = useRef<(() => void) | null>(null);
+	useEffect(() => {
+		return () => {
+			activeResizeCleanupRef.current?.();
+		};
+	}, []);
 	// 노드 뷰는 항상 편집기 안에서 그려지지만, 편집기 없이 그리는 경우(미리보기·테스트)도 막지 않는다.
 	const isEditable = editor?.isEditable ?? true;
 	const [mediaState, setMediaState] = useState<{ status: string; publicUrl: string | null } | null>(null);
+
+	const transform = computeImageTransform({
+		crop,
+		rotate,
+		aspectRatio,
+	});
 
 	useEffect(() => {
 		if (!mediaId || src) {
@@ -91,6 +109,71 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			right: "ml-auto",
 		}[align as "left" | "center" | "right"] || "mx-auto";
 
+	// 모서리(좌·우 아래) 핸들 드래그로 너비 조절 (c-editor.md §1.1)
+	const handleResizeStart = (e: React.PointerEvent, handle: "left" | "right") => {
+		if (!isEditable) return;
+		e.preventDefault();
+		e.stopPropagation();
+
+		const figure = (e.currentTarget as HTMLElement).closest("figure");
+		if (!figure) return;
+
+		activeResizeCleanupRef.current?.();
+
+		const startX = e.clientX;
+		const initialRect = figure.getBoundingClientRect();
+		const parentRect = figure.parentElement?.getBoundingClientRect() ?? initialRect;
+		const startWidth = initialRect.width;
+		const parentWidth = parentRect.width || initialRect.width;
+		const isPercent = typeof width === "string" && width.trim().endsWith("%");
+		let currentPreview = width || `${Math.round(startWidth)}px`;
+		let hasMoved = false;
+
+		const onPointerMove = (moveEvent: PointerEvent) => {
+			const delta = handle === "right" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
+			if (Math.abs(delta) >= 2) {
+				hasMoved = true;
+			}
+			const newWidth = Math.max(20, startWidth + delta);
+			if (isPercent) {
+				const percent = Math.min(100, Math.max(1, Math.round((newWidth / parentWidth) * 100)));
+				currentPreview = `${percent}%`;
+			} else {
+				const px = Math.min(4096, Math.max(20, Math.round(newWidth)));
+				currentPreview = `${px}px`;
+			}
+			setPreviewWidth(currentPreview);
+			setWidthDraft(currentPreview);
+		};
+
+		const cleanup = () => {
+			window.removeEventListener("pointermove", onPointerMove);
+			window.removeEventListener("pointerup", onPointerUp);
+			window.removeEventListener("pointercancel", onPointerCancel);
+			activeResizeCleanupRef.current = null;
+		};
+
+		const onPointerUp = () => {
+			cleanup();
+			setPreviewWidth(null);
+			// 이동 없이 클릭만 한 경우 커밋하지 않는다(P1-4: 너비 미지정 이미지 보존).
+			if (hasMoved && currentPreview && currentPreview !== (width || null) && isValidImageWidth(currentPreview)) {
+				updateAttributes({ width: normalizeWidth(currentPreview) });
+			}
+		};
+
+		const onPointerCancel = () => {
+			cleanup();
+			setPreviewWidth(null);
+			setWidthDraft(width || "");
+		};
+
+		window.addEventListener("pointermove", onPointerMove);
+		window.addEventListener("pointerup", onPointerUp);
+		window.addEventListener("pointercancel", onPointerCancel);
+		activeResizeCleanupRef.current = cleanup;
+	};
+
 	// TipTap v3는 노드 뷰의 첫 자식이 `data-node-view-wrapper`를 가져야 한다.
 	// 그 속성을 넣는 것이 `NodeViewWrapper`이고, 빠지면 "Please use the NodeViewWrapper
 	// component for your node view"로 런타임에 터진다(이미지 있는 글에서 발생).
@@ -103,7 +186,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 				alignClasses,
 				selected && "ring-2 ring-ring",
 			)}
-			style={{ width: width || "100%", maxWidth: "100%" }}
+			style={{ width: previewWidth || width || "100%", maxWidth: "100%" }}
 		>
 			{/* Image Controls Overlay */}
 			<div
@@ -205,8 +288,35 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 								장식 이미지 (빈 alt로 저장)
 							</Label>
 						</div>
+						{canRender && (
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-7 gap-1 text-xs"
+								onClick={() => {
+									setIsEditing(false);
+									setIsCropDialogOpen(true);
+								}}
+							>
+								<Crop className="size-3.5" />
+								자르기 및 회전 설정
+							</Button>
+						)}
 					</PopoverContent>
 				</Popover>
+				{canRender && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						aria-label="이미지 자르기 및 회전"
+						className="size-7 p-0"
+						onClick={() => setIsCropDialogOpen(true)}
+					>
+						<Crop className="size-3.5" />
+					</Button>
+				)}
 				<Button
 					type="button"
 					variant="ghost"
@@ -220,20 +330,52 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			</div>
 
 			{/* Actual Image */}
-			<div className="relative overflow-hidden rounded-md bg-muted">
-				{canRender ? (
-					// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible
-					<img
-						src={resolved && "url" in resolved ? resolved.url : ""}
-						alt={alt || ""}
-						className="h-auto w-full rounded-md object-contain"
-					/>
-				) : (
-					<div className="flex h-48 w-full items-center justify-center text-muted-foreground text-sm">
-						이미지를 불러올 수 없습니다
+			{canRender ? (
+				transform.isTransformed ? (
+					<div
+						data-slot="image-transform-wrapper"
+						className="relative w-full max-w-full overflow-hidden rounded-md bg-muted"
+						style={{
+							width: previewWidth || width || "100%",
+							maxWidth: "100%",
+							...transform.wrapperStyle,
+						}}
+					>
+						{/* biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible */}
+						<img
+							src={resolved && "url" in resolved ? resolved.url : ""}
+							alt={alt || ""}
+							className="rounded-md"
+							onLoad={(e) => {
+								const { naturalWidth, naturalHeight } = e.currentTarget;
+								if (naturalWidth > 0 && naturalHeight > 0) {
+									setAspectRatio(naturalWidth / naturalHeight);
+								}
+							}}
+							style={transform.imageStyle}
+						/>
 					</div>
-				)}
-			</div>
+				) : (
+					<div className="relative overflow-hidden rounded-md bg-muted">
+						{/* biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible */}
+						<img
+							src={resolved && "url" in resolved ? resolved.url : ""}
+							alt={alt || ""}
+							className="h-auto w-full rounded-md object-contain"
+							onLoad={(e) => {
+								const { naturalWidth, naturalHeight } = e.currentTarget;
+								if (naturalWidth > 0 && naturalHeight > 0) {
+									setAspectRatio(naturalWidth / naturalHeight);
+								}
+							}}
+						/>
+					</div>
+				)
+			) : (
+				<div className="flex h-48 w-full items-center justify-center rounded-md bg-muted text-muted-foreground text-sm">
+					이미지를 불러올 수 없습니다
+				</div>
+			)}
 			{resolveReason ? <p className="mt-1 text-center text-destructive text-xs">{resolveReason}</p> : null}
 
 			{/* Caption Input / Display */}
@@ -248,6 +390,40 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 					className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-center text-muted-foreground text-xs shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-xs dark:bg-transparent"
 				/>
 			</figcaption>
+
+			{/* 모서리(좌·우 아래) 너비 조절 핸들 */}
+			{isEditable && (
+				<>
+					<button
+						type="button"
+						data-slot="resize-handle-left"
+						aria-label="이미지 너비 조절 핸들 (좌측 하단)"
+						onPointerDown={(e) => handleResizeStart(e, "left")}
+						className="absolute -bottom-1 -left-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
+					/>
+					<button
+						type="button"
+						data-slot="resize-handle-right"
+						aria-label="이미지 너비 조절 핸들 (우측 하단)"
+						onPointerDown={(e) => handleResizeStart(e, "right")}
+						className="absolute -right-1 -bottom-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
+					/>
+				</>
+			)}
+
+			{/* 자르기 및 회전 대화상자 */}
+			{canRender && (
+				<ImageCropDialog
+					open={isCropDialogOpen}
+					onOpenChange={setIsCropDialogOpen}
+					src={resolved && "url" in resolved ? resolved.url : ""}
+					crop={crop}
+					rotate={rotate}
+					onApply={({ crop: nextCrop, rotate: nextRotate }) => {
+						updateAttributes({ crop: nextCrop, rotate: nextRotate });
+					}}
+				/>
+			)}
 		</NodeViewWrapper>
 	);
 }

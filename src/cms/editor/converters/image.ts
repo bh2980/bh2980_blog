@@ -1,7 +1,19 @@
 import type { CmsJsonValue } from "../../mdx";
+import { isValidCrop, isValidRotate } from "../../mdx/image-transform";
 import type { BlockConverter } from "./types";
 
-const IMAGE_ATTRS = ["mediaId", "src", "alt", "width", "align", "caption", "decorative", "title"] as const;
+const IMAGE_ATTRS = [
+	"mediaId",
+	"src",
+	"alt",
+	"width",
+	"align",
+	"caption",
+	"decorative",
+	"crop",
+	"rotate",
+	"title",
+] as const;
 
 /** `decorative`는 참일 때만 싣는다 — 거짓·없음은 저장하지 않는다(§4.4). */
 const isDecorative = (value: unknown): boolean => value === true;
@@ -18,6 +30,8 @@ export const imageConverter: BlockConverter = {
 			const value = source[key];
 			if (value === undefined || value === null) continue;
 			if (key === "decorative" && !isDecorative(value)) continue;
+			if (key === "rotate" && (value === "0" || value === 0 || value === "")) continue;
+			if (key === "crop" && (value === "" || value === "0,0,100,100")) continue;
 			attrs[key] = value;
 		}
 		return { type: "image", attrs };
@@ -34,6 +48,9 @@ export const imageConverter: BlockConverter = {
 			// 명시적 `100%`와 미지정은 공개 렌더가 다르다(인라인 width 유무, O2).
 			if (key === "align" && value === "center") continue;
 			if ((key === "caption" || key === "title") && value === "") continue;
+			// 회전 0/없음·전체 자르기는 기본값이므로 저장하지 않는다(c-editor.md §1.1).
+			if (key === "rotate" && (value === "0" || value === 0 || value === "" || !isValidRotate(value))) continue;
+			if (key === "crop" && (value === "" || value === "0,0,100,100" || !isValidCrop(value))) continue;
 			if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
 				attrs[key] = value;
 			}

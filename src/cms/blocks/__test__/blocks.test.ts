@@ -72,6 +72,9 @@ describe("블록 정의(v2 B3)", () => {
 			align: "string",
 			caption: "string",
 			decorative: "boolean",
+			crop: "string",
+			rotate: "string",
+			title: "string",
 		});
 	});
 });

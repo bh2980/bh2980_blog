@@ -37,6 +37,9 @@ export const CmsImage = ({
 	align,
 	caption,
 	decorative,
+	crop,
+	title,
+	rotate,
 	resolve,
 	className,
 	unavailableLabel = "이미지를 표시할 수 없습니다",
@@ -48,6 +51,10 @@ export const CmsImage = ({
 	align?: string;
 	caption?: string;
 	decorative?: boolean;
+	crop?: string;
+	/** `![alt](src "제목")`의 제목. 자르기·회전으로 지시자가 되어도 보존한다. */
+	title?: string;
+	rotate?: string | number;
 	/** 없으면 외부 `src`만 해석한다(`resolveImageUrl`). */
 	resolve?: ImageResolver;
 	className?: string;
@@ -88,7 +95,15 @@ export const CmsImage = ({
 
 	return (
 		<figure className={figureClassName}>
-			<PublicImage src={url} alt={alt ?? ""} decorative={decorative} style={imageWidthStyle} />
+			<PublicImage
+				src={url}
+				alt={alt ?? ""}
+				decorative={decorative}
+				style={imageWidthStyle}
+				crop={crop}
+				rotate={rotate}
+				title={title}
+			/>
 			{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
 		</figure>
 	);

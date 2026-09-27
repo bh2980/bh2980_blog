@@ -6,6 +6,7 @@ import { defineBlock } from "./define";
  */
 
 const ALIGN_OPTIONS = { left: "왼쪽", center: "가운데", right: "오른쪽" } as const;
+const ROTATE_OPTIONS = { "0": "0°", "90": "90°", "180": "180°", "270": "270°" } as const;
 
 export const callout = defineBlock({
 	name: "callout",
@@ -106,6 +107,9 @@ export const image = defineBlock({
 		align: { type: "string", label: "정렬", options: ALIGN_OPTIONS },
 		caption: { type: "string", label: "캡션" },
 		decorative: { type: "boolean", label: "장식 이미지", defaultValue: false },
+		crop: { type: "string", label: "자르기", description: "x,y,w,h (원본 기준 백분율 0~100)" },
+		rotate: { type: "string", label: "회전", options: ROTATE_OPTIONS, description: "90|180|270 (시계 방향)" },
+		title: { type: "string", label: "타이틀", description: "이미지 타이틀" },
 	},
 	editor: { view: "node", nodeView: "image", insertable: true, keywords: ["image", "이미지", "사진"] },
 });

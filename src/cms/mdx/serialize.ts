@@ -199,6 +199,15 @@ const serializeDirectiveAttrs = (node: CmsNode, definition: DirectiveDefinition)
 			parts.push(name);
 			return;
 		}
+		if (name === "rotate" && (value === "0" || value === 0 || value === "" || value === undefined || value === null)) {
+			return;
+		}
+		if (name === "crop" && (value === "" || value === "0,0,100,100" || value === undefined || value === null)) {
+			return;
+		}
+		if (name === "title" && (value === "" || value === undefined || value === null)) {
+			return;
+		}
 		if (value === undefined || value === null) return;
 		parts.push(`${name}="${escapeAttr(String(value))}"`);
 	};
@@ -247,11 +256,15 @@ const serializeImage = (node: CmsNode): string => {
 	const width = node.attrs?.width ? String(node.attrs.width) : undefined;
 	const align = node.attrs?.align ? String(node.attrs.align) : undefined;
 	const caption = node.attrs?.caption ? String(node.attrs.caption) : undefined;
+	const crop = node.attrs?.crop ? String(node.attrs.crop) : undefined;
+	const hasCrop = crop && crop !== "0,0,100,100";
+	const rotate = node.attrs?.rotate ? String(node.attrs.rotate) : undefined;
+	const hasRotate = rotate && rotate !== "0";
 
 	const decorative = node.attrs?.decorative === true || node.attrs?.decorative === "true";
 
 	// §4.4: 미디어 참조·크기·정렬·캡션·장식 표시가 있으면 `image` 리프로, 없으면 Markdown 이미지로 저장한다.
-	if (mediaId || width || align || caption || decorative) {
+	if (mediaId || width || align || caption || decorative || hasCrop || hasRotate) {
 		const definition = DIRECTIVE_BY_COMPONENT.get("Image");
 		if (definition) return `::image${serializeDirectiveAttrs(node, definition)}`;
 	}
