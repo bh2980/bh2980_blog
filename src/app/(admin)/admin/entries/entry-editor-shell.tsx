@@ -536,8 +536,11 @@ export function EntryEditorShell({
 		setPendingTemplateMdx(null);
 	};
 
+	// 번역본은 원문과 slug를 같이 쓸 수 있어 언어를 함께 넘긴다(v2 B4).
 	const previewHref = entry?.workingSlug
-		? `/preview/${collection === "memo" ? "memos" : "posts"}/${encodeURIComponent(entry.workingSlug)}`
+		? `/preview/${collection === "memo" ? "memos" : "posts"}/${encodeURIComponent(entry.workingSlug)}${
+				entry.locale && entry.locale !== "ko" ? `?locale=${entry.locale}` : ""
+			}`
 		: null;
 
 	const commands: PaletteCommand[] = [

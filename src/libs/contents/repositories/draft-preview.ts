@@ -2,6 +2,9 @@ import "server-only";
 
 import type { Entry, EntryMetadata } from "@/cms/adapters/postgres/content-store";
 import { getCmsContentStore } from "@/cms/container";
+import { isCollection } from "@/cms/core/collections";
+import { mergeTranslationMetadata } from "@/cms/schema/derive";
+import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { readSeoMetadata } from "../seo";
 import { normalizeSlug } from "../slug";
 import type { Category, DraftMemo, DraftPost, Tag } from "../types/contents";
@@ -101,10 +104,25 @@ function toDraftMemo(entry: Entry, slug: string, labels: TaxonomyLabels): DraftM
 }
 
 /** working slug로 초안 글을 읽는다. 없거나 분류가 없으면 null. */
-export async function getDraftPreviewPost(slug: string): Promise<DraftPost | null> {
+/**
+ * 번역본 초안은 언어별 값만 가지므로 원문 초안의 공통 값(카테고리·태그·정책)과 합쳐 보여 준다(v2 B4).
+ */
+async function withSourceCommonFields(entry: Entry): Promise<Entry> {
+	if (!entry.translationGroupId || entry.translationGroupId === entry.id || !isCollection(entry.collection))
+		return entry;
+	const source = await getCmsContentStore()
+		.getEntry(entry.translationGroupId)
+		.catch(() => null);
+	if (!source) return entry;
+	const metadata = mergeTranslationMetadata(entry.collection, source.working.metadata, entry.working.metadata);
+	return { ...entry, working: { ...entry.working, metadata: metadata as EntryMetadata } };
+}
+
+export async function getDraftPreviewPost(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<DraftPost | null> {
 	const normalized = normalizeSlug(slug);
-	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: normalized });
-	if (!entry) return null;
+	const found = await getCmsContentStore().getWorkingEntryBySlug({ collection: "post", slug: normalized, locale });
+	if (!found) return null;
+	const entry = await withSourceCommonFields(found);
 
 	const postSlug = entry.workingSlug ?? normalized;
 
@@ -112,10 +130,11 @@ export async function getDraftPreviewPost(slug: string): Promise<DraftPost | nul
 }
 
 /** working slug로 초안 메모를 읽는다. 없으면 null. */
-export async function getDraftPreviewMemo(slug: string): Promise<DraftMemo | null> {
+export async function getDraftPreviewMemo(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<DraftMemo | null> {
 	const normalized = normalizeSlug(slug);
-	const entry = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: normalized });
-	if (!entry) return null;
+	const found = await getCmsContentStore().getWorkingEntryBySlug({ collection: "memo", slug: normalized, locale });
+	if (!found) return null;
+	const entry = await withSourceCommonFields(found);
 
 	const memoSlug = entry.workingSlug ?? normalized;
 

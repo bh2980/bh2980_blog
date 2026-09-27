@@ -5,7 +5,7 @@ import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-stor
 import { COLLECTION_DEFINITIONS, isCollection } from "@/cms/core/collections";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
+import { DEFAULT_LOCALE, isLocale, LOCALE_INFO, localizePath } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import type { CmsIssue } from "../api-error-message";
 import { describeEntryStatus } from "../shared/entry-status";
@@ -86,7 +86,11 @@ export function InspectorPanel({
 					</p>
 					{entry.publishedSlug && entry.status === "published" && (
 						<p className="break-all text-muted-foreground">
-							공개 주소: /{collection === "memo" ? "memos" : "posts"}/{entry.publishedSlug}
+							공개 주소:{" "}
+							{localizePath(
+								isLocale(entry.locale) ? entry.locale : DEFAULT_LOCALE,
+								`/${collection === "memo" ? "memos" : "posts"}/${entry.publishedSlug}`,
+							)}
 						</p>
 					)}
 					<div className="flex flex-wrap gap-1.5">

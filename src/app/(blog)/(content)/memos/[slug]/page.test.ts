@@ -24,6 +24,12 @@ const getMemo = vi.fn();
 vi.mock("@/libs/contents/services/memo", () => ({
 	getMemo: (slug: string) => getMemo(slug),
 	listMemos: async () => ({ list: [] }),
+	listMemoTranslations: async () => [],
+}));
+// 상세 화면은 게시글·메모가 같은 view(v2 B4)를 쓴다. 이 테스트와 무관한 모듈은 막아 둔다.
+vi.mock("@/libs/contents/services/post", () => ({}));
+vi.mock("@/libs/contents/services/localized-links", () => ({
+	createLocalizedLinkResolver: async () => (href: string) => href,
 }));
 vi.mock("./memo-detail-page-content", () => ({ MemoDetailPageContent: () => null }));
 

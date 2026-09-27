@@ -346,14 +346,19 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 		 * 관리자 미리보기 전용 조회. working slug로 항목과 working 본문을 찾는다.
 		 * 공개 조회와 달리 초안·보관·휴지통도 찾으므로 호출자가 관리자 인증을 먼저 통과해야 한다.
 		 */
-		getWorkingEntryBySlug: async (params: { collection: string; slug: string }): Promise<Entry | null> => {
+		getWorkingEntryBySlug: async (params: {
+			collection: string;
+			slug: string;
+			locale?: string;
+		}): Promise<Entry | null> => {
 			if (typeof params?.collection !== "string" || typeof params?.slug !== "string") {
 				throw new CmsError("Invalid parameters", "invalid_input");
 			}
 			if (params.slug.trim().length === 0) throw new CmsError("Invalid slug", "invalid_input");
 			const res = await pool.query<{ id: string }>(
-				`SELECT id FROM "${qSchema}".entries WHERE collection = $1 AND working_slug = $2 LIMIT 1`,
-				[params.collection, params.slug],
+				// 번역본은 원문과 slug를 같이 쓸 수 있어 언어로 가린다(v2 B4).
+				`SELECT id FROM "${qSchema}".entries WHERE collection = $1 AND working_slug = $2 AND locale = $3 LIMIT 1`,
+				[params.collection, params.slug, params.locale ?? DEFAULT_LOCALE],
 			);
 			return res.rows[0] ? loadEntry(pool, res.rows[0].id, qSchema) : null;
 		},

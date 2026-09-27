@@ -2,6 +2,7 @@ import "server-only";
 
 import { compareDesc } from "date-fns";
 import { canPreview } from "@/libs/admin/preview-access";
+import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { getContentRepository } from "../get-content-repository";
 import { getDraftPreviewPost } from "../repositories/draft-preview";
 import type { ListResult, Post, PublishedPost } from "../types/contents";
@@ -9,19 +10,25 @@ import type { PostListQuery } from "../types/query";
 
 const contentRepository = getContentRepository();
 
-export async function getPost(slug: string) {
-	const post = await contentRepository.getPost(slug);
+export async function getPost(slug: string, locale: Locale = DEFAULT_LOCALE) {
+	const post = await contentRepository.getPost(slug, locale);
 
 	if (post?.status === "draft") return null;
 
 	return post;
 }
 
-export async function listPosts(query: Omit<PostListQuery, "status"> = {}): Promise<ListResult<PublishedPost>> {
-	const postList = await contentRepository.listPosts({
-		...query,
-		status: "published",
-	});
+export async function listPosts(
+	query: Omit<PostListQuery, "status"> = {},
+	locale: Locale = DEFAULT_LOCALE,
+): Promise<ListResult<PublishedPost>> {
+	const postList = await contentRepository.listPosts(
+		{
+			...query,
+			status: "published",
+		},
+		locale,
+	);
 
 	const publishedPostList = postList
 		.filter((post): post is PublishedPost => post.status === "published")
@@ -30,8 +37,13 @@ export async function listPosts(query: Omit<PostListQuery, "status"> = {}): Prom
 	return { list: publishedPostList, total: publishedPostList.length };
 }
 
-export async function listPostSlugs() {
-	return await contentRepository.listPostSlugs();
+export async function listPostSlugs(locale: Locale = DEFAULT_LOCALE) {
+	return await contentRepository.listPostSlugs(locale);
+}
+
+/** 같은 번역 묶음의 공개된 언어와 주소(v2 B4). 글 화면의 `hreflang`과 언어 전환이 쓴다. */
+export async function listPostTranslations(translationGroupId: string) {
+	return await contentRepository.listTranslations("post", translationGroupId);
 }
 
 /**
@@ -41,15 +53,15 @@ export async function listPostSlugs() {
  * M9-FE-1: postgres 공개 저장소는 계약상 초안을 돌려주지 않으므로, 공개 조회가 비어 있으면
  * 관리자 전용 working 본문 경로를 한 번 더 본다. 공개 경로(`getPost`)는 그대로 초안을 숨긴다.
  */
-export async function getPreviewPost(slug: string) {
+export async function getPreviewPost(slug: string, locale: Locale = DEFAULT_LOCALE) {
 	const isAdmin = await canPreview();
 
 	if (!isAdmin) return null;
 
-	const post = await contentRepository.getPost(slug);
+	const post = await contentRepository.getPost(slug, locale);
 	if (post) return post as Post;
 
-	return await getDraftPreviewPost(slug);
+	return await getDraftPreviewPost(slug, locale);
 }
 
 export async function listPreviewPosts(query: PostListQuery = {}): Promise<ListResult<Post>> {

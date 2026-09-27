@@ -8,13 +8,16 @@ export const Collapsible = ({
 	className,
 	defaultOpen,
 	title,
+	fallbackTitle = "펼치기",
 }: {
 	children: ReactNode;
 	className?: string;
 	defaultOpen?: boolean;
 	title?: string;
+	/** 제목이 없을 때 쓰는 문구. 공개 화면의 언어에 맞춰 넘긴다(v2 B4). */
+	fallbackTitle?: string;
 }) => {
-	const triggerLabel = title?.trim() || "펼치기";
+	const triggerLabel = title?.trim() || fallbackTitle;
 
 	return (
 		<CollapsibleRoot

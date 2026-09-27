@@ -20,7 +20,14 @@ const useHydrated = () =>
  * 뒤따르는 요소의 자동 ID(useId)를 브라우저와 다르게 만들었다(hydration 불일치). 그래서 hydration이
  * 끝날 때까지는 같은 크기의 자리표시를 두고, 그 뒤에 실제 버튼을 그린다.
  */
-export function ThemeToggle({ className, ...props }: Omit<ComponentProps<typeof Button>, "onClick" | "children">) {
+export function ThemeToggle({
+	className,
+	labels = { toLight: "라이트 모드로 전환", toDark: "다크 모드로 전환" },
+	...props
+}: Omit<ComponentProps<typeof Button>, "onClick" | "children"> & {
+	/** 버튼 이름. 공개 블로그는 화면 언어의 문구를 넘긴다(v2 B4). */
+	labels?: { toLight: string; toDark: string };
+}) {
 	const { resolvedTheme, setTheme } = useTheme();
 	const hydrated = useHydrated();
 	if (!hydrated) {
@@ -33,7 +40,7 @@ export function ThemeToggle({ className, ...props }: Omit<ComponentProps<typeof 
 			variant="ghost"
 			size="icon"
 			onClick={() => setTheme(isDark ? "light" : "dark")}
-			aria-label={isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}
+			aria-label={isDark ? labels.toLight : labels.toDark}
 			className={className}
 			{...props}
 		>

@@ -16,6 +16,8 @@ import type { ImageResolver } from "@/cms/mdx/image-src";
 import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/remark-directives";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { remarkChartToMdx } from "@/libs/chart";
+import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
+import { translator } from "@/libs/i18n/translate";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
 import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
 import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
@@ -97,12 +99,32 @@ export const MDX_COMPONENTS = {
  *
  * `CmsImage`는 DB를 직접 읽지 않는다 — 호출자가 resolver를 넘긴다(A3). 주지 않으면 외부 `src`만 해석한다.
  */
-export const createMdxComponents = (options: { imageResolver?: ImageResolver } = {}) => ({
-	...MDX_COMPONENTS,
-	Image: (props: ComponentProps<typeof CmsImage>) => <CmsImage {...props} resolve={options.imageResolver} />,
-});
+export type MdxRenderOptions = {
+	imageResolver?: ImageResolver;
+	/** 공개 화면의 언어(v2 B4). 컴포넌트의 고정 문구를 그 언어로 쓴다. */
+	locale?: Locale;
+	/** 사이트 내부 링크를 이 언어 주소로 바꾼다(같은 언어 번역본이 있을 때). */
+	resolveHref?: (href: string) => string;
+};
 
-export const renderMDX = async (source: string, options: { imageResolver?: ImageResolver } = {}) => {
+export const createMdxComponents = (options: MdxRenderOptions = {}) => {
+	const t = translator(options.locale ?? DEFAULT_LOCALE);
+	const resolveHref = options.resolveHref;
+	return {
+		...MDX_COMPONENTS,
+		...(resolveHref
+			? { a: (props: ComponentProps<typeof a>) => a({ ...props, href: resolveHref(props.href ?? "") }) }
+			: {}),
+		Collapsible: (props: ComponentProps<typeof Collapsible>) => (
+			<Collapsible {...props} fallbackTitle={t("mdx.expand")} />
+		),
+		Image: (props: ComponentProps<typeof CmsImage>) => (
+			<CmsImage {...props} resolve={options.imageResolver} unavailableLabel={t("mdx.imageUnavailable")} />
+		),
+	};
+};
+
+export const renderMDX = async (source: string, options: MdxRenderOptions = {}) => {
 	// M7-SEC-1 조건 3: 검증을 통과하지 못한 MDX는 실행 컴파일러에 넣지 않는다(fail-closed).
 	// 저장·발행 경계(`assertPublishableMdx`)를 지나온 본문이라도 여기서 한 번 더 막는다.
 	const errors = analyze(source).errors;

@@ -89,3 +89,31 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(entries.map((entry) => entry.url)).toEqual([HOST, `${HOST}/posts`, `${HOST}/memos`]);
 	});
 });
+
+describe("v2 B4 언어별 sitemap", () => {
+	it("번역본 주소를 담고 같은 글끼리 hreflang으로 잇는다(기본 언어가 x-default)", () => {
+		const ko = { ...post("hello"), locale: "ko" as const, translationGroupId: "g1" };
+		const en = { ...post("hello"), locale: "en" as const, translationGroupId: "g1" };
+		const solo = { ...post("only-ko"), locale: "ko" as const, translationGroupId: "g2" };
+		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [ko, en, solo], memos: [] });
+
+		expect(entries.map((entry) => entry.url)).toEqual([
+			HOST,
+			`${HOST}/en`,
+			`${HOST}/posts`,
+			`${HOST}/en/posts`,
+			`${HOST}/memos`,
+			`${HOST}/en/memos`,
+			`${HOST}/posts/hello`,
+			`${HOST}/en/posts/hello`,
+			`${HOST}/posts/only-ko`,
+		]);
+		const english = entries.find((entry) => entry.url === `${HOST}/en/posts/hello`);
+		expect(english?.alternates?.languages).toEqual({
+			ko: `${HOST}/posts/hello`,
+			en: `${HOST}/en/posts/hello`,
+			"x-default": `${HOST}/posts/hello`,
+		});
+		expect(entries.find((entry) => entry.url === `${HOST}/posts/only-ko`)?.alternates).toBeUndefined();
+	});
+});

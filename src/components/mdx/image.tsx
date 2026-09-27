@@ -39,6 +39,7 @@ export const CmsImage = ({
 	decorative,
 	resolve,
 	className,
+	unavailableLabel = "이미지를 표시할 수 없습니다",
 }: {
 	mediaId?: string;
 	src?: string;
@@ -50,6 +51,8 @@ export const CmsImage = ({
 	/** 없으면 외부 `src`만 해석한다(`resolveImageUrl`). */
 	resolve?: ImageResolver;
 	className?: string;
+	/** 표시할 수 없을 때 문구. 공개 화면의 언어에 맞춰 넘긴다(v2 B4). */
+	unavailableLabel?: string;
 }) => {
 	const resolved = resolve ? resolve({ mediaId, src }) : resolveImageUrl(src);
 	const url = resolved && "url" in resolved ? resolved.url : null;
@@ -66,14 +69,14 @@ export const CmsImage = ({
 			<figure className={cn("my-6 flex flex-col items-center gap-2", className)}>
 				<div
 					role="img"
-					aria-label="이미지를 표시할 수 없습니다"
+					aria-label={unavailableLabel}
 					className={cn(
 						"flex h-48 w-full items-center justify-center gap-2 rounded-md border border-dashed",
 						"border-slate-300 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500",
 					)}
 				>
 					<ImageOff className="h-5 w-5" aria-hidden />
-					<span className="text-sm">이미지를 표시할 수 없습니다</span>
+					<span className="text-sm">{unavailableLabel}</span>
 				</div>
 				{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
 			</figure>

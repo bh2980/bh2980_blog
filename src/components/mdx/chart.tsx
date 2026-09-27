@@ -26,6 +26,7 @@ import {
 	parseChartDsl,
 	resolvePieGeometry,
 } from "@/libs/chart";
+import { useTranslate } from "@/libs/i18n/use-locale";
 import { cn } from "@/utils/cn";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import {
@@ -71,16 +72,17 @@ const toChartConfig = (spec: NormalizedChartSpec): ChartConfig => {
 };
 
 const ChartErrorCard = ({ errors }: { errors: ChartRenderError[] }) => {
+	const { t } = useTranslate();
 	return (
 		<div className="not-prose my-6">
 			<Alert variant="danger">
 				<AlertOctagon />
-				<AlertTitle>차트 문법 오류</AlertTitle>
+				<AlertTitle>{t("mdx.chartError")}</AlertTitle>
 				<AlertDescription>
 					<ul className="ml-4 list-disc space-y-1">
 						{errors.map((error) => (
 							<li key={`${error.line}-${error.message}`}>
-								{error.line}줄: {error.message}
+								{t("mdx.chartErrorLine", { line: error.line, message: error.message })}
 							</li>
 						))}
 					</ul>

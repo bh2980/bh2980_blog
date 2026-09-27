@@ -64,7 +64,7 @@ describe("draft preview (M9-FE-1)", () => {
 			title: "초안 메모",
 			contentMdx: "미리보기 본문",
 		});
-		expect(state.slugCalls).toEqual([{ collection: "memo", slug: "draft-1" }]);
+		expect(state.slugCalls).toEqual([{ collection: "memo", slug: "draft-1", locale: "ko" }]);
 	});
 
 	it("working 항목에서 초안 글을 만든다", async () => {
@@ -101,7 +101,7 @@ describe("draft preview (M9-FE-1)", () => {
 			{ slug: "tag-1", label: "TypeScript" },
 			{ slug: "tag-missing", label: "tag-missing" },
 		]);
-		expect(state.slugCalls).toEqual([{ collection: "post", slug: "draft-1" }]);
+		expect(state.slugCalls).toEqual([{ collection: "post", slug: "draft-1", locale: "ko" }]);
 	});
 
 	it("NFD 한글 slug도 공개 조회와 같은 NFC 규칙으로 찾는다", async () => {
@@ -113,7 +113,7 @@ describe("draft preview (M9-FE-1)", () => {
 
 		const post = await getDraftPreviewPost(nfd);
 
-		expect(state.slugCalls).toEqual([{ collection: "post", slug: nfc }]);
+		expect(state.slugCalls).toEqual([{ collection: "post", slug: nfc, locale: "ko" }]);
 		expect(post?.slug).toBe(nfc);
 	});
 

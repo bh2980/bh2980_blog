@@ -3,6 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { type ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
+import { useTranslate } from "@/libs/i18n/use-locale";
 
 type QueryPreservingBackLinkProps = {
 	pathname: string;
@@ -30,17 +31,18 @@ const getHrefWithCurrentQuery = (pathname: string, searchParams: ReadonlyURLSear
 
 export const QueryPreservingBackLink = ({
 	pathname,
-	label = "돌아가기",
+	label,
 	className,
 	iconSize = 16,
 }: QueryPreservingBackLinkProps) => {
 	const searchParams = useSearchParams();
+	const { t } = useTranslate();
 	const href = getHrefWithCurrentQuery(pathname, searchParams);
 
 	return (
 		<Link href={href} className={className}>
 			<ArrowLeft size={iconSize} />
-			<span>{label}</span>
+			<span>{label ?? t("detail.back")}</span>
 		</Link>
 	);
 };

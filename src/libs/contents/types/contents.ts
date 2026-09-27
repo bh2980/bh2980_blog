@@ -1,3 +1,5 @@
+import type { Locale } from "@/libs/i18n/locales";
+
 export type ListResult<T> = {
 	list: T[];
 	total: number;
@@ -36,28 +38,36 @@ type BaseSeo = {
 	seo?: SeoMetadata;
 };
 
-type BasePost = BaseSeo & {
-	slug: string;
-	title: string;
-	contentMdx: string;
-	excerpt: string;
-	category: Category;
-	tags: Tag[];
-	isEvergreen?: boolean;
-	/** `policy: deprecated`인 글. 공개된 대체 글이 있으면 안내한다(§6.4). */
-	deprecation?: { replacement: { slug: string; title: string } | null };
+/** 콘텐츠 언어와 번역 묶음(v2 B4). 미리보기 초안은 없을 수 있다. */
+type BaseLocale = {
+	locale?: Locale;
+	translationGroupId?: string;
 };
+
+type BasePost = BaseSeo &
+	BaseLocale & {
+		slug: string;
+		title: string;
+		contentMdx: string;
+		excerpt: string;
+		category: Category;
+		tags: Tag[];
+		isEvergreen?: boolean;
+		/** `policy: deprecated`인 글. 공개된 대체 글이 있으면 안내한다(§6.4). */
+		deprecation?: { replacement: { slug: string; title: string; locale?: Locale } | null };
+	};
 
 export type DraftPost = DraftState & BasePost;
 export type PublishedPost = PublishedState & BasePost;
 export type Post = DraftPost | PublishedPost;
 
-type BaseMemo = BaseSeo & {
-	slug: string;
-	title: string;
-	contentMdx: string;
-	tags: Tag[];
-};
+type BaseMemo = BaseSeo &
+	BaseLocale & {
+		slug: string;
+		title: string;
+		contentMdx: string;
+		tags: Tag[];
+	};
 
 export type DraftMemo = DraftState & BaseMemo;
 export type PublishedMemo = PublishedState & BaseMemo;
