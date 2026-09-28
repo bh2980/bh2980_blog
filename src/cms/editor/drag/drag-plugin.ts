@@ -1,14 +1,11 @@
 import { Extension } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { calculateDropPosition, moveBlockNode, selectedBlockRange } from "./drag-commands";
+import type { EditorView } from "@tiptap/pm/view";
+import { createBlockSelectionPlugin, selectedBlockRange } from "./block-selection";
+import { calculateDropPosition, moveBlockNode } from "./drag-commands";
 
 export const BLOCK_DRAG_MIME_TYPE = "application/x-cms-block-drag";
-
-/** 여러 블록 선택 중인 편집기와 선택된 블록에 붙는 클래스(스타일은 편집기 클래스에 둔다). */
-export const BLOCK_RANGE_CLASS = "cms-block-range";
-export const BLOCK_SELECTED_CLASS = "cms-block-selected";
 
 export const cmsBlockDragPluginKey = new PluginKey<{ dropPos: number | null }>("cmsBlockDrag");
 
@@ -63,7 +60,7 @@ function createDropIndicatorView(editorView: EditorView) {
 
 /**
  * 블록 핸들 dragstart 시 호출되어 ProseMirror 드래그 상태와 dataTransfer를 초기화한다.
- * 잡은 블록이 여러 블록 선택(selectedBlockRange) 안에 있으면 선택된 블록 전체를 함께 끈다.
+ * 잡은 블록이 블록 선택(마키로 고른 블록) 안에 있으면 선택된 블록 전체를 함께 끈다.
  */
 export function startBlockDrag(
 	view: EditorView,
@@ -140,28 +137,8 @@ export const CmsBlockDrag = Extension.create({
 
 	addProseMirrorPlugins() {
 		return [
-			// 선택이 여러 블록에 걸치면 걸친 블록을 통째로 칠한다(노션의 블록 선택). 그 블록 중 하나의 핸들을
-			// 끌면 전부 함께 옮긴다(startBlockDrag). 글자 선택 표시는 그동안 숨긴다(편집기 클래스 참고).
-			new Plugin({
-				key: new PluginKey("cmsBlockRangeHighlight"),
-				props: {
-					attributes: (state): Record<string, string> =>
-						selectedBlockRange(state) ? { class: BLOCK_RANGE_CLASS } : {},
-					decorations(state) {
-						const range = selectedBlockRange(state);
-						if (!range) return null;
-						const decorations: Decoration[] = [];
-						let pos = range.from;
-						while (pos < range.to) {
-							const node = state.doc.nodeAt(pos);
-							if (!node) break;
-							decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: BLOCK_SELECTED_CLASS }));
-							pos += node.nodeSize;
-						}
-						return DecorationSet.create(state.doc, decorations);
-					},
-				},
-			}),
+			// 블록 선택(마키로 고른 블록). 그 블록 중 하나의 핸들을 끌면 전부 함께 옮긴다(startBlockDrag).
+			createBlockSelectionPlugin(),
 			new Plugin({
 				key: cmsBlockDragPluginKey,
 				state: {

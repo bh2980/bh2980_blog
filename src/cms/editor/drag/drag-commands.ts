@@ -7,6 +7,9 @@ import { canJoin, dropPoint } from "@tiptap/pm/transform";
  * DOM 의존 없이 ProseMirror 트랜잭션 및 스키마 검증을 jsdom/단위 테스트에서 수행할 수 있다.
  */
 
+/** moveBlockNode가 여러 블록을 옮긴 뒤 옮긴 자리({from, to})를 알리는 트랜잭션 메타(블록 선택이 이어진다). */
+export const MOVED_RANGE_META = "cmsMovedRange";
+
 /** 비면 안 되는 목록. 유일한 항목을 옮기면 빈 목록째 뺀다. */
 const LIST_NODES = new Set(["bulletList", "orderedList", "taskList"]);
 /** 본문 블록이 하나 이상이어야 하는 CMS 컨테이너. 유일한 블록을 옮기면 빈 문단을 남긴다. */
@@ -178,7 +181,7 @@ export function selectionForMovedNode(doc: PmNode, pos: number, node: PmNode): S
 /**
  * 단일 트랜잭션으로 블록(묶음이면 fromPos~toPos의 이웃 블록들)을 targetPos로 이동한다 ("한 드래그 = 한 undo").
  * 스키마가 허용하지 않으면 null을 반환하고 아무 작업도 하지 않는다.
- * 블록 하나를 옮기면 그 블록을, 여러 개를 옮기면 옮긴 블록 전체를 선택해 둔다(묶음 선택이 유지된다).
+ * 블록 하나를 옮기면 그 블록을 선택하고, 여러 개를 옮기면 옮긴 자리를 MOVED_RANGE_META로 알린다(블록 선택이 이어진다).
  */
 export function moveBlockNode(
 	state: EditorState,
@@ -231,30 +234,8 @@ export function moveBlockNode(
 	if (selection) {
 		tr.setSelection(selection);
 	}
+	if (range.content.childCount > 1) tr.setMeta(MOVED_RANGE_META, { from: movedStart, to: movedEnd });
 	tr.scrollIntoView();
 
 	return tr;
-}
-
-/**
- * 선택이 걸친 같은 부모의 이웃 블록들(두 개 이상). 노션처럼 여러 블록을 골라 한 번에 옮길 때 쓴다.
- * 선택 양 끝의 가장 가까운 공통 부모에서, 양 끝이 들어 있는 자식부터 끝 자식까지다.
- * 목록 항목 1~3에 걸치면 그 항목들, 목록 위 문단부터 목록 안까지 걸치면 문단과 목록 전체다.
- */
-export function selectedBlockRange(state: EditorState): { from: number; to: number } | null {
-	const { selection } = state;
-	if (selection.empty || !(selection instanceof TextSelection)) return null;
-	const { $from, $to } = selection;
-	const depth = $from.sharedDepth($to.pos);
-	const parent = $from.node(depth);
-	if (parent.isTextblock) return null;
-	const start = $from.index(depth);
-	const end = $to.index(depth);
-	if (end <= start) return null;
-	const base = depth === 0 ? 0 : $from.start(depth);
-	let from = base;
-	for (let index = 0; index < start; index += 1) from += parent.child(index).nodeSize;
-	let to = from;
-	for (let index = start; index <= end; index += 1) to += parent.child(index).nodeSize;
-	return { from, to };
 }

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
-import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag } from "./drag";
+import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
@@ -536,6 +536,14 @@ export function CmsEditor({
 				onCompositionEnd?.();
 			}}
 			onMouseMove={handleMouseMove}
+			onMouseDown={(event) => {
+				// 본문 바깥 빈 여백에서 누른 채 끌면 마키(네모 영역)로 블록을 고른다. 편집기 안쪽 여백은
+				// 블록 선택 플러그인이 맡는다. 서식 도구·제목 입력·버튼 같은 조작 요소와 포털(팝오버)은 제외한다.
+				const target = event.target as HTMLElement;
+				if (!editable || !event.currentTarget.contains(target) || editor.view.dom.contains(target)) return;
+				if (target.closest('input, textarea, button, select, a, [role="toolbar"], [contenteditable="true"]')) return;
+				startMarquee(editor.view, event.nativeEvent);
+			}}
 		>
 			<div
 				role="toolbar"
