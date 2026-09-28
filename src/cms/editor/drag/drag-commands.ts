@@ -7,8 +7,8 @@ import { canJoin, dropPoint } from "@tiptap/pm/transform";
  * DOM 의존 없이 ProseMirror 트랜잭션 및 스키마 검증을 jsdom/단위 테스트에서 수행할 수 있다.
  */
 
-/** moveBlockNode가 여러 블록을 옮긴 뒤 옮긴 자리({from, to})를 알리는 트랜잭션 메타(블록 선택이 이어진다). */
-export const MOVED_RANGE_META = "cmsMovedRange";
+/** 여러 블록을 옮긴 뒤 옮긴 블록들의 위치(number[])를 알리는 트랜잭션 메타(블록 선택이 이어진다). */
+export const MOVED_BLOCKS_META = "cmsMovedBlocks";
 
 /** 비면 안 되는 목록. 유일한 항목을 옮기면 빈 목록째 뺀다. */
 const LIST_NODES = new Set(["bulletList", "orderedList", "taskList"]);
@@ -181,7 +181,7 @@ export function selectionForMovedNode(doc: PmNode, pos: number, node: PmNode): S
 /**
  * 단일 트랜잭션으로 블록(묶음이면 fromPos~toPos의 이웃 블록들)을 targetPos로 이동한다 ("한 드래그 = 한 undo").
  * 스키마가 허용하지 않으면 null을 반환하고 아무 작업도 하지 않는다.
- * 블록 하나를 옮기면 그 블록을 선택하고, 여러 개를 옮기면 옮긴 자리를 MOVED_RANGE_META로 알린다(블록 선택이 이어진다).
+ * 블록 하나를 옮기면 그 블록을 선택하고, 여러 개를 옮기면 옮긴 자리를 MOVED_BLOCKS_META로 알린다(블록 선택이 이어진다).
  */
 export function moveBlockNode(
 	state: EditorState,
@@ -234,8 +234,148 @@ export function moveBlockNode(
 	if (selection) {
 		tr.setSelection(selection);
 	}
-	if (range.content.childCount > 1) tr.setMeta(MOVED_RANGE_META, { from: movedStart, to: movedEnd });
+	if (range.content.childCount > 1) {
+		const moved: number[] = [];
+		let offset = movedStart;
+		range.content.forEach((child) => {
+			moved.push(offset);
+			offset += child.nodeSize;
+		});
+		tr.setMeta(MOVED_BLOCKS_META, moved);
+	}
 	tr.scrollIntoView();
 
 	return tr;
+}
+
+/**
+ * 블록 묶음(서로 다른 부모의 줄이 섞일 수 있다: 제목 + 목록 항목 일부 등)을 한 곳에 넣을 모양으로 만든다.
+ * - 같은 목록에서 이어진 항목들은 그 목록 종류로 감싼다(목록 밖에 놓을 때).
+ * - 모두 목록 항목이면 목록 사이에 놓을 때를 위해 항목 그대로의 모양도 함께 돌려준다.
+ */
+function blockSetContent(doc: PmNode, positions: readonly number[]) {
+	const groups: Array<{ list: PmNode | null; nodes: PmNode[] }> = [];
+	const items: PmNode[] = [];
+	let itemsOnly = positions.length > 0;
+	for (const pos of positions) {
+		const node = doc.nodeAt(pos);
+		if (!node) return null;
+		const parent = doc.resolve(pos).parent;
+		const isItem = LIST_ITEM_NODES.has(node.type.name) && LIST_NODES.has(parent.type.name);
+		if (isItem) items.push(node);
+		else itemsOnly = false;
+		const last = groups[groups.length - 1];
+		if (isItem && last?.list === parent) last.nodes.push(node);
+		else groups.push({ list: isItem ? parent : null, nodes: [node] });
+	}
+	const blocks = groups.map(({ list, nodes }) => {
+		if (!list) return nodes[0] as PmNode;
+		const { order: _order, ...attrs } = list.attrs as Record<string, unknown>;
+		return list.type.create(attrs, nodes);
+	});
+	return { blocks: Fragment.fromArray(blocks), items: itemsOnly ? Fragment.fromArray(items) : null };
+}
+
+/** 묶음을 targetPos에 놓을 때 넣을 내용. 묶음 안쪽이거나 스키마가 허용하지 않으면 null이다. */
+export function placeableBlockSetAt(doc: PmNode, positions: readonly number[], targetPos: number): Fragment | null {
+	if (targetPos < 0 || targetPos > doc.content.size) return null;
+	for (const pos of positions) {
+		const node = doc.nodeAt(pos);
+		if (!node || (targetPos >= pos && targetPos <= pos + node.nodeSize)) return null;
+	}
+	const content = blockSetContent(doc, positions);
+	if (!content) return null;
+	const $target = doc.resolve(targetPos);
+	const index = $target.index();
+	if (content.items && $target.parent.canReplace(index, index, content.items)) return content.items;
+	return $target.parent.canReplace(index, index, content.blocks) ? content.blocks : null;
+}
+
+/** 묶음을 놓을 유효한 위치(끌기 중 표시와 놓기에 쓴다). */
+export function calculateBlockSetDropPosition(
+	doc: PmNode,
+	positions: readonly number[],
+	rawTargetPos: number,
+): number | null {
+	const content = blockSetContent(doc, positions);
+	if (!content) return null;
+	const candidates = [content.items, content.blocks].filter((fragment): fragment is Fragment => !!fragment);
+	for (const fragment of candidates) {
+		const point = dropPoint(doc, rawTargetPos, new Slice(fragment, 0, 0)) ?? rawTargetPos;
+		if (placeableBlockSetAt(doc, positions, point)) return point;
+	}
+	return null;
+}
+
+/**
+ * 묶음에서 줄들을 지운다(뒤에서부터). 목록의 항목이 모두 빠지면 목록째, 컨테이너가 비면 빈 문단을 남긴다.
+ * 문서가 통째로 비면 빈 문단 하나를 남긴다.
+ */
+export function deleteBlockSet(tr: Transaction, positions: readonly number[]): Transaction {
+	for (const original of [...positions].reverse()) {
+		const pos = tr.mapping.map(original);
+		const node = tr.doc.nodeAt(pos);
+		if (!node) continue;
+		const source = sourceRangeOf(tr.doc, pos);
+		if (source?.fill) tr.replaceWith(source.from, source.to, source.fill);
+		else if (source) tr.delete(source.from, source.to);
+		else {
+			const paragraph = tr.doc.type.schema.nodes.paragraph;
+			if (paragraph) tr.replaceWith(pos, pos + node.nodeSize, paragraph.create());
+		}
+	}
+	return tr;
+}
+
+/**
+ * 블록 묶음을 targetPos로 옮긴다(한 번의 되돌리기). 옮긴 줄들의 새 위치를 MOVED_BLOCKS_META로 알린다.
+ * 넣은 자리 양옆과 넣은 내용 사이의 같은 종류 목록은 합친다.
+ */
+export function moveBlockSet(state: EditorState, positions: readonly number[], targetPos: number): Transaction | null {
+	const content = placeableBlockSetAt(state.doc, positions, targetPos);
+	if (!content) return null;
+	const tr = deleteBlockSet(state.tr, positions);
+	const insertedAt = tr.mapping.map(targetPos);
+	tr.insert(insertedAt, content);
+	const afterInsert = tr.steps.length;
+
+	// 옮긴 줄의 위치: 항목이면 감싼 목록 안, 아니면 블록 자신.
+	const moved: number[] = [];
+	let offset = insertedAt;
+	content.forEach((node) => {
+		// 줄로 고를 수 있는 목록은 없다(항목이 줄이다). 넣은 목록은 항목을 감싼 것이고, 그 항목들이 옮긴 줄이다.
+		if (LIST_NODES.has(node.type.name)) {
+			let inner = offset + 1;
+			node.forEach((item) => {
+				moved.push(inner);
+				inner += item.nodeSize;
+			});
+		} else moved.push(offset);
+		offset += node.nodeSize;
+	});
+
+	// 같은 종류 목록끼리 맞닿은 경계를 뒤에서부터 합친다.
+	const boundaries: number[] = [insertedAt];
+	let boundary = insertedAt;
+	content.forEach((node) => {
+		boundary += node.nodeSize;
+		boundaries.push(boundary);
+	});
+	for (const at of boundaries.reverse()) {
+		const $at = tr.doc.resolve(tr.mapping.slice(afterInsert).map(at));
+		const before = $at.nodeBefore;
+		const after = $at.nodeAfter;
+		if (before && after && before.type === after.type && LIST_NODES.has(before.type.name) && canJoin(tr.doc, $at.pos))
+			tr.join($at.pos);
+	}
+
+	const mapping = tr.mapping.slice(afterInsert);
+	const finalPositions = moved.map((pos) => mapping.map(pos, 1));
+	const first = finalPositions[0];
+	const lastPos = finalPositions[finalPositions.length - 1];
+	const last = lastPos === undefined ? undefined : tr.doc.nodeAt(lastPos);
+	if (first !== undefined && lastPos !== undefined && last)
+		tr.setSelection(TextSelection.between(tr.doc.resolve(first + 1), tr.doc.resolve(lastPos + last.nodeSize - 1)));
+	tr.setMeta(MOVED_BLOCKS_META, finalPositions);
+	return tr.scrollIntoView();
 }

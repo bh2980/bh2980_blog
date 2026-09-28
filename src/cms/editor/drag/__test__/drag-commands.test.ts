@@ -3,8 +3,8 @@ import { TextSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
 import { buildEditorExtensions } from "../../extensions";
 import { mdxToTiptap } from "../../tiptap-content";
-import { selectedBlockRange, setBlockSelection } from "../block-selection";
-import { calculateDropPosition, canDropBlockNode, moveBlockNode, sourceRangeOf } from "../drag-commands";
+import { selectedBlocks, setBlockSelection } from "../block-selection";
+import { calculateDropPosition, canDropBlockNode, moveBlockNode, moveBlockSet, sourceRangeOf } from "../drag-commands";
 
 const createTestEditor = (content: string) => {
 	return new Editor({
@@ -332,7 +332,7 @@ describe("목록 항목을 목록 밖으로 끌어내기", () => {
 	});
 });
 
-describe("블록 선택(마키) 후 한 번에 옮기기·지우기", () => {
+describe("블록 선택(마키): 줄 단위로 고르고 옮기기·지우기", () => {
 	const posOf = (editor: Editor, type: string, text: string) => {
 		let found = -1;
 		editor.state.doc.descendants((node, pos) => {
@@ -342,61 +342,79 @@ describe("블록 선택(마키) 후 한 번에 옮기기·지우기", () => {
 		return found;
 	};
 	const html = (editor: Editor) => editor.getHTML().replace(/<p><\/p>$/, "");
-	const selectBlocks = (editor: Editor, from: number, to: number) =>
-		editor.view.dispatch(setBlockSelection(editor.state.tr, { from, to }));
+	const select = (editor: Editor, positions: number[]) =>
+		editor.view.dispatch(setBlockSelection(editor.state.tr, positions));
+	const backspace = (editor: Editor) =>
+		editor.view.dom.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
 
 	it("글자를 여러 블록에 걸쳐 골라도 블록 선택이 되지 않는다(보이는 것과 지워지는 것이 같다)", () => {
 		const editor = createTestEditor("<p>가나다</p><p>라마바</p>");
 		editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2, 7)));
-		expect(selectedBlockRange(editor.state)).toBeNull();
+		expect(selectedBlocks(editor.state)).toBeNull();
 		editor.destroy();
 	});
 
-	it("선택한 블록은 Backspace로 글자가 남지 않게 통째로 지운다", () => {
-		const editor = createTestEditor("<p>가</p><ul><li><p>하나</p></li></ul><p>나</p>");
-		selectBlocks(editor, 0, posOf(editor, "paragraph", "나"));
-		editor.view.dom.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
-		expect(html(editor)).toBe("<p>나</p>");
-		expect(selectedBlockRange(editor.state)).toBeNull();
+	it("목록 항목은 하나하나가 줄이다: 일부 항목만 골라 지우면 나머지 항목은 남는다", () => {
+		const editor = createTestEditor("<ol><li><p>하나</p></li><li><p>둘</p></li><li><p>셋</p></li></ol>");
+		select(editor, [posOf(editor, "listItem", "둘"), posOf(editor, "listItem", "셋")]);
+		backspace(editor);
+		expect(html(editor)).toBe("<ol><li><p>하나</p></li></ol>");
+		expect(selectedBlocks(editor.state)).toBeNull();
+		editor.destroy();
+	});
+
+	it("제목과 목록 앞쪽 항목을 함께 골라 지우면 글자가 남지 않고, 목록이 비면 목록째 빠진다", () => {
+		const editor = createTestEditor("<h2>제목</h2><ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>뒤</p>");
+		select(editor, [posOf(editor, "heading", "제목"), posOf(editor, "listItem", "하나")]);
+		backspace(editor);
+		expect(html(editor)).toBe("<ul><li><p>둘</p></li></ul><p>뒤</p>");
+		select(editor, [posOf(editor, "listItem", "둘")]);
+		backspace(editor);
+		expect(html(editor)).toBe("<p>뒤</p>");
+		editor.destroy();
+	});
+
+	it("부모 항목을 고르면 그 안의 자식 항목은 따로 세지 않는다(자식은 부모와 함께 간다)", () => {
+		const editor = createTestEditor("<ul><li><p>부모</p><ul><li><p>자식</p></li></ul></li><li><p>다음</p></li></ul>");
+		const parent = posOf(editor, "listItem", "부모자식");
+		select(editor, [parent, posOf(editor, "listItem", "자식")]);
+		expect(selectedBlocks(editor.state)).toEqual([parent]);
 		editor.destroy();
 	});
 
 	it("다른 곳을 고르거나 Esc를 누르면 블록 선택을 푼다", () => {
 		const editor = createTestEditor("<p>가</p><p>나</p><p>다</p>");
-		selectBlocks(editor, 0, posOf(editor, "paragraph", "다"));
-		expect(selectedBlockRange(editor.state)).not.toBeNull();
+		select(editor, [0, posOf(editor, "paragraph", "나")]);
 		editor.view.dom.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-		expect(selectedBlockRange(editor.state)).toBeNull();
-		selectBlocks(editor, 0, posOf(editor, "paragraph", "다"));
+		expect(selectedBlocks(editor.state)).toBeNull();
+		select(editor, [0]);
 		editor.commands.setTextSelection(1);
-		expect(selectedBlockRange(editor.state)).toBeNull();
+		expect(selectedBlocks(editor.state)).toBeNull();
 		editor.destroy();
 	});
 
-	it("선택한 문단과 목록을 한 번에 옮기고, 옮긴 뒤에도 블록 선택이 이어지며, 되돌리기 한 번으로 돌아간다", () => {
-		const editor = createTestEditor("<p>가</p><ul><li><p>하나</p></li></ul><p>나</p><p>다</p>");
-		selectBlocks(editor, 0, posOf(editor, "paragraph", "나"));
-		const range = selectedBlockRange(editor.state);
-		if (!range) throw new Error("범위 없음");
-		const tr = moveBlockNode(editor.state, range.from, editor.state.doc.content.size, range.to);
+	it("문단과 목록 항목 일부를 함께 옮기면 항목은 목록으로 감싸 옮기고, 옮긴 줄은 계속 선택된다", () => {
+		const editor = createTestEditor("<p>가</p><ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>나</p>");
+		const rows = [0, posOf(editor, "listItem", "하나")];
+		const tr = moveBlockSet(editor.state, rows, editor.state.doc.content.size);
 		expect(tr).not.toBeNull();
 		if (tr) editor.view.dispatch(tr);
-		expect(html(editor)).toBe("<p>나</p><p>다</p><p>가</p><ul><li><p>하나</p></li></ul>");
-		const moved = selectedBlockRange(editor.state);
-		expect(editor.state.doc.nodeAt(moved?.from ?? -1)?.textContent).toBe("가");
+		expect(html(editor)).toBe("<ul><li><p>둘</p></li></ul><p>나</p><p>가</p><ul><li><p>하나</p></li></ul>");
+		const moved = selectedBlocks(editor.state) ?? [];
+		expect(moved.map((pos) => editor.state.doc.nodeAt(pos)?.textContent)).toEqual(["가", "하나"]);
 		editor.commands.undo();
-		expect(html(editor)).toBe("<p>가</p><ul><li><p>하나</p></li></ul><p>나</p><p>다</p>");
+		expect(html(editor)).toBe("<p>가</p><ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>나</p>");
 		editor.destroy();
 	});
 
-	it("선택한 목록 항목들을 목록 밖에 놓으면 한 목록으로 감싸 옮긴다", () => {
-		const editor = createTestEditor("<ul><li><p>하나</p></li><li><p>둘</p></li><li><p>셋</p></li></ul><p>가</p>");
-		const from = posOf(editor, "listItem", "하나");
-		const to = posOf(editor, "listItem", "셋");
-		const target = posOf(editor, "paragraph", "가") + 3;
-		const tr = moveBlockNode(editor.state, from, target, to);
+	it("항목만 골라 다른 목록의 항목 사이에 놓으면 항목 그대로 들어간다", () => {
+		const editor = createTestEditor(
+			"<ul><li><p>a</p></li><li><p>b</p></li></ul><p>가</p><ul><li><p>x</p></li><li><p>y</p></li></ul>",
+		);
+		const rows = [posOf(editor, "listItem", "a"), posOf(editor, "listItem", "b")];
+		const tr = moveBlockSet(editor.state, rows, posOf(editor, "listItem", "y"));
 		if (tr) editor.view.dispatch(tr);
-		expect(html(editor)).toBe("<ul><li><p>셋</p></li></ul><p>가</p><ul><li><p>하나</p></li><li><p>둘</p></li></ul>");
+		expect(html(editor)).toBe("<p>가</p><ul><li><p>x</p></li><li><p>a</p></li><li><p>b</p></li><li><p>y</p></li></ul>");
 		editor.destroy();
 	});
 });

@@ -2,8 +2,10 @@ import { Extension } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { createBlockSelectionPlugin, selectedBlockRange } from "./block-selection";
-import { calculateDropPosition, moveBlockNode } from "./drag-commands";
+import { createBlockSelectionPlugin, selectedBlocks } from "./block-selection";
+import { calculateBlockSetDropPosition, calculateDropPosition, moveBlockNode, moveBlockSet } from "./drag-commands";
+
+type CmsDragging = { cmsBlockPos?: number; cmsBlockEnd?: number; cmsBlockSet?: number[]; slice?: Slice };
 
 export const BLOCK_DRAG_MIME_TYPE = "application/x-cms-block-drag";
 
@@ -60,7 +62,7 @@ function createDropIndicatorView(editorView: EditorView) {
 
 /**
  * 블록 핸들 dragstart 시 호출되어 ProseMirror 드래그 상태와 dataTransfer를 초기화한다.
- * 잡은 블록이 블록 선택(마키로 고른 블록) 안에 있으면 선택된 블록 전체를 함께 끈다.
+ * 잡은 블록이 블록 선택(마키로 고른 줄) 안에 있으면 선택된 줄 전체를 함께 끈다.
  */
 export function startBlockDrag(
 	view: EditorView,
@@ -71,30 +73,45 @@ export function startBlockDrag(
 	const node = state.doc.nodeAt(pos);
 	if (!node) return false;
 
-	const range = selectedBlockRange(state);
-	const inRange = range && pos >= range.from && pos + node.nodeSize <= range.to ? range : null;
+	// 잡은 블록이 블록 선택(마키로 고른 줄) 안에 있으면 선택된 줄 전체를 끈다.
+	const rows = selectedBlocks(state);
+	const inSelection = rows?.some((row) => {
+		const selected = state.doc.nodeAt(row);
+		return !!selected && pos >= row && pos < row + selected.nodeSize;
+	})
+		? rows
+		: null;
 
-	let slice: Slice;
-	let selection = state.selection;
-	if (inRange) {
-		// 여러 블록 선택은 그대로 두고(강조가 유지된다) 선택된 블록 전체를 옮길 내용으로 삼는다.
-		slice = state.doc.slice(inRange.from, inRange.to);
-	} else {
-		// 노드 선택(NodeSelection)이 가능하면 선택 영역으로 지정한다
-		if (NodeSelection.isSelectable(node)) {
-			selection = NodeSelection.create(state.doc, pos);
-			view.dispatch(state.tr.setSelection(selection));
+	if (inSelection) {
+		const first = inSelection[0] ?? pos;
+		const lastPos = inSelection[inSelection.length - 1] ?? pos;
+		const end = lastPos + (state.doc.nodeAt(lastPos)?.nodeSize ?? 0);
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = "move";
+			event.dataTransfer.setData("text/plain", state.doc.textBetween(first, end, "\n"));
 		}
-		slice = selection instanceof NodeSelection ? selection.content() : new Slice(Fragment.from(node), 0, 0);
+		(view as unknown as { dragging: CmsDragging & { move: boolean } }).dragging = {
+			slice: state.doc.slice(first, end),
+			move: true,
+			cmsBlockPos: first,
+			cmsBlockSet: inSelection,
+		};
+		return true;
 	}
-	const from = inRange ? inRange.from : pos;
-	const to = inRange ? inRange.to : pos + node.nodeSize;
+
+	let selection = state.selection;
+	// 노드 선택(NodeSelection)이 가능하면 선택 영역으로 지정한다
+	if (NodeSelection.isSelectable(node)) {
+		selection = NodeSelection.create(state.doc, pos);
+		view.dispatch(state.tr.setSelection(selection));
+	}
+	const slice = selection instanceof NodeSelection ? selection.content() : new Slice(Fragment.from(node), 0, 0);
 
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = "move";
-		event.dataTransfer.setData("text/plain", state.doc.textBetween(from, to, "\n"));
+		event.dataTransfer.setData("text/plain", node.textContent);
 		try {
-			event.dataTransfer.setData(BLOCK_DRAG_MIME_TYPE, JSON.stringify({ pos: from, end: to, type: node.type.name }));
+			event.dataTransfer.setData(BLOCK_DRAG_MIME_TYPE, JSON.stringify({ pos, type: node.type.name }));
 		} catch {
 			// 일부 브라우저 제한 시 무시
 		}
@@ -104,9 +121,8 @@ export function startBlockDrag(
 	(view as unknown as { dragging: unknown }).dragging = {
 		slice,
 		move: true,
-		node: !inRange && selection instanceof NodeSelection ? selection : undefined,
-		cmsBlockPos: from,
-		cmsBlockEnd: to,
+		node: selection instanceof NodeSelection ? selection : undefined,
+		cmsBlockPos: pos,
 	};
 
 	return true;
@@ -154,24 +170,23 @@ export const CmsBlockDrag = Extension.create({
 				props: {
 					handleDOMEvents: {
 						dragover(view, event) {
-							const viewAny = view as unknown as {
-								dragging?: { cmsBlockPos?: number; cmsBlockEnd?: number; slice?: Slice };
-							};
-							const dragging = viewAny.dragging;
+							const dragging = (view as unknown as { dragging?: CmsDragging }).dragging;
 							if (dragging && dragging.cmsBlockPos !== undefined && event.dataTransfer) {
 								// 기본 Dropcursor는 스키마 거부를 모르고 다른 위치를 가리킨다. 블록 드래그에서는 막고 직접 표시한다.
 								event.stopImmediatePropagation();
 								const coords = { left: event.clientX, top: event.clientY };
 								const target = view.posAtCoords(coords);
-								const validPos = target
-									? calculateDropPosition(
-											view.state.doc,
-											dragging.cmsBlockPos,
-											target.pos,
-											dragging.slice,
-											dragging.cmsBlockEnd,
-										)
-									: null;
+								const validPos = !target
+									? null
+									: dragging.cmsBlockSet
+										? calculateBlockSetDropPosition(view.state.doc, dragging.cmsBlockSet, target.pos)
+										: calculateDropPosition(
+												view.state.doc,
+												dragging.cmsBlockPos,
+												target.pos,
+												dragging.slice,
+												dragging.cmsBlockEnd,
+											);
 								setDropIndicator(view, validPos);
 								event.dataTransfer.dropEffect = validPos === null ? "none" : "move";
 							}
@@ -200,10 +215,7 @@ export const CmsBlockDrag = Extension.create({
 						},
 					},
 					handleDrop(view, event, slice) {
-						const viewAny = view as unknown as {
-							dragging?: { cmsBlockPos?: number; cmsBlockEnd?: number; slice?: Slice };
-						};
-						const dragging = viewAny.dragging;
+						const dragging = (view as unknown as { dragging?: CmsDragging }).dragging;
 						const cmsBlockPos = dragging?.cmsBlockPos;
 						const cmsBlockEnd = dragging?.cmsBlockEnd;
 
@@ -221,13 +233,10 @@ export const CmsBlockDrag = Extension.create({
 								return true;
 							}
 
-							const validDropPos = calculateDropPosition(
-								view.state.doc,
-								cmsBlockPos,
-								target.pos,
-								slice || dragging?.slice,
-								cmsBlockEnd,
-							);
+							const blockSet = dragging?.cmsBlockSet;
+							const validDropPos = blockSet
+								? calculateBlockSetDropPosition(view.state.doc, blockSet, target.pos)
+								: calculateDropPosition(view.state.doc, cmsBlockPos, target.pos, slice || dragging?.slice, cmsBlockEnd);
 
 							// 스키마가 허용하지 않는 위치면 드롭을 무시한다 (원문/문서 불변)
 							if (validDropPos === null) {
@@ -235,7 +244,9 @@ export const CmsBlockDrag = Extension.create({
 							}
 
 							// 단일 트랜잭션으로 이동을 수행하여 단 1회의 Undo를 보장한다
-							const tr = moveBlockNode(view.state, cmsBlockPos, validDropPos, cmsBlockEnd);
+							const tr = blockSet
+								? moveBlockSet(view.state, blockSet, validDropPos)
+								: moveBlockNode(view.state, cmsBlockPos, validDropPos, cmsBlockEnd);
 							if (tr) {
 								view.dispatch(tr);
 								view.focus();

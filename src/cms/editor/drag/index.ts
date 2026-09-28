@@ -6,17 +6,20 @@ export {
 	targetBlockAt,
 } from "./block-resolve";
 export {
-	type BlockRange,
 	deleteSelectedBlocks,
 	isOutsideContentColumn,
-	selectedBlockRange,
+	selectedBlocks,
 	setBlockSelection,
 	startMarquee,
 } from "./block-selection";
 export {
+	calculateBlockSetDropPosition,
 	calculateDropPosition,
 	canDropBlockNode,
+	deleteBlockSet,
 	moveBlockNode,
+	moveBlockSet,
+	placeableBlockSetAt,
 	placeableContentAt,
 	selectionForMovedNode,
 	sourceRangeOf,
