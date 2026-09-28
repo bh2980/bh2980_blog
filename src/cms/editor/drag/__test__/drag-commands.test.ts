@@ -1,7 +1,15 @@
 import { Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
 import { buildEditorExtensions } from "../../extensions";
-import { calculateDropPosition, canDropBlockNode, moveBlockNode } from "../drag-commands";
+import { mdxToTiptap } from "../../tiptap-content";
+import {
+	calculateDropPosition,
+	canDropBlockNode,
+	moveBlockNode,
+	selectedBlockRange,
+	sourceRangeOf,
+} from "../drag-commands";
 
 const createTestEditor = (content: string) => {
 	return new Editor({
@@ -115,17 +123,17 @@ describe("블록 드래그 앤 드롭 순수 명령(v2 C1)", () => {
 		);
 		const { doc } = editor.state;
 
-		// 1. listItem을 doc 루트(최상위)에 단독으로 놓는 것은 스키마가 거부해야 함
+		// 1. listItem을 codeBlock 안에 넣는 것은 목록으로 감싸도 스키마가 거부해야 함
+		// (목록 밖 최상위에 놓으면 목록으로 감싸 옮긴다 — 아래 "목록 항목을 목록 밖으로 끌어내기")
 		const listItemPos = 1;
-		const docRootEnd = doc.content.size;
-		expect(canDropBlockNode(doc, listItemPos, docRootEnd)).toBe(false);
-		expect(moveBlockNode(editor.state, listItemPos, docRootEnd)).toBeNull();
-
-		// 2. 일반 문단을 codeBlock 내부에 자식 블록으로 넣는 것은 스키마가 거부해야 함
 		const listSize = doc.child(0).nodeSize;
 		const codeBlockPos = listSize;
-		const paragraphPos = listSize + doc.child(1).nodeSize;
 		const insideCodePos = codeBlockPos + 2; // codeBlock 텍스트 내부
+		expect(canDropBlockNode(doc, listItemPos, insideCodePos)).toBe(false);
+		expect(moveBlockNode(editor.state, listItemPos, insideCodePos)).toBeNull();
+
+		// 2. 일반 문단을 codeBlock 내부에 자식 블록으로 넣는 것은 스키마가 거부해야 함
+		const paragraphPos = listSize + doc.child(1).nodeSize;
 
 		expect(canDropBlockNode(doc, paragraphPos, insideCodePos)).toBe(false);
 		expect(moveBlockNode(editor.state, paragraphPos, insideCodePos)).toBeNull();
@@ -186,7 +194,7 @@ describe("블록 드래그 앤 드롭 순수 명령(v2 C1)", () => {
 		// 단락 1이 끝으로 이동했는지 확인
 		expect(editor.state.doc.child(2).textContent).toBe("단락 1");
 
-		// 2. listItem을 doc 루트(최상위)로 드롭 시도 (허용 불가)
+		// 2. listItem을 doc 루트(최상위)로 드롭: 원래 목록 종류로 감싸 옮긴다
 		const listEditor = createTestEditor("<ul><li><p>목록 항목 1</p></li></ul><p>일반 문단</p>");
 		const listDoc = listEditor.state.doc;
 		const listItemPos = 1;
@@ -198,8 +206,7 @@ describe("블록 드래그 앤 드롭 순수 명령(v2 C1)", () => {
 		const targetEndPos = listDoc.content.size;
 		listEditor.view.posAtCoords = () => ({ pos: targetEndPos, inside: targetEndPos });
 
-		const beforeDoc = listEditor.state.doc.toJSON();
-		const invalidDropEvent = Object.assign(new Event("drop", { bubbles: true, cancelable: true }), {
+		const outsideDropEvent = Object.assign(new Event("drop", { bubbles: true, cancelable: true }), {
 			clientX: 50,
 			clientY: 50,
 			dataTransfer: {
@@ -208,13 +215,184 @@ describe("블록 드래그 앤 드롭 순수 명령(v2 C1)", () => {
 				types: [],
 			},
 		});
-		listEditor.view.dom.dispatchEvent(invalidDropEvent);
+		listEditor.view.dom.dispatchEvent(outsideDropEvent);
 
-		// 스키마상 listItem을 doc 루트에 둘 수 없으므로 drop이 무시되어 문서가 그대로 유지됨
-		expect(listEditor.state.doc.toJSON()).toEqual(beforeDoc);
+		// 유일한 항목이라 원래 목록은 사라지고, 문단 뒤에 한 항목짜리 목록이 생긴다
+		expect(listEditor.state.doc.child(0).textContent).toBe("일반 문단");
+		expect(listEditor.state.doc.child(1).type.name).toBe("bulletList");
+		expect(listEditor.state.doc.child(1).textContent).toBe("목록 항목 1");
 
 		listEditor.destroy();
 
+		editor.destroy();
+	});
+});
+
+describe("꺼낸 자리를 비우지 않는 이동(sourceRangeOf)", () => {
+	const nodePos = (editor: Editor, match: (text: string, type: string) => boolean) => {
+		let found = -1;
+		editor.state.doc.descendants((node, pos) => {
+			if (found === -1 && match(node.textContent, node.type.name)) found = pos;
+			return found === -1;
+		});
+		return found;
+	};
+
+	it("들여쓴 목록의 유일한 항목은 빈 목록째 빼서 다른 목록 사이로 옮긴다", () => {
+		const editor = createTestEditor("<ul><li><p>첫째</p></li><li><p>둘째</p><ul><li><p>들여쓴</p></li></ul></li></ul>");
+		const from = nodePos(editor, (text, type) => type === "listItem" && text === "들여쓴");
+		const target = nodePos(editor, (text, type) => type === "listItem" && text === "둘째들여쓴");
+		const source = sourceRangeOf(editor.state.doc, from);
+		expect(editor.state.doc.nodeAt(source?.from ?? -1)?.type.name).toBe("bulletList");
+
+		const tr = moveBlockNode(editor.state, from, target);
+		expect(tr).not.toBeNull();
+		if (tr) editor.view.dispatch(tr);
+		// 문서 끝의 빈 문단은 trailing node 확장이 붙인다.
+		expect(editor.getHTML()).toMatch(/^<ul><li><p>첫째<\/p><\/li><li><p>들여쓴<\/p><\/li><li><p>둘째<\/p><\/li><\/ul>/);
+		editor.destroy();
+	});
+
+	it("단의 유일한 문단을 다른 단으로 옮기면 빈 문단을 남긴다", () => {
+		const editor = createTestEditor(
+			mdxToTiptap("::::columns\n:::column\n왼쪽\n:::\n:::column\n오른쪽\n:::\n::::") as unknown as string,
+		);
+		const from = nodePos(editor, (text, type) => type === "paragraph" && text === "왼쪽");
+		const right = nodePos(editor, (text, type) => type === "paragraph" && text === "오른쪽");
+		const target = right + (editor.state.doc.nodeAt(right)?.nodeSize ?? 0);
+		expect(sourceRangeOf(editor.state.doc, from)?.fill?.type.name).toBe("paragraph");
+
+		const tr = moveBlockNode(editor.state, from, target);
+		expect(tr).not.toBeNull();
+		if (tr) editor.view.dispatch(tr);
+		const columns = editor.state.doc.firstChild;
+		expect(columns?.child(0).textContent).toBe("");
+		expect(columns?.child(1).childCount).toBe(2);
+		expect(columns?.child(1).textContent).toBe("오른쪽왼쪽");
+		editor.destroy();
+	});
+
+	it("목록 항목의 하나뿐인 문단은 여전히 꺼내지 않는다", () => {
+		const editor = createTestEditor("<ul><li><p>항목</p></li></ul><p>뒤</p>");
+		const from = nodePos(editor, (text, type) => type === "paragraph" && text === "항목");
+		expect(sourceRangeOf(editor.state.doc, from)).toBeNull();
+		editor.destroy();
+	});
+});
+
+describe("목록 항목을 목록 밖으로 끌어내기", () => {
+	const posOf = (editor: Editor, type: string, text: string) => {
+		let found = -1;
+		editor.state.doc.descendants((node, pos) => {
+			if (found === -1 && node.type.name === type && node.textContent === text) found = pos;
+			return found === -1;
+		});
+		return found;
+	};
+	const move = (editor: Editor, from: number, target: number) => {
+		const tr = moveBlockNode(editor.state, from, target);
+		expect(tr).not.toBeNull();
+		if (tr) editor.view.dispatch(tr);
+	};
+	// 문서 끝의 빈 문단은 trailing node 확장이 붙인다.
+	const html = (editor: Editor) => editor.getHTML().replace(/<p><\/p>$/, "");
+
+	it("문단 사이에 놓으면 원래 목록 종류로 감싼 새 목록이 되고, 원래 목록에는 나머지 항목이 남는다", () => {
+		const editor = createTestEditor("<ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>가</p><p>나</p>");
+		const from = posOf(editor, "listItem", "둘");
+		const target = posOf(editor, "paragraph", "나");
+		expect(calculateDropPosition(editor.state.doc, from, target + 1)).toBe(target);
+		move(editor, from, target);
+		expect(html(editor)).toBe("<ul><li><p>하나</p></li></ul><p>가</p><ul><li><p>둘</p></li></ul><p>나</p>");
+		editor.commands.undo();
+		expect(html(editor)).toBe("<ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>가</p><p>나</p>");
+		editor.destroy();
+	});
+
+	it("유일한 항목을 끌어내면 빈 목록을 남기지 않고, 자식 항목은 함께 옮긴다", () => {
+		const editor = createTestEditor("<p>가</p><ul><li><p>부모</p><ul><li><p>자식</p></li></ul></li></ul><p>나</p>");
+		move(editor, posOf(editor, "listItem", "부모자식"), 0);
+		expect(html(editor)).toBe("<ul><li><p>부모</p><ul><li><p>자식</p></li></ul></li></ul><p>가</p><p>나</p>");
+		editor.destroy();
+	});
+
+	it("번호 목록 항목은 번호 목록으로 감싸고, 옆의 같은 종류 목록과는 합치되 다른 종류와는 합치지 않는다", () => {
+		const editor = createTestEditor(
+			"<ol><li><p>일</p></li><li><p>이</p></li></ol><p>가</p><ol><li><p>삼</p></li></ol><ul><li><p>점</p></li></ul>",
+		);
+		// "가" 뒤(번호 목록 "삼" 앞)에 놓으면 그 번호 목록에 합쳐진다.
+		move(editor, posOf(editor, "listItem", "이"), posOf(editor, "orderedList", "삼"));
+		expect(html(editor)).toBe(
+			"<ol><li><p>일</p></li></ol><p>가</p><ol><li><p>이</p></li><li><p>삼</p></li></ol><ul><li><p>점</p></li></ul>",
+		);
+		editor.destroy();
+
+		// 문단과 글머리표 목록 사이에 번호 항목을 놓으면, 뒤의 글머리표 목록과는 합치지 않는다.
+		const mixed = createTestEditor("<ol><li><p>일</p></li><li><p>이</p></li></ol><p>가</p><ul><li><p>점</p></li></ul>");
+		move(mixed, posOf(mixed, "listItem", "이"), posOf(mixed, "bulletList", "점"));
+		expect(html(mixed)).toBe(
+			"<ol><li><p>일</p></li></ol><p>가</p><ol><li><p>이</p></li></ol><ul><li><p>점</p></li></ul>",
+		);
+		mixed.destroy();
+	});
+});
+
+describe("여러 블록 선택 후 한 번에 옮기기", () => {
+	const posOf = (editor: Editor, type: string, text: string) => {
+		let found = -1;
+		editor.state.doc.descendants((node, pos) => {
+			if (found === -1 && node.type.name === type && node.textContent === text) found = pos;
+			return found === -1;
+		});
+		return found;
+	};
+	const selectText = (editor: Editor, fromText: string, toText: string) => {
+		const from = posOf(editor, "paragraph", fromText) + 1;
+		const to = posOf(editor, "paragraph", toText) + 1 + toText.length;
+		editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, to)));
+	};
+	const html = (editor: Editor) => editor.getHTML().replace(/<p><\/p>$/, "");
+
+	it("선택이 걸친 같은 부모의 블록들을 범위로 잡는다(목록 위 문단부터 목록 안까지면 목록 전체)", () => {
+		const editor = createTestEditor("<p>가</p><ul><li><p>하나</p></li><li><p>둘</p></li></ul><p>나</p>");
+		selectText(editor, "하나", "둘");
+		const items = selectedBlockRange(editor.state);
+		expect(editor.state.doc.slice(items?.from ?? 0, items?.to ?? 0).content.childCount).toBe(2);
+		expect(editor.state.doc.nodeAt(items?.from ?? -1)?.type.name).toBe("listItem");
+
+		selectText(editor, "가", "하나");
+		const mixed = selectedBlockRange(editor.state);
+		expect(mixed).toEqual({ from: 0, to: posOf(editor, "paragraph", "나") });
+
+		selectText(editor, "나", "나");
+		expect(selectedBlockRange(editor.state)).toBeNull();
+		editor.destroy();
+	});
+
+	it("선택한 문단과 목록을 한 번에 옮기고, 옮긴 뒤에도 선택이 유지되며, 되돌리기 한 번으로 돌아간다", () => {
+		const editor = createTestEditor("<p>가</p><ul><li><p>하나</p></li></ul><p>나</p><p>다</p>");
+		selectText(editor, "가", "하나");
+		const range = selectedBlockRange(editor.state);
+		if (!range) throw new Error("범위 없음");
+		const tr = moveBlockNode(editor.state, range.from, editor.state.doc.content.size, range.to);
+		expect(tr).not.toBeNull();
+		if (tr) editor.view.dispatch(tr);
+		expect(html(editor)).toBe("<p>나</p><p>다</p><p>가</p><ul><li><p>하나</p></li></ul>");
+		expect(selectedBlockRange(editor.state)).not.toBeNull();
+		editor.commands.undo();
+		expect(html(editor)).toBe("<p>가</p><ul><li><p>하나</p></li></ul><p>나</p><p>다</p>");
+		editor.destroy();
+	});
+
+	it("선택한 목록 항목들을 목록 밖에 놓으면 한 목록으로 감싸 옮긴다", () => {
+		const editor = createTestEditor("<ul><li><p>하나</p></li><li><p>둘</p></li><li><p>셋</p></li></ul><p>가</p>");
+		selectText(editor, "하나", "둘");
+		const range = selectedBlockRange(editor.state);
+		if (!range) throw new Error("범위 없음");
+		const target = posOf(editor, "paragraph", "가") + 3;
+		const tr = moveBlockNode(editor.state, range.from, target, range.to);
+		if (tr) editor.view.dispatch(tr);
+		expect(html(editor)).toBe("<ul><li><p>셋</p></li></ul><p>가</p><ul><li><p>하나</p></li><li><p>둘</p></li></ul>");
 		editor.destroy();
 	});
 });

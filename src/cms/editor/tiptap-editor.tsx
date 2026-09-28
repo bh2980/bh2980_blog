@@ -7,19 +7,18 @@ import { ImageIcon } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Toggle } from "@/components/ui/toggle";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
-import { endBlockDrag, findBlockDOM, resolveTargetBlock, startBlockDrag } from "./drag";
+import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
+import { TableToolbar } from "./table-toolbar";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
+import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
 import { TooltipPopover } from "./tooltip-popover";
 
 interface CmsEditorProps {
@@ -34,15 +33,6 @@ interface CmsEditorProps {
 }
 
 type Coords = { top: number; left: number };
-
-interface ToolbarItem {
-	label: string;
-	title?: string;
-	className?: string;
-	isActive?: (editor: Editor) => boolean;
-	isDisabled?: (editor: Editor) => boolean;
-	run: (editor: Editor) => void;
-}
 
 const chain = (editor: Editor) => editor.chain().focus();
 
@@ -166,60 +156,6 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 	],
 ];
 
-const isCellSelection = (editor: Editor): boolean => editor.state.selection instanceof CellSelection;
-
-/** 표 안에 있을 때 보이는 표 조작 도구(§4.1, v2 C6). */
-const TABLE_TOOLS: ToolbarItem[] = [
-	{ label: "↑행", title: "위에 행 추가", run: (e) => chain(e).addRowBefore().run() },
-	{ label: "↓행", title: "아래에 행 추가", run: (e) => chain(e).addRowAfter().run() },
-	{ label: "←열", title: "왼쪽에 열 추가", run: (e) => chain(e).addColumnBefore().run() },
-	{ label: "→열", title: "오른쪽에 열 추가", run: (e) => chain(e).addColumnAfter().run() },
-	{ label: "행 삭제", run: (e) => chain(e).deleteRow().run() },
-	{ label: "열 삭제", run: (e) => chain(e).deleteColumn().run() },
-	{
-		label: "셀 병합",
-		title: "선택한 셀 병합",
-		isDisabled: (e) => !isCellSelection(e) || !e.can().mergeCells(),
-		run: (e) => chain(e).mergeCells().run(),
-	},
-	{
-		label: "셀 나누기",
-		title: "병합된 셀 나누기",
-		isDisabled: (e) => !isCellSelection(e) || !e.can().splitCell(),
-		run: (e) => chain(e).splitCell().run(),
-	},
-	{ label: "표 삭제", className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
-];
-
-function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
-	const active = item.isActive?.(editor) ?? false;
-	const disabled = !editor.isEditable || (item.isDisabled?.(editor) ?? false);
-	const label = item.title ?? item.label;
-	const common = {
-		"aria-label": label,
-		disabled,
-		// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
-		onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
-		className: cn("h-7 min-w-7 px-2 text-xs", item.className),
-	};
-	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={
-					item.isActive ? (
-						<Toggle size="sm" pressed={active} onPressedChange={() => item.run(editor)} {...common} />
-					) : (
-						<Button type="button" variant="ghost" size="sm" onClick={() => item.run(editor)} {...common} />
-					)
-				}
-			>
-				{item.label}
-			</TooltipTrigger>
-			<TooltipContent>{label}</TooltipContent>
-		</Tooltip>
-	);
-}
-
 async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 	const search = async (collection: "post" | "memo") => {
 		const params = new URLSearchParams({ collection, pageSize: "25" });
@@ -241,6 +177,35 @@ async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 	const [posts, memos] = await Promise.all([search("post"), search("memo")]);
 	return [...posts, ...memos].slice(0, 20);
 }
+
+/** 핸들 폭(px)과 블록과의 간격. BlockHandleOverlay가 `left - 32`에 24px 버튼을 둔다. */
+const HANDLE_OFFSET = 32;
+const HANDLE_WIDTH = 24;
+
+/**
+ * 핸들을 붙일 기준점.
+ * - 목록 항목은 글머리표를 가리지 않게 목록의 왼쪽(글머리표 바깥)에 붙인다. 들여쓴 항목은 그 들여쓰기에 붙는다.
+ * - 테두리가 있는 컨테이너(콜아웃·접기·탭·단 나누기) 안쪽 블록의 핸들이 그 왼쪽 테두리에 걸리면
+ *   컨테이너 바깥 핸들 자리로 옮긴다(같은 세로줄에 맞춘다).
+ */
+const handleAnchor = (block: HTMLElement, rect: DOMRect): Coords => {
+	const isListItem = block.tagName === "LI" || block.getAttribute("data-type") === "taskItem";
+	const list = isListItem ? block.parentElement : null;
+	let left = list ? list.getBoundingClientRect().left : rect.left;
+	const framed = block.parentElement?.closest<HTMLElement>("[data-cms-framed]");
+	if (framed) {
+		const edge = framed.getBoundingClientRect().left;
+		const handleLeft = left - HANDLE_OFFSET;
+		if (handleLeft <= edge + 1 && handleLeft + HANDLE_WIDTH >= edge - 1) left = edge;
+	}
+	return { top: rect.top, left };
+};
+
+/** 화면에 띄운 핸들과 그 핸들이 옮기는 블록의 위치. */
+type HandleSpot = Coords & { pos: number };
+
+const sameSpot = (a: HandleSpot | null, b: HandleSpot) =>
+	!!a && a.top === b.top && a.left === b.left && a.pos === b.pos;
 
 export function CmsEditor({
 	content,
@@ -268,9 +233,10 @@ export function CmsEditor({
 	const linkItemsRef = useRef(linkItems);
 	linkItemsRef.current = linkItems;
 
-	const [handleCoords, setHandleCoords] = useState<Coords | null>(null);
+	const [handleSpot, setHandleSpot] = useState<HandleSpot | null>(null);
 	const activeBlockRectRef = useRef<DOMRect | null>(null);
 	const activeBlockPosRef = useRef<number | null>(null);
+	const activeBlockElRef = useRef<HTMLElement | null>(null);
 	const [imageDialog, setImageDialog] = useState<{ file: File | null } | null>(null);
 
 	const syncTriggerPopup = (current: Editor) => {
@@ -316,7 +282,13 @@ export function CmsEditor({
 				class:
 					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20 " +
 					// 표 열 너비 조절 손잡이(prosemirror-tables columnResizing)
-					"[&_.tableWrapper]:overflow-x-auto [&_td]:relative [&_th]:relative [&.resize-cursor]:cursor-col-resize [&_.column-resize-handle]:pointer-events-none [&_.column-resize-handle]:absolute [&_.column-resize-handle]:-right-0.5 [&_.column-resize-handle]:top-0 [&_.column-resize-handle]:-bottom-px [&_.column-resize-handle]:w-1 [&_.column-resize-handle]:bg-primary",
+					"[&_.tableWrapper]:overflow-x-auto [&_td]:relative [&_th]:relative [&.resize-cursor]:cursor-col-resize [&_.column-resize-handle]:pointer-events-none [&_.column-resize-handle]:absolute [&_.column-resize-handle]:-right-px [&_.column-resize-handle]:top-0 [&_.column-resize-handle]:-bottom-px [&_.column-resize-handle]:w-0.5 [&_.column-resize-handle]:bg-primary " +
+					// 단 나누기 경계와 같은 모양: 얇은 선 + 첫 행 위쪽의 작은 손잡이.
+					"[&_tr:first-child_.column-resize-handle]:after:absolute [&_tr:first-child_.column-resize-handle]:after:top-0.5 [&_tr:first-child_.column-resize-handle]:after:left-1/2 [&_tr:first-child_.column-resize-handle]:after:h-3 [&_tr:first-child_.column-resize-handle]:after:w-6 [&_tr:first-child_.column-resize-handle]:after:-translate-x-1/2 [&_tr:first-child_.column-resize-handle]:after:rounded-full [&_tr:first-child_.column-resize-handle]:after:border [&_tr:first-child_.column-resize-handle]:after:bg-popover [&_tr:first-child_.column-resize-handle]:after:shadow-sm " +
+					// 여러 블록 선택(선택이 블록 둘 이상에 걸침): 블록을 통째로 칠하고 글자 선택 표시는 숨긴다(노션의 블록 선택).
+					"[&_.cms-block-selected]:rounded-md [&_.cms-block-selected]:bg-primary/15 [&.cms-block-range]:selection:bg-transparent " +
+					// 셀을 끌어 여러 칸을 고르면(CellSelection) 고른 칸을 칠한다. 병합할 범위를 눈으로 확인한다.
+					"[&_.selectedCell]:bg-primary/15 [&_.selectedCell]:outline-1 [&_.selectedCell]:-outline-offset-1 [&_.selectedCell]:outline-primary/60",
 			},
 			handleKeyDown: (view, event) => {
 				// 한글 IME 조합 중에는 메뉴 탐색·확정을 처리하지 않는다(§4.2).
@@ -387,7 +359,8 @@ export function CmsEditor({
 	});
 
 	// 서식 도구는 선택 변경에도 갱신돼야 한다. useEditor만으로는 표 셀 클릭 시 재렌더되지 않는다.
-	const tableSelection = useEditorState({
+	// (표 조작 도구는 TableToolbar가 따로 구독한다.)
+	useEditorState({
 		editor,
 		selector: ({ editor: current }) => {
 			if (!current?.isActive("table")) return "";
@@ -482,14 +455,19 @@ export function CmsEditor({
 			const active = activeBlockRectRef.current;
 			if (active && event.clientX < active.left && event.clientY >= active.top && event.clientY <= active.bottom)
 				return;
-			const block = findBlockDOM(root, event.target as HTMLElement | null);
-			if (!block) return;
+			const found = findBlockDOM(root, event.target as HTMLElement | null);
+			if (!found) return;
+			const block = refineBlock(found, event.clientX, event.clientY);
 			try {
 				const resolved = resolveTargetBlock(editor.view, block);
 				if (!resolved) return;
 				activeBlockPosRef.current = resolved.pos;
 				activeBlockRectRef.current = resolved.rect;
-				setHandleCoords({ top: resolved.rect.top, left: resolved.rect.left });
+				activeBlockElRef.current = block;
+				const spot = { ...handleAnchor(block, resolved.rect), pos: resolved.pos };
+				// 같은 자리면 상태를 바꾸지 않는다. 마우스를 움직일 때마다 편집기를 다시 그리면(useEditor가
+				// 옵션을 다시 설정한다) 노드 뷰가 갱신되어 표 열 너비 끌기 등이 흔들린다.
+				setHandleSpot((previous) => (sameSpot(previous, spot) ? previous : spot));
 			} catch {
 				// DOM이 막 바뀌는 중이면 무시한다.
 			}
@@ -497,10 +475,35 @@ export function CmsEditor({
 		[editor],
 	);
 
+	// 핸들은 화면 고정 위치에 뜬다. 스크롤하면 블록을 따라가고, 블록이 사라졌으면 숨긴다.
+	// 그대로 두면 스크롤 뒤 엉뚱한 블록 옆에 옛 핸들이 남아 같은 항목에 핸들이 두 곳처럼 보인다.
+	const hasHandle = handleSpot !== null;
+	useEffect(() => {
+		if (!hasHandle || !editor) return;
+		const follow = () => {
+			const element = activeBlockElRef.current;
+			const pos = activeBlockPosRef.current;
+			if (!element?.isConnected || pos === null) {
+				setHandleSpot(null);
+				return;
+			}
+			const rect = element.getBoundingClientRect();
+			activeBlockRectRef.current = rect;
+			const spot = { ...handleAnchor(element, rect), pos };
+			setHandleSpot((previous) => (sameSpot(previous, spot) ? previous : spot));
+		};
+		window.addEventListener("scroll", follow, true);
+		window.addEventListener("resize", follow);
+		return () => {
+			window.removeEventListener("scroll", follow, true);
+			window.removeEventListener("resize", follow);
+		};
+	}, [hasHandle, editor]);
+
 	const handleDragStart = useCallback(
-		(event: React.DragEvent<HTMLElement>) => {
-			if (!editor || activeBlockPosRef.current === null) return;
-			startBlockDrag(editor.view, activeBlockPosRef.current, event);
+		(pos: number, event: React.DragEvent<HTMLElement>) => {
+			if (!editor) return;
+			startBlockDrag(editor.view, pos, event);
 		},
 		[editor],
 	);
@@ -510,10 +513,10 @@ export function CmsEditor({
 		endBlockDrag(editor.view);
 	}, [editor]);
 
-	const withActiveBlock = (action: (current: Editor, pos: number) => boolean) => () => {
-		if (!editor || activeBlockPosRef.current === null) return;
+	const withBlock = (pos: number, action: (current: Editor, pos: number) => boolean) => () => {
+		if (!editor) return;
 		editor.commands.focus();
-		action(editor, activeBlockPosRef.current);
+		action(editor, pos);
 	};
 
 	if (!editor) return null;
@@ -522,6 +525,7 @@ export function CmsEditor({
 		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
 		<div
 			className="relative flex min-h-full w-full flex-1 flex-col bg-background"
+			data-cms-editor-shell
 			onCompositionStart={() => {
 				isComposingRef.current = true;
 				onCompositionStart?.();
@@ -558,14 +562,6 @@ export function CmsEditor({
 					<ImageIcon aria-hidden />
 					이미지
 				</Button>
-				{tableSelection && (
-					<fieldset className="flex items-center gap-1 border-0 p-0" aria-label="표 도구">
-						<Separator orientation="vertical" className="mx-1 data-vertical:h-4" />
-						{TABLE_TOOLS.map((item) => (
-							<ToolbarButton key={item.label} editor={editor} item={item} />
-						))}
-					</fieldset>
-				)}
 			</div>
 
 			{titleField && <div className="mx-auto w-full max-w-3xl px-4 pt-12">{titleField}</div>}
@@ -580,7 +576,11 @@ export function CmsEditor({
 			{/* biome-ignore lint/a11y: canvas click focuses the rich text editor */}
 			<div
 				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 py-6"
-				onClick={() => {
+				onClick={(event) => {
+					// 본문 밖 빈 캔버스를 눌렀을 때만 끝으로 옮긴다. NodeView 버튼·팝오버(포털)의 클릭도
+					// React 트리를 따라 여기로 올라오므로, 본문 DOM 안이나 캔버스 밖(포털)은 건드리지 않는다.
+					const target = event.target as Node;
+					if (!event.currentTarget.contains(target) || editor.view.dom.contains(target)) return;
 					if (!editor.isFocused) editor.chain().focus("end").run();
 				}}
 				onPaste={(event) => {
@@ -635,17 +635,19 @@ export function CmsEditor({
 				/>
 			)}
 
-			{handleCoords && editable && (
+			<TableToolbar editor={editor} />
+
+			{handleSpot && editable && (
 				<BlockHandleOverlay
-					coords={handleCoords}
-					onMoveUp={withActiveBlock((current, pos) => moveBlock(current, pos, -1))}
-					onMoveDown={withActiveBlock((current, pos) => moveBlock(current, pos, 1))}
-					onDuplicate={withActiveBlock(duplicateBlock)}
+					coords={handleSpot}
+					onMoveUp={withBlock(handleSpot.pos, (current, pos) => moveBlock(current, pos, -1))}
+					onMoveDown={withBlock(handleSpot.pos, (current, pos) => moveBlock(current, pos, 1))}
+					onDuplicate={withBlock(handleSpot.pos, duplicateBlock)}
 					onDelete={() => {
-						withActiveBlock(deleteBlock)();
-						setHandleCoords(null);
+						withBlock(handleSpot.pos, deleteBlock)();
+						setHandleSpot(null);
 					}}
-					onDragStart={handleDragStart}
+					onDragStart={(event) => handleDragStart(handleSpot.pos, event)}
 					onDragEnd={handleDragEnd}
 				/>
 			)}

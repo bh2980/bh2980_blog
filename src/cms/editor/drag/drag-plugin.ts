@@ -1,10 +1,14 @@
 import { Extension } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
-import { calculateDropPosition, moveBlockNode } from "./drag-commands";
+import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { calculateDropPosition, moveBlockNode, selectedBlockRange } from "./drag-commands";
 
 export const BLOCK_DRAG_MIME_TYPE = "application/x-cms-block-drag";
+
+/** 여러 블록 선택 중인 편집기와 선택된 블록에 붙는 클래스(스타일은 편집기 클래스에 둔다). */
+export const BLOCK_RANGE_CLASS = "cms-block-range";
+export const BLOCK_SELECTED_CLASS = "cms-block-selected";
 
 export const cmsBlockDragPluginKey = new PluginKey<{ dropPos: number | null }>("cmsBlockDrag");
 
@@ -59,6 +63,7 @@ function createDropIndicatorView(editorView: EditorView) {
 
 /**
  * 블록 핸들 dragstart 시 호출되어 ProseMirror 드래그 상태와 dataTransfer를 초기화한다.
+ * 잡은 블록이 여러 블록 선택(selectedBlockRange) 안에 있으면 선택된 블록 전체를 함께 끈다.
  */
 export function startBlockDrag(
 	view: EditorView,
@@ -69,20 +74,30 @@ export function startBlockDrag(
 	const node = state.doc.nodeAt(pos);
 	if (!node) return false;
 
-	// 노드 선택(NodeSelection)이 가능하면 선택 영역으로 지정한다
-	let selection = state.selection;
-	if (NodeSelection.isSelectable(node)) {
-		selection = NodeSelection.create(state.doc, pos);
-		view.dispatch(state.tr.setSelection(selection));
-	}
+	const range = selectedBlockRange(state);
+	const inRange = range && pos >= range.from && pos + node.nodeSize <= range.to ? range : null;
 
-	const slice = selection instanceof NodeSelection ? selection.content() : new Slice(Fragment.from(node), 0, 0);
+	let slice: Slice;
+	let selection = state.selection;
+	if (inRange) {
+		// 여러 블록 선택은 그대로 두고(강조가 유지된다) 선택된 블록 전체를 옮길 내용으로 삼는다.
+		slice = state.doc.slice(inRange.from, inRange.to);
+	} else {
+		// 노드 선택(NodeSelection)이 가능하면 선택 영역으로 지정한다
+		if (NodeSelection.isSelectable(node)) {
+			selection = NodeSelection.create(state.doc, pos);
+			view.dispatch(state.tr.setSelection(selection));
+		}
+		slice = selection instanceof NodeSelection ? selection.content() : new Slice(Fragment.from(node), 0, 0);
+	}
+	const from = inRange ? inRange.from : pos;
+	const to = inRange ? inRange.to : pos + node.nodeSize;
 
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = "move";
-		event.dataTransfer.setData("text/plain", node.textContent);
+		event.dataTransfer.setData("text/plain", state.doc.textBetween(from, to, "\n"));
 		try {
-			event.dataTransfer.setData(BLOCK_DRAG_MIME_TYPE, JSON.stringify({ pos, type: node.type.name }));
+			event.dataTransfer.setData(BLOCK_DRAG_MIME_TYPE, JSON.stringify({ pos: from, end: to, type: node.type.name }));
 		} catch {
 			// 일부 브라우저 제한 시 무시
 		}
@@ -92,8 +107,9 @@ export function startBlockDrag(
 	(view as unknown as { dragging: unknown }).dragging = {
 		slice,
 		move: true,
-		node: selection instanceof NodeSelection ? selection : undefined,
-		cmsBlockPos: pos,
+		node: !inRange && selection instanceof NodeSelection ? selection : undefined,
+		cmsBlockPos: from,
+		cmsBlockEnd: to,
 	};
 
 	return true;
@@ -124,6 +140,28 @@ export const CmsBlockDrag = Extension.create({
 
 	addProseMirrorPlugins() {
 		return [
+			// 선택이 여러 블록에 걸치면 걸친 블록을 통째로 칠한다(노션의 블록 선택). 그 블록 중 하나의 핸들을
+			// 끌면 전부 함께 옮긴다(startBlockDrag). 글자 선택 표시는 그동안 숨긴다(편집기 클래스 참고).
+			new Plugin({
+				key: new PluginKey("cmsBlockRangeHighlight"),
+				props: {
+					attributes: (state): Record<string, string> =>
+						selectedBlockRange(state) ? { class: BLOCK_RANGE_CLASS } : {},
+					decorations(state) {
+						const range = selectedBlockRange(state);
+						if (!range) return null;
+						const decorations: Decoration[] = [];
+						let pos = range.from;
+						while (pos < range.to) {
+							const node = state.doc.nodeAt(pos);
+							if (!node) break;
+							decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: BLOCK_SELECTED_CLASS }));
+							pos += node.nodeSize;
+						}
+						return DecorationSet.create(state.doc, decorations);
+					},
+				},
+			}),
 			new Plugin({
 				key: cmsBlockDragPluginKey,
 				state: {
@@ -139,7 +177,9 @@ export const CmsBlockDrag = Extension.create({
 				props: {
 					handleDOMEvents: {
 						dragover(view, event) {
-							const viewAny = view as unknown as { dragging?: { cmsBlockPos?: number; slice?: Slice } };
+							const viewAny = view as unknown as {
+								dragging?: { cmsBlockPos?: number; cmsBlockEnd?: number; slice?: Slice };
+							};
 							const dragging = viewAny.dragging;
 							if (dragging && dragging.cmsBlockPos !== undefined && event.dataTransfer) {
 								// 기본 Dropcursor는 스키마 거부를 모르고 다른 위치를 가리킨다. 블록 드래그에서는 막고 직접 표시한다.
@@ -147,7 +187,13 @@ export const CmsBlockDrag = Extension.create({
 								const coords = { left: event.clientX, top: event.clientY };
 								const target = view.posAtCoords(coords);
 								const validPos = target
-									? calculateDropPosition(view.state.doc, dragging.cmsBlockPos, target.pos, dragging.slice)
+									? calculateDropPosition(
+											view.state.doc,
+											dragging.cmsBlockPos,
+											target.pos,
+											dragging.slice,
+											dragging.cmsBlockEnd,
+										)
 									: null;
 								setDropIndicator(view, validPos);
 								event.dataTransfer.dropEffect = validPos === null ? "none" : "move";
@@ -177,9 +223,12 @@ export const CmsBlockDrag = Extension.create({
 						},
 					},
 					handleDrop(view, event, slice) {
-						const viewAny = view as unknown as { dragging?: { cmsBlockPos?: number; slice?: Slice } };
+						const viewAny = view as unknown as {
+							dragging?: { cmsBlockPos?: number; cmsBlockEnd?: number; slice?: Slice };
+						};
 						const dragging = viewAny.dragging;
 						const cmsBlockPos = dragging?.cmsBlockPos;
+						const cmsBlockEnd = dragging?.cmsBlockEnd;
 
 						// 블록 핸들 드래그가 아닌 일반 파일/텍스트 드롭은 기본 동작에 맡김
 						if (cmsBlockPos === undefined) {
@@ -200,6 +249,7 @@ export const CmsBlockDrag = Extension.create({
 								cmsBlockPos,
 								target.pos,
 								slice || dragging?.slice,
+								cmsBlockEnd,
 							);
 
 							// 스키마가 허용하지 않는 위치면 드롭을 무시한다 (원문/문서 불변)
@@ -208,7 +258,7 @@ export const CmsBlockDrag = Extension.create({
 							}
 
 							// 단일 트랜잭션으로 이동을 수행하여 단 1회의 Undo를 보장한다
-							const tr = moveBlockNode(view.state, cmsBlockPos, validDropPos);
+							const tr = moveBlockNode(view.state, cmsBlockPos, validDropPos, cmsBlockEnd);
 							if (tr) {
 								view.dispatch(tr);
 								view.focus();

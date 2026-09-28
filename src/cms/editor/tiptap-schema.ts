@@ -2,8 +2,12 @@ import { Mark, mergeAttributes, Node } from "@tiptap/core";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Subscript } from "@tiptap/extension-subscript";
 import { Superscript } from "@tiptap/extension-superscript";
-import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import { Table, TableCell, TableHeader, TableRow, TableView } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
+import type { Node as PmNode } from "@tiptap/pm/model";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { columnResizingPluginKey } from "@tiptap/pm/tables";
+import type { EditorView } from "@tiptap/pm/view";
 import { CmsCodeBlock } from "./code-block";
 
 /**
@@ -99,8 +103,53 @@ export const CmsSubscript = Subscript;
 export { CmsCodeBlock };
 
 /**
+ * 열 너비를 끄는 동안에는 저장된 너비로 되돌리지 않는 표 NodeView.
+ * 기본 TableView는 다시 그릴 때마다(`update`) 저장된 열 너비를 다시 적용한다. 끄는 너비는 DOM에만 있어서,
+ * 끄는 도중 편집기가 다시 그려지면(React 재렌더로 옵션이 다시 설정될 때 등) 저장값과 번갈아 깜빡인다.
+ * 놓으면 prosemirror-tables가 너비를 문서에 넣고, 그 뒤의 다시 그리기는 평소대로 적용한다.
+ */
+class CmsTableView extends TableView {
+	private readonly editorView?: EditorView;
+
+	constructor(node: PmNode, cellMinWidth: number, view?: EditorView, HTMLAttributes?: Record<string, unknown>) {
+		super(node, cellMinWidth, view, HTMLAttributes);
+		this.editorView = view;
+	}
+
+	update(node: PmNode): boolean {
+		if (node.type !== this.node.type) return false;
+		if (this.editorView && columnResizingPluginKey.getState(this.editorView.state)?.dragging) {
+			this.node = node;
+			return true;
+		}
+		const updated = super.update(node);
+		this.clearStaleColumnWidths(node);
+		return updated;
+	}
+
+	/**
+	 * 너비가 없는 열의 `<col>`에 남은 옛 `width`를 지운다. Tiptap의 열 갱신은 너비가 없는 열에 `min-width`만
+	 * 넣고 `width`는 그대로 둔다. 그래서 "폭 채우기" 뒤에도 옛 너비로 보이다가, 끌기 시작하면
+	 * prosemirror-tables가 옛 너비를 한꺼번에 지워 표가 훅 바뀐다.
+	 */
+	private clearStaleColumnWidths(node: PmNode) {
+		const row = node.firstChild;
+		if (!row) return;
+		const widths: Array<number | undefined> = [];
+		row.forEach((cell) => {
+			const { colspan, colwidth } = cell.attrs as { colspan: number; colwidth: number[] | null };
+			for (let index = 0; index < colspan; index += 1) widths.push(colwidth?.[index] || undefined);
+		});
+		Array.from(this.colgroup.children).forEach((col, index) => {
+			if (!widths[index] && col instanceof HTMLElement && col.style.width) col.style.width = "";
+		});
+	}
+}
+
+/**
  * 표(§4.1 "기본 표와 행·열 추가/삭제", v2 C6 셀 병합·열 너비).
  * 열 너비를 조절한 표는 `::::table{widths="..."}` directive로 저장한다(c-editor.md §1.2).
+ * 열 경계 양옆 `handleWidth`(px) 안에서 끌면 너비를 조절한다. 기본 5px은 잡기 어려워 넓혔다.
  */
 export const CmsTable = Table.extend({
 	addAttributes() {
@@ -110,7 +159,20 @@ export const CmsTable = Table.extend({
 			align: { default: null, rendered: false },
 		};
 	},
-}).configure({ resizable: true, allowTableNodeSelection: true });
+	addProseMirrorPlugins() {
+		return [
+			...(this.parent?.() ?? []),
+			// 열 너비를 끄는 동안에는 선택만 바꾸는 트랜잭션을 막는다. prosemirror-tables의 너비 조절 mousedown은
+			// 처리했다고 알리지 않아 셀 선택(tableEditing)도 함께 시작된다. 끄다가 다른 셀(특히 위아래 행)로
+			// 넘어가면 셀 선택이 바뀌고, 그때마다 표가 저장된 너비로 다시 그려져 끄는 너비와 번갈아 깜빡인다.
+			new Plugin({
+				key: new PluginKey("cmsTableResizeSelectionGuard"),
+				filterTransaction: (tr, state) =>
+					tr.docChanged || !tr.selectionSet || !columnResizingPluginKey.getState(state)?.dragging,
+			}),
+		];
+	},
+}).configure({ resizable: true, allowTableNodeSelection: true, handleWidth: 10, View: CmsTableView });
 
 /** `- [ ]`·`- [x]` 체크 목록(§4.1). */
 export const CmsTaskItem = TaskItem.configure({ nested: true });

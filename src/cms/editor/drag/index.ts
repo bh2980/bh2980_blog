@@ -1,5 +1,6 @@
 export {
 	findBlockDOM,
+	refineBlock,
 	resolveTargetBlock,
 	type TargetBlock,
 	targetBlockAt,
@@ -8,7 +9,10 @@ export {
 	calculateDropPosition,
 	canDropBlockNode,
 	moveBlockNode,
+	placeableContentAt,
+	selectedBlockRange,
 	selectionForMovedNode,
+	sourceRangeOf,
 } from "./drag-commands";
 export {
 	BLOCK_DRAG_MIME_TYPE,
