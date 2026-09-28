@@ -106,7 +106,7 @@ function ToolbarAction({
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					href ? (
+					href && !disabled ? (
 						<a
 							href={href}
 							target="_blank"
@@ -360,21 +360,25 @@ export function EntryEditorShell({
 		}
 	}, [pendingFieldPath, isInspectorOpen]);
 
-	/** 대기 중인 저장을 끝내고 항목 ID를 돌려준다. 저장되지 않았으면 이유를 보여 주고 `null`이다. */
-	const ensureSaved = async (purpose: string) => {
+	/** 명시적 발행만 현재 입력을 저장한다. 다른 작업은 미저장 입력이 있으면 먼저 저장하도록 안내한다. */
+	const ensureSaved = async (purpose: string, saveChanges = false) => {
 		if (autosave.status === "conflict") {
 			setActionFeedback({ type: "error", message: `편집 충돌을 해결한 후 ${purpose}할 수 있습니다.` });
 			return null;
 		}
-		if (!(await autosave.flush())) {
+		if (saveChanges && !(await autosave.flush())) {
 			setActionFeedback({
 				type: "error",
 				message: `변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.lastError ?? "저장 상태를 확인하세요."}`,
 			});
 			return null;
 		}
+		if (!saveChanges && autosave.hasPendingChanges()) {
+			setActionFeedback({ type: "error", message: `변경사항을 먼저 저장한 후 ${purpose}하세요.` });
+			return null;
+		}
 		const id = autosave.getEntryId();
-		if (!id) setActionFeedback({ type: "error", message: `초안을 저장한 후 ${purpose}할 수 있습니다.` });
+		if (!id) setActionFeedback({ type: "error", message: `먼저 저장한 후 ${purpose}할 수 있습니다.` });
 		return id;
 	};
 
@@ -410,7 +414,7 @@ export function EntryEditorShell({
 		}
 		setIsSubmitting(true);
 		try {
-			const id = await ensureSaved("발행");
+			const id = await ensureSaved("발행", true);
 			if (!id) return;
 			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
 				method: "POST",
@@ -503,8 +507,8 @@ export function EntryEditorShell({
 	const runLifecycle = async (action: LifecycleAction, successMessage: string) => {
 		if (!entry) return;
 		try {
-			if (action !== "restore" && !(await autosave.flush())) {
-				setActionFeedback({ type: "error", message: "저장되지 않은 변경이 있어 진행하지 않았습니다." });
+			if (action !== "restore" && autosave.hasPendingChanges()) {
+				setActionFeedback({ type: "error", message: "변경사항을 먼저 저장한 후 진행하세요." });
 				return;
 			}
 			await cmsFetch(`/api/cms/v1/entries/${entry.id}/${action}`, {
@@ -665,7 +669,7 @@ export function EntryEditorShell({
 					},
 				]
 			: []),
-		...(previewHref
+		...(previewHref && !autosave.hasPendingChanges()
 			? [
 					{
 						id: "preview",
@@ -795,7 +799,11 @@ export function EntryEditorShell({
 						{statusLabel}
 					</span>
 					{entry && !isRecordCollection(collection) && (
-						<LanguageMenu entry={entry} disabled={isReadOnly} onBeforeCreate={() => autosave.flush()} />
+						<LanguageMenu
+							entry={entry}
+							disabled={isReadOnly}
+							onBeforeCreate={async () => !autosave.hasPendingChanges()}
+						/>
 					)}
 				</div>
 
@@ -852,7 +860,20 @@ export function EntryEditorShell({
 						disabled={editorMode === "source" && !canUseVisual}
 						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
 					/>
-					{previewHref && <ToolbarAction label="미리보기" icon={Eye} href={previewHref} />}
+					<ToolbarAction
+						label="저장"
+						icon={Save}
+						disabled={isReadOnly || isSubmitting || autosave.status === "saving"}
+						onClick={() => void handleSaveNow()}
+					/>
+					{previewHref && (
+						<ToolbarAction
+							label={autosave.hasPendingChanges() ? "저장 후 미리보기" : "미리보기"}
+							icon={Eye}
+							href={previewHref}
+							disabled={autosave.hasPendingChanges()}
+						/>
+					)}
 					{!isReadOnly && entry?.status !== "archived" && (
 						<ToolbarAction
 							label="발행 예약"
@@ -1151,7 +1172,7 @@ export function EntryEditorShell({
 			<Dialog open={conflict !== null} onOpenChange={(open) => !open && setConflict(null)}>
 				<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>편집 충돌 — 자동 저장을 멈췄습니다</DialogTitle>
+						<DialogTitle>편집 충돌</DialogTitle>
 						<DialogDescription>
 							다른 탭이나 기기에서 먼저 저장했습니다. 내 입력은 브라우저에 남아 있습니다. 양쪽을 비교해 복사하거나
 							하나를 고르세요.

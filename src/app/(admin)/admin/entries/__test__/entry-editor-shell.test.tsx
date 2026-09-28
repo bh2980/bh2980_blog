@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EntryEditorShell } from "../entry-editor-shell";
 import { EMPTY_FORM, formFingerprint, formFromEntry } from "../entry-form";
@@ -77,10 +77,92 @@ beforeEach(() => {
 });
 afterEach(() => {
 	cleanup();
+	vi.useRealTimers();
 	vi.unstubAllGlobals();
 });
 
 describe("entry editor shell", () => {
+	it("keeps edits in the browser until Save is clicked", async () => {
+		serve((_input, init) => {
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				return json({ ...entry, version: 5, working: { metadata: body.metadata, mdx: body.mdx } });
+			}
+		});
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "로컬에서 수정" } });
+		await waitFor(() =>
+			expect(saveLocalBackup).toHaveBeenCalledWith(expect.objectContaining({ key: `${ADMIN}:entry-1` })),
+		);
+		expect(screen.getByLabelText("저장 전 변경사항")).toBeTruthy();
+		vi.useFakeTimers();
+		await act(async () => vi.advanceTimersByTimeAsync(11_000));
+		vi.useRealTimers();
+		expect(methodCalls("PATCH")).toHaveLength(0);
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
+		await waitFor(() => expect(screen.getByLabelText("서버에 저장됨")).toBeTruthy());
+		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).metadata.title).toBe("로컬에서 수정");
+	});
+
+	it("creates a new entry only after an explicit Save", async () => {
+		serve((input, init) => {
+			if (input === "/api/cms/v1/entries" && init?.method === "POST") {
+				const body = JSON.parse(String(init.body));
+				return json(
+					{
+						...entry,
+						id: "created-entry",
+						version: 1,
+						workingSlug: body.slug,
+						working: { metadata: body.metadata, mdx: body.mdx },
+					},
+					201,
+				);
+			}
+		});
+		render(<EntryEditorShell mode="new" adminId={ADMIN} collection="post" />);
+		fireEvent.change(await editorTitle(), { target: { value: "새 글" } });
+		await waitFor(() =>
+			expect(saveLocalBackup).toHaveBeenCalledWith(expect.objectContaining({ key: `${ADMIN}:new:post` })),
+		);
+		vi.useFakeTimers();
+		await act(async () => vi.advanceTimersByTimeAsync(11_000));
+		vi.useRealTimers();
+		expect(methodCalls("POST", "/api/cms/v1/entries")).toHaveLength(0);
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(methodCalls("POST", "/api/cms/v1/entries")).toHaveLength(1));
+		await waitFor(() => expect(deleteLocalBackup).toHaveBeenCalledWith(`${ADMIN}:new:post`));
+		expect(window.location.pathname).toBe("/admin/entries/created-entry/edit");
+	});
+
+	it("creates and publishes a local new entry when Publish is clicked", async () => {
+		serve((input, init) => {
+			if (input === "/api/cms/v1/entries" && init?.method === "POST") {
+				const body = JSON.parse(String(init.body));
+				return json({
+					...entry,
+					id: "published-entry",
+					collection: "memo",
+					version: 1,
+					workingSlug: body.slug,
+					working: { metadata: body.metadata, mdx: body.mdx },
+				});
+			}
+			if (input === "/api/cms/v1/entries/published-entry/publish" && init?.method === "POST") {
+				return json({ ...entry, id: "published-entry", collection: "memo", status: "published", version: 2 });
+			}
+		});
+		render(<EntryEditorShell mode="new" adminId={ADMIN} collection="memo" />);
+		fireEvent.change(await editorTitle(), { target: { value: "바로 발행" } });
+		await waitFor(() => expect(saveLocalBackup).toHaveBeenCalled());
+		expect(methodCalls("POST", "/api/cms/v1/entries")).toHaveLength(0);
+		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
+		await waitFor(() => expect(methodCalls("POST", "/publish")).toHaveLength(1));
+		expect(methodCalls("POST", "/api/cms/v1/entries")).toHaveLength(1);
+		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({ expectedVersion: 1 });
+	});
+
 	it("saves the KST display date in draft metadata and publishes with only the version", async () => {
 		let saved = {
 			...entry,

@@ -4,6 +4,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *, .kui-scheme--dark, .kui-scheme--dark *));
 
+/* Base UI는 data-horizontal/data-vertical 대신 data-orientation을 붙이므로 shadcn 클래스를 여기에 맞춘다 */
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+
 @utility anno-mark-base {
 	& > *:first-child {
 		@apply relative;
