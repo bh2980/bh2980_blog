@@ -22,7 +22,6 @@ export const callout = defineBlock({
 			defaultValue: "note",
 		},
 		title: { type: "string", label: "제목" },
-		description: { type: "string", label: "설명", input: "textarea" },
 	},
 	editor: { view: "node", nodeView: "callout", insertable: true, keywords: ["callout", "콜아웃", "알림"] },
 });
@@ -79,7 +78,13 @@ export const columns = defineBlock({
 	description: "내용을 2~4단으로 나란히 놓는다",
 	syntax: { kind: "container", directive: "columns" },
 	component: "Columns",
-	attributes: {},
+	attributes: {
+		widths: {
+			type: "string",
+			label: "단 너비",
+			description: "단마다 비율(%)을 쉼표로 적는다(예: 60,40). 비우면 똑같이 나눈다.",
+		},
+	},
 	children: { blocks: ["column"], min: 2, max: 4 },
 	editor: { view: "node", nodeView: "columns", insertable: true, keywords: ["columns", "단", "나란히"] },
 });

@@ -41,14 +41,22 @@ export const CONTAINER_CONVERTERS: readonly BlockConverter[] = containerTypes.ma
 				})
 			);
 		}
+		// 콜아웃은 본문이 비어도 된다(제목만 있는 콜아웃).
 		return (
-			children.length > 0 &&
+			(children.length > 0 || cmsType === "Callout") &&
 			children.every((child) => child.type !== "Tab" && child.type !== "Column" && ctx.isMappableBlock(child))
 		);
 	},
 	toTiptap(node, ctx) {
 		const attrs = node.attrs ?? {};
 		const values = Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== "name" && key !== "attributes"));
+		// 편집기 스키마는 본문 블록이 하나 이상이어야 한다(block+). 빈 콜아웃은 빈 문단 하나로 연다.
+		if (cmsType === "Callout" && !node.content?.length)
+			return {
+				type: tiptapType,
+				attrs: { values, originalAttributes: attrs.attributes ?? [] },
+				content: [{ type: "paragraph" }],
+			};
 		return {
 			type: tiptapType,
 			attrs: { values, originalAttributes: attrs.attributes ?? [] },
@@ -75,11 +83,15 @@ export const CONTAINER_CONVERTERS: readonly BlockConverter[] = containerTypes.ma
 			if (value !== undefined && !attributes.some((attr: { name: string }) => attr.name === name))
 				attributes.push({ name, value });
 		}
+		const children = node.content ?? [];
+		// 빈 문단만 남은 콜아웃은 본문 없는 콜아웃으로 저장한다(위 toTiptap의 반대).
+		const emptyBody =
+			cmsType === "Callout" && children.every((child) => child.type === "paragraph" && !child.content?.length);
 		return [
 			{
 				type: cmsType,
 				attrs: { ...values, name: cmsType, attributes },
-				content: (node.content ?? []).flatMap(ctx.tiptapBlockToCms),
+				content: emptyBody ? [] : children.flatMap(ctx.tiptapBlockToCms),
 			},
 		];
 	},

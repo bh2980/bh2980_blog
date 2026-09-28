@@ -12,11 +12,15 @@ const sources = [
 	':::collapsible{title="제목"}\n\n본문\n\n:::',
 	'::::tabs\n:::tab{label="a"}\n첫째\n:::\n:::tab{label="b"}\n둘째\n:::\n::::',
 	"::::columns\n:::column\n왼쪽\n:::\n:::column\n오른쪽\n:::\n::::",
+	'::::columns{widths="60,40"}\n:::column\n왼쪽\n:::\n:::column\n오른쪽\n:::\n::::',
 ];
 
 describe("C3 컨테이너 본문 편집", () => {
 	it.each(
-		sources.map((source, index) => [source, ["cmsCallout", "cmsCollapsible", "cmsTabs", "cmsColumns"][index]] as const),
+		sources.map(
+			(source, index) =>
+				[source, ["cmsCallout", "cmsCollapsible", "cmsTabs", "cmsColumns", "cmsColumns"][index]] as const,
+		),
 	)("MDX → Tiptap 스키마 → MDX 왕복: %s", (source, expected) => {
 		const content = mdxToTiptap(source);
 		expect(content.content?.[0]?.type).toBe(expected);
@@ -46,20 +50,32 @@ describe("C3 컨테이너 본문 편집", () => {
 		editor.destroy();
 	});
 
-	it("긴 설명도 HTML 복사·붙여넣기에서 보존한다", () => {
-		const description = "긴 설명".repeat(5000);
+	it("긴 제목도 HTML 복사·붙여넣기에서 보존한다", () => {
+		const title = "긴 제목".repeat(5000);
 		const editor = new Editor({ extensions: buildEditorExtensions(), content: mdxToTiptap(sources[0] ?? "") });
-		editor.commands.updateAttributes("cmsCallout", { values: { description } });
+		editor.commands.updateAttributes("cmsCallout", { values: { title } });
 		const element = document.createElement("div");
 		element.innerHTML = editor.getHTML();
 		const parsed = PmDOMParser.fromSchema(editor.schema).parse(element);
-		expect(parsed.firstChild?.attrs.values.description).toBe(description);
+		expect(parsed.firstChild?.attrs.values.title).toBe(title);
 		editor.destroy();
 	});
 
-	it("빈 컨테이너와 부모 바깥의 Tab은 원문 보존 상자로 간다", () => {
-		const empty = mdxToTiptap(":::callout\n:::");
-		expect(empty.content?.[0]?.type).not.toBe("cmsCallout");
+	it("본문 없는 콜아웃은 빈 문단으로 열고, 비운 채 저장하면 본문 없이 되돌린다", () => {
+		const source = ':::callout{variant="info" title="제목만"}\n:::';
+		const content = mdxToTiptap(source);
+		expect(content.content?.[0]?.type).toBe("cmsCallout");
+		expect(content.content?.[0]?.content).toEqual([{ type: "paragraph" }]);
+		const editor = new Editor({ extensions: buildEditorExtensions(), content });
+		expect(tiptapToMdx(editor.getJSON()).trim()).toBe(serialize(toDocument(analyze(source))).trim());
+		editor.commands.insertContentAt(2, "새 본문");
+		expect(tiptapToMdx(editor.getJSON())).toContain("새 본문");
+		editor.destroy();
+	});
+
+	it("빈 컨테이너(콜아웃 제외)와 부모 바깥의 Tab은 원문 보존 상자로 간다", () => {
+		const empty = mdxToTiptap(':::collapsible{title="a"}\n:::');
+		expect(empty.content?.[0]?.type).not.toBe("cmsCollapsible");
 		const orphan = mdxToTiptap(':::tab{label="a"}\n본문\n:::');
 		expect(orphan.content?.[0]?.type).not.toBe("cmsTab");
 		const loneColumn = mdxToTiptap(":::column\n본문\n:::");

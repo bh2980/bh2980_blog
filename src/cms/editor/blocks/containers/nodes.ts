@@ -1,6 +1,9 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { ContainerNodeView } from "./view";
+import { CalloutNodeView } from "./callout-view";
+import { CollapsibleNodeView } from "./collapsible-view";
+import { ColumnNodeView, ColumnsNodeView } from "./columns-view";
+import { TabNodeView, TabsNodeView } from "./tabs-view";
 
 /** 자식 노드는 부모 전용 스키마로 제한한다. 본문 컨테이너는 일반 블록을 받는다. */
 const parseJsonAttribute = (value: string | null, fallback: Record<string, unknown> | unknown[]) => {
@@ -15,7 +18,7 @@ const parseJsonAttribute = (value: string | null, fallback: Record<string, unkno
 	}
 };
 
-const container = (name: string, content: string, group?: string) =>
+const container = (name: string, content: string, view: Parameters<typeof ReactNodeViewRenderer>[0], group?: string) =>
 	Node.create({
 		name,
 		...(group ? { group } : {}),
@@ -46,13 +49,14 @@ const container = (name: string, content: string, group?: string) =>
 			return ["div", mergeAttributes(HTMLAttributes, { "data-cms-container": name }), 0];
 		},
 		addNodeView() {
-			return ReactNodeViewRenderer(ContainerNodeView);
+			return ReactNodeViewRenderer(view);
 		},
 	});
 
-export const CmsCalloutNode = container("cmsCallout", "block+", "block");
-export const CmsCollapsibleNode = container("cmsCollapsible", "block+", "block");
-export const CmsTabsNode = container("cmsTabs", "cmsTab{2,8}", "block");
-export const CmsTabNode = container("cmsTab", "block+");
-export const CmsColumnsNode = container("cmsColumns", "cmsColumn{2,4}", "block");
-export const CmsColumnNode = container("cmsColumn", "block+");
+/** 각 컨테이너는 공개 화면과 같은 모양으로 보이고 본문을 그 자리에서 고친다(뷰마다 파일을 둔다). */
+export const CmsCalloutNode = container("cmsCallout", "block+", CalloutNodeView, "block");
+export const CmsCollapsibleNode = container("cmsCollapsible", "block+", CollapsibleNodeView, "block");
+export const CmsTabsNode = container("cmsTabs", "cmsTab{2,8}", TabsNodeView, "block");
+export const CmsTabNode = container("cmsTab", "block+", TabNodeView);
+export const CmsColumnsNode = container("cmsColumns", "cmsColumn{2,4}", ColumnsNodeView, "block");
+export const CmsColumnNode = container("cmsColumn", "block+", ColumnNodeView);

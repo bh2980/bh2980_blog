@@ -46,6 +46,9 @@ const renderPublic = async (source: string): Promise<string> => {
  * 상태 속성(`data-state` → `data-closed`·`data-panel-open` 등)과 닫힌 패널의 빈 요소를 렌더하지 않는 것,
  * 그리고 Tooltip 설명을 스크린 리더용 숨긴 텍스트(`sr-only`, `aria-describedby`)로 함께 내보내는 것뿐이다.
  * v2 C6 후속(2026-09-27): GFM `<th>`에 `scope="col"`을 부여해 해당 표가 있는 2편의 해시를 갱신했다.
+ * 컨테이너 편집 개선(2026-09-28): Tabs 방향 변형(`data-[orientation=horizontal]`)·여백과 Column 래퍼(`<div>`)를
+ * 바로잡아 탭·단이 있는 3편의 해시를 갱신했다. 보이는 글자는 같다. 이어서 단 너비(`widths`)를 받도록
+ * Columns를 grid로 바꿔 단이 있는 1편의 해시를 다시 갱신했다.
  */
 const canonical = (html: string): string =>
 	html.replaceAll("<span>ㅤ</span>", "<p><br/></p>").replace(/<br\/>\s+/g, "<br/>");

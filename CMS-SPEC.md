@@ -285,11 +285,11 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 
 | 저장 문법 | 종류 | 속성 |
 |---|---|---|
-| `:::callout{...}` | 컨테이너 | `variant`, `title`, `description` |
+| `:::callout{...}` | 컨테이너 | `variant`, `title` |
 | `:::collapsible{...}` | 컨테이너 | `defaultOpen`, `title` |
 | `:::text-align{...}` | 컨테이너 | `align`(필수, `left`·`center`·`right`) |
 | `::::tabs{...}` 안 `:::tab{...}` | 중첩 컨테이너 | `defaultValue` / `label`(필수) |
-| `::::columns` 안 `:::column` | 중첩 컨테이너 | 없음 |
+| `::::columns{...}` 안 `:::column` | 중첩 컨테이너 | `widths` / 없음 |
 | `::image{...}` | 리프 | `mediaId` 또는 `src`(하나), `alt`, `width`, `align`, `caption`, `decorative` |
 | `:tooltip[...]{...}` | 텍스트 | `content`(필수) |
 | `:u[...]` | 텍스트 | 없음 |
@@ -311,10 +311,11 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 
 컴포넌트별 의미:
 
-- `callout`은 `variant`(기본 `note`)로 종류를 정하고 `title`·`description`을 선택적으로 쓴다.
+- `callout`은 `variant`(기본 `note`)로 종류를 정하고 `title`을 선택적으로 쓴다. 본문 없이 제목만 둘 수 있다.
 - `collapsible`은 `title`을 접힌 상태의 라벨로 쓰고 `defaultOpen`으로 초기 상태를 정한다.
 - `text-align`은 하나의 문단·제목을 감싸며 기본 왼쪽 정렬에는 쓰지 않는다. 제목의 텍스트·수준은 목차에 그대로 반영한다.
 - `tabs`/`tab`과 `columns`/`column`은 부모 안에만 쓴다. `tab`은 `label`이 필수이고 `tabs`의 `defaultValue`는 `label`과 맞아야 한다.
+- `columns`의 `widths`는 단마다 비율(%)을 쉼표로 적는다(`widths="60,40"`). 넓은 화면에서 그 비율로 나누고, 비우거나 단 수와 맞지 않으면 똑같이 나눈다. 좁은 화면에서는 비율과 상관없이 위아래로 쌓는다.
 - `image`는 등록 미디어의 `mediaId` 또는 외부 이미지의 `src` 중 하나를 사용한다. 공개 주소 해석은 렌더러가 담당한다. 장식 이미지는 `decorative`와 빈 alt로 저장한다. 이미지 주소는 허용된 http/https 또는 사이트 상대 경로만 쓰고 `javascript:` 같은 실행 가능한 URL은 거부한다. **해석에 실패하면 공개 화면은 중립 플레이스홀더와 캡션을 남기고 `width`·`align`은 적용하지 않는다(2026-09-22 사용자 결정). 장식 이미지는 캡션만 남긴다.** 적용 범위는 **정상 데이터에서 실제로 발생하는 3가지**다: ① 미디어 행은 있으나 `ready`가 아님 ② `ready`인데 R2 객체 해석 실패 ③ 외부 `src`가 허용 규칙에 걸리거나 해석 실패. **미디어 행이 아예 없는 경우는 경고 대상이 아니라 렌더 방어 대상이다** — `entry_references`의 FK·CHECK와 발행 검사의 참조 확인(M7 무결성 계약)이 저장·발행 단계에서 먼저 막으므로 스키마를 완화하지 않는다. 렌더러는 내부 실패 사유를 노출하지 않고 경고도 내지 않는다. `alt` 글자로 대체하지 않는다 — 문서 의미가 조용히 바뀌고, 장식 이미지는 대체할 alt가 없다. 대신 **발행 API가 비차단 경고**를 응답에 포함하고, **편집기는 이미지 아래에 실패 사유**를 함께 보여준다(공개 화면과 달리 저자는 원인을 알아야 한다).
 - `tooltip`은 `content`를 설명으로 쓰고 라벨을 표시 텍스트로 쓴다.
 - `u`·`sup`·`sub`는 라벨을 표시 텍스트로 쓰고 속성이 없다. `br`은 빈 라벨 `[]`로 홀로 쓰며, 같은 문단 안에서 줄을 바꾼다. 문단에 홀로 쓴 `:br[]`는 **빈 줄(간격)** 로 쓴다 — 간격용 컴포넌트(`IdeographicSpace`)를 대신한다(2026-09-22).

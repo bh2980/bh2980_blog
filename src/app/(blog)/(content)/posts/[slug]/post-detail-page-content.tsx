@@ -110,7 +110,7 @@ export const PostDetailPageContent = async ({
 					)}
 					{!post.deprecation && isStalePost(post) && (
 						<aside className="mt-8">
-							<Callout variant="warning" description={t("post.stale")} />
+							<Callout variant="warning">{t("post.stale")}</Callout>
 						</aside>
 					)}
 					{toc?.length > 0 ? <TableOfContents toc={toc} className="mt-4 xl:hidden" /> : null}

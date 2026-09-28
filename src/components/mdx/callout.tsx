@@ -5,9 +5,9 @@ import type { PropsWithChildren } from "react";
 
 import { Alert, type alertVariants } from "../ui/alert";
 
-type CalloutVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
+export type CalloutVariant = NonNullable<VariantProps<typeof alertVariants>["variant"]>;
 
-const ICON_BY_VARIANT: Record<CalloutVariant, React.ComponentType<{ className?: string }>> = {
+export const CALLOUT_ICON_BY_VARIANT: Record<CalloutVariant, React.ComponentType<{ className?: string }>> = {
 	note: AlertCircle,
 	tip: Lightbulb,
 	info: Info,
@@ -28,13 +28,11 @@ export const getDefaultCalloutTitle = (variant: CalloutVariant) => TITLE_BY_VARI
 type CalloutProps = PropsWithChildren<{
 	variant?: CalloutVariant;
 	title?: string;
-	description?: string;
-	editor?: boolean;
 }>;
 
-export const Callout = ({ variant = "note", title, description, children, editor = false }: CalloutProps) => {
+export const Callout = ({ variant = "note", title, children }: CalloutProps) => {
 	const v = variant ?? "note";
-	const Icon = ICON_BY_VARIANT[v];
+	const Icon = CALLOUT_ICON_BY_VARIANT[v];
 	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
 
 	return (
@@ -43,15 +41,12 @@ export const Callout = ({ variant = "note", title, description, children, editor
 				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
 				<div className="min-h-4 min-w-0 font-medium tracking-tight">{resolvedTitle}</div>
 			</div>
-			{editor ? (
-				<div data-slot="callout-body" className="mt-2 w-full">
-					{children || description}
-				</div>
-			) : (
+			{/* 본문 없이 제목만 둔 콜아웃은 빈 본문 칸을 그리지 않는다. */}
+			{children ? (
 				<div data-slot="callout-body" className="mt-2 text-current text-sm [&_p]:m-0 [&_p]:leading-relaxed">
-					{children || description}
+					{children}
 				</div>
-			)}
+			) : null}
 		</Alert>
 	);
 };
