@@ -24,7 +24,7 @@ const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].a
 
 /**
  * 편집 화면 머리글의 언어 메뉴(v2 B4). 같은 번역 묶음의 언어 사이를 오가고, 없는 언어는 번역본을 만든다.
- * 번역본은 원문의 언어별 값과 본문을 복사한 초안이다. 만들기 전에 지금 편집 중인 내용을 먼저 저장한다.
+ * 번역본은 서버에 저장된 원문의 언어별 값과 본문을 복사한 초안이다.
  */
 export function LanguageMenu({
 	entry,
@@ -33,7 +33,7 @@ export function LanguageMenu({
 }: {
 	entry: EntryData;
 	disabled: boolean;
-	/** 저장되지 않은 변경을 서버에 보낸다. 실패하면 번역본을 만들지 않는다. */
+	/** 저장되지 않은 변경이 있으면 번역본 생성을 막는다. */
 	onBeforeCreate: () => Promise<boolean>;
 }) {
 	const router = useRouter();
@@ -47,7 +47,7 @@ export function LanguageMenu({
 		setCreating(target);
 		try {
 			if (!(await onBeforeCreate())) {
-				toast.error("저장하지 못해 번역본을 만들지 않았습니다.");
+				toast.error("변경사항을 먼저 저장한 후 번역본을 만드세요.");
 				return;
 			}
 			const created = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${entry.id}/translations`, {

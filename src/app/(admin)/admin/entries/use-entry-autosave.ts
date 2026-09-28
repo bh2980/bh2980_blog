@@ -13,11 +13,20 @@ import {
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
 
 /** §5.1 저장 상태. */
-export type SaveStatus = "saved" | "dirty" | "saving" | "local-only" | "failed" | "conflict" | "session-expired";
+export type SaveStatus =
+	| "new"
+	| "saved"
+	| "dirty"
+	| "saving"
+	| "local-only"
+	| "failed"
+	| "conflict"
+	| "session-expired";
 
 export const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
+	new: "저장 전",
 	saved: "서버에 저장됨",
-	dirty: "변경 있음",
+	dirty: "저장 전 변경사항",
 	saving: "저장 중",
 	"local-only": "브라우저에만 임시 저장됨",
 	failed: "저장 실패",
@@ -25,15 +34,10 @@ export const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
 	"session-expired": "세션 만료 — 다시 로그인하세요",
 };
 
-const IDLE_MS = 2000;
-const MAX_WAIT_MS = 10_000;
-/** 자동 재시도 간격(§5.1). 이후에는 수동 재시도나 연결 복귀를 기다린다. */
-export const RETRY_DELAYS_MS = [2000, 5000, 15_000];
-
 interface Options {
 	adminId: string;
 	collection: string;
-	/** 불러온 항목. 새 글이면 `null`이고 첫 저장 때 만든다. */
+	/** 불러온 항목. 새 글이면 `null`이고 명시적으로 저장하거나 발행할 때 만든다. */
 	entry: EntryData | null;
 	initialForm: EntryForm;
 	/** 예약 잠금·휴지통처럼 저장하면 안 되는 상태면 false다. */
@@ -45,11 +49,10 @@ interface Options {
 }
 
 /**
- * 최신 초안 자동 저장과 브라우저 복구본(§5.1).
+ * 편집 중에는 브라우저 복구본만 남기고, 명시적 저장·발행 시 서버 초안을 저장한다.
  *
- * - 입력이 2초 멈추거나, 계속 입력해도 마지막 저장 후 최대 10초마다 서버에 저장한다. IME 조합 중에는 미룬다.
- * - 요청은 한 번에 하나다. 전송 중 새 입력은 다음 요청에 합친다. 서버가 확인한 순번이 현재 순번과 같을 때만 완료로 본다.
- * - 네트워크·서버 오류는 복구본을 남기고 2·5·15초 뒤 자동 재시도한다. 연결이 돌아오면 서버 버전을 먼저 확인한다.
+ * - 요청은 한 번에 하나다. 전송 중 새 입력은 다음 명시적 저장 때 보낸다.
+ * - 네트워크·서버 오류가 나도 복구본을 남긴다. 재시도는 사용자가 누를 때만 보낸다.
  * - 세션이 만료되면 복구본을 유지하고 다시 로그인하게 안내한다.
  */
 export function useEntryAutosave({
@@ -63,7 +66,7 @@ export function useEntryAutosave({
 	onConflict,
 }: Options) {
 	const [form, setFormState] = useState<EntryForm>(initialForm);
-	const [status, setStatus] = useState<SaveStatus>("saved");
+	const [status, setStatus] = useState<SaveStatus>(entry ? "saved" : "new");
 	const [lastError, setLastError] = useState<string | null>(null);
 	const [backupAvailable, setBackupAvailable] = useState(true);
 
@@ -78,11 +81,8 @@ export function useEntryAutosave({
 	const ackSeqRef = useRef(0);
 	const inflightRef = useRef<Promise<boolean> | null>(null);
 	const composingRef = useRef(false);
-	const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const maxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const retryAttemptRef = useRef(0);
-	const statusRef = useRef<SaveStatus>("saved");
+	const backupWriteRef = useRef<Promise<void>>(Promise.resolve());
+	const statusRef = useRef<SaveStatus>(entry ? "saved" : "new");
 	const enabledRef = useRef(enabled);
 	enabledRef.current = enabled;
 	const callbacksRef = useRef({ onSaved, onConflict });
@@ -93,13 +93,10 @@ export function useEntryAutosave({
 		setStatus(next);
 	}, []);
 
-	const clearTimers = useCallback(() => {
-		for (const ref of [idleTimerRef, maxWaitTimerRef, retryTimerRef]) {
-			if (ref.current) clearTimeout(ref.current);
-			ref.current = null;
-		}
+	const queueBackup = useCallback((task: () => Promise<void>) => {
+		backupWriteRef.current = backupWriteRef.current.then(task, task);
+		return backupWriteRef.current;
 	}, []);
-	useEffect(() => clearTimers, [clearTimers]);
 
 	/** 불러오기·재적재 뒤 기준값을 서버 값으로 맞춘다. */
 	const resetFromServer = useCallback(
@@ -113,22 +110,38 @@ export function useEntryAutosave({
 			setFormState(loadedForm);
 			changeSeqRef.current = 0;
 			ackSeqRef.current = 0;
-			retryAttemptRef.current = 0;
-			clearTimers();
 			setLastError(null);
 			updateStatus("saved");
 		},
-		[clearTimers, updateStatus],
+		[updateStatus],
 	);
 
 	const currentKey = () => backupKey(adminId, entryIdRef.current, collection);
+	const persistBackup = useCallback(
+		(snapshot: EntryForm, changeSeq: number) => {
+			const key = backupKey(adminId, entryIdRef.current, collection);
+			const record = {
+				key,
+				entryId: entryIdRef.current ?? "new",
+				baseVersion: versionRef.current,
+				baseFingerprint: serverFingerprintRef.current,
+				localFingerprint: formFingerprint(snapshot),
+				snapshot: snapshot as unknown as Record<string, unknown>,
+				changeSeq,
+				savedAt: Date.now(),
+			};
+			return queueBackup(async () => setBackupAvailable(await saveLocalBackup(record)));
+		},
+		[adminId, collection, queueBackup],
+	);
+	const discardBackup = useCallback((key: string) => queueBackup(() => deleteLocalBackup(key)), [queueBackup]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: save loop reads refs; scheduling helpers are stable
+	// biome-ignore lint/correctness/useExhaustiveDependencies: save loop reads refs; explicit save is invoked from current render
 	const performSave = useCallback((): Promise<boolean> => {
 		if (inflightRef.current) return inflightRef.current;
 		if (!enabledRef.current) return Promise.resolve(false);
 		if (statusRef.current === "conflict") return Promise.resolve(false);
-		if (changeSeqRef.current <= ackSeqRef.current) {
+		if (entryIdRef.current && changeSeqRef.current <= ackSeqRef.current) {
 			if (statusRef.current !== "session-expired") updateStatus("saved");
 			return Promise.resolve(true);
 		}
@@ -150,6 +163,7 @@ export function useEntryAutosave({
 		const request = (async (): Promise<boolean> => {
 			try {
 				const isNew = !entryIdRef.current;
+				const newKey = backupKey(adminId, null, collection);
 				const saved = await cmsFetch<EntryData>(
 					isNew ? "/api/cms/v1/entries" : `/api/cms/v1/entries/${entryIdRef.current}`,
 					{
@@ -166,7 +180,6 @@ export function useEntryAutosave({
 					},
 				);
 				if (isNew) {
-					await deleteLocalBackup(backupKey(adminId, null, collection));
 					entryIdRef.current = saved.id;
 					// 화면을 다시 마운트하지 않고 주소만 편집 주소로 바꾼다.
 					window.history.replaceState({ ...window.history.state }, "", `/admin/entries/${saved.id}/edit`);
@@ -175,17 +188,18 @@ export function useEntryAutosave({
 				baseMetadataRef.current = saved.working?.metadata ?? built.metadata;
 				serverFingerprintRef.current = formFingerprint(snapshot);
 				ackSeqRef.current = targetSeq;
-				retryAttemptRef.current = 0;
 				setLastError(null);
 				callbacksRef.current.onSaved(saved);
 
-				if (changeSeqRef.current === targetSeq) {
+				if (formFingerprint(formRef.current) === serverFingerprintRef.current) {
+					ackSeqRef.current = changeSeqRef.current;
 					updateStatus("saved");
-					await deleteLocalBackup(currentKey());
+					await discardBackup(currentKey());
 				} else {
 					updateStatus("dirty");
-					scheduleSave(0);
+					await persistBackup(formRef.current, changeSeqRef.current);
 				}
+				if (isNew) await discardBackup(newKey);
 				return true;
 			} catch (error) {
 				if (error instanceof CmsApiError) {
@@ -209,7 +223,6 @@ export function useEntryAutosave({
 				}
 				setLastError(error instanceof CmsApiError ? error.message : "서버에 연결할 수 없습니다.");
 				updateStatus(backupAvailable ? "local-only" : "failed");
-				scheduleRetry();
 				return false;
 			} finally {
 				inflightRef.current = null;
@@ -217,33 +230,9 @@ export function useEntryAutosave({
 		})();
 		inflightRef.current = request;
 		return request;
-	}, [adminId, collection, backupAvailable, newEntryFolderId, updateStatus]);
+	}, [adminId, collection, backupAvailable, discardBackup, newEntryFolderId, persistBackup, updateStatus]);
 
-	const scheduleSave = (delay: number) => {
-		if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-		idleTimerRef.current = setTimeout(() => {
-			idleTimerRef.current = null;
-			if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
-			maxWaitTimerRef.current = null;
-			void performSave();
-		}, delay);
-	};
-
-	const scheduleRetry = () => {
-		const delay = RETRY_DELAYS_MS[retryAttemptRef.current];
-		if (delay === undefined) return;
-		retryAttemptRef.current += 1;
-		if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-		retryTimerRef.current = setTimeout(() => {
-			retryTimerRef.current = null;
-			void retry(true);
-		}, delay);
-	};
-
-	/**
-	 * 다시 저장한다. `verify`면 먼저 서버 버전을 확인해 다른 곳에서 바뀌었는지 본다(§5.1 "연결 복귀 후 서버 버전을 먼저 확인").
-	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: scheduleRetry reads refs only
+	/** 사용자가 재시도를 누르면 서버 버전을 먼저 확인하고 다시 저장한다. */
 	const retry = useCallback(
 		async (verify = true): Promise<boolean> => {
 			if (verify && entryIdRef.current) {
@@ -260,7 +249,6 @@ export function useEntryAutosave({
 						return false;
 					}
 					updateStatus(backupAvailable ? "local-only" : "failed");
-					scheduleRetry();
 					return false;
 				}
 			}
@@ -270,71 +258,47 @@ export function useEntryAutosave({
 		[backupAvailable, performSave, updateStatus],
 	);
 
-	/** 폼 일부를 바꾼다. 복구본을 즉시 남기고 서버 저장을 예약한다. */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: helpers read refs only
+	/** 폼 일부를 바꾼다. 변경사항은 브라우저에만 남긴다. */
 	const setForm = useCallback(
 		(patch: EntryFormPatch) => {
 			const next = { ...formRef.current, ...patch };
+			const fingerprint = formFingerprint(next);
+			if (fingerprint === formFingerprint(formRef.current)) return;
 			formRef.current = next;
 			setFormState(next);
 			changeSeqRef.current += 1;
-			if (statusRef.current !== "conflict" && statusRef.current !== "session-expired") updateStatus("dirty");
-
-			void saveLocalBackup({
-				key: currentKey(),
-				entryId: entryIdRef.current ?? "new",
-				baseVersion: versionRef.current,
-				baseFingerprint: serverFingerprintRef.current,
-				localFingerprint: formFingerprint(next),
-				snapshot: next as unknown as Record<string, unknown>,
-				changeSeq: changeSeqRef.current,
-				savedAt: Date.now(),
-			}).then(setBackupAvailable);
-
-			if (!enabledRef.current) return;
-			scheduleSave(IDLE_MS);
-			if (!maxWaitTimerRef.current) {
-				maxWaitTimerRef.current = setTimeout(() => {
-					maxWaitTimerRef.current = null;
-					void performSave();
-				}, MAX_WAIT_MS);
+			if (!inflightRef.current && fingerprint === serverFingerprintRef.current) {
+				ackSeqRef.current = changeSeqRef.current;
+				if (statusRef.current !== "conflict" && statusRef.current !== "session-expired") {
+					updateStatus(entryIdRef.current ? "saved" : "new");
+				}
+				void discardBackup(backupKey(adminId, entryIdRef.current, collection));
+				return;
 			}
+			if (statusRef.current !== "conflict" && statusRef.current !== "session-expired") updateStatus("dirty");
+			void persistBackup(next, changeSeqRef.current);
 		},
-		[performSave, updateStatus],
+		[adminId, collection, discardBackup, persistBackup, updateStatus],
 	);
 
-	/** 대기 중인 저장을 즉시 보내고 모두 확인될 때까지 기다린다(수동 저장·발행 전). */
+	/** 명시적으로 저장하거나 발행할 때만 서버에 보낸다. */
 	const flush = useCallback(async (): Promise<boolean> => {
-		if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-		if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
-		idleTimerRef.current = null;
-		maxWaitTimerRef.current = null;
+		await backupWriteRef.current;
 		for (let attempt = 0; attempt < 5; attempt++) {
 			if (inflightRef.current) await inflightRef.current;
-			if (changeSeqRef.current <= ackSeqRef.current) return true;
+			if (entryIdRef.current && changeSeqRef.current <= ackSeqRef.current) return true;
 			if (!(await performSave())) return false;
 		}
-		return changeSeqRef.current <= ackSeqRef.current;
+		return Boolean(entryIdRef.current && changeSeqRef.current <= ackSeqRef.current);
 	}, [performSave]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: scheduleSave reads refs only
 	const setComposing = useCallback((composing: boolean) => {
 		composingRef.current = composing;
-		if (!composing && changeSeqRef.current > ackSeqRef.current) scheduleSave(IDLE_MS);
 	}, []);
 
-	// 연결이 돌아오면 서버 버전을 확인하고 다시 저장한다.
+	// 서버에 저장되지 않은 변경이 있으면 페이지 이탈을 경고한다.
 	useEffect(() => {
-		const online = () => {
-			if (changeSeqRef.current > ackSeqRef.current) void retry(true);
-		};
-		window.addEventListener("online", online);
-		return () => window.removeEventListener("online", online);
-	}, [retry]);
-
-	// 서버에 저장되지 않은 변경이 있으면 페이지 이탈을 경고한다. 종료 직전 전송이 성공한다고 가정하지 않는다.
-	useEffect(() => {
-		if (status === "saved") return;
+		if (status === "saved" || status === "new") return;
 		const warn = (event: BeforeUnloadEvent) => {
 			event.preventDefault();
 			event.returnValue = "";
