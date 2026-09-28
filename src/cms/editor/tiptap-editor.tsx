@@ -4,7 +4,7 @@ import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { ImageIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
@@ -25,6 +25,8 @@ import { TooltipPopover } from "./tooltip-popover";
 interface CmsEditorProps {
 	content: string;
 	onChange: (newContent: string) => void;
+	/** 편집 문서의 제목 입력. 서식 도구 아래, 본문 위에 놓는다. */
+	titleField?: ReactNode;
 	onCompositionStart?: () => void;
 	onCompositionEnd?: () => void;
 	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
@@ -243,6 +245,7 @@ async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 export function CmsEditor({
 	content,
 	onChange,
+	titleField,
 	onCompositionStart,
 	onCompositionEnd,
 	editable = true,
@@ -564,6 +567,8 @@ export function CmsEditor({
 					</fieldset>
 				)}
 			</div>
+
+			{titleField && <div className="mx-auto w-full max-w-3xl px-4 pt-12">{titleField}</div>}
 
 			<ImageInsertDialog
 				open={imageDialog !== null}

@@ -467,8 +467,26 @@ function useDashboard(mode: Mode) {
 	return { body, headerActions, total, state, folders, folderActions, moveEntries, update, createNew, label };
 }
 
+// 관리자 목록은 브라우저에서 데이터를 가져온다. hydration 뒤에 그려야 Base UI의 자동 ID가 서버 HTML과 어긋나지 않는다.
+function useDashboardMounted() {
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
+	return mounted;
+}
+
+function DashboardLoading() {
+	return (
+		<output className="flex h-svh items-center justify-center text-muted-foreground text-sm">
+			관리자 화면을 불러오는 중…
+		</output>
+	);
+}
+
 /** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
 export function AdminClientDashboard() {
+	const mounted = useDashboardMounted();
+	if (!mounted) return <DashboardLoading />;
+
 	return (
 		<AdminNavProvider>
 			<ListPage />
@@ -478,6 +496,9 @@ export function AdminClientDashboard() {
 
 /** 휴지통 전용 화면(v2 A3). 컬렉션 탭으로 나누고 복원·영구 삭제만 제공한다. */
 export function AdminTrashDashboard() {
+	const mounted = useDashboardMounted();
+	if (!mounted) return <DashboardLoading />;
+
 	return (
 		<AdminNavProvider>
 			<TrashPage />

@@ -21,8 +21,11 @@ vi.mock("../local-backup", async (importOriginal) => ({
 	saveLocalBackup,
 }));
 vi.mock("@/cms/editor/tiptap-editor", () => ({
-	CmsEditor: ({ editable }: { editable?: boolean }) => (
-		<textarea aria-label="시각 본문" readOnly={editable === false} />
+	CmsEditor: ({ editable, titleField }: { editable?: boolean; titleField?: React.ReactNode }) => (
+		<>
+			{titleField}
+			<textarea aria-label="시각 본문" readOnly={editable === false} />
+		</>
 	),
 }));
 vi.mock("sonner", () => ({ Toaster: () => null, toast: { success, warning, message } }));
@@ -61,7 +64,7 @@ const methodCalls = (method: string, suffix = "") =>
 	fetchMock.mock.calls.filter(([input, init]) => init?.method === method && String(input).endsWith(suffix));
 
 const renderEdit = () => render(<EntryEditorShell mode="edit" initialEntryId="entry-1" adminId={ADMIN} />);
-const inspectorTitle = () => screen.findByRole("textbox", { name: /^제목/ });
+const editorTitle = () => screen.findByRole("textbox", { name: "글 제목 (본문 위)" });
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -211,9 +214,12 @@ describe("entry editor shell", () => {
 		await screen.findByDisplayValue("요약");
 		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
 		await screen.findByRole("list", { name: "발행 검증 문제" });
-		const title = await inspectorTitle();
+		const title = await editorTitle();
 		expect(title.getAttribute("aria-invalid")).toBe("true");
 		expect(title.getAttribute("aria-describedby")).toBe("cms-title-error");
+		expect(screen.getAllByRole("textbox", { name: "글 제목 (본문 위)" })).toHaveLength(1);
+		fireEvent.click(screen.getByRole("button", { name: /제목을 입력하세요.*수정할 곳으로 이동/ }));
+		await waitFor(() => expect(document.activeElement).toBe(title));
 		fireEvent.click(screen.getByRole("button", { name: /MDX 본문 구문을 확인하세요.*수정할 곳으로 이동/ }));
 		const source = (await screen.findByRole("textbox", { name: "MDX 본문" })) as HTMLTextAreaElement;
 		await waitFor(() => expect(document.activeElement).toBe(source));
@@ -225,8 +231,9 @@ describe("entry editor shell", () => {
 		renderEdit();
 		const source = (await screen.findByRole("textbox", { name: "MDX 본문" })) as HTMLTextAreaElement;
 		expect(source.value).toBe("본문 <Callout>닫히지 않음");
+		expect((await editorTitle()).getAttribute("value")).toBe("테스트");
 		expect(screen.queryByLabelText("시각 본문")).toBeNull();
-		expect((screen.getByRole("button", { name: "시각 모드" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("button", { name: "시각 모드로 돌아가기" }) as HTMLButtonElement).disabled).toBe(true);
 		expect(screen.getByText(/원문 모드로만 편집합니다/)).toBeTruthy();
 	});
 
@@ -239,7 +246,7 @@ describe("entry editor shell", () => {
 		);
 		renderEdit();
 		await screen.findByRole("button", { name: "발행하기" });
-		expect(screen.queryByRole("textbox", { name: /^제목/ })).toBeNull();
+		expect(await editorTitle()).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
 		fireEvent.click(await screen.findByRole("button", { name: /카테고리를 지정하세요.*수정할 곳으로 이동/ }));
 		const category = await screen.findByRole("combobox", { name: /카테고리/ });
@@ -278,7 +285,7 @@ describe("entry editor shell", () => {
 			if (input.endsWith("/publish")) throw new Error("Publish must not run after conflict");
 		});
 		renderEdit();
-		fireEvent.change(await inspectorTitle(), { target: { value: "로컬 수정" } });
+		fireEvent.change(await editorTitle(), { target: { value: "로컬 수정" } });
 		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
 		const dialog = await screen.findByRole("dialog", { name: /편집 충돌/ });
 		expect(within(dialog).getAllByRole("button", { name: "본문 복사" })).toHaveLength(2);
@@ -300,7 +307,7 @@ describe("entry editor shell", () => {
 			return failure;
 		});
 		renderEdit();
-		const title = await inspectorTitle();
+		const title = await editorTitle();
 		const expected = ["브라우저에만 임시 저장됨", "브라우저에만 임시 저장됨", "세션 만료 — 다시 로그인하세요"];
 		for (const [index, value] of ["오프라인 수정", "서버 오류 수정", "세션 만료 수정"].entries()) {
 			fireEvent.change(title, { target: { value } });
@@ -334,7 +341,7 @@ describe("entry editor shell", () => {
 			}
 		});
 		const first = renderEdit();
-		fireEvent.change(await inspectorTitle(), { target: { value: "응답 유실 수정" } });
+		fireEvent.change(await editorTitle(), { target: { value: "응답 유실 수정" } });
 		fireEvent.keyDown(window, { key: "s", ctrlKey: true });
 		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
 		first.unmount();
@@ -375,9 +382,10 @@ describe("entry editor shell", () => {
 		renderEdit();
 		const banner = await screen.findByRole("region", { name: "예약" });
 		expect(within(banner).getByText(/외부 실행기 연결 필요/)).toBeTruthy();
-		expect(((await inspectorTitle()) as HTMLInputElement).closest("fieldset")?.disabled).toBe(true);
-		expect((screen.getByRole("button", { name: "발행하기" }) as HTMLButtonElement).disabled).toBe(true);
-		fireEvent.click(within(banner).getByRole("button", { name: "예약 해제 후 편집" }));
+		expect(((await editorTitle()) as HTMLInputElement).readOnly).toBe(true);
+		expect(screen.queryByRole("button", { name: "발행하기" })).toBeNull();
+		expect(within(banner).queryByRole("button")).toBeNull();
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "예약 해제 후 편집" }));
 		await waitFor(() => expect(screen.queryByRole("region", { name: "예약" })).toBeNull());
 		expect((screen.getByRole("button", { name: "발행하기" }) as HTMLButtonElement).disabled).toBe(false);
 	});
@@ -394,7 +402,8 @@ describe("entry editor shell", () => {
 			},
 		);
 		renderEdit();
-		expect(await screen.findByText(/비워 두면 발행할 때 본문에서 만듭니다/)).toBeTruthy();
+		await screen.findByRole("textbox", { name: "요약" });
+		expect(screen.queryByText(/비워 두면 발행할 때 본문에서 만듭니다/)).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "발행하기" }));
 		await waitFor(() => expect(methodCalls("POST", "/publish")).toHaveLength(1));
 		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).metadata.summary).toBe("소개 본문 첫 문장.");
@@ -404,9 +413,46 @@ describe("entry editor shell", () => {
 		serve(() => undefined, { ...entry, status: "trashed" });
 		renderEdit();
 		const banner = await screen.findByRole("region", { name: "휴지통" });
-		expect(within(banner).getByRole("button", { name: "복원" })).toBeTruthy();
-		expect(within(banner).getByRole("button", { name: "영구 삭제" })).toBeTruthy();
+		const toolbar = screen.getByRole("banner");
+		expect(within(toolbar).getByRole("button", { name: "복원" })).toBeTruthy();
+		fireEvent.click(within(toolbar).getByRole("button", { name: "더보기" }));
+		expect(screen.getByRole("menuitem", { name: "영구 삭제" })).toBeTruthy();
+		expect(within(banner).queryByRole("button")).toBeNull();
 		expect((screen.getByLabelText("시각 본문") as HTMLTextAreaElement).readOnly).toBe(true);
+	});
+
+	it("keeps frequent actions in the toolbar and moves lifecycle actions to the more menu", async () => {
+		renderEdit();
+		await screen.findByRole("button", { name: "더보기" });
+		const toolbar = screen.getByRole("banner");
+		expect(within(toolbar).getByRole("button", { name: "MDX 원문 보기" })).toBeTruthy();
+		expect(within(toolbar).getByRole("button", { name: "발행 예약" })).toBeTruthy();
+		expect(within(toolbar).getByRole("link", { name: "미리보기" })).toBeTruthy();
+		fireEvent.click(within(toolbar).getByRole("button", { name: "더보기" }));
+		expect(screen.getByRole("menuitem", { name: "복제" })).toBeTruthy();
+		expect(screen.getByRole("menuitem", { name: "휴지통으로 이동" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("menuitem", { name: "보관" }));
+		expect(screen.getByRole("alertdialog", { name: "글 보관" })).toBeTruthy();
+	});
+
+	it("opens and closes the inspector from its own edge instead of the top action bar", async () => {
+		renderEdit();
+		const close = await screen.findByRole("button", { name: "속성 닫기" });
+		expect(within(screen.getByRole("banner")).queryByRole("button", { name: /속성/ })).toBeNull();
+		expect(screen.getByRole("heading", { name: "속성" })).toBeTruthy();
+		fireEvent.click(close);
+		expect(screen.queryByRole("heading", { name: "속성" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "속성 열기" }));
+		expect(screen.getByRole("heading", { name: "속성" })).toBeTruthy();
+	});
+
+	it("shows the unarchive action in the toolbar for archived entries", async () => {
+		serve(() => undefined, { ...entry, status: "archived" });
+		renderEdit();
+		const unarchive = await screen.findByRole("button", { name: "보관 해제" });
+		expect(within(screen.getByRole("banner")).getByRole("button", { name: "보관 해제" })).toBe(unarchive);
+		expect(screen.queryByRole("button", { name: "발행하기" })).toBeNull();
+		expect(screen.queryByRole("region", { name: "보관됨" })).toBeNull();
 	});
 
 	it("sends record collections to their explicit-save form", async () => {

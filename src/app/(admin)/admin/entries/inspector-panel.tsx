@@ -1,14 +1,14 @@
 "use client";
 
+import { PanelRightClose } from "lucide-react";
 import Link from "next/link";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
 import { COLLECTION_DEFINITIONS, isCollection } from "@/cms/core/collections";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DEFAULT_LOCALE, isLocale, LOCALE_INFO, localizePath } from "@/libs/i18n/locales";
-import { cn } from "@/utils/cn";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
 import type { CmsIssue } from "../api-error-message";
-import { describeEntryStatus } from "../shared/entry-status";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
 
@@ -16,29 +16,20 @@ const REFERENCE_KIND_LABELS = { entry: "글", media: "미디어", category: "카
 
 const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
-export type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
-
 interface InspectorPanelProps {
 	collection: string;
 	form: EntryForm;
 	disabled: boolean;
 	publishIssues?: CmsIssue[];
-	/** 요약이 비었을 때 발행하면 쓸 자동 요약(§5.6). */
-	autoSummaryPreview: string;
 	entry: EntryData | null;
-	previewHref: string | null;
 	incomingReferences: IncomingReferenceItem[];
 	isLoadingIncomingReferences: boolean;
 	incomingReferencesError: string | null;
 	onRefreshIncomingReferences: () => void;
-	onTitleChange: (title: string) => void;
 	onSlugChange: (slug: string) => void;
 	onRegenerateSlug: () => void;
 	onChange: (patch: EntryFormPatch) => void;
-	onDuplicate: () => void;
-	onLifecycle: (action: LifecycleAction) => void;
-	onPermanentDelete: () => void;
-	onClose?: () => void;
+	onClose: () => void;
 }
 
 export function InspectorPanel({
@@ -46,20 +37,14 @@ export function InspectorPanel({
 	form,
 	disabled,
 	publishIssues = [],
-	autoSummaryPreview,
 	entry,
-	previewHref,
 	incomingReferences,
 	isLoadingIncomingReferences,
 	incomingReferencesError,
 	onRefreshIncomingReferences,
-	onTitleChange,
 	onSlugChange,
 	onRegenerateSlug,
 	onChange,
-	onDuplicate,
-	onLifecycle,
-	onPermanentDelete,
 	onClose,
 }: InspectorPanelProps) {
 	const workingReferences = incomingReferences.filter((reference) => reference.state === "working");
@@ -71,101 +56,17 @@ export function InspectorPanel({
 		<div className="h-full w-full space-y-5 overflow-y-auto border-l bg-background px-5 py-4 text-sm lg:w-80">
 			<div className="flex h-7 items-center justify-between">
 				<h2 className="font-medium text-muted-foreground text-xs">속성</h2>
-				{onClose && (
-					<Button type="button" size="sm" variant="ghost" className={actionButton} onClick={onClose}>
-						닫기
-					</Button>
-				)}
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button type="button" size="icon-sm" variant="ghost" aria-label="속성 닫기" onClick={onClose}>
+								<PanelRightClose aria-hidden className="size-4" />
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">속성 닫기</TooltipContent>
+				</Tooltip>
 			</div>
-
-			{entry && (
-				<section aria-label="상태와 작업" className="space-y-2 text-xs">
-					<p>
-						<span className="font-semibold">상태</span>{" "}
-						{describeEntryStatus({ ...entry, scheduledAt: entry.schedule?.pending?.scheduledAt })}
-					</p>
-					{entry.publishedSlug && entry.status === "published" && (
-						<p className="break-all text-muted-foreground">
-							공개 주소:{" "}
-							{localizePath(
-								isLocale(entry.locale) ? entry.locale : DEFAULT_LOCALE,
-								`/${collection === "memo" ? "memos" : "posts"}/${entry.publishedSlug}`,
-							)}
-						</p>
-					)}
-					<div className="flex flex-wrap gap-1.5">
-						{previewHref && (
-							<a
-								href={previewHref}
-								target="_blank"
-								rel="noreferrer"
-								className={cn(buttonVariants({ variant: "outline", size: "sm" }), actionButton)}
-							>
-								미리보기
-							</a>
-						)}
-						{entry.status !== "trashed" && (
-							<Button type="button" size="sm" variant="outline" className={actionButton} onClick={onDuplicate}>
-								복제
-							</Button>
-						)}
-						{(entry.status === "draft" || entry.status === "published") && (
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className={actionButton}
-								onClick={() => onLifecycle("archive")}
-							>
-								보관
-							</Button>
-						)}
-						{entry.status === "archived" && (
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className={actionButton}
-								onClick={() => onLifecycle("unarchive")}
-							>
-								보관 해제
-							</Button>
-						)}
-						{entry.status === "trashed" ? (
-							<>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className={actionButton}
-									onClick={() => onLifecycle("restore")}
-								>
-									복원
-								</Button>
-								<Button
-									type="button"
-									size="sm"
-									variant="destructive"
-									className={actionButton}
-									onClick={onPermanentDelete}
-								>
-									영구 삭제
-								</Button>
-							</>
-						) : (
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className={`${actionButton} text-destructive`}
-								onClick={() => onLifecycle("trash")}
-							>
-								휴지통
-							</Button>
-						)}
-					</div>
-				</section>
-			)}
 
 			<fieldset disabled={disabled} className="space-y-6 disabled:opacity-70">
 				{isCollection(collection) && (
@@ -176,14 +77,14 @@ export function InspectorPanel({
 						context={{
 							entryId: entry?.id,
 							groupId: entry?.translationGroupId,
-							autoSummaryPreview,
 							disabled,
 							incomingReferences: incomingReferences,
 							incomingReferencesLoading: isLoadingIncomingReferences,
 							refreshIncomingReferences: onRefreshIncomingReferences,
 						}}
+						omit={["title"]}
+						showDescriptions={false}
 						onChange={onChange}
-						onSourceChange={onTitleChange}
 						onSlugChange={onSlugChange}
 						onRegenerateSlug={onRegenerateSlug}
 						locked={

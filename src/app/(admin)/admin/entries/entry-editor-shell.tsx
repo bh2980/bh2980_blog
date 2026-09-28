@@ -1,8 +1,25 @@
 "use client";
 
-import { ChevronLeft, PanelRight } from "lucide-react";
+import {
+	Archive,
+	CalendarClock,
+	ChevronLeft,
+	CodeXml,
+	Copy,
+	Eye,
+	FileStack,
+	type LucideIcon,
+	MoreHorizontal,
+	PanelRightOpen,
+	Save,
+	Search,
+	SunMoon,
+	Trash,
+	Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
@@ -11,16 +28,7 @@ import { autoSummary } from "@/cms/core/plain-text";
 import { slugify } from "@/cms/core/slug";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
 import { analyze } from "@/cms/mdx";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-	Breadcrumb,
-	BreadcrumbItem,
-	BreadcrumbLink,
-	BreadcrumbList,
-	BreadcrumbPage,
-	BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	Dialog,
@@ -35,13 +43,17 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
+	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { cn } from "@/utils/cn";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
@@ -73,6 +85,58 @@ type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
 
 const formatSeoul = (value: string | null | undefined) => formatSeoulDateTimeInput(value ?? null).replace("T", " ");
 
+function ToolbarAction({
+	label,
+	icon: Icon,
+	href,
+	onClick,
+	disabled = false,
+	pressed,
+}: {
+	label: string;
+	icon: LucideIcon;
+	href?: string;
+	onClick?: () => void;
+	disabled?: boolean;
+	pressed?: boolean;
+}) {
+	const className = cn("size-8 shrink-0 text-muted-foreground", pressed && "bg-secondary text-foreground");
+	const icon = <Icon aria-hidden className="size-4" />;
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					href ? (
+						<a
+							href={href}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={label}
+							className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), className)}
+						>
+							{icon}
+						</a>
+					) : (
+						<Button
+							type="button"
+							size="icon-sm"
+							variant="ghost"
+							aria-label={label}
+							aria-pressed={pressed}
+							disabled={disabled}
+							className={className}
+							onClick={onClick}
+						>
+							{icon}
+						</Button>
+					)
+				}
+			/>
+			<TooltipContent side="bottom">{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
 /**
  * 저장·발행 응답에는 번역 묶음 정보(v2 B4)가 없다. 불러올 때 받은 값을 유지하고 이 콘텐츠의 상태만 갱신한다.
  */
@@ -94,6 +158,7 @@ export function EntryEditorShell({
 	folderId,
 }: EntryEditorShellProps) {
 	const router = useRouter();
+	const { resolvedTheme, setTheme } = useTheme();
 	const [entry, setEntry] = useState<EntryData | null>(null);
 	const [collection, setCollection] = useState(propCollection);
 	const [isLoading, setIsLoading] = useState(mode === "edit");
@@ -257,6 +322,11 @@ export function EntryEditorShell({
 	const handleTitleChange = (title: string) => setForm(isSlugTouched ? { title } : { title, slug: slugify(title) });
 
 	const focusIssue = (issue: CmsIssue) => {
+		if (issue.path === "title") {
+			if (isNarrowScreen) setIsInspectorOpen(false);
+			setPendingFieldPath("title-canvas");
+			return;
+		}
 		if (issue.position || issue.path === "mdx" || issue.path === "frontmatter") {
 			if (isNarrowScreen) setIsInspectorOpen(false);
 			setPendingBodyPosition(issue.position ?? { line: 1, column: 1 });
@@ -282,7 +352,7 @@ export function EntryEditorShell({
 	}, [pendingBodyPosition, editorMode, form.mdx]);
 
 	useEffect(() => {
-		if (!pendingFieldPath || !isInspectorOpen) return;
+		if (!pendingFieldPath || (pendingFieldPath !== "title-canvas" && !isInspectorOpen)) return;
 		const control = document.getElementById(`cms-${pendingFieldPath}`);
 		if (control) {
 			control.focus();
@@ -573,7 +643,7 @@ export function EntryEditorShell({
 			group: "발행",
 			label: entry?.status === "published" ? "변경사항 발행" : "발행",
 			keywords: ["publish", "발행"],
-			disabled: isReadOnly,
+			disabled: isReadOnly || entry?.status === "archived",
 			run: () => void handlePublish(),
 		},
 		{
@@ -581,7 +651,7 @@ export function EntryEditorShell({
 			group: "발행",
 			label: "발행 예약…",
 			keywords: ["schedule", "예약"],
-			disabled: isReadOnly,
+			disabled: isReadOnly || entry?.status === "archived",
 			run: () => setScheduleOpen(true),
 		},
 		...(scheduleLocked
@@ -676,40 +746,65 @@ export function EntryEditorShell({
 		: "새 글";
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
+	const titleIssue = publishIssues.find((issue) => issue.path === "title");
+	const titleInput = (
+		<>
+			<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
+				글 제목 (본문 위)
+			</FieldLabel>
+			<Input
+				id="cms-title-canvas"
+				value={form.title}
+				readOnly={isReadOnly}
+				aria-invalid={Boolean(titleIssue) || undefined}
+				aria-describedby={titleIssue ? "cms-title-error" : undefined}
+				onChange={(event) => handleTitleChange(event.target.value)}
+				placeholder="제목 없는 글"
+				className={cn(
+					"h-auto w-full rounded-none border-0 bg-transparent py-1 font-semibold leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent",
+					editorMode === "visual" ? "px-6 text-[34px] md:text-[34px]" : "mb-4 px-1 text-2xl",
+				)}
+			/>
+			{titleIssue && (
+				<p id="cms-title-error" className="text-destructive text-sm">
+					{cmsIssueMessage(titleIssue)}
+				</p>
+			)}
+		</>
+	);
 
 	return (
 		<div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
-			<header className="z-20 flex min-h-13 shrink-0 flex-wrap items-center gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur lg:flex-nowrap lg:justify-between lg:px-4">
-				<Breadcrumb aria-label="현재 위치" className="min-w-0">
-					<BreadcrumbList className="flex-nowrap text-[13px]">
-						<BreadcrumbItem>
-							<BreadcrumbLink
-								render={<Link href={`/admin?collection=${collection}`} />}
-								className="flex items-center gap-1 text-muted-foreground"
-							>
-								<ChevronLeft aria-hidden className="size-4" />
-								목록으로
-							</BreadcrumbLink>
-						</BreadcrumbItem>
-						<BreadcrumbSeparator />
-						<BreadcrumbItem className="min-w-0">
-							<BreadcrumbPage className="max-w-[320px] truncate font-medium">
-								{form.title || "제목 없는 글"}
-							</BreadcrumbPage>
-						</BreadcrumbItem>
-						<BreadcrumbItem>
-							<span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">{statusLabel}</span>
-						</BreadcrumbItem>
-						{entry && !isRecordCollection(collection) && (
-							<BreadcrumbItem>
-								<LanguageMenu entry={entry} disabled={isReadOnly} onBeforeCreate={() => autosave.flush()} />
-							</BreadcrumbItem>
-						)}
-					</BreadcrumbList>
-				</Breadcrumb>
+			<header className="z-20 flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-background/95 px-3 py-2 backdrop-blur sm:flex-nowrap lg:px-4">
+				<div className="flex min-w-0 items-center gap-2 text-[13px]">
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Link
+									href={`/admin?collection=${collection}`}
+									aria-label="목록으로"
+									className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "size-8 text-muted-foreground")}
+								>
+									<ChevronLeft aria-hidden className="size-4" />
+								</Link>
+							}
+						/>
+						<TooltipContent side="bottom">목록으로</TooltipContent>
+					</Tooltip>
+					<span className="hidden rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs sm:inline-flex">
+						{statusLabel}
+					</span>
+					{entry && !isRecordCollection(collection) && (
+						<LanguageMenu entry={entry} disabled={isReadOnly} onBeforeCreate={() => autosave.flush()} />
+					)}
+				</div>
 
-				<div className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap lg:w-auto">
-					<output aria-live="polite" className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs">
+				<div className="flex w-full items-center justify-end gap-1 whitespace-nowrap sm:w-auto">
+					<output
+						aria-live="polite"
+						aria-label={`${SAVE_STATUS_LABELS[autosave.status]}${!autosave.backupAvailable ? " · 브라우저 복구 불가" : ""}`}
+						className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs"
+					>
 						<span
 							aria-hidden
 							className={cn(
@@ -723,8 +818,10 @@ export function EntryEditorShell({
 											: "bg-muted-foreground/50",
 							)}
 						/>
-						{SAVE_STATUS_LABELS[autosave.status]}
-						{!autosave.backupAvailable && " · 브라우저 복구 불가"}
+						<span className="hidden lg:inline">
+							{SAVE_STATUS_LABELS[autosave.status]}
+							{!autosave.backupAvailable && " · 브라우저 복구 불가"}
+						</span>
 					</output>
 					{canRetry && (
 						<Button
@@ -748,111 +845,132 @@ export function EntryEditorShell({
 						</a>
 					)}
 
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						className="text-muted-foreground"
-						aria-pressed={editorMode === "source"}
+					<ToolbarAction
+						label={editorMode === "visual" ? "MDX 원문 보기" : "시각 모드로 돌아가기"}
+						icon={CodeXml}
+						pressed={editorMode === "source"}
 						disabled={editorMode === "source" && !canUseVisual}
-						title={!canUseVisual ? "본문 오류를 고치면 시각 모드를 쓸 수 있습니다" : undefined}
 						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
-					>
-						{editorMode === "visual" ? "MDX 원문" : "시각 모드"}
-					</Button>
-
-					<DropdownMenu open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
-						<DropdownMenuTrigger
-							render={
-								<Button
-									type="button"
-									size="sm"
-									variant="ghost"
-									className="text-muted-foreground"
-									disabled={isReadOnly}
-								/>
-							}
+					/>
+					{previewHref && <ToolbarAction label="미리보기" icon={Eye} href={previewHref} />}
+					{!isReadOnly && entry?.status !== "archived" && (
+						<ToolbarAction
+							label="발행 예약"
+							icon={CalendarClock}
+							disabled={isSubmitting}
+							onClick={() => {
+								setScheduleInput("");
+								setScheduleOpen(true);
+							}}
+						/>
+					)}
+					{scheduleLocked ? (
+						<Button type="button" size="sm" className="ml-1" onClick={() => void handleCancelSchedule()}>
+							예약 해제 후 편집
+						</Button>
+					) : isTrashed ? (
+						<Button type="button" size="sm" className="ml-1" onClick={() => confirmLifecycle("restore")}>
+							복원
+						</Button>
+					) : entry?.status === "archived" ? (
+						<Button type="button" size="sm" className="ml-1" onClick={() => confirmLifecycle("unarchive")}>
+							보관 해제
+						</Button>
+					) : (
+						<Button
+							id="cms-publish"
+							type="button"
+							size="sm"
+							className="ml-1"
+							disabled={isSubmitting}
+							onClick={() => void handlePublish()}
 						>
-							템플릿 ▾
+							{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
+						</Button>
+					)}
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button type="button" size="icon-sm" variant="ghost" aria-label="더보기" title="더보기" />}
+						>
+							<MoreHorizontal aria-hidden className="size-4" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
-							{templates === null ? (
-								<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
-							) : templates.length === 0 ? (
-								<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
-							) : (
-								templates.map((template) => (
-									<DropdownMenuItem
-										key={template.id}
-										onClick={() =>
-											form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
-										}
-									>
-										<span className="truncate">{template.name}</span>
+							<DropdownMenuSub open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
+								<DropdownMenuSubTrigger disabled={isReadOnly}>
+									<FileStack aria-hidden />
+									템플릿
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent className="max-h-80 w-56 overflow-y-auto">
+									{templates === null ? (
+										<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
+									) : templates.length === 0 ? (
+										<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
+									) : (
+										templates.map((template) => (
+											<DropdownMenuItem
+												key={template.id}
+												onClick={() =>
+													form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
+												}
+											>
+												<span className="truncate">{template.name}</span>
+											</DropdownMenuItem>
+										))
+									)}
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
+										템플릿 관리
 									</DropdownMenuItem>
-								))
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+							<DropdownMenuItem disabled={isReadOnly} onClick={() => void handleSaveNow()}>
+								<Save aria-hidden />
+								지금 저장
+								<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setPaletteOpen(true)}>
+								<Search aria-hidden />
+								명령 검색
+								<DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
+							</DropdownMenuItem>
+							{entry && !isTrashed && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={() => void handleDuplicate()}>
+										<Copy aria-hidden />
+										복제
+									</DropdownMenuItem>
+									{(entry.status === "draft" || entry.status === "published") && (
+										<DropdownMenuItem onClick={() => confirmLifecycle("archive")}>
+											<Archive aria-hidden />
+											보관
+										</DropdownMenuItem>
+									)}
+								</>
+							)}
+							{entry && (
+								<>
+									<DropdownMenuSeparator />
+									{isTrashed ? (
+										<DropdownMenuItem variant="destructive" onClick={confirmPermanentDelete}>
+											<Trash aria-hidden />
+											영구 삭제
+										</DropdownMenuItem>
+									) : (
+										<DropdownMenuItem variant="destructive" onClick={() => confirmLifecycle("trash")}>
+											<Trash2 aria-hidden />
+											휴지통으로 이동
+										</DropdownMenuItem>
+									)}
+								</>
 							)}
 							<DropdownMenuSeparator />
-							<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
-								템플릿 관리
+							<DropdownMenuItem onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
+								<SunMoon aria-hidden />
+								테마 전환
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
-
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						className="text-muted-foreground"
-						disabled={isReadOnly}
-						onClick={() => void handleSaveNow()}
-					>
-						저장
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						className="text-muted-foreground"
-						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
-						onClick={() => {
-							setScheduleInput("");
-							setScheduleOpen(true);
-						}}
-					>
-						예약
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						className="text-muted-foreground"
-						aria-label="명령 검색"
-						onClick={() => setPaletteOpen(true)}
-					>
-						<Kbd>⌘K</Kbd>
-					</Button>
-					<Button
-						id="cms-publish"
-						type="button"
-						size="sm"
-						className="ml-1"
-						disabled={isSubmitting || isReadOnly || entry?.status === "archived"}
-						onClick={() => void handlePublish()}
-					>
-						{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
-					</Button>
-					<Button
-						type="button"
-						size="icon-sm"
-						variant={isInspectorOpen ? "secondary" : "ghost"}
-						aria-label={isInspectorOpen ? "속성 닫기" : "속성 열기"}
-						aria-expanded={isInspectorOpen}
-						onClick={() => setIsInspectorOpen((open) => !open)}
-					>
-						<PanelRight aria-hidden />
-					</Button>
-					<ThemeToggle className="size-8 text-muted-foreground" />
 				</div>
 			</header>
 
@@ -866,9 +984,6 @@ export function EntryEditorShell({
 						{Date.parse(schedule.pending.scheduledAt) <= Date.now() && " 예정 시각이 지나 실행 대기 중입니다."}
 						{!schedule.runnerConfigured && " 외부 실행기 연결 필요: 연결되지 않으면 자동으로 발행되지 않습니다."}
 					</span>
-					<Button type="button" size="xs" variant="outline" onClick={() => void handleCancelSchedule()}>
-						예약 해제 후 편집
-					</Button>
 				</section>
 			)}
 			{!schedule?.pending && schedule?.last?.status === "failed" && (
@@ -881,20 +996,6 @@ export function EntryEditorShell({
 			{isTrashed && (
 				<section aria-label="휴지통" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
 					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
-					<Button type="button" size="xs" variant="outline" onClick={() => confirmLifecycle("restore")}>
-						복원
-					</Button>
-					<Button type="button" size="xs" variant="destructive" onClick={confirmPermanentDelete}>
-						영구 삭제
-					</Button>
-				</section>
-			)}
-			{entry?.status === "archived" && (
-				<section aria-label="보관됨" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
-					<span>보관된 글입니다. 공개되지 않으며, 보관을 해제하면 초안으로 돌아갑니다.</span>
-					<Button type="button" size="xs" variant="outline" onClick={() => confirmLifecycle("unarchive")}>
-						보관 해제
-					</Button>
 				</section>
 			)}
 			{!canUseVisual && (
@@ -940,28 +1041,17 @@ export function EntryEditorShell({
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					{editorMode === "visual" ? (
-						<div className="mx-auto flex min-h-full max-w-[760px] flex-col">
-							<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
-								글 제목 (본문 위)
-							</FieldLabel>
-							<Input
-								id="cms-title-canvas"
-								value={form.title}
-								readOnly={isReadOnly}
-								onChange={(event) => handleTitleChange(event.target.value)}
-								placeholder="제목 없는 글"
-								className="mt-12 h-auto w-full rounded-none border-0 bg-transparent px-10 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
-							/>
-							<CmsEditor
-								content={form.mdx}
-								editable={!isReadOnly}
-								onChange={(mdx) => setForm({ mdx })}
-								onCompositionStart={() => autosave.setComposing(true)}
-								onCompositionEnd={() => autosave.setComposing(false)}
-							/>
-						</div>
+						<CmsEditor
+							content={form.mdx}
+							titleField={titleInput}
+							editable={!isReadOnly}
+							onChange={(mdx) => setForm({ mdx })}
+							onCompositionStart={() => autosave.setComposing(true)}
+							onCompositionEnd={() => autosave.setComposing(false)}
+						/>
 					) : (
 						<div className="mx-auto flex h-full w-full max-w-3xl flex-col p-6">
+							{titleInput}
 							<Textarea
 								id="cms-mdx-source"
 								aria-label="MDX 본문"
@@ -984,25 +1074,20 @@ export function EntryEditorShell({
 					)}
 				</div>
 
-				{isInspectorOpen && (
+				{isInspectorOpen ? (
 					<div className="absolute inset-0 z-10 lg:static lg:inset-auto lg:w-80">
 						<InspectorPanel
 							collection={collection}
 							form={form}
 							disabled={isReadOnly}
 							publishIssues={publishIssues}
-							autoSummaryPreview={
-								collection === "post" && !formText(form, "summary").trim() ? autoSummary(deferredMdx) : ""
-							}
 							entry={entry}
-							previewHref={previewHref}
 							incomingReferences={incoming.items}
 							isLoadingIncomingReferences={incoming.loading}
 							incomingReferencesError={incoming.error}
 							onRefreshIncomingReferences={() => {
 								if (entry) void refreshIncoming(entry.id);
 							}}
-							onTitleChange={handleTitleChange}
 							onSlugChange={(slug) => {
 								setIsSlugTouched(true);
 								setForm({ slug });
@@ -1012,11 +1097,12 @@ export function EntryEditorShell({
 								setForm({ slug: slugify(form.title) });
 							}}
 							onChange={setForm}
-							onDuplicate={() => void handleDuplicate()}
-							onLifecycle={confirmLifecycle}
-							onPermanentDelete={confirmPermanentDelete}
-							onClose={isNarrowScreen ? () => setIsInspectorOpen(false) : undefined}
+							onClose={() => setIsInspectorOpen(false)}
 						/>
+					</div>
+				) : (
+					<div className="flex w-12 shrink-0 justify-center border-l bg-background pt-3">
+						<ToolbarAction label="속성 열기" icon={PanelRightOpen} onClick={() => setIsInspectorOpen(true)} />
 					</div>
 				)}
 			</div>

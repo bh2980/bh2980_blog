@@ -16,8 +16,6 @@ import type { FormValue } from "./entry-form";
 export interface FieldContext {
 	/** 편집 중인 콘텐츠 ID. 자기 자신을 관계 대상으로 고르지 않게 한다. */
 	entryId?: string;
-	/** 요약이 비었을 때 발행하면 쓸 자동 요약(§5.6). */
-	autoSummaryPreview?: string;
 	disabled: boolean;
 	/** 번역 묶음 ID(원문 ID). 반대 방향 관계는 원문을 가리킨다(v2 B2·B4). */
 	groupId?: string;
@@ -40,34 +38,20 @@ export interface FieldInputProps {
 
 export const inputClass = "h-8 text-xs md:text-xs";
 
-/** 요약: 여러 줄 입력 + 비었을 때 발행하면 만들 자동 요약 미리보기(§5.6). */
-function AutoSummaryInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
+/** 요약의 여러 줄 입력. */
+function AutoSummaryInput({ field, id, value, invalid, describedBy, onChange }: FieldInputProps) {
 	const text = typeof value === "string" ? value : "";
-	const preview = context.autoSummaryPreview ?? "";
 	return (
-		<>
-			<Textarea
-				id={id}
-				rows={3}
-				value={text}
-				aria-invalid={invalid || undefined}
-				aria-describedby={describedBy}
-				onChange={(event) => onChange(event.target.value)}
-				placeholder={field.kind === "text" ? field.placeholder : undefined}
-				className="min-h-16 resize-none text-xs md:text-xs"
-			/>
-			{!text.trim() && (
-				<p className="text-[11px] text-muted-foreground leading-tight">
-					{preview ? (
-						<>
-							<span className="font-medium">비워 두면 발행할 때 본문에서 만듭니다:</span> {preview}
-						</>
-					) : (
-						"요약을 만들 본문이 없습니다. 발행하려면 직접 입력하세요."
-					)}
-				</p>
-			)}
-		</>
+		<Textarea
+			id={id}
+			rows={3}
+			value={text}
+			aria-invalid={invalid || undefined}
+			aria-describedby={describedBy}
+			onChange={(event) => onChange(event.target.value)}
+			placeholder={field.kind === "text" ? field.placeholder : undefined}
+			className="min-h-16 resize-none text-xs md:text-xs"
+		/>
 	);
 }
 

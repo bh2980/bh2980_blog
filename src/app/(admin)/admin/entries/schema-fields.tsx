@@ -53,6 +53,8 @@ interface SchemaFieldsProps {
 	slugPlaceholder?: string;
 	/** 이 필드는 그리지 않는다(편집 화면 본문 위의 제목처럼 다른 곳에 입력이 있을 때). */
 	omit?: readonly string[];
+	/** 필드 아래의 상시 설명을 보여 줄지 여부. */
+	showDescriptions?: boolean;
 	/**
 	 * 번역본 편집(v2 B4). 언어별 값이 아닌 필드(공통 값)는 `values`(원문 값)로 읽기 전용으로 그리고 `note`를 붙인다.
 	 */
@@ -283,6 +285,7 @@ export function SchemaFields({
 	onRegenerateSlug,
 	slugPlaceholder,
 	omit = [],
+	showDescriptions = true,
 	locked,
 }: SchemaFieldsProps) {
 	const schema = schemaOf(collection);
@@ -312,7 +315,7 @@ export function SchemaFields({
 			context: readOnly ? { ...context, disabled: true } : context,
 			onChange: readOnly ? () => {} : (value) => setValue(name, value),
 		};
-		const help = readOnly && locked ? locked.note : field.description;
+		const help = readOnly && locked ? locked.note : showDescriptions ? field.description : undefined;
 		// 여러 개 관계는 입력이 여럿이라 묶음 자체에 초점을 줄 수 있게 한다(발행 문제로 이동).
 		if (field.kind === "relation" && field.many && isRecordCollection(field.to)) {
 			return (
@@ -358,7 +361,7 @@ export function SchemaFields({
 				label={field.label}
 				required={Boolean(field.required)}
 				issue={issue}
-				help={field.description}
+				help={showDescriptions ? field.description : undefined}
 			>
 				<div className="flex gap-1.5">
 					<Input
@@ -415,7 +418,7 @@ export function SchemaFields({
 					key={name}
 					id={fieldId(name)}
 					label={field.label}
-					help={readOnly && locked ? locked.note : field.description}
+					help={readOnly && locked ? locked.note : showDescriptions ? field.description : undefined}
 				>
 					<BacklinkInput
 						field={field}
