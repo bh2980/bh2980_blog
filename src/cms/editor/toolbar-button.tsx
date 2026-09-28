@@ -19,7 +19,15 @@ export interface ToolbarItem {
 }
 
 /** 서식 도구·표 도구의 아이콘 버튼. 누를 때 편집기 선택을 빼앗지 않는다. */
-export function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
+export function ToolbarButton({
+	editor,
+	item,
+	tooltipSide = "bottom",
+}: {
+	editor: Editor;
+	item: ToolbarItem;
+	tooltipSide?: "top" | "bottom";
+}) {
 	const active = item.isActive?.(editor) ?? false;
 	const disabled = !editor.isEditable || (item.isDisabled?.(editor) ?? false);
 	const label = item.title ?? item.label;
@@ -44,7 +52,7 @@ export function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarI
 			>
 				<Icon className="size-4" aria-hidden />
 			</TooltipTrigger>
-			<TooltipContent side="bottom">{label}</TooltipContent>
+			<TooltipContent side={tooltipSide}>{label}</TooltipContent>
 		</Tooltip>
 	);
 }

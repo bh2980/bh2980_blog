@@ -1,0 +1,352 @@
+"use client";
+
+import { type Editor, posToDOMRect } from "@tiptap/core";
+import type { Transaction } from "@tiptap/pm/state";
+import { useEditorState } from "@tiptap/react";
+import { Link2, MessageSquareMore, Pencil, Unlink, X } from "lucide-react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
+import {
+	type ActiveInlineMark,
+	INLINE_MARK_TOOLS,
+	type InlineBubbleTarget,
+	inlineBubbleTarget,
+	removeInlineMark,
+} from "./inline-marks";
+import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
+import { ToolbarButton } from "./toolbar-button";
+import { TooltipForm } from "./tooltip-popover";
+
+type Panel =
+	| { kind: "link"; draft: LinkDraft }
+	| { kind: "tooltip"; active: boolean; initial: string; range?: { from: number; to: number } };
+
+const GAP = 8;
+const EDGE = 8;
+
+function BubbleButton({
+	label,
+	onClick,
+	className,
+	children,
+}: {
+	label: string;
+	onClick: () => void;
+	className?: string;
+	children: ReactNode;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						aria-label={label}
+						// 누를 때 편집기 선택·초점을 빼앗지 않는다.
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={onClick}
+						className={cn("h-8 min-w-8 px-1.5", className)}
+					/>
+				}
+			>
+				{children}
+			</TooltipTrigger>
+			<TooltipContent side="top">{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** 버블을 붙일 화면 영역. 설정이 있는 효과(링크·툴팁)는 그 범위에, 나머지는 커서에 붙인다. */
+function anchorRange(target: InlineBubbleTarget): { from: number; to: number } {
+	if (target.kind === "selection") return target;
+	const primary = target.marks[0];
+	if (primary && (primary.name === "link" || primary.name === "cmsTooltip")) return primary;
+	return { from: target.pos, to: target.pos };
+}
+
+/**
+ * 본문 글자 위에 뜨는 인라인 효과 버블.
+ * - 글자를 끌어 고르면: 굵게·기울임 등 효과와 툴팁·링크를 바로 적용하는 도구.
+ * - 커서를 효과 안에 두면: 걸친 효과와 삭제 버튼, 링크 주소·툴팁 설명과 수정 버튼.
+ * 링크·툴팁 수정은 버블 안에서 입력 폼으로 펼친다(상단 서식 도구까지 가지 않아도 된다).
+ */
+export function InlineBubble({ editor }: { editor: Editor }) {
+	const snapshot = useEditorState({
+		editor,
+		selector: ({ editor: current }) => {
+			if (!current?.isEditable) return null;
+			const target = inlineBubbleTarget(current.state);
+			// 선택 도구의 눌림 표시가 효과를 적용한 뒤에도 맞도록 적용 상태를 함께 본다.
+			const active =
+				target?.kind === "selection"
+					? [...INLINE_MARK_TOOLS.map((tool) => tool.mark), "link", "cmsTooltip"].filter((mark) =>
+							current.isActive(mark),
+						)
+					: [];
+			return { target, focused: current.isFocused, active };
+		},
+	});
+	const [panel, setPanel] = useState<Panel | null>(null);
+	// 누른 채 끄는 동안(글자 선택 중)과 글자를 입력하는 동안에는 숨긴다.
+	const [pointerDown, setPointerDown] = useState(false);
+	const [typing, setTyping] = useState(false);
+	const bubbleRef = useRef<HTMLDivElement>(null);
+	const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+	const [, setScrollTick] = useState(0);
+
+	const target = snapshot?.target ?? null;
+	const visible =
+		target !== null &&
+		(panel !== null || (!!snapshot?.focused && !pointerDown && !(typing && target.kind === "marks")));
+
+	useEffect(() => {
+		const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+			if (transaction.docChanged && editor.state.selection.empty) setTyping(true);
+			else if (transaction.selectionSet && !transaction.docChanged) setTyping(false);
+		};
+		const dom = editor.view.dom;
+		const onPointerDown = (event: MouseEvent) => {
+			if (event.button === 0) setPointerDown(true);
+		};
+		const onPointerUp = () => setPointerDown(false);
+		editor.on("transaction", onTransaction);
+		dom.addEventListener("mousedown", onPointerDown);
+		window.addEventListener("mouseup", onPointerUp);
+		return () => {
+			editor.off("transaction", onTransaction);
+			dom.removeEventListener("mousedown", onPointerDown);
+			window.removeEventListener("mouseup", onPointerUp);
+		};
+	}, [editor]);
+
+	// 입력 폼을 연 채 버블 바깥을 누르면 폼을 닫는다(팝오버와 같게).
+	useEffect(() => {
+		if (!panel) return;
+		const onDown = (event: MouseEvent) => {
+			const bubble = bubbleRef.current;
+			if (bubble && event.target instanceof Node && !bubble.contains(event.target)) setPanel(null);
+		};
+		document.addEventListener("mousedown", onDown, true);
+		return () => document.removeEventListener("mousedown", onDown, true);
+	}, [panel]);
+
+	useEffect(() => {
+		if (!target && panel) setPanel(null);
+	}, [target, panel]);
+
+	// 스크롤·창 크기 변경에도 글자를 따라간다(버블은 화면 고정 위치로 띄운다).
+	useEffect(() => {
+		if (!visible) return;
+		const update = () => setScrollTick((tick) => tick + 1);
+		window.addEventListener("scroll", update, true);
+		window.addEventListener("resize", update);
+		return () => {
+			window.removeEventListener("scroll", update, true);
+			window.removeEventListener("resize", update);
+		};
+	}, [visible]);
+
+	useLayoutEffect(() => {
+		if (!visible || !target) {
+			setPosition(null);
+			return;
+		}
+		let rect: DOMRect;
+		try {
+			const range = anchorRange(target);
+			rect = posToDOMRect(editor.view, range.from, range.to);
+		} catch {
+			setPosition(null);
+			return;
+		}
+		const bubble = bubbleRef.current;
+		const height = bubble?.offsetHeight ?? 36;
+		const width = bubble?.offsetWidth ?? 0;
+		// 위쪽 서식 도구(sticky)에 가리지 않게 한다. 위에 자리가 없으면 글자 아래에 띄운다.
+		const formatBar = editor.view.dom
+			.closest("[data-cms-editor-shell]")
+			?.querySelector('[role="toolbar"][aria-label="서식 도구"]');
+		const minTop = (formatBar?.getBoundingClientRect().bottom ?? 0) + GAP;
+		if (rect.bottom < minTop || rect.top > window.innerHeight) {
+			setPosition(null);
+			return;
+		}
+		const above = rect.top - height - GAP;
+		const top = above >= minTop ? above : rect.bottom + GAP;
+		const center = (rect.left + rect.right) / 2;
+		const left = Math.max(EDGE, Math.min(center - width / 2, window.innerWidth - width - EDGE));
+		setPosition((previous) => (previous && previous.top === top && previous.left === left ? previous : { top, left }));
+	});
+
+	if (!visible || !target || typeof window === "undefined") return null;
+
+	// 버블에서 효과를 지우면 문서가 바뀌지만 입력이 아니므로 버블을 계속 보인다.
+	const act = (action: () => void) => () => {
+		action();
+		setTyping(false);
+	};
+
+	const closePanel = () => {
+		setPanel(null);
+		setTyping(false);
+		editor.commands.focus();
+	};
+
+	const openLink = (draft: LinkDraft) => setPanel({ kind: "link", draft });
+	const openTooltip = (mark?: ActiveInlineMark) =>
+		setPanel(
+			mark
+				? { kind: "tooltip", active: true, initial: String(mark.attrs.content ?? ""), range: mark }
+				: {
+						kind: "tooltip",
+						active: editor.isActive("cmsTooltip"),
+						initial: String(editor.getAttributes("cmsTooltip").content ?? ""),
+					},
+		);
+
+	const renderMark = (mark: ActiveInlineMark) => {
+		if (mark.name === "link") {
+			const href = String(mark.attrs.href ?? "");
+			return (
+				<div key={mark.name} className="flex items-center gap-0.5">
+					<Link2 aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+					<a
+						href={href}
+						target="_blank"
+						rel="noreferrer noopener"
+						title={`${href} (새 탭에서 열기)`}
+						// 누를 때 편집기 초점을 빼앗으면 버블이 먼저 사라져 링크가 열리지 않는다.
+						onMouseDown={(event) => event.preventDefault()}
+						className="max-w-56 truncate px-1 text-primary text-xs underline underline-offset-2"
+					>
+						{href}
+					</a>
+					<BubbleButton
+						label="링크 수정"
+						onClick={() => openLink({ from: mark.from, to: mark.to, existing: true, href })}
+					>
+						<Pencil aria-hidden className="size-4" />
+					</BubbleButton>
+					<BubbleButton label="링크 제거" onClick={act(() => removeInlineMark(editor, mark))}>
+						<Unlink aria-hidden className="size-4" />
+					</BubbleButton>
+				</div>
+			);
+		}
+		if (mark.name === "cmsTooltip") {
+			const content = String(mark.attrs.content ?? "");
+			return (
+				<div key={mark.name} className="flex items-center gap-0.5">
+					<MessageSquareMore aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+					<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={content}>
+						{content}
+					</span>
+					<BubbleButton label="툴팁 설명 수정" onClick={() => openTooltip(mark)}>
+						<Pencil aria-hidden className="size-4" />
+					</BubbleButton>
+					<BubbleButton label="툴팁 제거" onClick={act(() => removeInlineMark(editor, mark))}>
+						<X aria-hidden className="size-4" />
+					</BubbleButton>
+				</div>
+			);
+		}
+		const tool = INLINE_MARK_TOOLS.find((item) => item.mark === mark.name);
+		if (!tool) return null;
+		return (
+			<BubbleButton
+				key={mark.name}
+				label={`${tool.title ?? tool.label} 해제`}
+				onClick={act(() => removeInlineMark(editor, mark))}
+				className="gap-0.5"
+			>
+				<tool.icon aria-hidden className="size-4" />
+				<X aria-hidden className="size-3 text-muted-foreground" />
+			</BubbleButton>
+		);
+	};
+
+	const renderMarks = (marks: ActiveInlineMark[]) => {
+		const detailed = marks.filter((mark) => mark.name === "link" || mark.name === "cmsTooltip");
+		const simple = marks.filter((mark) => !detailed.includes(mark));
+		const groups = [...detailed.map((mark) => [mark]), ...(simple.length ? [simple] : [])];
+		return groups.map((group, index) => (
+			<div key={group[0]?.name} className="flex items-center gap-0.5">
+				{index > 0 && <Separator orientation="vertical" className="mx-0.5 h-4" />}
+				{group.map(renderMark)}
+			</div>
+		));
+	};
+
+	const renderSelectionTools = () => (
+		<>
+			{INLINE_MARK_TOOLS.map((item) => (
+				<ToolbarButton key={item.mark} editor={editor} item={item} tooltipSide="top" />
+			))}
+			<Separator orientation="vertical" className="mx-0.5 h-4" />
+			<BubbleButton
+				label={editor.isActive("cmsTooltip") ? "툴팁 설명 수정" : "툴팁 추가"}
+				onClick={() => openTooltip()}
+			>
+				<MessageSquareMore aria-hidden className="size-4" />
+			</BubbleButton>
+			<BubbleButton
+				label={editor.isActive("link") ? "링크 수정" : "링크 삽입"}
+				onClick={() => openLink(linkDraftFromSelection(editor))}
+			>
+				<Link2 aria-hidden className="size-4" />
+			</BubbleButton>
+		</>
+	);
+
+	const style = { position: "fixed", top: position?.top ?? -9999, left: position?.left ?? -9999, zIndex: 40 } as const;
+	const surface = "rounded-md border bg-popover/95 text-popover-foreground shadow-md backdrop-blur";
+
+	return createPortal(
+		panel ? (
+			<div
+				ref={bubbleRef}
+				role="dialog"
+				aria-label={panel.kind === "link" ? "링크 편집" : "툴팁 편집"}
+				data-cms-inline-bubble
+				style={style}
+				className={cn(surface, "flex w-80 flex-col gap-3 p-3 text-xs")}
+				onKeyDown={(event) => {
+					if (event.key === "Escape" && !event.nativeEvent.isComposing) {
+						event.preventDefault();
+						closePanel();
+					}
+				}}
+			>
+				{panel.kind === "link" ? (
+					<LinkForm editor={editor} draft={panel.draft} onDone={closePanel} />
+				) : (
+					<TooltipForm
+						editor={editor}
+						active={panel.active}
+						initial={panel.initial}
+						range={panel.range}
+						onDone={closePanel}
+					/>
+				)}
+			</div>
+		) : (
+			<div
+				ref={bubbleRef}
+				role="toolbar"
+				aria-label={target.kind === "selection" ? "인라인 서식" : "인라인 효과"}
+				data-cms-inline-bubble
+				style={style}
+				className={cn(surface, "flex items-center gap-0.5 p-0.5")}
+			>
+				{target.kind === "selection" ? renderSelectionTools() : renderMarks(target.marks)}
+			</div>
+		),
+		document.body,
+	);
+}

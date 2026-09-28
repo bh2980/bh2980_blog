@@ -7,15 +7,12 @@ import {
 	AlignCenter,
 	AlignLeft,
 	AlignRight,
-	Bold,
 	Check,
 	ChevronDown,
-	CodeXml,
 	Heading2,
 	Heading3,
 	Heading4,
 	ImageIcon,
-	Italic,
 	Link2,
 	List,
 	ListOrdered,
@@ -26,12 +23,7 @@ import {
 	Quote,
 	RemoveFormatting,
 	SquareCode,
-	Strikethrough,
-	Subscript,
-	Superscript,
 	Table2,
-	Underline,
-	Unlink,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +33,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
@@ -50,8 +41,11 @@ import { BlockHandleOverlay } from "./block-handle-overlay";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
+import { InlineBubble } from "./inline-bubble";
+import { INLINE_MARK_TOOLS } from "./inline-marks";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
+import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
 import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { TableToolbar } from "./table-toolbar";
@@ -92,57 +86,7 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 			run: (e: Editor) => chain(e).setHeading({ level }).run(),
 		})),
 	],
-	[
-		{
-			label: "B",
-			title: "굵게",
-			icon: Bold,
-			isActive: (e) => e.isActive("bold"),
-			run: (e) => chain(e).toggleBold().run(),
-		},
-		{
-			label: "i",
-			title: "기울임",
-			icon: Italic,
-			isActive: (e) => e.isActive("italic"),
-			run: (e) => chain(e).toggleItalic().run(),
-		},
-		{
-			label: "S",
-			title: "취소선",
-			icon: Strikethrough,
-			isActive: (e) => e.isActive("strike"),
-			run: (e) => chain(e).toggleStrike().run(),
-		},
-		{
-			label: "</>",
-			title: "인라인 코드",
-			icon: CodeXml,
-			isActive: (e) => e.isActive("code"),
-			run: (e) => chain(e).toggleCode().run(),
-		},
-		{
-			label: "U",
-			title: "밑줄",
-			icon: Underline,
-			isActive: (e) => e.isActive("underline"),
-			run: (e) => chain(e).toggleUnderline().run(),
-		},
-		{
-			label: "x²",
-			title: "위첨자",
-			icon: Superscript,
-			isActive: (e) => e.isActive("superscript"),
-			run: (e) => chain(e).toggleSuperscript().run(),
-		},
-		{
-			label: "x₂",
-			title: "아래첨자",
-			icon: Subscript,
-			isActive: (e) => e.isActive("subscript"),
-			run: (e) => chain(e).toggleSubscript().run(),
-		},
-	],
+	INLINE_MARK_TOOLS,
 	[
 		{
 			label: "왼쪽",
@@ -268,22 +212,6 @@ function ToolbarDropdown({
 	);
 }
 
-function normalizeLinkHref(value: string): string | null {
-	const href = value.trim();
-	if (!href || /\s/.test(href)) return null;
-	if ((href.startsWith("/") && !href.startsWith("//")) || href.startsWith("#")) return href;
-	if (/^mailto:[^@\s]+@[^@\s]+$/i.test(href)) return href;
-	if (/^https?:\/\//i.test(href)) {
-		try {
-			return new URL(href).href;
-		} catch {
-			return null;
-		}
-	}
-	if (/^[^/:?#\s]+\.[^/:?#\s]{2,}(?:[/?#].*)?$/i.test(href)) return `https://${href}`;
-	return null;
-}
-
 async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 	const search = async (collection: "post" | "memo") => {
 		const params = new URLSearchParams({ collection, pageSize: "25" });
@@ -367,10 +295,7 @@ export function CmsEditor({
 	const activeBlockPosRef = useRef<number | null>(null);
 	const activeBlockElRef = useRef<HTMLElement | null>(null);
 	const [imageDialog, setImageDialog] = useState<{ file: File | null } | null>(null);
-	const [linkDraft, setLinkDraft] = useState<{ from: number; to: number; existing: boolean } | null>(null);
-	const [linkHref, setLinkHref] = useState("");
-	const [linkText, setLinkText] = useState("");
-	const [linkError, setLinkError] = useState<string | null>(null);
+	const [linkDraft, setLinkDraft] = useState<LinkDraft | null>(null);
 
 	const syncTriggerPopup = (current: Editor) => {
 		if (isComposingRef.current) return;
@@ -506,46 +431,6 @@ export function CmsEditor({
 	});
 	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "본문") : "본문";
 	const listStyle = editor ? (LIST_STYLES.find((item) => item.isActive?.(editor))?.title ?? "목록") : "목록";
-
-	const openLinkEditor = () => {
-		if (!editor) return;
-		const { from, to } = editor.state.selection;
-		const existing = editor.isActive("link");
-		setLinkDraft({ from, to, existing });
-		setLinkHref(existing ? String(editor.getAttributes("link").href ?? "") : "");
-		setLinkText(from === to ? "" : editor.state.doc.textBetween(from, to));
-		setLinkError(null);
-	};
-
-	const submitLink = (event: React.FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!editor || !linkDraft) return;
-		const href = normalizeLinkHref(linkHref);
-		if (!href) {
-			setLinkError("http(s) 주소, 사이트 경로 또는 이메일 주소를 입력하세요.");
-			return;
-		}
-		const command = editor.chain().focus().setTextSelection({ from: linkDraft.from, to: linkDraft.to });
-		if (linkDraft.existing) command.extendMarkRange("link").setLink({ href }).run();
-		else if (linkDraft.from !== linkDraft.to) command.setLink({ href }).run();
-		else
-			command
-				.insertContent({ type: "text", text: linkText.trim() || href, marks: [{ type: "link", attrs: { href } }] })
-				.run();
-		setLinkDraft(null);
-	};
-
-	const removeLink = () => {
-		if (!editor || !linkDraft) return;
-		editor
-			.chain()
-			.focus()
-			.setTextSelection({ from: linkDraft.from, to: linkDraft.to })
-			.extendMarkRange("link")
-			.unsetLink()
-			.run();
-		setLinkDraft(null);
-	};
 
 	useEffect(() => {
 		editorRef.current = editor;
@@ -763,7 +648,10 @@ export function CmsEditor({
 					{INSERT_TOOLS.map((item) => (
 						<ToolbarButton key={item.label} editor={editor} item={item} />
 					))}
-					<Popover open={linkDraft !== null} onOpenChange={(open) => (open ? openLinkEditor() : setLinkDraft(null))}>
+					<Popover
+						open={linkDraft !== null}
+						onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
+					>
 						<PopoverTrigger
 							render={
 								<Button
@@ -781,49 +669,7 @@ export function CmsEditor({
 							<Link2 aria-hidden className="size-4" />
 						</PopoverTrigger>
 						<PopoverContent align="start" className="w-80">
-							<form onSubmit={submitLink} className="grid gap-3">
-								<p className="font-medium">{linkDraft?.existing ? "링크 수정" : "링크 삽입"}</p>
-								{linkDraft && !linkDraft.existing && linkDraft.from === linkDraft.to && (
-									<label htmlFor="cms-link-text" className="grid gap-1.5 text-xs">
-										표시 텍스트
-										<Input
-											id="cms-link-text"
-											value={linkText}
-											onChange={(event) => setLinkText(event.target.value)}
-											placeholder="링크 텍스트"
-										/>
-									</label>
-								)}
-								<label htmlFor="cms-link-href" className="grid gap-1.5 text-xs">
-									주소
-									<Input
-										id="cms-link-href"
-										autoFocus
-										value={linkHref}
-										onChange={(event) => {
-											setLinkHref(event.target.value);
-											setLinkError(null);
-										}}
-										placeholder="https://example.com"
-									/>
-								</label>
-								{linkError && (
-									<p role="alert" className="text-destructive text-xs">
-										{linkError}
-									</p>
-								)}
-								<div className="flex justify-end gap-2">
-									{linkDraft?.existing && (
-										<Button type="button" variant="outline" size="sm" onClick={removeLink}>
-											<Unlink aria-hidden className="size-4" />
-											링크 제거
-										</Button>
-									)}
-									<Button type="submit" size="sm">
-										{linkDraft?.existing ? "수정" : "삽입"}
-									</Button>
-								</div>
-							</form>
+							{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
 						</PopoverContent>
 					</Popover>
 				</div>
@@ -903,6 +749,8 @@ export function CmsEditor({
 			)}
 
 			<TableToolbar editor={editor} />
+
+			<InlineBubble editor={editor} />
 
 			{handleSpot && editable && (
 				<BlockHandleOverlay
