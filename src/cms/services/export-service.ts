@@ -374,7 +374,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 				snapshot.templates.map((template) => ({
 					id: template.id,
 					name: template.name,
-					forCollection: template.forCollection,
 					mdx: template.mdx,
 					version: template.version,
 					createdAt: iso(template.createdAt),

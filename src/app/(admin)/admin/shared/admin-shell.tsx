@@ -44,7 +44,7 @@ export function AdminNavProvider({ children }: { children: ReactNode }) {
 
 /**
  * 목록·미디어·템플릿·휴지통 화면이 함께 쓰는 틀(§3.1). 왼쪽은 shadcn Sidebar(좁은 화면에서는 시트),
- * 오른쪽 위에는 사이드바 열기·화면 제목·테마 전환을 둔다. 편집 화면은 Cmd/Ctrl+B(굵게)와 겹치지 않도록 쓰지 않는다.
+ * 오른쪽 위에는 화면 제목을 둔다. 좁은 화면에서는 헤더의 버튼으로 사이드바 시트를 연다.
  */
 export function AdminShell({
 	title,
@@ -76,7 +76,7 @@ export function AdminShell({
 			<AdminSidebar {...sidebar} trashCount={nav.trashCount} />
 			<SidebarInset className="min-w-0 overflow-hidden">
 				<header className="flex h-13 shrink-0 items-center gap-3 border-b px-4 lg:px-5">
-					<SidebarTrigger aria-label="사이드바 열고 닫기" className="-ml-1 text-muted-foreground" />
+					<SidebarTrigger aria-label="사이드바 열기" className="-ml-1 text-muted-foreground md:hidden" />
 					<h1 className="flex min-w-0 flex-1 items-baseline gap-2 truncate font-semibold text-[15px]">
 						<span className="truncate">{title}</span>
 						{count !== undefined && <span className="tabular font-normal text-muted-foreground text-sm">{count}</span>}

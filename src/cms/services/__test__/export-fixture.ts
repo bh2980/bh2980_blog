@@ -174,7 +174,6 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "66666666-6666-4666-8666-666666666666",
 			name: "기본",
-			forCollection: "post",
 			mdx: "## 문제",
 			version: 1,
 			createdAt: FIXTURE_TIME,

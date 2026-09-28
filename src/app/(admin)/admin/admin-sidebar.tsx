@@ -39,9 +39,10 @@ import {
 	SidebarMenuItem,
 	SidebarMenuSub,
 	SidebarMenuSubItem,
-	SidebarRail,
+	SidebarTrigger,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
@@ -224,7 +225,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 	];
 
 	return (
-		<SidebarGroup className="flex-1">
+		<SidebarGroup className="flex-1 group-data-[collapsible=icon]:hidden">
 			<SidebarGroupLabel>폴더</SidebarGroupLabel>
 			<SidebarGroupAction aria-label="새 폴더" title="새 폴더" onClick={() => nav.folderActions.requestCreate(null)}>
 				<Plus />
@@ -271,7 +272,8 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 
 /** 왼쪽 탐색 영역(§3.1): 컬렉션, 미디어·템플릿·휴지통, 가상 폴더 트리(§3.3). */
 export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarProps) {
-	const { isMobile, setOpenMobile } = useSidebar();
+	const { isMobile, setOpenMobile, state } = useSidebar();
+	const toggleLabel = isMobile ? "사이드바 닫기" : state === "collapsed" ? "사이드바 펼치기" : "사이드바 접기";
 	const closeMobile = () => {
 		if (isMobile) setOpenMobile(false);
 	};
@@ -280,6 +282,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 		<SidebarMenuItem key={id}>
 			<SidebarMenuButton
 				isActive={activeNav === id}
+				tooltip={label}
 				render={
 					<Link href={href as Route} onClick={closeMobile} aria-current={activeNav === id ? "page" : undefined} />
 				}
@@ -292,9 +295,13 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 	);
 
 	return (
-		<Sidebar>
-			<SidebarHeader className="px-3 pt-3.5">
-				<Link href="/admin" onClick={closeMobile} className="flex items-center gap-2.5 rounded-md px-1.5 py-1">
+		<Sidebar collapsible="icon">
+			<SidebarHeader className="flex-row items-center gap-1 px-3 pt-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+				<Link
+					href="/admin"
+					onClick={closeMobile}
+					className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[collapsible=icon]:hidden"
+				>
 					<span
 						aria-hidden
 						className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary font-semibold text-sidebar-primary-foreground text-xs"
@@ -302,8 +309,13 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						b
 					</span>
 					<span className="font-semibold text-[13px] text-sidebar-accent-foreground">bh2980.dev</span>
-					<span className="ml-auto text-[11px] text-muted-foreground">CMS</span>
 				</Link>
+				<Tooltip>
+					<TooltipTrigger
+						render={<SidebarTrigger aria-label={toggleLabel} className="size-8 shrink-0 text-sidebar-foreground/70" />}
+					/>
+					<TooltipContent side="right">{toggleLabel}</TooltipContent>
+				</Tooltip>
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
@@ -341,17 +353,26 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				</SidebarGroup>
 				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
 			</SidebarContent>
-			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2">
-				<Link
-					href="/"
-					className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-				>
-					<Globe aria-hidden className="size-4" />
-					블로그 보기
-				</Link>
+			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Link
+								href="/"
+								aria-label="블로그 보기"
+								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+							/>
+						}
+					>
+						<Globe aria-hidden className="size-4" />
+						<span className="group-data-[collapsible=icon]:hidden">블로그 보기</span>
+					</TooltipTrigger>
+					<TooltipContent side="right" hidden={state !== "collapsed" || isMobile}>
+						블로그 보기
+					</TooltipContent>
+				</Tooltip>
 				<ThemeToggle className="size-8 text-muted-foreground" />
 			</SidebarFooter>
-			<SidebarRail />
 		</Sidebar>
 	);
 }

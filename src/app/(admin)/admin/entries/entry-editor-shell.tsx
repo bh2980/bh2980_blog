@@ -7,12 +7,10 @@ import {
 	CodeXml,
 	Copy,
 	Eye,
-	FileStack,
 	type LucideIcon,
 	MoreHorizontal,
 	PanelRightOpen,
 	Save,
-	Search,
 	SunMoon,
 	Trash,
 	Trash2,
@@ -41,12 +39,11 @@ import {
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -60,7 +57,6 @@ import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
-import { CommandPalette, type PaletteCommand } from "./command-palette";
 import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry, formText } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
 import { LanguageMenu } from "./language-menu";
@@ -180,7 +176,6 @@ export function EntryEditorShell({
 	const [templates, setTemplates] = useState<{ id: string; name: string; mdx: string }[] | null>(null);
 	const [pendingTemplateMdx, setPendingTemplateMdx] = useState<string | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const [paletteOpen, setPaletteOpen] = useState(false);
 	const [incoming, setIncoming] = useState<{ items: IncomingReferenceItem[]; loading: boolean; error: string | null }>({
 		items: [],
 		loading: false,
@@ -595,9 +590,7 @@ export function EntryEditorShell({
 		setTemplateMenuOpen(open);
 		if (!open || templates) return;
 		try {
-			const data = await cmsFetch<{ items: { id: string; name: string; mdx: string }[] }>(
-				`/api/cms/v1/templates?forCollection=${collection}`,
-			);
+			const data = await cmsFetch<{ items: { id: string; name: string; mdx: string }[] }>("/api/cms/v1/templates");
 			setTemplates(data.items);
 		} catch {
 			setTemplates([]);
@@ -617,94 +610,7 @@ export function EntryEditorShell({
 			}`
 		: null;
 
-	const commands: PaletteCommand[] = [
-		{
-			id: "save",
-			group: "편집",
-			label: "지금 저장",
-			shortcut: "⌘S",
-			keywords: ["save", "저장"],
-			disabled: isReadOnly,
-			run: () => void handleSaveNow(),
-		},
-		{
-			id: "mode",
-			group: "편집",
-			label: editorMode === "visual" ? "MDX 원문으로 전환" : "시각 모드로 전환",
-			keywords: ["mdx", "source", "원문", "시각"],
-			disabled: editorMode === "source" && !canUseVisual,
-			run: () => setEditorMode(editorMode === "visual" ? "source" : "visual"),
-		},
-		{
-			id: "inspector",
-			group: "편집",
-			label: isInspectorOpen ? "속성 패널 닫기" : "속성 패널 열기",
-			keywords: ["inspector", "속성", "패널"],
-			run: () => setIsInspectorOpen((open) => !open),
-		},
-		{
-			id: "publish",
-			group: "발행",
-			label: entry?.status === "published" ? "변경사항 발행" : "발행",
-			keywords: ["publish", "발행"],
-			disabled: isReadOnly || entry?.status === "archived",
-			run: () => void handlePublish(),
-		},
-		{
-			id: "schedule",
-			group: "발행",
-			label: "발행 예약…",
-			keywords: ["schedule", "예약"],
-			disabled: isReadOnly || entry?.status === "archived",
-			run: () => setScheduleOpen(true),
-		},
-		...(scheduleLocked
-			? [
-					{
-						id: "unschedule",
-						group: "발행",
-						label: "예약 해제 후 편집",
-						keywords: ["예약", "해제", "unschedule"],
-						run: () => void handleCancelSchedule(),
-					},
-				]
-			: []),
-		...(previewHref && !autosave.hasPendingChanges()
-			? [
-					{
-						id: "preview",
-						group: "보기",
-						label: "미리보기 열기",
-						keywords: ["preview", "미리보기"],
-						run: () => window.open(previewHref, "_blank"),
-					},
-				]
-			: []),
-		{
-			id: "duplicate",
-			group: "글",
-			label: "복제",
-			keywords: ["duplicate", "copy", "복제"],
-			disabled: !entry || isTrashed,
-			run: () => void handleDuplicate(),
-		},
-		{
-			id: "new",
-			group: "글",
-			label: "새 글",
-			keywords: ["new", "새"],
-			run: () => router.push(`/admin/entries/new?collection=${collection}`),
-		},
-		{
-			id: "list",
-			group: "글",
-			label: "목록으로",
-			keywords: ["list", "목록"],
-			run: () => router.push(`/admin?collection=${collection}`),
-		},
-	];
-
-	// Cmd/Ctrl+S 즉시 저장, Cmd/Ctrl+K 명령 검색(§4.2). 매 렌더의 최신 상태를 쓰도록 다시 등록한다.
+	// Cmd/Ctrl+S 즉시 저장. 매 렌더의 최신 상태를 쓰도록 다시 등록한다.
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (!(event.metaKey || event.ctrlKey) || event.altKey || event.isComposing) return;
@@ -712,9 +618,6 @@ export function EntryEditorShell({
 			if (key === "s") {
 				event.preventDefault();
 				void handleSaveNow();
-			} else if (key === "k") {
-				event.preventDefault();
-				setPaletteOpen((open) => !open);
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
@@ -775,6 +678,47 @@ export function EntryEditorShell({
 				</p>
 			)}
 		</>
+	);
+	const templateMenu = (
+		<DropdownMenu open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						type="button"
+						size="icon-sm"
+						variant="ghost"
+						aria-label="템플릿 메뉴"
+						title="템플릿"
+						disabled={isReadOnly}
+					/>
+				}
+			>
+				<MoreHorizontal aria-hidden className="size-4" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="max-h-80 w-56 overflow-y-auto">
+				<DropdownMenuGroup>
+					<DropdownMenuLabel>템플릿</DropdownMenuLabel>
+					{templates === null ? (
+						<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
+					) : templates.length === 0 ? (
+						<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
+					) : (
+						templates.map((template) => (
+							<DropdownMenuItem
+								key={template.id}
+								onClick={() => (form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx))}
+							>
+								<span className="truncate">{template.name}</span>
+							</DropdownMenuItem>
+						))
+					)}
+				</DropdownMenuGroup>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
+					템플릿 관리
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 
 	return (
@@ -916,43 +860,10 @@ export function EntryEditorShell({
 							<MoreHorizontal aria-hidden className="size-4" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
-							<DropdownMenuSub open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
-								<DropdownMenuSubTrigger disabled={isReadOnly}>
-									<FileStack aria-hidden />
-									템플릿
-								</DropdownMenuSubTrigger>
-								<DropdownMenuSubContent className="max-h-80 w-56 overflow-y-auto">
-									{templates === null ? (
-										<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
-									) : templates.length === 0 ? (
-										<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
-									) : (
-										templates.map((template) => (
-											<DropdownMenuItem
-												key={template.id}
-												onClick={() =>
-													form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx)
-												}
-											>
-												<span className="truncate">{template.name}</span>
-											</DropdownMenuItem>
-										))
-									)}
-									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
-										템플릿 관리
-									</DropdownMenuItem>
-								</DropdownMenuSubContent>
-							</DropdownMenuSub>
 							<DropdownMenuItem disabled={isReadOnly} onClick={() => void handleSaveNow()}>
 								<Save aria-hidden />
 								지금 저장
 								<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setPaletteOpen(true)}>
-								<Search aria-hidden />
-								명령 검색
-								<DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							{entry && !isTrashed && (
 								<>
@@ -1065,6 +976,7 @@ export function EntryEditorShell({
 						<CmsEditor
 							content={form.mdx}
 							titleField={titleInput}
+							toolbarLeading={templateMenu}
 							editable={!isReadOnly}
 							onChange={(mdx) => setForm({ mdx })}
 							onCompositionStart={() => autosave.setComposing(true)}
@@ -1072,7 +984,8 @@ export function EntryEditorShell({
 						/>
 					) : (
 						<div className="mx-auto flex h-full w-full max-w-3xl flex-col p-6">
-							{titleInput}
+							<div className="mb-6 flex justify-start">{templateMenu}</div>
+							<div className="mb-6 border-border/60 border-b pb-5">{titleInput}</div>
 							<Textarea
 								id="cms-mdx-source"
 								aria-label="MDX 본문"
@@ -1260,7 +1173,6 @@ export function EntryEditorShell({
 			</Dialog>
 
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
-			<CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
 		</div>
 	);
 }

@@ -312,7 +312,7 @@ export function createTransferOps(ctx: StoreContext) {
 
 					const templatesRes = await client.query<TemplateRow>(
 						`SELECT ${TEMPLATE_COLUMNS}
-					 FROM "${qSchema}".body_templates ORDER BY for_collection ASC, lower(name) ASC, id ASC`,
+					 FROM "${qSchema}".body_templates ORDER BY lower(name) ASC, id ASC`,
 					);
 
 					const schedulesRes = await client.query<{

@@ -47,7 +47,6 @@ export interface EntryBody {
 export interface BodyTemplate {
 	id: string;
 	name: string;
-	forCollection: "post" | "memo";
 	mdx: string;
 	version: number;
 	createdAt: Date;

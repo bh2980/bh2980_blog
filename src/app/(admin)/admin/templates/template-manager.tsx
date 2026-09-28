@@ -10,29 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/utils/cn";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 
-const COLLECTION_OPTIONS = [
-	{ value: "memo", label: "메모용 (memo)" },
-	{ value: "post", label: "포스트용 (post)" },
-];
-
 export function TemplateManager() {
 	const [templates, setTemplates] = useState<BodyTemplate[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [filterCollection, setFilterCollection] = useState<string>("all");
 
 	// Editor state for selected/new template
 	const [activeTemplate, setActiveTemplate] = useState<Partial<BodyTemplate> | null>(null);
 	const [editName, setEditName] = useState("");
-	const [editForCollection, setEditForCollection] = useState<"post" | "memo">("memo");
 	const [editMdx, setEditMdx] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
@@ -60,7 +51,6 @@ export function TemplateManager() {
 	const handleSelectTemplate = (t: BodyTemplate) => {
 		setActiveTemplate(t);
 		setEditName(t.name);
-		setEditForCollection(t.forCollection);
 		setEditMdx(t.mdx);
 		setSaveError(null);
 	};
@@ -68,11 +58,9 @@ export function TemplateManager() {
 	const handleOpenNew = () => {
 		setActiveTemplate({
 			name: "",
-			forCollection: filterCollection === "post" ? "post" : "memo",
 			mdx: "## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.",
 		});
 		setEditName("");
-		setEditForCollection(filterCollection === "post" ? "post" : "memo");
 		setEditMdx("## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.");
 		setSaveError(null);
 	};
@@ -99,7 +87,6 @@ export function TemplateManager() {
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						name: editName.trim(),
-						forCollection: editForCollection,
 						mdx: editMdx,
 						expectedVersion: activeTemplate.version,
 					}),
@@ -117,7 +104,6 @@ export function TemplateManager() {
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						name: editName.trim(),
-						forCollection: editForCollection,
 						mdx: editMdx,
 					}),
 				});
@@ -170,8 +156,6 @@ export function TemplateManager() {
 		{ kind: "item", label: "삭제", shortcut: "Del", destructive: true, onSelect: () => requestDelete(template) },
 	];
 
-	const filtered = templates.filter((t) => filterCollection === "all" || t.forCollection === filterCollection);
-
 	return (
 		<AdminShell
 			title={
@@ -193,15 +177,6 @@ export function TemplateManager() {
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-80 shrink-0 flex-col border-r">
-					<div className="border-b p-2.5">
-						<Tabs value={filterCollection} onValueChange={(value) => setFilterCollection(String(value))}>
-							<TabsList className="w-full" aria-label="템플릿 대상">
-								<TabsTrigger value="all">전체</TabsTrigger>
-								<TabsTrigger value="memo">메모용</TabsTrigger>
-								<TabsTrigger value="post">포스트용</TabsTrigger>
-							</TabsList>
-						</Tabs>
-					</div>
 					<ul className="flex-1 divide-y overflow-y-auto" aria-label="템플릿 목록">
 						{isLoading ? (
 							Array.from({ length: 3 }, (_, index) => (
@@ -210,10 +185,10 @@ export function TemplateManager() {
 									<Skeleton className="h-10 w-full" />
 								</li>
 							))
-						) : filtered.length === 0 ? (
+						) : templates.length === 0 ? (
 							<li className="p-8 text-center text-muted-foreground text-xs">등록된 템플릿이 없습니다.</li>
 						) : (
-							filtered.map((t) => {
+							templates.map((t) => {
 								const isSelected = activeTemplate?.id === t.id;
 								return (
 									<ActionContextMenu
@@ -243,9 +218,6 @@ export function TemplateManager() {
 										>
 											<span className="truncate font-medium text-sm">{t.name}</span>
 											<span className="flex items-center gap-2 text-muted-foreground text-xs">
-												<Badge variant="outline" className="text-[10px] uppercase">
-													{t.forCollection}
-												</Badge>
 												<span className="text-[11px]">{new Date(t.updatedAt).toLocaleDateString("ko-KR")}</span>
 											</span>
 										</Button>
@@ -267,25 +239,9 @@ export function TemplateManager() {
 										aria-label="템플릿 이름"
 										value={editName}
 										onChange={(e) => setEditName(e.target.value)}
-										placeholder="템플릿 이름 (예: 알고리즘 풀이 메모)"
+										placeholder="템플릿 이름 (예: 알고리즘 풀이)"
 										className="h-8 min-w-0 flex-1"
 									/>
-									<Select
-										value={editForCollection}
-										items={COLLECTION_OPTIONS}
-										onValueChange={(value) => value && setEditForCollection(value as "post" | "memo")}
-									>
-										<SelectTrigger size="sm" aria-label="대상 컬렉션">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{COLLECTION_OPTIONS.map((option) => (
-												<SelectItem key={option.value} value={option.value}>
-													{option.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
 									<span className="hidden text-muted-foreground text-xs sm:inline">본문 MDX 골격</span>
 								</div>
 								<div className="flex items-center gap-2">

@@ -196,12 +196,11 @@ export const mapMediaRow = (row: MediaRow): MediaAssetRecord => ({
 	readyAt: row.ready_at,
 });
 
-export const TEMPLATE_COLUMNS = "id, name, for_collection, mdx, version, created_at, updated_at";
+export const TEMPLATE_COLUMNS = "id, name, mdx, version, created_at, updated_at";
 
 export interface TemplateRow {
 	id: string;
 	name: string;
-	for_collection: "post" | "memo";
 	mdx: string;
 	version: number;
 	created_at: Date;
@@ -211,7 +210,6 @@ export interface TemplateRow {
 export const mapTemplateRow = (row: TemplateRow): BodyTemplate => ({
 	id: row.id,
 	name: row.name,
-	forCollection: row.for_collection,
 	mdx: row.mdx,
 	version: row.version,
 	createdAt: row.created_at,

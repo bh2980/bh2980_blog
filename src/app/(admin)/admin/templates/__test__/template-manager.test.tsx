@@ -25,7 +25,6 @@ describe("TemplateManager", () => {
 						{
 							id: "template-post-default",
 							name: "일반 게시글",
-							forCollection: "post",
 							mdx: "## 개요",
 							version: 1,
 							createdAt: "2026-01-01T00:00:00.000Z",
@@ -40,5 +39,7 @@ describe("TemplateManager", () => {
 
 		expect(await screen.findByText("일반 게시글")).toBeTruthy();
 		expect(screen.getByText("총 1개")).toBeTruthy();
+		expect(screen.queryByText("메모용")).toBeNull();
+		expect(screen.queryByText("포스트용")).toBeNull();
 	});
 });
