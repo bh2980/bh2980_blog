@@ -29,6 +29,13 @@ const ALIGN_CLASS: Record<string, string> = {
 	right: "items-end",
 };
 
+/** 캡션은 이미지와 같은 쪽에 맞춘다. */
+const CAPTION_ALIGN_CLASS: Record<string, string> = {
+	left: "text-left",
+	center: "text-center",
+	right: "text-right",
+};
+
 export const CmsImage = ({
 	mediaId,
 	src,
@@ -68,12 +75,13 @@ export const CmsImage = ({
 			? { width: resolved.width, height: resolved.height }
 			: undefined;
 	const captionText = caption?.trim();
-	const captionClassName = "text-center text-slate-500 text-sm dark:text-slate-400";
+	const captionClassName = "text-slate-500 text-sm dark:text-slate-400";
+	const captionAlignClass = CAPTION_ALIGN_CLASS[align ?? ""] ?? "text-center";
 
 	// 해석 실패: 장식 이미지는 캡션만 남긴다. 본문 이미지는 중립 플레이스홀더와 캡션을 남긴다.
 	// 내부 사유·alt 대체·width·align 적용은 하지 않는다.
 	if (decorative && !url) {
-		return captionText ? <p className={cn("my-6", captionClassName, className)}>{captionText}</p> : null;
+		return captionText ? <p className={cn("my-6 text-center", captionClassName, className)}>{captionText}</p> : null;
 	}
 	if (!url) {
 		return (
@@ -89,12 +97,18 @@ export const CmsImage = ({
 					<ImageOff className="h-5 w-5" aria-hidden />
 					<span className="text-sm">{unavailableLabel}</span>
 				</div>
-				{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
+				{captionText ? <figcaption className={cn("text-center", captionClassName)}>{captionText}</figcaption> : null}
 			</figure>
 		);
 	}
 
-	const figureClassName = cn("my-6 flex flex-col gap-2", ALIGN_CLASS[align ?? ""] ?? "items-center", className);
+	// 본문(prose)의 img 여백을 없앤다. `mx-auto`는 이미지를 가운데로 끌어오고(정렬은 figure의 items-*가 맡는다),
+	// 위아래 2em은 자르기·회전 상자 안의 절대 위치 이미지를 아래로 민다.
+	const figureClassName = cn(
+		"my-6 flex flex-col gap-2 [&_img]:m-0",
+		ALIGN_CLASS[align ?? ""] ?? "items-center",
+		className,
+	);
 	const imageWidthStyle = widthStyle(width);
 
 	return (
@@ -109,7 +123,7 @@ export const CmsImage = ({
 				title={title}
 				intrinsicSize={intrinsicSize}
 			/>
-			{captionText ? <figcaption className={captionClassName}>{captionText}</figcaption> : null}
+			{captionText ? <figcaption className={cn(captionAlignClass, captionClassName)}>{captionText}</figcaption> : null}
 		</figure>
 	);
 };

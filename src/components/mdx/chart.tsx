@@ -71,6 +71,23 @@ const toChartConfig = (spec: NormalizedChartSpec): ChartConfig => {
 	);
 };
 
+/**
+ * Y축 눈금 글자 폭(px)을 데이터에서 어림한다. recharts의 `width="auto"`는 브라우저에서 글자를 재서
+ * 서버 HTML과 달라지므로(hydration 불일치) 쓰지 않는다. 기본 고정 폭 60px은 두 자리 수에도 왼쪽이 빈다.
+ */
+const Y_AXIS_CHAR_WIDTH = 7;
+const Y_AXIS_TICK_GAP = 14;
+const estimateYAxisWidth = (spec: CartesianChartSpec) => {
+	const values = spec.data.flatMap((row) =>
+		spec.series.map((series) => Number(row[series.key])).filter((value) => Number.isFinite(value)),
+	);
+	if (spec.options.yRange) values.push(spec.options.yRange.min, spec.options.yRange.max);
+	// 눈금은 데이터 최댓값보다 한 단계 크게 잡힐 수 있다(예: 95 → 100).
+	const labels = values.flatMap((value) => [String(value), String(Math.round(value * 1.25))]);
+	const longest = Math.max(1, ...labels.map((label) => label.length));
+	return longest * Y_AXIS_CHAR_WIDTH + Y_AXIS_TICK_GAP;
+};
+
 const ChartErrorCard = ({ errors }: { errors: ChartRenderError[] }) => {
 	const { t } = useTranslate();
 	return (
@@ -198,14 +215,16 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 				margin={{
 					top: spec.options.showValues ? 28 : 12,
 					right: 12,
-					left: spec.options.hideYAxis ? 12 : 40,
-					bottom: 24,
+					// Y축 폭은 눈금 글자에 맞춘다(estimateYAxisWidth). 고정 폭(60)에 여백을 더하면 왼쪽이 비어 보인다.
+					left: spec.options.hideYAxis ? 12 : 0,
+					bottom: 0,
 				}}
 			>
 				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
 				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
 				<YAxis
 					hide={spec.options.hideYAxis}
+					width={estimateYAxisWidth(spec)}
 					tickLine={false}
 					tickMargin={10}
 					axisLine={false}

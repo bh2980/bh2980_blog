@@ -108,6 +108,13 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			center: "mx-auto",
 			right: "ml-auto",
 		}[align as "left" | "center" | "right"] || "mx-auto";
+	// 공개 화면(CmsImage)과 같게 캡션을 이미지 정렬 쪽에 맞춘다.
+	const captionAlignClass =
+		{
+			left: "text-left",
+			center: "text-center",
+			right: "text-right",
+		}[align as "left" | "center" | "right"] || "text-center";
 
 	// 모서리(좌·우 아래) 핸들 드래그로 너비 조절 (c-editor.md §1.1)
 	const handleResizeStart = (e: React.PointerEvent, handle: "left" | "right") => {
@@ -182,7 +189,8 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			as="figure"
 			data-image-block
 			className={cn(
-				"group relative my-6 flex flex-col rounded-lg transition-all",
+				// 편집기 본문(prose)의 img 위아래 2em 여백이 회색 상자 안에 빈 띠로 보이지 않게 한다.
+				"group relative my-6 flex flex-col rounded-lg transition-all [&_img]:m-0",
 				alignClasses,
 				selected && "ring-2 ring-ring",
 			)}
@@ -379,7 +387,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			{resolveReason ? <p className="mt-1 text-center text-destructive text-xs">{resolveReason}</p> : null}
 
 			{/* Caption Input / Display */}
-			<figcaption className="mt-2 text-center">
+			<figcaption className={cn("mt-2", captionAlignClass)}>
 				<Input
 					type="text"
 					value={caption || ""}
@@ -387,7 +395,10 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 					aria-label="이미지 캡션"
 					readOnly={!isEditable}
 					onChange={(e) => updateAttributes({ caption: e.target.value })}
-					className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-center text-muted-foreground text-xs shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-xs dark:bg-transparent"
+					className={cn(
+						"h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-muted-foreground text-xs shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-xs dark:bg-transparent",
+						captionAlignClass,
+					)}
 				/>
 			</figcaption>
 
