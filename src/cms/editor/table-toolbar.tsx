@@ -4,6 +4,18 @@ import type { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorState } from "@tiptap/react";
+import {
+	BetweenHorizontalEnd,
+	BetweenHorizontalStart,
+	BetweenVerticalEnd,
+	BetweenVerticalStart,
+	Columns3,
+	MoveHorizontal,
+	Rows3,
+	TableCellsMerge,
+	TableCellsSplit,
+	Trash2,
+} from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Separator } from "@/components/ui/separator";
@@ -53,25 +65,27 @@ const fillTableWidth = (editor: Editor) => {
 /** 표 안에 커서가 있을 때 표 위에 뜨는 조작 도구(§4.1, v2 C6). */
 const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	[
-		{ label: "↑행", title: "위에 행 추가", run: (e) => chain(e).addRowBefore().run() },
-		{ label: "↓행", title: "아래에 행 추가", run: (e) => chain(e).addRowAfter().run() },
-		{ label: "←열", title: "왼쪽에 열 추가", run: (e) => chain(e).addColumnBefore().run() },
-		{ label: "→열", title: "오른쪽에 열 추가", run: (e) => chain(e).addColumnAfter().run() },
+		{ label: "↑행", title: "위에 행 추가", icon: BetweenHorizontalStart, run: (e) => chain(e).addRowBefore().run() },
+		{ label: "↓행", title: "아래에 행 추가", icon: BetweenHorizontalEnd, run: (e) => chain(e).addRowAfter().run() },
+		{ label: "←열", title: "왼쪽에 열 추가", icon: BetweenVerticalStart, run: (e) => chain(e).addColumnBefore().run() },
+		{ label: "→열", title: "오른쪽에 열 추가", icon: BetweenVerticalEnd, run: (e) => chain(e).addColumnAfter().run() },
 	],
 	[
-		{ label: "행 삭제", run: (e) => chain(e).deleteRow().run() },
-		{ label: "열 삭제", run: (e) => chain(e).deleteColumn().run() },
+		{ label: "행 삭제", icon: Rows3, className: "text-destructive", run: (e) => chain(e).deleteRow().run() },
+		{ label: "열 삭제", icon: Columns3, className: "text-destructive", run: (e) => chain(e).deleteColumn().run() },
 	],
 	[
 		{
 			label: "셀 병합",
 			title: "선택한 셀 병합 (셀을 끌어 여러 칸 선택)",
+			icon: TableCellsMerge,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().mergeCells(),
 			run: (e) => chain(e).mergeCells().run(),
 		},
 		{
 			label: "셀 나누기",
 			title: "병합된 셀 나누기",
+			icon: TableCellsSplit,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().splitCell(),
 			run: (e) => chain(e).splitCell().run(),
 		},
@@ -80,13 +94,14 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 		{
 			label: "폭 채우기",
 			title: "열 너비를 지워 표가 본문 폭을 꽉 채우게 하기",
+			icon: MoveHorizontal,
 			isDisabled: (e) => {
 				const table = findTable(e);
 				return !table || !hasFixedWidth(table.node);
 			},
 			run: fillTableWidth,
 		},
-		{ label: "표 삭제", className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
+		{ label: "표 삭제", icon: Trash2, className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
 	],
 ];
 

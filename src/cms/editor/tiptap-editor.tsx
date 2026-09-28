@@ -3,10 +3,48 @@
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import { ImageIcon } from "lucide-react";
+import {
+	AlignCenter,
+	AlignLeft,
+	AlignRight,
+	Bold,
+	Check,
+	ChevronDown,
+	CodeXml,
+	Heading2,
+	Heading3,
+	Heading4,
+	ImageIcon,
+	Italic,
+	Link2,
+	List,
+	ListOrdered,
+	ListTodo,
+	type LucideIcon,
+	Minus,
+	Pilcrow,
+	Quote,
+	RemoveFormatting,
+	SquareCode,
+	Strikethrough,
+	Subscript,
+	Superscript,
+	Table2,
+	Underline,
+	Unlink,
+} from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
@@ -26,6 +64,8 @@ interface CmsEditorProps {
 	onChange: (newContent: string) => void;
 	/** 편집 문서의 제목 입력. 서식 도구 아래, 본문 위에 놓는다. */
 	titleField?: ReactNode;
+	/** 툴바 맨 왼쪽에 놓을 문서 작업 메뉴. */
+	toolbarLeading?: ReactNode;
 	onCompositionStart?: () => void;
 	onCompositionEnd?: () => void;
 	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
@@ -38,59 +78,67 @@ const chain = (editor: Editor) => editor.chain().focus();
 
 const TOOLBAR_GROUPS: ToolbarItem[][] = [
 	[
-		{ label: "본문", isActive: (e) => e.isActive("paragraph"), run: (e) => chain(e).setParagraph().run() },
+		{
+			label: "본문",
+			icon: Pilcrow,
+			isActive: (e) => e.isActive("paragraph"),
+			run: (e) => chain(e).setParagraph().run(),
+		},
 		...([2, 3, 4] as const).map((level) => ({
 			label: `H${level}`,
 			title: `제목 ${level}`,
+			icon: { 2: Heading2, 3: Heading3, 4: Heading4 }[level],
 			isActive: (e: Editor) => e.isActive("heading", { level }),
-			run: (e: Editor) => chain(e).toggleHeading({ level }).run(),
+			run: (e: Editor) => chain(e).setHeading({ level }).run(),
 		})),
 	],
 	[
 		{
 			label: "B",
 			title: "굵게",
-			className: "font-bold",
+			icon: Bold,
 			isActive: (e) => e.isActive("bold"),
 			run: (e) => chain(e).toggleBold().run(),
 		},
 		{
 			label: "i",
 			title: "기울임",
-			className: "italic",
+			icon: Italic,
 			isActive: (e) => e.isActive("italic"),
 			run: (e) => chain(e).toggleItalic().run(),
 		},
 		{
 			label: "S",
 			title: "취소선",
-			className: "line-through",
+			icon: Strikethrough,
 			isActive: (e) => e.isActive("strike"),
 			run: (e) => chain(e).toggleStrike().run(),
 		},
 		{
 			label: "</>",
 			title: "인라인 코드",
-			className: "font-mono",
+			icon: CodeXml,
 			isActive: (e) => e.isActive("code"),
 			run: (e) => chain(e).toggleCode().run(),
 		},
 		{
 			label: "U",
 			title: "밑줄",
-			className: "underline",
+			icon: Underline,
 			isActive: (e) => e.isActive("underline"),
 			run: (e) => chain(e).toggleUnderline().run(),
 		},
 		{
 			label: "x²",
 			title: "위첨자",
+			icon: Superscript,
 			isActive: (e) => e.isActive("superscript"),
 			run: (e) => chain(e).toggleSuperscript().run(),
 		},
 		{
 			label: "x₂",
 			title: "아래첨자",
+			icon: Subscript,
 			isActive: (e) => e.isActive("subscript"),
 			run: (e) => chain(e).toggleSubscript().run(),
 		},
@@ -99,62 +147,142 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 		{
 			label: "왼쪽",
 			title: "왼쪽 정렬",
+			icon: AlignLeft,
 			isActive: (e) => e.isActive({ textAlign: "left" }),
 			run: (e) => chain(e).setTextAlign("left").run(),
 		},
 		{
 			label: "가운데",
 			title: "가운데 정렬",
+			icon: AlignCenter,
 			isActive: (e) => e.isActive({ textAlign: "center" }),
 			run: (e) => chain(e).setTextAlign("center").run(),
 		},
 		{
 			label: "오른쪽",
 			title: "오른쪽 정렬",
+			icon: AlignRight,
 			isActive: (e) => e.isActive({ textAlign: "right" }),
 			run: (e) => chain(e).setTextAlign("right").run(),
 		},
-		{ label: "자동", title: "정렬 해제", run: (e) => chain(e).unsetTextAlign().run() },
+		{ label: "자동", title: "정렬 해제", icon: RemoveFormatting, run: (e) => chain(e).unsetTextAlign().run() },
 	],
 	[
 		{
 			label: "• 목록",
 			title: "글머리 목록",
+			icon: List,
 			isActive: (e) => e.isActive("bulletList"),
 			run: (e) => chain(e).toggleBulletList().run(),
 		},
 		{
 			label: "1. 목록",
 			title: "번호 목록",
+			icon: ListOrdered,
 			isActive: (e) => e.isActive("orderedList"),
 			run: (e) => chain(e).toggleOrderedList().run(),
 		},
 		{
 			label: "☑ 체크",
 			title: "체크 목록",
+			icon: ListTodo,
 			isActive: (e) => e.isActive("taskList"),
 			run: (e) => chain(e).toggleTaskList().run(),
 		},
 		{
 			label: "“ 인용",
 			title: "인용구",
+			icon: Quote,
 			isActive: (e) => e.isActive("blockquote"),
 			run: (e) => chain(e).toggleBlockquote().run(),
 		},
 		{
 			label: "코드블록",
-			className: "font-mono",
+			icon: SquareCode,
 			isActive: (e) => e.isActive("codeBlock"),
 			run: (e) => chain(e).toggleCodeBlock().run(),
 		},
 		{
 			label: "표",
 			title: "표 삽입",
+			icon: Table2,
 			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
 		},
-		{ label: "구분선", run: (e) => chain(e).setHorizontalRule().run() },
+		{ label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() },
 	],
 ];
+
+const BLOCK_STYLES = TOOLBAR_GROUPS[0] ?? [];
+const INLINE_TOOLS = TOOLBAR_GROUPS[1] ?? [];
+const ALIGN_TOOLS = TOOLBAR_GROUPS[2] ?? [];
+const LIST_STYLES = TOOLBAR_GROUPS[3]?.slice(0, 3) ?? [];
+const INSERT_TOOLS = TOOLBAR_GROUPS[3]?.slice(3) ?? [];
+
+function ToolbarDivider() {
+	return <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-border" />;
+}
+
+function ToolbarDropdown({
+	editor,
+	label,
+	items,
+	icon: Icon,
+}: {
+	editor: Editor;
+	label: string;
+	items: ToolbarItem[];
+	icon?: LucideIcon;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-8 gap-1 px-2 text-xs"
+						aria-label={label}
+						disabled={!editor.isEditable}
+						onMouseDown={(event) => event.preventDefault()}
+					/>
+				}
+			>
+				{Icon && <Icon aria-hidden className="size-4" />}
+				{label}
+				<ChevronDown aria-hidden className="size-3" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-36">
+				{items.map((item) => {
+					const active = item.isActive?.(editor) ?? false;
+					return (
+						<DropdownMenuItem key={item.label} onClick={() => item.run(editor)}>
+							<item.icon aria-hidden className="size-4" />
+							<span className="flex-1">{item.title ?? item.label}</span>
+							{active && <Check aria-hidden className="size-4" />}
+						</DropdownMenuItem>
+					);
+				})}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function normalizeLinkHref(value: string): string | null {
+	const href = value.trim();
+	if (!href || /\s/.test(href)) return null;
+	if ((href.startsWith("/") && !href.startsWith("//")) || href.startsWith("#")) return href;
+	if (/^mailto:[^@\s]+@[^@\s]+$/i.test(href)) return href;
+	if (/^https?:\/\//i.test(href)) {
+		try {
+			return new URL(href).href;
+		} catch {
+			return null;
+		}
+	}
+	if (/^[^/:?#\s]+\.[^/:?#\s]{2,}(?:[/?#].*)?$/i.test(href)) return `https://${href}`;
+	return null;
+}
 
 async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 	const search = async (collection: "post" | "memo") => {
@@ -211,6 +339,7 @@ export function CmsEditor({
 	content,
 	onChange,
 	titleField,
+	toolbarLeading,
 	onCompositionStart,
 	onCompositionEnd,
 	editable = true,
@@ -238,6 +367,10 @@ export function CmsEditor({
 	const activeBlockPosRef = useRef<number | null>(null);
 	const activeBlockElRef = useRef<HTMLElement | null>(null);
 	const [imageDialog, setImageDialog] = useState<{ file: File | null } | null>(null);
+	const [linkDraft, setLinkDraft] = useState<{ from: number; to: number; existing: boolean } | null>(null);
+	const [linkHref, setLinkHref] = useState("");
+	const [linkText, setLinkText] = useState("");
+	const [linkError, setLinkError] = useState<string | null>(null);
 
 	const syncTriggerPopup = (current: Editor) => {
 		if (isComposingRef.current) return;
@@ -359,16 +492,60 @@ export function CmsEditor({
 		onSelectionUpdate: ({ editor: current }) => syncTriggerPopup(current),
 	});
 
-	// 서식 도구는 선택 변경에도 갱신돼야 한다. useEditor만으로는 표 셀 클릭 시 재렌더되지 않는다.
-	// (표 조작 도구는 TableToolbar가 따로 구독한다.)
+	// 선택 위치와 적용된 서식이 바뀌면 드롭다운 이름·활성 표시를 갱신한다(표 조작 도구는 TableToolbar가 따로 구독한다).
 	useEditorState({
 		editor,
 		selector: ({ editor: current }) => {
-			if (!current?.isActive("table")) return "";
+			if (!current) return "";
 			const selection = current.state.selection;
-			return `${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
+			const active = [...BLOCK_STYLES, ...INLINE_TOOLS, ...ALIGN_TOOLS, ...LIST_STYLES]
+				.map((item) => (item.isActive?.(current) ? "1" : "0"))
+				.join("");
+			return `${active}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
 		},
 	});
+	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "본문") : "본문";
+	const listStyle = editor ? (LIST_STYLES.find((item) => item.isActive?.(editor))?.title ?? "목록") : "목록";
+
+	const openLinkEditor = () => {
+		if (!editor) return;
+		const { from, to } = editor.state.selection;
+		const existing = editor.isActive("link");
+		setLinkDraft({ from, to, existing });
+		setLinkHref(existing ? String(editor.getAttributes("link").href ?? "") : "");
+		setLinkText(from === to ? "" : editor.state.doc.textBetween(from, to));
+		setLinkError(null);
+	};
+
+	const submitLink = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!editor || !linkDraft) return;
+		const href = normalizeLinkHref(linkHref);
+		if (!href) {
+			setLinkError("http(s) 주소, 사이트 경로 또는 이메일 주소를 입력하세요.");
+			return;
+		}
+		const command = editor.chain().focus().setTextSelection({ from: linkDraft.from, to: linkDraft.to });
+		if (linkDraft.existing) command.extendMarkRange("link").setLink({ href }).run();
+		else if (linkDraft.from !== linkDraft.to) command.setLink({ href }).run();
+		else
+			command
+				.insertContent({ type: "text", text: linkText.trim() || href, marks: [{ type: "link", attrs: { href } }] })
+				.run();
+		setLinkDraft(null);
+	};
+
+	const removeLink = () => {
+		if (!editor || !linkDraft) return;
+		editor
+			.chain()
+			.focus()
+			.setTextSelection({ from: linkDraft.from, to: linkDraft.to })
+			.extendMarkRange("link")
+			.unsetLink()
+			.run();
+		setLinkDraft(null);
+	};
 
 	useEffect(() => {
 		editorRef.current = editor;
@@ -549,31 +726,112 @@ export function CmsEditor({
 			<div
 				role="toolbar"
 				aria-label="서식 도구"
-				className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-background/95 px-4 py-2 backdrop-blur"
+				className="sticky top-0 z-10 w-full overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
-				{TOOLBAR_GROUPS.map((group, index) => (
-					<div key={group[0]?.label} className="flex items-center gap-1">
-						{index > 0 && <Separator orientation="vertical" className="mx-1 data-vertical:h-4" />}
-						{group.map((item) => (
-							<ToolbarButton key={item.label} editor={editor} item={item} />
-						))}
-						{index === 1 && <TooltipPopover editor={editor} />}
-					</div>
-				))}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className="h-7 px-2 text-xs"
-					disabled={!editable}
-					onClick={() => setImageDialog({ file: null })}
-				>
-					<ImageIcon aria-hidden />
-					이미지
-				</Button>
+				<div className="mx-auto flex min-h-12 w-max min-w-full items-center justify-center gap-1 px-4 py-2">
+					{toolbarLeading}
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="size-8 p-0"
+									aria-label="이미지 삽입"
+									disabled={!editable}
+									onClick={() => setImageDialog({ file: null })}
+								/>
+							}
+						>
+							<ImageIcon className="size-4" aria-hidden />
+						</TooltipTrigger>
+						<TooltipContent side="bottom">이미지 삽입</TooltipContent>
+					</Tooltip>
+					<ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />
+					<ToolbarDivider />
+					{INLINE_TOOLS.map((item) => (
+						<ToolbarButton key={item.label} editor={editor} item={item} />
+					))}
+					<TooltipPopover editor={editor} />
+					<ToolbarDivider />
+					{ALIGN_TOOLS.map((item) => (
+						<ToolbarButton key={item.label} editor={editor} item={item} />
+					))}
+					<ToolbarDivider />
+					<ToolbarDropdown editor={editor} label={listStyle} items={LIST_STYLES} icon={List} />
+					{INSERT_TOOLS.map((item) => (
+						<ToolbarButton key={item.label} editor={editor} item={item} />
+					))}
+					<Popover open={linkDraft !== null} onOpenChange={(open) => (open ? openLinkEditor() : setLinkDraft(null))}>
+						<PopoverTrigger
+							render={
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="size-8 p-0"
+									aria-label="링크 삽입·수정"
+									title="링크 삽입·수정"
+									disabled={!editable}
+									onMouseDown={(event) => event.preventDefault()}
+								/>
+							}
+						>
+							<Link2 aria-hidden className="size-4" />
+						</PopoverTrigger>
+						<PopoverContent align="start" className="w-80">
+							<form onSubmit={submitLink} className="grid gap-3">
+								<p className="font-medium">{linkDraft?.existing ? "링크 수정" : "링크 삽입"}</p>
+								{linkDraft && !linkDraft.existing && linkDraft.from === linkDraft.to && (
+									<label htmlFor="cms-link-text" className="grid gap-1.5 text-xs">
+										표시 텍스트
+										<Input
+											id="cms-link-text"
+											value={linkText}
+											onChange={(event) => setLinkText(event.target.value)}
+											placeholder="링크 텍스트"
+										/>
+									</label>
+								)}
+								<label htmlFor="cms-link-href" className="grid gap-1.5 text-xs">
+									주소
+									<Input
+										id="cms-link-href"
+										autoFocus
+										value={linkHref}
+										onChange={(event) => {
+											setLinkHref(event.target.value);
+											setLinkError(null);
+										}}
+										placeholder="https://example.com"
+									/>
+								</label>
+								{linkError && (
+									<p role="alert" className="text-destructive text-xs">
+										{linkError}
+									</p>
+								)}
+								<div className="flex justify-end gap-2">
+									{linkDraft?.existing && (
+										<Button type="button" variant="outline" size="sm" onClick={removeLink}>
+											<Unlink aria-hidden className="size-4" />
+											링크 제거
+										</Button>
+									)}
+									<Button type="submit" size="sm">
+										{linkDraft?.existing ? "수정" : "삽입"}
+									</Button>
+								</div>
+							</form>
+						</PopoverContent>
+					</Popover>
+				</div>
 			</div>
 
-			{titleField && <div className="mx-auto w-full max-w-3xl px-4 pt-12">{titleField}</div>}
+			{titleField && (
+				<div className="mx-auto w-full max-w-3xl border-border/60 border-b px-4 pt-12 pb-5">{titleField}</div>
+			)}
 
 			<ImageInsertDialog
 				open={imageDialog !== null}

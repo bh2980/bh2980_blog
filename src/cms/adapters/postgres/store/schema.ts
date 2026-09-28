@@ -137,15 +137,24 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		CREATE TABLE IF NOT EXISTS "${qSchema}".body_templates (
 			id UUID PRIMARY KEY,
 			name TEXT NOT NULL,
-			for_collection TEXT NOT NULL CHECK (for_collection IN ('post', 'memo')),
 			mdx TEXT NOT NULL,
 			version INTEGER NOT NULL DEFAULT 1,
 			created_at TIMESTAMPTZ NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL
 		);
 
-		CREATE UNIQUE INDEX IF NOT EXISTS body_templates_collection_name_idx
-		ON "${qSchema}".body_templates (for_collection, lower(name));
+		DROP INDEX IF EXISTS "${qSchema}".body_templates_collection_name_idx;
+		-- 예전 메모·포스트에 같은 이름이 있으면 한쪽 이름만 구분해 본문과 ID를 모두 보존한다.
+		WITH ranked AS (
+			SELECT id, ROW_NUMBER() OVER (PARTITION BY lower(name) ORDER BY created_at, id) AS position
+			FROM "${qSchema}".body_templates
+		)
+		UPDATE "${qSchema}".body_templates AS template
+		SET name = left(template.name, 50) || ' (통합 ' || template.id::text || ')'
+		FROM ranked WHERE template.id = ranked.id AND ranked.position > 1;
+		ALTER TABLE "${qSchema}".body_templates DROP COLUMN IF EXISTS for_collection;
+		CREATE UNIQUE INDEX IF NOT EXISTS body_templates_name_idx
+		ON "${qSchema}".body_templates (lower(name));
 
 		ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS trashed_at TIMESTAMPTZ;
 		UPDATE "${qSchema}".entries SET trashed_at = updated_at WHERE status = 'trashed' AND trashed_at IS NULL;
@@ -188,22 +197,20 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			{
 				id: "00000000-0000-4000-8000-000000000001",
 				name: "알고리즘 풀이",
-				forCollection: "memo",
 				mdx: "## 문제\n\n\n## 풀이\n\n```ts\n\n```\n",
 			},
 			{
 				id: "00000000-0000-4000-8000-000000000002",
 				name: "Type Challenge 풀이",
-				forCollection: "memo",
 				mdx: "### 질문\n\n\n```ts\n\n```\n\n### 풀이\n\n",
 			},
 		];
 		for (const t of initialTemplates) {
 			await pool.query(
-				`INSERT INTO "${qSchema}".body_templates (id, name, for_collection, mdx, version, created_at, updated_at)
-				 VALUES ($1, $2, $3, $4, 1, NOW(), NOW())
+				`INSERT INTO "${qSchema}".body_templates (id, name, mdx, version, created_at, updated_at)
+				 VALUES ($1, $2, $3, 1, NOW(), NOW())
 				 ON CONFLICT DO NOTHING`,
-				[t.id, t.name, t.forCollection, t.mdx],
+				[t.id, t.name, t.mdx],
 			);
 		}
 		await pool.query(
@@ -217,8 +224,8 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 	);
 	if (postTemplateSeedCheck.rows.length === 0) {
 		await pool.query(
-			`INSERT INTO "${qSchema}".body_templates (id, name, for_collection, mdx, version, created_at, updated_at)
-			 VALUES ($1, $2, 'post', $3, 1, NOW(), NOW())
+			`INSERT INTO "${qSchema}".body_templates (id, name, mdx, version, created_at, updated_at)
+			 VALUES ($1, $2, $3, 1, NOW(), NOW())
 			 ON CONFLICT DO NOTHING`,
 			[
 				"00000000-0000-4000-8000-000000000003",

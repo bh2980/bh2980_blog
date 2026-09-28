@@ -993,10 +993,6 @@ paths:
     get:
       tags: [templates]
       summary: 본문 템플릿 목록
-      parameters:
-        - name: forCollection
-          in: query
-          schema: { type: string, enum: [post, memo] }
       responses:
         "200":
           description: 템플릿 목록
@@ -1015,10 +1011,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, forCollection]
+              required: [name]
               properties:
                 name: { type: string, maxLength: 100 }
-                forCollection: { type: string, enum: [post, memo] }
                 mdx: { type: string, default: "" }
       responses:
         "201":
@@ -1057,7 +1052,6 @@ paths:
               properties:
                 expectedVersion: { type: integer }
                 name: { type: string, maxLength: 100 }
-                forCollection: { type: string, enum: [post, memo] }
                 mdx: { type: string }
       responses:
         "200":
@@ -1373,7 +1367,6 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
-        forCollection: { type: string, enum: [post, memo] }
         mdx: { type: string }
         version: { type: integer }
       additionalProperties: true

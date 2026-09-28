@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
+import type { LucideIcon } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
@@ -10,23 +11,25 @@ import { cn } from "@/utils/cn";
 export interface ToolbarItem {
 	label: string;
 	title?: string;
+	icon: LucideIcon;
 	className?: string;
 	isActive?: (editor: Editor) => boolean;
 	isDisabled?: (editor: Editor) => boolean;
 	run: (editor: Editor) => void;
 }
 
-/** 서식 도구·표 도구의 버튼. 누를 때 편집기 선택을 빼앗지 않는다. */
+/** 서식 도구·표 도구의 아이콘 버튼. 누를 때 편집기 선택을 빼앗지 않는다. */
 export function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarItem }) {
 	const active = item.isActive?.(editor) ?? false;
 	const disabled = !editor.isEditable || (item.isDisabled?.(editor) ?? false);
 	const label = item.title ?? item.label;
+	const Icon = item.icon;
 	const common = {
 		"aria-label": label,
 		disabled,
 		// 버튼 클릭이 편집기 선택을 빼앗지 않게 한다.
 		onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
-		className: cn("h-7 min-w-7 px-2 text-xs", item.className),
+		className: cn("size-8 p-0 text-xs", item.className),
 	};
 	return (
 		<Tooltip>
@@ -39,9 +42,9 @@ export function ToolbarButton({ editor, item }: { editor: Editor; item: ToolbarI
 					)
 				}
 			>
-				{item.label}
+				<Icon className="size-4" aria-hidden />
 			</TooltipTrigger>
-			<TooltipContent>{label}</TooltipContent>
+			<TooltipContent side="bottom">{label}</TooltipContent>
 		</Tooltip>
 	);
 }

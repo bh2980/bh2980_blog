@@ -332,7 +332,6 @@ describe("review regressions", () => {
 		});
 		await store.createTemplate({
 			name: unique("tpl"),
-			forCollection: "memo",
 			mdx: `::image{mediaId="${media.id}" alt="a"}`,
 		});
 		await expect(store.beginMediaDelete(media.id)).rejects.toMatchObject({

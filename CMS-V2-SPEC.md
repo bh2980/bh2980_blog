@@ -175,6 +175,8 @@ export const post = collection({
 
 ## 5. D — AI 보조
 
+작업 계획은 [`docs/cms/v2/d-ai.md`](docs/cms/v2/d-ai.md)에 있다.
+
 - slug 추천, 태그 추천부터 시작한다. B1의 `actions`로 붙인다.
 - 버튼을 눌렀을 때만 호출하고 결과는 제안으로만 보여준다. 사용자가 수락해야 값이 바뀐다.
 - API 키가 서버에 없으면 액션이 사용 불가를 반환하고 버튼을 숨긴다. 제공자 SDK와 키는 서버 등록부에만 둔다.

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
+import { MessageSquareMore } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,15 +115,15 @@ export function TooltipPopover({ editor }: TooltipPopoverProps) {
 									disabled={disabled}
 									aria-label="툴팁"
 									onMouseDown={(event) => event.preventDefault()}
-									className="h-7 min-w-7 px-2 text-xs"
+									className="size-8 p-0"
 								/>
 							}
 						>
-							툴팁
+							<MessageSquareMore className="size-4" aria-hidden />
 						</PopoverTrigger>
 					}
 				/>
-				<TooltipContent>툴팁 (설명)</TooltipContent>
+				<TooltipContent side="bottom">툴팁 (설명)</TooltipContent>
 			</Tooltip>
 			<PopoverContent align="center" className="flex w-72 flex-col gap-3 p-3 text-xs">
 				<PopoverHeader>
