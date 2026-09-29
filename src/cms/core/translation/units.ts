@@ -1,4 +1,4 @@
-import { analyze, type CmsNode, serialize, toDocument } from "@/cms/mdx";
+import { analyze, type CmsJsonValue, type CmsNode, serialize, toDocument } from "@/cms/mdx";
 
 /**
  * 번역 단위(v3 번역 화면, `docs/cms/v3/translation.md` §2).
@@ -130,13 +130,13 @@ export const parseHeader = (value: string): HeaderValue | null => {
 
 /** JSX 상자는 속성을 `attrs.이름`과 `attrs.attributes` 두 곳에 둔다. 둘 다 바꾼다. */
 const withJsxAttr = (node: CmsNode, name: string, value: string): CmsNode => {
-	const attributes = Array.isArray(node.attrs?.attributes)
-		? (node.attrs.attributes as { name?: string; value?: unknown }[])
-		: [];
-	const rest = attributes.filter((attribute) => attribute.name !== name);
+	const attributes: CmsJsonValue[] = Array.isArray(node.attrs?.attributes) ? node.attrs.attributes : [];
+	const nameOf = (attribute: CmsJsonValue) =>
+		attribute && typeof attribute === "object" && !Array.isArray(attribute) ? attribute.name : undefined;
+	const rest = attributes.filter((attribute) => nameOf(attribute) !== name);
 	const { [name]: _removed, ...attrs } = node.attrs ?? {};
 	if (!value) return { ...node, attrs: { ...attrs, attributes: rest } };
-	const index = attributes.findIndex((attribute) => attribute.name === name);
+	const index = attributes.findIndex((attribute) => nameOf(attribute) === name);
 	const nextAttributes = [...rest];
 	nextAttributes.splice(index === -1 ? rest.length : index, 0, { name, value });
 	return { ...node, attrs: { ...attrs, [name]: value, attributes: nextAttributes } };
@@ -316,4 +316,48 @@ export function translatedMdx(sourceMdx: string, stored: readonly StoredUnit[]):
 			aligned.map((item) => item.target),
 		),
 	);
+}
+
+/**
+ * 새 번역본의 본문과 번역 상태(v3 결정 7). 모든 단위가 미번역이고 번역할 것이 없는 블록만 원문 그대로다.
+ * 원문을 해석할 수 없으면 빈 본문·빈 목록으로 시작한다(원문을 고친 뒤 번역 화면이 다시 맞춘다).
+ */
+export function initialTranslation(sourceMdx: string): { mdx: string; units: StoredUnit[] } {
+	const analysis = analyze(sourceMdx);
+	if (analysis.errors.length > 0) return { mdx: "", units: [] };
+	const doc = toDocument(analysis);
+	const aligned = alignUnits(flattenUnits(doc), []);
+	return {
+		mdx: serialize(
+			buildTranslatedDoc(
+				doc,
+				aligned.map((item) => item.target),
+			),
+		),
+		units: toStoredUnits(aligned),
+	};
+}
+
+/**
+ * 발행 전 검사(v3 결정 11): 원문 최신 초안과 맞춘 뒤 미번역 수와, 저장된 번역본 본문이 지금 원문 뼈대로 만든 값과
+ * 다른지(원문에 블록이 더해지거나 빠졌는데 번역 화면에서 다시 저장하지 않았는지)를 본다.
+ */
+export function checkTranslation(
+	sourceMdx: string,
+	translationMdx: string,
+	state: { readonly units: readonly StoredUnit[] } | null | undefined,
+): { untranslated: number; outdated: boolean } {
+	const analysis = analyze(sourceMdx);
+	if (analysis.errors.length > 0) return { untranslated: 0, outdated: true };
+	const doc = toDocument(analysis);
+	const aligned = alignUnits(flattenUnits(doc), state?.units ?? []);
+	const untranslated = aligned.filter((item) => item.status === "untranslated").length;
+	const rebuilt = serialize(
+		buildTranslatedDoc(
+			doc,
+			aligned.map((item) => item.target),
+		),
+	);
+	// 끝 줄바꿈 차이는 같은 본문으로 본다(저장 경로마다 마지막 개행이 다를 수 있다).
+	return { untranslated, outdated: untranslated === 0 && rebuilt.trimEnd() !== translationMdx.trimEnd() };
 }

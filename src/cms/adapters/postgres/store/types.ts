@@ -1,3 +1,4 @@
+import type { TranslationState } from "../../../core/translation/state";
 import type { Reference, ReferenceKind, ReferenceOccurrence } from "../../../core/types";
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -42,6 +43,8 @@ export interface EntryBody {
 	schemaVersion: number;
 	contentHash: string;
 	updatedAt: Date;
+	/** 번역본의 번역 상태(v3 번역 화면). 원문과 예전 번역본은 `null`. */
+	translation?: TranslationState | null;
 }
 
 export interface BodyTemplate {
@@ -295,6 +298,8 @@ export interface ExportSnapshotBody {
 	schemaVersion: number;
 	contentHash: string;
 	updatedAt: Date;
+	/** 번역본의 번역 상태(v3). */
+	translation?: TranslationState | null;
 }
 
 export interface ExportSnapshotEntry {
@@ -351,6 +356,8 @@ export interface ImportEntryBodyInput {
 	mdx: string;
 	schemaVersion: number;
 	contentHash: string;
+	/** 번역본의 번역 상태(v3). */
+	translation?: TranslationState | null;
 }
 
 export interface ImportEntryItem {

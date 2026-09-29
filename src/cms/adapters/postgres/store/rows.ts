@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
+import type { TranslationState } from "../../../core/translation/state";
 import type { Reference, ReferenceKind, ReferenceOccurrence } from "../../../core/types";
 import type { Queryable } from "./context";
 import { CmsError } from "./errors";
@@ -72,6 +73,7 @@ export interface BodyRow {
 	schema_version: number;
 	metadata: EntryMetadata;
 	updated_at: Date;
+	translation: TranslationState | null;
 }
 
 export interface ReferenceRow {
@@ -303,7 +305,7 @@ export async function readBody(
 	state: "working" | "published",
 ): Promise<BodyRow | undefined> {
 	const res = await client.query<BodyRow>(
-		`SELECT metadata, mdx, schema_version, content_hash, updated_at FROM "${qSchema}".entry_bodies
+		`SELECT metadata, mdx, schema_version, content_hash, updated_at, translation FROM "${qSchema}".entry_bodies
 		 WHERE entry_id = $1 AND state = $2`,
 		[entryId, state],
 	);
@@ -316,14 +318,23 @@ export async function writeBody(
 	qSchema: string,
 	entryId: string,
 	state: "working" | "published",
-	body: { metadata: EntryMetadata; mdx: string; schemaVersion: number; contentHash: string; updatedAt: Date },
+	body: {
+		metadata: EntryMetadata;
+		mdx: string;
+		schemaVersion: number;
+		contentHash: string;
+		updatedAt: Date;
+		/** 번역본의 번역 상태(v3). 원문은 `null`. */
+		translation: TranslationState | null;
+	},
 ): Promise<void> {
 	await client.query(
-		`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`INSERT INTO "${qSchema}".entry_bodies (entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, search_text, translation)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		 ON CONFLICT (entry_id, state) DO UPDATE SET
 		   metadata = EXCLUDED.metadata, mdx = EXCLUDED.mdx, schema_version = EXCLUDED.schema_version,
-		   content_hash = EXCLUDED.content_hash, updated_at = EXCLUDED.updated_at, search_text = EXCLUDED.search_text`,
+		   content_hash = EXCLUDED.content_hash, updated_at = EXCLUDED.updated_at, search_text = EXCLUDED.search_text,
+		   translation = EXCLUDED.translation`,
 		[
 			entryId,
 			state,
@@ -333,6 +344,7 @@ export async function writeBody(
 			body.contentHash,
 			body.updatedAt,
 			extractVisibleText(body.mdx),
+			body.translation === null ? null : JSON.stringify(body.translation),
 		],
 	);
 }
@@ -359,6 +371,7 @@ interface EntryRow {
 	schema_version: number | null;
 	content_hash: string | null;
 	body_updated_at: Date | null;
+	translation: TranslationState | null;
 }
 
 export async function loadEntry(client: Queryable, id: string, qSchema: string): Promise<Entry> {
@@ -368,7 +381,7 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 			e.status, e.version, e.folder_id, e.created_at, e.updated_at as entry_updated_at,
 			e.first_published_at, e.last_published_at, e.published_at, e.trashed_at, e.working_slug,
 			(SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') as current_slug,
-			b.state, b.metadata, b.mdx, b.schema_version, b.content_hash, b.updated_at as body_updated_at
+			b.state, b.metadata, b.mdx, b.schema_version, b.content_hash, b.updated_at as body_updated_at, b.translation
 		 FROM "${qSchema}".entries e
 		 LEFT JOIN "${qSchema}".entry_bodies b ON e.id = b.entry_id
 		 WHERE e.id = $1`,
@@ -388,6 +401,7 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 			schemaVersion: row.schema_version,
 			contentHash: row.content_hash,
 			updatedAt: row.body_updated_at,
+			translation: row.translation ?? null,
 		};
 		if (row.state === "working") working = body;
 		else published = body;

@@ -33,6 +33,8 @@ const ISSUE_LABELS: Record<string, string> = {
 	dynamic_reference_id: "미디어 ID는 문자열이어야 합니다.",
 	missing_field: "필수 항목을 입력하세요.",
 	source_not_published: "원문을 먼저 발행하세요. 번역본의 카테고리·태그·발행일은 원문 공개본에서 옵니다.",
+	translation_incomplete: "번역하지 않은 블록이 있습니다.",
+	translation_outdated: "원문이 바뀌었습니다. 번역을 다시 저장하세요.",
 };
 
 /** API 오류 `code`의 안내 문구(§10.1). 응답 `message`보다 이 문구를 먼저 보여 준다. */
@@ -65,6 +67,7 @@ export function cmsApiIssues(payload: unknown): CmsIssue[] {
 
 /** 이슈의 `message`가 대상(속성 이름·주소·파서 오류)을 알려 주는 코드. 안내 문구 뒤에 붙인다. */
 const DETAILED_CODES = new Set([
+	"translation_incomplete",
 	"mdx_error",
 	"missing_block_attribute",
 	"invalid_block_attribute",

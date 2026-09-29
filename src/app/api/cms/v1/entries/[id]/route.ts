@@ -31,6 +31,8 @@ export const GET = adminRoute<IdParams>(async ({ params }) => {
 						status: source.status,
 						workingSlug: source.workingSlug,
 						metadata: source.working.metadata,
+						// 번역 화면(v3)이 원문 블록과 번역을 나란히 맞춘다.
+						mdx: source.working.mdx,
 					},
 				}
 			: {}),
@@ -48,6 +50,7 @@ export const PATCH = adminRoute<IdParams>(async ({ request, params }) => {
 		metadata: body.metadata ?? current.working.metadata,
 		mdx: body.mdx ?? current.working.mdx,
 		...(body.folderId !== undefined ? { folderId: body.folderId } : {}),
+		...(body.translation !== undefined ? { translation: body.translation } : {}),
 	} as SaveDraftInput;
 	return json(await getCmsContentService().saveDraft(params.id, input));
 });

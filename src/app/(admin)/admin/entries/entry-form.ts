@@ -1,4 +1,5 @@
 import { isCollection } from "@/cms/core/collections";
+import type { TranslationState } from "@/cms/core/translation/state";
 import {
 	localizedFieldNames,
 	RECORD_TRANSLATIONS_KEY,
@@ -48,6 +49,8 @@ export interface EntryData {
 		status: EntryData["status"];
 		workingSlug: string | null;
 		metadata: Record<string, unknown>;
+		/** 원문 최신 초안 본문(v3 번역 화면). */
+		mdx?: string;
 	};
 	status: "draft" | "published" | "archived" | "trashed";
 	version: number;
@@ -55,7 +58,7 @@ export interface EntryData {
 	publishedAt?: string;
 	workingSlug: string | null;
 	publishedSlug: string | null;
-	working: { metadata: Record<string, unknown>; mdx: string };
+	working: { metadata: Record<string, unknown>; mdx: string; translation?: TranslationState | null };
 	published?: { metadata: Record<string, unknown>; mdx: string };
 	schedule?: {
 		pending: ScheduleInfo | null;

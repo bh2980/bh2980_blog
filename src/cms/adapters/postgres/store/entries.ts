@@ -134,12 +134,18 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 							params.translationOf ?? null,
 						],
 					);
+					const translation = params.snapshot.translation ?? null;
+					// 번역 상태는 번역본만 가진다(v3).
+					if (translation !== null && !params.translationOf) {
+						throw new CmsError("Only translations have a translation state", "invalid_input");
+					}
 					await writeBody(client, qSchema, id, "working", {
 						metadata,
 						mdx: params.snapshot.mdx,
 						schemaVersion: params.snapshot.schemaVersion,
 						contentHash: params.snapshot.contentHash,
 						updatedAt: now,
+						translation,
 					});
 					await reserveSlug(client, id, params.snapshot.collection, locale, params.snapshot.slug);
 					await insertReferences(client, qSchema, id, "working", params.references);
@@ -199,13 +205,20 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					const currentRefs = await readReferences(client, qSchema, params.entryId, "working");
 					const refsEqual = isReferencesEqual(currentRefs, params.references);
 					const nextSlug = params.snapshot.slug;
+					// 번역 상태를 보내지 않으면(일괄 작업 등) 저장된 값을 그대로 둔다.
+					const translation =
+						params.snapshot.translation === undefined ? (body?.translation ?? null) : params.snapshot.translation;
+					if (translation !== null && locked.translation_group_id === params.entryId) {
+						throw new CmsError("Only translations have a translation state", "invalid_input");
+					}
 					const bodyIdentical = Boolean(
 						body &&
 							body.content_hash === params.snapshot.contentHash &&
 							body.mdx === params.snapshot.mdx &&
 							body.schema_version === params.snapshot.schemaVersion &&
 							locked.working_slug === nextSlug &&
-							isDeepStrictEqual(body.metadata, metadata),
+							isDeepStrictEqual(body.metadata, metadata) &&
+							isDeepStrictEqual(body.translation ?? null, translation),
 					);
 					const folderChanged = params.folderId !== undefined;
 
@@ -238,6 +251,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 								schemaVersion: params.snapshot.schemaVersion,
 								contentHash: params.snapshot.contentHash,
 								updatedAt: now,
+								translation,
 							});
 							if (locked.working_slug !== nextSlug) {
 								await reserveSlug(client, params.entryId, locked.collection, locked.locale, nextSlug);
@@ -414,6 +428,8 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					schemaVersion: orig.schema_version,
 					contentHash: computeContentHash(metadata, orig.mdx, orig.schema_version),
 					updatedAt: now,
+					// 복제본은 독립된 원문이다.
+					translation: null,
 				});
 				await client.query(
 					`INSERT INTO "${qSchema}".entry_references (entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)

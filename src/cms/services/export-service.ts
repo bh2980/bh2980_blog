@@ -187,6 +187,8 @@ const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): {
 			metadata: body.metadata,
 			schemaVersion: body.schemaVersion,
 			contentHash: body.contentHash,
+			// 번역본만 가진다(v3). 원문 파일 모양은 그대로 둔다.
+			...(body.translation ? { translation: body.translation } : {}),
 			updatedAt: iso(body.updatedAt),
 			createdAt: iso(entry.createdAt),
 			updatedEntryAt: iso(entry.updatedAt),

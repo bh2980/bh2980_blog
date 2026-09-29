@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
+import type { TranslationState } from "../../../core/translation/state";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError } from "./errors";
 import {
@@ -198,6 +199,7 @@ export function createTransferOps(ctx: StoreContext) {
 						schemaVersion: item.working.schemaVersion,
 						contentHash: item.working.contentHash,
 						updatedAt: now,
+						translation: item.working.translation ?? null,
 					});
 					if (item.published) {
 						await writeBody(client, qSchema, item.id, "published", {
@@ -206,6 +208,7 @@ export function createTransferOps(ctx: StoreContext) {
 							schemaVersion: item.published.schemaVersion,
 							contentHash: item.published.contentHash,
 							updatedAt: now,
+							translation: item.published.translation ?? null,
 						});
 					}
 
@@ -274,8 +277,9 @@ export function createTransferOps(ctx: StoreContext) {
 						schema_version: number;
 						content_hash: string;
 						updated_at: Date;
+						translation: TranslationState | null;
 					}>(
-						`SELECT entry_id, state, metadata, mdx, schema_version, content_hash, updated_at
+						`SELECT entry_id, state, metadata, mdx, schema_version, content_hash, updated_at, translation
 					 FROM "${qSchema}".entry_bodies ORDER BY entry_id ASC, state ASC`,
 					);
 
@@ -342,6 +346,7 @@ export function createTransferOps(ctx: StoreContext) {
 							schemaVersion: row.schema_version,
 							contentHash: row.content_hash,
 							updatedAt: row.updated_at,
+							translation: row.translation ?? null,
 						};
 						if (row.state === "working") bodiesByEntry.set(row.entry_id, body);
 						else if (row.state === "published") bodiesByEntryPublished.set(row.entry_id, body);

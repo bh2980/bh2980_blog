@@ -88,6 +88,8 @@ export const patchEntryBodySchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional(),
 	mdx: z.string().optional(),
 	folderId: z.uuid().nullable().optional(),
+	/** 번역본의 번역 상태(v3). 모양은 서비스가 검증한다. 생략하면 저장된 값을 그대로 둔다. */
+	translation: z.unknown().optional(),
 });
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 

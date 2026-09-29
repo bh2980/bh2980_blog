@@ -17,6 +17,7 @@ import {
 import { COLLECTION_DEFINITIONS, isCollection } from "./collections";
 import { isUuid } from "./ids";
 import { normalizeSlugInput } from "./slug";
+import { parseTranslationState } from "./translation/state";
 import {
 	type Collection,
 	type InternalLinkSource,
@@ -484,7 +485,13 @@ export async function prepareSnapshot(
 	if (!input || typeof input !== "object" || Array.isArray(input)) {
 		throw new ServiceError("invalid_input");
 	}
-	validateExactRecord(input, input.folderId === undefined ? SERVICE_INPUT_KEYS : [...SERVICE_INPUT_KEYS, "folderId"]);
+	validateExactRecord(input, [
+		...SERVICE_INPUT_KEYS,
+		...(input.folderId === undefined ? [] : ["folderId"]),
+		...(input.translation === undefined ? [] : ["translation"]),
+	]);
+	const translation = input.translation === undefined ? undefined : parseTranslationState(input.translation);
+	if (input.translation !== undefined && translation === undefined) throw new ServiceError("invalid_input");
 
 	const rawCollection: unknown = input.collection;
 	if (typeof rawCollection !== "string") throw new ServiceError("invalid_input");
@@ -631,6 +638,7 @@ export async function prepareSnapshot(
 			internalLinks.map((link) => Object.freeze({ ...link, position: Object.freeze({ ...link.position }) })),
 		),
 		imageSources: freeze(imageSources),
+		...(translation === undefined ? {} : { translation }),
 	});
 }
 
@@ -731,6 +739,13 @@ export function validateForPublish(
 	if (resolved.translation && !resolved.translation.sourcePublished) {
 		// 공개 화면의 카테고리·태그·발행일은 원문 공개본에서 온다.
 		issues.push({ code: "source_not_published", path: "translationGroupId" });
+	}
+	// 번역본은 미번역 블록이 없어야 발행한다. 원문을 대신 보여 주지 않는다(v3 결정 11).
+	if (resolved.translation?.untranslated) {
+		issues.push({ code: "translation_incomplete", path: "mdx", message: `${resolved.translation.untranslated}개` });
+	}
+	if (resolved.translation?.outdated) {
+		issues.push({ code: "translation_outdated", path: "mdx" });
 	}
 	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
 	if (isContent && snapshot.mdx.trim() === "") {

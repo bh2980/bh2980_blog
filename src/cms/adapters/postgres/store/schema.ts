@@ -122,6 +122,8 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		ALTER TABLE "${qSchema}".content_addresses ADD CONSTRAINT content_addresses_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES "${qSchema}".entries(id) ON DELETE SET NULL;
 
 		ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
+		-- v3 번역 화면: 번역본의 번역 단위(원문 조각·번역). 원문은 NULL이다.
+		ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS translation JSONB;
 
 		CREATE TABLE IF NOT EXISTS "${qSchema}".user_preferences (
 			user_id TEXT PRIMARY KEY,

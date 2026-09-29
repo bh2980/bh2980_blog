@@ -3,6 +3,7 @@ import type { MetadataOf } from "../schema/collection";
 import type { SCHEMAS } from "../schema/definitions";
 import type { RecordTranslations } from "../schema/derive";
 import type { Collection } from "./collections";
+import type { TranslationState } from "./translation/state";
 
 /**
  * CMS 도메인 타입. 저장소 구현·서비스·HTTP 계층이 함께 쓰며 어떤 계층에도 의존하지 않는다.
@@ -55,6 +56,8 @@ type InputFor<C extends Collection, M> = {
 	metadata: M;
 	mdx: string;
 	folderId?: string | null;
+	/** 번역본의 번역 상태(v3). 생략하면 저장된 값을 그대로 둔다. 원문은 `null`만 받는다. */
+	translation?: TranslationState | null;
 };
 
 export type ServiceInput =
@@ -95,6 +98,8 @@ export type PreparedSnapshot = {
 	readonly internalLinks?: readonly InternalLinkSource[];
 	/** 본문 이미지 소스와 위치. 발행 전 검사가 비차단 경고를 만들 때 쓴다. */
 	readonly imageSources: readonly CmsImageSource[];
+	/** 번역본의 번역 상태(v3). `undefined`면 저장된 값을 유지한다. 내용 해시에는 넣지 않는다. */
+	readonly translation?: TranslationState | null;
 };
 
 export type ResolvedTargets = {
@@ -108,7 +113,13 @@ export type ResolvedTargets = {
 	/**
 	 * 번역본 발행이면 원문 상태(v2 B4). 번역본은 언어별 필수값만 검사하고, 공통 값을 가진 원문이 공개돼 있어야 한다.
 	 */
-	translation?: { sourcePublished: boolean };
+	translation?: {
+		sourcePublished: boolean;
+		/** 원문 최신 초안과 맞춘 뒤 남은 미번역 단위 수(v3). */
+		untranslated?: number;
+		/** 원문 뼈대가 바뀌어 저장된 번역본 본문이 지금 원문과 맞지 않는다(v3). */
+		outdated?: boolean;
+	};
 };
 
 export type WorkingCopy = {
