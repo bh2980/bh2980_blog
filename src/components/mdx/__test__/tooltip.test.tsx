@@ -138,4 +138,17 @@ describe("MDX Tooltip", () => {
 			expect(mediaQueryList.removeListener).toHaveBeenCalledTimes(1);
 		}
 	});
+
+	it("코드 주석 번호가 있으면 터치 기기에서 팝오버 대신 번호만 보이고 설명은 스크린 리더로 읽는다", () => {
+		window.matchMedia = mockMatchMedia({ hoverNone: true });
+		render(
+			<Tooltip content="코드 설명" note="2">
+				item
+			</Tooltip>,
+		);
+
+		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.getByText("2").tagName).toBe("SUP");
+		expect(screen.getByText("주석 2: 코드 설명").className).toContain("sr-only");
+	});
 });

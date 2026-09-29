@@ -334,3 +334,37 @@ export const convertInlineAnnoToRenderTag = (allowedRenderTags: readonly string[
 		});
 	},
 });
+
+/**
+ * 코드 안 툴팁에 순서대로 번호(`note`)를 달고, 설명 목록을 `<pre>`의 `notes`(JSON)로 넘긴다.
+ * 터치 기기(마우스를 올릴 수 없는 화면)에서는 툴팁 대신 번호와 코드 아래 주석 목록으로 보인다(`pre`·`Tooltip`).
+ * 줄 감싸기(접기)까지 끝난 뒤에 돌아야 보이는 순서와 번호가 맞는다.
+ */
+export const numberCodeNotes = (): ShikiTransformer => ({
+	root(root: Root) {
+		const pre = root.children.find((child): child is Element => child.type === "element" && child.tagName === "pre");
+		if (!pre) return;
+		const notes: string[] = [];
+		visit(pre, "element", (el) => {
+			if (el.tagName !== "Tooltip") return;
+			const content = el.properties?.content;
+			notes.push(typeof content === "string" ? content : String(content ?? ""));
+			el.properties = { ...el.properties, note: String(notes.length) };
+		});
+		if (notes.length) pre.properties = { ...pre.properties, notes: JSON.stringify(notes) };
+	},
+});
+
+/** 코드 펜스 meta가 줄 번호를 켰는지(`lnum`·`showLineNumbers`, `=false`면 끈다). */
+export const showsLineNumbers = (meta: Meta) =>
+	[meta.lnum, meta.showLineNumbers].some((value) => value === true || value === "" || value === "true");
+
+/**
+ * 줄마다 실제 줄 번호(`data-line`)를 단다. 줄 번호는 CSS 카운터 대신 이 값을 쓴다 —
+ * 접힌 줄(`collapse`)은 화면에 없어 카운터가 세지 않으므로, 접기 뒤 줄 번호가 밀린다.
+ */
+export const addLineNumbers = (): ShikiTransformer => ({
+	line(node: Element, line: number) {
+		node.properties = { ...node.properties, "data-line": line };
+	},
+});

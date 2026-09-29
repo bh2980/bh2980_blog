@@ -49,6 +49,8 @@ const renderPublic = async (source: string): Promise<string> => {
  * 컨테이너 편집 개선(2026-09-28): Tabs 방향 변형(`data-[orientation=horizontal]`)·여백과 Column 래퍼(`<div>`)를
  * 바로잡아 탭·단이 있는 3편의 해시를 갱신했다. 보이는 글자는 같다. 이어서 단 너비(`widths`)를 받도록
  * Columns를 grid로 바꿔 단이 있는 1편의 해시를 다시 갱신했다.
+ * 코드 툴팁 주석(2026-09-29): 코드 안 툴팁에 터치 기기용 번호(`<sup>`)와 코드 아래 주석 목록(`<ol>`)을 더해
+ * 코드 툴팁이 있는 2편의 해시를 갱신했다. 둘을 빼면 이전 해시와 같다(데스크톱에서는 CSS로 숨는다).
  */
 const canonical = (html: string): string =>
 	html.replaceAll("<span>ㅤ</span>", "<p><br/></p>").replace(/<br\/>\s+/g, "<br/>");

@@ -8,6 +8,13 @@
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
 @custom-variant data-vertical (&[data-orientation="vertical"]);
 
+/* 마우스를 올릴 수 없는 화면(터치). 코드 툴팁을 번호와 주석 목록으로 바꿔 보인다(Tooltip과 같은 조건) */
+@custom-variant touch {
+	@media (hover: none), (pointer: coarse) {
+		@slot;
+	}
+}
+
 @utility anno-mark-base {
 	& > *:first-child {
 		@apply relative;
@@ -454,9 +461,9 @@
 		counter-increment: step 0;
 	}
 
+	/* 줄 번호는 줄에 단 실제 번호다(카운터는 접힌 줄을 세지 못해 접기 뒤 번호가 밀린다) */
 	.prose pre[data-show-line-numbers] code .line::before {
-		counter-increment: step;
-		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[counter(step)];
+		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[attr(data-line)];
 	}
 }
 

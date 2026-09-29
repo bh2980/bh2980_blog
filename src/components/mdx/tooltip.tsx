@@ -12,7 +12,14 @@ export const Tooltip = ({
 	className,
 	children,
 	style,
-}: PropsWithChildren<{ content: string; className?: string; style?: CSSProperties }>) => {
+	note,
+}: PropsWithChildren<{
+	content: string;
+	className?: string;
+	style?: CSSProperties;
+	/** 코드 안 툴팁의 주석 번호. 터치 기기에서는 툴팁 대신 이 번호를 보이고 설명은 코드 아래 목록에 둔다(`pre`). */
+	note?: string | number;
+}>) => {
 	const [isTouchLike, setIsTouchLike] = useState(false);
 	const descriptionId = useId();
 
@@ -45,7 +52,27 @@ export const Tooltip = ({
 	}, []);
 
 	const triggerClassName = cn(tooltipTriggerClassName, className);
-	const triggerContent = <span style={style}>{children}</span>;
+	// 번호는 CSS(touch)로만 보인다. 서버 렌더부터 자리를 잡아 두어 터치 기기에서 글자가 밀리지 않는다.
+	const noteMark = note ? (
+		<sup aria-hidden className="ml-0.5 touch:inline hidden font-sans font-semibold text-[0.7em] text-primary">
+			{note}
+		</sup>
+	) : null;
+	const triggerContent = (
+		<span style={style}>
+			{children}
+			{noteMark}
+		</span>
+	);
+
+	if (isTouchLike && note) {
+		return (
+			<span className={triggerClassName}>
+				{triggerContent}
+				<span className="sr-only">{`주석 ${note}: ${content}`}</span>
+			</span>
+		);
+	}
 
 	if (isTouchLike) {
 		return (
