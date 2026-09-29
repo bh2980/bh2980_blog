@@ -70,6 +70,7 @@ import {
 import { InspectorPanel } from "./inspector-panel";
 import { LanguageTabs } from "./language-tabs";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
+import { TranslationWorkspace } from "./translation-workspace";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
 interface EntryEditorShellProps {
@@ -674,6 +675,15 @@ export function EntryEditorShell({
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
+	/** 번역본이면 원문 본문·언어·제목. 번역 화면이 원문과 나란히 놓는다(v3). */
+	const translationSource =
+		entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string"
+			? {
+					mdx: entry.source.mdx,
+					locale: entry.source.locale,
+					title: typeof entry.source.metadata.title === "string" ? entry.source.metadata.title : "",
+				}
+			: null;
 	const languageTabs =
 		entry && !isRecordCollection(collection) ? (
 			<LanguageTabs
@@ -695,7 +705,7 @@ export function EntryEditorShell({
 				aria-invalid={Boolean(titleIssue) || undefined}
 				aria-describedby={titleIssue ? "cms-title-error" : undefined}
 				onChange={(event) => handleTitleChange(event.target.value)}
-				placeholder="제목 없는 글"
+				placeholder={translationSource?.title || "제목 없는 글"}
 				className="h-auto w-full rounded-none border-0 bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
 			/>
 			{titleIssue && (
@@ -1028,22 +1038,42 @@ export function EntryEditorShell({
 
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
-					<CmsEditor
-						content={form.mdx}
-						titleField={
-							<>
-								{languageTabs}
-								{titleInput}
-							</>
-						}
-						toolbarEnd={templateMenu}
-						toolbarAside={sourceModeToggle}
-						sourceView={editorMode === "source" ? sourceEditor : undefined}
-						editable={!isReadOnly}
-						onChange={(mdx) => setForm({ mdx })}
-						onCompositionStart={() => autosave.setComposing(true)}
-						onCompositionEnd={() => autosave.setComposing(false)}
-					/>
+					{translationSource ? (
+						// 번역본은 원문과 번역을 블록 단위로 나란히 편집한다(v3).
+						<TranslationWorkspace
+							header={
+								<>
+									{languageTabs}
+									{titleInput}
+								</>
+							}
+							sourceMdx={translationSource.mdx}
+							sourceLocale={translationSource.locale}
+							targetLocale={entry?.locale ?? ""}
+							form={form}
+							setForm={setForm}
+							editable={!isReadOnly}
+							onCompositionStart={() => autosave.setComposing(true)}
+							onCompositionEnd={() => autosave.setComposing(false)}
+						/>
+					) : (
+						<CmsEditor
+							content={form.mdx}
+							titleField={
+								<>
+									{languageTabs}
+									{titleInput}
+								</>
+							}
+							toolbarEnd={templateMenu}
+							toolbarAside={sourceModeToggle}
+							sourceView={editorMode === "source" ? sourceEditor : undefined}
+							editable={!isReadOnly}
+							onChange={(mdx) => setForm({ mdx })}
+							onCompositionStart={() => autosave.setComposing(true)}
+							onCompositionEnd={() => autosave.setComposing(false)}
+						/>
+					)}
 				</div>
 
 				{isInspectorOpen ? (

@@ -26,7 +26,9 @@ describe("번역본 폼(v2 B4)", () => {
 			working: { metadata: { title: "Hello", summary: "Sum" }, mdx: "Body" },
 		});
 		const form = formFromEntry(translation);
+		// 번역 상태(`$translation`, v3)도 폼이 다룬다. 저장 필드가 아니라 메타데이터에는 들어가지 않는다.
 		expect(Object.keys(form).sort()).toEqual([
+			"$translation",
 			"canonicalUrl",
 			"mdx",
 			"seoDescription",

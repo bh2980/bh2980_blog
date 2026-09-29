@@ -1,5 +1,6 @@
 import { isCollection } from "@/cms/core/collections";
-import type { TranslationState } from "@/cms/core/translation/state";
+import { parseTranslationState, type TranslationState } from "@/cms/core/translation/state";
+import type { StoredUnit } from "@/cms/core/translation/units";
 import {
 	localizedFieldNames,
 	RECORD_TRANSLATIONS_KEY,
@@ -100,6 +101,33 @@ const fieldsOf = (collection: string, translation = false): readonly StoredField
 	return fields.filter(({ name }) => own.includes(name) || inherit.includes(name));
 };
 
+/** 번역 상태를 담는 폼 키(v3). 저장 필드 이름과 겹치지 않게 `$`로 시작한다. 값은 JSON 문자열이다. */
+export const TRANSLATION_FORM_KEY = "$translation";
+
+/** 번역 상태의 JSON 문자열. 키 순서를 고정해 서버(JSONB는 키 순서를 바꾼다)에서 온 값과 지문이 같게 한다. */
+export const stringifyTranslation = (units: readonly StoredUnit[]) =>
+	JSON.stringify({
+		version: 1,
+		units: units.map(({ key, source, target }) => ({ key, source, target })),
+	});
+
+/** 폼 값 → 저장된 번역 단위. 없거나 모양이 다르면 빈 목록(모두 미번역)이다. */
+export const storedUnitsFromForm = (value: FormValue | undefined): StoredUnit[] => {
+	if (typeof value !== "string") return [];
+	try {
+		return [...(parseTranslationState(JSON.parse(value))?.units ?? [])];
+	} catch {
+		return [];
+	}
+};
+
+/** 폼 값 → 저장 요청의 `translation`. 번역본이 아니면(키가 없으면) 보내지 않는다. */
+export const translationPayload = (form: EntryForm) => {
+	const value = form[TRANSLATION_FORM_KEY];
+	if (typeof value !== "string") return undefined;
+	return { version: 1 as const, units: storedUnitsFromForm(value) };
+};
+
 /** 저장 값 → 입력 값. */
 function toFormValue({ field }: StoredField, value: unknown): FormValue {
 	switch (field.kind) {
@@ -126,6 +154,10 @@ export function formFromEntry(entry: EntryData): EntryForm {
 		form[stored.name] = toFormValue(stored, value);
 	}
 	Object.assign(form, recordTranslationsToForm(entry.collection, metadata));
+	// 번역본은 번역 상태도 폼으로 다룬다(v3). 자동 저장·복구본·충돌 비교가 본문과 함께 본다.
+	if (isTranslationEntry(entry)) {
+		form[TRANSLATION_FORM_KEY] = stringifyTranslation(entry.working.translation?.units ?? []);
+	}
 	return form;
 }
 

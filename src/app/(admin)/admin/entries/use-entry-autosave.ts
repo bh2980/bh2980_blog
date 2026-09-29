@@ -9,6 +9,7 @@ import {
 	formFingerprint,
 	isTranslationEntry,
 	metadataFromForm,
+	translationPayload,
 } from "./entry-form";
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
 
@@ -175,6 +176,7 @@ export function useEntryAutosave({
 							slug: snapshot.slug.trim() || null,
 							metadata: built.metadata,
 							mdx: snapshot.mdx,
+							...(translationPayload(snapshot) ? { translation: translationPayload(snapshot) } : {}),
 						},
 						fallback: "저장하지 못했습니다.",
 					},
