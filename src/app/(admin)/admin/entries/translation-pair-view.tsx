@@ -2,7 +2,7 @@
 
 import { EditorContent, type JSONContent, useEditor } from "@tiptap/react";
 import { Tag } from "lucide-react";
-import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type AlignedUnit, type HeaderValue, parseFragment, parseHeader } from "@/cms/core/translation/units";
 import { buildEditorExtensions } from "@/cms/editor/extensions";
 import { ImageInsertDialog, type ImageInsertion } from "@/cms/editor/image-insert-dialog";
@@ -21,10 +21,6 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 const BOX_LABELS: Record<string, string> = { Callout: "콜아웃", Collapsible: "접기", Tabs: "탭" };
-
-/** 셀 편집기 바깥이어도 편집을 끝내지 않는 떠 있는 UI(팝오버·대화상자·인라인 버블). */
-const KEEP_OPEN =
-	'[role="dialog"], [role="menu"], [role="listbox"], [data-slot^="popover"], [data-slot^="dialog"], [data-cms-inline-bubble]';
 
 const PROSE = "prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed";
 
@@ -104,77 +100,6 @@ function UnitValue({ header, value }: { header: boolean; value: string }) {
 	return header ? <HeaderText value={value} /> : <UnitPreview mdx={value} />;
 }
 
-/** 셀 밖을 누르면 편집을 끝낸다. 떠 있는 UI를 누른 것은 밖으로 치지 않는다. */
-function useOutsideCommit(ref: RefObject<HTMLElement | null>, commit: () => void) {
-	const latest = useRef(commit);
-	latest.current = commit;
-	useEffect(() => {
-		const onDown = (event: MouseEvent) => {
-			const target = event.target instanceof Element ? event.target : null;
-			if (!target || ref.current?.contains(target) || target.closest(KEEP_OPEN)) return;
-			latest.current();
-		};
-		document.addEventListener("mousedown", onDown, true);
-		return () => document.removeEventListener("mousedown", onDown, true);
-	}, [ref]);
-}
-
-interface EditorShellProps {
-	onCancel: () => void;
-	commit: () => void;
-	children: ReactNode;
-	actions: ReactNode;
-	error: string | null;
-	rootRef: RefObject<HTMLFieldSetElement | null>;
-}
-
-function EditorShell({ onCancel, commit, children, actions, error, rootRef }: EditorShellProps) {
-	useOutsideCommit(rootRef, commit);
-	return (
-		<fieldset
-			ref={rootRef}
-			aria-label="번역 편집"
-			className="m-0 flex min-w-0 flex-col gap-2 rounded-md border border-ring/60 bg-background p-2 ring-2 ring-ring/20"
-			onKeyDown={(event) => {
-				if (!rootRef.current?.contains(event.target as Node) || event.nativeEvent.isComposing) return;
-				if (event.key === "Escape") {
-					event.preventDefault();
-					event.stopPropagation();
-					onCancel();
-				} else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-					event.preventDefault();
-					commit();
-				}
-			}}
-		>
-			{children}
-			<div className="flex items-center gap-1">
-				{actions}
-				<span className="flex-1" />
-				{error && (
-					<span role="alert" className="text-destructive text-xs">
-						{error}
-					</span>
-				)}
-				<Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onCancel}>
-					취소
-				</Button>
-				<Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={commit}>
-					완료
-				</Button>
-			</div>
-		</fieldset>
-	);
-}
-
-interface BlockEditorProps {
-	type: string;
-	source: string;
-	initial: string;
-	onCommit: (target: string | null) => void;
-	onCancel: () => void;
-}
-
 /**
  * 빈칸에서 번역을 시작할 때의 뼈대: 원문과 같은 종류·구조(제목 단계, 목록 항목 수, 표 칸, 코드 언어)에서
  * 글자와 이미지 설명만 비운다. 빈 문단에서 시작하면 제목·목록을 번역할 때 종류가 달라진다.
@@ -182,63 +107,117 @@ interface BlockEditorProps {
 export const blankLike = (json: JSONContent): JSONContent => {
 	const strip = (node: JSONContent): JSONContent | null => {
 		if (node.type === "text") return null;
+		// 다이어그램·차트·수식은 내용이 글자가 아니라 `value` 속성에 있다. 그것도 비운다.
 		const attrs =
 			node.type === "image"
 				? { ...node.attrs, alt: "", caption: "", title: null }
-				: (node.attrs as JSONContent["attrs"]);
+				: typeof node.attrs?.value === "string"
+					? { ...node.attrs, value: "" }
+					: (node.attrs as JSONContent["attrs"]);
 		const content = node.content?.map(strip).filter((child): child is JSONContent => child !== null);
 		return { ...node, ...(attrs ? { attrs } : {}), ...(node.content ? { content } : {}) };
 	};
 	return strip(json) ?? { type: "doc", content: [] };
 };
 
-function BlockCellEditor({ type, source, initial, onCommit, onCancel }: BlockEditorProps) {
+/** 셀 위에 마우스를 올리거나 초점이 있을 때만 보이는 작은 도구줄. */
+function CellToolbar({ children }: { children: ReactNode }) {
+	return (
+		<div className="absolute -top-3 right-1 z-[1] flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-focus-within/cell:opacity-100 group-hover/cell:opacity-100">
+			{children}
+		</div>
+	);
+}
+
+const toolButton = "h-6 bg-background px-1.5 text-xs";
+
+interface CellEditorProps {
+	source: string;
+	/** 저장된 번역. `null`이면 미번역이다. */
+	target: string | null;
+	editable: boolean;
+	/** 0이 아니면 이 셀에 초점을 달라는 요청이다. */
+	focusToken: number;
+	onFocusHandled: () => void;
+	onCommit: (target: string | null) => void;
+}
+
+interface BlockEditorProps extends CellEditorProps {
+	type: string;
+}
+
+/** 서식이 없는 빈 뼈대 MDX. 이것과 같으면 비운 것으로 본다. */
+const blankMdxOf = (source: string) => tiptapToMdx(blankLike(mdxToTiptap(source))).trim();
+
+function BlockCellEditor({ type, source, target, editable, focusToken, onFocusHandled, onCommit }: BlockEditorProps) {
 	const [extensions] = useState(() => buildEditorExtensions());
-	const [content] = useState(() => (initial ? mdxToTiptap(initial) : blankLike(mdxToTiptap(source))));
+	const blank = useMemo(() => blankLike(mdxToTiptap(source)), [source]);
+	const blankMdx = useMemo(() => blankMdxOf(source), [source]);
+	const contentOf = (mdx: string | null) => (mdx ? mdxToTiptap(mdx) : blank);
 	const [error, setError] = useState<string | null>(null);
+	const [empty, setEmpty] = useState(() => !target);
 	const [imageOpen, setImageOpen] = useState(false);
 	const dirtyRef = useRef(false);
-	const rootRef = useRef<HTMLFieldSetElement>(null);
+	/** 마지막으로 저장한(또는 저장돼 있던) 번역. Escape로 되돌릴 기준이다. */
+	const committedRef = useRef(target);
 	const isImage = type === "image";
+
+	const isEmptyMdx = (mdx: string) => mdx === "" || mdx === blankMdx;
+
+	const commitRef = useRef(() => {});
 	const editor = useEditor({
 		immediatelyRender: false,
-		editable: true,
-		autofocus: "end",
+		editable,
 		extensions,
-		content,
+		content: contentOf(target),
 		editorProps: {
 			attributes: {
 				"aria-label": "번역 편집기",
-				class: cn(PROSE, "min-h-10 px-1 focus:outline-none [&_.tableWrapper]:overflow-x-auto"),
+				class: cn(PROSE, "min-h-10 px-1 py-1 focus:outline-none [&_.tableWrapper]:overflow-x-auto"),
 			},
 		},
-		onUpdate: () => {
+		onUpdate: ({ editor: current }) => {
 			dirtyRef.current = true;
 			setError(null);
+			setEmpty(isEmptyMdx(tiptapToMdx(current.getJSON()).trim()));
 		},
+		onBlur: () => commitRef.current(),
 	});
 
-	const commit = () => {
+	const load = (mdx: string | null) => {
 		if (!editor) return;
-		if (!dirtyRef.current) {
-			onCancel();
-			return;
-		}
+		editor.commands.setContent(contentOf(mdx), { emitUpdate: false });
+		dirtyRef.current = false;
+		setError(null);
+		setEmpty(!mdx || isEmptyMdx(tiptapToMdx(editor.getJSON()).trim()));
+	};
+
+	const commit = () => {
+		if (!editor || !dirtyRef.current) return;
 		const mdx = tiptapToMdx(editor.getJSON()).trim();
-		if (!mdx) {
-			onCommit(null);
+		if (isEmptyMdx(mdx)) {
+			dirtyRef.current = false;
+			if (committedRef.current !== null) {
+				committedRef.current = null;
+				onCommit(null);
+			}
 			return;
 		}
 		const problem = validateFragment(mdx, type);
-		if (problem) setError(problem);
-		else onCommit(mdx);
+		if (problem) {
+			setError(problem);
+			return;
+		}
+		dirtyRef.current = false;
+		committedRef.current = mdx;
+		onCommit(mdx);
 	};
+	commitRef.current = commit;
 
-	const fillSource = () => {
-		if (!editor) return;
-		dirtyRef.current = true;
-		editor.commands.setContent(mdxToTiptap(source), { emitUpdate: true });
-		setError(null);
+	const copySource = () => {
+		load(source);
+		committedRef.current = source;
+		onCommit(source);
 	};
 
 	const swapImage = (image: ImageInsertion) => {
@@ -261,38 +240,81 @@ function BlockCellEditor({ type, source, initial, onCommit, onCancel }: BlockEdi
 				return true;
 			})
 			.run();
-		dirtyRef.current = true;
 		setImageOpen(false);
+		commit();
 	};
 
+	useEffect(() => {
+		editor?.setEditable(editable, false);
+	}, [editor, editable]);
+
+	// 밖에서 번역이 바뀌면(원문에 맞춰 다시 맞춤 등) 편집 중이 아닐 때 내용을 바꾼다.
+	const previousTarget = useRef(target);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `load`는 매번 새로 만들어지지만 target이 바뀔 때만 다시 읽는다
+	useEffect(() => {
+		if (!editor || previousTarget.current === target) return;
+		previousTarget.current = target;
+		if (target === committedRef.current) return;
+		committedRef.current = target;
+		if (editor.isFocused || dirtyRef.current) return;
+		load(target);
+	}, [editor, target]);
+
+	useEffect(() => {
+		if (!focusToken || !editor) return;
+		editor.commands.focus("end");
+		onFocusHandled();
+	}, [focusToken, editor, onFocusHandled]);
+
 	return (
-		<EditorShell
-			rootRef={rootRef}
-			commit={commit}
-			onCancel={onCancel}
-			error={error}
-			actions={
-				<>
-					<Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={fillSource}>
+		// biome-ignore lint/a11y/noStaticElementInteractions: 셀 안 편집기의 키 처리를 모은다
+		<div
+			className="group/cell relative"
+			onKeyDown={(event) => {
+				if (!editable || event.nativeEvent.isComposing || !event.currentTarget.contains(event.target as Node)) return;
+				if (event.key === "Escape") {
+					event.preventDefault();
+					event.stopPropagation();
+					load(committedRef.current);
+					editor?.commands.blur();
+				} else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+					event.preventDefault();
+					commit();
+				}
+			}}
+		>
+			<div className="relative rounded-md border border-transparent focus-within:border-ring/60 hover:border-border">
+				<EditorContent editor={editor} />
+				{empty && (
+					<span
+						className={cn(
+							"pointer-events-none absolute left-1 text-muted-foreground text-sm",
+							isImage ? "bottom-1" : "top-1",
+						)}
+					>
+						미번역
+					</span>
+				)}
+			</div>
+			{error && (
+				<p role="alert" className="mt-1 text-destructive text-xs">
+					{error}
+				</p>
+			)}
+			{editable && (
+				<CellToolbar>
+					<Button type="button" size="sm" variant="outline" className={toolButton} onClick={copySource}>
 						{isImage ? "원문 이미지로" : "원문 복사"}
 					</Button>
 					{isImage && (
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							className="h-7 px-2 text-xs"
-							onClick={() => setImageOpen(true)}
-						>
+						<Button type="button" size="sm" variant="outline" className={toolButton} onClick={() => setImageOpen(true)}>
 							이미지 바꾸기
 						</Button>
 					)}
-				</>
-			}
-		>
-			<EditorContent editor={editor} />
-			{editor && <InlineBubble editor={editor} />}
-			{isImage && (
+				</CellToolbar>
+			)}
+			{editor && editable && <InlineBubble editor={editor} />}
+			{isImage && editable && (
 				<ImageInsertDialog
 					open={imageOpen}
 					initialFile={null}
@@ -300,33 +322,32 @@ function BlockCellEditor({ type, source, initial, onCommit, onCancel }: BlockEdi
 					onInsert={swapImage}
 				/>
 			)}
-		</EditorShell>
+		</div>
 	);
 }
 
-interface HeaderEditorProps {
-	source: HeaderValue;
-	initial: HeaderValue | null;
-	onCommit: (target: string | null) => void;
-	onCancel: () => void;
-}
-
-function HeaderCellEditor({ source, initial, onCommit, onCancel }: HeaderEditorProps) {
-	const isTitle = "title" in source;
-	const sourceTexts = headerTexts(source);
-	const [initialTexts] = useState(() => {
-		const same = initial && "title" in initial === isTitle ? headerTexts(initial) : [];
+function HeaderCellEditor({ source, target, editable, focusToken, onFocusHandled, onCommit }: CellEditorProps) {
+	const sourceHeader = parseHeader(source);
+	const isTitle = sourceHeader !== null && "title" in sourceHeader;
+	const sourceTexts = headerTexts(sourceHeader);
+	const textsOf = (value: string | null) => {
+		const parsed = value === null ? null : parseHeader(value);
+		const same = parsed && "title" in parsed === isTitle ? headerTexts(parsed) : [];
 		return sourceTexts.map((_, index) => same[index] ?? "");
-	});
-	const [values, setValues] = useState(initialTexts);
+	};
+	const [values, setValues] = useState(() => textsOf(target));
 	const valuesRef = useRef(values);
+	/** 마지막으로 저장한(또는 저장돼 있던) 번역과 그 글자들. */
+	const committedRef = useRef(target);
+	const committedTextsRef = useRef(values);
 	const composingRef = useRef(false);
 	const pendingRef = useRef(false);
-	const rootRef = useRef<HTMLFieldSetElement>(null);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const firstInputRef = useRef<HTMLInputElement>(null);
 
-	const setAt = (index: number, value: string) => {
-		valuesRef.current = valuesRef.current.map((current, i) => (i === index ? value : current));
-		setValues(valuesRef.current);
+	const show = (next: string[]) => {
+		valuesRef.current = next;
+		setValues(next);
 	};
 
 	const commit = () => {
@@ -337,63 +358,100 @@ function HeaderCellEditor({ source, initial, onCommit, onCancel }: HeaderEditorP
 		}
 		pendingRef.current = false;
 		const next = valuesRef.current.map((value) => value.trim());
-		if (next.every((value, index) => value === (initialTexts[index] ?? "").trim())) {
-			onCancel();
-			return;
-		}
-		if (next.every((value) => !value)) {
-			onCommit(null);
-			return;
-		}
-		onCommit(JSON.stringify(isTitle ? { title: next[0] ?? "" } : { labels: next }));
+		if (next.every((value, index) => value === (committedTextsRef.current[index] ?? "").trim())) return;
+		committedTextsRef.current = next;
+		const result = next.every((value) => !value)
+			? null
+			: JSON.stringify(isTitle ? { title: next[0] ?? "" } : { labels: next });
+		committedRef.current = result;
+		onCommit(result);
 	};
 
-	const fillSource = () => {
-		valuesRef.current = sourceTexts;
-		setValues(sourceTexts);
+	const copySource = () => {
+		show(sourceTexts);
+		committedTextsRef.current = sourceTexts;
+		committedRef.current = source;
+		onCommit(source);
 	};
+
+	const previousTarget = useRef(target);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: target이 바뀔 때만 다시 읽는다
+	useEffect(() => {
+		if (previousTarget.current === target) return;
+		previousTarget.current = target;
+		if (target === committedRef.current) return;
+		committedRef.current = target;
+		if (rootRef.current?.contains(document.activeElement)) return;
+		const next = textsOf(target);
+		committedTextsRef.current = next;
+		show(next);
+	}, [target]);
+
+	useEffect(() => {
+		if (!focusToken) return;
+		firstInputRef.current?.focus();
+		onFocusHandled();
+	}, [focusToken, onFocusHandled]);
 
 	return (
-		<EditorShell
-			rootRef={rootRef}
-			commit={commit}
-			onCancel={onCancel}
-			error={null}
-			actions={
-				<Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={fillSource}>
-					원문 복사
-				</Button>
-			}
+		// biome-ignore lint/a11y/noStaticElementInteractions: 셀 안 입력들의 포커스 이동과 Escape를 모은다
+		<div
+			ref={rootRef}
+			className="group/cell relative flex flex-col gap-1.5"
+			onBlur={(event) => {
+				// 같은 셀 안 다른 입력으로 옮길 때는 끝내지 않는다.
+				if (!editable || event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+				commit();
+			}}
+			onKeyDown={(event) => {
+				if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+				event.preventDefault();
+				event.stopPropagation();
+				show(committedTextsRef.current);
+				(event.target as HTMLElement).blur();
+			}}
 		>
-			<div className="flex flex-col gap-1.5">
-				{sourceTexts.map((text, index) => (
-					<Input
-						// biome-ignore lint/suspicious/noArrayIndexKey: 탭 이름은 순서가 곧 정체성이다
-						key={index}
-						autoFocus={index === 0}
-						aria-label={isTitle ? "제목" : `탭 이름 ${index + 1}`}
-						value={values[index] ?? ""}
-						placeholder={text}
-						className="h-8 text-sm"
-						onChange={(event) => setAt(index, event.target.value)}
-						onCompositionStart={() => {
-							composingRef.current = true;
-						}}
-						onCompositionEnd={(event) => {
-							composingRef.current = false;
-							setAt(index, event.currentTarget.value);
-							if (pendingRef.current) commit();
-						}}
-						onKeyDown={(event) => {
-							if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-								event.preventDefault();
-								commit();
-							}
-						}}
-					/>
-				))}
-			</div>
-		</EditorShell>
+			{sourceTexts.map((_, index) => (
+				<Input
+					// biome-ignore lint/suspicious/noArrayIndexKey: 탭 이름은 순서가 곧 정체성이다
+					key={index}
+					ref={index === 0 ? firstInputRef : undefined}
+					aria-label={isTitle ? "제목" : `탭 이름 ${index + 1}`}
+					value={values[index] ?? ""}
+					placeholder="미번역"
+					readOnly={!editable}
+					className="h-8 text-sm"
+					onChange={(event) => {
+						const next = [...valuesRef.current];
+						next[index] = event.target.value;
+						show(next);
+					}}
+					onCompositionStart={() => {
+						composingRef.current = true;
+					}}
+					onCompositionEnd={(event) => {
+						composingRef.current = false;
+						const next = [...valuesRef.current];
+						next[index] = event.currentTarget.value;
+						show(next);
+						if (pendingRef.current) commit();
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+							event.preventDefault();
+							commit();
+						}
+					}}
+				/>
+			))}
+			{editable && (
+				<CellToolbar>
+					<Button type="button" size="sm" variant="outline" className={toolButton} onClick={copySource}>
+						원문 복사
+					</Button>
+				</CellToolbar>
+			)}
+		</div>
 	);
 }
 
@@ -401,12 +459,11 @@ interface RowProps {
 	row: AlignedUnit;
 	index: number;
 	editable: boolean;
-	editing: boolean;
 	comparing: boolean;
+	focusToken: number;
 	rowRef: (element: HTMLElement | null) => void;
-	onOpen: (index: number) => void;
-	onCommit: (index: number, target: string | null) => void;
-	onCancel: () => void;
+	onVisit: (index: number) => void;
+	onFocusHandled: () => void;
 	onToggleCompare: (index: number) => void;
 	onChangeTarget: (index: number, target: string | null) => void;
 	onIgnoreChange: (index: number) => void;
@@ -425,12 +482,11 @@ function PairRow({
 	row,
 	index,
 	editable,
-	editing,
 	comparing,
+	focusToken,
 	rowRef,
-	onOpen,
-	onCommit,
-	onCancel,
+	onVisit,
+	onFocusHandled,
 	onToggleCompare,
 	onChangeTarget,
 	onIgnoreChange,
@@ -438,85 +494,36 @@ function PairRow({
 	const { unit } = row;
 	const isHeader = unit.kind === "header";
 	const depth = depthOf(unit.key);
-	const target = row.target;
-
-	const editor = (() => {
-		if (!editing) return null;
-		const commit = (value: string | null) => onCommit(index, value);
-		if (isHeader) {
-			const sourceHeader = parseHeader(unit.source);
-			if (!sourceHeader) return null;
-			return (
-				<HeaderCellEditor
-					source={sourceHeader}
-					initial={target === null ? null : parseHeader(target)}
-					onCommit={commit}
-					onCancel={onCancel}
-				/>
-			);
-		}
-		return (
-			<BlockCellEditor
-				type={unit.type}
-				source={unit.source}
-				initial={target ?? ""}
-				onCommit={commit}
-				onCancel={onCancel}
-			/>
-		);
-	})();
-
-	const preview = (value: string) => (
-		<div className="relative">
-			<UnitValue header={isHeader} value={value} />
-			{editable && (
-				<button
-					type="button"
-					aria-label="번역 편집"
-					className="absolute inset-0 cursor-text rounded-sm hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring"
-					onClick={() => onOpen(index)}
-				/>
-			)}
-		</div>
-	);
-
-	const targetCell = (() => {
-		if (unit.auto) return <p className="text-muted-foreground text-sm">원문 그대로</p>;
-		if (editor) return editor;
-		if (row.status === "untranslated" || target === null) {
-			return (
-				<div className="flex min-h-14 flex-col items-start justify-center gap-2 rounded-md border border-dashed px-3 py-2">
-					<span className="text-muted-foreground text-sm">미번역</span>
-					{editable && (
-						<div className="flex gap-1">
-							<Button type="button" size="sm" variant="outline" className={cellButton} onClick={() => onOpen(index)}>
-								번역하기
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className={cellButton}
-								onClick={() => onChangeTarget(index, unit.source)}
-							>
-								원문 복사
-							</Button>
-						</div>
-					)}
-				</div>
-			);
-		}
-		return preview(target);
-	})();
-
 	const changed = row.status === "changed" && !unit.auto;
 
+	const commit = (value: string | null) => onChangeTarget(index, value);
+	const cellProps = {
+		source: unit.source,
+		target: row.target,
+		editable,
+		focusToken,
+		onFocusHandled,
+		onCommit: commit,
+	};
+
+	const targetCell = unit.auto ? (
+		<p className="text-muted-foreground text-sm">원문 그대로</p>
+	) : isHeader ? (
+		<HeaderCellEditor {...cellProps} />
+	) : (
+		<LazyMount minHeight={48}>
+			<BlockCellEditor {...cellProps} type={unit.type} />
+		</LazyMount>
+	);
+
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: 초점이 들어온 줄을 기억해 다음 미번역의 기준으로 삼는다
 		<div
 			ref={rowRef}
 			data-row-index={index}
 			data-status={unit.auto ? "auto" : row.status}
 			className={cn("grid scroll-mt-28 grid-cols-2 border-b", isHeader && "bg-muted/40")}
+			onFocus={() => onVisit(index)}
 		>
 			<div className="min-w-0 border-r p-3">
 				{nest(
@@ -604,11 +611,12 @@ export function TranslationPairView({
 	sourceError?: boolean;
 }) {
 	const [filter, setFilter] = useState<Filter>("all");
-	const [editing, setEditing] = useState<number | null>(null);
 	const [comparing, setComparing] = useState<ReadonlySet<number>>(new Set());
 	const [scrollTo, setScrollTo] = useState<number | null>(null);
+	const [focusRequest, setFocusRequest] = useState<{ index: number; id: number } | null>(null);
 	const rowElements = useRef(new Map<number, HTMLElement>());
 	const lastRef = useRef(-1);
+	const requestCount = useRef(0);
 
 	const counts = useMemo(() => {
 		let translated = 0;
@@ -628,6 +636,8 @@ export function TranslationPairView({
 		setScrollTo(null);
 	}, [scrollTo]);
 
+	const handleFocused = useCallback(() => setFocusRequest(null), []);
+
 	if (sourceError) {
 		return (
 			<p role="alert" className="mx-auto w-full max-w-6xl px-4 py-10 text-center text-muted-foreground text-sm">
@@ -636,22 +646,18 @@ export function TranslationPairView({
 		);
 	}
 
-	const open = (index: number) => {
-		if (!editable) return;
-		lastRef.current = index;
-		setEditing(index);
-	};
-
 	const goNext = () => {
-		const start = editing ?? lastRef.current;
 		const untranslated = rows.flatMap((row, index) => (row.status === "untranslated" && !row.unit.auto ? [index] : []));
-		const next = untranslated.find((index) => index > start) ?? untranslated[0];
+		const next = untranslated.find((index) => index > lastRef.current) ?? untranslated[0];
 		if (next === undefined) return;
 		// 거른 보기에서 가려진 줄이면 전체로 돌려 보인다.
 		setFilter((current) => (current === "changed" ? "all" : current));
 		lastRef.current = next;
 		setScrollTo(next);
-		if (editable) setEditing(next);
+		if (editable) {
+			requestCount.current += 1;
+			setFocusRequest({ index: next, id: requestCount.current });
+		}
 	};
 
 	const visible = (row: AlignedUnit) => {
@@ -714,18 +720,16 @@ export function TranslationPairView({
 							row={row}
 							index={index}
 							editable={editable}
-							editing={editing === index}
 							comparing={comparing.has(index)}
+							focusToken={focusRequest?.index === index ? focusRequest.id : 0}
 							rowRef={(element) => {
 								if (element) rowElements.current.set(index, element);
 								else rowElements.current.delete(index);
 							}}
-							onOpen={open}
-							onCommit={(at, target) => {
-								setEditing(null);
-								onChangeTarget(at, target);
+							onVisit={(at) => {
+								lastRef.current = at;
 							}}
-							onCancel={() => setEditing(null)}
+							onFocusHandled={handleFocused}
 							onToggleCompare={(at) =>
 								setComparing((current) => {
 									const next = new Set(current);
