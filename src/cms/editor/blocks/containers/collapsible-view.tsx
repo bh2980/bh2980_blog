@@ -45,7 +45,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 			data-cms-container-node="cmsCollapsible"
 			data-cms-framed
 			className={cn(
-				"group/container relative my-4 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
+				"group/container relative my-6 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
 				selected && "ring-2 ring-ring",
 			)}
 		>
@@ -83,7 +83,15 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 					className="flex-1"
 				/>
 			</div>
-			<NodeViewContent className={cn("px-3 pt-2 pb-3 text-slate-700 dark:text-slate-200", !open && "hidden")} />
+			<NodeViewContent
+				className={cn(
+					"px-3 pt-2 pb-3 text-slate-700 dark:text-slate-200",
+					// 안쪽 첫·끝 블록의 prose 여백이 상자 안쪽 여백에 더해지지 않게 0으로 둔다(중첩 커스텀 블록은 react-renderer 안 래퍼가 여백을 가진다).
+					"[&>[data-node-view-content-react]>:first-child]:mt-0 [&>[data-node-view-content-react]>:last-child]:mb-0",
+					"[&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0",
+					!open && "hidden",
+				)}
+			/>
 			{editable ? (
 				<ContainerToolbar label="접기 도구" visible={defaultOpen}>
 					<label className="flex cursor-pointer items-center gap-1.5 px-1.5 py-0.5 text-xs">

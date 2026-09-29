@@ -51,6 +51,8 @@ const renderPublic = async (source: string): Promise<string> => {
  * Columns를 grid로 바꿔 단이 있는 1편의 해시를 다시 갱신했다.
  * 코드 툴팁 주석(2026-09-29): 코드 안 툴팁에 터치 기기용 번호(`<sup>`)와 코드 아래 주석 목록(`<ol>`)을 더해
  * 코드 툴팁이 있는 2편의 해시를 갱신했다. 둘을 빼면 이전 해시와 같다(데스크톱에서는 CSS로 숨는다).
+ * 블록 간격 맞춤(2026-09-29): 콜아웃·접기에 위아래 여백(`my-6`)과 안쪽 첫·끝 블록 여백 없애기를 더해
+ * 콜아웃·접기가 있는 39편의 해시를 갱신했다. 더한 클래스를 빼면 모두 이전 해시와 같다.
  */
 const canonical = (html: string): string =>
 	html.replaceAll("<span>ㅤ</span>", "<p><br/></p>").replace(/<br\/>\s+/g, "<br/>");

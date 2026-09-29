@@ -36,14 +36,17 @@ export const Callout = ({ variant = "note", title, children }: CalloutProps) => 
 	const resolvedTitle = title?.trim() ? title : getDefaultCalloutTitle(v);
 
 	return (
-		<Alert variant={v} layout="stack" className="not-prose w-full">
+		<Alert variant={v} layout="stack" className="not-prose my-6 w-full">
 			<div className="flex items-start gap-2">
 				<Icon className="mt-0.5 size-4 shrink-0 text-current" />
 				<div className="min-h-4 min-w-0 font-medium tracking-tight">{resolvedTitle}</div>
 			</div>
 			{/* 본문 없이 제목만 둔 콜아웃은 빈 본문 칸을 그리지 않는다. */}
 			{children ? (
-				<div data-slot="callout-body" className="mt-2 text-current text-sm [&_p]:m-0 [&_p]:leading-relaxed">
+				<div
+					data-slot="callout-body"
+					className="mt-2 text-current text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0 [&_p]:m-0 [&_p]:leading-relaxed"
+				>
 					{children}
 				</div>
 			) : null}

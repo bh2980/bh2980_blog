@@ -1,0 +1,84 @@
+"use client";
+
+import type { Editor } from "@tiptap/core";
+import {
+	ChartColumn,
+	ChevronsUpDown,
+	Columns2,
+	type LucideIcon,
+	MessageSquareWarning,
+	Puzzle,
+	Sigma,
+	SquareStack,
+	Workflow,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { buildBlockSlashCommands } from "./slash-command";
+
+/** 블록 이름(nodeView) → 메뉴 아이콘. 없으면 퍼즐 아이콘을 쓴다. */
+const BLOCK_ICONS: Record<string, LucideIcon> = {
+	callout: MessageSquareWarning,
+	collapsible: ChevronsUpDown,
+	tabs: SquareStack,
+	columns: Columns2,
+	mermaid: Workflow,
+	chart: ChartColumn,
+	math: Sigma,
+};
+
+const CUSTOM_BLOCKS = buildBlockSlashCommands();
+
+/** 툴바에서 커스텀 컴포넌트(블록)를 커서 위치에 넣는다. */
+export function CustomBlockMenu({ editor }: { editor: Editor }) {
+	return (
+		<DropdownMenu>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<DropdownMenuTrigger
+							render={
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="size-8 p-0"
+									aria-label="컴포넌트 삽입"
+									disabled={!editor.isEditable}
+									onMouseDown={(event) => event.preventDefault()}
+								/>
+							}
+						/>
+					}
+				>
+					<Puzzle className="size-4" aria-hidden />
+				</TooltipTrigger>
+				<TooltipContent side="bottom">컴포넌트</TooltipContent>
+			</Tooltip>
+			<DropdownMenuContent align="start" className="min-w-44">
+				{CUSTOM_BLOCKS.map((block) => {
+					const Icon = (block.id && BLOCK_ICONS[block.id]) || Puzzle;
+					return (
+						<DropdownMenuItem
+							key={block.id ?? block.title}
+							// 슬래시 메뉴용 액션이라 지울 글자가 없는 빈 범위를 커서 자리에 넘긴다.
+							onClick={() => {
+								const { from } = editor.state.selection;
+								block.action(editor, { from, to: from });
+							}}
+						>
+							<Icon aria-hidden className="size-4" />
+							<span className="flex-1">{block.title}</span>
+						</DropdownMenuItem>
+					);
+				})}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}

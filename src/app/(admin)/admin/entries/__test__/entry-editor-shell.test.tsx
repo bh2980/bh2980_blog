@@ -21,10 +21,26 @@ vi.mock("../local-backup", async (importOriginal) => ({
 	saveLocalBackup,
 }));
 vi.mock("@/cms/editor/tiptap-editor", () => ({
-	CmsEditor: ({ editable, titleField }: { editable?: boolean; titleField?: React.ReactNode }) => (
+	CmsEditor: ({
+		editable,
+		titleField,
+		toolbarEnd,
+		toolbarAside,
+		sourceView,
+	}: {
+		editable?: boolean;
+		titleField?: React.ReactNode;
+		toolbarEnd?: React.ReactNode;
+		toolbarAside?: React.ReactNode;
+		sourceView?: React.ReactNode;
+	}) => (
 		<>
+			<div role="toolbar" aria-label="서식 도구">
+				{toolbarEnd}
+				{toolbarAside}
+			</div>
 			{titleField}
-			<textarea aria-label="시각 본문" readOnly={editable === false} />
+			{sourceView ?? <textarea aria-label="시각 본문" readOnly={editable === false} />}
 		</>
 	),
 }));
@@ -315,8 +331,25 @@ describe("entry editor shell", () => {
 		expect(source.value).toBe("본문 <Callout>닫히지 않음");
 		expect((await editorTitle()).getAttribute("value")).toBe("테스트");
 		expect(screen.queryByLabelText("시각 본문")).toBeNull();
-		expect((screen.getByRole("button", { name: "시각 모드로 돌아가기" }) as HTMLButtonElement).disabled).toBe(true);
+		const toggle = screen.getByRole("button", { name: "MDX 원문" }) as HTMLButtonElement;
+		expect(toggle.getAttribute("aria-pressed")).toBe("true");
+		expect(toggle.disabled).toBe(true);
 		expect(screen.getByText(/원문 모드로만 편집합니다/)).toBeTruthy();
+	});
+
+	it("switches only the body to MDX source and keeps the toolbar and title", async () => {
+		renderEdit();
+		await screen.findByLabelText("시각 본문");
+		const toggle = screen.getByRole("button", { name: "MDX 원문" });
+		fireEvent.click(toggle);
+		const source = (await screen.findByRole("textbox", { name: "MDX 본문" })) as HTMLTextAreaElement;
+		expect(source.value).toBe(entry.working.mdx);
+		expect(screen.queryByLabelText("시각 본문")).toBeNull();
+		expect((await editorTitle()).getAttribute("value")).toBe("테스트");
+		expect(screen.getByRole("button", { name: "템플릿 메뉴" })).toBeTruthy();
+		fireEvent.click(toggle);
+		expect(await screen.findByLabelText("시각 본문")).toBeTruthy();
+		expect(screen.queryByRole("textbox", { name: "MDX 본문" })).toBeNull();
 	});
 
 	it("keeps the editor usable at narrow widths and opens the inspector on field errors", async () => {
@@ -507,7 +540,10 @@ describe("entry editor shell", () => {
 		renderEdit();
 		await screen.findByRole("button", { name: "더보기" });
 		const toolbar = screen.getByRole("banner");
-		expect(within(toolbar).getByRole("button", { name: "MDX 원문 보기" })).toBeTruthy();
+		expect(within(toolbar).queryByRole("button", { name: "MDX 원문" })).toBeNull();
+		expect(
+			within(screen.getByRole("toolbar", { name: "서식 도구" })).getByRole("button", { name: "MDX 원문" }),
+		).toBeTruthy();
 		expect(within(toolbar).getByRole("button", { name: "발행 예약" })).toBeTruthy();
 		expect(within(toolbar).getByRole("link", { name: "미리보기" })).toBeTruthy();
 		fireEvent.click(within(toolbar).getByRole("button", { name: "더보기" }));

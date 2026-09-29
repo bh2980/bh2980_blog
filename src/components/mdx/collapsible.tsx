@@ -21,7 +21,10 @@ export const Collapsible = ({
 
 	return (
 		<CollapsibleRoot
-			className={cn("rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900", className)}
+			className={cn(
+				"my-6 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
+				className,
+			)}
 			defaultOpen={defaultOpen}
 		>
 			<CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-slate-700 text-sm hover:bg-slate-100 data-panel-open:bg-slate-100 dark:text-slate-200 dark:data-panel-open:bg-slate-800 dark:hover:bg-slate-800">
@@ -29,7 +32,10 @@ export const Collapsible = ({
 				<span>{triggerLabel}</span>
 			</CollapsibleTrigger>
 
-			<CollapsibleContent className="px-3 pt-2 pb-3 text-slate-700 dark:text-slate-200">{children}</CollapsibleContent>
+			{/* 안쪽 첫·끝 블록의 여백이 상자 안쪽 여백에 더해지지 않게 0으로 둔다. */}
+			<CollapsibleContent className="px-3 pt-2 pb-3 text-slate-700 dark:text-slate-200 [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+				{children}
+			</CollapsibleContent>
 		</CollapsibleRoot>
 	);
 };

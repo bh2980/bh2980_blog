@@ -27,7 +27,7 @@ export function CalloutNodeView(props: NodeViewProps) {
 		<NodeViewWrapper
 			data-cms-container-node="cmsCallout"
 			data-cms-framed
-			className={cn("group/container relative my-4 rounded-lg", selected && "ring-2 ring-ring")}
+			className={cn("group/container relative my-6 rounded-lg", selected && "ring-2 ring-ring")}
 		>
 			<Alert variant={variant} layout="stack" role="note" className="not-prose w-full">
 				<div className="flex items-center gap-2" contentEditable={false}>
@@ -76,7 +76,8 @@ export function CalloutNodeView(props: NodeViewProps) {
 						className="flex-1 font-medium tracking-tight"
 					/>
 				</div>
-				<NodeViewContent className="mt-2 text-current text-sm [&_p]:m-0 [&_p]:leading-relaxed" />
+				{/* 안쪽 블록(react-renderer로 감싸진 커스텀 블록)의 위아래 여백이 상자 안쪽 여백에 더해지지 않게 첫·끝 자식은 0으로 둔다. */}
+				<NodeViewContent className="mt-2 text-current text-sm [&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0 [&_p]:m-0 [&_p]:leading-relaxed" />
 			</Alert>
 		</NodeViewWrapper>
 	);

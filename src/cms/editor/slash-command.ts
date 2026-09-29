@@ -8,6 +8,8 @@ export { OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export interface SlashCommandItem {
+	/** 블록 삽입 항목의 nodeView 이름. 기본 서식 항목에는 없다. */
+	id?: string;
 	title: string;
 	description: string;
 	keywords: string[];
@@ -150,6 +152,7 @@ export function buildBlockSlashCommands(
 		if (!action) continue;
 
 		items.push({
+			id: nodeView,
 			title: block.label,
 			description: block.description ?? DEFAULT_BLOCK_DESCRIPTIONS[nodeView] ?? `${block.label} 삽입`,
 			keywords: block.editor.keywords ? [...block.editor.keywords] : [block.label, block.name],

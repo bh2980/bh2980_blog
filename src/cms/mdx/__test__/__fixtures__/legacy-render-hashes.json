@@ -4,12 +4,12 @@
 		"bytes": 6427
 	},
 	"src/contents/posts/내가-만든-rag의-성능-측정하기.mdx": {
-		"sha256": "bcdea227de00040a4df34dc207075ba39f0c3dc4a95f8a613c8e4795f5214c1e",
-		"bytes": 11828
+		"sha256": "408de6ee29fad08891d0e7cb56350863f9160f5e33677de74b3b24af4e55d639",
+		"bytes": 11890
 	},
 	"src/contents/posts/블로그라면-seo는-해봐야지.mdx": {
-		"sha256": "4720010c63971c26b937ab8737e24bb1391dd1266bad2e4fb42325cf195d72a4",
-		"bytes": 134830
+		"sha256": "373d0ed64b568b601ed898b6c4addf6c2f3a1af609cb9dead221c6796471a308",
+		"bytes": 135202
 	},
 	"src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx": {
 		"sha256": "fa567f8aefa129ecaa6298d66c6be88c79afe5ea92bd94592fdf623275774eda",
@@ -24,160 +24,160 @@
 		"bytes": 40813
 	},
 	"src/contents/memos/1-implement-curry.mdx": {
-		"sha256": "bb487dcf6fb97e085f1e69a062262abd3739ca3121974c735279527259bb1169",
-		"bytes": 8570
+		"sha256": "2bbe63080342f3d0bd63512e5ab3b37aa41a86a4e01adecfc4f92c340957cc3a",
+		"bytes": 8575
 	},
 	"src/contents/memos/10-tuple-to-union.mdx": {
-		"sha256": "800105c389458a9f5f0fcc0839c9e4e46eaaaab8d002fb12fc3332b8cdd134d6",
-		"bytes": 5944
+		"sha256": "87b0ea137aeec295cf15c6240a93f2b098cb8b2ef45dd975e21b4f055d40aa64",
+		"bytes": 5949
 	},
 	"src/contents/memos/106-trim-left.mdx": {
-		"sha256": "9c8b0aeb163fc49c6cf5bc9ae8513e77a65bb514fbf93d44da6cfbbb32e3974f",
-		"bytes": 8740
+		"sha256": "fae4f219df9902ee4c14d2a6bda18e79e525b1d5e948156ddea92b9c38df6250",
+		"bytes": 8745
 	},
 	"src/contents/memos/108-trim.mdx": {
-		"sha256": "e191246ffe6531f979092b2a2f9834cb4790cd188562f768139a00ae5286c640",
-		"bytes": 9348
+		"sha256": "5c48290bd4c3c7da0f880b41018330fba2abcee8cb45f719c5f9d0b499ad7e89",
+		"bytes": 9353
 	},
 	"src/contents/memos/11-tuple-to-object.mdx": {
-		"sha256": "4acd0ea08fb07674b0b972ba2495c24aeb4017f022ed13a0f5cfab1f5e0a2123",
-		"bytes": 18445
+		"sha256": "cc65b03b6fa5e54400430db96c1eb724795d6572f2fc1654389259e2c155faab",
+		"bytes": 18450
 	},
 	"src/contents/memos/11-what-is-composition-create-a-pipe.mdx": {
-		"sha256": "e96beedfc2ae002ef9e13ea078c1dbe710de609f30f520a8d89543005793e476",
-		"bytes": 1701
+		"sha256": "fd96cc8a036be72264c1d48797ed1643cbbfeb1f73e79848b5ca55b448f173a7",
+		"bytes": 1706
 	},
 	"src/contents/memos/110-capitalize.mdx": {
-		"sha256": "2b45bd28f7ba0b61f4d6c395e6fa4a63878eb13e2219a3cf506de86459c61903",
-		"bytes": 1896
+		"sha256": "40a8630e40060ddc31f54f2205fb17e375c8c99e670822ac3fa001499179a536",
+		"bytes": 1901
 	},
 	"src/contents/memos/12-chainable-options.mdx": {
-		"sha256": "eb29877e6a5d23ebb6b71d0c7a932e838818bd404cbf3c40e7e5e10f208cf621",
-		"bytes": 20056
+		"sha256": "51e7cef6fd279ea24bb2aba27262d57a6c44d16545df2b3ab40f9ceee9a6ca25",
+		"bytes": 20061
 	},
 	"src/contents/memos/14-first-of-array.mdx": {
-		"sha256": "d0a2f3cc615f756d7f13e8b43143c40cd4c7ec6c143f26c31d5d14942ac4cb07",
-		"bytes": 12233
+		"sha256": "3fd7bf052f89eb83a00aced41229c26c445bcf70395a0c4a5454d5aad7500074",
+		"bytes": 12238
 	},
 	"src/contents/memos/15-implement-a-simple-dom-wrapper-to-support-method-chaining-like-jquery.mdx": {
-		"sha256": "9e08b4b03c94c67eeb5281f9e0374bf56bcb6b443e6e7aa51fbba43650f5ac70",
-		"bytes": 2979
+		"sha256": "bfa9dc5360b0cb1982d71951f3b6cf5e470d79e4ec6e68623a3cf5dea804bc95",
+		"bytes": 2984
 	},
 	"src/contents/memos/15-last-of-array.mdx": {
-		"sha256": "41907d5605575a0ba2480e79ee68f93e5562729076959ebb0d3855d65c83a28a",
-		"bytes": 8519
+		"sha256": "e4bda3e049b2f5ce22bba9ed929ada05312e312a474977ae59bd1da580ed7cdb",
+		"bytes": 8524
 	},
 	"src/contents/memos/16-pop.mdx": {
-		"sha256": "14e913c3a25d5d64195149cd2aba8dd59a6e028a7ee2be6d2de1326c7680b015",
-		"bytes": 9285
-	},
-	"src/contents/memos/167-intersection-of-unsorted-arrays.mdx": {
-		"sha256": "f0c236117c92e95d0286ddfce3755a478c14b93069d3b52a74ada16c91b3f731",
-		"bytes": 1181
-	},
-	"src/contents/memos/18-improve-a-function.mdx": {
-		"sha256": "afae6ad97baa95983780146826911edd63d1dcac601d03968444003dc2ea0fcc",
-		"bytes": 9951
-	},
-	"src/contents/memos/18-length-of-tuple.mdx": {
-		"sha256": "90fa91294270daf6974385145929f1154d4e142c6c92144c3ea163718ca63663",
-		"bytes": 10197
-	},
-	"src/contents/memos/189-awaited.mdx": {
-		"sha256": "f80b5624ea579c4403e3f826e5a5fac7bd6141f937a87c899e917514fbfa3ea9",
-		"bytes": 14463
-	},
-	"src/contents/memos/2-get-return-type.mdx": {
-		"sha256": "80facf1f2afd559a559174264b29ab76105da14be0b9aa3902ab3ad8cff75905",
-		"bytes": 14506
-	},
-	"src/contents/memos/20-promiseall.mdx": {
-		"sha256": "8109d89e8e0a3fea870d294f8c53616a726bab85c29c2177982400bf40923a3a",
-		"bytes": 29247
-	},
-	"src/contents/memos/268-if.mdx": {
-		"sha256": "5f97897a876f2b6ca1db0367afd0fd8d04de2019d35b8b763fb467f9cab7754c",
-		"bytes": 8373
-	},
-	"src/contents/memos/28-implement-clearalltimeout.mdx": {
-		"sha256": "f5471740feecd7b1d63ee924b1162d88f1e9633955cdd24ddc7a60c3b0394eca",
-		"bytes": 1229
-	},
-	"src/contents/memos/3-omit.mdx": {
-		"sha256": "b7be15e67cc5dc45f094eafcbd65b29a132331e94f02b8dbce91eb4077eb94b0",
-		"bytes": 14639
-	},
-	"src/contents/memos/3057-push.mdx": {
-		"sha256": "511d5e248fdc0644296acb79567ad801f3669cd8c28ed72ef5ad59409681bbc7",
+		"sha256": "5a5c9676f9b26561bad8a783810b89043c3505657d9f4d0f78b623472d721833",
 		"bytes": 9290
 	},
+	"src/contents/memos/167-intersection-of-unsorted-arrays.mdx": {
+		"sha256": "615e902656052b41540765e2d6be7754a26c9f1418e8a257ef886f2ec2b32bbc",
+		"bytes": 1186
+	},
+	"src/contents/memos/18-improve-a-function.mdx": {
+		"sha256": "752ba390290fea549caf0d86ff8aded21c389d1acd9377b1e1872925cbd0340e",
+		"bytes": 9956
+	},
+	"src/contents/memos/18-length-of-tuple.mdx": {
+		"sha256": "9f0754648526cf7124301f623ce029857755086d2f2bf87832589bb49eb0e228",
+		"bytes": 10202
+	},
+	"src/contents/memos/189-awaited.mdx": {
+		"sha256": "f8d862b3cf31e7218bd2925d18b95dfb192d50cb18d2ac453fd032e887738c84",
+		"bytes": 14468
+	},
+	"src/contents/memos/2-get-return-type.mdx": {
+		"sha256": "b55e58de4245d91176d53ff234199b33b4177555144a3ee11a3a21b620e162f5",
+		"bytes": 14511
+	},
+	"src/contents/memos/20-promiseall.mdx": {
+		"sha256": "d7807b6c7d82a339ac82d05ea6476803e518de597a3c0a3fb0fb86471e4c2496",
+		"bytes": 29252
+	},
+	"src/contents/memos/268-if.mdx": {
+		"sha256": "d05e91b0449db23844132bc8a97e4e047955a151ffde05bf8e42806ac5f95460",
+		"bytes": 8378
+	},
+	"src/contents/memos/28-implement-clearalltimeout.mdx": {
+		"sha256": "4697477205128e187176eae7c41e728195781ca0745d35f7670667876ba0b482",
+		"bytes": 1234
+	},
+	"src/contents/memos/3-omit.mdx": {
+		"sha256": "988c7de9e290a08e650f7964454c41ecfa155c3f068679efa7bc383d3ed70e6e",
+		"bytes": 14644
+	},
+	"src/contents/memos/3057-push.mdx": {
+		"sha256": "1761f546edf854c4c9c667b539914d8a6acc3687ca1507cca4e8a0c47f6971cb",
+		"bytes": 9295
+	},
 	"src/contents/memos/3060-unshift.mdx": {
-		"sha256": "ddd633979054a456b18917bf4fd1b91072700e464221c36950d416ce36d5edb9",
-		"bytes": 6779
+		"sha256": "0c2f414477e909c10392975044e85616031984f4bdcac5a2eedc30ef738a86a4",
+		"bytes": 6784
 	},
 	"src/contents/memos/3312-parameters.mdx": {
-		"sha256": "186956dafcdb8cb9f64489b9044d17fb9e9e57f02cee1a8eaaa98a7a2608f762",
-		"bytes": 9626
+		"sha256": "a6cbfb7dbd4212407df8bfdb22e761535a8114a45ffa4d7beba06a4644ace7f8",
+		"bytes": 9631
 	},
 	"src/contents/memos/4-pick.mdx": {
-		"sha256": "2277d0f2e9e303b99b97d104412337929398fef8d0476c167f4d46f049d7f5d8",
-		"bytes": 15133
+		"sha256": "72e267f8645c3c27a9acf2983fc75b97398dd1a29385b193df7619fb97ad4503",
+		"bytes": 15138
 	},
 	"src/contents/memos/43-exclude.mdx": {
-		"sha256": "5a95b8e1af2879ea60caa833a5790e976a79c18d84238fcbf3992674902ff7ac",
-		"bytes": 10401
+		"sha256": "7a2d8a463aef5ca96cc94ddad5bb2774f77b2d6ae3d7de96e6b7c11f0af02afa",
+		"bytes": 10406
 	},
 	"src/contents/memos/533-concat.mdx": {
-		"sha256": "af6d4025a7611872360028212d2445ef39a1800b4dc5ee394edfdbec43b7d17c",
-		"bytes": 10485
+		"sha256": "ccdbb8473e2383e060ca035878087928f70ba4bb76885679a5ea57d01ff5eed2",
+		"bytes": 10490
 	},
 	"src/contents/memos/6-implement-basic-debounce.mdx": {
-		"sha256": "5472cba5327040552d88db350adfd283a708d7c8162ba9d7a17f212b77cbfa4a",
-		"bytes": 2979
+		"sha256": "5f3cbbed60d8348b18d41950bbc40a97da2f9f1f7f5656e6961a603b0e5b391b",
+		"bytes": 2984
 	},
 	"src/contents/memos/62-type-lookup.mdx": {
-		"sha256": "8b0e6317b0bd930d591f7889b8d27e64b67c7c0d250b14befc7bc64f82459f52",
-		"bytes": 11778
+		"sha256": "d25ba76f7905de19e7993686b4b1df7811c176a46ae26f75a8f1de3938a07f9f",
+		"bytes": 11783
 	},
 	"src/contents/memos/7-readonly.mdx": {
-		"sha256": "bf425593558213db45f31bb85aaec4f349dd914ec26364b56d11a784098f65c1",
-		"bytes": 8358
+		"sha256": "1c8fc69017a73048bdbefe222744318acaa08c53e6182dce40b4d8c4fbb699de",
+		"bytes": 8363
 	},
 	"src/contents/memos/8-can-you-shuffle-an-array.mdx": {
-		"sha256": "c95fb58c5f33bb22965c1aedb8a746549b56cca3fb128d4fda3f94318ae4e6cb",
-		"bytes": 1203
+		"sha256": "a487488e4de17cc3143752c39c9ca7b1e562176c5facbe8d3e09adda9fadfd2d",
+		"bytes": 1208
 	},
 	"src/contents/memos/8-readonly-2.mdx": {
-		"sha256": "d74e393beb21b096c703140b7d95c94aa74a50f7e1f587ed780f2cece51d8e8c",
-		"bytes": 15448
+		"sha256": "f8c78c12927ce324a1789c1d153dab3bc874601a1d4d0420c74ca83a475d38da",
+		"bytes": 15453
 	},
 	"src/contents/memos/898-includes.mdx": {
-		"sha256": "621a3be8c9dce31cb9373acd8de546333c0276ef8c95bf716caa98e8b8936380",
-		"bytes": 22199
+		"sha256": "953079bd81a07464df1e36da35ab8479a095c491db7c0d449f20ade939b6cb11",
+		"bytes": 22204
 	},
 	"src/contents/memos/9-deep-readonly.mdx": {
 		"sha256": "0e0006eed969f0aecce5f0956c1fa203f7437e13adbc2a2f02cbf7b897b1b6a4",
 		"bytes": 23298
 	},
 	"src/contents/memos/js의-데이터-타입-및-메모리-관리.mdx": {
-		"sha256": "c88d793288d99029e40138b2ef7165f0ca680b752648e36b96365aad7fca6b08",
-		"bytes": 18423
+		"sha256": "cb9287ad224c03c89b139708e9ac2d34926304b981e5a312bf2ad588404c6795",
+		"bytes": 18547
 	},
 	"src/contents/memos/js의-비동기-처리-메커니즘.mdx": {
-		"sha256": "82e337e18435bc621707e98dfb29ab7782e3d457d853f1a8e78c867fa35dd3d0",
-		"bytes": 20338
+		"sha256": "d0cd77e2d0b8aac546ea7d579254b53181394e74432a17117d0470ed8a9c4c85",
+		"bytes": 20400
 	},
 	"src/contents/memos/js의-코드-실행-메커니즘.mdx": {
-		"sha256": "ec3fdbec0a614176b1e11811f4767ad0a2a0237b0baff79f387ce538e7a5c326",
-		"bytes": 11096
+		"sha256": "4378a668c5e6e38c28e0ceb143c642402fbd21d1230ee2090fcc78ac8a69c8bf",
+		"bytes": 11220
 	},
 	"src/contents/memos/tuple과-readonly.mdx": {
 		"sha256": "1b4ed782577670ebccea61cc8d03c23e2f8fde001328be6aac7dbaf36dc6b97f",
 		"bytes": 19124
 	},
 	"src/contents/memos/xxx-equal.mdx": {
-		"sha256": "a38f4ba955ae53c3af08748c5467996530877e1db82f21c5975779cc5e3e42c6",
-		"bytes": 18103
+		"sha256": "560fea523f08a66605c3e4506c3f8c9d1ae35cc8c80e86be7b716382f3d2c323",
+		"bytes": 18170
 	},
 	"src/contents/memos/정규표현식-정리.mdx": {
 		"sha256": "09f5dd2e81a28740b5433074799c8f00c6ec41161c360657b81e4932dc399e5b",

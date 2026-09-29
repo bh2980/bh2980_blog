@@ -50,6 +50,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { cn } from "@/utils/cn";
@@ -87,16 +88,14 @@ function ToolbarAction({
 	href,
 	onClick,
 	disabled = false,
-	pressed,
 }: {
 	label: string;
 	icon: LucideIcon;
 	href?: string;
 	onClick?: () => void;
 	disabled?: boolean;
-	pressed?: boolean;
 }) {
-	const className = cn("size-8 shrink-0 text-muted-foreground", pressed && "bg-secondary text-foreground");
+	const className = "size-8 shrink-0 text-muted-foreground";
 	const icon = <Icon aria-hidden className="size-4" />;
 	return (
 		<Tooltip>
@@ -118,7 +117,6 @@ function ToolbarAction({
 							size="icon-sm"
 							variant="ghost"
 							aria-label={label}
-							aria-pressed={pressed}
 							disabled={disabled}
 							className={className}
 							onClick={onClick}
@@ -667,10 +665,7 @@ export function EntryEditorShell({
 				aria-describedby={titleIssue ? "cms-title-error" : undefined}
 				onChange={(event) => handleTitleChange(event.target.value)}
 				placeholder="제목 없는 글"
-				className={cn(
-					"h-auto w-full rounded-none border-0 bg-transparent py-1 font-semibold leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent",
-					editorMode === "visual" ? "px-6 text-[34px] md:text-[34px]" : "mb-4 px-1 text-2xl",
-				)}
+				className="h-auto w-full rounded-none border-0 bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
 			/>
 			{titleIssue && (
 				<p id="cms-title-error" className="text-destructive text-sm">
@@ -695,7 +690,7 @@ export function EntryEditorShell({
 			>
 				<MoreHorizontal aria-hidden className="size-4" />
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="max-h-80 w-56 overflow-y-auto">
+			<DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>템플릿</DropdownMenuLabel>
 					{templates === null ? (
@@ -719,6 +714,50 @@ export function EntryEditorShell({
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+
+	const sourceModeToggle = (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Toggle
+						size="sm"
+						aria-label="MDX 원문"
+						pressed={editorMode === "source"}
+						// 해석할 수 없는 본문은 시각 모드로 돌아가지 못한다.
+						disabled={editorMode === "source" && !canUseVisual}
+						onPressedChange={(pressed) => setEditorMode(pressed ? "source" : "visual")}
+						className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
+					/>
+				}
+			>
+				<CodeXml aria-hidden className="size-4" />
+				MDX
+			</TooltipTrigger>
+			<TooltipContent side="bottom">MDX 원문</TooltipContent>
+		</Tooltip>
+	);
+	const sourceEditor = (
+		<>
+			<Textarea
+				id="cms-mdx-source"
+				aria-label="MDX 본문"
+				aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
+				aria-describedby={bodyIssue ? "cms-mdx-error" : undefined}
+				value={form.mdx}
+				readOnly={isReadOnly}
+				onChange={(event) => setForm({ mdx: event.target.value })}
+				onCompositionStart={() => autosave.setComposing(true)}
+				onCompositionEnd={() => autosave.setComposing(false)}
+				placeholder="MDX 원문을 작성하세요..."
+				className="min-h-[calc(100vh-240px)] w-full flex-1 resize-none p-4 font-mono text-sm md:text-sm"
+			/>
+			{bodyIssue && (
+				<p id="cms-mdx-error" className="mt-2 text-destructive text-sm">
+					{cmsIssueMessage(bodyIssue)}
+				</p>
+			)}
+		</>
 	);
 
 	return (
@@ -797,13 +836,6 @@ export function EntryEditorShell({
 						</a>
 					)}
 
-					<ToolbarAction
-						label={editorMode === "visual" ? "MDX 원문 보기" : "시각 모드로 돌아가기"}
-						icon={CodeXml}
-						pressed={editorMode === "source"}
-						disabled={editorMode === "source" && !canUseVisual}
-						onClick={() => setEditorMode(editorMode === "visual" ? "source" : "visual")}
-					/>
 					<ToolbarAction
 						label="저장"
 						icon={Save}
@@ -972,40 +1004,17 @@ export function EntryEditorShell({
 
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
-					{editorMode === "visual" ? (
-						<CmsEditor
-							content={form.mdx}
-							titleField={titleInput}
-							toolbarLeading={templateMenu}
-							editable={!isReadOnly}
-							onChange={(mdx) => setForm({ mdx })}
-							onCompositionStart={() => autosave.setComposing(true)}
-							onCompositionEnd={() => autosave.setComposing(false)}
-						/>
-					) : (
-						<div className="mx-auto flex h-full w-full max-w-3xl flex-col p-6">
-							<div className="mb-6 flex justify-start">{templateMenu}</div>
-							<div className="mb-6 border-border/60 border-b pb-5">{titleInput}</div>
-							<Textarea
-								id="cms-mdx-source"
-								aria-label="MDX 본문"
-								aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
-								aria-describedby={bodyIssue ? "cms-mdx-error" : undefined}
-								value={form.mdx}
-								readOnly={isReadOnly}
-								onChange={(event) => setForm({ mdx: event.target.value })}
-								onCompositionStart={() => autosave.setComposing(true)}
-								onCompositionEnd={() => autosave.setComposing(false)}
-								placeholder="MDX 원문을 작성하세요..."
-								className="w-full flex-1 resize-none p-4 font-mono text-sm md:text-sm"
-							/>
-							{bodyIssue && (
-								<p id="cms-mdx-error" className="text-destructive text-sm">
-									{cmsIssueMessage(bodyIssue)}
-								</p>
-							)}
-						</div>
-					)}
+					<CmsEditor
+						content={form.mdx}
+						titleField={titleInput}
+						toolbarEnd={templateMenu}
+						toolbarAside={sourceModeToggle}
+						sourceView={editorMode === "source" ? sourceEditor : undefined}
+						editable={!isReadOnly}
+						onChange={(mdx) => setForm({ mdx })}
+						onCompositionStart={() => autosave.setComposing(true)}
+						onCompositionEnd={() => autosave.setComposing(false)}
+					/>
 				</div>
 
 				{isInspectorOpen ? (

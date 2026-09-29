@@ -25,7 +25,7 @@ import {
 	SquareCode,
 	Table2,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -39,6 +39,7 @@ import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
+import { CustomBlockMenu } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
@@ -59,8 +60,12 @@ interface CmsEditorProps {
 	onChange: (newContent: string) => void;
 	/** 편집 문서의 제목 입력. 서식 도구 아래, 본문 위에 놓는다. */
 	titleField?: ReactNode;
-	/** 툴바 맨 왼쪽에 놓을 문서 작업 메뉴. */
-	toolbarLeading?: ReactNode;
+	/** 서식 도구 맨 끝에 놓을 문서 작업 메뉴. */
+	toolbarEnd?: ReactNode;
+	/** 서식 도구와 떨어진 툴바 오른쪽 끝(보기 전환 등). */
+	toolbarAside?: ReactNode;
+	/** 주어지면 본문 자리에 이것(원문 편집 등)을 보이고 시각 편집을 멈춘다. 툴바와 제목은 그대로 둔다. */
+	sourceView?: ReactNode;
 	onCompositionStart?: () => void;
 	onCompositionEnd?: () => void;
 	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
@@ -153,9 +158,10 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 			icon: Table2,
 			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
 		},
-		{ label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() },
 	],
 ];
+
+const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
 
 const BLOCK_STYLES = TOOLBAR_GROUPS[0] ?? [];
 const INLINE_TOOLS = TOOLBAR_GROUPS[1] ?? [];
@@ -172,11 +178,14 @@ function ToolbarDropdown({
 	label,
 	items,
 	icon: Icon,
+	iconOnly = false,
 }: {
 	editor: Editor;
 	label: string;
 	items: ToolbarItem[];
 	icon?: LucideIcon;
+	/** 글자 없이 아이콘만 보인다. 이름은 aria-label과 툴팁으로 알린다. */
+	iconOnly?: boolean;
 }) {
 	return (
 		<DropdownMenu>
@@ -186,15 +195,16 @@ function ToolbarDropdown({
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="h-8 gap-1 px-2 text-xs"
+						className={cn("h-8 gap-1 text-xs", iconOnly ? "px-1.5" : "px-2")}
 						aria-label={label}
+						title={iconOnly ? label : undefined}
 						disabled={!editor.isEditable}
 						onMouseDown={(event) => event.preventDefault()}
 					/>
 				}
 			>
 				{Icon && <Icon aria-hidden className="size-4" />}
-				{label}
+				{!iconOnly && label}
 				<ChevronDown aria-hidden className="size-3" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="min-w-36">
@@ -268,11 +278,18 @@ export function CmsEditor({
 	content,
 	onChange,
 	titleField,
-	toolbarLeading,
+	toolbarEnd,
+	toolbarAside,
+	sourceView,
 	onCompositionStart,
 	onCompositionEnd,
 	editable = true,
 }: CmsEditorProps) {
+	const isSourceMode = sourceView != null && sourceView !== false;
+	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
+	const canEdit = editable && !isSourceMode;
+	// 원문 모드로 열린 본문은 해석할 수 없을 수 있다. 시각 편집기는 빈 문서로 만들고 돌아올 때 채운다.
+	const [initialContent] = useState(() => mdxToTiptap(isSourceMode ? "" : content));
 	const isInternalUpdateRef = useRef(false);
 	const isComposingRef = useRef(false);
 	const editorRef = useRef<Editor | null>(null);
@@ -332,9 +349,9 @@ export function CmsEditor({
 
 	const editor = useEditor({
 		immediatelyRender: false,
-		editable,
+		editable: canEdit,
 		extensions: buildEditorExtensions(),
-		content: mdxToTiptap(content),
+		content: initialContent,
 		editorProps: {
 			attributes: {
 				"aria-label": "본문 편집기",
@@ -431,22 +448,34 @@ export function CmsEditor({
 		},
 	});
 	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "본문") : "본문";
-	const listStyle = editor ? (LIST_STYLES.find((item) => item.isActive?.(editor))?.title ?? "목록") : "목록";
+	const activeList = editor ? LIST_STYLES.find((item) => item.isActive?.(editor)) : undefined;
 
 	useEffect(() => {
 		editorRef.current = editor;
-		if (!editor) return;
-		// 비교 기준은 저장 문자열(MDX)이다 — Tiptap JSON 객체 비교는 순서 때문에 깨진다.
-		if (tiptapToMdx(editor.getJSON()) !== content) {
+		if (!editor || isSourceMode) return;
+		// 노드 뷰를 React로 다시 그리므로 effect 안에서 바로 바꾸지 않는다(flushSync 경고). 원문 모드에서 돌아올 때 등.
+		let cancelled = false;
+		queueMicrotask(() => {
+			if (cancelled || editor.isDestroyed) return;
+			// 비교 기준은 저장 문자열(MDX)이다 — Tiptap JSON 객체 비교는 순서 때문에 깨진다.
+			if (tiptapToMdx(editor.getJSON()) === content) return;
 			isInternalUpdateRef.current = true;
 			editor.commands.setContent(mdxToTiptap(content), { emitUpdate: false });
 			isInternalUpdateRef.current = false;
-		}
-	}, [content, editor]);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [content, editor, isSourceMode]);
 
+	// 툴바 도구는 그릴 때 editor.isEditable을 읽는다. 잠금을 바꾼 뒤 한 번 더 그려 도구 상태를 맞춘다.
+	const [, rerender] = useReducer((count: number) => count + 1, 0);
 	useEffect(() => {
-		editor?.setEditable(editable);
-	}, [editable, editor]);
+		if (!editor || editor.isEditable === canEdit) return;
+		// update 이벤트를 내지 않는다. 내면 원문 모드로 바뀔 때 멈춘 시각 문서가 본문을 덮어쓴다.
+		editor.setEditable(canEdit, false);
+		rerender();
+	}, [canEdit, editor]);
 
 	const linkQuery = link?.query;
 	useEffect(() => {
@@ -604,7 +633,7 @@ export function CmsEditor({
 				// 본문 바깥 빈 여백에서 누른 채 끌면 마키(네모 영역)로 블록을 고른다. 편집기 안쪽 여백은
 				// 블록 선택 플러그인이 맡는다. 서식 도구·제목 입력·버튼 같은 조작 요소와 포털(팝오버)은 제외한다.
 				const target = event.target as HTMLElement;
-				if (!editable || !event.currentTarget.contains(target) || editor.view.dom.contains(target)) return;
+				if (!canEdit || !event.currentTarget.contains(target) || editor.view.dom.contains(target)) return;
 				if (target.closest('input, textarea, button, select, a, [role="toolbar"], [contenteditable="true"]')) return;
 				startMarquee(editor.view, event.nativeEvent);
 			}}
@@ -614,67 +643,82 @@ export function CmsEditor({
 				aria-label="서식 도구"
 				className="sticky top-0 z-10 w-full overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
-				<div className="mx-auto flex min-h-12 w-max min-w-full items-center justify-center gap-1 px-4 py-2">
-					{toolbarLeading}
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="size-8 p-0"
-									aria-label="이미지 삽입"
-									disabled={!editable}
-									onClick={() => setImageDialog({ file: null })}
-								/>
-							}
-						>
-							<ImageIcon className="size-4" aria-hidden />
-						</TooltipTrigger>
-						<TooltipContent side="bottom">이미지 삽입</TooltipContent>
-					</Tooltip>
-					<ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />
-					<ToolbarDivider />
-					{INLINE_TOOLS.map((item) => (
-						<ToolbarButton key={item.label} editor={editor} item={item} />
-					))}
-					<TooltipPopover editor={editor} />
-					<ToolbarDivider />
-					{ALIGN_TOOLS.map((item) => (
-						<ToolbarButton key={item.label} editor={editor} item={item} />
-					))}
-					<ToolbarDivider />
-					<ToolbarDropdown editor={editor} label={listStyle} items={LIST_STYLES} icon={List} />
-					{INSERT_TOOLS.map((item) => (
-						<ToolbarButton key={item.label} editor={editor} item={item} />
-					))}
-					<Popover
-						open={linkDraft !== null}
-						onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
-					>
-						<PopoverTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="size-8 p-0"
-									aria-label="링크 삽입·수정"
-									title="링크 삽입·수정"
-									disabled={!editable}
-									onMouseDown={(event) => event.preventDefault()}
-								/>
-							}
-						>
-							<Link2 aria-hidden className="size-4" />
-						</PopoverTrigger>
-						<PopoverContent align="start" className="w-80">
-							{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
-						</PopoverContent>
-					</Popover>
+				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 자리만큼 양쪽을 똑같이 비우고,
+				    그래도 좁으면 가운데 도구 묶음만 가로로 스크롤한다. */}
+				<div className={cn("relative flex min-h-12 items-center py-2", toolbarAside ? "px-24" : "px-4")}>
+					<div className="mx-auto min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+						<div className="flex w-max items-center gap-1">
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="size-8 p-0"
+											aria-label="이미지 삽입"
+											disabled={!canEdit}
+											onClick={() => setImageDialog({ file: null })}
+										/>
+									}
+								>
+									<ImageIcon className="size-4" aria-hidden />
+								</TooltipTrigger>
+								<TooltipContent side="bottom">이미지 삽입</TooltipContent>
+							</Tooltip>
+							<ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />
+							<ToolbarDivider />
+							{INLINE_TOOLS.map((item) => (
+								<ToolbarButton key={item.label} editor={editor} item={item} />
+							))}
+							<TooltipPopover editor={editor} />
+							<ToolbarDivider />
+							{ALIGN_TOOLS.map((item) => (
+								<ToolbarButton key={item.label} editor={editor} item={item} />
+							))}
+							<ToolbarDivider />
+							<ToolbarDropdown
+								editor={editor}
+								label={activeList?.title ?? "목록"}
+								items={LIST_STYLES}
+								icon={activeList?.icon ?? List}
+								iconOnly
+							/>
+							{INSERT_TOOLS.map((item) => (
+								<ToolbarButton key={item.label} editor={editor} item={item} />
+							))}
+							<CustomBlockMenu editor={editor} />
+							<Popover
+								open={linkDraft !== null}
+								onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
+							>
+								<PopoverTrigger
+									render={
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="size-8 p-0"
+											aria-label="링크 삽입·수정"
+											title="링크 삽입·수정"
+											disabled={!canEdit}
+											onMouseDown={(event) => event.preventDefault()}
+										/>
+									}
+								>
+									<Link2 aria-hidden className="size-4" />
+								</PopoverTrigger>
+								<PopoverContent align="start" className="w-80">
+									{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
+								</PopoverContent>
+							</Popover>
+							<ToolbarButton editor={editor} item={DIVIDER_TOOL} />
+							{toolbarEnd}
+						</div>
+					</div>
+					{toolbarAside && <div className="absolute inset-y-0 right-4 flex items-center">{toolbarAside}</div>}
 				</div>
-				<CodeLinkBar editor={editor} />
+				{!isSourceMode && <CodeLinkBar editor={editor} />}
 			</div>
 
 			{titleField && (
@@ -688,8 +732,12 @@ export function CmsEditor({
 				onInsert={insertImage}
 			/>
 
+			{isSourceMode && <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6">{sourceView}</div>}
+
+			{/* 원문 모드에서도 시각 편집기를 내리지 않고 숨긴다. 돌아오면 원문을 다시 읽어 채운다. */}
 			{/* biome-ignore lint/a11y: canvas click focuses the rich text editor */}
 			<div
+				hidden={isSourceMode}
 				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 py-6"
 				onClick={(event) => {
 					// 본문 밖 빈 캔버스를 눌렀을 때만 끝으로 옮긴다. NodeView 버튼·팝오버(포털)의 클릭도
@@ -700,14 +748,14 @@ export function CmsEditor({
 				}}
 				onPaste={(event) => {
 					const file = imageFileFrom(event.clipboardData.items);
-					if (file && editable) {
+					if (file && canEdit) {
 						event.preventDefault();
 						setImageDialog({ file });
 					}
 				}}
 				onDrop={(event) => {
 					const file = imageFileFrom(event.dataTransfer.files);
-					if (file && editable) {
+					if (file && canEdit) {
 						event.preventDefault();
 						setImageDialog({ file });
 					}
@@ -720,7 +768,7 @@ export function CmsEditor({
 				/>
 			</div>
 
-			{slash && (
+			{slash && !isSourceMode && (
 				<SlashMenuPopup
 					items={filterCommands(slash.query)}
 					coords={slash.coords}
@@ -736,7 +784,7 @@ export function CmsEditor({
 				/>
 			)}
 
-			{link && (
+			{link && !isSourceMode && (
 				<InternalLinkPopup
 					items={linkItems}
 					isLoading={isLinkLoading}
@@ -750,11 +798,14 @@ export function CmsEditor({
 				/>
 			)}
 
-			<TableToolbar editor={editor} />
+			{!isSourceMode && (
+				<>
+					<TableToolbar editor={editor} />
+					<InlineBubble editor={editor} />
+				</>
+			)}
 
-			<InlineBubble editor={editor} />
-
-			{handleSpot && editable && (
+			{handleSpot && canEdit && (
 				<BlockHandleOverlay
 					coords={handleSpot}
 					onMoveUp={withBlock(handleSpot.pos, (current, pos) => moveBlock(current, pos, -1))}
