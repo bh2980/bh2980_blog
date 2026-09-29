@@ -711,7 +711,8 @@ export function TranslationPairView({
 					<span className="pl-3">{targetLocale.toUpperCase()}</span>
 				</div>
 			</div>
-			<div className="mx-auto w-full max-w-6xl border-x px-0 sm:px-0">
+			{/* 마지막 줄이 화면 아래에 붙지 않게 아래 여백을 둔다. */}
+			<div className="mx-auto mb-[35vh] w-full max-w-6xl border-x px-0 sm:px-0">
 				{rows.map((row, index) =>
 					visible(row) ? (
 						<PairRow

@@ -732,13 +732,16 @@ export function CmsEditor({
 				onInsert={insertImage}
 			/>
 
-			{isSourceMode && <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6">{sourceView}</div>}
+			{isSourceMode && (
+				<div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-[35vh]">{sourceView}</div>
+			)}
 
 			{/* 원문 모드에서도 시각 편집기를 내리지 않고 숨긴다. 돌아오면 원문을 다시 읽어 채운다. */}
 			{/* biome-ignore lint/a11y: canvas click focuses the rich text editor */}
 			<div
 				hidden={isSourceMode}
-				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 py-6"
+				// 마지막 줄이 화면 아래에 붙지 않게 아래 여백(화면 높이의 35%)을 둔다.
+				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 pt-6 pb-[35vh]"
 				onClick={(event) => {
 					// 본문 밖 빈 캔버스를 눌렀을 때만 끝으로 옮긴다. NodeView 버튼·팝오버(포털)의 클릭도
 					// React 트리를 따라 여기로 올라오므로, 본문 DOM 안이나 캔버스 밖(포털)은 건드리지 않는다.
