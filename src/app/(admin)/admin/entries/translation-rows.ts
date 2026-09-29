@@ -104,5 +104,5 @@ export function useTranslationRows({
 		[commit],
 	);
 
-	return { rows, sourceError: sourceDoc === null, setTarget, ignoreChange: ignore };
+	return { rows, sourceDoc, sourceError: sourceDoc === null, setTarget, ignoreChange: ignore };
 }

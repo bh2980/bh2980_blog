@@ -161,30 +161,50 @@ const applyHeader = (node: CmsNode, header: HeaderValue | null): CmsNode => {
  * 번역하지 않은 블록(`null`)은 빼고, 번역하지 않은 머리 줄은 비운다(미리보기용 — 발행은 미번역이 없어야 한다).
  */
 export function buildTranslatedDoc(sourceDoc: CmsNode, targets: readonly (string | null)[]): CmsNode {
+	return buildWithOwners(sourceDoc, targets).doc;
+}
+
+/**
+ * `buildTranslatedDoc`과 같고, 만든 노드마다 어느 단위에서 왔는지(`owners`)도 돌려준다.
+ * 블록은 그 노드, 머리 줄은 상자 노드가 단위를 가리킨다. 번역 미리보기가 누른 블록을 단위로 찾을 때 쓴다.
+ */
+export function buildWithOwners(
+	sourceDoc: CmsNode,
+	targets: readonly (string | null)[],
+): { doc: CmsNode; owners: Map<CmsNode, number> } {
+	const owners = new Map<CmsNode, number>();
 	let cursor = 0;
-	const next = () => targets[cursor++] ?? null;
 	const build = (nodes: readonly CmsNode[]): CmsNode[] =>
 		nodes.flatMap((node) => {
 			if (EXPANDED.has(node.type)) {
-				const header = headerValue(node) ? next() : undefined;
+				const headerIndex = headerValue(node) ? cursor++ : undefined;
+				const header = headerIndex === undefined ? undefined : (targets[headerIndex] ?? null);
 				const content = build(node.content ?? []);
 				const shell = header === undefined ? node : applyHeader(node, header === null ? null : parseHeader(header));
 				// 탭 이름은 머리 줄에서 먼저 바꿨다. 안쪽 탭 노드는 속성을 유지하고 내용만 새로 만든다.
-				if (node.type === "Tabs") {
-					return [{ ...shell, content: rebuildTabs(shell.content ?? [], content) }];
-				}
-				return [{ ...shell, content }];
+				const built =
+					node.type === "Tabs"
+						? { ...shell, content: rebuildTabs(shell.content ?? [], content) }
+						: { ...shell, content };
+				if (headerIndex !== undefined) owners.set(built, headerIndex);
+				return [built];
 			}
-			const target = next();
-			return target === null ? [] : parseFragment(target);
+			const index = cursor++;
+			const target = targets[index] ?? null;
+			const produced = target === null ? [] : parseFragment(target);
+			for (const child of produced) owners.set(child, index);
+			return produced;
 		});
 	/** `Tabs`의 자식은 이미 `build`로 새로 만들었다(탭 순서 그대로). 머리 줄에서 바꾼 이름을 입힌다. */
 	const rebuildTabs = (labelled: readonly CmsNode[], built: readonly CmsNode[]) =>
 		built.map((child, index) =>
 			child.type === "Tab" && labelled[index]?.type === "Tab" ? { ...child, attrs: labelled[index]?.attrs } : child,
 		);
-	return { ...sourceDoc, content: build(sourceDoc.content ?? []) };
+	return { doc: { ...sourceDoc, content: build(sourceDoc.content ?? []) }, owners };
 }
+
+/** 번역 단위로 펼치는 상자인가. 미리보기가 에디터 문서와 짝을 맞출 때 같은 규칙을 쓴다. */
+export const isExpandedContainer = (type: string) => EXPANDED.has(type);
 
 /** 저장된 번역 단위(`entry_bodies.translation.units`). */
 export interface StoredUnit {
