@@ -20,6 +20,8 @@ export type InlineAnnotationSource = "mdast" | "mdx-text";
 export type InlineAnnotation = AnnotationBase & {
 	scope: "char" | "document";
 	source: InlineAnnotationSource;
+	/** 정규식 규칙(`{re:/.../}`)으로 찾은 범위면 그 규칙의 `CodeBlockDocument.rules` 번호. */
+	rule?: number;
 };
 
 export type LineAnnotation = AnnotationBase & {
@@ -69,9 +71,24 @@ export type Line = { value: string; annotations: InlineAnnotation[] };
 
 export type CodeBlockMetaValue = string | boolean;
 
+/**
+ * 정규식으로 범위를 찾는 주석 규칙. 저장할 때 찾은 범위(고정 위치)가 아니라 규칙 그대로 쓴다.
+ * - `char`: `line` 번째 줄에서만 찾는다(`// @char fold {re:/.../}`를 그 줄 바로 위에 둔다).
+ * - `document`: 코드 전체에서 찾는다.
+ */
+export type CodeBlockRule = {
+	scope: "char" | "document";
+	name: string;
+	pattern: string;
+	flags: string;
+	line?: number;
+	attributes: AnnotationAttr[];
+};
+
 export type CodeBlockDocument = {
 	lang: string;
 	meta: Record<string, CodeBlockMetaValue>;
 	annotations: LineAnnotation[];
 	lines: Array<Line>;
+	rules?: CodeBlockRule[];
 };

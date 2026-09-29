@@ -32,6 +32,12 @@ const isListElement = (element: HTMLElement) =>
 const isListItemElement = (element: HTMLElement) =>
 	element.tagName === "LI" || element.getAttribute("data-type") === "taskItem";
 
+/**
+ * 안으로 내려가지 않는 NodeView(코드 블록). contentDOM 안이 블록이 아니라 글자 조각이라, 내려가면 코드 줄마다
+ * 핸들이 뜬다. 블록 전체를 한 대상으로 본다.
+ */
+const LEAF_VIEW_SELECTOR = ".node-codeBlock";
+
 /** 자식 블록을 따로 옮길 수 없는 틀(단 하나·탭 하나). 핸들 대상이 되지 않는다. */
 const STRUCTURAL_VIEWS = ["node-cmsColumn", "node-cmsTab"];
 const isStructural = (element: HTMLElement) => STRUCTURAL_VIEWS.some((name) => element.classList.contains(name));
@@ -51,6 +57,7 @@ const childBlocksOf = (element: HTMLElement): HTMLElement[] | null => {
 	if (isListElement(element)) return children(element).filter(isListItemElement);
 	// 목록 항목은 들여쓴 목록만 따로 나눈다(항목의 문단은 항목과 같은 대상이다).
 	if (isListItemElement(element)) return children(element).filter(isListElement);
+	if (element.matches(LEAF_VIEW_SELECTOR)) return null;
 	if (element.classList.contains("react-renderer")) {
 		const hole = contentHoleOf(element);
 		return hole ? children(hole) : null;
@@ -130,7 +137,8 @@ export function findBlockDOM(root: HTMLElement, target: HTMLElement | null): HTM
 
 	// 인용문은 한 덩어리로 옮긴다. 안쪽 문단에 핸들을 두면 인용문 왼쪽 줄과 겹치고, 같은 줄에 핸들이 둘이 된다.
 	const quote = target.closest("blockquote");
-	let current: HTMLElement | null = quote && root.contains(quote) ? quote : target;
+	const leaf = target.closest<HTMLElement>(LEAF_VIEW_SELECTOR);
+	let current: HTMLElement | null = quote && root.contains(quote) ? quote : leaf && root.contains(leaf) ? leaf : target;
 
 	while (current && current !== root) {
 		const parent: HTMLElement | null = current.parentElement;

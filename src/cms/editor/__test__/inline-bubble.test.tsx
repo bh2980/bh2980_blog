@@ -75,11 +75,21 @@ describe("inlineBubbleTarget", () => {
 		});
 	});
 
-	it("효과 없는 곳의 커서, 코드 블록 안에는 띄우지 않는다", () => {
+	it("효과 없는 곳의 커서, 원문 편집 중인 코드 블록, 코드 블록을 넘나드는 선택에는 띄우지 않는다", () => {
 		const editor = createEditor(HTML);
 		editor.commands.setTextSelection(2);
 		expect(inlineBubbleTarget(editor.state)).toBeNull();
+
 		const codeStart = editor.state.doc.firstChild?.nodeSize ?? 0;
+		editor.commands.setTextSelection({ from: codeStart + 1, to: codeStart + 3 });
+		expect(inlineBubbleTarget(editor.state)).toMatchObject({ kind: "selection" });
+		editor.commands.setTextSelection({ from: 2, to: codeStart + 3 });
+		expect(inlineBubbleTarget(editor.state)).toBeNull();
+
+		editor.commands.command(({ tr }) => {
+			tr.setNodeMarkup(codeStart, undefined, { ...editor.state.doc.child(1).attrs, rawMode: true });
+			return true;
+		});
 		editor.commands.setTextSelection({ from: codeStart + 1, to: codeStart + 3 });
 		expect(inlineBubbleTarget(editor.state)).toBeNull();
 	});
@@ -187,5 +197,58 @@ describe("InlineBubble", () => {
 			editor.commands.setTextSelection(5);
 		});
 		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
+	});
+
+	it("코드 블록에서는 코드가 받는 효과와 글자 접기만 보인다", () => {
+		const editor = createEditor("<pre><code>call(a, b)</code></pre>");
+		focusAt(editor, { from: 6, to: 10 });
+		renderBubble(editor);
+
+		const toolbar = screen.getByRole("toolbar", { name: "인라인 서식" });
+		const labels = [...toolbar.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
+		expect(labels).toEqual(["굵게", "기울임", "취소선", "밑줄", "툴팁 추가", "글자 접기"]);
+
+		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기" })));
+		expect(editor.getHTML()).toMatch(/call\(<span data-code-fold=""[^>]*>a, b<\/span>\)/);
+	});
+
+	it("코드의 글자 접기 옆 커서에서 해제·열림 설정을 한다", () => {
+		const editor = createEditor("<pre><code>call(a, b)</code></pre>");
+		editor.chain().setTextSelection({ from: 6, to: 10 }).setMark("codeFold").run();
+		focusAt(editor, 6);
+		renderBubble(editor);
+
+		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
+		act(() => fireEvent.click(screen.getByRole("button", { name: "공개 글에서 처음부터 펼쳐 두기" })));
+		expect(editor.getHTML()).toContain('data-open="true"');
+		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기 해제" })));
+		expect(editor.getHTML()).not.toContain("data-code-fold");
+	});
+
+	it("정규식 규칙으로 접은 곳에서는 규칙째 지우거나 개별 효과로 풀 수 있다", () => {
+		const rule = { id: "r", scope: "document", name: "fold", pattern: "b", flags: "g", attrs: {} };
+		const editor = createEditor("<pre><code>abab</code></pre>");
+		editor.commands.command(({ tr }) => {
+			tr.setNodeMarkup(0, undefined, { ...editor.state.doc.child(0).attrs, rules: [rule] });
+			return true;
+		});
+		focusAt(editor, 3);
+		const { unmount } = renderBubble(editor);
+		expect(screen.getByText("글자 접기 규칙 · 2곳")).toBeTruthy();
+
+		act(() => fireEvent.click(screen.getByRole("button", { name: "개별 효과로 바꾸기 (하나씩 지울 수 있게)" })));
+		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
+		expect(editor.getHTML().match(/data-code-fold/g)).toHaveLength(2);
+		unmount();
+
+		editor.commands.command(({ tr }) => {
+			tr.setNodeMarkup(0, undefined, { ...editor.state.doc.child(0).attrs, rules: [rule] });
+			return true;
+		});
+		editor.commands.unsetMark("codeFold", { extendEmptyMarkRange: true });
+		focusAt(editor, 3);
+		renderBubble(editor);
+		act(() => fireEvent.click(screen.getByRole("button", { name: "규칙 삭제 (2곳 모두)" })));
+		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
 	});
 });

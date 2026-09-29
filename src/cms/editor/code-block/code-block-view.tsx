@@ -1,64 +1,114 @@
 "use client";
 
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
-import { Check, Copy, Info, ListOrdered, MessageSquare, Underline as UnderlineIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
+import {
+	codeEffectsKey,
+	type FoldRegion,
+	foldRegions,
+	lineEffectsOf,
+	pickLines,
+	rulesOf,
+	setFoldOpen,
+} from "./effects-plugin";
 import { CODE_LANGUAGE_OPTIONS } from "./languages";
+import { LineMenu } from "./line-menu";
 import { formatMeta, parseMeta } from "./meta";
-import type { CodeBlockAnnotationItem } from "./types";
+import { type CodeLineEffect, type CodeRule, lineAt, lineRange, lineStarts } from "./model";
+import { RulesPanel } from "./rules-panel";
 
+/** 한 줄 높이(px). 코드(`leading-6`)와 줄 번호 칸·줄 배경이 같은 높이를 쓴다. */
+const LINE_HEIGHT = 24;
+/** 코드 위아래 여백(`py-3`). */
+const PAD_TOP = 12;
+
+/** 줄 배경. 공개 화면(annotation constants)과 같은 색이다. */
+const LINE_BACKGROUND: Record<string, string> = {
+	highlight: "bg-gray-400/20",
+	plus: "bg-green-400/10 shadow-[inset_2px_0_0_0_rgba(74,222,128,1)]",
+	minus: "bg-red-400/10 shadow-[inset_2px_0_0_0_rgba(239,68,68,1)]",
+};
+
+/** 경고·오류 물결 밑줄 색. 공개 화면(annotation constants)과 같다. */
+const WAVY: Record<string, string> = {
+	warning: "decoration-yellow-400/80",
+	error: "decoration-red-500",
+};
+
+const effectsOnLine = (effects: readonly CodeLineEffect[], line: number) =>
+	effects.filter((effect) => effect.start <= line && line < effect.end);
+
+/**
+ * 코드 블록 편집 화면(v2 C5 재개발).
+ * - 위: 언어·파일명·정규식 규칙·줄 번호(공개 화면 표시)·복사
+ * - 왼쪽 줄 번호 칸: 누르거나 끌어 줄을 고르면 줄 효과 메뉴가 뜬다. 줄 접기 화살표로 편집 중에도 여닫는다.
+ * - 코드: 그 자리에서 고친다. 글자 효과는 글자를 골라 인라인 버블·상단 도구로 준다.
+ */
 export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
 	const [copied, setCopied] = useState(false);
-	const [tooltipText, setTooltipText] = useState("");
-	const [tooltipOpen, setTooltipOpen] = useState(false);
-	const id = useId();
-	// NodeView는 선택만 바뀌면 재렌더되지 않는다. 주석 도구 활성 상태는 선택을 구독한다.
-	useEditorState({ editor, selector: ({ editor: current }) => current?.state.selection });
+	/** 줄 효과 메뉴. `at`이 있으면 그 자리(오른쪽 클릭한 곳), 없으면 고른 첫 줄 오른쪽에 뜬다. */
+	const [menu, setMenu] = useState<{ start: number; end: number; at?: { top: number; left: number } } | null>(null);
+	const dragRef = useRef<{ anchor: number; start: number; end: number } | null>(null);
+	const anchorRef = useRef<number | null>(null);
+	const bodyRef = useRef<HTMLDivElement>(null);
 
+	// NodeView는 선택·플러그인 상태만 바뀌면 다시 그려지지 않는다. 접기 상태와 선택을 구독한다.
+	useEditorState({
+		editor,
+		selector: ({ editor: current }) => {
+			if (!current) return "";
+			const { from, to } = current.state.selection;
+			return `${codeEffectsKey.getState(current.state)?.version ?? 0}:${from}:${to}`;
+		},
+	});
+
+	const pos = typeof getPos === "function" ? getPos() : undefined;
+	const base = typeof pos === "number" ? pos + 1 : null;
 	const language = (node.attrs.language as string) || "text";
-	const metaString = (node.attrs.meta as string) || "";
-	const annotations = (node.attrs.annotations as CodeBlockAnnotationItem[]) || [];
-	const annotationsDisabled = Boolean(node.attrs.annotationsDisabled);
+	const parsedMeta = parseMeta((node.attrs.meta as string) || "");
+	const rawMode = node.attrs.rawMode === true;
+	const text = node.textContent;
+	const starts = lineStarts(text);
+	const lineEffects = lineEffectsOf(node);
+	const rules = rulesOf(node);
+	const overrides = codeEffectsKey.getState(editor.state)?.overrides ?? new Map<string, boolean>();
+	const regions = typeof pos === "number" ? foldRegions(node, pos, overrides) : [];
+	const collapses = regions.filter((region) => region.kind === "collapse");
 
-	const parsedMeta = parseMeta(metaString);
-	const title = parsedMeta.title;
-	const showLineNumbers = parsedMeta.showLineNumbers;
+	// 닫힌 줄 접기가 숨기는 줄(첫 줄은 보인다).
+	const hiddenLines = new Set<number>();
+	for (const region of collapses) {
+		if (region.open || region.startLine === undefined || region.endLine === undefined) continue;
+		for (let line = region.startLine + 1; line < region.endLine; line += 1) hiddenLines.add(line);
+	}
+	const rows = starts.map((_, line) => line).filter((line) => !hiddenLines.has(line));
 
-	const handleLanguageChange = (val: string | null) => {
-		if (val) {
-			updateAttributes({ language: val });
-		}
-	};
+	// 이 블록 안의 선택이 걸친 줄.
+	const { from: selFrom, to: selTo } = editor.state.selection;
+	const selectionInside = base !== null && selFrom >= base && selTo <= base + text.length;
+	const selectedLines = selectionInside
+		? { start: lineAt(starts, selFrom - base), end: lineAt(starts, selTo - base) + 1 }
+		: null;
 
-	const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const newTitle = e.target.value;
-		const newMeta = formatMeta({
-			title: newTitle,
-			showLineNumbers,
-			raw: parsedMeta.raw,
+	const setMeta = (next: { title?: string; showLineNumbers?: boolean }) =>
+		updateAttributes({
+			meta: formatMeta({
+				title: next.title ?? parsedMeta.title,
+				showLineNumbers: next.showLineNumbers ?? parsedMeta.showLineNumbers,
+				raw: parsedMeta.raw,
+			}),
 		});
-		updateAttributes({ meta: newMeta });
-	};
-
-	const handleToggleLineNumbers = (pressed: boolean) => {
-		const newMeta = formatMeta({
-			title,
-			showLineNumbers: pressed,
-			raw: parsedMeta.raw,
-		});
-		updateAttributes({ meta: newMeta });
-	};
 
 	const handleCopy = async () => {
 		try {
-			await navigator.clipboard.writeText(node.textContent);
+			await navigator.clipboard.writeText(text);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
@@ -66,235 +116,178 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 		}
 	};
 
-	// 현재 선택 영역이 이 코드 블록 내부인지 판정
-	const getSelectionOffsets = (): { from: number; to: number } | null => {
-		if (typeof getPos !== "function") return null;
-		const pos = getPos();
-		if (typeof pos !== "number") return null;
-		const blockStart = pos + 1;
-		const blockEnd = blockStart + node.textContent.length;
-		const { from, to } = editor.state.selection;
+	// 줄 번호 칸에서 고른 줄. 누르거나 끌어 고르고 Shift로 늘린다. 메뉴는 고른 줄 옆 "줄 효과" 버튼으로 연다.
+	const pickState = codeEffectsKey.getState(editor.state)?.picked ?? null;
+	const picked = pickState && pickState.blockPos === pos ? pickState : null;
 
-		if (from >= blockStart && to <= blockEnd) {
-			return {
-				from: from - blockStart,
-				to: to - blockStart,
-			};
-		}
-		return null;
-	};
+	/** `start`~`end` 줄을 고른다(복사·효과 적용도 그 줄에 걸린다). */
+	const selectLines = useCallback(
+		(start: number, end: number) => {
+			const blockPos = typeof getPos === "function" ? getPos() : undefined;
+			if (typeof blockPos === "number") pickLines(editor.view, blockPos, start, end);
+		},
+		[editor, getPos],
+	);
 
-	const currentOffsets = getSelectionOffsets();
-	const hasSelection =
-		currentOffsets !== null &&
-		currentOffsets.from < currentOffsets.to &&
-		!node.textContent.slice(currentOffsets.from, currentOffsets.to).includes("\n");
-
-	// 밑줄 주석 추가 / 제거
-	const handleToggleUnderline = () => {
-		if (annotationsDisabled || !hasSelection || !currentOffsets) return;
-
-		const { from, to } = currentOffsets;
-		// 이미 동일하거나 겹치는 밑줄 주석이 있는지 확인
-		const existingIndex = annotations.findIndex(
-			(a) => a.type === "underline" && ((a.from <= from && a.to >= to) || (a.from >= from && a.to <= to)),
-		);
-
-		let next: CodeBlockAnnotationItem[];
-		if (existingIndex >= 0) {
-			next = annotations.filter((_, i) => i !== existingIndex);
-		} else if (from < to) {
-			next = [
-				...annotations,
-				{
-					id: `anno-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-					type: "underline",
-					from,
-					to,
-				},
-			];
-		} else {
-			return;
-		}
-
-		updateAttributes({ annotations: next });
-	};
-
-	// 툴팁 주석 적용
-	const handleApplyTooltip = () => {
-		if (annotationsDisabled || !currentOffsets || !tooltipText.trim()) return;
-
-		const { from, to } = currentOffsets;
-		if (from >= to) return;
-
-		const next: CodeBlockAnnotationItem[] = [
-			...annotations.filter((a) => !(a.type === "tooltip" && a.from === from && a.to === to)),
-			{
-				id: `anno-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-				type: "tooltip",
-				from,
-				to,
-				content: tooltipText.trim(),
+	const startLineDrag = (line: number, event: React.MouseEvent) => {
+		if (event.button !== 0 || rawMode) return;
+		event.preventDefault();
+		const anchor = event.shiftKey && picked ? (anchorRef.current ?? picked.start) : line;
+		anchorRef.current = anchor;
+		const range = { anchor, start: Math.min(anchor, line), end: Math.max(anchor, line) + 1 };
+		dragRef.current = range;
+		setMenu(null);
+		selectLines(range.start, range.end);
+		window.addEventListener(
+			"mouseup",
+			() => {
+				dragRef.current = null;
 			},
-		];
-
-		updateAttributes({ annotations: next });
-		setTooltipText("");
-		setTooltipOpen(false);
-	};
-
-	// 툴팁 주석 삭제
-	const handleRemoveTooltip = () => {
-		if (annotationsDisabled || !hasSelection || !currentOffsets) return;
-		const { from, to } = currentOffsets;
-
-		const next = annotations.filter(
-			(a) => !(a.type === "tooltip" && ((a.from <= from && a.to >= to) || (a.from >= from && a.to <= to))),
+			{ once: true },
 		);
-		updateAttributes({ annotations: next });
-		setTooltipOpen(false);
 	};
+
+	const extendLineDrag = (line: number) => {
+		const drag = dragRef.current;
+		if (!drag) return;
+		const start = Math.min(drag.anchor, line);
+		const end = Math.max(drag.anchor, line) + 1;
+		if (start === drag.start && end === drag.end) return;
+		dragRef.current = { ...drag, start, end };
+		selectLines(start, end);
+	};
+
+	const rowTop = (line: number) => PAD_TOP + Math.max(0, rows.indexOf(line)) * LINE_HEIGHT;
+	const closeMenu = useCallback(() => setMenu(null), []);
+
+	/** 줄 번호를 오른쪽 클릭하면 그 자리에 줄 효과 메뉴를 연다. 고른 줄 안이면 고른 줄 전체, 밖이면 그 줄이다. */
+	const openLineMenuAt = (line: number, event: React.MouseEvent) => {
+		if (rawMode) return;
+		event.preventDefault();
+		const inside = picked && picked.start <= line && line < picked.end;
+		const range = inside ? { start: picked.start, end: picked.end } : { start: line, end: line + 1 };
+		if (!inside) {
+			anchorRef.current = line;
+			selectLines(range.start, range.end);
+		}
+		const body = bodyRef.current?.getBoundingClientRect();
+		setMenu({ ...range, at: { top: event.clientY - (body?.top ?? 0), left: event.clientX - (body?.left ?? 0) + 2 } });
+	};
+
+	// 닫힌 글자 접기는 숨기고 `…`로 보인다. 경고·오류 물결 밑줄 길이를 보이는 글자에 맞춘다.
+	const closedFolds = regions
+		.filter((region) => region.kind === "fold" && !region.open && base !== null)
+		.map((region) => ({ from: region.from - (base ?? 0), to: region.to - (base ?? 0) }))
+		.sort((a, b) => a.from - b.from);
+	const visibleLineText = (line: number) => {
+		const range = lineRange(text, starts, line);
+		let out = "";
+		let at = range.from;
+		for (const fold of closedFolds) {
+			if (fold.to <= range.from || fold.from >= range.to) continue;
+			out += `${text.slice(at, Math.max(at, fold.from))}…`;
+			at = Math.max(at, fold.to);
+		}
+		return out + text.slice(at, range.to);
+	};
+
+	const collapseAt = (line: number): FoldRegion | undefined => collapses.find((region) => region.startLine === line);
 
 	return (
 		<NodeViewWrapper
-			className="group relative my-4 flex w-full flex-col overflow-hidden rounded-md border bg-muted/30 font-mono text-sm shadow-xs"
+			className="not-prose group/code relative my-4 flex w-full flex-col rounded-md border bg-muted/30 text-sm"
 			data-code-block-wrapper=""
 		>
-			{/* 상단 바: 언어 선택, 파일명, 줄 번호, 주석 편집 도구, 복사 버튼 */}
 			<div
-				className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/60 px-3 py-1.5 text-muted-foreground text-xs"
+				data-code-ui=""
 				contentEditable={false}
+				className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b bg-muted/60 px-2 py-1 text-muted-foreground text-xs"
 			>
-				<div className="flex flex-wrap items-center gap-2">
-					{/* 언어 선택 드롭다운 */}
-					<Select value={language} onValueChange={handleLanguageChange}>
+				<div className="flex flex-wrap items-center gap-1.5">
+					<Select value={language} onValueChange={(value) => value && updateAttributes({ language: value })}>
 						<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label="코드 언어 선택">
 							<SelectValue placeholder="언어 선택" />
 						</SelectTrigger>
 						<SelectContent>
-							{CODE_LANGUAGE_OPTIONS.map((opt) => (
-								<SelectItem key={opt.value} value={opt.value}>
-									{opt.label}
+							{CODE_LANGUAGE_OPTIONS.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
 								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
-
-					{/* title (파일명) 입력창 */}
 					<Input
-						id={`${id}-title`}
-						placeholder="파일명 (선택사항)"
-						value={title}
-						onChange={handleTitleChange}
-						className="h-7 w-40 text-xs"
+						placeholder="파일 경로 (선택사항)"
+						value={parsedMeta.title}
+						onChange={(event) => setMeta({ title: event.target.value })}
+						className="h-7 w-48 text-xs"
 						aria-label="코드 블록 파일명"
 					/>
 				</div>
-
-				<div className="flex items-center gap-1">
-					{/* 주석 편집: 밑줄 */}
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-xs"
-									disabled={annotationsDisabled || !hasSelection}
-									onClick={handleToggleUnderline}
-									aria-label="선택 영역 밑줄 주석 토글"
-									className="size-7"
-								>
-									<UnderlineIcon className="size-3.5" />
-								</Button>
-							}
-						/>
-						<TooltipContent>
-							{annotationsDisabled
-								? "지원하지 않는 주석 형식이 있어 편집 불가"
-								: hasSelection
-									? "선택 영역 밑줄 주석"
-									: "코드를 선택한 후 밑줄을 추가하세요"}
-						</TooltipContent>
-					</Tooltip>
-
-					{/* 주석 편집: 툴팁 */}
-					<Popover open={tooltipOpen} onOpenChange={setTooltipOpen}>
+				<div className="flex items-center gap-0.5">
+					{rawMode ? (
 						<Tooltip>
-							<TooltipTrigger
-								render={
-									<PopoverTrigger
-										render={
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon-xs"
-												disabled={annotationsDisabled || !hasSelection}
-												aria-label="선택 영역 툴팁 주석"
-												className="size-7"
-											>
-												<MessageSquare className="size-3.5" />
-											</Button>
-										}
-									/>
-								}
-							/>
-							<TooltipContent>
-								{annotationsDisabled
-									? "지원하지 않는 주석 형식이 있어 편집 불가"
-									: hasSelection
-										? "선택 영역 툴팁 설명 주석"
-										: "코드를 선택한 후 툴팁을 추가하세요"}
-							</TooltipContent>
+							<TooltipTrigger render={<span className="flex items-center gap-1 px-1" />}>
+								<Info aria-hidden className="size-3.5" />
+								원문 편집
+							</TooltipTrigger>
+							<TooltipContent>에디터가 나타낼 수 없는 주석이 있어 주석 줄까지 원문 그대로 편집합니다.</TooltipContent>
 						</Tooltip>
-						<PopoverContent className="w-64 p-3" align="end">
-							<div className="flex flex-col gap-2 font-sans text-xs">
-								<span className="font-semibold text-foreground">코드 툴팁 설명</span>
-								<Input
-									placeholder="툴팁 내용 입력..."
-									value={tooltipText}
-									onChange={(e) => setTooltipText(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											handleApplyTooltip();
-										}
-									}}
-									className="h-7 text-xs"
-								/>
-								<div className="flex justify-end gap-1">
-									<Button type="button" variant="destructive" size="xs" onClick={handleRemoveTooltip}>
-										삭제
-									</Button>
-									<Button type="button" variant="default" size="xs" onClick={handleApplyTooltip}>
-										적용
-									</Button>
-								</div>
-							</div>
-						</PopoverContent>
-					</Popover>
-
-					<Separator orientation="vertical" className="h-4" />
-
-					{/* 줄 번호 표시 토글 */}
+					) : (
+						<>
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon-xs"
+											className="size-7"
+											aria-label="줄 효과"
+											disabled={!(picked ?? selectedLines)}
+											onMouseDown={(event) => event.preventDefault()}
+											onClick={() => {
+												const lines = picked ?? selectedLines;
+												if (lines) setMenu({ start: lines.start, end: lines.end });
+											}}
+										/>
+									}
+								>
+									<Rows3 aria-hidden className="size-3.5" />
+								</TooltipTrigger>
+								<TooltipContent>고른 줄에 강조·추가·삭제·경고·오류·접기 (줄 번호를 눌러도 됩니다)</TooltipContent>
+							</Tooltip>
+							<RulesPanel
+								rules={rules}
+								text={text}
+								lineCount={starts.length}
+								selection={
+									selectionInside &&
+									selFrom < selTo &&
+									!text.slice(selFrom - (base ?? 0), selTo - (base ?? 0)).includes("\n")
+										? { text: text.slice(selFrom - (base ?? 0), selTo - (base ?? 0)) }
+										: null
+								}
+								onChange={(next: CodeRule[]) => updateAttributes({ rules: next })}
+							/>
+						</>
+					)}
 					<Tooltip>
 						<TooltipTrigger
 							render={
 								<Toggle
 									size="sm"
-									pressed={showLineNumbers}
-									onPressedChange={handleToggleLineNumbers}
+									pressed={parsedMeta.showLineNumbers}
+									onPressedChange={(pressed) => setMeta({ showLineNumbers: pressed })}
 									aria-label="줄 번호 표시 토글"
-									className="size-7 p-0 data-[state=on]:bg-accent"
-								>
-									<ListOrdered className="size-3.5" />
-								</Toggle>
+									className="size-7 min-w-7 p-0"
+								/>
 							}
-						/>
-						<TooltipContent>줄 번호 표시</TooltipContent>
+						>
+							<ListOrdered aria-hidden className="size-3.5" />
+						</TooltipTrigger>
+						<TooltipContent>공개 글에 줄 번호 표시</TooltipContent>
 					</Tooltip>
-
-					{/* 코드 복사 버튼 */}
 					<Tooltip>
 						<TooltipTrigger
 							render={
@@ -305,43 +298,143 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 									onClick={handleCopy}
 									aria-label="코드 복사"
 									className="size-7"
-								>
-									{copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
-								</Button>
+								/>
 							}
-						/>
+						>
+							{copied ? (
+								<Check aria-hidden className="size-3.5 text-primary" />
+							) : (
+								<Copy aria-hidden className="size-3.5" />
+							)}
+						</TooltipTrigger>
 						<TooltipContent>{copied ? "복사됨!" : "코드 복사"}</TooltipContent>
 					</Tooltip>
-
-					{annotationsDisabled && (
-						<Tooltip>
-							<TooltipTrigger
-								render={
-									<div className="flex items-center text-muted-foreground">
-										<Info className="size-3.5" />
-									</div>
-								}
-							/>
-							<TooltipContent>고급 주석(라인 접기 등)이 포함되어 주석 편집이 보호 모드로 동작합니다.</TooltipContent>
-						</Tooltip>
-					)}
 				</div>
 			</div>
 
-			{/* 코드 편집 영역 (contentDOM) */}
-			<pre className="relative flex overflow-x-auto whitespace-pre p-4 font-mono text-sm leading-relaxed outline-none">
-				{showLineNumbers && (
-					<span
-						contentEditable={false}
-						aria-hidden="true"
-						style={{ whiteSpace: "pre" }}
-						className="mr-4 select-none border-border border-r pr-2 text-right text-muted-foreground"
-					>
-						{Array.from({ length: node.textContent.split("\n").length }, (_, index) => index + 1).join("\n")}
-					</span>
+			<div ref={bodyRef} className="relative flex rounded-b-md">
+				<div
+					data-code-ui=""
+					data-code-gutter=""
+					contentEditable={false}
+					className="shrink-0 select-none rounded-bl-md border-r bg-muted/40 py-3 font-mono text-muted-foreground text-xs"
+				>
+					{rows.map((line) => {
+						const effects = effectsOnLine(lineEffects, line);
+						const collapse = collapseAt(line);
+						const lines = picked ?? selectedLines;
+						const selected = !!lines && lines.start <= line && line < lines.end;
+						const whole = !!picked && picked.start <= line && line < picked.end;
+						return (
+							// biome-ignore lint/a11y/noStaticElementInteractions: 줄 번호를 눌러(끌어) 줄을 고르고 오른쪽 클릭으로 메뉴를 연다(키보드는 상단 "줄 효과" 버튼)
+							<div
+								key={line}
+								data-line={line}
+								title="클릭·끌기: 줄 고르기 · Shift+클릭: 늘리기 · 오른쪽 클릭: 줄 효과"
+								onMouseDown={(event) => startLineDrag(line, event)}
+								onMouseEnter={() => extendLineDrag(line)}
+								onContextMenu={(event) => openLineMenuAt(line, event)}
+								className={cn(
+									"flex h-6 cursor-pointer items-center gap-0.5 pr-1.5 pl-0.5 hover:bg-accent/60",
+									selected && "bg-primary/10 text-foreground",
+									whole && "bg-primary/20",
+								)}
+							>
+								<span className="flex w-4 justify-center">
+									{collapse && (
+										<button
+											type="button"
+											aria-label={collapse.open ? `${line + 1}번째 줄부터 접기` : `${line + 1}번째 줄부터 펼치기`}
+											aria-expanded={collapse.open}
+											onMouseDown={(event) => {
+												event.preventDefault();
+												event.stopPropagation();
+												setFoldOpen(editor.view, collapse, !collapse.open);
+											}}
+											className="rounded hover:bg-accent"
+										>
+											<ChevronRight
+												aria-hidden
+												className={cn("size-3.5 transition-transform", collapse.open && "rotate-90")}
+											/>
+										</button>
+									)}
+								</span>
+								<span className={cn("min-w-5 text-right tabular-nums", !parsedMeta.showLineNumbers && "opacity-50")}>
+									{line + 1}
+								</span>
+								<span className="w-2.5 text-center">
+									{effects.some((effect) => effect.name === "plus") ? (
+										<span className="text-green-600 dark:text-green-400">+</span>
+									) : effects.some((effect) => effect.name === "minus") ? (
+										<span className="text-red-600 dark:text-red-400">−</span>
+									) : null}
+								</span>
+							</div>
+						);
+					})}
+				</div>
+
+				<div className="relative min-w-0 flex-1 overflow-x-auto">
+					<div className="relative w-max min-w-full">
+						<div
+							aria-hidden
+							contentEditable={false}
+							className="pointer-events-none absolute inset-x-0 top-3 select-none font-mono text-sm leading-6"
+						>
+							{rows.map((line) => {
+								const effects = effectsOnLine(lineEffects, line);
+								const wavy = effects.map((effect) => WAVY[effect.name]).find(Boolean);
+								const whole = !!picked && picked.start <= line && line < picked.end;
+								return (
+									<div
+										key={line}
+										className={cn(
+											"h-6",
+											...effects.map((effect) => LINE_BACKGROUND[effect.name] ?? ""),
+											whole && "bg-primary/15",
+										)}
+									>
+										{/* 물결 밑줄은 글자 조각(구문 색)마다 끊기지 않게 줄 전체에 한 번 긋는다. 같은 글자를 투명하게 겹쳐 길이를 맞춘다. */}
+										{wavy && (
+											<span
+												className={cn(
+													"block w-max whitespace-pre px-4 text-transparent underline decoration-wavy",
+													wavy,
+												)}
+											>
+												{visibleLineText(line) || " "}
+											</span>
+										)}
+									</div>
+								);
+							})}
+						</div>
+						<pre
+							className={cn(
+								"relative m-0 whitespace-pre bg-transparent px-4 py-3 font-mono text-foreground text-sm leading-6",
+								// 구문 색은 밝은 테마 색을 인라인으로 넣는다. 어두운 테마에서는 --shiki-dark로 바꾼다.
+								"dark:[&_.shiki-token]:text-(--shiki-dark)!",
+								// 줄 번호로 고른 동안에는 커서를 숨긴다(고른 줄은 줄 배경으로 보인다).
+								picked && "caret-transparent",
+							)}
+						>
+							<NodeViewContent<"code"> as="code" className="block outline-none" />
+						</pre>
+					</div>
+				</div>
+
+				{menu && !rawMode && (
+					<LineMenu
+						start={menu.start}
+						end={Math.min(menu.end, starts.length)}
+						lineEffects={lineEffects}
+						onChange={(next) => updateAttributes({ lineEffects: next })}
+						onClose={closeMenu}
+						style={menu.at ?? { top: rowTop(menu.start), right: 8 }}
+					/>
 				)}
-				<NodeViewContent<"code"> as="code" className="block min-w-fit flex-1 outline-none" />
-			</pre>
+			</div>
 		</NodeViewWrapper>
 	);
 }

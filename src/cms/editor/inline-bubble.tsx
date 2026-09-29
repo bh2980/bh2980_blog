@@ -3,15 +3,30 @@
 import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
-import { Link2, MessageSquareMore, Pencil, Unlink, X } from "lucide-react";
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+	ChevronsLeftRightEllipsis,
+	Eye,
+	EyeOff,
+	Link2,
+	MessageSquareMore,
+	Pencil,
+	Regex,
+	Unlink,
+	X,
+} from "lucide-react";
+import { Fragment, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
+import { codeEffectsKey, expandRule, removeRule, setFoldOpen } from "./code-block/effects-plugin";
+import { charEffectByName } from "./code-block/model";
 import {
+	type ActiveCodeRule,
 	type ActiveInlineMark,
+	allowedMarkTools,
+	allowsMark,
 	INLINE_MARK_TOOLS,
 	type InlineBubbleTarget,
 	inlineBubbleTarget,
@@ -67,6 +82,8 @@ function anchorRange(target: InlineBubbleTarget): { from: number; to: number } {
 	if (target.kind === "selection") return target;
 	const primary = target.marks[0];
 	if (primary && (primary.name === "link" || primary.name === "cmsTooltip")) return primary;
+	const rule = target.rules[0];
+	if (!primary && rule) return rule;
 	return { from: target.pos, to: target.pos };
 }
 
@@ -85,11 +102,13 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 			// 선택 도구의 눌림 표시가 효과를 적용한 뒤에도 맞도록 적용 상태를 함께 본다.
 			const active =
 				target?.kind === "selection"
-					? [...INLINE_MARK_TOOLS.map((tool) => tool.mark), "link", "cmsTooltip"].filter((mark) =>
+					? [...INLINE_MARK_TOOLS.map((tool) => tool.mark), "link", "cmsTooltip", "codeFold"].filter((mark) =>
 							current.isActive(mark),
 						)
 					: [];
-			return { target, focused: current.isFocused, active };
+			// 글자 접기의 열림 상태(코드 블록)도 버블에 보인다.
+			const folds = codeEffectsKey.getState(current.state)?.version ?? 0;
+			return { target, focused: current.isFocused, active, folds };
 		},
 	});
 	const [panel, setPanel] = useState<Panel | null>(null);
@@ -256,6 +275,51 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 				</div>
 			);
 		}
+		if (mark.name === "codeFold") {
+			const region = {
+				key: `m:${mark.from}`,
+				kind: "fold" as const,
+				from: mark.from,
+				to: mark.to,
+				defaultOpen: true,
+				hiddenLines: 0,
+			};
+			const open = codeEffectsKey.getState(editor.state)?.overrides.get(region.key) ?? region.defaultOpen;
+			const publicOpen = mark.attrs.open === true;
+			const type = editor.schema.marks.codeFold;
+			return (
+				<div key={mark.name} className="flex items-center gap-0.5">
+					<ChevronsLeftRightEllipsis aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+					<span className="px-1 text-muted-foreground text-xs">글자 접기</span>
+					<BubbleButton
+						label={open ? "접어 보기" : "펼쳐 보기"}
+						onClick={act(() => setFoldOpen(editor.view, { ...region, open }, !open))}
+					>
+						{open ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
+					</BubbleButton>
+					<BubbleButton
+						label={publicOpen ? "공개 글에서 처음엔 접어 두기" : "공개 글에서 처음부터 펼쳐 두기"}
+						className={cn("text-xs", publicOpen && "bg-muted")}
+						onClick={act(() => {
+							if (!type) return;
+							editor
+								.chain()
+								.focus()
+								.command(({ tr }) => {
+									tr.addMark(mark.from, mark.to, type.create({ open: !publicOpen }));
+									return true;
+								})
+								.run();
+						})}
+					>
+						처음부터 펼침
+					</BubbleButton>
+					<BubbleButton label="글자 접기 해제" onClick={act(() => removeInlineMark(editor, mark))}>
+						<X aria-hidden className="size-4" />
+					</BubbleButton>
+				</div>
+			);
+		}
 		const tool = INLINE_MARK_TOOLS.find((item) => item.mark === mark.name);
 		if (!tool) return null;
 		return (
@@ -271,36 +335,91 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 		);
 	};
 
-	const renderMarks = (marks: ActiveInlineMark[]) => {
-		const detailed = marks.filter((mark) => mark.name === "link" || mark.name === "cmsTooltip");
+	/** 정규식 규칙이 찾은 곳. 규칙이라 이 곳만 지울 수 없다 — 규칙째 지우거나, 개별 효과로 풀어 하나씩 지운다. */
+	const renderRule = ({ rule, blockPos, from, to, count }: ActiveCodeRule) => {
+		const label = charEffectByName(rule.name)?.label ?? rule.name;
+		const region = { key: `m:${from}`, kind: "fold" as const, from, to, defaultOpen: true, hiddenLines: 0 };
+		const open = codeEffectsKey.getState(editor.state)?.overrides.get(region.key) ?? true;
+		return (
+			<div key={rule.id} className="flex items-center gap-0.5">
+				<Regex aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+				<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={`/${rule.pattern}/${rule.flags}`}>
+					{label} 규칙 · {count}곳
+				</span>
+				{rule.name === "fold" && (
+					<BubbleButton
+						label={open ? "접어 보기" : "펼쳐 보기"}
+						onClick={act(() => setFoldOpen(editor.view, { ...region, open }, !open))}
+					>
+						{open ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
+					</BubbleButton>
+				)}
+				<BubbleButton
+					label="개별 효과로 바꾸기 (하나씩 지울 수 있게)"
+					className="text-xs"
+					onClick={act(() => expandRule(editor.view, blockPos, rule.id))}
+				>
+					개별로
+				</BubbleButton>
+				<BubbleButton
+					label={`규칙 삭제 (${count}곳 모두)`}
+					onClick={act(() => removeRule(editor.view, blockPos, rule.id))}
+				>
+					<X aria-hidden className="size-4" />
+				</BubbleButton>
+			</div>
+		);
+	};
+
+	const renderMarks = (marks: ActiveInlineMark[], rules: ActiveCodeRule[]) => {
+		const detailed = marks.filter((mark) => ["link", "cmsTooltip", "codeFold"].includes(mark.name));
 		const simple = marks.filter((mark) => !detailed.includes(mark));
-		const groups = [...detailed.map((mark) => [mark]), ...(simple.length ? [simple] : [])];
+		const groups = [
+			...detailed.map((mark) => <Fragment key={mark.name}>{renderMark(mark)}</Fragment>),
+			...rules.map(renderRule),
+			...(simple.length ? [<Fragment key="simple">{simple.map(renderMark)}</Fragment>] : []),
+		];
 		return groups.map((group, index) => (
-			<div key={group[0]?.name} className="flex items-center gap-0.5">
+			<div key={group.key} className="flex items-center gap-0.5">
 				{index > 0 && <Separator orientation="vertical" className="mx-0.5 h-4" />}
-				{group.map(renderMark)}
+				{group}
 			</div>
 		));
 	};
 
+	// 코드 블록에서는 그 블록이 받는 효과(굵게·기울임·취소선·밑줄·툴팁)와 글자 접기만 보인다.
+	const inCode = !!editor.state.selection.$from.parent.type.spec.code;
 	const renderSelectionTools = () => (
 		<>
-			{INLINE_MARK_TOOLS.map((item) => (
+			{allowedMarkTools(editor.state).map((item) => (
 				<ToolbarButton key={item.mark} editor={editor} item={item} tooltipSide="top" />
 			))}
 			<Separator orientation="vertical" className="mx-0.5 h-4" />
-			<BubbleButton
-				label={editor.isActive("cmsTooltip") ? "툴팁 설명 수정" : "툴팁 추가"}
-				onClick={() => openTooltip()}
-			>
-				<MessageSquareMore aria-hidden className="size-4" />
-			</BubbleButton>
-			<BubbleButton
-				label={editor.isActive("link") ? "링크 수정" : "링크 삽입"}
-				onClick={() => openLink(linkDraftFromSelection(editor))}
-			>
-				<Link2 aria-hidden className="size-4" />
-			</BubbleButton>
+			{allowsMark(editor.state, "cmsTooltip") && (
+				<BubbleButton
+					label={editor.isActive("cmsTooltip") ? "툴팁 설명 수정" : "툴팁 추가"}
+					onClick={() => openTooltip()}
+				>
+					<MessageSquareMore aria-hidden className="size-4" />
+				</BubbleButton>
+			)}
+			{allowsMark(editor.state, "link") && !inCode && (
+				<BubbleButton
+					label={editor.isActive("link") ? "링크 수정" : "링크 삽입"}
+					onClick={() => openLink(linkDraftFromSelection(editor))}
+				>
+					<Link2 aria-hidden className="size-4" />
+				</BubbleButton>
+			)}
+			{inCode && allowsMark(editor.state, "codeFold") && (
+				<BubbleButton
+					label="글자 접기"
+					className={cn(editor.isActive("codeFold") && "bg-muted")}
+					onClick={() => editor.chain().focus().toggleMark("codeFold").run()}
+				>
+					<ChevronsLeftRightEllipsis aria-hidden className="size-4" />
+				</BubbleButton>
+			)}
 		</>
 	);
 
@@ -344,7 +463,7 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 				style={style}
 				className={cn(surface, "flex items-center gap-0.5 p-0.5")}
 			>
-				{target.kind === "selection" ? renderSelectionTools() : renderMarks(target.marks)}
+				{target.kind === "selection" ? renderSelectionTools() : renderMarks(target.marks, target.rules)}
 			</div>
 		),
 		document.body,

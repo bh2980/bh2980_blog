@@ -2,6 +2,8 @@ import type { Editor } from "@tiptap/core";
 import type { Mark, ResolvedPos } from "@tiptap/pm/model";
 import { type EditorState, TextSelection } from "@tiptap/pm/state";
 import { Bold, CodeXml, Italic, Strikethrough, Subscript, Superscript, Underline } from "lucide-react";
+import { codeEffectsKey, rulesOf } from "./code-block/effects-plugin";
+import { type CodeRule, ruleMatches } from "./code-block/model";
 import { selectedBlocks } from "./drag";
 import type { ToolbarItem } from "./toolbar-button";
 
@@ -32,10 +34,26 @@ const MARK_TOOLS: Omit<InlineMarkTool, "isActive">[] = [
 export const INLINE_MARK_TOOLS: InlineMarkTool[] = MARK_TOOLS.map((item) => ({
 	...item,
 	isActive: (e: Editor) => e.isActive(item.mark),
+	// 코드 블록처럼 그 마크를 둘 수 없는 곳에서는 끈다.
+	isDisabled: (e: Editor) => !e.can().toggleMark(item.mark),
 }));
 
-/** 커서를 두면 버블에 보여 줄 마크. 설정이 있는 마크(링크·툴팁)를 먼저 보인다. */
-const BUBBLE_MARK_ORDER = ["link", "cmsTooltip", ...INLINE_MARK_TOOLS.map((tool) => tool.mark)];
+/** 선택이 들어 있는 글 블록에 둘 수 있는 인라인 도구. 코드 블록은 굵게·기울임·취소선·밑줄만 된다. */
+export const allowedMarkTools = (state: EditorState) => {
+	const parent = state.selection.$from.parent;
+	return INLINE_MARK_TOOLS.filter((tool) => {
+		const type = state.schema.marks[tool.mark];
+		return !!type && parent.type.allowsMarkType(type);
+	});
+};
+
+export const allowsMark = (state: EditorState, mark: string) => {
+	const type = state.schema.marks[mark];
+	return !!type && state.selection.$from.parent.type.allowsMarkType(type);
+};
+
+/** 커서를 두면 버블에 보여 줄 마크. 설정이 있는 마크(링크·툴팁·글자 접기)를 먼저 보인다. */
+const BUBBLE_MARK_ORDER = ["link", "cmsTooltip", "codeFold", ...INLINE_MARK_TOOLS.map((tool) => tool.mark)];
 
 /** 커서가 걸친 마크 하나와 그 마크가 이어지는 범위. */
 export interface ActiveInlineMark {
@@ -45,9 +63,18 @@ export interface ActiveInlineMark {
 	attrs: Record<string, unknown>;
 }
 
+/** 커서가 걸친 정규식 규칙의 찾은 곳 하나(코드 블록). 규칙이라 이 곳만 따로 지울 수는 없다. */
+export interface ActiveCodeRule {
+	rule: CodeRule;
+	blockPos: number;
+	from: number;
+	to: number;
+	count: number;
+}
+
 export type InlineBubbleTarget =
 	| { kind: "selection"; from: number; to: number }
-	| { kind: "marks"; pos: number; marks: ActiveInlineMark[] };
+	| { kind: "marks"; pos: number; marks: ActiveInlineMark[]; rules: ActiveCodeRule[] };
 
 /** `$pos` 바로 앞(before) 또는 뒤(after) 글자에서 시작해 같은 마크가 이어지는 범위. */
 function markRange($pos: ResolvedPos, mark: Mark, side: "before" | "after"): { from: number; to: number } {
@@ -68,13 +95,16 @@ function markRange($pos: ResolvedPos, mark: Mark, side: "before" | "after"): { f
  * 인라인 버블을 띄울 대상.
  * - 글자를 고르면(`selection`) 효과를 적용하는 도구를 띄운다.
  * - 커서가 효과 안이나 끝에 있으면(`marks`) 걸친 효과와 그 범위를 돌려준다(삭제·설정 수정용).
- * 코드 블록 안, 블록(마키) 선택, 셀 선택, 노드 선택에는 띄우지 않는다.
+ * 블록(마키) 선택, 셀 선택, 노드 선택, 코드 블록을 넘나드는 선택, 원문 편집 중인 코드 블록에는 띄우지 않는다.
  */
 export function inlineBubbleTarget(state: EditorState): InlineBubbleTarget | null {
 	const { selection } = state;
 	if (!(selection instanceof TextSelection) || selectedBlocks(state)) return null;
+	// 코드 블록 줄 번호 칸에서 줄을 골랐으면 줄 효과 메뉴를 쓴다(글자 효과 버블을 띄우지 않는다).
+	if (codeEffectsKey.getState(state)?.picked) return null;
 	const { $from, $to, from, to } = selection;
-	if ($from.parent.type.spec.code || $to.parent.type.spec.code) return null;
+	const code = $from.parent.type.spec.code || $to.parent.type.spec.code;
+	if (code && ($from.parent !== $to.parent || $from.parent.attrs.rawMode === true)) return null;
 	if (!selection.empty) return state.doc.textBetween(from, to, " ").trim() ? { kind: "selection", from, to } : null;
 
 	const marks: ActiveInlineMark[] = [];
@@ -85,9 +115,25 @@ export function inlineBubbleTarget(state: EditorState): InlineBubbleTarget | nul
 			marks.push({ name: mark.type.name, attrs: mark.attrs, ...markRange($from, mark, side) });
 		}
 	}
-	if (!marks.length) return null;
+	const rules = code ? rulesAt($from) : [];
+	if (!marks.length && !rules.length) return null;
 	marks.sort((a, b) => BUBBLE_MARK_ORDER.indexOf(a.name) - BUBBLE_MARK_ORDER.indexOf(b.name));
-	return { kind: "marks", pos: from, marks };
+	return { kind: "marks", pos: from, marks, rules };
+}
+
+/** 코드 블록 안 커서(`$pos`)에 걸친 정규식 규칙의 찾은 곳. */
+function rulesAt($pos: ResolvedPos): ActiveCodeRule[] {
+	const block = $pos.parent;
+	const text = block.textContent;
+	const offset = $pos.parentOffset;
+	const blockPos = $pos.before();
+	return rulesOf(block).flatMap((rule) => {
+		const matches = ruleMatches(rule, text);
+		const hit = matches.find((match) => match.from <= offset && offset <= match.to);
+		return hit
+			? [{ rule, blockPos, from: blockPos + 1 + hit.from, to: blockPos + 1 + hit.to, count: matches.length }]
+			: [];
+	});
 }
 
 /** 효과 하나를 그 범위 전체에서 지운다. 커서는 그 자리에 둔다. */

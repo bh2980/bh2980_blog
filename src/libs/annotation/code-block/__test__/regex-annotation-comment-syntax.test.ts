@@ -132,3 +132,42 @@ describe("regex annotation comment syntax", () => {
 		]);
 	});
 });
+
+describe("정규식 규칙 보존", () => {
+	it("정규식 선택자를 규칙으로 돌려주고, 찾은 범위에 규칙 번호를 단다", () => {
+		const document = parse(["// @document fold {re:/b+/}", "// @char fold {re:/a/g} open", "aab", "bb"].join("\n"));
+		expect(document.rules).toEqual([
+			{ scope: "document", name: "fold", pattern: "b+", flags: "", attributes: [] },
+			{ scope: "char", name: "fold", pattern: "a", flags: "g", line: 0, attributes: [{ name: "open", value: true }] },
+		]);
+		expect(document.lines[0]?.annotations.map((annotation) => annotation.rule)).toEqual([1, 1, 0]);
+	});
+
+	it("정규식 안의 `}`도 선택자로 읽는다", () => {
+		const document = parse(["// @char fold {re:/a{2}[}]/}", "xaa}x"].join("\n"));
+		expect(document.rules?.[0]).toMatchObject({ pattern: "a{2}[}]", line: 0 });
+		expect(document.lines[0]?.annotations[0]?.range).toEqual({ start: 1, end: 4 });
+	});
+
+	it("적용할 줄이 없는 @char 규칙은 버리고 나머지 규칙 번호를 다시 잇는다", () => {
+		const document = parse(["// @document fold {re:/x/}", "x", "// @char fold {re:/y/}"].join("\n"));
+		expect(document.rules?.map((rule) => rule.scope)).toEqual(["document"]);
+		expect(document.lines[0]?.annotations[0]?.rule).toBe(0);
+	});
+
+	it("정규식의 `/`는 주석이 깨지지 않게 `\\/`로 쓴다", async () => {
+		const { __testable__ } = await import("../document-to-code-fence");
+		const line = __testable__.fromRuleToCommentLine(
+			{ prefix: "//", postfix: "" },
+			{ scope: "document", name: "fold", pattern: "a/b\\/c", flags: "", attributes: [] },
+		);
+		expect(line).toBe("// @document fold {re:/a\\/b\\/c/}");
+		expect(parse([line, "a/b/c"].join("\n")).lines[0]?.annotations[0]?.range).toEqual({ start: 0, end: 5 });
+	});
+
+	it("다시 저장하면 규칙 그대로 쓴다", async () => {
+		const { fromCodeBlockDocumentToCodeFence } = await import("../document-to-code-fence");
+		const source = ["// @document fold {re:/b+/}", "// @char fold {re:/a/g} open", "aab", "bb"].join("\n");
+		expect(fromCodeBlockDocumentToCodeFence(parse(source), annotationConfig).value).toBe(source);
+	});
+});

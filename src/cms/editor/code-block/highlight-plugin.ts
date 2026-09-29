@@ -1,8 +1,6 @@
-import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
-import { Mapping } from "@tiptap/pm/transform";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { Highlighter } from "shiki";
-import type { CodeBlockAnnotationItem } from "./types";
 
 export const codeBlockHighlightPluginKey = new PluginKey<{ version: number }>("cmsCodeBlockHighlight");
 
@@ -179,7 +177,7 @@ export function createCodeBlockHighlightPlugin(): Plugin {
 					const blockStart = pos + 1;
 					const lang = (node.attrs.language as string) || "text";
 
-					// 1) Shiki 구문 하이라이팅 데코레이션
+					// Shiki 구문 하이라이팅 데코레이션
 					if (text.length > 0 && lang !== "text") {
 						const cacheKey = `${lang}:::${text}`;
 						const cached = highlightCache.get(cacheKey);
@@ -193,36 +191,6 @@ export function createCodeBlockHighlightPlugin(): Plugin {
 										}),
 									);
 								}
-							}
-						}
-					}
-
-					// 2) 주석(밑줄·툴팁) 데코레이션
-					const annotations = node.attrs.annotations as CodeBlockAnnotationItem[] | undefined;
-					if (annotations && Array.isArray(annotations)) {
-						for (const anno of annotations) {
-							const from = Math.max(0, Math.min(text.length, anno.from));
-							const to = Math.max(from, Math.min(text.length, anno.to));
-							if (from >= to) continue;
-
-							if (anno.type === "underline") {
-								decorations.push(
-									Decoration.inline(blockStart + from, blockStart + to, {
-										class:
-											"underline decoration-neutral-400 dark:decoration-neutral-500 underline-offset-4 decoration-2",
-										"data-code-anno": "underline",
-										"data-anno-id": anno.id,
-									}),
-								);
-							} else if (anno.type === "tooltip") {
-								decorations.push(
-									Decoration.inline(blockStart + from, blockStart + to, {
-										class: "underline decoration-dotted underline-offset-4 decoration-primary cursor-help",
-										title: anno.content || "툴팁",
-										"data-code-anno": "tooltip",
-										"data-anno-id": anno.id,
-									}),
-								);
 							}
 						}
 					}
@@ -253,74 +221,6 @@ export function createCodeBlockHighlightPlugin(): Plugin {
 					requestVisibleBlocks();
 				},
 			};
-		},
-		appendTransaction(transactions, oldState, newState) {
-			// 문서가 변경되었을 때만 주석 오프셋을 매핑하여 갱신
-			if (!transactions.some((tr) => tr.docChanged)) return null;
-
-			const combined = new Mapping();
-			for (const tr of transactions) {
-				combined.appendMapping(tr.mapping);
-			}
-
-			let updateTr: Transaction | null = null;
-
-			oldState.doc.descendants((oldNode, oldPos) => {
-				if (oldNode.type.name !== "codeBlock") return;
-
-				const annotations = oldNode.attrs.annotations as CodeBlockAnnotationItem[] | undefined;
-				if (!annotations || !Array.isArray(annotations) || annotations.length === 0) return;
-
-				const newPos = combined.map(oldPos, 1);
-				const newNode = newState.doc.nodeAt(newPos);
-				if (!newNode || newNode.type.name !== "codeBlock") return;
-				// 블록 자체를 교체·적재한 경우 새 attrs의 주석이 정본이다(옛 블록의 range를 매핑하지 않는다).
-				if (
-					oldNode.attrs.raw !== newNode.attrs.raw ||
-					oldNode.attrs.initialAnnotationsJson !== newNode.attrs.initialAnnotationsJson
-				)
-					return;
-
-				const oldBlockStart = oldPos + 1;
-				const newBlockStart = newPos + 1;
-				const newTextLen = newNode.textContent.length;
-
-				let changed = false;
-				const updatedAnnotations: CodeBlockAnnotationItem[] = [];
-
-				for (const anno of annotations) {
-					const oldDocFrom = oldBlockStart + anno.from;
-					const oldDocTo = oldBlockStart + anno.to;
-
-					const newDocFrom = combined.map(oldDocFrom, 1);
-					const newDocTo = combined.map(oldDocTo, 1);
-
-					const mappedFrom = Math.max(0, Math.min(newTextLen, newDocFrom - newBlockStart));
-					const mappedTo = Math.max(0, Math.min(newTextLen, newDocTo - newBlockStart));
-
-					if (mappedFrom < mappedTo) {
-						if (mappedFrom !== anno.from || mappedTo !== anno.to) {
-							changed = true;
-						}
-						updatedAnnotations.push({ ...anno, from: mappedFrom, to: mappedTo });
-					} else {
-						// 오프셋이 축소/삭제됨
-						changed = true;
-					}
-				}
-
-				if (changed || updatedAnnotations.length !== annotations.length) {
-					if (!updateTr) {
-						updateTr = newState.tr;
-					}
-					updateTr.setNodeMarkup(newPos, undefined, {
-						...newNode.attrs,
-						annotations: updatedAnnotations,
-					});
-				}
-			});
-
-			return updateTr;
 		},
 	});
 }
