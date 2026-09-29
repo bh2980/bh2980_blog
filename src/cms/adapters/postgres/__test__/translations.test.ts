@@ -170,18 +170,120 @@ describe("번역 묶음(v2 B4)", () => {
 		await expect(createPost("shared-slug")).rejects.toMatchObject({ code: "slug_conflict" });
 	});
 
-	it("번역본이 있는 원문은 영구 삭제할 수 없다", async () => {
+	const statusOf = async (id: string) =>
+		(await pool.query<{ status: string }>(`SELECT status FROM "${schemaName}".entries WHERE id = $1`, [id])).rows[0]
+			?.status;
+	const versionOf = async (id: string) =>
+		(await pool.query<{ version: number }>(`SELECT version FROM "${schemaName}".entries WHERE id = $1`, [id])).rows[0]
+			?.version as number;
+
+	it("원문을 휴지통으로 보내면 번역본도 함께 가고, 복원하면 함께 버린 번역본만 돌아온다(v3)", async () => {
+		const source = await createPost("trash-group-source");
+		const en = await service.createTranslation({ sourceId: source.id, locale: "en" });
+		const ja = await service.createTranslation({ sourceId: source.id, locale: "ja" });
+		await store.trashEntry({ id: ja.id, expectedVersion: ja.version });
+
+		const trashed = await store.trashEntry({ id: source.id, expectedVersion: source.version });
+		expect(await statusOf(en.id)).toBe("trashed");
+		// 열어 둔 번역본 편집 화면이 충돌로 알아차린다.
+		expect(await versionOf(en.id)).toBe(en.version + 1);
+
+		await expect(store.restoreEntry({ id: en.id, expectedVersion: await versionOf(en.id) })).rejects.toMatchObject({
+			code: "source_trashed",
+		});
+
+		await store.restoreEntry({ id: source.id, expectedVersion: trashed.version });
+		expect(await statusOf(source.id)).toBe("draft");
+		expect(await statusOf(en.id)).toBe("draft");
+		expect(await statusOf(ja.id)).toBe("trashed");
+
+		// 원문이 살아 있으면 따로 지운 번역본도 복원된다.
+		await store.restoreEntry({ id: ja.id, expectedVersion: await versionOf(ja.id) });
+		expect(await statusOf(ja.id)).toBe("draft");
+	});
+
+	it("원문 보관·보관 해제는 번역본에도 적용된다(v3)", async () => {
+		const source = await createPost("archive-group-source");
+		const en = await service.createTranslation({ sourceId: source.id, locale: "en" });
+		const archived = await store.archiveEntry({ id: source.id, expectedVersion: source.version });
+		expect(await statusOf(en.id)).toBe("archived");
+		await store.unarchiveEntry({ id: source.id, expectedVersion: archived.version });
+		expect(await statusOf(en.id)).toBe("draft");
+
+		// 번역본만 보관하면 원문은 그대로다.
+		await store.archiveEntry({ id: en.id, expectedVersion: await versionOf(en.id) });
+		expect(await statusOf(source.id)).toBe("draft");
+	});
+
+	it("원문을 영구 삭제하면 휴지통의 번역본도 함께 지우고, 휴지통 밖 번역본이 있으면 거부한다(v3)", async () => {
 		const source = await createPost("delete-source");
 		const en = await service.createTranslation({ sourceId: source.id, locale: "en" });
 		const trashed = await store.trashEntry({ id: source.id, expectedVersion: source.version });
+
+		// 원문만 휴지통에 있고 번역본이 살아 있는 예전 데이터.
+		await pool.query(`UPDATE "${schemaName}".entries SET status = 'draft', trashed_at = NULL WHERE id = $1`, [en.id]);
 		await expect(store.permanentDeleteEntry({ id: source.id, expectedVersion: trashed.version })).rejects.toMatchObject(
-			{
-				code: "has_translations",
-			},
+			{ code: "has_translations" },
 		);
-		const trashedEn = await store.trashEntry({ id: en.id, expectedVersion: en.version });
-		await store.permanentDeleteEntry({ id: en.id, expectedVersion: trashedEn.version });
+
+		await store.trashEntry({ id: en.id, expectedVersion: await versionOf(en.id) });
 		await store.permanentDeleteEntry({ id: source.id, expectedVersion: trashed.version });
+		expect(await statusOf(source.id)).toBeUndefined();
+		expect(await statusOf(en.id)).toBeUndefined();
+	});
+
+	it("묶음 보기 목록은 원문 한 줄에 언어별 콘텐츠를 딸려 보이고, 검색·언어 필터는 묶음 전체로 본다(v3)", async () => {
+		const source = await createPost("group-list-source");
+		const en = await service.createTranslation({ sourceId: source.id, locale: "en" });
+		await service.saveDraft(en.id, {
+			collection: "post",
+			slug: "group-list-source",
+			metadata: { title: "Grouped English title" },
+			mdx: "Body",
+			expectedVersion: en.version,
+		} as never);
+		const ja = await service.createTranslation({ sourceId: source.id, locale: "ja" });
+		await store.trashEntry({ id: ja.id, expectedVersion: ja.version });
+		const lonely = await createPost("group-list-lonely");
+
+		const all = await store.listEntries({ collection: "post", groupTranslations: true, pageSize: 100 });
+		const ids = all.items.map((item) => item.id);
+		expect(ids).toContain(source.id);
+		expect(ids).toContain(lonely.id);
+		expect(ids).not.toContain(en.id);
+		const row = all.items.find((item) => item.id === source.id);
+		expect(row?.translations?.map((member) => [member.locale, member.isSource, member.status])).toEqual([
+			["ko", true, "draft"],
+			["en", false, "draft"],
+		]);
+		expect(all.items.find((item) => item.id === lonely.id)?.translations?.map((member) => member.locale)).toEqual([
+			"ko",
+		]);
+
+		const byEnglishTitle = await store.listEntries({
+			collection: "post",
+			groupTranslations: true,
+			search: "Grouped English",
+			pageSize: 100,
+		});
+		expect(byEnglishTitle.items.map((item) => item.id)).toEqual([source.id]);
+
+		const withEnglish = await store.listEntries({
+			collection: "post",
+			groupTranslations: true,
+			locales: ["en"],
+			pageSize: 100,
+		});
+		expect(withEnglish.items.map((item) => item.id)).toContain(source.id);
+		expect(withEnglish.items.map((item) => item.id)).not.toContain(lonely.id);
+		// 휴지통의 번역본은 "있는 언어"로 치지 않는다.
+		const withJapanese = await store.listEntries({
+			collection: "post",
+			groupTranslations: true,
+			locales: ["ja"],
+			pageSize: 100,
+		});
+		expect(withJapanese.items.map((item) => item.id)).not.toContain(source.id);
 	});
 
 	it("목록은 언어로 거르고 번역본의 태그·카테고리는 원문 값을 보여 준다", async () => {

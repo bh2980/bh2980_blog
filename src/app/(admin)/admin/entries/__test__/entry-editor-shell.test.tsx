@@ -3,17 +3,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EntryEditorShell } from "../entry-editor-shell";
 import { EMPTY_FORM, formFingerprint, formFromEntry } from "../entry-form";
 
-const { getLocalBackup, deleteLocalBackup, saveLocalBackup, success, warning, message, routerReplace, routerPush } =
-	vi.hoisted(() => ({
-		getLocalBackup: vi.fn(),
-		deleteLocalBackup: vi.fn(),
-		saveLocalBackup: vi.fn(),
-		success: vi.fn(),
-		warning: vi.fn(),
-		message: vi.fn(),
-		routerReplace: vi.fn(),
-		routerPush: vi.fn(),
-	}));
+const {
+	getLocalBackup,
+	deleteLocalBackup,
+	saveLocalBackup,
+	success,
+	warning,
+	message,
+	error,
+	routerReplace,
+	routerPush,
+} = vi.hoisted(() => ({
+	getLocalBackup: vi.fn(),
+	deleteLocalBackup: vi.fn(),
+	saveLocalBackup: vi.fn(),
+	success: vi.fn(),
+	warning: vi.fn(),
+	message: vi.fn(),
+	error: vi.fn(),
+	routerReplace: vi.fn(),
+	routerPush: vi.fn(),
+}));
 vi.mock("../local-backup", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../local-backup")>()),
 	getLocalBackup,
@@ -44,7 +54,7 @@ vi.mock("@/cms/editor/tiptap-editor", () => ({
 		</>
 	),
 }));
-vi.mock("sonner", () => ({ Toaster: () => null, toast: { success, warning, message } }));
+vi.mock("sonner", () => ({ Toaster: () => null, toast: { success, warning, message, error } }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: routerReplace, push: routerPush }) }));
 
 const ADMIN = "u1";
@@ -578,5 +588,101 @@ describe("entry editor shell", () => {
 		renderEdit();
 		await waitFor(() => expect(routerReplace).toHaveBeenCalledWith("/admin?collection=tag"));
 		expect(EMPTY_FORM.title).toBe("");
+	});
+});
+
+describe("언어 탭", () => {
+	const member = (id: string, locale: string, status: string, isSource: boolean) => ({
+		id,
+		locale,
+		status,
+		isSource,
+		title: "테스트",
+		workingSlug: "test",
+	});
+	const source = {
+		...entry,
+		locale: "ko",
+		translationGroupId: "entry-1",
+		translations: [member("entry-1", "ko", "published", true), member("entry-en", "en", "draft", false)],
+	};
+	const translation = { ...source, id: "entry-en", locale: "en", status: "draft" };
+	it("shows one tab per member above the title and marks the current one", async () => {
+		serve(() => undefined, source);
+		renderEdit();
+		const nav = await screen.findByRole("navigation", { name: "언어" });
+		const current = within(nav).getByRole("button", { name: "한국어 원문 · 발행됨" });
+		expect(current.getAttribute("aria-current")).toBe("page");
+		const other = within(nav).getByRole("button", { name: "영어 · 초안" });
+		expect(other.getAttribute("aria-current")).toBeNull();
+		expect(within(nav).getByRole("button", { name: "일본어 번역본 만들기" })).toBeTruthy();
+		expect(within(nav).queryByRole("button", { name: "번역본 메뉴" })).toBeNull();
+		const title = await editorTitle();
+		expect(nav.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
+	it("moves to another language by its tab", async () => {
+		serve(() => undefined, source);
+		renderEdit();
+		fireEvent.click(await screen.findByRole("button", { name: "영어 · 초안" }));
+		expect(routerPush).toHaveBeenCalledWith("/admin/entries/entry-en/edit");
+	});
+
+	it("creates a translation from the missing-language button and opens it", async () => {
+		serve((input, init) => {
+			if (input === "/api/cms/v1/entries/entry-1/translations" && init?.method === "POST") {
+				return json({ id: "entry-ja" }, 201);
+			}
+		}, source);
+		renderEdit();
+		fireEvent.click(await screen.findByRole("button", { name: "일본어 번역본 만들기" }));
+		await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/admin/entries/entry-ja/edit"));
+		expect(JSON.parse(String(methodCalls("POST", "/translations")[0]?.[1]?.body))).toEqual({ locale: "ja" });
+		expect(success).toHaveBeenCalledWith("일본어 번역본을 만들었습니다.");
+	});
+
+	it("blocks translation creation while there are unsaved changes", async () => {
+		serve(() => undefined, source);
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "저장 전" } });
+		fireEvent.click(screen.getByRole("button", { name: "일본어 번역본 만들기" }));
+		await waitFor(() => expect(error).toHaveBeenCalled());
+		expect(methodCalls("POST", "/translations")).toHaveLength(0);
+	});
+
+	it("trashes a translation from its tab menu and goes back to the source", async () => {
+		serve((input, init) => {
+			if (input === "/api/cms/v1/entries/entry-en" && !init?.method) return json(translation);
+			if (input === "/api/cms/v1/entries/entry-en/trash" && init?.method === "POST") {
+				return json({ ...translation, status: "trashed" });
+			}
+		}, translation);
+		render(<EntryEditorShell mode="edit" initialEntryId="entry-en" adminId={ADMIN} />);
+		const nav = await screen.findByRole("navigation", { name: "언어" });
+		expect(within(nav).getByRole("button", { name: "영어 · 초안" }).getAttribute("aria-current")).toBe("page");
+		fireEvent.click(within(nav).getByRole("button", { name: "번역본 메뉴" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "이 번역본 삭제" }));
+		const dialog = screen.getByRole("alertdialog", { name: "휴지통으로 이동" });
+		expect(within(dialog).queryByText(/함께/)).toBeNull();
+		fireEvent.click(within(dialog).getByRole("button", { name: "휴지통으로 이동" }));
+		await waitFor(() => expect(methodCalls("POST", "/entry-en/trash")).toHaveLength(1));
+		await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/admin/entries/entry-1/edit"));
+	});
+
+	it("tells that translations go along when trashing or archiving the source", async () => {
+		serve(() => undefined, source);
+		renderEdit();
+		await screen.findByRole("navigation", { name: "언어" });
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "더보기" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "휴지통으로 이동" }));
+		expect(
+			within(screen.getByRole("alertdialog")).getByText(/번역본\(EN\)도 함께 휴지통으로 이동합니다\./),
+		).toBeTruthy();
+	});
+
+	it("hides the tabs for record collections and new entries", async () => {
+		render(<EntryEditorShell mode="new" adminId={ADMIN} collection="post" />);
+		await editorTitle();
+		expect(screen.queryByRole("navigation", { name: "언어" })).toBeNull();
 	});
 });

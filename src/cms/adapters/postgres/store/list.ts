@@ -1,4 +1,4 @@
-import { isLocale } from "@/libs/i18n/locales";
+import { isLocale, LOCALES } from "@/libs/i18n/locales";
 import { COLLECTIONS } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import type { StoreContext } from "./context";
@@ -10,6 +10,7 @@ import {
 	type ListEntriesItem,
 	type ListEntriesParams,
 	type ListEntriesResult,
+	type ListTranslationMember,
 } from "./types";
 
 const STATUSES: readonly EntryStatus[] = ["draft", "published", "archived", "trashed"];
@@ -30,7 +31,13 @@ function assertParams(params: ListEntriesParams) {
 		if (params[key] !== undefined && typeof params[key] !== "string")
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
-	for (const key of ["includeBody", "includeDescendants", "hasUnpublishedChanges", "scheduled"] as const) {
+	for (const key of [
+		"includeBody",
+		"includeDescendants",
+		"hasUnpublishedChanges",
+		"scheduled",
+		"groupTranslations",
+	] as const) {
 		if (params[key] !== undefined && typeof params[key] !== "boolean")
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
@@ -89,6 +96,16 @@ export function createListOps(ctx: StoreContext) {
 			};
 
 			conditions.push(`e.collection = ${bind(params.collection)}`);
+			const grouped = params.groupTranslations === true;
+			// 묶음 보기는 원문만 줄로 둔다. 번역본은 줄의 `translations`로 딸려 온다.
+			if (grouped) conditions.push("(e.translation_group_id IS NULL OR e.translation_group_id = e.id)");
+			/** 같은 묶음에서 휴지통 밖에 있는 콘텐츠(원문 포함)가 조건을 만족하는지. */
+			const anyMember = (predicate: string) =>
+				`EXISTS (
+					SELECT 1 FROM "${qSchema}".entries m
+					JOIN "${qSchema}".entry_bodies mw ON mw.entry_id = m.id AND mw.state = 'working'
+					WHERE COALESCE(m.translation_group_id, m.id) = e.id AND m.status <> 'trashed' AND ${predicate}
+				)`;
 			if (params.statuses && params.statuses.length > 0) {
 				conditions.push(`e.status = ANY(${bind(params.statuses)}::text[])`);
 			} else {
@@ -115,10 +132,14 @@ export function createListOps(ctx: StoreContext) {
 
 			if (params.search) {
 				const token = bind(escapeLike(params.search));
+				const matches = (alias: string, slug: string) =>
+					`(${slug} ILIKE ${token} OR ${alias}.metadata->>'title' ILIKE ${token}${
+						params.includeBody ? ` OR ${alias}.search_text ILIKE ${token}` : ""
+					})`;
 				conditions.push(
-					`(e.working_slug ILIKE ${token} OR w.metadata->>'title' ILIKE ${token}${
-						params.includeBody ? ` OR w.search_text ILIKE ${token}` : ""
-					})`,
+					grouped
+						? `(${matches("w", "e.working_slug")} OR ${anyMember(matches("mw", "m.working_slug"))})`
+						: matches("w", "e.working_slug"),
 				);
 			}
 			if (params.titleContains) {
@@ -128,7 +149,8 @@ export function createListOps(ctx: StoreContext) {
 				conditions.push(`e.working_slug ILIKE ${bind(escapeLike(params.slugContains))}`);
 			}
 			if (params.locales && params.locales.length > 0) {
-				conditions.push(`e.locale = ANY(${bind(params.locales)}::text[])`);
+				const locales = `${bind(params.locales)}::text[]`;
+				conditions.push(grouped ? anyMember(`m.locale = ANY(${locales})`) : `e.locale = ANY(${locales})`);
 			}
 			// 태그·카테고리는 공통 값이라 번역본은 원문 초안의 값으로 거른다(v2 B4). 원문은 `sw`가 자기 초안이다.
 			if (params.tagIds && params.tagIds.length > 0) {
@@ -263,7 +285,53 @@ export function createListOps(ctx: StoreContext) {
 				};
 			});
 
-			return { items, total, page, pageSize };
+			if (!grouped || items.length === 0) return { items, total, page, pageSize };
+
+			const memberRes = await pool.query<{
+				id: string;
+				group_id: string;
+				locale: string;
+				status: EntryStatus;
+				version: number;
+				has_changes: boolean;
+			}>(
+				`SELECT m.id, COALESCE(m.translation_group_id, m.id) AS group_id, m.locale, m.status, m.version,
+				        (p.entry_id IS NOT NULL AND (p.content_hash <> w.content_hash OR m.working_slug IS DISTINCT FROM cur.slug)) AS has_changes
+				 FROM "${qSchema}".entries m
+				 JOIN "${qSchema}".entry_bodies w ON w.entry_id = m.id AND w.state = 'working'
+				 LEFT JOIN "${qSchema}".entry_bodies p ON p.entry_id = m.id AND p.state = 'published'
+				 LEFT JOIN "${qSchema}".content_addresses cur ON cur.entry_id = m.id AND cur.type = 'current'
+				 WHERE COALESCE(m.translation_group_id, m.id) = ANY($1::uuid[]) AND m.status <> 'trashed'`,
+				[items.map((item) => item.id)],
+			);
+			const membersByGroup = new Map<string, ListTranslationMember[]>();
+			for (const row of memberRes.rows) {
+				const members = membersByGroup.get(row.group_id) ?? [];
+				members.push({
+					id: row.id,
+					locale: row.locale,
+					status: row.status,
+					version: row.version,
+					isSource: row.id === row.group_id,
+					hasUnpublishedChanges: row.has_changes,
+				});
+				membersByGroup.set(row.group_id, members);
+			}
+			const localeOrder = (locale: string) => {
+				const index = (LOCALES as readonly string[]).indexOf(locale);
+				return index === -1 ? LOCALES.length : index;
+			};
+			return {
+				items: items.map((item) => ({
+					...item,
+					translations: (membersByGroup.get(item.id) ?? []).sort(
+						(a, b) => localeOrder(a.locale) - localeOrder(b.locale),
+					),
+				})),
+				total,
+				page,
+				pageSize,
+			};
 		},
 	};
 }

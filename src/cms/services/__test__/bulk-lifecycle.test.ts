@@ -42,7 +42,10 @@ const newFakeLifecycleStore = (seed: Record<string, EntryState>, scheduled: read
 		async getWorkingReferences() {
 			return [] as Reference[];
 		},
-		async hasPendingSchedule(params: { entryId: string }) {
+		/** 번역본 예약: 원문 id → 예약된 번역본이 있는지. */
+		translationScheduled: new Set<string>(),
+		async hasPendingSchedule(params: { entryId: string; includeTranslations?: boolean }) {
+			if (params.includeTranslations && this.translationScheduled.has(params.entryId)) return true;
 			return scheduledIds.has(params.entryId);
 		},
 		unschedule(entryId: string) {
@@ -225,5 +228,36 @@ describe("v2 A3 bulk permanentDelete", () => {
 		});
 		expect(out.results).toEqual([{ id: "t1", ok: false, error: "conflict" }]);
 		expect(store.entries.has("t1")).toBe(true);
+	});
+
+	it("treats an item already removed earlier in the same request as deleted (source took its translations, v3)", async () => {
+		const store = newFakeLifecycleStore({ source: { version: 2, status: "trashed" } });
+		const out = await createBulkService(store).run({
+			op: "permanentDelete",
+			items: [
+				{ id: "source", expectedVersion: 2 },
+				{ id: "translation-removed-with-source", expectedVersion: 3 },
+			],
+		});
+		expect(out.results).toEqual([
+			{ id: "source", ok: true, version: 2 },
+			{ id: "translation-removed-with-source", ok: true, version: 3 },
+		]);
+	});
+});
+
+describe("v3 번역 묶음 일괄 작업", () => {
+	it("원문 보관·휴지통은 번역본 예약도 잠금으로 보고, 발행은 원문 예약만 본다", async () => {
+		const store = newFakeLifecycleStore({
+			source: { version: 1, status: "draft" },
+		});
+		store.translationScheduled.add("source");
+		const bulk = createBulkService(store);
+		for (const op of ["archive", "trash"] as const) {
+			const out = await bulk.run({ op, items: [{ id: "source", expectedVersion: 1 }] });
+			expect(out.results).toEqual([{ id: "source", ok: false, error: "locked" }]);
+		}
+		const published = await bulk.run({ op: "publish", items: [{ id: "source", expectedVersion: 1 }] });
+		expect(published.results).toEqual([{ id: "source", ok: true, version: 2 }]);
 	});
 });

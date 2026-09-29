@@ -1,5 +1,6 @@
 import type { ListSortField, PageSize } from "@/cms/core/api";
 import { type Collection, isCollection } from "@/cms/core/collections";
+import { schemaOf } from "@/cms/schema/derive";
 import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { isLocale, type Locale } from "@/libs/i18n/locales";
 import type { EntryStatus } from "./shared/entry-status";
@@ -159,6 +160,7 @@ const seoulDayBoundary = (date: string, end: boolean) => {
 /**
  * 목록 API(`GET /entries`) 질의. 같은 필터의 여러 값은 OR, 다른 필터끼리는 AND다.
  * `trash`면 휴지통 항목만 부른다(v2 A3 휴지통 화면).
+ * 발행형 컬렉션(글·메모)은 번역 묶음당 한 줄로 부른다. 휴지통은 번역본 하나만 복구할 수 있게 항목별로 둔다.
  */
 export function listStateToApiQuery(state: ListState, options: { trash?: boolean } = {}): URLSearchParams {
 	const query = new URLSearchParams({
@@ -168,6 +170,7 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 		page: String(state.page),
 		pageSize: String(state.pageSize),
 	});
+	if (!options.trash && schemaOf(state.collection).workflow === "publish") query.set("group", "translation");
 	if (!options.trash) {
 		// 탐색 모드는 현재 위치에 바로 든 항목만, 검색·필터나 "하위 폴더 포함"은 현재 위치 아래 전체를 본다.
 		const flat = !isExplorerMode(state);

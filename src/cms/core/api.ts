@@ -46,6 +46,8 @@ export const listEntriesQuerySchema = z.object({
 	status: z.array(entryStatusSchema).optional(),
 	/** 콘텐츠 언어(v2 B4). 여러 번 쓸 수 있고 없으면 모든 언어다. */
 	locale: z.array(z.enum(LOCALES)).optional(),
+	/** `translation`이면 번역 묶음마다 원문 한 줄로 보인다(v3 번역 화면). */
+	group: z.enum(["translation"]).optional(),
 	folderId: z
 		.string()
 		.optional()

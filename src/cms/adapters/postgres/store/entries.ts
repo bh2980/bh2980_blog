@@ -262,9 +262,13 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 		getWorkingReferences: async (params: { entryId: string }): Promise<Reference[]> =>
 			readReferences(pool, qSchema, params.entryId, "working"),
 
-		hasPendingSchedule: async (params: { entryId: string }): Promise<boolean> => {
+		hasPendingSchedule: async (params: { entryId: string; includeTranslations?: boolean }): Promise<boolean> => {
+			// 원문의 보관·휴지통은 번역본에도 적용되므로(v3) 번역본의 예약도 함께 본다.
 			const res = await pool.query(
-				`SELECT 1 FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending' LIMIT 1`,
+				params.includeTranslations
+					? `SELECT 1 FROM "${qSchema}".schedules s JOIN "${qSchema}".entries e ON e.id = s.entry_id
+					   WHERE (e.id = $1 OR e.translation_group_id = $1) AND s.status = 'pending' LIMIT 1`
+					: `SELECT 1 FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending' LIMIT 1`,
 				[params.entryId],
 			);
 			return res.rows.length > 0;

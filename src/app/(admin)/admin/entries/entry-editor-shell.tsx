@@ -58,9 +58,17 @@ import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
-import { EMPTY_FORM, type EntryData, type EntryForm, formFingerprint, formFromEntry, formText } from "./entry-form";
+import {
+	EMPTY_FORM,
+	type EntryData,
+	type EntryForm,
+	formFingerprint,
+	formFromEntry,
+	formText,
+	isTranslationEntry,
+} from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
-import { LanguageMenu } from "./language-menu";
+import { LanguageTabs } from "./language-tabs";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
@@ -508,6 +516,12 @@ export function EntryEditorShell({
 				method: "POST",
 				json: { expectedVersion: autosave.getVersion() },
 			});
+			// 번역본을 휴지통으로 보내면 원문 편집 화면으로 돌아간다.
+			if (action === "trash" && isTranslationEntry(entry) && entry.translationGroupId) {
+				toast.success(successMessage);
+				router.push(`/admin/entries/${entry.translationGroupId}/edit`);
+				return;
+			}
 			await loadEntry(entry.id);
 			toast.success(successMessage);
 		} catch (error) {
@@ -522,10 +536,18 @@ export function EntryEditorShell({
 			publishedUsers.length > 0
 				? ` 이 글을 공개본에서 참조하는 콘텐츠가 ${publishedUsers.length}개 있습니다(속성 패널의 사용처).`
 				: "";
+		// 원문을 옮기면 같은 묶음의 번역본도 함께 옮겨진다.
+		const otherLocales =
+			entry && !isTranslationEntry(entry)
+				? (entry.translations ?? [])
+						.filter((member) => member.id !== entry.id && member.status !== "trashed")
+						.map((member) => member.locale.toUpperCase())
+				: [];
+		const hasGroup = otherLocales.length > 0;
 		const requests: Record<LifecycleAction, ConfirmRequest> = {
 			archive: {
 				title: "글 보관",
-				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}`,
+				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
 				confirmLabel: "보관",
 				onConfirm: () => runLifecycle("archive", "보관했습니다."),
 			},
@@ -537,7 +559,7 @@ export function EntryEditorShell({
 			},
 			trash: {
 				title: "휴지통으로 이동",
-				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}`,
+				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? ` 번역본(${otherLocales.join("·")})도 함께 휴지통으로 이동합니다.` : ""}`,
 				confirmLabel: "휴지통으로 이동",
 				destructive: true,
 				onConfirm: () => runLifecycle("trash", "휴지통으로 옮겼습니다."),
@@ -652,6 +674,15 @@ export function EntryEditorShell({
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
+	const languageTabs =
+		entry && !isRecordCollection(collection) ? (
+			<LanguageTabs
+				entry={entry}
+				disabled={isReadOnly}
+				onBeforeCreate={async () => !autosave.hasPendingChanges()}
+				onTrashTranslation={() => confirmLifecycle("trash")}
+			/>
+		) : null;
 	const titleInput = (
 		<>
 			<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
@@ -781,13 +812,6 @@ export function EntryEditorShell({
 					<span className="hidden rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs sm:inline-flex">
 						{statusLabel}
 					</span>
-					{entry && !isRecordCollection(collection) && (
-						<LanguageMenu
-							entry={entry}
-							disabled={isReadOnly}
-							onBeforeCreate={async () => !autosave.hasPendingChanges()}
-						/>
-					)}
 				</div>
 
 				<div className="flex w-full items-center justify-end gap-1 whitespace-nowrap sm:w-auto">
@@ -1006,7 +1030,12 @@ export function EntryEditorShell({
 				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
 					<CmsEditor
 						content={form.mdx}
-						titleField={titleInput}
+						titleField={
+							<>
+								{languageTabs}
+								{titleInput}
+							</>
+						}
 						toolbarEnd={templateMenu}
 						toolbarAside={sourceModeToggle}
 						sourceView={editorMode === "source" ? sourceEditor : undefined}

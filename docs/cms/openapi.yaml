@@ -134,8 +134,17 @@ paths:
           schema: { type: array, items: { type: string, enum: [draft, published, archived, trashed] } }
         - name: locale
           in: query
-          description: 콘텐츠 언어(v2 B4). 반복 지정할 수 있다(OR). 생략하면 모든 언어다.
+          description: >
+            콘텐츠 언어(v2 B4). 반복 지정할 수 있다(OR). 생략하면 모든 언어다.
+            `group=translation`이면 이 언어 콘텐츠가 휴지통 밖에 있는 묶음만이다.
           schema: { type: array, items: { type: string, enum: [ko, en, ja] } }
+        - name: group
+          in: query
+          description: >
+            `translation`이면 번역 묶음마다 원문 한 줄로 보인다(v3 번역 화면). 검색은 묶음 안 어느 언어의
+            제목·주소에 걸려도 되고, 그 밖의 필터·정렬은 원문 값이다. 줄마다 `translations`(휴지통 밖 묶음
+            콘텐츠: id·locale·status·version·isSource·hasUnpublishedChanges)를 담는다.
+          schema: { type: string, enum: [translation] }
         - name: folderId
           in: query
           description: 폴더 ID. `null`이면 폴더 밖(최상위) 항목만.

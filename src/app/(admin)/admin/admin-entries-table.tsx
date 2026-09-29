@@ -19,7 +19,7 @@ import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderUp } from "lu
 import type { Route } from "next";
 import Link from "next/link";
 import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import type { Folder, ListEntriesItem, ListTranslationMember } from "@/cms/adapters/postgres/content-store";
 import { type AdminColumnSettings, type AdminListColumn, PAGE_SIZES, type PageSize } from "@/cms/core/api";
 import { isRecordCollection } from "@/cms/core/collections";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -38,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
+import { isLocale, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
@@ -46,7 +46,7 @@ import { COLUMN_CONFIG, COLUMN_LABELS, columnsFor, filterFor } from "./list-colu
 import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
-import { describeEntryStatus } from "./shared/entry-status";
+import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
 import { FittingTags } from "./shared/fitting-tags";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOption } from "./shared/use-taxonomy";
@@ -65,7 +65,7 @@ const features = tableFeatures({
 /** 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다. */
 const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
 	status: 132,
-	locale: 80,
+	locale: 124,
 	category: 112,
 	tags: 200,
 	updatedAt: 132,
@@ -146,6 +146,55 @@ function ColumnResizeHandle({
 				)}
 			/>
 		</div>
+	);
+}
+
+const BADGE_CLASS = "inline-flex h-5 items-center rounded border px-1.5 font-medium text-[11px] leading-none";
+
+const BADGE_TONE: Record<"published" | "changed" | "draft" | "archived", string> = {
+	published: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+	changed: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+	draft: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+	archived: "border-transparent bg-muted text-muted-foreground",
+};
+
+/** 번역 묶음의 언어별 상태. 있는 언어는 그 편집 화면으로 잇고, 없는 언어는 점선으로만 보인다. 색과 함께 글자로도 상태를 읽힌다. */
+function LocaleBadges({ translations }: { translations: readonly ListTranslationMember[] }) {
+	return (
+		<span className="flex items-center gap-1">
+			{LOCALES.map((locale) => {
+				const name = LOCALE_INFO[locale].adminName;
+				const member = translations.find((candidate) => candidate.locale === locale);
+				if (!member) {
+					return (
+						<span key={locale} className={cn(BADGE_CLASS, "border-dashed text-muted-foreground/70")}>
+							<span aria-hidden="true">{locale.toUpperCase()}</span>
+							<span className="sr-only">{name} 없음</span>
+						</span>
+					);
+				}
+				const tone =
+					member.status === "published"
+						? member.hasUnpublishedChanges
+							? "changed"
+							: "published"
+						: member.status === "draft"
+							? "draft"
+							: "archived";
+				return (
+					<Link
+						key={locale}
+						href={`/admin/entries/${member.id}/edit` as Route}
+						className={cn(BADGE_CLASS, BADGE_TONE[tone], "hover:brightness-95 dark:hover:brightness-125")}
+					>
+						<span aria-hidden="true">{locale.toUpperCase()}</span>
+						<span className="sr-only">
+							{name} · {STATUS_LABELS[member.status]}
+						</span>
+					</Link>
+				);
+			})}
+		</span>
 	);
 }
 
@@ -332,6 +381,7 @@ export function AdminEntriesTable({
 					// 색상만으로 상태를 전달하지 않는다(§3.2).
 					return <StatusLabel item={item} isRecord={isRecord} />;
 				case "locale":
+					if (item.translations) return <LocaleBadges translations={item.translations} />;
 					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
 					return (
 						<span className="text-muted-foreground text-xs">

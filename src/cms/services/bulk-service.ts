@@ -83,7 +83,12 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 			try {
 				if (request.op === "permanentDelete") {
 					// 휴지통으로 옮길 때 예약이 취소되므로 예약 잠금은 확인하지 않는다. 휴지통 여부·참조는 저장소가 검사한다.
-					await storePort.permanentDeleteEntry({ id: item.id, expectedVersion: item.expectedVersion });
+					try {
+						await storePort.permanentDeleteEntry({ id: item.id, expectedVersion: item.expectedVersion });
+					} catch (error) {
+						// 같은 요청에서 먼저 지운 원문이 번역본을 함께 지웠다(v3). 이미 없는 항목은 지운 것으로 본다.
+						if ((error as { code?: unknown })?.code !== "not_found") throw error;
+					}
 					// 삭제된 항목에는 새 버전이 없다. 요청한 버전을 그대로 돌려준다.
 					results.push({ id: item.id, ok: true, version: item.expectedVersion });
 					continue;
@@ -91,7 +96,8 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 				if (LIFECYCLE_OPS.includes(request.op)) {
 					// 사용자 결정 Q3-A: 예약된 글은 일괄 상태 변경을 실행하지 않고 항목별 `locked`로 표시한다.
 					// 예약을 조용히 취소하지 않도록 편집 화면에서 먼저 예약을 해제하게 한다.
-					if (await storePort.hasPendingSchedule({ entryId: item.id })) {
+					const groupWide = request.op === "archive" || request.op === "trash";
+					if (await storePort.hasPendingSchedule({ entryId: item.id, includeTranslations: groupWide })) {
 						results.push({ id: item.id, ok: false, error: "locked" });
 						continue;
 					}

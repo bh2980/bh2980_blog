@@ -196,6 +196,21 @@ export interface ListEntriesItem {
 	createdAt: Date;
 	updatedAt: Date;
 	trashedAt: Date | null;
+	/**
+	 * 묶음 보기(`groupTranslations`)에서만 채운다(v3 번역 화면). 같은 번역 묶음에서 휴지통 밖에 있는
+	 * 콘텐츠(원문 포함)를 `LOCALES` 순서로 담는다.
+	 */
+	translations?: readonly ListTranslationMember[];
+}
+
+/** 목록 한 줄(원문)에 딸린 같은 묶음의 언어별 콘텐츠. */
+export interface ListTranslationMember {
+	id: string;
+	locale: string;
+	status: EntryStatus;
+	version: number;
+	isSource: boolean;
+	hasUnpublishedChanges: boolean;
 }
 
 export const LIST_SORT_FIELDS = ["updatedAt", "createdAt", "publishedAt", "title", "slug"] as const;
@@ -215,8 +230,16 @@ export interface ListEntriesParams {
 	/** 컬럼 헤더 필터: 주소(slug)만(부분 일치). */
 	slugContains?: string;
 	statuses?: readonly EntryStatus[];
-	/** 이 언어들만(v2 B4). 없으면 모든 언어다. */
+	/**
+	 * 이 언어들만(v2 B4). 없으면 모든 언어다.
+	 * 묶음 보기에서는 "이 언어 콘텐츠가 (휴지통 밖에) 있는 묶음"으로 거른다.
+	 */
 	locales?: readonly string[];
+	/**
+	 * 번역 묶음마다 원문 한 줄로 보인다(v3 번역 화면). 검색은 묶음 안 어느 언어 제목·주소에 걸려도 되고,
+	 * 그 밖의 필터·정렬은 원문 값이다. 줄마다 `translations`를 채운다.
+	 */
+	groupTranslations?: boolean;
 	folderId?: string | null;
 	includeDescendants?: boolean;
 	/** 같은 필터의 여러 값은 OR, 다른 필터끼리는 AND다(§3.2). */
