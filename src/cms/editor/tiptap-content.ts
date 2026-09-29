@@ -23,7 +23,18 @@ export const TOOLTIP_MARK_NAME = "cmsTooltip";
 export const CODE_REF_MARK_NAME = "codeRef";
 
 /** Tiptap이 그대로 들고 다닐 수 있는 mark. `tooltip`은 전용 mark로 매핑한다. */
-const NATIVE_MARKS = new Set(["bold", "italic", "strike", "code", "link", "underline", "superscript", "subscript"]);
+const NATIVE_MARKS = new Set([
+	"bold",
+	"italic",
+	"strike",
+	"code",
+	"link",
+	"underline",
+	"superscript",
+	"subscript",
+	// 번역 안내 글(v3). 속성이 없어 이름 그대로 오간다.
+	"untranslated",
+]);
 const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip", "codeRef"]);
 
 const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);

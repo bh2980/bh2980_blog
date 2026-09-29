@@ -2,7 +2,7 @@ import { isLocale } from "@/libs/i18n/locales";
 import { isCollection, isRecordCollection } from "../core/collections";
 import { slugify } from "../core/slug";
 import { prepareSnapshot, SERVICE_INPUT_KEYS, validateExactRecord } from "../core/snapshot";
-import { pickLocalizedMetadata } from "../schema/derive";
+import { withTranslationHints } from "../core/translation/hints";
 import { type SaveDraftInput, ServiceError, type ServiceInput, type StorePort } from "./types";
 
 // 스냅샷 규칙은 도메인 계층(`core/snapshot`)에 있다. 기존 import 경로를 위해 다시 내보낸다.
@@ -69,7 +69,7 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => ({
 	},
 
 	/**
-	 * 번역본을 만든다(v2 B4, v3). 원문(묶음의 원문)의 최신 초안에서 언어별 값과 본문을 복사한 초안이다.
+	 * 번역본을 만든다(v2 B4, v3). 원문(묶음의 원문)의 최신 초안 구조에 원문 글을 번역 안내로 둔 초안이다.
 	 * 주소는 원문 주소를 그대로 쓴다(언어가 달라 겹치지 않는다). 폴더는 원문과 같다.
 	 * 번역본을 가리켜 부르면 그 묶음의 원문에서 만든다.
 	 */
@@ -81,13 +81,14 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => ({
 		if (!isCollection(source.collection) || isRecordCollection(source.collection)) {
 			throw new ServiceError("invalid_input");
 		}
-		// 번역본은 원문 복사본에서 시작한다(v3). 코드·이미지·상자 같은 구조를 그대로 두고 글자만 덮어쓴다.
+		// 번역본은 원문 틀에서 시작한다(v3). 구조(제목·문단·상자·목록·표)와 코드·이미지는 그대로 두고, 글자는
+		// 번역 안내(흐린 원문 글)로 둔다. 제목·요약 같은 언어별 값은 비운다(편집 화면이 원문 제목을 자리 표시로 보인다).
 		// 번역 상태에는 지금 원문을 "확인한 원문"으로 남긴다. 원문이 바뀌면 번역 화면이 알려 준다.
 		const snapshot = await prepareSnapshot({
 			collection: source.collection,
 			slug: source.slug,
-			metadata: pickLocalizedMetadata(source.collection, source.metadata),
-			mdx: source.mdx,
+			metadata: {},
+			mdx: withTranslationHints(source.mdx),
 			translation: { version: 2, baseSource: source.mdx },
 		} as ServiceInput);
 		return storePort.createEntryWithReferences({

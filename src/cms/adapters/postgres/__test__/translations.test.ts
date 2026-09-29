@@ -56,7 +56,7 @@ describe("번역 묶음(v2 B4)", () => {
 		expect(pk.rows.map((row) => row.column_name)).toEqual(["collection", "locale", "slug"]);
 	});
 
-	it("번역본은 원문의 언어별 값·본문·주소를 복사하고, 복사한 원문을 확인한 원문으로 남긴다(v3)", async () => {
+	it("번역본은 원문 주소를 같이 쓰고, 본문은 원문 글을 번역 안내로 감싼 틀에서 시작한다(v3)", async () => {
 		const source = await createPost("copy-source");
 		expect(source.locale).toBe("ko");
 		expect(source.translationGroupId).toBe(source.id);
@@ -66,12 +66,8 @@ describe("번역 묶음(v2 B4)", () => {
 		expect(translation.translationGroupId).toBe(source.id);
 		expect(translation.status).toBe("draft");
 		expect(translation.workingSlug).toBe("copy-source");
-		expect(translation.working.mdx).toBe("한국어 본문");
-		expect(translation.working.metadata).toEqual({
-			title: "한국어 제목",
-			summary: "한국어 요약",
-			seoTitle: "검색 제목",
-		});
+		expect(translation.working.mdx).toBe(":untranslated[한국어 본문]\n");
+		expect(translation.working.metadata).toEqual({});
 		expect(translation.working.translation).toEqual({ version: 2, baseSource: "한국어 본문" });
 		expect(source.working.translation ?? null).toBeNull();
 

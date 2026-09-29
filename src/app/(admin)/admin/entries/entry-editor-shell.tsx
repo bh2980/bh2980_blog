@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
 import { isRecordCollection } from "@/cms/core/collections";
@@ -76,6 +76,7 @@ import { LanguageTabs } from "./language-tabs";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
 import { SourceChangeDialog } from "./source-change-dialog";
 import { SourcePane } from "./source-pane";
+import { useSourceSync } from "./source-sync";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
 interface EntryEditorShellProps {
@@ -178,6 +179,8 @@ export function EntryEditorShell({
 	const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 	const [isSourcePaneOpen, setIsSourcePaneOpen] = useState(true);
 	const [isSourceCompareOpen, setIsSourceCompareOpen] = useState(false);
+	const editorScrollRef = useRef<HTMLDivElement>(null);
+	const sourcePaneRef = useRef<HTMLElement>(null);
 	const [isSlugTouched, setIsSlugTouched] = useState(mode === "edit");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [actionFeedback, setActionFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
@@ -270,6 +273,13 @@ export function EntryEditorShell({
 			// 기억하지 못해도 화면은 바뀐다.
 		}
 	};
+
+	useSourceSync({
+		enabled: Boolean(entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string") && isSourcePaneOpen,
+		syncScroll: editorMode === "visual",
+		editorRef: editorScrollRef,
+		paneRef: sourcePaneRef,
+	});
 
 	const refreshIncoming = useCallback(async (targetId: string) => {
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
@@ -1109,13 +1119,17 @@ export function EntryEditorShell({
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				{translationSource && isSourcePaneOpen && (
 					<SourcePane
+						ref={sourcePaneRef}
 						mdx={translationSource.mdx}
+						title={translationSource.title}
 						locale={translationSource.locale}
 						onClose={() => toggleSourcePane(false)}
 						className="absolute inset-y-0 left-0 z-10 w-[min(100%,28rem)] shadow-lg lg:static lg:w-[45%] lg:shrink-0 lg:shadow-none"
 					/>
 				)}
 				<div
+					ref={editorScrollRef}
+					// 원문 창과 아래 여백을 같게 둬 끝까지 스크롤해도 대응이 맞는다.
 					className="h-full min-w-0 flex-1 overflow-y-auto"
 					inert={(isInspectorOpen || (Boolean(translationSource) && isSourcePaneOpen)) && isNarrowScreen}
 				>

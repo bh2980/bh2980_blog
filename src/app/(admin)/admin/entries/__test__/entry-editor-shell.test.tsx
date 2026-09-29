@@ -51,6 +51,10 @@ vi.mock("@/cms/editor/tiptap-editor", () => ({
 			</div>
 			{titleField}
 			{sourceView ?? <textarea aria-label="시각 본문" readOnly={editable === false} />}
+			<div className="ProseMirror" data-testid="mock-editor-body">
+				<p>번역 첫 문단</p>
+				<p>번역 둘째 문단</p>
+			</div>
 		</>
 	),
 }));
@@ -811,5 +815,44 @@ describe("번역본 원문 창", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "비교" }));
 		const dialog = await screen.findByRole("dialog", { name: "원문 변경" });
 		expect(within(dialog).getByText("비교할 수 없습니다.")).toBeTruthy();
+	});
+
+	it("원문 창 맨 위에 원문 제목을 보인다", async () => {
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		const heading = await within(sourcePane() as HTMLElement).findByRole("heading", { level: 1 });
+		expect(heading.textContent).toBe("원문 제목");
+	});
+
+	it("편집기 커서가 있는 블록에 대응하는 원문 블록을 표시한다", async () => {
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		const paneBlocks = async () => {
+			const root = await waitFor(() => {
+				const found = sourcePane()?.querySelector(".ProseMirror");
+				if (!found || found.children.length < 2) throw new Error("pane not ready");
+				return found;
+			});
+			return Array.from(root.children);
+		};
+		const blocks = await paneBlocks();
+		const moveCaretTo = (index: number) => {
+			const body = screen.getByTestId("mock-editor-body");
+			const range = document.createRange();
+			range.setStart(body.children[index]?.firstChild as Node, 1);
+			range.collapse(true);
+			const selection = document.getSelection();
+			selection?.removeAllRanges();
+			selection?.addRange(range);
+			document.dispatchEvent(new Event("selectionchange"));
+		};
+		moveCaretTo(1);
+		await waitFor(() => expect(blocks[1]?.classList.contains("cms-source-active")).toBe(true));
+		expect(blocks[0]?.classList.contains("cms-source-active")).toBe(false);
+		moveCaretTo(0);
+		await waitFor(() => expect(blocks[0]?.classList.contains("cms-source-active")).toBe(true));
+		expect(blocks[1]?.classList.contains("cms-source-active")).toBe(false);
 	});
 });

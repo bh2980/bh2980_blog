@@ -7,6 +7,7 @@ export const REGISTERED_JSX_NAMES = new Set([
 	"Tab",
 	"Tooltip",
 	"CodeRef",
+	"Untranslated",
 	"u",
 	"strong",
 	"em",
@@ -52,6 +53,7 @@ export const INLINE_JSX_MARKS: Record<string, string> = {
 	sub: "subscript",
 	Tooltip: "tooltip",
 	CodeRef: "codeRef",
+	Untranslated: "untranslated",
 };
 
 /**
@@ -59,6 +61,7 @@ export const INLINE_JSX_MARKS: Record<string, string> = {
  * 왕복 문서 비교가 순서 때문에 깨지지 않는다.
  */
 export const MARK_ORDER = [
+	"untranslated",
 	"tooltip",
 	"codeRef",
 	"underline",

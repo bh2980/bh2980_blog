@@ -10,6 +10,7 @@ import { columnResizingPluginKey } from "@tiptap/pm/tables";
 import type { EditorView } from "@tiptap/pm/view";
 import { CmsCodeBlock } from "./code-block";
 import { CodeFoldMark } from "./code-block/code-fold-mark";
+import { CmsUntranslatedMark } from "./untranslated-mark";
 
 /**
  * Tiptap 스키마에 없는 CMS 블록(수식·차트·콜아웃·탭·머메이드·병합된 표 등)을 보존하는 읽기 전용 상자.
@@ -220,6 +221,7 @@ export const CMS_SCHEMA_EXTENSIONS = [
 	CmsSubscript,
 	CmsTooltipMark,
 	CmsCodeRefMark,
+	CmsUntranslatedMark,
 	CmsOpaqueBlock,
 	CodeFoldMark,
 	CmsCodeBlock,

@@ -151,6 +151,19 @@ const textMark = (name: "u" | "sup" | "sub" | "br", label: string) =>
 		editor: { view: "mark" },
 	});
 
+/**
+ * 번역 안내 글(`:untranslated[원문 글]`, v3). 새 번역본은 원문 글을 이 표시로 감싸 둔다. 에디터는 흐리게 보이고
+ * 그 블록에 입력하면 지운다. 공개 화면에는 보이지 않고, 남아 있으면 발행 전 검사가 알린다.
+ */
+export const untranslated = defineBlock({
+	name: "untranslated",
+	label: "번역 안내",
+	syntax: { kind: "text", directive: "untranslated" },
+	component: "Untranslated",
+	attributes: {},
+	editor: { view: "mark" },
+});
+
 export const underline = textMark("u", "밑줄");
 export const superscript = textMark("sup", "위 첨자");
 export const subscript = textMark("sub", "아래 첨자");
@@ -235,6 +248,7 @@ export const BLOCKS = [
 	image,
 	tooltip,
 	codeRef,
+	untranslated,
 	underline,
 	superscript,
 	subscript,

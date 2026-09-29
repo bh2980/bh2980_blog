@@ -135,6 +135,8 @@ const openMark = (mark: CmsMark): string => {
 			return ":tooltip[";
 		case "codeRef":
 			return ":code-ref[";
+		case "untranslated":
+			return ":untranslated[";
 		case "underline":
 			return ":u[";
 		case "superscript":
@@ -165,6 +167,7 @@ const closeMark = (mark: CmsMark): string => {
 		case "underline":
 		case "superscript":
 		case "subscript":
+		case "untranslated":
 			return "]";
 		case "bold":
 			return "**";

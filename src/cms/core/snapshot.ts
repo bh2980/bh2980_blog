@@ -578,6 +578,8 @@ export async function prepareSnapshot(
 		if (mediaId || src) imageSources.push({ ...(mediaId ? { mediaId } : { src }), position });
 	};
 
+	/** 번역본에 남은 번역 안내 글(v3). 공개 화면에는 보이지 않으므로 남은 채로 발행하지 않는다. */
+	const untranslated: ReturnType<typeof positionOf>[] = [];
 	const traverse = (node: unknown) => {
 		if (!isMdxNode(node)) return;
 		if (node.type === "link") {
@@ -588,6 +590,7 @@ export async function prepareSnapshot(
 		if (isJsxElement(node)) {
 			// `ContentLink`는 배치 4에서 폐기했다 — 본문에 남아 있으면 `analyze`가 거부한다.
 			if (node.name === "Image") collectImage(node);
+			if (node.name === "Untranslated") untranslated.push(positionOf(node));
 			checkBlockAttributes(node, positionOf(node), blockIssues, warnings);
 		}
 		if (Array.isArray(node.children)) node.children.forEach(traverse);
@@ -606,6 +609,10 @@ export async function prepareSnapshot(
 	}
 
 	const issues: Issue[] = [...mdxIssues, ...blockIssues];
+	const firstUntranslated = untranslated[0];
+	if (firstUntranslated) {
+		issues.push({ code: "untranslated_text", position: firstUntranslated, message: `${untranslated.length}곳` });
+	}
 	if (analysis.frontmatter !== null) {
 		issues.push({ code: "frontmatter_present", path: "frontmatter", position: { line: 1, column: 1 } });
 	}
