@@ -6,8 +6,11 @@ import type { AlignedUnit } from "@/cms/core/translation/units";
 import { Button } from "@/components/ui/button";
 import { BlockCellEditor, type CellEditorHandle, HeaderCellEditor, UnitValue } from "./translation-cell-editors";
 
-/** 번역 패널이 바깥에 내보이는 조작. 고른 블록을 바꾸기 전에 쓴다. */
-export type TranslationPanelHandle = CellEditorHandle;
+/** 번역 띠가 바깥에 내보이는 조작. 고른 블록을 바꾸기 전에 쓴다. */
+export interface TranslationBandHandle {
+	/** 고치던 내용을 저장한다. 저장할 수 없는 내용이면 false다. */
+	flush: () => boolean;
+}
 
 const BOX_NAMES: Record<string, string> = {
 	Callout: "콜아웃",
@@ -36,11 +39,14 @@ const positionLabel = (row: AlignedUnit, index: number, total: number) => {
 	return [place, `${index + 1}/${total}`].filter(Boolean).join(" · ");
 };
 
+const stripButton = "h-7 px-2 text-xs";
+
 /**
- * 고른 번역 단위를 고치는 패널(v3 §4.2). 원문(읽기 전용)과 번역 편집기를 위아래로 놓는다.
- * 다른 블록으로 옮기기 전에 `flush`로 고치던 내용을 저장한다.
+ * 고른 번역 단위가 미리보기 안에서 펼쳐지는 띠(v3 §4.2). 위쪽 줄에 위치와 도구를,
+ * 아래에 원문(왼쪽)과 번역 편집기(오른쪽)를 같은 폭으로 나란히 놓는다. 넓은 화면이 아니면 위아래로 쌓는다.
+ * `onNext`는 저장 키(Enter·Cmd/Ctrl+Enter)로 저장한 뒤 다음 단위로 가는 데 쓴다.
  */
-export function TranslationPanel({
+export function TranslationBand({
 	row,
 	index,
 	total,
@@ -65,10 +71,11 @@ export function TranslationPanel({
 	onPrev: () => void;
 	onNext: () => void;
 	onClose: () => void;
-	ref?: Ref<TranslationPanelHandle>;
+	ref?: Ref<TranslationBandHandle>;
 }) {
 	const { unit } = row;
 	const isHeader = unit.kind === "header";
+	const changed = row.status === "changed" && !unit.auto;
 	const [comparing, setComparing] = useState(false);
 	const editorRef = useRef<CellEditorHandle>(null);
 	useImperativeHandle(ref, () => ({ flush: () => editorRef.current?.flush() ?? true }), []);
@@ -79,13 +86,60 @@ export function TranslationPanel({
 		target: row.target,
 		editable,
 		autoFocus: true,
+		bare: true,
 		onCommit: (target: string | null) => onChangeTarget(index, target),
+		onSubmit: onNext,
+		// 고치던 내용은 편집기가 버린 뒤에 닫는다.
+		onEscape: onClose,
 	};
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex items-center gap-1 border-b px-3 py-2">
-				<p className="min-w-0 flex-1 truncate text-sm">{positionLabel(row, index, total)}</p>
+		<div className="overflow-hidden rounded-lg border border-primary/40 bg-background shadow-sm">
+			<div className="flex flex-wrap items-center gap-2 border-primary/30 border-b bg-primary/10 px-3 py-1.5">
+				<span className="text-sm">{positionLabel(row, index, total)}</span>
+				{editable && !unit.auto && (
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						className={stripButton}
+						onClick={() => editorRef.current?.copySource()}
+					>
+						{unit.type === "image" ? "원문 이미지로" : "원문 복사"}
+					</Button>
+				)}
+				{changed && (
+					<>
+						<span className="font-medium text-amber-700 text-xs dark:text-amber-400">원문 변경됨</span>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className={stripButton}
+							aria-pressed={comparing}
+							onClick={() => setComparing((current) => !current)}
+						>
+							비교
+						</Button>
+						{editable && (
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className={stripButton}
+								onClick={() => onIgnoreChange(index)}
+							>
+								변경 무시
+							</Button>
+						)}
+					</>
+				)}
+				<span className="flex-1" />
+				{editable && !unit.auto && (
+					<Button type="button" size="sm" className={stripButton} onClick={() => editorRef.current?.flush()}>
+						저장
+					</Button>
+				)}
 				<Button
 					type="button"
 					size="icon"
@@ -112,52 +166,25 @@ export function TranslationPanel({
 					<X aria-hidden className="size-4" />
 				</Button>
 			</div>
-			<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-				<section className="flex flex-col gap-1.5">
+			<div className="grid md:grid-cols-2">
+				<section className="flex min-w-0 flex-col gap-2 bg-muted/40 p-4">
 					<h3 className="font-medium text-muted-foreground text-xs">{sourceLocale.toUpperCase()} 원문</h3>
-					<UnitValue header={isHeader} value={unit.source} />
-				</section>
-				{row.status === "changed" && !unit.auto && (
-					<section className="flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
-						<div className="flex items-center gap-2 text-amber-700 text-xs dark:text-amber-400">
-							<span className="flex-1 font-medium">원문 변경됨</span>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="h-7 px-2 text-xs"
-								aria-pressed={comparing}
-								onClick={() => setComparing((current) => !current)}
-							>
-								비교
-							</Button>
-							{editable && (
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="h-7 px-2 text-xs"
-									onClick={() => onIgnoreChange(index)}
-								>
-									변경 무시
-								</Button>
-							)}
-						</div>
-						{comparing && (
-							<div className="grid gap-2">
-								<div>
-									<p className="mb-1 text-muted-foreground text-xs">이전</p>
-									<UnitValue header={isHeader} value={row.baseSource} />
-								</div>
-								<div>
-									<p className="mb-1 text-muted-foreground text-xs">지금</p>
-									<UnitValue header={isHeader} value={unit.source} />
-								</div>
+					{changed && comparing ? (
+						<div className="flex flex-col gap-3">
+							<div>
+								<p className="mb-1 text-muted-foreground text-xs">이전</p>
+								<UnitValue header={isHeader} value={row.baseSource} />
 							</div>
-						)}
-					</section>
-				)}
-				<section className="flex flex-col gap-1.5">
+							<div>
+								<p className="mb-1 text-muted-foreground text-xs">지금</p>
+								<UnitValue header={isHeader} value={unit.source} />
+							</div>
+						</div>
+					) : (
+						<UnitValue header={isHeader} value={unit.source} />
+					)}
+				</section>
+				<section className="flex min-w-0 flex-col gap-2 p-4">
 					<h3 className="font-medium text-muted-foreground text-xs">{targetLocale.toUpperCase()}</h3>
 					{unit.auto ? (
 						<p className="text-muted-foreground text-sm">원문 그대로</p>

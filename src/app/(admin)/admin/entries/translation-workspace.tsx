@@ -2,15 +2,14 @@
 
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/cn";
 import type { EntryForm, EntryFormPatch } from "./entry-form";
-import { TranslationPanel, type TranslationPanelHandle } from "./translation-panel";
+import { TranslationBand, type TranslationBandHandle } from "./translation-band";
 import { type PreviewMode, TranslationPreview } from "./translation-preview";
 import { useTranslationRows } from "./translation-rows";
 
 /**
  * 번역본 편집 화면(v3 §4.2). 제목 위 언어 탭·제목은 그대로 두고, 본문은 실제 글 모양의 미리보기로 보인다.
- * 블록을 누르면 오른쪽 패널에서 그 단위의 원문과 번역을 나란히 놓고 고친다.
+ * 블록을 누르면 그 자리에서 띠로 펼쳐져 원문(왼쪽)과 번역 편집기(오른쪽)를 나란히 놓고 고친다.
  * 서식 도구 줄과 MDX 보기는 두지 않는다. 단위를 저장하면 번역본 본문과 번역 상태가 폼에 들어가 자동 저장된다.
  */
 export function TranslationWorkspace({
@@ -38,7 +37,7 @@ export function TranslationWorkspace({
 	const { rows, sourceDoc, sourceError, setTarget, ignoreChange } = useTranslationRows({ sourceMdx, form, setForm });
 	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 	const [mode, setMode] = useState<PreviewMode>("translation");
-	const panelRef = useRef<TranslationPanelHandle>(null);
+	const bandRef = useRef<TranslationBandHandle>(null);
 
 	const selected = selectedIndex !== null && rows[selectedIndex] ? selectedIndex : null;
 	const selectedRow = selected === null ? null : (rows[selected] ?? null);
@@ -57,8 +56,25 @@ export function TranslationWorkspace({
 
 	/** 고르던 블록에 저장하지 않은 내용이 있으면 먼저 저장한다. 저장할 수 없는 내용이면 옮기지 않는다. */
 	const select = (index: number | null) => {
-		if (selected !== null && panelRef.current && !panelRef.current.flush()) return;
+		if (selected !== null && bandRef.current && !bandRef.current.flush()) return;
 		setSelectedIndex(index);
+	};
+
+	/** 저장 키로 저장한 뒤 다음 단위로 간다. 마지막 단위면 닫는다. */
+	const saveAndNext = () => {
+		if (selected === null) return;
+		select(selected + 1 < rows.length ? selected + 1 : null);
+	};
+
+	const toggleSource = () => {
+		if (mode === "translation") {
+			// 원문으로 보는 동안에는 띠를 닫는다. 고치던 내용이 저장되지 않으면 그대로 둔다.
+			if (selected !== null && bandRef.current && !bandRef.current.flush()) return;
+			setSelectedIndex(null);
+			setMode("source");
+		} else {
+			setMode("translation");
+		}
 	};
 
 	const goNext = () => {
@@ -98,7 +114,7 @@ export function TranslationWorkspace({
 							variant={mode === "source" ? "secondary" : "outline"}
 							className="h-7 px-2 text-xs"
 							aria-pressed={mode === "source"}
-							onClick={() => setMode((current) => (current === "source" ? "translation" : "source"))}
+							onClick={toggleSource}
 						>
 							원문으로 보기
 						</Button>
@@ -113,48 +129,35 @@ export function TranslationWorkspace({
 							다음 미번역
 						</Button>
 					</div>
-					<div className="flex min-h-0 flex-1 items-start">
-						<div className="min-w-0 flex-1 px-4 pt-8 pb-[35vh]">
-							<div className="mx-auto max-w-3xl">
-								<TranslationPreview
-									sourceDoc={sourceDoc}
-									rows={rows}
-									mode={mode}
-									selected={selected}
-									onSelect={select}
-								/>
-							</div>
+					<div data-translation-area className="min-w-0 flex-1 px-4 pt-8 pb-[35vh]">
+						<div className="mx-auto max-w-3xl">
+							<TranslationPreview
+								sourceDoc={sourceDoc}
+								rows={rows}
+								mode={mode}
+								selected={selected}
+								onSelect={mode === "source" ? () => {} : select}
+								band={
+									selectedRow && selected !== null && mode !== "source" ? (
+										<TranslationBand
+											key={selected}
+											ref={bandRef}
+											row={selectedRow}
+											index={selected}
+											total={rows.length}
+											editable={editable}
+											sourceLocale={sourceLocale}
+											targetLocale={targetLocale}
+											onChangeTarget={setTarget}
+											onIgnoreChange={ignoreChange}
+											onPrev={() => select(selected - 1)}
+											onNext={saveAndNext}
+											onClose={() => select(null)}
+										/>
+									) : undefined
+								}
+							/>
 						</div>
-						<aside
-							aria-label="번역 패널"
-							className={cn(
-								"border-l bg-background lg:sticky lg:top-12 lg:block lg:max-h-[calc(100vh-7rem)] lg:w-105 lg:shrink-0 lg:self-start lg:overflow-hidden",
-								// 좁은 화면에서는 블록을 골랐을 때만 오른쪽에서 덮는다.
-								selectedRow
-									? "max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-40 max-lg:w-[min(100vw,26rem)] max-lg:shadow-xl"
-									: "max-lg:hidden",
-							)}
-						>
-							{selectedRow && selected !== null ? (
-								<TranslationPanel
-									key={selected}
-									ref={panelRef}
-									row={selectedRow}
-									index={selected}
-									total={rows.length}
-									editable={editable}
-									sourceLocale={sourceLocale}
-									targetLocale={targetLocale}
-									onChangeTarget={setTarget}
-									onIgnoreChange={ignoreChange}
-									onPrev={() => select(selected - 1)}
-									onNext={() => select(selected + 1)}
-									onClose={() => select(null)}
-								/>
-							) : (
-								<p className="p-4 text-muted-foreground text-sm">블록을 누르면 번역합니다.</p>
-							)}
-						</aside>
 					</div>
 				</>
 			)}

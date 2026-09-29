@@ -24,6 +24,12 @@ vi.mock("@/components/ui/tooltip", () => ({
 	TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// jsdom에는 없는 좌표 API. 초점을 줄 때 커서를 화면에 맞추며 쓴다.
+if (typeof Range.prototype.getClientRects !== "function") {
+	Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+	Range.prototype.getBoundingClientRect = () => new DOMRect();
+}
+
 afterEach(cleanup);
 
 const editorIn = () =>

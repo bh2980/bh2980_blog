@@ -11,9 +11,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/utils/cn";
 
-const PROSE = "prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed";
+const PROSE = "prose dark:prose-invert max-w-none text-foreground leading-relaxed";
 
 /** 번역 결과 조각이 그 줄에 맞는지 본다. 알맞으면 null, 아니면 짧은 오류 문구를 돌려준다. */
+/**
+ * 요소가 문서에 붙으면 한 번 실행한다. 번역 띠는 미리보기에 위젯으로 붙기 전에 먼저 그려지므로,
+ * 바로 초점을 주면 떨어진 요소라 무시된다. 몇 프레임 기다렸다가 준다.
+ */
+const whenConnected = (element: () => Element | null | undefined, run: () => void) => {
+	let frame = 0;
+	let tries = 0;
+	const attempt = () => {
+		if (element()?.isConnected) run();
+		else if (tries++ < 30) frame = requestAnimationFrame(attempt);
+	};
+	attempt();
+	return () => cancelAnimationFrame(frame);
+};
+
 export const validateFragment = (mdx: string, type: string): string | null => {
 	const nodes = parseFragment(mdx);
 	if (nodes.length !== 1) return "블록 하나만";
@@ -66,7 +81,8 @@ function PreviewEditor({ mdx }: { mdx: string }) {
 		editable: false,
 		extensions,
 		content,
-		editorProps: { attributes: { class: cn(PROSE, "focus:outline-none") } },
+		// 읽기용 미리보기다. 코드 블록의 편집 도구 줄(언어·파일 경로)은 숨긴다.
+		editorProps: { attributes: { class: cn(PROSE, "focus:outline-none [&_[data-code-ui]]:hidden") } },
 	});
 	return <EditorContent editor={editor} />;
 }
@@ -114,6 +130,8 @@ export const blankLike = (json: JSONContent): JSONContent => {
 export interface CellEditorHandle {
 	/** 저장하지 않은 변경이 있으면 저장한다. 저장할 수 없는 내용이면 false다. */
 	flush: () => boolean;
+	/** 원문을 번역으로 넣고 바로 저장한다. */
+	copySource: () => void;
 }
 
 export interface CellEditorProps {
@@ -124,6 +142,12 @@ export interface CellEditorProps {
 	/** 처음 그릴 때 초점을 준다. */
 	autoFocus?: boolean;
 	onCommit: (target: string | null) => void;
+	/** 저장 키(Enter·Cmd/Ctrl+Enter)로 저장한 뒤 부른다. 있으면 그 키가 저장하고 다음으로 간다. */
+	onSubmit?: () => void;
+	/** Esc로 고치던 내용을 버린 뒤 부른다. */
+	onEscape?: () => void;
+	/** 저장·원문 복사 버튼을 그리지 않는다. 바깥에서 핸들로 부른다. */
+	bare?: boolean;
 	ref?: Ref<CellEditorHandle>;
 }
 
@@ -136,7 +160,18 @@ const blankMdxOf = (source: string) => tiptapToMdx(blankLike(mdxToTiptap(source)
 
 const actionButton = "h-7 px-2 text-xs";
 
-export function BlockCellEditor({ type, source, target, editable, autoFocus, onCommit, ref }: BlockEditorProps) {
+export function BlockCellEditor({
+	type,
+	source,
+	target,
+	editable,
+	autoFocus,
+	onCommit,
+	onSubmit,
+	onEscape,
+	bare,
+	ref,
+}: BlockEditorProps) {
 	const [extensions] = useState(() => buildEditorExtensions());
 	const blank = useMemo(() => blankLike(mdxToTiptap(source)), [source]);
 	const blankMdx = useMemo(() => blankMdxOf(source), [source]);
@@ -148,6 +183,10 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 	/** 마지막으로 저장한(또는 저장돼 있던) 번역. Escape로 되돌릴 기준이다. */
 	const committedRef = useRef(target);
 	const isImage = type === "image";
+	// 한 줄짜리 블록은 Enter가 저장이다(줄바꿈은 Shift+Enter).
+	const enterSaves = type === "paragraph" || type === "heading";
+	const submitRef = useRef(onSubmit);
+	submitRef.current = onSubmit;
 
 	const isEmptyMdx = (mdx: string) => mdx === "" || mdx === blankMdx;
 
@@ -160,15 +199,21 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 		editorProps: {
 			// 줄바꿈 단축키(Mod-Enter)보다 먼저 받아 저장으로 쓴다.
 			handleKeyDown: (view, event) => {
-				if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || view.composing || event.isComposing)
-					return false;
+				if (event.key !== "Enter" || view.composing || event.isComposing) return false;
+				const mod = event.metaKey || event.ctrlKey;
+				if (!mod && !(enterSaves && submitRef.current && !event.shiftKey)) return false;
 				event.preventDefault();
-				commitRef.current();
+				if (commitRef.current()) submitRef.current?.();
 				return true;
 			},
 			attributes: {
 				"aria-label": "번역 편집기",
-				class: cn(PROSE, "min-h-10 px-1 py-1 focus:outline-none [&_.tableWrapper]:overflow-x-auto"),
+				// 띠(bare)에서는 칸 전체가 쓰는 자리다. 원문 칸과 같은 글 모양으로 테두리 없이 둔다.
+				class: cn(
+					PROSE,
+					"focus:outline-none [&_.tableWrapper]:overflow-x-auto",
+					bare ? "min-h-full" : "min-h-10 px-1 py-1",
+				),
 			},
 		},
 		onUpdate: ({ editor: current }) => {
@@ -212,13 +257,15 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 		return true;
 	};
 	commitRef.current = commit;
-	useImperativeHandle(ref, () => ({ flush: () => commitRef.current() }), []);
 
 	const copySource = () => {
 		load(source);
 		committedRef.current = source;
 		onCommit(source);
 	};
+	const copyRef = useRef(copySource);
+	copyRef.current = copySource;
+	useImperativeHandle(ref, () => ({ flush: () => commitRef.current(), copySource: () => copyRef.current() }), []);
 
 	const swapImage = (image: ImageInsertion) => {
 		if (!editor) return;
@@ -263,31 +310,44 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 	const focusedRef = useRef(false);
 	useEffect(() => {
 		if (!autoFocus || !editable || !editor || focusedRef.current) return;
-		focusedRef.current = true;
-		editor.commands.focus("end");
+		// 개발 모드는 effect를 두 번 부른다. 실제로 초점을 준 뒤에만 표시해 두 번째가 취소되지 않게 한다.
+		return whenConnected(
+			() => editor.view.dom,
+			() => {
+				focusedRef.current = true;
+				editor.commands.focus("end");
+			},
+		);
 	}, [autoFocus, editable, editor]);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: 셀 안 편집기의 키 처리를 모은다
 		<div
-			className="flex flex-col gap-2"
+			className={cn("flex flex-col gap-2", bare && "flex-1")}
 			onKeyDown={(event) => {
 				if (!editable || event.nativeEvent.isComposing || !event.currentTarget.contains(event.target as Node)) return;
 				if (event.key === "Escape") {
 					event.preventDefault();
 					event.stopPropagation();
 					load(committedRef.current);
-					editor?.commands.blur();
+					if (onEscape) onEscape();
+					else editor?.commands.blur();
 				}
 			}}
 		>
-			<div className="relative rounded-md border focus-within:border-ring/60">
+			<div
+				className={cn(
+					"relative",
+					bare ? "flex flex-1 flex-col [&>div]:flex-1" : "rounded-md border focus-within:border-ring/60",
+				)}
+			>
 				<EditorContent editor={editor} />
 				{empty && (
 					<span
 						className={cn(
-							"pointer-events-none absolute left-1 text-muted-foreground text-sm",
-							isImage ? "bottom-1" : "top-1",
+							"pointer-events-none absolute text-muted-foreground",
+							bare ? "left-0 text-base" : "left-1 text-sm",
+							isImage ? "bottom-1" : bare ? "top-0 leading-relaxed" : "top-1",
 						)}
 					>
 						미번역
@@ -299,11 +359,13 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 					{error}
 				</p>
 			)}
-			{editable && (
+			{editable && (isImage || !bare) && (
 				<div className="flex flex-wrap items-center gap-1">
-					<Button type="button" size="sm" variant="outline" className={actionButton} onClick={copySource}>
-						{isImage ? "원문 이미지로" : "원문 복사"}
-					</Button>
+					{!bare && (
+						<Button type="button" size="sm" variant="outline" className={actionButton} onClick={copySource}>
+							{isImage ? "원문 이미지로" : "원문 복사"}
+						</Button>
+					)}
 					{isImage && (
 						<Button
 							type="button"
@@ -315,10 +377,14 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 							이미지 바꾸기
 						</Button>
 					)}
-					<span className="flex-1" />
-					<Button type="button" size="sm" className={actionButton} onClick={commit}>
-						저장
-					</Button>
+					{!bare && (
+						<>
+							<span className="flex-1" />
+							<Button type="button" size="sm" className={actionButton} onClick={commit}>
+								저장
+							</Button>
+						</>
+					)}
 				</div>
 			)}
 			{editor && editable && <InlineBubble editor={editor} />}
@@ -334,7 +400,17 @@ export function BlockCellEditor({ type, source, target, editable, autoFocus, onC
 	);
 }
 
-export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit, ref }: CellEditorProps) {
+export function HeaderCellEditor({
+	source,
+	target,
+	editable,
+	autoFocus,
+	onCommit,
+	onSubmit,
+	onEscape,
+	bare,
+	ref,
+}: CellEditorProps) {
 	const sourceHeader = parseHeader(source);
 	const isTitle = sourceHeader !== null && "title" in sourceHeader;
 	const sourceTexts = headerTexts(sourceHeader);
@@ -377,7 +453,6 @@ export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit
 	};
 	const commitRef = useRef(commit);
 	commitRef.current = commit;
-	useImperativeHandle(ref, () => ({ flush: () => commitRef.current() }), []);
 
 	const copySource = () => {
 		show(sourceTexts);
@@ -385,6 +460,9 @@ export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit
 		committedRef.current = source;
 		onCommit(source);
 	};
+	const copyRef = useRef(copySource);
+	copyRef.current = copySource;
+	useImperativeHandle(ref, () => ({ flush: () => commitRef.current(), copySource: () => copyRef.current() }), []);
 
 	const previousTarget = useRef(target);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: target이 바뀔 때만 다시 읽는다
@@ -402,8 +480,13 @@ export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit
 	const focusedRef = useRef(false);
 	useEffect(() => {
 		if (!autoFocus || !editable || focusedRef.current) return;
-		focusedRef.current = true;
-		firstInputRef.current?.focus();
+		return whenConnected(
+			() => firstInputRef.current,
+			() => {
+				focusedRef.current = true;
+				firstInputRef.current?.focus();
+			},
+		);
 	}, [autoFocus, editable]);
 
 	return (
@@ -422,10 +505,8 @@ export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit
 					event.preventDefault();
 					event.stopPropagation();
 					show(committedTextsRef.current);
-					(event.target as HTMLElement).blur();
-				} else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-					event.preventDefault();
-					commit();
+					if (onEscape) onEscape();
+					else (event.target as HTMLElement).blur();
 				}
 			}}
 		>
@@ -457,12 +538,12 @@ export function HeaderCellEditor({ source, target, editable, autoFocus, onCommit
 					onKeyDown={(event) => {
 						if (event.key === "Enter" && !event.nativeEvent.isComposing) {
 							event.preventDefault();
-							commit();
+							if (commit()) onSubmit?.();
 						}
 					}}
 				/>
 			))}
-			{editable && (
+			{editable && !bare && (
 				<div className="flex items-center gap-1">
 					<Button type="button" size="sm" variant="outline" className={actionButton} onClick={copySource}>
 						원문 복사
