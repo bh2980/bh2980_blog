@@ -113,13 +113,7 @@ export type ResolvedTargets = {
 	/**
 	 * 번역본 발행이면 원문 상태(v2 B4). 번역본은 언어별 필수값만 검사하고, 공통 값을 가진 원문이 공개돼 있어야 한다.
 	 */
-	translation?: {
-		sourcePublished: boolean;
-		/** 원문 최신 초안과 맞춘 뒤 남은 미번역 단위 수(v3). */
-		untranslated?: number;
-		/** 원문 뼈대가 바뀌어 저장된 번역본 본문이 지금 원문과 맞지 않는다(v3). */
-		outdated?: boolean;
-	};
+	translation?: { sourcePublished: boolean };
 };
 
 export type WorkingCopy = {

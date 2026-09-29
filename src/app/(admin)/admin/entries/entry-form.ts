@@ -1,6 +1,5 @@
 import { isCollection } from "@/cms/core/collections";
 import { parseTranslationState, type TranslationState } from "@/cms/core/translation/state";
-import type { StoredUnit } from "@/cms/core/translation/units";
 import {
 	localizedFieldNames,
 	RECORD_TRANSLATIONS_KEY,
@@ -105,27 +104,27 @@ const fieldsOf = (collection: string, translation = false): readonly StoredField
 export const TRANSLATION_FORM_KEY = "$translation";
 
 /** 번역 상태의 JSON 문자열. 키 순서를 고정해 서버(JSONB는 키 순서를 바꾼다)에서 온 값과 지문이 같게 한다. */
-export const stringifyTranslation = (units: readonly StoredUnit[]) =>
-	JSON.stringify({
-		version: 1,
-		units: units.map(({ key, source, target }) => ({ key, source, target })),
-	});
+export const stringifyTranslation = (state: TranslationState) =>
+	JSON.stringify({ version: 2, baseSource: state.baseSource });
 
-/** 폼 값 → 저장된 번역 단위. 없거나 모양이 다르면 빈 목록(모두 미번역)이다. */
-export const storedUnitsFromForm = (value: FormValue | undefined): StoredUnit[] => {
-	if (typeof value !== "string") return [];
-	try {
-		return [...(parseTranslationState(JSON.parse(value))?.units ?? [])];
-	} catch {
-		return [];
+/** 폼 값 → 번역 상태. 없거나 모양이 다르면 아무것도 확인하지 않은 상태(`baseSource` 빈 값)다. */
+export const translationStateFromForm = (value: FormValue | undefined): TranslationState => {
+	if (typeof value === "string") {
+		try {
+			const parsed = parseTranslationState(JSON.parse(value));
+			if (parsed) return parsed;
+		} catch {
+			// 깨진 값은 확인하지 않은 것으로 본다.
+		}
 	}
+	return { version: 2, baseSource: "" };
 };
 
 /** 폼 값 → 저장 요청의 `translation`. 번역본이 아니면(키가 없으면) 보내지 않는다. */
-export const translationPayload = (form: EntryForm) => {
+export const translationPayload = (form: EntryForm): TranslationState | undefined => {
 	const value = form[TRANSLATION_FORM_KEY];
 	if (typeof value !== "string") return undefined;
-	return { version: 1 as const, units: storedUnitsFromForm(value) };
+	return translationStateFromForm(value);
 };
 
 /** 저장 값 → 입력 값. */
@@ -156,7 +155,10 @@ export function formFromEntry(entry: EntryData): EntryForm {
 	Object.assign(form, recordTranslationsToForm(entry.collection, metadata));
 	// 번역본은 번역 상태도 폼으로 다룬다(v3). 자동 저장·복구본·충돌 비교가 본문과 함께 본다.
 	if (isTranslationEntry(entry)) {
-		form[TRANSLATION_FORM_KEY] = stringifyTranslation(entry.working.translation?.units ?? []);
+		// 유효한 v2 상태가 아니면 빈 `baseSource`로 둬 "원문이 바뀌었어요"가 보이게 한다.
+		form[TRANSLATION_FORM_KEY] = stringifyTranslation(
+			parseTranslationState(entry.working.translation) ?? { version: 2, baseSource: "" },
+		);
 	}
 	return form;
 }

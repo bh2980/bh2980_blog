@@ -3,7 +3,6 @@ import type { PoolClient } from "pg";
 import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
 import { isUuid } from "../../../core/ids";
 import { prepareSnapshot, validateForPublish } from "../../../core/snapshot";
-import { checkTranslation } from "../../../core/translation/units";
 import { type Collection, type Reference, ServiceError } from "../../../core/types";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
@@ -35,26 +34,20 @@ export function createPublishing(ctx: StoreContext) {
 		const entry = entryRes.rows[0];
 		if (!entry) throw new CmsError("Entry not found", "not_found");
 		// 번역본은 원문을 잠그고 공개 상태를 본다(v2 B4). 발행 중에 원문이 공개에서 빠지지 않게 한다.
-		const translation: { sourcePublished: boolean; untranslated?: number; outdated?: boolean } | undefined =
-			entry.translation_group_id
-				? {
-						sourcePublished:
-							(
-								await client.query<{ status: string }>(
-									`SELECT status FROM "${qSchema}".entries WHERE id = $1 FOR SHARE`,
-									[entry.translation_group_id],
-								)
-							).rows[0]?.status === "published",
-					}
-				: undefined;
+		const translation = entry.translation_group_id
+			? {
+					sourcePublished:
+						(
+							await client.query<{ status: string }>(
+								`SELECT status FROM "${qSchema}".entries WHERE id = $1 FOR SHARE`,
+								[entry.translation_group_id],
+							)
+						).rows[0]?.status === "published",
+				}
+			: undefined;
 		const body = await readBody(client, qSchema, entryId, "working");
 		if (!body) throw new CmsError("Working draft not found", "not_found");
 		const previousReferences = await readReferences(client, qSchema, entryId, "working");
-		// 번역본은 원문 최신 초안과 맞춰 미번역 블록과 뼈대 변경을 본다(v3 §3.2).
-		if (translation && entry.translation_group_id && entry.translation_group_id !== entryId) {
-			const sourceBody = await readBody(client, qSchema, entry.translation_group_id, "working");
-			Object.assign(translation, checkTranslation(sourceBody?.mdx ?? "", body.mdx, body.translation));
-		}
 
 		const snapshot = await prepareSnapshot(
 			{ collection: entry.collection, slug: entry.working_slug, metadata: body.metadata as never, mdx: body.mdx },

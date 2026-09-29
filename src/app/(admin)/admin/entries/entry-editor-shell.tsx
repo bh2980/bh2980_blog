@@ -9,6 +9,7 @@ import {
 	Eye,
 	type LucideIcon,
 	MoreHorizontal,
+	PanelLeft,
 	PanelRightOpen,
 	Save,
 	SunMoon,
@@ -66,11 +67,15 @@ import {
 	formFromEntry,
 	formText,
 	isTranslationEntry,
+	stringifyTranslation,
+	TRANSLATION_FORM_KEY,
+	translationStateFromForm,
 } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
 import { LanguageTabs } from "./language-tabs";
 import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
-import { TranslationWorkspace } from "./translation-workspace";
+import { SourceChangeDialog } from "./source-change-dialog";
+import { SourcePane } from "./source-pane";
 import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
 
 interface EntryEditorShellProps {
@@ -82,6 +87,8 @@ interface EntryEditorShellProps {
 	/** 새 글을 만들 폴더(목록에서 연 위치). */
 	folderId?: string | null;
 }
+
+const SOURCE_PANE_STORAGE_KEY = "cms:translation-source-pane";
 
 type Recovery =
 	| { kind: "restore"; backup: LocalBackupRecord<EntryForm> }
@@ -169,6 +176,8 @@ export function EntryEditorShell({
 	const [editorMode, setEditorMode] = useState<"visual" | "source">("visual");
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 	const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+	const [isSourcePaneOpen, setIsSourcePaneOpen] = useState(true);
+	const [isSourceCompareOpen, setIsSourceCompareOpen] = useState(false);
 	const [isSlugTouched, setIsSlugTouched] = useState(mode === "edit");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [actionFeedback, setActionFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
@@ -235,12 +244,32 @@ export function EntryEditorShell({
 		const update = () => {
 			setIsNarrowScreen(media.matches);
 			// 1024px 이하에서는 본문을 우선한다(§3.1).
-			if (media.matches) setIsInspectorOpen(false);
+			if (media.matches) {
+				setIsInspectorOpen(false);
+				setIsSourcePaneOpen(false);
+			}
 		};
 		update();
 		media.addEventListener?.("change", update);
 		return () => media.removeEventListener?.("change", update);
 	}, []);
+
+	// 원문 창을 열어 뒀는지는 브라우저에 기억한다. 저장소를 못 쓰면 매번 열린 채 시작한다.
+	useEffect(() => {
+		try {
+			if (window.localStorage.getItem(SOURCE_PANE_STORAGE_KEY) === "closed") setIsSourcePaneOpen(false);
+		} catch {
+			// 저장소를 쓸 수 없으면 기본값을 쓴다.
+		}
+	}, []);
+	const toggleSourcePane = (open: boolean) => {
+		setIsSourcePaneOpen(open);
+		try {
+			window.localStorage.setItem(SOURCE_PANE_STORAGE_KEY, open ? "open" : "closed");
+		} catch {
+			// 기억하지 못해도 화면은 바뀐다.
+		}
+	};
 
 	const refreshIncoming = useCallback(async (targetId: string) => {
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
@@ -414,6 +443,8 @@ export function EntryEditorShell({
 				return;
 			}
 		}
+		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
+		if (sourceChanged) toast.warning("확인하지 않은 원문 변경이 있습니다.");
 		setIsSubmitting(true);
 		try {
 			const id = await ensureSaved("발행", true);
@@ -675,7 +706,7 @@ export function EntryEditorShell({
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
-	/** 번역본이면 원문 본문·언어·제목. 번역 화면이 원문과 나란히 놓는다(v3). */
+	/** 번역본이면 원문 본문·언어·제목. 원문 창과 제목 안내가 쓴다(v3). */
 	const translationSource =
 		entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string"
 			? {
@@ -684,6 +715,11 @@ export function EntryEditorShell({
 					title: typeof entry.source.metadata.title === "string" ? entry.source.metadata.title : "",
 				}
 			: null;
+	const translationForm = form[TRANSLATION_FORM_KEY];
+	/** 번역자가 마지막으로 확인한 원문. 지금 원문과 다르면 "원문이 바뀌었어요"를 보인다. */
+	const confirmedSource = translationStateFromForm(translationForm).baseSource;
+	const sourceChanged =
+		translationSource !== null && typeof translationForm === "string" && translationSource.mdx !== confirmedSource;
 	const languageTabs =
 		entry && !isRecordCollection(collection) ? (
 			<LanguageTabs
@@ -757,6 +793,18 @@ export function EntryEditorShell({
 		</DropdownMenu>
 	);
 
+	const sourcePaneToggle = translationSource && (
+		<Toggle
+			size="sm"
+			aria-label="원문"
+			pressed={isSourcePaneOpen}
+			onPressedChange={toggleSourcePane}
+			className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
+		>
+			<PanelLeft aria-hidden className="size-4" />
+			원문
+		</Toggle>
+	);
 	const sourceModeToggle = (
 		<Tooltip>
 			<TooltipTrigger
@@ -1036,44 +1084,62 @@ export function EntryEditorShell({
 				</ul>
 			)}
 
+			{sourceChanged && translationSource && (
+				<output className="flex flex-wrap items-center gap-2 border-b bg-amber-500/10 px-4 py-1.5 text-sm">
+					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">원문이 바뀌었어요</span>
+					<Button type="button" size="sm" variant="outline" onClick={() => setIsSourceCompareOpen(true)}>
+						비교
+					</Button>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						disabled={isReadOnly}
+						onClick={() =>
+							setForm({
+								[TRANSLATION_FORM_KEY]: stringifyTranslation({ version: 2, baseSource: translationSource.mdx }),
+							})
+						}
+					>
+						확인함
+					</Button>
+				</output>
+			)}
+
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
-				<div className="h-full min-w-0 flex-1 overflow-y-auto" inert={isInspectorOpen && isNarrowScreen}>
-					{translationSource ? (
-						// 번역본은 원문과 번역을 블록 단위로 나란히 편집한다(v3).
-						<TranslationWorkspace
-							header={
-								<>
-									{languageTabs}
-									{titleInput}
-								</>
-							}
-							sourceMdx={translationSource.mdx}
-							sourceLocale={translationSource.locale}
-							targetLocale={entry?.locale ?? ""}
-							form={form}
-							setForm={setForm}
-							editable={!isReadOnly}
-							onCompositionStart={() => autosave.setComposing(true)}
-							onCompositionEnd={() => autosave.setComposing(false)}
-						/>
-					) : (
-						<CmsEditor
-							content={form.mdx}
-							titleField={
-								<>
-									{languageTabs}
-									{titleInput}
-								</>
-							}
-							toolbarEnd={templateMenu}
-							toolbarAside={sourceModeToggle}
-							sourceView={editorMode === "source" ? sourceEditor : undefined}
-							editable={!isReadOnly}
-							onChange={(mdx) => setForm({ mdx })}
-							onCompositionStart={() => autosave.setComposing(true)}
-							onCompositionEnd={() => autosave.setComposing(false)}
-						/>
-					)}
+				{translationSource && isSourcePaneOpen && (
+					<SourcePane
+						mdx={translationSource.mdx}
+						locale={translationSource.locale}
+						onClose={() => toggleSourcePane(false)}
+						className="absolute inset-y-0 left-0 z-10 w-[min(100%,28rem)] shadow-lg lg:static lg:w-[45%] lg:shrink-0 lg:shadow-none"
+					/>
+				)}
+				<div
+					className="h-full min-w-0 flex-1 overflow-y-auto"
+					inert={(isInspectorOpen || (Boolean(translationSource) && isSourcePaneOpen)) && isNarrowScreen}
+				>
+					<CmsEditor
+						content={form.mdx}
+						titleField={
+							<>
+								{languageTabs}
+								{titleInput}
+							</>
+						}
+						toolbarEnd={templateMenu}
+						toolbarAside={
+							<span className="flex items-center gap-1">
+								{sourcePaneToggle}
+								{sourceModeToggle}
+							</span>
+						}
+						sourceView={editorMode === "source" ? sourceEditor : undefined}
+						editable={!isReadOnly}
+						onChange={(mdx) => setForm({ mdx })}
+						onCompositionStart={() => autosave.setComposing(true)}
+						onCompositionEnd={() => autosave.setComposing(false)}
+					/>
 				</div>
 
 				{isInspectorOpen ? (
@@ -1241,6 +1307,14 @@ export function EntryEditorShell({
 			</Dialog>
 
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+			{translationSource && (
+				<SourceChangeDialog
+					open={isSourceCompareOpen}
+					onOpenChange={setIsSourceCompareOpen}
+					before={confirmedSource}
+					after={translationSource.mdx}
+				/>
+			)}
 		</div>
 	);
 }

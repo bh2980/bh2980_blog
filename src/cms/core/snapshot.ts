@@ -740,13 +740,6 @@ export function validateForPublish(
 		// 공개 화면의 카테고리·태그·발행일은 원문 공개본에서 온다.
 		issues.push({ code: "source_not_published", path: "translationGroupId" });
 	}
-	// 번역본은 미번역 블록이 없어야 발행한다. 원문을 대신 보여 주지 않는다(v3 결정 11).
-	if (resolved.translation?.untranslated) {
-		issues.push({ code: "translation_incomplete", path: "mdx", message: `${resolved.translation.untranslated}개` });
-	}
-	if (resolved.translation?.outdated) {
-		issues.push({ code: "translation_outdated", path: "mdx" });
-	}
 	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
 	if (isContent && snapshot.mdx.trim() === "") {
 		issues.push({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });

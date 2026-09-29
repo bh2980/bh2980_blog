@@ -686,3 +686,130 @@ describe("언어 탭", () => {
 		expect(screen.queryByRole("navigation", { name: "언어" })).toBeNull();
 	});
 });
+
+describe("번역본 원문 창", () => {
+	const SOURCE_MDX = "첫 문단\n\n둘째 문단\n";
+	const source = {
+		...entry,
+		locale: "ko",
+		translationGroupId: "entry-1",
+		translations: [],
+	};
+	const translationWith = (baseSource: string | null) => ({
+		...entry,
+		id: "entry-en",
+		locale: "en",
+		translationGroupId: "entry-1",
+		translations: [],
+		source: { locale: "ko", metadata: { title: "원문 제목" }, mdx: SOURCE_MDX },
+		working: {
+			metadata: { title: "Title" },
+			mdx: "First\n\nSecond\n",
+			translation: baseSource === null ? null : { version: 2, baseSource },
+		},
+	});
+	const sourcePane = () => screen.queryByRole("complementary", { name: "원문 창" });
+	const clearStorage = () => {
+		try {
+			window.localStorage.clear();
+		} catch {
+			// 저장소가 없으면 지울 것도 없다.
+		}
+	};
+	beforeEach(clearStorage);
+	afterEach(clearStorage);
+
+	it("번역본에만 원문 전체를 옆에 보인다", async () => {
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		await waitFor(() => expect(sourcePane()?.textContent).toContain("둘째 문단"));
+		expect(within(sourcePane() as HTMLElement).getByText("KO 원문")).toBeTruthy();
+		// 제목 자리 안내는 원문 제목이다.
+		expect((await editorTitle()).getAttribute("placeholder")).toBe("원문 제목");
+		// 번역본도 같은 편집기(서식 도구, MDX 전환)를 쓴다.
+		expect(screen.getByRole("toolbar", { name: "서식 도구" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "MDX 원문" })).toBeTruthy();
+
+		cleanup();
+		serve(() => undefined, source);
+		renderEdit();
+		await editorTitle();
+		expect(sourcePane()).toBeNull();
+		expect(screen.queryByRole("button", { name: "원문 닫기" })).toBeNull();
+	});
+
+	it("원문 닫기와 원문 토글로 창을 접고 펼치며 기억한다", async () => {
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(await screen.findByRole("button", { name: "원문 닫기" }));
+		expect(sourcePane()).toBeNull();
+		expect(window.localStorage.getItem("cms:translation-source-pane")).toBe("closed");
+		const toggle = screen.getByRole("button", { name: "원문" });
+		expect(toggle.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(toggle);
+		expect(sourcePane()).not.toBeNull();
+		expect(window.localStorage.getItem("cms:translation-source-pane")).toBe("open");
+	});
+
+	it("이전에 접어 둔 창은 접힌 채로 연다", async () => {
+		window.localStorage.setItem("cms:translation-source-pane", "closed");
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		expect(sourcePane()).toBeNull();
+	});
+
+	it("확인한 원문과 같으면 알림이 없다", async () => {
+		serve(() => undefined, translationWith(SOURCE_MDX));
+		renderEdit();
+		await editorTitle();
+		expect(screen.queryByText("원문이 바뀌었어요")).toBeNull();
+	});
+
+	it("원문이 바뀌면 알리고 확인함이 확인한 원문을 저장에 싣는다", async () => {
+		serve((_input, init) => {
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				return json({ ...translationWith(SOURCE_MDX), version: 5, working: { ...body, metadata: body.metadata } });
+			}
+		}, translationWith("첫 문단\n"));
+		renderEdit();
+		expect(await screen.findByText("원문이 바뀌었어요")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "확인함" }));
+		expect(screen.queryByText("원문이 바뀌었어요")).toBeNull();
+		fireEvent.click(await screen.findByRole("button", { name: "저장" }));
+		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
+		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).translation).toEqual({
+			version: 2,
+			baseSource: SOURCE_MDX,
+		});
+	});
+
+	it("번역 상태가 없거나 모양이 다르면 아무것도 확인하지 않은 것으로 본다", async () => {
+		serve(() => undefined, translationWith(null));
+		renderEdit();
+		expect(await screen.findByText("원문이 바뀌었어요")).toBeTruthy();
+	});
+
+	it("비교는 바뀐 블록을 이전·지금으로 나열한다", async () => {
+		serve(() => undefined, translationWith("첫 문단 옛\n\n둘째 문단\n\n지운 문단\n"));
+		renderEdit();
+		fireEvent.click(await screen.findByRole("button", { name: "비교" }));
+		const dialog = await screen.findByRole("dialog", { name: "원문 변경" });
+		expect(within(dialog).getByText("바뀜")).toBeTruthy();
+		expect(within(dialog).getByText("삭제")).toBeTruthy();
+		expect(within(dialog).getAllByText("이전").length).toBeGreaterThan(0);
+		expect(within(dialog).getAllByText("지금").length).toBeGreaterThan(0);
+		await waitFor(() => expect(dialog.textContent).toContain("첫 문단 옛"));
+	});
+
+	it("해석할 수 없는 원문은 비교할 수 없다고 알린다", async () => {
+		serve(() => undefined, translationWith("<Callout>닫히지 않음"));
+		renderEdit();
+		fireEvent.click(await screen.findByRole("button", { name: "비교" }));
+		const dialog = await screen.findByRole("dialog", { name: "원문 변경" });
+		expect(within(dialog).getByText("비교할 수 없습니다.")).toBeTruthy();
+	});
+});

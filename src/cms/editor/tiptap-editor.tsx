@@ -291,6 +291,18 @@ export function CmsEditor({
 	// 원문 모드로 열린 본문은 해석할 수 없을 수 있다. 시각 편집기는 빈 문서로 만들고 돌아올 때 채운다.
 	const [initialContent] = useState(() => mdxToTiptap(isSourceMode ? "" : content));
 	const isInternalUpdateRef = useRef(false);
+	// 툴바 오른쪽 끝 요소의 폭. 도구 묶음이 가운데에 오도록 양쪽을 이만큼 비운다.
+	const asideRef = useRef<HTMLDivElement>(null);
+	const [asideWidth, setAsideWidth] = useState(72);
+	useEffect(() => {
+		const element = asideRef.current;
+		if (!element) return;
+		const measure = () => setAsideWidth(Math.ceil(element.getBoundingClientRect().width));
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		return () => observer.disconnect();
+	});
 	const isComposingRef = useRef(false);
 	const editorRef = useRef<Editor | null>(null);
 
@@ -643,11 +655,14 @@ export function CmsEditor({
 				aria-label="서식 도구"
 				className="sticky top-0 z-10 w-full overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
-				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 자리만큼 양쪽을 똑같이 비우고,
-				    그래도 좁으면 가운데 도구 묶음만 가로로 스크롤한다. */}
-				<div className={cn("relative flex min-h-12 items-center py-2", toolbarAside ? "px-24" : "px-4")}>
-					<div className="mx-auto min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-						<div className="flex w-max items-center gap-1">
+				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,
+				    그래도 좁으면(번역 원문 칸을 연 때 등) 도구를 숨기지 않고 여러 줄로 감싼다. */}
+				<div
+					className="relative flex min-h-12 items-center py-2"
+					style={{ paddingInline: toolbarAside ? asideWidth + 24 : 16 }}
+				>
+					<div className="mx-auto min-w-0">
+						<div className="flex flex-wrap items-center justify-center gap-1">
 							<Tooltip>
 								<TooltipTrigger
 									render={
@@ -716,7 +731,11 @@ export function CmsEditor({
 							{toolbarEnd}
 						</div>
 					</div>
-					{toolbarAside && <div className="absolute inset-y-0 right-4 flex items-center">{toolbarAside}</div>}
+					{toolbarAside && (
+						<div ref={asideRef} className="absolute inset-y-0 right-4 flex items-center">
+							{toolbarAside}
+						</div>
+					)}
 				</div>
 				{!isSourceMode && <CodeLinkBar editor={editor} />}
 			</div>

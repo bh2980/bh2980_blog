@@ -56,7 +56,7 @@ describe("번역 묶음(v2 B4)", () => {
 		expect(pk.rows.map((row) => row.column_name)).toEqual(["collection", "locale", "slug"]);
 	});
 
-	it("번역본은 원문 주소만 같이 쓰고, 언어별 값과 본문은 빈칸(미번역 단위)에서 시작한다(v3)", async () => {
+	it("번역본은 원문의 언어별 값·본문·주소를 복사하고, 복사한 원문을 확인한 원문으로 남긴다(v3)", async () => {
 		const source = await createPost("copy-source");
 		expect(source.locale).toBe("ko");
 		expect(source.translationGroupId).toBe(source.id);
@@ -66,12 +66,13 @@ describe("번역 묶음(v2 B4)", () => {
 		expect(translation.translationGroupId).toBe(source.id);
 		expect(translation.status).toBe("draft");
 		expect(translation.workingSlug).toBe("copy-source");
-		expect(translation.working.mdx).toBe("");
-		expect(translation.working.metadata).toEqual({});
-		expect(translation.working.translation).toEqual({
-			version: 1,
-			units: [{ key: "|block|paragraph", source: "한국어 본문", target: null }],
+		expect(translation.working.mdx).toBe("한국어 본문");
+		expect(translation.working.metadata).toEqual({
+			title: "한국어 제목",
+			summary: "한국어 요약",
+			seoTitle: "검색 제목",
 		});
+		expect(translation.working.translation).toEqual({ version: 2, baseSource: "한국어 본문" });
 		expect(source.working.translation ?? null).toBeNull();
 
 		const group = await store.getTranslationGroup({ entryId: translation.id });
@@ -120,7 +121,6 @@ describe("번역 묶음(v2 B4)", () => {
 			slug: "merge-source",
 			metadata: { title: "English title", summary: "English summary" },
 			mdx: "English body",
-			translation: { version: 1, units: [{ key: "|block|paragraph", source: "한국어 본문", target: "English body" }] },
 			expectedVersion: en.version,
 		});
 
@@ -166,62 +166,6 @@ describe("번역 묶음(v2 B4)", () => {
 		expect(afterArchive.status).toBe("not_found");
 	});
 
-	it("미번역 블록이 있으면 발행을 막고, 원문 뼈대가 바뀌면 번역을 다시 저장해야 발행된다(v3)", async () => {
-		const source = await service.saveDraft((await createPost("check-source")).id, {
-			collection: "post",
-			slug: "check-source",
-			metadata: (await createPost("check-source-meta")).working.metadata as never,
-			mdx: "첫 문단\n\n둘째 문단\n",
-			expectedVersion: 1,
-		});
-		await publish(source);
-		const en = await service.createTranslation({ sourceId: source.id, locale: "en" });
-		const saveEn = (version: number, mdx: string, targets: [string, string | null][]) =>
-			service.saveDraft(en.id, {
-				collection: "post",
-				slug: "check-source",
-				metadata: { title: "Check" },
-				mdx,
-				translation: {
-					version: 1,
-					units: targets.map(([sourceText, target]) => ({ key: "|block|paragraph", source: sourceText, target })),
-				},
-				expectedVersion: version,
-			});
-
-		const partial = await saveEn(en.version, "First\n", [
-			["첫 문단", "First"],
-			["둘째 문단", null],
-		]);
-		await expect(publish(partial)).rejects.toMatchObject({
-			code: "publish_validation_failed",
-			issues: [expect.objectContaining({ code: "translation_incomplete", message: "1개" })],
-		});
-
-		const complete = await saveEn(partial.version, "First\n\nSecond\n", [
-			["첫 문단", "First"],
-			["둘째 문단", "Second"],
-		]);
-		const published = await publish(complete);
-		expect(published.published?.translation).toEqual(complete.working.translation);
-
-		// 원문에서 블록을 빼면 번역본 본문이 원문 뼈대와 맞지 않는다. 번역 화면에서 다시 저장해야 한다.
-		const current = await store.getEntry(source.id);
-		await service.saveDraft(source.id, {
-			collection: "post",
-			slug: "check-source",
-			metadata: current.working.metadata as never,
-			mdx: "첫 문단\n",
-			expectedVersion: current.version,
-		});
-		await expect(publish(await store.getEntry(en.id))).rejects.toMatchObject({
-			code: "publish_validation_failed",
-			issues: [expect.objectContaining({ code: "translation_outdated" })],
-		});
-		const resaved = await saveEn((await store.getEntry(en.id)).version, "First\n", [["첫 문단", "First"]]);
-		expect((await publish(resaved)).status).toBe("published");
-	});
-
 	it("번역 상태는 번역본만 저장하고, 보내지 않으면 저장된 값을 그대로 둔다(v3)", async () => {
 		const source = await createPost("state-source");
 		const base = {
@@ -233,7 +177,7 @@ describe("번역 묶음(v2 B4)", () => {
 		await expect(
 			service.saveDraft(source.id, {
 				...base,
-				translation: { version: 1, units: [] },
+				translation: { version: 2, baseSource: "" },
 				expectedVersion: source.version,
 			}),
 		).rejects.toMatchObject({ code: "invalid_input" });
@@ -245,7 +189,7 @@ describe("번역 묶음(v2 B4)", () => {
 				slug: "state-source",
 				metadata: { title: "T" },
 				mdx: "",
-				translation: { version: 2, units: [] } as never,
+				translation: { version: 1, units: [] } as never,
 				expectedVersion: en.version,
 			}),
 		).rejects.toMatchObject({ code: "invalid_input" });
@@ -259,17 +203,17 @@ describe("번역 묶음(v2 B4)", () => {
 		});
 		expect(saved.working.translation).toEqual(en.working.translation);
 
-		// 번역 상태만 바뀌어도(변경 무시 등) 저장한다.
+		// 번역 상태만 바뀌어도(원문 변경 확인) 저장한다.
 		const ignored = await service.saveDraft(en.id, {
 			collection: "post",
 			slug: "state-source",
 			metadata: { title: "Only the title" },
 			mdx: "",
-			translation: { version: 1, units: [{ key: "|block|paragraph", source: "바뀐 기준", target: null }] },
+			translation: { version: 2, baseSource: "바뀐 기준" },
 			expectedVersion: saved.version,
 		});
 		expect(ignored.version).toBe(saved.version + 1);
-		expect(ignored.working.translation?.units[0]?.source).toBe("바뀐 기준");
+		expect(ignored.working.translation?.baseSource).toBe("바뀐 기준");
 	});
 
 	it("주소는 언어마다 따로다", async () => {

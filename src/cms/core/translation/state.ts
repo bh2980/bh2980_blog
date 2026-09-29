@@ -1,41 +1,24 @@
-import type { StoredUnit } from "./units";
-
 /**
- * 번역본의 번역 상태(`entry_bodies.translation`, v3 §3.1). 원문은 `null`이다.
- * 번역본 MDX는 이 단위 목록과 원문 뼈대에서 만든 값이다.
+ * 번역본의 번역 상태(`entry_bodies.translation`, v3). 원문은 `null`이다.
+ * 번역자가 마지막으로 확인한 원문 본문(`baseSource`)을 담는다. 원문 최신 초안이 이 값과 다르면
+ * 번역 화면이 "원문이 바뀌었어요"를 보이고, 이전·지금 원문을 블록 단위로 비교해 준다.
  */
 export interface TranslationState {
-	readonly version: 1;
-	readonly units: readonly StoredUnit[];
+	readonly version: 2;
+	readonly baseSource: string;
 }
 
-/** 번역 상태 크기 상한. 원문 조각과 번역을 함께 담아 본문 상한(2MiB)의 두 배로 둔다. */
-export const MAX_TRANSLATION_BYTES = 4 * 1024 * 1024;
-const MAX_UNITS = 5000;
+/** 번역 상태 크기 상한. 원문 본문 상한(2MiB)과 같다. */
+export const MAX_TRANSLATION_BYTES = 2 * 1024 * 1024;
 
-const isUnit = (value: unknown): value is StoredUnit => {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-	const unit = value as Record<string, unknown>;
-	const keys = Object.keys(unit);
-	return (
-		keys.length === 3 &&
-		typeof unit.key === "string" &&
-		unit.key.length <= 500 &&
-		typeof unit.source === "string" &&
-		(unit.target === null || typeof unit.target === "string")
-	);
-};
-
-/** 들어온 값을 번역 상태로 검증한다. 모양이 다르면 `null`이 아니라 오류로 본다(`undefined` 반환). */
+/** 들어온 값을 번역 상태로 검증한다. 모양이 다르면 오류로 본다(`undefined` 반환). */
 export function parseTranslationState(value: unknown): TranslationState | null | undefined {
 	if (value === null) return null;
 	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
 	const record = value as Record<string, unknown>;
-	if (Object.keys(record).length !== 2 || record.version !== 1 || !Array.isArray(record.units)) return undefined;
-	if (record.units.length > MAX_UNITS || !record.units.every(isUnit)) return undefined;
-	if (new TextEncoder().encode(JSON.stringify(record)).length > MAX_TRANSLATION_BYTES) return undefined;
-	return {
-		version: 1,
-		units: record.units.map((unit: StoredUnit) => ({ key: unit.key, source: unit.source, target: unit.target })),
-	};
+	if (Object.keys(record).length !== 2 || record.version !== 2 || typeof record.baseSource !== "string") {
+		return undefined;
+	}
+	if (new TextEncoder().encode(record.baseSource).length > MAX_TRANSLATION_BYTES) return undefined;
+	return { version: 2, baseSource: record.baseSource };
 }
