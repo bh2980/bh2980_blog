@@ -461,6 +461,22 @@
 		counter-increment: step 0;
 	}
 
+	/* 본문 `:code-ref`에 마우스를 올리거나 누르면 연결된 줄을 강조하고 나머지 줄을 흐린다(focus) */
+	pre[data-code-focus] code .line {
+		transition: opacity 150ms ease, background-color 150ms ease;
+	}
+	pre[data-code-focus] code .line:not([data-focused]) {
+		opacity: 0.35;
+	}
+	pre[data-code-focus] code .line[data-focused] {
+		background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		pre[data-code-focus] code .line {
+			transition: none;
+		}
+	}
+
 	/* 줄 번호는 줄에 단 실제 번호다(카운터는 접힌 줄을 세지 못해 접기 뒤 번호가 밀린다) */
 	.prose pre[data-show-line-numbers] code .line::before {
 		@apply mr-3 inline-block border-transparent text-right! w-[2ch]! content-[attr(data-line)];

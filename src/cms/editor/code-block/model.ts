@@ -35,12 +35,14 @@ export const CODE_LINE_EFFECTS = [
 	{ name: "error", label: "오류" },
 ] as const;
 
-export type CodeLineEffectName = (typeof CODE_LINE_EFFECTS)[number]["name"] | "collapse";
+export type CodeLineEffectName = (typeof CODE_LINE_EFFECTS)[number]["name"] | "collapse" | "anchor";
 
 export const COLLAPSE = "collapse";
+/** 본문 `:code-ref`가 가리키는 줄 이름표(`attrs.id`). 줄 효과처럼 글자를 따라 옮겨진다. */
+export const ANCHOR = "anchor";
 
 export const isLineEffectName = (name: string): name is CodeLineEffectName =>
-	name === COLLAPSE || CODE_LINE_EFFECTS.some((effect) => effect.name === name);
+	name === COLLAPSE || name === ANCHOR || CODE_LINE_EFFECTS.some((effect) => effect.name === name);
 
 /** 줄 효과 하나. `start`~`end`는 줄 번호(0부터, `end`는 포함하지 않는다). */
 export interface CodeLineEffect {
@@ -150,7 +152,7 @@ export const escapePattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]
  */
 export function setLineEffect(
 	effects: readonly CodeLineEffect[],
-	name: Exclude<CodeLineEffectName, "collapse">,
+	name: Exclude<CodeLineEffectName, "collapse" | "anchor">,
 	start: number,
 	end: number,
 	on: boolean,

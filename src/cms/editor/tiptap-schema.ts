@@ -79,6 +79,36 @@ export const CmsTooltipMark = Mark.create({
 });
 
 /**
+ * 본문 글자와 코드 줄의 연결(`:code-ref[글자]{to="c1"}`). `to`는 코드 블록 줄 이름표(`anchor` 줄 효과)의 `id`다.
+ * 연결 글자 뒤에 이어 친 글자까지 연결되지 않게 `inclusive`를 끈다.
+ */
+export const CmsCodeRefMark = Mark.create({
+	name: "codeRef",
+	inclusive: false,
+	addAttributes() {
+		return {
+			to: {
+				default: "",
+				parseHTML: (element) => element.getAttribute("data-code-ref") ?? "",
+				renderHTML: (attrs) => ({ "data-code-ref": String(attrs.to ?? "") }),
+			},
+		};
+	},
+	parseHTML() {
+		return [{ tag: "span[data-code-ref]" }];
+	},
+	renderHTML({ HTMLAttributes }) {
+		return [
+			"span",
+			mergeAttributes(HTMLAttributes, {
+				class: "underline decoration-primary/60 decoration-solid underline-offset-4",
+			}),
+			0,
+		];
+	},
+});
+
+/**
  * 새 표현 계약(§4.4)의 인라인·정렬 확장.
  *
  * 배치 3(M8-ED-2)에서 쓰기 명령을 켰다 — 에디터가 `toDocument`/`serialize` 경로로
@@ -189,6 +219,7 @@ export const CMS_SCHEMA_EXTENSIONS = [
 	CmsSuperscript,
 	CmsSubscript,
 	CmsTooltipMark,
+	CmsCodeRefMark,
 	CmsOpaqueBlock,
 	CodeFoldMark,
 	CmsCodeBlock,

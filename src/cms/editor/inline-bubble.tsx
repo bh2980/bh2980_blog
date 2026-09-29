@@ -5,6 +5,7 @@ import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import {
 	ChevronsLeftRightEllipsis,
+	Code2,
 	Eye,
 	EyeOff,
 	Link2,
@@ -21,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import { codeEffectsKey, expandRule, removeRule, setFoldOpen } from "./code-block/effects-plugin";
+import { findAnchor, startLinkFromText, unlinkRef } from "./code-block/link-commands";
 import { charEffectByName } from "./code-block/model";
 import {
 	type ActiveCodeRule,
@@ -81,7 +83,7 @@ function BubbleButton({
 function anchorRange(target: InlineBubbleTarget): { from: number; to: number } {
 	if (target.kind === "selection") return target;
 	const primary = target.marks[0];
-	if (primary && (primary.name === "link" || primary.name === "cmsTooltip")) return primary;
+	if (primary && ["link", "codeRef", "cmsTooltip"].includes(primary.name)) return primary;
 	const rule = target.rules[0];
 	if (!primary && rule) return rule;
 	return { from: target.pos, to: target.pos };
@@ -275,6 +277,30 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 				</div>
 			);
 		}
+		if (mark.name === "codeRef") {
+			const anchor = findAnchor(editor.state.doc, String(mark.attrs.to ?? ""));
+			const where = anchor
+				? `${anchor.title ? `${anchor.title} ` : ""}${anchor.end - anchor.start === 1 ? `${anchor.start + 1}줄` : `${anchor.start + 1}–${anchor.end}줄`}`
+				: null;
+			return (
+				<div key={mark.name} className="flex items-center gap-0.5">
+					<Code2 aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+					<span className={cn("max-w-56 truncate px-1 text-xs", where ? "text-muted-foreground" : "text-destructive")}>
+						{where ? `코드 ${where}` : "연결된 코드 줄이 없습니다"}
+					</span>
+					<BubbleButton
+						label="코드 다시 연결"
+						className="text-xs"
+						onClick={act(() => startLinkFromText(editor.view, mark.from, mark.to))}
+					>
+						다시 연결
+					</BubbleButton>
+					<BubbleButton label="코드 연결 끊기" onClick={act(() => unlinkRef(editor.view, mark.from, mark.to))}>
+						<Unlink aria-hidden className="size-4" />
+					</BubbleButton>
+				</div>
+			);
+		}
 		if (mark.name === "codeFold") {
 			const region = {
 				key: `m:${mark.from}`,
@@ -355,16 +381,13 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 					</BubbleButton>
 				)}
 				<BubbleButton
-					label="개별 효과로 바꾸기 (하나씩 지울 수 있게)"
+					label="개별 효과로 바꾸기"
 					className="text-xs"
 					onClick={act(() => expandRule(editor.view, blockPos, rule.id))}
 				>
 					개별로
 				</BubbleButton>
-				<BubbleButton
-					label={`규칙 삭제 (${count}곳 모두)`}
-					onClick={act(() => removeRule(editor.view, blockPos, rule.id))}
-				>
+				<BubbleButton label="규칙 삭제" onClick={act(() => removeRule(editor.view, blockPos, rule.id))}>
 					<X aria-hidden className="size-4" />
 				</BubbleButton>
 			</div>
@@ -372,7 +395,7 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 	};
 
 	const renderMarks = (marks: ActiveInlineMark[], rules: ActiveCodeRule[]) => {
-		const detailed = marks.filter((mark) => ["link", "cmsTooltip", "codeFold"].includes(mark.name));
+		const detailed = marks.filter((mark) => ["link", "codeRef", "cmsTooltip", "codeFold"].includes(mark.name));
 		const simple = marks.filter((mark) => !detailed.includes(mark));
 		const groups = [
 			...detailed.map((mark) => <Fragment key={mark.name}>{renderMark(mark)}</Fragment>),
@@ -389,6 +412,11 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 
 	// 코드 블록에서는 그 블록이 받는 효과(굵게·기울임·취소선·밑줄·툴팁)와 글자 접기만 보인다.
 	const inCode = !!editor.state.selection.$from.parent.type.spec.code;
+	let hasCodeBlock = false;
+	editor.state.doc.descendants((node) => {
+		if (node.type.name === "codeBlock") hasCodeBlock = true;
+		return !hasCodeBlock;
+	});
 	const renderSelectionTools = () => (
 		<>
 			{allowedMarkTools(editor.state).map((item) => (
@@ -409,6 +437,17 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 					onClick={() => openLink(linkDraftFromSelection(editor))}
 				>
 					<Link2 aria-hidden className="size-4" />
+				</BubbleButton>
+			)}
+			{!inCode && allowsMark(editor.state, "codeRef") && hasCodeBlock && (
+				<BubbleButton
+					label="코드와 잇기"
+					onClick={() => {
+						const { from, to } = editor.state.selection;
+						startLinkFromText(editor.view, from, to);
+					}}
+				>
+					<Code2 aria-hidden className="size-4" />
 				</BubbleButton>
 			)}
 			{inCode && allowsMark(editor.state, "codeFold") && (

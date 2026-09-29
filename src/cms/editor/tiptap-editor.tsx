@@ -38,6 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
+import { CodeLinkBar } from "./code-block/code-link-bar";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
@@ -673,6 +674,7 @@ export function CmsEditor({
 						</PopoverContent>
 					</Popover>
 				</div>
+				<CodeLinkBar editor={editor} />
 			</div>
 
 			{titleField && (

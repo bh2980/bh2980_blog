@@ -1,9 +1,10 @@
 "use client";
 
-import { type CSSProperties, type PropsWithChildren, useEffect, useId, useState } from "react";
+import { type CSSProperties, type PropsWithChildren, useId } from "react";
 import { cn } from "@/utils/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { TooltipContent, Tooltip as TooltipRoot, TooltipTrigger } from "../ui/tooltip";
+import { useTouchLike } from "./use-touch-like";
 
 const tooltipTriggerClassName = "underline decoration-slate-900/30 decoration-dotted dark:decoration-slate-100/30";
 
@@ -20,36 +21,8 @@ export const Tooltip = ({
 	/** 코드 안 툴팁의 주석 번호. 터치 기기에서는 툴팁 대신 이 번호를 보이고 설명은 코드 아래 목록에 둔다(`pre`). */
 	note?: string | number;
 }>) => {
-	const [isTouchLike, setIsTouchLike] = useState(false);
+	const isTouchLike = useTouchLike();
 	const descriptionId = useId();
-
-	useEffect(() => {
-		const hoverNoneQuery = window.matchMedia("(hover: none)");
-		const pointerCoarseQuery = window.matchMedia("(pointer: coarse)");
-		const updateTouchLike = () => {
-			setIsTouchLike(hoverNoneQuery.matches || pointerCoarseQuery.matches);
-		};
-
-		updateTouchLike();
-
-		if ("addEventListener" in hoverNoneQuery && "addEventListener" in pointerCoarseQuery) {
-			hoverNoneQuery.addEventListener("change", updateTouchLike);
-			pointerCoarseQuery.addEventListener("change", updateTouchLike);
-
-			return () => {
-				hoverNoneQuery.removeEventListener("change", updateTouchLike);
-				pointerCoarseQuery.removeEventListener("change", updateTouchLike);
-			};
-		}
-
-		hoverNoneQuery.addListener(updateTouchLike);
-		pointerCoarseQuery.addListener(updateTouchLike);
-
-		return () => {
-			hoverNoneQuery.removeListener(updateTouchLike);
-			pointerCoarseQuery.removeListener(updateTouchLike);
-		};
-	}, []);
 
 	const triggerClassName = cn(tooltipTriggerClassName, className);
 	// 번호는 CSS(touch)로만 보인다. 서버 렌더부터 자리를 잡아 두어 터치 기기에서 글자가 밀리지 않는다.

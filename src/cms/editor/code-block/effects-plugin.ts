@@ -3,6 +3,7 @@ import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/s
 import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import {
+	ANCHOR,
 	COLLAPSE,
 	type CodeLineEffect,
 	type CodeRule,
@@ -27,8 +28,16 @@ export interface CodeEffectsState {
 	overrides: Map<string, boolean>;
 	/** 줄 번호 칸에서 고른 줄(코드 블록 위치, [start, end) 줄). 다른 방법으로 선택을 바꾸면 풀린다. */
 	picked: LinePick | null;
+	/** 본문–코드 잇기 중이면 먼저 고른 쪽(본문 글자 또는 코드 줄). 다른 쪽을 고르고 확인하면 잇는다. */
+	linking: LinkDraft | null;
+	/** 마우스를 올린 본문 연결(`codeRef`)의 줄 이름. 그 줄을 강조하고 나머지를 흐린다. */
+	hoverRef: string | null;
 	version: number;
 }
+
+export type LinkDraft =
+	| { kind: "text"; from: number; to: number }
+	| { kind: "lines"; blockPos: number; start: number; end: number };
 
 export interface LinePick {
 	blockPos: number;
@@ -36,7 +45,14 @@ export interface LinePick {
 	end: number;
 }
 
-type EffectsMeta = { key: string; open: boolean } | { pick: LinePick | null };
+type EffectsMeta =
+	| { key: string; open: boolean }
+	| { pick: LinePick | null }
+	| { linking: LinkDraft | null }
+	| { hoverRef: string | null };
+
+/** 플러그인 상태를 바꾸는 트랜잭션 메타(잇기 명령이 쓴다). */
+export const effectsMeta = (meta: EffectsMeta) => meta;
 
 export const codeEffectsKey = new PluginKey<CodeEffectsState>("cmsCodeEffects");
 
@@ -260,6 +276,34 @@ function blockDecorations(node: PmNode, pos: number, overrides: ReadonlyMap<stri
 	return decorations;
 }
 
+/** 문서의 모든 코드 줄 이름표(`anchor` 줄 효과의 id). */
+export function anchorIds(doc: PmNode): Set<string> {
+	const ids = new Set<string>();
+	doc.descendants((node) => {
+		if (node.type.name !== "codeBlock") return true;
+		for (const effect of lineEffectsOf(node))
+			if (effect.name === ANCHOR && typeof effect.attrs.id === "string") ids.add(effect.attrs.id);
+		return false;
+	});
+	return ids;
+}
+
+/** 마우스를 올린 본문 연결의 줄이 이 코드 블록에 있으면, 나머지 줄을 흐린다. */
+function hoverDecorations(node: PmNode, pos: number, id: string): Decoration[] {
+	const anchor = lineEffectsOf(node).find((effect) => effect.name === ANCHOR && effect.attrs.id === id);
+	if (!anchor) return [];
+	const text = node.textContent;
+	const starts = lineStarts(text);
+	const decorations: Decoration[] = [];
+	for (let line = 0; line < starts.length; line += 1) {
+		if (anchor.start <= line && line < anchor.end) continue;
+		const range = lineRange(text, starts, line);
+		if (range.to > range.from)
+			decorations.push(Decoration.inline(pos + 1 + range.from, pos + 1 + range.to, { class: "opacity-35" }));
+	}
+	return decorations;
+}
+
 /** 옛 줄 번호를 글자 변경을 따라 새 줄 번호로 옮긴다. */
 function remapLineEffects(
 	oldNode: PmNode,
@@ -306,7 +350,7 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 	return new Plugin<CodeEffectsState>({
 		key: codeEffectsKey,
 		state: {
-			init: () => ({ overrides: new Map(), picked: null, version: 0 }),
+			init: () => ({ overrides: new Map(), picked: null, linking: null, hoverRef: null, version: 0 }),
 			apply(tr, value, _oldState, newState) {
 				let overrides = value.overrides;
 				let changed = false;
@@ -339,6 +383,23 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 					picked = mapped.deleted ? null : { ...picked, blockPos: mapped.pos };
 				}
 				if (picked !== value.picked) changed = true;
+
+				let linking = value.linking;
+				if (meta && "linking" in meta) linking = meta.linking;
+				else if (linking && tr.docChanged) {
+					if (linking.kind === "text") {
+						const from = tr.mapping.map(linking.from, 1);
+						const to = tr.mapping.map(linking.to, -1);
+						linking = to > from ? { ...linking, from, to } : null;
+					} else {
+						const mapped = tr.mapping.mapResult(linking.blockPos, -1);
+						linking = mapped.deleted ? null : { ...linking, blockPos: mapped.pos };
+					}
+				}
+				if (linking !== value.linking) changed = true;
+
+				const hoverRef = meta && "hoverRef" in meta ? meta.hoverRef : value.hoverRef;
+				if (hoverRef !== value.hoverRef) changed = true;
 				// 커서가 접혀 숨은 곳에 들어가면(방향키·되돌리기 등) 펼친다.
 				const { $head, head } = newState.selection;
 				for (let depth = $head.depth; depth > 0; depth -= 1) {
@@ -352,19 +413,58 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 					}
 					break;
 				}
-				return changed ? { overrides, picked, version: value.version + 1 } : value;
+				return changed ? { overrides, picked, linking, hoverRef, version: value.version + 1 } : value;
 			},
 		},
 		props: {
 			decorations(state) {
-				const overrides = codeEffectsKey.getState(state)?.overrides ?? new Map<string, boolean>();
+				const plugin = codeEffectsKey.getState(state);
+				const overrides = plugin?.overrides ?? new Map<string, boolean>();
 				const decorations: Decoration[] = [];
+				const anchors = anchorIds(state.doc);
 				state.doc.descendants((node, pos) => {
-					if (node.type.name !== "codeBlock") return true;
-					decorations.push(...blockDecorations(node, pos, overrides));
-					return false;
+					if (node.type.name === "codeBlock") {
+						decorations.push(...blockDecorations(node, pos, overrides));
+						if (plugin?.hoverRef) decorations.push(...hoverDecorations(node, pos, plugin.hoverRef));
+						return false;
+					}
+					// 연결된 줄이 없는 본문 연결은 빨간 물결 밑줄로 알린다.
+					const ref = node.isText ? node.marks.find((mark) => mark.type.name === "codeRef") : undefined;
+					if (ref && !anchors.has(String(ref.attrs.to)))
+						decorations.push(
+							Decoration.inline(pos, pos + node.nodeSize, {
+								class: "decoration-wavy decoration-red-500",
+								title: "연결된 코드 줄이 없습니다",
+							}),
+						);
+					return true;
 				});
+				// 잇기 중(본문을 먼저 고름)이면 고른 글자를 칠해 둔다.
+				if (plugin?.linking?.kind === "text")
+					decorations.push(
+						Decoration.inline(plugin.linking.from, plugin.linking.to, { class: "rounded-sm bg-primary/15" }),
+					);
 				return decorations.length ? DecorationSet.create(state.doc, decorations) : DecorationSet.empty;
+			},
+			handleKeyDown(view, event) {
+				if (event.key !== "Escape" || !codeEffectsKey.getState(view.state)?.linking) return false;
+				view.dispatch(view.state.tr.setMeta(codeEffectsKey, effectsMeta({ linking: null })));
+				return true;
+			},
+			handleDOMEvents: {
+				// 본문 연결에 마우스를 올리면 연결된 코드 줄을 강조한다(공개 화면과 같다).
+				mouseover(view, event) {
+					const target = event.target instanceof Element ? event.target.closest("[data-code-ref]") : null;
+					const id = target?.getAttribute("data-code-ref") || null;
+					if (id !== (codeEffectsKey.getState(view.state)?.hoverRef ?? null))
+						view.dispatch(view.state.tr.setMeta(codeEffectsKey, effectsMeta({ hoverRef: id })));
+					return false;
+				},
+				mouseleave(view) {
+					if (codeEffectsKey.getState(view.state)?.hoverRef)
+						view.dispatch(view.state.tr.setMeta(codeEffectsKey, effectsMeta({ hoverRef: null })));
+					return false;
+				},
 			},
 		},
 		appendTransaction(transactions, oldState, newState) {

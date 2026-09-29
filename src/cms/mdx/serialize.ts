@@ -133,6 +133,8 @@ const openMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
 			return ":tooltip[";
+		case "codeRef":
+			return ":code-ref[";
 		case "underline":
 			return ":u[";
 		case "superscript":
@@ -158,6 +160,8 @@ const closeMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
 			return `]{content="${escapeAttr(String(mark.attrs?.content ?? ""))}"}`;
+		case "codeRef":
+			return `]{to="${escapeAttr(String(mark.attrs?.to ?? ""))}"}`;
 		case "underline":
 		case "superscript":
 		case "subscript":
@@ -410,8 +414,16 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false, inLabel = false
 		const text = node.text ?? "";
 		out.push(
 			atLineStart && !inCode
-				? encodeLeadingSpaces(text, inCode, inLabel || wanted.some((mark) => mark.type === "tooltip"))
-				: escapeText(text, inCode, inLabel || wanted.some((mark) => mark.type === "tooltip")),
+				? encodeLeadingSpaces(
+						text,
+						inCode,
+						inLabel || wanted.some((mark) => mark.type === "tooltip" || mark.type === "codeRef"),
+					)
+				: escapeText(
+						text,
+						inCode,
+						inLabel || wanted.some((mark) => mark.type === "tooltip" || mark.type === "codeRef"),
+					),
 		);
 		atLineStart = false;
 	}

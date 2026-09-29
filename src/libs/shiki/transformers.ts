@@ -52,6 +52,7 @@ export type LineDecorationPayload = {
 	range: { start: number; end: number };
 	order: number;
 	class: string;
+	attributes?: { name: string; value: unknown }[];
 };
 export type LineWrapperPayload = {
 	scope: "line";
@@ -118,14 +119,22 @@ export const addLineDecorations = (lineDecorations: LineDecorationPayload[] = []
 	return {
 		line(lineEl: Element, lineNumber: number) {
 			const lineIndex = lineNumber - 1;
-			const classNames = normalized
-				.filter((decoration) => decoration.range.start <= lineIndex && lineIndex < decoration.range.end)
-				.map((decoration) => decoration.class);
+			const onLine = normalized.filter(
+				(decoration) => decoration.range.start <= lineIndex && lineIndex < decoration.range.end,
+			);
+			const classNames = onLine.map((decoration) => decoration.class);
 			if (classNames.length === 0) return;
 
 			if (!lineEl.properties) {
 				lineEl.properties = {};
 			}
+
+			// 본문 `:code-ref`가 찾는 줄 이름표. 한 줄에 여러 이름이 걸릴 수 있다(공백으로 나눈다).
+			const anchors = onLine
+				.filter((decoration) => decoration.name === "anchor")
+				.map((decoration) => decoration.attributes?.find((attr) => attr.name === "id")?.value)
+				.filter((id): id is string => typeof id === "string" && /^[\w-]+$/.test(id));
+			if (anchors.length) lineEl.properties["data-anchor"] = [...new Set(anchors)].join(" ");
 
 			const existingClassNames = toClassList(lineEl.properties.className);
 			const existingClasses = toClassList(lineEl.properties.class);

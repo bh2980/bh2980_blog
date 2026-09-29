@@ -20,10 +20,11 @@ import { asNumber, asString, brDirectiveNode } from "./converters/shared";
 
 export const OPAQUE_BLOCK_NAME = "cmsOpaqueBlock";
 export const TOOLTIP_MARK_NAME = "cmsTooltip";
+export const CODE_REF_MARK_NAME = "codeRef";
 
 /** Tiptap이 그대로 들고 다닐 수 있는 mark. `tooltip`은 전용 mark로 매핑한다. */
 const NATIVE_MARKS = new Set(["bold", "italic", "strike", "code", "link", "underline", "superscript", "subscript"]);
-const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip"]);
+const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip", "codeRef"]);
 
 const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);
 
@@ -113,6 +114,10 @@ const toTiptapMarks = (marks: CmsMark[] | undefined): JSONContent["marks"] => {
 	for (const mark of marks) {
 		if (mark.type === "tooltip") {
 			out.push({ type: TOOLTIP_MARK_NAME, attrs: { content: asString(mark.attrs?.content) ?? "" } });
+			continue;
+		}
+		if (mark.type === "codeRef") {
+			out.push({ type: CODE_REF_MARK_NAME, attrs: { to: asString(mark.attrs?.to) ?? "" } });
 			continue;
 		}
 		// isMappableInline이 걸렀으므로 여기 오는 mark는 전부 네이티브다.
@@ -234,6 +239,10 @@ const tiptapMarksToCms = (marks: JSONContent["marks"]): CmsMark[] => {
 		if (!mark || typeof mark.type !== "string") continue;
 		if (mark.type === TOOLTIP_MARK_NAME) {
 			out.push({ type: "tooltip", attrs: { content: asString(mark.attrs?.content) ?? "" } });
+			continue;
+		}
+		if (mark.type === CODE_REF_MARK_NAME) {
+			out.push({ type: "codeRef", attrs: { to: asString(mark.attrs?.to) ?? "" } });
 			continue;
 		}
 		if (mark.type === "link") {

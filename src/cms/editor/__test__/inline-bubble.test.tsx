@@ -236,7 +236,7 @@ describe("InlineBubble", () => {
 		const { unmount } = renderBubble(editor);
 		expect(screen.getByText("글자 접기 규칙 · 2곳")).toBeTruthy();
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "개별 효과로 바꾸기 (하나씩 지울 수 있게)" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "개별 효과로 바꾸기" })));
 		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
 		expect(editor.getHTML().match(/data-code-fold/g)).toHaveLength(2);
 		unmount();
@@ -248,7 +248,7 @@ describe("InlineBubble", () => {
 		editor.commands.unsetMark("codeFold", { extendEmptyMarkRange: true });
 		focusAt(editor, 3);
 		renderBubble(editor);
-		act(() => fireEvent.click(screen.getByRole("button", { name: "규칙 삭제 (2곳 모두)" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "규칙 삭제" })));
 		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
 	});
 });

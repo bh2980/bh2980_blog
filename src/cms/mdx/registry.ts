@@ -6,6 +6,7 @@ export const REGISTERED_JSX_NAMES = new Set([
 	"Tabs",
 	"Tab",
 	"Tooltip",
+	"CodeRef",
 	"u",
 	"strong",
 	"em",
@@ -50,6 +51,7 @@ export const INLINE_JSX_MARKS: Record<string, string> = {
 	sup: "superscript",
 	sub: "subscript",
 	Tooltip: "tooltip",
+	CodeRef: "codeRef",
 };
 
 /**
@@ -58,6 +60,7 @@ export const INLINE_JSX_MARKS: Record<string, string> = {
  */
 export const MARK_ORDER = [
 	"tooltip",
+	"codeRef",
 	"underline",
 	"superscript",
 	"subscript",

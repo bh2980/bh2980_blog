@@ -20,6 +20,7 @@ import {
 } from "./effects-plugin";
 import { CODE_LANGUAGE_OPTIONS } from "./languages";
 import { LineMenu } from "./line-menu";
+import { startLinkFromLines } from "./link-commands";
 import { formatMeta, parseMeta } from "./meta";
 import { type CodeLineEffect, type CodeRule, lineAt, lineRange, lineStarts } from "./model";
 import { RulesPanel } from "./rules-panel";
@@ -119,6 +120,10 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 	// 줄 번호 칸에서 고른 줄. 누르거나 끌어 고르고 Shift로 늘린다. 메뉴는 고른 줄 옆 "줄 효과" 버튼으로 연다.
 	const pickState = codeEffectsKey.getState(editor.state)?.picked ?? null;
 	const picked = pickState && pickState.blockPos === pos ? pickState : null;
+	const effectsState = codeEffectsKey.getState(editor.state);
+	const hoverRef = effectsState?.hoverRef ?? null;
+	const linkingLines =
+		effectsState?.linking?.kind === "lines" && effectsState.linking.blockPos === pos ? effectsState.linking : null;
 
 	/** `start`~`end` 줄을 고른다(복사·효과 적용도 그 줄에 걸린다). */
 	const selectLines = useCallback(
@@ -231,7 +236,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								<Info aria-hidden className="size-3.5" />
 								원문 편집
 							</TooltipTrigger>
-							<TooltipContent>에디터가 나타낼 수 없는 주석이 있어 주석 줄까지 원문 그대로 편집합니다.</TooltipContent>
+							<TooltipContent>에디터가 나타낼 수 없는 주석이 있습니다</TooltipContent>
 						</Tooltip>
 					) : (
 						<>
@@ -255,7 +260,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								>
 									<Rows3 aria-hidden className="size-3.5" />
 								</TooltipTrigger>
-								<TooltipContent>고른 줄에 강조·추가·삭제·경고·오류·접기 (줄 번호를 눌러도 됩니다)</TooltipContent>
+								<TooltipContent>줄 효과</TooltipContent>
 							</Tooltip>
 							<RulesPanel
 								rules={rules}
@@ -286,7 +291,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						>
 							<ListOrdered aria-hidden className="size-3.5" />
 						</TooltipTrigger>
-						<TooltipContent>공개 글에 줄 번호 표시</TooltipContent>
+						<TooltipContent>줄 번호</TooltipContent>
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger
@@ -325,12 +330,14 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						const lines = picked ?? selectedLines;
 						const selected = !!lines && lines.start <= line && line < lines.end;
 						const whole = !!picked && picked.start <= line && line < picked.end;
+						const anchored = effects.some((effect) => effect.name === "anchor");
 						return (
 							// biome-ignore lint/a11y/noStaticElementInteractions: 줄 번호를 눌러(끌어) 줄을 고르고 오른쪽 클릭으로 메뉴를 연다(키보드는 상단 "줄 효과" 버튼)
 							<div
 								key={line}
 								data-line={line}
-								title="클릭·끌기: 줄 고르기 · Shift+클릭: 늘리기 · 오른쪽 클릭: 줄 효과"
+								data-anchored={anchored || undefined}
+								title={anchored ? "본문과 연결된 줄" : undefined}
 								onMouseDown={(event) => startLineDrag(line, event)}
 								onMouseEnter={() => extendLineDrag(line)}
 								onContextMenu={(event) => openLineMenuAt(line, event)}
@@ -338,6 +345,8 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 									"flex h-6 cursor-pointer items-center gap-0.5 pr-1.5 pl-0.5 hover:bg-accent/60",
 									selected && "bg-primary/10 text-foreground",
 									whole && "bg-primary/20",
+									// 본문과 연결된 줄은 줄 번호 칸 왼쪽에 선을 긋는다.
+									anchored && "shadow-[inset_2px_0_0_0_var(--primary)]",
 								)}
 							>
 								<span className="flex w-4 justify-center">
@@ -386,13 +395,16 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								const effects = effectsOnLine(lineEffects, line);
 								const wavy = effects.map((effect) => WAVY[effect.name]).find(Boolean);
 								const whole = !!picked && picked.start <= line && line < picked.end;
+								// 잇기 중에 먼저 고른 줄, 마우스를 올린 본문 연결이 가리키는 줄.
+								const pending = !!linkingLines && linkingLines.start <= line && line < linkingLines.end;
+								const hovered = effects.some((effect) => effect.name === "anchor" && effect.attrs.id === hoverRef);
 								return (
 									<div
 										key={line}
 										className={cn(
 											"h-6",
 											...effects.map((effect) => LINE_BACKGROUND[effect.name] ?? ""),
-											whole && "bg-primary/15",
+											(whole || pending || hovered) && "bg-primary/15",
 										)}
 									>
 										{/* 물결 밑줄은 글자 조각(구문 색)마다 끊기지 않게 줄 전체에 한 번 긋는다. 같은 글자를 투명하게 겹쳐 길이를 맞춘다. */}
@@ -431,6 +443,10 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						lineEffects={lineEffects}
 						onChange={(next) => updateAttributes({ lineEffects: next })}
 						onClose={closeMenu}
+						onLinkText={() => {
+							if (typeof pos === "number") startLinkFromLines(editor.view, pos, menu.start, menu.end);
+							closeMenu();
+						}}
 						style={menu.at ?? { top: rowTop(menu.start), right: 8 }}
 					/>
 				)}

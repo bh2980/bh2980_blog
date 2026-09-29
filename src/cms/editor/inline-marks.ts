@@ -53,7 +53,7 @@ export const allowsMark = (state: EditorState, mark: string) => {
 };
 
 /** 커서를 두면 버블에 보여 줄 마크. 설정이 있는 마크(링크·툴팁·글자 접기)를 먼저 보인다. */
-const BUBBLE_MARK_ORDER = ["link", "cmsTooltip", "codeFold", ...INLINE_MARK_TOOLS.map((tool) => tool.mark)];
+const BUBBLE_MARK_ORDER = ["link", "codeRef", "cmsTooltip", "codeFold", ...INLINE_MARK_TOOLS.map((tool) => tool.mark)];
 
 /** 커서가 걸친 마크 하나와 그 마크가 이어지는 범위. */
 export interface ActiveInlineMark {
@@ -100,8 +100,9 @@ function markRange($pos: ResolvedPos, mark: Mark, side: "before" | "after"): { f
 export function inlineBubbleTarget(state: EditorState): InlineBubbleTarget | null {
 	const { selection } = state;
 	if (!(selection instanceof TextSelection) || selectedBlocks(state)) return null;
-	// 코드 블록 줄 번호 칸에서 줄을 골랐으면 줄 효과 메뉴를 쓴다(글자 효과 버블을 띄우지 않는다).
-	if (codeEffectsKey.getState(state)?.picked) return null;
+	// 코드 블록 줄 번호 칸에서 줄을 골랐거나 본문–코드 잇기 중이면 버블을 띄우지 않는다(메뉴·안내 줄을 쓴다).
+	const effects = codeEffectsKey.getState(state);
+	if (effects?.picked || effects?.linking) return null;
 	const { $from, $to, from, to } = selection;
 	const code = $from.parent.type.spec.code || $to.parent.type.spec.code;
 	if (code && ($from.parent !== $to.parent || $from.parent.attrs.rawMode === true)) return null;

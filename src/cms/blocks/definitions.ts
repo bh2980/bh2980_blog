@@ -128,6 +128,19 @@ export const tooltip = defineBlock({
 	editor: { view: "mark" },
 });
 
+/**
+ * 본문 글자와 코드 줄을 잇는 링크(`:code-ref[글자]{to="c1"}`). `to`는 같은 글 코드 블록의 줄 이름표
+ * (`// @line anchor {2-4} id="c1"`)다. 공개 화면에서 글자에 마우스를 올리거나 누르면 그 줄을 강조한다.
+ */
+export const codeRef = defineBlock({
+	name: "codeRef",
+	label: "코드 연결",
+	syntax: { kind: "text", directive: "code-ref" },
+	component: "CodeRef",
+	attributes: { to: { type: "string", label: "연결할 코드 줄 이름", required: true } },
+	editor: { view: "mark" },
+});
+
 const textMark = (name: "u" | "sup" | "sub" | "br", label: string) =>
 	defineBlock({
 		name,
@@ -221,6 +234,7 @@ export const BLOCKS = [
 	column,
 	image,
 	tooltip,
+	codeRef,
 	underline,
 	superscript,
 	subscript,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsDownUp, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsDownUp, ChevronsUpDown, Code2, X } from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { cn } from "@/utils/cn";
 import {
@@ -20,6 +20,8 @@ interface LineMenuProps {
 	lineEffects: CodeLineEffect[];
 	onChange: (next: CodeLineEffect[]) => void;
 	onClose: () => void;
+	/** 이 줄을 본문 글자와 잇기 시작한다(본문을 드래그해 고르게 한다). */
+	onLinkText?: () => void;
 	style?: CSSProperties;
 }
 
@@ -66,7 +68,7 @@ function CheckItem({ checked, onSelect, children }: ItemProps & { checked: boole
 }
 
 /** 줄 번호 칸에서 고른 줄에 줄 효과(강조·추가·삭제·경고·오류·접기)를 켜고 끄는 메뉴. */
-export function LineMenu({ start, end, lineEffects, onChange, onClose, style }: LineMenuProps) {
+export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkText, style }: LineMenuProps) {
 	const ref = useRef<HTMLDivElement>(null);
 	// 고른 범위와 같은 접기, 또는 한 줄만 골랐을 때 그 줄(› 표시가 있는 첫 줄)에서 시작하는 접기(바깥쪽부터).
 	const startingHere = lineEffects
@@ -152,7 +154,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, style }: 
 			) : (
 				<MenuItem
 					disabled={!!collapseProblem}
-					title={collapseProblem ?? "첫 줄만 보이고 나머지는 접힙니다"}
+					title={collapseProblem ?? undefined}
 					onSelect={() =>
 						onChange(
 							[...lineEffects, { id: newEffectId(), name: COLLAPSE, start, end, attrs: {} } as CodeLineEffect].sort(
@@ -163,6 +165,15 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, style }: 
 				>
 					<ChevronsDownUp aria-hidden className="size-3.5" />이 줄들 접기
 				</MenuItem>
+			)}
+			{onLinkText && (
+				<>
+					<div aria-hidden className="my-0.5 h-px bg-border" />
+					<MenuItem onSelect={onLinkText}>
+						<Code2 aria-hidden className="size-3.5" />
+						본문과 잇기
+					</MenuItem>
+				</>
 			)}
 		</div>
 	);

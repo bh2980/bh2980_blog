@@ -26,6 +26,7 @@ import { Callout } from "./callout";
 import { Chart } from "./chart";
 import { collapse } from "./code-block/collapse";
 import { fold } from "./code-block/fold";
+import { CodeRef } from "./code-ref.client";
 import { Collapsible } from "./collapsible";
 import { Column, Columns } from "./columns";
 import { CmsImage } from "./image";
@@ -89,6 +90,7 @@ export const MDX_COMPONENTS = {
 	Columns,
 	Column,
 	Tooltip,
+	CodeRef,
 	Tabs,
 	Tab,
 	TextAlign,

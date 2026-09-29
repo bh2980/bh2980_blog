@@ -59,6 +59,7 @@ describe("블록 정의(v2 B3)", () => {
 			["column", "container", "Column", []],
 			["image", "leaf", "Image", []],
 			["tooltip", "text", "Tooltip", ["content"]],
+			["code-ref", "text", "CodeRef", ["to"]],
 			["u", "text", "u", []],
 			["sup", "text", "sup", []],
 			["sub", "text", "sub", []],

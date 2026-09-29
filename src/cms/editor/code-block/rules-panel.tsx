@@ -183,15 +183,10 @@ export function RulesPanel({ rules, text, lineCount, selection, onChange }: Rule
 						</PopoverTrigger>
 					}
 				/>
-				<TooltipContent>같은 글자를 한꺼번에 꾸미는 정규식 규칙</TooltipContent>
+				<TooltipContent>정규식 규칙</TooltipContent>
 			</Tooltip>
 			<PopoverContent align="end" className="w-96 gap-2 p-3 text-xs" data-code-ui="">
-				<div className="flex flex-col gap-0.5">
-					<p className="font-semibold">정규식 규칙</p>
-					<p className="text-[11px] text-muted-foreground">
-						정규식에 맞는 글자마다 효과를 줍니다. 코드를 고쳐도 다시 찾아 적용합니다.
-					</p>
-				</div>
+				<p className="font-semibold">정규식 규칙</p>
 				{rules.length > 0 && (
 					<ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
 						{rules.map((rule) => (
