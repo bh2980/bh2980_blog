@@ -7,7 +7,6 @@ import {
 	AlignCenter,
 	AlignLeft,
 	AlignRight,
-	Check,
 	ChevronDown,
 	Heading2,
 	Heading3,
@@ -23,6 +22,7 @@ import {
 	Quote,
 	RemoveFormatting,
 	SquareCode,
+	Superscript,
 	Table2,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
@@ -39,7 +39,7 @@ import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
-import { CustomBlockMenu } from "./custom-block-menu";
+import { CustomBlockMenu, CustomBlockMenuItems } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
@@ -53,6 +53,7 @@ import { SlashMenuPopup } from "./slash-menu-popup";
 import { TableToolbar } from "./table-toolbar";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
+import { type ToolbarEntry, ToolbarMenuGroup, ToolbarMenuItem, ToolbarMenuSection, ToolbarRow } from "./toolbar-row";
 import { TooltipPopover } from "./tooltip-popover";
 
 interface CmsEditorProps {
@@ -76,6 +77,9 @@ type Coords = { top: number; left: number };
 
 const chain = (editor: Editor) => editor.chain().focus();
 
+/** 자주 쓰지 않아 한 드롭다운으로 묶는 첨자 마크. */
+const SCRIPT_MARKS = ["superscript", "subscript"];
+
 const TOOLBAR_GROUPS: ToolbarItem[][] = [
 	[
 		{
@@ -92,7 +96,7 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 			run: (e: Editor) => chain(e).setHeading({ level }).run(),
 		})),
 	],
-	INLINE_MARK_TOOLS,
+	INLINE_MARK_TOOLS.filter((tool) => !SCRIPT_MARKS.includes(tool.mark)),
 	[
 		{
 			label: "왼쪽",
@@ -161,17 +165,17 @@ const TOOLBAR_GROUPS: ToolbarItem[][] = [
 	],
 ];
 
+/** 삽입 도구를 숨기는 순서(큰 것부터). 목록은 2, 컴포넌트는 4. */
+const INSERT_PRIORITY: Record<string, number> = { 코드블록: 3, "“ 인용": 6, 표: 7 };
+
 const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
 
 const BLOCK_STYLES = TOOLBAR_GROUPS[0] ?? [];
-const INLINE_TOOLS = TOOLBAR_GROUPS[1] ?? [];
+const INLINE_TOOLS = INLINE_MARK_TOOLS.filter((tool) => !SCRIPT_MARKS.includes(tool.mark));
 const ALIGN_TOOLS = TOOLBAR_GROUPS[2] ?? [];
+const SCRIPT_TOOLS = INLINE_MARK_TOOLS.filter((tool) => SCRIPT_MARKS.includes(tool.mark));
 const LIST_STYLES = TOOLBAR_GROUPS[3]?.slice(0, 3) ?? [];
 const INSERT_TOOLS = TOOLBAR_GROUPS[3]?.slice(3) ?? [];
-
-function ToolbarDivider() {
-	return <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-border" />;
-}
 
 function ToolbarDropdown({
 	editor,
@@ -208,16 +212,9 @@ function ToolbarDropdown({
 				<ChevronDown aria-hidden className="size-3" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="min-w-36">
-				{items.map((item) => {
-					const active = item.isActive?.(editor) ?? false;
-					return (
-						<DropdownMenuItem key={item.label} onClick={() => item.run(editor)}>
-							<item.icon aria-hidden className="size-4" />
-							<span className="flex-1">{item.title ?? item.label}</span>
-							{active && <Check aria-hidden className="size-4" />}
-						</DropdownMenuItem>
-					);
-				})}
+				{items.map((item) => (
+					<ToolbarMenuItem key={item.label} editor={editor} item={item} />
+				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -453,7 +450,7 @@ export function CmsEditor({
 		selector: ({ editor: current }) => {
 			if (!current) return "";
 			const selection = current.state.selection;
-			const active = [...BLOCK_STYLES, ...INLINE_TOOLS, ...ALIGN_TOOLS, ...LIST_STYLES]
+			const active = [...BLOCK_STYLES, ...INLINE_TOOLS, ...SCRIPT_TOOLS, ...ALIGN_TOOLS, ...LIST_STYLES]
 				.map((item) => (item.isActive?.(current) ? "1" : "0"))
 				.join("");
 			return `${active}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
@@ -461,6 +458,7 @@ export function CmsEditor({
 	});
 	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "본문") : "본문";
 	const activeList = editor ? LIST_STYLES.find((item) => item.isActive?.(editor)) : undefined;
+	const activeAlign = editor ? ALIGN_TOOLS.find((item) => item.isActive?.(editor)) : undefined;
 
 	useEffect(() => {
 		editorRef.current = editor;
@@ -626,6 +624,124 @@ export function CmsEditor({
 
 	if (!editor) return null;
 
+	const buttonSlot = (item: ToolbarItem, key: string, priority: number, fixed = false): ToolbarEntry => ({
+		key,
+		priority,
+		fixed,
+		render: () => <ToolbarButton editor={editor} item={item} />,
+		menu: () => <ToolbarMenuItem editor={editor} item={item} />,
+	});
+	const dropdownSlot = (
+		key: string,
+		priority: number,
+		label: string,
+		items: ToolbarItem[],
+		icon: LucideIcon,
+		menuLabel = label,
+	): ToolbarEntry => ({
+		key,
+		priority,
+		render: () => <ToolbarDropdown editor={editor} label={label} items={items} icon={icon} iconOnly />,
+		menu: () => <ToolbarMenuGroup editor={editor} label={menuLabel} items={items} />,
+	});
+	// 좁을 때 숨기는 순서: priority가 큰 것부터. fixed는 숨기지 않는다(팝오버 도구는 메뉴 안에서 앵커를 잃는다).
+	const toolbarEntries: ToolbarEntry[] = [
+		{
+			key: "image",
+			priority: 5,
+			render: () => (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="size-8 p-0"
+								aria-label="이미지 삽입"
+								disabled={!canEdit}
+								onClick={() => setImageDialog({ file: null })}
+							/>
+						}
+					>
+						<ImageIcon className="size-4" aria-hidden />
+					</TooltipTrigger>
+					<TooltipContent side="bottom">이미지 삽입</TooltipContent>
+				</Tooltip>
+			),
+			menu: () => (
+				<DropdownMenuItem disabled={!canEdit} onClick={() => setImageDialog({ file: null })}>
+					<ImageIcon aria-hidden className="size-4" />
+					<span className="flex-1">이미지 삽입</span>
+				</DropdownMenuItem>
+			),
+		},
+		{
+			key: "block-style",
+			priority: 0,
+			fixed: true,
+			render: () => <ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />,
+		},
+		{ key: "divider-block", divider: true },
+		...INLINE_TOOLS.map((tool) =>
+			buttonSlot(
+				tool,
+				tool.mark,
+				{ bold: 0, italic: 0, strike: 6, code: 4, underline: 5 }[tool.mark] ?? 5,
+				["bold", "italic"].includes(tool.mark),
+			),
+		),
+		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
+		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
+		{ key: "divider-align", divider: true },
+		dropdownSlot("align", 9, "정렬", ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
+		{ key: "divider-list", divider: true },
+		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
+		...INSERT_TOOLS.map((tool) => buttonSlot(tool, tool.label, INSERT_PRIORITY[tool.label] ?? 7)),
+		{
+			key: "custom-block",
+			priority: 4,
+			render: () => <CustomBlockMenu editor={editor} />,
+			menu: () => (
+				<ToolbarMenuSection label="컴포넌트">
+					<CustomBlockMenuItems editor={editor} />
+				</ToolbarMenuSection>
+			),
+		},
+		{
+			key: "link",
+			priority: 0,
+			fixed: true,
+			render: () => (
+				<Popover
+					open={linkDraft !== null}
+					onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
+				>
+					<PopoverTrigger
+						render={
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="size-8 p-0"
+								aria-label="링크 삽입·수정"
+								title="링크 삽입·수정"
+								disabled={!canEdit}
+								onMouseDown={(event) => event.preventDefault()}
+							/>
+						}
+					>
+						<Link2 aria-hidden className="size-4" />
+					</PopoverTrigger>
+					<PopoverContent align="start" className="w-80">
+						{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
+					</PopoverContent>
+				</Popover>
+			),
+		},
+		buttonSlot(DIVIDER_TOOL, "divider-tool", 8),
+	];
+
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
 		<div
@@ -656,81 +772,12 @@ export function CmsEditor({
 				className="sticky top-0 z-10 w-full overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
 				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,
-				    그래도 좁으면(번역 원문 칸을 연 때 등) 도구를 숨기지 않고 여러 줄로 감싼다. */}
+				    그래도 좁으면(번역 원문 칸을 연 때 등) 한 줄을 유지한 채 덜 쓰는 도구를 "더보기"로 접는다. */}
 				<div
 					className="relative flex min-h-12 items-center py-2"
 					style={{ paddingInline: toolbarAside ? asideWidth + 24 : 16 }}
 				>
-					<div className="mx-auto min-w-0">
-						<div className="flex flex-wrap items-center justify-center gap-1">
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="size-8 p-0"
-											aria-label="이미지 삽입"
-											disabled={!canEdit}
-											onClick={() => setImageDialog({ file: null })}
-										/>
-									}
-								>
-									<ImageIcon className="size-4" aria-hidden />
-								</TooltipTrigger>
-								<TooltipContent side="bottom">이미지 삽입</TooltipContent>
-							</Tooltip>
-							<ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />
-							<ToolbarDivider />
-							{INLINE_TOOLS.map((item) => (
-								<ToolbarButton key={item.label} editor={editor} item={item} />
-							))}
-							<TooltipPopover editor={editor} />
-							<ToolbarDivider />
-							{ALIGN_TOOLS.map((item) => (
-								<ToolbarButton key={item.label} editor={editor} item={item} />
-							))}
-							<ToolbarDivider />
-							<ToolbarDropdown
-								editor={editor}
-								label={activeList?.title ?? "목록"}
-								items={LIST_STYLES}
-								icon={activeList?.icon ?? List}
-								iconOnly
-							/>
-							{INSERT_TOOLS.map((item) => (
-								<ToolbarButton key={item.label} editor={editor} item={item} />
-							))}
-							<CustomBlockMenu editor={editor} />
-							<Popover
-								open={linkDraft !== null}
-								onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
-							>
-								<PopoverTrigger
-									render={
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="size-8 p-0"
-											aria-label="링크 삽입·수정"
-											title="링크 삽입·수정"
-											disabled={!canEdit}
-											onMouseDown={(event) => event.preventDefault()}
-										/>
-									}
-								>
-									<Link2 aria-hidden className="size-4" />
-								</PopoverTrigger>
-								<PopoverContent align="start" className="w-80">
-									{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
-								</PopoverContent>
-							</Popover>
-							<ToolbarButton editor={editor} item={DIVIDER_TOOL} />
-							{toolbarEnd}
-						</div>
-					</div>
+					<ToolbarRow editor={editor} entries={toolbarEntries} end={toolbarEnd} />
 					{toolbarAside && (
 						<div ref={asideRef} className="absolute inset-y-0 right-4 flex items-center">
 							{toolbarAside}

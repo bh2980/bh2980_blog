@@ -35,6 +35,27 @@ const BLOCK_ICONS: Record<string, LucideIcon> = {
 
 const CUSTOM_BLOCKS = buildBlockSlashCommands();
 
+/** 커스텀 컴포넌트 목록. 컴포넌트 메뉴와 툴바 "더보기" 메뉴가 함께 쓴다. */
+export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
+	return CUSTOM_BLOCKS.map((block) => {
+		const Icon = (block.id && BLOCK_ICONS[block.id]) || Puzzle;
+		return (
+			<DropdownMenuItem
+				key={block.id ?? block.title}
+				disabled={!editor.isEditable}
+				// 슬래시 메뉴용 액션이라 지울 글자가 없는 빈 범위를 커서 자리에 넘긴다.
+				onClick={() => {
+					const { from } = editor.state.selection;
+					block.action(editor, { from, to: from });
+				}}
+			>
+				<Icon aria-hidden className="size-4" />
+				<span className="flex-1">{block.title}</span>
+			</DropdownMenuItem>
+		);
+	});
+}
+
 /** 툴바에서 커스텀 컴포넌트(블록)를 커서 위치에 넣는다. */
 export function CustomBlockMenu({ editor }: { editor: Editor }) {
 	return (
@@ -62,22 +83,7 @@ export function CustomBlockMenu({ editor }: { editor: Editor }) {
 				<TooltipContent side="bottom">컴포넌트</TooltipContent>
 			</Tooltip>
 			<DropdownMenuContent align="start" className="min-w-44">
-				{CUSTOM_BLOCKS.map((block) => {
-					const Icon = (block.id && BLOCK_ICONS[block.id]) || Puzzle;
-					return (
-						<DropdownMenuItem
-							key={block.id ?? block.title}
-							// 슬래시 메뉴용 액션이라 지울 글자가 없는 빈 범위를 커서 자리에 넘긴다.
-							onClick={() => {
-								const { from } = editor.state.selection;
-								block.action(editor, { from, to: from });
-							}}
-						>
-							<Icon aria-hidden className="size-4" />
-							<span className="flex-1">{block.title}</span>
-						</DropdownMenuItem>
-					);
-				})}
+				<CustomBlockMenuItems editor={editor} />
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
