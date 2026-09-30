@@ -8,7 +8,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
-	ALLOWED_IMAGE_MIMES,
+	ALLOWED_MEDIA_MIMES,
 	type AllowedImageMime,
 	type MediaStore,
 	type MediaStoreConfig,
@@ -186,8 +186,8 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 
 	return {
 		prepareUpload: async (input: PrepareUploadInput): Promise<PrepareUploadOutput> => {
-			if (!ALLOWED_IMAGE_MIMES.includes(input.contentType)) {
-				throw new Error(`Disallowed image mime type: ${input.contentType}`);
+			if (!ALLOWED_MEDIA_MIMES.includes(input.contentType)) {
+				throw new Error(`Disallowed media mime type: ${input.contentType}`);
 			}
 
 			const command = new PutObjectCommand({
@@ -236,6 +236,18 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 			}
 		},
 
+		readPrefix: async (input: { key: string; bytes: number; signal?: AbortSignal }): Promise<Uint8Array> => {
+			const res = await s3.send(
+				new GetObjectCommand({
+					Bucket: config.bucket,
+					Key: input.key,
+					Range: `bytes=0-${Math.max(0, input.bytes - 1)}`,
+				}),
+				{ abortSignal: input.signal },
+			);
+			return res.Body ? new Uint8Array(await res.Body.transformToByteArray()) : new Uint8Array(0);
+		},
+
 		readFile: async (input: { key: string; maxBytes: number; signal?: AbortSignal }): Promise<Uint8Array> => {
 			const res = await s3.send(
 				new GetObjectCommand({
@@ -272,8 +284,8 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 		},
 
 		promoteFile: async (input: PromoteFileInput): Promise<StoredFileHead> => {
-			if (!ALLOWED_IMAGE_MIMES.includes(input.contentType)) {
-				throw new Error(`Disallowed image mime type: ${input.contentType}`);
+			if (!ALLOWED_MEDIA_MIMES.includes(input.contentType)) {
+				throw new Error(`Disallowed media mime type: ${input.contentType}`);
 			}
 
 			// 1. Copy from staging to final key with ETag precondition
@@ -282,8 +294,12 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					Bucket: config.bucket,
 					CopySource: `${config.bucket}/${input.stagingKey}`,
 					Key: input.finalKey,
-					ContentType: input.contentType,
+					// 글자 파일은 한글이 깨지지 않게 문자 집합을 붙인다.
+					ContentType: input.contentType.startsWith("text/")
+						? `${input.contentType}; charset=utf-8`
+						: input.contentType,
 					CacheControl: input.cacheControl || "public, max-age=31536000, immutable",
+					...(input.contentDisposition ? { ContentDisposition: input.contentDisposition } : {}),
 					MetadataDirective: "REPLACE",
 					...(input.expectedEtag ? { CopySourceIfMatch: input.expectedEtag } : {}),
 				}),

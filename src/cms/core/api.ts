@@ -210,6 +210,88 @@ export const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"
 export const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
 export const MAX_MEDIA_PIXELS = 40_000_000;
 
+/**
+ * 이미지가 아닌 첨부 파일(v3 파일 업로드). 본문에는 `::file{mediaId label}` 카드로 들어간다.
+ * 실행 파일과 HTML·SVG처럼 브라우저가 열면 스크립트가 도는 형식은 받지 않는다.
+ */
+export const ALLOWED_FILE_MIME_TYPES = [
+	"application/pdf",
+	"application/zip",
+	"text/plain",
+	"text/markdown",
+	"text/csv",
+	"application/json",
+] as const;
+export type AllowedFileMime = (typeof ALLOWED_FILE_MIME_TYPES)[number];
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+const CODE_EXTENSIONS = [
+	"js",
+	"mjs",
+	"cjs",
+	"jsx",
+	"ts",
+	"tsx",
+	"py",
+	"java",
+	"kt",
+	"c",
+	"h",
+	"cpp",
+	"hpp",
+	"cs",
+	"go",
+	"rs",
+	"rb",
+	"php",
+	"swift",
+	"dart",
+	"scala",
+	"css",
+	"scss",
+	"sass",
+	"less",
+	"vue",
+	"svelte",
+	"sql",
+	"yml",
+	"yaml",
+	"toml",
+	"ini",
+	"env",
+	"log",
+	"diff",
+	"patch",
+	"gradle",
+	"dockerfile",
+] as const;
+
+/** 확장자 → 저장 형식. 소스 코드는 글자 파일로 저장한다(브라우저가 코드 파일 MIME을 제각각 준다). */
+const FILE_TYPE_BY_EXTENSION: Readonly<Record<string, AllowedFileMime>> = {
+	pdf: "application/pdf",
+	zip: "application/zip",
+	txt: "text/plain",
+	md: "text/markdown",
+	markdown: "text/markdown",
+	csv: "text/csv",
+	json: "application/json",
+	...Object.fromEntries(CODE_EXTENSIONS.map((extension) => [extension, "text/plain" as const])),
+};
+
+/** 파일 이름으로 정한 첨부 파일 형식. 받지 않는 형식이면 `null`. */
+export function fileTypeFor(filename: string): AllowedFileMime | null {
+	const extension = filename.toLowerCase().split(".").pop() ?? "";
+	return filename.includes(".") ? (FILE_TYPE_BY_EXTENSION[extension] ?? null) : null;
+}
+
+/** 파일 선택 창의 `accept`. */
+export const FILE_ACCEPT = Object.keys(FILE_TYPE_BY_EXTENSION)
+	.map((extension) => `.${extension}`)
+	.join(",");
+
+export const isImageMime = (mimeType: string | null | undefined): boolean =>
+	typeof mimeType === "string" && (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType);
+
 const uploadFileSchema = z.object({
 	mimeType: z.enum(ALLOWED_IMAGE_MIME_TYPES),
 	byteSize: z.number().int().positive(),
@@ -219,10 +301,18 @@ const uploadFileSchema = z.object({
  * 업로드 준비(§7.2). 웹용 최적화를 고르면 브라우저가 만든 공개용 파일(`mimeType`·`byteSize`)과
  * 원본 파일(`original`)을 같은 미디어 레코드로 함께 올린다.
  */
-export const mediaUploadBodySchema = uploadFileSchema.extend({
-	filename: z.string().trim().min(1).max(255),
-	original: uploadFileSchema.optional(),
-});
+export const mediaUploadBodySchema = z.union([
+	uploadFileSchema.extend({
+		filename: z.string().trim().min(1).max(255),
+		original: uploadFileSchema.optional(),
+	}),
+	// 첨부 파일. 형식은 파일 이름의 확장자와 맞아야 한다(라우트가 확인한다).
+	z.object({
+		mimeType: z.enum(ALLOWED_FILE_MIME_TYPES),
+		byteSize: z.number().int().positive(),
+		filename: z.string().trim().min(1).max(255),
+	}),
+]);
 export type MediaUploadBody = z.infer<typeof mediaUploadBodySchema>;
 
 export const mediaPatchBodySchema = z.object({

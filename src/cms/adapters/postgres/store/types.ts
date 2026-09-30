@@ -133,8 +133,9 @@ export interface CompleteMediaAssetInput {
 	storageKey: string;
 	mimeType: string;
 	byteSize: number;
-	width: number;
-	height: number;
+	/** 첨부 파일(v3)은 크기가 없어 `null`이다. */
+	width: number | null;
+	height: number | null;
 	original?: { storageKey: string; mimeType: string; byteSize: number; width: number; height: number };
 }
 

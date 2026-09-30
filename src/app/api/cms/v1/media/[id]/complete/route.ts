@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
+import { isImageMime } from "@/cms/core/api";
 import { HttpError } from "../../../error-handler";
 import { adminRoute, json } from "../../../handler";
-import { extensionFor, inspectUploadedFile } from "../../media-files";
+import { attachmentDisposition, extensionFor, inspectUploadedFile } from "../../media-files";
 
 /**
  * 업로드 완료 확인(§7.2). 저장된 파일을 서버가 검사한 뒤에만 `ready`로 확정한다.
@@ -34,7 +35,7 @@ export const POST = adminRoute<{ id: string }>(async ({ params }) => {
 	let file: Awaited<ReturnType<typeof inspectUploadedFile>>;
 	let original: Awaited<ReturnType<typeof inspectUploadedFile>> | null = null;
 	try {
-		file = await inspectUploadedFile(mediaStore, media.stagingKey);
+		file = await inspectUploadedFile(mediaStore, media.stagingKey, media.mimeType);
 		if (media.original?.stagingKey) original = await inspectUploadedFile(mediaStore, media.original.stagingKey);
 	} catch (error) {
 		// 파일이 아직 없으면 재시도할 수 있게 그대로 둔다. 검사에 실패한 파일은 사용할 수 없다.
@@ -48,6 +49,8 @@ export const POST = adminRoute<{ id: string }>(async ({ params }) => {
 		finalKey,
 		expectedEtag: file.head.etag,
 		contentType: file.detected.mimeType,
+		// 첨부 파일은 원래 이름으로 내려받는다. 이미지는 브라우저에서 바로 보인다.
+		...(isImageMime(file.detected.mimeType) ? {} : { contentDisposition: attachmentDisposition(media.filename) }),
 	});
 	let originalKey: string | null = null;
 	if (original && media.original?.stagingKey) {
@@ -73,8 +76,9 @@ export const POST = adminRoute<{ id: string }>(async ({ params }) => {
 						storageKey: originalKey,
 						mimeType: original.detected.mimeType,
 						byteSize: original.head.contentLength,
-						width: original.detected.width,
-						height: original.detected.height,
+						// 원본은 늘 이미지라 크기가 있다.
+						width: original.detected.width ?? 0,
+						height: original.detected.height ?? 0,
 					},
 				}
 			: {}),

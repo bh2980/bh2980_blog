@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { ALLOWED_IMAGE_MIME_TYPES, MAX_MEDIA_BYTES, mediaUploadBodySchema } from "@/cms/core/api";
+import {
+	ALLOWED_FILE_MIME_TYPES,
+	ALLOWED_IMAGE_MIME_TYPES,
+	fileTypeFor,
+	isImageMime,
+	MAX_FILE_BYTES,
+	MAX_MEDIA_BYTES,
+	mediaUploadBodySchema,
+} from "@/cms/core/api";
 import { HttpError } from "../../error-handler";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 import { extensionFor, UPLOAD_URL_TTL_SECONDS } from "../media-files";
@@ -12,22 +20,36 @@ import { extensionFor, UPLOAD_URL_TTL_SECONDS } from "../media-files";
 export const POST = adminRoute(async ({ request }) => {
 	const raw = (await readJsonBody(request)) as { mimeType?: unknown; original?: { mimeType?: unknown } };
 	// §10.1: 허용하지 않는 파일 형식은 415다(형식 오류 400과 구분한다).
-	for (const mimeType of [raw?.mimeType, raw?.original?.mimeType]) {
-		if (mimeType !== undefined && !(ALLOWED_IMAGE_MIME_TYPES as readonly unknown[]).includes(mimeType)) {
-			throw new HttpError(415, "unsupported_media_type", `Allowed image types: ${ALLOWED_IMAGE_MIME_TYPES.join(", ")}`);
-		}
+	const allowed = [...ALLOWED_IMAGE_MIME_TYPES, ...ALLOWED_FILE_MIME_TYPES] as readonly unknown[];
+	if (raw?.mimeType !== undefined && !allowed.includes(raw.mimeType)) {
+		throw new HttpError(415, "unsupported_media_type", `Allowed types: ${allowed.join(", ")}`);
+	}
+	const originalMime = raw?.original?.mimeType;
+	if (originalMime !== undefined && !(ALLOWED_IMAGE_MIME_TYPES as readonly unknown[]).includes(originalMime)) {
+		throw new HttpError(415, "unsupported_media_type", `Allowed image types: ${ALLOWED_IMAGE_MIME_TYPES.join(", ")}`);
 	}
 	const body = parseWith(mediaUploadBodySchema, raw);
-	for (const file of [body, body.original]) {
-		if (file && file.byteSize > MAX_MEDIA_BYTES) {
-			throw new HttpError(413, "payload_too_large", `File size exceeds the 10MiB limit (${file.byteSize} bytes)`);
+	const isFile = !isImageMime(body.mimeType);
+	// 첨부 파일의 형식은 이름의 확장자와 맞아야 한다. 코드 파일을 글자로 보내는 식의 형식 바꿔치기를 막는다.
+	if (isFile && fileTypeFor(body.filename) !== body.mimeType) {
+		throw new HttpError(415, "unsupported_media_type", `File extension does not match ${body.mimeType}`);
+	}
+	const originalFile = "original" in body ? body.original : undefined;
+	const limit = isFile ? MAX_FILE_BYTES : MAX_MEDIA_BYTES;
+	for (const file of [body, originalFile]) {
+		if (file && file.byteSize > limit) {
+			throw new HttpError(
+				413,
+				"payload_too_large",
+				`File size exceeds the ${limit / 1024 / 1024}MiB limit (${file.byteSize} bytes)`,
+			);
 		}
 	}
 
 	const mediaId = randomUUID();
 	const stagingKey = `staging/${mediaId}/${randomUUID()}.${extensionFor(body.mimeType)}`;
-	const originalStagingKey = body.original
-		? `staging/${mediaId}/original-${randomUUID()}.${extensionFor(body.original.mimeType)}`
+	const originalStagingKey = originalFile
+		? `staging/${mediaId}/original-${randomUUID()}.${extensionFor(originalFile.mimeType)}`
 		: null;
 
 	await getCmsContentStore().createMediaAsset({
@@ -36,11 +58,11 @@ export const POST = adminRoute(async ({ request }) => {
 		mimeType: body.mimeType,
 		byteSize: body.byteSize,
 		stagingKey,
-		...(body.original && originalStagingKey
+		...(originalFile && originalStagingKey
 			? {
 					original: {
-						mimeType: body.original.mimeType,
-						byteSize: body.original.byteSize,
+						mimeType: originalFile.mimeType,
+						byteSize: originalFile.byteSize,
 						stagingKey: originalStagingKey,
 					},
 				}
@@ -54,10 +76,10 @@ export const POST = adminRoute(async ({ request }) => {
 		expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
 	});
 	const original =
-		body.original && originalStagingKey
+		originalFile && originalStagingKey
 			? await mediaStore.prepareUpload({
 					stagingKey: originalStagingKey,
-					contentType: body.original.mimeType,
+					contentType: originalFile.mimeType,
 					expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
 				})
 			: null;

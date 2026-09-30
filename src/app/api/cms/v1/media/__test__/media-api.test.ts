@@ -440,3 +440,100 @@ describe("Media Upload API Endpoints", () => {
 		expect(mockFinalizeMediaDelete).not.toHaveBeenCalled();
 	});
 });
+
+describe("첨부 파일 업로드(v3)", () => {
+	const post = (url: string, body?: unknown) =>
+		new NextRequest(url, {
+			method: "POST",
+			headers: { origin: "http://localhost", host: "localhost", "content-type": "application/json" },
+			...(body ? { body: JSON.stringify(body) } : {}),
+		});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockVerifyAdmin.mockResolvedValue({ id: "admin-1", email: "admin@example.com" });
+		mockPrepareUpload.mockResolvedValue({
+			url: "https://r2.example.com/staging",
+			method: "PUT",
+			requiredHeaders: {},
+			expiresAt: new Date("2026-10-01T00:10:00Z"),
+		});
+	});
+
+	it("PDF·zip·글자 파일을 50MiB까지 받고, 확장자와 형식이 다르거나 크면 거절한다", async () => {
+		const upload = (body: unknown) => handleUploads(post("http://localhost/api/cms/v1/media/uploads", body));
+		expect((await upload({ filename: "보고서.pdf", mimeType: "application/pdf", byteSize: 30_000_000 })).status).toBe(
+			201,
+		);
+		expect((await upload({ filename: "main.ts", mimeType: "text/plain", byteSize: 100 })).status).toBe(201);
+		expect((await upload({ filename: "run.exe", mimeType: "text/plain", byteSize: 100 })).status).toBe(415);
+		expect((await upload({ filename: "page.html", mimeType: "text/html", byteSize: 100 })).status).toBe(415);
+		expect((await upload({ filename: "big.zip", mimeType: "application/zip", byteSize: 60_000_000 })).status).toBe(413);
+		expect(mockCreateMediaAsset).toHaveBeenCalledWith(
+			expect.objectContaining({
+				filename: "보고서.pdf",
+				mimeType: "application/pdf",
+				stagingKey: expect.stringMatching(/\.pdf$/),
+			}),
+		);
+	});
+
+	it("완료할 때 실제 내용을 확인하고 원래 이름으로 내려받게 저장한다", async () => {
+		mockGetMediaAsset.mockResolvedValue({
+			id: "file-1",
+			status: "pending",
+			stagingKey: "staging/file-1/a.pdf",
+			filename: "보고서.pdf",
+			mimeType: "application/pdf",
+		});
+		mockHeadFile.mockResolvedValue({
+			key: "staging/file-1/a.pdf",
+			contentType: "application/pdf",
+			contentLength: 2048,
+			etag: "e1",
+		});
+		mockReadFile.mockResolvedValue(new TextEncoder().encode("%PDF-1.7\n..."));
+		mockCompleteMediaAsset.mockImplementation(async (input) => ({
+			...input,
+			status: "ready",
+			defaultAlt: "",
+			defaultCaption: "",
+		}));
+		mockGetPublicUrl.mockReturnValue("https://cdn.example/file.pdf");
+
+		const res = await handleComplete(post("http://localhost/api/cms/v1/media/file-1/complete"), {
+			params: Promise.resolve({ id: "file-1" }),
+		});
+		expect(res.status).toBe(200);
+		expect(mockPromoteFile).toHaveBeenCalledWith(
+			expect.objectContaining({
+				contentType: "application/pdf",
+				contentDisposition: `attachment; filename="___.pdf"; filename*=UTF-8''${encodeURIComponent("보고서.pdf")}`,
+			}),
+		);
+		expect(mockCompleteMediaAsset).toHaveBeenCalledWith(expect.objectContaining({ width: null, height: null }));
+	});
+
+	it("글자 파일이라고 올린 바이너리는 사용할 수 없게 한다", async () => {
+		mockGetMediaAsset.mockResolvedValue({
+			id: "file-2",
+			status: "pending",
+			stagingKey: "staging/file-2/a.txt",
+			filename: "notes.txt",
+			mimeType: "text/plain",
+		});
+		mockHeadFile.mockResolvedValue({
+			key: "staging/file-2/a.txt",
+			contentType: "text/plain",
+			contentLength: 4,
+			etag: "e2",
+		});
+		mockReadFile.mockResolvedValue(new Uint8Array([0x4d, 0x5a, 0x00, 0x90]));
+
+		const res = await handleComplete(post("http://localhost/api/cms/v1/media/file-2/complete"), {
+			params: Promise.resolve({ id: "file-2" }),
+		});
+		expect(res.status).toBe(415);
+		expect(mockFailMediaAsset).toHaveBeenCalledWith("file-2");
+	});
+});
