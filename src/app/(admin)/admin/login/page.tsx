@@ -41,7 +41,7 @@ export default async function AdminLoginPage() {
 								className="mt-3"
 							>
 								<Button type="submit" variant="link" size="xs">
-									다른 계정으로 로그인하기 (로그아웃)
+									로그아웃
 								</Button>
 							</form>
 						</Alert>

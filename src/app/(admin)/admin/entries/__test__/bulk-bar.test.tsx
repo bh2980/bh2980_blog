@@ -67,9 +67,9 @@ describe("bulk actions (§3.4)", () => {
 		await waitFor(() => expect(payloads).toHaveLength(2));
 		expect(payloads[1]).toMatchObject({ op: "category.set", categoryId: null });
 
-		await choose("일괄 작업 종류", "폴더 이동");
+		await choose("일괄 작업 종류", "폴더로 이동");
 		await choose("이동할 폴더", "최상위");
-		fireEvent.click(screen.getByRole("button", { name: "폴더 이동" }));
+		fireEvent.click(screen.getByRole("button", { name: "폴더로 이동" }));
 		await waitFor(() => expect(payloads).toHaveLength(3));
 		expect(payloads[2]).toMatchObject({ op: "folder.move", folderId: null });
 	});
@@ -79,11 +79,11 @@ describe("bulk actions (§3.4)", () => {
 		render(
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
 		);
-		await choose("일괄 작업 종류", "휴지통 이동");
-		fireEvent.click(screen.getByRole("button", { name: "휴지통 이동" }));
-		await screen.findByRole("alertdialog", { name: /휴지통 이동/ });
+		await choose("일괄 작업 종류", "휴지통으로 이동");
+		fireEvent.click(screen.getByRole("button", { name: "휴지통으로 이동" }));
+		await screen.findByRole("alertdialog", { name: /휴지통으로 이동/ });
 		expect(payloads).toHaveLength(0);
-		fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "휴지통 이동" }));
+		fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "휴지통으로 이동" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "trash", items: [{ id: "entry-1", expectedVersion: 3 }] });
 	});
@@ -115,7 +115,7 @@ describe("bulk actions (§3.4)", () => {
 		render(<BulkBar collection="tag" selected={selected} folders={[]} onClearSelection={vi.fn()} onDone={vi.fn()} />);
 		fireEvent.click(screen.getByRole("combobox", { name: "일괄 작업 종류" }));
 		const labels = (await screen.findAllByRole("option")).map((option) => option.textContent);
-		expect(labels).toEqual(["폴더 이동", "휴지통 이동"]);
+		expect(labels).toEqual(["폴더로 이동", "휴지통으로 이동"]);
 	});
 
 	it("permanently deletes in bulk on the trash screen and names what still uses a blocked item (v2 A3)", async () => {

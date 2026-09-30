@@ -37,7 +37,7 @@ const LIST_ACTIONS: ActionDef[] = [
 	{ value: "tags.add", label: "태그 추가", content: true },
 	{ value: "tags.remove", label: "태그 제거", content: true },
 	{ value: "category.set", label: "카테고리 변경", post: true },
-	{ value: "folder.move", label: "폴더 이동" },
+	{ value: "folder.move", label: "폴더로 이동" },
 	{
 		value: "publish",
 		label: "발행",
@@ -48,7 +48,7 @@ const LIST_ACTIONS: ActionDef[] = [
 	{ value: "unarchive", label: "보관 해제", content: true },
 	{
 		value: "trash",
-		label: "휴지통 이동",
+		label: "휴지통으로 이동",
 		confirm: "선택한 항목을 휴지통으로 옮길까요? 공개가 종료됩니다.",
 		destructive: true,
 	},

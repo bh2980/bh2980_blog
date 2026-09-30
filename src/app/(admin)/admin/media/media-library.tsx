@@ -1,7 +1,8 @@
 "use client";
 
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, File, RefreshCw, Upload, X } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatBytes, prepareUpload, uploadImageFile } from "@/cms/editor/upload-helper";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,23 @@ const TYPE_OPTIONS = [
 	{ value: "image/avif", label: "AVIF" },
 ];
 
+const MEDIA_KEY = ["cms", "media"] as const;
+
+interface MediaPage {
+	items: MediaItem[];
+	total: number;
+}
+
+/** 값이 멈춘 뒤 `delay`ms가 지나야 바뀐다. 첫 값은 바로 쓴다. */
+function useDebounced<T>(value: T, delay: number): T {
+	const [debounced, setDebounced] = useState(value);
+	useEffect(() => {
+		const timer = setTimeout(() => setDebounced(value), delay);
+		return () => clearTimeout(timer);
+	}, [value, delay]);
+	return debounced;
+}
+
 const USED_OPTIONS = [
 	{ value: "all", label: "사용 여부 전체" },
 	{ value: "used", label: "사용 중" },
@@ -59,47 +77,48 @@ const USED_OPTIONS = [
 export function MediaLibrary() {
 	const altId = useId();
 	const captionId = useId();
-	const [items, setItems] = useState<MediaItem[]>([]);
-	const [total, setTotal] = useState(0);
+	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const [used, setUsed] = useState<"all" | "used" | "unused">("all");
 	const [mimeType, setMimeType] = useState("all");
 	const [uploadedFrom, setUploadedFrom] = useState("");
 	const [uploadedTo, setUploadedTo] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [optimize, setOptimize] = useState(false);
 	const [upload, setUpload] = useState<{ current: number; total: number; percent: number } | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 	const [draft, setDraft] = useState({ alt: "", caption: "" });
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// 조건을 바꾸는 동안에도 이전 줄을 남겨(`keepPreviousData`) 자리 표시로 깜빡이지 않는다. 자리 표시는 캐시가 없을 때만 보인다.
+	const query = useMemo(() => {
+		const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), used });
+		if (search.trim()) params.set("search", search.trim());
+		if (mimeType !== "all") params.set("mimeType", mimeType);
+		const from = uploadedFrom && parseSeoulDateTimeInput(`${uploadedFrom}T00:00`);
+		const to = uploadedTo && parseSeoulDateTimeInput(`${uploadedTo}T23:59`);
+		if (from) params.set("uploadedFrom", from);
+		if (to) params.set("uploadedTo", new Date(Date.parse(to) + 59_999).toISOString());
+		return params.toString();
+	}, [page, used, search, mimeType, uploadedFrom, uploadedTo]);
+	const debouncedQuery = useDebounced(query, 200);
+	const mediaQuery = useQuery({
+		queryKey: [...MEDIA_KEY, debouncedQuery],
+		queryFn: ({ signal }) => cmsFetch<MediaPage>(`/api/cms/v1/media?${debouncedQuery}`, { signal }),
+		placeholderData: keepPreviousData,
+	});
+	const items = mediaQuery.data?.items ?? [];
+	const total = mediaQuery.data?.total ?? 0;
 	const selected = items.find((item) => item.id === selectedId) ?? null;
 
-	const fetchMedia = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), used });
-			if (search.trim()) query.set("search", search.trim());
-			if (mimeType !== "all") query.set("mimeType", mimeType);
-			const from = uploadedFrom && parseSeoulDateTimeInput(`${uploadedFrom}T00:00`);
-			const to = uploadedTo && parseSeoulDateTimeInput(`${uploadedTo}T23:59`);
-			if (from) query.set("uploadedFrom", from);
-			if (to) query.set("uploadedTo", new Date(Date.parse(to) + 59_999).toISOString());
-			const data = await cmsFetch<{ items: MediaItem[]; total: number }>(`/api/cms/v1/media?${query.toString()}`);
-			setItems(data.items);
-			setTotal(data.total);
-		} catch (error) {
-			toast.error(errorText(error, "미디어를 불러오지 못했습니다."));
-		} finally {
-			setIsLoading(false);
-		}
-	}, [page, used, search, mimeType, uploadedFrom, uploadedTo]);
-
+	const loadError = mediaQuery.error;
 	useEffect(() => {
-		const timer = setTimeout(() => void fetchMedia(), 200);
-		return () => clearTimeout(timer);
-	}, [fetchMedia]);
+		if (loadError) toast.error(errorText(loadError, "미디어를 불러오지 못했습니다."));
+	}, [loadError]);
+
+	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
+	const invalidateMedia = () => queryClient.invalidateQueries({ queryKey: MEDIA_KEY });
 
 	// 선택이 바뀔 때만 편집 초안을 채운다.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed by selected id
@@ -118,7 +137,7 @@ export function MediaLibrary() {
 			}
 			toast.success(`${list.length}개 파일을 올렸습니다.`);
 			setPage(1);
-			await fetchMedia();
+			await invalidateMedia();
 		} catch (error) {
 			// 실패한 업로드는 사용 가능 상태가 되지 않는다. 같은 파일로 다시 시도할 수 있다(§7.2).
 			toast.error(`업로드 실패: ${errorText(error, "오류가 발생했습니다.")} 다시 시도할 수 있습니다.`);
@@ -129,14 +148,24 @@ export function MediaLibrary() {
 	};
 
 	const deleteMedia = async (media: MediaItem) => {
+		// 목록에서 먼저 빼고 요청한다. 실패하면 되돌리고, 끝나면 서버 값으로 맞춘다.
+		await queryClient.cancelQueries({ queryKey: MEDIA_KEY });
+		const snapshots = queryClient.getQueriesData<MediaPage>({ queryKey: MEDIA_KEY });
+		queryClient.setQueriesData<MediaPage>({ queryKey: MEDIA_KEY }, (data) =>
+			data?.items.some((item) => item.id === media.id)
+				? { items: data.items.filter((item) => item.id !== media.id), total: Math.max(0, data.total - 1) }
+				: data,
+		);
+		setSelectedId((current) => (current === media.id ? null : current));
 		try {
 			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: "삭제하지 못했습니다." });
-			setSelectedId(null);
 			toast.success(`'${media.filename}'을(를) 삭제했습니다.`);
 		} catch (error) {
+			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
 			toast.error(errorText(error, "삭제하지 못했습니다."));
+		} finally {
+			void invalidateMedia();
 		}
-		await fetchMedia();
 	};
 
 	const saveDefaults = async () => {
@@ -147,7 +176,7 @@ export function MediaLibrary() {
 				json: { defaultAlt: draft.alt, defaultCaption: draft.caption },
 			});
 			toast.success("기본 설명을 저장했습니다. 이미 작성한 본문은 바뀌지 않습니다.");
-			await fetchMedia();
+			await invalidateMedia();
 		} catch (error) {
 			toast.error(errorText(error, "저장하지 못했습니다."));
 		}
@@ -162,6 +191,7 @@ export function MediaLibrary() {
 			const text = `24시간 지난 미완료 업로드 ${result.removed}개를 정리했습니다.${result.failed.length ? ` ${result.failed.length}개는 다음에 다시 시도합니다.` : ""}`;
 			if (result.failed.length) toast.error(text);
 			else toast.success(text);
+			void invalidateMedia();
 		} catch (error) {
 			toast.error(errorText(error, "정리하지 못했습니다."));
 		}
@@ -194,7 +224,7 @@ export function MediaLibrary() {
 		{ kind: "separator" },
 		{
 			kind: "item",
-			label: media.referencesCount > 0 ? "사용 중이라 삭제할 수 없음" : "삭제",
+			label: "삭제",
 			destructive: true,
 			disabled: media.referencesCount > 0,
 			onSelect: () => requestDelete(media),
@@ -218,7 +248,7 @@ export function MediaLibrary() {
 				<div className="flex flex-wrap items-center gap-2">
 					<Label className="font-normal text-muted-foreground text-xs">
 						<Checkbox checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
-						웹용 최적화 (원본도 보관)
+						웹용 최적화
 					</Label>
 					<input
 						ref={fileInputRef}
@@ -240,9 +270,9 @@ export function MediaLibrary() {
 						size="icon-sm"
 						variant="outline"
 						aria-label="새로고침"
-						onClick={() => void fetchMedia()}
+						onClick={() => void mediaQuery.refetch()}
 					>
-						<RefreshCw className={cn(isLoading && "animate-spin")} aria-hidden />
+						<RefreshCw className={cn(mediaQuery.isFetching && "animate-spin")} aria-hidden />
 					</Button>
 				</div>
 			}
@@ -304,7 +334,7 @@ export function MediaLibrary() {
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
 					{items.length === 0 ? (
-						isLoading ? (
+						mediaQuery.isPending ? (
 							<ul aria-hidden className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
 								{Array.from({ length: 6 }, (_, index) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
@@ -321,7 +351,12 @@ export function MediaLibrary() {
 							</Empty>
 						)
 					) : (
-						<ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+						<ul
+							className={cn(
+								"grid grid-cols-2 gap-4 transition-opacity sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6",
+								mediaQuery.isPlaceholderData && "opacity-60",
+							)}
+						>
 							{items.map((media) => (
 								<ActionContextMenu key={media.id} actions={mediaMenu(media)} trigger={<li className="relative" />}>
 									<Button
@@ -499,11 +534,7 @@ export function MediaLibrary() {
 							disabled={selected.referencesCount > 0}
 							onClick={() => requestDelete(selected)}
 						>
-							{selected.referencesCount > 0
-								? "사용 중이라 삭제할 수 없음"
-								: selected.status === "deleting"
-									? "삭제 다시 시도"
-									: "삭제"}
+							{selected.status === "deleting" ? "삭제 다시 시도" : "삭제"}
 						</Button>
 					</aside>
 				)}

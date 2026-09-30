@@ -48,7 +48,7 @@ function renderTable(overrides: Partial<ComponentProps<typeof AdminEntriesTable>
 		total: 2,
 		isLoading: false,
 		errorMessage: null,
-		rowMenu: () => [{ kind: "item", label: "휴지통으로", onSelect: vi.fn() }],
+		rowMenu: () => [{ kind: "item", label: "휴지통으로 이동", onSelect: vi.fn() }],
 		onSelectFolder: vi.fn(),
 		onOpenRecord: vi.fn(),
 		onPageChange: vi.fn(),
@@ -204,7 +204,7 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		});
 		fireEvent.click(screen.getByRole("button", { name: "알고리즘" }));
 		expect(props.onSelectFolder).toHaveBeenCalledWith("f2");
-		fireEvent.click(screen.getByRole("button", { name: ".. 상위 폴더로" }));
+		fireEvent.click(screen.getByRole("button", { name: ".. 상위 폴더" }));
 		expect(props.onSelectFolder).toHaveBeenCalledWith("all");
 	});
 });

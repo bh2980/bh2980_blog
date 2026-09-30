@@ -370,7 +370,7 @@ function useDashboard(mode: Mode) {
 				: [{ kind: "separator" as const }]),
 			{
 				kind: "item",
-				label: "휴지통으로",
+				label: "휴지통으로 이동",
 				shortcut: "Del",
 				destructive: true,
 				onSelect: () => confirmTrash(targets),

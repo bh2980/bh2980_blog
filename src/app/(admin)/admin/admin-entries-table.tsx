@@ -728,7 +728,7 @@ export function AdminEntriesTable({
 										onClick={() => onSelectFolder(explorer.parent ?? "all")}
 										className="h-auto p-0 text-muted-foreground hover:text-foreground"
 									>
-										.. 상위 폴더로
+										.. 상위 폴더
 									</Button>
 								</TableCell>
 							</TableRow>
@@ -836,9 +836,6 @@ export function AdminEntriesTable({
 							컬럼 설정
 						</PopoverTrigger>
 						<PopoverContent align="end" className="w-64 p-3">
-							<p className="mb-2 text-muted-foreground text-xs">
-								제목은 항상 보입니다. 표시와 순서는 컬렉션별로 저장됩니다.
-							</p>
 							<ul className="space-y-1">
 								{order.map((column, index) => (
 									<li

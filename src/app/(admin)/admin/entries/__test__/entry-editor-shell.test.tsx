@@ -665,7 +665,7 @@ describe("언어 탭", () => {
 		const nav = await screen.findByRole("navigation", { name: "언어" });
 		expect(within(nav).getByRole("button", { name: "영어 · 초안" }).getAttribute("aria-current")).toBe("page");
 		fireEvent.click(within(nav).getByRole("button", { name: "번역본 메뉴" }));
-		fireEvent.click(screen.getByRole("menuitem", { name: "이 번역본 삭제" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "휴지통으로 이동" }));
 		const dialog = screen.getByRole("alertdialog", { name: "휴지통으로 이동" });
 		expect(within(dialog).queryByText(/함께/)).toBeNull();
 		fireEvent.click(within(dialog).getByRole("button", { name: "휴지통으로 이동" }));

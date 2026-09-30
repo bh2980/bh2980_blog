@@ -1,7 +1,8 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutTemplate, Plus, Save } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import type { BodyTemplate } from "@/cms/adapters/postgres/content-store";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
@@ -12,14 +13,31 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
+import { cmsFetch, errorText } from "../admin-api";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 
+const TEMPLATES_KEY = ["cms", "templates"] as const;
+
 export function TemplateManager() {
-	const [templates, setTemplates] = useState<BodyTemplate[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
+	// 캐시가 있으면 바로 그리고 뒤에서 다시 받는다. 자리 표시는 캐시가 없을 때만 보인다.
+	const templatesQuery = useQuery({
+		queryKey: TEMPLATES_KEY,
+		queryFn: async ({ signal }) =>
+			(
+				await cmsFetch<{ items?: BodyTemplate[] }>("/api/cms/v1/templates", {
+					signal,
+					fallback: "템플릿 목록을 불러올 수 없습니다.",
+				})
+			).items ?? [],
+	});
+	const templates = templatesQuery.data ?? [];
+	const error =
+		templatesQuery.error && !templatesQuery.data
+			? errorText(templatesQuery.error, "템플릿 목록을 불러올 수 없습니다.")
+			: null;
 
 	// Editor state for selected/new template
 	const [activeTemplate, setActiveTemplate] = useState<Partial<BodyTemplate> | null>(null);
@@ -29,24 +47,8 @@ export function TemplateManager() {
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 
-	const fetchTemplates = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const res = await fetch("/api/cms/v1/templates");
-			if (!res.ok) throw new Error("템플릿 목록을 불러올 수 없습니다.");
-			const data = await res.json();
-			setTemplates(data.items || []);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "불러오기 실패");
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		fetchTemplates();
-	}, [fetchTemplates]);
+	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
+	const invalidateTemplates = () => queryClient.invalidateQueries({ queryKey: TEMPLATES_KEY });
 
 	const handleSelectTemplate = (t: BodyTemplate) => {
 		setActiveTemplate(t);
@@ -81,62 +83,53 @@ export function TemplateManager() {
 
 		try {
 			if (activeTemplate?.id) {
-				// PATCH update
-				const res = await fetch(`/api/cms/v1/templates/${activeTemplate.id}`, {
+				const updated = await cmsFetch<BodyTemplate>(`/api/cms/v1/templates/${activeTemplate.id}`, {
 					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						name: editName.trim(),
-						mdx: editMdx,
-						expectedVersion: activeTemplate.version,
-					}),
+					json: { name: editName.trim(), mdx: editMdx, expectedVersion: activeTemplate.version },
+					fallback: "수정 저장에 실패했습니다.",
 				});
-				if (!res.ok) {
-					const errData = await res.json().catch(() => ({}));
-					throw new Error(errData.message || "수정 저장에 실패했습니다.");
-				}
-				const updated = await res.json();
 				setActiveTemplate(updated);
+				queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
+					current?.map((item) => (item.id === updated.id ? updated : item)),
+				);
 			} else {
-				// POST create
-				const res = await fetch("/api/cms/v1/templates", {
+				const created = await cmsFetch<BodyTemplate>("/api/cms/v1/templates", {
 					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						name: editName.trim(),
-						mdx: editMdx,
-					}),
+					json: { name: editName.trim(), mdx: editMdx },
+					fallback: "생성에 실패했습니다.",
 				});
-				if (!res.ok) {
-					const errData = await res.json().catch(() => ({}));
-					throw new Error(errData.message || "생성에 실패했습니다.");
-				}
-				const created = await res.json();
 				setActiveTemplate(created);
+				queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
+					current && !current.some((item) => item.id === created.id) ? [created, ...current] : current,
+				);
 			}
-			await fetchTemplates();
+			void invalidateTemplates();
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : "오류가 발생했습니다.");
+			setSaveError(errorText(err, "오류가 발생했습니다."));
 		} finally {
 			setIsSaving(false);
 		}
 	};
 
 	const deleteTemplate = async (template: BodyTemplate) => {
+		// 목록에서 먼저 빼고 요청한다. 실패하면 되돌리고, 끝나면 서버 값으로 맞춘다.
+		await queryClient.cancelQueries({ queryKey: TEMPLATES_KEY });
+		const previous = queryClient.getQueryData<BodyTemplate[]>(TEMPLATES_KEY);
+		queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
+			current?.filter((item) => item.id !== template.id),
+		);
+		if (activeTemplate?.id === template.id) setActiveTemplate(null);
 		try {
-			const res = await fetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
+			await cmsFetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
 				method: "DELETE",
+				fallback: "삭제에 실패했습니다.",
 			});
-			if (!res.ok) {
-				const errData = await res.json().catch(() => ({}));
-				toast.error(errData.message || "삭제에 실패했습니다.");
-				return;
-			}
-			if (activeTemplate?.id === template.id) setActiveTemplate(null);
 			toast.success(`'${template.name}' 템플릿을 삭제했습니다.`);
-			await fetchTemplates();
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "삭제 중 오류가 발생했습니다.");
+			if (previous) queryClient.setQueryData(TEMPLATES_KEY, previous);
+			toast.error(errorText(err, "삭제 중 오류가 발생했습니다."));
+		} finally {
+			void invalidateTemplates();
 		}
 	};
 
@@ -166,7 +159,7 @@ export function TemplateManager() {
 			sidebar={{ activeNav: "templates" }}
 			headerActions={
 				<Button type="button" size="sm" onClick={handleOpenNew}>
-					<Plus aria-hidden />새 템플릿 만들기
+					<Plus aria-hidden />새 템플릿
 				</Button>
 			}
 		>
@@ -178,7 +171,7 @@ export function TemplateManager() {
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-80 shrink-0 flex-col border-r">
 					<ul className="flex-1 divide-y overflow-y-auto" aria-label="템플릿 목록">
-						{isLoading ? (
+						{templatesQuery.isPending ? (
 							Array.from({ length: 3 }, (_, index) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
 								<li key={index} className="p-4" aria-hidden>
@@ -239,7 +232,7 @@ export function TemplateManager() {
 										aria-label="템플릿 이름"
 										value={editName}
 										onChange={(e) => setEditName(e.target.value)}
-										placeholder="템플릿 이름 (예: 알고리즘 풀이)"
+										placeholder="템플릿 이름"
 										className="h-8 min-w-0 flex-1"
 									/>
 									<span className="hidden text-muted-foreground text-xs sm:inline">본문 MDX 골격</span>
@@ -250,7 +243,7 @@ export function TemplateManager() {
 									</Button>
 									<Button type="button" size="sm" disabled={isSaving} onClick={handleSave}>
 										<Save aria-hidden />
-										{isSaving ? "저장 중..." : activeTemplate.id ? "수정 완료" : "생성하기"}
+										{isSaving ? "저장 중..." : "저장"}
 									</Button>
 								</div>
 							</div>
@@ -276,7 +269,7 @@ export function TemplateManager() {
 							</EmptyHeader>
 							<EmptyContent>
 								<Button type="button" onClick={handleOpenNew}>
-									<Plus aria-hidden />새 템플릿 만들기
+									<Plus aria-hidden />새 템플릿
 								</Button>
 							</EmptyContent>
 						</Empty>

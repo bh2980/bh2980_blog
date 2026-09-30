@@ -75,7 +75,7 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 		onChange({ statuses: on ? [...state.statuses, status] : state.statuses.filter((item) => item !== status) });
 	return (
 		<fieldset className="space-y-0.5">
-			<legend className="sr-only">상태 — 여러 개를 고르면 하나라도 맞는 항목을 보여 줍니다</legend>
+			<legend className="sr-only">상태</legend>
 			{LIST_STATUSES.map((status) => (
 				<CheckRow
 					key={status}
@@ -95,7 +95,7 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 function LocaleFilter({ state, onChange }: { state: ListState; onChange: (patch: Partial<ListState>) => void }) {
 	return (
 		<fieldset className="space-y-0.5">
-			<legend className="sr-only">언어 — 여러 개를 고르면 하나라도 맞는 항목을 보여 줍니다</legend>
+			<legend className="sr-only">언어</legend>
 			{LOCALES.map((locale) => (
 				<CheckRow
 					key={locale}
@@ -169,7 +169,7 @@ function DateFilter({
 }) {
 	return (
 		<div className="space-y-2">
-			<p className="px-1 text-muted-foreground text-xs">{label} 범위(서울 날짜). 시작일과 끝날을 차례로 누르세요.</p>
+			<p className="px-1 text-muted-foreground text-xs">{label}</p>
 			<DateRangeCalendar from={from} to={to} onChange={onChange} />
 			<p className="px-1 text-xs" aria-live="polite">
 				{from || to ? `${from || "처음"} ~ ${to || "끝"}` : "기간을 고르지 않았습니다."}
