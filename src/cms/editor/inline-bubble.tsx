@@ -4,6 +4,7 @@ import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import {
+	Baseline,
 	ChevronsLeftRightEllipsis,
 	Code2,
 	Eye,
@@ -24,6 +25,8 @@ import { cn } from "@/utils/cn";
 import { codeEffectsKey, expandRule, removeRule, setFoldOpen } from "./code-block/effects-plugin";
 import { findAnchor, startLinkFromText, unlinkRef } from "./code-block/link-commands";
 import { charEffectByName } from "./code-block/model";
+import { COLOR_MARK_NAME } from "./color-mark";
+import { TextColorPanel } from "./color-menu";
 import {
 	type ActiveCodeRule,
 	type ActiveInlineMark,
@@ -40,6 +43,7 @@ import { TooltipForm } from "./tooltip-popover";
 
 type Panel =
 	| { kind: "link"; draft: LinkDraft }
+	| { kind: "color" }
 	| { kind: "tooltip"; active: boolean; initial: string; range?: { from: number; to: number } };
 
 const GAP = 8;
@@ -422,6 +426,11 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 			{allowedMarkTools(editor.state).map((item) => (
 				<ToolbarButton key={item.mark} editor={editor} item={item} tooltipSide="top" />
 			))}
+			{!inCode && allowsMark(editor.state, COLOR_MARK_NAME) && (
+				<BubbleButton label="글자색" onClick={() => setPanel({ kind: "color" })}>
+					<Baseline aria-hidden className="size-4" />
+				</BubbleButton>
+			)}
 			<Separator orientation="vertical" className="mx-0.5 h-4" />
 			{allowsMark(editor.state, "cmsTooltip") && (
 				<BubbleButton
@@ -470,10 +479,10 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 			<div
 				ref={bubbleRef}
 				role="dialog"
-				aria-label={panel.kind === "link" ? "링크 편집" : "툴팁 편집"}
+				aria-label={panel.kind === "link" ? "링크 편집" : panel.kind === "color" ? "글자색" : "툴팁 편집"}
 				data-cms-inline-bubble
 				style={style}
-				className={cn(surface, "flex w-80 flex-col gap-3 p-3 text-xs")}
+				className={cn(surface, "flex flex-col gap-3 p-3 text-xs", panel.kind === "color" ? "w-auto p-2" : "w-80")}
 				onKeyDown={(event) => {
 					if (event.key === "Escape" && !event.nativeEvent.isComposing) {
 						event.preventDefault();
@@ -483,6 +492,8 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 			>
 				{panel.kind === "link" ? (
 					<LinkForm editor={editor} draft={panel.draft} onDone={closePanel} />
+				) : panel.kind === "color" ? (
+					<TextColorPanel editor={editor} onPicked={closePanel} />
 				) : (
 					<TooltipForm
 						editor={editor}

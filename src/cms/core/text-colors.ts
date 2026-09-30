@@ -1,0 +1,87 @@
+/**
+ * 글자색·글자 배경색(`:color[글]{fg="#…" fgDark="#…" bg="#…" bgDark="#…"}`).
+ * 본문에는 색을 이름이 아니라 헥스 값으로 저장한다. 밝은·어두운 테마 값을 짝으로 두고, 어두운 값이 없으면
+ * 밝은 값을 그대로 쓴다. 에디터의 고르기 목록은 아래 프리셋이고, 나중에 직접 고른 색도 같은 모양으로 저장한다.
+ */
+
+export interface ColorPair {
+	readonly light: string;
+	readonly dark: string;
+}
+
+export interface PaletteColor {
+	readonly id: string;
+	readonly name: string;
+	/** 글자색. */
+	readonly fg: ColorPair;
+	/** 글자 배경색. */
+	readonly bg: ColorPair;
+}
+
+export const TEXT_PALETTE: readonly PaletteColor[] = [
+	{ id: "gray", name: "회색", fg: { light: "#6b7280", dark: "#9ca3af" }, bg: { light: "#f1f2f4", dark: "#2f3237" } },
+	{ id: "red", name: "빨강", fg: { light: "#dc2626", dark: "#f87171" }, bg: { light: "#fee2e2", dark: "#4a1f1f" } },
+	{ id: "orange", name: "주황", fg: { light: "#ea580c", dark: "#fb923c" }, bg: { light: "#ffedd5", dark: "#4a2a14" } },
+	{ id: "yellow", name: "노랑", fg: { light: "#b45309", dark: "#facc15" }, bg: { light: "#fef3c7", dark: "#453a12" } },
+	{ id: "green", name: "초록", fg: { light: "#16a34a", dark: "#4ade80" }, bg: { light: "#dcfce7", dark: "#173d2a" } },
+	{ id: "blue", name: "파랑", fg: { light: "#2563eb", dark: "#60a5fa" }, bg: { light: "#dbeafe", dark: "#172f4d" } },
+	{ id: "purple", name: "보라", fg: { light: "#9333ea", dark: "#c084fc" }, bg: { light: "#f3e8ff", dark: "#33224d" } },
+	{ id: "pink", name: "분홍", fg: { light: "#db2777", dark: "#f472b6" }, bg: { light: "#fce7f3", dark: "#4a1d38" } },
+];
+
+/** 본문 `:color`의 속성. 빈 값은 그 색을 쓰지 않는다는 뜻이다. */
+export interface TextColorAttrs {
+	fg?: string | null;
+	fgDark?: string | null;
+	bg?: string | null;
+	bgDark?: string | null;
+}
+
+export const TEXT_COLOR_ATTRS = ["fg", "fgDark", "bg", "bgDark"] as const;
+
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/** `#rgb`·`#rgba`·`#rrggbb`·`#rrggbbaa`만 받는다. 스타일에 그대로 넣으므로 다른 값은 버린다. */
+export const isHexColor = (value: unknown): value is string => typeof value === "string" && HEX.test(value);
+
+/** 속성에서 쓸 수 있는 값만 남긴다(소문자). 남은 것이 없으면 빈 객체다. */
+export function cleanTextColor(attrs: Readonly<Record<string, unknown>> | null | undefined): TextColorAttrs {
+	const out: TextColorAttrs = {};
+	for (const name of TEXT_COLOR_ATTRS) {
+		const value = attrs?.[name];
+		if (isHexColor(value)) out[name] = value.toLowerCase();
+	}
+	return out;
+}
+
+export const hasTextColor = (attrs: TextColorAttrs): boolean => Boolean(attrs.fg || attrs.bg);
+
+/**
+ * 공개 화면·에디터가 함께 쓰는 표시 속성. CSS(`.cms-color`)가 테마에 맞춰 변수를 고른다.
+ * `data-fg`·`data-bg`가 있을 때만 색을 입힌다.
+ */
+export function textColorProps(attrs: TextColorAttrs): {
+	className: string;
+	"data-fg"?: "";
+	"data-bg"?: "";
+	style: Record<string, string>;
+} {
+	const style: Record<string, string> = {};
+	if (attrs.fg) style["--cms-fg"] = attrs.fg;
+	if (attrs.fgDark) style["--cms-fg-dark"] = attrs.fgDark;
+	if (attrs.bg) style["--cms-bg"] = attrs.bg;
+	if (attrs.bgDark) style["--cms-bg-dark"] = attrs.bgDark;
+	return {
+		className: "cms-color",
+		...(attrs.fg ? { "data-fg": "" as const } : {}),
+		...(attrs.bg ? { "data-bg": "" as const } : {}),
+		style,
+	};
+}
+
+/** 프리셋과 같은 색이면 그 프리셋. 고르기 목록에서 지금 색을 표시할 때 쓴다. */
+export function paletteOf(kind: "fg" | "bg", attrs: TextColorAttrs): PaletteColor | undefined {
+	const light = attrs[kind];
+	if (!light) return undefined;
+	return TEXT_PALETTE.find((color) => color[kind].light === light.toLowerCase());
+}

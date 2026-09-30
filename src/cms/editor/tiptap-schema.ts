@@ -10,6 +10,7 @@ import { columnResizingPluginKey } from "@tiptap/pm/tables";
 import type { EditorView } from "@tiptap/pm/view";
 import { CmsCodeBlock } from "./code-block";
 import { CodeFoldMark } from "./code-block/code-fold-mark";
+import { CmsColorMark } from "./color-mark";
 import { CmsUntranslatedMark } from "./untranslated-mark";
 
 /**
@@ -221,6 +222,7 @@ export const CMS_SCHEMA_EXTENSIONS = [
 	CmsSubscript,
 	CmsTooltipMark,
 	CmsCodeRefMark,
+	CmsColorMark,
 	CmsUntranslatedMark,
 	CmsOpaqueBlock,
 	CodeFoldMark,

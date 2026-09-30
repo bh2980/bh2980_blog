@@ -141,6 +141,24 @@ export const codeRef = defineBlock({
 	editor: { view: "mark" },
 });
 
+/**
+ * 글자색·글자 배경색(`:color[글]{fg="#dc2626" fgDark="#f87171"}`). 헥스 값을 밝은·어두운 테마 짝으로 저장한다.
+ * 프리셋과 값 검사는 `src/cms/core/text-colors.ts`.
+ */
+export const color = defineBlock({
+	name: "color",
+	label: "글자색",
+	syntax: { kind: "text", directive: "color" },
+	component: "Color",
+	attributes: {
+		fg: { type: "string", label: "글자색" },
+		fgDark: { type: "string", label: "어두운 테마 글자색" },
+		bg: { type: "string", label: "배경색" },
+		bgDark: { type: "string", label: "어두운 테마 배경색" },
+	},
+	editor: { view: "mark" },
+});
+
 const textMark = (name: "u" | "sup" | "sub" | "br", label: string) =>
 	defineBlock({
 		name,
@@ -248,6 +266,7 @@ export const BLOCKS = [
 	image,
 	tooltip,
 	codeRef,
+	color,
 	untranslated,
 	underline,
 	superscript,

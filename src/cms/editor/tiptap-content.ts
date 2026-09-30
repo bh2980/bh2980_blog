@@ -1,8 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
+import { cleanTextColor, hasTextColor } from "../core/text-colors";
 import type { CmsJsonValue, CmsMark, CmsNode } from "../mdx";
 import { analyze, serialize, toDocument } from "../mdx";
 import { TEXT_ALIGN_VALUES as ALIGN_VALUES } from "../mdx/directives";
 import { sortMarks } from "../mdx/registry";
+import { COLOR_MARK_NAME } from "./color-mark";
 import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
 import { asNumber, asString, brDirectiveNode } from "./converters/shared";
 
@@ -35,7 +37,7 @@ const NATIVE_MARKS = new Set([
 	// 번역 안내 글(v3). 속성이 없어 이름 그대로 오간다.
 	"untranslated",
 ]);
-const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip", "codeRef"]);
+const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip", "codeRef", "color"]);
 
 const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);
 
@@ -129,6 +131,10 @@ const toTiptapMarks = (marks: CmsMark[] | undefined): JSONContent["marks"] => {
 		}
 		if (mark.type === "codeRef") {
 			out.push({ type: CODE_REF_MARK_NAME, attrs: { to: asString(mark.attrs?.to) ?? "" } });
+			continue;
+		}
+		if (mark.type === "color") {
+			out.push({ type: COLOR_MARK_NAME, attrs: { ...cleanTextColor(mark.attrs) } });
 			continue;
 		}
 		// isMappableInline이 걸렀으므로 여기 오는 mark는 전부 네이티브다.
@@ -254,6 +260,12 @@ const tiptapMarksToCms = (marks: JSONContent["marks"]): CmsMark[] => {
 		}
 		if (mark.type === CODE_REF_MARK_NAME) {
 			out.push({ type: "codeRef", attrs: { to: asString(mark.attrs?.to) ?? "" } });
+			continue;
+		}
+		if (mark.type === COLOR_MARK_NAME) {
+			const attrs = cleanTextColor(mark.attrs);
+			// 색이 모두 빠졌으면 표시를 남기지 않는다.
+			if (hasTextColor(attrs)) out.push({ type: "color", attrs: { ...attrs } });
 			continue;
 		}
 		if (mark.type === "link") {

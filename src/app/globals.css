@@ -461,6 +461,24 @@
 		counter-increment: step 0;
 	}
 
+	/* 글자색·글자 배경색(`:color`). 값은 밝은·어두운 테마 짝이고, 어두운 값이 없으면 밝은 값을 쓴다 */
+	.cms-color[data-fg] {
+		color: var(--cms-fg);
+	}
+	.cms-color[data-bg] {
+		background-color: var(--cms-bg);
+		border-radius: 0.25em;
+		padding: 0.05em 0.2em;
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
+	}
+	:where(.dark, .kui-scheme--dark) .cms-color[data-fg] {
+		color: var(--cms-fg-dark, var(--cms-fg));
+	}
+	:where(.dark, .kui-scheme--dark) .cms-color[data-bg] {
+		background-color: var(--cms-bg-dark, var(--cms-bg));
+	}
+
 	/* 본문 `:code-ref`에 마우스를 올리거나 누르면 연결된 줄을 강조하고 나머지 줄을 흐린다(focus) */
 	pre[data-code-focus] code .line {
 		transition: opacity 150ms ease, background-color 150ms ease;

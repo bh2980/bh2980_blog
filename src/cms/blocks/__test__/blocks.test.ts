@@ -60,6 +60,7 @@ describe("블록 정의(v2 B3)", () => {
 			["image", "leaf", "Image", []],
 			["tooltip", "text", "Tooltip", ["content"]],
 			["code-ref", "text", "CodeRef", ["to"]],
+			["color", "text", "Color", []],
 			// 번역 안내 글(v3). 새 번역본의 원문 글을 감싼다.
 			["untranslated", "text", "Untranslated", []],
 			["u", "text", "u", []],

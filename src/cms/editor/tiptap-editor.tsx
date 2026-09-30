@@ -31,6 +31,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,6 +40,7 @@ import { cn } from "@/utils/cn";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
+import { TextColorMenu, TextColorMenuItems } from "./color-menu";
 import { CustomBlockMenu, CustomBlockMenuItems } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
@@ -691,6 +693,17 @@ export function CmsEditor({
 				["bold", "italic"].includes(tool.mark),
 			),
 		),
+		{
+			key: "color",
+			priority: 3,
+			render: () => <TextColorMenu editor={editor} />,
+			menu: () => (
+				<>
+					<DropdownMenuSeparator className="first:hidden" />
+					<TextColorMenuItems editor={editor} />
+				</>
+			),
+		},
 		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
 		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
 		{ key: "divider-align", divider: true },

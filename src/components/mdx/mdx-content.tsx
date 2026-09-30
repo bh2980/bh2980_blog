@@ -28,6 +28,7 @@ import { collapse } from "./code-block/collapse";
 import { fold } from "./code-block/fold";
 import { CodeRef } from "./code-ref.client";
 import { Collapsible } from "./collapsible";
+import { Color } from "./color";
 import { Column, Columns } from "./columns";
 import { CmsImage } from "./image";
 import { Mermaid } from "./mermaid.client";
@@ -91,6 +92,7 @@ export const MDX_COMPONENTS = {
 	Column,
 	Tooltip,
 	CodeRef,
+	Color,
 	// 번역 안내 글(v3)은 공개 화면에 보이지 않는다. 남은 채로 발행하지 않게 발행 전 검사가 막는다.
 	Untranslated: () => null,
 	Tabs,

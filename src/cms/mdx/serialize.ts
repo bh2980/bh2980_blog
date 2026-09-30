@@ -1,6 +1,7 @@
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
+import { TEXT_COLOR_ATTRS } from "../core/text-colors";
 import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
@@ -125,6 +126,9 @@ const jsxName = (node: CmsNode): string => {
 	return node.type;
 };
 
+/** 속성이 붙는 지시자 라벨(`]{…}`) 안의 글. 라벨을 닫는 글자를 이스케이프한다. */
+const LABEL_MARKS = new Set(["tooltip", "codeRef", "color"]);
+
 const markKey = (mark: CmsMark) => `${mark.type}:${JSON.stringify(mark.attrs ?? null)}`;
 
 const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] => sortMarks(marks ?? []);
@@ -135,6 +139,8 @@ const openMark = (mark: CmsMark): string => {
 			return ":tooltip[";
 		case "codeRef":
 			return ":code-ref[";
+		case "color":
+			return ":color[";
 		case "untranslated":
 			return ":untranslated[";
 		case "underline":
@@ -164,6 +170,14 @@ const closeMark = (mark: CmsMark): string => {
 			return `]{content="${escapeAttr(String(mark.attrs?.content ?? ""))}"}`;
 		case "codeRef":
 			return `]{to="${escapeAttr(String(mark.attrs?.to ?? ""))}"}`;
+		case "color": {
+			// 속성 순서를 고정해 왕복해도 같은 글이 된다. 빈 값은 쓰지 않는다.
+			const attrs = TEXT_COLOR_ATTRS.flatMap((name) => {
+				const value = mark.attrs?.[name];
+				return typeof value === "string" && value !== "" ? [`${name}="${escapeAttr(value)}"`] : [];
+			});
+			return attrs.length > 0 ? `]{${attrs.join(" ")}}` : "]";
+		}
 		case "underline":
 		case "superscript":
 		case "subscript":
@@ -417,16 +431,8 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false, inLabel = false
 		const text = node.text ?? "";
 		out.push(
 			atLineStart && !inCode
-				? encodeLeadingSpaces(
-						text,
-						inCode,
-						inLabel || wanted.some((mark) => mark.type === "tooltip" || mark.type === "codeRef"),
-					)
-				: escapeText(
-						text,
-						inCode,
-						inLabel || wanted.some((mark) => mark.type === "tooltip" || mark.type === "codeRef"),
-					),
+				? encodeLeadingSpaces(text, inCode, inLabel || wanted.some((mark) => LABEL_MARKS.has(mark.type)))
+				: escapeText(text, inCode, inLabel || wanted.some((mark) => LABEL_MARKS.has(mark.type))),
 		);
 		atLineStart = false;
 	}
