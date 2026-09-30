@@ -172,6 +172,7 @@ export function BulkBar({
 	folders,
 	mode = "list",
 	onClearSelection,
+	onRun = runBulk,
 	onDone,
 }: {
 	collection: string;
@@ -179,7 +180,9 @@ export function BulkBar({
 	folders: Folder[];
 	mode?: "list" | "trash";
 	onClearSelection: () => void;
-	onDone: (failedIds: string[]) => void;
+	/** 작업 요청. 목록 화면은 목록에 먼저 반영(낙관적 갱신)하는 요청을 넘긴다. */
+	onRun?: typeof runBulk;
+	onDone?: (failedIds: string[]) => void;
 }) {
 	const isRecord = isRecordCollection(collection);
 	const actions = useMemo(
@@ -229,10 +232,10 @@ export function BulkBar({
 					: action === "folder.move"
 						? { folderId: single === "__unfiled__" ? null : single }
 						: {};
-			const out = await runBulk(action, items, params);
+			const out = await onRun(action, items, params);
 			setResults(out);
 			setRanItems(items);
-			onDone(out.filter((result) => !result.ok).map((result) => result.id));
+			onDone?.(out.filter((result) => !result.ok).map((result) => result.id));
 		} catch (err) {
 			setError(errorText(err, "일괄 작업이 실패했습니다."));
 		} finally {
@@ -245,7 +248,7 @@ export function BulkBar({
 			setConfirm({
 				title: `${activeAction.label} — ${selected.length}개`,
 				description: activeAction.confirm,
-				confirmLabel: "계속",
+				confirmLabel: activeAction.label,
 				destructive: activeAction.destructive,
 				onConfirm: () => run(selected),
 			});
@@ -294,9 +297,7 @@ export function BulkBar({
 							))}
 						</SelectContent>
 					</Select>
-				) : (
-					<span className="text-muted-foreground">{activeAction?.label}</span>
-				)}
+				) : null}
 
 				{needsTags && <TagPicker options={tags.options} value={checked} onValueChange={setChecked} />}
 
@@ -326,7 +327,7 @@ export function BulkBar({
 					disabled={!canRun}
 					onClick={start}
 				>
-					{isRunning ? "실행 중..." : "일괄 실행"}
+					{isRunning ? "실행 중..." : (activeAction?.label ?? "실행")}
 				</Button>
 
 				{results && (

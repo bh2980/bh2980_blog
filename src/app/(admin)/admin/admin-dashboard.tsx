@@ -1,10 +1,11 @@
 "use client";
 
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import type { AdminColumnSettings, CollectionPreferences, PreferencesBody } from "@/cms/core/api";
@@ -24,9 +25,17 @@ import {
 import { FilterChipBar, ListSearch } from "./list-toolbar";
 import { RecordDialog, type RecordTarget } from "./record-dialog";
 import type { MenuAction } from "./shared/action-menu";
-import { AdminNavProvider, AdminShell, useAdminNav } from "./shared/admin-shell";
+import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "./shared/confirm-dialog";
 import type { DraggedEntry } from "./shared/entry-drag";
+import {
+	applyOptimistic,
+	ENTRIES_KEY,
+	type EntriesPage,
+	entriesKey,
+	foldersKey,
+	type OptimisticOp,
+} from "./shared/list-cache";
 import { useFolderActions } from "./shared/use-folder-actions";
 import { useTaxonomy } from "./shared/use-taxonomy";
 
@@ -59,7 +68,7 @@ function announce(label: string, results: BulkItemResult[], items: BulkSelection
 function useDashboard(mode: Mode) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const { refreshTrashCount } = useAdminNav();
+	const queryClient = useQueryClient();
 	const isTrash = mode === "trash";
 	const basePath = isTrash ? "/admin/trash" : "/admin";
 	const parsed = useMemo(() => parseListState(new URLSearchParams(searchParams.toString())), [searchParams]);
@@ -82,11 +91,6 @@ function useDashboard(mode: Mode) {
 	const isRecord = isRecordCollection(collection);
 	const isContent = collection === "post" || collection === "memo";
 
-	const [items, setItems] = useState<ListEntriesItem[]>([]);
-	const [total, setTotal] = useState(0);
-	const [folders, setFolders] = useState<Folder[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
@@ -124,60 +128,81 @@ function useDashboard(mode: Mode) {
 		);
 	};
 
-	const fetchFolders = useCallback(async () => {
-		if (isTrash) return;
-		try {
-			setFolders(await cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`));
-		} catch {
-			setFolders([]);
-		}
-	}, [collection, isTrash]);
+	const foldersQuery = useQuery({
+		queryKey: foldersKey(collection),
+		queryFn: ({ signal }) => cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`, { signal }),
+		enabled: !isTrash,
+	});
+	const folders = useMemo(() => (isTrash ? [] : (foldersQuery.data ?? [])), [isTrash, foldersQuery.data]);
 
+	// 목록은 캐시에서 바로 그리고 뒤에서 새로 받는다. 조건을 바꾸는 동안에도 이전 줄을 남겨(`keepPreviousData`)
+	// 자리 표시로 깜빡이지 않는다. 자리 표시는 캐시가 아예 없을 때만 보인다.
 	const apiQuery = listStateToApiQuery(state, { trash: isTrash }).toString();
-	const abortRef = useRef<AbortController | null>(null);
-	const fetchEntries = useCallback(async () => {
-		abortRef.current?.abort();
-		const controller = new AbortController();
-		abortRef.current = controller;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const data = await cmsFetch<{ items: ListEntriesItem[]; total: number }>(`/api/cms/v1/entries?${apiQuery}`, {
-				signal: controller.signal,
-				fallback: "목록을 불러오지 못했습니다.",
-			});
-			setItems(data.items);
-			setTotal(data.total);
-		} catch (error) {
-			if ((error as Error).name !== "AbortError") setErrorMessage(errorText(error, "목록을 불러오지 못했습니다."));
-		} finally {
-			if (abortRef.current === controller) setIsLoading(false);
-		}
-	}, [apiQuery]);
+	const listKey = entriesKey(apiQuery);
+	const entriesQuery = useQuery({
+		queryKey: listKey,
+		queryFn: ({ signal }) =>
+			cmsFetch<EntriesPage>(`/api/cms/v1/entries?${apiQuery}`, { signal, fallback: "목록을 불러오지 못했습니다." }),
+		// 다른 컬렉션의 줄은 열 구성이 달라 남기지 않는다.
+		placeholderData: (previous, previousQuery) =>
+			previousQuery && new URLSearchParams(String(previousQuery.queryKey.at(-1))).get("collection") === collection
+				? keepPreviousData(previous)
+				: undefined,
+	});
+	const items = entriesQuery.data?.items ?? [];
+	const total = entriesQuery.data?.total ?? 0;
+	const errorMessage =
+		entriesQuery.error && !entriesQuery.data ? errorText(entriesQuery.error, "목록을 불러오지 못했습니다.") : null;
 
-	useEffect(() => {
-		void fetchFolders();
-	}, [fetchFolders]);
-	useEffect(() => {
-		void fetchEntries();
-	}, [fetchEntries]);
 	// 전체 선택은 현재 페이지만 대상이다(§3.4). 목록이 바뀌면 선택을 비운다.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the visible query changes
 	useEffect(() => setSelectedIds(new Set()), [apiQuery]);
 
-	const refresh = async (failedIds: string[] = []) => {
-		setSelectedIds(new Set(failedIds));
-		await fetchEntries();
-		refreshTrashCount();
+	/** 목록·휴지통 배지를 모두 다시 받는다(지금 보이는 줄은 그대로 둔 채). */
+	const invalidateEntries = () => queryClient.invalidateQueries({ queryKey: ENTRIES_KEY });
+
+	/**
+	 * 작업을 목록에 먼저 반영하고 요청한다. 실패한 항목은 선택으로 남기고, 요청 자체가 실패하면 되돌린다.
+	 * 끝나면 서버 값으로 맞춘다.
+	 */
+	const mutateEntries = async (
+		op: OptimisticOp,
+		targets: BulkSelection[],
+		request: () => Promise<BulkItemResult[]>,
+		params?: Parameters<typeof runBulk>[2],
+	): Promise<BulkItemResult[]> => {
+		await queryClient.cancelQueries({ queryKey: listKey });
+		const previous = queryClient.getQueryData<EntriesPage>(listKey);
+		if (previous) {
+			queryClient.setQueryData<EntriesPage>(
+				listKey,
+				applyOptimistic(previous, op, new Set(targets.map((target) => target.id)), {
+					state,
+					params,
+					tags: tags.options,
+					categories: categories.options,
+				}),
+			);
+		}
+		try {
+			const results = await request();
+			setSelectedIds(new Set(results.filter((result) => !result.ok).map((result) => result.id)));
+			return results;
+		} catch (error) {
+			if (previous) queryClient.setQueryData(listKey, previous);
+			throw error;
+		} finally {
+			void invalidateEntries();
+		}
 	};
 
 	const folderActions = useFolderActions({
 		collection,
 		folders,
 		onChanged: async (deletedId) => {
-			await fetchFolders();
+			await queryClient.invalidateQueries({ queryKey: foldersKey(collection) });
 			if (deletedId && state.folder === deletedId) update({ folder: "all" });
-			else await fetchEntries();
+			else await invalidateEntries();
 		},
 	});
 
@@ -188,9 +213,8 @@ function useDashboard(mode: Mode) {
 		params: Parameters<typeof runBulk>[2] = {},
 	) => {
 		try {
-			const results = await runBulk(op, targets, params);
+			const results = await mutateEntries(op, targets, () => runBulk(op, targets, params), params);
 			announce(label, results, targets);
-			await refresh(results.filter((result) => !result.ok).map((result) => result.id));
 		} catch (error) {
 			toast.error(errorText(error, `${label}하지 못했습니다.`));
 		}
@@ -205,21 +229,23 @@ function useDashboard(mode: Mode) {
 		);
 
 	const restore = async (targets: BulkSelection[]) => {
-		const results: BulkItemResult[] = [];
-		for (const target of targets) {
-			try {
-				await cmsFetch(`/api/cms/v1/entries/${target.id}/restore`, {
-					method: "POST",
-					json: { expectedVersion: target.expectedVersion },
-				});
-				results.push({ id: target.id, ok: true, version: target.expectedVersion + 1 });
-			} catch (error) {
-				const code = (error as { code?: string }).code ?? "internal";
-				results.push({ id: target.id, ok: false, error: code });
+		const results = await mutateEntries("restore", targets, async () => {
+			const out: BulkItemResult[] = [];
+			for (const target of targets) {
+				try {
+					await cmsFetch(`/api/cms/v1/entries/${target.id}/restore`, {
+						method: "POST",
+						json: { expectedVersion: target.expectedVersion },
+					});
+					out.push({ id: target.id, ok: true, version: target.expectedVersion + 1 });
+				} catch (error) {
+					const code = (error as { code?: string }).code ?? "internal";
+					out.push({ id: target.id, ok: false, error: code });
+				}
 			}
-		}
+			return out;
+		});
 		announce("복원", results, targets);
-		await refresh(results.filter((result) => !result.ok).map((result) => result.id));
 	};
 
 	const confirmTrash = (targets: BulkSelection[]) =>
@@ -394,7 +420,7 @@ function useDashboard(mode: Mode) {
 				selected={items.filter((item) => selectedIds.has(item.id)).map(toSelection)}
 				folders={folders}
 				onClearSelection={() => setSelectedIds(new Set())}
-				onDone={(failedIds) => void refresh(failedIds)}
+				onRun={(op, targets, params) => mutateEntries(op, targets, () => runBulk(op, targets, params), params)}
 			/>
 			<AdminEntriesTable
 				collection={collection}
@@ -419,7 +445,8 @@ function useDashboard(mode: Mode) {
 				selectedIds={selectedIds}
 				onSelectionChange={setSelectedIds}
 				total={total}
-				isLoading={isLoading}
+				isLoading={entriesQuery.isPending}
+				isRefreshing={entriesQuery.isPlaceholderData}
 				errorMessage={errorMessage}
 				mode={mode}
 				folderActions={isTrash ? undefined : folderActions}
@@ -446,7 +473,7 @@ function useDashboard(mode: Mode) {
 					update({ pageSize });
 					savePreferences({ pageSize });
 				}}
-				onRetry={() => void fetchEntries()}
+				onRetry={() => void entriesQuery.refetch()}
 			/>
 			{folderActions.dialogs}
 			<RecordDialog
@@ -455,7 +482,7 @@ function useDashboard(mode: Mode) {
 				onSaved={() => {
 					setRecordTarget(null);
 					toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
-					void fetchEntries();
+					void invalidateEntries();
 					void tags.reload();
 					void categories.reload();
 				}}

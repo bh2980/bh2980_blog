@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
 import { chooseSelectOption } from "@/test/base-ui";
@@ -57,19 +57,19 @@ describe("bulk actions (§3.4)", () => {
 		);
 		fireEvent.keyDown(screen.getByPlaceholderText("태그 검색"), { key: "Escape" });
 		await waitFor(() => expect(screen.queryByPlaceholderText("태그 검색")).toBeNull());
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		fireEvent.click(screen.getByRole("button", { name: "태그 추가" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "tags.add", items: [{ id: "entry-1", expectedVersion: 3 }], tagIds: ["tag-1"] });
 
 		await choose("일괄 작업 종류", "카테고리 변경");
 		await choose("대상 카테고리", "지우기(없음)");
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		fireEvent.click(screen.getByRole("button", { name: "카테고리 변경" }));
 		await waitFor(() => expect(payloads).toHaveLength(2));
 		expect(payloads[1]).toMatchObject({ op: "category.set", categoryId: null });
 
 		await choose("일괄 작업 종류", "폴더 이동");
 		await choose("이동할 폴더", "최상위");
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		fireEvent.click(screen.getByRole("button", { name: "폴더 이동" }));
 		await waitFor(() => expect(payloads).toHaveLength(3));
 		expect(payloads[2]).toMatchObject({ op: "folder.move", folderId: null });
 	});
@@ -80,10 +80,10 @@ describe("bulk actions (§3.4)", () => {
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
 		);
 		await choose("일괄 작업 종류", "휴지통 이동");
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		fireEvent.click(screen.getByRole("button", { name: "휴지통 이동" }));
 		await screen.findByRole("alertdialog", { name: /휴지통 이동/ });
 		expect(payloads).toHaveLength(0);
-		fireEvent.click(screen.getByRole("button", { name: "계속" }));
+		fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "휴지통 이동" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "trash", items: [{ id: "entry-1", expectedVersion: 3 }] });
 	});
@@ -102,8 +102,8 @@ describe("bulk actions (§3.4)", () => {
 			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={onDone} />,
 		);
 		await choose("일괄 작업 종류", "발행");
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
-		fireEvent.click(await screen.findByRole("button", { name: "계속" }));
+		fireEvent.click(screen.getByRole("button", { name: "발행" }));
+		fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "발행" }));
 		expect(await screen.findByText(/첫 글/)).toBeTruthy();
 		expect(screen.getByText(/카테고리를 지정하세요/)).toBeTruthy();
 		expect(screen.getByRole("button", { name: "실패만 다시 실행" })).toBeTruthy();
@@ -138,9 +138,10 @@ describe("bulk actions (§3.4)", () => {
 			/>,
 		);
 		expect(screen.queryByRole("combobox", { name: "일괄 작업 종류" })).toBeNull();
-		fireEvent.click(screen.getByRole("button", { name: "일괄 실행" }));
+		expect(screen.queryByRole("button", { name: "일괄 실행" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "영구 삭제" }));
 		await screen.findByRole("alertdialog", { name: /영구 삭제/ });
-		fireEvent.click(screen.getByRole("button", { name: "계속" }));
+		fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "영구 삭제" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({ op: "permanentDelete", items: [{ id: "entry-1", expectedVersion: 3 }] });
 		expect(await screen.findByText(/사용 중: 참조하는 글/)).toBeTruthy();

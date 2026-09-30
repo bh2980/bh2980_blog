@@ -1,10 +1,12 @@
 "use client";
 
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 import { COLLECTIONS } from "@/cms/core/collections";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cmsFetch } from "../admin-api";
 import { AdminSidebar, type AdminSidebarProps } from "../admin-sidebar";
+import { TRASH_COUNT_KEY } from "./list-cache";
 
 interface AdminNavContextValue {
 	/** 모든 컬렉션의 휴지통 항목 수. 불러오기 전이면 null. */
@@ -31,14 +33,13 @@ async function countTrash(): Promise<number> {
 
 /** 휴지통 배지 상태. 화면의 목록 로직도 이 값을 갱신해야 해서 셸보다 바깥에 둔다. */
 export function AdminNavProvider({ children }: { children: ReactNode }) {
-	const [trashCount, setTrashCount] = useState<number | null>(null);
-	const refreshTrashCount = useCallback(() => {
-		countTrash()
-			.then(setTrashCount)
-			.catch(() => setTrashCount(null));
-	}, []);
-	useEffect(() => refreshTrashCount(), [refreshTrashCount]);
-	const nav = useMemo(() => ({ trashCount, refreshTrashCount }), [trashCount, refreshTrashCount]);
+	const queryClient = useQueryClient();
+	const { data } = useQuery({ queryKey: TRASH_COUNT_KEY, queryFn: countTrash });
+	const refreshTrashCount = useCallback(
+		() => void queryClient.invalidateQueries({ queryKey: TRASH_COUNT_KEY }),
+		[queryClient],
+	);
+	const nav = useMemo(() => ({ trashCount: data ?? null, refreshTrashCount }), [data, refreshTrashCount]);
 	return <AdminNavContext.Provider value={nav}>{children}</AdminNavContext.Provider>;
 }
 

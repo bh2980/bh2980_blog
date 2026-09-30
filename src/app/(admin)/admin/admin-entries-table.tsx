@@ -265,6 +265,8 @@ interface TableProps {
 	onSelectionChange: (ids: Set<string>) => void;
 	total: number;
 	isLoading: boolean;
+	/** 조건을 바꿔 새 목록을 받는 중. 이전 줄을 흐리게 남겨 둔다. */
+	isRefreshing?: boolean;
 	errorMessage: string | null;
 	/** `trash`면 휴지통 화면이다(v2 A3): 끌어 옮기기·폴더 탐색이 없고 행마다 복원·영구 삭제를 보여 준다. */
 	mode?: "list" | "trash";
@@ -298,6 +300,7 @@ export function AdminEntriesTable({
 	onSelectionChange,
 	total,
 	isLoading,
+	isRefreshing = false,
 	errorMessage,
 	mode = "list",
 	folderActions,
@@ -708,7 +711,10 @@ export function AdminEntriesTable({
 							</TableRow>
 						))}
 					</TableHeader>
-					<TableBody>
+					<TableBody
+						aria-busy={isRefreshing || undefined}
+						className={cn("transition-opacity", isRefreshing && "opacity-60")}
+					>
 						{explorer && explorer.parent !== null && (
 							<TableRow>
 								<TableCell className="text-center text-muted-foreground">

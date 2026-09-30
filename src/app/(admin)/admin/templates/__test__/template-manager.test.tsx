@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AdminQueryProvider } from "../../shared/query-provider";
 import { TemplateManager } from "../template-manager";
 
 vi.mock("@/cms/editor/tiptap-editor", () => ({ CmsEditor: () => null }));
@@ -35,7 +36,11 @@ describe("TemplateManager", () => {
 			}),
 		);
 
-		render(<TemplateManager />);
+		render(
+			<AdminQueryProvider>
+				<TemplateManager />
+			</AdminQueryProvider>,
+		);
 
 		expect(await screen.findByText("일반 게시글")).toBeTruthy();
 		expect(screen.getByText("총 1개")).toBeTruthy();
