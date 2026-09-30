@@ -1186,7 +1186,6 @@ export function EntryEditorShell({
 							entry={entry}
 							incomingReferences={incoming.items}
 							isLoadingIncomingReferences={incoming.loading}
-							incomingReferencesError={incoming.error}
 							onRefreshIncomingReferences={() => {
 								if (entry) void refreshIncoming(entry.id);
 							}}

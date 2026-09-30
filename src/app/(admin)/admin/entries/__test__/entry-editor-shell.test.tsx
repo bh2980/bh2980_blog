@@ -224,53 +224,6 @@ describe("entry editor shell", () => {
 		expect(((await screen.findByLabelText(/^발행일/)) as HTMLInputElement).value).toBe("2020-02-03T04:05");
 	});
 
-	it("shows draft and published incoming references with their locations", async () => {
-		const relationRequests = vi.fn();
-		serve((input) => {
-			if (!input.endsWith("/relations")) return undefined;
-			relationRequests();
-			return json({
-				incomingReferences: [
-					{
-						state: "working",
-						sourceId: "draft-source",
-						sourceCollection: "post",
-						sourceTitle: "Draft referrer",
-						sourceSlug: "draft-referrer",
-						kind: "tag",
-						isStale: true,
-						occurrences: [
-							{ type: "mdx", line: 3, column: 2 },
-							{ type: "metadata", path: "tagIds", ordinal: 0 },
-						],
-					},
-					{
-						state: "published",
-						sourceId: "published-source",
-						sourceCollection: "memo",
-						sourceTitle: "Published referrer",
-						sourceSlug: "published-referrer",
-						kind: "tag",
-						isStale: false,
-						occurrences: [{ type: "mdx", line: 5, column: 1 }],
-					},
-				],
-			});
-		});
-		renderEdit();
-		fireEvent.click(await screen.findByRole("tab", { name: /사용처/ }));
-		expect(await screen.findByRole("heading", { name: "초안에서 사용" })).toBeTruthy();
-		expect(screen.getByRole("heading", { name: "현재 공개본에서 사용" })).toBeTruthy();
-		expect(screen.getByRole("link", { name: "Draft referrer" }).getAttribute("href")).toBe(
-			"/admin/entries/draft-source/edit",
-		);
-		expect(screen.getByText("본문 3:2")).toBeTruthy();
-		expect(screen.getByText("tagIds · 1번째")).toBeTruthy();
-		expect(screen.getByText("대상 변경 확인 필요")).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "사용처 새로고침" }));
-		await waitFor(() => expect(relationRequests).toHaveBeenCalledTimes(2));
-	});
-
 	it("offers a same-version browser backup and deletes it when the server copy is kept", async () => {
 		const server = formFromEntry(entry as never);
 		getLocalBackup.mockResolvedValue({

@@ -1,16 +1,17 @@
 "use client";
 
 import { ArrowDown, ArrowUp, X } from "lucide-react";
-import { type ComponentType, useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { BacklinkField, RelationField, ValueField } from "@/cms/schema/fields";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { FormValue } from "./entry-form";
+import { RelationCombobox } from "./relation-combobox";
 
 /** 입력이 필드 밖에서 알아야 하는 값. 편집 화면이 채운다. */
 export interface FieldContext {
@@ -308,9 +309,6 @@ export function BacklinkInput({
 }) {
 	const records = useTaxonomy(field.from as RecordCollection, Boolean(targetId));
 	const [fetched, setFetched] = useState<{ id: string; title: string }[] | null>(null);
-	const [draft, setDraft] = useState("");
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 
 	const membersOf = useCallback(
 		(references: readonly IncomingReference[]) => {
@@ -339,7 +337,7 @@ export function BacklinkInput({
 			);
 			setFetched(membersOf(data.incomingReferences));
 		} catch (loadError) {
-			setError(errorText(loadError, "목록을 불러오지 못했습니다."));
+			toast.error(errorText(loadError, "목록을 불러오지 못했습니다."));
 		}
 	}, [targetId, refreshShared, membersOf]);
 
@@ -378,124 +376,108 @@ export function BacklinkInput({
 		}
 	};
 
-	const run = async (action: () => Promise<void>, fallback: string) => {
-		if (busy || !targetId) return;
-		setBusy(true);
-		setError(null);
-		try {
-			await action();
-			await load();
-		} catch (actionError) {
-			setError(errorText(actionError, fallback));
-		} finally {
-			setBusy(false);
+	// 고르거나 빼면 먼저 화면에 반영하고(낙관적), 저장은 뒤에서 차례로 한다. 실패하면 알리고 그 변경만 되돌린다.
+	const [optimistic, setOptimistic] = useState<string[] | null>(null);
+	const pendingRef = useRef(0);
+	const queueRef = useRef<Promise<void>>(Promise.resolve());
+	const awaitingServerRef = useRef(false);
+	/** 방금 만들면서 이 글을 넣은 모음집. 다시 저장하지 않는다. */
+	const createdRef = useRef(new Set<string>());
+	const serverIds = useMemo(() => members?.map((member) => member.id) ?? [], [members]);
+	const serverKey = serverIds.join(",");
+	const serverIdsRef = useRef(serverIds);
+	serverIdsRef.current = serverIds;
+
+	// 저장이 모두 끝난 뒤 서버 값이 도착하면 낙관적 값을 내려놓는다.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed by the server ids
+	useEffect(() => {
+		if (awaitingServerRef.current && pendingRef.current === 0) {
+			awaitingServerRef.current = false;
+			setOptimistic(null);
 		}
+	}, [serverKey]);
+
+	const enqueue = (task: () => Promise<void>, failure: string, revert: (ids: string[]) => string[]) => {
+		pendingRef.current += 1;
+		queueRef.current = queueRef.current.then(async () => {
+			try {
+				await task();
+			} catch (taskError) {
+				toast.error(errorText(taskError, failure));
+				setOptimistic((current) => revert(current ?? serverIdsRef.current));
+			} finally {
+				pendingRef.current -= 1;
+				if (pendingRef.current === 0) {
+					awaitingServerRef.current = true;
+					await load();
+				}
+			}
+		});
 	};
 
 	if (!targetId) {
 		return <p className="text-muted-foreground text-xs">초안을 저장하면 {field.label}에 넣을 수 있습니다.</p>;
 	}
 
-	const addable = records.options.filter((option) => !members?.some((member) => member.id === option.id));
-	const items = [
-		{ value: "", label: field.placeholder ?? `${field.label}에 추가` },
-		...addable.map((option) => ({ value: option.id, label: option.title })),
+	const shown = optimistic ?? serverIds;
+	const options = [
+		...records.options.map((option) => ({ value: option.id, label: option.title })),
+		// 공개 목록에 아직 없는 모음집(방금 만든 것 등)도 이름으로 보인다.
+		...(members ?? [])
+			.filter((member) => !records.options.some((option) => option.id === member.id))
+			.map((member) => ({ value: member.id, label: member.title })),
 	];
-	const locked = disabled || busy;
+
+	const change = (next: string[]) => {
+		const added = next.filter((id) => !shown.includes(id) && !createdRef.current.delete(id));
+		const removed = shown.filter((id) => !next.includes(id));
+		setOptimistic(next);
+		for (const recordId of added) {
+			enqueue(
+				() => update(recordId, (ids) => (ids.includes(targetId) ? ids : [...ids, targetId])),
+				`${field.label}에 넣지 못했습니다.`,
+				(ids) => ids.filter((id) => id !== recordId),
+			);
+		}
+		for (const recordId of removed) {
+			enqueue(
+				() => update(recordId, (ids) => ids.filter((id) => id !== targetId)),
+				`${field.label}에서 빼지 못했습니다.`,
+				(ids) => (ids.includes(recordId) ? ids : [...ids, recordId]),
+			);
+		}
+	};
 
 	return (
-		<div className="space-y-2">
-			{members === null ? (
-				<p className="text-muted-foreground text-xs">불러오는 중...</p>
-			) : members.length === 0 ? (
-				<p className="text-muted-foreground text-xs">아직 넣은 곳이 없습니다.</p>
-			) : (
-				<ul className="flex flex-wrap gap-1.5">
-					{members.map((member) => (
-						<li
-							key={member.id}
-							className="flex items-center gap-1 rounded-md border bg-muted/40 py-0.5 pr-0.5 pl-2 text-xs"
-						>
-							{member.title}
-							<Button
-								type="button"
-								size="icon-xs"
-								variant="ghost"
-								aria-label={`${member.title}에서 빼기`}
-								disabled={locked}
-								onClick={() =>
-									void run(
-										() => update(member.id, (ids) => ids.filter((id) => id !== targetId)),
-										`${field.label}에서 빼지 못했습니다.`,
-									)
-								}
-							>
-								<X />
-							</Button>
-						</li>
-					))}
-				</ul>
-			)}
-			{addable.length > 0 && (
-				<Select
-					value=""
-					items={items}
-					disabled={locked}
-					onValueChange={(next) => {
-						if (typeof next === "string" && next) {
-							void run(() => update(next, (ids) => [...ids, targetId]), `${field.label}에 넣지 못했습니다.`);
-						}
-					}}
-				>
-					<SelectTrigger size="sm" className="w-full" aria-label={`${field.label}에 추가`}>
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						{items.map((option) => (
-							<SelectItem key={option.value || "none"} value={option.value} disabled={!option.value}>
-								{option.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			)}
-			{field.createInline && !disabled && (
-				<div className="flex items-center gap-1.5">
-					<Input
-						aria-label={`새 ${field.label} 이름`}
-						value={draft}
-						disabled={locked}
-						onChange={(event) => setDraft(event.target.value)}
-						placeholder={`새 ${field.label} 만들고 이 글 넣기`}
-						className={inputClass}
-					/>
-					<Button
-						type="button"
-						size="sm"
-						variant="secondary"
-						className="h-7 px-2 text-xs"
-						disabled={locked || !draft.trim()}
-						onClick={() =>
-							void run(async () => {
-								await cmsFetch("/api/cms/v1/entries", {
+		<RelationCombobox
+			multiple
+			aria-label={field.label}
+			placeholder={members === null ? "불러오는 중..." : "검색하거나 새로 만들기"}
+			options={options}
+			value={shown}
+			disabled={disabled || members === null}
+			onValueChange={change}
+			onCreate={
+				field.createInline
+					? async (title) => {
+							try {
+								// 만들면서 이 글을 넣는다. 목록에 바로 보이게 선택지도 다시 읽는다.
+								const created = await cmsFetch<{ id: string }>("/api/cms/v1/entries", {
 									method: "POST",
-									json: { collection: field.from, metadata: { title: draft.trim(), [field.via]: [targetId] }, mdx: "" },
+									json: { collection: field.from, metadata: { title, [field.via]: [targetId] }, mdx: "" },
 									fallback: "만들지 못했습니다.",
 								});
-								setDraft("");
-								await records.reload();
-							}, "만들지 못했습니다.")
+								createdRef.current.add(created.id);
+								void records.reload();
+								awaitingServerRef.current = true;
+								void load();
+								return created.id;
+							} catch (createError) {
+								throw new Error(errorText(createError, "만들지 못했습니다."));
+							}
 						}
-					>
-						만들기
-					</Button>
-				</div>
-			)}
-			{error && (
-				<p role="alert" className="text-destructive text-xs">
-					{error}
-				</p>
-			)}
-		</div>
+					: undefined
+			}
+		/>
 	);
 }
