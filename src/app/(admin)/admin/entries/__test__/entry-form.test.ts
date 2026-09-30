@@ -40,6 +40,7 @@ describe("번역본 폼(v2 B4)", () => {
 			"$translation",
 			"canonicalUrl",
 			"mdx",
+			"ogImageId",
 			"seoDescription",
 			"seoTitle",
 			"slug",

@@ -152,6 +152,7 @@ function toPost(
 		tags: resolveTags(entry, tagsById),
 		contentMdx: entry.mdx,
 		publishedAt,
+		updatedAt: entry.updatedAt.toISOString(),
 		isEvergreen: readMetadataString(entry.metadata, "policy") === POLICY_EVERGREEN,
 		...(deprecation ? { deprecation } : {}),
 		...(seo ? { seo } : {}),
@@ -176,6 +177,7 @@ function toMemo(
 		tags: resolveTags(entry, tagsById),
 		contentMdx: entry.mdx,
 		publishedAt,
+		updatedAt: entry.updatedAt.toISOString(),
 		...(seo ? { seo } : {}),
 	};
 }

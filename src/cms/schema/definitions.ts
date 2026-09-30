@@ -37,19 +37,23 @@ const publishedAt = fields.datetime({
 	description: "비워 두면 처음 발행한 시각을 씁니다. 미래 발행은 예약 기능을 쓰세요.",
 });
 
-/** 검색엔진·공유용 값(O1 A6). 비우면 공개 화면이 제목·요약을 쓴다. */
+/**
+ * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
+ * 편집 화면은 이 묶음을 전용 SEO 탭(`seo-panel.tsx`)으로 그린다.
+ */
 const seo = {
-	seoTitle: fields.text({ label: "검색 제목 (비우면 글 제목)", localized: true }),
-	seoDescription: fields.text({ label: "검색 설명 (비우면 요약)", multiline: true, localized: true }),
-	canonicalUrl: fields.text({
-		label: "canonical URL",
-		localized: true,
-		placeholder: "/posts/slug 또는 https://...",
-		description:
-			"값을 넣으면 canonical이 이 주소가 되고 sitemap에서 빠집니다. 사이트 경로(/...)와 http(s) 주소만 반영됩니다.",
+	seoTitle: fields.text({ label: "검색 제목", localized: true }),
+	seoDescription: fields.text({ label: "검색 설명", multiline: true, localized: true }),
+	/** 링크 미리보기·검색 결과 이미지(미디어 ID). 비우면 제목으로 만든 카드를 쓴다. */
+	ogImageId: fields.text({ label: "공유 이미지", localized: true }),
+	/** `noindex`면 검색엔진에 숨기고 sitemap에서 뺀다. */
+	seoRobots: fields.select({
+		label: "검색 노출",
+		options: { index: "노출", noindex: "숨기기" },
+		defaultValue: "index",
 	}),
-	/** OG 이미지 미디어 ID. 입력 UI와 head 반영은 아직 없다. */
-	ogImageId: fields.text({ label: "OG 이미지", hidden: true }),
+	/** 다른 곳에 먼저 올린 글의 주소(canonical). 넣으면 sitemap에서 빠진다. 사이트 경로(/...)와 http(s)만 받는다. */
+	canonicalUrl: fields.text({ label: "원본 주소", localized: true, placeholder: "https://" }),
 } as const;
 
 export const post = collection({
@@ -101,7 +105,7 @@ export const post = collection({
 		{ fields: ["title", "slug", "summary"] },
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "발행", fields: ["publishedAt", "policy"] },
-		{ group: "SEO", fields: ["seoTitle", "seoDescription", "canonicalUrl"], collapsed: true },
+		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
 	],
 	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
@@ -114,7 +118,7 @@ export const memo = collection({
 		{ fields: ["title", "slug"] },
 		{ group: "분류", fields: ["tagIds"] },
 		{ group: "발행", fields: ["publishedAt"] },
-		{ group: "SEO", fields: ["seoTitle", "seoDescription", "canonicalUrl"], collapsed: true },
+		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
 	],
 	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });

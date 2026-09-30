@@ -41,7 +41,7 @@ describe("posts/[slug] 페이지의 alias 판정", () => {
 	it("퍼센트 인코딩된 한글 slug를 alias로 오인하지 않는다", async () => {
 		redirects.length = 0;
 		// 리포지토리는 디코딩해서 찾아내고, 정규 slug(한글)를 돌려준다.
-		getPost.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목" });
+		getPost.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목", category: { slug: "dev", label: "개발" }, tags: [] });
 
 		await BlogPost({ params: Promise.resolve({ slug: ENCODED }) });
 
@@ -56,7 +56,7 @@ describe("posts/[slug] 페이지의 alias 판정", () => {
 
 	it("과거 주소는 정규 주소로 308 이동하되 헤더에 넣을 수 있게 인코딩한다", async () => {
 		redirects.length = 0;
-		getPost.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목" });
+		getPost.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목", category: { slug: "dev", label: "개발" }, tags: [] });
 
 		await expect(BlogPost({ params: Promise.resolve({ slug: "old-alias" }) })).rejects.toThrow(/REDIRECT:/);
 

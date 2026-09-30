@@ -9,6 +9,7 @@ import { translator } from "@/libs/i18n/translate";
 import { MemoDetailPageContent } from "../(content)/memos/[slug]/memo-detail-page-content";
 import { PostDetailPageContent } from "../(content)/posts/[slug]/post-detail-page-content";
 import { languageAlternates, openGraphLocale } from "./i18n-metadata";
+import { type ArticleFacts, ArticleStructuredData, articleMetadata } from "./structured-data";
 
 /**
  * 게시글·메모 상세(v2 B4에서 언어를 받도록 옮겼다). 기본 언어 주소(`/posts/slug`)와
@@ -19,6 +20,37 @@ import { languageAlternates, openGraphLocale } from "./i18n-metadata";
 type Section = { collection: "post" | "memo"; path: "/posts" | "/memos" };
 const POSTS: Section = { collection: "post", path: "/posts" };
 const MEMOS: Section = { collection: "memo", path: "/memos" };
+
+type PublishedPostData = NonNullable<Awaited<ReturnType<typeof getPost>>>;
+type PublishedMemoData = NonNullable<Awaited<ReturnType<typeof getMemo>>>;
+
+const publishedTimes = (entry: PublishedPostData | PublishedMemoData) =>
+	entry.status === "published" ? { publishedAt: entry.publishedAt, updatedAt: entry.updatedAt } : {};
+
+function postFacts(locale: Locale, post: PublishedPostData): ArticleFacts {
+	return {
+		title: post.seo?.title ?? post.title,
+		description: post.seo?.description ?? post.excerpt,
+		locale,
+		path: localizePath(locale, `/posts/${post.slug}`),
+		...publishedTimes(post),
+		section: post.category.label,
+		tags: post.tags.map((tag) => tag.label),
+		seo: post.seo,
+	};
+}
+
+function memoFacts(locale: Locale, memo: PublishedMemoData): ArticleFacts {
+	return {
+		title: memo.seo?.title ?? memo.title,
+		description: memo.seo?.description,
+		locale,
+		path: localizePath(locale, `/memos/${memo.slug}`),
+		...publishedTimes(memo),
+		tags: memo.tags.map((tag) => tag.label),
+		seo: memo.seo,
+	};
+}
 
 /** 같은 번역 묶음에서 공개된 언어의 주소. */
 async function translationPaths(section: Section, translationGroupId: string | undefined) {
@@ -59,17 +91,19 @@ export async function postDetailMetadata(locale: Locale, slug: string): Promise<
 	const title = post.seo?.title ?? post.title;
 	const description = post.seo?.description ?? post.excerpt;
 	const translations = await translationPaths(POSTS, post.translationGroupId);
+	const article = articleMetadata(postFacts(locale, post));
 
 	return {
 		title,
 		description,
+		...(article.robots ? { robots: article.robots } : {}),
 		// 관리자가 canonical을 지정하면 canonical만 바꾸고, OG 주소는 이 페이지의 실제 주소를 유지한다(M7-FE-2).
 		alternates: {
 			canonical: post.seo?.canonicalUrl ?? url,
 			...(translations.length > 1 ? { languages: languageAlternates(translations) } : {}),
 		},
 		openGraph: {
-			type: "article",
+			...article.openGraph,
 			title,
 			description,
 			url,
@@ -98,15 +132,21 @@ export async function PostDetailView({ locale, slug }: { locale: Locale; slug: s
 	]);
 
 	return (
-		<PostDetailPageContent
-			post={post}
-			postList={postList.list}
-			locale={locale}
-			detailPathnamePrefix={localizePath(locale, "/posts")}
-			listPathname={localizePath(locale, "/posts")}
-			languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
-			resolveHref={resolveHref}
-		/>
+		<>
+			<ArticleStructuredData
+				facts={postFacts(locale, post)}
+				list={{ name: "posts.title", path: localizePath(locale, "/posts") }}
+			/>
+			<PostDetailPageContent
+				post={post}
+				postList={postList.list}
+				locale={locale}
+				detailPathnamePrefix={localizePath(locale, "/posts")}
+				listPathname={localizePath(locale, "/posts")}
+				languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
+				resolveHref={resolveHref}
+			/>
+		</>
 	);
 }
 
@@ -118,16 +158,18 @@ export async function memoDetailMetadata(locale: Locale, slug: string): Promise<
 	const title = memo.seo?.title ?? memo.title;
 	const description = memo.seo?.description;
 	const translations = await translationPaths(MEMOS, memo.translationGroupId);
+	const article = articleMetadata(memoFacts(locale, memo));
 
 	return {
 		title,
+		...(article.robots ? { robots: article.robots } : {}),
 		...(description ? { description } : {}),
 		alternates: {
 			canonical: memo.seo?.canonicalUrl ?? url,
 			...(translations.length > 1 ? { languages: languageAlternates(translations) } : {}),
 		},
 		openGraph: {
-			type: "article",
+			...article.openGraph,
 			title,
 			url,
 			...(description ? { description } : {}),
@@ -155,12 +197,18 @@ export async function MemoDetailView({ locale, slug }: { locale: Locale; slug: s
 	]);
 
 	return (
-		<MemoDetailPageContent
-			memo={memo}
-			locale={locale}
-			listPathname={localizePath(locale, "/memos")}
-			languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
-			resolveHref={resolveHref}
-		/>
+		<>
+			<ArticleStructuredData
+				facts={memoFacts(locale, memo)}
+				list={{ name: "memos.title", path: localizePath(locale, "/memos") }}
+			/>
+			<MemoDetailPageContent
+				memo={memo}
+				locale={locale}
+				listPathname={localizePath(locale, "/memos")}
+				languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
+				resolveHref={resolveHref}
+			/>
+		</>
 	);
 }

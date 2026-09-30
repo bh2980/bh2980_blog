@@ -63,6 +63,7 @@ describe("컬렉션 정의(v2 B1)", () => {
 			seoDescription: "string",
 			canonicalUrl: "string",
 			ogImageId: "string",
+			seoRobots: "string",
 		});
 		expect(COLLECTION_DEFINITIONS.memo.fields).toEqual({
 			title: "string",
@@ -72,6 +73,7 @@ describe("컬렉션 정의(v2 B1)", () => {
 			seoDescription: "string",
 			canonicalUrl: "string",
 			ogImageId: "string",
+			seoRobots: "string",
 		});
 		expect(COLLECTION_DEFINITIONS.category.fields).toEqual({ title: "string" });
 		expect(COLLECTION_DEFINITIONS.collection.fields).toEqual({
@@ -170,9 +172,9 @@ describe("정의에서 만든 폼 변환", () => {
 				publishedAt: "",
 			},
 			"post",
-			{ ogImageId: "kept", summary: "old" },
+			{ summary: "old" },
 		);
-		expect(built).toEqual({ metadata: { title: "제목 ", categoryId: CATEGORY, seoTitle: "검색", ogImageId: "kept" } });
+		expect(built).toEqual({ metadata: { title: "제목 ", categoryId: CATEGORY, seoTitle: "검색" } });
 	});
 
 	it("이미 저장된 정책은 기본값이어도 갱신하고, 날짜는 서울 시간에서 ISO로 바꾼다", () => {

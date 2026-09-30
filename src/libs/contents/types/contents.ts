@@ -12,6 +12,8 @@ export type DraftState = {
 export type PublishedState = {
 	status: "published";
 	publishedAt: string;
+	/** 공개본이 마지막으로 바뀐 시각(ISO). 구조화 데이터·OG의 수정일이다. */
+	updatedAt?: string;
 };
 
 export type Category = { slug: string; label: string };
@@ -24,13 +26,15 @@ export type Tag = { slug: string; label: string };
  * - `title`: head·OG 제목. 미입력 시 글 title
  * - `description`: meta description·OG 설명. 미입력 시 글 summary
  * - `canonicalUrl`: 지정하면 canonical이 이 값이 되고 sitemap에서 제외된다
- * - `ogImageId`: OG 이미지로 쓸 media id (렌더 해석은 v2)
+ * - `ogImageId`: 공유 이미지(OG·X 카드)로 쓸 media id. 없으면 제목으로 만든 카드
+ * - `noindex`: 검색엔진에 숨긴다(robots noindex, sitemap 제외)
  */
 export type SeoMetadata = {
 	title?: string;
 	description?: string;
 	canonicalUrl?: string;
 	ogImageId?: string;
+	noindex?: true;
 };
 
 type BaseSeo = {

@@ -35,7 +35,7 @@ export type PublicExportEntry = z.infer<typeof publicExportEntrySchema>;
  * M7-FE-2: 공개 head로 나가는 SEO 메타 키. 명시 원시값만 허용한다는 O1 A6 규칙을 따른다.
  * `ogImageId`는 저장·내보내기는 하되 head 반영은 v2다.
  */
-const SEO_PUBLIC_KEYS: readonly string[] = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"];
+const SEO_PUBLIC_KEYS: readonly string[] = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId", "seoRobots"];
 
 /**
  * 공개 metadata allowlist. 컬렉션별 공개 필드만 골라 내보내므로

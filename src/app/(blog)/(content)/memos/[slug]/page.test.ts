@@ -41,7 +41,7 @@ const ENCODED = encodeURIComponent(KOREAN_SLUG);
 describe("memos/[slug] 페이지의 alias 판정", () => {
 	it("퍼센트 인코딩된 한글 slug를 alias로 오인하지 않는다", async () => {
 		redirects.length = 0;
-		getMemo.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목" });
+		getMemo.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목", tags: [] });
 
 		await MemoPage({ params: Promise.resolve({ slug: ENCODED }) });
 
@@ -50,7 +50,7 @@ describe("memos/[slug] 페이지의 alias 판정", () => {
 
 	it("과거 주소는 정규 주소로 308 이동하되 헤더에 넣을 수 있게 인코딩한다", async () => {
 		redirects.length = 0;
-		getMemo.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목" });
+		getMemo.mockResolvedValue({ slug: KOREAN_SLUG, title: "제목", tags: [] });
 
 		await expect(MemoPage({ params: Promise.resolve({ slug: "old-alias" }) })).rejects.toThrow(/REDIRECT:/);
 

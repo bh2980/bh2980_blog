@@ -14,6 +14,7 @@ import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
 import type { CmsIssue } from "../api-error-message";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
+import { SeoPanel } from "./seo-panel";
 
 const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
@@ -161,7 +162,18 @@ export function InspectorPanel({
 
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
 				<TabsContent value="fields">{fields((group) => !isSeoGroup(group))}</TabsContent>
-				{hasSeo && <TabsContent value="seo">{fields(isSeoGroup)}</TabsContent>}
+				{hasSeo && (
+					<TabsContent value="seo">
+						<SeoPanel
+							collection={collection}
+							form={form}
+							entry={entry}
+							disabled={disabled}
+							issues={publishIssues}
+							onChange={onChange}
+						/>
+					</TabsContent>
+				)}
 			</div>
 		</Tabs>
 	);

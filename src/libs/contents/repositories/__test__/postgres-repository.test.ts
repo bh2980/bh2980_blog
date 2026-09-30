@@ -124,6 +124,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 			],
 			contentMdx: "# 본문 1",
 			publishedAt: DATE_ISO,
+			updatedAt: DATE_ISO,
 			isEvergreen: true,
 		});
 	});
@@ -223,6 +224,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 			tags: [{ slug: "react", label: "React" }],
 			contentMdx: "",
 			publishedAt: DATE_ISO,
+			updatedAt: DATE_ISO,
 		});
 		expect(filtered.map((item) => item.slug)).toEqual(["memo-a"]);
 	});

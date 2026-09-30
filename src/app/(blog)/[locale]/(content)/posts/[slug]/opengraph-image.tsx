@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { createOgImageResponse, OG_ALTER_ALT, OG_CONTENT_TYPE, OG_SIZE } from "@/libs/contents/og";
+import { createEntryOgImage } from "@/libs/contents/entry-og";
+import { OG_ALTER_ALT, OG_CONTENT_TYPE, OG_SIZE } from "@/libs/contents/og";
 import { getPost } from "@/libs/contents/services/post";
 import { isLocale } from "@/libs/i18n/locales";
 
@@ -21,5 +22,5 @@ export async function generateImageMetadata({ params }: Props) {
 export default async function Image({ params }: Props) {
 	const entry = await load(params);
 	if (!entry) notFound();
-	return createOgImageResponse(entry.title, { noStore: true });
+	return createEntryOgImage(entry);
 }

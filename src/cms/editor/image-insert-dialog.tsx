@@ -23,6 +23,8 @@ export interface ImageInsertion {
 	alt: string;
 	decorative: boolean;
 	caption: string;
+	/** 미리보기용 공개 주소. 아직 없으면 `null`. */
+	publicUrl: string | null;
 }
 
 interface LibraryItem {
@@ -41,13 +43,24 @@ interface ImageInsertDialogProps {
 	initialFile: File | null;
 	onClose: () => void;
 	onInsert: (image: ImageInsertion) => void;
+	/** `pick`은 본문에 넣지 않고 이미지 하나만 고른다(공유 이미지). 대체 텍스트·캡션을 묻지 않는다. */
+	mode?: "insert" | "pick";
+	title?: string;
 }
 
 /**
  * 이미지 삽입(§7.1). 새 파일 업로드(원본 유지 기본, 웹용 최적화 선택) 또는 라이브러리 재사용.
  * 라이브러리의 기본 alt·caption은 삽입할 때 복사한다(§7.3). 설명이 필요한 이미지는 alt가 있어야 한다.
  */
-export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: ImageInsertDialogProps) {
+export function ImageInsertDialog({
+	open,
+	initialFile,
+	onClose,
+	onInsert,
+	mode = "insert",
+	title = "이미지 삽입",
+}: ImageInsertDialogProps) {
+	const picking = mode === "pick";
 	const altId = useId();
 	const captionId = useId();
 	const searchId = useId();
@@ -119,7 +132,7 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 	}, [open, tab, search]);
 
 	const isUploading = progress !== null;
-	const needsAlt = !decorative && !alt.trim();
+	const needsAlt = !picking && !decorative && !alt.trim();
 	const canInsert = !isUploading && !needsAlt && (tab === "upload" ? Boolean(prepared) : Boolean(picked));
 
 	const pick = (item: LibraryItem) => {
@@ -133,14 +146,26 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 		if (!canInsert) return;
 		setError(null);
 		if (tab === "library" && picked) {
-			onInsert({ mediaId: picked.id, alt: decorative ? "" : alt.trim(), decorative, caption: caption.trim() });
+			onInsert({
+				mediaId: picked.id,
+				alt: decorative ? "" : alt.trim(),
+				decorative,
+				caption: caption.trim(),
+				publicUrl: picked.publicUrl,
+			});
 			return;
 		}
 		if (!prepared) return;
 		setProgress(0);
 		try {
 			const uploaded = await uploadImageFile(prepared, setProgress);
-			onInsert({ mediaId: uploaded.mediaId, alt: decorative ? "" : alt.trim(), decorative, caption: caption.trim() });
+			onInsert({
+				mediaId: uploaded.mediaId,
+				alt: decorative ? "" : alt.trim(),
+				decorative,
+				caption: caption.trim(),
+				publicUrl: uploaded.publicUrl,
+			});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
 		} finally {
@@ -152,7 +177,7 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 		<Dialog open={open} onOpenChange={(next) => !next && !isUploading && onClose()}>
 			<DialogContent className="max-w-lg" showCloseButton={!isUploading}>
 				<DialogHeader>
-					<DialogTitle>이미지 삽입</DialogTitle>
+					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription>새 파일을 올리거나 미디어 라이브러리에서 고르세요.</DialogDescription>
 				</DialogHeader>
 
@@ -234,7 +259,7 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 					</div>
 				)}
 
-				<div className="space-y-2 text-sm">
+				<div className={cn("space-y-2 text-sm", picking && "hidden")}>
 					<Label htmlFor={altId}>대체 텍스트</Label>
 					<Input
 						id={altId}
@@ -277,7 +302,15 @@ export function ImageInsertDialog({ open, initialFile, onClose, onInsert }: Imag
 						취소
 					</Button>
 					<Button type="button" disabled={!canInsert} onClick={() => void confirm()}>
-						{tab === "upload" ? (error ? "다시 업로드" : "업로드 및 삽입") : "삽입"}
+						{tab === "upload"
+							? error
+								? "다시 업로드"
+								: picking
+									? "업로드"
+									: "업로드 및 삽입"
+							: picking
+								? "선택"
+								: "삽입"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

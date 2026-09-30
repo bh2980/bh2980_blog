@@ -16,6 +16,7 @@ type Item = { locale: Locale; group: string; path: string; lastModified?: string
  * `alternates.languages`(hreflang)로 잇는다. 기본 언어 주소는 `x-default`다.
  *
  * - custom canonical(`seo.canonicalUrl`)을 지정한 글은 대표 주소를 다른 곳으로 선언한 것이므로 자기 sitemap에서 뺀다.
+ * - 검색엔진에 숨긴 글(`seo.noindex`)도 뺀다.
  * - 공개 여부는 호출자가 이미 좁혀 놓은 목록을 신뢰한다(비공개 글은 여기 오지 않는다).
  * - 첫 화면·목록은 기본 언어와, 공개된 글이 하나라도 있는 언어만 넣는다.
  */
@@ -23,14 +24,14 @@ export function buildSitemapEntries({ hostUrl, posts, memos }: SitemapSource): M
 	const absolute = (path: string) => (path === "/" ? hostUrl : new URL(`${hostUrl}${path}`).toString());
 	const toItems = (entries: readonly (Post | Memo)[], section: "/posts" | "/memos"): Item[] =>
 		entries
-			.filter((entry) => entry.status === "published" && !entry.seo?.canonicalUrl)
+			.filter((entry) => entry.status === "published" && !entry.seo?.canonicalUrl && !entry.seo?.noindex)
 			.map((entry) => {
 				const locale = entry.locale ?? DEFAULT_LOCALE;
 				return {
 					locale,
 					group: `${section}:${entry.translationGroupId ?? entry.slug}`,
 					path: localizePath(locale, `${section}/${entry.slug}`),
-					lastModified: entry.status === "published" ? entry.publishedAt : undefined,
+					lastModified: entry.status === "published" ? (entry.updatedAt ?? entry.publishedAt) : undefined,
 				};
 			});
 

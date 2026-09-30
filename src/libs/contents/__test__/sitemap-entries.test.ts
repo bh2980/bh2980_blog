@@ -77,6 +77,18 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(urls).not.toContain(`${HOST}/memos/n`);
 	});
 
+	it("검색엔진에 숨긴 글은 sitemap에서 제외한다", () => {
+		const entries = buildSitemapEntries({
+			hostUrl: HOST,
+			posts: [post("a"), post("hidden", { noindex: true })],
+			memos: [],
+		});
+		const urls = entries.map((entry) => entry.url);
+
+		expect(urls).toContain(`${HOST}/posts/a`);
+		expect(urls).not.toContain(`${HOST}/posts/hidden`);
+	});
+
 	it("canonical이 없으면 SEO 제목만 있어도 포함한다", () => {
 		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [post("c", { title: "검색 제목" })], memos: [] });
 
