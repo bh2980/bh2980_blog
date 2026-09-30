@@ -16,7 +16,7 @@ export const POST = adminRoute<IdParams>(async ({ request, params }) => {
 	return json(schedule, { status: 201 });
 });
 
-/** 예약 해제(`예약 해제 후 편집`). 대기 중인 예약이 없으면 404다. */
+/** 예약 해제(`예약 해제`). 대기 중인 예약이 없으면 404다. */
 export const DELETE = adminRoute<IdParams>(async ({ request, params }) => {
 	const scheduleId = request.nextUrl.searchParams.get("scheduleId");
 	if (!scheduleId) throw new HttpError(400, "invalid_input", "scheduleId query parameter is required");

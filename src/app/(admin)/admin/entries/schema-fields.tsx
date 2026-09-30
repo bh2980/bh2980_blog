@@ -1,12 +1,11 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronRight, RefreshCw } from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
 import { isRecordCollection } from "@/cms/core/collections";
 import type { LayoutGroup } from "@/cms/schema/collection";
 import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@/cms/schema/derive";
 import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@/cms/schema/fields";
-import { MultiCombobox } from "@/components/multi-combobox";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -18,8 +17,10 @@ import {
 	Field as UiField,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { LOCALE_INFO, PREFIXED_LOCALES } from "@/libs/i18n/locales";
 import { errorText } from "../admin-api";
@@ -35,9 +36,9 @@ import {
 	inputClass,
 	OrderedEntryList,
 } from "./field-inputs";
+import { RelationCombobox } from "./relation-combobox";
 
 const fieldId = (name: string) => `cms-${name}`;
-const actionButton = "h-7 px-2 text-xs";
 
 interface SchemaFieldsProps {
 	collection: SchemaCollection;
@@ -59,6 +60,10 @@ interface SchemaFieldsProps {
 	 * 번역본 편집(v2 B4). 언어별 값이 아닌 필드(공통 값)는 `values`(원문 값)로 읽기 전용으로 그리고 `note`를 붙인다.
 	 */
 	locked?: { values: EntryForm; note: ReactNode };
+	/** 이 묶음만 그린다(편집 화면 속성 칸의 탭별 나누기). 없으면 모두. */
+	include?: (group: LayoutGroup) => boolean;
+	/** 묶음 제목 모양. `plain`은 접지 않는 작은 제목이다(편집 화면 속성 칸). */
+	sections?: "collapsible" | "plain";
 }
 
 /** 필드 하나의 라벨·필수 표시·오류·도움말. */
@@ -89,111 +94,45 @@ function FieldRow({
 	);
 }
 
-/** record 대상 관계(카테고리·태그·모음집). 한 개는 선택, 여러 개는 다중 선택이고 `createInline`이면 바로 만든다. */
-function RecordRelationInput({ name, field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
+/** record 대상 관계(카테고리·태그·모음집). 검색해 고르고, `createInline`이면 없는 이름을 목록에서 바로 만든다. */
+function RecordRelationInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
 	const relation = field as RelationField;
 	const records = useTaxonomy(relation.to as RecordCollection);
-	const [draft, setDraft] = useState("");
-	const [createError, setCreateError] = useState<string | null>(null);
-	const selected = Array.isArray(value) ? value : [];
-
-	const create = async () => {
-		const title = draft.trim();
-		if (!title) return;
-		setCreateError(null);
-		try {
-			const created = await records.create(title);
-			onChange(relation.many ? [...selected, created.id] : created.id);
-			setDraft("");
-		} catch (error) {
-			setCreateError(errorText(error, "만들지 못했습니다."));
-		}
-	};
-
-	const createRow = relation.createInline && !context.disabled && (
-		<div className="flex items-center gap-1.5 pt-1">
-			<Input
-				aria-label={`새 ${relation.label} 이름`}
-				value={draft}
-				disabled={context.disabled}
-				onChange={(event) => setDraft(event.target.value)}
-				placeholder={relation.many ? `새 ${relation.label} 만들고 바로 추가` : `새 ${relation.label} 추가`}
-				className={inputClass}
-			/>
-			<Button
-				type="button"
-				size="sm"
-				variant="secondary"
-				className={actionButton}
-				disabled={context.disabled || !draft.trim()}
-				onClick={() => void create()}
-			>
-				{relation.many ? "생성" : "추가"}
-			</Button>
-		</div>
+	const selected = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
+	const options = useMemo(
+		() => records.options.map((option) => ({ value: option.id, label: option.title })),
+		[records.options],
 	);
-	const error = (createError ?? records.error) && (
-		<p role="alert" className="text-destructive text-xs">
-			{createError ?? records.error}
-		</p>
-	);
-
-	if (relation.many) {
-		return (
-			<>
-				<MultiCombobox
-					aria-label={relation.label}
-					placeholder={relation.placeholder ?? `${relation.label} 검색·선택`}
-					emptyText="일치하는 항목이 없습니다."
-					options={[
-						...records.options.map((option) => ({ value: option.id, label: option.title })),
-						// 목록에 아직 없는 선택값(방금 만든 항목 등)도 칩으로 보이게 한다.
-						...selected
-							.filter((selectedId) => !records.options.some((option) => option.id === selectedId))
-							.map((selectedId) => ({ value: selectedId, label: selectedId.slice(0, 8) })),
-					]}
-					value={selected}
-					disabled={context.disabled}
-					onValueChange={(next) => onChange(next)}
-				/>
-				{createRow}
-				{error}
-			</>
-		);
-	}
-
-	const items = [
-		{ value: "", label: `${relation.label} 선택...` },
-		...records.options.map((option) => ({ value: option.id, label: option.title })),
-	];
 	return (
 		<>
-			<Select
-				value={typeof value === "string" ? value : ""}
-				items={items}
+			<RelationCombobox
+				id={id}
+				multiple={Boolean(relation.many)}
+				aria-label={relation.label}
+				placeholder={relation.placeholder ?? (relation.createInline ? "검색하거나 새로 만들기" : "검색")}
+				options={options}
+				value={selected}
+				invalid={invalid}
+				describedBy={describedBy}
 				disabled={context.disabled}
-				onValueChange={(next) => onChange(typeof next === "string" && next ? next : null)}
-			>
-				<SelectTrigger
-					id={id}
-					size="sm"
-					className="w-full"
-					aria-invalid={invalid || undefined}
-					aria-describedby={describedBy}
-					name={name}
-				>
-					<SelectValue />
-				</SelectTrigger>
-				<SelectContent>
-					{items.map((option) => (
-						<SelectItem key={option.value || "none"} value={option.value}>
-							{option.label}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-			{createRow}
-			{error}
+				onValueChange={(next) => onChange(relation.many ? next : (next[0] ?? null))}
+				onCreate={
+					relation.createInline
+						? async (title) => {
+								try {
+									return (await records.create(title)).id;
+								} catch (error) {
+									throw new Error(errorText(error, "만들지 못했습니다."));
+								}
+							}
+						: undefined
+				}
+			/>
+			{records.error && (
+				<p role="alert" className="text-destructive text-xs">
+					{records.error}
+				</p>
+			)}
 		</>
 	);
 }
@@ -287,6 +226,8 @@ export function SchemaFields({
 	omit = [],
 	showDescriptions = true,
 	locked,
+	include,
+	sections = "collapsible",
 }: SchemaFieldsProps) {
 	const schema = schemaOf(collection);
 	const issueFor = (path: string) => issues.find((issue) => issue.path === path);
@@ -316,28 +257,6 @@ export function SchemaFields({
 			onChange: readOnly ? () => {} : (value) => setValue(name, value),
 		};
 		const help = readOnly && locked ? locked.note : showDescriptions ? field.description : undefined;
-		// 여러 개 관계는 입력이 여럿이라 묶음 자체에 초점을 줄 수 있게 한다(발행 문제로 이동).
-		if (field.kind === "relation" && field.many && isRecordCollection(field.to)) {
-			return (
-				<fieldset
-					key={name}
-					id={fieldId(name)}
-					tabIndex={-1}
-					aria-invalid={Boolean(issue) || undefined}
-					aria-describedby={describedBy(name)}
-					className="space-y-2"
-				>
-					<legend className="font-semibold text-muted-foreground text-xs">
-						{field.label} {field.required && <span className="text-destructive">*</span>}
-					</legend>
-					{issue && <FieldError id={`${fieldId(name)}-error`}>{cmsIssueMessage(issue)}</FieldError>}
-					<fieldset disabled={readOnly} className="space-y-2">
-						<DefaultInput {...props} />
-					</fieldset>
-					{help && <FieldDescription className="text-[11px]">{help}</FieldDescription>}
-				</fieldset>
-			);
-		}
 		return (
 			<FieldRow
 				key={name}
@@ -363,29 +282,36 @@ export function SchemaFields({
 				issue={issue}
 				help={showDescriptions ? field.description : undefined}
 			>
-				<div className="flex gap-1.5">
-					<Input
+				<InputGroup className="h-8">
+					<InputGroupInput
 						id={fieldId(name)}
 						aria-invalid={Boolean(issue) || undefined}
 						aria-describedby={describedBy(name)}
 						value={form.slug}
 						onChange={(event) => (onSlugChange ?? ((slug) => onChange({ slug })))(event.target.value)}
 						placeholder={slugPlaceholder ?? field.placeholder}
-						className={`${inputClass} font-mono`}
+						className="font-mono text-xs md:text-xs"
 					/>
 					{onRegenerateSlug && field.from && (
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							className={actionButton}
-							disabled={context.disabled}
-							onClick={onRegenerateSlug}
-						>
-							제목에서
-						</Button>
+						<InputGroupAddon align="inline-end">
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<InputGroupButton
+											size="icon-xs"
+											aria-label="제목으로 다시 만들기"
+											disabled={context.disabled}
+											onClick={onRegenerateSlug}
+										/>
+									}
+								>
+									<RefreshCw aria-hidden />
+								</TooltipTrigger>
+								<TooltipContent side="bottom">제목으로 다시 만들기</TooltipContent>
+							</Tooltip>
+						</InputGroupAddon>
 					)}
-				</div>
+				</InputGroup>
 			</FieldRow>
 		);
 	};
@@ -442,7 +368,9 @@ export function SchemaFields({
 
 	const placed = new Set((schema.layout ?? []).flatMap((group) => group.fields));
 	const rest = Object.keys(schema.fields).filter((name) => !placed.has(name));
-	const groups: LayoutGroup[] = [...(schema.layout ?? []), ...(rest.length > 0 ? [{ fields: rest }] : [])];
+	const groups: LayoutGroup[] = [...(schema.layout ?? []), ...(rest.length > 0 ? [{ fields: rest }] : [])].filter(
+		(group) => !include || include(group),
+	);
 
 	return (
 		<>
@@ -458,6 +386,22 @@ export function SchemaFields({
 						<div key={key} className="space-y-4">
 							{visible.map(renderField)}
 						</div>
+					);
+				}
+				if (sections === "plain") {
+					// 묶음이 하나뿐이면(탭 하나에 한 묶음) 제목을 달지 않는다.
+					if (groups.length === 1) {
+						return (
+							<div key={key} className="space-y-4">
+								{visible.map(renderField)}
+							</div>
+						);
+					}
+					return (
+						<section key={key} aria-label={group.group} className="space-y-4 border-t pt-4">
+							<h3 className="font-medium text-[11px] text-muted-foreground uppercase tracking-wide">{group.group}</h3>
+							{visible.map(renderField)}
+						</section>
 					);
 				}
 				return (

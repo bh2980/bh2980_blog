@@ -10,7 +10,7 @@ import {
 	type LucideIcon,
 	MoreHorizontal,
 	PanelLeft,
-	PanelRightOpen,
+	PanelRight,
 	Save,
 	SunMoon,
 	Trash,
@@ -392,14 +392,15 @@ export function EntryEditorShell({
 		setPendingBodyPosition(undefined);
 	}, [pendingBodyPosition, editorMode, form.mdx]);
 
+	// 속성 필드는 속성 칸이 그 탭을 열고 초점을 옮긴다. 여기서는 본문 위 제목만 다룬다.
 	useEffect(() => {
-		if (!pendingFieldPath || (pendingFieldPath !== "title-canvas" && !isInspectorOpen)) return;
-		const control = document.getElementById(`cms-${pendingFieldPath}`);
+		if (pendingFieldPath !== "title-canvas") return;
+		const control = document.getElementById("cms-title-canvas");
 		if (control) {
 			control.focus();
 			setPendingFieldPath(null);
 		}
-	}, [pendingFieldPath, isInspectorOpen]);
+	}, [pendingFieldPath]);
 
 	/** 명시적 발행만 현재 입력을 저장한다. 다른 작업은 미저장 입력이 있으면 먼저 저장하도록 안내한다. */
 	const ensureSaved = async (purpose: string, saveChanges = false) => {
@@ -478,7 +479,7 @@ export function EntryEditorShell({
 					description: warnings.slice(0, 5).map(cmsIssueMessage).join("\n"),
 					duration: 10000,
 					action: warnings[0]?.position
-						? { label: "본문 이동", onClick: () => focusIssue(warnings[0] as CmsIssue) }
+						? { label: "이동", onClick: () => focusIssue(warnings[0] as CmsIssue) }
 						: undefined,
 				});
 			} else {
@@ -588,7 +589,7 @@ export function EntryEditorShell({
 		const hasGroup = otherLocales.length > 0;
 		const requests: Record<LifecycleAction, ConfirmRequest> = {
 			archive: {
-				title: "글 보관",
+				title: "보관",
 				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
 				confirmLabel: "보관",
 				onConfirm: () => runLifecycle("archive", "보관했습니다."),
@@ -955,7 +956,7 @@ export function EntryEditorShell({
 					)}
 					{scheduleLocked ? (
 						<Button type="button" size="sm" className="ml-1" onClick={() => void handleCancelSchedule()}>
-							예약 해제 후 편집
+							예약 해제
 						</Button>
 					) : isTrashed ? (
 						<Button type="button" size="sm" className="ml-1" onClick={() => confirmLifecycle("restore")}>
@@ -974,9 +975,27 @@ export function EntryEditorShell({
 							disabled={isSubmitting}
 							onClick={() => void handlePublish()}
 						>
-							{entry?.status === "published" ? "변경사항 발행" : "발행하기"}
+							발행
 						</Button>
 					)}
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									type="button"
+									size="icon-sm"
+									variant="ghost"
+									aria-label="속성"
+									aria-pressed={isInspectorOpen}
+									className="size-8 text-muted-foreground aria-pressed:bg-muted aria-pressed:text-foreground"
+									onClick={() => setIsInspectorOpen((open) => !open)}
+								>
+									<PanelRight aria-hidden className="size-4" />
+								</Button>
+							}
+						/>
+						<TooltipContent side="bottom">{isInspectorOpen ? "속성 닫기" : "속성 열기"}</TooltipContent>
+					</Tooltip>
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							render={<Button type="button" size="icon-sm" variant="ghost" aria-label="더보기" title="더보기" />}
@@ -986,7 +1005,7 @@ export function EntryEditorShell({
 						<DropdownMenuContent align="end" className="w-56">
 							<DropdownMenuItem disabled={isReadOnly} onClick={() => void handleSaveNow()}>
 								<Save aria-hidden />
-								지금 저장
+								저장
 								<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							{entry && !isTrashed && (
@@ -1087,7 +1106,7 @@ export function EntryEditorShell({
 								className="h-auto whitespace-normal px-0 text-left"
 								onClick={() => focusIssue(issue)}
 							>
-								{cmsIssueMessage(issue)} — 수정할 곳으로 이동
+								{cmsIssueMessage(issue)}
 							</Button>
 						</li>
 					))}
@@ -1111,7 +1130,7 @@ export function EntryEditorShell({
 							})
 						}
 					>
-						확인함
+						확인
 					</Button>
 				</output>
 			)}
@@ -1156,8 +1175,9 @@ export function EntryEditorShell({
 					/>
 				</div>
 
-				{isInspectorOpen ? (
-					<div className="absolute inset-0 z-10 lg:static lg:inset-auto lg:w-80">
+				{isInspectorOpen && (
+					// 좁은 화면은 본문 위에 덮고, 넓은 화면은 옆에 고정 폭으로 둔다.
+					<div className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[21rem] lg:static lg:z-auto lg:shrink-0 lg:shadow-none">
 						<InspectorPanel
 							collection={collection}
 							form={form}
@@ -1180,11 +1200,9 @@ export function EntryEditorShell({
 							}}
 							onChange={setForm}
 							onClose={() => setIsInspectorOpen(false)}
+							focusPath={pendingFieldPath !== "title-canvas" ? pendingFieldPath : null}
+							onFocused={() => setPendingFieldPath(null)}
 						/>
-					</div>
-				) : (
-					<div className="flex w-12 shrink-0 justify-center border-l bg-background pt-3">
-						<ToolbarAction label="속성 열기" icon={PanelRightOpen} onClick={() => setIsInspectorOpen(true)} />
 					</div>
 				)}
 			</div>
@@ -1219,7 +1237,7 @@ export function EntryEditorShell({
 								setRecovery(null);
 							}}
 						>
-							서버 내용 유지 (복구본 삭제)
+							복구본 삭제
 						</Button>
 						{recovery?.kind === "restore" && (
 							<Button type="button" onClick={() => applyRecovered({ ...EMPTY_FORM, ...recovery.backup.snapshot })}>
@@ -1251,7 +1269,7 @@ export function EntryEditorShell({
 							닫기
 						</Button>
 						<Button type="button" variant="outline" onClick={() => window.location.reload()}>
-							서버 최신본으로 다시 열기
+							다시 불러오기
 						</Button>
 						<Button
 							type="button"
@@ -1273,14 +1291,14 @@ export function EntryEditorShell({
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
 						<DialogTitle>템플릿 적용</DialogTitle>
-						<DialogDescription>현재 본문이 선택한 템플릿으로 교체됩니다. 계속하시겠습니까?</DialogDescription>
+						<DialogDescription>현재 본문이 선택한 템플릿으로 바뀝니다.</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={() => setPendingTemplateMdx(null)}>
 							취소
 						</Button>
 						<Button type="button" onClick={() => pendingTemplateMdx !== null && applyTemplate(pendingTemplateMdx)}>
-							적용
+							템플릿 적용
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1296,7 +1314,7 @@ export function EntryEditorShell({
 						</DialogDescription>
 					</DialogHeader>
 					<Field>
-						<FieldLabel htmlFor="schedule-date">예약 일시 (서울 시간)</FieldLabel>
+						<FieldLabel htmlFor="schedule-date">예약 일시</FieldLabel>
 						<Input
 							id="schedule-date"
 							type="datetime-local"

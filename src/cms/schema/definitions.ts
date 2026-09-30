@@ -14,7 +14,7 @@ const title = fields.text({
 	localized: true,
 });
 const slug = fields.slug({
-	label: "주소 (slug)",
+	label: "주소",
 	from: "title",
 	required: "publish",
 	placeholder: "url-friendly-slug",
@@ -30,10 +30,9 @@ const tagIds = fields.relation({
 	many: true,
 	createInline: true,
 	description: "고른 순서를 보존합니다.",
-	placeholder: "태그 검색·선택",
 });
 const publishedAt = fields.datetime({
-	label: "표시 발행일 (서울 시간)",
+	label: "발행일",
 	pastOnly: true,
 	description: "비워 두면 처음 발행한 시각을 씁니다. 미래 발행은 예약 기능을 쓰세요.",
 });
@@ -123,7 +122,7 @@ export const memo = collection({
 /** 이름만 언어별 값이고 주소와 연결 관계는 공통이다(v2 B4). */
 const taxonomyFields = {
 	title: fields.text({ label: "이름", required: "publish", max: 200, localized: true }),
-	slug: fields.slug({ label: "주소 (slug)", from: "title", required: "publish" }),
+	slug: fields.slug({ label: "주소", from: "title", required: "publish" }),
 } as const;
 
 export const category = collection({

@@ -183,7 +183,7 @@ describe("정의에서 만든 폼 변환", () => {
 		);
 		expect(built).toEqual({ metadata: { title: "t", policy: "normal", publishedAt: "2020-01-05T01:15:00.000Z" } });
 		expect(metadataFromForm({ title: "t", slug: "", mdx: "", publishedAt: "bad" }, "memo", {})).toEqual({
-			error: "표시 발행일 값을 확인하세요.",
+			error: "발행일 값을 확인하세요.",
 		});
 	});
 });
