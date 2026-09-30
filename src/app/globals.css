@@ -486,7 +486,10 @@
 	pre[data-code-focus] code .line:not([data-focused]) {
 		opacity: 0.35;
 	}
+	/* `.line`은 인라인이라 배경이 글자에만 깔린다. 줄 강조 주석처럼 코드 폭 전체로 넓힌다 */
 	pre[data-code-focus] code .line[data-focused] {
+		display: inline-block;
+		width: 100%;
 		background-color: color-mix(in oklab, var(--primary) 12%, transparent);
 	}
 	@media (prefers-reduced-motion: reduce) {
