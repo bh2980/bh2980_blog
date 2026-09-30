@@ -323,6 +323,7 @@ export const mediaPatchBodySchema = z.object({
 export const mediaListQuerySchema = z.object({
 	search: z.string().optional(),
 	mimeType: z.string().optional(),
+	kind: z.enum(["all", "image", "file"]).default("all"),
 	used: z.enum(["all", "used", "unused"]).default("all"),
 	uploadedFrom: dateQuery,
 	uploadedTo: dateQuery,

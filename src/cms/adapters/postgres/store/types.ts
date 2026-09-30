@@ -154,6 +154,8 @@ export interface ListMediaItem extends MediaAssetRecord {
 export interface ListMediaParams {
 	search?: string;
 	mimeType?: string;
+	/** 이미지만(`image`) 또는 이미지가 아닌 첨부 파일만(`file`). */
+	kind?: "all" | "image" | "file";
 	used?: "all" | "used" | "unused";
 	uploadedFrom?: Date;
 	uploadedTo?: Date;

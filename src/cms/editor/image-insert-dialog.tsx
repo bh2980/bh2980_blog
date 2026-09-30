@@ -111,7 +111,7 @@ export function ImageInsertDialog({
 		let cancelled = false;
 		setIsLibraryLoading(true);
 		const timer = setTimeout(() => {
-			const params = new URLSearchParams({ pageSize: "24" });
+			const params = new URLSearchParams({ pageSize: "24", kind: "image" });
 			if (search.trim()) params.set("search", search.trim());
 			fetch(`/api/cms/v1/media?${params.toString()}`)
 				.then((res) => (res.ok ? res.json() : { items: [] }))

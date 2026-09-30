@@ -117,6 +117,8 @@ export function createMediaOps(ctx: StoreContext) {
 			// `image/`처럼 앞부분만 줘도 걸러지도록 접두어로 비교한다.
 			if (params.mimeType?.trim())
 				conditions.push(`m.mime_type LIKE ${bind(`${params.mimeType.trim().replace(/[%_\\]/g, "\\$&")}%`)}`);
+			if (params.kind === "image") conditions.push("m.mime_type LIKE 'image/%'");
+			if (params.kind === "file") conditions.push("(m.mime_type IS NULL OR m.mime_type NOT LIKE 'image/%')");
 			if (params.uploadedFrom) conditions.push(`m.created_at >= ${bind(params.uploadedFrom)}`);
 			if (params.uploadedTo) conditions.push(`m.created_at <= ${bind(params.uploadedTo)}`);
 			const having =

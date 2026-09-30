@@ -1,10 +1,12 @@
 "use client";
 
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, File, RefreshCw, Upload, X } from "lucide-react";
+import { Copy, File, FileArchive, FileText, FileType, RefreshCw, Upload, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { formatBytes, prepareUpload, uploadImageFile } from "@/cms/editor/upload-helper";
+import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@/cms/core/api";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
+import { formatBytes, prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,14 +43,14 @@ interface MediaItem {
 }
 
 const PAGE_SIZE = 30;
-const TYPE_OPTIONS = [
+const KIND_OPTIONS = [
 	{ value: "all", label: "모든 형식" },
-	{ value: "image/jpeg", label: "JPEG" },
-	{ value: "image/png", label: "PNG" },
-	{ value: "image/webp", label: "WebP" },
-	{ value: "image/gif", label: "GIF" },
-	{ value: "image/avif", label: "AVIF" },
+	{ value: "image", label: "이미지" },
+	{ value: "file", label: "파일" },
 ];
+
+const UPLOAD_ACCEPT = `${ALLOWED_IMAGE_MIME_TYPES.join(",")},${FILE_ACCEPT}`;
+const FILE_ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
 
 const MEDIA_KEY = ["cms", "media"] as const;
 
@@ -56,6 +58,8 @@ interface MediaPage {
 	items: MediaItem[];
 	total: number;
 }
+
+const isImageFile = (file: File) => isImageMime(file.type);
 
 /** 값이 멈춘 뒤 `delay`ms가 지나야 바뀐다. 첫 값은 바로 쓴다. */
 function useDebounced<T>(value: T, delay: number): T {
@@ -73,6 +77,26 @@ const USED_OPTIONS = [
 	{ value: "unused", label: "미사용" },
 ];
 
+/** 이미지가 아닌 파일의 타일. 형식 아이콘과 형식 이름을 보인다. */
+function FileTile({ media }: { media: MediaItem }) {
+	const Icon = FILE_ICONS[fileKindOf(media.mimeType)];
+	return (
+		<span className="flex flex-col items-center gap-1.5 text-muted-foreground">
+			<Icon className="size-10" aria-hidden />
+			<span className="font-medium text-[10px]">{fileTypeLabel(media.filename, media.mimeType)}</span>
+		</span>
+	);
+}
+
+async function copyPublicUrl(url: string) {
+	try {
+		await navigator.clipboard.writeText(url);
+		toast.success("주소를 복사했습니다.");
+	} catch {
+		toast.error("복사하지 못했습니다.");
+	}
+}
+
 /** 미디어 라이브러리(§7.3). 썸네일 목록, 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순. */
 export function MediaLibrary() {
 	const altId = useId();
@@ -81,7 +105,7 @@ export function MediaLibrary() {
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const [used, setUsed] = useState<"all" | "used" | "unused">("all");
-	const [mimeType, setMimeType] = useState("all");
+	const [kind, setKind] = useState<"all" | "image" | "file">("all");
 	const [uploadedFrom, setUploadedFrom] = useState("");
 	const [uploadedTo, setUploadedTo] = useState("");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,13 +119,13 @@ export function MediaLibrary() {
 	const query = useMemo(() => {
 		const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), used });
 		if (search.trim()) params.set("search", search.trim());
-		if (mimeType !== "all") params.set("mimeType", mimeType);
+		if (kind !== "all") params.set("kind", kind);
 		const from = uploadedFrom && parseSeoulDateTimeInput(`${uploadedFrom}T00:00`);
 		const to = uploadedTo && parseSeoulDateTimeInput(`${uploadedTo}T23:59`);
 		if (from) params.set("uploadedFrom", from);
 		if (to) params.set("uploadedTo", new Date(Date.parse(to) + 59_999).toISOString());
 		return params.toString();
-	}, [page, used, search, mimeType, uploadedFrom, uploadedTo]);
+	}, [page, used, search, kind, uploadedFrom, uploadedTo]);
 	const debouncedQuery = useDebounced(query, 200);
 	const mediaQuery = useQuery({
 		queryKey: [...MEDIA_KEY, debouncedQuery],
@@ -111,6 +135,7 @@ export function MediaLibrary() {
 	const items = mediaQuery.data?.items ?? [];
 	const total = mediaQuery.data?.total ?? 0;
 	const selected = items.find((item) => item.id === selectedId) ?? null;
+	const selectedIsImage = isImageMime(selected?.mimeType);
 
 	const loadError = mediaQuery.error;
 	useEffect(() => {
@@ -128,12 +153,25 @@ export function MediaLibrary() {
 
 	const handleFiles = async (files: FileList | null) => {
 		if (!files?.length) return;
-		const list = Array.from(files);
+		const list: File[] = [];
+		for (const file of Array.from(files)) {
+			if (isImageFile(file) || fileTypeFor(file.name)) list.push(file);
+			else toast.error(`'${file.name}'은(는) 올릴 수 없는 형식입니다.`);
+		}
+		if (list.length === 0) {
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			return;
+		}
 		try {
 			for (const [index, file] of list.entries()) {
+				const onProgress = (percent: number) => setUpload({ current: index + 1, total: list.length, percent });
 				setUpload({ current: index + 1, total: list.length, percent: 0 });
-				const prepared = await prepareUpload(file, { optimize });
-				await uploadImageFile(prepared, (percent) => setUpload({ current: index + 1, total: list.length, percent }));
+				if (isImageFile(file)) {
+					const prepared = await prepareUpload(file, { optimize });
+					await uploadImageFile(prepared, onProgress);
+				} else {
+					await uploadAttachment(file, onProgress);
+				}
 			}
 			toast.success(`${list.length}개 파일을 올렸습니다.`);
 			setPage(1);
@@ -255,7 +293,7 @@ export function MediaLibrary() {
 						type="file"
 						multiple
 						hidden
-						accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+						accept={UPLOAD_ACCEPT}
 						onChange={(event) => void handleFiles(event.target.files)}
 					/>
 					<Button type="button" size="sm" disabled={upload !== null} onClick={() => fileInputRef.current?.click()}>
@@ -287,15 +325,15 @@ export function MediaLibrary() {
 					className="h-8 w-56"
 				/>
 				<Select
-					value={mimeType}
-					items={TYPE_OPTIONS}
-					onValueChange={(value) => value && setFilter(() => setMimeType(value))}
+					value={kind}
+					items={KIND_OPTIONS}
+					onValueChange={(value) => value && setFilter(() => setKind(value as typeof kind))}
 				>
 					<SelectTrigger size="sm" aria-label="형식">
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{TYPE_OPTIONS.map((option) => (
+						{KIND_OPTIONS.map((option) => (
 							<SelectItem key={option.value} value={option.value}>
 								{option.label}
 							</SelectItem>
@@ -376,7 +414,9 @@ export function MediaLibrary() {
 										)}
 									>
 										<span className="relative flex aspect-square items-center justify-center bg-muted">
-											{media.publicUrl ? (
+											{!isImageMime(media.mimeType) ? (
+												<FileTile media={media} />
+											) : media.publicUrl ? (
 												// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 												<img src={media.publicUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
 											) : (
@@ -437,7 +477,7 @@ export function MediaLibrary() {
 								<X aria-hidden />
 							</Button>
 						</div>
-						{selected.publicUrl && (
+						{selectedIsImage && selected.publicUrl && (
 							// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 							<img src={selected.publicUrl} alt="" className="max-h-48 rounded border object-contain" />
 						)}
@@ -447,12 +487,23 @@ export function MediaLibrary() {
 								{selected.filename}
 							</dd>
 							<dt className="text-muted-foreground">형식</dt>
-							<dd>{selected.mimeType ?? "—"}</dd>
-							<dt className="text-muted-foreground">공개용</dt>
 							<dd>
-								{selected.width}×{selected.height} · {formatBytes(selected.byteSize ?? 0)}
+								{selectedIsImage ? (selected.mimeType ?? "—") : fileTypeLabel(selected.filename, selected.mimeType)}
 							</dd>
-							{selected.original && (
+							{selectedIsImage ? (
+								<>
+									<dt className="text-muted-foreground">공개용</dt>
+									<dd>
+										{selected.width}×{selected.height} · {formatBytes(selected.byteSize ?? 0)}
+									</dd>
+								</>
+							) : (
+								<>
+									<dt className="text-muted-foreground">크기</dt>
+									<dd>{formatFileSize(selected.byteSize ?? 0)}</dd>
+								</>
+							)}
+							{selectedIsImage && selected.original && (
 								<>
 									<dt className="text-muted-foreground">원본</dt>
 									<dd>
@@ -463,6 +514,22 @@ export function MediaLibrary() {
 							)}
 							<dt className="text-muted-foreground">업로드</dt>
 							<dd>{new Date(selected.createdAt).toLocaleString("ko-KR")}</dd>
+							{selected.publicUrl && (
+								<>
+									<dt className="text-muted-foreground">주소</dt>
+									<dd>
+										<Button
+											type="button"
+											variant="outline"
+											size="xs"
+											onClick={() => void copyPublicUrl(selected.publicUrl as string)}
+										>
+											<Copy aria-hidden />
+											주소 복사
+										</Button>
+									</dd>
+								</>
+							)}
 							<dt className="text-muted-foreground">미디어 ID</dt>
 							<dd className="flex items-center gap-1">
 								<code className="truncate">{selected.id}</code>
@@ -478,37 +545,41 @@ export function MediaLibrary() {
 							</dd>
 						</dl>
 
-						<Separator />
-						<form
-							className="space-y-3"
-							onSubmit={(event) => {
-								event.preventDefault();
-								void saveDefaults();
-							}}
-						>
-							<FieldDescription>본문에 삽입할 때 복사되는 기본값입니다.</FieldDescription>
-							<Field>
-								<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
-								<Input
-									id={altId}
-									value={draft.alt}
-									onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
-									className="h-8"
-								/>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
-								<Input
-									id={captionId}
-									value={draft.caption}
-									onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
-									className="h-8"
-								/>
-							</Field>
-							<Button type="submit" size="sm" variant="outline" disabled={selected.status !== "ready"}>
-								기본값 저장
-							</Button>
-						</form>
+						{selectedIsImage && (
+							<>
+								<Separator />
+								<form
+									className="space-y-3"
+									onSubmit={(event) => {
+										event.preventDefault();
+										void saveDefaults();
+									}}
+								>
+									<FieldDescription>본문에 삽입할 때 복사되는 기본값입니다.</FieldDescription>
+									<Field>
+										<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
+										<Input
+											id={altId}
+											value={draft.alt}
+											onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
+											className="h-8"
+										/>
+									</Field>
+									<Field>
+										<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
+										<Input
+											id={captionId}
+											value={draft.caption}
+											onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
+											className="h-8"
+										/>
+									</Field>
+									<Button type="submit" size="sm" variant="outline" disabled={selected.status !== "ready"}>
+										기본값 저장
+									</Button>
+								</form>
+							</>
+						)}
 
 						<Separator />
 						<section className="space-y-1.5">
