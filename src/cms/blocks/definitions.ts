@@ -119,6 +119,22 @@ export const image = defineBlock({
 	editor: { view: "node", nodeView: "image", insertable: true, keywords: ["image", "이미지", "사진"] },
 });
 
+/**
+ * 첨부 파일 카드(`::file{mediaId="…" label="보고서.pdf"}`, v3). 공개 화면은 이름·크기·형식과 내려받기를 보인다.
+ * `label`을 비우면 올린 파일 이름을 쓴다.
+ */
+export const file = defineBlock({
+	name: "file",
+	label: "파일",
+	syntax: { kind: "leaf", directive: "file" },
+	component: "File",
+	attributes: {
+		mediaId: { type: "string", label: "미디어", required: true },
+		label: { type: "string", label: "보일 이름" },
+	},
+	editor: { view: "node", nodeView: "file", insertable: false, keywords: ["file", "파일", "첨부"] },
+});
+
 export const tooltip = defineBlock({
 	name: "tooltip",
 	label: "툴팁",
@@ -264,6 +280,7 @@ export const BLOCKS = [
 	columns,
 	column,
 	image,
+	file,
 	tooltip,
 	codeRef,
 	color,

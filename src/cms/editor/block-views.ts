@@ -8,6 +8,7 @@ import {
 	CmsTabsNode,
 } from "./blocks/containers";
 import { CmsChartNode, CmsMathNode, CmsMermaidNode } from "./blocks/fence-preview";
+import { CmsFileNode } from "./file-node";
 import { CmsImageNode } from "./image-node";
 
 /**
@@ -19,6 +20,7 @@ import { CmsImageNode } from "./image-node";
  */
 export const BLOCK_NODE_VIEWS: Readonly<Record<string, Node>> = {
 	image: CmsImageNode,
+	file: CmsFileNode,
 	callout: CmsCalloutNode,
 	collapsible: CmsCollapsibleNode,
 	tabs: CmsTabsNode,

@@ -1,3 +1,5 @@
+import { fileTypeFor, MAX_FILE_BYTES } from "../core/api";
+
 /**
  * 브라우저 이미지 업로드(§7.1·§7.2). 편집기와 미디어 라이브러리가 같이 쓴다.
  *
@@ -125,8 +127,8 @@ function putFile(ticket: UploadTicket, file: File, onProgress?: (loaded: number)
 			xhr.status >= 200 && xhr.status < 300
 				? resolve()
 				: reject(new Error(`저장소 업로드에 실패했습니다 (${xhr.status})`));
-		xhr.onerror = () => reject(new Error("이미지 업로드 중 네트워크 오류가 발생했습니다"));
-		xhr.ontimeout = () => reject(new Error("이미지 업로드 시간이 초과되었습니다"));
+		xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다"));
+		xhr.ontimeout = () => reject(new Error("업로드 시간이 초과되었습니다"));
 		xhr.send(file);
 	});
 }
@@ -201,3 +203,19 @@ export async function uploadImageFile(
 
 export const formatBytes = (bytes: number) =>
 	bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1024))}KB`;
+
+/**
+ * 첨부 파일(v3)을 올린다. 형식은 파일 이름의 확장자로 정한다(브라우저가 코드 파일의 형식을 제각각 준다).
+ * 받지 않는 형식이거나 50MiB를 넘으면 올리기 전에 거절한다.
+ */
+export async function uploadAttachment(
+	file: File,
+	onProgress?: (percent: number) => void,
+): Promise<{ mediaId: string }> {
+	const mimeType = fileTypeFor(file.name);
+	if (!mimeType) throw new Error("올릴 수 없는 파일 형식입니다");
+	if (file.size > MAX_FILE_BYTES) throw new Error(`${MAX_FILE_BYTES / 1024 / 1024}MB보다 큰 파일은 올릴 수 없습니다`);
+	const typed = file.type === mimeType ? file : new File([file], file.name, { type: mimeType });
+	const uploaded = await uploadImageFile(typed, onProgress);
+	return { mediaId: uploaded.mediaId };
+}

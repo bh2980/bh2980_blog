@@ -30,6 +30,7 @@ import { CodeRef } from "./code-ref.client";
 import { Collapsible } from "./collapsible";
 import { Color } from "./color";
 import { Column, Columns } from "./columns";
+import { CmsFile } from "./file";
 import { CmsImage } from "./image";
 import { Mermaid } from "./mermaid.client";
 import { pre } from "./pre";
@@ -99,6 +100,10 @@ export const MDX_COMPONENTS = {
 	Tab,
 	TextAlign,
 	Image: CmsImage,
+	// 주소 해석기가 없는 곳(원문 미리보기 등)에서는 이름만 보인다.
+	File: (props: { mediaId?: string; label?: string }) => (
+		<CmsFile {...props} downloadLabel="내려받기" unavailableLabel="파일" />
+	),
 	Table,
 	TableRow,
 	TableCell,
@@ -132,6 +137,14 @@ export const createMdxComponents = (options: MdxRenderOptions = {}) => {
 		),
 		Image: (props: ComponentProps<typeof CmsImage>) => (
 			<CmsImage {...props} resolve={options.imageResolver} unavailableLabel={t("mdx.imageUnavailable")} />
+		),
+		File: (props: { mediaId?: string; label?: string }) => (
+			<CmsFile
+				{...props}
+				resolve={options.imageResolver}
+				downloadLabel={t("mdx.download")}
+				unavailableLabel={t("mdx.fileUnavailable")}
+			/>
 		),
 	};
 };

@@ -70,6 +70,8 @@ export const ko = {
 	"mdx.expand": "펼치기",
 	"mdx.copy": "클립보드에 복사하기",
 	"mdx.imageUnavailable": "이미지를 표시할 수 없습니다",
+	"mdx.download": "내려받기",
+	"mdx.fileUnavailable": "파일을 내려받을 수 없습니다",
 	"mdx.chartError": "차트 문법 오류",
 	"mdx.chartErrorLine": "{line}줄: {message}",
 } as const;

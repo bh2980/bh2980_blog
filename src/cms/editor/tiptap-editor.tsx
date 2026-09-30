@@ -18,14 +18,17 @@ import {
 	ListTodo,
 	type LucideIcon,
 	Minus,
+	Paperclip,
 	Pilcrow,
 	Quote,
 	RemoveFormatting,
 	SquareCode,
 	Superscript,
 	Table2,
+	Upload,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -37,6 +40,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
+import { FILE_ACCEPT } from "../core/api";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
@@ -44,6 +48,7 @@ import { TextColorMenu, TextColorMenuItems } from "./color-menu";
 import { CustomBlockMenu, CustomBlockMenuItems } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { buildEditorExtensions } from "./extensions";
+import { FILE_NODE_NAME } from "./file-node";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
 import { InlineBubble } from "./inline-bubble";
 import { INLINE_MARK_TOOLS } from "./inline-marks";
@@ -57,6 +62,7 @@ import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
 import { type ToolbarEntry, ToolbarMenuGroup, ToolbarMenuItem, ToolbarMenuSection, ToolbarRow } from "./toolbar-row";
 import { TooltipPopover } from "./tooltip-popover";
+import { uploadAttachment } from "./upload-helper";
 
 interface CmsEditorProps {
 	content: string;
@@ -551,6 +557,40 @@ export function CmsEditor({
 		return null;
 	};
 
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	/** 이미지가 아닌 파일들을 올려 파일 카드로 넣는다. `at`이 있으면 그 자리(끌어 놓은 곳)에 넣는다. */
+	const uploadAttachments = useCallback(
+		async (files: File[], at?: number) => {
+			if (!editor) return;
+			let position = at;
+			for (const file of files) {
+				const toastId = toast.loading(`'${file.name}' 올리는 중…`);
+				try {
+					const { mediaId } = await uploadAttachment(file, (percent) =>
+						toast.loading(`'${file.name}' 올리는 중… ${percent}%`, { id: toastId }),
+					);
+					const node = { type: FILE_NODE_NAME, attrs: { mediaId, label: null } };
+					if (position === undefined) editor.chain().focus().insertContent(node).run();
+					else {
+						editor.chain().focus().insertContentAt(position, node).run();
+						position = editor.state.selection.to;
+					}
+					toast.success(`'${file.name}'을(를) 올렸습니다.`, { id: toastId });
+				} catch (error) {
+					toast.error(`'${file.name}'을(를) 올리지 못했습니다.`, {
+						id: toastId,
+						description: error instanceof Error ? error.message : undefined,
+					});
+				}
+			}
+		},
+		[editor],
+	);
+
+	const attachmentsFrom = (list: FileList | null): File[] =>
+		Array.from(list ?? []).filter((file) => !file.type.startsWith("image/"));
+
 	const handleMouseMove = useCallback(
 		(event: React.MouseEvent<HTMLDivElement>) => {
 			if (!editor) return;
@@ -646,37 +686,53 @@ export function CmsEditor({
 		render: () => <ToolbarDropdown editor={editor} label={label} items={items} icon={icon} iconOnly />,
 		menu: () => <ToolbarMenuGroup editor={editor} label={menuLabel} items={items} />,
 	});
+	const UploadMenuItems = () => (
+		<>
+			<DropdownMenuItem disabled={!canEdit} onClick={() => setImageDialog({ file: null })}>
+				<ImageIcon aria-hidden className="size-4" />
+				<span className="flex-1">이미지</span>
+			</DropdownMenuItem>
+			<DropdownMenuItem disabled={!canEdit} onClick={() => fileInputRef.current?.click()}>
+				<Paperclip aria-hidden className="size-4" />
+				<span className="flex-1">파일</span>
+			</DropdownMenuItem>
+		</>
+	);
 	// 좁을 때 숨기는 순서: priority가 큰 것부터. fixed는 숨기지 않는다(팝오버 도구는 메뉴 안에서 앵커를 잃는다).
 	const toolbarEntries: ToolbarEntry[] = [
 		{
-			key: "image",
+			key: "upload",
 			priority: 5,
 			render: () => (
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="size-8 p-0"
-								aria-label="이미지 삽입"
-								disabled={!canEdit}
-								onClick={() => setImageDialog({ file: null })}
-							/>
-						}
-					>
-						<ImageIcon className="size-4" aria-hidden />
-					</TooltipTrigger>
-					<TooltipContent side="bottom">이미지 삽입</TooltipContent>
-				</Tooltip>
+				<DropdownMenu>
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<DropdownMenuTrigger
+									render={
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="size-8 p-0"
+											aria-label="업로드"
+											disabled={!canEdit}
+											onMouseDown={(event) => event.preventDefault()}
+										/>
+									}
+								/>
+							}
+						>
+							<Upload className="size-4" aria-hidden />
+						</TooltipTrigger>
+						<TooltipContent side="bottom">업로드</TooltipContent>
+					</Tooltip>
+					<DropdownMenuContent align="start" className="w-40">
+						<UploadMenuItems />
+					</DropdownMenuContent>
+				</DropdownMenu>
 			),
-			menu: () => (
-				<DropdownMenuItem disabled={!canEdit} onClick={() => setImageDialog({ file: null })}>
-					<ImageIcon aria-hidden className="size-4" />
-					<span className="flex-1">이미지 삽입</span>
-				</DropdownMenuItem>
-			),
+			menu: () => <UploadMenuItems />,
 		},
 		{
 			key: "block-style",
@@ -804,6 +860,21 @@ export function CmsEditor({
 				<div className="mx-auto w-full max-w-3xl border-border/60 border-b px-4 pt-12 pb-5">{titleField}</div>
 			)}
 
+			<input
+				ref={fileInputRef}
+				type="file"
+				multiple
+				accept={FILE_ACCEPT}
+				hidden
+				aria-hidden
+				tabIndex={-1}
+				onChange={(event) => {
+					const files = Array.from(event.target.files ?? []);
+					event.target.value = "";
+					void uploadAttachments(files);
+				}}
+			/>
+
 			<ImageInsertDialog
 				open={imageDialog !== null}
 				initialFile={imageDialog?.file ?? null}
@@ -836,10 +907,19 @@ export function CmsEditor({
 					}
 				}}
 				onDrop={(event) => {
+					if (!canEdit) return;
 					const file = imageFileFrom(event.dataTransfer.files);
-					if (file && canEdit) {
+					if (file) {
 						event.preventDefault();
 						setImageDialog({ file });
+						return;
+					}
+					// 이미지가 아닌 파일은 놓은 자리에 파일 카드로 넣는다.
+					const attachments = attachmentsFrom(event.dataTransfer.files);
+					if (attachments.length > 0) {
+						event.preventDefault();
+						const at = editor.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+						void uploadAttachments(attachments, at);
 					}
 				}}
 				onDragOver={(event) => event.preventDefault()}

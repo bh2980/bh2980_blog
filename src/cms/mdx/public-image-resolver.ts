@@ -27,7 +27,11 @@ function collectMediaIds(source: string): string[] {
 	const tree = analyze(source).tree;
 	const visit = (node: unknown) => {
 		if (!isNode(node)) return;
-		if ((node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") && node.name === "Image") {
+		// 첨부 파일 카드(v3)도 같은 미디어 표를 쓴다.
+		if (
+			(node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") &&
+			(node.name === "Image" || node.name === "File")
+		) {
 			const mediaId = readAttribute(node, "mediaId");
 			if (mediaId) ids.add(mediaId);
 		}
@@ -60,7 +64,8 @@ export async function createPublicImageResolver(source: string) {
 					}
 					const url = mediaStore.getPublicUrl(media.storageKey);
 					const { width, height } = media;
-					urls.set(mediaId, width && height && width > 0 && height > 0 ? { url, width, height } : { url });
+					const file = { filename: media.filename, byteSize: media.byteSize, mimeType: media.mimeType };
+					urls.set(mediaId, width && height && width > 0 && height > 0 ? { url, width, height, file } : { url, file });
 				}),
 			);
 		} catch {

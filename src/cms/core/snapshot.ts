@@ -578,6 +578,24 @@ export async function prepareSnapshot(
 		if (mediaId || src) imageSources.push({ ...(mediaId ? { mediaId } : { src }), position });
 	};
 
+	/** 첨부 파일 카드(v3). `mediaId`가 꼭 있어야 하고, 미디어 참조로 남겨 사용 중인 파일을 지우지 않게 한다. */
+	const collectFile = (node: MdxNode) => {
+		const attr = readAttr(node, "mediaId");
+		const position = positionOf(node);
+		if (!attr || attr.value === null || attr.value === undefined || attr.value === "") {
+			mdxIssues.push({ code: "missing_media_id", position });
+			mdxHasError = true;
+		} else if (typeof attr.value !== "string") {
+			mdxIssues.push({ code: "dynamic_reference_id", position });
+			mdxHasError = true;
+		} else if (!isUuid(attr.value)) {
+			mdxIssues.push({ code: "invalid_reference_id", position });
+			mdxHasError = true;
+		} else {
+			mdxRefsToAdd.push({ kind: "media", targetId: attr.value, occ: { type: "mdx", ...position } });
+		}
+	};
+
 	/** 번역본에 남은 번역 안내 글(v3). 공개 화면에는 보이지 않으므로 남은 채로 발행하지 않는다. */
 	const untranslated: ReturnType<typeof positionOf>[] = [];
 	const traverse = (node: unknown) => {
@@ -590,6 +608,7 @@ export async function prepareSnapshot(
 		if (isJsxElement(node)) {
 			// `ContentLink`는 배치 4에서 폐기했다 — 본문에 남아 있으면 `analyze`가 거부한다.
 			if (node.name === "Image") collectImage(node);
+			if (node.name === "File") collectFile(node);
 			if (node.name === "Untranslated") untranslated.push(positionOf(node));
 			checkBlockAttributes(node, positionOf(node), blockIssues, warnings);
 		}

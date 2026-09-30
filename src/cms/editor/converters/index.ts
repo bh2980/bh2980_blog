@@ -2,6 +2,7 @@ import type { CmsNode } from "../../mdx";
 import { CONTAINER_CONVERTERS } from "../blocks/containers";
 import { codeBlockConverter } from "./code-block";
 import { chartConverter, mathConverter, mermaidConverter } from "./fence-preview";
+import { fileConverter } from "./file";
 import { imageConverter } from "./image";
 import { tableConverter } from "./table";
 import type { BlockConverter } from "./types";
@@ -15,6 +16,7 @@ export type { BlockConverter, ConverterContext } from "./types";
  */
 export const BLOCK_CONVERTERS: readonly BlockConverter[] = [
 	imageConverter,
+	fileConverter,
 	mermaidConverter,
 	chartConverter,
 	mathConverter,

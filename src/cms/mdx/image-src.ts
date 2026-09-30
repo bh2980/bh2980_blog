@@ -21,7 +21,15 @@ export type ImageResolveFailure =
 	| "rejected";
 
 /** `width`·`height`는 등록 미디어의 원본 픽셀 크기다. 알면 공개 화면이 로드 전에 자리를 잡는다. */
-export type ImageResolveResult = { url: string; width?: number; height?: number } | { failure: ImageResolveFailure };
+export type ImageResolveResult =
+	| {
+			url: string;
+			width?: number;
+			height?: number;
+			/** 첨부 파일 카드(v3)가 쓰는 올린 파일 정보. */
+			file?: { filename: string; byteSize: number | null; mimeType: string | null };
+	  }
+	| { failure: ImageResolveFailure };
 
 export type ImageResolver = (input: { mediaId?: string; src?: string }) => ImageResolveResult;
 
