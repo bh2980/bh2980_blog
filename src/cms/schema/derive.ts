@@ -91,8 +91,6 @@ export function fieldValueError(field: ValueField, name: string, value: string |
 			return null;
 		case "select":
 			return values.every((item) => Object.hasOwn(field.options, item)) ? null : "invalid_metadata_value";
-		case "datetime":
-			return values.every((item) => !Number.isNaN(Date.parse(item))) ? null : "invalid_metadata_value";
 		case "relation":
 			return values.every((item) => isUuid(item)) ? null : "invalid_metadata_value";
 	}

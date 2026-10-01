@@ -22,7 +22,6 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { LOCALE_INFO, PREFIXED_LOCALES } from "@/libs/i18n/locales";
 import { errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
@@ -206,19 +205,6 @@ function DefaultInput(props: FieldInputProps) {
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
 					placeholder={field.placeholder}
-					onChange={(event) => onChange(event.target.value)}
-					className={inputClass}
-				/>
-			);
-		case "datetime":
-			return (
-				<Input
-					id={id}
-					type="datetime-local"
-					value={text}
-					aria-invalid={invalid || undefined}
-					aria-describedby={describedBy}
-					max={field.pastOnly ? formatSeoulDateTimeInput(new Date()) : undefined}
 					onChange={(event) => onChange(event.target.value)}
 					className={inputClass}
 				/>

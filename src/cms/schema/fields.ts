@@ -59,12 +59,6 @@ export interface RelationField extends BaseField {
 	readonly placeholder?: string;
 }
 
-export interface DateTimeField extends BaseField {
-	readonly kind: "datetime";
-	/** 지금보다 늦은 값을 고르지 못하게 한다(예약 기능 우회 방지, v1 §5.5). */
-	readonly pastOnly?: boolean;
-}
-
 export interface SelectField<Option extends string = string> extends BaseField {
 	readonly kind: "select";
 	/** 값 → 라벨. 선언 순서가 보이는 순서다. */
@@ -100,7 +94,7 @@ export interface BacklinkField extends Omit<BaseField, "required" | "localized">
 }
 
 /** 값 하나를 저장하는 필드. */
-export type ValueField = TextField | RelationField | DateTimeField | SelectField;
+export type ValueField = TextField | RelationField | SelectField;
 export type Field = ValueField | SlugField | ConditionalField | BacklinkField;
 export type FieldKind = Field["kind"];
 
@@ -111,7 +105,6 @@ export const fields = {
 	slug: <const O extends Options<SlugField>>(options: O) => ({ kind: "slug", ...options }) as const,
 	relation: <const O extends Options<RelationField>>(options: O) => ({ kind: "relation", ...options }) as const,
 	backlink: <const O extends Options<BacklinkField>>(options: O) => ({ kind: "backlink", ...options }) as const,
-	datetime: <const O extends Options<DateTimeField>>(options: O) => ({ kind: "datetime", ...options }) as const,
 	select: <const O extends Options<SelectField>>(options: O) => ({ kind: "select", ...options }) as const,
 	conditional: <const D extends SelectField, const V extends ConditionalField["values"]>(discriminant: D, values: V) =>
 		({
@@ -136,6 +129,6 @@ export type ValueOf<F> = F extends RelationField
 		: string
 	: F extends { readonly kind: "select"; readonly options: infer Options }
 		? keyof Options & string
-		: F extends TextField | DateTimeField
+		: F extends TextField
 			? string
 			: never;

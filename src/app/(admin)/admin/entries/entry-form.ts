@@ -8,7 +8,6 @@ import {
 	type StoredField,
 	storedFields,
 } from "@/cms/schema/derive";
-import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { PREFIXED_LOCALES } from "@/libs/i18n/locales";
 
 /** 폼 입력 하나의 값. 텍스트·한 개 관계·선택·날짜는 문자열(관계는 비면 `null`), 여러 개 관계는 배열이다. */
@@ -151,8 +150,6 @@ function toFormValue({ field }: StoredField, value: unknown): FormValue {
 			return text(value) || null;
 		case "select":
 			return typeof value === "string" && Object.hasOwn(field.options, value) ? value : field.defaultValue;
-		case "datetime":
-			return formatSeoulDateTimeInput(text(value) || null);
 	}
 }
 
@@ -249,17 +246,6 @@ export function metadataFromForm(
 				const selected = typeof value === "string" && Object.hasOwn(field.options, value) ? value : field.defaultValue;
 				if (selected !== field.defaultValue || Object.hasOwn(base, name)) metadata[name] = selected;
 				else delete metadata[name];
-				break;
-			}
-			case "datetime": {
-				const raw = text(value);
-				if (!raw) {
-					delete metadata[name];
-					break;
-				}
-				const iso = parseSeoulDateTimeInput(raw);
-				if (!iso) return { error: `${field.label.replace(/\s*\(.*\)$/, "")} 값을 확인하세요.` };
-				metadata[name] = iso;
 				break;
 			}
 		}

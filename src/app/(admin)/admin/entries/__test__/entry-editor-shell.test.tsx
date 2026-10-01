@@ -402,21 +402,21 @@ describe("entry editor shell", () => {
 		const category = (await screen.findByRole("combobox", { name: "카테고리" })) as HTMLInputElement;
 		// Base UI는 실제 입력(`inputType`이 있는 input 이벤트)일 때만 목록을 연다.
 		fireEvent.input(category, { target: { value: "새 카테고리" }, inputType: "insertText" });
-		// 여러 테스트 파일을 함께 돌리면 목록이 늦게 열릴 때가 있어 넉넉히 기다린다.
-		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 만들기" }, { timeout: 3000 }));
-		await waitFor(() => expect(category.value).toBe("새 카테고리"), { timeout: 3000 });
+		// 여러 테스트 파일을 함께 돌리면 목록이 늦게 열릴 때가 있어 넉넉히 기다린다(3초로는 가끔 모자랐다).
+		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 만들기" }, { timeout: 10_000 }));
+		await waitFor(() => expect(category.value).toBe("새 카테고리"), { timeout: 10_000 });
 		fireEvent.input(screen.getByRole("combobox", { name: "태그" }), {
 			target: { value: "새 태그" },
 			inputType: "insertText",
 		});
-		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 만들기" }, { timeout: 3000 }));
-		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0), { timeout: 3000 });
+		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 만들기" }, { timeout: 10_000 }));
+		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0), { timeout: 10_000 });
 		const creations = methodCalls("POST", "/api/cms/v1/entries").map(([, init]) => JSON.parse(String(init?.body)));
 		expect(creations).toEqual([
 			{ collection: "category", metadata: { title: "새 카테고리" }, mdx: "" },
 			{ collection: "tag", metadata: { title: "새 태그" }, mdx: "" },
 		]);
-	});
+	}, 30_000);
 
 	it("stops publishing after an autosave conflict and offers copy, reload and overwrite", async () => {
 		serve((input, init) => {

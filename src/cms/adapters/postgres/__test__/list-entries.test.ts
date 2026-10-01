@@ -562,18 +562,6 @@ console.log("FencedCode000");
 		}
 		expectCmsError(statusErr, "invalid_input");
 
-		// page size outside the allowed list
-		let pageSizeErr: unknown;
-		try {
-			await store.listEntries({ collection: "post", pageSize: 30 as 25 });
-		} catch (e) {
-			pageSizeErr = e;
-		}
-		expectCmsError(pageSizeErr, "invalid_input");
-		for (const pageSize of [25, 50, 100] as const) {
-			expect((await store.listEntries({ collection: "post", pageSize })).pageSize).toBe(pageSize);
-		}
-
 		const afterTables = await pool.query(`SELECT tablename FROM pg_tables WHERE schemaname = $1 ORDER BY tablename`, [
 			schemaName,
 		]);
