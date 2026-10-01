@@ -38,7 +38,12 @@ describe("첨부 파일 카드 저장 형식(v3)", () => {
 	});
 
 	it("미디어 참조로 남긴다", async () => {
-		const snapshot = await prepareSnapshot({ collection: "memo", slug: "a", metadata: { title: "a" }, mdx: SOURCE } as never);
+		const snapshot = await prepareSnapshot({
+			collection: "memo",
+			slug: "a",
+			metadata: { title: "a" },
+			mdx: SOURCE,
+		} as never);
 		expect(snapshot.references).toEqual(
 			expect.arrayContaining([expect.objectContaining({ kind: "media", targetId: MEDIA })]),
 		);

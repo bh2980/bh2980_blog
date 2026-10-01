@@ -481,7 +481,9 @@
 
 	/* 본문 `:code-ref`에 마우스를 올리거나 누르면 연결된 줄을 강조하고 나머지 줄을 흐린다(focus) */
 	pre[data-code-focus] code .line {
-		transition: opacity 150ms ease, background-color 150ms ease;
+		transition:
+			opacity 150ms ease,
+			background-color 150ms ease;
 	}
 	pre[data-code-focus] code .line:not([data-focused]) {
 		opacity: 0.35;
