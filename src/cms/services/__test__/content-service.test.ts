@@ -68,7 +68,6 @@ describe("ContentService M2-TW-1 Contract", () => {
 						summary: "S",
 						categoryId: "123e4567-e89b-12d3-a456-426614174000",
 						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-						publishedAt: "2023-01-01T00:00:00.000Z",
 						policy: "normal",
 					},
 					mdx: "",
@@ -82,7 +81,6 @@ describe("ContentService M2-TW-1 Contract", () => {
 					metadata: {
 						title: "T",
 						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-						publishedAt: "2023-01-01T00:00:00.000Z",
 					},
 					mdx: "",
 				},

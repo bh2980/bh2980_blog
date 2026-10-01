@@ -27,7 +27,6 @@ const ISSUE_LABELS: Record<string, string> = {
 	invalid_block_attribute: "블록 속성 값이 올바르지 않습니다.",
 	unknown_block_attribute: "정의되지 않은 블록 속성이 있습니다.",
 	missing_image_alt: "이미지 대체 텍스트를 입력하거나 장식 이미지로 표시하세요.",
-	future_published_at: "미래 시각은 발행일로 지정할 수 없습니다. 예약 기능을 사용하세요.",
 	missing_media_id: "이미지 주소(mediaId 또는 src)가 없습니다.",
 	invalid_reference_id: "미디어 ID 형식이 올바르지 않습니다.",
 	dynamic_reference_id: "미디어 ID는 문자열이어야 합니다.",

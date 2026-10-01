@@ -55,9 +55,6 @@ const metadataFor = (
 ): { metadata: Record<string, unknown>; blocking: ImportPlanIssue[]; warnings: ImportPlanIssue[] } => {
 	const blocking: ImportPlanIssue[] = [];
 	const warnings: ImportPlanIssue[] = [];
-	// 초안도 원본 발행일을 작업본 메타데이터에만 남긴다(공개 시각 컬럼은 null).
-	// 표시 날짜는 이 문자열을 그대로 쓴다(§`keystaticPublishedAt`).
-	const publishedAt = keystaticPublishedAt(item.publishedAt) ?? undefined;
 
 	if (item.kind === "category" || item.kind === "tag") {
 		return { metadata: { title: item.title }, blocking, warnings };
@@ -91,7 +88,6 @@ const metadataFor = (
 			metadata: {
 				title: item.title,
 				...(tagIds.length > 0 ? { tagIds } : {}),
-				...(publishedAt ? { publishedAt } : {}),
 			},
 			blocking,
 			warnings,
@@ -116,7 +112,6 @@ const metadataFor = (
 			...(typeof summary === "string" && summary.trim().length > 0 ? { summary: summary.trim() } : {}),
 			...(categoryId ? { categoryId } : {}),
 			...(tagIds.length > 0 ? { tagIds } : {}),
-			...(publishedAt ? { publishedAt } : {}),
 			...(item.policy ? { policy: item.policy } : {}),
 		},
 		blocking,
@@ -194,6 +189,7 @@ export async function buildImportPlan(corpus: LegacyCorpus): Promise<ImportPlan>
 				schemaVersion: snapshot.schemaVersion,
 				contentHash: snapshot.contentHash,
 			};
+			// 발행일은 `published_at` 칸 하나다. 초안도 원본 날짜를 넣어 두면 나중에 발행할 때 그대로 쓴다.
 			const publishedAt = item.publishedAt ? new Date(keystaticPublishedAt(item.publishedAt) as string) : null;
 			const isPublished = item.status === "published";
 
@@ -202,7 +198,7 @@ export async function buildImportPlan(corpus: LegacyCorpus): Promise<ImportPlan>
 				collection: item.kind,
 				slug: item.slug,
 				status: isPublished ? "published" : "draft",
-				publishedAt: isPublished ? publishedAt : null,
+				publishedAt,
 				working: body,
 				...(isPublished ? { published: body } : {}),
 				references: snapshot.references,

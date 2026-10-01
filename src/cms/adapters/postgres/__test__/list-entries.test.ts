@@ -665,12 +665,11 @@ console.log("FencedCode000");
 	// 7  List authority
 	// -----------------------------------------------------------------------
 
-	it("7. List authority: working metadata is authoritative for categoryId, ordered tagIds and display publishedAt", async () => {
-		const directDate = "2020-05-05T00:00:00.000Z";
+	it("7. List authority: working metadata is authoritative for categoryId and ordered tagIds; publishedAt is the column", async () => {
 		await seedEntry(store, {
 			collection: "post",
 			slug: "d1-direct",
-			metadata: { categoryId: "cat-1", tagIds: ["tag-a", "tag-b"], publishedAt: directDate },
+			metadata: { categoryId: "cat-1", tagIds: ["tag-a", "tag-b"] },
 			mdx: "body",
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
@@ -701,12 +700,11 @@ console.log("FencedCode000");
 			contentHash: randomBytes(16).toString("hex"),
 		});
 
-		const refDate = "2021-08-08T00:00:00.000Z";
 		await store.createEntryWithReferences({
 			snapshot: {
 				collection: "post",
 				slug: "d1-ref",
-				metadata: { categoryId: "cat-meta", tagIds: ["tag-meta1", "tag-meta2"], publishedAt: refDate },
+				metadata: { categoryId: "cat-meta", tagIds: ["tag-meta1", "tag-meta2"] },
 				mdx: "body",
 				schemaVersion: 1,
 				contentHash: randomBytes(16).toString("hex"),
@@ -724,11 +722,13 @@ console.log("FencedCode000");
 		const histE = await seedEntry(store, {
 			collection: "post",
 			slug: "d1-hist",
-			metadata: { title: "Historical date", categoryId: testCategoryId, publishedAt: histDate },
+			metadata: { title: "Historical date", categoryId: testCategoryId },
 			mdx: "body",
 			schemaVersion: 1,
 			contentHash: randomBytes(16).toString("hex"),
 		});
+		// 이관한 글처럼 발행일을 미리 넣어 두면 발행해도 그대로다.
+		await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [histE.id, histDate]);
 		await store.publishEntry({ id: histE.id, expectedVersion: histE.version });
 
 		const noMetaE = await seedEntry(store, {
@@ -752,12 +752,12 @@ console.log("FencedCode000");
 		const iDirect = getBySlug("d1-direct");
 		expect(iDirect.categoryId).toBe("cat-1");
 		expect(iDirect.tagIds).toEqual(["tag-a", "tag-b"]);
-		expect(iDirect.publishedAt?.toISOString()).toBe(directDate);
+		expect(iDirect.publishedAt).toBeNull();
 
 		const iRef = getBySlug("d1-ref");
 		expect(iRef.categoryId).toBe("cat-meta");
 		expect(iRef.tagIds).toEqual(["tag-meta1", "tag-meta2"]);
-		expect(iRef.publishedAt?.toISOString()).toBe(refDate);
+		expect(iRef.publishedAt).toBeNull();
 
 		const iHist = getBySlug("d1-hist");
 		expect(iHist.publishedAt?.toISOString()).toBe(histDate);
@@ -807,5 +807,45 @@ console.log("FencedCode000");
 			{ id: secondTag.id, title: "Second tag" },
 			{ id: firstTag.id, title: "First tag" },
 		]);
+	}, 30_000);
+
+	it("8. publishedAt sort and range use the published_at column; entries without it come last", async () => {
+		const entry = async (slug: string, publishedAt?: string) => {
+			const created = await seedEntry(store, {
+				collection: "post",
+				slug,
+				metadata: { title: slug, categoryId: testCategoryId },
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			if (publishedAt) {
+				await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [
+					created.id,
+					publishedAt,
+				]);
+			}
+			return created;
+		};
+		// 이관한 초안처럼 발행일을 미리 넣어 둔 초안도 그 날짜로 정렬된다.
+		await entry("d-2023", "2023-07-17T00:00:00.000+09:00");
+		await entry("d-2025", "2025-06-07T00:00:00.000+09:00");
+		await entry("d-2024", "2024-03-15T00:00:00.000+09:00");
+		await entry("d-none");
+		const published = await entry("p-now");
+		await store.publishEntry({ id: published.id, expectedVersion: published.version });
+
+		const order = async (direction: "asc" | "desc") =>
+			(await store.listEntries({ collection: "post", sort: { field: "publishedAt", direction } as never })).items.map(
+				(item) => item.slug,
+			);
+		expect(await order("desc")).toEqual(["p-now", "d-2025", "d-2024", "d-2023", "d-none"]);
+		expect(await order("asc")).toEqual(["d-2023", "d-2024", "d-2025", "p-now", "d-none"]);
+
+		const inRange = await store.listEntries({
+			collection: "post",
+			publishedAt: { from: new Date("2024-01-01T00:00:00Z"), to: new Date("2025-12-31T00:00:00Z") },
+		} as never);
+		expect(inRange.items.map((item) => item.slug).sort()).toEqual(["d-2024", "d-2025"]);
 	}, 30_000);
 });

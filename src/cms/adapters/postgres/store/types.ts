@@ -24,7 +24,6 @@ export interface PublishedEntryRecord {
 	/** `includeBody: false`인 목록 조회에서는 빈 문자열이다. */
 	readonly mdx: string;
 	readonly publishedAt: Date | null;
-	readonly firstPublishedAt: Date | null;
 	readonly updatedAt: Date;
 }
 
@@ -69,8 +68,6 @@ export interface Entry {
 	folderId: string | null;
 	createdAt: Date;
 	updatedAt: Date;
-	firstPublishedAt?: Date;
-	lastPublishedAt?: Date;
 	publishedAt?: Date;
 	trashedAt?: Date;
 	workingSlug: string | null;
@@ -316,8 +313,6 @@ export interface ExportSnapshotEntry {
 	publishedSlug: string | null;
 	createdAt: Date;
 	updatedAt: Date;
-	firstPublishedAt: Date | null;
-	lastPublishedAt: Date | null;
 	publishedAt: Date | null;
 	working: ExportSnapshotBody;
 	published?: ExportSnapshotBody;

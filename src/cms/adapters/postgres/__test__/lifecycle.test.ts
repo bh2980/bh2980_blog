@@ -51,40 +51,22 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-publish-1",
-				metadata: { title: "Draft Post", publishedAt: "2026-03-01T12:00:00.000Z" },
+				metadata: { title: "Draft Post" },
 				mdx: "Content 1",
 				schemaVersion: 1,
 				contentHash: "hash-1",
 			});
 
 			expect(entry.status).toBe("draft");
+			expect(entry.publishedAt).toBeUndefined();
 
-			// 표시 발행일은 초안 메타데이터의 `publishedAt`이다(§5.5).
+			// 발행일은 처음 발행한 시각이다(§5.5).
+			const before = Date.now();
 			const published = await store.publishEntry({ id: entry.id, expectedVersion: entry.version });
 
 			expect(published.status).toBe("published");
-			expect(published.publishedAt).toEqual(new Date("2026-03-01T12:00:00Z"));
-			expect(published.firstPublishedAt).toBeDefined();
-			expect(published.lastPublishedAt).toBeDefined();
-		});
-
-		it("rejects future publishedAt without changing the draft", async () => {
-			const entry = await seedEntry(store, {
-				collection: "post",
-				slug: "test-future-published-at",
-				metadata: { title: "Future date", publishedAt: "2999-01-01T00:00:00.000Z" },
-				mdx: "Content",
-				schemaVersion: 1,
-				contentHash: `hash-future-${randomUUID()}`,
-			});
-
-			await expect(store.publishEntry({ id: entry.id, expectedVersion: entry.version })).rejects.toMatchObject({
-				code: "publish_validation_failed",
-				issues: expect.arrayContaining([expect.objectContaining({ code: "future_published_at" })]),
-			});
-			const unchanged = await store.getEntry(entry.id);
-			expect(unchanged.status).toBe("draft");
-			expect(unchanged.version).toBe(entry.version);
+			expect(published.publishedAt?.getTime()).toBeGreaterThanOrEqual(before - 1000);
+			expect(published.publishedAt?.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
 		});
 
 		it("published -> archive closes public visibility and cancels any pending schedule", async () => {
@@ -749,24 +731,19 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 	});
 
 	describe("4. Timestamps (§5.5)", () => {
-		it("preserves firstPublishedAt on re-publish, updates lastPublishedAt, and honors publishedAt override", async () => {
+		it("keeps the first publish time on re-publish and after archive", async () => {
 			const post = await seedEntry(store, {
 				collection: "post",
 				slug: "post-timestamp-test",
-				metadata: { title: "Timestamp Post", publishedAt: "2025-01-01T00:00:00.000Z" },
+				metadata: { title: "Timestamp Post" },
 				mdx: "V1",
 				schemaVersion: 1,
 				contentHash: "ts-hash-1",
 			});
-
-			const userSpecifiedDate = new Date("2025-01-01T00:00:00Z");
 			const pub1 = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+			const firstPublishedAt = pub1.publishedAt;
+			expect(firstPublishedAt).toBeInstanceOf(Date);
 
-			const firstPubAt = pub1.firstPublishedAt;
-			expect(firstPubAt).toBeDefined();
-			expect(pub1.publishedAt).toEqual(userSpecifiedDate);
-
-			// Save draft V2
 			await store.saveWorkingWithReferences({
 				entryId: post.id,
 				expectedVersion: pub1.version,
@@ -782,19 +759,30 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				},
 				references: [],
 			});
-
-			// Wait slight tick
 			await new Promise((r) => setTimeout(r, 50));
+			const pub2 = await store.publishEntry({ id: post.id, expectedVersion: pub1.version + 1 });
+			expect(pub2.publishedAt).toEqual(firstPublishedAt);
 
-			// Re-publish
-			const pub2 = await store.publishEntry({
-				id: post.id,
-				expectedVersion: pub1.version + 1,
+			const archived = await store.archiveEntry({ id: post.id, expectedVersion: pub2.version });
+			const draft = await store.unarchiveEntry({ id: post.id, expectedVersion: archived.version });
+			const pub3 = await store.publishEntry({ id: post.id, expectedVersion: draft.version });
+			expect(pub3.publishedAt).toEqual(firstPublishedAt);
+		});
+
+		it("publishes with a publish time set beforehand (migrated drafts keep their original date)", async () => {
+			const post = await seedEntry(store, {
+				collection: "post",
+				slug: "post-preset-date",
+				metadata: { title: "Migrated" },
+				mdx: "Body",
+				schemaVersion: 1,
+				contentHash: "ts-hash-preset",
 			});
+			const original = new Date("2023-07-16T15:00:00Z");
+			await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [post.id, original]);
 
-			expect(pub2.firstPublishedAt).toEqual(firstPubAt); // MUST NOT BE OVERWRITTEN
-			expect(new Date(pub2.lastPublishedAt).getTime()).toBeGreaterThan(new Date(firstPubAt).getTime());
-			expect(pub2.publishedAt).toEqual(userSpecifiedDate); // preserved unless overridden
+			const published = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+			expect(published.publishedAt).toEqual(original);
 		});
 	});
 

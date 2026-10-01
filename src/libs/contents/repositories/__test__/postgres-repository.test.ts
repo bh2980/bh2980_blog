@@ -14,7 +14,6 @@ function record(
 		metadata: {},
 		mdx: "",
 		publishedAt: DATE,
-		firstPublishedAt: DATE,
 		updatedAt: DATE,
 		...overrides,
 	};
@@ -137,7 +136,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 		expect(publishedAtOf(memo)).toBe(DATE_ISO);
 	});
 
-	it("metadata.publishedAt이 있으면 그 값을 우선한다", async () => {
+	it("발행일은 DB가 처음 발행할 때 기록한 칸이다(메타데이터에 남은 예전 값은 쓰지 않는다)", async () => {
 		const memo = await repositoryWith([
 			record({
 				id: "memo-1",
@@ -147,7 +146,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 			}),
 		]).getMemo("memo-a");
 
-		expect(publishedAtOf(memo)).toBe("2025-12-31T00:00:00.000Z");
+		expect(publishedAtOf(memo)).toBe(DATE_ISO);
 	});
 
 	it("카테고리를 해석할 수 없는 게시글은 공개하지 않는다", async () => {
@@ -165,7 +164,6 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 				collection: "memo",
 				slug: "memo-a",
 				publishedAt: null,
-				firstPublishedAt: null,
 			}),
 		]);
 

@@ -31,11 +31,6 @@ const tagIds = fields.relation({
 	createInline: true,
 	description: "고른 순서를 보존합니다.",
 });
-const publishedAt = fields.datetime({
-	label: "발행일",
-	pastOnly: true,
-	description: "비워 두면 처음 발행한 시각을 씁니다. 미래 발행은 예약 기능을 쓰세요.",
-});
 
 /**
  * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
@@ -79,7 +74,6 @@ export const post = collection({
 			description: "누르는 즉시 모음집에 저장됩니다(글의 초안·발행과 별개). 추가하면 모음집 끝에 들어갑니다.",
 			placeholder: "모음집에 추가",
 		}),
-		publishedAt,
 		policy: fields.conditional(
 			fields.select({
 				label: "정책",
@@ -104,7 +98,7 @@ export const post = collection({
 	layout: [
 		{ fields: ["title", "slug", "summary"] },
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
-		{ group: "발행", fields: ["publishedAt", "policy"] },
+		{ group: "정책", fields: ["policy"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
 	],
 	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
@@ -113,11 +107,10 @@ export const post = collection({
 export const memo = collection({
 	label: "메모",
 	workflow: "publish",
-	fields: { title, slug: contentSlug, tagIds, publishedAt, ...seo },
+	fields: { title, slug: contentSlug, tagIds, ...seo },
 	layout: [
 		{ fields: ["title", "slug"] },
 		{ group: "분류", fields: ["tagIds"] },
-		{ group: "발행", fields: ["publishedAt"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
 	],
 	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },

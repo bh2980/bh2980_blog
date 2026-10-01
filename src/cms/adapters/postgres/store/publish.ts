@@ -147,7 +147,7 @@ export function createPublishing(ctx: StoreContext) {
 
 	/**
 	 * 최신 초안을 현재 공개본으로 원자적으로 반영한다(§5.2, §9.2).
-	 * 발행일(`published_at`)은 초안 메타데이터의 `publishedAt`을 따르고, 없으면 기존 값 또는 지금이다(§5.5).
+	 * 발행일(`published_at`)은 처음 발행한 시각이다. 이미 값이 있으면(다시 발행, 이관한 글) 바꾸지 않는다.
 	 */
 	const publishWithinTransaction = async (client: PoolClient, id: string, options: PublishOptions): Promise<Entry> => {
 		const locked = await lockEntryForUpdate(client, qSchema, id, options.expectedVersion);
@@ -161,10 +161,6 @@ export function createPublishing(ctx: StoreContext) {
 		const working = await readBody(client, qSchema, id, "working");
 		if (!working) throw new CmsError("Working draft not found", "not_found");
 		const published = await readBody(client, qSchema, id, "published");
-		const entryRes = await client.query<{ published_at: Date | null }>(
-			`SELECT published_at FROM "${qSchema}".entries WHERE id = $1`,
-			[id],
-		);
 		const currentSlugRes = await client.query<{ slug: string }>(
 			`SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'current'`,
 			[id],
@@ -185,16 +181,10 @@ export function createPublishing(ctx: StoreContext) {
 
 		const now = new Date();
 		if (!isRepublish) {
-			const metadataDate =
-				typeof working.metadata.publishedAt === "string" ? new Date(working.metadata.publishedAt) : null;
-			const effectivePublishedAt =
-				metadataDate && Number.isFinite(metadataDate.getTime())
-					? metadataDate
-					: (entryRes.rows[0]?.published_at ?? now);
 			await client.query(
-				`UPDATE "${qSchema}".entries SET version = $1, status = 'published', last_published_at = $2,
-				 first_published_at = COALESCE(first_published_at, $2), published_at = $3 WHERE id = $4`,
-				[locked.version + 1, now, effectivePublishedAt, id],
+				`UPDATE "${qSchema}".entries SET version = $1, status = 'published',
+				 published_at = COALESCE(published_at, $2) WHERE id = $3`,
+				[locked.version + 1, now, id],
 			);
 			await writeBody(client, qSchema, id, "published", {
 				metadata: working.metadata,

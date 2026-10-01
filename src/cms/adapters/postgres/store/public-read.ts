@@ -32,7 +32,6 @@ type PublishedRow = {
 	source_metadata: EntryMetadata;
 	mdx: string;
 	published_at: Date | null;
-	first_published_at: Date | null;
 	body_updated_at: Date;
 };
 
@@ -45,11 +44,11 @@ const sourceJoin = (qSchema: string) => `JOIN "${qSchema}".entries src
 	 JOIN "${qSchema}".entry_bodies sb
 	   ON sb.entry_id = src.id AND sb.state = 'published'`;
 
-/** 표시 발행일은 공통 값이라 원문의 것을 쓴다. 수정일은 이 언어 본문의 것이다. */
+/** 발행일은 원문의 것을 쓴다(번역본도 원문 날짜). 수정일은 이 언어 본문의 것이다. */
 const PUBLISHED_COLUMNS = (mdxExpr: string, address = "a") =>
 	`e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
 	 ${address}.slug AS slug, b.metadata, sb.metadata AS source_metadata, ${mdxExpr} AS mdx,
-	 src.published_at, src.first_published_at, b.updated_at AS body_updated_at`;
+	 src.published_at, b.updated_at AS body_updated_at`;
 
 /** 번역본 메타데이터 = 원문의 공통 값 + 번역본의 언어별 값. */
 function mapPublishedRow(row: PublishedRow): PublishedEntryRecord {

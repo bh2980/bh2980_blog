@@ -161,10 +161,7 @@ export function formFromEntry(entry: EntryData): EntryForm {
 	const form: EntryForm = { title: text(metadata.title), slug: entry.workingSlug ?? "", mdx: entry.working.mdx ?? "" };
 	for (const stored of fieldsOf(entry.collection, isTranslationEntry(entry))) {
 		if (stored.name === "title" || stored.field.hidden) continue;
-		// 표시 발행일의 원천은 초안 메타데이터다. 없으면 이전 발행에서 정해진 값을 보여 준다(§5.5).
-		const value =
-			stored.name === "publishedAt" ? text(metadata.publishedAt) || entry.publishedAt : metadata[stored.name];
-		form[stored.name] = toFormValue(stored, value);
+		form[stored.name] = toFormValue(stored, metadata[stored.name]);
 	}
 	Object.assign(form, recordTranslationsToForm(entry.collection, metadata));
 	// 번역본은 번역 상태도 폼으로 다룬다(v3). 자동 저장·복구본·충돌 비교가 본문과 함께 본다.

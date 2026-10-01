@@ -66,14 +66,13 @@ export const COLUMN_LABELS: Record<AdminListColumn, string> = Object.fromEntries
 
 /**
  * 필드 컬럼 → 그 컬럼이 보여 주는 필드. 목록 API의 컬럼·필터 매개변수는 v1 그대로라
- * 이 표에 있는 필드만 목록 컬럼이 될 수 있다. 나머지 컬럼(상태·날짜·폴더)은 콘텐츠 자체의 값이다.
+ * 이 표에 있는 필드만 목록 컬럼이 될 수 있다. 나머지 컬럼(상태·언어·날짜·폴더)은 콘텐츠 자체의 값이다.
  */
 const FIELD_COLUMNS: Partial<Record<AdminListColumn, string>> = {
 	title: "title",
 	slug: "slug",
 	category: "categoryId",
 	tags: "tagIds",
-	publishedAt: "publishedAt",
 };
 
 const columnOf = (name: string): AdminListColumn | undefined =>
@@ -87,8 +86,8 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 	if (!isCollection(collection)) return { available: [...ADMIN_LIST_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
 	const available = ADMIN_LIST_COLUMNS.filter((column) => {
-		// record 컬렉션은 언어별 문서가 없다(이름만 언어별 값, v2 B4).
-		if (column === "locale") return schema.workflow === "publish";
+		// record 컬렉션은 언어별 문서가 없고(이름만 언어별 값, v2 B4) 발행 없이 저장이 곧 공개다.
+		if (column === "locale" || column === "publishedAt") return schema.workflow === "publish";
 		const field = FIELD_COLUMNS[column];
 		return field === undefined || Object.hasOwn(schema.fields, field) || storedField(collection, field) !== undefined;
 	});

@@ -124,7 +124,6 @@ export function mapPublishedEntryRow(row: {
 	metadata: EntryMetadata;
 	mdx: string;
 	published_at: Date | null;
-	first_published_at: Date | null;
 	body_updated_at: Date;
 }): PublishedEntryRecord {
 	return {
@@ -136,7 +135,6 @@ export function mapPublishedEntryRow(row: {
 		metadata: row.metadata,
 		mdx: row.mdx,
 		publishedAt: row.published_at,
-		firstPublishedAt: row.first_published_at,
 		updatedAt: row.body_updated_at,
 	};
 }
@@ -359,8 +357,6 @@ interface EntryRow {
 	folder_id: string | null;
 	created_at: Date;
 	entry_updated_at: Date;
-	first_published_at: Date | null;
-	last_published_at: Date | null;
 	published_at: Date | null;
 	trashed_at: Date | null;
 	working_slug: string | null;
@@ -379,7 +375,7 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 		`SELECT
 			e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
 			e.status, e.version, e.folder_id, e.created_at, e.updated_at as entry_updated_at,
-			e.first_published_at, e.last_published_at, e.published_at, e.trashed_at, e.working_slug,
+			e.published_at, e.trashed_at, e.working_slug,
 			(SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') as current_slug,
 			b.state, b.metadata, b.mdx, b.schema_version, b.content_hash, b.updated_at as body_updated_at, b.translation
 		 FROM "${qSchema}".entries e
@@ -418,8 +414,6 @@ export async function loadEntry(client: Queryable, id: string, qSchema: string):
 		folderId: first.folder_id,
 		createdAt: first.created_at,
 		updatedAt: first.entry_updated_at,
-		firstPublishedAt: first.first_published_at ?? undefined,
-		lastPublishedAt: first.last_published_at ?? undefined,
 		publishedAt: first.published_at ?? undefined,
 		trashedAt: first.trashed_at ?? undefined,
 		workingSlug: first.working_slug,

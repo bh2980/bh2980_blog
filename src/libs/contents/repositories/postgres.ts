@@ -44,16 +44,9 @@ function toLabel(entry: PublishedEntryRecord, locale: Locale = DEFAULT_LOCALE): 
 
 const asLocale = (value: string): Locale => (isLocale(value) ? value : DEFAULT_LOCALE);
 
-/**
- * 표시 발행일은 metadata(`publishedAt`, 이관된 표시 날짜)를 우선하고,
- * 없으면 DB가 발행 시점에 기록한 값을 쓴다. 둘 다 없으면 공개하지 않는다.
- */
+/** 발행일은 처음 발행할 때 DB가 기록한 값이다. 없으면 공개하지 않는다. */
 function resolvePublishedAt(entry: PublishedEntryRecord): string | null {
-	const fromMetadata = readMetadataString(entry.metadata, "publishedAt");
-	if (fromMetadata) return fromMetadata;
-
-	const fromColumn = entry.publishedAt ?? entry.firstPublishedAt;
-	return fromColumn ? fromColumn.toISOString() : null;
+	return entry.publishedAt ? entry.publishedAt.toISOString() : null;
 }
 
 function resolveTags(entry: PublishedEntryRecord, tagsById: ReadonlyMap<string, PublishedEntryRecord>): Tag[] {

@@ -19,8 +19,8 @@ describe("이관 발행일의 KST 해석", () => {
 		expect(source).toBeDefined();
 
 		const item = plan.items.find((entry) => entry.slug === source?.slug);
-		const publishedAt = (item?.working.metadata as Record<string, unknown>)?.publishedAt;
-		expect(publishedAt).toBe("2026-01-05T19:38:00.000+09:00");
+		const publishedAt = item?.publishedAt?.toISOString();
+		expect(publishedAt).toBe("2026-01-05T10:38:00.000Z");
 
 		// 표시 날짜가 원본 wall-clock과 같은 날이어야 한다(그대로 두면 1월 6일이 된다).
 		expect(formatPublishedAt(publishedAt as string)).toContain("1월 5일");

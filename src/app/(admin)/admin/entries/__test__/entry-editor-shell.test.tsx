@@ -260,35 +260,18 @@ describe("entry editor shell", () => {
 		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({ expectedVersion: 1 });
 	});
 
-	it("saves the KST display date in draft metadata and publishes with only the version", async () => {
-		let saved = {
-			...entry,
-			working: { ...entry.working, metadata: { ...entry.working.metadata, publishedAt: "2020-01-04T16:15:00.000Z" } },
-		};
-		serve((input, init) => {
-			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(saved);
-			if (init?.method === "PATCH") {
-				const body = JSON.parse(String(init.body));
-				saved = { ...saved, version: 5, working: { ...saved.working, metadata: body.metadata } };
-				return json(saved);
-			}
-			if (input.endsWith("/publish")) return json({ ...saved, version: 6, status: "published", warnings: [] });
+	it("has no publish date input and publishes with only the version", async () => {
+		serve((input) => {
+			if (input.endsWith("/publish")) return json({ ...entry, version: 5, status: "published", warnings: [] });
 		});
 		renderEdit();
-		const publishDate = (await screen.findByLabelText(/^발행일/)) as HTMLInputElement;
-		expect(publishDate.value).toBe("2020-01-05T01:15");
-		fireEvent.change(publishDate, { target: { value: "2020-02-03T04:05" } });
+		await editorTitle();
+		// 발행일은 처음 발행할 때 서버가 정한다. 속성 칸에서 고치지 않는다.
+		expect(screen.queryByLabelText(/^발행일/)).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "발행" }));
 
 		await waitFor(() => expect(methodCalls("POST", "/publish")).toHaveLength(1));
-		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).metadata.publishedAt).toBe(
-			"2020-02-02T19:05:00.000Z",
-		);
-		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({ expectedVersion: 5 });
-
-		cleanup();
-		renderEdit();
-		expect(((await screen.findByLabelText(/^발행일/)) as HTMLInputElement).value).toBe("2020-02-03T04:05");
+		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({ expectedVersion: 4 });
 	});
 
 	it("offers a same-version browser backup and deletes it when the server copy is kept", async () => {

@@ -229,7 +229,6 @@ export function createListOps(ctx: StoreContext) {
 				const tagIds = Array.isArray(common.tagIds)
 					? common.tagIds.filter((t): t is string => typeof t === "string")
 					: [];
-				const metaDate = typeof common.publishedAt === "string" ? new Date(common.publishedAt) : null;
 				return {
 					id: row.id,
 					collection: row.collection,
@@ -244,8 +243,7 @@ export function createListOps(ctx: StoreContext) {
 					tagIds,
 					hasUnpublishedChanges: row.has_changes,
 					scheduledAt: row.scheduled_at,
-					// 표시 발행일은 초안 메타데이터가 우선이다. 발행 때 같은 값이 `published_at`에 반영된다.
-					publishedAt: metaDate && Number.isFinite(metaDate.getTime()) ? metaDate : row.published_at,
+					publishedAt: row.published_at,
 					createdAt: row.created_at,
 					updatedAt: row.updated_at,
 					trashedAt: row.trashed_at,

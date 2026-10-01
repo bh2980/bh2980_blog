@@ -411,7 +411,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					throw new CmsError("Record collections cannot be duplicated", "invalid_input");
 				}
 
-				const { publishedAt: _publishedAt, ...rest } = orig.metadata ?? {};
+				const rest = orig.metadata ?? {};
 				const title = typeof rest.title === "string" && rest.title.trim() ? rest.title : "제목 없음";
 				const metadata = normalizeMetadata({ ...rest, title: `${title} (복사)` });
 				const newId = randomUUID();

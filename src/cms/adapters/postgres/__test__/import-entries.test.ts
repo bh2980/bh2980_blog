@@ -45,15 +45,14 @@ describe("M6-BE-2 importEntries / readExportSnapshot 계약", () => {
 		const published = snapshot.entries.find((entry) => entry.collection === "post");
 		expect(published?.published).toBeDefined();
 		expect(published?.publishedSlug).toBe("첫-글");
-		expect(published?.firstPublishedAt).toBeNull();
-		expect(published?.lastPublishedAt).toBeNull();
 		// 픽스처의 원본은 `…T03:04:00.000Z`지만 Keystatic이 한국 시간을 UTC로 잘못 저장한 값이다.
 		// 이관은 wall-clock을 KST로 해석하므로 03:04 KST = 전날 18:04 UTC가 된다.
 		expect(published?.publishedAt?.toISOString()).toBe("2026-01-01T18:04:00.000Z");
 
 		const draft = snapshot.entries.find((entry) => entry.status === "draft");
 		expect(draft?.published).toBeUndefined();
-		expect(draft?.publishedAt).toBeNull();
+		// 초안도 원본 날짜를 발행일 칸에 넣어 둔다.
+		expect(draft?.publishedAt?.toISOString()).toBe("2026-01-02T18:04:00.000Z");
 		expect(draft?.workingSlug).toBe("메모-하나");
 	});
 

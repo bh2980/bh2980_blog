@@ -7,7 +7,7 @@ import type { BacklinkField, Field, SlugField, ValueField, ValueOf } from "./fie
 export type CollectionWorkflow = "publish" | "record";
 
 /** 목록의 시스템 컬럼. 필드가 아니라 콘텐츠 자체의 값이다. */
-export const SYSTEM_LIST_COLUMNS = ["status", "locale", "updatedAt", "createdAt", "folder"] as const;
+export const SYSTEM_LIST_COLUMNS = ["status", "locale", "updatedAt", "createdAt", "publishedAt", "folder"] as const;
 export type SystemListColumn = (typeof SYSTEM_LIST_COLUMNS)[number];
 
 export interface LayoutGroup<Name extends string = string> {

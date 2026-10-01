@@ -178,8 +178,8 @@ export function createTransferOps(ctx: StoreContext) {
 				for (const item of pending) {
 					await client.query(
 						`INSERT INTO "${qSchema}".entries
-						 (id, collection, status, version, created_at, updated_at, first_published_at, last_published_at, published_at, working_slug, folder_id, locale, translation_group_id)
-						 VALUES ($1, $2, $3, 1, $4, $4, NULL, NULL, $5, $6, $7, $8, $9)`,
+						 (id, collection, status, version, created_at, updated_at, published_at, working_slug, folder_id, locale, translation_group_id)
+						 VALUES ($1, $2, $3, 1, $4, $4, $5, $6, $7, $8, $9)`,
 						[
 							item.id,
 							item.collection,
@@ -257,13 +257,11 @@ export function createTransferOps(ctx: StoreContext) {
 						current_slug: string | null;
 						created_at: Date;
 						updated_at: Date;
-						first_published_at: Date | null;
-						last_published_at: Date | null;
 						published_at: Date | null;
 					}>(
 						`SELECT e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
 					        e.status, e.version, e.folder_id, e.working_slug, e.created_at, e.updated_at,
-					        e.first_published_at, e.last_published_at, e.published_at,
+					        e.published_at,
 					        (SELECT slug FROM "${qSchema}".content_addresses WHERE entry_id = e.id AND type = 'current') AS current_slug
 					 FROM "${qSchema}".entries e
 					 ORDER BY e.collection ASC, e.id ASC`,
@@ -370,8 +368,6 @@ export function createTransferOps(ctx: StoreContext) {
 							publishedSlug: row.current_slug,
 							createdAt: row.created_at,
 							updatedAt: row.updated_at,
-							firstPublishedAt: row.first_published_at,
-							lastPublishedAt: row.last_published_at,
 							publishedAt: row.published_at,
 							working,
 							...(bodiesByEntryPublished.has(row.id) ? { published: bodiesByEntryPublished.get(row.id) } : {}),

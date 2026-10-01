@@ -42,8 +42,8 @@ const SEO_PUBLIC_KEYS: readonly string[] = ["seoTitle", "seoDescription", "canon
  * 관리자 전용 키(storageKey 등)나 내부 값이 중첩 metadata에 섞여도 공개 아카이브에 나가지 않는다.
  */
 export const PUBLIC_METADATA_KEYS: Record<string, readonly string[]> = {
-	post: ["title", "summary", "categoryId", "tagIds", "publishedAt", "policy", ...SEO_PUBLIC_KEYS],
-	memo: ["title", "tagIds", "publishedAt", ...SEO_PUBLIC_KEYS],
+	post: ["title", "summary", "categoryId", "tagIds", "policy", ...SEO_PUBLIC_KEYS],
+	memo: ["title", "tagIds", ...SEO_PUBLIC_KEYS],
 	category: ["title"],
 	tag: ["title"],
 	collection: ["title", "itemIds"],
@@ -72,8 +72,6 @@ export interface ExportManifestEntry {
 	folderId: string | null;
 	createdAt: string | null;
 	updatedAt: string | null;
-	firstPublishedAt: string | null;
-	lastPublishedAt: string | null;
 	publishedAt: string | null;
 	hasWorking: boolean;
 	hasPublished: boolean;
@@ -192,8 +190,6 @@ const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): {
 			updatedAt: iso(body.updatedAt),
 			createdAt: iso(entry.createdAt),
 			updatedEntryAt: iso(entry.updatedAt),
-			firstPublishedAt: iso(entry.firstPublishedAt),
-			lastPublishedAt: iso(entry.lastPublishedAt),
 			publishedAt: iso(entry.publishedAt),
 			folderId: entry.folderId,
 		})}\n`,
@@ -285,8 +281,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 				folderId: entry.folderId,
 				createdAt: iso(entry.createdAt),
 				updatedAt: iso(entry.updatedAt),
-				firstPublishedAt: iso(entry.firstPublishedAt),
-				lastPublishedAt: iso(entry.lastPublishedAt),
 				publishedAt: iso(entry.publishedAt),
 				hasWorking: true,
 				hasPublished: entry.published !== undefined,
@@ -316,8 +310,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			folderId: null,
 			createdAt: null,
 			updatedAt: iso(entry.published?.updatedAt),
-			firstPublishedAt: null,
-			lastPublishedAt: null,
 			publishedAt: iso(entry.publishedAt),
 			hasWorking: false,
 			hasPublished: true,

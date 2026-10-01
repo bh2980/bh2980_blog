@@ -59,9 +59,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		expect(entry.updatedAt).toBeInstanceOf(Date);
 		expect(entry.working.updatedAt).toBeInstanceOf(Date);
 
-		expect(entry.firstPublishedAt ?? null).toBeNull();
 		expect(entry.publishedAt ?? null).toBeNull();
-		expect(entry.lastPublishedAt ?? null).toBeNull();
 	});
 
 	it("allows two drafts in the same collection with slug null and manages workingSlug/publishedSlug", async () => {
@@ -134,10 +132,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		expect(published.published?.updatedAt?.getTime()).toBe(initialWorkingUpdatedAt);
 
 		expect(published.publishedAt).toBeInstanceOf(Date);
-		expect(published.firstPublishedAt).toBeInstanceOf(Date);
-		expect(published.lastPublishedAt).toBeInstanceOf(Date);
 
-		const firstPub = published.firstPublishedAt?.getTime();
 		const pubAt = published.publishedAt?.getTime();
 
 		await new Promise((r) => setTimeout(r, 10));
@@ -150,9 +145,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 			contentHash: "hash-time-2",
 		});
 
-		expect(saved.firstPublishedAt?.getTime()).toBe(firstPub);
 		expect(saved.publishedAt?.getTime()).toBe(pubAt);
-		expect(saved.lastPublishedAt?.getTime()).toBe(published.lastPublishedAt?.getTime());
 		expect(saved.published?.updatedAt?.getTime()).toBe(initialWorkingUpdatedAt);
 
 		expect(saved.working.updatedAt?.getTime()).toBeGreaterThan(initialWorkingUpdatedAt);
@@ -364,7 +357,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		});
 
 		const published = await store.publishEntry({ id: entry.id, expectedVersion: entry.version });
-		expect(published.lastPublishedAt).toBeDefined();
+		expect(published.publishedAt).toBeDefined();
 
 		await seedSave(store, entry.id, {
 			expectedVersion: published.version,
@@ -382,7 +375,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		expect(reloaded.working.schemaVersion).toBe(2);
 
 		expect(reloaded.published).toEqual(published.published);
-		expect(reloaded.lastPublishedAt?.getTime()).toEqual(published.lastPublishedAt?.getTime());
+		expect(reloaded.publishedAt?.getTime()).toEqual(published.publishedAt?.getTime());
 	});
 
 	it("republishing the same content hash does not replace the published snapshot", async () => {
@@ -409,7 +402,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		const reloaded = await store.getEntry(entry.id);
 		expect(reloaded.published).toEqual(firstPublish.published);
-		expect(reloaded.lastPublishedAt?.getTime()).toEqual(firstPublish.lastPublishedAt?.getTime());
+		expect(reloaded.publishedAt?.getTime()).toEqual(firstPublish.publishedAt?.getTime());
 	});
 
 	it("a transaction failure during publish leaves the prior published snapshot intact", async () => {

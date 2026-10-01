@@ -706,7 +706,6 @@ export async function imageWarningsForPublish(input: {
 export function validateForPublish(
 	snapshot: PreparedSnapshot,
 	resolved: ResolvedTargets,
-	now: Date = new Date(),
 ): { ready: boolean; issues: Issue[]; warnings: Issue[] } {
 	const issues: Issue[] = [...snapshot.issues];
 	const occurrenceIssue = (code: string, occurrence: ReferenceOccurrence | undefined, message?: string): Issue => ({
@@ -723,17 +722,12 @@ export function validateForPublish(
 		...missingRequiredIssues(snapshot.collection, snapshot, { localizedOnly: Boolean(resolved.translation) }),
 	);
 	if (resolved.translation && !resolved.translation.sourcePublished) {
-		// 공개 화면의 카테고리·태그·발행일은 원문 공개본에서 온다.
+		// 공개 화면의 카테고리·태그·발행일은 원문에서 온다.
 		issues.push({ code: "source_not_published", path: "translationGroupId" });
 	}
 	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
 	if (isContent && snapshot.mdx.trim() === "") {
 		issues.push({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });
-	}
-	const publishedAt = snapshot.metadata.publishedAt;
-	if (typeof publishedAt === "string" && Date.parse(publishedAt) > now.getTime()) {
-		// §5.5: 미래 발행일로 예약 기능을 우회하지 않는다.
-		issues.push({ code: "future_published_at", path: "publishedAt" });
 	}
 
 	// 메타데이터 관계는 스냅샷의 참조 목록과 무관하게 항상 검사한다(호출자가 참조를 비워 보내도 새지 않게).

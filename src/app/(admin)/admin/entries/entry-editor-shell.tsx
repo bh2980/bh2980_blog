@@ -489,16 +489,6 @@ export function EntryEditorShell({
 			setForm({ summary: generated });
 			toast.message("본문에서 요약을 만들었습니다. 속성 패널에서 고칠 수 있습니다.");
 		}
-		if (formText(form, "publishedAt")) {
-			const publishedAt = parseSeoulDateTimeInput(formText(form, "publishedAt"));
-			if (publishedAt && Date.parse(publishedAt) > Date.now()) {
-				setActionFeedback({
-					type: "error",
-					message: "미래 시각은 발행일로 지정할 수 없습니다. 예약 기능을 사용하세요.",
-				});
-				return;
-			}
-		}
 		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
 		if (sourceChanged) toast.warning("확인하지 않은 원문 변경이 있습니다.");
 		setIsSubmitting(true);

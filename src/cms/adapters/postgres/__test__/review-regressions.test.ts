@@ -194,15 +194,17 @@ describe("review regressions", () => {
 		}
 	});
 
-	it("duplicates without the display publish date and with a hash that matches its metadata", async () => {
-		const source = await service.createDraft({
+	it("duplicates without the publish date and with a hash that matches its metadata", async () => {
+		const draft = await service.createDraft({
 			collection: "post",
 			slug: unique("dup"),
-			metadata: { title: "원본", categoryId, publishedAt: "2020-01-01T00:00:00.000Z" },
+			metadata: { title: "원본", categoryId },
 			mdx: "본문",
 		});
+		const source = await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
+		expect(source.publishedAt).toBeInstanceOf(Date);
 		const copy = await store.duplicateEntry({ id: source.id });
-		expect(copy.working.metadata.publishedAt).toBeUndefined();
+		expect(copy.publishedAt).toBeUndefined();
 		expect(copy.working.metadata.title).toBe("원본 (복사)");
 		const recomputed = await prepareSnapshot({
 			collection: "post",

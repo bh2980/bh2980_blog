@@ -56,7 +56,6 @@ describe("컬렉션 정의(v2 B1)", () => {
 			summary: "string",
 			categoryId: "string",
 			tagIds: "string[]",
-			publishedAt: "string",
 			policy: "string",
 			replacementPostId: "string",
 			seoTitle: "string",
@@ -68,7 +67,6 @@ describe("컬렉션 정의(v2 B1)", () => {
 		expect(COLLECTION_DEFINITIONS.memo.fields).toEqual({
 			title: "string",
 			tagIds: "string[]",
-			publishedAt: "string",
 			seoTitle: "string",
 			seoDescription: "string",
 			canonicalUrl: "string",
@@ -108,8 +106,9 @@ describe("정의에서 만든 서버 규칙", () => {
 		await expect(post({ title: "t", categoryId: "not-uuid" })).rejects.toMatchObject({
 			code: "invalid_metadata_value",
 		});
-		await expect(post({ title: "t", publishedAt: "not-a-date" })).rejects.toMatchObject({
-			code: "invalid_metadata_value",
+		// 발행일은 입력값이 아니다(처음 발행할 때 DB가 기록한다).
+		await expect(post({ title: "t", publishedAt: "2020-01-01T00:00:00.000Z" })).rejects.toMatchObject({
+			code: "invalid_metadata_key",
 		});
 		await expect(post({ title: "가".repeat(201) })).rejects.toMatchObject({ code: "title_too_long" });
 	});
@@ -169,7 +168,6 @@ describe("정의에서 만든 폼 변환", () => {
 				policy: "normal",
 				replacementPostId: POST,
 				seoTitle: " 검색 ",
-				publishedAt: "",
 			},
 			"post",
 			{ summary: "old" },
@@ -177,15 +175,11 @@ describe("정의에서 만든 폼 변환", () => {
 		expect(built).toEqual({ metadata: { title: "제목 ", categoryId: CATEGORY, seoTitle: "검색" } });
 	});
 
-	it("이미 저장된 정책은 기본값이어도 갱신하고, 날짜는 서울 시간에서 ISO로 바꾼다", () => {
-		const built = metadataFromForm(
-			{ title: "t", slug: "", mdx: "", policy: "normal", publishedAt: "2020-01-05T10:15" },
-			"post",
-			{ policy: "deprecated", replacementPostId: POST },
-		);
-		expect(built).toEqual({ metadata: { title: "t", policy: "normal", publishedAt: "2020-01-05T01:15:00.000Z" } });
-		expect(metadataFromForm({ title: "t", slug: "", mdx: "", publishedAt: "bad" }, "memo", {})).toEqual({
-			error: "발행일 값을 확인하세요.",
+	it("이미 저장된 정책은 기본값이어도 갱신한다", () => {
+		const built = metadataFromForm({ title: "t", slug: "", mdx: "", policy: "normal" }, "post", {
+			policy: "deprecated",
+			replacementPostId: POST,
 		});
+		expect(built).toEqual({ metadata: { title: "t", policy: "normal" } });
 	});
 });

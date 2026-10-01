@@ -57,9 +57,9 @@ describe("import plan", () => {
 			const memo = plan.items.find((item) => item.collection === "memo");
 			expect(memo?.status).toBe("draft");
 			expect(memo?.published).toBeUndefined();
-			// 초안이어도 원본 날짜는 작업본 메타데이터에만 남고 공개 시각 컬럼은 null이다.
-			expect(memo?.publishedAt).toBeNull();
-			expect(memo?.working.metadata).toMatchObject({ publishedAt: "2026-01-03T03:04:00.000+09:00" });
+			// 초안도 원본 날짜를 발행일 칸에 넣어 둔다. 나중에 발행하면 그 날짜를 그대로 쓴다.
+			expect(memo?.publishedAt?.toISOString()).toBe("2026-01-02T18:04:00.000Z");
+			expect(memo?.working.metadata).not.toHaveProperty("publishedAt");
 		} finally {
 			fixture.cleanup();
 		}
