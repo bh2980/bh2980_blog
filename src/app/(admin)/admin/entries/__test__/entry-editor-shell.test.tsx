@@ -59,6 +59,10 @@ vi.mock("@/cms/editor/tiptap-editor", () => ({
 	),
 }));
 vi.mock("sonner", () => ({ Toaster: () => null, toast: { success, warning, message, error } }));
+// AI 번역은 따로 테스트한다(ai-translate.test.ts). 편집 화면 테스트에는 AI 기능 목록 요청이 없게 한다.
+vi.mock("../ai-translate", () => ({
+	useAiTranslate: () => ({ blockAction: null, toolbar: null, setEditor: () => {} }),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: routerReplace, push: routerPush }) }));
 
 const ADMIN = "u1";
@@ -121,6 +125,9 @@ describe("entry editor shell", () => {
 		});
 		renderEdit();
 		fireEvent.change(await editorTitle(), { target: { value: "로컬에서 수정" } });
+		// 복구본은 입력이 멈춘 뒤에 남긴다(간격은 use-entry-autosave 테스트). 여기서는 화면을 떠나 바로 남기게 한다.
+		expect(saveLocalBackup).not.toHaveBeenCalled();
+		window.dispatchEvent(new Event("pagehide"));
 		await waitFor(() =>
 			expect(saveLocalBackup).toHaveBeenCalledWith(expect.objectContaining({ key: `${ADMIN}:entry-1` })),
 		);
@@ -133,6 +140,62 @@ describe("entry editor shell", () => {
 		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
 		await waitFor(() => expect(screen.getByLabelText("서버에 저장됨")).toBeTruthy());
 		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).metadata.title).toBe("로컬에서 수정");
+	});
+
+	it("writes the waiting browser backup right away when the page is left", async () => {
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "떠나기 전 수정" } });
+		expect(saveLocalBackup).not.toHaveBeenCalled();
+		window.dispatchEvent(new Event("pagehide"));
+		await waitFor(() =>
+			expect(saveLocalBackup).toHaveBeenCalledWith(
+				expect.objectContaining({ snapshot: expect.objectContaining({ title: "떠나기 전 수정" }) }),
+			),
+		);
+	});
+
+	it("saves even when a Korean composition never reports its end", async () => {
+		serve((_input, init) => {
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				return json({ ...entry, version: 5, working: { metadata: body.metadata, mdx: body.mdx } });
+			}
+		});
+		renderEdit();
+		const title = await editorTitle();
+		fireEvent.change(title, { target: { value: "조합 중 수정" } });
+		// 조합을 시작한 입력칸이 끝 신호 없이 사라진 경우.
+		fireEvent.compositionStart(title);
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1), { timeout: 3000 });
+		await waitFor(() => expect(success).toHaveBeenCalledWith("저장했습니다."));
+	});
+
+	it("shows why an explicit save failed instead of doing nothing", async () => {
+		serve((_input, init) => {
+			if (init?.method === "PATCH") return json({ code: "invalid_input", message: "제목이 너무 깁니다." }, 400);
+		});
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "실패할 수정" } });
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(error).toHaveBeenCalledWith(expect.stringContaining("제목이 너무 깁니다.")));
+	});
+
+	it("saves pending changes before opening the preview", async () => {
+		const opened = { opener: {}, location: { href: "" }, close: vi.fn() };
+		const open = vi.spyOn(window, "open").mockReturnValue(opened as unknown as Window);
+		serve((_input, init) => {
+			if (init?.method === "PATCH") {
+				const body = JSON.parse(String(init.body));
+				return json({ ...entry, version: 5, working: { metadata: body.metadata, mdx: body.mdx } });
+			}
+		});
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "미리보기 전 수정" } });
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "미리보기" }));
+		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
+		await waitFor(() => expect(opened.location.href).toBe("/preview/posts/test"));
+		open.mockRestore();
 	});
 
 	it("creates a new entry only after an explicit Save", async () => {
@@ -153,6 +216,9 @@ describe("entry editor shell", () => {
 		});
 		render(<EntryEditorShell mode="new" adminId={ADMIN} collection="post" />);
 		fireEvent.change(await editorTitle(), { target: { value: "새 글" } });
+		// 복구본은 입력이 멈춘 뒤에 남긴다(간격은 use-entry-autosave 테스트). 여기서는 화면을 떠나 바로 남기게 한다.
+		expect(saveLocalBackup).not.toHaveBeenCalled();
+		window.dispatchEvent(new Event("pagehide"));
 		await waitFor(() =>
 			expect(saveLocalBackup).toHaveBeenCalledWith(expect.objectContaining({ key: `${ADMIN}:new:post` })),
 		);
@@ -185,6 +251,7 @@ describe("entry editor shell", () => {
 		});
 		render(<EntryEditorShell mode="new" adminId={ADMIN} collection="memo" />);
 		fireEvent.change(await editorTitle(), { target: { value: "바로 발행" } });
+		window.dispatchEvent(new Event("pagehide"));
 		await waitFor(() => expect(saveLocalBackup).toHaveBeenCalled());
 		expect(methodCalls("POST", "/api/cms/v1/entries")).toHaveLength(0);
 		fireEvent.click(screen.getByRole("button", { name: "발행" }));
@@ -237,13 +304,13 @@ describe("entry editor shell", () => {
 			savedAt: Date.now(),
 		});
 		renderEdit();
-		const dialog = await screen.findByRole("dialog", { name: "브라우저 복구본 발견" });
-		expect(within(dialog).getByRole("button", { name: "복구본 불러오기" })).toBeTruthy();
-		fireEvent.click(within(dialog).getByRole("button", { name: "복구본 삭제" }));
+		const dialog = await screen.findByRole("dialog", { name: "저장하지 않은 편집이 있습니다" });
+		expect(within(dialog).getByRole("button", { name: "임시 저장본 불러오기" })).toBeTruthy();
+		fireEvent.click(within(dialog).getByRole("button", { name: "서버 저장본 열기" }));
 		await waitFor(() => expect(deleteLocalBackup).toHaveBeenCalledWith(`${ADMIN}:entry-1`));
 	});
 
-	it("shows both sides instead of restoring a backup made before the server changed", async () => {
+	it("warns that loading a backup made before the server changed overwrites it", async () => {
 		const server = formFromEntry(entry as never);
 		getLocalBackup.mockResolvedValue({
 			key: `${ADMIN}:entry-1`,
@@ -256,9 +323,11 @@ describe("entry editor shell", () => {
 			savedAt: Date.now(),
 		});
 		renderEdit();
-		const dialog = await screen.findByRole("dialog", { name: /복구본과 서버 내용이 모두 바뀌었습니다/ });
-		expect(within(dialog).getByText("브라우저 본문")).toBeTruthy();
-		expect(within(dialog).queryByRole("button", { name: "복구본 불러오기" })).toBeNull();
+		const dialog = await screen.findByRole("dialog", { name: "저장하지 않은 편집이 있습니다" });
+		expect(within(dialog).getByText(/서버 내용을 덮어씁니다/)).toBeTruthy();
+		expect(within(dialog).queryByText("브라우저 본문")).toBeNull();
+		fireEvent.click(within(dialog).getByRole("button", { name: "임시 저장본 불러오기" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 	});
 
 	it("binds field issues and moves positioned issues to the MDX source", async () => {
@@ -350,14 +419,15 @@ describe("entry editor shell", () => {
 		const category = (await screen.findByRole("combobox", { name: "카테고리" })) as HTMLInputElement;
 		// Base UI는 실제 입력(`inputType`이 있는 input 이벤트)일 때만 목록을 연다.
 		fireEvent.input(category, { target: { value: "새 카테고리" }, inputType: "insertText" });
-		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 만들기" }));
-		await waitFor(() => expect(category.value).toBe("새 카테고리"));
+		// 여러 테스트 파일을 함께 돌리면 목록이 늦게 열릴 때가 있어 넉넉히 기다린다.
+		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 만들기" }, { timeout: 3000 }));
+		await waitFor(() => expect(category.value).toBe("새 카테고리"), { timeout: 3000 });
 		fireEvent.input(screen.getByRole("combobox", { name: "태그" }), {
 			target: { value: "새 태그" },
 			inputType: "insertText",
 		});
-		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 만들기" }));
-		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0));
+		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 만들기" }, { timeout: 3000 }));
+		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0), { timeout: 3000 });
 		const creations = methodCalls("POST", "/api/cms/v1/entries").map(([, init]) => JSON.parse(String(init?.body)));
 		expect(creations).toEqual([
 			{ collection: "category", metadata: { title: "새 카테고리" }, mdx: "" },
@@ -624,7 +694,7 @@ describe("언어 탭", () => {
 		const nav = await screen.findByRole("navigation", { name: "언어" });
 		expect(within(nav).getByRole("button", { name: "영어 · 초안" }).getAttribute("aria-current")).toBe("page");
 		fireEvent.click(within(nav).getByRole("button", { name: "번역본 메뉴" }));
-		fireEvent.click(screen.getByRole("menuitem", { name: "휴지통으로 이동" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "삭제" }));
 		const dialog = screen.getByRole("alertdialog", { name: "휴지통으로 이동" });
 		expect(within(dialog).queryByText(/함께/)).toBeNull();
 		fireEvent.click(within(dialog).getByRole("button", { name: "휴지통으로 이동" }));

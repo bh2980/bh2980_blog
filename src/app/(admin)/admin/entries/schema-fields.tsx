@@ -6,6 +6,7 @@ import { isRecordCollection } from "@/cms/core/collections";
 import type { LayoutGroup } from "@/cms/schema/collection";
 import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@/cms/schema/derive";
 import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@/cms/schema/fields";
+import { type SlotRequest, useSlot } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -66,13 +67,14 @@ interface SchemaFieldsProps {
 	sections?: "collapsible" | "plain";
 }
 
-/** 필드 하나의 라벨·필수 표시·오류·도움말. */
+/** 필드 하나의 라벨·필수 표시·오류·도움말. `slot`이 있으면 라벨 옆에 자리 버튼, 입력 아래에 결과를 둔다. */
 function FieldRow({
 	id,
 	label,
 	required,
 	issue,
 	help,
+	slot,
 	children,
 }: {
 	id: string;
@@ -80,14 +82,56 @@ function FieldRow({
 	required?: boolean;
 	issue?: CmsIssue;
 	help?: ReactNode;
+	slot?: SlotRequest;
 	children: ReactNode;
 }) {
+	if (slot) {
+		return (
+			<SlotFieldRow id={id} label={label} required={required} issue={issue} help={help} slot={slot}>
+				{children}
+			</SlotFieldRow>
+		);
+	}
 	return (
 		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
 			<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
 				{label} {required && <span className="text-destructive">*</span>}
 			</FieldLabel>
 			{children}
+			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
+			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
+		</UiField>
+	);
+}
+
+function SlotFieldRow({
+	id,
+	label,
+	required,
+	issue,
+	help,
+	slot,
+	children,
+}: {
+	id: string;
+	label: string;
+	required?: boolean;
+	issue?: CmsIssue;
+	help?: ReactNode;
+	slot: SlotRequest;
+	children: ReactNode;
+}) {
+	const { trigger, panel } = useSlot(slot);
+	return (
+		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
+			<div className="flex min-h-6 items-center justify-between gap-2">
+				<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
+					{label} {required && <span className="text-destructive">*</span>}
+				</FieldLabel>
+				{trigger}
+			</div>
+			{children}
+			{panel}
 			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
 			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
 		</UiField>
@@ -239,6 +283,30 @@ export function SchemaFields({
 		else onChange({ [name]: value });
 	};
 
+	/** 필드 옆 자리. 읽기 전용 필드에는 두지 않는다. 적용은 입력을 바꾼 것과 같다. */
+	const fieldSlot = (name: string, value: FormValue, apply: (value: FormValue) => void): SlotRequest => ({
+		slot: "field",
+		target: name,
+		collection,
+		scope: context.entryId ?? "new",
+		disabled: context.disabled,
+		getContext: () => ({
+			collection,
+			locale: context.locale,
+			entryId: context.entryId,
+			title: form.title,
+			summary: typeof form.summary === "string" ? form.summary : undefined,
+			body: form.mdx,
+			current: Array.isArray(value) ? value : typeof value === "string" ? value : undefined,
+		}),
+		apply: (next, mode) => {
+			if (mode === "append") {
+				const list = Array.isArray(value) ? value : [];
+				if (!list.includes(next)) apply([...list, next]);
+			} else apply(next);
+		},
+	});
+
 	/** 번역본에서 원문 값을 보여 주는 공통 필드인가. */
 	const isLocked = (field: Field) => Boolean(locked) && field.kind !== "backlink" && !field.localized;
 
@@ -265,6 +333,7 @@ export function SchemaFields({
 				required={Boolean(field.required) && !readOnly}
 				issue={issue}
 				help={help}
+				slot={readOnly ? undefined : fieldSlot(name, props.value, props.onChange)}
 			>
 				<DefaultInput {...props} />
 			</FieldRow>
@@ -281,6 +350,9 @@ export function SchemaFields({
 				required={Boolean(field.required)}
 				issue={issue}
 				help={showDescriptions ? field.description : undefined}
+				slot={fieldSlot(name, form.slug, (slug) =>
+					(onSlugChange ?? ((next) => onChange({ slug: next })))(typeof slug === "string" ? slug : ""),
+				)}
 			>
 				<InputGroup className="h-8">
 					<InputGroupInput

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
+import { AiError } from "@/cms/ai/errors";
 import { ServiceError } from "@/cms/services/types";
 
 /**
@@ -41,6 +42,13 @@ const SERVICE_ERROR_STATUS: Record<string, number> = {
 	slug_reserved: 409,
 	mdx_too_large: 413,
 	metadata_too_large: 413,
+};
+
+const AI_ERROR_STATUS: Record<AiError["code"], number> = {
+	ai_unavailable: 503,
+	ai_failed: 502,
+	ai_input_too_large: 413,
+	ai_rate_limited: 429,
 };
 
 /** DB 연결 장애는 일시 오류(503)다. 없는 콘텐츠나 빈 목록으로 위장하지 않는다(§10.1, §11.1). */
@@ -85,12 +93,19 @@ export function handleApiError(error: unknown): NextResponse {
 		);
 	}
 
+	if (error instanceof AiError) {
+		return NextResponse.json({ code: error.code, message: error.message }, { status: AI_ERROR_STATUS[error.code] });
+	}
+
 	if (error instanceof ServiceError) {
 		return NextResponse.json(
 			{ code: error.code, message: error.message, ...(error.issues ? { issues: error.issues } : {}) },
 			{ status: SERVICE_ERROR_STATUS[error.code] ?? 422 },
 		);
 	}
+
+	// 화면이 요청을 거둬들인 경우(모델 목록을 다시 불러오는 등). 받을 쪽이 없으니 조용히 끝낸다.
+	if (isClientAbort(error)) return new NextResponse(null, { status: 499 });
 
 	if (isUnavailable(error)) {
 		console.error("CMS storage unavailable:", error);
@@ -99,4 +114,12 @@ export function handleApiError(error: unknown): NextResponse {
 
 	console.error("Unhandled API error:", error);
 	return NextResponse.json({ code: "internal_error", message: "Internal server error" }, { status: 500 });
+}
+
+/** 브라우저가 요청을 끊어 본문을 끝까지 읽지 못했거나, 요청 신호로 멈춘 작업. */
+function isClientAbort(error: unknown): boolean {
+	if (!error || typeof error !== "object") return false;
+	// DOMException은 실행 환경에 따라 Error를 잇지 않는다. 이름으로 본다.
+	const { name, code, message } = error as { name?: unknown; code?: unknown; message?: unknown };
+	return name === "AbortError" || (code === "ECONNRESET" && message === "aborted");
 }

@@ -2,8 +2,8 @@
  * 컬렉션 필드 빌더(v2 B1). Keystatic의 `fields.*`처럼 코드 한 곳에서 필드를 정의한다.
  *
  * 필드 정의는 서버와 브라우저가 함께 쓰므로 **JSON으로 직렬화할 수 있는 값만** 가진다.
- * 함수·React 컴포넌트·비밀 값을 넣지 않는다. 입력 교체(`input`)와 입력 옆 버튼(`actions`)은 이름으로만
- * 가리키고, 실제 구현은 클라이언트 입력 등록부와 서버 액션 등록부에 둔다.
+ * 함수·React 컴포넌트·비밀 값을 넣지 않는다. 입력 교체(`input`)는 이름으로만 가리키고 실제 구현은 클라이언트
+ * 입력 등록부에 둔다. 입력 옆 AI 버튼은 필드 정의가 아니라 화면 자리(`src/cms/slots`)가 필드 이름으로 붙인다(v2 D).
  */
 
 /** 관계 대상 컬렉션. `collections.ts`의 `COLLECTIONS`와 같다(순환 import를 피하려고 여기 둔다). */
@@ -22,8 +22,6 @@ interface BaseField {
 	/** `"publish"`면 발행(record 컬렉션은 저장) 때 비어 있으면 안 된다. 초안 저장은 막지 않는다. */
 	readonly required?: "publish";
 	readonly localized?: Localized;
-	/** 입력 옆 버튼. 서버 액션 등록부의 이름이다(v2 D1). */
-	readonly actions?: readonly string[];
 	/** 기본 입력 대신 쓸 클라이언트 입력 등록부의 이름. */
 	readonly input?: string;
 	/** 저장·검증만 하고 속성 패널에 입력을 그리지 않는다. 저장된 값은 그대로 둔다. */

@@ -13,6 +13,15 @@ import {
 } from "./entry-form";
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
 
+/** 브라우저 임시 저장은 입력이 멈추고 이만큼 지나면 마지막 상태 하나를 남긴다(입력마다 쓰지 않는다). */
+export const BACKUP_IDLE_MS = 5000;
+/** 저장 전에 한글 조합이 끝나기를 기다리는 최대 시간. 지나면 조합 표시가 남은 것으로 보고 그냥 저장한다. */
+export const COMPOSITION_WAIT_MS = 1000;
+/** 저장 전에 브라우저 임시 저장을 기다리는 최대 시간. 브라우저 저장소가 멈춰도 서버 저장은 간다. */
+const BACKUP_WAIT_MS = 1500;
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** §5.1 저장 상태. */
 export type SaveStatus =
 	| "new"
@@ -52,6 +61,8 @@ interface Options {
 /**
  * 편집 중에는 브라우저 복구본만 남기고, 명시적 저장·발행 시 서버 초안을 저장한다.
  *
+ * - 복구본은 입력이 멈추고 `BACKUP_IDLE_MS`가 지나면 마지막 상태로 남긴다(브라우저에만, 서버에는 보내지 않는다).
+ *   화면을 떠나거나 탭을 숨기거나 저장 버튼을 누르면 기다리지 않고 바로 남긴다.
  * - 요청은 한 번에 하나다. 전송 중 새 입력은 다음 명시적 저장 때 보낸다.
  * - 네트워크·서버 오류가 나도 복구본을 남긴다. 재시도는 사용자가 누를 때만 보낸다.
  * - 세션이 만료되면 복구본을 유지하고 다시 로그인하게 안내한다.
@@ -68,7 +79,13 @@ export function useEntryAutosave({
 }: Options) {
 	const [form, setFormState] = useState<EntryForm>(initialForm);
 	const [status, setStatus] = useState<SaveStatus>(entry ? "saved" : "new");
-	const [lastError, setLastError] = useState<string | null>(null);
+	const [lastError, setLastErrorState] = useState<string | null>(null);
+	/** 저장 직후 같은 함수 안에서 이유를 읽을 수 있게 ref에도 둔다(렌더 값은 한 박자 늦다). */
+	const lastErrorRef = useRef<string | null>(null);
+	const setLastError = useCallback((message: string | null) => {
+		lastErrorRef.current = message;
+		setLastErrorState(message);
+	}, []);
 	const [backupAvailable, setBackupAvailable] = useState(true);
 
 	const formRef = useRef(initialForm);
@@ -82,6 +99,7 @@ export function useEntryAutosave({
 	const ackSeqRef = useRef(0);
 	const inflightRef = useRef<Promise<boolean> | null>(null);
 	const composingRef = useRef(false);
+	const compositionWaitersRef = useRef<Array<() => void>>([]);
 	const backupWriteRef = useRef<Promise<void>>(Promise.resolve());
 	const statusRef = useRef<SaveStatus>(entry ? "saved" : "new");
 	const enabledRef = useRef(enabled);
@@ -114,7 +132,7 @@ export function useEntryAutosave({
 			setLastError(null);
 			updateStatus("saved");
 		},
-		[updateStatus],
+		[updateStatus, setLastError],
 	);
 
 	const currentKey = () => backupKey(adminId, entryIdRef.current, collection);
@@ -135,7 +153,46 @@ export function useEntryAutosave({
 		},
 		[adminId, collection, queueBackup],
 	);
-	const discardBackup = useCallback((key: string) => queueBackup(() => deleteLocalBackup(key)), [queueBackup]);
+	const pendingBackupRef = useRef<{ snapshot: EntryForm; changeSeq: number } | null>(null);
+	const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const cancelPendingBackup = useCallback(() => {
+		if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
+		backupTimerRef.current = null;
+		pendingBackupRef.current = null;
+	}, []);
+	/** 기다리는 복구본을 지금 남긴다. */
+	const flushPendingBackup = useCallback(() => {
+		const pending = pendingBackupRef.current;
+		cancelPendingBackup();
+		if (pending) void persistBackup(pending.snapshot, pending.changeSeq);
+		return backupWriteRef.current;
+	}, [cancelPendingBackup, persistBackup]);
+	const scheduleBackup = useCallback(
+		(snapshot: EntryForm, changeSeq: number) => {
+			pendingBackupRef.current = { snapshot, changeSeq };
+			// 입력이 이어지면 다시 센다. 멈추고 나서야 남긴다.
+			if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
+			backupTimerRef.current = setTimeout(flushPendingBackup, BACKUP_IDLE_MS);
+		},
+		[flushPendingBackup],
+	);
+	const discardBackup = useCallback(
+		(key: string) => {
+			cancelPendingBackup();
+			return queueBackup(() => deleteLocalBackup(key));
+		},
+		[cancelPendingBackup, queueBackup],
+	);
+
+	/** 한글 조합이 끝나기를 기다린다. 끝 신호가 오지 않으면(입력칸이 조합 중에 사라진 경우 등) 표시를 지우고 넘어간다. */
+	const waitForComposition = useCallback(async () => {
+		if (!composingRef.current) return;
+		await Promise.race([
+			new Promise<void>((resolve) => compositionWaitersRef.current.push(resolve)),
+			wait(COMPOSITION_WAIT_MS),
+		]);
+		composingRef.current = false;
+	}, []);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: save loop reads refs; explicit save is invoked from current render
 	const performSave = useCallback((): Promise<boolean> => {
@@ -146,8 +203,11 @@ export function useEntryAutosave({
 			if (statusRef.current !== "session-expired") updateStatus("saved");
 			return Promise.resolve(true);
 		}
-		// 한글 조합이 끝나면 다시 부른다(조합 중 저장은 글자 누락을 만든다).
-		if (composingRef.current) return Promise.resolve(false);
+		// 조합 중 저장은 글자 누락을 만든다. 저장 경로(`flush`·`retry`)는 조합이 끝나기를 먼저 기다린다.
+		if (composingRef.current) {
+			setLastError("한글 입력이 끝난 뒤 다시 저장하세요.");
+			return Promise.resolve(false);
+		}
 
 		const targetSeq = changeSeqRef.current;
 		const snapshot = formRef.current;
@@ -199,6 +259,7 @@ export function useEntryAutosave({
 					await discardBackup(currentKey());
 				} else {
 					updateStatus("dirty");
+					cancelPendingBackup();
 					await persistBackup(formRef.current, changeSeqRef.current);
 				}
 				if (isNew) await discardBackup(newKey);
@@ -232,7 +293,16 @@ export function useEntryAutosave({
 		})();
 		inflightRef.current = request;
 		return request;
-	}, [adminId, collection, backupAvailable, discardBackup, newEntryFolderId, persistBackup, updateStatus]);
+	}, [
+		adminId,
+		collection,
+		backupAvailable,
+		cancelPendingBackup,
+		discardBackup,
+		newEntryFolderId,
+		persistBackup,
+		updateStatus,
+	]);
 
 	/** 사용자가 재시도를 누르면 서버 버전을 먼저 확인하고 다시 저장한다. */
 	const retry = useCallback(
@@ -255,9 +325,10 @@ export function useEntryAutosave({
 				}
 			}
 			if (statusRef.current === "session-expired") updateStatus("dirty");
+			await waitForComposition();
 			return performSave();
 		},
-		[backupAvailable, performSave, updateStatus],
+		[backupAvailable, performSave, updateStatus, waitForComposition],
 	);
 
 	/** 폼 일부를 바꾼다. 변경사항은 브라우저에만 남긴다. */
@@ -278,24 +349,43 @@ export function useEntryAutosave({
 				return;
 			}
 			if (statusRef.current !== "conflict" && statusRef.current !== "session-expired") updateStatus("dirty");
-			void persistBackup(next, changeSeqRef.current);
+			scheduleBackup(next, changeSeqRef.current);
 		},
-		[adminId, collection, discardBackup, persistBackup, updateStatus],
+		[adminId, collection, discardBackup, scheduleBackup, updateStatus],
 	);
 
 	/** 명시적으로 저장하거나 발행할 때만 서버에 보낸다. */
 	const flush = useCallback(async (): Promise<boolean> => {
-		await backupWriteRef.current;
+		await Promise.race([flushPendingBackup(), wait(BACKUP_WAIT_MS)]);
+		await waitForComposition();
 		for (let attempt = 0; attempt < 5; attempt++) {
 			if (inflightRef.current) await inflightRef.current;
 			if (entryIdRef.current && changeSeqRef.current <= ackSeqRef.current) return true;
 			if (!(await performSave())) return false;
 		}
 		return Boolean(entryIdRef.current && changeSeqRef.current <= ackSeqRef.current);
-	}, [performSave]);
+	}, [flushPendingBackup, performSave, waitForComposition]);
+
+	// 화면을 떠나거나 탭을 숨기면 기다리던 복구본을 바로 남긴다.
+	useEffect(() => {
+		const onHide = () => {
+			if (document.visibilityState === "hidden") void flushPendingBackup();
+		};
+		const onPageHide = () => void flushPendingBackup();
+		document.addEventListener("visibilitychange", onHide);
+		window.addEventListener("pagehide", onPageHide);
+		return () => {
+			document.removeEventListener("visibilitychange", onHide);
+			window.removeEventListener("pagehide", onPageHide);
+			void flushPendingBackup();
+		};
+	}, [flushPendingBackup]);
 
 	const setComposing = useCallback((composing: boolean) => {
 		composingRef.current = composing;
+		if (!composing) {
+			for (const resolve of compositionWaitersRef.current.splice(0)) resolve();
+		}
 	}, []);
 
 	// 서버에 저장되지 않은 변경이 있으면 페이지 이탈을 경고한다.
@@ -327,6 +417,9 @@ export function useEntryAutosave({
 			return performSave();
 		},
 		getEntryId: () => entryIdRef.current,
+		/** 마지막 저장 실패 이유와 저장 상태(렌더를 기다리지 않은 최신 값). */
+		getLastError: () => lastErrorRef.current,
+		getStatus: () => statusRef.current,
 		getVersion: () => versionRef.current,
 		setVersion: (version: number) => {
 			versionRef.current = version;

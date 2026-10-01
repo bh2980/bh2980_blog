@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@/cms/core/api";
 import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
 import { formatBytes, prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
+import { type SlotRequest, SlotScope } from "@/cms/slots/slots";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -95,6 +96,12 @@ async function copyPublicUrl(url: string) {
 	} catch {
 		toast.error("복사하지 못했습니다.");
 	}
+}
+
+/** 새 이름에 원래 파일의 확장자를 붙인다(추천 이름은 확장자 없이 온다). 이미 같은 확장자면 그대로 둔다. */
+function withExtension(name: string, original: string): string {
+	const extension = /\.[A-Za-z0-9]{1,8}$/.exec(original)?.[0]?.toLowerCase() ?? "";
+	return extension && !name.toLowerCase().endsWith(extension) ? `${name}${extension}` : name;
 }
 
 /** 미디어 라이브러리(§7.3). 썸네일 목록, 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순. */
@@ -219,6 +226,34 @@ export function MediaLibrary() {
 			toast.error(errorText(error, "저장하지 못했습니다."));
 		}
 	};
+
+	const rename = async (media: MediaItem, filename: string) => {
+		try {
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "PATCH", json: { filename } });
+			toast.success(`이름을 '${filename}'(으)로 바꿨습니다.`);
+			await invalidateMedia();
+		} catch (error) {
+			toast.error(errorText(error, "이름을 바꾸지 못했습니다."));
+		}
+	};
+
+	/** 미디어 파일 자리. 이미지 내용을 보고 이름·기본 설명을 추천한다. */
+	const mediaSlot = (
+		media: MediaItem,
+		target: "filename" | "defaultAlt" | "defaultCaption",
+		apply: (value: string) => void,
+	): SlotRequest => ({
+		slot: "media",
+		target,
+		scope: media.id,
+		disabled: media.status !== "ready" || !isImageMime(media.mimeType),
+		getContext: () => ({
+			mediaId: media.id,
+			filename: media.filename,
+			current: target === "filename" ? media.filename : target === "defaultAlt" ? draft.alt : draft.caption,
+		}),
+		apply,
+	});
 
 	const cleanup = async () => {
 		try {
@@ -483,9 +518,26 @@ export function MediaLibrary() {
 						)}
 						<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
 							<dt className="text-muted-foreground">파일명</dt>
-							<dd className="truncate" title={selected.filename}>
-								{selected.filename}
-							</dd>
+							<SlotScope
+								key={`filename-${selected.id}`}
+								request={mediaSlot(
+									selected,
+									"filename",
+									(stem) => void rename(selected, withExtension(stem, selected.filename)),
+								)}
+							>
+								{({ trigger, panel }) => (
+									<>
+										<dd className="flex min-w-0 items-center gap-1">
+											<span className="truncate" title={selected.filename}>
+												{selected.filename}
+											</span>
+											{selectedIsImage && trigger}
+										</dd>
+										{panel && <dd className="col-span-2">{panel}</dd>}
+									</>
+								)}
+							</SlotScope>
 							<dt className="text-muted-foreground">형식</dt>
 							<dd>
 								{selectedIsImage ? (selected.mimeType ?? "—") : fileTypeLabel(selected.filename, selected.mimeType)}
@@ -556,24 +608,48 @@ export function MediaLibrary() {
 									}}
 								>
 									<FieldDescription>본문에 삽입할 때 복사되는 기본값입니다.</FieldDescription>
-									<Field>
-										<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
-										<Input
-											id={altId}
-											value={draft.alt}
-											onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
-											className="h-8"
-										/>
-									</Field>
-									<Field>
-										<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
-										<Input
-											id={captionId}
-											value={draft.caption}
-											onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
-											className="h-8"
-										/>
-									</Field>
+									<SlotScope
+										key={`alt-${selected.id}`}
+										request={mediaSlot(selected, "defaultAlt", (alt) => setDraft((current) => ({ ...current, alt })))}
+									>
+										{({ trigger, panel }) => (
+											<Field>
+												<div className="flex items-center justify-between gap-2">
+													<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
+													{trigger}
+												</div>
+												<Input
+													id={altId}
+													value={draft.alt}
+													onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
+													className="h-8"
+												/>
+												{panel}
+											</Field>
+										)}
+									</SlotScope>
+									<SlotScope
+										key={`caption-${selected.id}`}
+										request={mediaSlot(selected, "defaultCaption", (caption) =>
+											setDraft((current) => ({ ...current, caption })),
+										)}
+									>
+										{({ trigger, panel }) => (
+											<Field>
+												<div className="flex items-center justify-between gap-2">
+													<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
+													{trigger}
+												</div>
+												<Input
+													id={captionId}
+													value={draft.caption}
+													onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
+													className="h-8"
+												/>
+												{panel}
+											</Field>
+										)}
+									</SlotScope>
 									<Button type="submit" size="sm" variant="outline" disabled={selected.status !== "ready"}>
 										기본값 저장
 									</Button>

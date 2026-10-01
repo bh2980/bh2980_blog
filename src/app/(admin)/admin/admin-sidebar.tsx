@@ -12,6 +12,7 @@ import {
 	NotebookPen,
 	Plus,
 	Shapes,
+	Sparkles,
 	Tag,
 	Trash2,
 } from "lucide-react";
@@ -48,7 +49,7 @@ import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 
-export type AdminNavId = Collection | "media" | "templates" | "trash";
+export type AdminNavId = Collection | "media" | "templates" | "ai" | "trash";
 
 const COLLECTION_ICONS: Record<Collection, React.ReactNode> = {
 	post: <FileText />,
@@ -339,6 +340,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						<SidebarMenu aria-label="관리">
 							{navLink("/admin/media", "media", "미디어", <FileImage />)}
 							{navLink("/admin/templates", "templates", "본문 템플릿", <LayoutTemplate />)}
+							{navLink("/admin/ai", "ai", "AI", <Sparkles />)}
 							{navLink(
 								"/admin/trash",
 								"trash",

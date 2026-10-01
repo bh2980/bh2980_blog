@@ -1,11 +1,12 @@
 "use client";
 
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { AlignCenter, AlignLeft, AlignRight, Crop, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Crop, Settings2, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { resolveImageUrl } from "@/cms/mdx/image-src";
 import { computeImageTransform } from "@/cms/mdx/image-transform";
+import { type SlotRequest, useSlot } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,10 +31,23 @@ const normalizeWidth = (value: string) => {
 	return /^\d+$/.test(trimmed) ? `${trimmed}px` : trimmed;
 };
 
-export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected, editor }: NodeViewProps) {
+/** 이미지 앞뒤의 본문 글자(자리 동작이 이미지를 글 흐름 안에서 설명할 때 쓴다). */
+const AROUND_CHARS = 1500;
+function surroundingText(editor: NodeViewProps["editor"], getPos: NodeViewProps["getPos"], nodeSize: number): string {
+	const pos = typeof getPos === "function" ? getPos() : undefined;
+	if (!editor || typeof pos !== "number") return "";
+	const doc = editor.state.doc;
+	const before = doc.textBetween(Math.max(0, pos - AROUND_CHARS), pos, "\n", " ");
+	const after = doc.textBetween(pos + nodeSize, Math.min(doc.content.size, pos + nodeSize + AROUND_CHARS), "\n", " ");
+	return `${before.trim()}\n[이미지]\n${after.trim()}`;
+}
+
+export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
 	const widthInputId = useId();
 	const altInputId = useId();
 	const widthErrorId = useId();
+	/** AI 자리 구분값. 노드 뷰가 살아 있는 동안 같다(같은 이미지를 두 번 넣어도 따로다). */
+	const slotScope = useId();
 	const { src, alt, width, align, caption, mediaId, decorative, crop, rotate } = node.attrs;
 	const [isEditing, setIsEditing] = useState(false);
 	const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
@@ -50,6 +64,23 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 	}, []);
 	// 노드 뷰는 항상 편집기 안에서 그려지지만, 편집기 없이 그리는 경우(미리보기·테스트)도 막지 않는다.
 	const isEditable = editor?.isEditable ?? true;
+	/** 본문 이미지 자리(alt·캡션). 서버는 미디어 라이브러리 이미지와 이 사이트 주소(`/images/...`)의 이미지를 읽는다. */
+	const siteSrc = typeof src === "string" && src.startsWith("/") && !src.startsWith("//") ? src : undefined;
+	const imageSlot = (target: "alt" | "caption"): SlotRequest => ({
+		slot: "image",
+		target,
+		scope: slotScope,
+		disabled: !isEditable || (!mediaId && !siteSrc),
+		getContext: () => ({
+			mediaId: typeof mediaId === "string" ? mediaId : undefined,
+			imageSrc: typeof mediaId === "string" ? undefined : siteSrc,
+			around: surroundingText(editor, getPos, node.nodeSize),
+			current: (target === "alt" ? alt : caption) || undefined,
+		}),
+		apply: (value) => updateAttributes(target === "alt" ? { alt: value, decorative: null } : { caption: value }),
+	});
+	const altSlot = useSlot(imageSlot("alt"));
+	const captionSlot = useSlot(imageSlot("caption"));
 	const [mediaState, setMediaState] = useState<{ status: string; publicUrl: string | null } | null>(null);
 
 	const transform = computeImageTransform({
@@ -237,22 +268,14 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 				<Separator orientation="vertical" className="mx-0.5 data-vertical:h-4" />
 				<Popover open={isEditing} onOpenChange={setIsEditing}>
 					<PopoverTrigger
-						render={
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								aria-label={`이미지 너비 설정 (${width || "100%"})`}
-								className="h-7 px-1.5 text-xs"
-							/>
-						}
+						render={<Button type="button" variant="ghost" size="sm" aria-label="이미지 설정" className="size-7 p-0" />}
 					>
-						{width || "100%"}
+						<Settings2 className="size-3.5" />
 					</PopoverTrigger>
-					<PopoverContent align="end" className="flex w-64 flex-col gap-3 p-3 text-xs">
+					<PopoverContent align="end" className="flex w-72 flex-col gap-3 p-3 text-xs">
 						<div className="flex flex-col gap-1">
 							<Label htmlFor={widthInputId} className="text-muted-foreground text-xs">
-								너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)
+								너비
 							</Label>
 							<Input
 								id={widthInputId}
@@ -266,6 +289,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 									}
 								}}
 								className="h-7 text-xs"
+								placeholder="본문 맞춤"
 							/>
 							{widthInvalid && (
 								<p id={widthErrorId} className="text-destructive">
@@ -274,9 +298,12 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 							)}
 						</div>
 						<div className="flex flex-col gap-1">
-							<Label htmlFor={altInputId} className="text-muted-foreground text-xs">
-								대체 텍스트 (Alt)
-							</Label>
+							<div className="flex items-center justify-between gap-2">
+								<Label htmlFor={altInputId} className="text-muted-foreground text-xs">
+									대체 텍스트
+								</Label>
+								{decorative !== true && altSlot.trigger}
+							</div>
 							<Input
 								id={altInputId}
 								value={alt || ""}
@@ -286,6 +313,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 								className="h-7 text-xs"
 								placeholder="이미지 설명"
 							/>
+							{altSlot.panel}
 							<Label className="font-normal text-xs">
 								<Checkbox
 									checked={decorative === true}
@@ -293,24 +321,9 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 										updateAttributes(checked === true ? { decorative: true, alt: "" } : { decorative: null })
 									}
 								/>
-								장식 이미지 (빈 alt로 저장)
+								장식 이미지
 							</Label>
 						</div>
-						{canRender && (
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="h-7 gap-1 text-xs"
-								onClick={() => {
-									setIsEditing(false);
-									setIsCropDialogOpen(true);
-								}}
-							>
-								<Crop className="size-3.5" />
-								자르기 및 회전 설정
-							</Button>
-						)}
 					</PopoverContent>
 				</Popover>
 				{canRender && (
@@ -387,7 +400,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			{resolveReason ? <p className="mt-1 text-center text-destructive text-xs">{resolveReason}</p> : null}
 
 			{/* Caption Input / Display */}
-			<figcaption className={cn("mt-2", captionAlignClass)}>
+			<figcaption className={cn("mt-2 flex items-center gap-1", captionAlignClass)}>
 				<Input
 					type="text"
 					value={caption || ""}
@@ -400,7 +413,9 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 						captionAlignClass,
 					)}
 				/>
+				{isEditable && captionSlot.trigger}
 			</figcaption>
+			{captionSlot.panel && <div className="mt-1 text-left">{captionSlot.panel}</div>}
 
 			{/* 모서리(좌·우 아래) 너비 조절 핸들 */}
 			{isEditable && (

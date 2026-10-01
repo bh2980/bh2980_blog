@@ -21,6 +21,7 @@
 		"prepare": "husky"
 	},
 	"dependencies": {
+		"@ai-sdk/openai-compatible": "^3.0.61",
 		"@aws-sdk/client-s3": "^3.1136.0",
 		"@aws-sdk/s3-request-presigner": "^3.1136.0",
 		"@base-ui/react": "^1.8.0",
@@ -41,6 +42,7 @@
 		"@tiptap/starter-kit": "^3.31.3",
 		"@tiptap/suggestion": "3.31.3",
 		"acorn": "^8.15.0",
+		"ai": "^7.0.124",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"cmdk": "^1.1.1",

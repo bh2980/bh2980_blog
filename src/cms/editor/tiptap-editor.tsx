@@ -79,6 +79,21 @@ interface CmsEditorProps {
 	onCompositionEnd?: () => void;
 	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
 	editable?: boolean;
+	/** 블록 손잡이 옆에 더 붙일 동작(번역본의 `번역` 등). 그 블록에서 쓸 수 있을 때만 보인다. */
+	blockActions?: readonly BlockAction[];
+	/** 편집기가 만들어지거나 사라질 때 부른다(바깥에서 문서 전체 작업을 할 때). */
+	onEditor?: (editor: Editor | null) => void;
+}
+
+/** 블록 손잡이 옆 동작. `pos`는 손잡이가 가리키는 블록의 위치다. */
+export interface BlockAction {
+	id: string;
+	label: string;
+	icon: ReactNode;
+	isAvailable: (editor: Editor, pos: number) => boolean;
+	run: (editor: Editor, pos: number) => void;
+	/** 그 블록에서 동작이 진행 중인가. */
+	isBusy?: (pos: number) => boolean;
 }
 
 type Coords = { top: number; left: number };
@@ -289,6 +304,8 @@ export function CmsEditor({
 	onCompositionStart,
 	onCompositionEnd,
 	editable = true,
+	blockActions,
+	onEditor,
 }: CmsEditorProps) {
 	const isSourceMode = sourceView != null && sourceView !== false;
 	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
@@ -658,6 +675,13 @@ export function CmsEditor({
 		endBlockDrag(editor.view);
 	}, [editor]);
 
+	const onEditorRef = useRef(onEditor);
+	onEditorRef.current = onEditor;
+	useEffect(() => {
+		onEditorRef.current?.(editor);
+		return () => onEditorRef.current?.(null);
+	}, [editor]);
+
 	const withBlock = (pos: number, action: (current: Editor, pos: number) => boolean) => () => {
 		if (!editor) return;
 		editor.commands.focus();
@@ -816,7 +840,10 @@ export function CmsEditor({
 		<div
 			className="relative flex min-h-full w-full flex-1 flex-col bg-background"
 			data-cms-editor-shell
-			onCompositionStart={() => {
+			onCompositionStart={(event) => {
+				// 팝오버(포털) 안 입력칸의 조합은 React 트리를 타고 여기까지 오지만 본문 입력이 아니다.
+				// 그 입력칸이 조합 중에 사라지면 끝 신호가 오지 않아 저장이 막혔다.
+				if (!event.currentTarget.contains(event.target as Node)) return;
 				isComposingRef.current = true;
 				onCompositionStart?.();
 			}}
@@ -979,6 +1006,15 @@ export function CmsEditor({
 					}}
 					onDragStart={(event) => handleDragStart(handleSpot.pos, event)}
 					onDragEnd={handleDragEnd}
+					actions={(blockActions ?? [])
+						.filter((action) => action.isAvailable(editor, handleSpot.pos))
+						.map((action) => ({
+							id: action.id,
+							label: action.label,
+							icon: action.icon,
+							busy: action.isBusy?.(handleSpot.pos) ?? false,
+							onClick: () => action.run(editor, handleSpot.pos),
+						}))}
 				/>
 			)}
 		</div>

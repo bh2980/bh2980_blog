@@ -133,7 +133,7 @@ export function LanguageTabs({
 								<DropdownMenuContent align="start">
 									<DropdownMenuItem variant="destructive" onClick={onTrashTranslation}>
 										<Trash2 aria-hidden />
-										휴지통으로 이동
+										삭제
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>

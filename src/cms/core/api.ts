@@ -316,6 +316,8 @@ export const mediaUploadBodySchema = z.union([
 export type MediaUploadBody = z.infer<typeof mediaUploadBodySchema>;
 
 export const mediaPatchBodySchema = z.object({
+	/** 보이는 이름·내려받을 때 이름. 저장 주소에는 들어가지 않는다. */
+	filename: z.string().trim().min(1).max(255).optional(),
 	defaultAlt: z.string().max(1000).optional(),
 	defaultCaption: z.string().max(1000).optional(),
 });

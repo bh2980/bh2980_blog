@@ -18,6 +18,8 @@ export interface FieldContext {
 	/** 편집 중인 콘텐츠 ID. 자기 자신을 관계 대상으로 고르지 않게 한다. */
 	entryId?: string;
 	disabled: boolean;
+	/** 편집 중인 콘텐츠의 언어. 필드 옆 AI 동작이 주소 충돌을 이 언어에서 본다. */
+	locale?: string;
 	/** 번역 묶음 ID(원문 ID). 반대 방향 관계는 원문을 가리킨다(v2 B2·B4). */
 	groupId?: string;
 	/** 속성 패널이 이미 불러온 이 글의 사용처. 반대 방향 관계가 같은 글이면 다시 부르지 않는다. */

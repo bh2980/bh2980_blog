@@ -91,13 +91,13 @@ describe("M13 editor accessibility", () => {
 		// 설정 팝오버는 한 번에 하나만 열린다. 차례로 열어 각 입력의 ID를 모은다.
 		const widthIds: string[] = [];
 		const altIds: string[] = [];
-		for (const button of screen.getAllByRole("button", { name: /이미지 너비 설정/ })) {
+		for (const button of screen.getAllByRole("button", { name: "이미지 설정" })) {
 			fireEvent.click(button);
-			const width = await screen.findByLabelText("너비 (1~100% 또는 4096px 이하, 비우면 본문 맞춤)");
+			const width = await screen.findByLabelText("너비");
 			widthIds.push(width.id);
-			altIds.push(screen.getByLabelText("대체 텍스트 (Alt)").id);
+			altIds.push(screen.getByLabelText("대체 텍스트").id);
 			fireEvent.keyDown(width, { key: "Escape" });
-			await waitFor(() => expect(screen.queryByLabelText("대체 텍스트 (Alt)")).toBeNull());
+			await waitFor(() => expect(screen.queryByLabelText("대체 텍스트")).toBeNull());
 		}
 		expect(new Set(widthIds).size).toBe(2);
 		expect(new Set(altIds).size).toBe(2);

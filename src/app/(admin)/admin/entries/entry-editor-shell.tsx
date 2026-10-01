@@ -59,6 +59,7 @@ import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
+import { useAiTranslate } from "./ai-translate";
 import {
 	EMPTY_FORM,
 	type EntryData,
@@ -281,6 +282,16 @@ export function EntryEditorShell({
 		paneRef: sourcePaneRef,
 	});
 
+	// AI 번역(v2 D2): 번역본에서만. 언어가 같으면 같은 객체를 넘겨 동작이 다시 만들어지지 않게 한다.
+	const aiSourceLocale =
+		entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string" ? entry.source.locale : undefined;
+	const aiTargetLocale = entry?.locale;
+	const translateLocales = useMemo(
+		() => (aiSourceLocale && aiTargetLocale ? { sourceLocale: aiSourceLocale, targetLocale: aiTargetLocale } : null),
+		[aiSourceLocale, aiTargetLocale],
+	);
+	const aiTranslate = useAiTranslate(translateLocales);
+
 	const refreshIncoming = useCallback(async (targetId: string) => {
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
 		try {
@@ -339,7 +350,7 @@ export function EntryEditorShell({
 				} else if (backup.baseVersion === result.loaded.version) {
 					setRecovery({ kind: "restore", backup });
 				} else {
-					// 복구본 이후 서버도 바뀌었다. 덮어쓰지 않고 양쪽을 보여 준다.
+					// 복구본 이후 서버도 바뀌었다. 불러오면 덮어쓴다는 것을 알린다.
 					setRecovery({ kind: "conflict", backup, server: result.loaded });
 				}
 			} catch (error) {
@@ -411,7 +422,7 @@ export function EntryEditorShell({
 		if (saveChanges && !(await autosave.flush())) {
 			setActionFeedback({
 				type: "error",
-				message: `변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.lastError ?? "저장 상태를 확인하세요."}`,
+				message: `변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.getLastError() ?? "저장 상태를 확인하세요."}`,
 			});
 			return null;
 		}
@@ -427,6 +438,24 @@ export function EntryEditorShell({
 	const handleSaveNow = async () => {
 		if (isReadOnly) return;
 		if (await autosave.flush()) toast.success("저장했습니다.");
+		// 실패하면 반드시 이유를 보인다(충돌은 충돌 창이 따로 뜬다).
+		else if (autosave.getStatus() !== "conflict") toast.error(autosave.getLastError() ?? "저장하지 못했습니다.");
+	};
+
+	/**
+	 * 미리보기는 서버 초안을 그린다. 저장하지 않은 변경이 있으면 먼저 저장하고 연다.
+	 * 저장을 기다리는 동안 팝업 차단에 걸리지 않게 창은 누르자마자 열어 둔다.
+	 */
+	const handlePreview = async (href: string) => {
+		const opened = window.open("about:blank", "_blank");
+		if (opened) opened.opener = null;
+		if (isReadOnly || (await autosave.flush())) {
+			if (opened) opened.location.href = href;
+			else window.open(href, "_blank", "noopener");
+			return;
+		}
+		opened?.close();
+		toast.error(`저장하지 못해 미리보기를 열지 않았습니다. ${autosave.getLastError() ?? ""}`.trim());
 	};
 
 	const handlePublish = async () => {
@@ -937,10 +966,10 @@ export function EntryEditorShell({
 					/>
 					{previewHref && (
 						<ToolbarAction
-							label={autosave.hasPendingChanges() ? "저장 후 미리보기" : "미리보기"}
+							label="미리보기"
 							icon={Eye}
-							href={previewHref}
-							disabled={autosave.hasPendingChanges()}
+							href={autosave.hasPendingChanges() ? undefined : previewHref}
+							onClick={() => void handlePreview(previewHref)}
 						/>
 					)}
 					{!isReadOnly && entry?.status !== "archived" && (
@@ -1163,6 +1192,7 @@ export function EntryEditorShell({
 						toolbarEnd={templateMenu}
 						toolbarAside={
 							<span className="flex items-center gap-1">
+								{aiTranslate.toolbar}
 								{sourcePaneToggle}
 								{sourceModeToggle}
 							</span>
@@ -1170,6 +1200,8 @@ export function EntryEditorShell({
 						sourceView={editorMode === "source" ? sourceEditor : undefined}
 						editable={!isReadOnly}
 						onChange={(mdx) => setForm({ mdx })}
+						blockActions={aiTranslate.blockAction ? [aiTranslate.blockAction] : undefined}
+						onEditor={aiTranslate.setEditor}
 						onCompositionStart={() => autosave.setComposing(true)}
 						onCompositionEnd={() => autosave.setComposing(false)}
 					/>
@@ -1207,26 +1239,17 @@ export function EntryEditorShell({
 			</div>
 
 			<Dialog open={recovery !== null} onOpenChange={(open) => !open && setRecovery(null)}>
-				<DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+				<DialogContent className="max-w-md">
 					<DialogHeader>
-						<DialogTitle>
-							{recovery?.kind === "conflict"
-								? "브라우저 복구본과 서버 내용이 모두 바뀌었습니다"
-								: "브라우저 복구본 발견"}
-						</DialogTitle>
+						<DialogTitle>저장하지 않은 편집이 있습니다</DialogTitle>
 						<DialogDescription>
-							{recovery?.kind === "conflict"
-								? "복구본을 만든 뒤 다른 곳에서 서버 내용이 바뀌었습니다. 덮어쓰지 않도록 양쪽을 확인하세요."
-								: `서버에 저장되지 않은 입력이 있습니다 (${recovery ? new Date(recovery.backup.savedAt).toLocaleString("ko-KR") : ""}).`}
+							{recovery
+								? `${new Date(recovery.backup.savedAt).toLocaleString("ko-KR")}에 이 브라우저에 임시 저장한 편집이 서버에 없습니다.`
+								: ""}
+							{recovery?.kind === "conflict" &&
+								" 그 뒤 다른 곳에서 서버 내용도 바뀌었습니다. 임시 저장본을 불러와 저장하면 서버 내용을 덮어씁니다."}
 						</DialogDescription>
 					</DialogHeader>
-					{recovery?.kind === "conflict" && (
-						<ComparePanes
-							local={{ ...EMPTY_FORM, ...recovery.backup.snapshot }}
-							server={formFromEntry(recovery.server)}
-							serverVersion={recovery.server.version}
-						/>
-					)}
 					<DialogFooter>
 						<Button
 							type="button"
@@ -1236,13 +1259,14 @@ export function EntryEditorShell({
 								setRecovery(null);
 							}}
 						>
-							복구본 삭제
+							서버 저장본 열기
 						</Button>
-						{recovery?.kind === "restore" && (
-							<Button type="button" onClick={() => applyRecovered({ ...EMPTY_FORM, ...recovery.backup.snapshot })}>
-								복구본 불러오기
-							</Button>
-						)}
+						<Button
+							type="button"
+							onClick={() => recovery && applyRecovered({ ...EMPTY_FORM, ...recovery.backup.snapshot })}
+						>
+							임시 저장본 불러오기
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

@@ -30,6 +30,12 @@ declare namespace NodeJS {
 		CMS_R2_ENDPOINT: string;
 		CMS_R2_PUBLIC_BASE_URL: string;
 
+		/**
+		 * 개발 전용 가짜 AI 연결(v2 D). "1"이면 키 없이 정해진 답을 준다. production에서는 무시한다.
+		 * 실제 서비스 연결(주소·키·모델)은 관리자 AI 화면에서 넣는다.
+		 */
+		CMS_AI_FAKE?: string;
+
 		GSC_VERIFICATION_TOKEN: string;
 	}
 }

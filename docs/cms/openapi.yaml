@@ -23,6 +23,8 @@ tags:
   - name: media
   - name: preferences
   - name: templates
+  - name: ai
+    description: v2 D AI 기능 정의·실행과 서비스 연결 설정. 키는 서버가 암호화해 저장하고 응답에는 끝 네 글자만 준다.
   - name: public
     description: 공개 데이터만 읽는 제공자 독립 계약
   - name: export
@@ -933,7 +935,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [media]
-      summary: 기본 alt·caption 수정 (이미 작성한 본문은 바뀌지 않는다)
+      summary: 파일 이름·기본 alt·caption 수정 (이미 작성한 본문은 바뀌지 않는다)
       parameters:
         - name: id
           in: path
@@ -946,6 +948,7 @@ paths:
             schema:
               type: object
               properties:
+                filename: { type: string, maxLength: 255, description: 보이는 이름. 저장 주소는 바뀌지 않는다. }
                 defaultAlt: { type: string }
                 defaultCaption: { type: string }
       responses:
@@ -1091,6 +1094,313 @@ paths:
             application/json:
               schema: { type: object, additionalProperties: true }
         "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /ai/features:
+    get:
+      tags: [ai]
+      summary: AI 기능 목록과 지금 쓸 수 있는 기능
+      responses:
+        "200":
+          description: 켜지고 꺼진 기능 전체. usable은 쓸 연결이 준비된 기능 id다.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usable: { type: array, items: { type: string } }
+                  items: { type: array, items: { $ref: "#/components/schemas/AiFeature" } }
+
+  /ai/features/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [ai]
+      summary: AI 기능 고치기 (고칠 수 있는 부분만 반영, 이름·자리·결과·방식 등 정해 둔 부분은 기능 정의대로)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, spec]
+              properties:
+                expectedVersion: { type: integer }
+                spec: { $ref: "#/components/schemas/AiFeatureSpec" }
+      responses:
+        "200":
+          description: 고친 기능
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiFeature" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /ai/features/{id}/reset:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [ai]
+      summary: 기본 기능을 처음 정의로 되돌린다 (켜짐 여부는 그대로)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: 되돌린 기능
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiFeature" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /ai/run:
+    post:
+      tags: [ai]
+      summary: AI 기능 실행 (값은 바꾸지 않고 결과만 돌려준다)
+      description: |
+        featureId는 늘 보낸다. 저장 전 시험은 draft(AiFeatureSpec)를 함께 보내며, 정해 둔 부분은 기능 정의대로 쓴다.
+        태그 목록·이미지·주소 충돌은 서버가 직접 읽는다. 본문·결과는 로그에 남기지 않는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [featureId, context]
+              properties:
+                featureId: { type: string, format: uuid }
+                draft: { $ref: "#/components/schemas/AiFeatureSpec" }
+                context:
+                  type: object
+                  properties:
+                    collection: { type: string }
+                    locale: { type: string }
+                    entryId: { type: string, format: uuid }
+                    title: { type: string }
+                    summary: { type: string }
+                    body: { type: string }
+                    current:
+                      oneOf:
+                        - { type: string }
+                        - { type: array, items: { type: string } }
+                    around: { type: string }
+                    code: { type: string }
+                    language: { type: string }
+                    mediaId: { type: string, format: uuid }
+                    imageSrc: { type: string, description: "미디어 라이브러리 밖 이미지의 이 사이트 경로(/images/...)" }
+                    filename: { type: string }
+      responses:
+        "200":
+          description: 실행 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind: { type: string, enum: [candidates] }
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                value: { type: string }
+                                label: { type: string }
+                                detail: { type: string }
+                      - type: object
+                        properties:
+                          kind: { type: string, enum: [text, note] }
+                          text: { type: string }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "413": { $ref: "#/components/responses/AiError" }
+        "429": { $ref: "#/components/responses/AiError" }
+        "502": { $ref: "#/components/responses/AiError" }
+        "503": { $ref: "#/components/responses/AiError" }
+
+  /ai/translate:
+    post:
+      tags: [ai]
+      summary: 본문 블록 번역 (블록 MDX를 그대로 번역하고 구조 검사를 통과한 것만 돌려준다)
+      description: |
+        번역본 에디터가 안내 글이 남은 블록의 원문 MDX를 한 번에 8개까지 보낸다. 블록마다 결과 mdx 또는 실패 이유 error를 준다.
+        값은 화면이 넣는다. 한 블록의 형식 오류는 그 블록만 실패로 돌려주고, 키·크레딧·요청 수 문제는 요청 전체가 오류다.
+        draft는 AI 화면의 시험용(저장하지 않은 번역 기능 설정)이다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceLocale, targetLocale, blocks]
+              properties:
+                sourceLocale: { type: string }
+                targetLocale: { type: string }
+                blocks:
+                  type: array
+                  maxItems: 8
+                  items:
+                    type: object
+                    required: [id, mdx]
+                    properties:
+                      id: { type: string }
+                      mdx: { type: string, maxLength: 30000 }
+                request: { type: string, maxLength: 1000 }
+                draft: { $ref: "#/components/schemas/AiFeatureSpec" }
+      responses:
+        "200":
+          description: 블록별 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        mdx: { type: string }
+                        error: { type: string }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "429": { $ref: "#/components/responses/AiError" }
+        "503": { $ref: "#/components/responses/AiError" }
+
+  /ai/settings:
+    get:
+      tags: [ai]
+      summary: 저장한 AI 연결 목록 (키는 끝 네 글자만)
+      responses:
+        "200":
+          description: 연결 목록
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettingsView" }
+
+  /ai/providers:
+    post:
+      tags: [ai]
+      summary: 연결 추가
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiProviderRequest" }
+      responses:
+        "201":
+          description: 저장된 연결 목록
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettingsView" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /ai/providers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [ai]
+      summary: 연결 수정 (apiKey가 빠지면 저장된 키 유지, 주소를 바꾸면 지움, null이면 삭제)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiProviderRequest" }
+      responses:
+        "200":
+          description: 저장된 연결 목록
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettingsView" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [ai]
+      summary: 연결 삭제 (이 연결을 고른 기능은 같은 종류의 첫 연결을 쓴다)
+      parameters:
+        - name: expectedVersion
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 저장된 연결 목록
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettingsView" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/VersionRequired" }
+
+  /ai/providers/check:
+    post:
+      tags: [ai]
+      summary: 저장 전 연결 확인 (입력값의 주소·키·기본 모델로 짧은 요청을 한 번 보낸다)
+      description: 키를 새로 넣지 않았으면 providerId 연결에 같은 주소로 저장된 키를 쓴다. 이름은 비어도 된다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                providerId: { type: string }
+                provider: { $ref: "#/components/schemas/AiProviderRequest/properties/provider" }
+      responses:
+        "200":
+          description: 결과. 실패도 200이고 ok가 false다.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiCheckResult" }
+
+  /ai/models:
+    post:
+      tags: [ai]
+      summary: 생성 연결 주소의 모델 목록 (저장한 연결은 providerId, 저장 전에는 url·apiKey)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                providerId: { type: string }
+                url: { type: string }
+                apiKey: { type: string }
+      responses:
+        "200":
+          description: 모델 목록. 목록을 주지 않는 주소면 빈 배열이다.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
 
   /public/entries:
     get:
@@ -1302,6 +1612,14 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    AiError:
+      description: >
+        AI 실행 오류. ai_unavailable(503, 연결 안 됨·키 오류·꺼진 기능), ai_failed(502), ai_input_too_large(413),
+        ai_rate_limited(429). message는 화면에 그대로 보여 줄 한국어 문구다.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: ai_unavailable, message: AI 서비스가 연결되어 있지 않습니다. }
     Unavailable:
       description: >
         DB·저장소·설정 오류. 404로 위장하지 않는다. 공개 경로는 내부 메시지를 노출하지 않는다.
@@ -1385,6 +1703,93 @@ components:
         mdx: { type: string }
         version: { type: integer }
       additionalProperties: true
+
+    AiFeatureSpec:
+      type: object
+      description: AI 기능 조합. 규칙은 src/cms/ai/definition.ts의 aiFeatureSpecSchema.
+      required: [name, enabled, slot, target, collections, inputs, result, apply, prompt]
+      properties:
+        name: { type: string, maxLength: 60 }
+        enabled: { type: boolean }
+        slot: { type: string, enum: [field, image, codeRules, media, body] }
+        target: { type: string }
+        collections: { type: array, items: { type: string } }
+        inputs:
+          type: array
+          items: { type: string, enum: [title, summary, body, tags, current, image, around, code, filename] }
+        result: { type: string, enum: [candidates, text, note] }
+        apply: { type: string, enum: [replace, append, none] }
+        checks:
+          type: array
+          description: 결과 검사 목록. 종류는 기능마다 정해져 있고 켜기와 값(정규식·글자 수)만 고친다.
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [pattern, maxLength, unique, exists, regexRuns, structure] }
+              enabled: { type: boolean, default: true }
+              pattern: { type: string, description: pattern의 정규식 }
+              max: { type: integer, description: maxLength의 최대 글자 수 }
+        providerId: { type: string, nullable: true, default: null, description: 쓸 연결. null이면 방식에 맞는 첫 연결 }
+        modelName: { type: string, default: "", description: 쓸 모델. 비우면 연결의 기본 모델 }
+        prompt: { type: string, maxLength: 4000, description: 생성 방식의 지시문, 판단 방식의 판단 기준 }
+        engine: { type: string, enum: [generate, decide], default: generate }
+        options: { type: string, enum: [tags, categories, field, list], default: tags, description: 판단 방식의 선택지 출처 }
+        optionList: { type: array, items: { type: string }, default: [] }
+        pick: { type: string, enum: [one, many], default: many }
+        threshold: { type: number, minimum: 0.01, maximum: 0.99, default: 0.6, description: 이 확률 이상만 후보 }
+        maxCount: { type: integer, minimum: 1, maximum: 20, default: 5 }
+
+    AiCheckResult:
+      oneOf:
+        - type: object
+          properties: { ok: { type: boolean, enum: [true] }, ms: { type: integer }, model: { type: string } }
+        - type: object
+          properties: { ok: { type: boolean, enum: [false] }, message: { type: string } }
+
+    AiProviderRequest:
+      type: object
+      required: [expectedVersion, provider]
+      properties:
+        expectedVersion: { type: integer, description: 설정 전체의 버전. 처음이면 0 }
+        provider:
+          type: object
+          required: [name, kind, url, defaultModel]
+          properties:
+            name: { type: string, maxLength: 60 }
+            kind: { type: string, enum: [chat, decisions], description: chat은 OpenAI 방식 주소, decisions는 System One 주소 }
+            url: { type: string }
+            apiKey: { type: string, nullable: true }
+            defaultModel: { type: string }
+
+    AiSettingsView:
+      type: object
+      properties:
+        version: { type: integer }
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              kind: { type: string, enum: [chat, decisions] }
+              url: { type: string }
+              keyHint: { type: string, nullable: true }
+              defaultModel: { type: string }
+              ready: { type: boolean }
+        fake: { type: boolean }
+
+    AiFeature:
+      allOf:
+        - $ref: "#/components/schemas/AiFeatureSpec"
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            builtin: { type: string, nullable: true }
+            version: { type: integer }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
 
     Preferences:
       type: object

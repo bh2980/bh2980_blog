@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Regex, Trash2 } from "lucide-react";
+import { useSlot } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +23,10 @@ interface RulesPanelProps {
 	lineCount: number;
 	/** 지금 이 코드 블록에서 고른 글자와 그 줄(새 규칙의 초깃값). */
 	selection: { text: string } | null;
+	/** 코드 언어(자리 동작에 넘긴다). */
+	language?: string | null;
+	/** 이 코드 블록을 가리키는 값. 패널을 닫아도 AI 결과가 이 블록에 남는다. */
+	slotScope?: string;
 	onChange: (next: CodeRule[]) => void;
 }
 
@@ -148,7 +153,16 @@ function RuleRow({
  * 정규식 규칙(`// @document fold {re:/.../}` 등) 목록. 코드를 고쳐도 규칙이 다시 찾아 효과를 준다.
  * 고른 글자가 있으면 "규칙 추가"가 그 글자를 찾는 규칙으로 시작한다.
  */
-export function RulesPanel({ rules, text, lineCount, selection, onChange }: RulesPanelProps) {
+export function RulesPanel({ rules, text, lineCount, selection, language, slotScope, onChange }: RulesPanelProps) {
+	// 코드 블록 규칙 자리. 후보 정규식을 누르면 글자 접기 규칙으로 더한다.
+	const foldSlot = useSlot({
+		slot: "codeRules",
+		target: "fold",
+		scope: slotScope,
+		getContext: () => ({ code: text, language: language ?? undefined }),
+		apply: (pattern) =>
+			onChange([...rules, { id: newEffectId(), scope: "document", name: "fold", pattern, flags: "g", attrs: {} }]),
+	});
 	const addRule = () =>
 		onChange([
 			...rules,
@@ -186,7 +200,11 @@ export function RulesPanel({ rules, text, lineCount, selection, onChange }: Rule
 				<TooltipContent>정규식 규칙</TooltipContent>
 			</Tooltip>
 			<PopoverContent align="end" className="w-96 gap-2 p-3 text-xs" data-code-ui="">
-				<p className="font-semibold">정규식 규칙</p>
+				<div className="flex items-center justify-between gap-2">
+					<p className="font-semibold">정규식 규칙</p>
+					{foldSlot.trigger}
+				</div>
+				{foldSlot.panel}
 				{rules.length > 0 && (
 					<ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
 						{rules.map((rule) => (

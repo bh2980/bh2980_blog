@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { BUILTIN_AI_FEATURES } from "@/cms/ai/builtins";
 import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
 import { validateSchemaName } from "./context";
 
@@ -188,7 +189,44 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 				ALTER TABLE "${qSchema}".content_addresses ADD CONSTRAINT content_addresses_pkey PRIMARY KEY (collection, locale, slug);
 			END IF;
 		END $$;
+
+		-- v2 D AI 기능 정의. 조합(붙는 곳·보낼 내용·결과·적용·검사·지시문)은 spec JSON 하나에 둔다.
+		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_features (
+			id UUID PRIMARY KEY,
+			builtin TEXT UNIQUE,
+			spec JSONB NOT NULL,
+			version INTEGER NOT NULL DEFAULT 1,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+
+		-- 추가 요청 받기(askInstruction)를 더하기 전에 넣은 기본 기능은, 값이 없을 때만 기본값(켬)을 채운다.
+		UPDATE "${qSchema}".ai_features SET spec = spec || '{"askInstruction": true}'::jsonb
+		WHERE builtin IN ('summary', 'imageAlt', 'imageCaption', 'codeFold') AND NOT (spec ? 'askInstruction');
+
+		-- 미디어 기본 대체 텍스트는 본문 이미지의 대체 텍스트 추천을 같이 쓴다(따로 두던 기능을 지운다).
+		DELETE FROM "${qSchema}".ai_features WHERE builtin = 'mediaAlt';
+
+		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default').
+		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_settings (
+			id TEXT PRIMARY KEY,
+			value JSONB NOT NULL,
+			version INTEGER NOT NULL DEFAULT 1,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
 	`);
+
+	// 기본 AI 기능을 하나씩 한 번만 넣는다. 나중에 더한 기본 기능도 들어가고, 지운 기본 기능은 되살리지 않는다.
+	for (const [builtin, feature] of Object.entries(BUILTIN_AI_FEATURES)) {
+		const marker = `seed_v2_ai_feature:${builtin}`;
+		const seeded = await pool.query(`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = $1`, [marker]);
+		if (seeded.rows.length > 0) continue;
+		await pool.query(
+			`INSERT INTO "${qSchema}".ai_features (id, builtin, spec) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+			[feature.id, builtin, JSON.stringify(feature.spec)],
+		);
+		await pool.query(`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`, [marker]);
+	}
 
 	// One-time seed for initial default body templates (idempotent; won't resurrect deleted templates)
 	const seedCheck = await pool.query(

@@ -94,6 +94,7 @@ export function InspectorPanel({
 					issues={publishIssues}
 					context={{
 						entryId: entry?.id,
+						locale: entry?.locale,
 						groupId: entry?.translationGroupId,
 						disabled,
 						incomingReferences: incomingReferences,

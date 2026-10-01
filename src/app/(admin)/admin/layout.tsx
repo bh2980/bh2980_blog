@@ -3,6 +3,7 @@ import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AiSlotProvider } from "./ai/ai-slot-provider";
 import { AdminQueryProvider } from "./shared/query-provider";
 import "@/app/globals.css";
 
@@ -16,10 +17,12 @@ export default function AdminRootLayout({ children }: { children: ReactNode }) {
 	return (
 		<ThemeProvider attribute="class" disableTransitionOnChange>
 			<AdminQueryProvider>
-				<TooltipProvider>
-					<div className="cms-admin min-h-screen bg-background text-foreground">{children}</div>
-					<Toaster richColors closeButton position="bottom-right" />
-				</TooltipProvider>
+				<AiSlotProvider>
+					<TooltipProvider>
+						<div className="cms-admin min-h-screen bg-background text-foreground">{children}</div>
+						<Toaster richColors closeButton position="bottom-right" />
+					</TooltipProvider>
+				</AiSlotProvider>
 			</AdminQueryProvider>
 		</ThemeProvider>
 	);

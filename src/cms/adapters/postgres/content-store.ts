@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { createAiOps } from "./store/ai";
 import { type ContentStoreHooks, type StoreContext, validateSchemaName } from "./store/context";
 import { createEntryOps } from "./store/entries";
 import { createFolderOps } from "./store/folders";
@@ -47,6 +48,7 @@ export function createContentStore(
 		...createScheduleOps(ctx, publishing),
 		...createMediaOps(ctx),
 		...createTemplateOps(ctx),
+		...createAiOps(ctx),
 	};
 }
 

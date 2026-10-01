@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockIndexOf, blocksOf, syncOffset } from "../source-sync";
+import { alignBlocks, blockIndexOf, blocksOf, itemAt, itemPathOf, syncOffset } from "../source-sync";
 
 const boxes = (...tops: number[]) => tops.map((top, i) => ({ top, bottom: tops[i + 1] ?? top + 100 }));
 
@@ -66,5 +66,61 @@ describe("최상위 블록 찾기", () => {
 		expect(blockIndexOf(root, root.querySelector("li"))).toBe(1);
 		expect(blockIndexOf(root, document.body)).toBeNull();
 		expect(blockIndexOf(root, null)).toBeNull();
+	});
+});
+
+describe("블록 짝짓기", () => {
+	it("같은 구조면 같은 순서로 짝짓는다", () => {
+		expect(alignBlocks(["H2", "UL", "P"], ["H2", "UL", "P"])).toEqual([0, 1, 2]);
+	});
+
+	it("번역본에서 목록이 둘로 나뉘어도 뒤 블록이 밀리지 않는다", () => {
+		// 번역본: 제목, 목록, 문단, 목록, 제목 / 원문: 제목, 목록, 제목
+		expect(alignBlocks(["H2", "UL", "P", "UL", "H2"], ["H2", "UL", "H2"])).toEqual([0, 1, 1, 1, 2]);
+	});
+
+	it("원문에 없는 블록이 맨 앞이면 첫 짝에 붙인다", () => {
+		expect(alignBlocks(["P", "H2", "UL"], ["H2", "UL"])).toEqual([0, 0, 1]);
+		expect(alignBlocks(["P"], [])).toEqual([]);
+	});
+
+	it("스크롤도 짝지은 원문 블록에 맞춘다", () => {
+		const editorBlocks = [
+			{ top: 0, bottom: 100 },
+			{ top: 100, bottom: 200 },
+			{ top: 200, bottom: 300 },
+		];
+		const paneBlocks = [
+			{ top: 0, bottom: 50 },
+			{ top: 50, bottom: 100 },
+		];
+		// 셋째 블록 시작 → 원문 둘째 블록 시작(50).
+		expect(
+			syncOffset({ editorBlocks, editorLine: 200, paneBlocks, paneLine: 0, paneScrollTop: 0, map: [0, 0, 1] }),
+		).toBe(50);
+	});
+});
+
+describe("목록 항목 표시", () => {
+	const make = (html: string) => {
+		const root = document.createElement("div");
+		root.innerHTML = html;
+		return root.firstElementChild as Element;
+	};
+
+	it("편집기 목록 항목의 순서로 원문의 같은 항목을 찾는다", () => {
+		const editorList = make("<ul><li><p>a</p></li><li><p>b</p><ul><li><p>c</p></li><li><p>d</p></li></ul></li></ul>");
+		const paneList = make("<ul><li><p>A</p></li><li><p>B</p><ul><li><p>C</p></li><li><p>D</p></li></ul></li></ul>");
+		const d = editorList.querySelectorAll("p")[3]?.firstChild as Node;
+		expect(itemPathOf(editorList, d)).toEqual([1, 1]);
+		expect(itemAt(paneList, [1, 1]).textContent).toBe("D");
+		expect(itemAt(paneList, [0]).textContent).toBe("A");
+	});
+
+	it("목록이 아니거나 원문에 그 항목이 없으면 블록 자신이다", () => {
+		const paragraph = make("<p>글</p>");
+		expect(itemPathOf(paragraph, paragraph.firstChild as Node)).toEqual([]);
+		const paneList = make("<ul><li>A</li></ul>");
+		expect(itemAt(paneList, [3])).toBe(paneList);
 	});
 });

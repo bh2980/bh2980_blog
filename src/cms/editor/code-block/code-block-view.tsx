@@ -2,7 +2,7 @@
 
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
 import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +53,8 @@ const effectsOnLine = (effects: readonly CodeLineEffect[], line: number) =>
  * - 코드: 그 자리에서 고친다. 글자 효과는 글자를 골라 인라인 버블·상단 도구로 준다.
  */
 export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
+	/** AI 자리 구분값. 노드 뷰가 살아 있는 동안 같다. */
+	const slotScope = useId();
 	const [copied, setCopied] = useState(false);
 	/** 줄 효과 메뉴. `at`이 있으면 그 자리(오른쪽 클릭한 곳), 없으면 고른 첫 줄 오른쪽에 뜬다. */
 	const [menu, setMenu] = useState<{ start: number; end: number; at?: { top: number; left: number } } | null>(null);
@@ -209,7 +211,16 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 				className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b bg-muted/60 px-2 py-1 text-muted-foreground text-xs"
 			>
 				<div className="flex flex-wrap items-center gap-1.5">
-					<Select value={language} onValueChange={(value) => value && updateAttributes({ language: value })}>
+					<Select
+						value={language}
+						// 이름 목록을 넘겨야 닫힌 칸에 값(`ts`)이 아니라 이름(`TypeScript`)이 보인다.
+						items={
+							CODE_LANGUAGE_OPTIONS.some((option) => option.value === language)
+								? CODE_LANGUAGE_OPTIONS
+								: [...CODE_LANGUAGE_OPTIONS, { label: language, value: language }]
+						}
+						onValueChange={(value) => value && updateAttributes({ language: value })}
+					>
 						<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label="코드 언어 선택">
 							<SelectValue placeholder="언어 선택" />
 						</SelectTrigger>
@@ -265,6 +276,8 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 							<RulesPanel
 								rules={rules}
 								text={text}
+								language={node.attrs.language}
+								slotScope={slotScope}
 								lineCount={starts.length}
 								selection={
 									selectionInside &&

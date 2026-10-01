@@ -3,6 +3,7 @@
 import { ChevronRight, ImageIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { ImageInsertDialog } from "@/cms/editor/image-insert-dialog";
+import { type SlotRequest, SlotScope } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -113,6 +114,25 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 	const path = localizePath(locale, `${SECTION[collection] ?? ""}/${form.slug || "slug"}`);
 	const imageUrl = useMediaUrl(ogImageId, pickedUrls);
 
+	/** 검색 제목·설명 자리. 속성 탭의 필드 자리와 같은 자리 이름(`field`)을 쓴다. */
+	const fieldSlot = (target: "seoTitle" | "seoDescription", value: string): SlotRequest => ({
+		slot: "field",
+		target,
+		collection,
+		scope: entry?.id ?? "new",
+		disabled,
+		getContext: () => ({
+			collection,
+			locale: entry?.locale,
+			entryId: entry?.id,
+			title: form.title,
+			summary: text(form.summary) || undefined,
+			body: form.mdx,
+			current: value || undefined,
+		}),
+		apply: (next) => onChange({ [target]: next }),
+	});
+
 	return (
 		<div className="space-y-5">
 			<section aria-label="검색 결과 미리보기" className="space-y-1 rounded-lg border bg-muted/30 p-3">
@@ -130,38 +150,58 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 				{noindex && <p className="pt-1 font-medium text-[11px] text-amber-700 dark:text-amber-400">검색엔진에 숨김</p>}
 			</section>
 
-			<Row
-				id="cms-seoTitle"
-				label="검색 제목"
-				aside={<Counter length={(seoTitle || form.title).length} limit={TITLE_LIMIT} />}
-				issue={issueFor("seoTitle")}
-			>
-				<Input
-					id="cms-seoTitle"
-					value={seoTitle}
-					disabled={disabled}
-					placeholder={form.title || "글 제목"}
-					onChange={(event) => onChange({ seoTitle: event.target.value })}
-					className="h-8 text-xs md:text-xs"
-				/>
-			</Row>
+			<SlotScope request={fieldSlot("seoTitle", seoTitle)}>
+				{({ trigger, panel }) => (
+					<Row
+						id="cms-seoTitle"
+						label="검색 제목"
+						aside={
+							<span className="flex items-center gap-1">
+								<Counter length={(seoTitle || form.title).length} limit={TITLE_LIMIT} />
+								{trigger}
+							</span>
+						}
+						issue={issueFor("seoTitle")}
+					>
+						<Input
+							id="cms-seoTitle"
+							value={seoTitle}
+							disabled={disabled}
+							placeholder={form.title || "글 제목"}
+							onChange={(event) => onChange({ seoTitle: event.target.value })}
+							className="h-8 text-xs md:text-xs"
+						/>
+						{panel}
+					</Row>
+				)}
+			</SlotScope>
 
-			<Row
-				id="cms-seoDescription"
-				label="검색 설명"
-				aside={<Counter length={(seoDescription || text(form.summary)).length} limit={DESCRIPTION_LIMIT} />}
-				issue={issueFor("seoDescription")}
-			>
-				<Textarea
-					id="cms-seoDescription"
-					rows={3}
-					value={seoDescription}
-					disabled={disabled}
-					placeholder={text(form.summary) || "요약"}
-					onChange={(event) => onChange({ seoDescription: event.target.value })}
-					className="min-h-16 resize-none text-xs md:text-xs"
-				/>
-			</Row>
+			<SlotScope request={fieldSlot("seoDescription", seoDescription)}>
+				{({ trigger, panel }) => (
+					<Row
+						id="cms-seoDescription"
+						label="검색 설명"
+						aside={
+							<span className="flex items-center gap-1">
+								<Counter length={(seoDescription || text(form.summary)).length} limit={DESCRIPTION_LIMIT} />
+								{trigger}
+							</span>
+						}
+						issue={issueFor("seoDescription")}
+					>
+						<Textarea
+							id="cms-seoDescription"
+							rows={3}
+							value={seoDescription}
+							disabled={disabled}
+							placeholder={text(form.summary) || "요약"}
+							onChange={(event) => onChange({ seoDescription: event.target.value })}
+							className="min-h-16 resize-none text-xs md:text-xs"
+						/>
+						{panel}
+					</Row>
+				)}
+			</SlotScope>
 
 			<Row label="공유 이미지" issue={issueFor("ogImageId")}>
 				<div className="overflow-hidden rounded-lg border">

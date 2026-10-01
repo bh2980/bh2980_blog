@@ -88,15 +88,22 @@ export function createMediaOps(ctx: StoreContext) {
 		/** 라이브러리의 기본 alt·caption. 삽입할 때만 복사하므로 이미 쓴 본문은 바뀌지 않는다(§7.3). */
 		updateMediaMetadata: async (params: {
 			id: string;
+			filename?: string;
 			defaultAlt?: string;
 			defaultCaption?: string;
 		}): Promise<MediaAssetRecord> => {
 			const res = await pool.query<MediaRow>(
 				`UPDATE "${qSchema}".media_assets
-				 SET default_alt = COALESCE($2, default_alt), default_caption = COALESCE($3, default_caption), updated_at = NOW()
+				 SET default_alt = COALESCE($2, default_alt), default_caption = COALESCE($3, default_caption),
+				     filename = COALESCE($4, filename), updated_at = NOW()
 				 WHERE id = $1 AND status = 'ready'
 				 RETURNING ${MEDIA_COLUMNS}`,
-				[params.id, params.defaultAlt ?? null, params.defaultCaption ?? null],
+				[
+					params.id,
+					params.defaultAlt ?? null,
+					params.defaultCaption ?? null,
+					params.filename?.normalize("NFC") ?? null,
+				],
 			);
 			if (!res.rows[0]) throw new CmsError("Media asset not found", "not_found");
 			return mapMediaRow(res.rows[0]);
