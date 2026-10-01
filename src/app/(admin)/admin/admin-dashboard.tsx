@@ -1,438 +1,67 @@
 "use client";
 
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { AdminColumnSettings, CollectionPreferences, PreferencesBody } from "@/cms/core/api";
-import { COLLECTION_DEFINITIONS, COLLECTIONS, isRecordCollection } from "@/cms/core/collections";
+import type { AdminColumnSettings } from "@/cms/core/api";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@/cms/core/collections";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
-import { cmsFetch, errorText } from "./admin-api";
 import { AdminEntriesTable } from "./admin-entries-table";
-import { BulkBar, type BulkItemResult, type BulkSelection, describeBulkFailure, runBulk } from "./entries/bulk-bar";
-import {
-	isExplorerMode,
-	type ListState,
-	listStateToApiQuery,
-	listStateToSearchParams,
-	parseListState,
-} from "./list-state";
+import { BulkBar, runBulk } from "./entries/bulk-bar";
+import { toSelection } from "./list-row-menu";
 import { FilterChipBar, ListSearch } from "./list-toolbar";
-import { RecordDialog, type RecordTarget } from "./record-dialog";
-import type { MenuAction } from "./shared/action-menu";
+import { RecordDialog } from "./record-dialog";
 import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
-import { ConfirmDialog, type ConfirmRequest } from "./shared/confirm-dialog";
-import type { DraggedEntry } from "./shared/entry-drag";
-import {
-	applyOptimistic,
-	ENTRIES_KEY,
-	type EntriesPage,
-	entriesKey,
-	foldersKey,
-	type OptimisticOp,
-} from "./shared/list-cache";
-import { useFolderActions } from "./shared/use-folder-actions";
-import { useTaxonomy } from "./shared/use-taxonomy";
+import { ConfirmDialog } from "./shared/confirm-dialog";
+import { type EntryList, useEntryList } from "./use-entry-list";
 
-type Mode = "list" | "trash";
-
-const toSelection = (item: ListEntriesItem): BulkSelection => ({
-	id: item.id,
-	expectedVersion: item.version,
-	title: item.title,
-});
-
-/** 일괄 결과를 알림으로 알린다. 실패는 항목 이름과 사유를 적는다. */
-function announce(label: string, results: BulkItemResult[], items: BulkSelection[]) {
-	const failures = results.filter((result): result is Extract<BulkItemResult, { ok: false }> => !result.ok);
-	const ok = results.length - failures.length;
-	if (failures.length === 0) {
-		toast.success(`${ok}개 항목을 ${label}했습니다.`);
-		return;
-	}
-	const titleOf = (id: string) => items.find((item) => item.id === id)?.title || "제목 없음";
-	toast.error(ok > 0 ? `${ok}개는 ${label}했고 ${failures.length}개는 하지 못했습니다.` : `${label}하지 못했습니다.`, {
-		description: failures
-			.slice(0, 3)
-			.map((failure) => `${titleOf(failure.id)} — ${describeBulkFailure(failure)}`)
-			.join("\n"),
-	});
-}
-
-/** 목록·휴지통 화면의 상태·데이터·작업. 셸(사이드바 폴더 탐색)과 본문이 함께 쓴다. */
-function useDashboard(mode: Mode) {
-	const router = useRouter();
-	const searchParams = useSearchParams();
-	const queryClient = useQueryClient();
-	const isTrash = mode === "trash";
-	const basePath = isTrash ? "/admin/trash" : "/admin";
-	const parsed = useMemo(() => parseListState(new URLSearchParams(searchParams.toString())), [searchParams]);
-	const [preferences, setPreferences] = useState<PreferencesBody | null>(null);
-
-	// URL에 페이지 크기·정렬이 없으면 컬렉션별 저장 설정을 쓴다(§3.2).
-	const collectionPrefs: CollectionPreferences = preferences?.collections?.[parsed.collection] ?? {};
-	const state: ListState = useMemo(
-		() => ({
-			...parsed,
-			pageSize: parsed.explicit.pageSize ? parsed.pageSize : (collectionPrefs.pageSize ?? parsed.pageSize),
-			sortField: parsed.explicit.sort ? parsed.sortField : (collectionPrefs.sort?.field ?? parsed.sortField),
-			sortDirection: parsed.explicit.sort
-				? parsed.sortDirection
-				: (collectionPrefs.sort?.direction ?? parsed.sortDirection),
-		}),
-		[parsed, collectionPrefs],
-	);
-	const collection = state.collection;
-	const isRecord = isRecordCollection(collection);
-	const isContent = collection === "post" || collection === "memo";
-
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
-	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const tags = useTaxonomy("tag", isContent);
-	const categories = useTaxonomy("category", collection === "post");
-	const options = useMemo(
-		() => ({ tags: tags.options, categories: categories.options }),
-		[tags.options, categories.options],
-	);
-
-	const navigate = useCallback(
-		(next: ListState) =>
-			router.replace(`${basePath}?${listStateToSearchParams(next).toString()}` as Route, { scroll: false }),
-		[router, basePath],
-	);
-	const update = useCallback(
-		(patch: Partial<ListState>, options: { resetPage?: boolean } = { resetPage: true }) =>
-			navigate({ ...state, ...(options.resetPage ? { page: 1 } : {}), ...patch }),
-		[navigate, state],
-	);
-
-	useEffect(() => {
-		cmsFetch<PreferencesBody>("/api/cms/v1/preferences")
-			.then(setPreferences)
-			.catch(() => setPreferences({}));
-	}, []);
-
-	const savePreferences = (patch: CollectionPreferences) => {
-		setPreferences((current) => ({
-			...current,
-			collections: { ...current?.collections, [collection]: { ...current?.collections?.[collection], ...patch } },
-		}));
-		void cmsFetch("/api/cms/v1/preferences", { method: "PUT", json: { collections: { [collection]: patch } } }).catch(
-			() => toast.error("목록 설정을 저장하지 못했습니다."),
-		);
-	};
-
-	const foldersQuery = useQuery({
-		queryKey: foldersKey(collection),
-		queryFn: ({ signal }) => cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`, { signal }),
-		enabled: !isTrash,
-	});
-	const folders = useMemo(() => (isTrash ? [] : (foldersQuery.data ?? [])), [isTrash, foldersQuery.data]);
-
-	// 목록은 캐시에서 바로 그리고 뒤에서 새로 받는다. 조건을 바꾸는 동안에도 이전 줄을 남겨(`keepPreviousData`)
-	// 자리 표시로 깜빡이지 않는다. 자리 표시는 캐시가 아예 없을 때만 보인다.
-	const apiQuery = listStateToApiQuery(state, { trash: isTrash }).toString();
-	const listKey = entriesKey(apiQuery);
-	const entriesQuery = useQuery({
-		queryKey: listKey,
-		queryFn: ({ signal }) =>
-			cmsFetch<EntriesPage>(`/api/cms/v1/entries?${apiQuery}`, { signal, fallback: "목록을 불러오지 못했습니다." }),
-		// 다른 컬렉션의 줄은 열 구성이 달라 남기지 않는다.
-		placeholderData: (previous, previousQuery) =>
-			previousQuery && new URLSearchParams(String(previousQuery.queryKey.at(-1))).get("collection") === collection
-				? keepPreviousData(previous)
-				: undefined,
-	});
-	const items = entriesQuery.data?.items ?? [];
-	const total = entriesQuery.data?.total ?? 0;
-	const errorMessage =
-		entriesQuery.error && !entriesQuery.data ? errorText(entriesQuery.error, "목록을 불러오지 못했습니다.") : null;
-
-	// 전체 선택은 현재 페이지만 대상이다(§3.4). 목록이 바뀌면 선택을 비운다.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the visible query changes
-	useEffect(() => setSelectedIds(new Set()), [apiQuery]);
-
-	/** 목록·휴지통 배지를 모두 다시 받는다(지금 보이는 줄은 그대로 둔 채). */
-	const invalidateEntries = () => queryClient.invalidateQueries({ queryKey: ENTRIES_KEY });
-
-	/**
-	 * 작업을 목록에 먼저 반영하고 요청한다. 실패한 항목은 선택으로 남기고, 요청 자체가 실패하면 되돌린다.
-	 * 끝나면 서버 값으로 맞춘다.
-	 */
-	const mutateEntries = async (
-		op: OptimisticOp,
-		targets: BulkSelection[],
-		request: () => Promise<BulkItemResult[]>,
-		params?: Parameters<typeof runBulk>[2],
-	): Promise<BulkItemResult[]> => {
-		await queryClient.cancelQueries({ queryKey: listKey });
-		const previous = queryClient.getQueryData<EntriesPage>(listKey);
-		if (previous) {
-			queryClient.setQueryData<EntriesPage>(
-				listKey,
-				applyOptimistic(previous, op, new Set(targets.map((target) => target.id)), {
-					state,
-					params,
-					tags: tags.options,
-					categories: categories.options,
-				}),
-			);
-		}
-		try {
-			const results = await request();
-			setSelectedIds(new Set(results.filter((result) => !result.ok).map((result) => result.id)));
-			return results;
-		} catch (error) {
-			if (previous) queryClient.setQueryData(listKey, previous);
-			throw error;
-		} finally {
-			void invalidateEntries();
-		}
-	};
-
-	const folderActions = useFolderActions({
-		collection,
-		folders,
-		onChanged: async (deletedId) => {
-			await queryClient.invalidateQueries({ queryKey: foldersKey(collection) });
-			if (deletedId && state.folder === deletedId) update({ folder: "all" });
-			else await invalidateEntries();
-		},
-	});
-
-	const bulk = async (
-		op: Parameters<typeof runBulk>[0],
-		label: string,
-		targets: BulkSelection[],
-		params: Parameters<typeof runBulk>[2] = {},
-	) => {
-		try {
-			const results = await mutateEntries(op, targets, () => runBulk(op, targets, params), params);
-			announce(label, results, targets);
-		} catch (error) {
-			toast.error(errorText(error, `${label}하지 못했습니다.`));
-		}
-	};
-
-	const moveEntries = (folderId: string | null, entries: DraggedEntry[]) =>
-		void bulk(
-			"folder.move",
-			"옮김",
-			entries.map((entry) => ({ ...entry, title: items.find((item) => item.id === entry.id)?.title })),
-			{ folderId },
-		);
-
-	const restore = async (targets: BulkSelection[]) => {
-		const results = await mutateEntries("restore", targets, async () => {
-			const out: BulkItemResult[] = [];
-			for (const target of targets) {
-				try {
-					await cmsFetch(`/api/cms/v1/entries/${target.id}/restore`, {
-						method: "POST",
-						json: { expectedVersion: target.expectedVersion },
-					});
-					out.push({ id: target.id, ok: true, version: target.expectedVersion + 1 });
-				} catch (error) {
-					const code = (error as { code?: string }).code ?? "internal";
-					out.push({ id: target.id, ok: false, error: code });
-				}
-			}
-			return out;
-		});
-		announce("복원", results, targets);
-	};
-
-	const confirmTrash = (targets: BulkSelection[]) =>
-		setConfirm({
-			title: `휴지통으로 이동 — ${targets.length}개`,
-			description:
-				targets.length === 1
-					? `'${targets[0]?.title || "제목 없음"}'을(를) 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.`
-					: "선택한 항목을 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.",
-			confirmLabel: "휴지통으로 이동",
-			destructive: true,
-			onConfirm: () => bulk("trash", "휴지통으로 이동", targets),
-		});
-
-	const confirmPermanentDelete = (targets: BulkSelection[]) =>
-		setConfirm({
-			title: `영구 삭제 — ${targets.length}개`,
-			description:
-				targets.length === 1
-					? `'${targets[0]?.title || "제목 없음"}'을(를) 영구 삭제합니다. 되돌릴 수 없습니다.`
-					: "선택한 항목을 영구 삭제합니다. 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 지우지 않고 사유를 보여 줍니다.",
-			confirmLabel: "영구 삭제",
-			destructive: true,
-			onConfirm: () => bulk("permanentDelete", "영구 삭제", targets),
-		});
-
-	const duplicate = async (item: ListEntriesItem) => {
-		try {
-			const copy = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${item.id}/duplicate`, {
-				method: "POST",
-				fallback: "복제하지 못했습니다.",
-			});
-			toast.success(`'${item.title || "제목 없음"}'을(를) 복제했습니다.`);
-			router.push(`/admin/entries/${copy.id}/edit` as Route);
-		} catch (error) {
-			toast.error(errorText(error, "복제하지 못했습니다."));
-		}
-	};
-
-	const createNew = () =>
-		isRecord
-			? setRecordTarget({ collection, id: null })
-			: router.push(
-					`/admin/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}` as Route,
-				);
-
-	/** 행 메뉴(v2 A2). 선택한 행을 오른쪽 클릭하면 선택 전체를 대상으로 한다. */
-	const rowMenu = (item: ListEntriesItem): MenuAction[] => {
-		const group =
-			selectedIds.has(item.id) && selectedIds.size > 1 ? items.filter((row) => selectedIds.has(row.id)) : [item];
-		const targets = group.map(toSelection);
-		const single = group.length === 1;
-		const header: MenuAction[] = single ? [] : [{ kind: "label", label: `${group.length}개 항목` }];
-
-		if (isTrash) {
-			return [
-				...header,
-				{ kind: "item", label: "복원", onSelect: () => void restore(targets) },
-				{ kind: "separator" },
-				{
-					kind: "item",
-					label: "영구 삭제",
-					shortcut: "Del",
-					destructive: true,
-					onSelect: () => confirmPermanentDelete(targets),
-				},
-			];
-		}
-
-		const editHref = `/admin/entries/${item.id}/edit`;
-		const open: MenuAction[] = single
-			? isRecord
-				? [{ kind: "item", label: "열기", onSelect: () => setRecordTarget({ collection, id: item.id }) }]
-				: [
-						{ kind: "item", label: "열기", onSelect: () => router.push(editHref as Route) },
-						{ kind: "item", label: "새 탭에서 열기", onSelect: () => window.open(editHref, "_blank", "noopener") },
-						{ kind: "item", label: "복제", onSelect: () => void duplicate(item) },
-					]
-			: [];
-		const allArchived = group.every((row) => row.status === "archived");
-		return [
-			...header,
-			...open,
-			{ kind: "separator" },
-			{
-				kind: "sub",
-				label: "폴더로 이동",
-				items: [
-					{
-						kind: "item",
-						label: "최상위",
-						onSelect: () => void bulk("folder.move", "옮김", targets, { folderId: null }),
-					},
-					...folders.map((folder) => ({
-						kind: "item" as const,
-						label: folder.name,
-						onSelect: () => void bulk("folder.move", "옮김", targets, { folderId: folder.id }),
-					})),
-				],
-			},
-			...(isContent
-				? [
-						{
-							kind: "sub" as const,
-							label: "태그 추가",
-							emptyLabel: "태그가 없습니다",
-							items: tags.options.map((tag) => ({
-								kind: "item" as const,
-								label: tag.title,
-								onSelect: () => void bulk("tags.add", "태그를 추가", targets, { tagIds: [tag.id] }),
-							})),
-						},
-						{ kind: "separator" as const },
-						allArchived
-							? {
-									kind: "item" as const,
-									label: "보관 해제",
-									onSelect: () => void bulk("unarchive", "보관 해제", targets),
-								}
-							: { kind: "item" as const, label: "보관", onSelect: () => void bulk("archive", "보관", targets) },
-					]
-				: [{ kind: "separator" as const }]),
-			{
-				kind: "item",
-				label: "휴지통으로 이동",
-				shortcut: "Del",
-				destructive: true,
-				onSelect: () => confirmTrash(targets),
-			},
-		];
-	};
-
-	const onDeleteKey = (item: ListEntriesItem) => {
-		const group =
-			selectedIds.has(item.id) && selectedIds.size > 1 ? items.filter((row) => selectedIds.has(row.id)) : [item];
-		if (isTrash) confirmPermanentDelete(group.map(toSelection));
-		else confirmTrash(group.map(toSelection));
-	};
-
-	const explorer =
-		!isTrash && isExplorerMode(state)
-			? (() => {
-					const current = state.folder === "all" ? null : state.folder;
-					const currentFolder = current ? folders.find((folder) => folder.id === current) : undefined;
-					return {
-						folders: folders.filter((folder) => (folder.parentId ?? null) === current),
-						parent: current ? (currentFolder?.parentId ?? "all") : null,
-					};
-				})()
-			: null;
-
-	const columnSettings = collectionPrefs.columns;
-	const label = COLLECTION_DEFINITIONS[collection].label;
-
-	const headerActions = (
+/** 목록 위 오른쪽: 검색과 새 항목(휴지통에는 새 항목이 없다). */
+function EntryListHeaderActions({ list }: { list: EntryList }) {
+	const isTrash = list.mode === "trash";
+	return (
 		<>
-			<ListSearch state={state} onChange={update} allowBody={!isTrash} />
+			<ListSearch state={list.state} onChange={list.update} allowBody={!isTrash} />
 			{!isTrash && (
-				<Button type="button" size="sm" onClick={createNew}>
-					<Plus aria-hidden />새 {label}
+				<Button type="button" size="sm" onClick={list.createNew}>
+					<Plus aria-hidden />새 {list.label}
 				</Button>
 			)}
 		</>
 	);
+}
 
-	const body = (
+/** 목록 본문: 필터 칩, 일괄 작업 줄, 표, 그리고 목록 작업이 여는 창. */
+function EntryListBody({ list }: { list: EntryList }) {
+	const { state, data, mode } = list;
+	const isTrash = mode === "trash";
+	const { items } = data;
+	return (
 		<>
-			<FilterChipBar state={state} options={options} onChange={update} />
+			<FilterChipBar state={state} options={list.options} onChange={list.update} />
 			<BulkBar
-				collection={collection}
+				collection={state.collection}
 				mode={mode}
-				selected={items.filter((item) => selectedIds.has(item.id)).map(toSelection)}
-				folders={folders}
-				onClearSelection={() => setSelectedIds(new Set())}
-				onRun={(op, targets, params) => mutateEntries(op, targets, () => runBulk(op, targets, params), params)}
+				selected={items.filter((item) => list.selectedIds.has(item.id)).map(toSelection)}
+				folders={data.folders}
+				onClearSelection={() => list.setSelectedIds(new Set())}
+				onRun={(op, targets, params) =>
+					list.mutations.mutateEntries(op, targets, () => runBulk(op, targets, params), params)
+				}
 			/>
 			<AdminEntriesTable
-				collection={collection}
+				collection={state.collection}
 				items={items}
-				folders={folders}
-				explorer={explorer}
+				folders={data.folders}
+				explorer={list.explorer}
 				state={state}
-				options={options}
+				options={list.options}
 				onStateChange={(patch) => {
-					update(patch);
+					list.update(patch);
 					if (patch.sortField || patch.sortDirection) {
-						savePreferences({
+						list.savePreferences({
 							sort: {
 								field: patch.sortField ?? state.sortField,
 								direction: patch.sortDirection ?? state.sortDirection,
@@ -440,17 +69,17 @@ function useDashboard(mode: Mode) {
 						});
 					}
 				}}
-				columnSettings={columnSettings}
-				onColumnSettingsChange={(columns: AdminColumnSettings) => savePreferences({ columns })}
-				selectedIds={selectedIds}
-				onSelectionChange={setSelectedIds}
-				total={total}
-				isLoading={entriesQuery.isPending}
-				isRefreshing={entriesQuery.isPlaceholderData}
-				errorMessage={errorMessage}
+				columnSettings={list.columnSettings}
+				onColumnSettingsChange={(columns: AdminColumnSettings) => list.savePreferences({ columns })}
+				selectedIds={list.selectedIds}
+				onSelectionChange={list.setSelectedIds}
+				total={data.total}
+				isLoading={data.isLoading}
+				isRefreshing={data.isRefreshing}
+				errorMessage={data.errorMessage}
 				mode={mode}
-				folderActions={isTrash ? undefined : folderActions}
-				rowMenu={rowMenu}
+				folderActions={isTrash ? undefined : list.folderActions}
+				rowMenu={list.rowMenu}
 				blankMenu={
 					isTrash
 						? undefined
@@ -458,40 +87,37 @@ function useDashboard(mode: Mode) {
 								{
 									kind: "item",
 									label: "새 폴더",
-									onSelect: () => folderActions.requestCreate(state.folder === "all" ? null : state.folder),
+									onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
 								},
-								{ kind: "item", label: `새 ${label}`, onSelect: createNew },
+								{ kind: "item", label: `새 ${list.label}`, onSelect: list.createNew },
 							]
 				}
-				onDeleteKey={onDeleteKey}
-				onSelectFolder={(folder) => update({ folder })}
-				onOpenRecord={(item) => setRecordTarget({ collection, id: item.id })}
-				onRestore={(item) => void restore([toSelection(item)])}
-				onPermanentDelete={(item) => confirmPermanentDelete([toSelection(item)])}
-				onPageChange={(page) => update({ page }, { resetPage: false })}
+				onDeleteKey={list.onDeleteKey}
+				onSelectFolder={(folder) => list.update({ folder })}
+				onOpenRecord={(item) => list.setRecordTarget({ collection: state.collection, id: item.id })}
+				onRestore={(item) => void list.restore([toSelection(item)])}
+				onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
+				onPageChange={(page) => list.update({ page }, { resetPage: false })}
 				onPageSizeChange={(pageSize) => {
-					update({ pageSize });
-					savePreferences({ pageSize });
+					list.update({ pageSize });
+					list.savePreferences({ pageSize });
 				}}
-				onRetry={() => void entriesQuery.refetch()}
+				onRetry={data.retry}
 			/>
-			{folderActions.dialogs}
+			{list.folderActions.dialogs}
 			<RecordDialog
-				target={recordTarget}
-				onClose={() => setRecordTarget(null)}
+				target={list.recordTarget}
+				onClose={() => list.setRecordTarget(null)}
 				onSaved={() => {
-					setRecordTarget(null);
+					list.setRecordTarget(null);
 					toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
-					void invalidateEntries();
-					void tags.reload();
-					void categories.reload();
+					void list.invalidateEntries();
+					list.reloadTaxonomies();
 				}}
 			/>
-			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+			<ConfirmDialog request={list.confirm} onClose={list.closeConfirm} />
 		</>
 	);
-
-	return { body, headerActions, total, state, folders, folderActions, moveEntries, update, createNew, label };
 }
 
 // 관리자 목록은 브라우저에서 데이터를 가져온다. hydration 뒤에 그려야 Base UI의 자동 ID가 서버 HTML과 어긋나지 않는다.
@@ -534,15 +160,16 @@ export function AdminTrashDashboard() {
 }
 
 function TrashPage() {
-	const { body, state, total, headerActions } = useDashboard("trash");
+	const list = useEntryList("trash");
+	const { state } = list;
 	return (
 		<AdminShell
 			title="휴지통"
-			count={total}
+			count={list.data.total}
 			sidebar={{ activeNav: "trash" }}
 			headerActions={
 				<>
-					{headerActions}
+					<EntryListHeaderActions list={list} />
 					<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
 						{COLLECTIONS.map((item) => (
 							<Link
@@ -561,21 +188,22 @@ function TrashPage() {
 				</>
 			}
 		>
-			{body}
+			<EntryListBody list={list} />
 		</AdminShell>
 	);
 }
 
 function ListPage() {
-	const { state, folders, folderActions, moveEntries, update, createNew, label, body, headerActions, total } =
-		useDashboard("list");
+	const list = useEntryList("list");
+	const { state, update } = list;
+	const { folders } = list.data;
 	const folderLabel =
 		state.folder !== "all" ? ` · ${folders.find((folder) => folder.id === state.folder)?.name ?? ""}` : "";
 	return (
 		<AdminShell
-			title={`${label}${folderLabel}`}
-			count={total}
-			headerActions={headerActions}
+			title={`${list.label}${folderLabel}`}
+			count={list.data.total}
+			headerActions={<EntryListHeaderActions list={list} />}
 			sidebar={{
 				activeNav: state.collection,
 				folderNav: {
@@ -583,15 +211,15 @@ function ListPage() {
 					currentFolder: state.folder,
 					includeDescendants: state.includeDescendants,
 					folders,
-					folderActions,
+					folderActions: list.folderActions,
 					onSelectFolder: (folder) => update({ folder }),
 					onIncludeDescendantsChange: (includeDescendants) => update({ includeDescendants }),
-					onDropEntries: moveEntries,
-					onCreateEntry: createNew,
+					onDropEntries: list.moveEntries,
+					onCreateEntry: list.createNew,
 				},
 			}}
 		>
-			{body}
+			<EntryListBody list={list} />
 		</AdminShell>
 	);
 }

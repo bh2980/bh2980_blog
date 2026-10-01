@@ -268,6 +268,30 @@ describe("목록 화면 — 행 메뉴와 일괄 작업", () => {
 		expect(toast.error).toHaveBeenCalledWith("1개는 휴지통으로 이동했고 1개는 하지 못했습니다.", expect.anything());
 	});
 
+	it("끝나면 성공한 줄은 선택에서 빼고 실패한 줄만 남긴다", async () => {
+		server.handle = (url, init) =>
+			url.pathname === "/api/cms/v1/bulk" && init?.method === "POST"
+				? json({
+						results: [
+							{ id: "가", ok: true, version: 4 },
+							{ id: "나", ok: false, error: "conflict" },
+						],
+					})
+				: undefined;
+		renderList();
+		await screen.findByRole("row", { name: /가/ });
+		fireEvent.click(screen.getByRole("checkbox", { name: "가 선택" }));
+		fireEvent.click(screen.getByRole("checkbox", { name: "나 선택" }));
+		await openRowMenu("가");
+		fireEvent.click(screen.getByRole("menuitem", { name: "보관" }));
+
+		await waitFor(() => expect(toast.error).toHaveBeenCalled());
+		const checked = (title: string) =>
+			screen.getByRole("checkbox", { name: `${title} 선택` }).getAttribute("aria-checked");
+		await waitFor(() => expect(checked("가")).toBe("false"));
+		expect(checked("나")).toBe("true");
+	});
+
 	it("요청 자체가 실패하면 다시 받기 전에 목록을 되돌린다", async () => {
 		let bulkFailed = false;
 		server.handle = (url, init) => {
