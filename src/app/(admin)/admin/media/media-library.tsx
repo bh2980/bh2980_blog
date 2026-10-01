@@ -25,6 +25,7 @@ import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared
 import { AdminShell } from "../shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { DateRangePicker } from "../shared/date-range-picker";
+import { useDebounced } from "../shared/use-debounced";
 
 interface MediaItem {
 	id: string;
@@ -61,16 +62,6 @@ interface MediaPage {
 }
 
 const isImageFile = (file: File) => isImageMime(file.type);
-
-/** 값이 멈춘 뒤 `delay`ms가 지나야 바뀐다. 첫 값은 바로 쓴다. */
-function useDebounced<T>(value: T, delay: number): T {
-	const [debounced, setDebounced] = useState(value);
-	useEffect(() => {
-		const timer = setTimeout(() => setDebounced(value), delay);
-		return () => clearTimeout(timer);
-	}, [value, delay]);
-	return debounced;
-}
 
 const USED_OPTIONS = [
 	{ value: "all", label: "사용 여부 전체" },

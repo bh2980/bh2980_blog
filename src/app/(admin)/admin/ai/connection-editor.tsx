@@ -21,8 +21,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { useDebounced } from "../shared/use-debounced";
 import { AI_FEATURES_KEY } from "./ai-slot-provider";
-import { ModelCombobox, type ModelSource, useDebounced, useModelList } from "./model-combobox";
+import { ModelCombobox, type ModelSource, useModelList } from "./model-combobox";
 
 export const AI_SETTINGS_KEY = ["cms", "ai", "settings"] as const;
 
@@ -35,6 +36,9 @@ export function useAiSettings() {
 		staleTime: 60_000,
 	});
 }
+
+/** 모델 목록을 받기 전에 주소·키 입력이 멈추길 기다리는 시간. */
+const LIST_INPUT_DEBOUNCE_MS = 400;
 
 const selectClass =
 	"h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -222,8 +226,9 @@ function ProviderEditor({
 	};
 	const example = PROVIDER_EXAMPLES[draft.kind];
 	// 주소·키를 치는 동안에는 목록을 받지 않고, 멈추면 받는다. 저장한 키를 그대로 쓰면 연결 id로 받는다.
-	const listUrl = useDebounced(draft.url);
-	const listKey = useDebounced(typeof draft.apiKey === "string" ? draft.apiKey : undefined);
+	// 주소·키를 치는 동안 모델 목록을 여러 번 받지 않는다.
+	const listUrl = useDebounced(draft.url, LIST_INPUT_DEBOUNCE_MS);
+	const listKey = useDebounced(typeof draft.apiKey === "string" ? draft.apiKey : undefined, LIST_INPUT_DEBOUNCE_MS);
 	const modelSource: ModelSource | null =
 		draft.kind !== "chat" || !listUrl
 			? null

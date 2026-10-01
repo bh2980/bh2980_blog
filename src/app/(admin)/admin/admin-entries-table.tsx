@@ -38,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { isLocale, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
+import { adminLocaleName, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
@@ -78,8 +78,6 @@ const DEFAULT_TITLE_SIZE = 320;
 const MIN_COLUMN_SIZE = 72;
 const MAX_COLUMN_SIZE = 960;
 const helper = createColumnHelper<typeof features, ListEntriesItem>();
-
-const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
 /** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
 const formatDate = (value: Date | string | null) => {
@@ -388,7 +386,7 @@ export function AdminEntriesTable({
 					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
 					return (
 						<span className="text-muted-foreground text-xs">
-							<abbr title={localeName(item.locale)} className="font-medium no-underline">
+							<abbr title={adminLocaleName(item.locale)} className="font-medium no-underline">
 								{item.locale.toUpperCase()}
 							</abbr>
 							{item.translationGroupId !== item.id && <span className="ml-1">번역</span>}

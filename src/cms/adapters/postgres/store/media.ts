@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError } from "./errors";
 import { MEDIA_COLUMNS, type MediaRow, mapMediaRow } from "./rows";
+import { likeContainsPattern, likePrefixPattern } from "./sql";
 import type {
 	CompleteMediaAssetInput,
 	CreateMediaAssetInput,
@@ -11,8 +12,6 @@ import type {
 	MediaAssetRecord,
 	MediaReferenceItem,
 } from "./types";
-
-const escapeLike = (value: string) => `%${value.replace(/[%_\\]/g, "\\$&")}%`;
 
 /** §7 미디어 메타데이터. 파일 자체는 `MediaStore`(R2)가 다룬다. */
 export function createMediaOps(ctx: StoreContext) {
@@ -120,10 +119,10 @@ export function createMediaOps(ctx: StoreContext) {
 			};
 
 			const conditions = ["m.status IN ('ready', 'deleting')"];
-			if (params.search?.trim()) conditions.push(`m.filename ILIKE ${bind(escapeLike(params.search.trim()))}`);
+			if (params.search?.trim()) conditions.push(`m.filename ILIKE ${bind(likeContainsPattern(params.search.trim()))}`);
 			// `image/`처럼 앞부분만 줘도 걸러지도록 접두어로 비교한다.
 			if (params.mimeType?.trim())
-				conditions.push(`m.mime_type LIKE ${bind(`${params.mimeType.trim().replace(/[%_\\]/g, "\\$&")}%`)}`);
+				conditions.push(`m.mime_type LIKE ${bind(likePrefixPattern(params.mimeType.trim()))}`);
 			if (params.kind === "image") conditions.push("m.mime_type LIKE 'image/%'");
 			if (params.kind === "file") conditions.push("(m.mime_type IS NULL OR m.mime_type NOT LIKE 'image/%')");
 			if (params.uploadedFrom) conditions.push(`m.created_at >= ${bind(params.uploadedFrom)}`);

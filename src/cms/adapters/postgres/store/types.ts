@@ -1,3 +1,4 @@
+import type { ListSortField } from "../../../core/api";
 import type { TranslationState } from "../../../core/translation/state";
 import type { Reference, ReferenceKind, ReferenceOccurrence } from "../../../core/types";
 
@@ -218,9 +219,6 @@ export interface ListTranslationMember {
 	isSource: boolean;
 	hasUnpublishedChanges: boolean;
 }
-
-export const LIST_SORT_FIELDS = ["updatedAt", "createdAt", "publishedAt", "title", "slug"] as const;
-export type ListSortField = (typeof LIST_SORT_FIELDS)[number];
 
 export interface DateRange {
 	from?: Date;

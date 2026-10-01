@@ -1,4 +1,4 @@
-import type { ListSortField, PageSize } from "@/cms/core/api";
+import { LIST_SORT_FIELDS, type ListSortField, type PageSize } from "@/cms/core/api";
 import { type Collection, isCollection } from "@/cms/core/collections";
 import { schemaOf } from "@/cms/schema/derive";
 import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
@@ -80,7 +80,6 @@ export const DATE_KEYS = [
 	"publishedFrom",
 	"publishedTo",
 ] as const;
-const SORT_FIELDS = ["updatedAt", "createdAt", "publishedAt", "title", "slug"];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parseListState(
@@ -108,7 +107,9 @@ export function parseListState(
 		tagIds: params.getAll("tag"),
 		categoryIds: params.getAll("category"),
 		locales: [...new Set(params.getAll("locale"))].filter(isLocale),
-		sortField: SORT_FIELDS.includes(sortField) ? (sortField as ListSortField) : DEFAULT_LIST_STATE.sortField,
+		sortField: (LIST_SORT_FIELDS as readonly string[]).includes(sortField)
+			? (sortField as ListSortField)
+			: DEFAULT_LIST_STATE.sortField,
 		sortDirection: params.get("sortDirection") === "asc" ? "asc" : "desc",
 		page: Number.isInteger(page) && page > 0 ? page : 1,
 		pageSize: pageSize === 50 || pageSize === 100 ? pageSize : 25,

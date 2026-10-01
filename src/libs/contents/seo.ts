@@ -1,3 +1,4 @@
+import { readMetadataString } from "./metadata";
 import type { SeoMetadata } from "./types/contents";
 
 /**
@@ -8,14 +9,6 @@ import type { SeoMetadata } from "./types/contents";
  * SEO를 입력하지 않은 글의 공개 객체 모양이 M7 이전과 동일하게 유지된다.
  */
 const SEO_KEYS = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId", "seoRobots"] as const;
-
-function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
-	const value = metadata[key];
-	if (typeof value !== "string") return null;
-
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
 
 /**
  * canonical로 쓸 수 있는 값만 통과시킨다.

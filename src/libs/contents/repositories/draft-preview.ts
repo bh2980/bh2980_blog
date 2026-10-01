@@ -5,6 +5,7 @@ import { getCmsContentStore } from "@/cms/container";
 import { isCollection } from "@/cms/core/collections";
 import { mergeTranslationMetadata } from "@/cms/schema/derive";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
+import { POLICY_EVERGREEN, readMetadataString, readMetadataStringArray } from "../metadata";
 import { readSeoMetadata } from "../seo";
 import { normalizeSlug } from "../slug";
 import type { Category, DraftMemo, DraftPost, Tag } from "../types/contents";
@@ -21,23 +22,6 @@ import type { Category, DraftMemo, DraftPost, Tag } from "../types/contents";
  *   권한을 판정하지 않는다.
  * - 이 모듈은 쓰기를 하지 않는다.
  */
-
-const POLICY_EVERGREEN = "evergreen";
-
-function readMetadataString(metadata: EntryMetadata, key: string): string | null {
-	const value = metadata[key];
-	if (typeof value !== "string") return null;
-
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
-
-function readMetadataStringArray(metadata: EntryMetadata, key: string): string[] {
-	const value = metadata[key];
-	if (!Array.isArray(value)) return [];
-
-	return value.filter((item): item is string => typeof item === "string" && item.length > 0);
-}
 
 /** `collection:id` → 표시 이름. 분류 항목은 CMS가 자동 발행하므로 공개본에서 읽는다. */
 type TaxonomyLabels = ReadonlyMap<string, string>;

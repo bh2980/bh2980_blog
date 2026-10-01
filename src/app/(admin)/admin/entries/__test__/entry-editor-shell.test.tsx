@@ -624,6 +624,132 @@ describe("entry editor shell", () => {
 	});
 });
 
+describe("템플릿", () => {
+	const templates = { items: [{ id: "t1", name: "회고", mdx: "## 회고" }] };
+	const sourceText = () => {
+		fireEvent.click(
+			within(screen.getByRole("toolbar", { name: "서식 도구" })).getByRole("button", { name: "MDX 원문" }),
+		);
+		return (screen.getByRole("textbox", { name: "MDX 본문" }) as HTMLTextAreaElement).value;
+	};
+
+	it("빈 본문에는 고른 템플릿을 바로 넣는다", async () => {
+		serve((input) => (input === "/api/cms/v1/templates" ? json(templates) : undefined), {
+			...entry,
+			working: { ...entry.working, mdx: "" },
+		});
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: "회고" }));
+
+		expect(screen.queryByRole("dialog", { name: "템플릿 적용" })).toBeNull();
+		expect(sourceText()).toBe("## 회고");
+	});
+
+	it("쓴 본문이 있으면 바꿀지 묻고, 적용해야 바꾼다", async () => {
+		serve((input) => (input === "/api/cms/v1/templates" ? json(templates) : undefined));
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: "회고" }));
+
+		const dialog = await screen.findByRole("dialog", { name: "템플릿 적용" });
+		fireEvent.click(within(dialog).getByRole("button", { name: "템플릿 적용" }));
+
+		await waitFor(() => expect(screen.queryByRole("dialog", { name: "템플릿 적용" })).toBeNull());
+		expect(sourceText()).toBe("## 회고");
+	});
+
+	it("템플릿이 없으면 없다고 알린다", async () => {
+		serve((input) => (input === "/api/cms/v1/templates" ? json({ items: [] }) : undefined));
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+
+		expect(await screen.findByRole("menuitem", { name: "등록된 템플릿이 없습니다." })).toBeTruthy();
+	});
+});
+
+describe("발행 예약", () => {
+	const pending = {
+		id: "s1",
+		status: "pending",
+		scheduledAt: "2099-01-01T00:00:00.000Z",
+		completedAt: null,
+		failureCode: null,
+		failureDetail: null,
+	};
+	const openSchedule = async () => {
+		await editorTitle();
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 예약" }));
+		return screen.findByRole("dialog", { name: "발행 예약" });
+	};
+
+	it("미래 서울 시각만 받고, 예약하면 잠긴 글을 다시 불러온다", async () => {
+		let current: unknown = entry;
+		serve((input, init) => {
+			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(current);
+			if (init?.method === "POST" && input === "/api/cms/v1/entries/entry-1/schedule") {
+				current = { ...entry, schedule: { pending, last: null, runnerConfigured: true } };
+				return json(pending);
+			}
+		});
+		renderEdit();
+		const dialog = await openSchedule();
+		const input = within(dialog).getByLabelText("예약 일시");
+
+		fireEvent.change(input, { target: { value: "2000-01-01T09:00" } });
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+		expect(await screen.findByText("예약은 미래 시각만 지정할 수 있습니다.")).toBeTruthy();
+		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
+
+		fireEvent.change(input, { target: { value: "2099-01-01T09:00" } });
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+
+		await waitFor(() => expect(methodCalls("POST", "/schedule")).toHaveLength(1));
+		expect(JSON.parse(String(methodCalls("POST", "/schedule")[0]?.[1]?.body))).toEqual({
+			expectedVersion: 4,
+			scheduledAt: "2099-01-01T00:00:00.000Z",
+		});
+		expect(await screen.findByRole("region", { name: "예약" })).toBeTruthy();
+		expect(success).toHaveBeenCalledWith("2099-01-01 09:00에 발행하도록 예약했습니다.");
+		expect(screen.queryByRole("dialog", { name: "발행 예약" })).toBeNull();
+	});
+
+	it("저장하지 않은 변경이 있으면 예약하지 않는다", async () => {
+		renderEdit();
+		fireEvent.change(await editorTitle(), { target: { value: "저장 안 한 수정" } });
+		const dialog = await openSchedule();
+		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+
+		expect(await screen.findByText("변경사항을 먼저 저장한 후 예약하세요.")).toBeTruthy();
+		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
+	});
+
+	it("검사에 걸리면 창을 닫고 문제 목록을 보인다", async () => {
+		serve((_input, init) => {
+			if (init?.method === "POST")
+				return json(
+					{
+						code: "validation_failed",
+						message: "발행할 수 없습니다.",
+						issues: [{ code: "missing_category", path: "categoryId" }],
+					},
+					422,
+				);
+		});
+		renderEdit();
+		const dialog = await openSchedule();
+		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+
+		expect(await screen.findByRole("list", { name: "발행 검증 문제" })).toBeTruthy();
+		await waitFor(() => expect(screen.queryByRole("dialog", { name: "발행 예약" })).toBeNull());
+	});
+});
+
 describe("언어 탭", () => {
 	const member = (id: string, locale: string, status: string, isSource: boolean) => ({
 		id,

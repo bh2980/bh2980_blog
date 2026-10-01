@@ -1,22 +1,18 @@
 import { isLocale, LOCALES } from "@/libs/i18n/locales";
+import { ENTRY_STATUSES, LIST_SORT_FIELDS, PAGE_SIZES } from "../../../core/api";
 import { COLLECTIONS } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
-import {
-	type DateRange,
-	type EntryStatus,
-	LIST_SORT_FIELDS,
-	type ListEntriesItem,
-	type ListEntriesParams,
-	type ListEntriesResult,
-	type ListTranslationMember,
+import { likeContainsPattern } from "./sql";
+import type {
+	DateRange,
+	EntryStatus,
+	ListEntriesItem,
+	ListEntriesParams,
+	ListEntriesResult,
+	ListTranslationMember,
 } from "./types";
-
-const STATUSES: readonly EntryStatus[] = ["draft", "published", "archived", "trashed"];
-const PAGE_SIZES = [25, 50, 100];
-
-const escapeLike = (value: string) => `%${value.replace(/[%_\\]/g, "\\$&")}%`;
 
 const isDate = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
 
@@ -42,7 +38,7 @@ function assertParams(params: ListEntriesParams) {
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
 	if (params.statuses !== undefined) {
-		if (!Array.isArray(params.statuses) || params.statuses.some((s) => !STATUSES.includes(s))) {
+		if (!Array.isArray(params.statuses) || params.statuses.some((s) => !ENTRY_STATUSES.includes(s))) {
 			throw new CmsError("Invalid status", "invalid_input");
 		}
 	}
@@ -131,7 +127,7 @@ export function createListOps(ctx: StoreContext) {
 			}
 
 			if (params.search) {
-				const token = bind(escapeLike(params.search));
+				const token = bind(likeContainsPattern(params.search));
 				const matches = (alias: string, slug: string) =>
 					`(${slug} ILIKE ${token} OR ${alias}.metadata->>'title' ILIKE ${token}${
 						params.includeBody ? ` OR ${alias}.search_text ILIKE ${token}` : ""
@@ -143,10 +139,10 @@ export function createListOps(ctx: StoreContext) {
 				);
 			}
 			if (params.titleContains) {
-				conditions.push(`w.metadata->>'title' ILIKE ${bind(escapeLike(params.titleContains))}`);
+				conditions.push(`w.metadata->>'title' ILIKE ${bind(likeContainsPattern(params.titleContains))}`);
 			}
 			if (params.slugContains) {
-				conditions.push(`e.working_slug ILIKE ${bind(escapeLike(params.slugContains))}`);
+				conditions.push(`e.working_slug ILIKE ${bind(likeContainsPattern(params.slugContains))}`);
 			}
 			if (params.locales && params.locales.length > 0) {
 				const locales = `${bind(params.locales)}::text[]`;

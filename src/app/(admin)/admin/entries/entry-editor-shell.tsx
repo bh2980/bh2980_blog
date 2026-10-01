@@ -30,30 +30,20 @@ import { analyze } from "@/cms/mdx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { cn } from "@/utils/cn";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
@@ -70,15 +60,20 @@ import {
 	isTranslationEntry,
 	stringifyTranslation,
 	TRANSLATION_FORM_KEY,
+	translationSourceOf,
 	translationStateFromForm,
 } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
 import { LanguageTabs } from "./language-tabs";
-import { backupKey, deleteLocalBackup, getLocalBackup, type LocalBackupRecord } from "./local-backup";
+import { type LifecycleAction, lifecycleConfirm } from "./lifecycle-confirm";
+import { backupKey, deleteLocalBackup, getLocalBackup } from "./local-backup";
+import { ConflictDialog, type Recovery, RecoveryDialog } from "./recovery-dialogs";
+import { formatSeoul, ScheduleDialog, ScheduleNotice } from "./schedule-dialog";
 import { SourceChangeDialog } from "./source-change-dialog";
 import { SourcePane } from "./source-pane";
 import { useSourceSync } from "./source-sync";
-import { SAVE_STATUS_LABELS, useEntryAutosave } from "./use-entry-autosave";
+import { TemplateMenu } from "./template-menu";
+import { SAVE_STATUS_LABELS, type SaveStatus, useEntryAutosave } from "./use-entry-autosave";
 
 interface EntryEditorShellProps {
 	mode: "new" | "edit";
@@ -91,14 +86,6 @@ interface EntryEditorShellProps {
 }
 
 const SOURCE_PANE_STORAGE_KEY = "cms:translation-source-pane";
-
-type Recovery =
-	| { kind: "restore"; backup: LocalBackupRecord<EntryForm> }
-	| { kind: "conflict"; backup: LocalBackupRecord<EntryForm>; server: EntryData };
-
-type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
-
-const formatSeoul = (value: string | null | undefined) => formatSeoulDateTimeInput(value ?? null).replace("T", " ");
 
 function ToolbarAction({
 	label,
@@ -149,6 +136,33 @@ function ToolbarAction({
 	);
 }
 
+/** 저장 상태 점의 색. 상태를 더하면 여기서 색을 정해야 한다. */
+const SAVE_STATUS_DOT: Record<SaveStatus, string> = {
+	new: "bg-muted-foreground/50",
+	saved: "bg-emerald-500",
+	dirty: "bg-muted-foreground/50",
+	saving: "animate-pulse bg-amber-500",
+	"local-only": "bg-muted-foreground/50",
+	failed: "bg-destructive",
+	conflict: "bg-destructive",
+	"session-expired": "bg-destructive",
+};
+
+/** 머리글의 저장 상태. 좁은 화면에서는 점만 보이고 이름은 읽기 도구로 알린다. */
+function SaveStatusIndicator({ status, backupAvailable }: { status: SaveStatus; backupAvailable: boolean }) {
+	const label = `${SAVE_STATUS_LABELS[status]}${backupAvailable ? "" : " · 브라우저 복구 불가"}`;
+	return (
+		<output
+			aria-live="polite"
+			aria-label={label}
+			className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs"
+		>
+			<span aria-hidden className={cn("size-2 rounded-full", SAVE_STATUS_DOT[status])} />
+			<span className="hidden lg:inline">{label}</span>
+		</output>
+	);
+}
+
 /**
  * 저장·발행 응답에는 번역 묶음 정보(v2 B4)가 없다. 불러올 때 받은 값을 유지하고 이 콘텐츠의 상태만 갱신한다.
  */
@@ -191,10 +205,6 @@ export function EntryEditorShell({
 	const [recovery, setRecovery] = useState<Recovery | null>(null);
 	const [conflict, setConflict] = useState<{ server: EntryData; local: EntryForm } | null>(null);
 	const [scheduleOpen, setScheduleOpen] = useState(false);
-	const [scheduleInput, setScheduleInput] = useState("");
-	const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
-	const [templates, setTemplates] = useState<{ id: string; name: string; mdx: string }[] | null>(null);
-	const [pendingTemplateMdx, setPendingTemplateMdx] = useState<string | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 	const [incoming, setIncoming] = useState<{ items: IncomingReferenceItem[]; loading: boolean; error: string | null }>({
 		items: [],
@@ -275,16 +285,22 @@ export function EntryEditorShell({
 		}
 	};
 
+	const translationSource = translationSourceOf(entry);
+	const translationForm = form[TRANSLATION_FORM_KEY];
+	/** 번역자가 마지막으로 확인한 원문. 지금 원문과 다르면 "원문이 바뀌었어요"를 보인다. */
+	const confirmedSource = translationStateFromForm(translationForm).baseSource;
+	const sourceChanged =
+		translationSource !== null && typeof translationForm === "string" && translationSource.mdx !== confirmedSource;
+
 	useSourceSync({
-		enabled: Boolean(entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string") && isSourcePaneOpen,
+		enabled: translationSource !== null && isSourcePaneOpen,
 		syncScroll: editorMode === "visual",
 		editorRef: editorScrollRef,
 		paneRef: sourcePaneRef,
 	});
 
 	// AI 번역(v2 D2): 번역본에서만. 언어가 같으면 같은 객체를 넘겨 동작이 다시 만들어지지 않게 한다.
-	const aiSourceLocale =
-		entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string" ? entry.source.locale : undefined;
+	const aiSourceLocale = translationSource?.locale;
 	const aiTargetLocale = entry?.locale;
 	const translateLocales = useMemo(
 		() => (aiSourceLocale && aiTargetLocale ? { sourceLocale: aiSourceLocale, targetLocale: aiTargetLocale } : null),
@@ -531,8 +547,8 @@ export function EntryEditorShell({
 		}
 	};
 
-	const handleSchedule = async () => {
-		const scheduledAt = parseSeoulDateTimeInput(scheduleInput);
+	const handleSchedule = async (seoulDateTime: string) => {
+		const scheduledAt = parseSeoulDateTimeInput(seoulDateTime);
 		if (!scheduledAt || isSubmitting) {
 			setActionFeedback({ type: "error", message: "예약 일시(서울 시간)를 확인하세요." });
 			return;
@@ -601,49 +617,10 @@ export function EntryEditorShell({
 		}
 	};
 
-	/** 공개 상태가 바뀌는 전환은 확인을 받는다. 공개본에서 이 글을 쓰는 곳이 있으면 함께 알린다(§6.1). */
+	/** 공개 상태가 바뀌는 전환은 확인을 받는다. */
 	const confirmLifecycle = (action: LifecycleAction) => {
-		const publishedUsers = incoming.items.filter((item) => item.state === "published");
-		const usageNote =
-			publishedUsers.length > 0
-				? ` 이 글을 공개본에서 참조하는 콘텐츠가 ${publishedUsers.length}개 있습니다(속성 패널의 사용처).`
-				: "";
-		// 원문을 옮기면 같은 묶음의 번역본도 함께 옮겨진다.
-		const otherLocales =
-			entry && !isTranslationEntry(entry)
-				? (entry.translations ?? [])
-						.filter((member) => member.id !== entry.id && member.status !== "trashed")
-						.map((member) => member.locale.toUpperCase())
-				: [];
-		const hasGroup = otherLocales.length > 0;
-		const requests: Record<LifecycleAction, ConfirmRequest> = {
-			archive: {
-				title: "보관",
-				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
-				confirmLabel: "보관",
-				onConfirm: () => runLifecycle("archive", "보관했습니다."),
-			},
-			unarchive: {
-				title: "보관 해제",
-				description: "초안으로 돌아갑니다. 자동으로 다시 공개하지 않습니다.",
-				confirmLabel: "보관 해제",
-				onConfirm: () => runLifecycle("unarchive", "보관을 해제했습니다."),
-			},
-			trash: {
-				title: "휴지통으로 이동",
-				description: `공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? ` 번역본(${otherLocales.join("·")})도 함께 휴지통으로 이동합니다.` : ""}`,
-				confirmLabel: "휴지통으로 이동",
-				destructive: true,
-				onConfirm: () => runLifecycle("trash", "휴지통으로 옮겼습니다."),
-			},
-			restore: {
-				title: "휴지통에서 복원",
-				description: "초안으로 복원합니다. 다시 공개하려면 발행하세요.",
-				confirmLabel: "복원",
-				onConfirm: () => runLifecycle("restore", "복원했습니다."),
-			},
-		};
-		setConfirm(requests[action]);
+		const { successMessage, ...request } = lifecycleConfirm(action, entry, incoming.items);
+		setConfirm({ ...request, onConfirm: () => runLifecycle(action, successMessage) });
 	};
 
 	const confirmPermanentDelete = () => {
@@ -676,23 +653,6 @@ export function EntryEditorShell({
 		} catch (error) {
 			setActionFeedback({ type: "error", message: errorText(error, "복제하지 못했습니다.") });
 		}
-	};
-
-	const openTemplates = async (open: boolean) => {
-		setTemplateMenuOpen(open);
-		if (!open || templates) return;
-		try {
-			const data = await cmsFetch<{ items: { id: string; name: string; mdx: string }[] }>("/api/cms/v1/templates");
-			setTemplates(data.items);
-		} catch {
-			setTemplates([]);
-		}
-	};
-
-	const applyTemplate = (mdx: string) => {
-		setForm({ mdx });
-		setTemplateMenuOpen(false);
-		setPendingTemplateMdx(null);
 	};
 
 	// 번역본은 원문과 slug를 같이 쓸 수 있어 언어를 함께 넘긴다(v2 B4).
@@ -746,20 +706,6 @@ export function EntryEditorShell({
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
-	/** 번역본이면 원문 본문·언어·제목. 원문 창과 제목 안내가 쓴다(v3). */
-	const translationSource =
-		entry && isTranslationEntry(entry) && typeof entry.source?.mdx === "string"
-			? {
-					mdx: entry.source.mdx,
-					locale: entry.source.locale,
-					title: typeof entry.source.metadata.title === "string" ? entry.source.metadata.title : "",
-				}
-			: null;
-	const translationForm = form[TRANSLATION_FORM_KEY];
-	/** 번역자가 마지막으로 확인한 원문. 지금 원문과 다르면 "원문이 바뀌었어요"를 보인다. */
-	const confirmedSource = translationStateFromForm(translationForm).baseSource;
-	const sourceChanged =
-		translationSource !== null && typeof translationForm === "string" && translationSource.mdx !== confirmedSource;
 	const languageTabs =
 		entry && !isRecordCollection(collection) ? (
 			<LanguageTabs
@@ -791,48 +737,6 @@ export function EntryEditorShell({
 			)}
 		</>
 	);
-	const templateMenu = (
-		<DropdownMenu open={templateMenuOpen} onOpenChange={(open) => void openTemplates(open)}>
-			<DropdownMenuTrigger
-				render={
-					<Button
-						type="button"
-						size="icon-sm"
-						variant="ghost"
-						aria-label="템플릿 메뉴"
-						title="템플릿"
-						disabled={isReadOnly}
-					/>
-				}
-			>
-				<MoreHorizontal aria-hidden className="size-4" />
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
-				<DropdownMenuGroup>
-					<DropdownMenuLabel>템플릿</DropdownMenuLabel>
-					{templates === null ? (
-						<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
-					) : templates.length === 0 ? (
-						<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
-					) : (
-						templates.map((template) => (
-							<DropdownMenuItem
-								key={template.id}
-								onClick={() => (form.mdx.trim() ? setPendingTemplateMdx(template.mdx) : applyTemplate(template.mdx))}
-							>
-								<span className="truncate">{template.name}</span>
-							</DropdownMenuItem>
-						))
-					)}
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
-					템플릿 관리
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
-	);
-
 	const sourcePaneToggle = translationSource && (
 		<Toggle
 			size="sm"
@@ -913,29 +817,7 @@ export function EntryEditorShell({
 				</div>
 
 				<div className="flex w-full items-center justify-end gap-1 whitespace-nowrap sm:w-auto">
-					<output
-						aria-live="polite"
-						aria-label={`${SAVE_STATUS_LABELS[autosave.status]}${!autosave.backupAvailable ? " · 브라우저 복구 불가" : ""}`}
-						className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs"
-					>
-						<span
-							aria-hidden
-							className={cn(
-								"size-2 rounded-full",
-								autosave.status === "saved"
-									? "bg-emerald-500"
-									: autosave.status === "saving"
-										? "animate-pulse bg-amber-500"
-										: ["conflict", "failed", "session-expired"].includes(autosave.status)
-											? "bg-destructive"
-											: "bg-muted-foreground/50",
-							)}
-						/>
-						<span className="hidden lg:inline">
-							{SAVE_STATUS_LABELS[autosave.status]}
-							{!autosave.backupAvailable && " · 브라우저 복구 불가"}
-						</span>
-					</output>
+					<SaveStatusIndicator status={autosave.status} backupAvailable={autosave.backupAvailable} />
 					{canRetry && (
 						<Button
 							type="button"
@@ -977,10 +859,7 @@ export function EntryEditorShell({
 							label="발행 예약"
 							icon={CalendarClock}
 							disabled={isSubmitting}
-							onClick={() => {
-								setScheduleInput("");
-								setScheduleOpen(true);
-							}}
+							onClick={() => setScheduleOpen(true)}
 						/>
 					)}
 					{scheduleLocked ? (
@@ -1078,25 +957,7 @@ export function EntryEditorShell({
 				</div>
 			</header>
 
-			{schedule?.pending && (
-				<section
-					aria-label="예약"
-					className="flex flex-wrap items-center gap-2 border-b bg-primary/10 px-4 py-2 text-sm"
-				>
-					<span>
-						{formatSeoul(schedule.pending.scheduledAt)} 발행 예약됨 — 예약 중에는 본문과 속성을 편집할 수 없습니다.
-						{Date.parse(schedule.pending.scheduledAt) <= Date.now() && " 예정 시각이 지나 실행 대기 중입니다."}
-						{!schedule.runnerConfigured && " 외부 실행기 연결 필요: 연결되지 않으면 자동으로 발행되지 않습니다."}
-					</span>
-				</section>
-			)}
-			{!schedule?.pending && schedule?.last?.status === "failed" && (
-				<p role="alert" className="border-b bg-destructive/10 px-4 py-2 text-destructive text-sm">
-					{formatSeoul(schedule.last.scheduledAt)} 예약 발행이 실패해 공개본을 그대로 유지했습니다 (
-					{schedule.last.failureCode}).
-					{schedule.last.failureDetail ? ` ${schedule.last.failureDetail.slice(0, 200)}` : ""}
-				</p>
-			)}
+			<ScheduleNotice schedule={schedule} />
 			{isTrashed && (
 				<section aria-label="휴지통" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
 					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
@@ -1189,7 +1050,9 @@ export function EntryEditorShell({
 								{titleInput}
 							</>
 						}
-						toolbarEnd={templateMenu}
+						toolbarEnd={
+							<TemplateMenu currentMdx={form.mdx} disabled={isReadOnly} onApply={(mdx) => setForm({ mdx })} />
+						}
 						toolbarAside={
 							<span className="flex items-center gap-1">
 								{aiTranslate.toolbar}
@@ -1238,128 +1101,31 @@ export function EntryEditorShell({
 				)}
 			</div>
 
-			<Dialog open={recovery !== null} onOpenChange={(open) => !open && setRecovery(null)}>
-				<DialogContent className="max-w-md">
-					<DialogHeader>
-						<DialogTitle>저장하지 않은 편집이 있습니다</DialogTitle>
-						<DialogDescription>
-							{recovery
-								? `${new Date(recovery.backup.savedAt).toLocaleString("ko-KR")}에 이 브라우저에 임시 저장한 편집이 서버에 없습니다.`
-								: ""}
-							{recovery?.kind === "conflict" &&
-								" 그 뒤 다른 곳에서 서버 내용도 바뀌었습니다. 임시 저장본을 불러와 저장하면 서버 내용을 덮어씁니다."}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={async () => {
-								if (recovery) await deleteLocalBackup(recovery.backup.key);
-								setRecovery(null);
-							}}
-						>
-							서버 저장본 열기
-						</Button>
-						<Button
-							type="button"
-							onClick={() => recovery && applyRecovered({ ...EMPTY_FORM, ...recovery.backup.snapshot })}
-						>
-							임시 저장본 불러오기
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog open={conflict !== null} onOpenChange={(open) => !open && setConflict(null)}>
-				<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-					<DialogHeader>
-						<DialogTitle>편집 충돌</DialogTitle>
-						<DialogDescription>
-							다른 탭이나 기기에서 먼저 저장했습니다. 내 입력은 브라우저에 남아 있습니다. 양쪽을 비교해 복사하거나
-							하나를 고르세요.
-						</DialogDescription>
-					</DialogHeader>
-					{conflict && (
-						<ComparePanes
-							local={conflict.local}
-							server={formFromEntry(conflict.server)}
-							serverVersion={conflict.server.version}
-						/>
-					)}
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => setConflict(null)}>
-							닫기
-						</Button>
-						<Button type="button" variant="outline" onClick={() => window.location.reload()}>
-							다시 불러오기
-						</Button>
-						<Button
-							type="button"
-							variant="destructive"
-							onClick={() => {
-								if (!conflict) return;
-								const version = conflict.server.version;
-								setConflict(null);
-								void autosave.overwriteWithLocal(version);
-							}}
-						>
-							내 내용으로 덮어쓰기
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog open={pendingTemplateMdx !== null} onOpenChange={(open) => !open && setPendingTemplateMdx(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>템플릿 적용</DialogTitle>
-						<DialogDescription>현재 본문이 선택한 템플릿으로 바뀝니다.</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => setPendingTemplateMdx(null)}>
-							취소
-						</Button>
-						<Button type="button" onClick={() => pendingTemplateMdx !== null && applyTemplate(pendingTemplateMdx)}>
-							템플릿 적용
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>발행 예약</DialogTitle>
-						<DialogDescription>
-							저장된 초안을 검증한 뒤 예약합니다. 예약 중에는 편집이 잠깁니다. 정해진 시각의 실행은 외부 실행기가
-							맡습니다.
-						</DialogDescription>
-					</DialogHeader>
-					<Field>
-						<FieldLabel htmlFor="schedule-date">예약 일시</FieldLabel>
-						<Input
-							id="schedule-date"
-							type="datetime-local"
-							value={scheduleInput}
-							onChange={(event) => setScheduleInput(event.target.value)}
-						/>
-					</Field>
-					{schedule && !schedule.runnerConfigured && (
-						<p className="text-amber-700 text-xs dark:text-amber-400">
-							외부 실행기 연결 필요: 연결 전에는 예약이 실행 대기로 남습니다.
-						</p>
-					)}
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>
-							취소
-						</Button>
-						<Button type="button" disabled={!scheduleInput || isSubmitting} onClick={() => void handleSchedule()}>
-							예약 등록
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			<RecoveryDialog
+				recovery={recovery}
+				onClose={() => setRecovery(null)}
+				onKeepServer={async (current) => {
+					await deleteLocalBackup(current.backup.key);
+					setRecovery(null);
+				}}
+				onRestore={(current) => applyRecovered({ ...EMPTY_FORM, ...current.backup.snapshot })}
+			/>
+			<ConflictDialog
+				conflict={conflict}
+				onClose={() => setConflict(null)}
+				onReload={() => window.location.reload()}
+				onOverwrite={(serverVersion) => {
+					setConflict(null);
+					void autosave.overwriteWithLocal(serverVersion);
+				}}
+			/>
+			<ScheduleDialog
+				open={scheduleOpen}
+				onOpenChange={setScheduleOpen}
+				runnerConfigured={schedule?.runnerConfigured}
+				submitting={isSubmitting}
+				onSubmit={(seoulDateTime) => void handleSchedule(seoulDateTime)}
+			/>
 
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
 			{translationSource && (
@@ -1370,42 +1136,6 @@ export function EntryEditorShell({
 					after={translationSource.mdx}
 				/>
 			)}
-		</div>
-	);
-}
-
-/** 충돌·복구 화면의 양쪽 비교(§5.1 "양쪽 내용을 확인·복사"). */
-function ComparePanes({
-	local,
-	server,
-	serverVersion,
-}: {
-	local: EntryForm;
-	server: EntryForm;
-	serverVersion: number;
-}) {
-	const pane = (label: string, value: EntryForm) => (
-		<div className="space-y-2 rounded border p-3">
-			<p className="font-semibold text-sm">{label}</p>
-			<p className="text-xs">
-				제목: {value.title || "(없음)"} · 주소: {value.slug || "(없음)"}
-			</p>
-			<Button
-				type="button"
-				variant="link"
-				size="xs"
-				className="px-0"
-				onClick={() => void navigator.clipboard.writeText(value.mdx)}
-			>
-				본문 복사
-			</Button>
-			<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{value.mdx}</pre>
-		</div>
-	);
-	return (
-		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-			{pane("내 입력(브라우저)", local)}
-			{pane(`서버 최신본 (v${serverVersion})`, server)}
 		</div>
 	);
 }

@@ -5,6 +5,7 @@ import { getCmsContentStore } from "@/cms/container";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/libs/i18n/locales";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";
+import { POLICY_DEPRECATED, POLICY_EVERGREEN, readMetadataString, readMetadataStringArray } from "../metadata";
 import { readSeoMetadata } from "../seo";
 import { normalizeSlug } from "../slug";
 import type { Category, Memo, Post, PublishedMemo, PublishedPost, Series, Tag } from "../types/contents";
@@ -21,24 +22,6 @@ import type { MemoListQuery, PostListQuery } from "../types/query";
  * - DB·환경 오류는 삼키지 않고 그대로 throw한다. 호출자는 이를 5xx로 처리한다(O1 A3).
  */
 type Metadata = Record<string, unknown>;
-
-const POLICY_EVERGREEN = "evergreen";
-const POLICY_DEPRECATED = "deprecated";
-
-function readMetadataString(metadata: Metadata, key: string): string | null {
-	const value = metadata[key];
-	if (typeof value !== "string") return null;
-
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
-
-function readMetadataStringArray(metadata: Metadata, key: string): string[] {
-	const value = metadata[key];
-	if (!Array.isArray(value)) return [];
-
-	return value.filter((item): item is string => typeof item === "string" && item.length > 0);
-}
 
 /** record 컬렉션(카테고리·태그·모음집)의 언어별 값. 없으면 기본 언어 값을 쓴다(v2 B4). */
 function readLocalizedString(metadata: Metadata, key: string, locale: Locale): string | null {

@@ -4,6 +4,7 @@ import { BLOCK_BY_NAME, invalidOptionAttributes } from "../blocks/derive";
 import { analyze } from "../mdx/analyze";
 import { DIRECTIVE_BY_COMPONENT } from "../mdx/directives";
 import { isAllowedImageSrc } from "../mdx/image-src";
+import { MAX_TABLE_COLUMNS } from "../mdx/table-layout";
 import type { CmsImageSource } from "../mdx/types";
 import {
 	fieldValueError,
@@ -257,6 +258,17 @@ function findNamedJsxChildren(node: MdxNode, name: string): MdxNode[] {
 	return found;
 }
 
+/** 병합 한 칸이 걸칠 수 있는 최대 행·열 수. 편집기·공개 렌더의 표 열 한도와 같다. */
+const MAX_TABLE_SPAN = MAX_TABLE_COLUMNS;
+
+/** 셀의 `colspan`·`rowspan`. 없거나 글자가 아니면 1이고, 양의 정수가 아니면 잘못된 값으로 돌려준다. */
+function readSpan(cell: MdxNode, key: "colspan" | "rowspan"): { span: number } | { invalid: string } {
+	const raw = readAttrValue(cell, key);
+	if (typeof raw !== "string") return { span: 1 };
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isNaN(parsed) || parsed < 1 || String(parsed) !== raw.trim() ? { invalid: raw } : { span: parsed };
+}
+
 /**
  * 표의 셀 병합(colspan·rowspan) 및 격자 구조를 검사하여 잘못된 span에 대해 경고한다(v2 C6).
  */
@@ -265,12 +277,12 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 	const totalRows = rows.length;
 	if (totalRows === 0) return;
 
-	const grid: boolean[][] = [];
-	for (let r = 0; r < totalRows; r += 1) {
-		grid.push([]);
-	}
-
+	const grid: boolean[][] = Array.from({ length: totalRows }, () => []);
 	let hasSpanIssue = false;
+	const warn = (message: string) => {
+		warnings.push({ code: "invalid_table_span", message, path: "mdx", position });
+		hasSpanIssue = true;
+	};
 
 	for (let r = 0; r < totalRows; r += 1) {
 		const row = rows[r];
@@ -283,95 +295,44 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 				c += 1;
 			}
 
-			const colspanRaw = readAttrValue(cell, "colspan");
-			const rowspanRaw = readAttrValue(cell, "rowspan");
-
 			let cs = 1;
-			if (colspanRaw !== undefined && typeof colspanRaw === "string") {
-				const parsed = Number.parseInt(colspanRaw, 10);
-				if (Number.isNaN(parsed) || parsed < 1 || String(parsed) !== colspanRaw.trim()) {
-					warnings.push({
-						code: "invalid_table_span",
-						message: `잘못된 colspan 값입니다: ${colspanRaw}`,
-						path: "mdx",
-						position,
-					});
-					hasSpanIssue = true;
-				} else {
-					cs = parsed;
-				}
-			}
+			const colspan = readSpan(cell, "colspan");
+			if ("invalid" in colspan) warn(`잘못된 colspan 값입니다: ${colspan.invalid}`);
+			else cs = colspan.span;
 
 			let rs = 1;
-			if (rowspanRaw !== undefined && typeof rowspanRaw === "string") {
-				const parsed = Number.parseInt(rowspanRaw, 10);
-				if (Number.isNaN(parsed) || parsed < 1 || String(parsed) !== rowspanRaw.trim()) {
-					warnings.push({
-						code: "invalid_table_span",
-						message: `잘못된 rowspan 값입니다: ${rowspanRaw}`,
-						path: "mdx",
-						position,
-					});
-					hasSpanIssue = true;
-				} else {
-					rs = parsed;
-				}
-			}
+			const rowspan = readSpan(cell, "rowspan");
+			if ("invalid" in rowspan) warn(`잘못된 rowspan 값입니다: ${rowspan.invalid}`);
+			else rs = rowspan.span;
 
 			// 외부 MDX의 거대한 span이 격자 계산을 폭증시키지 않도록 제한한다.
-			if (cs > 64 || rs > 64 || c + cs > 64 || r + rs > totalRows) {
-				warnings.push({
-					code: "invalid_table_span",
-					message:
-						r + rs > totalRows
-							? `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`
-							: "셀 병합 범위가 표의 허용 크기(64열·64행)를 넘습니다.",
-					path: "mdx",
-					position,
-				});
-				hasSpanIssue = true;
+			const overflowsRows = r + rs > totalRows;
+			if (cs > MAX_TABLE_SPAN || rs > MAX_TABLE_SPAN || c + cs > MAX_TABLE_SPAN || overflowsRows) {
+				warn(
+					overflowsRows
+						? `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`
+						: `셀 병합 범위가 표의 허용 크기(${MAX_TABLE_SPAN}열·${MAX_TABLE_SPAN}행)를 넘습니다.`,
+				);
 				continue;
-			}
-
-			if (r + rs > totalRows) {
-				warnings.push({
-					code: "invalid_table_span",
-					message: `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`,
-					path: "mdx",
-					position,
-				});
-				hasSpanIssue = true;
 			}
 
 			let overlap = false;
 			for (let dr = 0; dr < rs; dr += 1) {
 				for (let dc = 0; dc < cs; dc += 1) {
-					const targetR = r + dr;
-					const targetC = c + dc;
-					if (targetR < totalRows) {
-						if (grid[targetR]?.[targetC]) overlap = true;
-						if (!grid[targetR]) grid[targetR] = [];
-						grid[targetR][targetC] = true;
-					}
+					const covered = grid[r + dr];
+					if (!covered) continue;
+					if (covered[c + dc]) overlap = true;
+					covered[c + dc] = true;
 				}
 			}
-			if (overlap) {
-				warnings.push({
-					code: "invalid_table_span",
-					message: "표 셀의 병합 영역이 겹칩니다.",
-					path: "mdx",
-					position,
-				});
-				hasSpanIssue = true;
-			}
+			if (overlap) warn("표 셀의 병합 영역이 겹칩니다.");
 
 			c += cs;
 		}
 	}
 
 	if (!hasSpanIssue) {
-		const rowWidths = grid.map((row) => row.length);
-		const maxWidth = Math.max(...rowWidths, 0);
+		const maxWidth = Math.max(...grid.map((row) => row.length), 0);
 		const hasGapOrMismatch = grid.some((row) => {
 			if (row.length !== maxWidth) return true;
 			for (let i = 0; i < maxWidth; i += 1) {
@@ -550,6 +511,25 @@ export async function prepareSnapshot(
 		if (parsed) internalLinks.push({ ...parsed, position: positionOf(node) });
 	};
 
+	const addMdxError = (code: string, position: ReturnType<typeof positionOf>) => {
+		mdxIssues.push({ code, position });
+		mdxHasError = true;
+	};
+
+	/** 참조 ID 속성의 글자. 없거나 비면 `missing_media_id`, 식(`{...}`)이면 `dynamic_reference_id` 문제다. */
+	const staticReferenceId = (attr: MdxAttribute | undefined): { id: string } | { problem: string } =>
+		!attr || attr.value === null || attr.value === undefined || attr.value === ""
+			? { problem: "missing_media_id" }
+			: typeof attr.value !== "string"
+				? { problem: "dynamic_reference_id" }
+				: { id: attr.value };
+
+	/** 등록 미디어 참조로 모은다. UUID가 아니면 본문 오류다. 참조로 남겨 사용 중인 파일을 지우지 않게 한다. */
+	const addMediaReference = (mediaId: string, position: ReturnType<typeof positionOf>) => {
+		if (!isUuid(mediaId)) addMdxError("invalid_reference_id", position);
+		else mdxRefsToAdd.push({ kind: "media", targetId: mediaId, occ: { type: "mdx", ...position } });
+	};
+
 	const collectImage = (node: MdxNode) => {
 		// 이미지는 `mediaId`(등록 미디어) 또는 `src`(외부 주소) 중 하나를 쓴다(§4.4).
 		// `mediaId`만 참조 테이블 대상이다. `src`는 외부 주소라 참조가 아니다.
@@ -558,42 +538,22 @@ export async function prepareSnapshot(
 		const attr = mediaIdAttr ?? srcAttr;
 		const position = positionOf(node);
 
-		if (!attr || attr.value === null || attr.value === undefined || attr.value === "") {
-			mdxIssues.push({ code: "missing_media_id", position });
-			mdxHasError = true;
-		} else if (typeof attr.value !== "string") {
-			mdxIssues.push({ code: "dynamic_reference_id", position });
-			mdxHasError = true;
-		} else if (attr === mediaIdAttr) {
-			if (!isUuid(attr.value)) {
-				mdxIssues.push({ code: "invalid_reference_id", position });
-				mdxHasError = true;
-			} else {
-				mdxRefsToAdd.push({ kind: "media", targetId: attr.value, occ: { type: "mdx", ...position } });
-			}
-		}
+		const reference = staticReferenceId(attr);
+		if ("problem" in reference) addMdxError(reference.problem, position);
+		else if (attr === mediaIdAttr) addMediaReference(reference.id, position);
 
 		const mediaId = typeof mediaIdAttr?.value === "string" ? mediaIdAttr.value : undefined;
 		const src = typeof srcAttr?.value === "string" ? srcAttr.value : undefined;
 		if (mediaId || src) imageSources.push({ ...(mediaId ? { mediaId } : { src }), position });
 	};
 
-	/** 첨부 파일 카드(v3). `mediaId`가 꼭 있어야 하고, 미디어 참조로 남겨 사용 중인 파일을 지우지 않게 한다. */
+	/** 첨부 파일 카드(v3). `mediaId`가 꼭 있어야 한다. */
 	const collectFile = (node: MdxNode) => {
 		const attr = readAttr(node, "mediaId");
 		const position = positionOf(node);
-		if (!attr || attr.value === null || attr.value === undefined || attr.value === "") {
-			mdxIssues.push({ code: "missing_media_id", position });
-			mdxHasError = true;
-		} else if (typeof attr.value !== "string") {
-			mdxIssues.push({ code: "dynamic_reference_id", position });
-			mdxHasError = true;
-		} else if (!isUuid(attr.value)) {
-			mdxIssues.push({ code: "invalid_reference_id", position });
-			mdxHasError = true;
-		} else {
-			mdxRefsToAdd.push({ kind: "media", targetId: attr.value, occ: { type: "mdx", ...position } });
-		}
+		const reference = staticReferenceId(attr);
+		if ("problem" in reference) addMdxError(reference.problem, position);
+		else addMediaReference(reference.id, position);
 	};
 
 	/** 번역본에 남은 번역 안내 글(v3). 공개 화면에는 보이지 않으므로 남은 채로 발행하지 않는다. */

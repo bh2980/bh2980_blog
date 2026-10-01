@@ -2,18 +2,10 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { type ComponentProps, useSyncExternalStore } from "react";
+import type { ComponentProps } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/utils/cn";
-
-const subscribeNothing = () => () => {};
-/** 서버 렌더와 hydration 중에는 false, 그 뒤에는 true. */
-const useHydrated = () =>
-	useSyncExternalStore(
-		subscribeNothing,
-		() => true,
-		() => false,
-	);
 
 /**
  * 밝은·어두운 테마 전환 버튼. 서버 렌더에서는 현재 테마를 알 수 없고, 서버에서 그린 버튼이

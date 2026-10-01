@@ -367,9 +367,43 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 		it.each([
 			["<Image mediaId={dynamicId} />", "dynamic_reference_id"],
+			['<Image mediaId="not-a-uuid" alt="a" />', "invalid_reference_id"],
+			['<Image mediaId="" alt="a" />', "missing_media_id"],
+			["<File />", "missing_media_id"],
+			["<File mediaId={dynamicId} />", "dynamic_reference_id"],
+			['<File mediaId="not-a-uuid" />', "invalid_reference_id"],
 		])("creates structured issues for dynamic IDs: %s", async (mdx, expectedIssue) => {
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
+			expect(snap.references).toEqual([]);
+		});
+
+		it.each([
+			['<Image mediaId="987e4567-e89b-12d3-a456-426614174000" alt="a" />'],
+			['<File mediaId="987e4567-e89b-12d3-a456-426614174000" />'],
+		])("records a media reference for a registered media ID: %s", async (mdx) => {
+			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([
+				{
+					kind: "media",
+					targetId: "987e4567-e89b-12d3-a456-426614174000",
+					isStale: false,
+					occurrences: [{ type: "mdx", line: 1, column: 1 }],
+				},
+			]);
+		});
+
+		it("does not reference an external image src", async () => {
+			const snap = await prepareSnapshot({
+				collection: "post",
+				slug: "a",
+				metadata: {},
+				mdx: '<Image src="https://example.com/a.png" alt="a" />',
+			});
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([]);
+			expect(snap.imageSources).toEqual([{ src: "https://example.com/a.png", position: { line: 1, column: 1 } }]);
 		});
 
 		it("retains trusted previous refs marked stale on MDX syntax error and keeps exact MDX unchanged", async () => {

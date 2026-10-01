@@ -10,13 +10,11 @@ import { schemaOf } from "@/cms/schema/derive";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { isLocale, LOCALE_INFO } from "@/libs/i18n/locales";
+import { adminLocaleName } from "@/libs/i18n/locales";
 import type { CmsIssue } from "../api-error-message";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
 import { SeoPanel } from "./seo-panel";
-
-const localeName = (locale: string) => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
 
 type InspectorTab = "fields" | "seo";
 
@@ -114,7 +112,7 @@ export function InspectorPanel({
 									values: formFromSourceMetadata(collection, entry.source.metadata),
 									note: (
 										<>
-											원문({localeName(entry.source.locale)}) 값입니다.{" "}
+											원문({adminLocaleName(entry.source.locale)}) 값입니다.{" "}
 											<Link
 												href={`/admin/entries/${entry.source.id}/edit`}
 												className="text-primary underline-offset-2 hover:underline"

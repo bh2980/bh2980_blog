@@ -31,6 +31,9 @@ export const LOCALE_INFO: Readonly<Record<Locale, LocaleInfo>> = {
 	ja: { nativeName: "日本語", adminName: "일본어", ogLocale: "ja_JP", intl: "ja-JP" },
 };
 
+/** 관리자 화면의 언어 이름. 모르는 언어 코드는 그대로 보인다. */
+export const adminLocaleName = (locale: string): string => (isLocale(locale) ? LOCALE_INFO[locale].adminName : locale);
+
 /** 공개 주소의 언어 접두사. 기본 언어는 빈 문자열이다. */
 export const localePrefix = (locale: Locale): string => (locale === DEFAULT_LOCALE ? "" : `/${locale}`);
 

@@ -47,8 +47,6 @@ interface SchemaFieldsProps {
 	issues?: readonly CmsIssue[];
 	context: FieldContext;
 	onChange: (patch: EntryFormPatch) => void;
-	/** 주소를 만드는 필드(`slug.from`)가 바뀌면 부른다. 없으면 `onChange`를 쓴다. */
-	onSourceChange?: (value: string) => void;
 	onSlugChange?: (slug: string) => void;
 	onRegenerateSlug?: () => void;
 	/** 주소 입력의 안내 문구. 비우면 만들 값을 보여 주는 식으로 바꿀 때 쓴다. */
@@ -263,7 +261,6 @@ export function SchemaFields({
 	issues = [],
 	context,
 	onChange,
-	onSourceChange,
 	onSlugChange,
 	onRegenerateSlug,
 	slugPlaceholder,
@@ -276,12 +273,7 @@ export function SchemaFields({
 	const schema = schemaOf(collection);
 	const issueFor = (path: string) => issues.find((issue) => issue.path === path);
 	const describedBy = (path: string) => (issueFor(path) ? `${fieldId(path)}-error` : undefined);
-	const slugSource = Object.values(schema.fields).find((field): field is SlugField => field.kind === "slug")?.from;
-
-	const setValue = (name: string, value: FormValue) => {
-		if (name === slugSource && onSourceChange && typeof value === "string") onSourceChange(value);
-		else onChange({ [name]: value });
-	};
+	const setValue = (name: string, value: FormValue) => onChange({ [name]: value });
 
 	/** 필드 옆 자리. 읽기 전용 필드에는 두지 않는다. 적용은 입력을 바꾼 것과 같다. */
 	const fieldSlot = (name: string, value: FormValue, apply: (value: FormValue) => void): SlotRequest => ({

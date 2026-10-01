@@ -1,7 +1,7 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
-import { cloneElement, type ReactElement, useSyncExternalStore } from "react";
+import { cloneElement, type ReactElement } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	ContextMenu,
@@ -29,6 +29,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 /**
  * 오른쪽 클릭 메뉴와 `⋯` 버튼이 함께 쓰는 메뉴 정의(v2 A2). 같은 목록을 두 곳에서 렌더해
@@ -144,15 +145,6 @@ function DropdownItems({ actions }: { actions: MenuAction[] }) {
 		}
 	});
 }
-
-const subscribeNothing = () => () => {};
-/** 서버 렌더와 hydration 중에는 false, 그 뒤에는 true. */
-const useHydrated = () =>
-	useSyncExternalStore(
-		subscribeNothing,
-		() => true,
-		() => false,
-	);
 
 /**
  * `trigger`를 오른쪽 클릭(또는 Shift+F10·메뉴 키)하면 메뉴를 연다. `trigger`는 실제로 렌더할 요소다

@@ -100,105 +100,114 @@ type Coords = { top: number; left: number };
 
 const chain = (editor: Editor) => editor.chain().focus();
 
+/** 블록 모양 드롭다운. 지금 블록의 모양 이름이 드롭다운 이름이 된다. */
+const BLOCK_STYLES: ToolbarItem[] = [
+	{
+		label: "본문",
+		icon: Pilcrow,
+		isActive: (e) => e.isActive("paragraph"),
+		run: (e) => chain(e).setParagraph().run(),
+	},
+	...([2, 3, 4] as const).map((level) => ({
+		label: `H${level}`,
+		title: `제목 ${level}`,
+		icon: { 2: Heading2, 3: Heading3, 4: Heading4 }[level],
+		isActive: (e: Editor) => e.isActive("heading", { level }),
+		run: (e: Editor) => chain(e).setHeading({ level }).run(),
+	})),
+];
+
 /** 자주 쓰지 않아 한 드롭다운으로 묶는 첨자 마크. */
 const SCRIPT_MARKS = ["superscript", "subscript"];
+const INLINE_TOOLS = INLINE_MARK_TOOLS.filter((tool) => !SCRIPT_MARKS.includes(tool.mark));
+const SCRIPT_TOOLS = INLINE_MARK_TOOLS.filter((tool) => SCRIPT_MARKS.includes(tool.mark));
+/** 글자 꾸밈 버튼을 숨기는 순서(큰 것부터). 없는 마크는 5. 굵게·기울임은 숨기지 않는다. */
+const INLINE_PRIORITY: Readonly<Record<string, number>> = { bold: 0, italic: 0, strike: 6, code: 4, underline: 5 };
+const PINNED_INLINE_MARKS = ["bold", "italic"];
 
-const TOOLBAR_GROUPS: ToolbarItem[][] = [
-	[
-		{
-			label: "본문",
-			icon: Pilcrow,
-			isActive: (e) => e.isActive("paragraph"),
-			run: (e) => chain(e).setParagraph().run(),
-		},
-		...([2, 3, 4] as const).map((level) => ({
-			label: `H${level}`,
-			title: `제목 ${level}`,
-			icon: { 2: Heading2, 3: Heading3, 4: Heading4 }[level],
-			isActive: (e: Editor) => e.isActive("heading", { level }),
-			run: (e: Editor) => chain(e).setHeading({ level }).run(),
-		})),
-	],
-	INLINE_MARK_TOOLS.filter((tool) => !SCRIPT_MARKS.includes(tool.mark)),
-	[
-		{
-			label: "왼쪽",
-			title: "왼쪽 정렬",
-			icon: AlignLeft,
-			isActive: (e) => e.isActive({ textAlign: "left" }),
-			run: (e) => chain(e).setTextAlign("left").run(),
-		},
-		{
-			label: "가운데",
-			title: "가운데 정렬",
-			icon: AlignCenter,
-			isActive: (e) => e.isActive({ textAlign: "center" }),
-			run: (e) => chain(e).setTextAlign("center").run(),
-		},
-		{
-			label: "오른쪽",
-			title: "오른쪽 정렬",
-			icon: AlignRight,
-			isActive: (e) => e.isActive({ textAlign: "right" }),
-			run: (e) => chain(e).setTextAlign("right").run(),
-		},
-		{ label: "자동", title: "정렬 해제", icon: RemoveFormatting, run: (e) => chain(e).unsetTextAlign().run() },
-	],
-	[
-		{
-			label: "• 목록",
-			title: "글머리 목록",
-			icon: List,
-			isActive: (e) => e.isActive("bulletList"),
-			run: (e) => chain(e).toggleBulletList().run(),
-		},
-		{
-			label: "1. 목록",
-			title: "번호 목록",
-			icon: ListOrdered,
-			isActive: (e) => e.isActive("orderedList"),
-			run: (e) => chain(e).toggleOrderedList().run(),
-		},
-		{
-			label: "☑ 체크",
-			title: "체크 목록",
-			icon: ListTodo,
-			isActive: (e) => e.isActive("taskList"),
-			run: (e) => chain(e).toggleTaskList().run(),
-		},
-		{
+const ALIGN_TOOLS: ToolbarItem[] = [
+	{
+		label: "왼쪽",
+		title: "왼쪽 정렬",
+		icon: AlignLeft,
+		isActive: (e) => e.isActive({ textAlign: "left" }),
+		run: (e) => chain(e).setTextAlign("left").run(),
+	},
+	{
+		label: "가운데",
+		title: "가운데 정렬",
+		icon: AlignCenter,
+		isActive: (e) => e.isActive({ textAlign: "center" }),
+		run: (e) => chain(e).setTextAlign("center").run(),
+	},
+	{
+		label: "오른쪽",
+		title: "오른쪽 정렬",
+		icon: AlignRight,
+		isActive: (e) => e.isActive({ textAlign: "right" }),
+		run: (e) => chain(e).setTextAlign("right").run(),
+	},
+	{ label: "자동", title: "정렬 해제", icon: RemoveFormatting, run: (e) => chain(e).unsetTextAlign().run() },
+];
+
+/** 목록 드롭다운. 지금 블록의 목록 종류가 드롭다운 이름·아이콘이 된다. */
+const LIST_STYLES: ToolbarItem[] = [
+	{
+		label: "• 목록",
+		title: "글머리 목록",
+		icon: List,
+		isActive: (e) => e.isActive("bulletList"),
+		run: (e) => chain(e).toggleBulletList().run(),
+	},
+	{
+		label: "1. 목록",
+		title: "번호 목록",
+		icon: ListOrdered,
+		isActive: (e) => e.isActive("orderedList"),
+		run: (e) => chain(e).toggleOrderedList().run(),
+	},
+	{
+		label: "☑ 체크",
+		title: "체크 목록",
+		icon: ListTodo,
+		isActive: (e) => e.isActive("taskList"),
+		run: (e) => chain(e).toggleTaskList().run(),
+	},
+];
+
+/** 블록 넣기 버튼과 숨기는 순서(큰 것부터). 목록은 2, 컴포넌트는 4. */
+const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
+	{
+		priority: 6,
+		tool: {
 			label: "“ 인용",
 			title: "인용구",
 			icon: Quote,
 			isActive: (e) => e.isActive("blockquote"),
 			run: (e) => chain(e).toggleBlockquote().run(),
 		},
-		{
+	},
+	{
+		priority: 3,
+		tool: {
 			label: "코드블록",
 			icon: SquareCode,
 			isActive: (e) => e.isActive("codeBlock"),
 			run: (e) => chain(e).toggleCodeBlock().run(),
 		},
-		{
+	},
+	{
+		priority: 7,
+		tool: {
 			label: "표",
 			title: "표 삽입",
 			icon: Table2,
 			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
 		},
-	],
+	},
 ];
 
-/** 삽입 도구를 숨기는 순서(큰 것부터). 목록은 2, 컴포넌트는 4. */
-const INSERT_PRIORITY: Record<string, number> = { 코드블록: 3, "“ 인용": 6, 표: 7 };
-
 const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
-
-const BLOCK_STYLES = TOOLBAR_GROUPS[0] ?? [];
-const INLINE_TOOLS = INLINE_MARK_TOOLS.filter((tool) => !SCRIPT_MARKS.includes(tool.mark));
-const ALIGN_TOOLS = TOOLBAR_GROUPS[2] ?? [];
-const SCRIPT_TOOLS = INLINE_MARK_TOOLS.filter((tool) => SCRIPT_MARKS.includes(tool.mark));
-const LIST_STYLES = TOOLBAR_GROUPS[3]?.slice(0, 3) ?? [];
-const INSERT_TOOLS = TOOLBAR_GROUPS[3]?.slice(3) ?? [];
 
 function ToolbarDropdown({
 	editor,
@@ -766,12 +775,7 @@ export function CmsEditor({
 		},
 		{ key: "divider-block", divider: true },
 		...INLINE_TOOLS.map((tool) =>
-			buttonSlot(
-				tool,
-				tool.mark,
-				{ bold: 0, italic: 0, strike: 6, code: 4, underline: 5 }[tool.mark] ?? 5,
-				["bold", "italic"].includes(tool.mark),
-			),
+			buttonSlot(tool, tool.mark, INLINE_PRIORITY[tool.mark] ?? 5, PINNED_INLINE_MARKS.includes(tool.mark)),
 		),
 		{
 			key: "color",
@@ -790,7 +794,7 @@ export function CmsEditor({
 		dropdownSlot("align", 9, "정렬", ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
 		{ key: "divider-list", divider: true },
 		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
-		...INSERT_TOOLS.map((tool) => buttonSlot(tool, tool.label, INSERT_PRIORITY[tool.label] ?? 7)),
+		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
 		{
 			key: "custom-block",
 			priority: 4,

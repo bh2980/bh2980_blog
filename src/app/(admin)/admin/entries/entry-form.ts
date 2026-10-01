@@ -91,6 +91,20 @@ export const formList = (form: EntryForm, name: string): string[] => {
 export const isTranslationEntry = (entry: Pick<EntryData, "id" | "translationGroupId"> | null | undefined) =>
 	Boolean(entry?.translationGroupId && entry.translationGroupId !== entry.id);
 
+/** 번역 화면이 보여 줄 원문. 원문 본문을 함께 받은 번역본일 때만 있다. */
+export interface TranslationSource {
+	mdx: string;
+	locale: string;
+	title: string;
+}
+
+/** 번역본이면 원문 본문·언어·제목. 원문 창·제목 안내·AI 번역이 쓴다(v3). */
+export function translationSourceOf(entry: EntryData | null): TranslationSource | null {
+	if (!entry || !isTranslationEntry(entry) || typeof entry.source?.mdx !== "string") return null;
+	const title = entry.source.metadata.title;
+	return { mdx: entry.source.mdx, locale: entry.source.locale, title: typeof title === "string" ? title : "" };
+}
+
 /** 폼이 다루는 저장 필드. 번역본이면 정의에서 `localized`인 필드만이다(공통 값은 원문이 가진다). */
 const fieldsOf = (collection: string, translation = false): readonly StoredField[] => {
 	if (!isCollection(collection)) return [];

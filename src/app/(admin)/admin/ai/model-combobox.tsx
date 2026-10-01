@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { AiModelInfo } from "@/cms/ai/connection";
 import {
 	Combobox,
@@ -16,16 +16,6 @@ import { cmsFetch, errorText } from "../admin-api";
 
 /** 모델 목록을 받을 곳. 저장한 연결은 id로, 저장 전에는 주소·키로 받는다. */
 export type ModelSource = { providerId: string } | { url: string; apiKey?: string };
-
-/** 입력이 멈춘 뒤에만 값이 바뀐다(주소·키를 치는 동안 목록을 여러 번 받지 않게). */
-export function useDebounced<T>(value: T, delay = 400): T {
-	const [debounced, setDebounced] = useState(value);
-	useEffect(() => {
-		const timer = setTimeout(() => setDebounced(value), delay);
-		return () => clearTimeout(timer);
-	}, [value, delay]);
-	return debounced;
-}
 
 /**
  * 생성 연결의 모델 목록. 한 번 받은 목록은 10분 동안 다시 받지 않고, 저장·다시 열기에도 그대로 쓴다.
