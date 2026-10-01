@@ -350,8 +350,8 @@ paths:
               properties:
                 expectedVersion: { type: integer }
       description: >
-        표시 발행일은 초안 메타데이터의 `publishedAt`이다(없으면 기존 값 또는 발행 시각). 미래 날짜는
-        `future_published_at` 이슈로 거부된다. 예약이 대기 중이면 수동 발행이 그 예약을 대신하고 취소한다.
+        발행일(`publishedAt`)은 처음 발행할 때 서버가 기록하고 다시 발행해도 바꾸지 않는다(미리 넣어 둔 값이 있으면
+        그 값을 쓴다). 예약이 대기 중이면 수동 발행이 그 예약을 대신하고 취소한다.
       responses:
         "200":
           description: 발행된 항목과 비차단 `warnings`
@@ -1660,8 +1660,6 @@ components:
         publishedSlug: { type: string, nullable: true }
         createdAt: { type: string, format: date-time, nullable: true }
         updatedAt: { type: string, format: date-time, nullable: true }
-        firstPublishedAt: { type: string, format: date-time, nullable: true }
-        lastPublishedAt: { type: string, format: date-time, nullable: true }
         publishedAt: { type: string, format: date-time, nullable: true }
         trashedAt: { type: string, format: date-time, nullable: true }
         working: { $ref: "#/components/schemas/EntryBody" }

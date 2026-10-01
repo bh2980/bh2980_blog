@@ -138,7 +138,7 @@ A0 → A1 → A2 → A3 → A4. API 변경(`/bulk` `permanentDelete`, `/preferen
 
 **계획과 다르게 한 것.**
 
-- **날짜·시각 한 칸 입력:** 표시 발행일·예약 일시는 shadcn `Input type="datetime-local"`로 두었다. shadcn에 날짜+시각 선택기가 없고, 서울 시각 문자열·미래 제한(`max`)과 기존 동작을 그대로 지키기 위해서다. 날짜 범위 필터(목록·미디어)는 계획대로 `Calendar` 범위 + `Popover`다.
+- **날짜·시각 한 칸 입력:** 예약 일시는 shadcn `Input type="datetime-local"`로 두었다. shadcn에 날짜+시각 선택기가 없고, 서울 시각 문자열·미래 제한(`max`)과 기존 동작을 그대로 지키기 위해서다. 날짜 범위 필터(목록·미디어)는 계획대로 `Calendar` 범위 + `Popover`다.
 - **휴지통 컬렉션 탭:** `Tabs` 대신 `aria-current`가 붙은 링크 묶음이다. 컬렉션 사이 이동(내비게이션)이라 링크가 의미상 맞고, 머리글의 Base UI `Tabs`가 서버·브라우저 ID 불일치(hydration 경고)를 냈다.
 - **오른쪽 클릭 메뉴는 hydration 뒤에 붙인다:** 서버에서 렌더한 Base UI `ContextMenu`가 뒤따르는 요소의 `useId`를 서버와 다르게 만들었다(사이드바 빈 곳 메뉴에서 재현). `ActionContextMenu`는 hydration 전에는 트리거 요소만 그리고, 그 뒤에 메뉴를 붙인다.
 - **링크는 `Button`이 아니라 `buttonVariants`:** Base UI `Button`에 `<a>`를 렌더하면 `role="button"`이 붙는다. 링크는 클래스만 입힌 `<a>`·`<Link>`로 둔다(블로그 첫 화면 버튼, 모바일 메뉴 링크 포함). 블로그 모바일 메뉴는 `SheetClose` 대신 제어형 `Sheet`로 닫는다.

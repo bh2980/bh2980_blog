@@ -423,15 +423,15 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | --- | --- |
 | `createdAt` | 새 콘텐츠가 서버에 처음 생성된 시각. 서버 지정, 변경하지 않음 |
 | `updatedAt` | 실제 본문·메타데이터가 마지막으로 바뀐 시각. 같은 값 저장·폴더 이동에는 변경하지 않음 |
-| `firstPublishedAt` | 처음 공개된 실제 시각. 이후 발행으로 덮어쓰지 않음 |
-| `lastPublishedAt` | 공개본이 마지막으로 갱신된 시각 |
-| `publishedAt` | 블로그에 표시하고 정렬에 사용하는 발행일. 초안 메타데이터가 유일한 입력 경로이며 발행 시 공개본에 복사한다. 비어 있으면 첫 발행 시각. 발행 API는 별도 날짜 파라미터를 받지 않는다 |
+| `publishedAt` | 발행일. 처음 발행한 시각을 서버가 기록한다(`entries.published_at`). 다시 발행하거나 보관 후 다시 발행해도 바뀌지 않는다. 블로그 표시·정렬과 관리자 목록이 이 값을 쓴다. 화면이나 API로 고치지 않는다 |
 | `scheduledAt` | 외부 실행기가 발행을 수행할 예정 시각 |
 
-- 실제 공개 여부는 상태와 공개본으로 판단한다. `publishedAt`에 미래 시각을 넣어 예약 기능을 우회하지 않는다.
+- 실제 공개 여부는 상태와 공개본으로 판단한다.
+- 원래 날짜가 필요한 글(이전한 글)은 DB에서 `published_at`을 미리 넣어 둔다. 값이 있으면 발행해도 그대로 쓴다. 초안이어도 미리 넣어 둘 수 있다.
+- (2026-10-02 변경) 편집 가능한 표시 발행일(메타데이터 `publishedAt`)과 `firstPublishedAt`·`lastPublishedAt`은 없앴다. 발행일이 두 곳에 있어 목록 표시와 정렬이 서로 다른 값을 썼기 때문이다. `first_published_at`·`last_published_at` 칸은 코드가 쓰지 않으며 운영 전환 후 지운다.
 - 저장은 UTC, 기본 표시는 `Asia/Seoul`이다. 시간대 설정은 CMS 설정에서 바꿀 수 있다.
 - 기존 파일에 생성일·수정일이 없으면 null로 이전해 `기록 없음`으로 표시한다. 이전일은 `importedAt`으로 따로 기록한다.
-- 기존 `publishedDateTimeISO`는 표시 발행일로 이전한다. 실제 최초·최종 공개 시각을 알 수 없으면 추정해서 채우지 않는다.
+- 기존 `publishedDateTimeISO`는 발행일(`published_at`)로 이전한다. 초안도 원래 날짜를 넣어 둔다.
 - 공개 블로그의 수정일은 현재 공개본을 만들 때의 내용 수정일이다. 아직 발행하지 않은 초안 수정일을 공개 페이지에 노출하지 않는다.
 
 ### 5.6 검증
@@ -483,14 +483,14 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 
 | 컬렉션 | 필드와 동작 |
 | --- | --- |
-| `post` | 제목, slug, 요약, 카테고리, 태그, 표시 발행일, MDX 본문, 기존 normal/evergreen/deprecated 정책과 대체 글 관계. 초안/발행 workflow |
-| `memo` | 제목, slug, 태그, 표시 발행일, MDX 본문. 초안/발행 workflow |
+| `post` | 제목, slug, 요약, 카테고리, 태그, MDX 본문, 기존 normal/evergreen/deprecated 정책과 대체 글 관계. 초안/발행 workflow |
+| `memo` | 제목, slug, 태그, MDX 본문. 초안/발행 workflow |
 | `category` | 이름. slug는 이름에서 서버가 만든다. 명시적 저장으로 반영하는 record workflow |
 | `tag` | 이름. slug는 이름에서 서버가 만든다. 명시적 저장으로 반영하는 record workflow |
 | `collection` | 모음집 이름(`title`), 설명(`summary`), 순서를 유지하는 게시글 관계(`itemIds`). slug는 이름에서 만든다. record workflow |
 
 공통 시스템 필드와 가상 폴더는 CMS가 제공한다. 기존 공개 블로그가 받는 필드 이름은 호환 변환 계층에서 유지할 수 있다. 모음집에서 아직 공개되지 않은 게시글은 관리자에게 표시하고 공개 목록에서는 제외한다.
-새로운 CMS 메타데이터 통신 계약(wire keys)은 `title`, `summary`, `categoryId`, `tagIds`, `publishedAt`, `policy`, `replacementPostId`, `itemIds`다. `replacementPostId`는 `deprecated` 게시글의 대체 글 ID이며 공개 페이지에 대체 글 안내로 표시한다. 컬렉션별 허용 목록은 유지하되, 기존 Keystatic 이름은 마이그레이션 입력으로만 사용하며 새로운 통신 계약에는 포함하지 않는다. 컬렉션 항목 중 `itemIds`는 게시글(post)만을 대상으로 하며, 모음집 저장 시 아직 공개되지 않은 게시글도 담을 수 있다.
+새로운 CMS 메타데이터 통신 계약(wire keys)은 `title`, `summary`, `categoryId`, `tagIds`, `policy`, `replacementPostId`, `itemIds`다. `replacementPostId`는 `deprecated` 게시글의 대체 글 ID이며 공개 페이지에 대체 글 안내로 표시한다. 컬렉션별 허용 목록은 유지하되, 기존 Keystatic 이름은 마이그레이션 입력으로만 사용하며 새로운 통신 계약에는 포함하지 않는다. 컬렉션 항목 중 `itemIds`는 게시글(post)만을 대상으로 하며, 모음집 저장 시 아직 공개되지 않은 게시글도 담을 수 있다.
 
 ## 7. 이미지와 미디어 라이브러리
 
@@ -692,7 +692,7 @@ Next.js의 캐시/재검증은 페이지 생성 방식에 따라 동작이 달�
 | 대상 | 통과 조건 |
 | --- | --- |
 | F01 목록 | 제목·상태·날짜·태그를 확인하고 검색/필터/정렬/컬럼을 조합한다. 다시 열어 설정이 유지되고 페이지 이동 시 누락/중복이 없다 |
-| F02 폴더 | memo 아래 알고리즘/Type Challenge 폴더를 만들고 글을 이동한다. URL·태그·표시 발행일·내용 수정일이 바뀌지 않고 폴더 삭제 규칙이 지켜진다 |
+| F02 폴더 | memo 아래 알고리즘/Type Challenge 폴더를 만들고 글을 이동한다. URL·태그·발행일·내용 수정일이 바뀌지 않고 폴더 삭제 규칙이 지켜진다 |
 | F03 날짜 | 새 글 생성, 동일 내용 저장, 본문 변경, 첫 발행, 재발행, 폴더 이동 각각의 날짜가 §5.5와 일치한다 |
 | F04 연결 교체 | CMS UI/업무 로직에서 제공자 SDK 직접 사용이 없고, DB 연결 설정과 MediaStore 교체 계약을 문서·계약 테스트로 검증한다. 실제 새 서비스로의 이전 여부는 별도 기록한다 |
 | F05/F14 미디어 | 업로드/실패 재시도/원본 유지/최적화/재사용이 동작하고 이미지별 alt·크기는 독립적이다. 사용 중 파일 삭제와 위조/초과 파일 업로드가 차단된다 |

@@ -77,7 +77,7 @@ src/app/(admin)/admin/entries/field-inputs.tsx    입력 등록부(이름 → �
 | 정의 | `src/cms/schema/definitions.ts`에 게시글·메모·카테고리·태그·모음집. `COLLECTION_DEFINITIONS`(v1 모양)와 `PostMetadata` 등 메타데이터 타입은 여기서 만든다 |
 | 서버 | `snapshot.ts`의 허용 키·값 규칙(정책 값, 날짜, UUID, 글자 수), 참조 수집, 발행 필수값, 관계 대상 검사를 `derive.ts`가 정의에서 만든다. 저장 형식·해시·오류 코드는 v1과 같다 |
 | 편집 화면 | `schema-fields.tsx`가 배치 묶음(기본·분류·발행·SEO)을 그린다. SEO처럼 `collapsed` 묶음은 값이나 발행 문제가 없을 때만 접는다. 요약은 입력 등록부의 `auto-summary`, 대체 글은 게시글 대상 한 개 관계(`EntryPicker`) |
-| 폼 | `EntryForm`은 제목·주소·본문 + 필드 이름을 키로 한 평평한 값이다(`publishDate` → `publishedAt`). 변환 규칙은 `entry-form.ts` 한 곳 |
+| 폼 | `EntryForm`은 제목·주소·본문 + 필드 이름을 키로 한 평평한 값이다(발행일은 2026-10-02부터 필드가 아니다). 변환 규칙은 `entry-form.ts` 한 곳 |
 | record 대화상자 | 카테고리·태그·모음집도 같은 렌더러를 쓴다. 모음집 항목은 순서 있는 여러 개 관계(`OrderedEntryList`) |
 | 목록 | `columnsFor`가 정의의 필드와 `list.columns`에서 컬럼을 만든다. 필드 컬럼은 목록 API가 아는 것(제목·주소·카테고리·태그·발행일)만 된다 |
 | `/meta` | `schemas`를 추가했다. OpenAPI 갱신 |

@@ -1,6 +1,6 @@
 # bh2980 블로그 CMS v2 — 범위와 설계 메모
 
-작성일: 2026-09-27 · 상태: **A·B·C(C1~C6) 구현 완료 · C7 제외(사용자 결정)** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
+작성일: 2026-09-27 · 상태: **A·B·C(C1~C6)·D 구현 완료 · C7 제외(사용자 결정) · E 진행 중(데이터 이전 완료, `main` PR #146)** · 브랜치: `feature/cms-v2` (`feature/new-cms`의 `cda2fff1`에서 분기)
 
 > v1 명세는 [`CMS-SPEC.md`](CMS-SPEC.md)다. 이 문서는 v1 위에 더하거나 바꾸는 것만 적는다. 여기에 적지 않은 동작은 v1 명세를 따른다.
 
@@ -69,7 +69,6 @@ export const post = collection({
     summary: fields.text({ label: "요약", multiline: true, description: "비우면 자동 생성", localized: true }),
     categoryId: fields.relation({ to: "category", label: "카테고리", required: "publish", createInline: true }),
     tagIds: fields.relation({ to: "tag", many: true, label: "태그", createInline: true, actions: ["suggestTags"] }),
-    publishedAt: fields.datetime({ label: "발행일" }),
     policy: fields.conditional(
       fields.select({ label: "정책", options: { normal: "일반", evergreen: "항상 최신 글", deprecated: "지원 중단" } }),
       { deprecated: { replacementPostId: fields.relation({ to: "post", label: "최신 글" }) } },
@@ -127,7 +126,7 @@ export const post = collection({
 - 번역본은 별도 콘텐츠(entry)다. 같은 글의 원문과 번역본은 `translationGroupId`로 묶고, 각 콘텐츠는 `locale`을 가진다. 묶음마다 원문 언어가 하나 있다.
 - 한 묶음에는 언어마다 콘텐츠가 최대 하나다.
 - 초안·발행·예약·보관·휴지통·자동 저장·충돌 검사는 번역본마다 따로 한다. 기존 v1 로직을 언어별로 그대로 쓰기 위해서다.
-- 공통 필드(카테고리·태그 연결·정책·대체 글·표시 발행일)는 원문이 가지고 번역본은 물려받는다. 번역본 속성 패널은 공통 필드를 읽기 전용으로 보여 준다.
+- 공통 필드(카테고리·태그 연결·정책·대체 글)는 원문이 가지고 번역본은 물려받는다. 번역본 속성 패널은 공통 필드를 읽기 전용으로 보여 준다.
 - 필드 단위로 한 콘텐츠 안에 언어별 값을 두는 방식은 쓰지 않는다. 언어마다 발행 상태가 다를 때 복잡해지고 v1 저장 구조를 많이 바꿔야 한다.
 
 **공개 주소.**
@@ -189,11 +188,18 @@ export const post = collection({
 
 v1 명세 §11.3·§12.2의 전환 절차와 검수를 v2 결과물에 대해 수행한다. 실제 OS 한글 IME, 실 R2 업로드, 배포 후 smoke, 전체 기존 MDX 왕복 검수를 포함한다. 운영 데이터 이전과 공개 전환은 사용자 승인 후 실행한다.
 
+**진행 상황(2026-10-02).**
+
+- 병합 전 리뷰·리팩터링을 마쳤다(동작 변경 없음, 바꾸기 전에 테스트로 고정). 편집 화면·목록 화면을 맡은 일별로 나눴다.
+- 운영 DB(Neon)에 기존 글·메모 49편 이전을 마쳤다. 생성·수정·발행일을 원래 발행일로 맞췄다. 영어로 바뀐 주소 11편의 옛 한글 주소는 별칭으로 남았다.
+- 티스토리 글 14편을 초안으로 넣었다(이미지 117장은 R2 미디어, 발행일 칸에 원래 날짜). 이미지 alt를 채운 뒤 발행한다.
+- 발행일을 `published_at` 하나로 정리했다(v1 명세 §5.5).
+- `feature/cms-v2 → main` PR #146. 남은 일: Vercel 운영 환경 변수, 병합 후 공개·관리자 화면 점검, `first_published_at`·`last_published_at` 칸 삭제.
+
 ## 7. 확인이 남은 것
 
-- C2 크롭·회전 저장 방식, C6 셀 병합 directive 문법.
-- A의 확인 사항은 [`docs/cms/v2/a-ui-foundation.md`](docs/cms/v2/a-ui-foundation.md) §9에 답을 적었다.
-- D2 초벌 번역에 쓸 모델·비용 한도.
+- 실제 AI 서비스로 본문 번역 품질 확인(D2). 모델·비용은 AI 화면의 연결·기능 설정으로 정한다.
+- 정해진 것: C2 크롭·회전·C6 셀 병합 저장 방식은 [C 구현 계획](docs/cms/v2/c-editor.md) §1, A의 확인 사항은 [A 문서](docs/cms/v2/a-ui-foundation.md) §9.
 
 ## 8. v3 메모
 
@@ -206,6 +212,8 @@ v1 명세 §11.3·§12.2의 전환 절차와 검수를 v2 결과물에 대해 �
 | 날짜 | 결정 |
 | --- | --- |
 | 2026-09-27 | v1 단독 전환 없이 v2까지 만든 뒤 한 번에 전환 |
+| 2026-09-27 | C7(에디터 UI·디자인 개선)은 별도 항목으로 하지 않음. 쓰면서 필요한 개선을 그때그때 반영 |
+| 2026-10-02 | 발행일은 처음 발행한 시각(`published_at`) 하나. 편집 가능한 표시 발행일과 첫·마지막 발행 시각은 없앰. 원래 날짜가 필요하면 DB에서 넣는다 |
 | 2026-09-27 | 예약 실행기·휴지통 자동 비우기는 v3 |
 | 2026-09-27 | 스키마는 코드로 정의(Keystatic식). DB 저장·UI 스키마 빌더는 하지 않음 |
 | 2026-09-27 | AI는 slug·태그 추천부터, 선택 기능 |
