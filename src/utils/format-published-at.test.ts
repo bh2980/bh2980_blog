@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSeoulDateTimeInput, keystaticPublishedAt, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { formatSeoulDateTimeInput, parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { formatPublishedAt, publishedAtFormatter } from "./format-published-at";
 
 /**
@@ -43,21 +43,7 @@ describe("formatPublishedAt", () => {
 		expect(parseSeoulDateTimeInput("2026-01-05T24:00")).toBeNull();
 	});
 
-	it("파일 원문은 저장소가 KST로 정규화해야 한다", () => {
-		// 파일은 KST 벽시계를 UTC로 잘못 적어 두었고(`Z`), DB는 그 벽시계를 `+09:00`으로 해석한다.
-		const fileValue = "2026-01-05T19:38:00.000Z"; // 의도한 시각: 2026-01-05 19:38 KST
-		const dbValue = keystaticPublishedAt(fileValue);
-
-		expect(dbValue).toBe("2026-01-05T19:38:00.000+09:00");
-		expect(formatPublishedAt(dbValue as string)).toBe("2026년 1월 5일");
-
-		// 원문을 정규화 없이 KST로 그대로 읽으면 다음 날이 된다 —
-		// 그래서 `keystatic` 저장소가 `keystaticPublishedAt`을 거쳐야 한다.
-		expect(formatPublishedAt(fileValue)).toBe("2026년 1월 6일");
-	});
-
 	it("값이 없거나 깨져 있으면 원문을 그대로 돌려준다", () => {
 		expect(formatPublishedAt("설명할 수 없는 값")).toBe("설명할 수 없는 값");
-		expect(keystaticPublishedAt(null)).toBeNull();
 	});
 });

@@ -32,7 +32,6 @@
 │   ├── app             # 공개 페이지, /admin, CMS API, RSS, sitemap
 │   ├── cms             # 인증·PostgreSQL·R2 어댑터, 편집기, MDX, 서비스
 │   ├── components      # 공통 UI와 MDX 렌더러
-│   ├── contents        # 파일 기반 CMS 이전 입력 및 회귀 테스트 자료
 │   └── libs            # 공개 콘텐츠 조회, 주석, 차트, Mermaid 등
 └── package.json
 ```
@@ -44,7 +43,7 @@
 - **게시글 (Posts)**: 비교적 긴 호흡의 기술 문서와 정리 글. 카테고리 기반으로 분류합니다.
 - **메모 (Memos)**: 짧은 기록, 문제 해결 메모, 코드 스니펫. 태그 기반으로 탐색합니다.
 - **메타 데이터**: 태그, 카테고리, 발행일, OG 이미지, RSS, sitemap 정보를 함께 관리합니다.
-- **Admin UI**: `/admin`의 자체 관리자 화면에서 콘텐츠를 작성·정리·발행합니다. PostgreSQL이 CMS 데이터의 원본이며, 기존 `src/contents` 파일은 이전·회귀 검증에 사용합니다.
+- **Admin UI**: `/admin`의 자체 관리자 화면에서 콘텐츠를 작성·정리·발행합니다. PostgreSQL이 CMS 데이터의 원본이고, 이미지 같은 파일은 R2에 둡니다.
 
 ## Key Implementations
 
@@ -61,7 +60,7 @@
 - **다국어**: 글·메모는 언어별 번역본을 따로 발행하고, 분류 항목은 이름을 언어별로 둡니다. 기본 언어(`ko`)는 접두사 없는 주소, 그 밖은 `/en`·`/ja` 주소입니다.
 - **AI 보조**: 관리자 `AI` 화면에서 서비스 연결과 기능(주소·요약·태그·alt 추천, 본문 번역)을 정의합니다. 버튼을 눌렀을 때만 호출하고 결과는 제안으로만 보입니다.
 - **발행일**: 처음 발행한 시각을 서버가 기록하고 다시 발행해도 바꾸지 않습니다.
-- **남은 일**: 예약 발행 실행기 연결(`CMS_SCHEDULER_TOKEN`), 파일 기반 이전 도구(`src/cms/migrate-from-files`, `src/contents`) 정리.
+- **남은 일**: 예약 발행 실행기 연결(`CMS_SCHEDULER_TOKEN`).
 
 ## Development
 

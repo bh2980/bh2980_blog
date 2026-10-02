@@ -1,13 +1,9 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { prepareSnapshot } from "@/cms/core/snapshot";
 import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { analyze } from "@/cms/mdx";
-import { splitFrontmatter } from "@/cms/mdx/frontmatter";
+import { readSamples } from "@/cms/mdx/__test__/fixtures/samples";
 import { withTranslationHints } from "../hints";
-
-const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..", "..");
 
 describe("새 번역본의 번역 안내(v3)", () => {
 	it("글자는 안내로 감싸고 구조·코드·상자 제목은 그대로 둔다", () => {
@@ -28,17 +24,13 @@ describe("새 번역본의 번역 안내(v3)", () => {
 		expect(analyze(out).errors).toEqual([]);
 	});
 
-	it("기존 글 모두: 안내를 단 본문이 오류 없이 읽히고 에디터를 오가도 같다", () => {
+	it("실제 글 모두: 안내를 단 본문이 오류 없이 읽히고 에디터를 오가도 같다", () => {
 		const problems: string[] = [];
-		for (const folder of ["posts", "memos"]) {
-			const dir = path.join(REPO_ROOT, "src/contents", folder);
-			for (const name of readdirSync(dir).filter((file) => file.endsWith(".mdx"))) {
-				const body = splitFrontmatter(readFileSync(path.join(dir, name), "utf8")).body;
-				const hinted = withTranslationHints(body);
-				if (analyze(hinted).errors.length > 0) problems.push(`${name}: 읽기 오류`);
-				else if (tiptapToMdx(mdxToTiptap(hinted)) !== tiptapToMdx(mdxToTiptap(tiptapToMdx(mdxToTiptap(hinted)))))
-					problems.push(`${name}: 에디터 왕복이 흔들림`);
-			}
+		for (const { name, mdx } of readSamples()) {
+			const hinted = withTranslationHints(mdx);
+			if (analyze(hinted).errors.length > 0) problems.push(`${name}: 읽기 오류`);
+			else if (tiptapToMdx(mdxToTiptap(hinted)) !== tiptapToMdx(mdxToTiptap(tiptapToMdx(mdxToTiptap(hinted)))))
+				problems.push(`${name}: 에디터 왕복이 흔들림`);
 		}
 		expect(problems).toEqual([]);
 	});

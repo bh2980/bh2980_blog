@@ -1,10 +1,9 @@
-import path from "node:path";
 import type { JSONContent } from "@tiptap/core";
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
 import { analyze, serialize, toDocument } from "@/cms/mdx";
-import { readLegacyCorpus } from "@/cms/migrate-from-files/legacy-parser";
+import { readSamples } from "@/cms/mdx/__test__/fixtures/samples";
 import { BLOCK_NODE_VIEWS } from "../block-views";
 import {
 	cmsNodeToTiptap,
@@ -15,8 +14,6 @@ import {
 	tiptapToMdx,
 } from "../tiptap-content";
 import { CMS_SCHEMA_EXTENSIONS } from "../tiptap-schema";
-
-const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 
 /**
  * `tiptap-editor.tsx`의 extensions 배열과 같은 구성이다. 바뀌면 여기도 함께 고친다.
@@ -177,11 +174,10 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 	});
 });
 
-describe("49편 전체를 에디터에 싣고 되돌린다", () => {
-	it("49편 모두 스키마를 통과하고 문서가 같다", () => {
-		const corpus = readLegacyCorpus(REPO_ROOT);
-		const items = [...corpus.posts, ...corpus.memos];
-		expect(items).toHaveLength(49);
+describe("실제 글을 에디터에 싣고 되돌린다", () => {
+	it("예시 글 모두 스키마를 통과하고 문서가 같다", () => {
+		const items = readSamples();
+		expect(items.length).toBeGreaterThan(0);
 
 		const failures: string[] = [];
 		for (const item of items) {
@@ -190,14 +186,14 @@ describe("49편 전체를 에디터에 싣고 되돌린다", () => {
 			try {
 				json = throughSchema(mdxToTiptap(item.mdx));
 			} catch (error) {
-				failures.push(`${item.path}: 스키마 거부 (${error instanceof Error ? error.message : String(error)})`);
+				failures.push(`${item.name}: 스키마 거부 (${error instanceof Error ? error.message : String(error)})`);
 				continue;
 			}
 			const second = toDocument(analyze(tiptapToMdx(json)));
 			try {
 				expect(second).toEqual(first);
 			} catch {
-				failures.push(`${item.path}: 문서 불일치 (${firstDiff(first, second, "")})`);
+				failures.push(`${item.name}: 문서 불일치 (${firstDiff(first, second, "")})`);
 			}
 		}
 

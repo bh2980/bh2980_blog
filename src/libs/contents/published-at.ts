@@ -12,7 +12,6 @@
 /** 이 블로그의 표시 기준 시간대. */
 export const SEOUL_TIME_ZONE = "Asia/Seoul";
 
-const SEOUL_OFFSET = "+09:00";
 const SEOUL_OFFSET_HOURS = 9;
 
 /** UTC 순간을 `datetime-local`에서 쓰는 서울 벽시계 문자열로 바꾼다. */
@@ -56,14 +55,4 @@ export function parseSeoulDateTimeInput(value: string): string | null {
 		return null;
 	}
 	return new Date(localAsUtc.getTime() - SEOUL_OFFSET_HOURS * 60 * 60 * 1000).toISOString();
-}
-
-/** `Z`/오프셋이 붙은 문자열을 KST 벽시계로 해석한 ISO 문자열로 바꾼다. */
-export function keystaticPublishedAt(value: string | null): string | null {
-	if (!value) return null;
-	const wallClock = value.replace(/(Z|[+-]\d{2}:?\d{2})$/, "");
-	if (!wallClock) return value;
-
-	const withSeoul = `${wallClock}${SEOUL_OFFSET}`;
-	return Number.isNaN(Date.parse(withSeoul)) ? value : withSeoul;
 }

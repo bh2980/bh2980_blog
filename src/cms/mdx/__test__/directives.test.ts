@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
 import type { Root } from "mdast";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -11,13 +9,13 @@ import { VFile } from "vfile";
 import { describe, expect, it } from "vitest";
 import { parseMdxAst } from "@/cms/mdx/parse";
 import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/remark-directives";
+import { readSample, readSamples } from "./fixtures/samples";
 
-const ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 const DIRECTIVE_TYPES = ["containerDirective", "leafDirective", "textDirective"];
 
 /**
  * directive 두 플러그인의 **순서**를 공개 체인과 같게 둔 최소 재현 체인이다(demote → 변환).
- * 공개 체인 전체(수식·차트·mermaid·breaks·gfm·toc)는 여기 없다 — 49편 실등가성은 실제
+ * 공개 체인 전체(수식·차트·mermaid·breaks·gfm·toc)는 여기 없다 — 렌더 결과는 실제
  * `MDX_REMARK_PLUGINS`를 쓰는 `directive-render.test.tsx`가 검사한다.
  */
 const renderTree = (body: string): Root => {
@@ -81,15 +79,6 @@ const collectText = (tree: Root): string => {
 		parts.push((node as { value: string }).value);
 	});
 	return parts.join("");
-};
-
-const corpusFiles = (): string[] => {
-	const contents = path.join(ROOT, "src", "contents");
-	return ["posts", "memos"].flatMap((kind) =>
-		readdirSync(path.join(contents, kind))
-			.filter((file) => file.endsWith(".mdx"))
-			.map((file) => path.join(contents, kind, file)),
-	);
 };
 
 describe("미등록 directive 되돌리기", () => {
@@ -180,27 +169,19 @@ describe("등록 directive 처리", () => {
 	});
 });
 
-describe("레거시 코퍼스 불변식", () => {
-	const files = corpusFiles();
-
+describe("실제 글 불변식", () => {
 	it("미등록 이름이 directive로 남지 않는다(0건)", () => {
 		const offenders: string[] = [];
-		for (const file of files) {
-			const names = collectDirectiveNames(parseMdxAst(readFileSync(file, "utf8")));
-			if (names.length > 0) offenders.push(`${path.relative(ROOT, file)}: ${names.join(", ")}`);
+		for (const { name, mdx } of readSamples()) {
+			const names = collectDirectiveNames(parseMdxAst(mdx));
+			if (names.length > 0) offenders.push(`${name}: ${names.join(", ")}`);
 		}
 
 		expect(offenders).toEqual([]);
 	});
 
 	it("실측된 오탐 2건이 본문에 그대로 남아 있다", () => {
-		const free = readFileSync(path.join(ROOT, "src/contents/posts/블로그를-검색하는-벡터-rag-만들기.mdx"), "utf8");
-		const ratio = readFileSync(
-			path.join(ROOT, "src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx"),
-			"utf8",
-		);
-
-		expect(collectText(parseMdxAst(free))).toContain(":free를");
-		expect(collectText(parseMdxAst(ratio))).toContain(":1로");
+		expect(collectText(parseMdxAst(readSample("vector-rag-search.mdx")))).toContain(":free를");
+		expect(collectText(parseMdxAst(readSample("tooltips-in-code-blocks.mdx")))).toContain(":1로");
 	});
 });

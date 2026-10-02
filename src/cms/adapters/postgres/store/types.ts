@@ -1,6 +1,6 @@
 import type { ListSortField } from "../../../core/api";
 import type { TranslationState } from "../../../core/translation/state";
-import type { Reference, ReferenceKind, ReferenceOccurrence } from "../../../core/types";
+import type { ReferenceKind, ReferenceOccurrence } from "../../../core/types";
 
 export type JsonPrimitive = string | number | boolean | null;
 export interface JsonArray extends Array<JsonValue> {}
@@ -349,38 +349,6 @@ export interface ExportSnapshotSchedule {
 	completedAt: Date | null;
 	failureCode: string | null;
 	failureDetail: string | null;
-}
-
-/** 가져오기 전용 입력. ID를 외부에서 지정한다. */
-export interface ImportEntryBodyInput {
-	metadata: unknown;
-	mdx: string;
-	schemaVersion: number;
-	contentHash: string;
-	/** 번역본의 번역 상태(v3). */
-	translation?: TranslationState | null;
-}
-
-export interface ImportEntryItem {
-	id: string;
-	collection: string;
-	/** 없으면 기본 언어다(v2 B4). */
-	locale?: string;
-	/** 번역본이면 원문 ID. 원문이 같은 가져오기에 있거나 이미 있어야 한다. */
-	translationOf?: string | null;
-	slug: string | null;
-	status: "draft" | "published";
-	folderId?: string | null;
-	publishedAt?: Date | null;
-	working: ImportEntryBodyInput;
-	published?: ImportEntryBodyInput;
-	references: readonly Reference[];
-}
-
-export interface ImportEntriesResult {
-	imported: number;
-	skipped: number;
-	items: { id: string; collection: string; slug: string | null; outcome: "imported" | "skipped" }[];
 }
 
 /** 관리자 백업·공개 projection의 공통 원본. 단일 REPEATABLE READ READ ONLY 스냅샷이다. */

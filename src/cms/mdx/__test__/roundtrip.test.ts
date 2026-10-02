@@ -1,25 +1,7 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { analyze, serialize, toDocument } from "@/cms/mdx";
-
-const ROOT = path.resolve(__dirname, "..", "..", "..", "..");
-
-const SAMPLE_PATHS = [
-	"src/contents/posts/내가-만든-rag의-성능-측정하기.mdx",
-	"src/contents/memos/정규표현식-정리.mdx",
-	"src/contents/memos/load-file.mdx",
-	"src/contents/memos/download-file.mdx",
-	"src/contents/posts/블로그라면-seo는-해봐야지.mdx",
-	"src/contents/posts/왜-내-블로그는-ssg가-안될까.mdx",
-	"src/contents/posts/코드-블럭에-툴팁을-띄우고-싶었을-뿐인데.mdx",
-	"src/contents/memos/1-implement-curry.mdx",
-	"src/contents/memos/js의-비동기-처리-메커니즘.mdx",
-];
-
-function readSample(relPath: string): string {
-	return readFileSync(path.join(ROOT, relPath), "utf8");
-}
+import { readSample, SAMPLES_DIR } from "./fixtures/samples";
 
 function fullRoundtrip(mdx: string): { firstDoc: unknown; secondDoc: unknown } {
 	const first = analyze(mdx);
@@ -215,8 +197,8 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
 
 	describe("원문 토글(§4.4)", () => {
 		it("보기만 토글하면 serialize를 호출하지 않고 원문 바이트가 유지된다", () => {
-			for (const relPath of SAMPLE_PATHS) {
-				const source = readSample(relPath);
+			for (const name of readdirSync(SAMPLES_DIR)) {
+				const source = readSample(name);
 				const analysis = analyze(source);
 				expect(analysis.source).toBe(source);
 			}

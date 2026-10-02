@@ -5,12 +5,6 @@
 	"scripts": {
 		"dev": "next dev",
 		"cms:db:migrate": "tsx --env-file=.env.local src/cms/adapters/postgres/migrate-cli.ts",
-		"cms:migration:inspect": "tsx src/cms/migrate-from-files/cli.ts inspect",
-		"cms:migration:apply": "tsx src/cms/migrate-from-files/cli.ts apply",
-		"cms:migration:plan:production": "tsx src/cms/migrate-from-files/cli.ts apply-production --dry-run",
-		"cms:migration:apply:production": "tsx src/cms/migrate-from-files/cli.ts apply-production",
-		"cms:migration:audit": "vitest run src/cms/mdx/__test__/corpus-roundtrip.test.tsx",
-		"cms:convert": "tsx src/cms/migrate-from-files/convert-cli.ts",
 		"build": "rm -rf .next && next build",
 		"preview": "pnpm build && pnpm start",
 		"start": "next start",
