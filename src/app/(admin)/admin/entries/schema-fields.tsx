@@ -22,7 +22,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { LOCALE_INFO, PREFIXED_LOCALES } from "@/libs/i18n/locales";
+import { LOCALE_INFO, type Locale } from "@/libs/i18n/locales";
 import { errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
@@ -504,63 +504,57 @@ function LayoutSection({ title, defaultOpen, children }: { title: string; defaul
 /**
  * record 컬렉션(카테고리·태그·모음집)의 다른 언어 이름·설명(v2 B4). 비우면 공개 화면이 기본 언어 값을 쓴다.
  */
-export function RecordTranslationFields({
+/**
+ * record 컬렉션(카테고리·태그·모음집)의 한 언어 값. 분류 편집 패널의 언어 탭이 쓴다(v2 B4).
+ * 비워 두면 그 언어 화면에서도 기본 언어 값을 쓴다.
+ */
+export function RecordLocaleFields({
 	collection,
+	locale,
 	form,
 	disabled,
 	onChange,
 }: {
 	collection: SchemaCollection;
+	locale: Locale;
 	form: EntryForm;
 	disabled: boolean;
 	onChange: (patch: EntryFormPatch) => void;
 }) {
-	const fields = recordLocalizedFields(collection);
-	if (fields.length === 0) return null;
 	const schema = schemaOf(collection);
-	const filled = PREFIXED_LOCALES.some((locale) =>
-		fields.some((field) => Boolean(form[recordTranslationKey(field, locale)])),
-	);
 	return (
-		<LayoutSection title="다른 언어" defaultOpen={filled}>
-			<p className="text-[11px] text-muted-foreground leading-tight">
-				비워 두면 그 언어 화면에서도 기본 언어 값을 씁니다. 주소와 연결은 모든 언어가 같습니다.
-			</p>
-			{PREFIXED_LOCALES.map((locale) => (
-				<div key={locale} className="space-y-2">
-					{fields.map((field) => {
-						const key = recordTranslationKey(field, locale);
-						const definition = schema.fields[field];
-						const label = `${definition?.label ?? field} (${LOCALE_INFO[locale].adminName})`;
-						const multiline = definition?.kind === "text" && definition.multiline;
-						const value = typeof form[key] === "string" ? (form[key] as string) : "";
-						return (
-							<FieldRow key={key} id={fieldId(key)} label={label}>
-								{multiline ? (
-									<Textarea
-										id={fieldId(key)}
-										rows={2}
-										lang={locale}
-										value={value}
-										disabled={disabled}
-										onChange={(event) => onChange({ [key]: event.target.value })}
-										className="min-h-12 resize-none text-xs md:text-xs"
-									/>
-								) : (
-									<Input
-										id={fieldId(key)}
-										lang={locale}
-										value={value}
-										disabled={disabled}
-										onChange={(event) => onChange({ [key]: event.target.value })}
-										className={inputClass}
-									/>
-								)}
-							</FieldRow>
-						);
-					})}
-				</div>
-			))}
-		</LayoutSection>
+		<div className="space-y-4">
+			{recordLocalizedFields(collection).map((field) => {
+				const key = recordTranslationKey(field, locale);
+				const definition = schema.fields[field];
+				const label = `${definition?.label ?? field} (${LOCALE_INFO[locale].adminName})`;
+				const multiline = definition?.kind === "text" && definition.multiline;
+				const value = typeof form[key] === "string" ? (form[key] as string) : "";
+				return (
+					<FieldRow key={key} id={fieldId(key)} label={label}>
+						{multiline ? (
+							<Textarea
+								id={fieldId(key)}
+								rows={2}
+								lang={locale}
+								value={value}
+								disabled={disabled}
+								onChange={(event) => onChange({ [key]: event.target.value })}
+								className="min-h-12 resize-none text-xs md:text-xs"
+							/>
+						) : (
+							<Input
+								id={fieldId(key)}
+								lang={locale}
+								value={value}
+								disabled={disabled}
+								onChange={(event) => onChange({ [key]: event.target.value })}
+								className={inputClass}
+							/>
+						)}
+					</FieldRow>
+				);
+			})}
+		</div>
 	);
 }

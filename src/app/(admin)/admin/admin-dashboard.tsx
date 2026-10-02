@@ -13,7 +13,7 @@ import { AdminEntriesTable } from "./admin-entries-table";
 import { BulkBar, runBulk } from "./entries/bulk-bar";
 import { toSelection } from "./list-row-menu";
 import { FilterChipBar, ListSearch } from "./list-toolbar";
-import { RecordDialog } from "./record-dialog";
+import { RecordPanel } from "./record-panel";
 import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
 import { ConfirmDialog } from "./shared/confirm-dialog";
 import { type EntryList, useEntryList } from "./use-entry-list";
@@ -33,88 +33,98 @@ function EntryListHeaderActions({ list }: { list: EntryList }) {
 	);
 }
 
-/** 목록 본문: 필터 칩, 일괄 작업 줄, 표, 그리고 목록 작업이 여는 창. */
+/** 목록 본문: 필터 칩, 일괄 작업 줄, 표, 분류 편집 패널, 그리고 목록 작업이 여는 창. */
 function EntryListBody({ list }: { list: EntryList }) {
 	const { state, data, mode } = list;
 	const isTrash = mode === "trash";
 	const { items } = data;
+	const record = list.recordTarget;
 	return (
 		<>
-			<FilterChipBar state={state} options={list.options} onChange={list.update} />
-			<BulkBar
-				collection={state.collection}
-				mode={mode}
-				selected={items.filter((item) => list.selectedIds.has(item.id)).map(toSelection)}
-				folders={data.folders}
-				onClearSelection={() => list.setSelectedIds(new Set())}
-				onRun={(op, targets, params) =>
-					list.mutations.mutateEntries(op, targets, () => runBulk(op, targets, params), params)
-				}
-			/>
-			<AdminEntriesTable
-				collection={state.collection}
-				items={items}
-				folders={data.folders}
-				explorer={list.explorer}
-				state={state}
-				options={list.options}
-				onStateChange={(patch) => {
-					list.update(patch);
-					if (patch.sortField || patch.sortDirection) {
-						list.savePreferences({
-							sort: {
-								field: patch.sortField ?? state.sortField,
-								direction: patch.sortDirection ?? state.sortDirection,
-							},
-						});
-					}
-				}}
-				columnSettings={list.columnSettings}
-				onColumnSettingsChange={(columns: AdminColumnSettings) => list.savePreferences({ columns })}
-				selectedIds={list.selectedIds}
-				onSelectionChange={list.setSelectedIds}
-				total={data.total}
-				isLoading={data.isLoading}
-				isRefreshing={data.isRefreshing}
-				errorMessage={data.errorMessage}
-				mode={mode}
-				folderActions={isTrash ? undefined : list.folderActions}
-				rowMenu={list.rowMenu}
-				blankMenu={
-					isTrash
-						? undefined
-						: [
-								{
-									kind: "item",
-									label: "새 폴더",
-									onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
-								},
-								{ kind: "item", label: `새 ${list.label}`, onSelect: list.createNew },
-							]
-				}
-				onDeleteKey={list.onDeleteKey}
-				onSelectFolder={(folder) => list.update({ folder })}
-				onOpenRecord={(item) => list.setRecordTarget({ collection: state.collection, id: item.id })}
-				onRestore={(item) => void list.restore([toSelection(item)])}
-				onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
-				onPageChange={(page) => list.update({ page }, { resetPage: false })}
-				onPageSizeChange={(pageSize) => {
-					list.update({ pageSize });
-					list.savePreferences({ pageSize });
-				}}
-				onRetry={data.retry}
-			/>
+			<div className="relative flex min-h-0 flex-1 overflow-hidden">
+				<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+					<FilterChipBar state={state} options={list.options} onChange={list.update} />
+					<BulkBar
+						collection={state.collection}
+						mode={mode}
+						selected={items.filter((item) => list.selectedIds.has(item.id)).map(toSelection)}
+						folders={data.folders}
+						onClearSelection={() => list.setSelectedIds(new Set())}
+						onRun={(op, targets, params) =>
+							list.mutations.mutateEntries(op, targets, () => runBulk(op, targets, params), params)
+						}
+					/>
+					<AdminEntriesTable
+						collection={state.collection}
+						items={items}
+						folders={data.folders}
+						explorer={list.explorer}
+						state={state}
+						options={list.options}
+						onStateChange={(patch) => {
+							list.update(patch);
+							if (patch.sortField || patch.sortDirection) {
+								list.savePreferences({
+									sort: {
+										field: patch.sortField ?? state.sortField,
+										direction: patch.sortDirection ?? state.sortDirection,
+									},
+								});
+							}
+						}}
+						columnSettings={list.columnSettings}
+						onColumnSettingsChange={(columns: AdminColumnSettings) => list.savePreferences({ columns })}
+						selectedIds={list.selectedIds}
+						onSelectionChange={list.setSelectedIds}
+						total={data.total}
+						isLoading={data.isLoading}
+						isRefreshing={data.isRefreshing}
+						errorMessage={data.errorMessage}
+						mode={mode}
+						folderActions={isTrash ? undefined : list.folderActions}
+						rowMenu={list.rowMenu}
+						blankMenu={
+							isTrash
+								? undefined
+								: [
+										{
+											kind: "item",
+											label: "새 폴더",
+											onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
+										},
+										{ kind: "item", label: `새 ${list.label}`, onSelect: list.createNew },
+									]
+						}
+						onDeleteKey={list.onDeleteKey}
+						onSelectFolder={(folder) => list.update({ folder })}
+						onOpenRecord={(item) => list.setRecordTarget({ collection: state.collection, id: item.id })}
+						onRestore={(item) => void list.restore([toSelection(item)])}
+						onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
+						onPageChange={(page) => list.update({ page }, { resetPage: false })}
+						onPageSizeChange={(pageSize) => {
+							list.update({ pageSize });
+							list.savePreferences({ pageSize });
+						}}
+						onRetry={data.retry}
+					/>
+				</div>
+				{record && (
+					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 목록 옆에 고정 폭으로 둔다.
+					<RecordPanel
+						key={`${record.collection}:${record.id ?? "new"}`}
+						target={record}
+						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[24rem] lg:static lg:shrink-0 lg:shadow-none"
+						onClose={() => list.setRecordTarget(null)}
+						onSaved={() => {
+							list.setRecordTarget(null);
+							toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
+							void list.invalidateEntries();
+							list.reloadTaxonomies();
+						}}
+					/>
+				)}
+			</div>
 			{list.folderActions.dialogs}
-			<RecordDialog
-				target={list.recordTarget}
-				onClose={() => list.setRecordTarget(null)}
-				onSaved={() => {
-					list.setRecordTarget(null);
-					toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
-					void list.invalidateEntries();
-					list.reloadTaxonomies();
-				}}
-			/>
 			<ConfirmDialog request={list.confirm} onClose={list.closeConfirm} />
 		</>
 	);

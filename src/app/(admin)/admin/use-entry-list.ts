@@ -18,7 +18,7 @@ import {
 	listStateToSearchParams,
 	parseListState,
 } from "./list-state";
-import type { RecordTarget } from "./record-dialog";
+import type { RecordTarget } from "./record-panel";
 import type { MenuAction } from "./shared/action-menu";
 import type { ConfirmRequest } from "./shared/confirm-dialog";
 import type { DraggedEntry } from "./shared/entry-drag";
