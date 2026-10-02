@@ -115,11 +115,11 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 
 		/**
 		 * → 휴지통. 공개를 끝내고 예약을 취소한다.
-		 * 사용 중인 태그·카테고리는 참조를 먼저 해제해야 한다(§6.1).
+		 * 사용 중인 분류 항목(record 컬렉션: 태그·카테고리 등)은 참조를 먼저 해제해야 한다(§6.1).
 		 */
 		trashEntry: (params: LifecycleParams) =>
 			transition(params, ["draft", "published", "archived"], async (client, locked) => {
-				if (locked.collection === "tag" || locked.collection === "category") {
+				if (isRecordCollection(locked.collection)) {
 					await publishing.assertNotReferenced(client, params.id, { ignoreTrashedSources: true });
 				}
 				await client.query(

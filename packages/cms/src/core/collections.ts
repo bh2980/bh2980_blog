@@ -13,7 +13,7 @@ export type FieldType = StorageType;
 
 export interface CollectionRelation {
 	readonly field: string;
-	readonly kind: "category" | "tag" | "entry";
+	readonly kind: "entry";
 }
 
 /** v1 모양의 컬렉션 요약. 필드·관계는 사이트 설정(`cms.config.ts`)의 정의에서 만든다(v2 B1). */

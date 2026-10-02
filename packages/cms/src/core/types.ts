@@ -20,7 +20,13 @@ export type Issue = {
 };
 
 export type { Collection };
-export type ReferenceKind = "entry" | "media" | "category" | "tag";
+/**
+ * 참조 대상 종류. 콘텐츠(`entry`)의 컬렉션은 관계 필드 정의가 정한다.
+ * 예전에 저장한 `category`·`tag` 참조는 읽을 때 `entry`로 바꾼다(`normalizeReferenceKind`).
+ */
+export type ReferenceKind = "entry" | "media";
+
+export const normalizeReferenceKind = (kind: string): ReferenceKind => (kind === "media" ? "media" : "entry");
 
 export type ReferenceOccurrence =
 	| { readonly type: "mdx"; readonly line: number; readonly column: number }

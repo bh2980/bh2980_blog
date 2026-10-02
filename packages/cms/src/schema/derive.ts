@@ -13,7 +13,6 @@ const SCHEMAS = cmsConfig.collections;
 export type SchemaCollection = keyof typeof SCHEMAS & string;
 /** 관계 대상 컬렉션. 정의의 `to`·`from`은 문자열이고, `defineConfig`가 실제 컬렉션인지 확인했다. */
 export type RelationTarget = SchemaCollection;
-export type ReferenceKindOf = "category" | "tag" | "entry";
 
 export const schemaOf = (collection: SchemaCollection): CollectionSchema => SCHEMAS[collection];
 
@@ -63,15 +62,10 @@ export function storageTypes(collection: SchemaCollection): Record<string, Stora
 	return Object.fromEntries(storedFields(collection).map(({ name, field }) => [name, storageTypeOf(field)]));
 }
 
-export const referenceKindOf = (to: string): ReferenceKindOf =>
-	to === "category" ? "category" : to === "tag" ? "tag" : "entry";
-
 /** 관계 필드 목록. v1 `COLLECTION_DEFINITIONS.relations`와 같은 모양이다. */
-export function relationsOf(
-	collection: SchemaCollection,
-): { field: string; kind: ReferenceKindOf; to: RelationTarget }[] {
+export function relationsOf(collection: SchemaCollection): { field: string; kind: "entry"; to: RelationTarget }[] {
 	return storedFields(collection).flatMap(({ name, field }) =>
-		field.kind === "relation" ? [{ field: name, kind: referenceKindOf(field.to), to: field.to as RelationTarget }] : [],
+		field.kind === "relation" ? [{ field: name, kind: "entry" as const, to: field.to as RelationTarget }] : [],
 	);
 }
 
@@ -94,7 +88,8 @@ export function fieldValueError(field: ValueField, name: string, value: string |
 }
 
 export type MetadataReference = {
-	kind: ReferenceKindOf;
+	/** 관계 필드는 모두 콘텐츠를 가리킨다. 대상 컬렉션은 필드 정의(`relationRule`)가 정한다. */
+	kind: "entry";
 	targetId: string;
 	path: string;
 	ordinal?: number;
@@ -111,7 +106,7 @@ export function metadataReferences(
 	const references: MetadataReference[] = [];
 	for (const { name, field } of storedFields(collection)) {
 		if (field.kind !== "relation") continue;
-		const kind = referenceKindOf(field.to);
+		const kind = "entry";
 		const value = metadata[name];
 		if (typeof value === "string") references.push({ kind, targetId: value, path: name });
 		else if (Array.isArray(value)) {

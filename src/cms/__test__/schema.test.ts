@@ -95,10 +95,10 @@ describe("컬렉션 정의(v2 B1)", () => {
 			memoIds: "string[]",
 		});
 		expect(COLLECTION_DEFINITIONS.collection.workflow).toBe("record");
-		expect(relationsOf("post").map(({ field, kind }) => [field, kind])).toEqual([
-			["categoryId", "category"],
-			["tagIds", "tag"],
-			["replacementPostId", "entry"],
+		expect(relationsOf("post").map(({ field, kind, to }) => [field, kind, to])).toEqual([
+			["categoryId", "entry", "category"],
+			["tagIds", "entry", "tag"],
+			["replacementPostId", "entry", "post"],
 		]);
 	});
 
@@ -132,10 +132,10 @@ describe("정의에서 만든 서버 규칙", () => {
 		expect(
 			metadataReferences("post", { categoryId: CATEGORY, tagIds: [TAG_A, TAG_B, TAG_A], replacementPostId: POST }),
 		).toEqual([
-			{ kind: "category", targetId: CATEGORY, path: "categoryId" },
-			{ kind: "tag", targetId: TAG_A, path: "tagIds", ordinal: 0 },
-			{ kind: "tag", targetId: TAG_B, path: "tagIds", ordinal: 1 },
-			{ kind: "tag", targetId: TAG_A, path: "tagIds", ordinal: 2 },
+			{ kind: "entry", targetId: CATEGORY, path: "categoryId" },
+			{ kind: "entry", targetId: TAG_A, path: "tagIds", ordinal: 0 },
+			{ kind: "entry", targetId: TAG_B, path: "tagIds", ordinal: 1 },
+			{ kind: "entry", targetId: TAG_A, path: "tagIds", ordinal: 2 },
 			{ kind: "entry", targetId: POST, path: "replacementPostId" },
 		]);
 	});

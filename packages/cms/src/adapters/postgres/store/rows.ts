@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
 import type { TranslationState } from "../../../core/translation/state";
-import type { Reference, ReferenceKind, ReferenceOccurrence } from "../../../core/types";
+import { normalizeReferenceKind, type Reference, type ReferenceOccurrence } from "../../../core/types";
 import type { Queryable } from "./context";
 import { CmsError } from "./errors";
 import type {
@@ -77,7 +77,8 @@ export interface BodyRow {
 }
 
 export interface ReferenceRow {
-	kind: ReferenceKind;
+	/** 예전 행은 `category`·`tag`일 수 있다. */
+	kind: string;
 	target_id: string;
 	is_stale: boolean;
 	occurrences: readonly ReferenceOccurrence[];
@@ -109,7 +110,7 @@ export const mapFolderRow = (row: FolderRow): Folder => ({
 });
 
 export const mapReferenceRow = (row: ReferenceRow): Reference => ({
-	kind: row.kind,
+	kind: normalizeReferenceKind(row.kind),
 	targetId: row.target_id,
 	isStale: row.is_stale,
 	occurrences: row.occurrences,

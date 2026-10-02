@@ -27,7 +27,7 @@ function buildSnapshot(overrides: Partial<PreparedSnapshot> = {}): PreparedSnaps
 
 function buildReference(overrides: Partial<Reference> = {}): Reference {
 	return {
-		kind: "category",
+		kind: "entry",
 		targetId: "00000000-0000-0000-0000-000000000000",
 		isStale: false,
 		occurrences: [{ type: "metadata", path: "categoryId" }],
@@ -68,7 +68,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		await store.publishEntry({ id: target.id, expectedVersion: target.version });
 
 		const occurrence = { type: "metadata" as const, path: "tagIds", ordinal: 0 };
-		const reference = buildReference({ kind: "tag", targetId: target.id, occurrences: [occurrence] });
+		const reference = buildReference({ kind: "entry", targetId: target.id, occurrences: [occurrence] });
 		const source = await store.createEntryWithReferences({
 			snapshot: buildSnapshot({
 				collection: "memo",
@@ -131,7 +131,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		});
 
 		const ref1 = buildReference({
-			kind: "category",
+			kind: "entry",
 			targetId: targetCat.id,
 			isStale: true,
 			occurrences: [
@@ -140,7 +140,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			],
 		});
 		const ref2 = buildReference({
-			kind: "tag",
+			kind: "entry",
 			targetId: targetTag.id,
 			isStale: false,
 			occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],
@@ -193,11 +193,11 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			contentHash: "2",
 		});
 
-		const refOld = buildReference({ kind: "tag", targetId: targetOld.id });
+		const refOld = buildReference({ kind: "entry", targetId: targetOld.id });
 		const snapshot1 = buildSnapshot({ slug: "save-refs-1", references: [refOld] });
 		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [refOld] });
 
-		const refNew = buildReference({ kind: "category", targetId: targetNew.id });
+		const refNew = buildReference({ kind: "entry", targetId: targetNew.id });
 		const snapshot2 = buildSnapshot({
 			slug: "save-refs-2",
 			metadata: { title: "Updated" },
@@ -412,7 +412,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			contentHash: "1",
 		});
 
-		const ref1 = buildReference({ kind: "category", targetId: targetReal.id });
+		const ref1 = buildReference({ kind: "entry", targetId: targetReal.id });
 		const snapshot1 = buildSnapshot({ slug: "valid-target", contentHash: "hash1", mdx: "mdx1", references: [ref1] });
 		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [ref1] });
 		const priorRefs = await store.getWorkingReferences({ entryId: entry1.id });
@@ -554,7 +554,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const ref1 = buildReference({ kind: "category", targetId: targetReal.id });
+		const ref1 = buildReference({ kind: "entry", targetId: targetReal.id });
 		const snapshot1 = buildSnapshot({ slug: "empty-save-1", references: [ref1] });
 		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [ref1] });
 
@@ -616,7 +616,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const ref1 = buildReference({ kind: "category", targetId: targetReal.id });
+		const ref1 = buildReference({ kind: "entry", targetId: targetReal.id });
 		const snapshot1 = buildSnapshot({ slug: "noop-save", references: [ref1] });
 		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [ref1] });
 
@@ -647,7 +647,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const ref1 = buildReference({ kind: "category", targetId: targetReal.id });
+		const ref1 = buildReference({ kind: "entry", targetId: targetReal.id });
 		const snapshot1 = buildSnapshot({ collection: "post", slug: "mismatch-source", references: [ref1] });
 		const entry1 = await store.createEntryWithReferences({ snapshot: snapshot1, references: [ref1] });
 		const priorRefs = await store.getWorkingReferences({ entryId: entry1.id });
@@ -954,7 +954,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 
 		const upperTargetId = target.id.toUpperCase();
 		const refUpper = buildReference({
-			kind: "category",
+			kind: "entry",
 			targetId: upperTargetId,
 			isStale: true,
 			occurrences: [
@@ -975,7 +975,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 
 		const initialDbRefs = await store.getWorkingReferences({ entryId: created.id });
 		expect(initialDbRefs).toHaveLength(1);
-		expect(initialDbRefs[0].kind).toBe("category");
+		expect(initialDbRefs[0].kind).toBe("entry");
 		expect(initialDbRefs[0].isStale).toBe(true);
 		expect(initialDbRefs[0].occurrences).toEqual(refUpper.occurrences);
 		expect(initialDbRefs[0].targetId).toBe(target.id.toLowerCase());
@@ -995,5 +995,38 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 
 		const subsequentDbRefs = await store.getWorkingReferences({ entryId: created.id });
 		expect(subsequentDbRefs).toEqual(initialDbRefs);
+	});
+
+	it("reads legacy category/tag reference rows as entry and migrates them", async () => {
+		const target = await seedEntry(store, {
+			collection: "tag",
+			slug: `tag-legacy-${randomUUID()}`,
+			metadata: { title: "Legacy Tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "hash-tag-legacy",
+		});
+		const reference = buildReference({
+			targetId: target.id,
+			occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],
+		});
+		const created = await store.createEntryWithReferences({
+			snapshot: buildSnapshot({ slug: `post-legacy-${randomUUID()}`, references: [reference] }),
+			references: [reference],
+		});
+		// 예전 저장 형식: 관계 대상 컬렉션 이름을 참조 종류로 썼다.
+		await pool.query(`UPDATE "${schemaName}".entry_references SET kind = 'tag' WHERE entry_id = $1`, [created.id]);
+
+		const legacy = await store.getWorkingReferences({ entryId: created.id });
+		expect(legacy.map((ref) => ref.kind)).toEqual(["entry"]);
+		const incoming = await store.getIncomingReferences({ targetId: target.id });
+		expect(incoming.map((ref) => ref.kind)).toEqual(["entry"]);
+
+		await migrateContentStore(pool, { schema: schemaName });
+		const rows = await pool.query<{ kind: string }>(
+			`SELECT kind FROM "${schemaName}".entry_references WHERE entry_id = $1`,
+			[created.id],
+		);
+		expect(rows.rows.map((row) => row.kind)).toEqual(["entry"]);
 	});
 });

@@ -33,7 +33,7 @@ vi.mock("@bh2980/cms/container", () => {
 				sourceCollection: "post",
 				sourceTitle: "Post 1",
 				sourceSlug: "post-1",
-				kind: "tag",
+				kind: "entry",
 				isStale: false,
 				occurrences: [],
 			},

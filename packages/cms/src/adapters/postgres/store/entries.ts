@@ -4,7 +4,7 @@ import type { PoolClient } from "pg";
 import { isCollection, isRecordCollection } from "../../../core/collections";
 import { DEFAULT_LOCALE, isLocale } from "../../../core/locales";
 import { computeContentHash } from "../../../core/snapshot";
-import type { PreparedSnapshot, Reference, WorkingCopy } from "../../../core/types";
+import { normalizeReferenceKind, type PreparedSnapshot, type Reference, type WorkingCopy } from "../../../core/types";
 import { commonFieldKeys } from "../../../schema/derive";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError, mapEntryWriteError } from "./errors";
@@ -449,7 +449,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				source_collection: string;
 				source_title: string | null;
 				source_slug: string | null;
-				kind: IncomingReferenceItem["kind"];
+				kind: string;
 				is_stale: boolean;
 				occurrences: IncomingReferenceItem["occurrences"];
 			}>(
@@ -479,7 +479,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				sourceCollection: row.source_collection,
 				sourceTitle: row.source_title,
 				sourceSlug: row.source_slug,
-				kind: row.kind,
+				kind: normalizeReferenceKind(row.kind),
 				isStale: row.is_stale,
 				occurrences: row.occurrences,
 			}));

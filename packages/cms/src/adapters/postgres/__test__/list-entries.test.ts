@@ -700,9 +700,9 @@ console.log("FencedCode000");
 				issues: [],
 			},
 			references: [
-				{ kind: "category", targetId: targetCat.id, isStale: true, occurrences: [] },
-				{ kind: "tag", targetId: targetTag2.id, isStale: true, occurrences: [] },
-				{ kind: "tag", targetId: targetTag1.id, isStale: true, occurrences: [] },
+				{ kind: "entry", targetId: targetCat.id, isStale: true, occurrences: [] },
+				{ kind: "entry", targetId: targetTag2.id, isStale: true, occurrences: [] },
+				{ kind: "entry", targetId: targetTag1.id, isStale: true, occurrences: [] },
 			],
 		});
 

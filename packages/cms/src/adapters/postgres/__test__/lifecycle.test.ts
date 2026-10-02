@@ -242,7 +242,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 				},
 				references: [
 					{
-						kind: "tag",
+						kind: "entry",
 						targetId: tag.id,
 						isStale: false,
 						occurrences: [{ type: "metadata", path: "tags" }],
@@ -297,7 +297,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					issues: [],
 					references: [],
 				},
-				references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+				references: [{ kind: "entry", targetId: tag.id, isStale: false, occurrences: [] }],
 			});
 			const publishedPost = await store.publishEntry({ id: post.id, expectedVersion: saved.version });
 
@@ -395,7 +395,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 						issues: [],
 						references: [],
 					},
-					references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+					references: [{ kind: "entry", targetId: tag.id, isStale: false, occurrences: [] }],
 				});
 				await coordinator.query("COMMIT");
 				await expect(trash).rejects.toMatchObject({ code: "in_use" });
@@ -439,7 +439,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					issues: [],
 					references: [],
 				},
-				references: [{ kind: "tag", targetId: tag.id, isStale: false, occurrences: [] }],
+				references: [{ kind: "entry", targetId: tag.id, isStale: false, occurrences: [] }],
 			});
 
 			await expect(store.trashEntry({ id: tag.id, expectedVersion: tag.version })).rejects.toMatchObject({
@@ -491,7 +491,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 					},
 					references: [
 						{
-							kind: "tag",
+							kind: "entry",
 							targetId: tag.id,
 							isStale: false,
 							occurrences: [{ type: "metadata", path: "tags" }],

@@ -760,12 +760,11 @@ export function validateForPublish(
 			addForAll("unresolved_reference");
 			continue;
 		}
-		// 기대 대상 컬렉션과 미공개 허용은 관계 필드 정의에서 온다. 본문 링크(`entry`)는 게시글을 기대한다.
+		// 기대 대상 컬렉션과 미공개 허용은 관계 필드 정의에서 온다. 필드에 딸리지 않은 참조는 컬렉션을 따지지 않는다.
 		const rule = ref.occurrences
 			.map((o) => (o.type === "metadata" ? relationRule(snapshot.collection, o.path) : undefined))
 			.find((found) => found !== undefined);
-		const expected = rule?.to ?? (ref.kind === "entry" ? "post" : ref.kind);
-		if (target.collection !== expected) {
+		if (rule && target.collection !== rule.to) {
 			// 모음집 항목처럼 미공개를 허용하는 목록 관계는 v1부터 별도 코드로 알린다.
 			addForAll(rule?.allowUnpublished ? "invalid_item_collection" : "invalid_reference_collection");
 			continue;

@@ -283,7 +283,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references).toHaveLength(3);
 
 			expect(snap.references[0]).toMatchObject({
-				kind: "category",
+				kind: "entry",
 				targetId: "123e4567-e89b-12d3-a456-426614174001",
 				isStale: false,
 			});
@@ -291,7 +291,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "metadata", path: "categoryId" });
 
 			expect(snap.references[1]).toMatchObject({
-				kind: "tag",
+				kind: "entry",
 				targetId: "123e4567-e89b-12d3-a456-426614174002",
 				isStale: false,
 			});
@@ -300,7 +300,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[1].occurrences[1]).toMatchObject({ type: "metadata", path: "tagIds", ordinal: 2 });
 
 			expect(snap.references[2]).toMatchObject({
-				kind: "tag",
+				kind: "entry",
 				targetId: "123e4567-e89b-12d3-a456-426614174003",
 				isStale: false,
 			});
@@ -496,13 +496,13 @@ describe("ContentService M2-TW-1 Contract", () => {
 			contentHash: "hash",
 			references: [
 				{
-					kind: "category",
+					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174001",
 					isStale: false,
 					occurrences: [{ type: "metadata", path: "categoryId" }],
 				},
 				{
-					kind: "tag",
+					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174002",
 					isStale: false,
 					occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],

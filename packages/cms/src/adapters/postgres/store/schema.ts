@@ -83,6 +83,14 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 				(kind IN ('entry', 'category', 'tag') AND target_entry_id IS NOT NULL AND target_media_id IS NULL AND target_id = target_entry_id)
 			)
 		);
+		-- 관계 참조의 종류를 콘텐츠(entry)·미디어(media) 둘로 줄였다. 예전 category·tag 행을 entry로 바꾼다.
+		-- 같은 대상의 entry 행이 이미 있으면 남겨 둔다(읽을 때 entry로 다룬다).
+		UPDATE "${qSchema}".entry_references r SET kind = 'entry'
+		WHERE r.kind IN ('category', 'tag') AND NOT EXISTS (
+			SELECT 1 FROM "${qSchema}".entry_references d
+			WHERE d.entry_id = r.entry_id AND d.state = r.state AND d.kind = 'entry' AND d.target_id = r.target_id
+		);
+
 		CREATE TABLE IF NOT EXISTS "${qSchema}".folders (
 			id UUID PRIMARY KEY,
 			collection TEXT NOT NULL,
