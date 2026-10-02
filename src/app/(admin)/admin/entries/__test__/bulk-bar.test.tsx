@@ -59,13 +59,18 @@ describe("bulk actions (§3.4)", () => {
 		await waitFor(() => expect(screen.queryByPlaceholderText("태그 검색")).toBeNull());
 		fireEvent.click(screen.getByRole("button", { name: "태그 추가" }));
 		await waitFor(() => expect(payloads).toHaveLength(1));
-		expect(payloads[0]).toEqual({ op: "tags.add", items: [{ id: "entry-1", expectedVersion: 3 }], tagIds: ["tag-1"] });
+		expect(payloads[0]).toEqual({
+			op: "relation.add",
+			items: [{ id: "entry-1", expectedVersion: 3 }],
+			field: "tagIds",
+			ids: ["tag-1"],
+		});
 
 		await choose("일괄 작업 종류", "카테고리 변경");
 		await choose("대상 카테고리", "지우기(없음)");
 		fireEvent.click(screen.getByRole("button", { name: "카테고리 변경" }));
 		await waitFor(() => expect(payloads).toHaveLength(2));
-		expect(payloads[1]).toMatchObject({ op: "category.set", categoryId: null });
+		expect(payloads[1]).toMatchObject({ op: "relation.set", field: "categoryId", id: null });
 
 		await choose("일괄 작업 종류", "폴더로 이동");
 		await choose("이동할 폴더", "최상위");

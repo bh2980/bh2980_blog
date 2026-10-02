@@ -16,9 +16,7 @@ interface ListEntriesItem {
 	slug: string | null;
 	status: "draft" | "published";
 	folderId: string | null;
-	categoryId: string | null;
-	tagIds: readonly string[];
-	tags: readonly { id: string; title: string }[];
+	relations: Readonly<Record<string, readonly { id: string; title: string | null }[]>>;
 	publishedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -33,6 +31,7 @@ interface ListEntriesParams {
 	statuses?: readonly ("draft" | "published")[];
 	folderId?: string | null;
 	includeDescendants?: boolean;
+	relations?: Readonly<Record<string, readonly string[]>>;
 	sort?: {
 		field: "updatedAt" | "createdAt" | "title" | "slug";
 		direction: "asc" | "desc";
@@ -221,8 +220,11 @@ describe("listEntries contract", () => {
 				status: "draft",
 				version: 1,
 				folderId: null,
-				categoryId: testCategoryId,
-				tagIds: expect.any(Array),
+				relations: {
+					categoryId: [{ id: testCategoryId, title: "List test category" }],
+					tagIds: [],
+					replacementPostId: [],
+				},
 				publishedAt: null,
 				createdAt: expect.any(Date),
 				updatedAt: expect.any(Date),
@@ -235,6 +237,30 @@ describe("listEntries contract", () => {
 		const res2 = await store.listEntries({ collection: "memo" });
 		expect(res2.total).toBe(1);
 		expect(res2.items[0].collection).toBe("memo");
+	});
+
+	it("1b. relation filters accept only the collection's relation fields", async () => {
+		await seed("post", "le1b-slug", "Le1b Title");
+		const byCategory = await store.listEntries({ collection: "post", relations: { categoryId: [testCategoryId] } });
+		expect(byCategory.items.map((item) => item.slug)).toContain("le1b-slug");
+		const elsewhere = await store.listEntries({
+			collection: "post",
+			relations: { categoryId: ["00000000-0000-4000-8000-000000000000"] },
+		});
+		expect(elsewhere.items.map((item) => item.slug)).not.toContain("le1b-slug");
+		const invalid: Record<string, string[]>[] = [{ title: [testCategoryId] }, { tagIds: ["not-a-uuid"] }];
+		for (const relations of invalid) {
+			try {
+				await store.listEntries({ collection: "post", relations });
+				throw new Error("expected invalid_input");
+			} catch (err) {
+				expectCmsError(err, "invalid_input");
+			}
+		}
+		// 메모에는 카테고리 필드가 없다.
+		await expect(
+			store.listEntries({ collection: "memo", relations: { categoryId: [testCategoryId] } }),
+		).rejects.toMatchObject({ code: "invalid_input" });
 	});
 
 	// -----------------------------------------------------------------------
@@ -738,13 +764,14 @@ console.log("FencedCode000");
 		};
 
 		const iDirect = getBySlug("d1-direct");
-		expect(iDirect.categoryId).toBe("cat-1");
-		expect(iDirect.tagIds).toEqual(["tag-a", "tag-b"]);
+		const ids = (item: typeof iDirect, field: string) => item.relations[field]?.map((value) => value.id);
+		expect(ids(iDirect, "categoryId")).toEqual(["cat-1"]);
+		expect(ids(iDirect, "tagIds")).toEqual(["tag-a", "tag-b"]);
 		expect(iDirect.publishedAt).toBeNull();
 
 		const iRef = getBySlug("d1-ref");
-		expect(iRef.categoryId).toBe("cat-meta");
-		expect(iRef.tagIds).toEqual(["tag-meta1", "tag-meta2"]);
+		expect(ids(iRef, "categoryId")).toEqual(["cat-meta"]);
+		expect(ids(iRef, "tagIds")).toEqual(["tag-meta1", "tag-meta2"]);
 		expect(iRef.publishedAt).toBeNull();
 
 		const iHist = getBySlug("d1-hist");
@@ -790,8 +817,7 @@ console.log("FencedCode000");
 
 		const result = await store.listEntries({ collection: "post" });
 		const item = result.items.find((entry) => entry.id === post.id);
-		expect(item?.tagIds).toEqual([secondTag.id, firstTag.id]);
-		expect(item?.tags).toEqual([
+		expect(item?.relations.tagIds).toEqual([
 			{ id: secondTag.id, title: "Second tag" },
 			{ id: firstTag.id, title: "First tag" },
 		]);

@@ -1,7 +1,8 @@
 import { ENTRY_STATUSES, LIST_SORT_FIELDS, PAGE_SIZES } from "../../../core/api";
-import { COLLECTIONS, isRecordCollection } from "../../../core/collections";
+import { COLLECTIONS, type Collection, isRecordCollection } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import { DEFAULT_LOCALE, isLocale, LOCALES } from "../../../core/locales";
+import { type StoredField, storedFields } from "../../../schema/derive";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
 import { likeContainsPattern } from "./sql";
@@ -24,6 +25,16 @@ function namedLocales(metadata: Record<string, unknown>): string[] {
 }
 
 const isDate = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
+
+/** 컬렉션의 관계 필드. 목록 필터와 줄의 `relations`가 쓴다. */
+const relationFieldsOf = (collection: string): StoredField[] =>
+	storedFields(collection as Collection).filter((stored) => stored.field.kind === "relation");
+
+/** 관계 값을 읽을 초안. 언어별 값이 아니면 번역 묶음 공통 값이라 원문 초안(`sw`)에서 읽는다(v2 B4). */
+const relationSource = (stored: StoredField): "w" | "sw" => (stored.field.localized ? "w" : "sw");
+
+const relationIds = (value: unknown): string[] =>
+	typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((id) => typeof id === "string") : [];
 
 function assertParams(params: ListEntriesParams) {
 	if (typeof params !== "object" || params === null || Array.isArray(params)) {
@@ -54,10 +65,16 @@ function assertParams(params: ListEntriesParams) {
 	if (params.locales !== undefined && (!Array.isArray(params.locales) || params.locales.some((l) => !isLocale(l)))) {
 		throw new CmsError("Invalid locale", "invalid_input");
 	}
-	for (const key of ["tagIds", "categoryIds"] as const) {
-		const ids = params[key];
-		if (ids !== undefined && (!Array.isArray(ids) || ids.some((id) => !isUuid(id)))) {
-			throw new CmsError(`Invalid ${key}`, "invalid_input");
+	if (params.relations !== undefined) {
+		if (typeof params.relations !== "object" || params.relations === null || Array.isArray(params.relations)) {
+			throw new CmsError("Invalid relations", "invalid_input");
+		}
+		const fields = new Set(relationFieldsOf(params.collection).map((stored) => stored.name));
+		for (const [field, ids] of Object.entries(params.relations)) {
+			if (!fields.has(field)) throw new CmsError(`Unknown relation field: ${field}`, "invalid_input");
+			if (!Array.isArray(ids) || ids.some((id) => !isUuid(id))) {
+				throw new CmsError(`Invalid ${field} filter`, "invalid_input");
+			}
 		}
 	}
 	if (params.folderId !== undefined && params.folderId !== null && !isUuid(params.folderId)) {
@@ -157,12 +174,17 @@ export function createListOps(ctx: StoreContext) {
 				const locales = `${bind(params.locales)}::text[]`;
 				conditions.push(grouped ? anyMember(`m.locale = ANY(${locales})`) : `e.locale = ANY(${locales})`);
 			}
-			// 태그·카테고리는 공통 값이라 번역본은 원문 초안의 값으로 거른다(v2 B4). 원문은 `sw`가 자기 초안이다.
-			if (params.tagIds && params.tagIds.length > 0) {
-				conditions.push(`COALESCE(sw.metadata->'tagIds', '[]'::jsonb) ?| ${bind(params.tagIds)}::text[]`);
-			}
-			if (params.categoryIds && params.categoryIds.length > 0) {
-				conditions.push(`sw.metadata->>'categoryId' = ANY(${bind(params.categoryIds)}::text[])`);
+			// 공통 관계 값은 번역본도 원문 초안의 값으로 거른다(v2 B4). 원문은 `sw`가 자기 초안이다.
+			const relationFields = relationFieldsOf(params.collection);
+			for (const [field, ids] of Object.entries(params.relations ?? {})) {
+				const stored = relationFields.find((candidate) => candidate.name === field);
+				if (!stored || ids.length === 0) continue;
+				const value = `${relationSource(stored)}.metadata`;
+				conditions.push(
+					stored.field.kind === "relation" && stored.field.many
+						? `COALESCE(${value}->${bind(field)}, '[]'::jsonb) ?| ${bind(ids)}::text[]`
+						: `${value}->>${bind(field)} = ANY(${bind(ids)}::text[])`,
+				);
 			}
 			if (params.hasUnpublishedChanges !== undefined) {
 				const changed =
@@ -233,11 +255,14 @@ export function createListOps(ctx: StoreContext) {
 
 			const baseItems = dataRes.rows.map((row) => {
 				const meta = row.metadata ?? {};
-				// 공통 값(태그·카테고리·표시 발행일)은 원문 초안에서 읽는다(v2 B4).
+				// 공통 관계 값은 원문 초안에서 읽는다(v2 B4).
 				const common = row.source_metadata ?? meta;
-				const tagIds = Array.isArray(common.tagIds)
-					? common.tagIds.filter((t): t is string => typeof t === "string")
-					: [];
+				const relationIdsByField = Object.fromEntries(
+					relationFields.map((stored) => [
+						stored.name,
+						relationIds((relationSource(stored) === "w" ? meta : common)[stored.name]),
+					]),
+				);
 				return {
 					id: row.id,
 					collection: row.collection,
@@ -248,8 +273,7 @@ export function createListOps(ctx: StoreContext) {
 					status: row.status,
 					version: row.version,
 					folderId: row.folder_id,
-					categoryId: typeof common.categoryId === "string" ? common.categoryId : null,
-					tagIds,
+					relationIdsByField,
 					hasUnpublishedChanges: row.has_changes,
 					scheduledAt: row.scheduled_at,
 					publishedAt: row.published_at,
@@ -261,8 +285,8 @@ export function createListOps(ctx: StoreContext) {
 			});
 
 			const relatedIds = [
-				...new Set(baseItems.flatMap((item) => [...item.tagIds, ...(item.categoryId ? [item.categoryId] : [])])),
-			];
+				...new Set(baseItems.flatMap((item) => Object.values(item.relationIdsByField).flat())),
+			].filter(isUuid);
 			const titleById = new Map<string, string>();
 			if (relatedIds.length > 0) {
 				const res = await pool.query<{ id: string; title: string | null }>(
@@ -271,23 +295,21 @@ export function createListOps(ctx: StoreContext) {
 					 FROM "${qSchema}".entries e
 					 LEFT JOIN "${qSchema}".entry_bodies w ON w.entry_id = e.id AND w.state = 'working'
 					 LEFT JOIN "${qSchema}".entry_bodies p ON p.entry_id = e.id AND p.state = 'published'
-					 WHERE e.collection IN ('tag', 'category') AND e.id::text = ANY($1::text[])`,
+					 WHERE e.id::text = ANY($1::text[])`,
 					[relatedIds],
 				);
 				for (const row of res.rows) if (row.title) titleById.set(row.id, row.title);
 			}
 
-			const items: ListEntriesItem[] = baseItems.map((item) => {
-				const categoryTitle = item.categoryId ? titleById.get(item.categoryId) : undefined;
-				return {
-					...item,
-					category: item.categoryId && categoryTitle ? { id: item.categoryId, title: categoryTitle } : null,
-					tags: item.tagIds.flatMap((id) => {
-						const title = titleById.get(id);
-						return title ? [{ id, title }] : [];
-					}),
-				};
-			});
+			const items: ListEntriesItem[] = baseItems.map(({ relationIdsByField, ...item }) => ({
+				...item,
+				relations: Object.fromEntries(
+					Object.entries(relationIdsByField).map(([field, ids]) => [
+						field,
+						ids.map((id) => ({ id, title: titleById.get(id.toLowerCase()) ?? null })),
+					]),
+				),
+			}));
 
 			if (!grouped || items.length === 0) return { items, total, page, pageSize };
 

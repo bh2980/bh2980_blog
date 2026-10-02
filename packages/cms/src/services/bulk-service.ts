@@ -1,12 +1,12 @@
-import { COLLECTION_DEFINITIONS } from "../core/collections";
 import { prepareSnapshot } from "../core/snapshot";
+import { storedField } from "../schema/derive";
 import type { Issue, ServiceInput, StorePort, WorkingCopy } from "./types";
 import { ServiceError } from "./types";
 
 export const BULK_OPS = [
-	"tags.add",
-	"tags.remove",
-	"category.set",
+	"relation.add",
+	"relation.remove",
+	"relation.set",
 	"folder.move",
 	"archive",
 	"unarchive",
@@ -22,10 +22,16 @@ export type BulkItem = { readonly id: string; readonly expectedVersion: number }
 export type BulkRequest = {
 	readonly op: BulkOp;
 	readonly items: readonly BulkItem[];
-	readonly tagIds?: readonly string[];
-	readonly categoryId?: string | null;
+	/** `relation.*`이 바꾸는 관계 필드 이름. */
+	readonly field?: string;
+	/** `relation.add`·`relation.remove`: 여러 개 관계 필드에 더하거나 뺄 ID. */
+	readonly ids?: readonly string[];
+	/** `relation.set`: 하나짜리 관계 필드의 새 값. `null`이면 비운다. */
+	readonly id?: string | null;
 	readonly folderId?: string | null;
 };
+
+const RELATION_LIST_OPS: readonly BulkOp[] = ["relation.add", "relation.remove"];
 /** 영구 삭제를 막은 참조(사용처). 휴지통 화면이 사유(`사용 중: ○○`)로 보여 준다. */
 export type BulkUsage = {
 	readonly entryId: string;
@@ -61,9 +67,10 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 		}
 		if (!Array.isArray(request.items)) throw new ServiceError("invalid_input");
 		if (request.items.length > MAX_ITEMS) throw new ServiceError("too_many_items");
-		if ((request.op === "tags.add" || request.op === "tags.remove") && !Array.isArray(request.tagIds)) {
+		if (request.op.startsWith("relation.") && typeof request.field !== "string")
 			throw new ServiceError("invalid_input");
-		}
+		if (RELATION_LIST_OPS.includes(request.op) && !Array.isArray(request.ids)) throw new ServiceError("invalid_input");
+		if (request.op === "relation.set" && request.id === undefined) throw new ServiceError("invalid_input");
 		if (request.op === "folder.move" && request.folderId === undefined) throw new ServiceError("invalid_input");
 
 		const results: BulkItemResult[] = [];
@@ -116,25 +123,30 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 				const working = await storePort.getWorking({ entryId: item.id });
 				const metadata: { [key: string]: unknown } = { ...working.metadata };
 				let folderId: string | null | undefined;
-				if (request.op === "tags.add" || request.op === "tags.remove") {
-					if (!Object.hasOwn(COLLECTION_DEFINITIONS[working.collection].fields, "tagIds")) {
+				if (request.op.startsWith("relation.")) {
+					const field = request.field ?? "";
+					// 이 컬렉션의 관계 필드만 바꾼다. 더하기·빼기는 여러 개, 지정은 하나짜리 관계다.
+					const relation = storedField(working.collection, field)?.field;
+					const many = request.op !== "relation.set";
+					if (relation?.kind !== "relation" || (relation.many === true) !== many) {
 						throw new ServiceError("invalid_input");
 					}
-					// 태그가 하나도 없는 글은 `tagIds` 키 자체가 없다(편집기가 빈 배열을 지운다).
-					const current = Array.isArray(metadata.tagIds)
-						? metadata.tagIds.filter((t): t is string => typeof t === "string")
-						: [];
-					const next =
-						request.op === "tags.add"
-							? [...current, ...(request.tagIds ?? []).filter((t) => typeof t === "string" && !current.includes(t))]
-							: current.filter((t) => !(request.tagIds ?? []).includes(t));
-					if (next.length > 0) metadata.tagIds = next;
-					else delete metadata.tagIds;
-				} else if (request.op === "category.set") {
-					if (working.collection !== "post") throw new ServiceError("invalid_input");
-					if (request.categoryId === undefined) throw new ServiceError("invalid_input");
-					if (request.categoryId === null) delete metadata.categoryId;
-					else metadata.categoryId = request.categoryId;
+					if (many) {
+						// 값이 하나도 없는 관계는 키 자체가 없다(편집기가 빈 배열을 지운다).
+						const value = metadata[field];
+						const current = Array.isArray(value) ? value.filter((t): t is string => typeof t === "string") : [];
+						const ids = request.ids ?? [];
+						const next =
+							request.op === "relation.add"
+								? [...current, ...ids.filter((t) => typeof t === "string" && !current.includes(t))]
+								: current.filter((t) => !ids.includes(t));
+						if (next.length > 0) metadata[field] = next;
+						else delete metadata[field];
+					} else if (request.id === null || request.id === undefined) {
+						delete metadata[field];
+					} else {
+						metadata[field] = request.id;
+					}
 				} else {
 					folderId = request.folderId ?? null;
 				}

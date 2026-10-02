@@ -24,8 +24,20 @@ export type BulkItemResult =
 
 export type BulkSelection = { id: string; expectedVersion: number; title?: string | null };
 
+/** 화면의 분류 작업. 서버에는 관계 필드 일괄 작업(`relation.*`)으로 보낸다. */
+const TAXONOMY_ACTIONS = {
+	"tags.add": { op: "relation.add", field: "tagIds" },
+	"tags.remove": { op: "relation.remove", field: "tagIds" },
+	"category.set": { op: "relation.set", field: "categoryId" },
+} as const satisfies Record<string, { op: BulkOp; field: string }>;
+
+type ListAction = Exclude<BulkOp, `relation.${string}`> | keyof typeof TAXONOMY_ACTIONS;
+
+const isTaxonomyAction = (action: ListAction): action is keyof typeof TAXONOMY_ACTIONS =>
+	Object.hasOwn(TAXONOMY_ACTIONS, action);
+
 type ActionDef = {
-	value: BulkOp;
+	value: ListAction;
 	label: string;
 	confirm?: string;
 	content?: boolean;
@@ -90,7 +102,7 @@ export function describeBulkFailure(failure: Extract<BulkItemResult, { ok: false
 export async function runBulk(
 	op: BulkOp,
 	items: BulkSelection[],
-	params: { tagIds?: string[]; categoryId?: string | null; folderId?: string | null } = {},
+	params: { field?: string; ids?: string[]; id?: string | null; folderId?: string | null } = {},
 ): Promise<BulkItemResult[]> {
 	const data = await cmsFetch<{ results: BulkItemResult[] }>("/api/cms/v1/bulk", {
 		method: "POST",
@@ -192,7 +204,7 @@ export function BulkBar({
 				: LIST_ACTIONS.filter((action) => (!action.content || !isRecord) && (!action.post || collection === "post")),
 		[isRecord, collection, mode],
 	);
-	const [action, setAction] = useState<BulkOp>(actions[0]?.value ?? "trash");
+	const [action, setAction] = useState<ListAction>(actions[0]?.value ?? "trash");
 	const [checked, setChecked] = useState<string[]>([]);
 	const [single, setSingle] = useState("");
 	const [isRunning, setIsRunning] = useState(false);
@@ -225,14 +237,15 @@ export function BulkBar({
 		setIsRunning(true);
 		setError(null);
 		try {
+			const taxonomy = isTaxonomyAction(action) ? TAXONOMY_ACTIONS[action] : undefined;
 			const params = needsTags
-				? { tagIds: checked }
+				? { field: TAXONOMY_ACTIONS["tags.add"].field, ids: checked }
 				: action === "category.set"
-					? { categoryId: single === "__none__" ? null : single }
+					? { field: TAXONOMY_ACTIONS["category.set"].field, id: single === "__none__" ? null : single }
 					: action === "folder.move"
 						? { folderId: single === "__unfiled__" ? null : single }
 						: {};
-			const out = await onRun(action, items, params);
+			const out = await onRun(taxonomy?.op ?? (action as BulkOp), items, params);
 			setResults(out);
 			setRanItems(items);
 			onDone?.(out.filter((result) => !result.ok).map((result) => result.id));
@@ -284,7 +297,7 @@ export function BulkBar({
 					<Select
 						value={action}
 						items={actions.map((candidate) => ({ value: candidate.value, label: candidate.label }))}
-						onValueChange={(value) => value && setAction(value as BulkOp)}
+						onValueChange={(value) => value && setAction(value as ListAction)}
 					>
 						<SelectTrigger size="sm" aria-label="일괄 작업 종류">
 							<SelectValue />

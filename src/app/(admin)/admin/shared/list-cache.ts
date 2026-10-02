@@ -18,9 +18,9 @@ export type OptimisticOp = BulkOp | "restore";
 
 export interface OptimisticContext {
 	state: Pick<ListState, "statuses" | "folder" | "includeDescendants">;
-	params?: { tagIds?: string[]; categoryId?: string | null; folderId?: string | null };
-	tags?: readonly { id: string; title: string }[];
-	categories?: readonly { id: string; title: string }[];
+	params?: { field?: string; ids?: string[]; id?: string | null; folderId?: string | null };
+	/** 관계 필드 이름 → 고를 수 있는 항목. 새로 더한 항목의 이름을 미리 보여 줄 때 쓴다. */
+	options?: Readonly<Record<string, readonly { id: string; title: string }[]>>;
 }
 
 /**
@@ -52,31 +52,26 @@ export function applyOptimistic(
 				const leaves = state.folder !== "all" && !state.includeDescendants && folderId !== state.folder;
 				return leaves ? null : { ...item, folderId };
 			}
-			case "tags.add": {
-				const added = (params.tagIds ?? []).filter((id) => !item.tagIds.includes(id));
-				const tagIds = [...item.tagIds, ...added];
-				const tags = [
-					...item.tags,
-					...added.map((id) => ({ id, title: context.tags?.find((tag) => tag.id === id)?.title ?? id })),
-				];
-				return { ...item, tagIds, tags };
-			}
-			case "tags.remove": {
-				const removed = new Set(params.tagIds ?? []);
-				return {
-					...item,
-					tagIds: item.tagIds.filter((id) => !removed.has(id)),
-					tags: item.tags.filter((tag) => !removed.has(tag.id)),
-				};
-			}
-			case "category.set": {
-				const categoryId = params.categoryId ?? null;
-				const title = context.categories?.find((category) => category.id === categoryId)?.title;
-				return {
-					...item,
-					categoryId,
-					category: categoryId ? { id: categoryId, title: title ?? categoryId } : null,
-				};
+			case "relation.add":
+			case "relation.remove":
+			case "relation.set": {
+				const field = params.field;
+				if (!field) return item;
+				const current = item.relations[field] ?? [];
+				const titled = (id: string) => ({
+					id,
+					title: context.options?.[field]?.find((option) => option.id === id)?.title ?? id,
+				});
+				const ids = params.ids ?? [];
+				const next =
+					op === "relation.add"
+						? [...current, ...ids.filter((id) => !current.some((value) => value.id === id)).map(titled)]
+						: op === "relation.remove"
+							? current.filter((value) => !ids.includes(value.id))
+							: params.id
+								? [titled(params.id)]
+								: [];
+				return { ...item, relations: { ...item.relations, [field]: next } };
 			}
 			default:
 				return item;

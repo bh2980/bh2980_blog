@@ -78,10 +78,11 @@ describe("Preferences API — 컬렉션별 목록 설정(§3.2)", () => {
 		expect(saved.collections.post).toEqual({ pageSize: 50, sort: { field: "title", direction: "asc" } });
 	});
 
-	it("rejects unknown columns, duplicate order entries and invalid page sizes with 400", async () => {
+	it("rejects malformed column names, duplicate order entries and invalid page sizes with 400", async () => {
 		for (const body of [
 			{ collections: { post: { columns: { order: ["title", "title"] } } } },
-			{ collections: { post: { columns: { visibility: { nope: true } } } } },
+			{ collections: { post: { columns: { visibility: { "not a column": true } } } } },
+			{ collections: { post: { columns: { order: ["title", "1st"] } } } },
 			{ collections: { post: { pageSize: 30 } } },
 			{ collections: { unknown: { pageSize: 25 } } },
 		]) {

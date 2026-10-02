@@ -12,10 +12,7 @@ const row = (id: string, patch: Partial<ListEntriesItem> = {}): ListEntriesItem 
 	status: "draft",
 	version: 1,
 	folderId: null,
-	categoryId: null,
-	category: null,
-	tagIds: [],
-	tags: [],
+	relations: {},
 	hasUnpublishedChanges: false,
 	scheduledAt: null,
 	publishedAt: null,
@@ -56,18 +53,29 @@ describe("목록 낙관적 갱신", () => {
 		).toBe("f2");
 	});
 
-	it("태그·카테고리는 이름까지 채워 바꾼다", () => {
-		const tags = [{ id: "t1", title: "React" }];
-		const added = applyOptimistic(page([row("a")]), "tags.add", ids("a"), { state, params: { tagIds: ["t1"] }, tags });
-		expect(added.items[0]?.tags).toEqual([{ id: "t1", title: "React" }]);
-		const removed = applyOptimistic(added, "tags.remove", ids("a"), { state, params: { tagIds: ["t1"] } });
-		expect(removed.items[0]?.tagIds).toEqual([]);
-		const categories = [{ id: "c1", title: "개발" }];
-		const set = applyOptimistic(page([row("a")]), "category.set", ids("a"), {
+	it("관계 필드는 이름까지 채워 더하고 빼고 바꾼다", () => {
+		const options = { tagIds: [{ id: "t1", title: "React" }], categoryId: [{ id: "c1", title: "개발" }] };
+		const added = applyOptimistic(page([row("a")]), "relation.add", ids("a"), {
 			state,
-			params: { categoryId: "c1" },
-			categories,
+			params: { field: "tagIds", ids: ["t1"] },
+			options,
 		});
-		expect(set.items[0]?.category).toEqual({ id: "c1", title: "개발" });
+		expect(added.items[0]?.relations.tagIds).toEqual([{ id: "t1", title: "React" }]);
+		const removed = applyOptimistic(added, "relation.remove", ids("a"), {
+			state,
+			params: { field: "tagIds", ids: ["t1"] },
+		});
+		expect(removed.items[0]?.relations.tagIds).toEqual([]);
+		const set = applyOptimistic(page([row("a")]), "relation.set", ids("a"), {
+			state,
+			params: { field: "categoryId", id: "c1" },
+			options,
+		});
+		expect(set.items[0]?.relations.categoryId).toEqual([{ id: "c1", title: "개발" }]);
+		const cleared = applyOptimistic(set, "relation.set", ids("a"), {
+			state,
+			params: { field: "categoryId", id: null },
+		});
+		expect(cleared.items[0]?.relations.categoryId).toEqual([]);
 	});
 });

@@ -98,7 +98,10 @@ describe("행 메뉴 항목", () => {
 		select(actions, "태그 추가", "React");
 		expect(on.bulk).toHaveBeenNthCalledWith(1, "folder.move", "옮김", targets, { folderId: null });
 		expect(on.bulk).toHaveBeenNthCalledWith(2, "folder.move", "옮김", targets, { folderId: "f1" });
-		expect(on.bulk).toHaveBeenNthCalledWith(3, "tags.add", "태그를 추가", targets, { tagIds: ["t1"] });
+		expect(on.bulk).toHaveBeenNthCalledWith(3, "relation.add", "태그를 추가", targets, {
+			field: "tagIds",
+			ids: ["t1"],
+		});
 	});
 
 	it("휴지통은 복원·영구 삭제뿐이다", () => {

@@ -180,7 +180,7 @@ export interface Folder {
 export interface ListEntriesItem {
 	id: string;
 	collection: string;
-	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 태그·카테고리·표시 발행일은 원문 초안의 값이다. */
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 공통 관계 값·표시 발행일은 원문 초안의 값이다. */
 	locale: string;
 	translationGroupId: string;
 	title: string | null;
@@ -188,10 +188,11 @@ export interface ListEntriesItem {
 	status: EntryStatus;
 	version: number;
 	folderId: string | null;
-	categoryId: string | null;
-	category: { id: string; title: string } | null;
-	tagIds: readonly string[];
-	tags: readonly { id: string; title: string }[];
+	/**
+	 * 관계 필드 이름 → 고른 항목과 이름. 컬렉션의 모든 관계 필드를 담고(값이 없으면 빈 배열), 선언·고른 순서를 따른다.
+	 * 이름을 찾지 못한 항목(지운 대상 등)은 `title: null`이다. 언어별이 아닌 관계는 원문 초안에서 읽는다(v2 B4).
+	 */
+	relations: Readonly<Record<string, readonly ListRelationValue[]>>;
 	/** 공개본이 있고 최신 초안이 공개본과 다르다(`발행됨 · 수정 중`). */
 	hasUnpublishedChanges: boolean;
 	/** 대기 중인 예약 시각. */
@@ -210,6 +211,12 @@ export interface ListEntriesItem {
 	 * 기본 언어는 항목 자체의 이름이고, 다른 언어는 `metadata.translations[언어].title`이다(v2 B4).
 	 */
 	recordLocales?: readonly string[];
+}
+
+/** 목록 줄의 관계 값 하나. */
+export interface ListRelationValue {
+	id: string;
+	title: string | null;
 }
 
 /** 목록 한 줄(원문)에 딸린 같은 묶음의 언어별 콘텐츠. */
@@ -248,9 +255,8 @@ export interface ListEntriesParams {
 	groupTranslations?: boolean;
 	folderId?: string | null;
 	includeDescendants?: boolean;
-	/** 같은 필터의 여러 값은 OR, 다른 필터끼리는 AND다(§3.2). */
-	tagIds?: readonly string[];
-	categoryIds?: readonly string[];
+	/** 관계 필드 이름 → 고른 항목 ID. 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다(§3.2). */
+	relations?: Readonly<Record<string, readonly string[]>>;
 	hasUnpublishedChanges?: boolean;
 	scheduled?: boolean;
 	createdAt?: DateRange;

@@ -43,8 +43,7 @@ describe("관리자 목록 상태(§3.2)", () => {
 		const query = listStateToApiQuery(state);
 		// 필터가 있으면 최상위에서도 모든 폴더를 가로질러 찾는다.
 		expect(query.get("folderId")).toBeNull();
-		expect(query.getAll("tagId")).toEqual(["t1", "t2"]);
-		expect(query.getAll("categoryId")).toEqual(["c1"]);
+		expect(query.getAll("relation")).toEqual(["tagIds:t1", "tagIds:t2", "categoryId:c1"]);
 		expect(query.get("publishedFrom")).toBe("2026-02-28T15:00:00.000Z");
 		expect(query.get("publishedTo")).toBe("2026-03-01T14:59:59.999Z");
 	});

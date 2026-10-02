@@ -186,8 +186,7 @@ function useEntryMutations({
 				applyOptimistic(previous, op, new Set(targets.map((target) => target.id)), {
 					state,
 					params,
-					tags,
-					categories,
+					options: { tagIds: tags, categoryId: categories },
 				}),
 			);
 		}

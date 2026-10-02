@@ -1,8 +1,22 @@
-import type { AdminListColumn, ListSortField } from "@bh2980/cms/core/api";
-import { ADMIN_LIST_COLUMNS } from "@bh2980/cms/core/api";
+import type { ListSortField } from "@bh2980/cms/core/api";
 import { isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
 import { schemaOf, storedField } from "@bh2980/cms/schema/derive";
 import type { ListState } from "./list-state";
+
+/** 관리자 목록 컬럼. 사용자 컬럼 설정(순서·표시·너비)에 이 이름으로 저장한다. */
+export const ADMIN_LIST_COLUMNS = [
+	"title",
+	"status",
+	"locale",
+	"category",
+	"tags",
+	"updatedAt",
+	"publishedAt",
+	"createdAt",
+	"slug",
+	"folder",
+] as const;
+export type AdminListColumn = (typeof ADMIN_LIST_COLUMNS)[number];
 
 type DateFromKey = "createdFrom" | "updatedFrom" | "publishedFrom";
 type DateToKey = "createdTo" | "updatedTo" | "publishedTo";

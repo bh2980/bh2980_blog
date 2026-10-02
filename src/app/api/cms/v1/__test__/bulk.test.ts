@@ -81,13 +81,14 @@ describe("M4-BE-1a Bulk route contract", () => {
 	it("returns per-item results with partial success", async () => {
 		const res = await postBulk(
 			postReq({
-				op: "tags.add",
+				op: "relation.add",
+				field: "tagIds",
 				items: [
 					{ id: E1, expectedVersion: 3 },
 					{ id: STALE, expectedVersion: 2 },
 					{ id: MISSING, expectedVersion: 1 },
 				],
-				tagIds: [TAG_2],
+				ids: [TAG_2],
 			}),
 		);
 		expect(res.status).toBe(200);
@@ -103,12 +104,13 @@ describe("M4-BE-1a Bulk route contract", () => {
 	it("rejects more than 100 items with 400", async () => {
 		const res = await postBulk(
 			postReq({
-				op: "tags.add",
+				op: "relation.add",
+				field: "tagIds",
 				items: Array.from({ length: 101 }, (_, i) => ({
 					id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
 					expectedVersion: 1,
 				})),
-				tagIds: [TAG_1],
+				ids: [TAG_1],
 			}),
 		);
 		expect(res.status).toBe(400);

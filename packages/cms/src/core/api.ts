@@ -35,7 +35,32 @@ const dateQuery = z.iso
 	.transform((val) => (val ? new Date(val) : undefined));
 
 /** 같은 키를 여러 번 쓸 수 있는 목록 질의 키. 라우트는 이 키만 `getAll`로 읽는다. */
-export const LIST_ARRAY_QUERY_KEYS = ["status", "tagId", "categoryId", "locale"] as const;
+export const LIST_ARRAY_QUERY_KEYS = ["status", "relation", "locale"] as const;
+
+/** 필드·컬럼 이름. 메타데이터 키와 같은 모양만 받는다. */
+const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,59}$/;
+export const fieldNameSchema = z.string().regex(FIELD_NAME);
+
+/**
+ * 관계 필터(`relation=필드:ID`, 여러 번). 필드별 ID 목록으로 모은다.
+ * 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다(§3.2).
+ */
+const relationFiltersSchema = z
+	.array(z.string().max(120))
+	.optional()
+	.transform((values, ctx) => {
+		if (!values) return undefined;
+		const filters: Record<string, string[]> = {};
+		for (const value of values) {
+			const [field = "", id = "", ...rest] = value.split(":");
+			if (rest.length > 0 || !FIELD_NAME.test(field) || !z.uuid().safeParse(id).success) {
+				ctx.addIssue({ code: "custom", message: `Invalid relation filter: ${value}` });
+				return z.NEVER;
+			}
+			filters[field] = [...(filters[field] ?? []), id];
+		}
+		return filters;
+	});
 
 export const listEntriesQuerySchema = z.object({
 	collection: collectionSchema,
@@ -54,8 +79,7 @@ export const listEntriesQuerySchema = z.object({
 		.transform((val) => (val === undefined ? undefined : val === "null" || val === "" ? null : val))
 		.pipe(z.union([z.uuid(), z.null(), z.undefined()])),
 	includeDescendants: booleanQuery,
-	tagId: z.array(z.uuid()).optional(),
-	categoryId: z.array(z.uuid()).optional(),
+	relation: relationFiltersSchema,
 	hasChanges: booleanQuery,
 	scheduled: booleanQuery,
 	createdFrom: dateQuery,
@@ -102,9 +126,9 @@ export const scheduleBodySchema = z.object({
 });
 
 export const BULK_OPS = [
-	"tags.add",
-	"tags.remove",
-	"category.set",
+	"relation.add",
+	"relation.remove",
+	"relation.set",
 	"folder.move",
 	"archive",
 	"unarchive",
@@ -117,30 +141,22 @@ export type BulkOp = (typeof BULK_OPS)[number];
 export const bulkBodySchema = z.object({
 	op: z.enum(BULK_OPS),
 	items: z.array(z.object({ id: z.uuid(), expectedVersion: expectedVersionSchema })).max(100),
-	tagIds: z.array(z.uuid()).optional(),
-	categoryId: z.uuid().nullable().optional(),
+	/** `relation.*`이 바꾸는 관계 필드. */
+	field: fieldNameSchema.optional(),
+	/** `relation.add`·`relation.remove`의 ID. */
+	ids: z.array(z.uuid()).max(100).optional(),
+	/** `relation.set`의 새 값. `null`이면 비운다. */
+	id: z.uuid().nullable().optional(),
 	folderId: z.uuid().nullable().optional(),
 });
 export type BulkBody = z.infer<typeof bulkBodySchema>;
 
-export const ADMIN_LIST_COLUMNS = [
-	"title",
-	"status",
-	"locale",
-	"category",
-	"tags",
-	"updatedAt",
-	"publishedAt",
-	"createdAt",
-	"slug",
-	"folder",
-] as const;
-export const adminListColumnSchema = z.enum(ADMIN_LIST_COLUMNS);
-export type AdminListColumn = z.infer<typeof adminListColumnSchema>;
+/** 목록 컬럼 수의 상한. 컬럼 이름은 관리자 화면이 정한다(시스템 컬럼·필드 이름). */
+const MAX_LIST_COLUMNS = 60;
 
 export const adminColumnSettingsSchema = z
 	.object({
-		order: z.array(adminListColumnSchema).max(ADMIN_LIST_COLUMNS.length).optional(),
+		order: z.array(fieldNameSchema).max(MAX_LIST_COLUMNS).optional(),
 		visibility: z.record(z.string(), z.boolean()).optional(),
 		/** 사용자가 끌어서 바꾼 열 너비(px). 없는 컬럼은 기본 너비를 쓴다. */
 		sizes: z.record(z.string(), z.number().int().min(48).max(960)).optional(),
@@ -149,8 +165,12 @@ export const adminColumnSettingsSchema = z
 		if (settings.order && new Set(settings.order).size !== settings.order.length) {
 			ctx.addIssue({ code: "custom", message: "Column order cannot contain duplicates", path: ["order"] });
 		}
-		for (const key of [...Object.keys(settings.visibility ?? {}), ...Object.keys(settings.sizes ?? {})]) {
-			if (!adminListColumnSchema.safeParse(key).success) {
+		const keys = [...Object.keys(settings.visibility ?? {}), ...Object.keys(settings.sizes ?? {})];
+		if (keys.length > MAX_LIST_COLUMNS * 2) {
+			ctx.addIssue({ code: "custom", message: "Too many columns", path: ["visibility"] });
+		}
+		for (const key of keys) {
+			if (!FIELD_NAME.test(key)) {
 				ctx.addIssue({ code: "custom", message: `Unknown column: ${key}`, path: ["visibility", key] });
 			}
 		}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Folder, ListEntriesItem, ListTranslationMember } from "@bh2980/cms/adapters/postgres/content-store";
-import { type AdminColumnSettings, type AdminListColumn, PAGE_SIZES, type PageSize } from "@bh2980/cms/core/api";
+import { type AdminColumnSettings, PAGE_SIZES, type PageSize } from "@bh2980/cms/core/api";
 import { isRecordCollection } from "@bh2980/cms/core/collections";
 import {
 	type ColumnOrderState,
@@ -42,7 +42,7 @@ import { adminLocaleName, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
-import { COLUMN_CONFIG, COLUMN_LABELS, columnsFor, filterFor } from "./list-columns";
+import { type AdminListColumn, COLUMN_CONFIG, COLUMN_LABELS, columnsFor, filterFor } from "./list-columns";
 import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
@@ -338,7 +338,9 @@ export function AdminEntriesTable({
 	const isTrash = mode === "trash";
 	const isRecord = isRecordCollection(collection);
 	const { available, defaults } = columnsFor(collection);
-	const savedOrder = (columnSettings?.order ?? []).filter((column) => available.includes(column));
+	const savedOrder = (columnSettings?.order ?? []).filter((column): column is AdminListColumn =>
+		available.includes(column as AdminListColumn),
+	);
 	const order = [...new Set([...savedOrder, ...defaults, ...available])];
 	const visibility: ColumnVisibilityState = Object.fromEntries(
 		available.map((column) => [
@@ -416,10 +418,12 @@ export function AdminEntriesTable({
 						</span>
 					);
 				case "category":
-					return item.category?.title ?? <span className="text-muted-foreground">—</span>;
-				case "tags":
-					if (!item.tags.length) return <span className="text-muted-foreground">—</span>;
-					return <FittingTags tags={item.tags} />;
+					return item.relations.categoryId?.[0]?.title ?? <span className="text-muted-foreground">—</span>;
+				case "tags": {
+					const tags = (item.relations.tagIds ?? []).flatMap(({ id, title }) => (title ? [{ id, title }] : []));
+					if (!tags.length) return <span className="text-muted-foreground">—</span>;
+					return <FittingTags tags={tags} />;
+				}
 				case "updatedAt":
 				case "createdAt":
 				case "publishedAt":

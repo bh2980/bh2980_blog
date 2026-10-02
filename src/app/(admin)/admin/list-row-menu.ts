@@ -89,7 +89,7 @@ export function rowMenuActions(
 					items: context.tags.map((tag) => ({
 						kind: "item" as const,
 						label: tag.title,
-						onSelect: () => handlers.bulk("tags.add", "태그를 추가", targets, { tagIds: [tag.id] }),
+						onSelect: () => handlers.bulk("relation.add", "태그를 추가", targets, { field: "tagIds", ids: [tag.id] }),
 					})),
 				},
 				{ kind: "separator" },

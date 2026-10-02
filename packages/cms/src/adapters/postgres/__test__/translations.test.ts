@@ -341,10 +341,10 @@ describe("번역 묶음(v2 B4)", () => {
 		const row = result.items.find((item) => item.id === en.id);
 		expect(result.items.every((item) => item.locale === "en")).toBe(true);
 		expect(row?.translationGroupId).toBe(source.id);
-		expect(row?.categoryId).toBe(source.working.metadata.categoryId);
+		expect(row?.relations.categoryId?.map((value) => value.id)).toEqual([source.working.metadata.categoryId]);
 		const byCategory = await store.listEntries({
 			collection: "post",
-			categoryIds: [source.working.metadata.categoryId as string],
+			relations: { categoryId: [source.working.metadata.categoryId as string] },
 			pageSize: 100,
 		});
 		expect(byCategory.items.map((item) => item.id).sort()).toEqual([source.id, en.id].sort());

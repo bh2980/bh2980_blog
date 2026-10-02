@@ -94,24 +94,25 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		const bulk = createBulkService(newFakeStore({}));
 		const items = Array.from({ length: 101 }, (_, i) => ({ id: `e-${i}`, expectedVersion: 1 }));
 		await expect(
-			bulk.run({ op: "tags.add", items, tagIds: ["55555555-5555-4555-8555-555555555555"] }),
+			bulk.run({ op: "relation.add", field: "tagIds", items, ids: ["55555555-5555-4555-8555-555555555555"] }),
 		).rejects.toThrowError(expect.objectContaining({ code: "too_many_items" }));
 	});
 
 	it("returns empty results for empty items", async () => {
 		const bulk = createBulkService(newFakeStore({}));
 		await expect(
-			bulk.run({ op: "tags.add", items: [], tagIds: ["55555555-5555-4555-8555-555555555555"] }),
+			bulk.run({ op: "relation.add", field: "tagIds", items: [], ids: ["55555555-5555-4555-8555-555555555555"] }),
 		).resolves.toEqual({ results: [] });
 	});
 
-	it("tags.add merges and dedupes, bumping version", async () => {
+	it("relation.add merges and dedupes, bumping version", async () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [{ id: "e1", expectedVersion: 3 }],
-			tagIds: ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"],
+			ids: ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"],
 		});
 		expect(out).toEqual({ results: [{ id: "e1", ok: true, version: 4 }] });
 		expect(store.entries.get("e1")?.metadata.tagIds).toEqual([
@@ -121,13 +122,14 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		]);
 	});
 
-	it("tags.remove filters; removing absent tag is still ok", async () => {
+	it("relation.remove filters; removing absent tag is still ok", async () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.remove",
+			op: "relation.remove",
+			field: "tagIds",
 			items: [{ id: "e1", expectedVersion: 3 }],
-			tagIds: ["33333333-3333-4333-8333-333333333333", "99999999-9999-4999-8999-999999999999"],
+			ids: ["33333333-3333-4333-8333-333333333333", "99999999-9999-4999-8999-999999999999"],
 		});
 		expect(out).toEqual({ results: [{ id: "e1", ok: true, version: 4 }] });
 		expect(store.entries.get("e1")?.metadata.tagIds).toEqual(["44444444-4444-4444-8444-444444444444"]);
@@ -137,12 +139,13 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		const store = newFakeStore({ e1: post(), e2: post({ version: 5 }) });
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [
 				{ id: "e1", expectedVersion: 3 },
 				{ id: "e2", expectedVersion: 999 },
 			],
-			tagIds: ["55555555-5555-4555-8555-555555555555"],
+			ids: ["55555555-5555-4555-8555-555555555555"],
 		});
 		expect(out).toEqual({
 			results: [
@@ -158,12 +161,13 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [
 				{ id: "ghost", expectedVersion: 1 },
 				{ id: "e1", expectedVersion: 3 },
 			],
-			tagIds: ["55555555-5555-4555-8555-555555555555"],
+			ids: ["55555555-5555-4555-8555-555555555555"],
 		});
 		expect(out.results[0]).toEqual({ id: "ghost", ok: false, error: "not_found" });
 		expect(out.results[1]).toEqual({ id: "e1", ok: true, version: 4 });
@@ -173,24 +177,26 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		const store = newFakeStore({ e1: post() });
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [{ id: "e1", expectedVersion: 0 } as any, { id: "e1", expectedVersion: 3 }],
-			tagIds: ["55555555-5555-4555-8555-555555555555"],
+			ids: ["55555555-5555-4555-8555-555555555555"],
 		});
 		expect(out.results[0]).toEqual({ id: "e1", ok: false, error: "invalid_input" });
 		expect(out.results[1]).toEqual({ id: "e1", ok: true, version: 4 });
 	});
 
-	it("category.set replaces; null clears", async () => {
+	it("relation.set replaces; null clears", async () => {
 		const store = newFakeStore({ e1: post(), e2: post() });
 		const bulk = createBulkService(store);
 		await bulk.run({
-			op: "category.set",
+			op: "relation.set",
+			field: "categoryId",
 			items: [{ id: "e1", expectedVersion: 3 }],
-			categoryId: "22222222-2222-4222-8222-222222222222",
+			id: "22222222-2222-4222-8222-222222222222",
 		});
 		expect(store.entries.get("e1")?.metadata.categoryId).toBe("22222222-2222-4222-8222-222222222222");
-		await bulk.run({ op: "category.set", items: [{ id: "e2", expectedVersion: 3 }], categoryId: null });
+		await bulk.run({ op: "relation.set", field: "categoryId", items: [{ id: "e2", expectedVersion: 3 }], id: null });
 		expect(store.entries.get("e2")?.metadata.categoryId).toBeUndefined();
 	});
 
@@ -203,16 +209,53 @@ describe("M4-TW-1a Bulk metadata ops contract", () => {
 		expect(store.entries.get("e2")?.folderId).toBeNull();
 	});
 
-	it("tags op on a collection without tagIds is a per-item error", async () => {
+	it("relation op on a collection without the field is a per-item error", async () => {
 		const store = newFakeStore({
 			c1: { collection: "category", slug: "cat", metadata: { title: "Cat" }, mdx: "", version: 1, folderId: null },
 		});
 		const bulk = createBulkService(store);
 		const out = await bulk.run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [{ id: "c1", expectedVersion: 1 }],
-			tagIds: ["55555555-5555-4555-8555-555555555555"],
+			ids: ["55555555-5555-4555-8555-555555555555"],
 		});
 		expect(out).toEqual({ results: [{ id: "c1", ok: false, error: "invalid_input" }] });
+	});
+
+	it("relation ops reject a non-relation field and a many/single mismatch", async () => {
+		const store = newFakeStore({ e1: post(), e2: post(), e3: post() });
+		const bulk = createBulkService(store);
+		const out = await bulk.run({
+			op: "relation.add",
+			field: "title",
+			items: [{ id: "e1", expectedVersion: 3 }],
+			ids: ["55555555-5555-4555-8555-555555555555"],
+		});
+		expect(out.results).toEqual([{ id: "e1", ok: false, error: "invalid_input" }]);
+		const single = await bulk.run({
+			op: "relation.add",
+			field: "categoryId",
+			items: [{ id: "e2", expectedVersion: 3 }],
+			ids: ["55555555-5555-4555-8555-555555555555"],
+		});
+		expect(single.results).toEqual([{ id: "e2", ok: false, error: "invalid_input" }]);
+		const many = await bulk.run({
+			op: "relation.set",
+			field: "tagIds",
+			items: [{ id: "e3", expectedVersion: 3 }],
+			id: "55555555-5555-4555-8555-555555555555",
+		});
+		expect(many.results).toEqual([{ id: "e3", ok: false, error: "invalid_input" }]);
+	});
+
+	it("relation ops need a field and values for the whole request", async () => {
+		const bulk = createBulkService(newFakeStore({}));
+		await expect(bulk.run({ op: "relation.add", items: [], ids: [] })).rejects.toThrowError(
+			expect.objectContaining({ code: "invalid_input" }),
+		);
+		await expect(bulk.run({ op: "relation.set", field: "categoryId", items: [] })).rejects.toThrowError(
+			expect.objectContaining({ code: "invalid_input" }),
+		);
 	});
 });

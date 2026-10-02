@@ -121,9 +121,10 @@ describe("review regressions", () => {
 			mdx: "x",
 		});
 		const { results } = await createBulkService(store).run({
-			op: "tags.add",
+			op: "relation.add",
+			field: "tagIds",
 			items: [{ id: post.id, expectedVersion: post.version }],
-			tagIds: [tag.id],
+			ids: [tag.id],
 		});
 		expect(results).toEqual([{ id: post.id, ok: true, version: post.version + 1 }]);
 		expect((await store.getEntry(post.id)).working.metadata.tagIds).toEqual([tag.id]);
@@ -287,16 +288,16 @@ describe("review regressions", () => {
 			expectedVersion: tagged.version,
 		});
 
-		const byTag = await store.listEntries({ collection: "post", tagIds: [tag.id] });
+		const byTag = await store.listEntries({ collection: "post", relations: { tagIds: [tag.id] } });
 		expect(byTag.items.map((item) => item.id)).toEqual([tagged.id]);
 		expect(byTag.items[0]?.hasUnpublishedChanges).toBe(true);
-		expect(byTag.items[0]?.tags).toEqual([{ id: tag.id, title: expect.any(String) }]);
+		expect(byTag.items[0]?.relations.tagIds).toEqual([{ id: tag.id, title: expect.any(String) }]);
 
 		const withChanges = await store.listEntries({ collection: "post", hasUnpublishedChanges: true });
 		expect(withChanges.items.map((item) => item.id)).toContain(tagged.id);
 
 		const trashed = await store.trashEntry({ id: tagged.id, expectedVersion: changed.version });
-		expect((await store.listEntries({ collection: "post", tagIds: [tag.id] })).items).toHaveLength(0);
+		expect((await store.listEntries({ collection: "post", relations: { tagIds: [tag.id] } })).items).toHaveLength(0);
 		const trash = await store.listEntries({ collection: "post", statuses: ["trashed"] });
 		expect(trash.items.find((item) => item.id === tagged.id)?.trashedAt).toBeInstanceOf(Date);
 		expect(trashed.status).toBe("trashed");

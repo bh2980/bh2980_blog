@@ -1,6 +1,5 @@
 "use client";
 
-import type { AdminListColumn } from "@bh2980/cms/core/api";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, ListFilter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
-import { COLUMN_CONFIG, type ColumnFilter, isColumnFiltered } from "./list-columns";
+import { type AdminListColumn, COLUMN_CONFIG, type ColumnFilter, isColumnFiltered } from "./list-columns";
 import { LIST_STATUSES, type ListState } from "./list-state";
 import { DateRangeCalendar } from "./shared/date-range-picker";
 import { STATUS_LABELS } from "./shared/entry-status";

@@ -190,8 +190,8 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 	else for (const status of state.statuses) query.append("status", status);
 	if (state.hasChanges) query.set("hasChanges", "true");
 	if (state.scheduled) query.set("scheduled", "true");
-	for (const id of state.tagIds) query.append("tagId", id);
-	for (const id of state.categoryIds) query.append("categoryId", id);
+	for (const id of state.tagIds) query.append("relation", `tagIds:${id}`);
+	for (const id of state.categoryIds) query.append("relation", `categoryId:${id}`);
 	for (const locale of state.locales) query.append("locale", locale);
 	for (const key of DATE_KEYS) {
 		if (!state[key]) continue;
