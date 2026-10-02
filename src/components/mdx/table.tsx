@@ -1,4 +1,4 @@
-import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@bh2980/cms/mdx/table-layout";
+import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@bh2980/cms/mdx";
 import * as React from "react";
 import { cn } from "@/utils";
 

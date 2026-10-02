@@ -1,6 +1,6 @@
-import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
-import type { BulkOp } from "@bh2980/cms/core/api";
-import { taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import type { BulkOp } from "@bh2980/cms/client";
+import { taxonomyFieldsOf } from "@bh2980/cms/client";
+import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { josa } from "../lib/utils/josa";
 import type { BulkSelection, runBulk } from "./entries/bulk-bar";
 import type { MenuAction } from "./shared/action-menu";

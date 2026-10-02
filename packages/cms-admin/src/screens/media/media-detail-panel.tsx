@@ -1,7 +1,6 @@
 "use client";
 
-import { isImageMime } from "@bh2980/cms/core/api";
-import { fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
+import { fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
 import { Copy, ExternalLink, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { formatBytes } from "../../editor/upload-helper";

@@ -1,13 +1,17 @@
 "use client";
 
-import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
-import { DEFAULT_COLLECTION, isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
-import { previewHref as contentPreviewHref } from "@bh2980/cms/core/links";
-import { autoSummary } from "@bh2980/cms/core/plain-text";
-import { slugify } from "@bh2980/cms/core/slug";
-import { parseDateTimeInput } from "@bh2980/cms/core/time";
+import {
+	autoSummary,
+	previewHref as contentPreviewHref,
+	DEFAULT_COLLECTION,
+	isCollection,
+	isRecordCollection,
+	parseDateTimeInput,
+	schemaOf,
+	slugify,
+} from "@bh2980/cms/client";
 import { analyze } from "@bh2980/cms/mdx";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import {
 	Archive,
 	CalendarClock,

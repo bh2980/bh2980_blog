@@ -1,7 +1,7 @@
 "use client";
 
-import type { AdminColumnSettings } from "@bh2980/cms/core/api";
-import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/core/collections";
+import type { AdminColumnSettings } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/client";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";

@@ -1,6 +1,6 @@
 "use client";
 
-import { callout } from "@bh2980/cms/blocks/definitions";
+import { callout } from "@bh2980/cms/client";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Check } from "lucide-react";
 import { useState } from "react";

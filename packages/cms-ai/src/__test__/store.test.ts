@@ -1,15 +1,11 @@
 import {
-	closeGlobalPool,
-	createIsolatedTestPool,
-	dropIsolatedTestPool,
-} from "@bh2980/cms/adapters/postgres/__test__/test-database";
-import {
 	type ContentStore,
+	createContentService,
 	createContentStore,
 	type Entry,
 	migrateContentStore,
-} from "@bh2980/cms/adapters/postgres/content-store";
-import { createContentService } from "@bh2980/cms/services/content-service";
+} from "@bh2980/cms/runtime";
+import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getAction, listActions, resetAction, updateAction } from "../actions";

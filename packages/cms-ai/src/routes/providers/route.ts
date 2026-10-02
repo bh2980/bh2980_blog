@@ -1,4 +1,4 @@
-import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/http/v1/handler";
+import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { aiProviderRequestSchema } from "../../connection";
 import { addAiProvider } from "../../settings";
 import { getAiStore } from "../../store";

@@ -1,4 +1,4 @@
-import type { ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { ListEntriesItem } from "@bh2980/cms/runtime";
 import { describe, expect, it, vi } from "vitest";
 import { actionTargets, type RowMenuContext, type RowMenuHandlers, rowMenuActions } from "../list-row-menu";
 import type { MenuAction } from "../shared/action-menu";

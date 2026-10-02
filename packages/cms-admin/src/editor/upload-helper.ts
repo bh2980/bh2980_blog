@@ -1,4 +1,4 @@
-import { fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/core/api";
+import { fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
 
 /**
  * 브라우저 이미지 업로드(§7.1·§7.2). 편집기와 미디어 라이브러리가 같이 쓴다.

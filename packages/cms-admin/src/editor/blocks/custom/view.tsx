@@ -1,6 +1,6 @@
 "use client";
 
-import type { BlockDefinition } from "@bh2980/cms/blocks/define";
+import type { BlockDefinition } from "@bh2980/cms/client";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import type { ReactNode } from "react";
 import { useCmsAdminComponents } from "../../../admin-components";

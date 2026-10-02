@@ -1,6 +1,6 @@
 "use client";
 
-import type { BodyTemplate } from "@bh2980/cms/adapters/postgres/content-store";
+import type { BodyTemplate } from "@bh2980/cms/runtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutTemplate, Plus, Save } from "lucide-react";
 import { useState } from "react";

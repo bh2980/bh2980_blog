@@ -1,8 +1,8 @@
 "use client";
 
-import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
-import type { BulkOp } from "@bh2980/cms/core/api";
-import { isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import type { BulkOp } from "@bh2980/cms/client";
+import { isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
+import type { Folder } from "@bh2980/cms/runtime";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils/cn";

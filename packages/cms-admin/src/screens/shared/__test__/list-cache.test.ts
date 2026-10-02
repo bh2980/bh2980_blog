@@ -1,4 +1,4 @@
-import type { ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { ListEntriesItem } from "@bh2980/cms/runtime";
 import { describe, expect, it } from "vitest";
 import { applyOptimistic, type EntriesPage, type OptimisticContext } from "../list-cache";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, isCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import { COLLECTION_DEFINITIONS, isCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
 import { useQueries } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cmsFetch } from "../admin-api";

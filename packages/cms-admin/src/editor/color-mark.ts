@@ -1,4 +1,4 @@
-import { cleanTextColor, TEXT_COLOR_ATTRS, textColorProps } from "@bh2980/cms/core/text-colors";
+import { cleanTextColor, TEXT_COLOR_ATTRS, textColorProps } from "@bh2980/cms/client";
 import { Mark, mergeAttributes } from "@tiptap/core";
 
 export const COLOR_MARK_NAME = "cmsColor";

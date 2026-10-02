@@ -1,5 +1,5 @@
 import "server-only";
-import { type AuthContext, AuthError, authGateway } from "@bh2980/cms/adapters/auth";
+import { type AuthContext, AuthError, authGateway } from "@bh2980/cms/runtime";
 import { redirect } from "next/navigation";
 
 /**

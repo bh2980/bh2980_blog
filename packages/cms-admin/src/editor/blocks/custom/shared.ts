@@ -1,5 +1,5 @@
-import { CUSTOM_BLOCKS } from "@bh2980/cms/blocks/active";
-import type { BlockDefinition } from "@bh2980/cms/blocks/define";
+import type { BlockDefinition } from "@bh2980/cms/client";
+import { CUSTOM_BLOCKS } from "@bh2980/cms/client";
 
 /**
  * 사용자 블록(사이트 설정의 `blocks.custom`)의 편집기 표현. `editor.view: "node"`인 사용자 블록은 이름에서 만든

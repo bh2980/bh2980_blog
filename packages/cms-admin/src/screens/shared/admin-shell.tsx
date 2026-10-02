@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTIONS } from "@bh2980/cms/core/collections";
+import { COLLECTIONS } from "@bh2980/cms/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "../../ui/sidebar";

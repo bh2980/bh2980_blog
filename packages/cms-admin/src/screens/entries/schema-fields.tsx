@@ -1,10 +1,14 @@
 "use client";
 
-import { isRecordCollection } from "@bh2980/cms/core/collections";
-import { type Locale, localeLabel } from "@bh2980/cms/core/locales";
-import type { LayoutGroup } from "@bh2980/cms/schema/collection";
-import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@bh2980/cms/schema/derive";
-import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@bh2980/cms/schema/fields";
+import type { ConditionalField, Field, LayoutGroup, RelationField, SlugField, ValueField } from "@bh2980/cms/client";
+import {
+	isRecordCollection,
+	type Locale,
+	localeLabel,
+	recordLocalizedFields,
+	type SchemaCollection,
+	schemaOf,
+} from "@bh2980/cms/client";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useCmsAdminComponents } from "../../admin-components";

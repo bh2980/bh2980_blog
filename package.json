@@ -12,7 +12,9 @@
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check . --write",
 		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-ai typecheck",
-		"prepare": "husky"
+		"prepare": "husky",
+		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build",
+		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-ai; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1136.0",

@@ -1,4 +1,4 @@
-import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import type { ConfirmRequest } from "../shared/confirm-dialog";
 import { type EntryData, isTranslationEntry } from "./entry-form";
 

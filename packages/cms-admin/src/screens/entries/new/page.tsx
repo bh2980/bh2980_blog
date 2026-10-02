@@ -1,5 +1,4 @@
-import { DEFAULT_COLLECTION, isCollection } from "@bh2980/cms/core/collections";
-import { isUuid } from "@bh2980/cms/core/ids";
+import { DEFAULT_COLLECTION, isCollection, isUuid } from "@bh2980/cms/client";
 import { requireAdminPage } from "../../require-admin";
 import { EntryEditorShell } from "../entry-editor-shell";
 

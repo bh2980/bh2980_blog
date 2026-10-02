@@ -1,7 +1,5 @@
-import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
-import { isCollection } from "@bh2980/cms/core/collections";
-import { localeName } from "@bh2980/cms/core/locales";
-import { schemaOf, storedField } from "@bh2980/cms/schema/derive";
+import { isCollection, localeName, schemaOf, storedField } from "@bh2980/cms/client";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/plugin/server";
 import { AiError } from "../errors";
 import type { AiOption, AiRunDeps } from "../run";
 import type { AiRuntime } from "../settings";

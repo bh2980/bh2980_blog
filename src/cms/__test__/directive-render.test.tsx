@@ -1,4 +1,4 @@
-import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx/remark-directives";
+import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

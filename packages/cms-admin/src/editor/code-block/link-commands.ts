@@ -1,4 +1,4 @@
-import { ANCHOR, type CodeLineEffect, newEffectId } from "@bh2980/cms/annotation/code-block/model";
+import { ANCHOR, type CodeLineEffect, newEffectId } from "@bh2980/cms/code-block";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { TextSelection, type Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";

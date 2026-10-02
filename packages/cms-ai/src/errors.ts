@@ -1,4 +1,4 @@
-import { HttpError } from "@bh2980/cms/http/v1/error-handler";
+import { HttpError } from "@bh2980/cms/plugin/server";
 
 /** AI 실행 오류. 본체 API 오류(`HttpError`)를 이어 응답 코드를 함께 정한다. */
 export type AiErrorCode =

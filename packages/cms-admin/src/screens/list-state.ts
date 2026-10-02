@@ -1,8 +1,16 @@
-import { LIST_SORT_FIELDS, type ListSortField, type PageSize } from "@bh2980/cms/core/api";
-import { type Collection, DEFAULT_COLLECTION, isCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
-import { isLocale, type Locale } from "@bh2980/cms/core/locales";
-import { parseDateTimeInput } from "@bh2980/cms/core/time";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import {
+	type Collection,
+	DEFAULT_COLLECTION,
+	isCollection,
+	isLocale,
+	LIST_SORT_FIELDS,
+	type ListSortField,
+	type Locale,
+	type PageSize,
+	parseDateTimeInput,
+	schemaOf,
+	taxonomyFieldsOf,
+} from "@bh2980/cms/client";
 import type { EntryStatus } from "./shared/entry-status";
 
 /** 목록에서 거를 수 있는 상태. 휴지통은 전용 화면(v2 A3)에서만 본다. */

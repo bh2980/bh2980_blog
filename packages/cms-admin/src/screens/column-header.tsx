@@ -1,6 +1,6 @@
 "use client";
 
-import { LOCALES, localeLabel } from "@bh2980/cms/core/locales";
+import { LOCALES, localeLabel } from "@bh2980/cms/client";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, ListFilter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";

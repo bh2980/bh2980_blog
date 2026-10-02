@@ -1,4 +1,4 @@
-import type { BlockDefinition } from "@bh2980/cms/blocks/define";
+import type { BlockDefinition } from "@bh2980/cms/client";
 import type { CmsJsonValue, CmsNode } from "@bh2980/cms/mdx";
 import type { BlockConverter } from "../../converters/types";
 import { customNodeName, isContainer } from "./shared";

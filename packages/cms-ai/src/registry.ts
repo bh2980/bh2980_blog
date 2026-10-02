@@ -1,5 +1,5 @@
 import type { CmsPlugin, PluginNamed } from "@bh2980/cms";
-import { cmsConfig, type ResolvedConfig } from "@bh2980/cms/config/resolved";
+import { cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
 import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig } from "./action";
 import type { AiSlot } from "./definition";
 import { AI_PLUGIN_NAME } from "./plugin-name";

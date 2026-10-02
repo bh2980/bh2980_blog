@@ -1,4 +1,4 @@
-import type { ContentStore, PublishedEntryRecord } from "@bh2980/cms/adapters/postgres/content-store";
+import type { ContentStore, PublishedEntryRecord } from "@bh2980/cms/runtime";
 import { describe, expect, it, vi } from "vitest";
 import { PostgresRepository } from "../postgres";
 

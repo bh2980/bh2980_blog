@@ -1,5 +1,5 @@
-import type { ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
-import type { BulkOp } from "@bh2980/cms/core/api";
+import type { BulkOp } from "@bh2980/cms/client";
+import type { ListEntriesItem } from "@bh2980/cms/runtime";
 import type { ListState } from "../list-state";
 
 /** 목록 API 응답 한 페이지. */

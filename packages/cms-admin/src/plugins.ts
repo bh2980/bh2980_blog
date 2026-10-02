@@ -1,5 +1,5 @@
 import type { CmsPlugin } from "@bh2980/cms";
-import { cmsConfig } from "@bh2980/cms/config/resolved";
+import { cmsConfig } from "@bh2980/cms/client";
 import type { ComponentType, ReactNode } from "react";
 
 /**

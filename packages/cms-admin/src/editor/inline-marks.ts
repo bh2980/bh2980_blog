@@ -1,4 +1,4 @@
-import { type CodeRule, ruleMatches } from "@bh2980/cms/annotation/code-block/model";
+import { type CodeRule, ruleMatches } from "@bh2980/cms/code-block";
 import type { Editor } from "@tiptap/core";
 import type { Mark, ResolvedPos } from "@tiptap/pm/model";
 import { type EditorState, TextSelection } from "@tiptap/pm/state";

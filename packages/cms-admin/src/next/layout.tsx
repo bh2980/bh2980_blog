@@ -1,4 +1,4 @@
-import { SITE_NAME } from "@bh2980/cms/core/links";
+import { SITE_NAME } from "@bh2980/cms/client";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";

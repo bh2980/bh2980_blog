@@ -1,6 +1,6 @@
 "use client";
 
-import { charEffectByName } from "@bh2980/cms/annotation/code-block/model";
+import { charEffectByName } from "@bh2980/cms/code-block";
 import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";

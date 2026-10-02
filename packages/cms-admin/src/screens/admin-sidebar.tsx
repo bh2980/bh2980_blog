@@ -1,10 +1,8 @@
 "use client";
 
 import type { CmsPlugin } from "@bh2980/cms";
-import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
-import { cmsConfig } from "@bh2980/cms/config/resolved";
-import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@bh2980/cms/core/collections";
-import { SITE_NAME } from "@bh2980/cms/core/links";
+import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection, cmsConfig, SITE_NAME } from "@bh2980/cms/client";
+import type { Folder } from "@bh2980/cms/runtime";
 import {
 	ChevronRight,
 	FileImage,

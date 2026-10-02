@@ -8,7 +8,7 @@ import {
 	escapePattern,
 	newEffectId,
 	ruleMatches,
-} from "@bh2980/cms/annotation/code-block/model";
+} from "@bh2980/cms/code-block";
 import { Plus, Regex, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils/cn";
 import { useSlot } from "../../slots/slots";

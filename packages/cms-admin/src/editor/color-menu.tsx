@@ -7,7 +7,7 @@ import {
 	TEXT_PALETTE,
 	type TextColorAttrs,
 	textColorProps,
-} from "@bh2980/cms/core/text-colors";
+} from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import { Baseline, Check } from "lucide-react";
 import { cn } from "../lib/utils/cn";

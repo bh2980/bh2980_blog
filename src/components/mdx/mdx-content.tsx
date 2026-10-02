@@ -1,7 +1,6 @@
-import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
-import { analyze } from "@bh2980/cms/mdx";
-import type { ImageResolver } from "@bh2980/cms/mdx/image-src";
-import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx/remark-directives";
+import { annotationConfig } from "@bh2980/cms/code-block";
+import type { ImageResolver } from "@bh2980/cms/mdx";
+import { analyze, remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx";
 import type { Root, Text } from "mdast";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ComponentProps } from "react";

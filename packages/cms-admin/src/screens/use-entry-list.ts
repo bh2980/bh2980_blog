@@ -1,8 +1,8 @@
 "use client";
 
-import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
-import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/core/api";
-import { COLLECTION_DEFINITIONS, isContentCollection, isRecordCollection } from "@bh2980/cms/core/collections";
+import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, isContentCollection, isRecordCollection } from "@bh2980/cms/client";
+import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";

@@ -1,9 +1,16 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, type Collection } from "@bh2980/cms/core/collections";
-import { DEFAULT_LOCALE, LOCALES, type Locale, localeLabel } from "@bh2980/cms/core/locales";
-import { slugify } from "@bh2980/cms/core/slug";
-import { recordLocalizedFields, type SchemaCollection } from "@bh2980/cms/schema/derive";
+import {
+	COLLECTION_DEFINITIONS,
+	type Collection,
+	DEFAULT_LOCALE,
+	LOCALES,
+	type Locale,
+	localeLabel,
+	recordLocalizedFields,
+	type SchemaCollection,
+	slugify,
+} from "@bh2980/cms/client";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";

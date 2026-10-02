@@ -1,75 +1,189 @@
 # @bh2980/cms
 
-DB(Postgres) 기반 블로그 CMS의 본체. 사이트 설정, 컬렉션 스키마, 콘텐츠 저장·발행, MDX 변환, 플러그인 연결을 맡는다.
-React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 이 패키지의 API를 불러 그린다.
+DB(Postgres) 기반 블로그 CMS의 본체. 사이트 설정, 컬렉션 스키마, 콘텐츠 저장·발행, MDX 변환, 관리자 API, 플러그인 연결을 맡는다.
+관리자 화면은 `@bh2980/cms-admin`, AI 기능은 플러그인 `@bh2980/cms-ai`다. 다 붙인 예는 `examples/other-site`다.
 
-## 연결 방법 (Next.js)
+## 빈 Next 앱에 설치
 
-1. 사이트 설정 파일을 만든다. 비밀 값은 넣지 않는다(서버와 관리자 화면이 함께 읽는다).
+Next 16(App Router)·React 19·Tailwind CSS 4 앱 기준이다. 저장소는 Postgres만 지원한다.
 
-   ```ts
-   // src/cms.config.ts
-   import { defineCollection, defineConfig, fields } from "@bh2980/cms";
+### 1. 패키지
 
-   const post = defineCollection({
-   	label: "게시글",
-   	workflow: "publish",
-   	fields: {
-   		title: fields.text({ label: "제목", required: "publish", localized: true }),
-   		slug: fields.slug({ label: "주소", from: "title", required: "publish" }),
-   	},
-   	list: { columns: ["title", "status", "updatedAt"] },
-   });
+```sh
+pnpm add @bh2980/cms @bh2980/cms-admin next-auth@5.0.0-beta.32 next-themes @tanstack/react-query sonner \
+  @tiptap/core @tiptap/pm @tiptap/react
+pnpm add -D tsx tw-animate-css @tailwindcss/typography
+```
 
-   export default defineConfig({
-   	collections: { post },
-   	locales: [{ code: "ko", name: "한국어" }],
-   	defaultLocale: "ko",
-   });
-   ```
+관리자 패키지와 AI 플러그인은 React Query·sonner·Tiptap을 앱과 같은 하나로 써야 해서 앱이 설치한다(peer).
 
-2. 서버 설정 파일을 만든다. 저장소·미디어·관리자 로그인 연결과 비밀 값을 두고, 서버에서만 읽힌다.
-   연결은 처음 쓸 때 만들므로 빌드 중에 환경 변수가 비어 있어도 된다.
+### 2. 사이트 설정 `cms.config.ts`
 
-   ```ts
-   // src/cms.server.ts
-   import { defineServerConfig, githubAuth, postgres, r2Storage } from "@bh2980/cms/server";
+서버와 관리자 화면이 함께 읽는다. 비밀 값은 넣지 않는다.
 
-   export default defineServerConfig({
-   	database: postgres({ connectionString: process.env.DATABASE_URL }),
-   	media: r2Storage({ accountId: …, accessKeyId: …, secretAccessKey: …, bucket: …, endpoint: …, publicBaseUrl: … }),
-   	auth: githubAuth({
-   		clientId: process.env.AUTH_GITHUB_ID,
-   		clientSecret: process.env.AUTH_GITHUB_SECRET,
-   		adminIds: [process.env.ADMIN_GITHUB_ID],
-   	}),
-   	secret: process.env.AUTH_SECRET,
-   });
-   ```
+```ts
+import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 
-3. CMS 코드가 두 설정 파일을 `@cms-config`·`@cms-server`라는 이름으로 읽도록 잇는다.
+const article = defineCollection({
+	label: "Article",
+	workflow: "publish", // 초안·발행. 분류(태그 등)는 "record"
+	path: "/blog/:slug/", // 공개 주소. 본문 내부 링크·미리보기 주소에 쓴다
+	icon: "newspaper", // 관리자 사이드바 아이콘(lucide 이름)
+	fields: {
+		title: fields.text({ label: "Title", required: "publish" }),
+		slug: fields.slug({ label: "Slug", from: "title", required: "publish" }),
+	},
+	list: { columns: ["title", "status", "updatedAt"] },
+});
 
-   ```ts
-   // next.config.ts
-   import { withCms } from "@bh2980/cms/next";
+export default defineConfig({
+	collections: { article },
+	locales: [{ code: "en", name: "English" }],
+	defaultLocale: "en",
+	site: { name: "My site", previewPath: "/preview" },
+	timeZone: "UTC",
+});
+```
 
-   export default withCms({ /* 기존 설정 */ }, { config: "./src/cms.config.ts", server: "./src/cms.server.ts" });
-   ```
+### 3. 서버 설정 `cms.server.ts`
 
-   ```jsonc
-   // tsconfig.json
-   {
-   	"compilerOptions": {
-   		"paths": { "@cms-config": ["./src/cms.config.ts"], "@cms-server": ["./src/cms.server.ts"] }
-   	}
-   }
-   ```
+저장소·미디어·로그인 연결과 비밀 값. 서버에서만 읽힌다. 연결은 처음 쓸 때 만들어 빌드 중에는 환경 변수가 비어 있어도 된다.
 
-   테스트(Vitest)를 쓰면 `resolve.alias`에도 같은 별칭을 둔다.
+```ts
+import { defineServerConfig, githubAuth, postgres } from "@bh2980/cms/server";
 
-4. DB 표를 만든다: `tsx packages/cms/src/adapters/postgres/migrate-cli.ts`(서버 설정의 `database`를 쓴다).
-   로그인 라우트는 `app/api/auth/[...nextauth]/route.ts`에서 `export const { GET, POST } = handlers;`
-   (`@bh2980/cms/adapters/auth`)로 둔다.
+export default defineServerConfig({
+	database: postgres({ connectionString: process.env.CMS_DATABASE_URL, schema: process.env.CMS_SCHEMA }),
+	auth: githubAuth({
+		clientId: process.env.AUTH_GITHUB_ID,
+		clientSecret: process.env.AUTH_GITHUB_SECRET,
+		adminIds: [process.env.CMS_ADMIN_GITHUB_ID], // 관리자 GitHub 숫자 ID
+		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1", // `next dev`에서만 로그인 없이 관리자
+	}),
+	secret: process.env.AUTH_SECRET,
+	// media: r2Storage({ … }) — 미디어(이미지 올리기)를 쓸 때
+});
+```
+
+### 4. 두 설정을 잇기
+
+CMS 코드는 두 설정 파일을 `@cms-config`·`@cms-server`라는 이름으로 읽는다.
+
+```ts
+// next.config.ts
+import { withCms } from "@bh2980/cms/next";
+
+export default withCms({ /* 기존 설정 */ }, { config: "./cms.config.ts", server: "./cms.server.ts" });
+```
+
+```jsonc
+// tsconfig.json
+{ "compilerOptions": { "paths": { "@cms-config": ["./cms.config.ts"], "@cms-server": ["./cms.server.ts"] } } }
+```
+
+테스트(Vitest)를 쓰면 `resolve.alias`에도 같은 별칭을 둔다.
+
+### 5. 라우트 네 개
+
+```ts
+// app/api/cms/[...path]/route.ts — 관리자 API(/api/cms/v1/*)
+import { createCmsRouteHandler } from "@bh2980/cms/next/route-handler";
+export const { GET, POST, PATCH, PUT, DELETE } = createCmsRouteHandler();
+
+// app/api/auth/[...nextauth]/route.ts — 로그인
+import { handlers } from "@bh2980/cms/runtime";
+export const { GET, POST } = handlers;
+```
+
+```tsx
+// app/(admin)/admin/layout.tsx — 관리자 화면
+import { CmsAdminLayout } from "@bh2980/cms-admin/next";
+export { cmsAdminMetadata as metadata } from "@bh2980/cms-admin/next";
+export default function AdminLayout({ children }) {
+	return <CmsAdminLayout>{children}</CmsAdminLayout>;
+}
+
+// app/(admin)/admin/[[...path]]/page.tsx
+export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
+```
+
+### 6. 스타일
+
+앱의 Tailwind 입력 CSS(루트 레이아웃이 import하는 파일)에 더한다.
+
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@bh2980/cms-admin/styles.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+```
+
+### 7. 환경 변수와 DB 표
+
+`.env.local`에 `CMS_DATABASE_URL`, `AUTH_SECRET`(임의의 긴 값), 로그인용 `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`·
+`CMS_ADMIN_GITHUB_ID`(또는 로컬에서 `CMS_DEV_AUTH_BYPASS=1`)를 둔다. 그다음 표를 만든다.
+
+```ts
+// migrate.ts
+import "@bh2980/cms/migrate";
+```
+
+```sh
+tsx --env-file=.env.local --import @bh2980/cms/register migrate.ts
+```
+
+`@bh2980/cms/register`는 Next 밖에서 `@cms-config`·`@cms-server`를 `./cms.config.ts`·`./cms.server.ts`로 잇는다
+(다른 곳이면 `CMS_CONFIG_PATH`·`CMS_SERVER_PATH`). 플러그인 표도 함께 만든다. 패키지를 올린 뒤에도 다시 돌린다.
+
+### 8. 실행
+
+`next dev`로 띄우고 `/admin`을 연다.
+
+### AI 플러그인 (선택)
+
+```sh
+pnpm add @bh2980/cms-ai
+```
+
+```ts
+// cms.config.ts
+import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
+
+export default defineConfig({
+	// …
+	plugins: [aiPlugin({ actions: { summary: aiPresets.summary({ collections: ["article"] }) } })],
+});
+```
+
+```css
+@import "@bh2980/cms-ai/styles.css"; /* 관리자 패키지 스타일 다음 */
+```
+
+자세한 것은 `@bh2980/cms-ai`의 README.
+
+## 진입점
+
+| 진입점 | 쓰는 곳 | 내용 |
+| --- | --- | --- |
+| `@bh2980/cms` | `cms.config.ts` | `defineConfig`·`defineCollection`·`fields`·`defineBlock`·`definePlugin` |
+| `@bh2980/cms/server` | `cms.server.ts` | `defineServerConfig`·`postgres`·`r2Storage`·`githubAuth` |
+| `@bh2980/cms/next` | `next.config.ts` | `withCms` |
+| `@bh2980/cms/next/route-handler` | 관리자 API 라우트 | `createCmsRouteHandler` |
+| `@bh2980/cms/runtime` | 서버 코드(공개 화면 등) | 저장소·공개본 읽기·로그인·미리보기 권한·본문 이미지 |
+| `@bh2980/cms/client` | 화면 코드 | API 모양·컬렉션·언어·주소·블록·스키마 도우미 |
+| `@bh2980/cms/mdx`·`/code-block` | 공개 렌더러·편집기 | MDX 해석·직렬화, 코드 블록 주석 모델 |
+| `@bh2980/cms/plugin/server` | 플러그인 서버 쪽 | 라우트 틀·DB 연결·오류 |
+| `@bh2980/cms/migrate`·`/register` | 명령줄 | 표 만들기, 설정 별칭 잇기 |
+| `@bh2980/cms/testing` | 테스트 | 격리 스키마 DB·예시 데이터 |
+
+## 패키지 빌드
+
+저장소 안에서는 소스(`src`)를 바로 쓴다. 배포 묶음은 `pnpm build:packages`로 `dist`를 만들고 `pnpm pack`이
+`publishConfig.exports`(dist)로 묶는다. `pnpm example:pack`은 묶음을 `examples/other-site/vendor`에 넣는다.
 
 ## 본문 블록
 

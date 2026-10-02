@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { analyze } from "@bh2980/cms/mdx";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

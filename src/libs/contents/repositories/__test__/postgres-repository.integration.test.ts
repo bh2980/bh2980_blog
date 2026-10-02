@@ -1,14 +1,11 @@
-import { seedEntry, seedSave } from "@bh2980/cms/adapters/postgres/__test__/seed";
+import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
 import {
 	closeGlobalPool,
 	createIsolatedTestPool,
 	dropIsolatedTestPool,
-} from "@bh2980/cms/adapters/postgres/__test__/test-database";
-import {
-	type ContentStore,
-	createContentStore,
-	migrateContentStore,
-} from "@bh2980/cms/adapters/postgres/content-store";
+	seedEntry,
+	seedSave,
+} from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresRepository } from "../postgres";

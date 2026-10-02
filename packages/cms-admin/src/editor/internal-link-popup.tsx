@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/core/collections";
+import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/client";
 import { createPortal } from "react-dom";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "../ui/command";
 import type { InternalLinkItem } from "./internal-link";

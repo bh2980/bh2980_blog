@@ -1,4 +1,4 @@
-import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

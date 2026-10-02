@@ -1,5 +1,4 @@
-import { DEFAULT_LOCALE } from "@bh2980/cms/core/locales";
-import { compareStructure, readableMdx } from "@bh2980/cms/core/translation/skeleton";
+import { compareStructure, DEFAULT_LOCALE, readableMdx } from "@bh2980/cms/client";
 import { z } from "zod";
 import { type AiRunEnv, type ResolvedAiAction, renderPrompt } from "./action";
 import { type CheckEnv, checkCandidates, checkText } from "./checks";

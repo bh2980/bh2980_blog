@@ -1,7 +1,6 @@
-import { prepareSnapshot } from "@bh2980/cms/core/snapshot";
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
-import { buildEditorExtensions } from "@bh2980/cms-admin/editor/extensions";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
+import { prepareSnapshot } from "@bh2980/cms/runtime";
+import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { renderToReadableStream } from "react-dom/server";

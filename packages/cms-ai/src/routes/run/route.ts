@@ -1,4 +1,4 @@
-import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/http/v1/handler";
+import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { type AiRunBody, aiRunBodySchema, inputSchemaFor, type ResolvedAiAction } from "../../action";
 import { actionWithEdits, getAction } from "../../actions";
 import { AiError } from "../../errors";

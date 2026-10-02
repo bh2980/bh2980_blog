@@ -1,4 +1,4 @@
-import { adminRoute, assertVersionPresent, json, parseWith, readJsonBody } from "@bh2980/cms/http/v1/handler";
+import { adminRoute, assertVersionPresent, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { z } from "zod";
 import { updateAction } from "../../../actions";
 import { getAiStore } from "../../../store";

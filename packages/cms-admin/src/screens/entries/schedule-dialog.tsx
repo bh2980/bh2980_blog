@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDateTimeInput } from "@bh2980/cms/core/time";
+import { formatDateTimeInput } from "@bh2980/cms/client";
 import { useState } from "react";
 import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";

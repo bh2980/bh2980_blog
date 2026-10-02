@@ -1,4 +1,4 @@
-import { createPublicImageResolver } from "@bh2980/cms/mdx/public-image-resolver";
+import { createPublicImageResolver } from "@bh2980/cms/runtime";
 import { differenceInYears } from "date-fns";
 import { LanguageLinks } from "@/components/language-links";
 import { Callout } from "@/components/mdx/callout";

@@ -1,4 +1,4 @@
-export * from "@bh2980/cms/annotation/code-block/model";
+export * from "@bh2980/cms/code-block";
 export { CmsCodeBlock } from "./code-block-extension";
 export { CodeBlockView } from "./code-block-view";
 export { CodeFoldMark } from "./code-fold-mark";

@@ -1,7 +1,6 @@
-import { BLOCKS } from "@bh2980/cms/blocks/active";
-import { BLOCK_BY_NAME, invalidOptionAttributes } from "@bh2980/cms/blocks/derive";
-import { DIRECTIVES } from "@bh2980/cms/mdx/directives";
-import { BLOCK_NODE_VIEWS } from "@bh2980/cms-admin/editor/block-views";
+import { BLOCK_BY_NAME, BLOCKS, invalidOptionAttributes } from "@bh2980/cms/client";
+import { DIRECTIVES } from "@bh2980/cms/mdx";
+import { BLOCK_NODE_VIEWS } from "@bh2980/cms-admin/editor";
 import { describe, expect, it } from "vitest";
 import { MDX_COMPONENTS } from "@/components/mdx/mdx-content";
 

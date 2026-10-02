@@ -1,7 +1,6 @@
 "use client";
 
-import { isContentCollection } from "@bh2980/cms/core/collections";
-import { localeLabel } from "@bh2980/cms/core/locales";
+import { isContentCollection, localeLabel } from "@bh2980/cms/client";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";

@@ -6,21 +6,8 @@
 
 ## 붙이기
 
-```tsx
-// app/(admin)/admin/layout.tsx
-import "../../globals.css"; // Tailwind·테마 색. 관리자 화면도 앱의 전역 CSS로 그린다
-import { CmsAdminLayout } from "@bh2980/cms-admin/next";
-export { cmsAdminMetadata as metadata } from "@bh2980/cms-admin/next";
-
-export default function AdminLayout({ children }) {
-	return <CmsAdminLayout>{children}</CmsAdminLayout>;
-}
-
-// app/(admin)/admin/[[...path]]/page.tsx
-export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
-```
-
-관리자 화면 주소는 `/admin`이다. 로그인은 `/admin/login`으로 보낸다.
+설치·라우트·스타일은 `@bh2980/cms` README의 "빈 Next 앱에 설치"를 따른다. 관리자 화면 주소는 `/admin`이고,
+로그인은 `/admin/login`으로 보낸다.
 
 ## 사이트 컴포넌트 넣기
 
@@ -59,5 +46,5 @@ export default defineAdminPlugin({
 
 ## 스타일
 
-관리자 화면은 Tailwind 클래스로 그리고, 색은 앱의 테마 변수(shadcn 방식)를 쓴다. 모노레포 안에서는 앱의 Tailwind가
-이 패키지 파일도 읽는다. 패키지로 배포할 때는 따로 빌드한 CSS를 함께 낸다(계획 M7).
+`@bh2980/cms-admin/styles.css`가 관리자 색 토큰과 배포 묶음의 Tailwind 클래스 찾기(`@source`)를 준다. 앱 쪽 준비물은
+`styles.css` 머리 주석에 적었다.

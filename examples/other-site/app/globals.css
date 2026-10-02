@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@bh2980/cms-admin/styles.css";
+@plugin "@tailwindcss/typography";
+
+/* 관리자 화면이 기대는 변형: 클래스 방식 어두운 테마, Base UI의 방향 속성. */
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);

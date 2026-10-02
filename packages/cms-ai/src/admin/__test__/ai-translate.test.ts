@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { withTranslationHints } from "@bh2980/cms/core/translation/hints";
-import { buildEditorExtensions } from "@bh2980/cms-admin/editor/extensions";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
+import { withTranslationHints } from "@bh2980/cms/client";
+import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { afterEach, describe, expect, it } from "vitest";

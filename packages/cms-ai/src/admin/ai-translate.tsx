@@ -2,7 +2,7 @@
 
 import type { EditorExtension } from "@bh2980/cms-admin";
 import { errorText } from "@bh2980/cms-admin/api";
-import type { BlockAction } from "@bh2980/cms-admin/editor/tiptap-editor";
+import type { BlockAction } from "@bh2980/cms-admin/editor";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@bh2980/cms-admin/ui/popover";

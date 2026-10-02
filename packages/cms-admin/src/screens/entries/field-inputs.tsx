@@ -1,7 +1,7 @@
 "use client";
 
-import { type SchemaCollection, storedField } from "@bh2980/cms/schema/derive";
-import type { BacklinkField, RelationField, ValueField } from "@bh2980/cms/schema/fields";
+import type { BacklinkField, RelationField, ValueField } from "@bh2980/cms/client";
+import { type SchemaCollection, storedField } from "@bh2980/cms/client";
 import {
 	closestCenter,
 	DndContext,

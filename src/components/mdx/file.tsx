@@ -1,5 +1,5 @@
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
-import type { ImageResolver } from "@bh2980/cms/mdx/image-src";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
+import type { ImageResolver } from "@bh2980/cms/mdx";
 import { Download, FileArchive, FileText, FileType } from "lucide-react";
 
 const ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };

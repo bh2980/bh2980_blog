@@ -1,4 +1,4 @@
-import type { BlockDefinition } from "@bh2980/cms/blocks/define";
+import type { BlockDefinition } from "@bh2980/cms/client";
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { CUSTOM_NODE_BLOCKS, customNodeName, isContainer } from "./shared";

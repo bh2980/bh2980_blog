@@ -1,7 +1,6 @@
-import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/annotation/code-block/code-fence-to-document";
-import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
-import { fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/annotation/code-block/document-to-code-fence";
+import type { AnnotationAttr, CodeBlockDocument, InlineAnnotation, LineAnnotation } from "@bh2980/cms/code-block";
 import {
+	annotationConfig,
 	type CodeLineEffect,
 	type CodeRule,
 	type CodeSpan,
@@ -9,16 +8,12 @@ import {
 	charEffectByName,
 	checkPattern,
 	clampLineEffects,
+	fromCodeBlockDocumentToCodeFence,
+	fromCodeFenceToCodeBlockDocument,
 	isLineEffectName,
 	lineStarts,
 	modelFingerprint,
-} from "@bh2980/cms/annotation/code-block/model";
-import type {
-	AnnotationAttr,
-	CodeBlockDocument,
-	InlineAnnotation,
-	LineAnnotation,
-} from "@bh2980/cms/annotation/code-block/types";
+} from "@bh2980/cms/code-block";
 import type { CmsNode } from "@bh2980/cms/mdx";
 import type { JSONContent } from "@tiptap/core";
 import { asString } from "./shared";

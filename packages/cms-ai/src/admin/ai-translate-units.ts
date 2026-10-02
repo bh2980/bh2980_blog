@@ -1,5 +1,4 @@
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
-import { UNTRANSLATED_MARK_NAME } from "@bh2980/cms-admin/editor/untranslated-mark";
+import { mdxToTiptap, tiptapToMdx, UNTRANSLATED_MARK_NAME } from "@bh2980/cms-admin/editor";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Fragment, type Node as PmNode } from "@tiptap/pm/model";
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { FILE_ACCEPT } from "@bh2980/cms/core/api";
-import { LINKABLE_COLLECTIONS } from "@bh2980/cms/core/links";
+import { FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";

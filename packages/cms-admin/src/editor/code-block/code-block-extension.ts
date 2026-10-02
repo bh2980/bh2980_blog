@@ -1,4 +1,4 @@
-import { CODE_BLOCK_MARKS } from "@bh2980/cms/annotation/code-block/model";
+import { CODE_BLOCK_MARKS } from "@bh2980/cms/code-block";
 import { CodeBlock } from "@tiptap/extension-code-block";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { CodeBlockView } from "./code-block-view";

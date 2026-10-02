@@ -1,12 +1,15 @@
-import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/annotation/code-block/code-fence-to-document";
-import { createAnnotationRegistry, supportsAnnotationScope } from "@bh2980/cms/annotation/code-block/libs";
 import type {
 	AnnotationConfig,
 	AnnotationRegistry,
 	CodeBlockAnnotation,
 	CodeBlockDocument,
 	LineAnnotation,
-} from "@bh2980/cms/annotation/code-block/types";
+} from "@bh2980/cms/code-block";
+import {
+	createAnnotationRegistry,
+	fromCodeFenceToCodeBlockDocument,
+	supportsAnnotationScope,
+} from "@bh2980/cms/code-block";
 import type { Code, Root } from "mdast";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";

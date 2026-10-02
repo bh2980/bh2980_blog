@@ -1,4 +1,4 @@
-import type { CodeLineEffect, CodeRule } from "@bh2980/cms/annotation/code-block/model";
+import type { CodeLineEffect, CodeRule } from "@bh2980/cms/code-block";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import type { DecorationSet } from "@tiptap/pm/view";

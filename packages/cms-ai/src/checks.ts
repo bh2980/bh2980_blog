@@ -1,4 +1,4 @@
-import { checkPattern, ruleMatches } from "@bh2980/cms/annotation/code-block/model";
+import { checkPattern, ruleMatches } from "@bh2980/cms/code-block";
 import type { AiCandidate, AiCheck } from "./definition";
 
 /**

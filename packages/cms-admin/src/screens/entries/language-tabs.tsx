@@ -1,6 +1,6 @@
 "use client";
 
-import { LOCALES, localeLabel } from "@bh2980/cms/core/locales";
+import { LOCALES, localeLabel } from "@bh2980/cms/client";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";

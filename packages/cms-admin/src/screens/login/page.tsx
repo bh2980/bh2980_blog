@@ -1,11 +1,4 @@
-import {
-	auth,
-	authProviders,
-	isAllowedAdminId,
-	isDevAuthBypassEnabled,
-	signIn,
-	signOut,
-} from "@bh2980/cms/adapters/auth";
+import { auth, authProviders, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@bh2980/cms/runtime";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Button } from "../../ui/button";

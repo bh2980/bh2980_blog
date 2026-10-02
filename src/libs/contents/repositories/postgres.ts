@@ -1,7 +1,7 @@
 import "server-only";
 
-import type { ContentStore, PublishedEntryRecord } from "@bh2980/cms/adapters/postgres/content-store";
-import { getCmsContentStore } from "@bh2980/cms/container";
+import type { ContentStore, PublishedEntryRecord } from "@bh2980/cms/runtime";
+import { getCmsContentStore } from "@bh2980/cms/runtime";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/libs/i18n/locales";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";

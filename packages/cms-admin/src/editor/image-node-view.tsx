@@ -1,7 +1,6 @@
 "use client";
 
-import { resolveImageUrl } from "@bh2980/cms/mdx/image-src";
-import { computeImageTransform } from "@bh2980/cms/mdx/image-transform";
+import { computeImageTransform, resolveImageUrl } from "@bh2980/cms/mdx";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Crop, Settings2, Trash2 } from "lucide-react";
 import type React from "react";

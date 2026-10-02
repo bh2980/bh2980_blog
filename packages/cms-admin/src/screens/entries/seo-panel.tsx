@@ -1,7 +1,6 @@
 "use client";
 
-import { contentPath, SITE_NAME } from "@bh2980/cms/core/links";
-import { DEFAULT_LOCALE, isLocale, localizePath } from "@bh2980/cms/core/locales";
+import { contentPath, DEFAULT_LOCALE, isLocale, localizePath, SITE_NAME } from "@bh2980/cms/client";
 import { ChevronRight, ImageIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { ImageInsertDialog } from "../../editor/image-insert-dialog";

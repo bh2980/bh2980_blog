@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { slugify } from "@bh2980/cms/core/slug";
+import { slugify } from "@bh2980/cms/client";
 import { APICallError, generateText, NoObjectGeneratedError, Output, RetryError } from "ai";
 import { z } from "zod";
 import type { AiModelInfo } from "./connection";

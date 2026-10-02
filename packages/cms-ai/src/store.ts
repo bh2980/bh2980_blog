@@ -1,7 +1,5 @@
 import type { PluginDatabase } from "@bh2980/cms";
-import { withTransaction } from "@bh2980/cms/adapters/postgres/store/context";
-import { CmsError } from "@bh2980/cms/adapters/postgres/store/errors";
-import { getCmsDatabase } from "@bh2980/cms/plugin/server";
+import { CmsError, getCmsDatabase, withTransaction } from "@bh2980/cms/plugin/server";
 
 /** 기능 이름별로 고친 값 한 줄. */
 export interface AiActionOverrideRow {

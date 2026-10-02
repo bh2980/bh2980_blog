@@ -8,7 +8,7 @@ import {
 	hasLineEffect,
 	newEffectId,
 	setLineEffect,
-} from "@bh2980/cms/annotation/code-block/model";
+} from "@bh2980/cms/code-block";
 import { Check, ChevronsDownUp, ChevronsUpDown, Code2, X } from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { cn } from "../../lib/utils/cn";

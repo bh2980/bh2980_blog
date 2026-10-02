@@ -1,6 +1,6 @@
 "use client";
 
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { FileArchive, FileText, FileType } from "lucide-react";
 import { useEffect, useState } from "react";

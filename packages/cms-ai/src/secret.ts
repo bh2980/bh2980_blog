@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { getCmsSecret } from "@bh2980/cms/container";
+import { getCmsSecret } from "@bh2980/cms/plugin/server";
 import { AiError } from "./errors";
 
 /**

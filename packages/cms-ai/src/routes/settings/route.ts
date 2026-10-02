@@ -1,4 +1,4 @@
-import { adminRoute, json } from "@bh2980/cms/http/v1/handler";
+import { adminRoute, json } from "@bh2980/cms/plugin/server";
 import { getAiSettingsView } from "../../settings";
 import { getAiStore } from "../../store";
 

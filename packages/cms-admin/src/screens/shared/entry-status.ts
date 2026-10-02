@@ -1,4 +1,4 @@
-import { formatDateTimeInput } from "@bh2980/cms/core/time";
+import { formatDateTimeInput } from "@bh2980/cms/client";
 
 export type EntryStatus = "draft" | "published" | "archived" | "trashed";
 

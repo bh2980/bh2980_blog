@@ -1,6 +1,6 @@
 "use client";
 
-import { computeImageTransform, intrinsicDisplayWidth } from "@bh2980/cms/mdx/image-transform";
+import { computeImageTransform, intrinsicDisplayWidth } from "@bh2980/cms/mdx";
 import { ImageOff } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useState } from "react";

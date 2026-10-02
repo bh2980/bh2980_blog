@@ -1,4 +1,4 @@
-import type { AnnotationConfig } from "@bh2980/cms/annotation/code-block/types";
+import type { AnnotationConfig } from "@bh2980/cms/code-block";
 
 const RENDER_TAG_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const BLOCKED_RENDER_TAGS = new Set(["script", "iframe", "object", "embed", "style", "link", "meta", "base"]);

@@ -1,4 +1,4 @@
-import { contentPath } from "@bh2980/cms/core/links";
+import { contentPath } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 
 export interface InternalLinkItem {

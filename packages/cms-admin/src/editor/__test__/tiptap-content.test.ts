@@ -1,5 +1,5 @@
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
-import { readSamples } from "@bh2980/cms/mdx/__test__/fixtures/samples";
+import { readSamples } from "@bh2980/cms/testing";
 import type { JSONContent } from "@tiptap/core";
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";

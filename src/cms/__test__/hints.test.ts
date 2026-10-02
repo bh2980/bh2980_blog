@@ -1,8 +1,8 @@
-import { prepareSnapshot } from "@bh2980/cms/core/snapshot";
-import { withTranslationHints } from "@bh2980/cms/core/translation/hints";
+import { withTranslationHints } from "@bh2980/cms/client";
 import { analyze } from "@bh2980/cms/mdx";
-import { readSamples } from "@bh2980/cms/mdx/__test__/fixtures/samples";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
+import { prepareSnapshot } from "@bh2980/cms/runtime";
+import { readSamples } from "@bh2980/cms/testing";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { describe, expect, it } from "vitest";
 
 describe("새 번역본의 번역 안내(v3)", () => {

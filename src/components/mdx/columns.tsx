@@ -1,4 +1,4 @@
-import { columnsGridTemplate, parseColumnWidths } from "@bh2980/cms/mdx/columns-layout";
+import { columnsGridTemplate, parseColumnWidths } from "@bh2980/cms/mdx";
 import { Children, type CSSProperties, type PropsWithChildren } from "react";
 
 /** 좁은 화면에서는 위아래로 쌓고, 넓은 화면에서는 `widths` 비율(없으면 똑같이)로 나란히 놓는다. */

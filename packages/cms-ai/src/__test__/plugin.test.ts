@@ -1,4 +1,4 @@
-import { createCmsRouteHandler } from "@bh2980/cms/http/router";
+import { createCmsRouteHandler } from "@bh2980/cms/next/route-handler";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import aiServer from "../server";

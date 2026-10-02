@@ -6,19 +6,25 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./adapters/auth": "./src/adapters/auth/index.ts",
-		"./mdx": "./src/mdx/index.ts",
-		"./services": "./src/services/index.ts",
-		"./next": "./src/next/index.ts",
 		"./server": "./src/server/index.ts",
-		"./plugin/server": "./src/plugin/server.ts",
-		"./*": "./src/*.ts"
+		"./next": "./src/next/index.ts",
+		"./next/route-handler": "./src/next/route-handler.ts",
+		"./client": "./src/client.ts",
+		"./runtime": "./src/runtime.ts",
+		"./mdx": "./src/mdx/index.ts",
+		"./code-block": "./src/code-block.ts",
+		"./plugin/server": "./src/plugin-server.ts",
+		"./adapters/auth": "./src/adapters/auth/index.ts",
+		"./testing": "./src/testing.ts",
+		"./migrate": "./src/adapters/postgres/migrate-cli.ts",
+		"./register": "./src/register.ts"
 	},
 	"scripts": {
 		"test": "vitest",
 		"test:run": "vitest run",
 		"typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.other-site.json",
-		"typecheck:other-site": "tsc --noEmit -p tsconfig.other-site.json"
+		"typecheck:other-site": "tsc --noEmit -p tsconfig.other-site.json",
+		"build": "node ../../scripts/build-package.mjs mdx/__test__/fixtures/samples"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1136.0",
@@ -50,5 +56,66 @@
 		"typescript": "^7.0.2",
 		"vite": "^8.3.0",
 		"vitest": "^4.0.18"
-	}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"publishConfig": {
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"./server": {
+				"types": "./dist/server/index.d.ts",
+				"default": "./dist/server/index.js"
+			},
+			"./next": {
+				"types": "./dist/next/index.d.ts",
+				"default": "./dist/next/index.js"
+			},
+			"./next/route-handler": {
+				"types": "./dist/next/route-handler.d.ts",
+				"default": "./dist/next/route-handler.js"
+			},
+			"./client": {
+				"types": "./dist/client.d.ts",
+				"default": "./dist/client.js"
+			},
+			"./runtime": {
+				"types": "./dist/runtime.d.ts",
+				"default": "./dist/runtime.js"
+			},
+			"./mdx": {
+				"types": "./dist/mdx/index.d.ts",
+				"default": "./dist/mdx/index.js"
+			},
+			"./code-block": {
+				"types": "./dist/code-block.d.ts",
+				"default": "./dist/code-block.js"
+			},
+			"./plugin/server": {
+				"types": "./dist/plugin-server.d.ts",
+				"default": "./dist/plugin-server.js"
+			},
+			"./adapters/auth": {
+				"types": "./dist/adapters/auth/index.d.ts",
+				"default": "./dist/adapters/auth/index.js"
+			},
+			"./testing": {
+				"types": "./dist/testing.d.ts",
+				"default": "./dist/testing.js"
+			},
+			"./migrate": {
+				"types": "./dist/adapters/postgres/migrate-cli.d.ts",
+				"default": "./dist/adapters/postgres/migrate-cli.js"
+			},
+			"./register": {
+				"types": "./dist/register.d.ts",
+				"default": "./dist/register.js"
+			}
+		}
+	},
+	"sideEffects": false
 }

@@ -8,7 +8,7 @@ import {
 	parseRotate,
 	type RotateDegree,
 	roundCropBox,
-} from "@bh2980/cms/mdx/image-transform";
+} from "@bh2980/cms/mdx";
 import { Crop as CropIcon, RotateCw, Undo2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";

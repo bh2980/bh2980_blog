@@ -1,7 +1,6 @@
 "use client";
 
-import { isImageMime } from "@bh2980/cms/core/api";
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
 import { File, FileArchive, FileText, FileType } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { cn } from "../../lib/utils/cn";

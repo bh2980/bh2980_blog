@@ -1,4 +1,4 @@
-import type { BacklinkField } from "@bh2980/cms/schema/fields";
+import type { BacklinkField } from "@bh2980/cms/client";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

@@ -9,7 +9,7 @@ import {
 	tableCellColumns,
 	tableHasMergedCells,
 	tableWidths,
-} from "@bh2980/cms/mdx/table-layout";
+} from "@bh2980/cms/mdx";
 import { brDirectiveNode } from "./shared";
 import type { BlockConverter } from "./types";
 

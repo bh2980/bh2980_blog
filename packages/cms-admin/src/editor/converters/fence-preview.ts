@@ -1,7 +1,6 @@
-import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
-import { fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/annotation/code-block/document-to-code-fence";
-import type { CodeBlockDocument } from "@bh2980/cms/annotation/code-block/types";
-import { isBlockActive } from "@bh2980/cms/blocks/active";
+import { isBlockActive } from "@bh2980/cms/client";
+import type { CodeBlockDocument } from "@bh2980/cms/code-block";
+import { annotationConfig, fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/code-block";
 import type { CmsNode } from "@bh2980/cms/mdx";
 import { asString } from "./shared";
 import type { BlockConverter } from "./types";

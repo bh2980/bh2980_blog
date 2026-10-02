@@ -1,4 +1,4 @@
-import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
+import { CmsError } from "@bh2980/cms/runtime";
 import { NextResponse } from "next/server";
 
 /**

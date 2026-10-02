@@ -1,5 +1,5 @@
-import { BLOCKS } from "@bh2980/cms/blocks/active";
-import type { BlockDefinition } from "@bh2980/cms/blocks/define";
+import type { BlockDefinition } from "@bh2980/cms/client";
+import { BLOCKS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";

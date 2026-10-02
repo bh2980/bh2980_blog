@@ -1,8 +1,6 @@
 "use client";
 
-import { COLLECTIONS } from "@bh2980/cms/core/collections";
-import { DEFAULT_LOCALE, localeLabel, PREFIXED_LOCALES } from "@bh2980/cms/core/locales";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import { COLLECTIONS, DEFAULT_LOCALE, localeLabel, PREFIXED_LOCALES, schemaOf } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { AdminShell } from "@bh2980/cms-admin/shell";

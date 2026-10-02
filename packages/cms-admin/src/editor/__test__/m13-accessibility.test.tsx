@@ -1,4 +1,4 @@
-import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
+import type { Folder } from "@bh2980/cms/runtime";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";

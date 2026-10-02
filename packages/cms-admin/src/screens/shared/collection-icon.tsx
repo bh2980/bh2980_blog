@@ -1,5 +1,4 @@
-import { isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import { isCollection, isRecordCollection, schemaOf } from "@bh2980/cms/client";
 import {
 	Bookmark,
 	BookOpen,

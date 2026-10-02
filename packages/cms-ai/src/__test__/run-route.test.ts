@@ -25,7 +25,8 @@ vi.mock("../store", () => ({
 	}),
 }));
 
-vi.mock("@bh2980/cms/container", () => ({
+vi.mock("@bh2980/cms/plugin/server", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@bh2980/cms/plugin/server")>()),
 	getCmsContentStore: () => ({
 		listEntries: async () => ({ items: [], total: 0 }),
 		getMediaAsset: async () => null,

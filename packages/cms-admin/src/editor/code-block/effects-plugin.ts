@@ -8,7 +8,7 @@ import {
 	lineRange,
 	lineStarts,
 	ruleMatches,
-} from "@bh2980/cms/annotation/code-block/model";
+} from "@bh2980/cms/code-block";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Mapping } from "@tiptap/pm/transform";

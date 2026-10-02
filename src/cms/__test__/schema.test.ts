@@ -1,8 +1,14 @@
-import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/core/collections";
-import { prepareSnapshot, validateForPublish } from "@bh2980/cms/core/snapshot";
-import type { MetadataFor } from "@bh2980/cms/core/types";
-import { SYSTEM_LIST_COLUMNS } from "@bh2980/cms/schema/collection";
-import { metadataReferences, missingRequiredIssues, relationsOf, storedFields } from "@bh2980/cms/schema/derive";
+import type { MetadataFor } from "@bh2980/cms/client";
+import {
+	COLLECTION_DEFINITIONS,
+	COLLECTIONS,
+	metadataReferences,
+	missingRequiredIssues,
+	relationsOf,
+	SYSTEM_LIST_COLUMNS,
+	storedFields,
+} from "@bh2980/cms/client";
+import { prepareSnapshot, validateForPublish } from "@bh2980/cms/runtime";
 import { metadataFromForm } from "@bh2980/cms-admin/screens/entries/entry-form";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import cmsConfig from "@/cms.config";

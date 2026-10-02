@@ -1,9 +1,14 @@
 "use client";
 
-import type { Folder, ListEntriesItem, ListTranslationMember } from "@bh2980/cms/adapters/postgres/content-store";
-import { type AdminColumnSettings, PAGE_SIZES, type PageSize } from "@bh2980/cms/core/api";
-import { isRecordCollection } from "@bh2980/cms/core/collections";
-import { LOCALES, localeLabel } from "@bh2980/cms/core/locales";
+import {
+	type AdminColumnSettings,
+	isRecordCollection,
+	LOCALES,
+	localeLabel,
+	PAGE_SIZES,
+	type PageSize,
+} from "@bh2980/cms/client";
+import type { Folder, ListEntriesItem, ListTranslationMember } from "@bh2980/cms/runtime";
 import {
 	type ColumnOrderState,
 	type ColumnSizingState,

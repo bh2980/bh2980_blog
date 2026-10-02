@@ -1,13 +1,13 @@
 "use client";
 
-import { columns as columnsDefinition } from "@bh2980/cms/blocks/definitions";
+import { columns as columnsDefinition } from "@bh2980/cms/client";
 import {
 	columnsGridTemplate,
 	formatColumnWidths,
 	MIN_COLUMN_PERCENT,
 	parseColumnWidths,
 	toPercentWidths,
-} from "@bh2980/cms/mdx/columns-layout";
+} from "@bh2980/cms/mdx";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Columns2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { type CSSProperties, type PointerEvent, useLayoutEffect, useRef, useState } from "react";

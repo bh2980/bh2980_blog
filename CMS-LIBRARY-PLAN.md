@@ -364,6 +364,12 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | 2026-10-03 | M6 | 사이트 설정 `blocks: { disable, custom }`. 끌 수 있는 내장 블록은 콜아웃·접기·탭·단·Mermaid·차트뿐이다(자식 블록은 함께 꺼진다). 이미지·파일·표·수식·글자 꾸밈·번역 안내 글은 다른 기능이 기대거나 Markdown 문법이라 끄지 않는다 | 끈 블록은 저장 문법에서 빠져 이미 쓴 본문이 일반 글로 바뀐다. 문서에 "쓰던 블록은 끄지 않는다"를 적었다 |
 | 2026-10-03 | M6 | 사용자 블록은 지시자 블록(`container`·`leaf`)만 더한다. `editor.view: "node"`면 이름에서 만든 편집기 노드로, 사이트가 `blockEditors`로 편집 컴포넌트를 주면 그것으로, 안 주면 블록 이름·속성 입력·본문을 담은 기본 상자로 편집한다. `"opaque"`면 원문 상자다 | 기본값("없으면 원문 편집 상자")보다 기본 상자가 쓸모 있어 노드 블록에 붙였다. 원문 상자가 필요하면 `opaque`로 둔다 |
 | 2026-10-03 | M6 | 본체 예시 설정(`packages/cms/test/cms.config.ts`)에 사용자 블록 `notice`·`embed`를 더했다. 블로그 설정에는 없다 | 사용자 블록의 저장·검사·편집 왕복을 테스트로 확인한다 |
+| 2026-10-03 | M7 | **공개 진입점**: 본체 `.`·`/server`·`/next`·`/next/route-handler`·`/client`(화면용)·`/runtime`(서버용)·`/mdx`·`/code-block`·`/plugin/server`·`/adapters/auth`·`/migrate`·`/register`·`/testing`. 관리자 `.`·`/next`·`/editor`·`/plugins`·`/slots`·`/api`·`/shell`·`/confirm-dialog`·`/hooks/use-debounced`·`/lib/utils/cn`·`/ui/*`·`/styles.css` 등. `./*`를 없애고 블로그·패키지의 import 138곳을 진입점으로 바꿨다 | 부록 A의 묶음대로. 서버 전용 모듈(`node:crypto`·`pg`·`server-only`)은 `/runtime`·`/plugin/server`에만 둔다 |
+| 2026-10-03 | M7 | **빌드**: `tsc`로 파일마다 `dist`(ESM·타입 선언)를 내고 상대 경로에 `.js`를 붙인다(`scripts/build-package.mjs`). 저장소 안에서는 `exports`가 소스를 가리키고, 배포 묶음은 `publishConfig.exports`(dist)를 쓴다. 이 값은 `exports`에서 만들고 다르면 빌드가 멈춘다 | 개발 중에는 빌드 없이 소스를 쓰고, 배포 묶음만 dist다. "use client" 지시문이 파일마다 남는다 |
+| 2026-10-03 | M7 | **peer 의존성**: 하나만 있어야 하는 것(`@bh2980/cms`·`@bh2980/cms-admin`·React Query·sonner·Tiptap core/pm/react·Next·React)은 peer, 나머지는 각 패키지 의존성. 본체는 `sideEffects: false` | 문맥(Provider)·전역 연결을 나눠 쓰는 것이 둘이 되지 않게 한다 |
+| 2026-10-03 | M7 | **스타일**: 관리자 색 토큰을 블로그 `globals.css`에서 `@bh2980/cms-admin/styles.css`로 옮기고 블로그가 import한다. 배포 묶음은 `@source "./dist"`로 클래스를 찾는다. AI 플러그인도 `styles.css`를 준다 | 선택자(`html:has(.cms-admin)`)가 블로그 토큰보다 구체적이라 순서가 바뀌어도 모양이 같다 |
+| 2026-10-03 | M7 | **예시 앱**(`examples/other-site`): 작업 공간 밖에서 `pnpm pack` 묶음(`vendor/*.tgz`)을 설치한다. 확인: 타입 검사·`next build` 통과, `cms:db:migrate`(`@bh2980/cms/register`로 설정 별칭 잇기), 개발 서버에서 Article·Topic 관리자 화면, Topic 만들기, 글에 Topic·사용자 블록 넣고 발행. 블로그도 `exports`를 잠시 dist로 바꿔 `next build`가 통과했다 | M7-1 "빌드한 패키지로 동작"과 M7-2를 함께 확인 |
+| 2026-10-03 | M7 | 미디어 저장소를 두지 않은 사이트도 사이드바에 "미디어"가 보인다(누르면 오류). 고치지 않았다 | 예시 앱에서 찾았다. 미디어가 없으면 항목을 숨기는 일은 따로 한다 |
 
 
 ## 7. 진행 상태
@@ -377,7 +383,8 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | M4 | 완료 |
 | M5 | 완료 |
 | M6 | 완료 |
-| M7–M8 | 대기 |
+| M7 | M7-1~3 완료 (M7-4 새 레포 이전은 하지 않음) |
+| M8 | 대기 |
 
 ---
 

@@ -1,10 +1,8 @@
 "use client";
 
-import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
-import { isCollection } from "@bh2980/cms/core/collections";
-import { localeLabel } from "@bh2980/cms/core/locales";
-import type { LayoutGroup } from "@bh2980/cms/schema/collection";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import type { LayoutGroup } from "@bh2980/cms/client";
+import { isCollection, localeLabel, schemaOf } from "@bh2980/cms/client";
+import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";

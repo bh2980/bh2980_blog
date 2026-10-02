@@ -1,4 +1,4 @@
-import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/http/v1/handler";
+import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { z } from "zod";
 import { type AiCheckResult, aiProviderCheckSchema } from "../../../connection";
 import { AiError } from "../../../errors";

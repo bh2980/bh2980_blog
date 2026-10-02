@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	type CodeLineEffect,
-	type CodeRule,
-	lineAt,
-	lineRange,
-	lineStarts,
-} from "@bh2980/cms/annotation/code-block/model";
+import { type CodeLineEffect, type CodeRule, lineAt, lineRange, lineStarts } from "@bh2980/cms/code-block";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
 import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
 import { useCallback, useId, useRef, useState } from "react";

@@ -1,5 +1,5 @@
-import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/annotation/code-block/code-fence-to-document";
-import type { AnnotationConfig, CodeBlockDocument } from "@bh2980/cms/annotation/code-block/types";
+import type { AnnotationConfig, CodeBlockDocument } from "@bh2980/cms/code-block";
+import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/code-block";
 import type { DecorationItem } from "shiki";
 import { describe, expect, it } from "vitest";
 import * as remarkModule from "../remark-annotation-to-decoration";

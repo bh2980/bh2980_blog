@@ -1,6 +1,5 @@
-import type { ListSortField } from "@bh2980/cms/core/api";
-import { isCollection, isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
-import { schemaOf } from "@bh2980/cms/schema/derive";
+import type { ListSortField } from "@bh2980/cms/client";
+import { isCollection, isRecordCollection, schemaOf, taxonomyFieldsOf } from "@bh2980/cms/client";
 import type { ListState } from "./list-state";
 
 /**

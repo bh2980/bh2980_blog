@@ -1,4 +1,4 @@
-import type { CodeLineEffect, CodeRule } from "@bh2980/cms/annotation/code-block/model";
+import type { CodeLineEffect, CodeRule } from "@bh2980/cms/code-block";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";

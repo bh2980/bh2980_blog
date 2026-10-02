@@ -1,5 +1,4 @@
-import { DIRECTIVES } from "@bh2980/cms/mdx/directives";
-import { BLOCK_JSX_NAMES, REGISTERED_JSX_NAMES, RETIRED_JSX_NAMES } from "@bh2980/cms/mdx/registry";
+import { BLOCK_JSX_NAMES, DIRECTIVES, REGISTERED_JSX_NAMES, RETIRED_JSX_NAMES } from "@bh2980/cms/mdx";
 import { describe, expect, it } from "vitest";
 import { MDX_COMPONENTS } from "@/components/mdx/mdx-content";
 
