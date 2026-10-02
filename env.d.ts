@@ -5,12 +5,6 @@ declare namespace NodeJS {
 		CMS_DATABASE_URL: string;
 		CMS_TEST_DATABASE_URL?: string;
 		CMS_TEST_DATABASE_ALLOW_SCHEMA_CREATE?: string;
-		/**
-		 * 공개 조회 저장소 선택. **`postgres`가 필수**다(M9-BE-3에서 Keystatic 저장소를 제거했다).
-		 * 미설정·오값이면 실패하며, 플래그 없이 배포하면 공개 경로가 오류가 난다(fail-closed).
-		 * 배포 전에 이 값을 설정하는 것이 필수 선행조건이다. 규칙은 repositories/source.ts 참조.
-		 */
-		CMS_PUBLIC_REPOSITORY?: string;
 		/** 기본 스키마(`public`)를 바꾼다. 미리보기/스테이징에서 같은 DB를 나눠 쓸 때 쓴다. */
 		CMS_SCHEMA?: string;
 
@@ -22,6 +16,8 @@ declare namespace NodeJS {
 		CMS_ADMIN_GITHUB_ID: string;
 		/** 로컬 개발환경 한정 관리자 인증 우회. development 에서 "1"일 때만 유효. */
 		CMS_DEV_AUTH_BYPASS?: string;
+		/** 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. 없으면 예약 화면에 실행기 연결이 필요하다고 안내한다. */
+		CMS_SCHEDULER_TOKEN?: string;
 
 		CMS_R2_ACCOUNT_ID: string;
 		CMS_R2_ACCESS_KEY_ID: string;
