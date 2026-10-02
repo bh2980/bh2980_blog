@@ -1,5 +1,5 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
 import type { NextRequest } from "next/server";
-import { AuthError } from "@/cms/adapters/auth";
 import { HttpError } from "./error-handler";
 
 /**

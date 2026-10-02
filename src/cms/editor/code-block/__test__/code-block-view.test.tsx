@@ -1,3 +1,4 @@
+import type { CodeLineEffect, CodeRule } from "@bh2980/cms/annotation/code-block/model";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -7,7 +8,6 @@ import { findBlockDOM, refineBlock } from "../../drag";
 import { buildEditorExtensions } from "../../extensions";
 import { inlineBubbleTarget } from "../../inline-marks";
 import { mdxToTiptap, tiptapToMdx } from "../../tiptap-content";
-import type { CodeLineEffect, CodeRule } from "../model";
 
 afterEach(cleanup);
 

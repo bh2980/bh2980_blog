@@ -1,8 +1,8 @@
+import { ANCHOR, type CodeLineEffect, newEffectId } from "@bh2980/cms/annotation/code-block/model";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { TextSelection, type Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { codeEffectsKey, effectsMeta, type LinkDraft, lineEffectsOf } from "./effects-plugin";
-import { ANCHOR, type CodeLineEffect, newEffectId } from "./model";
 
 /**
  * 본문–코드 잇기(v2). 본문 글자에 `codeRef{to}` 마크를, 코드 블록 줄에 이름표(`anchor` 줄 효과, `attrs.id`)를 단다.

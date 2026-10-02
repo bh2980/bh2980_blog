@@ -1,10 +1,10 @@
 "use client";
 
+import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@bh2980/cms/core/api";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGrid, List, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@/cms/core/api";
 import { prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

@@ -1,8 +1,8 @@
 "use client";
 
+import type { AiModelInfo } from "@bh2980/cms/ai/connection";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import type { AiModelInfo } from "@/cms/ai/connection";
 import {
 	Combobox,
 	ComboboxContent,

@@ -1,9 +1,9 @@
 "use client";
 
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { FileArchive, FileText, FileType } from "lucide-react";
 import { useEffect, useState } from "react";
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
 import { cn } from "@/utils/cn";
 
 const ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };

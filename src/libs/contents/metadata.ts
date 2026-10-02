@@ -3,7 +3,7 @@
  * 공개본·초안 미리보기·SEO가 같은 규칙으로 읽도록 한곳에 둔다.
  */
 
-/** 게시글 `policy` 선택 값(`src/cms/schema/definitions.ts`). */
+/** 게시글 `policy` 선택 값(`src/cms.config.ts`). */
 export const POLICY_EVERGREEN = "evergreen";
 export const POLICY_DEPRECATED = "deprecated";
 

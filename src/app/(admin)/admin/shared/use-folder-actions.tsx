@@ -1,9 +1,9 @@
 "use client";
 
+import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
+import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/core/collections";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import type { Folder } from "@/cms/adapters/postgres/content-store";
-import { COLLECTION_DEFINITIONS, isCollection } from "@/cms/core/collections";
 import {
 	AlertDialog,
 	AlertDialogCancel,

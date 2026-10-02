@@ -4,10 +4,20 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => ({
 	test: {
-		environment: "jsdom",
-		globals: true,
-		include: ["src/**/*.{test,spec}.{ts,tsx}"],
-		setupFiles: ["./src/test/setup-dom.ts"],
+		// 블로그와 CMS 패키지(`packages/*`)를 한 번에 돌린다. 패키지는 자기 설정 파일을 쓴다.
+		projects: [
+			{
+				extends: true,
+				test: {
+					name: "blog",
+					environment: "jsdom",
+					globals: true,
+					include: ["src/**/*.{test,spec}.{ts,tsx}"],
+					setupFiles: ["./src/test/setup-dom.ts"],
+				},
+			},
+			"packages/*",
+		],
 		testTimeout: 60000,
 		hookTimeout: 60000,
 		env: {
@@ -20,6 +30,7 @@ export default defineConfig(({ mode }) => ({
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src"),
+			"@cms-config": path.resolve(__dirname, "./src/cms.config.ts"),
 			// `server-only`는 next의 의존성으로만 설치되어 루트에서 해석되지 않는다.
 			// Next 빌드에는 영향이 없고, 테스트만 스텁으로 대체한다.
 			"server-only": path.resolve(__dirname, "./src/test/stubs/server-only.ts"),

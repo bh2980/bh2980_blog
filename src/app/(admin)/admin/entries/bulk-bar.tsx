@@ -1,10 +1,10 @@
 "use client";
 
+import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
+import type { BulkOp } from "@bh2980/cms/core/api";
+import { isRecordCollection } from "@bh2980/cms/core/collections";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Folder } from "@/cms/adapters/postgres/content-store";
-import type { BulkOp } from "@/cms/core/api";
-import { isRecordCollection } from "@/cms/core/collections";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";

@@ -1,5 +1,5 @@
-import { detectImageDimensionsAndType } from "@/cms/adapters/r2/media-store";
-import type { AllowedMediaMime, MediaStore } from "@/cms/adapters/r2/types";
+import { detectImageDimensionsAndType } from "@bh2980/cms/adapters/r2/media-store";
+import type { AllowedMediaMime, MediaStore } from "@bh2980/cms/adapters/r2/types";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	type AllowedFileMime,
@@ -7,7 +7,7 @@ import {
 	MAX_FILE_BYTES,
 	MAX_MEDIA_BYTES,
 	MAX_MEDIA_PIXELS,
-} from "@/cms/core/api";
+} from "@bh2980/cms/core/api";
 import { HttpError } from "../error-handler";
 
 export const UPLOAD_URL_TTL_SECONDS = 600;

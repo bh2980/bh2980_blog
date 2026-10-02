@@ -1,6 +1,6 @@
 import "server-only";
 
-import { resolvePublicMediaUrl } from "@/cms/mdx/public-image-resolver";
+import { resolvePublicMediaUrl } from "@bh2980/cms/mdx/public-image-resolver";
 import { createImageOgResponse, createOgImageResponse } from "./og";
 import type { SeoMetadata } from "./types/contents";
 

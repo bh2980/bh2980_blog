@@ -1,3 +1,3 @@
-import { handlers } from "@/cms/adapters/auth";
+import { handlers } from "@bh2980/cms/adapters/auth";
 
 export const { GET, POST } = handlers;

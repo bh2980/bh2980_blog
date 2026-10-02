@@ -1,9 +1,9 @@
 "use client";
 
+import { callout } from "@bh2980/cms/blocks/definitions";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { callout } from "@/cms/blocks/definitions";
 import { CALLOUT_ICON_BY_VARIANT, type CalloutVariant, getDefaultCalloutTitle } from "@/components/mdx/callout";
 import { Alert } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

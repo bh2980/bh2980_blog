@@ -1,4 +1,4 @@
-import type { CmsNode } from "../../mdx";
+import type { CmsNode } from "@bh2980/cms/mdx";
 
 export const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
 export const asNumber = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);

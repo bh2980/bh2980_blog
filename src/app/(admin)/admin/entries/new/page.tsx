@@ -1,5 +1,5 @@
-import { isCollection } from "@/cms/core/collections";
-import { isUuid } from "@/cms/core/ids";
+import { isCollection } from "@bh2980/cms/core/collections";
+import { isUuid } from "@bh2980/cms/core/ids";
 import { requireAdminPage } from "../../require-admin";
 import { EntryEditorShell } from "../entry-editor-shell";
 

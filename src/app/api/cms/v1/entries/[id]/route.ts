@@ -1,7 +1,7 @@
-import { getCmsContentService, getCmsContentStore } from "@/cms/container";
-import { patchEntryBodySchema } from "@/cms/core/api";
-import { isRecordCollection } from "@/cms/core/collections";
-import type { SaveDraftInput } from "@/cms/services/types";
+import { getCmsContentService, getCmsContentStore } from "@bh2980/cms/container";
+import { patchEntryBodySchema } from "@bh2980/cms/core/api";
+import { isRecordCollection } from "@bh2980/cms/core/collections";
+import type { SaveDraftInput } from "@bh2980/cms/services/types";
 import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../handler";
 
 type IdParams = { id: string };

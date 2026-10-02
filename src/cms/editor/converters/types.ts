@@ -1,5 +1,5 @@
+import type { CmsNode } from "@bh2980/cms/mdx";
 import type { JSONContent } from "@tiptap/core";
-import type { CmsNode } from "../../mdx";
 
 /** 변환기가 재귀 변환·인라인 변환에 쓰는 함수. `tiptap-content.ts`가 넘긴다. */
 export interface ConverterContext {

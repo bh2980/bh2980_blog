@@ -1,3 +1,7 @@
+import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
+import { analyze } from "@bh2980/cms/mdx";
+import type { ImageResolver } from "@bh2980/cms/mdx/image-src";
+import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx/remark-directives";
 import type { Root, Text } from "mdast";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ComponentProps } from "react";
@@ -11,10 +15,6 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { PluggableList } from "unified";
 import { visit } from "unist-util-visit";
-import { analyze } from "@/cms/mdx";
-import type { ImageResolver } from "@/cms/mdx/image-src";
-import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@/cms/mdx/remark-directives";
-import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { remarkChartToMdx } from "@/libs/chart";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";

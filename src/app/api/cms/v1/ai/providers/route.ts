@@ -1,6 +1,6 @@
-import { aiProviderRequestSchema } from "@/cms/ai/connection";
-import { addAiProvider } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
+import { aiProviderRequestSchema } from "@bh2980/cms/ai/connection";
+import { addAiProvider } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 
 /** 연결 추가. 설정 전체의 버전이 다르면 409다. */

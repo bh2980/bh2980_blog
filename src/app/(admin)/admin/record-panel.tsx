@@ -1,10 +1,10 @@
 "use client";
 
+import { COLLECTION_DEFINITIONS, type Collection } from "@bh2980/cms/core/collections";
+import { slugify } from "@bh2980/cms/core/slug";
+import { recordLocalizedFields, type SchemaCollection } from "@bh2980/cms/schema/derive";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { COLLECTION_DEFINITIONS, type Collection } from "@/cms/core/collections";
-import { slugify } from "@/cms/core/slug";
-import { recordLocalizedFields, type SchemaCollection } from "@/cms/schema/derive";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES, type Locale } from "@/libs/i18n/locales";

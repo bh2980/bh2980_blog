@@ -1,9 +1,9 @@
+import { cleanTextColor, hasTextColor } from "@bh2980/cms/core/text-colors";
+import type { CmsJsonValue, CmsMark, CmsNode } from "@bh2980/cms/mdx";
+import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
+import { TEXT_ALIGN_VALUES as ALIGN_VALUES } from "@bh2980/cms/mdx/directives";
+import { sortMarks } from "@bh2980/cms/mdx/registry";
 import type { JSONContent } from "@tiptap/core";
-import { cleanTextColor, hasTextColor } from "../core/text-colors";
-import type { CmsJsonValue, CmsMark, CmsNode } from "../mdx";
-import { analyze, serialize, toDocument } from "../mdx";
-import { TEXT_ALIGN_VALUES as ALIGN_VALUES } from "../mdx/directives";
-import { sortMarks } from "../mdx/registry";
 import { COLOR_MARK_NAME } from "./color-mark";
 import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
 import { asNumber, asString, brDirectiveNode } from "./converters/shared";

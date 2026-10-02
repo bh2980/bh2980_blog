@@ -1,5 +1,5 @@
-import { isCollection } from "@/cms/core/collections";
-import { parseTranslationState, type TranslationState } from "@/cms/core/translation/state";
+import { isCollection } from "@bh2980/cms/core/collections";
+import { parseTranslationState, type TranslationState } from "@bh2980/cms/core/translation/state";
 import {
 	localizedFieldNames,
 	RECORD_TRANSLATIONS_KEY,
@@ -7,7 +7,7 @@ import {
 	type SchemaCollection,
 	type StoredField,
 	storedFields,
-} from "@/cms/schema/derive";
+} from "@bh2980/cms/schema/derive";
 import { PREFIXED_LOCALES } from "@/libs/i18n/locales";
 
 /** 폼 입력 하나의 값. 텍스트·한 개 관계·선택·날짜는 문자열(관계는 비면 `null`), 여러 개 관계는 배열이다. */

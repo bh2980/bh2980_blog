@@ -1,12 +1,12 @@
 "use client";
 
+import type { AdminColumnSettings } from "@bh2980/cms/core/api";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/core/collections";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { AdminColumnSettings } from "@/cms/core/api";
-import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@/cms/core/collections";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { AdminEntriesTable } from "./admin-entries-table";

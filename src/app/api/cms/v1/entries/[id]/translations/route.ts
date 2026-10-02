@@ -1,5 +1,5 @@
+import { getCmsContentService, getCmsContentStore } from "@bh2980/cms/container";
 import { z } from "zod";
-import { getCmsContentService, getCmsContentStore } from "@/cms/container";
 import { LOCALES } from "@/libs/i18n/locales";
 import { adminRoute, json, parseWith, readJsonBody } from "../../../handler";
 

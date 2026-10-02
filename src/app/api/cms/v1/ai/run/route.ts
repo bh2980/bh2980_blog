@@ -1,9 +1,9 @@
-import { withBuiltin } from "@/cms/ai/builtins";
-import { aiRunBodySchema } from "@/cms/ai/definition";
-import { AiError } from "@/cms/ai/errors";
-import { runAiFeature } from "@/cms/ai/run";
-import { loadAiRuntime } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
+import { withBuiltin } from "@bh2980/cms/ai/builtins";
+import { aiRunBodySchema } from "@bh2980/cms/ai/definition";
+import { AiError } from "@bh2980/cms/ai/errors";
+import { runAiFeature } from "@bh2980/cms/ai/run";
+import { loadAiRuntime } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 import { aiRunDeps, parseFeatureSpec } from "../ai-route";
 

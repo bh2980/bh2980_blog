@@ -1,4 +1,4 @@
-import type { CmsJsonValue } from "../../mdx";
+import type { CmsJsonValue } from "@bh2980/cms/mdx";
 import {
 	boundedTableSpan,
 	formatTableWidths,
@@ -9,7 +9,7 @@ import {
 	tableCellColumns,
 	tableHasMergedCells,
 	tableWidths,
-} from "../../mdx/table-layout";
+} from "@bh2980/cms/mdx/table-layout";
 import { brDirectiveNode } from "./shared";
 import type { BlockConverter } from "./types";
 

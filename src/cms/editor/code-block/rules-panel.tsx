@@ -1,12 +1,5 @@
 "use client";
 
-import { Plus, Regex, Trash2 } from "lucide-react";
-import { useSlot } from "@/cms/slots/slots";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/utils/cn";
 import {
 	CODE_CHAR_EFFECTS,
 	type CodeCharEffectName,
@@ -15,7 +8,14 @@ import {
 	escapePattern,
 	newEffectId,
 	ruleMatches,
-} from "./model";
+} from "@bh2980/cms/annotation/code-block/model";
+import { Plus, Regex, Trash2 } from "lucide-react";
+import { useSlot } from "@/cms/slots/slots";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
 
 interface RulesPanelProps {
 	rules: CodeRule[];

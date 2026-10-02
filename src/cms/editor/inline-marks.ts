@@ -1,9 +1,9 @@
+import { type CodeRule, ruleMatches } from "@bh2980/cms/annotation/code-block/model";
 import type { Editor } from "@tiptap/core";
 import type { Mark, ResolvedPos } from "@tiptap/pm/model";
 import { type EditorState, TextSelection } from "@tiptap/pm/state";
 import { Bold, CodeXml, Italic, Strikethrough, Subscript, Superscript, Underline } from "lucide-react";
 import { codeEffectsKey, rulesOf } from "./code-block/effects-plugin";
-import { type CodeRule, ruleMatches } from "./code-block/model";
 import { selectedBlocks } from "./drag";
 import type { ToolbarItem } from "./toolbar-button";
 

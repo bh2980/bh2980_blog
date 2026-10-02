@@ -1,7 +1,3 @@
-import type { Node as PmNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
-import { Mapping } from "@tiptap/pm/transform";
-import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import {
 	ANCHOR,
 	COLLAPSE,
@@ -12,7 +8,11 @@ import {
 	lineRange,
 	lineStarts,
 	ruleMatches,
-} from "./model";
+} from "@bh2980/cms/annotation/code-block/model";
+import type { Node as PmNode } from "@tiptap/pm/model";
+import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
+import { Mapping } from "@tiptap/pm/transform";
+import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
 /**
  * 코드 블록의 줄 효과·정규식 규칙·접기를 에디터에 보인다(v2 C5 코드 블록 재개발).

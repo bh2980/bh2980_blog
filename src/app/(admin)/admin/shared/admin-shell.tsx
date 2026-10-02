@@ -1,8 +1,8 @@
 "use client";
 
+import { COLLECTIONS } from "@bh2980/cms/core/collections";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
-import { COLLECTIONS } from "@/cms/core/collections";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cmsFetch } from "../admin-api";
 import { AdminSidebar, type AdminSidebarProps } from "../admin-sidebar";

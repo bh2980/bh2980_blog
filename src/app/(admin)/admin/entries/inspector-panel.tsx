@@ -1,12 +1,12 @@
 "use client";
 
+import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
+import { isCollection } from "@bh2980/cms/core/collections";
+import type { LayoutGroup } from "@bh2980/cms/schema/collection";
+import { schemaOf } from "@bh2980/cms/schema/derive";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
-import { isCollection } from "@/cms/core/collections";
-import type { LayoutGroup } from "@/cms/schema/collection";
-import { schemaOf } from "@/cms/schema/derive";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

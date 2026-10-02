@@ -1,7 +1,7 @@
-import type { AdminListColumn, ListSortField } from "@/cms/core/api";
-import { ADMIN_LIST_COLUMNS } from "@/cms/core/api";
-import { isCollection, isRecordCollection } from "@/cms/core/collections";
-import { schemaOf, storedField } from "@/cms/schema/derive";
+import type { AdminListColumn, ListSortField } from "@bh2980/cms/core/api";
+import { ADMIN_LIST_COLUMNS } from "@bh2980/cms/core/api";
+import { isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
+import { schemaOf, storedField } from "@bh2980/cms/schema/derive";
 import type { ListState } from "./list-state";
 
 type DateFromKey = "createdFrom" | "updatedFrom" | "publishedFrom";

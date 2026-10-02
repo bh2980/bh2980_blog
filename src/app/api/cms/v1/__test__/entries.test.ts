@@ -1,14 +1,14 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError } from "@/cms/adapters/auth";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { PATCH as patchEntry } from "../entries/[id]/route";
 import { POST as postEntries } from "../entries/route";
 import { GET as getMeta } from "../meta/route";
 
 const mockVerifyAdmin = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -22,7 +22,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => {
+vi.mock("@bh2980/cms/container", () => {
 	const mockStore = {
 		listEntries: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 }),
 		getEntry: vi.fn().mockImplementation((id: string) => {

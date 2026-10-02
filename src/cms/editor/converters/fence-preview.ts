@@ -1,7 +1,7 @@
-import { annotationConfig } from "@/libs/annotation/code-block/constants";
-import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
-import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
-import type { CmsNode } from "../../mdx";
+import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
+import { fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/annotation/code-block/document-to-code-fence";
+import type { CodeBlockDocument } from "@bh2980/cms/annotation/code-block/types";
+import type { CmsNode } from "@bh2980/cms/mdx";
 import { asString } from "./shared";
 import type { BlockConverter } from "./types";
 

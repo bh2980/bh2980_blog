@@ -1,5 +1,5 @@
-import { getCmsContentStore } from "@/cms/container";
-import { scheduleBodySchema } from "@/cms/core/api";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { scheduleBodySchema } from "@bh2980/cms/core/api";
 import { HttpError } from "../../../error-handler";
 import { adminRoute, json, readVersionedBody } from "../../../handler";
 

@@ -1,9 +1,9 @@
 import "server-only";
 
-import type { Entry, EntryMetadata } from "@/cms/adapters/postgres/content-store";
-import { getCmsContentStore } from "@/cms/container";
-import { isCollection } from "@/cms/core/collections";
-import { mergeTranslationMetadata } from "@/cms/schema/derive";
+import type { Entry, EntryMetadata } from "@bh2980/cms/adapters/postgres/content-store";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { isCollection } from "@bh2980/cms/core/collections";
+import { mergeTranslationMetadata } from "@bh2980/cms/schema/derive";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { POLICY_EVERGREEN, readMetadataString, readMetadataStringArray } from "../metadata";
 import { readSeoMetadata } from "../seo";

@@ -1,6 +1,6 @@
-import { aiProviderRequestSchema } from "@/cms/ai/connection";
-import { removeAiProvider, updateAiProvider } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
+import { aiProviderRequestSchema } from "@bh2980/cms/ai/connection";
+import { removeAiProvider, updateAiProvider } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json, parseWith, readJsonBody, readVersionQuery } from "../../../handler";
 
 type IdParams = { id: string };

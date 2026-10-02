@@ -1,4 +1,4 @@
-import type { CmsNode } from "../../mdx";
+import type { CmsNode } from "@bh2980/cms/mdx";
 import { CONTAINER_CONVERTERS } from "../blocks/containers";
 import { codeBlockConverter } from "./code-block";
 import { chartConverter, mathConverter, mermaidConverter } from "./fence-preview";

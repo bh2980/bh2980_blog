@@ -1,8 +1,8 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
+import { ServiceError } from "@bh2980/cms/services/types";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError } from "@/cms/adapters/auth";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
-import { ServiceError } from "@/cms/services/types";
 import { POST } from "../route";
 
 const { verifyAdmin, getWorking, publishEntry, imageWarningsForPublish } = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ const { verifyAdmin, getWorking, publishEntry, imageWarningsForPublish } = vi.ho
 	imageWarningsForPublish: vi.fn(),
 }));
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: { verifyAdmin },
 	AuthError: class AuthError extends Error {
 		constructor(
@@ -23,11 +23,11 @@ vi.mock("@/cms/adapters/auth", () => ({
 		}
 	},
 }));
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({ getWorking, publishEntry, getMediaAsset: vi.fn() }),
 	getCmsMediaStore: () => ({ headFile: vi.fn() }),
 }));
-vi.mock("@/cms/core/snapshot", () => ({ imageWarningsForPublish }));
+vi.mock("@bh2980/cms/core/snapshot", () => ({ imageWarningsForPublish }));
 
 function request(body: unknown = { expectedVersion: 4 }, origin = "http://localhost") {
 	return new NextRequest("http://localhost/api/cms/v1/entries/entry-1/publish", {

@@ -1,6 +1,6 @@
+import type { CmsMdxError, CmsNode } from "@bh2980/cms/mdx";
+import { SourceConverter } from "@bh2980/cms/mdx";
 import { describe, expect, it } from "vitest";
-import type { CmsMdxError, CmsNode } from "../../mdx";
-import { SourceConverter } from "../../mdx";
 import { EditorToggle } from "../editor-toggle";
 
 describe("EditorToggle", () => {

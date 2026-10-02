@@ -1,5 +1,12 @@
 "use client";
 
+import {
+	type CodeLineEffect,
+	type CodeRule,
+	lineAt,
+	lineRange,
+	lineStarts,
+} from "@bh2980/cms/annotation/code-block/model";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
 import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
 import { useCallback, useId, useRef, useState } from "react";
@@ -22,7 +29,6 @@ import { CODE_LANGUAGE_OPTIONS } from "./languages";
 import { LineMenu } from "./line-menu";
 import { startLinkFromLines } from "./link-commands";
 import { formatMeta, parseMeta } from "./meta";
-import { type CodeLineEffect, type CodeRule, lineAt, lineRange, lineStarts } from "./model";
 import { RulesPanel } from "./rules-panel";
 
 /** 한 줄 높이(px). 코드(`leading-6`)와 줄 번호 칸·줄 배경이 같은 높이를 쓴다. */

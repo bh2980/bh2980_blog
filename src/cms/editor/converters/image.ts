@@ -1,5 +1,5 @@
-import type { CmsJsonValue } from "../../mdx";
-import { isValidCrop, isValidRotate } from "../../mdx/image-transform";
+import type { CmsJsonValue } from "@bh2980/cms/mdx";
+import { isValidCrop, isValidRotate } from "@bh2980/cms/mdx/image-transform";
 import type { BlockConverter } from "./types";
 
 const IMAGE_ATTRS = [

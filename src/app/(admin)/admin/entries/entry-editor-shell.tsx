@@ -1,5 +1,10 @@
 "use client";
 
+import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
+import { isRecordCollection } from "@bh2980/cms/core/collections";
+import { autoSummary } from "@bh2980/cms/core/plain-text";
+import { slugify } from "@bh2980/cms/core/slug";
+import { analyze } from "@bh2980/cms/mdx";
 import {
 	Archive,
 	CalendarClock,
@@ -21,12 +26,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { IncomingReferenceItem } from "@/cms/adapters/postgres/content-store";
-import { isRecordCollection } from "@/cms/core/collections";
-import { autoSummary } from "@/cms/core/plain-text";
-import { slugify } from "@/cms/core/slug";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
-import { analyze } from "@/cms/mdx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {

@@ -1,6 +1,6 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 
 const mocks = vi.hoisted(() => ({
 	verifyAdmin: vi.fn(),
@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 	cancelSchedule: vi.fn(),
 }));
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	AuthError: class AuthError extends Error {
 		constructor(
 			public readonly code: "unauthorized" | "forbidden",
@@ -20,7 +20,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	authGateway: { verifyAdmin: () => mocks.verifyAdmin() },
 }));
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		createSchedule: mocks.createSchedule,
 		cancelSchedule: mocks.cancelSchedule,
@@ -97,7 +97,7 @@ describe("M7-TW-1 예약 API 회귀", () => {
 	});
 
 	it("세션이 없으면 401이고 예약을 만들지 않는다", async () => {
-		const { AuthError } = await import("@/cms/adapters/auth");
+		const { AuthError } = await import("@bh2980/cms/adapters/auth");
 		mocks.verifyAdmin.mockRejectedValue(new AuthError("unauthorized", "Authentication required"));
 
 		const response = await POST(

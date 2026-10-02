@@ -1,9 +1,9 @@
 "use client";
 
+import { computeImageTransform, intrinsicDisplayWidth } from "@bh2980/cms/mdx/image-transform";
 import { ImageOff } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useState } from "react";
-import { computeImageTransform, intrinsicDisplayWidth } from "@/cms/mdx/image-transform";
 import { useTranslate } from "@/libs/i18n/use-locale";
 
 export function PublicImage({

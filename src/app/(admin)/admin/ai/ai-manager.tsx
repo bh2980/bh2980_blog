@@ -1,9 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plug, RotateCcw, Save, Sparkles } from "lucide-react";
-import { useId, useState } from "react";
-import { toast } from "sonner";
 import {
 	type AiCheck,
 	type AiFeature,
@@ -17,9 +13,13 @@ import {
 	SLOT_INPUTS,
 	SLOT_LABELS,
 	SLOT_TARGETS,
-} from "@/cms/ai/definition";
-import { COLLECTIONS } from "@/cms/core/collections";
-import { schemaOf } from "@/cms/schema/derive";
+} from "@bh2980/cms/ai/definition";
+import { COLLECTIONS } from "@bh2980/cms/core/collections";
+import { schemaOf } from "@bh2980/cms/schema/derive";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, Plug, RotateCcw, Save, Sparkles } from "lucide-react";
+import { useId, useState } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

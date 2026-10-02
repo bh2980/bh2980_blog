@@ -1,10 +1,10 @@
+import { CODE_BLOCK_MARKS } from "@bh2980/cms/annotation/code-block/model";
 import { CodeBlock } from "@tiptap/extension-code-block";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { CodeBlockView } from "./code-block-view";
 import { createCodeEffectsPlugin } from "./effects-plugin";
 import { createCodeBlockHighlightPlugin } from "./highlight-plugin";
 import { createCodeBlockKeysPlugin } from "./keys";
-import { CODE_BLOCK_MARKS } from "./model";
 
 const hidden = (value: unknown) => ({ default: value, rendered: false });
 

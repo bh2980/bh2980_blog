@@ -1,14 +1,6 @@
-import type { JSONContent } from "@tiptap/core";
-import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
-import { annotationConfig } from "@/libs/annotation/code-block/constants";
-import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
-import type {
-	AnnotationAttr,
-	CodeBlockDocument,
-	InlineAnnotation,
-	LineAnnotation,
-} from "@/libs/annotation/code-block/types";
-import type { CmsNode } from "../../mdx";
+import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/annotation/code-block/code-fence-to-document";
+import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
+import { fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/annotation/code-block/document-to-code-fence";
 import {
 	type CodeLineEffect,
 	type CodeRule,
@@ -20,7 +12,15 @@ import {
 	isLineEffectName,
 	lineStarts,
 	modelFingerprint,
-} from "../code-block/model";
+} from "@bh2980/cms/annotation/code-block/model";
+import type {
+	AnnotationAttr,
+	CodeBlockDocument,
+	InlineAnnotation,
+	LineAnnotation,
+} from "@bh2980/cms/annotation/code-block/types";
+import type { CmsNode } from "@bh2980/cms/mdx";
+import type { JSONContent } from "@tiptap/core";
 import { asString } from "./shared";
 import type { BlockConverter } from "./types";
 

@@ -1,7 +1,7 @@
+import { withTranslationHints } from "@bh2980/cms/core/translation/hints";
 import { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { afterEach, describe, expect, it } from "vitest";
-import { withTranslationHints } from "@/cms/core/translation/hints";
 import { buildEditorExtensions } from "@/cms/editor/extensions";
 import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { applyTranslation, collectUnits, sourceMdxFromJson, unitAt } from "../ai-translate-units";

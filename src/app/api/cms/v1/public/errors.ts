@@ -1,5 +1,5 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextResponse } from "next/server";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 
 /**
  * 공개 API 오류 응답 (M7-BE-3).

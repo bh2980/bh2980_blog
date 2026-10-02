@@ -1,5 +1,5 @@
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { mediaPatchBodySchema } from "@/cms/core/api";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
+import { mediaPatchBodySchema } from "@bh2980/cms/core/api";
 import { HttpError } from "../../error-handler";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 

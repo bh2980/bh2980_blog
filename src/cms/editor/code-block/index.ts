@@ -1,3 +1,4 @@
+export * from "@bh2980/cms/annotation/code-block/model";
 export { CmsCodeBlock } from "./code-block-extension";
 export { CodeBlockView } from "./code-block-view";
 export { CodeFoldMark } from "./code-fold-mark";
@@ -15,5 +16,4 @@ export {
 } from "./keys";
 export { CODE_LANGUAGE_OPTIONS } from "./languages";
 export { formatMeta, parseMeta } from "./meta";
-export * from "./model";
 export type { CodeLanguageOption, ParsedCodeBlockMeta } from "./types";

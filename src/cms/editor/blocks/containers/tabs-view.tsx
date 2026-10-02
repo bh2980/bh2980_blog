@@ -1,9 +1,9 @@
 "use client";
 
+import { tabs as tabsDefinition } from "@bh2980/cms/blocks/definitions";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { PencilLine, Plus, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { tabs as tabsDefinition } from "@/cms/blocks/definitions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import {

@@ -1,6 +1,6 @@
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { versionBodySchema } from "@/cms/core/api";
-import { imageWarningsForPublish } from "@/cms/core/snapshot";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
+import { versionBodySchema } from "@bh2980/cms/core/api";
+import { imageWarningsForPublish } from "@bh2980/cms/core/snapshot";
 import { adminRoute, json, readVersionedBody } from "../../../handler";
 
 /**

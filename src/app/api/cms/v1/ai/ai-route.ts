@@ -1,14 +1,14 @@
 import "server-only";
+import { type AiFeatureSpec, aiFeatureSpecSchema } from "@bh2980/cms/ai/definition";
+import { AiError } from "@bh2980/cms/ai/errors";
+import type { AiOption, AiRunDeps } from "@bh2980/cms/ai/run";
+import type { AiRuntime } from "@bh2980/cms/ai/settings";
+import { siteImageUrl } from "@bh2980/cms/ai/site-image";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
+import { isCollection } from "@bh2980/cms/core/collections";
+import type { RelationTarget } from "@bh2980/cms/schema/derive";
+import { schemaOf } from "@bh2980/cms/schema/derive";
 import type { z } from "zod";
-import { type AiFeatureSpec, aiFeatureSpecSchema } from "@/cms/ai/definition";
-import { AiError } from "@/cms/ai/errors";
-import type { AiOption, AiRunDeps } from "@/cms/ai/run";
-import type { AiRuntime } from "@/cms/ai/settings";
-import { siteImageUrl } from "@/cms/ai/site-image";
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { isCollection } from "@/cms/core/collections";
-import { schemaOf } from "@/cms/schema/derive";
-import type { RelationTarget } from "@/cms/schema/fields";
 import { HttpError } from "../error-handler";
 
 /** 기능 정의를 검사한다. 오류는 발행 검증 모양(`issues`)이 아니라 첫 문제 한 줄로 알린다. */

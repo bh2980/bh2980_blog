@@ -1,4 +1,4 @@
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
 import { adminRoute, json } from "../../handler";
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;

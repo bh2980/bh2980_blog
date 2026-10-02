@@ -1,15 +1,15 @@
-import type { Code, Root } from "mdast";
-import type { DecorationItem } from "shiki";
-import { visit } from "unist-util-visit";
-import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
-import { createAnnotationRegistry, supportsAnnotationScope } from "@/libs/annotation/code-block/libs";
+import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/annotation/code-block/code-fence-to-document";
+import { createAnnotationRegistry, supportsAnnotationScope } from "@bh2980/cms/annotation/code-block/libs";
 import type {
 	AnnotationConfig,
 	AnnotationRegistry,
 	CodeBlockAnnotation,
 	CodeBlockDocument,
 	LineAnnotation,
-} from "@/libs/annotation/code-block/types";
+} from "@bh2980/cms/annotation/code-block/types";
+import type { Code, Root } from "mdast";
+import type { DecorationItem } from "shiki";
+import { visit } from "unist-util-visit";
 import { createAllowedRenderTagsFromConfig } from "./render-policy";
 
 type AnnotationWithClass = { class: string };

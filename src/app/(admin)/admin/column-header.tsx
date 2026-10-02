@@ -1,8 +1,8 @@
 "use client";
 
+import type { AdminListColumn } from "@bh2980/cms/core/api";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, ListFilter } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { AdminListColumn } from "@/cms/core/api";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";

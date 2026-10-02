@@ -1,4 +1,4 @@
-import type { CmsJsonValue } from "../../mdx";
+import type { CmsJsonValue } from "@bh2980/cms/mdx";
 import type { BlockConverter } from "./types";
 
 /** 첨부 파일 카드(`::file{mediaId label}`, v3). 빈 `label`은 저장하지 않는다. */

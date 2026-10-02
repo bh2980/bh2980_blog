@@ -1,6 +1,6 @@
+import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Folder } from "@/cms/adapters/postgres/content-store";
 import { chooseSelectOption } from "@/test/base-ui";
 import { BulkBar } from "../bulk-bar";
 

@@ -4,14 +4,14 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-		"cms:db:migrate": "tsx --env-file=.env.local src/cms/adapters/postgres/migrate-cli.ts",
+		"cms:db:migrate": "tsx --env-file=.env.local packages/cms/src/adapters/postgres/migrate-cli.ts",
 		"build": "rm -rf .next && next build",
 		"preview": "pnpm build && pnpm start",
 		"start": "next start",
 		"test": "vitest",
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check . --write",
-		"typecheck": "pnpm exec tsc --noEmit",
+		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck",
 		"prepare": "husky"
 	},
 	"dependencies": {
@@ -19,6 +19,7 @@
 		"@aws-sdk/client-s3": "^3.1136.0",
 		"@aws-sdk/s3-request-presigner": "^3.1136.0",
 		"@base-ui/react": "^1.8.0",
+		"@bh2980/cms": "workspace:*",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",

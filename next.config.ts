@@ -1,3 +1,4 @@
+import { withCms } from "@bh2980/cms/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -8,4 +9,4 @@ const nextConfig: NextConfig = {
 	typedRoutes: true,
 };
 
-export default nextConfig;
+export default withCms(nextConfig, { config: "./src/cms.config.ts" });

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { isImageMime } from "@/cms/core/api";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
+import { isImageMime } from "@bh2980/cms/core/api";
 import { HttpError } from "../../../error-handler";
 import { adminRoute, json } from "../../../handler";
 import { attachmentDisposition, extensionFor, inspectUploadedFile } from "../../media-files";

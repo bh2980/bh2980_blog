@@ -1,6 +1,6 @@
-import { LIST_SORT_FIELDS, type ListSortField, type PageSize } from "@/cms/core/api";
-import { type Collection, isCollection } from "@/cms/core/collections";
-import { schemaOf } from "@/cms/schema/derive";
+import { LIST_SORT_FIELDS, type ListSortField, type PageSize } from "@bh2980/cms/core/api";
+import { type Collection, isCollection } from "@bh2980/cms/core/collections";
+import { schemaOf } from "@bh2980/cms/schema/derive";
 import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { isLocale, type Locale } from "@/libs/i18n/locales";
 import type { EntryStatus } from "./shared/entry-status";

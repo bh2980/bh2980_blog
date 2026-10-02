@@ -1,7 +1,7 @@
+import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
 import { Editor } from "@tiptap/core";
 import { DOMParser as PmDOMParser } from "@tiptap/pm/model";
 import { describe, expect, it } from "vitest";
-import { analyze, serialize, toDocument } from "@/cms/mdx";
 import { deleteBlock, duplicateBlock } from "../../../block-commands";
 import { BLOCK_INSERT_ACTIONS } from "../../../block-inserts";
 import { buildEditorExtensions } from "../../../extensions";

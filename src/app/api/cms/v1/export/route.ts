@@ -1,7 +1,7 @@
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { exportScopeSchema } from "@bh2980/cms/core/api";
+import { buildExportArchive, type ExportScope } from "@bh2980/cms/services/export-service";
 import type { NextRequest } from "next/server";
-import { getCmsContentStore } from "@/cms/container";
-import { exportScopeSchema } from "@/cms/core/api";
-import { buildExportArchive, type ExportScope } from "@/cms/services/export-service";
 import { adminRoute, parseWith, readJsonBody, readQuery } from "../handler";
 
 const buildResponse = async (scope: ExportScope): Promise<Response> => {

@@ -1,7 +1,7 @@
-import { aiModelsQuerySchema } from "@/cms/ai/connection";
-import { isFakeAi, listModels } from "@/cms/ai/provider";
-import { savedProvider } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
+import { aiModelsQuerySchema } from "@bh2980/cms/ai/connection";
+import { isFakeAi, listModels } from "@bh2980/cms/ai/provider";
+import { savedProvider } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 
 /**

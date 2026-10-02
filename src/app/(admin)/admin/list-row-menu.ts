@@ -1,5 +1,5 @@
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { BulkOp } from "@/cms/core/api";
+import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { BulkOp } from "@bh2980/cms/core/api";
 import type { BulkSelection, runBulk } from "./entries/bulk-bar";
 import type { MenuAction } from "./shared/action-menu";
 import type { TaxonomyOption } from "./shared/use-taxonomy";

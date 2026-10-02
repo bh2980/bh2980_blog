@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
 import {
 	ALLOWED_FILE_MIME_TYPES,
 	ALLOWED_IMAGE_MIME_TYPES,
@@ -8,7 +8,7 @@ import {
 	MAX_FILE_BYTES,
 	MAX_MEDIA_BYTES,
 	mediaUploadBodySchema,
-} from "@/cms/core/api";
+} from "@bh2980/cms/core/api";
 import { HttpError } from "../../error-handler";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 import { extensionFor, UPLOAD_URL_TTL_SECONDS } from "../media-files";

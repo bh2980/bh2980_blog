@@ -1,11 +1,11 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as postDuplicate } from "../entries/[id]/duplicate/route";
 
 const mockVerifyAdmin = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -19,7 +19,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		duplicateEntry: vi.fn().mockImplementation(({ id }: { id: string }) => {
 			if (id === "ghost") throw new CmsError("Entry not found", "not_found");

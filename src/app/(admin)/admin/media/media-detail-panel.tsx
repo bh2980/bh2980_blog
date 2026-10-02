@@ -1,9 +1,9 @@
 "use client";
 
+import { isImageMime } from "@bh2980/cms/core/api";
+import { fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
 import { Copy, ExternalLink, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
-import { isImageMime } from "@/cms/core/api";
-import { fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
 import { formatBytes } from "@/cms/editor/upload-helper";
 import { type SlotRequest, SlotScope } from "@/cms/slots/slots";
 import { Button, buttonVariants } from "@/components/ui/button";

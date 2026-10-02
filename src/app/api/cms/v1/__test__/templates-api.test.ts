@@ -1,12 +1,12 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { DELETE as deleteTemplate, GET as getTemplate, PATCH as patchTemplate } from "../templates/[id]/route";
 import { GET as getTemplates, POST as postTemplate } from "../templates/route";
 
 const mockVerifyAdmin = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -39,7 +39,7 @@ const mockTemplates = [
 	},
 ];
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		listTemplates: vi.fn().mockResolvedValue(mockTemplates),
 		getTemplate: vi.fn().mockImplementation((id: string) => {

@@ -1,5 +1,5 @@
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { z } from "zod";
-import { getCmsContentStore } from "@/cms/container";
 import { adminRoute, assertVersionPresent, json, parseWith, readJsonBody } from "../../../handler";
 import { parseFeatureSpec } from "../../ai-route";
 

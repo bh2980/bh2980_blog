@@ -1,8 +1,5 @@
 "use client";
 
-import { Check, ChevronsDownUp, ChevronsUpDown, Code2, X } from "lucide-react";
-import { type CSSProperties, useEffect, useRef } from "react";
-import { cn } from "@/utils/cn";
 import {
 	CODE_LINE_EFFECTS,
 	COLLAPSE,
@@ -11,7 +8,10 @@ import {
 	hasLineEffect,
 	newEffectId,
 	setLineEffect,
-} from "./model";
+} from "@bh2980/cms/annotation/code-block/model";
+import { Check, ChevronsDownUp, ChevronsUpDown, Code2, X } from "lucide-react";
+import { type CSSProperties, useEffect, useRef } from "react";
+import { cn } from "@/utils/cn";
 
 interface LineMenuProps {
 	/** 고른 줄 [start, end). */

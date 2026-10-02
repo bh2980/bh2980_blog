@@ -1,5 +1,5 @@
+import { type ImageResolver, resolveImageUrl } from "@bh2980/cms/mdx/image-src";
 import { ImageOff } from "lucide-react";
-import { type ImageResolver, resolveImageUrl } from "@/cms/mdx/image-src";
 import { cn } from "@/utils/cn";
 import { PublicImage } from "./public-image.client";
 

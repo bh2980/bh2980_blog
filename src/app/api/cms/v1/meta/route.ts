@@ -1,17 +1,17 @@
-import { getAiSettingsView } from "@/cms/ai/settings";
-import { BLOCKS } from "@/cms/blocks/definitions";
-import { getCmsContentStore } from "@/cms/container";
+import { getAiSettingsView } from "@bh2980/cms/ai/settings";
+import { BLOCKS } from "@bh2980/cms/blocks/definitions";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	LIST_SORT_FIELDS,
 	MAX_MEDIA_BYTES,
 	MAX_MEDIA_PIXELS,
 	PAGE_SIZES,
-} from "@/cms/core/api";
-import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@/cms/core/collections";
-import { MAX_SLUG_LENGTH } from "@/cms/core/slug";
-import { MAX_MDX_BYTES, MAX_METADATA_BYTES, MAX_TITLE_LENGTH } from "@/cms/core/snapshot";
-import { SCHEMAS } from "@/cms/schema/definitions";
+} from "@bh2980/cms/core/api";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/core/collections";
+import { MAX_SLUG_LENGTH } from "@bh2980/cms/core/slug";
+import { MAX_MDX_BYTES, MAX_METADATA_BYTES, MAX_TITLE_LENGTH } from "@bh2980/cms/core/snapshot";
+import cmsConfig from "@/cms.config";
 import { adminRoute, json } from "../handler";
 
 /** 컬렉션 정의(v2 B1 `schemas`와 v1 모양의 요약 `definitions`), 본문 블록 정의(v2 B3 `blocks`)와 서버 제한(§5.6 "서버 설정과 API 메타데이터에 같은 제한을 표시한다"). */
@@ -24,7 +24,7 @@ export const GET = adminRoute(async () => {
 		version: "v1",
 		collections: COLLECTIONS,
 		definitions: COLLECTION_DEFINITIONS,
-		schemas: SCHEMAS,
+		schemas: cmsConfig.collections,
 		blocks: BLOCKS,
 		features: { folders: true, references: true, search: true, templates: true, ai },
 		limits: {

@@ -1,7 +1,7 @@
 "use client";
 
+import { COLLECTION_DEFINITIONS } from "@bh2980/cms/core/collections";
 import { useCallback, useEffect, useState } from "react";
-import { COLLECTION_DEFINITIONS } from "@/cms/core/collections";
 import { cmsFetch } from "../admin-api";
 
 /** 이름만으로 만들 수 있는 record 컬렉션(§5.2). 관계 필드의 선택지와 바로 만들기(v2 B2)에 쓴다. */

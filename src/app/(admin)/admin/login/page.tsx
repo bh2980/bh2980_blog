@@ -1,5 +1,5 @@
+import { auth, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@bh2980/cms/adapters/auth";
 import { redirect } from "next/navigation";
-import { auth, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@/cms/adapters/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

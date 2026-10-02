@@ -1,5 +1,5 @@
-import { getCmsContentStore, getCmsMediaStore } from "@/cms/container";
-import { mediaListQuerySchema } from "@/cms/core/api";
+import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
+import { mediaListQuerySchema } from "@bh2980/cms/core/api";
 import { adminRoute, json, parseWith, readQuery } from "../handler";
 
 /** 미디어 라이브러리(§7.3): 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순. */

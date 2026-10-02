@@ -1,5 +1,5 @@
+import type { ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
 import { describe, expect, it } from "vitest";
-import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import { applyOptimistic, type EntriesPage, type OptimisticContext } from "../list-cache";
 
 const row = (id: string, patch: Partial<ListEntriesItem> = {}): ListEntriesItem => ({

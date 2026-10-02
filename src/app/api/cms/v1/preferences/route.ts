@@ -1,7 +1,7 @@
-import type { JsonObject } from "@/cms/adapters/postgres/content-store";
-import { getCmsContentStore } from "@/cms/container";
-import { type PreferencesBody, preferencesBodySchema } from "@/cms/core/api";
-import { COLLECTIONS } from "@/cms/core/collections";
+import type { JsonObject } from "@bh2980/cms/adapters/postgres/content-store";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { type PreferencesBody, preferencesBodySchema } from "@bh2980/cms/core/api";
+import { COLLECTIONS } from "@bh2980/cms/core/collections";
 import { adminRoute, json, parseWith, readJsonBody } from "../handler";
 
 type StoredPreferences = PreferencesBody & {

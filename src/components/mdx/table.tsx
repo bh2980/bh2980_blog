@@ -1,5 +1,5 @@
+import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@bh2980/cms/mdx/table-layout";
 import * as React from "react";
-import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@/cms/mdx/table-layout";
 import { cn } from "@/utils";
 
 export interface TableProps extends Omit<React.ComponentProps<"table">, "align"> {

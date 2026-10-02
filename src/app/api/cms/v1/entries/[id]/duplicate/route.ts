@@ -1,4 +1,4 @@
-import { getCmsContentStore } from "@/cms/container";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json } from "../../../handler";
 
 /** 최신 초안을 새 ID의 초안으로 복제한다(§6.3). */

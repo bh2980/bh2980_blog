@@ -1,0 +1,13 @@
+{
+	"name": "@bh2980/cms-admin",
+	"version": "0.0.0",
+	"private": true,
+	"description": "@bh2980/cms의 관리자 화면(Next.js): 편집기·목록·미디어·AI 화면",
+	"type": "module",
+	"peerDependencies": {
+		"@bh2980/cms": "workspace:*",
+		"next": ">=16",
+		"react": ">=19",
+		"react-dom": ">=19"
+	}
+}

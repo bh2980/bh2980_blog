@@ -1,9 +1,9 @@
+import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
+import { readSamples } from "@bh2980/cms/mdx/__test__/fixtures/samples";
 import type { JSONContent } from "@tiptap/core";
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
-import { analyze, serialize, toDocument } from "@/cms/mdx";
-import { readSamples } from "@/cms/mdx/__test__/fixtures/samples";
 import { BLOCK_NODE_VIEWS } from "../block-views";
 import {
 	cmsNodeToTiptap,

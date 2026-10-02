@@ -1,5 +1,5 @@
-import { getCmsContentStore } from "@/cms/container";
-import { versionBodySchema } from "@/cms/core/api";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { versionBodySchema } from "@bh2980/cms/core/api";
 import { adminRoute, json, readVersionedBody } from "../../../handler";
 
 /** 보관 → 초안. 자동으로 다시 공개하지 않는다(§5.3). */

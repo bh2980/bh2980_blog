@@ -1,5 +1,5 @@
-import { usableFeatureIds } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
+import { usableFeatureIds } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json } from "../../handler";
 
 /** AI 기능 목록과 지금 쓸 수 있는(연결이 준비된) 기능 id. 자리는 켜진 기능 중 쓸 수 있는 것만 붙인다. */

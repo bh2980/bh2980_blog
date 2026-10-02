@@ -1,6 +1,6 @@
+import { defineBlock } from "@bh2980/cms/blocks/define";
 import { Editor } from "@tiptap/core";
 import { describe, expect, it, vi } from "vitest";
-import { defineBlock } from "@/cms/blocks/define";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction } from "../block-inserts";
 import { buildEditorExtensions } from "../extensions";
 import { buildBlockSlashCommands, filterCommands, SLASH_COMMANDS } from "../slash-command";

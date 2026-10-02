@@ -1,4 +1,4 @@
-import { getCmsContentStore } from "@/cms/container";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json } from "../../../handler";
 
 /** 이 항목의 사용처(역참조). 초안과 공개본 사용처를 구분한다(§6.1). */

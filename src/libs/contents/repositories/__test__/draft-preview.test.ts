@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
 	taxonomy: [] as unknown[],
 }));
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		getWorkingEntryBySlug: async (params: { collection: string; slug: string }) => {
 			state.slugCalls.push(params);

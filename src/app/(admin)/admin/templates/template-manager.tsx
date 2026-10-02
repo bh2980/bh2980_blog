@@ -1,10 +1,10 @@
 "use client";
 
+import type { BodyTemplate } from "@bh2980/cms/adapters/postgres/content-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutTemplate, Plus, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { BodyTemplate } from "@/cms/adapters/postgres/content-store";
 import { CmsEditor } from "@/cms/editor/tiptap-editor";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";

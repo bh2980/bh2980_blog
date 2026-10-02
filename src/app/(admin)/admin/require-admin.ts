@@ -1,6 +1,6 @@
 import "server-only";
+import { type AuthContext, AuthError, authGateway } from "@bh2980/cms/adapters/auth";
 import { redirect } from "next/navigation";
-import { type AuthContext, AuthError, authGateway } from "@/cms/adapters/auth";
 
 /**
  * 관리자 화면 공통 인증(§10.2). 세션이 없거나 다른 계정이면 오류 화면 대신 로그인으로 보낸다.

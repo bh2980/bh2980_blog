@@ -1,8 +1,8 @@
-import { withBuiltin } from "@/cms/ai/builtins";
-import { AiError } from "@/cms/ai/errors";
-import { loadAiRuntime } from "@/cms/ai/settings";
-import { aiTranslateBodySchema, translateBlocks } from "@/cms/ai/translate";
-import { getCmsContentStore } from "@/cms/container";
+import { withBuiltin } from "@bh2980/cms/ai/builtins";
+import { AiError } from "@bh2980/cms/ai/errors";
+import { loadAiRuntime } from "@bh2980/cms/ai/settings";
+import { aiTranslateBodySchema, translateBlocks } from "@bh2980/cms/ai/translate";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { adminRoute, json, parseWith, readJsonBody } from "../../handler";
 import { parseFeatureSpec } from "../ai-route";
 

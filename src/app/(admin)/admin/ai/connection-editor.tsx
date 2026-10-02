@@ -1,9 +1,5 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plug, PlugZap, Plus, Save, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
-import { toast } from "sonner";
 import {
 	AI_PROVIDER_KINDS,
 	type AiCheckResult,
@@ -12,7 +8,11 @@ import {
 	type AiSettingsView,
 	PROVIDER_EXAMPLES,
 	PROVIDER_KIND_LABELS,
-} from "@/cms/ai/connection";
+} from "@bh2980/cms/ai/connection";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plug, PlugZap, Plus, Save, Trash2 } from "lucide-react";
+import { useId, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";

@@ -1,10 +1,10 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { PATCH as patchFolder } from "../[id]/route";
 import { GET as getFolders } from "../route";
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
 	},
@@ -18,7 +18,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => {
+vi.mock("@bh2980/cms/container", () => {
 	const mockStore = {
 		listFolders: vi.fn().mockResolvedValue([{ id: "f-1", name: "Folder 1", version: 1 }]),
 		createFolder: vi.fn().mockImplementation((p) => Promise.resolve({ id: "f-new", version: 1, ...p })),

@@ -1,6 +1,6 @@
+import { type AuthContext, AuthError, authGateway } from "@bh2980/cms/adapters/auth";
 import type { NextRequest } from "next/server";
 import type { z } from "zod";
-import { type AuthContext, AuthError, authGateway } from "@/cms/adapters/auth";
 import { HttpError, handleApiError } from "./error-handler";
 import { validateSameOrigin } from "./security";
 

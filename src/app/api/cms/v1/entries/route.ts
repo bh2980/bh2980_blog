@@ -1,6 +1,6 @@
-import { getCmsContentService, getCmsContentStore } from "@/cms/container";
-import { createEntryBodySchema, LIST_ARRAY_QUERY_KEYS, listEntriesQuerySchema } from "@/cms/core/api";
-import type { ServiceInput } from "@/cms/services/types";
+import { getCmsContentService, getCmsContentStore } from "@bh2980/cms/container";
+import { createEntryBodySchema, LIST_ARRAY_QUERY_KEYS, listEntriesQuerySchema } from "@bh2980/cms/core/api";
+import type { ServiceInput } from "@bh2980/cms/services/types";
 import { adminRoute, json, parseWith, readJsonBody, readQuery } from "../handler";
 
 /** 컬렉션별 목록·검색·필터·정렬·페이지(§3.2). */

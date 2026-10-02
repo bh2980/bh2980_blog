@@ -1,7 +1,7 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError } from "@/cms/adapters/auth";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as handleComplete } from "../[id]/complete/route";
 import { DELETE as handleDeleteMedia } from "../[id]/route";
 import { GET as handleListMedia } from "../route";
@@ -9,7 +9,7 @@ import { POST as handleUploads } from "../uploads/route";
 
 const mockVerifyAdmin = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -38,7 +38,7 @@ const mockPromoteFile = vi.fn();
 const mockDeleteFile = vi.fn();
 const mockGetPublicUrl = vi.fn();
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		createMediaAsset: mockCreateMediaAsset,
 		getMediaAsset: mockGetMediaAsset,

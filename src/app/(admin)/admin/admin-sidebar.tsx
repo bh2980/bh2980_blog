@@ -1,5 +1,7 @@
 "use client";
 
+import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
+import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@bh2980/cms/core/collections";
 import {
 	ChevronRight,
 	FileImage,
@@ -19,8 +21,6 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { type KeyboardEvent, useEffect, useState } from "react";
-import type { Folder } from "@/cms/adapters/postgres/content-store";
-import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@/cms/core/collections";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";

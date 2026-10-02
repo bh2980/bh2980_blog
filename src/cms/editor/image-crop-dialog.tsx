@@ -1,8 +1,5 @@
 "use client";
 
-import { Crop as CropIcon, RotateCw, Undo2 } from "lucide-react";
-import type React from "react";
-import { useEffect, useRef, useState } from "react";
 import {
 	type CropBox,
 	formatCrop,
@@ -11,7 +8,10 @@ import {
 	parseRotate,
 	type RotateDegree,
 	roundCropBox,
-} from "@/cms/mdx/image-transform";
+} from "@bh2980/cms/mdx/image-transform";
+import { Crop as CropIcon, RotateCw, Undo2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,

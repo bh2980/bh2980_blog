@@ -1,7 +1,7 @@
+import type { ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import { AdminEntriesTable, columnsFor } from "../admin-entries-table";
 import { parseListState } from "../list-state";
 import { filterChips } from "../list-toolbar";

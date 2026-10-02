@@ -1,11 +1,11 @@
 "use client";
 
+import { resolveImageUrl } from "@bh2980/cms/mdx/image-src";
+import { computeImageTransform } from "@bh2980/cms/mdx/image-transform";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Crop, Settings2, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
-import { resolveImageUrl } from "@/cms/mdx/image-src";
-import { computeImageTransform } from "@/cms/mdx/image-transform";
 import { type SlotRequest, useSlot } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

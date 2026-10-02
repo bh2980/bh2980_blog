@@ -1,6 +1,6 @@
 "use client";
 
-import { diffSources, type SourceChange } from "@/cms/core/translation/source-diff";
+import { diffSources, type SourceChange } from "@bh2980/cms/core/translation/source-diff";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MdxPreview } from "./source-pane";
 

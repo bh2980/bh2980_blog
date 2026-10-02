@@ -1,6 +1,6 @@
+import type { RelationField } from "@bh2980/cms/schema/fields";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RelationField } from "@/cms/schema/fields";
 import { EntryPicker, type FieldInputProps, OrderedEntryList } from "../field-inputs";
 
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body });

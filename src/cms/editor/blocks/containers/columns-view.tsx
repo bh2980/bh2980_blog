@@ -1,16 +1,16 @@
 "use client";
 
-import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { Columns2, GripVertical, Plus, Trash2 } from "lucide-react";
-import { type CSSProperties, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
-import { columns as columnsDefinition } from "@/cms/blocks/definitions";
+import { columns as columnsDefinition } from "@bh2980/cms/blocks/definitions";
 import {
 	columnsGridTemplate,
 	formatColumnWidths,
 	MIN_COLUMN_PERCENT,
 	parseColumnWidths,
 	toPercentWidths,
-} from "@/cms/mdx/columns-layout";
+} from "@bh2980/cms/mdx/columns-layout";
+import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { Columns2, GripVertical, Plus, Trash2 } from "lucide-react";
+import { type CSSProperties, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { ContainerToolbar, childPos, focusInside, useSelectedChildIndex, valuesOf, withValue } from "./shared";

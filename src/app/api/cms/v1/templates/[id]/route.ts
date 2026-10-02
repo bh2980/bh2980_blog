@@ -1,5 +1,5 @@
-import { getCmsContentStore } from "@/cms/container";
-import { patchTemplateBodySchema } from "@/cms/core/api";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { patchTemplateBodySchema } from "@bh2980/cms/core/api";
 import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../handler";
 
 type IdParams = { id: string };

@@ -1,10 +1,10 @@
+import { AuthError, authGateway } from "@bh2980/cms/adapters/auth";
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
-import { AuthError, authGateway } from "@/cms/adapters/auth";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { GET as getRelations } from "../route";
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
 	},
@@ -18,7 +18,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => {
+vi.mock("@bh2980/cms/container", () => {
 	const mockStore = {
 		getEntry: vi.fn().mockImplementation((id: string) => {
 			if (id === "non-existent") {

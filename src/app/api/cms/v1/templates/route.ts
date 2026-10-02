@@ -1,5 +1,5 @@
-import { getCmsContentStore } from "@/cms/container";
-import { createTemplateBodySchema } from "@/cms/core/api";
+import { getCmsContentStore } from "@bh2980/cms/container";
+import { createTemplateBodySchema } from "@bh2980/cms/core/api";
 import { adminRoute, json, parseWith, readJsonBody } from "../handler";
 
 export const GET = adminRoute(async () => json({ items: await getCmsContentStore().listTemplates() }));

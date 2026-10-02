@@ -1,8 +1,8 @@
+import { type AiCheckResult, aiProviderCheckSchema } from "@bh2980/cms/ai/connection";
+import { AiError } from "@bh2980/cms/ai/errors";
+import { connectionForCheck } from "@bh2980/cms/ai/settings";
+import { getCmsContentStore } from "@bh2980/cms/container";
 import { z } from "zod";
-import { type AiCheckResult, aiProviderCheckSchema } from "@/cms/ai/connection";
-import { AiError } from "@/cms/ai/errors";
-import { connectionForCheck } from "@/cms/ai/settings";
-import { getCmsContentStore } from "@/cms/container";
 import { adminRoute, json, parseWith, readJsonBody } from "../../../handler";
 
 /**

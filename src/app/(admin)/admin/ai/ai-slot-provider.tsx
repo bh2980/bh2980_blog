@@ -1,9 +1,9 @@
 "use client";
 
+import { type AiFeature, type AiRunContext, type AiRunResult, SHARED_SLOT_TARGETS } from "@bh2980/cms/ai/definition";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
-import { type AiFeature, type AiRunContext, type AiRunResult, SHARED_SLOT_TARGETS } from "@/cms/ai/definition";
 import { SlotRegistryProvider, type SlotSource } from "@/cms/slots/slots";
 import { cmsFetch } from "../admin-api";
 

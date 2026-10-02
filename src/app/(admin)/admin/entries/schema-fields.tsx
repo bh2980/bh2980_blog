@@ -1,11 +1,11 @@
 "use client";
 
+import { isRecordCollection } from "@bh2980/cms/core/collections";
+import type { LayoutGroup } from "@bh2980/cms/schema/collection";
+import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@bh2980/cms/schema/derive";
+import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@bh2980/cms/schema/fields";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { isRecordCollection } from "@/cms/core/collections";
-import type { LayoutGroup } from "@/cms/schema/collection";
-import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@/cms/schema/derive";
-import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@/cms/schema/fields";
 import { type SlotRequest, useSlot } from "@/cms/slots/slots";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";

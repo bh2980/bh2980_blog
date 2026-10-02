@@ -1,13 +1,13 @@
 "use client";
 
+import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
+import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/core/api";
+import { COLLECTION_DEFINITIONS, isRecordCollection } from "@bh2980/cms/core/collections";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { CollectionPreferences, PreferencesBody } from "@/cms/core/api";
-import { COLLECTION_DEFINITIONS, isRecordCollection } from "@/cms/core/collections";
 import { cmsFetch, errorText } from "./admin-api";
 import { type BulkItemResult, type BulkSelection, describeBulkFailure, runBulk } from "./entries/bulk-bar";
 import { actionTargets, type BulkParams, rowMenuActions, toSelection } from "./list-row-menu";

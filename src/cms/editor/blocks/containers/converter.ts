@@ -1,4 +1,4 @@
-import type { CmsJsonValue, CmsNode } from "../../../mdx";
+import type { CmsJsonValue, CmsNode } from "@bh2980/cms/mdx";
 import type { BlockConverter } from "../../converters/types";
 
 const containerTypes = [

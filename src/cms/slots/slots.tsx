@@ -1,5 +1,6 @@
 "use client";
 
+import type { AiRunContext, AiRunResult, AiSlot } from "@bh2980/cms/ai/definition";
 import { CornerDownLeft, RefreshCw, Sparkles, X } from "lucide-react";
 import {
 	createContext,
@@ -11,7 +12,6 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import type { AiRunContext, AiRunResult, AiSlot } from "@/cms/ai/definition";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,

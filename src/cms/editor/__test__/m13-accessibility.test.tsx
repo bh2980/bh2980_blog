@@ -1,10 +1,10 @@
+import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminSidebar } from "@/app/(admin)/admin/admin-sidebar";
 import { type FolderActions, useFolderActions } from "@/app/(admin)/admin/shared/use-folder-actions";
-import type { Folder } from "@/cms/adapters/postgres/content-store";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { BlockHandleOverlay } from "../block-handle-overlay";
 import { CmsImageNodeView } from "../image-node-view";

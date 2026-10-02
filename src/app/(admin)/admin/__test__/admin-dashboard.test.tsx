@@ -1,7 +1,7 @@
+import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import { AdminClientDashboard, AdminTrashDashboard } from "../admin-dashboard";
 import { AdminQueryProvider } from "../shared/query-provider";
 

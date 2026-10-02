@@ -1,3 +1,4 @@
+import type { CodeLineEffect, CodeRule } from "@bh2980/cms/annotation/code-block/model";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import type { DecorationSet } from "@tiptap/pm/view";
@@ -8,7 +9,6 @@ import { buildEditorExtensions } from "../../extensions";
 import { codeEffectsKey, foldRegions, setFoldOpen } from "../effects-plugin";
 import { codeBlockHighlightPluginKey, getShikiHighlighter } from "../highlight-plugin";
 import { handleEnterKey, handleModAKey, handlePaste, handleTabKey, isComposing } from "../keys";
-import type { CodeLineEffect, CodeRule } from "../model";
 
 let editor: Editor | null = null;
 

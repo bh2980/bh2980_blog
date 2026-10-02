@@ -1,5 +1,13 @@
 "use client";
 
+import {
+	type ColorPair,
+	cleanTextColor,
+	hasTextColor,
+	TEXT_PALETTE,
+	type TextColorAttrs,
+	textColorProps,
+} from "@bh2980/cms/core/text-colors";
 import type { Editor } from "@tiptap/core";
 import { Baseline, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,14 +21,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
-import {
-	type ColorPair,
-	cleanTextColor,
-	hasTextColor,
-	TEXT_PALETTE,
-	type TextColorAttrs,
-	textColorProps,
-} from "../core/text-colors";
 import { COLOR_MARK_NAME } from "./color-mark";
 
 type ColorKind = "fg" | "bg";

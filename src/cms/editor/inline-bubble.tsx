@@ -1,5 +1,6 @@
 "use client";
 
+import { charEffectByName } from "@bh2980/cms/annotation/code-block/model";
 import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
@@ -24,7 +25,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/utils/cn";
 import { codeEffectsKey, expandRule, removeRule, setFoldOpen } from "./code-block/effects-plugin";
 import { findAnchor, startLinkFromText, unlinkRef } from "./code-block/link-commands";
-import { charEffectByName } from "./code-block/model";
 import { COLOR_MARK_NAME } from "./color-mark";
 import { TextColorPanel } from "./color-menu";
 import {

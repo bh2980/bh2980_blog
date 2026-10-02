@@ -1,5 +1,7 @@
 "use client";
 
+import { type SchemaCollection, storedField } from "@bh2980/cms/schema/derive";
+import type { BacklinkField, RelationField, ValueField } from "@bh2980/cms/schema/fields";
 import {
 	closestCenter,
 	DndContext,
@@ -20,8 +22,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { type SchemaCollection, storedField } from "@/cms/schema/derive";
-import type { BacklinkField, RelationField, ValueField } from "@/cms/schema/fields";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/utils/cn";

@@ -1,8 +1,8 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
+import { AiError } from "@bh2980/cms/ai/errors";
+import { ServiceError } from "@bh2980/cms/services/types";
 import { NextResponse } from "next/server";
-import { AuthError } from "@/cms/adapters/auth";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
-import { AiError } from "@/cms/ai/errors";
-import { ServiceError } from "@/cms/services/types";
 
 /**
  * 라우트가 직접 만드는 HTTP 오류(요청 형식·버전 누락 등).

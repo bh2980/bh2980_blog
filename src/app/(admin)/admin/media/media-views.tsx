@@ -1,9 +1,9 @@
 "use client";
 
+import { isImageMime } from "@bh2980/cms/core/api";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/core/file-display";
 import { File, FileArchive, FileText, FileType } from "lucide-react";
 import type { KeyboardEvent } from "react";
-import { isImageMime } from "@/cms/core/api";
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

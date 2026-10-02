@@ -1,11 +1,11 @@
+import { CmsError } from "@bh2980/cms/adapters/postgres/content-store";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as postBulk } from "../bulk/route";
 
 const mockVerifyAdmin = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -36,7 +36,7 @@ const working = (version: number) => ({
 	folderId: null,
 });
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		getWorkingReferences: vi.fn().mockResolvedValue([]),
 		getWorking: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {

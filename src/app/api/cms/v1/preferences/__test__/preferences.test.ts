@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getPreferences, PUT as putPreferences } from "../route";
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: vi.fn().mockResolvedValue({ userId: "user-42", githubId: "user-42", isAdmin: true }),
 	},
@@ -18,7 +18,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 
 const state = vi.hoisted(() => ({ stored: null as unknown }));
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({
 		getPreferences: vi.fn().mockImplementation(() => Promise.resolve(state.stored)),
 		savePreferences: vi.fn().mockImplementation((params: { preferences: unknown }) => {

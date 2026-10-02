@@ -1,14 +1,14 @@
+import { AuthError } from "@bh2980/cms/adapters/auth";
+import { makeExportFixtureSnapshot } from "@bh2980/cms/services/__test__/export-fixture";
+import { readZipArchive } from "@bh2980/cms/services/zip";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError } from "@/cms/adapters/auth";
-import { makeExportFixtureSnapshot } from "@/cms/services/__test__/export-fixture";
-import { readZipArchive } from "@/cms/services/zip";
 import { GET, POST } from "../export/route";
 
 const mockVerifyAdmin = vi.fn();
 const mockReadExportSnapshot = vi.fn();
 
-vi.mock("@/cms/adapters/auth", () => ({
+vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
@@ -22,7 +22,7 @@ vi.mock("@/cms/adapters/auth", () => ({
 	},
 }));
 
-vi.mock("@/cms/container", () => ({
+vi.mock("@bh2980/cms/container", () => ({
 	getCmsContentStore: () => ({ readExportSnapshot: () => mockReadExportSnapshot() }),
 }));
 

@@ -1,5 +1,5 @@
+import { createPublicImageResolver } from "@bh2980/cms/mdx/public-image-resolver";
 import { differenceInYears } from "date-fns";
-import { createPublicImageResolver } from "@/cms/mdx/public-image-resolver";
 import { LanguageLinks } from "@/components/language-links";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";

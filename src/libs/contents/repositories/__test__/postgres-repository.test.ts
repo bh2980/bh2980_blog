@@ -1,5 +1,5 @@
+import type { ContentStore, PublishedEntryRecord } from "@bh2980/cms/adapters/postgres/content-store";
 import { describe, expect, it, vi } from "vitest";
-import type { ContentStore, PublishedEntryRecord } from "@/cms/adapters/postgres/content-store";
 import { PostgresRepository } from "../postgres";
 
 const DATE = new Date("2026-03-01T12:00:00.000Z");

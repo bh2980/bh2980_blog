@@ -1,5 +1,6 @@
 "use client";
 
+import { FILE_ACCEPT } from "@bh2980/cms/core/api";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -40,7 +41,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
-import { FILE_ACCEPT } from "../core/api";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
