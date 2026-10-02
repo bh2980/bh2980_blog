@@ -1,19 +1,29 @@
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { fromCodeBlockDocumentToCodeFence } from "@/libs/annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "@/libs/annotation/code-block/types";
+import { TEXT_COLOR_ATTRS } from "../core/text-colors";
+import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
-import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS } from "./registry";
+import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
+import {
+	formatTableWidths,
+	hasBalancedLabelBrackets,
+	hasNonGfmHeaderLayout,
+	tableHasMergedCells,
+	tableWidths,
+} from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsNode } from "./types";
 
-const MARK_ORDER = ["tooltip", "underline", "superscript", "subscript", "link", "bold", "italic", "strike", "code"];
+const usesDirectiveTable = (node: CmsNode) =>
+	tableHasMergedCells(node) || hasNonGfmHeaderLayout(node) || formatTableWidths(tableWidths(node)) !== "";
 
 const isIdent = (value: string) => /^[A-Za-z_][\w]*$/.test(value);
 
 const escapeAttr = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
-const escapeText = (value: string, inCode: boolean) => {
+const escapeText = (value: string, inCode: boolean, inLabel = false) => {
 	if (inCode) return value;
-	return value
+	const escaped = value
 		.replace(/\\/g, "\\\\")
 		.replace(/`/g, "\\`")
 		.replace(/\*/g, "\\*")
@@ -21,8 +31,21 @@ const escapeText = (value: string, inCode: boolean) => {
 		.replace(/\[/g, "\\[")
 		.replace(/\{/g, "\\{")
 		.replace(/</g, "\\<");
+	const unbroken = escapeDirectiveColon(escaped);
+	// directive 라벨은 `]`로 닫히므로 라벨 안에서는 `]`를 이스케이프한다(짝이 맞지 않으면 라벨이 깨진다).
+	return inLabel ? unbroken.replace(/\]/g, "\\]") : unbroken;
 };
 
+/**
+ * 등록된 지시자 이름이 뒤따르는 `:`를 `\:`로 이스케이프한다(§4.4).
+ * 그대로 두면 재파싱 때 지시자로 읽힌다(`:br `, `:u[` 등). 미등록 이름(`:free를`)과
+ * 시각·URL의 콜론(`12:30`, `https://`)은 건드리지 않는다. 이미 이스케이프된 `\:`는 둔다.
+ */
+const escapeDirectiveColon = (value: string): string =>
+	value.replace(/(?<!\\):(?=[A-Za-z0-9_\-가-힣:])/g, (_match: string, offset: number, whole: string) => {
+		const run = /^[A-Za-z0-9_\-가-힣:]+/.exec(whole.slice(offset + 1))?.[0] ?? "";
+		return DIRECTIVE_NAMES.has(run) ? "\\:" : ":";
+	});
 const fenceTicks = (value: string) => {
 	const runs = value.match(/`+/g)?.map((run) => run.length) ?? [];
 	return Math.max(3, ...runs.map((size) => size + 1), 3);
@@ -103,27 +126,35 @@ const jsxName = (node: CmsNode): string => {
 	return node.type;
 };
 
+/** 속성이 붙는 지시자 라벨(`]{…}`) 안의 글. 라벨을 닫는 글자를 이스케이프한다. */
+const LABEL_MARKS = new Set(["tooltip", "codeRef", "color"]);
+
 const markKey = (mark: CmsMark) => `${mark.type}:${JSON.stringify(mark.attrs ?? null)}`;
 
-const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] =>
-	[...(marks ?? [])].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
+const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] => sortMarks(marks ?? []);
 
 const openMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
-			return `<Tooltip content="${escapeAttr(String(mark.attrs?.content ?? ""))}">`;
+			return ":tooltip[";
+		case "codeRef":
+			return ":code-ref[";
+		case "color":
+			return ":color[";
+		case "untranslated":
+			return ":untranslated[";
 		case "underline":
-			return "<u>";
+			return ":u[";
 		case "superscript":
-			return "<sup>";
+			return ":sup[";
 		case "subscript":
-			return "<sub>";
+			return ":sub[";
 		case "bold":
-			return "<strong>";
+			return "**";
 		case "italic":
-			return "<em>";
+			return "*";
 		case "strike":
-			return "<del>";
+			return "~~";
 		case "code":
 			return "`";
 		case "link":
@@ -136,19 +167,28 @@ const openMark = (mark: CmsMark): string => {
 const closeMark = (mark: CmsMark): string => {
 	switch (mark.type) {
 		case "tooltip":
-			return "</Tooltip>";
+			return `]{content="${escapeAttr(String(mark.attrs?.content ?? ""))}"}`;
+		case "codeRef":
+			return `]{to="${escapeAttr(String(mark.attrs?.to ?? ""))}"}`;
+		case "color": {
+			// 속성 순서를 고정해 왕복해도 같은 글이 된다. 빈 값은 쓰지 않는다.
+			const attrs = TEXT_COLOR_ATTRS.flatMap((name) => {
+				const value = mark.attrs?.[name];
+				return typeof value === "string" && value !== "" ? [`${name}="${escapeAttr(value)}"`] : [];
+			});
+			return attrs.length > 0 ? `]{${attrs.join(" ")}}` : "]";
+		}
 		case "underline":
-			return "</u>";
 		case "superscript":
-			return "</sup>";
 		case "subscript":
-			return "</sub>";
+		case "untranslated":
+			return "]";
 		case "bold":
-			return "</strong>";
+			return "**";
 		case "italic":
-			return "</em>";
+			return "*";
 		case "strike":
-			return "</del>";
+			return "~~";
 		case "code":
 			return "`";
 		case "link": {
@@ -161,6 +201,87 @@ const closeMark = (mark: CmsMark): string => {
 	}
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** JSX의 spread 속성은 directive로 표현할 수 없다 → JSX로 남긴다(조용한 손실 금지). */
+const hasSpread = (node: CmsNode): boolean =>
+	Array.isArray(node.attrs?.attributes) && node.attrs.attributes.some((item) => isRecord(item) && Boolean(item.spread));
+
+/** 노드가 directive로 저장되는지 판정한다. 이름은 컴포넌트 이름(`attrs.name` 또는 `type`)이다. */
+const directiveFor = (node: CmsNode): DirectiveDefinition | undefined =>
+	hasSpread(node) ? undefined : DIRECTIVE_BY_COMPONENT.get(jsxName(node));
+
+/**
+ * directive 속성 문자열(`{name="값"}`). 정의에 있는 속성을 표 순서대로 쓰고, 정의에 없는 속성도 뒤에 붙여 버리지 않는다.
+ * 불리언은 참이면 이름만 쓰고 거짓이면 생략한다(§4.4).
+ */
+const serializeDirectiveAttrs = (node: CmsNode, definition: DirectiveDefinition): string => {
+	const attrs = node.attrs ?? {};
+	const parts: string[] = [];
+	const done = new Set<string>();
+
+	const print = (name: string, value: CmsJsonValue | undefined) => {
+		if (done.has(name)) return;
+		done.add(name);
+		if (definition.attributes[name] === "boolean") {
+			// 없는 속성과 거짓은 쓰지 않는다(§4.4). 참일 때만 이름을 쓴다.
+			if (value === undefined || value === null || value === false || value === "false") return;
+			parts.push(name);
+			return;
+		}
+		if (name === "rotate" && (value === "0" || value === 0 || value === "" || value === undefined || value === null)) {
+			return;
+		}
+		if (name === "crop" && (value === "" || value === "0,0,100,100" || value === undefined || value === null)) {
+			return;
+		}
+		if (name === "title" && (value === "" || value === undefined || value === null)) {
+			return;
+		}
+		if (value === undefined || value === null) return;
+		parts.push(`${name}="${escapeAttr(String(value))}"`);
+	};
+
+	for (const name of Object.keys(definition.attributes)) print(name, attrs[name]);
+	for (const [name, value] of Object.entries(attrs)) {
+		if (reservedAttrKeys.has(name)) continue;
+		print(name, value);
+	}
+
+	return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+};
+
+/** 감싼 컨테이너 단계 수. 콜론 수는 `3 + 단계`(§4.4) — 변환기와 같은 식을 쓴다. */
+const containerDepth = (node: CmsNode): number => {
+	let max = 0;
+	for (const child of node.content ?? []) {
+		// 병합 표는 4콜론(table) 안에 3콜론(row)을 쓴다. 바깥 컨테이너는 최소 5콜론이어야 한다.
+		if (child.type === "table" && usesDirectiveTable(child)) max = Math.max(max, 2);
+		const definition = directiveFor(child);
+		if (definition?.kind === "container") max = Math.max(max, 1 + containerDepth(child));
+		max = Math.max(max, containerDepth(child));
+	}
+	return max;
+};
+
+const serializeDirective = (node: CmsNode, definition: DirectiveDefinition, indent: string): string => {
+	const attrs = serializeDirectiveAttrs(node, definition);
+
+	if (definition.kind === "leaf") return `${indent}::${definition.name}${attrs}`;
+
+	if (definition.kind === "text") {
+		const label = serializeInlines(node.content ?? [], false, true);
+		// `:br`은 빈 라벨이 정본이다(§4.4). 라벨에 내용이 있으면 버리지 않고 보존한다.
+		return `${indent}:${definition.name}[${definition.name === "br" && label.length === 0 ? "" : label}]${attrs}`;
+	}
+
+	const inner = serializeBlocks(node.content ?? [], "");
+	const fence = ":".repeat(3 + containerDepth(node));
+	if (inner.length === 0) return `${indent}${fence}${definition.name}${attrs}\n${indent}${fence}`;
+	return `${indent}${fence}${definition.name}${attrs}\n${inner}\n${indent}${fence}`;
+};
+
 const serializeImage = (node: CmsNode): string => {
 	const mediaId = node.attrs?.mediaId;
 	const src = node.attrs?.src ? String(node.attrs.src) : "";
@@ -168,19 +289,17 @@ const serializeImage = (node: CmsNode): string => {
 	const width = node.attrs?.width ? String(node.attrs.width) : undefined;
 	const align = node.attrs?.align ? String(node.attrs.align) : undefined;
 	const caption = node.attrs?.caption ? String(node.attrs.caption) : undefined;
+	const crop = node.attrs?.crop ? String(node.attrs.crop) : undefined;
+	const hasCrop = crop && crop !== "0,0,100,100";
+	const rotate = node.attrs?.rotate ? String(node.attrs.rotate) : undefined;
+	const hasRotate = rotate && rotate !== "0";
 
-	// If it has mediaId or custom width/align/caption, serialize as <Image ... />
-	if (mediaId || width || align || caption) {
-		const props: string[] = [];
-		if (mediaId) props.push(`mediaId="${escapeAttr(String(mediaId))}"`);
-		if (src) props.push(`src="${escapeAttr(src)}"`);
+	const decorative = node.attrs?.decorative === true || node.attrs?.decorative === "true";
 
-		props.push(`alt="${escapeAttr(alt)}"`);
-		if (width) props.push(`width="${escapeAttr(width)}"`);
-		if (align) props.push(`align="${escapeAttr(align)}"`);
-		if (caption) props.push(`caption="${escapeAttr(caption)}"`);
-
-		return `<Image ${props.join(" ")} />`;
+	// §4.4: 미디어 참조·크기·정렬·캡션·장식 표시가 있으면 `image` 리프로, 없으면 Markdown 이미지로 저장한다.
+	if (mediaId || width || align || caption || decorative || hasCrop || hasRotate) {
+		const definition = DIRECTIVE_BY_COMPONENT.get("Image");
+		if (definition) return `::image${serializeDirectiveAttrs(node, definition)}`;
 	}
 
 	const title = node.attrs?.title;
@@ -188,50 +307,106 @@ const serializeImage = (node: CmsNode): string => {
 	return `![${alt}](${src})`;
 };
 
-const encodeLeadingSpaces = (value: string, inCode: boolean): string => {
+const encodeLeadingSpaces = (value: string, inCode: boolean, inLabel = false): string => {
 	const match = /^[ \t]+/.exec(value);
-	if (!match) return escapeText(value, inCode);
-	return `${"&#x20;".repeat(match[0].replace(/\t/g, " ").length)}${escapeText(value.slice(match[0].length), inCode)}`;
+	if (!match) return escapeText(value, inCode, inLabel);
+	return `${"&#x20;".repeat(match[0].replace(/\t/g, " ").length)}${escapeText(value.slice(match[0].length), inCode, inLabel)}`;
 };
 
-const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
-	let result = "";
-	const active: CmsMark[] = [];
+const EMPHASIS_MARKS = new Set(["bold", "italic", "strike"]);
+
+/**
+ * CommonMark 강조 구분자는 안쪽 첫/끝 글자가 공백·문장부호면 열리거나 닫히지 않는다
+ * (`**정적(Static)**과`는 강조가 아니라 별표가 글자로 남는다). 그런 경우만 JSX로 쓴다.
+ */
+const EMPHASIS_UNSAFE_EDGE = /^[\s\p{P}\p{S}]|[\s\p{P}\p{S}]$/u;
+
+const jsxOpenMark = (mark: CmsMark): string => {
+	switch (mark.type) {
+		case "bold":
+			return "<strong>";
+		case "italic":
+			return "<em>";
+		case "strike":
+			return "<del>";
+		default:
+			return openMark(mark);
+	}
+};
+
+const jsxCloseMark = (mark: CmsMark): string => {
+	switch (mark.type) {
+		case "bold":
+			return "</strong>";
+		case "italic":
+			return "</em>";
+		case "strike":
+			return "</del>";
+		default:
+			return closeMark(mark);
+	}
+};
+
+const serializeInlines = (nodes: CmsNode[], asParagraph = false, inLabel = false): string => {
+	const out: string[] = [];
+	// 열린 마크마다 여는 구분자의 조각 위치와 내용이 시작하는 조각 위치를 기억한다.
+	// 닫을 때 내용 앞뒤 글자를 보고 Markdown 강조가 성립하는지 판정한다.
+	const active: { mark: CmsMark; openIndex: number; contentIndex: number }[] = [];
 	let atLineStart = asParagraph;
+
+	const closeEntry = (entry: { mark: CmsMark; openIndex: number; contentIndex: number }) => {
+		if (EMPHASIS_MARKS.has(entry.mark.type)) {
+			const content = out.slice(entry.contentIndex).join("");
+			if (content.length === 0 || EMPHASIS_UNSAFE_EDGE.test(content)) {
+				out[entry.openIndex] = jsxOpenMark(entry.mark);
+				out.push(jsxCloseMark(entry.mark));
+				return;
+			}
+		}
+		out.push(closeMark(entry.mark));
+	};
 
 	const closeTo = (index: number) => {
 		while (active.length > index) {
-			const mark = active.pop();
-			if (mark) result += closeMark(mark);
+			const entry = active.pop();
+			if (entry) closeEntry(entry);
 		}
 	};
 
 	for (const node of nodes) {
 		if (node.type === "hardBreak") {
+			// 강제 줄바꿈은 `:br[]`로만 쓴다. `\`+줄바꿈은 원문 줄바꿈을 만들어 `remark-breaks`가
+			// 의도하지 않은 `<br>`을 찍으므로 쓰지 않는다(§4.4).
 			closeTo(0);
-			result += "\\\n";
-			atLineStart = true;
+			out.push(":br[]");
+			atLineStart = false;
 			continue;
 		}
 		if (node.type === "image") {
 			closeTo(0);
-			result += serializeImage(node);
+			out.push(serializeImage(node));
+			continue;
+		}
+		const directive = directiveFor(node);
+		if (directive) {
+			closeTo(0);
+			out.push(serializeDirective(node, directive, ""));
 			continue;
 		}
 		if (node.type === "mdxJsx" || BLOCK_JSX_NAMES.has(node.type) || INLINE_JSX_MARKS[node.type]) {
 			closeTo(0);
-			result += serializeJsx(node);
+			out.push(serializeJsx(node));
 			continue;
 		}
 		if (node.type === "mdxExpression") {
 			closeTo(0);
-			result += `{${String(node.attrs?.value ?? "")}}`;
+			out.push(`{${String(node.attrs?.value ?? "")}}`);
 			continue;
 		}
 		if (node.type !== "text") {
 			closeTo(0);
-			if (node.content) result += serializeInlines(node.content);
-			else if (node.text) result += escapeText(node.text, false);
+			if (node.content) out.push(serializeInlines(node.content, false, inLabel));
+			else if (node.text) out.push(escapeText(node.text, false, inLabel));
 			continue;
 		}
 
@@ -240,7 +415,7 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
 		while (
 			same < active.length &&
 			same < wanted.length &&
-			markKey(active[same] ?? { type: "" }) === markKey(wanted[same] ?? { type: "" })
+			markKey(active[same]?.mark ?? { type: "" }) === markKey(wanted[same] ?? { type: "" })
 		) {
 			same += 1;
 		}
@@ -248,15 +423,22 @@ const serializeInlines = (nodes: CmsNode[], asParagraph = false): string => {
 		for (let index = same; index < wanted.length; index += 1) {
 			const mark = wanted[index];
 			if (!mark) continue;
-			active.push(mark);
-			result += openMark(mark);
+			const openIndex = out.length;
+			out.push(openMark(mark));
+			active.push({ mark, openIndex, contentIndex: openIndex + 1 });
 		}
 		const inCode = wanted.some((mark) => mark.type === "code");
 		const text = node.text ?? "";
-		result += atLineStart && !inCode ? encodeLeadingSpaces(text, inCode) : escapeText(text, inCode);
+		out.push(
+			atLineStart && !inCode
+				? encodeLeadingSpaces(text, inCode, inLabel || wanted.some((mark) => LABEL_MARKS.has(mark.type)))
+				: escapeText(text, inCode, inLabel || wanted.some((mark) => LABEL_MARKS.has(mark.type))),
+		);
 		atLineStart = false;
 	}
 	closeTo(0);
+
+	const result = out.join("");
 	if (!asParagraph) return result;
 	// 문단이 `1. `로 시작하면 재파싱 시 순서 목록으로 해석되므로 목록 기호를 이스케이프한다.
 	// 단, 백슬래시는 숫자가 아니라 마침표 앞에 붙여야 한다(`1\. `). `\1. `는 숫자를 이스케이프해 문자 그대로 남는다.
@@ -330,7 +512,7 @@ const serializeListItem = (item: CmsNode, marker: string, indent: string): strin
 	return [head, ...extra].join("\n\n");
 };
 
-const serializeTable = (node: CmsNode): string => {
+const serializeGfmTable = (node: CmsNode): string => {
 	const rows = node.content ?? [];
 	const serializedRows = rows.map((row) => {
 		const cells = (row.content ?? []).map((cell) => serializeInlines(cell.content ?? []).replace(/\|/g, "\\|"));
@@ -338,12 +520,92 @@ const serializeTable = (node: CmsNode): string => {
 	});
 	if (serializedRows.length === 0) return "";
 	const columnCount = rows[0]?.content?.length ?? 1;
-	const separator = `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`;
+	const align = Array.isArray(node.attrs?.align) ? node.attrs.align : [];
+	const rule = (value: unknown) =>
+		value === "left" ? ":--" : value === "center" ? ":-:" : value === "right" ? "--:" : "---";
+	const separator = `| ${Array.from({ length: columnCount }, (_, index) => rule(align[index])).join(" | ")} |`;
 	const [header, ...body] = serializedRows;
 	return [header, separator, ...body].join("\n");
 };
 
+const tableCellAttrs = (cell: CmsNode): string[] => {
+	const attrs: string[] = [];
+	if (cell.attrs?.header === true || cell.attrs?.header === "true") attrs.push("header");
+	const colspan = Number(cell.attrs?.colspan ?? 1);
+	if (colspan > 1) attrs.push(`colspan=${colspan}`);
+	const rowspan = Number(cell.attrs?.rowspan ?? 1);
+	if (rowspan > 1) attrs.push(`rowspan=${rowspan}`);
+	return attrs;
+};
+
+/** 표 속성(`align`, `widths`)을 저장 순서대로 모은다. */
+const tableAttrs = (node: CmsNode): Array<[string, string]> => {
+	const attrs: Array<[string, string]> = [];
+	const align = tableAlign(node);
+	if (align) attrs.push(["align", align]);
+	const widths = formatTableWidths(tableWidths(node));
+	if (widths) attrs.push(["widths", widths]);
+	return attrs;
+};
+
+const tableAlign = (node: CmsNode): string => {
+	const align = Array.isArray(node.attrs?.align) ? (node.attrs.align as Array<string | null>) : [];
+	const value = align.map((v) => v ?? "").join(",");
+	return value.replace(/,/g, "").length > 0 ? value : "";
+};
+
+// directive 라벨 대괄호가 맞지 않으면 파서가 셀을 잃으므로 같은 의미의 JSX 표로 저장한다.
+const serializeJsxTable = (node: CmsNode, rows: string[][]): string => {
+	const attrs = tableAttrs(node).map(([name, value]) => ` ${name}="${escapeAttr(value)}"`);
+	const lines = [`<Table${attrs.join("")}>`];
+	(node.content ?? []).forEach((row, rowIndex) => {
+		lines.push("<TableRow>");
+		(row.content ?? []).forEach((cell, cellIndex) => {
+			const attrs = tableCellAttrs(cell).map((attr) => attr.replace(/=(\d+)$/, '="$1"'));
+			lines.push(
+				`<TableCell${attrs.length ? ` ${attrs.join(" ")}` : ""}>${rows[rowIndex]?.[cellIndex] ?? ""}</TableCell>`,
+			);
+		});
+		lines.push("</TableRow>");
+	});
+	lines.push("</Table>");
+	return lines.join("\n");
+};
+
+const serializeDirectiveTable = (node: CmsNode): string => {
+	const rows = node.content ?? [];
+	const labels = rows.map((row) =>
+		(row.content ?? []).map((cell) => serializeInlines(cell.content ?? [], false, true)),
+	);
+	if (labels.some((row) => row.some((label) => !hasBalancedLabelBrackets(label)))) {
+		return serializeJsxTable(node, labels);
+	}
+	const attrs = tableAttrs(node).map(([name, value]) => `${name}="${value}"`);
+	const lines: string[] = [`::::table${attrs.length ? `{${attrs.join(" ")}}` : ""}`];
+	rows.forEach((row, rowIndex) => {
+		lines.push(":::row");
+		(row.content ?? []).forEach((cell, cellIndex) => {
+			const cellAttrs = tableCellAttrs(cell);
+			const attrStr = cellAttrs.length > 0 ? `{${cellAttrs.join(" ")}}` : "";
+			lines.push(`::cell[${labels[rowIndex]?.[cellIndex] ?? ""}]${attrStr}`);
+		});
+		lines.push(":::");
+	});
+	lines.push("::::");
+	return lines.join("\n");
+};
+
+const serializeTable = (node: CmsNode): string => {
+	if (usesDirectiveTable(node)) {
+		return serializeDirectiveTable(node);
+	}
+	return serializeGfmTable(node);
+};
+
 const serializeBlock = (node: CmsNode, indent = ""): string => {
+	const definition = directiveFor(node);
+	if (definition) return serializeDirective(node, definition, indent);
+
 	switch (node.type) {
 		case "paragraph":
 			return indent + serializeInlines(node.content ?? [], true);

@@ -7,9 +7,15 @@ export default defineConfig(({ mode }) => ({
 		environment: "jsdom",
 		globals: true,
 		include: ["src/**/*.{test,spec}.{ts,tsx}"],
+		setupFiles: ["./src/test/setup-dom.ts"],
 		testTimeout: 60000,
 		hookTimeout: 60000,
-		env: loadEnv(mode, process.cwd(), ""),
+		env: {
+			...loadEnv(mode, process.cwd(), ""),
+			// 운영(Vercel)은 UTC로 돈다. 테스트를 로컬 시간대에 두면 표시 날짜처럼
+			// 타임존에 민감한 로직의 회귀를 개발자 환경에서만 못 잡는다.
+			TZ: "UTC",
+		},
 	},
 	resolve: {
 		alias: {

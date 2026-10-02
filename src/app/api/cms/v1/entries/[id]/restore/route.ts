@@ -1,36 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
-import { handleApiError } from "../../../error-handler";
-import { validateSameOrigin } from "../../../security";
+import { versionBodySchema } from "@/cms/core/api";
+import { adminRoute, json, readVersionedBody } from "../../../handler";
 
-interface RouteContext {
-	params: Promise<{ id: string }>;
-}
-
-export async function POST(request: NextRequest, context: RouteContext) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const { id } = await context.params;
-		const body = await request.json();
-
-		if (body.expectedVersion === undefined) {
-			return NextResponse.json(
-				{ code: "version_required", message: "expectedVersion is required" },
-				{ status: 428 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		const restored = await store.restoreEntry({
-			id,
-			expectedVersion: body.expectedVersion,
-		});
-
-		return NextResponse.json(restored);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+/** 휴지통 → 복원. record 컬렉션은 검증 후 활성 레코드로 되돌린다(§5.3). */
+export const POST = adminRoute<{ id: string }>(async ({ request, params }) => {
+	const { expectedVersion } = await readVersionedBody(request, versionBodySchema);
+	return json(await getCmsContentStore().restoreEntry({ id: params.id, expectedVersion }));
+});

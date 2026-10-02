@@ -9,10 +9,11 @@ function record(
 	overrides: Partial<PublishedEntryRecord> & { id: string; collection: string; slug: string },
 ): PublishedEntryRecord {
 	return {
+		locale: "ko",
+		translationGroupId: overrides.id,
 		metadata: {},
 		mdx: "",
 		publishedAt: DATE,
-		firstPublishedAt: DATE,
 		updatedAt: DATE,
 		...overrides,
 	};
@@ -57,17 +58,30 @@ function createFakeStore(
 	hooks: { onList?: () => void; onGetBySlug?: () => void } = {},
 ): ContentStore {
 	const store = {
-		listPublishedEntries: async (params: { collections: readonly string[]; includeBody?: boolean }) => {
+		listPublishedEntries: async (params: {
+			collections: readonly string[];
+			includeBody?: boolean;
+			locale?: string;
+		}) => {
 			hooks.onList?.();
 
 			return entries
 				.filter((entry) => params.collections.includes(entry.collection))
+				.filter((entry) => params.locale === undefined || entry.locale === params.locale)
 				.map((entry) => (params.includeBody === true ? entry : { ...entry, mdx: "" }));
 		},
-		getPublishedEntryBySlug: async (params: { collection: string; slug: string; includeBody?: boolean }) => {
+		getPublishedEntryBySlug: async (params: {
+			collection: string;
+			slug: string;
+			includeBody?: boolean;
+			locale?: string;
+		}) => {
 			hooks.onGetBySlug?.();
 			const entry = entries.find(
-				(candidate) => candidate.collection === params.collection && candidate.slug === params.slug,
+				(candidate) =>
+					candidate.collection === params.collection &&
+					candidate.slug === params.slug &&
+					candidate.locale === (params.locale ?? "ko"),
 			);
 
 			if (!entry) return { status: "not_found" as const };
@@ -97,6 +111,8 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 
 		expect(post).toEqual({
 			slug: "first-post",
+			locale: "ko",
+			translationGroupId: "post-1",
 			status: "published",
 			title: "첫 글",
 			excerpt: "요약 1",
@@ -107,6 +123,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 			],
 			contentMdx: "# 본문 1",
 			publishedAt: DATE_ISO,
+			updatedAt: DATE_ISO,
 			isEvergreen: true,
 		});
 	});
@@ -119,7 +136,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 		expect(publishedAtOf(memo)).toBe(DATE_ISO);
 	});
 
-	it("metadata.publishedAt이 있으면 그 값을 우선한다", async () => {
+	it("발행일은 DB가 처음 발행할 때 기록한 칸이다(메타데이터에 남은 예전 값은 쓰지 않는다)", async () => {
 		const memo = await repositoryWith([
 			record({
 				id: "memo-1",
@@ -129,7 +146,7 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 			}),
 		]).getMemo("memo-a");
 
-		expect(publishedAtOf(memo)).toBe("2025-12-31T00:00:00.000Z");
+		expect(publishedAtOf(memo)).toBe(DATE_ISO);
 	});
 
 	it("카테고리를 해석할 수 없는 게시글은 공개하지 않는다", async () => {
@@ -147,7 +164,6 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 				collection: "memo",
 				slug: "memo-a",
 				publishedAt: null,
-				firstPublishedAt: null,
 			}),
 		]);
 
@@ -199,11 +215,14 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 
 		expect(memo).toEqual({
 			slug: "memo-a",
+			locale: "ko",
+			translationGroupId: expect.any(String),
 			status: "published",
 			title: "메모 A",
 			tags: [{ slug: "react", label: "React" }],
 			contentMdx: "",
 			publishedAt: DATE_ISO,
+			updatedAt: DATE_ISO,
 		});
 		expect(filtered.map((item) => item.slug)).toEqual(["memo-a"]);
 	});
@@ -373,5 +392,95 @@ describe("M7-BE-1 PostgresRepository 공개 매핑", () => {
 		await expect(repository.getPost("없는-글".normalize("NFD"))).resolves.toBeNull();
 		// 잘못된 퍼센트 인코딩도 500이 아니라 조회 실패로 다룬다.
 		await expect(repository.getPost("100%-확실해")).resolves.toBeNull();
+	});
+
+	it("points deprecated posts at their published replacement and describes collections", async () => {
+		const entries = [
+			...publishedPostsFixture(),
+			record({
+				id: "post-old",
+				collection: "post",
+				slug: "old-post",
+				mdx: "옛 글",
+				metadata: { title: "옛 글", categoryId: "cat-1", policy: "deprecated", replacementPostId: "post-1" },
+			}),
+			record({
+				id: "series-1",
+				collection: "collection",
+				slug: "series",
+				metadata: { title: "연재", summary: "연재 설명", itemIds: ["post-1"] },
+			}),
+		];
+		const repository = new PostgresRepository(() => createFakeStore(entries));
+		const post = await repository.getPost("old-post");
+		expect(post?.deprecation).toEqual({ replacement: { slug: "first-post", title: "첫 글", locale: "ko" } });
+		expect((await repository.getPost("first-post"))?.deprecation).toBeUndefined();
+		expect((await repository.getSeries("series"))?.description).toBe("연재 설명");
+	});
+});
+
+describe("v2 B4 언어별 공개 조회", () => {
+	/** 원문 공개 조회는 번역본 메타데이터를 원문 공통 값과 합쳐 준다. 여기서는 합친 결과를 그대로 둔다. */
+	const english = (
+		overrides: Partial<PublishedEntryRecord> & { id: string; slug: string; translationGroupId: string },
+	) => record({ collection: "post", locale: "en", ...overrides });
+
+	const fixture = () => [
+		...publishedPostsFixture(),
+		english({
+			id: "post-1-en",
+			slug: "first-post",
+			translationGroupId: "post-1",
+			metadata: { title: "First post", summary: "Summary", categoryId: "cat-1", tagIds: ["tag-1"] },
+		}),
+		record({
+			id: "cat-1",
+			collection: "category",
+			slug: "engineering",
+			metadata: { title: "엔지니어링", translations: { en: { title: "Engineering" } } },
+		}),
+		record({
+			id: "series-1",
+			collection: "collection",
+			slug: "series",
+			metadata: {
+				title: "연재",
+				summary: "연재 설명",
+				itemIds: ["post-2", "post-1"],
+				translations: { en: { title: "Series" } },
+			},
+		}),
+	];
+
+	it("그 언어 번역본만 목록에 보이고 분류 이름은 언어별 값(없으면 기본 언어)을 쓴다", async () => {
+		const repository = repositoryWith(fixture());
+		const posts = await repository.listPosts({}, "en");
+
+		expect(posts.map((post) => [post.slug, post.title, post.locale])).toEqual([["first-post", "First post", "en"]]);
+		expect(posts[0]?.category).toEqual({ slug: "engineering", label: "Engineering" });
+		expect(posts[0]?.tags).toEqual([{ slug: "typescript", label: "TypeScript" }]);
+		await expect(repository.listPosts({}, "ja")).resolves.toEqual([]);
+		expect((await repository.listCategories("en")).find((item) => item.slug === "notes")?.label).toBe("기록");
+	});
+
+	it("번역본이 없는 언어의 주소는 찾지 않는다", async () => {
+		const repository = repositoryWith(fixture());
+
+		await expect(repository.getPost("second-post", "en")).resolves.toBeNull();
+		expect((await repository.getPost("first-post", "en"))?.title).toBe("First post");
+	});
+
+	it("모음집은 그 언어 번역본이 공개된 글만 담고, 묶음의 공개 언어와 링크 표를 준다", async () => {
+		const repository = repositoryWith(fixture());
+		const series = await repository.getSeries("series", "en");
+
+		expect(series?.label).toBe("Series");
+		expect(series?.description).toBe("연재 설명");
+		expect(series?.items.map((item) => item.title)).toEqual(["First post"]);
+		await expect(repository.listTranslations("post", "post-1")).resolves.toEqual([
+			{ locale: "ko", slug: "first-post" },
+			{ locale: "en", slug: "first-post" },
+		]);
+		expect([...(await repository.listLocalizedAddresses("en"))]).toEqual([["post:first-post", "first-post"]]);
 	});
 });

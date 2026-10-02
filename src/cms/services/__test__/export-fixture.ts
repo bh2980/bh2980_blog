@@ -21,6 +21,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "11111111-1111-4111-8111-111111111111",
 			collection: "post",
+			locale: "ko",
+			translationGroupId: "11111111-1111-4111-8111-111111111111",
 			status: "published",
 			version: 3,
 			folderId: null,
@@ -28,8 +30,6 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			publishedSlug: "published-post",
 			createdAt: FIXTURE_TIME,
 			updatedAt: FIXTURE_TIME,
-			firstPublishedAt: null,
-			lastPublishedAt: null,
 			publishedAt: FIXTURE_TIME,
 			working: fixtureBody("working body", "게시글", "hash-working-1"),
 			published: fixtureBody("published body", "게시글", "hash-published-1", {
@@ -43,6 +43,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "22222222-2222-4222-8222-222222222222",
 			collection: "memo",
+			locale: "ko",
+			translationGroupId: "22222222-2222-4222-8222-222222222222",
 			status: "draft",
 			version: 1,
 			folderId: null,
@@ -50,8 +52,6 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			publishedSlug: null,
 			createdAt: FIXTURE_TIME,
 			updatedAt: FIXTURE_TIME,
-			firstPublishedAt: null,
-			lastPublishedAt: null,
 			publishedAt: null,
 			working: fixtureBody("draft secret body", "메모", "hash-working-2"),
 		},
@@ -59,6 +59,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			// 보관된 글. published 본문이 남아 있어도 공개 아카이브에는 나가면 안 된다.
 			id: "88888888-8888-4888-8888-888888888888",
 			collection: "post",
+			locale: "ko",
+			translationGroupId: "88888888-8888-4888-8888-888888888888",
 			status: "archived",
 			version: 2,
 			folderId: null,
@@ -66,8 +68,6 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			publishedSlug: "archived-post",
 			createdAt: FIXTURE_TIME,
 			updatedAt: FIXTURE_TIME,
-			firstPublishedAt: null,
-			lastPublishedAt: null,
 			publishedAt: FIXTURE_TIME,
 			working: fixtureBody("archived working body", "보관글", "hash-working-3"),
 			published: fixtureBody("archived published body", "보관글", "hash-published-3"),
@@ -119,7 +119,15 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			version: 1,
 		},
 	],
-	addresses: [{ collection: "post", slug: "old-slug", entryId: "11111111-1111-4111-8111-111111111111", type: "alias" }],
+	addresses: [
+		{
+			collection: "post",
+			locale: "ko",
+			slug: "old-slug",
+			entryId: "11111111-1111-4111-8111-111111111111",
+			type: "alias",
+		},
+	],
 	media: [
 		{
 			id: "44444444-4444-4444-8444-444444444444",
@@ -132,6 +140,9 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			stagingKey: null,
 			storageKey: "media/draft-only.png",
 			createdAt: FIXTURE_TIME,
+			original: null,
+			defaultAlt: "",
+			defaultCaption: "",
 			updatedAt: FIXTURE_TIME,
 			readyAt: FIXTURE_TIME,
 		},
@@ -146,6 +157,9 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			stagingKey: null,
 			storageKey: "media/working-only.png",
 			createdAt: FIXTURE_TIME,
+			original: null,
+			defaultAlt: "",
+			defaultCaption: "",
 			updatedAt: FIXTURE_TIME,
 			readyAt: FIXTURE_TIME,
 		},
@@ -154,7 +168,6 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			id: "66666666-6666-4666-8666-666666666666",
 			name: "기본",
-			forCollection: "post",
 			mdx: "## 문제",
 			version: 1,
 			createdAt: FIXTURE_TIME,

@@ -57,10 +57,7 @@ export function OgTemplate({ title }: { title: string }) {
 	);
 }
 
-export async function createOgImageResponse(
-	title: string = "bh2980.dev",
-	options: { noStore?: boolean } = {},
-) {
+export async function createOgImageResponse(title: string = "bh2980.dev", options: { noStore?: boolean } = {}) {
 	const pretendardBold = await loadPretendardBold();
 	return new ImageResponse(<OgTemplate title={title} />, {
 		...OG_SIZE,
@@ -74,4 +71,13 @@ export async function createOgImageResponse(
 			},
 		],
 	});
+}
+
+/** 관리자가 고른 공유 이미지(v3 SEO). OG 크기(1.91:1)에 맞춰 가운데를 잘라 채운다. */
+export function createImageOgResponse(url: string) {
+	return new ImageResponse(
+		// biome-ignore lint/performance/noImgElement: next/og renders plain img elements
+		<img src={url} alt="" width={OG_SIZE.width} height={OG_SIZE.height} style={{ objectFit: "cover" }} />,
+		{ ...OG_SIZE, headers: NO_STORE_HEADERS },
+	);
 }

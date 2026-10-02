@@ -1,585 +1,953 @@
 "use client";
 
-import { useState } from "react";
+import {
+	type ColumnOrderState,
+	type ColumnSizingState,
+	type ColumnVisibilityState,
+	columnOrderingFeature,
+	columnResizingFeature,
+	columnSizingFeature,
+	columnVisibilityFeature,
+	createColumnHelper,
+	type RowSelectionState,
+	rowSelectionFeature,
+	tableFeatures,
+	type Updater,
+	useTable,
+} from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderUp } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
+import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { Folder, ListEntriesItem, ListTranslationMember } from "@/cms/adapters/postgres/content-store";
+import { type AdminColumnSettings, type AdminListColumn, PAGE_SIZES, type PageSize } from "@/cms/core/api";
+import { isRecordCollection } from "@/cms/core/collections";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Label } from "@/components/ui/label";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationItem,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { adminLocaleName, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
+import { cn } from "@/utils/cn";
+import { folderKeyHandler } from "./admin-sidebar";
+import { ColumnHeader } from "./column-header";
+import { COLUMN_CONFIG, COLUMN_LABELS, columnsFor, filterFor } from "./list-columns";
+import type { ListState } from "./list-state";
+import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
+import { writeDraggedEntries } from "./shared/entry-drag";
+import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
+import { FittingTags } from "./shared/fitting-tags";
+import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
+import type { TaxonomyOption } from "./shared/use-taxonomy";
+
+export { COLUMN_LABELS, columnsFor };
+
+// Data Table(v2 A1): 컬럼 표시·순서와 행 선택은 TanStack Table이 다루고, 검색·정렬·필터·페이지는 서버가 처리한다.
+const features = tableFeatures({
+	columnVisibilityFeature,
+	columnOrderingFeature,
+	columnSizingFeature,
+	columnResizingFeature,
+	rowSelectionFeature,
+});
+
+/** 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다. */
+const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
+	status: 132,
+	locale: 124,
+	category: 112,
+	tags: 200,
+	updatedAt: 132,
+	publishedAt: 132,
+	createdAt: 132,
+	slug: 200,
+	folder: 140,
+};
+const DEFAULT_TITLE_SIZE = 320;
+const MIN_COLUMN_SIZE = 72;
+const MAX_COLUMN_SIZE = 960;
+const helper = createColumnHelper<typeof features, ListEntriesItem>();
+
+/** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
+const formatDate = (value: Date | string | null) => {
+	if (!value) return "—";
+	const date = new Date(value);
+	const sameYear = date.getFullYear() === new Date().getFullYear();
+	return sameYear
+		? date.toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+		: date.toLocaleDateString("ko-KR");
+};
+
+/**
+ * 폭이 모자랄 때 먼저 숨기는 컬럼과 그 순서. 사용자가 켠 컬럼이라도 제목이 최소 너비를 못 받으면 이 순서로 숨긴다.
+ * 제목·상태·카테고리·수정일은 숨기지 않는다.
+ */
+const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "locale", "tags"] as const;
+const TITLE_MIN_WIDTH = 240;
+
+/**
+ * 열 너비 조절 손잡이. 헤더 오른쪽 가장자리를 끌거나, 초점을 두고 ←/→로 16px씩 바꾼다. 두 번 누르면 기본 너비로 돌아간다.
+ */
+function ColumnResizeHandle({
+	label,
+	width,
+	resizing,
+	onStart,
+	onNudge,
+	onReset,
+}: {
+	label: string;
+	width: number;
+	resizing: boolean;
+	onStart: (event: unknown) => void;
+	onNudge: (delta: number) => void;
+	onReset: () => void;
+}) {
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: 열 너비 조절은 hr가 아니라 조작 가능한 분리자다
+		<div
+			role="separator"
+			aria-orientation="vertical"
+			aria-label={`${label} 열 너비 조절`}
+			aria-valuenow={width}
+			aria-valuemin={MIN_COLUMN_SIZE}
+			aria-valuemax={MAX_COLUMN_SIZE}
+			aria-valuetext={`${width}px`}
+			tabIndex={0}
+			onMouseDown={onStart}
+			onTouchStart={onStart}
+			onDoubleClick={onReset}
+			onKeyDown={(event) => {
+				if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+					event.preventDefault();
+					onNudge(event.key === "ArrowLeft" ? -16 : 16);
+				}
+			}}
+			className="absolute top-0 right-0 z-10 flex h-full w-2 cursor-col-resize touch-none select-none justify-center outline-none"
+		>
+			<span
+				className={cn(
+					"h-full w-px bg-transparent transition-colors group-hover/th:bg-border",
+					resizing && "bg-primary group-hover/th:bg-primary",
+					"[div:focus-visible>&]:bg-ring",
+				)}
+			/>
+		</div>
+	);
+}
+
+const BADGE_CLASS = "inline-flex h-5 items-center rounded border px-1.5 font-medium text-[11px] leading-none";
+
+const BADGE_TONE: Record<"published" | "changed" | "draft" | "archived", string> = {
+	published: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+	changed: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+	draft: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+	archived: "border-transparent bg-muted text-muted-foreground",
+};
+
+/** 번역 묶음의 언어별 상태. 있는 언어는 그 편집 화면으로 잇고, 없는 언어는 점선으로만 보인다. 색과 함께 글자로도 상태를 읽힌다. */
+function LocaleBadges({ translations }: { translations: readonly ListTranslationMember[] }) {
+	return (
+		<span className="flex items-center gap-1">
+			{LOCALES.map((locale) => {
+				const name = LOCALE_INFO[locale].adminName;
+				const member = translations.find((candidate) => candidate.locale === locale);
+				if (!member) {
+					return (
+						<span key={locale} className={cn(BADGE_CLASS, "border-dashed text-muted-foreground/70")}>
+							<span aria-hidden="true">{locale.toUpperCase()}</span>
+							<span className="sr-only">{name} 없음</span>
+						</span>
+					);
+				}
+				const tone =
+					member.status === "published"
+						? member.hasUnpublishedChanges
+							? "changed"
+							: "published"
+						: member.status === "draft"
+							? "draft"
+							: "archived";
+				return (
+					<Link
+						key={locale}
+						href={`/admin/entries/${member.id}/edit` as Route}
+						className={cn(BADGE_CLASS, BADGE_TONE[tone], "hover:brightness-95 dark:hover:brightness-125")}
+					>
+						<span aria-hidden="true">{locale.toUpperCase()}</span>
+						<span className="sr-only">
+							{name} · {STATUS_LABELS[member.status]}
+						</span>
+					</Link>
+				);
+			})}
+		</span>
+	);
+}
+
+/** 분류 항목(카테고리·태그·모음집)의 언어. 이름이 있는 언어는 채운 배지, 없는 언어는 점선 배지다. */
+function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
+	return (
+		<span className="flex items-center gap-1">
+			{LOCALES.map((locale) => {
+				const named = locales.includes(locale);
+				return (
+					<span
+						key={locale}
+						className={cn(BADGE_CLASS, named ? BADGE_TONE.published : "border-dashed text-muted-foreground/70")}
+					>
+						<span aria-hidden="true">{locale.toUpperCase()}</span>
+						<span className="sr-only">
+							{LOCALE_INFO[locale].adminName} {named ? "있음" : "없음"}
+						</span>
+					</span>
+				);
+			})}
+		</span>
+	);
+}
+
+/** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
+function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
+	const label = isRecord && item.status === "published" ? "활성" : describeEntryStatus(item);
+	const tone = item.scheduledAt
+		? "text-primary"
+		: item.status === "published"
+			? item.hasUnpublishedChanges
+				? "text-amber-600 dark:text-amber-400"
+				: "text-emerald-600 dark:text-emerald-400"
+			: "text-muted-foreground";
+	const icon = item.scheduledAt ? (
+		<>
+			<circle cx="8" cy="8" r="5.5" />
+			<path d="M8 5.5V8l1.8 1.1" />
+		</>
+	) : item.status === "published" ? (
+		item.hasUnpublishedChanges ? (
+			<>
+				<circle cx="8" cy="8" r="5.5" />
+				<path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none" />
+			</>
+		) : (
+			<circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="none" />
+		)
+	) : item.status === "archived" || item.status === "trashed" ? (
+		<>
+			<circle cx="8" cy="8" r="5.5" />
+			<path d="M5 8h6" />
+		</>
+	) : (
+		<circle cx="8" cy="8" r="5.5" strokeDasharray="2.4 2.4" />
+	);
+	return (
+		<span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-foreground/80">
+			<svg
+				aria-hidden="true"
+				focusable="false"
+				viewBox="0 0 16 16"
+				className={cn("size-3.5 shrink-0", tone)}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.6"
+			>
+				{icon}
+			</svg>
+			{label}
+		</span>
+	);
+}
+const resolve = <T,>(updater: Updater<T>, current: T): T =>
+	typeof updater === "function" ? (updater as (old: T) => T)(current) : updater;
 
 interface TableProps {
 	collection: string;
 	items: ListEntriesItem[];
+	folders: Folder[];
+	/** 폴더 탐색 모드에서 목록 위에 보여 줄 하위 폴더와 상위 폴더 이동. */
+	explorer: { folders: Folder[]; parent: string | null } | null;
+	state: ListState;
+	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
+	onStateChange: (patch: Partial<ListState>) => void;
+	columnSettings?: AdminColumnSettings;
+	onColumnSettingsChange: (settings: AdminColumnSettings) => void;
 	selectedIds: Set<string>;
-	onToggleSelect: (id: string) => void;
-	onToggleSelectPage: (selectAll: boolean) => void;
+	onSelectionChange: (ids: Set<string>) => void;
 	total: number;
-	page: number;
-	pageSize: 25 | 50 | 100;
-	search: string;
-	statusFilter: string;
-	sortField: "updatedAt" | "createdAt" | "title" | "slug";
-	sortDirection: "asc" | "desc";
 	isLoading: boolean;
+	/** 조건을 바꿔 새 목록을 받는 중. 이전 줄을 흐리게 남겨 둔다. */
+	isRefreshing?: boolean;
 	errorMessage: string | null;
-	onSearchChange: (val: string) => void;
-	onStatusChange: (val: string) => void;
-	onSortChange: (field: "updatedAt" | "createdAt" | "title" | "slug") => void;
-	onPageChange: (newPage: number) => void;
-	onPageSizeChange: (newSize: 25 | 50 | 100) => void;
-	onCreateNew: () => void;
-	onRenameRecord?: (id: string, newTitle: string, version: number) => Promise<void>;
-	onOpenEditRecord?: (item: ListEntriesItem) => void;
+	/** `trash`면 휴지통 화면이다(v2 A3): 끌어 옮기기·폴더 탐색이 없고 행마다 복원·영구 삭제를 보여 준다. */
+	mode?: "list" | "trash";
+	folderActions?: FolderActions;
+	/** 행의 오른쪽 클릭·`⋯` 메뉴(v2 A2). 선택한 행이면 선택 전체를 대상으로 한다. */
+	rowMenu: (item: ListEntriesItem) => MenuAction[];
+	/** 목록 빈 곳의 오른쪽 클릭 메뉴. */
+	blankMenu?: MenuAction[];
+	/** 행에서 Delete 키. 목록은 휴지통 이동, 휴지통은 영구 삭제를 묻는다. */
+	onDeleteKey?: (item: ListEntriesItem) => void;
+	onSelectFolder: (folder: string) => void;
+	onOpenRecord: (item: ListEntriesItem) => void;
+	onRestore?: (item: ListEntriesItem) => void;
+	onPermanentDelete?: (item: ListEntriesItem) => void;
+	onPageChange: (page: number) => void;
+	onPageSizeChange: (size: PageSize) => void;
 	onRetry: () => void;
-
-	// Folder Explorer Navigation
-	currentFolderId?: string | null;
-	folders?: Folder[];
-	onSelectFolder?: (folderId: string | null) => void;
-	onCreateFolder?: (name: string, parentId: string | null) => Promise<void>;
-	onRenameFolder?: (id: string, name: string, version: number) => Promise<void>;
-	onDeleteFolder?: (id: string, version: number) => Promise<void>;
 }
 
 export function AdminEntriesTable({
 	collection,
 	items,
+	folders,
+	explorer,
+	state,
+	options,
+	onStateChange,
+	columnSettings,
+	onColumnSettingsChange,
 	selectedIds,
-	onToggleSelect,
-	onToggleSelectPage,
+	onSelectionChange,
 	total,
-	page,
-	pageSize,
-	search,
-	statusFilter,
-	sortField,
-	sortDirection,
 	isLoading,
+	isRefreshing = false,
 	errorMessage,
-	onSearchChange,
-	onStatusChange,
-	onSortChange,
+	mode = "list",
+	folderActions,
+	rowMenu,
+	blankMenu,
+	onDeleteKey,
+	onSelectFolder,
+	onOpenRecord,
+	onRestore,
+	onPermanentDelete,
 	onPageChange,
 	onPageSizeChange,
-	onCreateNew,
-	onRenameRecord,
-	onOpenEditRecord,
 	onRetry,
-	currentFolderId,
-	folders = [],
-	onSelectFolder,
-	onCreateFolder,
-	onRenameFolder,
-	onDeleteFolder,
 }: TableProps) {
-	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-	const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-	const [newFolderName, setNewFolderName] = useState("");
+	const isTrash = mode === "trash";
+	const isRecord = isRecordCollection(collection);
+	const { available, defaults } = columnsFor(collection);
+	const savedOrder = (columnSettings?.order ?? []).filter((column) => available.includes(column));
+	const order = [...new Set([...savedOrder, ...defaults, ...available])];
+	const visibility: ColumnVisibilityState = Object.fromEntries(
+		available.map((column) => [
+			column,
+			column === "title" || (columnSettings?.visibility?.[column] ?? defaults.includes(column)),
+		]),
+	);
+	const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+	/** `상위 / 하위`처럼 최상위부터의 폴더 경로. 폴더 밖 항목은 `—`. */
+	const folderName = (id: string | null) => {
+		const names: string[] = [];
+		let folder = id ? folders.find((candidate) => candidate.id === id) : undefined;
+		while (folder && names.length < 8) {
+			names.unshift(folder.name);
+			const parentId = folder.parentId;
+			folder = parentId ? folders.find((candidate) => candidate.id === parentId) : undefined;
+		}
+		return names.length > 0 ? names.join(" / ") : "—";
+	};
+	// 폴더 구분 없이 평평하게 볼 때(검색·필터·하위 폴더 포함) 폴더 컬럼이 꺼져 있으면 제목 옆에 폴더 경로를 작게 붙인다.
+	const showFolderBesideTitle = !explorer && !isTrash && !isRecord && folders.length > 0 && visibility.folder === false;
 
-	// Custom Dialog / Inline states replacing window.prompt/confirm/alert
-	const [renamingFolder, setRenamingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
-	const [renameInput, setRenameInput] = useState("");
-	const [deletingFolder, setDeletingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
-	const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+	// TanStack Table은 컬럼 정의가 렌더마다 새로 만들어지지 않기를 기대한다. 셀이 읽는 값이 바뀔 때만 다시 만든다.
+	const availableKey = available.join();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `availableKey`가 `available`의 내용을 대신한다
+	const columns = useMemo(() => {
+		const cell = (item: ListEntriesItem, column: AdminListColumn) => {
+			switch (column) {
+				case "title": {
+					const title = item.title || <span className="text-muted-foreground italic">제목 없음</span>;
+					if (isTrash) return <span className="font-medium">{title}</span>;
+					return isRecord ? (
+						<Button
+							type="button"
+							variant="link"
+							size="sm"
+							onClick={() => onOpenRecord(item)}
+							className="h-auto p-0 font-medium text-foreground hover:text-primary"
+						>
+							{title}
+						</Button>
+					) : (
+						<span className="flex min-w-0 items-center gap-2">
+							<Link
+								href={`/admin/entries/${item.id}/edit` as Route}
+								className="truncate font-medium text-foreground hover:text-primary"
+							>
+								{title}
+							</Link>
+							{showFolderBesideTitle && item.folderId && (
+								<span className="flex min-w-0 shrink items-center gap-1 text-muted-foreground text-xs">
+									<FolderIcon aria-hidden className="size-3 shrink-0" />
+									<span className="truncate">
+										<span className="sr-only">폴더: </span>
+										{folderName(item.folderId)}
+									</span>
+								</span>
+							)}
+						</span>
+					);
+				}
+				case "status":
+					// 색상만으로 상태를 전달하지 않는다(§3.2).
+					return <StatusLabel item={item} isRecord={isRecord} />;
+				case "locale":
+					if (item.recordLocales) return <RecordLocaleBadges locales={item.recordLocales} />;
+					if (item.translations) return <LocaleBadges translations={item.translations} />;
+					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
+					return (
+						<span className="text-muted-foreground text-xs">
+							<abbr title={adminLocaleName(item.locale)} className="font-medium no-underline">
+								{item.locale.toUpperCase()}
+							</abbr>
+							{item.translationGroupId !== item.id && <span className="ml-1">번역</span>}
+						</span>
+					);
+				case "category":
+					return item.category?.title ?? <span className="text-muted-foreground">—</span>;
+				case "tags":
+					if (!item.tags.length) return <span className="text-muted-foreground">—</span>;
+					return <FittingTags tags={item.tags} />;
+				case "updatedAt":
+				case "createdAt":
+				case "publishedAt":
+					return (
+						<span className="tabular whitespace-nowrap text-muted-foreground text-xs">{formatDate(item[column])}</span>
+					);
+				case "slug":
+					return <span className="font-mono text-muted-foreground text-xs">{item.slug || "—"}</span>;
+				case "folder":
+					return <span className="text-muted-foreground text-xs">{folderName(item.folderId)}</span>;
+			}
+		};
 
-	// Build breadcrumb trail from current folder up to root
-	const breadcrumb: Folder[] = [];
-	if (currentFolderId && folders.length > 0) {
-		let curr = folders.find((f) => f.id === currentFolderId);
-		while (curr) {
-			breadcrumb.unshift(curr);
-			curr = curr.parentId ? folders.find((f) => f.id === curr!.parentId) : undefined;
+		return helper.columns([
+			helper.display({
+				id: "select",
+				size: 44,
+				enableResizing: false,
+				header: ({ table }) => (
+					<Checkbox
+						checked={table.getIsAllPageRowsSelected()}
+						indeterminate={table.getIsSomePageRowsSelected()}
+						onCheckedChange={(value) => table.toggleAllPageRowsSelected(value === true)}
+						aria-label="현재 페이지 전체 선택"
+					/>
+				),
+				cell: ({ row }) => (
+					<Checkbox
+						checked={row.getIsSelected()}
+						onCheckedChange={(value) => row.toggleSelected(value === true)}
+						aria-label={`${row.original.title ?? "제목 없음"} 선택`}
+					/>
+				),
+			}),
+			...available.map((column) =>
+				helper.display({
+					id: column,
+					enableHiding: column !== "title",
+					size: DEFAULT_COLUMN_SIZE[column] ?? DEFAULT_TITLE_SIZE,
+					minSize: MIN_COLUMN_SIZE,
+					maxSize: MAX_COLUMN_SIZE,
+					header: () => (
+						<ColumnHeader
+							column={column}
+							filter={filterFor(collection, column, mode)}
+							state={state}
+							options={options}
+							onChange={onStateChange}
+						/>
+					),
+					cell: ({ row }) => cell(row.original, column),
+				}),
+			),
+			helper.display({
+				id: "actions",
+				size: 52,
+				enableResizing: false,
+				header: () => <span className="sr-only">작업</span>,
+				cell: ({ row }) => (
+					<div className="flex items-center justify-end gap-1 whitespace-nowrap">
+						{isTrash && (
+							<>
+								<Button type="button" variant="ghost" size="xs" onClick={() => onRestore?.(row.original)}>
+									복원
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="xs"
+									className="text-destructive"
+									onClick={() => onPermanentDelete?.(row.original)}
+								>
+									영구 삭제
+								</Button>
+							</>
+						)}
+						<MoreActionsButton actions={rowMenu(row.original)} label={`${row.original.title ?? "제목 없음"} 작업`} />
+					</div>
+				),
+			}),
+		]);
+	}, [
+		mode,
+		availableKey,
+		collection,
+		state,
+		options,
+		onStateChange,
+		isTrash,
+		isRecord,
+		folders,
+		rowMenu,
+		onOpenRecord,
+		onRestore,
+		onPermanentDelete,
+		showFolderBesideTitle,
+	]);
+
+	const rowSelection: RowSelectionState = Object.fromEntries([...selectedIds].map((id) => [id, true]));
+	const columnOrder: ColumnOrderState = ["select", ...order, "actions"];
+
+	// 끄는 동안은 로컬 상태로 바로 반영하고, 멈추면 목록 설정에 저장한다.
+	const savedSizes = columnSettings?.sizes;
+	const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(savedSizes ?? {});
+	useEffect(() => setColumnSizing(savedSizes ?? {}), [savedSizes]);
+	const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const persistSizes = (next: ColumnSizingState) => {
+		if (saveTimer.current) clearTimeout(saveTimer.current);
+		saveTimer.current = setTimeout(() => {
+			const sizes = Object.fromEntries(
+				Object.entries(next)
+					.filter(([id]) => available.includes(id as AdminListColumn))
+					.map(([id, size]) => [id, Math.round(Math.min(MAX_COLUMN_SIZE, Math.max(MIN_COLUMN_SIZE, size)))]),
+			);
+			onColumnSettingsChange({ order, visibility, sizes });
+		}, 400);
+	};
+	const updateSizing = (updater: Updater<ColumnSizingState>) =>
+		setColumnSizing((current) => {
+			const next = resolve(updater, current);
+			persistSizes(next);
+			return next;
+		});
+
+	// 스크롤 영역의 실제 폭. 표 너비와 좁을 때 숨길 컬럼을 이 값으로 정한다.
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const [containerWidth, setContainerWidth] = useState(0);
+	useEffect(() => {
+		const element = scrollRef.current;
+		if (!element) return;
+		setContainerWidth(element.clientWidth);
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(([entry]) => setContainerWidth(Math.floor(entry?.contentRect.width ?? 0)));
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, []);
+
+	// 좁을 때 숨길 컬럼은 기본 너비와 제목 최소 너비로만 정한다. 사용자가 넓힌 너비는 숨김을 부르지 않고 가로 스크롤이 된다
+	// (끄는 도중 다른 컬럼이 사라져 손잡이가 튀지 않도록).
+	const defaultSizeOf = (id: string) =>
+		id === "select" ? 44 : id === "actions" ? 52 : (DEFAULT_COLUMN_SIZE[id] ?? DEFAULT_TITLE_SIZE);
+	const visibleIds = columnOrder.filter((id) => visibility[id] !== false);
+	const autoHidden = new Set<string>();
+	const naturalWidth = () =>
+		visibleIds
+			.filter((id) => !autoHidden.has(id))
+			.reduce((sum, id) => sum + (id === "title" ? TITLE_MIN_WIDTH : defaultSizeOf(id)), 0);
+	if (containerWidth > 0) {
+		for (const id of HIDE_ORDER_WHEN_NARROW) {
+			if (naturalWidth() <= containerWidth) break;
+			if (visibleIds.includes(id)) autoHidden.add(id);
 		}
 	}
-
-	const currentFolder = currentFolderId ? folders.find((f) => f.id === currentFolderId) : null;
-	const parentFolderId = currentFolder ? (currentFolder.parentId ?? null) : null;
-
-	// Show subfolders when no search/status filters are active (Folder Explorer Mode)
-	const isExplorerMode = !search.trim() && !statusFilter && Boolean(onSelectFolder);
-	const subFolders = isExplorerMode
-		? folders.filter((f) => (f.parentId ?? null) === (currentFolderId ?? null))
-		: [];
-
-	const handleFolderSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!newFolderName.trim() || !onCreateFolder) return;
-		try {
-			await onCreateFolder(newFolderName.trim(), currentFolderId ?? null);
-			setNewFolderName("");
-			setIsCreatingFolder(false);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 생성 실패: " + (err.message || String(err)));
-		}
+	const isShown = (id: string) => !autoHidden.has(id);
+	// 제목은 너비를 정하지 않았으면 남는 폭을 채운다. 어느 컬럼이든 끌기 시작하면 그 순간의 제목 너비를 고정해서,
+	// 끄는 컬럼만 커지고 손잡이가 커서를 그대로 따라가게 한다. 그 뒤 남는 폭은 작업 칸 앞의 빈 칸이 받는다.
+	const flexTitleWidth =
+		containerWidth > 0
+			? Math.min(
+					MAX_COLUMN_SIZE,
+					Math.max(
+						TITLE_MIN_WIDTH,
+						containerWidth -
+							visibleIds
+								.filter((id) => id !== "title" && isShown(id))
+								.reduce((sum, id) => sum + (columnSizing[id] ?? defaultSizeOf(id)), 0),
+					),
+				)
+			: DEFAULT_TITLE_SIZE;
+	const tableSizing: ColumnSizingState =
+		columnSizing.title === undefined ? { ...columnSizing, title: flexTitleWidth } : columnSizing;
+	const freezeTitle = () => {
+		if (columnSizing.title === undefined) setColumnSizing((current) => ({ ...current, title: flexTitleWidth }));
 	};
 
-	const handleConfirmRename = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!renamingFolder || !onRenameFolder) return;
-		const trimmed = renameInput.trim();
-		if (!trimmed || trimmed === renamingFolder.name) {
-			setRenamingFolder(null);
-			return;
-		}
-		try {
-			await onRenameFolder(renamingFolder.id, trimmed, renamingFolder.version);
-			setRenamingFolder(null);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 이름 수정 실패: " + (err.message || String(err)));
-		}
+	const table = useTable({
+		features,
+		data: items,
+		columns,
+		getRowId: (row) => row.id,
+		columnResizeMode: "onChange",
+		state: { columnVisibility: visibility, columnOrder, rowSelection, columnSizing: tableSizing },
+		onColumnSizingChange: updateSizing,
+		onColumnVisibilityChange: (updater) =>
+			onColumnSettingsChange({
+				order,
+				visibility: resolve(updater, visibility) as Record<string, boolean>,
+				sizes: savedSizes,
+			}),
+		onColumnOrderChange: (updater) => {
+			const next = resolve(updater, columnOrder).filter((id): id is AdminListColumn =>
+				available.includes(id as AdminListColumn),
+			);
+			onColumnSettingsChange({ order: next, visibility, sizes: savedSizes });
+		},
+		// 선택 해제는 값이 false인 키로 올 수 있어 true인 ID만 남긴다.
+		onRowSelectionChange: (updater) => {
+			const next = resolve(updater, rowSelection);
+			onSelectionChange(new Set(Object.entries(next).flatMap(([id, on]) => (on ? [id] : []))));
+		},
+	});
+
+	const moveColumn = (column: AdminListColumn, direction: -1 | 1) => {
+		const index = order.indexOf(column);
+		const target = index + direction;
+		if (target < 0 || target >= order.length) return;
+		const next = [...order];
+		[next[index], next[target]] = [next[target] as AdminListColumn, next[index] as AdminListColumn];
+		onColumnSettingsChange({ order: next, visibility, sizes: savedSizes });
 	};
 
-	const handleConfirmDelete = async () => {
-		if (!deletingFolder || !onDeleteFolder) return;
-		try {
-			await onDeleteFolder(deletingFolder.id, deletingFolder.version);
-			setDeletingFolder(null);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 삭제 실패: " + (err.message || String(err)));
-		}
+	const leafColumns = table.getVisibleLeafColumns();
+	const tableWidth =
+		containerWidth > 0
+			? Math.max(
+					containerWidth,
+					leafColumns.filter((column) => isShown(column.id)).reduce((sum, column) => sum + column.getSize(), 0),
+				)
+			: undefined;
+	// 빈 칸까지 센 칸 수.
+	const visibleCount = leafColumns.length - autoHidden.size + 1;
+	const rowKeyDown = (item: ListEntriesItem) => (event: KeyboardEvent) => {
+		if (event.key !== "Delete" || !onDeleteKey) return;
+		const target = event.target as HTMLElement;
+		if (target.closest("input, textarea, [contenteditable=true]")) return;
+		event.preventDefault();
+		onDeleteKey(item);
 	};
+
+	// 사이드바 트리와 같은 폴더 메뉴에 `열기`를 더한다.
+	const folderRowMenu = (folder: Folder): MenuAction[] =>
+		folderActions
+			? [
+					{ kind: "item", label: "열기", onSelect: () => onSelectFolder(folder.id) },
+					{ kind: "separator" },
+					...folderMenuActions(folder, folders, folderActions),
+				]
+			: [];
+
+	const pageHref = (page: number) => `?page=${page}`;
 
 	return (
-		<main className="flex-1 flex flex-col overflow-hidden bg-neutral-950 p-6">
-			{/* Top Bar: Controls */}
-			<div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-800">
-				<div className="flex flex-wrap items-center gap-3">
-					<input
-						type="text"
-						placeholder="제목, slug 검색..."
-						value={search}
-						onChange={(e) => onSearchChange(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 w-64"
-					/>
-
-					<select
-						value={statusFilter}
-						onChange={(e) => onStatusChange(e.target.value)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 focus:outline-none focus:border-neutral-600"
-					>
-						<option value="">전체 상태</option>
-						<option value="draft">초안 (Draft)</option>
-						<option value="published">공개 (Published)</option>
-					</select>
-				</div>
-
-				<div className="flex items-center gap-3">
-					<select
-						value={pageSize}
-						onChange={(e) => onPageSizeChange(Number(e.target.value) as 25 | 50 | 100)}
-						className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 focus:outline-none focus:border-neutral-600"
-					>
-						<option value={25}>25개씩 보기</option>
-						<option value={50}>50개씩 보기</option>
-						<option value={100}>100개씩 보기</option>
-					</select>
-
-					<button
-						type="button"
-						onClick={onCreateNew}
-						className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-neutral-200 transition"
-					>
-						+ 새로 만들기
-					</button>
-				</div>
-			</div>
-
-			{/* Folder Path Breadcrumb (파일 탐색기 스타일 경로 안내) */}
-			{onSelectFolder && (
-				<div className="flex items-center justify-between py-2.5 px-3 border-b border-neutral-800/60 bg-neutral-900/20 text-xs">
-					<div className="flex items-center gap-1.5 flex-wrap">
-						<button
-							type="button"
-							onClick={() => onSelectFolder(null)}
-							className={`flex items-center gap-1 hover:text-white transition ${
-								!currentFolderId ? "font-semibold text-white" : "text-neutral-400"
-							}`}
-						>
-							<span>📁</span>
-							<span>전체 (루트)</span>
-						</button>
-						{breadcrumb.map((f, i) => (
-							<span key={f.id} className="flex items-center gap-1.5">
-								<span className="text-neutral-600">/</span>
-								<button
-									type="button"
-									onClick={() => onSelectFolder(f.id)}
-									className={`hover:text-white transition ${
-										i === breadcrumb.length - 1
-											? "font-semibold text-white"
-											: "text-neutral-400"
-									}`}
-								>
-									{f.name}
-								</button>
-							</span>
-						))}
-					</div>
-
-					{onCreateFolder && (
-						<div>
-							{isCreatingFolder ? (
-								<form onSubmit={handleFolderSubmit} className="flex items-center gap-1.5">
-									<input
-										type="text"
-										value={newFolderName}
-										onChange={(e) => setNewFolderName(e.target.value)}
-										placeholder="새 폴더 이름"
-										className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-500"
-										autoFocus
-									/>
-									<button
-										type="submit"
-										className="rounded bg-neutral-700 px-2 py-0.5 text-xs text-white hover:bg-neutral-600"
-									>
-										확인
-									</button>
-									<button
-										type="button"
-										onClick={() => setIsCreatingFolder(false)}
-										className="text-xs text-neutral-400 hover:text-white px-1"
-									>
-										취소
-									</button>
-								</form>
-							) : (
-								<button
-									type="button"
-									onClick={() => setIsCreatingFolder(true)}
-									className="text-xs text-neutral-400 hover:text-white flex items-center gap-1"
-								>
-									<span>+ 현재 위치에 새 폴더</span>
-								</button>
-							)}
-						</div>
-					)}
-				</div>
-			)}
-
-			{/* Error Alert */}
+		<section aria-label="항목 목록" className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			{errorMessage && (
-				<div className="mt-4 rounded-lg border border-red-800 bg-red-950/50 p-4 flex items-center justify-between text-sm text-red-200">
-					<span>{errorMessage}</span>
-					<button
-						type="button"
-						onClick={onRetry}
-						className="text-xs underline hover:text-white ml-4"
-					>
+				<Alert variant="danger" className="mx-5 mt-3 flex w-auto items-center justify-between">
+					<AlertDescription className="col-start-auto">{errorMessage}</AlertDescription>
+					<Button type="button" variant="outline" size="xs" onClick={onRetry}>
 						다시 시도
-					</button>
-				</div>
+					</Button>
+				</Alert>
 			)}
 
-			{/* Entries & Folders Table */}
-			<div className="flex-1 overflow-y-auto mt-2 border border-neutral-800 rounded-lg">
-				<table className="w-full text-left text-sm text-neutral-300">
-					<thead className="bg-neutral-900/80 text-xs uppercase tracking-wider text-neutral-400 border-b border-neutral-800 sticky top-0 backdrop-blur z-10">
-						<tr>
-							<th className="px-4 py-3 w-10">
-								<input
-									type="checkbox"
-									checked={items.length > 0 && items.every((i) => selectedIds.has(i.id))}
-									onChange={(e) => onToggleSelectPage(e.target.checked)}
-									aria-label="현재 페이지 전체 선택"
-									className="accent-white"
-								/>
-							</th>
-							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
-								onClick={() => onSortChange("title")}
-							>
-								이름 / 제목 {sortField === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
-							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
-								onClick={() => onSortChange("slug")}
-							>
-								Slug {sortField === "slug" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
-							<th className="px-4 py-3">상태</th>
-							<th
-								className="px-4 py-3 cursor-pointer hover:text-white transition"
-								onClick={() => onSortChange("updatedAt")}
-							>
-								수정일 {sortField === "updatedAt" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-							</th>
-						</tr>
-					</thead>
-					<tbody className="divide-y divide-neutral-800/60">
-						{/* Explorer: 상위 폴더 (..) 이동 행 */}
-						{isExplorerMode && currentFolderId !== null && (
-							<tr
-								tabIndex={0}
-								onClick={() => onSelectFolder?.(parentFolderId)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										onSelectFolder?.(parentFolderId);
-									}
-								}}
-								className="hover:bg-neutral-800/30 focus:bg-neutral-800/50 focus:outline-none transition cursor-pointer text-neutral-400 select-none"
-							>
-								<td className="px-4 py-2.5 text-center text-xs">📁</td>
-								<td className="px-4 py-2.5 font-medium text-neutral-300 flex items-center gap-2">
-									<span>..</span>
-									<span className="text-xs text-neutral-500">(상위 폴더로 이동)</span>
-								</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
-								<td className="px-4 py-2.5 text-xs text-neutral-600">-</td>
-							</tr>
-						)}
-
-						{/* Explorer: 현재 폴더의 직속 하위 폴더 목록 */}
-						{isExplorerMode &&
-							subFolders.map((folder) => {
-								const isRenamingThis = renamingFolder?.id === folder.id;
-								return (
-									<tr
-										key={`folder-${folder.id}`}
-										tabIndex={isRenamingThis ? -1 : 0}
-										onClick={() => {
-											if (!isRenamingThis) onSelectFolder?.(folder.id);
-										}}
-										onKeyDown={(e) => {
-											if (!isRenamingThis && (e.key === "Enter" || e.key === " ")) {
-												e.preventDefault();
-												onSelectFolder?.(folder.id);
-											}
-										}}
-										className={`group hover:bg-neutral-800/40 focus:bg-neutral-800/60 focus:outline-none transition cursor-pointer select-none ${
-											isRenamingThis ? "bg-neutral-800/50" : ""
-										}`}
-									>
-										<td className="px-4 py-2.5 text-center text-sm">
-											📁
-										</td>
-										<td className="px-4 py-2.5 font-medium text-white">
-											{isRenamingThis ? (
-												<form
-													onSubmit={handleConfirmRename}
-													className="flex items-center gap-1.5"
-													onClick={(e) => e.stopPropagation()}
-													onKeyDown={(e) => e.stopPropagation()}
+			<div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-auto">
+				<Table
+					containerClassName="overflow-visible"
+					style={tableWidth ? { width: tableWidth } : undefined}
+					className="table-fixed [&_td:first-child]:pl-5 [&_td:last-child]:pr-4 [&_th:first-child]:pl-5 [&_th:last-child]:pr-4"
+				>
+					<TableHeader className="sticky top-0 z-10 bg-background [&_tr]:border-b">
+						{table.getHeaderGroups().map((group) => (
+							<TableRow key={group.id}>
+								{group.headers
+									.filter((header) => isShown(header.column.id))
+									.map((header) => {
+										const sortField = COLUMN_CONFIG[header.column.id as AdminListColumn]?.sortField;
+										const active = sortField !== undefined && sortField === state.sortField;
+										return (
+											<Fragment key={header.id}>
+												{header.column.id === "actions" && <TableHead aria-hidden className="p-0" />}
+												<TableHead
+													style={{ width: header.getSize() }}
+													className={cn(
+														"group/th relative h-9 font-normal text-muted-foreground text-xs",
+														header.column.id === "select" && "w-10",
+													)}
+													aria-sort={active ? (state.sortDirection === "asc" ? "ascending" : "descending") : undefined}
 												>
-													<input
-														type="text"
-														value={renameInput}
-														onChange={(e) => setRenameInput(e.target.value)}
-														className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
-														autoFocus
-														onKeyDown={(e) => {
-															e.stopPropagation();
-															if (e.key === "Escape") setRenamingFolder(null);
-														}}
-													/>
-													<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
-														저장
-													</button>
-													<button
-														type="button"
-														onClick={() => setRenamingFolder(null)}
-														className="text-[11px] text-neutral-400 hover:text-white px-1"
-													>
-														취소
-													</button>
-												</form>
-											) : (
-											<div className="flex items-center justify-between">
-												<span className="hover:underline flex items-center gap-1.5">
-													<span>{folder.name}</span>
-												</span>
-
-												{onRenameFolder && onDeleteFolder && (
-													<div
-														className="opacity-0 group-hover:opacity-100 flex items-center gap-2 text-xs text-neutral-400"
-														onClick={(e) => e.stopPropagation()}
-													>
-														<button
-															type="button"
-															onClick={() => {
-																setRenamingFolder(folder);
-																setRenameInput(folder.name);
+													{header.isPlaceholder ? null : <table.FlexRender header={header} />}
+													{header.column.getCanResize() && (
+														<ColumnResizeHandle
+															label={COLUMN_LABELS[header.column.id as AdminListColumn] ?? header.column.id}
+															width={header.getSize()}
+															resizing={header.column.getIsResizing()}
+															onStart={(event) => {
+																freezeTitle();
+																header.getResizeHandler()(event);
 															}}
-															className="text-[11px] text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-700"
-														>
-															이름 수정
-														</button>
-														<button
-															type="button"
-															onClick={() => setDeletingFolder(folder)}
-															className="text-[11px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-neutral-700"
-														>
-															삭제
-														</button>
-													</div>
-												)}
-											</div>
-										)}
-									</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">폴더</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
-									<td className="px-4 py-2.5 text-xs text-neutral-500">-</td>
-								</tr>
-								);
-							})}
-
-						{/* 로딩 / 빈 목록 / 게시글 목록 */}
-						{isLoading ? (
-							<tr>
-								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
-									불러오는 중...
-								</td>
-							</tr>
-						) : items.length === 0 && subFolders.length === 0 ? (
-							<tr>
-								<td colSpan={5} className="px-4 py-12 text-center text-neutral-500">
-									등록된 항목이 없습니다.
-								</td>
-							</tr>
-						) : (
-							items.map((item) => (
-								<tr key={item.id} className="hover:bg-neutral-800/40 transition">
-									<td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-										<input
-											type="checkbox"
-											checked={selectedIds.has(item.id)}
-											onChange={() => onToggleSelect(item.id)}
-											aria-label={`${item.title ?? item.id} 선택`}
-											className="accent-white"
-										/>
-									</td>
-									<td className="px-4 py-3 font-medium text-white">
-										{collection === "tag" || collection === "category" ? (
-											<div className="flex items-center gap-2">
-												<span>{item.title || <span className="text-neutral-500 italic">이름 없음</span>}</span>
-												{(onOpenEditRecord || onRenameRecord) && (
-													<button
-														type="button"
-														onClick={() => {
-															if (onOpenEditRecord) {
-																onOpenEditRecord(item);
-															} else if (onRenameRecord) {
-																onRenameRecord(item.id, item.title || "", item.version);
+															onNudge={(delta) =>
+																updateSizing((current) => ({
+																	...tableSizing,
+																	...current,
+																	[header.column.id]: Math.min(
+																		MAX_COLUMN_SIZE,
+																		Math.max(MIN_COLUMN_SIZE, header.getSize() + delta),
+																	),
+																}))
 															}
-														}}
-														className="text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded border border-neutral-700 hover:border-neutral-500 bg-neutral-800 transition whitespace-nowrap"
-														title="이름 수정"
-													>
-														이름 수정
-													</button>
-												)}
-											</div>
-										) : (
-											<Link
-												href={`/admin/entries/${item.id}/edit` as any}
-												className="hover:underline hover:text-blue-400"
-											>
-												{item.title || <span className="text-neutral-500 italic">제목 없음</span>}
-											</Link>
-										)}
-									</td>
-									<td className="px-4 py-3 text-neutral-400 font-mono text-xs">
-										{item.slug || <span className="text-neutral-600">-</span>}
-									</td>
-									<td className="px-4 py-3">
-										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-												item.status === "published"
-													? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/50"
-													: "bg-neutral-800 text-neutral-300 border border-neutral-700"
-											}`}
-										>
-											{item.status === "published" ? "공개" : "초안"}
-										</span>
-									</td>
-									<td className="px-4 py-3 text-xs text-neutral-400">
-										{new Date(item.updatedAt).toLocaleString("ko-KR")}
-									</td>
-								</tr>
+															onReset={() =>
+																updateSizing((current) => {
+																	const { [header.column.id]: _removed, ...rest } = current;
+																	return rest;
+																})
+															}
+														/>
+													)}
+												</TableHead>
+											</Fragment>
+										);
+									})}
+							</TableRow>
+						))}
+					</TableHeader>
+					<TableBody
+						aria-busy={isRefreshing || undefined}
+						className={cn("transition-opacity", isRefreshing && "opacity-60")}
+					>
+						{explorer && explorer.parent !== null && (
+							<TableRow>
+								<TableCell className="text-center text-muted-foreground">
+									<FolderUp aria-hidden className="mx-auto size-4" />
+								</TableCell>
+								<TableCell colSpan={visibleCount - 1}>
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										onClick={() => onSelectFolder(explorer.parent ?? "all")}
+										className="h-auto p-0 text-muted-foreground hover:text-foreground"
+									>
+										.. 상위 폴더
+									</Button>
+								</TableCell>
+							</TableRow>
+						)}
+						{explorer?.folders.map((folder) => (
+							<ActionContextMenu key={`folder-${folder.id}`} actions={folderRowMenu(folder)} trigger={<TableRow />}>
+								<TableCell className="text-center text-muted-foreground">
+									<FolderIcon aria-hidden className="mx-auto size-4" />
+								</TableCell>
+								<TableCell colSpan={visibleCount - 2} className="font-medium">
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										onClick={() => onSelectFolder(folder.id)}
+										onKeyDown={folderActions ? folderKeyHandler(folder, folderActions) : undefined}
+										className="h-auto p-0 font-medium text-foreground"
+									>
+										{folder.name}
+									</Button>
+								</TableCell>
+								<TableCell className="text-right">
+									<MoreActionsButton actions={folderRowMenu(folder)} label={`'${folder.name}' 폴더 작업`} />
+								</TableCell>
+							</ActionContextMenu>
+						))}
+						{isLoading ? (
+							Array.from({ length: 5 }, (_, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시 행
+								<TableRow key={index} aria-hidden>
+									<TableCell colSpan={visibleCount}>
+										<Skeleton className="h-5 w-full" />
+									</TableCell>
+								</TableRow>
+							))
+						) : items.length === 0 && !explorer?.folders.length ? (
+							<TableRow>
+								<TableCell colSpan={visibleCount} className="p-0">
+									<Empty className="py-10">
+										<EmptyHeader>
+											<EmptyTitle>{isTrash ? "휴지통이 비었습니다." : "조건에 맞는 항목이 없습니다."}</EmptyTitle>
+											{!isTrash && <EmptyDescription>필터를 지우거나 새로 만들어 보세요.</EmptyDescription>}
+										</EmptyHeader>
+									</Empty>
+								</TableCell>
+							</TableRow>
+						) : (
+							table.getRowModel().rows.map((row) => (
+								<ActionContextMenu
+									key={row.id}
+									actions={rowMenu(row.original)}
+									trigger={
+										<TableRow
+											className="h-11 data-[state=selected]:bg-primary/5"
+											data-state={row.getIsSelected() ? "selected" : undefined}
+											draggable={!isTrash}
+											onDragStart={(event) => {
+												// 선택한 행을 끌면 선택 전체를, 아니면 이 행만 옮긴다.
+												const group = selectedIds.has(row.original.id)
+													? items.filter((item) => selectedIds.has(item.id))
+													: [row.original];
+												writeDraggedEntries(
+													event,
+													group.map((item) => ({ id: item.id, expectedVersion: item.version })),
+													group.length === 1 ? group[0]?.title || "제목 없음" : `${group.length}개 항목`,
+												);
+											}}
+											onKeyDown={rowKeyDown(row.original)}
+										/>
+									}
+								>
+									{row
+										.getVisibleCells()
+										.filter((cell) => isShown(cell.column.id))
+										.map((cell) => (
+											<Fragment key={cell.id}>
+												{cell.column.id === "actions" && <TableCell aria-hidden className="p-0" />}
+												<TableCell className="overflow-hidden text-ellipsis whitespace-nowrap">
+													<table.FlexRender cell={cell} />
+												</TableCell>
+											</Fragment>
+										))}
+								</ActionContextMenu>
 							))
 						)}
-					</tbody>
-				</table>
+					</TableBody>
+				</Table>
+				{blankMenu && (
+					<ActionContextMenu actions={blankMenu} trigger={<div className="min-h-12 flex-1" aria-hidden />} />
+				)}
 			</div>
 
-			{/* Pagination Footer */}
-			<div className="flex items-center justify-between pt-4 text-xs text-neutral-400 border-t border-neutral-800 mt-2">
-				<div>
-					총 <span className="font-semibold text-white">{total}</span>개 항목 중{" "}
-					<span className="font-semibold text-white">
-						{items.length > 0 ? (page - 1) * pageSize + 1 : 0} -{" "}
-						{Math.min(page * pageSize, total)}
-					</span>
-				</div>
-
+			<div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-5 text-muted-foreground text-xs">
+				<span className="tabular">
+					{total}개 중{" "}
+					{items.length > 0
+						? `${(state.page - 1) * state.pageSize + 1}–${Math.min(state.page * state.pageSize, total)}`
+						: "0"}
+				</span>
 				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						disabled={page <= 1}
-						onClick={() => onPageChange(page - 1)}
-						className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs hover:bg-neutral-800 disabled:opacity-40"
+					<Popover>
+						<PopoverTrigger
+							render={<Button type="button" variant="ghost" size="xs" className="text-muted-foreground" />}
+						>
+							<Columns3 aria-hidden />
+							컬럼 설정
+						</PopoverTrigger>
+						<PopoverContent align="end" className="w-64 p-3">
+							<ul className="space-y-1">
+								{order.map((column, index) => (
+									<li
+										key={column}
+										className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-accent"
+									>
+										<Label className="font-normal">
+											<Checkbox
+												checked={visibility[column] ?? false}
+												disabled={column === "title"}
+												onCheckedChange={(checked) => table.getColumn(column)?.toggleVisibility(checked === true)}
+											/>
+											{COLUMN_LABELS[column]}
+										</Label>
+										<span className="flex gap-1">
+											<Button
+												type="button"
+												size="icon-xs"
+												variant="outline"
+												aria-label={`${COLUMN_LABELS[column]} 컬럼 위로`}
+												disabled={index === 0}
+												onClick={() => moveColumn(column, -1)}
+											>
+												<ArrowUp aria-hidden />
+											</Button>
+											<Button
+												type="button"
+												size="icon-xs"
+												variant="outline"
+												aria-label={`${COLUMN_LABELS[column]} 컬럼 아래로`}
+												disabled={index === order.length - 1}
+												onClick={() => moveColumn(column, 1)}
+											>
+												<ArrowDown aria-hidden />
+											</Button>
+										</span>
+									</li>
+								))}
+							</ul>
+						</PopoverContent>
+					</Popover>
+					<Select
+						value={String(state.pageSize)}
+						items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개씩 보기` }))}
+						onValueChange={(value) => value && onPageSizeChange(Number(value) as PageSize)}
 					>
-						이전
-					</button>
-					<span className="px-1 text-neutral-300">
-						{page} / {totalPages}
-					</span>
-					<button
-						type="button"
-						disabled={page >= totalPages}
-						onClick={() => onPageChange(page + 1)}
-						className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs hover:bg-neutral-800 disabled:opacity-40"
-					>
-						다음
-					</button>
+						<SelectTrigger size="sm" aria-label="페이지 크기" className="h-7 border-0 text-xs shadow-none">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{PAGE_SIZES.map((size) => (
+								<SelectItem key={size} value={String(size)}>
+									{size}개씩 보기
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Pagination className="mx-0 w-auto">
+						<PaginationContent>
+							<PaginationItem>
+								<PaginationPrevious
+									href={pageHref(state.page - 1)}
+									aria-disabled={state.page <= 1}
+									className={cn(state.page <= 1 && "pointer-events-none opacity-50")}
+									onClick={(event) => {
+										event.preventDefault();
+										if (state.page > 1) onPageChange(state.page - 1);
+									}}
+								/>
+							</PaginationItem>
+							<PaginationItem>
+								<span className="px-2 tabular-nums">
+									{state.page} / {totalPages}
+								</span>
+							</PaginationItem>
+							<PaginationItem>
+								<PaginationNext
+									href={pageHref(state.page + 1)}
+									aria-disabled={state.page >= totalPages}
+									className={cn(state.page >= totalPages && "pointer-events-none opacity-50")}
+									onClick={(event) => {
+										event.preventDefault();
+										if (state.page < totalPages) onPageChange(state.page + 1);
+									}}
+								/>
+							</PaginationItem>
+						</PaginationContent>
+					</Pagination>
 				</div>
 			</div>
-
-			{/* 삭제 확인 모달 (window.confirm 대체) */}
-			{deletingFolder && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-white mb-2">폴더 삭제 확인</h3>
-						<p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-							&apos;{deletingFolder.name}&apos; 폴더를 삭제하시겠습니까?<br />
-							<span className="text-neutral-500">폴더 안의 하위 글과 하위 폴더는 안전하게 보존됩니다.</span>
-						</p>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setDeletingFolder(null)}
-								className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition"
-							>
-								취소
-							</button>
-							<button
-								type="button"
-								onClick={handleConfirmDelete}
-								className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition"
-							>
-								삭제하기
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* 에러 알림 모달 (window.alert 대체) */}
-			{errorDialogMsg && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-red-900/60 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-red-400 mb-2">오류 발생</h3>
-						<p className="text-xs text-neutral-300 mb-5">{errorDialogMsg}</p>
-						<div className="flex justify-end">
-							<button
-								type="button"
-								onClick={() => setErrorDialogMsg(null)}
-								className="rounded-lg bg-neutral-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 transition"
-							>
-								확인
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-		</main>
+		</section>
 	);
 }

@@ -82,5 +82,12 @@ export const annotationConfig: AnnotationConfig = {
 			render: "collapse",
 			scopes: ["line"],
 		},
+		{
+			// 본문 `:code-ref`가 가리키는 줄 이름표(`id`). 줄에 `data-anchor`를 달 뿐 모양은 없다.
+			name: "anchor",
+			kind: "class",
+			class: "code-anchor",
+			scopes: ["line"],
+		},
 	],
 };

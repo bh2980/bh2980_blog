@@ -68,10 +68,6 @@ const createTransformer = (
 };
 
 describe("transformers.root addLineWrappers", () => {
-	it("line wrapper transformer를 제공한다", () => {
-		expect(addLineWrappers).toBeTypeOf("function");
-	});
-
 	it("range에 해당하는 line들을 wrapper로 감싼다", () => {
 		const transformer = createTransformer([
 			{

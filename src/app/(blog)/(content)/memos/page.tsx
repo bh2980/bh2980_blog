@@ -1,20 +1,11 @@
-import type { Metadata } from "next";
-import { listMemos } from "@/libs/contents/services/memo";
-import { listTags } from "@/libs/contents/services/tag";
-import { MemoList } from "./memo-list";
+import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
+import { MemosView, memosMetadata } from "../../_views/lists";
 
 // 공개 목록을 요청 시점에 조회한다(M7-BE-2).
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-	title: "메모장",
-	description: "개발 중에 자주 쓰는 팁, 문제 해결 기록, 코드 스니펫을 모아둡니다.",
-	alternates: { canonical: `/memos` },
-};
+export const metadata = memosMetadata(DEFAULT_LOCALE);
 
-export default async function MemoPage() {
-	const memos = await listMemos();
-	const memoTags = await listTags();
-
-	return <MemoList memos={memos} tags={memoTags} />;
+export default function MemoPage() {
+	return <MemosView locale={DEFAULT_LOCALE} />;
 }

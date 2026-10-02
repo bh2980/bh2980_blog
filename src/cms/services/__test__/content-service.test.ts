@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { PreparedSnapshot, Reference, ResolvedTargets, SaveDraftInput, ServiceInput, StorePort } from "../index";
-import { createContentService, prepareSnapshot, ServiceError, validateForPublish } from "../index";
+import {
+	createContentService,
+	imageWarningsForPublish,
+	prepareSnapshot,
+	ServiceError,
+	validateForPublish,
+} from "../index";
 
 describe("ContentService M2-TW-1 Contract", () => {
 	describe("1. Metadata Allowlists & Collection Rules", () => {
@@ -62,7 +68,6 @@ describe("ContentService M2-TW-1 Contract", () => {
 						summary: "S",
 						categoryId: "123e4567-e89b-12d3-a456-426614174000",
 						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-						publishedAt: "2023-01-01T00:00:00.000Z",
 						policy: "normal",
 					},
 					mdx: "",
@@ -76,7 +81,6 @@ describe("ContentService M2-TW-1 Contract", () => {
 					metadata: {
 						title: "T",
 						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-						publishedAt: "2023-01-01T00:00:00.000Z",
 					},
 					mdx: "",
 				},
@@ -324,14 +328,14 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[0].occurrences[1]).toMatchObject({ type: "metadata", path: "itemIds", ordinal: 1 });
 		});
 
-		it("extracts ordered/deduplicated refs with occurrences from ContentLink and Image", async () => {
+		it("extracts ordered/deduplicated refs with occurrences from Image", async () => {
 			const mdx =
-				'<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="987e4567-e89b-12d3-a456-426614174000" />\n<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />';
+				'<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="987e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />';
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
 			expect(snap.references).toHaveLength(2);
 
 			expect(snap.references[0]).toMatchObject({
-				kind: "entry",
+				kind: "media",
 				targetId: "123e4567-e89b-12d3-a456-426614174000",
 				isStale: false,
 			});
@@ -347,13 +351,57 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(snap.references[1].occurrences[0]).toMatchObject({ line: 2, column: 1 });
 		});
 
+		it("rejects retired ContentLink with a migration message", async () => {
+			const snap = await prepareSnapshot({
+				collection: "post",
+				slug: "a",
+				metadata: {},
+				mdx: '<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />',
+			});
+			expect(snap.issues).toContainEqual(
+				expect.objectContaining({ code: "mdx_error", message: expect.stringContaining("폐기된") }),
+			);
+		});
+
 		it.each([
-			['<ContentLink targetId="" />', "empty_reference_id"],
 			["<Image mediaId={dynamicId} />", "dynamic_reference_id"],
-			['<ContentLink targetId="not-static" />', "invalid_reference_id"],
-		])("creates structured issues for empty/dynamic/invalid IDs: %s", async (mdx, expectedIssue) => {
+			['<Image mediaId="not-a-uuid" alt="a" />', "invalid_reference_id"],
+			['<Image mediaId="" alt="a" />', "missing_media_id"],
+			["<File />", "missing_media_id"],
+			["<File mediaId={dynamicId} />", "dynamic_reference_id"],
+			['<File mediaId="not-a-uuid" />', "invalid_reference_id"],
+		])("creates structured issues for dynamic IDs: %s", async (mdx, expectedIssue) => {
 			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
+			expect(snap.references).toEqual([]);
+		});
+
+		it.each([
+			['<Image mediaId="987e4567-e89b-12d3-a456-426614174000" alt="a" />'],
+			['<File mediaId="987e4567-e89b-12d3-a456-426614174000" />'],
+		])("records a media reference for a registered media ID: %s", async (mdx) => {
+			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([
+				{
+					kind: "media",
+					targetId: "987e4567-e89b-12d3-a456-426614174000",
+					isStale: false,
+					occurrences: [{ type: "mdx", line: 1, column: 1 }],
+				},
+			]);
+		});
+
+		it("does not reference an external image src", async () => {
+			const snap = await prepareSnapshot({
+				collection: "post",
+				slug: "a",
+				metadata: {},
+				mdx: '<Image src="https://example.com/a.png" alt="a" />',
+			});
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([]);
+			expect(snap.imageSources).toEqual([{ src: "https://example.com/a.png", position: { line: 1, column: 1 } }]);
 		});
 
 		it("retains trusted previous refs marked stale on MDX syntax error and keeps exact MDX unchanged", async () => {
@@ -461,6 +509,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				},
 			],
 			issues: [],
+			imageSources: [],
 		};
 
 		const validResolvedTargets: ResolvedTargets = {
@@ -614,6 +663,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				contentHash: "hash",
 				references: [],
 				issues: [],
+				imageSources: [],
 			};
 
 			const validation = validateForPublish(snapWithItems, {
@@ -660,6 +710,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					},
 				],
 				issues: [],
+				imageSources: [],
 			};
 
 			const validation = validateForPublish(snapWithItems, {
@@ -674,7 +725,73 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 	});
 
-	describe("8. Service Orchestration & Fake Port", () => {
+	describe("8. Publish preflight completeness", () => {
+		it("allows unpublished posts only through collection itemIds", async () => {
+			const id = "123e4567-e89b-12d3-a456-426614174099";
+			const snapshot = await prepareSnapshot({
+				collection: "collection",
+				slug: "series",
+				metadata: { title: "Series", itemIds: [id] },
+				mdx: "",
+			});
+			const validation = validateForPublish(snapshot, {
+				targets: [{ id, isPublished: false, collection: "post" }],
+				media: [],
+			});
+			expect(validation.ready).toBe(true);
+		});
+
+		it("reports every unresolved reference with metadata occurrence", async () => {
+			const ids = ["123e4567-e89b-12d3-a456-426614174091", "123e4567-e89b-12d3-a456-426614174092"];
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo", tagIds: ids },
+				mdx: "Body",
+			});
+			const validation = validateForPublish(snapshot, { targets: [], media: [] });
+			expect(validation.issues.filter((issue) => issue.code === "unresolved_reference")).toEqual([
+				expect.objectContaining({ path: "tagIds", ordinal: 0 }),
+				expect.objectContaining({ path: "tagIds", ordinal: 1 }),
+			]);
+		});
+
+		it("extracts only supported prose links and keeps source positions", async () => {
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo" },
+				mdx: [
+					"[relative](/posts/draft-post)",
+					"[absolute](https://bh2980.dev/memos/xxx-equal)",
+					"[www](https://www.bh2980.dev/posts/old%20slug)",
+					"[external](https://example.com/posts/not-internal)",
+					"```md",
+					"[code](/posts/not-a-link)",
+					"```",
+				].join("\n"),
+			});
+			expect((snapshot as any).internalLinks).toEqual([
+				expect.objectContaining({ collection: "post", slug: "draft-post", position: { line: 1, column: 1 } }),
+				expect.objectContaining({ collection: "memo", slug: "xxx-equal", position: { line: 2, column: 1 } }),
+				expect.objectContaining({ collection: "post", slug: "old slug", position: { line: 3, column: 1 } }),
+			]);
+		});
+
+		it("preserves MDX analyser positions in blocking issues", async () => {
+			const snapshot = await prepareSnapshot({
+				collection: "memo",
+				slug: "memo",
+				metadata: { title: "Memo" },
+				mdx: 'First line\n<ContentLink targetId="bad" />',
+			});
+			expect(snapshot.issues).toContainEqual(
+				expect.objectContaining({ code: "mdx_error", position: { line: 2, column: 1 } }),
+			);
+		});
+	});
+
+	describe("9. Service Orchestration & Fake Port", () => {
 		it("saveDraft propagates save port rejection exact error after one mutation attempt", async () => {
 			const exactError = { code: "concurrent_modification", message: "Conflict" };
 			const storePort: StorePort = {
@@ -1189,6 +1306,109 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(storePort.getWorkingReferences).not.toHaveBeenCalled();
 			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
 			expect(storePort.createEntryWithReferences).not.toHaveBeenCalled();
+		});
+	});
+	describe("11. 이미지 소스와 발행 경고 (M8-FE-2 · A3)", () => {
+		const mediaId = "987e4567-e89b-12d3-a456-426614174000";
+		// `post`는 `categoryId`를 요구해 발행 검사가 먼저 차단한다. 이미지 경고만 보려면 `memo`를 쓴다.
+		const draft = (mdx: string) => ({ collection: "memo" as const, slug: "a", metadata: { title: "T" }, mdx });
+
+		it("directive로 쓴 이미지도 미디어 참조를 수집한다", async () => {
+			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}" alt="설명"}`));
+
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toHaveLength(1);
+			expect(snap.references[0]).toMatchObject({ kind: "media", targetId: mediaId });
+			expect(snap.imageSources).toEqual([{ mediaId, position: { line: 1, column: 1 } }]);
+		});
+
+		it("외부 src는 참조가 아니고 발행을 막지 않는다", async () => {
+			const snap = await prepareSnapshot(draft('::image{src="/images/a.png"}'));
+
+			expect(snap.issues).toEqual([]);
+			expect(snap.references).toEqual([]);
+			expect(snap.imageSources).toEqual([{ src: "/images/a.png", position: { line: 1, column: 1 } }]);
+		});
+
+		it("소스가 없는 이미지는 계속 차단한다(M7 무결성 유지)", async () => {
+			const snap = await prepareSnapshot(draft("::image{}"));
+
+			expect(snap.issues).toContainEqual(expect.objectContaining({ code: "missing_media_id" }));
+			expect(snap.imageSources).toEqual([]);
+		});
+
+		it("허용되지 않는 src는 비차단 경고다(ready 유지)", async () => {
+			const snap = await prepareSnapshot(draft('::image{src="javascript:alert(1)"}'));
+			const validation = validateForPublish(snap, { targets: [], media: [] });
+
+			expect(validation.ready).toBe(true);
+			expect(validation.warnings).toEqual([
+				expect.objectContaining({ code: "image_src_not_allowed", position: { line: 1, column: 1 } }),
+			]);
+		});
+
+		it("미디어 상태·저장소 키로 경고를 만들고, 행이 없으면 경고하지 않는다", async () => {
+			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}"}`));
+			const targets: ResolvedTargets["targets"] = [];
+
+			expect(validateForPublish(snap, { targets, media: [{ id: mediaId, status: "pending" }] }).warnings).toEqual([
+				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
+			]);
+			expect(
+				validateForPublish(snap, { targets, media: [{ id: mediaId, status: "ready", storageKey: null }] }).warnings,
+			).toEqual([expect.objectContaining({ code: "image_media_unresolved" })]);
+			expect(
+				validateForPublish(snap, { targets, media: [{ id: mediaId, status: "ready", storageKey: "k/a.png" }] })
+					.warnings,
+			).toEqual([]);
+
+			// 미디어 행이 아예 없는 경우는 경고 대상이 아니다 — 참조 확인이 먼저 차단한다.
+			const missing = validateForPublish(snap, { targets, media: [] });
+			expect(missing.warnings).toEqual([]);
+			expect(missing.ready).toBe(false);
+			expect(missing.issues).toContainEqual(expect.objectContaining({ code: "unresolved_media" }));
+		});
+
+		it("발행 응답용 경고는 DB 상태와 저장소 실물을 함께 본다", async () => {
+			const input = {
+				collection: "memo" as const,
+				slug: "a",
+				metadata: { title: "T" },
+				mdx: `::image{mediaId="${mediaId}"}`,
+				getMediaAsset: async () => ({ status: "pending", storageKey: null }),
+			};
+
+			expect(await imageWarningsForPublish(input)).toEqual([
+				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
+			]);
+			expect(
+				await imageWarningsForPublish({
+					...input,
+					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
+					headStorageKey: async () => true,
+				}),
+			).toEqual([]);
+			expect(
+				await imageWarningsForPublish({
+					...input,
+					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
+					headStorageKey: async () => false,
+				}),
+			).toEqual([expect.objectContaining({ code: "image_media_missing_in_storage", message: "k/a.png" })]);
+		});
+
+		it("경고 계산은 발행을 막지 않는다(실패 시 빈 배열)", async () => {
+			const warnings = await imageWarningsForPublish({
+				collection: "memo" as const,
+				slug: "a",
+				metadata: { title: "T" },
+				mdx: `::image{mediaId="${mediaId}"}`,
+				getMediaAsset: async () => {
+					throw new Error("db down");
+				},
+			});
+
+			expect(warnings).toEqual([]);
 		});
 	});
 });

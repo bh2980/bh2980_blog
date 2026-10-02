@@ -1,498 +1,236 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
-import type { Collection } from "@/cms/services/types";
+import { Plus } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import type { AdminColumnSettings } from "@/cms/core/api";
+import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@/cms/core/collections";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 import { AdminEntriesTable } from "./admin-entries-table";
-import { BulkBar } from "./entries/bulk-bar";
-import { AdminSidebar } from "./admin-sidebar";
+import { BulkBar, runBulk } from "./entries/bulk-bar";
+import { toSelection } from "./list-row-menu";
+import { FilterChipBar, ListSearch } from "./list-toolbar";
+import { RecordPanel } from "./record-panel";
+import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
+import { ConfirmDialog } from "./shared/confirm-dialog";
+import { type EntryList, useEntryList } from "./use-entry-list";
 
-export function AdminClientDashboard() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
-
-	// Initialize state from URL params
-	const urlCollection = (searchParams.get("collection") as Collection) || "post";
-	const urlFolderId = searchParams.get("folderId") || null;
-	const urlSearch = searchParams.get("search") || "";
-	const urlStatus = searchParams.get("status") || "";
-	const urlPage = parseInt(searchParams.get("page") || "1", 10);
-	const urlPageSize = (parseInt(searchParams.get("pageSize") || "25", 10) as 25 | 50 | 100) || 25;
-	const urlSortField =
-		(searchParams.get("sortField") as "updatedAt" | "createdAt" | "title" | "slug") || "updatedAt";
-	const urlSortDirection = (searchParams.get("sortDirection") as "asc" | "desc") || "desc";
-
-	const [currentCollection, setCurrentCollection] = useState<Collection>(urlCollection);
-	const [currentFolderId, setCurrentFolderId] = useState<string | null>(urlFolderId);
-	const [folders, setFolders] = useState<Folder[]>([]);
-
-	const [items, setItems] = useState<ListEntriesItem[]>([]);
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-	const [total, setTotal] = useState(0);
-	const [page, setPage] = useState(urlPage);
-	const [pageSize, setPageSize] = useState<25 | 50 | 100>(urlPageSize);
-	// Debounced search state: updates committed search only after 300ms idle,
-	// so fetchEntries (driven by the committed value) fires once per pause.
-	// Debounced search state: updates committedSearch only after 300ms idle,
-	// so fetchEntries (driven by committedSearch) fires once per pause.
-	const [search, setSearch] = useState(urlSearch);
-	const [committedSearch, setCommittedSearch] = useState(urlSearch);
-	const [statusFilter, setStatusFilter] = useState(urlStatus);
-	const [sortField, setSortField] = useState<"updatedAt" | "createdAt" | "title" | "slug">(urlSortField);
-	const [sortDirection, setSortDirection] = useState<"asc" | "desc">(urlSortDirection);
-	const [isLoading, setIsLoading] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [recordModalError, setRecordModalError] = useState<string | null>(null);
-
-	// Sync state to URL search parameters
-	const syncUrl = useCallback(
-		(params: {
-			collection?: Collection;
-			folderId?: string | null;
-			search?: string;
-			status?: string;
-			page?: number;
-			pageSize?: number;
-			sortField?: string;
-			sortDirection?: string;
-		}) => {
-			const query = new URLSearchParams(searchParams.toString());
-			if (params.collection !== undefined) query.set("collection", params.collection);
-			if (params.folderId !== undefined) {
-				if (params.folderId) query.set("folderId", params.folderId);
-				else query.delete("folderId");
-			}
-			if (params.search !== undefined) {
-				if (params.search) query.set("search", params.search);
-				else query.delete("search");
-			}
-			if (params.status !== undefined) {
-				if (params.status) query.set("status", params.status);
-				else query.delete("status");
-			}
-			if (params.page !== undefined) query.set("page", String(params.page));
-			if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
-			if (params.sortField !== undefined) query.set("sortField", params.sortField);
-			if (params.sortDirection !== undefined) query.set("sortDirection", params.sortDirection);
-
-			router.replace(`?${query.toString()}`, { scroll: false });
-		},
-		[router, searchParams],
+/** 목록 위 오른쪽: 검색과 새 항목(휴지통에는 새 항목이 없다). */
+function EntryListHeaderActions({ list }: { list: EntryList }) {
+	const isTrash = list.mode === "trash";
+	return (
+		<>
+			<ListSearch state={list.state} onChange={list.update} allowBody={!isTrash} />
+			{!isTrash && (
+				<Button type="button" size="sm" onClick={list.createNew}>
+					<Plus aria-hidden />새 {list.label}
+				</Button>
+			)}
+		</>
 	);
+}
 
-	// Load Preferences on initial mount only if not overridden by explicit URL
-	const preferencesLoadedRef = useRef(false);
-	useEffect(() => {
-		if (preferencesLoadedRef.current) return;
-		preferencesLoadedRef.current = true;
+/** 목록 본문: 필터 칩, 일괄 작업 줄, 표, 분류 편집 패널, 그리고 목록 작업이 여는 창. */
+function EntryListBody({ list }: { list: EntryList }) {
+	const { state, data, mode } = list;
+	const isTrash = mode === "trash";
+	const { items } = data;
+	const record = list.recordTarget;
+	return (
+		<>
+			<div className="relative flex min-h-0 flex-1 overflow-hidden">
+				<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+					<FilterChipBar state={state} options={list.options} onChange={list.update} />
+					<BulkBar
+						collection={state.collection}
+						mode={mode}
+						selected={items.filter((item) => list.selectedIds.has(item.id)).map(toSelection)}
+						folders={data.folders}
+						onClearSelection={() => list.setSelectedIds(new Set())}
+						onRun={(op, targets, params) =>
+							list.mutations.mutateEntries(op, targets, () => runBulk(op, targets, params), params)
+						}
+					/>
+					<AdminEntriesTable
+						collection={state.collection}
+						items={items}
+						folders={data.folders}
+						explorer={list.explorer}
+						state={state}
+						options={list.options}
+						onStateChange={(patch) => {
+							list.update(patch);
+							if (patch.sortField || patch.sortDirection) {
+								list.savePreferences({
+									sort: {
+										field: patch.sortField ?? state.sortField,
+										direction: patch.sortDirection ?? state.sortDirection,
+									},
+								});
+							}
+						}}
+						columnSettings={list.columnSettings}
+						onColumnSettingsChange={(columns: AdminColumnSettings) => list.savePreferences({ columns })}
+						selectedIds={list.selectedIds}
+						onSelectionChange={list.setSelectedIds}
+						total={data.total}
+						isLoading={data.isLoading}
+						isRefreshing={data.isRefreshing}
+						errorMessage={data.errorMessage}
+						mode={mode}
+						folderActions={isTrash ? undefined : list.folderActions}
+						rowMenu={list.rowMenu}
+						blankMenu={
+							isTrash
+								? undefined
+								: [
+										{
+											kind: "item",
+											label: "새 폴더",
+											onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
+										},
+										{ kind: "item", label: `새 ${list.label}`, onSelect: list.createNew },
+									]
+						}
+						onDeleteKey={list.onDeleteKey}
+						onSelectFolder={(folder) => list.update({ folder })}
+						onOpenRecord={(item) => list.openRecord({ collection: state.collection, id: item.id })}
+						onRestore={(item) => void list.restore([toSelection(item)])}
+						onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
+						onPageChange={(page) => list.update({ page }, { resetPage: false })}
+						onPageSizeChange={(pageSize) => {
+							list.update({ pageSize });
+							list.savePreferences({ pageSize });
+						}}
+						onRetry={data.retry}
+					/>
+				</div>
+				{record && (
+					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 목록 옆에 고정 폭으로 둔다.
+					<RecordPanel
+						key={`${record.collection}:${record.id ?? "new"}`}
+						target={record}
+						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[24rem] lg:static lg:shrink-0 lg:shadow-none"
+						onDirtyChange={list.setRecordDirty}
+						onClose={list.closeRecord}
+						onSaved={() => {
+							list.closeRecord();
+							toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
+							void list.invalidateEntries();
+							list.reloadTaxonomies();
+						}}
+					/>
+				)}
+			</div>
+			{list.folderActions.dialogs}
+			<ConfirmDialog request={list.confirm} onClose={list.closeConfirm} />
+		</>
+	);
+}
 
-		fetch("/api/cms/v1/preferences")
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data) => {
-				if (data) {
-					if (!searchParams.has("pageSize") && data.defaultPageSize) {
-						setPageSize(data.defaultPageSize);
-					}
-					if (!searchParams.has("sortField") && data.sort?.field) {
-						setSortField(data.sort.field);
-						setSortDirection(data.sort.direction);
-					}
-				}
-			})
-			.catch(() => {});
-	}, []); // mount only
+// 관리자 목록은 브라우저에서 데이터를 가져온다. hydration 뒤에 그려야 Base UI의 자동 ID가 서버 HTML과 어긋나지 않는다.
+function useDashboardMounted() {
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
+	return mounted;
+}
 
-	// Save Preferences when changed
-	const savePreferences = (newSize?: 25 | 50 | 100, field?: string, dir?: string) => {
-		fetch("/api/cms/v1/preferences", {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				defaultPageSize: newSize ?? pageSize,
-				sort: {
-					field: field ?? sortField,
-					direction: dir ?? sortDirection,
-				},
-			}),
-		}).catch(() => {});
-	};
+function DashboardLoading() {
+	return (
+		<output className="flex h-svh items-center justify-center text-muted-foreground text-sm">
+			관리자 화면을 불러오는 중…
+		</output>
+	);
+}
 
-	// Fetch Folders
-	const fetchFolders = useCallback(async () => {
-		try {
-			const res = await fetch(`/api/cms/v1/folders?collection=${currentCollection}`);
-			if (res.ok) {
-				const data = await res.json();
-				setFolders(data);
-			}
-		} catch (err) {
-			console.error("Failed to load folders", err);
-		}
-	}, [currentCollection]);
-
-	// Fetch Entries with Race Condition Cancellation
-	const abortControllerRef = useRef<AbortController | null>(null);
-
-	const fetchEntries = useCallback(async () => {
-		if (abortControllerRef.current) {
-			abortControllerRef.current.abort();
-		}
-		const controller = new AbortController();
-		abortControllerRef.current = controller;
-
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const params = new URLSearchParams();
-			params.set("collection", currentCollection);
-			if (committedSearch) params.set("search", committedSearch);
-			if (statusFilter) params.set("status", statusFilter);
-			if (currentFolderId) params.set("folderId", currentFolderId);
-			params.set("sortField", sortField);
-			params.set("sortDirection", sortDirection);
-			params.set("page", String(page));
-			params.set("pageSize", String(pageSize));
-
-			const res = await fetch(`/api/cms/v1/entries?${params.toString()}`, {
-				signal: controller.signal,
-			});
-
-			if (res.ok) {
-				const data = await res.json();
-				setItems(data.items);
-				setTotal(data.total);
-			} else {
-				const err = await res.json().catch(() => ({}));
-				setErrorMessage(err.message || "목록을 불러오지 못했습니다.");
-			}
-		} catch (err) {
-			if ((err as Error).name !== "AbortError") {
-				setErrorMessage("네트워크 오류가 발생했습니다.");
-			}
-		} finally {
-			setIsLoading(false);
-		}
-	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
-
-	useEffect(() => {
-		fetchFolders();
-	}, [fetchFolders]);
-
-	useEffect(() => {
-		fetchEntries();
-	}, [fetchEntries]);
-
-	// Bulk selection is limited to the current page (M4-FE-2).
-	useEffect(() => {
-		setSelectedIds(new Set());
-	}, [currentCollection, currentFolderId, committedSearch, statusFilter, sortField, sortDirection, page, pageSize]);
-
-	// Debounced search input handler
-	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
-	useEffect(() => {
-		return () => {
-			if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-		};
-	}, []);
-	const handleSearchChange = (val: string) => {
-		setSearch(val);
-		setPage(1);
-		if (searchDebounceRef.current) {
-			clearTimeout(searchDebounceRef.current);
-		}
-		searchDebounceRef.current = setTimeout(() => {
-			setCommittedSearch(val);
-			syncUrl({ search: val, page: 1 });
-		}, 300);
-	};
-
-	const handleCreateFolder = async (name: string, parentId: string | null) => {
-		const res = await fetch("/api/cms/v1/folders", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				collection: currentCollection,
-				name,
-				parentId,
-			}),
-		});
-		if (!res.ok) {
-			const err = await res.json();
-			throw new Error(err.message || "폴더 생성 실패");
-		}
-		await fetchFolders();
-	};
-
-	const handleRenameFolder = async (id: string, name: string, version: number) => {
-		const res = await fetch(`/api/cms/v1/folders/${id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				name,
-				expectedVersion: version,
-			}),
-		});
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({}));
-			throw new Error(err.message || "폴더 수정 실패");
-		}
-		await fetchFolders();
-	};
-
-	const handleDeleteFolder = async (id: string, version: number) => {
-		const res = await fetch(`/api/cms/v1/folders/${id}?expectedVersion=${version}`, {
-			method: "DELETE",
-		});
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({}));
-			throw new Error(err.message || "폴더 삭제 실패");
-		}
-		if (currentFolderId === id) {
-			setCurrentFolderId(null);
-			syncUrl({ folderId: null });
-		}
-		await fetchFolders();
-		await fetchEntries();
-	};
-
-	const toggleSelect = (id: string) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
-	};
-
-	const toggleSelectPage = (selectAll: boolean) => {
-		setSelectedIds(selectAll ? new Set(items.map((i) => i.id)) : new Set());
-	};
-
-	const selectedWithVersions = items
-		.filter((i) => selectedIds.has(i.id))
-		.map((i) => ({ id: i.id, expectedVersion: i.version }));
-
-	const handleBulkDone = (failedIds: string[]) => {
-		setSelectedIds(new Set(failedIds));
-		void fetchEntries();
-	};
-
-	// Record Creation & Rename Modal State (Tag / Category / Collection)
-	const [recordModal, setRecordModal] = useState<{
-		mode: "create" | "rename";
-		id?: string;
-		title: string;
-		version?: number;
-	} | null>(null);
-
-	const isRecordCollection = currentCollection === "tag" || currentCollection === "category";
-
-	const handleCreateNew = () => {
-		if (isRecordCollection) {
-			setRecordModalError(null);
-			setRecordModal({ mode: "create", title: "" });
-			return;
-		}
-		router.push(`/admin/entries/new?collection=${currentCollection}` as any);
-	};
-
-	const handleRenameRecord = async (id: string, currentTitle: string, version: number) => {
-		setRecordModalError(null);
-		setRecordModal({ mode: "rename", id, title: currentTitle, version });
-	};
-
-	const handleRecordModalSubmit = async () => {
-		if (!recordModal || !recordModal.title.trim()) return;
-		const trimmed = recordModal.title.trim();
-		setRecordModalError(null);
-
-		try {
-			if (recordModal.mode === "create") {
-				const res = await fetch("/api/cms/v1/entries", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						collection: currentCollection,
-						metadata: { title: trimmed },
-						mdx: "",
-					}),
-				});
-				if (!res.ok) {
-					const err = await res.json().catch(() => ({}));
-					setRecordModalError(err.message || "생성에 실패했습니다.");
-					return;
-				}
-			} else if (recordModal.id && recordModal.version !== undefined) {
-				const res = await fetch(`/api/cms/v1/entries/${recordModal.id}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						expectedVersion: recordModal.version,
-						metadata: { title: trimmed },
-					}),
-				});
-				if (!res.ok) {
-					const err = await res.json().catch(() => ({}));
-					setRecordModalError(err.message || "수정에 실패했습니다.");
-					return;
-				}
-			}
-			setRecordModal(null);
-			await fetchEntries();
-		} catch (err: any) {
-			setRecordModalError(err.message || "처리 중 오류가 발생했습니다.");
-		}
-	};
+/** 목록 화면(§3.1·§3.2). 별도 통계 대시보드 없이 컬렉션 목록을 연다. */
+export function AdminClientDashboard() {
+	const mounted = useDashboardMounted();
+	if (!mounted) return <DashboardLoading />;
 
 	return (
-		<div className="flex h-screen w-full overflow-hidden">
-			<AdminSidebar
-				currentCollection={currentCollection}
-				currentFolderId={currentFolderId}
-				folders={folders}
-				onSelectCollection={(col) => {
-					setCurrentCollection(col);
-					setCurrentFolderId(null);
-					setPage(1);
-					syncUrl({ collection: col, folderId: null, page: 1 });
-				}}
-				onSelectFolder={(fId) => {
-					setCurrentFolderId(fId);
-					setPage(1);
-					syncUrl({ folderId: fId, page: 1 });
-				}}
-				onCreateFolder={handleCreateFolder}
-				onRenameFolder={handleRenameFolder}
-				onDeleteFolder={handleDeleteFolder}
-			/>
+		<AdminNavProvider>
+			<ListPage />
+		</AdminNavProvider>
+	);
+}
 
-			<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-				<BulkBar
-					selected={selectedWithVersions}
-					folders={folders}
-					onClearSelection={() => setSelectedIds(new Set())}
-					onDone={handleBulkDone}
-				/>
-				<AdminEntriesTable
-					collection={currentCollection}
-					items={items}
-					selectedIds={selectedIds}
-					onToggleSelect={toggleSelect}
-					onToggleSelectPage={toggleSelectPage}
-				total={total}
-				page={page}
-				pageSize={pageSize}
-				search={search}
-				statusFilter={statusFilter}
-				sortField={sortField}
-				sortDirection={sortDirection}
-				isLoading={isLoading}
-				errorMessage={errorMessage}
-				onSearchChange={handleSearchChange}
-				onStatusChange={(st) => {
-					setStatusFilter(st);
-					setPage(1);
-					syncUrl({ status: st, page: 1 });
-				}}
-				onSortChange={(field) => {
-					const newDir = sortField === field && sortDirection === "asc" ? "desc" : "asc";
-					setSortField(field);
-					setSortDirection(newDir);
-					syncUrl({ sortField: field, sortDirection: newDir });
-					savePreferences(pageSize, field, newDir);
-				}}
-				onPageChange={(p) => {
-					setPage(p);
-					syncUrl({ page: p });
-				}}
-				onPageSizeChange={(newSize) => {
-					setPageSize(newSize);
-					setPage(1);
-					syncUrl({ pageSize: newSize, page: 1 });
-					savePreferences(newSize);
-				}}
-				onCreateNew={handleCreateNew}
-				onRenameRecord={handleRenameRecord}
-				onOpenEditRecord={(item) => {
-					setRecordModalError(null);
-					setRecordModal({
-						mode: "rename",
-						id: item.id,
-						title: item.title || "",
-						version: item.version,
-					});
-				}}
-				onRetry={fetchEntries}
-				currentFolderId={currentFolderId}
-				folders={folders}
-				onSelectFolder={(fId) => {
-					setCurrentFolderId(fId);
-					setPage(1);
-					syncUrl({ folderId: fId, page: 1 });
-				}}
-				onCreateFolder={handleCreateFolder}
-				onRenameFolder={handleRenameFolder}
-				onDeleteFolder={handleDeleteFolder}
-			/>
-			</div>
+/** 휴지통 전용 화면(v2 A3). 컬렉션 탭으로 나누고 복원·영구 삭제만 제공한다. */
+export function AdminTrashDashboard() {
+	const mounted = useDashboardMounted();
+	if (!mounted) return <DashboardLoading />;
 
-			{/* Record Form Modal (Tag / Category) */}
-			{recordModal && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-2xl">
-						<h3 className="text-base font-semibold text-white mb-1">
-							{recordModal.mode === "create"
-								? `새 ${currentCollection === "tag" ? "태그" : "카테고리"} 만들기`
-								: `${currentCollection === "tag" ? "태그" : "카테고리"} 이름 수정`}
-						</h3>
-						<p className="text-xs text-neutral-400 mb-4">
-							{recordModal.mode === "create"
-								? "목록 및 글 작성 시 선택할 수 있는 이름을 입력하세요."
-								: "이름을 변경하면 이 레코드를 참조하는 글들의 표시명이 즉시 갱신됩니다."}
-						</p>
+	return (
+		<AdminNavProvider>
+			<TrashPage />
+		</AdminNavProvider>
+	);
+}
 
-						<input
-							type="text"
-							autoFocus
-							value={recordModal.title}
-							onChange={(e) => setRecordModal({ ...recordModal, title: e.target.value })}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									handleRecordModalSubmit();
-								} else if (e.key === "Escape") {
-									setRecordModal(null);
-								}
-							}}
-							placeholder="이름 입력 (예: TypeScript)"
-							className="w-full text-sm px-3.5 py-2 rounded-lg border border-neutral-700 bg-neutral-950 text-white outline-none focus:border-neutral-500 mb-2"
-						/>
-
-						{recordModalError && (
-							<p className="text-xs text-red-400 mb-3">{recordModalError}</p>
-						)}
-
-						<div className="flex items-center justify-end gap-2 mt-3">
-							<button
-								type="button"
-								onClick={() => setRecordModal(null)}
-								className="px-3.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition rounded-md"
+function TrashPage() {
+	const list = useEntryList("trash");
+	const { state } = list;
+	return (
+		<AdminShell
+			title="휴지통"
+			count={list.data.total}
+			sidebar={{ activeNav: "trash" }}
+			headerActions={
+				<>
+					<EntryListHeaderActions list={list} />
+					<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
+						{COLLECTIONS.map((item) => (
+							<Link
+								key={item}
+								href={`/admin/trash?collection=${item}` as Route}
+								aria-current={state.collection === item ? "page" : undefined}
+								className={cn(
+									buttonVariants({ variant: "ghost", size: "xs" }),
+									"text-muted-foreground aria-[current=page]:bg-background aria-[current=page]:text-foreground aria-[current=page]:shadow-sm",
+								)}
 							>
-								취소
-							</button>
-							<button
-								type="button"
-								disabled={!recordModal.title.trim()}
-								onClick={handleRecordModalSubmit}
-								className="px-4 py-1.5 text-xs font-semibold text-neutral-950 bg-white hover:bg-neutral-200 transition rounded-md disabled:opacity-50"
-							>
-								{recordModal.mode === "create" ? "생성" : "수정 완료"}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
+								{COLLECTION_DEFINITIONS[item].label}
+							</Link>
+						))}
+					</nav>
+				</>
+			}
+		>
+			<EntryListBody list={list} />
+		</AdminShell>
+	);
+}
+
+function ListPage() {
+	const list = useEntryList("list");
+	const { state, update } = list;
+	const { folders } = list.data;
+	const folderLabel =
+		state.folder !== "all" ? ` · ${folders.find((folder) => folder.id === state.folder)?.name ?? ""}` : "";
+	return (
+		<AdminShell
+			title={`${list.label}${folderLabel}`}
+			count={list.data.total}
+			headerActions={<EntryListHeaderActions list={list} />}
+			sidebar={{
+				activeNav: state.collection,
+				folderNav: {
+					collection: state.collection,
+					currentFolder: state.folder,
+					includeDescendants: state.includeDescendants,
+					folders,
+					folderActions: list.folderActions,
+					onSelectFolder: (folder) => update({ folder }),
+					onIncludeDescendantsChange: (includeDescendants) => update({ includeDescendants }),
+					onDropEntries: list.moveEntries,
+					onCreateEntry: list.createNew,
+				},
+			}}
+		>
+			<EntryListBody list={list} />
+		</AdminShell>
 	);
 }

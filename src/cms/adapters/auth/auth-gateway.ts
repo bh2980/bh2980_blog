@@ -59,7 +59,7 @@ export class NextAuthGateway implements AuthGateway {
 		if (isDevAuthBypassEnabled()) {
 			if (!devBypassWarned) {
 				devBypassWarned = true;
-			console.warn("[cms-auth] DEV AUTH BYPASS enabled (development only, never use in production)");
+				console.warn("[cms-auth] DEV AUTH BYPASS enabled (development only, never use in production)");
 			}
 			const devId = process.env.CMS_ADMIN_GITHUB_ID?.trim() || "local-dev";
 			return { userId: devId, githubId: devId, isAdmin: true };

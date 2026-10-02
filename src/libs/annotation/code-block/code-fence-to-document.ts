@@ -6,6 +6,7 @@ import type {
 	AnnotationRegistryItem,
 	AnnotationScope,
 	CodeBlockDocument,
+	CodeBlockRule,
 	InlineAnnotation,
 } from "./types";
 
@@ -38,14 +39,11 @@ type PendingScopeInlineDirective = {
 	attributes: { name: string; value: unknown }[];
 	config: AnnotationRegistryItem;
 	selector?: ScopeSelector;
+	/** 정규식 선택자면 `rules`에 등록한 규칙 번호. */
+	ruleIndex?: number;
 };
 
-type PendingScopeDocumentDirective = {
-	name: string;
-	attributes: { name: string; value: unknown }[];
-	config: AnnotationRegistryItem;
-	selector?: ScopeSelector;
-};
+type PendingScopeDocumentDirective = PendingScopeInlineDirective;
 
 type PendingScopeLineMarkerBase = {
 	name: string;
@@ -77,7 +75,7 @@ const parseUnquotedAttrValue = (raw: string): unknown => {
 	}
 };
 
-const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
+export const parseCodeFenceMeta = (meta: string): CodeBlockDocument["meta"] => {
 	const parsed: CodeBlockDocument["meta"] = {};
 	const input = meta.trim();
 	let index = 0;
@@ -250,6 +248,27 @@ const parseScopeSelector = (raw: string): ScopeSelector | undefined => {
 	return { kind: "regex", regex };
 };
 
+/** `{...}` 선택자의 닫는 `}` 위치. 정규식(`{re:/a{2}/}`) 안의 `}`·`/`는 건너뛴다. */
+const findSelectorEnd = (tail: string): number => {
+	if (!tail.startsWith("{re:/")) return tail.indexOf("}");
+	let index = 5;
+	let inClass = false;
+	while (index < tail.length) {
+		const ch = tail[index];
+		if (ch === "\\") {
+			index += 2;
+			continue;
+		}
+		if (ch === "[") inClass = true;
+		else if (ch === "]") inClass = false;
+		else if (ch === "/" && !inClass) break;
+		index += 1;
+	}
+	index += 1;
+	while (index < tail.length && /[a-z]/i.test(tail[index] ?? "")) index += 1;
+	return tail[index] === "}" ? index : -1;
+};
+
 const parseScopeComment = (
 	line: string,
 	commentSyntax: { prefix: string; postfix: string },
@@ -273,7 +292,7 @@ const parseScopeComment = (
 	let selector: ScopeSelector | undefined;
 
 	if (tail.startsWith("{")) {
-		const selectorEnd = tail.indexOf("}");
+		const selectorEnd = findSelectorEnd(tail);
 		if (selectorEnd < 0) return;
 		const selectorRaw = tail.slice(1, selectorEnd);
 		selector = parseScopeSelector(selectorRaw);
@@ -430,6 +449,7 @@ const pushInlineDirectiveMatchesForLine = ({
 			order: stagedInline.length,
 		});
 		if (!annotation) continue;
+		if (directive.ruleIndex !== undefined) annotation.rule = directive.ruleIndex;
 
 		stagedInline.push({
 			lineIndex,
@@ -448,6 +468,7 @@ const tryConsumeScopeComment = ({
 	pendingScopeLineMarkers,
 	pendingScopeDocumentDirectives,
 	annotations,
+	rules,
 	nextOrder,
 }: {
 	lineText: string;
@@ -459,6 +480,7 @@ const tryConsumeScopeComment = ({
 	pendingScopeLineMarkers: PendingScopeLineMarker[];
 	pendingScopeDocumentDirectives: PendingScopeDocumentDirective[];
 	annotations: CodeBlockDocument["annotations"];
+	rules: CodeBlockRule[];
 	nextOrder: number;
 }) => {
 	const parsed = parseScopeComment(lineText, commentSyntax);
@@ -469,6 +491,13 @@ const tryConsumeScopeComment = ({
 	const config = registry.get(parsed.name);
 	if (!config) return false;
 
+	const registerRule = (scope: "char" | "document") => {
+		if (parsed.selector?.kind !== "regex") return undefined;
+		const { source, flags } = parsed.selector.regex;
+		rules.push({ scope, name: parsed.name, pattern: source, flags, attributes: markerAttributes });
+		return rules.length - 1;
+	};
+
 	if (parsed.scope === "char") {
 		if (!supportsAnnotationScope(config, "char")) return false;
 		pendingScopeInlineDirectives.push({
@@ -476,6 +505,7 @@ const tryConsumeScopeComment = ({
 			attributes: markerAttributes,
 			config,
 			selector: parsed.selector,
+			ruleIndex: registerRule("char"),
 		});
 		return true;
 	}
@@ -489,6 +519,7 @@ const tryConsumeScopeComment = ({
 			attributes: markerAttributes,
 			config,
 			selector: parsed.selector,
+			ruleIndex: registerRule("document"),
 		});
 		return true;
 	}
@@ -556,9 +587,11 @@ const commitCodeLine = ({
 	lines,
 	pendingScopeInlineDirectives,
 	stagedInline,
+	rules,
 	lineText,
 }: {
 	lines: CodeBlockDocument["lines"];
+	rules: CodeBlockRule[];
 	pendingScopeInlineDirectives: PendingScopeInlineDirective[];
 	stagedInline: StagedInlineAnnotation[];
 	lineText: string;
@@ -570,6 +603,8 @@ const commitCodeLine = ({
 	});
 
 	for (const directive of pendingScopeInlineDirectives) {
+		const rule = directive.ruleIndex === undefined ? undefined : rules[directive.ruleIndex];
+		if (rule) rule.line = lineIndex;
 		pushInlineDirectiveMatchesForLine({
 			directive,
 			lineText,
@@ -597,6 +632,7 @@ const parseCodeLines = ({
 	const pendingScopeLineMarkers: PendingScopeLineMarker[] = [];
 	const pendingScopeDocumentDirectives: PendingScopeDocumentDirective[] = [];
 	const stagedInline: StagedInlineAnnotation[] = [];
+	const rules: CodeBlockRule[] = [];
 	let lineMarkerOrder = 0;
 
 	for (const lineText of codeValue.split("\n")) {
@@ -610,6 +646,7 @@ const parseCodeLines = ({
 			pendingScopeLineMarkers,
 			pendingScopeDocumentDirectives,
 			annotations,
+			rules,
 			nextOrder: lineMarkerOrder,
 		});
 		if (consumed) {
@@ -621,6 +658,7 @@ const parseCodeLines = ({
 			lines,
 			pendingScopeInlineDirectives,
 			stagedInline,
+			rules,
 			lineText,
 		});
 	}
@@ -634,7 +672,7 @@ const parseCodeLines = ({
 		});
 	}
 
-	return { lines, annotations, stagedInline, pendingScopeDocumentDirectives };
+	return { lines, annotations, stagedInline, pendingScopeDocumentDirectives, rules };
 };
 
 const applyAbsoluteInlineRanges = (lines: CodeBlockDocument["lines"], stagedInline: StagedInlineAnnotation[]) => {
@@ -709,6 +747,7 @@ const applyScopeDocumentDirectives = ({
 					order: line.annotations.length,
 				});
 				if (!annotation) continue;
+				if (directive.ruleIndex !== undefined) annotation.rule = directive.ruleIndex;
 				line.annotations.push(annotation);
 			}
 		}
@@ -738,7 +777,23 @@ export const fromCodeFenceToCodeBlockDocument = (
 		directives: parsed.pendingScopeDocumentDirectives,
 	});
 
-	return { lang, meta, lines: parsed.lines, annotations: parsed.annotations };
+	// 적용할 줄이 없는(코드 끝의) `@char` 규칙은 버린다. 공개 화면에도 효과가 없다. 남은 규칙 번호로 다시 잇는다.
+	const renumbered = new Map<number, number>();
+	const rules = parsed.rules.filter((rule, index) => {
+		if (rule.scope === "char" && rule.line === undefined) return false;
+		renumbered.set(index, renumbered.size);
+		return true;
+	});
+	for (const line of parsed.lines)
+		for (const annotation of line.annotations)
+			if (annotation.rule !== undefined) annotation.rule = renumbered.get(annotation.rule);
+	return {
+		lang,
+		meta,
+		lines: parsed.lines,
+		annotations: parsed.annotations,
+		...(rules.length ? { rules } : {}),
+	};
 };
 
 export const __testable__ = {

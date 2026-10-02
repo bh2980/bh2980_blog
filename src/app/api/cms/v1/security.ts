@@ -1,66 +1,48 @@
-import { type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { AuthError } from "@/cms/adapters/auth";
+import { HttpError } from "./error-handler";
 
 /**
- * Validates Same-Origin requests for state-changing HTTP methods (POST, PATCH, PUT, DELETE).
- * Enforces Origin/Host equality or Sec-Fetch-Site: same-origin.
- * Denies requests missing all origin indicators by default (fail-closed).
- * Enforces Content-Type: application/json when body is expected.
+ * 상태를 바꾸는 요청(POST·PATCH·PUT·DELETE)의 동일 출처 검사(§10.2 CSRF 방어).
+ * Origin/Host 일치 또는 `Sec-Fetch-Site: same-origin`을 요구하고, 신호가 하나도 없으면 거부한다(fail-closed).
+ * 본문을 받는 요청은 `Content-Type: application/json`이어야 한다(아니면 415).
  */
 export function validateSameOrigin(request: NextRequest): void {
 	const method = request.method.toUpperCase();
-	if (["GET", "HEAD", "OPTIONS"].includes(method)) {
-		return;
-	}
+	if (["GET", "HEAD", "OPTIONS"].includes(method)) return;
 
-	const origin = request.headers.get("origin");
 	const host = request.headers.get("host") || request.nextUrl.host;
+	const origin = request.headers.get("origin");
 	const secFetchSite = request.headers.get("sec-fetch-site");
 	const referer = request.headers.get("referer");
 
-	let isVerified = false;
+	const sameHost = (value: string, label: string) => {
+		let url: URL;
+		try {
+			url = new URL(value);
+		} catch {
+			throw new AuthError("forbidden", `Invalid ${label} header`);
+		}
+		if (url.host !== host) throw new AuthError("forbidden", `Cross-origin ${label} rejected`);
+	};
 
 	if (origin) {
-		try {
-			const originUrl = new URL(origin);
-			if (originUrl.host !== host) {
-				throw new AuthError("forbidden", "Cross-origin requests are forbidden");
-			}
-			isVerified = true;
-		} catch (err) {
-			if (err instanceof AuthError) throw err;
-			throw new AuthError("forbidden", "Invalid request origin");
-		}
+		sameHost(origin, "origin");
 	} else if (secFetchSite) {
-		// Only strictly allow same-origin or none (direct navigation/tools)
-		if (secFetchSite === "same-origin" || secFetchSite === "none") {
-			isVerified = true;
-		} else {
+		// same-origin 또는 none(직접 탐색·도구)만 허용한다.
+		if (secFetchSite !== "same-origin" && secFetchSite !== "none") {
 			throw new AuthError("forbidden", "Cross-site request rejected");
 		}
 	} else if (referer) {
-		try {
-			const refererUrl = new URL(referer);
-			if (refererUrl.host !== host) {
-				throw new AuthError("forbidden", "Cross-origin referer rejected");
-			}
-			isVerified = true;
-		} catch (err) {
-			if (err instanceof AuthError) throw err;
-			throw new AuthError("forbidden", "Invalid referer header");
-		}
-	}
-
-	// Fail-closed: State-changing requests must present at least one valid origin verification signal
-	if (!isVerified) {
+		sameHost(referer, "referer");
+	} else {
 		throw new AuthError("forbidden", "Missing origin verification headers");
 	}
 
-	// Validate Content-Type for JSON body requests
-	const contentType = request.headers.get("content-type");
 	if (["POST", "PATCH", "PUT"].includes(method)) {
-		if (!contentType || !contentType.toLowerCase().includes("application/json")) {
-			throw new AuthError("forbidden", "Content-Type must be application/json");
+		const contentType = request.headers.get("content-type");
+		if (!contentType?.toLowerCase().includes("application/json")) {
+			throw new HttpError(415, "unsupported_media_type", "Content-Type must be application/json");
 		}
 	}
 }

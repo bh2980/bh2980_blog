@@ -1,89 +1,53 @@
+import type { CollectionWorkflow } from "../schema/collection";
+import { relationsOf, schemaOf, storageTypes } from "../schema/derive";
+import type { StorageType } from "../schema/fields";
+
 export const COLLECTIONS = ["post", "memo", "category", "tag", "collection"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
+
+export type { CollectionWorkflow } from "../schema/collection";
+
+export type FieldType = StorageType;
 
 export interface CollectionRelation {
 	readonly field: string;
 	readonly kind: "category" | "tag" | "entry";
 }
 
+/** v1 모양의 컬렉션 요약. 필드·관계는 `src/cms/schema/definitions.ts`의 정의에서 만든다(v2 B1). */
 export interface CollectionDefinition {
 	readonly name: Collection;
 	readonly label: string;
-	readonly isRecord?: boolean;
-	readonly fields: Readonly<Record<string, string>>;
+	readonly workflow: CollectionWorkflow;
+	readonly fields: Readonly<Record<string, FieldType>>;
 	readonly relations?: readonly CollectionRelation[];
 }
 
-export const COLLECTION_DEFINITIONS: Record<Collection, CollectionDefinition> = {
-	post: {
-		name: "post",
-		label: "게시글",
-		fields: {
-			title: "string",
-			summary: "string",
-			categoryId: "string",
-			tagIds: "string[]",
-			publishedAt: "string",
-			policy: "string",
-			// M7-FE-2 SEO 메타(선택)
-			seoTitle: "string",
-			seoDescription: "string",
-			canonicalUrl: "string",
-			ogImageId: "string",
-		},
-		relations: [
-			{ field: "categoryId", kind: "category" },
-			{ field: "tagIds", kind: "tag" },
-		],
-	},
-	memo: {
-		name: "memo",
-		label: "메모",
-		fields: {
-			title: "string",
-			tagIds: "string[]",
-			publishedAt: "string",
-			// M7-FE-2 SEO 메타(선택)
-			seoTitle: "string",
-			seoDescription: "string",
-			canonicalUrl: "string",
-			ogImageId: "string",
-		},
-		relations: [{ field: "tagIds", kind: "tag" }],
-	},
-	category: {
-		name: "category",
-		label: "카테고리",
-		isRecord: true,
-		fields: { title: "string" },
-	},
-	tag: {
-		name: "tag",
-		label: "태그",
-		isRecord: true,
-		fields: { title: "string" },
-	},
-	collection: {
-		name: "collection",
-		label: "모음집",
-		isRecord: true,
-		fields: {
-			title: "string",
-			itemIds: "string[]",
-		},
-		relations: [{ field: "itemIds", kind: "entry" }],
-	},
-};
-
-/** 기존 SCHEMA와의 100% 호환용 필드 타입 맵 */
-export const COLLECTION_FIELD_SCHEMAS: Record<Collection, Record<string, string>> = {
-	post: { ...COLLECTION_DEFINITIONS.post.fields },
-	memo: { ...COLLECTION_DEFINITIONS.memo.fields },
-	category: { ...COLLECTION_DEFINITIONS.category.fields },
-	tag: { ...COLLECTION_DEFINITIONS.tag.fields },
-	collection: { ...COLLECTION_DEFINITIONS.collection.fields },
-};
+export const COLLECTION_DEFINITIONS: Readonly<Record<Collection, CollectionDefinition>> = Object.fromEntries(
+	COLLECTIONS.map((name) => {
+		const schema = schemaOf(name);
+		const relations = relationsOf(name).map(({ field, kind }) => ({ field, kind }));
+		return [
+			name,
+			{
+				name,
+				label: schema.label,
+				workflow: schema.workflow,
+				fields: storageTypes(name),
+				...(relations.length > 0 ? { relations } : {}),
+			},
+		];
+	}),
+) as Record<Collection, CollectionDefinition>;
 
 export function isCollection(val: unknown): val is Collection {
 	return typeof val === "string" && (COLLECTIONS as readonly string[]).includes(val);
 }
+
+/** 명시적 저장이 곧 공개 반영인 분류용 컬렉션인가(§5.2 record workflow). */
+export function isRecordCollection(val: unknown): boolean {
+	return isCollection(val) && COLLECTION_DEFINITIONS[val].workflow === "record";
+}
+
+/** 본문을 쓰고 초안/발행을 나누는 콘텐츠 컬렉션. */
+export const CONTENT_COLLECTIONS = COLLECTIONS.filter((c) => COLLECTION_DEFINITIONS[c].workflow === "publish");

@@ -14,6 +14,11 @@ describe("M7-FE-2 SEO metadata 해석", () => {
 		});
 	});
 
+	it("검색 노출을 숨기면 noindex를, 노출이면 아무것도 담지 않는다", () => {
+		expect(readSeoMetadata({ seoRobots: "noindex" })).toEqual({ noindex: true });
+		expect(readSeoMetadata({ seoRobots: "index" })).toBeUndefined();
+	});
+
 	it("빈 문자열·공백만 있는 값은 없는 것으로 본다", () => {
 		expect(readSeoMetadata({ seoTitle: "   ", seoDescription: "", canonicalUrl: "", ogImageId: "  " })).toBeUndefined();
 	});
@@ -58,6 +63,12 @@ describe("M7-FE-2 SEO metadata 해석", () => {
 	});
 
 	it("키 목록은 컬렉션 레지스트리·공개 allowlist와 같은 4개다", () => {
-		expect([...SEO_METADATA_KEYS].sort()).toEqual(["canonicalUrl", "ogImageId", "seoDescription", "seoTitle"]);
+		expect([...SEO_METADATA_KEYS].sort()).toEqual([
+			"canonicalUrl",
+			"ogImageId",
+			"seoDescription",
+			"seoRobots",
+			"seoTitle",
+		]);
 	});
 });

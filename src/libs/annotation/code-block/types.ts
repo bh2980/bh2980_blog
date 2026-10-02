@@ -1,9 +1,3 @@
-import type { Paragraph, PhrasingContent } from "mdast";
-import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-import type { EDITOR_CODE_BLOCK_NAME } from "@/keystatic/fields/mdx/components/code-block/constants";
-
-export type CodeBlockRoot = MdxJsxFlowElement & { name: typeof EDITOR_CODE_BLOCK_NAME };
-
 export type Range = {
 	start: number;
 	end: number;
@@ -26,6 +20,8 @@ export type InlineAnnotationSource = "mdast" | "mdx-text";
 export type InlineAnnotation = AnnotationBase & {
 	scope: "char" | "document";
 	source: InlineAnnotationSource;
+	/** 정규식 규칙(`{re:/.../}`)으로 찾은 범위면 그 규칙의 `CodeBlockDocument.rules` 번호. */
+	rule?: number;
 };
 
 export type LineAnnotation = AnnotationBase & {
@@ -75,23 +71,24 @@ export type Line = { value: string; annotations: InlineAnnotation[] };
 
 export type CodeBlockMetaValue = string | boolean;
 
+/**
+ * 정규식으로 범위를 찾는 주석 규칙. 저장할 때 찾은 범위(고정 위치)가 아니라 규칙 그대로 쓴다.
+ * - `char`: `line` 번째 줄에서만 찾는다(`// @char fold {re:/.../}`를 그 줄 바로 위에 둔다).
+ * - `document`: 코드 전체에서 찾는다.
+ */
+export type CodeBlockRule = {
+	scope: "char" | "document";
+	name: string;
+	pattern: string;
+	flags: string;
+	line?: number;
+	attributes: AnnotationAttr[];
+};
+
 export type CodeBlockDocument = {
 	lang: string;
 	meta: Record<string, CodeBlockMetaValue>;
 	annotations: LineAnnotation[];
 	lines: Array<Line>;
+	rules?: CodeBlockRule[];
 };
-
-export type EventKind = "open" | "close";
-
-export type AnnotationEvent = {
-	pos: number; // line offset
-	kind: EventKind; // 같은 pos면 close 먼저
-	anno: CodeBlockAnnotation; // 원본 참조 or 동일 구조
-};
-
-// children을 가지는 PhrasingContent만 추출 (text 제외)
-export type PhrasingParent = Extract<PhrasingContent, { children: PhrasingContent[] }>;
-
-// 스택에 올릴 수 있는 노드(= children을 직접 push 할 대상)
-export type MdastNodeLike = Paragraph | MdxJsxTextElement | PhrasingParent;

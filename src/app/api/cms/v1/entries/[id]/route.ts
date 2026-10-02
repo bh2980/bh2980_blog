@@ -1,116 +1,63 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentService, getCmsContentStore } from "@/cms/container";
 import { patchEntryBodySchema } from "@/cms/core/api";
-import { handleApiError } from "../../error-handler";
-import { validateSameOrigin } from "../../security";
+import { isRecordCollection } from "@/cms/core/collections";
+import type { SaveDraftInput } from "@/cms/services/types";
+import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../handler";
 
-interface RouteContext {
-	params: Promise<{ id: string }>;
-}
+type IdParams = { id: string };
 
-export async function GET(_request: NextRequest, context: RouteContext) {
-	try {
-		await authGateway.verifyAdmin();
+/**
+ * 항목과 편집 화면에 필요한 예약 상태(§5.4), 번역 묶음(v2 B4).
+ * 번역본이면 원문의 최신 초안 메타데이터(`source`)를 함께 준다. 번역본 속성 패널이 공통 값을 읽기 전용으로 보여 준다.
+ */
+export const GET = adminRoute<IdParams>(async ({ params }) => {
+	const store = getCmsContentStore();
+	const entry = await store.getEntry(params.id);
+	const schedule = await store.getEntrySchedule({ entryId: params.id });
+	const translations = isRecordCollection(entry.collection)
+		? null
+		: await store.getTranslationGroup({ entryId: entry.id });
+	const source =
+		entry.translationGroupId !== entry.id ? await store.getEntry(entry.translationGroupId).catch(() => null) : null;
+	return json({
+		...entry,
+		schedule: { ...schedule, runnerConfigured: Boolean(process.env.CMS_SCHEDULER_TOKEN?.trim()) },
+		translations: translations?.members ?? [],
+		...(source
+			? {
+					source: {
+						id: source.id,
+						locale: source.locale,
+						status: source.status,
+						workingSlug: source.workingSlug,
+						metadata: source.working.metadata,
+						// 번역 화면(v3)이 원문 블록과 번역을 나란히 맞춘다.
+						mdx: source.working.mdx,
+					},
+				}
+			: {}),
+	});
+});
 
-		const { id } = await context.params;
-		const store = getCmsContentStore();
-		const entry = await store.getEntry(id);
+/** 최신 초안 저장. 보내지 않은 필드는 현재 초안 값을 유지한다. */
+export const PATCH = adminRoute<IdParams>(async ({ request, params }) => {
+	const body = await readVersionedBody(request, patchEntryBodySchema);
+	const current = await getCmsContentStore().getEntry(params.id);
+	const input = {
+		collection: current.collection,
+		expectedVersion: body.expectedVersion,
+		slug: body.slug !== undefined ? body.slug : current.workingSlug,
+		metadata: body.metadata ?? current.working.metadata,
+		mdx: body.mdx ?? current.working.mdx,
+		...(body.folderId !== undefined ? { folderId: body.folderId } : {}),
+		...(body.translation !== undefined ? { translation: body.translation } : {}),
+	} as SaveDraftInput;
+	return json(await getCmsContentService().saveDraft(params.id, input));
+});
 
-		return NextResponse.json(entry);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function PATCH(request: NextRequest, context: RouteContext) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const { id } = await context.params;
-		const body = await request.json();
-
-		if (body.expectedVersion === undefined) {
-			return NextResponse.json(
-				{ code: "version_required", message: "expectedVersion is required" },
-				{ status: 428 },
-			);
-		}
-
-		const parsed = patchEntryBodySchema.safeParse(body);
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid request body", issues: parsed.error.issues },
-				{ status: 400 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		const currentEntry = await store.getEntry(id);
-
-		const service = getCmsContentService();
-		const saveDraftInput: any = {
-			collection: currentEntry.collection as any,
-			expectedVersion: parsed.data.expectedVersion,
-			slug: parsed.data.slug !== undefined ? parsed.data.slug : currentEntry.workingSlug,
-			metadata:
-				parsed.data.metadata !== undefined
-					? (parsed.data.metadata as any)
-					: currentEntry.working.metadata,
-			mdx: parsed.data.mdx !== undefined ? parsed.data.mdx : currentEntry.working.mdx,
-		};
-		if (parsed.data.folderId !== undefined) {
-			saveDraftInput.folderId = parsed.data.folderId;
-		}
-		const updated = (await service.saveDraft(id, saveDraftInput)) as { id: string; version: number };
-
-		// Record 컬렉션(tag, category, collection)은 수정 즉시 published 상태로 재발행 (명세 §5.2)
-		if (["tag", "category", "collection"].includes(currentEntry.collection)) {
-			const published = await store.publishEntry({ id: updated.id, expectedVersion: updated.version });
-			return NextResponse.json(published);
-		}
-
-		return NextResponse.json(updated);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function DELETE(request: NextRequest, context: RouteContext) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const { id } = await context.params;
-		const { searchParams } = new URL(request.url);
-		const expectedVersionStr = searchParams.get("expectedVersion");
-		const permanent = searchParams.get("permanent") === "true";
-
-		if (!expectedVersionStr) {
-			return NextResponse.json(
-				{ code: "version_required", message: "expectedVersion is required" },
-				{ status: 428 },
-			);
-		}
-
-		const expectedVersion = parseInt(expectedVersionStr, 10);
-		if (isNaN(expectedVersion)) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid expectedVersion" },
-				{ status: 400 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		if (permanent) {
-			await store.permanentDeleteEntry({ id, expectedVersion });
-			return new NextResponse(null, { status: 204 });
-		} else {
-			const trashed = await store.trashEntry({ id, expectedVersion });
-			return NextResponse.json(trashed);
-		}
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+/** 휴지통 항목의 영구 삭제(§5.3). 휴지통 이동은 `POST /entries/:id/trash`다. */
+export const DELETE = adminRoute<IdParams>(async ({ request, params }) => {
+	const expectedVersion = readVersionQuery(request);
+	await getCmsContentStore().permanentDeleteEntry({ id: params.id, expectedVersion });
+	return new Response(null, { status: 204 });
+});

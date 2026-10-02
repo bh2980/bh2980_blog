@@ -1,15 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { describe, expect, it, vi } from "vitest";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
-import { GET as getFolders, POST as postFolder } from "../route";
-import { DELETE as deleteFolder, PATCH as patchFolder } from "../[id]/route";
+import { PATCH as patchFolder } from "../[id]/route";
+import { GET as getFolders } from "../route";
 
 vi.mock("@/cms/adapters/auth", () => ({
 	authGateway: {
 		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
 	},
 	AuthError: class AuthError extends Error {
-		constructor(public code: string, message: string) {
+		constructor(
+			public code: string,
+			message: string,
+		) {
 			super(message);
 		}
 	},

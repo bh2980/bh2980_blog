@@ -7,8 +7,13 @@ describe("Slash Menu Commands & Filter Contract", () => {
 	});
 
 	it("filters accurately with English queries", () => {
-		const h1Results = filterCommands("h1");
-		expect(h1Results.some((c) => c.title.includes("H1"))).toBe(true);
+		const h2Results = filterCommands("h2");
+		expect(h2Results.some((c) => c.title.includes("H2"))).toBe(true);
+		// 글 제목이 H1이므로 본문 제목 삽입은 H2부터다(§4.1).
+		expect(filterCommands("h1")).toHaveLength(0);
+
+		expect(filterCommands("table").some((c) => c.title.includes("표"))).toBe(true);
+		expect(filterCommands("todo").some((c) => c.title.includes("체크"))).toBe(true);
 
 		const codeResults = filterCommands("code");
 		expect(codeResults.some((c) => c.title.includes("코드"))).toBe(true);
@@ -16,7 +21,7 @@ describe("Slash Menu Commands & Filter Contract", () => {
 
 	it("filters accurately with Korean queries", () => {
 		const titleResults = filterCommands("제목");
-		expect(titleResults.length).toBeGreaterThanOrEqual(3); // H1, H2, H3
+		expect(titleResults.length).toBeGreaterThanOrEqual(3); // H2, H3, H4
 
 		const quoteResults = filterCommands("인용");
 		expect(quoteResults.some((c) => c.title.includes("인용구"))).toBe(true);

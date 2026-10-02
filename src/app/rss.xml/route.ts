@@ -1,66 +1,9 @@
-import { Feed } from "feed";
-import { listPosts } from "@/libs/contents/services/post";
-import { isDefined } from "@/utils/is-defined";
+import { DEFAULT_LOCALE } from "@/libs/i18n/locales";
+import { buildRssResponse } from "../(blog)/_views/rss";
 
 // 공개 피드를 요청 시점에 생성한다(M7-BE-2). 공개 조회 서비스가 초안·보관을 제외한다.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-	const HOST_URL = process.env.HOST_URL;
-	if (!HOST_URL) throw new Error("HOST_URL is required");
-
-	const siteUrl = new URL(HOST_URL);
-	const feedUrl = new URL("/rss.xml", siteUrl).href;
-	const faviconUrl = new URL("/favicon.ico", siteUrl).href;
-
-	const postList = await listPosts();
-	const items = [...postList.list]
-		.map((post) => {
-			if (post.status !== "published") return null;
-
-			const date = new Date(post.publishedAt);
-			if (Number.isNaN(date.getTime())) return null;
-
-			return { ...post, date };
-		})
-		.filter(isDefined)
-		.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-	const feed = new Feed({
-		title: "bh2980.dev",
-		description: "bh2980의 개발 블로그",
-		id: siteUrl.href,
-		link: siteUrl.href,
-		language: "ko",
-		feedLinks: {
-			rss2: feedUrl,
-		},
-		author: {
-			name: "bh2980",
-			link: siteUrl.href,
-		},
-		favicon: faviconUrl,
-		updated: items[0]?.date ?? new Date(),
-	});
-
-	for (const post of items) {
-		const url = new URL(`/posts/${post.slug}`, siteUrl).href;
-
-		feed.addItem({
-			title: post.title,
-			id: url,
-			link: url,
-			description: post.excerpt ?? "",
-			date: post.date,
-		});
-	}
-
-	return new Response(feed.rss2(), {
-		headers: {
-			"Content-Type": "application/rss+xml; charset=utf-8",
-			"X-Robots-Tag": "noindex, follow",
-			// 피드도 캐시하지 않는다. 보관·slug 변경이 다음 요청에 반영되어야 한다(M7-BE-2 / R1 지적).
-			"Cache-Control": "no-store",
-		},
-	});
+export function GET() {
+	return buildRssResponse(DEFAULT_LOCALE);
 }

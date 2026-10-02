@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-*/
 /out/
 
 # production
@@ -42,3 +43,6 @@ next-env.d.ts
 
 # 생성된 검수 보고서
 artifacts/
+
+# 로컬 에이전트 도구 설정(측정 스크립트 등). 저장소에 커밋하지 않는다.
+.pi/

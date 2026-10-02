@@ -10,7 +10,15 @@ import {
 import { parseYamlMapping, splitFrontmatter } from "./frontmatter";
 import { positionOf } from "./jsx";
 import { parseMdxAst } from "./parse";
-import { COLUMNS_MAX, COLUMNS_MIN, EVENT_HANDLER_NAME, TABS_MAX, TABS_MIN } from "./registry";
+import {
+	COLUMNS_MAX,
+	COLUMNS_MIN,
+	EVENT_HANDLER_NAME,
+	REGISTERED_JSX_NAMES,
+	RETIRED_JSX_NAMES,
+	TABS_MAX,
+	TABS_MIN,
+} from "./registry";
 import type { CmsMdxAnalysis, CmsMdxError } from "./types";
 
 type VisitNode =
@@ -64,6 +72,20 @@ const validateExpression = (errors: CmsMdxError[], estree: unknown, node: ErrorT
 	estreeToJson(expression);
 };
 
+/** JSX 이름 대조. 등록되지 않은 이름은 거부한다(무음 손실 방지, M8-TW-1). */
+const validateName = (errors: CmsMdxError[], node: VisitNode) => {
+	const name = "name" in node && typeof node.name === "string" ? node.name : "";
+	// fragment(`<>`)는 이름이 없어 대조할 수 없다 — 속성·표현식 검사는 그대로 적용한다.
+	if (!name) return;
+	if (RETIRED_JSX_NAMES.has(name)) {
+		pushError(errors, `폐기된 JSX 요소입니다: ${name} — directive 저장 형식으로 바꾸세요(§4.4).`, node);
+		return;
+	}
+	if (!REGISTERED_JSX_NAMES.has(name)) {
+		pushError(errors, `허용되지 않은 JSX 요소입니다: ${name}`, node);
+	}
+};
+
 const validateAttributes = (errors: CmsMdxError[], node: VisitNode) => {
 	const attributes = "attributes" in node && Array.isArray(node.attributes) ? node.attributes : [];
 	for (const raw of attributes) {
@@ -104,6 +126,7 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 	}
 
 	if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
+		validateName(errors, node);
 		validateAttributes(errors, node);
 		if (node.name === "Tabs") {
 			const count = namedJsxChildren(node, "Tab").length;
@@ -127,6 +150,7 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 
 export const analyze = (mdx: string, name?: string): CmsMdxAnalysis => {
 	const { raw, body } = splitFrontmatter(mdx);
+	const sourceLineOffset = raw === null ? 0 : mdx.slice(0, mdx.length - body.length).split(/\r?\n/).length - 1;
 	const errors: CmsMdxError[] = [];
 	let tree: Root | null = null;
 	let frontmatter: CmsMdxAnalysis["frontmatter"] = null;
@@ -145,9 +169,13 @@ export const analyze = (mdx: string, name?: string): CmsMdxAnalysis => {
 
 	return {
 		source: mdx,
-		errors,
+		errors: errors.map((error) => ({
+			...error,
+			position: { ...error.position, line: error.position.line + sourceLineOffset },
+		})),
 		name,
 		frontmatter,
+		sourceLineOffset,
 		tree,
 	};
 };

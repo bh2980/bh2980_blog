@@ -34,6 +34,9 @@ const newFakeStore = (seed: Record<string, Working>) => {
 		async publishEntry() {
 			throw new ServiceError("invalid_input");
 		},
+		async permanentDeleteEntry() {
+			throw new ServiceError("invalid_input");
+		},
 		async getWorking(params: { entryId: string }) {
 			const found = entries.get(params.entryId);
 			if (!found) throw new ServiceError("not_found");

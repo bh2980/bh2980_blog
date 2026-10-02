@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError, NextAuthGateway, isAllowedAdminId, isDevAuthBypassEnabled } from "../auth-gateway";
+import { AuthError, isAllowedAdminId, isDevAuthBypassEnabled, NextAuthGateway } from "../auth-gateway";
 
 vi.mock("../auth-config", () => ({
 	auth: vi.fn(),

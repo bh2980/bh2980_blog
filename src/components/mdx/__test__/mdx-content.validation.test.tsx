@@ -14,10 +14,10 @@ describe("공개 렌더 컴파일러 게이트", () => {
 		await expect(renderMDX('<Callout onclick="x">a</Callout>')).rejects.toThrow(/MDX validation failed/);
 	});
 
-	it("등록되지 않은 JSX는 analyze가 거부하지 않는다(알려진 한계, M8 안건)", async () => {
-		// `REGISTERED_JSX_NAMES`는 정의만 되고 analyze에서 쓰이지 않는다.
-		// 이 경우 공개 렌더는 React 단계에서 실패한다 → 발행 전 차단 규칙이 필요하다.
-		await expect(renderMDX("<UnknownComponent />")).resolves.toBeTruthy();
+	it("등록되지 않은 JSX는 analyze가 거부한다(M8-TW-1)", async () => {
+		// 배치 4에서 `REGISTERED_JSX_NAMES`를 analyze에 배선했다(무음 손실 방지).
+		await expect(renderMDX("<UnknownComponent />")).rejects.toThrow(/MDX validation failed/);
+		await expect(renderMDX("<ContentLink />")).rejects.toThrow(/MDX validation failed/);
 	});
 
 	it("정상 MDX는 그대로 컴파일한다", async () => {

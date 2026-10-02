@@ -45,10 +45,6 @@ const createTransformer = (lineDecorations: LineDecorationPayload[]) => {
 };
 
 describe("transformers.line addLineDecorations", () => {
-	it("line decoration transformer를 제공한다", () => {
-		expect(addLineDecorations).toBeTypeOf("function");
-	});
-
 	it("range에 포함된 line(1-based 입력)에 class를 추가한다", () => {
 		const transformer = createTransformer([
 			{

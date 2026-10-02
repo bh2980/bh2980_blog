@@ -1,80 +1,26 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { authGateway } from "@/cms/adapters/auth";
 import { getCmsContentStore } from "@/cms/container";
-import { handleApiError } from "../../../error-handler";
-import { validateSameOrigin } from "../../../security";
+import { scheduleBodySchema } from "@/cms/core/api";
+import { HttpError } from "../../../error-handler";
+import { adminRoute, json, readVersionedBody } from "../../../handler";
 
-interface RouteContext {
-	params: Promise<{ id: string }>;
-}
+type IdParams = { id: string };
 
-export async function POST(request: NextRequest, context: RouteContext) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
+/** 예약 등록(§5.4). 저장된 초안을 발행 검증한 뒤 미래 시각만 받는다. 변경은 해제 후 다시 등록한다. */
+export const POST = adminRoute<IdParams>(async ({ request, params }) => {
+	const body = await readVersionedBody(request, scheduleBodySchema);
+	const schedule = await getCmsContentStore().createSchedule({
+		entryId: params.id,
+		expectedVersion: body.expectedVersion,
+		scheduledAt: new Date(body.scheduledAt),
+	});
+	return json(schedule, { status: 201 });
+});
 
-		const { id } = await context.params;
-		const body = await request.json();
-
-		if (body.expectedVersion === undefined) {
-			return NextResponse.json(
-				{ code: "version_required", message: "expectedVersion is required" },
-				{ status: 428 },
-			);
-		}
-
-		if (!body.scheduledAt) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "scheduledAt is required" },
-				{ status: 400 },
-			);
-		}
-
-		const scheduledAt = new Date(body.scheduledAt);
-		if (isNaN(scheduledAt.getTime())) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "Invalid scheduledAt date" },
-				{ status: 400 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		const schedule = await store.createSchedule({
-			entryId: id,
-			expectedVersion: body.expectedVersion,
-			scheduledAt,
-		});
-
-		return NextResponse.json(schedule);
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
-
-export async function DELETE(request: NextRequest, context: RouteContext) {
-	try {
-		validateSameOrigin(request);
-		await authGateway.verifyAdmin();
-
-		const { id } = await context.params;
-		const { searchParams } = new URL(request.url);
-		const scheduleId = searchParams.get("scheduleId");
-
-		if (!scheduleId) {
-			return NextResponse.json(
-				{ code: "invalid_input", message: "scheduleId query parameter is required" },
-				{ status: 400 },
-			);
-		}
-
-		const store = getCmsContentStore();
-		await store.cancelSchedule({
-			scheduleId,
-			entryId: id,
-		});
-
-		return new NextResponse(null, { status: 204 });
-	} catch (error) {
-		return handleApiError(error);
-	}
-}
+/** 예약 해제(`예약 해제`). 대기 중인 예약이 없으면 404다. */
+export const DELETE = adminRoute<IdParams>(async ({ request, params }) => {
+	const scheduleId = request.nextUrl.searchParams.get("scheduleId");
+	if (!scheduleId) throw new HttpError(400, "invalid_input", "scheduleId query parameter is required");
+	const cancelled = await getCmsContentStore().cancelSchedule({ scheduleId, entryId: params.id });
+	if (!cancelled) throw new HttpError(404, "not_found", "No pending schedule");
+	return json({ id: scheduleId, status: "cancelled" });
+});

@@ -35,18 +35,18 @@ export type PublicExportEntry = z.infer<typeof publicExportEntrySchema>;
  * M7-FE-2: 공개 head로 나가는 SEO 메타 키. 명시 원시값만 허용한다는 O1 A6 규칙을 따른다.
  * `ogImageId`는 저장·내보내기는 하되 head 반영은 v2다.
  */
-const SEO_PUBLIC_KEYS: readonly string[] = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"];
+const SEO_PUBLIC_KEYS: readonly string[] = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId", "seoRobots"];
 
 /**
  * 공개 metadata allowlist. 컬렉션별 공개 필드만 골라 내보내므로
  * 관리자 전용 키(storageKey 등)나 내부 값이 중첩 metadata에 섞여도 공개 아카이브에 나가지 않는다.
  */
 export const PUBLIC_METADATA_KEYS: Record<string, readonly string[]> = {
-	post: ["title", "summary", "categoryId", "tagIds", "publishedAt", "policy", ...SEO_PUBLIC_KEYS],
-	memo: ["title", "tagIds", "publishedAt", ...SEO_PUBLIC_KEYS],
+	post: ["title", "summary", "categoryId", "tagIds", "policy", ...SEO_PUBLIC_KEYS],
+	memo: ["title", "tagIds", ...SEO_PUBLIC_KEYS],
 	category: ["title"],
 	tag: ["title"],
-	collection: ["title", "itemIds"],
+	collection: ["title", "itemKind", "itemIds", "memoIds"],
 };
 
 export function pickPublicMetadata(collection: string, metadata: Record<string, unknown>): Record<string, unknown> {
@@ -62,6 +62,9 @@ export function pickPublicMetadata(collection: string, metadata: Record<string, 
 export interface ExportManifestEntry {
 	id: string;
 	collection: string;
+	/** 콘텐츠 언어와 번역 묶음 ID(v2 B4). 원문이면 묶음 ID가 자기 ID다. */
+	locale: string;
+	translationGroupId: string;
 	status: string;
 	version: number;
 	workingSlug: string | null;
@@ -69,18 +72,13 @@ export interface ExportManifestEntry {
 	folderId: string | null;
 	createdAt: string | null;
 	updatedAt: string | null;
-	firstPublishedAt: string | null;
-	lastPublishedAt: string | null;
 	publishedAt: string | null;
 	hasWorking: boolean;
 	hasPublished: boolean;
 	/** 상태 1건의 canonical digest. */
 	workingDigest: string | null;
 	publishedDigest: string | null;
-	/**
-	 * 항목 전체(작업본+공개본) digest. 아카이브 간 동일성 비교·감사용이다.
-	 * (가져오기 skip 판정은 이 문자열이 아니라 저장 필드 동등 비교로 한다. content-store.importEntries 참고)
-	 */
+	/** 항목 전체(작업본+공개본) digest. 아카이브 간 동일성 비교·감사용이다. */
 	itemDigest: string;
 	files: string[];
 }
@@ -184,11 +182,11 @@ const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): {
 			metadata: body.metadata,
 			schemaVersion: body.schemaVersion,
 			contentHash: body.contentHash,
+			// 번역본만 가진다(v3). 원문 파일 모양은 그대로 둔다.
+			...(body.translation ? { translation: body.translation } : {}),
 			updatedAt: iso(body.updatedAt),
 			createdAt: iso(entry.createdAt),
 			updatedEntryAt: iso(entry.updatedAt),
-			firstPublishedAt: iso(entry.firstPublishedAt),
-			lastPublishedAt: iso(entry.lastPublishedAt),
 			publishedAt: iso(entry.publishedAt),
 			folderId: entry.folderId,
 		})}\n`,
@@ -271,6 +269,8 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			manifestEntries.push({
 				id: entry.id,
 				collection: entry.collection,
+				locale: entry.locale,
+				translationGroupId: entry.translationGroupId,
 				status: entry.status,
 				version: entry.version,
 				workingSlug: entry.workingSlug,
@@ -278,8 +278,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 				folderId: entry.folderId,
 				createdAt: iso(entry.createdAt),
 				updatedAt: iso(entry.updatedAt),
-				firstPublishedAt: iso(entry.firstPublishedAt),
-				lastPublishedAt: iso(entry.lastPublishedAt),
 				publishedAt: iso(entry.publishedAt),
 				hasWorking: true,
 				hasPublished: entry.published !== undefined,
@@ -300,6 +298,8 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 		manifestEntries.push({
 			id: entry.id,
 			collection: entry.collection,
+			locale: entry.locale,
+			translationGroupId: entry.translationGroupId,
 			status: "published",
 			version: 0,
 			workingSlug: null,
@@ -307,8 +307,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			folderId: null,
 			createdAt: null,
 			updatedAt: iso(entry.published?.updatedAt),
-			firstPublishedAt: null,
-			lastPublishedAt: null,
 			publishedAt: iso(entry.publishedAt),
 			hasWorking: false,
 			hasPublished: true,
@@ -367,7 +365,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 				snapshot.templates.map((template) => ({
 					id: template.id,
 					name: template.name,
-					forCollection: template.forCollection,
 					mdx: template.mdx,
 					version: template.version,
 					createdAt: iso(template.createdAt),

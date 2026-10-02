@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PreparedSnapshot, Reference, StorePort } from "../../../services";
 import type { Entry } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
+import { seedEntry } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 type ExtendedStore = ReturnType<typeof createContentStore> & StorePort<Entry>;
@@ -18,6 +19,7 @@ function buildSnapshot(overrides: Partial<PreparedSnapshot> = {}): PreparedSnaps
 		schemaVersion: 1,
 		contentHash: `hash-${Math.random().toString(36).slice(2, 8)}`,
 		issues: [],
+		imageSources: [],
 		...overrides,
 		references: refs,
 	};
@@ -54,8 +56,64 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		await closeGlobalPool();
 	});
 
+	it("returns working and current published incoming references separately", async () => {
+		const target = await seedEntry(store, {
+			collection: "tag",
+			slug: `incoming-tag-${randomUUID()}`,
+			metadata: { title: "Reference tag" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: `tag-${randomUUID()}`,
+		});
+		await store.publishEntry({ id: target.id, expectedVersion: target.version });
+
+		const occurrence = { type: "metadata" as const, path: "tagIds", ordinal: 0 };
+		const reference = buildReference({ kind: "tag", targetId: target.id, occurrences: [occurrence] });
+		const source = await store.createEntryWithReferences({
+			snapshot: buildSnapshot({
+				collection: "memo",
+				slug: `incoming-memo-${randomUUID()}`,
+				metadata: { title: "Published title", tagIds: [target.id] },
+				references: [reference],
+			}),
+			references: [reference],
+		});
+		const published = await store.publishEntry({ id: source.id, expectedVersion: source.version });
+		const draftSlug = `incoming-draft-${randomUUID()}`;
+		await store.saveWorkingWithReferences({
+			entryId: source.id,
+			expectedVersion: published.version,
+			snapshot: buildSnapshot({
+				collection: "memo",
+				slug: draftSlug,
+				metadata: { title: "Draft title", tagIds: [target.id] },
+				references: [reference],
+			}),
+			references: [reference],
+		});
+
+		const incoming = await store.getIncomingReferences({ targetId: target.id });
+		expect(incoming).toHaveLength(2);
+		expect(incoming).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					state: "working",
+					sourceTitle: "Draft title",
+					sourceSlug: draftSlug,
+					occurrences: [occurrence],
+				}),
+				expect.objectContaining({
+					state: "published",
+					sourceTitle: "Published title",
+					sourceSlug: source.workingSlug,
+					occurrences: [occurrence],
+				}),
+			]),
+		);
+	});
+
 	it("create atomically persists working snapshot + normalized working references, including multiple occurrences", async () => {
-		const targetCat = await store.createEntry({
+		const targetCat = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-1",
 			metadata: {},
@@ -63,7 +121,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "c1",
 		});
-		const targetTag = await store.createEntry({
+		const targetTag = await seedEntry(store, {
 			collection: "tag",
 			slug: "tag-1",
 			metadata: {},
@@ -118,7 +176,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("save atomically replaces the complete working reference set (removes old/adds new), increments numeric version, and stores matching body/slug", async () => {
-		const targetOld = await store.createEntry({
+		const targetOld = await seedEntry(store, {
 			collection: "tag",
 			slug: "old-tag",
 			metadata: {},
@@ -126,7 +184,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const targetNew = await store.createEntry({
+		const targetNew = await seedEntry(store, {
 			collection: "category",
 			slug: "new-cat",
 			metadata: {},
@@ -169,7 +227,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("stale references and occurrences survive exact DB roundtrip", async () => {
-		const target = await store.createEntry({
+		const target = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-stale",
 			metadata: {},
@@ -194,7 +252,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("reference-only mutation is a real optimistic-version mutation (increments version) and stale flag updates", async () => {
-		const target = await store.createEntry({
+		const target = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-ref-only",
 			metadata: {},
@@ -240,7 +298,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("optimistic version conflict preserves prior working snapshot, slug and refs", async () => {
-		const target1 = await store.createEntry({
+		const target1 = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-opt-1",
 			metadata: {},
@@ -248,7 +306,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const target2 = await store.createEntry({
+		const target2 = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-opt-2",
 			metadata: {},
@@ -345,7 +403,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("save rollback: invalid/nonexistent entry target causes failure and fully rolls back body/version/working slug/reference replacement", async () => {
-		const targetReal = await store.createEntry({
+		const targetReal = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-real-1",
 			metadata: {},
@@ -386,7 +444,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("create/save working slug collision is normalized to CmsError code slug_conflict and transaction rollback leaves no partial create or preserves existing saved state respectively", async () => {
-		const targetReal = await store.createEntry({
+		const targetReal = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-real-2",
 			metadata: {},
@@ -453,7 +511,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("references are isolated per source entry", async () => {
-		const target1 = await store.createEntry({
+		const target1 = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-iso-1",
 			metadata: {},
@@ -461,7 +519,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "1",
 		});
-		const target2 = await store.createEntry({
+		const target2 = await seedEntry(store, {
 			collection: "category",
 			slug: "cat-iso-2",
 			metadata: {},
@@ -488,7 +546,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("successful nonempty -> empty save: replaces refs with empty array and increments version", async () => {
-		const targetReal = await store.createEntry({
+		const targetReal = await seedEntry(store, {
 			collection: "category",
 			slug: "empty-save-cat",
 			metadata: {},
@@ -550,7 +608,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("identical snapshot + identical refs no-op save: timestamps and version remain unchanged", async () => {
-		const targetReal = await store.createEntry({
+		const targetReal = await seedEntry(store, {
 			collection: "category",
 			slug: "noop-cat",
 			metadata: {},
@@ -581,7 +639,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("collection mismatch on save rejects with CmsError invalid_input and leaves working entry and references unchanged", async () => {
-		const targetReal = await store.createEntry({
+		const targetReal = await seedEntry(store, {
 			collection: "category",
 			slug: `target-${randomUUID()}`,
 			metadata: {},
@@ -641,7 +699,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	});
 
 	it("DB CHECK binds target_id to target_entry_id for entry kinds, rejecting mismatched identities", async () => {
-		const source = await store.createEntry({
+		const source = await seedEntry(store, {
 			collection: "post",
 			slug: `source-${randomUUID()}`,
 			metadata: {},
@@ -649,7 +707,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "src",
 		});
-		const targetA = await store.createEntry({
+		const targetA = await seedEntry(store, {
 			collection: "tag",
 			slug: `target-a-${randomUUID()}`,
 			metadata: {},
@@ -657,7 +715,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 			schemaVersion: 1,
 			contentHash: "ta",
 		});
-		const targetB = await store.createEntry({
+		const targetB = await seedEntry(store, {
 			collection: "tag",
 			slug: `target-b-${randomUUID()}`,
 			metadata: {},
@@ -727,7 +785,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		);
 		expect(hasMediaCheck).toBe(true);
 
-		const source = await store.createEntry({
+		const source = await seedEntry(store, {
 			collection: "post",
 			slug: `media-src-${randomUUID()}`,
 			metadata: {},
@@ -885,7 +943,7 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 	}, 15_000);
 
 	it("preserves reference occurrences, stale flag, normalized targetId casing and avoids false mutations", async () => {
-		const target = await store.createEntry({
+		const target = await seedEntry(store, {
 			collection: "category",
 			slug: `cat-norm-${randomUUID()}`,
 			metadata: { name: "Category Normalization Target" },

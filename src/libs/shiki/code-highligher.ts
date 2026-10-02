@@ -35,12 +35,15 @@ import { type DecorationItem, getSingletonHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import {
 	addLineDecorations,
+	addLineNumbers,
 	addLineWrappers,
 	addMetaToPre,
 	convertInlineAnnoToRenderTag,
 	type LineDecorationPayload,
 	type LineWrapperPayload,
 	type Meta,
+	numberCodeNotes,
+	showsLineNumbers,
 } from "./transformers";
 
 export const CODE_BLOCK_THEME_DARK = oneDarkPro.name as typeof oneDarkPro.name;
@@ -70,6 +73,8 @@ export const highlight = (code: string, lang: string, meta: Meta, annotationPayl
 			addMetaToPre(code, meta),
 			convertInlineAnnoToRenderTag(allowedRenderTags),
 			addLineWrappers(rowWrappers, allowedRenderTags),
+			numberCodeNotes(),
+			...(showsLineNumbers(meta) ? [addLineNumbers()] : []),
 		],
 	});
 };

@@ -94,6 +94,7 @@ const toLineDecorationPayload = (annotation: LineAnnotation, style: ResolvedAnno
 		range: annotation.range,
 		order: annotation.order,
 		class: style.class,
+		attributes: annotation.attributes ?? [],
 	};
 };
 

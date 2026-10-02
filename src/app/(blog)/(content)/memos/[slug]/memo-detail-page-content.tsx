@@ -1,6 +1,9 @@
+import { createPublicImageResolver } from "@/cms/mdx/public-image-resolver";
+import { LanguageLinks } from "@/components/language-links";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
 import type { Memo } from "@/libs/contents/types/contents";
+import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
 import { MemoBackLink } from "./memo-back-link";
@@ -8,10 +11,21 @@ import { MemoBackLink } from "./memo-back-link";
 type MemoDetailPageContentProps = {
 	memo: Memo;
 	listPathname?: string;
+	/** 공개 화면의 언어(v2 B4). */
+	locale?: Locale;
+	languageLinks?: readonly { locale: Locale; href: string }[];
+	resolveHref?: (href: string) => string;
 };
 
-export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: MemoDetailPageContentProps) => {
-	const { content, toc } = await renderMDX(memo.contentMdx);
+export const MemoDetailPageContent = async ({
+	memo,
+	listPathname = "/memos",
+	locale = DEFAULT_LOCALE,
+	languageLinks = [],
+	resolveHref,
+}: MemoDetailPageContentProps) => {
+	const imageResolver = await createPublicImageResolver(memo.contentMdx);
+	const { content, toc } = await renderMDX(memo.contentMdx, { imageResolver, locale, resolveHref });
 
 	return (
 		<div className="mx-auto w-full px-6 py-8 xl:grid xl:grid-cols-[1fr_min(42rem,100%)_1fr] xl:gap-2">
@@ -24,10 +38,10 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 					)}
 				>
 					<header className="flex flex-col items-start gap-5 border-slate-200">
-						<MemoBackLink pathname={listPathname} />
+						<MemoBackLink pathname={listPathname} locale={locale} />
 						<div className="flex w-full items-center gap-2 pl-0.5 text-slate-500 text-xs dark:text-slate-400">
 							{memo.status === "published" && (
-								<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt)}</time>
+								<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt, locale)}</time>
 							)}
 						</div>
 						<h1 className="font-bold text-slate-900 dark:text-slate-100">{memo.title}</h1>
@@ -41,6 +55,7 @@ export const MemoDetailPageContent = async ({ memo, listPathname = "/memos" }: M
 								<li key={tag.slug}>{`#${tag.label}`}</li>
 							))}
 						</ul>
+						<LanguageLinks current={locale} links={languageLinks} />
 					</header>
 					{toc?.length > 0 ? <TableOfContents toc={toc} className="mt-4 xl:hidden" /> : null}
 					{content}

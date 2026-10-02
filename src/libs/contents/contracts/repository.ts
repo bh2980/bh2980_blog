@@ -1,3 +1,4 @@
+import type { Locale } from "@/libs/i18n/locales";
 import type { Category, Memo, Post, Series, Tag } from "../types/contents";
 import type { MemoListQuery, PostListQuery } from "../types/query";
 
@@ -13,14 +14,26 @@ import type { MemoListQuery, PostListQuery } from "../types/query";
  * - DB 구현에서 목록 조회 결과의 `contentMdx`는 빈 문자열이다. 본문이 필요하면 단건 조회를 쓴다.
  */
 export interface ContentRepository {
-	getPost(slug: string): Promise<Post | null>;
-	getMemo(slug: string): Promise<Memo | null>;
-	getSeries(slug: string): Promise<Series | null>;
-	listPosts(query: PostListQuery): Promise<Post[]>;
-	listPostSlugs(): Promise<string[]>;
-	listMemos(query: MemoListQuery): Promise<Memo[]>;
-	listMemoSlugs(): Promise<string[]>;
-	listCategories(): Promise<Category[]>;
-	listTags(): Promise<Tag[]>;
-	listSeries(): Promise<Series[]>;
+	/** `locale`을 주지 않으면 기본 언어다(v2 B4). 번역본이 없는 언어는 결과에서 빠진다. */
+	getPost(slug: string, locale?: Locale): Promise<Post | null>;
+	getMemo(slug: string, locale?: Locale): Promise<Memo | null>;
+	getSeries(slug: string, locale?: Locale): Promise<Series | null>;
+	listPosts(query: PostListQuery, locale?: Locale): Promise<Post[]>;
+	listPostSlugs(locale?: Locale): Promise<string[]>;
+	listMemos(query: MemoListQuery, locale?: Locale): Promise<Memo[]>;
+	listMemoSlugs(locale?: Locale): Promise<string[]>;
+	/** 이름은 그 언어 값을 쓰고, 없으면 기본 언어 값이다. */
+	listCategories(locale?: Locale): Promise<Category[]>;
+	listTags(locale?: Locale): Promise<Tag[]>;
+	listSeries(locale?: Locale): Promise<Series[]>;
+	/** 같은 번역 묶음의 공개된 언어와 주소(`hreflang`, 언어 전환). */
+	listTranslations(
+		collection: "post" | "memo",
+		translationGroupId: string,
+	): Promise<{ locale: Locale; slug: string }[]>;
+	/**
+	 * 본문 내부 링크를 이 언어로 바꿀 때 쓰는 표. `post:기본 언어 slug` → 이 언어 번역본 slug.
+	 * 기본 언어면 빈 표다.
+	 */
+	listLocalizedAddresses(locale: Locale): Promise<Map<string, string>>;
 }

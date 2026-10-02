@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type ContentStore, createContentStore, migrateContentStore } from "../content-store";
+import { seedEntry, seedSave } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
 /**
@@ -13,6 +14,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ContentStore;
+	let testCategoryId: string;
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -21,6 +23,16 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
+		const categoryDraft = await seedEntry(store, {
+			collection: "category",
+			slug: "public-read-test-category",
+			metadata: { title: "Public read category" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: "public-read-test-category-hash",
+		});
+		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
+		testCategoryId = category.id;
 	});
 
 	afterAll(async () => {
@@ -30,18 +42,30 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		await closeGlobalPool();
 	});
 
-	async function createEntry(params: { collection: string; slug: string; metadata?: unknown; mdx?: string }) {
-		return store.createEntry({
+	async function createEntry(params: {
+		collection: string;
+		slug: string;
+		metadata?: Record<string, unknown>;
+		mdx?: string;
+	}) {
+		const metadata = params.metadata ?? { title: params.slug };
+		return seedEntry(store, {
 			collection: params.collection,
 			slug: params.slug,
-			metadata: params.metadata ?? { title: params.slug },
+			metadata:
+				params.collection === "post" ? { ...metadata, categoryId: metadata.categoryId ?? testCategoryId } : metadata,
 			mdx: params.mdx ?? `# ${params.slug}`,
 			schemaVersion: 1,
 			contentHash: `hash-${params.slug}`,
 		});
 	}
 
-	async function createPublishedEntry(params: { collection: string; slug: string; metadata?: unknown; mdx?: string }) {
+	async function createPublishedEntry(params: {
+		collection: string;
+		slug: string;
+		metadata?: Record<string, unknown>;
+		mdx?: string;
+	}) {
 		const entry = await createEntry(params);
 
 		return store.publishEntry({ id: entry.id, expectedVersion: entry.version });
@@ -90,7 +114,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		if (lookup.status === "current") {
 			expect(lookup.entry.slug).toBe("live-post");
 			expect(lookup.entry.mdx).toBe("# 공개 본문");
-			expect(lookup.entry.metadata).toEqual({ title: "공개 글", summary: "요약" });
+			expect(lookup.entry.metadata).toEqual({ title: "공개 글", summary: "요약", categoryId: testCategoryId });
 			expect(lookup.entry.publishedAt).toBeInstanceOf(Date);
 		}
 	});
@@ -141,10 +165,10 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 
 	it("slug를 바꾸면 이전 주소는 alias로 판정되고 정규 slug를 반환한다", async () => {
 		const published = await createPublishedEntry({ collection: "post", slug: "before-rename" });
-		const saved = await store.saveWorking(published.id, {
+		const saved = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "after-rename",
-			metadata: { title: "이름 변경" },
+			metadata: { title: "이름 변경", categoryId: testCategoryId },
 			mdx: "# 이름 변경",
 			schemaVersion: 1,
 			contentHash: "hash-renamed",
@@ -164,12 +188,81 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		}
 	});
 
+	it("공개 글의 working 수정은 재발행 전까지 기존 published snapshot을 보존한다", async () => {
+		const publishedTag = await createPublishedEntry({
+			collection: "tag",
+			slug: "f10-published-tag",
+			metadata: { title: "Published tag" },
+		});
+		const workingTag = await createPublishedEntry({
+			collection: "tag",
+			slug: "f10-working-tag",
+			metadata: { title: "Working tag" },
+		});
+		const published = await createPublishedEntry({
+			collection: "post",
+			slug: "f10-published-snapshot",
+			metadata: {
+				title: "Published title",
+				summary: "Published summary",
+				categoryId: testCategoryId,
+				tagIds: [publishedTag.id],
+			},
+			mdx: "# Published body",
+		});
+		const working = await seedSave(store, published.id, {
+			expectedVersion: published.version,
+			slug: "f10-working-snapshot",
+			metadata: {
+				title: "Working title",
+				summary: "Working summary",
+				categoryId: testCategoryId,
+				tagIds: [workingTag.id],
+			},
+			mdx: "# Working body",
+			schemaVersion: 1,
+			contentHash: "f10-working-content",
+		});
+
+		expect(working.status).toBe("published");
+		expect(await publishedSlugs(["post"])).toContain("f10-published-snapshot");
+		expect(await publishedSlugs(["post"])).not.toContain("f10-working-snapshot");
+		const beforeRepublish = await store.getPublishedEntryBySlug({
+			collection: "post",
+			slug: "f10-published-snapshot",
+		});
+		expect(beforeRepublish.status).toBe("current");
+		if (beforeRepublish.status === "current") {
+			expect(beforeRepublish.entry.slug).toBe("f10-published-snapshot");
+			expect(beforeRepublish.entry.mdx).toBe("# Published body");
+			expect(beforeRepublish.entry.metadata).toEqual({
+				title: "Published title",
+				summary: "Published summary",
+				categoryId: testCategoryId,
+				tagIds: [publishedTag.id],
+			});
+		}
+		await expect(store.getPublishedEntryBySlug({ collection: "post", slug: "f10-working-snapshot" })).resolves.toEqual({
+			status: "not_found",
+		});
+
+		const republished = await store.publishEntry({ id: working.id, expectedVersion: working.version });
+		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "f10-published-snapshot" })).toMatchObject({
+			status: "alias",
+			entry: { slug: "f10-working-snapshot", mdx: "# Working body" },
+		});
+		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "f10-working-snapshot" })).toMatchObject({
+			status: "current",
+			entry: { slug: "f10-working-snapshot", mdx: "# Working body", metadata: { title: "Working title" } },
+		});
+		expect(republished.status).toBe("published");
+	});
 	it("비공개로 돌아간 주소는 alias로도 남지 않는다", async () => {
 		const published = await createPublishedEntry({ collection: "post", slug: "alias-then-archive" });
-		const saved = await store.saveWorking(published.id, {
+		const saved = await seedSave(store, published.id, {
 			expectedVersion: published.version,
 			slug: "alias-then-archive-2",
-			metadata: { title: "이름 변경" },
+			metadata: { title: "이름 변경", categoryId: testCategoryId },
 			mdx: "# 이름 변경",
 			schemaVersion: 1,
 			contentHash: "hash-alias-archive",
@@ -187,7 +280,7 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 		});
 	});
 
-	it("분류 레코드(tag/category)도 공개 조회되고 보관하면 제외된다", async () => {
+	it("분류 레코드(tag/category)도 공개 조회되고 휴지통으로 옮기면 제외된다", async () => {
 		const tag = await createPublishedEntry({ collection: "tag", slug: "public-tag", metadata: { title: "공개 태그" } });
 		await createPublishedEntry({ collection: "category", slug: "public-category", metadata: { title: "공개 분류" } });
 
@@ -195,7 +288,8 @@ describe("M7-BE-1 공개 published 읽기 계약", () => {
 			expect.arrayContaining(["public-tag", "public-category"]),
 		);
 
-		await store.archiveEntry({ id: tag.id, expectedVersion: tag.version });
+		// record 컬렉션은 보관이 없고 활성/휴지통만 쓴다(§5.3).
+		await store.trashEntry({ id: tag.id, expectedVersion: tag.version });
 
 		expect(await publishedSlugs(["tag"])).not.toContain("public-tag");
 		expect(await publishedSlugs(["category"])).toContain("public-category");

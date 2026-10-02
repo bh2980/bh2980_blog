@@ -1,3 +1,4 @@
+import { readMetadataString } from "./metadata";
 import type { SeoMetadata } from "./types/contents";
 
 /**
@@ -7,15 +8,7 @@ import type { SeoMetadata } from "./types/contents";
  * 여기서는 metadata 레코드를 도메인 값으로 옮기기만 한다. 값이 없으면 키 자체를 만들지 않아
  * SEO를 입력하지 않은 글의 공개 객체 모양이 M7 이전과 동일하게 유지된다.
  */
-const SEO_KEYS = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"] as const;
-
-function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
-	const value = metadata[key];
-	if (typeof value !== "string") return null;
-
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-}
+const SEO_KEYS = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId", "seoRobots"] as const;
 
 /**
  * canonical로 쓸 수 있는 값만 통과시킨다.
@@ -74,6 +67,7 @@ export function readSeoMetadata(metadata: Record<string, unknown>): SeoMetadata 
 	if (description) seo.description = description;
 	if (canonicalUrl) seo.canonicalUrl = canonicalUrl;
 	if (ogImageId) seo.ogImageId = ogImageId;
+	if (readMetadataString(metadata, "seoRobots") === "noindex") seo.noindex = true;
 
 	return Object.keys(seo).length > 0 ? seo : undefined;
 }

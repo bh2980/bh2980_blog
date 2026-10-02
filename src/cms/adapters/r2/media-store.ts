@@ -8,8 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
+	ALLOWED_MEDIA_MIMES,
 	type AllowedImageMime,
-	ALLOWED_IMAGE_MIMES,
 	type MediaStore,
 	type MediaStoreConfig,
 	type PrepareUploadInput,
@@ -50,6 +50,7 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 
 	// 2. GIF: GIF87a or GIF89a
 	if (
+		buffer.length >= 10 &&
 		buffer[0] === 0x47 &&
 		buffer[1] === 0x49 &&
 		buffer[2] === 0x46 &&
@@ -63,10 +64,11 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 		if (width > 0 && height > 0) {
 			return { mimeType: "image/gif", width, height };
 		}
+		return null;
 	}
 
 	// 3. JPEG: FF D8 FF
-	if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+	if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
 		let offset = 2;
 		while (offset < buffer.length - 8) {
 			if (buffer[offset] !== 0xff) {
@@ -85,14 +87,15 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 				break;
 			}
 			const len = (buffer[offset + 2] << 8) | buffer[offset + 3];
+			if (len < 2) break;
 			offset += 2 + len;
 		}
-		// Fallback for JPEG without parsed markers
-		return { mimeType: "image/jpeg", width: 800, height: 600 };
+		return null;
 	}
 
 	// 4. WebP: RIFF .... WEBP
 	if (
+		buffer.length >= 16 &&
 		buffer[0] === 0x52 &&
 		buffer[1] === 0x49 &&
 		buffer[2] === 0x46 &&
@@ -108,8 +111,11 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 			if (buffer.length >= 30) {
 				const width = view.getUint16(26, true) & 0x3fff;
 				const height = view.getUint16(28, true) & 0x3fff;
-				return { mimeType: "image/webp", width, height };
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
 			}
+			return null;
 		}
 		// VP8L (lossless)
 		if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x4c) {
@@ -120,13 +126,27 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 				const b4 = buffer[24];
 				const width = 1 + (((b2 & 0x3f) << 8) | b1);
 				const height = 1 + (((b4 & 0x0f) << 10) | (b3 << 2) | ((b2 & 0xc0) >> 6));
-				return { mimeType: "image/webp", width, height };
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
 			}
+			return null;
 		}
-		return { mimeType: "image/webp", width: 800, height: 600 };
+		// VP8X (extended)
+		if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x58) {
+			if (buffer.length >= 30) {
+				const width = 1 + (buffer[24] | (buffer[25] << 8) | (buffer[26] << 16));
+				const height = 1 + (buffer[27] | (buffer[28] << 8) | (buffer[29] << 16));
+				if (width > 0 && height > 0) {
+					return { mimeType: "image/webp", width, height };
+				}
+			}
+			return null;
+		}
+		return null;
 	}
 
-	// 5. AVIF: .... ftypavif
+	// 5. AVIF: .... ftypavif or ftypavis
 	if (
 		buffer.length >= 12 &&
 		buffer[4] === 0x66 &&
@@ -136,9 +156,19 @@ export function detectImageDimensionsAndType(buffer: Uint8Array): ImageDimension
 		buffer[8] === 0x61 &&
 		buffer[9] === 0x76 &&
 		buffer[10] === 0x69 &&
-		buffer[11] === 0x66
+		(buffer[11] === 0x66 || buffer[11] === 0x73)
 	) {
-		return { mimeType: "image/avif", width: 800, height: 600 };
+		for (let i = 12; i <= buffer.length - 16; i++) {
+			if (buffer[i] === 0x69 && buffer[i + 1] === 0x73 && buffer[i + 2] === 0x70 && buffer[i + 3] === 0x65) {
+				const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+				const width = view.getUint32(i + 8, false);
+				const height = view.getUint32(i + 12, false);
+				if (width > 0 && height > 0 && width < 65536 && height < 65536) {
+					return { mimeType: "image/avif", width, height };
+				}
+			}
+		}
+		return null;
 	}
 
 	return null;
@@ -156,8 +186,8 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 
 	return {
 		prepareUpload: async (input: PrepareUploadInput): Promise<PrepareUploadOutput> => {
-			if (!ALLOWED_IMAGE_MIMES.includes(input.contentType)) {
-				throw new Error(`Disallowed image mime type: ${input.contentType}`);
+			if (!ALLOWED_MEDIA_MIMES.includes(input.contentType)) {
+				throw new Error(`Disallowed media mime type: ${input.contentType}`);
 			}
 
 			const command = new PutObjectCommand({
@@ -197,12 +227,25 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					etag: res.ETag,
 					lastModified: res.LastModified,
 				};
-			} catch (err: any) {
-				if (err?.name === "NotFound" || err?.$metadata?.httpStatusCode === 404) {
+			} catch (err) {
+				const error = err as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
+				if (error?.name === "NotFound" || error?.$metadata?.httpStatusCode === 404) {
 					return null;
 				}
 				throw err;
 			}
+		},
+
+		readPrefix: async (input: { key: string; bytes: number; signal?: AbortSignal }): Promise<Uint8Array> => {
+			const res = await s3.send(
+				new GetObjectCommand({
+					Bucket: config.bucket,
+					Key: input.key,
+					Range: `bytes=0-${Math.max(0, input.bytes - 1)}`,
+				}),
+				{ abortSignal: input.signal },
+			);
+			return res.Body ? new Uint8Array(await res.Body.transformToByteArray()) : new Uint8Array(0);
 		},
 
 		readFile: async (input: { key: string; maxBytes: number; signal?: AbortSignal }): Promise<Uint8Array> => {
@@ -218,7 +261,7 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 				return new Uint8Array(0);
 			}
 
-			const stream = res.Body as any;
+			const stream = res.Body as AsyncIterable<Uint8Array>;
 			const chunks: Uint8Array[] = [];
 			let totalBytes = 0;
 
@@ -241,19 +284,24 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 		},
 
 		promoteFile: async (input: PromoteFileInput): Promise<StoredFileHead> => {
-			if (!ALLOWED_IMAGE_MIMES.includes(input.contentType)) {
-				throw new Error(`Disallowed image mime type: ${input.contentType}`);
+			if (!ALLOWED_MEDIA_MIMES.includes(input.contentType)) {
+				throw new Error(`Disallowed media mime type: ${input.contentType}`);
 			}
 
-			// 1. Copy from staging to final key
+			// 1. Copy from staging to final key with ETag precondition
 			await s3.send(
 				new CopyObjectCommand({
 					Bucket: config.bucket,
 					CopySource: `${config.bucket}/${input.stagingKey}`,
 					Key: input.finalKey,
-					ContentType: input.contentType,
+					// 글자 파일은 한글이 깨지지 않게 문자 집합을 붙인다.
+					ContentType: input.contentType.startsWith("text/")
+						? `${input.contentType}; charset=utf-8`
+						: input.contentType,
 					CacheControl: input.cacheControl || "public, max-age=31536000, immutable",
+					...(input.contentDisposition ? { ContentDisposition: input.contentDisposition } : {}),
 					MetadataDirective: "REPLACE",
+					...(input.expectedEtag ? { CopySourceIfMatch: input.expectedEtag } : {}),
 				}),
 			);
 
@@ -295,8 +343,12 @@ export function createR2MediaStore(config: MediaStoreConfig): MediaStore {
 					}),
 					{ abortSignal: input.signal },
 				);
-			} catch {
-				// Idempotent delete
+			} catch (error) {
+				// S3 DeleteObject는 없는 키에도 성공한다. 404만 이미 지워진 것으로 보고, 그 밖의 실패는 올려
+				// 호출자가 `deleting` 상태를 남겨 다시 시도하게 한다(§7.3).
+				const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+				if (status === 404) return;
+				throw error;
 			}
 		},
 

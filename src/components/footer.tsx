@@ -1,65 +1,83 @@
 "use client";
 
 import { Rss } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
+import { localizePath } from "@/libs/i18n/locales";
+import { useTranslate } from "@/libs/i18n/use-locale";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export default function Footer() {
+	const { locale, t } = useTranslate();
 	return (
 		<footer className="border-slate-200 border-t bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
 			<div className="mx-auto max-w-2xl px-6 py-6 md:px-0">
 				<div className="flex justify-between text-slate-600 text-sm dark:text-slate-400">
 					<p className="flex flex-col md:flex-row md:items-center md:gap-1">
-						<Link href={"/"} className="hover:underline">
+						<Link href={localizePath(locale, "/") as Route} className="hover:underline">
 							bh2980.dev
 						</Link>
-						<span className="text-muted-foreground">© {`${new Date().getFullYear()}  All rights reserved.`}</span>
+						<span className="text-muted-foreground">© {`${new Date().getFullYear()}  ${t("footer.rights")}`}</span>
 					</p>
 					<nav
 						className="flex items-center gap-5 fill-slate-600 md:gap-4 dark:fill-slate-400"
-						aria-label="관련 외부 페이지 이동"
+						aria-label={t("footer.externalLinks")}
 					>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<a
-									href="https://github.com/bh2980"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="size-6 md:size-4"
-									aria-label="깃허브"
-								>
-									<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-										<title>GitHub</title>
-										<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-									</svg>
-								</a>
+							<TooltipTrigger
+								render={
+									// biome-ignore lint/a11y/useAnchorContent: 내용(아이콘)은 TooltipTrigger의 children으로 들어간다.
+									<a
+										href="https://github.com/bh2980"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="size-6 md:size-4"
+										aria-label={t("footer.github")}
+									/>
+								}
+							>
+								<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+									<title>GitHub</title>
+									<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+								</svg>
 							</TooltipTrigger>
-							<TooltipContent className="text-xs">깃허브</TooltipContent>
+							<TooltipContent className="text-xs">{t("footer.github")}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<a
-									href="https://bh2980.tistory.com/"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="size-5 md:size-3"
-									aria-label="티스토리 블로그"
-								>
-									<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-										<title>Tistory</title>
-										<path d="M0 3a3 3 0 1 0 6 0 3 3 0 0 0-6 0m9 18a3 3 0 1 0 6 0 3 3 0 0 0-6 0m0-9a3 3 0 1 0 6 0 3 3 0 0 0-6 0m0-9a3 3 0 1 0 6 0 3 3 0 0 0-6 0m9 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0" />
-									</svg>
-								</a>
+							<TooltipTrigger
+								render={
+									// biome-ignore lint/a11y/useAnchorContent: 내용(아이콘)은 TooltipTrigger의 children으로 들어간다.
+									<a
+										href="https://bh2980.tistory.com/"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="size-5 md:size-3"
+										aria-label={t("footer.tistory")}
+									/>
+								}
+							>
+								<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+									<title>Tistory</title>
+									<path d="M0 3a3 3 0 1 0 6 0 3 3 0 0 0-6 0m9 18a3 3 0 1 0 6 0 3 3 0 0 0-6 0m0-9a3 3 0 1 0 6 0 3 3 0 0 0-6 0m0-9a3 3 0 1 0 6 0 3 3 0 0 0-6 0m9 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0" />
+								</svg>
 							</TooltipTrigger>
-							<TooltipContent className="text-xs">티스토리 블로그</TooltipContent>
+							<TooltipContent className="text-xs">{t("footer.tistory")}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<a href="/rss.xml" target="_blank" rel="noopener noreferrer" aria-label="RSS">
-									<Rss className="size-6 md:size-4" />
-								</a>
+							<TooltipTrigger
+								render={
+									// biome-ignore lint/a11y/useAnchorContent: 내용(아이콘)은 TooltipTrigger의 children으로 들어간다.
+									<a
+										href={localizePath(locale, "/rss.xml")}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={t("footer.rss")}
+									/>
+								}
+							>
+								<Rss className="size-6 md:size-4" />
 							</TooltipTrigger>
-							<TooltipContent className="text-xs">RSS</TooltipContent>
+							<TooltipContent className="text-xs">{t("footer.rss")}</TooltipContent>
 						</Tooltip>
 					</nav>
 				</div>

@@ -1,507 +1,439 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
-import {
-	Search,
-	Upload,
-	Trash2,
-	ExternalLink,
-	FileText,
-	AlertCircle,
-	CheckCircle,
-	File,
-	RefreshCw,
-	X,
-	Copy,
-	Check,
-} from "lucide-react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutGrid, List, RefreshCw, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@/cms/core/api";
+import { prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { uploadImageFile } from "@/cms/editor/upload-helper";
-import { AdminSidebar } from "../admin-sidebar";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
+import { cn } from "@/utils/cn";
+import { cmsFetch, errorText } from "../admin-api";
+import type { MenuAction } from "../shared/action-menu";
+import { AdminShell } from "../shared/admin-shell";
+import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { DateRangePicker } from "../shared/date-range-picker";
+import { useDebounced } from "../shared/use-debounced";
+import { MediaDetailPanel } from "./media-detail-panel";
+import type { MediaItem } from "./media-item";
+import { MediaGrid, MediaTable } from "./media-views";
 
-interface MediaItem {
-	id: string;
-	status: string;
-	filename: string;
-	mimeType: string | null;
-	byteSize: number | null;
-	width: number | null;
-	height: number | null;
-	storageKey: string | null;
-	publicUrl: string | null;
-	createdAt: string;
-	referencesCount: number;
-	references: {
-		entryId: string;
-		title: string | null;
-		collection: string;
-		state: "working" | "published";
-	}[];
+const PAGE_SIZE = 30;
+const KIND_OPTIONS = [
+	{ value: "all", label: "모든 형식" },
+	{ value: "image", label: "이미지" },
+	{ value: "file", label: "파일" },
+];
+
+const UPLOAD_ACCEPT = `${ALLOWED_IMAGE_MIME_TYPES.join(",")},${FILE_ACCEPT}`;
+
+const MEDIA_KEY = ["cms", "media"] as const;
+
+interface MediaPage {
+	items: MediaItem[];
+	total: number;
 }
 
+const isImageFile = (file: File) => isImageMime(file.type);
+
+const USED_OPTIONS = [
+	{ value: "all", label: "사용 여부 전체" },
+	{ value: "used", label: "사용 중" },
+	{ value: "unused", label: "미사용" },
+];
+
+type MediaView = "grid" | "list";
+const VIEW_STORAGE_KEY = "cms:media-view";
+
+/** 바둑판·목록 보기 선택. 이 브라우저에 기억하고, 저장소를 못 쓰면 바둑판으로 시작한다. */
+function useMediaView(): [MediaView, (view: MediaView) => void] {
+	const [view, setView] = useState<MediaView>("grid");
+	useEffect(() => {
+		try {
+			if (window.localStorage.getItem(VIEW_STORAGE_KEY) === "list") setView("list");
+		} catch {
+			// 저장소를 쓸 수 없으면 기본 보기를 쓴다.
+		}
+	}, []);
+	const change = (next: MediaView) => {
+		setView(next);
+		try {
+			window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+		} catch {
+			// 기억하지 못해도 보기는 바뀐다.
+		}
+	};
+	return [view, change];
+}
+
+/**
+ * 미디어 라이브러리(§7.3). 바둑판·목록 보기, 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순.
+ * 고르면 오른쪽에 상세가 열린다.
+ */
 export function MediaLibrary() {
-	const [items, setItems] = useState<MediaItem[]>([]);
-	const [total, setTotal] = useState(0);
+	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
-	const [usedFilter, setUsedFilter] = useState<"all" | "used" | "unused">("all");
-	const [typeFilter, setTypeFilter] = useState<string>("all");
-	const [isLoading, setIsLoading] = useState(false);
-	const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
-	const [isUploading, setIsUploading] = useState(false);
-	const [uploadPercent, setUploadPercent] = useState(0);
-	const [copiedUrl, setCopiedUrl] = useState(false);
-	const [deleteError, setDeleteError] = useState<string | null>(null);
-
+	const [used, setUsed] = useState<"all" | "used" | "unused">("all");
+	const [kind, setKind] = useState<"all" | "image" | "file">("all");
+	const [uploadedFrom, setUploadedFrom] = useState("");
+	const [uploadedTo, setUploadedTo] = useState("");
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [optimize, setOptimize] = useState(false);
+	const [upload, setUpload] = useState<{ current: number; total: number; percent: number } | null>(null);
+	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const [view, setView] = useMediaView();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const fetchMedia = useCallback(async () => {
-		setIsLoading(true);
-		setDeleteError(null);
-		try {
-			const query = new URLSearchParams();
-			if (search.trim()) query.set("search", search.trim());
-			if (usedFilter !== "all") query.set("used", usedFilter);
-			if (typeFilter !== "all") query.set("mimeType", typeFilter);
-			query.set("page", String(page));
-			query.set("pageSize", "30");
+	// 조건을 바꾸는 동안에도 이전 줄을 남겨(`keepPreviousData`) 자리 표시로 깜빡이지 않는다. 자리 표시는 캐시가 없을 때만 보인다.
+	const query = useMemo(() => {
+		const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), used });
+		if (search.trim()) params.set("search", search.trim());
+		if (kind !== "all") params.set("kind", kind);
+		const from = uploadedFrom && parseSeoulDateTimeInput(`${uploadedFrom}T00:00`);
+		const to = uploadedTo && parseSeoulDateTimeInput(`${uploadedTo}T23:59`);
+		if (from) params.set("uploadedFrom", from);
+		if (to) params.set("uploadedTo", new Date(Date.parse(to) + 59_999).toISOString());
+		return params.toString();
+	}, [page, used, search, kind, uploadedFrom, uploadedTo]);
+	const debouncedQuery = useDebounced(query, 200);
+	const mediaQuery = useQuery({
+		queryKey: [...MEDIA_KEY, debouncedQuery],
+		queryFn: ({ signal }) => cmsFetch<MediaPage>(`/api/cms/v1/media?${debouncedQuery}`, { signal }),
+		placeholderData: keepPreviousData,
+	});
+	const items = mediaQuery.data?.items ?? [];
+	const total = mediaQuery.data?.total ?? 0;
+	const selected = items.find((item) => item.id === selectedId) ?? null;
 
-			const res = await fetch(`/api/cms/v1/media?${query.toString()}`);
-			if (!res.ok) throw new Error("Failed to load media assets");
-			const data = await res.json();
-			setItems(data.items || []);
-			setTotal(data.total || 0);
-
-			// Refresh selectedMedia if open
-			if (selectedMedia) {
-				const refreshed = data.items.find((m: MediaItem) => m.id === selectedMedia.id);
-				if (refreshed) setSelectedMedia(refreshed);
-			}
-		} catch (err: any) {
-			console.error(err);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [search, usedFilter, typeFilter, page, selectedMedia?.id]);
-
+	const loadError = mediaQuery.error;
 	useEffect(() => {
-		const timer = setTimeout(() => {
-			fetchMedia();
-		}, 200);
-		return () => clearTimeout(timer);
-	}, [fetchMedia]);
+		if (loadError) toast.error(errorText(loadError, "미디어를 불러오지 못했습니다."));
+	}, [loadError]);
 
-	const handleFileUpload = async (files: FileList | null) => {
-		if (!files || files.length === 0) return;
-		setIsUploading(true);
-		setUploadPercent(0);
+	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
+	const invalidateMedia = () => queryClient.invalidateQueries({ queryKey: MEDIA_KEY });
 
+	const handleFiles = async (files: FileList | null) => {
+		if (!files?.length) return;
+		const list: File[] = [];
+		for (const file of Array.from(files)) {
+			if (isImageFile(file) || fileTypeFor(file.name)) list.push(file);
+			else toast.error(`'${file.name}'은(는) 올릴 수 없는 형식입니다.`);
+		}
+		if (list.length === 0) {
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			return;
+		}
 		try {
-			for (let i = 0; i < files.length; i++) {
-				await uploadImageFile(files[i], (pct) => setUploadPercent(pct));
+			for (const [index, file] of list.entries()) {
+				const onProgress = (percent: number) => setUpload({ current: index + 1, total: list.length, percent });
+				setUpload({ current: index + 1, total: list.length, percent: 0 });
+				if (isImageFile(file)) {
+					const prepared = await prepareUpload(file, { optimize });
+					await uploadImageFile(prepared, onProgress);
+				} else {
+					await uploadAttachment(file, onProgress);
+				}
 			}
-			await fetchMedia();
-		} catch (err: any) {
-			alert(`업로드 실패: ${err.message}`);
+			toast.success(`${list.length}개 파일을 올렸습니다.`);
+			setPage(1);
+			await invalidateMedia();
+		} catch (error) {
+			// 실패한 업로드는 사용 가능 상태가 되지 않는다. 같은 파일로 다시 시도할 수 있다(§7.2).
+			toast.error(`업로드 실패: ${errorText(error, "오류가 발생했습니다.")} 다시 시도할 수 있습니다.`);
 		} finally {
-			setIsUploading(false);
-			setUploadPercent(0);
+			setUpload(null);
 			if (fileInputRef.current) fileInputRef.current.value = "";
 		}
 	};
 
-	const handleDelete = async (media: MediaItem) => {
-		if (media.referencesCount > 0) {
-			setDeleteError(`이 미디어는 현재 ${media.referencesCount}개의 글에서 사용 중이므로 삭제할 수 없습니다.`);
-			return;
-		}
-
-		if (!confirm(`'${media.filename}' 미디어를 영구 삭제하시겠습니까?`)) {
-			return;
-		}
-
+	const deleteMedia = async (media: MediaItem) => {
+		// 목록에서 먼저 빼고 요청한다. 실패하면 되돌리고, 끝나면 서버 값으로 맞춘다.
+		await queryClient.cancelQueries({ queryKey: MEDIA_KEY });
+		const snapshots = queryClient.getQueriesData<MediaPage>({ queryKey: MEDIA_KEY });
+		queryClient.setQueriesData<MediaPage>({ queryKey: MEDIA_KEY }, (data) =>
+			data?.items.some((item) => item.id === media.id)
+				? { items: data.items.filter((item) => item.id !== media.id), total: Math.max(0, data.total - 1) }
+				: data,
+		);
+		setSelectedId((current) => (current === media.id ? null : current));
 		try {
-			const res = await fetch(`/api/cms/v1/media/${media.id}`, {
-				method: "DELETE",
-			});
-			if (!res.ok) {
-				const err = await res.json();
-				throw new Error(err.message || "Failed to delete");
-			}
-			setSelectedMedia(null);
-			await fetchMedia();
-		} catch (err: any) {
-			setDeleteError(`삭제 실패: ${err.message}`);
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: "삭제하지 못했습니다." });
+			toast.success(`'${media.filename}'을(를) 삭제했습니다.`);
+		} catch (error) {
+			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
+			toast.error(errorText(error, "삭제하지 못했습니다."));
+		} finally {
+			void invalidateMedia();
 		}
 	};
 
-	const formatSize = (bytes: number | null) => {
-		if (!bytes) return "0 B";
-		const k = 1024;
-		const sizes = ["B", "KB", "MB", "GB"];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+	const saveDefaults = async (media: MediaItem, defaults: { alt: string; caption: string }) => {
+		try {
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, {
+				method: "PATCH",
+				json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
+			});
+			toast.success("기본 설명을 저장했습니다. 이미 작성한 본문은 바뀌지 않습니다.");
+			await invalidateMedia();
+		} catch (error) {
+			toast.error(errorText(error, "저장하지 못했습니다."));
+		}
 	};
 
-	const copyToClipboard = (text: string) => {
-		navigator.clipboard.writeText(text);
-		setCopiedUrl(true);
-		setTimeout(() => setCopiedUrl(false), 2000);
+	const rename = async (media: MediaItem, filename: string) => {
+		try {
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "PATCH", json: { filename } });
+			toast.success(`이름을 '${filename}'(으)로 바꿨습니다.`);
+			await invalidateMedia();
+		} catch (error) {
+			toast.error(errorText(error, "이름을 바꾸지 못했습니다."));
+		}
+	};
+
+	const cleanup = async () => {
+		try {
+			const result = await cmsFetch<{ removed: number; failed: string[] }>("/api/cms/v1/media/cleanup", {
+				method: "POST",
+				json: {},
+			});
+			const text = `24시간 지난 미완료 업로드 ${result.removed}개를 정리했습니다.${result.failed.length ? ` ${result.failed.length}개는 다음에 다시 시도합니다.` : ""}`;
+			if (result.failed.length) toast.error(text);
+			else toast.success(text);
+			void invalidateMedia();
+		} catch (error) {
+			toast.error(errorText(error, "정리하지 못했습니다."));
+		}
+	};
+
+	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+	const requestDelete = (media: MediaItem) =>
+		setConfirm({
+			title: media.status === "deleting" ? "삭제 다시 시도" : "미디어 삭제",
+			description: `'${media.filename}' 파일을 삭제합니다. 템플릿이나 해석하지 못한 초안에서 쓰이면 삭제가 보류됩니다.`,
+			confirmLabel: "삭제",
+			destructive: true,
+			onConfirm: () => deleteMedia(media),
+		});
+
+	/** 미디어 타일의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
+	const mediaMenu = (media: MediaItem): MenuAction[] => [
+		{ kind: "item", label: "상세 보기", onSelect: () => setSelectedId(media.id) },
+		{
+			kind: "sub",
+			label: "사용처",
+			emptyLabel: "초안·공개본에서 쓰이지 않습니다",
+			items: media.references.map((reference) => ({
+				kind: "item" as const,
+				label: `${reference.title || "(제목 없음)"} · ${reference.state === "published" ? "공개본" : "초안"}`,
+				onSelect: () => window.location.assign(`/admin/entries/${reference.entryId}/edit`),
+			})),
+		},
+		{ kind: "separator" },
+		{
+			kind: "item",
+			label: "삭제",
+			destructive: true,
+			disabled: media.referencesCount > 0,
+			onSelect: () => requestDelete(media),
+		},
+	];
+
+	const viewProps = {
+		items,
+		selectedId,
+		dimmed: mediaQuery.isPlaceholderData,
+		onSelect: (media: MediaItem) => setSelectedId(media.id),
+		menuFor: mediaMenu,
+		onDeleteKey: requestDelete,
+	};
+
+	const setFilter = (apply: () => void) => {
+		apply();
+		setPage(1);
 	};
 
 	return (
-		<div className="flex h-screen overflow-hidden bg-neutral-950 text-neutral-100">
-			<AdminSidebar activeNav="media" />
-			<div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-950 text-neutral-200">
-				{/* Top Header & Actions */}
-				<div className="border-b border-neutral-800 p-4 bg-neutral-900/50 flex flex-wrap items-center justify-between gap-4">
-					<div className="flex items-center gap-3">
-						<Link
-							href="/admin"
-							className="text-xs font-medium text-neutral-400 hover:text-white transition"
-						>
-							대시보드
-						</Link>
-						<span className="text-neutral-600">/</span>
-						<h1 className="text-lg font-semibold text-white">미디어 라이브러리</h1>
-						<span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full">
-							총 {total}개
-						</span>
-					</div>
-
-				<div className="flex items-center gap-2">
+		<AdminShell
+			title={
+				<span>
+					미디어 <span className="font-normal text-muted-foreground text-xs">총 {total}개</span>
+				</span>
+			}
+			sidebar={{ activeNav: "media" }}
+			headerActions={
+				<div className="flex flex-wrap items-center gap-2">
+					<Label className="font-normal text-muted-foreground text-xs">
+						<Checkbox checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
+						웹용 최적화
+					</Label>
 					<input
-						type="file"
 						ref={fileInputRef}
+						type="file"
 						multiple
-						accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-						className="hidden"
-						onChange={(e) => handleFileUpload(e.target.files)}
+						hidden
+						accept={UPLOAD_ACCEPT}
+						onChange={(event) => void handleFiles(event.target.files)}
 					/>
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => fileInputRef.current?.click()}
-						disabled={isUploading}
-						className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs"
-					>
-						<Upload className="h-3.5 w-3.5" />
-						{isUploading ? `업로드 중 (${uploadPercent}%)` : "파일 업로드"}
+					<Button type="button" size="sm" disabled={upload !== null} onClick={() => fileInputRef.current?.click()}>
+						<Upload aria-hidden />
+						{upload ? `업로드 중 ${upload.current}/${upload.total} (${upload.percent}%)` : "파일 업로드"}
+					</Button>
+					<Button type="button" size="sm" variant="outline" onClick={() => void cleanup()}>
+						미완료 업로드 정리
 					</Button>
 					<Button
 						type="button"
+						size="icon-sm"
 						variant="outline"
-						size="sm"
-						onClick={() => fetchMedia()}
-						className="h-8 w-8 p-0 border-neutral-700 text-neutral-400 hover:text-white"
+						aria-label="새로고침"
+						onClick={() => void mediaQuery.refetch()}
 					>
-						<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+						<RefreshCw className={cn(mediaQuery.isFetching && "animate-spin")} aria-hidden />
 					</Button>
 				</div>
+			}
+		>
+			<div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 lg:px-6">
+				<Input
+					type="search"
+					aria-label="파일명 검색"
+					value={search}
+					placeholder="파일명 검색"
+					onChange={(event) => setFilter(() => setSearch(event.target.value))}
+					className="h-8 w-56"
+				/>
+				<Select
+					value={kind}
+					items={KIND_OPTIONS}
+					onValueChange={(value) => value && setFilter(() => setKind(value as typeof kind))}
+				>
+					<SelectTrigger size="sm" aria-label="형식">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{KIND_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<Select
+					value={used}
+					items={USED_OPTIONS}
+					onValueChange={(value) => value && setFilter(() => setUsed(value as typeof used))}
+				>
+					<SelectTrigger size="sm" aria-label="사용 여부">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{USED_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<DateRangePicker
+					label="업로드일"
+					from={uploadedFrom}
+					to={uploadedTo}
+					onChange={(from, to) =>
+						setFilter(() => {
+							setUploadedFrom(from);
+							setUploadedTo(to);
+						})
+					}
+				/>
+				<ToggleGroup
+					aria-label="보기"
+					variant="outline"
+					size="sm"
+					spacing={0}
+					value={[view]}
+					onValueChange={(next: unknown[]) => {
+						const picked = next[0];
+						if (picked === "grid" || picked === "list") setView(picked);
+					}}
+					className="ml-auto"
+				>
+					<ToggleGroupItem value="grid" aria-label="바둑판 보기">
+						<LayoutGrid aria-hidden />
+					</ToggleGroupItem>
+					<ToggleGroupItem value="list" aria-label="목록 보기">
+						<List aria-hidden />
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 
-			{/* Search & Filter Bar */}
-			<div className="p-4 border-b border-neutral-800/80 bg-neutral-900/20 flex flex-wrap items-center gap-3 text-xs">
-				<div className="relative flex-1 min-w-[200px] max-w-sm">
-					<Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-500" />
-					<Input
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						placeholder="파일명 검색..."
-						className="pl-8 h-8 text-xs bg-neutral-900 border-neutral-800 text-neutral-200"
-					/>
-				</div>
-
-				{/* Usage Filter */}
-				<div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-md p-0.5">
-					<button
-						type="button"
-						onClick={() => setUsedFilter("all")}
-						className={`px-2.5 py-1 rounded text-xs transition ${
-							usedFilter === "all" ? "bg-neutral-800 text-white font-medium" : "text-neutral-400 hover:text-neutral-300"
-						}`}
-					>
-						전체
-					</button>
-					<button
-						type="button"
-						onClick={() => setUsedFilter("used")}
-						className={`px-2.5 py-1 rounded text-xs transition ${
-							usedFilter === "used" ? "bg-neutral-800 text-white font-medium" : "text-neutral-400 hover:text-neutral-300"
-						}`}
-					>
-						사용 중
-					</button>
-					<button
-						type="button"
-						onClick={() => setUsedFilter("unused")}
-						className={`px-2.5 py-1 rounded text-xs transition ${
-							usedFilter === "unused" ? "bg-neutral-800 text-amber-300 font-medium" : "text-neutral-400 hover:text-neutral-300"
-						}`}
-					>
-						미사용 (고아)
-					</button>
-				</div>
-
-				{/* Type Filter */}
-				<div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-md p-0.5">
-					<button
-						type="button"
-						onClick={() => setTypeFilter("all")}
-						className={`px-2.5 py-1 rounded text-xs transition ${
-							typeFilter === "all" ? "bg-neutral-800 text-white font-medium" : "text-neutral-400 hover:text-neutral-300"
-						}`}
-					>
-						모든 형식
-					</button>
-					<button
-						type="button"
-						onClick={() => setTypeFilter("image/")}
-						className={`px-2.5 py-1 rounded text-xs transition ${
-							typeFilter === "image/" ? "bg-neutral-800 text-white font-medium" : "text-neutral-400 hover:text-neutral-300"
-						}`}
-					>
-						이미지
-					</button>
-				</div>
-			</div>
-
-			{/* Main Grid & Side Details Split */}
-			<div className="flex-1 flex overflow-hidden">
-				{/* Media Grid */}
-				<div className="flex-1 p-6 overflow-y-auto">
+			<div className="relative flex min-h-0 flex-1 overflow-hidden">
+				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
 					{items.length === 0 ? (
-						<div className="h-64 flex flex-col items-center justify-center text-neutral-500 gap-2">
-							<FileText className="h-8 w-8 stroke-[1.5]" />
-							<p className="text-sm">조건에 맞는 미디어가 없습니다</p>
-						</div>
+						mediaQuery.isPending ? (
+							<ul aria-hidden className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+								{Array.from({ length: 6 }, (_, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+									<li key={index}>
+										<Skeleton className="aspect-square w-full rounded-lg" />
+									</li>
+								))}
+							</ul>
+						) : (
+							<Empty className="py-16">
+								<EmptyHeader>
+									<EmptyTitle>조건에 맞는 미디어가 없습니다.</EmptyTitle>
+								</EmptyHeader>
+							</Empty>
+						)
+					) : view === "grid" ? (
+						<MediaGrid {...viewProps} />
 					) : (
-						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-							{items.map((media) => {
-								const isSelected = selectedMedia?.id === media.id;
-								const isUsed = media.referencesCount > 0;
-
-								return (
-									<div
-										key={media.id}
-										onClick={() => {
-											setSelectedMedia(media);
-											setDeleteError(null);
-										}}
-										className={`group relative flex flex-col rounded-lg border overflow-hidden cursor-pointer transition-all bg-neutral-900/60 hover:border-neutral-600 ${
-											isSelected ? "border-blue-500 ring-2 ring-blue-500/30" : "border-neutral-800"
-										}`}
-									>
-										{/* Media Thumbnail */}
-										<div className="aspect-square w-full bg-neutral-950 flex items-center justify-center overflow-hidden relative">
-											{media.publicUrl && media.mimeType?.startsWith("image/") ? (
-												// biome-ignore lint/a11y/useAltText: preview thumbnail
-												<img
-													src={media.publicUrl}
-													alt={media.filename}
-													className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-													loading="lazy"
-												/>
-											) : (
-												<File className="h-10 w-10 text-neutral-600" />
-											)}
-
-											{/* Usage Badge overlay */}
-											<div className="absolute top-1.5 right-1.5">
-												{isUsed ? (
-													<span className="text-[10px] bg-neutral-900/80 text-blue-300 border border-blue-500/30 backdrop-blur px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-														<CheckCircle className="h-2.5 w-2.5 text-blue-400" />
-														{media.referencesCount}
-													</span>
-												) : (
-													<span className="text-[10px] bg-neutral-900/80 text-amber-300 border border-amber-500/30 backdrop-blur px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-														미사용
-													</span>
-												)}
-											</div>
-										</div>
-
-										{/* Filename & Info */}
-										<div className="p-2 flex flex-col gap-0.5">
-											<span className="text-xs text-neutral-200 font-medium truncate" title={media.filename}>
-												{media.filename}
-											</span>
-											<div className="flex items-center justify-between text-[10px] text-neutral-500">
-												<span>{formatSize(media.byteSize)}</span>
-												<span>{media.width && media.height ? `${media.width}×${media.height}` : ""}</span>
-											</div>
-										</div>
-									</div>
-								);
-							})}
-						</div>
+						<MediaTable {...viewProps} />
 					)}
+					<nav aria-label="페이지 이동" className="mt-4 flex items-center justify-end gap-2 text-xs">
+						<Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+							이전
+						</Button>
+						<span className="tabular-nums">
+							{page} / {totalPages}
+						</span>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={page >= totalPages}
+							onClick={() => setPage(page + 1)}
+						>
+							다음
+						</Button>
+					</nav>
 				</div>
 
-				{/* Right Side Inspector Panel */}
-				{selectedMedia && (
-					<aside className="w-80 border-l border-neutral-800 bg-neutral-900/90 backdrop-blur flex flex-col overflow-y-auto">
-						{/* Panel Header */}
-						<div className="p-4 border-b border-neutral-800 flex items-center justify-between">
-							<span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">미디어 상세 정보</span>
-							<button
-								type="button"
-								onClick={() => setSelectedMedia(null)}
-								className="text-neutral-400 hover:text-white"
-							>
-								<X className="h-4 w-4" />
-							</button>
-						</div>
-
-						{/* Preview */}
-						<div className="p-4 flex flex-col gap-4">
-							<div className="w-full aspect-video bg-neutral-950 rounded-lg border border-neutral-800 flex items-center justify-center overflow-hidden">
-								{selectedMedia.publicUrl && selectedMedia.mimeType?.startsWith("image/") ? (
-									// biome-ignore lint/a11y/useAltText: details preview
-									<img
-										src={selectedMedia.publicUrl}
-										alt={selectedMedia.filename}
-										className="max-w-full max-h-full object-contain"
-									/>
-								) : (
-									<File className="h-12 w-12 text-neutral-600" />
-								)}
-							</div>
-
-							{/* Public URL copy */}
-							{selectedMedia.publicUrl && (
-								<div className="flex items-center gap-2">
-									<Input
-										readOnly
-										value={selectedMedia.publicUrl}
-										className="h-7 text-xs bg-neutral-950 border-neutral-800 font-mono text-neutral-400 flex-1 truncate"
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="h-7 px-2 border-neutral-800 hover:text-white"
-										onClick={() => copyToClipboard(selectedMedia.publicUrl!)}
-									>
-										{copiedUrl ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
-									</Button>
-									<a
-										href={selectedMedia.publicUrl}
-										target="_blank"
-										rel="noreferrer"
-										className="p-1.5 text-neutral-400 hover:text-white"
-									>
-										<ExternalLink className="h-3.5 w-3.5" />
-									</a>
-								</div>
-							)}
-
-							{/* Metadata List */}
-							<div className="space-y-2 text-xs border-t border-b border-neutral-800 py-3">
-								<div className="flex justify-between">
-									<span className="text-neutral-500">파일명</span>
-									<span className="text-neutral-300 font-medium truncate max-w-[170px]" title={selectedMedia.filename}>
-										{selectedMedia.filename}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-neutral-500">MIME 형식</span>
-									<span className="text-neutral-300 font-mono text-[11px]">{selectedMedia.mimeType || "알 수 없음"}</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-neutral-500">파일 크기</span>
-									<span className="text-neutral-300">{formatSize(selectedMedia.byteSize)}</span>
-								</div>
-								{selectedMedia.width && selectedMedia.height && (
-									<div className="flex justify-between">
-										<span className="text-neutral-500">해상도</span>
-										<span className="text-neutral-300">{selectedMedia.width} × {selectedMedia.height} px</span>
-									</div>
-								)}
-								<div className="flex justify-between">
-									<span className="text-neutral-500">업로드 일시</span>
-									<span className="text-neutral-300">
-										{new Date(selectedMedia.createdAt).toLocaleDateString("ko-KR", {
-											year: "numeric",
-											month: "short",
-											day: "numeric",
-										})}
-									</span>
-								</div>
-							</div>
-
-							{/* Usage Section */}
-							<div className="flex flex-col gap-2">
-								<div className="flex items-center justify-between">
-									<span className="text-xs font-semibold text-neutral-400">사용처 ({selectedMedia.referencesCount})</span>
-									{selectedMedia.referencesCount === 0 && (
-										<span className="text-[10px] text-amber-400 bg-amber-950/40 border border-amber-800/40 px-1.5 py-0.5 rounded">
-											어느 글에서도 쓰이지 않음
-										</span>
-									)}
-								</div>
-
-								{selectedMedia.referencesCount > 0 ? (
-									<div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-										{selectedMedia.references.map((ref, idx) => (
-											<a
-												key={`${ref.entryId}-${ref.state}-${idx}`}
-												href={`/admin/entries/${ref.entryId}/edit`}
-												className="p-2 rounded bg-neutral-950 hover:bg-neutral-800/80 border border-neutral-800 text-xs flex flex-col gap-0.5 transition"
-											>
-												<span className="text-neutral-200 font-medium truncate">
-													{ref.title || "(제목 없는 글)"}
-												</span>
-												<div className="flex items-center justify-between text-[10px] text-neutral-500">
-													<span>컬렉션: {ref.collection}</span>
-													<span className={ref.state === "published" ? "text-green-400" : "text-amber-400"}>
-														{ref.state === "published" ? "발행본" : "작업 초안"}
-													</span>
-												</div>
-											</a>
-										))}
-									</div>
-								) : (
-									<p className="text-xs text-neutral-500">
-										이 이미지는 본문에서 제거되었거나 아직 참조되지 않은 고아 미디어입니다. 안전하게 삭제할 수 있습니다.
-									</p>
-								)}
-							</div>
-
-							{/* Delete Error Notification */}
-							{deleteError && (
-								<div className="p-2.5 rounded bg-red-950/50 border border-red-800/60 text-red-300 text-xs flex items-start gap-1.5">
-									<AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-									<span>{deleteError}</span>
-								</div>
-							)}
-
-							{/* Actions */}
-							<div className="pt-2 border-t border-neutral-800 flex flex-col gap-2">
-								<Button
-									type="button"
-									variant="destructive"
-									size="sm"
-									disabled={selectedMedia.referencesCount > 0}
-									onClick={() => handleDelete(selectedMedia)}
-									className="gap-1.5 text-xs w-full disabled:opacity-50"
-								>
-									<Trash2 className="h-3.5 w-3.5" />
-									{selectedMedia.referencesCount > 0 ? "사용 중 (삭제 불가)" : "미디어 영구 삭제"}
-								</Button>
-								{selectedMedia.referencesCount > 0 && (
-									<p className="text-[10px] text-neutral-500 text-center">
-										글 본문에서 미디어 참조를 먼저 제거해야 삭제할 수 있습니다.
-									</p>
-								)}
-							</div>
-						</div>
-					</aside>
+				{selected && (
+					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 옆에 고정 폭으로 둔다.
+					<MediaDetailPanel
+						key={selected.id}
+						media={selected}
+						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[22rem] lg:static lg:shrink-0 lg:shadow-none"
+						onClose={() => setSelectedId(null)}
+						onSaveDefaults={(defaults) => void saveDefaults(selected, defaults)}
+						onRename={(filename) => void rename(selected, filename)}
+						onRequestDelete={() => requestDelete(selected)}
+					/>
 				)}
 			</div>
-		</div>
-	</div>
+			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+		</AdminShell>
 	);
 }

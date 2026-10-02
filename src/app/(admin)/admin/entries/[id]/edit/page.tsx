@@ -1,4 +1,4 @@
-import { authGateway } from "@/cms/adapters/auth";
+import { requireAdminPage } from "../../../require-admin";
 import { EntryEditorShell } from "../../entry-editor-shell";
 
 interface PageProps {
@@ -6,8 +6,9 @@ interface PageProps {
 }
 
 export default async function EditEntryPage({ params }: PageProps) {
-	await authGateway.verifyAdmin();
+	const auth = await requireAdminPage();
 	const { id } = await params;
 
-	return <EntryEditorShell mode="edit" initialEntryId={id} />;
+	// 번역본 사이를 오갈 때(v2 B4) 편집 상태를 새로 시작한다.
+	return <EntryEditorShell key={id} mode="edit" initialEntryId={id} adminId={auth.userId} />;
 }

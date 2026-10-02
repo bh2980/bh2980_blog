@@ -289,7 +289,9 @@ describe("export archive builder", () => {
 		expect(parsed.metadata.canonicalUrl).toBe("https://dev.to/crosspost");
 		expect(parsed.metadata.ogImageId).toBe("44444444-4444-4444-8444-444444444444");
 		// SEO 키는 컬렉션 allowlist에 있어야 하고, 관리자 컬렉션에는 열리지 않는다.
-		expect(PUBLIC_METADATA_KEYS.post).toEqual(expect.arrayContaining(["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"]));
+		expect(PUBLIC_METADATA_KEYS.post).toEqual(
+			expect.arrayContaining(["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"]),
+		);
 		expect(PUBLIC_METADATA_KEYS.category).not.toEqual(expect.arrayContaining(["seoTitle"]));
 	});
 });

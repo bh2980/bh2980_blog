@@ -50,6 +50,19 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(detail?.lastModified).toBe("2026-03-01T12:00:00.000Z");
 	});
 
+	it("실수로 비공개 상태가 전달되어도 sitemap에 넣지 않는다", () => {
+		const statuses = ["draft", "archived", "trash"] as const;
+		const posts = statuses.map((status) => ({ ...post(`post-${status}`), status }) as unknown as Post);
+		const memos = statuses.map((status) => ({ ...memo(`memo-${status}`), status }) as unknown as Memo);
+		const entries = buildSitemapEntries({ hostUrl: HOST, posts, memos });
+		const urls = entries.map((entry) => entry.url);
+
+		for (const status of statuses) {
+			expect(urls).not.toContain(`${HOST}/posts/post-${status}`);
+			expect(urls).not.toContain(`${HOST}/memos/memo-${status}`);
+		}
+	});
+
 	it("custom canonical을 지정한 글은 sitemap에서 제외한다", () => {
 		const entries = buildSitemapEntries({
 			hostUrl: HOST,
@@ -64,6 +77,18 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(urls).not.toContain(`${HOST}/memos/n`);
 	});
 
+	it("검색엔진에 숨긴 글은 sitemap에서 제외한다", () => {
+		const entries = buildSitemapEntries({
+			hostUrl: HOST,
+			posts: [post("a"), post("hidden", { noindex: true })],
+			memos: [],
+		});
+		const urls = entries.map((entry) => entry.url);
+
+		expect(urls).toContain(`${HOST}/posts/a`);
+		expect(urls).not.toContain(`${HOST}/posts/hidden`);
+	});
+
 	it("canonical이 없으면 SEO 제목만 있어도 포함한다", () => {
 		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [post("c", { title: "검색 제목" })], memos: [] });
 
@@ -74,5 +99,33 @@ describe("M7-FE-2 sitemap 항목", () => {
 		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [], memos: [] });
 
 		expect(entries.map((entry) => entry.url)).toEqual([HOST, `${HOST}/posts`, `${HOST}/memos`]);
+	});
+});
+
+describe("v2 B4 언어별 sitemap", () => {
+	it("번역본 주소를 담고 같은 글끼리 hreflang으로 잇는다(기본 언어가 x-default)", () => {
+		const ko = { ...post("hello"), locale: "ko" as const, translationGroupId: "g1" };
+		const en = { ...post("hello"), locale: "en" as const, translationGroupId: "g1" };
+		const solo = { ...post("only-ko"), locale: "ko" as const, translationGroupId: "g2" };
+		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [ko, en, solo], memos: [] });
+
+		expect(entries.map((entry) => entry.url)).toEqual([
+			HOST,
+			`${HOST}/en`,
+			`${HOST}/posts`,
+			`${HOST}/en/posts`,
+			`${HOST}/memos`,
+			`${HOST}/en/memos`,
+			`${HOST}/posts/hello`,
+			`${HOST}/en/posts/hello`,
+			`${HOST}/posts/only-ko`,
+		]);
+		const english = entries.find((entry) => entry.url === `${HOST}/en/posts/hello`);
+		expect(english?.alternates?.languages).toEqual({
+			ko: `${HOST}/posts/hello`,
+			en: `${HOST}/en/posts/hello`,
+			"x-default": `${HOST}/posts/hello`,
+		});
+		expect(entries.find((entry) => entry.url === `${HOST}/posts/only-ko`)?.alternates).toBeUndefined();
 	});
 });

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
 import { POST as postDuplicate } from "../entries/[id]/duplicate/route";
 
@@ -75,9 +75,12 @@ describe("M5-BE-1 Duplicate API Route", () => {
 	});
 
 	it("rejects cross-origin requests with 403", async () => {
-		const res = await postDuplicate(postReq("http://localhost/api/cms/v1/entries/orig-1/duplicate", "http://evil.com"), {
-			params: Promise.resolve({ id: "orig-1" }),
-		});
+		const res = await postDuplicate(
+			postReq("http://localhost/api/cms/v1/entries/orig-1/duplicate", "http://evil.com"),
+			{
+				params: Promise.resolve({ id: "orig-1" }),
+			},
+		);
 		expect(res.status).toBe(403);
 	});
 });

@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { Category, ListResult, Post } from "@/libs/contents/types/contents";
+import { localizePath } from "@/libs/i18n/locales";
+import { useTranslate } from "@/libs/i18n/use-locale";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
 
@@ -24,13 +26,14 @@ type PostListContentProps = PostListProps & {
 };
 
 const PostListContent = ({ categories, posts, category, setCategory }: PostListContentProps) => {
+	const { locale, t } = useTranslate();
 	const postList = category ? posts.list.filter((post) => post.category.slug === category) : posts.list;
 
 	return (
 		<div className="mx-auto max-w-2xl px-6 py-8 xl:py-12">
 			<div className="mb-6">
-				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">블로그</h1>
-				<p className="mb-6 text-slate-600 dark:text-slate-300">개발하면서 배운 것들과 경험을 기록합니다.</p>
+				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">{t("posts.title")}</h1>
+				<p className="mb-6 text-slate-600 dark:text-slate-300">{t("posts.description")}</p>
 				<div className="flex flex-wrap gap-2">
 					<Button
 						onClick={() => setCategory?.(null)}
@@ -41,7 +44,7 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 						)}
 					>
 						{!category && <span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />}
-						<span className="inline-block">전체 ({posts.total})</span>
+						<span className="inline-block">{t("posts.all", { count: posts.total })}</span>
 					</Button>
 					{categories.map((categoryItem) => (
 						<Button
@@ -66,7 +69,7 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 			</div>
 			{postList.length === 0 ? (
 				<div className="py-12 text-center">
-					<p className="text-lg text-slate-500 dark:text-slate-400">아직 작성된 게시글이 없습니다.</p>
+					<p className="text-lg text-slate-500 dark:text-slate-400">{t("posts.empty")}</p>
 				</div>
 			) : (
 				<ul className="flex flex-col">
@@ -74,7 +77,10 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 						<li key={post.slug} className="group">
 							<Separator className="my-1 group-first:hidden" />
 							<Link
-								href={{ pathname: `/posts/${post.slug}`, query: category ? { category } : undefined }}
+								href={{
+									pathname: localizePath(locale, `/posts/${post.slug}`),
+									query: category ? { category } : undefined,
+								}}
 								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
 							>
 								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
@@ -83,7 +89,7 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 										{post.status === "published" && (
 											<>
 												<span>·</span>
-												<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt)}</time>
+												<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt, locale)}</time>
 											</>
 										)}
 									</span>

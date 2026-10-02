@@ -2,7 +2,14 @@ import type { Code } from "mdast";
 import { fromCodeFenceToCodeBlockDocument } from "@/libs/annotation/code-block/code-fence-to-document";
 import { annotationConfig } from "@/libs/annotation/code-block/constants";
 import { attributeRecord, readJsxAttributes } from "./jsx";
-import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS } from "./registry";
+import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
+import {
+	boundedTableSpan,
+	hasGfmHeaderLayout,
+	MAX_TABLE_COLUMNS,
+	parseTableWidths,
+	tableHasMergedCells,
+} from "./table-layout";
 import type { CmsJsonValue, CmsMark, CmsMdxAnalysis, CmsNode } from "./types";
 
 type MdastLike = {
@@ -23,12 +30,7 @@ type MdastLike = {
 	attributes?: unknown[];
 };
 
-const MARK_ORDER = ["tooltip", "underline", "superscript", "subscript", "link", "bold", "italic", "strike", "code"];
-
 const jsonClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-const sortMarks = (marks: CmsMark[]): CmsMark[] =>
-	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
 
 const textNode = (text: string, marks: CmsMark[]): CmsNode => {
 	const node: CmsNode = { type: "text", text };
@@ -199,8 +201,87 @@ const convertCode = (node: MdastLike): CmsNode => {
 	return { type: "codeBlock", attrs };
 };
 
+const convertDirectiveTable = (node: MdastLike): CmsNode => {
+	const rawAttrs = attributeRecord(readJsxAttributes(node.attributes));
+	let align: Array<string | null> | null = null;
+	if (typeof rawAttrs.align === "string") {
+		align = rawAttrs.align.split(",").map((s) => {
+			const trimmed = s.trim();
+			return trimmed.length > 0 ? trimmed : null;
+		});
+	}
+
+	const rows: MdastLike[] = [];
+	for (const child of node.children ?? []) {
+		if (child.name === "TableRow") {
+			rows.push(child);
+		} else if (child.type === "paragraph" && child.children) {
+			for (const grandChild of child.children) {
+				if (grandChild.name === "TableRow") rows.push(grandChild);
+			}
+		}
+	}
+
+	const content: CmsNode[] = rows.map((row, rowIndex) => {
+		const cells: MdastLike[] = [];
+		for (const child of row.children ?? []) {
+			if (child.name === "TableCell") {
+				cells.push(child);
+			} else if (child.type === "paragraph" && child.children) {
+				for (const grandChild of child.children) {
+					if (grandChild.name === "TableCell") cells.push(grandChild);
+				}
+			}
+		}
+
+		return {
+			type: "tableRow",
+			content: cells.map((cell) => {
+				const cellAttrs = attributeRecord(readJsxAttributes(cell.attributes));
+				const attrs: Record<string, CmsJsonValue> = {};
+				const colspan = boundedTableSpan(cellAttrs.colspan, MAX_TABLE_COLUMNS);
+				const rowspan = boundedTableSpan(cellAttrs.rowspan, rows.length - rowIndex);
+				if (colspan > 1) attrs.colspan = colspan;
+				if (rowspan > 1) attrs.rowspan = rowspan;
+				if (cellAttrs.header === true || cellAttrs.header === "true" || cellAttrs.header === "") {
+					attrs.header = true;
+				}
+				const cellContent = trimTrailingText(convertPhrasing(cell.children ?? []));
+				return {
+					type: "tableCell",
+					...(Object.keys(attrs).length > 0 ? { attrs } : {}),
+					content: cellContent,
+				};
+			}),
+		};
+	});
+
+	const headerRows = content.map((row) => (row.content ?? []).map((cell) => cell.attrs?.header === true));
+	if (!tableHasMergedCells({ content }) && !hasGfmHeaderLayout(headerRows)) {
+		// 병합 없는 directive 표의 비GFM 머리글 배치를 명시해 저장 시 GFM 첫 행 머리글로 바뀌지 않게 한다.
+		for (const row of content) {
+			for (const cell of row.content ?? []) {
+				if (cell.attrs?.header !== true) cell.attrs = { ...cell.attrs, header: false };
+			}
+		}
+	}
+
+	const attrs: Record<string, CmsJsonValue> = {};
+	if (align?.some((v) => v !== null)) attrs.align = align;
+	const widths = parseTableWidths(rawAttrs.widths);
+	if (widths.length > 0) attrs.widths = widths;
+	return {
+		type: "table",
+		...(Object.keys(attrs).length > 0 ? { attrs } : {}),
+		content,
+	};
+};
+
 const convertJsx = (node: MdastLike): CmsNode => {
 	const name = node.name ?? "";
+	if (name === "Table") {
+		return convertDirectiveTable(node);
+	}
 	if (name === "Image") {
 		const rawAttrs = attributeRecord(readJsxAttributes(node.attributes));
 		const attrs: Record<string, CmsJsonValue> = {};
@@ -210,6 +291,11 @@ const convertJsx = (node: MdastLike): CmsNode => {
 		if (rawAttrs.width) attrs.width = rawAttrs.width;
 		if (rawAttrs.align) attrs.align = rawAttrs.align;
 		if (rawAttrs.caption) attrs.caption = rawAttrs.caption;
+		if (rawAttrs.crop) attrs.crop = rawAttrs.crop;
+		if (rawAttrs.rotate) attrs.rotate = String(rawAttrs.rotate);
+		if (rawAttrs.title) attrs.title = rawAttrs.title;
+		// 장식 표시는 불리언으로 정규화한다(참만 의미가 있다 — §4.4).
+		if (rawAttrs.decorative === true || rawAttrs.decorative === "true") attrs.decorative = true;
 		return { type: "image", attrs };
 	}
 	const type = name && (BLOCK_JSX_NAMES.has(name) || INLINE_JSX_MARKS[name]) ? name : "mdxJsx";
@@ -285,8 +371,11 @@ const convertList = (node: MdastLike): CmsNode => {
 };
 
 const convertTable = (node: MdastLike): CmsNode => {
+	// GFM 열 정렬(`:-:` 등). 정렬이 하나도 없으면 속성을 두지 않는다.
+	const align = (node.align ?? []).map((value) => value ?? null);
 	return {
 		type: "table",
+		...(align.some((value) => value !== null) ? { attrs: { align } } : {}),
 		content: (node.children ?? []).map((row) => ({
 			type: "tableRow",
 			content: (row.children ?? []).map((cell) => ({

@@ -1,517 +1,380 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import {
 	ChevronRight,
-	ChevronDown,
+	FileImage,
+	FileText,
 	Folder as FolderIcon,
 	FolderOpen,
+	Globe,
+	Layers,
+	LayoutTemplate,
+	NotebookPen,
 	Plus,
-	Edit2,
+	Shapes,
+	Sparkles,
+	Tag,
 	Trash2,
-	AlertCircle,
 } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { type KeyboardEvent, useEffect, useState } from "react";
 import type { Folder } from "@/cms/adapters/postgres/content-store";
-import type { Collection } from "@/cms/services/types";
+import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@/cms/core/collections";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarGroup,
+	SidebarGroupAction,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuBadge,
+	SidebarMenuButton,
+	SidebarMenuItem,
+	SidebarMenuSub,
+	SidebarMenuSubItem,
+	SidebarTrigger,
+	useSidebar,
+} from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
+import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
+import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
+import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 
-export type AdminNavId = Collection | "media" | "templates";
+export type AdminNavId = Collection | "media" | "templates" | "ai" | "trash";
 
-interface SidebarProps {
-	currentCollection?: Collection;
-	currentFolderId?: string | null;
-	folders?: Folder[];
-	activeNav?: AdminNavId;
-	onSelectCollection?: (col: Collection) => void;
-	onSelectFolder?: (folderId: string | null) => void;
-	onCreateFolder?: (name: string, parentId: string | null) => Promise<void>;
-	onRenameFolder?: (id: string, name: string, version: number) => Promise<void>;
-	onDeleteFolder?: (id: string, version: number) => Promise<void>;
+const COLLECTION_ICONS: Record<Collection, React.ReactNode> = {
+	post: <FileText />,
+	memo: <NotebookPen />,
+	category: <Shapes />,
+	tag: <Tag />,
+	collection: <Layers />,
+};
+
+/** 목록 화면에서만 쓰는 폴더 탐색(§3.3). */
+export interface FolderNavigation {
+	collection: Collection;
+	/** `all`(최상위)·폴더 ID. */
+	currentFolder: string;
+	includeDescendants: boolean;
+	folders: Folder[];
+	folderActions: FolderActions;
+	onSelectFolder: (folder: string) => void;
+	onIncludeDescendantsChange: (value: boolean) => void;
+	/** 목록 행을 폴더(또는 최상위)로 끌어 놓았을 때. */
+	onDropEntries: (folderId: string | null, entries: DraggedEntry[]) => void;
+	onCreateEntry: () => void;
 }
 
-export function AdminSidebar({
-	currentCollection,
-	currentFolderId,
-	folders = [],
-	activeNav,
-	onSelectCollection,
-	onSelectFolder,
-	onCreateFolder,
-	onRenameFolder,
-	onDeleteFolder,
-}: SidebarProps) {
-	const [newFolderName, setNewFolderName] = useState("");
-	const [isCreatingRoot, setIsCreatingRoot] = useState(false);
-	const [creatingParentId, setCreatingParentId] = useState<string | null>(null);
-	const [subFolderName, setSubFolderName] = useState("");
+export interface AdminSidebarProps {
+	activeNav: AdminNavId;
+	folderNav?: FolderNavigation;
+	trashCount?: number | null;
+}
+
+/** 파일 탐색기처럼 F2는 이름 변경, Delete는 삭제(확인 대화상자)를 연다. */
+export function folderKeyHandler(folder: Folder, actions: FolderActions) {
+	return (event: KeyboardEvent) => {
+		if (event.key === "F2") {
+			event.preventDefault();
+			actions.requestRename(folder);
+		} else if (event.key === "Delete") {
+			event.preventDefault();
+			void actions.requestDelete(folder);
+		}
+	};
+}
+
+/**
+ * 트리 연결선. 각 줄 왼쪽에 세로선과 `ㄴ`자 가로선을 그리고, 마지막 줄의 세로선은 가로선에서 끊는다.
+ * 줄 높이(28px)의 절반인 14px에 가로선을 둔다. 세로선은 부모 폴더 아이콘(또는 최상위 아이콘) 가운데에 온다.
+ */
+const TREE_LIST = "mx-0 translate-x-0 gap-0 border-l-0 py-0 pr-0 pl-6";
+const TREE_ITEM =
+	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-sidebar-foreground/20 after:absolute after:top-3.5 after:h-px after:w-3.5 after:bg-sidebar-foreground/20 last:before:h-3.5";
+
+function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: () => void }) {
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-	const [isFolderSectionOpen, setIsFolderSectionOpen] = useState(true);
-	const prevFolderIdRef = useRef<string | null | undefined>(undefined);
+	const [dropTarget, setDropTarget] = useState<string | null>(null);
+	const { folders, currentFolder } = nav;
 
-	// Custom Dialog States (Replacing window.alert/prompt/confirm)
-	const [renamingFolder, setRenamingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
-	const [renameInput, setRenameInput] = useState("");
-	const [deletingFolder, setDeletingFolder] = useState<{ id: string; name: string; version: number } | null>(null);
-	const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
-
-	const active: AdminNavId = activeNav ?? currentCollection ?? "post";
-
-	const collections: { id: Collection; label: string }[] = [
-		{ id: "post", label: "게시글 (Posts)" },
-		{ id: "memo", label: "메모 (Memos)" },
-		{ id: "category", label: "카테고리 (Categories)" },
-		{ id: "tag", label: "태그 (Tags)" },
-		{ id: "collection", label: "모음집 (Collections)" },
-	];
-
-	// 사용자가 다른 폴더로 이동(선택)했을 때만 해당 폴더의 부모 경로를 자동으로 펼침
+	// 선택한 폴더의 조상 경로를 펼친다.
 	useEffect(() => {
-		if (prevFolderIdRef.current === currentFolderId) return;
-		prevFolderIdRef.current = currentFolderId;
-
-		if (!currentFolderId || folders.length === 0) return;
+		if (currentFolder === "all") return;
 		setExpandedIds((prev) => {
 			const next = new Set(prev);
-			let curr = folders.find((f) => f.id === currentFolderId);
-			while (curr?.parentId) {
-				next.add(curr.parentId);
-				curr = folders.find((f) => f.id === curr!.parentId);
+			let folder = folders.find((f) => f.id === currentFolder);
+			while (folder?.parentId) {
+				next.add(folder.parentId);
+				folder = folders.find((f) => f.id === folder?.parentId);
 			}
 			return next;
 		});
-	}, [currentFolderId, folders]);
+	}, [currentFolder, folders]);
 
-	// 폴더 계층 구조 빌드
-	const rootFolders = folders.filter((f) => !f.parentId);
-	const getChildren = (parentId: string) => folders.filter((f) => f.parentId === parentId);
-
-	const toggleExpand = (folderId: string, e: React.MouseEvent) => {
-		e.stopPropagation();
-		setExpandedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(folderId)) {
-				next.delete(folderId);
-			} else {
-				next.add(folderId);
-			}
-			return next;
-		});
+	const select = (folder: string) => {
+		nav.onSelectFolder(folder);
+		closeMobile();
 	};
 
-	const handleCreateRootFolder = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!newFolderName.trim() || !onCreateFolder) return;
-		try {
-			await onCreateFolder(newFolderName.trim(), null);
-			setNewFolderName("");
-			setIsCreatingRoot(false);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 생성 실패: " + (err.message || String(err)));
-		}
-	};
+	const dropProps = (key: string, folderId: string | null) => ({
+		onDragOver: (event: React.DragEvent) => {
+			if (!isEntryDrag(event)) return;
+			event.preventDefault();
+			setDropTarget(key);
+		},
+		onDragLeave: () => setDropTarget((current) => (current === key ? null : current)),
+		onDrop: (event: React.DragEvent) => {
+			event.preventDefault();
+			setDropTarget(null);
+			const entries = readDraggedEntries(event);
+			if (entries.length > 0) nav.onDropEntries(folderId, entries);
+		},
+	});
 
-	const handleCreateSubFolder = async (parentId: string, e: React.FormEvent) => {
-		e.preventDefault();
-		if (!subFolderName.trim() || !onCreateFolder) return;
-		try {
-			await onCreateFolder(subFolderName.trim(), parentId);
-			setSubFolderName("");
-			setCreatingParentId(null);
-			setExpandedIds((prev) => new Set(prev).add(parentId));
-		} catch (err: any) {
-			setErrorDialogMsg("하위 폴더 생성 실패: " + (err.message || String(err)));
-		}
-	};
-
-	const handleConfirmRename = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!renamingFolder || !onRenameFolder) return;
-		const trimmed = renameInput.trim();
-		if (!trimmed || trimmed === renamingFolder.name) {
-			setRenamingFolder(null);
-			return;
-		}
-		try {
-			await onRenameFolder(renamingFolder.id, trimmed, renamingFolder.version);
-			setRenamingFolder(null);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 이름 수정 실패: " + (err.message || String(err)));
-		}
-	};
-
-	const handleConfirmDelete = async () => {
-		if (!deletingFolder || !onDeleteFolder) return;
-		try {
-			await onDeleteFolder(deletingFolder.id, deletingFolder.version);
-			setDeletingFolder(null);
-		} catch (err: any) {
-			setErrorDialogMsg("폴더 삭제 실패: " + (err.message || String(err)));
-		}
-	};
-
-	const renderFolderItem = (folder: Folder, isRootLevel: boolean = false) => {
-		const isFolderActive = currentFolderId === folder.id;
-		const children = getChildren(folder.id);
-		const hasChildren = children.length > 0;
+	const renderFolder = (folder: Folder) => {
+		const children = folders.filter((f) => f.parentId === folder.id);
 		const isExpanded = expandedIds.has(folder.id);
-		const isCreatingHere = creatingParentId === folder.id;
-		const isRenamingHere = renamingFolder?.id === folder.id;
-
+		const isActive = currentFolder === folder.id;
+		const actions = folderMenuActions(folder, nav.folders, nav.folderActions);
 		return (
-			<div key={folder.id} className="flex flex-col">
-				<div
-					className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition select-none ${
-						isFolderActive
-							? "bg-neutral-800 text-white font-medium"
-							: "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-300"
-					}`}
-				>
-					{isRenamingHere ? (
-						<form
-							onSubmit={handleConfirmRename}
-							className="flex-1 flex items-center gap-1.5"
-							onClick={(e) => e.stopPropagation()}
-							onKeyDown={(e) => e.stopPropagation()}
-						>
-							<input
-								type="text"
-								value={renameInput}
-								onChange={(e) => setRenameInput(e.target.value)}
-								className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-400"
-								autoFocus
-								onKeyDown={(e) => {
-									e.stopPropagation();
-									if (e.key === "Escape") setRenamingFolder(null);
-								}}
-							/>
-							<button type="submit" className="text-[11px] text-white bg-neutral-700 hover:bg-neutral-600 px-1.5 py-0.5 rounded">
-								저장
-							</button>
-							<button
-								type="button"
-								onClick={() => setRenamingFolder(null)}
-								className="text-[11px] text-neutral-400 hover:text-white px-1"
-							>
-								취소
-							</button>
-						</form>
-					) : (
-						<>
-							<div
-								className="flex flex-1 items-center gap-1.5 min-w-0 cursor-pointer"
-								onClick={() => {
-									onSelectFolder?.(folder.id);
-									if (hasChildren) {
-										setExpandedIds((prev) => {
-											const next = new Set(prev);
-											if (next.has(folder.id)) {
-												next.delete(folder.id);
-											} else {
-												next.add(folder.id);
-											}
-											return next;
-										});
-									}
-								}}
-							>
-								{/* 토글 화살표: 자식이 있을 때만 노출. 1단계(isRootLevel)에서 자식이 없으면 gap(여백)을 전혀 주지 않음 */}
-								{hasChildren ? (
-									<button
-										type="button"
-										onClick={(e) => toggleExpand(folder.id, e)}
-										className="p-0.5 hover:bg-neutral-700/60 rounded text-neutral-400 hover:text-white transition flex-shrink-0"
-									>
-										{isExpanded ? (
-											<ChevronDown className="h-3 w-3" />
-										) : (
-											<ChevronRight className="h-3 w-3" />
-										)}
-									</button>
-								) : !isRootLevel ? (
-									<span className="w-3.5 flex-shrink-0" />
-								) : null}
-
-								{/* 폴더 아이콘 */}
-								{isExpanded && hasChildren ? (
-									<FolderOpen className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
-								) : (
-									<FolderIcon className="h-3.5 w-3.5 text-neutral-400 group-hover:text-neutral-200 flex-shrink-0" />
-								)}
-
-								<span className="truncate text-xs font-normal">{folder.name}</span>
-							</div>
-
-							{/* 액션 버튼들 (호버 시 노출) */}
-							{onRenameFolder && onDeleteFolder && (
-								<div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition flex-shrink-0">
-									{onCreateFolder && (
-										<button
-											type="button"
-											title="하위 폴더 추가"
-											onClick={(e) => {
-												e.stopPropagation();
-												setCreatingParentId(folder.id);
-												setSubFolderName("");
-												setExpandedIds((prev) => new Set(prev).add(folder.id));
-											}}
-											className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
-										>
-											<Plus className="h-3 w-3" />
-										</button>
-									)}
-									<button
-										type="button"
-										title="이름 변경"
-										onClick={(e) => {
-											e.stopPropagation();
-											setRenamingFolder(folder);
-											setRenameInput(folder.name);
-										}}
-										className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-700/60"
-									>
-										<Edit2 className="h-3 w-3" />
-									</button>
-									<button
-										type="button"
-										title="삭제"
-										onClick={(e) => {
-											e.stopPropagation();
-											setDeletingFolder(folder);
-										}}
-										className="p-1 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-700/60"
-									>
-										<Trash2 className="h-3 w-3" />
-									</button>
-								</div>
+			<Collapsible
+				key={folder.id}
+				open={isExpanded}
+				onOpenChange={(open) =>
+					setExpandedIds((prev) => {
+						const next = new Set(prev);
+						if (open) next.add(folder.id);
+						else next.delete(folder.id);
+						return next;
+					})
+				}
+				render={<SidebarMenuSubItem className={TREE_ITEM} />}
+			>
+				<ActionContextMenu
+					actions={actions}
+					trigger={
+						<div
+							{...dropProps(folder.id, folder.id)}
+							data-active={isActive || undefined}
+							className={cn(
+								"group/folder flex h-7 items-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground",
+								dropTarget === folder.id && "ring-2 ring-sidebar-ring",
 							)}
-						</>
+						/>
+					}
+				>
+					{/* 폴더 아이콘이 펼침 단추를 겸한다. 하위 폴더가 있으면 올려 두거나 초점을 주면 화살표로 바뀐다. */}
+					{children.length > 0 ? (
+						<CollapsibleTrigger
+							aria-label={`${folder.name} 하위 폴더 ${isExpanded ? "접기" : "펼치기"}`}
+							className="group/toggle flex size-6 shrink-0 items-center justify-center rounded-md outline-hidden hover:bg-sidebar-foreground/10 focus-visible:ring-2 focus-visible:ring-sidebar-ring [&_svg]:size-4"
+						>
+							<span className="group-hover/toggle:hidden group-focus-visible/toggle:hidden">
+								{isExpanded ? <FolderOpen aria-hidden /> : <FolderIcon aria-hidden />}
+							</span>
+							<ChevronRight
+								aria-hidden
+								className={cn(
+									"hidden transition-transform group-hover/toggle:block group-focus-visible/toggle:block",
+									isExpanded && "rotate-90",
+								)}
+							/>
+						</CollapsibleTrigger>
+					) : (
+						<span aria-hidden className="flex size-6 shrink-0 items-center justify-center">
+							<FolderIcon className="size-4" />
+						</span>
 					)}
-				</div>
-
-				{/* 하위 폴더 계층 (트리 세로 라인 & 들여쓰기) */}
-				{isExpanded && (
-					<div className="ml-3 pl-2.5 border-l border-neutral-800 flex flex-col gap-1 mt-0.5">
-						{/* 하위 폴더 생성 인라인 폼 */}
-						{isCreatingHere && (
-							<form
-								onSubmit={(e) => handleCreateSubFolder(folder.id, e)}
-								className="flex items-center gap-1 my-1 px-1"
-							>
-								<input
-									type="text"
-									placeholder="하위 폴더 이름"
-									value={subFolderName}
-									onChange={(e) => setSubFolderName(e.target.value)}
-									className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-									autoFocus
-								/>
-								<button
-									type="button"
-									onClick={() => setCreatingParentId(null)}
-									className="text-[11px] text-neutral-400 hover:text-white px-1"
-								>
-									취소
-								</button>
-							</form>
-						)}
-
-						{children.map((child) => renderFolderItem(child, false))}
-					</div>
+					<SidebarMenuButton
+						size="sm"
+						isActive={isActive}
+						aria-current={isActive ? "true" : undefined}
+						onClick={() => select(folder.id)}
+						onKeyDown={folderKeyHandler(folder, nav.folderActions)}
+						className="min-w-0 flex-1 bg-transparent pl-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
+					>
+						<span>{folder.name}</span>
+					</SidebarMenuButton>
+					<MoreActionsButton
+						actions={actions}
+						label={`'${folder.name}' 폴더 작업`}
+						className="size-6 shrink-0 text-sidebar-foreground/70"
+					/>
+				</ActionContextMenu>
+				{children.length > 0 && (
+					<CollapsibleContent>
+						<SidebarMenuSub className={cn(TREE_LIST, "ml-0")}>{children.map(renderFolder)}</SidebarMenuSub>
+					</CollapsibleContent>
 				)}
-			</div>
+			</Collapsible>
 		);
 	};
 
+	const label = COLLECTION_DEFINITIONS[nav.collection].label;
+	const blankActions: MenuAction[] = [
+		{ kind: "item", label: "새 폴더", onSelect: () => nav.folderActions.requestCreate(null) },
+		{ kind: "item", label: `새 ${label}`, onSelect: nav.onCreateEntry },
+	];
+
 	return (
-		<aside className="w-64 flex-shrink-0 border-r border-neutral-800 bg-neutral-900/60 p-4 flex flex-col gap-6">
-			<div>
-				<div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 px-2 flex items-center justify-between">
-					<span>컬렉션</span>
-					<Link
-						href="/admin"
-						className="text-[10px] font-normal text-neutral-500 hover:text-neutral-300 transition"
-					>
-						대시보드 홈
-					</Link>
-				</div>
-				<nav className="flex flex-col gap-1">
-					{collections.map((col) => {
-						const isItemActive = active === col.id;
-						if (onSelectCollection) {
-							return (
-								<button
-									key={col.id}
-									type="button"
-									onClick={() => onSelectCollection(col.id)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
-										isItemActive
-											? "bg-neutral-800 text-white font-semibold"
-											: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
-									}`}
-								>
-									<span>{col.label}</span>
-								</button>
-							);
-						}
-						return (
-							<Link
-								key={col.id}
-								href={`/admin?collection=${col.id}`}
-								className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
-									isItemActive
-										? "bg-neutral-800 text-white font-semibold"
-										: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
-								}`}
+		<SidebarGroup className="flex-1 group-data-[collapsible=icon]:hidden">
+			<SidebarGroupLabel>폴더</SidebarGroupLabel>
+			<SidebarGroupAction aria-label="새 폴더" title="새 폴더" onClick={() => nav.folderActions.requestCreate(null)}>
+				<Plus />
+			</SidebarGroupAction>
+			<SidebarGroupContent className="flex flex-1 flex-col">
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<ActionContextMenu actions={blankActions} trigger={<div />}>
+							<SidebarMenuButton
+								size="sm"
+								{...dropProps("root", null)}
+								isActive={currentFolder === "all"}
+								aria-current={currentFolder === "all" ? "true" : undefined}
+								onClick={() => select("all")}
+								className={cn(dropTarget === "root" && "ring-2 ring-sidebar-ring")}
 							>
-								<span>{col.label}</span>
-							</Link>
-						);
-					})}
-					<Link
-						href="/admin/media"
-						className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition mt-1 border-t border-neutral-800/80 pt-2 ${
-							active === "media"
-								? "bg-neutral-800 text-white font-semibold"
-								: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
-						}`}
-					>
-						<span>미디어 라이브러리 (Media)</span>
-					</Link>
-					<Link
-						href="/admin/templates"
-						className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition ${
-							active === "templates"
-								? "bg-neutral-800 text-white font-semibold"
-								: "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
-						}`}
-					>
-						<span>본문 템플릿 (Templates)</span>
-					</Link>
-				</nav>
-			</div>
-
-			{folders && onSelectFolder ? (
-				<div className="flex-1 overflow-y-auto">
-					<div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 px-2">
-						<button
-							type="button"
-							onClick={() => setIsFolderSectionOpen((prev) => !prev)}
-							className="flex items-center gap-1 hover:text-white transition"
-							title={isFolderSectionOpen ? "폴더 트리 접기" : "폴더 트리 펼치기"}
-						>
-							{isFolderSectionOpen ? (
-								<ChevronDown className="h-3.5 w-3.5" />
-							) : (
-								<ChevronRight className="h-3.5 w-3.5" />
-							)}
-							<span>폴더 트리</span>
-						</button>
-
-						{onCreateFolder && isFolderSectionOpen && (
-							<button
-								type="button"
-								onClick={() => setIsCreatingRoot((prev) => !prev)}
-								className="text-xs text-neutral-400 hover:text-white"
-								title="새 폴더 추가"
-							>
-								+ 폴더
-							</button>
+								{COLLECTION_ICONS[nav.collection]}
+								<span>{label}</span>
+							</SidebarMenuButton>
+						</ActionContextMenu>
+						{folders.length > 0 && (
+							<SidebarMenuSub aria-label={`${label} 폴더`} className={cn(TREE_LIST, "ml-1")}>
+								{folders.filter((f) => !f.parentId).map(renderFolder)}
+							</SidebarMenuSub>
 						)}
-					</div>
+					</SidebarMenuItem>
+				</SidebarMenu>
+				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">만든 폴더가 없습니다.</p>}
+				{folders.length > 0 && (
+					<Label className="mt-3 px-2 font-normal text-muted-foreground text-xs">
+						<Checkbox
+							checked={nav.includeDescendants}
+							onCheckedChange={(checked) => nav.onIncludeDescendantsChange(checked === true)}
+						/>
+						하위 폴더 포함
+					</Label>
+				)}
+				{/* 빈 곳의 오른쪽 클릭 메뉴(v2 A2). 폴더 줄의 메뉴와 겹치지 않도록 목록 아래 빈 영역에만 붙인다. */}
+				<ActionContextMenu actions={blankActions} trigger={<div aria-hidden className="min-h-16 flex-1" />} />
+			</SidebarGroupContent>
+		</SidebarGroup>
+	);
+}
 
-					{isFolderSectionOpen && (
-						<div className="flex flex-col gap-1">
-							{isCreatingRoot && onCreateFolder && (
-								<form onSubmit={handleCreateRootFolder} className="flex items-center gap-1 my-1 px-1">
-									<input
-										type="text"
-										placeholder="새 폴더 이름"
-										value={newFolderName}
-										onChange={(e) => setNewFolderName(e.target.value)}
-										className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-										autoFocus
-									/>
-									<button
-										type="button"
-										onClick={() => setIsCreatingRoot(false)}
-										className="text-[11px] text-neutral-400 hover:text-white px-1"
-									>
-										취소
-									</button>
-								</form>
-							)}
+/** 왼쪽 탐색 영역(§3.1): 컬렉션, 미디어·템플릿·휴지통, 가상 폴더 트리(§3.3). */
+export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarProps) {
+	const { isMobile, setOpenMobile, state } = useSidebar();
+	const toggleLabel = isMobile ? "사이드바 닫기" : state === "collapsed" ? "사이드바 펼치기" : "사이드바 접기";
+	const closeMobile = () => {
+		if (isMobile) setOpenMobile(false);
+	};
 
-							{rootFolders.length === 0 && !isCreatingRoot ? (
-								<div className="px-2 py-2 text-xs text-neutral-500">
-									생성된 폴더가 없습니다.
-								</div>
-							) : (
-								rootFolders.map((f) => renderFolderItem(f, true))
-							)}
-						</div>
-					)}
-				</div>
-			) : (
-				<div className="mt-auto border-t border-neutral-800/80 pt-4">
-					<Link
-						href="/admin"
-						className="flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200 transition"
+	const navLink = (href: string, id: AdminNavId, label: string, icon?: React.ReactNode, badge?: React.ReactNode) => (
+		<SidebarMenuItem key={id}>
+			<SidebarMenuButton
+				isActive={activeNav === id}
+				tooltip={label}
+				render={
+					<Link href={href as Route} onClick={closeMobile} aria-current={activeNav === id ? "page" : undefined} />
+				}
+			>
+				{icon}
+				<span>{label}</span>
+			</SidebarMenuButton>
+			{badge}
+		</SidebarMenuItem>
+	);
+
+	return (
+		<Sidebar collapsible="icon">
+			<SidebarHeader className="flex-row items-center gap-1 px-3 pt-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+				<Link
+					href="/admin"
+					onClick={closeMobile}
+					className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[collapsible=icon]:hidden"
+				>
+					<span
+						aria-hidden
+						className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary font-semibold text-sidebar-primary-foreground text-xs"
 					>
-						<span>← 대시보드로 돌아가기</span>
-					</Link>
-				</div>
-			)}
-
-			{/* 삭제 확인 모달 (window.confirm 대체) */}
-			{deletingFolder && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
-						<h3 className="text-sm font-semibold text-white mb-2">폴더 삭제 확인</h3>
-						<p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-							&apos;{deletingFolder.name}&apos; 폴더를 삭제하시겠습니까?<br />
-							<span className="text-neutral-500">폴더 안의 하위 글과 하위 폴더는 안전하게 보존됩니다.</span>
-						</p>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setDeletingFolder(null)}
-								className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition"
-							>
-								취소
-							</button>
-							<button
-								type="button"
-								onClick={handleConfirmDelete}
-								className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition"
-							>
-								삭제하기
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* 에러 알림 모달 (window.alert 대체) */}
-			{errorDialogMsg && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-					<div className="w-full max-w-sm rounded-xl border border-red-900/60 bg-neutral-900 p-5 shadow-2xl">
-						<div className="flex items-center gap-2 text-red-400 mb-2">
-							<AlertCircle className="h-4 w-4" />
-							<h3 className="text-sm font-semibold">오류 발생</h3>
-						</div>
-						<p className="text-xs text-neutral-300 mb-5">{errorDialogMsg}</p>
-						<div className="flex justify-end">
-							<button
-								type="button"
-								onClick={() => setErrorDialogMsg(null)}
-								className="rounded-lg bg-neutral-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 transition"
-							>
-								확인
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-		</aside>
+						b
+					</span>
+					<span className="font-semibold text-[13px] text-sidebar-accent-foreground">bh2980.dev</span>
+				</Link>
+				<Tooltip>
+					<TooltipTrigger
+						render={<SidebarTrigger aria-label={toggleLabel} className="size-8 shrink-0 text-sidebar-foreground/70" />}
+					/>
+					<TooltipContent side="right">{toggleLabel}</TooltipContent>
+				</Tooltip>
+			</SidebarHeader>
+			<SidebarContent>
+				<SidebarGroup>
+					<SidebarGroupLabel>컬렉션</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu aria-label="컬렉션">
+							{COLLECTIONS.map((collection) =>
+								navLink(
+									`/admin?collection=${collection}`,
+									collection,
+									COLLECTION_DEFINITIONS[collection].label,
+									COLLECTION_ICONS[collection],
+								),
+							)}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel>관리</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu aria-label="관리">
+							{navLink("/admin/media", "media", "미디어", <FileImage />)}
+							{navLink("/admin/templates", "templates", "본문 템플릿", <LayoutTemplate />)}
+							{navLink("/admin/ai", "ai", "AI", <Sparkles />)}
+							{navLink(
+								"/admin/trash",
+								"trash",
+								"휴지통",
+								<Trash2 />,
+								trashCount ? (
+									<SidebarMenuBadge aria-label={`휴지통 ${trashCount}개`}>{trashCount}</SidebarMenuBadge>
+								) : null,
+							)}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
+			</SidebarContent>
+			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Link
+								href="/"
+								aria-label="블로그 보기"
+								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+							/>
+						}
+					>
+						<Globe aria-hidden className="size-4" />
+						<span className="group-data-[collapsible=icon]:hidden">블로그 보기</span>
+					</TooltipTrigger>
+					<TooltipContent side="right" hidden={state !== "collapsed" || isMobile}>
+						블로그 보기
+					</TooltipContent>
+				</Tooltip>
+				<ThemeToggle className="size-8 text-muted-foreground" />
+			</SidebarFooter>
+		</Sidebar>
 	);
 }

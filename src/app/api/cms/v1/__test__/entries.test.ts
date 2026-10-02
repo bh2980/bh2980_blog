@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "@/cms/adapters/auth";
 import { CmsError } from "@/cms/adapters/postgres/content-store";
+import { PATCH as patchEntry } from "../entries/[id]/route";
+import { POST as postEntries } from "../entries/route";
 import { GET as getMeta } from "../meta/route";
-import { GET as getEntries, POST as postEntries } from "../entries/route";
-import { GET as getEntry, PATCH as patchEntry } from "../entries/[id]/route";
 
 const mockVerifyAdmin = vi.fn();
 
@@ -13,7 +13,10 @@ vi.mock("@/cms/adapters/auth", () => ({
 		verifyAdmin: () => mockVerifyAdmin(),
 	},
 	AuthError: class AuthError extends Error {
-		constructor(public code: string, message: string) {
+		constructor(
+			public code: string,
+			message: string,
+		) {
 			super(message);
 		}
 	},
@@ -84,7 +87,7 @@ describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", (
 
 	it("returns 401 when user is unauthorized", async () => {
 		mockVerifyAdmin.mockRejectedValue(new AuthError("unauthorized", "Not logged in"));
-		const res = await getMeta();
+		const res = await getMeta(new NextRequest("http://localhost/api/cms/v1/meta"));
 		expect(res.status).toBe(401);
 		const data = await res.json();
 		expect(data.code).toBe("unauthorized");
@@ -92,7 +95,7 @@ describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", (
 
 	it("returns 403 when user is forbidden", async () => {
 		mockVerifyAdmin.mockRejectedValue(new AuthError("forbidden", "Wrong admin id"));
-		const res = await getMeta();
+		const res = await getMeta(new NextRequest("http://localhost/api/cms/v1/meta"));
 		expect(res.status).toBe(403);
 		const data = await res.json();
 		expect(data.code).toBe("forbidden");
