@@ -97,7 +97,7 @@ function EntryListBody({ list }: { list: EntryList }) {
 						}
 						onDeleteKey={list.onDeleteKey}
 						onSelectFolder={(folder) => list.update({ folder })}
-						onOpenRecord={(item) => list.setRecordTarget({ collection: state.collection, id: item.id })}
+						onOpenRecord={(item) => list.openRecord({ collection: state.collection, id: item.id })}
 						onRestore={(item) => void list.restore([toSelection(item)])}
 						onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
 						onPageChange={(page) => list.update({ page }, { resetPage: false })}
@@ -114,9 +114,10 @@ function EntryListBody({ list }: { list: EntryList }) {
 						key={`${record.collection}:${record.id ?? "new"}`}
 						target={record}
 						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[24rem] lg:static lg:shrink-0 lg:shadow-none"
-						onClose={() => list.setRecordTarget(null)}
+						onDirtyChange={list.setRecordDirty}
+						onClose={list.closeRecord}
 						onSaved={() => {
-							list.setRecordTarget(null);
+							list.closeRecord();
 							toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
 							void list.invalidateEntries();
 							list.reloadTaxonomies();

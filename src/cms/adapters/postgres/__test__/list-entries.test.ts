@@ -836,4 +836,31 @@ console.log("FencedCode000");
 		} as never);
 		expect(inRange.items.map((item) => item.slug).sort()).toEqual(["d-2024", "d-2025"]);
 	}, 30_000);
+
+	it("9. record collections list the locales that have a name (the default locale is the record's own title)", async () => {
+		const named = await seedEntry(store, {
+			collection: "tag",
+			slug: "tag-react",
+			metadata: { title: "리액트", translations: { en: { title: "React" }, ja: { title: " " } } },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: uniqueHash(),
+		});
+		const plain = await seedEntry(store, {
+			collection: "tag",
+			slug: "tag-plain",
+			metadata: { title: "그냥" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: uniqueHash(),
+		});
+		const { items } = await store.listEntries({ collection: "tag" });
+		const localesOf = (id: string) =>
+			(items.find((item) => item.id === id) as { recordLocales?: string[] })?.recordLocales;
+		expect(localesOf(named.id)).toEqual(["ko", "en"]);
+		expect(localesOf(plain.id)).toEqual(["ko"]);
+
+		const posts = await store.listEntries({ collection: "post" });
+		expect(posts.items.every((item) => !("recordLocales" in item))).toBe(true);
+	}, 30_000);
 });

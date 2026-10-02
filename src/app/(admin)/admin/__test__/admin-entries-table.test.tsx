@@ -72,7 +72,8 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 			"publishedAt",
 		]);
 		expect(columnsFor("memo").defaults).toEqual(["title", "status", "locale", "tags", "updatedAt", "publishedAt"]);
-		expect(columnsFor("tag").available).not.toContain("locale");
+		// 분류 항목은 언어별 문서가 없지만 이름이 있는 언어를 보인다.
+		expect(columnsFor("tag").defaults).toEqual(["title", "slug", "locale", "status", "updatedAt"]);
 		expect(columnsFor("memo").available).not.toContain("category");
 		expect(columnsFor("tag").available).not.toContain("tags");
 	});
@@ -206,5 +207,23 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		expect(props.onSelectFolder).toHaveBeenCalledWith("f2");
 		fireEvent.click(screen.getByRole("button", { name: ".. 상위 폴더" }));
 		expect(props.onSelectFolder).toHaveBeenCalledWith("all");
+	});
+
+	it("분류 항목은 언어 열에 이름이 있는 언어를 보인다", () => {
+		const tag = item("tag-1", {
+			collection: "tag",
+			title: "리액트",
+			status: "published",
+			recordLocales: ["ko", "en"],
+		} as Partial<ListEntriesItem>);
+		renderTable({
+			collection: "tag",
+			items: [tag],
+			state: parseListState(new URLSearchParams("collection=tag")),
+		});
+		const row = screen.getByRole("row", { name: /리액트/ });
+		expect(within(row).getByText("한국어 있음")).toBeTruthy();
+		expect(within(row).getByText("영어 있음")).toBeTruthy();
+		expect(within(row).getByText("일본어 없음")).toBeTruthy();
 	});
 });

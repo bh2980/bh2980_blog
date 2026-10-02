@@ -371,3 +371,65 @@ describe("휴지통 화면", () => {
 		expect(bodyOf(calls("POST", "/api/cms/v1/entries/trashed-1/restore")[0])).toEqual({ expectedVersion: 3 });
 	});
 });
+
+describe("분류 편집 패널 — 저장하지 않은 변경", () => {
+	const record = (id: string, title: string) => ({
+		id,
+		collection: "tag",
+		status: "published",
+		version: 1,
+		folderId: null,
+		workingSlug: id,
+		publishedSlug: id,
+		working: { metadata: { title }, mdx: "" },
+	});
+	beforeEach(() => {
+		nav.set("collection=tag");
+		const tags = [
+			item("t1", { collection: "tag", title: "리액트", status: "published" }),
+			item("t2", { collection: "tag", title: "뷰", status: "published" }),
+		];
+		server.handle = (url, init) => {
+			if (url.pathname === "/api/cms/v1/entries" && url.searchParams.get("collection") === "tag" && !init?.method)
+				return json({ items: tags, total: tags.length });
+			if (url.pathname === "/api/cms/v1/entries/t1") return json(record("t1", "리액트"));
+			if (url.pathname === "/api/cms/v1/entries/t2") return json(record("t2", "뷰"));
+			return undefined;
+		};
+	});
+	const panelName = () => screen.findByRole("textbox", { name: /이름/ }) as Promise<HTMLInputElement>;
+
+	it("고치지 않았으면 다른 항목을 바로 연다", async () => {
+		renderList();
+		fireEvent.click(await screen.findByRole("button", { name: "리액트" }));
+		await waitFor(async () => expect((await panelName()).value).toBe("리액트"));
+		fireEvent.click(screen.getByRole("button", { name: "뷰" }));
+		await waitFor(async () => expect((await panelName()).value).toBe("뷰"));
+		expect(screen.queryByRole("alertdialog")).toBeNull();
+	});
+
+	it("고친 채로 다른 항목을 누르면 확인을 받고, 버리면 그 항목을 연다", async () => {
+		renderList();
+		fireEvent.click(await screen.findByRole("button", { name: "리액트" }));
+		await waitFor(async () => expect((await panelName()).value).toBe("리액트"));
+		fireEvent.change(await panelName(), { target: { value: "React!" } });
+
+		fireEvent.click(screen.getByRole("button", { name: "뷰" }));
+		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 변경" });
+		// 확인 창이 떠 있는 동안 패널은 가려지지만 고친 값은 남아 있다.
+		expect(screen.getByDisplayValue("React!")).toBeTruthy();
+
+		fireEvent.click(within(dialog).getByRole("button", { name: "버리고 열기" }));
+		await waitFor(async () => expect((await panelName()).value).toBe("뷰"));
+	});
+
+	it("고친 채로 새 항목을 만들려 해도 확인을 받는다", async () => {
+		renderList();
+		fireEvent.click(await screen.findByRole("button", { name: "리액트" }));
+		await waitFor(async () => expect((await panelName()).value).toBe("리액트"));
+		fireEvent.change(await panelName(), { target: { value: "React!" } });
+
+		fireEvent.click(screen.getByRole("button", { name: "새 태그" }));
+		expect(await screen.findByRole("alertdialog", { name: "저장하지 않은 변경" })).toBeTruthy();
+	});
+});

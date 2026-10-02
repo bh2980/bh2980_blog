@@ -126,14 +126,14 @@ export const category = collection({
 	label: "카테고리",
 	workflow: "record",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "status", "updatedAt"] },
+	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const tag = collection({
 	label: "태그",
 	workflow: "record",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "status", "updatedAt"] },
+	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const series = collection({
@@ -152,7 +152,7 @@ export const series = collection({
 			placeholder: "글 추가·빼기",
 		}),
 	},
-	list: { columns: ["title", "slug", "status", "updatedAt"] },
+	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const SCHEMAS = { post, memo, category, tag, collection: series } as const;

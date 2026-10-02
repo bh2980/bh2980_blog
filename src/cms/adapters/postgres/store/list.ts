@@ -1,6 +1,6 @@
-import { isLocale, LOCALES } from "@/libs/i18n/locales";
+import { DEFAULT_LOCALE, isLocale, LOCALES } from "@/libs/i18n/locales";
 import { ENTRY_STATUSES, LIST_SORT_FIELDS, PAGE_SIZES } from "../../../core/api";
-import { COLLECTIONS } from "../../../core/collections";
+import { COLLECTIONS, isRecordCollection } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
@@ -13,6 +13,15 @@ import type {
 	ListEntriesResult,
 	ListTranslationMember,
 } from "./types";
+
+/** record 항목에서 이름이 있는 언어. 기본 언어는 항목 이름, 다른 언어는 `translations[언어].title`이다. */
+function namedLocales(metadata: Record<string, unknown>): string[] {
+	const translations = (metadata.translations ?? {}) as Record<string, { title?: unknown } | undefined>;
+	const hasName = (value: unknown) => typeof value === "string" && value.trim() !== "";
+	return LOCALES.filter((locale) =>
+		locale === DEFAULT_LOCALE ? hasName(metadata.title) : hasName(translations[locale]?.title),
+	);
+}
 
 const isDate = (value: unknown): value is Date => value instanceof Date && Number.isFinite(value.getTime());
 
@@ -247,6 +256,7 @@ export function createListOps(ctx: StoreContext) {
 					createdAt: row.created_at,
 					updatedAt: row.updated_at,
 					trashedAt: row.trashed_at,
+					...(isRecordCollection(row.collection) ? { recordLocales: namedLocales(meta) } : {}),
 				};
 			});
 

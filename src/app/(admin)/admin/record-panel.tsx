@@ -42,11 +42,14 @@ export function RecordPanel({
 	target,
 	onClose,
 	onSaved,
+	onDirtyChange,
 	className,
 }: {
 	target: RecordTarget;
 	onClose: () => void;
 	onSaved: () => void;
+	/** 저장하지 않은 변경이 생기거나 없어질 때. 목록이 다른 항목을 열기 전에 묻는 데 쓴다. */
+	onDirtyChange?: (dirty: boolean) => void;
 	className?: string;
 }) {
 	const [loaded, setLoaded] = useState<EntryData | null>(null);
@@ -84,6 +87,8 @@ export function RecordPanel({
 			cancelled = true;
 		};
 	}, [id, label]);
+
+	useEffect(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange]);
 
 	const setForm = (patch: EntryFormPatch) => {
 		setFormState((current) => ({ ...current, ...patch }) as EntryForm);

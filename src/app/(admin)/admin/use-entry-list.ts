@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Folder, ListEntriesItem } from "@/cms/adapters/postgres/content-store";
 import type { CollectionPreferences, PreferencesBody } from "@/cms/core/api";
@@ -282,6 +282,27 @@ export function useEntryList(mode: ListMode) {
 	useEffect(() => setSelectedIds(new Set()), [data.apiQuery]);
 	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	/** 분류 편집 패널에 저장하지 않은 변경이 있는가. 패널이 알려 준다. */
+	const recordDirtyRef = useRef(false);
+	/** 분류 편집 패널을 연다. 저장하지 않은 변경이 있으면 버릴지 먼저 묻는다. */
+	const openRecord = (target: RecordTarget) => {
+		const open = () => {
+			recordDirtyRef.current = false;
+			setRecordTarget(target);
+		};
+		if (!recordDirtyRef.current) return open();
+		setConfirm({
+			title: "저장하지 않은 변경",
+			description: "편집 중인 항목에 저장하지 않은 변경이 있습니다. 버리고 다른 항목을 열까요?",
+			confirmLabel: "버리고 열기",
+			destructive: true,
+			onConfirm: open,
+		});
+	};
+	const closeRecord = () => {
+		recordDirtyRef.current = false;
+		setRecordTarget(null);
+	};
 
 	const mutations = useEntryMutations({
 		listKey: data.listKey,
@@ -351,7 +372,7 @@ export function useEntryList(mode: ListMode) {
 	/** 새 항목. 글·메모는 지금 폴더에 편집 화면으로, 분류 항목은 작은 폼으로 만든다. */
 	const createNew = () =>
 		isRecord
-			? setRecordTarget({ collection, id: null })
+			? openRecord({ collection, id: null })
 			: router.push(
 					`/admin/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}` as Route,
 				);
@@ -364,7 +385,7 @@ export function useEntryList(mode: ListMode) {
 			{
 				openEditor: (target) => router.push(editHref(target) as Route),
 				openInNewTab: (target) => window.open(editHref(target), "_blank", "noopener"),
-				openRecord: (target) => setRecordTarget({ collection, id: target.id }),
+				openRecord: (target) => openRecord({ collection, id: target.id }),
 				duplicate: (target) => void duplicate(target),
 				restore: (targets) => void restore(targets),
 				confirmTrash,
@@ -395,7 +416,11 @@ export function useEntryList(mode: ListMode) {
 		mutations,
 		folderActions,
 		recordTarget,
-		setRecordTarget,
+		openRecord,
+		closeRecord,
+		setRecordDirty: (dirty: boolean) => {
+			recordDirtyRef.current = dirty;
+		},
 		confirm,
 		closeConfirm: () => setConfirm(null),
 		reloadTaxonomies: () => {

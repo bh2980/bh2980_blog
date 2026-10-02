@@ -205,6 +205,11 @@ export interface ListEntriesItem {
 	 * 콘텐츠(원문 포함)를 `LOCALES` 순서로 담는다.
 	 */
 	translations?: readonly ListTranslationMember[];
+	/**
+	 * record 컬렉션(카테고리·태그·모음집)에서만 채운다. 이름이 있는 언어를 `LOCALES` 순서로 담는다.
+	 * 기본 언어는 항목 자체의 이름이고, 다른 언어는 `metadata.translations[언어].title`이다(v2 B4).
+	 */
+	recordLocales?: readonly string[];
 }
 
 /** 목록 한 줄(원문)에 딸린 같은 묶음의 언어별 콘텐츠. */

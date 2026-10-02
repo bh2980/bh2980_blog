@@ -196,6 +196,28 @@ function LocaleBadges({ translations }: { translations: readonly ListTranslation
 	);
 }
 
+/** 분류 항목(카테고리·태그·모음집)의 언어. 이름이 있는 언어는 채운 배지, 없는 언어는 점선 배지다. */
+function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
+	return (
+		<span className="flex items-center gap-1">
+			{LOCALES.map((locale) => {
+				const named = locales.includes(locale);
+				return (
+					<span
+						key={locale}
+						className={cn(BADGE_CLASS, named ? BADGE_TONE.published : "border-dashed text-muted-foreground/70")}
+					>
+						<span aria-hidden="true">{locale.toUpperCase()}</span>
+						<span className="sr-only">
+							{LOCALE_INFO[locale].adminName} {named ? "있음" : "없음"}
+						</span>
+					</span>
+				);
+			})}
+		</span>
+	);
+}
+
 /** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
 function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
 	const label = isRecord && item.status === "published" ? "활성" : describeEntryStatus(item);
@@ -382,6 +404,7 @@ export function AdminEntriesTable({
 					// 색상만으로 상태를 전달하지 않는다(§3.2).
 					return <StatusLabel item={item} isRecord={isRecord} />;
 				case "locale":
+					if (item.recordLocales) return <RecordLocaleBadges locales={item.recordLocales} />;
 					if (item.translations) return <LocaleBadges translations={item.translations} />;
 					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
 					return (

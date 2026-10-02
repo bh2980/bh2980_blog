@@ -86,8 +86,8 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 	if (!isCollection(collection)) return { available: [...ADMIN_LIST_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
 	const available = ADMIN_LIST_COLUMNS.filter((column) => {
-		// record 컬렉션은 언어별 문서가 없고(이름만 언어별 값, v2 B4) 발행 없이 저장이 곧 공개다.
-		if (column === "locale" || column === "publishedAt") return schema.workflow === "publish";
+		// record 컬렉션은 발행 없이 저장이 곧 공개다. 언어 열은 이름이 있는 언어를 보인다(v2 B4).
+		if (column === "publishedAt") return schema.workflow === "publish";
 		const field = FIELD_COLUMNS[column];
 		return field === undefined || Object.hasOwn(schema.fields, field) || storedField(collection, field) !== undefined;
 	});
@@ -104,6 +104,8 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 export function filterFor(collection: string, column: AdminListColumn, mode: "list" | "trash" = "list"): ColumnFilter {
 	const filter = COLUMN_CONFIG[column].filter;
 	if (filter.kind === "status" && (isRecordCollection(collection) || mode === "trash")) return { kind: "none" };
+	// 분류 항목의 언어 열은 이름이 있는 언어를 보일 뿐이라 언어로 거르지 않는다.
+	if (filter.kind === "locale" && isRecordCollection(collection)) return { kind: "none" };
 	return filter;
 }
 
