@@ -869,7 +869,7 @@ export function CmsEditor({
 			<div
 				role="toolbar"
 				aria-label="서식 도구"
-				className="sticky top-0 z-10 w-full overflow-x-auto border-b bg-background/95 backdrop-blur"
+				className="sticky top-0 z-10 w-full shrink-0 overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
 				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,
 				    그래도 좁으면(번역 원문 칸을 연 때 등) 한 줄을 유지한 채 덜 쓰는 도구를 "더보기"로 접는다. */}
