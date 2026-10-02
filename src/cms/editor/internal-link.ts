@@ -1,3 +1,4 @@
+import { contentPath } from "@bh2980/cms/core/links";
 import type { Editor, Range } from "@tiptap/core";
 
 export interface InternalLinkItem {
@@ -9,17 +10,12 @@ export interface InternalLinkItem {
 	status?: string;
 }
 
-const PATH_BY_COLLECTION: Record<string, string> = { post: "posts", memo: "memos" };
-
 /**
  * 내부 글 링크 주소(§4.4·§6.2). 일반 Markdown 링크 `[제목](/posts/글-slug)`로 저장되며 고정 ID는 저장하지 않는다.
- * slug가 없으면 깨진 링크를 만들지 않는다.
+ * 주소 모양은 컬렉션 정의의 `path`다. 경로가 없는 컬렉션이거나 slug가 없으면 깨진 링크를 만들지 않는다.
  */
 export function internalLinkHref(item: InternalLinkItem): string | null {
-	const segment = PATH_BY_COLLECTION[item.collection];
-	if (!segment || !item.slug) return null;
-	// 한글은 읽을 수 있게 그대로 두고 Markdown 링크를 깨는 문자만 인코딩한다.
-	return `/${segment}/${item.slug.replace(/[\s()<>]/g, (char) => encodeURIComponent(char))}`;
+	return contentPath(item.collection, item.slug);
 }
 
 /** MDX 저장 형식. 원문 모드 삽입과 테스트가 쓴다. */

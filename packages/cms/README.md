@@ -54,6 +54,11 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
 | `collections` | 컬렉션 이름 → `defineCollection` 정의. 이름은 DB에 저장되므로 운영 중에 바꾸지 않는다. |
 | `locales` | 콘텐츠 언어 목록(`code`, `name`, 관리자 화면 이름 `label`). |
 | `defaultLocale` | 기본 언어. 공개 주소에 언어 접두사가 붙지 않는다. |
+| `site.url` | 공개 사이트 주소. 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 환경 변수에서 읽어도 된다. |
+| `site.aliases` | 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). |
+
+컬렉션의 `path`(예: `/posts/:slug`)는 공개 주소 모양이다. 본문의 내부 링크를 알아보고(가리키는 글이 있는지·공개됐는지
+발행 전에 검사) 편집기가 링크를 만들 때 쓴다. `path`가 없는 컬렉션은 본문 링크로 가리킬 수 없다.
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나 기본 언어가 목록에 없으면 앱이 뜰 때 바로 오류를 낸다.
 
@@ -61,8 +66,7 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
 
 이 패키지는 bh2980 블로그에서 떼어 내는 중이다. 다른 블로그에서 쓰기 전에 아래를 정리해야 한다.
 
-- 일부 코드가 컬렉션 이름(`post`·`memo`·`tag`·`category`)을 직접 안다. 내부 링크 주소(`/posts/...`)와
-  AI 기본 기능이 그렇다. 설정으로 옮겨야 한다.
+- AI 기본 기능이 컬렉션 이름(`post`·`memo`·`tag`·`category`)을 직접 안다. 설정으로 옮겨야 한다.
   `pnpm --filter @bh2980/cms typecheck:other-site`가 이름이 다른 예시 사이트(`test/other-site.config.ts`)로
   본체를 타입 검사한다. 지금은 AI 실행 코드(`ai/run.ts`)만 실패한다.
 - 본문 블록(`blocks/definitions.ts`)은 내장 목록뿐이다. 사이트가 블록을 더하고 빼는 설정이 없다.

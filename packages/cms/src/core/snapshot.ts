@@ -16,6 +16,7 @@ import {
 } from "../schema/derive";
 import { COLLECTION_DEFINITIONS, isCollection } from "./collections";
 import { isUuid } from "./ids";
+import { parseInternalLink } from "./links";
 import { PREFIXED_LOCALES } from "./locales";
 import { normalizeSlugInput } from "./slug";
 import { parseTranslationState } from "./translation/state";
@@ -42,8 +43,6 @@ import {
 export const MAX_MDX_BYTES = 2 * 1024 * 1024;
 export const MAX_METADATA_BYTES = 256 * 1024;
 export const MAX_TITLE_LENGTH = 200;
-const SITE_HOSTS = new Set(["bh2980.dev", "www.bh2980.dev"]);
-
 const isJsonArray = (value: unknown): value is readonly JsonValue[] => Array.isArray(value);
 
 function sortKeys(obj: JsonValue): JsonValue {
@@ -93,32 +92,6 @@ function addMetadataReferences(
 			...(ref.ordinal === undefined ? {} : { ordinal: ref.ordinal }),
 		});
 	}
-}
-
-export function parseSupportedInternalLink(url: string): Omit<InternalLinkSource, "position"> | null {
-	let parsed: URL;
-	try {
-		parsed = new URL(url, "https://bh2980.dev");
-	} catch {
-		return null;
-	}
-	const relative = url.startsWith("/") && !url.startsWith("//");
-	const sameSite =
-		(url.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(url)) &&
-		(parsed.protocol === "http:" || parsed.protocol === "https:") &&
-		SITE_HOSTS.has(parsed.hostname);
-	if (!relative && !sameSite) return null;
-
-	const match = /^\/(posts|memos)\/([^/]+)\/?$/.exec(parsed.pathname);
-	if (!match) return null;
-	let slug: string;
-	try {
-		slug = decodeURIComponent(match[2] ?? "").normalize("NFC");
-	} catch {
-		return null;
-	}
-	if (!slug || slug.includes("/")) return null;
-	return { collection: match[1] === "posts" ? "post" : "memo", slug, url };
 }
 
 /** 정확히 허용된 키만 가진 평범한 객체인가. getter·상속 속성은 거부한다. */
@@ -507,7 +480,7 @@ export async function prepareSnapshot(
 
 	const addInternalLink = (url: unknown, node: MdxNode) => {
 		if (typeof url !== "string") return;
-		const parsed = parseSupportedInternalLink(url);
+		const parsed = parseInternalLink(url);
 		if (parsed) internalLinks.push({ ...parsed, position: positionOf(node) });
 	};
 

@@ -8,6 +8,7 @@ import { defineCollection, defineConfig, fields } from "../src";
 const article = defineCollection({
 	label: "Article",
 	workflow: "publish",
+	path: "/blog/:slug/",
 	fields: {
 		title: fields.text({ label: "Title", required: "publish" }),
 		slug: fields.slug({ label: "Slug", from: "title", required: "publish" }),

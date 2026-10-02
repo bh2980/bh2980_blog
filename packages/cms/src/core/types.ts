@@ -70,14 +70,15 @@ export type ServiceInput = { [C in Collection]: InputFor<C, MetadataFor<C>> }[Co
 export type SaveDraftInput = ServiceInput & { expectedVersion: number };
 
 export type InternalLinkSource = {
-	readonly collection: "post" | "memo";
+	/** 링크가 가리키는 컬렉션(`path`가 있는 컬렉션). */
+	readonly collection: Collection;
 	readonly slug: string;
 	readonly url: string;
 	readonly position: { readonly line: number; readonly column: number };
 };
 
 export type ResolvedInternalLink = {
-	readonly collection: "post" | "memo";
+	readonly collection: Collection;
 	readonly slug: string;
 	readonly addressType: "current" | "alias" | "reservation" | "deleted" | "missing";
 	readonly isPublished: boolean;

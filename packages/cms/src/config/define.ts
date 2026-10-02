@@ -19,6 +19,16 @@ export interface LocaleConfig<Code extends string = string> {
 
 export type CollectionsConfig = Readonly<Record<string, CollectionSchema>>;
 
+export interface SiteConfig {
+	/**
+	 * 공개 사이트 주소(예: `https://example.com`). 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다.
+	 * 환경마다 다르면 환경 변수에서 읽는다. 없으면 `/posts/...`처럼 경로로 적은 링크만 알아본다.
+	 */
+	readonly url?: string;
+	/** 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). */
+	readonly aliases?: readonly string[];
+}
+
 export interface CmsConfig<Collections extends CollectionsConfig = CollectionsConfig, Locale extends string = string> {
 	/** 컬렉션 이름 → 정의. 이름은 저장 값(`entries.collection`)이므로 운영 중에 바꾸지 않는다. */
 	readonly collections: Collections;
@@ -26,6 +36,7 @@ export interface CmsConfig<Collections extends CollectionsConfig = CollectionsCo
 	readonly locales: readonly LocaleConfig<Locale>[];
 	/** 기본 언어. 공개 주소에 언어 접두사를 붙이지 않는다. */
 	readonly defaultLocale: NoInfer<Locale>;
+	readonly site?: SiteConfig;
 }
 
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
@@ -53,7 +64,30 @@ function validate(config: CmsConfig): void {
 		throw new Error(`cms.config: defaultLocale "${config.defaultLocale}" is not in \`locales\``);
 	}
 
+	if (config.site?.url !== undefined) {
+		let url: URL | undefined;
+		try {
+			url = new URL(config.site.url);
+		} catch {}
+		if (url?.protocol !== "http:" && url?.protocol !== "https:") {
+			throw new Error(`cms.config: site.url "${config.site.url}" is not an http(s) URL`);
+		}
+	}
+
+	const paths = new Map<string, string>();
 	for (const [collection, schema] of Object.entries(config.collections)) {
+		if (schema.path !== undefined) {
+			const { path } = schema;
+			if (!path.startsWith("/") || path.split(":slug").length !== 2 || /:(?!slug)/.test(path) || /[?#]/.test(path)) {
+				throw new Error(`cms.config: ${collection}.path "${path}" must start with "/" and contain ":slug" once`);
+			}
+			if (!Object.values(schema.fields).some((field) => field.kind === "slug")) {
+				throw new Error(`cms.config: ${collection}.path needs a slug field`);
+			}
+			const other = paths.get(path);
+			if (other) throw new Error(`cms.config: ${collection}.path is the same as ${other}.path`);
+			paths.set(path, collection);
+		}
 		for (const [name, field] of valueFields(schema.fields)) {
 			if (field.kind === "relation" && !Object.hasOwn(config.collections, field.to)) {
 				throw new Error(`cms.config: ${collection}.${name} relates to unknown collection "${field.to}"`);

@@ -27,6 +27,11 @@ export interface CollectionSchema<
 	/** 본문(MDX)을 가지는가. `publish` 컬렉션만 본문을 쓴다. */
 	readonly body: boolean;
 	readonly fields: Fields;
+	/**
+	 * 공개 주소 모양(예: `/posts/:slug`). `:slug`를 꼭 한 번 쓴다. 본문의 내부 링크를 알아보고(발행 전 검사),
+	 * 편집기가 링크를 만들 때 쓴다. 없으면 이 컬렉션은 본문 링크로 가리킬 수 없다.
+	 */
+	readonly path?: string;
 	/** 속성 패널 배치. 적지 않은 필드는 마지막 묶음 뒤에 선언 순서대로 그린다. */
 	readonly layout?: readonly LayoutGroup[];
 	readonly list: {
@@ -40,7 +45,8 @@ export function defineCollection<
 	const Fields extends Readonly<Record<string, Field>>,
 	const Workflow extends CollectionWorkflow,
 >(
-	schema: Omit<CollectionSchema<Fields, Workflow>, "body" | "layout" | "list"> & {
+	schema: Omit<CollectionSchema<Fields, Workflow>, "body" | "layout" | "list" | "path"> & {
+		path?: `/${string}:slug${string}`;
 		body?: boolean;
 		layout?: readonly LayoutGroup<Extract<keyof Fields, string>>[];
 		list: { columns: readonly (Extract<keyof Fields, string> | SystemListColumn)[] };

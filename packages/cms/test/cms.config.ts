@@ -53,6 +53,7 @@ const seo = {
 export const post = defineCollection({
 	label: "게시글",
 	workflow: "publish",
+	path: "/posts/:slug",
 	fields: {
 		title,
 		slug: contentSlug,
@@ -106,6 +107,7 @@ export const post = defineCollection({
 export const memo = defineCollection({
 	label: "메모",
 	workflow: "publish",
+	path: "/memos/:slug",
 	fields: {
 		title,
 		slug: contentSlug,
@@ -203,4 +205,5 @@ export default defineConfig({
 		{ code: "ja", name: "日本語", label: "일본어" },
 	],
 	defaultLocale: "ko",
+	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"] },
 });

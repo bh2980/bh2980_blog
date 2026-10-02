@@ -7,7 +7,13 @@
 
 export type { BlockAttribute, BlockChildren, BlockDefinition, BlockEditor, BlockSyntax } from "./blocks/define";
 export { defineBlock } from "./blocks/define";
-export { type CmsConfig, type CollectionsConfig, defineConfig, type LocaleConfig } from "./config/define";
+export {
+	type CmsConfig,
+	type CollectionsConfig,
+	defineConfig,
+	type LocaleConfig,
+	type SiteConfig,
+} from "./config/define";
 export {
 	type CollectionSchema,
 	type CollectionWorkflow,
