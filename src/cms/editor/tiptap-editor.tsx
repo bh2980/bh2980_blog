@@ -731,11 +731,50 @@ export function CmsEditor({
 			</DropdownMenuItem>
 		</>
 	);
+	// 문단 설정(블록 모양·정렬) → 글자 꾸밈 → 넣기 순이다.
 	// 좁을 때 숨기는 순서: priority가 큰 것부터. fixed는 숨기지 않는다(팝오버 도구는 메뉴 안에서 앵커를 잃는다).
 	const toolbarEntries: ToolbarEntry[] = [
 		{
+			key: "block-style",
+			priority: 0,
+			fixed: true,
+			render: () => <ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />,
+		},
+		dropdownSlot("align", 9, "정렬", ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
+		{ key: "divider-block", divider: true },
+		...INLINE_TOOLS.map((tool) =>
+			buttonSlot(tool, tool.mark, INLINE_PRIORITY[tool.mark] ?? 5, PINNED_INLINE_MARKS.includes(tool.mark)),
+		),
+		{
+			key: "color",
+			priority: 3,
+			render: () => <TextColorMenu editor={editor} />,
+			menu: () => (
+				<>
+					<DropdownMenuSeparator className="first:hidden" />
+					<TextColorMenuItems editor={editor} />
+				</>
+			),
+		},
+		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
+		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
+		{ key: "divider-list", divider: true },
+		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
+		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
+		{
+			key: "custom-block",
+			priority: 4,
+			render: () => <CustomBlockMenu editor={editor} />,
+			menu: () => (
+				<ToolbarMenuSection label="컴포넌트">
+					<CustomBlockMenuItems editor={editor} />
+				</ToolbarMenuSection>
+			),
+		},
+		{
 			key: "upload",
-			priority: 5,
+			// 밑줄(5)보다 늦게 숨긴다. 같은 우선순위면 오른쪽 도구가 먼저 숨는다.
+			priority: 4,
 			render: () => (
 				<DropdownMenu>
 					<Tooltip>
@@ -766,44 +805,6 @@ export function CmsEditor({
 				</DropdownMenu>
 			),
 			menu: () => <UploadMenuItems />,
-		},
-		{
-			key: "block-style",
-			priority: 0,
-			fixed: true,
-			render: () => <ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />,
-		},
-		{ key: "divider-block", divider: true },
-		...INLINE_TOOLS.map((tool) =>
-			buttonSlot(tool, tool.mark, INLINE_PRIORITY[tool.mark] ?? 5, PINNED_INLINE_MARKS.includes(tool.mark)),
-		),
-		{
-			key: "color",
-			priority: 3,
-			render: () => <TextColorMenu editor={editor} />,
-			menu: () => (
-				<>
-					<DropdownMenuSeparator className="first:hidden" />
-					<TextColorMenuItems editor={editor} />
-				</>
-			),
-		},
-		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
-		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
-		{ key: "divider-align", divider: true },
-		dropdownSlot("align", 9, "정렬", ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
-		{ key: "divider-list", divider: true },
-		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
-		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
-		{
-			key: "custom-block",
-			priority: 4,
-			render: () => <CustomBlockMenu editor={editor} />,
-			menu: () => (
-				<ToolbarMenuSection label="컴포넌트">
-					<CustomBlockMenuItems editor={editor} />
-				</ToolbarMenuSection>
-			),
 		},
 		{
 			key: "link",
