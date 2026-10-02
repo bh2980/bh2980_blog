@@ -1,5 +1,6 @@
 "use client";
 
+import { isContentCollection } from "@bh2980/cms/core/collections";
 import { localeLabel } from "@bh2980/cms/core/locales";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -8,10 +9,10 @@ import { Checkbox } from "../ui/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { Label } from "../ui/label";
 import { clearPatchFor } from "./column-header";
-import { COLUMN_CONFIG, type ColumnFilter, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
+import { type ColumnFilter, columnLabel, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
 import { clearFilters, type ListState } from "./list-state";
 import { STATUS_LABELS } from "./shared/entry-status";
-import type { TaxonomyOption } from "./shared/use-taxonomy";
+import type { TaxonomyOption, TaxonomyOptions } from "./shared/use-taxonomy";
 
 export interface FilterChip {
 	key: string;
@@ -19,14 +20,10 @@ export interface FilterChip {
 	clear: Partial<ListState>;
 }
 
-const nameOf = (options: TaxonomyOption[], id: string) =>
+const nameOf = (options: readonly TaxonomyOption[], id: string) =>
 	options.find((option) => option.id === id)?.title ?? "알 수 없음";
 
-function describe(
-	filter: ColumnFilter,
-	state: ListState,
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] },
-) {
+function describe(filter: ColumnFilter, state: ListState, options: TaxonomyOptions) {
 	switch (filter.kind) {
 		case "text":
 			return `"${state[filter.key].trim()}"`;
@@ -36,10 +33,8 @@ function describe(
 				...(state.hasChanges ? ["수정 중"] : []),
 				...(state.scheduled ? ["예약됨"] : []),
 			].join(", ");
-		case "taxonomy": {
-			const source = filter.source === "tag" ? options.tags : options.categories;
-			return state[filter.key].map((id) => nameOf(source, id)).join(", ");
-		}
+		case "relation":
+			return (state.relations[filter.field] ?? []).map((id) => nameOf(options[filter.field] ?? [], id)).join(", ");
 		case "locale":
 			return state.locales.map((locale) => localeLabel(locale)).join(", ");
 		case "date":
@@ -53,10 +48,7 @@ function describe(
  * 적용된 필터 칩(v2 A1). 컬럼을 숨겨도 그 컬럼에 걸린 필터는 칩으로 계속 보여
  * "왜 글이 안 보이지?"를 막는다.
  */
-export function filterChips(
-	state: ListState,
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] },
-): FilterChip[] {
+export function filterChips(state: ListState, options: TaxonomyOptions): FilterChip[] {
 	const chips: FilterChip[] = [];
 	if (state.search.trim()) {
 		chips.push({
@@ -70,8 +62,8 @@ export function filterChips(
 		if (!isColumnFiltered(state, filter)) continue;
 		chips.push({
 			key: column,
-			label: `${COLUMN_CONFIG[column].label}: ${describe(filter, state, options)}`,
-			clear: clearPatchFor(filter),
+			label: `${columnLabel(state.collection, column)}: ${describe(filter, state, options)}`,
+			clear: clearPatchFor(filter, state),
 		});
 	}
 	return chips;
@@ -95,7 +87,7 @@ export function ListSearch({
 		return () => clearTimeout(timer);
 	}, [search, state.search, onChange]);
 
-	const isContent = state.collection === "post" || state.collection === "memo";
+	const isContent = isContentCollection(state.collection);
 	return (
 		<div className="flex items-center gap-3">
 			<InputGroup className="h-8 w-64">
@@ -130,7 +122,7 @@ export function FilterChipBar({
 	onChange,
 }: {
 	state: ListState;
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
+	options: TaxonomyOptions;
 	onChange: (patch: Partial<ListState>) => void;
 }) {
 	const chips = filterChips(state, options);

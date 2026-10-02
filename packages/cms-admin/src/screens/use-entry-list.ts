@@ -2,7 +2,7 @@
 
 import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
 import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/core/api";
-import { COLLECTION_DEFINITIONS, isRecordCollection } from "@bh2980/cms/core/collections";
+import { COLLECTION_DEFINITIONS, isContentCollection, isRecordCollection } from "@bh2980/cms/core/collections";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,7 +31,7 @@ import {
 	type OptimisticOp,
 } from "./shared/list-cache";
 import { useFolderActions } from "./shared/use-folder-actions";
-import { type TaxonomyOption, useTaxonomy } from "./shared/use-taxonomy";
+import { type TaxonomyOptions, useTaxonomyOptions } from "./shared/use-taxonomy";
 
 export type ListMode = "list" | "trash";
 
@@ -157,14 +157,12 @@ function announce(label: string, results: BulkItemResult[], items: BulkSelection
 function useEntryMutations({
 	listKey,
 	state,
-	tags,
-	categories,
+	options,
 	onResults,
 }: {
 	listKey: ReturnType<typeof entriesKey>;
 	state: ListState;
-	tags: readonly TaxonomyOption[];
-	categories: readonly TaxonomyOption[];
+	options: TaxonomyOptions;
 	onResults: (results: BulkItemResult[]) => void;
 }) {
 	const queryClient = useQueryClient();
@@ -186,7 +184,7 @@ function useEntryMutations({
 				applyOptimistic(previous, op, new Set(targets.map((target) => target.id)), {
 					state,
 					params,
-					options: { tagIds: tags, categoryId: categories },
+					options,
 				}),
 			);
 		}
@@ -263,14 +261,8 @@ export function useEntryList(mode: ListMode) {
 	const { state, update, columnSettings, savePreferences } = useListState(mode);
 	const collection = state.collection;
 	const isRecord = isRecordCollection(collection);
-	const isContent = collection === "post" || collection === "memo";
-
-	const tags = useTaxonomy("tag", isContent);
-	const categories = useTaxonomy("category", collection === "post");
-	const options = useMemo(
-		() => ({ tags: tags.options, categories: categories.options }),
-		[tags.options, categories.options],
-	);
+	const isContent = isContentCollection(collection);
+	const options = useTaxonomyOptions(collection, !isTrash);
 
 	const data = useEntriesData(state, mode);
 	const { items, folders } = data;
@@ -306,8 +298,7 @@ export function useEntryList(mode: ListMode) {
 	const mutations = useEntryMutations({
 		listKey: data.listKey,
 		state,
-		tags: tags.options,
-		categories: categories.options,
+		options,
 		onResults: (results) => setSelectedIds(new Set(results.filter((result) => !result.ok).map((result) => result.id))),
 	});
 	const { bulk, restore, invalidateEntries } = mutations;
@@ -380,7 +371,7 @@ export function useEntryList(mode: ListMode) {
 	const rowMenu = (item: ListEntriesItem): MenuAction[] =>
 		rowMenuActions(
 			actionTargets(item, items, selectedIds),
-			{ mode, isRecord, isContent, folders, tags: tags.options },
+			{ mode, isRecord, isContent, folders, collection, options },
 			{
 				openEditor: (target) => router.push(editHref(target) as Route),
 				openInNewTab: (target) => window.open(editHref(target), "_blank", "noopener"),
@@ -422,10 +413,7 @@ export function useEntryList(mode: ListMode) {
 		},
 		confirm,
 		closeConfirm: () => setConfirm(null),
-		reloadTaxonomies: () => {
-			void tags.reload();
-			void categories.reload();
-		},
+		reloadTaxonomies: () => void queryClient.invalidateQueries({ queryKey: [...ENTRIES_KEY, "taxonomy"] }),
 		invalidateEntries,
 		moveEntries,
 		createNew,

@@ -33,7 +33,12 @@ export function githubAuth(options: GithubAuthOptions): AuthAdapter {
 					POST: async (request) =>
 						(await load()).handlers.POST(request as Parameters<NextAuthResult["handlers"]["POST"]>[0]),
 				},
-				session: async () => (await load()).auth(),
+				session: async () => {
+					const session = await (await load()).auth();
+					if (!session) return null;
+					return { user: { id: session.user?.id, accountId: session.user?.githubId } };
+				},
+				providers: [{ id: "github", name: "GitHub", label: "GitHub으로 로그인" }],
 				signIn: async (provider = "github", signInOptions) => (await load()).signIn(provider, signInOptions),
 				signOut: async (signOutOptions) => (await load()).signOut(signOutOptions),
 				isAdmin: (userId) => isAllowedAdminId(userId, options.adminIds),

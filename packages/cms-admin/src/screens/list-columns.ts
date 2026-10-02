@@ -1,32 +1,34 @@
 import type { ListSortField } from "@bh2980/cms/core/api";
-import { isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
-import { schemaOf, storedField } from "@bh2980/cms/schema/derive";
+import { isCollection, isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import { schemaOf } from "@bh2980/cms/schema/derive";
 import type { ListState } from "./list-state";
 
-/** 관리자 목록 컬럼. 사용자 컬럼 설정(순서·표시·너비)에 이 이름으로 저장한다. */
-export const ADMIN_LIST_COLUMNS = [
+/**
+ * 관리자 목록 컬럼. 콘텐츠 자체의 값(시스템 컬럼)과 분류 필드(분류용 컬렉션을 가리키는 관계 필드, 예: 태그·카테고리)다.
+ * 사용자 컬럼 설정(순서·표시·너비)에 이 이름으로 저장한다. 분류 필드 컬럼의 이름은 필드 이름이다.
+ */
+export const SYSTEM_COLUMNS = [
 	"title",
 	"status",
 	"locale",
-	"category",
-	"tags",
 	"updatedAt",
 	"publishedAt",
 	"createdAt",
 	"slug",
 	"folder",
 ] as const;
-export type AdminListColumn = (typeof ADMIN_LIST_COLUMNS)[number];
+type SystemColumn = (typeof SYSTEM_COLUMNS)[number];
+export type AdminListColumn = string;
 
 type DateFromKey = "createdFrom" | "updatedFrom" | "publishedFrom";
 type DateToKey = "createdTo" | "updatedTo" | "publishedTo";
 
-/** 컬럼 헤더 팝업이 보여 줄 필터 종류(v2 A1). */
+/** 컬럼 헤더 팝업이 보여 줄 필터 종류(v2 A1). `relation`은 분류 필드(값은 분류 항목 ID)다. */
 export type ColumnFilter =
 	| { kind: "text"; key: "titleContains" | "slugContains"; placeholder: string }
 	| { kind: "status" }
 	| { kind: "locale" }
-	| { kind: "taxonomy"; key: "tagIds" | "categoryIds"; source: "tag" | "category" }
+	| { kind: "relation"; field: string; collection: string }
 	| { kind: "date"; from: DateFromKey; to: DateToKey }
 	| { kind: "none" };
 
@@ -34,13 +36,12 @@ export interface ColumnConfig {
 	label: string;
 	sortField?: ListSortField;
 	filter: ColumnFilter;
+	/** 여러 개 관계(태그 등)의 컬럼. 칩으로 그리고 폭이 모자라면 먼저 숨긴다. */
+	many?: boolean;
 }
 
-/**
- * 컬럼별 라벨·정렬·필터를 정하는 한 곳. 헤더 팝업과 필터 칩이 이 표를 읽는다.
- * v2 B1(중앙 스키마)이 들어오면 컬렉션 스키마에서 이 표를 만든다.
- */
-export const COLUMN_CONFIG: Record<AdminListColumn, ColumnConfig> = {
+/** 시스템 컬럼의 라벨·정렬·필터. */
+const SYSTEM_CONFIG: Record<SystemColumn, ColumnConfig> = {
 	title: {
 		label: "제목",
 		sortField: "title",
@@ -48,8 +49,6 @@ export const COLUMN_CONFIG: Record<AdminListColumn, ColumnConfig> = {
 	},
 	status: { label: "상태", filter: { kind: "status" } },
 	locale: { label: "언어", filter: { kind: "locale" } },
-	category: { label: "카테고리", filter: { kind: "taxonomy", key: "categoryIds", source: "category" } },
-	tags: { label: "태그", filter: { kind: "taxonomy", key: "tagIds", source: "tag" } },
 	updatedAt: {
 		label: "수정일",
 		sortField: "updatedAt",
@@ -74,41 +73,62 @@ export const COLUMN_CONFIG: Record<AdminListColumn, ColumnConfig> = {
 	folder: { label: "폴더", filter: { kind: "none" } },
 };
 
-export const COLUMN_LABELS: Record<AdminListColumn, string> = Object.fromEntries(
-	ADMIN_LIST_COLUMNS.map((column) => [column, COLUMN_CONFIG[column].label]),
-) as Record<AdminListColumn, string>;
+const isSystemColumn = (column: string): column is SystemColumn => Object.hasOwn(SYSTEM_CONFIG, column);
 
-/**
- * 필드 컬럼 → 그 컬럼이 보여 주는 필드. 목록 API의 컬럼·필터 매개변수는 v1 그대로라
- * 이 표에 있는 필드만 목록 컬럼이 될 수 있다. 나머지 컬럼(상태·언어·날짜·폴더)은 콘텐츠 자체의 값이다.
- */
-const FIELD_COLUMNS: Partial<Record<AdminListColumn, string>> = {
-	title: "title",
-	slug: "slug",
-	category: "categoryId",
-	tags: "tagIds",
-};
+/** 컬럼 하나의 라벨·정렬·필터. 분류 필드는 필드 이름이 라벨이고 필드가 가리키는 컬렉션 항목으로 거른다. */
+export function columnConfig(collection: string, column: AdminListColumn): ColumnConfig {
+	if (isSystemColumn(column)) return SYSTEM_CONFIG[column];
+	const taxonomy = taxonomyFieldsOf(collection).find((stored) => stored.name === column);
+	if (!taxonomy || taxonomy.field.kind !== "relation") return { label: column, filter: { kind: "none" } };
+	return {
+		label: taxonomy.field.label,
+		filter: { kind: "relation", field: column, collection: taxonomy.to },
+		many: taxonomy.field.many === true,
+	};
+}
 
-const columnOf = (name: string): AdminListColumn | undefined =>
-	(Object.keys(FIELD_COLUMNS) as AdminListColumn[]).find((column) => FIELD_COLUMNS[column] === name) ??
-	((ADMIN_LIST_COLUMNS as readonly string[]).find((column) => column === name && !(column in FIELD_COLUMNS)) as
-		| AdminListColumn
-		| undefined);
+export const columnLabel = (collection: string, column: AdminListColumn) => columnConfig(collection, column).label;
 
 /** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`에서 만든다. */
 export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
-	if (!isCollection(collection)) return { available: [...ADMIN_LIST_COLUMNS], defaults: ["title", "status"] };
+	if (!isCollection(collection)) return { available: [...SYSTEM_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
-	const available = ADMIN_LIST_COLUMNS.filter((column) => {
+	const system = SYSTEM_COLUMNS.filter((column) => {
 		// record 컬렉션은 발행 없이 저장이 곧 공개다. 언어 열은 이름이 있는 언어를 보인다(v2 B4).
 		if (column === "publishedAt") return schema.workflow === "publish";
-		const field = FIELD_COLUMNS[column];
-		return field === undefined || Object.hasOwn(schema.fields, field) || storedField(collection, field) !== undefined;
+		if (column === "title" || column === "slug") return Object.hasOwn(schema.fields, column);
+		return true;
 	});
-	const defaults = schema.list.columns
-		.map(columnOf)
-		.filter((column): column is AdminListColumn => column !== undefined && available.includes(column));
+	const taxonomy = taxonomyFieldsOf(collection).map((stored) => stored.name);
+	// 분류 필드 컬럼은 언어 컬럼 뒤에 둔다.
+	const at = system.indexOf("locale") + 1;
+	const available = [...system.slice(0, at), ...taxonomy, ...system.slice(at)];
+	const defaults = schema.list.columns.filter((column) => available.includes(column));
 	return { available, defaults };
+}
+
+/**
+ * 저장된 컬럼 이름을 지금 컬럼으로 맞춘다. 예전 설정은 분류 필드 컬럼을 짧은 이름(`category` → `categoryId`,
+ * `tags` → `tagIds`)으로 저장했다. 맞는 컬럼이 없으면 `undefined`.
+ */
+export function normalizeColumnId(column: string, available: readonly AdminListColumn[]): AdminListColumn | undefined {
+	if (available.includes(column)) return column;
+	const candidates = [`${column}Id`, column.endsWith("s") ? `${column.slice(0, -1)}Ids` : undefined];
+	return candidates.find((candidate): candidate is string => candidate !== undefined && available.includes(candidate));
+}
+
+/** 키가 컬럼 이름인 저장 값(표시·너비)을 지금 컬럼으로 맞춘다. */
+export function normalizeColumnRecord<T>(
+	record: Readonly<Record<string, T>> | undefined,
+	available: readonly AdminListColumn[],
+): Record<string, T> | undefined {
+	if (!record) return undefined;
+	return Object.fromEntries(
+		Object.entries(record).flatMap(([column, value]) => {
+			const id = normalizeColumnId(column, available);
+			return id ? [[id, value]] : [];
+		}),
+	);
 }
 
 /**
@@ -116,7 +136,7 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
  * 휴지통 화면은 모든 항목이 휴지통 상태라 상태 필터가 없다.
  */
 export function filterFor(collection: string, column: AdminListColumn, mode: "list" | "trash" = "list"): ColumnFilter {
-	const filter = COLUMN_CONFIG[column].filter;
+	const filter = columnConfig(collection, column).filter;
 	if (filter.kind === "status" && (isRecordCollection(collection) || mode === "trash")) return { kind: "none" };
 	// 분류 항목의 언어 열은 이름이 있는 언어를 보일 뿐이라 언어로 거르지 않는다.
 	if (filter.kind === "locale" && isRecordCollection(collection)) return { kind: "none" };
@@ -130,8 +150,8 @@ export function isColumnFiltered(state: ListState, filter: ColumnFilter): boolea
 			return state[filter.key].trim() !== "";
 		case "status":
 			return state.statuses.length > 0 || state.hasChanges || state.scheduled;
-		case "taxonomy":
-			return state[filter.key].length > 0;
+		case "relation":
+			return (state.relations[filter.field]?.length ?? 0) > 0;
 		case "locale":
 			return state.locales.length > 0;
 		case "date":

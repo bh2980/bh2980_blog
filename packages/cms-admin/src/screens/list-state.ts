@@ -1,5 +1,5 @@
 import { LIST_SORT_FIELDS, type ListSortField, type PageSize } from "@bh2980/cms/core/api";
-import { type Collection, isCollection } from "@bh2980/cms/core/collections";
+import { type Collection, DEFAULT_COLLECTION, isCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
 import { isLocale, type Locale } from "@bh2980/cms/core/locales";
 import { parseDateTimeInput } from "@bh2980/cms/core/time";
 import { schemaOf } from "@bh2980/cms/schema/derive";
@@ -30,8 +30,8 @@ export interface ListState {
 	statuses: ListStatus[];
 	hasChanges: boolean;
 	scheduled: boolean;
-	tagIds: string[];
-	categoryIds: string[];
+	/** 분류 필드 이름 → 고른 항목 ID(v2 A1). 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다. */
+	relations: Readonly<Record<string, readonly string[]>>;
 	/** 콘텐츠 언어(v2 B4). 비어 있으면 모든 언어다. */
 	locales: Locale[];
 	/** `YYYY-MM-DD`(서울 날짜). */
@@ -57,8 +57,7 @@ export const DEFAULT_LIST_STATE: Omit<ListState, "collection"> = {
 	statuses: [],
 	hasChanges: false,
 	scheduled: false,
-	tagIds: [],
-	categoryIds: [],
+	relations: {},
 	locales: [],
 	createdFrom: "",
 	createdTo: "",
@@ -82,6 +81,26 @@ export const DATE_KEYS = [
 ] as const;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+/** `relation=필드:ID`(여러 번)을 분류 필드별 ID 목록으로 읽는다. 이 컬렉션의 분류 필드가 아니면 버린다. */
+function readRelations(values: readonly string[], collection: Collection): Record<string, string[]> {
+	const fields = new Set(taxonomyFieldsOf(collection).map((stored) => stored.name));
+	const relations: Record<string, string[]> = {};
+	for (const value of values) {
+		const at = value.indexOf(":");
+		const field = value.slice(0, at);
+		const id = value.slice(at + 1);
+		if (at <= 0 || !id || !fields.has(field)) continue;
+		relations[field] = [...new Set([...(relations[field] ?? []), id])];
+	}
+	return relations;
+}
+
+/** 분류 필터를 주소·목록 API 질의(`relation=필드:ID`)로 쓴다. */
+function appendRelations(params: URLSearchParams, relations: ListState["relations"]) {
+	for (const [field, ids] of Object.entries(relations))
+		for (const id of ids) params.append("relation", `${field}:${id}`);
+}
+
 export function parseListState(
 	params: URLSearchParams,
 ): ListState & { explicit: { pageSize: boolean; sort: boolean } } {
@@ -94,7 +113,7 @@ export function parseListState(
 	);
 	const state: ListState = {
 		...DEFAULT_LIST_STATE,
-		collection: isCollection(collection) ? collection : "post",
+		collection: isCollection(collection) ? collection : DEFAULT_COLLECTION,
 		folder: !params.get("folder") || params.get("folder") === "unfiled" ? "all" : (params.get("folder") as string),
 		includeDescendants: params.get("descendants") === "1",
 		search: params.get("search") ?? "",
@@ -104,8 +123,7 @@ export function parseListState(
 		statuses,
 		hasChanges: params.get("changes") === "1",
 		scheduled: params.get("scheduled") === "1",
-		tagIds: params.getAll("tag"),
-		categoryIds: params.getAll("category"),
+		relations: readRelations(params.getAll("relation"), isCollection(collection) ? collection : DEFAULT_COLLECTION),
 		locales: [...new Set(params.getAll("locale"))].filter(isLocale),
 		sortField: (LIST_SORT_FIELDS as readonly string[]).includes(sortField)
 			? (sortField as ListSortField)
@@ -133,8 +151,7 @@ function appendFilterParams(params: URLSearchParams, state: ListState) {
 	for (const status of state.statuses) params.append("status", status);
 	if (state.hasChanges) params.set("changes", "1");
 	if (state.scheduled) params.set("scheduled", "1");
-	for (const id of state.tagIds) params.append("tag", id);
-	for (const id of state.categoryIds) params.append("category", id);
+	appendRelations(params, state.relations);
 	for (const locale of state.locales) params.append("locale", locale);
 	for (const key of DATE_KEYS) set(key, state[key], "");
 	params.set("sortField", state.sortField);
@@ -190,8 +207,7 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 	else for (const status of state.statuses) query.append("status", status);
 	if (state.hasChanges) query.set("hasChanges", "true");
 	if (state.scheduled) query.set("scheduled", "true");
-	for (const id of state.tagIds) query.append("relation", `tagIds:${id}`);
-	for (const id of state.categoryIds) query.append("relation", `categoryId:${id}`);
+	appendRelations(query, state.relations);
 	for (const locale of state.locales) query.append("locale", locale);
 	for (const key of DATE_KEYS) {
 		if (!state[key]) continue;
@@ -209,8 +225,7 @@ export const activeFilterCount = (state: ListState) =>
 		state.statuses.length > 0,
 		state.hasChanges,
 		state.scheduled,
-		state.tagIds.length > 0,
-		state.categoryIds.length > 0,
+		...Object.values(state.relations).map((ids) => ids.length > 0),
 		state.locales.length > 0,
 		...DATE_KEYS.map((key) => state[key]),
 	].filter(Boolean).length;
@@ -234,8 +249,7 @@ export function clearFilters(state: ListState): ListState {
 		statuses: [],
 		hasChanges: false,
 		scheduled: false,
-		tagIds: [],
-		categoryIds: [],
+		relations: {},
 		locales: [],
 		createdFrom: "",
 		createdTo: "",

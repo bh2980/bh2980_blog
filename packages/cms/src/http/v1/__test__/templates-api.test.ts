@@ -89,7 +89,7 @@ const req = (url: string, method = "GET", body?: unknown, origin = "http://local
 
 describe("M5-BE-2 Templates API Route Contract", () => {
 	beforeEach(() => {
-		mockVerifyAdmin.mockResolvedValue({ userId: "u", githubId: "g", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 	});
 
 	it("GET /templates lists templates for both editors", async () => {

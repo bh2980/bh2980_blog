@@ -10,7 +10,8 @@ const context: RowMenuContext = {
 	isRecord: false,
 	isContent: true,
 	folders: [{ id: "f1", collection: "post", parentId: null, name: "뉴스", position: 0, version: 1 }],
-	tags: [{ id: "t1", title: "React", slug: "react" }],
+	collection: "post",
+	options: { tagIds: [{ id: "t1", title: "React", slug: "react" }] },
 };
 const handlers = (): RowMenuHandlers => ({
 	openEditor: vi.fn(),

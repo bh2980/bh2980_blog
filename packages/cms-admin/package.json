@@ -15,7 +15,7 @@
 	"scripts": {
 		"test": "vitest",
 		"test:run": "vitest run",
-		"typecheck": "tsc --noEmit -p ."
+		"typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.other-site.json"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.8.0",

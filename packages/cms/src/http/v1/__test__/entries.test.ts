@@ -82,7 +82,7 @@ vi.mock("../../../container", () => {
 describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", () => {
 	beforeEach(() => {
 		mockVerifyAdmin.mockReset();
-		mockVerifyAdmin.mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "123", accountId: "123", isAdmin: true });
 	});
 
 	it("returns 401 when user is unauthorized", async () => {

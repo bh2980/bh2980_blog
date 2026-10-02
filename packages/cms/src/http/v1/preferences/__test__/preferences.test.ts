@@ -4,7 +4,7 @@ import { GET as getPreferences, PUT as putPreferences } from "../route";
 
 vi.mock("../../../../adapters/auth", () => ({
 	authGateway: {
-		verifyAdmin: vi.fn().mockResolvedValue({ userId: "user-42", githubId: "user-42", isAdmin: true }),
+		verifyAdmin: vi.fn().mockResolvedValue({ userId: "user-42", accountId: "user-42", isAdmin: true }),
 	},
 	AuthError: class AuthError extends Error {
 		constructor(

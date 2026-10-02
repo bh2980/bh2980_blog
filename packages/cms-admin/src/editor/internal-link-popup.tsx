@@ -1,5 +1,6 @@
 "use client";
 
+import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/core/collections";
 import { createPortal } from "react-dom";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "../ui/command";
 import type { InternalLinkItem } from "./internal-link";
@@ -61,7 +62,8 @@ export function InternalLinkPopup({
 							>
 								<span className="w-full truncate font-semibold text-xs">{item.title}</span>
 								<span className="w-full truncate font-mono text-[10px] text-muted-foreground">
-									{item.collection === "memo" ? "메모" : "글"} · /{item.slug || "(slug 없음)"}
+									{isCollection(item.collection) ? COLLECTION_DEFINITIONS[item.collection].label : item.collection} · /
+									{item.slug || "(slug 없음)"}
 									{/* 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2). */}
 									{item.status && item.status !== "published"
 										? ` · ${item.status === "draft" ? "초안" : item.status}`

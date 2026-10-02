@@ -16,6 +16,7 @@ function fakeAuth(session: Awaited<ReturnType<CmsAuth["session"]>>, overrides: P
 		isAdmin: (id) => isAllowedAdminId(id, [ADMIN_ID]),
 		devBypass: false,
 		devUserId: ADMIN_ID,
+		providers: [],
 		...overrides,
 	};
 }
@@ -52,17 +53,17 @@ describe("M2-BE-1 AuthGateway Contract", () => {
 		await expectAuthError(gatewayOf(fakeAuth(null)).verifyAdmin(), "unauthorized");
 	});
 
-	it("throws unauthorized when session user has no githubId", async () => {
+	it("throws unauthorized when session user has no accountId", async () => {
 		await expectAuthError(gatewayOf(fakeAuth({ user: { id: "x" } })).verifyAdmin(), "unauthorized");
 	});
 
-	it("throws forbidden when session user githubId is not an admin", async () => {
-		await expectAuthError(gatewayOf(fakeAuth({ user: { githubId: "99999999" } })).verifyAdmin(), "forbidden");
+	it("throws forbidden when session user accountId is not an admin", async () => {
+		await expectAuthError(gatewayOf(fakeAuth({ user: { accountId: "99999999" } })).verifyAdmin(), "forbidden");
 	});
 
-	it("returns AuthContext when session user githubId is an admin", async () => {
-		const result = await gatewayOf(fakeAuth({ user: { id: ADMIN_ID, githubId: ADMIN_ID } })).verifyAdmin();
-		expect(result).toEqual({ userId: ADMIN_ID, githubId: ADMIN_ID, isAdmin: true });
+	it("returns AuthContext when session user accountId is an admin", async () => {
+		const result = await gatewayOf(fakeAuth({ user: { id: ADMIN_ID, accountId: ADMIN_ID } })).verifyAdmin();
+		expect(result).toEqual({ userId: ADMIN_ID, accountId: ADMIN_ID, isAdmin: true });
 	});
 
 	it("isDevAuthBypassEnabled is true only in development with the option on", () => {
@@ -90,7 +91,7 @@ describe("M2-BE-1 AuthGateway Contract", () => {
 	it("verifyAdmin bypasses session check when dev bypass is enabled", async () => {
 		const auth = fakeAuth(null, { devBypass: true });
 		const result = await gatewayOf(auth).verifyAdmin();
-		expect(result).toEqual({ userId: ADMIN_ID, githubId: ADMIN_ID, isAdmin: true });
+		expect(result).toEqual({ userId: ADMIN_ID, accountId: ADMIN_ID, isAdmin: true });
 		expect(auth.session).not.toHaveBeenCalled();
 	});
 

@@ -1,11 +1,13 @@
 "use client";
 
 import type { IncomingReferenceItem } from "@bh2980/cms/adapters/postgres/content-store";
-import { isRecordCollection } from "@bh2980/cms/core/collections";
+import { DEFAULT_COLLECTION, isCollection, isRecordCollection } from "@bh2980/cms/core/collections";
+import { previewHref as contentPreviewHref } from "@bh2980/cms/core/links";
 import { autoSummary } from "@bh2980/cms/core/plain-text";
 import { slugify } from "@bh2980/cms/core/slug";
 import { parseDateTimeInput } from "@bh2980/cms/core/time";
 import { analyze } from "@bh2980/cms/mdx";
+import { schemaOf } from "@bh2980/cms/schema/derive";
 import {
 	Archive,
 	CalendarClock,
@@ -176,10 +178,18 @@ function keepTranslationGroup(current: EntryData | null, next: EntryData): Pick<
 /**
  * 게시글·메모 편집 화면(§3.1, §5). 태그·카테고리·모음집(record 컬렉션)은 목록의 작은 폼에서 편집한다.
  */
+/** 발행할 때 비어 있으면 본문에서 채우는 요약 필드(`input: "auto-summary"`). */
+const autoSummaryFields = (collection: string): string[] =>
+	isCollection(collection)
+		? Object.entries(schemaOf(collection).fields).flatMap(([name, field]) =>
+				"input" in field && field.input === "auto-summary" ? [name] : [],
+			)
+		: [];
+
 export function EntryEditorShell({
 	mode,
 	initialEntryId,
-	collection: propCollection = "post",
+	collection: propCollection = DEFAULT_COLLECTION,
 	adminId,
 	folderId,
 }: EntryEditorShellProps) {
@@ -478,15 +488,16 @@ export function EntryEditorShell({
 		if (isSubmitting || isReadOnly) return;
 		setPublishIssues([]);
 		setActionFeedback(null);
-		// §5.6: 게시글 요약이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
-		if (collection === "post" && !formText(form, "summary").trim()) {
+		// §5.6: 본문 요약 입력(`input: "auto-summary"`)이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
+		for (const field of autoSummaryFields(collection)) {
+			if (formText(form, field).trim()) continue;
 			const generated = autoSummary(form.mdx);
 			if (!generated) {
-				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: "summary" }]);
+				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: field }]);
 				setActionFeedback({ type: "error", message: "요약을 만들 본문이 없습니다. 요약을 직접 입력하세요." });
 				return;
 			}
-			setForm({ summary: generated });
+			setForm({ [field]: generated });
 			toast.message("본문에서 요약을 만들었습니다. 속성 패널에서 고칠 수 있습니다.");
 		}
 		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
@@ -646,11 +657,7 @@ export function EntryEditorShell({
 	};
 
 	// 번역본은 원문과 slug를 같이 쓸 수 있어 언어를 함께 넘긴다(v2 B4).
-	const previewHref = entry?.workingSlug
-		? `/preview/${collection === "memo" ? "memos" : "posts"}/${encodeURIComponent(entry.workingSlug)}${
-				entry.locale && entry.locale !== "ko" ? `?locale=${entry.locale}` : ""
-			}`
-		: null;
+	const previewHref = entry ? contentPreviewHref(collection, entry.workingSlug, entry.locale) : null;
 
 	// Cmd/Ctrl+S 즉시 저장. 매 렌더의 최신 상태를 쓰도록 다시 등록한다.
 	useEffect(() => {

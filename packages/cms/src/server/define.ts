@@ -28,8 +28,18 @@ export interface MediaAdapter {
 export interface AuthContext {
 	userId: string;
 	isAdmin: boolean;
-	/** GitHub 로그인이면 GitHub 숫자 ID. */
-	githubId: string;
+	/** 로그인 방식의 계정 ID(GitHub이면 숫자 ID). 관리자 목록과 견준다. */
+	accountId: string;
+}
+
+/** 로그인 화면의 로그인 버튼 하나. */
+export interface AuthProvider {
+	/** `signIn(id)`에 넘기는 로그인 방식 이름(예: `github`). */
+	readonly id: string;
+	/** 로그인 방식의 보이는 이름(예: `GitHub`). 권한 안내 문구에 쓴다. */
+	readonly name: string;
+	/** 버튼 문구(예: `GitHub으로 로그인`). */
+	readonly label: string;
 }
 
 /** 관리자 로그인. Next 라우트(`handlers`)와 관리자 확인을 함께 준다. */
@@ -40,7 +50,9 @@ export interface CmsAuth {
 		POST(request: Request): Promise<Response>;
 	};
 	/** 지금 세션. 없으면 `null`. */
-	session(): Promise<{ user?: { id?: string; githubId?: string } } | null>;
+	session(): Promise<{ user?: { id?: string; accountId?: string } } | null>;
+	/** 로그인 화면에 보일 로그인 방식. */
+	readonly providers: readonly AuthProvider[];
 	signIn(provider?: string, options?: { redirectTo?: string }): Promise<unknown>;
 	signOut(options?: { redirectTo?: string }): Promise<unknown>;
 	/** 이 사용자가 관리자인가. */

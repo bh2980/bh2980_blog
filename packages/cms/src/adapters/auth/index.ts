@@ -22,3 +22,5 @@ export const signIn = (provider?: string, options?: { redirectTo?: string }) => 
 export const signOut = (options?: { redirectTo?: string }) => getCmsAuth().signOut(options);
 export const isAllowedAdminId = (userId: string | null | undefined) => getCmsAuth().isAdmin(userId);
 export const isDevAuthBypassEnabled = () => getCmsAuth().devBypass;
+/** 로그인 화면에 보일 로그인 방식. */
+export const authProviders = () => getCmsAuth().providers;

@@ -39,7 +39,7 @@ const findFile = (zip: Uint8Array, path: string): string => {
 describe("GET/POST /api/cms/v1/export", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockVerifyAdmin.mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "123", accountId: "123", isAdmin: true });
 		mockReadExportSnapshot.mockResolvedValue(makeExportFixtureSnapshot());
 	});
 

@@ -6,7 +6,7 @@ import { GET as getRelations } from "../route";
 
 vi.mock("../../../../../../adapters/auth", () => ({
 	authGateway: {
-		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", githubId: "123", isAdmin: true }),
+		verifyAdmin: vi.fn().mockResolvedValue({ userId: "123", accountId: "123", isAdmin: true }),
 	},
 	AuthError: class AuthError extends Error {
 		constructor(

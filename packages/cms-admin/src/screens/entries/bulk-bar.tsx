@@ -2,10 +2,11 @@
 
 import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
 import type { BulkOp } from "@bh2980/cms/core/api";
-import { isRecordCollection } from "@bh2980/cms/core/collections";
+import { isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils/cn";
+import { josa } from "../../lib/utils/josa";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../ui/command";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
-import { useTaxonomy } from "../shared/use-taxonomy";
+import { useTaxonomyOptions } from "../shared/use-taxonomy";
 
 export type BulkUsage = { entryId: string; title: string | null; collection: string; state: string };
 
@@ -24,31 +25,48 @@ export type BulkItemResult =
 
 export type BulkSelection = { id: string; expectedVersion: number; title?: string | null };
 
-/** 화면의 분류 작업. 서버에는 관계 필드 일괄 작업(`relation.*`)으로 보낸다. */
-const TAXONOMY_ACTIONS = {
-	"tags.add": { op: "relation.add", field: "tagIds" },
-	"tags.remove": { op: "relation.remove", field: "tagIds" },
-	"category.set": { op: "relation.set", field: "categoryId" },
-} as const satisfies Record<string, { op: BulkOp; field: string }>;
+type RelationOp = Extract<BulkOp, `relation.${string}`>;
 
-type ListAction = Exclude<BulkOp, `relation.${string}`> | keyof typeof TAXONOMY_ACTIONS;
-
-const isTaxonomyAction = (action: ListAction): action is keyof typeof TAXONOMY_ACTIONS =>
-	Object.hasOwn(TAXONOMY_ACTIONS, action);
+/**
+ * 화면의 작업. 분류 작업은 `relation.add:tagIds`처럼 관계 필드 일괄 작업과 필드 이름을 함께 적는다.
+ * 서버에는 관계 필드 일괄 작업(`relation.*`)으로 보낸다.
+ */
+type ListAction = Exclude<BulkOp, RelationOp> | `${RelationOp}:${string}`;
 
 type ActionDef = {
 	value: ListAction;
 	label: string;
 	confirm?: string;
 	content?: boolean;
-	post?: boolean;
 	destructive?: boolean;
+	/** 분류 작업이면 관계 필드. */
+	relation?: { op: RelationOp; field: string; label: string; many: boolean };
 };
 
+/**
+ * 컬렉션의 분류 필드(태그·카테고리 등)별 작업. 여러 개 필드는 추가·제거, 하나뿐인 필드는 변경이다.
+ * 여러 개 필드 작업을 먼저 둔다.
+ */
+export function taxonomyActions(collection: string): ActionDef[] {
+	const fields = taxonomyFieldsOf(collection).flatMap((stored) =>
+		stored.field.kind === "relation"
+			? [{ name: stored.name, label: stored.field.label, many: stored.field.many === true }]
+			: [],
+	);
+	const action = (op: RelationOp, field: (typeof fields)[number], verb: string): ActionDef => ({
+		value: `${op}:${field.name}`,
+		label: `${field.label} ${verb}`,
+		relation: { op, field: field.name, label: field.label, many: field.many },
+	});
+	return [
+		...fields
+			.filter((field) => field.many)
+			.flatMap((field) => [action("relation.add", field, "추가"), action("relation.remove", field, "제거")]),
+		...fields.filter((field) => !field.many).map((field) => action("relation.set", field, "변경")),
+	];
+}
+
 const LIST_ACTIONS: ActionDef[] = [
-	{ value: "tags.add", label: "태그 추가", content: true },
-	{ value: "tags.remove", label: "태그 제거", content: true },
-	{ value: "category.set", label: "카테고리 변경", post: true },
 	{ value: "folder.move", label: "폴더로 이동" },
 	{
 		value: "publish",
@@ -113,21 +131,23 @@ export async function runBulk(
 }
 
 /**
- * 일괄 작업 줄의 태그 선택. 폴더·카테고리 선택처럼 작은 버튼 하나로 두고, 누르면 검색과 체크 목록이 열린다.
- * 버튼에는 고른 태그를 `React 외 2개`처럼 줄여 보여 줘서 줄이 넘치지 않는다.
+ * 일괄 작업 줄의 여러 개 분류(태그 등) 선택. 폴더·카테고리 선택처럼 작은 버튼 하나로 두고, 누르면 검색과 체크 목록이 열린다.
+ * 버튼에는 고른 항목을 `React 외 2개`처럼 줄여 보여 줘서 줄이 넘치지 않는다.
  */
-function TagPicker({
+function ManyPicker({
+	label,
 	options,
 	value,
 	onValueChange,
 }: {
-	options: { id: string; title: string }[];
+	label: string;
+	options: readonly { id: string; title: string }[];
 	value: string[];
 	onValueChange: (value: string[]) => void;
 }) {
 	const names = value.map((id) => options.find((option) => option.id === id)?.title ?? id);
 	const summary =
-		names.length === 0 ? "태그 선택" : names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}개`;
+		names.length === 0 ? `${label} 선택` : names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}개`;
 	const toggle = (id: string) =>
 		onValueChange(value.includes(id) ? value.filter((item) => item !== id) : [...value, id]);
 	return (
@@ -138,7 +158,7 @@ function TagPicker({
 						type="button"
 						variant="outline"
 						size="sm"
-						aria-label={`적용할 태그: ${names.length === 0 ? "없음" : names.join(", ")}`}
+						aria-label={`적용할 ${label}: ${names.length === 0 ? "없음" : names.join(", ")}`}
 						className={cn(
 							"max-w-56 justify-between gap-1.5 font-normal",
 							names.length === 0 && "text-muted-foreground",
@@ -151,9 +171,9 @@ function TagPicker({
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0">
 				<Command>
-					<CommandInput placeholder="태그 검색" aria-label="태그 검색" />
+					<CommandInput placeholder={`${label} 검색`} aria-label={`${label} 검색`} />
 					<CommandList className="max-h-64">
-						<CommandEmpty>일치하는 태그가 없습니다.</CommandEmpty>
+						<CommandEmpty>일치하는 {josa(label, "이", "가")} 없습니다.</CommandEmpty>
 						<CommandGroup>
 							{options.map((option) => (
 								<CommandItem key={option.id} value={`${option.title} ${option.id}`} onSelect={() => toggle(option.id)}>
@@ -201,7 +221,7 @@ export function BulkBar({
 		() =>
 			mode === "trash"
 				? TRASH_ACTIONS
-				: LIST_ACTIONS.filter((action) => (!action.content || !isRecord) && (!action.post || collection === "post")),
+				: [...taxonomyActions(collection), ...LIST_ACTIONS.filter((action) => !action.content || !isRecord)],
 		[isRecord, collection, mode],
 	);
 	const [action, setAction] = useState<ListAction>(actions[0]?.value ?? "trash");
@@ -212,8 +232,7 @@ export function BulkBar({
 	const [ranItems, setRanItems] = useState<BulkSelection[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const tags = useTaxonomy("tag", !isRecord && mode === "list");
-	const categories = useTaxonomy("category", collection === "post" && mode === "list");
+	const options = useTaxonomyOptions(collection, mode === "list");
 
 	useEffect(() => {
 		if (!actions.some((candidate) => candidate.value === action)) setAction(actions[0]?.value ?? "trash");
@@ -227,25 +246,25 @@ export function BulkBar({
 		setError(null);
 	}, [action]);
 
-	const needsTags = action === "tags.add" || action === "tags.remove";
-	const needsSingle = action === "category.set" || action === "folder.move";
-	const canRun =
-		!isRunning && selected.length > 0 && (needsTags ? checked.length > 0 : needsSingle ? single !== "" : true);
 	const activeAction = actions.find((candidate) => candidate.value === action);
+	const relation = activeAction?.relation;
+	const needsMany = relation !== undefined && relation.op !== "relation.set";
+	const needsSingle = relation?.op === "relation.set" || action === "folder.move";
+	const canRun =
+		!isRunning && selected.length > 0 && (needsMany ? checked.length > 0 : needsSingle ? single !== "" : true);
 
 	const run = async (items: BulkSelection[]) => {
 		setIsRunning(true);
 		setError(null);
 		try {
-			const taxonomy = isTaxonomyAction(action) ? TAXONOMY_ACTIONS[action] : undefined;
-			const params = needsTags
-				? { field: TAXONOMY_ACTIONS["tags.add"].field, ids: checked }
-				: action === "category.set"
-					? { field: TAXONOMY_ACTIONS["category.set"].field, id: single === "__none__" ? null : single }
+			const params = needsMany
+				? { field: relation.field, ids: checked }
+				: relation
+					? { field: relation.field, id: single === "__none__" ? null : single }
 					: action === "folder.move"
 						? { folderId: single === "__unfiled__" ? null : single }
 						: {};
-			const out = await onRun(taxonomy?.op ?? (action as BulkOp), items, params);
+			const out = await onRun(relation?.op ?? (action as BulkOp), items, params);
 			setResults(out);
 			setRanItems(items);
 			onDone?.(out.filter((result) => !result.ok).map((result) => result.id));
@@ -276,14 +295,16 @@ export function BulkBar({
 
 	if (selected.length === 0 && !results) return null;
 
-	const categoryItems = [
-		{ value: "__none__", label: "지우기(없음)" },
-		...categories.options.map((option) => ({ value: option.id, label: option.title })),
-	];
-	const folderItems = [
-		{ value: "__unfiled__", label: "최상위" },
-		...folders.map((folder) => ({ value: folder.id, label: folder.name })),
-	];
+	const relationOptions = relation ? (options[relation.field] ?? []) : [];
+	const singleItems = relation
+		? [
+				{ value: "__none__", label: "지우기(없음)" },
+				...relationOptions.map((option) => ({ value: option.id, label: option.title })),
+			]
+		: [
+				{ value: "__unfiled__", label: "최상위" },
+				...folders.map((folder) => ({ value: folder.id, label: folder.name })),
+			];
 
 	return (
 		<section aria-label="일괄 작업" className="border-b bg-primary/5 px-5 py-2">
@@ -312,19 +333,21 @@ export function BulkBar({
 					</Select>
 				) : null}
 
-				{needsTags && <TagPicker options={tags.options} value={checked} onValueChange={setChecked} />}
+				{needsMany && (
+					<ManyPicker label={relation.label} options={relationOptions} value={checked} onValueChange={setChecked} />
+				)}
 
 				{needsSingle && (
 					<Select
 						value={single || null}
-						items={action === "category.set" ? categoryItems : folderItems}
+						items={singleItems}
 						onValueChange={(value) => setSingle(typeof value === "string" ? value : "")}
 					>
-						<SelectTrigger size="sm" aria-label={action === "category.set" ? "대상 카테고리" : "이동할 폴더"}>
-							<SelectValue placeholder={action === "category.set" ? "카테고리 선택" : "폴더 선택"} />
+						<SelectTrigger size="sm" aria-label={relation ? `대상 ${relation.label}` : "이동할 폴더"}>
+							<SelectValue placeholder={relation ? `${relation.label} 선택` : "폴더 선택"} />
 						</SelectTrigger>
 						<SelectContent>
-							{(action === "category.set" ? categoryItems : folderItems).map((item) => (
+							{singleItems.map((item) => (
 								<SelectItem key={item.value} value={item.value}>
 									{item.label}
 								</SelectItem>

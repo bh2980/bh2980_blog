@@ -56,20 +56,20 @@ export class CmsAuthGateway implements AuthGateway {
 				devBypassWarned = true;
 				console.warn("[cms-auth] DEV AUTH BYPASS enabled (development only, never use in production)");
 			}
-			return { userId: cmsAuth.devUserId, githubId: cmsAuth.devUserId, isAdmin: true };
+			return { userId: cmsAuth.devUserId, accountId: cmsAuth.devUserId, isAdmin: true };
 		}
 
 		const session = await cmsAuth.session();
-		if (!session?.user?.githubId) {
+		if (!session?.user?.accountId) {
 			throw new AuthError("unauthorized", "Authentication required");
 		}
 
-		const githubId = String(session.user.githubId);
-		if (!cmsAuth.isAdmin(githubId)) {
+		const accountId = String(session.user.accountId);
+		if (!cmsAuth.isAdmin(accountId)) {
 			throw new AuthError("forbidden", "Forbidden: not an authorized admin");
 		}
 
-		return { userId: session.user.id || githubId, githubId, isAdmin: true };
+		return { userId: session.user.id || accountId, accountId, isAdmin: true };
 	}
 
 	authorizeExecutor(token?: string | null): boolean {

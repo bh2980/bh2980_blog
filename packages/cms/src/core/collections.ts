@@ -1,6 +1,13 @@
 import { cmsConfig } from "../config/resolved";
 import type { CollectionWorkflow } from "../schema/collection";
-import { relationsOf, type SchemaCollection, schemaOf, storageTypes } from "../schema/derive";
+import {
+	relationsOf,
+	type SchemaCollection,
+	type StoredField,
+	schemaOf,
+	storageTypes,
+	storedFields,
+} from "../schema/derive";
 import type { StorageType } from "../schema/fields";
 
 /** 컬렉션 이름(`cms.config.ts`의 `collections` 키). 선언 순서를 따른다. */
@@ -53,3 +60,23 @@ export function isRecordCollection(val: unknown): boolean {
 
 /** 본문을 쓰고 초안/발행을 나누는 콘텐츠 컬렉션. */
 export const CONTENT_COLLECTIONS = COLLECTIONS.filter((c) => COLLECTION_DEFINITIONS[c].workflow === "publish");
+
+/** 본문을 쓰고 초안/발행을 나누는 콘텐츠 컬렉션인가. */
+export const isContentCollection = (val: unknown): val is Collection =>
+	isCollection(val) && COLLECTION_DEFINITIONS[val].workflow === "publish";
+
+/** 주소에 컬렉션이 없을 때 여는 컬렉션. 첫 콘텐츠 컬렉션, 없으면 첫 컬렉션. */
+export const DEFAULT_COLLECTION: Collection = (CONTENT_COLLECTIONS[0] ?? COLLECTIONS[0]) as Collection;
+
+/**
+ * 분류 필드: 분류용(record) 컬렉션을 가리키는 관계 필드(예: 태그·카테고리). 목록의 열·필터, 일괄 작업,
+ * 행 메뉴가 이 필드에서 만들어진다. 콘텐츠를 가리키는 관계(대체 글·모음집 글 목록 등)는 빠진다.
+ */
+export function taxonomyFieldsOf(collection: string): Array<StoredField & { readonly to: Collection }> {
+	if (!isCollection(collection)) return [];
+	return storedFields(collection).flatMap((stored) =>
+		stored.field.kind === "relation" && isRecordCollection(stored.field.to)
+			? [{ ...stored, to: stored.field.to as Collection }]
+			: [],
+	);
+}

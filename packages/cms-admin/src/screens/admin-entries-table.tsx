@@ -36,16 +36,24 @@ import { Skeleton } from "../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
-import { type AdminListColumn, COLUMN_CONFIG, COLUMN_LABELS, columnsFor, filterFor } from "./list-columns";
+import {
+	type AdminListColumn,
+	columnConfig,
+	columnLabel,
+	columnsFor,
+	filterFor,
+	normalizeColumnId,
+	normalizeColumnRecord,
+} from "./list-columns";
 import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
 import { FittingTags } from "./shared/fitting-tags";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
-import type { TaxonomyOption } from "./shared/use-taxonomy";
+import type { TaxonomyOptions } from "./shared/use-taxonomy";
 
-export { COLUMN_LABELS, columnsFor };
+export { columnsFor };
 
 // Data Table(v2 A1): 컬럼 표시·순서와 행 선택은 TanStack Table이 다루고, 검색·정렬·필터·페이지는 서버가 처리한다.
 const features = tableFeatures({
@@ -56,12 +64,13 @@ const features = tableFeatures({
 	rowSelectionFeature,
 });
 
-/** 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다. */
+/**
+ * 기본 열 너비(px). 제목은 정하지 않으면 남는 폭을 채운다. 끌어서 바꾸면 그 값을 저장한다.
+ * 분류 필드 컬럼은 여러 개(태그 등)면 칩이 들어갈 만큼, 하나(카테고리 등)면 이름 하나만큼이다.
+ */
 const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
 	status: 132,
 	locale: 124,
-	category: 112,
-	tags: 200,
 	updatedAt: 132,
 	publishedAt: 132,
 	createdAt: 132,
@@ -69,6 +78,16 @@ const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
 	folder: 140,
 };
 const DEFAULT_TITLE_SIZE = 320;
+const MANY_RELATION_SIZE = 200;
+const SINGLE_RELATION_SIZE = 112;
+
+function defaultColumnSize(collection: string, column: AdminListColumn): number {
+	const size = DEFAULT_COLUMN_SIZE[column];
+	if (size !== undefined) return size;
+	const config = columnConfig(collection, column);
+	if (config.filter.kind !== "relation") return DEFAULT_TITLE_SIZE;
+	return config.many ? MANY_RELATION_SIZE : SINGLE_RELATION_SIZE;
+}
 const MIN_COLUMN_SIZE = 72;
 const MAX_COLUMN_SIZE = 960;
 const helper = createColumnHelper<typeof features, ListEntriesItem>();
@@ -85,9 +104,13 @@ const formatDate = (value: Date | string | null) => {
 
 /**
  * 폭이 모자랄 때 먼저 숨기는 컬럼과 그 순서. 사용자가 켠 컬럼이라도 제목이 최소 너비를 못 받으면 이 순서로 숨긴다.
- * 제목·상태·카테고리·수정일은 숨기지 않는다.
+ * 여러 개 분류 필드(태그 등) 컬럼은 맨 뒤에 숨긴다. 제목·상태·하나뿐인 분류 필드(카테고리 등)·수정일은 숨기지 않는다.
  */
-const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "locale", "tags"] as const;
+const HIDE_ORDER_WHEN_NARROW = ["folder", "slug", "createdAt", "publishedAt", "locale"] as const;
+const hideOrderWhenNarrow = (collection: string, available: readonly AdminListColumn[]) => [
+	...HIDE_ORDER_WHEN_NARROW,
+	...available.filter((column) => columnConfig(collection, column).many),
+];
 const TITLE_MIN_WIDTH = 240;
 
 /**
@@ -271,7 +294,7 @@ interface TableProps {
 	/** 폴더 탐색 모드에서 목록 위에 보여 줄 하위 폴더와 상위 폴더 이동. */
 	explorer: { folders: Folder[]; parent: string | null } | null;
 	state: ListState;
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
+	options: TaxonomyOptions;
 	onStateChange: (patch: Partial<ListState>) => void;
 	columnSettings?: AdminColumnSettings;
 	onColumnSettingsChange: (settings: AdminColumnSettings) => void;
@@ -332,15 +355,12 @@ export function AdminEntriesTable({
 	const isTrash = mode === "trash";
 	const isRecord = isRecordCollection(collection);
 	const { available, defaults } = columnsFor(collection);
-	const savedOrder = (columnSettings?.order ?? []).filter((column): column is AdminListColumn =>
-		available.includes(column as AdminListColumn),
-	);
+	// 예전 설정은 분류 필드 컬럼을 짧은 이름(`category`·`tags`)으로 저장했다. 지금 컬럼 이름으로 맞춰 읽는다.
+	const savedOrder = (columnSettings?.order ?? []).flatMap((column) => normalizeColumnId(column, available) ?? []);
+	const savedVisibility = normalizeColumnRecord(columnSettings?.visibility, available);
 	const order = [...new Set([...savedOrder, ...defaults, ...available])];
 	const visibility: ColumnVisibilityState = Object.fromEntries(
-		available.map((column) => [
-			column,
-			column === "title" || (columnSettings?.visibility?.[column] ?? defaults.includes(column)),
-		]),
+		available.map((column) => [column, column === "title" || (savedVisibility?.[column] ?? defaults.includes(column))]),
 	);
 	const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
 	/** `상위 / 하위`처럼 최상위부터의 폴더 경로. 폴더 밖 항목은 `—`. */
@@ -411,13 +431,6 @@ export function AdminEntriesTable({
 							{item.translationGroupId !== item.id && <span className="ml-1">번역</span>}
 						</span>
 					);
-				case "category":
-					return item.relations.categoryId?.[0]?.title ?? <span className="text-muted-foreground">—</span>;
-				case "tags": {
-					const tags = (item.relations.tagIds ?? []).flatMap(({ id, title }) => (title ? [{ id, title }] : []));
-					if (!tags.length) return <span className="text-muted-foreground">—</span>;
-					return <FittingTags tags={tags} />;
-				}
 				case "updatedAt":
 				case "createdAt":
 				case "publishedAt":
@@ -428,6 +441,12 @@ export function AdminEntriesTable({
 					return <span className="font-mono text-muted-foreground text-xs">{item.slug || "—"}</span>;
 				case "folder":
 					return <span className="text-muted-foreground text-xs">{folderName(item.folderId)}</span>;
+				default: {
+					// 분류 필드 컬럼: 여러 개면 칩, 하나면 이름이다.
+					const values = (item.relations[column] ?? []).flatMap(({ id, title }) => (title ? [{ id, title }] : []));
+					if (!values.length) return <span className="text-muted-foreground">—</span>;
+					return columnConfig(collection, column).many ? <FittingTags tags={values} /> : values[0]?.title;
+				}
 			}
 		};
 
@@ -456,7 +475,7 @@ export function AdminEntriesTable({
 				helper.display({
 					id: column,
 					enableHiding: column !== "title",
-					size: DEFAULT_COLUMN_SIZE[column] ?? DEFAULT_TITLE_SIZE,
+					size: defaultColumnSize(collection, column),
 					minSize: MIN_COLUMN_SIZE,
 					maxSize: MAX_COLUMN_SIZE,
 					header: () => (
@@ -520,7 +539,11 @@ export function AdminEntriesTable({
 	const columnOrder: ColumnOrderState = ["select", ...order, "actions"];
 
 	// 끄는 동안은 로컬 상태로 바로 반영하고, 멈추면 목록 설정에 저장한다.
-	const savedSizes = columnSettings?.sizes;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `availableKey`가 `available`의 내용을 대신한다
+	const savedSizes = useMemo(
+		() => normalizeColumnRecord(columnSettings?.sizes, available),
+		[columnSettings?.sizes, availableKey],
+	);
 	const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(savedSizes ?? {});
 	useEffect(() => setColumnSizing(savedSizes ?? {}), [savedSizes]);
 	const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -558,7 +581,7 @@ export function AdminEntriesTable({
 	// 좁을 때 숨길 컬럼은 기본 너비와 제목 최소 너비로만 정한다. 사용자가 넓힌 너비는 숨김을 부르지 않고 가로 스크롤이 된다
 	// (끄는 도중 다른 컬럼이 사라져 손잡이가 튀지 않도록).
 	const defaultSizeOf = (id: string) =>
-		id === "select" ? 44 : id === "actions" ? 52 : (DEFAULT_COLUMN_SIZE[id] ?? DEFAULT_TITLE_SIZE);
+		id === "select" ? 44 : id === "actions" ? 52 : defaultColumnSize(collection, id);
 	const visibleIds = columnOrder.filter((id) => visibility[id] !== false);
 	const autoHidden = new Set<string>();
 	const naturalWidth = () =>
@@ -566,7 +589,7 @@ export function AdminEntriesTable({
 			.filter((id) => !autoHidden.has(id))
 			.reduce((sum, id) => sum + (id === "title" ? TITLE_MIN_WIDTH : defaultSizeOf(id)), 0);
 	if (containerWidth > 0) {
-		for (const id of HIDE_ORDER_WHEN_NARROW) {
+		for (const id of hideOrderWhenNarrow(collection, available)) {
 			if (naturalWidth() <= containerWidth) break;
 			if (visibleIds.includes(id)) autoHidden.add(id);
 		}
@@ -682,7 +705,7 @@ export function AdminEntriesTable({
 								{group.headers
 									.filter((header) => isShown(header.column.id))
 									.map((header) => {
-										const sortField = COLUMN_CONFIG[header.column.id as AdminListColumn]?.sortField;
+										const sortField = columnConfig(collection, header.column.id).sortField;
 										const active = sortField !== undefined && sortField === state.sortField;
 										return (
 											<Fragment key={header.id}>
@@ -698,7 +721,7 @@ export function AdminEntriesTable({
 													{header.isPlaceholder ? null : <table.FlexRender header={header} />}
 													{header.column.getCanResize() && (
 														<ColumnResizeHandle
-															label={COLUMN_LABELS[header.column.id as AdminListColumn] ?? header.column.id}
+															label={columnLabel(collection, header.column.id)}
 															width={header.getSize()}
 															resizing={header.column.getIsResizing()}
 															onStart={(event) => {
@@ -868,14 +891,14 @@ export function AdminEntriesTable({
 												disabled={column === "title"}
 												onCheckedChange={(checked) => table.getColumn(column)?.toggleVisibility(checked === true)}
 											/>
-											{COLUMN_LABELS[column]}
+											{columnLabel(collection, column)}
 										</Label>
 										<span className="flex gap-1">
 											<Button
 												type="button"
 												size="icon-xs"
 												variant="outline"
-												aria-label={`${COLUMN_LABELS[column]} 컬럼 위로`}
+												aria-label={`${columnLabel(collection, column)} 컬럼 위로`}
 												disabled={index === 0}
 												onClick={() => moveColumn(column, -1)}
 											>
@@ -885,7 +908,7 @@ export function AdminEntriesTable({
 												type="button"
 												size="icon-xs"
 												variant="outline"
-												aria-label={`${COLUMN_LABELS[column]} 컬럼 아래로`}
+												aria-label={`${columnLabel(collection, column)} 컬럼 아래로`}
 												disabled={index === order.length - 1}
 												onClick={() => moveColumn(column, 1)}
 											>

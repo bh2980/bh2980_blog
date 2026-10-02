@@ -6,17 +6,12 @@ import { SITE_NAME } from "@bh2980/cms/core/links";
 import {
 	ChevronRight,
 	FileImage,
-	FileText,
 	Folder as FolderIcon,
 	FolderOpen,
 	Globe,
-	Layers,
 	LayoutTemplate,
-	NotebookPen,
 	Plus,
-	Shapes,
 	Sparkles,
-	Tag,
 	Trash2,
 } from "lucide-react";
 import type { Route } from "next";
@@ -47,18 +42,11 @@ import {
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
+import { CollectionIcon } from "./shared/collection-icon";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 
 export type AdminNavId = Collection | "media" | "templates" | "ai" | "trash";
-
-const COLLECTION_ICONS: Record<Collection, React.ReactNode> = {
-	post: <FileText />,
-	memo: <NotebookPen />,
-	category: <Shapes />,
-	tag: <Tag />,
-	collection: <Layers />,
-};
 
 /** 목록 화면에서만 쓰는 폴더 탐색(§3.3). */
 export interface FolderNavigation {
@@ -244,7 +232,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 								onClick={() => select("all")}
 								className={cn(dropTarget === "root" && "ring-2 ring-sidebar-ring")}
 							>
-								{COLLECTION_ICONS[nav.collection]}
+								<CollectionIcon collection={nav.collection} />
 								<span>{label}</span>
 							</SidebarMenuButton>
 						</ActionContextMenu>
@@ -329,7 +317,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 									`/admin?collection=${collection}`,
 									collection,
 									COLLECTION_DEFINITIONS[collection].label,
-									COLLECTION_ICONS[collection],
+									<CollectionIcon collection={collection} />,
 								),
 							)}
 						</SidebarMenu>

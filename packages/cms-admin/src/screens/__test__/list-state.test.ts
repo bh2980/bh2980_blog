@@ -4,7 +4,7 @@ import { isExplorerMode, listStateToApiQuery, listStateToSearchParams, parseList
 describe("관리자 목록 상태(§3.2)", () => {
 	it("round-trips filters through the URL", () => {
 		const url = new URLSearchParams(
-			"collection=memo&folder=f1&descendants=1&search=리액트&title=훅&status=published&status=draft&changes=1&tag=t1&tag=t2&updatedFrom=2026-01-01&sortField=publishedAt&sortDirection=asc&page=2&pageSize=50",
+			"collection=memo&folder=f1&descendants=1&search=리액트&title=훅&status=published&status=draft&changes=1&relation=tagIds:t1&relation=tagIds:t2&updatedFrom=2026-01-01&sortField=publishedAt&sortDirection=asc&page=2&pageSize=50",
 		);
 		const state = parseListState(url);
 		expect(state).toMatchObject({
@@ -15,7 +15,7 @@ describe("관리자 목록 상태(§3.2)", () => {
 			titleContains: "훅",
 			statuses: ["published", "draft"],
 			hasChanges: true,
-			tagIds: ["t1", "t2"],
+			relations: { tagIds: ["t1", "t2"] },
 			updatedFrom: "2026-01-01",
 			sortField: "publishedAt",
 			sortDirection: "asc",
@@ -36,9 +36,21 @@ describe("관리자 목록 상태(§3.2)", () => {
 		expect(state).toMatchObject({ collection: "post", statuses: [], pageSize: 25, createdFrom: "" });
 	});
 
+	it("keeps only taxonomy fields of the collection in relation filters", () => {
+		// 메모에는 카테고리 필드가 없고, `title`은 분류 필드가 아니다. 모양이 틀린 값도 버린다.
+		const state = parseListState(
+			new URLSearchParams(
+				"collection=memo&relation=tagIds:t1&relation=categoryId:c1&relation=title:x&relation=tagIds:&relation=t9",
+			),
+		);
+		expect(state.relations).toEqual({ tagIds: ["t1"] });
+	});
+
 	it("builds the API query with OR-able repeats and Seoul day boundaries", () => {
 		const state = parseListState(
-			new URLSearchParams("collection=post&tag=t1&tag=t2&category=c1&publishedFrom=2026-03-01&publishedTo=2026-03-01"),
+			new URLSearchParams(
+				"collection=post&relation=tagIds:t1&relation=tagIds:t2&relation=categoryId:c1&publishedFrom=2026-03-01&publishedTo=2026-03-01",
+			),
 		);
 		const query = listStateToApiQuery(state);
 		// 필터가 있으면 최상위에서도 모든 폴더를 가로질러 찾는다.

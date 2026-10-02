@@ -30,6 +30,11 @@ export interface SiteConfig {
 	readonly aliases?: readonly string[];
 	/** 관리자 화면에 보이는 사이트 이름(사이드바·검색 미리보기·창 제목). 없으면 `url`의 호스트 이름. */
 	readonly name?: string;
+	/**
+	 * 초안 미리보기 주소 앞부분(예: `/preview`). 편집 화면의 `미리보기`가 이 뒤에 공개 경로(컬렉션 `path`)를 붙여 연다.
+	 * 기본 언어가 아니면 `?locale=`을 붙인다. 없으면 미리보기 단추가 없다.
+	 */
+	readonly previewPath?: string;
 }
 
 export interface SeedTemplate {

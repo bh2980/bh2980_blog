@@ -47,7 +47,7 @@ const context = { params: Promise.resolve({ id: entryId }) };
 
 beforeEach(() => {
 	mocks.verifyAdmin.mockReset();
-	mocks.verifyAdmin.mockResolvedValue({ userId: "1", githubId: "1", isAdmin: true });
+	mocks.verifyAdmin.mockResolvedValue({ userId: "1", accountId: "1", isAdmin: true });
 	mocks.createSchedule.mockReset();
 	mocks.cancelSchedule.mockReset();
 });

@@ -75,7 +75,7 @@ const postReq = (body: unknown) =>
 
 describe("M4-BE-1a Bulk route contract", () => {
 	beforeEach(() => {
-		mockVerifyAdmin.mockResolvedValue({ userId: "u", githubId: "g", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 	});
 
 	it("returns per-item results with partial success", async () => {

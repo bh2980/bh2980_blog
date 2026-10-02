@@ -56,6 +56,7 @@ const seo = {
 
 export const post = defineCollection({
 	label: "게시글",
+	icon: "file-text",
 	workflow: "publish",
 	path: "/posts/:slug",
 	fields: {
@@ -110,6 +111,7 @@ export const post = defineCollection({
 
 export const memo = defineCollection({
 	label: "메모",
+	icon: "notebook-pen",
 	workflow: "publish",
 	path: "/memos/:slug",
 	fields: {
@@ -143,6 +145,7 @@ const taxonomyFields = {
 
 export const category = defineCollection({
 	label: "카테고리",
+	icon: "shapes",
 	workflow: "record",
 	fields: taxonomyFields,
 	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
@@ -150,6 +153,7 @@ export const category = defineCollection({
 
 export const tag = defineCollection({
 	label: "태그",
+	icon: "tag",
 	workflow: "record",
 	fields: taxonomyFields,
 	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
@@ -157,6 +161,7 @@ export const tag = defineCollection({
 
 export const series = defineCollection({
 	label: "모음집",
+	icon: "layers",
 	workflow: "record",
 	fields: {
 		...taxonomyFields,
@@ -206,7 +211,7 @@ export default defineConfig({
 	locales: LOCALES.map((code) => ({ code, name: LOCALE_INFO[code].nativeName, label: LOCALE_INFO[code].adminName })),
 	defaultLocale: DEFAULT_LOCALE,
 	// 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 서버에서만 읽힌다(브라우저에서는 비어 있다).
-	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev" },
+	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
 	ai: {
 		siteDescription: "개인 기술 블로그",

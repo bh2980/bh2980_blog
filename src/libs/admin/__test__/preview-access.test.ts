@@ -23,7 +23,7 @@ beforeEach(() => {
 
 describe("M7-FE-1 미리보기 접근 판정", () => {
 	it("관리자 세션이 있으면 허용한다", async () => {
-		mockVerifyAdmin.mockResolvedValue({ userId: "1", githubId: "1", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "1", accountId: "1", isAdmin: true });
 
 		await expect(checkPreviewAccess()).resolves.toEqual({ granted: true });
 		await expect(canPreview()).resolves.toBe(true);

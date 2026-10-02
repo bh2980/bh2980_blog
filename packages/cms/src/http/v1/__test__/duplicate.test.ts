@@ -51,7 +51,7 @@ const postReq = (url: string, origin = "http://localhost") =>
 
 describe("M5-BE-1 Duplicate API Route", () => {
 	beforeEach(() => {
-		mockVerifyAdmin.mockResolvedValue({ userId: "u", githubId: "g", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 	});
 
 	it("duplicates entry with 201 Created", async () => {

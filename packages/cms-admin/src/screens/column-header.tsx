@@ -4,6 +4,7 @@ import { LOCALES, localeLabel } from "@bh2980/cms/core/locales";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, ListFilter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";
+import { josa } from "../lib/utils/josa";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
@@ -11,11 +12,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
-import { type AdminListColumn, COLUMN_CONFIG, type ColumnFilter, isColumnFiltered } from "./list-columns";
+import { type AdminListColumn, type ColumnFilter, columnConfig, isColumnFiltered } from "./list-columns";
 import { LIST_STATUSES, type ListState } from "./list-state";
 import { DateRangeCalendar } from "./shared/date-range-picker";
 import { STATUS_LABELS } from "./shared/entry-status";
-import type { TaxonomyOption } from "./shared/use-taxonomy";
+import type { TaxonomyOption, TaxonomyOptions } from "./shared/use-taxonomy";
 
 function TextFilter({
 	value,
@@ -116,8 +117,8 @@ function TaxonomyFilter({
 	onChange,
 }: {
 	label: string;
-	options: TaxonomyOption[];
-	selected: string[];
+	options: readonly TaxonomyOption[];
+	selected: readonly string[];
 	onChange: (ids: string[]) => void;
 }) {
 	const toggle = (id: string) =>
@@ -127,7 +128,7 @@ function TaxonomyFilter({
 			<Command className="rounded-md border">
 				<CommandInput placeholder={`${label} 검색`} aria-label={`${label} 검색`} />
 				<CommandList className="max-h-56">
-					<CommandEmpty>일치하는 {label}가 없습니다.</CommandEmpty>
+					<CommandEmpty>일치하는 {josa(label, "이", "가")} 없습니다.</CommandEmpty>
 					<CommandGroup>
 						{options.map((option) => (
 							<CommandItem key={option.id} value={`${option.title} ${option.id}`} onSelect={() => toggle(option.id)}>
@@ -177,15 +178,23 @@ function DateFilter({
 	);
 }
 
+/** 분류 필터 하나를 바꾼 `relations`. 빈 목록은 지운다. */
+export function setRelation(state: ListState, field: string, ids: readonly string[]): Partial<ListState> {
+	const { [field]: _removed, ...rest } = state.relations;
+	return { relations: ids.length > 0 ? { ...rest, [field]: ids } : rest };
+}
+
+const clearRelation = (state: ListState, field: string) => setRelation(state, field, []);
+
 /** 이 필터를 지우는 변경. 칩의 `✕`와 팝업의 `필터 지우기`가 쓴다. */
-export function clearPatchFor(filter: ColumnFilter): Partial<ListState> {
+export function clearPatchFor(filter: ColumnFilter, state: ListState): Partial<ListState> {
 	switch (filter.kind) {
 		case "text":
 			return { [filter.key]: "" };
 		case "status":
 			return { statuses: [], hasChanges: false, scheduled: false };
-		case "taxonomy":
-			return { [filter.key]: [] };
+		case "relation":
+			return clearRelation(state, filter.field);
 		case "locale":
 			return { locales: [] };
 		case "date":
@@ -209,10 +218,10 @@ export function ColumnHeader({
 	column: AdminListColumn;
 	filter: ColumnFilter;
 	state: ListState;
-	options: { tags: TaxonomyOption[]; categories: TaxonomyOption[] };
+	options: TaxonomyOptions;
 	onChange: (patch: Partial<ListState>) => void;
 }) {
-	const config = COLUMN_CONFIG[column];
+	const config = columnConfig(state.collection, column);
 	const sortField = config.sortField;
 	const filtered = isColumnFiltered(state, filter);
 	const sorted = sortField && state.sortField === sortField ? state.sortDirection : null;
@@ -273,12 +282,12 @@ export function ColumnHeader({
 				)}
 				{filter.kind === "status" && <StatusFilter state={state} onChange={onChange} />}
 				{filter.kind === "locale" && <LocaleFilter state={state} onChange={onChange} />}
-				{filter.kind === "taxonomy" && (
+				{filter.kind === "relation" && (
 					<TaxonomyFilter
 						label={config.label}
-						options={filter.source === "tag" ? options.tags : options.categories}
-						selected={state[filter.key]}
-						onChange={(ids) => onChange({ [filter.key]: ids })}
+						options={options[filter.field] ?? []}
+						selected={state.relations[filter.field] ?? []}
+						onChange={(ids) => onChange(setRelation(state, filter.field, ids))}
 					/>
 				)}
 				{filter.kind === "date" && (
@@ -295,7 +304,7 @@ export function ColumnHeader({
 						variant="outline"
 						size="sm"
 						className="w-full"
-						onClick={() => onChange(clearPatchFor(filter))}
+						onClick={() => onChange(clearPatchFor(filter, state))}
 					>
 						{config.label} 필터 지우기
 					</Button>

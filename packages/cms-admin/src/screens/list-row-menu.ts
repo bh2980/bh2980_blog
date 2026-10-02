@@ -1,8 +1,10 @@
 import type { Folder, ListEntriesItem } from "@bh2980/cms/adapters/postgres/content-store";
 import type { BulkOp } from "@bh2980/cms/core/api";
+import { taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import { josa } from "../lib/utils/josa";
 import type { BulkSelection, runBulk } from "./entries/bulk-bar";
 import type { MenuAction } from "./shared/action-menu";
-import type { TaxonomyOption } from "./shared/use-taxonomy";
+import type { TaxonomyOptions } from "./shared/use-taxonomy";
 
 export type BulkParams = NonNullable<Parameters<typeof runBulk>[2]>;
 
@@ -27,10 +29,12 @@ export interface RowMenuContext {
 	mode: "list" | "trash";
 	/** 태그·카테고리·모음집처럼 작은 폼으로 여는 컬렉션. */
 	isRecord: boolean;
-	/** 태그를 붙이고 보관할 수 있는 컬렉션(글·메모). */
+	/** 보관할 수 있는 컬렉션(글·메모). */
 	isContent: boolean;
 	folders: readonly Folder[];
-	tags: readonly TaxonomyOption[];
+	collection: string;
+	/** 분류 필드 이름 → 선택지. 여러 개 분류 필드(태그 등)마다 "○○ 추가" 하위 메뉴를 만든다. */
+	options: TaxonomyOptions;
 }
 
 /** 메뉴 항목이 부르는 작업. 대상은 항상 `actionTargets`로 고른 줄이다. */
@@ -80,18 +84,29 @@ export function rowMenuActions(
 					{ kind: "item", label: "복제", onSelect: () => handlers.duplicate(single) },
 				];
 	const allArchived = group.every((row) => row.status === "archived");
+	const addActions: MenuAction[] = taxonomyFieldsOf(context.collection).flatMap((stored): MenuAction[] => {
+		if (stored.field.kind !== "relation" || !stored.field.many) return [];
+		const label = stored.field.label;
+		return [
+			{
+				kind: "sub",
+				label: `${label} 추가`,
+				emptyLabel: `${josa(label, "이", "가")} 없습니다`,
+				items: (context.options[stored.name] ?? []).map((option) => ({
+					kind: "item" as const,
+					label: option.title,
+					onSelect: () =>
+						handlers.bulk("relation.add", `${josa(label, "을", "를")} 추가`, targets, {
+							field: stored.name,
+							ids: [option.id],
+						}),
+				})),
+			},
+		];
+	});
 	const contentActions: MenuAction[] = context.isContent
 		? [
-				{
-					kind: "sub",
-					label: "태그 추가",
-					emptyLabel: "태그가 없습니다",
-					items: context.tags.map((tag) => ({
-						kind: "item" as const,
-						label: tag.title,
-						onSelect: () => handlers.bulk("relation.add", "태그를 추가", targets, { field: "tagIds", ids: [tag.id] }),
-					})),
-				},
+				...addActions,
 				{ kind: "separator" },
 				allArchived
 					? { kind: "item", label: "보관 해제", onSelect: () => handlers.bulk("unarchive", "보관 해제", targets) }

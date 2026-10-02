@@ -14,7 +14,7 @@ const ISSUE_LABELS: Record<string, string> = {
 	unresolved_media: "이미지 미디어를 찾을 수 없습니다.",
 	unpublished_reference: "참조 항목이 공개 상태가 아닙니다.",
 	invalid_reference_collection: "참조 항목의 종류가 올바르지 않습니다.",
-	invalid_item_collection: "모음집에는 게시글만 추가할 수 있습니다.",
+	invalid_item_collection: "이 필드에 넣을 수 없는 종류의 항목이 있습니다.",
 	unresolved_internal_link: "해결할 수 없는 내부 링크가 있습니다.",
 	unpublished_internal_link: "아직 공개되지 않은 항목을 가리키는 내부 링크가 있습니다.",
 	mdx_error: "MDX 본문 구문을 확인하세요.",
@@ -31,7 +31,7 @@ const ISSUE_LABELS: Record<string, string> = {
 	invalid_reference_id: "미디어 ID 형식이 올바르지 않습니다.",
 	dynamic_reference_id: "미디어 ID는 문자열이어야 합니다.",
 	missing_field: "필수 항목을 입력하세요.",
-	source_not_published: "원문을 먼저 발행하세요. 번역본의 카테고리·태그·발행일은 원문 공개본에서 옵니다.",
+	source_not_published: "원문을 먼저 발행하세요. 번역본의 분류·발행일 같은 공통 값은 원문 공개본에서 옵니다.",
 	untranslated_text: "번역하지 않은 글이 남아 있습니다.",
 };
 

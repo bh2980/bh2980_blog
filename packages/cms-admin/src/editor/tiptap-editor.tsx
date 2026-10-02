@@ -1,6 +1,7 @@
 "use client";
 
 import { FILE_ACCEPT } from "@bh2980/cms/core/api";
+import { LINKABLE_COLLECTIONS } from "@bh2980/cms/core/links";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -254,7 +255,7 @@ function ToolbarDropdown({
 }
 
 async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
-	const search = async (collection: "post" | "memo") => {
+	const search = async (collection: string) => {
 		const params = new URLSearchParams({ collection, pageSize: "25" });
 		if (query) params.set("search", query);
 		for (const status of ["draft", "published"]) params.append("status", status);
@@ -271,8 +272,9 @@ async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 			status: item.status,
 		}));
 	};
-	const [posts, memos] = await Promise.all([search("post"), search("memo")]);
-	return [...posts, ...memos].slice(0, 20);
+	// 공개 경로가 있는 컬렉션(본문 링크로 가리킬 수 있는 것)만 찾는다.
+	const results = await Promise.all(LINKABLE_COLLECTIONS.map(search));
+	return results.flat().slice(0, 20);
 }
 
 /** 핸들 폭(px)과 블록과의 간격. BlockHandleOverlay가 `left - 32`에 24px 버튼을 둔다. */

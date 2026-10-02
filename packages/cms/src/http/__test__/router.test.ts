@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CMS_ROUTE_PATTERNS, createCmsRouteHandler, matchRoute } from "../router";
 
 vi.mock("../../adapters/auth", () => ({
-	authGateway: { verifyAdmin: async () => ({ userId: "u", githubId: "g", isAdmin: true }) },
+	authGateway: { verifyAdmin: async () => ({ userId: "u", accountId: "g", isAdmin: true }) },
 	AuthError: class AuthError extends Error {},
 }));
 

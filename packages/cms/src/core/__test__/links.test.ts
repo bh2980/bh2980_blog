@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentPath, LINKABLE_COLLECTIONS, parseContentPath, parseInternalLink } from "../links";
+import { contentPath, LINKABLE_COLLECTIONS, parseContentPath, parseInternalLink, previewHref } from "../links";
 
 // 예시 설정(`test/cms.config.ts`): 게시글 `/posts/:slug`, 메모 `/memos/:slug`, 사이트 `https://bh2980.dev`(+www).
 describe("본문 내부 링크 규칙", () => {
@@ -26,5 +26,14 @@ describe("본문 내부 링크 규칙", () => {
 		expect(parseInternalLink("https://example.com/posts/a")).toBeNull();
 		expect(parseInternalLink("mailto:me@bh2980.dev")).toBeNull();
 		expect(parseInternalLink("posts/a")).toBeNull();
+	});
+});
+
+describe("초안 미리보기 주소", () => {
+	it("미리보기 경로 아래에 공개 경로를 붙이고, 기본 언어가 아니면 언어를 넘긴다", () => {
+		expect(previewHref("post", "nextjs-guide", "ko")).toBe("/preview/posts/nextjs-guide");
+		expect(previewHref("memo", "한글 메모", "en")).toBe(`/preview/memos/${encodeURIComponent("한글 메모")}?locale=en`);
+		expect(previewHref("tag", "react")).toBeNull();
+		expect(previewHref("post", null)).toBeNull();
 	});
 });

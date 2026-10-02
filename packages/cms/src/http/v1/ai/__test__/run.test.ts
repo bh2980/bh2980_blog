@@ -39,7 +39,7 @@ const run = (body: unknown) =>
 
 describe("AI 실행 API", () => {
 	beforeEach(() => {
-		mockVerifyAdmin.mockResolvedValue({ userId: "u", githubId: "g", isAdmin: true });
+		mockVerifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 		vi.stubEnv("CMS_AI_FAKE", "1");
 		overrides.rows = [];
 	});

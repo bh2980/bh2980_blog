@@ -32,6 +32,11 @@ export interface CollectionSchema<
 	 * 편집기가 링크를 만들 때 쓴다. 없으면 이 컬렉션은 본문 링크로 가리킬 수 없다.
 	 */
 	readonly path?: string;
+	/**
+	 * 관리자 사이드바 아이콘 이름(lucide, 예: `file-text`·`notebook-pen`·`tag`·`shapes`·`layers`·`folder`·`image`).
+	 * 없거나 모르는 이름이면 저장 방식에 맞는 기본 아이콘이다.
+	 */
+	readonly icon?: string;
 	/** 속성 패널 배치. 적지 않은 필드는 마지막 묶음 뒤에 선언 순서대로 그린다. */
 	readonly layout?: readonly LayoutGroup[];
 	readonly list: {

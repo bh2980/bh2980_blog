@@ -28,7 +28,7 @@ const item = (id: string, fields: Partial<ListEntriesItem> = {}): ListEntriesIte
 	...fields,
 });
 
-const options = { tags: [{ id: "t1", title: "React", slug: "react" }], categories: [] };
+const options = { tagIds: [{ id: "t1", title: "React", slug: "react" }], categoryId: [] };
 
 function renderTable(overrides: Partial<ComponentProps<typeof AdminEntriesTable>> = {}) {
 	const props: ComponentProps<typeof AdminEntriesTable> = {
@@ -63,16 +63,16 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 			"title",
 			"status",
 			"locale",
-			"category",
-			"tags",
+			"categoryId",
+			"tagIds",
 			"updatedAt",
 			"publishedAt",
 		]);
-		expect(columnsFor("memo").defaults).toEqual(["title", "status", "locale", "tags", "updatedAt", "publishedAt"]);
+		expect(columnsFor("memo").defaults).toEqual(["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"]);
 		// 분류 항목은 언어별 문서가 없지만 이름이 있는 언어를 보인다.
 		expect(columnsFor("tag").defaults).toEqual(["title", "slug", "locale", "status", "updatedAt"]);
-		expect(columnsFor("memo").available).not.toContain("category");
-		expect(columnsFor("tag").available).not.toContain("tags");
+		expect(columnsFor("memo").available).not.toContain("categoryId");
+		expect(columnsFor("tag").available).not.toContain("tagIds");
 	});
 
 	it("states status in text, including unpublished changes and schedules", () => {
@@ -105,7 +105,9 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 	});
 
 	it("keeps filters on hidden columns visible as chips", () => {
-		const state = parseListState(new URLSearchParams("collection=post&slug=react&tag=t1&status=draft&changes=1"));
+		const state = parseListState(
+			new URLSearchParams("collection=post&slug=react&relation=tagIds:t1&status=draft&changes=1"),
+		);
 		const labels = filterChips(state, options).map((chip) => chip.label);
 		// 주소(slug) 컬럼은 기본으로 숨겨져 있어도 칩으로 남는다.
 		expect(labels).toEqual(["상태: 초안, 수정 중", "태그: React", '주소: "react"']);
@@ -135,11 +137,28 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 			expect(handle.getAttribute("aria-valuenow")).toBe("216");
 			act(() => vi.advanceTimersByTime(400));
 			expect(props.onColumnSettingsChange).toHaveBeenLastCalledWith(
-				expect.objectContaining({ sizes: { title: 320, tags: 216 } }),
+				expect.objectContaining({ sizes: { title: 320, tagIds: 216 } }),
 			);
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("reads saved column settings that use the old short names", () => {
+		renderTable({
+			columnSettings: {
+				order: ["tags", "title"],
+				visibility: { category: false, tags: true },
+				sizes: { tags: 240 },
+			},
+		});
+		expect(screen.queryByRole("columnheader", { name: /카테고리/ })).toBeNull();
+		const handle = screen.getByRole("separator", { name: "태그 열 너비 조절" });
+		expect(handle.getAttribute("aria-valuenow")).toBe("240");
+		const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+		expect(headers.findIndex((text) => text?.includes("태그"))).toBeLessThan(
+			headers.findIndex((text) => text?.includes("제목")),
+		);
 	});
 
 	it("selects rows through the Data Table checkboxes", () => {

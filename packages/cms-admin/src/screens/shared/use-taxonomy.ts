@@ -1,11 +1,18 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS } from "@bh2980/cms/core/collections";
-import { useCallback, useEffect, useState } from "react";
+import { COLLECTION_DEFINITIONS, isCollection, taxonomyFieldsOf } from "@bh2980/cms/core/collections";
+import { useQueries } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { cmsFetch } from "../admin-api";
 
-/** 이름만으로 만들 수 있는 record 컬렉션(§5.2). 관계 필드의 선택지와 바로 만들기(v2 B2)에 쓴다. */
-export type RecordCollection = "tag" | "category" | "collection";
+/** 이름만으로 만들 수 있는 record 컬렉션(§5.2) 이름. 관계 필드의 선택지와 바로 만들기(v2 B2)에 쓴다. */
+export type RecordCollection = string;
+
+/** 분류 필드 이름 → 그 필드가 가리키는 컬렉션의 선택지. */
+export type TaxonomyOptions = Readonly<Record<string, readonly TaxonomyOption[]>>;
+
+const labelOf = (collection: string) =>
+	isCollection(collection) ? COLLECTION_DEFINITIONS[collection].label : collection;
 
 export interface TaxonomyOption {
 	id: string;
@@ -49,7 +56,7 @@ export function useTaxonomy(collection: RecordCollection, enabled = true) {
 			setOptions(await loadAll(collection));
 			setError(null);
 		} catch {
-			setError(`${COLLECTION_DEFINITIONS[collection].label} 목록을 불러오지 못했습니다.`);
+			setError(`${labelOf(collection)} 목록을 불러오지 못했습니다.`);
 		}
 	}, [collection]);
 
@@ -72,4 +79,27 @@ export function useTaxonomy(collection: RecordCollection, enabled = true) {
 	);
 
 	return { options, error, reload, create };
+}
+
+/**
+ * 컬렉션의 분류 필드(태그·카테고리 등) 선택지를 필드 이름별로 읽는다. 목록 필터·일괄 작업·행 메뉴가 쓴다.
+ * 같은 컬렉션을 가리키는 필드는 한 번만 읽는다.
+ */
+export function useTaxonomyOptions(collection: string, enabled = true): TaxonomyOptions {
+	const fields = useMemo(() => taxonomyFieldsOf(collection), [collection]);
+	const targets = useMemo(() => [...new Set(fields.map((stored) => stored.to))], [fields]);
+	const combine = useCallback(
+		(results: { data?: TaxonomyOption[] }[]): TaxonomyOptions =>
+			Object.fromEntries(fields.map((stored) => [stored.name, results[targets.indexOf(stored.to)]?.data ?? []])),
+		[fields, targets],
+	);
+	return useQueries({
+		queries: targets.map((target) => ({
+			// 목록 캐시 아래에 두어 목록을 다시 받을 때 함께 새로 받는다.
+			queryKey: ["cms", "entries", "taxonomy", target],
+			queryFn: () => loadAll(target),
+			enabled,
+		})),
+		combine,
+	});
 }

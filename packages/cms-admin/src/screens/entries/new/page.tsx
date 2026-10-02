@@ -1,4 +1,4 @@
-import { isCollection } from "@bh2980/cms/core/collections";
+import { DEFAULT_COLLECTION, isCollection } from "@bh2980/cms/core/collections";
 import { isUuid } from "@bh2980/cms/core/ids";
 import { requireAdminPage } from "../../require-admin";
 import { EntryEditorShell } from "../entry-editor-shell";
@@ -14,7 +14,7 @@ export default async function NewEntryPage({ searchParams }: PageProps) {
 	return (
 		<EntryEditorShell
 			mode="new"
-			collection={isCollection(collection) ? collection : "post"}
+			collection={isCollection(collection) ? collection : DEFAULT_COLLECTION}
 			adminId={auth.userId}
 			folderId={isUuid(folder) ? folder : null}
 		/>

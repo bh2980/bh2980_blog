@@ -83,3 +83,12 @@ export function parseInternalLink(url: string): { collection: Collection; slug: 
 
 /** 관리자 화면에 보이는 사이트 이름(`site.name`, 없으면 `site.url`의 호스트 이름). 둘 다 없으면 빈 글자. */
 export const SITE_NAME = cmsConfig.site?.name ?? (siteUrl ? new URL(siteUrl).hostname : "");
+
+/** 초안 미리보기 주소. 미리보기 경로(`site.previewPath`)나 컬렉션 공개 경로가 없으면 `null`. */
+export function previewHref(collection: string, slug: string | null | undefined, locale?: string): string | null {
+	const prefix = cmsConfig.site?.previewPath;
+	const path = slug ? contentPath(collection, encodeURIComponent(slug)) : null;
+	if (!prefix || !path) return null;
+	const query = locale && locale !== cmsConfig.defaultLocale ? `?locale=${encodeURIComponent(locale)}` : "";
+	return `${prefix.replace(/\/$/, "")}${path}${query}`;
+}
