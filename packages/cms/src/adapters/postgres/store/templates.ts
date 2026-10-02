@@ -11,7 +11,7 @@ const mapTemplateError = (err: unknown) =>
 
 /**
  * §6.3 본문 템플릿. `새 글`에서 고르며, 바꿔도 이미 만든 글에는 영향이 없다.
- * 초기 템플릿(일반 게시글·알고리즘 풀이·Type Challenge 풀이)은 마이그레이션이 한 번 넣는다.
+ * 초기 템플릿은 사이트 설정(`seed.templates`)에서 마이그레이션이 한 번 넣는다.
  */
 export function createTemplateOps(ctx: StoreContext) {
 	const { pool, qSchema } = ctx;

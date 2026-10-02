@@ -12,6 +12,8 @@ export {
 	type CollectionsConfig,
 	defineConfig,
 	type LocaleConfig,
+	type SeedConfig,
+	type SeedTemplate,
 	type SiteConfig,
 } from "./config/define";
 export {

@@ -14,6 +14,8 @@ export default defineConfig(({ mode }) => ({
 					globals: true,
 					include: ["src/**/*.{test,spec}.{ts,tsx}"],
 					setupFiles: ["./src/test/setup-dom.ts"],
+					// 두 묶음을 동시에 돌리면 무거운 화면 테스트가 제한 시간에 걸린다. 블로그 묶음을 먼저 돌린다.
+					sequence: { groupOrder: 0 },
 				},
 			},
 			"packages/*",

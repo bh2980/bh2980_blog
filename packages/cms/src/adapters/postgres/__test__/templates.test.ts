@@ -55,7 +55,7 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 		expect(remaining.find((t) => t.id === tc.id)).toBeDefined();
 	});
 
-	it("M12 post seed preserves same-name user templates and never resurrects deletions", async () => {
+	it("seed preserves same-name user templates and never resurrects deletions", async () => {
 		const seeded = (await store.listTemplates()).find((template) => template.name === "일반 게시글");
 		if (!seeded) throw new Error("일반 게시글 템플릿이 없습니다.");
 
@@ -65,7 +65,8 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 			"사용자가 수정한 본문",
 			seeded.id,
 		]);
-		await pool.query(`DELETE FROM "${schemaName}".cms_migrations WHERE name = 'seed_m12_default_post_template'`);
+		// 시드 표시를 지워 다시 넣게 해도, 같은 이름의 사용자 템플릿을 덮어쓰지 않는다.
+		await pool.query(`DELETE FROM "${schemaName}".cms_migrations WHERE name = 'seed_initial_body_templates'`);
 		await migrateContentStore(pool, { schema: schemaName });
 
 		const preserved = (await store.listTemplates()).filter((template) => template.name === "일반 게시글");

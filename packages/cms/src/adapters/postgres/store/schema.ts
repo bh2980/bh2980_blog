@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { BUILTIN_AI_FEATURES } from "../../../ai/builtins";
+import { cmsConfig } from "../../../config/resolved";
 import { DEFAULT_LOCALE } from "../../../core/locales";
 import { validateSchemaName } from "./context";
 
@@ -236,23 +237,13 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		await pool.query(`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`, [marker]);
 	}
 
-	// One-time seed for initial default body templates (idempotent; won't resurrect deleted templates)
+	// 사이트 설정의 초기 본문 템플릿을 새 저장소에 한 번만 넣는다. 이미 넣은 저장소에는 나중에 더한 템플릿도
+	// 넣지 않고, 지운 템플릿을 되살리지 않는다.
 	const seedCheck = await pool.query(
 		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'seed_initial_body_templates'`,
 	);
 	if (seedCheck.rows.length === 0) {
-		const initialTemplates = [
-			{
-				id: "00000000-0000-4000-8000-000000000001",
-				name: "알고리즘 풀이",
-				mdx: "## 문제\n\n\n## 풀이\n\n```ts\n\n```\n",
-			},
-			{
-				id: "00000000-0000-4000-8000-000000000002",
-				name: "Type Challenge 풀이",
-				mdx: "### 질문\n\n\n```ts\n\n```\n\n### 풀이\n\n",
-			},
-		];
+		const initialTemplates = cmsConfig.seed?.templates ?? [];
 		for (const t of initialTemplates) {
 			await pool.query(
 				`INSERT INTO "${qSchema}".body_templates (id, name, mdx, version, created_at, updated_at)
@@ -263,26 +254,6 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		}
 		await pool.query(
 			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('seed_initial_body_templates') ON CONFLICT DO NOTHING`,
-		);
-	}
-
-	// Add the general post template once; conflict handling never overwrites user templates.
-	const postTemplateSeedCheck = await pool.query(
-		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'seed_m12_default_post_template'`,
-	);
-	if (postTemplateSeedCheck.rows.length === 0) {
-		await pool.query(
-			`INSERT INTO "${qSchema}".body_templates (id, name, mdx, version, created_at, updated_at)
-			 VALUES ($1, $2, $3, 1, NOW(), NOW())
-			 ON CONFLICT DO NOTHING`,
-			[
-				"00000000-0000-4000-8000-000000000003",
-				"일반 게시글",
-				"## 개요\n\n글의 핵심을 소개합니다.\n\n## 본문\n\n\n## 정리\n\n마무리 내용을 작성합니다.\n",
-			],
-		);
-		await pool.query(
-			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('seed_m12_default_post_template') ON CONFLICT DO NOTHING`,
 		);
 	}
 }

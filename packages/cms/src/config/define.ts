@@ -29,6 +29,21 @@ export interface SiteConfig {
 	readonly aliases?: readonly string[];
 }
 
+export interface SeedTemplate {
+	/** 고정 ID(UUID). 마이그레이션을 여러 번 돌려도 같은 템플릿이 하나만 생긴다. */
+	readonly id: string;
+	readonly name: string;
+	readonly mdx: string;
+}
+
+export interface SeedConfig {
+	/**
+	 * 새 저장소의 첫 마이그레이션 때 한 번만 넣는 본문 템플릿. 이미 넣은 저장소에는 나중에 더한 템플릿도 넣지 않고,
+	 * 지운 템플릿을 되살리지 않는다.
+	 */
+	readonly templates?: readonly SeedTemplate[];
+}
+
 export interface CmsConfig<Collections extends CollectionsConfig = CollectionsConfig, Locale extends string = string> {
 	/** 컬렉션 이름 → 정의. 이름은 저장 값(`entries.collection`)이므로 운영 중에 바꾸지 않는다. */
 	readonly collections: Collections;
@@ -37,6 +52,8 @@ export interface CmsConfig<Collections extends CollectionsConfig = CollectionsCo
 	/** 기본 언어. 공개 주소에 언어 접두사를 붙이지 않는다. */
 	readonly defaultLocale: NoInfer<Locale>;
 	readonly site?: SiteConfig;
+	/** 새 저장소에 처음 넣을 데이터. */
+	readonly seed?: SeedConfig;
 }
 
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
@@ -72,6 +89,17 @@ function validate(config: CmsConfig): void {
 		if (url?.protocol !== "http:" && url?.protocol !== "https:") {
 			throw new Error(`cms.config: site.url "${config.site.url}" is not an http(s) URL`);
 		}
+	}
+
+	const templateIds = new Set<string>();
+	for (const template of config.seed?.templates ?? []) {
+		if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(template.id)) {
+			throw new Error(`cms.config: seed template "${template.name}" needs a UUID id`);
+		}
+		if (templateIds.has(template.id.toLowerCase())) {
+			throw new Error(`cms.config: seed template id "${template.id}" is duplicated`);
+		}
+		templateIds.add(template.id.toLowerCase());
 	}
 
 	const paths = new Map<string, string>();

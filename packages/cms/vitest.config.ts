@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => ({
 		environment: "node",
 		globals: true,
 		include: ["src/**/*.{test,spec}.{ts,tsx}"],
+		// 저장소 루트에서 블로그와 함께 돌 때는 블로그 묶음 뒤에 돈다(`vitest.config.ts`).
+		sequence: { groupOrder: 1 },
 		testTimeout: 60000,
 		hookTimeout: 60000,
 		env: {

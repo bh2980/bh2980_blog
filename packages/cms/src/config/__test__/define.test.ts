@@ -72,4 +72,14 @@ describe("defineConfig", () => {
 			defineConfig({ collections: { topic }, locales, defaultLocale: "en", site: { url: "example.com" } }),
 		).toThrow(/site.url/);
 	});
+
+	it("checks seed template ids", () => {
+		const template = { id: "00000000-0000-4000-8000-000000000001", name: "Note", mdx: "" };
+		const base = { collections: { topic }, locales, defaultLocale: "en" } as const;
+		expect(() => defineConfig({ ...base, seed: { templates: [template] } })).not.toThrow();
+		expect(() => defineConfig({ ...base, seed: { templates: [{ ...template, id: "1" }] } })).toThrow(/UUID/);
+		expect(() => defineConfig({ ...base, seed: { templates: [template, { ...template, name: "Other" }] } })).toThrow(
+			/duplicated/,
+		);
+	});
 });

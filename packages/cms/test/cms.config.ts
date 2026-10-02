@@ -206,4 +206,23 @@ export default defineConfig({
 	],
 	defaultLocale: "ko",
 	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"] },
+	seed: {
+		templates: [
+			{
+				id: "00000000-0000-4000-8000-000000000001",
+				name: "알고리즘 풀이",
+				mdx: "## 문제\n\n\n## 풀이\n\n```ts\n\n```\n",
+			},
+			{
+				id: "00000000-0000-4000-8000-000000000002",
+				name: "Type Challenge 풀이",
+				mdx: "### 질문\n\n\n```ts\n\n```\n\n### 풀이\n\n",
+			},
+			{
+				id: "00000000-0000-4000-8000-000000000003",
+				name: "일반 게시글",
+				mdx: "## 개요\n\n글의 핵심을 소개합니다.\n\n## 본문\n\n\n## 정리\n\n마무리 내용을 작성합니다.\n",
+			},
+		],
+	},
 });

@@ -57,7 +57,7 @@
 | AI 판단 선택지가 태그·카테고리로 고정(`loadRecords("tag"/"category")`). `typecheck:other-site`가 실패하는 유일한 곳 | `ai/run.ts` | M2 |
 | 기본 AI 기능 11개가 필드 이름·컬렉션 이름·"기술 블로그" 지시문을 가짐 | `ai/builtins.ts`, `ai/run.ts`(`SYSTEM_FRAME`) | M2 |
 | 마이그레이션 SQL에 AI 기능 이름표(`summary`·`mediaAlt` 등), 기본 AI 기능 시드 | `adapters/postgres/store/schema.ts` | M2 |
-| 초기 본문 템플릿 시드("알고리즘 풀이", "Type Challenge 풀이") | 같은 파일 | M1 |
+| ~~초기 본문 템플릿 시드("알고리즘 풀이", "Type Challenge 풀이", "일반 게시글")~~ | 같은 파일 | M1 완료 |
 | 본문 블록 목록이 내장 고정. 사이트가 블록을 더하거나 뺄 수 없음 | `blocks/definitions.ts` | M6 |
 | 공개 진입점이 `./*`로 내부 파일 전부(테스트 포함)를 내보냄 | `package.json` `exports` | M1 → M7 |
 | 저장소 계약이 Postgres 구현 그대로(`ContentStore`) | `adapters/postgres` | 범위 밖(D13) |
@@ -234,8 +234,8 @@ aiPlugin({
 
 | ID | 할 일 | 완료 조건 |
 | --- | --- | --- |
-| M1-1 | 초기 본문 템플릿 시드를 설정(`cms.config.ts`의 `seed.templates` 등)으로 옮김 | 마이그레이션에 블로그 문구가 없다. 이 블로그는 같은 템플릿이 들어간다 |
-| M1-2 | 블로그가 본체에서 import하는 경로 목록을 조사해 공개 진입점 후보를 정함 | 진입점 목록 문서화. `./*` 제거는 M7 |
+| M1-1 | 초기 본문 템플릿 시드를 설정(`cms.config.ts`의 `seed.templates` 등)으로 옮김 | 마이그레이션에 블로그 문구가 없다. 이 블로그는 같은 템플릿이 들어간다 — **완료** |
+| M1-2 | 블로그가 본체에서 import하는 경로 목록을 조사해 공개 진입점 후보를 정함 | 진입점 목록 문서화(부록 A). `./*` 제거는 M7 — **완료** |
 
 ### M2. AI 재설계 (블로그 안에서, 화면 자리는 지금 것 유지)
 
@@ -330,6 +330,24 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | 단계 | 상태 |
 | --- | --- |
 | 1단계 (본체 분리·설정화) | 완료 (`d4f2d721` … `d3bae3f8`) |
-| M1 | 대기 |
+| M1 | 완료 |
 | M2 | 대기 |
 | M3–M8 | 대기 |
+
+---
+
+## 부록 A. 공개 진입점 후보 (M1-2 조사, 2026-10-03)
+
+블로그가 지금 본체에서 import하는 경로(테스트 제외)를 쓰는 곳별로 묶었다. M3에서 관리자 화면이 다른 패키지가 되면 이 경로들이 패키지 사이의 계약이 된다. 그때 아래 진입점으로 모으고, M7에서 `./*`를 없앤다.
+
+| 쓰는 곳 | 지금 import하는 경로 | 모을 진입점 |
+| --- | --- | --- |
+| 사이트·서버 설정 | `.`, `/server`, `/next` | 그대로 |
+| 공개 블로그 (읽기) | `container`, `adapters/postgres/content-store`(공개 읽기·타입), `core/collections`, `schema/derive`, `adapters/auth`(미리보기 권한) | `/runtime` — 서버에서 공개본 읽기·미리보기 권한 확인 |
+| 공개 블로그 (렌더) | `mdx`, `mdx/{directives,image-src,image-transform,public-image-resolver,remark-directives,table-layout,columns-layout}`, `core/{text-colors,file-display}`, `annotation/code-block/*` | `/mdx` — 본문 해석·렌더 보조(공개 화면과 편집기가 같이 씀) |
+| 관리자 화면 | `core/api`(요청 계약), `adapters/postgres/content-store`(응답 타입), `core/{collections,ids,links,plain-text,slug,translation/*}`, `schema/{collection,derive,fields}`, `blocks/{define,definitions}`, `ai/{connection,definition}`, `mdx/registry`, `annotation/code-block/*` | `/client` — API 요청·응답 타입과 화면이 쓰는 순수 함수(스키마 해석·주소·번역 상태) |
+| API 라우트 | `container`, `core/{api,snapshot,slug,collections}`, `services/*`, `adapters/*`, `ai/*` | M3에서 라우트가 본체로 들어오면 내부 import가 되어 공개 진입점이 필요 없다 |
+| 테스트 | `adapters/postgres/__test__/{seed,test-database}`, `mdx/__test__/fixtures/samples`, `services/__test__/export-fixture` | `/testing` — 다른 사이트도 쓸 수 있는 테스트 도우미 |
+
+`ai/*`는 M5에서 `@bh2980/cms-ai`로 옮기므로 본체 진입점에 넣지 않는다.
+
