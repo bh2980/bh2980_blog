@@ -1,5 +1,6 @@
 import type { ContentStore } from "../adapters/postgres/content-store";
 import type { MediaStore } from "../adapters/r2/types";
+import type { PluginDatabase } from "../plugin/define";
 
 /**
  * 서버 설정(`cms.server.ts`) 규격. 저장소·미디어·로그인 연결과 비밀 값을 둔다. 서버에서만 읽는다.
@@ -14,6 +15,8 @@ export interface DatabaseAdapter {
 	createStore(): ContentStore;
 	/** 표를 만들거나 최신 모양으로 맞춘다(`cms:db:migrate`). 여러 번 실행해도 결과가 같다. */
 	migrate(): Promise<void>;
+	/** 플러그인이 자기 표를 만들고 읽을 연결(`CmsServerPlugin.migrate`·플러그인 API). */
+	pluginDatabase(): PluginDatabase;
 	/** 연결을 닫는다(명령줄 도구가 끝날 때). */
 	close?(): Promise<void>;
 }

@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useEditorExtensions } from "../../admin-components";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
 import { Alert, AlertDescription } from "../../ui/alert";
@@ -51,7 +52,6 @@ import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
-import { useAiTranslate } from "./ai-translate";
 import {
 	EMPTY_FORM,
 	type EntryData,
@@ -309,14 +309,14 @@ export function EntryEditorShell({
 		paneRef: sourcePaneRef,
 	});
 
-	// AI 번역(v2 D2): 번역본에서만. 언어가 같으면 같은 객체를 넘겨 동작이 다시 만들어지지 않게 한다.
-	const aiSourceLocale = translationSource?.locale;
-	const aiTargetLocale = entry?.locale;
+	// 편집 화면 확장(플러그인의 툴바·블록 동작, 예: AI 번역). 언어가 같으면 같은 객체를 넘겨 동작이 다시 만들어지지 않게 한다.
+	const sourceLocale = translationSource?.locale;
+	const targetLocale = entry?.locale;
 	const translateLocales = useMemo(
-		() => (aiSourceLocale && aiTargetLocale ? { sourceLocale: aiSourceLocale, targetLocale: aiTargetLocale } : null),
-		[aiSourceLocale, aiTargetLocale],
+		() => (sourceLocale && targetLocale ? { sourceLocale: sourceLocale, targetLocale: targetLocale } : null),
+		[sourceLocale, targetLocale],
 	);
-	const aiTranslate = useAiTranslate(translateLocales);
+	const extensions = useEditorExtensions({ translateLocales });
 
 	const refreshIncoming = useCallback(async (targetId: string) => {
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
@@ -1052,7 +1052,7 @@ export function EntryEditorShell({
 						}
 						toolbarAside={
 							<span className="flex items-center gap-1">
-								{aiTranslate.toolbar}
+								{extensions.toolbar}
 								{sourcePaneToggle}
 								{sourceModeToggle}
 							</span>
@@ -1060,8 +1060,8 @@ export function EntryEditorShell({
 						sourceView={editorMode === "source" ? sourceEditor : undefined}
 						editable={!isReadOnly}
 						onChange={(mdx) => setForm({ mdx })}
-						blockActions={aiTranslate.blockAction ? [aiTranslate.blockAction] : undefined}
-						onEditor={aiTranslate.setEditor}
+						blockActions={extensions.blockActions.length > 0 ? extensions.blockActions : undefined}
+						onEditor={extensions.onEditor}
 						onCompositionStart={() => autosave.setComposing(true)}
 						onCompositionEnd={() => autosave.setComposing(false)}
 					/>

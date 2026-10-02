@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
-import AiPage from "../screens/ai/page";
+import { loadAdminPlugins } from "../plugins";
 import EditEntryPage from "../screens/entries/[id]/edit/page";
 import NewEntryPage from "../screens/entries/new/page";
 import LoginPage from "../screens/login/page";
 import MediaPage from "../screens/media/page";
 import DashboardPage from "../screens/page";
+import { requireAdminPage } from "../screens/require-admin";
 import TemplatesPage from "../screens/templates/page";
 import TrashPage from "../screens/trash/page";
 
@@ -16,8 +17,9 @@ export interface CmsAdminPageProps {
 /**
  * 관리자 화면 하나. 앱의 `app/(admin)/admin/[[...path]]/page.tsx`가 그린다. `/admin` 뒤 경로로 화면을 고른다.
  *
- * - `/admin` 목록 · `/admin/trash` 휴지통 · `/admin/media` 미디어 · `/admin/templates` 본문 템플릿 · `/admin/ai` AI
+ * - `/admin` 목록 · `/admin/trash` 휴지통 · `/admin/media` 미디어 · `/admin/templates` 본문 템플릿
  * - `/admin/entries/new` 새 글 · `/admin/entries/<id>/edit` 편집 · `/admin/login` 로그인
+ * - `/admin/<경로>` 플러그인 화면(예: AI 플러그인의 `/admin/ai`)
  */
 export async function CmsAdminPage({ params, searchParams }: CmsAdminPageProps) {
 	const path = (await params).path ?? [];
@@ -32,10 +34,15 @@ export async function CmsAdminPage({ params, searchParams }: CmsAdminPageProps) 
 				return <MediaPage />;
 			case "templates":
 				return <TemplatesPage />;
-			case "ai":
-				return <AiPage />;
 			case "login":
 				return <LoginPage />;
+		}
+	}
+	if (path.length === 1 && first) {
+		const Page = (await loadAdminPlugins()).find((plugin) => plugin.pages?.[first])?.pages?.[first];
+		if (Page) {
+			await requireAdminPage();
+			return <Page />;
 		}
 	}
 	if (first === "entries" && second === "new" && third === undefined) {

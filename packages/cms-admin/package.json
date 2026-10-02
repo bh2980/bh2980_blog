@@ -2,7 +2,7 @@
 	"name": "@bh2980/cms-admin",
 	"version": "0.0.0",
 	"private": true,
-	"description": "@bh2980/cms의 관리자 화면(Next.js): 편집기·목록·미디어·AI 화면",
+	"description": "@bh2980/cms의 관리자 화면(Next.js): 편집기·목록·미디어·템플릿, 플러그인 확장점",
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
@@ -10,7 +10,17 @@
 		"./editor/block-views": "./src/editor/block-views.ts",
 		"./editor/extensions": "./src/editor/extensions.ts",
 		"./editor/tiptap-content": "./src/editor/tiptap-content.ts",
-		"./screens/entries/entry-form": "./src/screens/entries/entry-form.ts"
+		"./screens/entries/entry-form": "./src/screens/entries/entry-form.ts",
+		"./plugins": "./src/plugins.ts",
+		"./slots": "./src/slots/slots.tsx",
+		"./api": "./src/screens/admin-api.ts",
+		"./ui/*": "./src/ui/*.tsx",
+		"./lib/*": "./src/lib/*.ts",
+		"./shell": "./src/screens/shared/admin-shell.tsx",
+		"./confirm-dialog": "./src/screens/shared/confirm-dialog.tsx",
+		"./hooks/use-debounced": "./src/screens/shared/use-debounced.ts",
+		"./editor/tiptap-editor": "./src/editor/tiptap-editor.tsx",
+		"./editor/untranslated-mark": "./src/editor/untranslated-mark.ts"
 	},
 	"scripts": {
 		"test": "vitest",

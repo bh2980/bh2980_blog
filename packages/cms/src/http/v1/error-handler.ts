@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "../../adapters/auth";
 import { CmsError } from "../../adapters/postgres/content-store";
-import { AiError } from "../../ai/errors";
 import { ServiceError } from "../../services/types";
 
 /**
- * 라우트가 직접 만드는 HTTP 오류(요청 형식·버전 누락 등).
+ * 라우트가 직접 만드는 HTTP 오류(요청 형식·버전 누락 등). 플러그인 오류도 이 오류를 이어 상태 코드를 정한다.
  * 응답 모양은 다른 오류와 같다: `code`, `message`, 필요하면 `issues`(§10.1).
  */
 export class HttpError extends Error {
@@ -42,15 +41,6 @@ const SERVICE_ERROR_STATUS: Record<string, number> = {
 	slug_reserved: 409,
 	mdx_too_large: 413,
 	metadata_too_large: 413,
-};
-
-const AI_ERROR_STATUS: Record<AiError["code"], number> = {
-	ai_unavailable: 503,
-	ai_failed: 502,
-	ai_input_too_large: 413,
-	ai_rate_limited: 429,
-	ai_unknown_action: 404,
-	ai_invalid_input: 400,
 };
 
 /** DB 연결 장애는 일시 오류(503)다. 없는 콘텐츠나 빈 목록으로 위장하지 않는다(§10.1, §11.1). */
@@ -93,10 +83,6 @@ export function handleApiError(error: unknown): NextResponse {
 			},
 			{ status },
 		);
-	}
-
-	if (error instanceof AiError) {
-		return NextResponse.json({ code: error.code, message: error.message }, { status: AI_ERROR_STATUS[error.code] });
 	}
 
 	if (error instanceof ServiceError) {

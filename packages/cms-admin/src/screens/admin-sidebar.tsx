@@ -1,6 +1,8 @@
 "use client";
 
+import type { CmsPlugin } from "@bh2980/cms";
 import type { Folder } from "@bh2980/cms/adapters/postgres/content-store";
+import { cmsConfig } from "@bh2980/cms/config/resolved";
 import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection } from "@bh2980/cms/core/collections";
 import { SITE_NAME } from "@bh2980/cms/core/links";
 import {
@@ -11,7 +13,6 @@ import {
 	Globe,
 	LayoutTemplate,
 	Plus,
-	Sparkles,
 	Trash2,
 } from "lucide-react";
 import type { Route } from "next";
@@ -42,11 +43,15 @@ import {
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
-import { CollectionIcon } from "./shared/collection-icon";
+import { CollectionIcon, NamedIcon } from "./shared/collection-icon";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 
-export type AdminNavId = Collection | "media" | "templates" | "ai" | "trash";
+/** 사이드바에서 지금 화면을 가리키는 값. 플러그인 화면은 그 화면 주소(`nav.path`, 예: `ai`)다. */
+export type AdminNavId = Collection | "media" | "templates" | "trash" | (string & {});
+
+/** 플러그인이 더한 사이드바 항목(사이트 설정의 `plugins[].nav`). */
+const PLUGIN_NAV = ((cmsConfig.plugins ?? []) as readonly CmsPlugin[]).flatMap((plugin) => plugin.nav ?? []);
 
 /** 목록 화면에서만 쓰는 폴더 탐색(§3.3). */
 export interface FolderNavigation {
@@ -329,7 +334,9 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						<SidebarMenu aria-label="관리">
 							{navLink("/admin/media", "media", "미디어", <FileImage />)}
 							{navLink("/admin/templates", "templates", "본문 템플릿", <LayoutTemplate />)}
-							{navLink("/admin/ai", "ai", "AI", <Sparkles />)}
+							{PLUGIN_NAV.map((item) =>
+								navLink(`/admin/${item.path}`, item.path, item.label, <NamedIcon name={item.icon} />),
+							)}
 							{navLink(
 								"/admin/trash",
 								"trash",

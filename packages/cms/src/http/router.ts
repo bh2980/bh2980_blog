@@ -1,13 +1,5 @@
 import type { NextRequest } from "next/server";
-import * as r2 from "./v1/ai/actions/[key]/reset/route";
-import * as r1 from "./v1/ai/actions/[key]/route";
-import * as r0 from "./v1/ai/actions/route";
-import * as r3 from "./v1/ai/models/route";
-import * as r6 from "./v1/ai/providers/[id]/route";
-import * as r5 from "./v1/ai/providers/check/route";
-import * as r4 from "./v1/ai/providers/route";
-import * as r7 from "./v1/ai/run/route";
-import * as r8 from "./v1/ai/settings/route";
+import { pluginRoutes } from "../plugin/server";
 import * as r9 from "./v1/bulk/route";
 import * as r12 from "./v1/entries/[id]/archive/route";
 import * as r13 from "./v1/entries/[id]/duplicate/route";
@@ -47,15 +39,6 @@ type RouteHandler = (request: NextRequest, context: { params: Promise<Record<str
 type RouteModule = Partial<Record<Method, unknown>>;
 
 const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
-	{ pattern: "v1/ai/actions", module: r0 },
-	{ pattern: "v1/ai/actions/[key]", module: r1 },
-	{ pattern: "v1/ai/actions/[key]/reset", module: r2 },
-	{ pattern: "v1/ai/models", module: r3 },
-	{ pattern: "v1/ai/providers", module: r4 },
-	{ pattern: "v1/ai/providers/check", module: r5 },
-	{ pattern: "v1/ai/providers/[id]", module: r6 },
-	{ pattern: "v1/ai/run", module: r7 },
-	{ pattern: "v1/ai/settings", module: r8 },
 	{ pattern: "v1/bulk", module: r9 },
 	{ pattern: "v1/entries", module: r10 },
 	{ pattern: "v1/entries/[id]", module: r11 },
@@ -84,11 +67,22 @@ const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
 	{ pattern: "v1/templates/[id]", module: r34 },
 ];
 
-const COMPILED = ROUTES.map(({ pattern, module }) => ({ segments: pattern.split("/"), module }));
+type CompiledRoute = { segments: string[]; module: RouteModule };
+const compile = (routes: ReadonlyArray<{ pattern: string; module: RouteModule }>): CompiledRoute[] =>
+	routes.map(({ pattern, module }) => ({ segments: pattern.split("/"), module }));
+const COMPILED = compile(ROUTES);
+let pluginCompiled: Promise<CompiledRoute[]> | undefined;
+const compiledPluginRoutes = () => {
+	pluginCompiled ??= pluginRoutes().then(compile);
+	return pluginCompiled;
+};
 
 /** 경로 조각과 맞는 라우트와 매개변수. 이름 있는 조각이 `[이름]` 조각보다 먼저 맞는다(표 순서). */
-export function matchRoute(path: readonly string[]): { module: RouteModule; params: Record<string, string> } | null {
-	for (const { segments, module } of COMPILED) {
+export function matchRoute(
+	path: readonly string[],
+	routes: readonly CompiledRoute[] = COMPILED,
+): { module: RouteModule; params: Record<string, string> } | null {
+	for (const { segments, module } of routes) {
 		if (segments.length !== path.length) continue;
 		const params: Record<string, string> = {};
 		const matched = segments.every((segment, index) => {
@@ -123,7 +117,8 @@ export function createCmsRouteHandler(): Record<Method, CmsRouteHandler> {
 		(method: Method): CmsRouteHandler =>
 		async (request, context) => {
 			const { path = [] } = await context.params;
-			const matched = matchRoute(path);
+			// 본체 경로에 없으면 플러그인 경로표에서 찾는다.
+			const matched = matchRoute(path) ?? matchRoute(path, await compiledPluginRoutes());
 			if (!matched) return notFound();
 			const handler = matched.module[method] as RouteHandler | undefined;
 			if (!handler) {

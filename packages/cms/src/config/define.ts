@@ -1,4 +1,4 @@
-import { type AiConfig, validateAiConfig } from "../ai/action";
+import type { CmsPlugin } from "../plugin/define";
 import type { CollectionSchema } from "../schema/collection";
 import type { Field, ValueField } from "../schema/fields";
 
@@ -55,7 +55,7 @@ export interface SeedConfig {
 export interface CmsConfig<
 	Collections extends CollectionsConfig = CollectionsConfig,
 	Locale extends string = string,
-	Ai extends AiConfig = AiConfig,
+	Plugins extends readonly CmsPlugin[] = readonly CmsPlugin[],
 > {
 	/** 컬렉션 이름 → 정의. 이름은 저장 값(`entries.collection`)이므로 운영 중에 바꾸지 않는다. */
 	readonly collections: Collections;
@@ -71,8 +71,8 @@ export interface CmsConfig<
 	readonly timeZone?: string;
 	/** 새 저장소에 처음 넣을 데이터. */
 	readonly seed?: SeedConfig;
-	/** AI 기능(`aiAction`·`aiPresets`). 없으면 AI 기능이 없다. */
-	readonly ai?: Ai;
+	/** 플러그인(예: `aiPlugin()`). 이름은 겹치지 않아야 한다. */
+	readonly plugins?: Plugins;
 }
 
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
@@ -89,7 +89,7 @@ function* valueFields(fields: Readonly<Record<string, Field>>): Generator<[strin
 }
 
 /** 설정이 서로 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
-function validate(config: CmsConfig<CollectionsConfig, string, AiConfig>): void {
+function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugin[]>): void {
 	const names = Object.keys(config.collections);
 	if (names.length === 0) throw new Error("cms.config: `collections` is empty");
 
@@ -161,15 +161,18 @@ function validate(config: CmsConfig<CollectionsConfig, string, AiConfig>): void 
 		}
 	}
 
-	if (config.ai) validateAiConfig(config.ai, config.collections);
+	const plugins = config.plugins ?? [];
+	const pluginNames = plugins.map((plugin) => plugin.name);
+	if (new Set(pluginNames).size !== pluginNames.length) throw new Error("cms.config: `plugins` has duplicate names");
+	for (const plugin of plugins) plugin.validate?.({ collections: config.collections, locales: config.locales });
 }
 
 /** 사이트 설정을 정의한다. 컬렉션·언어 이름을 타입으로 보존하고, 서로 맞지 않는 설정은 바로 알린다. */
 export function defineConfig<
 	const Collections extends CollectionsConfig,
 	const Locale extends string,
-	const Ai extends AiConfig = { readonly actions: {} },
->(config: CmsConfig<Collections, Locale, Ai>): CmsConfig<Collections, Locale, Ai> {
+	const Plugins extends readonly CmsPlugin[] = readonly [],
+>(config: CmsConfig<Collections, Locale, Plugins>): CmsConfig<Collections, Locale, Plugins> {
 	validate(config);
 	return config;
 }

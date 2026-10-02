@@ -1,6 +1,5 @@
 "use client";
 
-import type { AiRunContext, AiRunResult, AiSlot } from "@bh2980/cms/ai/definition";
 import { CornerDownLeft, RefreshCw, Sparkles, X } from "lucide-react";
 import {
 	createContext,
@@ -28,7 +27,48 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
  *   요청은 계속되고, 다시 열면 결과가 그대로 있다. 같은 자리는 `scope`(항목·이미지 등)로 구분한다.
  */
 
-export type SlotName = AiSlot;
+/**
+ * 자리 이름. `field`는 필드 옆, `image`는 본문 이미지, `codeRules`는 코드 블록 규칙, `media`는 미디어 상세다.
+ * `translation`은 번역본 편집기(블록 번역)다.
+ */
+export const SLOT_NAMES = ["field", "image", "codeRules", "media", "translation"] as const;
+export type SlotName = (typeof SLOT_NAMES)[number];
+
+/** 결과로 보여 줄 후보 하나. `value`가 적용될 값이고 `label`은 보이는 글자다. */
+export interface SlotCandidate {
+	value: string;
+	label: string;
+	/** 덧붙일 짧은 설명(정규식이 찾은 곳 수 등). */
+	detail?: string;
+}
+
+/** 동작의 결과. 후보 여러 개·긴 글·본문 조각(MDX)·보여 주기만 하는 메모다. */
+export type SlotResult =
+	| { kind: "candidates"; items: SlotCandidate[] }
+	| { kind: "text"; text: string }
+	| { kind: "mdx"; text: string }
+	| { kind: "note"; text: string };
+
+/** 자리가 누를 때 넘기는 지금 상황. 자리마다 아는 값만 채운다. */
+export interface SlotContext {
+	/** 실행할 때 적은 추가 요청. 동작이 `askInstruction`일 때만 받는다. */
+	request?: string;
+	collection?: string;
+	locale?: string;
+	entryId?: string;
+	title?: string;
+	summary?: string;
+	body?: string;
+	/** 대상의 현재 값. 목록 값(태그 id 등)은 배열이다. */
+	current?: string | readonly string[];
+	around?: string;
+	code?: string;
+	language?: string;
+	mediaId?: string;
+	/** 미디어 라이브러리 밖 이미지의 사이트 주소(`/images/...`). */
+	imageSrc?: string;
+	filename?: string;
+}
 export type SlotApplyMode = "replace" | "append";
 
 export interface SlotRequest {
@@ -38,7 +78,7 @@ export interface SlotRequest {
 	/** 필드 자리의 컬렉션. */
 	collection?: string;
 	/** 누를 때 읽는 지금 상황. */
-	getContext: () => AiRunContext;
+	getContext: () => SlotContext;
 	apply: (value: string, mode: SlotApplyMode) => void;
 	disabled?: boolean;
 	/** 같은 자리·대상이 여럿일 때 구분하는 값(항목 ID, 이미지 주소 등). 실행 상태는 이 값별로 따로 남는다. */
@@ -52,7 +92,7 @@ export interface SlotAction {
 	apply: SlotApplyMode | "none";
 	/** 실행할 때 추가 요청을 받는다. 누르면 바로 실행하지 않고 요청 입력을 먼저 연다. */
 	askInstruction?: boolean;
-	run: (context: AiRunContext, signal: AbortSignal) => Promise<AiRunResult>;
+	run: (context: SlotContext, signal: AbortSignal) => Promise<SlotResult>;
 }
 
 /** 자리에 붙을 동작을 돌려주는 공급원. */
@@ -62,7 +102,7 @@ type RunState =
 	| { status: "idle" }
 	| { status: "asking"; action: SlotAction }
 	| { status: "running"; action: SlotAction }
-	| { status: "done"; action: SlotAction; result: AiRunResult }
+	| { status: "done"; action: SlotAction; result: SlotResult }
 	| { status: "error"; action: SlotAction; message: string };
 
 const IDLE: RunState = { status: "idle" };

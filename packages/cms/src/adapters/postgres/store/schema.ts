@@ -1,5 +1,4 @@
 import type { Pool } from "pg";
-import { legacyFeatureOverride } from "../../../ai/actions";
 import { cmsConfig } from "../../../config/resolved";
 import { DEFAULT_LOCALE } from "../../../core/locales";
 import { validateSchemaName } from "./context";
@@ -199,49 +198,7 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			END IF;
 		END $$;
 
-		-- AI 기능의 고친 값(M2). 기능 정의는 사이트 설정에 있고, 관리자 화면에서 고친 값만 기능 이름별로 둔다.
-		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_action_overrides (
-			key TEXT PRIMARY KEY,
-			value JSONB NOT NULL,
-			version INTEGER NOT NULL DEFAULT 1,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-
-		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default').
-		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_settings (
-			id TEXT PRIMARY KEY,
-			value JSONB NOT NULL,
-			version INTEGER NOT NULL DEFAULT 1,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
 	`);
-
-	// 예전 AI 기능 표(`ai_features`)에 고친 값이 있으면 한 번만 기능 이름별 고친 값으로 옮긴다. 예전 표는 지우지 않는다.
-	const aiMoved = await pool.query(
-		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'migrate_ai_features_to_actions'`,
-	);
-	if (aiMoved.rows.length === 0) {
-		const legacy = await pool.query<{ exists: string | null }>(`SELECT to_regclass($1)::text AS exists`, [
-			`"${qSchema}".ai_features`,
-		]);
-		if (legacy.rows[0]?.exists) {
-			const rows = await pool.query<{ builtin: string | null; spec: unknown }>(
-				`SELECT builtin, spec FROM "${qSchema}".ai_features WHERE builtin IS NOT NULL`,
-			);
-			for (const row of rows.rows) {
-				const value = row.builtin ? legacyFeatureOverride(row.builtin, row.spec) : null;
-				if (!value || Object.keys(value).length === 0) continue;
-				await pool.query(
-					`INSERT INTO "${qSchema}".ai_action_overrides (key, value, version, updated_at) VALUES ($1, $2, 1, NOW())
-					 ON CONFLICT (key) DO NOTHING`,
-					[row.builtin, JSON.stringify(value)],
-				);
-			}
-		}
-		await pool.query(
-			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('migrate_ai_features_to_actions') ON CONFLICT DO NOTHING`,
-		);
-	}
 
 	// 사이트 설정의 초기 본문 템플릿을 새 저장소에 한 번만 넣는다. 이미 넣은 저장소에는 나중에 더한 템플릿도
 	// 넣지 않고, 지운 템플릿을 되살리지 않는다.

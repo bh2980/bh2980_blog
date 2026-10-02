@@ -1,10 +1,13 @@
 /**
- * 관리자 화면의 브라우저 쪽 진입점. 사이트가 관리자 화면에 컴포넌트를 넣거나(`CmsAdminComponentsProvider`)
- * 직접 만든 화면에서 AI 기능을 이름으로 부를 때(`useAiAction`) 쓴다.
+ * 관리자 화면의 브라우저 쪽 진입점. 사이트·플러그인이 관리자 화면에 컴포넌트(코드 펜스 미리보기·필드 입력·편집 화면 확장)를
+ * 넣을 때(`CmsAdminComponentsProvider`) 쓴다.
  */
 export {
 	type CmsAdminComponents,
 	CmsAdminComponentsProvider,
+	type EditorExtension,
+	type EditorExtensionContext,
+	type EditorExtensionResult,
 	useCmsAdminComponents,
 } from "./admin-components";
-export { type UseAiAction, useAiAction } from "./screens/ai/use-ai-action";
+export type { FieldInputProps } from "./screens/entries/field-inputs";

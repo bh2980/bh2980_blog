@@ -19,7 +19,6 @@ describe("관리자 API 경로표", () => {
 		expect(matchRoute(["v1", "media", "uploads"])?.params).toEqual({});
 		expect(matchRoute(["v1", "media", "m1", "complete"])?.params).toEqual({ id: "m1" });
 		expect(matchRoute(["v1", "schedules", "due"])?.params).toEqual({});
-		expect(matchRoute(["v1", "ai", "actions", "summary", "reset"])?.params).toEqual({ key: "summary" });
 		expect(matchRoute(["v1", "entries", ""])).toBeNull();
 		expect(matchRoute(["v1", "nope"])).toBeNull();
 		expect(matchRoute(["v2", "entries"])).toBeNull();
@@ -27,7 +26,9 @@ describe("관리자 API 경로표", () => {
 
 	it("공개 API는 본체 경로표에 없다(블로그가 가진다)", () => {
 		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/public"))).toBe(false);
-		expect(CMS_ROUTE_PATTERNS).toHaveLength(35);
+		// AI 경로는 AI 플러그인이 더한다(`@bh2980/cms-ai`).
+		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/ai"))).toBe(false);
+		expect(CMS_ROUTE_PATTERNS).toHaveLength(26);
 	});
 
 	it("없는 경로는 404, 없는 메서드는 405, 맞는 경로는 그 라우트가 받는다", async () => {

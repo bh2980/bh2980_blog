@@ -1,6 +1,6 @@
 # @bh2980/cms
 
-DB(Postgres) 기반 블로그 CMS의 본체. 사이트 설정, 컬렉션 스키마, 콘텐츠 저장·발행, MDX 변환, AI 기능을 맡는다.
+DB(Postgres) 기반 블로그 CMS의 본체. 사이트 설정, 컬렉션 스키마, 콘텐츠 저장·발행, MDX 변환, 플러그인 연결을 맡는다.
 React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 이 패키지의 API를 불러 그린다.
 
 ## 연결 방법 (Next.js)
@@ -71,28 +71,27 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
    로그인 라우트는 `app/api/auth/[...nextauth]/route.ts`에서 `export const { GET, POST } = handlers;`
    (`@bh2980/cms/adapters/auth`)로 둔다.
 
-## AI 기능
+## 플러그인
 
-사이트 설정의 `ai.actions`에 기능을 이름(key)으로 적는다. 기본 기능은 `aiPresets`로 고른다.
+사이트 설정의 `plugins`에 한 번 적는다(예: AI 플러그인 `@bh2980/cms-ai`의 `aiPlugin()`).
 
 ```ts
-ai: {
-	siteDescription: "개인 기술 블로그", // 모든 기능의 맨 앞 지시에 들어간다
-	actions: {
-		summary: aiPresets.summary({ collections: ["post"] }),
-		tags: aiPresets.tags({ choices: "tag", collections: ["post"] }),
-		translate: aiPresets.translate(),
-	},
-},
+import { definePlugin } from "@bh2980/cms";
+
+export const myPlugin = () =>
+	definePlugin({
+		name: "my-plugin",
+		options: {}, // JSON 값. 서버·브라우저가 함께 읽는다
+		nav: [{ path: "my", label: "내 화면", icon: "plug" }], // 관리자 사이드바 "관리" 묶음
+		validate: ({ collections }) => {}, // 사이트 설정을 만들 때 부른다
+		server: () => import("my-plugin/server"), // CmsServerPlugin: API 경로·표 만들기·메타 표시
+		admin: () => import("my-plugin/admin"), // CmsAdminPlugin(@bh2980/cms-admin): 화면·공급자
+	});
 ```
 
-- 기능 하나는 입력(재료)·지시문·결과 모양·검사·붙을 곳(`attach`)이다. `aiAction()`으로 직접 정의할 수 있다.
-- 재료(제목·본문·이미지…)는 지시문에 끼우지 않고 따로 보낸다. 지시문의 `{{이름}}`에는 언어 입력만 넣을 수 있다.
-- 붙을 곳은 관리자 화면의 정해진 자리다(필드 옆·본문 이미지·미디어·코드 블록·번역). 자리가 필수 입력을 채울 수 있어야 한다.
-- 관리자 AI 화면에서는 켜기·요청 받기·연결·모델·보낼 입력·지시문·기준값·검사 값만 고친다. 고친 값만 DB(`ai_action_overrides`)에 둔다.
-- 실행: `POST /api/cms/v1/ai/run { action, input | inputs, env }`. 관리자 화면에서는 `useAiAction("summary").run({ title, body })`처럼
-  이름으로 부르고, 이름·입력·결과 타입은 설정에서 나온다.
-- 판단 방식(`engine: "decide"`, System One)은 선택지(`choices`)마다 확률을 받아 기준 이상만 후보로 낸다.
+- 서버 쪽(`server`)은 브라우저 묶음에 들어가지 않게 패키지 `exports`의 `browser` 조건으로 빈 진입점을 준다.
+- 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms:db:migrate`가 본체 표 다음에 부른다.
+- 플러그인 코드는 `@bh2980/cms/plugin/server`의 `getCmsDatabase()`(DB 연결)와 본체 라우트 틀(`adminRoute` 등)을 쓴다.
 
 ## 서버 설정
 

@@ -1,6 +1,7 @@
 # @bh2980/cms-admin
 
-`@bh2980/cms`의 관리자 화면(Next.js App Router). 목록·편집기(tiptap)·미디어·본문 템플릿·AI 설정·휴지통·로그인 화면을 준다.
+`@bh2980/cms`의 관리자 화면(Next.js App Router). 목록·편집기(tiptap)·미디어·본문 템플릿·휴지통·로그인 화면을 준다.
+플러그인(예: `@bh2980/cms-ai`)이 화면·사이드바 항목·필드 옆 버튼·편집 화면 동작을 더한다.
 화면은 본체의 관리자 API(`/api/cms/v1/*`)만 부른다. 설치하지 않고 같은 API로 화면을 직접 만들어도 된다.
 
 ## 붙이기
@@ -23,7 +24,7 @@ export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
 
 ## 사이트 컴포넌트 넣기
 
-편집기의 코드 펜스 미리보기(예: `mermaid`·`chart`)는 사이트의 렌더러를 쓴다. 클라이언트 컴포넌트에서 넣는다.
+편집기의 코드 펜스 미리보기(예: `mermaid`·`chart`)와 필드 입력은 사이트가 넣는다. 클라이언트 컴포넌트에서 넣는다.
 
 ```tsx
 "use client";
@@ -31,6 +32,7 @@ import { CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 
 const components = {
 	fencePreviews: { chart: () => import("./chart").then((m) => m.Chart) }, // ({ source }) => ReactNode
+	fieldInputs: { color: ColorInput }, // fields.text({ input: "color" })인 필드를 이 입력으로 그린다
 };
 
 export function SiteAdminComponents({ children }) {
@@ -40,15 +42,19 @@ export function SiteAdminComponents({ children }) {
 
 넣지 않은 펜스는 원문을 그대로 보인다.
 
-## AI 기능 부르기
+## 플러그인 화면
 
-직접 만든 화면에서 사이트 설정의 AI 기능을 이름으로 부른다. 이름·입력·결과 타입은 설정에서 나온다.
+플러그인 정의의 `admin`이 불러오는 모듈은 `defineAdminPlugin()`(`@bh2980/cms-admin/plugins`)을 기본 내보내기로 준다.
 
 ```ts
-import { useAiAction } from "@bh2980/cms-admin";
-const summary = useAiAction("summary");
-const result = await summary.run({ title, body });
+export default defineAdminPlugin({
+	pages: { my: MyPage }, // /admin/my (클라이언트 컴포넌트). 로그인 확인은 관리자 화면이 한다
+	Provider: MyProvider, // 관리자 화면 전체를 감싼다. 안에서 CmsAdminComponentsProvider로 입력·편집 화면 확장을 더한다
+});
 ```
+
+편집 화면 확장(`editorExtensions`)은 툴바 끝 요소·블록 손잡이 옆 동작을 더하는 훅이다. 필드 옆·본문 이미지·미디어·코드 블록
+자리에는 `SlotRegistryProvider`(`@bh2980/cms-admin/slots`)로 동작을 붙인다.
 
 ## 스타일
 

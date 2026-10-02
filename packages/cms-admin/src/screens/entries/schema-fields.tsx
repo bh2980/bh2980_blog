@@ -7,6 +7,7 @@ import { recordLocalizedFields, type SchemaCollection, schemaOf } from "@bh2980/
 import type { ConditionalField, Field, RelationField, SlugField, ValueField } from "@bh2980/cms/schema/fields";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { useCmsAdminComponents } from "../../admin-components";
 import { type SlotRequest, useSlot } from "../../slots/slots";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
@@ -171,10 +172,11 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 	);
 }
 
-/** 필드 종류별 기본 입력. `input`이 있으면 입력 등록부의 컴포넌트를 쓴다. */
+/** 필드 종류별 기본 입력. `input`이 있으면 사이트·플러그인이 등록한 입력, 없으면 내장 입력 등록부의 컴포넌트를 쓴다. */
 function DefaultInput(props: FieldInputProps) {
 	const { field, id, value, invalid, describedBy, context, onChange } = props;
-	const Custom = field.input ? FIELD_INPUTS[field.input] : undefined;
+	const { fieldInputs } = useCmsAdminComponents();
+	const Custom = field.input ? (fieldInputs?.[field.input] ?? FIELD_INPUTS[field.input]) : undefined;
 	if (Custom) return <Custom {...props} />;
 	const text = typeof value === "string" ? value : "";
 

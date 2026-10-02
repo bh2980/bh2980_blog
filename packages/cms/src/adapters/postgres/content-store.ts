@@ -1,5 +1,4 @@
 import type { Pool } from "pg";
-import { createAiOps } from "./store/ai";
 import { type ContentStoreHooks, type StoreContext, validateSchemaName } from "./store/context";
 import { createEntryOps } from "./store/entries";
 import { createFolderOps } from "./store/folders";
@@ -18,7 +17,6 @@ import { createTransferOps } from "./store/transfer";
  * 드라이버와 SQL은 `store/` 아래 모듈에만 있다. 업무 규칙(스냅샷·발행 검증)은 `core/`에서 가져온다.
  */
 
-export type { AiActionOverrideRow } from "./store/ai";
 export { PUBLIC_COLLECTIONS } from "./store/constants";
 export type { ContentStoreHooks } from "./store/context";
 export { CmsError } from "./store/errors";
@@ -49,7 +47,6 @@ export function createContentStore(
 		...createScheduleOps(ctx, publishing),
 		...createMediaOps(ctx),
 		...createTemplateOps(ctx),
-		...createAiOps(ctx),
 	};
 }
 

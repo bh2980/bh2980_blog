@@ -1,4 +1,5 @@
-import { aiPresets, defineCollection, defineConfig, fields } from "@bh2980/cms";
+import { defineCollection, defineConfig, fields } from "@bh2980/cms";
+import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 /**
@@ -213,22 +214,24 @@ export default defineConfig({
 	// 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 서버에서만 읽힌다(브라우저에서는 비어 있다).
 	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
-	ai: {
-		siteDescription: "개인 기술 블로그",
-		actions: {
-			slug: aiPresets.slug({ collections: ["post", "memo"] }),
-			summary: aiPresets.summary({ collections: ["post"] }),
-			tags: aiPresets.tags({ choices: "tag", collections: ["post", "memo"] }),
-			category: aiPresets.category({ choices: "category", collections: ["post"] }),
-			seoTitle: aiPresets.seoTitle({ collections: ["post", "memo"] }),
-			seoDescription: aiPresets.seoDescription({ collections: ["post", "memo"] }),
-			imageAlt: aiPresets.imageAlt(),
-			imageCaption: aiPresets.imageCaption(),
-			mediaFilename: aiPresets.mediaFilename(),
-			translate: aiPresets.translate(),
-			codeFold: aiPresets.codeFold(),
-		},
-	},
+	plugins: [
+		aiPlugin({
+			siteDescription: "개인 기술 블로그",
+			actions: {
+				slug: aiPresets.slug({ collections: ["post", "memo"] }),
+				summary: aiPresets.summary({ collections: ["post"] }),
+				tags: aiPresets.tags({ choices: "tag", collections: ["post", "memo"] }),
+				category: aiPresets.category({ choices: "category", collections: ["post"] }),
+				seoTitle: aiPresets.seoTitle({ collections: ["post", "memo"] }),
+				seoDescription: aiPresets.seoDescription({ collections: ["post", "memo"] }),
+				imageAlt: aiPresets.imageAlt(),
+				imageCaption: aiPresets.imageCaption(),
+				mediaFilename: aiPresets.mediaFilename(),
+				translate: aiPresets.translate(),
+				codeFold: aiPresets.codeFold(),
+			},
+		}),
+	],
 	seed: {
 		templates: [
 			{

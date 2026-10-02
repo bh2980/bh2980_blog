@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import type { DatabaseAdapter } from "../../server/define";
 import { createContentStore, migrateContentStore } from "./content-store";
+import { validateSchemaName } from "./store/context";
 
 export interface PostgresOptions {
 	/** 연결 주소. 처음 쓸 때 없으면 오류를 낸다(빌드 중에는 비어 있어도 된다). */
@@ -22,6 +23,7 @@ export function postgres(options: PostgresOptions): DatabaseAdapter {
 		name: "postgres",
 		createStore: () => createContentStore(getPool(), schema),
 		migrate: () => migrateContentStore(getPool(), schema),
+		pluginDatabase: () => ({ pool: getPool(), schema: validateSchemaName(options.schema) }),
 		close: async () => {
 			await pool?.end();
 			pool = undefined;

@@ -1,10 +1,41 @@
 "use client";
 
-import { type ComponentType, createContext, type ReactNode, useContext } from "react";
+import type { Editor } from "@tiptap/react";
+import {
+	type ComponentType,
+	createContext,
+	Fragment,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useMemo,
+	useRef,
+} from "react";
+import type { BlockAction } from "./editor/tiptap-editor";
+import type { FieldInputProps } from "./screens/entries/field-inputs";
 
 /**
- * 사이트가 관리자 화면에 넣는 컴포넌트. 관리자 레이아웃 안에서 `CmsAdminComponentsProvider`로 준다.
- * 서버 레이아웃은 함수를 브라우저로 넘길 수 없으므로, 사이트의 클라이언트 컴포넌트가 이 공급자를 그린다.
+ * 편집 화면 확장(플러그인 등)이 받는 지금 상황. 매 렌더 부르는 훅이므로 안에서 React 훅을 써도 된다.
+ * 확장 목록은 관리자 화면이 떠 있는 동안 바뀌지 않아야 한다(훅 순서).
+ */
+export interface EditorExtensionContext {
+	/** 번역본을 편집 중이면 원문·번역 언어. 원문이면 `null`. */
+	readonly translateLocales: { readonly sourceLocale: string; readonly targetLocale: string } | null;
+}
+
+/** 편집 화면 확장이 더하는 것. 툴바 끝의 요소, 블록 손잡이 옆 동작, 편집기가 생기고 사라질 때 받을 함수. */
+export interface EditorExtensionResult {
+	readonly toolbar?: ReactNode;
+	readonly blockActions?: readonly BlockAction[];
+	readonly onEditor?: (editor: Editor | null) => void;
+}
+
+export type EditorExtension = (context: EditorExtensionContext) => EditorExtensionResult;
+
+/**
+ * 사이트·플러그인이 관리자 화면에 넣는 컴포넌트. 관리자 레이아웃 안에서 `CmsAdminComponentsProvider`로 준다.
+ * 서버 레이아웃은 함수를 브라우저로 넘길 수 없으므로, 클라이언트 컴포넌트가 이 공급자를 그린다.
+ * 공급자를 겹치면 바깥 값에 안쪽 값을 더한다(같은 이름은 안쪽이 이긴다).
  */
 export interface CmsAdminComponents {
 	/**
@@ -14,6 +45,13 @@ export interface CmsAdminComponents {
 	readonly fencePreviews?: Readonly<
 		Record<string, () => Promise<ComponentType<{ readonly source: string; readonly className?: string }>>>
 	>;
+	/**
+	 * 필드 입력. 컬렉션 정의의 필드 `input`이 이 이름을 가리키면 기본 입력 대신 그린다
+	 * (예: `fields.text({ input: "color" })` + `fieldInputs: { color: ColorInput }`).
+	 */
+	readonly fieldInputs?: Readonly<Record<string, ComponentType<FieldInputProps>>>;
+	/** 편집 화면 확장(툴바·블록 동작). */
+	readonly editorExtensions?: readonly EditorExtension[];
 }
 
 const CmsAdminComponentsContext = createContext<CmsAdminComponents>({});
@@ -25,7 +63,35 @@ export function CmsAdminComponentsProvider({
 	components: CmsAdminComponents;
 	children: ReactNode;
 }) {
-	return <CmsAdminComponentsContext.Provider value={components}>{children}</CmsAdminComponentsContext.Provider>;
+	const parent = useContext(CmsAdminComponentsContext);
+	const value = useMemo<CmsAdminComponents>(
+		() => ({
+			fencePreviews: { ...parent.fencePreviews, ...components.fencePreviews },
+			fieldInputs: { ...parent.fieldInputs, ...components.fieldInputs },
+			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
+		}),
+		[parent, components],
+	);
+	return <CmsAdminComponentsContext.Provider value={value}>{children}</CmsAdminComponentsContext.Provider>;
 }
 
 export const useCmsAdminComponents = () => useContext(CmsAdminComponentsContext);
+
+/** 등록된 편집 화면 확장을 모두 불러 하나로 합친다. */
+export function useEditorExtensions(context: EditorExtensionContext): Required<EditorExtensionResult> {
+	const { editorExtensions = [] } = useCmsAdminComponents();
+	// 확장 목록은 관리자 화면이 떠 있는 동안 같다. 매 렌더 같은 순서로 같은 수의 훅을 부른다.
+	const results = editorExtensions.map((extension) => extension(context));
+	const editorCallbacks = results.flatMap((result) => (result.onEditor ? [result.onEditor] : []));
+	const callbacksRef = useRef(editorCallbacks);
+	callbacksRef.current = editorCallbacks;
+	const onEditor = useCallback((editor: Editor | null) => {
+		for (const callback of callbacksRef.current) callback(editor);
+	}, []);
+	return {
+		// biome-ignore lint/suspicious/noArrayIndexKey: 확장 목록과 순서는 바뀌지 않는다
+		toolbar: results.map((result, index) => <Fragment key={index}>{result.toolbar}</Fragment>),
+		blockActions: results.flatMap((result) => result.blockActions ?? []),
+		onEditor,
+	};
+}
