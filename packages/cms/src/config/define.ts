@@ -1,3 +1,4 @@
+import { type BlocksConfig, resolveBlocks } from "../blocks/resolve";
 import type { CmsPlugin } from "../plugin/define";
 import type { CollectionSchema } from "../schema/collection";
 import type { Field, ValueField } from "../schema/fields";
@@ -71,6 +72,8 @@ export interface CmsConfig<
 	readonly timeZone?: string;
 	/** 새 저장소에 처음 넣을 데이터. */
 	readonly seed?: SeedConfig;
+	/** 본문 블록: 끌 내장 블록과 더할 사용자 블록. 없으면 내장 블록을 모두 쓴다. */
+	readonly blocks?: BlocksConfig;
 	/** 플러그인(예: `aiPlugin()`). 이름은 겹치지 않아야 한다. */
 	readonly plugins?: Plugins;
 }
@@ -160,6 +163,8 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			}
 		}
 	}
+
+	resolveBlocks(config.blocks);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);

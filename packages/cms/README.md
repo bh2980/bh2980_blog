@@ -71,6 +71,32 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
    로그인 라우트는 `app/api/auth/[...nextauth]/route.ts`에서 `export const { GET, POST } = handlers;`
    (`@bh2980/cms/adapters/auth`)로 둔다.
 
+## 본문 블록
+
+내장 블록(콜아웃·접기·탭·단·이미지·파일·표·Mermaid·차트·수식 등)을 쓰고, 설정의 `blocks`로 일부를 끄거나 블록을 더한다.
+
+```ts
+import { defineBlock } from "@bh2980/cms";
+
+blocks: {
+	disable: ["tabs", "mermaid"], // 끌 수 있는 것: callout·collapsible·tabs·columns·mermaid·chart
+	custom: [
+		defineBlock({
+			name: "notice", // 저장 문법 :::notice{level="warn"} … :::
+			label: "공지",
+			syntax: { kind: "container", directive: "notice" },
+			component: "Notice", // 공개 화면은 사이트의 MDX 컴포넌트 표에서 이 이름으로 그린다
+			attributes: { level: { type: "string", label: "단계", options: { info: "안내", warn: "주의" }, defaultValue: "info" } },
+			editor: { view: "node", insertable: true }, // "opaque"면 편집기에서 원문 상자로 보인다
+		}),
+	],
+},
+```
+
+- 사용자 블록은 지시자 블록(`container`·`leaf`)만 더할 수 있다. 속성의 선택 값·필수 값은 발행 전에 검사한다.
+- 끈 블록은 저장 문법에서 빠진다. 이미 그 블록을 쓴 본문은 다시 저장할 때 일반 글로 바뀌므로 쓰던 블록은 끄지 않는다.
+- 편집기 모양은 관리자 패키지의 `blockEditors`로 바꾼다(없으면 블록 이름·속성 입력·본문을 담은 기본 상자).
+
 ## 플러그인
 
 사이트 설정의 `plugins`에 한 번 적는다(예: AI 플러그인 `@bh2980/cms-ai`의 `aiPlugin()`).

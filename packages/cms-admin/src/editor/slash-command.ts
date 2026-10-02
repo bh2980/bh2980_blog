@@ -1,5 +1,5 @@
+import { BLOCKS } from "@bh2980/cms/blocks/active";
 import type { BlockDefinition } from "@bh2980/cms/blocks/define";
-import { BLOCKS } from "@bh2980/cms/blocks/definitions";
 import type { Editor, Range } from "@tiptap/core";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
@@ -144,8 +144,8 @@ export function buildBlockSlashCommands(
 	const items: SlashCommandItem[] = [];
 	for (const block of definitions) {
 		if (block.editor.insertable !== true || block.editor.view !== "node") continue;
-		const nodeView = block.editor.nodeView;
-		if (!nodeView) continue;
+		// 사용자 블록은 편집기 이름이 없으면 블록 이름으로 삽입 동작을 찾는다.
+		const nodeView = block.editor.nodeView ?? block.name;
 		// 이미지는 기존 하드코딩 항목이 있으므로 중복 제외
 		if (nodeView === "image" || block.name === "image") continue;
 		const action = actions[nodeView];

@@ -1,4 +1,4 @@
-import { BLOCKS } from "../../../blocks/definitions";
+import { BLOCKS } from "../../../blocks/active";
 import { cmsConfig } from "../../../config/resolved";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,

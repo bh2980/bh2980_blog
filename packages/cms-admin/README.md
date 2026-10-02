@@ -33,6 +33,7 @@ import { CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 const components = {
 	fencePreviews: { chart: () => import("./chart").then((m) => m.Chart) }, // ({ source }) => ReactNode
 	fieldInputs: { color: ColorInput }, // fields.text({ input: "color" })인 필드를 이 입력으로 그린다
+	blockEditors: { notice: NoticeEditor }, // 사용자 블록 편집 모양({ definition, values, setValue, content })
 };
 
 export function SiteAdminComponents({ children }) {

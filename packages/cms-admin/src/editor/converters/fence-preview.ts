@@ -1,6 +1,7 @@
 import { annotationConfig } from "@bh2980/cms/annotation/code-block/constants";
 import { fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "@bh2980/cms/annotation/code-block/types";
+import { isBlockActive } from "@bh2980/cms/blocks/active";
 import type { CmsNode } from "@bh2980/cms/mdx";
 import { asString } from "./shared";
 import type { BlockConverter } from "./types";
@@ -19,7 +20,8 @@ export const mermaidConverter: BlockConverter = {
 	name: "mermaid",
 	cmsTypes: ["codeBlock"],
 	tiptapTypes: ["cmsMermaid"],
-	matches: (node) => asString(node.attrs?.language)?.toLowerCase() === "mermaid",
+	// 사이트가 블록을 껐으면 일반 코드 블록으로 둔다.
+	matches: (node) => isBlockActive("mermaid") && asString(node.attrs?.language)?.toLowerCase() === "mermaid",
 	isMappable: () => true,
 	toTiptap(node) {
 		const language = asString(node.attrs?.language) ?? "mermaid";
@@ -55,7 +57,7 @@ export const chartConverter: BlockConverter = {
 	name: "chart",
 	cmsTypes: ["codeBlock"],
 	tiptapTypes: ["cmsChart"],
-	matches: (node) => asString(node.attrs?.language)?.toLowerCase() === "chart",
+	matches: (node) => isBlockActive("chart") && asString(node.attrs?.language)?.toLowerCase() === "chart",
 	isMappable: () => true,
 	toTiptap(node) {
 		const language = asString(node.attrs?.language) ?? "chart";

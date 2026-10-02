@@ -1,7 +1,7 @@
 import { defineBlock } from "./define";
 
 /**
- * 이 블로그 본문의 블록 정의(v2 B3). 저장 문법 표의 단일 원천이다.
+ * 내장 본문 블록 정의(v2 B3). 사이트 설정의 `blocks`로 일부를 끄고 사용자 블록을 더한다(`blocks/resolve.ts`).
  * 블록을 더하거나 바꾸면 공개 렌더러·에디터 등록부를 함께 확인한다(정의 테스트가 누락을 잡는다).
  */
 
@@ -270,8 +270,8 @@ export const cell = defineBlock({
 	editor: { view: "opaque" },
 });
 
-/** 선언 순서가 `/meta`와 문서의 순서다. */
-export const BLOCKS = [
+/** 내장 블록. 선언 순서가 `/meta`와 문서의 순서다. 사이트가 쓰는 블록은 `blocks/active.ts`의 `BLOCKS`다. */
+export const BUILTIN_BLOCKS = [
 	callout,
 	collapsible,
 	textAlign,

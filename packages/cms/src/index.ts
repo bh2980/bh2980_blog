@@ -7,6 +7,7 @@
 
 export type { BlockAttribute, BlockChildren, BlockDefinition, BlockEditor, BlockSyntax } from "./blocks/define";
 export { defineBlock } from "./blocks/define";
+export { type BlocksConfig, OPTIONAL_BLOCKS, type OptionalBlockName } from "./blocks/resolve";
 export {
 	type CmsConfig,
 	type CollectionsConfig,

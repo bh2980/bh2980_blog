@@ -11,6 +11,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
+import type { CustomBlockEditorProps } from "./editor/blocks/custom/view";
 import type { BlockAction } from "./editor/tiptap-editor";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
 
@@ -50,6 +51,11 @@ export interface CmsAdminComponents {
 	 * (예: `fields.text({ input: "color" })` + `fieldInputs: { color: ColorInput }`).
 	 */
 	readonly fieldInputs?: Readonly<Record<string, ComponentType<FieldInputProps>>>;
+	/**
+	 * 사용자 블록(사이트 설정의 `blocks.custom`, `editor.view: "node"`)의 편집 컴포넌트. 키는 블록 이름이다.
+	 * 없으면 블록 이름과 속성 입력, 본문을 담은 기본 상자로 편집한다.
+	 */
+	readonly blockEditors?: Readonly<Record<string, ComponentType<CustomBlockEditorProps>>>;
 	/** 편집 화면 확장(툴바·블록 동작). */
 	readonly editorExtensions?: readonly EditorExtension[];
 }
@@ -68,6 +74,7 @@ export function CmsAdminComponentsProvider({
 		() => ({
 			fencePreviews: { ...parent.fencePreviews, ...components.fencePreviews },
 			fieldInputs: { ...parent.fieldInputs, ...components.fieldInputs },
+			blockEditors: { ...parent.blockEditors, ...components.blockEditors },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
 		}),
 		[parent, components],

@@ -1,4 +1,4 @@
-import { BLOCKS } from "@bh2980/cms/blocks/definitions";
+import { BLOCKS } from "@bh2980/cms/blocks/active";
 import { BLOCK_BY_NAME, invalidOptionAttributes } from "@bh2980/cms/blocks/derive";
 import { DIRECTIVES } from "@bh2980/cms/mdx/directives";
 import { BLOCK_NODE_VIEWS } from "@bh2980/cms-admin/editor/block-views";

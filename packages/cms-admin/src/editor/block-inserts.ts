@@ -1,4 +1,5 @@
 import type { Editor, Range } from "@tiptap/core";
+import { CUSTOM_BLOCK_INSERT_ACTIONS } from "./blocks/custom";
 
 export const OPEN_IMAGE_DIALOG_EVENT = "cms:open-image-dialog";
 
@@ -114,4 +115,6 @@ export const BLOCK_INSERT_ACTIONS: Record<string, BlockInsertAction> = {
 			})
 			.run();
 	},
+	// 사이트 설정의 사용자 블록.
+	...CUSTOM_BLOCK_INSERT_ACTIONS,
 };

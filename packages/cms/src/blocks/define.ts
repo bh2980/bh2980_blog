@@ -4,11 +4,11 @@
  * 정의는 서버(저장 검증)·에디터·공개 렌더러·`/meta`가 함께 쓰므로 **JSON으로 직렬화할 수 있는 값만** 가진다.
  * 편집 UI(NodeView·설정 폼)와 공개 컴포넌트는 이름으로만 가리키고, 구현은 각 등록부에 둔다:
  *
- * - 공개 렌더러: `src/components/mdx/mdx-content.tsx`의 `MDX_COMPONENTS` (`component` 이름)
- * - 에디터 NodeView: `src/cms/editor/block-views.ts` (`editor.nodeView` 이름)
+ * - 공개 렌더러: 사이트의 MDX 컴포넌트 표(`component` 이름)
+ * - 에디터 NodeView: 내장 블록은 관리자 패키지의 `editor/block-views.ts`(`editor.nodeView` 이름), 사용자 블록은
+ *   사이트가 `CmsAdminComponentsProvider`의 `blockEditors`(블록 이름)로 준다. 없으면 기본 속성 상자다.
  *
- * 외부 플러그인 로더는 만들지 않는다. 블록을 더하려면 이 저장소의 `definitions.ts`에 정의를 더하고
- * 두 등록부에 구현을 둔다. 정의 테스트가 등록부 누락을 잡는다.
+ * 사이트는 설정의 `blocks`로 내장 블록 일부를 끄고 사용자 블록(`defineBlock`)을 더한다(`blocks/resolve.ts`).
  */
 
 /** 저장 문법. 지시자(§4.4)는 `:::이름`·`::이름`·`:이름[...]`, 코드 펜스는 ` ```언어 `, 수식은 `$$`다. */

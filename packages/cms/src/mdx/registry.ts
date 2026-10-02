@@ -1,3 +1,4 @@
+import { CUSTOM_BLOCKS } from "../blocks/active";
 export const REGISTERED_JSX_NAMES = new Set([
 	"Callout",
 	"Collapsible",
@@ -26,6 +27,8 @@ export const REGISTERED_JSX_NAMES = new Set([
 	"Table",
 	"TableRow",
 	"TableCell",
+	// 사이트 설정의 사용자 블록(`blocks.custom`).
+	...CUSTOM_BLOCKS.map((block) => block.component),
 ]);
 
 export const BLOCK_JSX_NAMES = new Set([
@@ -45,6 +48,7 @@ export const BLOCK_JSX_NAMES = new Set([
 	"Table",
 	"TableRow",
 	"TableCell",
+	...CUSTOM_BLOCKS.map((block) => block.component),
 ]);
 
 export const INLINE_JSX_MARKS: Record<string, string> = {

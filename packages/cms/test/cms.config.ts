@@ -1,4 +1,4 @@
-import { defineCollection, defineConfig, fields } from "../src";
+import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 /**
  * 패키지 자체 테스트가 쓰는 예시 사이트 설정. bh2980 블로그의 설정(`src/cms.config.ts`)과 같은 모양이다.
@@ -202,6 +202,28 @@ export const series = defineCollection({
 	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
+/** 사용자 블록 예시(블로그에는 없다). 편집기 노드가 있는 컨테이너와 원문 상자로 보이는 한 줄 블록이다. */
+const notice = defineBlock({
+	name: "notice",
+	label: "공지",
+	syntax: { kind: "container", directive: "notice" },
+	component: "Notice",
+	attributes: {
+		level: { type: "string", label: "단계", options: { info: "안내", warn: "주의" }, defaultValue: "info" },
+		title: { type: "string", label: "제목" },
+	},
+	editor: { view: "node", insertable: true, keywords: ["notice", "공지"] },
+});
+
+const embed = defineBlock({
+	name: "embed",
+	label: "임베드",
+	syntax: { kind: "leaf", directive: "embed" },
+	component: "Embed",
+	attributes: { url: { type: "string", label: "주소", required: true } },
+	editor: { view: "opaque" },
+});
+
 export default defineConfig({
 	collections: { post, memo, category, tag, collection: series },
 	locales: [
@@ -212,6 +234,7 @@ export default defineConfig({
 	defaultLocale: "ko",
 	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"], name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
+	blocks: { custom: [notice, embed] },
 	seed: {
 		templates: [
 			{

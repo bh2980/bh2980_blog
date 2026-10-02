@@ -1,4 +1,4 @@
-import { defineCollection, defineConfig, fields } from "../src";
+import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 /**
  * bh2980 블로그와 컬렉션·언어가 전혀 다른 예시 사이트. 본체가 특정 블로그의 컬렉션 이름에 묶이지 않았는지
@@ -31,4 +31,18 @@ export default defineConfig({
 	collections: { article, topic },
 	locales: [{ code: "en", name: "English" }],
 	defaultLocale: "en",
+	// 내장 블록 일부를 끄고 사용자 블록을 더한다.
+	blocks: {
+		disable: ["tabs", "columns", "mermaid"],
+		custom: [
+			defineBlock({
+				name: "quote-card",
+				label: "Quote card",
+				syntax: { kind: "container", directive: "quote-card" },
+				component: "QuoteCard",
+				attributes: { author: { type: "string", label: "Author" } },
+				editor: { view: "node", insertable: true },
+			}),
+		],
+	},
 });
