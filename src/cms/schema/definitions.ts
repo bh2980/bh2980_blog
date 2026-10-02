@@ -107,10 +107,24 @@ export const post = collection({
 export const memo = collection({
 	label: "메모",
 	workflow: "publish",
-	fields: { title, slug: contentSlug, tagIds, ...seo },
+	fields: {
+		title,
+		slug: contentSlug,
+		tagIds,
+		series: fields.backlink({
+			label: "모음집",
+			from: "collection",
+			via: "memoIds",
+			createInline: true,
+			description:
+				"누르는 즉시 모음집에 저장됩니다(메모의 초안·발행과 별개). 메모를 담는 모음집만 고를 수 있고, 추가하면 끝에 들어갑니다.",
+			placeholder: "모음집에 추가",
+		}),
+		...seo,
+	},
 	layout: [
 		{ fields: ["title", "slug"] },
-		{ group: "분류", fields: ["tagIds"] },
+		{ group: "분류", fields: ["tagIds", "series"] },
 		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
 	],
 	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
@@ -142,15 +156,42 @@ export const series = collection({
 	fields: {
 		...taxonomyFields,
 		summary: fields.text({ label: "설명", multiline: true, localized: true }),
-		itemIds: fields.relation({
-			label: "게시글",
-			to: "post",
-			many: true,
-			ordered: true,
-			allowUnpublished: true,
-			description: "아직 공개되지 않은 글도 담을 수 있고 공개 목록에서만 빠집니다.",
-			placeholder: "글 추가·빼기",
-		}),
+		/**
+		 * 모음집은 게시글 또는 메모 한 종류를 순서대로 담는다. 게시글 목록은 예전 키(`itemIds`)를 그대로 쓴다.
+		 * 종류를 바꿔 저장하면 다른 종류 목록은 비워진다.
+		 */
+		itemKind: fields.conditional(
+			fields.select({
+				label: "담는 글",
+				options: { post: "게시글", memo: "메모" },
+				defaultValue: "post",
+				description: "종류를 바꿔 저장하면 담아 둔 다른 종류 목록은 비워집니다.",
+			}),
+			{
+				post: {
+					itemIds: fields.relation({
+						label: "게시글",
+						to: "post",
+						many: true,
+						ordered: true,
+						allowUnpublished: true,
+						description: "아직 공개되지 않은 글도 담을 수 있고 공개 목록에서만 빠집니다.",
+						placeholder: "글 추가·빼기",
+					}),
+				},
+				memo: {
+					memoIds: fields.relation({
+						label: "메모",
+						to: "memo",
+						many: true,
+						ordered: true,
+						allowUnpublished: true,
+						description: "아직 공개되지 않은 메모도 담을 수 있고 공개 목록에서만 빠집니다.",
+						placeholder: "메모 추가·빼기",
+					}),
+				},
+			},
+		),
 	},
 	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });

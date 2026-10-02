@@ -46,7 +46,7 @@ export const PUBLIC_METADATA_KEYS: Record<string, readonly string[]> = {
 	memo: ["title", "tagIds", ...SEO_PUBLIC_KEYS],
 	category: ["title"],
 	tag: ["title"],
-	collection: ["title", "itemIds"],
+	collection: ["title", "itemKind", "itemIds", "memoIds"],
 };
 
 export function pickPublicMetadata(collection: string, metadata: Record<string, unknown>): Record<string, unknown> {

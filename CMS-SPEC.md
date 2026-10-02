@@ -487,10 +487,10 @@ MDX에 직접 쓰는 커스텀 표현은 **remark directive**로 저장한다. J
 | `memo` | 제목, slug, 태그, MDX 본문. 초안/발행 workflow |
 | `category` | 이름. slug는 이름에서 서버가 만든다. 명시적 저장으로 반영하는 record workflow |
 | `tag` | 이름. slug는 이름에서 서버가 만든다. 명시적 저장으로 반영하는 record workflow |
-| `collection` | 모음집 이름(`title`), 설명(`summary`), 순서를 유지하는 게시글 관계(`itemIds`). slug는 이름에서 만든다. record workflow |
+| `collection` | 모음집 이름(`title`), 설명(`summary`), 담는 글 종류(`itemKind`: 게시글·메모), 순서를 유지하는 게시글 관계(`itemIds`) 또는 메모 관계(`memoIds`). slug는 이름에서 만든다. record workflow |
 
 공통 시스템 필드와 가상 폴더는 CMS가 제공한다. 기존 공개 블로그가 받는 필드 이름은 호환 변환 계층에서 유지할 수 있다. 모음집에서 아직 공개되지 않은 게시글은 관리자에게 표시하고 공개 목록에서는 제외한다.
-새로운 CMS 메타데이터 통신 계약(wire keys)은 `title`, `summary`, `categoryId`, `tagIds`, `policy`, `replacementPostId`, `itemIds`다. `replacementPostId`는 `deprecated` 게시글의 대체 글 ID이며 공개 페이지에 대체 글 안내로 표시한다. 컬렉션별 허용 목록은 유지하되, 기존 Keystatic 이름은 마이그레이션 입력으로만 사용하며 새로운 통신 계약에는 포함하지 않는다. 컬렉션 항목 중 `itemIds`는 게시글(post)만을 대상으로 하며, 모음집 저장 시 아직 공개되지 않은 게시글도 담을 수 있다.
+새로운 CMS 메타데이터 통신 계약(wire keys)은 `title`, `summary`, `categoryId`, `tagIds`, `policy`, `replacementPostId`, `itemKind`, `itemIds`, `memoIds`다. `replacementPostId`는 `deprecated` 게시글의 대체 글 ID이며 공개 페이지에 대체 글 안내로 표시한다. 컬렉션별 허용 목록은 유지하되, 기존 Keystatic 이름은 마이그레이션 입력으로만 사용하며 새로운 통신 계약에는 포함하지 않는다. 모음집은 게시글 또는 메모 한 종류를 담는다(2026-10-02 변경). 게시글 모음집은 `itemIds`, 메모 모음집은 `memoIds`이고, 아직 공개되지 않은 글도 담을 수 있다.
 
 ## 7. 이미지와 미디어 라이브러리
 

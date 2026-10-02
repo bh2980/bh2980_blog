@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { type SchemaCollection, storedField } from "@/cms/schema/derive";
 import type { BacklinkField, RelationField, ValueField } from "@/cms/schema/fields";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -325,6 +326,49 @@ export type IncomingReference = {
 };
 
 /**
+ * 반대 방향 관계가 상대 레코드의 조건부 목록이면(예: 모음집의 `담는 글`이 메모일 때만 있는 `memoIds`)
+ * 그 조건에 맞는 레코드만 고를 수 있게 한다. 레코드마다 지금 고른 종류를 읽어 거른다.
+ * 조건이 없는 관계는 거르지 않는다.
+ */
+function useRecordKind(field: BacklinkField, options: readonly { id: string }[]) {
+	const requirement = storedField(field.from as SchemaCollection, field.via)?.when;
+	const discriminant = requirement ? storedField(field.from as SchemaCollection, requirement.field)?.field : undefined;
+	const defaultValue = discriminant?.kind === "select" ? discriminant.defaultValue : undefined;
+	const [kinds, setKinds] = useState<ReadonlyMap<string, string>>(new Map());
+	const idsKey = options.map((option) => option.id).join(",");
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed by the option ids
+	useEffect(() => {
+		if (!requirement) return;
+		const missing = options.filter((option) => !kinds.has(option.id));
+		if (missing.length === 0) return;
+		let cancelled = false;
+		void Promise.all(
+			missing.map((option) =>
+				cmsFetch<RecordEntry>(`/api/cms/v1/entries/${option.id}`)
+					.then((record) => {
+						const value = record.working.metadata[requirement.field];
+						return [option.id, typeof value === "string" ? value : (defaultValue ?? "")] as const;
+					})
+					.catch(() => [option.id, ""] as const),
+			),
+		).then((loaded) => {
+			if (!cancelled) setKinds((current) => new Map([...current, ...loaded]));
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [idsKey, requirement?.field]);
+
+	return {
+		ready: !requirement || options.every((option) => kinds.has(option.id)),
+		accepts: (id: string) => !requirement || kinds.get(id) === requirement.value,
+		/** 새로 만들 레코드가 이 관계를 받도록 종류를 정한다. 기본 종류면 따로 적지 않는다. */
+		createMetadata: requirement && requirement.value !== defaultValue ? { [requirement.field]: requirement.value } : {},
+	};
+}
+
+/**
  * 반대 방향 관계 입력(v2 B2). 예: 게시글의 `모음집`. 상대 레코드(모음집)의 여러 개 관계 필드(`itemIds`)를
  * 누르는 즉시 저장한다 — 이 글의 초안·발행과 별개다. 추가하면 끝에 들어가고, 빼면 이 글이 든 자리를 모두 뺀다.
  * 버전이 어긋나면(다른 곳에서 먼저 바뀜) 최신 값을 다시 읽어 한 번 더 시도한다.
@@ -343,6 +387,7 @@ export function BacklinkInput({
 	shared?: { references: readonly IncomingReference[]; loading: boolean; refresh: () => void };
 }) {
 	const records = useTaxonomy(field.from as RecordCollection, Boolean(targetId));
+	const kind = useRecordKind(field, records.options);
 	const [fetched, setFetched] = useState<{ id: string; title: string }[] | null>(null);
 
 	const membersOf = useCallback(
@@ -456,7 +501,9 @@ export function BacklinkInput({
 
 	const shown = optimistic ?? serverIds;
 	const options = [
-		...records.options.map((option) => ({ value: option.id, label: option.title })),
+		...records.options
+			.filter((option) => kind.accepts(option.id))
+			.map((option) => ({ value: option.id, label: option.title })),
 		// 공개 목록에 아직 없는 모음집(방금 만든 것 등)도 이름으로 보인다.
 		...(members ?? [])
 			.filter((member) => !records.options.some((option) => option.id === member.id))
@@ -487,10 +534,10 @@ export function BacklinkInput({
 		<RelationCombobox
 			multiple
 			aria-label={field.label}
-			placeholder={members === null ? "불러오는 중..." : "검색하거나 새로 만들기"}
+			placeholder={members === null || !kind.ready ? "불러오는 중..." : "검색하거나 새로 만들기"}
 			options={options}
 			value={shown}
-			disabled={disabled || members === null}
+			disabled={disabled || members === null || !kind.ready}
 			onValueChange={change}
 			onCreate={
 				field.createInline
@@ -499,7 +546,11 @@ export function BacklinkInput({
 								// 만들면서 이 글을 넣는다. 목록에 바로 보이게 선택지도 다시 읽는다.
 								const created = await cmsFetch<{ id: string }>("/api/cms/v1/entries", {
 									method: "POST",
-									json: { collection: field.from, metadata: { title, [field.via]: [targetId] }, mdx: "" },
+									json: {
+										collection: field.from,
+										metadata: { title, ...kind.createMetadata, [field.via]: [targetId] },
+										mdx: "",
+									},
 									fallback: "만들지 못했습니다.",
 								});
 								createdRef.current.add(created.id);

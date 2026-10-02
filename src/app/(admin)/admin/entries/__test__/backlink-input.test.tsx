@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BacklinkField } from "@/cms/schema/fields";
 import { BacklinkInput } from "../field-inputs";
 
@@ -58,6 +58,14 @@ function stubApi(patchStatus: number) {
 					total: 2,
 				});
 			}
+			// 모음집마다 담는 종류를 읽는다(기본은 게시글).
+			if (url === "/api/cms/v1/entries/c1" && !init?.method) {
+				return json({
+					version: 1,
+					workingSlug: "a",
+					working: { metadata: { title: "시리즈 A", itemIds: ["post-1"] } },
+				});
+			}
 			if (url === "/api/cms/v1/entries/c2" && !init?.method) {
 				return json({ version: 1, workingSlug: "b", working: { metadata: { title: "시리즈 B", itemIds: [] } } });
 			}
@@ -74,6 +82,7 @@ function stubApi(patchStatus: number) {
 const addSeriesB = async () => {
 	render(<BacklinkInput field={field} targetId="post-1" disabled={false} shared={shared} />);
 	const input = await screen.findByRole("combobox", { name: "모음집" });
+	await waitFor(() => expect((input as HTMLInputElement).disabled).toBe(false));
 	fireEvent.input(input, { target: { value: "시리즈 B" }, inputType: "insertText" });
 	fireEvent.click(await screen.findByRole("option", { name: "시리즈 B" }));
 };
@@ -96,5 +105,76 @@ describe("모음집 넣기(반대 방향 관계)", () => {
 		await waitFor(() => expect(toast.error).toHaveBeenCalled());
 		await waitFor(() => expect(screen.queryByText("시리즈 B")).toBeNull());
 		expect(screen.getByText("시리즈 A")).toBeTruthy();
+	});
+});
+
+describe("메모의 모음집 넣기", () => {
+	const memoField: BacklinkField = {
+		kind: "backlink",
+		label: "모음집",
+		from: "collection",
+		via: "memoIds",
+		createInline: true,
+	};
+	const records: Record<string, { itemKind?: string; title: string }> = {
+		c1: { title: "글 시리즈" },
+		c2: { itemKind: "memo", title: "Type Challenges" },
+		c3: { itemKind: "post", title: "다른 글 시리즈" },
+	};
+	let fetchMock: ReturnType<typeof vi.fn>;
+	beforeEach(() => {
+		fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url.startsWith("/api/cms/v1/entries?"))
+				return json({
+					items: Object.entries(records).map(([id, record]) => ({ id, title: record.title, slug: id })),
+					total: 3,
+				});
+			const id = url.match(/^\/api\/cms\/v1\/entries\/(c\d)$/)?.[1];
+			if (id && !init?.method) {
+				const { title, itemKind } = records[id] as { title: string; itemKind?: string };
+				return json({
+					version: 1,
+					workingSlug: id,
+					working: { metadata: { title, ...(itemKind ? { itemKind } : {}) } },
+				});
+			}
+			if (url === "/api/cms/v1/entries" && init?.method === "POST") return json({ id: "c9" }, 201);
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal("fetch", fetchMock);
+	});
+	const openList = async () => {
+		render(
+			<BacklinkInput field={memoField} targetId="memo-1" disabled={false} shared={{ ...shared, references: [] }} />,
+		);
+		const input = await screen.findByRole("combobox", { name: "모음집" });
+		await waitFor(() => expect((input as HTMLInputElement).disabled).toBe(false));
+		fireEvent.mouseDown(input);
+		return input;
+	};
+
+	it("메모를 담는 모음집만 고를 수 있다", async () => {
+		await openList();
+		await waitFor(async () =>
+			expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Type Challenges"]),
+		);
+	});
+
+	it("새로 만들면 메모를 담는 모음집으로 만든다", async () => {
+		const input = await openList();
+		fireEvent.input(input, { target: { value: "새 메모 시리즈" }, inputType: "insertText" });
+		fireEvent.click(await screen.findByRole("option", { name: "'새 메모 시리즈' 만들기" }));
+		await waitFor(() =>
+			expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/cms/v1/entries" && init?.method === "POST")).toBe(
+				true,
+			),
+		);
+		const post = fetchMock.mock.calls.find(([url, init]) => url === "/api/cms/v1/entries" && init?.method === "POST");
+		expect(JSON.parse(String(post?.[1]?.body))).toEqual({
+			collection: "collection",
+			metadata: { title: "새 메모 시리즈", itemKind: "memo", memoIds: ["memo-1"] },
+			mdx: "",
+		});
 	});
 });

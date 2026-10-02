@@ -48,6 +48,16 @@ describe("컬렉션 정의(v2 B1)", () => {
 			}
 		}
 		expect(SCHEMAS.post.fields.series).toMatchObject({ kind: "backlink", from: "collection", via: "itemIds" });
+		expect(SCHEMAS.memo.fields.series).toMatchObject({ kind: "backlink", from: "collection", via: "memoIds" });
+		// 각 목록은 모음집의 `담는 글` 선택에 딸려 있다.
+		expect(storedFields("collection").find((stored) => stored.name === "itemIds")?.when).toEqual({
+			field: "itemKind",
+			value: "post",
+		});
+		expect(storedFields("collection").find((stored) => stored.name === "memoIds")?.when).toEqual({
+			field: "itemKind",
+			value: "memo",
+		});
 	});
 
 	it("v1 모양의 정의를 그대로 만든다", () => {
@@ -74,10 +84,13 @@ describe("컬렉션 정의(v2 B1)", () => {
 			seoRobots: "string",
 		});
 		expect(COLLECTION_DEFINITIONS.category.fields).toEqual({ title: "string" });
+		// 모음집은 게시글 또는 메모 한 종류를 담는다. 게시글 목록은 예전 키(`itemIds`)를 그대로 쓴다.
 		expect(COLLECTION_DEFINITIONS.collection.fields).toEqual({
 			title: "string",
 			summary: "string",
+			itemKind: "string",
 			itemIds: "string[]",
+			memoIds: "string[]",
 		});
 		expect(COLLECTION_DEFINITIONS.collection.workflow).toBe("record");
 		expect(relationsOf("post").map(({ field, kind }) => [field, kind])).toEqual([
