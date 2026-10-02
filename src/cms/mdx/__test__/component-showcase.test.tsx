@@ -8,7 +8,7 @@ import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { analyze } from "@/cms/mdx";
 import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
 
-const source = readFileSync(path.join(process.cwd(), "docs/cms/component-showcase-sample.mdx"), "utf8");
+const source = readFileSync(path.join(__dirname, "fixtures/component-showcase.mdx"), "utf8");
 
 describe("CMS 컴포넌트 샘플 글", () => {
 	it("에디터에서 열리고 공개 MDX 렌더러에서 모든 섹션을 표시한다", async () => {

@@ -3,7 +3,7 @@ import { LOCALES } from "@/libs/i18n/locales";
 import { COLLECTIONS } from "./collections";
 
 /**
- * `/api/cms/v1` 요청 계약. 라우트·관리자 UI·OpenAPI가 같은 정의를 본다(`docs/cms/openapi.yaml`).
+ * `/api/cms/v1` 요청 계약. 라우트와 관리자 UI가 같은 정의를 본다.
  */
 
 export const collectionSchema = z.enum(COLLECTIONS);

@@ -3,8 +3,8 @@ import { directiveBlocks } from "../blocks/derive";
 /**
  * 지시자 이름 정의표.
  *
- * 저장 형식(`CMS-SPEC.md` §4.4)과 렌더러가 함께 보는 표다. v2 B3부터 블록 정의
- * (`src/cms/blocks/definitions.ts`)에서 만든다. 블록을 더할 때는 블록 정의를 고치고 `CMS-SPEC.md` §4.4를 함께 갱신한다.
+ * 저장 형식과 렌더러가 함께 보는 표다. 블록 정의(`src/cms/blocks/definitions.ts`)에서 만든다.
+ * 블록을 더할 때는 블록 정의를 고친다.
  *
  * 등록된 이름만 지시자로 인식한다. 미등록 `:이름`은 파싱 단계에서 본문 텍스트로 되돌린다
  * (`remark-directive`에는 이름 필터 옵션이 없다 — "It exports no additional options.").
