@@ -39,6 +39,8 @@ interface RelationComboboxProps {
 	invalid?: boolean;
 	describedBy?: string;
 	disabled?: boolean;
+	/** 여러 개일 때 고른 항목을 입력칸 안에 칩으로 보일지. 고른 목록을 따로 그리는 곳(모음집 글 목록)은 끈다. */
+	showChips?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export function RelationCombobox({
 	invalid,
 	describedBy,
 	disabled,
+	showChips = true,
 }: RelationComboboxProps) {
 	const anchor = useComboboxAnchor();
 	const [query, setQuery] = useState("");
@@ -146,7 +149,7 @@ export function RelationCombobox({
 				>
 					<ComboboxChips ref={anchor} className="w-full min-w-0">
 						<ComboboxValue>
-							{selected.map((item) => (
+							{(showChips ? selected : []).map((item) => (
 								<ComboboxChip key={item.value} className="max-w-full">
 									<span className="truncate">{item.label}</span>
 								</ComboboxChip>
@@ -157,7 +160,7 @@ export function RelationCombobox({
 							aria-label={ariaLabel}
 							aria-invalid={invalid || undefined}
 							aria-describedby={describedBy}
-							placeholder={selected.length === 0 ? placeholder : undefined}
+							placeholder={selected.length === 0 || !showChips ? placeholder : undefined}
 							className="text-xs"
 						/>
 					</ComboboxChips>

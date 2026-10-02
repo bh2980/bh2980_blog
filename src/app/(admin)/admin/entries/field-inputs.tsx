@@ -1,13 +1,29 @@
 "use client";
 
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import {
+	closestCenter,
+	DndContext,
+	type DragEndEvent,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { BacklinkField, RelationField, ValueField } from "@/cms/schema/fields";
 import { Button } from "@/components/ui/button";
-import { FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/utils/cn";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { FormValue } from "./entry-form";
@@ -68,211 +84,228 @@ export const FIELD_INPUTS: Readonly<Record<string, ComponentType<FieldInputProps
 
 type EntryOption = { id: string; title: string; status: string };
 
-/** 공개 컬렉션(게시글·메모) 제목 검색. 250ms 멈추면 찾는다. */
-function useEntrySearch(field: RelationField, search: string, excludeId?: string) {
-	const [results, setResults] = useState<EntryOption[]>([]);
+/** 목록 API 한 번에 받는 최대 수. 글이 이보다 많으면 여러 번 나눠 받는다. */
+const ENTRY_OPTIONS_PAGE_SIZE = 100;
+
+/**
+ * 관계 대상(게시글·메모)의 전체 목록. 고를 때 검색 없이 바로 펼쳐 보이려고 처음에 한 번 다 받는다.
+ * 휴지통 글은 목록 API가 빼고, `publishedOnly`면 공개 글만 받는다.
+ */
+function useEntryOptions(field: RelationField) {
+	const [options, setOptions] = useState<EntryOption[] | null>(null);
 	useEffect(() => {
-		if (!search.trim()) {
-			setResults([]);
-			return;
-		}
-		const timer = setTimeout(() => {
-			const params = new URLSearchParams({ collection: field.to, search: search.trim(), pageSize: "25" });
-			if (field.publishedOnly) params.set("status", "published");
-			cmsFetch<{ items: { id: string; title: string | null; status: string }[] }>(`/api/cms/v1/entries?${params}`)
-				.then((data) =>
-					setResults(
-						data.items
-							.filter((item) => item.id !== excludeId)
-							.map((item) => ({ id: item.id, title: item.title || "제목 없음", status: item.status })),
-					),
-				)
-				.catch(() => setResults([]));
-		}, 250);
-		return () => clearTimeout(timer);
-	}, [field.to, field.publishedOnly, search, excludeId]);
-	return results;
-}
-
-function SearchResults({ results, onPick }: { results: EntryOption[]; onPick: (option: EntryOption) => void }) {
-	if (results.length === 0) return null;
-	return (
-		<ul className="max-h-32 overflow-y-auto rounded-md border text-xs">
-			{results.map((result) => (
-				<li key={result.id}>
-					<Button
-						type="button"
-						variant="ghost"
-						size="xs"
-						className="w-full justify-start"
-						onClick={() => onPick(result)}
-					>
-						{result.title}
-						{result.status !== "published" && ` (${result.status})`}
-					</Button>
-				</li>
-			))}
-		</ul>
-	);
-}
-
-/** 한 개 관계(게시글·메모 대상). 제목으로 찾아 고른다. 대체 글(§6.4)이 쓴다. */
-export function EntryPicker({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
-	const relation = field as RelationField;
-	const [search, setSearch] = useState("");
-	const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
-	const results = useEntrySearch(relation, search, context.entryId);
-	const selected = typeof value === "string" && value ? value : null;
-
-	useEffect(() => {
-		if (!selected) {
-			setSelectedTitle(null);
-			return;
-		}
-		cmsFetch<{ working: { metadata: { title?: string } } }>(`/api/cms/v1/entries/${selected}`)
-			.then((entry) => setSelectedTitle(entry.working.metadata.title || "제목 없음"))
-			.catch(() => setSelectedTitle("(찾을 수 없음)"));
-	}, [selected]);
-
-	return (
-		<div className="space-y-1.5">
-			<p className="text-xs">
-				현재: {selectedTitle ?? "지정 안 함"}
-				{selected && !context.disabled && (
-					<Button type="button" variant="link" size="xs" className="ml-1" onClick={() => onChange(null)}>
-						해제
-					</Button>
-				)}
-			</p>
-			<Input
-				id={id}
-				aria-invalid={invalid || undefined}
-				aria-describedby={describedBy}
-				value={search}
-				disabled={context.disabled}
-				placeholder={relation.placeholder ?? "제목 검색"}
-				onChange={(event) => setSearch(event.target.value)}
-				className={inputClass}
-			/>
-			<SearchResults
-				results={results}
-				onPick={(option) => {
-					onChange(option.id);
-					setSearch("");
-				}}
-			/>
-		</div>
-	);
-}
-
-/** 순서 있는 여러 개 관계(게시글 대상). 모음집 항목(§6.4)이 쓴다. */
-export function OrderedEntryList({ field, id, value, context, onChange }: FieldInputProps) {
-	const relation = field as RelationField;
-	const [search, setSearch] = useState("");
-	const [known, setKnown] = useState<Record<string, EntryOption>>({});
-	const ids = Array.isArray(value) ? value : [];
-	const results = useEntrySearch(relation, search, context.entryId);
-	const idsKey = ids.join(",");
-
-	// 목록에 처음 보이는 항목의 제목·상태를 읽는다.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: idsKey stands in for ids
-	useEffect(() => {
-		const missing = ids.filter((itemId) => !known[itemId]);
-		if (missing.length === 0) return;
 		let cancelled = false;
-		void Promise.all(
-			missing.map((itemId) =>
-				cmsFetch<{ status: string; working: { metadata: { title?: string } } }>(`/api/cms/v1/entries/${itemId}`)
-					.then((entry) => ({ id: itemId, title: entry.working.metadata.title || "제목 없음", status: entry.status }))
-					.catch(() => ({ id: itemId, title: "(찾을 수 없음)", status: "missing" })),
-			),
-		).then((resolved) => {
-			if (!cancelled) setKnown((current) => ({ ...current, ...Object.fromEntries(resolved.map((r) => [r.id, r])) }));
-		});
+		const load = async () => {
+			const all: EntryOption[] = [];
+			for (let page = 1; ; page += 1) {
+				const params = new URLSearchParams({
+					collection: field.to,
+					pageSize: String(ENTRY_OPTIONS_PAGE_SIZE),
+					page: String(page),
+				});
+				if (field.publishedOnly) params.set("status", "published");
+				const data = await cmsFetch<{ items: { id: string; title: string | null; status: string }[]; total: number }>(
+					`/api/cms/v1/entries?${params}`,
+				);
+				all.push(...data.items.map((item) => ({ id: item.id, title: item.title || "제목 없음", status: item.status })));
+				if (data.items.length === 0 || all.length >= data.total) break;
+			}
+			return all;
+		};
+		load()
+			.then((loaded) => !cancelled && setOptions(loaded))
+			.catch(() => !cancelled && setOptions([]));
 		return () => {
 			cancelled = true;
 		};
-	}, [idsKey]);
+	}, [field.to, field.publishedOnly]);
+	return options;
+}
+
+/** 공개되지 않은 글은 이름 뒤에 표시한다. 모음집·대체 글의 공개 목록에서 빠지기 때문이다. */
+const entryLabel = (option: EntryOption) => (option.status === "published" ? option.title : `${option.title} · 비공개`);
+
+/** 한 개 관계(게시글·메모 대상). 누르면 전체 글 목록이 열리고 고른다. 대체 글(§6.4)이 쓴다. */
+export function EntryPicker({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
+	const relation = field as RelationField;
+	const options = useEntryOptions(relation);
+	const selected = typeof value === "string" && value ? [value] : [];
+	return (
+		<RelationCombobox
+			id={id}
+			aria-label={field.label}
+			placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? "글 고르기")}
+			invalid={invalid}
+			describedBy={describedBy}
+			disabled={context.disabled || options === null}
+			multiple={false}
+			options={(options ?? [])
+				.filter((option) => option.id !== context.entryId)
+				.map((option) => ({ value: option.id, label: entryLabel(option) }))}
+			value={selected}
+			onValueChange={(next) => onChange(next[0] ?? null)}
+		/>
+	);
+}
+
+/** 순서 있는 목록의 한 줄. 손잡이를 끌거나 위로·아래로 버튼으로 옮긴다. */
+function SortableEntryRow({
+	sortableId,
+	index,
+	count,
+	option,
+	disabled,
+	onMove,
+	onRemove,
+}: {
+	sortableId: string;
+	index: number;
+	count: number;
+	option: EntryOption | undefined;
+	disabled: boolean;
+	onMove: (direction: -1 | 1) => void;
+	onRemove: () => void;
+}) {
+	const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+		id: sortableId,
+		disabled,
+	});
+	const title = option?.title ?? "불러오는 중";
+	return (
+		<li
+			ref={setNodeRef}
+			style={{ transform: CSS.Transform.toString(transform), transition }}
+			className={cn(
+				"flex items-center gap-1 rounded-md border bg-background px-1 py-1 text-xs",
+				isDragging && "relative z-10 shadow-md",
+			)}
+		>
+			<Button
+				ref={setActivatorNodeRef}
+				type="button"
+				size="icon-xs"
+				variant="ghost"
+				aria-label={`${title} 끌어서 옮기기`}
+				disabled={disabled}
+				className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+				{...attributes}
+				{...listeners}
+			>
+				<GripVertical />
+			</Button>
+			<span className="min-w-0 flex-1 truncate">
+				{index + 1}. {title}
+				{option && option.status !== "published" && (
+					<span className="ml-1 text-amber-700 dark:text-amber-400">
+						({option.status === "missing" ? "없음" : "비공개 — 공개 목록에서 빠짐"})
+					</span>
+				)}
+			</span>
+			<Button
+				type="button"
+				size="icon-xs"
+				variant="ghost"
+				aria-label={`${title} 위로`}
+				disabled={disabled || index === 0}
+				onClick={() => onMove(-1)}
+			>
+				<ArrowUp />
+			</Button>
+			<Button
+				type="button"
+				size="icon-xs"
+				variant="ghost"
+				aria-label={`${title} 아래로`}
+				disabled={disabled || index === count - 1}
+				onClick={() => onMove(1)}
+			>
+				<ArrowDown />
+			</Button>
+			<Button
+				type="button"
+				size="icon-xs"
+				variant="ghost"
+				aria-label={`${title} 빼기`}
+				disabled={disabled}
+				onClick={onRemove}
+			>
+				<X />
+			</Button>
+		</li>
+	);
+}
+
+/**
+ * 순서 있는 여러 개 관계(게시글 대상). 모음집 항목(§6.4)이 쓴다.
+ * 위의 `글 추가·빼기` 목록에서 체크해 넣고 빼며(넣으면 끝에 붙는다), 아래 목록에서 끌어서 순서를 바꾼다.
+ */
+export function OrderedEntryList({ field, id, value, context, onChange }: FieldInputProps) {
+	const relation = field as RelationField;
+	const options = useEntryOptions(relation);
+	const ids = Array.isArray(value) ? value : [];
+	const byId = useMemo(() => new Map((options ?? []).map((option) => [option.id, option])), [options]);
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+		useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+	);
+	// 같은 글이 두 번 담길 수 있어(이전 데이터) 순번까지 끌기 ID로 쓴다.
+	const sortableIds = ids.map((itemId, index) => `${index}:${itemId}`);
 
 	const move = (index: number, direction: -1 | 1) => {
-		const next = [...ids];
 		const target = index + direction;
-		if (target < 0 || target >= next.length) return;
-		[next[index], next[target]] = [next[target] as string, next[index] as string];
-		onChange(next);
+		if (target < 0 || target >= ids.length) return;
+		onChange(arrayMove([...ids], index, target));
 	};
+	const onDragEnd = ({ active, over }: DragEndEvent) => {
+		if (!over || active.id === over.id) return;
+		onChange(arrayMove([...ids], sortableIds.indexOf(String(active.id)), sortableIds.indexOf(String(over.id))));
+	};
+	/** 체크 목록이 돌려준 선택. 남은 글은 지금 순서를 지키고 새 글은 끝에 붙인다. */
+	const applySelection = (selected: string[]) => {
+		const chosen = new Set(selected);
+		const kept = ids.filter((itemId) => chosen.has(itemId));
+		onChange([...kept, ...selected.filter((itemId) => !ids.includes(itemId))]);
+	};
+	const missing = (itemId: string): EntryOption | undefined =>
+		options === null ? undefined : { id: itemId, title: "(찾을 수 없음)", status: "missing" };
 
 	return (
 		<div className="space-y-2">
-			{ids.length === 0 && <p className="text-muted-foreground text-xs">담긴 글이 없습니다.</p>}
-			<ol className="space-y-1">
-				{ids.map((itemId, index) => {
-					const item = known[itemId];
-					const title = item?.title ?? "불러오는 중";
-					return (
-						// biome-ignore lint/suspicious/noArrayIndexKey: 같은 글이 두 번 담길 수 있어 순번까지 키로 쓴다
-						<li key={`${itemId}-${index}`} className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
-							<span className="min-w-0 flex-1 truncate">
-								{index + 1}. {title}
-								{item && item.status !== "published" && (
-									<span className="ml-1 text-amber-700 dark:text-amber-400">
-										({item.status === "missing" ? "없음" : "비공개 — 공개 목록에서 빠짐"})
-									</span>
-								)}
-							</span>
-							<Button
-								type="button"
-								size="icon-xs"
-								variant="ghost"
-								aria-label={`${title} 위로`}
-								disabled={context.disabled || index === 0}
-								onClick={() => move(index, -1)}
-							>
-								<ArrowUp />
-							</Button>
-							<Button
-								type="button"
-								size="icon-xs"
-								variant="ghost"
-								aria-label={`${title} 아래로`}
-								disabled={context.disabled || index === ids.length - 1}
-								onClick={() => move(index, 1)}
-							>
-								<ArrowDown />
-							</Button>
-							<Button
-								type="button"
-								size="icon-xs"
-								variant="ghost"
-								aria-label={`${title} 빼기`}
-								disabled={context.disabled}
-								onClick={() => onChange(ids.filter((_, i) => i !== index))}
-							>
-								<X />
-							</Button>
-						</li>
-					);
-				})}
-			</ol>
-			<FieldLabel htmlFor={id} className="sr-only">
-				추가할 글 검색
-			</FieldLabel>
-			<Input
+			<RelationCombobox
 				id={id}
-				value={search}
-				disabled={context.disabled}
-				placeholder={relation.placeholder ?? "추가할 글 검색"}
-				onChange={(event) => setSearch(event.target.value)}
-				className={inputClass}
+				aria-label="글 추가·빼기"
+				placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? "글 추가·빼기")}
+				disabled={context.disabled || options === null}
+				multiple
+				showChips={false}
+				options={(options ?? [])
+					.filter((option) => option.id !== context.entryId)
+					.map((option) => ({ value: option.id, label: entryLabel(option) }))}
+				value={ids}
+				onValueChange={applySelection}
 			/>
-			<SearchResults
-				results={results}
-				onPick={(option) => {
-					setKnown((current) => ({ ...current, [option.id]: option }));
-					onChange([...ids, option.id]);
-					setSearch("");
-				}}
-			/>
+			{ids.length === 0 ? (
+				<p className="text-muted-foreground text-xs">담긴 글이 없습니다.</p>
+			) : (
+				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+					<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+						<ol aria-label="담긴 글" className="space-y-1">
+							{ids.map((itemId, index) => (
+								<SortableEntryRow
+									key={sortableIds[index]}
+									sortableId={sortableIds[index] as string}
+									index={index}
+									count={ids.length}
+									option={byId.get(itemId) ?? missing(itemId)}
+									disabled={context.disabled}
+									onMove={(direction) => move(index, direction)}
+									onRemove={() => onChange(ids.filter((_, i) => i !== index))}
+								/>
+							))}
+						</ol>
+					</SortableContext>
+				</DndContext>
+			)}
 		</div>
 	);
 }
