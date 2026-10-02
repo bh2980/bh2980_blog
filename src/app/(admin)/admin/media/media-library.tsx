@@ -1,48 +1,30 @@
 "use client";
 
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, File, FileArchive, FileText, FileType, RefreshCw, Upload, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { LayoutGrid, List, RefreshCw, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ALLOWED_IMAGE_MIME_TYPES, FILE_ACCEPT, fileTypeFor, isImageMime } from "@/cms/core/api";
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@/cms/core/file-display";
-import { formatBytes, prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
-import { type SlotRequest, SlotScope } from "@/cms/slots/slots";
-import { Badge } from "@/components/ui/badge";
+import { prepareUpload, uploadAttachment, uploadImageFile } from "@/cms/editor/upload-helper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { parseSeoulDateTimeInput } from "@/libs/contents/published-at";
 import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
-import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
+import type { MenuAction } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { DateRangePicker } from "../shared/date-range-picker";
 import { useDebounced } from "../shared/use-debounced";
-
-interface MediaItem {
-	id: string;
-	status: "ready" | "deleting" | "pending" | "failed";
-	filename: string;
-	mimeType: string | null;
-	byteSize: number | null;
-	width: number | null;
-	height: number | null;
-	publicUrl: string | null;
-	original: { mimeType: string | null; byteSize: number | null; width: number | null; height: number | null } | null;
-	defaultAlt: string;
-	defaultCaption: string;
-	createdAt: string;
-	referencesCount: number;
-	references: { entryId: string; title: string | null; collection: string; state: "working" | "published" }[];
-}
+import { MediaDetailPanel } from "./media-detail-panel";
+import type { MediaItem } from "./media-item";
+import { MediaGrid, MediaTable } from "./media-views";
 
 const PAGE_SIZE = 30;
 const KIND_OPTIONS = [
@@ -52,7 +34,6 @@ const KIND_OPTIONS = [
 ];
 
 const UPLOAD_ACCEPT = `${ALLOWED_IMAGE_MIME_TYPES.join(",")},${FILE_ACCEPT}`;
-const FILE_ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
 
 const MEDIA_KEY = ["cms", "media"] as const;
 
@@ -69,36 +50,35 @@ const USED_OPTIONS = [
 	{ value: "unused", label: "미사용" },
 ];
 
-/** 이미지가 아닌 파일의 타일. 형식 아이콘과 형식 이름을 보인다. */
-function FileTile({ media }: { media: MediaItem }) {
-	const Icon = FILE_ICONS[fileKindOf(media.mimeType)];
-	return (
-		<span className="flex flex-col items-center gap-1.5 text-muted-foreground">
-			<Icon className="size-10" aria-hidden />
-			<span className="font-medium text-[10px]">{fileTypeLabel(media.filename, media.mimeType)}</span>
-		</span>
-	);
+type MediaView = "grid" | "list";
+const VIEW_STORAGE_KEY = "cms:media-view";
+
+/** 바둑판·목록 보기 선택. 이 브라우저에 기억하고, 저장소를 못 쓰면 바둑판으로 시작한다. */
+function useMediaView(): [MediaView, (view: MediaView) => void] {
+	const [view, setView] = useState<MediaView>("grid");
+	useEffect(() => {
+		try {
+			if (window.localStorage.getItem(VIEW_STORAGE_KEY) === "list") setView("list");
+		} catch {
+			// 저장소를 쓸 수 없으면 기본 보기를 쓴다.
+		}
+	}, []);
+	const change = (next: MediaView) => {
+		setView(next);
+		try {
+			window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+		} catch {
+			// 기억하지 못해도 보기는 바뀐다.
+		}
+	};
+	return [view, change];
 }
 
-async function copyPublicUrl(url: string) {
-	try {
-		await navigator.clipboard.writeText(url);
-		toast.success("주소를 복사했습니다.");
-	} catch {
-		toast.error("복사하지 못했습니다.");
-	}
-}
-
-/** 새 이름에 원래 파일의 확장자를 붙인다(추천 이름은 확장자 없이 온다). 이미 같은 확장자면 그대로 둔다. */
-function withExtension(name: string, original: string): string {
-	const extension = /\.[A-Za-z0-9]{1,8}$/.exec(original)?.[0]?.toLowerCase() ?? "";
-	return extension && !name.toLowerCase().endsWith(extension) ? `${name}${extension}` : name;
-}
-
-/** 미디어 라이브러리(§7.3). 썸네일 목록, 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순. */
+/**
+ * 미디어 라이브러리(§7.3). 바둑판·목록 보기, 파일명 검색, 형식·업로드일·사용 여부 필터, 최신 업로드순.
+ * 고르면 오른쪽에 상세가 열린다.
+ */
 export function MediaLibrary() {
-	const altId = useId();
-	const captionId = useId();
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
@@ -110,7 +90,7 @@ export function MediaLibrary() {
 	const [optimize, setOptimize] = useState(false);
 	const [upload, setUpload] = useState<{ current: number; total: number; percent: number } | null>(null);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
-	const [draft, setDraft] = useState({ alt: "", caption: "" });
+	const [view, setView] = useMediaView();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// 조건을 바꾸는 동안에도 이전 줄을 남겨(`keepPreviousData`) 자리 표시로 깜빡이지 않는다. 자리 표시는 캐시가 없을 때만 보인다.
@@ -133,7 +113,6 @@ export function MediaLibrary() {
 	const items = mediaQuery.data?.items ?? [];
 	const total = mediaQuery.data?.total ?? 0;
 	const selected = items.find((item) => item.id === selectedId) ?? null;
-	const selectedIsImage = isImageMime(selected?.mimeType);
 
 	const loadError = mediaQuery.error;
 	useEffect(() => {
@@ -142,12 +121,6 @@ export function MediaLibrary() {
 
 	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
 	const invalidateMedia = () => queryClient.invalidateQueries({ queryKey: MEDIA_KEY });
-
-	// 선택이 바뀔 때만 편집 초안을 채운다.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed by selected id
-	useEffect(() => {
-		if (selected) setDraft({ alt: selected.defaultAlt, caption: selected.defaultCaption });
-	}, [selected?.id]);
 
 	const handleFiles = async (files: FileList | null) => {
 		if (!files?.length) return;
@@ -204,12 +177,11 @@ export function MediaLibrary() {
 		}
 	};
 
-	const saveDefaults = async () => {
-		if (!selected) return;
+	const saveDefaults = async (media: MediaItem, defaults: { alt: string; caption: string }) => {
 		try {
-			await cmsFetch(`/api/cms/v1/media/${selected.id}`, {
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, {
 				method: "PATCH",
-				json: { defaultAlt: draft.alt, defaultCaption: draft.caption },
+				json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
 			});
 			toast.success("기본 설명을 저장했습니다. 이미 작성한 본문은 바뀌지 않습니다.");
 			await invalidateMedia();
@@ -227,24 +199,6 @@ export function MediaLibrary() {
 			toast.error(errorText(error, "이름을 바꾸지 못했습니다."));
 		}
 	};
-
-	/** 미디어 파일 자리. 이미지 내용을 보고 이름·기본 설명을 추천한다. */
-	const mediaSlot = (
-		media: MediaItem,
-		target: "filename" | "defaultAlt" | "defaultCaption",
-		apply: (value: string) => void,
-	): SlotRequest => ({
-		slot: "media",
-		target,
-		scope: media.id,
-		disabled: media.status !== "ready" || !isImageMime(media.mimeType),
-		getContext: () => ({
-			mediaId: media.id,
-			filename: media.filename,
-			current: target === "filename" ? media.filename : target === "defaultAlt" ? draft.alt : draft.caption,
-		}),
-		apply,
-	});
 
 	const cleanup = async () => {
 		try {
@@ -294,6 +248,15 @@ export function MediaLibrary() {
 			onSelect: () => requestDelete(media),
 		},
 	];
+
+	const viewProps = {
+		items,
+		selectedId,
+		dimmed: mediaQuery.isPlaceholderData,
+		onSelect: (media: MediaItem) => setSelectedId(media.id),
+		menuFor: mediaMenu,
+		onDeleteKey: requestDelete,
+	};
 
 	const setFilter = (apply: () => void) => {
 		apply();
@@ -393,9 +356,28 @@ export function MediaLibrary() {
 						})
 					}
 				/>
+				<ToggleGroup
+					aria-label="보기"
+					variant="outline"
+					size="sm"
+					spacing={0}
+					value={[view]}
+					onValueChange={(next: unknown[]) => {
+						const picked = next[0];
+						if (picked === "grid" || picked === "list") setView(picked);
+					}}
+					className="ml-auto"
+				>
+					<ToggleGroupItem value="grid" aria-label="바둑판 보기">
+						<LayoutGrid aria-hidden />
+					</ToggleGroupItem>
+					<ToggleGroupItem value="list" aria-label="목록 보기">
+						<List aria-hidden />
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 
-			<div className="flex min-h-0 flex-1 overflow-hidden">
+			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
 					{items.length === 0 ? (
 						mediaQuery.isPending ? (
@@ -414,58 +396,10 @@ export function MediaLibrary() {
 								</EmptyHeader>
 							</Empty>
 						)
+					) : view === "grid" ? (
+						<MediaGrid {...viewProps} />
 					) : (
-						<ul
-							className={cn(
-								"grid grid-cols-2 gap-4 transition-opacity sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6",
-								mediaQuery.isPlaceholderData && "opacity-60",
-							)}
-						>
-							{items.map((media) => (
-								<ActionContextMenu key={media.id} actions={mediaMenu(media)} trigger={<li className="relative" />}>
-									<Button
-										variant="outline"
-										type="button"
-										aria-pressed={selectedId === media.id}
-										onClick={() => setSelectedId(media.id)}
-										onKeyDown={(event) => {
-											if (event.key === "Delete" && media.referencesCount === 0) {
-												event.preventDefault();
-												requestDelete(media);
-											}
-										}}
-										className={cn(
-											"h-auto w-full flex-col items-stretch gap-0 overflow-hidden rounded-lg bg-card p-0 text-left font-normal",
-											selectedId === media.id ? "border-primary ring-2 ring-primary/30" : "hover:border-foreground/30",
-										)}
-									>
-										<span className="relative flex aspect-square items-center justify-center bg-muted">
-											{!isImageMime(media.mimeType) ? (
-												<FileTile media={media} />
-											) : media.publicUrl ? (
-												// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
-												<img src={media.publicUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-											) : (
-												<File className="size-10 text-muted-foreground" aria-hidden />
-											)}
-											<Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px]">
-												{media.status === "deleting"
-													? "삭제 중"
-													: media.referencesCount > 0
-														? `사용 ${media.referencesCount}`
-														: "미사용"}
-											</Badge>
-										</span>
-										<span className="truncate p-2 text-xs">{media.filename}</span>
-									</Button>
-									<MoreActionsButton
-										actions={mediaMenu(media)}
-										label={`'${media.filename}' 작업`}
-										className="absolute top-1 right-1 size-7 bg-background/80"
-									/>
-								</ActionContextMenu>
-							))}
-						</ul>
+						<MediaTable {...viewProps} />
 					)}
 					<nav aria-label="페이지 이동" className="mt-4 flex items-center justify-end gap-2 text-xs">
 						<Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
@@ -487,194 +421,16 @@ export function MediaLibrary() {
 				</div>
 
 				{selected && (
-					<aside
-						aria-label="미디어 상세"
-						className="flex w-80 flex-col gap-4 overflow-y-auto border-l bg-card p-4 text-xs"
-					>
-						<div className="flex items-center justify-between">
-							<h2 className="font-semibold text-sm">미디어 상세</h2>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-xs"
-								aria-label="상세 닫기"
-								onClick={() => setSelectedId(null)}
-							>
-								<X aria-hidden />
-							</Button>
-						</div>
-						{selectedIsImage && selected.publicUrl && (
-							// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
-							<img src={selected.publicUrl} alt="" className="max-h-48 rounded border object-contain" />
-						)}
-						<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-							<dt className="text-muted-foreground">파일명</dt>
-							<SlotScope
-								key={`filename-${selected.id}`}
-								request={mediaSlot(
-									selected,
-									"filename",
-									(stem) => void rename(selected, withExtension(stem, selected.filename)),
-								)}
-							>
-								{({ trigger, panel }) => (
-									<>
-										<dd className="flex min-w-0 items-center gap-1">
-											<span className="truncate" title={selected.filename}>
-												{selected.filename}
-											</span>
-											{selectedIsImage && trigger}
-										</dd>
-										{panel && <dd className="col-span-2">{panel}</dd>}
-									</>
-								)}
-							</SlotScope>
-							<dt className="text-muted-foreground">형식</dt>
-							<dd>
-								{selectedIsImage ? (selected.mimeType ?? "—") : fileTypeLabel(selected.filename, selected.mimeType)}
-							</dd>
-							{selectedIsImage ? (
-								<>
-									<dt className="text-muted-foreground">공개용</dt>
-									<dd>
-										{selected.width}×{selected.height} · {formatBytes(selected.byteSize ?? 0)}
-									</dd>
-								</>
-							) : (
-								<>
-									<dt className="text-muted-foreground">크기</dt>
-									<dd>{formatFileSize(selected.byteSize ?? 0)}</dd>
-								</>
-							)}
-							{selectedIsImage && selected.original && (
-								<>
-									<dt className="text-muted-foreground">원본</dt>
-									<dd>
-										{selected.original.width}×{selected.original.height} ·{" "}
-										{formatBytes(selected.original.byteSize ?? 0)} · {selected.original.mimeType}
-									</dd>
-								</>
-							)}
-							<dt className="text-muted-foreground">업로드</dt>
-							<dd>{new Date(selected.createdAt).toLocaleString("ko-KR")}</dd>
-							{selected.publicUrl && (
-								<>
-									<dt className="text-muted-foreground">주소</dt>
-									<dd>
-										<Button
-											type="button"
-											variant="outline"
-											size="xs"
-											onClick={() => void copyPublicUrl(selected.publicUrl as string)}
-										>
-											<Copy aria-hidden />
-											주소 복사
-										</Button>
-									</dd>
-								</>
-							)}
-							<dt className="text-muted-foreground">미디어 ID</dt>
-							<dd className="flex items-center gap-1">
-								<code className="truncate">{selected.id}</code>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-xs"
-									aria-label="미디어 ID 복사"
-									onClick={() => void navigator.clipboard.writeText(selected.id)}
-								>
-									<Copy aria-hidden />
-								</Button>
-							</dd>
-						</dl>
-
-						{selectedIsImage && (
-							<>
-								<Separator />
-								<form
-									className="space-y-3"
-									onSubmit={(event) => {
-										event.preventDefault();
-										void saveDefaults();
-									}}
-								>
-									<FieldDescription>본문에 삽입할 때 복사되는 기본값입니다.</FieldDescription>
-									<SlotScope
-										key={`alt-${selected.id}`}
-										request={mediaSlot(selected, "defaultAlt", (alt) => setDraft((current) => ({ ...current, alt })))}
-									>
-										{({ trigger, panel }) => (
-											<Field>
-												<div className="flex items-center justify-between gap-2">
-													<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
-													{trigger}
-												</div>
-												<Input
-													id={altId}
-													value={draft.alt}
-													onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
-													className="h-8"
-												/>
-												{panel}
-											</Field>
-										)}
-									</SlotScope>
-									<SlotScope
-										key={`caption-${selected.id}`}
-										request={mediaSlot(selected, "defaultCaption", (caption) =>
-											setDraft((current) => ({ ...current, caption })),
-										)}
-									>
-										{({ trigger, panel }) => (
-											<Field>
-												<div className="flex items-center justify-between gap-2">
-													<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
-													{trigger}
-												</div>
-												<Input
-													id={captionId}
-													value={draft.caption}
-													onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
-													className="h-8"
-												/>
-												{panel}
-											</Field>
-										)}
-									</SlotScope>
-									<Button type="submit" size="sm" variant="outline" disabled={selected.status !== "ready"}>
-										기본값 저장
-									</Button>
-								</form>
-							</>
-						)}
-
-						<Separator />
-						<section className="space-y-1.5">
-							<h3 className="font-semibold text-muted-foreground">사용처 ({selected.referencesCount})</h3>
-							{selected.references.map((reference) => (
-								<a
-									key={`${reference.entryId}-${reference.state}`}
-									href={`/admin/entries/${reference.entryId}/edit`}
-									className="block rounded border p-2 hover:bg-accent"
-								>
-									{reference.title || "(제목 없음)"} · {reference.state === "published" ? "공개본" : "초안"}
-								</a>
-							))}
-							{selected.referencesCount === 0 && (
-								<p className="text-muted-foreground">초안·공개본에서 쓰이지 않습니다.</p>
-							)}
-						</section>
-
-						<Button
-							type="button"
-							variant="destructive"
-							size="sm"
-							disabled={selected.referencesCount > 0}
-							onClick={() => requestDelete(selected)}
-						>
-							{selected.status === "deleting" ? "삭제 다시 시도" : "삭제"}
-						</Button>
-					</aside>
+					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 옆에 고정 폭으로 둔다.
+					<MediaDetailPanel
+						key={selected.id}
+						media={selected}
+						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[22rem] lg:static lg:shrink-0 lg:shadow-none"
+						onClose={() => setSelectedId(null)}
+						onSaveDefaults={(defaults) => void saveDefaults(selected, defaults)}
+						onRename={(filename) => void rename(selected, filename)}
+						onRequestDelete={() => requestDelete(selected)}
+					/>
 				)}
 			</div>
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
