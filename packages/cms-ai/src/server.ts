@@ -9,6 +9,7 @@ import * as providerCheck from "./routes/providers/check/route";
 import * as providers from "./routes/providers/route";
 import * as run from "./routes/run/route";
 import * as settings from "./routes/settings/route";
+import * as shared from "./routes/shared/route";
 import { getAiSettingsView } from "./settings";
 import { getAiStore } from "./store";
 
@@ -24,6 +25,7 @@ const aiServer: CmsServerPlugin = {
 		{ pattern: "v1/ai/providers/[id]", module: provider },
 		{ pattern: "v1/ai/run", module: run },
 		{ pattern: "v1/ai/settings", module: settings },
+		{ pattern: "v1/ai/shared", module: shared },
 	],
 	migrate: migrateAi,
 	// 관리자 메타 API의 `features.ai`: 연결이 하나라도 준비됐는가.

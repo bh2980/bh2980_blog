@@ -47,6 +47,8 @@ export interface AiRunDeps {
 	}) => Promise<Set<string>>;
 	/** 언어 코드 → 그 언어로 쓴 이름(지시문의 언어 입력). */
 	languageName: (code: string) => string;
+	/** 공통 문구(고친 값을 얹은 것). 지시문의 `{{shared.이름}}`에 들어간다. */
+	shared?: Readonly<Record<string, string>>;
 	signal?: AbortSignal;
 }
 
@@ -285,9 +287,71 @@ async function runGenerate(
 	};
 }
 
+/** 흘려받기 결과의 답 규칙. JSON이 아닌 일반 글로 받는다. */
+const STREAM_RULES: Partial<Record<AiResult, string>> = {
+	text: "결과 글만 답한다. JSON·설명·머리말·코드 펜스를 붙이지 않는다.",
+	mdx: "결과 MDX만 답한다. JSON·설명·머리말을 붙이지 않고, 전체를 코드 펜스로 감싸지 않는다.",
+};
+
+/** 답 전체를 감싼 코드 펜스(```mdx … ```)를 벗긴다. 모델이 규칙을 어겨도 본문만 남긴다. */
+const unfence = (text: string) => {
+	const match = text.trim().match(/^```[a-z]*\n([\s\S]*?)\n```$/i);
+	return match ? (match[1] ?? "") : text.trim();
+};
+
+/**
+ * 흘려받기 실행(M8-1). 글·MDX 결과를 조각마다 `onDelta`로 넘기고, 다 받으면 실행과 같은 검사를 한 결과를 돌려준다.
+ * 검사에 걸리면 받은 글을 버리고 오류다.
+ */
+export async function streamAiAction(
+	action: ResolvedAiAction,
+	call: AiCall,
+	deps: AiRunDeps,
+	onDelta: (text: string) => void,
+): Promise<AiRunResult> {
+	if (action.engine !== "generate" || (action.result !== "text" && action.result !== "mdx")) {
+		throw new AiError("ai_invalid_input", "흘려받을 수 없는 기능입니다.");
+	}
+	if (!deps.generator) throw new AiError("ai_unavailable", "생성 모델이 연결되어 있지 않습니다.");
+	for (const [name, spec] of Object.entries(action.input)) {
+		if (spec.required && (call.input[name] === undefined || call.input[name] === "")) {
+			throw new AiError("ai_failed", `${spec.label}이 없습니다.`);
+		}
+	}
+	const material = await collectMaterial(action, call, choiceLoader(action, deps));
+	const instructions = renderInstructions(action, call, deps);
+	// 초안처럼 자료 없이 지시만으로 쓰는 기능도 있다. 자료가 없으면 빈 자료 묶음을 보낸다.
+	const content: AiContent[] = [{ type: "text", text: `<material>\n${material.sections.join("\n\n")}\n</material>` }];
+	const system = `${systemFrame()}\n\n<instructions>\n${instructions}\n</instructions>\n\n${STREAM_RULES[action.result]}`;
+	let received = "";
+	for await (const piece of deps.generator.stream({
+		system,
+		content,
+		maxTokens: 16_000,
+		result: action.result,
+		data: material.data,
+		signal: deps.signal,
+	})) {
+		received += piece;
+		onDelta(piece);
+	}
+	const text = unfence(received);
+	if (!text) throw new AiError("ai_failed", "빈 결과입니다.");
+	if (action.result === "text") {
+		const problem = checkText(activeChecks(action), text);
+		if (problem) throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${problem}`);
+		return { kind: "text", text };
+	}
+	const source = action.sameStructureAs ? asText(call.input[action.sameStructureAs]) : undefined;
+	const structure = activeChecks(action).some((check) => check.kind === "structure");
+	const verdict = structure && source !== undefined ? compareStructure(source, text) : readableMdx(text);
+	if (!verdict.ok) throw new AiError("ai_failed", verdict.reason);
+	return { kind: "mdx", text };
+}
+
 /** 이번 실행의 지시문. 언어 입력을 언어 이름으로 넣고, 요청 받기가 켜졌으면 추가 요청을 붙인다. */
 const renderInstructions = (action: ResolvedAiAction, call: AiCall, deps: AiRunDeps) =>
-	renderPrompt(action, call.input, deps.languageName, call.request);
+	renderPrompt(action, call.input, deps.languageName, call.request, deps.shared);
 
 async function runDecide(
 	action: ResolvedAiAction,

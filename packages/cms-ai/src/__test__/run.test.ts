@@ -3,7 +3,7 @@ import { aiAction, aiInput, type ResolvedAiAction, resolveAction } from "../acti
 import { AiError } from "../errors";
 import type { AiDecider, AiProvider, AiRequest, DecisionAnswer, DecisionRequest } from "../provider";
 import { AI_ACTIONS } from "../registry";
-import { type AiCall, type AiRunDeps, MAX_AI_BODY_CHARS, runAiAction } from "../run";
+import { type AiCall, type AiRunDeps, MAX_AI_BODY_CHARS, runAiAction, streamAiAction } from "../run";
 
 /** 예시 설정(`test/cms.config.ts`)의 기능. */
 const preset = (key: string): ResolvedAiAction => {
@@ -23,6 +23,12 @@ function stubProvider(answer: Record<string, unknown>) {
 		generate: async <T>(request: AiRequest<T>) => {
 			requests.push(request as AiRequest<unknown>);
 			return answer as T;
+		},
+		// 흘려받기: `streamText`를 세 글자씩 흘린다.
+		async *stream(request) {
+			requests.push(request as AiRequest<unknown>);
+			const text = String(answer.streamText ?? "");
+			for (let index = 0; index < text.length; index += 3) yield text.slice(index, index + 3);
 		},
 	};
 	return { provider, requests };
@@ -300,5 +306,50 @@ describe("AI 기능 실행기", () => {
 			code: "ai_failed",
 		});
 		expect(requests).toHaveLength(0);
+	});
+});
+
+describe("흘려받기(M8-1)·공통 문구(M8-4)", () => {
+	const polish = resolveAction(
+		"polish",
+		aiAction({
+			label: "다듬기",
+			input: { selection: aiInput.mdx({ label: "고칠 글", required: true }) },
+			prompt: "문체를 다듬는다.\n\n문체 가이드:\n{{shared.styleGuide}}",
+			result: "mdx",
+			stream: true,
+		}),
+	);
+
+	it("조각마다 넘기고, 다 받으면 코드 펜스를 벗기고 검사한 결과를 돌려준다", async () => {
+		const { provider, requests } = stubProvider({ streamText: "```mdx\n**다듬은** 글\n```" });
+		const pieces: string[] = [];
+		const result = await streamAiAction(
+			polish,
+			call({ selection: "고칠 글" }),
+			deps(provider, { shared: { styleGuide: "짧게 쓴다." } }),
+			(piece) => pieces.push(piece),
+		);
+		expect(pieces.length).toBeGreaterThan(1);
+		expect(result).toEqual({ kind: "mdx", text: "**다듬은** 글" });
+		// 공통 문구가 지시문에 들어가고, 답은 JSON이 아닌 일반 글로 받는다.
+		expect(requests[0]?.system).toContain("짧게 쓴다.");
+		expect(requests[0]?.system).toContain("결과 MDX만 답한다");
+	});
+
+	it("흘려받을 수 없는 기능과 빈 결과는 막는다", async () => {
+		const { provider } = stubProvider({ streamText: "  " });
+		await expect(streamAiAction(polish, call({ selection: "글" }), deps(provider), () => {})).rejects.toMatchObject({
+			code: "ai_failed",
+		});
+		await expect(streamAiAction(preset("slug"), call({ title: "t" }), deps(provider), () => {})).rejects.toMatchObject({
+			code: "ai_invalid_input",
+		});
+	});
+
+	it("공통 문구가 비면 (없음)으로 넣고, 없는 공통 문구 이름은 그대로 둔다", async () => {
+		const { provider, requests } = stubProvider({ streamText: "글" });
+		await streamAiAction(polish, call({ selection: "글" }), deps(provider, { shared: { styleGuide: "" } }), () => {});
+		expect(requests[0]?.system).toContain("문체 가이드:\n(없음)");
 	});
 });

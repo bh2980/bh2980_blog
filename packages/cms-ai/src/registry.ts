@@ -1,6 +1,6 @@
 import type { CmsPlugin, PluginNamed } from "@bh2980/cms";
 import { cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
-import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig } from "./action";
+import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig, AiSharedText } from "./action";
 import type { AiSlot } from "./definition";
 import { AI_PLUGIN_NAME } from "./plugin-name";
 
@@ -28,6 +28,10 @@ const aiConfig = cmsConfig.plugins?.find((plugin) => plugin.name === AI_PLUGIN_N
 
 export const AI_ACTIONS: Readonly<Record<string, AiActionDefinition>> = aiConfig?.actions ?? {};
 
+/** 공통 문구 정의(기본값). 관리자 화면에서 고친 값은 서버가 얹는다. */
+export const AI_SHARED: Readonly<Record<string, AiSharedText>> = aiConfig?.shared ?? {};
+export const AI_SHARED_KEYS: readonly string[] = Object.keys(AI_SHARED);
+
 /** 모든 기능 맨 앞 지시에 들어가는 사이트 소개. */
 export const AI_SITE_DESCRIPTION = aiConfig?.siteDescription?.trim() || "블로그";
 
@@ -51,6 +55,8 @@ export function attachedTo(attach: AiAttach, place: AiPlace): boolean {
 				(!attach.collections || (place.collection !== undefined && attach.collections.includes(place.collection)))
 			);
 		case "translation":
+		case "selection":
+		case "insert":
 			return true;
 		default:
 			return attach.target === place.target;

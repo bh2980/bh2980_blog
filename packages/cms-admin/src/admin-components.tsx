@@ -22,12 +22,46 @@ import type { FieldInputProps } from "./screens/entries/field-inputs";
 export interface EditorExtensionContext {
 	/** 번역본을 편집 중이면 원문·번역 언어. 원문이면 `null`. */
 	readonly translateLocales: { readonly sourceLocale: string; readonly targetLocale: string } | null;
+	/** 누를 때 읽는 편집 중인 글(제목·컬렉션·언어·ID). */
+	readonly getEntry?: () => {
+		readonly title: string;
+		readonly collection: string;
+		readonly locale?: string;
+		readonly entryId?: string;
+	};
 }
 
-/** 편집 화면 확장이 더하는 것. 툴바 끝의 요소, 블록 손잡이 옆 동작, 편집기가 생기고 사라질 때 받을 함수. */
+/** 글자를 고르면 뜨는 인라인 메뉴에 더하는 동작(예: 문체 다듬기). */
+export interface EditorSelectionAction {
+	readonly id: string;
+	readonly label: string;
+	readonly icon: ReactNode;
+	readonly run: (editor: Editor) => void;
+}
+
+/** 슬래시(`/`) 메뉴에 더하는 삽입 동작(예: 초안 쓰기). `range`는 입력한 `/검색어` 자리다. */
+export interface EditorInsertAction {
+	readonly id: string;
+	readonly title: string;
+	readonly description: string;
+	readonly keywords: readonly string[];
+	readonly run: (editor: Editor, range: { from: number; to: number }) => void;
+}
+
+/**
+ * 편집 화면 확장이 더하는 것. 툴바 끝의 요소, 블록 손잡이 옆 동작, 선택 영역 메뉴·슬래시 메뉴의 동작,
+ * 편집기가 생기고 사라질 때 받을 함수.
+ */
 export interface EditorExtensionResult {
 	readonly toolbar?: ReactNode;
+	/**
+	 * 툴바 밖에 한 번만 그리는 요소(대화 상자 등). 툴바 요소는 폭에 따라 다시 그려질 수 있어,
+	 * 열려 있는 동안 상태를 지켜야 하는 것은 여기에 둔다.
+	 */
+	readonly overlay?: ReactNode;
 	readonly blockActions?: readonly BlockAction[];
+	readonly selectionActions?: readonly EditorSelectionAction[];
+	readonly insertActions?: readonly EditorInsertAction[];
 	readonly onEditor?: (editor: Editor | null) => void;
 }
 
@@ -98,7 +132,11 @@ export function useEditorExtensions(context: EditorExtensionContext): Required<E
 	return {
 		// biome-ignore lint/suspicious/noArrayIndexKey: 확장 목록과 순서는 바뀌지 않는다
 		toolbar: results.map((result, index) => <Fragment key={index}>{result.toolbar}</Fragment>),
+		// biome-ignore lint/suspicious/noArrayIndexKey: 확장 목록과 순서는 바뀌지 않는다
+		overlay: results.map((result, index) => <Fragment key={index}>{result.overlay}</Fragment>),
 		blockActions: results.flatMap((result) => result.blockActions ?? []),
+		selectionActions: results.flatMap((result) => result.selectionActions ?? []),
+		insertActions: results.flatMap((result) => result.insertActions ?? []),
 		onEditor,
 	};
 }

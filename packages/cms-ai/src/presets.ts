@@ -2,10 +2,10 @@ import { aiAction, aiInput } from "./action";
 import { KEBAB_PATTERN } from "./definition";
 
 /**
- * 기본 AI 기능(프리셋). 사이트 설정의 `ai.actions`에 이름을 붙여 넣는다. 필드·컬렉션 이름은 사이트가 정한다.
+ * 기본 AI 기능(프리셋). `aiPlugin({ actions })`에 이름을 붙여 넣는다. 필드·컬렉션 이름은 사이트가 정한다.
  *
  * ```ts
- * ai: { actions: { summary: aiPresets.summary({ collections: ["post"] }) } }
+ * aiPlugin({ actions: { summary: aiPresets.summary({ collections: ["post"] }) } })
  * ```
  *
  * 지시문은 관리자 AI 화면에서 고칠 수 있고, 프리셋 옵션 `prompt`로 처음 값을 바꿀 수도 있다.
@@ -256,6 +256,59 @@ export const aiPresets = {
 					"- 원문의 말투와 문체를 대상 언어에서 자연스럽게 옮긴다",
 				),
 			attach: [{ slot: "translation" }],
+		}),
+
+	/**
+	 * 문체 다듬기(M8-2). 본문에서 고른 글을 다듬어 바뀐 곳을 보여 주고, 누르면 고른 글을 바꾼다. 결과는 흘려받는다.
+	 * `styleGuide`에 공통 문구 이름을 주면 그 문구(예: 문체 가이드)를 지시문에 넣는다.
+	 */
+	polish: (options: { readonly prompt?: string; readonly styleGuide?: string } = {}) =>
+		aiAction({
+			label: "문체 다듬기",
+			input: {
+				selection: aiInput.mdx({ label: "고칠 글", required: true }),
+				title: aiInput.text({ label: "제목" }),
+			},
+			result: "mdx",
+			stream: true,
+			askInstruction: true,
+			prompt:
+				options.prompt ??
+				lines(
+					"블로그 글에서 고른 부분(MDX)의 문체를 다듬는다.",
+					"- 뜻과 사실, 링크 주소, 코드, 수식, MDX 문법은 그대로 둔다",
+					"- 어색하거나 긴 문장을 자연스럽고 읽기 쉽게 고친다. 없는 내용을 더하지 않는다",
+					"- 원문과 같은 언어, 같은 말투로 쓴다",
+					...(options.styleGuide ? ["", "문체 가이드:", `{{shared.${options.styleGuide}}}`] : []),
+				),
+			attach: [{ slot: "selection" }],
+		}),
+
+	/**
+	 * 초안 쓰기(M8-3). 슬래시 메뉴·빈 문서에서 요청을 받아 커서 자리에 넣을 본문 초안(MDX)을 쓴다. 결과는 흘려받는다.
+	 * `styleGuide`에 공통 문구 이름을 주면 그 문구를 지시문에 넣는다.
+	 */
+	draft: (options: { readonly prompt?: string; readonly styleGuide?: string } = {}) =>
+		aiAction({
+			label: "초안 쓰기",
+			input: {
+				title: aiInput.text({ label: "제목" }),
+				body: aiInput.mdx({ label: "지금 본문" }),
+			},
+			result: "mdx",
+			stream: true,
+			askInstruction: true,
+			prompt:
+				options.prompt ??
+				lines(
+					"블로그 글의 제목과 지금까지 쓴 본문, 이번 요청을 보고 커서 자리에 넣을 본문 초안을 MDX로 쓴다.",
+					"- 본문 제목은 ## 부터 쓴다(글 제목은 따로 있다)",
+					"- 지금 본문과 겹치지 않게, 앞뒤 흐름에 이어지게 쓴다",
+					"- 모르는 사실은 지어내지 않는다. 확인이 필요한 곳은 [확인 필요]로 적는다",
+					"- 제목과 같은 언어로 쓴다",
+					...(options.styleGuide ? ["", "문체 가이드:", `{{shared.${options.styleGuide}}}`] : []),
+				),
+			attach: [{ slot: "insert" }],
 		}),
 
 	/** 코드 블록에서 접어 둘 부분을 찾는 정규식 후보. */

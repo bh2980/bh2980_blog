@@ -8,6 +8,9 @@ export default defineConfig({
 	plugins: [
 		aiPlugin({
 			siteDescription: "개인 기술 블로그",
+			shared: {
+				styleGuide: { label: "문체 가이드", text: "" },
+			},
 			actions: {
 				slug: aiPresets.slug({ collections: ["post", "memo"] }),
 				summary: aiPresets.summary({ collections: ["post"] }),
@@ -20,6 +23,8 @@ export default defineConfig({
 				mediaFilename: aiPresets.mediaFilename(),
 				translate: aiPresets.translate(),
 				codeFold: aiPresets.codeFold(),
+				polish: aiPresets.polish({ styleGuide: "styleGuide" }),
+				draft: aiPresets.draft({ styleGuide: "styleGuide" }),
 			},
 		}),
 	],

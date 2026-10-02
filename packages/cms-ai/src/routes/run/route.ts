@@ -1,9 +1,10 @@
-import { adminRoute, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
+import { adminRoute, HttpError, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { type AiRunBody, aiRunBodySchema, inputSchemaFor, type ResolvedAiAction } from "../../action";
 import { actionWithEdits, getAction } from "../../actions";
 import { AiError } from "../../errors";
-import { type AiCall, type AiRunDeps, runAiAction } from "../../run";
+import { type AiCall, type AiRunDeps, runAiAction, streamAiAction } from "../../run";
 import { loadAiRuntime } from "../../settings";
+import { loadSharedTexts } from "../../shared";
 import { getAiStore } from "../../store";
 import { aiRunDeps } from "../ai-route";
 
@@ -17,10 +18,42 @@ async function runOne(action: ResolvedAiAction, body: AiRunBody, input: unknown,
 	return runAiAction(action, call, deps);
 }
 
+/** 흘려받기 응답(M8-1): 한 줄에 사건 하나인 JSON(`delta`·`done`·`error`). 시작한 뒤의 오류도 `error` 줄로 알린다. */
+type StreamEvent =
+	| { type: "delta"; text: string }
+	| { type: "done"; result: unknown }
+	| { type: "error"; code: string; message: string };
+
+function streamResponse(run: (send: (event: StreamEvent) => void) => Promise<void>): Response {
+	const encoder = new TextEncoder();
+	const body = new ReadableStream<Uint8Array>({
+		async start(controller) {
+			const send = (event: StreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+			try {
+				await run(send);
+			} catch (error) {
+				const known = error instanceof HttpError;
+				if (!known) console.error("AI stream failed:", error);
+				send({
+					type: "error",
+					code: known ? error.code : "ai_failed",
+					message: known ? error.message : "AI 답을 받지 못했습니다.",
+				});
+			} finally {
+				controller.close();
+			}
+		},
+	});
+	return new Response(body, {
+		headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" },
+	});
+}
+
 /**
  * AI 기능을 이름으로 실행해 결과(후보·글·MDX·메모)를 돌려준다. 값은 바꾸지 않는다. 적용은 화면에서 사용자가 누를 때 한다.
  * `inputs`(여러 입력)를 보내면 입력마다 결과나 실패 이유를 순서대로 돌려준다(번역의 `모두 번역`). 키·크레딧·요청 수
  * 문제처럼 다른 입력도 같을 문제는 요청 전체를 멈춘다. AI 화면의 `시험`은 저장하지 않은 고친 값 `draft`를 함께 보낸다.
+ * `stream`이면 결과를 조금씩 흘려보낸다(흘려받기 기능의 입력 하나만).
  */
 export const POST = adminRoute(async ({ request }) => {
 	const store = getAiStore();
@@ -30,9 +63,24 @@ export const POST = adminRoute(async ({ request }) => {
 	if (body.draft === undefined && !action.enabled) throw new AiError("ai_unavailable", "꺼진 AI 기능입니다.");
 
 	const runtime = await loadAiRuntime(store, action);
-	const deps = aiRunDeps(runtime, request.signal, new URL(request.url).origin);
+	const deps = {
+		...aiRunDeps(runtime, request.signal, new URL(request.url).origin),
+		shared: await loadSharedTexts(store),
+	};
 	const model = action.engine === "decide" ? runtime.decider?.model : runtime.generator?.model;
 	const started = Date.now();
+
+	if (body.stream) {
+		if (body.inputs !== undefined) throw new AiError("ai_invalid_input", "흘려받기는 입력 하나만 보낸다.");
+		if (!deps.generator) throw new AiError("ai_unavailable", "생성 모델이 연결되어 있지 않습니다.");
+		const parsed = parseWith(inputSchemaFor(action.input), body.input, "Invalid AI input");
+		const call: AiCall = { input: parsed as Record<string, unknown>, env: body.env, request: body.request };
+		return streamResponse(async (send) => {
+			const result = await streamAiAction(action, call, deps, (text) => send({ type: "delta", text }));
+			console.info(`[cms-ai] ${action.key} model=${model} stream ${Date.now() - started}ms`);
+			send({ type: "done", result });
+		});
+	}
 
 	if (body.inputs === undefined) {
 		const result = await runOne(action, body, body.input, deps);

@@ -1,6 +1,6 @@
 "use client";
 
-import { cmsFetch } from "@bh2980/cms-admin/api";
+import { CmsApiError, cmsFetch } from "@bh2980/cms-admin/api";
 import { SlotRegistryProvider, type SlotSource } from "@bh2980/cms-admin/slots";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
@@ -69,6 +69,52 @@ export async function runAiAction(
 	return response.result;
 }
 
+/**
+ * 기능을 흘려받기로 실행한다(M8-1). 받은 글이 늘 때마다 지금까지 받은 글 전체로 `onText`를 부르고,
+ * 다 받으면 검사를 통과한 결과를 돌려준다.
+ */
+export async function streamAiAction(
+	action: string,
+	input: Readonly<Record<string, unknown>>,
+	options: AiRunOptions & { onText: (text: string) => void },
+): Promise<AiRunResult> {
+	const fallback = "AI 기능을 실행하지 못했습니다.";
+	const response = await fetch("/api/cms/v1/ai/run", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ ...requestBody(action, options), input, stream: true }),
+		signal: options.signal,
+	});
+	if (!response.ok || !response.body) {
+		const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+		const message = typeof body.message === "string" ? body.message : fallback;
+		throw new CmsApiError(response.status, typeof body.code === "string" ? body.code : undefined, message, [], body);
+	}
+	const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+	let buffer = "";
+	let text = "";
+	for (;;) {
+		const { value, done } = await reader.read();
+		if (value) buffer += value;
+		const lines = buffer.split("\n");
+		buffer = done ? "" : (lines.pop() ?? "");
+		for (const line of lines) {
+			if (!line.trim()) continue;
+			const event = JSON.parse(line) as
+				| { type: "delta"; text: string }
+				| { type: "done"; result: AiRunResult }
+				| { type: "error"; code: string; message: string };
+			if (event.type === "delta") {
+				text += event.text;
+				options.onText(text);
+			} else if (event.type === "done") return event.result;
+			else throw new CmsApiError(502, event.code, event.message || fallback, [], {});
+		}
+		if (done) break;
+	}
+	throw new CmsApiError(502, "ai_failed", "AI 답이 끝나기 전에 끊겼습니다.", [], {});
+}
+
 /** 같은 기능을 여러 입력에 돌린다(한 요청 최대 8개). 입력마다 결과나 실패 이유가 순서대로 온다. */
 export async function runAiActionMany(
 	action: string,
@@ -105,6 +151,7 @@ export function inputFromContext(
 		body: context.body,
 		current: context.current,
 		around: context.around,
+		selection: context.selection,
 		code: context.code,
 		filename: context.filename,
 		image,

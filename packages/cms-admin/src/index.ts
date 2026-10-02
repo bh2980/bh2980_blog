@@ -8,6 +8,8 @@ export {
 	type EditorExtension,
 	type EditorExtensionContext,
 	type EditorExtensionResult,
+	type EditorInsertAction,
+	type EditorSelectionAction,
 	useCmsAdminComponents,
 } from "./admin-components";
 export type { CustomBlockEditorProps } from "./editor/blocks/custom/view";

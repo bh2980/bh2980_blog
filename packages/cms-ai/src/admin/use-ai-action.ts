@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import type { AiActionView } from "../actions";
 import type { AiActionInputOf, AiActionKey, AiActionResultOf } from "../registry";
-import { type AiRunOptions, runAiAction, runAiActionMany, useAiActions } from "./ai-slot-provider";
+import { type AiRunOptions, runAiAction, runAiActionMany, streamAiAction, useAiActions } from "./ai-slot-provider";
 
 export interface UseAiAction<K extends AiActionKey> {
 	/** 켜져 있고 연결이 준비되어 지금 부를 수 있는가. */
@@ -11,6 +11,11 @@ export interface UseAiAction<K extends AiActionKey> {
 	/** 기능 정의와 지금 값(이름·추가 요청 받기 등). 목록을 받기 전에는 없다. */
 	action: AiActionView | undefined;
 	run: (input: AiActionInputOf<K>, options?: AiRunOptions) => Promise<AiActionResultOf<K>>;
+	/** 흘려받기로 실행한다(M8-1). 받은 글이 늘 때마다 지금까지 받은 글 전체로 `onText`를 부른다. */
+	stream: (
+		input: AiActionInputOf<K>,
+		options: AiRunOptions & { onText: (text: string) => void },
+	) => Promise<AiActionResultOf<K>>;
 	/** 같은 기능을 여러 입력에 돌린다(한 요청 최대 8개). 입력마다 결과나 실패 이유가 순서대로 온다. */
 	runMany: (
 		inputs: readonly AiActionInputOf<K>[],
@@ -42,5 +47,10 @@ export function useAiAction<K extends AiActionKey>(key: K, enabled = true): UseA
 			>,
 		[key],
 	);
-	return useMemo(() => ({ available, action, run, runMany }), [available, action, run, runMany]);
+	const stream = useCallback(
+		(input: AiActionInputOf<K>, options: AiRunOptions & { onText: (text: string) => void }) =>
+			streamAiAction(key, input as Record<string, unknown>, options) as Promise<AiActionResultOf<K>>,
+		[key],
+	);
+	return useMemo(() => ({ available, action, run, runMany, stream }), [available, action, run, runMany, stream]);
 }

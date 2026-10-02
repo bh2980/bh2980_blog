@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { EditorSelectionAction } from "../admin-components";
 import { cn } from "../lib/utils/cn";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
@@ -99,7 +100,14 @@ function anchorRange(target: InlineBubbleTarget): { from: number; to: number } {
  * - 커서를 효과 안에 두면: 걸친 효과와 삭제 버튼, 링크 주소·툴팁 설명과 수정 버튼.
  * 링크·툴팁 수정은 버블 안에서 입력 폼으로 펼친다(상단 서식 도구까지 가지 않아도 된다).
  */
-export function InlineBubble({ editor }: { editor: Editor }) {
+export function InlineBubble({
+	editor,
+	actions = [],
+}: {
+	editor: Editor;
+	/** 선택 영역 메뉴 끝에 더할 동작(플러그인, 예: 문체 다듬기). */
+	actions?: readonly EditorSelectionAction[];
+}) {
 	const snapshot = useEditorState({
 		editor,
 		selector: ({ editor: current }) => {
@@ -423,6 +431,16 @@ export function InlineBubble({ editor }: { editor: Editor }) {
 	});
 	const renderSelectionTools = () => (
 		<>
+			{!inCode && actions.length > 0 && (
+				<>
+					{actions.map((action) => (
+						<BubbleButton key={action.id} label={action.label} onClick={() => action.run(editor)}>
+							{action.icon}
+						</BubbleButton>
+					))}
+					<Separator orientation="vertical" className="mx-0.5 h-4" />
+				</>
+			)}
 			{allowedMarkTools(editor.state).map((item) => (
 				<ToolbarButton key={item.mark} editor={editor} item={item} tooltipSide="top" />
 			))}

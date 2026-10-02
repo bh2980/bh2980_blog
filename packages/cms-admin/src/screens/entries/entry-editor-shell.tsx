@@ -320,7 +320,18 @@ export function EntryEditorShell({
 		() => (sourceLocale && targetLocale ? { sourceLocale: sourceLocale, targetLocale: targetLocale } : null),
 		[sourceLocale, targetLocale],
 	);
-	const extensions = useEditorExtensions({ translateLocales });
+	const formRef = useRef(form);
+	formRef.current = form;
+	const getEntry = useCallback(
+		() => ({
+			title: formText(formRef.current, "title"),
+			collection,
+			...(entry?.locale ? { locale: entry.locale } : {}),
+			...(entry?.id ? { entryId: entry.id } : {}),
+		}),
+		[collection, entry?.locale, entry?.id],
+	);
+	const extensions = useEditorExtensions({ translateLocales, getEntry });
 
 	const refreshIncoming = useCallback(async (targetId: string) => {
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
@@ -1065,10 +1076,13 @@ export function EntryEditorShell({
 						editable={!isReadOnly}
 						onChange={(mdx) => setForm({ mdx })}
 						blockActions={extensions.blockActions.length > 0 ? extensions.blockActions : undefined}
+						selectionActions={extensions.selectionActions}
+						insertActions={extensions.insertActions}
 						onEditor={extensions.onEditor}
 						onCompositionStart={() => autosave.setComposing(true)}
 						onCompositionEnd={() => autosave.setComposing(false)}
 					/>
+					{extensions.overlay}
 				</div>
 
 				{isInspectorOpen && (

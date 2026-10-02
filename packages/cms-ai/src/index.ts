@@ -9,6 +9,7 @@ export {
 	type AiChoices,
 	type AiConfig,
 	type AiInputSpec,
+	type AiSharedText,
 	aiAction,
 	aiInput,
 } from "./action";

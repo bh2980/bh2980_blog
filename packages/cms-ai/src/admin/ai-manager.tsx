@@ -16,7 +16,7 @@ import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plug, RotateCcw, Save, Sparkles } from "lucide-react";
+import { Check, Plug, Quote, RotateCcw, Save, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import type { AiActionView } from "../actions";
@@ -29,6 +29,7 @@ import {
 	SLOT_LABELS,
 	SLOT_TARGETS,
 } from "../definition";
+import { AI_SHARED_KEYS } from "../registry";
 import {
 	AI_ACTIONS_KEY,
 	type AiActionsResponse,
@@ -39,6 +40,7 @@ import {
 } from "./ai-slot-provider";
 import { ConnectionManager, useAiSettings } from "./connection-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
+import { SharedTextsEditor } from "./shared-editor";
 
 const selectClass =
 	"h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -56,7 +58,9 @@ function placeLabel(action: Pick<AiActionView, "attach">): string {
 			return `${SLOT_LABELS.field} · ${attach.field}`;
 		}
 		case "translation":
-			return SLOT_LABELS.translation;
+		case "selection":
+		case "insert":
+			return SLOT_LABELS[attach.slot];
 		default: {
 			const targets: Readonly<Record<string, string>> = SLOT_TARGETS[attach.slot];
 			return `${SLOT_LABELS[attach.slot]} · ${targets[attach.target] ?? attach.target}`;
@@ -115,6 +119,7 @@ function sampleContext(action: AiActionView, sample: Sample): AiRunContext {
 	if (sample.body.trim()) {
 		context.body = sample.body;
 		context.around = sample.body;
+		context.selection = sample.body;
 	}
 	if (sample.code.trim()) context.code = sample.code;
 	if (sample.mediaId.trim()) context.mediaId = sample.mediaId.trim();
@@ -131,7 +136,7 @@ export function AiManager() {
 	const featuresQuery = useAiActions();
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
-	const [tab, setTab] = useState<"features" | "connections">("features");
+	const [tab, setTab] = useState<"features" | "connections" | "shared">("features");
 	const [editing, setEditing] = useState<{ feature: AiActionView; spec: Editable } | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
@@ -205,6 +210,12 @@ export function AiManager() {
 						<Plug aria-hidden />
 						연결
 					</TabsTrigger>
+					{AI_SHARED_KEYS.length > 0 && (
+						<TabsTrigger value="shared" className="flex-none px-0 text-xs">
+							<Quote aria-hidden />
+							공통 문구
+						</TabsTrigger>
+					)}
 				</TabsList>
 				<TabsContent value="features" className="flex min-h-0 flex-1 flex-col">
 					{featuresQuery.error && !featuresQuery.data && (
@@ -275,6 +286,11 @@ export function AiManager() {
 						</div>
 					</div>
 				</TabsContent>
+				{AI_SHARED_KEYS.length > 0 && (
+					<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
+						<SharedTextsEditor />
+					</TabsContent>
+				)}
 				<TabsContent value="connections" className="flex min-h-0 flex-1 flex-col">
 					<ConnectionManager />
 				</TabsContent>

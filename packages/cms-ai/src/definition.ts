@@ -7,9 +7,10 @@ import { z } from "zod";
 
 /**
  * 기능이 붙는 화면 자리. 자리마다 주는 재료가 정해져 있다(`SLOT_INPUTS`).
- * `translation`은 번역본 편집기의 블록 번역(블록 메뉴와 `모두 번역`)이다.
+ * `translation`은 번역본 편집기의 블록 번역(블록 메뉴와 `모두 번역`), `selection`은 본문에서 글자를 고르면 뜨는 메뉴
+ * (예: 문체 다듬기, 고른 글을 바꾼다), `insert`는 슬래시(`/`) 메뉴와 빈 문서(예: 초안 쓰기, 커서에 넣는다)다.
  */
-export const AI_SLOTS = ["field", "image", "codeRules", "media", "translation"] as const;
+export const AI_SLOTS = ["field", "image", "codeRules", "media", "translation", "selection", "insert"] as const;
 export type AiSlot = (typeof AI_SLOTS)[number];
 
 /**
@@ -85,6 +86,8 @@ export const SLOT_LABELS: Record<AiSlot, string> = {
 	codeRules: "코드 블록 규칙",
 	media: "미디어 파일",
 	translation: "번역",
+	selection: "선택 영역 메뉴",
+	insert: "삽입 메뉴",
 };
 
 /** 필드 밖 자리의 대상. 필드 자리의 대상은 컬렉션 정의의 필드 이름이다. */
@@ -92,7 +95,7 @@ export const SLOT_TARGETS = {
 	image: { alt: "대체 텍스트", caption: "캡션" },
 	codeRules: { fold: "글자 접기 규칙" },
 	media: { filename: "파일 이름", defaultAlt: "기본 대체 텍스트", defaultCaption: "기본 캡션" },
-} as const satisfies Record<Exclude<AiSlot, "field" | "translation">, Record<string, string>>;
+} as const satisfies Record<Exclude<AiSlot, "field" | "translation" | "selection" | "insert">, Record<string, string>>;
 
 export const RESULT_LABELS: Record<AiResult, string> = {
 	candidates: "짧은 후보 여러 개",
@@ -156,6 +159,8 @@ export interface AiRunContext {
 	/** 대상의 현재 값. 목록 값(태그 id 등)은 배열이다. */
 	current?: string | readonly string[];
 	around?: string;
+	/** 선택 영역 메뉴에서 고른 글(MDX). */
+	selection?: string;
 	code?: string;
 	language?: string;
 	mediaId?: string;

@@ -118,7 +118,36 @@ describe("AI 기능 정의", () => {
 			"mediaFilename",
 			"translate",
 			"codeFold",
+			"polish",
+			"draft",
 		]);
+	});
+
+	it("공통 문구 이름만 지시문에 넣을 수 있고, 흘려받기는 생성 방식의 글·MDX 결과만이다", () => {
+		const base = { actions: {} };
+		const action = (patch: object) => ({
+			label: "x",
+			input: { body: { kind: "mdx" as const, label: "본문" } },
+			prompt: "다듬는다.",
+			result: "mdx" as const,
+			...patch,
+		});
+		expect(() =>
+			validateAiConfig(
+				{
+					...base,
+					shared: { guide: { label: "가이드", text: "" } },
+					actions: { a: action({ prompt: "{{shared.guide}}" }) },
+				},
+				{},
+			),
+		).not.toThrow();
+		expect(() => validateAiConfig({ ...base, actions: { a: action({ prompt: "{{shared.nope}}" }) } }, {})).toThrow(
+			/shared texts/,
+		);
+		expect(() =>
+			validateAiConfig({ ...base, actions: { a: action({ stream: true, result: "candidates" }) } }, {}),
+		).toThrow(/stream needs/);
 	});
 
 	it("예전 기능 표의 저장 값을 고친 값으로 옮긴다(예전 검사 모양·없는 입력·없는 기능 포함)", () => {

@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { slugify } from "@bh2980/cms/client";
-import { APICallError, generateText, NoObjectGeneratedError, Output, RetryError } from "ai";
+import { APICallError, generateText, NoObjectGeneratedError, Output, RetryError, streamText } from "ai";
 import { z } from "zod";
 import type { AiModelInfo } from "./connection";
 import type { AiResult } from "./definition";
@@ -29,10 +29,15 @@ export interface AiRequest<T> {
 	signal?: AbortSignal;
 }
 
+/** 흘려받기 요청(M8-1). 글(MDX·긴 글) 결과만 흘려받는다. 답은 JSON이 아닌 일반 글이다. */
+export type AiStreamRequest = Omit<AiRequest<unknown>, "schema">;
+
 export interface AiProvider {
 	readonly name: "openai-compatible" | "fake";
 	readonly model: string;
 	generate<T>(request: AiRequest<T>): Promise<T>;
+	/** 답을 조각으로 흘려준다. 다 받으면 끝난다. */
+	stream(request: AiStreamRequest): AsyncIterable<string>;
 }
 
 export type DecisionQuestion =
@@ -170,6 +175,39 @@ export function createGenerator(config: { baseUrl: string; apiKey: string; model
 	return {
 		name: "openai-compatible",
 		model: config.model,
+		async *stream(request: AiStreamRequest): AsyncIterable<string> {
+			const result = streamText({
+				model: loose(config.model),
+				system: request.system,
+				messages: [
+					{
+						role: "user" as const,
+						content: request.content.map((block) =>
+							block.type === "text"
+								? { type: "text" as const, text: block.text }
+								: { type: "image" as const, image: block.data, mediaType: block.mediaType },
+						),
+					},
+				],
+				maxOutputTokens: request.maxTokens,
+				maxRetries: 1,
+				abortSignal: request.signal,
+			});
+			for await (const part of result.fullStream) {
+				if (part.type === "text-delta") yield part.text;
+				else if (part.type === "error") {
+					const error = unwrap(part.error);
+					if (isAbort(error)) throw error;
+					console.warn(`[cms-ai] ${config.model} stream failed: ${failureNote(error)}`);
+					if (APICallError.isInstance(error)) {
+						throw providerError(error.statusCode, error.responseBody ?? error.message);
+					}
+					throw new AiError("ai_failed", "AI 답을 받는 중에 끊겼습니다.");
+				} else if (part.type === "finish" && part.finishReason === "length") {
+					throw new AiError("ai_failed", "AI 답이 길어 끝까지 받지 못했습니다.");
+				}
+			}
+		},
 		async generate<T>(request: AiRequest<T>): Promise<T> {
 			let lastError: unknown;
 			for (const mode of OUTPUT_MODES) {
@@ -268,11 +306,29 @@ export async function listModels(baseUrl: string, apiKey: string | null, signal?
 /** 자료에서 영어 낱말을 뽑는다(가짜 연결 전용). */
 const words = (text: string) => (text.match(/[A-Za-z][A-Za-z0-9]+/g) ?? []).map((word) => word.toLowerCase());
 
+/** 가짜 흘려받기의 답. 고칠 글(선택 영역·블록)이 있으면 그 글을, 없으면 제목으로 만든 초안이다. */
+const fakeStreamText = (request: AiStreamRequest) => {
+	const { data } = request;
+	// 고칠 글은 앞에 표시를 붙여 돌려준다(바뀐 곳 미리보기가 보이도록).
+	if (data.selection) return `(fake) ${data.selection}`;
+	if (data.block) return data.block;
+	const title = data.title?.trim() || "새 글";
+	return `## ${title}\n\n(fake) ${title}에 대한 초안 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
+};
+
 /** 키 없이 정해진 답을 주는 생성 모델. 같은 입력이면 늘 같은 답이다. */
 export function createFakeGenerator(): AiProvider {
 	return {
 		name: "fake",
 		model: "fake-generator",
+		async *stream(request: AiStreamRequest): AsyncIterable<string> {
+			// 조금씩 보이는지 확인할 수 있게 낱말마다 조금 쉰다.
+			for (const piece of fakeStreamText(request).split(/(?<=\s)/)) {
+				if (request.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+				await new Promise((resolve) => setTimeout(resolve, 40));
+				yield piece;
+			}
+		},
 		async generate<T>(request: AiRequest<T>): Promise<T> {
 			const { data } = request;
 			// MDX 결과(번역 등)는 원문을 그대로 돌려준다(구조 검사를 통과하는 항등 번역).

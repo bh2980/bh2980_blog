@@ -168,10 +168,12 @@ export function buildBlockSlashCommands(
  */
 export const SLASH_COMMANDS: SlashCommandItem[] = [...BASE_SLASH_COMMANDS, ...buildBlockSlashCommands()];
 
-export function filterCommands(query: string): SlashCommandItem[] {
-	if (!query) return SLASH_COMMANDS;
+/** 슬래시 메뉴 항목. `extra`는 편집 화면 확장(플러그인)이 더한 항목이다(뒤에 붙는다). */
+export function filterCommands(query: string, extra: readonly SlashCommandItem[] = []): SlashCommandItem[] {
+	const commands = extra.length > 0 ? [...SLASH_COMMANDS, ...extra] : SLASH_COMMANDS;
+	if (!query) return commands;
 	const clean = query.trim().toLowerCase();
-	return SLASH_COMMANDS.filter((cmd) => {
+	return commands.filter((cmd) => {
 		if (cmd.title.toLowerCase().includes(clean)) return true;
 		if (cmd.description.toLowerCase().includes(clean)) return true;
 		return cmd.keywords.some((k) => k.toLowerCase().includes(clean));

@@ -21,7 +21,7 @@ import {
 	migrateLegacyCheck,
 } from "./definition";
 import { AiError } from "./errors";
-import { AI_ACTIONS, actionDefinition } from "./registry";
+import { AI_ACTIONS, AI_SHARED_KEYS, actionDefinition } from "./registry";
 
 /**
  * 기능 정의(설정)와 고친 값(DB)을 합쳐 다룬다. 관리자 AI 화면·실행 API가 쓴다.
@@ -49,6 +49,8 @@ export interface AiActionView extends AiActionEditable {
 	choices?: AiChoices;
 	attach: readonly AiAttach[];
 	checks: AiCheck[];
+	/** 결과를 흘려받는 기능인가. */
+	stream: boolean;
 	/** 고친 값의 버전. 고친 적 없으면 0. */
 	version: number;
 	updatedAt: string | null;
@@ -80,6 +82,7 @@ const viewOf = (
 	),
 	...(action.choices ? { choices: action.choices } : {}),
 	attach: action.attach,
+	stream: action.stream,
 	enabled: action.enabled,
 	askInstruction: action.askInstruction,
 	providerId: action.providerId,
@@ -137,9 +140,12 @@ export function actionWithEdits(key: string, edited: unknown): ResolvedAiAction 
 		const where = issue?.path.length ? `${issue.path.join(".")}: ` : "";
 		throw new AiError("ai_invalid_input", `${where}${issue?.message ?? "값이 올바르지 않습니다."}`);
 	}
-	const unknown = parsed.data.prompt ? unknownPlaceholders(parsed.data.prompt, definition.input) : [];
+	const unknown = parsed.data.prompt ? unknownPlaceholders(parsed.data.prompt, definition.input, AI_SHARED_KEYS) : [];
 	if (unknown.length > 0) {
-		throw new AiError("ai_invalid_input", `지시문에는 언어 입력만 {{이름}}으로 넣을 수 있습니다: {{${unknown[0]}}}`);
+		throw new AiError(
+			"ai_invalid_input",
+			`지시문에는 언어 입력과 공통 문구만 {{이름}}으로 넣을 수 있습니다: {{${unknown[0]}}}`,
+		);
 	}
 	return resolveAction(key, definition, overrideFrom(definition, parsed.data));
 }

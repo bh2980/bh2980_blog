@@ -28,8 +28,18 @@ import {
 	Table2,
 	Upload,
 } from "lucide-react";
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
+import type { EditorInsertAction, EditorSelectionAction } from "../admin-components";
 import { cn } from "../lib/utils/cn";
 import { Button } from "../ui/button";
 import {
@@ -56,7 +66,7 @@ import { INLINE_MARK_TOOLS } from "./inline-marks";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
-import { filterCommands, OPEN_IMAGE_DIALOG_EVENT } from "./slash-command";
+import { filterCommands, OPEN_IMAGE_DIALOG_EVENT, type SlashCommandItem } from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { TableToolbar } from "./table-toolbar";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
@@ -84,6 +94,10 @@ interface CmsEditorProps {
 	blockActions?: readonly BlockAction[];
 	/** 편집기가 만들어지거나 사라질 때 부른다(바깥에서 문서 전체 작업을 할 때). */
 	onEditor?: (editor: Editor | null) => void;
+	/** 선택 영역 메뉴에 더할 동작(플러그인). */
+	selectionActions?: readonly EditorSelectionAction[];
+	/** 슬래시 메뉴에 더할 삽입 동작(플러그인). */
+	insertActions?: readonly EditorInsertAction[];
 }
 
 /** 블록 손잡이 옆 동작. `pos`는 손잡이가 가리키는 블록의 위치다. */
@@ -317,6 +331,8 @@ export function CmsEditor({
 	editable = true,
 	blockActions,
 	onEditor,
+	selectionActions,
+	insertActions,
 }: CmsEditorProps) {
 	const isSourceMode = sourceView != null && sourceView !== false;
 	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
@@ -342,6 +358,20 @@ export function CmsEditor({
 
 	const [slash, setSlash] = useState<{ query: string; index: number; coords: Coords } | null>(null);
 	const slashRangeRef = useRef<Range | null>(null);
+	// 확장(플러그인)이 더한 슬래시 메뉴 항목. 키 처리기가 최신 값을 읽도록 ref에도 둔다.
+	const extraCommands = useMemo<SlashCommandItem[]>(
+		() =>
+			(insertActions ?? []).map((item) => ({
+				id: item.id,
+				title: item.title,
+				description: item.description,
+				keywords: [...item.keywords],
+				action: (current, range) => item.run(current, range),
+			})),
+		[insertActions],
+	);
+	const extraCommandsRef = useRef(extraCommands);
+	extraCommandsRef.current = extraCommands;
 	const slashRef = useRef(slash);
 	slashRef.current = slash;
 
@@ -445,7 +475,7 @@ export function CmsEditor({
 
 				const openSlash = slashRef.current;
 				if (openSlash) {
-					const filtered = filterCommands(openSlash.query);
+					const filtered = filterCommands(openSlash.query, extraCommandsRef.current);
 					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
 						const step = event.key === "ArrowDown" ? 1 : -1;
@@ -969,7 +999,7 @@ export function CmsEditor({
 
 			{slash && !isSourceMode && (
 				<SlashMenuPopup
-					items={filterCommands(slash.query)}
+					items={filterCommands(slash.query, extraCommands)}
 					coords={slash.coords}
 					selectedIndex={slash.index}
 					onSelect={(command) => {
@@ -1000,7 +1030,7 @@ export function CmsEditor({
 			{!isSourceMode && (
 				<>
 					<TableToolbar editor={editor} />
-					<InlineBubble editor={editor} />
+					<InlineBubble editor={editor} actions={selectionActions} />
 				</>
 			)}
 

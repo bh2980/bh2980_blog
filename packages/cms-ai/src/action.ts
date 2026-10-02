@@ -90,6 +90,8 @@ export const SLOT_INPUTS = {
 	media: { image: "image", filename: "text", current: "value" },
 	codeRules: { code: "code" },
 	translation: { block: "mdx", from: "locale", to: "locale" },
+	selection: { selection: "mdx", title: "text" },
+	insert: { title: "text", body: "mdx" },
 } as const satisfies Record<AiSlot, Readonly<Record<string, AiInputKind>>>;
 
 type SlotInputNames = { [S in AiSlot]: keyof (typeof SLOT_INPUTS)[S] };
@@ -101,7 +103,11 @@ export type AiAttach =
 	| { readonly slot: "media"; readonly target: "filename" | "defaultAlt" | "defaultCaption" }
 	| { readonly slot: "codeRules"; readonly target: "fold" }
 	/** 번역본 편집기의 블록 번역(블록 메뉴·`모두 번역`). */
-	| { readonly slot: "translation" };
+	| { readonly slot: "translation" }
+	/** 본문 선택 영역 메뉴. 결과(MDX)는 바뀐 곳을 보여 준 뒤 고른 글을 바꾼다. */
+	| { readonly slot: "selection" }
+	/** 슬래시 메뉴·빈 문서. 결과(MDX)는 커서 자리에 넣는다. */
+	| { readonly slot: "insert" };
 
 type RequiredInputNames<I> = { [K in keyof I]: I[K] extends { readonly required: true } ? K : never }[keyof I];
 /** 필수 입력을 모두 채울 수 있는 자리. */
@@ -154,26 +160,42 @@ export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	readonly sameStructureAs?: keyof I & string;
 	/** 실행할 때 추가 요청을 받는다. 없으면 받지 않는다. */
 	readonly askInstruction?: boolean;
+	/** 결과를 흘려받는다(조금씩 보인다). 생성 방식의 글·MDX 결과만. */
+	readonly stream?: boolean;
 	/** 처음에 켜 둘까. 없으면 켠다. */
 	readonly enabled?: boolean;
 	readonly attach?: readonly AiAttach[];
 }
 
+/** 공통 문구 하나(예: 문체 가이드). 지시문에 `{{shared.이름}}`으로 넣고, 관리자 AI 화면에서 고친다. */
+export interface AiSharedText {
+	readonly label: string;
+	/** 기본 문구. 관리자 화면에서 고친 값이 있으면 그것을 쓴다. */
+	readonly text: string;
+}
+
 export interface AiConfig {
 	/** 사이트 소개. 모든 기능의 맨 앞 지시("너는 {이것} CMS의 편집 보조 도구다")에 들어간다. 없으면 "블로그". */
 	readonly siteDescription?: string;
+	/** 여러 기능이 함께 쓰는 공통 문구. 지시문에 `{{shared.이름}}`으로 넣는다. */
+	readonly shared?: Readonly<Record<string, AiSharedText>>;
 	readonly actions: Readonly<Record<string, AiActionDefinition>>;
 }
 
 /** 지시문의 `{{이름}}`. */
 type Placeholders<S extends string> = S extends `${string}{{${infer P}}}${infer Rest}` ? P | Placeholders<Rest> : never;
 type LocaleInputNames<I> = { [K in keyof I]: I[K] extends { readonly kind: "locale" } ? K : never }[keyof I];
-/** 지시문에 언어 입력이 아닌 `{{이름}}`이 있으면 타입 오류를 낸다. */
+/** 지시문에 언어 입력·공통 문구(`shared.이름`)가 아닌 `{{이름}}`이 있으면 타입 오류를 낸다. 공통 문구 이름은 플러그인 설정이 확인한다. */
 type PromptCheck<P extends string, I> = string extends P
 	? unknown
-	: [Exclude<Placeholders<P>, LocaleInputNames<I>>] extends [never]
+	: [Exclude<Placeholders<P>, LocaleInputNames<I> | `shared.${string}`>] extends [never]
 		? unknown
-		: { readonly "지시문에는 언어 입력만 {{이름}}으로 넣을 수 있다": Exclude<Placeholders<P>, LocaleInputNames<I>> };
+		: {
+				readonly "지시문에는 언어 입력과 공통 문구만 {{이름}}으로 넣을 수 있다": Exclude<
+					Placeholders<P>,
+					LocaleInputNames<I> | `shared.${string}`
+				>;
+			};
 
 /**
  * 기능을 정의한다. 지시문의 `{{이름}}`과 붙을 곳(자리가 입력을 모두 채울 수 있는지)을 타입으로 확인한다.
@@ -251,6 +273,7 @@ export interface ResolvedAiAction {
 	readonly checks: readonly AiCheck[];
 	readonly sameStructureAs?: string;
 	readonly askInstruction: boolean;
+	readonly stream: boolean;
 	readonly enabled: boolean;
 	readonly providerId: string | null;
 	readonly modelName: string;
@@ -308,6 +331,7 @@ export function resolveAction(
 		}),
 		...(definition.sameStructureAs ? { sameStructureAs: definition.sameStructureAs } : {}),
 		askInstruction: override.askInstruction ?? definition.askInstruction ?? false,
+		stream: definition.stream ?? false,
 		enabled: override.enabled ?? definition.enabled ?? true,
 		providerId: override.providerId ?? null,
 		modelName: override.modelName ?? "",
@@ -331,26 +355,42 @@ export function overrideFrom(definition: AiActionDefinition, edited: Partial<AiA
 // 지시문
 // ---------------------------------------------------------------------------
 
-const PLACEHOLDER = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g;
+const PLACEHOLDER = /\{\{\s*((?:shared\.)?[A-Za-z][A-Za-z0-9_]*)\s*\}\}/g;
+const SHARED_PREFIX = "shared.";
 
-/** 지시문의 `{{이름}}` 중 언어 입력이 아닌 것. 정의 확인과 저장 전 확인에 쓴다. */
-export function unknownPlaceholders(prompt: string, input: AiInputs): string[] {
+/**
+ * 지시문의 `{{이름}}` 중 언어 입력도, 있는 공통 문구(`shared.이름`)도 아닌 것. 정의 확인과 저장 전 확인에 쓴다.
+ */
+export function unknownPlaceholders(prompt: string, input: AiInputs, sharedKeys: readonly string[] = []): string[] {
 	const names = [...prompt.matchAll(PLACEHOLDER)].map((match) => match[1] ?? "");
-	return [...new Set(names.filter((name) => input[name]?.kind !== "locale"))];
+	return [
+		...new Set(
+			names.filter((name) =>
+				name.startsWith(SHARED_PREFIX)
+					? !sharedKeys.includes(name.slice(SHARED_PREFIX.length))
+					: input[name]?.kind !== "locale",
+			),
+		),
+	];
 }
 
 /**
- * 실행할 지시문. `{{언어 입력}}`을 언어 이름으로 바꾸고, 지시문에 쓰지 않은 언어 입력은 `이름: 언어` 줄로 붙인다.
- * 마지막에 실행할 때 적은 추가 요청을 붙인다(`요청 받기`가 켜진 기능만).
+ * 실행할 지시문. `{{언어 입력}}`을 언어 이름으로, `{{shared.이름}}`을 공통 문구로 바꾸고, 지시문에 쓰지 않은 언어 입력은
+ * `이름: 언어` 줄로 붙인다. 마지막에 실행할 때 적은 추가 요청을 붙인다(`요청 받기`가 켜진 기능만).
  */
 export function renderPrompt(
 	action: Pick<ResolvedAiAction, "prompt" | "input" | "askInstruction">,
 	values: Readonly<Record<string, unknown>>,
 	languageName: (code: string) => string,
 	request?: string,
+	shared: Readonly<Record<string, string>> = {},
 ): string {
 	const used = new Set<string>();
 	const prompt = action.prompt.replace(PLACEHOLDER, (whole, name: string) => {
+		if (name.startsWith(SHARED_PREFIX)) {
+			const text = shared[name.slice(SHARED_PREFIX.length)];
+			return text === undefined ? whole : text.trim() || "(없음)";
+		}
 		const value = values[name];
 		if (action.input[name]?.kind !== "locale" || typeof value !== "string") return whole;
 		used.add(name);
@@ -421,6 +461,8 @@ export const aiRunBodySchema = z
 		request: z.string().max(MAX_REQUEST_LENGTH).optional(),
 		/** 저장하지 않은 고친 값으로 시험한다(AI 화면의 `시험`). */
 		draft: z.unknown().optional(),
+		/** 결과를 흘려받는다(`application/x-ndjson`). 흘려받기 기능의 입력 하나만. */
+		stream: z.boolean().optional(),
 	})
 	.refine((body) => (body.input === undefined) !== (body.inputs === undefined), {
 		message: "input과 inputs 중 하나만 보낸다.",
@@ -460,6 +502,10 @@ function findField(
 
 /** AI 설정이 컬렉션 정의·자리·결과 모양과 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
 export function validateAiConfig(ai: AiConfig, collections: CollectionsView): void {
+	const sharedKeys = Object.keys(ai.shared ?? {});
+	for (const key of sharedKeys) {
+		if (!NAME.test(key)) throw new Error(`cms.config: ai.shared.${key}: name must be letters, digits or _`);
+	}
 	for (const [key, action] of Object.entries(ai.actions)) {
 		const where = `cms.config: ai.actions.${key}`;
 		if (!NAME.test(key)) throw new Error(`${where}: name must be letters, digits or _`);
@@ -468,8 +514,10 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView): vo
 		for (const name of action.send ?? []) {
 			if (!action.input[name]) throw new Error(`${where}: send lists unknown input "${name}"`);
 		}
-		const unknown = unknownPlaceholders(action.prompt, action.input);
-		if (unknown.length > 0) throw new Error(`${where}: prompt can only use locale inputs, not {{${unknown[0]}}}`);
+		const unknown = unknownPlaceholders(action.prompt, action.input, sharedKeys);
+		if (unknown.length > 0) {
+			throw new Error(`${where}: prompt can only use locale inputs and shared texts, not {{${unknown[0]}}}`);
+		}
 
 		const choices = action.choices;
 		if (choices?.from === "collection" && !collections[choices.collection]) {
@@ -489,6 +537,9 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView): vo
 			if (action.result !== "candidates") throw new Error(`${where}: decide engine answers candidates only`);
 			if (inputs.some(([, spec]) => spec.kind === "image"))
 				throw new Error(`${where}: decide engine cannot read images`);
+		}
+		if (action.stream && (engine !== "generate" || (action.result !== "text" && action.result !== "mdx"))) {
+			throw new Error(`${where}: stream needs the generate engine and a text or mdx result`);
 		}
 		if (action.result === "note" && action.apply && action.apply !== "none") {
 			throw new Error(`${where}: note results are not applied`);

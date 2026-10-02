@@ -1,6 +1,9 @@
 import type { PluginDatabase } from "@bh2980/cms";
 import { CmsError, getCmsDatabase, withTransaction } from "@bh2980/cms/plugin/server";
 
+/** AI 설정 표(`ai_settings`)의 줄 이름. */
+export type AiSettingsId = "default" | "shared";
+
 /** 기능 이름별로 고친 값 한 줄. */
 export interface AiActionOverrideRow {
 	key: string;
@@ -52,26 +55,31 @@ export function createAiStore({ pool, schema: qSchema }: PluginDatabase) {
 				return { key: row.key, value: row.value, version: row.version, updatedAt: row.updated_at };
 			}),
 
-		/** AI 서비스 연결 설정(저장한 모양 그대로). 없으면 `null`. */
-		getAiSettings: async (): Promise<{ value: unknown; version: number } | null> => {
+		/**
+		 * AI 설정 한 줄(저장한 모양 그대로). `default`는 서비스 연결, `shared`는 고친 공통 문구다. 없으면 `null`.
+		 */
+		getAiSettings: async (id: AiSettingsId = "default"): Promise<{ value: unknown; version: number } | null> => {
 			const res = await pool.query<{ value: unknown; version: number }>(
-				`SELECT value, version FROM "${qSchema}".ai_settings WHERE id = 'default'`,
+				`SELECT value, version FROM "${qSchema}".ai_settings WHERE id = $1`,
+				[id],
 			);
 			return res.rows[0] ?? null;
 		},
 
-		/** 연결 설정을 저장한다. 처음이면 `expectedVersion`이 0이고, 그 뒤로는 버전이 다르면 409다. */
-		saveAiSettings: async (params: { expectedVersion: number; value: unknown }): Promise<number> =>
+		/** 설정 한 줄을 저장한다. 처음이면 `expectedVersion`이 0이고, 그 뒤로는 버전이 다르면 409다. */
+		saveAiSettings: async (params: { id?: AiSettingsId; expectedVersion: number; value: unknown }): Promise<number> =>
 			withTransaction(pool, async (client) => {
+				const id = params.id ?? "default";
 				const cur = await client.query<{ version: number }>(
-					`SELECT version FROM "${qSchema}".ai_settings WHERE id = 'default' FOR UPDATE`,
+					`SELECT version FROM "${qSchema}".ai_settings WHERE id = $1 FOR UPDATE`,
+					[id],
 				);
 				const version = cur.rows[0]?.version ?? 0;
 				if (version !== params.expectedVersion) throw new CmsError("Conflict", "conflict", version);
 				await client.query(
-					`INSERT INTO "${qSchema}".ai_settings (id, value, version, updated_at) VALUES ('default', $1, $2, NOW())
+					`INSERT INTO "${qSchema}".ai_settings (id, value, version, updated_at) VALUES ($1, $2, $3, NOW())
 					 ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, version = EXCLUDED.version, updated_at = NOW()`,
-					[JSON.stringify(params.value), version + 1],
+					[id, JSON.stringify(params.value), version + 1],
 				);
 				return version + 1;
 			}),
