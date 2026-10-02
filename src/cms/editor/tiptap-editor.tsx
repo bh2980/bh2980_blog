@@ -27,7 +27,7 @@ import {
 	Table2,
 	Upload,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,7 @@ import { CodeLinkBar } from "./code-block/code-link-bar";
 import { TextColorMenu, TextColorMenuItems } from "./color-menu";
 import { CustomBlockMenu, CustomBlockMenuItems } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
+import { EDITOR_WIDTHS, EditorWidthMenu, useEditorWidth } from "./editor-width";
 import { buildEditorExtensions } from "./extensions";
 import { FILE_NODE_NAME } from "./file-node";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
@@ -336,6 +337,7 @@ export function CmsEditor({
 	});
 	const isComposingRef = useRef(false);
 	const editorRef = useRef<Editor | null>(null);
+	const [width, setWidth] = useEditorWidth();
 
 	const [slash, setSlash] = useState<{ query: string; index: number; coords: Coords } | null>(null);
 	const slashRangeRef = useRef<Range | null>(null);
@@ -845,6 +847,8 @@ export function CmsEditor({
 		<div
 			className="relative flex min-h-full w-full flex-1 flex-col bg-background"
 			data-cms-editor-shell
+			// 제목·본문·원문이 같은 폭(`--editor-width`)을 쓴다.
+			style={{ "--editor-width": EDITOR_WIDTHS[width] } as CSSProperties}
 			onCompositionStart={(event) => {
 				// 팝오버(포털) 안 입력칸의 조합은 React 트리를 타고 여기까지 오지만 본문 입력이 아니다.
 				// 그 입력칸이 조합 중에 사라지면 끝 신호가 오지 않아 저장이 막혔다.
@@ -874,22 +878,20 @@ export function CmsEditor({
 			>
 				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,
 				    그래도 좁으면(번역 원문 칸을 연 때 등) 한 줄을 유지한 채 덜 쓰는 도구를 "더보기"로 접는다. */}
-				<div
-					className="relative flex min-h-12 items-center py-2"
-					style={{ paddingInline: toolbarAside ? asideWidth + 24 : 16 }}
-				>
+				<div className="relative flex min-h-12 items-center py-2" style={{ paddingInline: asideWidth + 24 }}>
 					<ToolbarRow editor={editor} entries={toolbarEntries} end={toolbarEnd} />
-					{toolbarAside && (
-						<div ref={asideRef} className="absolute inset-y-0 right-4 flex items-center">
-							{toolbarAside}
-						</div>
-					)}
+					<div ref={asideRef} className="absolute inset-y-0 right-4 flex items-center gap-1">
+						{toolbarAside}
+						<EditorWidthMenu value={width} onChange={setWidth} />
+					</div>
 				</div>
 				{!isSourceMode && <CodeLinkBar editor={editor} />}
 			</div>
 
 			{titleField && (
-				<div className="mx-auto w-full max-w-3xl border-border/60 border-b px-4 pt-12 pb-5">{titleField}</div>
+				<div className="mx-auto w-full max-w-(--editor-width) border-border/60 border-b px-4 pt-12 pb-5">
+					{titleField}
+				</div>
 			)}
 
 			<input
@@ -915,7 +917,9 @@ export function CmsEditor({
 			/>
 
 			{isSourceMode && (
-				<div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-[35vh]">{sourceView}</div>
+				<div className="mx-auto flex w-full max-w-(--editor-width) flex-1 flex-col px-4 pt-6 pb-[35vh]">
+					{sourceView}
+				</div>
 			)}
 
 			{/* 원문 모드에서도 시각 편집기를 내리지 않고 숨긴다. 돌아오면 원문을 다시 읽어 채운다. */}
@@ -923,7 +927,7 @@ export function CmsEditor({
 			<div
 				hidden={isSourceMode}
 				// 마지막 줄이 화면 아래에 붙지 않게 아래 여백(화면 높이의 35%)을 둔다.
-				className="mx-auto flex min-h-full w-full max-w-3xl flex-1 cursor-text flex-col px-4 pt-6 pb-[35vh]"
+				className="mx-auto flex min-h-full w-full max-w-(--editor-width) flex-1 cursor-text flex-col px-4 pt-6 pb-[35vh]"
 				onClick={(event) => {
 					// 본문 밖 빈 캔버스를 눌렀을 때만 끝으로 옮긴다. NodeView 버튼·팝오버(포털)의 클릭도
 					// React 트리를 따라 여기로 올라오므로, 본문 DOM 안이나 캔버스 밖(포털)은 건드리지 않는다.
