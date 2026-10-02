@@ -1,10 +1,10 @@
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
+import { buildEditorExtensions } from "@bh2980/cms-admin/editor/extensions";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
 import { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildEditorExtensions } from "@/cms/editor/extensions";
-import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { renderMDX } from "@/components/mdx/mdx-content";
 
 /** 글자색·배경색 저장 형식: `:color[글]{fg fgDark bg bgDark}`(헥스 값, 밝은·어두운 테마 짝). */

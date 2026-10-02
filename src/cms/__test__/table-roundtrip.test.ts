@@ -44,7 +44,7 @@ describe("C6 표 셀 병합 MDX 파싱·직렬화", () => {
 	});
 
 	it("머리글 없는 첫 행의 병합 표를 편집기로 불러와도 td로 유지한다", async () => {
-		const { mdxToTiptap, tiptapToMdx } = await import("../editor/tiptap-content");
+		const { mdxToTiptap, tiptapToMdx } = await import("@bh2980/cms-admin/editor/tiptap-content");
 		const source = "::::table\n:::row\n::cell[본문]{colspan=2}\n:::\n:::row\n::cell[왼쪽]\n::cell[오른쪽]\n:::\n::::";
 		const json = mdxToTiptap(source);
 		expect(json.content?.[0]?.content?.[0]?.content?.[0]?.type).toBe("tableCell");

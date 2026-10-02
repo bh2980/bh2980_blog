@@ -11,7 +11,7 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check . --write",
-		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck",
+		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck",
 		"prepare": "husky"
 	},
 	"dependencies": {
@@ -20,6 +20,7 @@
 		"@aws-sdk/s3-request-presigner": "^3.1136.0",
 		"@base-ui/react": "^1.8.0",
 		"@bh2980/cms": "workspace:*",
+		"@bh2980/cms-admin": "workspace:*",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",

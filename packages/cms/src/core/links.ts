@@ -80,3 +80,6 @@ export function parseInternalLink(url: string): { collection: Collection; slug: 
 	const target = parseContentPath(parsed.pathname);
 	return target ? { ...target, url } : null;
 }
+
+/** 관리자 화면에 보이는 사이트 이름(`site.name`, 없으면 `site.url`의 호스트 이름). 둘 다 없으면 빈 글자. */
+export const SITE_NAME = cmsConfig.site?.name ?? (siteUrl ? new URL(siteUrl).hostname : "");

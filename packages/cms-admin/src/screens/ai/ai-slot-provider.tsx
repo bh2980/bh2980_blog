@@ -1,0 +1,152 @@
+"use client";
+
+import type { AiActionView } from "@bh2980/cms/ai/actions";
+import type { AiRunContext, AiRunResult } from "@bh2980/cms/ai/definition";
+import { attachedTo } from "@bh2980/cms/ai/registry";
+import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
+import { type ReactNode, useMemo } from "react";
+import { SlotRegistryProvider, type SlotSource } from "../../slots/slots";
+import { cmsFetch } from "../admin-api";
+
+export const AI_ACTIONS_KEY = ["cms", "ai", "actions"] as const;
+
+export interface AiActionsResponse {
+	/** 연결이 준비되어 지금 쓸 수 있는 기능 이름. */
+	usable: string[];
+	items: AiActionView[];
+}
+
+export function useAiActions(enabled = true) {
+	return useQuery({
+		queryKey: AI_ACTIONS_KEY,
+		queryFn: ({ signal }) =>
+			cmsFetch<AiActionsResponse>("/api/cms/v1/ai/actions", {
+				signal,
+				fallback: "AI 기능 목록을 불러올 수 없습니다.",
+			}),
+		enabled,
+		staleTime: 60_000,
+	});
+}
+
+/** 실행 요청의 공통 정보(입력 밖). */
+export interface AiRunEnv {
+	collection?: string;
+	locale?: string;
+	entryId?: string;
+	language?: string;
+}
+
+export interface AiRunOptions {
+	env?: AiRunEnv;
+	/** 실행할 때 적은 추가 요청. */
+	request?: string;
+	/** 저장하지 않은 고친 값(AI 화면의 `시험`). */
+	draft?: unknown;
+	signal?: AbortSignal;
+}
+
+const requestBody = (action: string, options: AiRunOptions) => ({
+	action,
+	env: options.env ?? {},
+	...(options.request?.trim() ? { request: options.request.trim() } : {}),
+	...(options.draft !== undefined ? { draft: options.draft } : {}),
+});
+
+/** 기능을 이름으로 실행한다. */
+export async function runAiAction(
+	action: string,
+	input: Readonly<Record<string, unknown>>,
+	options: AiRunOptions = {},
+): Promise<AiRunResult> {
+	const response = await cmsFetch<{ result: AiRunResult }>("/api/cms/v1/ai/run", {
+		method: "POST",
+		json: { ...requestBody(action, options), input },
+		signal: options.signal,
+		fallback: "AI 기능을 실행하지 못했습니다.",
+	});
+	return response.result;
+}
+
+/** 같은 기능을 여러 입력에 돌린다(한 요청 최대 8개). 입력마다 결과나 실패 이유가 순서대로 온다. */
+export async function runAiActionMany(
+	action: string,
+	inputs: ReadonlyArray<Readonly<Record<string, unknown>>>,
+	options: AiRunOptions = {},
+): Promise<Array<{ result: AiRunResult } | { error: string }>> {
+	const response = await cmsFetch<{ results: Array<{ result: AiRunResult } | { error: string }> }>(
+		"/api/cms/v1/ai/run",
+		{
+			method: "POST",
+			json: { ...requestBody(action, options), inputs },
+			signal: options.signal,
+			fallback: "AI 기능을 실행하지 못했습니다.",
+		},
+	);
+	return response.results;
+}
+
+/** 자리의 지금 상황을 기능 입력과 공통 정보로 옮긴다. 기능 정의에 있는 입력만 보낸다. */
+export function inputFromContext(
+	action: Pick<AiActionView, "input">,
+	context: AiRunContext,
+): { input: Record<string, unknown>; env: AiRunEnv } {
+	const image =
+		context.mediaId || context.imageSrc
+			? {
+					...(context.mediaId ? { mediaId: context.mediaId } : {}),
+					...(context.imageSrc ? { src: context.imageSrc } : {}),
+				}
+			: undefined;
+	const values: Record<string, unknown> = {
+		title: context.title,
+		summary: context.summary,
+		body: context.body,
+		current: context.current,
+		around: context.around,
+		code: context.code,
+		filename: context.filename,
+		image,
+	};
+	const input = Object.fromEntries(
+		Object.keys(action.input).flatMap((name) => (values[name] === undefined ? [] : [[name, values[name]]])),
+	);
+	const env: AiRunEnv = {
+		...(context.collection ? { collection: context.collection } : {}),
+		...(context.locale ? { locale: context.locale } : {}),
+		...(context.entryId ? { entryId: context.entryId } : {}),
+		...(context.language ? { language: context.language } : {}),
+	};
+	return { input, env };
+}
+
+/**
+ * AI 기능을 화면 자리에 연결한다. 켠 기능 중 붙을 곳(`attach`)이 이 자리인 것이 버튼으로 붙는다.
+ * 그 기능이 쓸 연결이 준비되지 않았으면 붙이지 않는다.
+ */
+export function AiSlotProvider({ children }: { children: ReactNode }) {
+	const pathname = usePathname();
+	const { data } = useAiActions(!pathname?.startsWith("/admin/login"));
+
+	const sources = useMemo<SlotSource[]>(() => {
+		const usable = new Set(data?.usable ?? []);
+		const actions = data ? data.items.filter((action) => action.enabled && usable.has(action.key)) : [];
+		const source: SlotSource = (place) =>
+			actions
+				.filter((action) => action.attach.some((attach) => attachedTo(attach, place)))
+				.map((action) => ({
+					id: action.key,
+					label: action.label,
+					apply: action.apply,
+					askInstruction: action.askInstruction,
+					run: (context, signal) => {
+						const { input, env } = inputFromContext(action, context);
+						return runAiAction(action.key, input, { env, request: context.request, signal });
+					},
+				}));
+		return [source];
+	}, [data]);
+
+	return <SlotRegistryProvider sources={sources}>{children}</SlotRegistryProvider>;
+}

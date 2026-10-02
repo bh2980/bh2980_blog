@@ -3,8 +3,8 @@ import { prepareSnapshot, validateForPublish } from "@bh2980/cms/core/snapshot";
 import type { MetadataFor } from "@bh2980/cms/core/types";
 import { SYSTEM_LIST_COLUMNS } from "@bh2980/cms/schema/collection";
 import { metadataReferences, missingRequiredIssues, relationsOf, storedFields } from "@bh2980/cms/schema/derive";
+import { metadataFromForm } from "@bh2980/cms-admin/screens/entries/entry-form";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { metadataFromForm } from "@/app/(admin)/admin/entries/entry-form";
 import cmsConfig from "@/cms.config";
 
 const SCHEMAS = cmsConfig.collections;

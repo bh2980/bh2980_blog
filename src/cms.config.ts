@@ -206,7 +206,8 @@ export default defineConfig({
 	locales: LOCALES.map((code) => ({ code, name: LOCALE_INFO[code].nativeName, label: LOCALE_INFO[code].adminName })),
 	defaultLocale: DEFAULT_LOCALE,
 	// 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 서버에서만 읽힌다(브라우저에서는 비어 있다).
-	site: { url: process.env.HOST_URL || undefined },
+	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev" },
+	timeZone: "Asia/Seoul",
 	ai: {
 		siteDescription: "개인 기술 블로그",
 		actions: {

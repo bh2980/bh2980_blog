@@ -28,6 +28,8 @@ export interface SiteConfig {
 	readonly url?: string;
 	/** 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). */
 	readonly aliases?: readonly string[];
+	/** 관리자 화면에 보이는 사이트 이름(사이드바·검색 미리보기·창 제목). 없으면 `url`의 호스트 이름. */
+	readonly name?: string;
 }
 
 export interface SeedTemplate {
@@ -57,6 +59,11 @@ export interface CmsConfig<
 	/** 기본 언어. 공개 주소에 언어 접두사를 붙이지 않는다. */
 	readonly defaultLocale: NoInfer<Locale>;
 	readonly site?: SiteConfig;
+	/**
+	 * 날짜·시각을 입력하고 보이는 시간대(IANA, 예: `Asia/Seoul`). 발행일·예약 시각 입력이 이 시간대의 벽시계다.
+	 * 없으면 `UTC`.
+	 */
+	readonly timeZone?: string;
 	/** 새 저장소에 처음 넣을 데이터. */
 	readonly seed?: SeedConfig;
 	/** AI 기능(`aiAction`·`aiPresets`). 없으면 AI 기능이 없다. */
@@ -95,6 +102,14 @@ function validate(config: CmsConfig<CollectionsConfig, string, AiConfig>): void 
 		} catch {}
 		if (url?.protocol !== "http:" && url?.protocol !== "https:") {
 			throw new Error(`cms.config: site.url "${config.site.url}" is not an http(s) URL`);
+		}
+	}
+
+	if (config.timeZone !== undefined) {
+		try {
+			new Intl.DateTimeFormat("en-US", { timeZone: config.timeZone });
+		} catch {
+			throw new Error(`cms.config: timeZone "${config.timeZone}" is not an IANA time zone`);
 		}
 	}
 

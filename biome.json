@@ -56,7 +56,7 @@
 			}
 		},
 		{
-			"includes": ["src/components/ui/**"],
+			"includes": ["src/components/ui/**", "packages/cms-admin/src/ui/**"],
 			"linter": {
 				"rules": {
 					"a11y": {

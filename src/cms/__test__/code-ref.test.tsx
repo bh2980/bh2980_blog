@@ -1,10 +1,10 @@
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
+import { buildEditorExtensions } from "@bh2980/cms-admin/editor/extensions";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
 import { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildEditorExtensions } from "@/cms/editor/extensions";
-import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { renderMDX } from "@/components/mdx/mdx-content";
 
 /** 본문–코드 잇기의 저장 형식(v2): 본문 `:code-ref[글자]{to}` ↔ 코드 줄 이름표 `// @line anchor {..} id`. */

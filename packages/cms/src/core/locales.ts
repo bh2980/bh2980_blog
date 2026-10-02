@@ -22,3 +22,13 @@ export const localeLabel = (code: string): string => {
 	const locale = cmsConfig.locales.find((entry) => entry.code === code);
 	return locale ? (locale.label ?? locale.name) : code;
 };
+
+/** 공개 주소의 언어 접두사. 기본 언어는 빈 글자다. */
+export const localePrefix = (code: string): string => (code === DEFAULT_LOCALE || !isLocale(code) ? "" : `/${code}`);
+
+/** 기본 언어 기준 경로(`/posts/a`)를 그 언어의 경로로 바꾼다. */
+export const localizePath = (code: string, path: string): string => {
+	const prefix = localePrefix(code);
+	if (!prefix) return path;
+	return path === "/" ? prefix : `${prefix}${path}`;
+};

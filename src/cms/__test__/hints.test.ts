@@ -2,8 +2,8 @@ import { prepareSnapshot } from "@bh2980/cms/core/snapshot";
 import { withTranslationHints } from "@bh2980/cms/core/translation/hints";
 import { analyze } from "@bh2980/cms/mdx";
 import { readSamples } from "@bh2980/cms/mdx/__test__/fixtures/samples";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
 import { describe, expect, it } from "vitest";
-import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 
 describe("새 번역본의 번역 안내(v3)", () => {
 	it("글자는 안내로 감싸고 구조·코드·상자 제목은 그대로 둔다", () => {

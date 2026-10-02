@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { analyze } from "@bh2980/cms/mdx";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
 
 const source = readFileSync(path.join(__dirname, "fixtures/component-showcase.mdx"), "utf8");

@@ -1,9 +1,9 @@
 import { BLOCKS } from "@bh2980/cms/blocks/definitions";
 import { BLOCK_BY_NAME, invalidOptionAttributes } from "@bh2980/cms/blocks/derive";
 import { DIRECTIVES } from "@bh2980/cms/mdx/directives";
+import { BLOCK_NODE_VIEWS } from "@bh2980/cms-admin/editor/block-views";
 import { describe, expect, it } from "vitest";
 import { MDX_COMPONENTS } from "@/components/mdx/mdx-content";
-import { BLOCK_NODE_VIEWS } from "../editor/block-views";
 
 describe("블록 정의(v2 B3)", () => {
 	it("JSON 왕복해도 같다 — 함수·컴포넌트가 없다", () => {

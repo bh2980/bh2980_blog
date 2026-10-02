@@ -1,29 +1,15 @@
-import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
-import type { ReactNode } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AiSlotProvider } from "./ai/ai-slot-provider";
-import { AdminQueryProvider } from "./shared/query-provider";
 import "@/app/globals.css";
+import { CmsAdminLayout } from "@bh2980/cms-admin/next";
+import type { ReactNode } from "react";
+import { BlogAdminComponents } from "@/cms.admin";
 
-export const metadata: Metadata = {
-	title: "CMS 관리자 | bh2980",
-	robots: { index: false, follow: false },
-};
+export { cmsAdminMetadata as metadata } from "@bh2980/cms-admin/next";
 
-/** 관리자 화면은 블로그와 같은 테마 설정(`next-themes`)을 쓰고 밝은·어두운 테마를 모두 지원한다(v1 §3.1). */
-export default function AdminRootLayout({ children }: { children: ReactNode }) {
+/** 관리자 화면(`@bh2980/cms-admin`). 이 블로그의 편집기 미리보기 컴포넌트를 넣는다. */
+export default function AdminLayout({ children }: { children: ReactNode }) {
 	return (
-		<ThemeProvider attribute="class" disableTransitionOnChange>
-			<AdminQueryProvider>
-				<AiSlotProvider>
-					<TooltipProvider>
-						<div className="cms-admin min-h-screen bg-background text-foreground">{children}</div>
-						<Toaster richColors closeButton position="bottom-right" />
-					</TooltipProvider>
-				</AiSlotProvider>
-			</AdminQueryProvider>
-		</ThemeProvider>
+		<CmsAdminLayout>
+			<BlogAdminComponents>{children}</BlogAdminComponents>
+		</CmsAdminLayout>
 	);
 }

@@ -1,11 +1,11 @@
 import { prepareSnapshot } from "@bh2980/cms/core/snapshot";
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
+import { buildEditorExtensions } from "@bh2980/cms-admin/editor/extensions";
+import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor/tiptap-content";
 import { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildEditorExtensions } from "@/cms/editor/extensions";
-import { mdxToTiptap, tiptapToMdx } from "@/cms/editor/tiptap-content";
 import { renderMDX } from "@/components/mdx/mdx-content";
 
 const MEDIA = "11111111-1111-4111-8111-111111111111";

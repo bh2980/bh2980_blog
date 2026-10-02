@@ -205,7 +205,8 @@ export default defineConfig({
 		{ code: "ja", name: "日本語", label: "일본어" },
 	],
 	defaultLocale: "ko",
-	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"] },
+	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"], name: "bh2980.dev" },
+	timeZone: "Asia/Seoul",
 	ai: {
 		siteDescription: "개인 기술 블로그",
 		actions: {
