@@ -814,6 +814,7 @@ export function AdminEntriesTable({
 												writeDraggedEntries(
 													event,
 													group.map((item) => ({ id: item.id, expectedVersion: item.version })),
+													group.length === 1 ? group[0]?.title || "제목 없음" : `${group.length}개 항목`,
 												);
 											}}
 											onKeyDown={rowKeyDown(row.original)}

@@ -226,4 +226,43 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		expect(within(row).getByText("영어 있음")).toBeTruthy();
 		expect(within(row).getByText("일본어 없음")).toBeTruthy();
 	});
+
+	describe("행 끌기", () => {
+		const dataTransfer = () => ({
+			setData: vi.fn(),
+			setDragImage: vi.fn(),
+			effectAllowed: "",
+			types: [] as string[],
+		});
+
+		it("한 줄을 끌면 그 줄의 제목만 담은 작은 끌기 이미지를 쓴다", () => {
+			renderTable();
+			const transfer = dataTransfer();
+			fireEvent.dragStart(screen.getByRole("row", { name: /draft/ }), { dataTransfer: transfer });
+
+			expect(transfer.setDragImage).toHaveBeenCalledTimes(1);
+			const [image] = transfer.setDragImage.mock.calls[0] as [HTMLElement];
+			expect(image.textContent).toBe("draft");
+			expect(JSON.parse(transfer.setData.mock.calls[0]?.[1] as string)).toEqual([{ id: "draft", expectedVersion: 1 }]);
+		});
+
+		it("고른 줄을 끌면 항목 수를 보이고 고른 줄 전체를 옮긴다", () => {
+			renderTable({ selectedIds: new Set(["published", "draft"]) });
+			const transfer = dataTransfer();
+			fireEvent.dragStart(screen.getByRole("row", { name: /draft/ }), { dataTransfer: transfer });
+
+			const [image] = transfer.setDragImage.mock.calls[0] as [HTMLElement];
+			expect(image.textContent).toBe("2개 항목");
+			expect(JSON.parse(transfer.setData.mock.calls[0]?.[1] as string)).toHaveLength(2);
+		});
+
+		it("끌기 이미지는 끌기를 시작한 뒤 페이지에서 지운다", async () => {
+			renderTable();
+			const transfer = dataTransfer();
+			fireEvent.dragStart(screen.getByRole("row", { name: /draft/ }), { dataTransfer: transfer });
+			const [image] = transfer.setDragImage.mock.calls[0] as [HTMLElement];
+			expect(document.body.contains(image)).toBe(true);
+			await waitFor(() => expect(document.body.contains(image)).toBe(false));
+		});
+	});
 });
