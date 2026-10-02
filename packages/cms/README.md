@@ -61,8 +61,10 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
 
 이 패키지는 bh2980 블로그에서 떼어 내는 중이다. 다른 블로그에서 쓰기 전에 아래를 정리해야 한다.
 
-- 일부 코드가 컬렉션 이름(`post`·`memo`·`category`·`tag`·`collection`)을 직접 안다. 분류(카테고리·태그), 내부 링크
-  주소(`/posts/...`), AI 기본 기능 대상이 그렇다. 설정으로 옮겨야 한다.
+- 일부 코드가 컬렉션 이름(`post`·`memo`·`tag`·`category`)을 직접 안다. 내부 링크 주소(`/posts/...`)와
+  AI 기본 기능이 그렇다. 설정으로 옮겨야 한다.
+  `pnpm --filter @bh2980/cms typecheck:other-site`가 이름이 다른 예시 사이트(`test/other-site.config.ts`)로
+  본체를 타입 검사한다. 지금은 AI 실행 코드(`ai/run.ts`)만 실패한다.
 - 본문 블록(`blocks/definitions.ts`)은 내장 목록뿐이다. 사이트가 블록을 더하고 빼는 설정이 없다.
 - DB·미디어 저장소·로그인 연결이 환경 변수로 고정돼 있다(`container.ts`). 설정에서 고르게 바꿔야 한다.
 - 지금은 빌드 없이 TypeScript 소스를 그대로 내보낸다(`transpilePackages`). 배포 전에 빌드 단계가 필요하다.

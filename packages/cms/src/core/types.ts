@@ -47,15 +47,13 @@ export type MetadataValue =
 
 export type JsonValue = string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
-/** 컬렉션별 메타데이터. 사이트 설정(`cms.config.ts`)의 정의에서 만든다(v2 B1). */
 type SCHEMAS = ResolvedConfig["collections"];
-export type PostMetadata = MetadataOf<SCHEMAS["post"]>;
-export type MemoMetadata = MetadataOf<SCHEMAS["memo"]>;
 /** record 컬렉션은 언어별 이름을 `translations`에 둔다(v2 B4). */
-type WithRecordTranslations<M> = M & { translations?: RecordTranslations };
-export type CategoryMetadata = WithRecordTranslations<MetadataOf<SCHEMAS["category"]>>;
-export type TagMetadata = WithRecordTranslations<MetadataOf<SCHEMAS["tag"]>>;
-export type CollectionMetadata = WithRecordTranslations<MetadataOf<SCHEMAS["collection"]>>;
+type WithRecordTranslations<S, M> = S extends { readonly workflow: "record" }
+	? M & { translations?: RecordTranslations }
+	: M;
+/** 컬렉션의 메타데이터. 사이트 설정(`cms.config.ts`)의 정의에서 만든다(v2 B1). */
+export type MetadataFor<C extends Collection> = WithRecordTranslations<SCHEMAS[C], MetadataOf<SCHEMAS[C]>>;
 
 type InputFor<C extends Collection, M> = {
 	collection: C;
@@ -67,12 +65,7 @@ type InputFor<C extends Collection, M> = {
 	translation?: TranslationState | null;
 };
 
-export type ServiceInput =
-	| InputFor<"post", PostMetadata>
-	| InputFor<"memo", MemoMetadata>
-	| InputFor<"category", CategoryMetadata>
-	| InputFor<"tag", TagMetadata>
-	| InputFor<"collection", CollectionMetadata>;
+export type ServiceInput = { [C in Collection]: InputFor<C, MetadataFor<C>> }[Collection];
 
 export type SaveDraftInput = ServiceInput & { expectedVersion: number };
 

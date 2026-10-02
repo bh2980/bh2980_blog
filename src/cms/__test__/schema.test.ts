@@ -1,6 +1,6 @@
 import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/core/collections";
 import { prepareSnapshot, validateForPublish } from "@bh2980/cms/core/snapshot";
-import type { PostMetadata } from "@bh2980/cms/core/types";
+import type { MetadataFor } from "@bh2980/cms/core/types";
 import { SYSTEM_LIST_COLUMNS } from "@bh2980/cms/schema/collection";
 import { metadataReferences, missingRequiredIssues, relationsOf, storedFields } from "@bh2980/cms/schema/derive";
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -8,6 +8,7 @@ import { metadataFromForm } from "@/app/(admin)/admin/entries/entry-form";
 import cmsConfig from "@/cms.config";
 
 const SCHEMAS = cmsConfig.collections;
+type PostMetadata = MetadataFor<"post">;
 
 const CATEGORY = "11111111-1111-4111-8111-111111111111";
 const TAG_A = "22222222-2222-4222-8222-222222222222";
@@ -107,6 +108,9 @@ describe("컬렉션 정의(v2 B1)", () => {
 		expectTypeOf<PostMetadata["tagIds"]>().toEqualTypeOf<readonly string[] | undefined>();
 		expectTypeOf<PostMetadata["replacementPostId"]>().toEqualTypeOf<string | undefined>();
 		expectTypeOf<PostMetadata>().not.toHaveProperty("slug");
+		// record 컬렉션만 언어별 이름(`translations`)을 가진다.
+		expectTypeOf<MetadataFor<"tag">>().toHaveProperty("translations");
+		expectTypeOf<PostMetadata>().not.toHaveProperty("translations");
 	});
 });
 

@@ -15,7 +15,8 @@
 	"scripts": {
 		"test": "vitest",
 		"test:run": "vitest run",
-		"typecheck": "tsc --noEmit -p ."
+		"typecheck": "tsc --noEmit -p .",
+		"typecheck:other-site": "tsc --noEmit -p tsconfig.other-site.json"
 	},
 	"dependencies": {
 		"@ai-sdk/openai-compatible": "^3.0.61",

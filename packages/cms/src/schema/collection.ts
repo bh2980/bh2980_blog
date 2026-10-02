@@ -18,9 +18,12 @@ export interface LayoutGroup<Name extends string = string> {
 	readonly collapsed?: boolean;
 }
 
-export interface CollectionSchema<Fields extends Readonly<Record<string, Field>> = Readonly<Record<string, Field>>> {
+export interface CollectionSchema<
+	Fields extends Readonly<Record<string, Field>> = Readonly<Record<string, Field>>,
+	Workflow extends CollectionWorkflow = CollectionWorkflow,
+> {
 	readonly label: string;
-	readonly workflow: CollectionWorkflow;
+	readonly workflow: Workflow;
 	/** 본문(MDX)을 가지는가. `publish` 컬렉션만 본문을 쓴다. */
 	readonly body: boolean;
 	readonly fields: Fields;
@@ -33,13 +36,16 @@ export interface CollectionSchema<Fields extends Readonly<Record<string, Field>>
 }
 
 /** 컬렉션을 정의한다. 배치·목록 컬럼에 적은 이름이 실제 필드인지 타입으로 확인한다. */
-export function defineCollection<const Fields extends Readonly<Record<string, Field>>>(
-	schema: Omit<CollectionSchema<Fields>, "body" | "layout" | "list"> & {
+export function defineCollection<
+	const Fields extends Readonly<Record<string, Field>>,
+	const Workflow extends CollectionWorkflow,
+>(
+	schema: Omit<CollectionSchema<Fields, Workflow>, "body" | "layout" | "list"> & {
 		body?: boolean;
 		layout?: readonly LayoutGroup<Extract<keyof Fields, string>>[];
 		list: { columns: readonly (Extract<keyof Fields, string> | SystemListColumn)[] };
 	},
-): CollectionSchema<Fields> {
+): CollectionSchema<Fields, Workflow> {
 	return { ...schema, body: schema.body ?? schema.workflow === "publish" };
 }
 
