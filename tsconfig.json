@@ -18,17 +18,11 @@
 				"name": "next"
 			}
 		],
-		"baseUrl": ".",
 		"paths": {
-			"@/components/*": ["./src/components/*"],
-			"@/utils/*": ["src/utils/*"],
-			"@/libs/*": ["src/libs/*"],
-			"@/root/*": ["./*"],
 			"@/*": ["./src/*"]
 		}
 	},
 	"include": [
-		"global.d.ts",
 		"env.d.ts",
 		"next-env.d.ts",
 		"**/*.ts",
