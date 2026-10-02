@@ -70,7 +70,7 @@ function readStored(value: unknown): StoredProvider[] {
 }
 
 interface ResolvedProvider extends StoredProvider {
-	/** 풀어 낸 키. `AUTH_SECRET`이 바뀌어 풀지 못하면 `null`. */
+	/** 풀어 낸 키. 서버 설정의 `secret`이 바뀌어 풀지 못하면 `null`. */
 	key: string | null;
 }
 

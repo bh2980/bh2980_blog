@@ -1,22 +1,17 @@
-import { Pool } from "pg";
-import { migrateContentStore } from "./content-store";
+import { cmsServerConfig } from "../../server/resolved";
 
+/** `cms:db:migrate`. 서버 설정(`cms.server.ts`)의 저장소에 표를 만들거나 최신 모양으로 맞춘다. */
 async function main() {
-	const connectionString = process.env.CMS_DATABASE_URL;
-	if (!connectionString) {
-		console.error("CMS_DATABASE_URL is not set in .env.local");
-		process.exit(1);
-	}
-	console.log("Starting CMS database migration on CMS_DATABASE_URL...");
-	const pool = new Pool({ connectionString });
+	const { database } = cmsServerConfig;
+	console.log(`Starting CMS database migration (${database.name})...`);
 	try {
-		await migrateContentStore(pool);
+		await database.migrate();
 		console.log("CMS database migration completed successfully!");
 	} catch (err) {
 		console.error("Migration failed:", err);
-		process.exit(1);
+		process.exitCode = 1;
 	} finally {
-		await pool.end();
+		await database.close?.();
 	}
 }
 

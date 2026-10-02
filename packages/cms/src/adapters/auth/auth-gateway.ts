@@ -1,11 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
-import { auth } from "./auth-config";
+import type { AuthContext, CmsAuth } from "../../server/define";
 
-export interface AuthContext {
-	userId: string;
-	githubId: string;
-	isAdmin: boolean;
-}
+export type { AuthContext } from "../../server/define";
 
 export interface AuthGateway {
 	verifyAdmin(): Promise<AuthContext>;
@@ -22,69 +18,62 @@ export class AuthError extends Error {
 	}
 }
 
-export function isAllowedAdminId(githubId: string | undefined | null): boolean {
-	const expected = process.env.CMS_ADMIN_GITHUB_ID;
-	if (!expected || !githubId) {
-		return false;
-	}
-
-	// Canonical decimal string normalization: strictly /^\d+$/
-	const trimmedTarget = String(githubId).trim();
-	const trimmedExpected = expected.trim();
-
-	if (!/^\d+$/.test(trimmedTarget) || !/^\d+$/.test(trimmedExpected)) {
-		return false;
-	}
-
-	// Normalize leading zeros away
-	const normTarget = BigInt(trimmedTarget).toString();
-	const normExpected = BigInt(trimmedExpected).toString();
-
-	return normTarget === normExpected;
+/** GitHub 숫자 ID가 관리자 목록에 있는가. 앞의 0은 무시하고, 숫자가 아닌 값은 거부한다. */
+export function isAllowedAdminId(
+	githubId: string | undefined | null,
+	adminIds: readonly (string | undefined)[],
+): boolean {
+	const target = String(githubId ?? "").trim();
+	if (!/^\d+$/.test(target)) return false;
+	const normalized = BigInt(target).toString();
+	return adminIds.some((id) => {
+		const expected = id?.trim() ?? "";
+		return /^\d+$/.test(expected) && BigInt(expected).toString() === normalized;
+	});
 }
 
 /**
- * 로컬 개발환경 한정 인증 우회 여부.
- * NODE_ENV=development 이면서 CMS_DEV_AUTH_BYPASS=1 일 때만 true.
- * production 에서는 플래그가 있어도 무시한다 (fail-closed).
+ * 로컬 개발환경 한정 인증 우회 여부. 설정이 켜도 `NODE_ENV=development`일 때만 true다.
+ * production 에서는 켜져 있어도 무시한다(fail-closed).
  */
-export function isDevAuthBypassEnabled(): boolean {
-	return process.env.NODE_ENV === "development" && process.env.CMS_DEV_AUTH_BYPASS === "1";
+export function isDevAuthBypassEnabled(enabled: boolean | undefined): boolean {
+	return enabled === true && process.env.NODE_ENV === "development";
 }
 
 let devBypassWarned = false;
 
-export class NextAuthGateway implements AuthGateway {
+/** 관리자 API·화면의 인증(§10.2)과 예약 실행기 토큰 확인. 로그인 방식은 서버 설정의 `auth`가 정한다. */
+export class CmsAuthGateway implements AuthGateway {
+	constructor(
+		private readonly getAuth: () => CmsAuth,
+		private readonly getSchedulerToken: () => string | undefined,
+	) {}
+
 	async verifyAdmin(): Promise<AuthContext> {
-		if (isDevAuthBypassEnabled()) {
+		const cmsAuth = this.getAuth();
+		if (cmsAuth.devBypass) {
 			if (!devBypassWarned) {
 				devBypassWarned = true;
 				console.warn("[cms-auth] DEV AUTH BYPASS enabled (development only, never use in production)");
 			}
-			const devId = process.env.CMS_ADMIN_GITHUB_ID?.trim() || "local-dev";
-			return { userId: devId, githubId: devId, isAdmin: true };
+			return { userId: cmsAuth.devUserId, githubId: cmsAuth.devUserId, isAdmin: true };
 		}
 
-		const session = await auth();
-
+		const session = await cmsAuth.session();
 		if (!session?.user?.githubId) {
 			throw new AuthError("unauthorized", "Authentication required");
 		}
 
 		const githubId = String(session.user.githubId);
-		if (!isAllowedAdminId(githubId)) {
+		if (!cmsAuth.isAdmin(githubId)) {
 			throw new AuthError("forbidden", "Forbidden: not an authorized admin");
 		}
 
-		return {
-			userId: session.user.id || githubId,
-			githubId,
-			isAdmin: true,
-		};
+		return { userId: session.user.id || githubId, githubId, isAdmin: true };
 	}
 
 	authorizeExecutor(token?: string | null): boolean {
-		const expected = process.env.CMS_SCHEDULER_TOKEN?.trim();
+		const expected = this.getSchedulerToken()?.trim();
 		const provided = token?.trim();
 		if (!expected || !provided || provided.length !== expected.length) {
 			return false;
@@ -99,5 +88,3 @@ export class NextAuthGateway implements AuthGateway {
 		}
 	}
 }
-
-export const authGateway = new NextAuthGateway();

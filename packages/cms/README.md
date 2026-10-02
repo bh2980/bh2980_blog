@@ -28,24 +28,60 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
    });
    ```
 
-2. CMS 코드가 설정 파일을 `@cms-config`라는 이름으로 읽도록 잇는다.
+2. 서버 설정 파일을 만든다. 저장소·미디어·관리자 로그인 연결과 비밀 값을 두고, 서버에서만 읽힌다.
+   연결은 처음 쓸 때 만들므로 빌드 중에 환경 변수가 비어 있어도 된다.
+
+   ```ts
+   // src/cms.server.ts
+   import { defineServerConfig, githubAuth, postgres, r2Storage } from "@bh2980/cms/server";
+
+   export default defineServerConfig({
+   	database: postgres({ connectionString: process.env.DATABASE_URL }),
+   	media: r2Storage({ accountId: …, accessKeyId: …, secretAccessKey: …, bucket: …, endpoint: …, publicBaseUrl: … }),
+   	auth: githubAuth({
+   		clientId: process.env.AUTH_GITHUB_ID,
+   		clientSecret: process.env.AUTH_GITHUB_SECRET,
+   		adminIds: [process.env.ADMIN_GITHUB_ID],
+   	}),
+   	secret: process.env.AUTH_SECRET,
+   });
+   ```
+
+3. CMS 코드가 두 설정 파일을 `@cms-config`·`@cms-server`라는 이름으로 읽도록 잇는다.
 
    ```ts
    // next.config.ts
    import { withCms } from "@bh2980/cms/next";
 
-   export default withCms({ /* 기존 설정 */ }, { config: "./src/cms.config.ts" });
+   export default withCms({ /* 기존 설정 */ }, { config: "./src/cms.config.ts", server: "./src/cms.server.ts" });
    ```
 
    ```jsonc
    // tsconfig.json
-   { "compilerOptions": { "paths": { "@cms-config": ["./src/cms.config.ts"] } } }
+   {
+   	"compilerOptions": {
+   		"paths": { "@cms-config": ["./src/cms.config.ts"], "@cms-server": ["./src/cms.server.ts"] }
+   	}
+   }
    ```
 
    테스트(Vitest)를 쓰면 `resolve.alias`에도 같은 별칭을 둔다.
 
-3. 환경 변수를 둔다: `CMS_DATABASE_URL`(Postgres), `CMS_R2_*`(미디어 저장소), `AUTH_*`(관리자 로그인).
-   DB 표는 `adapters/postgres/migrate-cli.ts`로 만든다.
+4. DB 표를 만든다: `tsx packages/cms/src/adapters/postgres/migrate-cli.ts`(서버 설정의 `database`를 쓴다).
+   로그인 라우트는 `app/api/auth/[...nextauth]/route.ts`에서 `export const { GET, POST } = handlers;`
+   (`@bh2980/cms/adapters/auth`)로 둔다.
+
+## 서버 설정
+
+| 항목 | 뜻 |
+|---|---|
+| `database` | 콘텐츠 저장소. `postgres({ connectionString, schema })` |
+| `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
+| `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass })` |
+| `secret` | AI 서비스 키를 DB에 암호화해 둘 때 쓰는 키. 바꾸면 저장된 키를 다시 넣어야 한다. |
+| `schedulerToken` | 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. |
+
+다른 저장소·로그인을 쓰려면 `DatabaseAdapter`·`MediaAdapter`·`AuthAdapter`를 직접 만들어 넣는다.
 
 ## 설정
 
@@ -70,7 +106,7 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
   `pnpm --filter @bh2980/cms typecheck:other-site`가 이름이 다른 예시 사이트(`test/other-site.config.ts`)로
   본체를 타입 검사한다. 지금은 AI 실행 코드(`ai/run.ts`)만 실패한다.
 - 본문 블록(`blocks/definitions.ts`)은 내장 목록뿐이다. 사이트가 블록을 더하고 빼는 설정이 없다.
-- DB·미디어 저장소·로그인 연결이 환경 변수로 고정돼 있다(`container.ts`). 설정에서 고르게 바꿔야 한다.
+- 저장소는 Postgres(`ContentStore`)만 있다. 다른 DB를 쓰려면 같은 계약을 구현해야 하는데 계약이 아직 크다.
 - 지금은 빌드 없이 TypeScript 소스를 그대로 내보낸다(`transpilePackages`). 배포 전에 빌드 단계가 필요하다.
 
 ## 개발
@@ -80,4 +116,4 @@ pnpm --filter @bh2980/cms test:run
 pnpm --filter @bh2980/cms typecheck
 ```
 
-패키지 자체 테스트는 예시 설정 `test/cms.config.ts`로 돈다.
+패키지 자체 테스트는 예시 설정 `test/cms.config.ts`·`test/cms.server.ts`로 돈다.

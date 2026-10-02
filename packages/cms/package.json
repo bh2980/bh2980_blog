@@ -10,6 +10,7 @@
 		"./mdx": "./src/mdx/index.ts",
 		"./services": "./src/services/index.ts",
 		"./next": "./src/next/index.ts",
+		"./server": "./src/server/index.ts",
 		"./*": "./src/*.ts"
 	},
 	"scripts": {

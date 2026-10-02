@@ -1,135 +1,115 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError, isAllowedAdminId, isDevAuthBypassEnabled, NextAuthGateway } from "../auth-gateway";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CmsAuth } from "../../../server/define";
+import { AuthError, CmsAuthGateway, isAllowedAdminId, isDevAuthBypassEnabled } from "../auth-gateway";
+import { githubAuth } from "../github";
 
-vi.mock("../auth-config", () => ({
-	auth: vi.fn(),
-	handlers: { GET: vi.fn(), POST: vi.fn() },
-}));
+const ADMIN_ID = "12345678";
+const SCHEDULER_TOKEN = "secret-scheduler-token";
 
-import { auth } from "../auth-config";
+/** 세션만 바꿔 끼우는 로그인 연결. 관리자 판정은 실제 `isAllowedAdminId`를 쓴다. */
+function fakeAuth(session: Awaited<ReturnType<CmsAuth["session"]>>, overrides: Partial<CmsAuth> = {}): CmsAuth {
+	return {
+		handlers: { GET: vi.fn(), POST: vi.fn() },
+		session: vi.fn().mockResolvedValue(session),
+		signIn: vi.fn(),
+		signOut: vi.fn(),
+		isAdmin: (id) => isAllowedAdminId(id, [ADMIN_ID]),
+		devBypass: false,
+		devUserId: ADMIN_ID,
+		...overrides,
+	};
+}
+
+const gatewayOf = (auth: CmsAuth, token: string | undefined = SCHEDULER_TOKEN) =>
+	new CmsAuthGateway(
+		() => auth,
+		() => token,
+	);
+
+async function expectAuthError(promise: Promise<unknown>, code: AuthError["code"]) {
+	await expect(promise).rejects.toThrow(AuthError);
+	await promise.catch((err) => expect((err as AuthError).code).toBe(code));
+}
 
 describe("M2-BE-1 AuthGateway Contract", () => {
-	const originalAdminId = process.env.CMS_ADMIN_GITHUB_ID;
-	const originalSchedulerToken = process.env.CMS_SCHEDULER_TOKEN;
-
-	beforeEach(() => {
-		vi.resetAllMocks();
-		process.env.CMS_ADMIN_GITHUB_ID = "12345678";
-		process.env.CMS_SCHEDULER_TOKEN = "secret-scheduler-token";
+	afterEach(() => {
+		vi.unstubAllEnvs();
 	});
 
-	afterAll(() => {
-		process.env.CMS_ADMIN_GITHUB_ID = originalAdminId;
-		process.env.CMS_SCHEDULER_TOKEN = originalSchedulerToken;
-	});
-
-	it("isAllowedAdminId validates against CMS_ADMIN_GITHUB_ID correctly", () => {
-		expect(isAllowedAdminId("12345678")).toBe(true);
-		expect(isAllowedAdminId("87654321")).toBe(false);
-		expect(isAllowedAdminId("")).toBe(false);
-		expect(isAllowedAdminId(undefined)).toBe(false);
+	it("isAllowedAdminId compares canonical decimal GitHub IDs", () => {
+		expect(isAllowedAdminId("12345678", [ADMIN_ID])).toBe(true);
+		expect(isAllowedAdminId("0012345678", [ADMIN_ID])).toBe(true);
+		expect(isAllowedAdminId("87654321", [ADMIN_ID])).toBe(false);
+		expect(isAllowedAdminId("87654321", [undefined, "87654321"])).toBe(true);
+		expect(isAllowedAdminId("", [ADMIN_ID])).toBe(false);
+		expect(isAllowedAdminId(undefined, [ADMIN_ID])).toBe(false);
+		expect(isAllowedAdminId("12345678", [])).toBe(false);
+		expect(isAllowedAdminId("12345678", [undefined, " "])).toBe(false);
+		expect(isAllowedAdminId("abc", ["abc"])).toBe(false);
 	});
 
 	it("throws unauthorized when no session exists", async () => {
-		vi.mocked(auth).mockResolvedValue(null as any);
-		const gateway = new NextAuthGateway();
-
-		await expect(gateway.verifyAdmin()).rejects.toThrow(AuthError);
-		try {
-			await gateway.verifyAdmin();
-		} catch (err) {
-			expect((err as AuthError).code).toBe("unauthorized");
-		}
+		await expectAuthError(gatewayOf(fakeAuth(null)).verifyAdmin(), "unauthorized");
 	});
 
 	it("throws unauthorized when session user has no githubId", async () => {
-		vi.mocked(auth).mockResolvedValue({
-			user: { name: "attacker" },
-		} as any);
-		const gateway = new NextAuthGateway();
-
-		await expect(gateway.verifyAdmin()).rejects.toThrow(AuthError);
-		try {
-			await gateway.verifyAdmin();
-		} catch (err) {
-			expect((err as AuthError).code).toBe("unauthorized");
-		}
+		await expectAuthError(gatewayOf(fakeAuth({ user: { id: "x" } })).verifyAdmin(), "unauthorized");
 	});
 
-	it("throws forbidden when session user githubId does not match CMS_ADMIN_GITHUB_ID", async () => {
-		vi.mocked(auth).mockResolvedValue({
-			user: { githubId: "99999999", name: "other-user" },
-		} as any);
-		const gateway = new NextAuthGateway();
-
-		await expect(gateway.verifyAdmin()).rejects.toThrow(AuthError);
-		try {
-			await gateway.verifyAdmin();
-		} catch (err) {
-			expect((err as AuthError).code).toBe("forbidden");
-		}
+	it("throws forbidden when session user githubId is not an admin", async () => {
+		await expectAuthError(gatewayOf(fakeAuth({ user: { githubId: "99999999" } })).verifyAdmin(), "forbidden");
 	});
 
-	it("returns AuthContext when session user githubId matches CMS_ADMIN_GITHUB_ID", async () => {
-		vi.mocked(auth).mockResolvedValue({
-			user: { id: "12345678", githubId: "12345678", name: "admin-user" },
-		} as any);
-		const gateway = new NextAuthGateway();
-
-		const result = await gateway.verifyAdmin();
-		expect(result).toEqual({
-			userId: "12345678",
-			githubId: "12345678",
-			isAdmin: true,
-		});
+	it("returns AuthContext when session user githubId is an admin", async () => {
+		const result = await gatewayOf(fakeAuth({ user: { id: ADMIN_ID, githubId: ADMIN_ID } })).verifyAdmin();
+		expect(result).toEqual({ userId: ADMIN_ID, githubId: ADMIN_ID, isAdmin: true });
 	});
 
-	it("isDevAuthBypassEnabled is true only in development with CMS_DEV_AUTH_BYPASS=1", () => {
+	it("isDevAuthBypassEnabled is true only in development with the option on", () => {
 		vi.stubEnv("NODE_ENV", "development");
-		vi.stubEnv("CMS_DEV_AUTH_BYPASS", "1");
-		expect(isDevAuthBypassEnabled()).toBe(true);
+		expect(isDevAuthBypassEnabled(true)).toBe(true);
+		expect(isDevAuthBypassEnabled(false)).toBe(false);
+		expect(isDevAuthBypassEnabled(undefined)).toBe(false);
 
-		vi.stubEnv("CMS_DEV_AUTH_BYPASS", "0");
-		expect(isDevAuthBypassEnabled()).toBe(false);
-
-		vi.unstubAllEnvs();
-		vi.stubEnv("NODE_ENV", "development");
-		expect(isDevAuthBypassEnabled()).toBe(false);
-
-		// production 에서는 플래그가 있어도 무시 (fail-closed)
+		// production 에서는 켜져 있어도 무시 (fail-closed)
 		vi.stubEnv("NODE_ENV", "production");
-		vi.stubEnv("CMS_DEV_AUTH_BYPASS", "1");
-		expect(isDevAuthBypassEnabled()).toBe(false);
+		expect(isDevAuthBypassEnabled(true)).toBe(false);
+	});
 
-		vi.unstubAllEnvs();
+	it("githubAuth applies the dev bypass only in development", () => {
+		const auth = githubAuth({ clientId: "id", clientSecret: "secret", adminIds: [ADMIN_ID], devBypass: true }).create();
+		vi.stubEnv("NODE_ENV", "development");
+		expect(auth.devBypass).toBe(true);
+		expect(auth.devUserId).toBe(ADMIN_ID);
+		vi.stubEnv("NODE_ENV", "production");
+		expect(auth.devBypass).toBe(false);
+		expect(auth.isAdmin(ADMIN_ID)).toBe(true);
+		expect(auth.isAdmin("1")).toBe(false);
 	});
 
 	it("verifyAdmin bypasses session check when dev bypass is enabled", async () => {
-		vi.stubEnv("NODE_ENV", "development");
-		vi.stubEnv("CMS_DEV_AUTH_BYPASS", "1");
-
-		vi.mocked(auth).mockResolvedValue(null as any);
-		const gateway = new NextAuthGateway();
-		const result = await gateway.verifyAdmin();
-		expect(result.isAdmin).toBe(true);
-		expect(vi.mocked(auth)).not.toHaveBeenCalled();
-
-		vi.unstubAllEnvs();
+		const auth = fakeAuth(null, { devBypass: true });
+		const result = await gatewayOf(auth).verifyAdmin();
+		expect(result).toEqual({ userId: ADMIN_ID, githubId: ADMIN_ID, isAdmin: true });
+		expect(auth.session).not.toHaveBeenCalled();
 	});
 
 	it("authorizeExecutor returns false when scheduler token is missing or incorrect", () => {
-		const gateway = new NextAuthGateway();
+		const gateway = gatewayOf(fakeAuth(null));
 		expect(gateway.authorizeExecutor()).toBe(false);
 		expect(gateway.authorizeExecutor("wrong-token")).toBe(false);
-		expect(gateway.authorizeExecutor("secret-scheduler-token")).toBe(true);
+		expect(gateway.authorizeExecutor(SCHEDULER_TOKEN)).toBe(true);
 
 		// M7-SEC-1: 길이 선검사 분기. `timingSafeEqual`는 길이가 다르면 throw 한다.
-		expect(gateway.authorizeExecutor("secret-scheduler-token-longer")).toBe(false);
+		expect(gateway.authorizeExecutor(`${SCHEDULER_TOKEN}-longer`)).toBe(false);
 		expect(gateway.authorizeExecutor("short")).toBe(false);
 		expect(gateway.authorizeExecutor("secret-scheduler-tokeX")).toBe(false);
-		expect(gateway.authorizeExecutor("  secret-scheduler-token  ")).toBe(true);
+		expect(gateway.authorizeExecutor(`  ${SCHEDULER_TOKEN}  `)).toBe(true);
 
-		delete process.env.CMS_SCHEDULER_TOKEN;
-		expect(gateway.authorizeExecutor("secret-scheduler-token")).toBe(false);
+		const unset = new CmsAuthGateway(
+			() => fakeAuth(null),
+			() => undefined,
+		);
+		expect(unset.authorizeExecutor(SCHEDULER_TOKEN)).toBe(false);
 	});
 });

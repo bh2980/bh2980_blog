@@ -20,7 +20,8 @@
 		],
 		"paths": {
 			"@/*": ["./src/*"],
-			"@cms-config": ["./src/cms.config.ts"]
+			"@cms-config": ["./src/cms.config.ts"],
+			"@cms-server": ["./src/cms.server.ts"]
 		}
 	},
 	"include": ["env.d.ts", "next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

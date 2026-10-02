@@ -1,17 +1,18 @@
 import "server-only";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { getCmsSecret } from "../container";
 import { AiError } from "./errors";
 
 /**
- * AI 서비스 키 암호화. 서버의 `AUTH_SECRET`에서 만든 키로 AES-256-GCM 암호화해 DB에 둔다.
- * `AUTH_SECRET`을 바꾸면 저장된 키를 풀 수 없으니 AI 화면에서 다시 넣어야 한다.
+ * AI 서비스 키 암호화. 서버 설정의 `secret`에서 만든 키로 AES-256-GCM 암호화해 DB에 둔다.
+ * `secret`을 바꾸면 저장된 키를 풀 수 없으니 AI 화면에서 다시 넣어야 한다.
  */
 
 const PREFIX = "v1";
 
 function encryptionKey(): Buffer {
-	const secret = process.env.AUTH_SECRET;
-	if (!secret) throw new AiError("ai_unavailable", "서버에 AUTH_SECRET이 없어 키를 저장할 수 없습니다.");
+	const secret = getCmsSecret();
+	if (!secret) throw new AiError("ai_unavailable", "서버 설정에 secret이 없어 키를 저장할 수 없습니다.");
 	return createHash("sha256").update(`cms-ai-key:${secret}`).digest();
 }
 
@@ -22,7 +23,7 @@ export function encryptSecret(plain: string): string {
 	return [PREFIX, iv.toString("base64"), cipher.getAuthTag().toString("base64"), body.toString("base64")].join(":");
 }
 
-/** 풀 수 없으면(`AUTH_SECRET`이 바뀌었거나 값이 깨졌으면) `null`. */
+/** 풀 수 없으면(`secret`이 바뀌었거나 값이 깨졌으면) `null`. */
 export function decryptSecret(stored: string): string | null {
 	const [prefix, iv, tag, body] = stored.split(":");
 	if (prefix !== PREFIX || !iv || !tag || !body) return null;

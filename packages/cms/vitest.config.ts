@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
 		alias: {
 			// 패키지 자체 테스트는 예시 블로그 설정으로 돈다.
 			"@cms-config": path.resolve(__dirname, "./test/cms.config.ts"),
+			"@cms-server": path.resolve(__dirname, "./test/cms.server.ts"),
 			"server-only": path.resolve(__dirname, "./test/server-only.ts"),
 		},
 	},

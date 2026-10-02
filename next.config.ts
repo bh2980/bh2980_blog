@@ -9,4 +9,4 @@ const nextConfig: NextConfig = {
 	typedRoutes: true,
 };
 
-export default withCms(nextConfig, { config: "./src/cms.config.ts" });
+export default withCms(nextConfig, { config: "./src/cms.config.ts", server: "./src/cms.server.ts" });

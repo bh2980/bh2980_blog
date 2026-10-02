@@ -14,11 +14,17 @@ declare module "next-auth" {
 	}
 }
 
-export const authConfig: NextAuthConfig = {
+export interface GithubCredentials {
+	readonly clientId: string | undefined;
+	readonly clientSecret: string | undefined;
+}
+
+/** GitHub OAuth로 로그인하는 NextAuth 설정. 세션에는 GitHub 숫자 ID(`githubId`)를 담는다. */
+export const githubAuthConfig = ({ clientId, clientSecret }: GithubCredentials): NextAuthConfig => ({
 	providers: [
 		GitHub({
-			clientId: process.env.AUTH_GITHUB_ID,
-			clientSecret: process.env.AUTH_GITHUB_SECRET,
+			clientId,
+			clientSecret,
 			profile(profile) {
 				const numericId = String(profile.id);
 				return {
@@ -56,6 +62,6 @@ export const authConfig: NextAuthConfig = {
 		signIn: "/admin/login",
 	},
 	trustHost: true,
-};
+});
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+export const createGithubNextAuth = (credentials: GithubCredentials) => NextAuth(githubAuthConfig(credentials));

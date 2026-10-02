@@ -1,0 +1,74 @@
+import type { ContentStore } from "../adapters/postgres/content-store";
+import type { MediaStore } from "../adapters/r2/types";
+
+/**
+ * 서버 설정(`cms.server.ts`) 규격. 저장소·미디어·로그인 연결과 비밀 값을 둔다. 서버에서만 읽는다.
+ * 사이트 설정(`cms.config.ts`)과 달리 비밀 값을 넣어도 되고, 보통 환경 변수에서 읽는다.
+ *
+ * 연결은 처음 쓸 때 만든다. 빌드처럼 환경 변수가 없는 곳에서 설정을 읽어도 실패하지 않는다.
+ */
+
+/** 콘텐츠 저장소 연결. */
+export interface DatabaseAdapter {
+	readonly name: string;
+	createStore(): ContentStore;
+	/** 표를 만들거나 최신 모양으로 맞춘다(`cms:db:migrate`). 여러 번 실행해도 결과가 같다. */
+	migrate(): Promise<void>;
+	/** 연결을 닫는다(명령줄 도구가 끝날 때). */
+	close?(): Promise<void>;
+}
+
+/** 미디어(이미지·첨부 파일) 저장소 연결. */
+export interface MediaAdapter {
+	readonly name: string;
+	createStore(): MediaStore;
+}
+
+/** 관리자 로그인 확인 결과. */
+export interface AuthContext {
+	userId: string;
+	isAdmin: boolean;
+	/** GitHub 로그인이면 GitHub 숫자 ID. */
+	githubId: string;
+}
+
+/** 관리자 로그인. Next 라우트(`handlers`)와 관리자 확인을 함께 준다. */
+export interface CmsAuth {
+	/** `/api/auth/[...nextauth]` 라우트 처리기. */
+	readonly handlers: {
+		GET(request: Request): Promise<Response>;
+		POST(request: Request): Promise<Response>;
+	};
+	/** 지금 세션. 없으면 `null`. */
+	session(): Promise<{ user?: { id?: string; githubId?: string } } | null>;
+	signIn(provider?: string, options?: { redirectTo?: string }): Promise<unknown>;
+	signOut(options?: { redirectTo?: string }): Promise<unknown>;
+	/** 이 사용자가 관리자인가. */
+	isAdmin(userId: string | null | undefined): boolean;
+	/** 로그인 없이 관리자로 보는 로컬 개발 우회가 켜졌는가. */
+	readonly devBypass: boolean;
+	/** 개발 우회 때 쓸 관리자 ID. */
+	readonly devUserId: string;
+}
+
+export interface AuthAdapter {
+	readonly name: string;
+	create(): CmsAuth;
+}
+
+export interface CmsServerConfig {
+	readonly database: DatabaseAdapter;
+	/** 없으면 미디어 업로드·관리 기능을 쓸 수 없다. */
+	readonly media?: MediaAdapter;
+	readonly auth: AuthAdapter;
+	/**
+	 * 비밀 값 암호화 키(AI 서비스 키를 DB에 저장할 때). 바꾸면 저장된 키를 풀 수 없어 다시 넣어야 한다.
+	 * 없으면 AI 서비스 키를 저장할 수 없다.
+	 */
+	readonly secret?: string;
+	/** 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. 없으면 예약 실행 API를 막는다. */
+	readonly schedulerToken?: string;
+}
+
+/** 서버 설정을 정의한다. */
+export const defineServerConfig = <const C extends CmsServerConfig>(config: C): C => config;
