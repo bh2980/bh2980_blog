@@ -5,6 +5,16 @@
  * 순환이 생겨 설정이 반쯤 만들어진 채로 읽힌다.
  */
 
+export {
+	type AiActionDefinition,
+	type AiAttach,
+	type AiChoices,
+	type AiConfig,
+	type AiInputSpec,
+	aiAction,
+	aiInput,
+} from "./ai/action";
+export { aiPresets } from "./ai/presets";
 export type { BlockAttribute, BlockChildren, BlockDefinition, BlockEditor, BlockSyntax } from "./blocks/define";
 export { defineBlock } from "./blocks/define";
 export {

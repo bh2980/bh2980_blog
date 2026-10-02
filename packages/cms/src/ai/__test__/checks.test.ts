@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_AI_FEATURES, withBuiltin } from "../builtins";
 import { checkCandidates, checkText } from "../checks";
-import { type AiCheck, aiFeatureSpecSchema, KEBAB_PATTERN } from "../definition";
-import { availableChecks } from "../targets";
+import { type AiCheck, KEBAB_PATTERN } from "../definition";
 
 const on = <T extends Omit<AiCheck, "enabled">>(check: T) => ({ ...check, enabled: true }) as AiCheck;
 
@@ -57,51 +55,5 @@ describe("AI 결과 검사", () => {
 		expect(checkText([on({ kind: "maxLength", max: 5 })], "여섯 글자다")).toMatch("5자");
 		expect(checkText([on({ kind: "pattern", pattern: "^요약" })], "요약입니다")).toBeNull();
 		expect(checkText([], "  ")).toBeTruthy();
-	});
-
-	it("대상이 재료를 줄 수 있는 검사만 고를 수 있다", () => {
-		expect(availableChecks("field", "slug", "post")).toEqual(["pattern", "maxLength", "unique"]);
-		expect(availableChecks("field", "tagIds", "post")).toEqual(["pattern", "maxLength", "exists"]);
-		expect(availableChecks("field", "summary", "post")).toEqual(["pattern", "maxLength"]);
-		expect(availableChecks("codeRules", "fold")).toEqual(["pattern", "maxLength", "regexRuns"]);
-	});
-});
-
-describe("기능 목록", () => {
-	it("모든 기능 정의가 규칙에 맞고, 검사는 대상이 줄 수 있는 것만 쓴다", () => {
-		for (const [key, feature] of Object.entries(BUILTIN_AI_FEATURES)) {
-			const spec = aiFeatureSpecSchema.parse(feature.spec);
-			const allowed = availableChecks(spec.slot, spec.target, spec.collections[0]);
-			for (const check of spec.checks) expect(allowed, key).toContain(check.kind);
-		}
-	});
-
-	it("정해 둔 부분은 사용자 값보다 앞서고, 검사는 켜기·값만 바뀐다", () => {
-		const spec = withBuiltin("slug", {
-			...BUILTIN_AI_FEATURES.slug?.spec,
-			name: "바꾼 이름",
-			slot: "media",
-			target: "filename",
-			prompt: "바꾼 지시문",
-			checks: [{ kind: "unique", enabled: false }, { kind: "regexRuns" }, { kind: "maxLength", max: 40 }],
-		});
-		expect(spec).toMatchObject({ name: "주소 추천", slot: "field", target: "slug", prompt: "바꾼 지시문" });
-		expect(spec?.checks).toEqual([
-			{ kind: "pattern", pattern: KEBAB_PATTERN, enabled: true },
-			{ kind: "maxLength", max: 40, enabled: true },
-			{ kind: "unique", enabled: false },
-		]);
-	});
-
-	it("예전 모양(검사 하나 + 글자 수)으로 저장한 정의도 검사 목록으로 읽는다", () => {
-		const legacy = { ...BUILTIN_AI_FEATURES.summary?.spec, checks: undefined, check: "maxLength", maxLength: 120 };
-		delete legacy.checks;
-		expect(aiFeatureSpecSchema.parse(legacy).checks).toEqual([{ kind: "maxLength", max: 120, enabled: true }]);
-		expect(withBuiltin("unknown", legacy)).toBeNull();
-	});
-
-	it("올바르지 않은 정규식은 저장하지 않는다", () => {
-		const bad = { ...BUILTIN_AI_FEATURES.slug?.spec, checks: [{ kind: "pattern", pattern: "(" }] };
-		expect(aiFeatureSpecSchema.safeParse(bad).success).toBe(false);
 	});
 });

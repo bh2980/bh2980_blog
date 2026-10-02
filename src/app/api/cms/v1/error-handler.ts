@@ -49,6 +49,8 @@ const AI_ERROR_STATUS: Record<AiError["code"], number> = {
 	ai_failed: 502,
 	ai_input_too_large: 413,
 	ai_rate_limited: 429,
+	ai_unknown_action: 404,
+	ai_invalid_input: 400,
 };
 
 /** DB 연결 장애는 일시 오류(503)다. 없는 콘텐츠나 빈 목록으로 위장하지 않는다(§10.1, §11.1). */

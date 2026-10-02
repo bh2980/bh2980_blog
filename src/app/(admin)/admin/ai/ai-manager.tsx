@@ -1,16 +1,12 @@
 "use client";
 
+import type { AiActionView } from "@bh2980/cms/ai/actions";
 import {
 	type AiCheck,
-	type AiFeature,
-	type AiFeatureSpec,
-	type AiInput,
 	type AiRunContext,
 	type AiRunResult,
 	CHECK_LABELS,
 	ENGINE_LABELS,
-	INPUT_LABELS,
-	SLOT_INPUTS,
 	SLOT_LABELS,
 	SLOT_TARGETS,
 } from "@bh2980/cms/ai/definition";
@@ -35,28 +31,62 @@ import { DEFAULT_LOCALE, LOCALE_INFO, PREFIXED_LOCALES } from "@/libs/i18n/local
 import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
 import { AdminShell } from "../shared/admin-shell";
-import { AI_FEATURES_KEY, type AiFeaturesResponse, runAiFeature, useAiFeatures } from "./ai-slot-provider";
+import {
+	AI_ACTIONS_KEY,
+	type AiActionsResponse,
+	inputFromContext,
+	runAiAction,
+	runAiActionMany,
+	useAiActions,
+} from "./ai-slot-provider";
 import { ConnectionManager, useAiSettings } from "./connection-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
 
 const selectClass =
 	"h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-/** 대상의 보이는 이름. 필드는 컬렉션 정의의 이름이다. */
-function targetLabel(feature: Pick<AiFeatureSpec, "slot" | "target">): string {
-	if (feature.slot !== "field") return SLOT_TARGETS[feature.slot][feature.target] ?? feature.target;
-	for (const collection of COLLECTIONS) {
-		const field = schemaOf(collection).fields[feature.target];
-		if (field) return field.label;
+/** 붙을 곳의 보이는 이름. 필드는 컬렉션 정의의 이름이다. */
+function placeLabel(action: Pick<AiActionView, "attach">): string {
+	const attach = action.attach[0];
+	if (!attach) return "직접 호출";
+	switch (attach.slot) {
+		case "field": {
+			for (const collection of COLLECTIONS) {
+				const field = schemaOf(collection).fields[attach.field];
+				if (field) return `${SLOT_LABELS.field} · ${field.label}`;
+			}
+			return `${SLOT_LABELS.field} · ${attach.field}`;
+		}
+		case "translation":
+			return SLOT_LABELS.translation;
+		default: {
+			const targets: Readonly<Record<string, string>> = SLOT_TARGETS[attach.slot];
+			return `${SLOT_LABELS[attach.slot]} · ${targets[attach.target] ?? attach.target}`;
+		}
 	}
-	return feature.target;
 }
 
-/** 저장·시험에 보내는 설정(목록 줄의 id·버전 등은 뺀다). */
-const specOf = (feature: AiFeature): AiFeatureSpec => {
-	const { id: _id, builtin: _builtin, version: _version, createdAt: _c, updatedAt: _u, ...spec } = feature;
-	return spec;
-};
+/** 관리자 화면에서 고칠 수 있는 값. 저장·시험에 보낸다. */
+type Editable = Pick<
+	AiActionView,
+	"enabled" | "askInstruction" | "providerId" | "modelName" | "prompt" | "send" | "threshold" | "maxCount" | "checks"
+>;
+
+const editableOf = (action: AiActionView): Editable => ({
+	enabled: action.enabled,
+	askInstruction: action.askInstruction,
+	providerId: action.providerId,
+	modelName: action.modelName,
+	prompt: action.prompt,
+	send: action.send,
+	threshold: action.threshold,
+	maxCount: action.maxCount,
+	checks: action.checks,
+});
+
+/** 번역본 편집기의 블록 번역 기능인가(시험이 예시 MDX·대상 언어를 받는다). */
+const isTranslation = (action: AiActionView) =>
+	action.result === "mdx" && action.attach.some((attach) => attach.slot === "translation");
 
 /** 시험에 쓸 자료. 기능이 보내는 내용에 맞는 칸만 보인다. */
 type Sample = {
@@ -79,9 +109,10 @@ const EMPTY_SAMPLE: Sample = {
 	targetLocale: PREFIXED_LOCALES[0] ?? "en",
 };
 
-function sampleContext(spec: AiFeatureSpec, sample: Sample): AiRunContext {
+function sampleContext(action: AiActionView, sample: Sample): AiRunContext {
 	const context: AiRunContext = {};
-	if (spec.slot === "field") context.collection = spec.collections[0];
+	const field = action.attach.find((attach) => attach.slot === "field");
+	if (field?.slot === "field") context.collection = field.collections?.[0];
 	if (sample.title.trim()) context.title = sample.title;
 	if (sample.body.trim()) {
 		context.body = sample.body;
@@ -90,7 +121,6 @@ function sampleContext(spec: AiFeatureSpec, sample: Sample): AiRunContext {
 	if (sample.code.trim()) context.code = sample.code;
 	if (sample.mediaId.trim()) context.mediaId = sample.mediaId.trim();
 	if (sample.current.trim()) context.current = sample.current;
-	if (spec.askInstruction && sample.request.trim()) context.request = sample.request.trim();
 	return context;
 }
 
@@ -100,21 +130,21 @@ function sampleContext(spec: AiFeatureSpec, sample: Sample): AiRunContext {
  */
 export function AiManager() {
 	const queryClient = useQueryClient();
-	const featuresQuery = useAiFeatures();
+	const featuresQuery = useAiActions();
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
 	const [tab, setTab] = useState<"features" | "connections">("features");
-	const [editing, setEditing] = useState<{ feature: AiFeature; spec: AiFeatureSpec } | null>(null);
+	const [editing, setEditing] = useState<{ feature: AiActionView; spec: Editable } | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 
-	const replaceInCache = (feature: AiFeature) =>
-		queryClient.setQueryData<AiFeaturesResponse>(AI_FEATURES_KEY, (data) =>
-			data ? { ...data, items: data.items.map((item) => (item.id === feature.id ? feature : item)) } : data,
+	const replaceInCache = (feature: AiActionView) =>
+		queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
+			data ? { ...data, items: data.items.map((item) => (item.key === feature.key ? feature : item)) } : data,
 		);
 
-	const open = (feature: AiFeature) => {
-		setEditing({ feature, spec: specOf(feature) });
+	const open = (feature: AiActionView) => {
+		setEditing({ feature, spec: editableOf(feature) });
 		setFormError(null);
 	};
 
@@ -123,15 +153,15 @@ export function AiManager() {
 		setSaving(true);
 		setFormError(null);
 		try {
-			const saved = await cmsFetch<AiFeature>(`/api/cms/v1/ai/features/${editing.feature.id}`, {
+			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
 				method: "PATCH",
-				json: { expectedVersion: editing.feature.version, spec: editing.spec },
+				json: { expectedVersion: editing.feature.version, value: editing.spec },
 				fallback: "저장하지 못했습니다.",
 			});
 			replaceInCache(saved);
 			open(saved);
 			toast.success("저장했습니다.");
-			void queryClient.invalidateQueries({ queryKey: AI_FEATURES_KEY });
+			void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
 		} catch (error) {
 			setFormError(errorText(error, "저장하지 못했습니다."));
 		} finally {
@@ -139,9 +169,9 @@ export function AiManager() {
 		}
 	};
 
-	const reset = async (feature: AiFeature) => {
+	const reset = async (feature: AiActionView) => {
 		try {
-			const saved = await cmsFetch<AiFeature>(`/api/cms/v1/ai/features/${feature.id}/reset`, {
+			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${feature.key}/reset`, {
 				method: "POST",
 				json: { expectedVersion: feature.version },
 				fallback: "되돌리지 못했습니다.",
@@ -196,10 +226,10 @@ export function AiManager() {
 										</li>
 									))
 								: features.map((feature) => {
-										const isSelected = editing?.feature.id === feature.id;
-										const state = !feature.enabled ? "꺼짐" : usable.has(feature.id) ? null : "연결 필요";
+										const isSelected = editing?.feature.key === feature.key;
+										const state = !feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요";
 										return (
-											<li key={feature.id}>
+											<li key={feature.key}>
 												<button
 													type="button"
 													aria-current={isSelected ? "true" : undefined}
@@ -210,11 +240,11 @@ export function AiManager() {
 													)}
 												>
 													<span className="flex w-full items-center gap-2">
-														<span className="truncate font-medium text-sm">{feature.name}</span>
+														<span className="truncate font-medium text-sm">{feature.label}</span>
 														{state && <span className="ml-auto shrink-0 text-muted-foreground text-xs">{state}</span>}
 													</span>
 													<span className="truncate text-muted-foreground text-xs">
-														{SLOT_LABELS[feature.slot]} · {targetLabel(feature)} · {ENGINE_LABELS[feature.engine]}
+														{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
 													</span>
 												</button>
 											</li>
@@ -225,7 +255,7 @@ export function AiManager() {
 						<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 							{editing ? (
 								<FeatureEditor
-									key={editing.feature.id}
+									key={editing.feature.key}
 									feature={editing.feature}
 									spec={editing.spec}
 									saving={saving}
@@ -308,16 +338,16 @@ function FeatureEditor({
 	onSave,
 	onReset,
 }: {
-	feature: AiFeature;
-	spec: AiFeatureSpec;
+	feature: AiActionView;
+	spec: Editable;
 	saving: boolean;
 	error: string | null;
-	onChange: (spec: AiFeatureSpec) => void;
+	onChange: (spec: Editable) => void;
 	onSave: () => void;
 	onReset: () => void;
 }) {
 	const ids = { provider: useId(), prompt: useId(), threshold: useId() };
-	const deciding = spec.engine === "decide";
+	const deciding = feature.engine === "decide";
 	const settings = useAiSettings().data;
 	const kind = deciding ? "decisions" : "chat";
 	const providers = (settings?.providers ?? []).filter((provider) => provider.kind === kind);
@@ -332,39 +362,30 @@ function FeatureEditor({
 	const [test, setTest] = useState<
 		{ status: "running" } | { status: "done"; result: AiRunResult } | { status: "error"; message: string } | null
 	>(null);
-	const set = (patch: Partial<AiFeatureSpec>) => onChange({ ...spec, ...patch });
-	const uses = (input: AiInput) => spec.inputs.includes(input);
-	const inputs = SLOT_INPUTS[spec.slot].filter((input) => !(deciding && input === "image"));
+	const set = (patch: Partial<Editable>) => onChange({ ...spec, ...patch });
+	const uses = (input: string) => spec.send.includes(input);
+	const inputs = Object.entries(feature.input).filter(
+		([, input]) => input.kind !== "locale" && !(deciding && input.kind === "image"),
+	);
 
-	const translating = spec.slot === "body";
+	const translating = isTranslation(feature);
 	const runTest = async () => {
 		setTest({ status: "running" });
 		try {
+			const options = { draft: spec, request: spec.askInstruction ? sample.request : undefined };
 			if (translating) {
-				// 번역은 예시 MDX 한 블록을 번역 API로 보낸다(에디터의 블록 번역과 같은 길).
-				const { results } = await cmsFetch<{ results: Array<{ mdx?: string; error?: string }> }>(
-					"/api/cms/v1/ai/translate",
-					{
-						method: "POST",
-						json: {
-							sourceLocale: DEFAULT_LOCALE,
-							targetLocale: sample.targetLocale,
-							blocks: [{ id: "sample", mdx: sample.body }],
-							draft: spec,
-							...(spec.askInstruction && sample.request.trim() ? { request: sample.request.trim() } : {}),
-						},
-						fallback: "번역하지 못했습니다.",
-					},
+				// 번역은 예시 MDX 한 블록을 번역본 편집기와 같은 길(여러 입력 실행)로 보낸다.
+				const [item] = await runAiActionMany(
+					feature.key,
+					[{ block: sample.body, from: DEFAULT_LOCALE, to: sample.targetLocale }],
+					{ ...options, env: { locale: sample.targetLocale } },
 				);
-				const result = results[0];
-				if (!result?.mdx) throw new Error(result?.error ?? "번역하지 못했습니다.");
-				setTest({ status: "done", result: { kind: "text", text: result.mdx } });
+				if (!item || "error" in item) throw new Error(item?.error ?? "번역하지 못했습니다.");
+				setTest({ status: "done", result: item.result });
 				return;
 			}
-			setTest({
-				status: "done",
-				result: await runAiFeature({ featureId: feature.id, draft: spec }, sampleContext(spec, sample)),
-			});
+			const { input, env } = inputFromContext(feature, sampleContext(feature, sample));
+			setTest({ status: "done", result: await runAiAction(feature.key, input, { ...options, env }) });
 		} catch (runError) {
 			setTest({ status: "error", message: errorText(runError, "실행하지 못했습니다.") });
 		}
@@ -374,9 +395,9 @@ function FeatureEditor({
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 text-sm">
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<div className="min-w-0 flex-1">
-					<h2 className="truncate font-medium text-base">{spec.name}</h2>
+					<h2 className="truncate font-medium text-base">{feature.label}</h2>
 					<p className="truncate text-muted-foreground text-xs">
-						{SLOT_LABELS[spec.slot]} · {targetLabel(spec)} · {ENGINE_LABELS[spec.engine]}
+						{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
 					</p>
 				</div>
 				<Label className="font-normal text-xs">
@@ -404,7 +425,7 @@ function FeatureEditor({
 						onChange={(event) => set({ providerId: event.target.value || null, modelName: "" })}
 						className={selectClass}
 					>
-						<option value="">첫 {ENGINE_LABELS[spec.engine]} 연결</option>
+						<option value="">첫 {ENGINE_LABELS[feature.engine]} 연결</option>
 						{spec.providerId && !providers.some((provider) => provider.id === spec.providerId) && (
 							<option value={spec.providerId}>삭제된 연결</option>
 						)}
@@ -427,17 +448,18 @@ function FeatureEditor({
 
 				{inputs.length > 0 && <span className="text-muted-foreground">보낼 내용</span>}
 				<div className={cn("flex flex-wrap gap-3", inputs.length === 0 && "hidden")}>
-					{inputs.map((input) => (
-						<Label key={input} className="font-normal text-xs">
+					{inputs.map(([name, input]) => (
+						<Label key={name} className="font-normal text-xs">
 							<Checkbox
-								checked={uses(input)}
+								checked={uses(name) || input.required}
+								disabled={input.required}
 								onCheckedChange={(checked) =>
 									set({
-										inputs: checked === true ? [...spec.inputs, input] : spec.inputs.filter((item) => item !== input),
+										send: checked === true ? [...spec.send, name] : spec.send.filter((item) => item !== name),
 									})
 								}
 							/>
-							{INPUT_LABELS[input]}
+							{input.label}
 						</Label>
 					))}
 				</div>
@@ -519,7 +541,7 @@ function FeatureEditor({
 					기본값
 				</Button>
 				<span className="ml-auto text-muted-foreground text-xs">
-					{new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침
+					{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본값"}
 				</span>
 			</div>
 
@@ -571,7 +593,7 @@ function FeatureEditor({
 						/>
 					</>
 				)}
-				{(uses("title") || spec.slot === "field") && (
+				{(uses("title") || feature.attach.some((attach) => attach.slot === "field")) && (
 					<Input
 						aria-label="예시 제목"
 						placeholder="예시 제목"

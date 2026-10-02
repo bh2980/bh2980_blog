@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import { BUILTIN_AI_FEATURES } from "../../../ai/builtins";
+import { legacyFeatureOverride } from "../../../ai/actions";
 import { cmsConfig } from "../../../config/resolved";
 import { DEFAULT_LOCALE } from "../../../core/locales";
 import { validateSchemaName } from "./context";
@@ -199,22 +199,13 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 			END IF;
 		END $$;
 
-		-- v2 D AI 기능 정의. 조합(붙는 곳·보낼 내용·결과·적용·검사·지시문)은 spec JSON 하나에 둔다.
-		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_features (
-			id UUID PRIMARY KEY,
-			builtin TEXT UNIQUE,
-			spec JSONB NOT NULL,
+		-- AI 기능의 고친 값(M2). 기능 정의는 사이트 설정에 있고, 관리자 화면에서 고친 값만 기능 이름별로 둔다.
+		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_action_overrides (
+			key TEXT PRIMARY KEY,
+			value JSONB NOT NULL,
 			version INTEGER NOT NULL DEFAULT 1,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
-
-		-- 추가 요청 받기(askInstruction)를 더하기 전에 넣은 기본 기능은, 값이 없을 때만 기본값(켬)을 채운다.
-		UPDATE "${qSchema}".ai_features SET spec = spec || '{"askInstruction": true}'::jsonb
-		WHERE builtin IN ('summary', 'imageAlt', 'imageCaption', 'codeFold') AND NOT (spec ? 'askInstruction');
-
-		-- 미디어 기본 대체 텍스트는 본문 이미지의 대체 텍스트 추천을 같이 쓴다(따로 두던 기능을 지운다).
-		DELETE FROM "${qSchema}".ai_features WHERE builtin = 'mediaAlt';
 
 		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default').
 		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_settings (
@@ -225,16 +216,31 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		);
 	`);
 
-	// 기본 AI 기능을 하나씩 한 번만 넣는다. 나중에 더한 기본 기능도 들어가고, 지운 기본 기능은 되살리지 않는다.
-	for (const [builtin, feature] of Object.entries(BUILTIN_AI_FEATURES)) {
-		const marker = `seed_v2_ai_feature:${builtin}`;
-		const seeded = await pool.query(`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = $1`, [marker]);
-		if (seeded.rows.length > 0) continue;
+	// 예전 AI 기능 표(`ai_features`)에 고친 값이 있으면 한 번만 기능 이름별 고친 값으로 옮긴다. 예전 표는 지우지 않는다.
+	const aiMoved = await pool.query(
+		`SELECT 1 FROM "${qSchema}".cms_migrations WHERE name = 'migrate_ai_features_to_actions'`,
+	);
+	if (aiMoved.rows.length === 0) {
+		const legacy = await pool.query<{ exists: string | null }>(`SELECT to_regclass($1)::text AS exists`, [
+			`"${qSchema}".ai_features`,
+		]);
+		if (legacy.rows[0]?.exists) {
+			const rows = await pool.query<{ builtin: string | null; spec: unknown }>(
+				`SELECT builtin, spec FROM "${qSchema}".ai_features WHERE builtin IS NOT NULL`,
+			);
+			for (const row of rows.rows) {
+				const value = row.builtin ? legacyFeatureOverride(row.builtin, row.spec) : null;
+				if (!value || Object.keys(value).length === 0) continue;
+				await pool.query(
+					`INSERT INTO "${qSchema}".ai_action_overrides (key, value, version, updated_at) VALUES ($1, $2, 1, NOW())
+					 ON CONFLICT (key) DO NOTHING`,
+					[row.builtin, JSON.stringify(value)],
+				);
+			}
+		}
 		await pool.query(
-			`INSERT INTO "${qSchema}".ai_features (id, builtin, spec) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-			[feature.id, builtin, JSON.stringify(feature.spec)],
+			`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ('migrate_ai_features_to_actions') ON CONFLICT DO NOTHING`,
 		);
-		await pool.query(`INSERT INTO "${qSchema}".cms_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`, [marker]);
 	}
 
 	// 사이트 설정의 초기 본문 템플릿을 새 저장소에 한 번만 넣는다. 이미 넣은 저장소에는 나중에 더한 템플릿도

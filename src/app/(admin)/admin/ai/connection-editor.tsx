@@ -22,7 +22,7 @@ import { cn } from "@/utils/cn";
 import { cmsFetch, errorText } from "../admin-api";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { useDebounced } from "../shared/use-debounced";
-import { AI_FEATURES_KEY } from "./ai-slot-provider";
+import { AI_ACTIONS_KEY } from "./ai-slot-provider";
 import { ModelCombobox, type ModelSource, useModelList } from "./model-combobox";
 
 export const AI_SETTINGS_KEY = ["cms", "ai", "settings"] as const;
@@ -77,7 +77,7 @@ export function ConnectionManager() {
 
 	const applySaved = (saved: AiSettingsView) => {
 		queryClient.setQueryData(AI_SETTINGS_KEY, saved);
-		void queryClient.invalidateQueries({ queryKey: AI_FEATURES_KEY });
+		void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
 	};
 
 	const current = settings?.providers.find((provider) => provider.id === selected) ?? null;

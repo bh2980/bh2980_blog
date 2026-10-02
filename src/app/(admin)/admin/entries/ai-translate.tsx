@@ -8,12 +8,13 @@ import type { BlockAction } from "@/cms/editor/tiptap-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cmsFetch, errorText } from "../admin-api";
-import { useAiFeatures } from "../ai/ai-slot-provider";
+import { errorText } from "../admin-api";
+import { runAiActionMany, useAiActions } from "../ai/ai-slot-provider";
 import { applyTranslation, collectUnits, type TranslateUnit, unitAt } from "./ai-translate-units";
 
 /**
  * 번역본 에디터의 AI 번역(v2 D2). 안내 글(`untranslated`)이 남은 블록이 "아직 번역 안 된 곳"이다.
+ * 번역은 일반 AI 기능 하나다. 붙을 곳이 `translation`인 기능(입력 `block`·`from`·`to`, MDX 결과)을 블록마다 부른다.
  * 블록의 원문 MDX(안내 글 표시를 걷어 낸 것)를 보내고, 서버가 번역·구조 검사를 통과한 MDX만 돌려주면 그 블록을 바꾼다.
  * 검사에 걸린 블록은 안내 글로 남는다. 번역 단위와 바꾸는 규칙은 `ai-translate-units.ts`다.
  */
@@ -27,18 +28,21 @@ const PARALLEL_REQUESTS = 2;
 type TranslateResult = { id: string; mdx: string } | { id: string; error: string };
 
 async function requestTranslation(
+	action: string,
 	blocks: Array<{ id: string; mdx: string }>,
 	locales: { sourceLocale: string; targetLocale: string },
 	request: string,
 	signal: AbortSignal,
 ): Promise<TranslateResult[]> {
-	const response = await cmsFetch<{ results: TranslateResult[] }>("/api/cms/v1/ai/translate", {
-		method: "POST",
-		json: { ...locales, blocks, ...(request.trim() ? { request: request.trim() } : {}) },
-		signal,
-		fallback: "번역하지 못했습니다.",
+	const results = await runAiActionMany(
+		action,
+		blocks.map((block) => ({ block: block.mdx, from: locales.sourceLocale, to: locales.targetLocale })),
+		{ request, signal, env: { locale: locales.targetLocale } },
+	);
+	return results.map((item, index) => {
+		const id = blocks[index]?.id ?? "";
+		return "error" in item ? { id, error: item.error } : { id, mdx: "text" in item.result ? item.result.text : "" };
 	});
-	return response.results;
 }
 
 /** 블록을 요청 단위로 묶는다. 한 블록이 커도 나누지 않고 혼자 보낸다. */
@@ -64,9 +68,12 @@ function batches<T extends { mdx: string }>(blocks: T[]): T[][] {
  * 번역 기능이 꺼져 있거나 연결이 없으면 둘 다 없다.
  */
 export function useAiTranslate(locales: { sourceLocale: string; targetLocale: string } | null) {
-	const { data } = useAiFeatures(locales !== null);
-	const feature = data?.items.find((item) => item.builtin === "translate");
-	const available = Boolean(locales && feature?.enabled && data?.usable.includes(feature.id));
+	const { data } = useAiActions(locales !== null);
+	const feature = data?.items.find(
+		(item) => item.enabled && item.result === "mdx" && item.attach.some((attach) => attach.slot === "translation"),
+	);
+	const available = Boolean(locales && feature && data?.usable.includes(feature.key));
+	const actionKey = feature?.key ?? "";
 	const editorRef = useRef<Editor | null>(null);
 	const [busyBlocks, setBusyBlocks] = useState<ReadonlySet<number>>(new Set());
 	const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -86,6 +93,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 			setBusyBlocks((current) => new Set([...current, pos]));
 			try {
 				const [result] = await requestTranslation(
+					actionKey,
 					[{ id: "b0", mdx: unit.mdx }],
 					locales,
 					request,
@@ -105,7 +113,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				setBusyBlocks((current) => new Set([...current].filter((item) => item !== pos)));
 			}
 		},
-		[locales, request],
+		[locales, request, actionKey],
 	);
 
 	const translateAll = useCallback(async () => {
@@ -133,6 +141,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				const group = groups[next++] ?? [];
 				try {
 					const results = await requestTranslation(
+						actionKey,
 						group.map(({ id, mdx }) => ({ id, mdx })),
 						locales,
 						request,
@@ -165,7 +174,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				`${blocks.length - failures.length - skipped}개 블록을 번역했습니다. ${failures.length + skipped}개는 원문 틀로 남겼습니다.${failures[0] ? ` (${failures[0]})` : ""}`,
 			);
 		} else toast.success(`${blocks.length}개 블록을 번역했습니다.`);
-	}, [locales, request]);
+	}, [locales, request, actionKey]);
 
 	const blockAction = useMemo<BlockAction | null>(
 		() =>

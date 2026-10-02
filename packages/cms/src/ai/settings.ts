@@ -1,8 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import type { ResolvedAiAction } from "./action";
 import type { AiProviderInput, AiProviderKind, AiProviderView, AiSettingsView } from "./connection";
-import type { AiFeatureSpec } from "./definition";
 import { AiError } from "./errors";
 import {
 	type AiDecider,
@@ -180,7 +180,9 @@ export async function savedProvider(
 	return provider ? { kind: provider.kind, url: provider.url, apiKey: provider.key } : null;
 }
 
-const kindFor = (spec: Pick<AiFeatureSpec, "engine">): AiProviderKind =>
+type ActionConnection = Pick<ResolvedAiAction, "engine" | "providerId" | "modelName">;
+
+const kindFor = (spec: Pick<ResolvedAiAction, "engine">): AiProviderKind =>
 	spec.engine === "decide" ? "decisions" : "chat";
 
 /**
@@ -189,7 +191,7 @@ const kindFor = (spec: Pick<AiFeatureSpec, "engine">): AiProviderKind =>
  */
 function pickConnection(
 	providers: ResolvedProvider[],
-	spec: Pick<AiFeatureSpec, "engine" | "providerId" | "modelName">,
+	spec: ActionConnection,
 ): { provider: ResolvedProvider; model: string } | null {
 	const kind = kindFor(spec);
 	const provider = spec.providerId
@@ -206,10 +208,7 @@ export interface AiRuntime {
 }
 
 /** 기능 하나를 실행할 생성·판단 모델. 기능의 방식에 맞는 쪽만 채운다. */
-export async function loadAiRuntime(
-	store: AiSettingsStore,
-	spec: Pick<AiFeatureSpec, "engine" | "providerId" | "modelName">,
-): Promise<AiRuntime> {
+export async function loadAiRuntime(store: AiSettingsStore, spec: ActionConnection): Promise<AiRuntime> {
 	if (isFakeAi()) return { generator: createFakeGenerator(), decider: createFakeDecider() };
 	const picked = pickConnection((await load(store)).providers, spec);
 	if (!picked || !picked.provider.key) return { generator: null, decider: null };
@@ -220,14 +219,14 @@ export async function loadAiRuntime(
 		: { generator: createGenerator({ baseUrl: provider.url, apiKey: key, model }), decider: null };
 }
 
-/** 기능마다 지금 쓸 수 있는가(자리에 버튼을 붙일지). */
-export async function usableFeatureIds(
+/** 기능마다 지금 쓸 수 있는가(자리에 버튼을 붙일지). 쓸 수 있는 기능 이름을 돌려준다. */
+export async function usableActionKeys(
 	store: AiSettingsStore,
-	features: ReadonlyArray<Pick<AiFeatureSpec, "engine" | "providerId" | "modelName"> & { id: string }>,
+	actions: ReadonlyArray<ActionConnection & { key: string }>,
 ): Promise<string[]> {
-	if (isFakeAi()) return features.map((feature) => feature.id);
+	if (isFakeAi()) return actions.map((action) => action.key);
 	const { providers } = await load(store);
-	return features.filter((feature) => pickConnection(providers, feature) !== null).map((feature) => feature.id);
+	return actions.filter((action) => pickConnection(providers, action) !== null).map((action) => action.key);
 }
 
 /**

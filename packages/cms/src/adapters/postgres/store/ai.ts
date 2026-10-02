@@ -1,111 +1,57 @@
-import { BUILTIN_AI_FEATURES, withBuiltin } from "../../../ai/builtins";
-import type { AiFeature, AiFeatureSpec } from "../../../ai/definition";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError } from "./errors";
 
-interface AiFeatureRow {
-	id: string;
-	builtin: string | null;
-	spec: unknown;
+/** 기능 이름별로 고친 값 한 줄. */
+export interface AiActionOverrideRow {
+	key: string;
+	/** 정의와 다른 고친 값(`aiActionOverrideSchema` 모양). */
+	value: unknown;
 	version: number;
-	created_at: Date;
-	updated_at: Date;
+	updatedAt: Date;
 }
 
-const COLUMNS = "id, builtin, spec, version, created_at, updated_at";
-
-/**
- * 저장된 정의를 읽는다. 기능마다 정해 둔 부분은 코드의 정의로 덮는다(코드가 바뀌면 저장값보다 앞선다).
- * 기능 목록에 없는 줄(예전에 직접 만든 기능 등)은 `null`이라 목록에서 빠진다.
- */
-function mapRow(row: AiFeatureRow): AiFeature | null {
-	const spec = withBuiltin(row.builtin, row.spec);
-	if (!spec) return null;
-	return {
-		...spec,
-		id: row.id,
-		builtin: row.builtin,
-		version: row.version,
-		createdAt: row.created_at.toISOString(),
-		updatedAt: row.updated_at.toISOString(),
-	};
-}
-
-const required = (feature: AiFeature | null): AiFeature => {
-	if (!feature) throw new CmsError("AI feature has an invalid definition", "invalid_state");
-	return feature;
-};
-
-/** v2 D AI 기능 정의(`ai_features`)와 AI 검사에 필요한 조회. */
+/** v2 D AI 기능의 고친 값(`ai_action_overrides`)·연결 설정(`ai_settings`)과 AI 검사에 필요한 조회. */
 export function createAiOps(ctx: StoreContext) {
 	const { pool, qSchema } = ctx;
 
-	const lockCurrent = async (
-		client: { query: typeof pool.query },
-		id: string,
-		expectedVersion: number,
-	): Promise<AiFeatureRow> => {
-		const res = await client.query<AiFeatureRow>(
-			`SELECT ${COLUMNS} FROM "${qSchema}".ai_features WHERE id = $1 FOR UPDATE`,
-			[id],
-		);
-		const cur = res.rows[0];
-		if (!cur) throw new CmsError("AI feature not found", "not_found");
-		if (cur.version !== expectedVersion) throw new CmsError("Conflict", "conflict", cur.version);
-		return cur;
-	};
-
-	const writeSpec = async (
-		client: { query: typeof pool.query },
-		id: string,
-		spec: AiFeatureSpec,
-		version: number,
-	): Promise<AiFeature> => {
-		const res = await client.query<AiFeatureRow>(
-			`UPDATE "${qSchema}".ai_features SET spec = $2, version = $3, updated_at = NOW() WHERE id = $1 RETURNING ${COLUMNS}`,
-			[id, JSON.stringify(spec), version],
-		);
-		return required(mapRow(res.rows[0] as AiFeatureRow));
-	};
-
 	return {
-		listAiFeatures: async (): Promise<AiFeature[]> => {
-			const res = await pool.query<AiFeatureRow>(
-				`SELECT ${COLUMNS} FROM "${qSchema}".ai_features ORDER BY created_at ASC, id ASC`,
+		/** 고친 값 전부. 고친 적 없는 기능은 없다. */
+		listAiActionOverrides: async (): Promise<AiActionOverrideRow[]> => {
+			const res = await pool.query<{ key: string; value: unknown; version: number; updated_at: Date }>(
+				`SELECT key, value, version, updated_at FROM "${qSchema}".ai_action_overrides ORDER BY key`,
 			);
-			// 기능 목록(코드) 순서대로 보인다.
-			const order = Object.keys(BUILTIN_AI_FEATURES);
-			return res.rows
-				.map(mapRow)
-				.filter((feature): feature is AiFeature => feature !== null)
-				.sort((a, b) => order.indexOf(a.builtin ?? "") - order.indexOf(b.builtin ?? ""));
+			return res.rows.map((row) => ({
+				key: row.key,
+				value: row.value,
+				version: row.version,
+				updatedAt: row.updated_at,
+			}));
 		},
 
-		getAiFeature: async (id: string): Promise<AiFeature> => {
-			const res = await pool.query<AiFeatureRow>(`SELECT ${COLUMNS} FROM "${qSchema}".ai_features WHERE id = $1`, [id]);
-			if (!res.rows[0]) throw new CmsError("AI feature not found", "not_found");
-			return required(mapRow(res.rows[0]));
-		},
-
-		/** 고칠 수 있는 부분만 반영한다. 정해 둔 부분(이름·자리·결과 등)은 보내도 기능 정의대로 남는다. */
-		updateAiFeature: async (params: { id: string; expectedVersion: number; spec: AiFeatureSpec }): Promise<AiFeature> =>
+		/**
+		 * 고친 값을 바꾼다. 처음이면 `expectedVersion`이 0이고, 그 뒤로는 버전이 다르면 409다.
+		 * 고친 값이 비면(모두 기본값) 줄을 남겨 버전을 이어 간다.
+		 */
+		saveAiActionOverride: async (params: {
+			key: string;
+			expectedVersion: number;
+			value: unknown;
+		}): Promise<AiActionOverrideRow> =>
 			withTransaction(pool, async (client) => {
-				const cur = await lockCurrent(client, params.id, params.expectedVersion);
-				const spec = withBuiltin(cur.builtin, params.spec);
-				if (!spec) throw new CmsError("AI feature not found", "not_found");
-				return writeSpec(client, params.id, spec, cur.version + 1);
-			}),
-
-		/** 기본 기능을 처음 정의로 되돌린다. 켜짐 여부는 지금 값을 둔다. */
-		resetAiFeature: async (params: { id: string; expectedVersion: number }): Promise<AiFeature> =>
-			withTransaction(pool, async (client) => {
-				const cur = await lockCurrent(client, params.id, params.expectedVersion);
-				const builtin = cur.builtin ? BUILTIN_AI_FEATURES[cur.builtin] : undefined;
-				if (!builtin) throw new CmsError("Only built-in AI features can be reset", "invalid_input");
-				const base = withBuiltin(cur.builtin, builtin.spec);
-				if (!base) throw new CmsError("AI feature not found", "not_found");
-				const enabled = withBuiltin(cur.builtin, cur.spec)?.enabled ?? base.enabled;
-				return writeSpec(client, params.id, { ...base, enabled }, cur.version + 1);
+				const cur = await client.query<{ version: number }>(
+					`SELECT version FROM "${qSchema}".ai_action_overrides WHERE key = $1 FOR UPDATE`,
+					[params.key],
+				);
+				const version = cur.rows[0]?.version ?? 0;
+				if (version !== params.expectedVersion) throw new CmsError("Conflict", "conflict", version);
+				const res = await client.query<{ key: string; value: unknown; version: number; updated_at: Date }>(
+					`INSERT INTO "${qSchema}".ai_action_overrides (key, value, version, updated_at) VALUES ($1, $2, $3, NOW())
+					 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, version = EXCLUDED.version, updated_at = NOW()
+					 RETURNING key, value, version, updated_at`,
+					[params.key, JSON.stringify(params.value), version + 1],
+				);
+				const row = res.rows[0] as { key: string; value: unknown; version: number; updated_at: Date };
+				return { key: row.key, value: row.value, version: row.version, updatedAt: row.updated_at };
 			}),
 
 		/** AI 서비스 연결 설정(저장한 모양 그대로). 없으면 `null`. */

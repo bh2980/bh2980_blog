@@ -1,4 +1,4 @@
-import { defineCollection, defineConfig, fields } from "../src";
+import { aiPresets, defineCollection, defineConfig, fields } from "../src";
 
 /**
  * 패키지 자체 테스트가 쓰는 예시 사이트 설정. bh2980 블로그의 설정(`src/cms.config.ts`)과 같은 모양이다.
@@ -206,6 +206,22 @@ export default defineConfig({
 	],
 	defaultLocale: "ko",
 	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"] },
+	ai: {
+		siteDescription: "개인 기술 블로그",
+		actions: {
+			slug: aiPresets.slug({ collections: ["post", "memo"] }),
+			summary: aiPresets.summary({ collections: ["post"] }),
+			tags: aiPresets.tags({ choices: "tag", collections: ["post", "memo"] }),
+			category: aiPresets.category({ choices: "category", collections: ["post"] }),
+			seoTitle: aiPresets.seoTitle({ collections: ["post", "memo"] }),
+			seoDescription: aiPresets.seoDescription({ collections: ["post", "memo"] }),
+			imageAlt: aiPresets.imageAlt(),
+			imageCaption: aiPresets.imageCaption(),
+			mediaFilename: aiPresets.mediaFilename(),
+			translate: aiPresets.translate(),
+			codeFold: aiPresets.codeFold(),
+		},
+	},
 	seed: {
 		templates: [
 			{

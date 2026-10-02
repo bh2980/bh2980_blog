@@ -1,3 +1,4 @@
+import { type AiConfig, validateAiConfig } from "../ai/action";
 import type { CollectionSchema } from "../schema/collection";
 import type { Field, ValueField } from "../schema/fields";
 
@@ -44,7 +45,11 @@ export interface SeedConfig {
 	readonly templates?: readonly SeedTemplate[];
 }
 
-export interface CmsConfig<Collections extends CollectionsConfig = CollectionsConfig, Locale extends string = string> {
+export interface CmsConfig<
+	Collections extends CollectionsConfig = CollectionsConfig,
+	Locale extends string = string,
+	Ai extends AiConfig = AiConfig,
+> {
 	/** 컬렉션 이름 → 정의. 이름은 저장 값(`entries.collection`)이므로 운영 중에 바꾸지 않는다. */
 	readonly collections: Collections;
 	/** 콘텐츠 언어. 선언 순서가 화면에 보이는 순서다. */
@@ -54,6 +59,8 @@ export interface CmsConfig<Collections extends CollectionsConfig = CollectionsCo
 	readonly site?: SiteConfig;
 	/** 새 저장소에 처음 넣을 데이터. */
 	readonly seed?: SeedConfig;
+	/** AI 기능(`aiAction`·`aiPresets`). 없으면 AI 기능이 없다. */
+	readonly ai?: Ai;
 }
 
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
@@ -70,7 +77,7 @@ function* valueFields(fields: Readonly<Record<string, Field>>): Generator<[strin
 }
 
 /** 설정이 서로 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
-function validate(config: CmsConfig): void {
+function validate(config: CmsConfig<CollectionsConfig, string, AiConfig>): void {
 	const names = Object.keys(config.collections);
 	if (names.length === 0) throw new Error("cms.config: `collections` is empty");
 
@@ -133,12 +140,16 @@ function validate(config: CmsConfig): void {
 			}
 		}
 	}
+
+	if (config.ai) validateAiConfig(config.ai, config.collections);
 }
 
 /** 사이트 설정을 정의한다. 컬렉션·언어 이름을 타입으로 보존하고, 서로 맞지 않는 설정은 바로 알린다. */
-export function defineConfig<const Collections extends CollectionsConfig, const Locale extends string>(
-	config: CmsConfig<Collections, Locale>,
-): CmsConfig<Collections, Locale> {
+export function defineConfig<
+	const Collections extends CollectionsConfig,
+	const Locale extends string,
+	const Ai extends AiConfig = { readonly actions: {} },
+>(config: CmsConfig<Collections, Locale, Ai>): CmsConfig<Collections, Locale, Ai> {
 	validate(config);
 	return config;
 }

@@ -1,33 +1,20 @@
 import "server-only";
-import { type AiFeatureSpec, aiFeatureSpecSchema } from "@bh2980/cms/ai/definition";
 import { AiError } from "@bh2980/cms/ai/errors";
 import type { AiOption, AiRunDeps } from "@bh2980/cms/ai/run";
 import type { AiRuntime } from "@bh2980/cms/ai/settings";
 import { siteImageUrl } from "@bh2980/cms/ai/site-image";
 import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/container";
 import { isCollection } from "@bh2980/cms/core/collections";
-import type { RelationTarget } from "@bh2980/cms/schema/derive";
-import { schemaOf } from "@bh2980/cms/schema/derive";
-import type { z } from "zod";
-import { HttpError } from "../error-handler";
-
-/** 기능 정의를 검사한다. 오류는 발행 검증 모양(`issues`)이 아니라 첫 문제 한 줄로 알린다. */
-export function parseFeatureSpec(value: unknown): AiFeatureSpec {
-	const parsed = aiFeatureSpecSchema.safeParse(value);
-	if (!parsed.success) {
-		const issue = parsed.error.issues[0] as z.core.$ZodIssue | undefined;
-		const where = issue?.path.length ? `${issue.path.join(".")}: ` : "";
-		throw new HttpError(400, "invalid_input", `${where}${issue?.message ?? "정의가 올바르지 않습니다."}`);
-	}
-	return parsed.data;
-}
+import { localeName } from "@bh2980/cms/core/locales";
+import { schemaOf, storedField } from "@bh2980/cms/schema/derive";
 
 /** 멀티모달 모델이 흔히 받는 이미지 형식과 크기. */
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /** 다른 컬렉션의 공개된 항목 전체(태그·카테고리·모음집·글). */
-async function loadRecords(collection: RelationTarget): Promise<AiOption[]> {
+async function loadRecords(collection: string): Promise<AiOption[]> {
+	if (!isCollection(collection)) return [];
 	const store = getCmsContentStore();
 	const options: AiOption[] = [];
 	for (let page = 1; page <= 20; page++) {
@@ -44,10 +31,10 @@ async function loadRecords(collection: RelationTarget): Promise<AiOption[]> {
 	return options;
 }
 
-/** 컬렉션 필드의 선택 목록(`select` 필드와 조건부 필드의 고르는 칸). */
+/** 컬렉션 필드의 선택 목록(`select` 필드와 조건부 필드의 고르는 칸, 딸린 선택 필드). */
 function fieldOptions(collection: string, field: string): AiOption[] {
 	if (!isCollection(collection)) return [];
-	const definition = schemaOf(collection).fields[field];
+	const definition = schemaOf(collection).fields[field] ?? storedField(collection, field)?.field;
 	// 조건부 필드(정책 등)는 고르는 칸(discriminant)의 목록을 쓴다.
 	const select = definition?.kind === "conditional" ? definition.discriminant : definition;
 	return select?.kind === "select"
@@ -85,6 +72,7 @@ export function aiRunDeps(runtime: AiRuntime, signal?: AbortSignal, origin?: str
 		signal,
 		loadRecords,
 		fieldOptions,
+		languageName: localeName,
 		loadImage: async ({ mediaId, src }) => {
 			if (!mediaId) {
 				const url = src && origin ? siteImageUrl(src, origin) : null;

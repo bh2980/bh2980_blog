@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { BUILTIN_AI_FEATURES } from "../builtins";
+import { resolveAction } from "../action";
 import type { AiProviderInput } from "../connection";
-import { aiFeatureSpecSchema } from "../definition";
 import { createDecider, createGenerator } from "../provider";
+import { AI_ACTIONS } from "../registry";
 import { decryptSecret } from "../secret";
 import {
 	type AiSettingsStore,
@@ -13,7 +13,7 @@ import {
 	loadAiRuntime,
 	removeAiProvider,
 	updateAiProvider,
-	usableFeatureIds,
+	usableActionKeys,
 } from "../settings";
 
 /** 메모리 설정 저장소. 버전 검사는 DB 저장소와 같다. */
@@ -51,8 +51,11 @@ const decisions = (patch: Partial<AiProviderInput> = {}): AiProviderInput => ({
 	...patch,
 });
 
-const spec = (key: string, patch: Record<string, unknown> = {}) =>
-	aiFeatureSpecSchema.parse({ ...BUILTIN_AI_FEATURES[key]?.spec, ...patch });
+const spec = (key: string, patch: { providerId?: string; modelName?: string } = {}) => {
+	const definition = AI_ACTIONS[key];
+	if (!definition) throw new Error(`${key} 기능이 없습니다.`);
+	return resolveAction(key, definition, patch);
+};
 
 describe("AI 연결 설정", () => {
 	beforeEach(() => {
@@ -120,13 +123,10 @@ describe("AI 연결 설정", () => {
 	it("쓸 수 있는 기능만 알려 준다(연결이 없거나 키를 풀 수 없으면 빠진다)", async () => {
 		const store = memoryStore();
 		await addAiProvider(store, 0, chat());
-		const features = [
-			{ id: "a", ...spec("slug") },
-			{ id: "b", ...spec("tags") },
-		];
-		expect(await usableFeatureIds(store, features)).toEqual(["a"]);
+		const features = [spec("slug"), spec("tags")];
+		expect(await usableActionKeys(store, features)).toEqual(["slug"]);
 		vi.stubEnv("AUTH_SECRET", "rotated");
-		expect(await usableFeatureIds(store, features)).toEqual([]);
+		expect(await usableActionKeys(store, features)).toEqual([]);
 		expect((await getAiSettingsView(store)).providers[0]?.keyHint).toBeNull();
 	});
 
@@ -169,7 +169,7 @@ describe("AI 연결 설정", () => {
 	it("개발용 가짜 연결이면 연결 없이도 모든 기능을 쓸 수 있다", async () => {
 		vi.stubEnv("CMS_AI_FAKE", "1");
 		const store = memoryStore();
-		expect(await usableFeatureIds(store, [{ id: "a", ...spec("tags") }])).toEqual(["a"]);
+		expect(await usableActionKeys(store, [spec("tags")])).toEqual(["tags"]);
 		const runtime = await loadAiRuntime(store, spec("tags"));
 		expect(runtime.decider?.name).toBe("fake");
 	});

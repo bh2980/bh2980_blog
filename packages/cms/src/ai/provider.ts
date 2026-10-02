@@ -276,9 +276,10 @@ export function createFakeGenerator(): AiProvider {
 		model: "fake-generator",
 		async generate<T>(request: AiRequest<T>): Promise<T> {
 			const { data } = request;
-			// 번역 요청(`mdx`)은 원문을 그대로 돌려준다(구조 검사를 통과하는 항등 번역).
+			// MDX 결과(번역 등)는 원문을 그대로 돌려준다(구조 검사를 통과하는 항등 번역).
+			if (request.result === "mdx") return { mdx: data.block ?? data.body ?? "" } as T;
 			if (request.result === "text") {
-				return { text: `(fake) ${(data.title || data.body || "요약").slice(0, 60)}`, mdx: data.body ?? "" } as T;
+				return { text: `(fake) ${(data.title || data.body || "요약").slice(0, 60)}` } as T;
 			}
 			if (request.result === "note") return { note: "(fake) 메모" } as T;
 

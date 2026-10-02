@@ -71,6 +71,29 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
    로그인 라우트는 `app/api/auth/[...nextauth]/route.ts`에서 `export const { GET, POST } = handlers;`
    (`@bh2980/cms/adapters/auth`)로 둔다.
 
+## AI 기능
+
+사이트 설정의 `ai.actions`에 기능을 이름(key)으로 적는다. 기본 기능은 `aiPresets`로 고른다.
+
+```ts
+ai: {
+	siteDescription: "개인 기술 블로그", // 모든 기능의 맨 앞 지시에 들어간다
+	actions: {
+		summary: aiPresets.summary({ collections: ["post"] }),
+		tags: aiPresets.tags({ choices: "tag", collections: ["post"] }),
+		translate: aiPresets.translate(),
+	},
+},
+```
+
+- 기능 하나는 입력(재료)·지시문·결과 모양·검사·붙을 곳(`attach`)이다. `aiAction()`으로 직접 정의할 수 있다.
+- 재료(제목·본문·이미지…)는 지시문에 끼우지 않고 따로 보낸다. 지시문의 `{{이름}}`에는 언어 입력만 넣을 수 있다.
+- 붙을 곳은 관리자 화면의 정해진 자리다(필드 옆·본문 이미지·미디어·코드 블록·번역). 자리가 필수 입력을 채울 수 있어야 한다.
+- 관리자 AI 화면에서는 켜기·요청 받기·연결·모델·보낼 입력·지시문·기준값·검사 값만 고친다. 고친 값만 DB(`ai_action_overrides`)에 둔다.
+- 실행: `POST /api/cms/v1/ai/run { action, input | inputs, env }`. 관리자 화면에서는 `useAiAction("summary").run({ title, body })`처럼
+  이름으로 부르고, 이름·입력·결과 타입은 설정에서 나온다.
+- 판단 방식(`engine: "decide"`, System One)은 선택지(`choices`)마다 확률을 받아 기준 이상만 후보로 낸다.
+
 ## 서버 설정
 
 | 항목 | 뜻 |
@@ -102,9 +125,6 @@ React 화면은 없다. 관리자 화면은 `@bh2980/cms-admin`(준비 중)이 �
 
 이 패키지는 bh2980 블로그에서 떼어 내는 중이다. 다른 블로그에서 쓰기 전에 아래를 정리해야 한다.
 
-- AI 기본 기능이 컬렉션 이름(`post`·`memo`·`tag`·`category`)을 직접 안다. 설정으로 옮겨야 한다.
-  `pnpm --filter @bh2980/cms typecheck:other-site`가 이름이 다른 예시 사이트(`test/other-site.config.ts`)로
-  본체를 타입 검사한다. 지금은 AI 실행 코드(`ai/run.ts`)만 실패한다.
 - 본문 블록(`blocks/definitions.ts`)은 내장 목록뿐이다. 사이트가 블록을 더하고 빼는 설정이 없다.
 - 저장소는 Postgres(`ContentStore`)만 있다. 다른 DB를 쓰려면 같은 계약을 구현해야 하는데 계약이 아직 크다.
 - 지금은 빌드 없이 TypeScript 소스를 그대로 내보낸다(`transpilePackages`). 배포 전에 빌드 단계가 필요하다.
