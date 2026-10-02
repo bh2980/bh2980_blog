@@ -8,7 +8,7 @@ import {
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getAction, listActions, resetAction, updateAction } from "../actions";
+import { createCustomAction, deleteCustomAction, getAction, listActions, resetAction, updateAction } from "../actions";
 import { migrateAi } from "../migrate";
 import { AI_ACTIONS } from "../registry";
 import { type AiStore, createAiStore } from "../store";
@@ -126,5 +126,48 @@ describe("AI 기능 고친 값 저장소", () => {
 		expect(await store.findTakenSlugs({ collection: "category", locale: "ko", slugs, entryId: entry.id })).toEqual(
 			new Set(),
 		);
+	});
+
+	it("화면 기능(M8-5)을 만들고 고치고 실행할 모양으로 읽고 지운다", async () => {
+		const created = await createCustomAction(store, {
+			label: "한 줄 요약",
+			surface: { slot: "field", field: "summary", collections: ["post"] },
+			result: "text",
+		});
+		expect(created.key).toMatch(/^custom_/);
+		expect(created).toMatchObject({
+			label: "한 줄 요약",
+			custom: { surface: { slot: "field", field: "summary" } },
+			attach: [{ slot: "field", field: "summary", collections: ["post"] }],
+			version: 1,
+		});
+		// 목록 끝에 붙는다.
+		expect((await listActions(store)).at(-1)?.key).toBe(created.key);
+
+		const updated = await updateAction(
+			store,
+			created.key,
+			1,
+			{ prompt: "한 문장으로 줄인다.", send: ["title", "body"] },
+			{ label: "한 문장 요약", surface: { slot: "selection" }, result: "mdx" },
+		);
+		expect(updated).toMatchObject({ label: "한 문장 요약", result: "mdx", stream: true, version: 2 });
+		const action = await getAction(store, created.key);
+		expect(action).toMatchObject({ prompt: "한 문장으로 줄인다.", attach: [{ slot: "selection" }] });
+		// 고른 자리의 재료만 보낸다(선택 영역 자리의 필수 입력은 언제나 보낸다).
+		expect(action.send).toEqual(["selection", "title"]);
+
+		await expect(resetAction(store, created.key, 2)).rejects.toMatchObject({ code: "ai_invalid_input" });
+		await expect(
+			createCustomAction(store, { label: "x", surface: { slot: "field", field: "nope" }, result: "text" }),
+		).rejects.toMatchObject({ code: "ai_invalid_input" });
+		await expect(
+			createCustomAction(store, { label: "x", surface: { slot: "selection" }, result: "candidates" }),
+		).rejects.toMatchObject({ code: "ai_invalid_input" });
+
+		await deleteCustomAction(store, created.key, 2);
+		expect((await listActions(store)).some((item) => item.key === created.key)).toBe(false);
+		await expect(getAction(store, created.key)).rejects.toMatchObject({ code: "ai_unknown_action" });
+		await expect(deleteCustomAction(store, "summary", 0)).rejects.toMatchObject({ code: "ai_invalid_input" });
 	});
 });

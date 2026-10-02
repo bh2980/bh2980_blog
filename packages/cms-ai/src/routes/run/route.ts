@@ -1,6 +1,6 @@
 import { adminRoute, HttpError, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { type AiRunBody, aiRunBodySchema, inputSchemaFor, type ResolvedAiAction } from "../../action";
-import { actionWithEdits, getAction } from "../../actions";
+import { actionWithDraft, getAction } from "../../actions";
 import { AiError } from "../../errors";
 import { type AiCall, type AiRunDeps, runAiAction, streamAiAction } from "../../run";
 import { loadAiRuntime } from "../../settings";
@@ -29,9 +29,19 @@ function streamResponse(run: (send: (event: StreamEvent) => void) => Promise<voi
 	const body = new ReadableStream<Uint8Array>({
 		async start(controller) {
 			const send = (event: StreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+			// 받는 쪽이 먼저 끊으면 이미 닫힌 흐름이다.
+			const close = () => {
+				try {
+					controller.close();
+				} catch {
+					// 이미 닫혔다.
+				}
+			};
 			try {
 				await run(send);
 			} catch (error) {
+				// 화면이 요청을 거둬들였으면(대화 상자를 닫는 등) 받을 쪽이 없으니 조용히 끝낸다.
+				if (error instanceof Error && error.name === "AbortError") return close();
 				const known = error instanceof HttpError;
 				if (!known) console.error("AI stream failed:", error);
 				send({
@@ -39,9 +49,8 @@ function streamResponse(run: (send: (event: StreamEvent) => void) => Promise<voi
 					code: known ? error.code : "ai_failed",
 					message: known ? error.message : "AI 답을 받지 못했습니다.",
 				});
-			} finally {
-				controller.close();
 			}
+			close();
 		},
 	});
 	return new Response(body, {
@@ -59,7 +68,9 @@ export const POST = adminRoute(async ({ request }) => {
 	const store = getAiStore();
 	const body = parseWith(aiRunBodySchema, await readJsonBody(request));
 	const action =
-		body.draft === undefined ? await getAction(store, body.action) : actionWithEdits(body.action, body.draft);
+		body.draft === undefined
+			? await getAction(store, body.action)
+			: await actionWithDraft(store, body.action, body.draft);
 	if (body.draft === undefined && !action.enabled) throw new AiError("ai_unavailable", "꺼진 AI 기능입니다.");
 
 	const runtime = await loadAiRuntime(store, action);

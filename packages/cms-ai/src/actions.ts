@@ -13,6 +13,16 @@ import {
 	unknownPlaceholders,
 } from "./action";
 import {
+	type CustomBase,
+	type CustomValue,
+	customBaseSchema,
+	customDefinition,
+	customValueSchema,
+	isCustomKey,
+	newCustomKey,
+	surfaceProblem,
+} from "./custom";
+import {
 	type AiApply,
 	type AiCheck,
 	type AiEngine,
@@ -28,13 +38,15 @@ import { AI_ACTIONS, AI_SHARED_KEYS, actionDefinition } from "./registry";
  * 정의에 없는 이름의 고친 값은 무시한다(설정에서 기능을 지운 경우).
  */
 
+type Row = { key: string; value: unknown; version: number; updatedAt: Date };
+
 export interface AiActionsStore {
-	listAiActionOverrides(): Promise<Array<{ key: string; value: unknown; version: number; updatedAt: Date }>>;
-	saveAiActionOverride(params: {
-		key: string;
-		expectedVersion: number;
-		value: unknown;
-	}): Promise<{ key: string; value: unknown; version: number; updatedAt: Date }>;
+	listAiActionOverrides(): Promise<Row[]>;
+	saveAiActionOverride(params: { key: string; expectedVersion: number; value: unknown }): Promise<Row>;
+	/** 화면 기능(M8-5). */
+	listAiCustomActions(): Promise<Row[]>;
+	saveAiCustomAction(params: { key: string; expectedVersion: number; value: unknown }): Promise<Row>;
+	deleteAiCustomAction(params: { key: string; expectedVersion: number }): Promise<void>;
 }
 
 /** 관리자 화면에 보내는 기능 하나. 정의의 고정 부분과 지금 값(고친 값을 얹은 것). */
@@ -51,6 +63,8 @@ export interface AiActionView extends AiActionEditable {
 	checks: AiCheck[];
 	/** 결과를 흘려받는 기능인가. */
 	stream: boolean;
+	/** 관리자 화면에서 만든 기능(화면 기능)이면 그 기본 정보(이름·붙을 곳·결과 모양). 코드 기능은 없다. */
+	custom?: CustomBase;
 	/** 고친 값의 버전. 고친 적 없으면 0. */
 	version: number;
 	updatedAt: string | null;
@@ -67,7 +81,9 @@ const readOverride = (value: unknown): AiActionOverride => {
 const viewOf = (
 	action: ResolvedAiAction,
 	row: { value: unknown; version: number; updatedAt: Date } | undefined,
+	custom?: CustomValue,
 ): AiActionView => ({
+	...(custom ? { custom: custom.base } : {}),
 	key: action.key,
 	label: action.label,
 	result: action.result,
@@ -94,8 +110,21 @@ const viewOf = (
 	send: [...action.send],
 	version: row?.version ?? 0,
 	updatedAt: row ? row.updatedAt.toISOString() : null,
-	overridden: Object.keys(readOverride(row?.value)),
+	overridden: Object.keys(custom ? custom.override : readOverride(row?.value)),
 });
+
+/** 저장한 화면 기능 한 줄. 모양이 맞지 않으면 `null`(정의가 바뀌어 맞지 않게 된 경우). */
+const readCustom = (value: unknown): CustomValue | null => {
+	const parsed = customValueSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+};
+
+async function customRow(store: AiActionsStore, key: string): Promise<{ row: Row; value: CustomValue }> {
+	const row = (await store.listAiCustomActions()).find((item) => item.key === key);
+	const value = row ? readCustom(row.value) : null;
+	if (!row || !value) throw new AiError("ai_unknown_action", "알 수 없는 AI 기능입니다.");
+	return { row, value };
+}
 
 const definitionOf = (key: string): AiActionDefinition => {
 	const definition = actionDefinition(key);
@@ -103,28 +132,41 @@ const definitionOf = (key: string): AiActionDefinition => {
 	return definition;
 };
 
-/** 기능 하나(고친 값을 얹은 것). */
+/** 기능 하나(고친 값을 얹은 것). 화면 기능도 같은 모양이다. */
 export async function getAction(store: AiActionsStore, key: string): Promise<ResolvedAiAction> {
+	if (isCustomKey(key)) {
+		const { value } = await customRow(store, key);
+		return resolveAction(key, customDefinition(value.base), value.override);
+	}
 	const definition = definitionOf(key);
 	const row = (await store.listAiActionOverrides()).find((item) => item.key === key);
 	return resolveAction(key, definition, readOverride(row?.value));
 }
 
-/** 설정 순서대로 모든 기능. */
+/** 설정 순서대로 모든 코드 기능, 그다음 만든 순서대로 화면 기능. */
 export async function listActions(store: AiActionsStore): Promise<AiActionView[]> {
 	const rows = new Map((await store.listAiActionOverrides()).map((row) => [row.key, row]));
-	return Object.entries(AI_ACTIONS).map(([key, definition]) => {
+	const code = Object.entries(AI_ACTIONS).map(([key, definition]) => {
 		const row = rows.get(key);
 		return viewOf(resolveAction(key, definition, readOverride(row?.value)), row);
 	});
+	const custom = (await store.listAiCustomActions()).flatMap((row) => {
+		const value = readCustom(row.value);
+		if (!value) return [];
+		return [viewOf(resolveAction(row.key, customDefinition(value.base), value.override), row, value)];
+	});
+	return [...code, ...custom];
 }
 
 /**
  * 고칠 수 있는 값으로 시험·저장할 기능을 만든다. 지시문의 `{{이름}}`은 언어 입력만 받는다.
  * 고칠 수 없는 값(이름·결과 모양 등)은 보내도 무시한다.
  */
-export function actionWithEdits(key: string, edited: unknown): ResolvedAiAction {
-	const definition = definitionOf(key);
+export function actionWithEdits(
+	key: string,
+	edited: unknown,
+	definition: AiActionDefinition = definitionOf(key),
+): ResolvedAiAction {
 	const parsed = aiActionOverrideSchema.safeParse(
 		edited && typeof edited === "object"
 			? Object.fromEntries(
@@ -150,13 +192,59 @@ export function actionWithEdits(key: string, edited: unknown): ResolvedAiAction 
 	return resolveAction(key, definition, overrideFrom(definition, parsed.data));
 }
 
-/** 고친 값을 저장한다. 기본값과 같은 값은 저장하지 않는다. */
+/** 저장하지 않은 고친 값으로 시험할 기능(AI 화면의 `시험`). 화면 기능은 저장한 기본 정보로 만든다. */
+export async function actionWithDraft(store: AiActionsStore, key: string, edited: unknown): Promise<ResolvedAiAction> {
+	if (!isCustomKey(key)) return actionWithEdits(key, edited);
+	const { value } = await customRow(store, key);
+	return actionWithEdits(key, edited, customDefinition(value.base));
+}
+
+/** 화면 기능의 기본 정보를 검사한다. */
+function readBase(input: unknown): CustomBase {
+	const parsed = customBaseSchema.safeParse(input);
+	if (!parsed.success) {
+		throw new AiError("ai_invalid_input", parsed.error.issues[0]?.message ?? "기본 정보가 올바르지 않습니다.");
+	}
+	const problem = surfaceProblem(parsed.data.surface);
+	if (problem) throw new AiError("ai_invalid_input", problem);
+	return parsed.data;
+}
+
+/** 화면 기능을 만든다. 지시문은 처음 문구로 두고 관리자 화면에서 바로 고친다. */
+export async function createCustomAction(store: AiActionsStore, baseInput: unknown): Promise<AiActionView> {
+	const base = readBase(baseInput);
+	const key = newCustomKey();
+	const value: CustomValue = { base, override: {} };
+	const row = await store.saveAiCustomAction({ key, expectedVersion: 0, value });
+	return viewOf(resolveAction(key, customDefinition(base), {}), row, value);
+}
+
+/** 화면 기능을 지운다. */
+export async function deleteCustomAction(store: AiActionsStore, key: string, expectedVersion: number): Promise<void> {
+	if (!isCustomKey(key)) throw new AiError("ai_invalid_input", "코드로 정한 기능은 지울 수 없습니다.");
+	await store.deleteAiCustomAction({ key, expectedVersion });
+}
+
+/**
+ * 고친 값을 저장한다. 기본값과 같은 값은 저장하지 않는다.
+ * 화면 기능은 기본 정보(`base`: 이름·붙을 곳·결과 모양)도 함께 고칠 수 있다.
+ */
 export async function updateAction(
 	store: AiActionsStore,
 	key: string,
 	expectedVersion: number,
 	edited: unknown,
+	baseInput?: unknown,
 ): Promise<AiActionView> {
+	if (isCustomKey(key)) {
+		const { value: current } = await customRow(store, key);
+		const base = baseInput === undefined ? current.base : readBase(baseInput);
+		const definition = customDefinition(base);
+		const action = actionWithEdits(key, edited, definition);
+		const value: CustomValue = { base, override: overrideFrom(definition, action) };
+		const row = await store.saveAiCustomAction({ key, expectedVersion, value });
+		return viewOf(resolveAction(key, definition, value.override), row, value);
+	}
 	const action = actionWithEdits(key, edited);
 	const definition = definitionOf(key);
 	const value = overrideFrom(definition, action);
@@ -164,8 +252,9 @@ export async function updateAction(
 	return viewOf(action, row);
 }
 
-/** 기본값으로 되돌린다. 켜짐 여부는 지금 값을 둔다. */
+/** 기본값으로 되돌린다. 켜짐 여부는 지금 값을 둔다. 화면 기능은 되돌릴 기본값이 없다. */
 export async function resetAction(store: AiActionsStore, key: string, expectedVersion: number): Promise<AiActionView> {
+	if (isCustomKey(key)) throw new AiError("ai_invalid_input", "직접 만든 기능은 되돌릴 기본값이 없습니다.");
 	const current = await getAction(store, key);
 	const definition = definitionOf(key);
 	const value = overrideFrom(definition, { enabled: current.enabled });

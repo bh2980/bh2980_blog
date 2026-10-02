@@ -1,5 +1,5 @@
-import { adminRoute, json } from "@bh2980/cms/plugin/server";
-import { listActions } from "../../actions";
+import { adminRoute, json, readJsonBody } from "@bh2980/cms/plugin/server";
+import { createCustomAction, listActions } from "../../actions";
 import { usableActionKeys } from "../../settings";
 import { getAiStore } from "../../store";
 
@@ -8,4 +8,10 @@ export const GET = adminRoute(async () => {
 	const store = getAiStore();
 	const items = await listActions(store);
 	return json({ usable: await usableActionKeys(store, items), items });
+});
+
+/** 화면 기능을 만든다(D12·M8-5). 본문은 `{ base: { label, surface, result } }`다. */
+export const POST = adminRoute(async ({ request }) => {
+	const body = (await readJsonBody(request)) as { base?: unknown };
+	return json(await createCustomAction(getAiStore(), body.base), { status: 201 });
 });

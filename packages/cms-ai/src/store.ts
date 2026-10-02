@@ -84,6 +84,60 @@ export function createAiStore({ pool, schema: qSchema }: PluginDatabase) {
 				return version + 1;
 			}),
 
+		/** 화면 기능(관리자 화면에서 만든 기능) 전부. 만든 순서다. */
+		listAiCustomActions: async (): Promise<AiActionOverrideRow[]> => {
+			const res = await pool.query<{ key: string; value: unknown; version: number; updated_at: Date }>(
+				`SELECT key, value, version, updated_at FROM "${qSchema}".ai_custom_actions ORDER BY created_at, key`,
+			);
+			return res.rows.map((row) => ({
+				key: row.key,
+				value: row.value,
+				version: row.version,
+				updatedAt: row.updated_at,
+			}));
+		},
+
+		/** 화면 기능을 만들거나(`expectedVersion` 0) 고친다. 버전이 다르면 409다. */
+		saveAiCustomAction: async (params: {
+			key: string;
+			expectedVersion: number;
+			value: unknown;
+		}): Promise<AiActionOverrideRow> =>
+			withTransaction(pool, async (client) => {
+				const cur = await client.query<{ version: number }>(
+					`SELECT version FROM "${qSchema}".ai_custom_actions WHERE key = $1 FOR UPDATE`,
+					[params.key],
+				);
+				const version = cur.rows[0]?.version ?? 0;
+				if (version !== params.expectedVersion) throw new CmsError("Conflict", "conflict", version);
+				const res = await client.query<{ updated_at: Date }>(
+					`INSERT INTO "${qSchema}".ai_custom_actions (key, value, version, created_at, updated_at)
+					 VALUES ($1, $2, $3, NOW(), NOW())
+					 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, version = EXCLUDED.version, updated_at = NOW()
+					 RETURNING updated_at`,
+					[params.key, JSON.stringify(params.value), version + 1],
+				);
+				return {
+					key: params.key,
+					value: params.value,
+					version: version + 1,
+					updatedAt: res.rows[0]?.updated_at ?? new Date(),
+				};
+			}),
+
+		/** 화면 기능을 지운다. 버전이 다르면 409, 없으면 404다. */
+		deleteAiCustomAction: async (params: { key: string; expectedVersion: number }): Promise<void> =>
+			withTransaction(pool, async (client) => {
+				const cur = await client.query<{ version: number }>(
+					`SELECT version FROM "${qSchema}".ai_custom_actions WHERE key = $1 FOR UPDATE`,
+					[params.key],
+				);
+				const version = cur.rows[0]?.version;
+				if (version === undefined) throw new CmsError("Not found", "not_found");
+				if (version !== params.expectedVersion) throw new CmsError("Conflict", "conflict", version);
+				await client.query(`DELETE FROM "${qSchema}".ai_custom_actions WHERE key = $1`, [params.key]);
+			}),
+
 		/** 후보 주소 중 같은 컬렉션·언어에서 다른 글이 쓰거나 예약한 것. */
 		findTakenSlugs: async (params: {
 			collection: string;

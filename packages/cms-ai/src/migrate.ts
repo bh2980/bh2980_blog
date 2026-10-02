@@ -16,7 +16,16 @@ export async function migrateAi({ pool, schema }: PluginDatabase): Promise<void>
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 
-		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default').
+		-- 화면 기능(M8-5): 관리자 AI 화면에서 만든 기능. 값은 기본 정보와 고친 값이다.
+		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_custom_actions (
+			key TEXT PRIMARY KEY,
+			value JSONB NOT NULL,
+			version INTEGER NOT NULL DEFAULT 1,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+
+		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default'). 고친 공통 문구는 'shared' 줄이다.
 		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_settings (
 			id TEXT PRIMARY KEY,
 			value JSONB NOT NULL,

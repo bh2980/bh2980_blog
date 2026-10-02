@@ -16,10 +16,11 @@ import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plug, Quote, RotateCcw, Save, Sparkles } from "lucide-react";
+import { Check, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import type { AiActionView } from "../actions";
+import type { CustomBase } from "../custom";
 import {
 	type AiCheck,
 	type AiRunContext,
@@ -39,6 +40,7 @@ import {
 	useAiActions,
 } from "./ai-slot-provider";
 import { ConnectionManager, useAiSettings } from "./connection-editor";
+import { CustomBaseFields, NewCustomDialog } from "./custom-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
 import { SharedTextsEditor } from "./shared-editor";
 
@@ -137,7 +139,8 @@ export function AiManager() {
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
 	const [tab, setTab] = useState<"features" | "connections" | "shared">("features");
-	const [editing, setEditing] = useState<{ feature: AiActionView; spec: Editable } | null>(null);
+	const [editing, setEditing] = useState<{ feature: AiActionView; spec: Editable; base?: CustomBase } | null>(null);
+	const [creating, setCreating] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 
@@ -147,8 +150,34 @@ export function AiManager() {
 		);
 
 	const open = (feature: AiActionView) => {
-		setEditing({ feature, spec: editableOf(feature) });
+		setEditing({ feature, spec: editableOf(feature), ...(feature.custom ? { base: feature.custom } : {}) });
 		setFormError(null);
+	};
+
+	/** 만든 화면 기능을 목록 끝에 더하고 연다. */
+	const created = (feature: AiActionView) => {
+		queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
+			data ? { ...data, items: [...data.items, feature] } : data,
+		);
+		setCreating(false);
+		open(feature);
+		void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
+	};
+
+	const remove = async (feature: AiActionView) => {
+		try {
+			await cmsFetch(`/api/cms/v1/ai/actions/${feature.key}?expectedVersion=${feature.version}`, {
+				method: "DELETE",
+				fallback: "지우지 못했습니다.",
+			});
+			queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
+				data ? { ...data, items: data.items.filter((item) => item.key !== feature.key) } : data,
+			);
+			setEditing(null);
+			toast.success(`'${feature.label}'을(를) 지웠습니다.`);
+		} catch (error) {
+			toast.error(errorText(error, "지우지 못했습니다."));
+		}
 	};
 
 	const save = async () => {
@@ -158,7 +187,11 @@ export function AiManager() {
 		try {
 			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
 				method: "PATCH",
-				json: { expectedVersion: editing.feature.version, value: editing.spec },
+				json: {
+					expectedVersion: editing.feature.version,
+					value: editing.spec,
+					...(editing.base ? { base: { ...editing.base, label: editing.base.label.trim() } } : {}),
+				},
 				fallback: "저장하지 못했습니다.",
 			});
 			replaceInCache(saved);
@@ -226,40 +259,48 @@ export function AiManager() {
 						</Alert>
 					)}
 					<div className="flex min-h-0 flex-1 overflow-hidden">
-						<ul className="w-72 shrink-0 divide-y overflow-y-auto border-r" aria-label="AI 기능 목록">
-							{featuresQuery.isPending
-								? Array.from({ length: 4 }, (_, index) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
-										<li key={index} className="p-3" aria-hidden>
-											<Skeleton className="h-9 w-full" />
-										</li>
-									))
-								: features.map((feature) => {
-										const isSelected = editing?.feature.key === feature.key;
-										const state = !feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요";
-										return (
-											<li key={feature.key}>
-												<button
-													type="button"
-													aria-current={isSelected ? "true" : undefined}
-													onClick={() => open(feature)}
-													className={cn(
-														"flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors",
-														isSelected ? "bg-accent" : "hover:bg-accent/50",
-													)}
-												>
-													<span className="flex w-full items-center gap-2">
-														<span className="truncate font-medium text-sm">{feature.label}</span>
-														{state && <span className="ml-auto shrink-0 text-muted-foreground text-xs">{state}</span>}
-													</span>
-													<span className="truncate text-muted-foreground text-xs">
-														{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
-													</span>
-												</button>
+						<div className="flex w-72 shrink-0 flex-col border-r">
+							<div className="border-b p-2">
+								<Button type="button" size="xs" variant="outline" onClick={() => setCreating(true)}>
+									<Plus aria-hidden />새 기능
+								</Button>
+							</div>
+							<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="AI 기능 목록">
+								{featuresQuery.isPending
+									? Array.from({ length: 4 }, (_, index) => (
+											// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+											<li key={index} className="p-3" aria-hidden>
+												<Skeleton className="h-9 w-full" />
 											</li>
-										);
-									})}
-						</ul>
+										))
+									: features.map((feature) => {
+											const isSelected = editing?.feature.key === feature.key;
+											const state = !feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요";
+											return (
+												<li key={feature.key}>
+													<button
+														type="button"
+														aria-current={isSelected ? "true" : undefined}
+														onClick={() => open(feature)}
+														className={cn(
+															"flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors",
+															isSelected ? "bg-accent" : "hover:bg-accent/50",
+														)}
+													>
+														<span className="flex w-full items-center gap-2">
+															<span className="truncate font-medium text-sm">{feature.label}</span>
+															{state && <span className="ml-auto shrink-0 text-muted-foreground text-xs">{state}</span>}
+														</span>
+														<span className="truncate text-muted-foreground text-xs">
+															{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
+															{feature.custom && " · 직접 만듦"}
+														</span>
+													</button>
+												</li>
+											);
+										})}
+							</ul>
+						</div>
 
 						<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 							{editing ? (
@@ -272,6 +313,15 @@ export function AiManager() {
 									onChange={(spec) => setEditing({ ...editing, spec })}
 									onSave={() => void save()}
 									onReset={() => void reset(editing.feature)}
+									custom={
+										editing.base
+											? {
+													base: editing.base,
+													onBaseChange: (base) => setEditing({ ...editing, base }),
+													onDelete: () => void remove(editing.feature),
+												}
+											: undefined
+									}
 								/>
 							) : (
 								<Empty className="flex-1">
@@ -286,6 +336,7 @@ export function AiManager() {
 						</div>
 					</div>
 				</TabsContent>
+				{creating && <NewCustomDialog onClose={() => setCreating(false)} onCreated={created} />}
 				{AI_SHARED_KEYS.length > 0 && (
 					<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
 						<SharedTextsEditor />
@@ -351,6 +402,7 @@ function FeatureEditor({
 	onChange,
 	onSave,
 	onReset,
+	custom,
 }: {
 	feature: AiActionView;
 	spec: Editable;
@@ -359,6 +411,8 @@ function FeatureEditor({
 	onChange: (spec: Editable) => void;
 	onSave: () => void;
 	onReset: () => void;
+	/** 화면 기능이면 기본 정보 고치기와 지우기. */
+	custom?: { base: CustomBase; onBaseChange: (base: CustomBase) => void; onDelete: () => void };
 }) {
 	const ids = { provider: useId(), prompt: useId(), threshold: useId() };
 	const deciding = feature.engine === "decide";
@@ -427,6 +481,12 @@ function FeatureEditor({
 					요청 받기
 				</Label>
 			</div>
+
+			{custom && (
+				<section aria-label="기본 정보" className="rounded-md border p-3">
+					<CustomBaseFields base={custom.base} onChange={custom.onBaseChange} />
+				</section>
+			)}
 
 			<section className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 text-xs">
 				<Label htmlFor={ids.provider} className="text-muted-foreground text-xs">
@@ -550,10 +610,17 @@ function FeatureEditor({
 					<Save aria-hidden />
 					{saving ? "저장 중…" : "저장"}
 				</Button>
-				<Button type="button" size="sm" variant="outline" onClick={onReset}>
-					<RotateCcw aria-hidden />
-					기본값
-				</Button>
+				{custom ? (
+					<Button type="button" size="sm" variant="outline" className="text-destructive" onClick={custom.onDelete}>
+						<Trash2 aria-hidden />
+						지우기
+					</Button>
+				) : (
+					<Button type="button" size="sm" variant="outline" onClick={onReset}>
+						<RotateCcw aria-hidden />
+						기본값
+					</Button>
+				)}
 				<span className="ml-auto text-muted-foreground text-xs">
 					{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본값"}
 				</span>

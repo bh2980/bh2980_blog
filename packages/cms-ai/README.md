@@ -32,6 +32,17 @@ plugins: [
   이름·입력·결과 타입은 설정에서 나온다.
 - 판단 방식(`engine: "decide"`, System One)은 선택지(`choices`)마다 확률을 받아 기준 이상만 후보로 낸다.
 
+## 새 기능 (M8)
+
+- **흘려받기**: 기능 정의 `stream: true`(생성 방식의 글·MDX 결과)면 결과가 조금씩 보인다. 화면에서는
+  `useAiAction("이름").stream(입력, { onText })`. API는 `/ai/run`에 `stream: true`(한 줄에 사건 하나인 JSON).
+- **공통 문구**: `aiPlugin({ shared: { styleGuide: { label: "문체 가이드", text: "…" } } })`. 지시문에
+  `{{shared.styleGuide}}`로 넣고, 관리자 AI 화면 "공통 문구" 탭에서 고친다.
+- **문체 다듬기·초안 쓰기**: `aiPresets.polish()`(본문에서 글자를 고르면 뜨는 메뉴, 바뀐 곳을 보인 뒤 바꾸기),
+  `aiPresets.draft()`(슬래시 메뉴·빈 문서 툴바, 커서 자리에 넣기). `styleGuide: "공통 문구 이름"`으로 문체 가이드를 넣는다.
+- **화면 기능**: 관리자 AI 화면의 "새 기능"으로 코드 없이 기능을 만든다. 이름·붙을 곳(필드 옆·선택 영역 메뉴·삽입 메뉴·
+  본문 이미지·미디어)·결과 모양을 고르고, 지시문·보낼 내용·연결을 고친다. DB(`ai_custom_actions`)에 둔다.
+
 ## 진입점
 
 | 진입점 | 내용 |
