@@ -36,6 +36,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useEditorExtensions } from "../../admin-components";
+import { MdxSourceEditor } from "../../editor/mdx-source-editor";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
 import { josa } from "../../lib/utils/josa";
@@ -52,7 +53,6 @@ import { FieldLabel } from "../../ui/field";
 import { IconButton } from "../../ui/icon-button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
-import { Textarea } from "../../ui/textarea";
 import { Toggle } from "../../ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
@@ -157,7 +157,8 @@ function ToolbarToggle({
 	onPressedChange,
 }: {
 	label: string;
-	text: string;
+	/** 아이콘 옆 글자. 없으면 아이콘만 보인다(이름은 툴팁). */
+	text?: string;
 	icon: LucideIcon;
 	pressed: boolean;
 	disabled?: boolean;
@@ -829,7 +830,6 @@ export function EntryEditorShell({
 	const sourceModeToggle = (
 		<ToolbarToggle
 			label="MDX 원문"
-			text="MDX"
 			icon={FileCode}
 			pressed={editorMode === "source"}
 			// 해석할 수 없는 본문은 시각 모드로 돌아가지 못한다.
@@ -839,7 +839,7 @@ export function EntryEditorShell({
 	);
 	const sourceEditor = (
 		<>
-			<Textarea
+			<MdxSourceEditor
 				id="cms-mdx-source"
 				aria-label="MDX 본문"
 				aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
@@ -850,7 +850,7 @@ export function EntryEditorShell({
 				onCompositionStart={() => autosave.setComposing(true)}
 				onCompositionEnd={() => autosave.setComposing(false)}
 				placeholder="MDX 원문을 작성하세요…"
-				className="min-h-[calc(100vh-240px)] w-full flex-1 resize-none p-4 font-mono text-sm md:text-sm"
+				className="min-h-[calc(100vh-240px)] w-full flex-1 px-4"
 			/>
 			{bodyIssue && (
 				<p id="cms-mdx-error" className="mt-2 text-destructive text-sm">
