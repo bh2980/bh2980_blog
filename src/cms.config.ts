@@ -3,6 +3,7 @@ import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
 import { callout, chart, collapsible, columns, mermaid, tabs } from "@bh2980/cms-blocks";
 import { chartAi } from "@bh2980/cms-blocks/chart/ai";
 import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
+import { bareun } from "@bh2980/cms-text-check/bareun";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 /**
@@ -264,6 +265,8 @@ export default defineConfig({
 				chartEdit: chartAi.edit(),
 			},
 		}),
+		// 맞춤법·문장 검사(바른). 키는 서버 환경 변수 `BAREUN_API_KEY`. 쓴 만큼 요금이 들어 버튼으로만 검사한다.
+		bareun(),
 	],
 	seed: {
 		templates: [

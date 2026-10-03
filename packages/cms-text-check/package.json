@@ -1,0 +1,71 @@
+{
+	"name": "@bh2980/cms-text-check",
+	"version": "0.0.0",
+	"private": true,
+	"description": "@bh2980/cms의 맞춤법·문장 검사기 확장: 바른(Bareun)",
+	"type": "module",
+	"exports": {
+		"./bareun": "./src/bareun/index.ts",
+		"./bareun/server": {
+			"browser": "./src/bareun/server.browser.ts",
+			"default": "./src/bareun/server.ts"
+		},
+		"./bareun/admin": "./src/bareun/admin.ts"
+	},
+	"scripts": {
+		"test": "vitest",
+		"test:run": "vitest run",
+		"typecheck": "tsc --noEmit -p .",
+		"build": "node ../../scripts/build-package.mjs"
+	},
+	"peerDependencies": {
+		"@bh2980/cms": "workspace:^",
+		"@bh2980/cms-admin": "workspace:^",
+		"react": ">=19"
+	},
+	"devDependencies": {
+		"@bh2980/cms": "workspace:*",
+		"@bh2980/cms-admin": "workspace:*",
+		"@tanstack/react-query": "^5.104.0",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@tiptap/core": "^3.31.3",
+		"@tiptap/pm": "^3.31.3",
+		"@tiptap/react": "^3.31.3",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"jsdom": "^27.4.0",
+		"next": "16.3.8",
+		"next-auth": "5.0.0-beta.32",
+		"next-themes": "^0.4.6",
+		"react": "19.2.3",
+		"react-dom": "19.2.3",
+		"sonner": "^2.0.8",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.0",
+		"vitest": "^4.0.18"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"publishConfig": {
+		"exports": {
+			"./bareun": {
+				"types": "./dist/bareun/index.d.ts",
+				"default": "./dist/bareun/index.js"
+			},
+			"./bareun/server": {
+				"types": "./dist/bareun/server.d.ts",
+				"browser": "./dist/bareun/server.browser.js",
+				"default": "./dist/bareun/server.js"
+			},
+			"./bareun/admin": {
+				"types": "./dist/bareun/admin.d.ts",
+				"default": "./dist/bareun/admin.js"
+			}
+		}
+	}
+}
