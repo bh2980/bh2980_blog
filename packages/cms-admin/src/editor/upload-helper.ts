@@ -1,4 +1,5 @@
 import { fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
+import { cmsApiErrorMessage } from "../screens/api-error-message";
 
 /**
  * 브라우저 이미지 업로드(§7.1·§7.2). 편집기와 미디어 라이브러리가 같이 쓴다.
@@ -133,10 +134,8 @@ function putFile(ticket: UploadTicket, file: File, onProgress?: (loaded: number)
 	});
 }
 
-const errorMessage = async (response: Response, fallback: string) => {
-	const body = (await response.json().catch(() => null)) as { message?: string } | null;
-	return body?.message || fallback;
-};
+const errorMessage = async (response: Response, fallback: string) =>
+	cmsApiErrorMessage(await response.json().catch(() => null), fallback);
 
 export interface UploadedMedia {
 	mediaId: string;

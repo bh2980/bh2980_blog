@@ -33,6 +33,7 @@ const CMS_ERROR_STATUS: Record<string, number> = {
 	invalid_input: 400,
 	invalid_reference: 400,
 	invalid_state: 500,
+	media_not_configured: 501,
 };
 
 const SERVICE_ERROR_STATUS: Record<string, number> = {

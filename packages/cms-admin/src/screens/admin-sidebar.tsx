@@ -41,6 +41,7 @@ import {
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
+import { useAdminFeatures } from "./shared/admin-features";
 import { CollectionIcon, NamedIcon } from "./shared/collection-icon";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
@@ -266,6 +267,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 /** 왼쪽 탐색 영역(§3.1): 컬렉션, 미디어·템플릿·휴지통, 가상 폴더 트리(§3.3). */
 export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarProps) {
 	const { isMobile, setOpenMobile, state } = useSidebar();
+	const features = useAdminFeatures();
 	const toggleLabel = isMobile ? "사이드바 닫기" : state === "collapsed" ? "사이드바 펼치기" : "사이드바 접기";
 	const closeMobile = () => {
 		if (isMobile) setOpenMobile(false);
@@ -330,7 +332,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 					<SidebarGroupLabel>관리</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu aria-label="관리">
-							{navLink("/admin/media", "media", "미디어", <FileImage />)}
+							{features.media && navLink("/admin/media", "media", "미디어", <FileImage />)}
 							{navLink("/admin/templates", "templates", "본문 템플릿", <LayoutTemplate />)}
 							{PLUGIN_NAV.map((item) =>
 								navLink(`/admin/${item.path}`, item.path, item.label, <NamedIcon name={item.icon} />),

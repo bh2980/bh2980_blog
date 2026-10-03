@@ -41,6 +41,8 @@ import {
 import { toast } from "sonner";
 import type { EditorInsertAction, EditorSelectionAction } from "../admin-components";
 import { cn } from "../lib/utils/cn";
+import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
+import { useAdminFeatures } from "../screens/shared/admin-features";
 import { Button } from "../ui/button";
 import {
 	DropdownMenu,
@@ -337,6 +339,7 @@ export function CmsEditor({
 	const isSourceMode = sourceView != null && sourceView !== false;
 	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
 	const canEdit = editable && !isSourceMode;
+	const { media } = useAdminFeatures();
 	// 원문 모드로 열린 본문은 해석할 수 없을 수 있다. 시각 편집기는 빈 문서로 만들고 돌아올 때 채운다.
 	const [initialContent] = useState(() => mdxToTiptap(isSourceMode ? "" : content));
 	const isInternalUpdateRef = useRef(false);
@@ -622,6 +625,10 @@ export function CmsEditor({
 	const uploadAttachments = useCallback(
 		async (files: File[], at?: number) => {
 			if (!editor) return;
+			if (!media) {
+				toast.error(MEDIA_NOT_CONFIGURED);
+				return;
+			}
 			let position = at;
 			for (const file of files) {
 				const toastId = toast.loading(`'${file.name}' 올리는 중…`);
@@ -644,7 +651,7 @@ export function CmsEditor({
 				}
 			}
 		},
-		[editor],
+		[editor, media],
 	);
 
 	const attachmentsFrom = (list: FileList | null): File[] =>

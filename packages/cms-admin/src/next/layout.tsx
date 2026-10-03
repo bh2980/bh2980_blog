@@ -1,8 +1,10 @@
 import { SITE_NAME } from "@bh2980/cms/client";
+import { isCmsMediaConfigured } from "@bh2980/cms/runtime";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 import { loadAdminPlugins } from "../plugins";
+import { AdminFeaturesProvider } from "../screens/shared/admin-features";
 import { AdminQueryProvider } from "../screens/shared/query-provider";
 import { Toaster } from "../ui/sonner";
 import { TooltipProvider } from "../ui/tooltip";
@@ -29,7 +31,9 @@ export async function CmsAdminLayout({ children }: { children: ReactNode }) {
 	);
 	return (
 		<ThemeProvider attribute="class" disableTransitionOnChange>
-			<AdminQueryProvider>{content}</AdminQueryProvider>
+			<AdminQueryProvider>
+				<AdminFeaturesProvider features={{ media: isCmsMediaConfigured() }}>{content}</AdminFeaturesProvider>
+			</AdminQueryProvider>
 		</ThemeProvider>
 	);
 }

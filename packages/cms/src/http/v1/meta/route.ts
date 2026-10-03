@@ -1,5 +1,6 @@
 import { BLOCKS } from "../../../blocks/active";
 import { cmsConfig } from "../../../config/resolved";
+import { isCmsMediaConfigured } from "../../../container";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	LIST_SORT_FIELDS,
@@ -22,7 +23,14 @@ export const GET = adminRoute(async () => {
 		definitions: COLLECTION_DEFINITIONS,
 		schemas: cmsConfig.collections,
 		blocks: BLOCKS,
-		features: { folders: true, references: true, search: true, templates: true, ...plugins },
+		features: {
+			folders: true,
+			references: true,
+			search: true,
+			templates: true,
+			media: isCmsMediaConfigured(),
+			...plugins,
+		},
 		limits: {
 			mdxBytes: MAX_MDX_BYTES,
 			metadataBytes: MAX_METADATA_BYTES,

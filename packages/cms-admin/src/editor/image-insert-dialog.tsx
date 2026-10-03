@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { cn } from "../lib/utils/cn";
+import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
+import { useAdminFeatures } from "../screens/shared/admin-features";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -54,6 +56,7 @@ export function ImageInsertDialog({
 	title = "이미지 삽입",
 }: ImageInsertDialogProps) {
 	const picking = mode === "pick";
+	const { media } = useAdminFeatures();
 	const altId = useId();
 	const captionId = useId();
 	const searchId = useId();
@@ -165,6 +168,24 @@ export function ImageInsertDialog({
 			setProgress(null);
 		}
 	};
+
+	if (!media) {
+		return (
+			<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+				<DialogContent className="max-w-lg">
+					<DialogHeader>
+						<DialogTitle>{title}</DialogTitle>
+						<DialogDescription>{MEDIA_NOT_CONFIGURED}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button type="button" variant="outline" onClick={onClose}>
+							닫기
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		);
+	}
 
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && !isUploading && onClose()}>

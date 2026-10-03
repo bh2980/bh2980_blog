@@ -1,3 +1,5 @@
+export const MEDIA_NOT_CONFIGURED = "미디어 저장소가 설정되지 않았습니다.";
+
 export type CmsIssue = {
 	code?: string;
 	message?: string;
@@ -53,6 +55,7 @@ const ERROR_LABELS: Record<string, string> = {
 	payload_too_large: "파일이 너무 큽니다.",
 	too_many_pixels: "이미지 해상도가 너무 큽니다(최대 4천만 픽셀).",
 	unavailable: "저장소에 일시적으로 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
+	media_not_configured: MEDIA_NOT_CONFIGURED,
 };
 
 export function cmsApiIssues(payload: unknown): CmsIssue[] {
