@@ -90,12 +90,22 @@ function placeLabel(action: Pick<AiActionView, "attach">): string {
 /** 관리자 화면에서 고칠 수 있는 값. 저장·시험에 보낸다. */
 type Editable = Pick<
 	AiActionView,
-	"enabled" | "askInstruction" | "providerId" | "modelName" | "prompt" | "send" | "threshold" | "maxCount" | "checks"
+	| "enabled"
+	| "askInstruction"
+	| "instant"
+	| "providerId"
+	| "modelName"
+	| "prompt"
+	| "send"
+	| "threshold"
+	| "maxCount"
+	| "checks"
 >;
 
 const editableOf = (action: AiActionView): Editable => ({
 	enabled: action.enabled,
 	askInstruction: action.askInstruction,
+	instant: action.instant,
 	providerId: action.providerId,
 	modelName: action.modelName,
 	prompt: action.prompt,
@@ -555,6 +565,12 @@ function FeatureEditor({
 					/>
 					요청 받기
 				</Label>
+				{feature.apply !== "none" && (feature.result === "candidates" || feature.result === "text") && (
+					<Label className="font-normal text-xs">
+						<Switch size="sm" checked={spec.instant} onCheckedChange={(instant) => set({ instant })} />
+						바로 넣기
+					</Label>
+				)}
 			</div>
 
 			{custom && (

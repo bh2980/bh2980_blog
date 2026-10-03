@@ -40,11 +40,13 @@ export const aiPresets = {
 			input: fieldInput,
 			send: ["title", "body"],
 			result: "candidates",
+			// 누를 때마다 검사를 통과한 맨 앞 후보로 바로 바꾼다. 지금 값과 같은 후보는 빠지므로 누를 때마다 다른 주소다.
+			instant: true,
 			checks: [{ kind: "pattern", pattern: KEBAB_PATTERN }, { kind: "maxLength", max: 80 }, { kind: "unique" }],
 			prompt:
 				options.prompt ??
 				lines(
-					"글 제목과 본문을 보고 영어 URL 주소(slug) 후보 3개를 만든다.",
+					"글 제목과 본문을 보고 영어 URL 주소(slug) 후보 3개를 가장 알맞은 것부터 만든다.",
 					"- 소문자 영어, 숫자, 하이픈만 쓴다. 점·밑줄·공백은 쓰지 않는다",
 					"- 2~5단어. 관사와 전치사는 되도록 뺀다",
 					"- 기술 이름은 널리 쓰는 표기를 따른다 (nextjs, react-query, typescript)",

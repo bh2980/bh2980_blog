@@ -66,6 +66,26 @@ describe("화면 자리", () => {
 		expect(apply).toHaveBeenCalledTimes(2);
 	});
 
+	it("바로 넣는 동작은 맨 앞 후보를 바로 넣고 결과 칸을 열지 않는다. 넣을 것이 없으면 알린다", async () => {
+		const run = vi.fn(async () => ({
+			kind: "candidates" as const,
+			items: [
+				{ value: "first", label: "first" },
+				{ value: "second", label: "second" },
+			],
+		}));
+		const { apply } = renderSlot([() => [action({ run, instant: true })]]);
+		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
+		await waitFor(() => expect(apply).toHaveBeenCalledWith("first", "replace"));
+		expect(screen.queryByRole("button", { name: "second" })).toBeNull();
+
+		cleanup();
+		const empty = renderSlot([() => [action({ instant: true, run: async () => ({ kind: "candidates", items: [] }) })]]);
+		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
+		expect(await screen.findByText("맞는 후보가 없습니다.")).toBeTruthy();
+		expect(empty.apply).not.toHaveBeenCalled();
+	});
+
 	it("요청을 받는 동작은 입력을 먼저 열고, 적은 요청을 실행할 때 함께 보낸다", async () => {
 		const run = vi.fn(action().run);
 		renderSlot([() => [action({ run, askInstruction: true })]]);

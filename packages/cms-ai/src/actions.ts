@@ -105,6 +105,7 @@ const viewOf = (
 	stream: action.stream,
 	enabled: action.enabled,
 	askInstruction: action.askInstruction,
+	instant: action.instant,
 	providerId: action.providerId,
 	modelName: action.modelName,
 	prompt: action.prompt,

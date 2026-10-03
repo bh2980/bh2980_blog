@@ -92,6 +92,8 @@ export interface SlotAction {
 	apply: SlotApplyMode | "none";
 	/** 실행할 때 추가 요청을 받는다. 누르면 바로 실행하지 않고 요청 입력을 먼저 연다. */
 	askInstruction?: boolean;
+	/** 결과를 보여 주지 않고 바로 넣는다(후보는 첫 후보). 넣을 것이 없으면 결과 칸에 알린다. */
+	instant?: boolean;
 	run: (context: SlotContext, signal: AbortSignal) => Promise<SlotResult>;
 }
 
@@ -208,7 +210,15 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 			const request = action.askInstruction ? extra.trim() : "";
 			try {
 				const result = await action.run(request ? { ...context, request } : context, controller.signal);
-				if (runs.isCurrent(key, controller)) runs.set(key, { status: "done", action, result });
+				if (!runs.isCurrent(key, controller)) return;
+				const value =
+					result.kind === "candidates" ? result.items[0]?.value : result.kind === "text" ? result.text : undefined;
+				if (action.instant && action.apply !== "none" && value) {
+					requestRef.current.apply(value, action.apply);
+					runs.set(key, IDLE);
+					return;
+				}
+				runs.set(key, { status: "done", action, result });
 			} catch (error) {
 				if (runs.isCurrent(key, controller)) runs.set(key, { status: "error", action, message: errorMessage(error) });
 			}

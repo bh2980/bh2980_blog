@@ -187,6 +187,7 @@ export function AiSlotProvider({ children }: { children: ReactNode }) {
 					label: action.label,
 					apply: action.apply,
 					askInstruction: action.askInstruction,
+					instant: action.instant,
 					run: (context, signal) => {
 						const { input, env } = inputFromContext(action, context);
 						return runAiAction(action.key, input, { env, request: context.request, signal });

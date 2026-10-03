@@ -188,6 +188,8 @@ export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	readonly sameStructureAs?: keyof I & string;
 	/** 실행할 때 추가 요청을 받는다. 없으면 받지 않는다. */
 	readonly askInstruction?: boolean;
+	/** 누르면 결과를 보여 주지 않고 바로 넣는다(후보는 맨 앞 후보). 없으면 결과를 보이고 눌러서 넣는다. */
+	readonly instant?: boolean;
 	/** 결과를 흘려받는다(조금씩 보인다). 생성 방식의 글·MDX 결과만. */
 	readonly stream?: boolean;
 	/** 처음에 켜 둘까. 없으면 켠다. */
@@ -271,6 +273,7 @@ export const aiActionOverrideSchema = z
 	.object({
 		enabled: z.boolean(),
 		askInstruction: z.boolean(),
+		instant: z.boolean(),
 		/** 쓸 연결의 id. `null`이면 방식에 맞는 첫 연결. */
 		providerId: z.string().max(60).nullable(),
 		/** 쓸 모델 이름. 빈 글자면 연결의 기본 모델. */
@@ -304,6 +307,7 @@ export interface ResolvedAiAction {
 	readonly validate?: AiValidate;
 	readonly sameStructureAs?: string;
 	readonly askInstruction: boolean;
+	readonly instant: boolean;
 	readonly stream: boolean;
 	readonly enabled: boolean;
 	readonly providerId: string | null;
@@ -315,6 +319,7 @@ export interface ResolvedAiAction {
 export const EDITABLE_KEYS = [
 	"enabled",
 	"askInstruction",
+	"instant",
 	"providerId",
 	"modelName",
 	"prompt",
@@ -373,6 +378,7 @@ export function resolveAction(
 		...(definition.validate ? { validate: definition.validate } : {}),
 		...(definition.sameStructureAs ? { sameStructureAs: definition.sameStructureAs } : {}),
 		askInstruction: override.askInstruction ?? definition.askInstruction ?? false,
+		instant: override.instant ?? definition.instant ?? false,
 		stream: definition.stream ?? false,
 		enabled: override.enabled ?? definition.enabled ?? true,
 		providerId: override.providerId ?? null,
