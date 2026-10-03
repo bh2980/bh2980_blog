@@ -1117,11 +1117,9 @@ export function EntryEditorShell({
 								{titleInput}
 							</>
 						}
-						toolbarEnd={
-							<TemplateMenu currentMdx={form.mdx} disabled={isReadOnly} onApply={(mdx) => setForm({ mdx })} />
-						}
 						toolbarAside={
 							<span className="flex items-center gap-1">
+								<TemplateMenu currentMdx={form.mdx} disabled={isReadOnly} onApply={(mdx) => setForm({ mdx })} />
 								{extensions.toolbar}
 								{sourcePaneToggle}
 								{sourceModeToggle}
@@ -1134,7 +1132,6 @@ export function EntryEditorShell({
 						selectionActions={extensions.selectionActions}
 						insertActions={extensions.insertActions}
 						onEditor={extensions.onEditor}
-						{...(entry?.locale ? { locale: entry.locale } : {})}
 						onCompositionStart={() => autosave.setComposing(true)}
 						onCompositionEnd={() => autosave.setComposing(false)}
 					/>
