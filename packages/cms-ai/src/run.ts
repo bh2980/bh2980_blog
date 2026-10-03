@@ -1,6 +1,12 @@
 import { DEFAULT_LOCALE, readableMdx } from "@bh2980/cms/client";
 import { z } from "zod";
-import { type AiCheckContext, type AiCodeCheck, type AiRunEnv, type ResolvedAiAction, renderPrompt } from "./action";
+import {
+	type AiRunEnv,
+	type AiValidator,
+	type AiValidatorContext,
+	type ResolvedAiAction,
+	renderPrompt,
+} from "./action";
 import { type CheckEnv, checkCandidates, checkText } from "./checks";
 import { type AiCandidate, type AiResult, type AiRunResult, MAX_DECISION_OPTIONS } from "./definition";
 import { AiError } from "./errors";
@@ -181,7 +187,7 @@ async function collectMaterial(
 	return material;
 }
 
-const checkContext = (call: AiCall, deps: AiRunDeps, choices?: ReadonlyMap<string, string>): AiCheckContext => ({
+const checkContext = (call: AiCall, deps: AiRunDeps, choices?: ReadonlyMap<string, string>): AiValidatorContext => ({
 	input: call.input,
 	...(call.env.collection ? { collection: call.env.collection } : {}),
 	...(call.env.locale ? { locale: call.env.locale } : {}),
@@ -199,21 +205,21 @@ const checkContext = (call: AiCall, deps: AiRunDeps, choices?: ReadonlyMap<strin
 });
 
 /** 켜 둔 코드 검사(적힌 순서대로). */
-const activeCodeChecks = (action: ResolvedAiAction): AiCodeCheck[] =>
+const activeValidators = (action: ResolvedAiAction): AiValidator[] =>
 	action.checks.flatMap((check) => {
-		const code = check.kind === "code" && check.enabled ? action.codeChecks[check.name] : undefined;
+		const code = check.kind === "code" && check.enabled ? action.validators[check.name] : undefined;
 		return code ? [code] : [];
 	});
 
 /** 코드 검사를 후보마다 돌린다. 통과하지 못한 후보는 버리고, 설명을 주면 후보 옆에 붙인다. */
-async function runCodeChecks(
+async function runValidators(
 	action: ResolvedAiAction,
 	call: AiCall,
 	deps: AiRunDeps,
 	items: readonly AiCandidate[],
 	choices?: ReadonlyMap<string, string>,
 ): Promise<AiCandidate[]> {
-	const checks = activeCodeChecks(action);
+	const checks = activeValidators(action);
 	if (checks.length === 0) return [...items];
 	const context = checkContext(call, deps, choices);
 	const results = await Promise.all(
@@ -231,9 +237,9 @@ async function runCodeChecks(
 }
 
 /** 글·MDX 결과 전체에 코드 검사를 돌린다. 통과하지 못하면 이유와 함께 실패다. */
-async function runCodeChecksWhole(action: ResolvedAiAction, call: AiCall, deps: AiRunDeps, text: string) {
+async function runValidatorsWhole(action: ResolvedAiAction, call: AiCall, deps: AiRunDeps, text: string) {
 	const context = checkContext(call, deps);
-	for (const check of activeCodeChecks(action)) {
+	for (const check of activeValidators(action)) {
 		const result = await check.run(text, context);
 		if (result === false) throw new AiError("ai_failed", `결과가 ${check.label} 검사를 통과하지 못했습니다.`);
 		if (typeof result === "string") throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${result}`);
@@ -321,7 +327,7 @@ async function runGenerate(
 		const text = String(output.text ?? "").trim();
 		const problem = checkText(activeChecks(action), text);
 		if (problem) throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${problem}`);
-		await runCodeChecksWhole(action, call, deps, text);
+		await runValidatorsWhole(action, call, deps, text);
 		return { kind: "text", text };
 	}
 	if (action.result === "mdx") {
@@ -329,7 +335,7 @@ async function runGenerate(
 		if (!mdx) throw new AiError("ai_failed", "빈 결과입니다.");
 		const verdict = readableMdx(mdx);
 		if (!verdict.ok) throw new AiError("ai_failed", verdict.reason);
-		await runCodeChecksWhole(action, call, deps, mdx);
+		await runValidatorsWhole(action, call, deps, mdx);
 		return { kind: "mdx", text: mdx };
 	}
 
@@ -337,7 +343,7 @@ async function runGenerate(
 	const env = await checkEnv(action, call, choices);
 	return {
 		kind: "candidates",
-		items: await runCodeChecks(action, call, deps, checkCandidates(activeChecks(action), raw, env), env.options),
+		items: await runValidators(action, call, deps, checkCandidates(activeChecks(action), raw, env), env.options),
 	};
 }
 
@@ -397,12 +403,12 @@ export async function streamAiAction(
 	if (action.result === "text") {
 		const problem = checkText(activeChecks(action), text);
 		if (problem) throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${problem}`);
-		await runCodeChecksWhole(action, call, deps, text);
+		await runValidatorsWhole(action, call, deps, text);
 		return { kind: "text", text };
 	}
 	const verdict = readableMdx(text);
 	if (!verdict.ok) throw new AiError("ai_failed", verdict.reason);
-	await runCodeChecksWhole(action, call, deps, text);
+	await runValidatorsWhole(action, call, deps, text);
 	return { kind: "mdx", text };
 }
 
@@ -467,7 +473,7 @@ async function runDecide(
 		.map(({ option }) => option.value);
 	// 판단 결과에도 켜 둔 검사를 적용한다. 선택지 목록이 곧 후보 이름이다.
 	const env = await checkEnv(action, call, choices);
-	const items = await runCodeChecks(
+	const items = await runValidators(
 		action,
 		call,
 		deps,

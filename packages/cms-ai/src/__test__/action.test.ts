@@ -6,7 +6,7 @@ import {
 	aiAction,
 	aiActionOverrideSchema,
 	aiInput,
-	defineAiCheck,
+	defineValidator,
 	overrideFrom,
 	renderPrompt,
 	resolveAction,
@@ -53,7 +53,7 @@ describe("AI 기능 정의", () => {
 			{ kind: "maxLength", max: 40, enabled: true },
 			{ kind: "code", name: "unique-slug", enabled: false },
 		]);
-		expect(Object.keys(action.codeChecks)).toEqual(["unique-slug"]);
+		expect(Object.keys(action.validators)).toEqual(["unique-slug"]);
 		expect(action.definedChecks).toEqual(["pattern", "maxLength", "code:unique-slug"]);
 	});
 
@@ -76,13 +76,13 @@ describe("AI 기능 정의", () => {
 	});
 
 	it("코드 검사 이름은 소문자 하이픈이고 한 기능에 한 번만 쓴다", () => {
-		const check = defineAiCheck({ name: "no-dup", label: "겹침 없음", run: () => true });
+		const check = defineValidator({ name: "no-dup", label: "겹침 없음", run: () => true });
 		const action = (checks: AiActionDefinition["checks"]) =>
 			aiAction({ label: "x", input: { title: aiInput.text({ label: "제목" }) }, result: "text", prompt: "x", checks });
 		expect(() => validateAiConfig({ actions: { a: action([check, check]) } }, collections)).toThrow("listed twice");
 		expect(() =>
 			validateAiConfig(
-				{ actions: { a: action([defineAiCheck({ name: "Bad", label: "x", run: () => true })]) } },
+				{ actions: { a: action([defineValidator({ name: "Bad", label: "x", run: () => true })]) } },
 				collections,
 			),
 		).toThrow("kebab-case");

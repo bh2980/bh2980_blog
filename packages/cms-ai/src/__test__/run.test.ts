@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aiAction, aiInput, defineAiCheck, type ResolvedAiAction, resolveAction } from "../action";
+import { aiAction, aiInput, defineValidator, type ResolvedAiAction, resolveAction } from "../action";
 import { AiError } from "../errors";
 import type { AiDecider, AiProvider, AiRequest, DecisionAnswer, DecisionRequest } from "../provider";
 import { AI_ACTIONS } from "../registry";
@@ -142,7 +142,7 @@ describe("AI 기능 실행기", () => {
 				result: "candidates",
 				checks: [
 					{ kind: "oneOf", items: ["alpha", "beta"] },
-					defineAiCheck({
+					defineValidator({
 						name: "no-beta",
 						label: "베타 없음",
 						run: (value, context) => {
@@ -169,7 +169,7 @@ describe("AI 기능 실행기", () => {
 				input: { title: aiInput.text({ label: "제목" }) },
 				result: "text",
 				checks: [
-					defineAiCheck({
+					defineValidator({
 						name: "long-enough",
 						label: "길이 충분",
 						run: async (value) => (value.length < 10 ? "너무 짧다" : undefined),
@@ -189,7 +189,7 @@ describe("AI 기능 실행기", () => {
 				label: "쓰기",
 				input: { title: aiInput.text({ label: "제목" }) },
 				result: "text",
-				checks: [defineAiCheck({ name: "long-enough", label: "길이 충분", run: () => "막힘" })],
+				checks: [defineValidator({ name: "long-enough", label: "길이 충분", run: () => "막힘" })],
 				prompt: "쓴다.",
 			}),
 			{ checks: [{ kind: "code", name: "long-enough", enabled: false }] },

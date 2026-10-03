@@ -810,7 +810,7 @@ function FeatureEditor({
 									check={check}
 									label={
 										check.kind === "code"
-											? (feature.codeCheckLabels[check.name] ?? check.name)
+											? (feature.validatorLabels[check.name] ?? check.name)
 											: CHECK_LABELS[check.kind]
 									}
 									onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}

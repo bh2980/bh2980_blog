@@ -53,7 +53,7 @@ export type AiApply = (typeof AI_APPLIES)[number];
  * - `exists`: 선택지(`choices`)에 실제로 있는 값만
  * - `oneOf`: 정해 둔 목록(`items`) 중 하나인 것만
  *
- * 기능마다 다른 검사(주소 중복, 정규식 실행, 번역 구조 등)는 코드 검사(`defineAiCheck`)로 만들어 기능의 `checks`에 넣는다.
+ * 기능마다 다른 검사(주소 중복, 정규식 실행, 번역 구조 등)는 코드 검사(`defineValidator`)로 만들어 기능의 `checks`에 넣는다.
  * 고친 값에는 그 이름(`{ kind: "code", name }`)과 켜기만 남는다.
  */
 export const AI_CHECK_KINDS = ["pattern", "maxLength", "exists", "oneOf"] as const;

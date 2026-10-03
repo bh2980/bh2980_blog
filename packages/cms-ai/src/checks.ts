@@ -2,7 +2,7 @@ import type { AiCandidate, AiCheck } from "./definition";
 
 /**
  * 정해진 결과 검사(순수 함수). 기능에 적힌 검사 목록 중 켜 둔 것을 차례로 적용해, 통과하지 못한 후보는 버린다.
- * 후보를 고치거나 잘라 내지 않는다. 코드 검사(`defineAiCheck`)는 이 검사 다음에 실행기가 부른다.
+ * 후보를 고치거나 잘라 내지 않는다. 코드 검사(`defineValidator`)는 이 검사 다음에 실행기가 부른다.
  */
 
 export interface CheckEnv {

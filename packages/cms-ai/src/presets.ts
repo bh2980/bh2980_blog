@@ -1,6 +1,6 @@
 import { aiAction, aiInput } from "./action";
-import { regexRuns, sameStructure, uniqueSlug } from "./code-checks";
 import { KEBAB_PATTERN } from "./definition";
+import { regexRuns, sameStructure, uniqueSlug } from "./validators";
 
 /**
  * 기본 AI 기능(프리셋). `aiPlugin({ actions })`에 이름을 붙여 넣는다. 필드·컬렉션 이름은 사이트가 정한다.

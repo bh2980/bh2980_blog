@@ -31,7 +31,7 @@ export interface AiActionView extends AiActionEditable {
 	/** 기능 정의가 정한 검사(`checkKey`, 끌 수만 있다). 나머지는 관리자 화면에서 더한 검사다. */
 	definedChecks: string[];
 	/** 코드 검사 이름 → 보이는 이름. 코드 검사는 켜고 끄기만 한다. */
-	codeCheckLabels: Record<string, string>;
+	validatorLabels: Record<string, string>;
 	/** 결과를 흘려받는 기능인가. */
 	stream: boolean;
 	/** 관리자 화면에서 만든 기능(화면 기능)이면 그 기본 정보(이름·붙을 곳·결과 모양). 코드 기능은 없다. */
@@ -80,7 +80,7 @@ export const viewOf = (
 	maxCount: action.maxCount,
 	checks: [...action.checks],
 	definedChecks: [...action.definedChecks],
-	codeCheckLabels: Object.fromEntries(Object.values(action.codeChecks).map((check) => [check.name, check.label])),
+	validatorLabels: Object.fromEntries(Object.values(action.validators).map((check) => [check.name, check.label])),
 	send: [...action.send],
 	version: row?.version ?? 0,
 	updatedAt: row ? row.updatedAt.toISOString() : null,

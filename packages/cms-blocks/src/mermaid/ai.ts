@@ -1,4 +1,4 @@
-import { aiAction, aiInput, defineAiCheck } from "@bh2980/cms-ai";
+import { aiAction, aiInput, defineValidator } from "@bh2980/cms-ai";
 
 /**
  * Mermaid 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `aiPlugin({ actions })`에 이름을 붙여 넣는다.
@@ -57,7 +57,7 @@ export function validateMermaid(value: string): string | undefined {
 }
 
 /** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
-export const mermaidSyntax = defineAiCheck({ name: "mermaid-syntax", label: "Mermaid 문법", run: validateMermaid });
+export const mermaidSyntax = defineValidator({ name: "mermaid-syntax", label: "Mermaid 문법", run: validateMermaid });
 
 export const mermaidAi = {
 	/** 다이어그램 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 Mermaid 블록을 넣는다. */

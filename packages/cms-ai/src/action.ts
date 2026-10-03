@@ -27,7 +27,7 @@ import {
  *   입력을 채울 수 있을 때만 붙일 수 있다(타입과 `defineConfig`가 확인한다).
  *
  * 관리자 AI 화면에서는 켜기·요청 받기·연결·모델·보낼 입력·지시문·기준값·검사 값만 고치고, 고친 값만 DB에 둔다.
- * 정의는 서버와 브라우저가 함께 읽는다. 코드 검사(`defineAiCheck`)의 함수는 서버에서만 부른다.
+ * 정의는 서버와 브라우저가 함께 읽는다. 코드 검사(`defineValidator`)의 함수는 서버에서만 부른다.
  */
 
 // ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ export type AiChoices =
 // ---------------------------------------------------------------------------
 
 /** 코드 검사가 받는 상황. */
-export interface AiCheckContext {
+export interface AiValidatorContext {
 	/** 실행에 쓴 입력. */
 	readonly input: Readonly<Record<string, unknown>>;
 	readonly collection?: string;
@@ -158,13 +158,13 @@ export interface AiCheckContext {
  * 코드 검사의 결과. `true`·`null`·`undefined`면 통과, `false`면 버리고, 글자면 그 이유로 버린다.
  * 통과시키면서 후보 옆에 설명을 붙이려면 `{ detail }`.
  */
-export type AiCheckResult = boolean | string | null | undefined | { readonly detail: string };
+export type AiValidatorResult = boolean | string | null | undefined | { readonly detail: string };
 
 /**
- * 코드 검사(`defineAiCheck`). 정해진 검사(형식·길이·선택지)로 안 되는 것을 함수로 본다. 기능의 `checks`에 넣으면
+ * 코드 검사(`defineValidator`). 정해진 검사(형식·길이·선택지)로 안 되는 것을 함수로 본다. 기능의 `checks`에 넣으면
  * 관리자 화면에 이름이 보이고 켜고 끌 수 있다(값은 고칠 수 없다). 서버에서 값 하나(후보 하나, 또는 글·MDX 결과 전체)마다 부른다.
  */
-export interface AiCodeCheck {
+export interface AiValidator {
 	readonly kind: "code";
 	/** 기능 안에서 겹치지 않는 이름(소문자·숫자·하이픈). 고친 값(켜기)이 이 이름으로 남는다. */
 	readonly name: string;
@@ -172,13 +172,13 @@ export interface AiCodeCheck {
 	readonly label: string;
 	/** 처음에 켜 둘까. 없으면 켠다. */
 	readonly enabled?: boolean;
-	readonly run: (value: string, context: AiCheckContext) => AiCheckResult | Promise<AiCheckResult>;
+	readonly run: (value: string, context: AiValidatorContext) => AiValidatorResult | Promise<AiValidatorResult>;
 }
 
 /** 코드 검사를 만든다. 기능 정의의 `checks`에 정해진 검사와 함께 넣는다. */
-export const defineAiCheck = (check: Omit<AiCodeCheck, "kind">): AiCodeCheck => ({ kind: "code", ...check });
+export const defineValidator = (check: Omit<AiValidator, "kind">): AiValidator => ({ kind: "code", ...check });
 
-const isCodeCheck = (check: AiCheckInput | AiCodeCheck): check is AiCodeCheck => "run" in check;
+const isValidator = (check: AiCheckInput | AiValidator): check is AiValidator => "run" in check;
 
 export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	/** 관리자 화면과 버튼에 보이는 이름. */
@@ -201,10 +201,10 @@ export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	/** 판단 방식 후보 최대 개수. 없으면 5. */
 	readonly maxCount?: number;
 	/**
-	 * 결과 검사. 정해진 검사를 먼저, 코드 검사(`defineAiCheck`)를 그다음에 적힌 순서대로 적용한다.
+	 * 결과 검사. 정해진 검사를 먼저, 코드 검사(`defineValidator`)를 그다음에 적힌 순서대로 적용한다.
 	 * 관리자 화면에서는 켜기·값을 고치고, 형식·길이·선택지 안 검사를 더한다.
 	 */
-	readonly checks?: readonly (Exclude<AiCheckInput, { kind: "code" }> | AiCodeCheck)[];
+	readonly checks?: readonly (Exclude<AiCheckInput, { kind: "code" }> | AiValidator)[];
 	/** 실행할 때 추가 요청을 받는다. 없으면 받지 않는다. */
 	readonly askInstruction?: boolean;
 	/** 누르면 결과를 보여 주지 않고 바로 넣는다(후보는 맨 앞 후보). 없으면 결과를 보이고 눌러서 넣는다. */
@@ -324,7 +324,7 @@ export interface ResolvedAiAction {
 	/** 기능 정의가 정한 검사(`checkKey`). 관리자 화면은 이것을 끌 수만 있고, 나머지(사용자가 더한 검사)는 뺄 수 있다. */
 	readonly definedChecks: readonly string[];
 	/** 코드 검사 이름 → 검사. `checks`의 `{ kind: "code" }` 항목이 가리킨다. */
-	readonly codeChecks: Readonly<Record<string, AiCodeCheck>>;
+	readonly validators: Readonly<Record<string, AiValidator>>;
 	readonly askInstruction: boolean;
 	readonly instant: boolean;
 	readonly stream: boolean;
@@ -352,7 +352,7 @@ export type AiActionEditable = Pick<ResolvedAiAction, (typeof EDITABLE_KEYS)[num
 
 const defaultChecks = (definition: AiActionDefinition): AiCheck[] =>
 	(definition.checks ?? []).map((check) =>
-		isCodeCheck(check)
+		isValidator(check)
 			? { kind: "code", name: check.name, enabled: check.enabled ?? true }
 			: aiCheckSchema.parse(check),
 	);
@@ -398,7 +398,7 @@ export function resolveAction(
 			),
 		],
 		definedChecks: base.map(checkKey),
-		codeChecks: Object.fromEntries((definition.checks ?? []).filter(isCodeCheck).map((check) => [check.name, check])),
+		validators: Object.fromEntries((definition.checks ?? []).filter(isValidator).map((check) => [check.name, check])),
 		askInstruction: override.askInstruction ?? definition.askInstruction ?? false,
 		instant: override.instant ?? definition.instant ?? false,
 		stream: definition.stream ?? false,
@@ -619,7 +619,7 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView, blo
 		const codeNames = new Set<string>();
 		for (const check of action.checks ?? []) {
 			if (check.kind === "exists" && !choices) throw new Error(`${where}: exists check needs choices`);
-			if (isCodeCheck(check)) {
+			if (isValidator(check)) {
 				if (!CODE_CHECK_NAME.test(check.name))
 					throw new Error(`${where}: check name "${check.name}" must be kebab-case`);
 				if (codeNames.has(check.name)) throw new Error(`${where}: check "${check.name}" is listed twice`);

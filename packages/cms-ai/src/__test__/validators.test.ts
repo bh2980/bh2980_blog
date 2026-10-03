@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { AiCheckContext } from "../action";
-import { regexRuns, sameStructure, uniqueSlug } from "../code-checks";
+import type { AiValidatorContext } from "../action";
+import { regexRuns, sameStructure, uniqueSlug } from "../validators";
 
-const context = (input: Record<string, unknown>, taken: string[] = []): AiCheckContext => ({
+const context = (input: Record<string, unknown>, taken: string[] = []): AiValidatorContext => ({
 	input,
 	slugsInUse: async (slugs) => new Set(slugs.filter((slug) => taken.includes(slug))),
 });

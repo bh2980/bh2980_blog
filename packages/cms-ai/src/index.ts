@@ -6,17 +6,17 @@
 export {
 	type AiActionDefinition,
 	type AiAttach,
-	type AiCheckContext,
-	type AiCheckResult,
 	type AiChoices,
-	type AiCodeCheck,
 	type AiConfig,
 	type AiInputSpec,
 	type AiSharedText,
+	type AiValidator,
+	type AiValidatorContext,
+	type AiValidatorResult,
 	aiAction,
 	aiInput,
-	defineAiCheck,
+	defineValidator,
 } from "./action";
-export { regexRuns, sameStructure, uniqueSlug } from "./code-checks";
 export { aiPlugin } from "./plugin";
 export { aiPresets } from "./presets";
+export { regexRuns, sameStructure, uniqueSlug } from "./validators";
