@@ -193,9 +193,16 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 
 	const paths = new Map<string, string>();
 	for (const [collection, schema] of Object.entries(config.collections)) {
-		// 목록·검색·관계 고르기·본문 링크·편집 화면 제목 칸이 `title`을 쓴다.
+		// 라이브러리 약속: 제목 필드 이름은 `title`이다(이름표는 자유). 목록·검색·관계 고르기·본문 링크·편집 화면 제목 칸이 쓴다.
 		if (schema.fields.title?.kind !== "text") {
 			throw new Error(`cms.config: ${collection} needs a "title" text field (fields.text)`);
+		}
+		// 주소는 콘텐츠마다 하나다(저장소의 주소 열이 하나). 둘째 주소 필드는 쓰이지 않으므로 설정 오류로 막는다.
+		const slugFields = Object.entries(schema.fields).filter(([, field]) => field.kind === "slug");
+		if (slugFields.length > 1) {
+			throw new Error(
+				`cms.config: ${collection} has more than one slug field (${slugFields.map(([name]) => name).join(", ")}); a collection can have only one`,
+			);
 		}
 		validateFieldMeanings(collection, schema);
 		if (schema.path !== undefined) {

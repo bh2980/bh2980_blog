@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cmsFetch, errorText } from "./admin-api";
 import { type BulkItemResult, type BulkSelection, describeBulkFailure, runBulk } from "./entries/bulk-bar";
+import { copyTitle } from "./entries/entry-form";
 import { actionTargets, type BulkParams, rowMenuActions, toSelection } from "./list-row-menu";
 import {
 	isExplorerMode,
@@ -360,6 +361,7 @@ export function useEntryList(mode: ListMode) {
 		try {
 			const copy = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${item.id}/duplicate`, {
 				method: "POST",
+				json: { title: copyTitle(item.collection, item.title) },
 				fallback: "복제하지 못했습니다.",
 			});
 			toast.success(`'${item.title || "제목 없음"}'을(를) 복제했습니다.`);

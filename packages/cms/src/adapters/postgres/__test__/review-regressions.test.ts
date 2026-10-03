@@ -204,7 +204,7 @@ describe("review regressions", () => {
 		});
 		const source = await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
 		expect(source.publishedAt).toBeInstanceOf(Date);
-		const copy = await store.duplicateEntry({ id: source.id });
+		const copy = await store.duplicateEntry({ id: source.id, title: "원본 (복사)" });
 		expect(copy.publishedAt).toBeUndefined();
 		expect(copy.working.metadata.title).toBe("원본 (복사)");
 		const recomputed = await prepareSnapshot({

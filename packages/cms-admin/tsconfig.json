@@ -17,5 +17,5 @@
 			"@cms-server": ["../cms/test/cms.server.ts"]
 		}
 	},
-	"include": ["src", "vitest.config.ts"]
+	"include": ["src", "vitest.config.ts", "vitest.othersite.config.ts"]
 }

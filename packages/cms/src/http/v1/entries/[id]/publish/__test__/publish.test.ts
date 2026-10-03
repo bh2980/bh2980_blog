@@ -71,7 +71,7 @@ describe("M10 publish HTTP contract", () => {
 	});
 
 	it("does not publish when validation fails", async () => {
-		const issues = [{ code: "missing_title", path: "title" }];
+		const issues = [{ code: "missing_field", path: "title", message: "제목" }];
 		publishEntry.mockRejectedValue(new ServiceError("publish_validation_failed", issues));
 		const response = await POST(request(), context);
 		expect(response.status).toBe(422);

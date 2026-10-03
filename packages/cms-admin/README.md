@@ -154,3 +154,13 @@ export const POST = textCheckRoute({
 
 `@bh2980/cms-admin/styles.css`가 관리자 색 토큰과 배포 묶음의 Tailwind 클래스 찾기(`@source`)를 준다. 앱 쪽 준비물은
 `styles.css` 머리 주석에 적었다.
+
+## 개발
+
+```bash
+pnpm --filter @bh2980/cms-admin test:run        # 예시 블로그 설정 + 다른 사이트 설정
+pnpm --filter @bh2980/cms-admin test:other-site # 다른 사이트 설정(`../cms/test/other-site.config.ts`)만
+```
+
+화면 테스트는 블로그와 다른 사이트 설정으로도 돈다(`vitest.othersite.config.ts`, 본체 README "개발"). 컬렉션·필드·블록 이름과
+이름표는 테스트에 적지 말고 설정에서 읽는다(예: `src/screens/__test__/any-site-screens.test.tsx`).

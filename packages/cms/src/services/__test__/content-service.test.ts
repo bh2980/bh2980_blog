@@ -109,7 +109,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				mdx: "",
 			});
 			expect(result.metadata).toEqual({});
-			expect(result.issues.some((i: { code: string }) => i.code === "missing_title")).toBe(false);
+			expect(result.issues.some((i: { code: string }) => i.code === "missing_field")).toBe(false);
 		});
 	});
 
@@ -160,7 +160,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(result.metadata.title).toBe(title200);
 			await expect(
 				prepareSnapshot({ collection: "post", slug: "valid", metadata: { title: title201 }, mdx: "" }),
-			).rejects.toMatchObject({ code: "title_too_long" });
+			).rejects.toMatchObject({
+				code: "field_too_long",
+				issues: [{ code: "field_too_long", path: "title", message: "제목" }],
+			});
 		});
 
 		it("allows equal slug in two different collection inputs", async () => {
@@ -525,7 +528,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				"missing title",
 				{ ...validSnap, metadata: { categoryId: "123e4567-e89b-12d3-a456-426614174001" } },
 				validResolvedTargets,
-				"missing_title",
+				"missing_field",
 			],
 			["null slug", { ...validSnap, slug: null }, validResolvedTargets, "null_slug"],
 			["empty body", { ...validSnap, mdx: "" }, validResolvedTargets, "empty_body"],

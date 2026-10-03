@@ -26,7 +26,7 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		await closeGlobalPool();
 	});
 
-	it("duplicates entry draft with '(복사)' title, empty slug, draft status, and preserved references", async () => {
+	it("duplicates entry draft with the caller's title, empty slug, draft status, and preserved references", async () => {
 		const media = await store.createMediaAsset({
 			filename: "sample.png",
 			mimeType: "image/png",
@@ -89,7 +89,8 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		expect(publishedOrig.publishedSlug).toBe("orig-slug");
 
 		// Execute duplicate
-		const duplicated = await store.duplicateEntry({ id: original.id });
+		// 붙일 말은 부르는 쪽(관리자 화면)이 정한다. 저장소는 받은 제목을 그대로 저장한다.
+		const duplicated = await store.duplicateEntry({ id: original.id, title: "Original Post (copy)" });
 
 		// 1. Different ID, version 1, draft status
 		expect(duplicated.id).toBeDefined();
@@ -97,8 +98,8 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		expect(duplicated.version).toBe(1);
 		expect(duplicated.status).toBe("draft");
 
-		// 2. Title has '(복사)' suffix, slug is null/empty
-		expect(duplicated.working.metadata.title).toBe("Original Post (복사)");
+		// 2. Title is what the caller gave, slug is null/empty
+		expect(duplicated.working.metadata.title).toBe("Original Post (copy)");
 		expect(duplicated.workingSlug).toBeNull();
 		expect(duplicated.publishedSlug).toBeNull();
 		expect(duplicated.published).toBeUndefined();
@@ -120,6 +121,24 @@ describe("M5-BE-1 Duplicate Entry Contract", () => {
 		expect(duplicated.working.mdx).toBe("Hello world ![img](mediaId)");
 		expect(duplicated.working.metadata.categoryId).toBe(category.id);
 		expect(duplicated.working.metadata.tagIds).toEqual([tag.id]);
+	});
+
+	it("keeps the original title when no title is given, and checks the title field's max", async () => {
+		const original = await seedEntry(store, {
+			collection: "post",
+			slug: "keep-title",
+			metadata: { title: "Same title" },
+			mdx: "",
+			schemaVersion: 1,
+			contentHash: randomUUID(),
+		});
+		const copy = await store.duplicateEntry({ id: original.id });
+		expect(copy.working.metadata.title).toBe("Same title");
+		// 제목 필드의 `max`(예시 설정 200자)를 넘으면 필드 경로를 담은 일반 오류다.
+		await expect(store.duplicateEntry({ id: original.id, title: "가".repeat(201) })).rejects.toMatchObject({
+			code: "field_too_long",
+			issues: [{ code: "field_too_long", path: "title", message: "제목" }],
+		});
 	});
 
 	it("throws not_found when duplicating non-existent entry", async () => {

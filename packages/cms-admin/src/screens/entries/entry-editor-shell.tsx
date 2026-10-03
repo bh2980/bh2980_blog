@@ -11,6 +11,7 @@ import {
 	parseDateTimeInput,
 	slugFieldOf,
 	slugFromValues,
+	storedField,
 } from "@bh2980/cms/client";
 import { analyze } from "@bh2980/cms/mdx";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
@@ -61,6 +62,7 @@ import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
 import { SIDE_PANEL_WIDTH } from "../shared/side-panel";
 import {
+	copyTitle,
 	EMPTY_FORM,
 	type EntryData,
 	type EntryForm,
@@ -733,7 +735,10 @@ export function EntryEditorShell({
 		const id = await ensureSaved("복제");
 		if (!id) return;
 		try {
-			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, { method: "POST", json: {} });
+			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, {
+				method: "POST",
+				json: { title: copyTitle(collection, formText(formRef.current, "title")) },
+			});
 			router.push(`/admin/entries/${copy.id}/edit`);
 		} catch (error) {
 			toast.error(errorText(error, "복제하지 못했습니다."));
@@ -796,10 +801,12 @@ export function EntryEditorShell({
 				onTrashTranslation={() => confirmLifecycle("trash")}
 			/>
 		) : null;
+	// 제목 칸은 라이브러리 약속인 `title` 필드다. 이름표는 사이트가 정한다.
+	const titleLabel = (isCollection(collection) ? storedField(collection, "title")?.field.label : undefined) ?? "제목";
 	const titleInput = (
 		<>
 			<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
-				제목
+				{titleLabel}
 			</FieldLabel>
 			<Input
 				id="cms-title-canvas"

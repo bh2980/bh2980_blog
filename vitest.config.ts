@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => ({
 				},
 			},
 			"packages/*",
+			// 재발 방지(M10-1): 블로그와 다른 사이트 설정으로 본체·관리자·AI 테스트를 다시 돈다.
+			"packages/*/vitest.othersite.config.ts",
 		],
 		testTimeout: 60000,
 		hookTimeout: 60000,

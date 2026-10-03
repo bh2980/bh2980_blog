@@ -151,3 +151,13 @@ aiPlugin({
 | `@bh2980/cms-ai` | `aiPlugin`, `aiAction`, `aiInput`, `aiPresets` (사이트 설정용, 서버·브라우저 공용) |
 | `@bh2980/cms-ai/server` | 서버 쪽(API 경로·표 만들기). 본체가 불러 쓴다. 브라우저 묶음에서는 빈 진입점이다 |
 | `@bh2980/cms-ai/admin` | 관리자 쪽(AI 화면·공급자), `useAiAction`, `AiButton` |
+
+## 개발
+
+```bash
+pnpm --filter @bh2980/cms-ai test:run        # 예시 블로그 설정 + 다른 사이트 설정
+pnpm --filter @bh2980/cms-ai test:other-site # 다른 사이트 설정(`test/other-site.config.ts`)만
+```
+
+다른 사이트 설정은 AI 필드 기능을 그 사이트의 필드 이름(`excerpt`·`topicIds`·`authorId`·`metaTitle`…)에 붙인다. 설정과 상관없는
+확인은 `src/__test__/any-site.test.ts`다(필드 기능이 맞는 종류의 필드에 붙는지, 자리 입력으로 실행되는지).

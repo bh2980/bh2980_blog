@@ -135,7 +135,11 @@ describe("정의에서 만든 서버 규칙", () => {
 		await expect(post({ title: "t", publishedAt: "2020-01-01T00:00:00.000Z" })).rejects.toMatchObject({
 			code: "invalid_metadata_key",
 		});
-		await expect(post({ title: "가".repeat(201) })).rejects.toMatchObject({ code: "title_too_long" });
+		// 제목 글자 수 한도는 제목 필드의 `max`(200자)다. 오류 코드는 다른 필드와 같고 필드 경로를 담는다.
+		await expect(post({ title: "가".repeat(201) })).rejects.toMatchObject({
+			code: "field_too_long",
+			issues: [{ code: "field_too_long", path: "title", message: "제목" }],
+		});
 	});
 
 	it("관계 참조를 선언 순서대로 모으고 목록은 순서·중복을 보존한다", () => {
@@ -150,10 +154,10 @@ describe("정의에서 만든 서버 규칙", () => {
 		]);
 	});
 
-	it("발행 필수값: 주소·제목은 v1 코드, 나머지는 라벨을 담은 missing_field", () => {
+	it("발행 필수값: 주소는 null_slug, 제목을 포함한 나머지는 라벨을 담은 missing_field", () => {
 		expect(missingRequiredIssues("post", { slug: null, metadata: { title: "" } })).toEqual([
 			{ code: "null_slug", path: "slug" },
-			{ code: "missing_title", path: "title" },
+			{ code: "missing_field", path: "title", message: "제목" },
 			{ code: "missing_field", path: "categoryId", message: "카테고리" },
 		]);
 		expect(missingRequiredIssues("memo", { slug: "a", metadata: { title: "t" } })).toEqual([]);

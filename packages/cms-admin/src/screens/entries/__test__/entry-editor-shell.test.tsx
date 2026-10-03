@@ -320,7 +320,7 @@ describe("entry editor shell", () => {
 						{
 							code: "publish_validation_failed",
 							issues: [
-								{ code: "missing_title", path: "title" },
+								{ code: "missing_field", path: "title", message: "제목" },
 								{ code: "mdx_error", path: "mdx", position: { line: 2, column: 2 } },
 							],
 						},

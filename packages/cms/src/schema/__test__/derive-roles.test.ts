@@ -68,10 +68,10 @@ describe("slug from", () => {
 });
 
 describe("missing required fields", () => {
-	it("uses missing_field with the field label for site fields", () => {
+	it("uses missing_field with the field label for every field, title included", () => {
 		expect(missingRequiredIssues(article, { slug: null, metadata: { title: "" } })).toEqual([
 			{ code: "null_slug", path: "slug" },
-			{ code: "missing_title", path: "title" },
+			{ code: "missing_field", path: "title", message: "Title" },
 			{ code: "missing_field", path: "topicId", message: "Topic" },
 		]);
 	});

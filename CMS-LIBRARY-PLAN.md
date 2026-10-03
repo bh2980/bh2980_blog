@@ -324,6 +324,10 @@ AI 설계(D6·D9·D10)를 실제 기능으로 먼저 검증한다. 화면 확장
 | M10-3 | **설정 줄이기·블록 정리.** `workflow` → `kind: "document" \| "item"`(예전 값도 받기), `required: true`, `layout`·목록 칸 기본값, `blocks()`. 툴팁·코드 연결·글자색을 블록 확장으로(정렬·파일은 본체). Mermaid·차트 편집기 미리보기를 블록 확장이 가져온다. 블록 확장 편집기 모양은 테마 색. 요약 채우기 `fillFromBody: { maxLength }`, 요약 입력 이름 일반화. 자잘한 것: `translations` 필드 이름 막기, 모음집 오류 코드, DB 제약의 `category`·`tag`, 빈 본문 검사는 `body` 설정, 날짜 `ko-KR` 고정, 관계 입력 문구 "글", 예전 열 이름 바꾸기 코드, 분류 사용처 링크, 내부 링크 경로, 임시 저장소 예전 이름, 분류 "번역 있음" 판단 | 블로그 설정 절반 이하, 기존 글 그대로 읽힘 |
 | M10-4 | **경로·설치.** 관리자 경로 설정(`/admin` 고정 제거, API `/api/cms/v1`은 고정), 언어 주소 형식·미리보기 언어 설정, 사이트 홈 링크. `cms init`·`cms migrate` 명령, 로그인 경로를 CMS API에 합치기, Tailwind 변형을 관리자 CSS에 | 새 사이트가 `cms init` → 컬렉션 작성 → `cms migrate`로 뜬다 |
 
+재발 방지 장치(M10-1): 본체·관리자·AI 테스트는 블로그 예시 설정과 블로그와 일부러 다른 설정(`packages/cms/test/other-site.config.ts`)
+둘 다로 돈다(패키지마다 `vitest.othersite.config.ts`, 루트 `pnpm test:run`에 포함). 새 테스트는 기본으로 두 설정에서 돌고,
+블로그 예시 데이터를 그대로 쓰는 테스트만 `BLOG_FIXTURE_TESTS`에 적어 뺀다. 컬렉션·필드 이름은 설정에서 찾는다(`test/any-site.ts`).
+
 ### 순서
 
 ```text
@@ -446,6 +450,12 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | 2026-10-03 | 하드코딩 정리 | **속성 칸 탭과 보기 필드는 스키마로.** `layout` 묶음의 `seo: true`를 없애고 `tab`(탭 이름, 같은 이름끼리 한 탭, 없으면 `속성`)을 둔다. 검색·공유 미리보기는 저장하지 않는 보기 필드 `fields.view({ view: "search" })`로 다른 필드처럼 자리를 정한다. 본체는 화면 `search`를 주고, 관리자 확장 `fieldViews`로 바꾸거나 더한다. 블로그는 `tab: "SEO"` + `searchPreview` 보기 필드 | SEO 탭 하나만 정해져 있고 미리보기가 묶음 설정에 붙어 있어 사이트가 탭과 화면을 자유롭게 구성할 수 없었다 |
 | 2026-10-03 | 확장 | **맞춤법·문장 검사는 확장점만 둔다.** `defineTextChecker`·`remoteTextChecker`(`@bh2980/cms-admin/text-check`)로 만든 검사기를 `textCheckExtension({ checkers })`로 관리자 확장(`editorExtensions`)에 넣으면 검사기마다 도구 모음 버튼(`label`·`icon`)이 생긴다. 본체 편집기는 검사기를 모르고 확장이 준 버튼·창을 그리기만 한다(확장을 여럿 넣어도 밑줄 플러그인은 따로). 검사 단위는 문단(`{ id, text, locale }`), 결과 위치는 문단 안 UTF-16. 버튼 검사가 기본이고 `auto: true`인 검사기만 바뀐 문단을 저절로 검사한다. 문단 글자별 캐시, 한도별 나눠 보내기, 다시 검사·닫기 때 요청 끊기. 코드·수식·속성·주소는 보내지 않는다. 키가 필요한 API는 서버 경로 `textCheckRoute`(`/text-check/server`, 관리자 인증) | 검사기마다 비용·약관·언어가 달라 기본값을 넣지 않는다. 유료·호출 제한 API를 생각해 저절로 검사는 검사기마다 켠다 |
 | 2026-10-03 | 확장 | **첫 검사기는 바른(`@bh2980/cms-text-check/bareun`).** 검사기는 새 패키지 `@bh2980/cms-text-check`에 검사기마다 경로(`./bareun`·`./bareun/server`·`./bareun/admin`)로 두고, `plugins: [bareun()]` 한 줄로 서버 경로(`/api/cms/v1/text-check/bareun`, `textCheckRoute`)와 편집기 검사기(`remoteTextChecker`)를 함께 단다. 키는 서버 환경 변수 `BAREUN_API_KEY`(없으면 503 `text_check_unavailable`, 바른을 부르지 않음). 문단은 `\n`으로 이어 한 번에 `encodingType: UTF16`으로 보내고 위치를 문단별로 다시 나눈다. 합친 블록(`nested`)은 낱낱의 고침으로 펼치고, 문단 경계·`￼`에 걸치거나 원문과 맞지 않는 결과는 버린다. 자동 검사는 끔, 한 번에 100문단·10,000자. `bareun` npm 패키지 없이 `fetch`로 부른다. 블로그 설정에 등록 | 바른은 쓴 만큼 요금이 든다(무료 한 달 약 5만 어절). 합친 블록의 설명은 "여러 수정이 합쳐졌다"뿐이라 설명·규칙이 있는 낱낱의 고침이 쓸모 있다. 겹치는 낱낱 고침은 하나를 고치면 다른 하나가 사라진다(다시 검사하면 나온다) |
+| 2026-10-04 | M10-1 | **재발 방지: 다른 사이트 설정으로도 테스트한다.** `packages/cms/test/other-site.config.ts`(예시 앱 `examples/other-site/cms.config.ts`와 같은 모양)는 블로그와 일부러 다르다: 컬렉션 article·topic·author, `title`·`slug` 말고는 다른 필드 이름(`excerpt`·`authorId`·`topicIds`·`heroImage`·`format`·`metaTitle`·`shareImage`·`hideFromSearch`)과 이름표, 제목 `max` 120, 영어만, 블록은 차트 + 사이트 블록(인용 카드·코드 펜스 지도). 본체·관리자·AI 패키지에 `vitest.othersite.config.ts`(묶음 `cms (other-site)`·`cms-admin (other-site)`·`cms-ai (other-site)`)를 두고 루트 `pnpm test:run`이 함께 돈다. 새 테스트는 저절로 두 설정으로 돌고, 블로그 예시 데이터(post·tag·callout·ko/ja 등)를 그대로 쓰는 테스트만 각 설정의 `BLOG_FIXTURE_TESTS`로 뺀다. 설정과 상관없는 확인을 더했다: 본체 `services/__test__/any-site.test.ts`(DB: 분류 저장·발행·제목 `missing_field`·제목 `max`·목록·관계 이름·사용처·복제)와 `mdx/__test__/any-site-blocks.test.ts`, 관리자 `screens/__test__/any-site-screens.test.tsx`(목록·복제·분류 칸·편집 화면)와 `editor/__test__/any-site-blocks.test.ts`, AI `__test__/any-site.test.ts`(필드 기능이 맞는 종류의 필드에 붙고 실행된다). 컬렉션·필드는 `packages/cms/test/any-site.ts`가 설정에서 찾는다 | 블로그 설정으로만 돌면 블로그 이름을 가정한 코드가 다시 생겨도 모른다. 포함 목록 대신 제외 목록이라 새 테스트가 기본으로 다른 설정에서도 돈다 |
+| 2026-10-04 | M10-1 | **제목 약속: 제목 필드 이름은 `title`, 이름표는 자유.** 본체 README에 적었다. 편집 화면 제목 칸의 (화면 낭독용) 이름표도 제목 필드의 `label`을 쓴다(블로그는 그대로 "제목"). 목록의 제목 열 이름표("제목")는 그대로 둔다 | 블로그 분류 목록의 열 이름이 "이름"으로 바뀌는 눈에 띄는 변화라서 뒤로 미룬다 |
+| 2026-10-04 | M10-1 | **복제 제목은 부르는 쪽이 정한다.** 저장소의 `duplicateEntry({ id, title? })`는 받은 `title`을 그대로 저장하고(제목 필드 규칙만 확인, 어긋나면 `field_too_long`), 없으면 원본 제목 그대로다. API `POST /entries/:id/duplicate`는 본문 `{ title? }`을 받는다. 관리자 화면(`copyTitle`)이 원본 제목에 " (복사)"를 붙이고(비면 "제목 없음 (복사)") 제목 필드 `max`를 넘으면 원본 쪽을 줄여 보낸다 | 저장소가 한국어 문구와 필드 이름을 정하고 있었다. 블로그 화면 결과는 그대로다 |
+| 2026-10-04 | M10-1 | **제목 글자 수와 오류 코드는 일반 필드와 같다.** 고정 `MAX_TITLE_LENGTH`(200)와 API 메타 `limits.titleLength`를 없애고 제목 필드의 `max`를 쓴다(블로그 설정은 `max: 200`이라 동작 그대로, 관리자 화면은 스키마를 읽는다). `missing_title`·`title_too_long` 대신 `missing_field`·`field_too_long`이고, 둘 다 문제(`issues`)에 `path`(필드 이름, 분류 번역은 `translations.<언어>.<필드>`)와 `message`(필드 이름표)를 담는다(다른 값 오류 코드는 전과 같이 문제 없이 보낸다). 관리자 문구는 "<이름표>을/를 입력하세요."·"<이름표>이/가 너무 깁니다.". `fieldValueError(field, value)`는 필드 이름 인자를 뺐다 | 제목만 다른 코드라서 라이브러리가 필드 이름 `title`을 특별히 봤다. 화면 문구는 그대로다("제목을 입력하세요.") |
+| 2026-10-04 | M10-1 | `defineConfig`는 한 컬렉션에 주소 필드(`fields.slug`)가 둘 이상이면 오류를 낸다 | 저장소의 주소 열은 하나라서 둘째 주소 필드는 쓰이지 않았다 |
+| 2026-10-04 | M10-1 | 관리자 편집기 확인 중 찾음: 본문이 꼭 있어야 하는 사용자 컨테이너 블록(`children.min` 없음 = 1)을 슬래시 메뉴로 넣고 비운 채 저장하면 다시 열 때 원문 상자가 된다. 지금 규칙(빈 컨테이너는 원문 상자, 테스트 `빈 컨테이너(콜아웃 제외)…`)대로라 고치지 않았고, 설정과 상관없는 편집기 확인은 본문에 글을 쓴 상태로 왕복한다 | 블로그 블록은 본문 없는 블록을 허용(`min: 0`)해 영향이 없다. 바꿀지는 M10-3 블록 정리 때 정한다 |
 
 ## 7. 진행 상태
 
@@ -461,7 +471,7 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | M7 | M7-1~3 완료 (M7-4 새 레포 이전은 하지 않음) |
 | M8 | 완료 |
 | M9 | 완료 |
-| M10 | 진행 전 (M10-1부터) |
+| M10 | M10-1 완료 |
 
 ---
 

@@ -127,12 +127,12 @@ export function relationsOf(collection: SchemaCollection): { field: string; kind
 /**
  * 저장 형식 검사를 통과한 값의 의미를 검사한다. 문제가 있으면 v1 API의 오류 코드를 돌려준다.
  */
-export function fieldValueError(field: ValueField, name: string, value: string | readonly string[]): string | null {
+export function fieldValueError(field: ValueField, value: string | readonly string[]): string | null {
 	const values = typeof value === "string" ? [value] : value;
 	switch (field.kind) {
 		case "text":
 			if (field.max !== undefined && values.some((item) => Array.from(item).length > (field.max ?? 0))) {
-				return name === "title" ? "title_too_long" : "field_too_long";
+				return "field_too_long";
 			}
 			return null;
 		case "select":
@@ -184,11 +184,10 @@ export function relationRule(
 }
 
 /**
- * 필수값 문제 코드. 주소 필드는 `null_slug`, 핵심 필드 `title`은 `missing_title`(v1 API와 같다), 나머지는
- * `missing_field`이고 `message`에 필드 라벨을 담는다.
+ * 필수값 문제 코드. 주소 필드는 `null_slug`, 나머지(제목 포함)는 `missing_field`이고 `path`에 필드 이름,
+ * `message`에 필드 라벨을 담는다.
  */
 const NULL_SLUG = "null_slug";
-const MISSING_TITLE = "missing_title";
 
 const isEmptyValue = (value: unknown) =>
 	value === undefined ||
@@ -214,11 +213,7 @@ export function missingRequiredIssues(
 		if (!required(field)) continue;
 		if (when && snapshot.metadata[when.field] !== when.value) continue;
 		if (isEmptyValue(snapshot.metadata[name])) {
-			issues.push(
-				name === "title"
-					? { code: MISSING_TITLE, path: name }
-					: { code: "missing_field", path: name, message: field.label },
-			);
+			issues.push({ code: "missing_field", path: name, message: field.label });
 		}
 	}
 	return issues;
@@ -290,7 +285,7 @@ export function normalizeRecordTranslations(
 	collection: SchemaCollection,
 	value: unknown,
 	locales: readonly string[],
-): { value: RecordTranslations } | { error: string } {
+): { value: RecordTranslations } | { error: string; path?: string; label?: string } {
 	const fieldsAllowed = recordLocalizedFields(collection);
 	const isPlain = (item: unknown): item is Record<string, unknown> =>
 		typeof item === "object" &&
@@ -308,8 +303,8 @@ export function normalizeRecordTranslations(
 			const field = storedField(collection, name)?.field;
 			if (!fieldsAllowed.includes(name) || field?.kind !== "text") return { error: "invalid_metadata_key" };
 			if (typeof text !== "string") return { error: "invalid_metadata_type" };
-			const error = fieldValueError(field, name, text);
-			if (error) return { error };
+			const error = fieldValueError(field, text);
+			if (error) return { error, path: `${RECORD_TRANSLATIONS_KEY}.${locale}.${name}`, label: field.label };
 			if (text.trim()) cleaned[name] = text.trim();
 		}
 		if (Object.keys(cleaned).length > 0) result[locale] = cleaned;

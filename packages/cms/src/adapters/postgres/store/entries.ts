@@ -4,8 +4,14 @@ import type { PoolClient } from "pg";
 import { isCollection, isRecordCollection } from "../../../core/collections";
 import { DEFAULT_LOCALE, isLocale } from "../../../core/locales";
 import { computeContentHash } from "../../../core/snapshot";
-import { normalizeReferenceKind, type PreparedSnapshot, type Reference, type WorkingCopy } from "../../../core/types";
-import { commonFieldKeys } from "../../../schema/derive";
+import {
+	normalizeReferenceKind,
+	type PreparedSnapshot,
+	type Reference,
+	ServiceError,
+	type WorkingCopy,
+} from "../../../core/types";
+import { commonFieldKeys, fieldValueError, storedField } from "../../../schema/derive";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
@@ -20,6 +26,13 @@ import {
 	writeBody,
 } from "./rows";
 import type { Entry, IncomingReferenceItem, TranslationGroup } from "./types";
+
+/** 제목 필드(라이브러리 약속상 `title`) 값 검사. 어긋나면 필드 경로를 담은 오류다. */
+function assertTitleValue(collection: string, title: string): void {
+	const stored = isCollection(collection) ? storedField(collection, "title") : undefined;
+	const error = stored ? fieldValueError(stored.field, title) : null;
+	if (error) throw new ServiceError(error, [{ code: error, path: "title", message: stored?.field.label }]);
+}
 
 export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 	const { pool, qSchema } = ctx;
@@ -389,8 +402,10 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 		/**
 		 * §6.3 복제: 최신 초안의 본문·필드·관계를 새 ID의 초안으로 복사한다.
 		 * slug·발행 상태·예약·공개본·발행일·생성/수정 시각은 복사하지 않는다.
+		 * `title`을 주면 복제본의 제목(`title` 필드)을 그 값으로 바꾼다. 붙일 말("(복사)" 등)은 부르는 쪽이 정한다.
+		 * 저장소는 받은 값을 그대로 저장하고 제목 필드의 규칙(글자 수 등)만 확인한다.
 		 */
-		duplicateEntry: async (params: { id: string }): Promise<Entry> =>
+		duplicateEntry: async (params: { id: string; title?: string }): Promise<Entry> =>
 			withTransaction(pool, async (client) => {
 				const res = await client.query<{
 					collection: string;
@@ -412,8 +427,8 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				}
 
 				const rest = orig.metadata ?? {};
-				const title = typeof rest.title === "string" && rest.title.trim() ? rest.title : "제목 없음";
-				const metadata = normalizeMetadata({ ...rest, title: `${title} (복사)` });
+				if (params.title !== undefined) assertTitleValue(orig.collection, params.title);
+				const metadata = normalizeMetadata(params.title === undefined ? rest : { ...rest, title: params.title });
 				const newId = randomUUID();
 				const now = new Date();
 

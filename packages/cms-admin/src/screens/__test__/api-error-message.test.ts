@@ -5,7 +5,7 @@ describe("M10 publish feedback", () => {
 	it("keeps field paths for inline validation", () => {
 		const payload = {
 			issues: [
-				{ code: "missing_title", path: "title" },
+				{ code: "missing_field", path: "title", message: "제목" },
 				{ code: "missing_field", path: "categoryId", message: "카테고리" },
 			],
 		};
@@ -16,6 +16,11 @@ describe("M10 publish feedback", () => {
 			"요약을 입력하세요. (summary)",
 		);
 		expect(cmsIssueMessage({ code: "missing_field", path: "x" })).toBe("필수 항목을 입력하세요. (x)");
+		// 글자 수 초과도 필드와 상관없는 코드이고 필드 이름표로 말한다.
+		expect(cmsIssueMessage({ code: "field_too_long", path: "title", message: "제목" })).toBe(
+			"제목이 너무 깁니다. (title)",
+		);
+		expect(cmsIssueMessage({ code: "field_too_long" })).toBe("입력한 글이 너무 깁니다.");
 	});
 
 	it("formats body position and image warnings with readable labels", () => {

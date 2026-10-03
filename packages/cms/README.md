@@ -346,8 +346,10 @@ export const myPlugin = () =>
 
 ### 필드 규칙
 
-- **`title`은 꼭 있어야 한다.** 모든 컬렉션은 `title` 텍스트 필드(`fields.text`)를 가진다. 목록·검색·관계 고르기·본문 링크·
-  편집 화면 제목 칸이 이 필드를 쓴다.
+- **제목 필드 이름은 `title`, 이름표는 자유.** 라이브러리 약속이다. 모든 컬렉션은 `title` 텍스트 필드(`fields.text`)를 가진다.
+  목록·검색·관계 고르기·본문 링크·복제·편집 화면 제목 칸이 이 필드를 쓴다. 이름표(`label`)는 사이트가 정한다(예: `Headline`·
+  `이름`). 제목 글자 수 한도는 따로 없고 이 필드의 `max`를 따른다(없으면 한도 없음).
+- **주소 필드는 하나.** 주소(`fields.slug`)는 본체 개념이라 콘텐츠마다 하나다. 한 컬렉션에 주소 필드를 둘 이상 두면 설정 오류다.
 - **주소는 `from`에서 만든다.** `fields.slug({ from: "title" })`이면 주소를 직접 고치기 전까지 그 필드 값으로 주소를 만들고,
   record 컬렉션은 주소를 비우고 저장하면 그 값에서 만든다. `from`이 없으면 자동으로 만들지 않는다. `from`은 같은 컬렉션의
   텍스트 필드여야 한다.
@@ -361,6 +363,8 @@ export const myPlugin = () =>
 | `canonical` | 텍스트 | 원본 주소. |
 | `noindex` | 선택(`noindex` 선택지가 있어야 함) | 값이 `noindex`면 검색엔진에 숨긴다. 선택지가 둘이면 켜고 끄기로 그린다. |
 
+- **필드 값 오류.** 오류 코드는 필드와 상관없이 같다. 필수값이 비면 `missing_field`(주소는 `null_slug`), 글자 수가 `max`를
+  넘으면 `field_too_long`이다. 문제(`issues`)의 `path`에 필드 이름, `message`에 필드 이름표가 담긴다(제목도 같다).
 - **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
   컬렉션만).
 - **탭.** `layout` 묶음에 `tab: "이름"`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생기고, 같은 이름의 묶음이 모인다(없으면
@@ -381,8 +385,11 @@ fields: {
 layout: [{ fields: ["title", "slug", "excerpt"] }, { tab: "Search", fields: ["searchPreview", "metaTitle", "shareImage"] }],
 ```
 
-`defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 역할·`from`·
-`fillFromBody`가 필드와 맞지 않으면 앱이 뜰 때 바로 오류를 낸다.
+`defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 주소 필드가 둘 이상이거나,
+역할·`from`·`fillFromBody`가 필드와 맞지 않으면 앱이 뜰 때 바로 오류를 낸다.
+
+복제(`POST /api/cms/v1/entries/:id/duplicate`)는 본문에 `{ title }`을 받으면 복제본 제목을 그 값으로 둔다(관리자 화면은 원본
+제목에 "(복사)"를 붙여 보낸다). 없으면 원본 제목 그대로다. 저장소는 붙일 말을 정하지 않는다.
 
 ## 아직 남은 일
 
@@ -398,3 +405,10 @@ pnpm --filter @bh2980/cms typecheck
 ```
 
 패키지 자체 테스트는 예시 설정 `test/cms.config.ts`·`test/cms.server.ts`로 돈다.
+
+**다른 사이트 설정으로도 돈다(재발 방지).** `test/other-site.config.ts`는 블로그와 일부러 다른 설정이다(컬렉션 article·topic·author,
+`title`·`slug` 말고는 다른 필드 이름, 영어만, 차트 + 사이트 블록). 본체·관리자·AI 패키지마다 `vitest.othersite.config.ts`가 같은
+테스트를 이 설정으로 다시 돌린다(묶음 이름 `cms (other-site)`·`cms-admin (other-site)`·`cms-ai (other-site)`, 저장소 루트
+`pnpm test:run`이 함께 돈다. 패키지에서는 `pnpm test:other-site`). 새 테스트는 저절로 두 설정으로 돈다. 컬렉션·필드 이름은
+테스트에 적지 말고 설정에서 찾는다(`test/any-site.ts`, 예: `src/services/__test__/any-site.test.ts`). 블로그 예시 데이터를 그대로
+쓰는 테스트만 각 `vitest.othersite.config.ts`의 `BLOG_FIXTURE_TESTS`에 적어 뺀다.

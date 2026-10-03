@@ -125,6 +125,22 @@ describe("defineConfig", () => {
 		expect(() => defineConfig({ collections: { wrongKind }, locales, defaultLocale: "en" })).toThrow(/title/);
 	});
 
+	it("rejects a collection with more than one slug field", () => {
+		const twoSlugs = defineCollection({
+			label: "Page",
+			workflow: "publish",
+			fields: {
+				title: fields.text({ label: "Title" }),
+				slug: fields.slug({ label: "Slug", from: "title" }),
+				handle: fields.slug({ label: "Handle", from: "title" }),
+			},
+			list: { columns: [] },
+		});
+		expect(() => defineConfig({ collections: { twoSlugs }, locales, defaultLocale: "en" })).toThrow(
+			/twoSlugs has more than one slug field \(slug, handle\)/,
+		);
+	});
+
 	it("checks field roles: one field per role, and the field kind fits", () => {
 		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
 			defineCollection({ label: "Article", workflow: "publish", fields: { title, ...extra }, list: { columns: [] } });

@@ -42,7 +42,6 @@ import {
 
 export const MAX_MDX_BYTES = 2 * 1024 * 1024;
 export const MAX_METADATA_BYTES = 256 * 1024;
-export const MAX_TITLE_LENGTH = 200;
 const isJsonArray = (value: unknown): value is readonly JsonValue[] => Array.isArray(value);
 
 function sortKeys(obj: JsonValue): JsonValue {
@@ -126,6 +125,15 @@ export function validateExactRecord(
 
 export const SERVICE_INPUT_KEYS: readonly string[] = ["collection", "slug", "metadata", "mdx"];
 
+/**
+ * 필드 값 오류. 오류 코드는 필드 이름과 상관없이 같다. 글자 수 초과(`field_too_long`)는 어느 필드인지 문제(`issues`)의
+ * `path`(필드 이름)와 `message`(필드 이름표)로 알린다(관리자 화면이 "<이름표>이/가 너무 깁니다."로 보인다).
+ */
+function fieldValueServiceError(code: string, path: string, label: string | undefined): ServiceError {
+	if (code !== "field_too_long") return new ServiceError(code);
+	return new ServiceError(code, [{ code, path, ...(label ? { message: label } : {}) }]);
+}
+
 function validateMetadata(collection: Collection, raw: unknown): Record<string, MetadataValue> {
 	if (
 		!raw ||
@@ -142,12 +150,6 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 	}
 	const input = raw as Record<string, unknown>;
 
-	const titleValue = input.title;
-	if (titleValue !== undefined) {
-		if (typeof titleValue !== "string") throw new ServiceError("invalid_metadata_type");
-		if (Array.from(titleValue).length > MAX_TITLE_LENGTH) throw new ServiceError("title_too_long");
-	}
-
 	// 허용 키·저장 형식·값 규칙은 컬렉션 정의(v2 B1)에서 온다.
 	const rules = COLLECTION_DEFINITIONS[collection].fields;
 	const metadata: Record<string, MetadataValue> = {};
@@ -155,7 +157,10 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 		if (k === RECORD_TRANSLATIONS_KEY) {
 			// record 컬렉션의 언어별 이름(v2 B4). 기본 언어 값은 필드 자체에 둔다.
 			const normalized = normalizeRecordTranslations(collection, v, PREFIXED_LOCALES);
-			if ("error" in normalized) throw new ServiceError(normalized.error);
+			if ("error" in normalized) {
+				const { error, path, label } = normalized;
+				throw path ? fieldValueServiceError(error, path, label) : new ServiceError(error);
+			}
 			if (Object.keys(normalized.value).length > 0) metadata[k] = normalized.value;
 			continue;
 		}
@@ -178,8 +183,8 @@ function validateMetadata(collection: Collection, raw: unknown): Record<string, 
 		}
 
 		const value = metadata[k];
-		const error = typeof value === "string" || Array.isArray(value) ? fieldValueError(stored.field, k, value) : null;
-		if (error) throw new ServiceError(error);
+		const error = typeof value === "string" || Array.isArray(value) ? fieldValueError(stored.field, value) : null;
+		if (error) throw fieldValueServiceError(error, k, stored.field.label);
 	}
 
 	if (Buffer.byteLength(JSON.stringify(sortKeys(metadata)), "utf8") > MAX_METADATA_BYTES) {

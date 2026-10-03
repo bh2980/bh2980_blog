@@ -7,6 +7,7 @@ import {
 	recordLocalizedFields,
 	type SchemaCollection,
 	type StoredField,
+	storedField,
 	storedFields,
 	type TranslationState,
 } from "@bh2980/cms/client";
@@ -24,6 +25,24 @@ export type EntryForm = { title: string; slug: string; mdx: string } & { [field:
 export type EntryFormPatch = { readonly [field: string]: FormValue };
 
 export const EMPTY_FORM: EntryForm = { title: "", slug: "", mdx: "" };
+
+/** 복제본 제목에 붙이는 말과 제목이 빈 원본의 이름. 화면 문구이므로 저장소가 아니라 관리자 화면이 정한다. */
+const COPY_SUFFIX = " (복사)";
+const UNTITLED = "제목 없음";
+
+/**
+ * 복제본 제목(라이브러리 약속상 제목 필드 이름은 `title`). 원본 제목 뒤에 " (복사)"를 붙이고, 제목 필드의 `max`를
+ * 넘으면 원본 쪽을 줄인다.
+ */
+export function copyTitle(collection: string, title: string | null | undefined): string {
+	const base = title?.trim() ? title : UNTITLED;
+	const field = isCollection(collection) ? storedField(collection, "title")?.field : undefined;
+	const max = field?.kind === "text" ? field.max : undefined;
+	const room = max === undefined ? Number.POSITIVE_INFINITY : max - Array.from(COPY_SUFFIX).length;
+	const chars = Array.from(base);
+	if (room <= 0) return chars.slice(0, max).join("");
+	return `${chars.length > room ? chars.slice(0, room).join("") : base}${COPY_SUFFIX}`;
+}
 
 /** 같은 번역 묶음의 콘텐츠(v2 B4). */
 export interface TranslationMember {

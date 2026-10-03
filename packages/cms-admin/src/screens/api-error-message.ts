@@ -11,7 +11,6 @@ export type CmsIssue = {
 
 const ISSUE_LABELS: Record<string, string> = {
 	null_slug: "주소(slug)를 입력하세요.",
-	missing_title: "제목을 입력하세요.",
 	empty_body: "본문을 입력하세요.",
 	unresolved_reference: "참조 항목을 찾을 수 없습니다.",
 	unresolved_media: "이미지 미디어를 찾을 수 없습니다.",
@@ -34,6 +33,7 @@ const ISSUE_LABELS: Record<string, string> = {
 	invalid_reference_id: "미디어 ID 형식이 올바르지 않습니다.",
 	dynamic_reference_id: "미디어 ID는 문자열이어야 합니다.",
 	missing_field: "필수 항목을 입력하세요.",
+	field_too_long: "입력한 글이 너무 깁니다.",
 	source_not_published: "원문을 먼저 발행하세요. 번역본의 분류·발행일 같은 공통 값은 원문 공개본에서 옵니다.",
 	untranslated_text: "번역하지 않은 글이 남아 있습니다.",
 };
@@ -79,11 +79,16 @@ const DETAILED_CODES = new Set([
 	"image_src_not_allowed",
 ]);
 
+function fieldIssueText(code: string | undefined, label: string): string | undefined {
+	if (code === "missing_field") return `${josa(label, "을", "를")} 입력하세요.`;
+	if (code === "field_too_long") return `${josa(label, "이", "가")} 너무 깁니다.`;
+	return undefined;
+}
+
 export function cmsIssueMessage(issue: CmsIssue): string {
-	// 필수 필드 문제는 `message`에 필드 라벨이 온다.
-	const missing =
-		issue.code === "missing_field" && issue.message ? `${josa(issue.message, "을", "를")} 입력하세요.` : undefined;
-	const known = missing ?? (issue.code ? ISSUE_LABELS[issue.code] : undefined);
+	// 필드 문제(필수값·글자 수)는 오류 코드가 필드와 상관없이 같고 `message`에 필드 이름표가 온다.
+	const field = issue.message ? fieldIssueText(issue.code, issue.message) : undefined;
+	const known = field ?? (issue.code ? ISSUE_LABELS[issue.code] : undefined);
 	const detail = known && issue.code && DETAILED_CODES.has(issue.code) && issue.message ? ` — ${issue.message}` : "";
 	const label = known ? `${known}${detail}` : issue.message || issue.code || "발행 검증 실패";
 	const location = issue.position ? `${issue.position.line}행 ${issue.position.column}열` : issue.path;

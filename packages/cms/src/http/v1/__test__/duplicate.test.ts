@@ -19,34 +19,35 @@ vi.mock("../../../adapters/auth", () => ({
 	},
 }));
 
+const duplicateEntry = vi.fn(({ id, title }: { id: string; title?: string }) => {
+	if (id === "ghost") return Promise.reject(new CmsError("Entry not found", "not_found"));
+	return Promise.resolve({
+		id: "new-duplicated-id",
+		collection: "post",
+		version: 1,
+		status: "draft",
+		workingSlug: null,
+		folderId: "folder-1",
+		working: {
+			metadata: { title: title ?? "Original" },
+			mdx: "body",
+			schemaVersion: 1,
+		},
+	});
+});
+
 vi.mock("../../../container", () => ({
-	getCmsContentStore: () => ({
-		duplicateEntry: vi.fn().mockImplementation(({ id }: { id: string }) => {
-			if (id === "ghost") throw new CmsError("Entry not found", "not_found");
-			return Promise.resolve({
-				id: "new-duplicated-id",
-				collection: "post",
-				version: 1,
-				status: "draft",
-				workingSlug: null,
-				folderId: "folder-1",
-				working: {
-					metadata: { title: "Original (복사)" },
-					mdx: "body",
-					schemaVersion: 1,
-				},
-			});
-		}),
-	}),
+	getCmsContentStore: () => ({ duplicateEntry }),
 }));
 
-const postReq = (url: string, origin = "http://localhost") =>
+const postReq = (url: string, origin = "http://localhost", body?: unknown) =>
 	new NextRequest(url, {
 		method: "POST",
 		headers: {
 			origin,
 			"content-type": "application/json",
 		},
+		...(body === undefined ? {} : { body: JSON.stringify(body) }),
 	});
 
 describe("M5-BE-1 Duplicate API Route", () => {
@@ -62,7 +63,26 @@ describe("M5-BE-1 Duplicate API Route", () => {
 		const data = await res.json();
 		expect(data.id).toBe("new-duplicated-id");
 		expect(data.status).toBe("draft");
-		expect(data.working.metadata.title).toBe("Original (복사)");
+		expect(data.working.metadata.title).toBe("Original");
+		expect(duplicateEntry).toHaveBeenLastCalledWith({ id: "orig-1", title: undefined });
+	});
+
+	it("passes the caller's copy title to the store", async () => {
+		const res = await postDuplicate(
+			postReq("http://localhost/api/cms/v1/entries/orig-1/duplicate", "http://localhost", { title: "Original (copy)" }),
+			{ params: Promise.resolve({ id: "orig-1" }) },
+		);
+		expect(res.status).toBe(201);
+		expect((await res.json()).working.metadata.title).toBe("Original (copy)");
+		expect(duplicateEntry).toHaveBeenLastCalledWith({ id: "orig-1", title: "Original (copy)" });
+	});
+
+	it("rejects a non-string title with 400", async () => {
+		const res = await postDuplicate(
+			postReq("http://localhost/api/cms/v1/entries/orig-1/duplicate", "http://localhost", { title: 1 }),
+			{ params: Promise.resolve({ id: "orig-1" }) },
+		);
+		expect(res.status).toBe(400);
 	});
 
 	it("returns 404 when entry does not exist", async () => {
