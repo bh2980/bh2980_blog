@@ -18,9 +18,9 @@ const chain = (editor: Editor) => editor.chain().focus();
 const MARK_TOOLS: Omit<InlineMarkTool, "isActive">[] = [
 	{ mark: "bold", label: "B", title: "굵게", icon: Bold, run: (e) => chain(e).toggleBold().run() },
 	{ mark: "italic", label: "i", title: "기울임", icon: Italic, run: (e) => chain(e).toggleItalic().run() },
+	{ mark: "underline", label: "U", title: "밑줄", icon: Underline, run: (e) => chain(e).toggleUnderline().run() },
 	{ mark: "strike", label: "S", title: "취소선", icon: Strikethrough, run: (e) => chain(e).toggleStrike().run() },
 	{ mark: "code", label: "</>", title: "인라인 코드", icon: CodeXml, run: (e) => chain(e).toggleCode().run() },
-	{ mark: "underline", label: "U", title: "밑줄", icon: Underline, run: (e) => chain(e).toggleUnderline().run() },
 	{
 		mark: "superscript",
 		label: "x²",

@@ -206,7 +206,7 @@ describe("InlineBubble", () => {
 
 		const toolbar = screen.getByRole("toolbar", { name: "인라인 서식" });
 		const labels = [...toolbar.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
-		expect(labels).toEqual(["굵게", "기울임", "취소선", "밑줄", "툴팁 넣기", "글자 접기"]);
+		expect(labels).toEqual(["굵게", "기울임", "밑줄", "취소선", "툴팁 넣기", "글자 접기"]);
 
 		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기" })));
 		expect(editor.getHTML()).toMatch(/call\(<span data-code-fold=""[^>]*>a, b<\/span>\)/);

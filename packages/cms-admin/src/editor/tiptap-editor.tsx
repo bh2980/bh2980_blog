@@ -231,6 +231,36 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 
 const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
 
+/**
+ * 도구 모음 순서. 블록 모양 → 글자 꾸밈 → 글자에 붙이기(링크·툴팁) → 블록 넣기. 문서 단위 도구(템플릿·확장·원문·MDX·폭)는
+ * 편집 화면이 오른쪽(`toolbarAside`)에 둔다. 여기 없는 항목은 끝에 원래 순서대로 붙는다.
+ */
+const TOOLBAR_ORDER = [
+	"block-style",
+	"list",
+	"align",
+	"divider-block",
+	...INLINE_TOOLS.map((tool) => tool.mark),
+	"color",
+	"script",
+	"divider-inline",
+	"link",
+	"tooltip",
+	"divider-insert",
+	...INSERT_TOOLS.map(({ tool }) => tool.label),
+	"divider-tool",
+	"upload",
+	"custom-block",
+];
+
+const orderToolbar = (entries: readonly ToolbarEntry[]): ToolbarEntry[] => {
+	const rank = (key: string) => {
+		const index = TOOLBAR_ORDER.indexOf(key);
+		return index < 0 ? TOOLBAR_ORDER.length : index;
+	};
+	return [...entries].sort((a, b) => rank(a.key) - rank(b.key));
+};
+
 function ToolbarDropdown({
 	editor,
 	label,
@@ -813,9 +843,9 @@ export function CmsEditor({
 			</DropdownMenuItem>
 		</>
 	);
-	// 문단 설정(블록 모양·정렬) → 글자 꾸밈 → 넣기 순이다.
 	// 좁을 때 숨기는 순서: priority가 큰 것부터. fixed는 숨기지 않는다(팝오버 도구는 메뉴 안에서 앵커를 잃는다).
-	const toolbarEntries: ToolbarEntry[] = [
+	// 놓는 순서는 아래 `TOOLBAR_ORDER`가 정한다.
+	const unordered: ToolbarEntry[] = [
 		{
 			key: "block-style",
 			priority: 0,
@@ -839,8 +869,9 @@ export function CmsEditor({
 			),
 		},
 		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
+		{ key: "divider-inline", divider: true },
 		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
-		{ key: "divider-list", divider: true },
+		{ key: "divider-insert", divider: true },
 		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
 		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
 		{
@@ -913,6 +944,7 @@ export function CmsEditor({
 		},
 		buttonSlot(DIVIDER_TOOL, "divider-tool", 8),
 	];
+	const toolbarEntries = orderToolbar(unordered);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
