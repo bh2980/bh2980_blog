@@ -83,6 +83,30 @@ describe("defineConfig", () => {
 		);
 	});
 
+	it("checks layout tab names and preview names", () => {
+		const withLayout = (group: Record<string, unknown>) =>
+			defineCollection({
+				label: "Note",
+				workflow: "record",
+				fields: { title: fields.text({ label: "Title" }) },
+				list: { columns: [] },
+				layout: [{ fields: ["title"], ...group }],
+			});
+		expect(() =>
+			defineConfig({
+				collections: { note: withLayout({ tab: "검색", preview: "search" }) },
+				locales,
+				defaultLocale: "en",
+			}),
+		).not.toThrow();
+		expect(() =>
+			defineConfig({ collections: { note: withLayout({ tab: " " }) }, locales, defaultLocale: "en" }),
+		).toThrow(/tab must be 1-20 characters/);
+		expect(() =>
+			defineConfig({ collections: { note: withLayout({ preview: "Search" }) }, locales, defaultLocale: "en" }),
+		).toThrow(/preview must be a kebab-case name/);
+	});
+
 	it("requires a title text field in every collection", () => {
 		const untitled = defineCollection({
 			label: "Note",

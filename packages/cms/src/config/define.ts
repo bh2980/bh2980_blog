@@ -131,6 +131,15 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 			throw new Error(`cms.config: ${collection}.${name} fillFromBody needs a collection with a body`);
 		}
 	}
+	for (const [index, group] of (schema.layout ?? []).entries()) {
+		const at = `cms.config: ${collection}.layout[${index}]`;
+		if (group.tab !== undefined && (!group.tab.trim() || group.tab.length > 20)) {
+			throw new Error(`${at}.tab must be 1-20 characters`);
+		}
+		if (group.preview !== undefined && !/^[a-z][a-z0-9-]*$/.test(group.preview)) {
+			throw new Error(`${at}.preview must be a kebab-case name`);
+		}
+	}
 	for (const [name, field] of Object.entries(schema.fields)) {
 		if (field.kind !== "slug" || field.from === undefined) continue;
 		if (schema.fields[field.from]?.kind !== "text") {

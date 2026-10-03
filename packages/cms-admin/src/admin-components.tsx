@@ -14,6 +14,7 @@ import {
 } from "react";
 import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 import type { BlockAction } from "./editor/tiptap-editor";
+import type { EntryData, EntryForm } from "./screens/entries/entry-form";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
 
 /**
@@ -105,6 +106,18 @@ export interface CmsAdminComponents {
 	 * 컬렉션의 `icon`, 코드 줄 효과의 `icon`이 본체 목록에 없는 이름을 쓰면 여기에 등록한다.
 	 */
 	readonly icons?: Readonly<Record<string, LucideIcon>>;
+	/**
+	 * 속성 칸 묶음 위에 그릴 미리보기(`layout` 묶음의 `preview` 이름 → 컴포넌트). 본체는 `search`를 준다.
+	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
+	 */
+	readonly groupPreviews?: Readonly<Record<string, ComponentType<GroupPreviewProps>>>;
+}
+
+/** 묶음 미리보기가 받는 값. */
+export interface GroupPreviewProps {
+	readonly collection: string;
+	readonly form: EntryForm;
+	readonly entry: EntryData | null;
 }
 
 const CmsAdminComponentsContext = createContext<CmsAdminComponents>({});
@@ -125,6 +138,7 @@ export function CmsAdminComponentsProvider({
 			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
 			icons: { ...parent.icons, ...components.icons },
+			groupPreviews: { ...parent.groupPreviews, ...components.groupPreviews },
 		}),
 		[parent, components],
 	);

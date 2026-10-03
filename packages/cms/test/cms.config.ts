@@ -34,7 +34,7 @@ const tagIds = fields.relation({
 
 /**
  * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
- * 편집 화면은 `seo: true` 묶음을 SEO 탭으로 그리고, 미리보기는 필드 역할(`role`)로 값을 찾는다.
+ * 편집 화면은 `tab: "SEO"` 묶음을 SEO 탭에 그리고, 검색 미리보기(`preview: "search"`)는 필드 역할(`role`)로 값을 찾는다.
  */
 const seo = {
 	seoTitle: fields.text({ label: "검색 제목", role: "seoTitle", localized: true }),
@@ -106,7 +106,8 @@ export const post = defineCollection({
 		{ group: "정책", fields: ["policy"] },
 		{
 			group: "SEO",
-			seo: true,
+			tab: "SEO",
+			preview: "search",
 			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
 			collapsed: true,
 		},
@@ -139,7 +140,8 @@ export const memo = defineCollection({
 		{ group: "분류", fields: ["tagIds", "series"] },
 		{
 			group: "SEO",
-			seo: true,
+			tab: "SEO",
+			preview: "search",
 			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
 			collapsed: true,
 		},

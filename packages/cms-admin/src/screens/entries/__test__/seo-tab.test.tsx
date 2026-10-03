@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CmsAdminComponentsProvider, type GroupPreviewProps } from "../../../admin-components";
 import { type SlotAction, SlotRegistryProvider } from "../../../slots/slots";
 import { TooltipProvider } from "../../../ui/tooltip";
 import { EMPTY_FORM, type EntryForm } from "../entry-form";
@@ -41,8 +42,8 @@ function renderPanel(collection: string, form: EntryForm, onChange = vi.fn(), so
 
 const openSeo = () => fireEvent.click(screen.getByRole("tab", { name: "SEO" }));
 
-describe("SEO 탭", () => {
-	it("`seo: true` 묶음의 필드를 보통 입력으로 그리고, 다른 탭에는 그리지 않는다", async () => {
+describe("속성 칸 탭(layout `tab`)과 묶음 미리보기(`preview`)", () => {
+	it('`tab: "SEO"` 묶음의 필드를 그 탭에 보통 입력으로 그리고, 다른 탭에는 그리지 않는다', async () => {
 		renderPanel("post", { ...EMPTY_FORM, title: "글 제목", seoTitle: "검색용 제목", canonicalUrl: "https://a.dev/x" });
 		expect(screen.queryByLabelText("검색 제목")).toBeNull();
 		openSeo();
@@ -84,8 +85,34 @@ describe("SEO 탭", () => {
 		expect(run.mock.calls[0]?.[0]).toMatchObject({ title: "글", summary: "요약 글" });
 	});
 
-	it("`seo: true` 묶음이 없는 컬렉션은 SEO 탭이 없다", () => {
+	it("`tab`을 둔 묶음이 없는 컬렉션은 기본 탭 하나만 있다", () => {
 		renderPanel("category", { ...EMPTY_FORM, title: "분류" });
-		expect(screen.queryByRole("tab", { name: "SEO" })).toBeNull();
+		expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["속성"]);
+	});
+
+	it("미리보기 이름은 관리자 확장의 `groupPreviews`로 바꾸거나 더한다", async () => {
+		const Custom = ({ form }: GroupPreviewProps) => <p>미리보기: {String(form.title)}</p>;
+		render(
+			<TooltipProvider>
+				<CmsAdminComponentsProvider components={{ groupPreviews: { search: Custom } }}>
+					<InspectorPanel
+						collection="post"
+						form={{ ...EMPTY_FORM, title: "글 제목" }}
+						disabled={false}
+						entry={null}
+						incomingReferences={[]}
+						isLoadingIncomingReferences={false}
+						onRefreshIncomingReferences={vi.fn()}
+						onSlugChange={vi.fn()}
+						onRegenerateSlug={vi.fn()}
+						onChange={vi.fn()}
+						onClose={vi.fn()}
+					/>
+				</CmsAdminComponentsProvider>
+			</TooltipProvider>,
+		);
+		openSeo();
+		expect(await screen.findByText("미리보기: 글 제목")).toBeTruthy();
+		expect(screen.queryByRole("region", { name: "검색 결과 미리보기" })).toBeNull();
 	});
 });

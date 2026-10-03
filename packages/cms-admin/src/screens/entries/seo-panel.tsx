@@ -45,7 +45,7 @@ export function seoPreviewText(collection: SchemaCollection, form: EntryForm, en
 }
 
 /**
- * 편집 화면 속성 칸 SEO 탭(`seo: true` 묶음) 위의 미리보기. 검색 결과와 공유 카드 모양으로, 값은 필드 역할에서 온다.
+ * 묶음 미리보기 `search`(`preview: "search"`). 검색 결과와 공유 카드 모양으로, 값은 필드 역할에서 온다.
  * 입력은 탭이 묶음의 필드를 보통 입력으로 그린다.
  */
 export function SeoPreview({

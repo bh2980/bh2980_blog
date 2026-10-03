@@ -10,6 +10,7 @@ export {
 	type EditorExtensionResult,
 	type EditorInsertAction,
 	type EditorSelectionAction,
+	type GroupPreviewProps,
 	useCmsAdminComponents,
 } from "./admin-components";
 export type { CustomBlockEditorProps } from "./editor/blocks/added/view";

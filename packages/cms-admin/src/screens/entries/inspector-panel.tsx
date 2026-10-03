@@ -4,7 +4,8 @@ import type { LayoutGroup } from "@bh2980/cms/client";
 import { isCollection, localeLabel, schemaOf } from "@bh2980/cms/client";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { type GroupPreviewProps, useCmsAdminComponents } from "../../admin-components";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { CmsIssue } from "../api-error-message";
 import { SidePanelHeader } from "../shared/side-panel";
@@ -12,16 +13,28 @@ import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMeta
 import { SchemaFields } from "./schema-fields";
 import { SeoPreview } from "./seo-panel";
 
-type InspectorTab = "fields" | "seo";
+/** 기본 탭(`tab`이 없는 묶음). */
+const DEFAULT_TAB = "속성";
 
-/** `seo: true` 묶음은 SEO 탭에 그린다. */
-const isSeoGroup = (group: LayoutGroup) => group.seo === true;
+/** 본체가 주는 묶음 미리보기. 다른 이름은 `groupPreviews`로 더한다. */
+const BUILTIN_PREVIEWS: Readonly<Record<string, ComponentType<GroupPreviewProps>>> = {
+	search: ({ collection, form, entry }) =>
+		isCollection(collection) ? <SeoPreview collection={collection} form={form} entry={entry} /> : null,
+};
+
+const tabOfGroup = (group: LayoutGroup) => group.tab ?? DEFAULT_TAB;
+
+/** 탭 이름(기본 탭 먼저, 나머지는 `layout`에 처음 나온 순서). */
+function tabsOf(collection: string): string[] {
+	const layout = isCollection(collection) ? (schemaOf(collection).layout ?? []) : [];
+	return [...new Set([DEFAULT_TAB, ...layout.map(tabOfGroup)])];
+}
 
 /** 필드가 들어 있는 탭. 발행 문제로 이동할 때 그 탭을 먼저 연다. */
-function tabOf(collection: string, path: string): InspectorTab {
-	if (!isCollection(collection)) return "fields";
+function tabOf(collection: string, path: string): string {
+	if (!isCollection(collection)) return DEFAULT_TAB;
 	const group = schemaOf(collection).layout?.find((candidate) => candidate.fields.includes(path));
-	return group && isSeoGroup(group) ? "seo" : "fields";
+	return group ? tabOfGroup(group) : DEFAULT_TAB;
 }
 
 interface InspectorPanelProps {
@@ -62,9 +75,12 @@ export function InspectorPanel({
 	focusPath,
 	onFocused,
 }: InspectorPanelProps) {
-	const [tab, setTab] = useState<InspectorTab>("fields");
-	const hasSeo = isCollection(collection) && Boolean(schemaOf(collection).layout?.some(isSeoGroup));
-	const seoIssues = publishIssues.filter((issue) => issue.path && tabOf(collection, issue.path) === "seo").length;
+	const [tab, setTab] = useState(DEFAULT_TAB);
+	const tabs = useMemo(() => tabsOf(collection), [collection]);
+	const { groupPreviews } = useCmsAdminComponents();
+	const previews = { ...BUILTIN_PREVIEWS, ...groupPreviews };
+	const issuesIn = (name: string) =>
+		publishIssues.filter((issue) => issue.path && tabOf(collection, issue.path) === name).length;
 
 	useEffect(() => {
 		if (focusPath) setTab(tabOf(collection, focusPath));
@@ -128,32 +144,37 @@ export function InspectorPanel({
 	return (
 		<Tabs
 			value={tab}
-			onValueChange={(value) => setTab(value as InspectorTab)}
+			onValueChange={(value) => setTab(String(value))}
 			aria-label="속성"
 			className="h-full w-full gap-0 overflow-hidden border-l bg-background text-sm"
 		>
 			<SidePanelHeader onClose={onClose}>
 				<TabsList variant="line" className="h-full flex-1 justify-start gap-3">
-					<TabsTrigger value="fields" className="flex-none px-0 text-xs">
-						속성
-					</TabsTrigger>
-					{hasSeo && (
-						<TabsTrigger value="seo" className="flex-none px-0 text-xs">
-							SEO
-							{seoIssues > 0 && <span aria-hidden className="size-1.5 rounded-full bg-destructive" />}
+					{tabs.map((name) => (
+						<TabsTrigger key={name} value={name} className="flex-none px-0 text-xs">
+							{name}
+							{issuesIn(name) > 0 && <span aria-hidden className="size-1.5 rounded-full bg-destructive" />}
 						</TabsTrigger>
-					)}
+					))}
 				</TabsList>
 			</SidePanelHeader>
 
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
-				<TabsContent value="fields">{fields((group) => !isSeoGroup(group))}</TabsContent>
-				{hasSeo && isCollection(collection) && (
-					<TabsContent value="seo" className="space-y-5">
-						<SeoPreview collection={collection} form={form} entry={entry} />
-						{fields(isSeoGroup)}
-					</TabsContent>
-				)}
+				{tabs.map((name) => {
+					const groups = isCollection(collection)
+						? (schemaOf(collection).layout ?? []).filter((group) => tabOfGroup(group) === name)
+						: [];
+					return (
+						<TabsContent key={name} value={name} className="space-y-5">
+							{groups.map((group, index) => {
+								const Preview = group.preview ? previews[group.preview] : undefined;
+								// biome-ignore lint/suspicious/noArrayIndexKey: 설정의 묶음 순서는 바뀌지 않는다
+								return Preview ? <Preview key={index} collection={collection} form={form} entry={entry} /> : null;
+							})}
+							{fields((group) => tabOfGroup(group) === name)}
+						</TabsContent>
+					);
+				})}
 			</div>
 		</Tabs>
 	);

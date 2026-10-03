@@ -363,8 +363,9 @@ export const myPlugin = () =>
 
 - **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
   컬렉션만).
-- **SEO 탭.** `layout` 묶음에 `seo: true`를 두면 편집 화면 속성 칸의 `SEO` 탭에 그 묶음의 필드를 그리고, 위에 검색 결과·공유
-  미리보기를 둔다. 미리보기 값은 위 역할에서 온다.
+- **탭과 미리보기.** `layout` 묶음에 `tab: "이름"`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생기고, 같은 이름의 묶음이
+  모인다(없으면 기본 탭 `속성`). `preview: "search"`를 두면 묶음 위에 검색 결과·공유 미리보기를 그린다. 미리보기 값은 위
+  역할에서 온다. 다른 미리보기는 관리자 확장의 `groupPreviews`로 더한다.
 
 ```ts
 fields: {
@@ -374,7 +375,7 @@ fields: {
 	metaTitle: fields.text({ label: "Search title", role: "seoTitle" }),
 	shareImage: fields.text({ label: "Share image", role: "ogImage" }),
 },
-layout: [{ fields: ["title", "slug", "excerpt"] }, { group: "Search", seo: true, fields: ["metaTitle", "shareImage"] }],
+layout: [{ fields: ["title", "slug", "excerpt"] }, { tab: "Search", preview: "search", fields: ["metaTitle", "shareImage"] }],
 ```
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 역할·`from`·

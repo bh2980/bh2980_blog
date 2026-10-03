@@ -20,7 +20,7 @@ vi.mock("../../config/resolved", async () => {
 				defaultValue: "index",
 			}),
 		},
-		layout: [{ group: "Search", seo: true, fields: ["robots"] }],
+		layout: [{ tab: "Search", fields: ["robots"] }],
 		list: { columns: ["title", "slug"] },
 	});
 	const topic = defineCollection({

@@ -28,8 +28,8 @@ const article = defineCollection({
 	},
 	layout: [
 		{ fields: ["title", "slug", "excerpt", "topicIds"] },
-		// `seo: true` 묶음은 편집 화면의 SEO 탭에 그린다.
-		{ group: "Search", seo: true, fields: ["metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
+		// 같은 `tab`의 묶음은 편집 화면의 한 탭에 모인다. `preview: "search"`는 검색 결과·공유 미리보기를 위에 둔다.
+		{ tab: "Search", preview: "search", fields: ["metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
 	],
 	list: { columns: ["title", "status", "updatedAt"] },
 });
