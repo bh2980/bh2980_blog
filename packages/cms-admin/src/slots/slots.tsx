@@ -180,7 +180,8 @@ const errorMessage = (error: unknown) =>
  * 자리 하나의 버튼(`trigger`)과 결과 칸(`panel`). 자리마다 버튼은 라벨 옆에, 결과는 입력 아래에 둔다.
  * 연결된 동작이 없으면 둘 다 `null`이다.
  */
-export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: ReactNode } {
+/** 자리 버튼(`trigger`)·결과 칸(`panel`)과, 붙은 동작이 있는가(`available`). */
+export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: ReactNode; available: boolean } {
 	const sources = useContext(SlotRegistryContext);
 	const { slot, target, collection } = request;
 	const actions = useMemo(
@@ -245,7 +246,7 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 		requestRef.current.apply(value, state.action.apply);
 	};
 
-	if (actions.length === 0) return { trigger: null, panel: null };
+	if (actions.length === 0) return { trigger: null, panel: null, available: false };
 
 	const busy = state.status === "running";
 	const disabled = request.disabled || busy;
@@ -360,7 +361,7 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 			</div>
 		);
 
-	return { trigger, panel };
+	return { trigger, panel, available: true };
 }
 
 function SlotResult({

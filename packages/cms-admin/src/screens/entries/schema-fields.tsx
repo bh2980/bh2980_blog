@@ -62,6 +62,12 @@ interface SchemaFieldsProps {
 	sections?: "collapsible" | "plain";
 }
 
+/** 입력. 자리에 동작(AI 등)이 붙었는지에 따라 모양을 바꾸려면 함수로 준다. */
+type FieldRowChildren = ReactNode | ((slotAvailable: boolean) => ReactNode);
+
+const renderChildren = (children: FieldRowChildren, slotAvailable: boolean) =>
+	typeof children === "function" ? children(slotAvailable) : children;
+
 /** 필드 하나의 라벨·필수 표시·오류·도움말. `slot`이 있으면 라벨 옆에 자리 버튼, 입력 아래에 결과를 둔다. */
 function FieldRow({
 	id,
@@ -78,7 +84,7 @@ function FieldRow({
 	issue?: CmsIssue;
 	help?: ReactNode;
 	slot?: SlotRequest;
-	children: ReactNode;
+	children: FieldRowChildren;
 }) {
 	if (slot) {
 		return (
@@ -92,7 +98,7 @@ function FieldRow({
 			<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
 				{label} {required && <span className="text-destructive">*</span>}
 			</FieldLabel>
-			{children}
+			{renderChildren(children, false)}
 			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
 			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
 		</UiField>
@@ -114,9 +120,9 @@ function SlotFieldRow({
 	issue?: CmsIssue;
 	help?: ReactNode;
 	slot: SlotRequest;
-	children: ReactNode;
+	children: FieldRowChildren;
 }) {
-	const { trigger, panel } = useSlot(slot);
+	const { trigger, panel, available } = useSlot(slot);
 	return (
 		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
 			<div className="flex min-h-6 items-center justify-between gap-2">
@@ -125,7 +131,7 @@ function SlotFieldRow({
 				</FieldLabel>
 				{trigger}
 			</div>
-			{children}
+			{renderChildren(children, available)}
 			{panel}
 			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
 			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
@@ -331,36 +337,39 @@ export function SchemaFields({
 					(onSlugChange ?? ((next) => onChange({ slug: next })))(typeof slug === "string" ? slug : ""),
 				)}
 			>
-				<InputGroup className="h-8">
-					<InputGroupInput
-						id={fieldId(name)}
-						aria-invalid={Boolean(issue) || undefined}
-						aria-describedby={describedBy(name)}
-						value={form.slug}
-						onChange={(event) => (onSlugChange ?? ((slug) => onChange({ slug })))(event.target.value)}
-						placeholder={slugPlaceholder ?? field.placeholder}
-						className="font-mono text-xs md:text-xs"
-					/>
-					{onRegenerateSlug && field.from && (
-						<InputGroupAddon align="inline-end">
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<InputGroupButton
-											size="icon-xs"
-											aria-label="제목으로 다시 만들기"
-											disabled={context.disabled}
-											onClick={onRegenerateSlug}
-										/>
-									}
-								>
-									<RefreshCw aria-hidden />
-								</TooltipTrigger>
-								<TooltipContent side="bottom">제목으로 다시 만들기</TooltipContent>
-							</Tooltip>
-						</InputGroupAddon>
-					)}
-				</InputGroup>
+				{(aiAvailable) => (
+					<InputGroup className="h-8">
+						<InputGroupInput
+							id={fieldId(name)}
+							aria-invalid={Boolean(issue) || undefined}
+							aria-describedby={describedBy(name)}
+							value={form.slug}
+							onChange={(event) => (onSlugChange ?? ((slug) => onChange({ slug })))(event.target.value)}
+							placeholder={slugPlaceholder ?? field.placeholder}
+							className="font-mono text-xs md:text-xs"
+						/>
+						{/* 주소를 만드는 동작(AI 주소 추천 등)이 붙어 있으면 그 버튼 하나만 둔다. */}
+						{!aiAvailable && onRegenerateSlug && field.from && (
+							<InputGroupAddon align="inline-end">
+								<Tooltip>
+									<TooltipTrigger
+										render={
+											<InputGroupButton
+												size="icon-xs"
+												aria-label="제목으로 다시 만들기"
+												disabled={context.disabled}
+												onClick={onRegenerateSlug}
+											/>
+										}
+									>
+										<RefreshCw aria-hidden />
+									</TooltipTrigger>
+									<TooltipContent side="bottom">제목으로 다시 만들기</TooltipContent>
+								</Tooltip>
+							</InputGroupAddon>
+						)}
+					</InputGroup>
+				)}
 			</FieldRow>
 		);
 	};
