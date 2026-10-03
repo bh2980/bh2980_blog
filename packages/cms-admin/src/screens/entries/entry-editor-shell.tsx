@@ -1134,6 +1134,7 @@ export function EntryEditorShell({
 						selectionActions={extensions.selectionActions}
 						insertActions={extensions.insertActions}
 						onEditor={extensions.onEditor}
+						{...(entry?.locale ? { locale: entry.locale } : {})}
 						onCompositionStart={() => autosave.setComposing(true)}
 						onCompositionEnd={() => autosave.setComposing(false)}
 					/>

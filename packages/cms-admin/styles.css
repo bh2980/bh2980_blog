@@ -30,6 +30,7 @@
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
+	--color-warning: var(--warning);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -63,6 +64,7 @@ html:has(.cms-admin) {
 	--accent: #f0f0f2;
 	--accent-foreground: #18181b;
 	--destructive: #dc2626;
+	--warning: #d97706;
 	--border: #ececef;
 	--input: #e4e4e7;
 	--ring: #6366f1;
@@ -97,6 +99,7 @@ html.dark:has(.cms-admin) {
 	--accent: #1f1f24;
 	--accent-foreground: #f4f4f5;
 	--destructive: #f87171;
+	--warning: #fbbf24;
 	--border: #232328;
 	--input: #2a2a30;
 	--ring: #818cf8;
@@ -156,4 +159,21 @@ html:has(.cms-admin) body {
 /* 표의 숫자·날짜는 자릿수를 맞춘다. */
 .cms-admin .tabular {
 	font-variant-numeric: tabular-nums;
+}
+
+/* 맞춤법·문장 검사 결과 밑줄(편집기 장식). 심각도마다 색이 다르다. */
+.cms-admin .cms-text-issue {
+	text-decoration-line: underline;
+	text-decoration-style: wavy;
+	text-decoration-thickness: 1px;
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--warning);
+	cursor: pointer;
+}
+.cms-admin .cms-text-issue[data-severity="error"] {
+	text-decoration-color: var(--destructive);
+}
+.cms-admin .cms-text-issue[data-severity="info"] {
+	text-decoration-color: var(--primary);
 }

@@ -9,6 +9,8 @@
 		"./next": "./src/next/index.tsx",
 		"./editor": "./src/editor/public.ts",
 		"./blocks": "./src/editor/blocks/public.ts",
+		"./text-check": "./src/text-check/index.ts",
+		"./text-check/server": "./src/text-check/server.ts",
 		"./plugins": "./src/plugins.ts",
 		"./slots": "./src/slots/slots.tsx",
 		"./api": "./src/screens/admin-api.ts",
@@ -105,6 +107,14 @@
 			"./blocks": {
 				"types": "./dist/editor/blocks/public.d.ts",
 				"default": "./dist/editor/blocks/public.js"
+			},
+			"./text-check": {
+				"types": "./dist/text-check/index.d.ts",
+				"default": "./dist/text-check/index.js"
+			},
+			"./text-check/server": {
+				"types": "./dist/text-check/server.d.ts",
+				"default": "./dist/text-check/server.js"
 			},
 			"./plugins": {
 				"types": "./dist/plugins.d.ts",
