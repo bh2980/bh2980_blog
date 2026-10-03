@@ -220,7 +220,7 @@ describe("M13 editor accessibility", () => {
 				onClose={onCloseSlash}
 			/>,
 		);
-		const slashOption = await screen.findByRole("option", { name: /문단 \(Paragraph\)/ });
+		const slashOption = await screen.findByRole("option", { name: /문단/ });
 		expect(slashOption.getAttribute("aria-selected")).toBe("true");
 		fireEvent.mouseDown(slashOption);
 		expect(onSelectSlash).not.toHaveBeenCalled();

@@ -8,7 +8,7 @@ describe("Slash Menu Commands & Filter Contract", () => {
 
 	it("filters accurately with English queries", () => {
 		const h2Results = filterCommands("h2");
-		expect(h2Results.some((c) => c.title.includes("H2"))).toBe(true);
+		expect(h2Results.map((c) => c.title)).toEqual(["제목 2"]);
 		// 글 제목이 H1이므로 본문 제목 삽입은 H2부터다(§4.1).
 		expect(filterCommands("h1")).toHaveLength(0);
 

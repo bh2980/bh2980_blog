@@ -1,6 +1,23 @@
 import type { BlockDefinition } from "@bh2980/cms/client";
 import { ADDED_BLOCKS, BLOCKS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
+import {
+	Heading2,
+	Heading3,
+	Heading4,
+	Image,
+	Link2,
+	List,
+	ListOrdered,
+	ListTodo,
+	type LucideIcon,
+	MessageSquareText,
+	Minus,
+	Pilcrow,
+	Quote,
+	SquareCode,
+	Table2,
+} from "lucide-react";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
@@ -10,16 +27,19 @@ export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 export interface SlashCommandItem {
 	/** 블록 삽입 항목의 이름(본체 블록은 nodeView, 더한 블록은 블록 이름). 기본 서식 항목에는 없다. */
 	id?: string;
-	/** 블록 삽입 항목의 아이콘(lucide 이름, 블록 정의의 `editor.icon`). */
-	icon?: string;
+	/** 아이콘. 블록 삽입 항목은 블록 정의의 `editor.icon`(lucide 이름)이다. 없으면 퍼즐 아이콘이다. */
+	icon?: LucideIcon | string;
 	title: string;
 	description: string;
 	keywords: string[];
 	action: (editor: Editor, range: Range) => void;
 }
 
+const HEADING_ICONS = { 2: Heading2, 3: Heading3, 4: Heading4 } as const;
+
 const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashCommandItem => ({
-	title: `제목 ${level} (H${level})`,
+	title: `제목 ${level}`,
+	icon: HEADING_ICONS[level],
 	description,
 	keywords: ["제목", `h${level}`, `heading${level}`, ...extra],
 	action: (editor, range) => {
@@ -32,8 +52,9 @@ const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashC
  */
 export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	{
-		title: "문단 (Paragraph)",
-		description: "일반 텍스트 본문",
+		title: "문단",
+		description: "일반 본문",
+		icon: Pilcrow,
 		keywords: ["본문", "텍스트", "문단", "paragraph", "p"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).setParagraph().run();
@@ -44,7 +65,8 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	heading(4, "소제목", ["소제목"]),
 	{
 		title: "글머리 기호 목록",
-		description: "순서 없는 불릿 리스트",
+		description: "순서 없는 목록",
+		icon: List,
 		keywords: ["목록", "불릿", "리스트", "bullet", "list", "ul"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleBulletList().run();
@@ -52,55 +74,62 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	},
 	{
 		title: "번호 매기기 목록",
-		description: "순서가 있는 숫자 리스트",
+		description: "순서 있는 목록",
+		icon: ListOrdered,
 		keywords: ["순서", "번호", "목록", "ordered", "numbered", "list", "ol"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleOrderedList().run();
 		},
 	},
 	{
-		title: "체크 목록 (To-do)",
-		description: "완료 여부를 표시하는 목록",
+		title: "체크 목록",
+		description: "할 일 목록",
+		icon: ListTodo,
 		keywords: ["체크", "할일", "할 일", "목록", "todo", "task", "checklist"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleTaskList().run();
 		},
 	},
 	{
-		title: "인용구 (Quote)",
-		description: "강조하고 싶은 인용 문구",
+		title: "인용구",
+		description: "인용 문구",
+		icon: Quote,
 		keywords: ["인용", "인용구", "quote", "blockquote"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleBlockquote().run();
 		},
 	},
 	{
-		title: "코드 블록 (Code Block)",
-		description: "프로그래밍 코드 삽입",
+		title: "코드 블록",
+		description: "프로그래밍 코드",
+		icon: SquareCode,
 		keywords: ["코드", "코드블록", "code", "pre"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
 		},
 	},
 	{
-		title: "표 (Table)",
-		description: "3×3 표 삽입. 행·열은 표 도구로 추가·삭제",
+		title: "표",
+		description: "3×3 표",
+		icon: Table2,
 		keywords: ["표", "테이블", "table", "grid"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 		},
 	},
 	{
-		title: "구분선 (Divider)",
+		title: "구분선",
 		description: "가로 구분선",
+		icon: Minus,
 		keywords: ["구분선", "가로줄", "선", "divider", "hr"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).setHorizontalRule().run();
 		},
 	},
 	{
-		title: "이미지 (Image)",
-		description: "새로 업로드하거나 라이브러리에서 고르기",
+		title: "이미지",
+		description: "올리거나 라이브러리에서 고르기",
+		icon: Image,
 		keywords: ["이미지", "사진", "그림", "라이브러리", "image", "img", "photo", "media"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).run();
@@ -109,15 +138,17 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	},
 	{
 		title: "내부 글 링크",
-		description: "제목으로 글·메모를 찾아 링크 (`[[`로도 열림)",
+		description: "제목으로 글·메모 찾기",
+		icon: Link2,
 		keywords: ["링크", "내부", "글", "link", "internal"],
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).insertContent("[[").run();
 		},
 	},
 	{
-		title: "툴팁 (Tooltip)",
-		description: "선택한 텍스트에 부가 설명 추가 (텍스트 선택 필요)",
+		title: "툴팁",
+		description: "글자에 설명 달기",
+		icon: MessageSquareText,
 		keywords: ["툴팁", "tooltip", "설명", "주석"],
 		action: (editor, range) => {
 			// 슬래시는 빈 문단에서 입력하므로 선택 영역이 없다. 라벨 예시를 선택해 편집·설명 입력을 시작한다.

@@ -369,6 +369,7 @@ export function CmsEditor({
 				title: item.title,
 				description: item.description,
 				keywords: [...item.keywords],
+				...(item.icon ? { icon: item.icon } : {}),
 				action: (current, range) => item.run(current, range),
 			})),
 		[insertActions],

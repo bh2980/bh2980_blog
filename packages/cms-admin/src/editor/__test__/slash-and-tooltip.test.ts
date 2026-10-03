@@ -72,11 +72,11 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 
 	it("SLASH_COMMANDS에 기본 커맨드와 자동 생성 블록 커맨드가 모두 포함된다", () => {
 		const titles = SLASH_COMMANDS.map((c) => c.title);
-		expect(titles).toContain("문단 (Paragraph)");
-		expect(titles).toContain("코드 블록 (Code Block)");
-		expect(titles).toContain("표 (Table)");
-		expect(titles).toContain("이미지 (Image)");
-		expect(titles).toContain("툴팁 (Tooltip)");
+		expect(titles).toContain("문단");
+		expect(titles).toContain("코드 블록");
+		expect(titles).toContain("표");
+		expect(titles).toContain("이미지");
+		expect(titles).toContain("툴팁");
 		expect(titles).toContain("다이어그램(Mermaid)");
 		expect(titles).toContain("차트");
 		expect(titles).toContain("수식");
@@ -89,7 +89,7 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(filterCommands("그래프").some((c) => c.title === "차트")).toBe(true);
 		expect(filterCommands("math").some((c) => c.title === "수식")).toBe(true);
 		expect(filterCommands("katex").some((c) => c.title === "수식")).toBe(true);
-		expect(filterCommands("tooltip").some((c) => c.title === "툴팁 (Tooltip)")).toBe(true);
+		expect(filterCommands("tooltip").some((c) => c.title === "툴팁")).toBe(true);
 	});
 });
 
@@ -158,7 +158,7 @@ describe("툴팁(Tooltip) 설정·수정·제거 및 MDX 왕복 (v2 C3a)", () =>
 
 	it("슬래시 툴팁 명령은 예시 라벨을 선택해 설명 입력을 연다", () => {
 		const editor = createEditor("<p>/</p>");
-		const command = SLASH_COMMANDS.find((item) => item.title === "툴팁 (Tooltip)");
+		const command = SLASH_COMMANDS.find((item) => item.title === "툴팁");
 		command?.action(editor, { from: 1, to: 2 });
 		expect(editor.state.doc.textContent).toBe("툴팁 텍스트");
 		expect(editor.state.selection.empty).toBe(false);

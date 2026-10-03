@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor, NodeViewProps } from "@tiptap/react";
+import type { LucideIcon } from "lucide-react";
 import {
 	type ComponentType,
 	createContext,
@@ -45,6 +46,8 @@ export interface EditorInsertAction {
 	readonly title: string;
 	readonly description: string;
 	readonly keywords: readonly string[];
+	/** 메뉴 아이콘(lucide 이름이나 컴포넌트). 없으면 퍼즐 아이콘이다. */
+	readonly icon?: string | LucideIcon;
 	readonly run: (editor: Editor, range: { from: number; to: number }) => void;
 }
 

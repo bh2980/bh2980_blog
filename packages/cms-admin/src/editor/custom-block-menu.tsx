@@ -14,7 +14,7 @@ const CUSTOM_BLOCKS = buildBlockSlashCommands();
 export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
 	return CUSTOM_BLOCKS.map((block) => {
 		// 블록 정의의 아이콘(`editor.icon`). 없으면 퍼즐 아이콘을 쓴다.
-		const Icon = iconByName(block.icon) ?? Puzzle;
+		const Icon = (typeof block.icon === "string" ? iconByName(block.icon) : block.icon) ?? Puzzle;
 		return (
 			<DropdownMenuItem
 				key={block.id ?? block.title}

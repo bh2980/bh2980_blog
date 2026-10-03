@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Puzzle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Command, CommandGroup, CommandItem, CommandList } from "../ui/command";
+import { cn } from "../lib/utils/cn";
+import { iconByName } from "../screens/shared/collection-icon";
 import type { SlashCommandItem } from "./slash-command";
 
 interface SlashMenuPopupProps {
@@ -13,56 +15,74 @@ interface SlashMenuPopupProps {
 	onClose: () => void;
 }
 
+/** 항목 아이콘. 이름(블록 정의의 `editor.icon`)이나 컴포넌트이고, 없으면 퍼즐 아이콘이다. */
+function ItemIcon({ icon }: { icon: SlashCommandItem["icon"] }) {
+	const Icon = (typeof icon === "string" ? iconByName(icon) : icon) ?? Puzzle;
+	return <Icon aria-hidden className="size-4" />;
+}
+
 /**
- * `/` 블록 삽입 메뉴(§4.2). shadcn Command로 그리되 포커스와 방향키는 에디터가 맡고,
- * 강조할 항목만 `value`로 넘긴다(한글 IME 조합 중 포커스를 뺏지 않는다).
+ * `/` 블록 삽입 메뉴(§4.2). 포커스와 방향키는 에디터가 맡고(한글 IME 조합 중 포커스를 뺏지 않는다),
+ * 여기서는 강조할 항목(`selectedIndex`)만 그리고 보이게 스크롤한다.
  */
 export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose }: SlashMenuPopupProps) {
 	const [mounted, setMounted] = useState(false);
+	const listRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
 
+	useEffect(() => {
+		listRef.current
+			?.querySelector<HTMLElement>(`[data-index="${selectedIndex}"]`)
+			?.scrollIntoView({ block: "nearest" });
+	}, [selectedIndex]);
+
 	if (!mounted || items.length === 0) return null;
 
 	return createPortal(
-		<section
-			style={{
-				position: "fixed",
-				top: `${coords.top + 24}px`,
-				left: `${coords.left}px`,
-				zIndex: 9999,
-			}}
+		<div
+			ref={listRef}
+			role="listbox"
 			aria-label="블록 추가"
-			aria-live="polite"
+			tabIndex={-1}
+			style={{ position: "fixed", top: `${coords.top + 24}px`, left: `${coords.left}px`, zIndex: 9999 }}
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					event.preventDefault();
 					onClose();
 				}
 			}}
-			className="w-64 rounded-xl border shadow-md"
+			className="max-h-80 w-72 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
 		>
-			<Command value={items[selectedIndex]?.title ?? ""} shouldFilter={false} loop={false}>
-				<CommandList className="max-h-80">
-					<CommandGroup heading="블록 추가">
-						{items.map((item) => (
-							<CommandItem
-								key={item.title}
-								value={item.title}
-								onMouseDown={(event) => event.preventDefault()}
-								onSelect={() => onSelect(item)}
-								className="flex-col items-start gap-0"
-							>
-								<span className="font-semibold text-xs">{item.title}</span>
-								<span className="text-[10px] text-muted-foreground">{item.description}</span>
-							</CommandItem>
-						))}
-					</CommandGroup>
-				</CommandList>
-			</Command>
-		</section>,
+			{items.map((item, index) => (
+				<div
+					key={item.id ?? item.title}
+					role="option"
+					aria-selected={index === selectedIndex}
+					data-index={index}
+					tabIndex={-1}
+					onMouseDown={(event) => event.preventDefault()}
+					onClick={() => onSelect(item)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") onSelect(item);
+					}}
+					className={cn(
+						"flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none",
+						index === selectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+					)}
+				>
+					<span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
+						<ItemIcon icon={item.icon} />
+					</span>
+					<span className="min-w-0">
+						<span className="block truncate font-medium text-sm">{item.title}</span>
+						<span className="block truncate text-muted-foreground text-xs">{item.description}</span>
+					</span>
+				</div>
+			))}
+		</div>,
 		document.body,
 	);
 }

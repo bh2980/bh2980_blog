@@ -326,6 +326,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 				title: action.label,
 				description: "AI로 커서 자리에 쓰기",
 				keywords: ["ai", "초안", "draft", action.label],
+				icon: "sparkles",
 				run: (current, range) => setJob({ mode: "insert", action, editor: current, from: range.from, to: range.to }),
 			})),
 		[usable.insert],
