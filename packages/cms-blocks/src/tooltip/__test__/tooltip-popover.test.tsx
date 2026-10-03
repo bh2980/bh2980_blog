@@ -1,12 +1,12 @@
+import { buildEditorExtensions } from "@bh2980/cms-admin/editor";
+import { TooltipProvider } from "@bh2980/cms-admin/ui/tooltip";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TooltipProvider } from "../../ui/tooltip";
-import { buildEditorExtensions } from "../extensions";
-import { OPEN_TOOLTIP_EVENT, TooltipPopover } from "../tooltip-popover";
+import { OPEN_TOOLTIP_EVENT, tooltipMarkExtension } from "../provider";
 
-vi.mock("../../ui/tooltip", () => ({
+vi.mock("@bh2980/cms-admin/ui/tooltip", () => ({
 	Tooltip: ({ children }: { children: React.ReactNode }) => children,
 	TooltipTrigger: ({
 		render,
@@ -26,17 +26,20 @@ vi.mock("../../ui/tooltip", () => ({
 
 afterEach(cleanup);
 
-describe("TooltipPopover UI (v2 C3a)", () => {
+/** 툴팁 확장의 서식 도구 버튼(본체 `MarkTextPopover`). */
+const TooltipButton = tooltipMarkExtension.toolbar?.Button ?? (() => null);
+
+describe("툴팁 확장의 서식 도구 팝오버 (v2 C3a)", () => {
 	const createEditor = (html = "<p>안녕하세요 세상입니다</p>") =>
 		new Editor({
-			extensions: buildEditorExtensions(),
+			extensions: buildEditorExtensions({ tooltip: tooltipMarkExtension }),
 			content: html,
 		});
 
 	const renderComponent = (editor: Editor) =>
 		render(
 			<TooltipProvider delay={0}>
-				<TooltipPopover editor={editor} />
+				<TooltipButton editor={editor} />
 			</TooltipProvider>,
 		);
 

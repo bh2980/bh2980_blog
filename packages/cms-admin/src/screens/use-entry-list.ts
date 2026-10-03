@@ -1,7 +1,7 @@
 "use client";
 
 import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/client";
-import { COLLECTION_DEFINITIONS, isContentCollection, isRecordCollection } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, isDocumentCollection, isItemCollection } from "@bh2980/cms/client";
 import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
@@ -23,6 +23,7 @@ import type { RecordTarget } from "./record-panel";
 import type { MenuAction } from "./shared/action-menu";
 import { useConfirm } from "./shared/confirm-dialog";
 import type { DraggedEntry } from "./shared/entry-drag";
+import { OPEN_ITEM_PARAM } from "./shared/entry-href";
 import {
 	applyOptimistic,
 	ENTRIES_KEY,
@@ -261,8 +262,8 @@ export function useEntryList(mode: ListMode) {
 	const isTrash = mode === "trash";
 	const { state, update, columnSettings, savePreferences } = useListState(mode);
 	const collection = state.collection;
-	const isRecord = isRecordCollection(collection);
-	const isContent = isContentCollection(collection);
+	const isRecord = isItemCollection(collection);
+	const isContent = isDocumentCollection(collection);
 	const options = useTaxonomyOptions(collection, !isTrash);
 
 	const data = useEntriesData(state, mode);
@@ -289,6 +290,17 @@ export function useEntryList(mode: ListMode) {
 		recordDirtyRef.current = false;
 		setRecordTarget(null);
 	};
+	// 주소의 `open`(미디어 사용처 등에서 연 항목)은 항목 칸으로 한 번 열고 주소에서 뺀다.
+	const searchParams = useSearchParams();
+	const openParam = searchParams.get(OPEN_ITEM_PARAM);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 주소의 값이 바뀔 때만 연다
+	useEffect(() => {
+		if (!openParam || !isItemCollection(state.collection) || mode === "trash") return;
+		showRecord({ collection: state.collection, id: openParam });
+		const next = new URLSearchParams(searchParams.toString());
+		next.delete(OPEN_ITEM_PARAM);
+		router.replace(`/admin?${next.toString()}` as Route, { scroll: false });
+	}, [openParam]);
 
 	const mutations = useEntryMutations({
 		listKey: data.listKey,

@@ -3,7 +3,7 @@ import {
 	type Collection,
 	DEFAULT_COLLECTION,
 	DEFAULT_LOCALE,
-	isRecordCollection,
+	isItemCollection,
 	schemaOf,
 	storedField,
 	storedFields,
@@ -25,7 +25,7 @@ import { AdminQueryProvider } from "../shared/query-provider";
  */
 
 const content: Collection = DEFAULT_COLLECTION;
-const record = COLLECTIONS.find((name) => isRecordCollection(name)) as Collection;
+const record = COLLECTIONS.find((name) => isItemCollection(name)) as Collection;
 const titleLabel = (collection: Collection) => storedField(collection, "title")?.field.label ?? "";
 
 const nav = vi.hoisted(() => {

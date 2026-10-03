@@ -53,9 +53,6 @@ describe("블록 정의(v2 B3)", () => {
 			["text-align", "container", "TextAlign", ["align"]],
 			["image", "leaf", "Image", []],
 			["file", "leaf", "File", ["mediaId"]],
-			["tooltip", "text", "Tooltip", ["content"]],
-			["code-ref", "text", "CodeRef", ["to"]],
-			["color", "text", "Color", []],
 			// 번역 안내 글(v3). 새 번역본의 원문 글을 감싼다.
 			["untranslated", "text", "Untranslated", []],
 			["u", "text", "u", []],
@@ -72,6 +69,10 @@ describe("블록 정의(v2 B3)", () => {
 			["tab", "container", "Tab", ["label"]],
 			["columns", "container", "Columns", []],
 			["column", "container", "Column", []],
+			// 글자 꾸밈 확장(M10-3에서 본체에서 옮겼다). 저장 문법·컴포넌트 이름은 그대로다.
+			["tooltip", "text", "Tooltip", ["content"]],
+			["code-ref", "text", "CodeRef", ["to"]],
+			["color", "text", "Color", []],
 		]);
 		expect(DIRECTIVES.find((directive) => directive.name === "cell")?.attributes).toEqual({
 			colspan: "string",

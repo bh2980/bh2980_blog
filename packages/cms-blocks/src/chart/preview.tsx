@@ -1,0 +1,215 @@
+"use client";
+
+import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { Alert, AlertDescription, AlertTitle } from "@bh2980/cms-admin/ui/alert";
+import { AlertOctagon } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+	Area,
+	AreaChart,
+	Bar,
+	BarChart,
+	CartesianGrid,
+	LabelList,
+	Line,
+	LineChart,
+	Pie,
+	PieChart,
+	XAxis,
+	YAxis,
+} from "recharts";
+import { normalizeChartDsl, parseChartDsl } from "./dsl";
+import { CHART_LEGEND_HEIGHT, resolvePieGeometry } from "./layout";
+import type { CartesianChartSpec, ChartRenderError, NormalizedChartSpec, PieChartSpec } from "./types";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
+	useChartDimensions,
+} from "./ui";
+
+/**
+ * 차트 블록의 기본 편집기 미리보기. 차트 문법(`./dsl`)을 recharts로 그린다(선택 의존성 `recharts`). 차트 블록 확장의 관리자
+ * 공급자가 `fencePreviews.chart`로 미리보기를 열 때만 불러온다. 사이트는 같은 이름으로 자기 렌더러를 넣어 바꿀 수 있다.
+ * 색은 계열의 테마 변수(`--chart-1`~`--chart-5`)다.
+ */
+
+const toChartConfig = (spec: NormalizedChartSpec): ChartConfig => {
+	if (spec.type === "pie" && spec.labelKey) {
+		return Object.fromEntries(
+			spec.data.map((row) => [
+				String(row[spec.labelKey] ?? ""),
+				{ label: String(row[spec.labelKey] ?? ""), color: String(row.fill ?? "var(--chart-1)") },
+			]),
+		);
+	}
+	return Object.fromEntries(
+		spec.series.map((series) => [series.key, { label: series.label, color: `var(--${series.colorToken})` }]),
+	);
+};
+
+/** Y축 눈금 글자 폭(px)을 데이터에서 어림한다. 눈금은 데이터 최댓값보다 한 단계 크게 잡힐 수 있다(예: 95 → 100). */
+const Y_AXIS_CHAR_WIDTH = 7;
+const Y_AXIS_TICK_GAP = 14;
+const estimateYAxisWidth = (spec: CartesianChartSpec) => {
+	const values = spec.data.flatMap((row) =>
+		spec.series.map((series) => Number(row[series.key])).filter((value) => Number.isFinite(value)),
+	);
+	if (spec.options.yRange) values.push(spec.options.yRange.min, spec.options.yRange.max);
+	const labels = values.flatMap((value) => [String(value), String(Math.round(value * 1.25))]);
+	const longest = Math.max(1, ...labels.map((label) => label.length));
+	return longest * Y_AXIS_CHAR_WIDTH + Y_AXIS_TICK_GAP;
+};
+
+function ChartErrorCard({ errors }: { errors: ChartRenderError[] }) {
+	return (
+		<div className="not-prose my-6">
+			<Alert variant="danger">
+				<AlertOctagon />
+				<AlertTitle>차트 문법 오류</AlertTitle>
+				<AlertDescription>
+					<ul className="ml-4 list-disc space-y-1">
+						{errors.map((error) => (
+							<li key={`${error.line}-${error.message}`}>
+								{error.line}줄: {error.message}
+							</li>
+						))}
+					</ul>
+				</AlertDescription>
+			</Alert>
+		</div>
+	);
+}
+
+const CARTESIAN = { bar: BarChart, line: LineChart, area: AreaChart } as const;
+
+const formatValue = (value: unknown) =>
+	value == null || value === false ? "" : typeof value === "number" ? value.toLocaleString() : String(value);
+
+const VALUE_LABEL_CLASS = "fill-foreground font-medium text-[11px]";
+
+/** 값 글자(`show values`). */
+const valueLabel = (spec: CartesianChartSpec) =>
+	spec.options.showValues ? (
+		<LabelList
+			position="top"
+			offset={spec.type === "bar" ? 8 : 10}
+			formatter={formatValue}
+			className={VALUE_LABEL_CLASS}
+		/>
+	) : null;
+
+const renderSeries = (spec: CartesianChartSpec) =>
+	spec.series.map((series) => {
+		const color = `var(--color-${series.key})`;
+		if (spec.type === "bar") {
+			return (
+				<Bar key={series.key} dataKey={series.key} fill={color} radius={8} isAnimationActive={false}>
+					{valueLabel(spec)}
+				</Bar>
+			);
+		}
+		if (spec.type === "line") {
+			return (
+				<Line
+					key={series.key}
+					type="monotone"
+					dataKey={series.key}
+					stroke={color}
+					strokeWidth={2}
+					dot={false}
+					isAnimationActive={false}
+				>
+					{valueLabel(spec)}
+				</Line>
+			);
+		}
+		return (
+			<Area
+				key={series.key}
+				type="monotone"
+				dataKey={series.key}
+				stroke={color}
+				fill={color}
+				fillOpacity={0.24}
+				isAnimationActive={false}
+			>
+				{valueLabel(spec)}
+			</Area>
+		);
+	});
+
+function ResponsivePie({ spec, legendHeight }: { spec: PieChartSpec; legendHeight: number }) {
+	const geometry = resolvePieGeometry(useChartDimensions(), spec.options.showLegend ? legendHeight : 0);
+	return (
+		<Pie data={spec.data} dataKey={spec.valueKey} nameKey={spec.labelKey} isAnimationActive={false} {...geometry} />
+	);
+}
+
+function CartesianPreview({ spec, className }: { spec: CartesianChartSpec; className?: string }) {
+	const Chart = CARTESIAN[spec.type];
+	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
+	return (
+		<ChartContainer config={toChartConfig(spec)} className={cn("not-prose my-6 w-full min-w-0", className)}>
+			<Chart
+				accessibilityLayer
+				data={spec.data}
+				margin={{ top: spec.options.showValues ? 28 : 12, right: 12, left: spec.options.hideYAxis ? 12 : 0, bottom: 0 }}
+			>
+				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
+				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
+				<YAxis
+					hide={spec.options.hideYAxis}
+					width={estimateYAxisWidth(spec)}
+					tickLine={false}
+					tickMargin={10}
+					axisLine={false}
+					domain={spec.options.yRange ? [spec.options.yRange.min, spec.options.yRange.max] : undefined}
+					allowDataOverflow={!!spec.options.yRange}
+				/>
+				<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+				{spec.options.showLegend ? (
+					<ChartLegend
+						verticalAlign="bottom"
+						height={legendHeight}
+						content={<ChartLegendContent onHeightChange={setLegendHeight} />}
+					/>
+				) : null}
+				{renderSeries(spec)}
+			</Chart>
+		</ChartContainer>
+	);
+}
+
+function PiePreview({ spec, className }: { spec: PieChartSpec; className?: string }) {
+	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
+	return (
+		<ChartContainer config={toChartConfig(spec)} className={cn("not-prose my-6 w-full min-w-0", className)}>
+			<PieChart>
+				<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey={spec.labelKey} />} />
+				{spec.options.showLegend ? (
+					<ChartLegend
+						verticalAlign="bottom"
+						height={legendHeight}
+						content={<ChartLegendContent nameKey={spec.labelKey} onHeightChange={setLegendHeight} />}
+					/>
+				) : null}
+				<ResponsivePie spec={spec} legendHeight={legendHeight} />
+			</PieChart>
+		</ChartContainer>
+	);
+}
+
+/** 차트 원문(`source`)을 그린다. 문법 오류면 줄마다 알린다. */
+export function ChartPreview({ source, className }: { readonly source: string; readonly className?: string }) {
+	const normalized = useMemo(() => normalizeChartDsl(parseChartDsl(source)), [source]);
+	if (!normalized.spec) return <ChartErrorCard errors={normalized.errors} />;
+	return normalized.spec.type === "pie" ? (
+		<PiePreview spec={normalized.spec} className={className} />
+	) : (
+		<CartesianPreview spec={normalized.spec} className={className} />
+	);
+}

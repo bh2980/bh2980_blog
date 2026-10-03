@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "../../ui/button";
 import { Field, FieldLabel } from "../../ui/field";
 import { Textarea } from "../../ui/textarea";
 import { errorText } from "../admin-api";
+import { entryHref } from "../shared/entry-href";
 import { formatDateTime } from "../shared/format-date";
 import { SidePanelHeader } from "../shared/side-panel";
 import { copyText, type MediaItem, withExtension } from "./media-item";
@@ -265,7 +266,7 @@ export function MediaDetailPanel({
 							{media.references.map((reference) => (
 								<li key={`${reference.entryId}-${reference.state}`}>
 									<a
-										href={`/admin/entries/${reference.entryId}/edit`}
+										href={entryHref(reference.collection, reference.entryId)}
 										className="block truncate rounded-md border px-2 py-1.5 hover:bg-accent"
 									>
 										{reference.title || "제목 없음"} · {reference.state === "published" ? "공개본" : "초안"}

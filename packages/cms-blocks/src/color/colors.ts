@@ -1,7 +1,7 @@
 /**
  * 글자색·글자 배경색(`:color[글]{fg="#…" fgDark="#…" bg="#…" bgDark="#…"}`).
  * 본문에는 색을 이름이 아니라 헥스 값으로 저장한다. 밝은·어두운 테마 값을 짝으로 두고, 어두운 값이 없으면
- * 밝은 값을 그대로 쓴다. 에디터의 고르기 목록은 사이트 설정의 `textColors`이고, 없으면 아래 기본 프리셋이다.
+ * 밝은 값을 그대로 쓴다. 편집기의 고르기 목록은 확장 옵션 `color({ palette })`이고, 없으면 아래 기본 프리셋이다.
  * 직접 고른 색도 같은 모양으로 저장한다.
  */
 
@@ -19,7 +19,7 @@ export interface PaletteColor {
 	readonly bg: ColorPair;
 }
 
-/** 기본 고르기 목록. 사이트 설정의 `textColors`로 바꾼다. */
+/** 기본 고르기 목록. 확장 옵션 `color({ palette })`로 바꾼다. */
 export const DEFAULT_TEXT_PALETTE: readonly PaletteColor[] = [
 	{ id: "gray", name: "회색", fg: { light: "#6b7280", dark: "#9ca3af" }, bg: { light: "#f1f2f4", dark: "#2f3237" } },
 	{ id: "red", name: "빨강", fg: { light: "#dc2626", dark: "#f87171" }, bg: { light: "#fee2e2", dark: "#4a1f1f" } },
@@ -59,7 +59,7 @@ export function cleanTextColor(attrs: Readonly<Record<string, unknown>> | null |
 export const hasTextColor = (attrs: TextColorAttrs): boolean => Boolean(attrs.fg || attrs.bg);
 
 /**
- * 공개 화면·에디터가 함께 쓰는 표시 속성. CSS(`.cms-color`)가 테마에 맞춰 변수를 고른다.
+ * 공개 화면·에디터가 함께 쓰는 표시 속성. CSS(`.cms-color`, 이 패키지의 `styles.css`)가 테마에 맞춰 변수를 고른다.
  * `data-fg`·`data-bg`가 있을 때만 색을 입힌다.
  */
 export function textColorProps(attrs: TextColorAttrs): {
@@ -92,11 +92,11 @@ export function paletteOf(
 	return palette.find((color) => color[kind].light.toLowerCase() === light.toLowerCase());
 }
 
-/** 사이트 설정의 `textColors`가 맞는지 확인한다(헥스 값, 겹치지 않는 `id`). */
+/** 고르기 목록(`color({ palette })`)이 맞는지 확인한다(헥스 값, 겹치지 않는 `id`). */
 export function validateTextPalette(palette: readonly PaletteColor[] | undefined): void {
 	const ids = new Set<string>();
 	for (const color of palette ?? []) {
-		const at = `cms.config: textColors.${color.id}`;
+		const at = `cms.config: plugins.color.palette.${color.id}`;
 		if (!color.id || ids.has(color.id)) throw new Error(`${at}: id is empty or duplicated`);
 		ids.add(color.id);
 		for (const value of [color.fg.light, color.fg.dark, color.bg.light, color.bg.dark]) {

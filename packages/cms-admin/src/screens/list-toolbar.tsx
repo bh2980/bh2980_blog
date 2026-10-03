@@ -1,6 +1,6 @@
 "use client";
 
-import { isContentCollection, localeLabel } from "@bh2980/cms/client";
+import { isDocumentCollection, localeLabel } from "@bh2980/cms/client";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -87,7 +87,7 @@ export function ListSearch({
 		return () => clearTimeout(timer);
 	}, [search, state.search, onChange]);
 
-	const isContent = isContentCollection(state.collection);
+	const isContent = isDocumentCollection(state.collection);
 	return (
 		<div className="flex items-center gap-3">
 			<InputGroup className="h-8 w-64">

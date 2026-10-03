@@ -672,7 +672,8 @@ describe("entry editor shell", () => {
 	it("sends record collections to their explicit-save form", async () => {
 		serve(() => undefined, { ...entry, collection: "tag" });
 		renderEdit();
-		await waitFor(() => expect(routerReplace).toHaveBeenCalledWith("/admin?collection=tag"));
+		// 항목 컬렉션은 목록의 작은 폼으로 그 항목을 연다.
+		await waitFor(() => expect(routerReplace).toHaveBeenCalledWith(`/admin?collection=tag&open=${entry.id}`));
 		expect(EMPTY_FORM.title).toBe("");
 	});
 });

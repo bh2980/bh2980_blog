@@ -3,6 +3,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { X } from "lucide-react";
 import { type Ref, useState } from "react";
+import { useCmsAdminComponents } from "../../admin-components";
 import { buildEditorExtensions } from "../../editor/extensions";
 import { mdxToTiptap } from "../../editor/tiptap-content";
 import { cn } from "../../lib/utils/cn";
@@ -17,7 +18,9 @@ const PROSE =
 	"[&_.cms-source-active]:rounded-sm [&_.cms-source-active]:bg-primary/8 [&_.cms-source-active]:shadow-[0_0_0_12px_color-mix(in_oklab,var(--color-primary)_8%,transparent)] [&_.cms-source-active]:transition-[background-color,box-shadow]";
 
 function PreviewEditor({ mdx, label }: { mdx: string; label: string }) {
-	const [extensions] = useState(() => buildEditorExtensions());
+	// 글자 꾸밈 확장(글자색 등)의 모양도 편집기와 같게 그린다.
+	const { marks } = useCmsAdminComponents();
+	const [extensions] = useState(() => buildEditorExtensions(marks));
 	const editor = useEditor({
 		immediatelyRender: false,
 		editable: false,

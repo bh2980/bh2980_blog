@@ -1,6 +1,6 @@
 import { defineBlock } from "@bh2980/cms";
 
-/** 차트(` ```chart `). 차트 문법은 `parseChartDsl`이 읽고, 편집기 미리보기와 공개 화면은 사이트가 그린다. */
+/** 차트(` ```chart `). 차트 문법은 `parseChartDsl`이 읽는다. 편집기 미리보기는 확장이(사이트가 바꿀 수 있다), 공개 화면은 사이트가 그린다. */
 export const chartBlock = defineBlock({
 	name: "chart",
 	label: "차트",

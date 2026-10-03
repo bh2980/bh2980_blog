@@ -2,7 +2,7 @@
 	"name": "@bh2980/cms-blocks",
 	"version": "0.0.0",
 	"private": true,
-	"description": "@bh2980/cms의 블록 확장: 콜아웃·접기·탭·단 나누기·Mermaid·차트",
+	"description": "@bh2980/cms의 블록 확장: 콜아웃·접기·탭·단 나누기·Mermaid·차트, 글자 꾸밈(툴팁·코드 연결·글자색)",
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
@@ -21,6 +21,12 @@
 		"./chart": "./src/chart/index.ts",
 		"./chart/admin": "./src/chart/admin.ts",
 		"./chart/ai": "./src/chart/ai.ts",
+		"./tooltip": "./src/tooltip/index.ts",
+		"./tooltip/admin": "./src/tooltip/admin.ts",
+		"./code-ref": "./src/code-ref/index.ts",
+		"./code-ref/admin": "./src/code-ref/admin.ts",
+		"./color": "./src/color/index.ts",
+		"./color/admin": "./src/color/admin.ts",
 		"./styles.css": "./styles.css"
 	},
 	"scripts": {
@@ -39,10 +45,18 @@
 		"@tiptap/pm": "^3.31.3",
 		"@tiptap/react": "^3.31.3",
 		"react": ">=19",
-		"@bh2980/cms-ai": "workspace:^"
+		"@bh2980/cms-ai": "workspace:^",
+		"mermaid": ">=11",
+		"recharts": ">=3"
 	},
 	"peerDependenciesMeta": {
 		"@bh2980/cms-ai": {
+			"optional": true
+		},
+		"mermaid": {
+			"optional": true
+		},
+		"recharts": {
 			"optional": true
 		}
 	},
@@ -61,11 +75,13 @@
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"jsdom": "^27.4.0",
+		"mermaid": "^11.12.2",
 		"next": "16.3.8",
 		"next-auth": "5.0.0-beta.32",
 		"next-themes": "^0.4.6",
 		"react": "19.2.3",
 		"react-dom": "19.2.3",
+		"recharts": "^3.8.1",
 		"sonner": "^2.0.8",
 		"typescript": "^7.0.2",
 		"vite": "^8.3.0",
@@ -141,6 +157,30 @@
 			"./chart/ai": {
 				"types": "./dist/chart/ai.d.ts",
 				"default": "./dist/chart/ai.js"
+			},
+			"./tooltip": {
+				"types": "./dist/tooltip/index.d.ts",
+				"default": "./dist/tooltip/index.js"
+			},
+			"./tooltip/admin": {
+				"types": "./dist/tooltip/admin.d.ts",
+				"default": "./dist/tooltip/admin.js"
+			},
+			"./code-ref": {
+				"types": "./dist/code-ref/index.d.ts",
+				"default": "./dist/code-ref/index.js"
+			},
+			"./code-ref/admin": {
+				"types": "./dist/code-ref/admin.d.ts",
+				"default": "./dist/code-ref/admin.js"
+			},
+			"./color": {
+				"types": "./dist/color/index.d.ts",
+				"default": "./dist/color/index.js"
+			},
+			"./color/admin": {
+				"types": "./dist/color/admin.d.ts",
+				"default": "./dist/color/admin.js"
 			},
 			"./styles.css": "./styles.css"
 		}

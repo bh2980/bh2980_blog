@@ -11,7 +11,7 @@ export const blockNodeName = (block: Pick<BlockDefinition, "name">) =>
 	`cms${block.name.replace(/(^|-)([a-z0-9])/g, (_, _dash: string, char: string) => char.toUpperCase())}`;
 
 /** 편집기가 이미 쓰는 이름. 더한 블록의 노드 이름이 겹치면 안 된다. */
-const TAKEN_NODE_NAMES = new Set(["cmsOpaqueBlock", "cmsMath", "cmsBlockKeymap", "cmsBlockDrag", "cmsTooltip"]);
+const TAKEN_NODE_NAMES = new Set(["cmsOpaqueBlock", "cmsMath", "cmsBlockKeymap", "cmsBlockDrag", "cmsUntranslated"]);
 
 /** 편집기 노드로 편집하는 더한 블록. */
 export const ADDED_NODE_BLOCKS: readonly BlockDefinition[] = ADDED_BLOCKS.filter(

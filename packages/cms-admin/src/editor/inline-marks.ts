@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import type { Mark, ResolvedPos } from "@tiptap/pm/model";
 import { type EditorState, TextSelection } from "@tiptap/pm/state";
 import { Bold, CodeXml, Italic, Strikethrough, Subscript, Superscript, Underline } from "lucide-react";
+import { CODE_TOOLTIP_MARK_NAME } from "./code-block/code-tooltip-mark";
 import { codeEffectsKey, rulesOf } from "./code-block/effects-plugin";
 import { selectedBlocks } from "./drag";
 import type { ToolbarItem } from "./toolbar-button";
@@ -52,8 +53,20 @@ export const allowsMark = (state: EditorState, mark: string) => {
 	return !!type && state.selection.$from.parent.type.allowsMarkType(type);
 };
 
-/** 커서를 두면 버블에 보여 줄 마크. 설정이 있는 마크(링크·툴팁·글자 접기)를 먼저 보인다. */
-const BUBBLE_MARK_ORDER = ["link", "codeRef", "cmsTooltip", "codeFold", ...INLINE_MARK_TOOLS.map((tool) => tool.mark)];
+/**
+ * 커서를 두면 버블에 보여 줄 마크 순서. 설정이 있는 마크(링크, 확장의 글자 꾸밈, 코드 안 툴팁·글자 접기)를 먼저 보인다.
+ * `detailed`는 글자 꾸밈 확장이 내용을 그리는 마크(`EditorMarkExtension.detail`)다.
+ */
+export const bubbleMarkOrder = (detailed: readonly string[] = []) => [
+	"link",
+	...detailed,
+	CODE_TOOLTIP_MARK_NAME,
+	"codeFold",
+	...INLINE_MARK_TOOLS.map((tool) => tool.mark),
+];
+
+/** 설정이 있어 범위에 버블을 붙이는 마크(링크·코드 안 툴팁). 확장의 글자 꾸밈 내용도 같다. */
+export const RANGED_MARKS: readonly string[] = ["link", CODE_TOOLTIP_MARK_NAME];
 
 /** 커서가 걸친 마크 하나와 그 마크가 이어지는 범위. */
 export interface ActiveInlineMark {
@@ -97,7 +110,8 @@ function markRange($pos: ResolvedPos, mark: Mark, side: "before" | "after"): { f
  * - 커서가 효과 안이나 끝에 있으면(`marks`) 걸친 효과와 그 범위를 돌려준다(삭제·설정 수정용).
  * 블록(마키) 선택, 셀 선택, 노드 선택, 코드 블록을 넘나드는 선택, 원문 편집 중인 코드 블록에는 띄우지 않는다.
  */
-export function inlineBubbleTarget(state: EditorState): InlineBubbleTarget | null {
+export function inlineBubbleTarget(state: EditorState, detailed: readonly string[] = []): InlineBubbleTarget | null {
+	const order = bubbleMarkOrder(detailed);
 	const { selection } = state;
 	if (!(selection instanceof TextSelection) || selectedBlocks(state)) return null;
 	// 코드 블록 줄 번호 칸에서 줄을 골랐거나 본문–코드 잇기 중이면 버블을 띄우지 않는다(메뉴·안내 줄을 쓴다).
@@ -112,13 +126,13 @@ export function inlineBubbleTarget(state: EditorState): InlineBubbleTarget | nul
 	for (const side of ["after", "before"] as const) {
 		const node = side === "after" ? $from.nodeAfter : $from.nodeBefore;
 		for (const mark of node?.marks ?? []) {
-			if (!BUBBLE_MARK_ORDER.includes(mark.type.name) || marks.some((item) => item.name === mark.type.name)) continue;
+			if (!order.includes(mark.type.name) || marks.some((item) => item.name === mark.type.name)) continue;
 			marks.push({ name: mark.type.name, attrs: mark.attrs, ...markRange($from, mark, side) });
 		}
 	}
 	const rules = code ? rulesAt($from) : [];
 	if (!marks.length && !rules.length) return null;
-	marks.sort((a, b) => BUBBLE_MARK_ORDER.indexOf(a.name) - BUBBLE_MARK_ORDER.indexOf(b.name));
+	marks.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
 	return { kind: "marks", pos: from, marks, rules };
 }
 

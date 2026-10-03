@@ -1,5 +1,5 @@
 import { defineBlock, defineCollection, defineConfig, fields } from "@bh2980/cms";
-import { chart } from "@bh2980/cms-blocks";
+import { blocks } from "@bh2980/cms-blocks";
 import { seo, seoFields } from "@bh2980/cms-seo";
 
 /**
@@ -12,14 +12,14 @@ import { seo, seoFields } from "@bh2980/cms-seo";
 const article = defineCollection({
 	label: "Article",
 	icon: "newspaper",
-	workflow: "publish",
+	kind: "document",
 	path: "/blog/:slug/",
 	fields: {
-		title: fields.text({ label: "Headline", required: "publish", max: 120 }),
-		slug: fields.slug({ label: "Permalink", from: "title", required: "publish" }),
+		title: fields.text({ label: "Headline", required: true, max: 120 }),
+		slug: fields.slug({ label: "Permalink", from: "title", required: true }),
 		// 요약·검색 값은 이름이 아니라 역할(`role`)로 찾는다. 블로그와 다른 이름을 쓴다.
 		excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true, max: 300 }),
-		authorId: fields.relation({ label: "Author", to: "author", required: "publish" }),
+		authorId: fields.relation({ label: "Author", to: "author", required: true }),
 		topicIds: fields.relation({ label: "Topics", to: "topic", many: true, createInline: true }),
 		heroImage: fields.text({ label: "Hero image", placeholder: "https://" }),
 		format: fields.select({
@@ -58,10 +58,10 @@ const article = defineCollection({
 const topic = defineCollection({
 	label: "Topic",
 	icon: "tag",
-	workflow: "record",
+	kind: "item",
 	fields: {
-		title: fields.text({ label: "Name", required: "publish", max: 60 }),
-		slug: fields.slug({ label: "Key", from: "title", required: "publish" }),
+		title: fields.text({ label: "Name", required: true, max: 60 }),
+		slug: fields.slug({ label: "Key", from: "title", required: true }),
 	},
 	list: { columns: ["title", "slug", "updatedAt"] },
 });
@@ -69,10 +69,10 @@ const topic = defineCollection({
 const author = defineCollection({
 	label: "Author",
 	icon: "user",
-	workflow: "record",
+	kind: "item",
 	fields: {
-		title: fields.text({ label: "Display name", required: "publish" }),
-		slug: fields.slug({ label: "Handle", from: "title", required: "publish" }),
+		title: fields.text({ label: "Display name", required: true }),
+		slug: fields.slug({ label: "Handle", from: "title", required: true }),
 		bio: fields.text({ label: "Bio", multiline: true }),
 	},
 	list: { columns: ["title", "slug"] },
@@ -104,7 +104,8 @@ export default defineConfig({
 	defaultLocale: "en",
 	site: { name: "Example site", previewPath: "/preview" },
 	timeZone: "UTC",
-	// 블록 확장에서 차트만 설치하고, 사이트 블록 둘을 더한다. SEO 확장은 검색 미리보기·숨기기 스위치를 준다.
-	plugins: [chart(), seo()],
+	// 블록 확장에서 차트만 설치하고(`blocks({ only })`), 사이트 블록 둘을 더한다. SEO 확장은 검색 미리보기·숨기기 스위치를 준다.
+	// 차트 편집기 미리보기는 선택 의존성 `recharts`로 그린다.
+	plugins: [...blocks({ only: ["chart"] }), seo()],
 	blocks: [quoteCard, mapBlock],
 });

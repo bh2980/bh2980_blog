@@ -1,5 +1,5 @@
 import type { ListSortField } from "@bh2980/cms/client";
-import { isCollection, isRecordCollection, schemaOf, taxonomyFieldsOf } from "@bh2980/cms/client";
+import { isCollection, isItemCollection, LOCALES, schemaOf, taxonomyFieldsOf } from "@bh2980/cms/client";
 import type { ListState } from "./list-state";
 
 /**
@@ -88,15 +88,31 @@ export function columnConfig(collection: string, column: AdminListColumn): Colum
 
 export const columnLabel = (collection: string, column: AdminListColumn) => columnConfig(collection, column).label;
 
-/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`에서 만든다. */
+/**
+ * 목록 설정(`list.columns`)이 없을 때의 기본 컬럼. 문서 컬렉션은 제목·상태·언어·분류 필드·수정일·발행일, 항목 컬렉션은
+ * 제목·주소·언어·상태·수정일이다. 언어 컬럼은 언어가 둘 이상일 때만, 주소 컬럼은 주소 필드가 있을 때만 둔다.
+ */
+export function defaultListColumns(collection: string): AdminListColumn[] {
+	if (!isCollection(collection)) return ["title", "status"];
+	const schema = schemaOf(collection);
+	const locale = LOCALES.length > 1 ? ["locale"] : [];
+	if (schema.kind === "item") {
+		const slug = Object.values(schema.fields).some((field) => field.kind === "slug") ? ["slug"] : [];
+		return ["title", ...slug, ...locale, "status", "updatedAt"];
+	}
+	const taxonomy = taxonomyFieldsOf(collection).map((stored) => stored.name);
+	return ["title", "status", ...locale, ...taxonomy, "updatedAt", "publishedAt"];
+}
+
+/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`(없으면 기본 컬럼)에서 만든다. */
 export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
 	if (!isCollection(collection)) return { available: [...SYSTEM_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
 	// 주소 열은 이름과 상관없이 주소 필드(`fields.slug`)가 있으면 쓴다. 제목(`title`)은 모든 컬렉션에 있다.
 	const slugField = Object.entries(schema.fields).find(([, field]) => field.kind === "slug")?.[0];
 	const system = SYSTEM_COLUMNS.filter((column) => {
-		// record 컬렉션은 발행 없이 저장이 곧 공개다. 언어 열은 이름이 있는 언어를 보인다(v2 B4).
-		if (column === "publishedAt") return schema.workflow === "publish";
+		// 항목 컬렉션은 발행 없이 저장이 곧 공개다. 언어 열은 이름이 있는 언어를 보인다(v2 B4).
+		if (column === "publishedAt") return schema.kind === "document";
 		if (column === "slug") return slugField !== undefined;
 		return true;
 	});
@@ -104,45 +120,30 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 	// 분류 필드 컬럼은 언어 컬럼 뒤에 둔다.
 	const at = system.indexOf("locale") + 1;
 	const available = [...system.slice(0, at), ...taxonomy, ...system.slice(at)];
-	const defaults = schema.list.columns
+	const defaults = (schema.list?.columns ?? defaultListColumns(collection))
 		.map((column) => (column === slugField ? "slug" : column))
 		.filter((column) => available.includes(column));
 	return { available, defaults };
 }
 
-/**
- * 저장된 컬럼 이름을 지금 컬럼으로 맞춘다. 예전 설정은 분류 필드 컬럼을 짧은 이름(`category` → `categoryId`,
- * `tags` → `tagIds`)으로 저장했다. 맞는 컬럼이 없으면 `undefined`.
- */
-export function normalizeColumnId(column: string, available: readonly AdminListColumn[]): AdminListColumn | undefined {
-	if (available.includes(column)) return column;
-	const candidates = [`${column}Id`, column.endsWith("s") ? `${column.slice(0, -1)}Ids` : undefined];
-	return candidates.find((candidate): candidate is string => candidate !== undefined && available.includes(candidate));
-}
-
-/** 키가 컬럼 이름인 저장 값(표시·너비)을 지금 컬럼으로 맞춘다. */
-export function normalizeColumnRecord<T>(
+/** 키가 컬럼 이름인 저장 값(표시·너비)에서 지금 쓸 수 있는 컬럼만 남긴다. */
+export function knownColumnRecord<T>(
 	record: Readonly<Record<string, T>> | undefined,
 	available: readonly AdminListColumn[],
 ): Record<string, T> | undefined {
 	if (!record) return undefined;
-	return Object.fromEntries(
-		Object.entries(record).flatMap(([column, value]) => {
-			const id = normalizeColumnId(column, available);
-			return id ? [[id, value]] : [];
-		}),
-	);
+	return Object.fromEntries(Object.entries(record).filter(([column]) => available.includes(column)));
 }
 
 /**
- * 이 컬렉션에서 실제로 쓸 수 있는 필터. record 컬렉션은 활성/휴지통뿐이고,
+ * 이 컬렉션에서 실제로 쓸 수 있는 필터. 항목 컬렉션은 활성/휴지통뿐이고,
  * 휴지통 화면은 모든 항목이 휴지통 상태라 상태 필터가 없다.
  */
 export function filterFor(collection: string, column: AdminListColumn, mode: "list" | "trash" = "list"): ColumnFilter {
 	const filter = columnConfig(collection, column).filter;
-	if (filter.kind === "status" && (isRecordCollection(collection) || mode === "trash")) return { kind: "none" };
+	if (filter.kind === "status" && (isItemCollection(collection) || mode === "trash")) return { kind: "none" };
 	// 분류 항목의 언어 열은 이름이 있는 언어를 보일 뿐이라 언어로 거르지 않는다.
-	if (filter.kind === "locale" && isRecordCollection(collection)) return { kind: "none" };
+	if (filter.kind === "locale" && isItemCollection(collection)) return { kind: "none" };
 	return filter;
 }
 

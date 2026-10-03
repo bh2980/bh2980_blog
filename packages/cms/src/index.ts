@@ -21,6 +21,7 @@ export type {
 } from "./blocks/define";
 export { defineBlock } from "./blocks/define";
 export {
+	type AdminConfig,
 	type CmsConfig,
 	type CollectionsConfig,
 	defineConfig,
@@ -29,7 +30,6 @@ export {
 	type SeedTemplate,
 	type SiteConfig,
 } from "./config/define";
-export { type ColorPair, DEFAULT_TEXT_PALETTE, type PaletteColor } from "./core/text-colors";
 export {
 	type CmsPlugin,
 	type CmsServerPlugin,

@@ -11,7 +11,6 @@ import {
 	ListOrdered,
 	ListTodo,
 	type LucideIcon,
-	MessageSquareMore,
 	Minus,
 	Paperclip,
 	Pilcrow,
@@ -25,10 +24,8 @@ import {
 	OPEN_FILE_PICKER_EVENT,
 	OPEN_IMAGE_DIALOG_EVENT,
 } from "./block-inserts";
-import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export { OPEN_FILE_PICKER_EVENT, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
-export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export interface SlashCommandItem {
 	/** 블록 삽입 항목의 이름(본체 블록은 nodeView, 더한 블록은 블록 이름). 기본 서식 항목에는 없다. */
@@ -161,19 +158,6 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 			editor.chain().focus().deleteRange(range).insertContent("[[").run();
 		},
 	},
-	{
-		title: "툴팁",
-		description: "글자에 설명 달기",
-		icon: MessageSquareMore,
-		keywords: ["툴팁", "tooltip", "설명", "주석"],
-		action: (editor, range) => {
-			// 슬래시는 빈 문단에서 입력하므로 선택 영역이 없다. 라벨 예시를 선택해 편집·설명 입력을 시작한다.
-			editor.chain().focus().deleteRange(range).insertContent("툴팁 텍스트").run();
-			const to = editor.state.selection.from;
-			editor.commands.setTextSelection({ from: to - "툴팁 텍스트".length, to });
-			window.dispatchEvent(new CustomEvent(OPEN_TOOLTIP_EVENT));
-		},
-	},
 ];
 
 /** 슬래시 메뉴 블록 순서: 더한 블록(블록 확장·사이트 설정) 다음에 본체 블록(수식 등)이다. */
@@ -212,15 +196,28 @@ export function buildBlockSlashCommands(
 	return items;
 }
 
+/** 블록 삽입 항목(더한 블록 다음 본체 블록). */
+const BLOCK_SLASH_COMMANDS = buildBlockSlashCommands();
+
 /**
  * `/` 블록 삽입 메뉴(§4.2). 한국어·영문 이름으로 검색한다.
  * 글 제목이 본문 위의 H1이므로 본문 제목은 H2부터 쓴다(§4.1).
  */
-export const SLASH_COMMANDS: SlashCommandItem[] = [...BASE_SLASH_COMMANDS, ...buildBlockSlashCommands()];
+export const SLASH_COMMANDS: SlashCommandItem[] = [...BASE_SLASH_COMMANDS, ...BLOCK_SLASH_COMMANDS];
 
-/** 슬래시 메뉴 항목. `extra`는 편집 화면 확장(플러그인)이 더한 항목이다(뒤에 붙는다). */
-export function filterCommands(query: string, extra: readonly SlashCommandItem[] = []): SlashCommandItem[] {
-	const commands = extra.length > 0 ? [...SLASH_COMMANDS, ...extra] : SLASH_COMMANDS;
+/**
+ * 슬래시 메뉴 항목. `extra`는 편집 화면 확장(플러그인)이 더한 항목이고(뒤에 붙는다), `inline`은 글자 꾸밈 확장이 더한 항목이다
+ * (기본 글 서식 항목 다음, 블록 항목 앞).
+ */
+export function filterCommands(
+	query: string,
+	extra: readonly SlashCommandItem[] = [],
+	inline: readonly SlashCommandItem[] = [],
+): SlashCommandItem[] {
+	const commands =
+		extra.length > 0 || inline.length > 0
+			? [...BASE_SLASH_COMMANDS, ...inline, ...BLOCK_SLASH_COMMANDS, ...extra]
+			: SLASH_COMMANDS;
 	if (!query) return commands;
 	const clean = query.trim().toLowerCase();
 	return commands.filter((cmd) => {

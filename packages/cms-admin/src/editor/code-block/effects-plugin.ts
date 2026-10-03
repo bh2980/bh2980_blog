@@ -13,6 +13,7 @@ import type { Node as PmNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { CODE_ANCHOR_REF } from "../added-marks";
 
 /**
  * 코드 블록의 줄 효과·정규식 규칙·접기를 에디터에 보인다(v2 C5 코드 블록 재개발).
@@ -30,7 +31,7 @@ export interface CodeEffectsState {
 	picked: LinePick | null;
 	/** 본문–코드 잇기 중이면 먼저 고른 쪽(본문 글자 또는 코드 줄). 다른 쪽을 고르고 확인하면 잇는다. */
 	linking: LinkDraft | null;
-	/** 마우스를 올린 본문 연결(`codeRef`)의 줄 이름. 그 줄을 강조하고 나머지를 흐린다. */
+	/** 마우스를 올린 본문 연결(`data-code-ref`, `CODE_ANCHOR_REF`)의 줄 이름. 그 줄을 강조하고 나머지를 흐린다. */
 	hoverRef: string | null;
 	version: number;
 }
@@ -429,8 +430,11 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 						return false;
 					}
 					// 연결된 줄이 없는 본문 연결은 빨간 물결 밑줄로 알린다.
-					const ref = node.isText ? node.marks.find((mark) => mark.type.name === "codeRef") : undefined;
-					if (ref && !anchors.has(String(ref.attrs.to)))
+					const ref =
+						node.isText && CODE_ANCHOR_REF
+							? node.marks.find((mark) => mark.type.name === CODE_ANCHOR_REF?.mark)
+							: undefined;
+					if (ref && CODE_ANCHOR_REF && !anchors.has(String(ref.attrs[CODE_ANCHOR_REF.attribute])))
 						decorations.push(
 							Decoration.inline(pos, pos + node.nodeSize, {
 								class: "decoration-wavy decoration-red-500",

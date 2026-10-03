@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { isRecordCollection } from "../../../core/collections";
+import { isItemCollection } from "../../../core/collections";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError, isTransactionConflict, isUniqueViolation, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
@@ -47,7 +47,7 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 						throw new CmsError("scheduledAt must be in the future", "invalid_input");
 					}
 					const locked = await lockEntryForUpdate(client, qSchema, params.entryId, params.expectedVersion);
-					if (isRecordCollection(locked.collection)) {
+					if (isItemCollection(locked.collection)) {
 						throw new CmsError("Record collections are saved immediately and cannot be scheduled", "invalid_input");
 					}
 					if (locked.status !== "draft" && locked.status !== "published") {

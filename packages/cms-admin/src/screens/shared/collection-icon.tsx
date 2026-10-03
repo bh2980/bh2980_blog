@@ -1,6 +1,6 @@
 "use client";
 
-import { isCollection, isRecordCollection, schemaOf } from "@bh2980/cms/client";
+import { isCollection, isItemCollection, schemaOf } from "@bh2980/cms/client";
 import {
 	Bookmark,
 	BookOpen,
@@ -85,7 +85,7 @@ export function useIconByName(): (name: string | undefined) => LucideIcon | unde
 export function CollectionIcon({ collection }: { collection: string }) {
 	const iconByName = useIconByName();
 	const name = isCollection(collection) ? schemaOf(collection).icon : undefined;
-	const Icon = iconByName(name) ?? (isRecordCollection(collection) ? Tag : FileText);
+	const Icon = iconByName(name) ?? (isItemCollection(collection) ? Tag : FileText);
 	return <Icon />;
 }
 

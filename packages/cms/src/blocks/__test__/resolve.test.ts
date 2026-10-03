@@ -40,7 +40,9 @@ describe("사이트 설정의 본문 블록", () => {
 	it("더한 블록의 이름·문법·컴포넌트·편집 방식·자식을 검사한다", () => {
 		const bad = (patch: object) => resolveBlocks({ blocks: [{ ...card, ...patch } as never] });
 		expect(() => bad({ name: "Card" })).toThrow(/kebab/);
-		expect(() => bad({ syntax: { kind: "text", directive: "card" } })).toThrow(/container, leaf or fence/);
+		expect(() => bad({ syntax: { kind: "math" } })).toThrow(/container, leaf, text or fence/);
+		// 글자 꾸밈(`text`)은 `mark` 편집 방식이고 자식이 없다.
+		expect(() => bad({ syntax: { kind: "text", directive: "card" } })).toThrow(/text block needs editor.view "mark"/);
 		expect(() => bad({ syntax: { kind: "container", directive: "other" } })).toThrow(/directive must equal/);
 		expect(() => bad({ component: "card" })).toThrow(/PascalCase/);
 		expect(() => bad({ name: "image", syntax: { kind: "leaf", directive: "image" } })).toThrow(/already used/);
@@ -48,6 +50,32 @@ describe("사이트 설정의 본문 블록", () => {
 		expect(() => bad({ editor: { view: "mark" } })).toThrow(/editor.view/);
 		expect(() => bad({ children: { blocks: ["tab"] } })).toThrow(/added block with this parent/);
 		expect(() => resolveBlocks({ blocks: [card, card] })).toThrow(/already used/);
+	});
+
+	it("글자 꾸밈(`text`·`mark`)을 더하고, 코드 줄 이름표 속성(`codeAnchor`)은 꾸밈 하나의 글 속성 하나다", () => {
+		const note = defineBlock({
+			name: "note",
+			label: "메모",
+			syntax: { kind: "text", directive: "note" },
+			component: "Note",
+			attributes: { text: { type: "string", label: "글", required: true } },
+			editor: { view: "mark" },
+		});
+		expect(resolveBlocks({ blocks: [note] }).at(-1)).toBe(note);
+		expect(() => resolveBlocks({ blocks: [{ ...note, children: { min: 0 } }] })).toThrow(/no children or parent/);
+		const anchor = { ...note, attributes: { to: { type: "string" as const, label: "줄", codeAnchor: true } } };
+		expect(resolveBlocks({ blocks: [anchor] }).at(-1)).toBe(anchor);
+		expect(() =>
+			resolveBlocks({
+				blocks: [
+					anchor,
+					{ ...anchor, name: "note-two", component: "NoteTwo", syntax: { kind: "text", directive: "note-two" } },
+				],
+			}),
+		).toThrow(/only one block can link code lines/);
+		expect(() => resolveBlocks({ blocks: [{ ...card, attributes: { to: anchor.attributes.to } }] })).toThrow(
+			/codeAnchor/,
+		);
 	});
 
 	it("코드 펜스 블록은 언어가 겹치지 않는다", () => {

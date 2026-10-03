@@ -44,7 +44,7 @@ describe("설정 검사(`seo().validate`)", () => {
 			collections: {
 				page: defineCollection({
 					label: "Page",
-					workflow: "publish",
+					kind: "document",
 					fields: { title, ...extra },
 					list: { columns: [] },
 				}),
@@ -65,7 +65,7 @@ describe("설정 검사(`seo().validate`)", () => {
 describe("공개 화면 도우미(`seoOf`)", () => {
 	const page = defineCollection({
 		label: "Page",
-		workflow: "publish",
+		kind: "document",
 		fields: {
 			title: fields.text({ label: "Title" }),
 			intro: fields.text({ label: "Intro", role: "summary" }),

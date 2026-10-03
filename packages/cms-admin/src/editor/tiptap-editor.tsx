@@ -43,13 +43,7 @@ import { type EditorInsertAction, type EditorSelectionAction, useCmsAdminCompone
 import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
 import { useAdminFeatures } from "../screens/shared/admin-features";
 import { Button } from "../ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Toggle } from "../ui/toggle";
@@ -57,14 +51,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
 import { CodeLinkBar } from "./code-block/code-link-bar";
-import { TextColorMenu, TextColorMenuItems } from "./color-menu";
 import { CustomBlockMenu, CustomBlockMenuItems } from "./custom-block-menu";
 import { endBlockDrag, findBlockDOM, refineBlock, resolveTargetBlock, startBlockDrag, startMarquee } from "./drag";
 import { EDITOR_WIDTHS, EditorWidthMenu, useEditorWidth } from "./editor-width";
 import { buildEditorExtensions } from "./extensions";
 import { FILE_NODE_NAME } from "./file-node";
 import { ImageInsertDialog, type ImageInsertion } from "./image-insert-dialog";
-import { InlineBubble } from "./inline-bubble";
+import { InlineBubble, useMarkExtensions } from "./inline-bubble";
 import { INLINE_MARK_TOOLS } from "./inline-marks";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
@@ -80,7 +73,6 @@ import { TableToolbar } from "./table-toolbar";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
 import { type ToolbarEntry, ToolbarMenuGroup, ToolbarMenuItem, ToolbarMenuSection, ToolbarRow } from "./toolbar-row";
-import { TooltipPopover } from "./tooltip-popover";
 import { uploadAttachment } from "./upload-helper";
 
 interface CmsEditorProps {
@@ -231,19 +223,23 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 
 const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
 
+/** 글자 꾸밈 확장의 서식 도구 자리 이름(`mark:블록 이름`). */
+const markToolKey = (group: "format" | "link", name: string) => `mark-${group}:${name}`;
+
 /**
- * 도구 모음 순서. 문단 모양 → 글자 꾸밈 → 글자에 붙이기(링크·툴팁) → 목록·정렬 → 블록 넣기. 문서 단위 도구(템플릿·확장·원문·MDX·폭)는
- * 편집 화면이 오른쪽(`toolbarAside`)에 둔다. 여기 없는 항목은 끝에 원래 순서대로 붙는다.
+ * 도구 모음 순서. 문단 모양 → 글자 꾸밈(확장의 꾸밈 포함) → 글자에 붙이기(링크·확장의 꾸밈) → 목록·정렬 → 블록 넣기.
+ * 문서 단위 도구(템플릿·확장·원문·MDX·폭)는 편집 화면이 오른쪽(`toolbarAside`)에 둔다. 여기 없는 항목은 끝에 원래 순서대로 붙는다.
+ * `mark-format:*`·`mark-link:*`는 확장이 더한 순서다.
  */
 const TOOLBAR_ORDER = [
 	"block-style",
 	"divider-block",
 	...INLINE_TOOLS.map((tool) => tool.mark),
-	"color",
+	"mark-format:*",
 	"script",
 	"divider-inline",
 	"link",
-	"tooltip",
+	"mark-link:*",
 	"divider-list",
 	"list",
 	"align",
@@ -256,9 +252,11 @@ const TOOLBAR_ORDER = [
 
 const orderToolbar = (entries: readonly ToolbarEntry[]): ToolbarEntry[] => {
 	const rank = (key: string) => {
-		const index = TOOLBAR_ORDER.indexOf(key);
+		const group = /^(mark-(?:format|link)):/.exec(key)?.[1];
+		const index = TOOLBAR_ORDER.indexOf(group ? `${group}:*` : key);
 		return index < 0 ? TOOLBAR_ORDER.length : index;
 	};
+	// 같은 자리 안에서는 원래 순서를 지킨다(Array.prototype.sort는 안정 정렬이다).
 	return [...entries].sort((a, b) => rank(a.key) - rank(b.key));
 };
 
@@ -391,6 +389,9 @@ export function CmsEditor({
 	insertActions,
 }: CmsEditorProps) {
 	const isSourceMode = sourceView != null && sourceView !== false;
+	// 글자 꾸밈 확장(블록 확장의 `:tooltip` 등). 모양·서식 도구·슬래시 메뉴를 준다.
+	const { marks: markSpecs = {} } = useCmsAdminComponents();
+	const allMarkExtensions = useMarkExtensions();
 	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
 	const canEdit = editable && !isSourceMode;
 	const { media } = useAdminFeatures();
@@ -430,6 +431,19 @@ export function CmsEditor({
 	);
 	const extraCommandsRef = useRef(extraCommands);
 	extraCommandsRef.current = extraCommands;
+	// 글자 꾸밈 확장의 슬래시 메뉴 항목(기본 글 서식 항목 다음).
+	const inlineCommands: SlashCommandItem[] = allMarkExtensions.flatMap(({ extension }) =>
+		(extension.insertActions ?? []).map((item) => ({
+			id: item.id,
+			title: item.title,
+			description: item.description,
+			keywords: [...item.keywords],
+			...(item.icon ? { icon: item.icon } : {}),
+			action: (current: Editor, range: Range) => item.run(current, range),
+		})),
+	);
+	const inlineCommandsRef = useRef(inlineCommands);
+	inlineCommandsRef.current = inlineCommands;
 	const slashRef = useRef(slash);
 	slashRef.current = slash;
 
@@ -484,7 +498,7 @@ export function CmsEditor({
 	const editor = useEditor({
 		immediatelyRender: false,
 		editable: canEdit,
-		extensions: buildEditorExtensions(),
+		extensions: buildEditorExtensions(markSpecs),
 		content: initialContent,
 		editorProps: {
 			attributes: {
@@ -533,7 +547,7 @@ export function CmsEditor({
 
 				const openSlash = slashRef.current;
 				if (openSlash) {
-					const filtered = filterCommands(openSlash.query, extraCommandsRef.current);
+					const filtered = filterCommands(openSlash.query, extraCommandsRef.current, inlineCommandsRef.current);
 					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
 						const step = event.key === "ArrowDown" ? 1 : -1;
@@ -569,6 +583,10 @@ export function CmsEditor({
 		onSelectionUpdate: ({ editor: current }) => syncTriggerPopup(current),
 	});
 
+	// 이 편집기 스키마에 있는 글자 꾸밈 확장(사이트가 쓰는 블록)만 도구를 그린다.
+	const markExtensions = allMarkExtensions.filter(({ name }) => !editor || editor.schema.marks[name]);
+	const markNames = markExtensions.map(({ name }) => name);
+
 	// 선택 위치와 적용된 서식이 바뀌면 드롭다운 이름·활성 표시를 갱신한다(표 조작 도구는 TableToolbar가 따로 구독한다).
 	useEditorState({
 		editor,
@@ -578,7 +596,7 @@ export function CmsEditor({
 			const active = [...BLOCK_STYLES, ...INLINE_TOOLS, ...SCRIPT_TOOLS, ...ALIGN_TOOLS, ...LIST_STYLES]
 				.map((item) => (item.isActive?.(current) ? "1" : "0"))
 				.join("");
-			const marks = ["link", "cmsTooltip"].map((mark) => (current.isActive(mark) ? "1" : "0")).join("");
+			const marks = ["link", ...markNames].map((mark) => (current.isActive(mark) ? "1" : "0")).join("");
 			return `${active}${marks}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
 		},
 	});
@@ -858,20 +876,23 @@ export function CmsEditor({
 		...INLINE_TOOLS.map((tool) =>
 			buttonSlot(tool, tool.mark, INLINE_PRIORITY[tool.mark] ?? 5, PINNED_INLINE_MARKS.includes(tool.mark)),
 		),
-		{
-			key: "color",
-			priority: 3,
-			render: () => <TextColorMenu editor={editor} />,
-			menu: () => (
-				<>
-					<DropdownMenuSeparator className="first:hidden" />
-					<TextColorMenuItems editor={editor} />
-				</>
-			),
-		},
+		// 글자 꾸밈 확장의 서식 도구(블록 확장의 글자색·툴팁 등).
+		...markExtensions.flatMap(({ name, extension }): ToolbarEntry[] => {
+			const tool = extension.toolbar;
+			if (!tool) return [];
+			const { Button, MenuItems } = tool;
+			return [
+				{
+					key: markToolKey(tool.group, name),
+					priority: tool.priority ?? 0,
+					fixed: tool.priority === undefined || !MenuItems,
+					render: () => <Button editor={editor} />,
+					...(MenuItems ? { menu: () => <MenuItems editor={editor} /> } : {}),
+				},
+			];
+		}),
 		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
 		{ key: "divider-inline", divider: true },
-		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
 		{ key: "divider-list", divider: true },
 		{ key: "divider-insert", divider: true },
 		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
@@ -1074,7 +1095,7 @@ export function CmsEditor({
 
 			{slash && !isSourceMode && (
 				<SlashMenuPopup
-					items={filterCommands(slash.query, extraCommands)}
+					items={filterCommands(slash.query, extraCommands, inlineCommands)}
 					coords={slash.coords}
 					selectedIndex={slash.index}
 					onSelect={(command) => {

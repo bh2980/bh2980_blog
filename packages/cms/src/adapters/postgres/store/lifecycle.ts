@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { isRecordCollection } from "../../../core/collections";
+import { isItemCollection } from "../../../core/collections";
 import { type StoreContext, withTransaction } from "./context";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
@@ -82,7 +82,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 		/** 초안/발행 → 보관. 공개를 끝내고 예약을 취소한다. record 컬렉션은 보관이 없다. */
 		archiveEntry: (params: LifecycleParams) =>
 			transition(params, ["draft", "published"], async (client, locked) => {
-				if (isRecordCollection(locked.collection)) {
+				if (isItemCollection(locked.collection)) {
 					throw new CmsError("Record collections cannot be archived", "invalid_status", locked.version);
 				}
 				await client.query(`UPDATE "${qSchema}".entries SET status = 'archived', version = $1 WHERE id = $2`, [
@@ -119,7 +119,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 		 */
 		trashEntry: (params: LifecycleParams) =>
 			transition(params, ["draft", "published", "archived"], async (client, locked) => {
-				if (isRecordCollection(locked.collection)) {
+				if (isItemCollection(locked.collection)) {
 					await publishing.assertNotReferenced(client, params.id, { ignoreTrashedSources: true });
 				}
 				await client.query(
@@ -165,7 +165,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 					`UPDATE "${qSchema}".entries SET status = 'draft', trashed_at = NULL, version = $1 WHERE id = $2`,
 					[version, params.id],
 				);
-				if (isRecordCollection(locked.collection)) {
+				if (isItemCollection(locked.collection)) {
 					await publishing.publishWithinTransaction(client, params.id, { expectedVersion: version });
 				}
 				// 원문과 함께 버린 번역본만 되살린다. 따로 지운 번역본은 휴지통에 남는다.

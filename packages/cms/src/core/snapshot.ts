@@ -12,6 +12,7 @@ import {
 	normalizeRecordTranslations,
 	RECORD_TRANSLATIONS_KEY,
 	relationRule,
+	schemaOf,
 	storedField,
 } from "../schema/derive";
 import { COLLECTION_DEFINITIONS, isCollection } from "./collections";
@@ -703,8 +704,8 @@ export function validateForPublish(
 		// 공개 화면의 카테고리·태그·발행일은 원문에서 온다.
 		issues.push({ code: "source_not_published", path: "translationGroupId" });
 	}
-	const isContent = COLLECTION_DEFINITIONS[snapshot.collection].workflow === "publish";
-	if (isContent && snapshot.mdx.trim() === "") {
+	// 본문을 쓰는 컬렉션(`body`)만 빈 본문을 막는다.
+	if (schemaOf(snapshot.collection).body && snapshot.mdx.trim() === "") {
 		issues.push({ code: "empty_body", path: "mdx", position: { line: 1, column: 1 } });
 	}
 
@@ -743,8 +744,7 @@ export function validateForPublish(
 			.map((o) => (o.type === "metadata" ? relationRule(snapshot.collection, o.path) : undefined))
 			.find((found) => found !== undefined);
 		if (rule && target.collection !== rule.to) {
-			// 모음집 항목처럼 미공개를 허용하는 목록 관계는 v1부터 별도 코드로 알린다.
-			addForAll(rule?.allowUnpublished ? "invalid_item_collection" : "invalid_reference_collection");
+			addForAll("invalid_reference_collection");
 			continue;
 		}
 		// 모음집은 아직 공개되지 않은 게시글도 담을 수 있다(§6.4). 공개 목록에서만 뺀다.

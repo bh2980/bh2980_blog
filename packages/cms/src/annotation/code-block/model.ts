@@ -15,7 +15,7 @@ export const CODE_CHAR_EFFECTS = [
 	{ name: "em", mark: "italic", label: "기울임" },
 	{ name: "del", mark: "strike", label: "취소선" },
 	{ name: "u", mark: "underline", label: "밑줄" },
-	{ name: "Tooltip", mark: "cmsTooltip", label: "툴팁" },
+	{ name: "Tooltip", mark: "codeTooltip", label: "툴팁" },
 	{ name: "fold", mark: "codeFold", label: "글자 접기" },
 ] as const;
 

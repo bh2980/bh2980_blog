@@ -12,7 +12,9 @@ import {
 	useMemo,
 	useRef,
 } from "react";
+import type { EditorMarkSpec } from "./editor/added-marks";
 import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
+import type { ActiveInlineMark } from "./editor/inline-marks";
 import type { BlockAction } from "./editor/tiptap-editor";
 import type { EntryData, EntryForm } from "./screens/entries/entry-form";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
@@ -71,6 +73,63 @@ export interface EditorExtensionResult {
 
 export type EditorExtension = (context: EditorExtensionContext) => EditorExtensionResult;
 
+/** 인라인 버블 안에 펼치는 입력 칸(링크 입력처럼). */
+export interface EditorBubblePanel {
+	/** 칸 이름(화면 낭독용). */
+	readonly label: string;
+	/** `form`은 입력 폼 폭(20rem), `auto`는 내용 폭. 없으면 `form`. */
+	readonly size?: "form" | "auto";
+	readonly content: ReactNode;
+}
+
+/** 인라인 버블 버튼·내용이 받는 값. */
+export interface EditorBubbleProps {
+	readonly editor: Editor;
+	/** 선택이 코드 블록 안인가. */
+	readonly inCode: boolean;
+	/** 버블 안에 입력 칸을 펼친다. */
+	readonly openPanel: (panel: EditorBubblePanel) => void;
+	/** 펼친 칸을 닫고 편집기로 초점을 돌린다. */
+	readonly closePanel: () => void;
+	/** 문서를 바꾸는 동작을 감싼다. 바꾼 뒤에도 버블이 사라지지 않는다(입력으로 보지 않는다). */
+	readonly act: (run: () => void) => () => void;
+}
+
+/** 커서가 꾸밈 안에 있을 때 버블에 그릴 내용이 받는 값. `mark`는 커서가 걸친 그 꾸밈과 범위다. */
+export interface EditorMarkDetailProps extends EditorBubbleProps {
+	readonly mark: ActiveInlineMark;
+}
+
+/**
+ * 글자 꾸밈 확장(블록 확장의 `syntax.kind: "text"` 블록)이 편집기에 더하는 것. 키는 블록 이름이고, 편집기 마크 이름은
+ * `cms` + 파스칼 블록 이름이다(`@bh2980/cms-admin/editor`의 `addedMarkName`). 본체 편집기는 꾸밈 이름을 모르고 이 등록만 그린다.
+ */
+export interface EditorMarkExtension extends EditorMarkSpec {
+	/**
+	 * 서식 도구 버튼. `format`은 글자 꾸밈(굵게…) 뒤, `link`는 링크 뒤에 놓는다. `priority`가 있으면 좁을 때 큰 것부터
+	 * "더보기" 메뉴(`MenuItems`)로 들어가고, 없으면 숨기지 않는다.
+	 */
+	readonly toolbar?: {
+		readonly group: "format" | "link";
+		readonly priority?: number;
+		readonly Button: ComponentType<{ readonly editor: Editor }>;
+		readonly MenuItems?: ComponentType<{ readonly editor: Editor }>;
+	};
+	/**
+	 * 글자를 골랐을 때 인라인 버블에 더할 버튼. `format`은 글자 꾸밈 뒤, `link`는 링크 묶음에 `order` 순서로 놓는다
+	 * (링크는 0, 없으면 1).
+	 */
+	readonly bubble?: {
+		readonly group: "format" | "link";
+		readonly order?: number;
+		readonly Button: ComponentType<EditorBubbleProps>;
+	};
+	/** 커서가 이 꾸밈 안에 있을 때 버블에 그릴 내용(설명·수정·해제). 없으면 버블에 나오지 않는다. */
+	readonly detail?: ComponentType<EditorMarkDetailProps>;
+	/** 슬래시(`/`) 메뉴 항목. 기본 글 서식 항목 다음, 블록 항목 앞에 놓는다. */
+	readonly insertActions?: readonly EditorInsertAction[];
+}
+
 /**
  * 사이트·플러그인이 관리자 화면에 넣는 컴포넌트. 관리자 레이아웃 안에서 `CmsAdminComponentsProvider`로 준다.
  * 서버 레이아웃은 함수를 브라우저로 넘길 수 없으므로, 클라이언트 컴포넌트가 이 공급자를 그린다.
@@ -102,6 +161,11 @@ export interface CmsAdminComponents {
 	readonly blockViews?: Readonly<Record<string, ComponentType<NodeViewProps>>>;
 	/** 편집 화면 확장(툴바·블록 동작). */
 	readonly editorExtensions?: readonly EditorExtension[];
+	/**
+	 * 글자 꾸밈 확장(블록 이름 → 모양·서식 도구·버블·슬래시 메뉴). 블록 확장의 글자 꾸밈(`syntax.kind: "text"`) 블록이 넣는다.
+	 * 등록하지 않은 꾸밈은 기본 모양(꾸밈 없는 글자)으로 저장·편집되고 도구가 없다.
+	 */
+	readonly marks?: Readonly<Record<string, EditorMarkExtension>>;
 	/**
 	 * 이름으로 고르는 아이콘(lucide 이름 → 컴포넌트). 블록 정의의 `editor.icon`, 플러그인 사이드바 항목의 `icon`,
 	 * 컬렉션의 `icon`, 코드 줄 효과의 `icon`이 본체 목록에 없는 이름을 쓰면 여기에 등록한다.
@@ -157,6 +221,7 @@ export function CmsAdminComponentsProvider({
 			blockEditors: { ...parent.blockEditors, ...components.blockEditors },
 			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
+			marks: { ...parent.marks, ...components.marks },
 			icons: { ...parent.icons, ...components.icons },
 			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
 		}),

@@ -1,7 +1,74 @@
 /*
  * @bh2980/cms-blocks 스타일. 앱의 Tailwind 입력 CSS에서 `@bh2980/cms-admin/styles.css` 다음에 import한다.
- * 색·토큰은 관리자 패키지 스타일이 준다.
+ * 편집기 모양은 관리자 테마 색(--background·--foreground·--border·--muted-foreground·--destructive·--warning)에서 만든다.
+ * 아래 기본값은 모두 `:where()`로 두어 앱이 같은 변수를 정하면 앱 값이 이긴다.
  */
 
 /* 배포 묶음의 편집 화면에서 Tailwind 클래스를 찾는다(작업 공간 안에서는 앱이 소스를 바로 읽는다). */
 @source "./dist";
+
+/* 기본값: 콜아웃 종류별 강조색과 차트 계열 색(`chart-1`~`chart-5`). */
+:where(:root) {
+	--cms-callout-note: var(--muted-foreground);
+	--cms-callout-tip: oklch(0.6 0.15 155);
+	--cms-callout-info: oklch(0.6 0.14 240);
+	--cms-callout-warning: var(--warning, oklch(0.7 0.16 70));
+	--cms-callout-danger: var(--destructive, oklch(0.58 0.22 27));
+	--chart-1: oklch(0.65 0.17 265);
+	--chart-2: oklch(0.7 0.14 160);
+	--chart-3: oklch(0.75 0.15 70);
+	--chart-4: oklch(0.65 0.2 15);
+	--chart-5: oklch(0.6 0.15 310);
+}
+
+:where(.dark) {
+	--chart-1: oklch(0.75 0.13 265);
+	--chart-2: oklch(0.78 0.12 160);
+	--chart-3: oklch(0.82 0.12 70);
+	--chart-4: oklch(0.72 0.16 15);
+	--chart-5: oklch(0.72 0.13 310);
+}
+
+/* 콜아웃 편집 화면(`callout/view.tsx`). 강조색을 테마 배경·테두리에 섞는다. 공개 화면 모양은 사이트가 정한다. */
+.cms-callout {
+	--cms-callout-accent: var(--cms-callout-note);
+	background-color: color-mix(in oklab, var(--cms-callout-accent) 10%, var(--background));
+	border-color: color-mix(in oklab, var(--cms-callout-accent) 40%, var(--border));
+	color: var(--foreground);
+}
+.cms-callout[data-variant="tip"] {
+	--cms-callout-accent: var(--cms-callout-tip);
+}
+.cms-callout[data-variant="info"] {
+	--cms-callout-accent: var(--cms-callout-info);
+}
+.cms-callout[data-variant="warning"] {
+	--cms-callout-accent: var(--cms-callout-warning);
+}
+.cms-callout[data-variant="danger"] {
+	--cms-callout-accent: var(--cms-callout-danger);
+}
+.cms-callout [data-callout-icon] {
+	color: var(--cms-callout-accent);
+}
+.cms-callout :is(ul, ol) > li::marker {
+	color: var(--muted-foreground);
+}
+
+/* 글자색·글자 배경색(`:color`, 글자색 확장). 값은 밝은·어두운 테마 짝이고, 어두운 값이 없으면 밝은 값을 쓴다. */
+.cms-color[data-fg] {
+	color: var(--cms-fg);
+}
+.cms-color[data-bg] {
+	background-color: var(--cms-bg);
+	border-radius: 0.25em;
+	padding: 0.05em 0.2em;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+}
+:where(.dark) .cms-color[data-fg] {
+	color: var(--cms-fg-dark, var(--cms-fg));
+}
+:where(.dark) .cms-color[data-bg] {
+	background-color: var(--cms-bg-dark, var(--cms-bg));
+}

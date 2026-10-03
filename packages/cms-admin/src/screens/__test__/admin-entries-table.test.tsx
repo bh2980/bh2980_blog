@@ -144,17 +144,18 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		}
 	});
 
-	it("reads saved column settings that use the old short names", () => {
+	it("ignores saved column names that are not columns any more (no guessing of old names)", () => {
 		renderTable({
 			columnSettings: {
-				order: ["tags", "title"],
-				visibility: { category: false, tags: true },
-				sizes: { tags: 240 },
+				order: ["tags", "tagIds", "title"],
+				visibility: { category: false, tags: false },
+				sizes: { tags: 240, tagIds: 230 },
 			},
 		});
-		expect(screen.queryByRole("columnheader", { name: /카테고리/ })).toBeNull();
+		// 예전 짧은 이름(`category`·`tags`)은 본체가 짐작해 바꾸지 않는다(블로그는 마이그레이션으로 옮긴다).
+		expect(screen.getByRole("columnheader", { name: /카테고리/ })).toBeTruthy();
 		const handle = screen.getByRole("separator", { name: "태그 열 너비 조절" });
-		expect(handle.getAttribute("aria-valuenow")).toBe("240");
+		expect(handle.getAttribute("aria-valuenow")).toBe("230");
 		const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
 		expect(headers.findIndex((text) => text?.includes("태그"))).toBeLessThan(
 			headers.findIndex((text) => text?.includes("제목")),

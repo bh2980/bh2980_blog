@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { PoolClient } from "pg";
-import { isCollection, isRecordCollection } from "../../../core/collections";
+import { isCollection, isItemCollection } from "../../../core/collections";
 import { DEFAULT_LOCALE, isLocale } from "../../../core/locales";
 import { computeContentHash } from "../../../core/snapshot";
 import {
@@ -89,7 +89,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 		);
 		const source = res.rows[0];
 		if (!source) throw new CmsError("Source entry not found", "not_found");
-		if (source.collection !== collection || isRecordCollection(collection)) {
+		if (source.collection !== collection || isItemCollection(collection)) {
 			throw new CmsError("Only content collections have translations", "invalid_input");
 		}
 		if (source.group_id !== null) throw new CmsError("Translate the source entry, not a translation", "invalid_input");
@@ -422,7 +422,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 				);
 				const orig = res.rows[0];
 				if (!orig) throw new CmsError("Entry not found", "not_found");
-				if (isRecordCollection(orig.collection)) {
+				if (isItemCollection(orig.collection)) {
 					throw new CmsError("Record collections cannot be duplicated", "invalid_input");
 				}
 

@@ -34,7 +34,7 @@ const pairs = (definition: AiActionDefinition | undefined) =>
 
 const collections = cmsConfig.collections as CollectionsConfig;
 const bodyCollections = Object.entries(collections).filter(([, schema]) => schema.body);
-const isRecord = (name: string) => collections[name]?.workflow === "record";
+const isRecord = (name: string) => collections[name]?.kind === "item";
 
 describe("지금 설정: 기본 필드 기능은 필드 종류·역할·관계 대상으로 붙는다", () => {
 	it("주소 추천은 본문이 있는 컬렉션의 주소 필드(`fields.slug`)에 붙는다", () => {
@@ -117,7 +117,7 @@ describe("기본 기능 켜기·끄기·바꾸기(`resolveAiActions`)", () => {
 	const title = fields.text({ label: "제목", max: 100 });
 	const note = defineCollection({
 		label: "노트",
-		workflow: "publish",
+		kind: "document",
 		fields: {
 			title,
 			slug: fields.slug({ label: "주소", from: "title" }),
@@ -130,11 +130,11 @@ describe("기본 기능 켜기·끄기·바꾸기(`resolveAiActions`)", () => {
 	});
 	const label = defineCollection({
 		label: "라벨",
-		workflow: "record",
+		kind: "item",
 		fields: { title, slug: fields.slug({ label: "주소" }) },
 		list: { columns: [] },
 	});
-	const shelf = defineCollection({ label: "책장", workflow: "record", fields: { title }, list: { columns: [] } });
+	const shelf = defineCollection({ label: "책장", kind: "item", fields: { title }, list: { columns: [] } });
 	const callout = defineBlock({
 		name: "aside-box",
 		label: "곁상자",

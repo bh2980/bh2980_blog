@@ -26,14 +26,14 @@ import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 
 const article = defineCollection({
 	label: "Article",
-	workflow: "publish", // 초안·발행. 분류(태그 등)는 "record"
+	kind: "document", // 본문·초안·발행. 태그 같은 작은 항목은 "item"
 	path: "/blog/:slug/", // 공개 주소. 본문 내부 링크·미리보기 주소에 쓴다
 	icon: "newspaper", // 관리자 사이드바 아이콘(lucide 이름)
 	fields: {
-		title: fields.text({ label: "Title", required: "publish" }),
-		slug: fields.slug({ label: "Slug", from: "title", required: "publish" }),
+		title: fields.text({ label: "Title", required: true }), // 발행(항목은 저장) 때 비면 안 된다
+		slug: fields.slug({ label: "Slug", from: "title", required: true }),
 	},
-	list: { columns: ["title", "status", "updatedAt"] },
+	// layout·list를 적지 않으면 필드 순서대로 그리고 기본 목록 컬럼을 쓴다("컬렉션").
 });
 
 export default defineConfig({
@@ -151,11 +151,11 @@ pnpm add @bh2980/cms-blocks
 
 ```ts
 // cms.config.ts
-import { callout, tabs } from "@bh2980/cms-blocks";
+import { blocks } from "@bh2980/cms-blocks";
 
 export default defineConfig({
 	// …
-	plugins: [callout(), tabs()],
+	plugins: [...blocks()], // 전부. 고르려면 blocks({ only: ["callout", "tooltip"] }), 하나씩은 callout()·tabs()…
 });
 ```
 
@@ -233,13 +233,14 @@ export default defineConfig({
 
 ## 본문 블록
 
-본체에는 다른 기능이 기대거나 Markdown 문법인 블록(이미지·파일·표·수식·정렬·글자 꾸밈)만 있다. 콜아웃·접기·탭·단·
-Mermaid·차트는 블록 확장 `@bh2980/cms-blocks`에서 필요한 것만 플러그인으로 설치한다.
+본체에는 다른 기능이 기대거나 Markdown 문법인 블록(이미지·파일·표·수식·정렬, 밑줄·위아래 첨자·줄바꿈·번역 안내)만 있다.
+콜아웃·접기·탭·단·Mermaid·차트와 글자 꾸밈(툴팁·코드 연결·글자색)은 블록 확장 `@bh2980/cms-blocks`에서 필요한 것만
+플러그인으로 설치한다.
 
 ```ts
-import { callout, mermaid } from "@bh2980/cms-blocks";
+import { blocks } from "@bh2980/cms-blocks";
 
-plugins: [callout(), mermaid()],
+plugins: [...blocks({ only: ["callout", "mermaid", "tooltip"] })],
 ```
 
 사이트가 직접 만든 블록은 설정의 `blocks`에 넣는다. 블록 확장도 같은 정의(`definePlugin({ blocks })`)로 블록을 더한다.
@@ -276,8 +277,12 @@ blocks: [
 ],
 ```
 
-- 더할 수 있는 블록은 지시자 블록(`container`·`leaf`)과 코드 펜스 블록(`fence`)이다. 코드 펜스 블록은 그 언어의 코드
-  펜스를 모두 가져가므로 일반 코드 언어 이름(`ts` 등)을 쓰지 않는다.
+- 더할 수 있는 블록은 지시자 블록(`container`·`leaf`), 글자 꾸밈(`text` + `editor.view: "mark"`), 코드 펜스 블록(`fence`)이다.
+  코드 펜스 블록은 그 언어의 코드 펜스를 모두 가져가므로 일반 코드 언어 이름(`ts` 등)을 쓰지 않는다.
+- 글자 꾸밈은 `:이름[글자]{속성}`으로 저장한다. 속성은 정의 순서대로 쓰고, 꼭 있어야 하는 속성(`required`)은 비어도, 나머지는
+  값이 있을 때만 쓴다. 겹친 꾸밈은 더한 순서(바깥부터)로 저장한다. 편집기 표시는 관리자 패키지가 정의에서 만들고, 모양·서식
+  도구·버블·슬래시 메뉴는 확장이 관리자 화면에 등록한다(`@bh2980/cms-admin` README의 "글자 꾸밈"). 속성에 `codeAnchor: true`를
+  달면 그 값이 코드 블록 줄 이름표(`anchor` 줄 효과)이고, 편집기의 본문–코드 잇기가 이 꾸밈을 쓴다(사이트에 하나만).
 - 속성의 선택 값·필수 값·자식 값(`childValue`, 예: 처음 열 탭은 탭 이름 중 하나)과 자식 개수(`children.min`·`max`)는
   발행 전에 검사한다.
 - 쓰던 블록을 빼면 저장 문법에서 빠진다. 이미 그 블록을 쓴 본문은 다시 저장할 때 일반 글로 바뀌므로 쓰던 블록은 빼지 않는다.
@@ -312,12 +317,7 @@ codeBlock: {
 
 ### 글자색 목록
 
-편집기의 글자색·배경색 고르기 목록은 설정의 `textColors`로 바꾼다. 없으면 기본 8색(`DEFAULT_TEXT_PALETTE`)이다. 본문에는 색
-이름이 아니라 헥스 값이 저장되므로 목록을 바꿔도 이미 쓴 글은 그대로다.
-
-```ts
-textColors: [{ id: "brand", name: "브랜드", fg: { light: "#4f46e5", dark: "#818cf8" }, bg: { light: "#eef2ff", dark: "#1e1b4b" } }],
-```
+글자색은 블록 확장(`@bh2980/cms-blocks`의 `color({ palette })`)이 준다. 예전 설정 `textColors`는 없어졌다(옵션으로 옮긴다).
 
 ## 플러그인
 
@@ -367,7 +367,17 @@ export const myPlugin = () =>
 | `site.url` | 공개 사이트 주소. 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 환경 변수에서 읽어도 된다. |
 | `site.aliases` | 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). |
 | `codeBlock.lineEffects` | 코드 블록 줄 효과 더하기·바꾸기("코드 블록 줄 효과"). |
-| `textColors` | 편집기 글자색 고르기 목록("글자색 목록"). |
+| `admin.locale` | 관리자 화면의 날짜·숫자 표기 언어(BCP 47). 없으면 `ko-KR`. 시각은 `timeZone`으로 보인다. |
+| `admin.legacyBackupNames` | 예전 브라우저 복구본 DB 이름. 관리자 화면이 읽고 지우되 새로 만들지 않는다(지금 이름 `cms_backup`). |
+
+### 컬렉션
+
+- **종류(`kind`).** `document`(문서)는 본문을 쓰고 초안과 공개본을 나눠 명시적으로 발행한다. `item`(항목)은 작은 폼에서 저장하면
+  곧바로 공개 값에 반영한다(발행·예약·보관·번역본이 없고, 언어별 값은 `translations`에 둔다). 본문(`body`)은 없으면 문서만 쓴다.
+  예전 이름 `workflow: "publish" | "record"`도 받아 `document`·`item`으로 바꾼다(앞으로 없앨 이름이다). 본체 코드는 `kind`만 읽는다.
+- **배치(`layout`).** 없으면 필드 선언 순서대로 한 묶음이고, 제 `tab`을 가진 필드는 그 탭에 모인다.
+- **목록(`list.columns`).** 없으면 기본 컬럼이다. 문서는 제목·상태·언어(언어가 둘 이상일 때)·분류 필드(항목 컬렉션을 가리키는
+  관계)·수정일·발행일, 항목은 제목·주소(주소 필드가 있을 때)·언어·상태·수정일.
 
 컬렉션의 `path`(예: `/posts/:slug`)는 공개 주소 모양이다. 본문의 내부 링크를 알아보고(가리키는 글이 있는지·공개됐는지
 발행 전에 검사) 편집기가 링크를 만들 때 쓴다. `path`가 없는 컬렉션은 본문 링크로 가리킬 수 없다.
@@ -379,7 +389,7 @@ export const myPlugin = () =>
   `이름`). 제목 글자 수 한도는 따로 없고 이 필드의 `max`를 따른다(없으면 한도 없음).
 - **주소 필드는 하나.** 주소(`fields.slug`)는 본체 개념이라 콘텐츠마다 하나다. 한 컬렉션에 주소 필드를 둘 이상 두면 설정 오류다.
 - **주소는 `from`에서 만든다.** `fields.slug({ from: "title" })`이면 주소를 직접 고치기 전까지 그 필드 값으로 주소를 만들고,
-  record 컬렉션은 주소를 비우고 저장하면 그 값에서 만든다. `from`이 없으면 자동으로 만들지 않는다. `from`은 같은 컬렉션의
+  항목 컬렉션은 주소를 비우고 저장하면 그 값에서 만든다. `from`이 없으면 자동으로 만들지 않는다. `from`은 같은 컬렉션의
   텍스트 필드여야 한다.
 - **필드 역할(`role`).** 확장과 화면은 값을 필드 이름이 아니라 역할로 찾는다(`roleField(collection, role)`, 설정을 읽지 않는
   `fieldWithRole(schema, role)`). 역할 이름은 자유(영문자·숫자·하이픈)이고 한 컬렉션에 역할마다 한 필드만 둔다. 본체가 아는
@@ -389,10 +399,15 @@ export const myPlugin = () =>
   글자로 저장한다. 값은 미디어 사용처(`entry_references`, 종류 `media`)에 잡혀 미디어 화면의 "사용처"·"사용하지 않음" 거르기에
   보이고, 쓰고 있는 파일은 지울 수 없다. 미디어 ID가 아닌 값은 `invalid_metadata_value`, 빈 값(`""`)은 고르지 않은 것이다.
 
+- **필수 필드(`required: true`).** 문서 컬렉션은 발행할 때, 항목 컬렉션은 저장할 때 비어 있으면 막는다. 초안 저장은 막지 않는다.
+  예전 값 `required: "publish"`도 같은 뜻으로 받는다.
 - **필드 값 오류.** 오류 코드는 필드와 상관없이 같다. 필수값이 비면 `missing_field`(주소는 `null_slug`), 글자 수가 `max`를
-  넘으면 `field_too_long`이다. 문제(`issues`)의 `path`에 필드 이름, `message`에 필드 이름표가 담긴다(제목도 같다).
-- **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
-  컬렉션만).
+  넘으면 `field_too_long`이다. 문제(`issues`)의 `path`에 필드 이름, `message`에 필드 이름표가 담긴다(제목도 같다). 관계 대상
+  컬렉션이 다르면 `invalid_reference_collection`이다. 빈 본문(`empty_body`)은 본문을 쓰는 컬렉션(`body`)만 막는다.
+- **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`(160자) 또는 `fillFromBody: { maxLength }`를 두면 발행할 때 비어 있으면
+  본문 앞부분의 일반 글자로 채운다(본문이 있는 컬렉션만, 필드 `max`를 넘지 않는다). 본체 함수는 `bodyExcerpt(mdx, maxLength)`다.
+- **여러 줄 입력.** `multiline: true`인 텍스트 필드는 여러 줄 입력이고 `rows`(기본 2)로 처음 줄 수를 정한다.
+- **쓸 수 없는 필드 이름.** 메타데이터에서 본체가 따로 쓰는 키(`translations`)는 필드 이름으로 쓸 수 없다.
 - **탭.** 필드에 `tab: "이름"`을 두거나 `layout` 묶음에 `tab`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생긴다(1~20자).
   묶음의 `tab`이 먼저고, 묶음에 `tab`이 없으면 필드의 `tab`이다. 제 `tab`을 가진 필드는 배치를 적지 않아도 탭마다 한 묶음으로
   모인다. 그래서 확장이 주는 필드 묶음(예: `seoFields()`)이 사이트가 `layout`을 적지 않아도 제 탭에 들어간다. 없으면 기본 탭
@@ -404,9 +419,9 @@ export const myPlugin = () =>
 
 ```ts
 fields: {
-	title: fields.text({ label: "Title", required: "publish" }),
+	title: fields.text({ label: "Title", required: true }),
 	slug: fields.slug({ label: "Slug", from: "title" }),
-	excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true }),
+	excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, rows: 3, fillFromBody: { maxLength: 200 } }),
 	hero: fields.media({ label: "Hero image", tab: "Media" }),
 	credit: fields.text({ label: "Credit", tab: "Media" }),
 },
@@ -414,8 +429,8 @@ layout: [{ fields: ["title", "slug", "excerpt"] }], // hero·credit은 Media 탭
 ```
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 주소 필드가 둘 이상이거나,
-역할이 겹치거나 `summary`가 텍스트 필드가 아니거나, 탭 이름이 1~20자가 아니거나, `from`·`fillFromBody`가 필드와 맞지 않으면
-앱이 뜰 때 바로 오류를 낸다.
+역할이 겹치거나 `summary`가 텍스트 필드가 아니거나, 탭 이름이 1~20자가 아니거나, `from`·`fillFromBody`가 필드와 맞지 않거나,
+필드 이름이 `translations`이거나, 컬렉션 종류가 없으면 앱이 뜰 때 바로 오류를 낸다.
 
 복제(`POST /api/cms/v1/entries/:id/duplicate`)는 본문에 `{ title }`을 받으면 복제본 제목을 그 값으로 둔다(관리자 화면은 원본
 제목에 "(복사)"를 붙여 보낸다). 없으면 원본 제목 그대로다. 저장소는 붙일 말을 정하지 않는다.
@@ -436,7 +451,7 @@ pnpm --filter @bh2980/cms typecheck
 패키지 자체 테스트는 예시 설정 `test/cms.config.ts`·`test/cms.server.ts`로 돈다.
 
 **다른 사이트 설정으로도 돈다(재발 방지).** `test/other-site.config.ts`는 블로그와 일부러 다른 설정이다(컬렉션 article·topic·author,
-`title`·`slug` 말고는 다른 필드 이름, 영어만, 차트 + 사이트 블록). 본체·관리자·AI 패키지마다 `vitest.othersite.config.ts`가 같은
+`title`·`slug` 말고는 다른 필드 이름, 영어만, 차트 + 사이트 블록, 글자 꾸밈 없음). 본체·관리자·AI 패키지마다 `vitest.othersite.config.ts`가 같은
 테스트를 이 설정으로 다시 돌린다(묶음 이름 `cms (other-site)`·`cms-admin (other-site)`·`cms-ai (other-site)`, 저장소 루트
 `pnpm test:run`이 함께 돈다. 패키지에서는 `pnpm test:other-site`). 새 테스트는 저절로 두 설정으로 돈다. 컬렉션·필드 이름은
 테스트에 적지 말고 설정에서 찾는다(`test/any-site.ts`, 예: `src/services/__test__/any-site.test.ts`). 블로그 예시 데이터를 그대로

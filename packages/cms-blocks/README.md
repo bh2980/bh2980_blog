@@ -1,6 +1,6 @@
 # @bh2980/cms-blocks
 
-`@bh2980/cms`의 블록 확장. 본문 블록을 필요한 것만 플러그인으로 설치한다.
+`@bh2980/cms`의 블록 확장. 본문 블록과 글자 꾸밈을 필요한 것만 플러그인으로 설치한다.
 
 | 블록 | 플러그인 | 저장 문법 | 공개 화면 컴포넌트 |
 | --- | --- | --- | --- |
@@ -10,28 +10,49 @@
 | 단 나누기 | `columns()` | `::::columns{widths="60,40"}` 안에 `:::column` 2~4개 | `Columns`·`Column` |
 | Mermaid | `mermaid()` | ` ```mermaid ` | `Mermaid` |
 | 차트 | `chart()` | ` ```chart ` | `Chart` |
+| 툴팁 | `tooltip()` | `:tooltip[글자]{content="설명"}` | `Tooltip` |
+| 코드 연결 | `codeRef()` | `:code-ref[글자]{to="c1"}`(코드 줄 이름표 `// @line anchor {..} id="c1"`) | `CodeRef` |
+| 글자색 | `color({ palette? })` | `:color[글자]{fg="#…" fgDark="#…" bg="#…" bgDark="#…"}` | `Color` |
 
 ## 설치
 
 ```ts
 // cms.config.ts
-import { callout, columns, mermaid } from "@bh2980/cms-blocks";
+import { blocks } from "@bh2980/cms-blocks";
 
 export default defineConfig({
 	// …
-	plugins: [callout(), columns(), mermaid()],
+	plugins: [
+		...blocks(), // 전부(콜아웃·접기·탭·단·Mermaid·차트·툴팁·코드 연결·글자색)
+		// ...blocks({ only: ["callout", "tooltip"] })   고른 것만
+		// ...blocks({ omit: ["chart"], codeRef: false }) 빼고(`false`도 뺀다)
+		// ...blocks({ color: { palette: [...] } })       확장별 옵션
+	],
 });
 ```
+
+하나씩 넣어도 된다(`plugins: [callout(), columns(), color({ palette })]`). 같은 확장을 두 번 넣으면 설정 오류다.
 
 ```css
 @import "@bh2980/cms-admin/styles.css";
 @import "@bh2980/cms-blocks/styles.css";
 ```
 
-- 편집기: 콜아웃·접기·탭·단은 공개 화면과 비슷한 편집 화면이 함께 온다. Mermaid·차트는 코드 입력 칸과 미리보기로
-  편집하고, 미리보기는 사이트가 `fencePreviews`(`@bh2980/cms-admin`)로 넣는다.
+- 편집기: 콜아웃·접기·탭·단은 편집 화면이 함께 온다(관리자 테마 색, `styles.css`). Mermaid·차트는 코드 입력 칸과 미리보기로
+  편집한다. 미리보기는 이 확장이 그리고(선택 의존성 `mermaid`·`recharts`를 앱이 설치한다. 미리보기를 열 때만 불러온다),
+  사이트가 `fencePreviews`(`@bh2980/cms-admin`)로 같은 이름을 넣으면 그것이 이긴다. 차트 색은 CSS 변수 `--chart-1`~`--chart-5`이고
+  앱이 정하지 않으면 `styles.css`의 기본값이다.
+- 글자 꾸밈: 툴팁은 서식 도구(링크 뒤)·글자 버블·슬래시 메뉴, 글자색은 서식 도구(글자 꾸밈 뒤)·글자 버블, 코드 연결은 글자 버블
+  (문서에 코드 블록이 있을 때)과 커서를 둔 연결의 설명·다시 연결·해제를 준다(`@bh2980/cms-admin` README의 "글자 꾸밈").
+  코드 줄 이름표·코드 블록 줄 메뉴의 "본문 연결"·잇기 안내 줄·마우스를 올린 줄 강조는 본체 코드 블록 기능이고, 이 확장의
+  `to` 속성(`codeAnchor`)으로 이 꾸밈을 쓴다. 코드 블록 안 글자 툴팁(`// @char Tooltip`)은 본체 코드 블록 기능이다.
+- 글자색 고르기 목록은 `color({ palette })`(없으면 기본 8색 `DEFAULT_TEXT_PALETTE`). 본문에는 헥스 값이 저장되므로 목록을 바꿔도
+  이미 쓴 글은 그대로다. 공개 화면은 `@bh2980/cms-blocks/color`의 `cleanTextColor`·`textColorProps`로 그리고, 색은
+  `styles.css`의 `.cms-color`가 테마에 맞춰 고른다.
 - 공개 화면: 사이트가 위 이름의 MDX 컴포넌트를 그린다. 코드 펜스 블록은 `remarkFenceBlocksToMdx`(`@bh2980/cms/mdx`)가
-  `<Mermaid source="…" />`로 바꾼다. 단 너비는 `@bh2980/cms-blocks/columns`의 `parseColumnWidths`·`columnsGridTemplate`로 읽는다.
+  `<Mermaid source="…" />`로 바꾼다. 단 너비는 `@bh2980/cms-blocks/columns`의 `parseColumnWidths`·`columnsGridTemplate`로,
+  차트 문법·크기는 `@bh2980/cms-blocks/chart`의 `parseChartDsl`·`normalizeChartDsl`·`resolvePieGeometry`로 읽는다.
+- 편집기 모양 바꾸기: `styles.css`의 변수(`--cms-callout-note`·`-tip`·`-info`·`-warning`·`-danger`, `--chart-1`~`5`)를 앱에서 정한다.
 - 이미 쓴 블록의 플러그인을 빼면 그 블록은 저장 문법에서 빠져 다시 저장할 때 일반 글로 바뀐다.
 
 플러그인 없이 정의만 쓰려면(예: 테스트) `@bh2980/cms-blocks/definitions`의 정의를 설정의 `blocks`에 넣는다.

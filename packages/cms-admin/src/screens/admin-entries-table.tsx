@@ -2,7 +2,7 @@
 
 import {
 	type AdminColumnSettings,
-	isRecordCollection,
+	isItemCollection,
 	LOCALES,
 	localeLabel,
 	PAGE_SIZES,
@@ -48,8 +48,7 @@ import {
 	columnLabel,
 	columnsFor,
 	filterFor,
-	normalizeColumnId,
-	normalizeColumnRecord,
+	knownColumnRecord,
 } from "./list-columns";
 import type { ListState } from "./list-state";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
@@ -363,11 +362,11 @@ export function AdminEntriesTable({
 	onRetry,
 }: TableProps) {
 	const isTrash = mode === "trash";
-	const isRecord = isRecordCollection(collection);
+	const isRecord = isItemCollection(collection);
 	const { available, defaults } = columnsFor(collection);
-	// 예전 설정은 분류 필드 컬럼을 짧은 이름(`category`·`tags`)으로 저장했다. 지금 컬럼 이름으로 맞춰 읽는다.
-	const savedOrder = (columnSettings?.order ?? []).flatMap((column) => normalizeColumnId(column, available) ?? []);
-	const savedVisibility = normalizeColumnRecord(columnSettings?.visibility, available);
+	// 저장된 설정에서 지금 없는 컬럼(지운 필드 등)은 버린다.
+	const savedOrder = (columnSettings?.order ?? []).filter((column) => available.includes(column));
+	const savedVisibility = knownColumnRecord(columnSettings?.visibility, available);
 	const order = [...new Set([...savedOrder, ...defaults, ...available])];
 	const visibility: ColumnVisibilityState = Object.fromEntries(
 		available.map((column) => [column, column === "title" || (savedVisibility?.[column] ?? defaults.includes(column))]),
@@ -551,7 +550,7 @@ export function AdminEntriesTable({
 	// 끄는 동안은 로컬 상태로 바로 반영하고, 멈추면 목록 설정에 저장한다.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `availableKey`가 `available`의 내용을 대신한다
 	const savedSizes = useMemo(
-		() => normalizeColumnRecord(columnSettings?.sizes, available),
+		() => knownColumnRecord(columnSettings?.sizes, available),
 		[columnSettings?.sizes, availableKey],
 	);
 	const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(savedSizes ?? {});

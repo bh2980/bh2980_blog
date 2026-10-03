@@ -11,8 +11,9 @@ export { chartBlock } from "./definition";
  * plugins: [chart()]
  * ```
  *
- * 편집기는 코드 입력 칸과 미리보기로 편집한다. 미리보기는 사이트가 `fencePreviews.chart`로, 공개 화면은 `Chart`
- * 컴포넌트로 그린다(코드는 `source` 속성, `remarkFenceBlocksToMdx`).
+ * 편집기는 코드 입력 칸과 미리보기로 편집한다. 미리보기는 이 확장이 recharts로 그린다(선택 의존성 `recharts`를 설치한다).
+ * 사이트가 `fencePreviews.chart`로 바꿀 수 있다. 공개 화면은 사이트가 `Chart` 컴포넌트로 그린다(코드는 `source` 속성,
+ * `remarkFenceBlocksToMdx`). 차트 색은 CSS 변수 `--chart-1`~`--chart-5`(없으면 이 패키지 `styles.css`의 기본값)다.
  */
 export const chart = () =>
 	definePlugin({
@@ -25,4 +26,5 @@ export const chart = () =>
 	});
 
 export * from "./dsl";
+export * from "./layout";
 export * from "./types";

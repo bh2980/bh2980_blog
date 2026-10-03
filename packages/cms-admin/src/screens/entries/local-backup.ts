@@ -1,3 +1,5 @@
+import { cmsConfig } from "@bh2980/cms/client";
+
 /**
  * 브라우저 복구본(§5.1). IndexedDB에 편집 중인 최신 입력을 남긴다.
  *
@@ -7,8 +9,8 @@
 
 /** 복구본 DB 이름. IndexedDB는 사이트 주소(origin)마다 따로라 사이트 이름을 붙이지 않는다. */
 const DB_NAME = "cms_backup";
-/** 예전 DB 이름. 이 이름으로 남은 복구본도 읽고 지운다(새로 만들지는 않는다). */
-const LEGACY_DB_NAME = "bh2980_cms_backup";
+/** 예전 DB 이름(사이트 설정 `admin.legacyBackupNames`). 이 이름으로 남은 복구본도 읽고 지운다(새로 만들지는 않는다). */
+const LEGACY_DB_NAMES: readonly string[] = cmsConfig.admin?.legacyBackupNames ?? [];
 const STORE_NAME = "backups";
 const DB_VERSION = 1;
 
@@ -77,7 +79,7 @@ export async function saveLocalBackup(record: LocalBackupRecord): Promise<boolea
 export async function getLocalBackup<Snapshot = Record<string, unknown>>(
 	key: string,
 ): Promise<LocalBackupRecord<Snapshot> | null> {
-	for (const name of [DB_NAME, LEGACY_DB_NAME]) {
+	for (const name of [DB_NAME, ...LEGACY_DB_NAMES]) {
 		try {
 			const record = (await run(name, "readonly", (store) => store.get(key))) as
 				| LocalBackupRecord<Snapshot>
@@ -91,7 +93,7 @@ export async function getLocalBackup<Snapshot = Record<string, unknown>>(
 }
 
 export async function deleteLocalBackup(key: string): Promise<void> {
-	for (const name of [DB_NAME, LEGACY_DB_NAME]) {
+	for (const name of [DB_NAME, ...LEGACY_DB_NAMES]) {
 		try {
 			await run(name, "readwrite", (store) => store.delete(key));
 		} catch {

@@ -4,16 +4,10 @@ import type { JSONContent } from "@tiptap/core";
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
+import { ADDED_MARKS, addedMarkName, createAddedMark } from "../added-marks";
 import { BLOCK_NODE_VIEWS } from "../block-views";
 import { ADDED_BLOCK_NODES } from "../blocks/added";
-import {
-	cmsNodeToTiptap,
-	mdxToTiptap,
-	OPAQUE_BLOCK_NAME,
-	TOOLTIP_MARK_NAME,
-	tiptapToCmsNode,
-	tiptapToMdx,
-} from "../tiptap-content";
+import { cmsNodeToTiptap, mdxToTiptap, OPAQUE_BLOCK_NAME, tiptapToCmsNode, tiptapToMdx } from "../tiptap-content";
 import { CMS_SCHEMA_EXTENSIONS } from "../tiptap-schema";
 
 /**
@@ -25,6 +19,7 @@ const schema = getSchema([
 	...CMS_SCHEMA_EXTENSIONS,
 	...Object.values(BLOCK_NODE_VIEWS),
 	...ADDED_BLOCK_NODES,
+	...[...ADDED_MARKS.values()].map((block) => createAddedMark(block)),
 ]);
 
 /** Tiptap 스키마를 통과하는지 확인한다 — 통과하지 못하면 실에디터가 조용히 버린다. */
@@ -170,8 +165,8 @@ describe("CmsNode ↔ Tiptap 왕복", () => {
 		});
 	});
 
-	it("툴팁 mark 이름이 스키마와 같다", () => {
-		expect(schema.marks[TOOLTIP_MARK_NAME]).toBeDefined();
+	it("더한 글자 꾸밈(블록 확장의 툴팁)의 mark 이름이 스키마와 같다", () => {
+		expect(schema.marks[addedMarkName("tooltip")]).toBeDefined();
 		expect(schema.nodes[OPAQUE_BLOCK_NAME]).toBeDefined();
 	});
 });

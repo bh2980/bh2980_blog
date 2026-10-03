@@ -1,6 +1,7 @@
-import { COLLECTIONS, CONTENT_COLLECTIONS, type Collection, isRecordCollection } from "../src/core/collections";
+import { COLLECTIONS, type Collection, DOCUMENT_COLLECTIONS, isItemCollection } from "../src/core/collections";
 import { DEFAULT_LOCALE } from "../src/core/locales";
 import { type StoredField, schemaOf, storedField, storedFields } from "../src/schema/derive";
+import { isRequiredField } from "../src/schema/fields";
 
 /**
  * 설정과 상관없는 테스트(M10-1 재발 방지)가 쓰는 도우미. 컬렉션·필드 이름을 테스트에 적지 않고 지금 설정
@@ -8,17 +9,17 @@ import { type StoredField, schemaOf, storedField, storedFields } from "../src/sc
  * (`other-site.config.ts`) 둘 다로 돈다. 라이브러리 약속인 제목 필드 `title`만 이름으로 쓴다.
  */
 
-/** 본문이 있는 첫 발행 컬렉션. */
+/** 본문이 있는 첫 문서 컬렉션. */
 export const contentCollection: Collection = (() => {
-	const found = CONTENT_COLLECTIONS.find((name) => schemaOf(name).body);
-	if (!found) throw new Error("any-site: the config has no publish collection with a body");
+	const found = DOCUMENT_COLLECTIONS.find((name) => schemaOf(name).body);
+	if (!found) throw new Error("any-site: the config has no document collection with a body");
 	return found;
 })();
 
-/** 첫 분류용(record) 컬렉션. */
+/** 첫 항목 컬렉션(`kind: "item"`). */
 export const recordCollection: Collection = (() => {
-	const found = COLLECTIONS.find((name) => isRecordCollection(name));
-	if (!found) throw new Error("any-site: the config has no record collection");
+	const found = COLLECTIONS.find((name) => isItemCollection(name));
+	if (!found) throw new Error("any-site: the config has no item collection");
 	return found;
 })();
 
@@ -33,9 +34,7 @@ export function titleFieldOf(collection: Collection) {
 
 /** 발행에 꼭 있어야 하는 저장 필드(조건부 필드 제외). */
 export function requiredFields(collection: Collection): StoredField[] {
-	return storedFields(collection).filter(
-		({ field, when }) => !when && "required" in field && field.required === "publish",
-	);
+	return storedFields(collection).filter(({ field, when }) => !when && isRequiredField(field));
 }
 
 /** 처음 나오는 관계 필드(있으면). */
@@ -53,7 +52,7 @@ export function firstMediaField(collection: Collection): StoredField | undefined
 
 /** 미디어 필드가 있는 첫 컬렉션(본문이 있는 컬렉션 먼저). */
 export const mediaFieldCollection: Collection | undefined = [
-	...CONTENT_COLLECTIONS.filter((name) => schemaOf(name).body),
+	...DOCUMENT_COLLECTIONS.filter((name) => schemaOf(name).body),
 	...COLLECTIONS,
 ].find((name) => firstMediaField(name));
 

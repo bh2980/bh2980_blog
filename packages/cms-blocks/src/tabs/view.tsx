@@ -37,7 +37,7 @@ const SHOW_ONLY_TAB = [
 	"[&>[data-node-view-content-react]>:not(:nth-child(8))]:hidden",
 ] as const;
 
-// 공개 화면(src/components/mdx/tabs.tsx + ui/tabs)의 탭 모양과 맞춘다.
+// 편집기 탭 바 모양(테마 색). 공개 화면의 탭 모양은 사이트가 정한다.
 const TAB_TRIGGER =
 	"relative inline-flex h-[calc(100%-1px)] items-center justify-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2 py-1 font-medium text-foreground/60 text-sm transition-all hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground";
 const TAB_TRIGGER_ACTIVE =

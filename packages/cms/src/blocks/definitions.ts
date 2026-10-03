@@ -1,8 +1,8 @@
 import { defineBlock } from "./define";
 
 /**
- * 본체 블록 정의(v2 B3). 다른 기능이 기대거나 Markdown 문법인 블록만 둔다. 콜아웃·탭 같은 블록은 블록 확장
- * (`@bh2980/cms-blocks`)이 플러그인으로 더하고, 사이트는 설정의 `blocks`로 더한다(`blocks/resolve.ts`).
+ * 본체 블록 정의(v2 B3). 다른 기능이 기대거나 Markdown 문법인 블록만 둔다. 콜아웃·탭 같은 블록과 툴팁·코드 연결·글자색 같은
+ * 글자 꾸밈은 블록 확장(`@bh2980/cms-blocks`)이 플러그인으로 더하고, 사이트는 설정의 `blocks`로 더한다(`blocks/resolve.ts`).
  * 블록을 더하거나 바꾸면 공개 렌더러·에디터 등록부를 함께 확인한다(정의 테스트가 누락을 잡는다).
  */
 
@@ -59,46 +59,6 @@ export const file = defineBlock({
 		label: { type: "string", label: "보일 이름", translatable: true },
 	},
 	editor: { view: "node", nodeView: "file", insertable: false, keywords: ["file", "파일", "첨부"] },
-});
-
-export const tooltip = defineBlock({
-	name: "tooltip",
-	label: "툴팁",
-	syntax: { kind: "text", directive: "tooltip" },
-	component: "Tooltip",
-	attributes: { content: { type: "string", label: "설명", required: true, translatable: true } },
-	editor: { view: "mark" },
-});
-
-/**
- * 본문 글자와 코드 줄을 잇는 링크(`:code-ref[글자]{to="c1"}`). `to`는 같은 글 코드 블록의 줄 이름표
- * (`// @line anchor {2-4} id="c1"`)다. 공개 화면에서 글자에 마우스를 올리거나 누르면 그 줄을 강조한다.
- */
-export const codeRef = defineBlock({
-	name: "codeRef",
-	label: "코드 연결",
-	syntax: { kind: "text", directive: "code-ref" },
-	component: "CodeRef",
-	attributes: { to: { type: "string", label: "연결할 코드 줄 이름", required: true } },
-	editor: { view: "mark" },
-});
-
-/**
- * 글자색·글자 배경색(`:color[글]{fg="#dc2626" fgDark="#f87171"}`). 헥스 값을 밝은·어두운 테마 짝으로 저장한다.
- * 프리셋과 값 검사는 `core/text-colors.ts`.
- */
-export const color = defineBlock({
-	name: "color",
-	label: "글자색",
-	syntax: { kind: "text", directive: "color" },
-	component: "Color",
-	attributes: {
-		fg: { type: "string", label: "글자색" },
-		fgDark: { type: "string", label: "어두운 테마 글자색" },
-		bg: { type: "string", label: "배경색" },
-		bgDark: { type: "string", label: "어두운 테마 배경색" },
-	},
-	editor: { view: "mark" },
 });
 
 const textMark = (name: "u" | "sup" | "sub" | "br", label: string) =>
@@ -184,9 +144,6 @@ export const BUILTIN_BLOCKS = [
 	textAlign,
 	image,
 	file,
-	tooltip,
-	codeRef,
-	color,
 	untranslated,
 	underline,
 	superscript,

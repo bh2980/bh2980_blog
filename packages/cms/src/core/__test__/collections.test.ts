@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COLLECTION, isContentCollection, taxonomyFieldsOf } from "../collections";
+import { DEFAULT_COLLECTION, isDocumentCollection, taxonomyFieldsOf } from "../collections";
 
 // 예시 설정(`test/cms.config.ts`): 게시글(카테고리 하나·태그 여러 개), 메모(태그), 분류용 태그·카테고리·모음집.
 describe("컬렉션 도우미", () => {
 	it("기본 컬렉션은 처음 선언한 발행형 컬렉션이다", () => {
 		expect(DEFAULT_COLLECTION).toBe("post");
-		expect(isContentCollection("memo")).toBe(true);
-		expect(isContentCollection("tag")).toBe(false);
-		expect(isContentCollection("nope")).toBe(false);
+		expect(isDocumentCollection("memo")).toBe(true);
+		expect(isDocumentCollection("tag")).toBe(false);
+		expect(isDocumentCollection("nope")).toBe(false);
 	});
 
 	it("분류 필드는 분류용(record) 컬렉션을 가리키는 관계 필드다", () => {

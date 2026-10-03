@@ -1,4 +1,4 @@
-import { Mark, mergeAttributes, Node } from "@tiptap/core";
+import { Node } from "@tiptap/core";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Subscript } from "@tiptap/extension-subscript";
 import { Superscript } from "@tiptap/extension-superscript";
@@ -10,7 +10,7 @@ import { columnResizingPluginKey } from "@tiptap/pm/tables";
 import type { EditorView } from "@tiptap/pm/view";
 import { CmsCodeBlock } from "./code-block";
 import { CodeFoldMark } from "./code-block/code-fold-mark";
-import { CmsColorMark } from "./color-mark";
+import { CodeTooltipMark } from "./code-block/code-tooltip-mark";
 import { CmsUntranslatedMark } from "./untranslated-mark";
 
 /**
@@ -57,55 +57,6 @@ export const CmsOpaqueBlock = Node.create({
 			},
 			["div", { class: "text-xs font-medium text-neutral-500 dark:text-neutral-400" }, `${label} · 원문 모드에서 편집`],
 			["pre", { class: "mt-2 overflow-x-auto whitespace-pre-wrap text-xs" }, source],
-		];
-	},
-});
-
-/** `:tooltip[라벨]{content="설명"}`의 에디터 표현. 점선 밑줄 span으로 보인다. */
-export const CmsTooltipMark = Mark.create({
-	name: "cmsTooltip",
-	addAttributes() {
-		return {
-			content: {
-				default: "",
-				parseHTML: (element) => element.getAttribute("data-cms-tooltip") ?? "",
-			},
-		};
-	},
-	parseHTML() {
-		return [{ tag: "span[data-cms-tooltip]" }];
-	},
-	renderHTML({ HTMLAttributes }) {
-		return ["span", mergeAttributes(HTMLAttributes, { class: "underline decoration-dotted underline-offset-4" }), 0];
-	},
-});
-
-/**
- * 본문 글자와 코드 줄의 연결(`:code-ref[글자]{to="c1"}`). `to`는 코드 블록 줄 이름표(`anchor` 줄 효과)의 `id`다.
- * 연결 글자 뒤에 이어 친 글자까지 연결되지 않게 `inclusive`를 끈다.
- */
-export const CmsCodeRefMark = Mark.create({
-	name: "codeRef",
-	inclusive: false,
-	addAttributes() {
-		return {
-			to: {
-				default: "",
-				parseHTML: (element) => element.getAttribute("data-code-ref") ?? "",
-				renderHTML: (attrs) => ({ "data-code-ref": String(attrs.to ?? "") }),
-			},
-		};
-	},
-	parseHTML() {
-		return [{ tag: "span[data-code-ref]" }];
-	},
-	renderHTML({ HTMLAttributes }) {
-		return [
-			"span",
-			mergeAttributes(HTMLAttributes, {
-				class: "underline decoration-primary/60 decoration-solid underline-offset-4",
-			}),
-			0,
 		];
 	},
 });
@@ -220,11 +171,9 @@ export const CMS_SCHEMA_EXTENSIONS = [
 	CmsTextAlign,
 	CmsSuperscript,
 	CmsSubscript,
-	CmsTooltipMark,
-	CmsCodeRefMark,
-	CmsColorMark,
 	CmsUntranslatedMark,
 	CmsOpaqueBlock,
 	CodeFoldMark,
+	CodeTooltipMark,
 	CmsCodeBlock,
 ];

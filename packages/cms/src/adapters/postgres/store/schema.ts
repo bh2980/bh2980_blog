@@ -71,25 +71,65 @@ export async function migrateContentStore(pool: Pool, options?: { schema?: strin
 		CREATE TABLE IF NOT EXISTS "${qSchema}".entry_references (
 			entry_id UUID NOT NULL REFERENCES "${qSchema}".entries(id) ON DELETE CASCADE,
 			state TEXT NOT NULL CHECK (state IN ('working', 'published')),
-			kind TEXT NOT NULL CHECK (kind IN ('entry', 'media', 'category', 'tag')),
+			kind TEXT NOT NULL CONSTRAINT entry_references_kind_check CHECK (kind IN ('entry', 'media')),
 			target_id UUID NOT NULL,
 			target_entry_id UUID REFERENCES "${qSchema}".entries(id),
 			target_media_id UUID REFERENCES "${qSchema}".media_assets(id),
 			is_stale BOOLEAN NOT NULL,
 			occurrences JSONB NOT NULL,
 			UNIQUE (entry_id, state, kind, target_id),
-			CHECK (
+			CONSTRAINT entry_references_target_check CHECK (
 				(kind = 'media' AND target_entry_id IS NULL AND target_media_id IS NOT NULL AND target_id = target_media_id) OR
-				(kind IN ('entry', 'category', 'tag') AND target_entry_id IS NOT NULL AND target_media_id IS NULL AND target_id = target_entry_id)
+				(kind = 'entry' AND target_entry_id IS NOT NULL AND target_media_id IS NULL AND target_id = target_entry_id)
 			)
 		);
-		-- 관계 참조의 종류를 콘텐츠(entry)·미디어(media) 둘로 줄였다. 예전 category·tag 행을 entry로 바꾼다.
-		-- 같은 대상의 entry 행이 이미 있으면 남겨 둔다(읽을 때 entry로 다룬다).
-		UPDATE "${qSchema}".entry_references r SET kind = 'entry'
-		WHERE r.kind IN ('category', 'tag') AND NOT EXISTS (
-			SELECT 1 FROM "${qSchema}".entry_references d
-			WHERE d.entry_id = r.entry_id AND d.state = r.state AND d.kind = 'entry' AND d.target_id = r.target_id
-		);
+		-- 관계 참조의 종류를 콘텐츠(entry)·미디어(media) 둘로 줄였다. 예전 저장소에 남은 category·tag 행을 entry 행으로 옮긴다.
+		-- 같은 콘텐츠·상태·대상의 예전 행(category·tag)과 entry 행은 한 행으로 합친다: 위치(occurrences)는 entry 행 것 뒤에
+		-- 없는 것만 붙이고, 하나라도 오래된 참조(is_stale)면 오래된 참조다(읽을 때 entry로 다루던 것과 같은 결과).
+		WITH legacy AS (
+			SELECT r.entry_id, r.state, r.target_id,
+				COALESCE(jsonb_agg(o.value ORDER BY r.kind, o.ordinality) FILTER (WHERE o.value IS NOT NULL), '[]'::jsonb) AS occurrences,
+				bool_or(r.is_stale) AS is_stale
+			FROM "${qSchema}".entry_references r
+			LEFT JOIN LATERAL jsonb_array_elements(r.occurrences) WITH ORDINALITY AS o(value, ordinality) ON TRUE
+			WHERE r.kind IN ('category', 'tag')
+			GROUP BY r.entry_id, r.state, r.target_id
+		)
+		INSERT INTO "${qSchema}".entry_references AS d
+			(entry_id, state, kind, target_id, target_entry_id, target_media_id, is_stale, occurrences)
+		SELECT entry_id, state, 'entry', target_id, target_id, NULL, is_stale, occurrences FROM legacy
+		ON CONFLICT (entry_id, state, kind, target_id) DO UPDATE SET
+			is_stale = d.is_stale OR EXCLUDED.is_stale,
+			occurrences = d.occurrences || COALESCE(
+				(SELECT jsonb_agg(x.value ORDER BY x.ordinality)
+				 FROM jsonb_array_elements(EXCLUDED.occurrences) WITH ORDINALITY AS x(value, ordinality)
+				 WHERE NOT d.occurrences @> jsonb_build_array(x.value)),
+				'[]'::jsonb
+			);
+		DELETE FROM "${qSchema}".entry_references WHERE kind IN ('category', 'tag');
+		-- 예전 행이 없어졌으니 종류 제약을 entry·media로 좁힌다. 예전 제약(이름이 저장소마다 다를 수 있다)은 정의로 찾아 지운다.
+		DO $$
+		DECLARE
+			old_constraint record;
+			target regclass := to_regclass(format('%I.entry_references', '${qSchema}'));
+		BEGIN
+			FOR old_constraint IN
+				SELECT conname FROM pg_constraint
+				WHERE conrelid = target AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%category%'
+			LOOP
+				EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', target, old_constraint.conname);
+			END LOOP;
+			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = target AND conname = 'entry_references_kind_check') THEN
+				ALTER TABLE "${qSchema}".entry_references
+					ADD CONSTRAINT entry_references_kind_check CHECK (kind IN ('entry', 'media'));
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = target AND conname = 'entry_references_target_check') THEN
+				ALTER TABLE "${qSchema}".entry_references ADD CONSTRAINT entry_references_target_check CHECK (
+					(kind = 'media' AND target_entry_id IS NULL AND target_media_id IS NOT NULL AND target_id = target_media_id) OR
+					(kind = 'entry' AND target_entry_id IS NOT NULL AND target_media_id IS NULL AND target_id = target_entry_id)
+				);
+			END IF;
+		END $$;
 
 		CREATE TABLE IF NOT EXISTS "${qSchema}".folders (
 			id UUID PRIMARY KEY,

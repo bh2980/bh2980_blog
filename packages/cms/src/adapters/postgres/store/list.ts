@@ -1,8 +1,8 @@
 import { ENTRY_STATUSES, LIST_SORT_FIELDS, PAGE_SIZES } from "../../../core/api";
-import { COLLECTIONS, type Collection, isRecordCollection } from "../../../core/collections";
+import { COLLECTIONS, type Collection, isItemCollection } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import { DEFAULT_LOCALE, isLocale, LOCALES } from "../../../core/locales";
-import { storedFields } from "../../../schema/derive";
+import { RECORD_TRANSLATIONS_KEY, recordLocalizedFields, storedFields } from "../../../schema/derive";
 import type { StoredField } from "../../../schema/walk";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
@@ -16,12 +16,16 @@ import type {
 	ListTranslationMember,
 } from "./types";
 
-/** record 항목에서 이름이 있는 언어. 기본 언어는 항목 이름, 다른 언어는 `translations[언어].title`이다. */
-function namedLocales(metadata: Record<string, unknown>): string[] {
-	const translations = (metadata.translations ?? {}) as Record<string, { title?: unknown } | undefined>;
-	const hasName = (value: unknown) => typeof value === "string" && value.trim() !== "";
+/**
+ * 항목에서 값이 있는 언어. 언어별 텍스트 필드(`localized: true`) 중 하나라도 값이 있으면 그 언어가 있다. 기본 언어는 필드 자체,
+ * 다른 언어는 `translations[언어][필드]`다.
+ */
+function namedLocales(collection: Collection, metadata: Record<string, unknown>): string[] {
+	const fields = recordLocalizedFields(collection);
+	const translations = (metadata[RECORD_TRANSLATIONS_KEY] ?? {}) as Record<string, Record<string, unknown> | undefined>;
+	const hasValue = (value: unknown) => typeof value === "string" && value.trim() !== "";
 	return LOCALES.filter((locale) =>
-		locale === DEFAULT_LOCALE ? hasName(metadata.title) : hasName(translations[locale]?.title),
+		fields.some((field) => hasValue(locale === DEFAULT_LOCALE ? metadata[field] : translations[locale]?.[field])),
 	);
 }
 
@@ -281,7 +285,9 @@ export function createListOps(ctx: StoreContext) {
 					createdAt: row.created_at,
 					updatedAt: row.updated_at,
 					trashedAt: row.trashed_at,
-					...(isRecordCollection(row.collection) ? { recordLocales: namedLocales(meta) } : {}),
+					...(isItemCollection(row.collection)
+						? { recordLocales: namedLocales(row.collection as Collection, meta) }
+						: {}),
 				};
 			});
 

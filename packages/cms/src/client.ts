@@ -16,7 +16,6 @@ export * from "./core/links";
 export * from "./core/locales";
 export * from "./core/plain-text";
 export * from "./core/slug";
-export * from "./core/text-colors";
 export * from "./core/time";
 export * from "./core/translation/hints";
 export * from "./core/translation/skeleton";

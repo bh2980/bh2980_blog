@@ -1,7 +1,7 @@
 "use client";
 
 import type { BulkOp } from "@bh2980/cms/client";
-import { isRecordCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
+import { isItemCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -264,7 +264,7 @@ export function BulkBar({
 	onRun?: typeof runBulk;
 	onDone?: (failedIds: string[]) => void;
 }) {
-	const isRecord = isRecordCollection(collection);
+	const isRecord = isItemCollection(collection);
 	const actions = useMemo(
 		() =>
 			mode === "trash"

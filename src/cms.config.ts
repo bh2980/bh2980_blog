@@ -1,8 +1,9 @@
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 import { aiPlugin } from "@bh2980/cms-ai";
-import { callout, chart, collapsible, columns, mermaid, tabs } from "@bh2980/cms-blocks";
+import { blocks } from "@bh2980/cms-blocks";
 import { seo, seoFields } from "@bh2980/cms-seo";
 import { bareun } from "@bh2980/cms-text-check/bareun";
+import { legacyListColumns } from "@/cms/legacy-list-columns";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 /**
@@ -15,7 +16,7 @@ import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 const title = fields.text({
 	label: "제목",
-	required: "publish",
+	required: true,
 	max: 200,
 	placeholder: "제목 없는 글",
 	localized: true,
@@ -23,7 +24,7 @@ const title = fields.text({
 const slug = fields.slug({
 	label: "주소",
 	from: "title",
-	required: "publish",
+	required: true,
 	placeholder: "url-friendly-slug",
 	localized: "inherit",
 });
@@ -58,7 +59,7 @@ const seoValues = seoFields({
 export const post = defineCollection({
 	label: "게시글",
 	icon: "file-text",
-	workflow: "publish",
+	kind: "document",
 	path: "/posts/:slug",
 	fields: {
 		title,
@@ -68,11 +69,11 @@ export const post = defineCollection({
 			multiline: true,
 			placeholder: "목록과 검색 결과에 보일 소개글",
 			role: "summary",
-			input: "auto-summary",
+			rows: 3,
 			fillFromBody: true,
 			localized: true,
 		}),
-		categoryId: fields.relation({ label: "카테고리", to: "category", required: "publish", createInline: true }),
+		categoryId: fields.relation({ label: "카테고리", to: "category", required: true, createInline: true }),
 		tagIds,
 		series: fields.backlink({
 			label: "모음집",
@@ -108,13 +109,12 @@ export const post = defineCollection({
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "정책", fields: ["policy"] },
 	],
-	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 export const memo = defineCollection({
 	label: "메모",
 	icon: "notebook-pen",
-	workflow: "publish",
+	kind: "document",
 	path: "/memos/:slug",
 	fields: {
 		title,
@@ -132,35 +132,32 @@ export const memo = defineCollection({
 		...seoValues,
 	},
 	layout: [{ fields: ["title", "slug"] }, { group: "분류", fields: ["tagIds", "series"] }],
-	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 /** 이름만 언어별 값이고 주소와 연결 관계는 공통이다(v2 B4). */
 const taxonomyFields = {
-	title: fields.text({ label: "이름", required: "publish", max: 200, localized: true }),
-	slug: fields.slug({ label: "주소", from: "title", required: "publish" }),
+	title: fields.text({ label: "이름", required: true, max: 200, localized: true }),
+	slug: fields.slug({ label: "주소", from: "title", required: true }),
 } as const;
 
 export const category = defineCollection({
 	label: "카테고리",
 	icon: "shapes",
-	workflow: "record",
+	kind: "item",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const tag = defineCollection({
 	label: "태그",
 	icon: "tag",
-	workflow: "record",
+	kind: "item",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const series = defineCollection({
 	label: "모음집",
 	icon: "layers",
-	workflow: "record",
+	kind: "item",
 	fields: {
 		...taxonomyFields,
 		summary: fields.text({ label: "설명", role: "summary", multiline: true, localized: true }),
@@ -201,7 +198,6 @@ export const series = defineCollection({
 			},
 		),
 	},
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export default defineConfig({
@@ -211,14 +207,11 @@ export default defineConfig({
 	// 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 서버에서만 읽힌다(브라우저에서는 비어 있다).
 	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
+	// 예전 브라우저 복구본 DB 이름(main에서 쓰던 이름). 남은 복구본을 읽고 지운다.
+	admin: { legacyBackupNames: ["bh2980_cms_backup"] },
 	plugins: [
-		// 본문 블록 확장. 이미 쓴 글에 있는 블록이라 빼지 않는다.
-		callout(),
-		collapsible(),
-		tabs(),
-		columns(),
-		mermaid(),
-		chart(),
+		// 본문 블록 확장(콜아웃·접기·탭·단·Mermaid·차트·툴팁·코드 연결·글자색). 이미 쓴 글에 있는 블록이라 빼지 않는다.
+		...blocks(),
 		seo(),
 		// AI 기능은 기본 기능과 블록·SEO 확장이 더한 기능이 저절로 켜진다. 문체 가이드는 문체 다듬기·초안 쓰기에 들어간다.
 		aiPlugin({
@@ -227,6 +220,8 @@ export default defineConfig({
 		}),
 		// 맞춤법·문장 검사(바른). 키는 서버 환경 변수 `BAREUN_API_KEY`. 쓴 만큼 요금이 들어 버튼으로만 검사한다.
 		bareun(),
+		// 저장된 관리자 목록 열 설정의 예전 이름(category·tags)을 `cms:db:migrate`가 옮긴다.
+		legacyListColumns(),
 	],
 	seed: {
 		templates: [

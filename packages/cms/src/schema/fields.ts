@@ -27,8 +27,11 @@ interface BaseField {
 	readonly label: string;
 	/** 입력 아래 도움말. */
 	readonly description?: string;
-	/** `"publish"`면 발행(record 컬렉션은 저장) 때 비어 있으면 안 된다. 초안 저장은 막지 않는다. */
-	readonly required?: "publish";
+	/**
+	 * 비어 있으면 안 되는 필드. 문서(`document`) 컬렉션은 발행할 때, 항목(`item`) 컬렉션은 저장할 때 검사한다.
+	 * 초안 저장은 막지 않는다. 예전 값 `"publish"`도 같은 뜻으로 받는다.
+	 */
+	readonly required?: true | "publish";
 	readonly localized?: Localized;
 	/** 기본 입력 대신 쓸 클라이언트 입력 등록부의 이름. */
 	readonly input?: string;
@@ -50,11 +53,13 @@ interface BaseField {
 export interface TextField extends BaseField {
 	readonly kind: "text";
 	/**
-	 * 발행할 때 비어 있으면 본문 앞부분(일반 글자 160자)으로 채운다. 본문이 있는 컬렉션에서만 쓴다.
-	 * 채울 글이 없으면 발행하지 않고 이 필드를 입력하라고 알린다.
+	 * 발행할 때 비어 있으면 본문 앞부분의 일반 글자로 채운다. `true`면 160자, `{ maxLength }`로 바꾼다.
+	 * 본문이 있는 컬렉션에서만 쓴다. 채울 글이 없으면 발행하지 않고 이 필드를 입력하라고 알린다.
 	 */
-	readonly fillFromBody?: boolean;
+	readonly fillFromBody?: boolean | { readonly maxLength?: number };
 	readonly multiline?: boolean;
+	/** 여러 줄 입력(`multiline`)의 처음 줄 수. 없으면 2줄. */
+	readonly rows?: number;
 	/** 최대 글자 수(유니코드 코드 포인트). */
 	readonly max?: number;
 	readonly placeholder?: string;
@@ -149,6 +154,29 @@ export interface ViewField {
 	readonly localized?: undefined;
 	readonly required?: undefined;
 	readonly input?: undefined;
+}
+
+/**
+ * 메타데이터에서 본체가 따로 쓰는 키. 필드 이름으로 쓸 수 없다(`defineConfig`가 막는다).
+ * `translations`는 항목 컬렉션의 언어별 값이다.
+ */
+export const RESERVED_METADATA_KEYS: readonly string[] = ["translations"];
+
+/** 필드가 비어 있으면 안 되는가(`required: true`·예전 값 `"publish"`). */
+export const isRequiredField = (field: { readonly required?: true | "publish" }): boolean =>
+	field.required === true || field.required === "publish";
+
+/** 본문에서 채울 때의 기본 글자 수. */
+export const FILL_FROM_BODY_MAX_LENGTH = 160;
+
+/**
+ * 본문에서 채우는 필드의 글자 수(`fillFromBody`). 필드 `max`보다 길지 않다. 채우지 않는 필드면 `undefined`.
+ */
+export function fillFromBodyLength(field: TextField): number | undefined {
+	const fill = field.fillFromBody;
+	if (!fill) return undefined;
+	const length = fill === true ? FILL_FROM_BODY_MAX_LENGTH : (fill.maxLength ?? FILL_FROM_BODY_MAX_LENGTH);
+	return field.max === undefined ? length : Math.min(length, field.max);
 }
 
 /** 값 하나를 저장하는 필드. */

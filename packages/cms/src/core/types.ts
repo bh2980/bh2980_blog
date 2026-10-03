@@ -48,10 +48,8 @@ export type MetadataValue =
 export type JsonValue = string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
 type SCHEMAS = ResolvedConfig["collections"];
-/** record 컬렉션은 언어별 이름을 `translations`에 둔다(v2 B4). */
-type WithRecordTranslations<S, M> = S extends { readonly workflow: "record" }
-	? M & { translations?: RecordTranslations }
-	: M;
+/** 항목 컬렉션은 언어별 이름을 `translations`에 둔다(v2 B4). */
+type WithRecordTranslations<S, M> = S extends { readonly kind: "item" } ? M & { translations?: RecordTranslations } : M;
 /** 컬렉션의 메타데이터. 사이트 설정(`cms.config.ts`)의 정의에서 만든다(v2 B1). */
 export type MetadataFor<C extends Collection> = WithRecordTranslations<SCHEMAS[C], MetadataOf<SCHEMAS[C]>>;
 

@@ -11,7 +11,7 @@ export interface InternalLinkItem {
 }
 
 /**
- * 내부 글 링크 주소(§4.4·§6.2). 일반 Markdown 링크 `[제목](/posts/글-slug)`로 저장되며 고정 ID는 저장하지 않는다.
+ * 내부 글 링크 주소(§4.4·§6.2). 일반 Markdown 링크 `[제목](<컬렉션 path에 주소를 넣은 경로>)`로 저장되며 고정 ID는 저장하지 않는다.
  * 주소 모양은 컬렉션 정의의 `path`다. 경로가 없는 컬렉션이거나 slug가 없으면 깨진 링크를 만들지 않는다.
  */
 export function internalLinkHref(item: InternalLinkItem): string | null {

@@ -9,7 +9,7 @@ import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 const title = fields.text({
 	label: "제목",
-	required: "publish",
+	required: true,
 	max: 200,
 	placeholder: "제목 없는 글",
 	localized: true,
@@ -17,7 +17,7 @@ const title = fields.text({
 const slug = fields.slug({
 	label: "주소",
 	from: "title",
-	required: "publish",
+	required: true,
 	placeholder: "url-friendly-slug",
 	localized: "inherit",
 });
@@ -51,7 +51,7 @@ const seo = seoFields({
 export const post = defineCollection({
 	label: "게시글",
 	icon: "file-text",
-	workflow: "publish",
+	kind: "document",
 	path: "/posts/:slug",
 	fields: {
 		title,
@@ -61,11 +61,11 @@ export const post = defineCollection({
 			multiline: true,
 			placeholder: "목록과 검색 결과에 보일 소개글",
 			role: "summary",
-			input: "auto-summary",
+			rows: 3,
 			fillFromBody: true,
 			localized: true,
 		}),
-		categoryId: fields.relation({ label: "카테고리", to: "category", required: "publish", createInline: true }),
+		categoryId: fields.relation({ label: "카테고리", to: "category", required: true, createInline: true }),
 		tagIds,
 		series: fields.backlink({
 			label: "모음집",
@@ -101,13 +101,12 @@ export const post = defineCollection({
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "정책", fields: ["policy"] },
 	],
-	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 export const memo = defineCollection({
 	label: "메모",
 	icon: "notebook-pen",
-	workflow: "publish",
+	kind: "document",
 	path: "/memos/:slug",
 	fields: {
 		title,
@@ -125,35 +124,32 @@ export const memo = defineCollection({
 		...seo,
 	},
 	layout: [{ fields: ["title", "slug"] }, { group: "분류", fields: ["tagIds", "series"] }],
-	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });
 
 /** 이름만 언어별 값이고 주소와 연결 관계는 공통이다(v2 B4). */
 const taxonomyFields = {
-	title: fields.text({ label: "이름", required: "publish", max: 200, localized: true }),
-	slug: fields.slug({ label: "주소", from: "title", required: "publish" }),
+	title: fields.text({ label: "이름", required: true, max: 200, localized: true }),
+	slug: fields.slug({ label: "주소", from: "title", required: true }),
 } as const;
 
 export const category = defineCollection({
 	label: "카테고리",
 	icon: "shapes",
-	workflow: "record",
+	kind: "item",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const tag = defineCollection({
 	label: "태그",
 	icon: "tag",
-	workflow: "record",
+	kind: "item",
 	fields: taxonomyFields,
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 export const series = defineCollection({
 	label: "모음집",
 	icon: "layers",
-	workflow: "record",
+	kind: "item",
 	fields: {
 		...taxonomyFields,
 		summary: fields.text({ label: "설명", role: "summary", multiline: true, localized: true }),
@@ -194,7 +190,6 @@ export const series = defineCollection({
 			},
 		),
 	},
-	list: { columns: ["title", "slug", "locale", "status", "updatedAt"] },
 });
 
 /** 사용자 블록 예시(블로그에는 없다). 편집기 노드가 있는 컨테이너와 원문 상자로 보이는 한 줄 블록이다. */

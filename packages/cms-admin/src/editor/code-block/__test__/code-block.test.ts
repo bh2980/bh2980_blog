@@ -220,7 +220,7 @@ describe("코드 블록 저장 형식(주석 문법) ↔ 에디터", () => {
 		const html = instance.getHTML();
 		expect(instance.state.doc.child(0).textContent).toBe("const test = 100;\nprint(a, b);");
 		expect(html).toContain("<u>const</u>");
-		expect(html).toMatch(/<span content="안내 문구"[^>]*>test<\/span>/);
+		expect(html).toMatch(/<span data-code-tooltip="안내 문구"[^>]*>test<\/span>/);
 		expect(html).toContain("<strong>100</strong>");
 		expect(html).toMatch(/<span data-open="true" data-code-fold=""[^>]*>a, b<\/span>/);
 		expect(save(blockJson(instance))).toBe(raw);
@@ -229,7 +229,7 @@ describe("코드 블록 저장 형식(주석 문법) ↔ 에디터", () => {
 	it("새로 준 글자 효과는 줄 기준 범위의 주석으로 저장한다", () => {
 		const instance = createTestEditor("abc\nconst item = 1;");
 		instance.chain().setTextSelection({ from: 5, to: 10 }).toggleBold().run();
-		instance.chain().setTextSelection({ from: 11, to: 15 }).setMark("cmsTooltip", { content: "변수명" }).run();
+		instance.chain().setTextSelection({ from: 11, to: 15 }).setMark("codeTooltip", { content: "변수명" }).run();
 		expect(save(blockJson(instance))).toBe(
 			["abc", "// @char strong {0-4}", '// @char Tooltip {6-9} content="변수명"', "const item = 1;"].join("\n"),
 		);

@@ -18,18 +18,12 @@ import {
 } from "@bh2980/cms-admin/ui/dropdown-menu";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { calloutBlock } from "./definition";
-import {
-	CALLOUT_BOX_CLASS,
-	CALLOUT_CLASS_BY_VARIANT,
-	CALLOUT_ICON_BY_VARIANT,
-	type CalloutVariant,
-	getDefaultCalloutTitle,
-} from "./style";
+import { CALLOUT_BOX_CLASS, CALLOUT_ICON_BY_VARIANT, type CalloutVariant, getDefaultCalloutTitle } from "./style";
 
 const VARIANT_OPTIONS = calloutBlock.attributes.variant.options as Record<CalloutVariant, string>;
 const isVariant = (value: unknown): value is CalloutVariant => typeof value === "string" && value in VARIANT_OPTIONS;
 
-/** 공개 화면의 콜아웃과 같은 모양. 제목은 그 자리에서, 종류는 블록 도구 줄의 메뉴에서 바꾼다. */
+/** 콜아웃 편집 화면. 제목은 그 자리에서, 종류는 블록 도구 줄의 메뉴에서 바꾼다. 색은 테마 색에서 만든다(`styles.css`). */
 export function CalloutNodeView(props: NodeViewProps) {
 	const { selected, editor, getPos } = props;
 	const [values, setValue] = useContainerValues(props);
@@ -43,13 +37,9 @@ export function CalloutNodeView(props: NodeViewProps) {
 			data-cms-framed
 			className={cn("group/container relative my-6 rounded-lg", selected && SELECTED_RING)}
 		>
-			<div
-				data-slot="callout"
-				role="note"
-				className={cn(CALLOUT_BOX_CLASS, CALLOUT_CLASS_BY_VARIANT[variant], "not-prose w-full")}
-			>
+			<div data-slot="callout" data-variant={variant} role="note" className={cn(CALLOUT_BOX_CLASS, "not-prose w-full")}>
 				<div className="flex items-center gap-2" contentEditable={false}>
-					<Icon aria-hidden className="size-4 shrink-0" />
+					<Icon aria-hidden data-callout-icon className="size-4 shrink-0" />
 					<AttributeInput
 						aria-label="콜아웃 제목"
 						value={typeof values.title === "string" ? values.title : ""}

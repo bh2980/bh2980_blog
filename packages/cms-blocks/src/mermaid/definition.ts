@@ -1,6 +1,6 @@
 import { defineBlock } from "@bh2980/cms";
 
-/** Mermaid 다이어그램(` ```mermaid `). 편집기 미리보기와 공개 화면은 사이트가 그린다. */
+/** Mermaid 다이어그램(` ```mermaid `). 편집기 미리보기는 확장이(사이트가 바꿀 수 있다), 공개 화면은 사이트가 그린다. */
 export const mermaidBlock = defineBlock({
 	name: "mermaid",
 	label: "다이어그램",

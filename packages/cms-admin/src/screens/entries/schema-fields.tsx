@@ -10,7 +10,7 @@ import type {
 	ValueField,
 } from "@bh2980/cms/client";
 import {
-	isRecordCollection,
+	isItemCollection,
 	type Locale,
 	recordLocalizedFields,
 	roleValue,
@@ -36,10 +36,10 @@ import { type EntryForm, type EntryFormPatch, type FormValue, recordTranslationK
 import {
 	BacklinkInput,
 	EntryPicker,
-	FIELD_INPUTS,
 	type FieldContext,
 	type FieldInputProps,
 	inputClass,
+	multilineProps,
 	OrderedEntryList,
 } from "./field-inputs";
 import { FieldView } from "./field-views";
@@ -201,7 +201,7 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInputParts }) {
 	const { field, id, value, invalid, describedBy, context, onChange } = props;
 	const { fieldInputs } = useCmsAdminComponents();
-	const registered = field.input ? (fieldInputs?.[field.input] ?? FIELD_INPUTS[field.input]) : undefined;
+	const registered = field.input ? fieldInputs?.[field.input] : undefined;
 	if (registered && !isFieldInputParts(registered)) {
 		const Custom = registered;
 		return <Custom {...props} />;
@@ -215,13 +215,13 @@ function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInpu
 			return field.multiline ? (
 				<Textarea
 					id={id}
-					rows={2}
+					{...multilineProps(field)}
 					value={text}
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
 					placeholder={placeholder}
 					onChange={(event) => onChange(event.target.value)}
-					className="min-h-12 resize-none text-xs md:text-xs"
+					className="resize-none text-xs md:text-xs"
 				/>
 			) : (
 				<Input
@@ -257,7 +257,7 @@ function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInpu
 			);
 		}
 		case "relation":
-			if (isRecordCollection(field.to)) return <RecordRelationInput {...props} />;
+			if (isItemCollection(field.to)) return <RecordRelationInput {...props} />;
 			return field.many ? <OrderedEntryList {...props} /> : <EntryPicker {...props} />;
 		case "media":
 			return <MediaInput {...props} />;
@@ -589,12 +589,12 @@ export function RecordLocaleFields({
 						{multiline ? (
 							<Textarea
 								id={fieldId(key)}
-								rows={2}
+								{...multilineProps(definition)}
 								lang={locale}
 								value={value}
 								disabled={disabled}
 								onChange={(event) => onChange({ [key]: event.target.value })}
-								className="min-h-12 resize-none text-xs md:text-xs"
+								className="resize-none text-xs md:text-xs"
 							/>
 						) : (
 							<Input

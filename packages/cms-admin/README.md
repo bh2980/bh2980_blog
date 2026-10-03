@@ -11,7 +11,8 @@
 
 ## 사이트 컴포넌트 넣기
 
-편집기의 코드 펜스 미리보기(예: `mermaid`·`chart`)와 필드 입력은 사이트가 넣는다. 클라이언트 컴포넌트에서 넣는다.
+필드 입력·블록 편집 화면·코드 펜스 미리보기는 확장이 넣고 사이트가 더하거나 바꾼다(예: 블록 확장의 Mermaid·차트는 기본
+미리보기를 준다). 클라이언트 컴포넌트에서 넣는다. 사이트의 공급자를 관리자 레이아웃 안쪽에 두면 같은 이름은 사이트 것이 이긴다.
 
 ```tsx
 "use client";
@@ -29,7 +30,7 @@ export function SiteAdminComponents({ children }) {
 }
 ```
 
-넣지 않은 펜스는 원문을 그대로 보인다.
+아무도 넣지 않은 펜스는 원문을 그대로 보인다.
 
 ### 아이콘
 
@@ -50,7 +51,8 @@ const components = { icons: { eye: Eye } };
 
 편집 화면 오른쪽 속성 칸은 컬렉션 정의대로 입력을 그린다. 입력은 필드 종류로 정한다: 텍스트·선택·관계, 미디어 필드
 (`fields.media`)는 미디어 고르기(`accept: "file"`이면 파일 올리기)다. 필드 이름이나 역할로 입력을 바꾸지 않는다.
-`input`으로 등록한 입력을 고르면 그 입력이 먼저다. 기본 입력 `auto-summary`는 여러 줄 요약 칸이다.
+`input`으로 등록한 입력을 고르면 그 입력이 먼저다. 본체에는 이름 붙은 입력이 없다. 여러 줄 텍스트(`multiline: true`)는
+`rows`(기본 2)만큼의 여러 줄 칸이다(예전 `input: "auto-summary"`는 `multiline: true, rows: 3`으로 바꾼다).
 
 `fieldInputs`에는 컴포넌트(입력 전체를 바꾼다) 또는 조각(`FieldInputParts`, 기본 입력을 두고 일부만 바꾼다)을 등록한다.
 조각은 지금 입력 중인 값(`form`)을 읽을 수 있다.
@@ -70,7 +72,10 @@ const components = {
 (`fields.view({ view })`)는 그 자리에 `CmsAdminComponentsProvider`의 `fieldViews`(`{ 이름: ({ collection, form, entry }) => … }`)로
 등록한 화면을 그린다. 등록한 화면이 없으면 아무것도 그리지 않는다. 미디어 ID로 미리보기를 그리는 화면은
 `@bh2980/cms-admin/media`의 `MediaThumbnail`·`useMediaUrl`을 쓴다(SEO 확장 `@bh2980/cms-seo`의 검색 미리보기가 예시다).
-날짜·시각은 사이트 설정의 `timeZone`으로 보인다.
+날짜·시각은 사이트 설정의 `timeZone`으로, 표기는 `admin.locale`(기본 `ko-KR`)로 보인다. 관계 입력의 안내 문구는 대상 컬렉션의
+이름표를 쓴다(예: "게시글 고르기"). 항목 컬렉션(`kind: "item"`)의 항목은 목록의 작은 폼으로 연다. 미디어 사용처처럼 여러
+컬렉션을 가리키는 곳은 `/admin?collection=<컬렉션>&open=<ID>`로 그 항목 칸을 열고, `/admin/entries/<ID>/edit`로 열어도 그 주소로
+보낸다. 목록 컬럼 설정에 저장된 이름 중 지금 컬럼이 아닌 것은 버린다(예전 이름을 짐작해 바꾸지 않는다).
 
 ## 블록 편집 화면
 
@@ -81,6 +86,36 @@ const components = {
 - `blockEditors`는 기본 틀 안의 속성·본문 모양을, `blockViews`는 틀까지 포함한 화면 전체를 바꾼다.
 - `blockViews` 화면을 만드는 도구(속성 값 읽고 쓰기·자식 위치·입력 칸·도구 줄·노드 이름)는 `@bh2980/cms-admin/blocks`에 있다.
   `@bh2980/cms-blocks`의 콜아웃·탭 화면이 예시다.
+
+## 글자 꾸밈
+
+블록 확장의 글자 꾸밈(`syntax.kind: "text"`, `editor.view: "mark"`, 예: `@bh2980/cms-blocks`의 툴팁·코드 연결·글자색)은 관리자
+화면이 정의에서 편집기 마크(`cms` + 파스칼 이름, `addedMarkName("tooltip")` → `cmsTooltip`)와 저장 문서 변환을 만든다. 본체
+편집기는 꾸밈 이름을 모르고, 확장이 `CmsAdminComponentsProvider`의 `marks`(블록 이름 → `EditorMarkExtension`)로 준 것만 그린다.
+
+```tsx
+import type { EditorMarkExtension } from "@bh2980/cms-admin/editor";
+
+const note: EditorMarkExtension = {
+	inclusive: false, // 꾸밈 끝에 이어 친 글자가 꾸밈을 이어받는가(기본 false)
+	render: (attrs) => ({ class: "underline decoration-wavy" }), // span에 더할 HTML 속성
+	toolbar: { group: "format", priority: 3, Button: NoteButton, MenuItems: NoteMenuItems }, // format: 글자 꾸밈 뒤, link: 링크 뒤
+	bubble: { group: "link", order: -1, Button: NoteBubbleButton }, // 글자를 골랐을 때 버블 버튼(링크 앞)
+	detail: NoteDetail, // 커서가 꾸밈 안에 있을 때 버블 내용(설명·수정·해제)
+	insertActions: [{ id: "note", title: "메모", description: "…", keywords: ["note"], run: (editor, range) => {} }], // 슬래시 메뉴
+};
+const components = { marks: { note } };
+```
+
+- 버블 버튼·내용은 `{ editor, inCode, openPanel, closePanel, act }`를 받는다. `openPanel({ label, size, content })`은 버블 안에
+  입력 칸을 펼친다. 같은 모양을 내려면 `@bh2980/cms-admin/editor`의 `BubbleButton`·`MarkTextForm`·`MarkTextPopover`·
+  `removeInlineMark`·`allowsMark`를 쓴다.
+- HTML로는 `span[data-cms-mark="이름"]`과 속성마다 `data-mark-<속성>`이다. 저장 문서(CmsNode)의 mark 이름은 블록 이름이고
+  속성은 정의의 속성만 남긴다(`markAttrsOf`).
+- 속성에 `codeAnchor: true`가 있는 꾸밈은 코드 블록 줄 이름표를 가리킨다(`CODE_ANCHOR_REF`). 코드 블록의 줄 메뉴 "본문 연결"·
+  잇기 안내 줄·마우스를 올린 줄 강조(`data-code-ref`)·연결 끊김 표시가 이 꾸밈을 쓰고, 그런 꾸밈이 없으면 숨는다. 버블에서 쓰는
+  잇기 명령(`findAnchor`·`startLinkFromText`·`unlinkRef`)도 같은 진입점에 있다.
+- 코드 블록 안 글자 툴팁(코드 펜스 주석 `// @char Tooltip`)은 본체 코드 블록 기능이라 본문 툴팁과 따로다(마크 `codeTooltip`).
 
 ## 플러그인 화면
 
@@ -93,7 +128,7 @@ export default defineAdminPlugin({
 });
 ```
 
-편집 화면 확장(`editorExtensions`)은 툴바 끝 요소·블록 손잡이 옆 동작을 더하는 훅이다. 필드 옆·본문 이미지·미디어·코드 블록
+편집 화면 확장(`editorExtensions`)은 툴바 끝 요소·블록 손잡이 옆 동작·선택 영역 메뉴·슬래시 메뉴 동작을 더하는 훅이다. 필드 옆·본문 이미지·미디어·코드 블록
 자리에는 `SlotRegistryProvider`(`@bh2980/cms-admin/slots`)로 동작을 붙인다.
 
 ## 맞춤법·문장 검사 확장

@@ -20,21 +20,21 @@ describe("사이트가 등록한 필드 입력", () => {
 	it("필드의 `input` 이름으로 등록한 입력이 내장 입력 대신 그려진다", () => {
 		const onChange = vi.fn();
 		render(
-			<CmsAdminComponentsProvider components={{ fieldInputs: { "auto-summary": UpperInput } }}>
+			<CmsAdminComponentsProvider components={{ fieldInputs: { "seo-title": UpperInput } }}>
 				<SchemaFields
 					collection="post"
-					form={{ ...EMPTY_FORM, summary: "요약 abc" }}
+					form={{ ...EMPTY_FORM, seoTitle: "제목 abc" }}
 					context={{ disabled: false }}
 					onChange={onChange}
-					include={(group) => group.fields.includes("summary")}
+					include={(group) => group.fields.includes("seoTitle")}
 				/>
 			</CmsAdminComponentsProvider>,
 		);
-		fireEvent.click(screen.getByText("사이트 입력: 요약 abc"));
-		expect(onChange).toHaveBeenCalledWith({ summary: "요약 ABC" });
+		fireEvent.click(screen.getByText("사이트 입력: 제목 abc"));
+		expect(onChange).toHaveBeenCalledWith({ seoTitle: "제목 ABC" });
 	});
 
-	it("등록하지 않으면 내장 입력(여러 줄 요약)을 쓴다", () => {
+	it("여러 줄 텍스트 필드는 줄 수(`rows`)만큼의 여러 줄 입력이다", () => {
 		render(
 			<SchemaFields
 				collection="post"
@@ -44,6 +44,9 @@ describe("사이트가 등록한 필드 입력", () => {
 				include={(group) => group.fields.includes("summary")}
 			/>,
 		);
-		expect(screen.getByDisplayValue("요약").tagName).toBe("TEXTAREA");
+		const input = screen.getByDisplayValue("요약") as HTMLTextAreaElement;
+		expect(input.tagName).toBe("TEXTAREA");
+		expect(input.rows).toBe(3);
+		expect(input.style.minHeight).toBe("4rem");
 	});
 });

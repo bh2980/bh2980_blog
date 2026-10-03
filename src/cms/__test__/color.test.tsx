@@ -1,5 +1,6 @@
 import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
 import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { colorMarkExtension } from "@bh2980/cms-blocks/color/admin";
 import { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { renderToReadableStream } from "react-dom/server";
@@ -26,10 +27,14 @@ describe("글자색 저장 형식", () => {
 	});
 
 	it("에디터에 올렸다 저장해도 원문이 그대로다", () => {
-		const editor = new Editor({ extensions: buildEditorExtensions(), content: mdxToTiptap(SOURCE) });
+		// 글자색은 블록 확장(`@bh2980/cms-blocks`의 `color()`)이고 편집기 모양도 확장이 준다.
+		const editor = new Editor({
+			extensions: buildEditorExtensions({ color: colorMarkExtension }),
+			content: mdxToTiptap(SOURCE),
+		});
 		const html = editor.getHTML();
 		expect(html).toMatch(
-			/<span[^>]*data-cms-color[^>]*data-fg[^>]*style="--cms-fg: #dc2626; --cms-fg-dark: #f87171;?"[^>]*>경고<\/span>/,
+			/<span[^>]*data-cms-mark="color"[^>]*data-fg[^>]*style="--cms-fg: #dc2626; --cms-fg-dark: #f87171;?"[^>]*>경고<\/span>/,
 		);
 		expect(tiptapToMdx(editor.getJSON()).trimEnd()).toBe(SOURCE);
 		editor.destroy();

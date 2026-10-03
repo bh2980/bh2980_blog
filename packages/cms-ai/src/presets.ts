@@ -86,7 +86,7 @@ const recordRelation =
 			({ field }) =>
 				field.kind === "relation" &&
 				Boolean(field.many) === many &&
-				(to ? field.to === to : site.collections[field.to]?.workflow === "record"),
+				(to ? field.to === to : site.collections[field.to]?.kind === "item"),
 		);
 
 const lines = (...text: string[]) => text.join("\n");

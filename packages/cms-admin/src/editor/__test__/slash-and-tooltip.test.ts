@@ -76,7 +76,8 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(titles).toContain("코드 블록");
 		expect(titles).toContain("표");
 		expect(titles).toContain("이미지");
-		expect(titles).toContain("툴팁");
+		// 툴팁은 블록 확장(`@bh2980/cms-blocks`)이 등록하는 항목이라 본체 목록에 없다.
+		expect(titles).not.toContain("툴팁");
 		expect(titles).toContain("다이어그램");
 		expect(titles).toContain("차트");
 		expect(titles).toContain("수식");
@@ -102,7 +103,13 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(filterCommands("그래프").some((c) => c.title === "차트")).toBe(true);
 		expect(filterCommands("math").some((c) => c.title === "수식")).toBe(true);
 		expect(filterCommands("katex").some((c) => c.title === "수식")).toBe(true);
-		expect(filterCommands("tooltip").some((c) => c.title === "툴팁")).toBe(true);
+		// 툴팁은 블록 확장의 글자 꾸밈이라 본체 메뉴에 없고, 확장이 준 항목(`inline`)은 글 서식 항목 다음·블록 항목 앞에 온다.
+		expect(filterCommands("tooltip").some((c) => c.title === "툴팁")).toBe(false);
+		const inline = [{ title: "툴팁", description: "글자에 설명 달기", keywords: ["tooltip"], action: () => {} }];
+		expect(filterCommands("tooltip", [], inline).map((c) => c.title)).toEqual(["툴팁"]);
+		const titles = filterCommands("", [], inline).map((c) => c.title);
+		expect(titles.indexOf("툴팁")).toBeGreaterThan(titles.indexOf("내부 글 링크"));
+		expect(titles.indexOf("툴팁")).toBeLessThan(titles.indexOf("다이어그램"));
 	});
 });
 
@@ -166,15 +173,6 @@ describe("툴팁(Tooltip) 설정·수정·제거 및 MDX 왕복 (v2 C3a)", () =>
 		const mdx = tiptapToMdx(editor.getJSON());
 		expect(mdx).toContain(':tooltip[a\\]b]{content="설명"}');
 		expect(tiptapToMdx(mdxToTiptap(mdx))).toBe(mdx);
-		editor.destroy();
-	});
-
-	it("슬래시 툴팁 명령은 예시 라벨을 선택해 설명 입력을 연다", () => {
-		const editor = createEditor("<p>/</p>");
-		const command = SLASH_COMMANDS.find((item) => item.title === "툴팁");
-		command?.action(editor, { from: 1, to: 2 });
-		expect(editor.state.doc.textContent).toBe("툴팁 텍스트");
-		expect(editor.state.selection.empty).toBe(false);
 		editor.destroy();
 	});
 

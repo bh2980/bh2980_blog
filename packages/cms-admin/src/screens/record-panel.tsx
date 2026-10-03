@@ -34,11 +34,10 @@ import { SidePanelHeader } from "./shared/side-panel";
 
 export type RecordTarget = { collection: Collection; id: string | null };
 
-/** 그 언어 탭에 값이 하나라도 있는가. 기본 언어는 이름이 곧 값이다. */
+/** 그 언어 탭에 언어별 값(`localized: true` 텍스트 필드)이 하나라도 있는가. 기본 언어는 필드 자체의 값이다. */
 function hasLocaleValues(collection: SchemaCollection, form: EntryForm, locale: Locale): boolean {
-	if (locale === DEFAULT_LOCALE) return Boolean(form.title.trim());
 	return recordLocalizedFields(collection).some((field) => {
-		const value = form[recordTranslationKey(field, locale)];
+		const value = locale === DEFAULT_LOCALE ? form[field] : form[recordTranslationKey(field, locale)];
 		return typeof value === "string" && value.trim() !== "";
 	});
 }

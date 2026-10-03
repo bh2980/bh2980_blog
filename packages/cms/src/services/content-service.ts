@@ -1,4 +1,4 @@
-import { isCollection, isRecordCollection } from "../core/collections";
+import { isCollection, isItemCollection } from "../core/collections";
 import { isLocale } from "../core/locales";
 import { prepareSnapshot, SERVICE_INPUT_KEYS, validateExactRecord } from "../core/snapshot";
 import { withTranslationHints } from "../core/translation/hints";
@@ -19,7 +19,7 @@ const assertInputKeys = (input: unknown, baseKeys: readonly string[]) => {
  * 만든다(`from`이 없으면 만들지 않는다). 명시적 저장이 곧 공개 반영이라 slug 없는 레코드는 존재할 수 없다.
  */
 const withRecordSlug = (input: ServiceInput): ServiceInput => {
-	if (!isRecordCollection(input.collection) || input.slug?.trim()) return input;
+	if (!isItemCollection(input.collection) || input.slug?.trim()) return input;
 	const slug = slugFromValues(input.collection, input.metadata ?? {});
 	return slug ? { ...input, slug } : input;
 };
@@ -36,7 +36,7 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => ({
 			snapshot,
 			references: snapshot.references,
 			folderId,
-			publishImmediately: options?.publishImmediately ?? isRecordCollection(input.collection),
+			publishImmediately: options?.publishImmediately ?? isItemCollection(input.collection),
 		});
 	},
 
@@ -63,7 +63,7 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => ({
 			snapshot,
 			references: snapshot.references,
 			folderId,
-			publishImmediately: options?.publishImmediately ?? isRecordCollection(input.collection),
+			publishImmediately: options?.publishImmediately ?? isItemCollection(input.collection),
 		});
 	},
 
@@ -77,7 +77,7 @@ export const createContentService = <T = unknown>(storePort: StorePort<T>) => ({
 		const picked = await storePort.getWorking({ entryId: params.sourceId });
 		const sourceId = picked.translationGroupId ?? params.sourceId;
 		const source = sourceId === params.sourceId ? picked : await storePort.getWorking({ entryId: sourceId });
-		if (!isCollection(source.collection) || isRecordCollection(source.collection)) {
+		if (!isCollection(source.collection) || isItemCollection(source.collection)) {
 			throw new ServiceError("invalid_input");
 		}
 		// 번역본은 원문 틀에서 시작한다(v3). 구조(제목·문단·상자·목록·표)와 코드·이미지는 그대로 두고, 글자는

@@ -996,37 +996,4 @@ describe("ContentStore References (M2-TW-3 RED tests)", () => {
 		const subsequentDbRefs = await store.getWorkingReferences({ entryId: created.id });
 		expect(subsequentDbRefs).toEqual(initialDbRefs);
 	});
-
-	it("reads legacy category/tag reference rows as entry and migrates them", async () => {
-		const target = await seedEntry(store, {
-			collection: "tag",
-			slug: `tag-legacy-${randomUUID()}`,
-			metadata: { title: "Legacy Tag" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: "hash-tag-legacy",
-		});
-		const reference = buildReference({
-			targetId: target.id,
-			occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],
-		});
-		const created = await store.createEntryWithReferences({
-			snapshot: buildSnapshot({ slug: `post-legacy-${randomUUID()}`, references: [reference] }),
-			references: [reference],
-		});
-		// 예전 저장 형식: 관계 대상 컬렉션 이름을 참조 종류로 썼다.
-		await pool.query(`UPDATE "${schemaName}".entry_references SET kind = 'tag' WHERE entry_id = $1`, [created.id]);
-
-		const legacy = await store.getWorkingReferences({ entryId: created.id });
-		expect(legacy.map((ref) => ref.kind)).toEqual(["entry"]);
-		const incoming = await store.getIncomingReferences({ targetId: target.id });
-		expect(incoming.map((ref) => ref.kind)).toEqual(["entry"]);
-
-		await migrateContentStore(pool, { schema: schemaName });
-		const rows = await pool.query<{ kind: string }>(
-			`SELECT kind FROM "${schemaName}".entry_references WHERE entry_id = $1`,
-			[created.id],
-		);
-		expect(rows.rows.map((row) => row.kind)).toEqual(["entry"]);
-	});
 });

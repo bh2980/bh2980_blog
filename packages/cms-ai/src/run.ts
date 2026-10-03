@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, readableMdx } from "@bh2980/cms/client";
+import { ADMIN_LOCALE, DEFAULT_LOCALE, readableMdx } from "@bh2980/cms/client";
 import { z } from "zod";
 import {
 	type AiContentLookup,
@@ -149,7 +149,7 @@ async function collectMaterial(
 				if ((text?.length ?? 0) > MAX_AI_BODY_CHARS) {
 					throw new AiError(
 						"ai_input_too_large",
-						`${spec.label}이 ${MAX_AI_BODY_CHARS.toLocaleString("ko-KR")}자를 넘어 보낼 수 없습니다.`,
+						`${spec.label}이 ${MAX_AI_BODY_CHARS.toLocaleString(ADMIN_LOCALE)}자를 넘어 보낼 수 없습니다.`,
 					);
 				}
 				add(text);

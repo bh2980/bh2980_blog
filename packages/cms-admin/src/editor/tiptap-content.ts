@@ -1,9 +1,8 @@
-import { cleanTextColor, hasTextColor } from "@bh2980/cms/client";
 import type { CmsJsonValue, CmsMark, CmsNode } from "@bh2980/cms/mdx";
 import { TEXT_ALIGN_VALUES as ALIGN_VALUES, analyze, serialize, sortMarks, toDocument } from "@bh2980/cms/mdx";
 import type { JSONContent } from "@tiptap/core";
+import { ADDED_MARK_BY_EDITOR_NAME, ADDED_MARKS, addedMarkName, markAttrsOf } from "./added-marks";
 import { PARENT_ONLY_TYPES } from "./blocks/added";
-import { COLOR_MARK_NAME } from "./color-mark";
 import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
 import { asNumber, asString, brDirectiveNode } from "./converters/shared";
 
@@ -20,10 +19,8 @@ import { asNumber, asString, brDirectiveNode } from "./converters/shared";
  */
 
 export const OPAQUE_BLOCK_NAME = "cmsOpaqueBlock";
-export const TOOLTIP_MARK_NAME = "cmsTooltip";
-export const CODE_REF_MARK_NAME = "codeRef";
 
-/** Tiptap이 그대로 들고 다닐 수 있는 mark. `tooltip`은 전용 mark로 매핑한다. */
+/** Tiptap이 그대로 들고 다닐 수 있는 mark. 더한 글자 꾸밈(블록 확장)은 정의에서 만든 마크로 옮긴다(`added-marks.ts`). */
 const NATIVE_MARKS = new Set([
 	"bold",
 	"italic",
@@ -36,7 +33,7 @@ const NATIVE_MARKS = new Set([
 	// 번역 안내 글(v3). 속성이 없어 이름 그대로 오간다.
 	"untranslated",
 ]);
-const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, "tooltip", "codeRef", "color"]);
+const MAPPABLE_MARKS = new Set([...NATIVE_MARKS, ...ADDED_MARKS.keys()]);
 
 const TEXT_ALIGN_VALUES: ReadonlySet<string> = new Set(ALIGN_VALUES);
 
@@ -124,16 +121,9 @@ const toTiptapMarks = (marks: CmsMark[] | undefined): JSONContent["marks"] => {
 	if (!marks || marks.length === 0) return undefined;
 	const out: NonNullable<JSONContent["marks"]> = [];
 	for (const mark of marks) {
-		if (mark.type === "tooltip") {
-			out.push({ type: TOOLTIP_MARK_NAME, attrs: { content: asString(mark.attrs?.content) ?? "" } });
-			continue;
-		}
-		if (mark.type === "codeRef") {
-			out.push({ type: CODE_REF_MARK_NAME, attrs: { to: asString(mark.attrs?.to) ?? "" } });
-			continue;
-		}
-		if (mark.type === "color") {
-			out.push({ type: COLOR_MARK_NAME, attrs: { ...cleanTextColor(mark.attrs) } });
+		const added = ADDED_MARKS.get(mark.type);
+		if (added) {
+			out.push({ type: addedMarkName(added.name), attrs: markAttrsOf(added, mark.attrs) });
 			continue;
 		}
 		// isMappableInline이 걸렀으므로 여기 오는 mark는 전부 네이티브다.
@@ -253,18 +243,10 @@ const tiptapMarksToCms = (marks: JSONContent["marks"]): CmsMark[] => {
 	const out: CmsMark[] = [];
 	for (const mark of marks ?? []) {
 		if (!mark || typeof mark.type !== "string") continue;
-		if (mark.type === TOOLTIP_MARK_NAME) {
-			out.push({ type: "tooltip", attrs: { content: asString(mark.attrs?.content) ?? "" } });
-			continue;
-		}
-		if (mark.type === CODE_REF_MARK_NAME) {
-			out.push({ type: "codeRef", attrs: { to: asString(mark.attrs?.to) ?? "" } });
-			continue;
-		}
-		if (mark.type === COLOR_MARK_NAME) {
-			const attrs = cleanTextColor(mark.attrs);
-			// 색이 모두 빠졌으면 표시를 남기지 않는다.
-			if (hasTextColor(attrs)) out.push({ type: "color", attrs: { ...attrs } });
+		const added = ADDED_MARK_BY_EDITOR_NAME.get(mark.type);
+		if (added) {
+			const attrs = markAttrsOf(added, mark.attrs);
+			out.push(Object.keys(attrs).length > 0 ? { type: added.name, attrs } : { type: added.name });
 			continue;
 		}
 		if (mark.type === "link") {

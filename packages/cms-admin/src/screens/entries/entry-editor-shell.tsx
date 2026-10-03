@@ -1,13 +1,15 @@
 "use client";
 
 import {
-	autoSummary,
+	ADMIN_LOCALE,
+	bodyExcerpt,
 	CMS_TIME_ZONE,
 	previewHref as contentPreviewHref,
 	DEFAULT_COLLECTION,
 	fillFromBodyFields,
+	fillFromBodyLength,
 	isCollection,
-	isRecordCollection,
+	isItemCollection,
 	parseDateTimeInput,
 	slugFieldOf,
 	slugFromValues,
@@ -31,6 +33,7 @@ import {
 	Trash,
 	Trash2,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -59,6 +62,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { entryHref } from "../shared/entry-href";
 import { describeEntryStatus } from "../shared/entry-status";
 import { SIDE_PANEL_WIDTH } from "../shared/side-panel";
 import {
@@ -233,7 +237,7 @@ function keepTranslationGroup(current: EntryData | null, next: EntryData): Pick<
  */
 /** 설정 시간대의 이름(예: `한국 표준시`). 예약 시각 안내에 쓴다. */
 const timeZoneName = () =>
-	new Intl.DateTimeFormat("ko-KR", { timeZone: CMS_TIME_ZONE, timeZoneName: "long" })
+	new Intl.DateTimeFormat(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE, timeZoneName: "long" })
 		.formatToParts(new Date())
 		.find((part) => part.type === "timeZoneName")?.value ?? CMS_TIME_ZONE;
 
@@ -399,9 +403,9 @@ export function EntryEditorShell({
 	const loadEntry = useCallback(
 		async (id: string) => {
 			const loaded = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, { fallback: "문서를 불러올 수 없습니다." });
-			if (isRecordCollection(loaded.collection)) {
-				// 태그·카테고리·모음집은 명시적 저장 폼을 쓴다(§5.2).
-				router.replace(`/admin?collection=${loaded.collection}`);
+			if (isItemCollection(loaded.collection)) {
+				// 항목 컬렉션(태그·카테고리 등)은 목록의 작은 폼에서 연다(§5.2).
+				router.replace(entryHref(loaded.collection, loaded.id) as Route);
 				return null;
 			}
 			const loadedForm = formFromEntry(loaded);
@@ -420,7 +424,7 @@ export function EntryEditorShell({
 		let cancelled = false;
 		const open = async () => {
 			if (mode === "new") {
-				if (isRecordCollection(propCollection)) {
+				if (isItemCollection(propCollection)) {
 					router.replace(`/admin?collection=${propCollection}`);
 					return;
 				}
@@ -566,7 +570,7 @@ export function EntryEditorShell({
 		// §5.6: 본문에서 채우는 필드(`fillFromBody`)가 비었으면 본문에서 만들어 보여 준다. 만들 글이 없으면 직접 입력해야 한다.
 		for (const { name, field } of isCollection(collection) ? fillFromBodyFields(collection) : []) {
 			if (formText(form, name).trim()) continue;
-			const generated = autoSummary(form.mdx);
+			const generated = bodyExcerpt(form.mdx, fillFromBodyLength(field));
 			if (!generated) {
 				setPublishIssues([{ code: "missing_field", message: field.label, path: name }]);
 				toast.error(`${josa(field.label, "을", "를")} 만들 본문이 없습니다. 직접 입력하세요.`);
@@ -793,7 +797,7 @@ export function EntryEditorShell({
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
 	const languageTabs =
-		entry && !isRecordCollection(collection) ? (
+		entry && !isItemCollection(collection) ? (
 			<LanguageTabs
 				entry={entry}
 				disabled={isReadOnly}

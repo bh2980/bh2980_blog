@@ -1,6 +1,6 @@
 "use client";
 
-import { BLOCK_BY_NAME, CMS_TIME_ZONE, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
+import { ADMIN_LOCALE, BLOCK_BY_NAME, CMS_TIME_ZONE, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
@@ -846,7 +846,7 @@ function FeatureEditor({
 				{!custom?.isNew && (
 					<span className="ml-auto text-muted-foreground text-xs">
 						{feature.updatedAt
-							? `${new Date(feature.updatedAt).toLocaleString("ko-KR", { timeZone: CMS_TIME_ZONE })} 고침`
+							? `${new Date(feature.updatedAt).toLocaleString(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE })} 고침`
 							: "기본 설정"}
 					</span>
 				)}

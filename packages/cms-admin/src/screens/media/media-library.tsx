@@ -28,6 +28,7 @@ import type { MenuAction } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
 import { useConfirm } from "../shared/confirm-dialog";
 import { DateRangePicker } from "../shared/date-range-picker";
+import { entryHref } from "../shared/entry-href";
 import { SIDE_PANEL_DOCK } from "../shared/side-panel";
 import { useDebounced } from "../shared/use-debounced";
 import { MediaDetailPanel } from "./media-detail-panel";
@@ -260,7 +261,7 @@ export function MediaLibrary() {
 				kind: "item" as const,
 				label: `${reference.title || "제목 없음"} · ${reference.state === "published" ? "공개본" : "초안"}`,
 				icon: FileText,
-				onSelect: () => window.location.assign(`/admin/entries/${reference.entryId}/edit`),
+				onSelect: () => window.location.assign(entryHref(reference.collection, reference.entryId)),
 			})),
 		},
 		{ kind: "separator" },

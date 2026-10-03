@@ -41,7 +41,7 @@ describe("컬렉션 정의(v2 B1)", () => {
 			for (const group of schema.layout ?? []) {
 				for (const name of group.fields) expect(Object.keys(schema.fields)).toContain(name);
 			}
-			for (const column of schema.list.columns) {
+			for (const column of schema.list?.columns ?? []) {
 				expect([...Object.keys(schema.fields), ...system]).toContain(column);
 			}
 		}
@@ -101,7 +101,7 @@ describe("컬렉션 정의(v2 B1)", () => {
 			itemIds: "string[]",
 			memoIds: "string[]",
 		});
-		expect(COLLECTION_DEFINITIONS.collection.workflow).toBe("record");
+		expect(COLLECTION_DEFINITIONS.collection.kind).toBe("item");
 		expect(relationsOf("post").map(({ field, kind, to }) => [field, kind, to])).toEqual([
 			["categoryId", "entry", "category"],
 			["tagIds", "entry", "tag"],

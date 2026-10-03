@@ -1,7 +1,7 @@
 "use client";
 
 import type { BacklinkField, Collection, RelationField, ValueField } from "@bh2980/cms/client";
-import { type SchemaCollection, storedField } from "@bh2980/cms/client";
+import { isCollection, type SchemaCollection, schemaOf, storedField } from "@bh2980/cms/client";
 import {
 	closestCenter,
 	DndContext,
@@ -20,10 +20,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../../lib/utils/cn";
+import { josa } from "../../lib/utils/josa";
 import { IconButton } from "../../ui/icon-button";
-import { Textarea } from "../../ui/textarea";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { EntryForm, FormValue } from "./entry-form";
@@ -64,30 +64,11 @@ export interface FieldInputProps {
 
 export const inputClass = "h-8 text-xs md:text-xs";
 
-/** 요약의 여러 줄 입력. */
-function AutoSummaryInput({ field, id, value, invalid, describedBy, onChange }: FieldInputProps) {
-	const text = typeof value === "string" ? value : "";
-	return (
-		<Textarea
-			id={id}
-			rows={3}
-			value={text}
-			aria-invalid={invalid || undefined}
-			aria-describedby={describedBy}
-			onChange={(event) => onChange(event.target.value)}
-			placeholder={field.kind === "text" ? field.placeholder : undefined}
-			className="min-h-16 resize-none text-xs md:text-xs"
-		/>
-	);
+/** 여러 줄 텍스트 입력의 줄 수(`rows`, 없으면 2)와 그 줄 수가 보이는 최소 높이(글자 줄 + 위아래 여백). */
+export function multilineProps(field: { readonly rows?: number }): { rows: number; style: { minHeight: string } } {
+	const rows = field.rows !== undefined && field.rows >= 1 ? Math.floor(field.rows) : 2;
+	return { rows, style: { minHeight: `${rows + 1}rem` } };
 }
-
-/**
- * 입력 등록부(v2 B1). 컬렉션 정의의 `input`이 이 이름을 가리키면 기본 입력 대신 쓴다.
- * 스키마에는 이름만 두고 컴포넌트는 여기에만 둔다(스키마는 서버와 함께 쓰므로 React를 넣지 않는다).
- */
-export const FIELD_INPUTS: Readonly<Record<string, ComponentType<FieldInputProps>>> = {
-	"auto-summary": AutoSummaryInput,
-};
 
 type EntryOption = { id: string; title: string; status: string };
 
@@ -129,6 +110,10 @@ function useEntryOptions(field: RelationField) {
 	return options;
 }
 
+/** 관계 대상 컬렉션의 이름표(예: `게시글`). 입력 안내 문구에 쓴다. */
+const targetLabel = (relation: RelationField) =>
+	isCollection(relation.to) ? schemaOf(relation.to).label : relation.to;
+
 /** 공개되지 않은 글은 이름 뒤에 표시한다. 모음집·대체 글의 공개 목록에서 빠지기 때문이다. */
 const entryLabel = (option: EntryOption) => (option.status === "published" ? option.title : `${option.title} · 비공개`);
 
@@ -141,7 +126,7 @@ export function EntryPicker({ field, id, value, invalid, describedBy, context, o
 		<RelationCombobox
 			id={id}
 			aria-label={field.label}
-			placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? "글 고르기")}
+			placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? `${targetLabel(relation)} 고르기`)}
 			invalid={invalid}
 			describedBy={describedBy}
 			disabled={context.disabled || options === null}
@@ -254,15 +239,16 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 		const kept = ids.filter((itemId) => chosen.has(itemId));
 		onChange([...kept, ...selected.filter((itemId) => !ids.includes(itemId))]);
 	};
+	const target = targetLabel(relation);
 	const missing = (itemId: string): EntryOption | undefined =>
-		options === null ? undefined : { id: itemId, title: "찾을 수 없는 글", status: "missing" };
+		options === null ? undefined : { id: itemId, title: `찾을 수 없는 ${target}`, status: "missing" };
 
 	return (
 		<div className="space-y-2">
 			<RelationCombobox
 				id={id}
-				aria-label="글 추가·빼기"
-				placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? "글 추가·빼기")}
+				aria-label={`${target} 추가·빼기`}
+				placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? `${target} 추가·빼기`)}
 				disabled={context.disabled || options === null}
 				multiple
 				showChips={false}
@@ -273,11 +259,11 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 				onValueChange={applySelection}
 			/>
 			{ids.length === 0 ? (
-				<p className="text-muted-foreground text-xs">담긴 글이 없습니다.</p>
+				<p className="text-muted-foreground text-xs">담긴 {josa(target, "이", "가")} 없습니다.</p>
 			) : (
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
 					<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-						<ol aria-label="담긴 글" className="space-y-1">
+						<ol aria-label={`담긴 ${target}`} className="space-y-1">
 							{ids.map((itemId, index) => (
 								<SortableEntryRow
 									key={sortableIds[index]}

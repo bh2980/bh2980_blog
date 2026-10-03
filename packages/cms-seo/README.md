@@ -11,7 +11,7 @@ import { seo, seoFields } from "@bh2980/cms-seo";
 
 const article = defineCollection({
 	label: "Article",
-	workflow: "publish",
+	kind: "document",
 	fields: {
 		title: fields.text({ label: "Title" }),
 		slug: fields.slug({ label: "Slug", from: "title" }),

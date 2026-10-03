@@ -11,8 +11,9 @@ export { mermaidBlock } from "./definition";
  * plugins: [mermaid()]
  * ```
  *
- * 편집기는 코드 입력 칸과 미리보기로 편집한다. 미리보기는 사이트가 `fencePreviews.mermaid`로, 공개 화면은 `Mermaid`
- * 컴포넌트로 그린다(코드는 `source` 속성, `remarkFenceBlocksToMdx`).
+ * 편집기는 코드 입력 칸과 미리보기로 편집한다. 미리보기는 이 확장이 그린다(선택 의존성 `mermaid`를 설치한다). 사이트가
+ * `fencePreviews.mermaid`로 바꿀 수 있다. 공개 화면은 사이트가 `Mermaid` 컴포넌트로 그린다(코드는 `source` 속성,
+ * `remarkFenceBlocksToMdx`).
  */
 export const mermaid = () =>
 	definePlugin({

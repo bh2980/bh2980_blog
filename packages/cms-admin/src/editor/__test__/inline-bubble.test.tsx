@@ -1,10 +1,27 @@
+import { defineBlock } from "@bh2980/cms";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CmsAdminComponentsProvider, type EditorMarkExtension } from "../../admin-components";
+import { addedMarkName, createAddedMark } from "../added-marks";
 import { buildEditorExtensions } from "../extensions";
-import { InlineBubble } from "../inline-bubble";
+import { BubbleButton, InlineBubble } from "../inline-bubble";
 import { inlineBubbleTarget } from "../inline-marks";
+
+/**
+ * 사이트 설정과 상관없이 시험하는 글자 꾸밈(확장이 더하는 `:note[글]{text="…"}`). 편집기에 마크를 직접 더하고
+ * `CmsAdminComponentsProvider`의 `marks`로 버블 버튼·내용을 등록한다.
+ */
+const noteBlock = defineBlock({
+	name: "note",
+	label: "메모",
+	syntax: { kind: "text", directive: "note" },
+	component: "Note",
+	attributes: { text: { type: "string", label: "메모", required: true } },
+	editor: { view: "mark" },
+});
+const NOTE_MARK = addedMarkName(noteBlock.name);
 
 vi.mock("../../ui/tooltip", () => ({
 	Tooltip: ({ children }: { children: React.ReactNode }) => children,
@@ -32,7 +49,11 @@ afterEach(() => {
 const createEditor = (html: string) => {
 	const element = document.createElement("div");
 	document.body.append(element);
-	const editor = new Editor({ element, extensions: buildEditorExtensions(), content: html });
+	const editor = new Editor({
+		element,
+		extensions: [...buildEditorExtensions(), createAddedMark(noteBlock, { inclusive: true })],
+		content: html,
+	});
 	editors.push(editor);
 	return editor;
 };
@@ -43,9 +64,9 @@ const focusAt = (editor: Editor, position: number | { from: number; to: number }
 	editor.view.focus();
 };
 
-// 위치: 가나(1–3) 굵게 다라(4–6) 링크 마바(7–9) 툴팁 사아(10–12)
+// 위치: 가나(1–3) 굵게 다라(4–6) 링크 마바(7–9) 메모 꾸밈 사아(10–12)
 const HTML =
-	'<p>가나 <strong>다라</strong> <a href="https://example.com">마바</a> <span data-cms-tooltip="설명">사아</span> 자</p><pre><code>code</code></pre>';
+	'<p>가나 <strong>다라</strong> <a href="https://example.com">마바</a> <span data-cms-mark="note" data-mark-text="설명">사아</span> 자</p><pre><code>code</code></pre>';
 
 describe("inlineBubbleTarget", () => {
 	it("글자를 고르면 선택 도구를 띄운다", () => {
@@ -67,11 +88,12 @@ describe("inlineBubbleTarget", () => {
 			kind: "marks",
 			marks: [{ name: "link", from: 7, to: 9, attrs: { href: "https://example.com" } }],
 		});
-		// 툴팁 시작(경계)에 둔 커서도 툴팁으로 본다.
+		// 확장 꾸밈 시작(경계)에 둔 커서도 그 꾸밈으로 본다(확장이 내용을 그리는 꾸밈만).
 		editor.commands.setTextSelection(10);
-		expect(inlineBubbleTarget(editor.state)).toMatchObject({
+		expect(inlineBubbleTarget(editor.state)).toBeNull();
+		expect(inlineBubbleTarget(editor.state, [NOTE_MARK])).toMatchObject({
 			kind: "marks",
-			marks: [{ name: "cmsTooltip", from: 10, to: 12, attrs: { content: "설명" } }],
+			marks: [{ name: NOTE_MARK, from: 10, to: 12, attrs: { text: "설명" } }],
 		});
 	});
 
@@ -154,21 +176,74 @@ describe("InlineBubble", () => {
 		expect(editor.getText()).toContain("마바");
 	});
 
-	it("툴팁 경계의 커서에서도 설명을 고친다", () => {
+	it("확장의 글자 꾸밈은 등록한 버블 버튼·내용·입력 칸을 그린다", () => {
+		const extension: EditorMarkExtension = {
+			bubble: {
+				group: "link",
+				order: -1,
+				Button: ({ editor: current, openPanel, closePanel }) => (
+					<BubbleButton
+						label="메모 넣기"
+						onClick={() =>
+							openPanel({
+								label: "메모 편집",
+								content: (
+									<button
+										type="button"
+										onClick={() => {
+											current.chain().setMark(NOTE_MARK, { text: "새 메모" }).run();
+											closePanel();
+										}}
+									>
+										메모 적용
+									</button>
+								),
+							})
+						}
+					>
+						메모
+					</BubbleButton>
+				),
+			},
+			detail: ({ mark, act, editor: current }) => (
+				<>
+					<span>{String(mark.attrs.text)}</span>
+					<BubbleButton
+						label="메모 해제"
+						onClick={act(() => current.chain().setTextSelection(mark).unsetMark(NOTE_MARK).run())}
+					>
+						해제
+					</BubbleButton>
+				</>
+			),
+		};
 		const editor = createEditor(HTML);
-		focusAt(editor, 10);
-		renderBubble(editor);
+		const renderWith = () =>
+			render(
+				<CmsAdminComponentsProvider components={{ marks: { [noteBlock.name]: extension } }}>
+					<InlineBubble editor={editor} />
+				</CmsAdminComponentsProvider>,
+			);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁 수정" })));
-		const input = screen.getByLabelText("설명") as HTMLTextAreaElement;
-		expect(input.value).toBe("설명");
-		act(() => fireEvent.change(input, { target: { value: "새 설명" } }));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
-
-		const tooltips = editor.state.doc.firstChild?.content.content.flatMap((node) =>
-			node.marks.filter((mark) => mark.type.name === "cmsTooltip").map((mark) => [node.text, mark.attrs.content]),
+		// 글자를 고르면 등록한 버튼이 링크 앞(`order: -1`)에 온다.
+		focusAt(editor, { from: 1, to: 3 });
+		const { unmount } = renderWith();
+		const labels = [...screen.getByRole("toolbar", { name: "인라인 서식" }).querySelectorAll("button")].map((button) =>
+			button.getAttribute("aria-label"),
 		);
-		expect(tooltips).toEqual([["사아", "새 설명"]]);
+		expect(labels.indexOf("메모 넣기")).toBe(labels.indexOf("링크 넣기") - 1);
+		act(() => fireEvent.click(screen.getByRole("button", { name: "메모 넣기" })));
+		expect(screen.getByRole("dialog", { name: "메모 편집" })).toBeTruthy();
+		act(() => fireEvent.click(screen.getByRole("button", { name: "메모 적용" })));
+		expect(editor.getHTML()).toMatch(/<span data-cms-mark="note" data-mark-text="새 메모">가나<\/span>/);
+		unmount();
+
+		// 커서가 꾸밈 경계에 있으면 등록한 내용을 그리고, 해제는 버블을 닫지 않는다.
+		focusAt(editor, 10);
+		renderWith();
+		expect(screen.getByText("설명")).toBeTruthy();
+		act(() => fireEvent.click(screen.getByRole("button", { name: "메모 해제" })));
+		expect(editor.getHTML()).not.toContain('data-mark-text="설명"');
 	});
 
 	it("선택한 글자에 버블에서 링크를 넣는다", () => {

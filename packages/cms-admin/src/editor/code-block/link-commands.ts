@@ -1,13 +1,19 @@
 import { ANCHOR, type CodeLineEffect, newEffectId } from "@bh2980/cms/code-block";
-import type { Node as PmNode } from "@tiptap/pm/model";
+import type { MarkType, Node as PmNode } from "@tiptap/pm/model";
 import { TextSelection, type Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { CODE_ANCHOR_REF } from "../added-marks";
 import { codeEffectsKey, effectsMeta, type LinkDraft, lineEffectsOf } from "./effects-plugin";
 
 /**
- * 본문–코드 잇기(v2). 본문 글자에 `codeRef{to}` 마크를, 코드 블록 줄에 이름표(`anchor` 줄 효과, `attrs.id`)를 단다.
- * 한쪽을 먼저 고르면 잇기 중이 되고(`linking`), 다른 쪽을 고른 뒤 확인하면 둘을 잇는다.
+ * 본문–코드 잇기(v2). 본문 글자에 코드 줄을 가리키는 꾸밈(`CODE_ANCHOR_REF`, 예: 블록 확장의 `:code-ref[글자]{to}`)을,
+ * 코드 블록 줄에 이름표(`anchor` 줄 효과, `attrs.id`)를 단다. 한쪽을 먼저 고르면 잇기 중이 되고(`linking`),
+ * 다른 쪽을 고른 뒤 확인하면 둘을 잇는다. 그 꾸밈이 없는 사이트에서는 아무것도 하지 않는다.
  */
+
+/** 본문 연결 마크와 이름표 속성. */
+const anchorMark = (state: { schema: { marks: Record<string, MarkType> } }) =>
+	CODE_ANCHOR_REF ? state.schema.marks[CODE_ANCHOR_REF.mark] : undefined;
 
 export interface AnchorInfo {
 	id: string;
@@ -37,7 +43,10 @@ export function findAnchor(doc: PmNode, id: string): AnchorInfo | null {
 function referencedIds(doc: PmNode): Set<string> {
 	const ids = new Set<string>();
 	doc.descendants((node) => {
-		for (const mark of node.marks) if (mark.type.name === "codeRef") ids.add(String(mark.attrs.to));
+		for (const mark of node.marks) {
+			if (CODE_ANCHOR_REF && mark.type.name === CODE_ANCHOR_REF.mark)
+				ids.add(String(mark.attrs[CODE_ANCHOR_REF.attribute]));
+		}
 		return true;
 	});
 	return ids;
@@ -106,9 +115,9 @@ export function linkLines(view: EditorView): { blockPos: number; start: number; 
 export function commitLink(view: EditorView): boolean {
 	const text = linkTextRange(view);
 	const lines = linkLines(view);
-	const markType = view.state.schema.marks.codeRef;
+	const markType = anchorMark(view.state);
 	const block = lines ? view.state.doc.nodeAt(lines.blockPos) : null;
-	if (!text || !lines || !markType || !block || block.type.name !== "codeBlock") return false;
+	if (!text || !lines || !markType || !CODE_ANCHOR_REF || !block || block.type.name !== "codeBlock") return false;
 
 	const tr = view.state.tr;
 	const effects = lineEffectsOf(block);
@@ -124,7 +133,7 @@ export function commitLink(view: EditorView): boolean {
 				{ id: newEffectId(), name: ANCHOR, start: lines.start, end: lines.end, attrs: { id } } satisfies CodeLineEffect,
 			],
 		});
-	tr.addMark(text.from, text.to, markType.create({ to: id }));
+	tr.addMark(text.from, text.to, markType.create({ [CODE_ANCHOR_REF.attribute]: id }));
 	pruneOrphanAnchors(tr);
 	tr.setSelection(TextSelection.create(tr.doc, text.to));
 	tr.setMeta(codeEffectsKey, effectsMeta({ linking: null }));
@@ -135,7 +144,7 @@ export function commitLink(view: EditorView): boolean {
 
 /** 본문 연결(from~to)을 끊는다. 더는 가리키는 연결이 없는 줄 이름표도 지운다. */
 export function unlinkRef(view: EditorView, from: number, to: number) {
-	const markType = view.state.schema.marks.codeRef;
+	const markType = anchorMark(view.state);
 	if (!markType) return;
 	const tr = view.state.tr.removeMark(from, to, markType);
 	pruneOrphanAnchors(tr);

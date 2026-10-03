@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEXT_PALETTE, type PaletteColor, paletteOf, validateTextPalette } from "../text-colors";
+import { DEFAULT_TEXT_PALETTE, type PaletteColor, paletteOf, validateTextPalette } from "../colors";
 
 const brand: PaletteColor = {
 	id: "brand",

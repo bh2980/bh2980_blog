@@ -17,7 +17,7 @@ import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 /**
- * 공개 화면의 접기와 같은 모양. 처음 모습은 `defaultOpen`을 따르고, 제목 옆 화살표로 편집 중에도 여닫는다.
+ * 접기 편집 화면(테마 색). 처음 모습은 `defaultOpen`을 따르고, 제목 옆 화살표로 편집 중에도 여닫는다.
  * 커서가 안으로 들어오면(방향키·되돌리기·찾기) 저절로 펼친다.
  */
 export function CollapsibleNodeView(props: NodeViewProps) {

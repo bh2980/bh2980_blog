@@ -1,7 +1,8 @@
 import { annotationConfig } from "../annotation/code-block/active";
 import { fromCodeBlockDocumentToCodeFence } from "../annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "../annotation/code-block/types";
-import { TEXT_COLOR_ATTRS } from "../core/text-colors";
+import { ADDED_MARK_BLOCKS } from "../blocks/active";
+import type { BlockDefinition } from "../blocks/define";
 import { DIRECTIVE_BY_COMPONENT, DIRECTIVE_NAMES, type DirectiveDefinition } from "./directives";
 import { serializeFrontmatter } from "./frontmatter";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
@@ -126,21 +127,36 @@ const jsxName = (node: CmsNode): string => {
 	return node.type;
 };
 
+/** 더한 글자 꾸밈(블록 확장). mark 이름은 블록 이름이다. */
+const ADDED_MARKS: ReadonlyMap<string, BlockDefinition> = new Map(
+	ADDED_MARK_BLOCKS.map((block) => [block.name, block]),
+);
+
 /** 속성이 붙는 지시자 라벨(`]{…}`) 안의 글. 라벨을 닫는 글자를 이스케이프한다. */
-const LABEL_MARKS = new Set(["tooltip", "codeRef", "color"]);
+const LABEL_MARKS = new Set(ADDED_MARKS.keys());
+
+/**
+ * 더한 글자 꾸밈의 속성(`{이름="값" …}`). 정의의 속성을 정의 순서대로 쓴다. 꼭 있어야 하는 속성(`required`)은 비어도 쓰고,
+ * 나머지는 값이 있을 때만 쓴다. 불리언은 참일 때 이름만 쓴다. 속성이 하나도 없으면 `]`만 쓴다.
+ */
+const markAttrs = (block: BlockDefinition, mark: CmsMark): string => {
+	const parts = Object.entries(block.attributes).flatMap(([name, attribute]) => {
+		const value = mark.attrs?.[name];
+		if (attribute.type === "boolean") return value === true || value === "true" ? [name] : [];
+		if (typeof value === "string" && value !== "") return [`${name}="${escapeAttr(value)}"`];
+		return attribute.required ? [`${name}="${escapeAttr(value == null ? "" : String(value))}"`] : [];
+	});
+	return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+};
 
 const markKey = (mark: CmsMark) => `${mark.type}:${JSON.stringify(mark.attrs ?? null)}`;
 
 const sortedMarks = (marks: CmsMark[] | undefined): CmsMark[] => sortMarks(marks ?? []);
 
 const openMark = (mark: CmsMark): string => {
+	const added = ADDED_MARKS.get(mark.type);
+	if (added && added.syntax.kind === "text") return `:${added.syntax.directive}[`;
 	switch (mark.type) {
-		case "tooltip":
-			return ":tooltip[";
-		case "codeRef":
-			return ":code-ref[";
-		case "color":
-			return ":color[";
 		case "untranslated":
 			return ":untranslated[";
 		case "underline":
@@ -165,19 +181,9 @@ const openMark = (mark: CmsMark): string => {
 };
 
 const closeMark = (mark: CmsMark): string => {
+	const added = ADDED_MARKS.get(mark.type);
+	if (added) return `]${markAttrs(added, mark)}`;
 	switch (mark.type) {
-		case "tooltip":
-			return `]{content="${escapeAttr(String(mark.attrs?.content ?? ""))}"}`;
-		case "codeRef":
-			return `]{to="${escapeAttr(String(mark.attrs?.to ?? ""))}"}`;
-		case "color": {
-			// 속성 순서를 고정해 왕복해도 같은 글이 된다. 빈 값은 쓰지 않는다.
-			const attrs = TEXT_COLOR_ATTRS.flatMap((name) => {
-				const value = mark.attrs?.[name];
-				return typeof value === "string" && value !== "" ? [`${name}="${escapeAttr(value)}"`] : [];
-			});
-			return attrs.length > 0 ? `]{${attrs.join(" ")}}` : "]";
-		}
 		case "underline":
 		case "superscript":
 		case "subscript":

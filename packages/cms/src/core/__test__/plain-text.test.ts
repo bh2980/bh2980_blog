@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoSummary, toPlainText } from "../plain-text";
+import { bodyExcerpt, toPlainText } from "../plain-text";
 
 describe("본문 일반 텍스트와 자동 요약(§5.6)", () => {
 	it("keeps readable text and drops code, math, images and directive syntax", () => {
@@ -28,7 +28,7 @@ describe("본문 일반 텍스트와 자동 요약(§5.6)", () => {
 	});
 
 	it("truncates long text and returns empty for bodies without prose", () => {
-		expect(Array.from(autoSummary("가".repeat(300), 10))).toHaveLength(10);
-		expect(autoSummary("```js\nonly();\n```")).toBe("");
+		expect(Array.from(bodyExcerpt("가".repeat(300), 10))).toHaveLength(10);
+		expect(bodyExcerpt("```js\nonly();\n```")).toBe("");
 	});
 });

@@ -1,10 +1,9 @@
 import { type CodeBlockConfig, validateCodeBlockConfig } from "../annotation/code-block/line-effects";
 import type { BlockDefinition } from "../blocks/define";
 import { resolveBlocks } from "../blocks/resolve";
-import { type PaletteColor, validateTextPalette } from "../core/text-colors";
 import type { CmsPlugin } from "../plugin/define";
-import type { CollectionSchema } from "../schema/collection";
-import { SUMMARY_ROLE } from "../schema/fields";
+import { type CollectionSchema, normalizeCollection } from "../schema/collection";
+import { RESERVED_METADATA_KEYS, SUMMARY_ROLE } from "../schema/fields";
 import { valueFieldsOf } from "../schema/walk";
 
 /**
@@ -42,6 +41,19 @@ export interface SiteConfig {
 	readonly previewPath?: string;
 }
 
+export interface AdminConfig {
+	/**
+	 * 관리자 화면의 날짜·숫자 표기 언어(BCP 47, 예: `en-US`). 없으면 `ko-KR`. 화면 글(버튼·안내)은 바꾸지 않는다.
+	 * 시각은 `timeZone`으로 보인다.
+	 */
+	readonly locale?: string;
+	/**
+	 * 예전 브라우저 복구본 DB 이름(IndexedDB). 관리자 화면이 이 이름으로 남은 복구본도 읽고 지우되 새로 만들지 않는다.
+	 * 지금 이름은 `cms_backup`이다. 예전 이름으로 쓰던 사이트만 적는다.
+	 */
+	readonly legacyBackupNames?: readonly string[];
+}
+
 export interface SeedTemplate {
 	/** 고정 ID(UUID). 마이그레이션을 여러 번 돌려도 같은 템플릿이 하나만 생긴다. */
 	readonly id: string;
@@ -76,6 +88,8 @@ export interface CmsConfig<
 	readonly timeZone?: string;
 	/** 새 저장소에 처음 넣을 데이터. */
 	readonly seed?: SeedConfig;
+	/** 관리자 화면 설정. */
+	readonly admin?: AdminConfig;
 	/**
 	 * 사이트가 더하는 본문 블록(`defineBlock`). 콜아웃·탭 같은 블록은 블록 확장(`@bh2980/cms-blocks`)을 `plugins`에
 	 * 넣어 더한다. 공개 화면은 사이트가 `component` 이름으로 그린다.
@@ -85,8 +99,6 @@ export interface CmsConfig<
 	readonly plugins?: Plugins;
 	/** 코드 블록 설정. 줄 효과(`lineEffects`)를 더하거나 본체 기본(강조·추가·삭제·경고·오류)을 바꾼다. */
 	readonly codeBlock?: CodeBlockConfig;
-	/** 편집기 글자색·배경색 고르기 목록. 없으면 본체 기본 프리셋(`DEFAULT_TEXT_PALETTE`)이다. */
-	readonly textColors?: readonly PaletteColor[];
 }
 
 const ROLE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/;
@@ -111,8 +123,17 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 			if (other) throw new Error(`cms.config: ${collection} has role "${role}" on both ${other} and ${name}`);
 			roles.set(role, name);
 		}
+		if (RESERVED_METADATA_KEYS.includes(name)) {
+			throw new Error(`cms.config: ${collection}.${name} uses a reserved name; rename the field`);
+		}
 		if (field.kind === "text" && field.fillFromBody && !schema.body) {
 			throw new Error(`cms.config: ${collection}.${name} fillFromBody needs a collection with a body`);
+		}
+		if (field.kind === "text" && typeof field.fillFromBody === "object") {
+			const { maxLength } = field.fillFromBody;
+			if (maxLength !== undefined && (!Number.isInteger(maxLength) || maxLength < 1)) {
+				throw new Error(`cms.config: ${collection}.${name} fillFromBody.maxLength must be a positive integer`);
+			}
 		}
 		if (field.kind === "media" && field.accept !== undefined && field.accept !== "image" && field.accept !== "file") {
 			throw new Error(`cms.config: ${collection}.${name} accept must be "image" or "file"`);
@@ -122,6 +143,9 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 		checkTab(`cms.config: ${collection}.layout[${index}]`, group.tab);
 	}
 	for (const [name, field] of Object.entries(schema.fields)) {
+		if (RESERVED_METADATA_KEYS.includes(name)) {
+			throw new Error(`cms.config: ${collection}.${name} uses a reserved name; rename the field`);
+		}
 		checkTab(`cms.config: ${collection}.${name}`, field.tab);
 		if (field.kind === "view" && !/^[a-z][a-z0-9-]*$/.test(field.view)) {
 			throw new Error(`cms.config: ${collection}.${name} view must be a kebab-case name`);
@@ -162,6 +186,14 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			new Intl.DateTimeFormat("en-US", { timeZone: config.timeZone });
 		} catch {
 			throw new Error(`cms.config: timeZone "${config.timeZone}" is not an IANA time zone`);
+		}
+	}
+
+	if (config.admin?.locale !== undefined) {
+		try {
+			new Intl.DateTimeFormat(config.admin.locale);
+		} catch {
+			throw new Error(`cms.config: admin.locale "${config.admin.locale}" is not a valid locale`);
 		}
 	}
 
@@ -223,7 +255,6 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 	const blockDefinitions = resolveBlocks(config);
 	const blocks = blockDefinitions.map((block) => block.name);
 	validateCodeBlockConfig(config.codeBlock);
-	validateTextPalette(config.textColors);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);
@@ -246,6 +277,11 @@ export function defineConfig<
 	const Locale extends string,
 	const Plugins extends readonly CmsPlugin[] = readonly [],
 >(config: CmsConfig<Collections, Locale, Plugins>): CmsConfig<Collections, Locale, Plugins> {
-	validate(config);
-	return config;
+	// `defineCollection` 없이 적은 정의와 예전 이름(`workflow`)도 받는다. 본체는 정리한 `kind`만 읽는다.
+	const collections = Object.fromEntries(
+		Object.entries(config.collections).map(([name, schema]) => [name, normalizeCollection(schema)]),
+	) as unknown as Collections;
+	const normalized = { ...config, collections };
+	validate(normalized);
+	return normalized;
 }

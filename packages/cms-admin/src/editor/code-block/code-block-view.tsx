@@ -18,6 +18,7 @@ import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Toggle } from "../../ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { CODE_ANCHOR_REF } from "../added-marks";
 import { useEditorEditable } from "../blocks/shared";
 import {
 	codeEffectsKey,
@@ -451,10 +452,15 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						lineEffects={lineEffects}
 						onChange={(next) => updateAttributes({ lineEffects: next })}
 						onClose={closeMenu}
-						onLinkText={() => {
-							if (typeof pos === "number") startLinkFromLines(editor.view, pos, menu.start, menu.end);
-							closeMenu();
-						}}
+						// 본문–코드 잇기는 코드 줄을 가리키는 글자 꾸밈(블록 확장 `codeRef` 등)이 있을 때만 쓴다.
+						onLinkText={
+							CODE_ANCHOR_REF
+								? () => {
+										if (typeof pos === "number") startLinkFromLines(editor.view, pos, menu.start, menu.end);
+										closeMenu();
+									}
+								: undefined
+						}
 						style={menu.at ?? { top: rowTop(menu.start), right: 8 }}
 					/>
 				)}

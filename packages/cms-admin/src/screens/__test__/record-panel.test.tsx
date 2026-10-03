@@ -123,6 +123,6 @@ describe("분류 편집 패널", () => {
 
 	it("모음집은 글 목록을 기본 언어 탭에서 고친다", async () => {
 		renderPanel({ collection: "collection", id: null });
-		expect(await screen.findByRole("combobox", { name: "글 추가·빼기" })).toBeTruthy();
+		expect(await screen.findByRole("combobox", { name: "게시글 추가·빼기" })).toBeTruthy();
 	});
 });

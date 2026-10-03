@@ -196,7 +196,7 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 		page: String(state.page),
 		pageSize: String(state.pageSize),
 	});
-	if (!options.trash && schemaOf(state.collection).workflow === "publish") query.set("group", "translation");
+	if (!options.trash && schemaOf(state.collection).kind === "document") query.set("group", "translation");
 	if (!options.trash) {
 		// 탐색 모드는 현재 위치에 바로 든 항목만, 검색·필터나 "하위 폴더 포함"은 현재 위치 아래 전체를 본다.
 		const flat = !isExplorerMode(state);

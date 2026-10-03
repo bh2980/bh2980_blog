@@ -3,13 +3,65 @@ import { defineCollection, defineConfig, definePlugin, fields } from "../..";
 
 const title = fields.text({ label: "Title" });
 const slug = fields.slug({ label: "Slug", from: "title" });
-const topic = defineCollection({ label: "Topic", workflow: "record", fields: { title, slug }, list: { columns: [] } });
+const topic = defineCollection({ label: "Topic", kind: "item", fields: { title, slug }, list: { columns: [] } });
 const locales = [{ code: "en", name: "English" }];
 
 describe("defineConfig", () => {
-	it("returns the config as is", () => {
+	it("returns the config with collections normalized (kind, body)", () => {
 		const config = { collections: { topic }, locales, defaultLocale: "en" } as const;
-		expect(defineConfig(config)).toBe(config);
+		const defined = defineConfig(config);
+		expect(defined).toEqual(config);
+		expect(defined.collections.topic).toMatchObject({ kind: "item", body: false });
+	});
+
+	it("still accepts the old `workflow` (publish → document, record → item)", () => {
+		const fields = { title, slug };
+		const oldDocument = defineCollection({ label: "Old", workflow: "publish", fields });
+		const oldItem = defineCollection({ label: "OldItem", workflow: "record", fields });
+		expect(oldDocument).toMatchObject({ kind: "document", body: true });
+		expect(oldItem).toMatchObject({ kind: "item", body: false });
+		expect("workflow" in oldDocument).toBe(false);
+		const kindDocument: "document" = oldDocument.kind;
+		expect(kindDocument).toBe("document");
+		// `defineCollection` 없이 적은 정의(예전 이름)도 `defineConfig`가 정리한다.
+		const raw = { label: "Raw", workflow: "record", fields } as unknown as typeof topic;
+		expect(defineConfig({ collections: { raw }, locales, defaultLocale: "en" }).collections.raw).toMatchObject({
+			kind: "item",
+			body: false,
+		});
+		expect(() =>
+			defineConfig({
+				collections: { bad: { label: "Bad", fields } as unknown as typeof topic },
+				locales,
+				defaultLocale: "en",
+			}),
+		).toThrow(/needs kind/);
+		expect(() => defineCollection({ label: "Both", kind: "item", workflow: "publish", fields } as never)).toThrow(
+			/kind "item" and workflow "publish"/,
+		);
+	});
+
+	it("rejects a field named like a reserved metadata key (`translations`)", () => {
+		const collection = defineCollection({
+			label: "Reserved",
+			kind: "item",
+			fields: { title, slug, translations: fields.text({ label: "Translations" }) },
+		});
+		expect(() => defineConfig({ collections: { collection }, locales, defaultLocale: "en" })).toThrow(
+			/translations uses a reserved name/,
+		);
+	});
+
+	it("checks the admin locale and fillFromBody.maxLength", () => {
+		expect(() =>
+			defineConfig({ collections: { topic }, locales, defaultLocale: "en", admin: { locale: "not a locale!" } }),
+		).toThrow(/admin.locale/);
+		const article = defineCollection({
+			label: "Article",
+			kind: "document",
+			fields: { title, summary: fields.text({ label: "Summary", fillFromBody: { maxLength: 0 } }) },
+		});
+		expect(() => defineConfig({ collections: { article }, locales, defaultLocale: "en" })).toThrow(/maxLength/);
 	});
 
 	it("rejects a default locale outside the list and duplicate locales", () => {
@@ -24,7 +76,7 @@ describe("defineConfig", () => {
 	it("rejects relations and backlinks to unknown or mismatched collections", () => {
 		const article = defineCollection({
 			label: "Article",
-			workflow: "publish",
+			kind: "document",
 			fields: { title, topicId: fields.relation({ label: "Topic", to: "missing" }) },
 			list: { columns: [] },
 		});
@@ -34,13 +86,13 @@ describe("defineConfig", () => {
 
 		const series = defineCollection({
 			label: "Series",
-			workflow: "record",
+			kind: "item",
 			fields: { title, articleId: fields.relation({ label: "Article", to: "article" }) },
 			list: { columns: [] },
 		});
 		const linked = defineCollection({
 			label: "Article",
-			workflow: "publish",
+			kind: "document",
 			fields: { title, series: fields.backlink({ label: "Series", from: "series", via: "articleId" }) },
 			list: { columns: [] },
 		});
@@ -62,7 +114,7 @@ describe("defineConfig", () => {
 		}
 		const noSlug = defineCollection({
 			label: "Note",
-			workflow: "publish",
+			kind: "document",
 			path: "/notes/:slug",
 			fields: { title },
 			list: { columns: [] },
@@ -87,7 +139,7 @@ describe("defineConfig", () => {
 		const note = (extra: { view?: string; tab?: string }) =>
 			defineCollection({
 				label: "Note",
-				workflow: "record",
+				kind: "item",
 				fields: {
 					title: fields.text({ label: "Title" }),
 					preview: fields.view({ view: extra.view ?? "search" }),
@@ -109,7 +161,7 @@ describe("defineConfig", () => {
 	it("requires a title text field in every collection", () => {
 		const untitled = defineCollection({
 			label: "Note",
-			workflow: "record",
+			kind: "item",
 			fields: { name: fields.text({ label: "Name" }) },
 			list: { columns: [] },
 		});
@@ -118,7 +170,7 @@ describe("defineConfig", () => {
 		);
 		const wrongKind = defineCollection({
 			label: "Note",
-			workflow: "record",
+			kind: "item",
 			fields: { title: fields.select({ label: "Title", options: { a: "A" }, defaultValue: "a" }) },
 			list: { columns: [] },
 		});
@@ -128,7 +180,7 @@ describe("defineConfig", () => {
 	it("rejects a collection with more than one slug field", () => {
 		const twoSlugs = defineCollection({
 			label: "Page",
-			workflow: "publish",
+			kind: "document",
 			fields: {
 				title: fields.text({ label: "Title" }),
 				slug: fields.slug({ label: "Slug", from: "title" }),
@@ -143,7 +195,7 @@ describe("defineConfig", () => {
 
 	it("checks field roles: one field per role, and the field kind fits", () => {
 		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
-			defineCollection({ label: "Article", workflow: "publish", fields: { title, ...extra }, list: { columns: [] } });
+			defineCollection({ label: "Article", kind: "document", fields: { title, ...extra }, list: { columns: [] } });
 		const ok = article({
 			excerpt: fields.text({ label: "Excerpt", role: "summary", fillFromBody: true }),
 			metaTitle: fields.text({ label: "Meta title", role: "seoTitle" }),
@@ -182,7 +234,7 @@ describe("defineConfig", () => {
 
 	it("checks field tabs and media fields", () => {
 		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
-			defineCollection({ label: "Article", workflow: "publish", fields: { title, ...extra }, list: { columns: [] } });
+			defineCollection({ label: "Article", kind: "document", fields: { title, ...extra }, list: { columns: [] } });
 		const ok = article({ hero: fields.media({ label: "Hero", accept: "file", tab: "Media" }) });
 		expect(() => defineConfig({ collections: { ok }, locales, defaultLocale: "en" })).not.toThrow();
 		const longTab = article({ hero: fields.media({ label: "Hero", tab: "x".repeat(21) }) });
@@ -209,7 +261,7 @@ describe("defineConfig", () => {
 		});
 		const article = defineCollection({
 			label: "Article",
-			workflow: "publish",
+			kind: "document",
 			fields: { title },
 			list: { columns: [] },
 		});
@@ -220,7 +272,7 @@ describe("defineConfig", () => {
 	it("allows fillFromBody only in collections with a body", () => {
 		const note = defineCollection({
 			label: "Note",
-			workflow: "record",
+			kind: "item",
 			fields: { title, summary: fields.text({ label: "Summary", fillFromBody: true }) },
 			list: { columns: [] },
 		});
@@ -231,7 +283,7 @@ describe("defineConfig", () => {
 		const withFrom = (from: string) =>
 			defineCollection({
 				label: "Topic",
-				workflow: "record",
+				kind: "item",
 				fields: { title, name: fields.text({ label: "Name" }), slug: fields.slug({ label: "Slug", from }) },
 				list: { columns: [] },
 			});

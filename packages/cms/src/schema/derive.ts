@@ -5,6 +5,8 @@ import type { CollectionSchema } from "./collection";
 import {
 	type Field,
 	type FieldRole,
+	isRequiredField,
+	RESERVED_METADATA_KEYS,
 	type SlugField,
 	type StorageType,
 	storageTypeOf,
@@ -70,7 +72,7 @@ export function roleValue(
 export function fillFromBodyFields(collection: SchemaCollection): (StoredField & { readonly field: TextField })[] {
 	return storedFields(collection).filter(
 		(stored): stored is StoredField & { readonly field: TextField } =>
-			stored.field.kind === "text" && stored.field.fillFromBody === true,
+			stored.field.kind === "text" && Boolean(stored.field.fillFromBody),
 	);
 }
 
@@ -174,7 +176,7 @@ const isEmptyValue = (value: unknown) =>
 	(typeof value === "string" && value === "") ||
 	(Array.isArray(value) && value.length === 0);
 
-/** 발행(record는 저장) 때 비어 있으면 안 되는 필드의 문제. */
+/** 발행(항목 컬렉션은 저장) 때 비어 있으면 안 되는 필드(`required`)의 문제. */
 export function missingRequiredIssues(
 	collection: SchemaCollection,
 	snapshot: { slug: string | null; metadata: { readonly [key: string]: unknown } },
@@ -183,7 +185,7 @@ export function missingRequiredIssues(
 	const issues: { code: string; path: string; message?: string }[] = [];
 	// 번역본은 언어별 값만 가지므로 공통 필수값(카테고리 등)은 원문에서 검사한다(v2 B4).
 	const required = (field: Field) =>
-		"required" in field && field.required === "publish" && (!options.localizedOnly || Boolean(field.localized));
+		"required" in field && isRequiredField(field) && (!options.localizedOnly || Boolean(field.localized));
 	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
 		if (field.kind !== "slug" || !required(field)) continue;
 		if (!snapshot.slug) issues.push({ code: NULL_SLUG, path: name });
@@ -240,17 +242,17 @@ export function mergeTranslationMetadata<T>(
 }
 
 /**
- * record 컬렉션(카테고리·태그·모음집)의 언어별 값을 담는 메타데이터 키(v2 B4).
+ * 항목 컬렉션(카테고리·태그·모음집)의 언어별 값을 담는 메타데이터 키(v2 B4). 필드 이름으로 쓸 수 없다(`defineConfig`).
  * `{ en: { title: "..." }, ja: { ... } }`. 주소와 연결 관계는 공통이라 레코드는 언어마다 나누지 않는다.
  */
-export const RECORD_TRANSLATIONS_KEY = "translations";
+export const RECORD_TRANSLATIONS_KEY = RESERVED_METADATA_KEYS[0] as "translations";
 
 export type RecordTranslations = { readonly [locale: string]: { readonly [field: string]: string } };
 
-/** 언어별 값을 가질 수 있는 record 컬렉션의 텍스트 필드. */
+/** 언어별 값을 가질 수 있는 항목 컬렉션의 텍스트 필드. */
 export function recordLocalizedFields(collection: SchemaCollection): string[] {
 	const schema = schemaOf(collection);
-	if (schema.workflow !== "record") return [];
+	if (schema.kind !== "item") return [];
 	return Object.entries(schema.fields)
 		.filter(([, field]) => field.kind === "text" && field.localized === true)
 		.map(([name]) => name);

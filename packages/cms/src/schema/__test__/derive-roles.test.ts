@@ -6,13 +6,13 @@ vi.mock("../../config/resolved", async () => {
 	const { defineCollection, defineConfig, fields } = await import("../..");
 	const article = defineCollection({
 		label: "Article",
-		workflow: "publish",
+		kind: "document",
 		fields: {
-			title: fields.text({ label: "Title", required: "publish" }),
+			title: fields.text({ label: "Title", required: true }),
 			headline: fields.text({ label: "Headline" }),
-			slug: fields.slug({ label: "Slug", from: "headline", required: "publish" }),
+			slug: fields.slug({ label: "Slug", from: "headline", required: true }),
 			excerpt: fields.text({ label: "Excerpt", role: "summary", fillFromBody: true }),
-			topicId: fields.relation({ label: "Topic", to: "topic", required: "publish" }),
+			topicId: fields.relation({ label: "Topic", to: "topic", required: true }),
 			hero: fields.media({ label: "Hero", role: "heroImage", tab: "Media" }),
 			robots: fields.select({
 				label: "Robots",
@@ -26,7 +26,7 @@ vi.mock("../../config/resolved", async () => {
 	});
 	const topic = defineCollection({
 		label: "Topic",
-		workflow: "record",
+		kind: "item",
 		fields: { title: fields.text({ label: "Name" }), slug: fields.slug({ label: "Slug" }) },
 		list: { columns: [] },
 	});

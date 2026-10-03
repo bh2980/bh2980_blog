@@ -1,17 +1,9 @@
 "use client";
 
-import {
-	type ColorPair,
-	cleanTextColor,
-	cmsConfig,
-	DEFAULT_TEXT_PALETTE,
-	hasTextColor,
-	type TextColorAttrs,
-	textColorProps,
-} from "@bh2980/cms/client";
-import type { Editor } from "@tiptap/core";
-import { Baseline, Check } from "lucide-react";
-import { cn } from "../lib/utils/cn";
+import type { CmsPlugin } from "@bh2980/cms";
+import { cmsConfig } from "@bh2980/cms/client";
+import { addedMarkName } from "@bh2980/cms-admin/editor";
+import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -19,13 +11,32 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { IconButton } from "../ui/icon-button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { COLOR_MARK_NAME } from "./color-mark";
+} from "@bh2980/cms-admin/ui/dropdown-menu";
+import { IconButton } from "@bh2980/cms-admin/ui/icon-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@bh2980/cms-admin/ui/tooltip";
+import type { Editor } from "@tiptap/core";
+import { Baseline, Check } from "lucide-react";
+import {
+	type ColorPair,
+	cleanTextColor,
+	DEFAULT_TEXT_PALETTE,
+	hasTextColor,
+	type PaletteColor,
+	type TextColorAttrs,
+	textColorProps,
+} from "./colors";
+import { colorBlock } from "./definition";
 
-/** 고르기 목록. 사이트 설정의 `textColors`, 없으면 본체 기본 프리셋이다. */
-const PALETTE = cmsConfig.textColors ?? DEFAULT_TEXT_PALETTE;
+/** 편집기 마크 이름(`cmsColor`). */
+export const COLOR_MARK_NAME = addedMarkName(colorBlock.name);
+
+/** 고르기 목록. 확장 옵션 `color({ palette })`, 없으면 기본 8색이다. */
+const PALETTE: readonly PaletteColor[] =
+	(
+		((cmsConfig.plugins ?? []) as readonly CmsPlugin[]).find((plugin) => plugin.name === "color")?.options as
+			| { palette?: readonly PaletteColor[] }
+			| undefined
+	)?.palette ?? DEFAULT_TEXT_PALETTE;
 
 type ColorKind = "fg" | "bg";
 

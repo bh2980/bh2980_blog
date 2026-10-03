@@ -1,10 +1,25 @@
 import type { BacklinkField, Field, SlugField, ValueField, ValueOf } from "./fields";
 
 /**
- * §5.2 저장 방식. `publish`는 초안과 공개본을 나누고 명시적 발행으로 공개한다.
- * `record`는 작은 폼에서 명시적으로 저장하면 곧바로 현재 값(공개)에 반영한다.
+ * 컬렉션 종류(§5.2).
+ *
+ * - `document`(문서): 본문을 쓰고 초안과 공개본을 나눈다. 명시적 발행으로 공개한다(예: 게시글).
+ * - `item`(항목): 작은 폼에서 저장하면 곧바로 현재 값(공개)에 반영한다. 발행·예약·보관·번역본이 없다(예: 태그).
+ */
+export type CollectionKind = "document" | "item";
+
+/**
+ * 예전 이름(`workflow`). `publish`는 `document`, `record`는 `item`이다.
+ * @deprecated `kind`를 쓴다. `defineCollection`이 아직 받아 `kind`로 바꾼다.
  */
 export type CollectionWorkflow = "publish" | "record";
+
+/** 예전 이름(`workflow`)의 종류. */
+export type KindOfWorkflow<W extends CollectionWorkflow> = W extends "record" ? "item" : "document";
+
+/** 예전 이름(`workflow`)을 종류(`kind`)로 바꾼다. */
+export const kindOfWorkflow = (workflow: CollectionWorkflow): CollectionKind =>
+	workflow === "record" ? "item" : "document";
 
 /** 목록의 시스템 컬럼. 필드가 아니라 콘텐츠 자체의 값이다. */
 export const SYSTEM_LIST_COLUMNS = ["status", "locale", "updatedAt", "createdAt", "publishedAt", "folder"] as const;
@@ -24,11 +39,12 @@ export interface LayoutGroup<Name extends string = string> {
 
 export interface CollectionSchema<
 	Fields extends Readonly<Record<string, Field>> = Readonly<Record<string, Field>>,
-	Workflow extends CollectionWorkflow = CollectionWorkflow,
+	Kind extends CollectionKind = CollectionKind,
 > {
 	readonly label: string;
-	readonly workflow: Workflow;
-	/** 본문(MDX)을 가지는가. `publish` 컬렉션만 본문을 쓴다. */
+	/** 컬렉션 종류(`document`·`item`). */
+	readonly kind: Kind;
+	/** 본문(MDX)을 가지는가. 없으면 `document` 컬렉션만 본문을 쓴다. */
 	readonly body: boolean;
 	/**
 	 * 필드 이름 → 정의. 꼭 `title` 텍스트 필드(`fields.text`)가 있어야 한다(`defineConfig`가 확인한다). 목록·검색·
@@ -42,30 +58,73 @@ export interface CollectionSchema<
 	readonly path?: string;
 	/**
 	 * 관리자 사이드바 아이콘 이름(lucide, 예: `file-text`·`notebook-pen`·`tag`·`shapes`·`layers`·`folder`·`image`).
-	 * 없거나 모르는 이름이면 저장 방식에 맞는 기본 아이콘이다.
+	 * 없거나 모르는 이름이면 종류에 맞는 기본 아이콘이다.
 	 */
 	readonly icon?: string;
-	/** 속성 패널 배치. 적지 않은 필드는 마지막 묶음 뒤에 선언 순서대로 그린다. */
+	/**
+	 * 속성 패널 배치. 적지 않은 필드는 마지막 묶음 뒤에 선언 순서대로 그린다. 없으면 필드 선언 순서대로 그리고,
+	 * 제 `tab`을 가진 필드는 그 탭에 모인다.
+	 */
 	readonly layout?: readonly LayoutGroup[];
-	readonly list: {
+	/**
+	 * 목록. 없으면 기본 컬럼이다: 문서는 제목·상태·언어(언어가 둘 이상일 때)·분류 필드(항목 컬렉션을 가리키는 관계)·
+	 * 수정일·발행일, 항목은 제목·주소·언어·상태·수정일.
+	 */
+	readonly list?: {
 		/** 기본으로 보이는 목록 컬럼. 필드 이름 또는 시스템 컬럼. */
 		readonly columns: readonly string[];
 	};
 }
 
+/** `defineCollection`이 받는 값(종류 말고). 배치·목록 컬럼에 적은 이름이 실제 필드인지 타입으로 확인한다. */
+type CollectionInput<Fields extends Readonly<Record<string, Field>>> = Omit<
+	CollectionSchema<Fields>,
+	"kind" | "body" | "layout" | "list" | "path"
+> & {
+	path?: `/${string}:slug${string}`;
+	body?: boolean;
+	layout?: readonly LayoutGroup<Extract<keyof Fields, string>>[];
+	list?: { columns: readonly (Extract<keyof Fields, string> | SystemListColumn)[] };
+};
+
 /** 컬렉션을 정의한다. 배치·목록 컬럼에 적은 이름이 실제 필드인지 타입으로 확인한다. */
+export function defineCollection<
+	const Fields extends Readonly<Record<string, Field>>,
+	const Kind extends CollectionKind,
+>(schema: CollectionInput<Fields> & { kind: Kind; workflow?: undefined }): CollectionSchema<Fields, Kind>;
+/** @deprecated `workflow` 대신 `kind`를 쓴다(`publish` → `document`, `record` → `item`). */
 export function defineCollection<
 	const Fields extends Readonly<Record<string, Field>>,
 	const Workflow extends CollectionWorkflow,
 >(
-	schema: Omit<CollectionSchema<Fields, Workflow>, "body" | "layout" | "list" | "path"> & {
-		path?: `/${string}:slug${string}`;
-		body?: boolean;
-		layout?: readonly LayoutGroup<Extract<keyof Fields, string>>[];
-		list: { columns: readonly (Extract<keyof Fields, string> | SystemListColumn)[] };
+	schema: CollectionInput<Fields> & { workflow: Workflow; kind?: undefined },
+): CollectionSchema<Fields, KindOfWorkflow<Workflow>>;
+export function defineCollection(
+	schema: CollectionInput<Readonly<Record<string, Field>>> & { kind?: CollectionKind; workflow?: CollectionWorkflow },
+): CollectionSchema {
+	return normalizeCollection(schema);
+}
+
+/**
+ * 컬렉션 정의를 정리한다: 예전 이름(`workflow`)을 종류(`kind`)로 바꾸고 본문 기본값(`document`만 본문)을 채운다.
+ * `defineCollection`과 `defineConfig`가 부른다(이미 정리한 정의는 그대로다).
+ */
+export function normalizeCollection(
+	schema: Omit<CollectionSchema, "kind" | "body"> & {
+		readonly kind?: CollectionKind;
+		readonly workflow?: CollectionWorkflow;
+		readonly body?: boolean;
 	},
-): CollectionSchema<Fields, Workflow> {
-	return { ...schema, body: schema.body ?? schema.workflow === "publish" };
+): CollectionSchema {
+	const { workflow, ...rest } = schema;
+	const kind = schema.kind ?? (workflow ? kindOfWorkflow(workflow) : undefined);
+	if (kind !== "document" && kind !== "item") {
+		throw new Error(`cms.config: collection "${schema.label}" needs kind "document" or "item"`);
+	}
+	if (schema.kind !== undefined && workflow !== undefined && kindOfWorkflow(workflow) !== schema.kind) {
+		throw new Error(`cms.config: collection "${schema.label}" has kind "${schema.kind}" and workflow "${workflow}"`);
+	}
+	return { ...rest, kind, body: schema.body ?? kind === "document" };
 }
 
 type Stored<Fields> = {

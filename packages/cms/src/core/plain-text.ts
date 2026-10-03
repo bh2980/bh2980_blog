@@ -1,5 +1,5 @@
 /**
- * MDX 본문의 읽을 수 있는 일반 텍스트. 요약 자동 생성(§5.6)에 쓴다.
+ * MDX 본문의 읽을 수 있는 일반 텍스트. 본문에서 필드 채우기(`fillFromBody`, §5.6)에 쓴다.
  * 코드·수식·이미지·지시자 문법은 버리고 링크·지시자의 라벨만 남긴다.
  */
 export function toPlainText(mdx: string): string {
@@ -29,8 +29,11 @@ export function toPlainText(mdx: string): string {
 	);
 }
 
-/** 요약이 비었을 때 쓸 자동 요약. 만들 텍스트가 없으면 빈 문자열이다. */
-export function autoSummary(mdx: string, maxLength = 160): string {
+/**
+ * 본문 앞부분의 일반 글자(최대 `maxLength`자, 넘으면 끝에 `…`). 비어 있는 필드를 본문에서 채울 때(`fillFromBody`) 쓴다.
+ * 만들 텍스트가 없으면 빈 문자열이다.
+ */
+export function bodyExcerpt(mdx: string, maxLength = 160): string {
 	const text = toPlainText(mdx);
 	const chars = Array.from(text);
 	if (chars.length <= maxLength) return text;

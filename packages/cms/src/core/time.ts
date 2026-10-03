@@ -6,6 +6,12 @@ import { cmsConfig } from "../config/resolved";
 
 export const CMS_TIME_ZONE = cmsConfig.timeZone ?? "UTC";
 
+/**
+ * 관리자 화면의 날짜·숫자 표기 언어(BCP 47). 사이트 설정의 `admin.locale`, 없으면 `ko-KR`(관리자 화면 글이 한국어다).
+ * 콘텐츠 언어(`locales`)와는 따로다.
+ */
+export const ADMIN_LOCALE = cmsConfig.admin?.locale ?? "ko-KR";
+
 type Parts = { year: number; month: number; day: number; hour: number; minute: number };
 
 function zonedParts(date: Date, timeZone: string): Parts {

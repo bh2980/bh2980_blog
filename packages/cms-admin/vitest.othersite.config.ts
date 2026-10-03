@@ -12,6 +12,7 @@ const BLOG_FIXTURE_TESTS = [
 	// 블로그 컬렉션·필드(post·memo·category·tag·collection·summary)와 한국어·일본어 번역본으로 화면을 그린다.
 	"src/screens/__test__/admin-dashboard.test.tsx",
 	"src/screens/__test__/admin-entries-table.test.tsx",
+	"src/screens/__test__/blog-list-defaults.test.ts",
 	"src/screens/__test__/list-row-menu.test.ts",
 	"src/screens/__test__/list-state.test.ts",
 	"src/screens/__test__/record-panel.test.tsx",
@@ -32,6 +33,8 @@ const BLOG_FIXTURE_TESTS = [
 	"src/editor/blocks/added/__test__/containers.test.ts",
 	"src/editor/blocks/added/__test__/custom-block-view.test.tsx",
 	"src/editor/blocks/added/__test__/custom-blocks.test.ts",
+	// 본문–코드 잇기는 코드 줄을 가리키는 글자 꾸밈(블록 확장의 코드 연결)이 있어야 한다. 없을 때는 `code-link-absent.test.ts`.
+	"src/editor/code-block/__test__/code-link.test.ts",
 ];
 
 export default defineConfig(({ mode }) => ({

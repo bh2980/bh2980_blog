@@ -1,6 +1,6 @@
 import { getCmsContentService, getCmsContentStore } from "../../../../container";
 import { patchEntryBodySchema } from "../../../../core/api";
-import { isRecordCollection } from "../../../../core/collections";
+import { isItemCollection } from "../../../../core/collections";
 import type { SaveDraftInput } from "../../../../services/types";
 import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../handler";
 
@@ -14,7 +14,7 @@ export const GET = adminRoute<IdParams>(async ({ params }) => {
 	const store = getCmsContentStore();
 	const entry = await store.getEntry(params.id);
 	const schedule = await store.getEntrySchedule({ entryId: params.id });
-	const translations = isRecordCollection(entry.collection)
+	const translations = isItemCollection(entry.collection)
 		? null
 		: await store.getTranslationGroup({ entryId: entry.id });
 	const source =

@@ -677,7 +677,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				media: [],
 			});
 			expect(validation.ready).toBe(false);
-			expect(validation.issues).toContainEqual(expect.objectContaining({ code: "invalid_item_collection" }));
+			expect(validation.issues).toContainEqual(expect.objectContaining({ code: "invalid_reference_collection" }));
 		});
 
 		it("is ready when all resolved IDs are published post targets, preserving order and duplicates", () => {

@@ -35,6 +35,11 @@ export interface BlockAttribute {
 	readonly translatable?: boolean;
 	/** 값이 자식 블록의 이 속성 값 중 하나여야 한다(예: 처음 열 탭 → 탭 이름). 발행 전 검사가 확인한다. */
 	readonly childValue?: string;
+	/**
+	 * 값이 같은 글 코드 블록의 줄 이름표(코드 펜스 주석 `anchor` 줄 효과의 `id`)다. 글자 꾸밈 블록(`view: "mark"`) 하나만
+	 * 단다. 관리자 편집기가 이 블록으로 본문 글자와 코드 줄을 잇는다(줄 고르기·잇기 안내·마우스를 올린 줄 강조).
+	 */
+	readonly codeAnchor?: boolean;
 }
 
 export interface BlockChildren {
@@ -62,7 +67,8 @@ export interface BlockInsert {
  *
  * - `opaque`: 원문을 보존하는 읽기 전용 상자(원문 모드에서 편집). 삽입 UI가 없는 블록의 기본값이다.
  * - `node`: 전용 NodeView(`nodeView` 이름)로 편집한다.
- * - `mark`: 글자 꾸밈(인라인 지시자).
+ * - `mark`: 글자 꾸밈(인라인 지시자 `:이름[글자]{속성}`). 더한 블록이면 관리자 편집기가 정의에서 글자 표시를 만들고,
+ *   고르기 도구·버블은 확장이 `CmsAdminComponentsProvider`의 `marks`로 준다.
  * - `attribute`: 다른 노드의 속성으로 표현한다(예: 문단 정렬).
  */
 export interface BlockEditor {
