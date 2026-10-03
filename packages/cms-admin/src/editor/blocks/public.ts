@@ -7,11 +7,16 @@ export type { CustomBlockEditorProps } from "./added/view";
 export { type FenceEditorMeta, FencePreviewNodeView, LazyFencePreview } from "./fence-preview";
 export {
 	AttributeInput,
+	BLOCK_TOOLBAR,
+	BlockSettings,
+	BlockSettingsField,
 	ContainerToolbar,
 	type ContainerValues,
 	childPos,
 	focusInside,
+	SELECTED_RING,
 	selectContainer,
+	ToolbarButton,
 	useContainerValues,
 	useSelectedChildIndex,
 	valuesOf,

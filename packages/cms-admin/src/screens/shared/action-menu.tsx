@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { type LucideIcon, MoreHorizontal } from "lucide-react";
 import { cloneElement, type ReactElement } from "react";
 import { useHydrated } from "../../lib/hooks/use-hydrated";
 import { Button } from "../../ui/button";
@@ -39,13 +39,15 @@ export type MenuAction =
 	| {
 			kind: "item";
 			label: string;
+			/** 항목 앞 아이콘. 메뉴 항목은 모두 아이콘을 둔다. */
+			icon?: LucideIcon;
 			onSelect: () => void;
 			destructive?: boolean;
 			disabled?: boolean;
 			/** 화면에 보이는 단축키 안내. 실제 키 처리는 호출하는 쪽이 한다. */
 			shortcut?: string;
 	  }
-	| { kind: "sub"; label: string; items: MenuAction[]; emptyLabel?: string; disabled?: boolean }
+	| { kind: "sub"; label: string; icon?: LucideIcon; items: MenuAction[]; emptyLabel?: string; disabled?: boolean }
 	| { kind: "label"; label: string }
 	| { kind: "separator" };
 
@@ -75,7 +77,10 @@ function ContextItems({ actions }: { actions: MenuAction[] }) {
 			case "sub":
 				return (
 					<ContextMenuSub key={key}>
-						<ContextMenuSubTrigger disabled={action.disabled}>{action.label}</ContextMenuSubTrigger>
+						<ContextMenuSubTrigger disabled={action.disabled}>
+							{action.icon && <action.icon aria-hidden />}
+							{action.label}
+						</ContextMenuSubTrigger>
 						<ContextMenuSubContent className="max-h-80 overflow-y-auto">
 							{action.items.length === 0 ? (
 								<ContextMenuItem disabled>{action.emptyLabel ?? "항목이 없습니다"}</ContextMenuItem>
@@ -93,6 +98,7 @@ function ContextItems({ actions }: { actions: MenuAction[] }) {
 						disabled={action.disabled}
 						onClick={action.onSelect}
 					>
+						{action.icon && <action.icon aria-hidden />}
 						{action.label}
 						{action.shortcut && <ContextMenuShortcut>{action.shortcut}</ContextMenuShortcut>}
 					</ContextMenuItem>
@@ -118,7 +124,10 @@ function DropdownItems({ actions }: { actions: MenuAction[] }) {
 			case "sub":
 				return (
 					<DropdownMenuSub key={key}>
-						<DropdownMenuSubTrigger disabled={action.disabled}>{action.label}</DropdownMenuSubTrigger>
+						<DropdownMenuSubTrigger disabled={action.disabled}>
+							{action.icon && <action.icon aria-hidden />}
+							{action.label}
+						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent className="max-h-80 overflow-y-auto">
 							{action.items.length === 0 ? (
 								<DropdownMenuItem disabled>{action.emptyLabel ?? "항목이 없습니다"}</DropdownMenuItem>
@@ -136,6 +145,7 @@ function DropdownItems({ actions }: { actions: MenuAction[] }) {
 						disabled={action.disabled}
 						onClick={action.onSelect}
 					>
+						{action.icon && <action.icon aria-hidden />}
 						{action.label}
 						{action.shortcut && <DropdownMenuShortcut>{action.shortcut}</DropdownMenuShortcut>}
 					</DropdownMenuItem>

@@ -4,8 +4,18 @@ import type { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { type NodeViewProps, useEditorState } from "@tiptap/react";
+import { Settings2 } from "lucide-react";
 import { type ComponentProps, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "../../lib/utils/cn";
+import { IconButton } from "../../ui/icon-button";
+import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+
+/** 고른 블록 테두리. 모든 블록이 같은 모양을 쓴다. */
+export const SELECTED_RING = "ring-2 ring-ring ring-offset-2 ring-offset-background";
+
+/** 블록 위에 뜨는 조작 도구 줄의 겉모양(블록 도구 줄·이미지·표가 같이 쓴다). */
+export const BLOCK_TOOLBAR =
+	"z-10 flex items-center gap-0.5 rounded-md border bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur";
 
 export type ContainerValues = Record<string, string | boolean>;
 
@@ -191,12 +201,71 @@ export function ContainerToolbar({
 			aria-label={label}
 			contentEditable={false}
 			className={cn(
-				"absolute -top-3.5 right-2 z-10 flex items-center gap-0.5 rounded-md border bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur transition-opacity",
+				BLOCK_TOOLBAR,
+				"absolute -top-3.5 right-2 transition-opacity",
 				"opacity-0 group-focus-within/container:opacity-100 group-hover/container:opacity-100 has-aria-expanded:opacity-100",
 				visible && "opacity-100",
 				className,
 			)}
 		>
+			{children}
+		</div>
+	);
+}
+
+/** 도구 줄의 아이콘 버튼. 이름은 마우스를 올리면 뜬다. */
+export function ToolbarButton(props: ComponentProps<typeof IconButton>) {
+	return <IconButton size="icon-xs" {...props} />;
+}
+
+/**
+ * 블록 설정 버튼과 그 팝오버. 블록의 속성(너비·대체 텍스트·처음 상태 등)은 모두 여기에 둔다.
+ * 안의 칸은 `BlockSettingsField`로 줄을 맞춘다.
+ */
+export function BlockSettings({
+	label = "설정",
+	open,
+	onOpenChange,
+	children,
+}: {
+	label?: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	children: ReactNode;
+}) {
+	return (
+		<Popover open={open} onOpenChange={onOpenChange}>
+			<ToolbarButton label={label} trigger={(button) => <PopoverTrigger render={button} />}>
+				<Settings2 aria-hidden />
+			</ToolbarButton>
+			<PopoverContent align="end" className="flex w-72 flex-col gap-3 p-3 text-xs">
+				{children}
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+/** 설정 팝오버 안의 한 칸(이름 위, 입력 아래). */
+export function BlockSettingsField({
+	label,
+	htmlFor,
+	action,
+	children,
+}: {
+	label: string;
+	htmlFor?: string;
+	/** 이름 오른쪽에 붙는 작은 버튼(AI 등). */
+	action?: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div className="flex flex-col gap-1">
+			<div className="flex min-h-6 items-center justify-between gap-2">
+				<label htmlFor={htmlFor} className="text-muted-foreground text-xs">
+					{label}
+				</label>
+				{action}
+			</div>
 			{children}
 		</div>
 	);
