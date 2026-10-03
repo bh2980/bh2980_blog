@@ -9,7 +9,7 @@ import { defineConfig } from "vitest/config";
  * 블로그 예시 설정의 컬렉션·필드·블록·언어(post·tag·summary·callout·ko/ja…)를 그대로 쓰는 테스트만 아래에서 뺀다.
  */
 const BLOG_FIXTURE_TESTS = [
-	// 블로그 컬렉션·필드(post·memo·category·tag·collection·summary·SEO 탭)와 한국어·일본어 번역본으로 화면을 그린다.
+	// 블로그 컬렉션·필드(post·memo·category·tag·collection·summary)와 한국어·일본어 번역본으로 화면을 그린다.
 	"src/screens/__test__/admin-dashboard.test.tsx",
 	"src/screens/__test__/admin-entries-table.test.tsx",
 	"src/screens/__test__/list-row-menu.test.ts",
@@ -20,7 +20,6 @@ const BLOG_FIXTURE_TESTS = [
 	"src/screens/entries/__test__/custom-field-input.test.tsx",
 	"src/screens/entries/__test__/entry-editor-shell.test.tsx",
 	"src/screens/entries/__test__/entry-form.test.ts",
-	"src/screens/entries/__test__/seo-tab.test.tsx",
 	"src/editor/__test__/m13-accessibility.test.tsx",
 	"src/editor/internal-link.test.ts",
 	// 블로그 블록(콜아웃·접기·탭·단·Mermaid)과 예시 사용자 블록(notice·embed)으로 편집기를 시험한다.

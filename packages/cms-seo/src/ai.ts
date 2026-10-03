@@ -1,0 +1,93 @@
+import { valueFieldsOf } from "@bh2980/cms";
+// AI 플러그인은 고를 수 있는 의존성이라 타입만 읽는다(이 파일은 AI 플러그인 코드를 불러오지 않는다).
+import type { AiActionDefinition, AiActionFactory, AiAttach, AiContribution, AiSiteView } from "@bh2980/cms-ai";
+import { SEO_DEFAULT_LIMITS, SEO_ROLES } from "./fields";
+
+/**
+ * SEO 확장이 AI 플러그인에 더하는 기능(검색 제목·설명 추천). `seo()` 플러그인이 `contributes.ai`로 더하므로 AI 플러그인을
+ * 쓰는 사이트에만 붙는다. 바꾸려면 `aiPlugin({ actions: { seoTitle: seoAi.title({ prompt }) } })`, 끄려면 `seoTitle: false`.
+ */
+
+const fieldInput = {
+	title: { kind: "text", label: "제목" },
+	summary: { kind: "text", label: "요약" },
+	body: { kind: "mdx", label: "본문" },
+	current: { kind: "value", label: "현재 값" },
+} as const;
+
+const lines = (...text: string[]) => text.join("\n");
+
+/** 그 역할 필드가 있는 컬렉션과 필드. 필드 이름마다 붙을 곳 하나, 길이는 필드 `max` → 권장 글자 수 → 기본값. */
+function roleTargets(site: AiSiteView, role: string, fallback: number) {
+	const byName = new Map<string, string[]>();
+	const limits: number[] = [];
+	for (const [collection, schema] of Object.entries(site.collections)) {
+		const found = valueFieldsOf(schema).find((stored) => stored.field.role === role);
+		if (!found) continue;
+		byName.set(found.name, [...(byName.get(found.name) ?? []), collection]);
+		const limit =
+			("max" in found.field ? found.field.max : undefined) ??
+			(typeof found.field.inputOptions?.limit === "number" ? found.field.inputOptions.limit : undefined);
+		if (limit !== undefined) limits.push(limit);
+	}
+	const attach: AiAttach[] = [...byName].map(([field, collections]) => ({ slot: "field", field, collections }));
+	return { attach, max: limits.length > 0 ? Math.min(...limits) : fallback };
+}
+
+export const seoAi = {
+	/** 검색 결과에 보일 제목 후보. 검색 제목 역할(`seoTitle`) 필드에 붙는다. */
+	title:
+		(options: { readonly prompt?: string; readonly maxLength?: number } = {}): AiActionFactory =>
+		(site) => {
+			const { attach, max } = roleTargets(site, SEO_ROLES.title, SEO_DEFAULT_LIMITS.title);
+			if (attach.length === 0) return undefined;
+			const limit = options.maxLength ?? max;
+			return {
+				label: "검색 제목 추천",
+				input: fieldInput,
+				send: ["title", "summary", "body"],
+				result: "candidates",
+				askInstruction: true,
+				checks: [{ kind: "maxLength", max: limit }],
+				prompt:
+					options.prompt ??
+					lines(
+						"검색 결과에 보일 제목 후보 3개를 쓴다.",
+						`- ${limit}자 이내, 본문과 같은 언어`,
+						"- 글이 답하는 질문이나 핵심 키워드를 앞쪽에 둔다",
+						"- 과장하거나 낚는 표현은 쓰지 않는다",
+					),
+				attach,
+			} satisfies AiActionDefinition;
+		},
+
+	/** 검색 결과에 보일 설명. 검색 설명 역할(`seoDescription`) 필드에 붙는다. */
+	description:
+		(options: { readonly prompt?: string; readonly maxLength?: number } = {}): AiActionFactory =>
+		(site) => {
+			const { attach, max } = roleTargets(site, SEO_ROLES.description, SEO_DEFAULT_LIMITS.description);
+			if (attach.length === 0) return undefined;
+			const limit = options.maxLength ?? max;
+			return {
+				label: "검색 설명 추천",
+				input: fieldInput,
+				send: ["title", "summary", "body"],
+				result: "text",
+				askInstruction: true,
+				checks: [{ kind: "maxLength", max: limit }],
+				prompt:
+					options.prompt ??
+					lines(
+						"검색 결과에 제목 아래로 보일 설명을 쓴다.",
+						`- ${limit}자 이내, 1~2문장, 본문과 같은 언어`,
+						"- 검색한 사람이 이 글에서 무엇을 얻는지 드러낸다",
+					),
+				attach,
+			} satisfies AiActionDefinition;
+		},
+};
+
+/** `seo()`가 AI 플러그인에 더하는 것. 기능 이름(`seoTitle`·`seoDescription`)은 관리자 AI 화면에서 고친 값의 키다. */
+export const seoAiContribution = {
+	actions: { seoTitle: seoAi.title(), seoDescription: seoAi.description() },
+} satisfies AiContribution;

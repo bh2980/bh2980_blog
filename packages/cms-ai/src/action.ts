@@ -1,3 +1,4 @@
+import type { BlockDefinition, CollectionsConfig } from "@bh2980/cms";
 import { z } from "zod";
 import {
 	type AiApply,
@@ -244,10 +245,50 @@ export interface AiSharedText {
 	readonly text: string;
 }
 
+/** 기능을 만드는 함수가 보는 사이트 설정. */
+export interface AiSiteView {
+	readonly collections: CollectionsConfig;
+	/** 사이트가 쓰는 본문 블록 정의(본체 + 확장 + 사이트). */
+	readonly blocks: readonly BlockDefinition[];
+	readonly locales: readonly { readonly code: string }[];
+	/** AI 설정의 공통 문구 이름(`aiPlugin({ shared })`). */
+	readonly sharedKeys: readonly string[];
+}
+
+/**
+ * 사이트 설정을 보고 기능 하나를 만드는 함수. 기본 기능(`aiPresets`)과 확장이 더하는 기능이 이 모양이다(필드 종류·역할·관계
+ * 대상으로 붙을 필드를 찾는다). 붙을 곳이 없으면 `undefined`이고 그 기능은 켜지지 않는다.
+ */
+export type AiActionFactory<D extends AiActionDefinition = AiActionDefinition> = (site: AiSiteView) => D | undefined;
+
+/** 기능 정의 또는 기능을 만드는 함수. */
+export type AiActionSource = AiActionDefinition | AiActionFactory;
+
+/**
+ * 다른 플러그인이 AI 기능을 더하는 모양. 플러그인 정의의 `contributes: { ai: { actions } }`에 둔다(AI 플러그인이 없으면
+ * 쓰이지 않는다). 예: 블록 확장의 다이어그램 만들기, SEO 확장의 검색 제목 추천.
+ */
+export interface AiContribution {
+	readonly actions?: Readonly<Record<string, AiActionSource>>;
+}
+
 export interface AiConfig {
 	/** 사이트 소개. 모든 기능의 맨 앞 지시("너는 {이것} CMS의 편집 보조 도구다")에 들어간다. 없으면 "웹사이트". */
 	readonly siteDescription?: string;
-	/** 여러 기능이 함께 쓰는 공통 문구. 지시문에 `{{shared.이름}}`으로 넣는다. */
+	/**
+	 * 여러 기능이 함께 쓰는 공통 문구. 지시문에 `{{shared.이름}}`으로 넣는다. `styleGuide`가 있으면 기본 기능인 문체
+	 * 다듬기·초안 쓰기 지시문에 들어간다.
+	 */
+	readonly shared?: Readonly<Record<string, AiSharedText>>;
+	/**
+	 * 바꾸거나 더할 기능. 기본 기능(`aiPresets`, 사이트에 붙을 곳이 있는 것)과 다른 플러그인이 더한 기능은 적지 않아도 켜진다.
+	 * 같은 이름에 정의(또는 `aiPresets.이름(옵션)`)를 주면 그것으로 바꾸고, `false`를 주면 뺀다. 새 이름이면 더한다.
+	 */
+	readonly actions?: Readonly<Record<string, AiActionSource | false>>;
+}
+
+/** 설정을 풀어 낸 기능 목록(이름 → 정의). 실행기·화면·검사가 읽는다. */
+export interface ResolvedAiConfig {
 	readonly shared?: Readonly<Record<string, AiSharedText>>;
 	readonly actions: Readonly<Record<string, AiActionDefinition>>;
 }
@@ -597,7 +638,7 @@ function findField(
 }
 
 /** AI 설정이 컬렉션 정의·자리·결과 모양과 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
-export function validateAiConfig(ai: AiConfig, collections: CollectionsView, blocks?: readonly string[]): void {
+export function validateAiConfig(ai: ResolvedAiConfig, collections: CollectionsView, blocks?: readonly string[]): void {
 	const sharedKeys = Object.keys(ai.shared ?? {});
 	for (const key of sharedKeys) {
 		if (!NAME.test(key)) throw new Error(`cms.config: ai.shared.${key}: name must be letters, digits or _`);

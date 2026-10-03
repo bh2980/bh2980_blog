@@ -13,26 +13,15 @@
 export type Localized = boolean | "inherit";
 
 /**
- * 필드의 뜻(역할). 라이브러리는 요약·검색·공유 값을 필드 이름이 아니라 이 역할로 찾는다. 한 컬렉션에서 역할마다
- * 필드는 하나뿐이다(`defineConfig`가 확인한다).
+ * 필드의 뜻(역할). 확장·화면은 필드 이름이 아니라 역할로 값을 찾는다. 한 컬렉션에서 역할마다
+ * 필드는 하나뿐이다(`defineConfig`가 확인한다). 역할 이름과 맞는 필드 종류는 그 역할을 쓰는 확장이 정하고 확인한다
+ * (플러그인 `validate`).
  *
- * - `summary`: 요약. 목록·검색 결과 설명의 기본값이고 필드 옆 동작(AI 등)에 `summary`로 넘어간다.
- * - `seoTitle`·`seoDescription`: 검색 결과 제목·설명. 비우면 제목·요약을 쓴다.
- * - `ogImage`: 공유 이미지(미디어 ID). 관리자 화면은 미디어 고르기로 입력한다.
- * - `canonical`: 원본 주소.
- * - `noindex`(선택 필드): 값이 `noindex`면 검색엔진에 숨긴다. 선택지에 `noindex`가 있어야 한다.
+ * 본체가 아는 역할은 `summary`(요약, 텍스트 필드) 하나다. 필드 옆 동작(AI 등)에 `summary`로 넘어가고 목록·검색 결과
+ * 설명의 기본값이다.
  */
-export type TextFieldRole = "summary" | "seoTitle" | "seoDescription" | "ogImage" | "canonical";
-export type SelectFieldRole = "noindex";
-export type FieldRole = TextFieldRole | SelectFieldRole;
-export const TEXT_FIELD_ROLES = [
-	"summary",
-	"seoTitle",
-	"seoDescription",
-	"ogImage",
-	"canonical",
-] as const satisfies readonly TextFieldRole[];
-export const FIELD_ROLES = [...TEXT_FIELD_ROLES, "noindex"] as const satisfies readonly FieldRole[];
+export type FieldRole = string;
+export const SUMMARY_ROLE = "summary";
 
 interface BaseField {
 	readonly label: string;
@@ -43,13 +32,23 @@ interface BaseField {
 	readonly localized?: Localized;
 	/** 기본 입력 대신 쓸 클라이언트 입력 등록부의 이름. */
 	readonly input?: string;
+	/**
+	 * 기본 입력이나 `input`이 가리키는 입력에 넘길 설정(예: 권장 글자 수). 본체는 읽지 않는다. JSON 값만 둔다.
+	 */
+	readonly inputOptions?: Readonly<Record<string, string | number | boolean>>;
 	/** 저장·검증만 하고 속성 패널에 입력을 그리지 않는다. 저장된 값은 그대로 둔다. */
 	readonly hidden?: boolean;
+	/** 필드의 뜻(`FieldRole`). 컬렉션 안에서 겹치지 않는다. */
+	readonly role?: FieldRole;
+	/**
+	 * 편집 화면 속성 칸에서 이 필드를 그릴 탭 이름. 배치(`layout`) 묶음의 `tab`이 있으면 그것이 먼저다. 확장이 주는 필드 묶음
+	 * 이 사이트가 배치를 적지 않아도 제 탭에 모이게 한다. 없으면 기본 탭(`속성`)이다.
+	 */
+	readonly tab?: string;
 }
 
 export interface TextField extends BaseField {
 	readonly kind: "text";
-	readonly role?: TextFieldRole;
 	/**
 	 * 발행할 때 비어 있으면 본문 앞부분(일반 글자 160자)으로 채운다. 본문이 있는 컬렉션에서만 쓴다.
 	 * 채울 글이 없으면 발행하지 않고 이 필드를 입력하라고 알린다.
@@ -90,10 +89,20 @@ export interface RelationField extends BaseField {
 
 export interface SelectField<Option extends string = string> extends BaseField {
 	readonly kind: "select";
-	readonly role?: SelectFieldRole;
 	/** 값 → 라벨. 선언 순서가 보이는 순서다. */
 	readonly options: Readonly<Record<Option, string>>;
 	readonly defaultValue: Option;
+}
+
+/**
+ * 미디어 라이브러리의 파일 하나(미디어 ID를 글자로 저장한다). 관리자 화면은 미디어 고르기로 입력하고, 값은 미디어
+ * 사용처(`entry_references`)에 잡혀 쓰고 있는 파일은 지울 수 없다.
+ */
+export interface MediaField extends BaseField {
+	readonly kind: "media";
+	/** 고를 수 있는 파일. `image`면 이미지만, `file`이면 아무 파일. 없으면 `image`. */
+	readonly accept?: "image" | "file";
+	readonly placeholder?: string;
 }
 
 /**
@@ -126,7 +135,7 @@ export interface BacklinkField extends Omit<BaseField, "required" | "localized">
 
 /**
  * 보기 필드. 값을 저장하지 않고 편집 화면 속성 칸의 그 자리에 화면 하나를 그린다(예: 검색 결과·공유 미리보기).
- * `view`는 관리자 확장의 `fieldViews`에 등록한 이름이다. 본체는 `search`(필드 역할로 값을 읽는 검색·공유 미리보기)를 준다.
+ * `view`는 관리자 확장의 `fieldViews`에 등록한 이름이다. 등록한 화면이 없으면 아무것도 그리지 않는다.
  */
 export interface ViewField {
 	readonly kind: "view";
@@ -135,13 +144,15 @@ export interface ViewField {
 	readonly label?: string;
 	readonly description?: string;
 	readonly hidden?: boolean;
+	/** 그릴 탭(`BaseField.tab`과 같다). */
+	readonly tab?: string;
 	readonly localized?: undefined;
 	readonly required?: undefined;
 	readonly input?: undefined;
 }
 
 /** 값 하나를 저장하는 필드. */
-export type ValueField = TextField | RelationField | SelectField;
+export type ValueField = TextField | RelationField | SelectField | MediaField;
 export type Field = ValueField | SlugField | ConditionalField | BacklinkField | ViewField;
 export type FieldKind = Field["kind"];
 
@@ -154,6 +165,7 @@ export const fields = {
 	backlink: <const O extends Options<BacklinkField>>(options: O) => ({ kind: "backlink", ...options }) as const,
 	view: <const O extends Options<ViewField>>(options: O) => ({ kind: "view", ...options }) as const,
 	select: <const O extends Options<SelectField>>(options: O) => ({ kind: "select", ...options }) as const,
+	media: <const O extends Options<MediaField>>(options: O) => ({ kind: "media", ...options }) as const,
 	conditional: <const D extends SelectField, const V extends ConditionalField["values"]>(discriminant: D, values: V) =>
 		({
 			kind: "conditional",
@@ -177,6 +189,6 @@ export type ValueOf<F> = F extends RelationField
 		: string
 	: F extends { readonly kind: "select"; readonly options: infer Options }
 		? keyof Options & string
-		: F extends TextField
+		: F extends TextField | MediaField
 			? string
 			: never;

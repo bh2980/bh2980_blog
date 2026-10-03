@@ -1,7 +1,7 @@
 "use client";
 
 import type { LayoutGroup } from "@bh2980/cms/client";
-import { isCollection, localeLabel, schemaOf } from "@bh2980/cms/client";
+import { isCollection, localeLabel } from "@bh2980/cms/client";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -9,25 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { CmsIssue } from "../api-error-message";
 import { SidePanelHeader } from "../shared/side-panel";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
+import { DEFAULT_TAB, tabOf, tabOfGroup, tabsOf } from "./layout-groups";
 import { SchemaFields } from "./schema-fields";
 
-/** 기본 탭(`tab`이 없는 묶음). */
-const DEFAULT_TAB = "속성";
-
-const tabOfGroup = (group: LayoutGroup) => group.tab ?? DEFAULT_TAB;
-
-/** 탭 이름(기본 탭 먼저, 나머지는 `layout`에 처음 나온 순서). */
-function tabsOf(collection: string): string[] {
-	const layout = isCollection(collection) ? (schemaOf(collection).layout ?? []) : [];
-	return [...new Set([DEFAULT_TAB, ...layout.map(tabOfGroup)])];
-}
-
-/** 필드가 들어 있는 탭. 발행 문제로 이동할 때 그 탭을 먼저 연다. */
-function tabOf(collection: string, path: string): string {
-	if (!isCollection(collection)) return DEFAULT_TAB;
-	const group = schemaOf(collection).layout?.find((candidate) => candidate.fields.includes(path));
-	return group ? tabOfGroup(group) : DEFAULT_TAB;
-}
+const tabsFor = (collection: string) => (isCollection(collection) ? tabsOf(collection) : [DEFAULT_TAB]);
+const tabFor = (collection: string, path: string) => (isCollection(collection) ? tabOf(collection, path) : DEFAULT_TAB);
 
 interface InspectorPanelProps {
 	collection: string;
@@ -48,7 +34,7 @@ interface InspectorPanelProps {
 }
 
 /**
- * 편집 화면 오른쪽 속성 칸. 속성·SEO를 탭으로 나누고, 안쪽 폭을 고정해 여닫거나 창 폭이 바뀌어도
+ * 편집 화면 오른쪽 속성 칸. 묶음·필드의 `tab`으로 탭을 나누고, 안쪽 폭을 고정해 여닫거나 창 폭이 바뀌어도
  * 입력이 밀리거나 넘치지 않는다.
  */
 export function InspectorPanel({
@@ -68,12 +54,12 @@ export function InspectorPanel({
 	onFocused,
 }: InspectorPanelProps) {
 	const [tab, setTab] = useState(DEFAULT_TAB);
-	const tabs = useMemo(() => tabsOf(collection), [collection]);
+	const tabs = useMemo(() => tabsFor(collection), [collection]);
 	const issuesIn = (name: string) =>
-		publishIssues.filter((issue) => issue.path && tabOf(collection, issue.path) === name).length;
+		publishIssues.filter((issue) => issue.path && tabFor(collection, issue.path) === name).length;
 
 	useEffect(() => {
-		if (focusPath) setTab(tabOf(collection, focusPath));
+		if (focusPath) setTab(tabFor(collection, focusPath));
 	}, [focusPath, collection]);
 	// 탭이 바뀌어 입력이 그려진 뒤에 초점을 옮긴다.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: tab change re-runs the lookup

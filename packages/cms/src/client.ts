@@ -26,3 +26,4 @@ export * from "./core/types";
 export * from "./schema/collection";
 export * from "./schema/derive";
 export * from "./schema/fields";
+export * from "./schema/walk";

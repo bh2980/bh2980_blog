@@ -164,6 +164,7 @@ export const translationPayload = (form: EntryForm): TranslationState | undefine
 function toFormValue({ field }: StoredField, value: unknown): FormValue {
 	switch (field.kind) {
 		case "text":
+		case "media":
 			return text(value);
 		case "relation":
 			if (field.many) return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
@@ -248,7 +249,8 @@ export function metadataFromForm(
 			continue;
 		}
 		switch (field.kind) {
-			case "text": {
+			case "text":
+			case "media": {
 				const raw = text(value);
 				if (field.required) metadata[name] = raw;
 				else if (raw.trim()) metadata[name] = raw.trim();

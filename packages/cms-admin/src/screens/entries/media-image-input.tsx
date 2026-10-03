@@ -1,14 +1,16 @@
 "use client";
 
-import { ImageIcon } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { FILE_ACCEPT } from "@bh2980/cms/client";
+import { FileIcon, ImageIcon } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ImageInsertDialog } from "../../editor/image-insert-dialog";
+import { uploadAttachment } from "../../editor/upload-helper";
 import { cn } from "../../lib/utils/cn";
 import { Button } from "../../ui/button";
 import { cmsFetch } from "../admin-api";
 import type { FieldInputProps } from "./field-inputs";
 
-/** 미디어 ID → 공개 주소. 입력과 SEO 미리보기가 함께 쓴다. 불러오지 못하면 `null`. */
+/** 미디어 ID → 공개 주소. 입력과 확장의 미리보기가 함께 쓴다. 불러오지 못하면 `null`. */
 const urls = new Map<string, string | null>();
 const loading = new Set<string>();
 const listeners = new Set<() => void>();
@@ -55,10 +57,16 @@ export function MediaThumbnail({ mediaId, className }: { mediaId: string; classN
 	);
 }
 
-/**
- * 미디어 ID를 저장하는 텍스트 필드의 입력. 역할이 `ogImage`인 필드의 기본 입력이다.
- * 미디어 라이브러리에서 이미지를 고르고, 고른 이미지를 작게 보여 준다.
- */
+/** 미디어 필드(`fields.media`)의 기본 입력. `accept`가 `file`이면 파일, 아니면 이미지를 고른다. */
+export function MediaInput(props: FieldInputProps) {
+	return props.field.kind === "media" && props.field.accept === "file" ? (
+		<MediaFileInput {...props} />
+	) : (
+		<MediaImageInput {...props} />
+	);
+}
+
+/** 미디어 라이브러리에서 이미지를 고르고, 고른 이미지를 작게 보여 준다. */
 export function MediaImageInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
 	const [picking, setPicking] = useState(false);
 	const mediaId = typeof value === "string" ? value : "";
@@ -104,6 +112,94 @@ export function MediaImageInput({ field, id, value, invalid, describedBy, contex
 					setPicking(false);
 				}}
 			/>
+		</>
+	);
+}
+
+/** 파일 하나를 올려 고른다. 고른 파일은 파일 이름으로 보인다. */
+function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
+	const mediaId = typeof value === "string" ? value : "";
+	const fileInput = useRef<HTMLInputElement>(null);
+	const [filename, setFilename] = useState<string | null>(null);
+	const [progress, setProgress] = useState<number | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	useEffect(() => {
+		setFilename(null);
+		if (!mediaId) return;
+		let cancelled = false;
+		cmsFetch<{ filename?: string }>(`/api/cms/v1/media/${mediaId}`)
+			.then((media) => !cancelled && setFilename(media.filename ?? null))
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [mediaId]);
+	const upload = async (file: File) => {
+		setError(null);
+		setProgress(0);
+		try {
+			const uploaded = await uploadAttachment(file, setProgress);
+			setFilename(file.name);
+			onChange(uploaded.mediaId);
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : "올리지 못했습니다.");
+		} finally {
+			setProgress(null);
+		}
+	};
+	return (
+		<>
+			<div className="flex items-center gap-1.5">
+				{mediaId && (
+					<span className="flex min-w-0 flex-1 items-center gap-1 text-xs">
+						<FileIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+						<span className="truncate">{filename ?? mediaId}</span>
+					</span>
+				)}
+				<Button
+					id={id}
+					type="button"
+					size="sm"
+					variant="outline"
+					className={cn("h-7 text-xs", !mediaId && "flex-1")}
+					disabled={context.disabled || progress !== null}
+					aria-invalid={invalid || undefined}
+					aria-describedby={describedBy}
+					onClick={() => fileInput.current?.click()}
+				>
+					{progress !== null ? `업로드 중 · ${progress}%` : mediaId ? "바꾸기" : "파일 고르기"}
+				</Button>
+				{mediaId && (
+					<Button
+						type="button"
+						size="sm"
+						variant="ghost"
+						className="h-7 text-xs"
+						disabled={context.disabled}
+						onClick={() => onChange("")}
+					>
+						빼기
+					</Button>
+				)}
+			</div>
+			<input
+				ref={fileInput}
+				type="file"
+				accept={FILE_ACCEPT}
+				hidden
+				aria-hidden
+				tabIndex={-1}
+				onChange={(event) => {
+					const file = event.target.files?.[0];
+					event.target.value = "";
+					if (file) void upload(file);
+				}}
+			/>
+			{error && (
+				<p role="alert" className="text-destructive text-xs">
+					{error}
+				</p>
+			)}
 		</>
 	);
 }

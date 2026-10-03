@@ -38,21 +38,22 @@ export default defineConfig({
 
 ## AI 기능 (선택)
 
-`@bh2980/cms-ai`를 쓰는 사이트는 Mermaid·차트 AI 기능을 넣을 수 있다.
+`@bh2980/cms-ai`를 쓰는 사이트에는 `mermaid()`·`chart()`가 AI 기능을 저절로 더한다(플러그인 `contributes.ai`). 설정에 적지 않는다.
+
+| 블록 | 기능 이름 | 붙는 곳 |
+| --- | --- | --- |
+| `mermaid()` | `diagramDraft` · `diagramEdit` | 다이어그램 만들기(슬래시 메뉴) · 고치기(블록 손잡이 옆) |
+| `chart()` | `chartDraft` · `chartEdit` | 차트 만들기 · 고치기 |
+
+바꾸거나 끌 때만 같은 이름으로 적는다.
 
 ```ts
-import { chartAi } from "@bh2980/cms-blocks/chart/ai";
 import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
 
-aiPlugin({
-	actions: {
-		diagramDraft: mermaidAi.draft(), // 다이어그램 만들기(슬래시 메뉴)
-		diagramEdit: mermaidAi.edit(), // 다이어그램 고치기(블록 손잡이 옆)
-		chartDraft: chartAi.draft(), // 차트 만들기
-		chartEdit: chartAi.edit(), // 차트 고치기
-	},
-});
+aiPlugin({ actions: { diagramDraft: mermaidAi.draft({ prompt: "…" }), chartEdit: false } });
 ```
+
+블록 확장은 AI 플러그인 코드를 불러오지 않는다(타입만 읽는다). AI 플러그인이 없는 사이트에서는 기여가 쓰이지 않는다.
 
 두 기능은 결과 문법을 코드 검사(`mermaidSyntax`·`chartSyntax`)로 본다. 같은 검사를 다른 기능의 `checks`에 넣어 쓸 수 있다.
 개발 전용 가짜 연결(`CMS_AI_FAKE=1`)에는 기능 정의의 `fake`로 문법 검사를 통과하는 답을 준다(만들기는 예시 블록, 고치기는

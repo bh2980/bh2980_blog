@@ -1,5 +1,6 @@
 import { defineBlock, defineCollection, defineConfig, fields } from "@bh2980/cms";
 import { chart } from "@bh2980/cms-blocks";
+import { seo, seoFields } from "@bh2980/cms-seo";
 
 /**
  * 블로그와 일부러 다르게 만든 예시 사이트. 컬렉션은 글(article)·주제(topic)·글쓴이(author), 언어는 영어 하나다.
@@ -26,22 +27,30 @@ const article = defineCollection({
 			options: { news: "News", guide: "Guide", review: "Review" },
 			defaultValue: "news",
 		}),
-		metaTitle: fields.text({ label: "Search title", role: "seoTitle", max: 70 }),
-		searchPreview: fields.view({ view: "search" }),
-		metaDescription: fields.text({ label: "Search description", role: "seoDescription", multiline: true }),
-		shareImage: fields.text({ label: "Share image", role: "ogImage" }),
-		hideFromSearch: fields.select({
-			label: "Hide from search",
-			role: "noindex",
-			options: { index: "No", noindex: "Yes" },
-			defaultValue: "index",
+		// SEO 확장의 필드 묶음. 블로그와 다른 이름·이름표·탭(`Search`)이고 원본 주소는 뺀다. 묶음의 필드는 제 `tab`으로 그 탭에 모인다.
+		...seoFields({
+			keys: {
+				preview: "searchPreview",
+				title: "metaTitle",
+				description: "metaDescription",
+				image: "shareImage",
+				noindex: "hideFromSearch",
+			},
+			labels: {
+				title: "Search title",
+				description: "Search description",
+				image: "Share image",
+				noindex: "Hide from search",
+			},
+			omit: ["canonical"],
+			tab: "Search",
+			localized: false,
+			limits: { title: 70 },
 		}),
 	},
 	layout: [
 		{ fields: ["title", "slug", "excerpt", "authorId", "topicIds"] },
 		{ group: "Presentation", fields: ["heroImage", "format"] },
-		// 같은 `tab`의 묶음은 편집 화면의 한 탭에 모인다. 보기 필드 `searchPreview`는 검색 결과·공유 미리보기를 그린다.
-		{ tab: "Search", fields: ["searchPreview", "metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
 	],
 	list: { columns: ["title", "status", "authorId", "topicIds", "updatedAt"] },
 });
@@ -95,7 +104,7 @@ export default defineConfig({
 	defaultLocale: "en",
 	site: { name: "Example site", previewPath: "/preview" },
 	timeZone: "UTC",
-	// 블록 확장에서 차트만 설치하고, 사이트 블록 둘을 더한다.
-	plugins: [chart()],
+	// 블록 확장에서 차트만 설치하고, 사이트 블록 둘을 더한다. SEO 확장은 검색 미리보기·숨기기 스위치를 준다.
+	plugins: [chart(), seo()],
 	blocks: [quoteCard, mapBlock],
 });

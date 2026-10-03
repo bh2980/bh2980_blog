@@ -13,6 +13,7 @@
 		"./text-check/extension": "./src/text-check/extension.tsx",
 		"./text-check/server": "./src/text-check/server.ts",
 		"./plugins": "./src/plugins.ts",
+		"./media": "./src/media.ts",
 		"./slots": "./src/slots/slots.tsx",
 		"./api": "./src/screens/admin-api.ts",
 		"./shell": "./src/screens/shared/admin-shell.tsx",
@@ -125,6 +126,10 @@
 			"./plugins": {
 				"types": "./dist/plugins.d.ts",
 				"default": "./dist/plugins.js"
+			},
+			"./media": {
+				"types": "./dist/media.d.ts",
+				"default": "./dist/media.js"
 			},
 			"./slots": {
 				"types": "./dist/slots/slots.d.ts",

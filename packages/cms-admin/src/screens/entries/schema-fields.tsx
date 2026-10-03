@@ -19,8 +19,7 @@ import {
 } from "@bh2980/cms/client";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { useCmsAdminComponents } from "../../admin-components";
-import { cn } from "../../lib/utils/cn";
+import { type FieldInputParts, isFieldInputParts, useCmsAdminComponents } from "../../admin-components";
 import { josa } from "../../lib/utils/josa";
 import { type SlotRequest, useSlot } from "../../slots/slots";
 import { Button } from "../../ui/button";
@@ -29,7 +28,6 @@ import { FieldDescription, FieldError, FieldLabel, FieldLegend, FieldSet, Field 
 import { Input } from "../../ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../../ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { Switch } from "../../ui/switch";
 import { Textarea } from "../../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
@@ -45,10 +43,10 @@ import {
 	OrderedEntryList,
 } from "./field-inputs";
 import { FieldView } from "./field-views";
-import { MediaImageInput } from "./media-image-input";
+import { layoutGroupsOf } from "./layout-groups";
+import { MediaInput } from "./media-image-input";
 import { optionOf, useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
-import { SEO_DESCRIPTION_LIMIT, SEO_TITLE_LIMIT } from "./seo-panel";
 
 const fieldId = (name: string) => `cms-${name}`;
 
@@ -90,7 +88,7 @@ interface FieldRowProps {
 
 /**
  * 필드 하나의 라벨·필수 표시·오류·도움말. `slot`이 있으면 라벨 옆에 자리 버튼, 입력 아래에 결과를 둔다.
- * 속성 칸의 모든 입력(스키마 필드·SEO)이 이 줄을 쓴다.
+ * 속성 칸의 모든 입력이 이 줄을 쓴다.
  */
 export function FieldRow({ id, label, required, issue, help, slot, aside, children }: FieldRowProps) {
 	if (slot) {
@@ -154,27 +152,6 @@ function SlotFieldRow({
 	);
 }
 
-/** 글자 수. 기준을 넘으면 색을 바꾼다(검색 제목·설명). */
-function Counter({ length, limit }: { length: number; limit: number }) {
-	return (
-		<span
-			className={cn(
-				"text-[11px] text-muted-foreground tabular-nums",
-				length > limit && "text-amber-600 dark:text-amber-400",
-			)}
-		>
-			{length}/{limit}
-		</span>
-	);
-}
-
-/** 선택지가 둘이고 하나가 `noindex`인 `noindex` 역할 필드는 켜고 끄기로 그린다. 켜면 `noindex`다. */
-const noindexToggle = (field: ValueField) => {
-	if (field.kind !== "select" || field.role !== "noindex") return undefined;
-	const others = Object.keys(field.options).filter((option) => option !== "noindex");
-	return others.length === 1 ? { off: others[0] as string } : undefined;
-};
-
 /** record 대상 관계(카테고리·태그·모음집). 검색해 고르고, `createInline`이면 없는 이름을 목록에서 바로 만든다. */
 function RecordRelationInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
 	const relation = field as RelationField;
@@ -220,14 +197,18 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 	);
 }
 
-/** 필드 종류별 기본 입력. `input`이 있으면 사이트·플러그인이 등록한 입력, 없으면 내장 입력 등록부의 컴포넌트를 쓴다. */
-function DefaultInput(props: FieldInputProps) {
+/** 필드 종류별 기본 입력. `input`이 컴포넌트를 가리키면 그것을, 아니면 종류에 맞는 입력을 그린다. */
+function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInputParts }) {
 	const { field, id, value, invalid, describedBy, context, onChange } = props;
 	const { fieldInputs } = useCmsAdminComponents();
-	const Custom = field.input ? (fieldInputs?.[field.input] ?? FIELD_INPUTS[field.input]) : undefined;
-	if (Custom) return <Custom {...props} />;
-	if (field.kind === "text" && field.role === "ogImage") return <MediaImageInput {...props} />;
+	const registered = field.input ? (fieldInputs?.[field.input] ?? FIELD_INPUTS[field.input]) : undefined;
+	if (registered && !isFieldInputParts(registered)) {
+		const Custom = registered;
+		return <Custom {...props} />;
+	}
 	const text = typeof value === "string" ? value : "";
+	const placeholder =
+		parts?.placeholder?.(props) ?? (field.kind === "text" || field.kind === "media" ? field.placeholder : undefined);
 
 	switch (field.kind) {
 		case "text":
@@ -238,7 +219,7 @@ function DefaultInput(props: FieldInputProps) {
 					value={text}
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
-					placeholder={field.placeholder}
+					placeholder={placeholder}
 					onChange={(event) => onChange(event.target.value)}
 					className="min-h-12 resize-none text-xs md:text-xs"
 				/>
@@ -248,7 +229,7 @@ function DefaultInput(props: FieldInputProps) {
 					value={text}
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
-					placeholder={field.placeholder}
+					placeholder={placeholder}
 					onChange={(event) => onChange(event.target.value)}
 					className={inputClass}
 				/>
@@ -278,6 +259,8 @@ function DefaultInput(props: FieldInputProps) {
 		case "relation":
 			if (isRecordCollection(field.to)) return <RecordRelationInput {...props} />;
 			return field.many ? <OrderedEntryList {...props} /> : <EntryPicker {...props} />;
+		case "media":
+			return <MediaInput {...props} />;
 	}
 }
 
@@ -301,6 +284,7 @@ export function SchemaFields({
 	sections = "collapsible",
 }: SchemaFieldsProps) {
 	const schema = schemaOf(collection);
+	const { fieldInputs } = useCmsAdminComponents();
 	const issueFor = (path: string) => issues.find((issue) => issue.path === path);
 	const describedBy = (path: string) => (issueFor(path) ? `${fieldId(path)}-error` : undefined);
 	const setValue = (name: string, value: FormValue) => onChange({ [name]: value });
@@ -338,6 +322,8 @@ export function SchemaFields({
 		const issue = readOnly ? undefined : issueFor(name);
 		const source = readOnly && locked ? locked.values : form;
 		const props: FieldInputProps = {
+			collection,
+			form: source,
 			name,
 			field,
 			id: fieldId(name),
@@ -348,45 +334,11 @@ export function SchemaFields({
 			onChange: readOnly ? () => {} : (value) => setValue(name, value),
 		};
 		const help = readOnly && locked ? locked.note : showDescriptions ? field.description : undefined;
-		const toggle = noindexToggle(field);
-		if (toggle) {
-			const value = typeof props.value === "string" ? props.value : field.kind === "select" ? field.defaultValue : "";
-			return (
-				<FieldRow
-					key={name}
-					id={fieldId(name)}
-					label={field.label}
-					issue={issue}
-					help={help}
-					aside={
-						<Switch
-							id={fieldId(name)}
-							size="sm"
-							checked={value === "noindex"}
-							disabled={props.context.disabled}
-							aria-describedby={props.describedBy}
-							onCheckedChange={(checked) => props.onChange(checked ? "noindex" : toggle.off)}
-						/>
-					}
-				>
-					{null}
-				</FieldRow>
-			);
-		}
-		// 검색 제목·설명은 비우면 제목·요약을 쓰므로 그 값을 안내 문구와 글자 수로 보인다.
-		const fallback =
-			field.kind !== "text"
-				? undefined
-				: field.role === "seoTitle"
-					? { text: form.title, limit: SEO_TITLE_LIMIT }
-					: field.role === "seoDescription"
-						? { text: roleValue(collection, "summary", form), limit: SEO_DESCRIPTION_LIMIT }
-						: undefined;
-		const current = typeof props.value === "string" ? props.value : "";
-		const input =
-			fallback && field.kind === "text" && fallback.text
-				? { ...props, field: { ...field, placeholder: fallback.text } }
-				: props;
+		// 확장이 등록한 입력 조각(이름표 줄 오른쪽·안내 문구·입력 바꾸기).
+		const registered = field.input ? fieldInputs?.[field.input] : undefined;
+		const parts = registered && isFieldInputParts(registered) ? registered : undefined;
+		const Aside = parts?.Aside;
+		const Input = parts?.Input;
 		return (
 			<FieldRow
 				key={name}
@@ -395,10 +347,10 @@ export function SchemaFields({
 				required={Boolean(field.required) && !readOnly}
 				issue={issue}
 				help={help}
-				slot={readOnly ? undefined : fieldSlot(name, props.value, props.onChange)}
-				aside={fallback ? <Counter length={(current || fallback.text).length} limit={fallback.limit} /> : undefined}
+				slot={readOnly || Input === null ? undefined : fieldSlot(name, props.value, props.onChange)}
+				aside={Aside ? <Aside {...props} /> : undefined}
 			>
-				<DefaultInput {...input} />
+				{Input === null ? null : Input ? <Input {...props} /> : <DefaultInput {...props} parts={parts} />}
 			</FieldRow>
 		);
 	};
@@ -521,11 +473,7 @@ export function SchemaFields({
 		return renderValue(name, field, isLocked(field));
 	};
 
-	const placed = new Set((schema.layout ?? []).flatMap((group) => group.fields));
-	const rest = Object.keys(schema.fields).filter((name) => !placed.has(name));
-	const groups: LayoutGroup[] = [...(schema.layout ?? []), ...(rest.length > 0 ? [{ fields: rest }] : [])].filter(
-		(group) => !include || include(group),
-	);
+	const groups = layoutGroupsOf(collection).filter((group) => !include || include(group));
 
 	return (
 		<>
@@ -535,7 +483,7 @@ export function SchemaFields({
 					return field && !omit.includes(name) && !(field.kind !== "conditional" && "hidden" in field && field.hidden);
 				});
 				if (visible.length === 0) return null;
-				const key = group.group ?? `group-${index}`;
+				const key = `${group.group ?? "group"}-${index}`;
 				if (!group.group) {
 					return (
 						<div key={key} className="space-y-4">

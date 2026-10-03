@@ -46,6 +46,17 @@ export function firstRelationField(collection: Collection): (StoredField & { to:
 	return undefined;
 }
 
+/** 처음 나오는 미디어 필드(있으면, `fields.media`). */
+export function firstMediaField(collection: Collection): StoredField | undefined {
+	return storedFields(collection).find((stored) => stored.field.kind === "media");
+}
+
+/** 미디어 필드가 있는 첫 컬렉션(본문이 있는 컬렉션 먼저). */
+export const mediaFieldCollection: Collection | undefined = [
+	...CONTENT_COLLECTIONS.filter((name) => schemaOf(name).body),
+	...COLLECTIONS,
+].find((name) => firstMediaField(name));
+
 /**
  * 발행 필수값을 채운 메타데이터. 관계는 `relationTarget(대상 컬렉션)`이 돌려준 ID를 쓴다.
  * 텍스트는 `${이름표} value`, 선택은 첫 선택지다.

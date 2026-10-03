@@ -1,4 +1,5 @@
 import { definePlugin } from "@bh2980/cms";
+import { chartAiContribution } from "./ai";
 import { chartBlock } from "./definition";
 
 export { chartBlock } from "./definition";
@@ -19,6 +20,8 @@ export const chart = () =>
 		options: {},
 		blocks: [chartBlock],
 		admin: () => import("@bh2980/cms-blocks/chart/admin"),
+		// AI 플러그인이 있으면 만들기·고치기 기능이 저절로 붙는다(`./ai`).
+		contributes: { ai: chartAiContribution },
 	});
 
 export * from "./dsl";

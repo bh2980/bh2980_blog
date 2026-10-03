@@ -88,6 +88,16 @@ describe("AI 기능 실행기", () => {
 		expect(text).not.toContain("보내면 안 되는 요약");
 		expect(requests[0]?.system).toContain(preset("slug").prompt);
 		expect(requests[0]?.system).toContain("너는 개인 기술 블로그 CMS의 편집 보조 도구다.");
+		// 언어를 모를 때 쓸 콘텐츠 언어: 요청에 없으면 사이트 기본 언어.
+		expect(requests[0]?.system).toContain("콘텐츠 언어: 한국어");
+	});
+
+	it('콘텐츠 언어는 편집 중인 글의 언어다(지시문의 "콘텐츠 언어" 자리)', async () => {
+		const { provider, requests } = stubProvider({ candidates: ["Alt"] });
+		await runAiAction(preset("imageAlt"), call({ image: { src: "/a.png" } }, { locale: "en" }), deps(provider));
+		expect(requests[0]?.system).toContain("콘텐츠 언어: English");
+		expect(preset("imageAlt").prompt).toContain("없으면 콘텐츠 언어");
+		expect(preset("imageAlt").prompt).not.toContain("한국어");
 	});
 
 	it("요청 받기를 켠 기능은 실행할 때 적은 추가 요청을 고정 지시문 뒤에 붙인다", async () => {

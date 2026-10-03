@@ -13,6 +13,7 @@ vi.mock("../../config/resolved", async () => {
 			slug: fields.slug({ label: "Slug", from: "headline", required: "publish" }),
 			excerpt: fields.text({ label: "Excerpt", role: "summary", fillFromBody: true }),
 			topicId: fields.relation({ label: "Topic", to: "topic", required: "publish" }),
+			hero: fields.media({ label: "Hero", role: "heroImage", tab: "Media" }),
 			robots: fields.select({
 				label: "Robots",
 				role: "noindex",
@@ -37,7 +38,15 @@ vi.mock("../../config/resolved", async () => {
 	return { cmsConfig: config };
 });
 
-const { fillFromBodyFields, missingRequiredIssues, roleField, roleValue, slugFromValues } = await import("../derive");
+const {
+	fieldValueError,
+	fillFromBodyFields,
+	metadataReferences,
+	missingRequiredIssues,
+	roleField,
+	roleValue,
+	slugFromValues,
+} = await import("../derive");
 // 이 파일의 컬렉션은 위에서 바꾼 설정에만 있다(타입은 패키지 테스트 설정을 본다).
 const article = "article" as SchemaCollection;
 const topic = "topic" as SchemaCollection;
@@ -47,6 +56,8 @@ describe("field roles", () => {
 		expect(roleField(article, "summary")?.name).toBe("excerpt");
 		expect(roleField(article, "noindex")?.field.kind).toBe("select");
 		expect(roleField(article, "seoTitle")).toBeUndefined();
+		// 본체가 모르는 역할도 이름으로 찾는다(종류는 그 역할을 쓰는 확장이 정한다).
+		expect(roleField(article, "heroImage")?.name).toBe("hero");
 		expect(roleValue(article, "summary", { excerpt: "Short", summary: "Not this" })).toBe("Short");
 		expect(roleValue(topic, "summary", { summary: "x" })).toBe("");
 	});
@@ -54,6 +65,27 @@ describe("field roles", () => {
 	it("lists fields filled from the body", () => {
 		expect(fillFromBodyFields(article).map((stored) => stored.name)).toEqual(["excerpt"]);
 		expect(fillFromBodyFields(topic)).toEqual([]);
+	});
+});
+
+describe("media fields", () => {
+	const MEDIA = "11111111-1111-4111-8111-111111111111";
+	const TOPIC = "22222222-2222-4222-8222-222222222222";
+
+	it("collects the media ID as a media reference next to relation references", () => {
+		expect(metadataReferences(article, { topicId: TOPIC, hero: MEDIA })).toEqual([
+			{ kind: "entry", targetId: TOPIC, path: "topicId" },
+			{ kind: "media", targetId: MEDIA, path: "hero" },
+		]);
+		expect(metadataReferences(article, { hero: "" })).toEqual([]);
+	});
+
+	it("accepts a media ID or an empty value", () => {
+		const hero = roleField(article, "heroImage")?.field;
+		if (!hero) throw new Error("hero");
+		expect(fieldValueError(hero, MEDIA)).toBeNull();
+		expect(fieldValueError(hero, "")).toBeNull();
+		expect(fieldValueError(hero, "hero.png")).toBe("invalid_metadata_value");
 	});
 });
 

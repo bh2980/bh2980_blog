@@ -22,6 +22,11 @@ export interface CmsPlugin<Name extends string = string, Options = unknown> {
 	readonly server?: () => Promise<{ readonly default: CmsServerPlugin }>;
 	/** 관리자 화면 쪽(페이지·공급자). 기본 내보내기가 관리자 패키지의 `CmsAdminPlugin`이다. */
 	readonly admin?: () => Promise<{ readonly default: unknown }>;
+	/**
+	 * 다른 플러그인에 더하는 것. 키는 받는 쪽이 정한 이름이고(예: AI 플러그인은 `ai: { actions }`를 읽는다), 본체는 읽지 않는다.
+	 * 받는 플러그인이 없으면 쓰이지 않는다. 그래서 확장은 받는 플러그인을 몰라도 기능을 더할 수 있다.
+	 */
+	readonly contributes?: Readonly<Record<string, unknown>>;
 }
 
 export interface PluginNavItem {
@@ -34,9 +39,14 @@ export interface PluginNavItem {
 /** 플러그인 검사가 보는 사이트 설정. */
 export interface PluginConfigView {
 	readonly collections: CollectionsConfig;
-	readonly locales: readonly { readonly code: string }[];
+	readonly locales: readonly { readonly code: string; readonly name?: string }[];
+	readonly defaultLocale: string;
 	/** 사이트가 쓰는 본문 블록 이름(본체 블록 + 플러그인·사이트 설정이 더한 블록). */
 	readonly blocks: readonly string[];
+	/** 그 블록의 정의(`blocks`와 같은 순서). */
+	readonly blockDefinitions: readonly BlockDefinition[];
+	/** 사이트 설정의 모든 플러그인(자기 자신 포함). 다른 플러그인이 더한 것(`contributes`)을 읽을 때 쓴다. */
+	readonly plugins: readonly CmsPlugin[];
 }
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -62,10 +72,17 @@ export interface CmsServerPlugin {
 	readonly features?: () => Promise<Readonly<Record<string, boolean>>>;
 }
 
-/** 플러그인을 만든다. 플러그인 패키지는 이 값을 돌려주는 함수(예: `aiPlugin()`)를 내보낸다. */
-export function definePlugin<const Name extends string, Options>(
-	plugin: CmsPlugin<Name, Options>,
-): CmsPlugin<Name, Options> {
+/**
+ * 플러그인을 만든다. 플러그인 패키지는 이 값을 돌려주는 함수(예: `aiPlugin()`)를 내보낸다. 더하는 것(`contributes`)의 타입은
+ * 그대로 남아 받는 플러그인이 읽을 수 있다(예: AI 기능 이름).
+ */
+export function definePlugin<
+	const Name extends string,
+	Options,
+	const Contributes extends Readonly<Record<string, unknown>> = Readonly<Record<string, unknown>>,
+>(
+	plugin: CmsPlugin<Name, Options> & { readonly contributes?: Contributes },
+): CmsPlugin<Name, Options> & { readonly contributes?: Contributes } {
 	if (!/^[a-z][a-z0-9-]*$/.test(plugin.name)) throw new Error(`cms plugin: invalid name "${plugin.name}"`);
 	return plugin;
 }

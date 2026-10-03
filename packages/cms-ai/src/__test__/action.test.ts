@@ -1,6 +1,9 @@
+import { BLOCKS, cmsConfig } from "@bh2980/cms/client";
 import { describe, expect, it } from "vitest";
+import { seoAi } from "../../../cms-seo/src/ai";
 import {
 	type AiActionDefinition,
+	type AiActionFactory,
 	type AiActionInput,
 	type AiActionResult,
 	aiAction,
@@ -21,6 +24,15 @@ import { AI_ACTIONS, attachedTo } from "../registry";
 /** 두 타입이 같은가(타입 검사용). */
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 
+/** 프리셋(만드는 함수)을 예시 설정으로 만든다. 붙을 곳이 없으면 테스트 실패다. */
+const site = { collections: cmsConfig.collections, blocks: BLOCKS, locales: cmsConfig.locales, sharedKeys: [] };
+type Def<F> = F extends (...args: never[]) => infer D ? NonNullable<D> : never;
+function build<F extends AiActionFactory>(factory: F): Def<F> {
+	const definition = factory(site);
+	if (!definition) throw new Error("preset has nothing to attach to");
+	return definition as Def<F>;
+}
+
 const collections = {
 	post: {
 		fields: {
@@ -35,7 +47,7 @@ const collections = {
 
 describe("AI 기능 정의", () => {
 	it("정의에 고친 값을 얹는다. 검사는 정의의 종류·순서를 지키고 켜기·값만 바뀐다", () => {
-		const slug = aiPresets.slug();
+		const slug = build(aiPresets.slug());
 		const action = resolveAction("slug", slug, {
 			prompt: "바꾼 지시문",
 			send: ["title", "nope"],
@@ -47,7 +59,11 @@ describe("AI 기능 정의", () => {
 		});
 		expect(action).toMatchObject({ label: "주소 추천", prompt: "바꾼 지시문", send: ["title"], apply: "replace" });
 		// 필수 입력은 끌 수 없다.
-		expect(resolveAction("translate", aiPresets.translate(), { send: [] }).send).toEqual(["block", "from", "to"]);
+		expect(resolveAction("translate", build(aiPresets.translate()), { send: [] }).send).toEqual([
+			"block",
+			"from",
+			"to",
+		]);
 		expect(action.checks).toEqual([
 			{ kind: "pattern", pattern: KEBAB_PATTERN, enabled: true },
 			{ kind: "maxLength", max: 40, enabled: true },
@@ -68,7 +84,7 @@ describe("AI 기능 정의", () => {
 			{ kind: "code", name: "unique-slug", enabled: false },
 			{ kind: "code", name: "regex-runs", enabled: true },
 		]);
-		expect(resolveAction("slug", aiPresets.slug(), override).checks.at(-1)).toEqual({
+		expect(resolveAction("slug", build(aiPresets.slug()), override).checks.at(-1)).toEqual({
 			kind: "code",
 			name: "unique-slug",
 			enabled: false,
@@ -89,7 +105,7 @@ describe("AI 기능 정의", () => {
 	});
 
 	it("관리자 화면에서 더한 검사(형식·길이·선택지 안)는 정의의 검사 뒤에 붙고, 정의의 검사는 빼지 못한다", () => {
-		const definition = aiPresets.seoTitle();
+		const definition = build(seoAi.title());
 		const action = resolveAction("seoTitle", definition, {
 			checks: [
 				{ kind: "maxLength", enabled: false, max: 60 },
@@ -109,7 +125,7 @@ describe("AI 기능 정의", () => {
 	});
 
 	it("저장할 고친 값은 기본값과 다른 것만 남긴다", () => {
-		const summary = aiPresets.summary();
+		const summary = build(aiPresets.summary());
 		const base = resolveAction("summary", summary);
 		expect(overrideFrom(summary, { ...base })).toEqual({});
 		expect(overrideFrom(summary, { ...base, enabled: false, modelName: "m" })).toEqual({
@@ -139,21 +155,30 @@ describe("AI 기능 정의", () => {
 
 	it("설정 확인: 선택지·붙을 곳·검사가 정의와 맞지 않으면 알린다", () => {
 		const ok = (actions: Record<string, unknown>) => () =>
-			validateAiConfig({ actions } as Parameters<typeof validateAiConfig>[0], collections);
-		expect(ok({ tags: aiPresets.tags({ choices: "tag", collections: ["post"] }) })).not.toThrow();
-		expect(ok({ tags: aiPresets.tags({ choices: "nope" }) })).toThrow(/unknown collection/);
-		expect(ok({ slug: aiPresets.slug({ field: "missing" }) })).toThrow(/unknown field/);
-		expect(ok({ slug: aiPresets.slug({ collections: ["tag"] }) })).toThrow(/no field "slug"/);
-		expect(ok({ "bad-key": aiPresets.slug() })).toThrow(/name/);
-		expect(ok({ x: { ...aiPresets.summary(), prompt: "{{title}}" } })).toThrow(/locale inputs/);
-		expect(ok({ x: { ...aiPresets.summary(), engine: "decide" } })).toThrow(/choices/);
-		expect(ok({ x: { ...aiPresets.summary(), checks: [{ kind: "exists" }] } })).toThrow(/choices/);
+			validateAiConfig({ actions } as Parameters<typeof validateAiConfig>[0], cmsConfig.collections);
+		const tags = build(aiPresets.tags());
+		const slug = build(aiPresets.slug());
+		const summary = build(aiPresets.summary());
+		expect(ok({ tags })).not.toThrow();
+		expect(ok({ tags: { ...tags, choices: { from: "collection", collection: "nope" } } })).toThrow(
+			/unknown collection/,
+		);
+		expect(ok({ slug: { ...slug, attach: [{ slot: "field", field: "missing" }] } })).toThrow(/unknown field/);
+		expect(ok({ slug: { ...slug, attach: [{ slot: "field", field: "summary", collections: ["tag"] }] } })).toThrow(
+			/no field "summary"/,
+		);
+		expect(ok({ "bad-key": slug })).toThrow(/name/);
+		expect(ok({ x: { ...summary, prompt: "{{title}}" } })).toThrow(/locale inputs/);
+		expect(ok({ x: { ...summary, engine: "decide" } })).toThrow(/choices/);
+		expect(ok({ x: { ...summary, checks: [{ kind: "exists" }] } })).toThrow(/choices/);
 		expect(ok({ x: { ...aiPresets.codeFold(), attach: [{ slot: "field", field: "title" }] } })).not.toThrow();
-		expect(ok({ x: { ...aiPresets.translate(), attach: [{ slot: "field", field: "title" }] } })).toThrow(/cannot fill/);
+		expect(ok({ x: { ...build(aiPresets.translate()), attach: [{ slot: "field", field: "title" }] } })).toThrow(
+			/cannot fill/,
+		);
 		expect(
 			ok({
 				x: {
-					...aiPresets.category({ choices: "tag" }),
+					...build(aiPresets.category()),
 					choices: { from: "select", collection: "post", field: "policy" },
 					attach: [],
 				},
@@ -249,20 +274,20 @@ describe("AI 기능 정의", () => {
 			prompt: "운영자가 고친 지시문",
 			checks: [{ kind: "maxLength", max: 120, enabled: true }],
 		});
-		expect(legacyFeatureOverride("summary", { ...resolveAction("summary", aiPresets.summary()) })).toEqual({});
+		expect(legacyFeatureOverride("summary", { ...resolveAction("summary", build(aiPresets.summary())) })).toEqual({});
 		expect(legacyFeatureOverride("mediaAlt", { prompt: "x" })).toBeNull();
 		expect(legacyFeatureOverride("translate", { inputs: [], prompt: AI_ACTIONS.translate?.prompt })).toEqual({});
 		expect(legacyFeatureOverride("slug", { checks: [{ kind: "pattern", pattern: "(" }] })).toEqual({});
 	});
 
 	it("타입: 지시문 자리 표시·붙을 곳·입력·결과를 정의에서 확인한다", () => {
-		const translate = aiPresets.translate();
-		const input: Equal<AiActionInput<typeof translate>, { block: string; from: string; to: string }> = true;
-		const mdx: Equal<AiActionResult<typeof translate>, { kind: "mdx"; text: string }> = true;
-		const tags = aiPresets.tags({ choices: "tag" });
-		const candidates: Equal<AiActionResult<typeof tags>, { kind: "candidates"; items: AiCandidate[] }> = true;
+		type Translate = Def<ReturnType<typeof aiPresets.translate>>;
+		const input: Equal<AiActionInput<Translate>, { block: string; from: string; to: string }> = true;
+		const mdx: Equal<AiActionResult<Translate>, { kind: "mdx"; text: string }> = true;
+		type Tags = Def<ReturnType<typeof aiPresets.tags>>;
+		const candidates: Equal<AiActionResult<Tags>, { kind: "candidates"; items: AiCandidate[] }> = true;
 		const summaryInput: Equal<
-			AiActionInput<ReturnType<typeof aiPresets.summary>>,
+			AiActionInput<Def<ReturnType<typeof aiPresets.summary>>>,
 			{ title?: string; summary?: string; body?: string; current?: string | readonly string[] }
 		> = true;
 		expect([input, mdx, candidates, summaryInput]).toEqual([true, true, true, true]);

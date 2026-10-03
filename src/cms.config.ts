@@ -1,8 +1,7 @@
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
-import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
+import { aiPlugin } from "@bh2980/cms-ai";
 import { callout, chart, collapsible, columns, mermaid, tabs } from "@bh2980/cms-blocks";
-import { chartAi } from "@bh2980/cms-blocks/chart/ai";
-import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
+import { seo, seoFields } from "@bh2980/cms-seo";
 import { bareun } from "@bh2980/cms-text-check/bareun";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
@@ -41,25 +40,20 @@ const tagIds = fields.relation({
 });
 
 /**
- * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
- * 편집 화면은 `tab: "SEO"` 묶음을 SEO 탭에 그린다. 검색·공유 미리보기는 보기 필드(`fields.view({ view: "search" })`)이고 값은 필드 역할(`role`)로 찾는다.
+ * 검색엔진·공유용 값(SEO 확장). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다. 필드는 SEO 탭에 모인다.
+ * 이미 저장한 값이 있어 필드 이름은 예전 이름 그대로 둔다. 숨기기(`seoRobots`가 `noindex`)는 sitemap에서도 빼고,
+ * 원본 주소(`canonicalUrl`)를 넣으면 sitemap에서 빠진다(사이트 경로 /...와 http(s)만 받는다).
  */
-const seo = {
-	searchPreview: fields.view({ view: "search" }),
-	seoTitle: fields.text({ label: "검색 제목", role: "seoTitle", localized: true }),
-	seoDescription: fields.text({ label: "검색 설명", role: "seoDescription", multiline: true, localized: true }),
-	/** 링크 미리보기·검색 결과 이미지(미디어 ID). 비우면 제목으로 만든 카드를 쓴다. */
-	ogImageId: fields.text({ label: "공유 이미지", role: "ogImage", localized: true }),
-	/** `noindex`면 검색엔진에 숨기고 sitemap에서 뺀다. */
-	seoRobots: fields.select({
-		label: "검색엔진에 숨기기",
-		role: "noindex",
-		options: { index: "노출", noindex: "숨기기" },
-		defaultValue: "index",
-	}),
-	/** 다른 곳에 먼저 올린 글의 주소(canonical). 넣으면 sitemap에서 빠진다. 사이트 경로(/...)와 http(s)만 받는다. */
-	canonicalUrl: fields.text({ label: "원본 주소", role: "canonical", localized: true, placeholder: "https://" }),
-} as const;
+const seoValues = seoFields({
+	keys: {
+		preview: "searchPreview",
+		title: "seoTitle",
+		description: "seoDescription",
+		image: "ogImageId",
+		noindex: "seoRobots",
+		canonical: "canonicalUrl",
+	},
+});
 
 export const post = defineCollection({
 	label: "게시글",
@@ -107,18 +101,12 @@ export const post = defineCollection({
 				},
 			},
 		),
-		...seo,
+		...seoValues,
 	},
 	layout: [
 		{ fields: ["title", "slug", "summary"] },
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "정책", fields: ["policy"] },
-		{
-			group: "SEO",
-			tab: "SEO",
-			fields: ["searchPreview", "seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
-			collapsed: true,
-		},
 	],
 	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
@@ -141,18 +129,9 @@ export const memo = defineCollection({
 				"누르는 즉시 모음집에 저장됩니다(메모의 초안·발행과 별개). 메모를 담는 모음집만 고를 수 있고, 추가하면 끝에 들어갑니다.",
 			placeholder: "모음집에 추가",
 		}),
-		...seo,
+		...seoValues,
 	},
-	layout: [
-		{ fields: ["title", "slug"] },
-		{ group: "분류", fields: ["tagIds", "series"] },
-		{
-			group: "SEO",
-			tab: "SEO",
-			fields: ["searchPreview", "seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
-			collapsed: true,
-		},
-	],
+	layout: [{ fields: ["title", "slug"] }, { group: "분류", fields: ["tagIds", "series"] }],
 	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });
 
@@ -240,30 +219,11 @@ export default defineConfig({
 		columns(),
 		mermaid(),
 		chart(),
+		seo(),
+		// AI 기능은 기본 기능과 블록·SEO 확장이 더한 기능이 저절로 켜진다. 문체 가이드는 문체 다듬기·초안 쓰기에 들어간다.
 		aiPlugin({
 			siteDescription: "개인 기술 블로그",
-			shared: {
-				styleGuide: { label: "문체 가이드", text: "" },
-			},
-			actions: {
-				slug: aiPresets.slug({ collections: ["post", "memo"] }),
-				summary: aiPresets.summary({ collections: ["post"] }),
-				tags: aiPresets.tags({ choices: "tag", collections: ["post", "memo"] }),
-				category: aiPresets.category({ choices: "category", collections: ["post"] }),
-				seoTitle: aiPresets.seoTitle({ collections: ["post", "memo"] }),
-				seoDescription: aiPresets.seoDescription({ collections: ["post", "memo"] }),
-				imageAlt: aiPresets.imageAlt(),
-				imageCaption: aiPresets.imageCaption(),
-				mediaFilename: aiPresets.mediaFilename(),
-				translate: aiPresets.translate(),
-				codeFold: aiPresets.codeFold(),
-				polish: aiPresets.polish({ styleGuide: "styleGuide" }),
-				draft: aiPresets.draft({ styleGuide: "styleGuide" }),
-				diagramDraft: mermaidAi.draft(),
-				diagramEdit: mermaidAi.edit(),
-				chartDraft: chartAi.draft(),
-				chartEdit: chartAi.edit(),
-			},
+			shared: { styleGuide: { label: "문체 가이드", text: "" } },
 		}),
 		// 맞춤법·문장 검사(바른). 키는 서버 환경 변수 `BAREUN_API_KEY`. 쓴 만큼 요금이 들어 버튼으로만 검사한다.
 		bareun(),

@@ -3,20 +3,18 @@
 import {
 	contentPath,
 	DEFAULT_LOCALE,
-	type FieldRole,
+	isCollection,
 	isLocale,
 	localizePath,
 	roleField,
 	type SchemaCollection,
 	SITE_NAME,
 } from "@bh2980/cms/client";
-import { cn } from "../../lib/utils/cn";
-import type { EntryData, EntryForm } from "./entry-form";
-import { MediaThumbnail } from "./media-image-input";
-
-/** 검색 결과에서 잘리지 않는 대략의 길이(Strapi·Yoast 등이 쓰는 기준). */
-export const SEO_TITLE_LIMIT = 60;
-export const SEO_DESCRIPTION_LIMIT = 155;
+import type { FieldViewProps } from "@bh2980/cms-admin";
+import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { MediaThumbnail } from "@bh2980/cms-admin/media";
+import type { EntryData, EntryForm } from "@bh2980/cms-admin/screens/entries/entry-form";
+import { SEO_ROLES } from "../fields";
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 
@@ -25,7 +23,7 @@ const text = (value: unknown) => (typeof value === "string" ? value : "");
  */
 export function seoRoleValue(
 	collection: SchemaCollection,
-	role: FieldRole,
+	role: string,
 	form: EntryForm,
 	entry: Pick<EntryData, "source"> | null,
 ): string {
@@ -37,17 +35,14 @@ export function seoRoleValue(
 
 /** 검색 결과·공유 미리보기에 쓸 제목·설명. 비우면 제목·요약을 쓴다. */
 export function seoPreviewText(collection: SchemaCollection, form: EntryForm, entry: Pick<EntryData, "source"> | null) {
-	const value = (role: FieldRole) => seoRoleValue(collection, role, form, entry).trim();
+	const value = (role: string) => seoRoleValue(collection, role, form, entry).trim();
 	return {
-		title: value("seoTitle") || form.title.trim(),
-		description: value("seoDescription") || value("summary"),
+		title: value(SEO_ROLES.title) || form.title.trim(),
+		description: value(SEO_ROLES.description) || value("summary"),
 	};
 }
 
-/**
- * 묶음 미리보기 `search`(`preview: "search"`). 검색 결과와 공유 카드 모양으로, 값은 필드 역할에서 온다.
- * 입력은 탭이 묶음의 필드를 보통 입력으로 그린다.
- */
+/** 검색 결과와 공유 카드 모양 미리보기. 값은 필드 역할에서 온다. */
 export function SeoPreview({
 	collection,
 	form,
@@ -58,9 +53,9 @@ export function SeoPreview({
 	entry: EntryData | null;
 }) {
 	const { title, description } = seoPreviewText(collection, form, entry);
-	const noindex = seoRoleValue(collection, "noindex", form, entry) === "noindex";
-	const hasImageField = Boolean(roleField(collection, "ogImage"));
-	const imageId = seoRoleValue(collection, "ogImage", form, entry);
+	const noindex = seoRoleValue(collection, SEO_ROLES.noindex, form, entry) === "noindex";
+	const hasImageField = Boolean(roleField(collection, SEO_ROLES.image));
+	const imageId = seoRoleValue(collection, SEO_ROLES.image, form, entry);
 	const locale = entry?.locale && isLocale(entry.locale) ? entry.locale : DEFAULT_LOCALE;
 	const path = localizePath(locale, contentPath(collection, form.slug || "slug") ?? `/${form.slug || "slug"}`);
 
@@ -95,4 +90,9 @@ export function SeoPreview({
 			)}
 		</div>
 	);
+}
+
+/** 보기 필드 `search`의 화면. */
+export function SeoPreviewView({ collection, form, entry }: FieldViewProps) {
+	return isCollection(collection) ? <SeoPreview collection={collection} form={form} entry={entry} /> : null;
 }

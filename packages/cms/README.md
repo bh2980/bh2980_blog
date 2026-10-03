@@ -173,11 +173,12 @@ pnpm add @bh2980/cms-ai
 
 ```ts
 // cms.config.ts
-import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
+import { aiPlugin } from "@bh2980/cms-ai";
 
 export default defineConfig({
 	// …
-	plugins: [aiPlugin({ actions: { summary: aiPresets.summary({ collections: ["article"] }) } })],
+	// 기본 기능(주소·요약·태그 추천 등)이 필드 종류·역할·관계 대상으로 저절로 붙는다. 바꾸거나 끌 것만 `actions`에 적는다.
+	plugins: [aiPlugin({ siteDescription: "기술 블로그" })],
 });
 ```
 
@@ -186,6 +187,29 @@ export default defineConfig({
 ```
 
 자세한 것은 `@bh2980/cms-ai`의 README.
+
+### SEO 확장 (선택)
+
+```sh
+pnpm add @bh2980/cms-seo
+```
+
+```ts
+// cms.config.ts
+import { seo, seoFields } from "@bh2980/cms-seo";
+
+const article = defineCollection({
+	// …
+	fields: { title, slug, ...seoFields() }, // 검색 제목·설명·공유 이미지·숨기기·원본 주소 + 미리보기, 모두 SEO 탭
+});
+
+export default defineConfig({
+	// …
+	plugins: [seo()],
+});
+```
+
+자세한 것은 `@bh2980/cms-seo`의 README.
 
 ## 진입점
 
@@ -314,6 +338,10 @@ export const myPlugin = () =>
 ```
 
 - 서버 쪽(`server`)은 브라우저 묶음에 들어가지 않게 패키지 `exports`의 `browser` 조건으로 빈 진입점을 준다.
+- `validate`는 컬렉션·언어·블록 정의와 모든 플러그인(`plugins`)을 받는다. 역할을 쓰는 확장은 여기서 필드 종류를 확인한다.
+- `contributes`는 다른 플러그인에 더하는 것이다. 키와 모양은 받는 플러그인이 정하고 본체는 읽지 않는다. 예를 들어
+  `contributes: { ai: { actions: { … } } }`는 AI 플러그인(`@bh2980/cms-ai`)이 있으면 그 기능을 더하고, 없으면 쓰이지 않는다.
+  확장은 받는 플러그인을 몰라도 기능을 더할 수 있다(블록 확장의 다이어그램 만들기, SEO 확장의 검색 제목 추천).
 - 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms:db:migrate`가 본체 표 다음에 부른다.
 - 플러그인 코드는 `@bh2980/cms/plugin/server`의 `getCmsDatabase()`(DB 연결)와 본체 라우트 틀(`adminRoute` 등)을 쓴다.
 
@@ -353,40 +381,41 @@ export const myPlugin = () =>
 - **주소는 `from`에서 만든다.** `fields.slug({ from: "title" })`이면 주소를 직접 고치기 전까지 그 필드 값으로 주소를 만들고,
   record 컬렉션은 주소를 비우고 저장하면 그 값에서 만든다. `from`이 없으면 자동으로 만들지 않는다. `from`은 같은 컬렉션의
   텍스트 필드여야 한다.
-- **필드 역할(`role`).** 라이브러리는 요약·검색·공유 값을 필드 이름이 아니라 역할로 찾는다. 역할마다 한 컬렉션에 한 필드만 둔다.
-
-| `role` | 필드 | 쓰는 곳 |
-|---|---|---|
-| `summary` | 텍스트 | 요약. 필드 옆 동작(AI 등)에 `summary`로 넘어가고 검색 설명이 비면 대신 쓴다. |
-| `seoTitle` · `seoDescription` | 텍스트 | 검색 결과 제목·설명. 비우면 제목·요약을 쓴다. 입력 옆에 글자 수가 보인다. |
-| `ogImage` | 텍스트(미디어 ID) | 공유 이미지. 관리자 화면은 미디어 고르기로 입력한다. |
-| `canonical` | 텍스트 | 원본 주소. |
-| `noindex` | 선택(`noindex` 선택지가 있어야 함) | 값이 `noindex`면 검색엔진에 숨긴다. 선택지가 둘이면 켜고 끄기로 그린다. |
+- **필드 역할(`role`).** 확장과 화면은 값을 필드 이름이 아니라 역할로 찾는다(`roleField(collection, role)`, 설정을 읽지 않는
+  `fieldWithRole(schema, role)`). 역할 이름은 자유(영문자·숫자·하이픈)이고 한 컬렉션에 역할마다 한 필드만 둔다. 본체가 아는
+  역할은 `summary`(텍스트 필드, 요약) 하나다. 필드 옆 동작(AI 등)에 `summary`로 넘어간다. 다른 역할은 그 역할을 쓰는 확장이
+  정하고 필드 종류를 플러그인 `validate`에서 확인한다(예: SEO 확장의 `seoTitle`·`ogImage`·`noindex`).
+- **미디어 필드.** `fields.media({ label, accept?: "image" | "file" })`는 미디어 라이브러리의 파일 하나를 고르고 미디어 ID를
+  글자로 저장한다. 값은 미디어 사용처(`entry_references`, 종류 `media`)에 잡혀 미디어 화면의 "사용처"·"사용하지 않음" 거르기에
+  보이고, 쓰고 있는 파일은 지울 수 없다. 미디어 ID가 아닌 값은 `invalid_metadata_value`, 빈 값(`""`)은 고르지 않은 것이다.
 
 - **필드 값 오류.** 오류 코드는 필드와 상관없이 같다. 필수값이 비면 `missing_field`(주소는 `null_slug`), 글자 수가 `max`를
   넘으면 `field_too_long`이다. 문제(`issues`)의 `path`에 필드 이름, `message`에 필드 이름표가 담긴다(제목도 같다).
 - **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
   컬렉션만).
-- **탭.** `layout` 묶음에 `tab: "이름"`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생기고, 같은 이름의 묶음이 모인다(없으면
-  기본 탭 `속성`).
-- **보기 필드.** `fields.view({ view: "search" })`는 값을 저장하지 않고 그 자리에 화면을 그리는 필드다. 다른 필드처럼 `layout`에
-  넣어 자리를 정한다. 본체는 `search`(검색 결과·공유 미리보기, 값은 위 역할에서)를 주고, 다른 화면은 관리자 확장의
-  `fieldViews`로 등록한다.
+- **탭.** 필드에 `tab: "이름"`을 두거나 `layout` 묶음에 `tab`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생긴다(1~20자).
+  묶음의 `tab`이 먼저고, 묶음에 `tab`이 없으면 필드의 `tab`이다. 제 `tab`을 가진 필드는 배치를 적지 않아도 탭마다 한 묶음으로
+  모인다. 그래서 확장이 주는 필드 묶음(예: `seoFields()`)이 사이트가 `layout`을 적지 않아도 제 탭에 들어간다. 없으면 기본 탭
+  `속성`이다.
+- **보기 필드.** `fields.view({ view: "이름" })`은 값을 저장하지 않고 그 자리에 화면을 그리는 필드다. 화면은 관리자 확장이
+  `fieldViews`로 등록한다(예: SEO 확장의 `search`). 등록한 화면이 없으면 아무것도 그리지 않는다.
+- **입력 바꾸기.** `input: "이름"`은 관리자 확장이 `fieldInputs`로 등록한 입력을 가리킨다. 등록이 없으면 종류의 기본 입력이다.
+  `inputOptions`(JSON 값)는 그 입력에 넘길 설정이고 본체는 읽지 않는다(예: 권장 글자 수).
 
 ```ts
 fields: {
 	title: fields.text({ label: "Title", required: "publish" }),
 	slug: fields.slug({ label: "Slug", from: "title" }),
 	excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true }),
-	metaTitle: fields.text({ label: "Search title", role: "seoTitle" }),
-	shareImage: fields.text({ label: "Share image", role: "ogImage" }),
-	searchPreview: fields.view({ view: "search" }),
+	hero: fields.media({ label: "Hero image", tab: "Media" }),
+	credit: fields.text({ label: "Credit", tab: "Media" }),
 },
-layout: [{ fields: ["title", "slug", "excerpt"] }, { tab: "Search", fields: ["searchPreview", "metaTitle", "shareImage"] }],
+layout: [{ fields: ["title", "slug", "excerpt"] }], // hero·credit은 Media 탭에 모인다
 ```
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 주소 필드가 둘 이상이거나,
-역할·`from`·`fillFromBody`가 필드와 맞지 않으면 앱이 뜰 때 바로 오류를 낸다.
+역할이 겹치거나 `summary`가 텍스트 필드가 아니거나, 탭 이름이 1~20자가 아니거나, `from`·`fillFromBody`가 필드와 맞지 않으면
+앱이 뜰 때 바로 오류를 낸다.
 
 복제(`POST /api/cms/v1/entries/:id/duplicate`)는 본문에 `{ title }`을 받으면 복제본 제목을 그 값으로 둔다(관리자 화면은 원본
 제목에 "(복사)"를 붙여 보낸다). 없으면 원본 제목 그대로다. 저장소는 붙일 말을 정하지 않는다.

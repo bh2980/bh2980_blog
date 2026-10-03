@@ -6,22 +6,53 @@
 
 ## 등록
 
-사이트 설정의 `plugins`에 `aiPlugin()`을 적는다. 기능은 이름(key)으로 적고, 기본 기능은 `aiPresets`로 고른다.
+사이트 설정의 `plugins`에 `aiPlugin()`을 적는다. 기본 기능은 붙을 곳이 있으면 저절로 켜지고, 다른 플러그인(블록 확장·SEO 확장 등)이
+더한 기능도 저절로 붙는다. 바꾸거나 끌 것만 `actions`에 기능 이름(key)으로 적는다.
 
 ```ts
-import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
+import { aiAction, aiPlugin, aiPresets } from "@bh2980/cms-ai";
 
 plugins: [
 	aiPlugin({
 		siteDescription: "개인 기술 블로그", // 모든 기능의 맨 앞 지시에 들어간다. 없으면 "웹사이트"
 		actions: {
-			summary: aiPresets.summary({ collections: ["post"] }),
-			tags: aiPresets.tags({ choices: "tag", collections: ["post"] }),
-			translate: aiPresets.translate(),
+			summary: aiPresets.summary({ maxLength: 120 }), // 바꾸기(같은 이름)
+			draft: false, // 끄기
+			outline: aiAction({ … }), // 더하기(새 이름)
 		},
 	}),
 ],
 ```
+
+### 기본 기능
+
+| 이름 | 붙는 곳 | 켜지는 조건 |
+| --- | --- | --- |
+| `slug` | 주소 필드(`fields.slug`) | 본문이 있는 컬렉션에 주소 필드가 있을 때 |
+| `summary` | 요약 역할(`role: "summary"`) 텍스트 필드. 글자 수는 필드 `max`(없으면 160) | 본문이 있는 컬렉션에 있을 때 |
+| `tags` | 분류(record) 컬렉션을 가리키는 여러 개 관계 필드. 선택지는 그 대상 컬렉션 | 본문이 있는 컬렉션에 있을 때 |
+| `category` | 분류(record) 컬렉션을 가리키는 하나 관계 필드. 선택지는 그 대상 컬렉션 | 본문이 있는 컬렉션에 있을 때 |
+| `imageAlt`·`imageCaption` | 본문 이미지·미디어 화면의 대체 텍스트·캡션 | 언제나 |
+| `mediaFilename` | 미디어 화면의 파일 이름 | 언제나 |
+| `translate` | 번역본 편집기의 블록 번역. 번역할 블록 속성은 블록 정의(`translatable`)에서 만든다 | 언어가 둘 이상일 때 |
+| `codeFold` | 코드 블록 접기 규칙 | 언제나 |
+| `polish`·`draft` | 선택 영역 메뉴·넣기 메뉴 | 본문이 있는 컬렉션이 있을 때 |
+
+- 필드 기능은 필드 이름이 아니라 필드 종류·역할·관계 대상으로 붙을 필드를 찾는다(컬렉션마다 하나). 하나/여럿 고르기와
+  선택지도 필드에서 온다. `aiPresets.summary({ field: "excerpt", collections: ["article"] })`처럼 이름·컬렉션을 줄 수도 있다.
+  태그·카테고리는 `choices: "컬렉션"`으로 대상을 고른다.
+- 지시문은 사이트 종류("블로그")나 언어("한국어")를 가정하지 않는다. 자료에서 언어를 알 수 없을 때(이미지 대체 텍스트 등)는
+  "콘텐츠 언어"를 쓰고, 실행기가 지시 맨 앞에 콘텐츠 언어(편집 중인 글의 언어, 없으면 사이트 기본 언어)를 붙인다.
+- 공통 문구 `styleGuide`(`aiPlugin({ shared: { styleGuide: … } })`)가 있으면 문체 다듬기·초안 쓰기 지시문에 넣는다. 없으면 넣지 않는다.
+- 관리자 AI 화면의 기능 순서는 필드 옆 기능이 먼저, 그다음 기본 기능·다른 플러그인 기능·설정에 더한 기능 순서다.
+- `aiPresets.이름(옵션)`은 사이트 설정을 보고 기능을 만드는 함수(`AiActionFactory`)를 돌려준다. 붙을 곳이 없으면 켜지지 않는다.
+
+### 다른 플러그인이 더하는 기능
+
+플러그인은 `definePlugin({ contributes: { ai: { actions: { 이름: 정의 또는 만드는 함수 } } } })`로 기능을 더한다(`AiContribution`).
+AI 플러그인이 없으면 쓰이지 않으므로 확장은 AI 플러그인을 몰라도 되고, 타입만 읽는다(`import type`). 이미 있는 이름을 더하면
+설정 오류다. 사이트는 같은 이름으로 바꾸거나 `false`로 끈다. 블록 확장의 `diagramDraft`·`diagramEdit`(Mermaid)·`chartDraft`·
+`chartEdit`(차트), SEO 확장의 `seoTitle`·`seoDescription`이 이렇게 붙는다.
 
 - 기능 하나는 입력(재료)·지시문·결과 모양·검사·붙을 곳(`attach`)이다. `aiAction()`으로 직접 정의할 수 있다.
 - 재료(제목·본문·이미지…)는 지시문에 끼우지 않고 따로 보낸다. 자료 태그는 입력 이름 그대로다(`<title>`, `<block>`…).
@@ -103,9 +134,10 @@ MDX 결과는 MDX 입력을 그대로(흘려받기는 글로 시작하는 문단
   API는 `/ai/shared`: `GET`(목록, `source: "config" | "added"`), `POST { expectedVersion, key, label, text }`(더하기),
   `PATCH { expectedVersion, key, label?, text }`(하나 고치기), `PUT { expectedVersion, texts }`(여럿 고치기),
   `DELETE ?key=&expectedVersion=`(삭제). 모두 바뀐 목록을 돌려주고, 버전이 다르면 409다.
-- **문체 다듬기·초안 쓰기**: `aiPresets.polish()`(본문에서 글자를 고르면 뜨는 메뉴, 바뀐 곳을 보인 뒤 바꾸기),
-  `aiPresets.draft()`(슬래시 메뉴·빈 문서 툴바, 커서 자리에 넣기). `styleGuide: "설정 공통 문구의 키"`로 문체 가이드를
-  넣는다. 관리자 화면에서 더한 문구는 관리자 화면에서 지시문에 `{{shared.키}}`로 넣는다.
+- **문체 다듬기·초안 쓰기**: `polish`(본문에서 글자를 고르면 뜨는 메뉴, 바뀐 곳을 보인 뒤 바꾸기),
+  `draft`(슬래시 메뉴·빈 문서 툴바, 커서 자리에 넣기). 공통 문구 `styleGuide`가 있으면 저절로, 다른 키면
+  `aiPresets.polish({ styleGuide: "키" })`로 문체 가이드를 넣는다. 관리자 화면에서 더한 문구는 관리자 화면에서 지시문에
+  `{{shared.키}}`로 넣는다.
 - **시험**: 관리자 AI 화면의 기능 오른쪽 아래에서 저장 전에 실행해 본다. 칸은 기능의 입력 종류로 만든다(글·MDX·코드는
   여러 줄 칸, 현재 값은 한 줄 칸, 이미지는 미디어 ID 또는 사이트 경로, 언어는 사이트 설정의 언어 고르기). 보낼 입력과
   필수 입력, 언어 입력만 보이고, 필수 칸이 비면 실행하지 않는다.
@@ -122,13 +154,12 @@ MDX 결과는 MDX 입력을 그대로(흘려받기는 글로 시작하는 문단
 `block` 입력으로 보내고, 결과(MDX)가 같은 종류의 블록 하나면 바뀐 곳을 보인 뒤 그 블록을 바꾼다. 블록 이름은 사이트가 쓰는
 블록이어야 한다(설정을 만들 때 확인한다). 블록 확장이나 사이트 블록 모두 같은 방법으로 붙는다.
 
-```ts
-import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
+블록 확장의 Mermaid·차트 기능(만들기: 슬래시 메뉴, 고치기: 블록 손잡이 옆)은 그 블록 플러그인이 더하므로 적지 않는다.
+사이트 블록에는 직접 붙인다.
 
+```ts
 aiPlugin({
 	actions: {
-		diagramDraft: mermaidAi.draft(), // 슬래시 메뉴: 요청을 받아 커서 자리에 Mermaid 블록을 넣는다
-		diagramEdit: mermaidAi.edit(), // Mermaid 블록 손잡이 옆: 요청대로 고친다
 		graphvizEdit: aiAction({
 			label: "그래프 고치기",
 			input: { block: aiInput.mdx({ label: "그래프", required: true }) },
@@ -148,7 +179,7 @@ aiPlugin({
 
 | 진입점 | 내용 |
 | --- | --- |
-| `@bh2980/cms-ai` | `aiPlugin`, `aiAction`, `aiInput`, `aiPresets` (사이트 설정용, 서버·브라우저 공용) |
+| `@bh2980/cms-ai` | `aiPlugin`, `aiAction`, `aiInput`, `aiPresets`, `resolveAiActions`, 기여 타입(`AiContribution`·`AiActionFactory`·`AiSiteView`) (사이트 설정용, 서버·브라우저 공용) |
 | `@bh2980/cms-ai/server` | 서버 쪽(API 경로·표 만들기). 본체가 불러 쓴다. 브라우저 묶음에서는 빈 진입점이다 |
 | `@bh2980/cms-ai/admin` | 관리자 쪽(AI 화면·공급자), `useAiAction`, `AiButton` |
 

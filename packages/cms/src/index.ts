@@ -52,18 +52,18 @@ export {
 export {
 	type BacklinkField,
 	type ConditionalField,
-	FIELD_ROLES,
 	type Field,
 	type FieldKind,
 	type FieldRole,
 	fields,
 	type Localized,
+	type MediaField,
 	type RelationField,
 	type SelectField,
-	type SelectFieldRole,
 	type SlugField,
+	SUMMARY_ROLE,
 	type TextField,
-	type TextFieldRole,
 	type ValueField,
 	type ViewField,
 } from "./schema/fields";
+export { fieldWithRole, type StoredField, valueFieldsOf, valueWithRole } from "./schema/walk";

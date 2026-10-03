@@ -1,4 +1,5 @@
 import { definePlugin } from "@bh2980/cms";
+import { mermaidAiContribution } from "./ai";
 import { mermaidBlock } from "./definition";
 
 export { mermaidBlock } from "./definition";
@@ -19,4 +20,6 @@ export const mermaid = () =>
 		options: {},
 		blocks: [mermaidBlock],
 		admin: () => import("@bh2980/cms-blocks/mermaid/admin"),
+		// AI 플러그인이 있으면 만들기·고치기 기능이 저절로 붙는다(`./ai`).
+		contributes: { ai: mermaidAiContribution },
 	});

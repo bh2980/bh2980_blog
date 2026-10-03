@@ -2,7 +2,9 @@ import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	contentCollection,
+	firstMediaField,
 	firstRelationField,
+	mediaFieldCollection,
 	recordCollection,
 	requiredMetadata,
 	titleFieldOf,
@@ -137,5 +139,86 @@ describe("any site: core content flow", () => {
 		expect(copy.workingSlug).toBeNull();
 		const same = await store.duplicateEntry({ id: draft.id });
 		expect(same.working.metadata.title).toBe("Original");
+	});
+
+	describe("media fields (`fields.media`)", () => {
+		const collection = mediaFieldCollection;
+		const media = collection ? firstMediaField(collection) : undefined;
+		const readyMedia = async (filename: string) => {
+			const asset = await store.createMediaAsset({
+				filename,
+				mimeType: "image/png",
+				byteSize: 10,
+				stagingKey: `staging/${filename}`,
+			});
+			await store.completeMediaAsset({
+				id: asset.id,
+				storageKey: `media/${filename}`,
+				mimeType: "image/png",
+				byteSize: 10,
+				width: 1,
+				height: 1,
+			});
+			return asset;
+		};
+		const draftWith = async (title: string, mediaId: string) => {
+			if (!collection || !media) throw new Error("no media field");
+			const metadata = await requiredMetadata(collection, title, relationTarget);
+			return service.createDraft({
+				collection,
+				slug: unique("media"),
+				metadata: { ...metadata, [media.name]: mediaId },
+				mdx: "Body text",
+			} as Parameters<typeof service.createDraft>[0]);
+		};
+
+		it("the config has a media field (SEO share image)", () => {
+			expect(media?.field.kind).toBe("media");
+		});
+
+		it("tracks the field value as a media reference: usage, the unused filter and the delete check", async () => {
+			if (!collection || !media) return;
+			const used = await readyMedia(`${unique("used")}.png`);
+			const spare = await readyMedia(`${unique("spare")}.png`);
+			const draft = await draftWith("Uses a share image", used.id);
+			const list = await store.listMediaAssets({ pageSize: 100 });
+			const usedItem = list.items.find((item) => item.id === used.id);
+			expect(usedItem?.referencesCount).toBe(1);
+			expect(usedItem?.references).toEqual([
+				expect.objectContaining({ entryId: draft.id, state: "working", title: "Uses a share image" }),
+			]);
+			const unused = await store.listMediaAssets({ pageSize: 100, used: "unused" });
+			expect(unused.items.map((item) => item.id)).toContain(spare.id);
+			expect(unused.items.map((item) => item.id)).not.toContain(used.id);
+			await expect(store.beginMediaDelete(used.id)).rejects.toMatchObject({
+				code: "in_use",
+				details: { references: 1 },
+			});
+			expect((await store.getMediaAsset(used.id))?.status).toBe("ready");
+			// 발행본도 같은 참조를 가진다.
+			const published = await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
+			expect(published.published?.metadata[media.name]).toBe(used.id);
+			const after = (await store.listMediaAssets({ pageSize: 100 })).items.find((item) => item.id === used.id);
+			expect(after?.references.map((reference) => reference.state).sort()).toEqual(["published", "working"]);
+		});
+
+		it("rejects a value that is not a media ID and ignores an empty one", async () => {
+			if (!collection || !media) return;
+			await expect(draftWith("Bad media", "not-a-uuid")).rejects.toMatchObject({ code: "invalid_metadata_value" });
+			const empty = await draftWith("No media", "");
+			expect(empty.working.metadata[media.name]).toBe("");
+		});
+
+		it("blocks deleting media that only stored metadata mentions (saved before the field tracked it)", async () => {
+			if (!collection || !media) return;
+			const legacy = await readyMedia(`${unique("legacy")}.png`);
+			const draft = await draftWith("Legacy share image", "");
+			// 미디어 필드를 두기 전에 저장한 값처럼 참조 인덱스 없이 메타데이터에만 둔다.
+			await pool.query(
+				`UPDATE "${schemaName}".entry_bodies SET metadata = jsonb_set(metadata, $2, to_jsonb($3::text)) WHERE entry_id = $1`,
+				[draft.id, [media.name], legacy.id],
+			);
+			await expect(store.beginMediaDelete(legacy.id)).rejects.toMatchObject({ code: "in_use", details: { bodies: 1 } });
+		});
 	});
 });

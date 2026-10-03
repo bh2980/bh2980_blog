@@ -1,8 +1,10 @@
 import type { CmsPlugin, PluginNamed } from "@bh2980/cms";
-import { cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
+import { BLOCKS, cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
 import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig, AiSharedText } from "./action";
 import type { AiSlot } from "./definition";
 import { AI_PLUGIN_NAME } from "./plugin-name";
+import type { DEFAULT_AI_ACTIONS } from "./presets";
+import { resolveAiActions } from "./resolve";
 
 /**
  * 사이트 설정의 AI 기능(`aiPlugin({ actions })`). 기능 이름(key)과 입력·결과 타입을 설정에서 뽑는다.
@@ -15,20 +17,50 @@ type AiPluginOptions = ResolvedConfig extends { readonly plugins?: infer P }
 		: never
 	: never;
 type ConfigActions = [AiPluginOptions] extends [{ readonly actions: infer X }] ? X : Record<never, never>;
+/** 만드는 함수면 그 결과(정의). */
+type Built<S> = S extends (...args: never[]) => infer D ? NonNullable<D> : S;
+type UnionToIntersection<U> = (U extends unknown ? (value: U) => void : never) extends (value: infer I) => void
+	? I
+	: never;
+type ConfigPlugins = ResolvedConfig extends { readonly plugins?: infer P } ? P : never;
+/** 다른 플러그인이 더한 기능(`contributes.ai.actions`). */
+type ContributedActions = UnionToIntersection<
+	ConfigPlugins extends readonly (infer P)[]
+		? P extends { readonly contributes?: { readonly ai?: { readonly actions?: infer A } } }
+			? unknown extends A
+				? never
+				: A
+			: never
+		: never
+>;
+/** 이름 → 정의(설정이 바꾸거나 끈 기본·더한 기능은 뺀다). */
+type Unconfigured<T> = { [K in keyof T as K extends keyof ConfigActions ? never : K]: Built<T[K]> };
+/** 타입을 아는 기능: 기본 기능 + 다른 플러그인이 더한 기능 + 설정에 적은 기능(끈 것은 뺀다). */
+type KnownActions = Unconfigured<typeof DEFAULT_AI_ACTIONS> &
+	Unconfigured<[ContributedActions] extends [never] ? Record<never, never> : ContributedActions> & {
+		[K in keyof ConfigActions as ConfigActions[K] extends false ? never : K]: Built<ConfigActions[K]>;
+	};
 
 /** 설정에 있는 기능 이름. */
-export type AiActionKey = keyof ConfigActions & string;
+export type AiActionKey = keyof KnownActions & string;
 /** 기능을 부를 때 줄 입력. */
-export type AiActionInputOf<K extends AiActionKey> = AiActionInput<ConfigActions[K]>;
+export type AiActionInputOf<K extends AiActionKey> = AiActionInput<KnownActions[K]>;
 /** 기능의 결과. */
-export type AiActionResultOf<K extends AiActionKey> = AiActionResult<ConfigActions[K]>;
+export type AiActionResultOf<K extends AiActionKey> = AiActionResult<KnownActions[K]>;
 
 /** 사이트 설정에 등록한 AI 플러그인의 설정. 등록하지 않았으면 `undefined`. */
 // 플러그인이 없는 설정은 빈 튜플 타입이라 넓혀 읽는다.
 const plugins: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
 const aiConfig = plugins.find((plugin) => plugin.name === AI_PLUGIN_NAME)?.options as AiConfig | undefined;
 
-export const AI_ACTIONS: Readonly<Record<string, AiActionDefinition>> = aiConfig?.actions ?? {};
+/** 실행할 기능(기본 기능 + 다른 플러그인이 더한 기능 + 설정의 기능, `resolveAiActions`). */
+export const AI_ACTIONS: Readonly<Record<string, AiActionDefinition>> = aiConfig
+	? resolveAiActions(
+			aiConfig,
+			{ collections: cmsConfig.collections, blocks: BLOCKS, locales: cmsConfig.locales },
+			plugins,
+		)
+	: {};
 
 /** 공통 문구 정의(기본값). 관리자 화면에서 고친 값은 서버가 얹는다. */
 export const AI_SHARED: Readonly<Record<string, AiSharedText>> = aiConfig?.shared ?? {};

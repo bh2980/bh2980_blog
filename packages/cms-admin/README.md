@@ -48,13 +48,28 @@ const components = { icons: { eye: Eye } };
 
 ## 속성 칸
 
-편집 화면 오른쪽 속성 칸은 컬렉션 정의대로 입력을 그린다. 필드 역할(`role`)에 맞춰 기본 입력이 바뀐다: `ogImage`는 미디어
-고르기, 선택지가 둘인 `noindex`는 켜고 끄기, `seoTitle`·`seoDescription`은 글자 수와 비었을 때 쓸 값(제목·요약)을 보인다.
-`input`으로 사이트 입력을 고르면 그 입력이 먼저다. 기본 입력 `auto-summary`는 여러 줄 요약 칸이다.
+편집 화면 오른쪽 속성 칸은 컬렉션 정의대로 입력을 그린다. 입력은 필드 종류로 정한다: 텍스트·선택·관계, 미디어 필드
+(`fields.media`)는 미디어 고르기(`accept: "file"`이면 파일 올리기)다. 필드 이름이나 역할로 입력을 바꾸지 않는다.
+`input`으로 등록한 입력을 고르면 그 입력이 먼저다. 기본 입력 `auto-summary`는 여러 줄 요약 칸이다.
 
-`layout` 묶음의 `tab`마다 속성 칸에 탭이 생긴다(없으면 `속성` 탭). 보기 필드(`fields.view({ view })`)는 그 자리에 등록한
-화면을 그린다. 본체는 `search`(검색 결과·공유 미리보기, 값은 역할 필드에서)를 주고, 다른 이름은 `CmsAdminComponentsProvider`의
-`fieldViews`(`{ 이름: ({ collection, form, entry }) => … }`)로 더하거나 바꾼다.
+`fieldInputs`에는 컴포넌트(입력 전체를 바꾼다) 또는 조각(`FieldInputParts`, 기본 입력을 두고 일부만 바꾼다)을 등록한다.
+조각은 지금 입력 중인 값(`form`)을 읽을 수 있다.
+
+```tsx
+const components = {
+	fieldInputs: {
+		// 비었을 때 쓸 값을 안내 문구로, 글자 수를 이름표 줄 오른쪽에
+		"meta-title": { placeholder: ({ form }) => form.title, Aside: ({ value }) => <span>{String(value ?? "").length}</span> },
+		// 입력 줄 없이 이름표 줄의 스위치만(`Input: null`)
+		"hide-switch": { Input: null, Aside: HideSwitch },
+	},
+};
+```
+
+필드나 `layout` 묶음의 `tab`마다 속성 칸에 탭이 생긴다(없으면 `속성` 탭, 묶음의 `tab`이 먼저). 보기 필드
+(`fields.view({ view })`)는 그 자리에 `CmsAdminComponentsProvider`의 `fieldViews`(`{ 이름: ({ collection, form, entry }) => … }`)로
+등록한 화면을 그린다. 등록한 화면이 없으면 아무것도 그리지 않는다. 미디어 ID로 미리보기를 그리는 화면은
+`@bh2980/cms-admin/media`의 `MediaThumbnail`·`useMediaUrl`을 쓴다(SEO 확장 `@bh2980/cms-seo`의 검색 미리보기가 예시다).
 날짜·시각은 사이트 설정의 `timeZone`으로 보인다.
 
 ## 블록 편집 화면

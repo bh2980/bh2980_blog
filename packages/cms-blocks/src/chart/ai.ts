@@ -1,15 +1,20 @@
-import { aiAction, aiInput, defineValidator } from "@bh2980/cms-ai";
+// AI 플러그인은 고를 수 있는 의존성이라 타입만 읽는다(블록 확장은 AI 플러그인 코드를 불러오지 않는다).
+import type { AiActionDefinition, AiContribution, AiValidator } from "@bh2980/cms-ai";
 import { normalizeChartDsl, parseChartDsl } from "./dsl";
 
 /**
- * 차트 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `aiPlugin({ actions })`에 이름을 붙여 넣는다.
+ * 차트 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `chart()` 플러그인이 `contributes.ai`로 더하므로 AI 플러그인을
+ * 쓰는 사이트에는 저절로 붙는다(`chartDraft`·`chartEdit`). 지시문을 바꾸려면 같은 이름으로 적고, 끄려면 `false`를 준다.
  *
  * ```ts
- * aiPlugin({ actions: { chartDraft: chartAi.draft(), chartEdit: chartAi.edit() } })
+ * aiPlugin({ actions: { chartDraft: chartAi.draft({ prompt: "…" }), chartEdit: false } })
  * ```
  */
 
 const lines = (...text: string[]) => text.join("\n");
+
+/** 코드 검사(`@bh2980/cms-ai`의 `defineValidator`와 같은 모양). */
+const codeCheck = (check: Omit<AiValidator, "kind">): AiValidator => ({ kind: "code", ...check });
 
 /** 차트 문법(`parseChartDsl`) 설명. 지시문에 넣는다. */
 export const CHART_SYNTAX_GUIDE = lines(
@@ -42,7 +47,7 @@ export function validateChart(value: string): string | undefined {
 }
 
 /** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
-export const chartSyntax = defineValidator({ name: "chart-syntax", label: "차트 문법", run: validateChart });
+export const chartSyntax = codeCheck({ name: "chart-syntax", label: "차트 문법", run: validateChart });
 
 /** 가짜 연결(개발 전용)의 답: 문법 검사를 통과하는 차트. 고칠 차트가 있으면 마지막 값 행을 한 번 더 넣는다. */
 function fakeChart(input: Readonly<Record<string, string>>): string {
@@ -68,9 +73,9 @@ function fakeChart(input: Readonly<Record<string, string>>): string {
 export const chartAi = {
 	/** 차트 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 차트 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
-		aiAction({
+		({
 			label: "차트 만들기",
-			input: { title: aiInput.text({ label: "제목" }), body: aiInput.mdx({ label: "지금 본문" }) },
+			input: { title: { kind: "text", label: "제목" }, body: { kind: "mdx", label: "지금 본문" } },
 			result: "mdx",
 			stream: true,
 			askInstruction: true,
@@ -86,13 +91,13 @@ export const chartAi = {
 			checks: [chartSyntax],
 			fake: fakeChart,
 			attach: [{ slot: "insert" }],
-		}),
+		}) as const satisfies AiActionDefinition,
 
 	/** 차트 고치기. 블록 손잡이 옆에서 요청대로 고치고, 바뀐 곳을 보인 뒤 블록을 바꾼다. */
 	edit: (options: { readonly prompt?: string } = {}) =>
-		aiAction({
+		({
 			label: "차트 고치기",
-			input: { block: aiInput.mdx({ label: "차트", required: true }), title: aiInput.text({ label: "제목" }) },
+			input: { block: { kind: "mdx", label: "차트", required: true }, title: { kind: "text", label: "제목" } },
 			result: "mdx",
 			stream: true,
 			askInstruction: true,
@@ -109,5 +114,10 @@ export const chartAi = {
 			checks: [chartSyntax],
 			fake: fakeChart,
 			attach: [{ slot: "block", block: "chart" }],
-		}),
+		}) as const satisfies AiActionDefinition,
 };
+
+/** `chart()`이 AI 플러그인에 더하는 것. 기능 이름은 관리자 AI 화면에서 고친 값의 키다. */
+export const chartAiContribution = {
+	actions: { chartDraft: chartAi.draft(), chartEdit: chartAi.edit() },
+} satisfies AiContribution;

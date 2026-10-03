@@ -1,6 +1,7 @@
 import type { RelationField } from "@bh2980/cms/client";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EMPTY_FORM } from "../entry-form";
 import { EntryPicker, type FieldInputProps, OrderedEntryList } from "../field-inputs";
 
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body });
@@ -30,6 +31,8 @@ afterEach(() => {
 });
 
 const props = (field: RelationField, value: FieldInputProps["value"], onChange = vi.fn()): FieldInputProps => ({
+	collection: "post",
+	form: EMPTY_FORM,
 	name: "rel",
 	field,
 	id: "rel",

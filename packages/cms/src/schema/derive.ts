@@ -5,13 +5,15 @@ import type { CollectionSchema } from "./collection";
 import {
 	type Field,
 	type FieldRole,
-	type SelectField,
 	type SlugField,
 	type StorageType,
 	storageTypeOf,
 	type TextField,
 	type ValueField,
 } from "./fields";
+import { type StoredField, valueFieldsOf } from "./walk";
+
+export type { StoredField } from "./walk";
 
 /**
  * 컬렉션 정의에서 저장·검증·참조 규칙을 만든다(v2 B1). 순수 함수이며 DB·HTTP·React를 모른다.
@@ -26,36 +28,14 @@ export type RelationTarget = SchemaCollection;
 
 export const schemaOf = (collection: SchemaCollection): CollectionSchema => SCHEMAS[collection];
 
-/** 메타데이터에 값 하나로 저장되는 필드. 조건부 필드의 선택 값과 딸린 필드도 각각 하나로 펼친다. */
-export interface StoredField {
-	readonly name: string;
-	readonly field: ValueField;
-	/** 조건부 필드에 딸린 필드면 그 조건. 조건이 맞을 때만 값을 남긴다. */
-	readonly when?: { readonly field: string; readonly value: string };
-}
-
 const storedCache = new Map<SchemaCollection, readonly StoredField[]>();
 
 /** 저장 필드 목록. 선언 순서를 따르고 조건부 필드에 딸린 필드는 그 필드 바로 뒤에 온다. */
 export function storedFields(collection: SchemaCollection): readonly StoredField[] {
 	const cached = storedCache.get(collection);
 	if (cached) return cached;
-	const result: StoredField[] = [];
-	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
-		// 주소는 콘텐츠 열에, 반대 방향 관계는 상대 레코드에 저장한다. 보기 필드는 저장하지 않는다.
-		if (field.kind === "slug" || field.kind === "backlink" || field.kind === "view") continue;
-		if (field.kind === "conditional") {
-			result.push({ name, field: field.discriminant });
-			for (const [value, group] of Object.entries(field.values)) {
-				for (const [nestedName, nested] of Object.entries(group ?? {})) {
-					result.push({ name: nestedName, field: nested, when: { field: name, value } });
-				}
-			}
-			continue;
-		}
-		result.push({ name, field });
-	}
-	storedCache.set(collection, Object.freeze(result));
+	const result = Object.freeze(valueFieldsOf(schemaOf(collection)));
+	storedCache.set(collection, result);
 	return result;
 }
 
@@ -67,21 +47,12 @@ export function slugFieldOf(collection: SchemaCollection): SlugField | undefined
 	return Object.values(schemaOf(collection).fields).find((field): field is SlugField => field.kind === "slug");
 }
 
-/** 역할별 필드 정의의 종류. `noindex`만 선택 필드이고 나머지는 텍스트 필드다. */
-export type RoleFieldOf<R extends FieldRole> = R extends "noindex" ? SelectField : TextField;
-
 /**
- * 그 역할(`role`)을 가진 저장 필드. 없으면 `undefined`. 라이브러리 코드는 요약·검색·공유 값을 필드 이름이 아니라
+ * 그 역할(`role`)을 가진 저장 필드. 없으면 `undefined`. 라이브러리와 확장 코드는 요약 같은 값을 필드 이름이 아니라
  * 이 함수로 찾는다.
  */
-export function roleField<R extends FieldRole>(
-	collection: SchemaCollection,
-	role: R,
-): (StoredField & { readonly field: RoleFieldOf<R> }) | undefined {
-	return storedFields(collection).find(
-		(stored): stored is StoredField & { readonly field: RoleFieldOf<R> } =>
-			"role" in stored.field && stored.field.role === role,
-	);
+export function roleField(collection: SchemaCollection, role: FieldRole): StoredField | undefined {
+	return storedFields(collection).find((stored) => stored.field.role === role);
 }
 
 /** 그 역할 필드의 값(문자열). 필드가 없거나 값이 문자열이 아니면 `""`. */
@@ -139,20 +110,27 @@ export function fieldValueError(field: ValueField, value: string | readonly stri
 			return values.every((item) => Object.hasOwn(field.options, item)) ? null : "invalid_metadata_value";
 		case "relation":
 			return values.every((item) => isUuid(item)) ? null : "invalid_metadata_value";
+		case "media":
+			// 비운 값(`""`)은 고르지 않은 것이다.
+			return values.every((item) => item === "" || isUuid(item)) ? null : "invalid_metadata_value";
 	}
 }
 
 export type MetadataReference = {
-	/** 관계 필드는 모두 콘텐츠를 가리킨다. 대상 컬렉션은 필드 정의(`relationRule`)가 정한다. */
-	kind: "entry";
+	/**
+	 * 관계 필드는 콘텐츠(`entry`)를, 미디어 필드는 미디어(`media`)를 가리킨다. 콘텐츠의 대상 컬렉션은 필드 정의
+	 * (`relationRule`)가 정한다.
+	 */
+	kind: "entry" | "media";
 	targetId: string;
 	path: string;
 	ordinal?: number;
 };
 
 /**
- * 메타데이터 관계 필드의 참조를 선언 순서대로 모은다. 여러 개인 필드는 순서와 중복을 보존한다.
- * 조건이 맞지 않는 딸린 필드도 값이 있으면 모은다(저장된 값은 모두 추적한다).
+ * 메타데이터 관계·미디어 필드의 참조를 선언 순서대로 모은다. 여러 개인 필드는 순서와 중복을 보존한다.
+ * 조건이 맞지 않는 딸린 필드도 값이 있으면 모은다(저장된 값은 모두 추적한다). 미디어 참조는 미디어 사용처·
+ * "사용하지 않음" 거르기·쓰고 있는 파일 삭제 막기에 쓰인다.
  */
 export function metadataReferences(
 	collection: SchemaCollection,
@@ -160,9 +138,10 @@ export function metadataReferences(
 ): MetadataReference[] {
 	const references: MetadataReference[] = [];
 	for (const { name, field } of storedFields(collection)) {
-		if (field.kind !== "relation") continue;
-		const kind = "entry";
+		if (field.kind !== "relation" && field.kind !== "media") continue;
+		const kind = field.kind === "media" ? "media" : "entry";
 		const value = metadata[name];
+		if (value === "") continue;
 		if (typeof value === "string") references.push({ kind, targetId: value, path: name });
 		else if (Array.isArray(value)) {
 			value.forEach((id, ordinal) => {

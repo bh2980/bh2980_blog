@@ -26,7 +26,7 @@ import { IconButton } from "../../ui/icon-button";
 import { Textarea } from "../../ui/textarea";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
-import type { FormValue } from "./entry-form";
+import type { EntryForm, FormValue } from "./entry-form";
 import { useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
 
@@ -48,6 +48,8 @@ export interface FieldContext {
 }
 
 export interface FieldInputProps {
+	/** 편집 중인 콘텐츠의 컬렉션. */
+	collection: string;
 	name: string;
 	field: ValueField;
 	id: string;
@@ -55,6 +57,8 @@ export interface FieldInputProps {
 	invalid: boolean;
 	describedBy?: string;
 	context: FieldContext;
+	/** 지금 입력 중인 값 전체(제목·요약 등 다른 필드 값을 안내 문구에 쓸 때). 번역본의 공통 필드는 원문 값이다. */
+	form: EntryForm;
 	onChange: (value: FormValue) => void;
 }
 

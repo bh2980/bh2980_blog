@@ -2,7 +2,8 @@ import { ENTRY_STATUSES, LIST_SORT_FIELDS, PAGE_SIZES } from "../../../core/api"
 import { COLLECTIONS, type Collection, isRecordCollection } from "../../../core/collections";
 import { isUuid } from "../../../core/ids";
 import { DEFAULT_LOCALE, isLocale, LOCALES } from "../../../core/locales";
-import { type StoredField, storedFields } from "../../../schema/derive";
+import { storedFields } from "../../../schema/derive";
+import type { StoredField } from "../../../schema/walk";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
 import { likeContainsPattern } from "./sql";

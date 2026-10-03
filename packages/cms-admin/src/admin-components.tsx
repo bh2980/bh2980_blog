@@ -85,10 +85,11 @@ export interface CmsAdminComponents {
 		Record<string, () => Promise<ComponentType<{ readonly source: string; readonly className?: string }>>>
 	>;
 	/**
-	 * 필드 입력. 컬렉션 정의의 필드 `input`이 이 이름을 가리키면 기본 입력 대신 그린다
-	 * (예: `fields.text({ input: "color" })` + `fieldInputs: { color: ColorInput }`).
+	 * 필드 입력. 컬렉션 정의의 필드 `input`이 이 이름을 가리키면 그린다. 컴포넌트면 기본 입력 대신 그리고
+	 * (예: `fields.text({ input: "color" })` + `fieldInputs: { color: ColorInput }`), 조각(`FieldInputParts`)이면 기본 입력을 두고
+	 * 안내 문구·이름표 줄 오른쪽만 바꾼다.
 	 */
-	readonly fieldInputs?: Readonly<Record<string, ComponentType<FieldInputProps>>>;
+	readonly fieldInputs?: Readonly<Record<string, FieldInputEntry>>;
 	/**
 	 * 더한 블록(블록 확장·사이트 설정의 `blocks`, `editor.view: "node"`)의 속성·본문 편집 컴포넌트. 키는 블록 이름이다.
 	 * 기본 틀 안에 그린다. 없으면 블록 이름과 속성 입력, 본문을 담은 기본 상자로 편집한다.
@@ -107,11 +108,30 @@ export interface CmsAdminComponents {
 	 */
 	readonly icons?: Readonly<Record<string, LucideIcon>>;
 	/**
-	 * 보기 필드(`fields.view({ view })`)가 그릴 화면(이름 → 컴포넌트). 본체는 `search`(검색 결과·공유 미리보기)를 준다.
+	 * 보기 필드(`fields.view({ view })`)가 그릴 화면(이름 → 컴포넌트). 확장이 등록한다.
 	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
 	 */
 	readonly fieldViews?: Readonly<Record<string, ComponentType<FieldViewProps>>>;
 }
+
+/**
+ * 기본 입력을 두고 일부만 바꾸는 필드 입력 조각. 모두 지금 입력 중인 값(`FieldInputProps.form`)을 읽을 수 있다.
+ */
+export interface FieldInputParts {
+	/** 입력. 없으면 필드 종류의 기본 입력, `null`이면 입력 줄 없이 이름표 줄만 그린다(켜고 끄기를 `Aside`에 둘 때). */
+	readonly Input?: ComponentType<FieldInputProps> | null;
+	/** 이름표 줄 오른쪽(글자 수·스위치 등). 필드 옆 동작 버튼보다 앞에 온다. */
+	readonly Aside?: ComponentType<FieldInputProps>;
+	/** 기본 입력의 안내 문구. `undefined`를 돌려주면 필드의 `placeholder`다. */
+	readonly placeholder?: (props: FieldInputProps) => string | undefined;
+}
+
+/** 필드 입력 등록 하나: 입력 전체(컴포넌트) 또는 조각. */
+export type FieldInputEntry = ComponentType<FieldInputProps> | FieldInputParts;
+
+/** 등록 값이 입력 조각인가(컴포넌트가 아닌 보통 객체). */
+export const isFieldInputParts = (entry: FieldInputEntry): entry is FieldInputParts =>
+	typeof entry === "object" && entry !== null && !("$$typeof" in entry);
 
 /** 보기 필드 화면이 받는 값. */
 export interface FieldViewProps {

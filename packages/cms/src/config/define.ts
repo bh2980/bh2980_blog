@@ -4,7 +4,8 @@ import { resolveBlocks } from "../blocks/resolve";
 import { type PaletteColor, validateTextPalette } from "../core/text-colors";
 import type { CmsPlugin } from "../plugin/define";
 import type { CollectionSchema } from "../schema/collection";
-import { FIELD_ROLES, type Field, TEXT_FIELD_ROLES, type ValueField } from "../schema/fields";
+import { SUMMARY_ROLE } from "../schema/fields";
+import { valueFieldsOf } from "../schema/walk";
 
 /**
  * 사이트 설정(`cms.config.ts`) 규격. 블로그마다 컬렉션·언어를 여기에 적고 `defineConfig`로 감싸 기본 내보내기로 둔다.
@@ -88,40 +89,23 @@ export interface CmsConfig<
 	readonly textColors?: readonly PaletteColor[];
 }
 
-/** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
-function* valueFields(fields: Readonly<Record<string, Field>>): Generator<[string, ValueField]> {
-	for (const [name, field] of Object.entries(fields)) {
-		if (field.kind === "slug" || field.kind === "backlink" || field.kind === "view") continue;
-		if (field.kind === "conditional") {
-			yield [name, field.discriminant];
-			for (const group of Object.values(field.values)) yield* Object.entries(group ?? {});
-			continue;
-		}
-		yield [name, field];
-	}
-}
+const ROLE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/;
+const checkTab = (at: string, tab: string | undefined) => {
+	if (tab !== undefined && (!tab.trim() || tab.length > 20)) throw new Error(`${at}.tab must be 1-20 characters`);
+};
 
-const isTextRole = (role: string): boolean => (TEXT_FIELD_ROLES as readonly string[]).includes(role);
-
-/** 필드 역할(`role`)·본문에서 채우기(`fillFromBody`)·주소 원본(`from`)이 필드 종류와 맞는지 확인한다. */
+/**
+ * 필드 역할(`role`)·탭(`tab`)·본문에서 채우기(`fillFromBody`)·주소 원본(`from`)이 맞는지 확인한다. 역할은 컬렉션마다 하나씩이고,
+ * 본체가 아는 역할(`summary`)만 종류를 본다. 다른 역할의 종류는 그 역할을 쓰는 플러그인이 `validate`에서 본다.
+ */
 function validateFieldMeanings(collection: string, schema: CollectionSchema): void {
 	const roles = new Map<string, string>();
-	for (const [name, field] of valueFields(schema.fields)) {
-		const role = "role" in field ? field.role : undefined;
+	for (const { name, field } of valueFieldsOf(schema)) {
+		const role = field.role;
 		if (role !== undefined) {
-			if (!(FIELD_ROLES as readonly string[]).includes(role)) {
-				throw new Error(`cms.config: ${collection}.${name} has unknown role "${role}"`);
-			}
-			const fits =
-				role === "noindex"
-					? field.kind === "select" && Object.hasOwn(field.options, "noindex")
-					: field.kind === "text" && isTextRole(role);
-			if (!fits) {
-				throw new Error(
-					role === "noindex"
-						? `cms.config: ${collection}.${name} role "noindex" needs a select field with a "noindex" option`
-						: `cms.config: ${collection}.${name} role "${role}" needs a text field`,
-				);
+			if (!ROLE_NAME.test(role)) throw new Error(`cms.config: ${collection}.${name} has an invalid role "${role}"`);
+			if (role === SUMMARY_ROLE && field.kind !== "text") {
+				throw new Error(`cms.config: ${collection}.${name} role "${role}" needs a text field`);
 			}
 			const other = roles.get(role);
 			if (other) throw new Error(`cms.config: ${collection} has role "${role}" on both ${other} and ${name}`);
@@ -130,14 +114,15 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 		if (field.kind === "text" && field.fillFromBody && !schema.body) {
 			throw new Error(`cms.config: ${collection}.${name} fillFromBody needs a collection with a body`);
 		}
-	}
-	for (const [index, group] of (schema.layout ?? []).entries()) {
-		const at = `cms.config: ${collection}.layout[${index}]`;
-		if (group.tab !== undefined && (!group.tab.trim() || group.tab.length > 20)) {
-			throw new Error(`${at}.tab must be 1-20 characters`);
+		if (field.kind === "media" && field.accept !== undefined && field.accept !== "image" && field.accept !== "file") {
+			throw new Error(`cms.config: ${collection}.${name} accept must be "image" or "file"`);
 		}
 	}
+	for (const [index, group] of (schema.layout ?? []).entries()) {
+		checkTab(`cms.config: ${collection}.layout[${index}]`, group.tab);
+	}
 	for (const [name, field] of Object.entries(schema.fields)) {
+		checkTab(`cms.config: ${collection}.${name}`, field.tab);
 		if (field.kind === "view" && !/^[a-z][a-z0-9-]*$/.test(field.view)) {
 			throw new Error(`cms.config: ${collection}.${name} view must be a kebab-case name`);
 		}
@@ -217,7 +202,7 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			if (other) throw new Error(`cms.config: ${collection}.path is the same as ${other}.path`);
 			paths.set(path, collection);
 		}
-		for (const [name, field] of valueFields(schema.fields)) {
+		for (const { name, field } of valueFieldsOf(schema)) {
 			if (field.kind === "relation" && !Object.hasOwn(config.collections, field.to)) {
 				throw new Error(`cms.config: ${collection}.${name} relates to unknown collection "${field.to}"`);
 			}
@@ -226,7 +211,7 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			if (field.kind !== "backlink") continue;
 			const source = config.collections[field.from];
 			if (!source) throw new Error(`cms.config: ${collection}.${name} links from unknown collection "${field.from}"`);
-			const via = [...valueFields(source.fields)].find(([fieldName]) => fieldName === field.via)?.[1];
+			const via = valueFieldsOf(source).find((stored) => stored.name === field.via)?.field;
 			if (via?.kind !== "relation" || !via.many || via.to !== collection) {
 				throw new Error(
 					`cms.config: ${collection}.${name} needs ${field.from}.${field.via} to be a many relation to "${collection}"`,
@@ -235,14 +220,24 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 		}
 	}
 
-	const blocks = resolveBlocks(config).map((block) => block.name);
+	const blockDefinitions = resolveBlocks(config);
+	const blocks = blockDefinitions.map((block) => block.name);
 	validateCodeBlockConfig(config.codeBlock);
 	validateTextPalette(config.textColors);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);
 	if (new Set(pluginNames).size !== pluginNames.length) throw new Error("cms.config: `plugins` has duplicate names");
-	for (const plugin of plugins) plugin.validate?.({ collections: config.collections, locales: config.locales, blocks });
+	for (const plugin of plugins) {
+		plugin.validate?.({
+			collections: config.collections,
+			locales: config.locales,
+			defaultLocale: config.defaultLocale,
+			blocks,
+			blockDefinitions,
+			plugins,
+		});
+	}
 }
 
 /** 사이트 설정을 정의한다. 컬렉션·언어 이름을 타입으로 보존하고, 서로 맞지 않는 설정은 바로 알린다. */

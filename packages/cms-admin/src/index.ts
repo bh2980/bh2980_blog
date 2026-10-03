@@ -10,8 +10,10 @@ export {
 	type EditorExtensionResult,
 	type EditorInsertAction,
 	type EditorSelectionAction,
+	type FieldInputEntry,
+	type FieldInputParts,
 	type FieldViewProps,
 	useCmsAdminComponents,
 } from "./admin-components";
 export type { CustomBlockEditorProps } from "./editor/blocks/added/view";
-export type { FieldInputProps } from "./screens/entries/field-inputs";
+export type { FieldContext, FieldInputProps } from "./screens/entries/field-inputs";

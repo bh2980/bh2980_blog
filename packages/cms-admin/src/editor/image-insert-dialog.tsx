@@ -45,7 +45,7 @@ interface ImageInsertDialogProps {
 	initialFile: File | null;
 	onClose: () => void;
 	onInsert: (image: ImageInsertion) => void;
-	/** `pick`은 본문에 넣지 않고 이미지 하나만 고른다(공유 이미지). 대체 텍스트·캡션을 묻지 않는다. */
+	/** `pick`은 본문에 넣지 않고 이미지 하나만 고른다(미디어 필드). 대체 텍스트·캡션을 묻지 않는다. */
 	mode?: "insert" | "pick";
 	title?: string;
 }

@@ -173,8 +173,9 @@ export function createMediaOps(ctx: StoreContext) {
 		 * 삭제 1단계(§7.3): 사용 중이 아닌지 확인하고 `deleting`으로 바꾼다. 파일 삭제가 끝나면
 		 * {@link finalizeMediaDelete}로 행을 지운다. 저장소 삭제가 실패해도 `deleting` 행이 남아 다시 시도할 수 있다.
 		 *
-		 * 참조 인덱스 외에 본문 원문과 템플릿도 본다 — 해석하지 못한 초안이나 템플릿이 이 미디어를 쓰면
-		 * 사용 여부를 확정할 수 없으므로 삭제를 보류한다.
+		 * 참조 인덱스 외에 본문 원문·메타데이터와 템플릿도 본다 — 해석하지 못한 초안이나 템플릿이 이 미디어를 쓰면
+		 * 사용 여부를 확정할 수 없으므로 삭제를 보류한다. 메타데이터는 미디어 필드(`fields.media`)를 두기 전에 저장해
+		 * 참조 인덱스에 아직 없는 값(텍스트 필드에 두던 미디어 ID)도 지우지 않게 한다.
 		 */
 		beginMediaDelete: async (id: string): Promise<MediaAssetRecord> =>
 			withTransaction(pool, async (client) => {
@@ -191,7 +192,8 @@ export function createMediaOps(ctx: StoreContext) {
 				);
 				const mentions = await client.query<{ count: string; templates: string }>(
 					`SELECT
-					   (SELECT COUNT(*) FROM "${qSchema}".entry_bodies WHERE position($1 in mdx) > 0)::text AS count,
+					   (SELECT COUNT(*) FROM "${qSchema}".entry_bodies
+					     WHERE position($1 in mdx) > 0 OR position($1 in metadata::text) > 0)::text AS count,
 					   (SELECT COUNT(*) FROM "${qSchema}".body_templates WHERE position($1 in mdx) > 0)::text AS templates`,
 					[id],
 				);

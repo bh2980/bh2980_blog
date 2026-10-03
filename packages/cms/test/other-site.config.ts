@@ -1,11 +1,12 @@
 import { chartBlock } from "../../cms-blocks/src/definitions";
+import { seoFields } from "../../cms-seo/src/fields";
 import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 /**
  * 재발 방지용 다른 사이트 설정(M10-1). bh2980 블로그(`cms.config.ts`)와 일부러 다르게 만든다.
  * - 컬렉션: article·topic·author(블로그의 post·memo·category·tag·collection이 없다)
  * - 필드: 라이브러리 약속인 `title`과 주소 필드 `slug`만 같고 나머지 이름(`excerpt`·`topicIds`·`authorId`·`heroImage`·
- *   `metaTitle`…)과 이름표는 모두 다르다. 제목 글자 수 한도도 블로그(200)와 다르다(120).
+ *   `metaTitle`…)과 이름표는 모두 다르다. 제목 글자 수 한도도 블로그(200)와 다르다(120). SEO 필드도 다른 이름·탭이다.
  * - 언어: 영어 하나. 블록: 블록 확장의 차트만 + 사이트 블록(인용 카드·코드 펜스 지도).
  *
  * 본체·관리자·AI 테스트 일부가 이 설정으로도 돈다(각 패키지의 `vitest.othersite.config.ts`). 타입 검사도 한다
@@ -30,22 +31,30 @@ const article = defineCollection({
 			options: { news: "News", guide: "Guide", review: "Review" },
 			defaultValue: "news",
 		}),
-		metaTitle: fields.text({ label: "Search title", role: "seoTitle", max: 70 }),
-		searchPreview: fields.view({ view: "search" }),
-		metaDescription: fields.text({ label: "Search description", role: "seoDescription", multiline: true }),
-		shareImage: fields.text({ label: "Share image", role: "ogImage" }),
-		hideFromSearch: fields.select({
-			label: "Hide from search",
-			role: "noindex",
-			options: { index: "No", noindex: "Yes" },
-			defaultValue: "index",
+		// SEO 확장의 필드 묶음. 블로그와 다른 이름·이름표·탭(`Search`)이고 원본 주소는 뺀다. 묶음의 필드는 제 `tab`으로 그 탭에 모인다.
+		...seoFields({
+			keys: {
+				preview: "searchPreview",
+				title: "metaTitle",
+				description: "metaDescription",
+				image: "shareImage",
+				noindex: "hideFromSearch",
+			},
+			labels: {
+				title: "Search title",
+				description: "Search description",
+				image: "Share image",
+				noindex: "Hide from search",
+			},
+			omit: ["canonical"],
+			tab: "Search",
+			localized: false,
+			limits: { title: 70 },
 		}),
 	},
 	layout: [
 		{ fields: ["title", "slug", "excerpt", "authorId", "topicIds"] },
 		{ group: "Presentation", fields: ["heroImage", "format"] },
-		// 같은 `tab`의 묶음은 편집 화면의 한 탭에 모인다. 보기 필드 `searchPreview`는 검색 결과·공유 미리보기를 그린다.
-		{ tab: "Search", fields: ["searchPreview", "metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
 	],
 	list: { columns: ["title", "status", "authorId", "topicIds", "updatedAt"] },
 });

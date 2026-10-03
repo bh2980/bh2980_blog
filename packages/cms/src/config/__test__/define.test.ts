@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineCollection, defineConfig, fields } from "../..";
+import { defineCollection, defineConfig, definePlugin, fields } from "../..";
 
 const title = fields.text({ label: "Title" });
 const slug = fields.slug({ label: "Slug", from: "title" });
@@ -164,20 +164,57 @@ describe("defineConfig", () => {
 			/role "summary" on both excerpt and intro/,
 		);
 
-		const noOption = article({
+		// 본체는 요약 역할(`summary`)의 종류만 본다. 다른 역할(예: SEO 확장의 `noindex`)의 종류는 그 확장이 본다.
+		const wrongSummary = article({
+			excerpt: { ...fields.relation({ label: "E", to: "article" }), role: "summary" } as never,
+		});
+		expect(() => defineConfig({ collections: { article: wrongSummary }, locales, defaultLocale: "en" })).toThrow(
+			/role "summary" needs a text field/,
+		);
+		const anyKind = article({
+			hero: fields.media({ label: "Hero", role: "heroImage" }),
 			robots: fields.select({ label: "Robots", role: "noindex", options: { index: "Index" }, defaultValue: "index" }),
 		});
-		expect(() => defineConfig({ collections: { noOption }, locales, defaultLocale: "en" })).toThrow(/"noindex" option/);
+		expect(() => defineConfig({ collections: { anyKind }, locales, defaultLocale: "en" })).not.toThrow();
+		const badName = article({ teaser: fields.text({ label: "Teaser", role: "not a name" }) });
+		expect(() => defineConfig({ collections: { badName }, locales, defaultLocale: "en" })).toThrow(/invalid role/);
+	});
 
-		// 타입을 거치지 않은 설정(JS)도 알린다.
-		const wrongKind = article({
-			image: { ...fields.relation({ label: "Image", to: "article" }), role: "ogImage" } as never,
-		});
-		expect(() => defineConfig({ collections: { article: wrongKind }, locales, defaultLocale: "en" })).toThrow(
-			/role "ogImage" needs a text field/,
+	it("checks field tabs and media fields", () => {
+		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
+			defineCollection({ label: "Article", workflow: "publish", fields: { title, ...extra }, list: { columns: [] } });
+		const ok = article({ hero: fields.media({ label: "Hero", accept: "file", tab: "Media" }) });
+		expect(() => defineConfig({ collections: { ok }, locales, defaultLocale: "en" })).not.toThrow();
+		const longTab = article({ hero: fields.media({ label: "Hero", tab: "x".repeat(21) }) });
+		expect(() => defineConfig({ collections: { longTab }, locales, defaultLocale: "en" })).toThrow(
+			/hero.tab must be 1-20 characters/,
 		);
-		const unknown = article({ teaser: { ...fields.text({ label: "Teaser" }), role: "teaser" } as never });
-		expect(() => defineConfig({ collections: { unknown }, locales, defaultLocale: "en" })).toThrow(/unknown role/);
+		const badAccept = article({ hero: { ...fields.media({ label: "Hero" }), accept: "video" } as never });
+		expect(() => defineConfig({ collections: { badAccept }, locales, defaultLocale: "en" })).toThrow(/accept/);
+	});
+
+	it("passes the whole config and other plugins to plugin checks", () => {
+		const seen: unknown[] = [];
+		const other = definePlugin({ name: "other", options: {}, contributes: { ai: { actions: {} } } });
+		const watcher = definePlugin({
+			name: "watcher",
+			options: {},
+			validate: (view) => {
+				seen.push(
+					view.defaultLocale,
+					view.plugins.map((plugin) => plugin.name),
+					view.blockDefinitions.length > 0,
+				);
+			},
+		});
+		const article = defineCollection({
+			label: "Article",
+			workflow: "publish",
+			fields: { title },
+			list: { columns: [] },
+		});
+		defineConfig({ collections: { article }, locales, defaultLocale: "en", plugins: [other, watcher] });
+		expect(seen).toEqual(["en", ["other", "watcher"], true]);
 	});
 
 	it("allows fillFromBody only in collections with a body", () => {

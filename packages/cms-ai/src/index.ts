@@ -5,12 +5,16 @@
 
 export {
 	type AiActionDefinition,
+	type AiActionFactory,
+	type AiActionSource,
 	type AiAttach,
 	type AiChoices,
 	type AiConfig,
 	type AiContentLookup,
+	type AiContribution,
 	type AiInputSpec,
 	type AiSharedText,
+	type AiSiteView,
 	type AiValidator,
 	type AiValidatorContext,
 	type AiValidatorResult,
@@ -19,5 +23,15 @@ export {
 	defineValidator,
 } from "./action";
 export { aiPlugin } from "./plugin";
-export { aiPresets, KEBAB_PATTERN } from "./presets";
+export {
+	type AiFieldTarget,
+	aiPresets,
+	DEFAULT_AI_ACTIONS,
+	fieldAttachOf,
+	fieldTargets,
+	KEBAB_PATTERN,
+	smallestMax,
+	translatableAttributes,
+} from "./presets";
+export { resolveAiActions, resolveAiConfig } from "./resolve";
 export { type RegexRunsRule, regexRuns, sameStructure, uniqueSlug } from "./validators";
