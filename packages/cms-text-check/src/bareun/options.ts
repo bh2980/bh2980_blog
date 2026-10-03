@@ -14,7 +14,7 @@ export interface BareunOptions {
 	readonly apiKeyEnv?: string;
 	/** 바른 API 주소. 기본 `https://api.bareun.ai`. 직접 띄운 바른 서버를 쓸 때 바꾼다. */
 	readonly baseUrl?: string;
-	/** 화면에 보이는 이름. 기본 "바른". */
+	/** 도구 모음 버튼 이름이자 결과 창의 출처. 기본 "바른 맞춤법 검사". */
 	readonly label?: string;
 	/** 입력을 멈추면 바뀐 문단만 저절로 검사한다. 바른 API는 쓴 만큼 요금이 들어 기본은 끈다. */
 	readonly auto?: boolean;
@@ -49,7 +49,7 @@ export function resolveBareunOptions(options: BareunOptions = {}): ResolvedBareu
 	return {
 		apiKeyEnv,
 		baseUrl,
-		label: options.label?.trim() || "바른",
+		label: options.label?.trim() || "바른 맞춤법 검사",
 		auto: options.auto ?? false,
 		customDictNames: [...(options.customDictNames ?? [])],
 		limits,

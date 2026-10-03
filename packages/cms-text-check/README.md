@@ -35,7 +35,7 @@ BAREUN_API_KEY=…
 bareun({
 	apiKeyEnv: "BAREUN_API_KEY", // 키를 담은 환경 변수 이름
 	baseUrl: "https://api.bareun.ai", // 직접 띄운 바른 서버면 바꾼다
-	label: "바른", // 결과 창에 보이는 이름
+	label: "바른 맞춤법 검사", // 도구 모음 버튼 이름
 	auto: false, // true면 입력을 멈출 때 바뀐 문단만 저절로 검사
 	customDictNames: ["blog"], // 바른에 올려 둔 사용자 사전
 	limits: { maxSegments: 100, maxChars: 10_000 }, // 한 번에 보낼 양(넘으면 나눠 보낸다)

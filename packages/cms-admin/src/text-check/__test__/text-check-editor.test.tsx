@@ -1,10 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
+import type { PluginKey } from "@tiptap/pm/state";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { CmsAdminComponentsProvider } from "../../admin-components";
+import { CmsAdminComponentsProvider, useEditorExtensions } from "../../admin-components";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { pressOption } from "../../test/base-ui";
-import { textCheckIssues, textCheckPluginKey } from "../plugin";
+import { textCheckExtension } from "../extension";
+import { type TextCheckPluginState, textCheckIssues } from "../plugin";
 import { defineTextChecker, type TextChecker, type TextCheckSegment } from "../types";
 import { AUTO_CHECK_DELAY } from "../use-text-check";
 
@@ -53,16 +55,50 @@ const fakeChecker = (options: Partial<Pick<TextChecker, "auto" | "locales">> = {
 		),
 	});
 
+/** 편집 화면처럼 관리자 확장(`editorExtensions`)의 버튼·창을 편집기 곁에 그린다. */
+function Harness({
+	content,
+	locale,
+	onChange,
+	onReady,
+}: {
+	content: string;
+	locale: string;
+	onChange: (mdx: string) => void;
+	onReady: (editor: Editor | null) => void;
+}) {
+	const extensions = useEditorExtensions({
+		translateLocales: null,
+		getEntry: () => ({ title: "", collection: "post", locale }),
+	});
+	return (
+		<>
+			<div role="toolbar" aria-label="확장 도구">
+				{extensions.toolbar}
+			</div>
+			<CmsEditor
+				content={content}
+				onChange={onChange}
+				onEditor={(ready) => {
+					extensions.onEditor(ready);
+					onReady(ready);
+				}}
+			/>
+			{extensions.overlay}
+		</>
+	);
+}
+
 const renderEditor = async (content: string, checkers: readonly TextChecker[], locale = "ko") => {
 	let editor: Editor | null = null;
 	const onChange = vi.fn();
 	render(
-		<CmsAdminComponentsProvider components={{ textCheckers: checkers }}>
-			<CmsEditor
+		<CmsAdminComponentsProvider components={{ editorExtensions: [textCheckExtension({ checkers })] }}>
+			<Harness
 				content={content}
 				locale={locale}
 				onChange={onChange}
-				onEditor={(ready) => {
+				onReady={(ready) => {
 					editor = ready;
 				}}
 			/>
@@ -73,14 +109,25 @@ const renderEditor = async (content: string, checkers: readonly TextChecker[], l
 	return { editor: editor as unknown as Editor, onChange };
 };
 
-const checkButton = () =>
-	within(screen.getByRole("toolbar", { name: "서식 도구" })).queryByRole("button", { name: "맞춤법 검사" });
+/** 검사 확장이 편집기에 단 밑줄 플러그인의 이름표(확장마다 따로다). */
+const pluginKeyOf = (editor: Editor) =>
+	editor.state.plugins.find((plugin) => (plugin as unknown as { key: string }).key.startsWith("cmsTextCheck"))?.spec
+		.key as PluginKey<TextCheckPluginState> | undefined;
+
+const issuesOf = (editor: Editor) => {
+	const key = pluginKeyOf(editor);
+	return key ? textCheckIssues(editor.state, key) : [];
+};
+
+/** 검사기 버튼. 이름은 검사기 `label`이다. */
+const checkButton = (name = "가짜 검사") =>
+	within(screen.getByRole("toolbar", { name: "확장 도구" })).queryByRole("button", { name });
 
 /** 밑줄을 누른 것처럼 결과 창을 연다(jsdom은 좌표로 위치를 찾지 못한다). */
 const clickIssue = (editor: Editor) => {
-	const [issue] = textCheckIssues(editor.state);
+	const [issue] = issuesOf(editor);
 	if (!issue) throw new Error("no issue");
-	const plugin = textCheckPluginKey.get(editor.state);
+	const plugin = pluginKeyOf(editor)?.get(editor.state);
 	const target = editor.view.dom.querySelector(`[data-text-issue="${issue.key}"]`);
 	act(() => {
 		plugin?.props.handleClick?.call(plugin, editor.view, issue.from + 1, {
@@ -92,6 +139,25 @@ const clickIssue = (editor: Editor) => {
 };
 
 describe("맞춤법 검사 버튼", () => {
+	it("검사 확장을 여럿 넣으면 검사기마다 버튼이 생기고 밑줄 플러그인이 겹치지 않는다", async () => {
+		const other = defineTextChecker({ ...fakeChecker(), id: "other", label: "다른 검사" });
+		render(
+			<CmsAdminComponentsProvider
+				components={{
+					editorExtensions: [
+						textCheckExtension({ checkers: [fakeChecker()] }),
+						textCheckExtension({ checkers: [other] }),
+					],
+				}}
+			>
+				<Harness content={"틀린말\n"} locale="ko" onChange={vi.fn()} onReady={() => {}} />
+			</CmsAdminComponentsProvider>,
+		);
+		await screen.findByRole("toolbar", { name: "서식 도구" });
+		await waitFor(() => expect(checkButton()).not.toBeNull());
+		expect(checkButton("다른 검사")).not.toBeNull();
+	});
+
 	it("검사기를 등록하지 않으면 버튼이 없다", async () => {
 		await renderEditor("틀린말\n", []);
 		expect(checkButton()).toBeNull();
@@ -109,7 +175,7 @@ describe("맞춤법 검사 버튼", () => {
 
 		fireEvent.click(checkButton() as HTMLElement);
 
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(1));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 		expect(checker.check).toHaveBeenCalledTimes(1);
 		const [sent] = (checker.check as ReturnType<typeof vi.fn>).mock.calls[0] as [TextCheckSegment[]];
 		expect(sent.map((segment) => segment.text)).toEqual(["첫 문단은 틀린말 입니다", "둘째 문단"]);
@@ -129,17 +195,17 @@ describe("맞춤법 검사 버튼", () => {
 
 		fireEvent.click(checkButton() as HTMLElement);
 
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(1));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 		const [sent] = (checker.check as ReturnType<typeof vi.fn>).mock.calls[0] as [TextCheckSegment[]];
 		expect(sent.map((segment) => segment.text)).toEqual(["둘째 틀린말"]);
-		const [issue] = textCheckIssues(editor.state);
+		const [issue] = issuesOf(editor);
 		expect(issue?.from).toBeGreaterThan(start);
 	});
 
 	it("결과 창에서 후보를 고르면 그 글자를 바꾼다", async () => {
 		const { editor, onChange } = await renderEditor("이것은 틀린말 입니다\n", [fakeChecker()]);
 		fireEvent.click(checkButton() as HTMLElement);
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(1));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 
 		clickIssue(editor);
 		const dialog = await screen.findByRole("dialog", { name: "검사 결과" });
@@ -148,7 +214,7 @@ describe("맞춤법 검사 버튼", () => {
 		fireEvent.click(within(dialog).getByRole("button", { name: "맞는 말" }));
 
 		await waitFor(() => expect(String(onChange.mock.lastCall?.[0])).toContain("이것은 맞는 말 입니다"));
-		expect(textCheckIssues(editor.state)).toHaveLength(0);
+		expect(issuesOf(editor)).toHaveLength(0);
 		await waitFor(() => expect(screen.queryByRole("dialog", { name: "검사 결과" })).toBeNull());
 	});
 
@@ -156,18 +222,18 @@ describe("맞춤법 검사 버튼", () => {
 		const checker = fakeChecker();
 		const { editor } = await renderEditor("이것은 틀린말 입니다\n\n또 틀린말\n", [checker]);
 		fireEvent.click(checkButton() as HTMLElement);
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(2));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(2));
 
 		clickIssue(editor);
 		fireEvent.click(
 			within(await screen.findByRole("dialog", { name: "검사 결과" })).getByRole("button", { name: "무시" }),
 		);
 		// 같은 검사기·규칙·글자는 모두 숨긴다.
-		expect(textCheckIssues(editor.state)).toHaveLength(0);
+		expect(issuesOf(editor)).toHaveLength(0);
 
 		fireEvent.click(checkButton() as HTMLElement);
 		await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith("고칠 곳이 없습니다."));
-		expect(textCheckIssues(editor.state)).toHaveLength(0);
+		expect(issuesOf(editor)).toHaveLength(0);
 		// 같은 글자는 다시 보내지 않는다.
 		expect(checker.check).toHaveBeenCalledTimes(1);
 	});
@@ -175,12 +241,12 @@ describe("맞춤법 검사 버튼", () => {
 	it("결과 목록에서 고르면 그 자리를 고르고 결과 창을 연다", async () => {
 		const { editor } = await renderEditor("앞 문단\n\n이것은 틀린말 입니다\n", [fakeChecker()]);
 		fireEvent.click(checkButton() as HTMLElement);
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(1));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 
 		fireEvent.click(screen.getByRole("button", { name: "검사 결과" }));
 		pressOption(await screen.findByRole("menuitem", { name: /틀린말/ }));
 
-		const [issue] = textCheckIssues(editor.state);
+		const [issue] = issuesOf(editor);
 		await waitFor(() => expect(editor.state.selection.from).toBe(issue?.from));
 		expect(editor.state.selection.to).toBe(issue?.to);
 		expect(await screen.findByRole("dialog", { name: "검사 결과" })).toBeTruthy();
@@ -195,11 +261,11 @@ describe("맞춤법 검사 버튼", () => {
 			},
 		});
 		await renderEditor("틀린말\n", [failing]);
-		fireEvent.click(checkButton() as HTMLElement);
+		fireEvent.click(checkButton("고장") as HTMLElement);
 		await waitFor(() =>
-			expect(toastMock.error).toHaveBeenCalledWith("검사하지 못했습니다.", { description: "HTTP 500" }),
+			expect(toastMock.error).toHaveBeenCalledWith("고장: 검사하지 못했습니다.", { description: "HTTP 500" }),
 		);
-		expect(checkButton()?.hasAttribute("disabled")).toBe(false);
+		expect(checkButton("고장")?.hasAttribute("disabled")).toBe(false);
 	});
 
 	it("검사하는 동안 버튼 이름이 바뀌고 눌리지 않는다", async () => {
@@ -213,11 +279,11 @@ describe("맞춤법 검사 버튼", () => {
 				}),
 		});
 		await renderEditor("문단\n", [slow]);
-		fireEvent.click(checkButton() as HTMLElement);
+		fireEvent.click(checkButton("느림") as HTMLElement);
 		const busy = await screen.findByRole("button", { name: "검사 중…" });
 		expect(busy.hasAttribute("disabled")).toBe(true);
 		await act(async () => finish?.());
-		await waitFor(() => expect(checkButton()).not.toBeNull());
+		await waitFor(() => expect(checkButton("느림")).not.toBeNull());
 	});
 });
 
@@ -251,7 +317,7 @@ describe("저절로 검사", () => {
 		await act(async () => {
 			vi.advanceTimersByTime(AUTO_CHECK_DELAY + 10);
 		});
-		await waitFor(() => expect(textCheckIssues(editor.state)).toHaveLength(1));
+		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 		expect(checker.check).toHaveBeenCalledTimes(1);
 		const [sent] = (checker.check as ReturnType<typeof vi.fn>).mock.calls[0] as [TextCheckSegment[]];
 		expect(sent.map((segment) => segment.text)).toEqual(["고칠 문단 틀린말"]);

@@ -23,6 +23,7 @@ export type TextCheckMeta =
 	| { readonly type: "remove"; readonly keys: readonly string[] }
 	| { readonly type: "clear" };
 
+/** 기본 플러그인 이름표. 검사 확장마다 따로 만들어(`new PluginKey`) 서로 겹치지 않게 한다. */
 export const textCheckPluginKey = new PluginKey<TextCheckPluginState>("cmsTextCheck");
 
 const EMPTY: TextCheckPluginState = { issues: [], decorations: DecorationSet.empty };
@@ -77,8 +78,8 @@ function applyMeta(issues: readonly DocTextIssue[], meta: TextCheckMeta): readon
 }
 
 /** 그 위치를 덮는 결과(가장 짧은 것). */
-export function issueAt(state: EditorState, pos: number): DocTextIssue | null {
-	const issues = textCheckPluginKey.getState(state)?.issues ?? [];
+export function issueAt(state: EditorState, pos: number, key = textCheckPluginKey): DocTextIssue | null {
+	const issues = key.getState(state)?.issues ?? [];
 	let found: DocTextIssue | null = null;
 	for (const issue of issues) {
 		if (issue.from <= pos && pos <= issue.to && (!found || issue.to - issue.from < found.to - found.from))
@@ -88,16 +89,18 @@ export function issueAt(state: EditorState, pos: number): DocTextIssue | null {
 }
 
 export function createTextCheckPlugin({
+	key = textCheckPluginKey,
 	onIssueClick,
 }: {
+	key?: PluginKey<TextCheckPluginState>;
 	onIssueClick?: (issue: DocTextIssue, view: EditorView) => void;
 } = {}): Plugin<TextCheckPluginState> {
 	return new Plugin<TextCheckPluginState>({
-		key: textCheckPluginKey,
+		key,
 		state: {
 			init: () => EMPTY,
 			apply(tr, value, _old, state) {
-				const meta = tr.getMeta(textCheckPluginKey) as TextCheckMeta | undefined;
+				const meta = tr.getMeta(key) as TextCheckMeta | undefined;
 				if (!tr.docChanged && !meta) return value;
 				let issues = tr.docChanged ? mapIssues(value.issues, tr) : value.issues;
 				if (meta) issues = applyMeta(issues, meta);
@@ -106,12 +109,12 @@ export function createTextCheckPlugin({
 			},
 		},
 		props: {
-			decorations: (state) => textCheckPluginKey.getState(state)?.decorations ?? DecorationSet.empty,
+			decorations: (state) => key.getState(state)?.decorations ?? DecorationSet.empty,
 			handleClick(view, pos, event) {
 				if (!onIssueClick || event.button !== 0) return false;
 				// 장식(밑줄) 위를 누른 때만 연다. 줄 끝 빈 자리를 눌러 커서가 결과 끝에 붙은 경우는 열지 않는다.
 				if (!(event.target instanceof Element) || !event.target.closest("[data-text-issue]")) return false;
-				const issue = issueAt(view.state, pos);
+				const issue = issueAt(view.state, pos, key);
 				if (issue) onIssueClick(issue, view);
 				// 커서는 평소대로 옮긴다.
 				return false;
@@ -120,5 +123,5 @@ export function createTextCheckPlugin({
 	});
 }
 
-export const textCheckIssues = (state: EditorState): readonly DocTextIssue[] =>
-	textCheckPluginKey.getState(state)?.issues ?? [];
+export const textCheckIssues = (state: EditorState, key = textCheckPluginKey): readonly DocTextIssue[] =>
+	key.getState(state)?.issues ?? [];

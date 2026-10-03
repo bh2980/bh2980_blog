@@ -42,9 +42,6 @@ import { toast } from "sonner";
 import { type EditorInsertAction, type EditorSelectionAction, useCmsAdminComponents } from "../admin-components";
 import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
 import { useAdminFeatures } from "../screens/shared/admin-features";
-import { TextCheckToolbar, TextIssuePopover } from "../text-check/text-check-controls";
-import type { TextChecker } from "../text-check/types";
-import { useTextCheck } from "../text-check/use-text-check";
 import { Button } from "../ui/button";
 import {
 	DropdownMenu,
@@ -109,11 +106,7 @@ interface CmsEditorProps {
 	selectionActions?: readonly EditorSelectionAction[];
 	/** 슬래시 메뉴에 더할 삽입 동작(플러그인). */
 	insertActions?: readonly EditorInsertAction[];
-	/** 글의 언어. 맞춤법 검사기를 고를 때 쓴다. 없으면 기본 언어다. */
-	locale?: string;
 }
-
-const NO_TEXT_CHECKERS: readonly TextChecker[] = [];
 
 /** 블록 손잡이 옆 동작. `pos`는 손잡이가 가리키는 블록의 위치다. */
 export interface BlockAction {
@@ -365,7 +358,6 @@ export function CmsEditor({
 	onEditor,
 	selectionActions,
 	insertActions,
-	locale = DEFAULT_LOCALE,
 }: CmsEditorProps) {
 	const isSourceMode = sourceView != null && sourceView !== false;
 	// 원문을 고치는 동안에는 시각 편집기를 멈춘다. 툴바 도구도 함께 잠긴다.
@@ -559,9 +551,6 @@ export function CmsEditor({
 			return `${active}${marks}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
 		},
 	});
-	// 맞춤법·문장 검사. 등록한 검사기 중 이 글의 언어를 검사하는 것이 없으면 `null`이고 버튼도 없다.
-	const { textCheckers = NO_TEXT_CHECKERS } = useCmsAdminComponents();
-	const textCheck = useTextCheck(editor, { checkers: textCheckers, locale });
 
 	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "문단") : "문단";
 	const activeList = editor ? LIST_STYLES.find((item) => item.isActive?.(editor)) : undefined;
@@ -923,13 +912,6 @@ export function CmsEditor({
 			),
 		},
 		buttonSlot(DIVIDER_TOOL, "divider-tool", 8),
-		...(textCheck
-			? ([
-					{ key: "divider-text-check", divider: true },
-					// 결과 목록(드롭다운)이 있어 "더보기" 메뉴로 옮기지 않는다.
-					{ key: "text-check", priority: 0, fixed: true, render: () => <TextCheckToolbar controller={textCheck} /> },
-				] satisfies ToolbarEntry[])
-			: []),
 	];
 
 	return (
@@ -1090,7 +1072,6 @@ export function CmsEditor({
 				<>
 					<TableToolbar editor={editor} />
 					<InlineBubble editor={editor} actions={selectionActions} />
-					{textCheck && <TextIssuePopover controller={textCheck} />}
 				</>
 			)}
 

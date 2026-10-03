@@ -16,7 +16,6 @@ import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 import type { BlockAction } from "./editor/tiptap-editor";
 import type { EntryData, EntryForm } from "./screens/entries/entry-form";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
-import type { TextChecker } from "./text-check/types";
 
 /**
  * 편집 화면 확장(플러그인 등)이 받는 지금 상황. 매 렌더 부르는 훅이므로 안에서 React 훅을 써도 된다.
@@ -112,11 +111,6 @@ export interface CmsAdminComponents {
 	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
 	 */
 	readonly fieldViews?: Readonly<Record<string, ComponentType<FieldViewProps>>>;
-	/**
-	 * 맞춤법·문장 검사기(`defineTextChecker`·`remoteTextChecker`, `@bh2980/cms-admin/text-check`). 본체는 하나도 넣지 않는다.
-	 * 글의 언어를 검사하는 검사기가 있으면 편집기 도구 모음에 "맞춤법 검사" 버튼이 생긴다. 같은 `id`는 안쪽이 이긴다.
-	 */
-	readonly textCheckers?: readonly TextChecker[];
 }
 
 /** 보기 필드 화면이 받는 값. */
@@ -127,17 +121,6 @@ export interface FieldViewProps {
 }
 
 const CmsAdminComponentsContext = createContext<CmsAdminComponents>({});
-
-/** 바깥 목록에 안쪽 목록을 더한다. 같은 `id`는 안쪽 것으로 바꾼다(자리는 바깥 순서). */
-function mergeById<T extends { readonly id: string }>(
-	outer: readonly T[] = [],
-	inner: readonly T[] = [],
-): readonly T[] {
-	const byId = new Map(inner.map((item) => [item.id, item]));
-	const merged = outer.map((item) => byId.get(item.id) ?? item);
-	const outerIds = new Set(outer.map((item) => item.id));
-	return [...merged, ...inner.filter((item) => !outerIds.has(item.id))];
-}
 
 export function CmsAdminComponentsProvider({
 	components,
@@ -156,7 +139,6 @@ export function CmsAdminComponentsProvider({
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
 			icons: { ...parent.icons, ...components.icons },
 			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
-			textCheckers: mergeById(parent.textCheckers, components.textCheckers),
 		}),
 		[parent, components],
 	);

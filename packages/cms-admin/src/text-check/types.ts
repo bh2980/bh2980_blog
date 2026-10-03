@@ -1,6 +1,6 @@
 /**
- * 맞춤법·문장 검사 확장의 공통 모양. 본체는 검사기를 하나도 넣지 않는다. 사이트가 필요한 검사기를 만들어
- * 관리자 컴포넌트(`textCheckers`)에 등록한다.
+ * 맞춤법·문장 검사 확장의 공통 모양. 본체는 검사기를 하나도 넣지 않는다. 사이트·확장이 필요한 검사기를 만들어
+ * `textCheckExtension({ checkers })`로 관리자 확장(`editorExtensions`)에 넣는다.
  *
  * 위치는 늘 문단(검사 단위) 안의 UTF-16 위치(JS 문자열 인덱스)다. 바이트·코드 포인트·문장 기준 위치를 주는
  * 검사기는 검사기 쪽에서 바꿔 돌려준다.
@@ -51,8 +51,13 @@ export interface TextCheckContext {
 
 export interface TextChecker {
 	readonly id: string;
-	/** 화면에 보이는 이름(결과 창의 출처). */
+	/** 도구 모음 버튼 이름이자 결과 창의 출처. 예: "바른 맞춤법 검사". */
 	readonly label: string;
+	/**
+	 * 도구 모음 버튼 아이콘. lucide 컴포넌트나 아이콘 이름(관리자 확장 `icons`에 등록한 이름 포함). 없으면 맞춤법 아이콘.
+	 * 검사기마다 버튼이 하나씩 생긴다.
+	 */
+	readonly icon?: string | import("lucide-react").LucideIcon;
 	/** 검사할 수 있는 언어. 없으면 모든 언어다. `ko`는 `ko-KR`과도 맞는다. */
 	readonly locales?: readonly string[];
 	/** 편집을 멈추면 바뀐 문단만 저절로 검사한다. 기본은 끔(유료·호출 제한 API를 생각해 버튼으로만 검사). */

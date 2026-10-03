@@ -4,13 +4,14 @@ import { posToDOMRect } from "@tiptap/core";
 import { CircleAlert, EyeOff, Info, Loader2, type LucideIcon, SpellCheck, TriangleAlert } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { cn } from "../lib/utils";
+import { useIconByName } from "../screens/shared/collection-icon";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
 import { Popover, PopoverContent } from "../ui/popover";
 import { textCheckIssues } from "./plugin";
 import type { DocTextIssue } from "./run";
-import type { TextIssueSeverity } from "./types";
+import type { TextChecker, TextIssueSeverity } from "./types";
 import type { TextCheckController } from "./use-text-check";
 
 const SEVERITY_ICON: Readonly<Record<TextIssueSeverity, { icon: LucideIcon; className: string }>> = {
@@ -24,26 +25,34 @@ function SeverityIcon({ severity }: { severity: TextIssueSeverity }) {
 	return <Icon aria-hidden className={cn("size-4 shrink-0", className)} />;
 }
 
-/** 도구 모음의 "맞춤법 검사" 버튼과 결과 수(누르면 결과 목록). */
+/** 검사기 버튼 하나. 이름·아이콘은 검사기 정의(`label`·`icon`)에서 온다. */
+function CheckerButton({ checker, controller }: { checker: TextChecker; controller: TextCheckController }) {
+	const iconByName = useIconByName();
+	const Icon = (typeof checker.icon === "string" ? iconByName(checker.icon) : checker.icon) ?? SpellCheck;
+	const running = controller.running === checker.id;
+	return (
+		<IconButton
+			label={running ? "검사 중…" : checker.label}
+			side="bottom"
+			disabled={controller.running !== null || !controller.editor.isEditable}
+			// 고른 글자를 잃지 않게 편집기 초점을 지킨다.
+			onMouseDown={(event) => event.preventDefault()}
+			onClick={() => void controller.run(checker.id)}
+		>
+			{running ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Icon aria-hidden className="size-4" />}
+		</IconButton>
+	);
+}
+
+/** 도구 모음의 검사기 버튼(검사기마다 하나)과 결과 수(누르면 결과 목록). */
 export function TextCheckToolbar({ controller }: { controller: TextCheckController }) {
-	const { editor, running, issues } = controller;
+	const { issues } = controller;
 	const count = issues.length;
 	return (
 		<div className="flex items-center gap-0.5">
-			<IconButton
-				label={running ? "검사 중…" : "맞춤법 검사"}
-				side="bottom"
-				disabled={running || !editor.isEditable}
-				// 고른 글자를 잃지 않게 편집기 초점을 지킨다.
-				onMouseDown={(event) => event.preventDefault()}
-				onClick={() => void controller.run()}
-			>
-				{running ? (
-					<Loader2 aria-hidden className="size-4 animate-spin" />
-				) : (
-					<SpellCheck aria-hidden className="size-4" />
-				)}
-			</IconButton>
+			{controller.checkers.map((checker) => (
+				<CheckerButton key={checker.id} checker={checker} controller={controller} />
+			))}
 			{count > 0 && (
 				<DropdownMenu>
 					<IconButton
@@ -77,7 +86,7 @@ export function TextCheckToolbar({ controller }: { controller: TextCheckControll
 
 /** 밑줄을 누르거나 목록에서 고르면 그 자리에 뜨는 결과 창: 설명, 바꿀 글 후보, 무시. */
 export function TextIssuePopover({ controller }: { controller: TextCheckController }) {
-	const { editor, open, issues } = controller;
+	const { editor, open, issues, pluginKey } = controller;
 	const issue = open ? issues.find((item) => item.key === open.key) : undefined;
 	const key = issue?.key;
 	// 목록(키보드)에서 연 창은 닫을 때 초점을 본문으로 돌려준다. 밑줄을 눌러 연 창은 초점을 옮기지 않았다.
@@ -89,7 +98,7 @@ export function TextIssuePopover({ controller }: { controller: TextCheckControll
 			key
 				? {
 						getBoundingClientRect: () => {
-							const current = textCheckIssues(editor.state).find((item) => item.key === key);
+							const current = textCheckIssues(editor.state, pluginKey).find((item) => item.key === key);
 							if (!current || editor.isDestroyed) return new DOMRect();
 							try {
 								return posToDOMRect(editor.view, current.from, current.to);
@@ -99,7 +108,7 @@ export function TextIssuePopover({ controller }: { controller: TextCheckControll
 						},
 					}
 				: null,
-		[editor, key],
+		[editor, key, pluginKey],
 	);
 	return (
 		<Popover

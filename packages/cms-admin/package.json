@@ -10,6 +10,7 @@
 		"./editor": "./src/editor/public.ts",
 		"./blocks": "./src/editor/blocks/public.ts",
 		"./text-check": "./src/text-check/index.ts",
+		"./text-check/extension": "./src/text-check/extension.tsx",
 		"./text-check/server": "./src/text-check/server.ts",
 		"./plugins": "./src/plugins.ts",
 		"./slots": "./src/slots/slots.tsx",
@@ -111,6 +112,10 @@
 			"./text-check": {
 				"types": "./dist/text-check/index.d.ts",
 				"default": "./dist/text-check/index.js"
+			},
+			"./text-check/extension": {
+				"types": "./dist/text-check/extension.d.ts",
+				"default": "./dist/text-check/extension.js"
 			},
 			"./text-check/server": {
 				"types": "./dist/text-check/server.d.ts",

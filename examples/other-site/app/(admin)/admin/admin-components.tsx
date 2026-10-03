@@ -2,6 +2,7 @@
 
 import { CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 import { defineTextChecker, type TextIssue } from "@bh2980/cms-admin/text-check";
+import { textCheckExtension } from "@bh2980/cms-admin/text-check/extension";
 import type { ReactNode } from "react";
 
 /**
@@ -16,7 +17,7 @@ const WORDS: Readonly<Record<string, { readonly message: string; readonly sugges
 
 const wordListChecker = defineTextChecker({
 	id: "word-list",
-	label: "Word list",
+	label: "Word list check",
 	locales: ["en"],
 	// 버튼으로만 검사한다(기본). 브라우저 안에서 도는 무료 검사기라 `auto: true`로 켜도 된다.
 	check: async (segments) => {
@@ -42,7 +43,7 @@ const wordListChecker = defineTextChecker({
 	},
 });
 
-const components = { textCheckers: [wordListChecker] };
+const components = { editorExtensions: [textCheckExtension({ checkers: [wordListChecker] })] };
 
 export function SiteAdminComponents({ children }: { children: ReactNode }) {
 	return <CmsAdminComponentsProvider components={components}>{children}</CmsAdminComponentsProvider>;

@@ -83,17 +83,20 @@ export default defineAdminPlugin({
 
 ## 맞춤법·문장 검사 확장
 
-본체는 검사기를 하나도 넣지 않는다. 사이트가 쓰고 싶은 검사기(유료 API, 브라우저에서 도는 npm 패키지 등)를 만들어
-`CmsAdminComponentsProvider`의 `textCheckers`에 넣는다. 글의 언어를 검사하는 검사기가 하나라도 있으면 편집기 도구 모음에
-"맞춤법 검사" 버튼이 생기고, 없으면 버튼도 없고 아무것도 돌지 않는다.
+본체 편집기는 검사기를 모르고, 확장이 준 버튼·창을 그리기만 한다. 사이트·확장이 검사기(유료 API, 브라우저에서 도는 npm 패키지
+등)를 만들어 `textCheckExtension({ checkers })`를 관리자 확장(`editorExtensions`)에 넣으면, 글의 언어를 검사하는 검사기마다
+도구 모음 버튼(이름 `label`, 아이콘 `icon`)이 생기고 결과는 물결 밑줄·결과 창·목록으로 보인다. 확장을 여럿 넣어도 밑줄은
+겹치지 않는다.
 
 ```tsx
 "use client";
 import { defineTextChecker } from "@bh2980/cms-admin/text-check";
+import { textCheckExtension } from "@bh2980/cms-admin/text-check/extension";
 
 const myChecker = defineTextChecker({
 	id: "my-words",
-	label: "금지어",
+	label: "금지어 검사", // 도구 모음 버튼 이름
+	icon: "ban", // lucide 이름이나 컴포넌트. 없으면 맞춤법 아이콘
 	locales: ["ko"], // 없으면 모든 언어
 	limits: { maxChars: 10_000, maxSegments: 50 }, // 넘으면 나눠 보낸다
 	// auto: true, // 입력을 멈추면 바뀐 문단만 저절로 검사(기본은 끔)
@@ -102,15 +105,15 @@ const myChecker = defineTextChecker({
 	],
 });
 
-const components = { textCheckers: [myChecker] };
+const components = { editorExtensions: [textCheckExtension({ checkers: [myChecker] })] };
 ```
 
 - 검사 단위는 문단(제목·목록 항목·표 칸 등 글이 든 블록) 하나다: `{ id, text, locale }`. 결과의 `start`·`end`는 그 문단 안의
   UTF-16 위치(JS 문자열 인덱스, `end` 미포함)다.
 - 코드 블록·수식·코드 펜스 블록·블록 속성은 보내지 않는다. 인라인 코드와 주소는 `￼` 한 글자로 바꿔 보내고, 그 글자에 걸친
   결과는 버린다. 링크는 글자만 보낸다.
-- 버튼은 고른 글자가 있으면 그 범위에 걸친 문단만, 없으면 문서 전체를 검사한다. 결과는 물결 밑줄로 보이고, 밑줄을 누르면
-  설명·바꿀 글 후보·"무시"가 뜬다. 버튼 옆 숫자를 누르면 결과 목록이다. 결과 범위 안을 고치면 그 결과는 사라진다.
+- 검사기 버튼은 고른 글자가 있으면 그 범위에 걸친 문단만, 없으면 문서 전체를 그 검사기로 검사한다. 결과는 물결 밑줄로 보이고,
+  밑줄을 누르면 설명·바꿀 글 후보·"무시"가 뜬다. 버튼 옆 숫자를 누르면 결과 목록이다. 결과 범위 안을 고치면 그 결과는 사라진다.
 - 같은 검사기·언어·글자의 문단은 다시 보내지 않는다(편집 화면을 여는 동안). 다시 검사하거나 화면을 닫으면 진행 중인 요청을
   `signal`로 끊는다.
 - `auto: true`는 유료·호출 제한 API면 비용이 들 수 있어 기본으로 끈다. 켜면 입력을 1.5초 멈춘 뒤, 연 뒤로 바뀐 문단만 보낸다.
