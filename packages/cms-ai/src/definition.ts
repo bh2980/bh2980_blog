@@ -53,8 +53,11 @@ export type AiApply = (typeof AI_APPLIES)[number];
  * - `exists`: 선택지(`choices`)에 실제로 있는 값만
  * - `regexRuns`: 올바른 정규식이고 `code` 입력에서 한 곳 이상 찾는 것만
  * - `structure`: MDX 결과가 원문 입력과 같은 뼈대(요소·링크·코드·속성)인 것만
+ * - `oneOf`: 정해 둔 목록(`items`) 중 하나인 것만
+ *
+ * 이 밖의 검사는 기능 정의의 `validate` 함수(코드)로 더한다.
  */
-export const AI_CHECK_KINDS = ["pattern", "maxLength", "unique", "exists", "regexRuns", "structure"] as const;
+export const AI_CHECK_KINDS = ["pattern", "maxLength", "unique", "exists", "regexRuns", "structure", "oneOf"] as const;
 export type AiCheckKind = (typeof AI_CHECK_KINDS)[number];
 
 const patternSchema = z
@@ -83,6 +86,7 @@ export const aiCheckSchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("exists"), enabled }),
 	z.object({ kind: z.literal("regexRuns"), enabled }),
 	z.object({ kind: z.literal("structure"), enabled }),
+	z.object({ kind: z.literal("oneOf"), enabled, items: z.array(z.string().trim().min(1).max(200)).min(1).max(100) }),
 ]);
 export type AiCheck = z.output<typeof aiCheckSchema>;
 export type AiCheckInput = z.input<typeof aiCheckSchema>;
@@ -131,7 +135,17 @@ export const CHECK_LABELS: Record<AiCheckKind, string> = {
 	exists: "있는 값만",
 	regexRuns: "정규식 실행",
 	structure: "구조 유지",
+	oneOf: "선택지 안",
 };
+
+/** 관리자 화면에서 어느 기능에든 더할 수 있는 검사와 처음 값. 나머지는 기능 정의가 정한다. */
+export const ADDABLE_CHECKS = {
+	pattern: { kind: "pattern", enabled: true, pattern: ".+" },
+	maxLength: { kind: "maxLength", enabled: true, max: 100 },
+	oneOf: { kind: "oneOf", enabled: true, items: ["값"] },
+} as const satisfies Partial<Record<AiCheckKind, AiCheck>>;
+export type AddableCheckKind = keyof typeof ADDABLE_CHECKS;
+export const isAddableCheck = (kind: AiCheckKind): kind is AddableCheckKind => Object.hasOwn(ADDABLE_CHECKS, kind);
 
 export const ENGINE_LABELS: Record<AiEngine, string> = { generate: "생성", decide: "판단" };
 

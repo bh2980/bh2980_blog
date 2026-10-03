@@ -52,6 +52,26 @@ describe("AI 기능 정의", () => {
 		]);
 	});
 
+	it("관리자 화면에서 더한 검사(형식·길이·선택지 안)는 정의의 검사 뒤에 붙고, 정의의 검사는 빼지 못한다", () => {
+		const definition = aiPresets.seoTitle();
+		const action = resolveAction("seoTitle", definition, {
+			checks: [
+				{ kind: "maxLength", enabled: false, max: 60 },
+				{ kind: "oneOf", enabled: true, items: ["가", "나"] },
+				{ kind: "oneOf", enabled: true, items: ["중복"] },
+				{ kind: "unique", enabled: true },
+			],
+		});
+		expect(action.checks).toEqual([
+			{ kind: "maxLength", enabled: false, max: 60 },
+			{ kind: "oneOf", enabled: true, items: ["가", "나"] },
+		]);
+		expect(action.definedChecks).toEqual(["maxLength"]);
+		// 더한 검사는 고친 값으로 저장되고, 다시 읽어도 같다.
+		const override = overrideFrom(definition, { checks: action.checks });
+		expect(resolveAction("seoTitle", definition, override).checks).toEqual(action.checks);
+	});
+
 	it("저장할 고친 값은 기본값과 다른 것만 남긴다", () => {
 		const summary = aiPresets.summary();
 		const base = resolveAction("summary", summary);

@@ -131,6 +131,47 @@ describe("AI 기능 실행기", () => {
 		expect(result).toEqual({ kind: "candidates", items: [{ value: "t1", label: "React" }] });
 	});
 
+	it("코드 검사(validate)는 정해진 검사 다음에 후보마다 돌고, 설명을 붙이거나 버린다", async () => {
+		const { provider } = stubProvider({ candidates: ["alpha", "beta", "gamma"] });
+		const seen: string[] = [];
+		const action = resolveAction(
+			"pick",
+			aiAction({
+				label: "고르기",
+				input: { title: aiInput.text({ label: "제목" }) },
+				result: "candidates",
+				checks: [{ kind: "oneOf", items: ["alpha", "beta"] }],
+				validate: (value, context) => {
+					seen.push(`${value}:${String(context.input.title)}`);
+					return value === "beta" ? "베타는 안 된다" : { detail: "통과" };
+				},
+				prompt: "고른다.",
+			}),
+		);
+		const result = await runAiAction(action, call({ title: "글" }), deps(provider));
+		// 선택지 안 검사가 gamma를 먼저 버리고, 코드 검사는 남은 것만 본다.
+		expect(seen).toEqual(["alpha:글", "beta:글"]);
+		expect(result).toEqual({ kind: "candidates", items: [{ value: "alpha", label: "alpha", detail: "통과" }] });
+	});
+
+	it("코드 검사가 글·MDX 결과 전체를 막으면 이유와 함께 실패한다", async () => {
+		const { provider } = stubProvider({ text: "짧은 글" });
+		const action = resolveAction(
+			"write",
+			aiAction({
+				label: "쓰기",
+				input: { title: aiInput.text({ label: "제목" }) },
+				result: "text",
+				validate: async (value) => (value.length < 10 ? "너무 짧다" : undefined),
+				prompt: "쓴다.",
+			}),
+		);
+		await expect(runAiAction(action, call({ title: "글" }), deps(provider))).rejects.toMatchObject({
+			code: "ai_failed",
+			message: "결과가 검사를 통과하지 못했습니다: 너무 짧다",
+		});
+	});
+
 	it("생성 방식도 선택지 안에서 고르게 목록(이미 고른 값 제외)과 규칙을 보낸다", async () => {
 		const { provider, requests } = stubProvider({ candidates: ["t1"] });
 		const action = resolveAction(

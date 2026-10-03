@@ -102,6 +102,12 @@ export function ConnectionManager() {
 	return (
 		<div className="flex min-h-0 flex-1 overflow-hidden">
 			<div className="flex w-72 shrink-0 flex-col border-r">
+				<div className="border-b p-2">
+					<Button type="button" size="xs" variant="outline" onClick={() => setSelected("new")}>
+						<Plus aria-hidden />
+						연결 추가
+					</Button>
+				</div>
 				{settings?.fake && (
 					<p className="border-b px-3 py-2 text-muted-foreground text-xs">개발용 가짜 연결(CMS_AI_FAKE) 사용 중</p>
 				)}
@@ -144,12 +150,6 @@ export function ConnectionManager() {
 								</li>
 							))}
 				</ul>
-				<div className="border-t p-2">
-					<Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setSelected("new")}>
-						<Plus aria-hidden />
-						연결 추가
-					</Button>
-				</div>
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">

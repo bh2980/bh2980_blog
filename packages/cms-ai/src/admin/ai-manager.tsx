@@ -15,6 +15,12 @@ import { Alert, AlertDescription } from "@bh2980/cms-admin/ui/alert";
 import { Badge } from "@bh2980/cms-admin/ui/badge";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Checkbox } from "@bh2980/cms-admin/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@bh2980/cms-admin/ui/dropdown-menu";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Label } from "@bh2980/cms-admin/ui/label";
@@ -23,12 +29,14 @@ import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
+import { Check, Code, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import type { AiActionView } from "../actions";
 import type { CustomBase } from "../custom";
 import {
+	ADDABLE_CHECKS,
+	type AddableCheckKind,
 	type AiCheck,
 	type AiRunContext,
 	type AiRunResult,
@@ -359,11 +367,49 @@ export function AiManager() {
 	);
 }
 
-/** 검사 한 줄. 켜고 끄며, 형식은 정규식, 길이는 글자 수를 고친다. */
-function CheckRow({ check, onChange }: { check: AiCheck; onChange: (check: AiCheck) => void }) {
+/** 선택지 안 검사의 목록 입력. 한 줄에 값 하나이고, 빈 줄은 뺀다. */
+function OneOfInput({
+	items,
+	disabled,
+	onChange,
+}: {
+	items: readonly string[];
+	disabled: boolean;
+	onChange: (items: string[]) => void;
+}) {
+	const [text, setText] = useState(items.join("\n"));
+	return (
+		<Textarea
+			aria-label="선택지"
+			rows={3}
+			value={text}
+			disabled={disabled}
+			onChange={(event) => {
+				setText(event.target.value);
+				const next = event.target.value
+					.split("\n")
+					.map((line) => line.trim())
+					.filter(Boolean);
+				if (next.length > 0) onChange(next);
+			}}
+			className="field-sizing-fixed min-h-16 min-w-0 max-w-md flex-1 font-mono text-xs md:text-xs"
+		/>
+	);
+}
+
+/** 검사 한 줄. 켜고 끄며, 형식은 정규식, 길이는 글자 수, 선택지 안은 값 목록을 고친다. 더한 검사는 뺄 수 있다. */
+function CheckRow({
+	check,
+	onChange,
+	onRemove,
+}: {
+	check: AiCheck;
+	onChange: (check: AiCheck) => void;
+	onRemove?: () => void;
+}) {
 	const id = useId();
 	return (
-		<li className="flex min-h-8 items-center gap-2">
+		<li className={cn("flex min-h-8 gap-2", check.kind === "oneOf" ? "items-start [&>label]:pt-1.5" : "items-center")}>
 			<Switch
 				id={id}
 				size="sm"
@@ -398,6 +444,21 @@ function CheckRow({ check, onChange }: { check: AiCheck; onChange: (check: AiChe
 					/>
 					<span className="text-muted-foreground">자 이하</span>
 				</span>
+			)}
+			{check.kind === "oneOf" && (
+				<OneOfInput items={check.items} disabled={!check.enabled} onChange={(items) => onChange({ ...check, items })} />
+			)}
+			{onRemove && (
+				<Button
+					type="button"
+					size="icon-xs"
+					variant="ghost"
+					aria-label={`${CHECK_LABELS[check.kind]} 검사 빼기`}
+					onClick={onRemove}
+					className="ml-auto"
+				>
+					<X aria-hidden />
+				</Button>
 			)}
 		</li>
 	);
@@ -440,6 +501,11 @@ function FeatureEditor({
 		{ status: "running" } | { status: "done"; result: AiRunResult } | { status: "error"; message: string } | null
 	>(null);
 	const set = (patch: Partial<Editable>) => onChange({ ...spec, ...patch });
+	// 더할 수 있는 검사: 형식·길이·선택지 안 중 아직 없는 것. MDX 결과(본문 조각)는 글자 검사를 더하지 않는다.
+	const addableChecks = (Object.keys(ADDABLE_CHECKS) as AddableCheckKind[]).filter(
+		(kind) =>
+			feature.result !== "mdx" && feature.result !== "note" && !spec.checks.some((check) => check.kind === kind),
+	);
 	const uses = (input: string) => spec.send.includes(input);
 	const inputs = Object.entries(feature.input).filter(
 		([, input]) => input.kind !== "locale" && !(deciding && input.kind === "image"),
@@ -579,20 +645,46 @@ function FeatureEditor({
 					</>
 				)}
 
-				{spec.checks.length > 0 && (
-					<>
-						<span className="self-start pt-2 text-muted-foreground">검사</span>
-						<ul className="flex flex-col gap-1.5" aria-label="검사">
-							{spec.checks.map((check, index) => (
-								<CheckRow
-									key={check.kind}
-									check={check}
-									onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
-								/>
-							))}
-						</ul>
-					</>
-				)}
+				<span className="self-start pt-2 text-muted-foreground">검사</span>
+				<div className="flex flex-col gap-1.5">
+					<ul className="flex flex-col gap-1.5" aria-label="검사">
+						{spec.checks.map((check, index) => (
+							<CheckRow
+								key={check.kind}
+								check={check}
+								onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
+								onRemove={
+									feature.definedChecks.includes(check.kind)
+										? undefined
+										: () => set({ checks: spec.checks.filter((_, i) => i !== index) })
+								}
+							/>
+						))}
+						{feature.validated && (
+							<li className="flex min-h-8 items-center gap-2 text-xs">
+								<Code aria-hidden className="size-3.5 text-muted-foreground" />
+								코드 검사
+							</li>
+						)}
+					</ul>
+					{addableChecks.length > 0 && (
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={<Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" />}
+							>
+								<Plus aria-hidden />
+								검사 추가
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start" className="min-w-32">
+								{addableChecks.map((kind) => (
+									<DropdownMenuItem key={kind} onClick={() => set({ checks: [...spec.checks, ADDABLE_CHECKS[kind]] })}>
+										{CHECK_LABELS[kind]}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
+				</div>
 			</section>
 
 			<div className="flex flex-col gap-1.5">

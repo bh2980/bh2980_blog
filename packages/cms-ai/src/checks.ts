@@ -3,7 +3,7 @@ import type { AiCandidate, AiCheck } from "./definition";
 
 /**
  * 결과 검사(순수 함수). 기능에 적힌 검사 목록 중 켜 둔 것을 차례로 적용해, 통과하지 못한 후보는 버린다.
- * 후보를 고치거나 잘라 내지 않는다. 검사는 기능 편집기에 보이는 것이 전부다.
+ * 후보를 고치거나 잘라 내지 않는다. 기능 정의의 `validate` 함수(코드 검사)는 이 검사 다음에 실행기가 부른다.
  */
 
 export interface CheckEnv {
@@ -36,6 +36,8 @@ function runCheck(check: AiCheck, value: string, env: CheckEnv): string | null {
 			return env.taken?.has(value) ? null : "";
 		case "exists":
 			return env.options?.has(value) ? "" : null;
+		case "oneOf":
+			return check.items.includes(value) ? "" : null;
 		case "structure":
 			// 본문 번역에서 원문과 비교해 따로 본다(`translate.ts`). 후보 검사에서는 통과로 둔다.
 			return "";
@@ -85,6 +87,7 @@ export function checkText(checks: readonly AiCheck[], text: string): string | nu
 		if (!check.enabled) continue;
 		if (check.kind === "pattern" && !matchesPattern(check.pattern, text.trim())) return "형식에 맞지 않습니다.";
 		if (check.kind === "maxLength" && Array.from(text.trim()).length > check.max) return `${check.max}자를 넘었습니다.`;
+		if (check.kind === "oneOf" && !check.items.includes(text.trim())) return "선택지에 없는 값입니다.";
 	}
 	return null;
 }

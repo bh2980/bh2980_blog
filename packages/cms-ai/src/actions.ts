@@ -61,6 +61,10 @@ export interface AiActionView extends AiActionEditable {
 	choices?: AiChoices;
 	attach: readonly AiAttach[];
 	checks: AiCheck[];
+	/** 기능 정의가 정한 검사 종류(끌 수만 있다). 나머지는 관리자 화면에서 더한 검사다. */
+	definedChecks: AiCheck["kind"][];
+	/** 코드 검사(`validate`)가 있는가. 관리자 화면에서는 고칠 수 없다. */
+	validated: boolean;
 	/** 결과를 흘려받는 기능인가. */
 	stream: boolean;
 	/** 관리자 화면에서 만든 기능(화면 기능)이면 그 기본 정보(이름·붙을 곳·결과 모양). 코드 기능은 없다. */
@@ -107,6 +111,8 @@ const viewOf = (
 	threshold: action.threshold,
 	maxCount: action.maxCount,
 	checks: [...action.checks],
+	definedChecks: [...action.definedChecks],
+	validated: !!action.validate,
 	send: [...action.send],
 	version: row?.version ?? 0,
 	updatedAt: row ? row.updatedAt.toISOString() : null,

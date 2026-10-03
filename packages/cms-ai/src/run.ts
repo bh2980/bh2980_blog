@@ -1,6 +1,6 @@
 import { compareStructure, DEFAULT_LOCALE, readableMdx } from "@bh2980/cms/client";
 import { z } from "zod";
-import { type AiRunEnv, type ResolvedAiAction, renderPrompt } from "./action";
+import { type AiRunEnv, type AiValidateContext, type ResolvedAiAction, renderPrompt } from "./action";
 import { type CheckEnv, checkCandidates, checkText } from "./checks";
 import { type AiCandidate, type AiResult, type AiRunResult, MAX_DECISION_OPTIONS } from "./definition";
 import { AiError } from "./errors";
@@ -181,6 +181,43 @@ async function collectMaterial(
 	return material;
 }
 
+const validateContext = (call: AiCall, choices?: ReadonlyMap<string, string>): AiValidateContext => ({
+	input: call.input,
+	...(call.env.collection ? { collection: call.env.collection } : {}),
+	...(call.env.locale ? { locale: call.env.locale } : {}),
+	...(call.env.entryId ? { entryId: call.env.entryId } : {}),
+	...(choices ? { choices } : {}),
+});
+
+/** 코드 검사(`validate`)를 후보마다 돌린다. 통과하지 못한 후보는 버리고, 설명을 주면 후보 옆에 붙인다. */
+async function validateCandidates(
+	action: ResolvedAiAction,
+	call: AiCall,
+	items: readonly AiCandidate[],
+	choices?: ReadonlyMap<string, string>,
+): Promise<AiCandidate[]> {
+	const { validate } = action;
+	if (!validate) return [...items];
+	const context = validateContext(call, choices);
+	const results = await Promise.all(items.map((item) => validate(item.value, context)));
+	return items.flatMap((item, index) => {
+		const result = results[index];
+		if (result === false || typeof result === "string") return [];
+		if (result && typeof result === "object") {
+			return [{ ...item, detail: item.detail ? `${item.detail} · ${result.detail}` : result.detail }];
+		}
+		return [item];
+	});
+}
+
+/** 글·MDX 결과 전체에 코드 검사를 돌린다. 통과하지 못하면 이유와 함께 실패다. */
+async function validateWhole(action: ResolvedAiAction, call: AiCall, text: string): Promise<void> {
+	if (!action.validate) return;
+	const result = await action.validate(text, validateContext(call));
+	if (result === false) throw new AiError("ai_failed", "결과가 검사를 통과하지 못했습니다.");
+	if (typeof result === "string") throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${result}`);
+}
+
 /** 켜 둔 검사만. */
 const activeChecks = (action: ResolvedAiAction) => action.checks.filter((check) => check.enabled);
 
@@ -278,6 +315,7 @@ async function runGenerate(
 		const text = String(output.text ?? "").trim();
 		const problem = checkText(activeChecks(action), text);
 		if (problem) throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${problem}`);
+		await validateWhole(action, call, text);
 		return { kind: "text", text };
 	}
 	if (action.result === "mdx") {
@@ -287,13 +325,15 @@ async function runGenerate(
 		const structure = activeChecks(action).some((check) => check.kind === "structure");
 		const verdict = structure && source !== undefined ? compareStructure(source, mdx) : readableMdx(mdx);
 		if (!verdict.ok) throw new AiError("ai_failed", verdict.reason);
+		await validateWhole(action, call, mdx);
 		return { kind: "mdx", text: mdx };
 	}
 
 	const raw = (Array.isArray(output.candidates) ? output.candidates : []).map(String).slice(0, MAX_CANDIDATES);
+	const env = await checkEnv(action, call, deps, raw, choices);
 	return {
 		kind: "candidates",
-		items: checkCandidates(activeChecks(action), raw, await checkEnv(action, call, deps, raw, choices)),
+		items: await validateCandidates(action, call, checkCandidates(activeChecks(action), raw, env), env.options),
 	};
 }
 
@@ -353,12 +393,14 @@ export async function streamAiAction(
 	if (action.result === "text") {
 		const problem = checkText(activeChecks(action), text);
 		if (problem) throw new AiError("ai_failed", `결과가 검사를 통과하지 못했습니다: ${problem}`);
+		await validateWhole(action, call, text);
 		return { kind: "text", text };
 	}
 	const source = action.sameStructureAs ? asText(call.input[action.sameStructureAs]) : undefined;
 	const structure = activeChecks(action).some((check) => check.kind === "structure");
 	const verdict = structure && source !== undefined ? compareStructure(source, text) : readableMdx(text);
 	if (!verdict.ok) throw new AiError("ai_failed", verdict.reason);
+	await validateWhole(action, call, text);
 	return { kind: "mdx", text };
 }
 
@@ -423,6 +465,6 @@ async function runDecide(
 		.map(({ option }) => option.value);
 	// 판단 결과에도 켜 둔 검사를 적용한다. 선택지 목록이 곧 후보 이름이다.
 	const env = await checkEnv(action, call, deps, picked, choices);
-	const items: AiCandidate[] = checkCandidates(activeChecks(action), picked, env);
+	const items = await validateCandidates(action, call, checkCandidates(activeChecks(action), picked, env), env.options);
 	return { kind: "candidates", items };
 }

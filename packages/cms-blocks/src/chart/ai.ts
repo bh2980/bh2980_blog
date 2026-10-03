@@ -1,4 +1,5 @@
 import { aiAction, aiInput } from "@bh2980/cms-ai";
+import { normalizeChartDsl, parseChartDsl } from "./dsl";
 
 /**
  * 차트 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `aiPlugin({ actions })`에 이름을 붙여 넣는다.
@@ -31,6 +32,15 @@ export const CHART_SYNTAX_GUIDE = lines(
 	"```",
 );
 
+/** 코드 검사: 답이 ```chart 코드 펜스 하나이고 차트 문법(`parseChartDsl`·`normalizeChartDsl`)에 맞는가. */
+export function validateChart(value: string): string | undefined {
+	const match = value.trim().match(/^```chart[^\n]*\n([\s\S]*?)\n?```$/);
+	if (!match) return "```chart 코드 펜스 하나가 아닙니다.";
+	const { errors } = normalizeChartDsl(parseChartDsl(match[1] ?? ""));
+	const [first] = errors;
+	return first ? `차트 문법 오류(${first.line}줄): ${first.message}` : undefined;
+}
+
 export const chartAi = {
 	/** 차트 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 차트 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
@@ -49,6 +59,7 @@ export const chartAi = {
 					"",
 					CHART_SYNTAX_GUIDE,
 				),
+			validate: validateChart,
 			attach: [{ slot: "insert" }],
 		}),
 
@@ -70,6 +81,7 @@ export const chartAi = {
 					"",
 					CHART_SYNTAX_GUIDE,
 				),
+			validate: validateChart,
 			attach: [{ slot: "block", block: "chart" }],
 		}),
 };

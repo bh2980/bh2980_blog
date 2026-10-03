@@ -33,6 +33,24 @@ plugins: [
   이름·입력·결과 타입은 설정에서 나온다.
 - 판단 방식(`engine: "decide"`, System One)은 선택지(`choices`)마다 확률을 받아 기준 이상만 후보로 낸다.
 
+## 결과 검사
+
+- **정해진 검사(`checks`)**: 형식(`pattern`)·길이(`maxLength`)·중복 없음(`unique`)·있는 값만(`exists`)·선택지 안
+  (`oneOf`, 정해 둔 목록 중 하나)·정규식 실행(`regexRuns`)·구조 유지(`structure`). 관리자 AI 화면에서 켜고 끄며 값을 고치고,
+  어느 기능에든 형식·길이·선택지 안 검사를 더하거나 뺀다(정의가 정한 검사는 끄기만 한다).
+- **코드 검사(`validate`)**: 정해진 검사로 안 되는 것은 함수로 본다. 정해진 검사 다음에 서버에서 값 하나(후보 하나, 글·MDX
+  결과 전체)마다 부른다. `undefined`·`true`면 통과, 글자면 그 이유로 버리고(글·MDX는 실패), `{ detail }`이면 통과하면서
+  후보 옆에 설명을 붙인다.
+
+```ts
+aiAction({
+	label: "다이어그램 만들기",
+	// …
+	validate: (value, { input, collection, choices }) =>
+		value.trim().startsWith("```mermaid") ? undefined : "```mermaid 코드 펜스 하나가 아닙니다.",
+});
+```
+
 ## 새 기능 (M8)
 
 - **흘려받기**: 기능 정의 `stream: true`(생성 방식의 글·MDX 결과)면 결과가 조금씩 보인다. 화면에서는
