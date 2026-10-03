@@ -8,21 +8,22 @@ import { Input } from "@bh2980/cms-admin/ui/input";
 import { Label } from "@bh2980/cms-admin/ui/label";
 import { useId, useState } from "react";
 import type { AiActionView } from "../actions";
-import { CUSTOM_BLOCKS, CUSTOM_RESULTS, type CustomBase, type CustomSurface } from "../custom";
-import { RESULT_LABELS } from "../definition";
+import { CUSTOM_BLOCKS, type CustomBase, type CustomSurface, customEngines, customResults } from "../custom";
+import { ENGINE_LABELS, RESULT_LABELS } from "../definition";
 
 /** 화면 기능(D12·M8-5)의 기본 정보 고르기: 이름·붙을 곳·결과 모양. */
 
 const selectClass =
 	"h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-/** 필드 옆에 붙일 수 있는 필드(글·주소 필드). 값은 `컬렉션:필드`다. */
+/** 필드 옆에 붙일 수 있는 필드(글·주소·관계·선택 필드). 조건부 필드의 선택 값도 고른다. 값은 `컬렉션:필드`다. */
 const FIELD_OPTIONS = COLLECTIONS.flatMap((collection) =>
-	Object.entries(schemaOf(collection).fields).flatMap(([name, field]) =>
-		field.kind === "text" || field.kind === "slug"
-			? [{ value: `${collection}:${name}`, label: `${COLLECTION_DEFINITIONS[collection].label} · ${field.label}` }]
-			: [],
-	),
+	Object.entries(schemaOf(collection).fields).flatMap(([name, field]) => {
+		const target = field.kind === "conditional" ? field.discriminant : field;
+		return target.kind === "text" || target.kind === "slug" || target.kind === "relation" || target.kind === "select"
+			? [{ value: `${collection}:${name}`, label: `${COLLECTION_DEFINITIONS[collection].label} · ${target.label}` }]
+			: [];
+	}),
 );
 
 const PLACE_OPTIONS: ReadonlyArray<{ value: string; label: string; surface: CustomSurface | null }> = [
@@ -56,18 +57,27 @@ const firstField = (): CustomSurface => {
 	return collection && field ? { slot: "field", field, collections: [collection] } : { slot: "selection" };
 };
 
-export const NEW_CUSTOM_BASE = (): CustomBase => {
-	const surface = firstField();
-	return { label: "", surface, result: CUSTOM_RESULTS[surface.slot][0] ?? "text" };
+/** 자리에 맞춘 결과 모양·방식. 쓸 수 없는 값은 첫 값으로 바꾼다(관계·선택 필드는 판단 방식이 먼저다). */
+const fitted = (base: CustomBase, surface: CustomSurface): CustomBase => {
+	const results = customResults(surface);
+	const engines = customEngines(surface);
+	const engine = base.engine && engines.includes(base.engine) ? base.engine : engines[0];
+	return {
+		...base,
+		surface,
+		result: results.includes(base.result) ? base.result : (results[0] ?? "text"),
+		...(engine === "decide" ? { engine } : { engine: undefined }),
+	};
 };
 
-/** 기본 정보 입력. 붙을 곳을 바꾸면 그 자리에서 쓸 수 없는 결과 모양은 첫 모양으로 바꾼다. */
+export const NEW_CUSTOM_BASE = (): CustomBase =>
+	fitted({ label: "", surface: firstField(), result: "text" }, firstField());
+
+/** 기본 정보 입력. 붙을 곳을 바꾸면 그 자리에서 쓸 수 없는 결과 모양·방식은 첫 값으로 바꾼다. */
 export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChange: (base: CustomBase) => void }) {
-	const ids = { label: useId(), place: useId(), field: useId(), result: useId() };
-	const setSurface = (surface: CustomSurface) => {
-		const results = CUSTOM_RESULTS[surface.slot];
-		onChange({ ...base, surface, result: results.includes(base.result) ? base.result : (results[0] ?? "text") });
-	};
+	const ids = { label: useId(), place: useId(), field: useId(), result: useId(), engine: useId() };
+	const setSurface = (surface: CustomSurface) => onChange(fitted(base, surface));
+	const engines = customEngines(base.surface);
 	const fieldValue =
 		base.surface.slot === "field" ? `${base.surface.collections?.[0] ?? ""}:${base.surface.field}` : "";
 	return (
@@ -138,13 +148,35 @@ export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChang
 					value={base.result}
 					onChange={(event) => onChange({ ...base, result: event.target.value as CustomBase["result"] })}
 				>
-					{CUSTOM_RESULTS[base.surface.slot].map((result) => (
+					{customResults(base.surface).map((result) => (
 						<option key={result} value={result}>
 							{RESULT_LABELS[result]}
 						</option>
 					))}
 				</select>
 			</div>
+			{engines.length > 1 && (
+				<div className="space-y-1.5">
+					<Label htmlFor={ids.engine} className="text-xs">
+						방식
+					</Label>
+					<select
+						id={ids.engine}
+						className={selectClass}
+						value={base.engine ?? "generate"}
+						onChange={(event) => {
+							const engine = event.target.value as NonNullable<CustomBase["engine"]>;
+							onChange({ ...base, engine: engine === "decide" ? engine : undefined });
+						}}
+					>
+						{engines.map((engine) => (
+							<option key={engine} value={engine}>
+								{ENGINE_LABELS[engine]}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
 		</div>
 	);
 }

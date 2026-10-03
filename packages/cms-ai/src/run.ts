@@ -248,10 +248,20 @@ async function runGenerate(
 		sections.push("<image>첨부한 이미지</image>");
 	}
 	if (sections.length === 0) throw new AiError("ai_failed", "보낼 내용이 비어 있습니다.");
+	// 선택지가 있는 후보(관계·선택 필드)는 선택지 안에서만 고르게 목록을 함께 보낸다. 이미 넣은 값은 뺀다.
+	const options =
+		action.choices && action.result === "candidates"
+			? (await choices()).filter((option) => !currentValues(call).includes(option.value))
+			: [];
+	if (options.length > 0) {
+		sections.push(`<choices>\n${options.map((option) => `${option.value}: ${option.label}`).join("\n")}\n</choices>`);
+	}
 	content.push({ type: "text", text: `<material>\n${sections.join("\n\n")}\n</material>` });
 
 	const instructions = renderInstructions(action, call, deps);
-	const system = `${systemFrame()}\n\n<instructions>\n${instructions}\n</instructions>\n\n${RESULT_RULES[action.result]}`;
+	const choiceRule =
+		options.length > 0 ? "\n\n후보는 <choices>에 있는 값(콜론 앞)만 쓴다. 목록에 없는 값은 만들지 않는다." : "";
+	const system = `${systemFrame()}\n\n<instructions>\n${instructions}${choiceRule}\n</instructions>\n\n${RESULT_RULES[action.result]}`;
 	const output = await deps.generator.generate({
 		system,
 		content,

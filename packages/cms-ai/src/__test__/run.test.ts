@@ -131,6 +131,24 @@ describe("AI 기능 실행기", () => {
 		expect(result).toEqual({ kind: "candidates", items: [{ value: "t1", label: "React" }] });
 	});
 
+	it("생성 방식도 선택지 안에서 고르게 목록(이미 고른 값 제외)과 규칙을 보낸다", async () => {
+		const { provider, requests } = stubProvider({ candidates: ["t1"] });
+		const action = resolveAction(
+			"pickTags",
+			aiAction({
+				label: "태그 고르기",
+				input: { title: aiInput.text({ label: "제목" }), current: aiInput.value({ label: "현재 값" }) },
+				choices: { from: "collection", collection: "tag" },
+				result: "candidates",
+				checks: [{ kind: "exists" }],
+				prompt: "태그를 고른다.",
+			}),
+		);
+		await runAiAction(action, call({ title: "글", current: ["t2"] }), deps(provider));
+		expect(textOf(requests[0])).toContain("<choices>\nt1: React\n</choices>");
+		expect(requests[0]?.system).toContain("<choices>에 있는 값(콜론 앞)만 쓴다");
+	});
+
 	it("판단 방식(여러 개)은 선택지마다 따로 묻고 기준 확률 이상만 높은 순으로 돌려준다", async () => {
 		const { decider, requests } = stubDecider((request) =>
 			Object.fromEntries(

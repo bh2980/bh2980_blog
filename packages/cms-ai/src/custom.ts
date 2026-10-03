@@ -1,7 +1,7 @@
 import { ADDED_BLOCKS, COLLECTIONS, schemaOf, storedField } from "@bh2980/cms/client";
 import { z } from "zod";
-import { type AiActionDefinition, type AiInputs, aiActionOverrideSchema, aiInput } from "./action";
-import type { AiResult } from "./definition";
+import { type AiActionDefinition, type AiChoices, type AiInputs, aiActionOverrideSchema, aiInput } from "./action";
+import type { AiEngine, AiResult } from "./definition";
 
 /**
  * 화면 기능(D12·M8-5). 관리자 AI 화면에서 만든 기능이다. 코드 기능과 같은 실행기를 쓰고, 범용 자리(필드 옆·선택 영역
@@ -33,6 +33,33 @@ export const customSurfaceSchema = z.discriminatedUnion("slot", [
 ]);
 export type CustomSurface = z.output<typeof customSurfaceSchema>;
 
+/** 필드 자리가 가리키는 필드(처음 찾은 컬렉션의 것). 관계·선택 필드는 저장 필드에서 찾는다. */
+export function surfaceField(surface: CustomSurface) {
+	if (surface.slot !== "field") return undefined;
+	const collections = surface.collections?.length ? surface.collections : COLLECTIONS;
+	for (const collection of collections) {
+		if (!(COLLECTIONS as readonly string[]).includes(collection)) continue;
+		const name = collection as (typeof COLLECTIONS)[number];
+		// 저장 필드(조건부 필드의 선택 값 포함)를 먼저 보고, 주소처럼 따로 저장하는 필드는 스키마에서 찾는다.
+		const field = storedField(name, surface.field)?.field ?? schemaOf(name).fields[surface.field];
+		if (field) return { collection, field };
+	}
+	return undefined;
+}
+
+/**
+ * 고를 값이 정해진 필드의 선택지. 관계 필드(태그·카테고리·모음집)는 가리키는 컬렉션의 공개된 항목, 선택 필드는 그 선택지다.
+ * 선택지가 있는 필드는 후보만 내고, 실제로 있는 값인지 검사한다.
+ */
+export function surfaceChoices(surface: CustomSurface): { choices: AiChoices; many: boolean } | undefined {
+	const found = surfaceField(surface);
+	if (!found || surface.slot !== "field") return undefined;
+	const { collection, field } = found;
+	if (field.kind === "relation") return { choices: { from: "collection", collection: field.to }, many: !!field.many };
+	if (field.kind === "select") return { choices: { from: "select", collection, field: surface.field }, many: false };
+	return undefined;
+}
+
 /** 자리마다 고를 수 있는 결과 모양. 선택 영역·삽입·블록은 본문 조각(MDX)을 바꾸거나 넣는다. */
 export const CUSTOM_RESULTS: Readonly<Record<CustomSurface["slot"], readonly AiResult[]>> = {
 	field: ["candidates", "text", "note"],
@@ -43,15 +70,29 @@ export const CUSTOM_RESULTS: Readonly<Record<CustomSurface["slot"], readonly AiR
 	media: ["candidates", "text"],
 };
 
+/** 자리에서 고를 수 있는 결과 모양. 선택지가 있는 필드는 후보만이다. */
+export const customResults = (surface: CustomSurface): readonly AiResult[] =>
+	surfaceChoices(surface) ? ["candidates"] : CUSTOM_RESULTS[surface.slot];
+
+/** 자리에서 고를 수 있는 방식. 판단 방식(System One)은 선택지가 있는 필드에서만 쓴다. */
+export const customEngines = (surface: CustomSurface): readonly AiEngine[] =>
+	surfaceChoices(surface) ? ["decide", "generate"] : ["generate"];
+
 export const customBaseSchema = z
 	.object({
 		label: z.string().trim().min(1).max(40),
 		surface: customSurfaceSchema,
 		result: z.enum(["candidates", "text", "mdx", "note"]),
+		/** 방식. 없으면 생성 방식이다(예전에 만든 기능). */
+		engine: z.enum(["generate", "decide"]).optional(),
 	})
-	.refine((base) => CUSTOM_RESULTS[base.surface.slot].includes(base.result), {
+	.refine((base) => customResults(base.surface).includes(base.result), {
 		message: "이 자리에서 쓸 수 없는 결과 모양입니다.",
 		path: ["result"],
+	})
+	.refine((base) => customEngines(base.surface).includes(base.engine ?? "generate"), {
+		message: "판단 방식은 고를 값이 정해진 필드(관계·선택 필드)에서만 쓸 수 있습니다.",
+		path: ["engine"],
 	});
 export type CustomBase = z.output<typeof customBaseSchema>;
 
@@ -89,6 +130,25 @@ export const CUSTOM_DEFAULT_PROMPT = "할 일을 적으세요.";
 
 /** 저장한 기본 정보로 만든 기능 정의. 지시문·보낼 입력 등은 고친 값(`override`)이 정한다. */
 export function customDefinition(base: CustomBase): AiActionDefinition {
+	const picked = surfaceChoices(base.surface);
+	if (picked) {
+		// 관계·선택 필드: 선택지 안에서 고른다. 여러 개 받는 필드(태그)는 더하고, 하나만 받는 필드는 바꾼다.
+		return {
+			label: base.label,
+			input: SURFACE_INPUTS.field,
+			send: ["title", "summary", "body"],
+			prompt: CUSTOM_DEFAULT_PROMPT,
+			engine: base.engine ?? "generate",
+			choices: picked.choices,
+			pick: picked.many ? "many" : "one",
+			threshold: picked.many ? 0.6 : 0.3,
+			maxCount: picked.many ? 5 : 2,
+			result: "candidates",
+			...(picked.many ? { apply: "append" as const } : {}),
+			checks: [{ kind: "exists" }],
+			attach: [base.surface],
+		};
+	}
 	const writes = base.surface.slot === "selection" || base.surface.slot === "insert" || base.surface.slot === "block";
 	return {
 		label: base.label,
