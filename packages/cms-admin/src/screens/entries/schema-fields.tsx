@@ -216,6 +216,7 @@ function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInpu
 				<Textarea
 					id={id}
 					{...multilineProps(field)}
+					autoComplete="off"
 					value={text}
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
@@ -226,6 +227,7 @@ function DefaultInput({ parts, ...props }: FieldInputProps & { parts?: FieldInpu
 			) : (
 				<Input
 					id={id}
+					autoComplete="off"
 					value={text}
 					aria-invalid={invalid || undefined}
 					aria-describedby={describedBy}
@@ -374,6 +376,7 @@ export function SchemaFields({
 				<InputGroup className="h-8">
 					<InputGroupInput
 						id={fieldId(name)}
+						autoComplete="off"
 						aria-invalid={Boolean(issue) || undefined}
 						aria-describedby={describedBy(name)}
 						value={form.slug}
@@ -590,6 +593,7 @@ export function RecordLocaleFields({
 							<Textarea
 								id={fieldId(key)}
 								{...multilineProps(definition)}
+								autoComplete="off"
 								lang={locale}
 								value={value}
 								disabled={disabled}
@@ -599,6 +603,7 @@ export function RecordLocaleFields({
 						) : (
 							<Input
 								id={fieldId(key)}
+								autoComplete="off"
 								lang={locale}
 								value={value}
 								disabled={disabled}
