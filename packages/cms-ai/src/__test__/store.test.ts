@@ -8,7 +8,15 @@ import {
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createCustomAction, deleteCustomAction, getAction, listActions, resetAction, updateAction } from "../actions";
+import {
+	actionWithDraft,
+	createCustomAction,
+	deleteCustomAction,
+	getAction,
+	listActions,
+	resetAction,
+	updateAction,
+} from "../actions";
 import { migrateAi } from "../migrate";
 import { AI_ACTIONS } from "../registry";
 import { type AiStore, createAiStore } from "../store";
@@ -126,6 +134,39 @@ describe("AI 기능 고친 값 저장소", () => {
 		expect(await store.findTakenSlugs({ collection: "category", locale: "ko", slugs, entryId: entry.id })).toEqual(
 			new Set(),
 		);
+	});
+
+	it("새 화면 기능은 기본 정보와 고친 값(지시문·연결·검사 등)을 한 번에 만들고, 저장 전에도 그 값으로 시험한다", async () => {
+		const base = {
+			label: "태그 고르기",
+			surface: { slot: "field", field: "tagIds", collections: ["post"] },
+			result: "candidates",
+			engine: "decide",
+		};
+		const edits = {
+			prompt: "글의 주제를 다루는가.",
+			instant: true,
+			checks: [
+				{ kind: "exists", enabled: true },
+				{ kind: "oneOf", enabled: true, items: ["t1"] },
+			],
+		};
+		const draft = await actionWithDraft(store, "custom_new", edits, base);
+		expect(draft).toMatchObject({ engine: "decide", prompt: "글의 주제를 다루는가.", instant: true });
+		expect(draft.checks.map((check) => check.kind)).toEqual(["exists", "oneOf"]);
+
+		const created = await createCustomAction(store, base, edits);
+		expect(created).toMatchObject({
+			label: "태그 고르기",
+			engine: "decide",
+			prompt: "글의 주제를 다루는가.",
+			instant: true,
+		});
+		expect((await getAction(store, created.key)).checks.map((check) => check.kind)).toEqual(["exists", "oneOf"]);
+		await expect(createCustomAction(store, base, { prompt: "{{title}}" })).rejects.toMatchObject({
+			code: "ai_invalid_input",
+		});
+		await deleteCustomAction(store, created.key, created.version);
 	});
 
 	it("화면 기능(M8-5)을 만들고 고치고 실행할 모양으로 읽고 지운다", async () => {

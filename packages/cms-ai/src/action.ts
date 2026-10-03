@@ -509,6 +509,8 @@ export const aiRunBodySchema = z
 		request: z.string().max(MAX_REQUEST_LENGTH).optional(),
 		/** 저장하지 않은 고친 값으로 시험한다(AI 화면의 `시험`). */
 		draft: z.unknown().optional(),
+		/** 화면 기능의 저장하지 않은 기본 정보(새 기능을 저장 전에 시험할 때). `draft`와 함께 보낸다. */
+		draftBase: z.unknown().optional(),
 		/** 결과를 흘려받는다(`application/x-ndjson`). 흘려받기 기능의 입력 하나만. */
 		stream: z.boolean().optional(),
 	})

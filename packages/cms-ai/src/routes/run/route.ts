@@ -70,7 +70,7 @@ export const POST = adminRoute(async ({ request }) => {
 	const action =
 		body.draft === undefined
 			? await getAction(store, body.action)
-			: await actionWithDraft(store, body.action, body.draft);
+			: await actionWithDraft(store, body.action, body.draft, body.draftBase);
 	if (body.draft === undefined && !action.enabled) throw new AiError("ai_unavailable", "꺼진 AI 기능입니다.");
 
 	const runtime = await loadAiRuntime(store, action);

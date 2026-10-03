@@ -1,13 +1,9 @@
 "use client";
 
 import { COLLECTION_DEFINITIONS, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
-import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@bh2980/cms-admin/ui/dialog";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Label } from "@bh2980/cms-admin/ui/label";
-import { useId, useState } from "react";
-import type { AiActionView } from "../actions";
+import { useId } from "react";
 import { CUSTOM_BLOCKS, type CustomBase, type CustomSurface, customEngines, customResults } from "../custom";
 import { ENGINE_LABELS, RESULT_LABELS } from "../definition";
 
@@ -178,58 +174,5 @@ export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChang
 				</div>
 			)}
 		</div>
-	);
-}
-
-/** 새 화면 기능 만들기. 만든 뒤 지시문·보낼 내용·연결은 기능 편집에서 고친다. */
-export function NewCustomDialog({
-	onClose,
-	onCreated,
-}: {
-	onClose: () => void;
-	onCreated: (view: AiActionView) => void;
-}) {
-	const [base, setBase] = useState<CustomBase>(NEW_CUSTOM_BASE);
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const create = async () => {
-		setSaving(true);
-		setError(null);
-		try {
-			onCreated(
-				await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
-					method: "POST",
-					json: { base: { ...base, label: base.label.trim() } },
-					fallback: "만들지 못했습니다.",
-				}),
-			);
-		} catch (createError) {
-			setError(errorText(createError, "만들지 못했습니다."));
-		} finally {
-			setSaving(false);
-		}
-	};
-	return (
-		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="sm:max-w-lg">
-				<DialogHeader>
-					<DialogTitle>새 기능</DialogTitle>
-				</DialogHeader>
-				<CustomBaseFields base={base} onChange={setBase} />
-				{error && (
-					<p role="alert" className="text-destructive text-xs">
-						{error}
-					</p>
-				)}
-				<DialogFooter>
-					<Button type="button" variant="outline" size="sm" onClick={onClose}>
-						취소
-					</Button>
-					<Button type="button" size="sm" disabled={saving || !base.label.trim()} onClick={() => void create()}>
-						{saving ? "만드는 중…" : "만들기"}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
 	);
 }

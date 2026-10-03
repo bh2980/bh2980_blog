@@ -32,6 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Code, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { draftCustomView } from "../action-view";
 import type { AiActionView } from "../actions";
 import type { CustomBase } from "../custom";
 import {
@@ -55,7 +56,7 @@ import {
 	useAiActions,
 } from "./ai-slot-provider";
 import { ConnectionManager, useAiSettings } from "./connection-editor";
-import { CustomBaseFields, NewCustomDialog } from "./custom-editor";
+import { CustomBaseFields, NEW_CUSTOM_BASE } from "./custom-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
 import { SharedTextsEditor } from "./shared-editor";
 
@@ -166,8 +167,13 @@ export function AiManager() {
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
 	const [tab, setTab] = useState<"features" | "connections" | "shared">("features");
-	const [editing, setEditing] = useState<{ feature: AiActionView; spec: Editable; base?: CustomBase } | null>(null);
-	const [creating, setCreating] = useState(false);
+	/** 고치는 기능. `isNew`면 아직 저장하지 않은 새 화면 기능이다(저장하면 만든다). */
+	const [editing, setEditing] = useState<{
+		feature: AiActionView;
+		spec: Editable;
+		base?: CustomBase;
+		isNew?: boolean;
+	} | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 
@@ -181,14 +187,45 @@ export function AiManager() {
 		setFormError(null);
 	};
 
-	/** 만든 화면 기능을 목록 끝에 더하고 연다. */
-	const created = (feature: AiActionView) => {
-		queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
-			data ? { ...data, items: [...data.items, feature] } : data,
-		);
-		setCreating(false);
-		open(feature);
-		void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
+	/** 새 화면 기능을 오른쪽에 연다. 기본 정보·연결·지시문 등을 다 고친 뒤 저장하면 만든다. */
+	const startNew = () => {
+		const base = NEW_CUSTOM_BASE();
+		const feature = draftCustomView(base);
+		setEditing({ feature, spec: editableOf(feature), base, isNew: true });
+		setFormError(null);
+	};
+
+	/**
+	 * 화면 기능의 기본 정보를 바꾼다. 붙을 곳·결과 모양·방식이 바뀌면 입력·검사가 달라지므로 화면 모양을 다시 만들고,
+	 * 고친 켜기·요청 받기·바로 넣기·지시문은 남긴다(방식이 같으면 연결·모델도 남긴다).
+	 */
+	const changeBase = (base: CustomBase) => {
+		if (!editing) return;
+		const { label: _before, ...restBefore } = editing.base ?? base;
+		const { label: _after, ...restAfter } = base;
+		if (JSON.stringify(restBefore) === JSON.stringify(restAfter)) {
+			setEditing({ ...editing, base });
+			return;
+		}
+		const draft = draftCustomView(base);
+		const feature: AiActionView = editing.isNew
+			? draft
+			: { ...draft, key: editing.feature.key, version: editing.feature.version, updatedAt: editing.feature.updatedAt };
+		const sameEngine = feature.engine === editing.feature.engine;
+		const { spec } = editing;
+		setEditing({
+			...editing,
+			base,
+			feature,
+			spec: {
+				...editableOf(feature),
+				enabled: spec.enabled,
+				askInstruction: spec.askInstruction,
+				instant: spec.instant,
+				prompt: spec.prompt,
+				...(sameEngine ? { providerId: spec.providerId, modelName: spec.modelName } : {}),
+			},
+		});
 	};
 
 	const remove = async (feature: AiActionView) => {
@@ -211,6 +248,26 @@ export function AiManager() {
 		if (!editing) return;
 		setSaving(true);
 		setFormError(null);
+		if (editing.isNew && editing.base) {
+			try {
+				const createdFeature = await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
+					method: "POST",
+					json: { base: { ...editing.base, label: editing.base.label.trim() }, value: editing.spec },
+					fallback: "만들지 못했습니다.",
+				});
+				queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
+					data ? { ...data, items: [...data.items, createdFeature] } : data,
+				);
+				open(createdFeature);
+				toast.success("만들었습니다.");
+				void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
+			} catch (error) {
+				setFormError(errorText(error, "만들지 못했습니다."));
+			} finally {
+				setSaving(false);
+			}
+			return;
+		}
 		try {
 			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
 				method: "PATCH",
@@ -288,7 +345,7 @@ export function AiManager() {
 					<div className="flex min-h-0 flex-1 overflow-hidden">
 						<div className="flex w-72 shrink-0 flex-col border-r">
 							<div className="border-b p-2">
-								<Button type="button" size="xs" variant="outline" onClick={() => setCreating(true)}>
+								<Button type="button" size="xs" variant="outline" onClick={startNew}>
 									<Plus aria-hidden />새 기능
 								</Button>
 							</div>
@@ -344,8 +401,9 @@ export function AiManager() {
 										editing.base
 											? {
 													base: editing.base,
-													onBaseChange: (base) => setEditing({ ...editing, base }),
-													onDelete: () => void remove(editing.feature),
+													onBaseChange: changeBase,
+													isNew: editing.isNew === true,
+													onDelete: editing.isNew ? () => setEditing(null) : () => void remove(editing.feature),
 												}
 											: undefined
 									}
@@ -363,7 +421,6 @@ export function AiManager() {
 						</div>
 					</div>
 				</TabsContent>
-				{creating && <NewCustomDialog onClose={() => setCreating(false)} onCreated={created} />}
 				{AI_SHARED_KEYS.length > 0 && (
 					<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
 						<SharedTextsEditor />
@@ -491,8 +548,8 @@ function FeatureEditor({
 	onChange: (spec: Editable) => void;
 	onSave: () => void;
 	onReset: () => void;
-	/** 화면 기능이면 기본 정보 고치기와 지우기. */
-	custom?: { base: CustomBase; onBaseChange: (base: CustomBase) => void; onDelete: () => void };
+	/** 화면 기능이면 기본 정보 고치기와 지우기. 새 기능(`isNew`)이면 지우기 대신 취소다. */
+	custom?: { base: CustomBase; onBaseChange: (base: CustomBase) => void; onDelete: () => void; isNew: boolean };
 }) {
 	const ids = { provider: useId(), prompt: useId(), threshold: useId() };
 	const deciding = feature.engine === "decide";
@@ -525,7 +582,12 @@ function FeatureEditor({
 	const runTest = async () => {
 		setTest({ status: "running" });
 		try {
-			const options = { draft: spec, request: spec.askInstruction ? sample.request : undefined };
+			// 화면 기능은 고치는 중인 기본 정보로 시험한다(아직 저장하지 않은 새 기능 포함).
+			const options = {
+				draft: spec,
+				request: spec.askInstruction ? sample.request : undefined,
+				...(custom ? { draftBase: { ...custom.base, label: custom.base.label.trim() || "새 기능" } } : {}),
+			};
 			if (translating) {
 				// 번역은 예시 MDX 한 블록을 번역본 편집기와 같은 길(여러 입력 실행)로 보낸다.
 				const [item] = await runAiActionMany(
@@ -548,7 +610,9 @@ function FeatureEditor({
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 text-sm">
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<div className="min-w-0 flex-1">
-					<h2 className="truncate font-medium text-base">{feature.label}</h2>
+					<h2 className="truncate font-medium text-base">
+						{(custom ? custom.base.label.trim() : feature.label) || "새 기능"}
+					</h2>
 					<p className="truncate text-muted-foreground text-xs">
 						{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
 					</p>
@@ -723,11 +787,20 @@ function FeatureEditor({
 			)}
 
 			<div className="flex flex-wrap items-center gap-2">
-				<Button type="button" size="sm" disabled={saving} onClick={onSave}>
-					<Save aria-hidden />
-					{saving ? "저장 중…" : "저장"}
+				<Button
+					type="button"
+					size="sm"
+					disabled={saving || (custom?.isNew === true && !custom.base.label.trim())}
+					onClick={onSave}
+				>
+					{custom?.isNew ? <Plus aria-hidden /> : <Save aria-hidden />}
+					{saving ? "저장 중…" : custom?.isNew ? "만들기" : "저장"}
 				</Button>
-				{custom ? (
+				{custom?.isNew ? (
+					<Button type="button" size="sm" variant="outline" onClick={custom.onDelete}>
+						취소
+					</Button>
+				) : custom ? (
 					<Button type="button" size="sm" variant="outline" className="text-destructive" onClick={custom.onDelete}>
 						<Trash2 aria-hidden />
 						지우기
@@ -738,9 +811,11 @@ function FeatureEditor({
 						기본값
 					</Button>
 				)}
-				<span className="ml-auto text-muted-foreground text-xs">
-					{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본값"}
-				</span>
+				{!custom?.isNew && (
+					<span className="ml-auto text-muted-foreground text-xs">
+						{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본값"}
+					</span>
+				)}
 			</div>
 
 			<section className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 text-xs" aria-label="시험">

@@ -44,6 +44,8 @@ export interface AiRunOptions {
 	request?: string;
 	/** 저장하지 않은 고친 값(AI 화면의 `시험`). */
 	draft?: unknown;
+	/** 화면 기능의 저장하지 않은 기본 정보(새 기능 시험). */
+	draftBase?: unknown;
 	signal?: AbortSignal;
 }
 
@@ -52,6 +54,7 @@ const requestBody = (action: string, options: AiRunOptions) => ({
 	env: options.env ?? {},
 	...(options.request?.trim() ? { request: options.request.trim() } : {}),
 	...(options.draft !== undefined ? { draft: options.draft } : {}),
+	...(options.draftBase !== undefined ? { draftBase: options.draftBase } : {}),
 });
 
 /** 기능을 이름으로 실행한다. */
