@@ -1,7 +1,7 @@
 "use client";
 
 import { diffSources, type SourceChange } from "@bh2980/cms/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { MdxPreview } from "./source-pane";
 
 const KIND_LABELS: Record<SourceChange["kind"], string> = { changed: "바뀜", added: "추가", removed: "삭제" };
@@ -68,6 +68,7 @@ export function SourceChangeDialog({
 			<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>원문 변경</DialogTitle>
+					<DialogDescription>마지막으로 확인한 원문과 지금 원문에서 바뀐 블록입니다.</DialogDescription>
 				</DialogHeader>
 				{changes === null ? (
 					<p className="text-muted-foreground text-sm">비교할 수 없습니다.</p>

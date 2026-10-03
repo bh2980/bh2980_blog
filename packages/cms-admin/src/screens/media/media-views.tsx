@@ -8,6 +8,7 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
+import { OPEN_ITEM } from "../shared/side-panel";
 import { type MediaItem, usageLabel } from "./media-item";
 
 const FILE_ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
@@ -25,12 +26,13 @@ export function MediaThumb({ media, iconClassName }: { media: MediaItem; iconCla
 
 export interface MediaViewProps {
 	items: readonly MediaItem[];
+	/** 오른쪽 상세 칸에 열린 파일. `OPEN_ITEM`으로 강조한다. */
 	selectedId: string | null;
 	/** 조건을 바꾸는 동안 이전 줄을 흐리게 보인다. */
 	dimmed: boolean;
 	onSelect: (media: MediaItem) => void;
 	menuFor: (media: MediaItem) => MenuAction[];
-	/** Delete 키. 쓰이지 않는 파일만 지울 수 있다. */
+	/** Delete 키. 쓰이지 않는 파일만 삭제할 수 있다. */
 	onDeleteKey: (media: MediaItem) => void;
 }
 
@@ -55,12 +57,14 @@ export function MediaGrid({ items, selectedId, dimmed, onSelect, menuFor, onDele
 					<Button
 						variant="outline"
 						type="button"
-						aria-pressed={selectedId === media.id}
+						aria-current={selectedId === media.id ? "true" : undefined}
 						onClick={() => onSelect(media)}
 						onKeyDown={deleteKey(media, onDeleteKey)}
 						className={cn(
 							"h-auto w-full flex-col items-stretch gap-0 overflow-hidden rounded-lg bg-card p-0 text-left font-normal",
-							selectedId === media.id ? "border-primary ring-2 ring-primary/30" : "hover:border-foreground/30",
+							selectedId === media.id
+								? cn(OPEN_ITEM, "border-foreground/40 hover:bg-accent")
+								: "hover:border-foreground/30",
 						)}
 					>
 						<span className="relative flex aspect-square items-center justify-center bg-muted">
@@ -118,8 +122,8 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 							actions={menuFor(media)}
 							trigger={
 								<TableRow
-									data-state={isSelected ? "selected" : undefined}
-									className="cursor-pointer"
+									aria-current={isSelected ? "true" : undefined}
+									className={cn("cursor-pointer", isSelected && OPEN_ITEM)}
 									onClick={() => onSelect(media)}
 								/>
 							}
@@ -132,7 +136,7 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 							<TableCell className="max-w-0">
 								<button
 									type="button"
-									aria-pressed={isSelected}
+									aria-current={isSelected ? "true" : undefined}
 									onClick={(event) => {
 										event.stopPropagation();
 										onSelect(media);

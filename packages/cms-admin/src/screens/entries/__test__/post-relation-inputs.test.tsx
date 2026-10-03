@@ -81,7 +81,7 @@ describe("모음집 글 목록(순서 있는 여러 개 관계)", () => {
 					.map((item) => item.textContent),
 			).toEqual([expect.stringContaining("1. 셋째 글"), expect.stringContaining("2. 둘째 글")]),
 		);
-		expect(within(list).getByText(/비공개 — 공개 목록에서 빠짐/)).toBeTruthy();
+		expect(within(list).getByText("· 비공개")).toBeTruthy();
 	});
 
 	it("글 추가·빼기 목록에서 체크하면 끝에 넣고, 체크를 풀면 뺀다", async () => {

@@ -11,8 +11,7 @@ import {
 	type SchemaCollection,
 	slugify,
 } from "@bh2980/cms/client";
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -28,6 +27,8 @@ import {
 	recordTranslationKey,
 } from "./entries/entry-form";
 import { RecordLocaleFields, SchemaFields } from "./entries/schema-fields";
+import { useConfirm } from "./shared/confirm-dialog";
+import { SidePanelHeader } from "./shared/side-panel";
 
 export type RecordTarget = { collection: Collection; id: string | null };
 
@@ -42,7 +43,8 @@ function hasLocaleValues(collection: SchemaCollection, form: EntryForm, locale: 
 
 /**
  * 분류(카테고리·태그·모음집) 편집 패널. 목록 옆에 열린다(§5.2). `저장`이 검증 후 곧바로 공개 값에 반영되고
- * 자동 저장은 하지 않는다. 위의 언어 탭마다 번역이 있는지 보이고, 다른 언어 탭에서는 그 언어 이름·설명만 고친다.
+ * 자동 저장은 하지 않는다. 저장한 뒤에도 칸은 열린 채 남는다(새 항목이면 부모가 만든 항목으로 바꿔 연다).
+ * 저장하지 않은 채 닫으면 버릴지 묻는다. 위의 언어 탭마다 번역이 있는지 보이고, 다른 언어 탭에서는 그 언어 이름·설명만 고친다.
  * 모음집 글 목록과 주소는 모든 언어가 같아 기본 언어 탭에서 고친다. 아직 공개되지 않은 글도 담을 수 있다(§6.4).
  */
 export function RecordPanel({
@@ -50,35 +52,39 @@ export function RecordPanel({
 	onClose,
 	onSaved,
 	onDirtyChange,
+	initial,
 	className,
 }: {
 	target: RecordTarget;
 	onClose: () => void;
-	onSaved: () => void;
+	/** 저장(새 항목은 추가)한 뒤. 서버가 돌려준 항목을 넘긴다. */
+	onSaved: (saved: EntryData) => void;
 	/** 저장하지 않은 변경이 생기거나 없어질 때. 목록이 다른 항목을 열기 전에 묻는 데 쓴다. */
 	onDirtyChange?: (dirty: boolean) => void;
+	/** 새 항목의 처음 값(글 편집 화면에서 검색어로 추가할 때의 이름 등). */
+	initial?: EntryFormPatch;
 	className?: string;
 }) {
+	const initialRef = useRef(initial);
 	const [loaded, setLoaded] = useState<EntryData | null>(null);
 	const [form, setFormState] = useState<EntryForm>(EMPTY_FORM);
 	const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
-	const [confirmDiscard, setConfirmDiscard] = useState(false);
+	const { confirmDiscard, dialog } = useConfirm();
 
 	const { collection, id } = target;
 	const label = COLLECTION_DEFINITIONS[collection].label;
-	const heading = id ? `${label} 편집` : `새 ${label}`;
+	const heading = id ? `${label} 편집` : `${label} 추가`;
 	const title = form.title;
 
 	useEffect(() => {
 		setLoaded(null);
-		setFormState(EMPTY_FORM);
+		setFormState(id ? EMPTY_FORM : ({ ...EMPTY_FORM, ...initialRef.current } as EntryForm));
 		setLocale(DEFAULT_LOCALE);
 		setError(null);
 		setIsDirty(false);
-		setConfirmDiscard(false);
 		if (!id) return;
 		let cancelled = false;
 		cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`)
@@ -100,16 +106,10 @@ export function RecordPanel({
 	const setForm = (patch: EntryFormPatch) => {
 		setFormState((current) => ({ ...current, ...patch }) as EntryForm);
 		setIsDirty(true);
-		setConfirmDiscard(false);
 	};
 
-	const close = () => {
-		// 명시적 저장 폼은 변경 중 닫을 때 한 번 알린다(§5.2).
-		if (isDirty && !confirmDiscard) {
-			setConfirmDiscard(true);
-			return;
-		}
-		onClose();
+	const close = async () => {
+		if (await confirmDiscard(isDirty)) onClose();
 	};
 
 	const save = async () => {
@@ -122,21 +122,26 @@ export function RecordPanel({
 		setIsSaving(true);
 		setError(null);
 		try {
-			if (id && loaded) {
-				await cmsFetch(`/api/cms/v1/entries/${id}`, {
-					method: "PATCH",
-					json: { expectedVersion: loaded.version, slug: form.slug.trim() || slugify(title), metadata: built.metadata },
-					fallback: "저장하지 못했습니다.",
-				});
-			} else {
-				await cmsFetch("/api/cms/v1/entries", {
-					method: "POST",
-					json: { collection, slug: form.slug.trim() || null, metadata: built.metadata, mdx: "" },
-					fallback: "만들지 못했습니다.",
-				});
-			}
+			const saved =
+				id && loaded
+					? await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, {
+							method: "PATCH",
+							json: {
+								expectedVersion: loaded.version,
+								slug: form.slug.trim() || slugify(title),
+								metadata: built.metadata,
+							},
+							fallback: "저장하지 못했습니다.",
+						})
+					: await cmsFetch<EntryData>("/api/cms/v1/entries", {
+							method: "POST",
+							json: { collection, slug: form.slug.trim() || null, metadata: built.metadata, mdx: "" },
+							fallback: "저장하지 못했습니다.",
+						});
+			// 칸은 열린 채 남는다. 다음 저장이 새 판을 기준으로 하도록 받은 항목으로 바꾼다.
+			if (id) setLoaded(saved);
 			setIsDirty(false);
-			onSaved();
+			onSaved(saved);
 		} catch (err) {
 			setError(
 				err instanceof CmsApiError && err.issues.length > 0
@@ -150,12 +155,7 @@ export function RecordPanel({
 
 	return (
 		<aside aria-label={heading} className={cn("flex h-full flex-col border-l bg-background text-sm", className)}>
-			<div className="flex h-11 shrink-0 items-center gap-2 border-b pr-2 pl-4">
-				<h2 className="min-w-0 flex-1 truncate font-medium text-sm">{heading}</h2>
-				<Button type="button" size="icon-sm" variant="ghost" aria-label="닫기" onClick={close}>
-					<X aria-hidden className="size-4" />
-				</Button>
-			</div>
+			<SidePanelHeader title={heading} onClose={() => void close()} />
 			<form
 				className="flex min-h-0 flex-1 flex-col"
 				onSubmit={(event) => {
@@ -221,26 +221,22 @@ export function RecordPanel({
 					</div>
 				</Tabs>
 				<div className="shrink-0 space-y-2 border-t px-4 py-3">
-					{confirmDiscard && (
-						<p role="alert" className="text-amber-700 text-xs dark:text-amber-400">
-							저장하지 않은 변경이 있습니다. 한 번 더 닫으면 변경을 버립니다.
-						</p>
-					)}
 					{error && (
 						<p role="alert" className="whitespace-pre-wrap text-destructive text-xs">
 							{error}
 						</p>
 					)}
 					<div className="flex justify-end gap-2">
-						<Button type="button" variant="outline" size="sm" onClick={close}>
-							{confirmDiscard ? "변경 버리고 닫기" : "취소"}
+						<Button type="button" variant="outline" size="sm" onClick={() => void close()}>
+							취소
 						</Button>
 						<Button type="submit" size="sm" disabled={!title.trim() || isSaving || Boolean(id && !loaded)}>
-							{id ? "저장" : "만들기"}
+							{isSaving ? "저장 중…" : "저장"}
 						</Button>
 					</div>
 				</div>
 			</form>
+			{dialog}
 		</aside>
 	);
 }

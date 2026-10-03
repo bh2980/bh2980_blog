@@ -20,7 +20,7 @@ import {
 } from "./list-state";
 import type { RecordTarget } from "./record-panel";
 import type { MenuAction } from "./shared/action-menu";
-import type { ConfirmRequest } from "./shared/confirm-dialog";
+import { useConfirm } from "./shared/confirm-dialog";
 import type { DraggedEntry } from "./shared/entry-drag";
 import {
 	applyOptimistic,
@@ -272,23 +272,17 @@ export function useEntryList(mode: ListMode) {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the visible query changes
 	useEffect(() => setSelectedIds(new Set()), [data.apiQuery]);
 	const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
-	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const { confirm, confirmDiscard, dialog: confirmDialog } = useConfirm();
 	/** 분류 편집 패널에 저장하지 않은 변경이 있는가. 패널이 알려 준다. */
 	const recordDirtyRef = useRef(false);
+	/** 분류 편집 패널에 바로 연다(묻지 않는다). 저장한 항목을 그대로 열어 둘 때 쓴다. */
+	const showRecord = (target: RecordTarget) => {
+		recordDirtyRef.current = false;
+		setRecordTarget(target);
+	};
 	/** 분류 편집 패널을 연다. 저장하지 않은 변경이 있으면 버릴지 먼저 묻는다. */
-	const openRecord = (target: RecordTarget) => {
-		const open = () => {
-			recordDirtyRef.current = false;
-			setRecordTarget(target);
-		};
-		if (!recordDirtyRef.current) return open();
-		setConfirm({
-			title: "저장하지 않은 변경",
-			description: "편집 중인 항목에 저장하지 않은 변경이 있습니다. 버리고 다른 항목을 열까요?",
-			confirmLabel: "버리고 열기",
-			destructive: true,
-			onConfirm: open,
-		});
+	const openRecord = async (target: RecordTarget) => {
+		if (await confirmDiscard(recordDirtyRef.current)) showRecord(target);
 	};
 	const closeRecord = () => {
 		recordDirtyRef.current = false;
@@ -322,29 +316,45 @@ export function useEntryList(mode: ListMode) {
 			{ folderId },
 		);
 
-	const confirmTrash = (targets: BulkSelection[]) =>
-		setConfirm({
-			title: `휴지통으로 이동 — ${targets.length}개`,
+	const titleOf = (targets: BulkSelection[]) => `'${targets[0]?.title || "제목 없음"}'`;
+
+	const confirmTrash = async (targets: BulkSelection[]) => {
+		const ok = await confirm({
+			title: "휴지통으로 이동",
 			description:
 				targets.length === 1
-					? `'${targets[0]?.title || "제목 없음"}'을(를) 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.`
-					: "선택한 항목을 휴지통으로 옮깁니다. 공개가 종료되고 예약이 취소됩니다.",
+					? `${titleOf(targets)}을(를) 휴지통으로 옮길까요? 공개가 종료되고 예약이 취소됩니다.`
+					: `선택한 항목 ${targets.length}개를 휴지통으로 옮길까요? 공개가 종료되고 예약이 취소됩니다.`,
 			confirmLabel: "휴지통으로 이동",
 			destructive: true,
-			onConfirm: () => bulk("trash", "휴지통으로 이동", targets),
 		});
+		if (ok) await bulk("trash", "휴지통으로 이동", targets);
+	};
 
-	const confirmPermanentDelete = (targets: BulkSelection[]) =>
-		setConfirm({
-			title: `영구 삭제 — ${targets.length}개`,
+	const confirmArchive = async (targets: BulkSelection[]) => {
+		const ok = await confirm({
+			title: "보관",
 			description:
 				targets.length === 1
-					? `'${targets[0]?.title || "제목 없음"}'을(를) 영구 삭제합니다. 되돌릴 수 없습니다.`
-					: "선택한 항목을 영구 삭제합니다. 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 지우지 않고 사유를 보여 줍니다.",
+					? `${titleOf(targets)}을(를) 보관할까요? 공개가 종료되고 예약이 취소됩니다.`
+					: `선택한 글 ${targets.length}개를 보관할까요? 공개가 종료되고 예약이 취소됩니다.`,
+			confirmLabel: "보관",
+		});
+		if (ok) await bulk("archive", "보관", targets);
+	};
+
+	const confirmPermanentDelete = async (targets: BulkSelection[]) => {
+		const ok = await confirm({
+			title: "영구 삭제",
+			description:
+				targets.length === 1
+					? `${titleOf(targets)}을(를) 영구 삭제할까요? 되돌릴 수 없습니다.`
+					: `선택한 항목 ${targets.length}개를 영구 삭제할까요? 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 삭제하지 않고 사유를 보여 줍니다.`,
 			confirmLabel: "영구 삭제",
 			destructive: true,
-			onConfirm: () => bulk("permanentDelete", "영구 삭제", targets),
 		});
+		if (ok) await bulk("permanentDelete", "영구 삭제", targets);
+	};
 
 	const duplicate = async (item: ListEntriesItem) => {
 		try {
@@ -362,7 +372,7 @@ export function useEntryList(mode: ListMode) {
 	/** 새 항목. 글·메모는 지금 폴더에 편집 화면으로, 분류 항목은 작은 폼으로 만든다. */
 	const createNew = () =>
 		isRecord
-			? openRecord({ collection, id: null })
+			? void openRecord({ collection, id: null })
 			: router.push(
 					`/admin/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}` as Route,
 				);
@@ -375,11 +385,12 @@ export function useEntryList(mode: ListMode) {
 			{
 				openEditor: (target) => router.push(editHref(target) as Route),
 				openInNewTab: (target) => window.open(editHref(target), "_blank", "noopener"),
-				openRecord: (target) => openRecord({ collection, id: target.id }),
+				openRecord: (target) => void openRecord({ collection, id: target.id }),
 				duplicate: (target) => void duplicate(target),
 				restore: (targets) => void restore(targets),
-				confirmTrash,
-				confirmPermanentDelete,
+				confirmTrash: (targets) => void confirmTrash(targets),
+				confirmArchive: (targets) => void confirmArchive(targets),
+				confirmPermanentDelete: (targets) => void confirmPermanentDelete(targets),
 				bulk: (op, label, targets, params) => void bulk(op, label, targets, params),
 			},
 		);
@@ -387,8 +398,8 @@ export function useEntryList(mode: ListMode) {
 	/** 행에서 Delete 키. 목록은 휴지통 이동, 휴지통은 영구 삭제를 묻는다. */
 	const onDeleteKey = (item: ListEntriesItem) => {
 		const targets = actionTargets(item, items, selectedIds).map(toSelection);
-		if (isTrash) confirmPermanentDelete(targets);
-		else confirmTrash(targets);
+		if (isTrash) void confirmPermanentDelete(targets);
+		else void confirmTrash(targets);
 	};
 
 	return {
@@ -407,12 +418,13 @@ export function useEntryList(mode: ListMode) {
 		folderActions,
 		recordTarget,
 		openRecord,
+		showRecord,
 		closeRecord,
 		setRecordDirty: (dirty: boolean) => {
 			recordDirtyRef.current = dirty;
 		},
-		confirm,
-		closeConfirm: () => setConfirm(null),
+		/** 이 목록의 확인창(휴지통 이동·보관·영구 삭제·변경 버리기). 화면에 한 번 렌더한다. */
+		confirmDialog,
 		reloadTaxonomies: () => void queryClient.invalidateQueries({ queryKey: [...ENTRIES_KEY, "taxonomy"] }),
 		invalidateEntries,
 		moveEntries,
@@ -420,7 +432,7 @@ export function useEntryList(mode: ListMode) {
 		rowMenu,
 		onDeleteKey,
 		restore,
-		confirmPermanentDelete,
+		confirmPermanentDelete: (targets: BulkSelection[]) => void confirmPermanentDelete(targets),
 	};
 }
 

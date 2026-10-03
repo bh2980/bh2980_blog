@@ -89,7 +89,7 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 	it("sorts from the column header popup and exposes aria-sort on the header cell", async () => {
 		const props = renderTable();
 		expect(screen.getByRole("columnheader", { name: /수정일/ }).getAttribute("aria-sort")).toBe("descending");
-		fireEvent.click(screen.getByRole("button", { name: /^발행일 — 정렬·필터 열기$/ }));
+		fireEvent.click(screen.getByRole("button", { name: /^발행일$/ }));
 		fireEvent.click(await screen.findByRole("button", { name: "오름차순" }));
 		expect(props.onStateChange).toHaveBeenCalledWith({ sortField: "publishedAt", sortDirection: "asc" });
 	});
@@ -100,7 +100,7 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		fireEvent.click(header);
 		fireEvent.click(await screen.findByRole("checkbox", { name: "초안" }));
 		expect(props.onStateChange).toHaveBeenCalledWith({ statuses: ["draft"] });
-		fireEvent.click(screen.getByRole("button", { name: "상태 필터 지우기" }));
+		fireEvent.click(screen.getByRole("button", { name: "필터 해제" }));
 		expect(props.onStateChange).toHaveBeenLastCalledWith({ statuses: [], hasChanges: false, scheduled: false });
 	});
 

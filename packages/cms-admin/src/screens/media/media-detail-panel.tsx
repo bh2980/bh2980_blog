@@ -1,14 +1,16 @@
 "use client";
 
 import { fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
-import { Copy, ExternalLink, X } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { Copy, ExternalLink } from "lucide-react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { formatBytes } from "../../editor/upload-helper";
 import { cn } from "../../lib/utils/cn";
 import { type SlotRequest, SlotScope } from "../../slots/slots";
 import { Button, buttonVariants } from "../../ui/button";
 import { Field, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
+import { Textarea } from "../../ui/textarea";
+import { errorText } from "../admin-api";
+import { SidePanelHeader } from "../shared/side-panel";
 import { copyText, type MediaItem, withExtension } from "./media-item";
 import { MediaThumb } from "./media-views";
 
@@ -35,7 +37,8 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 /**
  * 미디어 상세(§7.3). 바둑판·목록 어느 보기에서 골라도 오른쪽에 열린다.
  * 위에서부터 미리보기 → 바로 쓰는 작업(주소·ID 복사, 열기) → 정보 → 기본 설명(이미지) → 사용처 → 삭제 순이다.
- * 이름·기본 설명은 AI 자리(파일 이름·대체 텍스트·캡션 추천)를 둔다.
+ * 이름·기본 설명은 AI 자리(파일 이름·대체 텍스트·캡션 추천)를 둔다. 기본 설명은 `저장`을 눌러야 저장되고,
+ * 저장하지 않은 변경이 있는지 `onDirtyChange`로 알린다(다른 파일을 열거나 닫기 전에 묻는 데 쓴다).
  */
 export function MediaDetailPanel({
 	media,
@@ -44,18 +47,40 @@ export function MediaDetailPanel({
 	onSaveDefaults,
 	onRename,
 	onRequestDelete,
+	onDirtyChange,
 }: {
 	media: MediaItem;
 	className?: string;
 	onClose: () => void;
-	onSaveDefaults: (defaults: { alt: string; caption: string }) => void;
+	/** 기본 설명을 저장한다. 실패하면 거부(reject)한다. 오류는 칸 안에 보인다. */
+	onSaveDefaults: (defaults: { alt: string; caption: string }) => Promise<void>;
 	onRename: (filename: string) => void;
 	onRequestDelete: () => void;
+	onDirtyChange?: (dirty: boolean) => void;
 }) {
 	const altId = useId();
 	const captionId = useId();
-	const [draft, setDraft] = useState({ alt: media.defaultAlt, caption: media.defaultCaption });
+	// 마지막으로 저장한(처음에는 불러온) 값. 고친 값과 다르면 저장하지 않은 변경이다.
+	const [saved, setSaved] = useState({ alt: media.defaultAlt, caption: media.defaultCaption });
+	const [draft, setDraft] = useState(saved);
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState<string | null>(null);
 	const isImage = isImageMime(media.mimeType);
+	const isDirty = draft.alt !== saved.alt || draft.caption !== saved.caption;
+	useEffect(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange]);
+
+	const saveDefaults = async () => {
+		setIsSaving(true);
+		setSaveError(null);
+		try {
+			await onSaveDefaults(draft);
+			setSaved(draft);
+		} catch (error) {
+			setSaveError(errorText(error, "저장하지 못했습니다."));
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	/** 미디어 파일 자리. 이미지 내용을 보고 이름·기본 설명을 추천한다. */
 	const slot = (target: "filename" | "defaultAlt" | "defaultCaption", apply: (value: string) => void): SlotRequest => ({
@@ -73,14 +98,7 @@ export function MediaDetailPanel({
 
 	return (
 		<aside aria-label="미디어 상세" className={cn("flex h-full flex-col border-l bg-background text-xs", className)}>
-			<div className="flex h-11 shrink-0 items-center gap-2 border-b pr-2 pl-4">
-				<h2 className="min-w-0 flex-1 truncate font-medium text-sm" title={media.filename}>
-					{media.filename}
-				</h2>
-				<Button type="button" variant="ghost" size="icon-sm" aria-label="상세 닫기" onClick={onClose}>
-					<X aria-hidden className="size-4" />
-				</Button>
-			</div>
+			<SidePanelHeader title={media.filename} onClose={onClose} />
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<div className="space-y-3 p-4">
@@ -177,7 +195,7 @@ export function MediaDetailPanel({
 							className="space-y-3"
 							onSubmit={(event) => {
 								event.preventDefault();
-								onSaveDefaults(draft);
+								void saveDefaults();
 							}}
 						>
 							<SlotScope
@@ -190,11 +208,13 @@ export function MediaDetailPanel({
 											<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
 											{trigger}
 										</div>
-										<Input
+										<Textarea
 											id={altId}
+											rows={2}
 											value={draft.alt}
+											disabled={isSaving}
 											onChange={(event) => setDraft({ ...draft, alt: event.target.value })}
-											className="h-8 text-xs md:text-xs"
+											className="min-h-14 text-xs md:text-xs"
 										/>
 										{panel}
 									</Field>
@@ -210,19 +230,28 @@ export function MediaDetailPanel({
 											<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
 											{trigger}
 										</div>
-										<Input
+										<Textarea
 											id={captionId}
+											rows={2}
 											value={draft.caption}
+											disabled={isSaving}
 											onChange={(event) => setDraft({ ...draft, caption: event.target.value })}
-											className="h-8 text-xs md:text-xs"
+											className="min-h-14 text-xs md:text-xs"
 										/>
 										{panel}
 									</Field>
 								)}
 							</SlotScope>
-							<Button type="submit" size="sm" variant="outline" disabled={media.status !== "ready"}>
-								기본값 저장
-							</Button>
+							{saveError && (
+								<p role="alert" className="text-destructive">
+									{saveError}
+								</p>
+							)}
+							<div className="flex justify-end">
+								<Button type="submit" size="sm" disabled={media.status !== "ready" || isSaving}>
+									{isSaving ? "저장 중…" : "저장"}
+								</Button>
+							</div>
 						</form>
 					</Section>
 				)}
@@ -238,7 +267,7 @@ export function MediaDetailPanel({
 										href={`/admin/entries/${reference.entryId}/edit`}
 										className="block truncate rounded-md border px-2 py-1.5 hover:bg-accent"
 									>
-										{reference.title || "(제목 없음)"} · {reference.state === "published" ? "공개본" : "초안"}
+										{reference.title || "제목 없음"} · {reference.state === "published" ? "공개본" : "초안"}
 									</a>
 								</li>
 							))}
@@ -259,7 +288,7 @@ export function MediaDetailPanel({
 					{media.status === "deleting" ? "삭제 다시 시도" : "삭제"}
 				</Button>
 				{media.referencesCount > 0 && (
-					<p className="text-center text-[11px] text-muted-foreground">쓰이는 파일은 지울 수 없습니다.</p>
+					<p className="text-center text-[11px] text-muted-foreground">쓰이는 파일은 삭제할 수 없습니다.</p>
 				)}
 			</div>
 		</aside>

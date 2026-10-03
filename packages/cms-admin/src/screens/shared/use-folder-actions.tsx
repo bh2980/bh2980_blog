@@ -2,6 +2,7 @@
 
 import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
+import { Folder as FolderIcon, FolderInput, FolderPlus, FolderUp, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -17,6 +18,7 @@ import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
+import { Skeleton } from "../../ui/skeleton";
 import { cmsFetch, errorText } from "../admin-api";
 import type { MenuAction } from "./action-menu";
 
@@ -50,19 +52,28 @@ export function moveTargetsFor(folder: Folder, folders: Folder[]): Folder[] {
 export function folderMenuActions(folder: Folder, folders: Folder[], actions: FolderActions): MenuAction[] {
 	const targets = moveTargetsFor(folder, folders);
 	return [
-		{ kind: "item", label: "새 하위 폴더", onSelect: () => actions.requestCreate(folder.id) },
-		{ kind: "item", label: "이름 변경", shortcut: "F2", onSelect: () => actions.requestRename(folder) },
+		{ kind: "item", label: "하위 폴더 추가", icon: FolderPlus, onSelect: () => actions.requestCreate(folder.id) },
+		{ kind: "item", label: "이름 변경", icon: Pencil, shortcut: "F2", onSelect: () => actions.requestRename(folder) },
 		{
 			kind: "sub",
 			label: "이동",
+			icon: FolderInput,
 			emptyLabel: "옮길 수 있는 폴더가 없습니다",
 			items: [
 				...(folder.parentId
-					? [{ kind: "item" as const, label: "최상위", onSelect: () => void actions.moveFolder(folder, null) }]
+					? [
+							{
+								kind: "item" as const,
+								label: "최상위",
+								icon: FolderUp,
+								onSelect: () => void actions.moveFolder(folder, null),
+							},
+						]
 					: []),
 				...targets.map((target) => ({
 					kind: "item" as const,
 					label: target.name,
+					icon: FolderIcon,
 					onSelect: () => void actions.moveFolder(folder, target.id),
 				})),
 			],
@@ -71,6 +82,7 @@ export function folderMenuActions(folder: Folder, folders: Folder[], actions: Fo
 		{
 			kind: "item",
 			label: "삭제",
+			icon: Trash2,
 			shortcut: "Del",
 			destructive: true,
 			onSelect: () => void actions.requestDelete(folder),
@@ -163,14 +175,16 @@ export function useFolderActions({
 				await cmsFetch("/api/cms/v1/folders", {
 					method: "POST",
 					json: { collection, name: name.trim(), parentId: nameDialog.parentId },
-					fallback: "폴더를 만들지 못했습니다.",
+					fallback: "폴더를 추가하지 못했습니다.",
 				});
+				toast.success(`'${name.trim()}' 폴더를 추가했습니다.`);
 			} else {
 				await cmsFetch(`/api/cms/v1/folders/${nameDialog.folder.id}`, {
 					method: "PATCH",
 					json: { name: name.trim(), expectedVersion: nameDialog.folder.version },
 					fallback: "폴더 이름을 바꾸지 못했습니다.",
 				});
+				toast.success("저장했습니다.");
 			}
 			setNameDialog(null);
 			await onChanged();
@@ -193,7 +207,7 @@ export function useFolderActions({
 			const deletedId = deleteDialog.folder.id;
 			const moved = deleteDialog.contents;
 			toast.success(
-				`'${deleteDialog.folder.name}' 폴더를 지웠습니다.${
+				`'${deleteDialog.folder.name}' 폴더를 삭제했습니다.${
 					moved && moved.entryCount + moved.childFolders.length > 0
 						? ` 안의 내용은 ${toFolder(deleteDialog.folder.parentId)} 옮겼습니다.`
 						: ""
@@ -216,10 +230,12 @@ export function useFolderActions({
 			<Dialog open={nameDialog !== null} onOpenChange={(open) => !open && setNameDialog(null)}>
 				<DialogContent className="max-w-sm" finalFocus={restoreFocus}>
 					<DialogHeader>
-						<DialogTitle>{nameDialog?.mode === "rename" ? "폴더 이름 변경" : "새 폴더"}</DialogTitle>
+						<DialogTitle>
+							{nameDialog?.mode === "rename" ? "폴더 이름 변경" : nameDialog?.parentId ? "하위 폴더 추가" : "폴더 추가"}
+						</DialogTitle>
 						<DialogDescription>
 							{nameDialog?.mode === "create"
-								? `위치: ${folderName(nameDialog.parentId)}. 폴더는 관리자 전용 분류이며 글 주소에 영향이 없습니다.`
+								? `위치: ${folderName(nameDialog.parentId)}`
 								: "같은 위치에 같은 이름의 폴더는 둘 수 없습니다."}
 						</DialogDescription>
 					</DialogHeader>
@@ -241,6 +257,12 @@ export function useFolderActions({
 								maxLength={100}
 								aria-invalid={Boolean(error) || undefined}
 								onChange={(e) => setName(e.target.value)}
+								onKeyDown={(event) => {
+									// 한글 조합 중 Enter는 글자를 끝내는 키다. 폼을 보내지 않는다.
+									if (event.key === "Enter" && (event.nativeEvent.isComposing || event.keyCode === 229)) {
+										event.preventDefault();
+									}
+								}}
 							/>
 							{error && <FieldError>{error}</FieldError>}
 						</Field>
@@ -249,7 +271,7 @@ export function useFolderActions({
 								취소
 							</Button>
 							<Button type="submit" disabled={!name.trim() || isBusy}>
-								{nameDialog?.mode === "rename" ? "이름 변경" : "만들기"}
+								{isBusy ? "저장 중…" : "저장"}
 							</Button>
 						</DialogFooter>
 					</form>
@@ -261,7 +283,7 @@ export function useFolderActions({
 					<AlertDialogHeader>
 						<AlertDialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</AlertDialogTitle>
 						<AlertDialogDescription>
-							폴더만 지웁니다. 안의 {itemLabel}·하위 폴더는 휴지통으로 가지 않고 {destination} 옮겨집니다.
+							폴더를 삭제할까요? 안의 {itemLabel}·하위 폴더는 휴지통으로 가지 않고 {destination} 옮겨집니다.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					{deleteDialog?.contents ? (
@@ -276,7 +298,12 @@ export function useFolderActions({
 							</li>
 						</ul>
 					) : (
-						!error && <p className="text-muted-foreground text-sm">내용을 확인하는 중…</p>
+						!error && (
+							<div aria-hidden className="space-y-2">
+								<Skeleton className="h-4 w-40" />
+								<Skeleton className="h-4 w-56" />
+							</div>
+						)
 					)}
 					{error && (
 						<p role="alert" className="text-destructive text-sm">
@@ -291,7 +318,7 @@ export function useFolderActions({
 							disabled={!deleteDialog?.contents || isBusy}
 							onClick={() => void confirmDelete()}
 						>
-							삭제
+							{isBusy ? "삭제 중…" : "삭제"}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

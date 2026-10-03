@@ -63,7 +63,7 @@ export function DateRangePicker({
 				<DateRangeCalendar from={from} to={to} onChange={onChange} />
 				{(from || to) && (
 					<Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => onChange("", "")}>
-						기간 지우기
+						기간 비우기
 					</Button>
 				)}
 			</PopoverContent>

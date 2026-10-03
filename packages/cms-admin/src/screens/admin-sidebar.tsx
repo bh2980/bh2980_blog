@@ -8,6 +8,7 @@ import {
 	FileImage,
 	Folder as FolderIcon,
 	FolderOpen,
+	FolderPlus,
 	Globe,
 	LayoutTemplate,
 	Plus,
@@ -17,15 +18,14 @@ import type { Route } from "next";
 import Link from "next/link";
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";
-import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { IconButton } from "../ui/icon-button";
 import { Label } from "../ui/label";
 import {
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
 	SidebarGroup,
-	SidebarGroupAction,
 	SidebarGroupContent,
 	SidebarGroupLabel,
 	SidebarHeader,
@@ -38,6 +38,7 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "../ui/sidebar";
+import { Switch } from "../ui/switch";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
@@ -214,16 +215,22 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 
 	const label = COLLECTION_DEFINITIONS[nav.collection].label;
 	const blankActions: MenuAction[] = [
-		{ kind: "item", label: "새 폴더", onSelect: () => nav.folderActions.requestCreate(null) },
-		{ kind: "item", label: `새 ${label}`, onSelect: nav.onCreateEntry },
+		{ kind: "item", label: "폴더 추가", icon: FolderPlus, onSelect: () => nav.folderActions.requestCreate(null) },
+		{ kind: "item", label: `${label} 추가`, icon: Plus, onSelect: nav.onCreateEntry },
 	];
 
 	return (
 		<SidebarGroup className="flex-1 group-data-[collapsible=icon]:hidden">
 			<SidebarGroupLabel>폴더</SidebarGroupLabel>
-			<SidebarGroupAction aria-label="새 폴더" title="새 폴더" onClick={() => nav.folderActions.requestCreate(null)}>
-				<Plus />
-			</SidebarGroupAction>
+			<IconButton
+				label="폴더 추가"
+				side="right"
+				size="icon-xs"
+				className="absolute top-3.5 right-3 size-5 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden [&_svg]:size-4"
+				onClick={() => nav.folderActions.requestCreate(null)}
+			>
+				<Plus aria-hidden />
+			</IconButton>
 			<SidebarGroupContent className="flex flex-1 flex-col">
 				<SidebarMenu>
 					<SidebarMenuItem>
@@ -247,10 +254,11 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">만든 폴더가 없습니다.</p>}
+				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">폴더가 없습니다.</p>}
 				{folders.length > 0 && (
 					<Label className="mt-3 px-2 font-normal text-muted-foreground text-xs">
-						<Checkbox
+						<Switch
+							size="sm"
 							checked={nav.includeDescendants}
 							onCheckedChange={(checked) => nav.onIncludeDescendantsChange(checked === true)}
 						/>

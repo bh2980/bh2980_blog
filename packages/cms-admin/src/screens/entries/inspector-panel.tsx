@@ -3,13 +3,11 @@
 import type { LayoutGroup } from "@bh2980/cms/client";
 import { isCollection, localeLabel, schemaOf } from "@bh2980/cms/client";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
-import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Button } from "../../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { CmsIssue } from "../api-error-message";
+import { SidePanelHeader } from "../shared/side-panel";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
 import { SeoPanel } from "./seo-panel";
@@ -133,7 +131,7 @@ export function InspectorPanel({
 			aria-label="속성"
 			className="h-full w-full gap-0 overflow-hidden border-l bg-background text-sm"
 		>
-			<div className="flex h-11 shrink-0 items-center gap-1 border-b pr-2 pl-3">
+			<SidePanelHeader onClose={onClose}>
 				<TabsList variant="line" className="h-full flex-1 justify-start gap-3">
 					<TabsTrigger value="fields" className="flex-none px-0 text-xs">
 						속성
@@ -145,17 +143,7 @@ export function InspectorPanel({
 						</TabsTrigger>
 					)}
 				</TabsList>
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<Button type="button" size="icon-sm" variant="ghost" aria-label="속성 닫기" onClick={onClose}>
-								<X aria-hidden className="size-4" />
-							</Button>
-						}
-					/>
-					<TooltipContent side="bottom">속성 닫기</TooltipContent>
-				</Tooltip>
-			</div>
+			</SidePanelHeader>
 
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
 				<TabsContent value="fields">{fields((group) => !isSeoGroup(group))}</TabsContent>

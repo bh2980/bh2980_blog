@@ -4,7 +4,7 @@ import { formatDateTimeInput } from "@bh2980/cms/client";
 import { useState } from "react";
 import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
-import { Field, FieldLabel } from "../../ui/field";
+import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import type { EntryData } from "./entry-form";
 
@@ -13,12 +13,14 @@ export const formatSeoul = (value: string | null | undefined) => formatDateTimeI
 
 /**
  * 발행 예약 창. 열 때마다 빈 입력으로 시작한다. 입력한 서울 시각 문자열을 그대로 넘기고, 검사·요청은 부르는 쪽이 한다.
+ * 검사·요청이 실패하면 부르는 쪽이 `error`로 넘기고, 창 안에 보인다(창 밖에 보이지 않는다).
  */
 export function ScheduleDialog({
 	open,
 	onOpenChange,
 	runnerConfigured,
 	submitting,
+	error,
 	onSubmit,
 }: {
 	open: boolean;
@@ -26,6 +28,8 @@ export function ScheduleDialog({
 	/** 외부 실행기 연결 여부. 모르면(새 글) 안내하지 않는다. */
 	runnerConfigured: boolean | undefined;
 	submitting: boolean;
+	/** 창 안에 보일 오류. */
+	error?: string | null;
 	onSubmit: (seoulDateTime: string) => void;
 }) {
 	const [input, setInput] = useState("");
@@ -46,28 +50,39 @@ export function ScheduleDialog({
 						맡습니다.
 					</DialogDescription>
 				</DialogHeader>
-				<Field>
-					<FieldLabel htmlFor="schedule-date">예약 일시</FieldLabel>
-					<Input
-						id="schedule-date"
-						type="datetime-local"
-						value={input}
-						onChange={(event) => setInput(event.target.value)}
-					/>
-				</Field>
-				{runnerConfigured === false && (
-					<p className="text-amber-700 text-xs dark:text-amber-400">
-						외부 실행기 연결 필요: 연결 전에는 예약이 실행 대기로 남습니다.
-					</p>
-				)}
-				<DialogFooter>
-					<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-						취소
-					</Button>
-					<Button type="button" disabled={!input || submitting} onClick={() => onSubmit(input)}>
-						예약 등록
-					</Button>
-				</DialogFooter>
+				<form
+					className="contents"
+					onSubmit={(event) => {
+						event.preventDefault();
+						if (input && !submitting) onSubmit(input);
+					}}
+				>
+					<Field data-invalid={Boolean(error) || undefined}>
+						<FieldLabel htmlFor="schedule-date">예약 일시</FieldLabel>
+						<Input
+							id="schedule-date"
+							type="datetime-local"
+							value={input}
+							aria-invalid={Boolean(error) || undefined}
+							aria-describedby={error ? "schedule-date-error" : undefined}
+							onChange={(event) => setInput(event.target.value)}
+						/>
+						{error && <FieldError id="schedule-date-error">{error}</FieldError>}
+					</Field>
+					{runnerConfigured === false && (
+						<p className="text-amber-700 text-xs dark:text-amber-400">
+							외부 실행기 연결 필요: 연결 전에는 예약이 실행 대기로 남습니다.
+						</p>
+					)}
+					<DialogFooter>
+						<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+							취소
+						</Button>
+						<Button type="submit" disabled={!input || submitting}>
+							{submitting ? "예약 중…" : "예약"}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

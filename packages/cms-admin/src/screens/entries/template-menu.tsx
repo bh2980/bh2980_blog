@@ -1,19 +1,17 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { FileText, LayoutTemplate, RefreshCw, Settings } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import { IconButton } from "../../ui/icon-button";
 import { cmsFetch } from "../admin-api";
+import { useConfirm } from "../shared/confirm-dialog";
 
 type Template = { id: string; name: string; mdx: string };
 
@@ -32,83 +30,75 @@ export function TemplateMenu({
 }) {
 	const [open, setOpen] = useState(false);
 	const [templates, setTemplates] = useState<Template[] | null>(null);
-	const [pendingMdx, setPendingMdx] = useState<string | null>(null);
+	const [loadFailed, setLoadFailed] = useState(false);
+	const { confirm, dialog } = useConfirm();
 
-	const openMenu = async (next: boolean) => {
-		setOpen(next);
-		if (!next || templates) return;
+	const load = async () => {
+		setLoadFailed(false);
 		try {
 			const data = await cmsFetch<{ items: Template[] }>("/api/cms/v1/templates");
 			setTemplates(data.items);
 		} catch {
-			setTemplates([]);
+			setLoadFailed(true);
 		}
 	};
 
-	const apply = (mdx: string) => {
-		onApply(mdx);
+	const openMenu = (next: boolean) => {
+		setOpen(next);
+		if (next && !templates) void load();
+	};
+
+	const choose = async (template: Template) => {
 		setOpen(false);
-		setPendingMdx(null);
+		if (
+			currentMdx.trim() &&
+			!(await confirm({
+				title: "템플릿 적용",
+				description: `지금 본문을 '${template.name}' 템플릿으로 바꿀까요? 쓴 본문은 사라집니다.`,
+				confirmLabel: "적용",
+				destructive: true,
+			}))
+		) {
+			return;
+		}
+		onApply(template.mdx);
 	};
 
 	return (
 		<>
-			<DropdownMenu open={open} onOpenChange={(next) => void openMenu(next)}>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							type="button"
-							size="icon-sm"
-							variant="ghost"
-							aria-label="템플릿 메뉴"
-							title="템플릿"
-							disabled={disabled}
-						/>
-					}
-				>
-					<MoreHorizontal aria-hidden className="size-4" />
-				</DropdownMenuTrigger>
+			<DropdownMenu open={open} onOpenChange={openMenu}>
+				<IconButton label="템플릿" disabled={disabled} trigger={(button) => <DropdownMenuTrigger render={button} />}>
+					<LayoutTemplate aria-hidden className="size-4" />
+				</IconButton>
 				<DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
-					<DropdownMenuGroup>
-						<DropdownMenuLabel>템플릿</DropdownMenuLabel>
-						{templates === null ? (
-							<DropdownMenuItem disabled>불러오는 중...</DropdownMenuItem>
-						) : templates.length === 0 ? (
-							<DropdownMenuItem disabled>등록된 템플릿이 없습니다.</DropdownMenuItem>
-						) : (
-							templates.map((template) => (
-								<DropdownMenuItem
-									key={template.id}
-									onClick={() => (currentMdx.trim() ? setPendingMdx(template.mdx) : apply(template.mdx))}
-								>
-									<span className="truncate">{template.name}</span>
-								</DropdownMenuItem>
-							))
-						)}
-					</DropdownMenuGroup>
+					{loadFailed ? (
+						<>
+							<DropdownMenuItem disabled>템플릿을 불러오지 못했습니다.</DropdownMenuItem>
+							<DropdownMenuItem closeOnClick={false} onClick={() => void load()}>
+								<RefreshCw aria-hidden />
+								다시 시도
+							</DropdownMenuItem>
+						</>
+					) : templates === null ? (
+						<DropdownMenuItem disabled>불러오는 중…</DropdownMenuItem>
+					) : templates.length === 0 ? (
+						<DropdownMenuItem disabled>템플릿이 없습니다.</DropdownMenuItem>
+					) : (
+						templates.map((template) => (
+							<DropdownMenuItem key={template.id} onClick={() => void choose(template)}>
+								<FileText aria-hidden />
+								<span className="truncate">{template.name}</span>
+							</DropdownMenuItem>
+						))
+					)}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
+						<Settings aria-hidden />
 						템플릿 관리
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
-
-			<Dialog open={pendingMdx !== null} onOpenChange={(next) => !next && setPendingMdx(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>템플릿 적용</DialogTitle>
-						<DialogDescription>현재 본문이 선택한 템플릿으로 바뀝니다.</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => setPendingMdx(null)}>
-							취소
-						</Button>
-						<Button type="button" onClick={() => pendingMdx !== null && apply(pendingMdx)}>
-							템플릿 적용
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			{dialog}
 		</>
 	);
 }

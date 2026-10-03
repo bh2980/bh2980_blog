@@ -20,6 +20,7 @@ const handlers = (): RowMenuHandlers => ({
 	duplicate: vi.fn(),
 	restore: vi.fn(),
 	confirmTrash: vi.fn(),
+	confirmArchive: vi.fn(),
 	confirmPermanentDelete: vi.fn(),
 	bulk: vi.fn(),
 });
@@ -77,6 +78,24 @@ describe("행 메뉴 항목", () => {
 		const on = handlers();
 		select(rowMenuActions([item("a", "archived")], context, on), "보관 해제");
 		expect(on.bulk).toHaveBeenCalledWith("unarchive", "보관 해제", [{ id: "a", expectedVersion: 2, title: "a" }]);
+	});
+
+	it("보관은 바로 하지 않고 확인을 부른다", () => {
+		const on = handlers();
+		select(rowMenuActions([item("a")], context, on), "보관");
+		expect(on.confirmArchive).toHaveBeenCalledWith([{ id: "a", expectedVersion: 2, title: "a" }]);
+		expect(on.bulk).not.toHaveBeenCalled();
+	});
+
+	it("모든 항목과 하위 메뉴 항목에 아이콘이 있다", () => {
+		const missing = (actions: MenuAction[]): string[] =>
+			actions.flatMap((action) => {
+				if (action.kind === "item") return action.icon ? [] : [action.label];
+				if (action.kind === "sub") return [...(action.icon ? [] : [action.label]), ...missing(action.items)];
+				return [];
+			});
+		expect(missing(rowMenuActions([item("a")], context, handlers()))).toEqual([]);
+		expect(missing(rowMenuActions([item("a", "trashed")], { ...context, mode: "trash" }, handlers()))).toEqual([]);
 	});
 
 	it("분류 항목은 작은 폼으로 열고 태그·보관이 없다", () => {

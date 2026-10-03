@@ -1,5 +1,5 @@
 import type { BacklinkField } from "@bh2980/cms/client";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BacklinkInput } from "../field-inputs";
@@ -94,15 +94,18 @@ describe("모음집 넣기(반대 방향 관계)", () => {
 		expect(screen.getByText("시리즈 B")).toBeTruthy();
 		release();
 		await waitFor(() => expect(shared.refresh).toHaveBeenCalled());
+		expect(screen.queryByRole("alert")).toBeNull();
 		expect(toast.error).not.toHaveBeenCalled();
 	});
 
-	it("저장이 실패하면 알리고 되돌린다", async () => {
+	it("저장이 실패하면 입력 아래에 알리고 되돌린다", async () => {
 		const release = stubApi(500);
 		await addSeriesB();
 		expect(screen.getByText("시리즈 B")).toBeTruthy();
 		release();
-		await waitFor(() => expect(toast.error).toHaveBeenCalled());
+		// 다른 관계 입력처럼 입력 바로 아래에 알린다(토스트가 아니다).
+		expect((await screen.findByRole("alert")).textContent).toBe("실패");
+		expect(toast.error).not.toHaveBeenCalled();
 		await waitFor(() => expect(screen.queryByText("시리즈 B")).toBeNull());
 		expect(screen.getByText("시리즈 A")).toBeTruthy();
 	});
@@ -161,17 +164,24 @@ describe("메모의 모음집 넣기", () => {
 		);
 	});
 
-	it("새로 만들면 메모를 담는 모음집으로 만든다", async () => {
+	it("추가하면 메모를 담은 모음집 추가 칸을 열고, 저장하면 그 모음집으로 만든다", async () => {
 		const input = await openList();
 		fireEvent.input(input, { target: { value: "새 메모 시리즈" }, inputType: "insertText" });
-		fireEvent.click(await screen.findByRole("option", { name: "'새 메모 시리즈' 만들기" }));
+		fireEvent.click(await screen.findByRole("option", { name: "'새 메모 시리즈' 추가" }));
+		// 이름만으로 바로 만들지 않고, 이름이 채워진 추가 칸을 연다.
+		const panel = await screen.findByRole("complementary", { name: "모음집 추가" });
+		expect(within(panel).getByDisplayValue("새 메모 시리즈")).toBeTruthy();
+		expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/cms/v1/entries" && init?.method === "POST")).toBe(
+			false,
+		);
+		fireEvent.click(within(panel).getByRole("button", { name: "저장" }));
 		await waitFor(() =>
 			expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/cms/v1/entries" && init?.method === "POST")).toBe(
 				true,
 			),
 		);
 		const post = fetchMock.mock.calls.find(([url, init]) => url === "/api/cms/v1/entries" && init?.method === "POST");
-		expect(JSON.parse(String(post?.[1]?.body))).toEqual({
+		expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({
 			collection: "collection",
 			metadata: { title: "새 메모 시리즈", itemKind: "memo", memoIds: ["memo-1"] },
 			mdx: "",

@@ -2,10 +2,10 @@
 
 import { COLLECTION_DEFINITIONS, isCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
 import { useQueries } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cmsFetch } from "../admin-api";
 
-/** 이름만으로 만들 수 있는 record 컬렉션(§5.2) 이름. 관계 필드의 선택지와 바로 만들기(v2 B2)에 쓴다. */
+/** record 컬렉션(§5.2) 이름. 관계 필드의 선택지와 추가(v2 B2)에 쓴다. */
 export type RecordCollection = string;
 
 /** 분류 필드 이름 → 그 필드가 가리키는 컬렉션의 선택지. */
@@ -45,15 +45,21 @@ async function loadAll(collection: RecordCollection): Promise<TaxonomyOption[]> 
 
 /**
  * 편집 화면·일괄 작업·목록 필터가 함께 쓰는 태그·카테고리 등 record 선택지.
- * `create`는 제목만으로 새 레코드를 만든다(slug는 서버가 제목에서 만든다).
+ * 새 항목은 분류 추가 칸(`useRecordCreator`)에서 만들고, 만든 항목을 `remember`로 바로 보인다.
  */
 export function useTaxonomy(collection: RecordCollection, enabled = true) {
 	const [options, setOptions] = useState<TaxonomyOption[]>([]);
 	const [error, setError] = useState<string | null>(null);
+	// 이 화면에서 추가한 항목. 다시 읽은 목록에 아직 없어도(목록 캐시·검색 반영 전) 이름으로 보인다.
+	const rememberedRef = useRef<TaxonomyOption[]>([]);
 
 	const reload = useCallback(async () => {
 		try {
-			setOptions(await loadAll(collection));
+			const loaded = await loadAll(collection);
+			setOptions([
+				...loaded,
+				...rememberedRef.current.filter((option) => !loaded.some((item) => item.id === option.id)),
+			]);
 			setError(null);
 		} catch {
 			setError(`${labelOf(collection)} 목록을 불러오지 못했습니다.`);
@@ -64,21 +70,13 @@ export function useTaxonomy(collection: RecordCollection, enabled = true) {
 		if (enabled) void reload();
 	}, [enabled, reload]);
 
-	const create = useCallback(
-		async (title: string): Promise<TaxonomyOption> => {
-			const created = await cmsFetch<{ id: string; publishedSlug: string | null }>("/api/cms/v1/entries", {
-				method: "POST",
-				json: { collection, metadata: { title: title.trim() }, mdx: "" },
-				fallback: "만들지 못했습니다.",
-			});
-			const option = { id: created.id, title: title.trim(), slug: created.publishedSlug };
-			setOptions((current) => [...current, option]);
-			return option;
-		},
-		[collection],
-	);
+	/** 방금 추가한 항목을 다시 읽기 전에도 이름으로 보이게 선택지에 넣는다. */
+	const remember = useCallback((option: TaxonomyOption) => {
+		rememberedRef.current = [...rememberedRef.current, option];
+		setOptions((current) => (current.some((item) => item.id === option.id) ? current : [...current, option]));
+	}, []);
 
-	return { options, error, reload, create };
+	return { options, error, reload, remember };
 }
 
 /**

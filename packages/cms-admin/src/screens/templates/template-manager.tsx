@@ -2,23 +2,26 @@
 
 import type { BodyTemplate } from "@bh2980/cms/runtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutTemplate, Plus, Save } from "lucide-react";
-import { useState } from "react";
+import { LayoutTemplate, Plus, SquarePen, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
 import { Alert, AlertDescription } from "../../ui/alert";
-import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
 import { cmsFetch, errorText } from "../admin-api";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
-import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { useConfirm } from "../shared/confirm-dialog";
+import { OPEN_ITEM } from "../shared/side-panel";
 
 const TEMPLATES_KEY = ["cms", "templates"] as const;
+
+/** 새 템플릿의 처음 본문. */
+const NEW_TEMPLATE_MDX = "## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.";
 
 export function TemplateManager() {
 	const queryClient = useQueryClient();
@@ -29,52 +32,56 @@ export function TemplateManager() {
 			(
 				await cmsFetch<{ items?: BodyTemplate[] }>("/api/cms/v1/templates", {
 					signal,
-					fallback: "템플릿 목록을 불러올 수 없습니다.",
+					fallback: "템플릿 목록을 불러오지 못했습니다.",
 				})
 			).items ?? [],
 	});
 	const templates = templatesQuery.data ?? [];
 	const error =
 		templatesQuery.error && !templatesQuery.data
-			? errorText(templatesQuery.error, "템플릿 목록을 불러올 수 없습니다.")
+			? errorText(templatesQuery.error, "템플릿 목록을 불러오지 못했습니다.")
 			: null;
 
-	// Editor state for selected/new template
+	// 편집 칸에 연 템플릿(새 템플릿은 id가 없다)과 고치는 값.
 	const [activeTemplate, setActiveTemplate] = useState<Partial<BodyTemplate> | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editMdx, setEditMdx] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
-	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const { confirm, confirmDiscard, dialog } = useConfirm();
+
+	/** 연 템플릿에서 이름이나 본문을 바꿨는가. */
+	const isDirty =
+		activeTemplate !== null && (editName !== (activeTemplate.name ?? "") || editMdx !== (activeTemplate.mdx ?? ""));
 
 	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
 	const invalidateTemplates = () => queryClient.invalidateQueries({ queryKey: TEMPLATES_KEY });
 
-	const handleSelectTemplate = (t: BodyTemplate) => {
-		setActiveTemplate(t);
-		setEditName(t.name);
-		setEditMdx(t.mdx);
+	const show = (template: Partial<BodyTemplate> | null) => {
+		setActiveTemplate(template);
+		setEditName(template?.name ?? "");
+		setEditMdx(template?.mdx ?? "");
 		setSaveError(null);
 	};
 
-	const handleOpenNew = () => {
-		setActiveTemplate({
-			name: "",
-			mdx: "## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.",
-		});
-		setEditName("");
-		setEditMdx("## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.");
-		setSaveError(null);
+	/** 다른 템플릿을 연다. 저장하지 않은 변경이 있으면 버릴지 먼저 묻는다. */
+	const openTemplate = async (template: BodyTemplate) => {
+		if (template.id === activeTemplate?.id) return;
+		if (await confirmDiscard(isDirty)) show(template);
 	};
 
-	const handleCloseEditor = () => {
-		setActiveTemplate(null);
-		setSaveError(null);
+	const openNew = async () => {
+		if (await confirmDiscard(isDirty)) show({ name: "", mdx: NEW_TEMPLATE_MDX });
+	};
+
+	const closeEditor = async () => {
+		if (await confirmDiscard(isDirty)) show(null);
 	};
 
 	const handleSave = async () => {
+		if (!activeTemplate || isSaving) return;
 		if (!editName.trim()) {
-			setSaveError("템플릿 이름을 입력해주세요.");
+			setSaveError("템플릿 이름을 입력하세요.");
 			return;
 		}
 
@@ -82,13 +89,13 @@ export function TemplateManager() {
 		setSaveError(null);
 
 		try {
-			if (activeTemplate?.id) {
+			if (activeTemplate.id) {
 				const updated = await cmsFetch<BodyTemplate>(`/api/cms/v1/templates/${activeTemplate.id}`, {
 					method: "PATCH",
 					json: { name: editName.trim(), mdx: editMdx, expectedVersion: activeTemplate.version },
-					fallback: "수정 저장에 실패했습니다.",
+					fallback: "저장하지 못했습니다.",
 				});
-				setActiveTemplate(updated);
+				show(updated);
 				queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
 					current?.map((item) => (item.id === updated.id ? updated : item)),
 				);
@@ -96,20 +103,38 @@ export function TemplateManager() {
 				const created = await cmsFetch<BodyTemplate>("/api/cms/v1/templates", {
 					method: "POST",
 					json: { name: editName.trim(), mdx: editMdx },
-					fallback: "생성에 실패했습니다.",
+					fallback: "저장하지 못했습니다.",
 				});
-				setActiveTemplate(created);
+				// 만든 템플릿을 그대로 열어 둔다.
+				show(created);
 				queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
 					current && !current.some((item) => item.id === created.id) ? [created, ...current] : current,
 				);
 			}
+			toast.success("저장했습니다.");
 			void invalidateTemplates();
 		} catch (err) {
-			setSaveError(errorText(err, "오류가 발생했습니다."));
+			setSaveError(errorText(err, "저장하지 못했습니다."));
 		} finally {
 			setIsSaving(false);
 		}
 	};
+
+	// ⌘S·Ctrl+S로 저장한다(편집 칸이 열려 있을 때만). 최신 값으로 저장하도록 함수를 ref에 둔다.
+	const saveRef = useRef(handleSave);
+	saveRef.current = handleSave;
+	const isEditing = activeTemplate !== null;
+	useEffect(() => {
+		if (!isEditing) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.altKey || event.isComposing) return;
+			if (event.key.toLowerCase() !== "s") return;
+			event.preventDefault();
+			void saveRef.current();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [isEditing]);
 
 	const deleteTemplate = async (template: BodyTemplate) => {
 		// 목록에서 먼저 빼고 요청한다. 실패하면 되돌리고, 끝나면 서버 값으로 맞춘다.
@@ -118,132 +143,145 @@ export function TemplateManager() {
 		queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
 			current?.filter((item) => item.id !== template.id),
 		);
-		if (activeTemplate?.id === template.id) setActiveTemplate(null);
+		if (activeTemplate?.id === template.id) show(null);
 		try {
 			await cmsFetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
 				method: "DELETE",
-				fallback: "삭제에 실패했습니다.",
+				fallback: "삭제하지 못했습니다.",
 			});
 			toast.success(`'${template.name}' 템플릿을 삭제했습니다.`);
 		} catch (err) {
 			if (previous) queryClient.setQueryData(TEMPLATES_KEY, previous);
-			toast.error(errorText(err, "삭제 중 오류가 발생했습니다."));
+			toast.error(errorText(err, "삭제하지 못했습니다."));
 		} finally {
 			void invalidateTemplates();
 		}
 	};
 
-	const requestDelete = (template: BodyTemplate) =>
-		setConfirm({
+	const requestDelete = async (template: BodyTemplate) => {
+		const ok = await confirm({
 			title: "템플릿 삭제",
-			description: `'${template.name}' 템플릿을 삭제하시겠습니까? 이 템플릿으로 작성된 글에는 영향이 없습니다.`,
+			description: `'${template.name}' 템플릿을 삭제할까요? 이 템플릿으로 쓴 글에는 영향이 없습니다.`,
 			confirmLabel: "삭제",
 			destructive: true,
-			onConfirm: () => deleteTemplate(template),
 		});
+		if (ok) await deleteTemplate(template);
+	};
 
 	/** 템플릿 목록 줄의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
 	const templateMenu = (template: BodyTemplate): MenuAction[] => [
-		{ kind: "item", label: "열기", onSelect: () => handleSelectTemplate(template) },
+		{ kind: "item", label: "열기", icon: SquarePen, onSelect: () => void openTemplate(template) },
 		{ kind: "separator" },
-		{ kind: "item", label: "삭제", shortcut: "Del", destructive: true, onSelect: () => requestDelete(template) },
+		{
+			kind: "item",
+			label: "삭제",
+			icon: Trash2,
+			shortcut: "Del",
+			destructive: true,
+			onSelect: () => void requestDelete(template),
+		},
 	];
 
 	return (
 		<AdminShell
-			title={
-				<span className="flex items-center gap-2">
-					본문 템플릿 <Badge variant="secondary">총 {templates.length}개</Badge>
-				</span>
-			}
+			title="본문 템플릿"
+			count={templatesQuery.data ? templates.length : undefined}
 			sidebar={{ activeNav: "templates" }}
 			headerActions={
-				<Button type="button" size="sm" onClick={handleOpenNew}>
-					<Plus aria-hidden />새 템플릿
+				<Button type="button" size="sm" onClick={() => void openNew()}>
+					<Plus aria-hidden />
+					템플릿 추가
 				</Button>
 			}
 		>
 			{error && (
-				<Alert variant="danger" className="m-3 w-auto">
+				<Alert variant="danger" className="mx-5 mt-3 flex w-auto items-center justify-between">
 					<AlertDescription className="col-start-auto">{error}</AlertDescription>
+					<Button type="button" variant="outline" size="xs" onClick={() => void templatesQuery.refetch()}>
+						다시 시도
+					</Button>
 				</Alert>
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div className="flex w-80 shrink-0 flex-col border-r">
+				<div className="flex w-72 shrink-0 flex-col border-r">
 					<ul className="flex-1 divide-y overflow-y-auto" aria-label="템플릿 목록">
-						{templatesQuery.isPending ? (
-							Array.from({ length: 3 }, (_, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
-								<li key={index} className="p-4" aria-hidden>
-									<Skeleton className="h-10 w-full" />
-								</li>
-							))
-						) : templates.length === 0 ? (
-							<li className="p-8 text-center text-muted-foreground text-xs">등록된 템플릿이 없습니다.</li>
-						) : (
-							templates.map((t) => {
-								const isSelected = activeTemplate?.id === t.id;
-								return (
-									<ActionContextMenu
-										key={t.id}
-										actions={templateMenu(t)}
-										trigger={
-											<li
-												className={cn(
-													"group flex items-center justify-between gap-2 px-3 py-2 transition-colors",
-													isSelected ? "bg-accent" : "hover:bg-accent/50",
-												)}
-											/>
-										}
-									>
-										<Button
-											variant="ghost"
-											type="button"
-											aria-current={isSelected ? "true" : undefined}
-											onClick={() => handleSelectTemplate(t)}
-											onKeyDown={(event) => {
-												if (event.key === "Delete") {
-													event.preventDefault();
-													requestDelete(t);
+						{templatesQuery.isPending
+							? Array.from({ length: 3 }, (_, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+									<li key={index} className="p-4" aria-hidden>
+										<Skeleton className="h-10 w-full" />
+									</li>
+								))
+							: templates.length === 0
+								? !error && <li className="p-8 text-center text-muted-foreground text-xs">템플릿이 없습니다.</li>
+								: templates.map((t) => {
+										const isSelected = activeTemplate?.id === t.id;
+										return (
+											<ActionContextMenu
+												key={t.id}
+												actions={templateMenu(t)}
+												trigger={
+													<li
+														className={cn(
+															"group flex items-center justify-between gap-2 px-3 py-2 transition-colors",
+															isSelected ? OPEN_ITEM : "hover:bg-accent/50",
+														)}
+													/>
 												}
-											}}
-											className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
-										>
-											<span className="truncate font-medium text-sm">{t.name}</span>
-											<span className="flex items-center gap-2 text-muted-foreground text-xs">
-												<span className="text-[11px]">{new Date(t.updatedAt).toLocaleDateString("ko-KR")}</span>
-											</span>
-										</Button>
-										<MoreActionsButton actions={templateMenu(t)} label={`'${t.name}' 템플릿 작업`} />
-									</ActionContextMenu>
-								);
-							})
-						)}
+											>
+												<Button
+													variant="ghost"
+													type="button"
+													aria-current={isSelected ? "true" : undefined}
+													onClick={() => void openTemplate(t)}
+													onKeyDown={(event) => {
+														if (event.key === "Delete") {
+															event.preventDefault();
+															void requestDelete(t);
+														}
+													}}
+													className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
+												>
+													<span className="truncate font-medium text-sm">{t.name}</span>
+													<span className="text-[11px] text-muted-foreground">
+														{new Date(t.updatedAt).toLocaleDateString("ko-KR")}
+													</span>
+												</Button>
+												<MoreActionsButton actions={templateMenu(t)} label={`'${t.name}' 템플릿 작업`} />
+											</ActionContextMenu>
+										);
+									})}
 					</ul>
 				</div>
 
 				<div className="flex flex-1 flex-col overflow-hidden">
 					{activeTemplate ? (
-						<div className="flex h-full flex-1 flex-col overflow-hidden">
+						// 본문 편집기 안에도 버튼·입력이 있어 <form>으로 감싸지 않는다. 이름 칸 Enter와 ⌘S가 저장한다.
+						<section
+							aria-label={activeTemplate.id ? "템플릿 편집" : "템플릿 추가"}
+							className="flex h-full flex-1 flex-col overflow-hidden"
+						>
 							<div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
-								<div className="flex max-w-2xl flex-1 items-center gap-3">
-									<Input
-										type="text"
-										aria-label="템플릿 이름"
-										value={editName}
-										onChange={(e) => setEditName(e.target.value)}
-										placeholder="템플릿 이름"
-										className="h-8 min-w-0 flex-1"
-									/>
-									<span className="hidden text-muted-foreground text-xs sm:inline">본문 MDX 골격</span>
-								</div>
+								<Input
+									type="text"
+									aria-label="템플릿 이름"
+									value={editName}
+									onChange={(e) => setEditName(e.target.value)}
+									onKeyDown={(event) => {
+										// 한글 조합 중 Enter는 글자를 끝내는 키다. 저장하지 않는다.
+										if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
+										event.preventDefault();
+										void handleSave();
+									}}
+									placeholder="템플릿 이름"
+									className="h-8 min-w-0 max-w-2xl flex-1"
+								/>
 								<div className="flex items-center gap-2">
-									<Button type="button" variant="ghost" size="sm" onClick={handleCloseEditor}>
-										닫기
+									<Button type="button" variant="outline" size="sm" onClick={() => void closeEditor()}>
+										취소
 									</Button>
-									<Button type="button" size="sm" disabled={isSaving} onClick={handleSave}>
-										<Save aria-hidden />
-										{isSaving ? "저장 중..." : "저장"}
+									<Button type="button" size="sm" disabled={isSaving} onClick={() => void handleSave()}>
+										{isSaving ? "저장 중…" : "저장"}
 									</Button>
 								</div>
 							</div>
@@ -255,28 +293,26 @@ export function TemplateManager() {
 							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 								<CmsEditor content={editMdx} onChange={(next) => setEditMdx(next)} />
 							</div>
-						</div>
+						</section>
 					) : (
 						<Empty className="flex-1">
 							<EmptyHeader>
 								<EmptyMedia variant="icon">
 									<LayoutTemplate aria-hidden />
 								</EmptyMedia>
-								<EmptyTitle>본문 템플릿을 선택하거나 새로 만드세요</EmptyTitle>
-								<EmptyDescription>
-									왼쪽 목록에서 기존 템플릿을 골라 수정하거나, 새 템플릿을 만들어 글을 쓸 때 빠르게 적용할 수 있습니다.
-								</EmptyDescription>
+								<EmptyTitle>선택한 템플릿이 없습니다.</EmptyTitle>
 							</EmptyHeader>
 							<EmptyContent>
-								<Button type="button" onClick={handleOpenNew}>
-									<Plus aria-hidden />새 템플릿
+								<Button type="button" size="sm" onClick={() => void openNew()}>
+									<Plus aria-hidden />
+									템플릿 추가
 								</Button>
 							</EmptyContent>
 						</Empty>
 					)}
 				</div>
 			</div>
-			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+			{dialog}
 		</AdminShell>
 	);
 }

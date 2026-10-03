@@ -1,7 +1,9 @@
 "use client";
 
+import { toast } from "sonner";
 import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { useConfirm } from "../shared/confirm-dialog";
 import { type EntryData, type EntryForm, formFromEntry } from "./entry-form";
 import type { LocalBackupRecord } from "./local-backup";
 
@@ -61,6 +63,22 @@ export function ConflictDialog({
 	/** 서버 최신 버전 위에 내 입력을 덮어쓴다. */
 	onOverwrite: (serverVersion: number) => void;
 }) {
+	const { confirm, dialog } = useConfirm();
+	// 서버 최신본을 통째로 바꾸므로 한 번 더 묻는다(§5).
+	const overwrite = async () => {
+		if (!conflict) return;
+		const serverVersion = conflict.server.version;
+		if (
+			await confirm({
+				title: "덮어쓰기",
+				description: "서버 최신본을 내 입력으로 덮어쓸까요? 다른 곳에서 저장한 변경은 사라집니다.",
+				confirmLabel: "덮어쓰기",
+				destructive: true,
+			})
+		) {
+			onOverwrite(serverVersion);
+		}
+	};
 	return (
 		<Dialog open={conflict !== null} onOpenChange={(open) => !open && onClose()}>
 			<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
@@ -85,10 +103,11 @@ export function ConflictDialog({
 					<Button type="button" variant="outline" onClick={onReload}>
 						다시 불러오기
 					</Button>
-					<Button type="button" variant="destructive" onClick={() => conflict && onOverwrite(conflict.server.version)}>
+					<Button type="button" variant="destructive" onClick={() => void overwrite()}>
 						내 내용으로 덮어쓰기
 					</Button>
 				</DialogFooter>
+				{dialog}
 			</DialogContent>
 		</Dialog>
 	);
@@ -104,19 +123,21 @@ function ComparePanes({
 	server: EntryForm;
 	serverVersion: number;
 }) {
+	const copy = async (mdx: string) => {
+		try {
+			await navigator.clipboard.writeText(mdx);
+			toast.success("본문을 복사했습니다.");
+		} catch {
+			toast.error("복사하지 못했습니다.");
+		}
+	};
 	const pane = (label: string, value: EntryForm) => (
 		<div className="space-y-2 rounded border p-3">
 			<p className="font-semibold text-sm">{label}</p>
 			<p className="text-xs">
-				제목: {value.title || "(없음)"} · 주소: {value.slug || "(없음)"}
+				제목: {value.title || "제목 없음"} · 주소: {value.slug || "없음"}
 			</p>
-			<Button
-				type="button"
-				variant="link"
-				size="xs"
-				className="px-0"
-				onClick={() => void navigator.clipboard.writeText(value.mdx)}
-			>
+			<Button type="button" variant="link" size="xs" className="px-0" onClick={() => void copy(value.mdx)}>
 				본문 복사
 			</Button>
 			<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{value.mdx}</pre>
@@ -124,8 +145,8 @@ function ComparePanes({
 	);
 	return (
 		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-			{pane("내 입력(브라우저)", local)}
-			{pane(`서버 최신본 (v${serverVersion})`, server)}
+			{pane("내 입력", local)}
+			{pane(`서버 최신본 · v${serverVersion}`, server)}
 		</div>
 	);
 }

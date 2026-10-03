@@ -22,7 +22,7 @@ export interface RelationOption {
 	label: string;
 }
 
-/** 목록 끝의 `'검색어' 만들기` 항목. 검색어가 곧 이름이라 거르기에 늘 걸린다. */
+/** 목록 끝의 `'검색어' 추가` 항목. 검색어가 곧 이름이라 거르기에 늘 걸린다. */
 type Item = RelationOption & { create?: true };
 
 interface RelationComboboxProps {
@@ -31,8 +31,8 @@ interface RelationComboboxProps {
 	/** 고른 ID들. 하나만 고르는 관계는 비었거나 하나다. */
 	value: readonly string[];
 	onValueChange: (value: string[]) => void;
-	/** 있으면 검색어로 새 항목을 만들 수 있다. 만든 항목의 ID를 돌려준다. */
-	onCreate?: (label: string) => Promise<string>;
+	/** 있으면 검색어로 새 항목을 추가할 수 있다. 만든 항목의 ID를, 그만두면 null을 돌려준다. */
+	onCreate?: (label: string) => Promise<string | null>;
 	id?: string;
 	placeholder?: string;
 	"aria-label"?: string;
@@ -44,7 +44,7 @@ interface RelationComboboxProps {
 }
 
 /**
- * 태그·카테고리 같은 관계 입력. 검색해 고르고, 없는 이름이면 목록 끝의 `'이름' 만들기`로 바로 만든다
+ * 태그·카테고리 같은 관계 입력. 검색해 고르고, 없는 이름이면 목록 끝의 `'이름' 추가`로 추가 칸을 연다
  * (따로 떨어진 "새 항목" 입력 줄을 두지 않는다).
  */
 export function RelationCombobox({
@@ -93,10 +93,11 @@ export function RelationCombobox({
 		setError(null);
 		try {
 			const createdId = await onCreate(label);
+			if (createdId === null) return;
 			onValueChange([...keep, createdId]);
 			setQuery("");
 		} catch (caught) {
-			setError(caught instanceof Error && caught.message ? caught.message : "만들지 못했습니다.");
+			setError(caught instanceof Error && caught.message ? caught.message : "추가하지 못했습니다.");
 		} finally {
 			setIsCreating(false);
 		}
@@ -111,7 +112,7 @@ export function RelationCombobox({
 						{item.create ? (
 							<>
 								<Plus aria-hidden />
-								<span className="truncate">'{item.label}' 만들기</span>
+								<span className="truncate">'{item.label}' 추가</span>
 							</>
 						) : (
 							<span className="truncate">{item.label}</span>

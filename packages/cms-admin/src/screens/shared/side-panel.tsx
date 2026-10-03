@@ -8,6 +8,13 @@ import { IconButton } from "../../ui/icon-button";
 /** 오른쪽 칸(분류 편집·미디어 상세·글 속성) 너비. 모든 오른쪽 칸이 같은 너비다. */
 export const SIDE_PANEL_WIDTH = "w-[22rem]";
 
+/**
+ * 목록 옆에 여는 오른쪽 칸의 자리(분류 편집·미디어 상세). 좁은 화면은 목록 위에 덮고,
+ * 넓은 화면은 목록 옆에 `SIDE_PANEL_WIDTH`와 같은 폭으로 둔다(Tailwind가 읽도록 글자 그대로 적는다).
+ */
+export const SIDE_PANEL_DOCK =
+	"absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[22rem] lg:static lg:shrink-0 lg:shadow-none";
+
 /** 목록에서 지금 연 항목(오른쪽 칸·편집 칸에 열린 것)의 배경. */
 export const OPEN_ITEM = "bg-accent text-accent-foreground";
 

@@ -4,9 +4,10 @@ import { isContentCollection, localeLabel } from "@bh2980/cms/client";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
+import { IconButton } from "../ui/icon-button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { Label } from "../ui/label";
+import { Switch } from "../ui/switch";
 import { clearPatchFor } from "./column-header";
 import { type ColumnFilter, columnLabel, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
 import { clearFilters, type ListState } from "./list-state";
@@ -52,7 +53,7 @@ export function filterChips(state: ListState, options: TaxonomyOptions): FilterC
 	if (state.search.trim()) {
 		chips.push({
 			key: "search",
-			label: `검색${state.includeBody ? "(본문 포함)" : ""}: "${state.search.trim()}"`,
+			label: `${state.includeBody ? "본문 포함 검색" : "검색"}: "${state.search.trim()}"`,
 			clear: { search: "", includeBody: false },
 		});
 	}
@@ -103,7 +104,8 @@ export function ListSearch({
 			</InputGroup>
 			{isContent && allowBody && (
 				<Label className="font-normal text-muted-foreground text-xs">
-					<Checkbox
+					<Switch
+						size="sm"
 						checked={state.includeBody}
 						onCheckedChange={(checked) => onChange({ includeBody: checked === true })}
 					/>
@@ -132,16 +134,14 @@ export function FilterChipBar({
 				<li key={chip.key}>
 					<span className="inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 pr-0.5 pl-2 font-medium text-primary text-xs">
 						<span className="max-w-72 truncate">{chip.label}</span>
-						<Button
-							type="button"
-							variant="ghost"
+						<IconButton
 							size="icon-xs"
 							className="size-5 text-primary hover:bg-primary/15 hover:text-primary"
-							aria-label={`${chip.label} 필터 지우기`}
+							label="필터 해제"
 							onClick={() => onChange(chip.clear)}
 						>
 							<X aria-hidden />
-						</Button>
+						</IconButton>
 					</span>
 				</li>
 			))}
@@ -162,7 +162,7 @@ export function FilterChipBar({
 						onChange(cleared);
 					}}
 				>
-					모두 지우기
+					모두 해제
 				</Button>
 			</li>
 		</ul>

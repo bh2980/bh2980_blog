@@ -1,6 +1,21 @@
 import type { BulkOp } from "@bh2980/cms/client";
 import { taxonomyFieldsOf } from "@bh2980/cms/client";
 import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
+import {
+	Archive,
+	ArchiveRestore,
+	Copy,
+	ExternalLink,
+	Folder as FolderIcon,
+	FolderInput,
+	FolderUp,
+	PanelRightOpen,
+	RotateCcw,
+	SquarePen,
+	Tag,
+	Tags,
+	Trash2,
+} from "lucide-react";
 import { josa } from "../lib/utils/josa";
 import type { BulkSelection, runBulk } from "./entries/bulk-bar";
 import type { MenuAction } from "./shared/action-menu";
@@ -45,6 +60,8 @@ export interface RowMenuHandlers {
 	duplicate: (item: ListEntriesItem) => void;
 	restore: (targets: BulkSelection[]) => void;
 	confirmTrash: (targets: BulkSelection[]) => void;
+	/** 보관은 공개 글을 내리므로 묻고 한다(하나든 여럿이든). */
+	confirmArchive: (targets: BulkSelection[]) => void;
 	confirmPermanentDelete: (targets: BulkSelection[]) => void;
 	bulk: (op: BulkOp, label: string, targets: BulkSelection[], params?: BulkParams) => void;
 }
@@ -62,11 +79,12 @@ export function rowMenuActions(
 	if (context.mode === "trash") {
 		return [
 			...header,
-			{ kind: "item", label: "복원", onSelect: () => handlers.restore(targets) },
+			{ kind: "item", label: "복원", icon: RotateCcw, onSelect: () => handlers.restore(targets) },
 			{ kind: "separator" },
 			{
 				kind: "item",
 				label: "영구 삭제",
+				icon: Trash2,
 				shortcut: "Del",
 				destructive: true,
 				onSelect: () => handlers.confirmPermanentDelete(targets),
@@ -77,11 +95,11 @@ export function rowMenuActions(
 	const open: MenuAction[] = !single
 		? []
 		: context.isRecord
-			? [{ kind: "item", label: "열기", onSelect: () => handlers.openRecord(single) }]
+			? [{ kind: "item", label: "열기", icon: PanelRightOpen, onSelect: () => handlers.openRecord(single) }]
 			: [
-					{ kind: "item", label: "열기", onSelect: () => handlers.openEditor(single) },
-					{ kind: "item", label: "새 탭에서 열기", onSelect: () => handlers.openInNewTab(single) },
-					{ kind: "item", label: "복제", onSelect: () => handlers.duplicate(single) },
+					{ kind: "item", label: "열기", icon: SquarePen, onSelect: () => handlers.openEditor(single) },
+					{ kind: "item", label: "새 탭에서 열기", icon: ExternalLink, onSelect: () => handlers.openInNewTab(single) },
+					{ kind: "item", label: "복제", icon: Copy, onSelect: () => handlers.duplicate(single) },
 				];
 	const allArchived = group.every((row) => row.status === "archived");
 	const addActions: MenuAction[] = taxonomyFieldsOf(context.collection).flatMap((stored): MenuAction[] => {
@@ -91,10 +109,12 @@ export function rowMenuActions(
 			{
 				kind: "sub",
 				label: `${label} 추가`,
+				icon: Tags,
 				emptyLabel: `${josa(label, "이", "가")} 없습니다`,
 				items: (context.options[stored.name] ?? []).map((option) => ({
 					kind: "item" as const,
 					label: option.title,
+					icon: Tag,
 					onSelect: () =>
 						handlers.bulk("relation.add", `${josa(label, "을", "를")} 추가`, targets, {
 							field: stored.name,
@@ -109,8 +129,13 @@ export function rowMenuActions(
 				...addActions,
 				{ kind: "separator" },
 				allArchived
-					? { kind: "item", label: "보관 해제", onSelect: () => handlers.bulk("unarchive", "보관 해제", targets) }
-					: { kind: "item", label: "보관", onSelect: () => handlers.bulk("archive", "보관", targets) },
+					? {
+							kind: "item",
+							label: "보관 해제",
+							icon: ArchiveRestore,
+							onSelect: () => handlers.bulk("unarchive", "보관 해제", targets),
+						}
+					: { kind: "item", label: "보관", icon: Archive, onSelect: () => handlers.confirmArchive(targets) },
 			]
 		: [{ kind: "separator" }];
 
@@ -121,15 +146,18 @@ export function rowMenuActions(
 		{
 			kind: "sub",
 			label: "폴더로 이동",
+			icon: FolderInput,
 			items: [
 				{
 					kind: "item",
 					label: "최상위",
+					icon: FolderUp,
 					onSelect: () => handlers.bulk("folder.move", "옮김", targets, { folderId: null }),
 				},
 				...context.folders.map((folder) => ({
 					kind: "item" as const,
 					label: folder.name,
+					icon: FolderIcon,
 					onSelect: () => handlers.bulk("folder.move", "옮김", targets, { folderId: folder.id }),
 				})),
 			],
@@ -138,6 +166,7 @@ export function rowMenuActions(
 		{
 			kind: "item",
 			label: "휴지통으로 이동",
+			icon: Trash2,
 			shortcut: "Del",
 			destructive: true,
 			onSelect: () => handlers.confirmTrash(targets),

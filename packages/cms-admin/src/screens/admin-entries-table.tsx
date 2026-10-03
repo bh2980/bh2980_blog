@@ -24,7 +24,7 @@ import {
 	type Updater,
 	useTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderOpen, FolderUp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
+import { IconButton } from "../ui/icon-button";
 import { Label } from "../ui/label";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -55,6 +56,7 @@ import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
 import { FittingTags } from "./shared/fitting-tags";
+import { OPEN_ITEM } from "./shared/side-panel";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOptions } from "./shared/use-taxonomy";
 
@@ -321,6 +323,8 @@ interface TableProps {
 	onDeleteKey?: (item: ListEntriesItem) => void;
 	onSelectFolder: (folder: string) => void;
 	onOpenRecord: (item: ListEntriesItem) => void;
+	/** 오른쪽 분류 편집 칸에 열린 항목. 그 줄을 강조한다. */
+	openRecordId?: string | null;
 	onRestore?: (item: ListEntriesItem) => void;
 	onPermanentDelete?: (item: ListEntriesItem) => void;
 	onPageChange: (page: number) => void;
@@ -351,6 +355,7 @@ export function AdminEntriesTable({
 	onDeleteKey,
 	onSelectFolder,
 	onOpenRecord,
+	openRecordId = null,
 	onRestore,
 	onPermanentDelete,
 	onPageChange,
@@ -679,7 +684,7 @@ export function AdminEntriesTable({
 	const folderRowMenu = (folder: Folder): MenuAction[] =>
 		folderActions
 			? [
-					{ kind: "item", label: "열기", onSelect: () => onSelectFolder(folder.id) },
+					{ kind: "item", label: "열기", icon: FolderOpen, onSelect: () => onSelectFolder(folder.id) },
 					{ kind: "separator" },
 					...folderMenuActions(folder, folders, folderActions),
 				]
@@ -817,7 +822,7 @@ export function AdminEntriesTable({
 									<Empty className="py-10">
 										<EmptyHeader>
 											<EmptyTitle>{isTrash ? "휴지통이 비었습니다." : "조건에 맞는 항목이 없습니다."}</EmptyTitle>
-											{!isTrash && <EmptyDescription>필터를 지우거나 새로 만들어 보세요.</EmptyDescription>}
+											{!isTrash && <EmptyDescription>필터를 해제하거나 항목을 추가해 보세요.</EmptyDescription>}
 										</EmptyHeader>
 									</Empty>
 								</TableCell>
@@ -829,7 +834,11 @@ export function AdminEntriesTable({
 									actions={rowMenu(row.original)}
 									trigger={
 										<TableRow
-											className="h-11 data-[state=selected]:bg-primary/5"
+											className={cn(
+												"h-11 data-[state=selected]:bg-primary/5",
+												row.original.id === openRecordId && OPEN_ITEM,
+											)}
+											aria-current={row.original.id === openRecordId ? "true" : undefined}
 											data-state={row.getIsSelected() ? "selected" : undefined}
 											draggable={!isTrash}
 											onDragStart={(event) => {
@@ -899,26 +908,24 @@ export function AdminEntriesTable({
 											{columnLabel(collection, column)}
 										</Label>
 										<span className="flex gap-1">
-											<Button
-												type="button"
+											<IconButton
 												size="icon-xs"
 												variant="outline"
-												aria-label={`${columnLabel(collection, column)} 컬럼 위로`}
+												label={`${columnLabel(collection, column)} 컬럼 위로`}
 												disabled={index === 0}
 												onClick={() => moveColumn(column, -1)}
 											>
 												<ArrowUp aria-hidden />
-											</Button>
-											<Button
-												type="button"
+											</IconButton>
+											<IconButton
 												size="icon-xs"
 												variant="outline"
-												aria-label={`${columnLabel(collection, column)} 컬럼 아래로`}
+												label={`${columnLabel(collection, column)} 컬럼 아래로`}
 												disabled={index === order.length - 1}
 												onClick={() => moveColumn(column, 1)}
 											>
 												<ArrowDown aria-hidden />
-											</Button>
+											</IconButton>
 										</span>
 									</li>
 								))}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { BacklinkField, RelationField, ValueField } from "@bh2980/cms/client";
+import type { BacklinkField, Collection, RelationField, ValueField } from "@bh2980/cms/client";
 import { type SchemaCollection, storedField } from "@bh2980/cms/client";
 import {
 	closestCenter,
@@ -21,13 +21,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import { cn } from "../../lib/utils/cn";
-import { Button } from "../../ui/button";
+import { IconButton } from "../../ui/icon-button";
 import { Textarea } from "../../ui/textarea";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { FormValue } from "./entry-form";
+import { useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
 
 /** 입력이 필드 밖에서 알아야 하는 값. 편집 화면이 채운다. */
@@ -171,7 +171,7 @@ function SortableEntryRow({
 		id: sortableId,
 		disabled,
 	});
-	const title = option?.title ?? "불러오는 중";
+	const title = option?.title ?? "불러오는 중…";
 	return (
 		<li
 			ref={setNodeRef}
@@ -181,57 +181,38 @@ function SortableEntryRow({
 				isDragging && "relative z-10 shadow-md",
 			)}
 		>
-			<Button
+			<IconButton
 				ref={setActivatorNodeRef}
-				type="button"
 				size="icon-xs"
-				variant="ghost"
-				aria-label={`${title} 끌어서 옮기기`}
+				label={`${title} 끌어서 옮기기`}
 				disabled={disabled}
 				className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
 				{...attributes}
 				{...listeners}
 			>
 				<GripVertical />
-			</Button>
+			</IconButton>
 			<span className="min-w-0 flex-1 truncate">
 				{index + 1}. {title}
-				{option && option.status !== "published" && (
-					<span className="ml-1 text-amber-700 dark:text-amber-400">
-						({option.status === "missing" ? "없음" : "비공개 — 공개 목록에서 빠짐"})
-					</span>
+				{/* 공개되지 않은 글은 모음집의 공개 목록에서 빠진다. */}
+				{option && option.status !== "published" && option.status !== "missing" && (
+					<span className="ml-1 text-amber-700 dark:text-amber-400">· 비공개</span>
 				)}
 			</span>
-			<Button
-				type="button"
-				size="icon-xs"
-				variant="ghost"
-				aria-label={`${title} 위로`}
-				disabled={disabled || index === 0}
-				onClick={() => onMove(-1)}
-			>
+			<IconButton size="icon-xs" label={`${title} 위로`} disabled={disabled || index === 0} onClick={() => onMove(-1)}>
 				<ArrowUp />
-			</Button>
-			<Button
-				type="button"
+			</IconButton>
+			<IconButton
 				size="icon-xs"
-				variant="ghost"
-				aria-label={`${title} 아래로`}
+				label={`${title} 아래로`}
 				disabled={disabled || index === count - 1}
 				onClick={() => onMove(1)}
 			>
 				<ArrowDown />
-			</Button>
-			<Button
-				type="button"
-				size="icon-xs"
-				variant="ghost"
-				aria-label={`${title} 빼기`}
-				disabled={disabled}
-				onClick={onRemove}
-			>
+			</IconButton>
+			<IconButton size="icon-xs" label={`${title} 빼기`} disabled={disabled} onClick={onRemove}>
 				<X />
-			</Button>
+			</IconButton>
 		</li>
 	);
 }
@@ -268,7 +249,7 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 		onChange([...kept, ...selected.filter((itemId) => !ids.includes(itemId))]);
 	};
 	const missing = (itemId: string): EntryOption | undefined =>
-		options === null ? undefined : { id: itemId, title: "(찾을 수 없음)", status: "missing" };
+		options === null ? undefined : { id: itemId, title: "찾을 수 없는 글", status: "missing" };
 
 	return (
 		<div className="space-y-2">
@@ -387,8 +368,11 @@ export function BacklinkInput({
 	shared?: { references: readonly IncomingReference[]; loading: boolean; refresh: () => void };
 }) {
 	const records = useTaxonomy(field.from as RecordCollection, Boolean(targetId));
+	const creator = useRecordCreator();
 	const kind = useRecordKind(field, records.options);
 	const [fetched, setFetched] = useState<{ id: string; title: string }[] | null>(null);
+	/** 불러오기·저장 실패. 다른 관계 입력처럼 입력 바로 아래에 보인다. */
+	const [error, setError] = useState<string | null>(null);
 
 	const membersOf = useCallback(
 		(references: readonly IncomingReference[]) => {
@@ -396,7 +380,7 @@ export function BacklinkInput({
 			for (const reference of references) {
 				const viaField = reference.occurrences.some((occurrence) => occurrence.path === field.via);
 				if (reference.state === "working" && reference.sourceCollection === field.from && viaField) {
-					found.set(reference.sourceId, reference.sourceTitle || "이름 없음");
+					found.set(reference.sourceId, reference.sourceTitle || "제목 없음");
 				}
 			}
 			return [...found].map(([id, title]) => ({ id, title }));
@@ -417,7 +401,7 @@ export function BacklinkInput({
 			);
 			setFetched(membersOf(data.incomingReferences));
 		} catch (loadError) {
-			toast.error(errorText(loadError, "목록을 불러오지 못했습니다."));
+			setError(errorText(loadError, "목록을 불러오지 못했습니다."));
 		}
 	}, [targetId, refreshShared, membersOf]);
 
@@ -483,7 +467,7 @@ export function BacklinkInput({
 			try {
 				await task();
 			} catch (taskError) {
-				toast.error(errorText(taskError, failure));
+				setError(errorText(taskError, failure));
 				setOptimistic((current) => revert(current ?? serverIdsRef.current));
 			} finally {
 				pendingRef.current -= 1;
@@ -511,6 +495,7 @@ export function BacklinkInput({
 	];
 
 	const change = (next: string[]) => {
+		setError(null);
 		const added = next.filter((id) => !shown.includes(id) && !createdRef.current.delete(id));
 		const removed = shown.filter((id) => !next.includes(id));
 		setOptimistic(next);
@@ -531,39 +516,40 @@ export function BacklinkInput({
 	};
 
 	return (
-		<RelationCombobox
-			multiple
-			aria-label={field.label}
-			placeholder={members === null || !kind.ready ? "불러오는 중..." : "검색하거나 새로 만들기"}
-			options={options}
-			value={shown}
-			disabled={disabled || members === null || !kind.ready}
-			onValueChange={change}
-			onCreate={
-				field.createInline
-					? async (title) => {
-							try {
-								// 만들면서 이 글을 넣는다. 목록에 바로 보이게 선택지도 다시 읽는다.
-								const created = await cmsFetch<{ id: string }>("/api/cms/v1/entries", {
-									method: "POST",
-									json: {
-										collection: field.from,
-										metadata: { title, ...kind.createMetadata, [field.via]: [targetId] },
-										mdx: "",
-									},
-									fallback: "만들지 못했습니다.",
+		<>
+			<RelationCombobox
+				multiple
+				aria-label={field.label}
+				placeholder={members === null || !kind.ready ? "불러오는 중…" : "검색하거나 추가"}
+				options={options}
+				value={shown}
+				disabled={disabled || members === null || !kind.ready}
+				onValueChange={change}
+				onCreate={
+					field.createInline
+						? async (title) => {
+								// 추가 칸에 이 글을 담은 채로 연다. 저장하면 목록에 바로 보이게 선택지도 다시 읽는다.
+								const saved = await creator.create(field.from as Collection, {
+									title,
+									...kind.createMetadata,
+									[field.via]: [targetId],
 								});
-								createdRef.current.add(created.id);
+								if (!saved) return null;
+								createdRef.current.add(saved.id);
 								void records.reload();
 								awaitingServerRef.current = true;
 								void load();
-								return created.id;
-							} catch (createError) {
-								throw new Error(errorText(createError, "만들지 못했습니다."));
+								return saved.id;
 							}
-						}
-					: undefined
-			}
-		/>
+						: undefined
+				}
+			/>
+			{error && (
+				<p role="alert" className="text-destructive text-xs">
+					{error}
+				</p>
+			)}
+			{creator.sheet}
+		</>
 	);
 }

@@ -2,23 +2,24 @@
 
 import type { AdminColumnSettings } from "@bh2980/cms/client";
 import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/client";
-import { Plus } from "lucide-react";
+import { FolderPlus, Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils/cn";
 import { Button, buttonVariants } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 import { AdminEntriesTable } from "./admin-entries-table";
 import { BulkBar, runBulk } from "./entries/bulk-bar";
 import { toSelection } from "./list-row-menu";
 import { FilterChipBar, ListSearch } from "./list-toolbar";
 import { RecordPanel } from "./record-panel";
 import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
-import { ConfirmDialog } from "./shared/confirm-dialog";
+import { SIDE_PANEL_DOCK } from "./shared/side-panel";
 import { type EntryList, useEntryList } from "./use-entry-list";
 
-/** 목록 위 오른쪽: 검색과 새 항목(휴지통에는 새 항목이 없다). */
+/** 목록 위 오른쪽: 검색과 추가 버튼(휴지통에는 추가가 없다). */
 function EntryListHeaderActions({ list }: { list: EntryList }) {
 	const isTrash = list.mode === "trash";
 	return (
@@ -26,7 +27,8 @@ function EntryListHeaderActions({ list }: { list: EntryList }) {
 			<ListSearch state={list.state} onChange={list.update} allowBody={!isTrash} />
 			{!isTrash && (
 				<Button type="button" size="sm" onClick={list.createNew}>
-					<Plus aria-hidden />새 {list.label}
+					<Plus aria-hidden />
+					{list.label} 추가
 				</Button>
 			)}
 		</>
@@ -89,15 +91,17 @@ function EntryListBody({ list }: { list: EntryList }) {
 								: [
 										{
 											kind: "item",
-											label: "새 폴더",
+											label: state.folder === "all" ? "폴더 추가" : "하위 폴더 추가",
+											icon: FolderPlus,
 											onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
 										},
-										{ kind: "item", label: `새 ${list.label}`, onSelect: list.createNew },
+										{ kind: "item", label: `${list.label} 추가`, icon: Plus, onSelect: list.createNew },
 									]
 						}
 						onDeleteKey={list.onDeleteKey}
 						onSelectFolder={(folder) => list.update({ folder })}
-						onOpenRecord={(item) => list.openRecord({ collection: state.collection, id: item.id })}
+						openRecordId={record?.collection === state.collection ? record.id : null}
+						onOpenRecord={(item) => void list.openRecord({ collection: state.collection, id: item.id })}
 						onRestore={(item) => void list.restore([toSelection(item)])}
 						onPermanentDelete={(item) => list.confirmPermanentDelete([toSelection(item)])}
 						onPageChange={(page) => list.update({ page }, { resetPage: false })}
@@ -109,16 +113,16 @@ function EntryListBody({ list }: { list: EntryList }) {
 					/>
 				</div>
 				{record && (
-					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 목록 옆에 고정 폭으로 둔다.
 					<RecordPanel
 						key={`${record.collection}:${record.id ?? "new"}`}
 						target={record}
-						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[24rem] lg:static lg:shrink-0 lg:shadow-none"
+						className={SIDE_PANEL_DOCK}
 						onDirtyChange={list.setRecordDirty}
 						onClose={list.closeRecord}
-						onSaved={() => {
-							list.closeRecord();
-							toast.success("저장했습니다. 공개 분류 정보에 반영되었습니다.");
+						onSaved={(saved) => {
+							// 저장한 항목을 그대로 열어 둔다. 새 항목이면 만든 항목의 편집으로 바뀐다.
+							if (!record.id) list.showRecord({ collection: record.collection, id: saved.id });
+							toast.success("저장했습니다.");
 							void list.invalidateEntries();
 							list.reloadTaxonomies();
 						}}
@@ -126,7 +130,7 @@ function EntryListBody({ list }: { list: EntryList }) {
 				)}
 			</div>
 			{list.folderActions.dialogs}
-			<ConfirmDialog request={list.confirm} onClose={list.closeConfirm} />
+			{list.confirmDialog}
 		</>
 	);
 }
@@ -138,11 +142,31 @@ function useDashboardMounted() {
 	return mounted;
 }
 
+/** 첫 화면을 그리기 전 자리 표시. 사이드바·머리·목록 줄 모양을 흉내 낸다. */
 function DashboardLoading() {
 	return (
-		<output className="flex h-svh items-center justify-center text-muted-foreground text-sm">
-			관리자 화면을 불러오는 중…
-		</output>
+		<div aria-busy="true" className="flex h-svh overflow-hidden">
+			<span className="sr-only">불러오는 중…</span>
+			<div aria-hidden className="hidden w-64 shrink-0 space-y-2 border-r p-3 md:block">
+				<Skeleton className="mb-4 h-7 w-32" />
+				{Array.from({ length: 6 }, (_, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+					<Skeleton key={index} className="h-7 w-full" />
+				))}
+			</div>
+			<div aria-hidden className="flex min-w-0 flex-1 flex-col">
+				<div className="flex h-13 shrink-0 items-center justify-between border-b px-4 lg:px-5">
+					<Skeleton className="h-5 w-32" />
+					<Skeleton className="h-8 w-64" />
+				</div>
+				<div className="space-y-3 px-5 py-4">
+					{Array.from({ length: 8 }, (_, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
+						<Skeleton key={index} className="h-7 w-full" />
+					))}
+				</div>
+			</div>
+		</div>
 	);
 }
 

@@ -98,7 +98,7 @@ const methodCalls = (method: string, suffix = "") =>
 	fetchMock.mock.calls.filter(([input, init]) => init?.method === method && String(input).endsWith(suffix));
 
 const renderEdit = () => render(<EntryEditorShell mode="edit" initialEntryId="entry-1" adminId={ADMIN} />);
-const editorTitle = () => screen.findByRole("textbox", { name: "글 제목 (본문 위)" });
+const editorTitle = () => screen.findByRole("textbox", { name: "제목" });
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -335,7 +335,7 @@ describe("entry editor shell", () => {
 		const title = await editorTitle();
 		expect(title.getAttribute("aria-invalid")).toBe("true");
 		expect(title.getAttribute("aria-describedby")).toBe("cms-title-error");
-		expect(screen.getAllByRole("textbox", { name: "글 제목 (본문 위)" })).toHaveLength(1);
+		expect(screen.getAllByRole("textbox", { name: "제목" })).toHaveLength(1);
 		fireEvent.click(screen.getByRole("button", { name: /제목을 입력하세요/ }));
 		await waitFor(() => expect(document.activeElement).toBe(title));
 		fireEvent.click(screen.getByRole("button", { name: /MDX 본문 구문을 확인하세요/ }));
@@ -366,7 +366,7 @@ describe("entry editor shell", () => {
 		expect(source.value).toBe(entry.working.mdx);
 		expect(screen.queryByLabelText("시각 본문")).toBeNull();
 		expect((await editorTitle()).getAttribute("value")).toBe("테스트");
-		expect(screen.getByRole("button", { name: "템플릿 메뉴" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "템플릿" })).toBeTruthy();
 		fireEvent.click(toggle);
 		expect(await screen.findByLabelText("시각 본문")).toBeTruthy();
 		expect(screen.queryByRole("textbox", { name: "MDX 본문" })).toBeNull();
@@ -389,30 +389,47 @@ describe("entry editor shell", () => {
 		expect(screen.getByLabelText("시각 본문").closest("[inert]")).toBeTruthy();
 	});
 
-	it("creates categories and tags from their name alone (the server derives the slug)", async () => {
+	it("adds categories and tags through the add panel, prefilled with the typed name", async () => {
 		serve((input, init) => {
 			if (init?.method === "PATCH") return json({ ...entry, version: 5 });
 			if (input === "/api/cms/v1/entries" && init?.method === "POST") {
 				const data = JSON.parse(String(init.body));
-				return json({ id: data.collection === "category" ? "cat-2" : "tag-2", publishedSlug: "slug" }, 201);
+				return json(
+					{
+						id: data.collection === "category" ? "cat-2" : "tag-2",
+						workingSlug: "slug",
+						publishedSlug: "slug",
+						working: { metadata: data.metadata, mdx: "" },
+					},
+					201,
+				);
 			}
 		});
 		renderEdit();
-		// 없는 이름을 검색하면 목록 끝에 `'이름' 만들기`가 나온다.
+		// 없는 이름을 검색하면 목록 끝에 `'이름' 추가`가 나오고, 누르면 이름이 채워진 추가 칸이 열린다.
+		const saveIn = async (label: string) => {
+			const panel = await screen.findByRole("complementary", { name: label }, { timeout: 10_000 });
+			fireEvent.click(within(panel).getByRole("button", { name: "저장" }));
+			await waitFor(() => expect(screen.queryByRole("complementary", { name: label })).toBeNull(), {
+				timeout: 10_000,
+			});
+		};
 		const category = (await screen.findByRole("combobox", { name: "카테고리" })) as HTMLInputElement;
 		// Base UI는 실제 입력(`inputType`이 있는 input 이벤트)일 때만 목록을 연다.
 		fireEvent.input(category, { target: { value: "새 카테고리" }, inputType: "insertText" });
 		// 여러 테스트 파일을 함께 돌리면 목록이 늦게 열릴 때가 있어 넉넉히 기다린다(3초로는 가끔 모자랐다).
-		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 만들기" }, { timeout: 10_000 }));
+		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 추가" }, { timeout: 10_000 }));
+		await saveIn("카테고리 추가");
 		await waitFor(() => expect(category.value).toBe("새 카테고리"), { timeout: 10_000 });
 		fireEvent.input(screen.getByRole("combobox", { name: "태그" }), {
 			target: { value: "새 태그" },
 			inputType: "insertText",
 		});
-		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 만들기" }, { timeout: 10_000 }));
+		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 추가" }, { timeout: 10_000 }));
+		await saveIn("태그 추가");
 		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0), { timeout: 10_000 });
 		const creations = methodCalls("POST", "/api/cms/v1/entries").map(([, init]) => JSON.parse(String(init?.body)));
-		expect(creations).toEqual([
+		expect(creations).toMatchObject([
 			{ collection: "category", metadata: { title: "새 카테고리" }, mdx: "" },
 			{ collection: "tag", metadata: { title: "새 태그" }, mdx: "" },
 		]);
@@ -579,7 +596,7 @@ describe("entry editor shell", () => {
 
 	it("opens and closes the inspector from the top bar toggle and its close button", async () => {
 		renderEdit();
-		const close = await screen.findByRole("button", { name: "속성 닫기" });
+		const close = await screen.findByRole("button", { name: "닫기" });
 		const toggle = within(screen.getByRole("banner")).getByRole("button", { name: "속성" });
 		expect(toggle.getAttribute("aria-pressed")).toBe("true");
 		expect(screen.getByRole("tab", { name: "속성" })).toBeTruthy();
@@ -597,6 +614,47 @@ describe("entry editor shell", () => {
 		expect(within(screen.getByRole("banner")).getByRole("button", { name: "보관 해제" })).toBe(unarchive);
 		expect(screen.queryByRole("button", { name: "발행" })).toBeNull();
 		expect(screen.queryByRole("region", { name: "보관됨" })).toBeNull();
+	});
+
+	it("unarchives and restores at once without asking", async () => {
+		for (const [status, action, label, message] of [
+			["archived", "unarchive", "보관 해제", "보관을 해제했습니다."],
+			["trashed", "restore", "복원", "복원했습니다."],
+		] as const) {
+			serve(
+				(input, init) => {
+					if (input.endsWith(`/${action}`) && init?.method === "POST") return json({ ...entry, version: 5 });
+				},
+				{ ...entry, status },
+			);
+			renderEdit();
+			await editorTitle();
+			fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: label }));
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+			await waitFor(() => expect(methodCalls("POST", `/${action}`)).toHaveLength(1));
+			await waitFor(() => expect(success).toHaveBeenCalledWith(message));
+			cleanup();
+		}
+	});
+
+	it("reports header action failures as a toast", async () => {
+		serve((input, init) => {
+			if (input.endsWith("/publish") && init?.method === "POST") return json({ message: "서버 오류" }, 500);
+		});
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(screen.getByRole("button", { name: "발행" }));
+		await waitFor(() => expect(error).toHaveBeenCalled());
+		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("offers save once, in the header, not again in the more menu", async () => {
+		renderEdit();
+		await editorTitle();
+		expect(within(screen.getByRole("banner")).getByRole("button", { name: "저장" })).toBeTruthy();
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "더보기" }));
+		expect(screen.getByRole("menuitem", { name: "복제" })).toBeTruthy();
+		expect(screen.queryByRole("menuitem", { name: /저장/ })).toBeNull();
 	});
 
 	it("sends record collections to their explicit-save form", async () => {
@@ -623,10 +681,10 @@ describe("템플릿", () => {
 		});
 		renderEdit();
 		await editorTitle();
-		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+		fireEvent.click(screen.getByRole("button", { name: "템플릿" }));
 		fireEvent.click(await screen.findByRole("menuitem", { name: "회고" }));
 
-		expect(screen.queryByRole("dialog", { name: "템플릿 적용" })).toBeNull();
+		expect(screen.queryByRole("alertdialog", { name: "템플릿 적용" })).toBeNull();
 		expect(sourceText()).toBe("## 회고");
 	});
 
@@ -634,13 +692,14 @@ describe("템플릿", () => {
 		serve((input) => (input === "/api/cms/v1/templates" ? json(templates) : undefined));
 		renderEdit();
 		await editorTitle();
-		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+		fireEvent.click(screen.getByRole("button", { name: "템플릿" }));
 		fireEvent.click(await screen.findByRole("menuitem", { name: "회고" }));
 
-		const dialog = await screen.findByRole("dialog", { name: "템플릿 적용" });
-		fireEvent.click(within(dialog).getByRole("button", { name: "템플릿 적용" }));
+		const dialog = await screen.findByRole("alertdialog", { name: "템플릿 적용" });
+		expect(within(dialog).getByText("지금 본문을 '회고' 템플릿으로 바꿀까요? 쓴 본문은 사라집니다.")).toBeTruthy();
+		fireEvent.click(within(dialog).getByRole("button", { name: "적용" }));
 
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "템플릿 적용" })).toBeNull());
+		await waitFor(() => expect(screen.queryByRole("alertdialog", { name: "템플릿 적용" })).toBeNull());
 		expect(sourceText()).toBe("## 회고");
 	});
 
@@ -648,9 +707,9 @@ describe("템플릿", () => {
 		serve((input) => (input === "/api/cms/v1/templates" ? json({ items: [] }) : undefined));
 		renderEdit();
 		await editorTitle();
-		fireEvent.click(screen.getByRole("button", { name: "템플릿 메뉴" }));
+		fireEvent.click(screen.getByRole("button", { name: "템플릿" }));
 
-		expect(await screen.findByRole("menuitem", { name: "등록된 템플릿이 없습니다." })).toBeTruthy();
+		expect(await screen.findByRole("menuitem", { name: "템플릿이 없습니다." })).toBeTruthy();
 	});
 });
 
@@ -683,12 +742,13 @@ describe("발행 예약", () => {
 		const input = within(dialog).getByLabelText("예약 일시");
 
 		fireEvent.change(input, { target: { value: "2000-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
-		expect(await screen.findByText("예약은 미래 시각만 지정할 수 있습니다.")).toBeTruthy();
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
+		// 창을 연 채 오류를 창 밖에 보이지 않는다.
+		expect((await within(dialog).findByRole("alert")).textContent).toBe("예약은 미래 시각만 지정할 수 있습니다.");
 		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
 
 		fireEvent.change(input, { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
 
 		await waitFor(() => expect(methodCalls("POST", "/schedule")).toHaveLength(1));
 		expect(JSON.parse(String(methodCalls("POST", "/schedule")[0]?.[1]?.body))).toEqual({
@@ -705,9 +765,9 @@ describe("발행 예약", () => {
 		fireEvent.change(await editorTitle(), { target: { value: "저장 안 한 수정" } });
 		const dialog = await openSchedule();
 		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
 
-		expect(await screen.findByText("변경사항을 먼저 저장한 후 예약하세요.")).toBeTruthy();
+		expect((await within(dialog).findByRole("alert")).textContent).toBe("변경사항을 먼저 저장한 후 예약하세요.");
 		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
 	});
 
@@ -726,7 +786,7 @@ describe("발행 예약", () => {
 		renderEdit();
 		const dialog = await openSchedule();
 		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약 등록" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
 
 		expect(await screen.findByRole("list", { name: "발행 검증 문제" })).toBeTruthy();
 		await waitFor(() => expect(screen.queryByRole("dialog", { name: "발행 예약" })).toBeNull());
@@ -757,7 +817,7 @@ describe("언어 탭", () => {
 		expect(current.getAttribute("aria-current")).toBe("page");
 		const other = within(nav).getByRole("button", { name: "영어 · 초안" });
 		expect(other.getAttribute("aria-current")).toBeNull();
-		expect(within(nav).getByRole("button", { name: "일본어 번역본 만들기" })).toBeTruthy();
+		expect(within(nav).getByRole("button", { name: "일본어 번역본 추가" })).toBeTruthy();
 		expect(within(nav).queryByRole("button", { name: "번역본 메뉴" })).toBeNull();
 		const title = await editorTitle();
 		expect(nav.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -777,7 +837,7 @@ describe("언어 탭", () => {
 			}
 		}, source);
 		renderEdit();
-		fireEvent.click(await screen.findByRole("button", { name: "일본어 번역본 만들기" }));
+		fireEvent.click(await screen.findByRole("button", { name: "일본어 번역본 추가" }));
 		await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/admin/entries/entry-ja/edit"));
 		expect(JSON.parse(String(methodCalls("POST", "/translations")[0]?.[1]?.body))).toEqual({ locale: "ja" });
 		expect(success).toHaveBeenCalledWith("일본어 번역본을 만들었습니다.");
@@ -787,7 +847,7 @@ describe("언어 탭", () => {
 		serve(() => undefined, source);
 		renderEdit();
 		fireEvent.change(await editorTitle(), { target: { value: "저장 전" } });
-		fireEvent.click(screen.getByRole("button", { name: "일본어 번역본 만들기" }));
+		fireEvent.click(screen.getByRole("button", { name: "일본어 번역본 추가" }));
 		await waitFor(() => expect(error).toHaveBeenCalled());
 		expect(methodCalls("POST", "/translations")).toHaveLength(0);
 	});
@@ -803,7 +863,7 @@ describe("언어 탭", () => {
 		const nav = await screen.findByRole("navigation", { name: "언어" });
 		expect(within(nav).getByRole("button", { name: "영어 · 초안" }).getAttribute("aria-current")).toBe("page");
 		fireEvent.click(within(nav).getByRole("button", { name: "번역본 메뉴" }));
-		fireEvent.click(screen.getByRole("menuitem", { name: "삭제" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "휴지통으로 이동" }));
 		const dialog = screen.getByRole("alertdialog", { name: "휴지통으로 이동" });
 		expect(within(dialog).queryByText(/함께/)).toBeNull();
 		fireEvent.click(within(dialog).getByRole("button", { name: "휴지통으로 이동" }));
@@ -817,9 +877,7 @@ describe("언어 탭", () => {
 		await screen.findByRole("navigation", { name: "언어" });
 		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "더보기" }));
 		fireEvent.click(screen.getByRole("menuitem", { name: "휴지통으로 이동" }));
-		expect(
-			within(screen.getByRole("alertdialog")).getByText(/번역본\(EN\)도 함께 휴지통으로 이동합니다\./),
-		).toBeTruthy();
+		expect(within(screen.getByRole("alertdialog")).getByText(/EN 번역본도 함께 휴지통으로 이동합니다\./)).toBeTruthy();
 	});
 
 	it("hides the tabs for record collections and new entries", async () => {
@@ -878,14 +936,14 @@ describe("번역본 원문 창", () => {
 		renderEdit();
 		await editorTitle();
 		expect(sourcePane()).toBeNull();
-		expect(screen.queryByRole("button", { name: "원문 닫기" })).toBeNull();
 	});
 
 	it("원문 닫기와 원문 토글로 창을 접고 펼치며 기억한다", async () => {
 		serve(() => undefined, translationWith(SOURCE_MDX));
 		renderEdit();
 		await editorTitle();
-		fireEvent.click(await screen.findByRole("button", { name: "원문 닫기" }));
+		await waitFor(() => expect(sourcePane()).not.toBeNull());
+		fireEvent.click(within(sourcePane() as HTMLElement).getByRole("button", { name: "닫기" }));
 		expect(sourcePane()).toBeNull();
 		expect(window.localStorage.getItem("cms:translation-source-pane")).toBe("closed");
 		const toggle = screen.getByRole("button", { name: "원문" });
@@ -907,7 +965,7 @@ describe("번역본 원문 창", () => {
 		serve(() => undefined, translationWith(SOURCE_MDX));
 		renderEdit();
 		await editorTitle();
-		expect(screen.queryByText("원문이 바뀌었어요")).toBeNull();
+		expect(screen.queryByText("원문이 바뀌었습니다")).toBeNull();
 	});
 
 	it("원문이 바뀌면 알리고 확인이 확인한 원문을 저장에 싣는다", async () => {
@@ -918,9 +976,9 @@ describe("번역본 원문 창", () => {
 			}
 		}, translationWith("첫 문단\n"));
 		renderEdit();
-		expect(await screen.findByText("원문이 바뀌었어요")).toBeTruthy();
+		expect(await screen.findByText("원문이 바뀌었습니다")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "확인" }));
-		expect(screen.queryByText("원문이 바뀌었어요")).toBeNull();
+		expect(screen.queryByText("원문이 바뀌었습니다")).toBeNull();
 		fireEvent.click(await screen.findByRole("button", { name: "저장" }));
 		await waitFor(() => expect(methodCalls("PATCH")).toHaveLength(1));
 		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).translation).toEqual({
@@ -932,7 +990,7 @@ describe("번역본 원문 창", () => {
 	it("번역 상태가 없거나 모양이 다르면 아무것도 확인하지 않은 것으로 본다", async () => {
 		serve(() => undefined, translationWith(null));
 		renderEdit();
-		expect(await screen.findByText("원문이 바뀌었어요")).toBeTruthy();
+		expect(await screen.findByText("원문이 바뀌었습니다")).toBeTruthy();
 	});
 
 	it("비교는 바뀐 블록을 이전·지금으로 나열한다", async () => {

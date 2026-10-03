@@ -37,6 +37,14 @@ function stubBulkApi(results: unknown[] = [{ id: "entry-1", ok: true, version: 4
 
 const choose = chooseSelectOption;
 
+/** 일괄 작업은 모두 묻는다. 확인창의 질문을 확인하고 확인을 누른다. */
+async function confirmIn(label: string, question: string) {
+	const dialog = await screen.findByRole("alertdialog", { name: label });
+	expect(within(dialog).getByText(question)).toBeTruthy();
+	fireEvent.click(within(dialog).getByRole("button", { name: label }));
+	await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+}
+
 describe("bulk actions (§3.4)", () => {
 	it("sends tag, category clear and root folder payloads", async () => {
 		const payloads = stubBulkApi();
@@ -59,6 +67,7 @@ describe("bulk actions (§3.4)", () => {
 		fireEvent.keyDown(screen.getByPlaceholderText("태그 검색"), { key: "Escape" });
 		await waitFor(() => expect(screen.queryByPlaceholderText("태그 검색")).toBeNull());
 		fireEvent.click(screen.getByRole("button", { name: "태그 추가" }));
+		await confirmIn("태그 추가", "선택한 글 1개에 'Tag One' 태그를 추가할까요?");
 		await waitFor(() => expect(payloads).toHaveLength(1));
 		expect(payloads[0]).toEqual({
 			op: "relation.add",
@@ -67,17 +76,36 @@ describe("bulk actions (§3.4)", () => {
 			ids: ["tag-1"],
 		});
 
-		await choose("일괄 작업 종류", "카테고리 변경");
-		await choose("대상 카테고리", "지우기(없음)");
-		fireEvent.click(screen.getByRole("button", { name: "카테고리 변경" }));
+		await choose("일괄 작업 종류", "카테고리 바꾸기");
+		await choose("대상 카테고리", "없음");
+		fireEvent.click(screen.getByRole("button", { name: "카테고리 바꾸기" }));
+		await confirmIn("카테고리 바꾸기", "선택한 글 1개의 카테고리를 비울까요?");
 		await waitFor(() => expect(payloads).toHaveLength(2));
 		expect(payloads[1]).toMatchObject({ op: "relation.set", field: "categoryId", id: null });
 
 		await choose("일괄 작업 종류", "폴더로 이동");
 		await choose("이동할 폴더", "최상위");
 		fireEvent.click(screen.getByRole("button", { name: "폴더로 이동" }));
+		await confirmIn("폴더로 이동", "선택한 항목 1개를 최상위로 이동할까요?");
 		await waitFor(() => expect(payloads).toHaveLength(3));
 		expect(payloads[2]).toMatchObject({ op: "folder.move", folderId: null });
+	});
+
+	it("asks before unarchiving in bulk", async () => {
+		const payloads = stubBulkApi();
+		render(
+			<BulkBar collection="post" selected={selected} folders={folders} onClearSelection={vi.fn()} onDone={vi.fn()} />,
+		);
+		await choose("일괄 작업 종류", "보관 해제");
+		fireEvent.click(screen.getByRole("button", { name: "보관 해제" }));
+		await screen.findByRole("alertdialog", { name: "보관 해제" });
+		expect(payloads).toHaveLength(0);
+		await confirmIn(
+			"보관 해제",
+			"선택한 글 1개의 보관을 해제할까요? 초안으로 돌아가고 자동으로 다시 공개하지 않습니다.",
+		);
+		await waitFor(() => expect(payloads).toHaveLength(1));
+		expect(payloads[0]).toEqual({ op: "unarchive", items: [{ id: "entry-1", expectedVersion: 3 }] });
 	});
 
 	it("keeps destructive actions behind a confirmation dialog", async () => {

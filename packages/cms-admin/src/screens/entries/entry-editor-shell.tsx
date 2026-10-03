@@ -16,9 +16,9 @@ import {
 	Archive,
 	CalendarClock,
 	ChevronLeft,
-	CodeXml,
 	Copy,
 	Eye,
+	FileCode,
 	type LucideIcon,
 	MoreHorizontal,
 	PanelLeft,
@@ -43,10 +43,10 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
-	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import { FieldLabel } from "../../ui/field";
+import { IconButton } from "../../ui/icon-button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
 import { Textarea } from "../../ui/textarea";
@@ -56,6 +56,7 @@ import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { describeEntryStatus } from "../shared/entry-status";
+import { SIDE_PANEL_WIDTH } from "../shared/side-panel";
 import {
 	EMPTY_FORM,
 	type EntryData,
@@ -71,7 +72,13 @@ import {
 } from "./entry-form";
 import { InspectorPanel } from "./inspector-panel";
 import { LanguageTabs } from "./language-tabs";
-import { type LifecycleAction, lifecycleConfirm } from "./lifecycle-confirm";
+import {
+	type ConfirmedLifecycleAction,
+	LIFECYCLE_LABEL,
+	LIFECYCLE_SUCCESS,
+	type LifecycleAction,
+	lifecycleConfirm,
+} from "./lifecycle-confirm";
 import { backupKey, deleteLocalBackup, getLocalBackup } from "./local-backup";
 import { ConflictDialog, type Recovery, RecoveryDialog } from "./recovery-dialogs";
 import { formatSeoul, ScheduleDialog, ScheduleNotice } from "./schedule-dialog";
@@ -108,39 +115,74 @@ function ToolbarAction({
 }) {
 	const className = "size-8 shrink-0 text-muted-foreground";
 	const icon = <Icon aria-hidden className="size-4" />;
+	if (!href || disabled) {
+		return (
+			<IconButton label={label} side="bottom" disabled={disabled} className={className} onClick={onClick}>
+				{icon}
+			</IconButton>
+		);
+	}
+	// 링크는 링크로 남긴다(새 탭 열기·주소 복사). 이름과 툴팁은 아이콘 버튼과 같다.
 	return (
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					href && !disabled ? (
-						<a
-							href={href}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={label}
-							className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), className)}
-						>
-							{icon}
-						</a>
-					) : (
-						<Button
-							type="button"
-							size="icon-sm"
-							variant="ghost"
-							aria-label={label}
-							disabled={disabled}
-							className={className}
-							onClick={onClick}
-						>
-							{icon}
-						</Button>
-					)
+					<a
+						href={href}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label={label}
+						className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), className)}
+					>
+						{icon}
+					</a>
 				}
 			/>
 			<TooltipContent side="bottom">{label}</TooltipContent>
 		</Tooltip>
 	);
 }
+
+/** 편집기 도구 모음 끝의 켜고 끄는 단추(원문 창·MDX 원문). 이름과 툴팁이 같다. */
+function ToolbarToggle({
+	label,
+	text,
+	icon: Icon,
+	pressed,
+	disabled,
+	onPressedChange,
+}: {
+	label: string;
+	text: string;
+	icon: LucideIcon;
+	pressed: boolean;
+	disabled?: boolean;
+	onPressedChange: (pressed: boolean) => void;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Toggle
+						size="sm"
+						aria-label={label}
+						pressed={pressed}
+						disabled={disabled}
+						onPressedChange={onPressedChange}
+						className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
+					/>
+				}
+			>
+				<Icon aria-hidden className="size-4" />
+				{text}
+			</TooltipTrigger>
+			<TooltipContent side="bottom">{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** "먼저 저장하세요" 안내. 편집 화면 어디서 막혀도 같은 말을 쓴다. */
+const saveFirstMessage = (purpose: string) => `변경사항을 먼저 저장한 후 ${purpose}하세요.`;
 
 /** 저장 상태 점의 색. 상태를 더하면 여기서 색을 정해야 한다. */
 const SAVE_STATUS_DOT: Record<SaveStatus, string> = {
@@ -211,8 +253,11 @@ export function EntryEditorShell({
 	const editorScrollRef = useRef<HTMLDivElement>(null);
 	const sourcePaneRef = useRef<HTMLElement>(null);
 	const [isSlugTouched, setIsSlugTouched] = useState(mode === "edit");
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [actionFeedback, setActionFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
+	/** 머리 단추가 하는 일. 하는 동안 단추를 막고 글자를 바꾼다. */
+	const [busy, setBusy] = useState<"publish" | "schedule" | "status" | null>(null);
+	const isSubmitting = busy !== null;
+	/** 예약 창 안에 보일 오류. 창을 연 채 오류를 창 밖에 보이지 않는다. */
+	const [scheduleError, setScheduleError] = useState<string | null>(null);
 	const [publishIssues, setPublishIssues] = useState<CmsIssue[]>([]);
 	const [pendingBodyPosition, setPendingBodyPosition] = useState<CmsIssue["position"]>();
 	const [pendingFieldPath, setPendingFieldPath] = useState<string | null>(null);
@@ -301,7 +346,7 @@ export function EntryEditorShell({
 
 	const translationSource = translationSourceOf(entry);
 	const translationForm = form[TRANSLATION_FORM_KEY];
-	/** 번역자가 마지막으로 확인한 원문. 지금 원문과 다르면 "원문이 바뀌었어요"를 보인다. */
+	/** 번역자가 마지막으로 확인한 원문. 지금 원문과 다르면 "원문이 바뀌었습니다"를 보인다. */
 	const confirmedSource = translationStateFromForm(translationForm).baseSource;
 	const sourceChanged =
 		translationSource !== null && typeof translationForm === "string" && translationSource.mdx !== confirmedSource;
@@ -454,25 +499,29 @@ export function EntryEditorShell({
 		}
 	}, [pendingFieldPath]);
 
-	/** 명시적 발행만 현재 입력을 저장한다. 다른 작업은 미저장 입력이 있으면 먼저 저장하도록 안내한다. */
-	const ensureSaved = async (purpose: string, saveChanges = false) => {
+	/**
+	 * 명시적 발행만 현재 입력을 저장한다. 다른 작업은 미저장 입력이 있으면 먼저 저장하도록 안내한다.
+	 * 안내는 누른 자리 가까이에 보인다. 머리 단추·메뉴는 토스트(기본), 예약 창은 창 안이다.
+	 */
+	const ensureSaved = async (
+		purpose: string,
+		{ saveChanges = false, report = toast.error }: { saveChanges?: boolean; report?: (message: string) => void } = {},
+	) => {
 		if (autosave.status === "conflict") {
-			setActionFeedback({ type: "error", message: `편집 충돌을 해결한 후 ${purpose}할 수 있습니다.` });
+			report(`편집 충돌을 해결한 후 ${purpose}하세요.`);
 			return null;
 		}
 		if (saveChanges && !(await autosave.flush())) {
-			setActionFeedback({
-				type: "error",
-				message: `변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.getLastError() ?? "저장 상태를 확인하세요."}`,
-			});
-			return null;
-		}
-		if (!saveChanges && autosave.hasPendingChanges()) {
-			setActionFeedback({ type: "error", message: `변경사항을 먼저 저장한 후 ${purpose}하세요.` });
+			report(
+				`변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.getLastError() ?? "저장 상태를 확인하세요."}`,
+			);
 			return null;
 		}
 		const id = autosave.getEntryId();
-		if (!id) setActionFeedback({ type: "error", message: `먼저 저장한 후 ${purpose}할 수 있습니다.` });
+		if (!id || (!saveChanges && autosave.hasPendingChanges())) {
+			report(saveFirstMessage(purpose));
+			return null;
+		}
 		return id;
 	};
 
@@ -502,14 +551,13 @@ export function EntryEditorShell({
 	const handlePublish = async () => {
 		if (isSubmitting || isReadOnly) return;
 		setPublishIssues([]);
-		setActionFeedback(null);
 		// §5.6: 본문 요약 입력(`input: "auto-summary"`)이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
 		for (const field of autoSummaryFields(collection)) {
 			if (formText(form, field).trim()) continue;
 			const generated = autoSummary(form.mdx);
 			if (!generated) {
 				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: field }]);
-				setActionFeedback({ type: "error", message: "요약을 만들 본문이 없습니다. 요약을 직접 입력하세요." });
+				toast.error("요약을 만들 본문이 없습니다. 요약을 직접 입력하세요.");
 				return;
 			}
 			setForm({ [field]: generated });
@@ -517,9 +565,9 @@ export function EntryEditorShell({
 		}
 		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
 		if (sourceChanged) toast.warning("확인하지 않은 원문 변경이 있습니다.");
-		setIsSubmitting(true);
+		setBusy("publish");
 		try {
-			const id = await ensureSaved("발행", true);
+			const id = await ensureSaved("발행", { saveChanges: true });
 			if (!id) return;
 			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
 				method: "POST",
@@ -554,28 +602,30 @@ export function EntryEditorShell({
 			}
 			if (error instanceof CmsApiError && error.issues.length > 0) {
 				setPublishIssues(error.issues);
-				setActionFeedback({ type: "error", message: "발행할 수 없습니다. 아래 문제를 수정하세요." });
+				toast.error("발행할 수 없습니다. 아래 문제를 수정하세요.");
 				return;
 			}
-			setActionFeedback({ type: "error", message: errorText(error, "발행하지 못했습니다.") });
+			toast.error(errorText(error, "발행하지 못했습니다."));
 		} finally {
-			setIsSubmitting(false);
+			setBusy(null);
 		}
 	};
 
 	const handleSchedule = async (seoulDateTime: string) => {
+		if (isSubmitting) return;
+		setScheduleError(null);
 		const scheduledAt = parseDateTimeInput(seoulDateTime);
-		if (!scheduledAt || isSubmitting) {
-			setActionFeedback({ type: "error", message: "예약 일시(서울 시간)를 확인하세요." });
+		if (!scheduledAt) {
+			setScheduleError("예약 일시를 확인하세요. 서울 시각입니다.");
 			return;
 		}
 		if (Date.parse(scheduledAt) <= Date.now()) {
-			setActionFeedback({ type: "error", message: "예약은 미래 시각만 지정할 수 있습니다." });
+			setScheduleError("예약은 미래 시각만 지정할 수 있습니다.");
 			return;
 		}
-		setIsSubmitting(true);
+		setBusy("schedule");
 		try {
-			const id = await ensureSaved("예약");
+			const id = await ensureSaved("예약", { report: setScheduleError });
 			if (!id) return;
 			await cmsFetch(`/api/cms/v1/entries/${id}/schedule`, {
 				method: "POST",
@@ -586,64 +636,73 @@ export function EntryEditorShell({
 			await loadEntry(id);
 			toast.success(`${formatSeoul(scheduledAt)}에 발행하도록 예약했습니다.`);
 		} catch (error) {
+			// 발행 검사에 걸리면 창을 닫고 문제 목록을 보인다. 그 밖의 실패는 창 안에 보인다.
 			if (error instanceof CmsApiError && error.issues.length > 0) {
 				setPublishIssues(error.issues);
 				setScheduleOpen(false);
+				toast.error("예약할 수 없습니다. 아래 문제를 수정하세요.");
+				return;
 			}
-			setActionFeedback({ type: "error", message: errorText(error, "예약하지 못했습니다.") });
+			setScheduleError(errorText(error, "예약하지 못했습니다."));
 		} finally {
-			setIsSubmitting(false);
+			setBusy(null);
 		}
 	};
 
 	const handleCancelSchedule = async () => {
 		const pending = entry?.schedule?.pending;
-		if (!entry || !pending) return;
+		if (!entry || !pending || isSubmitting) return;
+		setBusy("status");
 		try {
 			await cmsFetch(`/api/cms/v1/entries/${entry.id}/schedule?scheduleId=${pending.id}`, { method: "DELETE" });
 			await loadEntry(entry.id);
 			toast.success("예약을 해제했습니다. 이제 편집할 수 있습니다.");
 		} catch (error) {
-			setActionFeedback({ type: "error", message: errorText(error, "예약을 해제하지 못했습니다.") });
+			toast.error(errorText(error, "예약을 해제하지 못했습니다."));
+		} finally {
+			setBusy(null);
 		}
 	};
 
 	/** 보관·보관 해제·휴지통·복원(§5.3). */
-	const runLifecycle = async (action: LifecycleAction, successMessage: string) => {
-		if (!entry) return;
+	const runLifecycle = async (action: LifecycleAction) => {
+		if (!entry || isSubmitting) return;
+		if (action !== "restore" && autosave.hasPendingChanges()) {
+			toast.error(saveFirstMessage(LIFECYCLE_LABEL[action]));
+			return;
+		}
+		setBusy("status");
 		try {
-			if (action !== "restore" && autosave.hasPendingChanges()) {
-				setActionFeedback({ type: "error", message: "변경사항을 먼저 저장한 후 진행하세요." });
-				return;
-			}
 			await cmsFetch(`/api/cms/v1/entries/${entry.id}/${action}`, {
 				method: "POST",
 				json: { expectedVersion: autosave.getVersion() },
 			});
 			// 번역본을 휴지통으로 보내면 원문 편집 화면으로 돌아간다.
 			if (action === "trash" && isTranslationEntry(entry) && entry.translationGroupId) {
-				toast.success(successMessage);
+				toast.success(LIFECYCLE_SUCCESS[action]);
 				router.push(`/admin/entries/${entry.translationGroupId}/edit`);
 				return;
 			}
 			await loadEntry(entry.id);
-			toast.success(successMessage);
+			toast.success(LIFECYCLE_SUCCESS[action]);
 		} catch (error) {
-			setActionFeedback({ type: "error", message: errorText(error, "상태를 바꾸지 못했습니다.") });
+			toast.error(errorText(error, `${LIFECYCLE_LABEL[action]}하지 못했습니다.`));
+		} finally {
+			setBusy(null);
 		}
 	};
 
-	/** 공개 상태가 바뀌는 전환은 확인을 받는다. */
-	const confirmLifecycle = (action: LifecycleAction) => {
-		const { successMessage, ...request } = lifecycleConfirm(action, entry, incoming.items);
-		setConfirm({ ...request, onConfirm: () => runLifecycle(action, successMessage) });
+	/** 공개 글을 내리는 전환(보관·휴지통 이동)만 묻는다. 보관 해제·복원은 바로 한다(§5). */
+	const confirmLifecycle = (action: ConfirmedLifecycleAction) => {
+		setConfirm({ ...lifecycleConfirm(action, entry, incoming.items), onConfirm: () => runLifecycle(action) });
 	};
 
 	const confirmPermanentDelete = () => {
 		if (!entry) return;
 		setConfirm({
 			title: "영구 삭제",
-			description: "되돌릴 수 없습니다. 공개된 적 있는 주소는 다른 글이 다시 쓸 수 없도록 기록만 남습니다.",
+			description:
+				"이 글을 영구 삭제할까요? 되돌릴 수 없습니다. 공개된 적 있는 주소는 다른 글이 다시 쓸 수 없도록 기록만 남습니다.",
 			confirmLabel: "영구 삭제",
 			destructive: true,
 			onConfirm: async () => {
@@ -654,7 +713,7 @@ export function EntryEditorShell({
 					await deleteLocalBackup(backupKey(adminId, entry.id, entry.collection));
 					router.push(`/admin?collection=${entry.collection}&status=trashed`);
 				} catch (error) {
-					setActionFeedback({ type: "error", message: errorText(error, "삭제하지 못했습니다.") });
+					toast.error(errorText(error, "삭제하지 못했습니다."));
 				}
 			},
 		});
@@ -667,7 +726,7 @@ export function EntryEditorShell({
 			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, { method: "POST", json: {} });
 			router.push(`/admin/entries/${copy.id}/edit`);
 		} catch (error) {
-			setActionFeedback({ type: "error", message: errorText(error, "복제하지 못했습니다.") });
+			toast.error(errorText(error, "복제하지 못했습니다."));
 		}
 	};
 
@@ -691,7 +750,7 @@ export function EntryEditorShell({
 	if (isLoading) {
 		return (
 			<div className="space-y-4 p-8" aria-busy>
-				<span className="sr-only">문서를 불러오는 중...</span>
+				<span className="sr-only">문서를 불러오는 중…</span>
 				<Skeleton className="h-8 w-1/2" />
 				<Skeleton className="h-4 w-full" />
 				<Skeleton className="h-4 w-5/6" />
@@ -730,7 +789,7 @@ export function EntryEditorShell({
 	const titleInput = (
 		<>
 			<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
-				글 제목 (본문 위)
+				제목
 			</FieldLabel>
 			<Input
 				id="cms-title-canvas"
@@ -739,7 +798,7 @@ export function EntryEditorShell({
 				aria-invalid={Boolean(titleIssue) || undefined}
 				aria-describedby={titleIssue ? "cms-title-error" : undefined}
 				onChange={(event) => handleTitleChange(event.target.value)}
-				placeholder={translationSource?.title || "제목 없는 글"}
+				placeholder={translationSource?.title || "제목 없음"}
 				className="h-auto w-full rounded-none border-0 bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
 			/>
 			{titleIssue && (
@@ -750,37 +809,24 @@ export function EntryEditorShell({
 		</>
 	);
 	const sourcePaneToggle = translationSource && (
-		<Toggle
-			size="sm"
-			aria-label="원문"
+		<ToolbarToggle
+			label="원문"
+			text="원문"
+			icon={PanelLeft}
 			pressed={isSourcePaneOpen}
 			onPressedChange={toggleSourcePane}
-			className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
-		>
-			<PanelLeft aria-hidden className="size-4" />
-			원문
-		</Toggle>
+		/>
 	);
 	const sourceModeToggle = (
-		<Tooltip>
-			<TooltipTrigger
-				render={
-					<Toggle
-						size="sm"
-						aria-label="MDX 원문"
-						pressed={editorMode === "source"}
-						// 해석할 수 없는 본문은 시각 모드로 돌아가지 못한다.
-						disabled={editorMode === "source" && !canUseVisual}
-						onPressedChange={(pressed) => setEditorMode(pressed ? "source" : "visual")}
-						className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
-					/>
-				}
-			>
-				<CodeXml aria-hidden className="size-4" />
-				MDX
-			</TooltipTrigger>
-			<TooltipContent side="bottom">MDX 원문</TooltipContent>
-		</Tooltip>
+		<ToolbarToggle
+			label="MDX 원문"
+			text="MDX"
+			icon={FileCode}
+			pressed={editorMode === "source"}
+			// 해석할 수 없는 본문은 시각 모드로 돌아가지 못한다.
+			disabled={editorMode === "source" && !canUseVisual}
+			onPressedChange={(pressed) => setEditorMode(pressed ? "source" : "visual")}
+		/>
 	);
 	const sourceEditor = (
 		<>
@@ -794,7 +840,7 @@ export function EntryEditorShell({
 				onChange={(event) => setForm({ mdx: event.target.value })}
 				onCompositionStart={() => autosave.setComposing(true)}
 				onCompositionEnd={() => autosave.setComposing(false)}
-				placeholder="MDX 원문을 작성하세요..."
+				placeholder="MDX 원문을 작성하세요…"
 				className="min-h-[calc(100vh-240px)] w-full flex-1 resize-none p-4 font-mono text-sm md:text-sm"
 			/>
 			{bodyIssue && (
@@ -871,20 +917,42 @@ export function EntryEditorShell({
 							label="발행 예약"
 							icon={CalendarClock}
 							disabled={isSubmitting}
-							onClick={() => setScheduleOpen(true)}
+							onClick={() => {
+								setScheduleError(null);
+								setScheduleOpen(true);
+							}}
 						/>
 					)}
+					{/* 하나만 바꾸는 전환(발행·보관 해제·복원·예약 해제)은 묻지 않고 바로 한다(§5). */}
 					{scheduleLocked ? (
-						<Button type="button" size="sm" className="ml-1" onClick={() => void handleCancelSchedule()}>
-							예약 해제
+						<Button
+							type="button"
+							size="sm"
+							className="ml-1"
+							disabled={isSubmitting}
+							onClick={() => void handleCancelSchedule()}
+						>
+							{busy === "status" ? "예약 해제 중…" : "예약 해제"}
 						</Button>
 					) : isTrashed ? (
-						<Button type="button" size="sm" className="ml-1" onClick={() => confirmLifecycle("restore")}>
-							복원
+						<Button
+							type="button"
+							size="sm"
+							className="ml-1"
+							disabled={isSubmitting}
+							onClick={() => void runLifecycle("restore")}
+						>
+							{busy === "status" ? "복원 중…" : "복원"}
 						</Button>
 					) : entry?.status === "archived" ? (
-						<Button type="button" size="sm" className="ml-1" onClick={() => confirmLifecycle("unarchive")}>
-							보관 해제
+						<Button
+							type="button"
+							size="sm"
+							className="ml-1"
+							disabled={isSubmitting}
+							onClick={() => void runLifecycle("unarchive")}
+						>
+							{busy === "status" ? "보관 해제 중…" : "보관 해제"}
 						</Button>
 					) : (
 						<Button
@@ -895,42 +963,31 @@ export function EntryEditorShell({
 							disabled={isSubmitting}
 							onClick={() => void handlePublish()}
 						>
-							발행
+							{busy === "publish" ? "발행 중…" : "발행"}
 						</Button>
 					)}
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Button
-									type="button"
-									size="icon-sm"
-									variant="ghost"
-									aria-label="속성"
-									aria-pressed={isInspectorOpen}
-									className="size-8 text-muted-foreground aria-pressed:bg-muted aria-pressed:text-foreground"
-									onClick={() => setIsInspectorOpen((open) => !open)}
-								>
-									<PanelRight aria-hidden className="size-4" />
-								</Button>
-							}
-						/>
-						<TooltipContent side="bottom">{isInspectorOpen ? "속성 닫기" : "속성 열기"}</TooltipContent>
-					</Tooltip>
+					<IconButton
+						label="속성"
+						side="bottom"
+						pressed={isInspectorOpen}
+						className="size-8 text-muted-foreground"
+						onClick={() => setIsInspectorOpen((open) => !open)}
+					>
+						<PanelRight aria-hidden className="size-4" />
+					</IconButton>
 					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button type="button" size="icon-sm" variant="ghost" aria-label="더보기" title="더보기" />}
+						<IconButton
+							label="더보기"
+							side="bottom"
+							className="size-8 text-muted-foreground"
+							trigger={(button) => <DropdownMenuTrigger render={button} />}
 						>
 							<MoreHorizontal aria-hidden className="size-4" />
-						</DropdownMenuTrigger>
+						</IconButton>
 						<DropdownMenuContent align="end" className="w-56">
-							<DropdownMenuItem disabled={isReadOnly} onClick={() => void handleSaveNow()}>
-								<Save aria-hidden />
-								저장
-								<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-							</DropdownMenuItem>
+							{/* 저장은 머리의 저장 단추와 ⌘S로 한다. 메뉴에 다시 두지 않는다. */}
 							{entry && !isTrashed && (
 								<>
-									<DropdownMenuSeparator />
 									<DropdownMenuItem onClick={() => void handleDuplicate()}>
 										<Copy aria-hidden />
 										복제
@@ -945,7 +1002,7 @@ export function EntryEditorShell({
 							)}
 							{entry && (
 								<>
-									<DropdownMenuSeparator />
+									{!isTrashed && <DropdownMenuSeparator />}
 									{isTrashed ? (
 										<DropdownMenuItem variant="destructive" onClick={confirmPermanentDelete}>
 											<Trash aria-hidden />
@@ -959,7 +1016,7 @@ export function EntryEditorShell({
 									)}
 								</>
 							)}
-							<DropdownMenuSeparator />
+							{entry && <DropdownMenuSeparator />}
 							<DropdownMenuItem onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
 								<SunMoon aria-hidden />
 								테마 전환
@@ -980,17 +1037,6 @@ export function EntryEditorShell({
 					해석할 수 없는 본문이 있어 원문 모드로만 편집합니다. 저장은 되지만 발행은 막힙니다 —{" "}
 					{sourceProblems[0] ? cmsIssueMessage(sourceProblems[0]) : ""}
 				</output>
-			)}
-			{actionFeedback && (
-				<p
-					role={actionFeedback.type === "error" ? "alert" : "status"}
-					className={cn(
-						"whitespace-pre-wrap border-b px-4 py-2 text-sm",
-						actionFeedback.type === "error" && "text-destructive",
-					)}
-				>
-					{actionFeedback.message}
-				</p>
 			)}
 			{autosave.lastError && ["failed", "session-expired"].includes(autosave.status) && (
 				<p role="alert" className="border-b px-4 py-2 text-destructive text-sm">
@@ -1017,7 +1063,7 @@ export function EntryEditorShell({
 
 			{sourceChanged && translationSource && (
 				<output className="flex flex-wrap items-center gap-2 border-b bg-amber-500/10 px-4 py-1.5 text-sm">
-					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">원문이 바뀌었어요</span>
+					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">원문이 바뀌었습니다</span>
 					<Button type="button" size="sm" variant="outline" onClick={() => setIsSourceCompareOpen(true)}>
 						비교
 					</Button>
@@ -1087,7 +1133,12 @@ export function EntryEditorShell({
 
 				{isInspectorOpen && (
 					// 좁은 화면은 본문 위에 덮고, 넓은 화면은 옆에 고정 폭으로 둔다.
-					<div className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[21rem] lg:static lg:z-auto lg:shrink-0 lg:shadow-none">
+					<div
+						className={cn(
+							"absolute inset-y-0 right-0 z-20 max-w-full shadow-lg lg:static lg:z-auto lg:shrink-0 lg:shadow-none",
+							SIDE_PANEL_WIDTH,
+						)}
+					>
 						<InspectorPanel
 							collection={collection}
 							form={form}
@@ -1138,7 +1189,8 @@ export function EntryEditorShell({
 				open={scheduleOpen}
 				onOpenChange={setScheduleOpen}
 				runnerConfigured={schedule?.runnerConfigured}
-				submitting={isSubmitting}
+				submitting={busy === "schedule"}
+				error={scheduleError}
 				onSubmit={(seoulDateTime) => void handleSchedule(seoulDateTime)}
 			/>
 

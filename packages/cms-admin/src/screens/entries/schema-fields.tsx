@@ -1,10 +1,17 @@
 "use client";
 
-import type { ConditionalField, Field, LayoutGroup, RelationField, SlugField, ValueField } from "@bh2980/cms/client";
+import type {
+	Collection,
+	ConditionalField,
+	Field,
+	LayoutGroup,
+	RelationField,
+	SlugField,
+	ValueField,
+} from "@bh2980/cms/client";
 import {
 	isRecordCollection,
 	type Locale,
-	localeLabel,
 	recordLocalizedFields,
 	type SchemaCollection,
 	schemaOf,
@@ -21,7 +28,6 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Textarea } from "../../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import { errorText } from "../admin-api";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import { type EntryForm, type EntryFormPatch, type FormValue, recordTranslationKey } from "./entry-form";
@@ -34,6 +40,7 @@ import {
 	inputClass,
 	OrderedEntryList,
 } from "./field-inputs";
+import { optionOf, useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
 
 const fieldId = (name: string) => `cms-${name}`;
@@ -62,36 +69,45 @@ interface SchemaFieldsProps {
 	sections?: "collapsible" | "plain";
 }
 
-/** 필드 하나의 라벨·필수 표시·오류·도움말. `slot`이 있으면 라벨 옆에 자리 버튼, 입력 아래에 결과를 둔다. */
-function FieldRow({
-	id,
-	label,
-	required,
-	issue,
-	help,
-	slot,
-	children,
-}: {
+interface FieldRowProps {
 	id: string;
 	label: string;
 	required?: boolean;
 	issue?: CmsIssue;
 	help?: ReactNode;
 	slot?: SlotRequest;
+	/** 라벨 줄 오른쪽에 둘 것(글자 수 등). 자리 버튼보다 앞에 온다. */
+	aside?: ReactNode;
 	children: ReactNode;
-}) {
+}
+
+/**
+ * 필드 하나의 라벨·필수 표시·오류·도움말. `slot`이 있으면 라벨 옆에 자리 버튼, 입력 아래에 결과를 둔다.
+ * 속성 칸의 모든 입력(스키마 필드·SEO)이 이 줄을 쓴다.
+ */
+export function FieldRow({ id, label, required, issue, help, slot, aside, children }: FieldRowProps) {
 	if (slot) {
 		return (
-			<SlotFieldRow id={id} label={label} required={required} issue={issue} help={help} slot={slot}>
+			<SlotFieldRow id={id} label={label} required={required} issue={issue} help={help} slot={slot} aside={aside}>
 				{children}
 			</SlotFieldRow>
 		);
 	}
+	const labelNode = (
+		<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
+			{label} {required && <span className="text-destructive">*</span>}
+		</FieldLabel>
+	);
 	return (
 		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
-			<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
-				{label} {required && <span className="text-destructive">*</span>}
-			</FieldLabel>
+			{aside ? (
+				<div className="flex min-h-6 items-center justify-between gap-2">
+					{labelNode}
+					{aside}
+				</div>
+			) : (
+				labelNode
+			)}
 			{children}
 			{issue && <FieldError id={`${id}-error`}>{cmsIssueMessage(issue)}</FieldError>}
 			{help && <FieldDescription className="text-[11px] leading-tight">{help}</FieldDescription>}
@@ -106,16 +122,9 @@ function SlotFieldRow({
 	issue,
 	help,
 	slot,
+	aside,
 	children,
-}: {
-	id: string;
-	label: string;
-	required?: boolean;
-	issue?: CmsIssue;
-	help?: ReactNode;
-	slot: SlotRequest;
-	children: ReactNode;
-}) {
+}: FieldRowProps & { slot: SlotRequest }) {
 	const { trigger, panel } = useSlot(slot);
 	return (
 		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
@@ -123,7 +132,12 @@ function SlotFieldRow({
 				<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
 					{label} {required && <span className="text-destructive">*</span>}
 				</FieldLabel>
-				{trigger}
+				{aside || trigger ? (
+					<span className="flex items-center gap-1">
+						{aside}
+						{trigger}
+					</span>
+				) : null}
 			</div>
 			{children}
 			{panel}
@@ -137,6 +151,7 @@ function SlotFieldRow({
 function RecordRelationInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
 	const relation = field as RelationField;
 	const records = useTaxonomy(relation.to as RecordCollection);
+	const creator = useRecordCreator();
 	const selected = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 	const options = useMemo(
 		() => records.options.map((option) => ({ value: option.id, label: option.title })),
@@ -148,7 +163,7 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 				id={id}
 				multiple={Boolean(relation.many)}
 				aria-label={relation.label}
-				placeholder={relation.placeholder ?? (relation.createInline ? "검색하거나 새로 만들기" : "검색")}
+				placeholder={relation.placeholder ?? (relation.createInline ? "검색하거나 추가" : "검색")}
 				options={options}
 				value={selected}
 				invalid={invalid}
@@ -158,11 +173,11 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 				onCreate={
 					relation.createInline
 						? async (title) => {
-								try {
-									return (await records.create(title)).id;
-								} catch (error) {
-									throw new Error(errorText(error, "만들지 못했습니다."));
-								}
+								const saved = await creator.create(relation.to as Collection, { title });
+								if (!saved) return null;
+								records.remember(optionOf(saved));
+								void records.reload();
+								return saved.id;
 							}
 						: undefined
 				}
@@ -172,6 +187,7 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 					{records.error}
 				</p>
 			)}
+			{creator.sheet}
 		</>
 	);
 }
@@ -526,7 +542,8 @@ export function RecordLocaleFields({
 			{recordLocalizedFields(collection).map((field) => {
 				const key = recordTranslationKey(field, locale);
 				const definition = schema.fields[field];
-				const label = `${definition?.label ?? field} (${localeLabel(locale)})`;
+				// 언어는 분류 칸의 언어 탭이 이미 보인다.
+				const label = definition?.label ?? field;
 				const multiline = definition?.kind === "text" && definition.multiline;
 				const value = typeof form[key] === "string" ? (form[key] as string) : "";
 				return (

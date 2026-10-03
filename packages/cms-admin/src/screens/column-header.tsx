@@ -186,7 +186,7 @@ export function setRelation(state: ListState, field: string, ids: readonly strin
 
 const clearRelation = (state: ListState, field: string) => setRelation(state, field, []);
 
-/** 이 필터를 지우는 변경. 칩의 `✕`와 팝업의 `필터 지우기`가 쓴다. */
+/** 이 필터를 지우는 변경. 칩의 `✕`와 팝업의 `필터 해제`가 쓴다. */
 export function clearPatchFor(filter: ColumnFilter, state: ListState): Partial<ListState> {
 	switch (filter.kind) {
 		case "text":
@@ -250,7 +250,7 @@ export function ColumnHeader({
 						variant="ghost"
 						size="sm"
 						className={cn("-ml-2 h-7 gap-1 px-2 font-normal text-muted-foreground text-xs", filtered && "text-primary")}
-						aria-label={`${config.label}${sorted ? `, ${sorted === "asc" ? "오름차순" : "내림차순"} 정렬` : ""}${filtered ? ", 필터 적용됨" : ""} — 정렬·필터 열기`}
+						aria-label={`${config.label}${sorted ? `, ${sorted === "asc" ? "오름차순" : "내림차순"} 정렬` : ""}${filtered ? ", 필터 적용됨" : ""}`}
 					/>
 				}
 			>
@@ -306,7 +306,7 @@ export function ColumnHeader({
 						className="w-full"
 						onClick={() => onChange(clearPatchFor(filter, state))}
 					>
-						{config.label} 필터 지우기
+						필터 해제
 					</Button>
 				)}
 			</PopoverContent>

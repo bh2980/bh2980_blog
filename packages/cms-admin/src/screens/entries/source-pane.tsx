@@ -6,7 +6,7 @@ import { type Ref, useState } from "react";
 import { buildEditorExtensions } from "../../editor/extensions";
 import { mdxToTiptap } from "../../editor/tiptap-content";
 import { cn } from "../../lib/utils/cn";
-import { Button } from "../../ui/button";
+import { IconButton } from "../../ui/icon-button";
 
 const PROSE =
 	"prose dark:prose-invert max-w-none text-base text-foreground leading-relaxed focus:outline-none " +
@@ -62,9 +62,9 @@ export function SourcePane({
 				className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur"
 			>
 				<h2 className="flex-1 font-medium text-sm">{locale.toUpperCase()} 원문</h2>
-				<Button type="button" size="icon-sm" variant="ghost" aria-label="원문 닫기" onClick={onClose}>
+				<IconButton label="닫기" side="bottom" onClick={onClose}>
 					<X aria-hidden className="size-4" />
-				</Button>
+				</IconButton>
 			</div>
 			<h1
 				className={cn(
@@ -72,7 +72,7 @@ export function SourcePane({
 					!title && "text-muted-foreground/40",
 				)}
 			>
-				{title || "제목 없는 글"}
+				{title || "제목 없음"}
 			</h1>
 			<div className="px-6 pt-6 pb-[35vh]">
 				<MdxPreview mdx={mdx} label="원문 본문" />

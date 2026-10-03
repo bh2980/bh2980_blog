@@ -117,13 +117,62 @@ describe("미디어 라이브러리", () => {
 		expect(alt.value).toBe("고양이");
 		fireEvent.change(alt, { target: { value: "창가의 고양이" } });
 		fireEvent.change(within(detail).getByRole("textbox", { name: "기본 캡션" }), { target: { value: "캡션" } });
-		fireEvent.click(within(detail).getByRole("button", { name: "기본값 저장" }));
+		fireEvent.click(within(detail).getByRole("button", { name: "저장" }));
 
 		await waitFor(() => expect(calls("PATCH", "/api/cms/v1/media/cat")).toHaveLength(1));
 		expect(JSON.parse(String(calls("PATCH", "/api/cms/v1/media/cat")[0]?.[1]?.body))).toEqual({
 			defaultAlt: "창가의 고양이",
 			defaultCaption: "캡션",
 		});
+		await waitFor(() => expect(toast.success).toHaveBeenCalledWith("저장했습니다."));
+	});
+
+	it("기본 설명을 고친 채 다른 파일을 열면 버릴지 묻는다", async () => {
+		await renderLibrary();
+		const detail = await openDetail(/cat\.png$/);
+		fireEvent.change(within(detail).getByRole("textbox", { name: "기본 캡션" }), { target: { value: "고친 캡션" } });
+
+		fireEvent.click(screen.getByRole("button", { name: /dog\.png$/ }));
+		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" });
+		// 확인 창이 떠 있는 동안 상세 칸은 가려지지만 고친 값은 남아 있다.
+		expect(screen.getByDisplayValue("고친 캡션")).toBeTruthy();
+		fireEvent.click(within(dialog).getByRole("button", { name: "버리기" }));
+		await waitFor(() =>
+			expect(
+				within(screen.getByRole("complementary", { name: "미디어 상세" })).getByRole("heading", { name: "dog.png" }),
+			).toBeTruthy(),
+		);
+	});
+
+	it("열린 파일을 표시한다", async () => {
+		await renderLibrary();
+		await openDetail(/cat\.png$/);
+		await waitFor(() =>
+			expect(screen.getByRole("button", { name: /cat\.png$/ }).getAttribute("aria-current")).toBe("true"),
+		);
+		expect(screen.getByRole("button", { name: /dog\.png$/ }).getAttribute("aria-current")).toBeNull();
+	});
+
+	it("불러오지 못하면 그 자리에 알리고 다시 시도할 수 있다", async () => {
+		let fail = true;
+		const ok = fetchMock.getMockImplementation() as (input: string, init?: RequestInit) => Promise<unknown>;
+		fetchMock.mockImplementation(async (input: string, init?: RequestInit) =>
+			fail && new URL(input, "http://localhost").pathname === "/api/cms/v1/media"
+				? json({ code: "internal", message: "서버 오류" }, 500)
+				: ok(input, init),
+		);
+		render(
+			<AdminQueryProvider>
+				<MediaLibrary />
+			</AdminQueryProvider>,
+		);
+		// 목록 요청은 한 번 다시 시도한 뒤 실패로 본다.
+		const alert = await screen.findByRole("alert", undefined, { timeout: 3000 });
+		expect(alert.textContent).toContain("서버 오류");
+		expect(toast.error).not.toHaveBeenCalled();
+		fail = false;
+		fireEvent.click(within(alert).getByRole("button", { name: "다시 시도" }));
+		expect(await screen.findByRole("button", { name: /cat\.png$/ })).toBeTruthy();
 	});
 
 	it("파일은 기본 설명 칸 없이 크기를 보인다", async () => {
@@ -144,13 +193,13 @@ describe("미디어 라이브러리", () => {
 		await waitFor(() => expect(toast.success).toHaveBeenCalledWith("'dog.png'을(를) 삭제했습니다."));
 	});
 
-	it("오른쪽 클릭 메뉴에 상세 보기·사용처·삭제가 있다", async () => {
+	it("오른쪽 클릭 메뉴에 열기·사용처·삭제가 있다", async () => {
 		await renderLibrary();
 		await act(async () => {
 			fireEvent.contextMenu(screen.getByRole("button", { name: /cat\.png$/ }));
 		});
 		const items = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
-		expect(items).toEqual(["상세 보기", "사용처", "삭제"]);
+		expect(items).toEqual(["열기", "사용처", "삭제Del"]);
 	});
 
 	it("목록 보기로 바꾸면 이름·형식·크기·치수·사용·올린 날짜를 표로 보이고, 줄을 누르면 상세가 열린다", async () => {

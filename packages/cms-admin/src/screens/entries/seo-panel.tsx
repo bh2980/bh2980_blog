@@ -1,21 +1,28 @@
 "use client";
 
-import { contentPath, DEFAULT_LOCALE, isLocale, localizePath, SITE_NAME } from "@bh2980/cms/client";
+import {
+	contentPath,
+	DEFAULT_LOCALE,
+	isCollection,
+	isLocale,
+	localizePath,
+	SITE_NAME,
+	schemaOf,
+} from "@bh2980/cms/client";
 import { ChevronRight, ImageIcon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageInsertDialog } from "../../editor/image-insert-dialog";
 import { cn } from "../../lib/utils/cn";
-import { type SlotRequest, SlotScope } from "../../slots/slots";
+import type { SlotRequest } from "../../slots/slots";
 import { Button } from "../../ui/button";
-import { Checkbox } from "../../ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { FieldError } from "../../ui/field";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
+import { Switch } from "../../ui/switch";
 import { Textarea } from "../../ui/textarea";
 import { cmsFetch } from "../admin-api";
-import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
+import type { CmsIssue } from "../api-error-message";
 import type { EntryData, EntryForm, EntryFormPatch } from "./entry-form";
+import { FieldRow } from "./schema-fields";
 
 /** 검색 결과에서 잘리지 않는 대략의 길이(Strapi·Yoast 등이 쓰는 기준). */
 const TITLE_LIMIT = 60;
@@ -33,33 +40,6 @@ function Counter({ length, limit }: { length: number; limit: number }) {
 		>
 			{length}/{limit}
 		</span>
-	);
-}
-
-function Row({
-	id,
-	label,
-	aside,
-	issue,
-	children,
-}: {
-	id?: string;
-	label: string;
-	aside?: ReactNode;
-	issue?: CmsIssue;
-	children: ReactNode;
-}) {
-	return (
-		<div className="space-y-1.5">
-			<div className="flex items-center justify-between gap-2">
-				<Label htmlFor={id} className="font-semibold text-muted-foreground text-xs">
-					{label}
-				</Label>
-				{aside}
-			</div>
-			{children}
-			{issue && <FieldError>{cmsIssueMessage(issue)}</FieldError>}
-		</div>
 	);
 }
 
@@ -97,6 +77,11 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 	const [picking, setPicking] = useState(false);
 	const [pickedUrls, setPickedUrls] = useState<Record<string, string | null>>({});
 	const issueFor = (path: string) => issues.find((issue) => issue.path === path);
+	/** 스키마가 필수로 정한 SEO 필드. 속성 탭과 같이 라벨 옆에 별표를 단다. */
+	const requiredOf = (name: string) => {
+		const field = isCollection(collection) ? schemaOf(collection).fields[name] : undefined;
+		return Boolean(field && "required" in field && field.required);
+	};
 
 	const seoTitle = text(form.seoTitle);
 	const seoDescription = text(form.seoDescription);
@@ -106,7 +91,7 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 	const robotsLocked = Boolean(entry?.source);
 	const noindex = text(robotsLocked ? entry?.source?.metadata.seoRobots : form.seoRobots) === "noindex";
 
-	const title = seoTitle.trim() || form.title.trim() || "제목 없는 글";
+	const title = seoTitle.trim() || form.title.trim() || "제목 없음";
 	const description = seoDescription.trim() || text(form.summary).trim();
 	const locale = entry?.locale && isLocale(entry.locale) ? entry.locale : DEFAULT_LOCALE;
 	const path = localizePath(locale, contentPath(collection, form.slug || "slug") ?? `/${form.slug || "slug"}`);
@@ -148,60 +133,46 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 				{noindex && <p className="pt-1 font-medium text-[11px] text-amber-700 dark:text-amber-400">검색엔진에 숨김</p>}
 			</section>
 
-			<SlotScope request={fieldSlot("seoTitle", seoTitle)}>
-				{({ trigger, panel }) => (
-					<Row
-						id="cms-seoTitle"
-						label="검색 제목"
-						aside={
-							<span className="flex items-center gap-1">
-								<Counter length={(seoTitle || form.title).length} limit={TITLE_LIMIT} />
-								{trigger}
-							</span>
-						}
-						issue={issueFor("seoTitle")}
-					>
-						<Input
-							id="cms-seoTitle"
-							value={seoTitle}
-							disabled={disabled}
-							placeholder={form.title || "글 제목"}
-							onChange={(event) => onChange({ seoTitle: event.target.value })}
-							className="h-8 text-xs md:text-xs"
-						/>
-						{panel}
-					</Row>
-				)}
-			</SlotScope>
+			<FieldRow
+				id="cms-seoTitle"
+				label="검색 제목"
+				required={requiredOf("seoTitle")}
+				slot={fieldSlot("seoTitle", seoTitle)}
+				aside={<Counter length={(seoTitle || form.title).length} limit={TITLE_LIMIT} />}
+				issue={issueFor("seoTitle")}
+			>
+				<Input
+					id="cms-seoTitle"
+					value={seoTitle}
+					disabled={disabled}
+					placeholder={form.title || "글 제목"}
+					aria-invalid={Boolean(issueFor("seoTitle")) || undefined}
+					onChange={(event) => onChange({ seoTitle: event.target.value })}
+					className="h-8 text-xs md:text-xs"
+				/>
+			</FieldRow>
 
-			<SlotScope request={fieldSlot("seoDescription", seoDescription)}>
-				{({ trigger, panel }) => (
-					<Row
-						id="cms-seoDescription"
-						label="검색 설명"
-						aside={
-							<span className="flex items-center gap-1">
-								<Counter length={(seoDescription || text(form.summary)).length} limit={DESCRIPTION_LIMIT} />
-								{trigger}
-							</span>
-						}
-						issue={issueFor("seoDescription")}
-					>
-						<Textarea
-							id="cms-seoDescription"
-							rows={3}
-							value={seoDescription}
-							disabled={disabled}
-							placeholder={text(form.summary) || "요약"}
-							onChange={(event) => onChange({ seoDescription: event.target.value })}
-							className="min-h-16 resize-none text-xs md:text-xs"
-						/>
-						{panel}
-					</Row>
-				)}
-			</SlotScope>
+			<FieldRow
+				id="cms-seoDescription"
+				label="검색 설명"
+				required={requiredOf("seoDescription")}
+				slot={fieldSlot("seoDescription", seoDescription)}
+				aside={<Counter length={(seoDescription || text(form.summary)).length} limit={DESCRIPTION_LIMIT} />}
+				issue={issueFor("seoDescription")}
+			>
+				<Textarea
+					id="cms-seoDescription"
+					rows={3}
+					value={seoDescription}
+					disabled={disabled}
+					placeholder={text(form.summary) || "요약"}
+					aria-invalid={Boolean(issueFor("seoDescription")) || undefined}
+					onChange={(event) => onChange({ seoDescription: event.target.value })}
+					className="min-h-16 resize-none text-xs md:text-xs"
+				/>
+			</FieldRow>
 
-			<Row label="공유 이미지" issue={issueFor("ogImageId")}>
+			<FieldRow id="cms-ogImageId" label="공유 이미지" required={requiredOf("ogImageId")} issue={issueFor("ogImageId")}>
 				<div className="overflow-hidden rounded-lg border">
 					{ogImageId && imageUrl ? (
 						// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
@@ -217,7 +188,7 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 							style={{ background: "linear-gradient(135deg, #eff6ff 0%, #e0f2fe 45%, #dbeafe 100%)" }}
 						>
 							<span className="line-clamp-3 rounded-xl border border-white/70 bg-white/55 px-4 py-3 text-center font-bold text-sm text-zinc-900 leading-snug">
-								{form.title || "제목 없는 글"}
+								{form.title || "제목 없음"}
 							</span>
 						</div>
 					)}
@@ -247,20 +218,24 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 						</Button>
 					)}
 				</div>
-			</Row>
+			</FieldRow>
 
-			<div className="space-y-1">
-				<Label htmlFor="cms-seoRobots" className="font-normal text-xs">
-					<Checkbox
+			<FieldRow
+				id="cms-seoRobots"
+				label="검색엔진에 숨기기"
+				aside={
+					<Switch
 						id="cms-seoRobots"
+						size="sm"
 						checked={noindex}
 						disabled={disabled || robotsLocked}
-						onCheckedChange={(checked) => onChange({ seoRobots: checked === true ? "noindex" : "index" })}
+						onCheckedChange={(checked) => onChange({ seoRobots: checked ? "noindex" : "index" })}
 					/>
-					검색엔진에 숨기기
-				</Label>
-				{robotsLocked && <p className="text-[11px] text-muted-foreground">원문 값을 따릅니다.</p>}
-			</div>
+				}
+				help={robotsLocked ? "원문 값을 따릅니다." : undefined}
+			>
+				{null}
+			</FieldRow>
 
 			<Collapsible defaultOpen={Boolean(canonicalUrl) || Boolean(issueFor("canonicalUrl"))}>
 				<CollapsibleTrigger
@@ -277,16 +252,22 @@ export function SeoPanel({ collection, form, entry, disabled, issues = [], onCha
 					고급
 				</CollapsibleTrigger>
 				<CollapsibleContent className="pt-2">
-					<Row id="cms-canonicalUrl" label="원본 주소" issue={issueFor("canonicalUrl")}>
+					<FieldRow
+						id="cms-canonicalUrl"
+						label="원본 주소"
+						required={requiredOf("canonicalUrl")}
+						issue={issueFor("canonicalUrl")}
+					>
 						<Input
 							id="cms-canonicalUrl"
 							value={canonicalUrl}
 							disabled={disabled}
-							placeholder="https://"
+							placeholder="https://example.com"
+							aria-invalid={Boolean(issueFor("canonicalUrl")) || undefined}
 							onChange={(event) => onChange({ canonicalUrl: event.target.value })}
 							className="h-8 text-xs md:text-xs"
 						/>
-					</Row>
+					</FieldRow>
 				</CollapsibleContent>
 			</Collapsible>
 

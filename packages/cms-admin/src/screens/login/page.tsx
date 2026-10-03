@@ -27,14 +27,14 @@ export default async function AdminLoginPage() {
 			<Card className="w-full max-w-sm">
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">CMS 관리자</CardTitle>
-					<CardDescription>승인된 {providerName}관리자 계정으로 로그인해주세요.</CardDescription>
+					<CardDescription>승인된 {providerName}관리자 계정으로 로그인해 주세요.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isUnauthorizedUser ? (
 						<Alert variant="danger" layout="stack" className="text-center">
-							<AlertTitle className="text-xs">접근 권한이 없습니다 (403 Forbidden)</AlertTitle>
+							<AlertTitle className="text-xs">접근 권한이 없습니다</AlertTitle>
 							<AlertDescription className="mt-1 text-xs">
-								로그인된 {providerName}ID({accountId})는 관리자 권한이 없습니다.
+								로그인한 {providerName}계정 {accountId}에는 관리자 권한이 없습니다.
 							</AlertDescription>
 							<form
 								action={async () => {

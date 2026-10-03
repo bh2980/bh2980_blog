@@ -8,24 +8,27 @@ import {
 	parseDateTimeInput,
 } from "@bh2980/cms/client";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutGrid, List, RefreshCw, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { FileText, LayoutGrid, Link2, List, PanelRightOpen, RefreshCw, Trash2, Upload } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { prepareUpload, uploadAttachment, uploadImageFile } from "../../editor/upload-helper";
 import { cn } from "../../lib/utils/cn";
+import { Alert, AlertDescription } from "../../ui/alert";
 import { Button } from "../../ui/button";
-import { Checkbox } from "../../ui/checkbox";
 import { Empty, EmptyHeader, EmptyTitle } from "../../ui/empty";
+import { IconButton } from "../../ui/icon-button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Skeleton } from "../../ui/skeleton";
+import { Switch } from "../../ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../../ui/toggle-group";
 import { cmsFetch, errorText } from "../admin-api";
 import type { MenuAction } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
-import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
+import { useConfirm } from "../shared/confirm-dialog";
 import { DateRangePicker } from "../shared/date-range-picker";
+import { SIDE_PANEL_DOCK } from "../shared/side-panel";
 import { useDebounced } from "../shared/use-debounced";
 import { MediaDetailPanel } from "./media-detail-panel";
 import type { MediaItem } from "./media-item";
@@ -92,9 +95,11 @@ export function MediaLibrary() {
 	const [uploadedFrom, setUploadedFrom] = useState("");
 	const [uploadedTo, setUploadedTo] = useState("");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	/** 상세 칸의 기본 설명에 저장하지 않은 변경이 있는가. 상세 칸이 알려 준다. */
+	const detailDirtyRef = useRef(false);
 	const [optimize, setOptimize] = useState(false);
 	const [upload, setUpload] = useState<{ current: number; total: number; percent: number } | null>(null);
-	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+	const { confirm, confirmDiscard, dialog } = useConfirm();
 	const [view, setView] = useMediaView();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,10 +124,15 @@ export function MediaLibrary() {
 	const total = mediaQuery.data?.total ?? 0;
 	const selected = items.find((item) => item.id === selectedId) ?? null;
 
-	const loadError = mediaQuery.error;
-	useEffect(() => {
-		if (loadError) toast.error(errorText(loadError, "미디어를 불러오지 못했습니다."));
-	}, [loadError]);
+	const loadError = mediaQuery.error ? errorText(mediaQuery.error, "미디어를 불러오지 못했습니다.") : null;
+
+	/** 상세 칸에 연다(닫으려면 null). 저장하지 않은 기본 설명이 있으면 버릴지 먼저 묻는다. */
+	const openDetail = async (id: string | null) => {
+		if (id === selectedId) return;
+		if (!(await confirmDiscard(detailDirtyRef.current))) return;
+		detailDirtyRef.current = false;
+		setSelectedId(id);
+	};
 
 	/** 목록을 뒤에서 다시 받는다. 지금 보이는 줄은 그대로 둔다. */
 	const invalidateMedia = () => queryClient.invalidateQueries({ queryKey: MEDIA_KEY });
@@ -170,7 +180,12 @@ export function MediaLibrary() {
 				? { items: data.items.filter((item) => item.id !== media.id), total: Math.max(0, data.total - 1) }
 				: data,
 		);
-		setSelectedId((current) => (current === media.id ? null : current));
+		// 지우는 파일이 열려 있으면 닫는다. 그 파일의 고친 기본 설명은 함께 버린다.
+		setSelectedId((current) => {
+			if (current !== media.id) return current;
+			detailDirtyRef.current = false;
+			return null;
+		});
 		try {
 			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: "삭제하지 못했습니다." });
 			toast.success(`'${media.filename}'을(를) 삭제했습니다.`);
@@ -182,17 +197,15 @@ export function MediaLibrary() {
 		}
 	};
 
+	/** 기본 설명 저장. 실패는 상세 칸 안에 보이도록 그대로 던진다. */
 	const saveDefaults = async (media: MediaItem, defaults: { alt: string; caption: string }) => {
-		try {
-			await cmsFetch(`/api/cms/v1/media/${media.id}`, {
-				method: "PATCH",
-				json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
-			});
-			toast.success("기본 설명을 저장했습니다. 이미 작성한 본문은 바뀌지 않습니다.");
-			await invalidateMedia();
-		} catch (error) {
-			toast.error(errorText(error, "저장하지 못했습니다."));
-		}
+		await cmsFetch(`/api/cms/v1/media/${media.id}`, {
+			method: "PATCH",
+			json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
+			fallback: "저장하지 못했습니다.",
+		});
+		toast.success("저장했습니다.");
+		void invalidateMedia();
 	};
 
 	const rename = async (media: MediaItem, filename: string) => {
@@ -221,26 +234,32 @@ export function MediaLibrary() {
 	};
 
 	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+	const setDetailDirty = useCallback((dirty: boolean) => {
+		detailDirtyRef.current = dirty;
+	}, []);
 
-	const requestDelete = (media: MediaItem) =>
-		setConfirm({
+	const requestDelete = async (media: MediaItem) => {
+		const ok = await confirm({
 			title: media.status === "deleting" ? "삭제 다시 시도" : "미디어 삭제",
-			description: `'${media.filename}' 파일을 삭제합니다. 템플릿이나 해석하지 못한 초안에서 쓰이면 삭제가 보류됩니다.`,
+			description: `'${media.filename}' 파일을 삭제할까요? 템플릿이나 해석하지 못한 초안에서 쓰이면 삭제가 보류됩니다.`,
 			confirmLabel: "삭제",
 			destructive: true,
-			onConfirm: () => deleteMedia(media),
 		});
+		if (ok) await deleteMedia(media);
+	};
 
 	/** 미디어 타일의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
 	const mediaMenu = (media: MediaItem): MenuAction[] => [
-		{ kind: "item", label: "상세 보기", onSelect: () => setSelectedId(media.id) },
+		{ kind: "item", label: "열기", icon: PanelRightOpen, onSelect: () => void openDetail(media.id) },
 		{
 			kind: "sub",
 			label: "사용처",
+			icon: Link2,
 			emptyLabel: "초안·공개본에서 쓰이지 않습니다",
 			items: media.references.map((reference) => ({
 				kind: "item" as const,
-				label: `${reference.title || "(제목 없음)"} · ${reference.state === "published" ? "공개본" : "초안"}`,
+				label: `${reference.title || "제목 없음"} · ${reference.state === "published" ? "공개본" : "초안"}`,
+				icon: FileText,
 				onSelect: () => window.location.assign(`/admin/entries/${reference.entryId}/edit`),
 			})),
 		},
@@ -248,9 +267,11 @@ export function MediaLibrary() {
 		{
 			kind: "item",
 			label: "삭제",
+			icon: Trash2,
+			shortcut: "Del",
 			destructive: true,
 			disabled: media.referencesCount > 0,
-			onSelect: () => requestDelete(media),
+			onSelect: () => void requestDelete(media),
 		},
 	];
 
@@ -258,9 +279,9 @@ export function MediaLibrary() {
 		items,
 		selectedId,
 		dimmed: mediaQuery.isPlaceholderData,
-		onSelect: (media: MediaItem) => setSelectedId(media.id),
+		onSelect: (media: MediaItem) => void openDetail(media.id),
 		menuFor: mediaMenu,
-		onDeleteKey: requestDelete,
+		onDeleteKey: (media: MediaItem) => void requestDelete(media),
 	};
 
 	const setFilter = (apply: () => void) => {
@@ -270,16 +291,13 @@ export function MediaLibrary() {
 
 	return (
 		<AdminShell
-			title={
-				<span>
-					미디어 <span className="font-normal text-muted-foreground text-xs">총 {total}개</span>
-				</span>
-			}
+			title="미디어"
+			count={mediaQuery.data ? total : undefined}
 			sidebar={{ activeNav: "media" }}
 			headerActions={
 				<div className="flex flex-wrap items-center gap-2">
 					<Label className="font-normal text-muted-foreground text-xs">
-						<Checkbox checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
+						<Switch size="sm" checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
 						웹용 최적화
 					</Label>
 					<input
@@ -292,20 +310,14 @@ export function MediaLibrary() {
 					/>
 					<Button type="button" size="sm" disabled={upload !== null} onClick={() => fileInputRef.current?.click()}>
 						<Upload aria-hidden />
-						{upload ? `업로드 중 ${upload.current}/${upload.total} (${upload.percent}%)` : "파일 업로드"}
+						{upload ? `업로드 중 ${upload.current}/${upload.total} · ${upload.percent}%` : "파일 업로드"}
 					</Button>
 					<Button type="button" size="sm" variant="outline" onClick={() => void cleanup()}>
 						미완료 업로드 정리
 					</Button>
-					<Button
-						type="button"
-						size="icon-sm"
-						variant="outline"
-						aria-label="새로고침"
-						onClick={() => void mediaQuery.refetch()}
-					>
+					<IconButton label="새로고침" variant="outline" onClick={() => void mediaQuery.refetch()}>
 						<RefreshCw className={cn(mediaQuery.isFetching && "animate-spin")} aria-hidden />
-					</Button>
+					</IconButton>
 				</div>
 			}
 		>
@@ -384,8 +396,16 @@ export function MediaLibrary() {
 
 			<div className="relative flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex-1 overflow-y-auto p-4 lg:p-6">
+					{loadError && (
+						<Alert variant="danger" className="mb-4 flex w-auto items-center justify-between">
+							<AlertDescription className="col-start-auto">{loadError}</AlertDescription>
+							<Button type="button" variant="outline" size="xs" onClick={() => void mediaQuery.refetch()}>
+								다시 시도
+							</Button>
+						</Alert>
+					)}
 					{items.length === 0 ? (
-						mediaQuery.isPending ? (
+						loadError ? null : mediaQuery.isPending ? (
 							<ul aria-hidden className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
 								{Array.from({ length: 6 }, (_, index) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
@@ -426,19 +446,19 @@ export function MediaLibrary() {
 				</div>
 
 				{selected && (
-					// 좁은 화면은 목록 위에 덮고, 넓은 화면은 옆에 고정 폭으로 둔다.
 					<MediaDetailPanel
 						key={selected.id}
 						media={selected}
-						className="absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[22rem] lg:static lg:shrink-0 lg:shadow-none"
-						onClose={() => setSelectedId(null)}
-						onSaveDefaults={(defaults) => void saveDefaults(selected, defaults)}
+						className={SIDE_PANEL_DOCK}
+						onClose={() => void openDetail(null)}
+						onSaveDefaults={(defaults) => saveDefaults(selected, defaults)}
 						onRename={(filename) => void rename(selected, filename)}
-						onRequestDelete={() => requestDelete(selected)}
+						onRequestDelete={() => void requestDelete(selected)}
+						onDirtyChange={setDetailDirty}
 					/>
 				)}
 			</div>
-			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+			{dialog}
 		</AdminShell>
 	);
 }

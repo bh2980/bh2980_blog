@@ -162,7 +162,7 @@ describe("목록 화면 — 목록 설정", () => {
 		renderList();
 		await screen.findByRole("row", { name: /가/ });
 
-		fireEvent.click(screen.getByRole("button", { name: /^제목.*정렬·필터 열기$/ }));
+		fireEvent.click(screen.getByRole("button", { name: /^제목/ }));
 		fireEvent.click(await screen.findByRole("button", { name: "오름차순" }));
 
 		await waitFor(() => expect(calls("PUT", "/api/cms/v1/preferences")).toHaveLength(1));
@@ -203,6 +203,9 @@ describe("목록 화면 — 행 메뉴와 일괄 작업", () => {
 		expect(screen.getByText("2개 항목")).toBeTruthy();
 		expect(menuLabels(items)).not.toContain("열기");
 		fireEvent.click(screen.getByRole("menuitem", { name: "보관" }));
+		fireEvent.click(
+			within(await screen.findByRole("alertdialog", { name: "보관" })).getByRole("button", { name: "보관" }),
+		);
 
 		await waitFor(() => expect(calls("POST", "/api/cms/v1/bulk")).toHaveLength(1));
 		expect(bodyOf(calls("POST", "/api/cms/v1/bulk")[0])).toEqual({
@@ -223,7 +226,7 @@ describe("목록 화면 — 행 메뉴와 일괄 작업", () => {
 
 		fireEvent.keyDown(screen.getByRole("checkbox", { name: "다 선택" }), { key: "Delete" });
 
-		expect(await screen.findByRole("alertdialog", { name: "휴지통으로 이동 — 2개" })).toBeTruthy();
+		expect(await screen.findByRole("alertdialog", { name: "휴지통으로 이동" })).toBeTruthy();
 	});
 
 	it("작업은 목록에 먼저 반영하고, 실패한 줄은 고른 채로 남긴다", async () => {
@@ -281,6 +284,7 @@ describe("목록 화면 — 행 메뉴와 일괄 작업", () => {
 		fireEvent.click(screen.getByRole("checkbox", { name: "나 선택" }));
 		await openRowMenu("가");
 		fireEvent.click(screen.getByRole("menuitem", { name: "보관" }));
+		fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "보관" }));
 
 		await waitFor(() => expect(toast.error).toHaveBeenCalled());
 		const checked = (title: string) =>
@@ -310,13 +314,13 @@ describe("목록 화면 — 행 메뉴와 일괄 작업", () => {
 		expect(screen.getByRole("row", { name: /가/ })).toBeTruthy();
 	});
 
-	it("새 글은 지금 폴더에 만든다", async () => {
+	it("글 추가는 지금 폴더에 만든다", async () => {
 		nav.set("collection=post&folder=f1");
 		server.folders = [folder];
 		renderList();
 		await screen.findByRole("row", { name: /가/ });
 
-		fireEvent.click(screen.getByRole("button", { name: "새 게시글" }));
+		fireEvent.click(screen.getByRole("button", { name: "게시글 추가" }));
 
 		expect(nav.push).toHaveBeenCalledWith("/admin/entries/new?collection=post&folder=f1");
 	});
@@ -396,13 +400,16 @@ describe("분류 편집 패널 — 저장하지 않은 변경", () => {
 	});
 	const panelName = () => screen.findByRole("textbox", { name: /이름/ }) as Promise<HTMLInputElement>;
 
-	it("고치지 않았으면 다른 항목을 바로 연다", async () => {
+	it("고치지 않았으면 다른 항목을 바로 열고, 연 줄을 표시한다", async () => {
 		renderList();
 		fireEvent.click(await screen.findByRole("button", { name: "리액트" }));
 		await waitFor(async () => expect((await panelName()).value).toBe("리액트"));
+		expect(row("리액트").getAttribute("aria-current")).toBe("true");
 		fireEvent.click(screen.getByRole("button", { name: "뷰" }));
 		await waitFor(async () => expect((await panelName()).value).toBe("뷰"));
 		expect(screen.queryByRole("alertdialog")).toBeNull();
+		expect(row("뷰").getAttribute("aria-current")).toBe("true");
+		expect(row("리액트").getAttribute("aria-current")).toBeNull();
 	});
 
 	it("고친 채로 다른 항목을 누르면 확인을 받고, 버리면 그 항목을 연다", async () => {
@@ -412,11 +419,11 @@ describe("분류 편집 패널 — 저장하지 않은 변경", () => {
 		fireEvent.change(await panelName(), { target: { value: "React!" } });
 
 		fireEvent.click(screen.getByRole("button", { name: "뷰" }));
-		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 변경" });
+		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" });
 		// 확인 창이 떠 있는 동안 패널은 가려지지만 고친 값은 남아 있다.
 		expect(screen.getByDisplayValue("React!")).toBeTruthy();
 
-		fireEvent.click(within(dialog).getByRole("button", { name: "버리고 열기" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: "버리기" }));
 		await waitFor(async () => expect((await panelName()).value).toBe("뷰"));
 	});
 
@@ -426,7 +433,7 @@ describe("분류 편집 패널 — 저장하지 않은 변경", () => {
 		await waitFor(async () => expect((await panelName()).value).toBe("리액트"));
 		fireEvent.change(await panelName(), { target: { value: "React!" } });
 
-		fireEvent.click(screen.getByRole("button", { name: "새 태그" }));
-		expect(await screen.findByRole("alertdialog", { name: "저장하지 않은 변경" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "태그 추가" }));
+		expect(await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" })).toBeTruthy();
 	});
 });

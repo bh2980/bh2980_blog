@@ -36,15 +36,26 @@ type ListAction = Exclude<BulkOp, RelationOp> | `${RelationOp}:${string}`;
 type ActionDef = {
 	value: ListAction;
 	label: string;
-	confirm?: string;
+	/**
+	 * 확인창의 질문. 여러 개를 한 번에 바꾸는 작업은 모두 묻는다(§5).
+	 * `count`는 고른 수, `target`은 고른 대상 이름(폴더·분류). 대상을 비우는 작업이면 `null`.
+	 */
+	ask: (count: number, target: string | null) => string;
 	content?: boolean;
 	destructive?: boolean;
 	/** 분류 작업이면 관계 필드. */
 	relation?: { op: RelationOp; field: string; label: string; many: boolean };
 };
 
+/** 받침에 맞는 "으로/로"(ㄹ 받침은 "로"). */
+const toward = (word: string) => {
+	const code = word.charCodeAt(word.length - 1) - 0xac00;
+	const final = code >= 0 && code <= 11171 ? code % 28 : 0;
+	return `${word}${final === 0 || final === 8 ? "로" : "으로"}`;
+};
+
 /**
- * 컬렉션의 분류 필드(태그·카테고리 등)별 작업. 여러 개 필드는 추가·제거, 하나뿐인 필드는 변경이다.
+ * 컬렉션의 분류 필드(태그·카테고리 등)별 작업. 여러 개 필드는 추가·빼기, 하나뿐인 필드는 바꾸기다.
  * 여러 개 필드 작업을 먼저 둔다.
  */
 export function taxonomyActions(collection: string): ActionDef[] {
@@ -53,33 +64,70 @@ export function taxonomyActions(collection: string): ActionDef[] {
 			? [{ name: stored.name, label: stored.field.label, many: stored.field.many === true }]
 			: [],
 	);
-	const action = (op: RelationOp, field: (typeof fields)[number], verb: string): ActionDef => ({
+	const action = (op: RelationOp, field: (typeof fields)[number], verb: string, ask: ActionDef["ask"]): ActionDef => ({
 		value: `${op}:${field.name}`,
 		label: `${field.label} ${verb}`,
+		ask,
 		relation: { op, field: field.name, label: field.label, many: field.many },
 	});
 	return [
 		...fields
 			.filter((field) => field.many)
-			.flatMap((field) => [action("relation.add", field, "추가"), action("relation.remove", field, "제거")]),
-		...fields.filter((field) => !field.many).map((field) => action("relation.set", field, "변경")),
+			.flatMap((field) => [
+				action(
+					"relation.add",
+					field,
+					"추가",
+					(count, target) => `선택한 글 ${count}개에 '${target}' ${josa(field.label, "을", "를")} 추가할까요?`,
+				),
+				action(
+					"relation.remove",
+					field,
+					"빼기",
+					(count, target) => `선택한 글 ${count}개에서 '${target}' ${josa(field.label, "을", "를")} 뺄까요?`,
+				),
+			]),
+		...fields
+			.filter((field) => !field.many)
+			.map((field) =>
+				action("relation.set", field, "바꾸기", (count, target) =>
+					target === null
+						? `선택한 글 ${count}개의 ${josa(field.label, "을", "를")} 비울까요?`
+						: `선택한 글 ${count}개의 ${josa(field.label, "을", "를")} ${toward(`'${target}'`)} 바꿀까요?`,
+				),
+			),
 	];
 }
 
 const LIST_ACTIONS: ActionDef[] = [
-	{ value: "folder.move", label: "폴더로 이동" },
+	{
+		value: "folder.move",
+		label: "폴더로 이동",
+		ask: (count, target) =>
+			`선택한 항목 ${count}개를 ${target === null ? "최상위로" : `'${target}' 폴더로`} 이동할까요?`,
+	},
 	{
 		value: "publish",
 		label: "발행",
-		confirm: "선택한 글을 발행할까요? 각 글에 발행 검증을 적용하고 최신 초안이 공개됩니다.",
+		ask: (count) => `선택한 글 ${count}개를 발행할까요? 각 글에 발행 검증을 적용하고 최신 초안이 공개됩니다.`,
 		content: true,
 	},
-	{ value: "archive", label: "보관", confirm: "선택한 글을 보관할까요? 공개가 종료됩니다.", content: true },
-	{ value: "unarchive", label: "보관 해제", content: true },
+	{
+		value: "archive",
+		label: "보관",
+		ask: (count) => `선택한 글 ${count}개를 보관할까요? 공개가 종료됩니다.`,
+		content: true,
+	},
+	{
+		value: "unarchive",
+		label: "보관 해제",
+		ask: (count) => `선택한 글 ${count}개의 보관을 해제할까요? 초안으로 돌아가고 자동으로 다시 공개하지 않습니다.`,
+		content: true,
+	},
 	{
 		value: "trash",
 		label: "휴지통으로 이동",
-		confirm: "선택한 항목을 휴지통으로 옮길까요? 공개가 종료됩니다.",
+		ask: (count) => `선택한 항목 ${count}개를 휴지통으로 이동할까요? 공개가 종료됩니다.`,
 		destructive: true,
 	},
 ];
@@ -88,21 +136,21 @@ const TRASH_ACTIONS: ActionDef[] = [
 	{
 		value: "permanentDelete",
 		label: "영구 삭제",
-		confirm:
-			"선택한 항목을 영구 삭제할까요? 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 지우지 않고 사유를 보여 줍니다.",
+		ask: (count) =>
+			`선택한 항목 ${count}개를 영구 삭제할까요? 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 삭제하지 않고 사유를 보여 줍니다.`,
 		destructive: true,
 	},
 ];
 
 /** 작업별 실패 사유(§3.4 "성공·실패를 구분하고 실패한 항목만 다시 실행"). */
 export const BULK_ERROR_LABEL: Record<string, string> = {
-	conflict: "다른 곳에서 먼저 바뀌었습니다(버전 충돌). 목록을 새로고침한 뒤 다시 실행하세요.",
+	conflict: "다른 곳에서 먼저 바뀌었습니다. 목록을 새로고침한 뒤 다시 실행하세요.",
 	not_found: "삭제되었거나 없습니다.",
 	invalid_input: "이 항목에는 적용할 수 없습니다.",
 	invalid_status: "현재 상태에서는 할 수 없는 작업입니다.",
 	locked: "예약된 글입니다. 편집 화면에서 예약을 해제하세요.",
 	publish_validation_failed: "발행 검증을 통과하지 못했습니다.",
-	slug_conflict: "같은 주소(slug)가 이미 사용 중입니다.",
+	slug_conflict: "같은 주소가 이미 사용 중입니다.",
 	in_use: "다른 콘텐츠가 사용 중입니다.",
 	invalid_reference: "휴지통에 있는 항목을 참조합니다.",
 };
@@ -114,7 +162,7 @@ export function describeBulkFailure(failure: Extract<BulkItemResult, { ok: false
 		return `사용 중: ${names.slice(0, 3).join(", ")}${names.length > 3 ? ` 외 ${names.length - 3}개` : ""}`;
 	}
 	const base = BULK_ERROR_LABEL[failure.error] ?? failure.error;
-	return failure.issues?.length ? `${base} (${failure.issues.slice(0, 3).map(cmsIssueMessage).join(", ")})` : base;
+	return failure.issues?.length ? `${base} ${failure.issues.slice(0, 3).map(cmsIssueMessage).join(" ")}` : base;
 }
 
 export async function runBulk(
@@ -250,6 +298,7 @@ export function BulkBar({
 	const relation = activeAction?.relation;
 	const needsMany = relation !== undefined && relation.op !== "relation.set";
 	const needsSingle = relation?.op === "relation.set" || action === "folder.move";
+	const relationOptions = relation ? (options[relation.field] ?? []) : [];
 	const canRun =
 		!isRunning && selected.length > 0 && (needsMany ? checked.length > 0 : needsSingle ? single !== "" : true);
 
@@ -275,18 +324,26 @@ export function BulkBar({
 		}
 	};
 
+	/** 고른 대상의 이름. 분류는 고른 이름들, 폴더는 폴더 이름이다. 비우는 선택이면 `null`. */
+	const targetName = (): string | null => {
+		const titleOf = (id: string) => relationOptions.find((option) => option.id === id)?.title ?? id;
+		if (needsMany) return checked.map(titleOf).join(", ");
+		if (relation) return single === "__none__" ? null : titleOf(single);
+		if (action === "folder.move")
+			return single === "__unfiled__" ? null : (folders.find((folder) => folder.id === single)?.name ?? single);
+		return null;
+	};
+
+	// 여러 개를 한 번에 바꾸는 작업은 모두 묻는다(§5).
 	const start = () => {
-		if (activeAction?.confirm) {
-			setConfirm({
-				title: `${activeAction.label} — ${selected.length}개`,
-				description: activeAction.confirm,
-				confirmLabel: activeAction.label,
-				destructive: activeAction.destructive,
-				onConfirm: () => run(selected),
-			});
-		} else {
-			void run(selected);
-		}
+		if (!activeAction) return;
+		setConfirm({
+			title: activeAction.label,
+			description: activeAction.ask(selected.length, targetName()),
+			confirmLabel: activeAction.label,
+			destructive: activeAction.destructive,
+			onConfirm: () => run(selected),
+		});
 	};
 
 	const failures = (results ?? []).filter((result): result is Extract<BulkItemResult, { ok: false }> => !result.ok);
@@ -295,10 +352,9 @@ export function BulkBar({
 
 	if (selected.length === 0 && !results) return null;
 
-	const relationOptions = relation ? (options[relation.field] ?? []) : [];
 	const singleItems = relation
 		? [
-				{ value: "__none__", label: "지우기(없음)" },
+				{ value: "__none__", label: "없음" },
 				...relationOptions.map((option) => ({ value: option.id, label: option.title })),
 			]
 		: [
@@ -363,12 +419,12 @@ export function BulkBar({
 					disabled={!canRun}
 					onClick={start}
 				>
-					{isRunning ? "실행 중..." : (activeAction?.label ?? "실행")}
+					{isRunning ? "실행 중…" : (activeAction?.label ?? "실행")}
 				</Button>
 
 				{results && (
 					<output className="text-muted-foreground text-xs">
-						성공 {successes} / 실패 {failures.length}
+						성공 {successes} · 실패 {failures.length}
 					</output>
 				)}
 				{failures.length > 0 && (

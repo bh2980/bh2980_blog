@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "../../lib/utils/cn";
 import { Button } from "../../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../ui/dropdown-menu";
+import { IconButton } from "../../ui/icon-button";
 import { cmsFetch, errorText } from "../admin-api";
 import { STATUS_LABELS } from "../shared/entry-status";
 import { type EntryData, isTranslationEntry } from "./entry-form";
@@ -74,7 +75,7 @@ export function LanguageTabs({
 							size="sm"
 							variant="ghost"
 							disabled={createDisabled}
-							aria-label={`${localeLabel(target)} 번역본 만들기`}
+							aria-label={`${localeLabel(target)} 번역본 추가`}
 							className="h-7 gap-1 border border-dashed px-2 text-muted-foreground text-xs"
 							onClick={() => void create(target)}
 						>
@@ -112,23 +113,17 @@ export function LanguageTabs({
 						</Button>
 						{current && isTranslation && entry.status !== "trashed" && (
 							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={
-										<Button
-											type="button"
-											size="icon-sm"
-											variant="ghost"
-											aria-label="번역본 메뉴"
-											className="size-7 text-muted-foreground"
-										/>
-									}
+								<IconButton
+									label="번역본 메뉴"
+									className="size-7 text-muted-foreground"
+									trigger={(button) => <DropdownMenuTrigger render={button} />}
 								>
 									<MoreHorizontal aria-hidden className="size-3.5" />
-								</DropdownMenuTrigger>
+								</IconButton>
 								<DropdownMenuContent align="start">
 									<DropdownMenuItem variant="destructive" onClick={onTrashTranslation}>
 										<Trash2 aria-hidden />
-										삭제
+										휴지통으로 이동
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>

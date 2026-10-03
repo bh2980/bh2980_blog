@@ -3,7 +3,6 @@
 import { type LucideIcon, MoreHorizontal } from "lucide-react";
 import { cloneElement, type ReactElement } from "react";
 import { useHydrated } from "../../lib/hooks/use-hydrated";
-import { Button } from "../../ui/button";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -30,6 +29,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import { IconButton } from "../../ui/icon-button";
 
 /**
  * 오른쪽 클릭 메뉴와 `⋯` 버튼이 함께 쓰는 메뉴 정의(v2 A2). 같은 목록을 두 곳에서 렌더해
@@ -195,7 +195,7 @@ export function MoreActionsButton({
 	className,
 }: {
 	actions: MenuAction[];
-	/** 스크린 리더용 이름(예: `'알고리즘' 폴더 작업`). */
+	/** 버튼 이름이자 툴팁(예: `'알고리즘' 폴더 작업`). */
 	label: string;
 	className?: string;
 }) {
@@ -203,11 +203,9 @@ export function MoreActionsButton({
 	if (items.length === 0) return null;
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={<Button type="button" variant="ghost" size="icon-sm" aria-label={label} className={className} />}
-			>
+			<IconButton label={label} className={className} trigger={(button) => <DropdownMenuTrigger render={button} />}>
 				<MoreHorizontal aria-hidden />
-			</DropdownMenuTrigger>
+			</IconButton>
 			<DropdownMenuContent align="end" className="min-w-48">
 				<DropdownItems actions={items} />
 			</DropdownMenuContent>

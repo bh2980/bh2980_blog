@@ -61,7 +61,7 @@ describe("분류 편집 패널", () => {
 		fireEvent.click(within(panel()).getByRole("tab", { name: /일본어/ }));
 		expect(screen.queryByRole("textbox", { name: "주소" })).toBeNull();
 		expect(screen.getByText(/주소와 연결은 모든 언어가 같습니다/)).toBeTruthy();
-		fireEvent.change(screen.getByRole("textbox", { name: "이름 (일본어)" }), { target: { value: "リアクト" } });
+		fireEvent.change(screen.getByRole("textbox", { name: /^이름/ }), { target: { value: "リアクト" } });
 		expect(within(panel()).getByRole("tab", { name: "일본어 · 번역 있음" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -74,27 +74,51 @@ describe("분류 편집 패널", () => {
 		await waitFor(() => expect(onSaved).toHaveBeenCalled());
 	});
 
-	it("새 항목은 이름만으로 만든다", async () => {
-		const { onSaved } = renderPanel({ collection: "tag", id: null });
-		expect(screen.getByRole("heading", { name: "새 태그" })).toBeTruthy();
+	it("새 항목은 이름만으로 저장하고, 만든 항목을 넘기며 칸을 닫지 않는다", async () => {
+		const { onSaved, onClose } = renderPanel({ collection: "tag", id: null });
+		expect(screen.getByRole("heading", { name: "태그 추가" })).toBeTruthy();
 		fireEvent.change(screen.getByRole("textbox", { name: /이름/ }), { target: { value: "Vue" } });
-		fireEvent.click(screen.getByRole("button", { name: "만들기" }));
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
 		await waitFor(() => expect(calls("POST")).toHaveLength(1));
 		expect(bodyOf(calls("POST")[0])).toEqual({ collection: "tag", slug: null, metadata: { title: "Vue" }, mdx: "" });
-		await waitFor(() => expect(onSaved).toHaveBeenCalled());
+		await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: "tag-2" })));
+		expect(onClose).not.toHaveBeenCalled();
 	});
 
-	it("저장하지 않은 변경이 있으면 한 번 알리고, 한 번 더 닫으면 버린다", async () => {
+	it("저장한 뒤에는 받은 판을 기준으로 다시 저장한다", async () => {
+		renderPanel({ collection: "tag", id: "tag-1" });
+		fireEvent.change(await screen.findByDisplayValue("리액트"), { target: { value: "React!" } });
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(calls("PATCH")).toHaveLength(1));
+		await waitFor(() =>
+			expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(false),
+		);
+
+		fireEvent.change(screen.getByDisplayValue("React!"), { target: { value: "React!!" } });
+		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		await waitFor(() => expect(calls("PATCH")).toHaveLength(2));
+		expect(bodyOf(calls("PATCH")[1]).expectedVersion).toBe(4);
+	});
+
+	it("저장하지 않은 변경이 있으면 닫기 전에 버릴지 묻는다", async () => {
 		const { onClose } = renderPanel({ collection: "tag", id: "tag-1" });
 		fireEvent.change(await screen.findByDisplayValue("리액트"), { target: { value: "React!" } });
 
 		fireEvent.click(within(panel()).getByRole("button", { name: "닫기" }));
+		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" });
 		expect(onClose).not.toHaveBeenCalled();
-		expect(screen.getByRole("alert").textContent).toContain("저장하지 않은 변경이 있습니다");
 
-		fireEvent.click(within(panel()).getByRole("button", { name: "변경 버리고 닫기" }));
-		expect(onClose).toHaveBeenCalledTimes(1);
+		fireEvent.click(within(dialog).getByRole("button", { name: "버리기" }));
+		await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+	});
+
+	it("고치지 않았으면 묻지 않고 닫는다", async () => {
+		const { onClose } = renderPanel({ collection: "tag", id: "tag-1" });
+		await screen.findByDisplayValue("리액트");
+		fireEvent.click(within(panel()).getByRole("button", { name: "취소" }));
+		await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+		expect(screen.queryByRole("alertdialog")).toBeNull();
 	});
 
 	it("모음집은 글 목록을 기본 언어 탭에서 고친다", async () => {
