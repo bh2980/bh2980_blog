@@ -14,11 +14,11 @@ import {
 	Rows3,
 	TableCellsMerge,
 	TableCellsSplit,
-	Trash2,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Separator } from "../ui/separator";
+import { BLOCK_TOOLBAR } from "./blocks/shared";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
 
 const chain = (editor: Editor) => editor.chain().focus();
@@ -62,7 +62,7 @@ const fillTableWidth = (editor: Editor) => {
 	editor.commands.focus();
 };
 
-/** 표 안에 커서가 있을 때 표 위에 뜨는 조작 도구(§4.1, v2 C6). */
+/** 표 안에 커서가 있을 때 표 위에 뜨는 조작 도구(§4.1, v2 C6). 표 삭제는 블록 손잡이 메뉴에 있다. */
 const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	[
 		{ label: "↑행", title: "위에 행 추가", icon: BetweenHorizontalStart, run: (e) => chain(e).addRowBefore().run() },
@@ -77,14 +77,14 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	[
 		{
 			label: "셀 병합",
-			title: "선택한 셀 병합 (셀을 끌어 여러 칸 선택)",
+			title: "셀 병합",
 			icon: TableCellsMerge,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().mergeCells(),
 			run: (e) => chain(e).mergeCells().run(),
 		},
 		{
 			label: "셀 나누기",
-			title: "병합된 셀 나누기",
+			title: "셀 나누기",
 			icon: TableCellsSplit,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().splitCell(),
 			run: (e) => chain(e).splitCell().run(),
@@ -93,7 +93,7 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	[
 		{
 			label: "폭 채우기",
-			title: "열 너비를 지워 표가 본문 폭을 꽉 채우게 하기",
+			title: "폭 채우기",
 			icon: MoveHorizontal,
 			isDisabled: (e) => {
 				const table = findTable(e);
@@ -101,7 +101,6 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 			},
 			run: fillTableWidth,
 		},
-		{ label: "표 삭제", icon: Trash2, className: "text-destructive", run: (e) => chain(e).deleteTable().run() },
 	],
 ];
 
@@ -168,7 +167,7 @@ export function TableToolbar({ editor }: { editor: Editor }) {
 			role="toolbar"
 			aria-label="표 도구"
 			style={{ position: "fixed", top: position?.top ?? -9999, left: position?.left ?? -9999, zIndex: 30 }}
-			className="flex items-center gap-0.5 rounded-md border bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur"
+			className={BLOCK_TOOLBAR}
 		>
 			{TABLE_TOOL_GROUPS.map((group, index) => (
 				<div key={group[0]?.label} className="flex items-center gap-0.5">

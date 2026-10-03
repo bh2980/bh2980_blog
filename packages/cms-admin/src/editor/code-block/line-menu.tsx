@@ -9,7 +9,19 @@ import {
 	newEffectId,
 	setLineEffect,
 } from "@bh2980/cms/code-block";
-import { Check, ChevronsDownUp, ChevronsUpDown, Code2, X } from "lucide-react";
+import {
+	Check,
+	ChevronsDownUp,
+	ChevronsUpDown,
+	CircleX,
+	Code2,
+	Eye,
+	Highlighter,
+	type LucideIcon,
+	Minus,
+	Plus,
+	TriangleAlert,
+} from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { cn } from "../../lib/utils/cn";
 
@@ -20,10 +32,19 @@ interface LineMenuProps {
 	lineEffects: CodeLineEffect[];
 	onChange: (next: CodeLineEffect[]) => void;
 	onClose: () => void;
-	/** 이 줄을 본문 글자와 잇기 시작한다(본문을 드래그해 고르게 한다). */
+	/** 이 줄을 본문 글자와 연결하기 시작한다(본문을 드래그해 고르게 한다). */
 	onLinkText?: () => void;
 	style?: CSSProperties;
 }
+
+/** 줄 효과 메뉴 항목의 아이콘과 이름. 이름은 괄호 없이 짧게 쓴다. */
+const EFFECT_ITEMS: Record<string, { icon: LucideIcon; label: string }> = {
+	highlight: { icon: Highlighter, label: "강조" },
+	plus: { icon: Plus, label: "추가" },
+	minus: { icon: Minus, label: "삭제" },
+	warning: { icon: TriangleAlert, label: "경고" },
+	error: { icon: CircleX, label: "오류" },
+};
 
 const ITEM_CLASS =
 	"flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent disabled:pointer-events-none disabled:opacity-50";
@@ -110,27 +131,18 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 			style={style}
 			className="absolute z-20 flex w-44 flex-col gap-0.5 rounded-md border bg-popover p-1 font-sans text-popover-foreground shadow-md"
 		>
-			<div className="flex items-center justify-between px-2 pt-0.5 pb-1 text-muted-foreground text-xs">
-				<span>{start + 1 === end ? `${start + 1}번째 줄` : `${start + 1}–${end}번째 줄`}</span>
-				<button
-					type="button"
-					aria-label="닫기"
-					onMouseDown={(event) => event.preventDefault()}
-					onClick={onClose}
-					className="rounded p-0.5 hover:bg-accent"
-				>
-					<X aria-hidden className="size-3.5" />
-				</button>
-			</div>
 			{CODE_LINE_EFFECTS.map((effect) => {
 				const active = hasLineEffect(lineEffects, effect.name, start, end);
+				const item = EFFECT_ITEMS[effect.name];
+				const Icon = item?.icon ?? Highlighter;
 				return (
 					<CheckItem
 						key={effect.name}
 						checked={active}
 						onSelect={() => onChange(setLineEffect(lineEffects, effect.name, start, end, !active))}
 					>
-						{effect.label}
+						<Icon aria-hidden className="size-3.5" />
+						{item?.label ?? effect.label}
 					</CheckItem>
 				);
 			})}
@@ -139,7 +151,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 				<>
 					<MenuItem onSelect={() => onChange(lineEffects.filter((effect) => effect !== collapse))}>
 						<ChevronsUpDown aria-hidden className="size-3.5" />
-						접기 풀기
+						접기 해제
 						<span className="ml-auto text-muted-foreground">
 							{collapse.start + 1}–{collapse.end}줄
 						</span>
@@ -148,7 +160,8 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 						checked={collapse.attrs.open === true}
 						onSelect={() => setCollapseOpen(collapse.attrs.open !== true)}
 					>
-						처음부터 펼쳐 두기
+						<Eye aria-hidden className="size-3.5" />
+						처음부터 펼치기
 					</CheckItem>
 				</>
 			) : (
@@ -171,7 +184,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 					<div aria-hidden className="my-0.5 h-px bg-border" />
 					<MenuItem onSelect={onLinkText}>
 						<Code2 aria-hidden className="size-3.5" />
-						본문과 잇기
+						본문 연결
 					</MenuItem>
 				</>
 			)}

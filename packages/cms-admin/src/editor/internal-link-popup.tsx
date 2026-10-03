@@ -1,8 +1,11 @@
 "use client";
 
 import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/client";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "../ui/command";
+import { cn } from "../lib/utils/cn";
+import { CollectionIcon } from "../screens/shared/collection-icon";
+import { Spinner } from "../ui/spinner";
 import type { InternalLinkItem } from "./internal-link";
 
 interface InternalLinkPopupProps {
@@ -14,7 +17,18 @@ interface InternalLinkPopupProps {
 	onClose: () => void;
 }
 
-/** `[[` 내부 글 링크 검색 결과(§6.2). 포커스와 방향키는 에디터가 맡고 강조할 항목만 `value`로 넘긴다. */
+/** 글 아래 줄: 컬렉션 이름 · 주소 · 초안 여부. */
+function itemMeta(item: InternalLinkItem): string {
+	const collection = isCollection(item.collection) ? COLLECTION_DEFINITIONS[item.collection].label : item.collection;
+	// 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2).
+	const status = item.status && item.status !== "published" ? (item.status === "draft" ? "초안" : item.status) : null;
+	return [collection, item.slug ? `/${item.slug}` : null, status].filter(Boolean).join(" · ");
+}
+
+/**
+ * `[[` 내부 글 링크 검색 결과(§6.2). 슬래시 메뉴와 같은 모양이다.
+ * 포커스와 방향키는 에디터가 맡고 여기서는 강조할 항목(`selectedIndex`)만 그리고 보이게 스크롤한다.
+ */
 export function InternalLinkPopup({
 	items,
 	isLoading,
@@ -23,58 +37,75 @@ export function InternalLinkPopup({
 	onSelect,
 	onClose,
 }: InternalLinkPopupProps) {
-	if (typeof window === "undefined") return null;
+	const [mounted, setMounted] = useState(false);
+	const listRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	useEffect(() => {
+		listRef.current
+			?.querySelector<HTMLElement>(`[data-index="${selectedIndex}"]`)
+			?.scrollIntoView({ block: "nearest" });
+	}, [selectedIndex]);
+
+	if (!mounted) return null;
 
 	return createPortal(
-		<section
-			style={{
-				position: "fixed",
-				top: `${coords.top + 24}px`,
-				left: `${coords.left}px`,
-				zIndex: 9999,
-			}}
-			aria-label="내부 글 링크 검색 결과"
-			aria-live="polite"
+		<div
+			ref={listRef}
+			role="listbox"
+			aria-label="내부 글 링크"
+			aria-busy={isLoading}
+			tabIndex={-1}
+			style={{ position: "fixed", top: `${coords.top + 24}px`, left: `${coords.left}px`, zIndex: 9999 }}
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					event.preventDefault();
 					onClose();
 				}
 			}}
-			className="w-72 rounded-xl border shadow-md"
+			className="max-h-80 w-72 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
 		>
-			<Command value={items[selectedIndex]?.id ?? ""} shouldFilter={false} loop={false}>
-				<div className="flex items-center justify-between px-2 py-1 font-semibold text-[10px] text-muted-foreground">
-					<span>내부 글 링크 (`[[`)</span>
-					{isLoading && <span>검색 중...</span>}
+			{items.map((item, index) => (
+				<div
+					key={item.id}
+					role="option"
+					aria-selected={index === selectedIndex}
+					data-index={index}
+					tabIndex={-1}
+					onMouseDown={(event) => event.preventDefault()}
+					onClick={() => onSelect(item)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") onSelect(item);
+					}}
+					className={cn(
+						"flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none",
+						index === selectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+					)}
+				>
+					<span
+						aria-hidden
+						className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground [&_svg]:size-4"
+					>
+						<CollectionIcon collection={item.collection} />
+					</span>
+					<span className="min-w-0">
+						<span className="block truncate font-medium text-sm">{item.title}</span>
+						<span className="block truncate text-muted-foreground text-xs">{itemMeta(item)}</span>
+					</span>
 				</div>
-				<CommandList className="max-h-72">
-					{!isLoading && <CommandEmpty className="py-3 text-xs">검색 결과가 없습니다</CommandEmpty>}
-					<CommandGroup>
-						{items.map((item, idx) => (
-							<CommandItem
-								key={item.id}
-								value={item.id}
-								aria-current={idx === selectedIndex ? "true" : undefined}
-								onMouseDown={(event) => event.preventDefault()}
-								onSelect={() => onSelect(item)}
-								className="flex-col items-start gap-0"
-							>
-								<span className="w-full truncate font-semibold text-xs">{item.title}</span>
-								<span className="w-full truncate font-mono text-[10px] text-muted-foreground">
-									{isCollection(item.collection) ? COLLECTION_DEFINITIONS[item.collection].label : item.collection} · /
-									{item.slug || "(slug 없음)"}
-									{/* 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2). */}
-									{item.status && item.status !== "published"
-										? ` · ${item.status === "draft" ? "초안" : item.status}`
-										: ""}
-								</span>
-							</CommandItem>
-						))}
-					</CommandGroup>
-				</CommandList>
-			</Command>
-		</section>,
+			))}
+			{isLoading ? (
+				<output className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
+					<Spinner className="size-3.5" />
+					검색 중…
+				</output>
+			) : (
+				items.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">검색 결과가 없습니다.</p>
+			)}
+		</div>,
 		document.body,
 	);
 }

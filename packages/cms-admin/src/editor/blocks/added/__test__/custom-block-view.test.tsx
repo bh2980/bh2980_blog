@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { CmsAdminComponentsProvider } from "../../../../admin-components";
+import { chooseSelectOption } from "../../../../test/base-ui";
 import { buildEditorExtensions } from "../../../extensions";
 import { mdxToTiptap, tiptapToMdx } from "../../../tiptap-content";
 import type { CustomBlockEditorProps } from "../view";
@@ -54,12 +55,21 @@ function NoticeEditor({ values, setValue, content }: CustomBlockEditorProps) {
 }
 
 describe("사용자 블록 NodeView", () => {
-	it("등록한 편집 컴포넌트가 없으면 이름과 속성 입력을 보이고, 고친 값을 저장한다", async () => {
+	it("등록한 편집 컴포넌트가 없으면 이름을 보이고, 도구 줄 설정에서 속성을 고쳐 저장한다", async () => {
 		const editor = await mount(NOTICE);
 		expect(screen.getByText("공지")).toBeTruthy();
-		fireEvent.change(screen.getByLabelText("단계"), { target: { value: "warn" } });
+		expect(screen.queryByLabelText("단계")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "설정" }));
+		await chooseSelectOption("단계", "주의");
 		await waitFor(() => expect(tiptapToMdx(editor.getJSON())).toContain(':::notice{level="warn"}'));
-		expect(screen.getByLabelText("제목")).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("제목"), { target: { value: "점검" } });
+		await waitFor(() => expect(tiptapToMdx(editor.getJSON())).toContain('title="점검"'));
+	});
+
+	it("읽기 전용이면 설정 도구를 숨긴다", async () => {
+		const editor = await mount(NOTICE);
+		act(() => editor.setEditable(false));
+		await waitFor(() => expect(screen.queryByRole("button", { name: "설정" })).toBeNull());
 	});
 
 	it("사이트가 등록한 편집 컴포넌트로 그린다", async () => {

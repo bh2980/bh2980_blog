@@ -76,7 +76,7 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 		editor.destroy();
 	});
 
-	it("툴팁 안에서 팝오버를 열면 기존 설명이 표시되고, 제거 버튼이 나타난다", () => {
+	it("툴팁 안에서 팝오버를 열면 기존 설명이 표시되고, 해제 버튼이 나타난다", () => {
 		const editor = createEditor();
 		editor
 			.chain()
@@ -94,10 +94,10 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 			fireEvent.click(trigger);
 		});
 
-		const input = screen.getByPlaceholderText("설명을 입력하세요") as HTMLInputElement;
+		const input = screen.getByLabelText("설명") as HTMLTextAreaElement;
 		expect(input.value).toBe("기존 툴팁 설명");
 
-		const removeBtn = screen.getByRole("button", { name: "제거" });
+		const removeBtn = screen.getByRole("button", { name: "툴팁 해제" });
 		expect(removeBtn).toBeTruthy();
 
 		act(() => {
@@ -107,14 +107,14 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 		editor.destroy();
 	});
 
-	it("인접한 서로 다른 설명의 툴팁은 현재 마크만 제거한다", () => {
+	it("인접한 서로 다른 설명의 툴팁은 현재 마크만 해제한다", () => {
 		const editor = createEditor("<p>가나다라</p>");
 		editor.chain().focus().setTextSelection({ from: 1, to: 3 }).setMark("cmsTooltip", { content: "첫째" }).run();
 		editor.chain().focus().setTextSelection({ from: 3, to: 5 }).setMark("cmsTooltip", { content: "둘째" }).run();
 		editor.chain().focus().setTextSelection(2).run();
 		renderComponent(editor);
 		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁" })));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "제거" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁 해제" })));
 		expect(editor.getJSON().content?.[0]?.content?.[0]?.marks).toBeUndefined();
 		expect(editor.getJSON().content?.[0]?.content?.[1]?.marks?.[0]?.attrs?.content).toBe("둘째");
 		editor.destroy();
@@ -131,7 +131,7 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 			fireEvent.click(trigger);
 		});
 
-		const input = screen.getByPlaceholderText("설명을 입력하세요") as HTMLInputElement;
+		const input = screen.getByLabelText("설명") as HTMLTextAreaElement;
 		act(() => {
 			fireEvent.change(input, { target: { value: "새로운 설명" } });
 		});
@@ -168,7 +168,7 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 			fireEvent.click(trigger);
 		});
 
-		const input = screen.getByPlaceholderText("설명을 입력하세요") as HTMLInputElement;
+		const input = screen.getByLabelText("설명") as HTMLTextAreaElement;
 		act(() => {
 			fireEvent.change(input, { target: { value: "인사말" } });
 		});
@@ -183,6 +183,17 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 		editor.destroy();
 	});
 
+	it("설명이 비어 있으면 적용하지 않고 폼 안에 오류를 보인다", () => {
+		const editor = createEditor();
+		editor.chain().focus().setTextSelection({ from: 1, to: 5 }).run();
+		renderComponent(editor);
+		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
+		expect(screen.getByRole("alert").textContent).toBe("설명을 입력하세요.");
+		expect(editor.isActive("cmsTooltip")).toBe(false);
+		editor.destroy();
+	});
+
 	it("cms:open-tooltip 커스텀 이벤트를 받으면 팝오버를 연다", () => {
 		const editor = createEditor();
 		editor.chain().focus().setTextSelection({ from: 1, to: 5 }).run();
@@ -193,7 +204,7 @@ describe("TooltipPopover UI (v2 C3a)", () => {
 			window.dispatchEvent(new CustomEvent(OPEN_TOOLTIP_EVENT));
 		});
 
-		expect(screen.getByPlaceholderText("설명을 입력하세요")).toBeTruthy();
+		expect(screen.getByLabelText("설명")).toBeTruthy();
 		editor.destroy();
 	});
 });

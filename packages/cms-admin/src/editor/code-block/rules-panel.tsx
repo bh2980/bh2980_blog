@@ -13,9 +13,12 @@ import { Plus, Regex, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils/cn";
 import { useSlot } from "../../slots/slots";
 import { Button } from "../../ui/button";
+import { IconButton } from "../../ui/icon-button";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Switch } from "../../ui/switch";
+import { Textarea } from "../../ui/textarea";
 
 interface RulesPanelProps {
 	rules: CodeRule[];
@@ -30,8 +33,11 @@ interface RulesPanelProps {
 	onChange: (next: CodeRule[]) => void;
 }
 
-const selectClass =
-	"h-7 rounded-md border border-input bg-transparent px-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+const EFFECT_OPTIONS = CODE_CHAR_EFFECTS.map((effect) => ({ value: effect.name, label: effect.label }));
+const SCOPE_OPTIONS = [
+	{ value: "document", label: "코드 전체" },
+	{ value: "line", label: "한 줄만" },
+];
 
 function RuleRow({
 	rule,
@@ -51,33 +57,45 @@ function RuleRow({
 	return (
 		<li className="flex flex-col gap-1.5 rounded-md border p-2" aria-label={`규칙 /${rule.pattern}/`}>
 			<div className="flex items-center gap-1.5">
-				<select
-					aria-label="효과"
+				<Select
 					value={rule.name}
-					onChange={(event) => onChange({ ...rule, name: event.target.value as CodeCharEffectName, attrs: {} })}
-					className={selectClass}
+					items={EFFECT_OPTIONS}
+					onValueChange={(value) => value && onChange({ ...rule, name: value as CodeCharEffectName, attrs: {} })}
 				>
-					{CODE_CHAR_EFFECTS.map((effect) => (
-						<option key={effect.name} value={effect.name}>
-							{effect.label}
-						</option>
-					))}
-				</select>
-				<select
-					aria-label="찾는 곳"
+					<SelectTrigger size="sm" className="h-7 text-xs" aria-label="효과">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{EFFECT_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<Select
 					value={rule.scope === "document" ? "document" : "line"}
-					onChange={(event) =>
+					items={SCOPE_OPTIONS}
+					onValueChange={(value) =>
+						value &&
 						onChange(
-							event.target.value === "document"
+							value === "document"
 								? { ...rule, scope: "document", line: undefined }
 								: { ...rule, scope: "char", line: rule.line ?? 0 },
 						)
 					}
-					className={selectClass}
 				>
-					<option value="document">코드 전체</option>
-					<option value="line">한 줄만</option>
-				</select>
+					<SelectTrigger size="sm" className="h-7 text-xs" aria-label="찾는 곳">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{SCOPE_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
 				{rule.scope === "char" && (
 					<Input
 						aria-label="줄 번호"
@@ -92,23 +110,16 @@ function RuleRow({
 						className="h-7 w-14 px-1.5 text-xs"
 					/>
 				)}
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-xs"
-					aria-label="규칙 삭제"
-					onClick={onRemove}
-					className="ml-auto text-destructive hover:text-destructive"
-				>
+				<IconButton label="규칙 삭제" size="icon-xs" destructive onClick={onRemove} className="ml-auto">
 					<Trash2 aria-hidden />
-				</Button>
+				</IconButton>
 			</div>
 			<div className="flex items-center gap-1 font-mono text-xs">
 				<span className="text-muted-foreground">/</span>
 				<Input
 					aria-label="정규식"
 					value={rule.pattern}
-					placeholder="찾을 글자(정규식)"
+					placeholder="찾을 글자"
 					onChange={(event) => onChange({ ...rule, pattern: event.target.value })}
 					className="h-7 flex-1 px-1.5 font-mono text-xs"
 					aria-invalid={!!problem && rule.pattern.length > 0}
@@ -122,24 +133,24 @@ function RuleRow({
 				/>
 			</div>
 			{rule.name === "Tooltip" && (
-				<Input
+				<Textarea
 					aria-label="툴팁 설명"
 					value={String(rule.attrs.content ?? "")}
 					placeholder="툴팁 설명"
+					rows={1}
 					onChange={(event) => onChange({ ...rule, attrs: { ...rule.attrs, content: event.target.value } })}
-					className="h-7 px-1.5 text-xs"
+					className="min-h-7 px-1.5 py-1 text-xs md:text-xs"
 				/>
 			)}
 			{rule.name === "fold" && (
-				<label className="flex items-center gap-1.5 text-xs">
-					<input
-						type="checkbox"
+				<label htmlFor={`${rule.id}-open`} className="flex items-center gap-2 text-xs">
+					<Switch
+						id={`${rule.id}-open`}
+						size="sm"
 						checked={rule.attrs.open === true}
-						onChange={(event) =>
-							onChange({ ...rule, attrs: { ...rule.attrs, open: event.target.checked || undefined } })
-						}
+						onCheckedChange={(checked) => onChange({ ...rule, attrs: { ...rule.attrs, open: checked || undefined } })}
 					/>
-					처음부터 펼쳐 두기
+					처음부터 펼치기
 				</label>
 			)}
 			<p className={cn("text-[11px]", problem && rule.pattern ? "text-destructive" : "text-muted-foreground")}>
@@ -178,27 +189,15 @@ export function RulesPanel({ rules, text, lineCount, selection, language, slotSc
 
 	return (
 		<Popover>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<PopoverTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									aria-label="정규식 규칙"
-									className={cn("h-7 gap-1 px-1.5 text-xs", rules.length > 0 && "text-foreground")}
-								/>
-							}
-						>
-							<Regex aria-hidden className="size-3.5" />
-							{rules.length > 0 && <span className="tabular-nums">{rules.length}</span>}
-						</PopoverTrigger>
-					}
-				/>
-				<TooltipContent>정규식 규칙</TooltipContent>
-			</Tooltip>
+			<IconButton
+				label="정규식 규칙"
+				size="sm"
+				className={cn("h-7 min-w-7 gap-1 px-1.5 text-xs", rules.length > 0 && "text-foreground")}
+				trigger={(button) => <PopoverTrigger render={button} />}
+			>
+				<Regex aria-hidden className="size-3.5" />
+				{rules.length > 0 && <span className="tabular-nums">{rules.length}</span>}
+			</IconButton>
 			<PopoverContent align="end" className="w-96 gap-2 p-3 text-xs" data-code-ui="">
 				<div className="flex items-center justify-between gap-2">
 					<p className="font-semibold">정규식 규칙</p>

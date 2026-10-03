@@ -9,11 +9,11 @@ import {
 	type RotateDegree,
 	roundCropBox,
 } from "@bh2980/cms/mdx";
-import { Crop as CropIcon, RotateCw, Undo2 } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
@@ -72,7 +72,8 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 		handleResetRotate();
 	};
 
-	const handleApply = () => {
+	const handleApply = (event?: React.FormEvent<HTMLFormElement>) => {
+		event?.preventDefault();
 		const finalCrop = isFullCrop(cropDraft) ? null : formatCrop(cropDraft);
 		const finalRotate = rotateDraft === 0 ? null : String(rotateDraft);
 		onApply({ crop: finalCrop, rotate: finalRotate });
@@ -197,225 +198,191 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-2xl gap-4 p-5 sm:max-w-xl">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<CropIcon className="size-4" />
-						이미지 자르기 및 회전
-					</DialogTitle>
-					<DialogDescription>
-						마우스로 드래그하거나 수치를 입력하여 자를 영역과 회전 각도를 지정하세요.
-					</DialogDescription>
-				</DialogHeader>
+				<form onSubmit={handleApply} className="contents">
+					<DialogHeader>
+						<DialogTitle>자르기·회전</DialogTitle>
+					</DialogHeader>
 
-				{/* 이미지 영역 + 자르기 오버레이 (P1-2: 실제 이미지 크기에 맞춘 래퍼) */}
-				<div className="flex flex-col items-center gap-2">
-					<div className="flex max-h-[380px] w-full items-center justify-center overflow-hidden rounded-md border bg-muted/30 p-1">
-						<div
-							ref={containerRef}
-							onPointerDown={(e) => handlePointerDown(e)}
-							className="relative inline-block select-none"
-							style={{ touchAction: "none" }}
-						>
-							{/* biome-ignore lint/performance/noImgElement: editor dynamic image */}
-							<img
-								ref={imgRef}
-								src={src}
-								alt="자르기 편집 대상"
-								className="pointer-events-none block max-h-[360px] max-w-full select-none rounded"
-								draggable={false}
-							/>
+					{/* 이미지 영역 + 자르기 오버레이 (P1-2: 실제 이미지 크기에 맞춘 래퍼) */}
+					<div className="flex flex-col items-center gap-2">
+						<div className="flex max-h-[380px] w-full items-center justify-center overflow-hidden rounded-md border bg-muted/30 p-1">
+							<div
+								ref={containerRef}
+								onPointerDown={(e) => handlePointerDown(e)}
+								className="relative inline-block select-none"
+								style={{ touchAction: "none" }}
+							>
+								{/* biome-ignore lint/performance/noImgElement: editor dynamic image */}
+								<img
+									ref={imgRef}
+									src={src}
+									alt="자르기 편집 대상"
+									className="pointer-events-none block max-h-[360px] max-w-full select-none rounded"
+									draggable={false}
+								/>
 
-							{/* 선택된 자르기 영역 */}
-							{!isFull && (
-								<>
-									{/* 어두운 반투명 배경 마스크 (영역 밖, P2 디자인 토큰 적용) */}
-									<div
-										className="pointer-events-none absolute inset-0 bg-foreground/40"
-										style={{
-											clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cropDraft.x}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y}%)`,
-										}}
+								{/* 선택된 자르기 영역 */}
+								{!isFull && (
+									<>
+										{/* 어두운 반투명 배경 마스크 (영역 밖, P2 디자인 토큰 적용) */}
+										<div
+											className="pointer-events-none absolute inset-0 bg-foreground/40"
+											style={{
+												clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cropDraft.x}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y}%)`,
+											}}
+										/>
+
+										{/* 활성 자르기 사각형 */}
+										<div
+											data-slot="crop-box"
+											onPointerDown={(e) => handlePointerDown(e, "move")}
+											className="absolute cursor-move border-2 border-primary shadow-sm"
+											style={{
+												left: `${cropDraft.x}%`,
+												top: `${cropDraft.y}%`,
+												width: `${cropDraft.width}%`,
+												height: `${cropDraft.height}%`,
+											}}
+										>
+											{/* 모서리 핸들 4개 */}
+											<button
+												type="button"
+												data-slot="crop-handle-nw"
+												onPointerDown={(e) => handlePointerDown(e, "nw")}
+												className="absolute -top-1.5 -left-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												aria-label="좌측 상단 핸들"
+											/>
+											<button
+												type="button"
+												data-slot="crop-handle-ne"
+												onPointerDown={(e) => handlePointerDown(e, "ne")}
+												className="absolute -top-1.5 -right-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												aria-label="우측 상단 핸들"
+											/>
+											<button
+												type="button"
+												data-slot="crop-handle-sw"
+												onPointerDown={(e) => handlePointerDown(e, "sw")}
+												className="absolute -bottom-1.5 -left-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												aria-label="좌측 하단 핸들"
+											/>
+											<button
+												type="button"
+												data-slot="crop-handle-se"
+												onPointerDown={(e) => handlePointerDown(e, "se")}
+												className="absolute -right-1.5 -bottom-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												aria-label="우측 하단 핸들"
+											/>
+										</div>
+									</>
+								)}
+							</div>
+						</div>
+
+						<div className="flex w-full flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+							<span>
+								{isFull
+									? "전체 이미지"
+									: `${cropDraft.width}% × ${cropDraft.height}% · 왼쪽 ${cropDraft.x}% · 위 ${cropDraft.y}%`}
+							</span>
+						</div>
+
+						{/* 키보드 수치 직접 입력 컨트롤 (P2) */}
+						<div className="flex w-full items-center justify-between gap-2 rounded-lg border bg-muted/10 p-2 text-xs">
+							<span className="font-medium text-muted-foreground">영역 %</span>
+							<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1">
+									<Label htmlFor="crop-input-x" className="text-muted-foreground text-xs">
+										X
+									</Label>
+									<Input
+										id="crop-input-x"
+										type="number"
+										min={0}
+										max={99}
+										step={1}
+										value={cropDraft.x}
+										aria-label="자르기 X"
+										onChange={(e) => handleNumericCropChange("x", Number(e.target.value))}
+										className="h-6 w-14 px-1.5 text-center text-xs"
 									/>
-
-									{/* 활성 자르기 사각형 */}
-									<div
-										data-slot="crop-box"
-										onPointerDown={(e) => handlePointerDown(e, "move")}
-										className="absolute cursor-move border-2 border-primary shadow-sm"
-										style={{
-											left: `${cropDraft.x}%`,
-											top: `${cropDraft.y}%`,
-											width: `${cropDraft.width}%`,
-											height: `${cropDraft.height}%`,
-										}}
-									>
-										{/* 모서리 핸들 4개 */}
-										<button
-											type="button"
-											data-slot="crop-handle-nw"
-											onPointerDown={(e) => handlePointerDown(e, "nw")}
-											className="absolute -top-1.5 -left-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-											aria-label="좌측 상단 핸들"
-										/>
-										<button
-											type="button"
-											data-slot="crop-handle-ne"
-											onPointerDown={(e) => handlePointerDown(e, "ne")}
-											className="absolute -top-1.5 -right-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-											aria-label="우측 상단 핸들"
-										/>
-										<button
-											type="button"
-											data-slot="crop-handle-sw"
-											onPointerDown={(e) => handlePointerDown(e, "sw")}
-											className="absolute -bottom-1.5 -left-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-											aria-label="좌측 하단 핸들"
-										/>
-										<button
-											type="button"
-											data-slot="crop-handle-se"
-											onPointerDown={(e) => handlePointerDown(e, "se")}
-											className="absolute -right-1.5 -bottom-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-											aria-label="우측 하단 핸들"
-										/>
-									</div>
-								</>
-							)}
-						</div>
-					</div>
-
-					<div className="flex w-full flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
-						<span>
-							{isFull
-								? "전체 이미지 (드래그하여 자를 영역을 선택하세요)"
-								: `선택 영역: ${cropDraft.width}% × ${cropDraft.height}% (좌측 ${cropDraft.x}%, 상단 ${cropDraft.y}%)`}
-						</span>
-						{!isFull && (
-							<Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleResetCrop}>
-								자르기 취소
-							</Button>
-						)}
-					</div>
-
-					{/* 키보드 수치 직접 입력 컨트롤 (P2) */}
-					<div className="flex w-full items-center justify-between gap-2 rounded-lg border bg-muted/10 p-2 text-xs">
-						<span className="font-medium text-muted-foreground">영역 수치 (%):</span>
-						<div className="flex items-center gap-2">
-							<div className="flex items-center gap-1">
-								<Label htmlFor="crop-input-x" className="text-muted-foreground text-xs">
-									X
-								</Label>
-								<Input
-									id="crop-input-x"
-									type="number"
-									min={0}
-									max={99}
-									step={1}
-									value={cropDraft.x}
-									aria-label="자르기 X 좌표 (%)"
-									onChange={(e) => handleNumericCropChange("x", Number(e.target.value))}
-									className="h-6 w-14 px-1.5 text-center text-xs"
-								/>
-							</div>
-							<div className="flex items-center gap-1">
-								<Label htmlFor="crop-input-y" className="text-muted-foreground text-xs">
-									Y
-								</Label>
-								<Input
-									id="crop-input-y"
-									type="number"
-									min={0}
-									max={99}
-									step={1}
-									value={cropDraft.y}
-									aria-label="자르기 Y 좌표 (%)"
-									onChange={(e) => handleNumericCropChange("y", Number(e.target.value))}
-									className="h-6 w-14 px-1.5 text-center text-xs"
-								/>
-							</div>
-							<div className="flex items-center gap-1">
-								<Label htmlFor="crop-input-w" className="text-muted-foreground text-xs">
-									W
-								</Label>
-								<Input
-									id="crop-input-w"
-									type="number"
-									min={1}
-									max={100}
-									step={1}
-									value={cropDraft.width}
-									aria-label="자르기 너비 (%)"
-									onChange={(e) => handleNumericCropChange("width", Number(e.target.value))}
-									className="h-6 w-14 px-1.5 text-center text-xs"
-								/>
-							</div>
-							<div className="flex items-center gap-1">
-								<Label htmlFor="crop-input-h" className="text-muted-foreground text-xs">
-									H
-								</Label>
-								<Input
-									id="crop-input-h"
-									type="number"
-									min={1}
-									max={100}
-									step={1}
-									value={cropDraft.height}
-									aria-label="자르기 높이 (%)"
-									onChange={(e) => handleNumericCropChange("height", Number(e.target.value))}
-									className="h-6 w-14 px-1.5 text-center text-xs"
-								/>
+								</div>
+								<div className="flex items-center gap-1">
+									<Label htmlFor="crop-input-y" className="text-muted-foreground text-xs">
+										Y
+									</Label>
+									<Input
+										id="crop-input-y"
+										type="number"
+										min={0}
+										max={99}
+										step={1}
+										value={cropDraft.y}
+										aria-label="자르기 Y"
+										onChange={(e) => handleNumericCropChange("y", Number(e.target.value))}
+										className="h-6 w-14 px-1.5 text-center text-xs"
+									/>
+								</div>
+								<div className="flex items-center gap-1">
+									<Label htmlFor="crop-input-w" className="text-muted-foreground text-xs">
+										W
+									</Label>
+									<Input
+										id="crop-input-w"
+										type="number"
+										min={1}
+										max={100}
+										step={1}
+										value={cropDraft.width}
+										aria-label="자르기 너비"
+										onChange={(e) => handleNumericCropChange("width", Number(e.target.value))}
+										className="h-6 w-14 px-1.5 text-center text-xs"
+									/>
+								</div>
+								<div className="flex items-center gap-1">
+									<Label htmlFor="crop-input-h" className="text-muted-foreground text-xs">
+										H
+									</Label>
+									<Input
+										id="crop-input-h"
+										type="number"
+										min={1}
+										max={100}
+										step={1}
+										value={cropDraft.height}
+										aria-label="자르기 높이"
+										onChange={(e) => handleNumericCropChange("height", Number(e.target.value))}
+										className="h-6 w-14 px-1.5 text-center text-xs"
+									/>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 
-				{/* 회전 컨트롤 */}
-				<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-2.5">
-					<div className="flex items-center gap-2">
-						<span className="font-medium text-xs">회전:</span>
-						<span className="font-semibold text-primary text-xs">{rotateDraft}°</span>
-						<span className="text-muted-foreground text-xs">자르기 영역은 회전하기 전 원본 기준입니다</span>
-					</div>
-					<div className="flex items-center gap-1.5">
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							aria-label="시계 방향 90도 회전"
-							className="h-7 gap-1 px-2 text-xs"
-							onClick={handleRotate90}
-						>
-							<RotateCw className="size-3.5" />
+					{/* 회전 컨트롤 */}
+					<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-2.5">
+						<div className="flex items-center gap-2 text-xs">
+							<span className="font-medium">회전</span>
+							<span className="font-semibold text-primary">{rotateDraft}°</span>
+						</div>
+						<Button type="button" variant="outline" size="sm" onClick={handleRotate90}>
+							<RotateCw aria-hidden />
 							90° 회전
 						</Button>
-						{rotateDraft !== 0 && (
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								aria-label="회전 초기화"
-								className="h-7 px-2 text-xs"
-								onClick={handleResetRotate}
-							>
-								<Undo2 className="size-3.5" />
-								회전 초기화
-							</Button>
-						)}
 					</div>
-				</div>
 
-				<DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
-					<Button type="button" variant="ghost" size="sm" className="text-xs" onClick={handleResetAll}>
-						초기화
-					</Button>
-					<div className="flex items-center gap-2">
-						<Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => onOpenChange(false)}>
-							취소
+					<DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
+						<Button type="button" variant="ghost" disabled={isFull && rotateDraft === 0} onClick={handleResetAll}>
+							초기화
 						</Button>
-						<Button type="button" variant="default" size="sm" className="text-xs" onClick={handleApply}>
-							적용
-						</Button>
-					</div>
-				</DialogFooter>
+						<div className="flex items-center gap-2">
+							<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+								취소
+							</Button>
+							<Button type="submit">적용</Button>
+						</div>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

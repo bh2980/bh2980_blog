@@ -2,16 +2,14 @@
 
 import { MoveHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { IconButton } from "../ui/icon-button";
 
 /**
  * 편집기 본문 폭. 편집할 때 보이는 폭만 바꾸고 저장되는 글·공개 화면과는 상관없다.
@@ -58,32 +56,27 @@ export function useEditorWidth(): [EditorWidth, (width: EditorWidth) => void] {
 export function EditorWidthMenu({ value, onChange }: { value: EditorWidth; onChange: (width: EditorWidth) => void }) {
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						aria-label="본문 폭"
-						title="본문 폭"
-						className="text-muted-foreground"
-						onMouseDown={(event) => event.preventDefault()}
-					/>
-				}
+			<IconButton
+				label="본문 폭"
+				side="bottom"
+				className="text-muted-foreground"
+				onMouseDown={(event) => event.preventDefault()}
+				trigger={(button) => <DropdownMenuTrigger render={button} />}
 			>
 				<MoveHorizontal aria-hidden className="size-4" />
-			</DropdownMenuTrigger>
+			</IconButton>
 			<DropdownMenuContent align="end" className="w-36">
-				<DropdownMenuGroup>
-					<DropdownMenuLabel>본문 폭</DropdownMenuLabel>
-					<DropdownMenuRadioGroup value={value} onValueChange={(next) => isEditorWidth(next) && onChange(next)}>
-						{(Object.keys(EDITOR_WIDTHS) as EditorWidth[]).map((width) => (
-							<DropdownMenuRadioItem key={width} value={width}>
-								{LABELS[width]}
-							</DropdownMenuRadioItem>
-						))}
-					</DropdownMenuRadioGroup>
-				</DropdownMenuGroup>
+				<DropdownMenuRadioGroup
+					aria-label="본문 폭"
+					value={value}
+					onValueChange={(next) => isEditorWidth(next) && onChange(next)}
+				>
+					{(Object.keys(EDITOR_WIDTHS) as EditorWidth[]).map((width) => (
+						<DropdownMenuRadioItem key={width} value={width}>
+							{LABELS[width]}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

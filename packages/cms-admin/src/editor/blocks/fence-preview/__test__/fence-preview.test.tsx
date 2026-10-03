@@ -45,7 +45,7 @@ const metaOf = (typeName: string): FenceEditorMeta =>
 	typeName === "cmsMath"
 		? {
 				kind: "math",
-				label: "수식 (KaTeX)",
+				label: "수식",
 				placeholder: "E = mc^2",
 				preview: (value) => <MathPreview value={value} />,
 			}

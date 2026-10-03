@@ -3,14 +3,13 @@
 import type { Editor } from "@tiptap/core";
 import { Puzzle } from "lucide-react";
 import { iconByName } from "../screens/shared/collection-icon";
-import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { IconButton } from "../ui/icon-button";
 import { buildBlockSlashCommands } from "./slash-command";
 
 const CUSTOM_BLOCKS = buildBlockSlashCommands();
 
-/** 커스텀 컴포넌트 목록. 컴포넌트 메뉴와 툴바 "더보기" 메뉴가 함께 쓴다. */
+/** 커스텀 컴포넌트 목록. 컴포넌트 메뉴와 툴바 "더보기" 메뉴가 함께 쓴다. 슬래시 메뉴처럼 이름 아래 설명을 둔다. */
 export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
 	return CUSTOM_BLOCKS.map((block) => {
 		// 블록 정의의 아이콘(`editor.icon`). 없으면 퍼즐 아이콘을 쓴다.
@@ -26,7 +25,10 @@ export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
 				}}
 			>
 				<Icon aria-hidden className="size-4" />
-				<span className="flex-1">{block.title}</span>
+				<span className="min-w-0 flex-1">
+					<span className="block truncate">{block.title}</span>
+					<span className="block truncate text-muted-foreground text-xs">{block.description}</span>
+				</span>
 			</DropdownMenuItem>
 		);
 	});
@@ -36,29 +38,16 @@ export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
 export function CustomBlockMenu({ editor }: { editor: Editor }) {
 	return (
 		<DropdownMenu>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<DropdownMenuTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="size-8 p-0"
-									aria-label="컴포넌트 삽입"
-									disabled={!editor.isEditable}
-									onMouseDown={(event) => event.preventDefault()}
-								/>
-							}
-						/>
-					}
-				>
-					<Puzzle className="size-4" aria-hidden />
-				</TooltipTrigger>
-				<TooltipContent side="bottom">컴포넌트</TooltipContent>
-			</Tooltip>
-			<DropdownMenuContent align="start" className="min-w-44">
+			<IconButton
+				label="컴포넌트 넣기"
+				side="bottom"
+				disabled={!editor.isEditable}
+				onMouseDown={(event) => event.preventDefault()}
+				trigger={(button) => <DropdownMenuTrigger render={button} />}
+			>
+				<Puzzle className="size-4" aria-hidden />
+			</IconButton>
+			<DropdownMenuContent align="start" className="w-64">
 				<CustomBlockMenuItems editor={editor} />
 			</DropdownMenuContent>
 		</DropdownMenu>

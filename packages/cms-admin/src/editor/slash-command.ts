@@ -11,17 +11,23 @@ import {
 	ListOrdered,
 	ListTodo,
 	type LucideIcon,
-	MessageSquareText,
+	MessageSquareMore,
 	Minus,
+	Paperclip,
 	Pilcrow,
 	Quote,
 	SquareCode,
 	Table2,
 } from "lucide-react";
-import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
+import {
+	BLOCK_INSERT_ACTIONS,
+	type BlockInsertAction,
+	OPEN_FILE_PICKER_EVENT,
+	OPEN_IMAGE_DIALOG_EVENT,
+} from "./block-inserts";
 import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
-export { OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
+export { OPEN_FILE_PICKER_EVENT, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export interface SlashCommandItem {
@@ -64,7 +70,7 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	heading(3, "중간 섹션 제목", ["중제목"]),
 	heading(4, "소제목", ["소제목"]),
 	{
-		title: "글머리 기호 목록",
+		title: "글머리 목록",
 		description: "순서 없는 목록",
 		icon: List,
 		keywords: ["목록", "불릿", "리스트", "bullet", "list", "ul"],
@@ -73,7 +79,7 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 		},
 	},
 	{
-		title: "번호 매기기 목록",
+		title: "번호 목록",
 		description: "순서 있는 목록",
 		icon: ListOrdered,
 		keywords: ["순서", "번호", "목록", "ordered", "numbered", "list", "ol"],
@@ -137,6 +143,16 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 		},
 	},
 	{
+		title: "파일",
+		description: "첨부 파일 올리기",
+		icon: Paperclip,
+		keywords: ["파일", "첨부", "업로드", "file", "attachment", "upload", "pdf", "zip"],
+		action: (editor, range) => {
+			editor.chain().focus().deleteRange(range).run();
+			window.dispatchEvent(new CustomEvent(OPEN_FILE_PICKER_EVENT));
+		},
+	},
+	{
 		title: "내부 글 링크",
 		description: "제목으로 글·메모 찾기",
 		icon: Link2,
@@ -148,7 +164,7 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	{
 		title: "툴팁",
 		description: "글자에 설명 달기",
-		icon: MessageSquareText,
+		icon: MessageSquareMore,
 		keywords: ["툴팁", "tooltip", "설명", "주석"],
 		action: (editor, range) => {
 			// 슬래시는 빈 문단에서 입력하므로 선택 영역이 없다. 라벨 예시를 선택해 편집·설명 입력을 시작한다.
@@ -187,7 +203,7 @@ export function buildBlockSlashCommands(
 		items.push({
 			id: nodeView,
 			title: block.label,
-			description: block.description ?? `${block.label} 삽입`,
+			description: block.description ?? `${block.label} 넣기`,
 			keywords: block.editor.keywords ? [...block.editor.keywords] : [block.label, block.name],
 			...(block.editor.icon ? { icon: block.editor.icon } : {}),
 			action,

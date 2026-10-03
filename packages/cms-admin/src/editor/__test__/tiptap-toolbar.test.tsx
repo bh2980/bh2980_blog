@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { Editor } from "@tiptap/core";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { CmsEditor } from "../tiptap-editor";
 
@@ -43,6 +44,28 @@ describe("서식 도구 묶음", () => {
 		expect(within(toolbar).queryByRole("button", { name: "더보기" })).toBeNull();
 	});
 
+	it("링크 버튼은 커서가 링크 안에 있으면 눌린 상태다", async () => {
+		let editor: Editor | null = null;
+		render(
+			<CmsEditor
+				content="[주소](https://example.com) 뒤"
+				onChange={vi.fn()}
+				onEditor={(ready) => {
+					editor = ready;
+				}}
+			/>,
+		);
+		const toolbar = await screen.findByRole("toolbar", { name: "서식 도구" });
+		await waitFor(() => expect(editor).not.toBeNull());
+		expect(within(toolbar).getByRole("button", { name: "링크" }).getAttribute("aria-pressed")).toBe("false");
+		act(() => {
+			(editor as unknown as Editor).commands.setTextSelection(2);
+		});
+		await waitFor(() =>
+			expect(within(toolbar).getByRole("button", { name: "링크" }).getAttribute("aria-pressed")).toBe("true"),
+		);
+	});
+
 	it("정렬 메뉴에서 가운데를 고르면 문단이 가운데 정렬된다", async () => {
 		const onChange = await renderEditor();
 
@@ -80,7 +103,7 @@ describe("서식 도구 묶음", () => {
 		const more = await within(toolbar).findByRole("button", { name: "더보기" });
 		// 고정 도구는 남고, 우선순위가 가장 낮은 정렬은 접힌다.
 		expect(within(toolbar).getByRole("button", { name: "굵게" })).toBeTruthy();
-		expect(within(toolbar).getByRole("button", { name: "링크 삽입·수정" })).toBeTruthy();
+		expect(within(toolbar).getByRole("button", { name: "링크" })).toBeTruthy();
 		expect(within(toolbar).queryByRole("button", { name: "정렬" })).toBeNull();
 
 		fireEvent.click(more);
@@ -94,7 +117,7 @@ describe("서식 도구 묶음", () => {
 
 		// 문단 설정(블록 모양·정렬) → 글자 꾸밈 → 넣기 순이다. 업로드는 넣기 도구와 함께 둔다.
 		expect(toolbarButtonNames(toolbar)).toEqual([
-			"본문",
+			"문단",
 			"정렬",
 			"굵게",
 			"기울임",
@@ -106,23 +129,23 @@ describe("서식 도구 묶음", () => {
 			"툴팁",
 			"목록",
 			"인용구",
-			"코드블록",
-			"표 삽입",
-			"컴포넌트 삽입",
+			"코드 블록",
+			"표",
+			"컴포넌트 넣기",
 			"업로드",
-			"링크 삽입·수정",
+			"링크",
 			"구분선",
 			"본문 폭",
 		]);
 	});
 
-	it("블록 모양 메뉴는 본문·제목 2~4이다", async () => {
+	it("블록 모양 메뉴는 문단·제목 2~4이다", async () => {
 		await renderEditor();
 
-		fireEvent.click(screen.getByRole("button", { name: "본문" }));
+		fireEvent.click(screen.getByRole("button", { name: "문단" }));
 
 		expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
-			"본문",
+			"문단",
 			"제목 2",
 			"제목 3",
 			"제목 4",
@@ -142,21 +165,21 @@ describe("서식 도구 묶음", () => {
 	});
 
 	it.each([
-		[400, ["본문", "굵게", "기울임", "글자색", "툴팁", "목록", "코드블록", "링크 삽입·수정", "더보기", "본문 폭"]],
+		[400, ["문단", "굵게", "기울임", "글자색", "툴팁", "목록", "코드 블록", "링크", "더보기", "본문 폭"]],
 		[
 			500,
 			[
-				"본문",
+				"문단",
 				"굵게",
 				"기울임",
 				"인라인 코드",
 				"글자색",
 				"툴팁",
 				"목록",
-				"코드블록",
-				"컴포넌트 삽입",
+				"코드 블록",
+				"컴포넌트 넣기",
 				"업로드",
-				"링크 삽입·수정",
+				"링크",
 				"더보기",
 				"본문 폭",
 			],

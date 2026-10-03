@@ -92,12 +92,12 @@ export function LazyFencePreview({
 	if (loadError) {
 		return (
 			<div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-destructive text-xs">
-				{label} 모듈 로드 실패: {loadError}
+				{label} 미리보기를 불러오지 못했습니다. {loadError}
 			</div>
 		);
 	}
 	if (!Renderer) {
-		return <div className="py-2 text-center text-muted-foreground text-xs">{label} 로딩 중...</div>;
+		return <div className="py-2 text-center text-muted-foreground text-xs">{label} 불러오는 중…</div>;
 	}
 	if (!trimmed) {
 		return <div className="py-2 text-center text-muted-foreground text-xs italic">{emptyText}</div>;

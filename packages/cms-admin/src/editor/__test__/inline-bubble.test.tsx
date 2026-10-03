@@ -137,19 +137,19 @@ describe("InlineBubble", () => {
 		const input = screen.getByLabelText("주소") as HTMLInputElement;
 		expect(input.value).toBe("https://example.com");
 		act(() => fireEvent.change(input, { target: { value: "https://changed.dev" } }));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "수정" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
 
 		expect(editor.getHTML()).toContain('href="https://changed.dev/"');
 		expect(editor.getHTML()).toContain(">마바</a>");
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
-	it("링크 제거 버튼은 링크만 지우고 글자는 남긴다", () => {
+	it("링크 해제 버튼은 링크만 지우고 글자는 남긴다", () => {
 		const editor = createEditor(HTML);
 		focusAt(editor, 8);
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 제거" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 해제" })));
 		expect(editor.getHTML()).not.toContain("<a");
 		expect(editor.getText()).toContain("마바");
 	});
@@ -159,8 +159,8 @@ describe("InlineBubble", () => {
 		focusAt(editor, 10);
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁 설명 수정" })));
-		const input = screen.getByLabelText("툴팁 설명") as HTMLInputElement;
+		act(() => fireEvent.click(screen.getByRole("button", { name: "툴팁 수정" })));
+		const input = screen.getByLabelText("설명") as HTMLTextAreaElement;
 		expect(input.value).toBe("설명");
 		act(() => fireEvent.change(input, { target: { value: "새 설명" } }));
 		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
@@ -176,9 +176,9 @@ describe("InlineBubble", () => {
 		focusAt(editor, { from: 1, to: 3 });
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 삽입" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 넣기" })));
 		act(() => fireEvent.change(screen.getByLabelText("주소"), { target: { value: "/posts/hello" } }));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "삽입" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
 		expect(editor.getHTML()).toMatch(/<a [^>]*href="\/posts\/hello"[^>]*>가나<\/a>/);
 	});
 
@@ -206,7 +206,7 @@ describe("InlineBubble", () => {
 
 		const toolbar = screen.getByRole("toolbar", { name: "인라인 서식" });
 		const labels = [...toolbar.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
-		expect(labels).toEqual(["굵게", "기울임", "취소선", "밑줄", "툴팁 추가", "글자 접기"]);
+		expect(labels).toEqual(["굵게", "기울임", "취소선", "밑줄", "툴팁 넣기", "글자 접기"]);
 
 		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기" })));
 		expect(editor.getHTML()).toMatch(/call\(<span data-code-fold=""[^>]*>a, b<\/span>\)/);
@@ -219,8 +219,11 @@ describe("InlineBubble", () => {
 		renderBubble(editor);
 
 		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
-		act(() => fireEvent.click(screen.getByRole("button", { name: "공개 글에서 처음부터 펼쳐 두기" })));
+		const openByDefault = screen.getByRole("button", { name: "처음부터 펼치기" });
+		expect(openByDefault.getAttribute("aria-pressed")).toBe("false");
+		act(() => fireEvent.click(openByDefault));
 		expect(editor.getHTML()).toContain('data-open="true"');
+		expect(screen.getByRole("button", { name: "처음부터 펼치기" }).getAttribute("aria-pressed")).toBe("true");
 		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기 해제" })));
 		expect(editor.getHTML()).not.toContain("data-code-fold");
 	});

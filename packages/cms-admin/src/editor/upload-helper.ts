@@ -127,7 +127,7 @@ function putFile(ticket: UploadTicket, file: File, onProgress?: (loaded: number)
 		xhr.onload = () =>
 			xhr.status >= 200 && xhr.status < 300
 				? resolve()
-				: reject(new Error(`저장소 업로드에 실패했습니다 (${xhr.status})`));
+				: reject(new Error(`저장소 업로드에 실패했습니다 · ${xhr.status}`));
 		xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다"));
 		xhr.ontimeout = () => reject(new Error("업로드 시간이 초과되었습니다"));
 		xhr.send(file);

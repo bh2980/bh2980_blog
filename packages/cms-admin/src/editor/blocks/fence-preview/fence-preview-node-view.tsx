@@ -3,6 +3,7 @@
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../../lib/utils/cn";
+import { SELECTED_RING, useEditorEditable } from "../shared";
 
 /** 코드로 쓰고 미리보기로 보는 블록(수식·코드 펜스 블록)의 이름과 입력 안내. */
 export interface FenceEditorMeta {
@@ -53,7 +54,7 @@ export function FencePreviewNodeView({
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const isEditable = editor?.isEditable ?? true;
+	const isEditable = useEditorEditable(editor);
 
 	const updateRef = useRef(updateAttributes);
 	updateRef.current = updateAttributes;
@@ -174,16 +175,14 @@ export function FencePreviewNodeView({
 			onBlur={handleBlur}
 			className={cn(
 				"group relative my-4 rounded-md border border-border bg-card p-3 shadow-xs transition-colors",
-				isOpen && "ring-2 ring-ring/50",
+				isOpen && SELECTED_RING,
 			)}
 		>
 			{isOpen ? (
 				<div className="space-y-3">
 					<div className="flex items-center justify-between border-border/40 border-b pb-1 text-muted-foreground text-xs">
 						<span className="font-medium font-mono text-[11px]">{meta.label}</span>
-						<span className="text-[10px] text-muted-foreground/70">
-							{isEditing ? "편집 중 (바깥 클릭 시 완료)" : "선택됨"}
-						</span>
+						<span className="text-[10px] text-muted-foreground/70">{isEditing ? "편집 중" : "선택됨"}</span>
 					</div>
 
 					{/* 미리보기 (상단 동시 표시) */}
@@ -223,7 +222,7 @@ export function FencePreviewNodeView({
 						renderPreview()
 					) : (
 						<div className="rounded border border-border/80 border-dashed p-4 text-center text-muted-foreground text-xs hover:border-foreground/30">
-							클릭하여 {meta.label} 입력...
+							{meta.label} 입력
 						</div>
 					)}
 				</button>

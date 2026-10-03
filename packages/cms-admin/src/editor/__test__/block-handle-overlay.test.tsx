@@ -19,7 +19,7 @@ describe("BlockHandleOverlay DropdownMenu 및 드래그 동작(v2 C1)", () => {
 			/>,
 		);
 
-		const trigger = screen.getByRole("button", { name: "블록 조작 메뉴" });
+		const trigger = screen.getByRole("button", { name: "블록 조작" });
 		expect(trigger.getAttribute("draggable")).toBe("true");
 
 		fireEvent.dragStart(trigger, {
@@ -50,7 +50,7 @@ describe("BlockHandleOverlay DropdownMenu 및 드래그 동작(v2 C1)", () => {
 			/>,
 		);
 
-		const trigger = screen.getByRole("button", { name: "블록 조작 메뉴" });
+		const trigger = screen.getByRole("button", { name: "블록 조작" });
 		fireEvent.click(trigger);
 		expect(trigger.getAttribute("aria-expanded")).toBe("true");
 

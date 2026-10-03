@@ -60,14 +60,14 @@ describe("M13 editor accessibility", () => {
 			</>,
 		);
 
-		expect(screen.getByRole("button", { name: "이미지 왼쪽 정렬" }).getAttribute("aria-pressed")).toBe("false");
-		expect(screen.getByRole("button", { name: "이미지 가운데 정렬" }).getAttribute("aria-pressed")).toBe("true");
-		fireEvent.click(screen.getByRole("button", { name: "이미지 왼쪽 정렬" }));
+		expect(screen.getByRole("button", { name: "왼쪽 정렬" }).getAttribute("aria-pressed")).toBe("false");
+		expect(screen.getByRole("button", { name: "가운데 정렬" }).getAttribute("aria-pressed")).toBe("true");
+		fireEvent.click(screen.getByRole("button", { name: "왼쪽 정렬" }));
 		expect(updateAttributes).toHaveBeenCalledWith({ align: "left" });
-		fireEvent.click(screen.getByRole("button", { name: "이미지 삭제" }));
-		expect(deleteNode).toHaveBeenCalledOnce();
+		// 삭제는 블록 손잡이 메뉴에만 있다(같은 일을 두 곳에 두지 않는다).
+		expect(screen.queryByRole("button", { name: "이미지 삭제" })).toBeNull();
 
-		const blockMenu = screen.getByRole("button", { name: "블록 조작 메뉴" });
+		const blockMenu = screen.getByRole("button", { name: "블록 조작" });
 		expect(blockMenu.getAttribute("aria-expanded")).toBe("false");
 		fireEvent.click(blockMenu);
 		expect(blockMenu.getAttribute("aria-expanded")).toBe("true");
@@ -91,7 +91,7 @@ describe("M13 editor accessibility", () => {
 		// 설정 팝오버는 한 번에 하나만 열린다. 차례로 열어 각 입력의 ID를 모은다.
 		const widthIds: string[] = [];
 		const altIds: string[] = [];
-		for (const button of screen.getAllByRole("button", { name: "이미지 설정" })) {
+		for (const button of screen.getAllByRole("button", { name: "설정" })) {
 			fireEvent.click(button);
 			const width = await screen.findByLabelText("너비");
 			widthIds.push(width.id);
@@ -151,7 +151,7 @@ describe("M13 editor accessibility", () => {
 
 		// 오른쪽 클릭 메뉴와 같은 항목을 항상 보이는 ⋯ 버튼으로도 연다.
 		fireEvent.click(screen.getByRole("button", { name: "'문서' 폴더 작업" }));
-		expect(await screen.findByRole("menuitem", { name: "새 하위 폴더" })).toBeTruthy();
+		expect(await screen.findByRole("menuitem", { name: "하위 폴더 추가" })).toBeTruthy();
 		expect(screen.getByRole("menuitem", { name: /이름 변경/ })).toBeTruthy();
 		expect(screen.getByRole("menuitem", { name: /삭제/ })).toBeTruthy();
 	});

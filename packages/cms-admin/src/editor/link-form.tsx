@@ -3,7 +3,7 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { Unlink } from "lucide-react";
-import { useId, useState } from "react";
+import { type FormEvent, type KeyboardEvent, type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
@@ -44,6 +44,74 @@ export const collapseToEnd = (chain: ChainedCommands) =>
 		return true;
 	});
 
+/** 한글 조합을 끝내는 Enter인가. 이때는 폼을 보내지 않는다. */
+export const isComposingKey = (event: KeyboardEvent) =>
+	event.nativeEvent.isComposing || event.key === "Process" || event.keyCode === 229;
+
+/**
+ * 팝오버 입력 폼(링크·툴팁)의 Enter 처리. 한글 조합 중 Enter는 무시하고, 여러 줄 칸에서도 Enter로 보낸다(Shift+Enter는 줄바꿈).
+ * `<form onKeyDown={submitOnEnter}>`로 단다.
+ */
+export function submitOnEnter(event: KeyboardEvent<HTMLFormElement>) {
+	if (event.key !== "Enter") return;
+	if (isComposingKey(event)) {
+		event.preventDefault();
+		return;
+	}
+	if (event.target instanceof HTMLTextAreaElement && !event.shiftKey) {
+		event.preventDefault();
+		event.currentTarget.requestSubmit();
+	}
+}
+
+/** 팝오버 입력 폼 아래 버튼 줄: 왼쪽에 해제, 오른쪽에 취소·적용. 링크·툴팁 폼이 같이 쓴다. */
+export function PopoverFormFooter({
+	removeLabel,
+	removeIcon,
+	onRemove,
+	onCancel,
+}: {
+	removeLabel: string;
+	removeIcon: ReactNode;
+	/** 이미 걸린 효과를 고칠 때만 준다. */
+	onRemove?: () => void;
+	onCancel: () => void;
+}) {
+	return (
+		<div className="flex items-center gap-2">
+			{onRemove && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+					onClick={onRemove}
+				>
+					{removeIcon}
+					{removeLabel}
+				</Button>
+			)}
+			<div className="ml-auto flex items-center gap-2">
+				<Button type="button" variant="outline" size="sm" onClick={onCancel}>
+					취소
+				</Button>
+				<Button type="submit" size="sm">
+					적용
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+/** 팝오버 입력 폼의 빨간 한 줄 오류. */
+export function PopoverFormError({ id, children }: { id: string; children: ReactNode }) {
+	return (
+		<p id={id} role="alert" className="text-destructive text-xs">
+			{children}
+		</p>
+	);
+}
+
 interface LinkFormProps {
 	editor: Editor;
 	draft: LinkDraft;
@@ -60,7 +128,7 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 	const [error, setError] = useState<string | null>(null);
 	const needsText = !draft.existing && draft.from === draft.to;
 
-	const submit = (event: React.FormEvent<HTMLFormElement>) => {
+	const submit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const normalized = normalizeLinkHref(href);
 		if (!normalized) {
@@ -94,8 +162,8 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 	};
 
 	return (
-		<form onSubmit={submit} className="grid gap-3">
-			<p className="font-medium">{draft.existing ? "링크 수정" : "링크 삽입"}</p>
+		<form onSubmit={submit} onKeyDown={submitOnEnter} className="grid gap-3">
+			<p className="font-medium">{draft.existing ? "링크 수정" : "링크 넣기"}</p>
 			{needsText && (
 				<label htmlFor={`${id}-text`} className="grid gap-1.5 text-xs">
 					표시 텍스트
@@ -113,6 +181,8 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 					id={`${id}-href`}
 					autoFocus
 					value={href}
+					aria-invalid={!!error || undefined}
+					aria-describedby={error ? `${id}-error` : undefined}
 					onChange={(event) => {
 						setHref(event.target.value);
 						setError(null);
@@ -120,22 +190,13 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 					placeholder="https://example.com"
 				/>
 			</label>
-			{error && (
-				<p role="alert" className="text-destructive text-xs">
-					{error}
-				</p>
-			)}
-			<div className="flex justify-end gap-2">
-				{draft.existing && (
-					<Button type="button" variant="outline" size="sm" onClick={remove}>
-						<Unlink aria-hidden className="size-4" />
-						링크 제거
-					</Button>
-				)}
-				<Button type="submit" size="sm">
-					{draft.existing ? "수정" : "삽입"}
-				</Button>
-			</div>
+			{error && <PopoverFormError id={`${id}-error`}>{error}</PopoverFormError>}
+			<PopoverFormFooter
+				removeLabel="링크 해제"
+				removeIcon={<Unlink aria-hidden />}
+				onRemove={draft.existing ? remove : undefined}
+				onCancel={onDone}
+			/>
 		</form>
 	);
 }

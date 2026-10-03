@@ -28,10 +28,10 @@ describe("CustomBlockMenu", () => {
 		const editor = createEditor();
 		render(<CustomBlockMenu editor={editor} />);
 
-		fireEvent.click(screen.getByRole("button", { name: "컴포넌트 삽입" }));
+		fireEvent.click(screen.getByRole("button", { name: "컴포넌트 넣기" }));
 
-		expect(await screen.findByRole("menuitem", { name: "콜아웃" })).toBeTruthy();
-		expect(screen.getByRole("menuitem", { name: "접기" })).toBeTruthy();
+		expect(await screen.findByRole("menuitem", { name: /^콜아웃/ })).toBeTruthy();
+		expect(screen.getByRole("menuitem", { name: /^접기/ })).toBeTruthy();
 		editor.destroy();
 	});
 
@@ -40,8 +40,8 @@ describe("CustomBlockMenu", () => {
 		editor.commands.setTextSelection(3);
 		render(<CustomBlockMenu editor={editor} />);
 
-		fireEvent.click(screen.getByRole("button", { name: "컴포넌트 삽입" }));
-		fireEvent.click(await screen.findByRole("menuitem", { name: "콜아웃" }));
+		fireEvent.click(screen.getByRole("button", { name: "컴포넌트 넣기" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: /^콜아웃/ }));
 
 		const types: string[] = [];
 		editor.state.doc.descendants((node) => {
@@ -58,7 +58,7 @@ describe("CustomBlockMenu", () => {
 		const editor = createEditor(false);
 		render(<CustomBlockMenu editor={editor} />);
 
-		const button = screen.getByRole("button", { name: "컴포넌트 삽입" }) as HTMLButtonElement;
+		const button = screen.getByRole("button", { name: "컴포넌트 넣기" }) as HTMLButtonElement;
 		expect(button.disabled).toBe(true);
 		editor.destroy();
 	});

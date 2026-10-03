@@ -73,19 +73,33 @@ const CODE = "```ts\nconst a = 1;\nconst b = 2;\nconst c = 3;\n```";
 describe("코드 블록 편집 화면", () => {
 	it("머리 도구에 언어·파일 경로·줄 효과·정규식 규칙·줄 번호·복사가 있다", async () => {
 		await mount(CODE);
-		expect(screen.getByLabelText("코드 언어 선택")).toBeTruthy();
-		expect(screen.getByLabelText("코드 블록 파일명")).toBeTruthy();
+		expect(screen.getByLabelText("코드 언어")).toBeTruthy();
+		expect(screen.getByLabelText("파일 경로")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "줄 효과" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "정규식 규칙" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "줄 번호 표시 토글" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "줄 번호" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "코드 복사" })).toBeTruthy();
+	});
+
+	it("읽기 전용이면 언어·파일 경로·효과 도구를 숨기고 줄을 고르지 않는다", async () => {
+		const editor = await mount('```ts title="src/a.ts"\nconst a = 1;\n```');
+		act(() => editor.setEditable(false));
+		await waitFor(() => expect(screen.queryByLabelText("코드 언어")).toBeNull());
+		expect(screen.queryByLabelText("파일 경로")).toBeNull();
+		expect(screen.queryByRole("button", { name: "줄 효과" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "정규식 규칙" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "줄 번호" })).toBeNull();
+		expect(screen.getByText("src/a.ts")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "코드 복사" })).toBeTruthy();
+		await openLineMenu(0);
+		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
 	it("파일 경로와 줄 번호 표시는 meta로 저장한다", async () => {
 		const editor = await mount(CODE);
-		fireEvent.change(screen.getByLabelText("코드 블록 파일명"), { target: { value: "src/a.ts" } });
-		await waitFor(() => expect((screen.getByLabelText("코드 블록 파일명") as HTMLInputElement).value).toBe("src/a.ts"));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "줄 번호 표시 토글" })));
+		fireEvent.change(screen.getByLabelText("파일 경로"), { target: { value: "src/a.ts" } });
+		await waitFor(() => expect((screen.getByLabelText("파일 경로") as HTMLInputElement).value).toBe("src/a.ts"));
+		act(() => fireEvent.click(screen.getByRole("button", { name: "줄 번호" })));
 		await waitFor(() => expect(block(editor).attrs.meta).toBe('title="src/a.ts" lnum'));
 	});
 
@@ -177,13 +191,13 @@ describe("코드 블록 편집 화면", () => {
 		expect(editor.state.selection.from).toBe(1);
 	});
 
-	it("접기 첫 줄(› 줄)만 골라도 접기 풀기와 처음부터 펼침이 나온다", async () => {
+	it("접기 첫 줄(› 줄)만 골라도 접기 해제와 처음부터 펼치기가 나온다", async () => {
 		const editor = await mount("```ts\n// @line collapse {0-2}\na\nb\nc\nd\n```");
 		// 줄을 먼저 고르지 않아도 오른쪽 클릭한 줄이 대상이다.
 		await openLineMenu(0);
 		const menu = await screen.findByRole("menu", { name: "1번째 줄 효과" });
-		expect(within(menu).getByRole("menuitemcheckbox", { name: "처음부터 펼쳐 두기" })).toBeTruthy();
-		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: /접기 풀기/ })));
+		expect(within(menu).getByRole("menuitemcheckbox", { name: "처음부터 펼치기" })).toBeTruthy();
+		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: /접기 해제/ })));
 		await waitFor(() => expect(block(editor).attrs.lineEffects).toEqual([]));
 	});
 

@@ -1,19 +1,17 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
-import { Check, ChevronsRight } from "lucide-react";
+import { Check, MoreHorizontal } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Button } from "../ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { IconButton } from "../ui/icon-button";
 import type { ToolbarItem } from "./toolbar-button";
 import { type FitItem, fitSlots, layoutKeys } from "./toolbar-fit";
 
@@ -56,20 +54,20 @@ export function ToolbarMenuItem({ editor, item }: { editor: Editor; item: Toolba
 	);
 }
 
-/** "더보기" 메뉴 안에서 이름표를 단 묶음. 메뉴 맨 앞이 아니면 위에 구분선을 둔다. */
+/**
+ * "더보기" 메뉴 안의 한 묶음. 메뉴 맨 앞이 아니면 위에 구분선을 둔다.
+ * 머리글은 두지 않는다(항목 아이콘과 이름으로 알 수 있다). `label`은 묶음 이름(스크린 리더)이다.
+ */
 export function ToolbarMenuSection({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<>
 			<DropdownMenuSeparator className="first:hidden" />
-			<DropdownMenuGroup>
-				<DropdownMenuLabel>{label}</DropdownMenuLabel>
-				{children}
-			</DropdownMenuGroup>
+			<DropdownMenuGroup aria-label={label}>{children}</DropdownMenuGroup>
 		</>
 	);
 }
 
-/** "더보기" 메뉴 안에서 드롭다운 묶음을 이름표와 함께 펼친 모습. */
+/** "더보기" 메뉴 안에서 드롭다운 묶음을 펼친 모습. */
 export function ToolbarMenuGroup({ editor, label, items }: { editor: Editor; label: string; items: ToolbarItem[] }) {
 	return (
 		<ToolbarMenuSection label={label}>
@@ -83,28 +81,16 @@ export function ToolbarMenuGroup({ editor, label, items }: { editor: Editor; lab
 function OverflowMenu({ editor, children }: { editor: Editor; children: ReactNode }) {
 	return (
 		<DropdownMenu>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<DropdownMenuTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="size-8 shrink-0 p-0"
-									aria-label="더보기"
-									disabled={!editor.isEditable}
-									onMouseDown={(event) => event.preventDefault()}
-								/>
-							}
-						/>
-					}
-				>
-					<ChevronsRight className="size-4" aria-hidden />
-				</TooltipTrigger>
-				<TooltipContent side="bottom">더보기</TooltipContent>
-			</Tooltip>
+			<IconButton
+				label="더보기"
+				side="bottom"
+				className="shrink-0"
+				disabled={!editor.isEditable}
+				onMouseDown={(event) => event.preventDefault()}
+				trigger={(button) => <DropdownMenuTrigger render={button} />}
+			>
+				<MoreHorizontal className="size-4" aria-hidden />
+			</IconButton>
 			<DropdownMenuContent align="end" className="min-w-44">
 				{children}
 			</DropdownMenuContent>

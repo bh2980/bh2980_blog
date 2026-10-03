@@ -2,6 +2,8 @@ import type { Editor, Range } from "@tiptap/core";
 import { ADDED_BLOCK_INSERT_ACTIONS } from "./blocks/added";
 
 export const OPEN_IMAGE_DIALOG_EVENT = "cms:open-image-dialog";
+/** 첨부 파일 고르기 창을 연다(슬래시 메뉴 "파일"). */
+export const OPEN_FILE_PICKER_EVENT = "cms:open-file-picker";
 
 export type BlockInsertAction = (editor: Editor, range: Range) => void;
 

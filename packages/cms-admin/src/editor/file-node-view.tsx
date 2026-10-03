@@ -5,6 +5,7 @@ import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { FileArchive, FileText, FileType } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";
+import { SELECTED_RING, useEditorEditable } from "./blocks/shared";
 
 const ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
 
@@ -15,6 +16,7 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 	const mediaId = typeof node.attrs.mediaId === "string" ? node.attrs.mediaId : "";
 	const label = typeof node.attrs.label === "string" ? node.attrs.label : "";
 	const [media, setMedia] = useState<MediaInfo | null | "failed">(null);
+	const editable = useEditorEditable(editor);
 
 	useEffect(() => {
 		if (!mediaId) return;
@@ -48,7 +50,7 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 			data-file-block
 			className={cn(
 				"not-prose my-6 flex items-center gap-3 rounded-lg border bg-card px-4 py-3",
-				selected && "ring-2 ring-ring",
+				selected && SELECTED_RING,
 			)}
 		>
 			<Icon aria-hidden className="size-8 shrink-0 text-muted-foreground" strokeWidth={1.5} />
@@ -57,7 +59,7 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 					aria-label="보일 이름"
 					value={label}
 					placeholder={filename || "파일"}
-					disabled={!editor.isEditable}
+					disabled={!editable}
 					// 입력 글자가 에디터 문서로 새지 않게 한다.
 					onKeyDown={(event) => event.stopPropagation()}
 					onChange={(event) => updateAttributes({ label: event.target.value || null })}

@@ -40,7 +40,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { EditorInsertAction, EditorSelectionAction } from "../admin-components";
-import { cn } from "../lib/utils/cn";
 import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
 import { useAdminFeatures } from "../screens/shared/admin-features";
 import { Button } from "../ui/button";
@@ -51,7 +50,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { IconButton } from "../ui/icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Toggle } from "../ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { deleteBlock, duplicateBlock, moveBlock } from "./block-commands";
 import { BlockHandleOverlay } from "./block-handle-overlay";
@@ -68,7 +69,12 @@ import { INLINE_MARK_TOOLS } from "./inline-marks";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
-import { filterCommands, OPEN_IMAGE_DIALOG_EVENT, type SlashCommandItem } from "./slash-command";
+import {
+	filterCommands,
+	OPEN_FILE_PICKER_EVENT,
+	OPEN_IMAGE_DIALOG_EVENT,
+	type SlashCommandItem,
+} from "./slash-command";
 import { SlashMenuPopup } from "./slash-menu-popup";
 import { TableToolbar } from "./table-toolbar";
 import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
@@ -120,7 +126,7 @@ const chain = (editor: Editor) => editor.chain().focus();
 /** 블록 모양 드롭다운. 지금 블록의 모양 이름이 드롭다운 이름이 된다. */
 const BLOCK_STYLES: ToolbarItem[] = [
 	{
-		label: "본문",
+		label: "문단",
 		icon: Pilcrow,
 		isActive: (e) => e.isActive("paragraph"),
 		run: (e) => chain(e).setParagraph().run(),
@@ -207,7 +213,7 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 	{
 		priority: 3,
 		tool: {
-			label: "코드블록",
+			label: "코드 블록",
 			icon: SquareCode,
 			isActive: (e) => e.isActive("codeBlock"),
 			run: (e) => chain(e).toggleCodeBlock().run(),
@@ -217,7 +223,6 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 		priority: 7,
 		tool: {
 			label: "표",
-			title: "표 삽입",
 			icon: Table2,
 			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
 		},
@@ -240,26 +245,44 @@ function ToolbarDropdown({
 	/** 글자 없이 아이콘만 보인다. 이름은 aria-label과 툴팁으로 알린다. */
 	iconOnly?: boolean;
 }) {
+	const content = (
+		<>
+			{Icon && <Icon aria-hidden className="size-4" />}
+			{!iconOnly && label}
+			<ChevronDown aria-hidden className="size-3" />
+		</>
+	);
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						className={cn("h-8 gap-1 text-xs", iconOnly ? "px-1.5" : "px-2")}
-						aria-label={label}
-						title={iconOnly ? label : undefined}
-						disabled={!editor.isEditable}
-						onMouseDown={(event) => event.preventDefault()}
-					/>
-				}
-			>
-				{Icon && <Icon aria-hidden className="size-4" />}
-				{!iconOnly && label}
-				<ChevronDown aria-hidden className="size-3" />
-			</DropdownMenuTrigger>
+			{iconOnly ? (
+				<IconButton
+					label={label}
+					side="bottom"
+					size="sm"
+					className="h-8 gap-1 px-1.5 text-xs"
+					disabled={!editor.isEditable}
+					onMouseDown={(event) => event.preventDefault()}
+					trigger={(button) => <DropdownMenuTrigger render={button} />}
+				>
+					{content}
+				</IconButton>
+			) : (
+				<DropdownMenuTrigger
+					render={
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-8 gap-1 px-2 text-xs"
+							aria-label={label}
+							disabled={!editor.isEditable}
+							onMouseDown={(event) => event.preventDefault()}
+						/>
+					}
+				>
+					{content}
+				</DropdownMenuTrigger>
+			)}
 			<DropdownMenuContent align="start" className="min-w-36">
 				{items.map((item) => (
 					<ToolbarMenuItem key={item.label} editor={editor} item={item} />
@@ -524,10 +547,11 @@ export function CmsEditor({
 			const active = [...BLOCK_STYLES, ...INLINE_TOOLS, ...SCRIPT_TOOLS, ...ALIGN_TOOLS, ...LIST_STYLES]
 				.map((item) => (item.isActive?.(current) ? "1" : "0"))
 				.join("");
-			return `${active}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
+			const marks = ["link", "cmsTooltip"].map((mark) => (current.isActive(mark) ? "1" : "0")).join("");
+			return `${active}${marks}:${current.isActive("table") ? "table" : ""}:${selection.from}:${selection.to}:${selection instanceof CellSelection}`;
 		},
 	});
-	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "본문") : "본문";
+	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "문단") : "문단";
 	const activeList = editor ? LIST_STYLES.find((item) => item.isActive?.(editor)) : undefined;
 	const activeAlign = editor ? ALIGN_TOOLS.find((item) => item.isActive?.(editor)) : undefined;
 
@@ -555,6 +579,12 @@ export function CmsEditor({
 		if (!editor || editor.isEditable === canEdit) return;
 		// update 이벤트를 내지 않는다. 내면 원문 모드로 바뀔 때 멈춘 시각 문서가 본문을 덮어쓴다.
 		editor.setEditable(canEdit, false);
+		// 노드 뷰(코드 블록 머리 도구·블록 도구 줄)가 잠금을 따라 다시 그리도록 문서를 바꾸지 않는 트랜잭션을 낸다.
+		// effect 안에서 바로 내면 노드 뷰를 그리는 중 flushSync 경고가 나므로 미룬다.
+		queueMicrotask(() => {
+			if (!editor.isDestroyed)
+				editor.view.dispatch(editor.state.tr.setMeta("cmsEditable", canEdit).setMeta("addToHistory", false));
+		});
 		rerender();
 	}, [canEdit, editor]);
 
@@ -622,6 +652,16 @@ export function CmsEditor({
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
+	// 슬래시 메뉴 "파일": 파일 고르기 창을 연다. 미디어 저장소가 없으면 올릴 수 없다고 알린다.
+	useEffect(() => {
+		const open = () => {
+			if (!media) toast.error(MEDIA_NOT_CONFIGURED);
+			else fileInputRef.current?.click();
+		};
+		window.addEventListener(OPEN_FILE_PICKER_EVENT, open);
+		return () => window.removeEventListener(OPEN_FILE_PICKER_EVENT, open);
+	}, [media]);
+
 	/** 이미지가 아닌 파일들을 올려 파일 카드로 넣는다. `at`이 있으면 그 자리(끌어 놓은 곳)에 넣는다. */
 	const uploadAttachments = useCallback(
 		async (files: File[], at?: number) => {
@@ -635,7 +675,7 @@ export function CmsEditor({
 				const toastId = toast.loading(`'${file.name}' 올리는 중…`);
 				try {
 					const { mediaId } = await uploadAttachment(file, (percent) =>
-						toast.loading(`'${file.name}' 올리는 중… ${percent}%`, { id: toastId }),
+						toast.loading(`'${file.name}' 올리는 중 · ${percent}%`, { id: toastId }),
 					);
 					const node = { type: FILE_NODE_NAME, attrs: { mediaId, label: null } };
 					if (position === undefined) editor.chain().focus().insertContent(node).run();
@@ -818,28 +858,15 @@ export function CmsEditor({
 			priority: 4,
 			render: () => (
 				<DropdownMenu>
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<DropdownMenuTrigger
-									render={
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="size-8 p-0"
-											aria-label="업로드"
-											disabled={!canEdit}
-											onMouseDown={(event) => event.preventDefault()}
-										/>
-									}
-								/>
-							}
-						>
-							<Upload className="size-4" aria-hidden />
-						</TooltipTrigger>
-						<TooltipContent side="bottom">업로드</TooltipContent>
-					</Tooltip>
+					<IconButton
+						label="업로드"
+						side="bottom"
+						disabled={!canEdit}
+						onMouseDown={(event) => event.preventDefault()}
+						trigger={(button) => <DropdownMenuTrigger render={button} />}
+					>
+						<Upload className="size-4" aria-hidden />
+					</IconButton>
 					<DropdownMenuContent align="start" className="w-40">
 						<UploadMenuItems />
 					</DropdownMenuContent>
@@ -856,22 +883,27 @@ export function CmsEditor({
 					open={linkDraft !== null}
 					onOpenChange={(open) => setLinkDraft(open ? linkDraftFromSelection(editor) : null)}
 				>
-					<PopoverTrigger
-						render={
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="size-8 p-0"
-								aria-label="링크 삽입·수정"
-								title="링크 삽입·수정"
-								disabled={!canEdit}
-								onMouseDown={(event) => event.preventDefault()}
-							/>
-						}
-					>
-						<Link2 aria-hidden className="size-4" />
-					</PopoverTrigger>
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<PopoverTrigger
+									render={
+										<Toggle
+											size="sm"
+											pressed={editor.isActive("link")}
+											disabled={!canEdit}
+											aria-label="링크"
+											onMouseDown={(event) => event.preventDefault()}
+											className="size-8 p-0"
+										/>
+									}
+								>
+									<Link2 aria-hidden className="size-4" />
+								</PopoverTrigger>
+							}
+						/>
+						<TooltipContent side="bottom">링크</TooltipContent>
+					</Tooltip>
 					<PopoverContent align="start" className="w-80">
 						{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
 					</PopoverContent>

@@ -4,19 +4,16 @@ import { ArrowDown, ArrowUp, Copy, GripVertical, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "../ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface BlockHandleOverlayProps {
 	coords: { top: number; left: number };
@@ -56,58 +53,46 @@ export function BlockHandleOverlay({
 			className="flex items-center"
 		>
 			{actions.map((action) => (
-				<Tooltip key={action.id}>
-					<TooltipTrigger
-						render={
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-xs"
-								aria-label={action.label}
-								disabled={action.busy}
-								onClick={action.onClick}
-								className="text-muted-foreground hover:text-foreground"
-							/>
-						}
-					>
-						{action.busy ? <Spinner className="size-3" /> : action.icon}
-					</TooltipTrigger>
-					<TooltipContent side="bottom">{action.label}</TooltipContent>
-				</Tooltip>
+				<IconButton
+					key={action.id}
+					label={action.label}
+					side="bottom"
+					size="icon-xs"
+					disabled={action.busy}
+					onClick={action.onClick}
+					className="text-muted-foreground hover:text-foreground"
+				>
+					{action.busy ? <Spinner className="size-3" /> : action.icon}
+				</IconButton>
 			))}
 			{/* 모달이 아니어야 한다: 핸들을 누르면 메뉴가 열리는데, 모달 배경이 dragover·drop을 가로채면 드래그가 끝나지 않는다. */}
 			<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-xs"
-							draggable
-							onDragStart={(event) => {
-								// 누를 때 열린 메뉴는 끌기 시작하면 닫는다.
-								setOpen(false);
-								onDragStart?.(event);
-							}}
-							onDragEnd={onDragEnd}
-							aria-label="블록 조작 메뉴"
-							title="블록 조작 (드래그하여 이동)"
-							className="cursor-grab text-muted-foreground active:cursor-grabbing"
-						/>
-					}
+				<IconButton
+					label="블록 조작"
+					side="bottom"
+					size="icon-xs"
+					draggable
+					onDragStart={(event) => {
+						// 누를 때 열린 메뉴는 끌기 시작하면 닫는다.
+						setOpen(false);
+						onDragStart?.(event);
+					}}
+					onDragEnd={onDragEnd}
+					className="cursor-grab text-muted-foreground active:cursor-grabbing"
+					trigger={(button) => <DropdownMenuTrigger render={button} />}
 				>
 					<GripVertical aria-hidden />
-				</DropdownMenuTrigger>
+				</IconButton>
 				<DropdownMenuContent align="start" side="right" className="w-56">
 					<DropdownMenuItem onClick={onMoveUp}>
 						<ArrowUp aria-hidden />
 						위로 이동
-						<DropdownMenuShortcut>Alt+↑</DropdownMenuShortcut>
+						<DropdownMenuShortcut>⌥↑</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onMoveDown}>
 						<ArrowDown aria-hidden />
 						아래로 이동
-						<DropdownMenuShortcut>Alt+↓</DropdownMenuShortcut>
+						<DropdownMenuShortcut>⌥↓</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onDuplicate}>
 						<Copy aria-hidden />
@@ -120,12 +105,6 @@ export function BlockHandleOverlay({
 						삭제
 						<DropdownMenuShortcut>⇧⌘⌫</DropdownMenuShortcut>
 					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuGroup>
-						<DropdownMenuLabel className="font-normal text-[10px]">
-							키보드: Alt+↑/↓ 이동 · Mod+Shift+D 복제 · Mod+Shift+Backspace 삭제
-						</DropdownMenuLabel>
-					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>,

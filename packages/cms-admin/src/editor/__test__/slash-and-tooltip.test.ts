@@ -3,7 +3,7 @@ import { Editor } from "@tiptap/core";
 import { describe, expect, it, vi } from "vitest";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction } from "../block-inserts";
 import { buildEditorExtensions } from "../extensions";
-import { buildBlockSlashCommands, filterCommands, SLASH_COMMANDS } from "../slash-command";
+import { buildBlockSlashCommands, filterCommands, OPEN_FILE_PICKER_EVENT, SLASH_COMMANDS } from "../slash-command";
 import { mdxToTiptap, tiptapToMdx } from "../tiptap-content";
 
 describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
@@ -12,7 +12,7 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 
 		// mermaid, chart, math가 포함되어야 한다.
 		const titles = commands.map((c) => c.title);
-		expect(titles).toContain("다이어그램(Mermaid)");
+		expect(titles).toContain("다이어그램");
 		expect(titles).toContain("차트");
 		expect(titles).toContain("수식");
 
@@ -25,7 +25,7 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(titles).toContain("단 나누기");
 		expect(titles).not.toContain("정렬");
 
-		const mermaidCmd = commands.find((c) => c.title === "다이어그램(Mermaid)");
+		const mermaidCmd = commands.find((c) => c.title === "다이어그램");
 		expect(mermaidCmd?.keywords).toContain("mermaid");
 		expect(mermaidCmd?.keywords).toContain("다이어그램");
 		expect(mermaidCmd?.description).toBeTruthy();
@@ -77,14 +77,27 @@ describe("슬래시 메뉴 블록 정의 기반 삽입 (v2 C3a)", () => {
 		expect(titles).toContain("표");
 		expect(titles).toContain("이미지");
 		expect(titles).toContain("툴팁");
-		expect(titles).toContain("다이어그램(Mermaid)");
+		expect(titles).toContain("다이어그램");
 		expect(titles).toContain("차트");
 		expect(titles).toContain("수식");
 	});
 
+	it("슬래시 메뉴와 서식 도구가 같은 블록 이름을 쓰고, 파일 항목은 파일 고르기를 연다", () => {
+		const titles = SLASH_COMMANDS.map((c) => c.title);
+		expect(titles).toEqual(expect.arrayContaining(["문단", "글머리 목록", "번호 목록", "코드 블록", "표", "파일"]));
+		const open = vi.fn();
+		window.addEventListener(OPEN_FILE_PICKER_EVENT, open);
+		const editor = new Editor({ extensions: buildEditorExtensions(), content: "<p>/파일</p>" });
+		SLASH_COMMANDS.find((c) => c.title === "파일")?.action(editor, { from: 1, to: 4 });
+		window.removeEventListener(OPEN_FILE_PICKER_EVENT, open);
+		expect(open).toHaveBeenCalledOnce();
+		expect(editor.getText()).toBe("");
+		editor.destroy();
+	});
+
 	it("filterCommands가 한글/영문 키워드로 블록 커맨드를 검색한다", () => {
-		expect(filterCommands("mermaid").some((c) => c.title === "다이어그램(Mermaid)")).toBe(true);
-		expect(filterCommands("다이어그램").some((c) => c.title === "다이어그램(Mermaid)")).toBe(true);
+		expect(filterCommands("mermaid").some((c) => c.title === "다이어그램")).toBe(true);
+		expect(filterCommands("다이어그램").some((c) => c.title === "다이어그램")).toBe(true);
 		expect(filterCommands("chart").some((c) => c.title === "차트")).toBe(true);
 		expect(filterCommands("그래프").some((c) => c.title === "차트")).toBe(true);
 		expect(filterCommands("math").some((c) => c.title === "수식")).toBe(true);

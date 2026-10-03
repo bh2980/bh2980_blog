@@ -11,7 +11,6 @@ import {
 import type { Editor } from "@tiptap/core";
 import { Baseline, Check } from "lucide-react";
 import { cn } from "../lib/utils/cn";
-import { Button } from "../ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,6 +19,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { IconButton } from "../ui/icon-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { COLOR_MARK_NAME } from "./color-mark";
 
@@ -163,36 +163,30 @@ export function TextColorPanel({ editor, onPicked }: { editor: Editor; onPicked?
 	);
 }
 
-/** 툴바의 글자색 버튼. 아이콘 밑줄이 지금 글자색을 보여 준다. */
-export function TextColorMenu({ editor }: { editor: Editor }) {
+/** 글자색 버튼 아이콘. 지금 고른 글의 글자색·배경색으로 칠해 보인다(툴바와 서식 버블이 같이 쓴다). */
+export function TextColorIcon({ editor }: { editor: Editor }) {
 	const current = currentColor(editor);
 	const underline = textColorProps({ fg: current.fg, fgDark: current.fgDark, bg: current.bg, bgDark: current.bgDark });
 	return (
+		<span {...underline} className={cn(underline.className, "rounded-sm p-0.5")}>
+			<Baseline aria-hidden className="size-4" />
+		</span>
+	);
+}
+
+/** 툴바의 글자색 버튼. 아이콘이 지금 글자색을 보여 준다. */
+export function TextColorMenu({ editor }: { editor: Editor }) {
+	return (
 		<DropdownMenu>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<DropdownMenuTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="size-8 p-0"
-									aria-label="글자색"
-									disabled={!editor.isEditable}
-									onMouseDown={(event) => event.preventDefault()}
-								/>
-							}
-						/>
-					}
-				>
-					<span {...underline} className={cn(underline.className, "rounded-sm p-0.5")}>
-						<Baseline aria-hidden className="size-4" />
-					</span>
-				</TooltipTrigger>
-				<TooltipContent side="bottom">글자색</TooltipContent>
-			</Tooltip>
+			<IconButton
+				label="글자색"
+				side="bottom"
+				disabled={!editor.isEditable}
+				onMouseDown={(event) => event.preventDefault()}
+				trigger={(button) => <DropdownMenuTrigger render={button} />}
+			>
+				<TextColorIcon editor={editor} />
+			</IconButton>
 			<DropdownMenuContent align="start" className="w-auto">
 				<TextColorMenuItems editor={editor} />
 			</DropdownMenuContent>

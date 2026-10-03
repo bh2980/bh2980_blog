@@ -5,8 +5,19 @@ import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/re
 import type { ReactNode } from "react";
 import { useCmsAdminComponents } from "../../../admin-components";
 import { cn } from "../../../lib/utils/cn";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
+import { Switch } from "../../../ui/switch";
 import { type FenceEditorMeta, FencePreviewNodeView, LazyFencePreview } from "../fence-preview";
-import { AttributeInput, type ContainerValues, useContainerValues } from "../shared";
+import {
+	AttributeInput,
+	BlockSettings,
+	BlockSettingsField,
+	ContainerToolbar,
+	type ContainerValues,
+	SELECTED_RING,
+	useContainerValues,
+	useEditorEditable,
+} from "../shared";
 import { addedBlockOfNode, isContainer } from "./shared";
 
 /** 사이트·블록 확장이 블록에 등록하는 편집 컴포넌트가 받는 값(`CmsAdminComponents.blockEditors`). */
@@ -21,7 +32,7 @@ export interface CustomBlockEditorProps {
 	readonly selected: boolean;
 }
 
-/** 속성 하나의 기본 입력. 선택 값이 있으면 고르는 칸, 참·거짓이면 체크, 나머지는 한 줄 입력이다. */
+/** 속성 하나의 기본 입력(설정 팝오버 안). 선택 값이 있으면 고르는 칸, 참·거짓이면 스위치, 나머지는 글 입력이다. */
 function AttributeField({
 	name,
 	definition,
@@ -39,75 +50,91 @@ function AttributeField({
 	if (!attribute) return null;
 	const value = values[name] ?? attribute.defaultValue ?? (attribute.type === "boolean" ? false : "");
 	const id = `${definition.name}-${name}`;
+	const description = attribute.description ? (
+		<p className="text-muted-foreground text-xs">{attribute.description}</p>
+	) : null;
 	if (attribute.type === "boolean") {
 		return (
-			<label htmlFor={id} className="flex items-center gap-1.5 text-xs">
-				<input
-					id={id}
-					type="checkbox"
-					checked={value === true}
-					disabled={!editable}
-					onChange={(event) => setValue(name, event.target.checked)}
-				/>
-				{attribute.label}
-			</label>
+			<div className="flex flex-col gap-1">
+				<label htmlFor={id} className="flex items-center justify-between gap-2">
+					<span className="text-muted-foreground">{attribute.label}</span>
+					<Switch
+						id={id}
+						size="sm"
+						checked={value === true}
+						disabled={!editable}
+						onCheckedChange={(checked) => setValue(name, checked)}
+					/>
+				</label>
+				{description}
+			</div>
 		);
 	}
 	if (attribute.options) {
+		const options = Object.entries(attribute.options).map(([option, label]) => ({ value: option, label }));
 		return (
-			<label htmlFor={id} className="flex items-center gap-1.5 text-xs">
-				{attribute.label}
-				<select
-					id={id}
+			<BlockSettingsField label={attribute.label} htmlFor={id}>
+				<Select
 					value={String(value)}
+					items={options}
 					disabled={!editable}
-					onChange={(event) => setValue(name, event.target.value)}
-					className="rounded border border-slate-200 bg-transparent px-1 py-0.5 dark:border-slate-700"
+					onValueChange={(next) => next !== null && setValue(name, String(next))}
 				>
-					{Object.entries(attribute.options).map(([option, label]) => (
-						<option key={option} value={option}>
-							{label}
-						</option>
-					))}
-				</select>
-			</label>
+					<SelectTrigger id={id} size="sm" className="h-7 w-full text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{options.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				{description}
+			</BlockSettingsField>
 		);
 	}
 	return (
-		<label htmlFor={id} className="flex min-w-40 flex-1 items-center gap-1.5 text-xs">
-			<span className="shrink-0">{attribute.label}</span>
+		<BlockSettingsField label={attribute.label} htmlFor={id}>
 			<AttributeInput
 				id={id}
 				value={String(value)}
 				readOnly={!editable}
-				placeholder={attribute.description}
 				onCommit={(next) => setValue(name, next)}
-				className="min-w-0 flex-1 rounded border border-slate-200 bg-transparent px-1.5 py-0.5 dark:border-slate-700"
+				className="h-7 w-full rounded-md border border-input px-2 text-xs shadow-xs placeholder:text-muted-foreground placeholder:opacity-100 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 			/>
-		</label>
+			{description}
+		</BlockSettingsField>
 	);
 }
 
-/** 등록한 편집 컴포넌트가 없을 때의 기본 모양: 블록 이름과 속성 입력, 그 아래 본문. */
+/** 등록한 편집 컴포넌트가 없을 때의 기본 모양: 블록 이름과 그 아래 본문. 속성은 도구 줄의 설정 팝오버에서 고친다. */
 function DefaultCustomBlockEditor({ definition, values, setValue, content, editable }: CustomBlockEditorProps) {
 	const names = Object.keys(definition.attributes);
 	return (
 		<>
+			{editable && names.length > 0 && (
+				<ContainerToolbar label={`${definition.label} 도구`}>
+					<BlockSettings>
+						{names.map((name) => (
+							<AttributeField
+								key={name}
+								name={name}
+								definition={definition}
+								values={values}
+								setValue={setValue}
+								editable={editable}
+							/>
+						))}
+					</BlockSettings>
+				</ContainerToolbar>
+			)}
 			<div
 				contentEditable={false}
-				className="not-prose flex flex-wrap items-center gap-x-3 gap-y-1.5 border-slate-200 border-b px-3 py-2 text-slate-600 dark:border-slate-700 dark:text-slate-300"
+				className={cn("not-prose px-3 py-2 font-medium text-muted-foreground text-xs", content && "border-b")}
 			>
-				<span className="font-medium text-xs">{definition.label}</span>
-				{names.map((name) => (
-					<AttributeField
-						key={name}
-						name={name}
-						definition={definition}
-						values={values}
-						setValue={setValue}
-						editable={editable}
-					/>
-				))}
+				{definition.label}
 			</div>
 			{content && <div className="px-3">{content}</div>}
 		</>
@@ -119,6 +146,7 @@ export function CustomBlockNodeView(props: NodeViewProps) {
 	const { node, selected, editor } = props;
 	const definition = addedBlockOfNode(node.type.name);
 	const [values, setValue] = useContainerValues(props);
+	const editable = useEditorEditable(editor);
 	const { blockEditors } = useCmsAdminComponents();
 	if (!definition) return <NodeViewWrapper />;
 	const Editor = blockEditors?.[definition.name] ?? DefaultCustomBlockEditor;
@@ -126,17 +154,14 @@ export function CustomBlockNodeView(props: NodeViewProps) {
 		<NodeViewWrapper
 			data-cms-custom-block={definition.name}
 			data-cms-framed
-			className={cn(
-				"relative my-6 rounded-md border border-slate-200 dark:border-slate-700",
-				selected && "ring-2 ring-ring",
-			)}
+			className={cn("group/container relative my-6 rounded-md border", selected && SELECTED_RING)}
 		>
 			<Editor
 				definition={definition}
 				values={values}
 				setValue={setValue}
 				content={isContainer(definition) ? <NodeViewContent /> : null}
-				editable={editor.isEditable}
+				editable={editable}
 				selected={selected}
 			/>
 		</NodeViewWrapper>

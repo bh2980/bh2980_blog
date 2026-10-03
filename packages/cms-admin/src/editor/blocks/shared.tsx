@@ -34,6 +34,20 @@ export const useContainerValues = ({ node, updateAttributes }: Pick<NodeViewProp
 	return [values, setValue] as const;
 };
 
+/**
+ * 편집기를 고칠 수 있는가. 잠금(예약·휴지통·원문 모드)이 바뀌면 다시 그린다.
+ * 노드 뷰는 `editor.isEditable`을 그릴 때 한 번 읽으면 잠금이 바뀌어도 따라가지 않으므로 이것을 쓴다.
+ */
+export function useEditorEditable(editor: Editor | null | undefined): boolean {
+	// 편집기 없이 그리는 경우(미리보기·테스트의 가짜 편집기)는 구독하지 않고 그때 값을 읽는다.
+	const tracked = typeof editor?.on === "function" ? editor : null;
+	const editable = useEditorState({
+		editor: tracked,
+		selector: ({ editor: current }) => current?.isEditable ?? true,
+	});
+	return tracked ? (editable ?? true) : (editor?.isEditable ?? true);
+}
+
 /** 부모 컨테이너 안 i번째 자식의 시작 위치. */
 export const childPos = (parent: PmNode, parentPos: number, index: number) => {
 	let offset = parentPos + 1;

@@ -2,18 +2,26 @@
 
 import { computeImageTransform, resolveImageUrl } from "@bh2980/cms/mdx";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { AlignCenter, AlignLeft, AlignRight, Crop, Settings2, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Crop } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { type SlotRequest, useSlot } from "../slots/slots";
-import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
+import { Skeleton } from "../ui/skeleton";
+import { Switch } from "../ui/switch";
+import { Textarea } from "../ui/textarea";
+import {
+	BlockSettings,
+	BlockSettingsField,
+	ContainerToolbar,
+	SELECTED_RING,
+	ToolbarButton,
+	useEditorEditable,
+} from "./blocks/shared";
 import { ImageCropDialog } from "./image-crop-dialog";
+import { ALT_REQUIRED_MESSAGE } from "./image-insert-dialog";
 
 /** §4.3 너비 입력: 1~100% 또는 4096 이하의 양의 정수 px. 빈 값은 본문에 맞춤이다. */
 export const isValidImageWidth = (value: string) => {
@@ -41,10 +49,18 @@ function surroundingText(editor: NodeViewProps["editor"], getPos: NodeViewProps[
 	return `${before.trim()}\n[이미지]\n${after.trim()}`;
 }
 
-export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
+const ALIGN_TOOLS = [
+	{ value: "left", label: "왼쪽 정렬", icon: AlignLeft },
+	{ value: "center", label: "가운데 정렬", icon: AlignCenter },
+	{ value: "right", label: "오른쪽 정렬", icon: AlignRight },
+] as const;
+
+export function CmsImageNodeView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
 	const widthInputId = useId();
 	const altInputId = useId();
 	const widthErrorId = useId();
+	const altErrorId = useId();
+	const decorativeId = useId();
 	/** AI 자리 구분값. 노드 뷰가 살아 있는 동안 같다(같은 이미지를 두 번 넣어도 따로다). */
 	const slotScope = useId();
 	const { src, alt, width, align, caption, mediaId, decorative, crop, rotate } = node.attrs;
@@ -62,7 +78,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 		};
 	}, []);
 	// 노드 뷰는 항상 편집기 안에서 그려지지만, 편집기 없이 그리는 경우(미리보기·테스트)도 막지 않는다.
-	const isEditable = editor?.isEditable ?? true;
+	const isEditable = useEditorEditable(editor);
 	/** 본문 이미지 자리(alt·캡션). 서버는 미디어 라이브러리 이미지와 이 사이트 주소(`/images/...`)의 이미지를 읽는다. */
 	const siteSrc = typeof src === "string" && src.startsWith("/") && !src.startsWith("//") ? src : undefined;
 	const imageSlot = (target: "alt" | "caption"): SlotRequest => ({
@@ -114,14 +130,14 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 	const imageSrc = typeof src === "string" && src ? src : mediaState?.publicUrl;
 	const resolved = resolveImageUrl(typeof imageSrc === "string" ? imageSrc : undefined);
 	const canRender = resolved !== null && "url" in resolved;
-	const resolveReason = canRender
-		? null
-		: src
-			? "허용되지 않는 이미지 주소입니다"
-			: !mediaId
-				? "이미지 주소가 없습니다"
-				: mediaState?.status === "checking"
-					? "미디어 상태를 확인하는 중입니다"
+	const isChecking = !canRender && !src && !!mediaId && (!mediaState || mediaState.status === "checking");
+	const resolveReason =
+		canRender || isChecking
+			? null
+			: src
+				? "허용되지 않는 이미지 주소입니다"
+				: !mediaId
+					? "이미지 주소가 없습니다"
 					: mediaState?.status === "pending"
 						? "미디어가 아직 준비되지 않았습니다"
 						: mediaState?.status === "failed"
@@ -131,6 +147,9 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 								: mediaState?.status === "lookup-failed"
 									? "미디어 상태를 확인할 수 없습니다"
 									: "미디어 주소를 해석할 수 없습니다";
+
+	// 설명이 필요한 이미지는 대체 텍스트가 있어야 한다(넣기 대화 상자와 같은 규칙).
+	const altMissing = decorative !== true && !String(alt ?? "").trim();
 
 	const alignClasses =
 		{
@@ -220,62 +239,28 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 			data-image-block
 			className={cn(
 				// 편집기 본문(prose)의 img 위아래 2em 여백이 회색 상자 안에 빈 띠로 보이지 않게 한다.
-				"group relative my-6 flex flex-col rounded-lg transition-all [&_img]:m-0",
+				"group group/container relative my-6 flex flex-col rounded-lg transition-all [&_img]:m-0",
 				alignClasses,
-				selected && "ring-2 ring-ring",
+				selected && SELECTED_RING,
 			)}
 			style={{ width: previewWidth || width || "100%", maxWidth: "100%" }}
 		>
-			{/* Image Controls Overlay */}
-			<div
-				hidden={!isEditable}
-				className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md border bg-popover/90 p-1 opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 has-aria-expanded:opacity-100"
-			>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					aria-label="이미지 왼쪽 정렬"
-					aria-pressed={align === "left"}
-					className={cn("size-7 p-0", align === "left" && "bg-accent")}
-					onClick={() => updateAttributes({ align: "left" })}
-				>
-					<AlignLeft className="h-3.5 w-3.5" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					aria-label="이미지 가운데 정렬"
-					aria-pressed={align === "center"}
-					className={cn("size-7 p-0", align === "center" && "bg-accent")}
-					onClick={() => updateAttributes({ align: "center" })}
-				>
-					<AlignCenter className="h-3.5 w-3.5" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					aria-label="이미지 오른쪽 정렬"
-					aria-pressed={align === "right"}
-					className={cn("size-7 p-0", align === "right" && "bg-accent")}
-					onClick={() => updateAttributes({ align: "right" })}
-				>
-					<AlignRight className="h-3.5 w-3.5" />
-				</Button>
-				<Separator orientation="vertical" className="mx-0.5 data-vertical:h-4" />
-				<Popover open={isEditing} onOpenChange={setIsEditing}>
-					<PopoverTrigger
-						render={<Button type="button" variant="ghost" size="sm" aria-label="이미지 설정" className="size-7 p-0" />}
-					>
-						<Settings2 className="size-3.5" />
-					</PopoverTrigger>
-					<PopoverContent align="end" className="flex w-72 flex-col gap-3 p-3 text-xs">
-						<div className="flex flex-col gap-1">
-							<Label htmlFor={widthInputId} className="text-muted-foreground text-xs">
-								너비
-							</Label>
+			{/* 블록 도구 줄: 정렬·설정·자르기. 삭제는 블록 손잡이 메뉴에 있다. */}
+			{isEditable && (
+				<ContainerToolbar label="이미지 도구">
+					{ALIGN_TOOLS.map((tool) => (
+						<ToolbarButton
+							key={tool.value}
+							label={tool.label}
+							pressed={(align || "center") === tool.value}
+							onClick={() => updateAttributes({ align: tool.value })}
+						>
+							<tool.icon aria-hidden />
+						</ToolbarButton>
+					))}
+					<Separator orientation="vertical" className="mx-0.5 data-vertical:h-4" />
+					<BlockSettings open={isEditing} onOpenChange={setIsEditing}>
+						<BlockSettingsField label="너비" htmlFor={widthInputId}>
 							<Input
 								id={widthInputId}
 								value={widthDraft}
@@ -291,63 +276,52 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 								placeholder="본문 맞춤"
 							/>
 							{widthInvalid && (
-								<p id={widthErrorId} className="text-destructive">
+								<p id={widthErrorId} role="alert" className="text-destructive">
 									1~100% 또는 1~4096px로 입력하세요.
 								</p>
 							)}
-						</div>
-						<div className="flex flex-col gap-1">
-							<div className="flex items-center justify-between gap-2">
-								<Label htmlFor={altInputId} className="text-muted-foreground text-xs">
-									대체 텍스트
-								</Label>
-								{decorative !== true && altSlot.trigger}
-							</div>
-							<Input
+						</BlockSettingsField>
+						<BlockSettingsField
+							label="대체 텍스트"
+							htmlFor={altInputId}
+							action={decorative !== true ? altSlot.trigger : undefined}
+						>
+							<Textarea
 								id={altInputId}
 								value={alt || ""}
+								rows={2}
 								disabled={decorative === true}
-								aria-invalid={(!decorative && !alt) || undefined}
+								aria-invalid={altMissing || undefined}
+								aria-describedby={altMissing ? altErrorId : undefined}
 								onChange={(e) => updateAttributes({ alt: e.target.value })}
-								className="h-7 text-xs"
-								placeholder="이미지 설명"
+								className="min-h-0 text-xs md:text-xs"
 							/>
+							{altMissing && (
+								<p id={altErrorId} role="alert" className="text-destructive">
+									{ALT_REQUIRED_MESSAGE}
+								</p>
+							)}
 							{altSlot.panel}
-							<Label className="font-normal text-xs">
-								<Checkbox
-									checked={decorative === true}
-									onCheckedChange={(checked) =>
-										updateAttributes(checked === true ? { decorative: true, alt: "" } : { decorative: null })
-									}
-								/>
-								장식 이미지
-							</Label>
-						</div>
-					</PopoverContent>
-				</Popover>
-				{canRender && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						aria-label="이미지 자르기 및 회전"
-						className="size-7 p-0"
-						onClick={() => setIsCropDialogOpen(true)}
-					>
-						<Crop className="size-3.5" />
-					</Button>
-				)}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					aria-label="이미지 삭제"
-					className="size-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-					onClick={() => deleteNode()}
-				>
-					<Trash2 aria-hidden />
-				</Button>
-			</div>
+						</BlockSettingsField>
+						<label htmlFor={decorativeId} className="flex items-center justify-between gap-2">
+							<span className="text-muted-foreground">장식 이미지</span>
+							<Switch
+								id={decorativeId}
+								size="sm"
+								checked={decorative === true}
+								onCheckedChange={(checked) =>
+									updateAttributes(checked ? { decorative: true, alt: "" } : { decorative: null })
+								}
+							/>
+						</label>
+					</BlockSettings>
+					{canRender && (
+						<ToolbarButton label="자르기·회전" onClick={() => setIsCropDialogOpen(true)}>
+							<Crop aria-hidden />
+						</ToolbarButton>
+					)}
+				</ContainerToolbar>
+			)}
 
 			{/* Actual Image */}
 			{canRender ? (
@@ -391,6 +365,8 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 						/>
 					</div>
 				)
+			) : isChecking ? (
+				<Skeleton role="status" aria-label="불러오는 중" className="h-48 w-full rounded-md" />
 			) : (
 				<div className="flex h-48 w-full items-center justify-center rounded-md bg-muted text-muted-foreground text-sm">
 					이미지를 불러올 수 없습니다
@@ -403,7 +379,7 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 				<Input
 					type="text"
 					value={caption || ""}
-					placeholder="캡션 입력..."
+					placeholder="캡션"
 					aria-label="이미지 캡션"
 					readOnly={!isEditable}
 					onChange={(e) => updateAttributes({ caption: e.target.value })}
@@ -422,14 +398,14 @@ export function CmsImageNodeView({ node, updateAttributes, deleteNode, selected,
 					<button
 						type="button"
 						data-slot="resize-handle-left"
-						aria-label="이미지 너비 조절 핸들 (좌측 하단)"
+						aria-label="이미지 너비 조절 왼쪽"
 						onPointerDown={(e) => handleResizeStart(e, "left")}
 						className="absolute -bottom-1 -left-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>
 					<button
 						type="button"
 						data-slot="resize-handle-right"
-						aria-label="이미지 너비 조절 핸들 (우측 하단)"
+						aria-label="이미지 너비 조절 오른쪽"
 						onPointerDown={(e) => handleResizeStart(e, "right")}
 						className="absolute -right-1 -bottom-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>

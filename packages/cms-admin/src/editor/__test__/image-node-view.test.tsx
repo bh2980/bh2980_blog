@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ALT_REQUIRED_MESSAGE } from "../image-insert-dialog";
 import { CmsImageNodeView } from "../image-node-view";
 
 vi.mock("@tiptap/react", async (importOriginal) => {
@@ -46,12 +47,31 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		return { props, updateAttributes, deleteNode };
 	};
 
+	it("설정 팝오버에서 대체 텍스트를 비우면 그 자리에 오류를 보이고, 장식 이미지는 스위치로 켠다", async () => {
+		const { props, updateAttributes } = createProps({ alt: "" });
+		render(<CmsImageNodeView {...props} />);
+		fireEvent.click(screen.getByRole("button", { name: "설정" }));
+		expect((await screen.findByRole("alert")).textContent).toBe(ALT_REQUIRED_MESSAGE);
+		fireEvent.click(screen.getByRole("switch", { name: "장식 이미지" }));
+		expect(updateAttributes).toHaveBeenCalledWith({ decorative: true, alt: "" });
+	});
+
+	it("읽기 전용이면 도구 줄을 숨기고 삭제 버튼은 두지 않는다", () => {
+		const { props } = createProps({}, false);
+		render(<CmsImageNodeView {...props} />);
+		expect(screen.queryByRole("toolbar", { name: "이미지 도구" })).toBeNull();
+		cleanup();
+		render(<CmsImageNodeView {...createProps().props} />);
+		expect(screen.getByRole("toolbar", { name: "이미지 도구" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: /삭제/ })).toBeNull();
+	});
+
 	it("너비 조절 모서리 핸들을 렌더링하고 드래그 시 한번의 트랜잭션으로 업데이트한다", () => {
 		const { props, updateAttributes } = createProps({ width: "500px" });
 		render(<CmsImageNodeView {...props} />);
 
-		const leftHandle = screen.getByLabelText("이미지 너비 조절 핸들 (좌측 하단)");
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 핸들 (우측 하단)");
+		const leftHandle = screen.getByLabelText("이미지 너비 조절 왼쪽");
+		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
 		expect(leftHandle).toBeDefined();
 		expect(rightHandle).toBeDefined();
 
@@ -70,7 +90,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: "60%" });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 핸들 (우측 하단)");
+		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
 			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 150 }));
@@ -95,14 +115,14 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps();
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByLabelText("이미지 자르기 및 회전");
+		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
 		fireEvent.click(cropBtn);
 
 		// 다이얼로그 열림 확인
-		expect(screen.getByText("이미지 자르기 및 회전")).toBeDefined();
+		expect(screen.getByRole("dialog", { name: "자르기·회전" })).toBeDefined();
 
 		// 90도 회전 버튼 클릭
-		const rotateBtn = screen.getByRole("button", { name: "시계 방향 90도 회전" });
+		const rotateBtn = screen.getByRole("button", { name: "90° 회전" });
 		fireEvent.click(rotateBtn);
 		expect(screen.getByText("90°")).toBeDefined();
 
@@ -120,7 +140,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: null });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 핸들 (우측 하단)");
+		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
 		// 이동 없이 단순 클릭 후 놓음
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
@@ -134,7 +154,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: "400px" });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 핸들 (우측 하단)");
+		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
 			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 200 }));
@@ -148,14 +168,14 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ rotate: "90" });
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByLabelText("이미지 자르기 및 회전");
+		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
 		fireEvent.click(cropBtn);
 
 		// X, Y, W, H 키보드 수치 입력 대안 (P2)
-		const inputX = screen.getByLabelText("자르기 X 좌표 (%)");
-		const inputY = screen.getByLabelText("자르기 Y 좌표 (%)");
-		const inputW = screen.getByLabelText("자르기 너비 (%)");
-		const inputH = screen.getByLabelText("자르기 높이 (%)");
+		const inputX = screen.getByLabelText("자르기 X");
+		const inputY = screen.getByLabelText("자르기 Y");
+		const inputW = screen.getByLabelText("자르기 너비");
+		const inputH = screen.getByLabelText("자르기 높이");
 
 		fireEvent.change(inputX, { target: { value: "15" } });
 		fireEvent.change(inputY, { target: { value: "25" } });
@@ -172,14 +192,14 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		});
 	});
 
-	it("대화상자에서 회전 초기화와 전체 초기화가 동작한다", () => {
+	it("대화상자에서 초기화가 자르기와 회전을 함께 되돌린다", () => {
 		const { props, updateAttributes } = createProps({
 			crop: "10,10,80,80",
 			rotate: "180",
 		});
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByLabelText("이미지 자르기 및 회전");
+		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
 		fireEvent.click(cropBtn);
 
 		// 초기화 버튼 클릭

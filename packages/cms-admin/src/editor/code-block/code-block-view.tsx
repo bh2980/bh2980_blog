@@ -5,11 +5,12 @@ import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } 
 import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
 import { useCallback, useId, useRef, useState } from "react";
 import { cn } from "../../lib/utils/cn";
-import { Button } from "../../ui/button";
+import { IconButton } from "../../ui/icon-button";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Toggle } from "../../ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { useEditorEditable } from "../blocks/shared";
 import {
 	codeEffectsKey,
 	type FoldRegion,
@@ -68,10 +69,12 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 		selector: ({ editor: current }) => {
 			if (!current) return "";
 			const { from, to } = current.state.selection;
-			return `${codeEffectsKey.getState(current.state)?.version ?? 0}:${from}:${to}`;
+			return `${codeEffectsKey.getState(current.state)?.version ?? 0}:${from}:${to}:${current.isEditable}`;
 		},
 	});
 
+	// 읽기 전용(예약 잠금·휴지통·원문 모드)이면 언어·경로·효과 도구를 숨기고 줄을 고르지 않는다.
+	const editable = useEditorEditable(editor);
 	const pos = typeof getPos === "function" ? getPos() : undefined;
 	const base = typeof pos === "number" ? pos + 1 : null;
 	const language = (node.attrs.language as string) || "text";
@@ -137,7 +140,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 	);
 
 	const startLineDrag = (line: number, event: React.MouseEvent) => {
-		if (event.button !== 0 || rawMode) return;
+		if (event.button !== 0 || rawMode || !editable) return;
 		event.preventDefault();
 		const anchor = event.shiftKey && picked ? (anchorRef.current ?? picked.start) : line;
 		anchorRef.current = anchor;
@@ -169,7 +172,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 
 	/** 줄 번호를 오른쪽 클릭하면 그 자리에 줄 효과 메뉴를 연다. 고른 줄 안이면 고른 줄 전체, 밖이면 그 줄이다. */
 	const openLineMenuAt = (line: number, event: React.MouseEvent) => {
-		if (rawMode) return;
+		if (rawMode || !editable) return;
 		event.preventDefault();
 		const inside = picked && picked.start <= line && line < picked.end;
 		const range = inside ? { start: picked.start, end: picked.end } : { start: line, end: line + 1 };
@@ -198,6 +201,10 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 		return out + text.slice(at, range.to);
 	};
 
+	const languageOptions = CODE_LANGUAGE_OPTIONS.some((option) => option.value === language)
+		? CODE_LANGUAGE_OPTIONS
+		: [...CODE_LANGUAGE_OPTIONS, { label: language, value: language }];
+
 	const collapseAt = (line: number): FoldRegion | undefined => collapses.find((region) => region.startLine === line);
 
 	return (
@@ -210,38 +217,41 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 				contentEditable={false}
 				className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b bg-muted/60 px-2 py-1 text-muted-foreground text-xs"
 			>
-				<div className="flex flex-wrap items-center gap-1.5">
-					<Select
-						value={language}
-						// 이름 목록을 넘겨야 닫힌 칸에 값(`ts`)이 아니라 이름(`TypeScript`)이 보인다.
-						items={
-							CODE_LANGUAGE_OPTIONS.some((option) => option.value === language)
-								? CODE_LANGUAGE_OPTIONS
-								: [...CODE_LANGUAGE_OPTIONS, { label: language, value: language }]
-						}
-						onValueChange={(value) => value && updateAttributes({ language: value })}
-					>
-						<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label="코드 언어 선택">
-							<SelectValue placeholder="언어 선택" />
-						</SelectTrigger>
-						<SelectContent>
-							{CODE_LANGUAGE_OPTIONS.map((option) => (
-								<SelectItem key={option.value} value={option.value}>
-									{option.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<Input
-						placeholder="파일 경로 (선택사항)"
-						value={parsedMeta.title}
-						onChange={(event) => setMeta({ title: event.target.value })}
-						className="h-7 w-48 text-xs"
-						aria-label="코드 블록 파일명"
-					/>
-				</div>
+				{editable ? (
+					<div className="flex flex-wrap items-center gap-1.5">
+						<Select
+							value={language}
+							// 이름 목록을 넘겨야 닫힌 칸에 값(`ts`)이 아니라 이름(`TypeScript`)이 보인다.
+							items={languageOptions}
+							onValueChange={(value) => value && updateAttributes({ language: value })}
+						>
+							<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label="코드 언어">
+								<SelectValue placeholder="언어" />
+							</SelectTrigger>
+							<SelectContent>
+								{CODE_LANGUAGE_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Input
+							placeholder="파일 경로"
+							value={parsedMeta.title}
+							onChange={(event) => setMeta({ title: event.target.value })}
+							className="h-7 w-48 text-xs"
+							aria-label="파일 경로"
+						/>
+					</div>
+				) : (
+					<div className="flex min-h-7 items-center gap-2 px-1">
+						<span>{languageOptions.find((option) => option.value === language)?.label ?? language}</span>
+						{parsedMeta.title && <span className="font-mono">{parsedMeta.title}</span>}
+					</div>
+				)}
 				<div className="flex items-center gap-0.5">
-					{rawMode ? (
+					{!editable ? null : rawMode ? (
 						<Tooltip>
 							<TooltipTrigger render={<span className="flex items-center gap-1 px-1" />}>
 								<Info aria-hidden className="size-3.5" />
@@ -251,28 +261,19 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						</Tooltip>
 					) : (
 						<>
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon-xs"
-											className="size-7"
-											aria-label="줄 효과"
-											disabled={!(picked ?? selectedLines)}
-											onMouseDown={(event) => event.preventDefault()}
-											onClick={() => {
-												const lines = picked ?? selectedLines;
-												if (lines) setMenu({ start: lines.start, end: lines.end });
-											}}
-										/>
-									}
-								>
-									<Rows3 aria-hidden className="size-3.5" />
-								</TooltipTrigger>
-								<TooltipContent>줄 효과</TooltipContent>
-							</Tooltip>
+							<IconButton
+								label="줄 효과"
+								size="icon-xs"
+								className="size-7"
+								disabled={!(picked ?? selectedLines)}
+								onMouseDown={(event) => event.preventDefault()}
+								onClick={() => {
+									const lines = picked ?? selectedLines;
+									if (lines) setMenu({ start: lines.start, end: lines.end });
+								}}
+							>
+								<Rows3 aria-hidden className="size-3.5" />
+							</IconButton>
 							<RulesPanel
 								rules={rules}
 								text={text}
@@ -290,43 +291,36 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 							/>
 						</>
 					)}
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Toggle
-									size="sm"
-									pressed={parsedMeta.showLineNumbers}
-									onPressedChange={(pressed) => setMeta({ showLineNumbers: pressed })}
-									aria-label="줄 번호 표시 토글"
-									className="size-7 min-w-7 p-0"
-								/>
-							}
-						>
-							<ListOrdered aria-hidden className="size-3.5" />
-						</TooltipTrigger>
-						<TooltipContent>줄 번호</TooltipContent>
-					</Tooltip>
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-xs"
-									onClick={handleCopy}
-									aria-label="코드 복사"
-									className="size-7"
-								/>
-							}
-						>
-							{copied ? (
-								<Check aria-hidden className="size-3.5 text-primary" />
-							) : (
-								<Copy aria-hidden className="size-3.5" />
-							)}
-						</TooltipTrigger>
-						<TooltipContent>{copied ? "복사됨!" : "코드 복사"}</TooltipContent>
-					</Tooltip>
+					{editable && (
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<Toggle
+										size="sm"
+										pressed={parsedMeta.showLineNumbers}
+										onPressedChange={(pressed) => setMeta({ showLineNumbers: pressed })}
+										aria-label="줄 번호"
+										className="size-7 min-w-7 p-0"
+									/>
+								}
+							>
+								<ListOrdered aria-hidden className="size-3.5" />
+							</TooltipTrigger>
+							<TooltipContent>줄 번호</TooltipContent>
+						</Tooltip>
+					)}
+					<IconButton
+						label={copied ? "복사했습니다" : "코드 복사"}
+						size="icon-xs"
+						className="size-7"
+						onClick={handleCopy}
+					>
+						{copied ? (
+							<Check aria-hidden className="size-3.5 text-primary" />
+						) : (
+							<Copy aria-hidden className="size-3.5" />
+						)}
+					</IconButton>
 				</div>
 			</div>
 
@@ -364,22 +358,23 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 							>
 								<span className="flex w-4 justify-center">
 									{collapse && (
-										<button
-											type="button"
-											aria-label={collapse.open ? `${line + 1}번째 줄부터 접기` : `${line + 1}번째 줄부터 펼치기`}
+										<IconButton
+											label={collapse.open ? `${line + 1}번째 줄부터 접기` : `${line + 1}번째 줄부터 펼치기`}
+											side="left"
+											size="icon-xs"
 											aria-expanded={collapse.open}
 											onMouseDown={(event) => {
 												event.preventDefault();
 												event.stopPropagation();
 												setFoldOpen(editor.view, collapse, !collapse.open);
 											}}
-											className="rounded hover:bg-accent"
+											className="size-4 rounded p-0 hover:bg-accent"
 										>
 											<ChevronRight
 												aria-hidden
 												className={cn("size-3.5 transition-transform", collapse.open && "rotate-90")}
 											/>
-										</button>
+										</IconButton>
 									)}
 								</span>
 								<span className={cn("min-w-5 text-right tabular-nums", !parsedMeta.showLineNumbers && "opacity-50")}>
@@ -449,7 +444,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 					</div>
 				</div>
 
-				{menu && !rawMode && (
+				{menu && !rawMode && editable && (
 					<LineMenu
 						start={menu.start}
 						end={Math.min(menu.end, starts.length)}

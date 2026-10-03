@@ -52,8 +52,8 @@ describe("더한 블록의 편집기 표현", () => {
 			"math",
 		]);
 		expect(items.find((item) => item.id === "mermaid")).toMatchObject({
-			title: "다이어그램(Mermaid)",
-			description: "다이어그램·흐름도 삽입",
+			title: "다이어그램",
+			description: "Mermaid 다이어그램·흐름도",
 			icon: "workflow",
 		});
 	});

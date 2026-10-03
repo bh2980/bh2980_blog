@@ -5,7 +5,6 @@ import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import {
-	Baseline,
 	ChevronsLeftRightEllipsis,
 	Code2,
 	Eye,
@@ -14,6 +13,7 @@ import {
 	MessageSquareMore,
 	Pencil,
 	Regex,
+	Trash2,
 	Unlink,
 	X,
 } from "lucide-react";
@@ -21,13 +21,13 @@ import { Fragment, type ReactNode, useEffect, useLayoutEffect, useRef, useState 
 import { createPortal } from "react-dom";
 import type { EditorSelectionAction } from "../admin-components";
 import { cn } from "../lib/utils/cn";
-import { Button } from "../ui/button";
+import { IconButton } from "../ui/icon-button";
 import { Separator } from "../ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { BLOCK_TOOLBAR } from "./blocks/shared";
 import { codeEffectsKey, expandRule, removeRule, setFoldOpen } from "./code-block/effects-plugin";
 import { findAnchor, startLinkFromText, unlinkRef } from "./code-block/link-commands";
 import { COLOR_MARK_NAME } from "./color-mark";
-import { TextColorPanel } from "./color-menu";
+import { TextColorIcon, TextColorPanel } from "./color-menu";
 import {
 	type ActiveCodeRule,
 	type ActiveInlineMark,
@@ -50,37 +50,35 @@ type Panel =
 const GAP = 8;
 const EDGE = 8;
 
+/** 버블의 버튼. 이름(aria-label)과 툴팁이 같다. `pressed`를 주면 켜고 끄는 버튼이다. */
 function BubbleButton({
 	label,
 	onClick,
+	pressed,
+	destructive,
 	className,
 	children,
 }: {
 	label: string;
 	onClick: () => void;
+	pressed?: boolean;
+	destructive?: boolean;
 	className?: string;
 	children: ReactNode;
 }) {
 	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						aria-label={label}
-						// 누를 때 편집기 선택·초점을 빼앗지 않는다.
-						onMouseDown={(event) => event.preventDefault()}
-						onClick={onClick}
-						className={cn("h-8 min-w-8 px-1.5", className)}
-					/>
-				}
-			>
-				{children}
-			</TooltipTrigger>
-			<TooltipContent side="top">{label}</TooltipContent>
-		</Tooltip>
+		<IconButton
+			label={label}
+			pressed={pressed}
+			destructive={destructive}
+			size="sm"
+			// 누를 때 편집기 선택·초점을 빼앗지 않는다.
+			onMouseDown={(event) => event.preventDefault()}
+			onClick={onClick}
+			className={cn("h-8 min-w-8 px-1.5", className)}
+		>
+			{children}
+		</IconButton>
 	);
 }
 
@@ -253,7 +251,7 @@ export function InlineBubble({
 						href={href}
 						target="_blank"
 						rel="noreferrer noopener"
-						title={`${href} (새 탭에서 열기)`}
+						title={href}
 						// 누를 때 편집기 초점을 빼앗으면 버블이 먼저 사라져 링크가 열리지 않는다.
 						onMouseDown={(event) => event.preventDefault()}
 						className="max-w-56 truncate px-1 text-primary text-xs underline underline-offset-2"
@@ -266,7 +264,7 @@ export function InlineBubble({
 					>
 						<Pencil aria-hidden className="size-4" />
 					</BubbleButton>
-					<BubbleButton label="링크 제거" onClick={act(() => removeInlineMark(editor, mark))}>
+					<BubbleButton label="링크 해제" onClick={act(() => removeInlineMark(editor, mark))}>
 						<Unlink aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -280,10 +278,10 @@ export function InlineBubble({
 					<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={content}>
 						{content}
 					</span>
-					<BubbleButton label="툴팁 설명 수정" onClick={() => openTooltip(mark)}>
+					<BubbleButton label="툴팁 수정" onClick={() => openTooltip(mark)}>
 						<Pencil aria-hidden className="size-4" />
 					</BubbleButton>
-					<BubbleButton label="툴팁 제거" onClick={act(() => removeInlineMark(editor, mark))}>
+					<BubbleButton label="툴팁 해제" onClick={act(() => removeInlineMark(editor, mark))}>
 						<X aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -307,7 +305,7 @@ export function InlineBubble({
 					>
 						다시 연결
 					</BubbleButton>
-					<BubbleButton label="코드 연결 끊기" onClick={act(() => unlinkRef(editor.view, mark.from, mark.to))}>
+					<BubbleButton label="코드 연결 해제" onClick={act(() => unlinkRef(editor.view, mark.from, mark.to))}>
 						<Unlink aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -336,8 +334,9 @@ export function InlineBubble({
 						{open ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
 					</BubbleButton>
 					<BubbleButton
-						label={publicOpen ? "공개 글에서 처음엔 접어 두기" : "공개 글에서 처음부터 펼쳐 두기"}
-						className={cn("text-xs", publicOpen && "bg-muted")}
+						label="처음부터 펼치기"
+						pressed={publicOpen}
+						className="text-xs"
 						onClick={act(() => {
 							if (!type) return;
 							editor
@@ -350,7 +349,7 @@ export function InlineBubble({
 								.run();
 						})}
 					>
-						처음부터 펼침
+						처음부터 펼치기
 					</BubbleButton>
 					<BubbleButton label="글자 접기 해제" onClick={act(() => removeInlineMark(editor, mark))}>
 						<X aria-hidden className="size-4" />
@@ -399,8 +398,8 @@ export function InlineBubble({
 				>
 					개별로
 				</BubbleButton>
-				<BubbleButton label="규칙 삭제" onClick={act(() => removeRule(editor.view, blockPos, rule.id))}>
-					<X aria-hidden className="size-4" />
+				<BubbleButton label="규칙 삭제" destructive onClick={act(() => removeRule(editor.view, blockPos, rule.id))}>
+					<Trash2 aria-hidden className="size-4" />
 				</BubbleButton>
 			</div>
 		);
@@ -446,21 +445,18 @@ export function InlineBubble({
 			))}
 			{!inCode && allowsMark(editor.state, COLOR_MARK_NAME) && (
 				<BubbleButton label="글자색" onClick={() => setPanel({ kind: "color" })}>
-					<Baseline aria-hidden className="size-4" />
+					<TextColorIcon editor={editor} />
 				</BubbleButton>
 			)}
 			<Separator orientation="vertical" className="mx-0.5 h-4" />
 			{allowsMark(editor.state, "cmsTooltip") && (
-				<BubbleButton
-					label={editor.isActive("cmsTooltip") ? "툴팁 설명 수정" : "툴팁 추가"}
-					onClick={() => openTooltip()}
-				>
+				<BubbleButton label={editor.isActive("cmsTooltip") ? "툴팁 수정" : "툴팁 넣기"} onClick={() => openTooltip()}>
 					<MessageSquareMore aria-hidden className="size-4" />
 				</BubbleButton>
 			)}
 			{allowsMark(editor.state, "link") && !inCode && (
 				<BubbleButton
-					label={editor.isActive("link") ? "링크 수정" : "링크 삽입"}
+					label={editor.isActive("link") ? "링크 수정" : "링크 넣기"}
 					onClick={() => openLink(linkDraftFromSelection(editor))}
 				>
 					<Link2 aria-hidden className="size-4" />
@@ -468,7 +464,7 @@ export function InlineBubble({
 			)}
 			{!inCode && allowsMark(editor.state, "codeRef") && hasCodeBlock && (
 				<BubbleButton
-					label="코드와 잇기"
+					label="코드 연결"
 					onClick={() => {
 						const { from, to } = editor.state.selection;
 						startLinkFromText(editor.view, from, to);
@@ -480,7 +476,7 @@ export function InlineBubble({
 			{inCode && allowsMark(editor.state, "codeFold") && (
 				<BubbleButton
 					label="글자 접기"
-					className={cn(editor.isActive("codeFold") && "bg-muted")}
+					pressed={editor.isActive("codeFold")}
 					onClick={() => editor.chain().focus().toggleMark("codeFold").run()}
 				>
 					<ChevronsLeftRightEllipsis aria-hidden className="size-4" />
@@ -490,7 +486,7 @@ export function InlineBubble({
 	);
 
 	const style = { position: "fixed", top: position?.top ?? -9999, left: position?.left ?? -9999, zIndex: 40 } as const;
-	const surface = "rounded-md border bg-popover/95 text-popover-foreground shadow-md backdrop-blur";
+	const surface = "rounded-md border bg-popover/95 text-popover-foreground shadow-sm backdrop-blur";
 
 	return createPortal(
 		panel ? (
@@ -529,7 +525,7 @@ export function InlineBubble({
 				aria-label={target.kind === "selection" ? "인라인 서식" : "인라인 효과"}
 				data-cms-inline-bubble
 				style={style}
-				className={cn(surface, "flex items-center gap-0.5 p-0.5")}
+				className={BLOCK_TOOLBAR}
 			>
 				{target.kind === "selection" ? renderSelectionTools() : renderMarks(target.marks, target.rules)}
 			</div>
