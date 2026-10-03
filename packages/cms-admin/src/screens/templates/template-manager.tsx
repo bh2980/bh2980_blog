@@ -16,6 +16,7 @@ import { cmsFetch, errorText } from "../admin-api";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
 import { AdminShell } from "../shared/admin-shell";
 import { useConfirm } from "../shared/confirm-dialog";
+import { formatDateOnly } from "../shared/format-date";
 import { OPEN_ITEM } from "../shared/side-panel";
 
 const TEMPLATES_KEY = ["cms", "templates"] as const;
@@ -243,9 +244,7 @@ export function TemplateManager() {
 													className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
 												>
 													<span className="truncate font-medium text-sm">{t.name}</span>
-													<span className="text-[11px] text-muted-foreground">
-														{new Date(t.updatedAt).toLocaleDateString("ko-KR")}
-													</span>
+													<span className="text-[11px] text-muted-foreground">{formatDateOnly(t.updatedAt)}</span>
 												</Button>
 												<MoreActionsButton actions={templateMenu(t)} label={`'${t.name}' 템플릿 작업`} />
 											</ActionContextMenu>

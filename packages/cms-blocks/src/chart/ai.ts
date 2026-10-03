@@ -44,6 +44,27 @@ export function validateChart(value: string): string | undefined {
 /** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
 export const chartSyntax = defineValidator({ name: "chart-syntax", label: "차트 문법", run: validateChart });
 
+/** 가짜 연결(개발 전용)의 답: 문법 검사를 통과하는 차트. 고칠 차트가 있으면 마지막 값 행을 한 번 더 넣는다. */
+function fakeChart(input: Readonly<Record<string, string>>): string {
+	const fence = input.block?.trim().match(/^(```chart[^\n]*\n[\s\S]*?)\n?(```)$/);
+	if (fence) {
+		const body = fence[1] ?? "";
+		return `${body}\n${body.trimEnd().split("\n").at(-1) ?? ""}\n${fence[2]}`;
+	}
+	const label = (input.title?.trim() || "(fake)").replaceAll("|", " ");
+	return lines(
+		"```chart",
+		"chart bar",
+		"x label",
+		"series value | (fake) | chart-1",
+		"",
+		"data",
+		"label | value",
+		`${label} | 1`,
+		"```",
+	);
+}
+
 export const chartAi = {
 	/** 차트 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 차트 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
@@ -63,6 +84,7 @@ export const chartAi = {
 					CHART_SYNTAX_GUIDE,
 				),
 			checks: [chartSyntax],
+			fake: fakeChart,
 			attach: [{ slot: "insert" }],
 		}),
 
@@ -85,6 +107,7 @@ export const chartAi = {
 					CHART_SYNTAX_GUIDE,
 				),
 			checks: [chartSyntax],
+			fake: fakeChart,
 			attach: [{ slot: "block", block: "chart" }],
 		}),
 };

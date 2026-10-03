@@ -4,7 +4,7 @@ import { Puzzle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils/cn";
-import { iconByName } from "../screens/shared/collection-icon";
+import { useIconByName } from "../screens/shared/collection-icon";
 import type { SlashCommandItem } from "./slash-command";
 
 interface SlashMenuPopupProps {
@@ -17,6 +17,7 @@ interface SlashMenuPopupProps {
 
 /** 항목 아이콘. 이름(블록 정의의 `editor.icon`)이나 컴포넌트이고, 없으면 퍼즐 아이콘이다. */
 function ItemIcon({ icon }: { icon: SlashCommandItem["icon"] }) {
+	const iconByName = useIconByName();
 	const Icon = (typeof icon === "string" ? iconByName(icon) : icon) ?? Puzzle;
 	return <Icon aria-hidden className="size-4" />;
 }

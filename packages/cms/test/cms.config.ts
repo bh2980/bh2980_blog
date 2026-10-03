@@ -34,21 +34,22 @@ const tagIds = fields.relation({
 
 /**
  * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
- * 편집 화면은 이 묶음을 전용 SEO 탭(`seo-panel.tsx`)으로 그린다.
+ * 편집 화면은 `seo: true` 묶음을 SEO 탭으로 그리고, 미리보기는 필드 역할(`role`)로 값을 찾는다.
  */
 const seo = {
-	seoTitle: fields.text({ label: "검색 제목", localized: true }),
-	seoDescription: fields.text({ label: "검색 설명", multiline: true, localized: true }),
+	seoTitle: fields.text({ label: "검색 제목", role: "seoTitle", localized: true }),
+	seoDescription: fields.text({ label: "검색 설명", role: "seoDescription", multiline: true, localized: true }),
 	/** 링크 미리보기·검색 결과 이미지(미디어 ID). 비우면 제목으로 만든 카드를 쓴다. */
-	ogImageId: fields.text({ label: "공유 이미지", localized: true }),
+	ogImageId: fields.text({ label: "공유 이미지", role: "ogImage", localized: true }),
 	/** `noindex`면 검색엔진에 숨기고 sitemap에서 뺀다. */
 	seoRobots: fields.select({
-		label: "검색 노출",
+		label: "검색엔진에 숨기기",
+		role: "noindex",
 		options: { index: "노출", noindex: "숨기기" },
 		defaultValue: "index",
 	}),
 	/** 다른 곳에 먼저 올린 글의 주소(canonical). 넣으면 sitemap에서 빠진다. 사이트 경로(/...)와 http(s)만 받는다. */
-	canonicalUrl: fields.text({ label: "원본 주소", localized: true, placeholder: "https://" }),
+	canonicalUrl: fields.text({ label: "원본 주소", role: "canonical", localized: true, placeholder: "https://" }),
 } as const;
 
 export const post = defineCollection({
@@ -63,7 +64,9 @@ export const post = defineCollection({
 			label: "요약",
 			multiline: true,
 			placeholder: "목록과 검색 결과에 보일 소개글",
+			role: "summary",
 			input: "auto-summary",
+			fillFromBody: true,
 			localized: true,
 		}),
 		categoryId: fields.relation({ label: "카테고리", to: "category", required: "publish", createInline: true }),
@@ -101,7 +104,12 @@ export const post = defineCollection({
 		{ fields: ["title", "slug", "summary"] },
 		{ group: "분류", fields: ["categoryId", "tagIds", "series"] },
 		{ group: "정책", fields: ["policy"] },
-		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
+		{
+			group: "SEO",
+			seo: true,
+			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
+			collapsed: true,
+		},
 	],
 	list: { columns: ["title", "status", "locale", "categoryId", "tagIds", "updatedAt", "publishedAt"] },
 });
@@ -129,7 +137,12 @@ export const memo = defineCollection({
 	layout: [
 		{ fields: ["title", "slug"] },
 		{ group: "분류", fields: ["tagIds", "series"] },
-		{ group: "SEO", fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"], collapsed: true },
+		{
+			group: "SEO",
+			seo: true,
+			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
+			collapsed: true,
+		},
 	],
 	list: { columns: ["title", "status", "locale", "tagIds", "updatedAt", "publishedAt"] },
 });
@@ -162,7 +175,7 @@ export const series = defineCollection({
 	workflow: "record",
 	fields: {
 		...taxonomyFields,
-		summary: fields.text({ label: "설명", multiline: true, localized: true }),
+		summary: fields.text({ label: "설명", role: "summary", multiline: true, localized: true }),
 		/**
 		 * 모음집은 게시글 또는 메모 한 종류를 순서대로 담는다. 게시글 목록은 예전 키(`itemIds`)를 그대로 쓴다.
 		 * 종류를 바꿔 저장하면 다른 종류 목록은 비워진다.
@@ -211,7 +224,7 @@ const notice = defineBlock({
 	component: "Notice",
 	attributes: {
 		level: { type: "string", label: "단계", options: { info: "안내", warn: "주의" }, defaultValue: "info" },
-		title: { type: "string", label: "제목" },
+		title: { type: "string", label: "제목", translatable: true },
 	},
 	editor: { view: "node", insertable: true, keywords: ["notice", "공지"] },
 });

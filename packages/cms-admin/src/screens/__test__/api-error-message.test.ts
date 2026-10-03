@@ -6,12 +6,16 @@ describe("M10 publish feedback", () => {
 		const payload = {
 			issues: [
 				{ code: "missing_title", path: "title" },
-				{ code: "missing_category", path: "categoryId" },
+				{ code: "missing_field", path: "categoryId", message: "카테고리" },
 			],
 		};
 		expect(cmsApiIssues(payload)).toEqual(payload.issues);
 		expect(cmsApiErrorMessage(payload, "실패")).toContain("제목을 입력하세요. (title)");
-		expect(cmsIssueMessage(payload.issues[1])).toContain("카테고리");
+		expect(cmsIssueMessage(payload.issues[1])).toBe("카테고리를 입력하세요. (categoryId)");
+		expect(cmsIssueMessage({ code: "missing_field", path: "summary", message: "요약" })).toBe(
+			"요약을 입력하세요. (summary)",
+		);
+		expect(cmsIssueMessage({ code: "missing_field", path: "x" })).toBe("필수 항목을 입력하세요. (x)");
 	});
 
 	it("formats body position and image warnings with readable labels", () => {

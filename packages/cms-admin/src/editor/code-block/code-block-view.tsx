@@ -1,6 +1,14 @@
 "use client";
 
-import { type CodeLineEffect, type CodeRule, lineAt, lineRange, lineStarts } from "@bh2980/cms/code-block";
+import {
+	CODE_LINE_EFFECTS,
+	type CodeLineEffect,
+	type CodeRule,
+	lineAt,
+	lineEffectDefinition,
+	lineRange,
+	lineStarts,
+} from "@bh2980/cms/code-block";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper, useEditorState } from "@tiptap/react";
 import { Check, ChevronRight, Copy, Info, ListOrdered, Rows3 } from "lucide-react";
 import { useCallback, useId, useRef, useState } from "react";
@@ -31,21 +39,16 @@ const LINE_HEIGHT = 24;
 /** 코드 위아래 여백(`py-3`). */
 const PAD_TOP = 12;
 
-/** 줄 배경. 공개 화면(annotation constants)과 같은 색이다. */
-const LINE_BACKGROUND: Record<string, string> = {
-	highlight: "bg-gray-400/20",
-	plus: "bg-green-400/10 shadow-[inset_2px_0_0_0_rgba(74,222,128,1)]",
-	minus: "bg-red-400/10 shadow-[inset_2px_0_0_0_rgba(239,68,68,1)]",
-};
-
-/** 경고·오류 물결 밑줄 색. 공개 화면(annotation constants)과 같다. */
-const WAVY: Record<string, string> = {
-	warning: "decoration-yellow-400/80",
-	error: "decoration-red-500",
-};
-
 const effectsOnLine = (effects: readonly CodeLineEffect[], line: number) =>
 	effects.filter((effect) => effect.start <= line && line < effect.end);
+
+/** 줄 효과의 편집기 표시(줄 배경·물결 밑줄·줄 번호 칸 표시). 효과 정의의 `editor`다. */
+const editorLookOf = (effect: CodeLineEffect) => lineEffectDefinition(effect.name)?.editor;
+
+/** 줄 번호 칸 표시. 한 줄에 여럿이면 정의 순서가 앞선 효과다. */
+const markerOf = (effects: readonly CodeLineEffect[]) =>
+	CODE_LINE_EFFECTS.find((definition) => definition.editor?.marker && effects.some((e) => e.name === definition.name))
+		?.editor?.marker;
 
 /**
  * 코드 블록 편집 화면(v2 C5 재개발).
@@ -338,6 +341,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						const selected = !!lines && lines.start <= line && line < lines.end;
 						const whole = !!picked && picked.start <= line && line < picked.end;
 						const anchored = effects.some((effect) => effect.name === "anchor");
+						const marker = markerOf(effects);
 						return (
 							// biome-ignore lint/a11y/noStaticElementInteractions: 줄 번호를 눌러(끌어) 줄을 고르고 오른쪽 클릭으로 메뉴를 연다(키보드는 상단 "줄 효과" 버튼)
 							<div
@@ -381,11 +385,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 									{line + 1}
 								</span>
 								<span className="w-2.5 text-center">
-									{effects.some((effect) => effect.name === "plus") ? (
-										<span className="text-green-600 dark:text-green-400">+</span>
-									) : effects.some((effect) => effect.name === "minus") ? (
-										<span className="text-red-600 dark:text-red-400">−</span>
-									) : null}
+									{marker && <span className={marker.className}>{marker.text}</span>}
 								</span>
 							</div>
 						);
@@ -401,7 +401,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						>
 							{rows.map((line) => {
 								const effects = effectsOnLine(lineEffects, line);
-								const wavy = effects.map((effect) => WAVY[effect.name]).find(Boolean);
+								const wavy = effects.map((effect) => editorLookOf(effect)?.wavy).find(Boolean);
 								const whole = !!picked && picked.start <= line && line < picked.end;
 								// 잇기 중에 먼저 고른 줄, 마우스를 올린 본문 연결이 가리키는 줄.
 								const pending = !!linkingLines && linkingLines.start <= line && line < linkingLines.end;
@@ -411,7 +411,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 										key={line}
 										className={cn(
 											"h-6",
-											...effects.map((effect) => LINE_BACKGROUND[effect.name] ?? ""),
+											...effects.map((effect) => editorLookOf(effect)?.background ?? ""),
 											(whole || pending || hovered) && "bg-primary/15",
 										)}
 									>

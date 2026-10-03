@@ -154,7 +154,7 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	},
 	{
 		title: "내부 글 링크",
-		description: "제목으로 글·메모 찾기",
+		description: "제목으로 글 찾기",
 		icon: Link2,
 		keywords: ["링크", "내부", "글", "link", "internal"],
 		action: (editor, range) => {

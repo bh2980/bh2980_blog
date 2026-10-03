@@ -533,7 +533,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				"missing categoryId",
 				{ ...validSnap, metadata: { title: "Title" }, references: [] },
 				validResolvedTargets,
-				"missing_category",
+				"missing_field",
 			],
 			[
 				"mdx issues",
@@ -844,6 +844,23 @@ describe("ContentService M2-TW-1 Contract", () => {
 			).rejects.toBeDefined();
 
 			expect(storePort.saveWorkingWithReferences).not.toHaveBeenCalled();
+		});
+
+		it("createDraft makes an empty record slug from the slug field's `from`", async () => {
+			const storePort: StorePort = {
+				getWorkingReferences: vi.fn(),
+				hasPendingSchedule: vi.fn(),
+				archiveEntry: vi.fn(),
+				unarchiveEntry: vi.fn(),
+				trashEntry: vi.fn(),
+				publishEntry: vi.fn(),
+				getWorking: vi.fn(),
+				createEntryWithReferences: vi.fn().mockResolvedValue(undefined),
+				saveWorkingWithReferences: vi.fn(),
+			};
+			const service = createContentService(storePort);
+			await service.createDraft({ collection: "tag", slug: "", metadata: { title: "Hello World" }, mdx: "" });
+			expect(vi.mocked(storePort.createEntryWithReferences).mock.calls[0][0].snapshot.slug).toBe("hello-world");
 		});
 
 		it("createDraft uses exactly one atomic call, no previous refs/contentHash, exact port error propagated", async () => {

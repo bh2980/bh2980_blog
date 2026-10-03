@@ -500,7 +500,9 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		await expect(store.publishEntry({ id: draft.id, expectedVersion: draft.version })).rejects.toMatchObject({
 			code: "publish_validation_failed",
-			issues: expect.arrayContaining([expect.objectContaining({ code: "missing_category", path: "categoryId" })]),
+			issues: expect.arrayContaining([
+				expect.objectContaining({ code: "missing_field", path: "categoryId", message: "카테고리" }),
+			]),
 		});
 		const unchanged = await store.getEntry(draft.id);
 		expect(unchanged.status).toBe("draft");

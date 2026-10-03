@@ -2,10 +2,11 @@
  * 에디터 코드 블록의 효과 모델.
  *
  * - 글자 효과(굵게·기울임·취소선·밑줄·툴팁·글자 접기)는 코드 텍스트의 ProseMirror 마크다. 편집하면 마크가 글자를 따라간다.
- * - 줄 효과(강조·추가·삭제·경고·오류·줄 접기)는 노드 속성 `lineEffects`의 줄 범위다.
+ * - 줄 효과(정의 목록의 효과와 줄 접기·본문 연결 이름표)는 노드 속성 `lineEffects`의 줄 범위다. 정의는 `line-effects.ts`.
  * - 정규식 규칙(`{re:/.../}`)은 노드 속성 `rules`다. 찾은 위치가 아니라 규칙 그대로 저장한다.
  *
- * 저장 형식은 코드 펜스 주석 문법(이 폴더)이고, 에디터 변환은 블로그의 `src/cms/editor/converters/code-block.ts`다.
+ * 저장 형식은 코드 펜스 주석 문법(이 폴더)이고, 에디터 변환은 관리자 패키지의 `editor/converters/code-block.ts`다.
+ * 이 파일은 사이트 설정을 읽지 않는다. 사이트의 줄 효과 목록은 `active.ts`다.
  */
 
 /** 글자 효과: 주석 이름 ↔ 에디터 마크. */
@@ -26,23 +27,12 @@ export const CODE_BLOCK_MARKS = CODE_CHAR_EFFECTS.map((effect) => effect.mark).j
 export const charEffectByName = (name: string) => CODE_CHAR_EFFECTS.find((effect) => effect.name === name);
 export const charEffectByMark = (mark: string) => CODE_CHAR_EFFECTS.find((effect) => effect.mark === mark);
 
-/** 줄 효과(줄 접기 제외). 한 줄씩 켜고 끈다. */
-export const CODE_LINE_EFFECTS = [
-	{ name: "highlight", label: "강조" },
-	{ name: "plus", label: "추가(+)" },
-	{ name: "minus", label: "삭제(−)" },
-	{ name: "warning", label: "경고" },
-	{ name: "error", label: "오류" },
-] as const;
-
-export type CodeLineEffectName = (typeof CODE_LINE_EFFECTS)[number]["name"] | "collapse" | "anchor";
+/** 줄 효과 이름. 정의 목록(`CODE_LINE_EFFECTS`, 한 줄씩 켜고 끈다)의 이름과 `collapse`·`anchor`다. */
+export type CodeLineEffectName = string;
 
 export const COLLAPSE = "collapse";
 /** 본문 `:code-ref`가 가리키는 줄 이름표(`attrs.id`). 줄 효과처럼 글자를 따라 옮겨진다. */
 export const ANCHOR = "anchor";
-
-export const isLineEffectName = (name: string): name is CodeLineEffectName =>
-	name === COLLAPSE || name === ANCHOR || CODE_LINE_EFFECTS.some((effect) => effect.name === name);
 
 /** 줄 효과 하나. `start`~`end`는 줄 번호(0부터, `end`는 포함하지 않는다). */
 export interface CodeLineEffect {
@@ -152,7 +142,7 @@ export const escapePattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]
  */
 export function setLineEffect(
 	effects: readonly CodeLineEffect[],
-	name: Exclude<CodeLineEffectName, "collapse" | "anchor">,
+	name: CodeLineEffectName,
 	start: number,
 	end: number,
 	on: boolean,

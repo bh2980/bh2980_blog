@@ -16,7 +16,7 @@ import { IconButton } from "../ui/icon-button";
  * 브라우저에는 단계 이름만 기억하므로 폭 값은 여기서만 바꾸면 된다.
  */
 export const EDITOR_WIDTHS = {
-	/** 공개 블로그 글 본문과 같은 폭(`max-w-2xl`). 공개 화면 폭을 바꾸면 함께 바꾼다. */
+	/** 읽기 좋은 글 본문 폭(Tailwind `max-w-2xl`과 같은 42rem). */
 	narrow: "42rem",
 	normal: "48rem",
 	wide: "64rem",

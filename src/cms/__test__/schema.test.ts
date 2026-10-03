@@ -150,11 +150,11 @@ describe("정의에서 만든 서버 규칙", () => {
 		]);
 	});
 
-	it("발행 필수값은 v1 문제 코드를 쓴다", () => {
+	it("발행 필수값: 주소·제목은 v1 코드, 나머지는 라벨을 담은 missing_field", () => {
 		expect(missingRequiredIssues("post", { slug: null, metadata: { title: "" } })).toEqual([
 			{ code: "null_slug", path: "slug" },
 			{ code: "missing_title", path: "title" },
-			{ code: "missing_category", path: "categoryId" },
+			{ code: "missing_field", path: "categoryId", message: "카테고리" },
 		]);
 		expect(missingRequiredIssues("memo", { slug: "a", metadata: { title: "t" } })).toEqual([]);
 	});

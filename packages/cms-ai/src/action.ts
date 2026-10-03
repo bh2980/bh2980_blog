@@ -141,17 +141,32 @@ export type AiChoices =
 // 기능 정의
 // ---------------------------------------------------------------------------
 
+/**
+ * 코드 검사가 서버에서 읽는 본체 콘텐츠 조회. 실행 API가 본체의 공개 조회(`@bh2980/cms/plugin/server`의
+ * `createContentLookup`)로 채운다. 플러그인은 본체 표를 직접 읽지 않는다.
+ */
+export interface AiContentLookup {
+	/** 주소(slug) 중 같은 컬렉션·언어에서 이미 쓰는 것. `excludeEntryId` 항목이 쓰는 주소는 뺀다. */
+	slugsInUse(params: {
+		readonly collection: string;
+		readonly locale: string;
+		readonly slugs: readonly string[];
+		readonly excludeEntryId?: string;
+	}): Promise<ReadonlySet<string>>;
+}
+
 /** 코드 검사가 받는 상황. */
 export interface AiValidatorContext {
 	/** 실행에 쓴 입력. */
 	readonly input: Readonly<Record<string, unknown>>;
 	readonly collection?: string;
-	readonly locale?: string;
+	/** 콘텐츠 언어. 요청에 없으면 사이트 설정의 기본 언어다. */
+	readonly locale: string;
 	readonly entryId?: string;
 	/** 선택지가 있는 기능이면 값 → 보이는 이름. */
 	readonly choices?: ReadonlyMap<string, string>;
-	/** 이 컬렉션·언어의 다른 항목이 이미 쓰는 주소(slug). 컬렉션을 모르면 빈 집합이다. */
-	readonly slugsInUse: (slugs: readonly string[]) => Promise<ReadonlySet<string>>;
+	/** 본체 콘텐츠 조회(서버). */
+	readonly content: AiContentLookup;
 }
 
 /**
@@ -214,6 +229,12 @@ export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	/** 처음에 켜 둘까. 없으면 켠다. */
 	readonly enabled?: boolean;
 	readonly attach?: readonly AiAttach[];
+	/**
+	 * 개발 전용 가짜 연결(`CMS_AI_FAKE=1`)이 이 기능의 답으로 쓸 글. 받은 입력(이름 → 글)으로 만든다. 없으면 가짜 연결이
+	 * 결과 모양과 입력 종류로 답을 만든다. 코드 검사가 정해진 모양(예: 다이어그램 문법)을 바라는 기능만 둔다.
+	 * 후보 결과면 줄마다 후보 하나다.
+	 */
+	readonly fake?: (input: Readonly<Record<string, string>>) => string;
 }
 
 /** 공통 문구 하나(예: 문체 가이드). 지시문에 `{{shared.이름}}`으로 넣고, 관리자 AI 화면에서 고친다. */
@@ -224,7 +245,7 @@ export interface AiSharedText {
 }
 
 export interface AiConfig {
-	/** 사이트 소개. 모든 기능의 맨 앞 지시("너는 {이것} CMS의 편집 보조 도구다")에 들어간다. 없으면 "블로그". */
+	/** 사이트 소개. 모든 기능의 맨 앞 지시("너는 {이것} CMS의 편집 보조 도구다")에 들어간다. 없으면 "웹사이트". */
 	readonly siteDescription?: string;
 	/** 여러 기능이 함께 쓰는 공통 문구. 지시문에 `{{shared.이름}}`으로 넣는다. */
 	readonly shared?: Readonly<Record<string, AiSharedText>>;
@@ -332,6 +353,8 @@ export interface ResolvedAiAction {
 	readonly providerId: string | null;
 	readonly modelName: string;
 	readonly attach: readonly AiAttach[];
+	/** 가짜 연결이 쓸 답(`AiActionDefinition.fake`). */
+	readonly fake?: (input: Readonly<Record<string, string>>) => string;
 }
 
 /** 고칠 수 있는 값 이름. */
@@ -406,6 +429,7 @@ export function resolveAction(
 		providerId: override.providerId ?? null,
 		modelName: override.modelName ?? "",
 		attach: definition.attach ?? [],
+		...(definition.fake ? { fake: definition.fake } : {}),
 	};
 }
 
@@ -612,6 +636,9 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView, blo
 		}
 		if (action.stream && (engine !== "generate" || (action.result !== "text" && action.result !== "mdx"))) {
 			throw new Error(`${where}: stream needs the generate engine and a text or mdx result`);
+		}
+		if (action.fake !== undefined && typeof action.fake !== "function") {
+			throw new Error(`${where}: fake must be a function`);
 		}
 		if (action.result === "note" && action.apply && action.apply !== "none") {
 			throw new Error(`${where}: note results are not applied`);

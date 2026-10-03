@@ -31,6 +31,30 @@ export function SiteAdminComponents({ children }) {
 
 넣지 않은 펜스는 원문을 그대로 보인다.
 
+### 아이콘
+
+블록 정의의 `editor.icon`, 플러그인 사이드바 항목의 `icon`, 컬렉션의 `icon`, 코드 줄 효과의 `icon`은 lucide 이름이다.
+관리자 패키지에는 자주 쓰는 아이콘만 있으므로, 다른 이름은 같은 공급자의 `icons`로 등록한다. 없는 이름은 기본 아이콘(퍼즐·플러그 등)으로
+보인다.
+
+```tsx
+import { Eye } from "lucide-react";
+
+const components = { icons: { eye: Eye } };
+```
+
+플러그인은 관리자 쪽 `Provider` 안에서 등록한다(`@bh2980/cms-blocks`의 각 블록, `@bh2980/cms-ai`가 예시). 서버 레이아웃은
+컴포넌트를 브라우저로 넘길 수 없어 플러그인 정의가 아니라 클라이언트 공급자로 등록한다.
+
+## 속성 칸
+
+편집 화면 오른쪽 속성 칸은 컬렉션 정의대로 입력을 그린다. 필드 역할(`role`)에 맞춰 기본 입력이 바뀐다: `ogImage`는 미디어
+고르기, 선택지가 둘인 `noindex`는 켜고 끄기, `seoTitle`·`seoDescription`은 글자 수와 비었을 때 쓸 값(제목·요약)을 보인다.
+`input`으로 사이트 입력을 고르면 그 입력이 먼저다. 기본 입력 `auto-summary`는 여러 줄 요약 칸이다.
+
+`layout`에서 `seo: true`인 묶음은 `SEO` 탭에 그린다. 탭 위에는 검색 결과·공유 미리보기가 있고 값은 역할 필드에서 온다.
+날짜·시각은 사이트 설정의 `timeZone`으로 보인다.
+
 ## 블록 편집 화면
 
 설정의 `blocks`나 블록 확장 플러그인이 더한 블록(`editor.view: "node"`)은 관리자 화면이 정의에서 편집기 노드(`cms` + 파스칼

@@ -1,8 +1,10 @@
+import { type CodeBlockConfig, validateCodeBlockConfig } from "../annotation/code-block/line-effects";
 import type { BlockDefinition } from "../blocks/define";
 import { resolveBlocks } from "../blocks/resolve";
+import { type PaletteColor, validateTextPalette } from "../core/text-colors";
 import type { CmsPlugin } from "../plugin/define";
 import type { CollectionSchema } from "../schema/collection";
-import type { Field, ValueField } from "../schema/fields";
+import { FIELD_ROLES, type Field, TEXT_FIELD_ROLES, type ValueField } from "../schema/fields";
 
 /**
  * 사이트 설정(`cms.config.ts`) 규격. 블로그마다 컬렉션·언어를 여기에 적고 `defineConfig`로 감싸 기본 내보내기로 둔다.
@@ -80,6 +82,10 @@ export interface CmsConfig<
 	readonly blocks?: readonly BlockDefinition[];
 	/** 플러그인(예: `aiPlugin()`). 이름은 겹치지 않아야 한다. */
 	readonly plugins?: Plugins;
+	/** 코드 블록 설정. 줄 효과(`lineEffects`)를 더하거나 본체 기본(강조·추가·삭제·경고·오류)을 바꾼다. */
+	readonly codeBlock?: CodeBlockConfig;
+	/** 편집기 글자색·배경색 고르기 목록. 없으면 본체 기본 프리셋(`DEFAULT_TEXT_PALETTE`)이다. */
+	readonly textColors?: readonly PaletteColor[];
 }
 
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
@@ -92,6 +98,44 @@ function* valueFields(fields: Readonly<Record<string, Field>>): Generator<[strin
 			continue;
 		}
 		yield [name, field];
+	}
+}
+
+const isTextRole = (role: string): boolean => (TEXT_FIELD_ROLES as readonly string[]).includes(role);
+
+/** 필드 역할(`role`)·본문에서 채우기(`fillFromBody`)·주소 원본(`from`)이 필드 종류와 맞는지 확인한다. */
+function validateFieldMeanings(collection: string, schema: CollectionSchema): void {
+	const roles = new Map<string, string>();
+	for (const [name, field] of valueFields(schema.fields)) {
+		const role = "role" in field ? field.role : undefined;
+		if (role !== undefined) {
+			if (!(FIELD_ROLES as readonly string[]).includes(role)) {
+				throw new Error(`cms.config: ${collection}.${name} has unknown role "${role}"`);
+			}
+			const fits =
+				role === "noindex"
+					? field.kind === "select" && Object.hasOwn(field.options, "noindex")
+					: field.kind === "text" && isTextRole(role);
+			if (!fits) {
+				throw new Error(
+					role === "noindex"
+						? `cms.config: ${collection}.${name} role "noindex" needs a select field with a "noindex" option`
+						: `cms.config: ${collection}.${name} role "${role}" needs a text field`,
+				);
+			}
+			const other = roles.get(role);
+			if (other) throw new Error(`cms.config: ${collection} has role "${role}" on both ${other} and ${name}`);
+			roles.set(role, name);
+		}
+		if (field.kind === "text" && field.fillFromBody && !schema.body) {
+			throw new Error(`cms.config: ${collection}.${name} fillFromBody needs a collection with a body`);
+		}
+	}
+	for (const [name, field] of Object.entries(schema.fields)) {
+		if (field.kind !== "slug" || field.from === undefined) continue;
+		if (schema.fields[field.from]?.kind !== "text") {
+			throw new Error(`cms.config: ${collection}.${name} is made from "${field.from}", which is not a text field`);
+		}
 	}
 }
 
@@ -138,6 +182,11 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 
 	const paths = new Map<string, string>();
 	for (const [collection, schema] of Object.entries(config.collections)) {
+		// 목록·검색·관계 고르기·본문 링크·편집 화면 제목 칸이 `title`을 쓴다.
+		if (schema.fields.title?.kind !== "text") {
+			throw new Error(`cms.config: ${collection} needs a "title" text field (fields.text)`);
+		}
+		validateFieldMeanings(collection, schema);
 		if (schema.path !== undefined) {
 			const { path } = schema;
 			if (!path.startsWith("/") || path.split(":slug").length !== 2 || /:(?!slug)/.test(path) || /[?#]/.test(path)) {
@@ -169,6 +218,8 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 	}
 
 	const blocks = resolveBlocks(config).map((block) => block.name);
+	validateCodeBlockConfig(config.codeBlock);
+	validateTextPalette(config.textColors);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);

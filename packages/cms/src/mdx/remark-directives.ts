@@ -6,7 +6,7 @@
  *    `openai/gpt-oss-120b:free를` 같은 산문이 사라진다. 레거시 49편 실측 오탐은 2건이다(`:free를`, `:1로`).
  * 2. {@link remarkDirectivesToMdx} — **등록된** 이름을 MDX 요소로 바꾼다. 컴포넌트는 이름으로만 붙으므로
  *    (`MDX_COMPONENTS`) `mdxJsxFlowElement`·`mdxJsxTextElement`로 변환해야 한다.
- *    선례: `src/libs/mermaid/remark-mermaid-to-mdx.ts`, `src/libs/chart/remark-chart-to-mdx.ts`.
+ *    코드 펜스 블록을 MDX 요소로 바꾸는 `remark-fence-blocks.ts`와 같은 방식이다.
  *
  * 두 플러그인은 순서가 있다. demote를 먼저 돌려 미등록 이름을 걷어낸 뒤 변환한다.
  * **CMS 파서(`parseMdxAst`)와 공개 렌더 체인이 둘 다 쓴다.** 저장 문자열은 바뀌지 않고 분석기가 보는

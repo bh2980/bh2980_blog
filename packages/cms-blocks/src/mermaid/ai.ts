@@ -59,6 +59,14 @@ export function validateMermaid(value: string): string | undefined {
 /** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
 export const mermaidSyntax = defineValidator({ name: "mermaid-syntax", label: "Mermaid 문법", run: validateMermaid });
 
+/** 가짜 연결(개발 전용)의 답: 문법 검사를 통과하는 다이어그램. 고칠 다이어그램이 있으면 노드 한 줄을 더한다. */
+function fakeMermaid(input: Readonly<Record<string, string>>): string {
+	const fence = input.block?.trim().match(/^(```mermaid[^\n]*\n[\s\S]*?)\n?(```)$/);
+	if (fence) return `${fence[1]}\n  fake["(fake)"]\n${fence[2]}`;
+	const title = (input.title?.trim() || "다이어그램").replaceAll('"', "'");
+	return `\`\`\`mermaid\ngraph TD\n  fake["(fake) ${title}"]\n\`\`\``;
+}
+
 export const mermaidAi = {
 	/** 다이어그램 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 Mermaid 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
@@ -78,6 +86,7 @@ export const mermaidAi = {
 					"- 본문에 없는 사실은 지어내지 않는다",
 				),
 			checks: [mermaidSyntax],
+			fake: fakeMermaid,
 			attach: [{ slot: "insert" }],
 		}),
 
@@ -98,6 +107,7 @@ export const mermaidAi = {
 					"- 요청이 없으면 문법 오류를 고치고 알아보기 쉽게 정리한다",
 				),
 			checks: [mermaidSyntax],
+			fake: fakeMermaid,
 			attach: [{ slot: "block", block: "mermaid" }],
 		}),
 };

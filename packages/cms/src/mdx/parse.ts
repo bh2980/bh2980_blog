@@ -9,7 +9,7 @@ import { VFile } from "vfile";
 import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "./remark-directives";
 
 /**
- * CMS 본문 파서. 공개 렌더(`src/components/mdx/mdx-content.tsx`)와 해석이 갈리지 않도록
+ * CMS 본문 파서. 사이트의 공개 렌더(MDX 렌더러)와 해석이 갈리지 않도록
  * 같은 remark 구성을 쓴다.
  *
  * `remark-directive`는 등록 여부와 무관하게 모든 `:이름`을 directive 노드로 만든다.

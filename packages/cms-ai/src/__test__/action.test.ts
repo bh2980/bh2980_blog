@@ -14,8 +14,8 @@ import {
 	validateAiConfig,
 } from "../action";
 import { legacyFeatureOverride } from "../actions";
-import { type AiCandidate, KEBAB_PATTERN } from "../definition";
-import { aiPresets } from "../presets";
+import type { AiCandidate } from "../definition";
+import { aiPresets, KEBAB_PATTERN } from "../presets";
 import { AI_ACTIONS, attachedTo } from "../registry";
 
 /** 두 타입이 같은가(타입 검사용). */

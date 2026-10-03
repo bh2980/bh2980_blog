@@ -345,7 +345,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 				id: `ai:${action.key}`,
 				title: action.label,
 				description: "AI 기능",
-				keywords: ["ai", "초안", "draft", action.label],
+				keywords: ["ai", action.label],
 				icon: "sparkles",
 				run: (current, range) => setJob({ mode: "insert", action, editor: current, from: range.from, to: range.to }),
 			})),

@@ -82,4 +82,88 @@ describe("defineConfig", () => {
 			/duplicated/,
 		);
 	});
+
+	it("requires a title text field in every collection", () => {
+		const untitled = defineCollection({
+			label: "Note",
+			workflow: "record",
+			fields: { name: fields.text({ label: "Name" }) },
+			list: { columns: [] },
+		});
+		expect(() => defineConfig({ collections: { untitled }, locales, defaultLocale: "en" })).toThrow(
+			/untitled needs a "title" text field/,
+		);
+		const wrongKind = defineCollection({
+			label: "Note",
+			workflow: "record",
+			fields: { title: fields.select({ label: "Title", options: { a: "A" }, defaultValue: "a" }) },
+			list: { columns: [] },
+		});
+		expect(() => defineConfig({ collections: { wrongKind }, locales, defaultLocale: "en" })).toThrow(/title/);
+	});
+
+	it("checks field roles: one field per role, and the field kind fits", () => {
+		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
+			defineCollection({ label: "Article", workflow: "publish", fields: { title, ...extra }, list: { columns: [] } });
+		const ok = article({
+			excerpt: fields.text({ label: "Excerpt", role: "summary", fillFromBody: true }),
+			metaTitle: fields.text({ label: "Meta title", role: "seoTitle" }),
+			robots: fields.select({
+				label: "Robots",
+				role: "noindex",
+				options: { index: "Index", noindex: "No index" },
+				defaultValue: "index",
+			}),
+		});
+		expect(() => defineConfig({ collections: { ok }, locales, defaultLocale: "en" })).not.toThrow();
+
+		const twice = article({
+			excerpt: fields.text({ label: "Excerpt", role: "summary" }),
+			intro: fields.text({ label: "Intro", role: "summary" }),
+		});
+		expect(() => defineConfig({ collections: { twice }, locales, defaultLocale: "en" })).toThrow(
+			/role "summary" on both excerpt and intro/,
+		);
+
+		const noOption = article({
+			robots: fields.select({ label: "Robots", role: "noindex", options: { index: "Index" }, defaultValue: "index" }),
+		});
+		expect(() => defineConfig({ collections: { noOption }, locales, defaultLocale: "en" })).toThrow(/"noindex" option/);
+
+		// 타입을 거치지 않은 설정(JS)도 알린다.
+		const wrongKind = article({
+			image: { ...fields.relation({ label: "Image", to: "article" }), role: "ogImage" } as never,
+		});
+		expect(() => defineConfig({ collections: { article: wrongKind }, locales, defaultLocale: "en" })).toThrow(
+			/role "ogImage" needs a text field/,
+		);
+		const unknown = article({ teaser: { ...fields.text({ label: "Teaser" }), role: "teaser" } as never });
+		expect(() => defineConfig({ collections: { unknown }, locales, defaultLocale: "en" })).toThrow(/unknown role/);
+	});
+
+	it("allows fillFromBody only in collections with a body", () => {
+		const note = defineCollection({
+			label: "Note",
+			workflow: "record",
+			fields: { title, summary: fields.text({ label: "Summary", fillFromBody: true }) },
+			list: { columns: [] },
+		});
+		expect(() => defineConfig({ collections: { note }, locales, defaultLocale: "en" })).toThrow(/fillFromBody/);
+	});
+
+	it("checks that a slug is made from a text field", () => {
+		const withFrom = (from: string) =>
+			defineCollection({
+				label: "Topic",
+				workflow: "record",
+				fields: { title, name: fields.text({ label: "Name" }), slug: fields.slug({ label: "Slug", from }) },
+				list: { columns: [] },
+			});
+		expect(() =>
+			defineConfig({ collections: { topic: withFrom("name") }, locales, defaultLocale: "en" }),
+		).not.toThrow();
+		expect(() => defineConfig({ collections: { topic: withFrom("missing") }, locales, defaultLocale: "en" })).toThrow(
+			/made from "missing"/,
+		);
+	});
 });

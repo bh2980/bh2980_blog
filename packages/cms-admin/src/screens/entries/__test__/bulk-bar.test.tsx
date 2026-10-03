@@ -128,7 +128,7 @@ describe("bulk actions (§3.4)", () => {
 				id: "entry-1",
 				ok: false,
 				error: "publish_validation_failed",
-				issues: [{ code: "missing_category", path: "categoryId" }],
+				issues: [{ code: "missing_field", path: "categoryId", message: "카테고리" }],
 			},
 		]);
 		const onDone = vi.fn();
@@ -139,7 +139,7 @@ describe("bulk actions (§3.4)", () => {
 		fireEvent.click(screen.getByRole("button", { name: "발행" }));
 		fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "발행" }));
 		expect(await screen.findByText(/첫 글/)).toBeTruthy();
-		expect(screen.getByText(/카테고리를 지정하세요/)).toBeTruthy();
+		expect(screen.getByText(/카테고리를 입력하세요/)).toBeTruthy();
 		expect(screen.getByRole("button", { name: "실패만 다시 실행" })).toBeTruthy();
 		expect(onDone).toHaveBeenCalledWith(["entry-1"]);
 	});

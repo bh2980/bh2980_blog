@@ -16,8 +16,10 @@
 		"./columns": "./src/columns/index.ts",
 		"./columns/admin": "./src/columns/admin.ts",
 		"./mermaid": "./src/mermaid/index.ts",
+		"./mermaid/admin": "./src/mermaid/admin.ts",
 		"./mermaid/ai": "./src/mermaid/ai.ts",
 		"./chart": "./src/chart/index.ts",
+		"./chart/admin": "./src/chart/admin.ts",
 		"./chart/ai": "./src/chart/ai.ts",
 		"./styles.css": "./styles.css"
 	},
@@ -120,6 +122,10 @@
 				"types": "./dist/mermaid/index.d.ts",
 				"default": "./dist/mermaid/index.js"
 			},
+			"./mermaid/admin": {
+				"types": "./dist/mermaid/admin.d.ts",
+				"default": "./dist/mermaid/admin.js"
+			},
 			"./mermaid/ai": {
 				"types": "./dist/mermaid/ai.d.ts",
 				"default": "./dist/mermaid/ai.js"
@@ -127,6 +133,10 @@
 			"./chart": {
 				"types": "./dist/chart/index.d.ts",
 				"default": "./dist/chart/index.js"
+			},
+			"./chart/admin": {
+				"types": "./dist/chart/admin.d.ts",
+				"default": "./dist/chart/admin.js"
 			},
 			"./chart/ai": {
 				"types": "./dist/chart/ai.d.ts",

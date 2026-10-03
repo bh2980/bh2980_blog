@@ -235,7 +235,7 @@ describe("생성 모델 호출", () => {
 		schema: z.object({ candidates: z.array(z.string()) }),
 		maxTokens: 100,
 		result: "candidates" as const,
-		data: {},
+		fake: { inputs: {} },
 	};
 
 	it("정해진 JSON 모양을 요청하고 답을 읽는다", async () => {

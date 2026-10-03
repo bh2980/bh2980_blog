@@ -92,17 +92,21 @@ export const columnLabel = (collection: string, column: AdminListColumn) => colu
 export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
 	if (!isCollection(collection)) return { available: [...SYSTEM_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
+	// 주소 열은 이름과 상관없이 주소 필드(`fields.slug`)가 있으면 쓴다. 제목(`title`)은 모든 컬렉션에 있다.
+	const slugField = Object.entries(schema.fields).find(([, field]) => field.kind === "slug")?.[0];
 	const system = SYSTEM_COLUMNS.filter((column) => {
 		// record 컬렉션은 발행 없이 저장이 곧 공개다. 언어 열은 이름이 있는 언어를 보인다(v2 B4).
 		if (column === "publishedAt") return schema.workflow === "publish";
-		if (column === "title" || column === "slug") return Object.hasOwn(schema.fields, column);
+		if (column === "slug") return slugField !== undefined;
 		return true;
 	});
 	const taxonomy = taxonomyFieldsOf(collection).map((stored) => stored.name);
 	// 분류 필드 컬럼은 언어 컬럼 뒤에 둔다.
 	const at = system.indexOf("locale") + 1;
 	const available = [...system.slice(0, at), ...taxonomy, ...system.slice(at)];
-	const defaults = schema.list.columns.filter((column) => available.includes(column));
+	const defaults = schema.list.columns
+		.map((column) => (column === slugField ? "slug" : column))
+		.filter((column) => available.includes(column));
 	return { available, defaults };
 }
 

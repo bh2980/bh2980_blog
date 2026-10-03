@@ -10,11 +10,12 @@ import type { CmsIssue } from "../api-error-message";
 import { SidePanelHeader } from "../shared/side-panel";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
-import { SeoPanel } from "./seo-panel";
+import { SeoPreview } from "./seo-panel";
 
 type InspectorTab = "fields" | "seo";
 
-const isSeoGroup = (group: LayoutGroup) => group.group === "SEO";
+/** `seo: true` 묶음은 SEO 탭에 그린다. */
+const isSeoGroup = (group: LayoutGroup) => group.seo === true;
 
 /** 필드가 들어 있는 탭. 발행 문제로 이동할 때 그 탭을 먼저 연다. */
 function tabOf(collection: string, path: string): InspectorTab {
@@ -147,16 +148,10 @@ export function InspectorPanel({
 
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
 				<TabsContent value="fields">{fields((group) => !isSeoGroup(group))}</TabsContent>
-				{hasSeo && (
-					<TabsContent value="seo">
-						<SeoPanel
-							collection={collection}
-							form={form}
-							entry={entry}
-							disabled={disabled}
-							issues={publishIssues}
-							onChange={onChange}
-						/>
+				{hasSeo && isCollection(collection) && (
+					<TabsContent value="seo" className="space-y-5">
+						<SeoPreview collection={collection} form={form} entry={entry} />
+						{fields(isSeoGroup)}
 					</TabsContent>
 				)}
 			</div>

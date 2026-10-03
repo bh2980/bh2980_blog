@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
  * - 원본 파일은 그대로 두고 `::image`에 표시 속성 `crop="x,y,w,h"`과 `rotate="90|180|270"`을 쓴다.
  * - crop: 원본 기준 백분율(0~100, 소수 둘째 자리까지). 없거나 전체(0,0,100,100)는 회전 없음/전체.
  * - rotate: 시계 방향(90 | 180 | 270). 없거나 0은 회전 없음.
- * - 공개 렌더러(`src/components/mdx/image.tsx`)와 에디터(`src/cms/editor/image-node-view.tsx`)가
+ * - 사이트의 공개 이미지 렌더러와 관리자 편집기의 이미지 블록이
  *   같은 함수를 사용해 CSS 스타일을 계산한다. 잘못된 값은 무시(너비 규칙과 동일).
  */
 

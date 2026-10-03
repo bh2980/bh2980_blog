@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkCandidates, checkText } from "../checks";
-import { type AiCheck, KEBAB_PATTERN } from "../definition";
+import type { AiCheck } from "../definition";
+import { KEBAB_PATTERN } from "../presets";
 
 const on = <T extends Omit<AiCheck, "enabled">>(check: T) => ({ ...check, enabled: true }) as AiCheck;
 

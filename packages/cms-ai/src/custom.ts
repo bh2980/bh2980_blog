@@ -128,6 +128,15 @@ const SURFACE_INPUTS: Readonly<Record<CustomSurface["slot"], AiInputs>> = {
 /** 처음 지시문. 관리자 화면에서 바로 고친다. */
 export const CUSTOM_DEFAULT_PROMPT = "할 일을 적으세요.";
 
+/**
+ * 관계·선택 필드에 붙인 화면 기능의 판단 기본값(기준 확률·최대 개수). 여러 개 받는 필드와 하나만 받는 필드로 나눈다.
+ * 관리자 화면에서 고친다.
+ */
+export const CUSTOM_PICK_DEFAULTS = {
+	many: { threshold: 0.6, maxCount: 5 },
+	one: { threshold: 0.3, maxCount: 2 },
+} as const;
+
 /** 저장한 기본 정보로 만든 기능 정의. 지시문·보낼 입력 등은 고친 값(`override`)이 정한다. */
 export function customDefinition(base: CustomBase): AiActionDefinition {
 	const picked = surfaceChoices(base.surface);
@@ -141,8 +150,7 @@ export function customDefinition(base: CustomBase): AiActionDefinition {
 			engine: base.engine ?? "generate",
 			choices: picked.choices,
 			pick: picked.many ? "many" : "one",
-			threshold: picked.many ? 0.6 : 0.3,
-			maxCount: picked.many ? 5 : 2,
+			...CUSTOM_PICK_DEFAULTS[picked.many ? "many" : "one"],
 			result: "candidates",
 			...(picked.many ? { apply: "append" as const } : {}),
 			checks: [{ kind: "exists" }],

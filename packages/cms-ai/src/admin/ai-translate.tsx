@@ -12,10 +12,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { runAiActionMany, useAiActions } from "./ai-slot-provider";
 import { applyTranslation, collectUnits, type TranslateUnit, unitAt } from "./ai-translate-units";
+import { OptionSelect } from "./custom-editor";
 
 /**
  * 번역본 에디터의 AI 번역(v2 D2). 안내 글(`untranslated`)이 남은 블록이 "아직 번역 안 된 곳"이다.
- * 번역은 일반 AI 기능 하나다. 붙을 곳이 `translation`인 기능(입력 `block`·`from`·`to`, MDX 결과)을 블록마다 부른다.
+ * 번역은 일반 AI 기능이다. 붙을 곳이 `translation`인 기능(입력 `block`·`from`·`to`, MDX 결과)을 블록마다 부른다.
+ * 그런 기능이 여럿이면 블록 손잡이 옆에 기능마다 버튼이 붙고, `모두 번역`에서 기능을 고른다.
  * 블록의 원문 MDX(안내 글 표시를 걷어 낸 것)를 보내고, 서버가 번역·구조 검사를 통과한 MDX만 돌려주면 그 블록을 바꾼다.
  * 검사에 걸린 블록은 안내 글로 남는다. 번역 단위와 바꾸는 규칙은 `ai-translate-units.ts`다.
  */
@@ -65,15 +67,27 @@ function batches<T extends { mdx: string }>(blocks: T[]): T[][] {
 }
 
 /**
- * 번역본 에디터의 AI 번역 동작. `blockAction`은 블록 손잡이 옆 `번역`, `toolbar`는 툴바의 `모두 번역`이다.
- * 번역 기능이 꺼져 있거나 연결이 없으면 둘 다 없다.
+ * 번역본 에디터의 AI 번역 동작. `blockActions`는 블록 손잡이 옆 번역 기능(기능마다 하나, 이름은 기능 이름),
+ * `toolbar`는 툴바의 `모두 번역`이다. 쓸 수 있는 번역 기능이 없으면 둘 다 없다.
  */
 export function useAiTranslate(locales: { sourceLocale: string; targetLocale: string } | null) {
 	const { data } = useAiActions(locales !== null);
-	const feature = data?.items.find(
-		(item) => item.enabled && item.result === "mdx" && item.attach.some((attach) => attach.slot === "translation"),
+	const features = useMemo(
+		() =>
+			locales
+				? (data?.items ?? []).filter(
+						(item) =>
+							item.enabled &&
+							item.result === "mdx" &&
+							item.attach.some((attach) => attach.slot === "translation") &&
+							data?.usable.includes(item.key),
+					)
+				: [],
+		[data, locales],
 	);
-	const available = Boolean(locales && feature && data?.usable.includes(feature.key));
+	/** `모두 번역`에 쓸 기능. 고른 기능이 사라졌으면 첫 기능이다. */
+	const [chosenKey, setChosenKey] = useState<string | null>(null);
+	const feature = features.find((item) => item.key === chosenKey) ?? features[0];
 	const actionKey = feature?.key ?? "";
 	const editorRef = useRef<Editor | null>(null);
 	const [busyBlocks, setBusyBlocks] = useState<ReadonlySet<number>>(new Set());
@@ -98,7 +112,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 	useEffect(() => stop, [stop]);
 
 	const translateOne = useCallback(
-		async (editor: Editor, pos: number) => {
+		async (editor: Editor, pos: number, action: string) => {
 			if (!locales) return;
 			const unit = unitAt(editor.state.doc, pos);
 			if (!unit) return;
@@ -109,7 +123,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 			setBusyBlocks((current) => new Set([...current, pos]));
 			try {
 				const [result] = await requestTranslation(
-					actionKey,
+					action,
 					[{ id: "b0", mdx: unit.mdx }],
 					locales,
 					"",
@@ -131,7 +145,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				setBusyBlocks((current) => new Set([...current].filter((item) => item !== pos)));
 			}
 		},
-		[locales, actionKey],
+		[locales],
 	);
 
 	const translateAll = useCallback(async () => {
@@ -194,23 +208,21 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		} else toast.success(`${blocks.length}개 블록을 번역했습니다.`);
 	}, [locales, request, actionKey]);
 
-	const blockAction = useMemo<BlockAction | null>(
+	const blockActions = useMemo<BlockAction[]>(
 		() =>
-			available
-				? {
-						id: "ai-translate",
-						label: "번역",
-						icon: <Languages aria-hidden className="size-3.5" />,
-						isAvailable: (editor, pos) => unitAt(editor.state.doc, pos) !== null && progress === null,
-						isBusy: (pos) => busyBlocks.has(pos),
-						run: (editor, pos) => void translateOne(editor, pos),
-					}
-				: null,
-		[available, busyBlocks, progress, translateOne],
+			features.map((item) => ({
+				id: `ai-translate:${item.key}`,
+				label: item.label,
+				icon: <Languages aria-hidden className="size-3.5" />,
+				isAvailable: (editor, pos) => unitAt(editor.state.doc, pos) !== null && progress === null,
+				isBusy: (pos) => busyBlocks.has(pos),
+				run: (editor, pos) => void translateOne(editor, pos, item.key),
+			})),
+		[features, busyBlocks, progress, translateOne],
 	);
 
 	const running = progress !== null || busyBlocks.size > 0;
-	const toolbar = available ? (
+	const toolbar = feature ? (
 		running ? (
 			<span className="flex items-center gap-1">
 				{progress && (
@@ -239,7 +251,15 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 							void translateAll();
 						}}
 					>
-						{feature?.askInstruction && (
+						{features.length > 1 && (
+							<OptionSelect
+								aria-label="번역 기능"
+								value={feature.key}
+								options={features.map((item) => ({ value: item.key, label: item.label }))}
+								onChange={setChosenKey}
+							/>
+						)}
+						{feature.askInstruction && (
 							<Textarea
 								aria-label="추가 요청"
 								placeholder="추가 요청"
@@ -266,15 +286,15 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		)
 	) : null;
 
-	return { blockAction, toolbar, setEditor };
+	return { blockActions, toolbar, setEditor };
 }
 
-/** 편집 화면 확장으로 붙인 AI 번역. 번역본 편집기의 툴바에 `모두 번역`, 블록 손잡이 옆에 `번역`을 둔다. */
+/** 편집 화면 확장으로 붙인 AI 번역. 번역본 편집기의 툴바에 `모두 번역`, 블록 손잡이 옆에 번역 기능을 둔다. */
 export const useAiTranslateExtension: EditorExtension = ({ translateLocales }) => {
 	const translate = useAiTranslate(translateLocales);
 	return {
 		toolbar: translate.toolbar,
-		blockActions: translate.blockAction ? [translate.blockAction] : undefined,
+		blockActions: translate.blockActions.length > 0 ? translate.blockActions : undefined,
 		onEditor: translate.setEditor,
 	};
 };

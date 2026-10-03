@@ -110,9 +110,6 @@ export function migrateCheck(value: unknown): unknown {
 	return name ? { kind: "code", name, ...(typeof enabled === "boolean" ? { enabled } : {}) } : value;
 }
 
-/** 주소·파일 이름처럼 소문자·숫자·하이픈만 쓰는 값의 형식. 기본 기능의 `형식` 검사에 채워 둔다. */
-export const KEBAB_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
-
 export const SLOT_LABELS: Record<AiSlot, string> = {
 	field: "필드",
 	image: "본문 이미지",
@@ -219,15 +216,17 @@ export interface AiRunContext {
  */
 export function migrateLegacyCheck(value: unknown): unknown {
 	if (!value || typeof value !== "object" || "checks" in value || !("check" in value)) return value;
+	// 예전 `slug`·`filename` 검사가 쓰던 형식(그때 값 그대로).
+	const LEGACY_KEBAB = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 	const { check, maxLength, ...rest } = value as { check?: unknown; maxLength?: unknown };
 	const legacy: Record<string, AiCheckInput[]> = {
 		slug: [
-			{ kind: "pattern", pattern: KEBAB_PATTERN },
+			{ kind: "pattern", pattern: LEGACY_KEBAB },
 			{ kind: "code", name: "unique-slug" },
 		],
 		tags: [{ kind: "exists" }],
 		regex: [{ kind: "code", name: "regex-runs" }],
-		filename: [{ kind: "pattern", pattern: KEBAB_PATTERN }],
+		filename: [{ kind: "pattern", pattern: LEGACY_KEBAB }],
 		maxLength: typeof maxLength === "number" ? [{ kind: "maxLength", max: maxLength }] : [],
 	};
 	return { ...rest, checks: typeof check === "string" ? (legacy[check] ?? []) : [] };

@@ -1,5 +1,4 @@
 import { aiAction, aiInput } from "./action";
-import { KEBAB_PATTERN } from "./definition";
 import { regexRuns, sameStructure, uniqueSlug } from "./validators";
 
 /**
@@ -32,6 +31,9 @@ const fieldAttach = (field: string, collections?: readonly string[]) =>
 	[{ slot: "field", field, ...(collections ? { collections } : {}) }] as const;
 
 const lines = (...text: string[]) => text.join("\n");
+
+/** 주소·파일 이름처럼 소문자·숫자·하이픈만 쓰는 값의 형식. 주소·파일 이름 프리셋의 `형식` 검사에 채워 둔다. */
+export const KEBAB_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 
 export const aiPresets = {
 	/** 주소(slug) 하나를 만들어 바로 넣는다. 형식·길이·같은 컬렉션·언어 안의 중복을 검사한다. */
@@ -263,7 +265,7 @@ export const aiPresets = {
 
 	/**
 	 * 문체 다듬기(M8-2). 본문에서 고른 글을 다듬어 바뀐 곳을 보여 주고, 누르면 고른 글을 바꾼다. 결과는 흘려받는다.
-	 * `styleGuide`에 공통 문구 이름을 주면 그 문구(예: 문체 가이드)를 지시문에 넣는다.
+	 * `styleGuide`에 설정 공통 문구(`aiPlugin({ shared })`)의 키를 주면 그 문구(예: 문체 가이드)를 지시문에 넣는다.
 	 */
 	polish: (options: { readonly prompt?: string; readonly styleGuide?: string } = {}) =>
 		aiAction({
@@ -289,7 +291,7 @@ export const aiPresets = {
 
 	/**
 	 * 초안 쓰기(M8-3). 슬래시 메뉴·빈 문서에서 요청을 받아 커서 자리에 넣을 본문 초안(MDX)을 쓴다. 결과는 흘려받는다.
-	 * `styleGuide`에 공통 문구 이름을 주면 그 문구를 지시문에 넣는다.
+	 * `styleGuide`에 설정 공통 문구의 키를 주면 그 문구를 지시문에 넣는다.
 	 */
 	draft: (options: { readonly prompt?: string; readonly styleGuide?: string } = {}) =>
 		aiAction({

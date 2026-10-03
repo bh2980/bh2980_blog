@@ -1,93 +1,32 @@
-import type { AnnotationConfig } from "./types";
+import { type CodeLineEffectDefinition, DEFAULT_CODE_LINE_EFFECTS } from "./line-effects";
+import type { AnnotationConfig, AnnotationConfigItem } from "./types";
 
-export const annotationConfig: AnnotationConfig = {
-	annotations: [
-		{
-			name: "Tooltip",
-			kind: "render",
-			source: "mdx-text",
-			render: "Tooltip",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "strong",
-			kind: "render",
-			source: "mdx-text",
-			render: "strong",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "em",
-			kind: "render",
-			source: "mdx-text",
-			render: "em",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "del",
-			kind: "render",
-			source: "mdx-text",
-			render: "del",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "u",
-			kind: "render",
-			source: "mdx-text",
-			render: "u",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "fold",
-			kind: "render",
-			source: "mdx-text",
-			render: "fold",
-			scopes: ["char", "document"],
-		},
-		{
-			name: "plus",
-			kind: "class",
-			class:
-				"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 shadow-[inset_2px_0_0_0_rgba(74,222,128,1)]",
-			scopes: ["line"],
-		},
-		{
-			name: "minus",
-			kind: "class",
-			class:
-				"inline-block w-full anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 shadow-[inset_2px_0_0_0_rgba(239,68,68,1)]",
-			scopes: ["line"],
-		},
-		{
-			name: "highlight",
-			kind: "class",
-			class: "inline-block w-full anno-mark-base bg-gray-400/20",
-			scopes: ["line"],
-		},
-		{
-			name: "warning",
-			kind: "class",
-			class: "underline decoration-wavy decoration-yellow-400/80",
-			scopes: ["line"],
-		},
-		{
-			name: "error",
-			kind: "class",
-			class: "underline decoration-wavy decoration-red-500",
-			scopes: ["line"],
-		},
-		{
-			name: "collapse",
-			kind: "render",
-			render: "collapse",
-			scopes: ["line"],
-		},
-		{
+/** 글자 효과(`// @char 이름`). 공개 화면이 렌더러 이름(`render`)으로 그린다. */
+const CHAR_ANNOTATIONS: readonly AnnotationConfigItem[] = ["Tooltip", "strong", "em", "del", "u", "fold"].map(
+	(name) => ({ name, kind: "render", source: "mdx-text", render: name, scopes: ["char", "document"] }),
+);
+
+/**
+ * 코드 펜스 주석 설정. 글자 효과, 줄 효과(정의 목록), 줄 접기, 본문 연결 이름표 순서다.
+ * 사이트가 쓰는 설정은 `active.ts`의 `annotationConfig`다.
+ */
+export function createAnnotationConfig(
+	lineEffects: readonly CodeLineEffectDefinition[] = DEFAULT_CODE_LINE_EFFECTS,
+): AnnotationConfig {
+	return {
+		annotations: [
+			...CHAR_ANNOTATIONS,
+			...lineEffects.map(
+				(effect): AnnotationConfigItem => ({
+					name: effect.name,
+					kind: "class",
+					class: effect.class,
+					scopes: ["line"],
+				}),
+			),
+			{ name: "collapse", kind: "render", render: "collapse", scopes: ["line"] },
 			// 본문 `:code-ref`가 가리키는 줄 이름표(`id`). 줄에 `data-anchor`를 달 뿐 모양은 없다.
-			name: "anchor",
-			kind: "class",
-			class: "code-anchor",
-			scopes: ["line"],
-		},
-	],
-};
+			{ name: "anchor", kind: "class", class: "code-anchor", scopes: ["line"] },
+		],
+	};
+}

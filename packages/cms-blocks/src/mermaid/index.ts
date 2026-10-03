@@ -13,4 +13,10 @@ export { mermaidBlock } from "./definition";
  * 편집기는 코드 입력 칸과 미리보기로 편집한다. 미리보기는 사이트가 `fencePreviews.mermaid`로, 공개 화면은 `Mermaid`
  * 컴포넌트로 그린다(코드는 `source` 속성, `remarkFenceBlocksToMdx`).
  */
-export const mermaid = () => definePlugin({ name: "mermaid", options: {}, blocks: [mermaidBlock] });
+export const mermaid = () =>
+	definePlugin({
+		name: "mermaid",
+		options: {},
+		blocks: [mermaidBlock],
+		admin: () => import("@bh2980/cms-blocks/mermaid/admin"),
+	});

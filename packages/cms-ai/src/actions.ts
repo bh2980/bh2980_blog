@@ -22,6 +22,7 @@ import {
 import { migrateLegacyCheck } from "./definition";
 import { AiError } from "./errors";
 import { AI_ACTIONS, AI_SHARED_KEYS, actionDefinition } from "./registry";
+import { type AiSharedStore, loadSharedKeys } from "./shared";
 
 /**
  * 기능 정의(설정)와 고친 값(DB)을 합쳐 다룬다. 관리자 AI 화면·실행 API가 쓴다.
@@ -32,7 +33,7 @@ type Row = { key: string; value: unknown; version: number; updatedAt: Date };
 
 export type { AiActionView } from "./action-view";
 
-export interface AiActionsStore {
+export interface AiActionsStore extends Pick<AiSharedStore, "getAiSettings"> {
 	listAiActionOverrides(): Promise<Row[]>;
 	saveAiActionOverride(params: { key: string; expectedVersion: number; value: unknown }): Promise<Row>;
 	/** 화면 기능(M8-5). */
@@ -87,13 +88,14 @@ export async function listActions(store: AiActionsStore): Promise<AiActionView[]
 }
 
 /**
- * 고칠 수 있는 값으로 시험·저장할 기능을 만든다. 지시문의 `{{이름}}`은 언어 입력만 받는다.
- * 고칠 수 없는 값(이름·결과 모양 등)은 보내도 무시한다.
+ * 고칠 수 있는 값으로 시험·저장할 기능을 만든다. 지시문의 `{{이름}}`은 언어 입력과 공통 문구(`sharedKeys`: 설정 문구와
+ * 관리자 화면에서 더한 문구)만 받는다. 고칠 수 없는 값(이름·결과 모양 등)은 보내도 무시한다.
  */
 export function actionWithEdits(
 	key: string,
 	edited: unknown,
 	definition: AiActionDefinition = definitionOf(key),
+	sharedKeys: readonly string[] = AI_SHARED_KEYS,
 ): ResolvedAiAction {
 	const parsed = aiActionOverrideSchema.safeParse(
 		edited && typeof edited === "object"
@@ -110,7 +112,7 @@ export function actionWithEdits(
 		const where = issue?.path.length ? `${issue.path.join(".")}: ` : "";
 		throw new AiError("ai_invalid_input", `${where}${issue?.message ?? "값이 올바르지 않습니다."}`);
 	}
-	const unknown = parsed.data.prompt ? unknownPlaceholders(parsed.data.prompt, definition.input, AI_SHARED_KEYS) : [];
+	const unknown = parsed.data.prompt ? unknownPlaceholders(parsed.data.prompt, definition.input, sharedKeys) : [];
 	if (unknown.length > 0) {
 		throw new AiError(
 			"ai_invalid_input",
@@ -130,10 +132,13 @@ export async function actionWithDraft(
 	edited: unknown,
 	baseInput?: unknown,
 ): Promise<ResolvedAiAction> {
-	if (!isCustomKey(key)) return actionWithEdits(key, edited);
-	if (baseInput !== undefined) return actionWithEdits(key, edited, customDefinition(readBase(baseInput)));
+	const sharedKeys = await loadSharedKeys(store);
+	if (!isCustomKey(key)) return actionWithEdits(key, edited, definitionOf(key), sharedKeys);
+	if (baseInput !== undefined) {
+		return actionWithEdits(key, edited, customDefinition(readBase(baseInput)), sharedKeys);
+	}
 	const { value } = await customRow(store, key);
-	return actionWithEdits(key, edited, customDefinition(value.base));
+	return actionWithEdits(key, edited, customDefinition(value.base), sharedKeys);
 }
 
 /** 화면 기능의 기본 정보를 검사한다. */
@@ -156,7 +161,8 @@ export async function createCustomAction(
 	const base = readBase(baseInput);
 	const key = newCustomKey();
 	const definition = customDefinition(base);
-	const value: CustomValue = { base, override: overrideFrom(definition, actionWithEdits(key, edited, definition)) };
+	const action = actionWithEdits(key, edited, definition, await loadSharedKeys(store));
+	const value: CustomValue = { base, override: overrideFrom(definition, action) };
 	const row = await store.saveAiCustomAction({ key, expectedVersion: 0, value });
 	return viewOf(resolveAction(key, definition, value.override), row, value);
 }
@@ -182,13 +188,13 @@ export async function updateAction(
 		const { value: current } = await customRow(store, key);
 		const base = baseInput === undefined ? current.base : readBase(baseInput);
 		const definition = customDefinition(base);
-		const action = actionWithEdits(key, edited, definition);
+		const action = actionWithEdits(key, edited, definition, await loadSharedKeys(store));
 		const value: CustomValue = { base, override: overrideFrom(definition, action) };
 		const row = await store.saveAiCustomAction({ key, expectedVersion, value });
 		return viewOf(resolveAction(key, definition, value.override), row, value);
 	}
-	const action = actionWithEdits(key, edited);
 	const definition = definitionOf(key);
+	const action = actionWithEdits(key, edited, definition, await loadSharedKeys(store));
 	const value = overrideFrom(definition, action);
 	const row = await store.saveAiActionOverride({ key, expectedVersion, value });
 	return viewOf(action, row);

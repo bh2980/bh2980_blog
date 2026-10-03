@@ -1,13 +1,6 @@
 "use client";
 
-import {
-	BLOCK_BY_NAME,
-	COLLECTIONS,
-	DEFAULT_LOCALE,
-	localeLabel,
-	PREFIXED_LOCALES,
-	schemaOf,
-} from "@bh2980/cms/client";
+import { BLOCK_BY_NAME, CMS_TIME_ZONE, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
@@ -41,7 +34,6 @@ import {
 	ADDABLE_CHECKS,
 	type AddableCheckKind,
 	type AiCheck,
-	type AiRunContext,
 	type AiRunResult,
 	CHECK_LABELS,
 	checkKey,
@@ -49,15 +41,9 @@ import {
 	SLOT_LABELS,
 	SLOT_TARGETS,
 } from "../definition";
-import { AI_SHARED_KEYS, actionDefinition } from "../registry";
-import {
-	AI_ACTIONS_KEY,
-	type AiActionsResponse,
-	inputFromContext,
-	runAiAction,
-	runAiActionMany,
-	useAiActions,
-} from "./ai-slot-provider";
+import { actionDefinition } from "../registry";
+import { AI_ACTIONS_KEY, type AiActionsResponse, runAiAction, useAiActions } from "./ai-slot-provider";
+import { missingRequired, SampleInputs, sampleDefaults, sampleFields, sampleRun } from "./ai-test-sample";
 import {
 	ConnectionManager,
 	DETAIL_PANE,
@@ -69,7 +55,7 @@ import {
 } from "./connection-editor";
 import { CustomBaseFields, NEW_CUSTOM_BASE, OptionSelect } from "./custom-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
-import { PROMPT_ROWS, PROMPT_TEXTAREA, SharedTextsEditor } from "./shared-editor";
+import { PROMPT_ROWS, PROMPT_TEXTAREA, SharedManager, useAiShared } from "./shared-editor";
 
 /** 붙을 곳의 보이는 이름. 필드는 컬렉션 정의의 이름이다. */
 function placeLabel(action: Pick<AiActionView, "attach">): string {
@@ -134,58 +120,23 @@ function defaultSpecOf(feature: AiActionView): Editable | null {
 /** 고치는 값의 비교 열쇠. 열 때 값과 다르면 저장하지 않은 내용이 있다. */
 const snapshotOf = (spec: Editable, base: CustomBase | undefined) => JSON.stringify({ spec, base });
 
-/** 번역본 편집기의 블록 번역 기능인가(시험이 예시 MDX·대상 언어를 받는다). */
-const isTranslation = (action: AiActionView) =>
-	action.result === "mdx" && action.attach.some((attach) => attach.slot === "translation");
-
-/** 시험에 쓸 자료. 기능이 보내는 내용에 맞는 칸만 보인다. */
-type Sample = {
-	title: string;
-	body: string;
-	code: string;
-	mediaId: string;
-	current: string;
-	request: string;
-	/** 번역 시험의 대상 언어. */
-	targetLocale: string;
-};
-const EMPTY_SAMPLE: Sample = {
-	title: "",
-	body: "",
-	code: "",
-	mediaId: "",
-	current: "",
-	request: "",
-	targetLocale: PREFIXED_LOCALES[0] ?? "en",
-};
-
-function sampleContext(action: AiActionView, sample: Sample): AiRunContext {
-	const context: AiRunContext = {};
-	const field = action.attach.find((attach) => attach.slot === "field");
-	if (field?.slot === "field") context.collection = field.collections?.[0];
-	if (sample.title.trim()) context.title = sample.title;
-	if (sample.body.trim()) {
-		context.body = sample.body;
-		context.around = sample.body;
-		context.selection = sample.body;
-	}
-	if (sample.code.trim()) context.code = sample.code;
-	if (sample.mediaId.trim()) context.mediaId = sample.mediaId.trim();
-	if (sample.current.trim()) context.current = sample.current;
-	return context;
-}
+/** 시험에 쓸 예시 입력(입력 이름 → 값)과 추가 요청. 칸은 기능의 입력 종류로 만든다(`ai-test-sample`). */
+type Sample = { values: Record<string, string>; request: string };
+const EMPTY_SAMPLE: Sample = { values: {}, request: "" };
 
 type AiTab = "features" | "connections" | "shared";
 
 /**
  * 관리자 AI 화면(v2 D). `기능` 탭은 코드로 정해 둔 기능과 화면에서 만든 기능의 목록이고, 기능마다 켜기·요청 받기·연결·
  * 모델·보낼 내용·지시문·검사를 고친 뒤 저장 전에 시험한다. `연결` 탭에서 서비스 주소·키·기본 모델을 여러 개 저장한다.
+ * `공통 문구` 탭에서 지시문의 `{{shared.키}}`에 들어갈 문구를 고치고 더한다. 세 탭 모두 목록 + 상세 칸이다.
  * 저장하지 않은 내용이 있는 채로 다른 항목·탭을 열면 버릴지 묻는다.
  */
 export function AiManager() {
 	const queryClient = useQueryClient();
 	const featuresQuery = useAiActions();
 	const settingsQuery = useAiSettings();
+	const sharedQuery = useAiShared();
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
 	const [tab, setTab] = useState<AiTab>("features");
@@ -203,6 +154,8 @@ export function AiManager() {
 	/** 연 연결. 머리의 `연결 추가`가 여기서 바꾸므로 연결 탭 밖에 둔다. */
 	const [connection, setConnection] = useState<string | "new" | null>(null);
 	const [connectionDirty, setConnectionDirty] = useState(false);
+	/** 연 공통 문구. 머리의 `문구 추가`가 여기서 바꾸므로 공통 문구 탭 밖에 둔다. */
+	const [shared, setShared] = useState<string | "new" | null>(null);
 	const [sharedDirty, setSharedDirty] = useState(false);
 	const { confirm, confirmDiscard, dialog } = useConfirm();
 
@@ -244,6 +197,11 @@ export function AiManager() {
 	const openConnection = async (id: string | "new") => {
 		if (id === connection) return;
 		if (await confirmDiscard(connectionDirty)) setConnection(id);
+	};
+
+	const openShared = async (key: string | "new") => {
+		if (key === shared) return;
+		if (await confirmDiscard(sharedDirty)) setShared(key);
 	};
 
 	/** 탭을 바꾼다. 연결·공통 문구 탭은 닫으면 입력이 사라지므로 저장하지 않은 내용이 있으면 묻는다. */
@@ -363,13 +321,18 @@ export function AiManager() {
 				<Plus aria-hidden />
 				연결 추가
 			</Button>
-		) : null;
+		) : (
+			<Button type="button" size="sm" onClick={() => void openShared("new")}>
+				<Plus aria-hidden />
+				문구 추가
+			</Button>
+		);
 	const count =
 		tab === "features"
 			? featuresQuery.data?.items.length
 			: tab === "connections"
 				? settingsQuery.data?.providers.length
-				: AI_SHARED_KEYS.length;
+				: sharedQuery.data?.items.length;
 
 	return (
 		<AdminShell title="AI" count={count} headerActions={headerActions} sidebar={{ activeNav: "ai" }}>
@@ -378,7 +341,7 @@ export function AiManager() {
 				onValueChange={(value) => void changeTab(value as AiTab)}
 				className="flex min-h-0 flex-1 flex-col gap-0"
 			>
-				<TabsList variant="line" className="h-10 shrink-0 justify-start gap-4 border-b px-4">
+				<TabsList variant="line" className="h-10 w-full shrink-0 justify-start gap-4 border-b px-4">
 					<TabsTrigger value="features" className="flex-none px-0 text-xs">
 						<Sparkles aria-hidden />
 						기능
@@ -387,12 +350,10 @@ export function AiManager() {
 						<Plug aria-hidden />
 						연결
 					</TabsTrigger>
-					{AI_SHARED_KEYS.length > 0 && (
-						<TabsTrigger value="shared" className="flex-none px-0 text-xs">
-							<Quote aria-hidden />
-							공통 문구
-						</TabsTrigger>
-					)}
+					<TabsTrigger value="shared" className="flex-none px-0 text-xs">
+						<Quote aria-hidden />
+						공통 문구
+					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="features" className="flex min-h-0 flex-1 flex-col">
 					{featuresQuery.error && !featuresQuery.data && (
@@ -481,11 +442,14 @@ export function AiManager() {
 						</div>
 					</div>
 				</TabsContent>
-				{AI_SHARED_KEYS.length > 0 && (
-					<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
-						<SharedTextsEditor onDirtyChange={onSharedDirty} />
-					</TabsContent>
-				)}
+				<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
+					<SharedManager
+						selected={shared}
+						onOpen={(key) => void openShared(key)}
+						onSelectedChange={setShared}
+						onDirtyChange={onSharedDirty}
+					/>
+				</TabsContent>
 				<TabsContent value="connections" className="flex min-h-0 flex-1 flex-col">
 					<ConnectionManager
 						selected={connection}
@@ -658,9 +622,10 @@ function FeatureEditor({
 		...providers.map((provider) => ({ value: provider.id, label: provider.name })),
 	];
 
-	const translating = isTranslation(feature);
+	const sampleInputs = sampleFields(feature, spec.send);
+	const sampleStart = sampleDefaults(feature);
 	const testRunning = test?.status === "running";
-	const testDisabled = !canRun || testRunning || (translating && !sample.body.trim());
+	const testDisabled = !canRun || testRunning || missingRequired(sampleInputs, sample.values, sampleStart);
 	const runTest = async () => {
 		if (testDisabled) return;
 		setTest({ status: "running" });
@@ -671,18 +636,7 @@ function FeatureEditor({
 				request: spec.askInstruction ? sample.request : undefined,
 				...(custom ? { draftBase: { ...custom.base, label: custom.base.label.trim() || "새 기능" } } : {}),
 			};
-			if (translating) {
-				// 번역은 예시 MDX 한 블록을 번역본 편집기와 같은 길(여러 입력 실행)로 보낸다.
-				const [item] = await runAiActionMany(
-					feature.key,
-					[{ block: sample.body, from: DEFAULT_LOCALE, to: sample.targetLocale }],
-					{ ...options, env: { locale: sample.targetLocale } },
-				);
-				if (!item || "error" in item) throw new Error(item?.error ?? "실행하지 못했습니다.");
-				setTest({ status: "done", result: item.result });
-				return;
-			}
-			const { input, env } = inputFromContext(feature, sampleContext(feature, sample));
+			const { input, env } = sampleRun(feature, sampleInputs, sample.values, sampleStart);
 			setTest({ status: "done", result: await runAiAction(feature.key, input, { ...options, env }) });
 		} catch (runError) {
 			setTest({ status: "error", message: errorText(runError, "실행하지 못했습니다.") });
@@ -891,7 +845,9 @@ function FeatureEditor({
 				)}
 				{!custom?.isNew && (
 					<span className="ml-auto text-muted-foreground text-xs">
-						{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본 설정"}
+						{feature.updatedAt
+							? `${new Date(feature.updatedAt).toLocaleString("ko-KR", { timeZone: CMS_TIME_ZONE })} 고침`
+							: "기본 설정"}
 					</span>
 				)}
 				{custom && !custom.isNew && (
@@ -941,63 +897,12 @@ function FeatureEditor({
 						className="min-h-14 resize-y bg-background text-xs md:text-xs"
 					/>
 				)}
-				{translating && (
-					<>
-						<OptionSelect
-							aria-label="대상 언어"
-							value={sample.targetLocale}
-							options={PREFIXED_LOCALES.map((locale) => ({ value: locale, label: localeLabel(locale) }))}
-							onChange={(targetLocale) => setSample({ ...sample, targetLocale })}
-							className="w-auto self-start bg-background"
-						/>
-						<Textarea
-							aria-label="예시 MDX"
-							placeholder="예시 MDX"
-							rows={5}
-							value={sample.body}
-							onChange={(event) => setSample({ ...sample, body: event.target.value })}
-							className="bg-background font-mono text-xs md:text-xs"
-						/>
-					</>
-				)}
-				{(uses("title") || feature.attach.some((attach) => attach.slot === "field")) && (
-					<Input
-						aria-label="예시 제목"
-						placeholder="예시 제목"
-						value={sample.title}
-						onChange={(event) => setSample({ ...sample, title: event.target.value })}
-						className="h-8 bg-background text-xs md:text-xs"
-					/>
-				)}
-				{(uses("body") || uses("around") || uses("summary")) && (
-					<Textarea
-						aria-label="예시 본문"
-						placeholder="예시 본문"
-						rows={4}
-						value={sample.body}
-						onChange={(event) => setSample({ ...sample, body: event.target.value })}
-						className="bg-background text-xs md:text-xs"
-					/>
-				)}
-				{uses("code") && (
-					<Textarea
-						aria-label="예시 코드"
-						placeholder="예시 코드"
-						rows={4}
-						value={sample.code}
-						onChange={(event) => setSample({ ...sample, code: event.target.value })}
-						className="bg-background font-mono text-xs md:text-xs"
-					/>
-				)}
-				{uses("image") && (
-					<Input
-						aria-label="미디어 ID"
-						placeholder="미디어 ID"
-						value={sample.mediaId}
-						onChange={(event) => setSample({ ...sample, mediaId: event.target.value })}
-						className="h-8 bg-background font-mono text-xs md:text-xs"
-					/>
-				)}
+				<SampleInputs
+					fields={sampleInputs}
+					values={sample.values}
+					defaults={sampleStart}
+					onChange={(name, value) => setSample({ ...sample, values: { ...sample.values, [name]: value } })}
+				/>
 				{test?.status === "error" && (
 					<p role="alert" className="text-destructive">
 						{test.message}

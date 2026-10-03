@@ -2,13 +2,15 @@
 
 import {
 	autoSummary,
+	CMS_TIME_ZONE,
 	previewHref as contentPreviewHref,
 	DEFAULT_COLLECTION,
+	fillFromBodyFields,
 	isCollection,
 	isRecordCollection,
 	parseDateTimeInput,
-	schemaOf,
-	slugify,
+	slugFieldOf,
+	slugFromValues,
 } from "@bh2980/cms/client";
 import { analyze } from "@bh2980/cms/mdx";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
@@ -36,6 +38,7 @@ import { toast } from "sonner";
 import { useEditorExtensions } from "../../admin-components";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
+import { josa } from "../../lib/utils/josa";
 import { Alert, AlertDescription } from "../../ui/alert";
 import { Button, buttonVariants } from "../../ui/button";
 import {
@@ -61,6 +64,7 @@ import {
 	EMPTY_FORM,
 	type EntryData,
 	type EntryForm,
+	type EntryFormPatch,
 	formFingerprint,
 	formFromEntry,
 	formText,
@@ -81,7 +85,7 @@ import {
 } from "./lifecycle-confirm";
 import { backupKey, deleteLocalBackup, getLocalBackup } from "./local-backup";
 import { ConflictDialog, type Recovery, RecoveryDialog } from "./recovery-dialogs";
-import { formatSeoul, ScheduleDialog, ScheduleNotice } from "./schedule-dialog";
+import { formatScheduleTime, ScheduleDialog, ScheduleNotice } from "./schedule-dialog";
 import { SourceChangeDialog } from "./source-change-dialog";
 import { SourcePane } from "./source-pane";
 import { useSourceSync } from "./source-sync";
@@ -224,13 +228,11 @@ function keepTranslationGroup(current: EntryData | null, next: EntryData): Pick<
 /**
  * 게시글·메모 편집 화면(§3.1, §5). 태그·카테고리·모음집(record 컬렉션)은 목록의 작은 폼에서 편집한다.
  */
-/** 발행할 때 비어 있으면 본문에서 채우는 요약 필드(`input: "auto-summary"`). */
-const autoSummaryFields = (collection: string): string[] =>
-	isCollection(collection)
-		? Object.entries(schemaOf(collection).fields).flatMap(([name, field]) =>
-				"input" in field && field.input === "auto-summary" ? [name] : [],
-			)
-		: [];
+/** 설정 시간대의 이름(예: `한국 표준시`). 예약 시각 안내에 쓴다. */
+const timeZoneName = () =>
+	new Intl.DateTimeFormat("ko-KR", { timeZone: CMS_TIME_ZONE, timeZoneName: "long" })
+		.formatToParts(new Date())
+		.find((part) => part.type === "timeZoneName")?.value ?? CMS_TIME_ZONE;
 
 export function EntryEditorShell({
 	mode,
@@ -457,7 +459,14 @@ export function EntryEditorShell({
 		setRecovery(null);
 	};
 
-	const handleTitleChange = (title: string) => setForm(isSlugTouched ? { title } : { title, slug: slugify(title) });
+	/** 주소를 직접 고치지 않았으면 주소 필드의 `from`이 가리키는 값이 바뀔 때 주소를 다시 만든다. */
+	const withAutoSlug = (patch: EntryFormPatch): EntryFormPatch => {
+		if (isSlugTouched || !isCollection(collection)) return patch;
+		const from = slugFieldOf(collection)?.from;
+		if (!from || !Object.hasOwn(patch, from)) return patch;
+		return { ...patch, slug: slugFromValues(collection, { ...form, ...patch }) };
+	};
+	const handleTitleChange = (title: string) => setForm(withAutoSlug({ title }));
 
 	const focusIssue = (issue: CmsIssue) => {
 		if (issue.path === "title") {
@@ -551,17 +560,17 @@ export function EntryEditorShell({
 	const handlePublish = async () => {
 		if (isSubmitting || isReadOnly) return;
 		setPublishIssues([]);
-		// §5.6: 본문 요약 입력(`input: "auto-summary"`)이 비었으면 본문에서 만들어 보여 준다. 만들 텍스트가 없으면 직접 입력해야 한다.
-		for (const field of autoSummaryFields(collection)) {
-			if (formText(form, field).trim()) continue;
+		// §5.6: 본문에서 채우는 필드(`fillFromBody`)가 비었으면 본문에서 만들어 보여 준다. 만들 글이 없으면 직접 입력해야 한다.
+		for (const { name, field } of isCollection(collection) ? fillFromBodyFields(collection) : []) {
+			if (formText(form, name).trim()) continue;
 			const generated = autoSummary(form.mdx);
 			if (!generated) {
-				setPublishIssues([{ code: "missing_summary", message: "요약을 입력하세요.", path: field }]);
-				toast.error("요약을 만들 본문이 없습니다. 요약을 직접 입력하세요.");
+				setPublishIssues([{ code: "missing_field", message: field.label, path: name }]);
+				toast.error(`${josa(field.label, "을", "를")} 만들 본문이 없습니다. 직접 입력하세요.`);
 				return;
 			}
-			setForm({ [field]: generated });
-			toast.message("본문에서 요약을 만들었습니다. 속성 패널에서 고칠 수 있습니다.");
+			setForm({ [name]: generated });
+			toast.message(`본문에서 ${josa(field.label, "을", "를")} 만들었습니다. 속성 패널에서 고칠 수 있습니다.`);
 		}
 		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
 		if (sourceChanged) toast.warning("확인하지 않은 원문 변경이 있습니다.");
@@ -611,12 +620,12 @@ export function EntryEditorShell({
 		}
 	};
 
-	const handleSchedule = async (seoulDateTime: string) => {
+	const handleSchedule = async (dateTime: string) => {
 		if (isSubmitting) return;
 		setScheduleError(null);
-		const scheduledAt = parseDateTimeInput(seoulDateTime);
+		const scheduledAt = parseDateTimeInput(dateTime);
 		if (!scheduledAt) {
-			setScheduleError("예약 일시를 확인하세요. 서울 시각입니다.");
+			setScheduleError(`예약 일시를 확인하세요. ${timeZoneName()} 기준입니다.`);
 			return;
 		}
 		if (Date.parse(scheduledAt) <= Date.now()) {
@@ -634,7 +643,7 @@ export function EntryEditorShell({
 			});
 			setScheduleOpen(false);
 			await loadEntry(id);
-			toast.success(`${formatSeoul(scheduledAt)}에 발행하도록 예약했습니다.`);
+			toast.success(`${formatScheduleTime(scheduledAt)}에 발행하도록 예약했습니다.`);
 		} catch (error) {
 			// 발행 검사에 걸리면 창을 닫고 문제 목록을 보인다. 그 밖의 실패는 창 안에 보인다.
 			if (error instanceof CmsApiError && error.issues.length > 0) {
@@ -1156,9 +1165,9 @@ export function EntryEditorShell({
 							}}
 							onRegenerateSlug={() => {
 								setIsSlugTouched(false);
-								setForm({ slug: slugify(form.title) });
+								setForm({ slug: isCollection(collection) ? slugFromValues(collection, form) : "" });
 							}}
-							onChange={setForm}
+							onChange={(patch) => setForm(withAutoSlug(patch))}
 							onClose={() => setIsInspectorOpen(false)}
 							focusPath={pendingFieldPath !== "title-canvas" ? pendingFieldPath : null}
 							onFocused={() => setPendingFieldPath(null)}
@@ -1191,7 +1200,7 @@ export function EntryEditorShell({
 				runnerConfigured={schedule?.runnerConfigured}
 				submitting={busy === "schedule"}
 				error={scheduleError}
-				onSubmit={(seoulDateTime) => void handleSchedule(seoulDateTime)}
+				onSubmit={(dateTime) => void handleSchedule(dateTime)}
 			/>
 
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />

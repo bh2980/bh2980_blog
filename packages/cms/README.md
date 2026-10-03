@@ -261,6 +261,39 @@ blocks: [
   `blockViews`(화면 전체)로 바꾸고, 코드 펜스 블록의 미리보기는 `fencePreviews`로 넣는다.
 - 공개 화면의 코드 펜스 블록은 `@bh2980/cms/mdx`의 `remarkFenceBlocksToMdx`를 렌더 체인(`remarkDirectivesToMdx` 뒤)에 넣어
   `component`로 그린다.
+- 번역 구조 검사(`compareStructure`)는 `translatable` 속성과, 그 값을 가리키는 `childValue` 속성(예: 처음 열 탭)만 번역에서
+  바뀌어도 된다고 본다. 사람이 읽는 속성(제목·설명 등)에는 `translatable: true`를 단다.
+- `editor.icon`이 관리자 패키지의 기본 아이콘에 없는 이름이면 관리자 화면에 아이콘을 등록한다(`@bh2980/cms-admin` README).
+
+### 코드 블록 줄 효과
+
+코드 블록 줄 효과(`// @line 이름 {0-2}`)의 기본은 강조·추가·삭제·경고·오류다. 설정의 `codeBlock.lineEffects`로 더하고,
+같은 이름을 적으면 기본을 바꾼다.
+
+```ts
+codeBlock: {
+	lineEffects: [
+		{
+			name: "focus", // 주석 이름(소문자 케밥). collapse·anchor와 글자 효과 이름은 쓸 수 없다
+			label: "초점", // 줄 효과 메뉴 이름
+			icon: "eye", // 메뉴 아이콘(lucide 이름, 관리자 화면에 등록된 이름)
+			class: "bg-primary/10", // 공개 화면이 그 줄에 붙이는 클래스(사이트 Tailwind가 읽는 곳에 둔다)
+			editor: { background: "bg-primary/10" }, // 편집기 표시: background·wavy(물결 밑줄 색)·marker({ text, className })
+		},
+	],
+},
+```
+
+공개 화면은 `@bh2980/cms/code-block`의 `annotationConfig`(기본 + 설정)를 렌더 체인에 넘긴다.
+
+### 글자색 목록
+
+편집기의 글자색·배경색 고르기 목록은 설정의 `textColors`로 바꾼다. 없으면 기본 8색(`DEFAULT_TEXT_PALETTE`)이다. 본문에는 색
+이름이 아니라 헥스 값이 저장되므로 목록을 바꿔도 이미 쓴 글은 그대로다.
+
+```ts
+textColors: [{ id: "brand", name: "브랜드", fg: { light: "#4f46e5", dark: "#818cf8" }, bg: { light: "#eef2ff", dark: "#1e1b4b" } }],
+```
 
 ## 플러그인
 
@@ -305,11 +338,47 @@ export const myPlugin = () =>
 | `defaultLocale` | 기본 언어. 공개 주소에 언어 접두사가 붙지 않는다. |
 | `site.url` | 공개 사이트 주소. 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 환경 변수에서 읽어도 된다. |
 | `site.aliases` | 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). |
+| `codeBlock.lineEffects` | 코드 블록 줄 효과 더하기·바꾸기("코드 블록 줄 효과"). |
+| `textColors` | 편집기 글자색 고르기 목록("글자색 목록"). |
 
 컬렉션의 `path`(예: `/posts/:slug`)는 공개 주소 모양이다. 본문의 내부 링크를 알아보고(가리키는 글이 있는지·공개됐는지
 발행 전에 검사) 편집기가 링크를 만들 때 쓴다. `path`가 없는 컬렉션은 본문 링크로 가리킬 수 없다.
 
-`defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나 기본 언어가 목록에 없으면 앱이 뜰 때 바로 오류를 낸다.
+### 필드 규칙
+
+- **`title`은 꼭 있어야 한다.** 모든 컬렉션은 `title` 텍스트 필드(`fields.text`)를 가진다. 목록·검색·관계 고르기·본문 링크·
+  편집 화면 제목 칸이 이 필드를 쓴다.
+- **주소는 `from`에서 만든다.** `fields.slug({ from: "title" })`이면 주소를 직접 고치기 전까지 그 필드 값으로 주소를 만들고,
+  record 컬렉션은 주소를 비우고 저장하면 그 값에서 만든다. `from`이 없으면 자동으로 만들지 않는다. `from`은 같은 컬렉션의
+  텍스트 필드여야 한다.
+- **필드 역할(`role`).** 라이브러리는 요약·검색·공유 값을 필드 이름이 아니라 역할로 찾는다. 역할마다 한 컬렉션에 한 필드만 둔다.
+
+| `role` | 필드 | 쓰는 곳 |
+|---|---|---|
+| `summary` | 텍스트 | 요약. 필드 옆 동작(AI 등)에 `summary`로 넘어가고 검색 설명이 비면 대신 쓴다. |
+| `seoTitle` · `seoDescription` | 텍스트 | 검색 결과 제목·설명. 비우면 제목·요약을 쓴다. 입력 옆에 글자 수가 보인다. |
+| `ogImage` | 텍스트(미디어 ID) | 공유 이미지. 관리자 화면은 미디어 고르기로 입력한다. |
+| `canonical` | 텍스트 | 원본 주소. |
+| `noindex` | 선택(`noindex` 선택지가 있어야 함) | 값이 `noindex`면 검색엔진에 숨긴다. 선택지가 둘이면 켜고 끄기로 그린다. |
+
+- **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
+  컬렉션만).
+- **SEO 탭.** `layout` 묶음에 `seo: true`를 두면 편집 화면 속성 칸의 `SEO` 탭에 그 묶음의 필드를 그리고, 위에 검색 결과·공유
+  미리보기를 둔다. 미리보기 값은 위 역할에서 온다.
+
+```ts
+fields: {
+	title: fields.text({ label: "Title", required: "publish" }),
+	slug: fields.slug({ label: "Slug", from: "title" }),
+	excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true }),
+	metaTitle: fields.text({ label: "Search title", role: "seoTitle" }),
+	shareImage: fields.text({ label: "Share image", role: "ogImage" }),
+},
+layout: [{ fields: ["title", "slug", "excerpt"] }, { group: "Search", seo: true, fields: ["metaTitle", "shareImage"] }],
+```
+
+`defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 역할·`from`·
+`fillFromBody`가 필드와 맞지 않으면 앱이 뜰 때 바로 오류를 낸다.
 
 ## 아직 남은 일
 

@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "../../ui/button";
 import { Field, FieldLabel } from "../../ui/field";
 import { Textarea } from "../../ui/textarea";
 import { errorText } from "../admin-api";
+import { formatDateTime } from "../shared/format-date";
 import { SidePanelHeader } from "../shared/side-panel";
 import { copyText, type MediaItem, withExtension } from "./media-item";
 import { MediaThumb } from "./media-views";
@@ -181,7 +182,7 @@ export function MediaDetailPanel({
 								{media.original.mimeType}
 							</Row>
 						)}
-						<Row label="올린 날짜">{new Date(media.createdAt).toLocaleString("ko-KR")}</Row>
+						<Row label="올린 날짜">{formatDateTime(media.createdAt)}</Row>
 						<Row label="미디어 ID">
 							<code className="text-[11px]">{media.id}</code>
 						</Row>

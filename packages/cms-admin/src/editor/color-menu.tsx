@@ -3,8 +3,9 @@
 import {
 	type ColorPair,
 	cleanTextColor,
+	cmsConfig,
+	DEFAULT_TEXT_PALETTE,
 	hasTextColor,
-	TEXT_PALETTE,
 	type TextColorAttrs,
 	textColorProps,
 } from "@bh2980/cms/client";
@@ -22,6 +23,9 @@ import {
 import { IconButton } from "../ui/icon-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { COLOR_MARK_NAME } from "./color-mark";
+
+/** 고르기 목록. 사이트 설정의 `textColors`, 없으면 본체 기본 프리셋이다. */
+const PALETTE = cmsConfig.textColors ?? DEFAULT_TEXT_PALETTE;
 
 type ColorKind = "fg" | "bg";
 
@@ -85,12 +89,12 @@ function SwatchRow({
 	const current = currentColor(editor)[kind] ?? null;
 	const options: { name: string; color: ColorPair | null }[] = [
 		{ name: "기본", color: null },
-		...TEXT_PALETTE.map((color) => ({ name: color.name, color: color[kind] })),
+		...PALETTE.map((color) => ({ name: color.name, color: color[kind] })),
 	];
 	return (
 		<div className="grid grid-cols-9 gap-1 px-1 pb-1">
 			{options.map(({ name, color }) => {
-				const selected = (color?.light ?? null) === current;
+				const selected = (color?.light.toLowerCase() ?? null) === current;
 				return (
 					<Tooltip key={name}>
 						<TooltipTrigger

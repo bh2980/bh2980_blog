@@ -1,3 +1,5 @@
+import { josa } from "../lib/utils/josa";
+
 export const MEDIA_NOT_CONFIGURED = "미디어 저장소가 설정되지 않았습니다.";
 
 export type CmsIssue = {
@@ -11,7 +13,6 @@ const ISSUE_LABELS: Record<string, string> = {
 	null_slug: "주소(slug)를 입력하세요.",
 	missing_title: "제목을 입력하세요.",
 	empty_body: "본문을 입력하세요.",
-	missing_category: "공개된 카테고리를 지정하세요.",
 	unresolved_reference: "참조 항목을 찾을 수 없습니다.",
 	unresolved_media: "이미지 미디어를 찾을 수 없습니다.",
 	unpublished_reference: "참조 항목이 공개 상태가 아닙니다.",
@@ -79,7 +80,10 @@ const DETAILED_CODES = new Set([
 ]);
 
 export function cmsIssueMessage(issue: CmsIssue): string {
-	const known = issue.code ? ISSUE_LABELS[issue.code] : undefined;
+	// 필수 필드 문제는 `message`에 필드 라벨이 온다.
+	const missing =
+		issue.code === "missing_field" && issue.message ? `${josa(issue.message, "을", "를")} 입력하세요.` : undefined;
+	const known = missing ?? (issue.code ? ISSUE_LABELS[issue.code] : undefined);
 	const detail = known && issue.code && DETAILED_CODES.has(issue.code) && issue.message ? ` — ${issue.message}` : "";
 	const label = known ? `${known}${detail}` : issue.message || issue.code || "발행 검증 실패";
 	const location = issue.position ? `${issue.position.line}행 ${issue.position.column}열` : issue.path;

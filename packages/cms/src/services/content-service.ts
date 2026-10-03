@@ -1,8 +1,8 @@
 import { isCollection, isRecordCollection } from "../core/collections";
 import { isLocale } from "../core/locales";
-import { slugify } from "../core/slug";
 import { prepareSnapshot, SERVICE_INPUT_KEYS, validateExactRecord } from "../core/snapshot";
 import { withTranslationHints } from "../core/translation/hints";
+import { slugFromValues } from "../schema/derive";
 import { type SaveDraftInput, ServiceError, type ServiceInput, type StorePort } from "./types";
 
 // 스냅샷 규칙은 도메인 계층(`core/snapshot`)에 있다. 기존 import 경로를 위해 다시 내보낸다.
@@ -15,13 +15,12 @@ const assertInputKeys = (input: unknown, baseKeys: readonly string[]) => {
 };
 
 /**
- * record 컬렉션(§5.2)은 제목만 입력해도 만들 수 있어야 한다. slug가 비면 제목에서 만든다.
- * 명시적 저장이 곧 공개 반영이라 slug 없는 레코드는 존재할 수 없다.
+ * record 컬렉션(§5.2)은 이름만 입력해도 만들 수 있어야 한다. slug가 비면 주소 필드의 `from`이 가리키는 값에서
+ * 만든다(`from`이 없으면 만들지 않는다). 명시적 저장이 곧 공개 반영이라 slug 없는 레코드는 존재할 수 없다.
  */
 const withRecordSlug = (input: ServiceInput): ServiceInput => {
 	if (!isRecordCollection(input.collection) || input.slug?.trim()) return input;
-	const title = typeof input.metadata?.title === "string" ? input.metadata.title : "";
-	const slug = slugify(title);
+	const slug = slugFromValues(input.collection, input.metadata ?? {});
 	return slug ? { ...input, slug } : input;
 };
 

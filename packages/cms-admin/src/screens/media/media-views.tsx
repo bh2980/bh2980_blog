@@ -8,6 +8,7 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared/action-menu";
+import { formatDateTime } from "../shared/format-date";
 import { OPEN_ITEM } from "../shared/side-panel";
 import { type MediaItem, usageLabel } from "./media-item";
 
@@ -158,7 +159,7 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 							</TableCell>
 							<TableCell>{usageLabel(media)}</TableCell>
 							<TableCell className="text-muted-foreground tabular-nums">
-								{new Date(media.createdAt).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" })}
+								{formatDateTime(media.createdAt, { dateStyle: "medium", timeStyle: "short" })}
 							</TableCell>
 							<TableCell onClick={(event) => event.stopPropagation()}>
 								<MoreActionsButton actions={menuFor(media)} label={`'${media.filename}' 작업`} className="size-7" />

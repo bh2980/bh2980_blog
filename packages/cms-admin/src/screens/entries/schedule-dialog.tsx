@@ -8,11 +8,12 @@ import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import type { EntryData } from "./entry-form";
 
-/** 서울 시각 `2026-10-01 09:00`. */
-export const formatSeoul = (value: string | null | undefined) => formatDateTimeInput(value ?? null).replace("T", " ");
+/** 설정 시간대(`timeZone`)의 시각 `2026-10-01 09:00`. */
+export const formatScheduleTime = (value: string | null | undefined) =>
+	formatDateTimeInput(value ?? null).replace("T", " ");
 
 /**
- * 발행 예약 창. 열 때마다 빈 입력으로 시작한다. 입력한 서울 시각 문자열을 그대로 넘기고, 검사·요청은 부르는 쪽이 한다.
+ * 발행 예약 창. 열 때마다 빈 입력으로 시작한다. 입력한 설정 시간대 시각 문자열을 그대로 넘기고, 검사·요청은 부르는 쪽이 한다.
  * 검사·요청이 실패하면 부르는 쪽이 `error`로 넘기고, 창 안에 보인다(창 밖에 보이지 않는다).
  */
 export function ScheduleDialog({
@@ -30,7 +31,7 @@ export function ScheduleDialog({
 	submitting: boolean;
 	/** 창 안에 보일 오류. */
 	error?: string | null;
-	onSubmit: (seoulDateTime: string) => void;
+	onSubmit: (dateTime: string) => void;
 }) {
 	const [input, setInput] = useState("");
 	// 열릴 때마다 입력을 비운다(부르는 쪽이 `open`을 직접 바꿔도).
@@ -94,7 +95,7 @@ export function ScheduleNotice({ schedule }: { schedule: EntryData["schedule"] }
 		return (
 			<section aria-label="예약" className="flex flex-wrap items-center gap-2 border-b bg-primary/10 px-4 py-2 text-sm">
 				<span>
-					{formatSeoul(schedule.pending.scheduledAt)} 발행 예약됨 — 예약 중에는 본문과 속성을 편집할 수 없습니다.
+					{formatScheduleTime(schedule.pending.scheduledAt)} 발행 예약됨 — 예약 중에는 본문과 속성을 편집할 수 없습니다.
 					{Date.parse(schedule.pending.scheduledAt) <= Date.now() && " 예정 시각이 지나 실행 대기 중입니다."}
 					{!schedule.runnerConfigured && " 외부 실행기 연결 필요: 연결되지 않으면 자동으로 발행되지 않습니다."}
 				</span>
@@ -104,7 +105,7 @@ export function ScheduleNotice({ schedule }: { schedule: EntryData["schedule"] }
 	if (schedule?.last?.status === "failed") {
 		return (
 			<p role="alert" className="border-b bg-destructive/10 px-4 py-2 text-destructive text-sm">
-				{formatSeoul(schedule.last.scheduledAt)} 예약 발행이 실패해 공개본을 그대로 유지했습니다 (
+				{formatScheduleTime(schedule.last.scheduledAt)} 예약 발행이 실패해 공개본을 그대로 유지했습니다 (
 				{schedule.last.failureCode}).
 				{schedule.last.failureDetail ? ` ${schedule.last.failureDetail.slice(0, 200)}` : ""}
 			</p>

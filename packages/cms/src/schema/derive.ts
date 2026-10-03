@@ -1,7 +1,17 @@
 import { cmsConfig } from "../config/resolved";
 import { isUuid } from "../core/ids";
+import { slugify } from "../core/slug";
 import type { CollectionSchema } from "./collection";
-import { type Field, type SlugField, type StorageType, storageTypeOf, type ValueField } from "./fields";
+import {
+	type Field,
+	type FieldRole,
+	type SelectField,
+	type SlugField,
+	type StorageType,
+	storageTypeOf,
+	type TextField,
+	type ValueField,
+} from "./fields";
 
 /**
  * 컬렉션 정의에서 저장·검증·참조 규칙을 만든다(v2 B1). 순수 함수이며 DB·HTTP·React를 모른다.
@@ -55,6 +65,51 @@ export function storedField(collection: SchemaCollection, name: string): StoredF
 
 export function slugFieldOf(collection: SchemaCollection): SlugField | undefined {
 	return Object.values(schemaOf(collection).fields).find((field): field is SlugField => field.kind === "slug");
+}
+
+/** 역할별 필드 정의의 종류. `noindex`만 선택 필드이고 나머지는 텍스트 필드다. */
+export type RoleFieldOf<R extends FieldRole> = R extends "noindex" ? SelectField : TextField;
+
+/**
+ * 그 역할(`role`)을 가진 저장 필드. 없으면 `undefined`. 라이브러리 코드는 요약·검색·공유 값을 필드 이름이 아니라
+ * 이 함수로 찾는다.
+ */
+export function roleField<R extends FieldRole>(
+	collection: SchemaCollection,
+	role: R,
+): (StoredField & { readonly field: RoleFieldOf<R> }) | undefined {
+	return storedFields(collection).find(
+		(stored): stored is StoredField & { readonly field: RoleFieldOf<R> } =>
+			"role" in stored.field && stored.field.role === role,
+	);
+}
+
+/** 그 역할 필드의 값(문자열). 필드가 없거나 값이 문자열이 아니면 `""`. */
+export function roleValue(
+	collection: SchemaCollection,
+	role: FieldRole,
+	values: { readonly [key: string]: unknown },
+): string {
+	const stored = roleField(collection, role);
+	const value = stored ? values[stored.name] : undefined;
+	return typeof value === "string" ? value : "";
+}
+
+/** 비어 있으면 발행할 때 본문 앞부분으로 채우는 필드(`fillFromBody`). */
+export function fillFromBodyFields(collection: SchemaCollection): (StoredField & { readonly field: TextField })[] {
+	return storedFields(collection).filter(
+		(stored): stored is StoredField & { readonly field: TextField } =>
+			stored.field.kind === "text" && stored.field.fillFromBody === true,
+	);
+}
+
+/**
+ * 주소 필드의 `from`이 가리키는 값으로 만든 주소. `from`이 없거나 값이 비면 `""`(자동으로 만들지 않는다).
+ */
+export function slugFromValues(collection: SchemaCollection, values: { readonly [key: string]: unknown }): string {
+	const from = slugFieldOf(collection)?.from;
+	const source = from ? values[from] : undefined;
+	return typeof source === "string" ? slugify(source) : "";
 }
 
 /** 필드 이름 → 저장 형식. v1 `COLLECTION_DEFINITIONS.fields`와 같은 모양이다. */
@@ -128,12 +183,12 @@ export function relationRule(
 	return { to: stored.field.to as RelationTarget, allowUnpublished: stored.field.allowUnpublished === true };
 }
 
-/** v1 API가 쓰던 필수값 문제 코드. 새 필드는 `missing_field`를 쓴다. */
-const LEGACY_REQUIRED_CODES: Readonly<Record<string, string>> = {
-	slug: "null_slug",
-	title: "missing_title",
-	categoryId: "missing_category",
-};
+/**
+ * 필수값 문제 코드. 주소 필드는 `null_slug`, 핵심 필드 `title`은 `missing_title`(v1 API와 같다), 나머지는
+ * `missing_field`이고 `message`에 필드 라벨을 담는다.
+ */
+const NULL_SLUG = "null_slug";
+const MISSING_TITLE = "missing_title";
 
 const isEmptyValue = (value: unknown) =>
 	value === undefined ||
@@ -146,20 +201,24 @@ export function missingRequiredIssues(
 	collection: SchemaCollection,
 	snapshot: { slug: string | null; metadata: { readonly [key: string]: unknown } },
 	options: { localizedOnly?: boolean } = {},
-): { code: string; path: string }[] {
-	const issues: { code: string; path: string }[] = [];
+): { code: string; path: string; message?: string }[] {
+	const issues: { code: string; path: string; message?: string }[] = [];
 	// 번역본은 언어별 값만 가지므로 공통 필수값(카테고리 등)은 원문에서 검사한다(v2 B4).
 	const required = (field: Field) =>
 		"required" in field && field.required === "publish" && (!options.localizedOnly || Boolean(field.localized));
 	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
 		if (field.kind !== "slug" || !required(field)) continue;
-		if (!snapshot.slug) issues.push({ code: LEGACY_REQUIRED_CODES.slug ?? "missing_field", path: name });
+		if (!snapshot.slug) issues.push({ code: NULL_SLUG, path: name });
 	}
 	for (const { name, field, when } of storedFields(collection)) {
 		if (!required(field)) continue;
 		if (when && snapshot.metadata[when.field] !== when.value) continue;
 		if (isEmptyValue(snapshot.metadata[name])) {
-			issues.push({ code: LEGACY_REQUIRED_CODES[name] ?? "missing_field", path: name });
+			issues.push(
+				name === "title"
+					? { code: MISSING_TITLE, path: name }
+					: { code: "missing_field", path: name, message: field.label },
+			);
 		}
 	}
 	return issues;

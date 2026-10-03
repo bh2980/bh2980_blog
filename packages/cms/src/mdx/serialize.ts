@@ -1,4 +1,4 @@
-import { annotationConfig } from "../annotation/code-block/constants";
+import { annotationConfig } from "../annotation/code-block/active";
 import { fromCodeBlockDocumentToCodeFence } from "../annotation/code-block/document-to-code-fence";
 import type { CodeBlockDocument } from "../annotation/code-block/types";
 import { TEXT_COLOR_ATTRS } from "../core/text-colors";

@@ -13,7 +13,7 @@ export interface AiActionOverrideRow {
 	updatedAt: Date;
 }
 
-/** v2 D AI 기능의 고친 값(`ai_action_overrides`)·연결 설정(`ai_settings`)과 AI 검사에 필요한 조회. */
+/** v2 D AI 기능의 고친 값(`ai_action_overrides`)·연결 설정(`ai_settings`)·화면 기능(`ai_custom_actions`). */
 export function createAiStore({ pool, schema: qSchema }: PluginDatabase) {
 	return {
 		/** 고친 값 전부. 고친 적 없는 기능은 없다. */
@@ -137,23 +137,6 @@ export function createAiStore({ pool, schema: qSchema }: PluginDatabase) {
 				if (version !== params.expectedVersion) throw new CmsError("Conflict", "conflict", version);
 				await client.query(`DELETE FROM "${qSchema}".ai_custom_actions WHERE key = $1`, [params.key]);
 			}),
-
-		/** 후보 주소 중 같은 컬렉션·언어에서 다른 글이 쓰거나 예약한 것. */
-		findTakenSlugs: async (params: {
-			collection: string;
-			locale: string;
-			slugs: string[];
-			entryId?: string;
-		}): Promise<Set<string>> => {
-			if (params.slugs.length === 0) return new Set();
-			const res = await pool.query<{ slug: string }>(
-				`SELECT slug FROM "${qSchema}".content_addresses
-				 WHERE collection = $1 AND locale = $2 AND slug = ANY($3::text[])
-				   AND ($4::uuid IS NULL OR entry_id <> $4::uuid)`,
-				[params.collection, params.locale, params.slugs, params.entryId ?? null],
-			);
-			return new Set(res.rows.map((row) => row.slug));
-		},
 	};
 }
 

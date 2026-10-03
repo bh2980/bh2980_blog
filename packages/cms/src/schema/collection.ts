@@ -16,6 +16,11 @@ export interface LayoutGroup<Name extends string = string> {
 	readonly fields: readonly Name[];
 	/** 처음에 접어 둔다. */
 	readonly collapsed?: boolean;
+	/**
+	 * 편집 화면 속성 칸의 `SEO` 탭에 그린다. 탭은 이 묶음의 필드를 보통 입력으로 그리고, 위에 검색 결과·공유 미리보기를
+	 * 둔다. 미리보기 값은 필드 역할(`seoTitle`·`seoDescription`·`ogImage`·`noindex`, 없으면 제목·`summary`)에서 온다.
+	 */
+	readonly seo?: boolean;
 }
 
 export interface CollectionSchema<
@@ -26,6 +31,10 @@ export interface CollectionSchema<
 	readonly workflow: Workflow;
 	/** 본문(MDX)을 가지는가. `publish` 컬렉션만 본문을 쓴다. */
 	readonly body: boolean;
+	/**
+	 * 필드 이름 → 정의. 꼭 `title` 텍스트 필드(`fields.text`)가 있어야 한다(`defineConfig`가 확인한다). 목록·검색·
+	 * 관계 고르기·본문 링크·편집 화면 제목 칸이 이 필드를 쓴다.
+	 */
 	readonly fields: Fields;
 	/**
 	 * 공개 주소 모양(예: `/posts/:slug`). `:slug`를 꼭 한 번 쓴다. 본문의 내부 링크를 알아보고(발행 전 검사),

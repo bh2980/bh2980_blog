@@ -2,6 +2,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { slugify } from "@bh2980/cms/client";
 import { APICallError, generateText, NoObjectGeneratedError, Output, RetryError, streamText } from "ai";
 import { z } from "zod";
+import type { AiInputKind } from "./action";
 import type { AiModelInfo } from "./connection";
 import type { AiResult } from "./definition";
 import { AiError } from "./errors";
@@ -18,14 +19,24 @@ export type AiContent =
 	| { type: "text"; text: string }
 	| { type: "image"; mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; data: string };
 
+/** 가짜 연결(개발 전용)이 답을 만들 재료. 실제 연결은 읽지 않는다. */
+export interface AiFakeHint {
+	/** 보낸 자료(입력 이름 → 종류·글). */
+	readonly inputs: Readonly<Record<string, { readonly kind: AiInputKind; readonly value: string }>>;
+	/** 고를 수 있는 값(선택지가 있는 후보). */
+	readonly choices?: readonly string[];
+	/** 기능이 정한 가짜 답(`AiActionDefinition.fake`). */
+	readonly answer?: () => string;
+}
+
 export interface AiRequest<T> {
 	system: string;
 	content: AiContent[];
 	schema: z.ZodType<T>;
 	maxTokens: number;
-	/** 결과 모양과 보낸 자료. 가짜 연결이 그럴듯한 답을 만들 때만 쓴다. */
+	/** 결과 모양. 가짜 연결이 답 모양을 정할 때 쓴다. */
 	result: AiResult;
-	data: Record<string, string>;
+	fake: AiFakeHint;
 	signal?: AbortSignal;
 }
 
@@ -306,34 +317,56 @@ export async function listModels(baseUrl: string, apiKey: string | null, signal?
 /** 자료에서 영어 낱말을 뽑는다(가짜 연결 전용). */
 const words = (text: string) => (text.match(/[A-Za-z][A-Za-z0-9]+/g) ?? []).map((word) => word.toLowerCase());
 
-/** 가짜 흘려받기의 답. 고칠 글(선택 영역·블록)이 있으면 그 글을, 없으면 제목으로 만든 초안(코드 펜스를 바라면 그 펜스)이다. */
-const fakeStreamText = (request: AiStreamRequest) => {
-	const { data } = request;
-	// 고칠 글은 앞에 표시를 붙여 돌려준다(바뀐 곳 미리보기가 보이도록).
-	if (data.selection) return `(fake) ${data.selection}`;
-	// 블록은 모양을 지킨 채 한 줄을 더한다(코드 펜스면 닫는 줄 앞, Mermaid는 그려지는 노드 한 줄).
-	if (data.block) {
-		const fence = data.block.match(/^(`{3,}([a-z-]*)[^\n]*\n[\s\S]*\n)(`{3,}\s*)$/);
-		if (!fence) return `${data.block} (fake)`;
-		// Mermaid는 노드 한 줄, 차트는 마지막 값 행을 한 번 더(문법 검사를 통과하게), 나머지는 표시 한 줄을 더한다.
-		const lastLine = fence[1].trimEnd().split("\n").at(-1) ?? "";
-		const line = fence[2] === "mermaid" ? '  fake["(fake)"]' : fence[2] === "chart" ? lastLine : "(fake)";
-		return `${fence[1]}${line}\n${fence[3]}`;
+/** 종류가 맞는 첫 자료. */
+const firstOf = (hint: AiFakeHint, kinds: readonly AiInputKind[]) =>
+	Object.values(hint.inputs).find((input) => kinds.includes(input.kind) && input.value.trim())?.value;
+
+/** 글 자료(글·MDX·현재 값)를 모두 이은 것. */
+const allText = (hint: AiFakeHint) =>
+	Object.values(hint.inputs)
+		.filter((input) => input.kind === "text" || input.kind === "mdx" || input.kind === "value")
+		.map((input) => input.value)
+		.join(" ");
+
+/** 글자로 시작하는 MDX(문단). 앞에 표시를 붙여도 블록 모양이 바뀌지 않는다. */
+const startsWithWords = (mdx: string) => /^[\p{L}\p{N}]/u.test(mdx.trim());
+
+/**
+ * 가짜 글·MDX 답. 기능이 정한 답(`fake`)이 있으면 그것을, 없으면 결과 모양과 자료 종류로 만든다.
+ * - MDX 자료가 있으면 그 MDX(번역처럼 뼈대를 지켜야 하는 기능도 검사를 통과한다). 흘려받기는 바뀐 곳이 보이게
+ *   문단 앞에 표시를 붙인다.
+ * - 없으면 첫 글 자료로 만든 초안.
+ */
+function fakeText(result: AiResult, hint: AiFakeHint, streaming: boolean): string {
+	if (hint.answer) return hint.answer();
+	const title = firstOf(hint, ["text"])?.trim().slice(0, 60);
+	if (result === "note") return "(fake) 메모";
+	if (result === "text") return `(fake) ${(title || firstOf(hint, ["mdx", "value"]) || "글").slice(0, 60)}`;
+	const source = firstOf(hint, ["mdx"]);
+	if (source !== undefined) return streaming && startsWithWords(source) ? `(fake) ${source}` : source;
+	const heading = title || "새 글";
+	return `## ${heading}\n\n(fake) ${heading}에 대한 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
+}
+
+/** 가짜 후보. 기능이 정한 답(줄마다 하나), 선택지, 코드에서 찾을 정규식, 글로 만든 낱말 묶음 순으로 고른다. */
+function fakeCandidates(hint: AiFakeHint): string[] {
+	if (hint.answer) {
+		return hint
+			.answer()
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean);
 	}
-	const title = data.title?.trim() || "새 글";
-	// 지시문이 코드 펜스 하나로 답하라고 하면(예: 다이어그램 만들기) 그 언어의 펜스로 답한다.
-	const fence = request.system.match(/답은 ```([a-z][a-z0-9-]*) 코드 펜스 하나/)?.[1];
-	if (fence) {
-		const body =
-			fence === "mermaid"
-				? `graph TD\n  fake["(fake) ${title}"]`
-				: fence === "chart"
-					? "chart bar\nx label\nseries value | (fake) | chart-1\n\ndata\nlabel | value\n(fake) | 1"
-					: `(fake) ${title}`;
-		return `\`\`\`${fence}\n${body}\n\`\`\``;
+	if (hint.choices && hint.choices.length > 0) return hint.choices.slice(0, 3);
+	const code = firstOf(hint, ["code"]);
+	if (code !== undefined) {
+		const firstWord = words(code)[0];
+		return firstWord ? [firstWord, "\\d+"] : ["\\S+"];
 	}
-	return `## ${title}\n\n(fake) ${title}에 대한 초안 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
-};
+	const source = words(allText(hint));
+	const base = source.length > 0 ? source.slice(0, 3).join("-") : "sample";
+	return [base, `${base}-guide`, slugify(`fake ${base}`)];
+}
 
 /** 키 없이 정해진 답을 주는 생성 모델. 같은 입력이면 늘 같은 답이다. */
 export function createFakeGenerator(): AiProvider {
@@ -342,37 +375,16 @@ export function createFakeGenerator(): AiProvider {
 		model: "fake-generator",
 		async *stream(request: AiStreamRequest): AsyncIterable<string> {
 			// 조금씩 보이는지 확인할 수 있게 낱말마다 조금 쉰다.
-			for (const piece of fakeStreamText(request).split(/(?<=\s)/)) {
+			for (const piece of fakeText(request.result, request.fake, true).split(/(?<=\s)/)) {
 				if (request.signal?.aborted) throw new DOMException("Aborted", "AbortError");
 				await new Promise((resolve) => setTimeout(resolve, 40));
 				yield piece;
 			}
 		},
 		async generate<T>(request: AiRequest<T>): Promise<T> {
-			const { data } = request;
-			// MDX 결과(번역 등)는 원문을 그대로 돌려준다(구조 검사를 통과하는 항등 번역).
-			if (request.result === "mdx") return { mdx: data.block ?? data.body ?? "" } as T;
-			if (request.result === "text") {
-				return { text: `(fake) ${(data.title || data.body || "요약").slice(0, 60)}` } as T;
-			}
-			if (request.result === "note") return { note: "(fake) 메모" } as T;
-
-			let candidates: string[];
-			if (data.tags) {
-				candidates = data.tags
-					.split("\n")
-					.map((line) => line.split(":")[0]?.trim() ?? "")
-					.filter(Boolean)
-					.slice(0, 3);
-			} else if (data.code) {
-				const firstWord = words(data.code)[0];
-				candidates = firstWord ? [firstWord, "\\d+"] : ["\\S+"];
-			} else {
-				const source = words(`${data.title ?? ""} ${data.filename ?? ""} ${data.body ?? ""}`);
-				const base = source.length > 0 ? source.slice(0, 3).join("-") : "sample-post";
-				candidates = [base, `${base}-guide`, slugify(`fake ${base}`)];
-			}
-			return { candidates } as T;
+			const { result, fake } = request;
+			if (result === "candidates") return { candidates: fakeCandidates(fake) } as T;
+			return { [result]: fakeText(result, fake, false) } as T;
 		},
 	};
 }

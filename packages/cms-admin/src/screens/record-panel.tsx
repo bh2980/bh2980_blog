@@ -9,7 +9,9 @@ import {
 	localeLabel,
 	recordLocalizedFields,
 	type SchemaCollection,
-	slugify,
+	schemaOf,
+	slugFieldOf,
+	slugFromValues,
 } from "@bh2980/cms/client";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils/cn";
@@ -78,6 +80,11 @@ export function RecordPanel({
 	const label = COLLECTION_DEFINITIONS[collection].label;
 	const heading = id ? `${label} 편집` : `${label} 추가`;
 	const title = form.title;
+	/** 주소를 비우면 만들 값의 안내. 주소 필드의 `from`이 없으면 필드의 안내 문구를 그대로 쓴다. */
+	const slugFrom = slugFieldOf(collection)?.from;
+	const slugHint = slugFrom
+		? `비우면 ${schemaOf(collection).fields[slugFrom]?.label ?? slugFrom}에서 만듭니다`
+		: undefined;
 
 	useEffect(() => {
 		setLoaded(null);
@@ -128,7 +135,7 @@ export function RecordPanel({
 							method: "PATCH",
 							json: {
 								expectedVersion: loaded.version,
-								slug: form.slug.trim() || slugify(title),
+								slug: form.slug.trim() || slugFromValues(collection, form) || null,
 								metadata: built.metadata,
 							},
 							fallback: "저장하지 못했습니다.",
@@ -200,7 +207,7 @@ export function RecordPanel({
 								form={form}
 								context={{ entryId: id ?? undefined, disabled: isSaving }}
 								onChange={setForm}
-								slugPlaceholder={slugify(title) || "비우면 이름에서 만듭니다"}
+								slugPlaceholder={slugFromValues(collection, form) || slugHint}
 							/>
 							{id && <p className="text-muted-foreground text-xs">주소를 바꾸면 이전 주소는 새 주소로 연결됩니다.</p>}
 						</TabsContent>

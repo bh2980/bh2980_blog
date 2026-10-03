@@ -11,7 +11,7 @@ export const STATUS_LABELS: Record<EntryStatus, string> = {
 
 /**
  * 목록·편집 화면의 상태 문구(§5.3). 색상만으로 상태를 전달하지 않도록 항상 글자로 쓴다(§3.2).
- * 공개본과 다른 초안은 `발행됨 · 수정 중`, 대기 중인 예약은 `· 예약 <서울 시간>`을 붙인다.
+ * 공개본과 다른 초안은 `발행됨 · 수정 중`, 대기 중인 예약은 `· 예약 <설정 시간대 시각>`을 붙인다.
  */
 export function describeEntryStatus(entry: {
 	status: EntryStatus;

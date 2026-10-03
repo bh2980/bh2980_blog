@@ -1,10 +1,9 @@
 import { isCollection, localeName, schemaOf, storedField } from "@bh2980/cms/client";
-import { getCmsContentStore, getCmsMediaStore } from "@bh2980/cms/plugin/server";
+import { createContentLookup, getCmsContentStore, getCmsDatabase, getCmsMediaStore } from "@bh2980/cms/plugin/server";
 import { AiError } from "../errors";
 import type { AiOption, AiRunDeps } from "../run";
 import type { AiRuntime } from "../settings";
 import { siteImageUrl } from "../site-image";
-import { getAiStore } from "../store";
 
 /** 멀티모달 모델이 흔히 받는 이미지 형식과 크기. */
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -60,7 +59,7 @@ async function fetchSiteImage(url: URL, signal?: AbortSignal): Promise<LoadedIma
 }
 
 /**
- * 실행기에 넘길 저장소 연결. 태그·카테고리·이미지·주소는 서버가 직접 읽는다.
+ * 실행기에 넘길 저장소 연결. 태그·카테고리·이미지와 코드 검사의 콘텐츠 조회는 서버가 직접 읽는다.
  * `origin`은 이 사이트 주소다. 미디어 라이브러리 밖 이미지(사이트 파일)를 여기서 읽는다.
  */
 export function aiRunDeps(runtime: AiRuntime, signal?: AbortSignal, origin?: string): AiRunDeps {
@@ -91,6 +90,7 @@ export function aiRunDeps(runtime: AiRuntime, signal?: AbortSignal, origin?: str
 				data: Buffer.from(bytes).toString("base64"),
 			};
 		},
-		takenSlugs: (params) => getAiStore().findTakenSlugs(params),
+		// 코드 검사가 읽는 본체 콘텐츠 조회(본체 공개 API).
+		content: createContentLookup(getCmsDatabase()),
 	};
 }

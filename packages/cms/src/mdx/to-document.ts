@@ -1,6 +1,6 @@
 import type { Code } from "mdast";
+import { annotationConfig } from "../annotation/code-block/active";
 import { fromCodeFenceToCodeBlockDocument } from "../annotation/code-block/code-fence-to-document";
-import { annotationConfig } from "../annotation/code-block/constants";
 import { attributeRecord, readJsxAttributes } from "./jsx";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
 import {

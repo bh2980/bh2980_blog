@@ -360,21 +360,22 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
 			</SidebarContent>
 			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
+				{/* 관리자 화면은 사이트 앱 안의 경로(`/admin`)라 사이트 첫 화면은 `/`다. */}
 				<Tooltip>
 					<TooltipTrigger
 						render={
 							<Link
 								href="/"
-								aria-label="블로그 보기"
+								aria-label="사이트 보기"
 								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
 							/>
 						}
 					>
 						<Globe aria-hidden className="size-4" />
-						<span className="group-data-[collapsible=icon]:hidden">블로그 보기</span>
+						<span className="group-data-[collapsible=icon]:hidden">사이트 보기</span>
 					</TooltipTrigger>
 					<TooltipContent side="right" hidden={state !== "collapsed" || isMobile}>
-						블로그 보기
+						사이트 보기
 					</TooltipContent>
 				</Tooltip>
 				<ThemeToggle className="size-8 text-muted-foreground" />

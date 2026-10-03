@@ -6,7 +6,7 @@ import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
-/** `YYYY-MM-DD` ↔ 달력의 날짜. 관리자 필터는 서울 날짜를 받아 서버에 하루 경계로 보낸다(§5.5). */
+/** `YYYY-MM-DD` ↔ 달력의 날짜. 관리자 필터는 설정 시간대의 날짜를 받아 서버에 하루 경계로 보낸다(§5.5). */
 export const dayToDate = (value: string) => {
 	if (!value) return undefined;
 	const [y, m, d] = value.split("-").map(Number);

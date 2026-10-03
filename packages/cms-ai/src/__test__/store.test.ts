@@ -1,3 +1,4 @@
+import { createContentLookup } from "@bh2980/cms/plugin/server";
 import {
 	type ContentStore,
 	createContentService,
@@ -119,19 +120,18 @@ describe("AI 기능 고친 값 저장소", () => {
 		expect(legacy.rows[0]?.n).toBe(3);
 	});
 
-	it("같은 컬렉션·언어에서 다른 글이 쓰는 주소를 찾는다", async () => {
+	it("코드 검사가 쓰는 본체 콘텐츠 조회는 같은 컬렉션·언어에서 다른 글이 쓰는 주소를 찾는다", async () => {
 		const entry = await createContentService<Entry>(content).createDraft({
 			collection: "category",
 			slug: "used-address",
 			metadata: { title: "주소 확인" },
 			mdx: "",
 		});
+		const lookup = createContentLookup({ pool, schema: schemaName });
 		const slugs = ["used-address", "free-address"];
-		expect(await store.findTakenSlugs({ collection: "category", locale: "ko", slugs })).toEqual(
-			new Set(["used-address"]),
-		);
-		expect(await store.findTakenSlugs({ collection: "category", locale: "en", slugs })).toEqual(new Set());
-		expect(await store.findTakenSlugs({ collection: "category", locale: "ko", slugs, entryId: entry.id })).toEqual(
+		expect(await lookup.slugsInUse({ collection: "category", locale: "ko", slugs })).toEqual(new Set(["used-address"]));
+		expect(await lookup.slugsInUse({ collection: "category", locale: "en", slugs })).toEqual(new Set());
+		expect(await lookup.slugsInUse({ collection: "category", locale: "ko", slugs, excludeEntryId: entry.id })).toEqual(
 			new Set(),
 		);
 	});

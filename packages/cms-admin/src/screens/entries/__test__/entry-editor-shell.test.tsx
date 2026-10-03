@@ -376,14 +376,14 @@ describe("entry editor shell", () => {
 		vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
 		serve((input) =>
 			input.endsWith("/publish")
-				? json({ issues: [{ code: "missing_category", path: "categoryId" }] }, 422)
+				? json({ issues: [{ code: "missing_field", path: "categoryId", message: "카테고리" }] }, 422)
 				: undefined,
 		);
 		renderEdit();
 		await screen.findByRole("button", { name: "발행" });
 		expect(await editorTitle()).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "발행" }));
-		fireEvent.click(await screen.findByRole("button", { name: /카테고리를 지정하세요/ }));
+		fireEvent.click(await screen.findByRole("button", { name: /카테고리를 입력하세요/ }));
 		const category = await screen.findByRole("combobox", { name: /카테고리/ });
 		await waitFor(() => expect(document.activeElement).toBe(category));
 		expect(screen.getByLabelText("시각 본문").closest("[inert]")).toBeTruthy();
@@ -565,6 +565,18 @@ describe("entry editor shell", () => {
 		expect(JSON.parse(String(methodCalls("PATCH")[0]?.[1]?.body)).metadata.summary).toBe("소개 본문 첫 문장.");
 	});
 
+	it("does not publish when a body-filled field has nothing to fill from, naming the field", async () => {
+		serve(() => undefined, {
+			...entry,
+			working: { metadata: { title: "테스트", categoryId: "cat-1" }, mdx: "```js\nonly();\n```" },
+		});
+		renderEdit();
+		await screen.findByRole("textbox", { name: "요약" });
+		fireEvent.click(screen.getByRole("button", { name: "발행" }));
+		await waitFor(() => expect(error).toHaveBeenCalledWith("요약을 만들 본문이 없습니다. 직접 입력하세요."));
+		expect(methodCalls("POST", "/publish")).toHaveLength(0);
+	});
+
 	it("shows trashed entries read-only with restore and permanent delete", async () => {
 		serve(() => undefined, { ...entry, status: "trashed" });
 		renderEdit();
@@ -728,7 +740,7 @@ describe("발행 예약", () => {
 		return screen.findByRole("dialog", { name: "발행 예약" });
 	};
 
-	it("미래 서울 시각만 받고, 예약하면 잠긴 글을 다시 불러온다", async () => {
+	it("설정 시간대의 미래 시각만 받고, 예약하면 잠긴 글을 다시 불러온다", async () => {
 		let current: unknown = entry;
 		serve((input, init) => {
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(current);
@@ -778,7 +790,7 @@ describe("발행 예약", () => {
 					{
 						code: "validation_failed",
 						message: "발행할 수 없습니다.",
-						issues: [{ code: "missing_category", path: "categoryId" }],
+						issues: [{ code: "missing_field", path: "categoryId", message: "카테고리" }],
 					},
 					422,
 				);

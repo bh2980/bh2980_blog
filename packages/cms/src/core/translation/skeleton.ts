@@ -1,3 +1,5 @@
+import { BLOCKS } from "../../blocks/active";
+import type { BlockDefinition } from "../../blocks/define";
 import { analyze, toDocument } from "../../mdx";
 import type { CmsJsonValue, CmsNode } from "../../mdx/types";
 
@@ -6,11 +8,59 @@ import type { CmsJsonValue, CmsNode } from "../../mdx/types";
  *
  * - 같아야 하는 것: 블록·인라인 요소의 종류와 순서, 링크 주소, 이미지 주소, 코드·수식 내용, 코드 언어,
  *   directive·JSX 이름과 사람이 읽지 않는 속성, 인라인 코드 글자.
- * - 달라도 되는 것: 글자, 사람이 읽는 속성 값(`READABLE_ATTRS`), 문장 안에서 굵게·링크가 걸린 위치.
+ * - 달라도 되는 것: 글자, 사람이 읽는 속성 값, 문장 안에서 굵게·링크가 걸린 위치.
+ *
+ * 사람이 읽는 속성은 블록 정의에서 정한다. 번역할 속성(`translatable`)과, 그 속성 값을 가리키는 속성
+ * (`childValue`, 예: 처음 열 탭 → 탭 이름)이다. 사이트가 더한 블록도 같은 규칙을 따른다.
  */
 
-/** 사람이 읽는 속성. 번역하면 값이 바뀐다. `defaultValue`는 탭 이름을 가리켜 함께 바뀐다. */
-const READABLE_ATTRS = new Set(["title", "label", "alt", "caption", "content", "defaultValue"]);
+/** Markdown 문법 요소의 사람이 읽는 속성. 블록 정의가 없는 요소만 둔다(링크 제목 `[글](주소 "제목")`). */
+const MARKDOWN_READABLE: Readonly<Record<string, readonly string[]>> = { link: ["title"] };
+
+/** 블록 하나의 사람이 읽는 속성 이름. */
+export function readableAttributes(
+	block: BlockDefinition,
+	blockByName: ReadonlyMap<string, BlockDefinition>,
+): Set<string> {
+	const childTranslatable = new Set(
+		(block.children?.blocks ?? []).flatMap((name) =>
+			Object.entries(blockByName.get(name)?.attributes ?? {}).flatMap(([attribute, definition]) =>
+				definition.translatable ? [attribute] : [],
+			),
+		),
+	);
+	return new Set(
+		Object.entries(block.attributes).flatMap(([name, attribute]) =>
+			attribute.translatable || (attribute.childValue !== undefined && childTranslatable.has(attribute.childValue))
+				? [name]
+				: [],
+		),
+	);
+}
+
+/**
+ * 노드·마크 종류 → 사람이 읽는 속성. 지시자·JSX 블록은 렌더러 이름(`Callout`), 인라인 지시자 마크와
+ * Markdown 이미지는 블록 이름(`tooltip`·`image`)이 종류다.
+ */
+export function readableAttributesByType(blocks: readonly BlockDefinition[]): Map<string, ReadonlySet<string>> {
+	const byName = new Map(blocks.map((block) => [block.name, block]));
+	const map = new Map<string, ReadonlySet<string>>();
+	for (const block of blocks) {
+		const readable = readableAttributes(block, byName);
+		if (readable.size === 0) continue;
+		map.set(block.name, readable);
+		map.set(block.component, readable);
+	}
+	for (const [type, names] of Object.entries(MARKDOWN_READABLE)) map.set(type, new Set(names));
+	return map;
+}
+
+let readableByType: Map<string, ReadonlySet<string>> | undefined;
+const NONE: ReadonlySet<string> = new Set();
+const readableOf = (type: string): ReadonlySet<string> => {
+	readableByType ??= readableAttributesByType(BLOCKS);
+	return readableByType.get(type) ?? NONE;
+};
 
 type Skeleton = {
 	type: string;
@@ -22,16 +72,20 @@ type Skeleton = {
 	children: Skeleton[];
 };
 
-const withoutReadable = (attrs: Record<string, CmsJsonValue> | undefined): Record<string, CmsJsonValue> => {
+const withoutReadable = (
+	type: string,
+	attrs: Record<string, CmsJsonValue> | undefined,
+): Record<string, CmsJsonValue> => {
+	const readable = readableOf(type);
 	const kept: Record<string, CmsJsonValue> = {};
 	for (const [key, value] of Object.entries(attrs ?? {})) {
-		if (READABLE_ATTRS.has(key)) continue;
+		if (readable.has(key)) continue;
 		// JSX 원래 속성 목록: 이름은 그대로, 사람이 읽는 속성의 값만 뺀다.
 		kept[key] =
 			key === "attributes" && Array.isArray(value)
 				? value.map((item) => {
 						const attribute = item as { name?: unknown; value?: CmsJsonValue };
-						return typeof attribute.name === "string" && READABLE_ATTRS.has(attribute.name)
+						return typeof attribute.name === "string" && readable.has(attribute.name)
 							? { name: attribute.name }
 							: (item as CmsJsonValue);
 					})
@@ -51,12 +105,12 @@ function skeletonOf(node: CmsNode): Skeleton {
 		}
 		for (const mark of child.marks ?? []) {
 			if (mark.type === "code") codes.push(child.text ?? "");
-			else marks.add(JSON.stringify([mark.type, withoutReadable(mark.attrs)]));
+			else marks.add(JSON.stringify([mark.type, withoutReadable(mark.type, mark.attrs)]));
 		}
 	}
 	return {
 		type: node.type,
-		attrs: withoutReadable(node.attrs),
+		attrs: withoutReadable(node.type, node.attrs),
 		marks: [...marks].sort(),
 		codes: codes.sort(),
 		children,

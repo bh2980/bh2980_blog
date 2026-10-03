@@ -3,6 +3,11 @@
  * 브라우저 코드에서 import하지 않는다.
  */
 
+export {
+	type ContentLookup,
+	createContentLookup,
+	type SlugsInUseParams,
+} from "./adapters/postgres/store/content-lookup";
 export { withTransaction } from "./adapters/postgres/store/context";
 export { CmsError } from "./adapters/postgres/store/errors";
 export { getCmsContentStore, getCmsMediaStore, getCmsSecret } from "./container";

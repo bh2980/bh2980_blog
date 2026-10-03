@@ -2,7 +2,7 @@
 
 import type { Editor } from "@tiptap/core";
 import { Puzzle } from "lucide-react";
-import { iconByName } from "../screens/shared/collection-icon";
+import { useIconByName } from "../screens/shared/collection-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
 import { buildBlockSlashCommands } from "./slash-command";
@@ -11,6 +11,7 @@ const CUSTOM_BLOCKS = buildBlockSlashCommands();
 
 /** 커스텀 컴포넌트 목록. 컴포넌트 메뉴와 툴바 "더보기" 메뉴가 함께 쓴다. 슬래시 메뉴처럼 이름 아래 설명을 둔다. */
 export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
+	const iconByName = useIconByName();
 	return CUSTOM_BLOCKS.map((block) => {
 		// 블록 정의의 아이콘(`editor.icon`). 없으면 퍼즐 아이콘을 쓴다.
 		const Icon = (typeof block.icon === "string" ? iconByName(block.icon) : block.icon) ?? Puzzle;

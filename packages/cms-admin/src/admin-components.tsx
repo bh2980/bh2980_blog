@@ -100,6 +100,11 @@ export interface CmsAdminComponents {
 	readonly blockViews?: Readonly<Record<string, ComponentType<NodeViewProps>>>;
 	/** 편집 화면 확장(툴바·블록 동작). */
 	readonly editorExtensions?: readonly EditorExtension[];
+	/**
+	 * 이름으로 고르는 아이콘(lucide 이름 → 컴포넌트). 블록 정의의 `editor.icon`, 플러그인 사이드바 항목의 `icon`,
+	 * 컬렉션의 `icon`, 코드 줄 효과의 `icon`이 본체 목록에 없는 이름을 쓰면 여기에 등록한다.
+	 */
+	readonly icons?: Readonly<Record<string, LucideIcon>>;
 }
 
 const CmsAdminComponentsContext = createContext<CmsAdminComponents>({});
@@ -119,6 +124,7 @@ export function CmsAdminComponentsProvider({
 			blockEditors: { ...parent.blockEditors, ...components.blockEditors },
 			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
+			icons: { ...parent.icons, ...components.icons },
 		}),
 		[parent, components],
 	);

@@ -13,12 +13,15 @@ import {
 	isRecordCollection,
 	type Locale,
 	recordLocalizedFields,
+	roleValue,
 	type SchemaCollection,
 	schemaOf,
 } from "@bh2980/cms/client";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useCmsAdminComponents } from "../../admin-components";
+import { cn } from "../../lib/utils/cn";
+import { josa } from "../../lib/utils/josa";
 import { type SlotRequest, useSlot } from "../../slots/slots";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
@@ -26,6 +29,7 @@ import { FieldDescription, FieldError, FieldLabel, FieldLegend, FieldSet, Field 
 import { Input } from "../../ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../../ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Switch } from "../../ui/switch";
 import { Textarea } from "../../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { type CmsIssue, cmsIssueMessage } from "../api-error-message";
@@ -40,8 +44,10 @@ import {
 	inputClass,
 	OrderedEntryList,
 } from "./field-inputs";
+import { MediaImageInput } from "./media-image-input";
 import { optionOf, useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
+import { SEO_DESCRIPTION_LIMIT, SEO_TITLE_LIMIT } from "./seo-panel";
 
 const fieldId = (name: string) => `cms-${name}`;
 
@@ -147,6 +153,27 @@ function SlotFieldRow({
 	);
 }
 
+/** 글자 수. 기준을 넘으면 색을 바꾼다(검색 제목·설명). */
+function Counter({ length, limit }: { length: number; limit: number }) {
+	return (
+		<span
+			className={cn(
+				"text-[11px] text-muted-foreground tabular-nums",
+				length > limit && "text-amber-600 dark:text-amber-400",
+			)}
+		>
+			{length}/{limit}
+		</span>
+	);
+}
+
+/** 선택지가 둘이고 하나가 `noindex`인 `noindex` 역할 필드는 켜고 끄기로 그린다. 켜면 `noindex`다. */
+const noindexToggle = (field: ValueField) => {
+	if (field.kind !== "select" || field.role !== "noindex") return undefined;
+	const others = Object.keys(field.options).filter((option) => option !== "noindex");
+	return others.length === 1 ? { off: others[0] as string } : undefined;
+};
+
 /** record 대상 관계(카테고리·태그·모음집). 검색해 고르고, `createInline`이면 없는 이름을 목록에서 바로 만든다. */
 function RecordRelationInput({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
 	const relation = field as RelationField;
@@ -198,6 +225,7 @@ function DefaultInput(props: FieldInputProps) {
 	const { fieldInputs } = useCmsAdminComponents();
 	const Custom = field.input ? (fieldInputs?.[field.input] ?? FIELD_INPUTS[field.input]) : undefined;
 	if (Custom) return <Custom {...props} />;
+	if (field.kind === "text" && field.role === "ogImage") return <MediaImageInput {...props} />;
 	const text = typeof value === "string" ? value : "";
 
 	switch (field.kind) {
@@ -288,7 +316,7 @@ export function SchemaFields({
 			locale: context.locale,
 			entryId: context.entryId,
 			title: form.title,
-			summary: typeof form.summary === "string" ? form.summary : undefined,
+			summary: roleValue(collection, "summary", form) || undefined,
 			body: form.mdx,
 			current: Array.isArray(value) ? value : typeof value === "string" ? value : undefined,
 		}),
@@ -318,6 +346,45 @@ export function SchemaFields({
 			onChange: readOnly ? () => {} : (value) => setValue(name, value),
 		};
 		const help = readOnly && locked ? locked.note : showDescriptions ? field.description : undefined;
+		const toggle = noindexToggle(field);
+		if (toggle) {
+			const value = typeof props.value === "string" ? props.value : field.kind === "select" ? field.defaultValue : "";
+			return (
+				<FieldRow
+					key={name}
+					id={fieldId(name)}
+					label={field.label}
+					issue={issue}
+					help={help}
+					aside={
+						<Switch
+							id={fieldId(name)}
+							size="sm"
+							checked={value === "noindex"}
+							disabled={props.context.disabled}
+							aria-describedby={props.describedBy}
+							onCheckedChange={(checked) => props.onChange(checked ? "noindex" : toggle.off)}
+						/>
+					}
+				>
+					{null}
+				</FieldRow>
+			);
+		}
+		// 검색 제목·설명은 비우면 제목·요약을 쓰므로 그 값을 안내 문구와 글자 수로 보인다.
+		const fallback =
+			field.kind !== "text"
+				? undefined
+				: field.role === "seoTitle"
+					? { text: form.title, limit: SEO_TITLE_LIMIT }
+					: field.role === "seoDescription"
+						? { text: roleValue(collection, "summary", form), limit: SEO_DESCRIPTION_LIMIT }
+						: undefined;
+		const current = typeof props.value === "string" ? props.value : "";
+		const input =
+			fallback && field.kind === "text" && fallback.text
+				? { ...props, field: { ...field, placeholder: fallback.text } }
+				: props;
 		return (
 			<FieldRow
 				key={name}
@@ -327,14 +394,17 @@ export function SchemaFields({
 				issue={issue}
 				help={help}
 				slot={readOnly ? undefined : fieldSlot(name, props.value, props.onChange)}
+				aside={fallback ? <Counter length={(current || fallback.text).length} limit={fallback.limit} /> : undefined}
 			>
-				<DefaultInput {...props} />
+				<DefaultInput {...input} />
 			</FieldRow>
 		);
 	};
 
 	const renderSlug = (name: string, field: SlugField) => {
 		const issue = issueFor(name);
+		const fromLabel = field.from ? (schema.fields[field.from]?.label ?? field.from) : "";
+		const regenerateLabel = `${josa(fromLabel, "으로", "로")} 다시 만들기`;
 		return (
 			<FieldRow
 				key={name}
@@ -364,7 +434,7 @@ export function SchemaFields({
 									render={
 										<InputGroupButton
 											size="icon-xs"
-											aria-label="제목으로 다시 만들기"
+											aria-label={regenerateLabel}
 											disabled={context.disabled}
 											onClick={onRegenerateSlug}
 										/>
@@ -372,7 +442,7 @@ export function SchemaFields({
 								>
 									<RefreshCw aria-hidden />
 								</TooltipTrigger>
-								<TooltipContent side="bottom">제목으로 다시 만들기</TooltipContent>
+								<TooltipContent side="bottom">{regenerateLabel}</TooltipContent>
 							</Tooltip>
 						</InputGroupAddon>
 					)}

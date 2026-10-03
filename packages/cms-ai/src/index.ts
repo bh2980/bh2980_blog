@@ -8,6 +8,7 @@ export {
 	type AiAttach,
 	type AiChoices,
 	type AiConfig,
+	type AiContentLookup,
 	type AiInputSpec,
 	type AiSharedText,
 	type AiValidator,
@@ -18,5 +19,5 @@ export {
 	defineValidator,
 } from "./action";
 export { aiPlugin } from "./plugin";
-export { aiPresets } from "./presets";
-export { regexRuns, sameStructure, uniqueSlug } from "./validators";
+export { aiPresets, KEBAB_PATTERN } from "./presets";
+export { type RegexRunsRule, regexRuns, sameStructure, uniqueSlug } from "./validators";

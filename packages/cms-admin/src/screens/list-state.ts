@@ -42,7 +42,7 @@ export interface ListState {
 	relations: Readonly<Record<string, readonly string[]>>;
 	/** 콘텐츠 언어(v2 B4). 비어 있으면 모든 언어다. */
 	locales: Locale[];
-	/** `YYYY-MM-DD`(서울 날짜). */
+	/** `YYYY-MM-DD`(설정 시간대의 날짜). */
 	createdFrom: string;
 	createdTo: string;
 	updatedFrom: string;
@@ -177,7 +177,7 @@ export function listStateToSearchParams(state: ListState): URLSearchParams {
 	return params;
 }
 
-const seoulDayBoundary = (date: string, end: boolean) => {
+const zonedDayBoundary = (date: string, end: boolean) => {
 	const parsed = parseDateTimeInput(`${date}T${end ? "23:59" : "00:00"}`);
 	if (!parsed) return null;
 	return end ? new Date(Date.parse(parsed) + 59_999).toISOString() : parsed;
@@ -219,7 +219,7 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 	for (const locale of state.locales) query.append("locale", locale);
 	for (const key of DATE_KEYS) {
 		if (!state[key]) continue;
-		const boundary = seoulDayBoundary(state[key], key.endsWith("To"));
+		const boundary = zonedDayBoundary(state[key], key.endsWith("To"));
 		if (boundary) query.set(key, boundary);
 	}
 	return query;

@@ -16,7 +16,7 @@ export type FormValue = string | string[] | null;
 
 /**
  * 편집 화면이 다루는 초안 값(§5.2). 제목·주소·본문 외의 필드는 컬렉션 정의(v2 B1)에서 오며
- * 필드 이름을 키로 평평하게 둔다. 날짜 필드는 `datetime-local` 입력값(서울 시간)이다.
+ * 필드 이름을 키로 평평하게 둔다. 날짜 필드는 `datetime-local` 입력값(설정 시간대)이다.
  */
 export type EntryForm = { title: string; slug: string; mdx: string } & { [field: string]: FormValue };
 

@@ -9,7 +9,6 @@ import {
 	useContainerValues,
 } from "@bh2980/cms-admin/blocks";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Alert } from "@bh2980/cms-admin/ui/alert";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -19,7 +18,13 @@ import {
 } from "@bh2980/cms-admin/ui/dropdown-menu";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { calloutBlock } from "./definition";
-import { CALLOUT_ICON_BY_VARIANT, type CalloutVariant, getDefaultCalloutTitle } from "./style";
+import {
+	CALLOUT_BOX_CLASS,
+	CALLOUT_CLASS_BY_VARIANT,
+	CALLOUT_ICON_BY_VARIANT,
+	type CalloutVariant,
+	getDefaultCalloutTitle,
+} from "./style";
 
 const VARIANT_OPTIONS = calloutBlock.attributes.variant.options as Record<CalloutVariant, string>;
 const isVariant = (value: unknown): value is CalloutVariant => typeof value === "string" && value in VARIANT_OPTIONS;
@@ -38,7 +43,11 @@ export function CalloutNodeView(props: NodeViewProps) {
 			data-cms-framed
 			className={cn("group/container relative my-6 rounded-lg", selected && SELECTED_RING)}
 		>
-			<Alert variant={variant} layout="stack" role="note" className="not-prose w-full">
+			<div
+				data-slot="callout"
+				role="note"
+				className={cn(CALLOUT_BOX_CLASS, CALLOUT_CLASS_BY_VARIANT[variant], "not-prose w-full")}
+			>
 				<div className="flex items-center gap-2" contentEditable={false}>
 					<Icon aria-hidden className="size-4 shrink-0" />
 					<AttributeInput
@@ -54,7 +63,7 @@ export function CalloutNodeView(props: NodeViewProps) {
 				</div>
 				{/* 안쪽 블록(react-renderer로 감싸진 커스텀 블록)의 위아래 여백이 상자 안쪽 여백에 더해지지 않게 첫·끝 자식은 0으로 둔다. */}
 				<NodeViewContent className="mt-2 text-current text-sm [&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0 [&_p]:m-0 [&_p]:leading-relaxed" />
-			</Alert>
+			</div>
 			{editable ? (
 				<ContainerToolbar label="콜아웃 도구">
 					<DropdownMenu>

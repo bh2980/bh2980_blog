@@ -56,6 +56,7 @@ import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
 import { FittingTags } from "./shared/fitting-tags";
+import { formatDateOnly, formatDateTime, zonedYear } from "./shared/format-date";
 import { OPEN_ITEM } from "./shared/side-panel";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOptions } from "./shared/use-taxonomy";
@@ -102,11 +103,10 @@ const helper = createColumnHelper<typeof features, ListEntriesItem>();
 /** 목록 날짜: 올해는 `9월 27일 14:05`, 그 밖은 `2025. 8. 7.`처럼 짧게 쓴다. 정확한 시각은 툴팁 대신 편집 화면에 있다. */
 const formatDate = (value: Date | string | null) => {
 	if (!value) return "—";
-	const date = new Date(value);
-	const sameYear = date.getFullYear() === new Date().getFullYear();
+	const sameYear = zonedYear(value) === zonedYear(Date.now());
 	return sameYear
-		? date.toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
-		: date.toLocaleDateString("ko-KR");
+		? formatDateTime(value, { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+		: formatDateOnly(value);
 };
 
 /**

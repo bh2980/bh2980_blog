@@ -35,7 +35,7 @@ export const AI_SHARED: Readonly<Record<string, AiSharedText>> = aiConfig?.share
 export const AI_SHARED_KEYS: readonly string[] = Object.keys(AI_SHARED);
 
 /** 모든 기능 맨 앞 지시에 들어가는 사이트 소개. */
-export const AI_SITE_DESCRIPTION = aiConfig?.siteDescription?.trim() || "블로그";
+export const AI_SITE_DESCRIPTION = aiConfig?.siteDescription?.trim() || "웹사이트";
 
 export const actionDefinition = (key: string): AiActionDefinition | undefined =>
 	Object.hasOwn(AI_ACTIONS, key) ? AI_ACTIONS[key] : undefined;

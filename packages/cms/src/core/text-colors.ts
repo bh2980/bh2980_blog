@@ -1,7 +1,8 @@
 /**
  * 글자색·글자 배경색(`:color[글]{fg="#…" fgDark="#…" bg="#…" bgDark="#…"}`).
  * 본문에는 색을 이름이 아니라 헥스 값으로 저장한다. 밝은·어두운 테마 값을 짝으로 두고, 어두운 값이 없으면
- * 밝은 값을 그대로 쓴다. 에디터의 고르기 목록은 아래 프리셋이고, 나중에 직접 고른 색도 같은 모양으로 저장한다.
+ * 밝은 값을 그대로 쓴다. 에디터의 고르기 목록은 사이트 설정의 `textColors`이고, 없으면 아래 기본 프리셋이다.
+ * 직접 고른 색도 같은 모양으로 저장한다.
  */
 
 export interface ColorPair {
@@ -18,7 +19,8 @@ export interface PaletteColor {
 	readonly bg: ColorPair;
 }
 
-export const TEXT_PALETTE: readonly PaletteColor[] = [
+/** 기본 고르기 목록. 사이트 설정의 `textColors`로 바꾼다. */
+export const DEFAULT_TEXT_PALETTE: readonly PaletteColor[] = [
 	{ id: "gray", name: "회색", fg: { light: "#6b7280", dark: "#9ca3af" }, bg: { light: "#f1f2f4", dark: "#2f3237" } },
 	{ id: "red", name: "빨강", fg: { light: "#dc2626", dark: "#f87171" }, bg: { light: "#fee2e2", dark: "#4a1f1f" } },
 	{ id: "orange", name: "주황", fg: { light: "#ea580c", dark: "#fb923c" }, bg: { light: "#ffedd5", dark: "#4a2a14" } },
@@ -80,8 +82,25 @@ export function textColorProps(attrs: TextColorAttrs): {
 }
 
 /** 프리셋과 같은 색이면 그 프리셋. 고르기 목록에서 지금 색을 표시할 때 쓴다. */
-export function paletteOf(kind: "fg" | "bg", attrs: TextColorAttrs): PaletteColor | undefined {
+export function paletteOf(
+	kind: "fg" | "bg",
+	attrs: TextColorAttrs,
+	palette: readonly PaletteColor[] = DEFAULT_TEXT_PALETTE,
+): PaletteColor | undefined {
 	const light = attrs[kind];
 	if (!light) return undefined;
-	return TEXT_PALETTE.find((color) => color[kind].light === light.toLowerCase());
+	return palette.find((color) => color[kind].light.toLowerCase() === light.toLowerCase());
+}
+
+/** 사이트 설정의 `textColors`가 맞는지 확인한다(헥스 값, 겹치지 않는 `id`). */
+export function validateTextPalette(palette: readonly PaletteColor[] | undefined): void {
+	const ids = new Set<string>();
+	for (const color of palette ?? []) {
+		const at = `cms.config: textColors.${color.id}`;
+		if (!color.id || ids.has(color.id)) throw new Error(`${at}: id is empty or duplicated`);
+		ids.add(color.id);
+		for (const value of [color.fg.light, color.fg.dark, color.bg.light, color.bg.dark]) {
+			if (!isHexColor(value)) throw new Error(`${at}: "${value}" is not a hex color`);
+		}
+	}
 }

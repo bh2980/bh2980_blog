@@ -28,14 +28,19 @@ export const image = defineBlock({
 	attributes: {
 		mediaId: { type: "string", label: "미디어", description: "등록 미디어. 외부 주소(src)와 둘 중 하나를 쓴다." },
 		src: { type: "string", label: "외부 주소" },
-		alt: { type: "string", label: "대체 텍스트", description: "등록 미디어는 장식 이미지가 아니면 발행 전에 채운다." },
+		alt: {
+			type: "string",
+			label: "대체 텍스트",
+			description: "등록 미디어는 장식 이미지가 아니면 발행 전에 채운다.",
+			translatable: true,
+		},
 		width: { type: "string", label: "너비", description: "px 또는 %" },
 		align: { type: "string", label: "정렬", options: ALIGN_OPTIONS },
-		caption: { type: "string", label: "캡션" },
+		caption: { type: "string", label: "캡션", translatable: true },
 		decorative: { type: "boolean", label: "장식 이미지", defaultValue: false },
 		crop: { type: "string", label: "자르기", description: "x,y,w,h (원본 기준 백분율 0~100)" },
 		rotate: { type: "string", label: "회전", options: ROTATE_OPTIONS, description: "90|180|270 (시계 방향)" },
-		title: { type: "string", label: "타이틀", description: "이미지 타이틀" },
+		title: { type: "string", label: "타이틀", description: "이미지 타이틀", translatable: true },
 	},
 	editor: { view: "node", nodeView: "image", insertable: true, keywords: ["image", "이미지", "사진"] },
 });
@@ -51,7 +56,7 @@ export const file = defineBlock({
 	component: "File",
 	attributes: {
 		mediaId: { type: "string", label: "미디어", required: true },
-		label: { type: "string", label: "보일 이름" },
+		label: { type: "string", label: "보일 이름", translatable: true },
 	},
 	editor: { view: "node", nodeView: "file", insertable: false, keywords: ["file", "파일", "첨부"] },
 });
@@ -61,7 +66,7 @@ export const tooltip = defineBlock({
 	label: "툴팁",
 	syntax: { kind: "text", directive: "tooltip" },
 	component: "Tooltip",
-	attributes: { content: { type: "string", label: "설명", required: true } },
+	attributes: { content: { type: "string", label: "설명", required: true, translatable: true } },
 	editor: { view: "mark" },
 });
 

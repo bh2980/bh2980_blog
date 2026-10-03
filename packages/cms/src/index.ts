@@ -5,6 +5,12 @@
  * 순환이 생겨 설정이 반쯤 만들어진 채로 읽힌다.
  */
 
+export {
+	type CodeBlockConfig,
+	type CodeLineEffectDefinition,
+	type CodeLineEffectEditor,
+	DEFAULT_CODE_LINE_EFFECTS,
+} from "./annotation/code-block/line-effects";
 export type {
 	BlockAttribute,
 	BlockChildren,
@@ -23,6 +29,7 @@ export {
 	type SeedTemplate,
 	type SiteConfig,
 } from "./config/define";
+export { type ColorPair, DEFAULT_TEXT_PALETTE, type PaletteColor } from "./core/text-colors";
 export {
 	type CmsPlugin,
 	type CmsServerPlugin,
@@ -45,13 +52,17 @@ export {
 export {
 	type BacklinkField,
 	type ConditionalField,
+	FIELD_ROLES,
 	type Field,
 	type FieldKind,
+	type FieldRole,
 	fields,
 	type Localized,
 	type RelationField,
 	type SelectField,
+	type SelectFieldRole,
 	type SlugField,
 	type TextField,
+	type TextFieldRole,
 	type ValueField,
 } from "./schema/fields";

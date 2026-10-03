@@ -28,7 +28,7 @@ export const POST = adminRoute(async ({ request }) => {
 				// 생각을 먼저 하는 모델은 짧은 답에도 출력 한도를 많이 쓴다.
 				maxTokens: 4_000,
 				result: "note",
-				data: {},
+				fake: { inputs: {} },
 				signal: request.signal,
 			});
 		} else if (target.decider) {

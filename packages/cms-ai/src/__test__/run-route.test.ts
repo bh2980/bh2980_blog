@@ -21,7 +21,6 @@ vi.mock("../store", () => ({
 	getAiStore: () => ({
 		listAiActionOverrides: async () => overrides.rows.map((row) => ({ ...row, updatedAt: new Date(0) })),
 		getAiSettings: async () => null,
-		findTakenSlugs: async () => new Set(),
 	}),
 }));
 
@@ -32,6 +31,8 @@ vi.mock("@bh2980/cms/plugin/server", async (importOriginal) => ({
 		getMediaAsset: async () => null,
 	}),
 	getCmsMediaStore: () => ({}),
+	getCmsDatabase: () => ({ pool: {}, schema: "cms" }),
+	createContentLookup: () => ({ slugsInUse: async () => new Set(["taken"]) }),
 }));
 
 const run = (body: unknown) =>
@@ -87,5 +88,25 @@ describe("AI 실행 API", () => {
 		const bad = await run({ action: "summary", input: { title: "t" }, draft: { prompt: "{{title}}" } });
 		expect(bad.status).toBe(400);
 		expect(await bad.json()).toMatchObject({ code: "ai_invalid_input" });
+	});
+
+	it("가짜 연결은 입력 종류로 답하고, 기능이 정한 가짜 답(fake)은 그 기능의 검사를 통과한다", async () => {
+		// 블록 기능: 고칠 다이어그램에 한 줄을 더한 답이 Mermaid 문법 검사를 통과한다.
+		const diagram = "```mermaid\ngraph TD\n  A --> B\n```";
+		const edit = await run({ action: "diagramEdit", input: { block: diagram } });
+		expect(edit.status).toBe(200);
+		const edited = (await edit.json()) as { result: { kind: string; text: string } };
+		expect(edited.result.kind).toBe("mdx");
+		expect(edited.result.text).toContain("A --> B");
+		expect(edited.result.text).not.toBe(diagram);
+
+		// 선택 영역 기능: MDX 입력을 그대로 돌려준다(입력 이름을 보지 않는다).
+		const polish = await run({ action: "polish", input: { selection: "고칠 글" } });
+		expect(await polish.json()).toEqual({ result: { kind: "mdx", text: "고칠 글" } });
+
+		// 주소 후보: 본체 콘텐츠 조회가 쓰는 주소라고 답한 후보는 빠진다.
+		const slug = await run({ action: "slug", input: { title: "Taken" }, env: { collection: "post" } });
+		const slugs = (await slug.json()) as { result: { items: Array<{ value: string }> } };
+		expect(slugs.result.items.map((item) => item.value)).toEqual(["taken-guide", "fake-taken"]);
 	});
 });

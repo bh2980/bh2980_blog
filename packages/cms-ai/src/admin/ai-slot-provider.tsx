@@ -172,12 +172,18 @@ export function inputFromContext(
 }
 
 /**
+ * 관리자 로그인 화면인가(관리자 경로 아래 `login`). 로그인 전에는 기능 목록을 묻지 않는다. 관리자 화면이 어느 경로에
+ * 붙든 같게 본다.
+ */
+const isLoginScreen = (pathname: string | null) => pathname !== null && /\/login\/?$/.test(pathname);
+
+/**
  * AI 기능을 화면 자리에 연결한다. 켠 기능 중 붙을 곳(`attach`)이 이 자리인 것이 버튼으로 붙는다.
  * 그 기능이 쓸 연결이 준비되지 않았으면 붙이지 않는다.
  */
 export function AiSlotProvider({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
-	const { data } = useAiActions(!pathname?.startsWith("/admin/login"));
+	const { data } = useAiActions(!isLoginScreen(pathname));
 
 	const sources = useMemo<SlotSource[]>(() => {
 		const usable = new Set(data?.usable ?? []);

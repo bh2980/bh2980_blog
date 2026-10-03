@@ -9,21 +9,10 @@ import {
 	newEffectId,
 	setLineEffect,
 } from "@bh2980/cms/code-block";
-import {
-	Check,
-	ChevronsDownUp,
-	ChevronsUpDown,
-	CircleX,
-	Code2,
-	Eye,
-	Highlighter,
-	type LucideIcon,
-	Minus,
-	Plus,
-	TriangleAlert,
-} from "lucide-react";
+import { Check, ChevronsDownUp, ChevronsUpDown, Code2, Eye, Highlighter } from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { cn } from "../../lib/utils/cn";
+import { useIconByName } from "../../screens/shared/collection-icon";
 
 interface LineMenuProps {
 	/** 고른 줄 [start, end). */
@@ -36,15 +25,6 @@ interface LineMenuProps {
 	onLinkText?: () => void;
 	style?: CSSProperties;
 }
-
-/** 줄 효과 메뉴 항목의 아이콘과 이름. 이름은 괄호 없이 짧게 쓴다. */
-const EFFECT_ITEMS: Record<string, { icon: LucideIcon; label: string }> = {
-	highlight: { icon: Highlighter, label: "강조" },
-	plus: { icon: Plus, label: "추가" },
-	minus: { icon: Minus, label: "삭제" },
-	warning: { icon: TriangleAlert, label: "경고" },
-	error: { icon: CircleX, label: "오류" },
-};
 
 const ITEM_CLASS =
 	"flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent disabled:pointer-events-none disabled:opacity-50";
@@ -88,9 +68,10 @@ function CheckItem({ checked, onSelect, children }: ItemProps & { checked: boole
 	);
 }
 
-/** 줄 번호 칸에서 고른 줄에 줄 효과(강조·추가·삭제·경고·오류·접기)를 켜고 끄는 메뉴. */
+/** 줄 번호 칸에서 고른 줄에 줄 효과(정의 목록의 효과와 접기)를 켜고 끄는 메뉴. 이름·아이콘은 효과 정의에서 온다. */
 export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkText, style }: LineMenuProps) {
 	const ref = useRef<HTMLDivElement>(null);
+	const iconByName = useIconByName();
 	// 고른 범위와 같은 접기, 또는 한 줄만 골랐을 때 그 줄(› 표시가 있는 첫 줄)에서 시작하는 접기(바깥쪽부터).
 	const startingHere = lineEffects
 		.filter((effect) => effect.name === COLLAPSE && effect.start === start)
@@ -133,8 +114,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 		>
 			{CODE_LINE_EFFECTS.map((effect) => {
 				const active = hasLineEffect(lineEffects, effect.name, start, end);
-				const item = EFFECT_ITEMS[effect.name];
-				const Icon = item?.icon ?? Highlighter;
+				const Icon = iconByName(effect.icon) ?? Highlighter;
 				return (
 					<CheckItem
 						key={effect.name}
@@ -142,7 +122,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 						onSelect={() => onChange(setLineEffect(lineEffects, effect.name, start, end, !active))}
 					>
 						<Icon aria-hidden className="size-3.5" />
-						{item?.label ?? effect.label}
+						{effect.label}
 					</CheckItem>
 				);
 			})}

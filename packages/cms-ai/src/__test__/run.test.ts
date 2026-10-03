@@ -64,7 +64,7 @@ function deps(provider: AiProvider | null, overrides: Partial<AiRunDeps> = {}): 
 					],
 		fieldOptions: () => [],
 		loadImage: async () => ({ mediaType: "image/png", data: "aGk=" }),
-		takenSlugs: async () => new Set(),
+		content: { slugsInUse: async () => new Set() },
 		languageName: (code) => ({ ko: "한국어", en: "English" })[code] ?? code,
 		...overrides,
 	};
@@ -127,8 +127,41 @@ describe("AI 기능 실행기", () => {
 			}),
 		);
 		const result = await runAiAction(action, call({ title: "글", current: ["t2"] }), deps(provider));
-		expect(textOf(requests[0])).toContain("<current_value>\nt2: SEO\n</current_value>");
+		expect(textOf(requests[0])).toContain("<current>\nt2: SEO\n</current>");
 		expect(result).toEqual({ kind: "candidates", items: [{ value: "t1", label: "React" }] });
+	});
+
+	it("현재 값 제외는 입력 이름이 아니라 `value` 종류 입력으로 한다", async () => {
+		const { provider, requests } = stubProvider({ candidates: ["t1", "t2", "fresh"] });
+		const action = resolveAction(
+			"pickTags",
+			aiAction({
+				label: "태그 고르기",
+				input: { title: aiInput.text({ label: "제목" }), picked: aiInput.value({ label: "고른 태그" }) },
+				choices: { from: "collection", collection: "tag" },
+				result: "candidates",
+				prompt: "태그를 고른다.",
+			}),
+		);
+		const result = await runAiAction(action, call({ title: "글", picked: ["t2"] }), deps(provider));
+		// 고른 값은 선택지 목록에서도, 후보에서도 빠진다. 자료 태그는 입력 이름 그대로다.
+		expect(textOf(requests[0])).toContain("<choices>\nt1: React\n</choices>");
+		expect(textOf(requests[0])).toContain("<picked>\nt2: SEO\n</picked>");
+		expect(result.kind === "candidates" && result.items.map((item) => item.value)).toEqual(["t1", "fresh"]);
+
+		// 같은 이름이라도 `value` 종류가 아니면 빼지 않는다.
+		const plain = resolveAction(
+			"words",
+			aiAction({
+				label: "낱말",
+				input: { current: aiInput.text({ label: "글" }) },
+				result: "candidates",
+				prompt: "낱말을 고른다.",
+			}),
+		);
+		const words = stubProvider({ candidates: ["same", "other"] });
+		const kept = await runAiAction(plain, call({ current: "same" }), deps(words.provider));
+		expect(kept.kind === "candidates" && kept.items.map((item) => item.value)).toEqual(["same", "other"]);
 	});
 
 	it("코드 검사는 정해진 검사 다음에 후보마다 돌고, 설명을 붙이거나 버린다", async () => {
@@ -293,27 +326,39 @@ describe("AI 기능 실행기", () => {
 		});
 	});
 
-	it("주소 추천은 같은 컬렉션·언어의 쓰는 주소를 뺀다", async () => {
+	it("주소 추천은 코드 검사가 본체 콘텐츠 조회로 같은 컬렉션·언어의 쓰는 주소를 뺀다", async () => {
 		const { provider } = stubProvider({ candidates: ["used-slug", "fresh-slug"] });
-		const takenSlugs = vi.fn(async () => new Set(["used-slug"]));
+		const slugsInUse = vi.fn(async () => new Set(["used-slug"]));
 		const result = await runAiAction(
 			preset("slug"),
 			call(
 				{ title: "t", body: "b" },
 				{ collection: "post", locale: "en", entryId: "11111111-1111-4111-8111-111111111111" },
 			),
-			deps(provider, { takenSlugs }),
+			deps(provider, { content: { slugsInUse } }),
 		);
 		// 중복 없음(코드 검사)이 후보마다 묻는다.
 		for (const slug of ["used-slug", "fresh-slug"]) {
-			expect(takenSlugs).toHaveBeenCalledWith({
+			expect(slugsInUse).toHaveBeenCalledWith({
 				collection: "post",
 				locale: "en",
 				slugs: [slug],
-				entryId: "11111111-1111-4111-8111-111111111111",
+				excludeEntryId: "11111111-1111-4111-8111-111111111111",
 			});
 		}
 		expect(result.kind === "candidates" && result.items.map((item) => item.value)).toEqual(["fresh-slug"]);
+
+		// 언어가 없으면 사이트 설정의 기본 언어로, 컬렉션이 없으면 묻지 않는다.
+		slugsInUse.mockClear();
+		await runAiAction(
+			preset("slug"),
+			call({ title: "t" }, { collection: "post" }),
+			deps(provider, { content: { slugsInUse } }),
+		);
+		expect(slugsInUse).toHaveBeenCalledWith({ collection: "post", locale: "ko", slugs: ["used-slug"] });
+		slugsInUse.mockClear();
+		await runAiAction(preset("slug"), call({ title: "t" }), deps(provider, { content: { slugsInUse } }));
+		expect(slugsInUse).not.toHaveBeenCalled();
 	});
 
 	it("이미지를 보내는 기능은 이미지를 붙이고, 읽지 못하면 실패한다", async () => {
@@ -380,7 +425,7 @@ describe("AI 기능 실행기", () => {
 		expect(result).toEqual({ kind: "mdx", text: "Hello **world**" });
 		expect(requests[0]?.system).toContain("원문 언어: 한국어\n\n대상 언어: English");
 		expect(requests[0]?.system).toContain("이번 요청(위 지시보다 우선):\n존댓말 없이");
-		expect(textOf(requests[0])).toContain("<source_mdx>\n안녕 **세계**\n</source_mdx>");
+		expect(textOf(requests[0])).toContain("<block>\n안녕 **세계**\n</block>");
 
 		const broken = stubProvider({ mdx: "Hello world" });
 		await expect(

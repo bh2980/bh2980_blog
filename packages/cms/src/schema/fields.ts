@@ -12,6 +12,28 @@
  */
 export type Localized = boolean | "inherit";
 
+/**
+ * 필드의 뜻(역할). 라이브러리는 요약·검색·공유 값을 필드 이름이 아니라 이 역할로 찾는다. 한 컬렉션에서 역할마다
+ * 필드는 하나뿐이다(`defineConfig`가 확인한다).
+ *
+ * - `summary`: 요약. 목록·검색 결과 설명의 기본값이고 필드 옆 동작(AI 등)에 `summary`로 넘어간다.
+ * - `seoTitle`·`seoDescription`: 검색 결과 제목·설명. 비우면 제목·요약을 쓴다.
+ * - `ogImage`: 공유 이미지(미디어 ID). 관리자 화면은 미디어 고르기로 입력한다.
+ * - `canonical`: 원본 주소.
+ * - `noindex`(선택 필드): 값이 `noindex`면 검색엔진에 숨긴다. 선택지에 `noindex`가 있어야 한다.
+ */
+export type TextFieldRole = "summary" | "seoTitle" | "seoDescription" | "ogImage" | "canonical";
+export type SelectFieldRole = "noindex";
+export type FieldRole = TextFieldRole | SelectFieldRole;
+export const TEXT_FIELD_ROLES = [
+	"summary",
+	"seoTitle",
+	"seoDescription",
+	"ogImage",
+	"canonical",
+] as const satisfies readonly TextFieldRole[];
+export const FIELD_ROLES = [...TEXT_FIELD_ROLES, "noindex"] as const satisfies readonly FieldRole[];
+
 interface BaseField {
 	readonly label: string;
 	/** 입력 아래 도움말. */
@@ -27,6 +49,12 @@ interface BaseField {
 
 export interface TextField extends BaseField {
 	readonly kind: "text";
+	readonly role?: TextFieldRole;
+	/**
+	 * 발행할 때 비어 있으면 본문 앞부분(일반 글자 160자)으로 채운다. 본문이 있는 컬렉션에서만 쓴다.
+	 * 채울 글이 없으면 발행하지 않고 이 필드를 입력하라고 알린다.
+	 */
+	readonly fillFromBody?: boolean;
 	readonly multiline?: boolean;
 	/** 최대 글자 수(유니코드 코드 포인트). */
 	readonly max?: number;
@@ -36,7 +64,10 @@ export interface TextField extends BaseField {
 /** 주소. 메타데이터가 아니라 콘텐츠의 slug 열에 저장한다. */
 export interface SlugField extends BaseField {
 	readonly kind: "slug";
-	/** `제목에서` 버튼과 자동 생성이 읽는 필드. */
+	/**
+	 * 주소를 만들 때 읽는 텍스트 필드 이름(보통 `title`). 다시 만들기 단추와 자동 생성(새 글 입력 중, record 저장 때
+	 * 비어 있으면)이 이 필드 값을 쓴다. 없으면 주소를 자동으로 만들지 않는다.
+	 */
 	readonly from?: string;
 	readonly placeholder?: string;
 }
@@ -59,6 +90,7 @@ export interface RelationField extends BaseField {
 
 export interface SelectField<Option extends string = string> extends BaseField {
 	readonly kind: "select";
+	readonly role?: SelectFieldRole;
 	/** 값 → 라벨. 선언 순서가 보이는 순서다. */
 	readonly options: Readonly<Record<Option, string>>;
 	readonly defaultValue: Option;

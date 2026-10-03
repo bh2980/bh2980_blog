@@ -3,12 +3,14 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
+/**
+ * 관리자 화면 알림 상자. `default`는 안내, `danger`는 불러오기 실패 같은 오류다.
+ * 본문 블록(콜아웃 등)의 모양은 각 블록이 따로 정한다.
+ */
 export const alertVariants = cva(
 	[
 		"relative w-full rounded-lg border px-4 py-3 text-sm",
 		"[&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
-		"[&_:is(ul,ol)>li]:marker:text-slate-700",
-		"dark:[&_:is(ul,ol)>li]:marker:text-slate-200/80",
 	].join(" "),
 	{
 		variants: {
@@ -17,22 +19,7 @@ export const alertVariants = cva(
 				stack: "block",
 			},
 			variant: {
-				note: [
-					"bg-slate-100 border-border text-slate-900",
-					"dark:bg-slate-800/70 dark:border-slate-500/60 dark:text-slate-50",
-				].join(" "),
-				tip: [
-					"bg-emerald-50 text-emerald-900 border-emerald-200 [&>svg]:text-emerald-700",
-					"dark:bg-emerald-400/25 dark:text-emerald-50 dark:border-emerald-300/70 dark:[&>svg]:text-emerald-100",
-				].join(" "),
-				info: [
-					"bg-sky-50 text-sky-900 border-sky-200 [&>svg]:text-sky-700",
-					"dark:bg-sky-400/25 dark:text-sky-50 dark:border-sky-300/70 dark:[&>svg]:text-sky-100",
-				].join(" "),
-				warning: [
-					"bg-amber-50 text-amber-900 border-amber-200 [&>svg]:text-amber-700",
-					"dark:bg-amber-400/25 dark:text-amber-50 dark:border-amber-300/70 dark:[&>svg]:text-amber-100",
-				].join(" "),
+				default: "border-border bg-card text-card-foreground",
 				danger: [
 					"bg-red-50 text-red-900 border-red-200 [&>svg]:text-red-700",
 					"dark:bg-red-400/25 dark:text-red-50 dark:border-red-300/70 dark:[&>svg]:text-red-100",
@@ -41,7 +28,7 @@ export const alertVariants = cva(
 		},
 		defaultVariants: {
 			layout: "grid",
-			variant: "note",
+			variant: "default",
 		},
 	},
 );

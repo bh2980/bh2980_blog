@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { useConfirm } from "../shared/confirm-dialog";
+import { formatDateTime } from "../shared/format-date";
 import { type EntryData, type EntryForm, formFromEntry } from "./entry-form";
 import type { LocalBackupRecord } from "./local-backup";
 
@@ -31,7 +32,7 @@ export function RecoveryDialog({
 					<DialogTitle>저장하지 않은 편집이 있습니다</DialogTitle>
 					<DialogDescription>
 						{recovery
-							? `${new Date(recovery.backup.savedAt).toLocaleString("ko-KR")}에 이 브라우저에 임시 저장한 편집이 서버에 없습니다.`
+							? `${formatDateTime(recovery.backup.savedAt)}에 이 브라우저에 임시 저장한 편집이 서버에 없습니다.`
 							: ""}
 						{recovery?.kind === "conflict" &&
 							" 그 뒤 다른 곳에서 서버 내용도 바뀌었습니다. 임시 저장본을 불러와 저장하면 서버 내용을 덮어씁니다."}
