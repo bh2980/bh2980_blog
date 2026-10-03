@@ -1,10 +1,11 @@
 "use client";
 
 import type { EditorExtension, EditorInsertAction, EditorSelectionAction } from "@bh2980/cms-admin";
-import { type BlockAction, blockNodeName, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { type BlockAction, blockNodeName, MdxPreview, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@bh2980/cms-admin/ui/dialog";
-import { Input } from "@bh2980/cms-admin/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
+import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { PenLine, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -132,10 +133,13 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 		[job, state],
 	);
 	const running = state.status === "running";
+	const result = "text" in state ? state.text : "";
+	// 고친 글(다듬기)은 바뀐 곳부터, 블록·초안은 그린 모양부터 본다.
+	const [view, setView] = useState<"preview" | "source">(job.mode === "selection" ? "source" : "preview");
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="sm:max-w-2xl">
+			<DialogContent className="gap-4 sm:max-w-3xl">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Sparkles aria-hidden className="size-4" />
@@ -144,54 +148,56 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 				</DialogHeader>
 				{action.askInstruction && (
 					<form
-						className="flex gap-2"
+						className="space-y-2"
 						onSubmit={(event) => {
 							event.preventDefault();
 							void run();
 						}}
 					>
-						<Input
-							aria-label="추가 요청"
+						<Textarea
+							aria-label="요청"
 							value={request}
+							rows={3}
 							onChange={(event) => setRequest(event.target.value)}
+							onKeyDown={(event) => {
+								// 줄바꿈은 Enter, 보내기는 Cmd/Ctrl+Enter다.
+								if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !running) {
+									event.preventDefault();
+									void run();
+								}
+							}}
 							placeholder={
 								job.mode === "insert" ? "무엇을 쓸까요?" : job.mode === "block" ? "무엇을 바꿀까요?" : "추가 요청"
 							}
-							className="h-8 text-xs"
+							className="max-h-48 min-h-20 resize-y text-sm"
 							autoFocus={!fixed}
 						/>
-						<Button type="submit" size="sm" disabled={running}>
-							{state.status === "idle" ? "쓰기" : "다시"}
-						</Button>
+						<div className="flex justify-end">
+							<Button type="submit" size="sm" disabled={running}>
+								{state.status === "idle" ? "쓰기" : "다시"}
+							</Button>
+						</div>
 					</form>
 				)}
-				<output
-					aria-live="polite"
-					className="block max-h-[50vh] min-h-24 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 font-mono text-xs leading-relaxed"
-				>
-					{diff
-						? diff.map((part, index) =>
-								part.type === "same" ? (
-									// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
-									<span key={index}>{part.text}</span>
-								) : part.type === "del" ? (
-									// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
-									<del key={index} className="bg-destructive/15 text-destructive line-through">
-										{part.text}
-									</del>
-								) : (
-									// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
-									<ins key={index} className="bg-emerald-500/15 text-emerald-700 no-underline dark:text-emerald-400">
-										{part.text}
-									</ins>
-								),
-							)
-						: "text" in state && state.text
-							? state.text
-							: state.status === "idle"
-								? "요청을 적고 쓰기를 누르세요."
-								: "쓰는 중..."}
-				</output>
+				<Tabs value={view} onValueChange={(value) => setView(value as "preview" | "source")} className="min-w-0 gap-2">
+					<TabsList>
+						<TabsTrigger value="preview">미리보기</TabsTrigger>
+						<TabsTrigger value="source">{job.mode === "insert" ? "원문" : "바뀐 곳"}</TabsTrigger>
+					</TabsList>
+					<output aria-live="polite" className="block min-w-0">
+						{state.status === "idle" ? (
+							<p className="rounded-md border border-dashed p-6 text-center text-muted-foreground text-xs">
+								요청을 적고 쓰기를 누르세요.
+							</p>
+						) : view === "preview" ? (
+							<ResultPreview job={job} text={result} done={state.status === "done"} />
+						) : (
+							<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed">
+								{diff ? <DiffText parts={diff} /> : result || "쓰는 중..."}
+							</pre>
+						)}
+					</output>
+				</Tabs>
 				{(state.status === "error" || blockProblem) && (
 					<p role="alert" className="text-destructive text-xs">
 						{state.status === "error" ? state.message : blockProblem}
@@ -212,6 +218,55 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+/** 바뀐 곳(지운 것·더한 것)을 표시한 글. */
+function DiffText({ parts }: { parts: ReturnType<typeof diffWords> }) {
+	return parts.map((part, index) =>
+		part.type === "same" ? (
+			// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
+			<span key={index}>{part.text}</span>
+		) : part.type === "del" ? (
+			// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
+			<del key={index} className="bg-destructive/15 text-destructive line-through">
+				{part.text}
+			</del>
+		) : (
+			// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
+			<ins key={index} className="bg-emerald-500/15 text-emerald-700 no-underline dark:text-emerald-400">
+				{part.text}
+			</ins>
+		),
+	);
+}
+
+const PANEL = "max-h-[50vh] min-h-48 overflow-y-auto rounded-md bg-muted/40 p-3";
+
+/**
+ * 결과를 글 모양 그대로 그린다(다이어그램·차트는 그림으로). 쓰는 중에는 반쯤 쓴 코드가 그려지지 않으므로 원문을 보인다.
+ * 블록 고치기는 지금 블록과 바뀐 뒤를 나란히 보인다.
+ */
+function ResultPreview({ job, text, done }: { job: Job; text: string; done: boolean }) {
+	const after = done ? (
+		<MdxPreview mdx={text} label="바뀐 뒤" />
+	) : (
+		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || "쓰는 중..."}</pre>
+	);
+	if (job.mode === "insert") return <div className={PANEL}>{after}</div>;
+	return (
+		<div className="grid min-w-0 gap-3 sm:grid-cols-2">
+			<section className="min-w-0 space-y-1.5">
+				<h3 className="font-medium text-muted-foreground text-xs">지금</h3>
+				<div className={PANEL}>
+					<MdxPreview mdx={job.source} label="지금" />
+				</div>
+			</section>
+			<section className="min-w-0 space-y-1.5">
+				<h3 className="font-medium text-muted-foreground text-xs">바뀐 뒤</h3>
+				<div className={PANEL}>{after}</div>
+			</section>
+		</div>
 	);
 }
 

@@ -311,15 +311,20 @@ const fakeStreamText = (request: AiStreamRequest) => {
 	const { data } = request;
 	// 고칠 글은 앞에 표시를 붙여 돌려준다(바뀐 곳 미리보기가 보이도록).
 	if (data.selection) return `(fake) ${data.selection}`;
-	// 블록은 모양을 지킨 채 한 줄을 더한다(코드 펜스면 닫는 줄 앞).
+	// 블록은 모양을 지킨 채 한 줄을 더한다(코드 펜스면 닫는 줄 앞, Mermaid는 그려지는 노드 한 줄).
 	if (data.block) {
-		const fence = data.block.match(/^([\s\S]*\n)(`{3,}\s*)$/);
-		return fence ? `${fence[1]}(fake)\n${fence[2]}` : `${data.block} (fake)`;
+		const fence = data.block.match(/^(`{3,}([a-z-]*)[^\n]*\n[\s\S]*\n)(`{3,}\s*)$/);
+		if (!fence) return `${data.block} (fake)`;
+		const line = fence[2] === "mermaid" ? '  fake["(fake)"]' : "(fake)";
+		return `${fence[1]}${line}\n${fence[3]}`;
 	}
 	const title = data.title?.trim() || "새 글";
 	// 지시문이 코드 펜스 하나로 답하라고 하면(예: 다이어그램 만들기) 그 언어의 펜스로 답한다.
 	const fence = request.system.match(/답은 ```([a-z][a-z0-9-]*) 코드 펜스 하나/)?.[1];
-	if (fence) return `\`\`\`${fence}\n(fake) ${title}\n\`\`\``;
+	if (fence) {
+		const body = fence === "mermaid" ? `graph TD\n  fake["(fake) ${title}"]` : `(fake) ${title}`;
+		return `\`\`\`${fence}\n${body}\n\`\`\``;
+	}
 	return `## ${title}\n\n(fake) ${title}에 대한 초안 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
 };
 
