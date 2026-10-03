@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import type { BlockDefinition } from "../blocks/define";
 import type { CollectionsConfig } from "../config/define";
 
 /**
@@ -13,6 +14,8 @@ export interface CmsPlugin<Name extends string = string, Options = unknown> {
 	readonly options: Options;
 	/** 관리자 사이드바의 "관리" 묶음에 더할 항목. `path`는 `/admin/` 뒤 주소이고, 관리자 플러그인의 `pages`가 그린다. */
 	readonly nav?: readonly PluginNavItem[];
+	/** 본문 블록(블록 확장). 사이트 설정의 `blocks`와 같은 규칙으로 더한다. */
+	readonly blocks?: readonly BlockDefinition[];
 	/** 사이트 설정을 만들 때 부르는 검사. 잘못된 설정이면 오류를 던진다. */
 	readonly validate?: (config: PluginConfigView) => void;
 	/** 서버 쪽(API 경로·마이그레이션). 기본 내보내기가 `CmsServerPlugin`이다. */

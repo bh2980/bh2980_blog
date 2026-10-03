@@ -14,35 +14,73 @@ const card = defineBlock({
 
 const names = (blocks: readonly { name: string }[]) => blocks.map((block) => block.name);
 
+const diagram = defineBlock({
+	name: "diagram",
+	label: "다이어그램",
+	syntax: { kind: "fence", lang: "diagram" },
+	component: "Diagram",
+	attributes: {},
+	editor: { view: "node", insertable: true },
+});
+
 describe("사이트 설정의 본문 블록", () => {
-	it("설정이 없으면 내장 블록을 모두 쓴다", () => {
+	it("설정이 없으면 본체 블록만 쓴다", () => {
 		expect(names(resolveBlocks(undefined))).toEqual(names(BUILTIN_BLOCKS));
+		expect(names(BUILTIN_BLOCKS)).not.toContain("callout");
 	});
 
-	it("끈 블록과 그 자식 전용 블록을 빼고, 사용자 블록을 뒤에 더한다", () => {
-		const blocks = names(resolveBlocks({ disable: ["tabs", "mermaid"], custom: [card] }));
-		expect(blocks).not.toContain("tabs");
-		expect(blocks).not.toContain("tab");
-		expect(blocks).not.toContain("mermaid");
-		expect(blocks).toContain("callout");
-		expect(blocks.at(-1)).toBe("card");
+	it("플러그인 블록 다음에 사이트 블록을 더한다", () => {
+		const blocks = names(
+			resolveBlocks({ plugins: [{ name: "diagram", blocks: [diagram] }, { name: "ai" }], blocks: [card] }),
+		);
+		expect(blocks.slice(-2)).toEqual(["diagram", "card"]);
+		expect(blocks.slice(0, BUILTIN_BLOCKS.length)).toEqual(names(BUILTIN_BLOCKS));
 	});
 
-	it("다른 기능이 기대는 블록은 끌 수 없다", () => {
-		expect(() => resolveBlocks({ disable: ["untranslated" as never] })).toThrow(/cannot be turned off/);
-		expect(() => resolveBlocks({ disable: ["image" as never] })).toThrow(/cannot be turned off/);
-	});
-
-	it("사용자 블록의 이름·문법·컴포넌트·편집 방식·자식을 검사한다", () => {
-		const bad = (patch: object) => resolveBlocks({ custom: [{ ...card, ...patch } as never] });
+	it("더한 블록의 이름·문법·컴포넌트·편집 방식·자식을 검사한다", () => {
+		const bad = (patch: object) => resolveBlocks({ blocks: [{ ...card, ...patch } as never] });
 		expect(() => bad({ name: "Card" })).toThrow(/kebab/);
-		expect(() => bad({ syntax: { kind: "text", directive: "card" } })).toThrow(/container or leaf/);
+		expect(() => bad({ syntax: { kind: "text", directive: "card" } })).toThrow(/container, leaf or fence/);
 		expect(() => bad({ syntax: { kind: "container", directive: "other" } })).toThrow(/directive must equal/);
 		expect(() => bad({ component: "card" })).toThrow(/PascalCase/);
-		expect(() => bad({ name: "callout", syntax: { kind: "container", directive: "callout" } })).toThrow(/already used/);
-		expect(() => bad({ component: "Callout" })).toThrow(/already used/);
+		expect(() => bad({ name: "image", syntax: { kind: "leaf", directive: "image" } })).toThrow(/already used/);
+		expect(() => bad({ component: "Image" })).toThrow(/already used/);
 		expect(() => bad({ editor: { view: "mark" } })).toThrow(/editor.view/);
-		expect(() => bad({ children: { blocks: ["tab"] } })).toThrow(/custom block with this parent/);
+		expect(() => bad({ children: { blocks: ["tab"] } })).toThrow(/added block with this parent/);
+		expect(() => resolveBlocks({ blocks: [card, card] })).toThrow(/already used/);
+	});
+
+	it("코드 펜스 블록은 언어가 겹치지 않는다", () => {
+		expect(() =>
+			resolveBlocks({ blocks: [diagram, { ...diagram, name: "diagram-two", component: "DiagramTwo" }] }),
+		).toThrow(/fence lang "diagram" is already used/);
+		expect(() => resolveBlocks({ blocks: [{ ...diagram, syntax: { kind: "fence", lang: "Diagram" } }] })).toThrow(
+			/lower-case/,
+		);
+	});
+
+	it("자식 값 속성은 자식 블록에 그 속성이 있어야 한다", () => {
+		const group = defineBlock({
+			name: "group",
+			label: "묶음",
+			syntax: { kind: "container", directive: "group" },
+			component: "Group",
+			attributes: { first: { type: "string", label: "처음", childValue: "label" } },
+			children: { blocks: ["item"] },
+			editor: { view: "node" },
+		});
+		const item = defineBlock({
+			name: "item",
+			label: "항목",
+			syntax: { kind: "container", directive: "item" },
+			component: "Item",
+			attributes: {},
+			parent: "group",
+			editor: { view: "node" },
+		});
+		expect(() => resolveBlocks({ blocks: [group, item] })).toThrow(/no child block has "label"/);
+		const labeled = { ...item, attributes: { label: { type: "string" as const, label: "이름" } } };
+		expect(names(resolveBlocks({ blocks: [group, labeled] })).slice(-2)).toEqual(["group", "item"]);
 	});
 });
 

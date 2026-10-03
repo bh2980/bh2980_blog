@@ -26,8 +26,9 @@ describe("블록 정의(v2 B3)", () => {
 			if (!intrinsic && !("renderedBy" in block && block.renderedBy)) {
 				expect(components[block.component], `${block.name}.component`).toBeDefined();
 			}
-			if (block.editor.view === "node") {
-				expect(BLOCK_NODE_VIEWS[block.editor.nodeView ?? ""], `${block.name}.editor.nodeView`).toBeDefined();
+			// 본체 블록은 등록부의 편집기 노드를, 더한 블록(블록 확장)은 정의에서 만든 노드를 쓴다.
+			if (block.editor.view === "node" && block.editor.nodeView) {
+				expect(BLOCK_NODE_VIEWS[block.editor.nodeView], `${block.name}.editor.nodeView`).toBeDefined();
 			}
 		}
 	});
@@ -49,13 +50,7 @@ describe("블록 정의(v2 B3)", () => {
 		expect(
 			DIRECTIVES.map((directive) => [directive.name, directive.kind, directive.component, directive.required]),
 		).toEqual([
-			["callout", "container", "Callout", []],
-			["collapsible", "container", "Collapsible", []],
 			["text-align", "container", "TextAlign", ["align"]],
-			["tabs", "container", "Tabs", []],
-			["tab", "container", "Tab", ["label"]],
-			["columns", "container", "Columns", []],
-			["column", "container", "Column", []],
 			["image", "leaf", "Image", []],
 			["file", "leaf", "File", ["mediaId"]],
 			["tooltip", "text", "Tooltip", ["content"]],
@@ -70,6 +65,13 @@ describe("블록 정의(v2 B3)", () => {
 			["table", "container", "Table", []],
 			["row", "container", "TableRow", []],
 			["cell", "leaf", "TableCell", []],
+			// 블록 확장(`@bh2980/cms-blocks`). 블로그 설정의 `plugins` 순서다.
+			["callout", "container", "Callout", []],
+			["collapsible", "container", "Collapsible", []],
+			["tabs", "container", "Tabs", []],
+			["tab", "container", "Tab", ["label"]],
+			["columns", "container", "Columns", []],
+			["column", "container", "Column", []],
 		]);
 		expect(DIRECTIVES.find((directive) => directive.name === "cell")?.attributes).toEqual({
 			colspan: "string",

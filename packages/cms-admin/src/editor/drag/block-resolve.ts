@@ -1,5 +1,6 @@
 import type { Node as PmNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
+import { CONTAINER_NODE_NAMES, PARENT_ONLY_NODE_NAMES } from "../blocks/added/shared";
 
 /**
  * 블록 요소 해석 규약 및 DOM 탐색(v2 C1).
@@ -7,18 +8,10 @@ import type { EditorView } from "@tiptap/pm/view";
  */
 
 /**
- * 자식 블록을 하나씩 옮길 수 있는 컨테이너 노드 이름. C3의 컨테이너 NodeView(콜아웃·접기·탭·단 등)는 여기에 이름을 더한다.
+ * 자식 블록을 하나씩 옮길 수 있는 컨테이너 노드 이름. 인용과 더한 컨테이너 블록(콜아웃·접기·탭·단 등)이다.
  * 이 목록에 없는 부모(표 셀 등)의 자식은 따로 옮기지 않고 부모 블록 단위로 옮긴다.
  */
-export const DRAG_CONTAINER_NODES = new Set<string>([
-	"blockquote",
-	"cmsCallout",
-	"cmsCollapsible",
-	"cmsTabs",
-	"cmsTab",
-	"cmsColumns",
-	"cmsColumn",
-]);
+export const DRAG_CONTAINER_NODES = new Set<string>(["blockquote", ...CONTAINER_NODE_NAMES]);
 
 const isContentHole = (element: HTMLElement | null) =>
 	!!element &&
@@ -39,7 +32,7 @@ const isListItemElement = (element: HTMLElement) =>
 const LEAF_VIEW_SELECTOR = ".node-codeBlock";
 
 /** 자식 블록을 따로 옮길 수 없는 틀(단 하나·탭 하나). 핸들 대상이 되지 않는다. */
-const STRUCTURAL_VIEWS = ["node-cmsColumn", "node-cmsTab"];
+const STRUCTURAL_VIEWS = [...PARENT_ONLY_NODE_NAMES].map((name) => `node-${name}`);
 const isStructural = (element: HTMLElement) => STRUCTURAL_VIEWS.some((name) => element.classList.contains(name));
 
 /** NodeView(컨테이너)의 contentDOM. 안쪽 컨테이너의 것은 건너뛴다. */

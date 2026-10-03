@@ -1,5 +1,6 @@
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
+import { callout, chart, collapsible, columns, mermaid, tabs } from "@bh2980/cms-blocks";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 /**
@@ -215,6 +216,13 @@ export default defineConfig({
 	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
 	plugins: [
+		// 본문 블록 확장. 이미 쓴 글에 있는 블록이라 빼지 않는다.
+		callout(),
+		collapsible(),
+		tabs(),
+		columns(),
+		mermaid(),
+		chart(),
 		aiPlugin({
 			siteDescription: "개인 기술 블로그",
 			shared: {

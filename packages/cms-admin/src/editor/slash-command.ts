@@ -1,5 +1,5 @@
 import type { BlockDefinition } from "@bh2980/cms/client";
-import { BLOCKS } from "@bh2980/cms/client";
+import { ADDED_BLOCKS, BLOCKS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { BLOCK_INSERT_ACTIONS, type BlockInsertAction, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 import { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
@@ -8,8 +8,10 @@ export { OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 export { OPEN_TOOLTIP_EVENT } from "./tooltip-popover";
 
 export interface SlashCommandItem {
-	/** 블록 삽입 항목의 nodeView 이름. 기본 서식 항목에는 없다. */
+	/** 블록 삽입 항목의 이름(본체 블록은 nodeView, 더한 블록은 블록 이름). 기본 서식 항목에는 없다. */
 	id?: string;
+	/** 블록 삽입 항목의 아이콘(lucide 이름, 블록 정의의 `editor.icon`). */
+	icon?: string;
 	title: string;
 	description: string;
 	keywords: string[];
@@ -127,24 +129,24 @@ export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	},
 ];
 
-const DEFAULT_BLOCK_DESCRIPTIONS: Record<string, string> = {
-	mermaid: "다이어그램·흐름도 삽입",
-	chart: "차트·그래프 삽입",
-	math: "LaTeX 수식 삽입",
-};
+/** 슬래시 메뉴 블록 순서: 더한 블록(블록 확장·사이트 설정) 다음에 본체 블록(수식 등)이다. */
+const MENU_BLOCKS: readonly BlockDefinition[] = [
+	...ADDED_BLOCKS,
+	...BLOCKS.filter((block) => !ADDED_BLOCKS.includes(block)),
+];
 
 /**
  * 블록 정의(BLOCKS) 중 `editor.insertable === true`이고 `editor.view === 'node'`인 것 중
  * 삽입 액션이 등록된 블록에 대한 슬래시 커맨드 목록을 생성한다(v2 C3a).
  */
 export function buildBlockSlashCommands(
-	definitions: readonly BlockDefinition[] = BLOCKS,
+	definitions: readonly BlockDefinition[] = MENU_BLOCKS,
 	actions: Record<string, BlockInsertAction> = BLOCK_INSERT_ACTIONS,
 ): SlashCommandItem[] {
 	const items: SlashCommandItem[] = [];
 	for (const block of definitions) {
 		if (block.editor.insertable !== true || block.editor.view !== "node") continue;
-		// 사용자 블록은 편집기 이름이 없으면 블록 이름으로 삽입 동작을 찾는다.
+		// 더한 블록은 편집기 이름이 없어 블록 이름으로 삽입 동작을 찾는다.
 		const nodeView = block.editor.nodeView ?? block.name;
 		// 이미지는 기존 하드코딩 항목이 있으므로 중복 제외
 		if (nodeView === "image" || block.name === "image") continue;
@@ -154,8 +156,9 @@ export function buildBlockSlashCommands(
 		items.push({
 			id: nodeView,
 			title: block.label,
-			description: block.description ?? DEFAULT_BLOCK_DESCRIPTIONS[nodeView] ?? `${block.label} 삽입`,
+			description: block.description ?? `${block.label} 삽입`,
 			keywords: block.editor.keywords ? [...block.editor.keywords] : [block.label, block.name],
+			...(block.editor.icon ? { icon: block.editor.icon } : {}),
 			action,
 		});
 	}

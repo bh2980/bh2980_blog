@@ -1,11 +1,9 @@
-import { CUSTOM_BLOCKS } from "../blocks/active";
+import { ADDED_BLOCKS } from "../blocks/active";
+
+/** 더한 블록(블록 확장·사이트 설정)의 공개 렌더러 이름. */
+const ADDED_COMPONENTS = ADDED_BLOCKS.map((block) => block.component);
+
 export const REGISTERED_JSX_NAMES = new Set([
-	"Callout",
-	"Collapsible",
-	"Columns",
-	"Column",
-	"Tabs",
-	"Tab",
 	"Tooltip",
 	"CodeRef",
 	"Color",
@@ -20,35 +18,24 @@ export const REGISTERED_JSX_NAMES = new Set([
 	"TextAlign",
 	"Image",
 	"File",
-	"Chart",
-	"Mermaid",
 	"CodeBlock",
 	"Math",
 	"Table",
 	"TableRow",
 	"TableCell",
-	// 사이트 설정의 사용자 블록(`blocks.custom`).
-	...CUSTOM_BLOCKS.map((block) => block.component),
+	...ADDED_COMPONENTS,
 ]);
 
 export const BLOCK_JSX_NAMES = new Set([
-	"Callout",
-	"Collapsible",
-	"Columns",
-	"Column",
-	"Tabs",
-	"Tab",
 	"TextAlign",
 	"Image",
 	"File",
-	"Chart",
-	"Mermaid",
 	"CodeBlock",
 	"Math",
 	"Table",
 	"TableRow",
 	"TableCell",
-	...CUSTOM_BLOCKS.map((block) => block.component),
+	...ADDED_COMPONENTS,
 ]);
 
 export const INLINE_JSX_MARKS: Record<string, string> = {
@@ -85,9 +72,6 @@ export const MARK_ORDER = [
 
 export const sortMarks = <T extends { type: string }>(marks: readonly T[]): T[] =>
 	[...marks].sort((left, right) => MARK_ORDER.indexOf(left.type) - MARK_ORDER.indexOf(right.type));
-
-/** 자식 개수 규칙은 블록 정의(v2 B3)에서 온다. */
-export { COLUMNS_MAX, COLUMNS_MIN, TABS_MAX, TABS_MIN } from "../blocks/derive";
 
 /** 배치 4에서 제거한 이름. 본문에 남아 있으면 `analyze`가 거부한다(읽기 호환도 끝). */
 export const RETIRED_JSX_NAMES = new Set(["ContentLink", "IdeographicSpace"]);

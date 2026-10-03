@@ -11,7 +11,7 @@ import { Button } from "../../ui/button";
 const PROSE =
 	"prose dark:prose-invert max-w-none text-base text-foreground leading-relaxed focus:outline-none " +
 	// 읽기 전용: 코드 블록 도구 줄은 숨기고, 접기 상자는 늘 펼쳐 보인다.
-	"[&_[data-code-ui]]:hidden [&_[data-cms-container-node=cmsCollapsible]_.hidden]:block " +
+	"[&_[data-code-ui]]:hidden [&_[data-cms-collapsed]]:block " +
 	// 번역 편집기에서 커서가 있는 블록에 대응하는 원문 블록(source-sync).
 	// 막대 없이 옅은 배경만 블록 둘레로 번지게 한다(그림자 퍼짐이라 자리를 밀지 않고 목록 점도 감싼다).
 	"[&_.cms-source-active]:rounded-sm [&_.cms-source-active]:bg-primary/8 [&_.cms-source-active]:shadow-[0_0_0_12px_color-mix(in_oklab,var(--color-primary)_8%,transparent)] [&_.cms-source-active]:transition-[background-color,box-shadow]";

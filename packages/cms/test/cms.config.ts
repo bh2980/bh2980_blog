@@ -1,3 +1,4 @@
+import { ALL_BLOCKS } from "../../cms-blocks/src/definitions";
 import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 /**
@@ -234,7 +235,8 @@ export default defineConfig({
 	defaultLocale: "ko",
 	site: { url: "https://bh2980.dev", aliases: ["www.bh2980.dev"], name: "bh2980.dev", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
-	blocks: { custom: [notice, embed] },
+	// 블록 확장(`@bh2980/cms-blocks`)의 블록 + 사용자 블록. 테스트는 플러그인 없이 정의만 쓴다(관리자 화면 코드를 읽지 않는다).
+	blocks: [...ALL_BLOCKS, notice, embed],
 	seed: {
 		templates: [
 			{

@@ -20,7 +20,8 @@ import { CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 const components = {
 	fencePreviews: { chart: () => import("./chart").then((m) => m.Chart) }, // ({ source }) => ReactNode
 	fieldInputs: { color: ColorInput }, // fields.text({ input: "color" })인 필드를 이 입력으로 그린다
-	blockEditors: { notice: NoticeEditor }, // 사용자 블록 편집 모양({ definition, values, setValue, content })
+	blockEditors: { notice: NoticeEditor }, // 더한 블록의 속성·본문 상자({ definition, values, setValue, content })
+	blockViews: { banner: BannerView }, // 더한 블록의 편집 화면 전체(Tiptap NodeView). blockEditors보다 먼저 쓴다
 };
 
 export function SiteAdminComponents({ children }) {
@@ -29,6 +30,16 @@ export function SiteAdminComponents({ children }) {
 ```
 
 넣지 않은 펜스는 원문을 그대로 보인다.
+
+## 블록 편집 화면
+
+설정의 `blocks`나 블록 확장 플러그인이 더한 블록(`editor.view: "node"`)은 관리자 화면이 정의에서 편집기 노드(`cms` + 파스칼
+이름, 예: `cmsNotice`)·변환·슬래시 메뉴 삽입·끌기 규칙을 만든다. 편집 모양만 넣으면 된다.
+
+- 아무것도 넣지 않으면 지시자 블록은 속성 입력과 본문을 담은 상자, 코드 펜스 블록은 코드 입력 칸과 미리보기다.
+- `blockEditors`는 기본 틀 안의 속성·본문 모양을, `blockViews`는 틀까지 포함한 화면 전체를 바꾼다.
+- `blockViews` 화면을 만드는 도구(속성 값 읽고 쓰기·자식 위치·입력 칸·도구 줄·노드 이름)는 `@bh2980/cms-admin/blocks`에 있다.
+  `@bh2980/cms-blocks`의 콜아웃·탭 화면이 예시다.
 
 ## 플러그인 화면
 

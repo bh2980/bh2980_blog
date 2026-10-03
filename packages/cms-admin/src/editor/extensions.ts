@@ -1,7 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import { CmsBlockKeymap } from "./block-commands";
 import { BLOCK_NODE_VIEWS } from "./block-views";
-import { CUSTOM_BLOCK_NODES } from "./blocks/custom";
+import { ADDED_BLOCK_NODES } from "./blocks/added";
 import { CmsBlockDrag } from "./drag";
 import { CMS_SCHEMA_EXTENSIONS } from "./tiptap-schema";
 
@@ -21,8 +21,8 @@ export function buildEditorExtensions() {
 		}),
 		...CMS_SCHEMA_EXTENSIONS,
 		...Object.values(BLOCK_NODE_VIEWS),
-		// 사이트 설정의 사용자 블록(`blocks.custom`, `editor.view: "node"`).
-		...CUSTOM_BLOCK_NODES,
+		// 블록 확장·사이트 설정이 더한 블록(`editor.view: "node"`).
+		...ADDED_BLOCK_NODES,
 		CmsBlockKeymap,
 		CmsBlockDrag,
 	];

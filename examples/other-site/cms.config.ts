@@ -1,4 +1,5 @@
 import { defineBlock, defineCollection, defineConfig, fields } from "@bh2980/cms";
+import { callout, chart } from "@bh2980/cms-blocks";
 
 /** 블로그와 컬렉션·언어가 전혀 다른 예시 사이트. 글(article)과 주제(topic), 영어 하나다. */
 
@@ -42,5 +43,7 @@ export default defineConfig({
 	defaultLocale: "en",
 	site: { name: "Example site", previewPath: "/preview" },
 	timeZone: "UTC",
-	blocks: { disable: ["tabs", "columns", "mermaid"], custom: [quoteCard] },
+	// 블록 확장에서 콜아웃·차트만 설치하고, 사용자 블록 하나를 더한다.
+	plugins: [callout(), chart()],
+	blocks: [quoteCard],
 });

@@ -49,7 +49,7 @@ export class PreviewErrorBoundary extends Component<ErrorBoundaryProps, ErrorBou
 /**
  * 사이트가 넣은 펜스 미리보기(`CmsAdminComponents.fencePreviews`)를 불러와 그린다. 넣지 않았으면 원문을 그대로 보인다.
  */
-function LazyFencePreview({
+export function LazyFencePreview({
 	lang,
 	label,
 	value,
@@ -113,30 +113,6 @@ function LazyFencePreview({
 				<Renderer source={trimmed} />
 			</div>
 		</PreviewErrorBoundary>
-	);
-}
-
-export function MermaidPreview({ value, className }: { value: string; className?: string }) {
-	return (
-		<LazyFencePreview
-			lang="mermaid"
-			label="다이어그램"
-			value={value}
-			className={className}
-			emptyText="Mermaid 다이어그램을 입력하세요"
-		/>
-	);
-}
-
-export function ChartPreview({ value, className }: { value: string; className?: string }) {
-	return (
-		<LazyFencePreview
-			lang="chart"
-			label="차트"
-			value={value}
-			className={className}
-			emptyText="차트 데이터를 입력하세요"
-		/>
 	);
 }
 

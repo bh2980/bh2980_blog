@@ -35,6 +35,14 @@ describe("원문 두 버전 비교(v3)", () => {
 		]);
 	});
 
+	it("탭 이름은 탭 묶음 머리 줄 하나로 모아 비교한다", () => {
+		const tabs = (second: string) =>
+			`::::tabs\n:::tab{label="하나"}\n첫째\n:::\n:::tab{label="${second}"}\n둘째\n:::\n::::\n`;
+		expect(summary(diffSources(tabs("둘"), tabs("둘 고침")))).toEqual([
+			["changed", JSON.stringify({ labels: ["하나", "둘"] }), JSON.stringify({ labels: ["하나", "둘 고침"] })],
+		]);
+	});
+
 	it("해석할 수 없는 원문이면 null", () => {
 		expect(diffSources("본문 <Callout>닫히지 않음", "하나\n")).toBeNull();
 	});

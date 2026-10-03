@@ -370,30 +370,30 @@ function checkBlockAttributes(
 		}
 	}
 
-	if (name === "Tabs") {
-		const defaultValue = readAttrValue(node, "defaultValue");
-		if (typeof defaultValue === "string" && defaultValue) {
-			const labels: string[] = [];
-			const collectLabels = (children: unknown) => {
-				for (const child of Array.isArray(children) ? children : []) {
-					if (!isMdxNode(child)) continue;
-					if (isJsxElement(child) && child.name === "Tab") {
-						const label = readAttrValue(child, "label");
-						if (typeof label === "string") labels.push(label);
-					} else if (child.type === "paragraph") {
-						collectLabels(child.children);
-					}
+	// 자식 블록의 값 중 하나여야 하는 속성(예: 처음 열 탭 → 탭 이름).
+	for (const [key, attribute] of Object.entries(block?.attributes ?? {})) {
+		const childKey = attribute.childValue;
+		if (!block || !childKey) continue;
+		const value = readAttrValue(node, key);
+		if (typeof value !== "string" || !value) continue;
+		const childComponents = new Set(
+			(block.children?.blocks ?? []).flatMap((child) => BLOCK_BY_NAME.get(child)?.component ?? []),
+		);
+		const values: string[] = [];
+		const collect = (children: unknown) => {
+			for (const child of Array.isArray(children) ? children : []) {
+				if (!isMdxNode(child)) continue;
+				if (isJsxElement(child) && childComponents.has(String(child.name ?? ""))) {
+					const childValue = readAttrValue(child, childKey);
+					if (typeof childValue === "string") values.push(childValue);
+				} else if (child.type === "paragraph") {
+					collect(child.children);
 				}
-			};
-			collectLabels(node.children);
-			if (!labels.includes(defaultValue)) {
-				issues.push({
-					code: "invalid_block_attribute",
-					message: `tabs.defaultValue=${defaultValue}`,
-					path: "mdx",
-					position,
-				});
 			}
+		};
+		collect(node.children);
+		if (!values.includes(value)) {
+			issues.push({ code: "invalid_block_attribute", message: `${block.name}.${key}=${value}`, path: "mdx", position });
 		}
 	}
 

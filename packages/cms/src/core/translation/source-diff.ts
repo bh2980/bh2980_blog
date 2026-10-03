@@ -1,23 +1,44 @@
+import { BLOCK_BY_COMPONENT, BLOCK_BY_NAME, FENCE_BLOCKS } from "../../blocks/derive";
 import { analyze, type CmsNode, serialize, toDocument } from "../../mdx";
 
 /**
  * 원문 두 버전의 블록 비교(번역 화면).
  *
  * 번역자가 마지막으로 확인한 원문과 지금 원문을 블록 단위로 나눠 바뀐·더해진·빠진 블록을 찾는다.
- * 상자(콜아웃·접기·탭·단 나누기·정렬)는 펼쳐서 제목·탭 이름과 안쪽 블록을 각각 비교한다. 서버·브라우저가 같이 쓴다.
+ * 펼치는 상자(블록 정의의 `translateInside`, 예: 콜아웃·탭·정렬)는 펼쳐서 머리 줄(번역할 속성)과 안쪽 블록을 각각
+ * 비교한다. 서버·브라우저가 같이 쓴다.
  */
 
-/** 펼치는 상자: 상자 자체는 뼈대이고 안쪽 블록이 각각 단위다. */
-const EXPANDED = new Set(["Callout", "Collapsible", "Tabs", "Tab", "Columns", "Column", "TextAlign"]);
+/** 펼치는 상자의 렌더러 이름: 상자 자체는 뼈대이고 안쪽 블록이 각각 단위다. */
+const EXPANDED = new Set(
+	[...BLOCK_BY_COMPONENT.values()].filter((block) => block.translateInside).map((b) => b.component),
+);
 
-/** 머리 줄로 번역할 속성. 탭 이름은 `Tabs` 머리 줄 하나에 모은다. */
-const HEADER_TITLE = new Set(["Callout", "Collapsible"]);
+const translatableOf = (component: string): string | undefined => {
+	const block = BLOCK_BY_COMPONENT.get(component);
+	return Object.entries(block?.attributes ?? {}).find(([, attribute]) => attribute.translatable)?.[0];
+};
+
+/** 자식 블록의 번역할 속성(예: 탭 이름)을 머리 줄 하나에 모으는 상자. 렌더러 이름 → [자식 렌더러 이름, 속성]. */
+const CHILD_HEADERS = new Map(
+	[...BLOCK_BY_COMPONENT.values()].flatMap((block) => {
+		const child = BLOCK_BY_NAME.get(block.children?.blocks?.[0] ?? "");
+		const attribute = child && translatableOf(child.component);
+		return child && attribute ? [[block.component, [child.component, attribute] as const] as const] : [];
+	}),
+);
 
 /** 번역할 글자가 없어 원문을 그대로 쓰는 블록. */
 const STRUCTURAL = new Set(["horizontalRule", "html", "mdxEsm", "mdxExpression"]);
 
-/** 글자가 없어도 사람이 확인해야 하는 블록(주석·라벨이 들어갈 수 있다). */
-const ALWAYS_MANUAL = new Set(["codeBlock", "math", "Chart", "Mermaid", "CodeBlock", "Math"]);
+/** 글자가 없어도 사람이 확인해야 하는 블록(주석·라벨이 들어갈 수 있다). 코드 펜스 블록도 그렇다. */
+const ALWAYS_MANUAL = new Set([
+	"codeBlock",
+	"math",
+	"CodeBlock",
+	"Math",
+	...[...FENCE_BLOCKS.values()].map((block) => block.component),
+]);
 
 export type UnitKind = "block" | "header";
 
@@ -35,7 +56,7 @@ export interface TranslationUnit {
 	readonly auto: boolean;
 }
 
-/** 머리 줄의 번역 값. 콜아웃·접기는 제목, 탭 묶음은 탭 이름들이다. */
+/** 머리 줄의 번역 값. 상자의 번역할 속성(예: 콜아웃 제목)이나, 자식에서 모은 값들(예: 탭 이름)이다. */
 export type HeaderValue = { title: string } | { labels: string[] };
 
 const textOf = (node: CmsNode): string =>
@@ -63,15 +84,20 @@ const stringAttr = (node: CmsNode, name: string) => {
 };
 
 const headerValue = (node: CmsNode): HeaderValue | null => {
-	if (HEADER_TITLE.has(node.type)) {
-		const title = stringAttr(node, "title");
-		return title.trim() ? { title } : null;
-	}
-	if (node.type === "Tabs") {
-		const labels = (node.content ?? []).filter((child) => child.type === "Tab").map((tab) => stringAttr(tab, "label"));
+	const fromChildren = CHILD_HEADERS.get(node.type);
+	if (fromChildren) {
+		const [childType, attribute] = fromChildren;
+		const labels = (node.content ?? [])
+			.filter((child) => child.type === childType)
+			.map((child) => stringAttr(child, attribute));
 		return labels.some((label) => label.trim()) ? { labels } : null;
 	}
-	return null;
+	// 부모가 모아 번역하는 자식(탭 하나)은 머리 줄을 따로 두지 않는다.
+	if (BLOCK_BY_COMPONENT.get(node.type)?.parent) return null;
+	const attribute = translatableOf(node.type);
+	if (!attribute) return null;
+	const title = stringAttr(node, attribute);
+	return title.trim() ? { title } : null;
 };
 
 /** 원문 문서를 번역 단위로 나눈다(문서 순서). */

@@ -1,3 +1,4 @@
+import { calloutBlock, chartBlock } from "../../cms-blocks/src/definitions";
 import { defineBlock, defineCollection, defineConfig, fields } from "../src";
 
 /**
@@ -31,18 +32,17 @@ export default defineConfig({
 	collections: { article, topic },
 	locales: [{ code: "en", name: "English" }],
 	defaultLocale: "en",
-	// 내장 블록 일부를 끄고 사용자 블록을 더한다.
-	blocks: {
-		disable: ["tabs", "columns", "mermaid"],
-		custom: [
-			defineBlock({
-				name: "quote-card",
-				label: "Quote card",
-				syntax: { kind: "container", directive: "quote-card" },
-				component: "QuoteCard",
-				attributes: { author: { type: "string", label: "Author" } },
-				editor: { view: "node", insertable: true },
-			}),
-		],
-	},
+	// 블록 확장의 콜아웃·차트와 사용자 블록 하나만 쓴다.
+	blocks: [
+		calloutBlock,
+		chartBlock,
+		defineBlock({
+			name: "quote-card",
+			label: "Quote card",
+			syntax: { kind: "container", directive: "quote-card" },
+			component: "QuoteCard",
+			attributes: { author: { type: "string", label: "Author" } },
+			editor: { view: "node", insertable: true },
+		}),
+	],
 });

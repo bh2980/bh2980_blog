@@ -5,6 +5,7 @@ import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
 import { BLOCK_NODE_VIEWS } from "../block-views";
+import { ADDED_BLOCK_NODES } from "../blocks/added";
 import {
 	cmsNodeToTiptap,
 	mdxToTiptap,
@@ -23,6 +24,7 @@ const schema = getSchema([
 	StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
 	...CMS_SCHEMA_EXTENSIONS,
 	...Object.values(BLOCK_NODE_VIEWS),
+	...ADDED_BLOCK_NODES,
 ]);
 
 /** Tiptap 스키마를 통과하는지 확인한다 — 통과하지 못하면 실에디터가 조용히 버린다. */

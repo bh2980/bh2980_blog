@@ -1,39 +1,20 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
-import {
-	ChartColumn,
-	ChevronsUpDown,
-	Columns2,
-	type LucideIcon,
-	MessageSquareWarning,
-	Puzzle,
-	Sigma,
-	SquareStack,
-	Workflow,
-} from "lucide-react";
+import { Puzzle } from "lucide-react";
+import { iconByName } from "../screens/shared/collection-icon";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { buildBlockSlashCommands } from "./slash-command";
-
-/** 블록 이름(nodeView) → 메뉴 아이콘. 없으면 퍼즐 아이콘을 쓴다. */
-const BLOCK_ICONS: Record<string, LucideIcon> = {
-	callout: MessageSquareWarning,
-	collapsible: ChevronsUpDown,
-	tabs: SquareStack,
-	columns: Columns2,
-	mermaid: Workflow,
-	chart: ChartColumn,
-	math: Sigma,
-};
 
 const CUSTOM_BLOCKS = buildBlockSlashCommands();
 
 /** 커스텀 컴포넌트 목록. 컴포넌트 메뉴와 툴바 "더보기" 메뉴가 함께 쓴다. */
 export function CustomBlockMenuItems({ editor }: { editor: Editor }) {
 	return CUSTOM_BLOCKS.map((block) => {
-		const Icon = (block.id && BLOCK_ICONS[block.id]) || Puzzle;
+		// 블록 정의의 아이콘(`editor.icon`). 없으면 퍼즐 아이콘을 쓴다.
+		const Icon = iconByName(block.icon) ?? Puzzle;
 		return (
 			<DropdownMenuItem
 				key={block.id ?? block.title}

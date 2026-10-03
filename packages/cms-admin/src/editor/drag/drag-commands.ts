@@ -1,6 +1,7 @@
 import { Fragment, type Node as PmNode, Slice } from "@tiptap/pm/model";
 import { type EditorState, NodeSelection, Selection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { canJoin, dropPoint } from "@tiptap/pm/transform";
+import { BODY_CONTAINER_NODE_NAMES } from "../blocks/added/shared";
 
 /**
  * 블록 드래그 앤 드롭 순수 명령 함수들(v2 C1).
@@ -12,8 +13,8 @@ export const MOVED_BLOCKS_META = "cmsMovedBlocks";
 
 /** 비면 안 되는 목록. 유일한 항목을 옮기면 빈 목록째 뺀다. */
 const LIST_NODES = new Set(["bulletList", "orderedList", "taskList"]);
-/** 본문 블록이 하나 이상이어야 하는 CMS 컨테이너. 유일한 블록을 옮기면 빈 문단을 남긴다. */
-const CONTAINER_BODY_NODES = new Set(["cmsCallout", "cmsCollapsible", "cmsTab", "cmsColumn"]);
+/** 본문 블록이 하나 이상이어야 하는 CMS 컨테이너(블록 정의에서 만든다). 유일한 블록을 옮기면 빈 문단을 남긴다. */
+const CONTAINER_BODY_NODES = BODY_CONTAINER_NODE_NAMES;
 
 /** 블록을 꺼낼 때 지울 범위. `fill`이 있으면 그 자리를 fill로 채운다. 꺼낼 수 없으면 null. */
 export interface SourceRange {

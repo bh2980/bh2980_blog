@@ -1,32 +1,18 @@
 "use client";
 
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../../lib/utils/cn";
-import { ChartPreview, MathPreview, MermaidPreview } from "./preview-renderers";
 
-type PreviewKind = "mermaid" | "chart" | "math";
-
-const KIND_META: Record<PreviewKind, { label: string; placeholder: string }> = {
-	mermaid: {
-		label: "Mermaid 다이어그램",
-		placeholder: "graph TD;\n    A-->B;",
-	},
-	chart: {
-		label: "차트",
-		placeholder: 'pie\n  "Apple": 40\n  "Banana": 60',
-	},
-	math: {
-		label: "수식 (KaTeX)",
-		placeholder: "E = mc^2",
-	},
-};
-
-const resolveKind = (typeName: string): PreviewKind => {
-	if (typeName === "cmsChart") return "chart";
-	if (typeName === "cmsMath") return "math";
-	return "mermaid";
-};
+/** 코드로 쓰고 미리보기로 보는 블록(수식·코드 펜스 블록)의 이름과 입력 안내. */
+export interface FenceEditorMeta {
+	/** `data-fence-preview` 값(예: `math`, 펜스 언어). */
+	readonly kind: string;
+	readonly label: string;
+	/** 입력 칸이 비었을 때 보일 예시 코드. */
+	readonly placeholder: string;
+	readonly preview: (value: string) => ReactNode;
+}
 
 const PROSEMIRROR_CURSOR_KEYS = new Set([
 	"Enter",
@@ -43,9 +29,18 @@ const PROSEMIRROR_CURSOR_KEYS = new Set([
 	"PageDown",
 ]);
 
-export function FencePreviewNodeView({ node, updateAttributes, selected, editor }: NodeViewProps) {
-	const kind = resolveKind(node.type.name);
-	const meta = KIND_META[kind];
+/**
+ * 코드 입력 칸과 미리보기를 함께 보이는 편집 화면. 고르거나 누르면 입력 칸이 열리고, 아니면 미리보기만 보인다.
+ * 입력은 잠시 멈추거나 칸을 벗어날 때 문서에 넣는다(한글 조합 중에는 넣지 않는다).
+ */
+export function FencePreviewNodeView({
+	node,
+	updateAttributes,
+	selected,
+	editor,
+	meta,
+}: NodeViewProps & { readonly meta: FenceEditorMeta }) {
+	const { kind } = meta;
 	const [isEditing, setIsEditing] = useState(false);
 	const [draft, setDraft] = useState<string>(node.attrs.value ?? "");
 	const [previewValue, setPreviewValue] = useState<string>(node.attrs.value ?? "");
@@ -169,16 +164,7 @@ export function FencePreviewNodeView({ node, updateAttributes, selected, editor 
 		}
 	};
 
-	const renderPreview = () => {
-		switch (kind) {
-			case "mermaid":
-				return <MermaidPreview value={previewValue} />;
-			case "chart":
-				return <ChartPreview value={previewValue} />;
-			case "math":
-				return <MathPreview value={previewValue} />;
-		}
-	};
+	const renderPreview = () => meta.preview(previewValue);
 
 	return (
 		<NodeViewWrapper

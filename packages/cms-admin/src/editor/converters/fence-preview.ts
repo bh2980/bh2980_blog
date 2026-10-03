@@ -1,4 +1,4 @@
-import { isBlockActive } from "@bh2980/cms/client";
+import type { BlockDefinition } from "@bh2980/cms/client";
 import type { CodeBlockDocument } from "@bh2980/cms/code-block";
 import { annotationConfig, fromCodeBlockDocumentToCodeFence } from "@bh2980/cms/code-block";
 import type { CmsNode } from "@bh2980/cms/mdx";
@@ -15,78 +15,31 @@ const extractCodeValue = (node: CmsNode): string => {
 	return "";
 };
 
-export const mermaidConverter: BlockConverter = {
-	name: "mermaid",
-	cmsTypes: ["codeBlock"],
-	tiptapTypes: ["cmsMermaid"],
-	// 사이트가 블록을 껐으면 일반 코드 블록으로 둔다.
-	matches: (node) => isBlockActive("mermaid") && asString(node.attrs?.language)?.toLowerCase() === "mermaid",
-	isMappable: () => true,
-	toTiptap(node) {
-		const language = asString(node.attrs?.language) ?? "mermaid";
-		const meta = asString(node.attrs?.meta) ?? "";
-		const value = extractCodeValue(node);
-		return {
-			type: "cmsMermaid",
-			attrs: {
-				value,
-				language,
-				...(meta ? { meta } : {}),
-			},
-		};
-	},
-	toCms(node) {
-		const value = asString(node.attrs?.value) ?? "";
-		const language = asString(node.attrs?.language) || "mermaid";
-		const meta = asString(node.attrs?.meta);
-		return [
-			{
-				type: "codeBlock",
-				attrs: {
-					language,
-					...(meta ? { meta } : {}),
-					value,
-				},
-			},
-		];
-	},
-};
-
-export const chartConverter: BlockConverter = {
-	name: "chart",
-	cmsTypes: ["codeBlock"],
-	tiptapTypes: ["cmsChart"],
-	matches: (node) => isBlockActive("chart") && asString(node.attrs?.language)?.toLowerCase() === "chart",
-	isMappable: () => true,
-	toTiptap(node) {
-		const language = asString(node.attrs?.language) ?? "chart";
-		const meta = asString(node.attrs?.meta) ?? "";
-		const value = extractCodeValue(node);
-		return {
-			type: "cmsChart",
-			attrs: {
-				value,
-				language,
-				...(meta ? { meta } : {}),
-			},
-		};
-	},
-	toCms(node) {
-		const value = asString(node.attrs?.value) ?? "";
-		const language = asString(node.attrs?.language) || "chart";
-		const meta = asString(node.attrs?.meta);
-		return [
-			{
-				type: "codeBlock",
-				attrs: {
-					language,
-					...(meta ? { meta } : {}),
-					value,
-				},
-			},
-		];
-	},
-};
+/**
+ * 더한 코드 펜스 블록(예: ` ```mermaid `)의 변환기. 그 언어의 코드 블록을 블록 노드로 바꾸고, 저장할 때 언어·메타를
+ * 그대로 되살린다. 블록을 설치하지 않은 사이트에서는 일반 코드 블록으로 남는다.
+ */
+export function fenceBlockConverter(block: BlockDefinition, nodeName: string): BlockConverter {
+	const lang = block.syntax.kind === "fence" ? block.syntax.lang : block.name;
+	return {
+		name: block.name,
+		cmsTypes: ["codeBlock"],
+		tiptapTypes: [nodeName],
+		matches: (node) => asString(node.attrs?.language)?.toLowerCase() === lang,
+		isMappable: () => true,
+		toTiptap(node) {
+			const language = asString(node.attrs?.language) ?? lang;
+			const meta = asString(node.attrs?.meta) ?? "";
+			return { type: nodeName, attrs: { value: extractCodeValue(node), language, ...(meta ? { meta } : {}) } };
+		},
+		toCms(node) {
+			const value = asString(node.attrs?.value) ?? "";
+			const language = asString(node.attrs?.language) || lang;
+			const meta = asString(node.attrs?.meta);
+			return [{ type: "codeBlock", attrs: { language, ...(meta ? { meta } : {}), value } }];
+		},
+	};
+}
 
 export const mathConverter: BlockConverter = {
 	name: "math",

@@ -2,6 +2,7 @@ import { cleanTextColor, hasTextColor } from "@bh2980/cms/client";
 import type { CmsJsonValue, CmsMark, CmsNode } from "@bh2980/cms/mdx";
 import { TEXT_ALIGN_VALUES as ALIGN_VALUES, analyze, serialize, sortMarks, toDocument } from "@bh2980/cms/mdx";
 import type { JSONContent } from "@tiptap/core";
+import { PARENT_ONLY_TYPES } from "./blocks/added";
 import { COLOR_MARK_NAME } from "./color-mark";
 import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
 import { asNumber, asString, brDirectiveNode } from "./converters/shared";
@@ -82,8 +83,8 @@ const isTaskList = (node: CmsNode): boolean => {
 };
 
 const isMappableBlock = (node: CmsNode): boolean => {
-	// Tab·Column은 전용 부모(Tabs·Columns) 밖에서 유효하지 않다. 부모 변환기가 자식을 직접 검증한다.
-	if (node.type === "Tab" || node.type === "Column") return false;
+	// 부모 전용 블록(탭 하나·단 하나)은 부모 밖에서 유효하지 않다. 부모 변환기가 자식을 직접 검증한다.
+	if (PARENT_ONLY_TYPES.has(node.type)) return false;
 	const converter = converterForCms(node.type, node);
 	if (converter) return converter.isMappable(node, context);
 	switch (node.type) {

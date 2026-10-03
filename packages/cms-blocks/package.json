@@ -1,0 +1,121 @@
+{
+	"name": "@bh2980/cms-blocks",
+	"version": "0.0.0",
+	"private": true,
+	"description": "@bh2980/cms의 블록 확장: 콜아웃·접기·탭·단 나누기·Mermaid·차트",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./definitions": "./src/definitions.ts",
+		"./callout": "./src/callout/index.ts",
+		"./callout/admin": "./src/callout/admin.ts",
+		"./collapsible": "./src/collapsible/index.ts",
+		"./collapsible/admin": "./src/collapsible/admin.ts",
+		"./tabs": "./src/tabs/index.ts",
+		"./tabs/admin": "./src/tabs/admin.ts",
+		"./columns": "./src/columns/index.ts",
+		"./columns/admin": "./src/columns/admin.ts",
+		"./mermaid": "./src/mermaid/index.ts",
+		"./chart": "./src/chart/index.ts",
+		"./styles.css": "./styles.css"
+	},
+	"scripts": {
+		"test": "vitest",
+		"test:run": "vitest run",
+		"typecheck": "tsc --noEmit -p .",
+		"build": "node ../../scripts/build-package.mjs"
+	},
+	"dependencies": {
+		"lucide-react": "^0.562.0"
+	},
+	"peerDependencies": {
+		"@bh2980/cms": "workspace:^",
+		"@bh2980/cms-admin": "workspace:^",
+		"@tiptap/core": "^3.31.3",
+		"@tiptap/pm": "^3.31.3",
+		"@tiptap/react": "^3.31.3",
+		"react": ">=19"
+	},
+	"devDependencies": {
+		"@bh2980/cms": "workspace:*",
+		"@bh2980/cms-admin": "workspace:*",
+		"@tanstack/react-query": "^5.104.0",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@tiptap/core": "^3.31.3",
+		"@tiptap/pm": "^3.31.3",
+		"@tiptap/react": "^3.31.3",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"jsdom": "^27.4.0",
+		"next": "16.3.8",
+		"next-auth": "5.0.0-beta.32",
+		"next-themes": "^0.4.6",
+		"react": "19.2.3",
+		"react-dom": "19.2.3",
+		"sonner": "^2.0.8",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.0",
+		"vitest": "^4.0.18"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"styles.css"
+	],
+	"publishConfig": {
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"./definitions": {
+				"types": "./dist/definitions.d.ts",
+				"default": "./dist/definitions.js"
+			},
+			"./callout": {
+				"types": "./dist/callout/index.d.ts",
+				"default": "./dist/callout/index.js"
+			},
+			"./callout/admin": {
+				"types": "./dist/callout/admin.d.ts",
+				"default": "./dist/callout/admin.js"
+			},
+			"./collapsible": {
+				"types": "./dist/collapsible/index.d.ts",
+				"default": "./dist/collapsible/index.js"
+			},
+			"./collapsible/admin": {
+				"types": "./dist/collapsible/admin.d.ts",
+				"default": "./dist/collapsible/admin.js"
+			},
+			"./tabs": {
+				"types": "./dist/tabs/index.d.ts",
+				"default": "./dist/tabs/index.js"
+			},
+			"./tabs/admin": {
+				"types": "./dist/tabs/admin.d.ts",
+				"default": "./dist/tabs/admin.js"
+			},
+			"./columns": {
+				"types": "./dist/columns/index.d.ts",
+				"default": "./dist/columns/index.js"
+			},
+			"./columns/admin": {
+				"types": "./dist/columns/admin.d.ts",
+				"default": "./dist/columns/admin.js"
+			},
+			"./mermaid": {
+				"types": "./dist/mermaid/index.d.ts",
+				"default": "./dist/mermaid/index.js"
+			},
+			"./chart": {
+				"types": "./dist/chart/index.d.ts",
+				"default": "./dist/chart/index.js"
+			},
+			"./styles.css": "./styles.css"
+		}
+	}
+}

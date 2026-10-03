@@ -1,8 +1,7 @@
 import type { CmsNode } from "@bh2980/cms/mdx";
-import { CONTAINER_CONVERTERS } from "../blocks/containers";
-import { CUSTOM_BLOCK_CONVERTERS } from "../blocks/custom";
+import { ADDED_BLOCK_CONVERTERS } from "../blocks/added";
 import { codeBlockConverter } from "./code-block";
-import { chartConverter, mathConverter, mermaidConverter } from "./fence-preview";
+import { mathConverter } from "./fence-preview";
 import { fileConverter } from "./file";
 import { imageConverter } from "./image";
 import { tableConverter } from "./table";
@@ -18,13 +17,11 @@ export type { BlockConverter, ConverterContext } from "./types";
 export const BLOCK_CONVERTERS: readonly BlockConverter[] = [
 	imageConverter,
 	fileConverter,
-	mermaidConverter,
-	chartConverter,
 	mathConverter,
 	codeBlockConverter,
 	tableConverter,
-	...CONTAINER_CONVERTERS,
-	...CUSTOM_BLOCK_CONVERTERS,
+	// 블록 확장·사이트 설정이 더한 블록(정의에서 만든다). 코드 펜스 블록은 언어(`matches`)로 골라진다.
+	...ADDED_BLOCK_CONVERTERS,
 ];
 
 const CMS_CONVERTERS_BY_TYPE = new Map<string, BlockConverter[]>();

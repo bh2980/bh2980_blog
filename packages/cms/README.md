@@ -143,6 +143,28 @@ tsx --env-file=.env.local --import @bh2980/cms/register migrate.ts
 
 `next dev`로 띄우고 `/admin`을 연다.
 
+### 블록 확장 (선택)
+
+```sh
+pnpm add @bh2980/cms-blocks
+```
+
+```ts
+// cms.config.ts
+import { callout, tabs } from "@bh2980/cms-blocks";
+
+export default defineConfig({
+	// …
+	plugins: [callout(), tabs()],
+});
+```
+
+```css
+@import "@bh2980/cms-blocks/styles.css"; /* 관리자 패키지 스타일 다음 */
+```
+
+자세한 것은 `@bh2980/cms-blocks`의 README.
+
 ### AI 플러그인 (선택)
 
 ```sh
@@ -187,29 +209,58 @@ export default defineConfig({
 
 ## 본문 블록
 
-내장 블록(콜아웃·접기·탭·단·이미지·파일·표·Mermaid·차트·수식 등)을 쓰고, 설정의 `blocks`로 일부를 끄거나 블록을 더한다.
+본체에는 다른 기능이 기대거나 Markdown 문법인 블록(이미지·파일·표·수식·정렬·글자 꾸밈)만 있다. 콜아웃·접기·탭·단·
+Mermaid·차트는 블록 확장 `@bh2980/cms-blocks`에서 필요한 것만 플러그인으로 설치한다.
+
+```ts
+import { callout, mermaid } from "@bh2980/cms-blocks";
+
+plugins: [callout(), mermaid()],
+```
+
+사이트가 직접 만든 블록은 설정의 `blocks`에 넣는다. 블록 확장도 같은 정의(`definePlugin({ blocks })`)로 블록을 더한다.
 
 ```ts
 import { defineBlock } from "@bh2980/cms";
 
-blocks: {
-	disable: ["tabs", "mermaid"], // 끌 수 있는 것: callout·collapsible·tabs·columns·mermaid·chart
-	custom: [
-		defineBlock({
-			name: "notice", // 저장 문법 :::notice{level="warn"} … :::
-			label: "공지",
-			syntax: { kind: "container", directive: "notice" },
-			component: "Notice", // 공개 화면은 사이트의 MDX 컴포넌트 표에서 이 이름으로 그린다
-			attributes: { level: { type: "string", label: "단계", options: { info: "안내", warn: "주의" }, defaultValue: "info" } },
-			editor: { view: "node", insertable: true }, // "opaque"면 편집기에서 원문 상자로 보인다
-		}),
-	],
-},
+blocks: [
+	defineBlock({
+		name: "notice", // 저장 문법 :::notice{level="warn"} … :::
+		label: "공지",
+		syntax: { kind: "container", directive: "notice" },
+		component: "Notice", // 공개 화면은 사이트의 MDX 컴포넌트 표에서 이 이름으로 그린다
+		attributes: {
+			level: { type: "string", label: "단계", options: { info: "안내", warn: "주의" }, defaultValue: "info" },
+			title: { type: "string", label: "제목", translatable: true }, // 번역 화면이 머리 줄로 따로 번역한다
+		},
+		translateInside: true, // 번역 화면이 상자를 펼쳐 안쪽 블록을 하나씩 번역한다
+		editor: {
+			view: "node", // "opaque"면 편집기에서 원문 상자로 보인다
+			insertable: true,
+			icon: "message-square", // 슬래시·컴포넌트 메뉴 아이콘(lucide 이름)
+			insert: { values: { level: "warn" }, text: "내용" }, // 넣을 때 처음 값
+		},
+	}),
+	defineBlock({
+		name: "graphviz", // 저장 문법 ```graphviz … ```
+		label: "Graphviz",
+		syntax: { kind: "fence", lang: "graphviz" },
+		component: "Graphviz", // 공개 화면은 remarkFenceBlocksToMdx가 <Graphviz source="…" />로 바꾼다
+		attributes: {},
+		editor: { view: "node", insertable: true, insert: { code: "digraph { a -> b }" }, placeholder: "Graphviz 코드를 입력하세요" },
+	}),
+],
 ```
 
-- 사용자 블록은 지시자 블록(`container`·`leaf`)만 더할 수 있다. 속성의 선택 값·필수 값은 발행 전에 검사한다.
-- 끈 블록은 저장 문법에서 빠진다. 이미 그 블록을 쓴 본문은 다시 저장할 때 일반 글로 바뀌므로 쓰던 블록은 끄지 않는다.
-- 편집기 모양은 관리자 패키지의 `blockEditors`로 바꾼다(없으면 블록 이름·속성 입력·본문을 담은 기본 상자).
+- 더할 수 있는 블록은 지시자 블록(`container`·`leaf`)과 코드 펜스 블록(`fence`)이다. 코드 펜스 블록은 그 언어의 코드
+  펜스를 모두 가져가므로 일반 코드 언어 이름(`ts` 등)을 쓰지 않는다.
+- 속성의 선택 값·필수 값·자식 값(`childValue`, 예: 처음 열 탭은 탭 이름 중 하나)과 자식 개수(`children.min`·`max`)는
+  발행 전에 검사한다.
+- 쓰던 블록을 빼면 저장 문법에서 빠진다. 이미 그 블록을 쓴 본문은 다시 저장할 때 일반 글로 바뀌므로 쓰던 블록은 빼지 않는다.
+- 편집기 노드는 관리자 패키지가 정의에서 만든다. 편집 모양은 관리자 패키지의 `blockEditors`(속성·본문 상자)나
+  `blockViews`(화면 전체)로 바꾸고, 코드 펜스 블록의 미리보기는 `fencePreviews`로 넣는다.
+- 공개 화면의 코드 펜스 블록은 `@bh2980/cms/mdx`의 `remarkFenceBlocksToMdx`를 렌더 체인(`remarkDirectivesToMdx` 뒤)에 넣어
+  `component`로 그린다.
 
 ## 플러그인
 
@@ -264,9 +315,7 @@ export const myPlugin = () =>
 
 이 패키지는 bh2980 블로그에서 떼어 내는 중이다. 다른 블로그에서 쓰기 전에 아래를 정리해야 한다.
 
-- 본문 블록(`blocks/definitions.ts`)은 내장 목록뿐이다. 사이트가 블록을 더하고 빼는 설정이 없다.
 - 저장소는 Postgres(`ContentStore`)만 있다. 다른 DB를 쓰려면 같은 계약을 구현해야 하는데 계약이 아직 크다.
-- 지금은 빌드 없이 TypeScript 소스를 그대로 내보낸다(`transpilePackages`). 배포 전에 빌드 단계가 필요하다.
 
 ## 개발
 

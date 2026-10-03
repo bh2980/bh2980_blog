@@ -11,10 +11,10 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check . --write",
-		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-ai typecheck",
+		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck",
 		"prepare": "husky",
-		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build",
-		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-ai; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
+		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-ai build",
+		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-blocks cms-ai; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1136.0",
@@ -23,6 +23,7 @@
 		"@bh2980/cms": "workspace:*",
 		"@bh2980/cms-admin": "workspace:*",
 		"@bh2980/cms-ai": "workspace:*",
+		"@bh2980/cms-blocks": "workspace:*",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",

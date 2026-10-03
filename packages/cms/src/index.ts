@@ -5,9 +5,15 @@
  * 순환이 생겨 설정이 반쯤 만들어진 채로 읽힌다.
  */
 
-export type { BlockAttribute, BlockChildren, BlockDefinition, BlockEditor, BlockSyntax } from "./blocks/define";
+export type {
+	BlockAttribute,
+	BlockChildren,
+	BlockDefinition,
+	BlockEditor,
+	BlockInsert,
+	BlockSyntax,
+} from "./blocks/define";
 export { defineBlock } from "./blocks/define";
-export { type BlocksConfig, OPTIONAL_BLOCKS, type OptionalBlockName } from "./blocks/resolve";
 export {
 	type CmsConfig,
 	type CollectionsConfig,

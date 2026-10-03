@@ -8,6 +8,7 @@
 		".": "./src/index.ts",
 		"./next": "./src/next/index.tsx",
 		"./editor": "./src/editor/public.ts",
+		"./blocks": "./src/editor/blocks/public.ts",
 		"./plugins": "./src/plugins.ts",
 		"./slots": "./src/slots/slots.tsx",
 		"./api": "./src/screens/admin-api.ts",
@@ -100,6 +101,10 @@
 			"./editor": {
 				"types": "./dist/editor/public.d.ts",
 				"default": "./dist/editor/public.js"
+			},
+			"./blocks": {
+				"types": "./dist/editor/blocks/public.d.ts",
+				"default": "./dist/editor/blocks/public.js"
 			},
 			"./plugins": {
 				"types": "./dist/plugins.d.ts",

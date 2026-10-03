@@ -1,43 +1,13 @@
 import { defineBlock } from "./define";
 
 /**
- * 내장 본문 블록 정의(v2 B3). 사이트 설정의 `blocks`로 일부를 끄고 사용자 블록을 더한다(`blocks/resolve.ts`).
+ * 본체 블록 정의(v2 B3). 다른 기능이 기대거나 Markdown 문법인 블록만 둔다. 콜아웃·탭 같은 블록은 블록 확장
+ * (`@bh2980/cms-blocks`)이 플러그인으로 더하고, 사이트는 설정의 `blocks`로 더한다(`blocks/resolve.ts`).
  * 블록을 더하거나 바꾸면 공개 렌더러·에디터 등록부를 함께 확인한다(정의 테스트가 누락을 잡는다).
  */
 
 const ALIGN_OPTIONS = { left: "왼쪽", center: "가운데", right: "오른쪽" } as const;
 const ROTATE_OPTIONS = { "0": "0°", "90": "90°", "180": "180°", "270": "270°" } as const;
-
-export const callout = defineBlock({
-	name: "callout",
-	label: "콜아웃",
-	description: "참고·경고처럼 눈에 띄게 강조하는 상자",
-	syntax: { kind: "container", directive: "callout" },
-	component: "Callout",
-	attributes: {
-		variant: {
-			type: "string",
-			label: "종류",
-			options: { note: "노트", tip: "팁", info: "정보", warning: "경고", danger: "위험" },
-			defaultValue: "note",
-		},
-		title: { type: "string", label: "제목" },
-	},
-	editor: { view: "node", nodeView: "callout", insertable: true, keywords: ["callout", "콜아웃", "알림"] },
-});
-
-export const collapsible = defineBlock({
-	name: "collapsible",
-	label: "접기",
-	description: "제목을 눌러 펼치는 영역",
-	syntax: { kind: "container", directive: "collapsible" },
-	component: "Collapsible",
-	attributes: {
-		title: { type: "string", label: "제목" },
-		defaultOpen: { type: "boolean", label: "처음부터 펼치기", defaultValue: false },
-	},
-	editor: { view: "node", nodeView: "collapsible", insertable: true, keywords: ["collapsible", "접기", "펼치기"] },
-});
 
 export const textAlign = defineBlock({
 	name: "text-align",
@@ -46,57 +16,8 @@ export const textAlign = defineBlock({
 	component: "TextAlign",
 	// §4.4 A4: `justify`는 쓰지 않는다. 공개 렌더가 세 값만 고정 클래스로 지원한다.
 	attributes: { align: { type: "string", label: "정렬", required: true, options: ALIGN_OPTIONS } },
+	translateInside: true,
 	editor: { view: "attribute" },
-});
-
-export const tabs = defineBlock({
-	name: "tabs",
-	label: "탭",
-	description: "여러 내용을 탭으로 나눠 보여 준다",
-	syntax: { kind: "container", directive: "tabs" },
-	component: "Tabs",
-	attributes: {
-		defaultValue: { type: "string", label: "처음 열 탭", description: "탭 이름 중 하나. 비우면 첫 탭이다." },
-	},
-	children: { blocks: ["tab"], min: 2, max: 8 },
-	editor: { view: "node", nodeView: "tabs", insertable: true, keywords: ["tabs", "탭"] },
-});
-
-export const tab = defineBlock({
-	name: "tab",
-	label: "탭 하나",
-	syntax: { kind: "container", directive: "tab" },
-	component: "Tab",
-	attributes: { label: { type: "string", label: "탭 이름", required: true } },
-	parent: "tabs",
-	editor: { view: "node", nodeView: "tab" },
-});
-
-export const columns = defineBlock({
-	name: "columns",
-	label: "단 나누기",
-	description: "내용을 2~4단으로 나란히 놓는다",
-	syntax: { kind: "container", directive: "columns" },
-	component: "Columns",
-	attributes: {
-		widths: {
-			type: "string",
-			label: "단 너비",
-			description: "단마다 비율(%)을 쉼표로 적는다(예: 60,40). 비우면 똑같이 나눈다.",
-		},
-	},
-	children: { blocks: ["column"], min: 2, max: 4 },
-	editor: { view: "node", nodeView: "columns", insertable: true, keywords: ["columns", "단", "나란히"] },
-});
-
-export const column = defineBlock({
-	name: "column",
-	label: "단 하나",
-	syntax: { kind: "container", directive: "column" },
-	component: "Column",
-	attributes: {},
-	parent: "columns",
-	editor: { view: "node", nodeView: "column" },
 });
 
 export const image = defineBlock({
@@ -203,24 +124,6 @@ export const superscript = textMark("sup", "위 첨자");
 export const subscript = textMark("sub", "아래 첨자");
 export const lineBreak = textMark("br", "줄바꿈");
 
-export const mermaid = defineBlock({
-	name: "mermaid",
-	label: "다이어그램(Mermaid)",
-	syntax: { kind: "fence", lang: "mermaid" },
-	component: "Mermaid",
-	attributes: {},
-	editor: { view: "node", nodeView: "mermaid", insertable: true, keywords: ["mermaid", "다이어그램", "흐름도"] },
-});
-
-export const chart = defineBlock({
-	name: "chart",
-	label: "차트",
-	syntax: { kind: "fence", lang: "chart" },
-	component: "Chart",
-	attributes: {},
-	editor: { view: "node", nodeView: "chart", insertable: true, keywords: ["chart", "차트", "그래프"] },
-});
-
 export const math = defineBlock({
 	name: "math",
 	label: "수식",
@@ -228,7 +131,8 @@ export const math = defineBlock({
 	component: "Math",
 	renderedBy: "rehype-katex",
 	attributes: {},
-	editor: { view: "node", nodeView: "math", insertable: true, keywords: ["math", "수식", "katex"] },
+	description: "LaTeX 수식 삽입",
+	editor: { view: "node", nodeView: "math", insertable: true, keywords: ["math", "수식", "katex"], icon: "sigma" },
 });
 
 export const table = defineBlock({
@@ -270,15 +174,9 @@ export const cell = defineBlock({
 	editor: { view: "opaque" },
 });
 
-/** 내장 블록. 선언 순서가 `/meta`와 문서의 순서다. 사이트가 쓰는 블록은 `blocks/active.ts`의 `BLOCKS`다. */
+/** 본체 블록. 선언 순서가 `/meta`와 문서의 순서다. 사이트가 쓰는 블록은 `blocks/active.ts`의 `BLOCKS`다. */
 export const BUILTIN_BLOCKS = [
-	callout,
-	collapsible,
 	textAlign,
-	tabs,
-	tab,
-	columns,
-	column,
 	image,
 	file,
 	tooltip,
@@ -289,8 +187,6 @@ export const BUILTIN_BLOCKS = [
 	superscript,
 	subscript,
 	lineBreak,
-	mermaid,
-	chart,
 	math,
 	table,
 	row,

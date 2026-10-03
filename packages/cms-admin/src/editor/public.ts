@@ -3,7 +3,7 @@
  */
 
 export { BLOCK_NODE_VIEWS } from "./block-views";
-export { customNodeName } from "./blocks/custom";
+export { blockNodeName } from "./blocks/added";
 export { buildEditorExtensions } from "./extensions";
 export { mdxToTiptap, OPAQUE_BLOCK_NAME, tiptapToMdx } from "./tiptap-content";
 export type { BlockAction } from "./tiptap-editor";

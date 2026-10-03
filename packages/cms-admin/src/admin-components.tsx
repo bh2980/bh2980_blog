@@ -1,6 +1,6 @@
 "use client";
 
-import type { Editor } from "@tiptap/react";
+import type { Editor, NodeViewProps } from "@tiptap/react";
 import {
 	type ComponentType,
 	createContext,
@@ -11,7 +11,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
-import type { CustomBlockEditorProps } from "./editor/blocks/custom/view";
+import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 import type { BlockAction } from "./editor/tiptap-editor";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
 
@@ -86,10 +86,15 @@ export interface CmsAdminComponents {
 	 */
 	readonly fieldInputs?: Readonly<Record<string, ComponentType<FieldInputProps>>>;
 	/**
-	 * 사용자 블록(사이트 설정의 `blocks.custom`, `editor.view: "node"`)의 편집 컴포넌트. 키는 블록 이름이다.
-	 * 없으면 블록 이름과 속성 입력, 본문을 담은 기본 상자로 편집한다.
+	 * 더한 블록(블록 확장·사이트 설정의 `blocks`, `editor.view: "node"`)의 속성·본문 편집 컴포넌트. 키는 블록 이름이다.
+	 * 기본 틀 안에 그린다. 없으면 블록 이름과 속성 입력, 본문을 담은 기본 상자로 편집한다.
 	 */
 	readonly blockEditors?: Readonly<Record<string, ComponentType<CustomBlockEditorProps>>>;
+	/**
+	 * 더한 블록의 편집 화면 전체(Tiptap NodeView). 키는 블록 이름이다. `blockEditors`보다 먼저 쓴다.
+	 * 틀(`NodeViewWrapper`)과 본문 자리(`NodeViewContent`)를 직접 그린다(예: 콜아웃·탭).
+	 */
+	readonly blockViews?: Readonly<Record<string, ComponentType<NodeViewProps>>>;
 	/** 편집 화면 확장(툴바·블록 동작). */
 	readonly editorExtensions?: readonly EditorExtension[];
 }
@@ -109,6 +114,7 @@ export function CmsAdminComponentsProvider({
 			fencePreviews: { ...parent.fencePreviews, ...components.fencePreviews },
 			fieldInputs: { ...parent.fieldInputs, ...components.fieldInputs },
 			blockEditors: { ...parent.blockEditors, ...components.blockEditors },
+			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
 		}),
 		[parent, components],

@@ -2,8 +2,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FencePreviewNodeView } from "../fence-preview-node-view";
-import { MathPreview, PreviewErrorBoundary } from "../preview-renderers";
+import { type FenceEditorMeta, FencePreviewNodeView } from "../fence-preview-node-view";
+import { LazyFencePreview, MathPreview, PreviewErrorBoundary } from "../preview-renderers";
 
 vi.mock("@tiptap/react", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@tiptap/react")>();
@@ -40,10 +40,28 @@ const createNodeViewProps = (
 	} as unknown as NodeViewProps;
 };
 
+/** 노드 종류에 맞는 이름·미리보기. 수식은 KaTeX, 나머지는 사이트가 넣는 미리보기(없으면 원문)다. */
+const metaOf = (typeName: string): FenceEditorMeta =>
+	typeName === "cmsMath"
+		? {
+				kind: "math",
+				label: "수식 (KaTeX)",
+				placeholder: "E = mc^2",
+				preview: (value) => <MathPreview value={value} />,
+			}
+		: {
+				kind: typeName === "cmsChart" ? "chart" : "mermaid",
+				label: typeName === "cmsChart" ? "차트" : "다이어그램",
+				placeholder: "",
+				preview: (value) => <LazyFencePreview lang="mermaid" label="다이어그램" value={value} emptyText="비었음" />,
+			};
+
+const View = (props: NodeViewProps) => <FencePreviewNodeView {...props} meta={metaOf(props.node.type.name)} />;
+
 describe("FencePreviewNodeView", () => {
 	it("선택되지 않았을 때는 textarea 없이 미리보기만 보여 준다", () => {
 		const props = createNodeViewProps("cmsMermaid", "graph TD;\n  A-->B;", false);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		expect(container.querySelector("textarea")).toBeNull();
 		expect(container.querySelector('[data-fence-preview="mermaid"]')).toBeDefined();
@@ -51,7 +69,7 @@ describe("FencePreviewNodeView", () => {
 
 	it("선택되었을 때(selected=true) textarea와 미리보기가 동시에 표시된다", () => {
 		const props = createNodeViewProps("cmsChart", 'pie\n  "A": 10', true);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		const textarea = container.querySelector("textarea");
 		expect(textarea).not.toBeNull();
@@ -60,7 +78,7 @@ describe("FencePreviewNodeView", () => {
 
 	it("미리보기 클릭 시 편집 모드로 전환되어 textarea가 나타난다", async () => {
 		const props = createNodeViewProps("cmsMath", "E = mc^2", false);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		expect(container.querySelector("textarea")).toBeNull();
 
@@ -76,7 +94,7 @@ describe("FencePreviewNodeView", () => {
 		vi.useFakeTimers();
 		const updateAttributes = vi.fn();
 		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 		expect(textarea).not.toBeNull();
@@ -95,7 +113,7 @@ describe("FencePreviewNodeView", () => {
 	it("블러(blur) 시 대기 중인 변경사항이 즉시 커밋된다", () => {
 		const updateAttributes = vi.fn();
 		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 		fireEvent.change(textarea, { target: { value: "x = immediate" } });
@@ -109,7 +127,7 @@ describe("FencePreviewNodeView", () => {
 		vi.useFakeTimers();
 		const updateAttributes = vi.fn();
 		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 		expect(textarea).not.toBeNull();
@@ -132,7 +150,7 @@ describe("FencePreviewNodeView", () => {
 	it("IME 조합 중 언마운트되면 입력 중인 값을 잃지 않는다", () => {
 		const updateAttributes = vi.fn();
 		const props = createNodeViewProps("cmsMath", "x = 1", true, updateAttributes);
-		const { container, unmount } = render(<FencePreviewNodeView {...props} />);
+		const { container, unmount } = render(<View {...props} />);
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 		fireEvent.compositionStart(textarea);
 		fireEvent.change(textarea, { target: { value: "x = 한" } });
@@ -142,7 +160,7 @@ describe("FencePreviewNodeView", () => {
 
 	it("커서 키와 Mod 조합은 입력 칸 안에 두고, 저장(Mod-s)만 대기 중 입력을 커밋한 뒤 통과시킨다", () => {
 		const props = createNodeViewProps("cmsMermaid", "graph TD", true);
-		const { container } = render(<FencePreviewNodeView {...props} />);
+		const { container } = render(<View {...props} />);
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 
 		for (const init of [
@@ -170,7 +188,7 @@ describe("FencePreviewNodeView", () => {
 
 	it("사라질 때 대기 중인 입력을 커밋한다", () => {
 		const props = createNodeViewProps("cmsMermaid", "graph TD", true);
-		const { container, unmount } = render(<FencePreviewNodeView {...props} />);
+		const { container, unmount } = render(<View {...props} />);
 		const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
 		fireEvent.change(textarea, { target: { value: "graph BT" } });
 		unmount();

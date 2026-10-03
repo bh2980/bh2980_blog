@@ -12,5 +12,5 @@ export {
 	type EditorSelectionAction,
 	useCmsAdminComponents,
 } from "./admin-components";
-export type { CustomBlockEditorProps } from "./editor/blocks/custom/view";
+export type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 export type { FieldInputProps } from "./screens/entries/field-inputs";

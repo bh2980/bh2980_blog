@@ -5,10 +5,11 @@
  * 편집 UI(NodeView·설정 폼)와 공개 컴포넌트는 이름으로만 가리키고, 구현은 각 등록부에 둔다:
  *
  * - 공개 렌더러: 사이트의 MDX 컴포넌트 표(`component` 이름)
- * - 에디터 NodeView: 내장 블록은 관리자 패키지의 `editor/block-views.ts`(`editor.nodeView` 이름), 사용자 블록은
- *   사이트가 `CmsAdminComponentsProvider`의 `blockEditors`(블록 이름)로 준다. 없으면 기본 속성 상자다.
+ * - 에디터: 본체 블록(이미지·파일·수식)은 관리자 패키지의 `editor/block-views.ts`(`editor.nodeView` 이름)다. 더한 블록은
+ *   관리자 패키지가 정의에서 편집기 노드를 만들고, 편집 화면은 `CmsAdminComponentsProvider`의 `blockViews`(전체)나
+ *   `blockEditors`(속성·본문 상자)로 받는다. 둘 다 없으면 기본 상자다.
  *
- * 사이트는 설정의 `blocks`로 내장 블록 일부를 끄고 사용자 블록(`defineBlock`)을 더한다(`blocks/resolve.ts`).
+ * 사이트는 설정의 `blocks`로, 블록 확장(예: `@bh2980/cms-blocks`)은 플러그인의 `blocks`로 블록을 더한다(`blocks/resolve.ts`).
  */
 
 /** 저장 문법. 지시자(§4.4)는 `:::이름`·`::이름`·`:이름[...]`, 코드 펜스는 ` ```언어 `, 수식은 `$$`다. */
@@ -30,13 +31,30 @@ export interface BlockAttribute {
 	readonly defaultValue?: string | boolean;
 	/** 설정 폼 입력. 없으면 종류에 맞는 기본 입력(한 줄·체크·선택)이다. */
 	readonly input?: "textarea";
+	/** 번역할 글자(예: 제목·탭 이름). 번역 화면이 머리 줄로 따로 번역한다. */
+	readonly translatable?: boolean;
+	/** 값이 자식 블록의 이 속성 값 중 하나여야 한다(예: 처음 열 탭 → 탭 이름). 발행 전 검사가 확인한다. */
+	readonly childValue?: string;
 }
 
 export interface BlockChildren {
 	/** 자식으로 올 수 있는 블록 이름. 없으면 일반 본문 블록(문단·목록 등)을 담는다. */
 	readonly blocks?: readonly string[];
+	/** 최소 개수. 본문을 담는 컨테이너는 0이면 본문 없이 둘 수 있다(없으면 1). */
 	readonly min?: number;
 	readonly max?: number;
+}
+
+/** 슬래시 메뉴로 넣을 때의 처음 값. */
+export interface BlockInsert {
+	/** 처음 속성 값. 없으면 속성의 기본값(`defaultValue`)이다. */
+	readonly values?: Readonly<Record<string, string | boolean>>;
+	/** 본문 첫 문단의 글자. 없으면 빈 문단이다. */
+	readonly text?: string;
+	/** 코드 펜스 블록의 처음 코드. */
+	readonly code?: string;
+	/** 자식 블록마다의 처음 값. 없으면 최소 개수만큼 기본값으로 넣는다. */
+	readonly children?: readonly Omit<BlockInsert, "children" | "code">[];
 }
 
 /**
@@ -54,6 +72,12 @@ export interface BlockEditor {
 	readonly insertable?: boolean;
 	/** 슬래시 메뉴 검색어. */
 	readonly keywords?: readonly string[];
+	/** 메뉴 아이콘(lucide 이름, 예: `workflow`). 없으면 퍼즐 아이콘이다. */
+	readonly icon?: string;
+	/** 슬래시 메뉴로 넣을 때의 처음 값. */
+	readonly insert?: BlockInsert;
+	/** 코드 펜스 블록이 비었을 때 보일 글. */
+	readonly placeholder?: string;
 }
 
 export interface BlockDefinition {
@@ -71,6 +95,8 @@ export interface BlockDefinition {
 	readonly children?: BlockChildren;
 	/** 이 블록 안에서만 쓸 수 있다(예: `tab`은 `tabs` 안). */
 	readonly parent?: string;
+	/** 번역 화면이 상자를 펼쳐 안쪽 블록을 하나씩 번역한다(없으면 블록 전체가 한 단위다). */
+	readonly translateInside?: boolean;
 	readonly editor: BlockEditor;
 }
 

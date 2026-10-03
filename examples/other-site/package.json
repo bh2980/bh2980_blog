@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@bh2980/cms": "file:vendor/bh2980-cms-0.0.0.tgz",
 		"@bh2980/cms-admin": "file:vendor/bh2980-cms-admin-0.0.0.tgz",
+		"@bh2980/cms-blocks": "file:vendor/bh2980-cms-blocks-0.0.0.tgz",
 		"@tanstack/react-query": "^5.104.0",
 		"@tiptap/core": "^3.31.3",
 		"@tiptap/pm": "^3.31.3",

@@ -1,4 +1,5 @@
 import type { Root, RootContent } from "mdast";
+import { childRules } from "../blocks/derive";
 import {
 	estreeToJson,
 	hasSpread,
@@ -10,15 +11,7 @@ import {
 import { parseYamlMapping, splitFrontmatter } from "./frontmatter";
 import { positionOf } from "./jsx";
 import { parseMdxAst } from "./parse";
-import {
-	COLUMNS_MAX,
-	COLUMNS_MIN,
-	EVENT_HANDLER_NAME,
-	REGISTERED_JSX_NAMES,
-	RETIRED_JSX_NAMES,
-	TABS_MAX,
-	TABS_MIN,
-} from "./registry";
+import { EVENT_HANDLER_NAME, REGISTERED_JSX_NAMES, RETIRED_JSX_NAMES } from "./registry";
 import type { CmsMdxAnalysis, CmsMdxError } from "./types";
 
 type VisitNode =
@@ -26,13 +19,24 @@ type VisitNode =
 	| RootContent
 	| { type: string; position?: { start?: { line?: number; column?: number } }; [key: string]: unknown };
 
-const namedJsxChildren = (node: VisitNode, name: string) => {
+/** 더한 블록의 자식 개수 규칙(예: 탭 2~8개). 렌더러 이름 → 규칙. */
+const CHILD_RULES = new Map(
+	childRules().map(({ block, childComponents }) => [
+		block.component,
+		{ children: childComponents, min: block.children?.min ?? 0, max: block.children?.max ?? Number.POSITIVE_INFINITY },
+	]),
+);
+
+const namedJsxChildren = (node: VisitNode, names: readonly string[]) => {
 	const children = "children" in node && Array.isArray(node.children) ? node.children : [];
 	const found: unknown[] = [];
 	const walk = (nodes: unknown[]) => {
 		for (const child of nodes) {
 			const current = child as { type?: string; name?: string; children?: unknown[] };
-			if ((current.type === "mdxJsxFlowElement" || current.type === "mdxJsxTextElement") && current.name === name) {
+			if (
+				(current.type === "mdxJsxFlowElement" || current.type === "mdxJsxTextElement") &&
+				names.includes(current.name ?? "")
+			) {
 				found.push(child);
 				continue;
 			}
@@ -128,16 +132,12 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 	if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
 		validateName(errors, node);
 		validateAttributes(errors, node);
-		if (node.name === "Tabs") {
-			const count = namedJsxChildren(node, "Tab").length;
-			if (count < TABS_MIN || count > TABS_MAX) {
-				pushError(errors, `Tabs는 ${TABS_MIN}~${TABS_MAX}개의 Tab만 허용합니다.`, node);
-			}
-		}
-		if (node.name === "Columns") {
-			const count = namedJsxChildren(node, "Column").length;
-			if (count < COLUMNS_MIN || count > COLUMNS_MAX) {
-				pushError(errors, `Columns는 ${COLUMNS_MIN}~${COLUMNS_MAX}개의 Column만 허용합니다.`, node);
+		const rule = typeof node.name === "string" ? CHILD_RULES.get(node.name) : undefined;
+		if (rule) {
+			const count = namedJsxChildren(node, rule.children).length;
+			if (count < rule.min || count > rule.max) {
+				const range = Number.isFinite(rule.max) ? `${rule.min}~${rule.max}개의` : `${rule.min}개 이상의`;
+				pushError(errors, `${node.name}는 ${range} ${rule.children.join("·")}만 허용합니다.`, node);
 			}
 		}
 	}
