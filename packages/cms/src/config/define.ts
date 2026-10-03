@@ -168,12 +168,12 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 		}
 	}
 
-	resolveBlocks(config);
+	const blocks = resolveBlocks(config).map((block) => block.name);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);
 	if (new Set(pluginNames).size !== pluginNames.length) throw new Error("cms.config: `plugins` has duplicate names");
-	for (const plugin of plugins) plugin.validate?.({ collections: config.collections, locales: config.locales });
+	for (const plugin of plugins) plugin.validate?.({ collections: config.collections, locales: config.locales, blocks });
 }
 
 /** 사이트 설정을 정의한다. 컬렉션·언어 이름을 타입으로 보존하고, 서로 맞지 않는 설정은 바로 알린다. */

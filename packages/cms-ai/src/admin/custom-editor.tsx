@@ -8,7 +8,7 @@ import { Input } from "@bh2980/cms-admin/ui/input";
 import { Label } from "@bh2980/cms-admin/ui/label";
 import { useId, useState } from "react";
 import type { AiActionView } from "../actions";
-import { CUSTOM_RESULTS, type CustomBase, type CustomSurface } from "../custom";
+import { CUSTOM_BLOCKS, CUSTOM_RESULTS, type CustomBase, type CustomSurface } from "../custom";
 import { RESULT_LABELS } from "../definition";
 
 /** 화면 기능(D12·M8-5)의 기본 정보 고르기: 이름·붙을 곳·결과 모양. */
@@ -29,6 +29,11 @@ const PLACE_OPTIONS: ReadonlyArray<{ value: string; label: string; surface: Cust
 	{ value: "field", label: "필드 옆", surface: null },
 	{ value: "selection", label: "선택 영역 메뉴", surface: { slot: "selection" } },
 	{ value: "insert", label: "삽입 메뉴", surface: { slot: "insert" } },
+	...CUSTOM_BLOCKS.map((block) => ({
+		value: `block:${block.name}`,
+		label: `블록 · ${block.label}`,
+		surface: { slot: "block", block: block.name } as const,
+	})),
 	{ value: "image:alt", label: "본문 이미지 · 대체 텍스트", surface: { slot: "image", target: "alt" } },
 	{ value: "image:caption", label: "본문 이미지 · 캡션", surface: { slot: "image", target: "caption" } },
 	{ value: "media:filename", label: "미디어 · 파일 이름", surface: { slot: "media", target: "filename" } },
@@ -37,7 +42,13 @@ const PLACE_OPTIONS: ReadonlyArray<{ value: string; label: string; surface: Cust
 ];
 
 const placeValue = (surface: CustomSurface) =>
-	surface.slot === "field" ? "field" : "target" in surface ? `${surface.slot}:${surface.target}` : surface.slot;
+	surface.slot === "field"
+		? "field"
+		: surface.slot === "block"
+			? `block:${surface.block}`
+			: "target" in surface
+				? `${surface.slot}:${surface.target}`
+				: surface.slot;
 
 /** 첫 필드 자리. 글·주소 필드가 없으면 선택 영역 메뉴다. */
 const firstField = (): CustomSurface => {

@@ -25,7 +25,8 @@ plugins: [
 
 - 기능 하나는 입력(재료)·지시문·결과 모양·검사·붙을 곳(`attach`)이다. `aiAction()`으로 직접 정의할 수 있다.
 - 재료(제목·본문·이미지…)는 지시문에 끼우지 않고 따로 보낸다. 지시문의 `{{이름}}`에는 언어 입력만 넣을 수 있다.
-- 붙을 곳은 관리자 화면의 정해진 자리다(필드 옆·본문 이미지·미디어·코드 블록·번역). 자리가 필수 입력을 채울 수 있어야 한다.
+- 붙을 곳은 관리자 화면의 정해진 자리다(필드 옆·본문 이미지·미디어·코드 블록·번역·선택 영역 메뉴·삽입 메뉴·본문 블록).
+  자리가 필수 입력을 채울 수 있어야 한다.
 - 관리자 AI 화면에서는 켜기·요청 받기·연결·모델·보낼 입력·지시문·기준값·검사 값만 고친다. 고친 값만 DB(`ai_action_overrides`)에 둔다.
 - 실행: `POST /api/cms/v1/ai/run { action, input | inputs, env }`. 관리자 화면에서는 `useAiAction("summary").run({ title, body })`나
   `<AiButton action="summary" input={() => ({ title, body })} onResult={…} />`(`@bh2980/cms-ai/admin`)처럼 이름으로 부르고,
@@ -41,7 +42,35 @@ plugins: [
 - **문체 다듬기·초안 쓰기**: `aiPresets.polish()`(본문에서 글자를 고르면 뜨는 메뉴, 바뀐 곳을 보인 뒤 바꾸기),
   `aiPresets.draft()`(슬래시 메뉴·빈 문서 툴바, 커서 자리에 넣기). `styleGuide: "공통 문구 이름"`으로 문체 가이드를 넣는다.
 - **화면 기능**: 관리자 AI 화면의 "새 기능"으로 코드 없이 기능을 만든다. 이름·붙을 곳(필드 옆·선택 영역 메뉴·삽입 메뉴·
-  본문 이미지·미디어)·결과 모양을 고르고, 지시문·보낼 내용·연결을 고친다. DB(`ai_custom_actions`)에 둔다.
+  본문 블록·본문 이미지·미디어)·결과 모양을 고르고, 지시문·보낼 내용·연결을 고친다. DB(`ai_custom_actions`)에 둔다.
+
+## 블록에 붙는 기능 (M9)
+
+`attach: [{ slot: "block", block: "블록 이름" }]`이면 그 블록의 손잡이 옆에 버튼이 생긴다. 블록 원문(MDX, 예: ` ```mermaid … ``` `)을
+`block` 입력으로 보내고, 결과(MDX)가 같은 종류의 블록 하나면 바뀐 곳을 보인 뒤 그 블록을 바꾼다. 블록 이름은 사이트가 쓰는
+블록이어야 한다(설정을 만들 때 확인한다). 블록 확장이나 사이트 블록 모두 같은 방법으로 붙는다.
+
+```ts
+import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
+
+aiPlugin({
+	actions: {
+		diagramDraft: mermaidAi.draft(), // 슬래시 메뉴: 요청을 받아 커서 자리에 Mermaid 블록을 넣는다
+		diagramEdit: mermaidAi.edit(), // Mermaid 블록 손잡이 옆: 요청대로 고친다
+		graphvizEdit: aiAction({
+			label: "그래프 고치기",
+			input: { block: aiInput.mdx({ label: "그래프", required: true }) },
+			prompt: "```graphviz 코드 펜스를 요청대로 고친다. 답은 고친 펜스 하나만 쓴다.",
+			result: "mdx",
+			stream: true,
+			askInstruction: true,
+			attach: [{ slot: "block", block: "graphviz" }],
+		}),
+	},
+});
+```
+
+흘려받은 MDX 결과는 답 전체를 감싼 ` ```mdx ` 펜스만 벗긴다. 블록 원문인 다른 언어의 펜스는 그대로 둔다.
 
 ## 진입점
 

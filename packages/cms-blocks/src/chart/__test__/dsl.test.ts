@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeChartDsl, parseChartDsl } from "../parse-chart-dsl";
+import { normalizeChartDsl, parseChartDsl } from "../dsl";
 
 describe("parseChartDsl", () => {
 	it("bar chart DSL을 파싱하고 정규화한다", () => {

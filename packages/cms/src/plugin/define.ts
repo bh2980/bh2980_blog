@@ -35,6 +35,8 @@ export interface PluginNavItem {
 export interface PluginConfigView {
 	readonly collections: CollectionsConfig;
 	readonly locales: readonly { readonly code: string }[];
+	/** 사이트가 쓰는 본문 블록 이름(본체 블록 + 플러그인·사이트 설정이 더한 블록). */
+	readonly blocks: readonly string[];
 }
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";

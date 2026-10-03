@@ -13,7 +13,7 @@ import {
 import { legacyFeatureOverride } from "../actions";
 import { type AiCandidate, KEBAB_PATTERN } from "../definition";
 import { aiPresets } from "../presets";
-import { AI_ACTIONS } from "../registry";
+import { AI_ACTIONS, attachedTo } from "../registry";
 
 /** 두 타입이 같은가(타입 검사용). */
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -120,7 +120,35 @@ describe("AI 기능 정의", () => {
 			"codeFold",
 			"polish",
 			"draft",
+			"diagramDraft",
+			"diagramEdit",
+			"chartDraft",
+			"chartEdit",
 		]);
+	});
+
+	it("블록 자리: 사이트가 쓰는 블록에만 붙고, 결과는 MDX다", () => {
+		const edit = (patch: object = {}) => ({
+			label: "고치기",
+			input: { block: { kind: "mdx" as const, label: "블록", required: true } },
+			prompt: "고친다.",
+			result: "mdx" as const,
+			attach: [{ slot: "block" as const, block: "mermaid" }],
+			...patch,
+		});
+		const check =
+			(action: object, blocks: readonly string[] = ["image", "mermaid"]) =>
+			() =>
+				validateAiConfig({ actions: { a: action } } as Parameters<typeof validateAiConfig>[0], {}, blocks);
+		expect(check(edit())).not.toThrow();
+		expect(check(edit(), ["image"])).toThrow(/unknown block "mermaid"/);
+		expect(check(edit({ result: "text" }))).toThrow(/block slot needs an mdx result/);
+		// 블록 자리는 블록 원문과 제목만 준다.
+		expect(check(edit({ input: { code: { kind: "code" as const, label: "코드", required: true } } }))).toThrow(
+			/cannot fill/,
+		);
+		expect(attachedTo({ slot: "block", block: "mermaid" }, { slot: "block", target: "mermaid" })).toBe(true);
+		expect(attachedTo({ slot: "block", block: "mermaid" }, { slot: "block", target: "chart" })).toBe(false);
 	});
 
 	it("공통 문구 이름만 지시문에 넣을 수 있고, 흘려받기는 생성 방식의 글·MDX 결과만이다", () => {

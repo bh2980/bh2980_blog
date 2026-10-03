@@ -1,6 +1,8 @@
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 import { aiPlugin, aiPresets } from "@bh2980/cms-ai";
 import { callout, chart, collapsible, columns, mermaid, tabs } from "@bh2980/cms-blocks";
+import { chartAi } from "@bh2980/cms-blocks/chart/ai";
+import { mermaidAi } from "@bh2980/cms-blocks/mermaid/ai";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 
 /**
@@ -242,6 +244,10 @@ export default defineConfig({
 				codeFold: aiPresets.codeFold(),
 				polish: aiPresets.polish({ styleGuide: "styleGuide" }),
 				draft: aiPresets.draft({ styleGuide: "styleGuide" }),
+				diagramDraft: mermaidAi.draft(),
+				diagramEdit: mermaidAi.edit(),
+				chartDraft: chartAi.draft(),
+				chartEdit: chartAi.edit(),
 			},
 		}),
 	],

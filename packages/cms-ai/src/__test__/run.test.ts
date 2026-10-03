@@ -3,7 +3,7 @@ import { aiAction, aiInput, type ResolvedAiAction, resolveAction } from "../acti
 import { AiError } from "../errors";
 import type { AiDecider, AiProvider, AiRequest, DecisionAnswer, DecisionRequest } from "../provider";
 import { AI_ACTIONS } from "../registry";
-import { type AiCall, type AiRunDeps, MAX_AI_BODY_CHARS, runAiAction, streamAiAction } from "../run";
+import { type AiCall, type AiRunDeps, MAX_AI_BODY_CHARS, runAiAction, streamAiAction, unfence } from "../run";
 
 /** 예시 설정(`test/cms.config.ts`)의 기능. */
 const preset = (key: string): ResolvedAiAction => {
@@ -335,6 +335,12 @@ describe("흘려받기(M8-1)·공통 문구(M8-4)", () => {
 		// 공통 문구가 지시문에 들어가고, 답은 JSON이 아닌 일반 글로 받는다.
 		expect(requests[0]?.system).toContain("짧게 쓴다.");
 		expect(requests[0]?.system).toContain("결과 MDX만 답한다");
+	});
+
+	it("답 전체를 감싼 MDX 펜스만 벗기고, 다른 언어의 코드 블록은 그대로 둔다", () => {
+		expect(unfence("```mdx\n**글**\n```")).toBe("**글**");
+		expect(unfence("```\n글\n```")).toBe("글");
+		expect(unfence("```mermaid\ngraph TD\n  A --> B\n```")).toBe("```mermaid\ngraph TD\n  A --> B\n```");
 	});
 
 	it("흘려받을 수 없는 기능과 빈 결과는 막는다", async () => {

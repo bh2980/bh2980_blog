@@ -92,6 +92,7 @@ export const SLOT_INPUTS = {
 	translation: { block: "mdx", from: "locale", to: "locale" },
 	selection: { selection: "mdx", title: "text" },
 	insert: { title: "text", body: "mdx" },
+	block: { block: "mdx", title: "text" },
 } as const satisfies Record<AiSlot, Readonly<Record<string, AiInputKind>>>;
 
 type SlotInputNames = { [S in AiSlot]: keyof (typeof SLOT_INPUTS)[S] };
@@ -107,7 +108,9 @@ export type AiAttach =
 	/** 본문 선택 영역 메뉴. 결과(MDX)는 바뀐 곳을 보여 준 뒤 고른 글을 바꾼다. */
 	| { readonly slot: "selection" }
 	/** 슬래시 메뉴·빈 문서. 결과(MDX)는 커서 자리에 넣는다. */
-	| { readonly slot: "insert" };
+	| { readonly slot: "insert" }
+	/** 본문 블록 하나의 손잡이 옆(`block`은 블록 이름, 예: `mermaid`). 결과(MDX)는 바뀐 곳을 보여 준 뒤 그 블록을 바꾼다. */
+	| { readonly slot: "block"; readonly block: string };
 
 type RequiredInputNames<I> = { [K in keyof I]: I[K] extends { readonly required: true } ? K : never }[keyof I];
 /** 필수 입력을 모두 채울 수 있는 자리. */
@@ -501,7 +504,7 @@ function findField(
 }
 
 /** AI 설정이 컬렉션 정의·자리·결과 모양과 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
-export function validateAiConfig(ai: AiConfig, collections: CollectionsView): void {
+export function validateAiConfig(ai: AiConfig, collections: CollectionsView, blocks?: readonly string[]): void {
 	const sharedKeys = Object.keys(ai.shared ?? {});
 	for (const key of sharedKeys) {
 		if (!NAME.test(key)) throw new Error(`cms.config: ai.shared.${key}: name must be letters, digits or _`);
@@ -564,6 +567,13 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView): vo
 				if (given === undefined ? spec.required : given !== spec.kind) {
 					throw new Error(`${where}: ${attach.slot} slot cannot fill input "${name}" (${spec.kind})`);
 				}
+			}
+			if (attach.slot === "block") {
+				if (action.result !== "mdx") throw new Error(`${where}: block slot needs an mdx result`);
+				if (blocks && !blocks.includes(attach.block)) {
+					throw new Error(`${where}: attach uses unknown block "${attach.block}"`);
+				}
+				continue;
 			}
 			if (attach.slot !== "field") continue;
 			for (const collection of attach.collections ?? []) {

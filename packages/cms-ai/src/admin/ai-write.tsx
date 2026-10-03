@@ -1,7 +1,7 @@
 "use client";
 
 import type { EditorExtension, EditorInsertAction, EditorSelectionAction } from "@bh2980/cms-admin";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { type BlockAction, blockNodeName, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@bh2980/cms-admin/ui/dialog";
 import { Input } from "@bh2980/cms-admin/ui/input";
@@ -13,14 +13,25 @@ import { streamAiAction, useAiActions } from "./ai-slot-provider";
 import { diffWords } from "./word-diff";
 
 /**
- * 본문에 글을 쓰는 AI 기능(M8-2·M8-3). 붙을 곳이 `selection`(선택 영역 메뉴, 예: 문체 다듬기)이면 고른 글을 다듬어
- * 바뀐 곳을 보여 준 뒤 바꾸고, `insert`(슬래시 메뉴·빈 문서, 예: 초안 쓰기)면 커서 자리에 넣는다.
+ * 본문에 글을 쓰는 AI 기능(M8-2·M8-3·M9-3). 붙을 곳이 `selection`(선택 영역 메뉴, 예: 문체 다듬기)이면 고른 글을 다듬어
+ * 바뀐 곳을 보여 준 뒤 바꾸고, `insert`(슬래시 메뉴·빈 문서, 예: 초안 쓰기)면 커서 자리에 넣는다. `block`(블록 손잡이
+ * 옆, 예: 다이어그램 고치기)이면 그 블록 원문을 고쳐 바뀐 곳을 보여 준 뒤 블록을 바꾼다.
  * 결과는 흘려받아 조금씩 보인다. 적용은 사용자가 누를 때만 한다.
  */
 
 type Job =
 	| { mode: "selection"; action: AiActionView; editor: Editor; from: number; to: number; source: string }
-	| { mode: "insert"; action: AiActionView; editor: Editor; from: number; to: number };
+	| { mode: "insert"; action: AiActionView; editor: Editor; from: number; to: number }
+	| {
+			mode: "block";
+			action: AiActionView;
+			editor: Editor;
+			from: number;
+			to: number;
+			source: string;
+			/** 고치는 블록의 편집기 노드 이름. 결과도 이 블록 하나여야 바꾼다. */
+			nodeType: string;
+	  };
 
 type RunState =
 	| { status: "idle" }
@@ -62,7 +73,9 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 		const input: Record<string, unknown> =
 			job.mode === "selection"
 				? { selection: job.source, title: entry?.title || undefined }
-				: { title: entry?.title || undefined, body: tiptapToMdx(editor.getJSON()).trim() || undefined };
+				: job.mode === "block"
+					? { block: job.source, title: entry?.title || undefined }
+					: { title: entry?.title || undefined, body: tiptapToMdx(editor.getJSON()).trim() || undefined };
 		try {
 			const result = await streamAiAction(
 				action.key,
@@ -90,22 +103,32 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 		}
 	};
 
-	// 고친 글이 정해진 다듬기는 열자마자 실행한다. 초안은 요청을 먼저 받는다.
+	// 고칠 글이 정해진 다듬기는 열자마자 실행한다. 초안과 요청을 받는 블록 기능은 요청을 먼저 받는다.
+	const fixed = job.mode === "selection" || (job.mode === "block" && !action.askInstruction);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 열 때 한 번만 실행한다
 	useEffect(() => {
-		if (job.mode === "selection") void run();
+		if (fixed) void run();
 		return () => controllerRef.current?.abort();
 	}, []);
 
+	// 블록 고치기는 결과가 같은 종류의 블록 하나일 때만 바꾼다.
+	const blockProblem = useMemo(() => {
+		if (job.mode !== "block" || state.status !== "done") return null;
+		const blocks = mdxToTiptap(state.text).content ?? [];
+		return blocks.length === 1 && blocks[0]?.type === job.nodeType ? null : "결과가 같은 블록 하나가 아닙니다.";
+	}, [job, state]);
+
 	const apply = () => {
-		if (state.status !== "done" || !state.text) return;
-		const content = contentFor(editor, job.from, job.to, state.text);
+		if (state.status !== "done" || !state.text || blockProblem) return;
+		// 블록은 결과 블록으로 통째로 바꾼다.
+		const content =
+			job.mode === "block" ? (mdxToTiptap(state.text).content ?? []) : contentFor(editor, job.from, job.to, state.text);
 		editor.chain().focus().insertContentAt({ from: job.from, to: job.to }, content).run();
 		onClose();
 	};
 
 	const diff = useMemo(
-		() => (job.mode === "selection" && state.status === "done" ? diffWords(job.source, state.text) : null),
+		() => (job.mode !== "insert" && state.status === "done" ? diffWords(job.source, state.text) : null),
 		[job, state],
 	);
 	const running = state.status === "running";
@@ -131,9 +154,11 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 							aria-label="추가 요청"
 							value={request}
 							onChange={(event) => setRequest(event.target.value)}
-							placeholder={job.mode === "insert" ? "무엇을 쓸까요?" : "추가 요청"}
+							placeholder={
+								job.mode === "insert" ? "무엇을 쓸까요?" : job.mode === "block" ? "무엇을 바꿀까요?" : "추가 요청"
+							}
 							className="h-8 text-xs"
-							autoFocus={job.mode === "insert"}
+							autoFocus={!fixed}
 						/>
 						<Button type="submit" size="sm" disabled={running}>
 							{state.status === "idle" ? "쓰기" : "다시"}
@@ -167,17 +192,22 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 								? "요청을 적고 쓰기를 누르세요."
 								: "쓰는 중..."}
 				</output>
-				{state.status === "error" && (
+				{(state.status === "error" || blockProblem) && (
 					<p role="alert" className="text-destructive text-xs">
-						{state.message}
+						{state.status === "error" ? state.message : blockProblem}
 					</p>
 				)}
 				<DialogFooter>
 					<Button type="button" variant="outline" size="sm" onClick={onClose}>
 						취소
 					</Button>
-					<Button type="button" size="sm" disabled={state.status !== "done" || !state.text} onClick={apply}>
-						{job.mode === "selection" ? "바꾸기" : "넣기"}
+					<Button
+						type="button"
+						size="sm"
+						disabled={state.status !== "done" || !state.text || !!blockProblem}
+						onClick={apply}
+					>
+						{job.mode === "insert" ? "넣기" : "바꾸기"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -215,6 +245,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 		return {
 			selection: actions.filter((action) => action.attach.some((attach) => attach.slot === "selection")),
 			insert: actions.filter((action) => action.attach.some((attach) => attach.slot === "insert")),
+			block: actions.filter((action) => action.attach.some((attach) => attach.slot === "block")),
 		};
 	}, [data]);
 
@@ -245,6 +276,37 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 		[usable.insert],
 	);
 
+	const blockActions = useMemo<BlockAction[]>(
+		() =>
+			usable.block.map((action) => {
+				// 이 기능이 붙은 블록의 편집기 노드 이름.
+				const nodes = new Set(
+					action.attach.flatMap((attach) => (attach.slot === "block" ? [blockNodeName({ name: attach.block })] : [])),
+				);
+				return {
+					id: `ai:${action.key}`,
+					label: action.label,
+					icon: <Sparkles aria-hidden className="size-3.5" />,
+					isAvailable: (current, pos) => nodes.has(current.state.doc.nodeAt(pos)?.type.name ?? ""),
+					run: (current, pos) => {
+						const node = current.state.doc.nodeAt(pos);
+						if (!node) return;
+						const source = tiptapToMdx({ type: "doc", content: [node.toJSON() as JSONContent] }).trim();
+						setJob({
+							mode: "block",
+							action,
+							editor: current,
+							from: pos,
+							to: pos + node.nodeSize,
+							source,
+							nodeType: node.type.name,
+						});
+					},
+				};
+			}),
+		[usable.block],
+	);
+
 	const firstInsert = usable.insert[0];
 	return {
 		toolbar: (
@@ -269,6 +331,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 		overlay: job && <WriteDialog job={job} getEntry={getEntry} onClose={() => setJob(null)} />,
 		selectionActions,
 		insertActions,
+		blockActions,
 		onEditor: setEditor,
 	};
 };

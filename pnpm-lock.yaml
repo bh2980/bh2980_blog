@@ -601,6 +601,9 @@ importers:
       '@bh2980/cms-admin':
         specifier: workspace:*
         version: link:../cms-admin
+      '@bh2980/cms-ai':
+        specifier: workspace:*
+        version: link:../cms-ai
       '@tanstack/react-query':
         specifier: ^5.104.0
         version: 5.104.0(react@19.2.3)

@@ -1,6 +1,13 @@
 "use client";
 
-import { COLLECTIONS, DEFAULT_LOCALE, localeLabel, PREFIXED_LOCALES, schemaOf } from "@bh2980/cms/client";
+import {
+	BLOCK_BY_NAME,
+	COLLECTIONS,
+	DEFAULT_LOCALE,
+	localeLabel,
+	PREFIXED_LOCALES,
+	schemaOf,
+} from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { AdminShell } from "@bh2980/cms-admin/shell";
@@ -63,6 +70,8 @@ function placeLabel(action: Pick<AiActionView, "attach">): string {
 		case "selection":
 		case "insert":
 			return SLOT_LABELS[attach.slot];
+		case "block":
+			return `${SLOT_LABELS.block} · ${BLOCK_BY_NAME.get(attach.block)?.label ?? attach.block}`;
 		default: {
 			const targets: Readonly<Record<string, string>> = SLOT_TARGETS[attach.slot];
 			return `${SLOT_LABELS[attach.slot]} · ${targets[attach.target] ?? attach.target}`;

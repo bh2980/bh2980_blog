@@ -9,8 +9,18 @@ import { z } from "zod";
  * 기능이 붙는 화면 자리. 자리마다 주는 재료가 정해져 있다(`SLOT_INPUTS`).
  * `translation`은 번역본 편집기의 블록 번역(블록 메뉴와 `모두 번역`), `selection`은 본문에서 글자를 고르면 뜨는 메뉴
  * (예: 문체 다듬기, 고른 글을 바꾼다), `insert`는 슬래시(`/`) 메뉴와 빈 문서(예: 초안 쓰기, 커서에 넣는다)다.
+ * `block`은 본문 블록 하나(예: Mermaid 다이어그램)의 손잡이 옆 버튼이다. 블록 원문을 보내고 바꾼 블록으로 바꾼다.
  */
-export const AI_SLOTS = ["field", "image", "codeRules", "media", "translation", "selection", "insert"] as const;
+export const AI_SLOTS = [
+	"field",
+	"image",
+	"codeRules",
+	"media",
+	"translation",
+	"selection",
+	"insert",
+	"block",
+] as const;
 export type AiSlot = (typeof AI_SLOTS)[number];
 
 /**
@@ -88,6 +98,7 @@ export const SLOT_LABELS: Record<AiSlot, string> = {
 	translation: "번역",
 	selection: "선택 영역 메뉴",
 	insert: "삽입 메뉴",
+	block: "블록",
 };
 
 /** 필드 밖 자리의 대상. 필드 자리의 대상은 컬렉션 정의의 필드 이름이다. */
@@ -95,7 +106,10 @@ export const SLOT_TARGETS = {
 	image: { alt: "대체 텍스트", caption: "캡션" },
 	codeRules: { fold: "글자 접기 규칙" },
 	media: { filename: "파일 이름", defaultAlt: "기본 대체 텍스트", defaultCaption: "기본 캡션" },
-} as const satisfies Record<Exclude<AiSlot, "field" | "translation" | "selection" | "insert">, Record<string, string>>;
+} as const satisfies Record<
+	Exclude<AiSlot, "field" | "translation" | "selection" | "insert" | "block">,
+	Record<string, string>
+>;
 
 export const RESULT_LABELS: Record<AiResult, string> = {
 	candidates: "짧은 후보 여러 개",

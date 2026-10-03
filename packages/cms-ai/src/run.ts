@@ -290,12 +290,15 @@ async function runGenerate(
 /** 흘려받기 결과의 답 규칙. JSON이 아닌 일반 글로 받는다. */
 const STREAM_RULES: Partial<Record<AiResult, string>> = {
 	text: "결과 글만 답한다. JSON·설명·머리말·코드 펜스를 붙이지 않는다.",
-	mdx: "결과 MDX만 답한다. JSON·설명·머리말을 붙이지 않고, 전체를 코드 펜스로 감싸지 않는다.",
+	mdx: "결과 MDX만 답한다. JSON·설명·머리말을 붙이지 않고, MDX 전체를 ```mdx 코드 펜스로 감싸지 않는다(본문 안의 코드 블록은 그대로 쓴다).",
 };
 
-/** 답 전체를 감싼 코드 펜스(```mdx … ```)를 벗긴다. 모델이 규칙을 어겨도 본문만 남긴다. */
-const unfence = (text: string) => {
-	const match = text.trim().match(/^```[a-z]*\n([\s\S]*?)\n```$/i);
+/**
+ * 답 전체를 감싼 MDX 코드 펜스(```mdx … ```, 언어 없는 펜스도)를 벗긴다. 모델이 규칙을 어겨도 본문만 남긴다.
+ * 다른 언어의 펜스(예: ```mermaid)는 본문의 코드 블록이라 그대로 둔다.
+ */
+export const unfence = (text: string) => {
+	const match = text.trim().match(/^```(?:mdx|md|markdown)?\n([\s\S]*?)\n```$/i);
 	return match ? (match[1] ?? "") : text.trim();
 };
 

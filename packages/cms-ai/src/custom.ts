@@ -1,11 +1,11 @@
-import { COLLECTIONS, schemaOf, storedField } from "@bh2980/cms/client";
+import { ADDED_BLOCKS, COLLECTIONS, schemaOf, storedField } from "@bh2980/cms/client";
 import { z } from "zod";
 import { type AiActionDefinition, type AiInputs, aiActionOverrideSchema, aiInput } from "./action";
 import type { AiResult } from "./definition";
 
 /**
  * 화면 기능(D12·M8-5). 관리자 AI 화면에서 만든 기능이다. 코드 기능과 같은 실행기를 쓰고, 범용 자리(필드 옆·선택 영역
- * 메뉴·삽입 메뉴·본문 이미지·미디어)에 붙는다. 입력은 고른 자리가 주는 재료다. DB(`ai_custom_actions`)에 둔다.
+ * 메뉴·삽입 메뉴·본문 블록·본문 이미지·미디어)에 붙는다. 입력은 고른 자리가 주는 재료다. DB(`ai_custom_actions`)에 둔다.
  *
  * 저장 모양: `{ base: { label, surface, result }, override: 고친 값(지시문·보낼 입력·연결 등) }`.
  */
@@ -21,16 +21,24 @@ export const customSurfaceSchema = z.discriminatedUnion("slot", [
 	}),
 	z.object({ slot: z.literal("selection") }),
 	z.object({ slot: z.literal("insert") }),
+	z.object({
+		slot: z.literal("block"),
+		block: z
+			.string()
+			.regex(/^[a-z][a-z0-9-]*$/)
+			.max(60),
+	}),
 	z.object({ slot: z.literal("image"), target: z.enum(["alt", "caption"]) }),
 	z.object({ slot: z.literal("media"), target: z.enum(["filename", "defaultAlt", "defaultCaption"]) }),
 ]);
 export type CustomSurface = z.output<typeof customSurfaceSchema>;
 
-/** 자리마다 고를 수 있는 결과 모양. 선택 영역·삽입은 본문 조각(MDX)을 바꾸거나 넣는다. */
+/** 자리마다 고를 수 있는 결과 모양. 선택 영역·삽입·블록은 본문 조각(MDX)을 바꾸거나 넣는다. */
 export const CUSTOM_RESULTS: Readonly<Record<CustomSurface["slot"], readonly AiResult[]>> = {
 	field: ["candidates", "text", "note"],
 	selection: ["mdx"],
 	insert: ["mdx"],
+	block: ["mdx"],
 	image: ["candidates", "text"],
 	media: ["candidates", "text"],
 };
@@ -63,6 +71,7 @@ const SURFACE_INPUTS: Readonly<Record<CustomSurface["slot"], AiInputs>> = {
 		title: aiInput.text({ label: "제목" }),
 	},
 	insert: { title: aiInput.text({ label: "제목" }), body: aiInput.mdx({ label: "지금 본문" }) },
+	block: { block: aiInput.mdx({ label: "블록 원문", required: true }), title: aiInput.text({ label: "제목" }) },
 	image: {
 		image: aiInput.image({ label: "이미지", required: true }),
 		around: aiInput.text({ label: "앞뒤 문단" }),
@@ -80,7 +89,7 @@ export const CUSTOM_DEFAULT_PROMPT = "할 일을 적으세요.";
 
 /** 저장한 기본 정보로 만든 기능 정의. 지시문·보낼 입력 등은 고친 값(`override`)이 정한다. */
 export function customDefinition(base: CustomBase): AiActionDefinition {
-	const writes = base.surface.slot === "selection" || base.surface.slot === "insert";
+	const writes = base.surface.slot === "selection" || base.surface.slot === "insert" || base.surface.slot === "block";
 	return {
 		label: base.label,
 		input: SURFACE_INPUTS[base.surface.slot],
@@ -92,8 +101,14 @@ export function customDefinition(base: CustomBase): AiActionDefinition {
 	};
 }
 
-/** 필드 자리가 가리키는 필드가 컬렉션 정의에 있는가. 없으면 그 이유. */
+/** 화면 기능을 붙일 수 있는 블록: 블록 확장·사이트 설정이 더한 블록 중 편집기 노드로 편집하는 것(자식 전용 블록 제외). */
+export const CUSTOM_BLOCKS = ADDED_BLOCKS.filter((block) => block.editor.view === "node" && !block.parent);
+
+/** 자리가 가리키는 필드·블록이 사이트 설정에 있는가. 없으면 그 이유. */
 export function surfaceProblem(surface: CustomSurface): string | null {
+	if (surface.slot === "block") {
+		return CUSTOM_BLOCKS.some((block) => block.name === surface.block) ? null : `없는 블록입니다: ${surface.block}`;
+	}
 	if (surface.slot !== "field") return null;
 	const collections = surface.collections?.length ? surface.collections : COLLECTIONS;
 	for (const collection of collections) {

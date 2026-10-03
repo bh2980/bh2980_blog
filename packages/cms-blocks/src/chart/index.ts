@@ -14,3 +14,6 @@ export { chartBlock } from "./definition";
  * 컴포넌트로 그린다(코드는 `source` 속성, `remarkFenceBlocksToMdx`).
  */
 export const chart = () => definePlugin({ name: "chart", options: {}, blocks: [chartBlock] });
+
+export * from "./dsl";
+export * from "./types";

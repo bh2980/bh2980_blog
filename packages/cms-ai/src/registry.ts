@@ -24,7 +24,9 @@ export type AiActionInputOf<K extends AiActionKey> = AiActionInput<ConfigActions
 export type AiActionResultOf<K extends AiActionKey> = AiActionResult<ConfigActions[K]>;
 
 /** 사이트 설정에 등록한 AI 플러그인의 설정. 등록하지 않았으면 `undefined`. */
-const aiConfig = cmsConfig.plugins?.find((plugin) => plugin.name === AI_PLUGIN_NAME)?.options as AiConfig | undefined;
+// 플러그인이 없는 설정은 빈 튜플 타입이라 넓혀 읽는다.
+const plugins: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
+const aiConfig = plugins.find((plugin) => plugin.name === AI_PLUGIN_NAME)?.options as AiConfig | undefined;
 
 export const AI_ACTIONS: Readonly<Record<string, AiActionDefinition>> = aiConfig?.actions ?? {};
 
@@ -58,6 +60,8 @@ export function attachedTo(attach: AiAttach, place: AiPlace): boolean {
 		case "selection":
 		case "insert":
 			return true;
+		case "block":
+			return attach.block === place.target;
 		default:
 			return attach.target === place.target;
 	}

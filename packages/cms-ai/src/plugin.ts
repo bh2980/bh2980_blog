@@ -15,7 +15,7 @@ export function aiPlugin<const Config extends AiConfig>(config: Config) {
 		name: AI_PLUGIN_NAME,
 		options: config,
 		nav: [{ path: "ai", label: "AI", icon: "sparkles" }],
-		validate: ({ collections }) => validateAiConfig(config, collections),
+		validate: ({ collections, blocks }) => validateAiConfig(config, collections, blocks),
 		// 브라우저 묶음에서는 `./server`가 빈 진입점(`server.browser.ts`)으로 바뀐다(package.json `exports`).
 		server: () => import("@bh2980/cms-ai/server"),
 		admin: () => import("@bh2980/cms-ai/admin"),

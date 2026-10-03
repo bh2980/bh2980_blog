@@ -1,5 +1,7 @@
 import { defineConfig } from "@bh2980/cms";
 import base from "../../cms/test/cms.config";
+import { chartAi } from "../../cms-blocks/src/chart/ai";
+import { mermaidAi } from "../../cms-blocks/src/mermaid/ai";
 import { aiPlugin, aiPresets } from "../src";
 
 /** 본체 패키지의 예시 블로그 설정에 이 블로그와 같은 AI 플러그인을 더한 설정. AI 플러그인 테스트가 쓴다. */
@@ -25,6 +27,10 @@ export default defineConfig({
 				codeFold: aiPresets.codeFold(),
 				polish: aiPresets.polish({ styleGuide: "styleGuide" }),
 				draft: aiPresets.draft({ styleGuide: "styleGuide" }),
+				diagramDraft: mermaidAi.draft(),
+				diagramEdit: mermaidAi.edit(),
+				chartDraft: chartAi.draft(),
+				chartEdit: chartAi.edit(),
 			},
 		}),
 	],

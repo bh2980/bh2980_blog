@@ -306,13 +306,20 @@ export async function listModels(baseUrl: string, apiKey: string | null, signal?
 /** 자료에서 영어 낱말을 뽑는다(가짜 연결 전용). */
 const words = (text: string) => (text.match(/[A-Za-z][A-Za-z0-9]+/g) ?? []).map((word) => word.toLowerCase());
 
-/** 가짜 흘려받기의 답. 고칠 글(선택 영역·블록)이 있으면 그 글을, 없으면 제목으로 만든 초안이다. */
+/** 가짜 흘려받기의 답. 고칠 글(선택 영역·블록)이 있으면 그 글을, 없으면 제목으로 만든 초안(코드 펜스를 바라면 그 펜스)이다. */
 const fakeStreamText = (request: AiStreamRequest) => {
 	const { data } = request;
 	// 고칠 글은 앞에 표시를 붙여 돌려준다(바뀐 곳 미리보기가 보이도록).
 	if (data.selection) return `(fake) ${data.selection}`;
-	if (data.block) return data.block;
+	// 블록은 모양을 지킨 채 한 줄을 더한다(코드 펜스면 닫는 줄 앞).
+	if (data.block) {
+		const fence = data.block.match(/^([\s\S]*\n)(`{3,}\s*)$/);
+		return fence ? `${fence[1]}(fake)\n${fence[2]}` : `${data.block} (fake)`;
+	}
 	const title = data.title?.trim() || "새 글";
+	// 지시문이 코드 펜스 하나로 답하라고 하면(예: 다이어그램 만들기) 그 언어의 펜스로 답한다.
+	const fence = request.system.match(/답은 ```([a-z][a-z0-9-]*) 코드 펜스 하나/)?.[1];
+	if (fence) return `\`\`\`${fence}\n(fake) ${title}\n\`\`\``;
 	return `## ${title}\n\n(fake) ${title}에 대한 초안 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
 };
 
