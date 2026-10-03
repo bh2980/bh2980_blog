@@ -15,6 +15,7 @@ const article = defineCollection({
 		// 요약·검색 값은 이름이 아니라 역할(`role`)로 찾는다. 블로그와 다른 이름을 쓴다.
 		excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true }),
 		metaTitle: fields.text({ label: "Search title", role: "seoTitle" }),
+		searchPreview: fields.view({ view: "search" }),
 		metaDescription: fields.text({ label: "Search description", role: "seoDescription", multiline: true }),
 		shareImage: fields.text({ label: "Share image", role: "ogImage" }),
 		hideFromSearch: fields.select({
@@ -26,8 +27,8 @@ const article = defineCollection({
 	},
 	layout: [
 		{ fields: ["title", "slug", "excerpt", "topicIds"] },
-		// 같은 `tab`의 묶음은 편집 화면의 한 탭에 모인다. `preview: "search"`는 검색 결과·공유 미리보기를 위에 둔다.
-		{ tab: "Search", preview: "search", fields: ["metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
+		// 같은 `tab`의 묶음은 편집 화면의 한 탭에 모인다. 보기 필드 `searchPreview`는 검색 결과·공유 미리보기를 그린다.
+		{ tab: "Search", fields: ["searchPreview", "metaTitle", "metaDescription", "shareImage", "hideFromSearch"] },
 	],
 	list: { columns: ["title", "status", "topicIds", "updatedAt"] },
 });

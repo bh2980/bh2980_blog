@@ -52,9 +52,9 @@ const components = { icons: { eye: Eye } };
 고르기, 선택지가 둘인 `noindex`는 켜고 끄기, `seoTitle`·`seoDescription`은 글자 수와 비었을 때 쓸 값(제목·요약)을 보인다.
 `input`으로 사이트 입력을 고르면 그 입력이 먼저다. 기본 입력 `auto-summary`는 여러 줄 요약 칸이다.
 
-`layout` 묶음의 `tab`마다 속성 칸에 탭이 생긴다(없으면 `속성` 탭). `preview`는 묶음 위에 그릴 미리보기 이름이다. 본체는
-`search`(검색 결과·공유 미리보기, 값은 역할 필드에서)를 주고, 다른 이름은 `CmsAdminComponentsProvider`의 `groupPreviews`
-(`{ 이름: ({ collection, form, entry }) => … }`)로 더한다.
+`layout` 묶음의 `tab`마다 속성 칸에 탭이 생긴다(없으면 `속성` 탭). 보기 필드(`fields.view({ view })`)는 그 자리에 등록한
+화면을 그린다. 본체는 `search`(검색 결과·공유 미리보기, 값은 역할 필드에서)를 주고, 다른 이름은 `CmsAdminComponentsProvider`의
+`fieldViews`(`{ 이름: ({ collection, form, entry }) => … }`)로 더하거나 바꾼다.
 날짜·시각은 사이트 설정의 `timeZone`으로 보인다.
 
 ## 블록 편집 화면

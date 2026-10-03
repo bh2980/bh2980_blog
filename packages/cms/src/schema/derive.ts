@@ -42,8 +42,8 @@ export function storedFields(collection: SchemaCollection): readonly StoredField
 	if (cached) return cached;
 	const result: StoredField[] = [];
 	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
-		// 주소는 콘텐츠 열에, 반대 방향 관계는 상대 레코드에 저장한다.
-		if (field.kind === "slug" || field.kind === "backlink") continue;
+		// 주소는 콘텐츠 열에, 반대 방향 관계는 상대 레코드에 저장한다. 보기 필드는 저장하지 않는다.
+		if (field.kind === "slug" || field.kind === "backlink" || field.kind === "view") continue;
 		if (field.kind === "conditional") {
 			result.push({ name, field: field.discriminant });
 			for (const [value, group] of Object.entries(field.values)) {
@@ -229,7 +229,7 @@ export function localizedFieldNames(collection: SchemaCollection): { own: string
 	const own: string[] = [];
 	const inherit: string[] = [];
 	for (const [name, field] of Object.entries(schemaOf(collection).fields)) {
-		if (field.kind === "backlink") continue;
+		if (field.kind === "backlink" || field.kind === "view") continue;
 		if (field.localized === true) own.push(name);
 		else if (field.localized === "inherit") inherit.push(name);
 	}

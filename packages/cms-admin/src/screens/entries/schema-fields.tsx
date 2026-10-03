@@ -44,6 +44,7 @@ import {
 	inputClass,
 	OrderedEntryList,
 } from "./field-inputs";
+import { FieldView } from "./field-views";
 import { MediaImageInput } from "./media-image-input";
 import { optionOf, useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
@@ -329,7 +330,8 @@ export function SchemaFields({
 	});
 
 	/** 번역본에서 원문 값을 보여 주는 공통 필드인가. */
-	const isLocked = (field: Field) => Boolean(locked) && field.kind !== "backlink" && !field.localized;
+	const isLocked = (field: Field) =>
+		Boolean(locked) && field.kind !== "backlink" && field.kind !== "view" && !field.localized;
 
 	const renderValue = (name: string, field: ValueField, readOnly = false) => {
 		if (field.hidden) return null;
@@ -470,6 +472,24 @@ export function SchemaFields({
 		if (!field) return null;
 		if (field.kind === "slug") return renderSlug(name, field);
 		if (field.kind === "conditional") return renderConditional(name, field);
+		if (field.kind === "view") {
+			if (field.hidden) return null;
+			const view = (
+				<FieldView key={name} view={field.view} collection={collection} form={form} entry={context.entry ?? null} />
+			);
+			return field.label ? (
+				<FieldRow
+					key={name}
+					id={fieldId(name)}
+					label={field.label}
+					help={showDescriptions ? field.description : undefined}
+				>
+					{view}
+				</FieldRow>
+			) : (
+				view
+			);
+		}
 		if (field.kind === "backlink") {
 			// 번역본에서는 원문 값을 보여 주기만 한다(관계는 원문을 가리킨다).
 			const readOnly = Boolean(locked);

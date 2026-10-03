@@ -124,9 +124,25 @@ export interface BacklinkField extends Omit<BaseField, "required" | "localized">
 	readonly required?: undefined;
 }
 
+/**
+ * 보기 필드. 값을 저장하지 않고 편집 화면 속성 칸의 그 자리에 화면 하나를 그린다(예: 검색 결과·공유 미리보기).
+ * `view`는 관리자 확장의 `fieldViews`에 등록한 이름이다. 본체는 `search`(필드 역할로 값을 읽는 검색·공유 미리보기)를 준다.
+ */
+export interface ViewField {
+	readonly kind: "view";
+	readonly view: string;
+	/** 화면 위 이름. 없으면 이름 없이 그린다. */
+	readonly label?: string;
+	readonly description?: string;
+	readonly hidden?: boolean;
+	readonly localized?: undefined;
+	readonly required?: undefined;
+	readonly input?: undefined;
+}
+
 /** 값 하나를 저장하는 필드. */
 export type ValueField = TextField | RelationField | SelectField;
-export type Field = ValueField | SlugField | ConditionalField | BacklinkField;
+export type Field = ValueField | SlugField | ConditionalField | BacklinkField | ViewField;
 export type FieldKind = Field["kind"];
 
 type Options<F extends { kind: string }> = Omit<F, "kind">;
@@ -136,6 +152,7 @@ export const fields = {
 	slug: <const O extends Options<SlugField>>(options: O) => ({ kind: "slug", ...options }) as const,
 	relation: <const O extends Options<RelationField>>(options: O) => ({ kind: "relation", ...options }) as const,
 	backlink: <const O extends Options<BacklinkField>>(options: O) => ({ kind: "backlink", ...options }) as const,
+	view: <const O extends Options<ViewField>>(options: O) => ({ kind: "view", ...options }) as const,
 	select: <const O extends Options<SelectField>>(options: O) => ({ kind: "select", ...options }) as const,
 	conditional: <const D extends SelectField, const V extends ConditionalField["values"]>(discriminant: D, values: V) =>
 		({

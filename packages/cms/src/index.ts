@@ -65,4 +65,5 @@ export {
 	type TextField,
 	type TextFieldRole,
 	type ValueField,
+	type ViewField,
 } from "./schema/fields";

@@ -20,11 +20,6 @@ export interface LayoutGroup<Name extends string = string> {
 	 * 편집 화면 속성 칸에서 이 묶음을 그릴 탭 이름. 같은 이름의 묶음은 한 탭에 모이고, 없으면 기본 탭(`속성`)에 그린다.
 	 */
 	readonly tab?: string;
-	/**
-	 * 묶음 위에 그릴 미리보기 이름. 본체는 `search`(검색 결과·공유 미리보기, 값은 필드 역할 `seoTitle`·`seoDescription`·
-	 * `ogImage`·`noindex`, 없으면 제목·`summary` 역할)를 준다. 다른 이름은 관리자 확장의 `groupPreviews`로 더한다.
-	 */
-	readonly preview?: string;
 }
 
 export interface CollectionSchema<

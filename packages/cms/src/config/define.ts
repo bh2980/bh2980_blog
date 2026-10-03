@@ -91,7 +91,7 @@ export interface CmsConfig<
 /** 값 하나를 저장하는 필드. 조건부 필드의 선택 값과 딸린 필드도 펼친다. */
 function* valueFields(fields: Readonly<Record<string, Field>>): Generator<[string, ValueField]> {
 	for (const [name, field] of Object.entries(fields)) {
-		if (field.kind === "slug" || field.kind === "backlink") continue;
+		if (field.kind === "slug" || field.kind === "backlink" || field.kind === "view") continue;
 		if (field.kind === "conditional") {
 			yield [name, field.discriminant];
 			for (const group of Object.values(field.values)) yield* Object.entries(group ?? {});
@@ -136,8 +136,10 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 		if (group.tab !== undefined && (!group.tab.trim() || group.tab.length > 20)) {
 			throw new Error(`${at}.tab must be 1-20 characters`);
 		}
-		if (group.preview !== undefined && !/^[a-z][a-z0-9-]*$/.test(group.preview)) {
-			throw new Error(`${at}.preview must be a kebab-case name`);
+	}
+	for (const [name, field] of Object.entries(schema.fields)) {
+		if (field.kind === "view" && !/^[a-z][a-z0-9-]*$/.test(field.view)) {
+			throw new Error(`cms.config: ${collection}.${name} view must be a kebab-case name`);
 		}
 	}
 	for (const [name, field] of Object.entries(schema.fields)) {

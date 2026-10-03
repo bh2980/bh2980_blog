@@ -4,23 +4,15 @@ import type { LayoutGroup } from "@bh2980/cms/client";
 import { isCollection, localeLabel, schemaOf } from "@bh2980/cms/client";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import Link from "next/link";
-import { type ComponentType, useEffect, useMemo, useState } from "react";
-import { type GroupPreviewProps, useCmsAdminComponents } from "../../admin-components";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { CmsIssue } from "../api-error-message";
 import { SidePanelHeader } from "../shared/side-panel";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { SchemaFields } from "./schema-fields";
-import { SeoPreview } from "./seo-panel";
 
 /** 기본 탭(`tab`이 없는 묶음). */
 const DEFAULT_TAB = "속성";
-
-/** 본체가 주는 묶음 미리보기. 다른 이름은 `groupPreviews`로 더한다. */
-const BUILTIN_PREVIEWS: Readonly<Record<string, ComponentType<GroupPreviewProps>>> = {
-	search: ({ collection, form, entry }) =>
-		isCollection(collection) ? <SeoPreview collection={collection} form={form} entry={entry} /> : null,
-};
 
 const tabOfGroup = (group: LayoutGroup) => group.tab ?? DEFAULT_TAB;
 
@@ -77,8 +69,6 @@ export function InspectorPanel({
 }: InspectorPanelProps) {
 	const [tab, setTab] = useState(DEFAULT_TAB);
 	const tabs = useMemo(() => tabsOf(collection), [collection]);
-	const { groupPreviews } = useCmsAdminComponents();
-	const previews = { ...BUILTIN_PREVIEWS, ...groupPreviews };
 	const issuesIn = (name: string) =>
 		publishIssues.filter((issue) => issue.path && tabOf(collection, issue.path) === name).length;
 
@@ -111,6 +101,7 @@ export function InspectorPanel({
 						incomingReferences: incomingReferences,
 						incomingReferencesLoading: isLoadingIncomingReferences,
 						refreshIncomingReferences: onRefreshIncomingReferences,
+						entry,
 					}}
 					omit={["title"]}
 					showDescriptions={false}
@@ -160,21 +151,11 @@ export function InspectorPanel({
 			</SidePanelHeader>
 
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
-				{tabs.map((name) => {
-					const groups = isCollection(collection)
-						? (schemaOf(collection).layout ?? []).filter((group) => tabOfGroup(group) === name)
-						: [];
-					return (
-						<TabsContent key={name} value={name} className="space-y-5">
-							{groups.map((group, index) => {
-								const Preview = group.preview ? previews[group.preview] : undefined;
-								// biome-ignore lint/suspicious/noArrayIndexKey: 설정의 묶음 순서는 바뀌지 않는다
-								return Preview ? <Preview key={index} collection={collection} form={form} entry={entry} /> : null;
-							})}
-							{fields((group) => tabOfGroup(group) === name)}
-						</TabsContent>
-					);
-				})}
+				{tabs.map((name) => (
+					<TabsContent key={name} value={name}>
+						{fields((group) => tabOfGroup(group) === name)}
+					</TabsContent>
+				))}
 			</div>
 		</Tabs>
 	);

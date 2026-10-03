@@ -43,6 +43,8 @@ export interface FieldContext {
 	incomingReferences?: readonly IncomingReference[];
 	incomingReferencesLoading?: boolean;
 	refreshIncomingReferences?: () => void;
+	/** 저장된 이 글(보기 필드가 원문 값·언어를 읽는다). */
+	entry?: import("./entry-form").EntryData | null;
 }
 
 export interface FieldInputProps {

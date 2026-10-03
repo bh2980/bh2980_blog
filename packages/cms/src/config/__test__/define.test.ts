@@ -83,28 +83,27 @@ describe("defineConfig", () => {
 		);
 	});
 
-	it("checks layout tab names and preview names", () => {
-		const withLayout = (group: Record<string, unknown>) =>
+	it("checks layout tab names and view field names", () => {
+		const note = (extra: { view?: string; tab?: string }) =>
 			defineCollection({
 				label: "Note",
 				workflow: "record",
-				fields: { title: fields.text({ label: "Title" }) },
+				fields: {
+					title: fields.text({ label: "Title" }),
+					preview: fields.view({ view: extra.view ?? "search" }),
+				},
 				list: { columns: [] },
-				layout: [{ fields: ["title"], ...group }],
+				layout: [{ fields: ["title", "preview"], ...(extra.tab !== undefined ? { tab: extra.tab } : {}) }],
 			});
 		expect(() =>
-			defineConfig({
-				collections: { note: withLayout({ tab: "검색", preview: "search" }) },
-				locales,
-				defaultLocale: "en",
-			}),
+			defineConfig({ collections: { note: note({ tab: "검색" }) }, locales, defaultLocale: "en" }),
 		).not.toThrow();
+		expect(() => defineConfig({ collections: { note: note({ tab: " " }) }, locales, defaultLocale: "en" })).toThrow(
+			/tab must be 1-20 characters/,
+		);
 		expect(() =>
-			defineConfig({ collections: { note: withLayout({ tab: " " }) }, locales, defaultLocale: "en" }),
-		).toThrow(/tab must be 1-20 characters/);
-		expect(() =>
-			defineConfig({ collections: { note: withLayout({ preview: "Search" }) }, locales, defaultLocale: "en" }),
-		).toThrow(/preview must be a kebab-case name/);
+			defineConfig({ collections: { note: note({ view: "Search" }) }, locales, defaultLocale: "en" }),
+		).toThrow(/view must be a kebab-case name/);
 	});
 
 	it("requires a title text field in every collection", () => {

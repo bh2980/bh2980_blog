@@ -34,9 +34,10 @@ const tagIds = fields.relation({
 
 /**
  * 검색엔진·공유용 값(O1 A6, v3 SEO 탭). 비우면 공개 화면이 제목·요약·자동 카드를 쓴다.
- * 편집 화면은 `tab: "SEO"` 묶음을 SEO 탭에 그리고, 검색 미리보기(`preview: "search"`)는 필드 역할(`role`)로 값을 찾는다.
+ * 편집 화면은 `tab: "SEO"` 묶음을 SEO 탭에 그린다. 검색·공유 미리보기는 보기 필드(`fields.view({ view: "search" })`)이고 값은 필드 역할(`role`)로 찾는다.
  */
 const seo = {
+	searchPreview: fields.view({ view: "search" }),
 	seoTitle: fields.text({ label: "검색 제목", role: "seoTitle", localized: true }),
 	seoDescription: fields.text({ label: "검색 설명", role: "seoDescription", multiline: true, localized: true }),
 	/** 링크 미리보기·검색 결과 이미지(미디어 ID). 비우면 제목으로 만든 카드를 쓴다. */
@@ -107,8 +108,7 @@ export const post = defineCollection({
 		{
 			group: "SEO",
 			tab: "SEO",
-			preview: "search",
-			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
+			fields: ["searchPreview", "seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
 			collapsed: true,
 		},
 	],
@@ -141,8 +141,7 @@ export const memo = defineCollection({
 		{
 			group: "SEO",
 			tab: "SEO",
-			preview: "search",
-			fields: ["seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
+			fields: ["searchPreview", "seoTitle", "seoDescription", "ogImageId", "seoRobots", "canonicalUrl"],
 			collapsed: true,
 		},
 	],

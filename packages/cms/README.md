@@ -363,9 +363,11 @@ export const myPlugin = () =>
 
 - **본문에서 채우기.** 텍스트 필드에 `fillFromBody: true`를 두면 발행할 때 비어 있으면 본문 앞부분으로 채운다(본문이 있는
   컬렉션만).
-- **탭과 미리보기.** `layout` 묶음에 `tab: "이름"`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생기고, 같은 이름의 묶음이
-  모인다(없으면 기본 탭 `속성`). `preview: "search"`를 두면 묶음 위에 검색 결과·공유 미리보기를 그린다. 미리보기 값은 위
-  역할에서 온다. 다른 미리보기는 관리자 확장의 `groupPreviews`로 더한다.
+- **탭.** `layout` 묶음에 `tab: "이름"`을 두면 편집 화면 속성 칸에 그 이름의 탭이 생기고, 같은 이름의 묶음이 모인다(없으면
+  기본 탭 `속성`).
+- **보기 필드.** `fields.view({ view: "search" })`는 값을 저장하지 않고 그 자리에 화면을 그리는 필드다. 다른 필드처럼 `layout`에
+  넣어 자리를 정한다. 본체는 `search`(검색 결과·공유 미리보기, 값은 위 역할에서)를 주고, 다른 화면은 관리자 확장의
+  `fieldViews`로 등록한다.
 
 ```ts
 fields: {
@@ -374,8 +376,9 @@ fields: {
 	excerpt: fields.text({ label: "Excerpt", role: "summary", multiline: true, fillFromBody: true }),
 	metaTitle: fields.text({ label: "Search title", role: "seoTitle" }),
 	shareImage: fields.text({ label: "Share image", role: "ogImage" }),
+	searchPreview: fields.view({ view: "search" }),
 },
-layout: [{ fields: ["title", "slug", "excerpt"] }, { tab: "Search", preview: "search", fields: ["metaTitle", "shareImage"] }],
+layout: [{ fields: ["title", "slug", "excerpt"] }, { tab: "Search", fields: ["searchPreview", "metaTitle", "shareImage"] }],
 ```
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 역할·`from`·

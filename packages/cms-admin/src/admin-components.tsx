@@ -107,14 +107,14 @@ export interface CmsAdminComponents {
 	 */
 	readonly icons?: Readonly<Record<string, LucideIcon>>;
 	/**
-	 * 속성 칸 묶음 위에 그릴 미리보기(`layout` 묶음의 `preview` 이름 → 컴포넌트). 본체는 `search`를 준다.
+	 * 보기 필드(`fields.view({ view })`)가 그릴 화면(이름 → 컴포넌트). 본체는 `search`(검색 결과·공유 미리보기)를 준다.
 	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
 	 */
-	readonly groupPreviews?: Readonly<Record<string, ComponentType<GroupPreviewProps>>>;
+	readonly fieldViews?: Readonly<Record<string, ComponentType<FieldViewProps>>>;
 }
 
-/** 묶음 미리보기가 받는 값. */
-export interface GroupPreviewProps {
+/** 보기 필드 화면이 받는 값. */
+export interface FieldViewProps {
 	readonly collection: string;
 	readonly form: EntryForm;
 	readonly entry: EntryData | null;
@@ -138,7 +138,7 @@ export function CmsAdminComponentsProvider({
 			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
 			icons: { ...parent.icons, ...components.icons },
-			groupPreviews: { ...parent.groupPreviews, ...components.groupPreviews },
+			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
 		}),
 		[parent, components],
 	);
