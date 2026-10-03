@@ -15,7 +15,8 @@ export interface CmsAdminPageProps {
 }
 
 /**
- * 관리자 화면 하나. 앱의 `app/(admin)/admin/[[...path]]/page.tsx`가 그린다. `/admin` 뒤 경로로 화면을 고른다.
+ * 관리자 화면 하나. 앱의 관리자 라우트(기본 `app/(admin)/admin/[[...path]]/page.tsx`)가 그린다. 관리자 경로 뒤 경로로
+ * 화면을 고른다. 관리자 경로는 사이트 설정 `admin.path`(기본 `/admin`)이고 라우트 폴더와 같아야 한다.
  *
  * - `/admin` 목록 · `/admin/trash` 휴지통 · `/admin/media` 미디어 · `/admin/templates` 본문 템플릿
  * - `/admin/entries/new` 새 글 · `/admin/entries/<id>/edit` 편집 · `/admin/login` 로그인

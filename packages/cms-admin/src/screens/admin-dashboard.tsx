@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdminColumnSettings } from "@bh2980/cms/client";
-import { COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/client";
+import { adminHref, COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/client";
 import { FolderPlus, Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -209,7 +209,7 @@ function TrashPage() {
 						{COLLECTIONS.map((item) => (
 							<Link
 								key={item}
-								href={`/admin/trash?collection=${item}` as Route}
+								href={adminHref(`/trash?collection=${item}`) as Route}
 								aria-current={state.collection === item ? "page" : undefined}
 								className={cn(
 									buttonVariants({ variant: "ghost", size: "xs" }),

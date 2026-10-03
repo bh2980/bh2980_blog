@@ -8,6 +8,7 @@ export * from "./blocks/define";
 export * from "./blocks/definitions";
 export * from "./blocks/derive";
 export * from "./config/resolved";
+export * from "./core/admin-paths";
 export * from "./core/api";
 export * from "./core/collections";
 export * from "./core/file-display";

@@ -17,10 +17,20 @@ declare module "next-auth" {
 export interface GithubCredentials {
 	readonly clientId: string | undefined;
 	readonly clientSecret: string | undefined;
+	/** 로그인 API 경로(NextAuth `basePath`, 예: `/api/cms/auth`). */
+	readonly basePath: string;
+	/** 관리자 로그인 화면 주소(예: `/admin/login`). */
+	readonly signInPage: string;
 }
 
 /** GitHub OAuth로 로그인하는 NextAuth 설정. 세션에는 GitHub 숫자 ID(`githubId`)를 담는다. */
-export const githubAuthConfig = ({ clientId, clientSecret }: GithubCredentials): NextAuthConfig => ({
+export const githubAuthConfig = ({
+	clientId,
+	clientSecret,
+	basePath,
+	signInPage,
+}: GithubCredentials): NextAuthConfig => ({
+	basePath,
 	providers: [
 		GitHub({
 			clientId,
@@ -59,7 +69,7 @@ export const githubAuthConfig = ({ clientId, clientSecret }: GithubCredentials):
 		},
 	},
 	pages: {
-		signIn: "/admin/login",
+		signIn: signInPage,
 	},
 	trustHost: true,
 });

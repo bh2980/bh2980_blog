@@ -10,7 +10,7 @@ export { type AuthContext, AuthError, type AuthGateway } from "./auth-gateway";
 
 export const authGateway: AuthGateway = new CmsAuthGateway(getCmsAuth, () => cmsServerConfig.schedulerToken);
 
-/** `/api/auth/[...nextauth]` 라우트 처리기. */
+/** 로그인 API 라우트 처리기. 로그인 경로를 기본(`/api/cms/auth`)과 다르게 둔 앱이 그 경로의 라우트 파일에서 내보낸다(예: `app/api/auth/[...nextauth]/route.ts`). */
 export const handlers = {
 	GET: (request: Request) => getCmsAuth().handlers.GET(request),
 	POST: (request: Request) => getCmsAuth().handlers.POST(request),

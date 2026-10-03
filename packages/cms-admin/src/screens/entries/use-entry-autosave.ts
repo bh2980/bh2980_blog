@@ -1,5 +1,6 @@
 "use client";
 
+import { adminEntryEditHref } from "@bh2980/cms/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CmsApiError, cmsFetch } from "../admin-api";
 import {
@@ -244,7 +245,7 @@ export function useEntryAutosave({
 				if (isNew) {
 					entryIdRef.current = saved.id;
 					// 화면을 다시 마운트하지 않고 주소만 편집 주소로 바꾼다.
-					window.history.replaceState({ ...window.history.state }, "", `/admin/entries/${saved.id}/edit`);
+					window.history.replaceState({ ...window.history.state }, "", adminEntryEditHref(saved.id));
 				}
 				versionRef.current = saved.version;
 				baseMetadataRef.current = saved.working?.metadata ?? built.metadata;

@@ -64,6 +64,24 @@ describe("defineConfig", () => {
 		expect(() => defineConfig({ collections: { article }, locales, defaultLocale: "en" })).toThrow(/maxLength/);
 	});
 
+	it("checks the admin path, locale prefix, preview locale param and site home", () => {
+		const base = { collections: { topic }, locales, defaultLocale: "en" } as const;
+		expect(() => defineConfig({ ...base, admin: { path: "/studio" } })).not.toThrow();
+		expect(() => defineConfig({ ...base, admin: { path: "/cms/admin" } })).not.toThrow();
+		for (const path of ["/", "admin", "/admin/", "/api/admin", "/a b"]) {
+			expect(() => defineConfig({ ...base, admin: { path } })).toThrow(/admin.path/);
+		}
+		expect(() => defineConfig({ ...base, site: { localePrefix: "always" } })).not.toThrow();
+		expect(() => defineConfig({ ...base, site: { localePrefix: "sometimes" as "always" } })).toThrow(/localePrefix/);
+		expect(() => defineConfig({ ...base, site: { previewLocaleParam: false } })).not.toThrow();
+		expect(() => defineConfig({ ...base, site: { previewLocaleParam: "lang" } })).not.toThrow();
+		expect(() => defineConfig({ ...base, site: { previewLocaleParam: "a b" } })).toThrow(/previewLocaleParam/);
+		expect(() => defineConfig({ ...base, site: { home: "https://example.com" } })).not.toThrow();
+		expect(() => defineConfig({ ...base, site: { home: "/blog" } })).not.toThrow();
+		expect(() => defineConfig({ ...base, site: { home: "//evil.example" } })).toThrow(/site.home/);
+		expect(() => defineConfig({ ...base, site: { home: "javascript:alert(1)" } })).toThrow(/site.home/);
+	});
+
 	it("rejects a default locale outside the list and duplicate locales", () => {
 		expect(() => defineConfig({ collections: { topic }, locales, defaultLocale: "ko" as "en" })).toThrow(
 			/defaultLocale/,

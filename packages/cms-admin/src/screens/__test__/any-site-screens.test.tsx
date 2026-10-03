@@ -1,4 +1,5 @@
 import {
+	adminEntryEditHref,
 	COLLECTIONS,
 	type Collection,
 	DEFAULT_COLLECTION,
@@ -182,7 +183,7 @@ describe("any site: list screen", () => {
 		expect(bodyOf(calls("POST", "/api/cms/v1/entries/e1/duplicate")[0])).toEqual({
 			title: copyTitle(content, "Alpha"),
 		});
-		await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/admin/entries/copy-1/edit"));
+		await waitFor(() => expect(nav.push).toHaveBeenCalledWith(adminEntryEditHref("copy-1")));
 	});
 });
 

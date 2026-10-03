@@ -1,13 +1,18 @@
 /*
  * @bh2980/cms-admin 스타일. 앱의 Tailwind 입력 CSS에서 `@import "tailwindcss";` 다음에 import한다.
  *
- * 앱 쪽에 필요한 것: `tw-animate-css`, `@tailwindcss/typography`, 클래스 방식 `dark` 변형
- * (`@custom-variant dark (&:where(.dark, .dark *));`), Base UI 방향 변형
- * (`@custom-variant data-horizontal (&[data-orientation="horizontal"]);`·`data-vertical`).
+ * 앱 쪽에 필요한 것: `tw-animate-css`, `@tailwindcss/typography`. 관리자 화면이 쓰는 Tailwind 변형(클래스 방식 `dark`,
+ * Base UI 방향 `data-horizontal`·`data-vertical`)은 아래에서 정한다. 앱이 같은 이름의 변형을 다시 정하면 앱 것이 이긴다
+ * (앱 CSS가 이 파일 import 뒤에 오므로). 그때도 `.dark`는 어두운 테마로 남겨 둔다.
  */
 
 /* 배포 묶음의 컴포넌트에서 Tailwind 클래스를 찾는다(작업 공간 안에서는 앱이 소스를 바로 읽는다). */
 @source "./dist";
+
+/* 관리자 화면이 기대는 변형: 클래스 방식 어두운 테마(next-themes가 html에 `dark`를 붙인다), Base UI의 방향 속성. */
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
 
 /* 관리자 화면이 쓰는 색·둥글기 이름. 값은 아래 관리자 토큰이 정한다. */
 @theme inline {

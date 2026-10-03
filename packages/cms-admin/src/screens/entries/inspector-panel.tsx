@@ -1,8 +1,9 @@
 "use client";
 
 import type { LayoutGroup } from "@bh2980/cms/client";
-import { isCollection, localeLabel } from "@bh2980/cms/client";
+import { adminEntryEditHref, isCollection, localeLabel } from "@bh2980/cms/client";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
+import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
@@ -104,7 +105,7 @@ export function InspectorPanel({
 										<>
 											원문({localeLabel(entry.source.locale)}) 값입니다.{" "}
 											<Link
-												href={`/admin/entries/${entry.source.id}/edit`}
+												href={adminEntryEditHref(entry.source.id) as Route}
 												className="text-primary underline-offset-2 hover:underline"
 											>
 												원문에서 바꿉니다

@@ -11,8 +11,35 @@ pnpm example:pack
 # 이 폴더에서
 pnpm install --ignore-workspace
 cp .env.example .env.local   # CMS_DATABASE_URL 등을 채운다
-pnpm cms:db:migrate
-pnpm dev                     # http://localhost:3000/admin
+pnpm cms:db:migrate          # = cms migrate
+pnpm dev                     # http://localhost:3000/studio
 ```
 
 `CMS_DEV_AUTH_BYPASS=1`이면 `next dev`에서 로그인 없이 관리자 화면을 연다.
+
+## 파일
+
+`cms init --admin-path /studio`가 만드는 모양에 이 사이트의 컬렉션·확장을 더했다.
+
+| 파일 | 내용 |
+| --- | --- |
+| `cms.config.ts` | 컬렉션·블록·확장. 블로그와 다르게 관리자 경로 `admin.path: "/studio"`, 주소 규칙 `site.localePrefix: "always"`(모든 언어에 `/en`), 미리보기 언어는 경로(`previewLocaleParam: false`) |
+| `cms.server.ts` | DB·GitHub 로그인(`cms init` 그대로) |
+| `app/(admin)/studio/` | 관리자 화면(`[[...path]]/page.tsx`·`layout.tsx`)과 맞춤법 검사 확장 예시(`admin-components.tsx`) |
+| `app/api/cms/[...path]/route.ts` | 관리자 API와 로그인(`/api/cms/auth/*`). 로그인 라우트 파일이 따로 없다 |
+| `app/globals.css` | Tailwind와 패키지 스타일 import만. 관리자 화면 변형(`dark` 등)은 관리자 패키지 스타일이 정한다 |
+
+GitHub 로그인을 쓰려면 OAuth 앱의 콜백 주소를 `http://localhost:3000/api/cms/auth/callback/github`로 둔다.
+
+## 저장소 안에서 확인하기
+
+운영 DB를 쓰지 않는다. 테스트 DB(`CMS_TEST_DATABASE_URL`)에 `cms_preview_*` 스키마를 만들어 쓰고 끝나면 지운다.
+
+```sh
+export CMS_DATABASE_URL="$CMS_TEST_DATABASE_URL" CMS_SCHEMA=cms_preview_example CMS_DEV_AUTH_BYPASS=1 AUTH_SECRET=local-only
+# (스키마 cms_preview_example을 만든 뒤)
+pnpm exec cms migrate --no-env-file
+pnpm exec next dev -p 3997   # http://localhost:3997/studio
+```
+
+`next dev`가 이 폴더에 만드는 `AGENTS.md`·`CLAUDE.md`는 저장소에 넣지 않는다.

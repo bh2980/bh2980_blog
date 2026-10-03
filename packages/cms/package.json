@@ -17,7 +17,12 @@
 		"./adapters/auth": "./src/adapters/auth/index.ts",
 		"./testing": "./src/testing.ts",
 		"./migrate": "./src/adapters/postgres/migrate-cli.ts",
-		"./register": "./src/register.ts"
+		"./register": "./src/register.ts",
+		"./cli": "./src/cli/index.ts",
+		"./stubs/missing-optional": "./stubs/missing-optional.cjs"
+	},
+	"bin": {
+		"cms": "./bin/cms.mjs"
 	},
 	"scripts": {
 		"test": "vitest",
@@ -36,6 +41,7 @@
 		"remark-math": "^6.0.0",
 		"remark-mdx": "^3.1.1",
 		"remark-parse": "^11.0.0",
+		"tsx": "^4.21.0",
 		"unified": "^11.0.5",
 		"unist-util-visit": "^5.0.0",
 		"vfile": "^6.0.3",
@@ -59,7 +65,9 @@
 		"vitest": "^4.0.18"
 	},
 	"files": [
+		"bin",
 		"dist",
+		"stubs",
 		"README.md"
 	],
 	"publishConfig": {
@@ -115,7 +123,12 @@
 			"./register": {
 				"types": "./dist/register.d.ts",
 				"default": "./dist/register.js"
-			}
+			},
+			"./cli": {
+				"types": "./dist/cli/index.d.ts",
+				"default": "./dist/cli/index.js"
+			},
+			"./stubs/missing-optional": "./stubs/missing-optional.cjs"
 		}
 	},
 	"sideEffects": false

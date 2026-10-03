@@ -1,6 +1,6 @@
 "use client";
 
-import { LOCALES, localeLabel } from "@bh2980/cms/client";
+import { adminEntryEditHref, LOCALES, localeLabel } from "@bh2980/cms/client";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ export function LanguageTabs({
 				fallback: "번역본을 만들지 못했습니다.",
 			});
 			toast.success(`${localeLabel(target)} 번역본을 만들었습니다.`);
-			router.push(`/admin/entries/${created.id}/edit` as Route);
+			router.push(adminEntryEditHref(created.id) as Route);
 		} catch (error) {
 			toast.error(errorText(error, "번역본을 만들지 못했습니다."));
 		} finally {
@@ -95,7 +95,7 @@ export function LanguageTabs({
 							aria-label={`${localeLabel(target)}${member.isSource ? " 원문" : ""} · ${STATUS_LABELS[member.status]}`}
 							className={cn("h-7 gap-1.5 px-2 text-xs", current ? "bg-muted text-foreground" : "text-muted-foreground")}
 							onClick={() => {
-								if (!current) router.push(`/admin/entries/${member.id}/edit` as Route);
+								if (!current) router.push(adminEntryEditHref(member.id) as Route);
 							}}
 						>
 							<span

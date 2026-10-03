@@ -2,6 +2,7 @@
 
 import {
 	type AdminColumnSettings,
+	adminEntryEditHref,
 	isItemCollection,
 	LOCALES,
 	localeLabel,
@@ -205,7 +206,7 @@ function LocaleBadges({ translations }: { translations: readonly ListTranslation
 				return (
 					<Link
 						key={locale}
-						href={`/admin/entries/${member.id}/edit` as Route}
+						href={adminEntryEditHref(member.id) as Route}
 						className={cn(BADGE_CLASS, BADGE_TONE[tone], "hover:brightness-95 dark:hover:brightness-125")}
 					>
 						<span aria-hidden="true">{locale.toUpperCase()}</span>
@@ -408,7 +409,7 @@ export function AdminEntriesTable({
 					) : (
 						<span className="flex min-w-0 items-center gap-2">
 							<Link
-								href={`/admin/entries/${item.id}/edit` as Route}
+								href={adminEntryEditHref(item.id) as Route}
 								className="truncate font-medium text-foreground hover:text-primary"
 							>
 								{title}

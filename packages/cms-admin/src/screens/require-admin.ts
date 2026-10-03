@@ -1,5 +1,7 @@
 import "server-only";
+import { adminHref } from "@bh2980/cms/client";
 import { type AuthContext, AuthError, authGateway } from "@bh2980/cms/runtime";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 
 /**
@@ -10,7 +12,7 @@ export async function requireAdminPage(): Promise<AuthContext> {
 	try {
 		return await authGateway.verifyAdmin();
 	} catch (error) {
-		if (error instanceof AuthError) redirect("/admin/login");
+		if (error instanceof AuthError) redirect(adminHref("/login") as Route);
 		throw error;
 	}
 }

@@ -7,8 +7,17 @@ vi.mock("../../adapters/auth", () => ({
 	AuthError: class AuthError extends Error {},
 }));
 
+const auth = vi.hoisted(() => ({
+	basePath: "/api/cms/auth" as string | undefined,
+	handlers: {
+		GET: vi.fn(async (_request: Request) => new Response("auth-get")),
+		POST: vi.fn(async (_request: Request) => new Response("auth-post")),
+	},
+}));
+
 vi.mock("../../container", () => ({
 	getCmsContentStore: () => ({ getPreferences: async () => null }),
+	getCmsAuth: () => auth,
 }));
 
 describe("관리자 API 경로표", () => {
@@ -41,5 +50,23 @@ describe("관리자 API 경로표", () => {
 		expect((await call("GET", "v1/nope")).status).toBe(404);
 		expect((await call("DELETE", "v1/preferences")).status).toBe(405);
 		expect((await call("GET", "v1/preferences")).status).toBe(200);
+	});
+
+	it("로그인 경로가 기본(`/api/cms/auth`)이면 `auth/*`를 로그인 처리기로 넘긴다", async () => {
+		const handler = createCmsRouteHandler();
+		const call = (method: "GET" | "POST" | "DELETE", path: string) =>
+			handler[method](new NextRequest(`http://localhost/api/cms/${path}`, { method }), {
+				params: Promise.resolve({ path: path.split("/") }),
+			});
+		expect(await (await call("GET", "auth/session")).text()).toBe("auth-get");
+		expect(await (await call("POST", "auth/signin/github")).text()).toBe("auth-post");
+		expect(auth.handlers.GET).toHaveBeenCalledTimes(1);
+		expect((await call("DELETE", "auth/session")).status).toBe(405);
+
+		// 앱이 로그인 경로를 따로 두면(`basePath: "/api/auth"`) CMS API 아래로는 받지 않는다.
+		auth.basePath = "/api/auth";
+		expect((await call("GET", "auth/session")).status).toBe(404);
+		expect(auth.handlers.GET).toHaveBeenCalledTimes(1);
+		auth.basePath = "/api/cms/auth";
 	});
 });

@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
+import { getCmsAuth } from "../container";
 import { pluginRoutes } from "../plugin/server";
+import { CMS_AUTH_BASE_PATH } from "../server/define";
 import * as r9 from "./v1/bulk/route";
 import * as r12 from "./v1/entries/[id]/archive/route";
 import * as r13 from "./v1/entries/[id]/duplicate/route";
@@ -105,7 +107,8 @@ const notFound = () => handleApiError(new HttpError(404, "not_found", "Unknown C
 
 /**
  * catch-all 라우트 처리기. `params.path`는 `/api/cms/` 뒤의 경로 조각이다(예: `["v1", "entries", "<id>"]`).
- * 없는 경로는 404, 경로는 있지만 그 메서드가 없으면 405다.
+ * 없는 경로는 404, 경로는 있지만 그 메서드가 없으면 405다. `auth/*`는 로그인 연결의 경로가 기본(`/api/cms/auth`)일 때
+ * 로그인 처리기로 넘긴다(로그인 라우트 파일이 따로 필요 없다).
  */
 export type CmsRouteHandler = (
 	request: NextRequest,
@@ -117,6 +120,14 @@ export function createCmsRouteHandler(): Record<Method, CmsRouteHandler> {
 		(method: Method): CmsRouteHandler =>
 		async (request, context) => {
 			const { path = [] } = await context.params;
+			if (path[0] === "auth") {
+				const auth = getCmsAuth();
+				if (auth.basePath !== CMS_AUTH_BASE_PATH) return notFound();
+				if (method !== "GET" && method !== "POST") {
+					return handleApiError(new HttpError(405, "method_not_allowed", `${method} is not allowed here`));
+				}
+				return auth.handlers[method](request);
+			}
 			// 본체 경로에 없으면 플러그인 경로표에서 찾는다.
 			const matched = matchRoute(path) ?? matchRoute(path, await compiledPluginRoutes());
 			if (!matched) return notFound();

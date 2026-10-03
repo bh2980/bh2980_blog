@@ -102,7 +102,10 @@ export default defineConfig({
 	collections: { article, topic, author },
 	locales: [{ code: "en", name: "English" }],
 	defaultLocale: "en",
-	site: { name: "Example site", previewPath: "/preview" },
+	// 주소 규칙도 블로그와 다르게: 모든 언어에 접두사(`/en/blog/...`), 미리보기 언어는 경로로.
+	site: { name: "Example site", previewPath: "/preview", localePrefix: "always", previewLocaleParam: false },
+	// 관리자 화면 경로(`cms init --admin-path /studio`). 라우트 폴더 `app/(admin)/studio/`와 같다.
+	admin: { path: "/studio" },
 	timeZone: "UTC",
 	// 블록 확장에서 차트만 설치하고(`blocks({ only })`), 사이트 블록 둘을 더한다. SEO 확장은 검색 미리보기·숨기기 스위치를 준다.
 	// 차트 편집기 미리보기는 선택 의존성 `recharts`로 그린다.

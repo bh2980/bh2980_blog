@@ -1,20 +1,12 @@
-import { migratePlugins } from "../../plugin/server";
-import { cmsServerConfig } from "../../server/resolved";
+import { runMigrate } from "./run-migrate";
 
-/** `cms:db:migrate`. 서버 설정(`cms.server.ts`)의 저장소에 표를 만들거나 최신 모양으로 맞춘다. */
-async function main() {
-	const { database } = cmsServerConfig;
-	console.log(`Starting CMS database migration (${database.name})...`);
-	try {
-		await database.migrate();
-		await migratePlugins();
-		console.log("CMS database migration completed successfully!");
-	} catch (err) {
-		console.error("Migration failed:", err);
-		process.exitCode = 1;
-	} finally {
-		await database.close?.();
-	}
-}
-
-main();
+/**
+ * 예전 진입점(`import "@bh2980/cms/migrate"`): 불러오면 바로 표를 만든다. 새 앱은 명령줄 `cms migrate`를 쓴다.
+ *
+ * ```sh
+ * tsx --env-file=.env.local --import @bh2980/cms/register migrate.ts   # migrate.ts: import "@bh2980/cms/migrate";
+ * ```
+ */
+void runMigrate().then((ok) => {
+	if (!ok) process.exitCode = 1;
+});

@@ -9,7 +9,9 @@ export { type R2Options, r2Storage } from "../adapters/r2/adapter";
 export {
 	type AuthAdapter,
 	type AuthContext,
+	type AuthCreateContext,
 	type AuthProvider,
+	CMS_AUTH_BASE_PATH,
 	type CmsAuth,
 	type CmsServerConfig,
 	type DatabaseAdapter,

@@ -45,9 +45,20 @@ export interface AuthProvider {
 	readonly label: string;
 }
 
+/**
+ * 로그인 API의 기본 경로. 관리자 API catch-all(`app/api/cms/[...path]/route.ts`)이 이 아래(`/api/cms/auth/*`)를
+ * 로그인 연결에 넘기므로 로그인 라우트 파일이 따로 없어도 된다.
+ */
+export const CMS_AUTH_BASE_PATH = "/api/cms/auth";
+
 /** 관리자 로그인. Next 라우트(`handlers`)와 관리자 확인을 함께 준다. */
 export interface CmsAuth {
-	/** `/api/auth/[...nextauth]` 라우트 처리기. */
+	/**
+	 * 로그인 API 경로(예: `/api/cms/auth`). `CMS_AUTH_BASE_PATH`이면 관리자 API catch-all이 `handlers`로 넘긴다.
+	 * 다른 경로면 앱이 그 경로에 라우트 파일을 두고 `@bh2980/cms/runtime`의 `handlers`를 내보낸다.
+	 */
+	readonly basePath?: string;
+	/** 로그인 API 라우트 처리기(`basePath` 아래 요청). */
 	readonly handlers: {
 		GET(request: Request): Promise<Response>;
 		POST(request: Request): Promise<Response>;
@@ -66,9 +77,15 @@ export interface CmsAuth {
 	readonly devUserId: string;
 }
 
+/** 로그인 연결을 만들 때 본체가 주는 값. */
+export interface AuthCreateContext {
+	/** 관리자 로그인 화면 주소(관리자 경로 + `/login`, 예: `/admin/login`). */
+	readonly loginPath: string;
+}
+
 export interface AuthAdapter {
 	readonly name: string;
-	create(): CmsAuth;
+	create(context: AuthCreateContext): CmsAuth;
 }
 
 export interface CmsServerConfig {

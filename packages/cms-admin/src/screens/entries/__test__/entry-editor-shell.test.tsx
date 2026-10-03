@@ -414,18 +414,28 @@ describe("entry editor shell", () => {
 				timeout: 10_000,
 			});
 		};
-		const category = (await screen.findByRole("combobox", { name: "카테고리" })) as HTMLInputElement;
-		// Base UI는 실제 입력(`inputType`이 있는 input 이벤트)일 때만 목록을 연다.
-		fireEvent.input(category, { target: { value: "새 카테고리" }, inputType: "insertText" });
-		// 여러 테스트 파일을 함께 돌리면 목록이 늦게 열릴 때가 있어 넉넉히 기다린다(3초로는 가끔 모자랐다).
-		fireEvent.click(await screen.findByRole("option", { name: "'새 카테고리' 추가" }, { timeout: 10_000 }));
+		/**
+		 * 검색어를 넣고 `'이름' 추가` 항목을 누른다. Base UI는 실제 입력(`inputType`이 있는 input 이벤트)일 때만 목록을 연다.
+		 * 여러 테스트 파일을 함께 돌리면 입력 칸이 준비되기 전에 넣은 입력이 사라질 때가 있어, 항목이 보일 때까지 다시 넣는다.
+		 */
+		const typeAndPickAdd = async (field: string, text: string) => {
+			const input = (await screen.findByRole("combobox", { name: field })) as HTMLInputElement;
+			const option = await waitFor(
+				() => {
+					if (!screen.queryByRole("option", { name: `'${text}' 추가` })) {
+						fireEvent.input(input, { target: { value: text }, inputType: "insertText" });
+					}
+					return screen.getByRole("option", { name: `'${text}' 추가` });
+				},
+				{ timeout: 10_000, interval: 200 },
+			);
+			fireEvent.click(option);
+			return input;
+		};
+		const category = await typeAndPickAdd("카테고리", "새 카테고리");
 		await saveIn("카테고리 추가");
 		await waitFor(() => expect(category.value).toBe("새 카테고리"), { timeout: 10_000 });
-		fireEvent.input(screen.getByRole("combobox", { name: "태그" }), {
-			target: { value: "새 태그" },
-			inputType: "insertText",
-		});
-		fireEvent.click(await screen.findByRole("option", { name: "'새 태그' 추가" }, { timeout: 10_000 }));
+		await typeAndPickAdd("태그", "새 태그");
 		await saveIn("태그 추가");
 		await waitFor(() => expect(screen.getAllByText("새 태그").length).toBeGreaterThan(0), { timeout: 10_000 });
 		const creations = methodCalls("POST", "/api/cms/v1/entries").map(([, init]) => JSON.parse(String(init?.body)));

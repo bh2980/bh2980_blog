@@ -23,6 +23,9 @@ export default defineServerConfig({
 		clientSecret: process.env.AUTH_GITHUB_SECRET,
 		adminIds: [process.env.CMS_ADMIN_GITHUB_ID],
 		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1",
+		// 운영 GitHub OAuth 앱의 콜백 주소가 `/api/auth/callback/github`라 예전 로그인 경로를 그대로 쓴다
+		// (`src/app/api/auth/[...nextauth]/route.ts`). 새 사이트는 기본값(`/api/cms/auth`, 라우트 파일 없음)을 쓴다.
+		basePath: "/api/auth",
 	}),
 	secret: process.env.AUTH_SECRET,
 	schedulerToken: process.env.CMS_SCHEDULER_TOKEN,

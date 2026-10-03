@@ -78,7 +78,9 @@ describe("M2-BE-1 AuthGateway Contract", () => {
 	});
 
 	it("githubAuth applies the dev bypass only in development", () => {
-		const auth = githubAuth({ clientId: "id", clientSecret: "secret", adminIds: [ADMIN_ID], devBypass: true }).create();
+		const auth = githubAuth({ clientId: "id", clientSecret: "secret", adminIds: [ADMIN_ID], devBypass: true }).create({
+			loginPath: "/admin/login",
+		});
 		vi.stubEnv("NODE_ENV", "development");
 		expect(auth.devBypass).toBe(true);
 		expect(auth.devUserId).toBe(ADMIN_ID);

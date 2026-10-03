@@ -6,8 +6,15 @@
 
 ## 붙이기
 
-설치·라우트·스타일은 `@bh2980/cms` README의 "빈 Next 앱에 설치"를 따른다. 관리자 화면 주소는 `/admin`이고,
-로그인은 `/admin/login`으로 보낸다.
+설치·라우트·스타일은 `@bh2980/cms` README의 "빈 Next 앱에 설치"를 따른다(`cms init`이 관리자 라우트·스타일 줄을 만든다).
+
+- **관리자 경로.** 기본 `/admin`이고 사이트 설정 `admin.path`로 바꾼다(예: `/studio`). 앱의 관리자 라우트 폴더
+  (`app/(admin)/studio/[[...path]]/page.tsx`·`layout.tsx`)가 같은 경로여야 한다. 화면 안 링크·로그인 이동(`<관리자 경로>/login`)·
+  플러그인 화면 주소가 이 경로를 따른다. 화면 코드는 `@bh2980/cms/client`의 `adminHref("/media")`·`adminEntryEditHref(id)`로
+  주소를 만든다. 관리자 API(`/api/cms/v1`)는 바뀌지 않는다.
+- **사이트 보기.** 사이드바 아래 `사이트 보기`는 `site.home`(기본 `/`)을 연다. 관리자 화면이 다른 호스트에 있으면 전체 주소를 적는다.
+- **미리보기.** 편집 화면 `미리보기`는 `site.previewPath` 뒤에 공개 경로를 붙이고 언어는 `site.previewLocaleParam`(기본
+  `?locale=`)으로 넘긴다. 검색 미리보기의 주소는 `site.localePrefix`를 따른다.
 
 ## 사이트 컴포넌트 넣기
 
@@ -74,8 +81,8 @@ const components = {
 `@bh2980/cms-admin/media`의 `MediaThumbnail`·`useMediaUrl`을 쓴다(SEO 확장 `@bh2980/cms-seo`의 검색 미리보기가 예시다).
 날짜·시각은 사이트 설정의 `timeZone`으로, 표기는 `admin.locale`(기본 `ko-KR`)로 보인다. 관계 입력의 안내 문구는 대상 컬렉션의
 이름표를 쓴다(예: "게시글 고르기"). 항목 컬렉션(`kind: "item"`)의 항목은 목록의 작은 폼으로 연다. 미디어 사용처처럼 여러
-컬렉션을 가리키는 곳은 `/admin?collection=<컬렉션>&open=<ID>`로 그 항목 칸을 열고, `/admin/entries/<ID>/edit`로 열어도 그 주소로
-보낸다. 목록 컬럼 설정에 저장된 이름 중 지금 컬럼이 아닌 것은 버린다(예전 이름을 짐작해 바꾸지 않는다).
+컬렉션을 가리키는 곳은 `<관리자 경로>?collection=<컬렉션>&open=<ID>`로 그 항목 칸을 열고, `<관리자 경로>/entries/<ID>/edit`로 열어도
+그 주소로 보낸다. 목록 컬럼 설정에 저장된 이름 중 지금 컬럼이 아닌 것은 버린다(예전 이름을 짐작해 바꾸지 않는다).
 
 ## 블록 편집 화면
 
@@ -123,7 +130,7 @@ const components = { marks: { note } };
 
 ```ts
 export default defineAdminPlugin({
-	pages: { my: MyPage }, // /admin/my (클라이언트 컴포넌트). 로그인 확인은 관리자 화면이 한다
+	pages: { my: MyPage }, // <관리자 경로>/my(기본 /admin/my, 클라이언트 컴포넌트). 로그인 확인은 관리자 화면이 한다
 	Provider: MyProvider, // 관리자 화면 전체를 감싼다. 안에서 CmsAdminComponentsProvider로 입력·편집 화면 확장을 더한다
 });
 ```
@@ -198,12 +205,14 @@ export const POST = textCheckRoute({
   센다. 띄어쓰기·문법은 보지 못한다.
 - 위치 없이 틀린 낱말만 주는 검사기는 문단 글자에서 낱말을 찾아 위치를 정한다(같은 낱말이 여럿이면 차례대로).
 
-`examples/other-site`의 `app/(admin)/admin/admin-components.tsx`가 브라우저에서 도는 작은 금지어 검사기 예시다.
+`examples/other-site`의 `app/(admin)/studio/admin-components.tsx`가 브라우저에서 도는 작은 금지어 검사기 예시다.
 
 ## 스타일
 
-`@bh2980/cms-admin/styles.css`가 관리자 색 토큰과 배포 묶음의 Tailwind 클래스 찾기(`@source`)를 준다. 앱 쪽 준비물은
-`styles.css` 머리 주석에 적었다.
+`@bh2980/cms-admin/styles.css`가 관리자 색 토큰, 배포 묶음의 Tailwind 클래스 찾기(`@source`), 관리자 화면이 쓰는 Tailwind
+변형(클래스 방식 `dark`, Base UI 방향 `data-horizontal`·`data-vertical`)을 준다. 앱 CSS에 변형을 따로 적지 않아도 된다.
+앱이 같은 이름의 변형을 다시 정하면(이 파일 import 뒤라서) 앱 것이 이긴다. 그때도 `.dark`는 어두운 테마로 남겨 둔다.
+앱 쪽 준비물(`tw-animate-css`·`@tailwindcss/typography`)은 `styles.css` 머리 주석에 적었다.
 
 ## 개발
 

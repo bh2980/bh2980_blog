@@ -2,6 +2,8 @@
 
 import {
 	ADMIN_LOCALE,
+	adminEntryEditHref,
+	adminHref,
 	bodyExcerpt,
 	CMS_TIME_ZONE,
 	previewHref as contentPreviewHref,
@@ -425,7 +427,7 @@ export function EntryEditorShell({
 		const open = async () => {
 			if (mode === "new") {
 				if (isItemCollection(propCollection)) {
-					router.replace(`/admin?collection=${propCollection}`);
+					router.replace(adminHref(`?collection=${propCollection}`) as Route);
 					return;
 				}
 				const backup = await getLocalBackup<EntryForm>(backupKey(adminId, null, propCollection));
@@ -696,7 +698,7 @@ export function EntryEditorShell({
 			// 번역본을 휴지통으로 보내면 원문 편집 화면으로 돌아간다.
 			if (action === "trash" && isTranslationEntry(entry) && entry.translationGroupId) {
 				toast.success(LIFECYCLE_SUCCESS[action]);
-				router.push(`/admin/entries/${entry.translationGroupId}/edit`);
+				router.push(adminEntryEditHref(entry.translationGroupId) as Route);
 				return;
 			}
 			await loadEntry(entry.id);
@@ -727,7 +729,7 @@ export function EntryEditorShell({
 						method: "DELETE",
 					});
 					await deleteLocalBackup(backupKey(adminId, entry.id, entry.collection));
-					router.push(`/admin?collection=${entry.collection}&status=trashed`);
+					router.push(adminHref(`?collection=${entry.collection}&status=trashed`) as Route);
 				} catch (error) {
 					toast.error(errorText(error, "삭제하지 못했습니다."));
 				}
@@ -743,7 +745,7 @@ export function EntryEditorShell({
 				method: "POST",
 				json: { title: copyTitle(collection, formText(formRef.current, "title")) },
 			});
-			router.push(`/admin/entries/${copy.id}/edit`);
+			router.push(adminEntryEditHref(copy.id) as Route);
 		} catch (error) {
 			toast.error(errorText(error, "복제하지 못했습니다."));
 		}
@@ -782,7 +784,7 @@ export function EntryEditorShell({
 				<Alert variant="danger">
 					<AlertDescription className="col-start-auto">{loadError}</AlertDescription>
 				</Alert>
-				<Link href="/admin" className={buttonVariants({ variant: "outline" })}>
+				<Link href={adminHref() as Route} className={buttonVariants({ variant: "outline" })}>
 					목록으로
 				</Link>
 			</div>
@@ -879,7 +881,7 @@ export function EntryEditorShell({
 						<TooltipTrigger
 							render={
 								<Link
-									href={`/admin?collection=${collection}`}
+									href={adminHref(`?collection=${collection}`) as Route}
 									aria-label="목록으로"
 									className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "size-8 text-muted-foreground")}
 								>
@@ -909,7 +911,7 @@ export function EntryEditorShell({
 					)}
 					{autosave.status === "session-expired" && (
 						<a
-							href="/admin/login"
+							href={adminHref("/login") as Route}
 							target="_blank"
 							rel="noreferrer"
 							className={buttonVariants({ variant: "link", size: "xs" })}

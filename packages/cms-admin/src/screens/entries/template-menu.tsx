@@ -1,5 +1,6 @@
 "use client";
 
+import { adminHref } from "@bh2980/cms/client";
 import { FileText, LayoutTemplate, RefreshCw, Settings } from "lucide-react";
 import { useState } from "react";
 import {
@@ -92,7 +93,7 @@ export function TemplateMenu({
 						))
 					)}
 					<DropdownMenuSeparator />
-					<DropdownMenuItem onClick={() => window.open("/admin/templates", "_blank", "noopener")}>
+					<DropdownMenuItem onClick={() => window.open(adminHref("/templates"), "_blank", "noopener")}>
 						<Settings aria-hidden />
 						템플릿 관리
 					</DropdownMenuItem>

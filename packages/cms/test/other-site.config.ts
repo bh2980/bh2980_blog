@@ -106,7 +106,17 @@ export default defineConfig({
 	collections: { article, topic, author },
 	locales: [{ code: "en", name: "English" }],
 	defaultLocale: "en",
-	site: { url: "https://example.org", name: "Example site", previewPath: "/preview" },
+	site: {
+		url: "https://example.org",
+		name: "Example site",
+		previewPath: "/preview",
+		// 블로그와 다른 주소 규칙(M10-4): 모든 언어에 접두사, 미리보기 언어는 경로로, 사이트 보기는 다른 호스트.
+		localePrefix: "always",
+		previewLocaleParam: false,
+		home: "https://example.org/",
+	},
+	// 관리자 화면 경로도 블로그(`/admin`)와 다르게 둔다.
+	admin: { path: "/studio" },
 	timeZone: "UTC",
 	blocks: [chartBlock, quoteCard, mapBlock],
 });

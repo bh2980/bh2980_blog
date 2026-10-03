@@ -36,12 +36,38 @@ export interface SiteConfig {
 	readonly name?: string;
 	/**
 	 * 초안 미리보기 주소 앞부분(예: `/preview`). 편집 화면의 `미리보기`가 이 뒤에 공개 경로(컬렉션 `path`)를 붙여 연다.
-	 * 기본 언어가 아니면 `?locale=`을 붙인다. 없으면 미리보기 단추가 없다.
+	 * 기본 언어가 아니면 언어를 `previewLocaleParam` 쿼리로 넘긴다. 없으면 미리보기 단추가 없다.
 	 */
 	readonly previewPath?: string;
+	/**
+	 * 미리보기 주소에 언어를 넘기는 쿼리 이름. 기본 `locale`(`/preview/posts/a?locale=en`).
+	 * `false`면 쿼리 대신 `localePrefix` 규칙대로 경로에 언어를 넣는다(`/preview/en/posts/a`).
+	 */
+	readonly previewLocaleParam?: string | false;
+	/**
+	 * 공개 주소에 언어를 붙이는 방식. 검색 미리보기·초안 미리보기·`localizePath`가 따른다.
+	 * - `except-default`(기본): 기본 언어는 접두사 없이(`/posts/a`), 다른 언어는 `/{code}`(`/en/posts/a`)
+	 * - `always`: 모든 언어에 `/{code}`
+	 * - `never`: 어느 언어도 접두사 없이(언어마다 도메인이 다르거나 언어가 하나일 때)
+	 */
+	readonly localePrefix?: LocalePrefixMode;
+	/**
+	 * 관리자 사이드바 `사이트 보기`가 여는 주소. 경로(`/`)나 전체 주소(`https://example.com`). 기본 `/`
+	 * (관리자 화면이 사이트 앱 안에 있을 때 사이트 첫 화면).
+	 */
+	readonly home?: string;
 }
 
+/** 공개 주소의 언어 접두사 방식(`site.localePrefix`). */
+export type LocalePrefixMode = "except-default" | "always" | "never";
+export const LOCALE_PREFIX_MODES: readonly LocalePrefixMode[] = ["except-default", "always", "never"];
+
 export interface AdminConfig {
+	/**
+	 * 관리자 화면 경로. 기본 `/admin`. 앱의 관리자 라우트 폴더가 같은 경로여야 한다
+	 * (`/studio`이면 `app/(admin)/studio/[[...path]]/page.tsx`). 관리자 API(`/api/cms/v1`)는 바뀌지 않는다.
+	 */
+	readonly path?: string;
 	/**
 	 * 관리자 화면의 날짜·숫자 표기 언어(BCP 47, 예: `en-US`). 없으면 `ko-KR`. 화면 글(버튼·안내)은 바꾸지 않는다.
 	 * 시각은 `timeZone`으로 보인다.
@@ -159,6 +185,23 @@ function validateFieldMeanings(collection: string, schema: CollectionSchema): vo
 	}
 }
 
+/** 관리자 화면 기본 경로(`admin.path`가 없을 때). */
+export const DEFAULT_ADMIN_PATH = "/admin";
+
+/** 관리자 경로 모양: `/`로 시작하는 한 칸 이상의 경로(끝 `/` 없이), `/api` 아래는 안 된다. */
+export const isAdminPath = (path: string): boolean =>
+	/^(\/[A-Za-z0-9._~-]+)+$/.test(path) && !/^\/api(\/|$)/.test(path);
+
+const isHomeHref = (href: string): boolean => {
+	if (href.startsWith("/")) return !href.startsWith("//");
+	try {
+		const url = new URL(href);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+};
+
 /** 설정이 서로 맞는지 확인한다. 틀리면 앱이 뜰 때 바로 알린다. */
 function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugin[]>): void {
 	const names = Object.keys(config.collections);
@@ -187,6 +230,22 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 		} catch {
 			throw new Error(`cms.config: timeZone "${config.timeZone}" is not an IANA time zone`);
 		}
+	}
+
+	if (config.admin?.path !== undefined && !isAdminPath(config.admin.path)) {
+		throw new Error(
+			`cms.config: admin.path "${config.admin.path}" must be a path like "/admin" (not "/" and not under "/api")`,
+		);
+	}
+	if (config.site?.localePrefix !== undefined && !LOCALE_PREFIX_MODES.includes(config.site.localePrefix)) {
+		throw new Error(`cms.config: site.localePrefix must be one of ${LOCALE_PREFIX_MODES.join(", ")}`);
+	}
+	const previewParam = config.site?.previewLocaleParam;
+	if (previewParam !== undefined && previewParam !== false && !/^[A-Za-z][\w-]*$/.test(previewParam)) {
+		throw new Error(`cms.config: site.previewLocaleParam "${previewParam}" is not a query name`);
+	}
+	if (config.site?.home !== undefined && !isHomeHref(config.site.home)) {
+		throw new Error(`cms.config: site.home "${config.site.home}" must be a path ("/") or an http(s) URL`);
 	}
 
 	if (config.admin?.locale !== undefined) {

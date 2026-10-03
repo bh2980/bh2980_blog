@@ -1,7 +1,13 @@
 "use client";
 
 import type { CollectionPreferences, PreferencesBody } from "@bh2980/cms/client";
-import { COLLECTION_DEFINITIONS, isDocumentCollection, isItemCollection } from "@bh2980/cms/client";
+import {
+	adminEntryEditHref,
+	adminHref,
+	COLLECTION_DEFINITIONS,
+	isDocumentCollection,
+	isItemCollection,
+} from "@bh2980/cms/client";
 import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
@@ -44,7 +50,7 @@ export type ListMode = "list" | "trash";
 function useListState(mode: ListMode) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const basePath = mode === "trash" ? "/admin/trash" : "/admin";
+	const basePath = mode === "trash" ? adminHref("/trash") : adminHref();
 	const parsed = useMemo(() => parseListState(new URLSearchParams(searchParams.toString())), [searchParams]);
 	const [preferences, setPreferences] = useState<PreferencesBody | null>(null);
 
@@ -299,7 +305,7 @@ export function useEntryList(mode: ListMode) {
 		showRecord({ collection: state.collection, id: openParam });
 		const next = new URLSearchParams(searchParams.toString());
 		next.delete(OPEN_ITEM_PARAM);
-		router.replace(`/admin?${next.toString()}` as Route, { scroll: false });
+		router.replace(adminHref(`?${next.toString()}`) as Route, { scroll: false });
 	}, [openParam]);
 
 	const mutations = useEntryMutations({
@@ -377,7 +383,7 @@ export function useEntryList(mode: ListMode) {
 				fallback: "복제하지 못했습니다.",
 			});
 			toast.success(`'${item.title || "제목 없음"}'을(를) 복제했습니다.`);
-			router.push(`/admin/entries/${copy.id}/edit` as Route);
+			router.push(adminEntryEditHref(copy.id) as Route);
 		} catch (error) {
 			toast.error(errorText(error, "복제하지 못했습니다."));
 		}
@@ -388,10 +394,12 @@ export function useEntryList(mode: ListMode) {
 		isRecord
 			? void openRecord({ collection, id: null })
 			: router.push(
-					`/admin/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}` as Route,
+					adminHref(
+						`/entries/new?collection=${collection}${state.folder !== "all" ? `&folder=${state.folder}` : ""}`,
+					) as Route,
 				);
 
-	const editHref = (item: ListEntriesItem) => `/admin/entries/${item.id}/edit`;
+	const editHref = (item: ListEntriesItem) => adminEntryEditHref(item.id);
 	const rowMenu = (item: ListEntriesItem): MenuAction[] =>
 		rowMenuActions(
 			actionTargets(item, items, selectedIds),

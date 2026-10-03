@@ -26,6 +26,7 @@ export {
 	type CollectionsConfig,
 	defineConfig,
 	type LocaleConfig,
+	type LocalePrefixMode,
 	type SeedConfig,
 	type SeedTemplate,
 	type SiteConfig,

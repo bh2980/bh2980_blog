@@ -1,5 +1,6 @@
 "use client";
 
+import { adminHref } from "@bh2980/cms/client";
 import { CmsApiError, cmsFetch } from "@bh2980/cms-admin/api";
 import { SlotRegistryProvider, type SlotSource } from "@bh2980/cms-admin/slots";
 import { useQuery } from "@tanstack/react-query";
@@ -171,11 +172,9 @@ export function inputFromContext(
 	return { input, env };
 }
 
-/**
- * 관리자 로그인 화면인가(관리자 경로 아래 `login`). 로그인 전에는 기능 목록을 묻지 않는다. 관리자 화면이 어느 경로에
- * 붙든 같게 본다.
- */
-const isLoginScreen = (pathname: string | null) => pathname !== null && /\/login\/?$/.test(pathname);
+/** 관리자 로그인 화면인가(관리자 경로 `admin.path` 아래 `login`). 로그인 전에는 기능 목록을 묻지 않는다. */
+const isLoginScreen = (pathname: string | null) =>
+	pathname !== null && pathname.replace(/\/$/, "") === adminHref("/login");
 
 /**
  * AI 기능을 화면 자리에 연결한다. 켠 기능 중 붙을 곳(`attach`)이 이 자리인 것이 버튼으로 붙는다.

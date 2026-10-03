@@ -1,3 +1,4 @@
+import { adminEntryEditHref } from "@bh2980/cms/client";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminQueryProvider } from "../../shared/query-provider";
@@ -105,7 +106,7 @@ describe("미디어 라이브러리", () => {
 			within(detail)
 				.getByRole("link", { name: /고양이 글 · 공개본/ })
 				.getAttribute("href"),
-		).toBe("/admin/entries/e1/edit");
+		).toBe(adminEntryEditHref("e1"));
 		// 쓰이는 파일은 지울 수 없다.
 		expect((within(detail).getByRole("button", { name: "삭제" }) as HTMLButtonElement).disabled).toBe(true);
 	});

@@ -1,6 +1,7 @@
 import type { ContentStore, Entry } from "./adapters/postgres/content-store";
 import { CmsError } from "./adapters/postgres/store/errors";
 import type { MediaStore } from "./adapters/r2/types";
+import { adminHref } from "./core/admin-paths";
 import type { CmsAuth } from "./server/define";
 import { cmsServerConfig } from "./server/resolved";
 import { createContentService } from "./services/content-service";
@@ -39,7 +40,7 @@ export function getCmsMediaStore(): MediaStore {
 }
 
 export function getCmsAuth(): CmsAuth {
-	global.__cmsAuth ??= cmsServerConfig.auth.create();
+	global.__cmsAuth ??= cmsServerConfig.auth.create({ loginPath: adminHref("/login") });
 	return global.__cmsAuth;
 }
 

@@ -1,4 +1,4 @@
-import { isItemCollection } from "@bh2980/cms/client";
+import { adminEntryEditHref, adminHref, isItemCollection } from "@bh2980/cms/client";
 
 /** 목록 화면에서 항목을 열어 두는 주소 값(`?collection=tag&open=<ID>`). 항목 컬렉션은 편집 화면 대신 목록의 작은 폼으로 연다. */
 export const OPEN_ITEM_PARAM = "open";
@@ -9,7 +9,7 @@ export const OPEN_ITEM_PARAM = "open";
  */
 export function entryHref(collection: string | null | undefined, id: string): string {
 	if (collection && isItemCollection(collection)) {
-		return `/admin?${new URLSearchParams({ collection, [OPEN_ITEM_PARAM]: id }).toString()}`;
+		return adminHref(`?${new URLSearchParams({ collection, [OPEN_ITEM_PARAM]: id }).toString()}`);
 	}
-	return `/admin/entries/${id}/edit`;
+	return adminEntryEditHref(id);
 }

@@ -1,4 +1,6 @@
+import { adminHref } from "@bh2980/cms/client";
 import { auth, authProviders, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@bh2980/cms/runtime";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Button } from "../../ui/button";
@@ -6,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 
 export default async function AdminLoginPage() {
 	if (isDevAuthBypassEnabled()) {
-		redirect("/admin");
+		redirect(adminHref() as Route);
 	}
 
 	const session = await auth();
@@ -14,7 +16,7 @@ export default async function AdminLoginPage() {
 
 	// 이미 관리자로 로그인했으면 바로 대시보드로 간다.
 	if (accountId && isAllowedAdminId(accountId)) {
-		redirect("/admin");
+		redirect(adminHref() as Route);
 	}
 
 	const isUnauthorizedUser = Boolean(accountId && !isAllowedAdminId(accountId));
@@ -39,7 +41,7 @@ export default async function AdminLoginPage() {
 							<form
 								action={async () => {
 									"use server";
-									await signOut({ redirectTo: "/admin/login" });
+									await signOut({ redirectTo: adminHref("/login") });
 								}}
 								className="mt-3"
 							>
@@ -55,7 +57,7 @@ export default async function AdminLoginPage() {
 									key={provider.id}
 									action={async () => {
 										"use server";
-										await signIn(provider.id, { redirectTo: "/admin" });
+										await signIn(provider.id, { redirectTo: adminHref() });
 									}}
 								>
 									<Button type="submit" className="w-full">

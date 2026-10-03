@@ -7,7 +7,11 @@
 
 @custom-variant dark (&:where(.dark, .dark *, .kui-scheme--dark, .kui-scheme--dark *));
 
-/* Base UI는 data-horizontal/data-vertical 대신 data-orientation을 붙이므로 shadcn 클래스를 여기에 맞춘다 */
+/*
+ * Base UI는 data-horizontal/data-vertical 대신 data-orientation을 붙이므로 shadcn 클래스를 여기에 맞춘다.
+ * 관리자 패키지 스타일도 같은 변형을 정하지만 블로그 공개 화면 컴포넌트(button-group·toggle-group·separator)가 쓰므로
+ * 블로그 것을 둔다. 어두운 테마(dark)도 블로그 것(코드 블록 테마 포함)이 관리자 패키지 것을 덮는다.
+ */
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
 @custom-variant data-vertical (&[data-orientation="vertical"]);
 

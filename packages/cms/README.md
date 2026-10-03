@@ -5,143 +5,144 @@ DB(Postgres) 기반 블로그 CMS의 본체. 사이트 설정, 컬렉션 스키�
 
 ## 빈 Next 앱에 설치
 
-Next 16(App Router)·React 19·Tailwind CSS 4 앱 기준이다. 저장소는 Postgres만 지원한다.
+Next 16(App Router)·React 19·Tailwind CSS 4 앱 기준이다. 저장소는 Postgres만 지원한다. 순서는 `cms init` → 컬렉션 고치기 → `cms migrate`다.
 
 ### 1. 패키지
 
 ```sh
 pnpm add @bh2980/cms @bh2980/cms-admin next-auth@5.0.0-beta.32 next-themes @tanstack/react-query sonner \
   @tiptap/core @tiptap/pm @tiptap/react
-pnpm add -D tsx tw-animate-css @tailwindcss/typography
+pnpm add -D tw-animate-css @tailwindcss/typography
 ```
 
 관리자 패키지와 AI 플러그인은 React Query·sonner·Tiptap을 앱과 같은 하나로 써야 해서 앱이 설치한다(peer).
+명령줄 `cms`는 `@bh2980/cms`에 들어 있다(TypeScript 설정 파일은 함께 설치되는 tsx가 읽는다).
 
-### 2. 사이트 설정 `cms.config.ts`
+### 2. `cms init`
 
-서버와 관리자 화면이 함께 읽는다. 비밀 값은 넣지 않는다.
+앱 폴더(`package.json`이 있는 곳)에서 돌린다. **있는 파일은 덮어쓰지 않고** "건너뛴 파일"로 알린다. 다시 돌려도 안전하다.
+
+```sh
+pnpm exec cms init                       # 관리자 화면 /admin
+pnpm exec cms init --admin-path /studio  # 관리자 화면 경로를 바꿀 때
+```
+
+| 하는 일 | 파일 |
+| --- | --- |
+| 사이트 설정(컬렉션 하나짜리 시작점) | `cms.config.ts` |
+| 서버 설정(DB·GitHub 로그인, 비밀 값은 환경 변수) | `cms.server.ts` |
+| 관리자 화면 | `app/(admin)/admin/[[...path]]/page.tsx`·`layout.tsx` |
+| 관리자 API와 로그인(`/api/cms/v1/*`·`/api/cms/auth/*`) | `app/api/cms/[...path]/route.ts` |
+| 설정 별칭 `@cms-config`·`@cms-server` | `tsconfig.json` `paths`에 더한다 |
+| 관리자 스타일 줄 | 전역 CSS(`app/globals.css` 등)의 마지막 `@import` 다음에 더한다 |
+| 설정 잇기(`withCms`) | `next.config.ts`(`export default nextConfig;` 한 줄인 기본 모양일 때), 없으면 만든다 |
+
+`src/app`을 쓰는 앱이면 설정 파일을 `src/`에, 라우트를 `src/app/` 아래에 만든다. 안전하게 고칠 수 없는 파일(주석이 있는
+`tsconfig.json`, 기본 모양이 아닌 next 설정, Tailwind 4가 없는 CSS)은 그대로 두고 넣을 내용을 "할 일"로 보인다.
+끝에 설치할 패키지·환경 변수·GitHub 콜백 주소를 알려 준다.
+
+`--admin-path`를 주면 라우트 폴더가 그 경로(`app/(admin)/studio/…`)가 되고 사이트 설정에 `admin: { path: "/studio" }`가
+들어간다. **관리자 경로는 사이트 설정 `admin.path`와 라우트 폴더가 같아야 한다.** 나중에 바꿀 때도 둘을 함께 바꾼다.
+관리자 API 경로(`/api/cms/v1`)는 바뀌지 않는다.
+
+### 3. 컬렉션 고치기
+
+`cms.config.ts`는 서버와 관리자 화면이 함께 읽는다. 비밀 값은 넣지 않는다. 만들어진 시작점은 이렇다.
 
 ```ts
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 
-const article = defineCollection({
-	label: "Article",
+const post = defineCollection({
+	label: "글",
 	kind: "document", // 본문·초안·발행. 태그 같은 작은 항목은 "item"
-	path: "/blog/:slug/", // 공개 주소. 본문 내부 링크·미리보기 주소에 쓴다
-	icon: "newspaper", // 관리자 사이드바 아이콘(lucide 이름)
+	path: "/posts/:slug", // 공개 주소. 본문 내부 링크·미리보기 주소에 쓴다
+	icon: "file-text", // 관리자 사이드바 아이콘(lucide 이름)
 	fields: {
-		title: fields.text({ label: "Title", required: true }), // 발행(항목은 저장) 때 비면 안 된다
-		slug: fields.slug({ label: "Slug", from: "title", required: true }),
+		title: fields.text({ label: "제목", required: true, max: 200 }), // 제목 필드 이름은 `title`
+		slug: fields.slug({ label: "주소", from: "title", required: true }),
+		summary: fields.text({ label: "요약", role: "summary", multiline: true, fillFromBody: true }),
 	},
 	// layout·list를 적지 않으면 필드 순서대로 그리고 기본 목록 컬럼을 쓴다("컬렉션").
 });
 
 export default defineConfig({
-	collections: { article },
-	locales: [{ code: "en", name: "English" }],
-	defaultLocale: "en",
-	site: { name: "My site", previewPath: "/preview" },
-	timeZone: "UTC",
+	collections: { post },
+	locales: [{ code: "ko", name: "한국어" }],
+	defaultLocale: "ko",
+	site: { name: "내 사이트" },
+	timeZone: "Asia/Seoul",
 });
 ```
 
-### 3. 서버 설정 `cms.server.ts`
+컬렉션 이름(`post`)은 DB에 저장되므로 운영 중에 바꾸지 않는다. 필드 규칙은 아래 "설정"을 본다.
 
-저장소·미디어·로그인 연결과 비밀 값. 서버에서만 읽힌다. 연결은 처음 쓸 때 만들어 빌드 중에는 환경 변수가 비어 있어도 된다.
+서버 설정 `cms.server.ts`는 저장소·미디어·로그인 연결과 비밀 값이고 서버에서만 읽힌다. 연결은 처음 쓸 때 만들어 빌드 중에는
+환경 변수가 비어 있어도 된다. 이미지 올리기를 쓰려면 `media: r2Storage({ … })`(S3 호환)를 더한다.
 
-```ts
-import { defineServerConfig, githubAuth, postgres } from "@bh2980/cms/server";
+### 4. 환경 변수와 `cms migrate`
 
-export default defineServerConfig({
-	database: postgres({ connectionString: process.env.CMS_DATABASE_URL, schema: process.env.CMS_SCHEMA }),
-	auth: githubAuth({
-		clientId: process.env.AUTH_GITHUB_ID,
-		clientSecret: process.env.AUTH_GITHUB_SECRET,
-		adminIds: [process.env.CMS_ADMIN_GITHUB_ID], // 관리자 GitHub 숫자 ID
-		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1", // `next dev`에서만 로그인 없이 관리자
-	}),
-	secret: process.env.AUTH_SECRET,
-	// media: r2Storage({ … }) — 미디어(이미지 올리기)를 쓸 때
-});
+`.env.local`에 둔다.
+
+| 이름 | 뜻 |
+| --- | --- |
+| `CMS_DATABASE_URL` | Postgres 연결 주소 |
+| `CMS_SCHEMA` | 선택. 같은 DB를 나눠 쓸 때 스키마 이름(없으면 `public`) |
+| `AUTH_SECRET` | 임의의 긴 값. 로그인 세션·AI 키 암호화 |
+| `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET` | GitHub OAuth 앱. 콜백 주소는 `<사이트 주소>/api/cms/auth/callback/github` |
+| `CMS_ADMIN_GITHUB_ID` | 관리자 GitHub 숫자 ID |
+| `CMS_DEV_AUTH_BYPASS` | 선택. `1`이면 `next dev`에서 로그인 없이 관리자 |
+
+```sh
+pnpm exec cms migrate
 ```
 
-### 4. 두 설정을 잇기
+표를 만들거나 최신 모양으로 맞춘다(플러그인 표 포함). 여러 번 돌려도 결과가 같고, 패키지를 올린 뒤에도 다시 돌린다.
 
-CMS 코드는 두 설정 파일을 `@cms-config`·`@cms-server`라는 이름으로 읽는다.
+- 환경 파일: 기본으로 `.env.local`·`.env`(있는 것만)를 읽는다. 셸에서 준 값이 이기고 앞 파일이 뒤 파일을 이긴다.
+  `--env-file <파일>`(여러 번)로 고르고 `--no-env-file`이면 읽지 않는다.
+- 설정 파일: `--config`·`--server` → `CMS_CONFIG_PATH`·`CMS_SERVER_PATH` → `tsconfig.json` `paths`의 별칭 →
+  `./cms.config.ts`·`./src/cms.config.ts` 순서로 찾는다.
+- 예전 방식(`migrate.ts`에 `import "@bh2980/cms/migrate";`를 두고 `tsx --import @bh2980/cms/register migrate.ts`)도 그대로 돈다.
 
-```ts
-// next.config.ts
-import { withCms } from "@bh2980/cms/next";
+### 5. 실행
 
-export default withCms({ /* 기존 설정 */ }, { config: "./cms.config.ts", server: "./cms.server.ts" });
-```
+`next dev`로 띄우고 관리자 경로(기본 `/admin`)를 연다.
 
-```jsonc
-// tsconfig.json
-{ "compilerOptions": { "paths": { "@cms-config": ["./cms.config.ts"], "@cms-server": ["./cms.server.ts"] } } }
-```
+### 로그인 경로
 
-테스트(Vitest)를 쓰면 `resolve.alias`에도 같은 별칭을 둔다.
-
-### 5. 라우트 네 개
+GitHub 로그인 API는 기본으로 관리자 API 라우트가 함께 받는다(`/api/cms/auth/*`). 그래서 로그인 라우트 파일이 따로 없다.
+예전처럼 `/api/auth/*`를 쓰는 앱(이미 등록한 OAuth 콜백 주소를 바꾸지 않으려는 앱)은 경로를 고르고 라우트 파일을 둔다.
 
 ```ts
-// app/api/cms/[...path]/route.ts — 관리자 API(/api/cms/v1/*)
-import { createCmsRouteHandler } from "@bh2980/cms/next/route-handler";
-export const { GET, POST, PATCH, PUT, DELETE } = createCmsRouteHandler();
+// cms.server.ts
+auth: githubAuth({ /* … */, basePath: "/api/auth" }),
 
-// app/api/auth/[...nextauth]/route.ts — 로그인
+// app/api/auth/[...nextauth]/route.ts
 import { handlers } from "@bh2980/cms/runtime";
 export const { GET, POST } = handlers;
 ```
 
-```tsx
-// app/(admin)/admin/layout.tsx — 관리자 화면
-import { CmsAdminLayout } from "@bh2980/cms-admin/next";
-export { cmsAdminMetadata as metadata } from "@bh2980/cms-admin/next";
-export default function AdminLayout({ children }) {
-	return <CmsAdminLayout>{children}</CmsAdminLayout>;
-}
+`basePath`가 기본값이 아니면 관리자 API 라우트는 `/api/cms/auth/*`를 받지 않는다(404). bh2980 블로그가 이 방식이다.
 
-// app/(admin)/admin/[[...path]]/page.tsx
-export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
-```
+### 선택 의존성
 
-### 6. 스타일
+CMS 패키지의 선택 의존성(예: 블록 확장의 `mermaid`·`recharts`)은 그 기능을 쓸 때만 설치한다. 설치하지 않은 것은 `withCms`가
+빈 모듈(`@bh2980/cms/stubs/missing-optional`)로 이어 빌드가 멈추지 않게 하고, 그 기능을 쓰면 설치하라는 오류가 난다.
+설치한 뒤에는 개발 서버를 다시 띄운다.
 
-앱의 Tailwind 입력 CSS(루트 레이아웃이 import하는 파일)에 더한다.
+### 직접 잇기 (`cms init` 없이)
+
+`cms init`이 하는 일을 손으로 하려면: 두 설정 파일을 만들고, `next.config.ts`를
+`withCms(nextConfig, { config: "./cms.config.ts", server: "./cms.server.ts" })`로 감싸고, `tsconfig.json` `paths`에
+`"@cms-config": ["./cms.config.ts"]`·`"@cms-server": ["./cms.server.ts"]`를 더하고(테스트(Vitest)를 쓰면 `resolve.alias`에도),
+위 표의 라우트 파일 셋을 두고, 전역 CSS에 아래 줄을 넣는다.
 
 ```css
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@bh2980/cms-admin/styles.css";
+@import "@bh2980/cms-admin/styles.css"; /* 관리자 화면이 쓰는 Tailwind 변형(dark·data-horizontal·data-vertical)도 정한다 */
 @plugin "@tailwindcss/typography";
-
-@custom-variant dark (&:where(.dark, .dark *));
-@custom-variant data-horizontal (&[data-orientation="horizontal"]);
-@custom-variant data-vertical (&[data-orientation="vertical"]);
 ```
-
-### 7. 환경 변수와 DB 표
-
-`.env.local`에 `CMS_DATABASE_URL`, `AUTH_SECRET`(임의의 긴 값), 로그인용 `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`·
-`CMS_ADMIN_GITHUB_ID`(또는 로컬에서 `CMS_DEV_AUTH_BYPASS=1`)를 둔다. 그다음 표를 만든다.
-
-```ts
-// migrate.ts
-import "@bh2980/cms/migrate";
-```
-
-```sh
-tsx --env-file=.env.local --import @bh2980/cms/register migrate.ts
-```
-
-`@bh2980/cms/register`는 Next 밖에서 `@cms-config`·`@cms-server`를 `./cms.config.ts`·`./cms.server.ts`로 잇는다
-(다른 곳이면 `CMS_CONFIG_PATH`·`CMS_SERVER_PATH`). 플러그인 표도 함께 만든다. 패키지를 올린 뒤에도 다시 돌린다.
-
-### 8. 실행
-
-`next dev`로 띄우고 `/admin`을 연다.
 
 ### 블록 확장 (선택)
 
@@ -223,7 +224,9 @@ export default defineConfig({
 | `@bh2980/cms/client` | 화면 코드 | API 모양·컬렉션·언어·주소·블록·스키마 도우미 |
 | `@bh2980/cms/mdx`·`/code-block` | 공개 렌더러·편집기 | MDX 해석·직렬화, 코드 블록 주석 모델 |
 | `@bh2980/cms/plugin/server` | 플러그인 서버 쪽 | 라우트 틀·DB 연결·오류 |
-| `@bh2980/cms/migrate`·`/register` | 명령줄 | 표 만들기, 설정 별칭 잇기 |
+| `cms`(명령줄, 패키지 `bin`) | 터미널 | `cms init`(파일 만들기)·`cms migrate`(표 만들기) |
+| `@bh2980/cms/cli` | 명령줄 도구 | `runCli`·`initProject`·`migrate`(명령 `cms`의 코드) |
+| `@bh2980/cms/migrate`·`/register` | 명령줄(예전 방식) | 표 만들기, 직접 만든 스크립트에서 설정 별칭 잇기 |
 | `@bh2980/cms/testing` | 테스트 | 격리 스키마 DB·예시 데이터 |
 
 ## 패키지 빌드
@@ -342,7 +345,7 @@ export const myPlugin = () =>
 - `contributes`는 다른 플러그인에 더하는 것이다. 키와 모양은 받는 플러그인이 정하고 본체는 읽지 않는다. 예를 들어
   `contributes: { ai: { actions: { … } } }`는 AI 플러그인(`@bh2980/cms-ai`)이 있으면 그 기능을 더하고, 없으면 쓰이지 않는다.
   확장은 받는 플러그인을 몰라도 기능을 더할 수 있다(블록 확장의 다이어그램 만들기, SEO 확장의 검색 제목 추천).
-- 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms:db:migrate`가 본체 표 다음에 부른다.
+- 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms migrate`가 본체 표 다음에 부른다.
 - 플러그인 코드는 `@bh2980/cms/plugin/server`의 `getCmsDatabase()`(DB 연결)와 본체 라우트 틀(`adminRoute` 등)을 쓴다.
 
 ## 서버 설정
@@ -351,7 +354,7 @@ export const myPlugin = () =>
 |---|---|
 | `database` | 콘텐츠 저장소. `postgres({ connectionString, schema })` |
 | `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
-| `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass })` |
+| `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath? })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로") |
 | `secret` | AI 서비스 키를 DB에 암호화해 둘 때 쓰는 키. 바꾸면 저장된 키를 다시 넣어야 한다. |
 | `schedulerToken` | 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. |
 
@@ -363,9 +366,15 @@ export const myPlugin = () =>
 |---|---|
 | `collections` | 컬렉션 이름 → `defineCollection` 정의. 이름은 DB에 저장되므로 운영 중에 바꾸지 않는다. |
 | `locales` | 콘텐츠 언어 목록(`code`, `name`, 관리자 화면 이름 `label`). |
-| `defaultLocale` | 기본 언어. 공개 주소에 언어 접두사가 붙지 않는다. |
+| `defaultLocale` | 기본 언어(번역의 원본). 기본 주소 방식에서는 공개 주소에 언어 접두사가 붙지 않는다. |
 | `site.url` | 공개 사이트 주소. 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 환경 변수에서 읽어도 된다. |
 | `site.aliases` | 같은 사이트로 볼 다른 호스트 이름(예: `www.example.com`). |
+| `site.name` | 관리자 화면에 보이는 사이트 이름. 없으면 `site.url`의 호스트 이름. |
+| `site.home` | 관리자 사이드바 `사이트 보기` 주소. 경로나 전체 주소. 기본 `/`. |
+| `site.localePrefix` | 공개 주소에 언어를 붙이는 방식. `except-default`(기본: 기본 언어는 그대로, 다른 언어는 `/{code}`)·`always`(모든 언어에 `/{code}`)·`never`(붙이지 않음). 검색 미리보기·초안 미리보기·`localizePath`가 따른다. |
+| `site.previewPath` | 초안 미리보기 주소 앞부분(예: `/preview`). 없으면 미리보기 단추가 없다. |
+| `site.previewLocaleParam` | 미리보기 주소에 언어를 넘기는 쿼리 이름(기본 `locale`, 기본 언어가 아닐 때만 `?locale=en`). `false`면 `localePrefix` 규칙대로 경로에 넣는다(`/preview/en/posts/a`). |
+| `admin.path` | 관리자 화면 경로(기본 `/admin`). 앱의 관리자 라우트 폴더와 같아야 한다. `/`나 `/api` 아래는 안 된다. 화면 안 링크·로그인 이동·플러그인 화면 주소가 따른다. |
 | `codeBlock.lineEffects` | 코드 블록 줄 효과 더하기·바꾸기("코드 블록 줄 효과"). |
 | `admin.locale` | 관리자 화면의 날짜·숫자 표기 언어(BCP 47). 없으면 `ko-KR`. 시각은 `timeZone`으로 보인다. |
 | `admin.legacyBackupNames` | 예전 브라우저 복구본 DB 이름. 관리자 화면이 읽고 지우되 새로 만들지 않는다(지금 이름 `cms_backup`). |
@@ -430,7 +439,8 @@ layout: [{ fields: ["title", "slug", "excerpt"] }], // hero·credit은 Media 탭
 
 `defineConfig`는 관계 필드가 없는 컬렉션을 가리키거나, 기본 언어가 목록에 없거나, `title`이 없거나, 주소 필드가 둘 이상이거나,
 역할이 겹치거나 `summary`가 텍스트 필드가 아니거나, 탭 이름이 1~20자가 아니거나, `from`·`fillFromBody`가 필드와 맞지 않거나,
-필드 이름이 `translations`이거나, 컬렉션 종류가 없으면 앱이 뜰 때 바로 오류를 낸다.
+필드 이름이 `translations`이거나, 컬렉션 종류가 없거나, `admin.path`·`site.localePrefix`·`site.previewLocaleParam`·`site.home`
+모양이 틀리면 앱이 뜰 때 바로 오류를 낸다.
 
 복제(`POST /api/cms/v1/entries/:id/duplicate`)는 본문에 `{ title }`을 받으면 복제본 제목을 그 값으로 둔다(관리자 화면은 원본
 제목에 "(복사)"를 붙여 보낸다). 없으면 원본 제목 그대로다. 저장소는 붙일 말을 정하지 않는다.

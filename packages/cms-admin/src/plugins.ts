@@ -8,7 +8,7 @@ import type { ComponentType, ReactNode } from "react";
  */
 export interface CmsAdminPlugin {
 	/**
-	 * `/admin/<경로>` 화면(클라이언트 컴포넌트). 사이드바 항목은 플러그인 정의의 `nav`다.
+	 * 관리자 경로 아래 `<경로>` 화면(기본 `/admin/<경로>`, 클라이언트 컴포넌트). 사이드바 항목은 플러그인 정의의 `nav`다.
 	 * 관리자 로그인 확인은 관리자 화면이 그리기 전에 한다.
 	 */
 	readonly pages?: Readonly<Record<string, ComponentType>>;

@@ -1,7 +1,15 @@
 "use client";
 
 import type { CmsPlugin } from "@bh2980/cms";
-import { COLLECTION_DEFINITIONS, COLLECTIONS, type Collection, cmsConfig, SITE_NAME } from "@bh2980/cms/client";
+import {
+	adminHref,
+	COLLECTION_DEFINITIONS,
+	COLLECTIONS,
+	type Collection,
+	cmsConfig,
+	SITE_HOME,
+	SITE_NAME,
+} from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
 import {
 	ChevronRight,
@@ -301,7 +309,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 		<Sidebar collapsible="icon">
 			<SidebarHeader className="flex-row items-center gap-1 px-3 pt-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
 				<Link
-					href="/admin"
+					href={adminHref() as Route}
 					onClick={closeMobile}
 					className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[collapsible=icon]:hidden"
 				>
@@ -327,7 +335,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						<SidebarMenu aria-label="컬렉션">
 							{COLLECTIONS.map((collection) =>
 								navLink(
-									`/admin?collection=${collection}`,
+									adminHref(`?collection=${collection}`),
 									collection,
 									COLLECTION_DEFINITIONS[collection].label,
 									<CollectionIcon collection={collection} />,
@@ -340,13 +348,13 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 					<SidebarGroupLabel>관리</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu aria-label="관리">
-							{features.media && navLink("/admin/media", "media", "미디어", <FileImage />)}
-							{navLink("/admin/templates", "templates", "본문 템플릿", <LayoutTemplate />)}
+							{features.media && navLink(adminHref("/media"), "media", "미디어", <FileImage />)}
+							{navLink(adminHref("/templates"), "templates", "본문 템플릿", <LayoutTemplate />)}
 							{PLUGIN_NAV.map((item) =>
-								navLink(`/admin/${item.path}`, item.path, item.label, <NamedIcon name={item.icon} />),
+								navLink(adminHref(`/${item.path}`), item.path, item.label, <NamedIcon name={item.icon} />),
 							)}
 							{navLink(
-								"/admin/trash",
+								adminHref("/trash"),
 								"trash",
 								"휴지통",
 								<Trash2 />,
@@ -360,12 +368,12 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
 			</SidebarContent>
 			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
-				{/* 관리자 화면은 사이트 앱 안의 경로(`/admin`)라 사이트 첫 화면은 `/`다. */}
+				{/* 사이트 첫 화면(`site.home`, 기본 `/`). 관리자 화면이 사이트 앱 안에 있어 `/`가 사이트다. */}
 				<Tooltip>
 					<TooltipTrigger
 						render={
 							<Link
-								href="/"
+								href={SITE_HOME as Route}
 								aria-label="사이트 보기"
 								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
 							/>
