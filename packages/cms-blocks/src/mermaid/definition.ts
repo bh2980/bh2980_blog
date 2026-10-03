@@ -3,8 +3,8 @@ import { defineBlock } from "@bh2980/cms";
 /** Mermaid 다이어그램(` ```mermaid `). 편집기 미리보기와 공개 화면은 사이트가 그린다. */
 export const mermaidBlock = defineBlock({
 	name: "mermaid",
-	label: "다이어그램(Mermaid)",
-	description: "다이어그램·흐름도 삽입",
+	label: "다이어그램",
+	description: "Mermaid 다이어그램·흐름도",
 	syntax: { kind: "fence", lang: "mermaid" },
 	component: "Mermaid",
 	attributes: {},

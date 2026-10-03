@@ -99,7 +99,7 @@ describe("화면 자리", () => {
 		cleanup();
 		const empty = renderSlot([() => [action({ instant: true, run: async () => ({ kind: "candidates", items: [] }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
-		expect(await screen.findByText("맞는 후보가 없습니다.")).toBeTruthy();
+		expect(await screen.findByText("맞는 결과가 없습니다.")).toBeTruthy();
 		expect(empty.apply).not.toHaveBeenCalled();
 	});
 
@@ -111,7 +111,10 @@ describe("화면 자리", () => {
 		expect(run).not.toHaveBeenCalled();
 		const input = screen.getByRole("textbox", { name: "추가 요청" });
 		fireEvent.change(input, { target: { value: "  tailwind 클래스만 " } });
+		// Enter는 줄바꿈이고 Cmd/Ctrl+Enter로 실행한다.
 		fireEvent.keyDown(input, { key: "Enter" });
+		expect(run).not.toHaveBeenCalled();
+		fireEvent.keyDown(input, { key: "Enter", metaKey: true });
 
 		await screen.findByRole("button", { name: "react-query" });
 		expect(run.mock.calls[0]?.[0]).toEqual({ title: "제목", request: "tailwind 클래스만" });
@@ -134,17 +137,17 @@ describe("화면 자리", () => {
 		expect(apply).not.toHaveBeenCalled();
 	});
 
-	it("긴 글 결과는 적용 버튼으로 적용하고, 메모는 적용 버튼이 없다", async () => {
+	it("긴 글 결과는 바꾸기 버튼으로 넣고, 메모는 넣는 버튼이 없다", async () => {
 		const { apply } = renderSlot([() => [action({ run: async () => ({ kind: "text", text: "요약 글" }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
-		fireEvent.click(await screen.findByRole("button", { name: "적용" }));
+		fireEvent.click(await screen.findByRole("button", { name: "바꾸기" }));
 		expect(apply).toHaveBeenCalledWith("요약 글", "replace");
 
 		cleanup();
 		renderSlot([() => [action({ apply: "none", run: async () => ({ kind: "note", text: "메모" }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
 		await waitFor(() => expect(screen.getByText("메모")).toBeTruthy());
-		expect(screen.queryByRole("button", { name: "적용" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "바꾸기" })).toBeNull();
 	});
 
 	it("만드는 중에 자리가 사라져도 요청을 멈추지 않고, 다시 그리면 결과가 남아 있다", async () => {

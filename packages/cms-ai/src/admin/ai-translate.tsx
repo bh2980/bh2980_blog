@@ -4,11 +4,11 @@ import type { EditorExtension } from "@bh2980/cms-admin";
 import { errorText } from "@bh2980/cms-admin/api";
 import type { BlockAction } from "@bh2980/cms-admin/editor";
 import { Button } from "@bh2980/cms-admin/ui/button";
-import { Input } from "@bh2980/cms-admin/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@bh2980/cms-admin/ui/popover";
+import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import type { Editor } from "@tiptap/react";
 import { Languages, Square } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { runAiActionMany, useAiActions } from "./ai-slot-provider";
 import { applyTranslation, collectUnits, type TranslateUnit, unitAt } from "./ai-translate-units";
@@ -81,26 +81,41 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 	const [request, setRequest] = useState("");
 	const [open, setOpen] = useState(false);
 	const abortRef = useRef<AbortController | null>(null);
+	/** 블록 하나씩 번역하는 요청. 툴바의 `중지`가 함께 멈춘다. */
+	const blockAbortRef = useRef(new Map<number, AbortController>());
 
 	const setEditor = useCallback((editor: Editor | null) => {
 		editorRef.current = editor;
 	}, []);
+
+	/** 진행 중인 번역(모두 번역·블록 번역)을 모두 멈춘다. */
+	const stop = useCallback(() => {
+		abortRef.current?.abort();
+		for (const controller of blockAbortRef.current.values()) controller.abort();
+	}, []);
+
+	// 편집 화면을 떠나면 진행 중인 번역을 멈춘다.
+	useEffect(() => stop, [stop]);
 
 	const translateOne = useCallback(
 		async (editor: Editor, pos: number) => {
 			if (!locales) return;
 			const unit = unitAt(editor.state.doc, pos);
 			if (!unit) return;
+			// 블록 번역은 툴바의 추가 요청을 쓰지 않는다(그 요청은 `모두 번역`에만 붙는다).
+			blockAbortRef.current.get(pos)?.abort();
+			const controller = new AbortController();
+			blockAbortRef.current.set(pos, controller);
 			setBusyBlocks((current) => new Set([...current, pos]));
 			try {
 				const [result] = await requestTranslation(
 					actionKey,
 					[{ id: "b0", mdx: unit.mdx }],
 					locales,
-					request,
-					new AbortController().signal,
+					"",
+					controller.signal,
 				);
-				if (!result) return;
+				if (!result || controller.signal.aborted) return;
 				if ("error" in result) {
 					toast.error(`번역하지 못해 원문 틀로 두었습니다. ${result.error}`);
 					return;
@@ -109,12 +124,14 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				if (applied === "changed") toast.message("그사이 블록이 바뀌어 넣지 않았습니다.");
 				else if (applied === "invalid") toast.error("번역 결과가 이 자리에 맞지 않아 원문 틀로 두었습니다.");
 			} catch (error) {
-				toast.error(errorText(error, "번역하지 못했습니다."));
+				if (controller.signal.aborted) toast.message("번역을 멈췄습니다.");
+				else toast.error(errorText(error, "실행하지 못했습니다."));
 			} finally {
+				if (blockAbortRef.current.get(pos) === controller) blockAbortRef.current.delete(pos);
 				setBusyBlocks((current) => new Set([...current].filter((item) => item !== pos)));
 			}
 		},
-		[locales, request, actionKey],
+		[locales, actionKey],
 	);
 
 	const translateAll = useCallback(async () => {
@@ -160,7 +177,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 					}
 				} catch (error) {
 					if (controller.signal.aborted) return;
-					fatal = errorText(error, "번역하지 못했습니다.");
+					fatal = errorText(error, "실행하지 못했습니다.");
 				}
 				setProgress((current) => (current ? { ...current, done: current.done + group.length } : current));
 			}
@@ -172,7 +189,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		else if (fatal) toast.error(fatal);
 		else if (failures.length > 0 || skipped > 0) {
 			toast.warning(
-				`${blocks.length - failures.length - skipped}개 블록을 번역했습니다. ${failures.length + skipped}개는 원문 틀로 남겼습니다.${failures[0] ? ` (${failures[0]})` : ""}`,
+				`${blocks.length - failures.length - skipped}개 블록을 번역했습니다. ${failures.length + skipped}개는 원문 틀로 남겼습니다.${failures[0] ? ` · ${failures[0]}` : ""}`,
 			);
 		} else toast.success(`${blocks.length}개 블록을 번역했습니다.`);
 	}, [locales, request, actionKey]);
@@ -183,7 +200,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				? {
 						id: "ai-translate",
 						label: "번역",
-						icon: <Languages aria-hidden />,
+						icon: <Languages aria-hidden className="size-3.5" />,
 						isAvailable: (editor, pos) => unitAt(editor.state.doc, pos) !== null && progress === null,
 						isBusy: (pos) => busyBlocks.has(pos),
 						run: (editor, pos) => void translateOne(editor, pos),
@@ -192,18 +209,20 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		[available, busyBlocks, progress, translateOne],
 	);
 
+	const running = progress !== null || busyBlocks.size > 0;
 	const toolbar = available ? (
-		progress ? (
-			<Button
-				type="button"
-				size="sm"
-				variant="ghost"
-				className="gap-1.5 text-muted-foreground"
-				onClick={() => abortRef.current?.abort()}
-			>
-				<Square aria-hidden className="size-3.5" />
-				번역 중 {progress.done}/{progress.total}
-			</Button>
+		running ? (
+			<span className="flex items-center gap-1">
+				{progress && (
+					<span className="text-muted-foreground text-xs tabular-nums">
+						번역 중 {progress.done}/{progress.total}
+					</span>
+				)}
+				<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={stop}>
+					<Square aria-hidden className="size-4" />
+					중지
+				</Button>
+			</span>
 		) : (
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger
@@ -213,25 +232,35 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 					모두 번역
 				</PopoverTrigger>
 				<PopoverContent align="end" className="w-72 gap-2 p-3 text-xs">
-					{feature?.askInstruction && (
-						<Input
-							aria-label="추가 요청"
-							placeholder="추가 요청"
-							value={request}
-							onChange={(event) => setRequest(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-									event.preventDefault();
-									void translateAll();
-								}
-							}}
-							className="h-8 text-xs"
-						/>
-					)}
-					<Button type="button" size="sm" onClick={() => void translateAll()}>
-						<Languages aria-hidden />
-						번역 시작
-					</Button>
+					<form
+						className="flex flex-col gap-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void translateAll();
+						}}
+					>
+						{feature?.askInstruction && (
+							<Textarea
+								aria-label="추가 요청"
+								placeholder="추가 요청"
+								rows={3}
+								value={request}
+								onChange={(event) => setRequest(event.target.value)}
+								onKeyDown={(event) => {
+									// 줄바꿈은 Enter, 실행은 Cmd/Ctrl+Enter다.
+									if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
+										event.preventDefault();
+										void translateAll();
+									}
+								}}
+								className="min-h-16 resize-y text-xs md:text-xs"
+							/>
+						)}
+						<Button type="submit" size="sm" className="self-end">
+							<Languages aria-hidden />
+							실행
+						</Button>
+					</form>
 				</PopoverContent>
 			</Popover>
 		)

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import type { Editor, JSONContent } from "@tiptap/core";
-import { PenLine, Sparkles, Wand2 } from "lucide-react";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiActionView } from "../actions";
 import { streamAiAction, useAiActions } from "./ai-slot-provider";
@@ -104,7 +104,9 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 		}
 	};
 
-	// 고칠 글이 정해진 다듬기는 열자마자 실행한다. 초안과 요청을 받는 블록 기능은 요청을 먼저 받는다.
+	// 초안(insert)은 고칠 글이 없으니 늘 요청을 받는다. 요청 받기를 켠 기능도 요청을 먼저 받는다.
+	const askRequest = job.mode === "insert" || action.askInstruction;
+	// 고칠 글이 정해진 다듬기·블록 고치기는 열자마자 실행한다. 요청 받기를 켠 블록 기능은 요청을 먼저 받는다.
 	const fixed = job.mode === "selection" || (job.mode === "block" && !action.askInstruction);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 열 때 한 번만 실행한다
 	useEffect(() => {
@@ -134,6 +136,8 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 	);
 	const running = state.status === "running";
 	const result = "text" in state ? state.text : "";
+	// 실패해도 받은 글이 있으면 보인다.
+	const showResult = running || state.status === "done" || (state.status === "error" && !!state.text);
 	// 고친 글(다듬기)은 바뀐 곳부터, 블록·초안은 그린 모양부터 본다.
 	const [view, setView] = useState<"preview" | "source">(job.mode === "selection" ? "source" : "preview");
 
@@ -146,24 +150,24 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 						{action.label}
 					</DialogTitle>
 				</DialogHeader>
-				{action.askInstruction && (
+				{askRequest && (
 					<form
 						className="space-y-2"
 						onSubmit={(event) => {
 							event.preventDefault();
-							void run();
+							if (!running) void run();
 						}}
 					>
 						<Textarea
-							aria-label="요청"
+							aria-label="추가 요청"
 							value={request}
 							rows={3}
 							onChange={(event) => setRequest(event.target.value)}
 							onKeyDown={(event) => {
-								// 줄바꿈은 Enter, 보내기는 Cmd/Ctrl+Enter다.
-								if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !running) {
+								// 줄바꿈은 Enter, 실행은 Cmd/Ctrl+Enter다.
+								if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
 									event.preventDefault();
-									void run();
+									if (!running) void run();
 								}
 							}}
 							placeholder={
@@ -174,36 +178,52 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 						/>
 						<div className="flex justify-end">
 							<Button type="submit" size="sm" disabled={running}>
-								{state.status === "idle" ? "쓰기" : "다시"}
+								{state.status === "idle" ? <Sparkles aria-hidden /> : <RefreshCw aria-hidden />}
+								{running ? "실행 중…" : state.status === "idle" ? "실행" : "다시 실행"}
 							</Button>
 						</div>
 					</form>
 				)}
-				<Tabs value={view} onValueChange={(value) => setView(value as "preview" | "source")} className="min-w-0 gap-2">
-					<TabsList>
-						<TabsTrigger value="preview">미리보기</TabsTrigger>
-						<TabsTrigger value="source">{job.mode === "insert" ? "원문" : "바뀐 곳"}</TabsTrigger>
-					</TabsList>
-					<output aria-live="polite" className="block min-w-0">
-						{state.status === "idle" ? (
-							<p className="rounded-md border border-dashed p-6 text-center text-muted-foreground text-xs">
-								요청을 적고 쓰기를 누르세요.
-							</p>
-						) : view === "preview" ? (
-							<ResultPreview job={job} text={result} done={state.status === "done"} />
-						) : (
-							<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-								{diff ? <DiffText parts={diff} /> : result || "쓰는 중..."}
-							</pre>
-						)}
-					</output>
-				</Tabs>
+				{showResult && (
+					<Tabs
+						value={view}
+						onValueChange={(value) => setView(value as "preview" | "source")}
+						className="min-w-0 gap-2"
+					>
+						<TabsList>
+							<TabsTrigger value="preview">미리보기</TabsTrigger>
+							<TabsTrigger value="source">{job.mode === "insert" ? "원문" : "바뀐 곳"}</TabsTrigger>
+						</TabsList>
+						<output aria-live="polite" className="block min-w-0">
+							{view === "preview" ? (
+								<ResultPreview job={job} text={result} done={state.status === "done"} />
+							) : (
+								<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed">
+									{diff ? <DiffText parts={diff} /> : result || "실행 중…"}
+								</pre>
+							)}
+						</output>
+					</Tabs>
+				)}
 				{(state.status === "error" || blockProblem) && (
 					<p role="alert" className="text-destructive text-xs">
 						{state.status === "error" ? state.message : blockProblem}
 					</p>
 				)}
 				<DialogFooter>
+					{!askRequest && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="sm:mr-auto"
+							disabled={running}
+							onClick={() => void run()}
+						>
+							<RefreshCw aria-hidden />
+							{running ? "실행 중…" : "다시 실행"}
+						</Button>
+					)}
 					<Button type="button" variant="outline" size="sm" onClick={onClose}>
 						취소
 					</Button>
@@ -251,7 +271,7 @@ function ResultPreview({ job, text, done }: { job: Job; text: string; done: bool
 	const after = done ? (
 		<MdxPreview mdx={text} label="바뀐 뒤" />
 	) : (
-		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || "쓰는 중..."}</pre>
+		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || "실행 중…"}</pre>
 	);
 	if (job.mode === "insert") return <div className={PANEL}>{after}</div>;
 	return (
@@ -309,7 +329,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 			usable.selection.map((action) => ({
 				id: `ai:${action.key}`,
 				label: action.label,
-				icon: <Wand2 aria-hidden className="size-4" />,
+				icon: <Sparkles aria-hidden className="size-4" />,
 				run: (current) => {
 					const { from, to } = current.state.selection;
 					if (from === to) return;
@@ -324,7 +344,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 			usable.insert.map((action) => ({
 				id: `ai:${action.key}`,
 				title: action.label,
-				description: "AI로 커서 자리에 쓰기",
+				description: "AI 기능",
 				keywords: ["ai", "초안", "draft", action.label],
 				icon: "sparkles",
 				run: (current, range) => setJob({ mode: "insert", action, editor: current, from: range.from, to: range.to }),
@@ -372,13 +392,14 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 					<Button
 						type="button"
 						variant="ghost"
-						size="xs"
+						size="sm"
+						className="gap-1.5 text-muted-foreground"
 						onClick={() => {
 							const { from, to } = editor.state.selection;
 							setJob({ mode: "insert", action: firstInsert, editor, from, to });
 						}}
 					>
-						<PenLine aria-hidden />
+						<Sparkles aria-hidden className="size-4" />
 						{firstInsert.label}
 					</Button>
 				)}

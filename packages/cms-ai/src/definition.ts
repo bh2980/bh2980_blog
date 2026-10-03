@@ -101,7 +101,7 @@ export const SLOT_LABELS: Record<AiSlot, string> = {
 	media: "미디어 파일",
 	translation: "번역",
 	selection: "선택 영역 메뉴",
-	insert: "삽입 메뉴",
+	insert: "넣기 메뉴",
 	block: "블록",
 };
 
@@ -123,9 +123,9 @@ export const RESULT_LABELS: Record<AiResult, string> = {
 };
 
 export const APPLY_LABELS: Record<AiApply, string> = {
-	replace: "누르면 교체",
-	append: "누르면 추가",
-	none: "적용 안 함",
+	replace: "바꾸기",
+	append: "넣기",
+	none: "보기만",
 };
 
 export const CHECK_LABELS: Record<AiCheckKind, string> = {

@@ -111,7 +111,7 @@ export function ModelCombobox({
 							value={item}
 							className={cn("font-mono text-xs", item.custom && "text-primary")}
 						>
-							<span className="truncate">{item.custom ? `'${item.label}' 쓰기` : item.label}</span>
+							<span className="truncate">{item.custom ? `'${item.label}' 사용` : item.label}</span>
 						</ComboboxItem>
 					)}
 				</ComboboxList>

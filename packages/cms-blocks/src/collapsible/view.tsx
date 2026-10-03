@@ -2,16 +2,19 @@
 
 import {
 	AttributeInput,
+	BlockSettings,
 	ContainerToolbar,
 	focusInside,
+	SELECTED_RING,
 	selectContainer,
 	useContainerValues,
 	useSelectedChildIndex,
 } from "@bh2980/cms-admin/blocks";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 /**
  * 공개 화면의 접기와 같은 모양. 처음 모습은 `defaultOpen`을 따르고, 제목 옆 화살표로 편집 중에도 여닫는다.
@@ -24,6 +27,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 	const [open, setOpen] = useState(defaultOpen);
 	const selectionInside = useSelectedChildIndex(editor, getPos) !== -1;
 	const editable = editor.isEditable;
+	const defaultOpenId = useId();
 
 	useEffect(() => {
 		if (selectionInside) setOpen(true);
@@ -44,16 +48,13 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 		<NodeViewWrapper
 			data-cms-container-node="cmsCollapsible"
 			data-cms-framed
-			className={cn(
-				"group/container relative my-6 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
-				selected && "ring-2 ring-ring",
-			)}
+			className={cn("group/container relative my-6 rounded-md border bg-background", selected && SELECTED_RING)}
 		>
 			<div
 				contentEditable={false}
 				className={cn(
-					"not-prose flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-slate-700 text-sm dark:text-slate-200",
-					open && "bg-slate-100 dark:bg-slate-800",
+					"not-prose flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-foreground text-sm",
+					open && "bg-muted",
 				)}
 			>
 				<button
@@ -61,13 +62,10 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 					aria-expanded={open}
 					aria-label={open ? "접기" : "펼치기"}
 					onClick={toggle}
-					className="-m-1 rounded p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
+					className="-m-1 rounded p-1 hover:bg-accent"
 				>
 					<ChevronRight
-						className={cn(
-							"size-4 shrink-0 text-slate-500 transition-transform dark:text-slate-400",
-							open && "rotate-90",
-						)}
+						className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
 					/>
 				</button>
 				<AttributeInput
@@ -85,7 +83,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 			</div>
 			<NodeViewContent
 				className={cn(
-					"px-3 pt-2 pb-3 text-slate-700 dark:text-slate-200",
+					"px-3 pt-2 pb-3 text-foreground",
 					// 안쪽 첫·끝 블록의 prose 여백이 상자 안쪽 여백에 더해지지 않게 0으로 둔다(중첩 커스텀 블록은 react-renderer 안 래퍼가 여백을 가진다).
 					"[&>[data-node-view-content-react]>:first-child]:mt-0 [&>[data-node-view-content-react]>:last-child]:mb-0",
 					"[&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0",
@@ -95,15 +93,18 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 				data-cms-collapsed={open ? undefined : ""}
 			/>
 			{editable ? (
-				<ContainerToolbar label="접기 도구" visible={defaultOpen}>
-					<label className="flex cursor-pointer items-center gap-1.5 px-1.5 py-0.5 text-xs">
-						<input
-							type="checkbox"
-							checked={defaultOpen}
-							onChange={(event) => setValue("defaultOpen", event.target.checked)}
-						/>
-						처음부터 펼치기
-					</label>
+				<ContainerToolbar label="접기 도구">
+					<BlockSettings>
+						<label htmlFor={defaultOpenId} className="flex items-center justify-between gap-2">
+							<span className="text-muted-foreground">처음부터 펼치기</span>
+							<Switch
+								id={defaultOpenId}
+								size="sm"
+								checked={defaultOpen}
+								onCheckedChange={(checked) => setValue("defaultOpen", checked)}
+							/>
+						</label>
+					</BlockSettings>
 				</ContainerToolbar>
 			) : null}
 		</NodeViewWrapper>

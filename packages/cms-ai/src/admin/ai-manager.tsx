@@ -9,10 +9,10 @@ import {
 	schemaOf,
 } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
+import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { AdminShell } from "@bh2980/cms-admin/shell";
-import { Alert, AlertDescription } from "@bh2980/cms-admin/ui/alert";
-import { Badge } from "@bh2980/cms-admin/ui/badge";
+import { SLOT_CHIP } from "@bh2980/cms-admin/slots";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Checkbox } from "@bh2980/cms-admin/ui/checkbox";
 import {
@@ -21,18 +21,20 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@bh2980/cms-admin/ui/dropdown-menu";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
+import { Field, FieldGroup, FieldLabel, FieldTitle } from "@bh2980/cms-admin/ui/field";
+import { IconButton } from "@bh2980/cms-admin/ui/icon-button";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Label } from "@bh2980/cms-admin/ui/label";
-import { Skeleton } from "@bh2980/cms-admin/ui/skeleton";
 import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Code, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2, X } from "lucide-react";
-import { useId, useState } from "react";
+import { Code, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
-import { draftCustomView } from "../action-view";
+import { resolveAction } from "../action";
+import { draftCustomView, viewOf } from "../action-view";
 import type { AiActionView } from "../actions";
 import type { CustomBase } from "../custom";
 import {
@@ -46,7 +48,7 @@ import {
 	SLOT_LABELS,
 	SLOT_TARGETS,
 } from "../definition";
-import { AI_SHARED_KEYS } from "../registry";
+import { AI_SHARED_KEYS, actionDefinition } from "../registry";
 import {
 	AI_ACTIONS_KEY,
 	type AiActionsResponse,
@@ -55,13 +57,18 @@ import {
 	runAiActionMany,
 	useAiActions,
 } from "./ai-slot-provider";
-import { ConnectionManager, useAiSettings } from "./connection-editor";
-import { CustomBaseFields, NEW_CUSTOM_BASE } from "./custom-editor";
+import {
+	ConnectionManager,
+	DETAIL_PANE,
+	InlineError,
+	ListRow,
+	ListSkeleton,
+	LoadError,
+	useAiSettings,
+} from "./connection-editor";
+import { CustomBaseFields, NEW_CUSTOM_BASE, OptionSelect } from "./custom-editor";
 import { ModelCombobox, useModelList } from "./model-combobox";
-import { SharedTextsEditor } from "./shared-editor";
-
-const selectClass =
-	"h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+import { PROMPT_ROWS, PROMPT_TEXTAREA, SharedTextsEditor } from "./shared-editor";
 
 /** 붙을 곳의 보이는 이름. 필드는 컬렉션 정의의 이름이다. */
 function placeLabel(action: Pick<AiActionView, "attach">): string {
@@ -116,6 +123,16 @@ const editableOf = (action: AiActionView): Editable => ({
 	checks: action.checks,
 });
 
+/** 코드 기능의 기본값(고친 값 없이 정의만으로 만든 값). 화면 기능은 되돌릴 기본값이 없다. */
+function defaultSpecOf(feature: AiActionView): Editable | null {
+	if (feature.custom) return null;
+	const definition = actionDefinition(feature.key);
+	return definition ? editableOf(viewOf(resolveAction(feature.key, definition), undefined)) : null;
+}
+
+/** 고치는 값의 비교 열쇠. 열 때 값과 다르면 저장하지 않은 내용이 있다. */
+const snapshotOf = (spec: Editable, base: CustomBase | undefined) => JSON.stringify({ spec, base });
+
 /** 번역본 편집기의 블록 번역 기능인가(시험이 예시 MDX·대상 언어를 받는다). */
 const isTranslation = (action: AiActionView) =>
 	action.result === "mdx" && action.attach.some((attach) => attach.slot === "translation");
@@ -157,42 +174,81 @@ function sampleContext(action: AiActionView, sample: Sample): AiRunContext {
 	return context;
 }
 
+type AiTab = "features" | "connections" | "shared";
+
 /**
- * 관리자 AI 화면(v2 D). `기능` 탭은 코드로 정해 둔 기능 목록이고, 기능마다 켜기·요청 받기·연결·모델·보낼 내용·
- * 지시문·검사를 고친 뒤 저장 전에 시험한다. `연결` 탭에서 서비스 주소·키·기본 모델을 여러 개 저장한다.
+ * 관리자 AI 화면(v2 D). `기능` 탭은 코드로 정해 둔 기능과 화면에서 만든 기능의 목록이고, 기능마다 켜기·요청 받기·연결·
+ * 모델·보낼 내용·지시문·검사를 고친 뒤 저장 전에 시험한다. `연결` 탭에서 서비스 주소·키·기본 모델을 여러 개 저장한다.
+ * 저장하지 않은 내용이 있는 채로 다른 항목·탭을 열면 버릴지 묻는다.
  */
 export function AiManager() {
 	const queryClient = useQueryClient();
 	const featuresQuery = useAiActions();
+	const settingsQuery = useAiSettings();
 	const features = featuresQuery.data?.items ?? [];
 	const usable = new Set(featuresQuery.data?.usable ?? []);
-	const [tab, setTab] = useState<"features" | "connections" | "shared">("features");
-	/** 고치는 기능. `isNew`면 아직 저장하지 않은 새 화면 기능이다(저장하면 만든다). */
+	const [tab, setTab] = useState<AiTab>("features");
+	/** 고치는 기능. `isNew`면 아직 저장하지 않은 새 화면 기능이다(저장하면 만든다). `initial`은 열 때 값이다. */
 	const [editing, setEditing] = useState<{
 		feature: AiActionView;
 		spec: Editable;
 		base?: CustomBase;
 		isNew?: boolean;
+		initial: string;
 	} | null>(null);
 	const [saving, setSaving] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
+	/** 연 연결. 머리의 `연결 추가`가 여기서 바꾸므로 연결 탭 밖에 둔다. */
+	const [connection, setConnection] = useState<string | "new" | null>(null);
+	const [connectionDirty, setConnectionDirty] = useState(false);
+	const [sharedDirty, setSharedDirty] = useState(false);
+	const { confirm, confirmDiscard, dialog } = useConfirm();
+
+	const featureDirty = editing !== null && snapshotOf(editing.spec, editing.base) !== editing.initial;
 
 	const replaceInCache = (feature: AiActionView) =>
 		queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
 			data ? { ...data, items: data.items.map((item) => (item.key === feature.key ? feature : item)) } : data,
 		);
 
+	/** 묻지 않고 연다(저장한 뒤 등). */
 	const open = (feature: AiActionView) => {
-		setEditing({ feature, spec: editableOf(feature), ...(feature.custom ? { base: feature.custom } : {}) });
+		const spec = editableOf(feature);
+		setEditing({
+			feature,
+			spec,
+			...(feature.custom ? { base: feature.custom } : {}),
+			initial: snapshotOf(spec, feature.custom),
+		});
 		setFormError(null);
 	};
 
+	/** 목록에서 연다. 저장하지 않은 내용이 있으면 먼저 묻는다. */
+	const openFeature = async (feature: AiActionView) => {
+		if (editing && !editing.isNew && editing.feature.key === feature.key) return;
+		if (await confirmDiscard(featureDirty)) open(feature);
+	};
+
 	/** 새 화면 기능을 오른쪽에 연다. 기본 정보·연결·지시문 등을 다 고친 뒤 저장하면 만든다. */
-	const startNew = () => {
+	const startNew = async () => {
+		if (!(await confirmDiscard(featureDirty))) return;
 		const base = NEW_CUSTOM_BASE();
 		const feature = draftCustomView(base);
-		setEditing({ feature, spec: editableOf(feature), base, isNew: true });
+		const spec = editableOf(feature);
+		setEditing({ feature, spec, base, isNew: true, initial: snapshotOf(spec, base) });
 		setFormError(null);
+	};
+
+	const openConnection = async (id: string | "new") => {
+		if (id === connection) return;
+		if (await confirmDiscard(connectionDirty)) setConnection(id);
+	};
+
+	/** 탭을 바꾼다. 연결·공통 문구 탭은 닫으면 입력이 사라지므로 저장하지 않은 내용이 있으면 묻는다. */
+	const changeTab = async (next: AiTab) => {
+		const dirty = (tab === "connections" && connectionDirty) || (tab === "shared" && sharedDirty);
+		if (await confirmDiscard(dirty)) setTab(next);
 	};
 
 	/**
@@ -229,18 +285,29 @@ export function AiManager() {
 	};
 
 	const remove = async (feature: AiActionView) => {
+		const ok = await confirm({
+			title: "기능 삭제",
+			description: `'${feature.label}'을(를) 삭제할까요?`,
+			confirmLabel: "삭제",
+			destructive: true,
+		});
+		if (!ok) return;
+		setDeleting(true);
+		setFormError(null);
 		try {
 			await cmsFetch(`/api/cms/v1/ai/actions/${feature.key}?expectedVersion=${feature.version}`, {
 				method: "DELETE",
-				fallback: "지우지 못했습니다.",
+				fallback: "삭제하지 못했습니다.",
 			});
 			queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
 				data ? { ...data, items: data.items.filter((item) => item.key !== feature.key) } : data,
 			);
 			setEditing(null);
-			toast.success(`'${feature.label}'을(를) 지웠습니다.`);
+			toast.success("삭제했습니다.");
 		} catch (error) {
-			toast.error(errorText(error, "지우지 못했습니다."));
+			setFormError(errorText(error, "삭제하지 못했습니다."));
+		} finally {
+			setDeleting(false);
 		}
 	};
 
@@ -248,38 +315,30 @@ export function AiManager() {
 		if (!editing) return;
 		setSaving(true);
 		setFormError(null);
-		if (editing.isNew && editing.base) {
-			try {
-				const createdFeature = await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
+		try {
+			if (editing.isNew && editing.base) {
+				const created = await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
 					method: "POST",
 					json: { base: { ...editing.base, label: editing.base.label.trim() }, value: editing.spec },
-					fallback: "만들지 못했습니다.",
+					fallback: "저장하지 못했습니다.",
 				});
 				queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
-					data ? { ...data, items: [...data.items, createdFeature] } : data,
+					data ? { ...data, items: [...data.items, created] } : data,
 				);
-				open(createdFeature);
-				toast.success("만들었습니다.");
-				void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
-			} catch (error) {
-				setFormError(errorText(error, "만들지 못했습니다."));
-			} finally {
-				setSaving(false);
+				open(created);
+			} else {
+				const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
+					method: "PATCH",
+					json: {
+						expectedVersion: editing.feature.version,
+						value: editing.spec,
+						...(editing.base ? { base: { ...editing.base, label: editing.base.label.trim() } } : {}),
+					},
+					fallback: "저장하지 못했습니다.",
+				});
+				replaceInCache(saved);
+				open(saved);
 			}
-			return;
-		}
-		try {
-			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
-				method: "PATCH",
-				json: {
-					expectedVersion: editing.feature.version,
-					value: editing.spec,
-					...(editing.base ? { base: { ...editing.base, label: editing.base.label.trim() } } : {}),
-				},
-				fallback: "저장하지 못했습니다.",
-			});
-			replaceInCache(saved);
-			open(saved);
 			toast.success("저장했습니다.");
 			void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
 		} catch (error) {
@@ -289,33 +348,33 @@ export function AiManager() {
 		}
 	};
 
-	const reset = async (feature: AiActionView) => {
-		try {
-			const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${feature.key}/reset`, {
-				method: "POST",
-				json: { expectedVersion: feature.version },
-				fallback: "되돌리지 못했습니다.",
-			});
-			replaceInCache(saved);
-			open(saved);
-			toast.success("기본값으로 되돌렸습니다.");
-		} catch (error) {
-			toast.error(errorText(error, "되돌리지 못했습니다."));
-		}
-	};
+	const onConnectionDirty = useCallback((dirty: boolean) => setConnectionDirty(dirty), []);
+	const onSharedDirty = useCallback((dirty: boolean) => setSharedDirty(dirty), []);
+
+	const headerActions =
+		tab === "features" ? (
+			<Button type="button" size="sm" onClick={() => void startNew()}>
+				<Plus aria-hidden />
+				기능 추가
+			</Button>
+		) : tab === "connections" ? (
+			<Button type="button" size="sm" onClick={() => void openConnection("new")}>
+				<Plus aria-hidden />
+				연결 추가
+			</Button>
+		) : null;
+	const count =
+		tab === "features"
+			? featuresQuery.data?.items.length
+			: tab === "connections"
+				? settingsQuery.data?.providers.length
+				: AI_SHARED_KEYS.length;
 
 	return (
-		<AdminShell
-			title={
-				<span className="flex items-center gap-2">
-					AI <Badge variant="secondary">총 {features.length}개</Badge>
-				</span>
-			}
-			sidebar={{ activeNav: "ai" }}
-		>
+		<AdminShell title="AI" count={count} headerActions={headerActions} sidebar={{ activeNav: "ai" }}>
 			<Tabs
 				value={tab}
-				onValueChange={(value) => setTab(value as typeof tab)}
+				onValueChange={(value) => void changeTab(value as AiTab)}
 				className="flex min-h-0 flex-1 flex-col gap-0"
 			>
 				<TabsList variant="line" className="h-10 shrink-0 justify-start gap-4 border-b px-4">
@@ -336,101 +395,106 @@ export function AiManager() {
 				</TabsList>
 				<TabsContent value="features" className="flex min-h-0 flex-1 flex-col">
 					{featuresQuery.error && !featuresQuery.data && (
-						<Alert variant="danger" className="m-3 w-auto">
-							<AlertDescription className="col-start-auto">
-								{errorText(featuresQuery.error, "AI 기능 목록을 불러올 수 없습니다.")}
-							</AlertDescription>
-						</Alert>
+						<LoadError
+							message={errorText(featuresQuery.error, "AI 기능 목록을 불러올 수 없습니다.")}
+							onRetry={() => void featuresQuery.refetch()}
+						/>
 					)}
 					<div className="flex min-h-0 flex-1 overflow-hidden">
 						<div className="flex w-72 shrink-0 flex-col border-r">
-							<div className="border-b p-2">
-								<Button type="button" size="xs" variant="outline" onClick={startNew}>
-									<Plus aria-hidden />
-									기능 추가
-								</Button>
-							</div>
 							<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="AI 기능 목록">
-								{featuresQuery.isPending
-									? Array.from({ length: 4 }, (_, index) => (
-											// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
-											<li key={index} className="p-3" aria-hidden>
-												<Skeleton className="h-9 w-full" />
-											</li>
-										))
-									: features.map((feature) => {
-											const isSelected = editing?.feature.key === feature.key;
-											const state = !feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요";
-											return (
-												<li key={feature.key}>
-													<button
-														type="button"
-														aria-current={isSelected ? "true" : undefined}
-														onClick={() => open(feature)}
-														className={cn(
-															"flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors",
-															isSelected ? "bg-accent" : "hover:bg-accent/50",
-														)}
-													>
-														<span className="flex w-full items-center gap-2">
-															<span className="truncate font-medium text-sm">{feature.label}</span>
-															{state && <span className="ml-auto shrink-0 text-muted-foreground text-xs">{state}</span>}
-														</span>
-														<span className="truncate text-muted-foreground text-xs">
-															{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
-															{feature.custom && " · 직접 만듦"}
-														</span>
-													</button>
-												</li>
-											);
-										})}
+								{featuresQuery.isPending ? (
+									<ListSkeleton rows={4} />
+								) : (
+									<>
+										{featuresQuery.data && features.length === 0 && !editing?.isNew && (
+											<li className="px-3 py-6 text-center text-muted-foreground text-xs">기능이 없습니다.</li>
+										)}
+										{features.map((feature) => (
+											<ListRow
+												key={feature.key}
+												title={feature.label}
+												status={!feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요"}
+												detail={`${placeLabel(feature)} · ${ENGINE_LABELS[feature.engine]}${feature.custom ? " · 직접 만듦" : ""}`}
+												// 저장하지 않은 새 기능을 여는 동안은 목록의 다른 줄을 열린 줄로 보이지 않는다.
+												current={editing !== null && !editing.isNew && editing.feature.key === feature.key}
+												onClick={() => void openFeature(feature)}
+											/>
+										))}
+										{editing?.isNew && (
+											<ListRow
+												title={editing.base?.label.trim() || "새 기능"}
+												status="저장 안 함"
+												detail={`${placeLabel(editing.feature)} · ${ENGINE_LABELS[editing.feature.engine]}`}
+												current
+												onClick={() => {}}
+											/>
+										)}
+									</>
+								)}
 							</ul>
 						</div>
 
 						<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 							{editing ? (
 								<FeatureEditor
-									key={editing.feature.key}
+									key={editing.isNew ? "new" : editing.feature.key}
 									feature={editing.feature}
 									spec={editing.spec}
 									saving={saving}
+									deleting={deleting}
+									dirty={featureDirty}
 									error={formError}
 									onChange={(spec) => setEditing({ ...editing, spec })}
 									onSave={() => void save()}
-									onReset={() => void reset(editing.feature)}
 									custom={
 										editing.base
 											? {
 													base: editing.base,
 													onBaseChange: changeBase,
 													isNew: editing.isNew === true,
-													onDelete: editing.isNew ? () => setEditing(null) : () => void remove(editing.feature),
+													onCancel: () => setEditing(null),
+													onDelete: () => void remove(editing.feature),
 												}
 											: undefined
 									}
 								/>
 							) : (
-								<Empty className="flex-1">
-									<EmptyHeader>
-										<EmptyMedia variant="icon">
-											<Sparkles aria-hidden />
-										</EmptyMedia>
-										<EmptyTitle>기능을 고르세요</EmptyTitle>
-									</EmptyHeader>
-								</Empty>
+								featuresQuery.data && (
+									<Empty className="flex-1">
+										<EmptyHeader>
+											<EmptyMedia variant="icon">
+												<Sparkles aria-hidden />
+											</EmptyMedia>
+											<EmptyTitle>기능을 고르세요</EmptyTitle>
+										</EmptyHeader>
+										<EmptyContent>
+											<Button type="button" size="sm" onClick={() => void startNew()}>
+												<Plus aria-hidden />
+												기능 추가
+											</Button>
+										</EmptyContent>
+									</Empty>
+								)
 							)}
 						</div>
 					</div>
 				</TabsContent>
 				{AI_SHARED_KEYS.length > 0 && (
 					<TabsContent value="shared" className="flex min-h-0 flex-1 flex-col">
-						<SharedTextsEditor />
+						<SharedTextsEditor onDirtyChange={onSharedDirty} />
 					</TabsContent>
 				)}
 				<TabsContent value="connections" className="flex min-h-0 flex-1 flex-col">
-					<ConnectionManager />
+					<ConnectionManager
+						selected={connection}
+						onOpen={(id) => void openConnection(id)}
+						onSelectedChange={setConnection}
+						onDirtyChange={onConnectionDirty}
+					/>
 				</TabsContent>
 			</Tabs>
+			{dialog}
 		</AdminShell>
 	);
 }
@@ -465,7 +529,7 @@ function OneOfInput({
 	);
 }
 
-/** 검사 한 줄. 켜고 끄며, 형식은 정규식, 길이는 글자 수, 선택지 안은 값 목록을 고친다. 더한 검사는 뺄 수 있다. */
+/** 검사 한 줄. 켜고 끄며, 형식은 정규식, 길이는 글자 수, 선택지 안은 값 목록을 고친다. 더한 검사는 삭제할 수 있다. */
 function CheckRow({
 	check,
 	onChange,
@@ -517,16 +581,15 @@ function CheckRow({
 				<OneOfInput items={check.items} disabled={!check.enabled} onChange={(items) => onChange({ ...check, items })} />
 			)}
 			{onRemove && (
-				<Button
-					type="button"
+				<IconButton
+					label={`${CHECK_LABELS[check.kind]} 검사 삭제`}
 					size="icon-xs"
-					variant="ghost"
-					aria-label={`${CHECK_LABELS[check.kind]} 검사 빼기`}
+					destructive
 					onClick={onRemove}
 					className="ml-auto"
 				>
-					<X aria-hidden />
-				</Button>
+					<Trash2 aria-hidden />
+				</IconButton>
 			)}
 		</li>
 	);
@@ -536,23 +599,31 @@ function FeatureEditor({
 	feature,
 	spec,
 	saving,
+	deleting,
+	dirty,
 	error,
 	onChange,
 	onSave,
-	onReset,
 	custom,
 }: {
 	feature: AiActionView;
 	spec: Editable;
 	saving: boolean;
+	deleting: boolean;
+	dirty: boolean;
 	error: string | null;
 	onChange: (spec: Editable) => void;
 	onSave: () => void;
-	onReset: () => void;
-	/** 화면 기능이면 기본 정보 고치기와 지우기. 새 기능(`isNew`)이면 지우기 대신 취소다. */
-	custom?: { base: CustomBase; onBaseChange: (base: CustomBase) => void; onDelete: () => void; isNew: boolean };
+	/** 화면 기능이면 기본 정보 고치기와 삭제. 새 기능(`isNew`)이면 삭제 대신 취소다. */
+	custom?: {
+		base: CustomBase;
+		onBaseChange: (base: CustomBase) => void;
+		onCancel: () => void;
+		onDelete: () => void;
+		isNew: boolean;
+	};
 }) {
-	const ids = { provider: useId(), prompt: useId(), threshold: useId() };
+	const ids = { provider: useId(), prompt: useId(), threshold: useId(), sendTitle: useId(), checksTitle: useId() };
 	const deciding = feature.engine === "decide";
 	const settings = useAiSettings().data;
 	const kind = deciding ? "decisions" : "chat";
@@ -569,6 +640,10 @@ function FeatureEditor({
 		{ status: "running" } | { status: "done"; result: AiRunResult } | { status: "error"; message: string } | null
 	>(null);
 	const set = (patch: Partial<Editable>) => onChange({ ...spec, ...patch });
+	// 코드 기능의 기본값. `기본값으로`는 입력 칸만 되돌리고(켜기는 그대로), 저장은 따로 누른다.
+	const defaults = custom ? null : defaultSpecOf(feature);
+	const atDefaults =
+		defaults !== null && JSON.stringify({ ...defaults, enabled: spec.enabled }) === JSON.stringify(spec);
 	// 더할 수 있는 검사: 형식·길이·선택지 안 중 아직 없는 것. MDX 결과(본문 조각)는 글자 검사를 더하지 않는다.
 	const addableChecks = (Object.keys(ADDABLE_CHECKS) as AddableCheckKind[]).filter(
 		(kind) =>
@@ -578,9 +653,19 @@ function FeatureEditor({
 	const inputs = Object.entries(feature.input).filter(
 		([, input]) => input.kind !== "locale" && !(deciding && input.kind === "image"),
 	);
+	const providerOptions = [
+		{ value: "", label: `첫 ${ENGINE_LABELS[feature.engine]} 연결` },
+		...(spec.providerId && !providers.some((provider) => provider.id === spec.providerId)
+			? [{ value: spec.providerId, label: "삭제된 연결" }]
+			: []),
+		...providers.map((provider) => ({ value: provider.id, label: provider.name })),
+	];
 
 	const translating = isTranslation(feature);
+	const testRunning = test?.status === "running";
+	const testDisabled = !canRun || testRunning || (translating && !sample.body.trim());
 	const runTest = async () => {
+		if (testDisabled) return;
 		setTest({ status: "running" });
 		try {
 			// 화면 기능은 고치는 중인 기본 정보로 시험한다(아직 저장하지 않은 새 기능 포함).
@@ -596,7 +681,7 @@ function FeatureEditor({
 					[{ block: sample.body, from: DEFAULT_LOCALE, to: sample.targetLocale }],
 					{ ...options, env: { locale: sample.targetLocale } },
 				);
-				if (!item || "error" in item) throw new Error(item?.error ?? "번역하지 못했습니다.");
+				if (!item || "error" in item) throw new Error(item?.error ?? "실행하지 못했습니다.");
 				setTest({ status: "done", result: item.result });
 				return;
 			}
@@ -608,7 +693,7 @@ function FeatureEditor({
 	};
 
 	return (
-		<div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 text-sm">
+		<div className={DETAIL_PANE}>
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<div className="min-w-0 flex-1">
 					<h2 className="truncate font-medium text-base">
@@ -644,62 +729,54 @@ function FeatureEditor({
 				</section>
 			)}
 
-			<section className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 text-xs">
-				<Label htmlFor={ids.provider} className="text-muted-foreground text-xs">
-					연결
-				</Label>
-				<div className="flex min-w-0 items-center gap-2">
-					<select
-						id={ids.provider}
-						value={spec.providerId ?? ""}
-						onChange={(event) => set({ providerId: event.target.value || null, modelName: "" })}
-						className={selectClass}
-					>
-						<option value="">첫 {ENGINE_LABELS[feature.engine]} 연결</option>
-						{spec.providerId && !providers.some((provider) => provider.id === spec.providerId) && (
-							<option value={spec.providerId}>삭제된 연결</option>
-						)}
-						{providers.map((provider) => (
-							<option key={provider.id} value={provider.id}>
-								{provider.name}
-							</option>
-						))}
-					</select>
-					<ModelCombobox
-						aria-label="모델"
-						value={spec.modelName}
-						models={modelList.models}
-						loading={modelList.loading}
-						error={modelList.error}
-						placeholder={chosen?.defaultModel || "기본 모델"}
-						onChange={(modelName) => set({ modelName })}
-					/>
-				</div>
+			<FieldGroup className="gap-5">
+				<Field>
+					<FieldLabel htmlFor={ids.provider}>연결</FieldLabel>
+					<div className="flex min-w-0 items-center gap-2">
+						<OptionSelect
+							id={ids.provider}
+							value={spec.providerId ?? ""}
+							options={providerOptions}
+							onChange={(value) => set({ providerId: value || null, modelName: "" })}
+						/>
+						<ModelCombobox
+							aria-label="모델"
+							value={spec.modelName}
+							models={modelList.models}
+							loading={modelList.loading}
+							error={modelList.error}
+							placeholder={chosen?.defaultModel || "기본 모델"}
+							onChange={(modelName) => set({ modelName })}
+						/>
+					</div>
+				</Field>
 
-				{inputs.length > 0 && <span className="text-muted-foreground">보낼 내용</span>}
-				<div className={cn("flex flex-wrap gap-3", inputs.length === 0 && "hidden")}>
-					{inputs.map(([name, input]) => (
-						<Label key={name} className="font-normal text-xs">
-							<Checkbox
-								checked={uses(name) || input.required}
-								disabled={input.required}
-								onCheckedChange={(checked) =>
-									set({
-										send: checked === true ? [...spec.send, name] : spec.send.filter((item) => item !== name),
-									})
-								}
-							/>
-							{input.label}
-						</Label>
-					))}
-				</div>
+				{inputs.length > 0 && (
+					<Field role="group" aria-labelledby={ids.sendTitle}>
+						<FieldTitle id={ids.sendTitle}>보낼 내용</FieldTitle>
+						<div className="flex flex-wrap gap-3">
+							{inputs.map(([name, input]) => (
+								<Label key={name} className="font-normal text-xs">
+									<Checkbox
+										checked={uses(name) || input.required}
+										disabled={input.required}
+										onCheckedChange={(checked) =>
+											set({
+												send: checked === true ? [...spec.send, name] : spec.send.filter((item) => item !== name),
+											})
+										}
+									/>
+									{input.label}
+								</Label>
+							))}
+						</div>
+					</Field>
+				)}
 
 				{deciding && (
-					<>
-						<Label htmlFor={ids.threshold} className="text-muted-foreground text-xs">
-							기준 확률
-						</Label>
-						<div className="flex items-center gap-2">
+					<Field>
+						<FieldLabel htmlFor={ids.threshold}>기준 확률</FieldLabel>
+						<div className="flex items-center gap-2 text-xs">
 							<Input
 								id={ids.threshold}
 								type="number"
@@ -709,7 +786,7 @@ function FeatureEditor({
 								onChange={(event) =>
 									set({ threshold: Math.min(99, Math.max(1, Number(event.target.value) || 1)) / 100 })
 								}
-								className="h-8 w-20 text-xs"
+								className="h-8 w-20 text-xs md:text-xs"
 							/>
 							<span className="text-muted-foreground">% 이상</span>
 							<Input
@@ -719,103 +796,120 @@ function FeatureEditor({
 								max={20}
 								value={spec.maxCount}
 								onChange={(event) => set({ maxCount: Math.min(20, Math.max(1, Number(event.target.value) || 1)) })}
-								className="ml-3 h-8 w-16 text-xs"
+								className="ml-3 h-8 w-16 text-xs md:text-xs"
 							/>
 							<span className="text-muted-foreground">개까지</span>
 						</div>
-					</>
+					</Field>
 				)}
 
-				<span className="self-start pt-2 text-muted-foreground">검사</span>
-				<div className="flex flex-col gap-1.5">
-					<ul className="flex flex-col gap-1.5" aria-label="검사">
-						{spec.checks.map((check, index) => (
-							<CheckRow
-								key={check.kind}
-								check={check}
-								onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
-								onRemove={
-									feature.definedChecks.includes(check.kind)
-										? undefined
-										: () => set({ checks: spec.checks.filter((_, i) => i !== index) })
-								}
-							/>
-						))}
-						{feature.validated && (
-							<li className="flex min-h-8 items-center gap-2 text-xs">
-								<Code aria-hidden className="size-3.5 text-muted-foreground" />
-								코드 검사
-							</li>
+				<Field role="group" aria-labelledby={ids.checksTitle}>
+					<FieldTitle id={ids.checksTitle}>검사</FieldTitle>
+					<div className="flex flex-col gap-1.5 text-xs">
+						<ul className="flex flex-col gap-1.5" aria-label="검사">
+							{spec.checks.map((check, index) => (
+								<CheckRow
+									key={check.kind}
+									check={check}
+									onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
+									onRemove={
+										feature.definedChecks.includes(check.kind)
+											? undefined
+											: () => set({ checks: spec.checks.filter((_, i) => i !== index) })
+									}
+								/>
+							))}
+							{feature.validated && (
+								<li className="flex min-h-8 items-center gap-2 text-xs">
+									<Code aria-hidden className="size-3.5 text-muted-foreground" />
+									코드 검사
+								</li>
+							)}
+						</ul>
+						{addableChecks.length > 0 && (
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={
+										<Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" />
+									}
+								>
+									<Plus aria-hidden />
+									검사 추가
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="start" className="min-w-32">
+									{addableChecks.map((kind) => (
+										<DropdownMenuItem
+											key={kind}
+											onClick={() => set({ checks: [...spec.checks, ADDABLE_CHECKS[kind]] })}
+										>
+											<Plus aria-hidden />
+											{CHECK_LABELS[kind]}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
 						)}
-					</ul>
-					{addableChecks.length > 0 && (
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={<Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" />}
-							>
-								<Plus aria-hidden />
-								검사 추가
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="start" className="min-w-32">
-								{addableChecks.map((kind) => (
-									<DropdownMenuItem key={kind} onClick={() => set({ checks: [...spec.checks, ADDABLE_CHECKS[kind]] })}>
-										{CHECK_LABELS[kind]}
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
-				</div>
-			</section>
+					</div>
+				</Field>
 
-			<div className="flex flex-col gap-1.5">
-				<Label htmlFor={ids.prompt} className="text-muted-foreground text-xs">
-					{deciding ? "판단 기준" : "지시문"}
-				</Label>
-				<Textarea
-					id={ids.prompt}
-					rows={8}
-					value={spec.prompt}
-					onChange={(event) => set({ prompt: event.target.value })}
-					className="font-mono text-xs md:text-xs"
-				/>
-			</div>
+				<Field>
+					<FieldLabel htmlFor={ids.prompt}>{deciding ? "판단 기준" : "지시문"}</FieldLabel>
+					<Textarea
+						id={ids.prompt}
+						rows={PROMPT_ROWS}
+						value={spec.prompt}
+						onChange={(event) => set({ prompt: event.target.value })}
+						className={PROMPT_TEXTAREA}
+					/>
+				</Field>
+			</FieldGroup>
 
-			{error && (
-				<p role="alert" className="text-destructive text-xs">
-					{error}
-				</p>
-			)}
+			{error && <InlineError>{error}</InlineError>}
 
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					type="button"
 					size="sm"
-					disabled={saving || (custom?.isNew === true && !custom.base.label.trim())}
+					disabled={saving || !dirty || (custom?.isNew === true && !custom.base.label.trim())}
 					onClick={onSave}
 				>
-					{custom?.isNew ? <Plus aria-hidden /> : <Save aria-hidden />}
-					{saving ? "저장 중…" : custom?.isNew ? "만들기" : "저장"}
+					<Save aria-hidden />
+					{saving ? "저장 중…" : "저장"}
 				</Button>
-				{custom?.isNew ? (
-					<Button type="button" size="sm" variant="outline" onClick={custom.onDelete}>
+				{custom?.isNew && (
+					<Button type="button" size="sm" variant="outline" onClick={custom.onCancel}>
 						취소
 					</Button>
-				) : custom ? (
-					<Button type="button" size="sm" variant="outline" className="text-destructive" onClick={custom.onDelete}>
-						<Trash2 aria-hidden />
-						지우기
-					</Button>
-				) : (
-					<Button type="button" size="sm" variant="outline" onClick={onReset}>
+				)}
+				{defaults && (
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						disabled={atDefaults}
+						onClick={() => onChange({ ...defaults, enabled: spec.enabled })}
+					>
 						<RotateCcw aria-hidden />
-						기본값
+						기본값으로
 					</Button>
 				)}
 				{!custom?.isNew && (
 					<span className="ml-auto text-muted-foreground text-xs">
-						{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본값"}
+						{feature.updatedAt ? `${new Date(feature.updatedAt).toLocaleString("ko-KR")} 고침` : "기본 설정"}
 					</span>
+				)}
+				{custom && !custom.isNew && (
+					<Button
+						type="button"
+						size="sm"
+						variant="ghost"
+						className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+						disabled={deleting}
+						onClick={custom.onDelete}
+					>
+						<Trash2 aria-hidden />
+						{deleting ? "삭제 중…" : "삭제"}
+					</Button>
 				)}
 			</div>
 
@@ -827,36 +921,39 @@ function FeatureEditor({
 						size="xs"
 						variant="outline"
 						className="ml-auto"
-						disabled={!canRun || test?.status === "running" || (translating && !sample.body.trim())}
+						disabled={testDisabled}
 						onClick={() => void runTest()}
 					>
 						<Sparkles aria-hidden />
-						{test?.status === "running" ? "만드는 중…" : "실행"}
+						{testRunning ? "실행 중…" : "실행"}
 					</Button>
 				</div>
 				{spec.askInstruction && (
-					<Input
+					<Textarea
 						aria-label="추가 요청"
 						placeholder="추가 요청"
+						rows={2}
 						value={sample.request}
 						onChange={(event) => setSample({ ...sample, request: event.target.value })}
-						className="h-8 bg-background text-xs"
+						onKeyDown={(event) => {
+							// 줄바꿈은 Enter, 실행은 Cmd/Ctrl+Enter다.
+							if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
+								event.preventDefault();
+								void runTest();
+							}
+						}}
+						className="min-h-14 resize-y bg-background text-xs md:text-xs"
 					/>
 				)}
 				{translating && (
 					<>
-						<select
+						<OptionSelect
 							aria-label="대상 언어"
 							value={sample.targetLocale}
-							onChange={(event) => setSample({ ...sample, targetLocale: event.target.value })}
-							className={cn(selectClass, "w-auto bg-background")}
-						>
-							{PREFIXED_LOCALES.map((locale) => (
-								<option key={locale} value={locale}>
-									{localeLabel(locale)}
-								</option>
-							))}
-						</select>
+							options={PREFIXED_LOCALES.map((locale) => ({ value: locale, label: localeLabel(locale) }))}
+							onChange={(targetLocale) => setSample({ ...sample, targetLocale })}
+							className="w-auto self-start bg-background"
+						/>
 						<Textarea
 							aria-label="예시 MDX"
 							placeholder="예시 MDX"
@@ -873,7 +970,7 @@ function FeatureEditor({
 						placeholder="예시 제목"
 						value={sample.title}
 						onChange={(event) => setSample({ ...sample, title: event.target.value })}
-						className="h-8 bg-background text-xs"
+						className="h-8 bg-background text-xs md:text-xs"
 					/>
 				)}
 				{(uses("body") || uses("around") || uses("summary")) && (
@@ -902,7 +999,7 @@ function FeatureEditor({
 						placeholder="미디어 ID"
 						value={sample.mediaId}
 						onChange={(event) => setSample({ ...sample, mediaId: event.target.value })}
-						className="h-8 bg-background font-mono text-xs"
+						className="h-8 bg-background font-mono text-xs md:text-xs"
 					/>
 				)}
 				{test?.status === "error" && (
@@ -913,17 +1010,13 @@ function FeatureEditor({
 				{test?.status === "done" &&
 					(test.result.kind === "candidates" ? (
 						test.result.items.length === 0 ? (
-							<p className="text-muted-foreground">검사를 통과한 후보가 없습니다.</p>
+							<p className="text-muted-foreground">맞는 결과가 없습니다.</p>
 						) : (
 							<ul className="flex flex-wrap gap-1">
 								{test.result.items.map((item) => (
-									<li
-										key={item.value}
-										className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5"
-									>
-										<Check aria-hidden className="size-3 text-muted-foreground" />
-										{item.label}
-										{item.detail && <span className="text-muted-foreground">{item.detail}</span>}
+									<li key={item.value} className={SLOT_CHIP}>
+										<span className="truncate">{item.label}</span>
+										{item.detail && <span className="shrink-0 text-muted-foreground">{item.detail}</span>}
 									</li>
 								))}
 							</ul>

@@ -131,7 +131,7 @@ export const math = defineBlock({
 	component: "Math",
 	renderedBy: "rehype-katex",
 	attributes: {},
-	description: "LaTeX 수식 삽입",
+	description: "LaTeX 수식",
 	editor: { view: "node", nodeView: "math", insertable: true, keywords: ["math", "수식", "katex"], icon: "sigma" },
 });
 

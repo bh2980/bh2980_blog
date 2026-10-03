@@ -5,12 +5,13 @@ import {
 	ContainerToolbar,
 	childPos,
 	focusInside,
+	SELECTED_RING,
+	ToolbarButton,
 	useSelectedChildIndex,
 	valuesOf,
 	withValue,
 } from "@bh2980/cms-admin/blocks";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Button } from "@bh2980/cms-admin/ui/button";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Columns2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { type CSSProperties, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
@@ -167,7 +168,7 @@ export function ColumnsNodeView(props: NodeViewProps) {
 			ref={wrapperRef}
 			data-cms-container-node="cmsColumns"
 			data-cms-framed
-			className={cn("group/container relative my-6 rounded-md", selected && "ring-2 ring-ring ring-offset-4")}
+			className={cn("group/container relative my-6 rounded-md", selected && SELECTED_RING)}
 		>
 			<NodeViewContent
 				style={{ "--cms-columns": columnsGridTemplate(widths, count) } as CSSProperties}
@@ -198,8 +199,7 @@ export function ColumnsNodeView(props: NodeViewProps) {
 							/>
 							<button
 								type="button"
-								aria-label={`${boundary.index + 1}번째와 ${boundary.index + 2}번째 단 사이 너비 조절 (←/→)`}
-								title="끌어서 단 너비 조절"
+								aria-label={`${boundary.index + 1}번째와 ${boundary.index + 2}번째 단 사이 너비 조절`}
 								onPointerDown={(event) => startResize(boundary.index, event)}
 								onKeyDown={(event) => {
 									if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -222,39 +222,20 @@ export function ColumnsNodeView(props: NodeViewProps) {
 					<span className="px-1.5 text-muted-foreground text-xs tabular-nums">
 						{widths ? widths.join(" : ") : `${count}단`}
 					</span>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="단 너비 똑같이 나누기"
-						title="단 너비 똑같이 나누기"
-						disabled={!saved}
-						onClick={() => setColumns(null)}
-					>
+					<ToolbarButton label="단 너비 똑같이 나누기" disabled={!saved} onClick={() => setColumns(null)}>
 						<Columns2 aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="단 추가"
-						title="단 추가"
-						disabled={count >= MAX_COLUMNS}
-						onClick={addColumn}
-					>
+					</ToolbarButton>
+					<ToolbarButton label="단 추가" disabled={count >= MAX_COLUMNS} onClick={addColumn}>
 						<Plus aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label={selectedIndex === -1 ? "마지막 단 삭제" : "이 단 삭제"}
-						title={selectedIndex === -1 ? "마지막 단 삭제" : "이 단 삭제"}
+					</ToolbarButton>
+					<ToolbarButton
+						label={selectedIndex === -1 ? "마지막 단 삭제" : "이 단 삭제"}
+						destructive
 						disabled={count <= MIN_COLUMNS}
 						onClick={removeColumn}
 					>
 						<Trash2 aria-hidden />
-					</Button>
+					</ToolbarButton>
 				</ContainerToolbar>
 			) : null}
 		</NodeViewWrapper>

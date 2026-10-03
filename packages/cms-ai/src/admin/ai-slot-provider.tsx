@@ -67,7 +67,7 @@ export async function runAiAction(
 		method: "POST",
 		json: { ...requestBody(action, options), input },
 		signal: options.signal,
-		fallback: "AI 기능을 실행하지 못했습니다.",
+		fallback: "실행하지 못했습니다.",
 	});
 	return response.result;
 }
@@ -81,7 +81,7 @@ export async function streamAiAction(
 	input: Readonly<Record<string, unknown>>,
 	options: AiRunOptions & { onText: (text: string) => void },
 ): Promise<AiRunResult> {
-	const fallback = "AI 기능을 실행하지 못했습니다.";
+	const fallback = "실행하지 못했습니다.";
 	const response = await fetch("/api/cms/v1/ai/run", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -130,7 +130,7 @@ export async function runAiActionMany(
 			method: "POST",
 			json: { ...requestBody(action, options), inputs },
 			signal: options.signal,
-			fallback: "AI 기능을 실행하지 못했습니다.",
+			fallback: "실행하지 못했습니다.",
 		},
 	);
 	return response.results;

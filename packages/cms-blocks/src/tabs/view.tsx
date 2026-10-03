@@ -6,13 +6,14 @@ import {
 	ContainerToolbar,
 	childPos,
 	focusInside,
+	SELECTED_RING,
+	ToolbarButton,
 	useContainerValues,
 	useSelectedChildIndex,
 	valuesOf,
 	withValue,
 } from "@bh2980/cms-admin/blocks";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Button } from "@bh2980/cms-admin/ui/button";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { PencilLine, Plus, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -47,7 +48,7 @@ const labelOf = (values: Record<string, unknown>) => (typeof values.label === "s
 /**
  * 공개 화면처럼 탭 바와 고른 탭의 본문만 보여 준다. 본문은 그 자리에서 고친다.
  * 탭을 누르면 그 탭 본문으로 커서가 가고, 방향키로 다른 탭 본문에 들어가면 그 탭이 열린다.
- * 탭 이름은 두 번 눌러 바꾼다.
+ * 탭 이름·처음 열 탭·추가·삭제는 블록 도구 줄에서 한다.
  */
 export function TabsNodeView(props: NodeViewProps) {
 	const { node, selected, editor, getPos } = props;
@@ -139,7 +140,7 @@ export function TabsNodeView(props: NodeViewProps) {
 		<NodeViewWrapper
 			data-cms-container-node="cmsTabs"
 			data-cms-framed
-			className={cn("group/container relative my-6 rounded-lg", selected && "ring-2 ring-ring")}
+			className={cn("group/container relative my-6 rounded-lg", selected && SELECTED_RING)}
 		>
 			<div contentEditable={false} className="not-prose">
 				<div
@@ -175,15 +176,9 @@ export function TabsNodeView(props: NodeViewProps) {
 								role="tab"
 								aria-selected={index === current}
 								className={cn(TAB_TRIGGER, index === current && TAB_TRIGGER_ACTIVE)}
-								// 두 번 누르기의 두 번째 클릭은 탭을 다시 열지 않는다. 다시 열면 예약된 편집기 포커스가 이름 입력 칸을 빼앗는다.
-								onClick={(event) => event.detail < 2 && openTab(index)}
-								onDoubleClick={() => editable && setRenaming(index)}
-								title={editable ? "두 번 눌러 이름 바꾸기" : undefined}
+								onClick={() => openTab(index)}
 							>
 								{label || "이름 없음"}
-								{index === defaultIndex && defaultLabel ? (
-									<Star className="size-3 fill-current opacity-60" aria-label="처음 열 탭" />
-								) : null}
 							</button>
 						),
 					)}
@@ -195,50 +190,23 @@ export function TabsNodeView(props: NodeViewProps) {
 			/>
 			{editable ? (
 				<ContainerToolbar label="탭 도구">
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="탭 추가"
-						title="탭 추가"
-						disabled={node.childCount >= MAX_TABS}
-						onClick={addTab}
-					>
+					<ToolbarButton label="탭 추가" disabled={node.childCount >= MAX_TABS} onClick={addTab}>
 						<Plus aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="이 탭 이름 바꾸기"
-						title="이 탭 이름 바꾸기"
-						onClick={() => setRenaming(current)}
-					>
+					</ToolbarButton>
+					<ToolbarButton label="이 탭 이름 바꾸기" onClick={() => setRenaming(current)}>
 						<PencilLine aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="이 탭을 처음 열기"
-						title="이 탭을 처음 열기"
-						aria-pressed={current === defaultIndex}
-						className="aria-pressed:text-amber-500"
-						onClick={() => toggleDefault(current)}
-					>
+					</ToolbarButton>
+					<ToolbarButton label="처음 열 탭" pressed={current === defaultIndex} onClick={() => toggleDefault(current)}>
 						<Star aria-hidden className={cn(current === defaultIndex && "fill-current")} />
-					</Button>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						aria-label="이 탭 삭제"
-						title="이 탭 삭제"
+					</ToolbarButton>
+					<ToolbarButton
+						label="이 탭 삭제"
+						destructive
 						disabled={node.childCount <= MIN_TABS}
 						onClick={() => removeTab(current)}
 					>
 						<Trash2 aria-hidden />
-					</Button>
+					</ToolbarButton>
 				</ContainerToolbar>
 			) : null}
 		</NodeViewWrapper>

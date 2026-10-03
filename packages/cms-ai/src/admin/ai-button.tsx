@@ -44,14 +44,14 @@ export function AiButton<K extends AiActionKey>({ action, input, onResult, child
 				try {
 					onResult(await ai.run(input()));
 				} catch (error) {
-					toast.error(error instanceof Error && error.message ? error.message : `${label}을(를) 실행하지 못했습니다.`);
+					toast.error(error instanceof Error && error.message ? error.message : "실행하지 못했습니다.");
 				} finally {
 					setRunning(false);
 				}
 			}}
 		>
 			{running ? <Spinner /> : <Sparkles aria-hidden />}
-			{children ?? label}
+			{running ? "실행 중…" : (children ?? label)}
 		</Button>
 	);
 }

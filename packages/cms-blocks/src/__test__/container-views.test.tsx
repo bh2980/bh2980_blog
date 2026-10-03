@@ -126,6 +126,20 @@ describe("컨테이너 NodeView(공개 모양 + 제자리 편집)", () => {
 		expect(tiptapToMdx(editor.getJSON())).not.toContain("title=");
 	});
 
+	it("콜아웃 종류는 도구 줄 메뉴에서 바꾼다", async () => {
+		const editor = await mount(':::callout{variant="tip"}\n본문\n:::');
+		fireEvent.click(screen.getByRole("button", { name: /콜아웃 종류/ }));
+		fireEvent.click(await screen.findByRole("menuitemradio", { name: "경고" }));
+		await waitFor(() => expect(editor.state.doc.firstChild?.attrs.values).toEqual({ variant: "warning" }));
+	});
+
+	it("접기의 처음부터 펼치기는 설정 팝오버의 스위치로 바꾼다", async () => {
+		const editor = await mount(':::collapsible{title="제목"}\n숨은 본문\n:::');
+		fireEvent.click(screen.getByRole("button", { name: "설정" }));
+		fireEvent.click(await screen.findByRole("switch", { name: "처음부터 펼치기" }));
+		await waitFor(() => expect(tiptapToMdx(editor.getJSON())).toContain("defaultOpen"));
+	});
+
 	it("접기는 defaultOpen을 따라 처음에 닫혀 있고, 화살표로 펼치면 본문으로 커서가 간다", async () => {
 		const editor = await mount(':::collapsible{title="제목"}\n숨은 본문\n:::');
 		const toggle = screen.getByRole("button", { name: "펼치기" });

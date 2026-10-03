@@ -1,6 +1,6 @@
 "use client";
 
-import { CornerDownLeft, RefreshCw, Sparkles, X } from "lucide-react";
+import { RefreshCw, Sparkles, X } from "lucide-react";
 import {
 	createContext,
 	type ReactNode,
@@ -11,11 +11,12 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { cn } from "../lib/utils/cn";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Input } from "../ui/input";
+import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Textarea } from "../ui/textarea";
 
 /**
  * 화면 자리(slot). CMS 화면 곳곳에 이름 붙은 자리를 두고, 자리에 연결된 동작을 버튼으로 그린다.
@@ -173,6 +174,9 @@ export function SlotRegistryProvider({ sources, children }: { sources: readonly 
 	);
 }
 
+/** 결과 후보 하나의 모양. AI 화면의 시험 결과도 같은 모양을 쓴다. */
+export const SLOT_CHIP = "inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5";
+
 const errorMessage = (error: unknown) =>
 	error instanceof Error && error.message ? error.message : "실행하지 못했습니다.";
 
@@ -249,45 +253,35 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 
 	const busy = state.status === "running";
 	const disabled = request.disabled || busy;
+	const triggerIcon = busy ? <Spinner className="size-3" /> : <Sparkles aria-hidden />;
 	const trigger =
 		actions.length === 1 ? (
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-xs"
-							aria-label={actions[0]?.label}
-							disabled={disabled}
-							onClick={() => actions[0] && start(actions[0])}
-							className="text-muted-foreground hover:text-foreground"
-						/>
-					}
-				>
-					{busy ? <Spinner className="size-3" /> : <Sparkles aria-hidden />}
-				</TooltipTrigger>
-				<TooltipContent side="bottom">{actions[0]?.label}</TooltipContent>
-			</Tooltip>
+			<IconButton
+				label={actions[0]?.label ?? "AI"}
+				size="icon-xs"
+				side="bottom"
+				disabled={disabled}
+				onClick={() => actions[0] && start(actions[0])}
+				className="text-muted-foreground hover:text-foreground"
+			>
+				{triggerIcon}
+			</IconButton>
 		) : (
 			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-xs"
-							aria-label="AI"
-							disabled={disabled}
-							className="text-muted-foreground hover:text-foreground"
-						/>
-					}
+				<IconButton
+					label="AI"
+					size="icon-xs"
+					side="bottom"
+					disabled={disabled}
+					className="text-muted-foreground hover:text-foreground"
+					trigger={(button) => <DropdownMenuTrigger render={button} />}
 				>
-					{busy ? <Spinner className="size-3" /> : <Sparkles aria-hidden />}
-				</DropdownMenuTrigger>
+					{triggerIcon}
+				</IconButton>
 				<DropdownMenuContent align="end">
 					{actions.map((action) => (
 						<DropdownMenuItem key={action.id} onClick={() => start(action)}>
+							<Sparkles aria-hidden />
 							{action.label}
 						</DropdownMenuItem>
 					))}
@@ -304,52 +298,53 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 					<span className="truncate">{state.action.label}</span>
 					<span className="ml-auto flex items-center">
 						{state.status !== "running" && state.status !== "asking" && (
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-xs"
-								aria-label="다시"
-								onClick={() => void run(state.action, instruction)}
-							>
+							<IconButton label="다시 실행" size="icon-xs" onClick={() => void run(state.action, instruction)}>
 								<RefreshCw aria-hidden />
-							</Button>
+							</IconButton>
 						)}
-						<Button type="button" variant="ghost" size="icon-xs" aria-label="닫기" onClick={close}>
+						<IconButton label="닫기" size="icon-xs" onClick={close}>
 							<X aria-hidden />
-						</Button>
+						</IconButton>
 					</span>
 				</div>
 				{state.action.askInstruction && (
-					<div className="flex items-center gap-1">
-						<Input
+					<form
+						className="flex flex-col gap-1.5"
+						onSubmit={(event) => {
+							event.preventDefault();
+							if (state.status !== "running") void run(state.action, instruction);
+						}}
+					>
+						<Textarea
 							aria-label="추가 요청"
 							placeholder="추가 요청"
 							value={instruction}
+							rows={2}
 							maxLength={1000}
 							autoFocus={state.status === "asking"}
 							disabled={state.status === "running"}
 							onChange={(event) => setInstruction(event.target.value)}
 							onKeyDown={(event) => {
-								// 편집기 안에서도 Enter가 본문으로 새지 않게 한다.
+								// 편집기 안에서도 키가 본문으로 새지 않게 한다. 줄바꿈은 Enter, 실행은 Cmd/Ctrl+Enter다.
 								event.stopPropagation();
-								if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+								if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
 									event.preventDefault();
-									void run(state.action, instruction);
+									if (state.status !== "running") void run(state.action, instruction);
 								}
 							}}
-							className="h-7 bg-background text-xs md:text-xs"
+							className="min-h-14 resize-y bg-background text-xs md:text-xs"
 						/>
 						<Button
-							type="button"
+							type="submit"
 							variant="outline"
-							size="icon-xs"
-							aria-label="실행"
+							size="xs"
+							className="self-end"
 							disabled={state.status === "running"}
-							onClick={() => void run(state.action, instruction)}
 						>
-							<CornerDownLeft aria-hidden />
+							<Sparkles aria-hidden />
+							{state.status === "running" ? "실행 중…" : "실행"}
 						</Button>
-					</div>
+					</form>
 				)}
 				{state.status === "error" && (
 					<p role="alert" className="text-destructive">
@@ -372,7 +367,7 @@ function SlotResult({
 }) {
 	const { result, action } = state;
 	if (result.kind === "candidates") {
-		if (result.items.length === 0) return <p className="text-muted-foreground">맞는 후보가 없습니다.</p>;
+		if (result.items.length === 0) return <p className="text-muted-foreground">맞는 결과가 없습니다.</p>;
 		return (
 			<ul className="flex flex-wrap gap-1">
 				{result.items.map((item) => (
@@ -381,7 +376,7 @@ function SlotResult({
 							type="button"
 							onClick={() => onApply(item.value)}
 							title={item.label}
-							className="inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-left hover:bg-accent"
+							className={cn(SLOT_CHIP, "text-left hover:bg-accent")}
 						>
 							<span className="truncate">{item.label}</span>
 							{item.detail && <span className="shrink-0 text-muted-foreground">{item.detail}</span>}
@@ -396,7 +391,7 @@ function SlotResult({
 			<p className="whitespace-pre-wrap rounded border bg-background p-2">{result.text}</p>
 			{result.kind === "text" && action.apply !== "none" && (
 				<Button type="button" size="xs" variant="outline" className="self-start" onClick={() => onApply(result.text)}>
-					적용
+					{action.apply === "append" ? "넣기" : "바꾸기"}
 				</Button>
 			)}
 		</div>

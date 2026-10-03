@@ -4,7 +4,7 @@ import { defineBlock } from "@bh2980/cms";
 export const chartBlock = defineBlock({
 	name: "chart",
 	label: "차트",
-	description: "차트·그래프 삽입",
+	description: "차트·그래프",
 	syntax: { kind: "fence", lang: "chart" },
 	component: "Chart",
 	attributes: {},
