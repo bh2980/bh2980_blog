@@ -13,7 +13,7 @@ import { errorText } from "../admin-api";
 import { entryHref } from "../shared/entry-href";
 import { formatDateTime } from "../shared/format-date";
 import { SidePanelHeader } from "../shared/side-panel";
-import { copyText, type MediaItem, withExtension } from "./media-item";
+import { copyText, type MediaItem, mediaUsages, usageCount, withExtension } from "./media-item";
 import { MediaThumb } from "./media-views";
 
 /** 상세의 한 묶음. 제목은 작게, 내용은 그 아래에 둔다. */
@@ -258,18 +258,19 @@ export function MediaDetailPanel({
 					</Section>
 				)}
 
-				<Section title={`사용처 ${media.referencesCount}`}>
+				<Section title={`사용처 ${usageCount(media)}`}>
 					{media.referencesCount === 0 ? (
-						<p className="text-muted-foreground">초안·공개본에서 쓰이지 않습니다.</p>
+						<p className="text-muted-foreground">쓰는 글이 없습니다.</p>
 					) : (
 						<ul className="space-y-1">
-							{media.references.map((reference) => (
-								<li key={`${reference.entryId}-${reference.state}`}>
+							{mediaUsages(media).map((usage) => (
+								<li key={usage.entryId}>
 									<a
-										href={entryHref(reference.collection, reference.entryId)}
-										className="block truncate rounded-md border px-2 py-1.5 hover:bg-accent"
+										href={entryHref(usage.collection, usage.entryId)}
+										className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
 									>
-										{reference.title || "제목 없음"} · {reference.state === "published" ? "공개본" : "초안"}
+										<span className="min-w-0 flex-1 truncate">{usage.title || "제목 없음"}</span>
+										{usage.note && <span className="shrink-0 text-muted-foreground text-xs">{usage.note}</span>}
 									</a>
 								</li>
 							))}

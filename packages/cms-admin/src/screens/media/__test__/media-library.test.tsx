@@ -104,7 +104,7 @@ describe("미디어 라이브러리", () => {
 		expect(within(detail).getByText(/640×480/)).toBeTruthy();
 		expect(
 			within(detail)
-				.getByRole("link", { name: /고양이 글 · 공개본/ })
+				.getByRole("link", { name: /고양이 글/ })
 				.getAttribute("href"),
 		).toBe(adminEntryEditHref("e1"));
 		// 쓰이는 파일은 지울 수 없다.

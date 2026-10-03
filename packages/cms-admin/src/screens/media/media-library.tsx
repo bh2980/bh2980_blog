@@ -32,7 +32,7 @@ import { entryHref } from "../shared/entry-href";
 import { SIDE_PANEL_DOCK } from "../shared/side-panel";
 import { useDebounced } from "../shared/use-debounced";
 import { MediaDetailPanel } from "./media-detail-panel";
-import type { MediaItem } from "./media-item";
+import { type MediaItem, mediaUsages } from "./media-item";
 import { MediaGrid, MediaTable } from "./media-views";
 
 const PAGE_SIZE = 30;
@@ -256,12 +256,12 @@ export function MediaLibrary() {
 			kind: "sub",
 			label: "사용처",
 			icon: Link2,
-			emptyLabel: "초안·공개본에서 쓰이지 않습니다",
-			items: media.references.map((reference) => ({
+			emptyLabel: "쓰는 글이 없습니다",
+			items: mediaUsages(media).map((usage) => ({
 				kind: "item" as const,
-				label: `${reference.title || "제목 없음"} · ${reference.state === "published" ? "공개본" : "초안"}`,
+				label: `${usage.title || "제목 없음"}${usage.note ? ` · ${usage.note}` : ""}`,
 				icon: FileText,
-				onSelect: () => window.location.assign(entryHref(reference.collection, reference.entryId)),
+				onSelect: () => window.location.assign(entryHref(usage.collection, usage.entryId)),
 			})),
 		},
 		{ kind: "separator" },
