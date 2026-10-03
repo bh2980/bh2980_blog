@@ -54,6 +54,7 @@ aiPlugin({
 });
 ```
 
+두 기능은 결과 문법을 코드 검사(`mermaidSyntax`·`chartSyntax`)로 본다. 같은 검사를 다른 기능의 `checks`에 넣어 쓸 수 있다.
 차트 지시문에는 차트 문법 설명(`CHART_SYNTAX_GUIDE`)이 들어간다. 차트 문법은 `@bh2980/cms-blocks/chart`의
 `parseChartDsl`·`normalizeChartDsl`이 읽는다.
 

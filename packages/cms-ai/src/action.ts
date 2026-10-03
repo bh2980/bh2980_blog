@@ -9,9 +9,12 @@ import {
 	type AiResult,
 	type AiSlot,
 	aiCheckSchema,
+	CODE_CHECK_NAME,
+	checkKey,
 	isAddableCheck,
 	MAX_PROMPT_LENGTH,
 	MAX_REQUEST_LENGTH,
+	migrateCheck,
 } from "./definition";
 
 /**
@@ -24,7 +27,7 @@ import {
  *   입력을 채울 수 있을 때만 붙일 수 있다(타입과 `defineConfig`가 확인한다).
  *
  * 관리자 AI 화면에서는 켜기·요청 받기·연결·모델·보낼 입력·지시문·기준값·검사 값만 고치고, 고친 값만 DB에 둔다.
- * 정의는 서버와 브라우저가 함께 읽으므로 JSON으로 담을 수 있는 값만 둔다.
+ * 정의는 서버와 브라우저가 함께 읽는다. 코드 검사(`defineAiCheck`)의 함수는 서버에서만 부른다.
  */
 
 // ---------------------------------------------------------------------------
@@ -139,7 +142,7 @@ export type AiChoices =
 // ---------------------------------------------------------------------------
 
 /** 코드 검사가 받는 상황. */
-export interface AiValidateContext {
+export interface AiCheckContext {
 	/** 실행에 쓴 입력. */
 	readonly input: Readonly<Record<string, unknown>>;
 	readonly collection?: string;
@@ -147,16 +150,35 @@ export interface AiValidateContext {
 	readonly entryId?: string;
 	/** 선택지가 있는 기능이면 값 → 보이는 이름. */
 	readonly choices?: ReadonlyMap<string, string>;
+	/** 이 컬렉션·언어의 다른 항목이 이미 쓰는 주소(slug). 컬렉션을 모르면 빈 집합이다. */
+	readonly slugsInUse: (slugs: readonly string[]) => Promise<ReadonlySet<string>>;
 }
 
 /**
  * 코드 검사의 결과. `true`·`null`·`undefined`면 통과, `false`면 버리고, 글자면 그 이유로 버린다.
  * 통과시키면서 후보 옆에 설명을 붙이려면 `{ detail }`.
  */
-export type AiValidateResult = boolean | string | null | undefined | { readonly detail: string };
+export type AiCheckResult = boolean | string | null | undefined | { readonly detail: string };
 
-/** 코드 검사. 정해진 검사(`checks`) 다음에 서버에서 값 하나(후보 하나, 또는 글·MDX 결과 전체)마다 부른다. */
-export type AiValidate = (value: string, context: AiValidateContext) => AiValidateResult | Promise<AiValidateResult>;
+/**
+ * 코드 검사(`defineAiCheck`). 정해진 검사(형식·길이·선택지)로 안 되는 것을 함수로 본다. 기능의 `checks`에 넣으면
+ * 관리자 화면에 이름이 보이고 켜고 끌 수 있다(값은 고칠 수 없다). 서버에서 값 하나(후보 하나, 또는 글·MDX 결과 전체)마다 부른다.
+ */
+export interface AiCodeCheck {
+	readonly kind: "code";
+	/** 기능 안에서 겹치지 않는 이름(소문자·숫자·하이픈). 고친 값(켜기)이 이 이름으로 남는다. */
+	readonly name: string;
+	/** 관리자 화면에 보이는 이름. */
+	readonly label: string;
+	/** 처음에 켜 둘까. 없으면 켠다. */
+	readonly enabled?: boolean;
+	readonly run: (value: string, context: AiCheckContext) => AiCheckResult | Promise<AiCheckResult>;
+}
+
+/** 코드 검사를 만든다. 기능 정의의 `checks`에 정해진 검사와 함께 넣는다. */
+export const defineAiCheck = (check: Omit<AiCodeCheck, "kind">): AiCodeCheck => ({ kind: "code", ...check });
+
+const isCodeCheck = (check: AiCheckInput | AiCodeCheck): check is AiCodeCheck => "run" in check;
 
 export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	/** 관리자 화면과 버튼에 보이는 이름. */
@@ -179,13 +201,10 @@ export interface AiActionDefinition<I extends AiInputs = AiInputs> {
 	/** 판단 방식 후보 최대 개수. 없으면 5. */
 	readonly maxCount?: number;
 	/**
-	 * 결과 검사. 위에서부터 차례로 적용한다. 관리자 화면에서는 켜기·값을 고치고, 형식·길이·선택지 안 검사를 더한다.
+	 * 결과 검사. 정해진 검사를 먼저, 코드 검사(`defineAiCheck`)를 그다음에 적힌 순서대로 적용한다.
+	 * 관리자 화면에서는 켜기·값을 고치고, 형식·길이·선택지 안 검사를 더한다.
 	 */
-	readonly checks?: readonly AiCheckInput[];
-	/** 코드 검사. 정해진 검사로 안 되는 것(예: 다이어그램 문법)을 함수로 본다. 관리자 화면에서는 고칠 수 없다. */
-	readonly validate?: AiValidate;
-	/** `구조 유지` 검사가 비교할 원문 입력(MDX 결과). */
-	readonly sameStructureAs?: keyof I & string;
+	readonly checks?: readonly (Exclude<AiCheckInput, { kind: "code" }> | AiCodeCheck)[];
 	/** 실행할 때 추가 요청을 받는다. 없으면 받지 않는다. */
 	readonly askInstruction?: boolean;
 	/** 누르면 결과를 보여 주지 않고 바로 넣는다(후보는 맨 앞 후보). 없으면 결과를 보이고 눌러서 넣는다. */
@@ -282,7 +301,7 @@ export const aiActionOverrideSchema = z
 		send: z.array(z.string().max(40)).max(20),
 		threshold: z.number().min(0.01).max(0.99),
 		maxCount: z.number().int().min(1).max(20),
-		checks: z.array(aiCheckSchema).max(10),
+		checks: z.array(z.preprocess(migrateCheck, aiCheckSchema)).max(10),
 	})
 	.partial();
 export type AiActionOverride = z.output<typeof aiActionOverrideSchema>;
@@ -302,10 +321,10 @@ export interface ResolvedAiAction {
 	readonly threshold: number;
 	readonly maxCount: number;
 	readonly checks: readonly AiCheck[];
-	/** 기능 정의가 정한 검사 종류. 관리자 화면은 이것을 끌 수만 있고, 나머지(사용자가 더한 검사)는 뺄 수 있다. */
-	readonly definedChecks: readonly AiCheck["kind"][];
-	readonly validate?: AiValidate;
-	readonly sameStructureAs?: string;
+	/** 기능 정의가 정한 검사(`checkKey`). 관리자 화면은 이것을 끌 수만 있고, 나머지(사용자가 더한 검사)는 뺄 수 있다. */
+	readonly definedChecks: readonly string[];
+	/** 코드 검사 이름 → 검사. `checks`의 `{ kind: "code" }` 항목이 가리킨다. */
+	readonly codeChecks: Readonly<Record<string, AiCodeCheck>>;
 	readonly askInstruction: boolean;
 	readonly instant: boolean;
 	readonly stream: boolean;
@@ -332,7 +351,11 @@ export const EDITABLE_KEYS = [
 export type AiActionEditable = Pick<ResolvedAiAction, (typeof EDITABLE_KEYS)[number]>;
 
 const defaultChecks = (definition: AiActionDefinition): AiCheck[] =>
-	(definition.checks ?? []).map((check) => aiCheckSchema.parse(check));
+	(definition.checks ?? []).map((check) =>
+		isCodeCheck(check)
+			? { kind: "code", name: check.name, enabled: check.enabled ?? true }
+			: aiCheckSchema.parse(check),
+	);
 
 /**
  * 정의에 고친 값을 얹는다. 검사는 정의에 있는 종류를 정의의 순서대로 두고 사용자가 고친 켜기·값을 얹은 뒤, 사용자가
@@ -364,8 +387,8 @@ export function resolveAction(
 		maxCount: override.maxCount ?? definition.maxCount ?? 5,
 		checks: [
 			...base.map((check) => {
-				const mine = override.checks?.find((item) => item.kind === check.kind);
-				return mine ? { ...check, ...mine } : check;
+				const mine = override.checks?.find((item) => checkKey(item) === checkKey(check));
+				return mine ? ({ ...check, ...mine } as AiCheck) : check;
 			}),
 			...(override.checks ?? []).filter(
 				(check, index, all) =>
@@ -374,9 +397,8 @@ export function resolveAction(
 					all.findIndex((item) => item.kind === check.kind) === index,
 			),
 		],
-		definedChecks: base.map((check) => check.kind),
-		...(definition.validate ? { validate: definition.validate } : {}),
-		...(definition.sameStructureAs ? { sameStructureAs: definition.sameStructureAs } : {}),
+		definedChecks: base.map(checkKey),
+		codeChecks: Object.fromEntries((definition.checks ?? []).filter(isCodeCheck).map((check) => [check.name, check])),
 		askInstruction: override.askInstruction ?? definition.askInstruction ?? false,
 		instant: override.instant ?? definition.instant ?? false,
 		stream: definition.stream ?? false,
@@ -594,16 +616,15 @@ export function validateAiConfig(ai: AiConfig, collections: CollectionsView, blo
 		if (action.result === "note" && action.apply && action.apply !== "none") {
 			throw new Error(`${where}: note results are not applied`);
 		}
+		const codeNames = new Set<string>();
 		for (const check of action.checks ?? []) {
 			if (check.kind === "exists" && !choices) throw new Error(`${where}: exists check needs choices`);
-			if (check.kind === "regexRuns" && action.input.code?.kind !== "code") {
-				throw new Error(`${where}: regexRuns check needs a code input named "code"`);
-			}
-			if (
-				check.kind === "structure" &&
-				(action.result !== "mdx" || !action.sameStructureAs || action.input[action.sameStructureAs]?.kind !== "mdx")
-			) {
-				throw new Error(`${where}: structure check needs an mdx result and sameStructureAs an mdx input`);
+			if (isCodeCheck(check)) {
+				if (!CODE_CHECK_NAME.test(check.name))
+					throw new Error(`${where}: check name "${check.name}" must be kebab-case`);
+				if (codeNames.has(check.name)) throw new Error(`${where}: check "${check.name}" is listed twice`);
+				if (typeof check.run !== "function") throw new Error(`${where}: check "${check.name}" needs a run function`);
+				codeNames.add(check.name);
 			}
 		}
 

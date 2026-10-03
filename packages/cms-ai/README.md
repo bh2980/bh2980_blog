@@ -36,19 +36,29 @@ plugins: [
 
 ## 결과 검사
 
-- **정해진 검사(`checks`)**: 형식(`pattern`)·길이(`maxLength`)·중복 없음(`unique`)·있는 값만(`exists`)·선택지 안
-  (`oneOf`, 정해 둔 목록 중 하나)·정규식 실행(`regexRuns`)·구조 유지(`structure`). 관리자 AI 화면에서 켜고 끄며 값을 고치고,
-  어느 기능에든 형식·길이·선택지 안 검사를 더하거나 삭제한다(정의가 정한 검사는 끄기만 한다).
-- **코드 검사(`validate`)**: 정해진 검사로 안 되는 것은 함수로 본다. 정해진 검사 다음에 서버에서 값 하나(후보 하나, 글·MDX
-  결과 전체)마다 부른다. `undefined`·`true`면 통과, 글자면 그 이유로 버리고(글·MDX는 실패), `{ detail }`이면 통과하면서
-  후보 옆에 설명을 붙인다.
+- **정해진 검사**: 어느 기능에나 쓰는 것만 둔다. 형식(`pattern`)·길이(`maxLength`)·있는 값만(`exists`, 기능의 선택지에 있는 값)·
+  선택지 안(`oneOf`, 정해 둔 목록 중 하나). 관리자 AI 화면에서 켜고 끄며 값을 고치고, 어느 기능에든 형식·길이·선택지 안 검사를
+  더하거나 삭제한다(정의가 정한 검사는 끄기만 한다).
+- **코드 검사(`defineAiCheck`)**: 기능마다 다른 검사는 함수로 만들어 기능 정의의 `checks`에 함께 넣는다. 관리자 화면에는
+  `label`이 보이고 켜고 끌 수만 있다. 정해진 검사 다음에 적힌 순서대로, 서버에서 값 하나(후보 하나, 글·MDX 결과 전체)마다
+  부른다. `undefined`·`true`면 통과, `false`나 글자면 버리고(글·MDX는 실패, 글자는 그 이유), `{ detail }`이면 통과하면서
+  후보 옆에 설명을 붙인다. 두 번째 인자로 입력·컬렉션·언어·선택지와 `slugsInUse(주소들)`(이미 쓰는 주소)를 받는다.
+- 기본 코드 검사: `uniqueSlug`(중복 없음, 주소 추천), `regexRuns(입력)`(정규식 실행, 코드 블록 정규식), `sameStructure(입력)`
+  (구조 유지, 번역). 블록 확장은 `mermaidSyntax`·`chartSyntax`(`@bh2980/cms-blocks/mermaid/ai`·`/chart/ai`)를 낸다.
 
 ```ts
+import { aiAction, defineAiCheck, uniqueSlug } from "@bh2980/cms-ai";
+
+const noBannedWords = defineAiCheck({
+	name: "no-banned-words",
+	label: "금지어 없음",
+	run: (value) => (/광고|협찬/.test(value) ? "금지어가 들어 있습니다." : true),
+});
+
 aiAction({
-	label: "다이어그램 만들기",
+	label: "요약 만들기",
 	// …
-	validate: (value, { input, collection, choices }) =>
-		value.trim().startsWith("```mermaid") ? undefined : "```mermaid 코드 펜스 하나가 아닙니다.",
+	checks: [{ kind: "maxLength", max: 160 }, noBannedWords],
 });
 ```
 

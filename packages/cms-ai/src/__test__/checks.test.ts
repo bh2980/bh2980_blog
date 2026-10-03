@@ -5,23 +5,16 @@ import { type AiCheck, KEBAB_PATTERN } from "../definition";
 const on = <T extends Omit<AiCheck, "enabled">>(check: T) => ({ ...check, enabled: true }) as AiCheck;
 
 describe("AI 결과 검사", () => {
-	it("형식·길이·중복 없음을 차례로 적용하고, 값을 고치지 않고 버린다", () => {
+	it("형식·길이를 차례로 적용하고, 값을 고치지 않고 버린다. 코드 검사는 여기서 보지 않는다", () => {
 		const checks = [
 			on({ kind: "pattern", pattern: KEBAB_PATTERN }),
 			on({ kind: "maxLength", max: 20 }),
-			on({ kind: "unique" }),
+			on({ kind: "code", name: "unique-slug" }),
 		];
 		const items = checkCandidates(
 			checks,
-			[
-				"react-query-guide",
-				"Next.js Scroll",
-				"taken-slug",
-				"a-very-long-slug-over-twenty",
-				"same",
-				"react-query-guide",
-			],
-			{ taken: new Set(["taken-slug"]), current: "same" },
+			["react-query-guide", "Next.js Scroll", "a-very-long-slug-over-twenty", "same", "react-query-guide"],
+			{ current: "same" },
 		);
 		expect(items.map((item) => item.value)).toEqual(["react-query-guide"]);
 	});
@@ -38,12 +31,6 @@ describe("AI 결과 검사", () => {
 			{ value: "t2", label: "Next.js" },
 			{ value: "unknown", label: "unknown" },
 		]);
-	});
-
-	it("정규식 실행은 문법이 맞고 코드에서 한 곳 이상 찾는 것만 남기고 찾은 곳 수를 붙인다", () => {
-		const code = "import { a, b, c } from 'x';\nconst value = 1;\nconst other = 2;";
-		const items = checkCandidates([on({ kind: "regexRuns" })], ["const \\w+", "(", "nothing-here"], { code });
-		expect(items).toEqual([{ value: "const \\w+", label: "const \\w+", detail: "2곳" }]);
 	});
 
 	it("꺼 둔 검사는 적용하지 않는다", () => {

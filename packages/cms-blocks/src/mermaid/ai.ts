@@ -1,4 +1,4 @@
-import { aiAction, aiInput } from "@bh2980/cms-ai";
+import { aiAction, aiInput, defineAiCheck } from "@bh2980/cms-ai";
 
 /**
  * Mermaid 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `aiPlugin({ actions })`에 이름을 붙여 넣는다.
@@ -56,6 +56,9 @@ export function validateMermaid(value: string): string | undefined {
 	return DIAGRAM_TYPES.has(type) ? undefined : `알 수 없는 다이어그램 종류입니다: ${type}`;
 }
 
+/** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
+export const mermaidSyntax = defineAiCheck({ name: "mermaid-syntax", label: "Mermaid 문법", run: validateMermaid });
+
 export const mermaidAi = {
 	/** 다이어그램 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 Mermaid 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
@@ -74,7 +77,7 @@ export const mermaidAi = {
 					"- 노드 글자는 본문과 같은 언어로 쓰고, 괄호·따옴표·쉼표가 든 글자는 큰따옴표로 감싼다",
 					"- 본문에 없는 사실은 지어내지 않는다",
 				),
-			validate: validateMermaid,
+			checks: [mermaidSyntax],
 			attach: [{ slot: "insert" }],
 		}),
 
@@ -94,7 +97,7 @@ export const mermaidAi = {
 					"- 요청과 상관없는 부분은 그대로 둔다",
 					"- 요청이 없으면 문법 오류를 고치고 알아보기 쉽게 정리한다",
 				),
-			validate: validateMermaid,
+			checks: [mermaidSyntax],
 			attach: [{ slot: "block", block: "mermaid" }],
 		}),
 };

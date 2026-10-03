@@ -46,19 +46,21 @@ export const AI_APPLIES = ["replace", "append", "none"] as const;
 export type AiApply = (typeof AI_APPLIES)[number];
 
 /**
- * 결과 검사 종류. 기능마다 목록으로 정하고(기능 편집기에 모두 보인다), 통과하지 못한 후보는 버린다.
+ * 결과 검사. 기능마다 목록으로 정하고(기능 편집기에 모두 보인다), 통과하지 못한 후보는 버린다.
+ * 정해진 검사는 어느 기능에나 쓰는 것만 둔다.
  * - `pattern`: 정규식에 맞는 값만
  * - `maxLength`: 최대 글자 수를 넘지 않는 값만
- * - `unique`: 같은 컬렉션·언어의 다른 항목이 이미 쓰는 주소는 뺌
  * - `exists`: 선택지(`choices`)에 실제로 있는 값만
- * - `regexRuns`: 올바른 정규식이고 `code` 입력에서 한 곳 이상 찾는 것만
- * - `structure`: MDX 결과가 원문 입력과 같은 뼈대(요소·링크·코드·속성)인 것만
  * - `oneOf`: 정해 둔 목록(`items`) 중 하나인 것만
  *
- * 이 밖의 검사는 기능 정의의 `validate` 함수(코드)로 더한다.
+ * 기능마다 다른 검사(주소 중복, 정규식 실행, 번역 구조 등)는 코드 검사(`defineAiCheck`)로 만들어 기능의 `checks`에 넣는다.
+ * 고친 값에는 그 이름(`{ kind: "code", name }`)과 켜기만 남는다.
  */
-export const AI_CHECK_KINDS = ["pattern", "maxLength", "unique", "exists", "regexRuns", "structure", "oneOf"] as const;
+export const AI_CHECK_KINDS = ["pattern", "maxLength", "exists", "oneOf"] as const;
 export type AiCheckKind = (typeof AI_CHECK_KINDS)[number];
+
+/** 코드 검사 이름(소문자·숫자·하이픈). */
+export const CODE_CHECK_NAME = /^[a-z][a-z0-9-]*$/;
 
 const patternSchema = z
 	.string()
@@ -82,14 +84,31 @@ const enabled = z.boolean().default(true);
 export const aiCheckSchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("pattern"), enabled, pattern: patternSchema }),
 	z.object({ kind: z.literal("maxLength"), enabled, max: z.number().int().min(1).max(5000) }),
-	z.object({ kind: z.literal("unique"), enabled }),
 	z.object({ kind: z.literal("exists"), enabled }),
-	z.object({ kind: z.literal("regexRuns"), enabled }),
-	z.object({ kind: z.literal("structure"), enabled }),
 	z.object({ kind: z.literal("oneOf"), enabled, items: z.array(z.string().trim().min(1).max(200)).min(1).max(100) }),
+	z.object({ kind: z.literal("code"), enabled, name: z.string().max(60).regex(CODE_CHECK_NAME) }),
 ]);
 export type AiCheck = z.output<typeof aiCheckSchema>;
 export type AiCheckInput = z.input<typeof aiCheckSchema>;
+
+/** 검사 목록 안에서 검사 하나를 가리키는 이름. 코드 검사는 이름마다 하나, 나머지는 종류마다 하나다. */
+export const checkKey = (check: Pick<AiCheck, "kind"> & { name?: string }) =>
+	check.kind === "code" ? `code:${check.name}` : check.kind;
+
+/** 정해진 검사였다가 코드 검사로 옮긴 것(저장된 고친 값을 읽을 때 옮긴다). */
+const MOVED_TO_CODE: Readonly<Record<string, string>> = {
+	unique: "unique-slug",
+	regexRuns: "regex-runs",
+	structure: "same-structure",
+};
+
+/** 저장된 검사 하나를 지금 모양으로. 코드 검사로 옮긴 종류는 같은 이름의 코드 검사로 바꾼다. */
+export function migrateCheck(value: unknown): unknown {
+	if (!value || typeof value !== "object" || !("kind" in value)) return value;
+	const { kind, enabled } = value as { kind?: unknown; enabled?: unknown };
+	const name = typeof kind === "string" ? MOVED_TO_CODE[kind] : undefined;
+	return name ? { kind: "code", name, ...(typeof enabled === "boolean" ? { enabled } : {}) } : value;
+}
 
 /** 주소·파일 이름처럼 소문자·숫자·하이픈만 쓰는 값의 형식. 기본 기능의 `형식` 검사에 채워 둔다. */
 export const KEBAB_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
@@ -131,10 +150,7 @@ export const APPLY_LABELS: Record<AiApply, string> = {
 export const CHECK_LABELS: Record<AiCheckKind, string> = {
 	pattern: "형식",
 	maxLength: "길이",
-	unique: "중복 없음",
 	exists: "있는 값만",
-	regexRuns: "정규식 실행",
-	structure: "구조 유지",
 	oneOf: "선택지 안",
 };
 
@@ -145,7 +161,7 @@ export const ADDABLE_CHECKS = {
 	oneOf: { kind: "oneOf", enabled: true, items: ["값"] },
 } as const satisfies Partial<Record<AiCheckKind, AiCheck>>;
 export type AddableCheckKind = keyof typeof ADDABLE_CHECKS;
-export const isAddableCheck = (kind: AiCheckKind): kind is AddableCheckKind => Object.hasOwn(ADDABLE_CHECKS, kind);
+export const isAddableCheck = (kind: string): kind is AddableCheckKind => Object.hasOwn(ADDABLE_CHECKS, kind);
 
 export const ENGINE_LABELS: Record<AiEngine, string> = { generate: "생성", decide: "판단" };
 
@@ -205,9 +221,12 @@ export function migrateLegacyCheck(value: unknown): unknown {
 	if (!value || typeof value !== "object" || "checks" in value || !("check" in value)) return value;
 	const { check, maxLength, ...rest } = value as { check?: unknown; maxLength?: unknown };
 	const legacy: Record<string, AiCheckInput[]> = {
-		slug: [{ kind: "pattern", pattern: KEBAB_PATTERN }, { kind: "unique" }],
+		slug: [
+			{ kind: "pattern", pattern: KEBAB_PATTERN },
+			{ kind: "code", name: "unique-slug" },
+		],
 		tags: [{ kind: "exists" }],
-		regex: [{ kind: "regexRuns" }],
+		regex: [{ kind: "code", name: "regex-runs" }],
 		filename: [{ kind: "pattern", pattern: KEBAB_PATTERN }],
 		maxLength: typeof maxLength === "number" ? [{ kind: "maxLength", max: maxLength }] : [],
 	};

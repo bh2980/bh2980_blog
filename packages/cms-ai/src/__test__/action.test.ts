@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+	type AiActionDefinition,
 	type AiActionInput,
 	type AiActionResult,
 	aiAction,
+	aiActionOverrideSchema,
 	aiInput,
+	defineAiCheck,
 	overrideFrom,
 	renderPrompt,
 	resolveAction,
@@ -37,8 +40,8 @@ describe("AI 기능 정의", () => {
 			prompt: "바꾼 지시문",
 			send: ["title", "nope"],
 			checks: [
-				{ kind: "unique", enabled: false },
-				{ kind: "regexRuns", enabled: true },
+				{ kind: "code", name: "unique-slug", enabled: false },
+				{ kind: "code", name: "regex-runs", enabled: true },
 				{ kind: "maxLength", max: 40, enabled: true },
 			],
 		});
@@ -48,8 +51,41 @@ describe("AI 기능 정의", () => {
 		expect(action.checks).toEqual([
 			{ kind: "pattern", pattern: KEBAB_PATTERN, enabled: true },
 			{ kind: "maxLength", max: 40, enabled: true },
-			{ kind: "unique", enabled: false },
+			{ kind: "code", name: "unique-slug", enabled: false },
 		]);
+		expect(Object.keys(action.codeChecks)).toEqual(["unique-slug"]);
+		expect(action.definedChecks).toEqual(["pattern", "maxLength", "code:unique-slug"]);
+	});
+
+	it("예전에 정해진 검사였던 중복 없음·정규식 실행·구조 유지의 고친 값은 같은 코드 검사의 켜기로 읽는다", () => {
+		const override = aiActionOverrideSchema.parse({
+			checks: [
+				{ kind: "unique", enabled: false },
+				{ kind: "regexRuns", enabled: true },
+			],
+		});
+		expect(override.checks).toEqual([
+			{ kind: "code", name: "unique-slug", enabled: false },
+			{ kind: "code", name: "regex-runs", enabled: true },
+		]);
+		expect(resolveAction("slug", aiPresets.slug(), override).checks.at(-1)).toEqual({
+			kind: "code",
+			name: "unique-slug",
+			enabled: false,
+		});
+	});
+
+	it("코드 검사 이름은 소문자 하이픈이고 한 기능에 한 번만 쓴다", () => {
+		const check = defineAiCheck({ name: "no-dup", label: "겹침 없음", run: () => true });
+		const action = (checks: AiActionDefinition["checks"]) =>
+			aiAction({ label: "x", input: { title: aiInput.text({ label: "제목" }) }, result: "text", prompt: "x", checks });
+		expect(() => validateAiConfig({ actions: { a: action([check, check]) } }, collections)).toThrow("listed twice");
+		expect(() =>
+			validateAiConfig(
+				{ actions: { a: action([defineAiCheck({ name: "Bad", label: "x", run: () => true })]) } },
+				collections,
+			),
+		).toThrow("kebab-case");
 	});
 
 	it("관리자 화면에서 더한 검사(형식·길이·선택지 안)는 정의의 검사 뒤에 붙고, 정의의 검사는 빼지 못한다", () => {
@@ -59,7 +95,7 @@ describe("AI 기능 정의", () => {
 				{ kind: "maxLength", enabled: false, max: 60 },
 				{ kind: "oneOf", enabled: true, items: ["가", "나"] },
 				{ kind: "oneOf", enabled: true, items: ["중복"] },
-				{ kind: "unique", enabled: true },
+				{ kind: "code", name: "unique-slug", enabled: true },
 			],
 		});
 		expect(action.checks).toEqual([

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aiAction, aiInput, type ResolvedAiAction, resolveAction } from "../action";
+import { aiAction, aiInput, defineAiCheck, type ResolvedAiAction, resolveAction } from "../action";
 import { AiError } from "../errors";
 import type { AiDecider, AiProvider, AiRequest, DecisionAnswer, DecisionRequest } from "../provider";
 import { AI_ACTIONS } from "../registry";
@@ -131,7 +131,7 @@ describe("AI 기능 실행기", () => {
 		expect(result).toEqual({ kind: "candidates", items: [{ value: "t1", label: "React" }] });
 	});
 
-	it("코드 검사(validate)는 정해진 검사 다음에 후보마다 돌고, 설명을 붙이거나 버린다", async () => {
+	it("코드 검사는 정해진 검사 다음에 후보마다 돌고, 설명을 붙이거나 버린다", async () => {
 		const { provider } = stubProvider({ candidates: ["alpha", "beta", "gamma"] });
 		const seen: string[] = [];
 		const action = resolveAction(
@@ -140,11 +140,17 @@ describe("AI 기능 실행기", () => {
 				label: "고르기",
 				input: { title: aiInput.text({ label: "제목" }) },
 				result: "candidates",
-				checks: [{ kind: "oneOf", items: ["alpha", "beta"] }],
-				validate: (value, context) => {
-					seen.push(`${value}:${String(context.input.title)}`);
-					return value === "beta" ? "베타는 안 된다" : { detail: "통과" };
-				},
+				checks: [
+					{ kind: "oneOf", items: ["alpha", "beta"] },
+					defineAiCheck({
+						name: "no-beta",
+						label: "베타 없음",
+						run: (value, context) => {
+							seen.push(`${value}:${String(context.input.title)}`);
+							return value === "beta" ? "베타는 안 된다" : { detail: "통과" };
+						},
+					}),
+				],
 				prompt: "고른다.",
 			}),
 		);
@@ -162,13 +168,35 @@ describe("AI 기능 실행기", () => {
 				label: "쓰기",
 				input: { title: aiInput.text({ label: "제목" }) },
 				result: "text",
-				validate: async (value) => (value.length < 10 ? "너무 짧다" : undefined),
+				checks: [
+					defineAiCheck({
+						name: "long-enough",
+						label: "길이 충분",
+						run: async (value) => (value.length < 10 ? "너무 짧다" : undefined),
+					}),
+				],
 				prompt: "쓴다.",
 			}),
 		);
 		await expect(runAiAction(action, call({ title: "글" }), deps(provider))).rejects.toMatchObject({
 			code: "ai_failed",
 			message: "결과가 검사를 통과하지 못했습니다: 너무 짧다",
+		});
+		// 꺼 둔 코드 검사는 돌지 않는다.
+		const off = resolveAction(
+			"write",
+			aiAction({
+				label: "쓰기",
+				input: { title: aiInput.text({ label: "제목" }) },
+				result: "text",
+				checks: [defineAiCheck({ name: "long-enough", label: "길이 충분", run: () => "막힘" })],
+				prompt: "쓴다.",
+			}),
+			{ checks: [{ kind: "code", name: "long-enough", enabled: false }] },
+		);
+		await expect(runAiAction(off, call({ title: "글" }), deps(provider))).resolves.toEqual({
+			kind: "text",
+			text: "짧은 글",
 		});
 	});
 
@@ -276,12 +304,15 @@ describe("AI 기능 실행기", () => {
 			),
 			deps(provider, { takenSlugs }),
 		);
-		expect(takenSlugs).toHaveBeenCalledWith({
-			collection: "post",
-			locale: "en",
-			slugs: ["used-slug", "fresh-slug"],
-			entryId: "11111111-1111-4111-8111-111111111111",
-		});
+		// 중복 없음(코드 검사)이 후보마다 묻는다.
+		for (const slug of ["used-slug", "fresh-slug"]) {
+			expect(takenSlugs).toHaveBeenCalledWith({
+				collection: "post",
+				locale: "en",
+				slugs: [slug],
+				entryId: "11111111-1111-4111-8111-111111111111",
+			});
+		}
 		expect(result.kind === "candidates" && result.items.map((item) => item.value)).toEqual(["fresh-slug"]);
 	});
 

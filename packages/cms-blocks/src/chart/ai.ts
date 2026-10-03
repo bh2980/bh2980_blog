@@ -1,4 +1,4 @@
-import { aiAction, aiInput } from "@bh2980/cms-ai";
+import { aiAction, aiInput, defineAiCheck } from "@bh2980/cms-ai";
 import { normalizeChartDsl, parseChartDsl } from "./dsl";
 
 /**
@@ -41,6 +41,9 @@ export function validateChart(value: string): string | undefined {
 	return first ? `차트 문법 오류(${first.line}줄): ${first.message}` : undefined;
 }
 
+/** 결과 문법 검사(코드 검사). 다른 기능에도 `checks`로 넣을 수 있다. */
+export const chartSyntax = defineAiCheck({ name: "chart-syntax", label: "차트 문법", run: validateChart });
+
 export const chartAi = {
 	/** 차트 만들기. 슬래시 메뉴에서 요청을 받아 커서 자리에 차트 블록을 넣는다. */
 	draft: (options: { readonly prompt?: string } = {}) =>
@@ -59,7 +62,7 @@ export const chartAi = {
 					"",
 					CHART_SYNTAX_GUIDE,
 				),
-			validate: validateChart,
+			checks: [chartSyntax],
 			attach: [{ slot: "insert" }],
 		}),
 
@@ -81,7 +84,7 @@ export const chartAi = {
 					"",
 					CHART_SYNTAX_GUIDE,
 				),
-			validate: validateChart,
+			checks: [chartSyntax],
 			attach: [{ slot: "block", block: "chart" }],
 		}),
 };

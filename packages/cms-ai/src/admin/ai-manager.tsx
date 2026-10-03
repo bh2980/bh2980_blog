@@ -30,7 +30,7 @@ import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
-import { Code, Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
+import { Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
 import { resolveAction } from "../action";
@@ -44,6 +44,7 @@ import {
 	type AiRunContext,
 	type AiRunResult,
 	CHECK_LABELS,
+	checkKey,
 	ENGINE_LABELS,
 	SLOT_LABELS,
 	SLOT_TARGETS,
@@ -532,10 +533,12 @@ function OneOfInput({
 /** 검사 한 줄. 켜고 끄며, 형식은 정규식, 길이는 글자 수, 선택지 안은 값 목록을 고친다. 더한 검사는 삭제할 수 있다. */
 function CheckRow({
 	check,
+	label,
 	onChange,
 	onRemove,
 }: {
 	check: AiCheck;
+	label: string;
 	onChange: (check: AiCheck) => void;
 	onRemove?: () => void;
 }) {
@@ -549,7 +552,7 @@ function CheckRow({
 				onCheckedChange={(enabled) => onChange({ ...check, enabled })}
 			/>
 			<Label htmlFor={id} className="w-20 shrink-0 font-normal text-xs">
-				{CHECK_LABELS[check.kind]}
+				{label}
 			</Label>
 			{check.kind === "pattern" && (
 				<Input
@@ -581,13 +584,7 @@ function CheckRow({
 				<OneOfInput items={check.items} disabled={!check.enabled} onChange={(items) => onChange({ ...check, items })} />
 			)}
 			{onRemove && (
-				<IconButton
-					label={`${CHECK_LABELS[check.kind]} 검사 삭제`}
-					size="icon-xs"
-					destructive
-					onClick={onRemove}
-					className="ml-auto"
-				>
+				<IconButton label={`${label} 검사 삭제`} size="icon-xs" destructive onClick={onRemove} className="ml-auto">
 					<Trash2 aria-hidden />
 				</IconButton>
 			)}
@@ -809,22 +806,21 @@ function FeatureEditor({
 						<ul className="flex flex-col gap-1.5" aria-label="검사">
 							{spec.checks.map((check, index) => (
 								<CheckRow
-									key={check.kind}
+									key={checkKey(check)}
 									check={check}
+									label={
+										check.kind === "code"
+											? (feature.codeCheckLabels[check.name] ?? check.name)
+											: CHECK_LABELS[check.kind]
+									}
 									onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
 									onRemove={
-										feature.definedChecks.includes(check.kind)
+										feature.definedChecks.includes(checkKey(check))
 											? undefined
 											: () => set({ checks: spec.checks.filter((_, i) => i !== index) })
 									}
 								/>
 							))}
-							{feature.validated && (
-								<li className="flex min-h-8 items-center gap-2 text-xs">
-									<Code aria-hidden className="size-3.5 text-muted-foreground" />
-									코드 검사
-								</li>
-							)}
 						</ul>
 						{addableChecks.length > 0 && (
 							<DropdownMenu>

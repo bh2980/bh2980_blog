@@ -1,4 +1,5 @@
 import { aiAction, aiInput } from "./action";
+import { regexRuns, sameStructure, uniqueSlug } from "./code-checks";
 import { KEBAB_PATTERN } from "./definition";
 
 /**
@@ -42,7 +43,7 @@ export const aiPresets = {
 			send: ["title", "body", "current"],
 			result: "candidates",
 			instant: true,
-			checks: [{ kind: "pattern", pattern: KEBAB_PATTERN }, { kind: "maxLength", max: 80 }, { kind: "unique" }],
+			checks: [{ kind: "pattern", pattern: KEBAB_PATTERN }, { kind: "maxLength", max: 80 }, uniqueSlug],
 			prompt:
 				options.prompt ??
 				lines(
@@ -245,9 +246,8 @@ export const aiPresets = {
 				to: aiInput.locale({ label: "대상 언어", required: true }),
 			},
 			result: "mdx",
-			sameStructureAs: "block",
 			askInstruction: true,
-			checks: [{ kind: "structure" }],
+			checks: [sameStructure("block")],
 			prompt:
 				options.prompt ??
 				lines(
@@ -322,7 +322,7 @@ export const aiPresets = {
 			result: "candidates",
 			apply: "append",
 			askInstruction: true,
-			checks: [{ kind: "regexRuns" }],
+			checks: [regexRuns("code")],
 			prompt:
 				options.prompt ??
 				lines(
