@@ -125,11 +125,11 @@ function TaxonomyFilter({
 		onChange(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
 	return (
 		<div className="space-y-2">
-			<Command className="rounded-md border">
+			<Command className="bg-transparent p-0">
 				<CommandInput placeholder={`${label} 검색`} aria-label={`${label} 검색`} />
-				<CommandList className="max-h-56">
+				<CommandList className="mt-1 max-h-56">
 					<CommandEmpty>일치하는 {josa(label, "이", "가")} 없습니다.</CommandEmpty>
-					<CommandGroup>
+					<CommandGroup className="space-y-0.5 p-0">
 						{options.map((option) => (
 							<CommandItem key={option.id} value={`${option.title} ${option.id}`} onSelect={() => toggle(option.id)}>
 								<Checkbox

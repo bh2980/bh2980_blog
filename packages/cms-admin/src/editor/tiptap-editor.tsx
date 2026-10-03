@@ -232,13 +232,11 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
 
 /**
- * 도구 모음 순서. 블록 모양 → 글자 꾸밈 → 글자에 붙이기(링크·툴팁) → 블록 넣기. 문서 단위 도구(템플릿·확장·원문·MDX·폭)는
+ * 도구 모음 순서. 문단 모양 → 글자 꾸밈 → 글자에 붙이기(링크·툴팁) → 목록·정렬 → 블록 넣기. 문서 단위 도구(템플릿·확장·원문·MDX·폭)는
  * 편집 화면이 오른쪽(`toolbarAside`)에 둔다. 여기 없는 항목은 끝에 원래 순서대로 붙는다.
  */
 const TOOLBAR_ORDER = [
 	"block-style",
-	"list",
-	"align",
 	"divider-block",
 	...INLINE_TOOLS.map((tool) => tool.mark),
 	"color",
@@ -246,6 +244,9 @@ const TOOLBAR_ORDER = [
 	"divider-inline",
 	"link",
 	"tooltip",
+	"divider-list",
+	"list",
+	"align",
 	"divider-insert",
 	...INSERT_TOOLS.map(({ tool }) => tool.label),
 	"divider-tool",
@@ -871,6 +872,7 @@ export function CmsEditor({
 		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
 		{ key: "divider-inline", divider: true },
 		{ key: "tooltip", priority: 0, fixed: true, render: () => <TooltipPopover editor={editor} /> },
+		{ key: "divider-list", divider: true },
 		{ key: "divider-insert", divider: true },
 		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
 		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
