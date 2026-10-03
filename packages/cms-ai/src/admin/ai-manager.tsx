@@ -346,7 +346,8 @@ export function AiManager() {
 						<div className="flex w-72 shrink-0 flex-col border-r">
 							<div className="border-b p-2">
 								<Button type="button" size="xs" variant="outline" onClick={startNew}>
-									<Plus aria-hidden />새 기능
+									<Plus aria-hidden />
+									기능 추가
 								</Button>
 							</div>
 							<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="AI 기능 목록">
