@@ -66,6 +66,23 @@ describe("화면 자리", () => {
 		expect(apply).toHaveBeenCalledTimes(2);
 	});
 
+	it("만드는 동안은 결과 칸을 열지 않고 버튼만 막는다", async () => {
+		let finish: (value: { kind: "text"; text: string }) => void = () => {};
+		const run = vi.fn(
+			() =>
+				new Promise<{ kind: "text"; text: string }>((resolve) => {
+					finish = resolve;
+				}),
+		);
+		renderSlot([() => [action({ run })]]);
+		const button = screen.getByRole("button", { name: "주소 추천" }) as HTMLButtonElement;
+		fireEvent.click(button);
+		await waitFor(() => expect(button.disabled).toBe(true));
+		expect(screen.queryByRole("button", { name: "닫기" })).toBeNull();
+		finish({ kind: "text", text: "결과" });
+		expect(await screen.findByText("결과")).toBeTruthy();
+	});
+
 	it("바로 넣는 동작은 맨 앞 후보를 바로 넣고 결과 칸을 열지 않는다. 넣을 것이 없으면 알린다", async () => {
 		const run = vi.fn(async () => ({
 			kind: "candidates" as const,

@@ -295,8 +295,9 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 			</DropdownMenu>
 		);
 
+	// 만드는 동안은 버튼의 도는 아이콘으로 알린다. 결과 칸은 결과·오류가 나오거나 요청을 받을 때만 연다.
 	const panel =
-		state.status === "idle" ? null : (
+		state.status === "idle" || (state.status === "running" && !state.action.askInstruction) ? null : (
 			<div className="flex flex-col gap-1.5 rounded-md border bg-muted/30 p-2 text-xs" aria-live="polite">
 				<div className="flex items-center gap-1 text-muted-foreground">
 					<Sparkles aria-hidden className="size-3" />
@@ -350,7 +351,6 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 						</Button>
 					</div>
 				)}
-				{state.status === "running" && <p className="text-muted-foreground">만드는 중…</p>}
 				{state.status === "error" && (
 					<p role="alert" className="text-destructive">
 						{state.message}
