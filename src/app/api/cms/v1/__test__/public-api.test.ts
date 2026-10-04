@@ -1,246 +1,255 @@
+import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
+import {
+	closeGlobalPool,
+	createIsolatedTestPool,
+	dropIsolatedTestPool,
+	seedEntry,
+	seedSave,
+} from "@bh2980/cms/testing";
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DraftPost, PublishedMemo, PublishedPost } from "@/libs/contents/types/contents";
+import type { Pool } from "pg";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { GET } from "../../[...path]/route";
 
+/**
+ * M7-BE-3 공개 API 계약. 이 블로그는 공개 JSON API를 라이브러리 본체(서버 설정 `cms.server.ts`의 `publicApi`)로 켜므로,
+ * 앱의 `[...path]` 라우트를 그대로 부르고 `CMS_TEST_DATABASE_URL`의 격리 스키마를 읽는다(관리자 세션은 두지 않는다).
+ */
 const DRAFT_BODY_SENTINEL = "초안-본문-비밀";
 
-const repo = vi.hoisted(() => {
-	const state = {
-		posts: [] as unknown[],
-		memos: [] as unknown[],
-		/** 과거 주소 → 정규 slug. postgres 저장소의 alias 해석 계약을 흉내낸다. */
-		aliases: {} as Record<string, string>,
-		failure: null as unknown,
+const globalStore = globalThis as { __cmsStore?: ContentStore };
+
+describe("M7-BE-3 공개 API 계약 (실DB)", () => {
+	let pool: Pool;
+	let schemaName: string;
+	let store: ContentStore;
+	const ids = new Map<string, string>();
+
+	const get = async (path: string) => {
+		const [pathname = "", query = ""] = path.split("?");
+		const response = await GET(
+			new NextRequest(new URL(`/api/cms/${pathname}${query ? `?${query}` : ""}`, "https://example.com")),
+			{ params: Promise.resolve({ path: pathname.split("/") }) },
+		);
+		const text = await response.text();
+		return { status: response.status, cache: response.headers.get("cache-control"), text, body: JSON.parse(text) };
 	};
 
-	const maybeFail = () => {
-		if (state.failure) throw state.failure;
-	};
+	async function publish(
+		key: string,
+		collection: string,
+		slug: string,
+		metadata: Record<string, unknown>,
+		mdx = `${slug} 본문`,
+	) {
+		const draft = await seedEntry(store, { collection, slug, metadata, mdx });
+		const published = await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
+		ids.set(key, draft.id);
+		return published;
+	}
 
-	return {
-		state,
-		listPosts: async () => {
-			maybeFail();
-			return state.posts;
-		},
-		listMemos: async () => {
-			maybeFail();
-			return state.memos;
-		},
-		getPost: async (slug: string) => {
-			maybeFail();
-			const canonical = state.aliases[slug] ?? slug;
-			return state.posts.find((post) => (post as { slug: string }).slug === canonical) ?? null;
-		},
-		getMemo: async (slug: string) => {
-			maybeFail();
-			return state.memos.find((memo) => (memo as { slug: string }).slug === slug) ?? null;
-		},
-	};
-});
+	beforeAll(async () => {
+		const isolated = await createIsolatedTestPool();
+		pool = isolated.pool;
+		schemaName = isolated.schemaName;
+		await migrateContentStore(pool, { schema: schemaName });
+		store = createContentStore(pool, { schema: schemaName });
+		globalStore.__cmsStore = store;
 
-vi.mock("@/libs/contents/get-content-repository", () => ({
-	getContentRepository: () => repo,
-}));
+		await publish("category", "category", "engineering", { title: "엔지니어링" });
+		await publish("category-notes", "category", "notes", { title: "기록" });
+		await publish("tag", "tag", "typescript", { title: "TypeScript" });
+		await publish(
+			"a",
+			"post",
+			"a",
+			{
+				title: "a 제목",
+				summary: "a 요약",
+				categoryId: ids.get("category"),
+				tagIds: [ids.get("tag")],
+				policy: "evergreen",
+				seoTitle: "검색 제목",
+			},
+			"a 본문",
+		);
+		await publish("b", "post", "b", { title: "b 제목", categoryId: ids.get("category-notes") });
+		await seedEntry(store, {
+			collection: "post",
+			slug: "draft-slug",
+			metadata: { title: "초안", categoryId: ids.get("category") },
+			mdx: DRAFT_BODY_SENTINEL,
+		});
+		const archived = await publish("archived", "post", "archived-slug", {
+			title: "보관",
+			categoryId: ids.get("category"),
+		});
+		await store.archiveEntry({ id: archived.id, expectedVersion: archived.version });
+		const trashed = await publish("trashed", "post", "trashed-slug", {
+			title: "휴지통",
+			categoryId: ids.get("category"),
+		});
+		await store.trashEntry({ id: trashed.id, expectedVersion: trashed.version });
 
-import { GET as getPublicEntry } from "../public/entries/[collection]/[slug]/route";
-import { GET as listPublicEntries } from "../public/entries/route";
+		const renamed = await publish(
+			"old",
+			"post",
+			"old-slug",
+			{ title: "옛 주소", categoryId: ids.get("category") },
+			"옛 주소 본문",
+		);
+		const saved = await seedSave(store, renamed.id, {
+			expectedVersion: renamed.version,
+			slug: "new-slug",
+			metadata: renamed.working.metadata,
+			mdx: renamed.working.mdx,
+		});
+		await store.publishEntry({ id: renamed.id, expectedVersion: saved.version });
 
-const CATEGORY = { slug: "engineering", label: "엔지니어링" };
-const TAG = { slug: "typescript", label: "TypeScript" };
+		await publish("memo", "memo", "m-1", { title: "m-1 메모", tagIds: [ids.get("tag")] }, "m-1 메모 본문");
+	});
 
-function publishedPost(slug: string, overrides: Partial<PublishedPost> = {}): PublishedPost {
-	return {
-		slug,
-		status: "published",
-		publishedAt: "2026-03-01T12:00:00.000Z",
-		title: `${slug} 제목`,
-		excerpt: `${slug} 요약`,
-		category: CATEGORY,
-		tags: [TAG],
-		contentMdx: `${slug} 본문`,
-		...overrides,
-	};
-}
+	afterAll(async () => {
+		delete globalStore.__cmsStore;
+		if (pool && schemaName) await dropIsolatedTestPool(pool, schemaName);
+		await closeGlobalPool();
+	});
 
-function draftPost(slug: string): DraftPost {
-	return {
-		slug,
-		status: "draft",
-		title: `${slug} 초안`,
-		excerpt: "",
-		category: CATEGORY,
-		tags: [],
-		contentMdx: DRAFT_BODY_SENTINEL,
-	};
-}
-
-function publishedMemo(slug: string): PublishedMemo {
-	return {
-		slug,
-		status: "published",
-		publishedAt: "2026-03-02T12:00:00.000Z",
-		title: `${slug} 메모`,
-		tags: [TAG],
-		contentMdx: `${slug} 메모 본문`,
-	};
-}
-
-const request = (path: string) => new NextRequest(new URL(path, "https://example.com"));
-const context = (collection: string, slug: string) => ({ params: Promise.resolve({ collection, slug }) });
-
-beforeEach(() => {
-	repo.state.posts = [];
-	repo.state.memos = [];
-	repo.state.aliases = {};
-	repo.state.failure = null;
-});
-
-describe("M7-BE-3 공개 API 계약", () => {
 	it("목록은 공개본만 반환하고 페이지 정보와 no-store를 담는다", async () => {
-		repo.state.posts = [
-			publishedPost("a"),
-			draftPost("b"),
-			{ ...draftPost("archived"), status: "archived" },
-			{ ...draftPost("trashed"), status: "trash" },
-		];
-
-		const response = await listPublicEntries(request("/api/cms/v1/public/entries?collection=post"));
-		const body = await response.json();
+		const response = await get("v1/public/entries?collection=post");
 
 		expect(response.status).toBe(200);
-		expect(response.headers.get("cache-control")).toBe("no-store");
-		expect(body).toMatchObject({ total: 1, page: 1, pageSize: 25 });
-		expect(body.items.map((item: { slug: string }) => item.slug)).toEqual(["a"]);
+		expect(response.cache).toBe("no-store");
+		expect(response.body).toMatchObject({ total: 3, page: 1, pageSize: 25 });
+		expect(response.body.items.map((item: { slug: string }) => item.slug).sort()).toEqual(["a", "b", "new-slug"]);
+	});
+
+	it("collection을 주지 않으면 게시글 목록이다", async () => {
+		const response = await get("v1/public/entries");
+
+		expect(response.body.items.every((item: { collection: string }) => item.collection === "post")).toBe(true);
+	});
+
+	it("목록 항목은 예전 공개 DTO 모양 그대로다", async () => {
+		const response = await get("v1/public/entries?collection=post&category=engineering&tag=typescript");
+
+		expect(response.body.items).toEqual([
+			{
+				collection: "post",
+				slug: "a",
+				title: "a 제목",
+				publishedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.*Z$/),
+				tags: [{ slug: "typescript", label: "TypeScript" }],
+				seo: { title: "검색 제목" },
+				excerpt: "a 요약",
+				category: { slug: "engineering", label: "엔지니어링" },
+				isEvergreen: true,
+			},
+		]);
 	});
 
 	it("목록 응답에는 초안 본문과 관리자 필드가 직렬화되지 않는다", async () => {
-		repo.state.posts = [publishedPost("a"), draftPost("secret")];
+		const response = await get("v1/public/entries?collection=post");
 
-		const response = await listPublicEntries(request("/api/cms/v1/public/entries?collection=post"));
-		const text = await response.text();
-
-		expect(text).not.toContain(DRAFT_BODY_SENTINEL);
-		for (const forbidden of ["version", "folderId", "working", "contentMdx", "status"]) {
-			expect(text).not.toContain(forbidden);
+		expect(response.text).not.toContain(DRAFT_BODY_SENTINEL);
+		for (const forbidden of ["version", "folderId", "working", "contentMdx", "status", "metadata", "relations"]) {
+			expect(response.text).not.toContain(forbidden);
 		}
 		// 목록은 본문을 싣지 않는다(공개본 본문도).
-		expect(text).not.toContain("a 본문");
+		expect(response.text).not.toContain("a 본문");
+	});
+
+	it("카테고리·태그는 주소로 거르고 없는 주소는 빈 목록이다", async () => {
+		const byCategory = await get("v1/public/entries?category=notes");
+		const byTag = await get("v1/public/entries?collection=memo&tag=typescript");
+		const missing = await get("v1/public/entries?category=no-such-category");
+
+		expect(byCategory.body.items.map((item: { slug: string }) => item.slug)).toEqual(["b"]);
+		expect(byTag.body.items.map((item: { slug: string }) => item.slug)).toEqual(["m-1"]);
+		expect(missing.body).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
+		expect((await get("v1/public/entries?tag=")).status).toBe(400);
 	});
 
 	it("목록은 pageSize만큼 잘라내고 total은 전체 개수다", async () => {
-		repo.state.posts = Array.from({ length: 5 }, (_, index) => publishedPost(`post-${index}`));
+		const first = await get("v1/public/entries?page=1&pageSize=2");
+		const second = await get("v1/public/entries?page=2&pageSize=2");
 
-		const response = await listPublicEntries(request("/api/cms/v1/public/entries?page=2&pageSize=2"));
-		const body = await response.json();
-
-		expect(body.total).toBe(5);
-		expect(body.page).toBe(2);
-		expect(body.pageSize).toBe(2);
-		expect(body.items.map((item: { slug: string }) => item.slug)).toEqual(["post-2", "post-3"]);
+		expect(first.body).toMatchObject({ total: 3, page: 1, pageSize: 2 });
+		expect(first.body.items).toHaveLength(2);
+		expect(second.body.items).toHaveLength(1);
+		const slugs = [...first.body.items, ...second.body.items].map((item: { slug: string }) => item.slug);
+		expect(new Set(slugs).size).toBe(3);
 	});
 
 	it("단건 조회는 본문과 정규 주소를 함께 돌려준다", async () => {
-		repo.state.posts = [publishedPost("hello")];
-
-		const response = await getPublicEntry(request("/api/cms/v1/public/entries/post/hello"), context("post", "hello"));
-		const body = await response.json();
+		const response = await get("v1/public/entries/post/a");
 
 		expect(response.status).toBe(200);
-		expect(body.entry.body).toBe("hello 본문");
-		expect(body.address).toEqual({ slug: "hello", isAlias: false });
+		expect(response.body.entry.body).toBe("a 본문");
+		expect(response.body.entry).toMatchObject({ collection: "post", slug: "a", title: "a 제목" });
+		expect(response.body.address).toEqual({ slug: "a", isAlias: false });
 	});
 
 	it("과거 주소로 조회하면 정규 주소와 별칭 표시를 돌려준다", async () => {
-		repo.state.posts = [publishedPost("new-slug")];
-		repo.state.aliases = { "old-slug": "new-slug" };
+		const response = await get("v1/public/entries/post/old-slug");
 
-		const response = await getPublicEntry(
-			request("/api/cms/v1/public/entries/post/old-slug"),
-			context("post", "old-slug"),
-		);
-		const body = await response.json();
-
-		// 저장소가 과거 주소를 정규 slug로 해석해 돌려주는 계약을 그대로 쓴다.
 		expect(response.status).toBe(200);
-		expect(body.entry.slug).toBe("new-slug");
-		expect(body.address).toEqual({ slug: "new-slug", isAlias: true });
+		expect(response.body.entry.slug).toBe("new-slug");
+		expect(response.body.address).toEqual({ slug: "new-slug", isAlias: true });
 		// 응답 어디에도 요청한 과거 주소가 정규 주소로 남지 않는다.
-		expect(JSON.stringify(body.entry)).not.toContain("old-slug");
+		expect(JSON.stringify(response.body.entry)).not.toContain("old-slug");
 	});
 
-	it("초안 slug와 없는 slug는 404다", async () => {
-		repo.state.posts = [
-			publishedPost("hello"),
-			draftPost("draft-slug"),
-			{ ...draftPost("archived-slug"), status: "archived" },
-			{ ...draftPost("trashed-slug"), status: "trash" },
-		];
+	it("초안·보관·휴지통 slug와 없는 slug는 404다", async () => {
+		for (const slug of ["draft-slug", "archived-slug", "trashed-slug", "nope"]) {
+			const response = await get(`v1/public/entries/post/${slug}`);
 
-		const draft = await getPublicEntry(
-			request("/api/cms/v1/public/entries/post/draft-slug"),
-			context("post", "draft-slug"),
-		);
-		const archived = await getPublicEntry(
-			request("/api/cms/v1/public/entries/post/archived-slug"),
-			context("post", "archived-slug"),
-		);
-		const trashed = await getPublicEntry(
-			request("/api/cms/v1/public/entries/post/trashed-slug"),
-			context("post", "trashed-slug"),
-		);
-		const missing = await getPublicEntry(request("/api/cms/v1/public/entries/post/nope"), context("post", "nope"));
-
-		expect(draft.status).toBe(404);
-		expect(archived.status).toBe(404);
-		expect(trashed.status).toBe(404);
-		expect(missing.status).toBe(404);
-		expect(draft.headers.get("cache-control")).toBe("no-store");
-		expect(await draft.text()).not.toContain(DRAFT_BODY_SENTINEL);
+			expect(response.status).toBe(404);
+			expect(response.cache).toBe("no-store");
+			expect(response.text).not.toContain(DRAFT_BODY_SENTINEL);
+		}
 	});
 
-	it("메모 컬렉션도 같은 규칙으로 읽는다", async () => {
-		repo.state.memos = [publishedMemo("m-1")];
+	it("메모 컬렉션도 같은 규칙으로 읽고 카테고리·요약은 싣지 않는다", async () => {
+		const list = await get("v1/public/entries?collection=memo");
+		const detail = await get("v1/public/entries/memo/m-1");
 
-		const list = await listPublicEntries(request("/api/cms/v1/public/entries?collection=memo"));
-		const detail = await getPublicEntry(request("/api/cms/v1/public/entries/memo/m-1"), context("memo", "m-1"));
-
-		expect((await list.json()).items[0].collection).toBe("memo");
-		expect((await detail.json()).entry.collection).toBe("memo");
+		expect(list.body.items[0]).toMatchObject({ collection: "memo", slug: "m-1" });
+		expect(list.body.items[0]).not.toHaveProperty("category");
+		expect(list.body.items[0]).not.toHaveProperty("excerpt");
+		expect(detail.body.entry).toMatchObject({ collection: "memo", body: "m-1 메모 본문" });
 	});
 
 	it("지원하지 않는 컬렉션과 잘못된 질의는 400이다", async () => {
-		const badCollection = await getPublicEntry(
-			request("/api/cms/v1/public/entries/category/engineering"),
-			context("category", "engineering"),
-		);
-		const badQuery = await listPublicEntries(request("/api/cms/v1/public/entries?pageSize=101"));
+		const badCollection = await get("v1/public/entries/category/engineering");
+		const badListCollection = await get("v1/public/entries?collection=category");
+		const badSize = await get("v1/public/entries?pageSize=101");
+		const badPage = await get("v1/public/entries?page=0");
 
-		expect(badCollection.status).toBe(400);
-		expect(badQuery.status).toBe(400);
-		expect(badCollection.headers.get("cache-control")).toBe("no-store");
-		expect(badQuery.headers.get("cache-control")).toBe("no-store");
+		for (const response of [badCollection, badListCollection, badSize, badPage]) {
+			expect(response.status).toBe(400);
+			expect(response.cache).toBe("no-store");
+		}
 	});
 
 	it("저장소 장애는 404가 아니라 503이고 내부 메시지를 노출하지 않는다", async () => {
-		repo.state.failure = new Error("connect ECONNREFUSED 10.0.0.5:5432");
+		globalStore.__cmsStore = {
+			listPublishedPage: async () => {
+				throw new Error("connect ECONNREFUSED 10.0.0.5:5432");
+			},
+		} as unknown as ContentStore;
+		const originalError = console.error;
+		console.error = () => {};
+		try {
+			const list = await get("v1/public/entries");
 
-		const list = await listPublicEntries(request("/api/cms/v1/public/entries"));
-		const board = await list.json();
-
-		expect(list.status).toBe(503);
-		expect(list.headers.get("cache-control")).toBe("no-store");
-		expect(board.code).toBe("unavailable");
-		expect(JSON.stringify(board)).not.toContain("ECONNREFUSED");
-		expect(list.status).not.toBe(404);
-	});
-
-	it("관리자 세션 없이 동작한다(공개 계약)", async () => {
-		repo.state.posts = [publishedPost("hello")];
-
-		// authGateway를 mock하지 않았으므로 인증 코드가 호출되면 이 테스트는 실패한다.
-		const response = await listPublicEntries(request("/api/cms/v1/public/entries"));
-
-		expect(response.status).toBe(200);
+			expect(list.status).toBe(503);
+			expect(list.cache).toBe("no-store");
+			expect(list.body.code).toBe("unavailable");
+			expect(list.text).not.toContain("ECONNREFUSED");
+		} finally {
+			console.error = originalError;
+			globalStore.__cmsStore = store;
+		}
 	});
 });

@@ -1,11 +1,12 @@
+import { createPublicImageResolver } from "@bh2980/cms/render";
 import { differenceInYears } from "date-fns";
-import { createPublicImageResolver } from "@/cms/mdx/public-image-resolver";
 import { LanguageLinks } from "@/components/language-links";
 import { Callout } from "@/components/mdx/callout";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";
+import { entryPath } from "@/libs/contents/entry-path";
 import type { Post } from "@/libs/contents/types/contents";
-import { DEFAULT_LOCALE, type Locale, localizePath } from "@/libs/i18n/locales";
+import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
 import { cn } from "@/utils/cn";
 import { formatPublishedAt } from "@/utils/format-published-at";
@@ -54,7 +55,7 @@ export const PostDetailPageContent = async ({
 	const replacementHref = replacement
 		? !replacement.locale || replacement.locale === locale
 			? `${detailPathnamePrefix}/${replacement.slug}`
-			: localizePath(replacement.locale, `/posts/${replacement.slug}`)
+			: entryPath(replacement.locale, "post", replacement.slug)
 		: null;
 
 	return (

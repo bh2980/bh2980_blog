@@ -1,5 +1,6 @@
 import type { Metadata, Route } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { entryPath } from "@/libs/contents/entry-path";
 import { createLocalizedLinkResolver } from "@/libs/contents/services/localized-links";
 import { getMemo, listMemoTranslations } from "@/libs/contents/services/memo";
 import { getPost, listPosts, listPostTranslations } from "@/libs/contents/services/post";
@@ -32,7 +33,7 @@ function postFacts(locale: Locale, post: PublishedPostData): ArticleFacts {
 		title: post.seo?.title ?? post.title,
 		description: post.seo?.description ?? post.excerpt,
 		locale,
-		path: localizePath(locale, `/posts/${post.slug}`),
+		path: entryPath(locale, "post", post.slug),
 		...publishedTimes(post),
 		section: post.category.label,
 		tags: post.tags.map((tag) => tag.label),
@@ -45,7 +46,7 @@ function memoFacts(locale: Locale, memo: PublishedMemoData): ArticleFacts {
 		title: memo.seo?.title ?? memo.title,
 		description: memo.seo?.description,
 		locale,
-		path: localizePath(locale, `/memos/${memo.slug}`),
+		path: entryPath(locale, "memo", memo.slug),
 		...publishedTimes(memo),
 		tags: memo.tags.map((tag) => tag.label),
 		seo: memo.seo,
@@ -61,7 +62,7 @@ async function translationPaths(section: Section, translationGroupId: string | u
 			: await listMemoTranslations(translationGroupId);
 	return translations.map((item) => ({
 		locale: item.locale,
-		path: localizePath(item.locale, `${section.path}/${item.slug}`),
+		path: entryPath(item.locale, section.collection, item.slug),
 	}));
 }
 
@@ -87,7 +88,7 @@ export async function postDetailMetadata(locale: Locale, slug: string): Promise<
 	const post = await getPost(slug, locale);
 	if (!post) return notFoundMetadata(locale);
 
-	const url = localizePath(locale, `/posts/${post.slug}`);
+	const url = entryPath(locale, "post", post.slug);
 	const title = post.seo?.title ?? post.title;
 	const description = post.seo?.description ?? post.excerpt;
 	const translations = await translationPaths(POSTS, post.translationGroupId);
@@ -154,7 +155,7 @@ export async function memoDetailMetadata(locale: Locale, slug: string): Promise<
 	const memo = await getMemo(slug, locale);
 	if (!memo) return notFoundMetadata(locale);
 
-	const url = localizePath(locale, `/memos/${memo.slug}`);
+	const url = entryPath(locale, "memo", memo.slug);
 	const title = memo.seo?.title ?? memo.title;
 	const description = memo.seo?.description;
 	const translations = await translationPaths(MEMOS, memo.translationGroupId);

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCanonicalUrl, readSeoMetadata, SEO_METADATA_KEYS } from "../seo";
+import { post } from "@/cms.config";
+import { normalizeCanonicalUrl, toSeoMetadata } from "../seo";
+
+/** 게시글 컬렉션 정의의 SEO 역할 필드로 읽는다. */
+const readSeoMetadata = (metadata: Record<string, unknown>) => toSeoMetadata(post, metadata);
 
 describe("M7-FE-2 SEO metadata 해석", () => {
 	it("SEO 값이 없으면 undefined를 돌려준다", () => {
@@ -60,15 +64,5 @@ describe("M7-FE-2 SEO metadata 해석", () => {
 
 	it("ogImageId도 함께 저장한다(렌더 해석은 v2)", () => {
 		expect(readSeoMetadata({ ogImageId: " media-1 " })).toEqual({ ogImageId: "media-1" });
-	});
-
-	it("키 목록은 컬렉션 레지스트리·공개 allowlist와 같은 4개다", () => {
-		expect([...SEO_METADATA_KEYS].sort()).toEqual([
-			"canonicalUrl",
-			"ogImageId",
-			"seoDescription",
-			"seoRobots",
-			"seoTitle",
-		]);
 	});
 });

@@ -1,5 +1,5 @@
+import { TEXT_ALIGN_VALUES } from "@bh2980/cms/mdx";
 import type { ReactNode } from "react";
-import { TEXT_ALIGN_VALUES } from "@/cms/mdx/directives";
 import { cn } from "@/utils/cn";
 
 /**

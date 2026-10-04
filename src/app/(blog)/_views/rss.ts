@@ -1,4 +1,5 @@
 import { Feed } from "feed";
+import { entryPath } from "@/libs/contents/entry-path";
 import { listPosts } from "@/libs/contents/services/post";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
@@ -48,7 +49,7 @@ export async function buildRssResponse(locale: Locale): Promise<Response> {
 	});
 
 	for (const post of items) {
-		const url = new URL(localizePath(locale, `/posts/${post.slug}`), siteUrl).href;
+		const url = new URL(entryPath(locale, "post", post.slug), siteUrl).href;
 
 		feed.addItem({
 			title: post.title,

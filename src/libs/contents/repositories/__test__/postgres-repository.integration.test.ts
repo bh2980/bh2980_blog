@@ -1,12 +1,13 @@
-import type { Pool } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { seedEntry, seedSave } from "@/cms/adapters/postgres/__test__/seed";
+import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
 import {
 	closeGlobalPool,
 	createIsolatedTestPool,
 	dropIsolatedTestPool,
-} from "@/cms/adapters/postgres/__test__/test-database";
-import { type ContentStore, createContentStore, migrateContentStore } from "@/cms/adapters/postgres/content-store";
+	seedEntry,
+	seedSave,
+} from "@bh2980/cms/testing";
+import type { Pool } from "pg";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresRepository } from "../postgres";
 
 /**
@@ -16,7 +17,7 @@ import { PostgresRepository } from "../postgres";
  * 페이지가 기대하는 계약: 발행하면 다음 요청에 노출, 보관·휴지통이면 제외(404),
  * 주소를 바꾸면 이전 주소 조회가 정규 slug를 반환(페이지가 308 판정), SEO는 도메인 값으로 전달.
  *
- * 주의: 글은 **해석 가능한 published 카테고리**가 있어야 공개된다(`toPost`가 없으면 null).
+ * 주의: 글은 **해석 가능한 published 카테고리**가 있어야 공개된다(`toPublishedPost`가 없으면 null).
  * 이관 시 카테고리 레코드가 published로 들어와야 한다는 뜻이라 테스트로 고정한다.
  */
 describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
@@ -33,7 +34,9 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		repository = new PostgresRepository(() => store);
+		// 읽기 API(`@bh2980/cms/read`)는 컨테이너의 전역 저장소를 읽으므로 그 자리에 시험 저장소를 둔다.
+		(globalThis as { __cmsStore?: ContentStore }).__cmsStore = store;
+		repository = new PostgresRepository();
 
 		const category = await seedEntry(store, {
 			collection: "category",
@@ -49,6 +52,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 	});
 
 	afterAll(async () => {
+		delete (globalThis as { __cmsStore?: ContentStore }).__cmsStore;
 		if (pool && schemaName) {
 			await dropIsolatedTestPool(pool, schemaName);
 		}

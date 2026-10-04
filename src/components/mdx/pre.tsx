@@ -1,6 +1,6 @@
+import { showsLineNumbers } from "@bh2980/cms/render/code";
 import { Folder } from "lucide-react";
 import { type CSSProperties, Fragment, type PropsWithChildren } from "react";
-import { showsLineNumbers } from "@/libs/shiki/transformers";
 import { cn } from "@/utils/cn";
 import { CopyButton } from "./copy-button.client";
 

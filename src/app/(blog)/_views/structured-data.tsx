@@ -1,5 +1,5 @@
+import { resolvePublicMediaUrl } from "@bh2980/cms/runtime";
 import type { Metadata } from "next";
-import { resolvePublicMediaUrl } from "@/cms/mdx/public-image-resolver";
 import type { SeoMetadata } from "@/libs/contents/types/contents";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";

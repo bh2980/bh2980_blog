@@ -3,74 +3,76 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * M9-FE-1: 관리자 전용 초안 미리보기 모듈.
  *
- * 공개 조회와 **같은 slug 정규화**를 쓰고, PostgreSQL 초안을 미리보기에서 읽는다.
+ * 공개 조회와 **같은 slug 정규화**를 쓰고, 라이브러리의 `getPreview`(최신 초안)로 초안을 읽는다.
  */
 const state = vi.hoisted(() => ({
-	slugCalls: [] as { collection: string; slug: string }[],
-	taxonomyCalls: 0,
+	calls: [] as { collection: string; slug: string; locale?: string }[],
 	entries: new Map<string, unknown>(),
-	taxonomy: [] as unknown[],
 }));
 
-vi.mock("@/cms/container", () => ({
-	getCmsContentStore: () => ({
-		getWorkingEntryBySlug: async (params: { collection: string; slug: string }) => {
-			state.slugCalls.push(params);
-			return state.entries.get(`${params.collection}:${params.slug}`) ?? null;
-		},
-		listPublishedEntries: async () => {
-			state.taxonomyCalls += 1;
-			return state.taxonomy;
-		},
-	}),
+vi.mock("@bh2980/cms/read", () => ({
+	getPreview: async (params: { collection: string; slug: string; locale?: string }) => {
+		state.calls.push(params);
+		return state.entries.get(`${params.collection}:${params.slug}`) ?? null;
+	},
 }));
 
 import { getDraftPreviewMemo, getDraftPreviewPost } from "../draft-preview";
 
-const workingEntry = (metadata: Record<string, unknown>, mdx = "편집 중 본문", workingSlug: string | null = null) => ({
+const relation = (id: string, slug: string, title: string, collection: string) => ({
+	id,
+	collection,
+	locale: "ko",
+	slug,
+	title,
+	path: null,
+});
+
+const draft = (
+	collection: "post" | "memo",
+	slug: string,
+	metadata: Record<string, unknown>,
+	mdx: string,
+	relations: Record<string, unknown[]> = {},
+) => ({
 	id: "11111111-1111-5111-8111-111111111111",
-	collection: "post",
-	status: "draft",
-	version: 1,
-	createdAt: new Date("2026-01-01T00:00:00.000Z"),
+	collection,
+	locale: "ko",
+	translationGroupId: "11111111-1111-5111-8111-111111111111",
+	slug,
+	path: null,
+	title: null,
+	metadata,
+	relations,
+	publishedAt: null,
 	updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-	workingSlug,
-	publishedSlug: null,
-	working: {
-		metadata,
-		mdx,
-		schemaVersion: 1,
-		contentHash: "hash",
-		updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-	},
+	mdx,
+	fallback: false,
 });
 
 beforeEach(() => {
-	state.slugCalls = [];
-	state.taxonomyCalls = 0;
+	state.calls = [];
 	state.entries = new Map();
-	state.taxonomy = [
-		{ id: "cat-1", collection: "category", slug: "dev", metadata: { title: "개발" } },
-		{ id: "tag-1", collection: "tag", slug: "ts", metadata: { title: "TypeScript" } },
-	];
 });
 
 describe("draft preview (M9-FE-1)", () => {
-	it("환경변수 없이도 관리자 초안을 미리 볼 수 있다", async () => {
-		state.entries.set("memo:draft-1", workingEntry({ title: "초안 메모" }, "미리보기 본문", "draft-1"));
+	it("관리자 초안 메모를 미리 볼 수 있다", async () => {
+		state.entries.set("memo:draft-1", draft("memo", "draft-1", { title: "초안 메모" }, "미리보기 본문"));
 
 		await expect(getDraftPreviewMemo("draft-1")).resolves.toMatchObject({
 			status: "draft",
 			title: "초안 메모",
 			contentMdx: "미리보기 본문",
 		});
-		expect(state.slugCalls).toEqual([{ collection: "memo", slug: "draft-1", locale: "ko" }]);
+		expect(state.calls).toEqual([{ collection: "memo", slug: "draft-1", locale: "ko" }]);
 	});
 
-	it("working 항목에서 초안 글을 만든다", async () => {
+	it("초안 글을 만들고 공개된 분류는 주소·이름으로 풀어 준다", async () => {
 		state.entries.set(
 			"post:draft-1",
-			workingEntry(
+			draft(
+				"post",
+				"draft-1",
 				{
 					title: "초안 제목",
 					summary: "요약",
@@ -80,7 +82,10 @@ describe("draft preview (M9-FE-1)", () => {
 					seoTitle: "SEO 제목",
 				},
 				"편집 중 본문",
-				"draft-1",
+				{
+					categoryId: [relation("cat-1", "dev", "개발", "category")],
+					tagIds: [relation("tag-1", "ts", "TypeScript", "tag")],
+				},
 			),
 		);
 
@@ -91,17 +96,22 @@ describe("draft preview (M9-FE-1)", () => {
 			slug: "draft-1",
 			title: "초안 제목",
 			excerpt: "요약",
-			category: { slug: "cat-1", label: "개발" },
+			category: { slug: "dev", label: "개발" },
 			contentMdx: "편집 중 본문",
 			isEvergreen: true,
 			seo: { title: "SEO 제목" },
 		});
-		// 표시 이름을 못 찾는 태그는 id를 그대로 남기고 미리보기를 막지 않는다.
+		// 공개되지 않아 풀리지 않는 태그는 id를 그대로 남기고 미리보기를 막지 않는다.
 		expect(post?.tags).toEqual([
-			{ slug: "tag-1", label: "TypeScript" },
+			{ slug: "ts", label: "TypeScript" },
 			{ slug: "tag-missing", label: "tag-missing" },
 		]);
-		expect(state.slugCalls).toEqual([{ collection: "post", slug: "draft-1", locale: "ko" }]);
+	});
+
+	it("카테고리가 아직 공개되지 않았어도 id로 미리보기를 보여 준다", async () => {
+		state.entries.set("post:p", draft("post", "p", { title: "글", categoryId: "cat-new" }, "본문"));
+
+		expect((await getDraftPreviewPost("p"))?.category).toEqual({ slug: "cat-new", label: "cat-new" });
 	});
 
 	it("NFD 한글 slug도 공개 조회와 같은 NFC 규칙으로 찾는다", async () => {
@@ -109,16 +119,16 @@ describe("draft preview (M9-FE-1)", () => {
 		const nfd = nfc.normalize("NFD");
 		expect(nfd).not.toBe(nfc);
 
-		state.entries.set(`post:${nfc}`, workingEntry({ title: "한글", categoryId: "cat-1" }, "본문", nfc));
+		state.entries.set(`post:${nfc}`, draft("post", nfc, { title: "한글", categoryId: "cat-1" }, "본문"));
 
 		const post = await getDraftPreviewPost(nfd);
 
-		expect(state.slugCalls).toEqual([{ collection: "post", slug: nfc, locale: "ko" }]);
+		expect(state.calls).toEqual([{ collection: "post", slug: nfc, locale: "ko" }]);
 		expect(post?.slug).toBe(nfc);
 	});
 
 	it("분류가 없는 초안 글은 공개 렌더가 성립하지 않으므로 null이다", async () => {
-		state.entries.set("post:no-category", workingEntry({ title: "분류 없음" }, "본문", "no-category"));
+		state.entries.set("post:no-category", draft("post", "no-category", { title: "분류 없음" }, "본문"));
 
 		await expect(getDraftPreviewPost("no-category")).resolves.toBeNull();
 	});
@@ -126,22 +136,25 @@ describe("draft preview (M9-FE-1)", () => {
 	it("메모 초안은 분류 없이도 만들어진다", async () => {
 		state.entries.set(
 			"memo:memo-draft",
-			workingEntry({ title: "메모 제목", tagIds: ["tag-1"] }, "메모 본문", "memo-draft"),
+			draft("memo", "memo-draft", { title: "메모 제목", tagIds: ["tag-1"] }, "메모 본문", {
+				tagIds: [relation("tag-1", "ts", "TypeScript", "tag")],
+			}),
 		);
 
-		const memo = await getDraftPreviewMemo("memo-draft");
-
-		expect(memo).toMatchObject({
+		await expect(getDraftPreviewMemo("memo-draft")).resolves.toMatchObject({
 			status: "draft",
 			slug: "memo-draft",
 			title: "메모 제목",
 			contentMdx: "메모 본문",
-			tags: [{ slug: "tag-1", label: "TypeScript" }],
+			tags: [{ slug: "ts", label: "TypeScript" }],
 		});
 	});
 
-	it("없는 항목은 null이다", async () => {
+	it("없는 항목과 빈 slug는 null이다", async () => {
 		await expect(getDraftPreviewPost("missing")).resolves.toBeNull();
 		await expect(getDraftPreviewMemo("missing")).resolves.toBeNull();
+		state.calls = [];
+		await expect(getDraftPreviewPost("")).resolves.toBeNull();
+		expect(state.calls).toEqual([]);
 	});
 });

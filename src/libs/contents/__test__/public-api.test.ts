@@ -1,59 +1,62 @@
+import type { ReadEntry, ReadRelation } from "@bh2980/cms/read";
 import { describe, expect, it } from "vitest";
-import { paginate, publicEntriesQuerySchema, toPublicAddress, toPublicMemo, toPublicPost } from "../public-api";
-import type { DraftPost, PublishedMemo, PublishedPost } from "../types/contents";
+import { toPublicEntryDto } from "../public-api";
 
-const CATEGORY = { slug: "engineering", label: "엔지니어링" };
-const TAG = { slug: "typescript", label: "TypeScript" };
+const DATE = new Date("2026-03-01T12:00:00.000Z");
 
-function post(overrides: Partial<PublishedPost> = {}): PublishedPost {
+const relation = (slug: string, title: string, collection = "tag"): ReadRelation => ({
+	id: `id-${slug}`,
+	collection,
+	locale: "ko",
+	slug,
+	title,
+	path: null,
+});
+
+function entry(collection: "post" | "memo", overrides: Partial<ReadEntry> = {}): ReadEntry {
 	return {
+		id: "id-1",
+		collection,
+		locale: "ko",
+		translationGroupId: "id-1",
 		slug: "hello",
-		status: "published",
-		publishedAt: "2026-03-01T12:00:00.000Z",
+		path: null,
 		title: "안녕",
-		excerpt: "요약",
-		category: CATEGORY,
-		tags: [TAG],
-		contentMdx: "# 본문",
+		metadata: collection === "post" ? { title: "안녕", summary: "요약", policy: "evergreen" } : { title: "안녕" },
+		relations: {
+			tagIds: [relation("typescript", "TypeScript")],
+			...(collection === "post" ? { categoryId: [relation("engineering", "엔지니어링", "category")] } : {}),
+		},
+		publishedAt: DATE,
+		updatedAt: DATE,
+		mdx: "# 본문",
+		fallback: false,
 		...overrides,
-	};
+	} as ReadEntry;
 }
 
-function memo(overrides: Partial<PublishedMemo> = {}): PublishedMemo {
-	return {
-		slug: "memo-1",
-		status: "published",
-		publishedAt: "2026-03-02T12:00:00.000Z",
-		title: "메모",
-		tags: [TAG],
-		contentMdx: "메모 본문",
-		...overrides,
-	};
-}
+/** 숨기지 않는 글의 DTO(테스트 표본은 모두 공개 조건을 갖춘다). */
+const dtoOf = (...args: Parameters<typeof toPublicEntryDto>) => {
+	const dto = toPublicEntryDto(...args);
+	if (!dto) throw new Error("hidden");
+	return dto;
+};
 
 describe("M7-BE-3 공개 DTO", () => {
 	it("목록 직렬화에는 본문이 없다", () => {
-		const dto = toPublicPost(post(), { includeBody: false });
+		const dto = dtoOf(entry("post"), { body: false });
 
-		expect(dto).not.toBeNull();
-		expect(Object.hasOwn(dto as object, "body")).toBe(false);
+		expect(Object.hasOwn(dto, "body")).toBe(false);
 		expect(JSON.stringify(dto)).not.toContain("본문");
 	});
 
 	it("상세 직렬화에는 본문이 있다", () => {
-		expect(toPublicPost(post(), { includeBody: true })?.body).toBe("# 본문");
-		expect(toPublicMemo(memo(), { includeBody: true })?.body).toBe("메모 본문");
-	});
-
-	it("초안은 공개 DTO로 만들 수 없다(fail-closed)", () => {
-		const draft: DraftPost = { ...post(), status: "draft" };
-
-		expect(toPublicPost(draft, { includeBody: true })).toBeNull();
+		expect(dtoOf(entry("post"), { body: true }).body).toBe("# 본문");
+		expect(dtoOf(entry("memo"), { body: true }).body).toBe("# 본문");
 	});
 
 	it("공개 응답에 관리자 전용 키가 없다", () => {
-		const dto = toPublicPost(post(), { includeBody: true });
-		const keys = Object.keys(dto as object);
+		const keys = Object.keys(dtoOf(entry("post"), { body: true }));
 
 		for (const forbidden of [
 			"version",
@@ -65,59 +68,48 @@ describe("M7-BE-3 공개 DTO", () => {
 			"createdAt",
 			"updatedAt",
 			"id",
+			"metadata",
+			"relations",
 		]) {
 			expect(keys).not.toContain(forbidden);
 		}
 	});
 
-	it("post는 요약·카테고리를 싣고 memo는 싣지 않는다", () => {
-		const postDto = toPublicPost(post(), { includeBody: false });
-		expect(postDto?.collection).toBe("post");
-		expect(postDto?.excerpt).toBe("요약");
-		expect(postDto?.category).toEqual(CATEGORY);
-
-		const memoDto = toPublicMemo(memo(), { includeBody: false });
-		expect(memoDto?.collection).toBe("memo");
-		expect(Object.hasOwn(memoDto as object, "category")).toBe(false);
-		expect(Object.hasOwn(memoDto as object, "excerpt")).toBe(false);
-	});
-
-	it("SEO 메타와 isEvergreen은 공개 응답에 실린다", () => {
-		const dto = toPublicPost(post({ seo: { title: "검색 제목", canonicalUrl: "/posts/hello" }, isEvergreen: true }), {
-			includeBody: false,
+	it("post는 요약·카테고리·evergreen을 싣고 memo는 싣지 않는다", () => {
+		expect(dtoOf(entry("post"), { body: false })).toEqual({
+			collection: "post",
+			slug: "hello",
+			title: "안녕",
+			publishedAt: DATE.toISOString(),
+			tags: [{ slug: "typescript", label: "TypeScript" }],
+			excerpt: "요약",
+			category: { slug: "engineering", label: "엔지니어링" },
+			isEvergreen: true,
 		});
 
-		expect(dto?.seo).toEqual({ title: "검색 제목", canonicalUrl: "/posts/hello" });
-		expect(dto?.isEvergreen).toBe(true);
-	});
-
-	it("별칭 판정은 요청 slug와 정규 slug 비교다", () => {
-		expect(toPublicAddress("old-post", "new-post")).toEqual({ slug: "new-post", isAlias: true });
-		expect(toPublicAddress("same", "same")).toEqual({ slug: "same", isAlias: false });
-	});
-
-	it("페이지네이션은 전체 개수를 유지하고 잘라낸다", () => {
-		const items = Array.from({ length: 30 }, (_, index) => index);
-
-		expect(paginate(items, 1, 25)).toEqual({ items: items.slice(0, 25), total: 30, page: 1, pageSize: 25 });
-		expect(paginate(items, 2, 25)).toEqual({ items: items.slice(25, 30), total: 30, page: 2, pageSize: 25 });
-		expect(paginate([], 1, 25)).toEqual({ items: [], total: 0, page: 1, pageSize: 25 });
-	});
-
-	it("질의 스키마는 §10.1 기본값을 채운다", () => {
-		expect(publicEntriesQuerySchema.parse({})).toEqual({ collection: "post", page: 1, pageSize: 25 });
-		expect(publicEntriesQuerySchema.parse({ collection: "memo", tag: "ts", page: "2", pageSize: "50" })).toEqual({
+		const memoDto = dtoOf(entry("memo"), { body: false });
+		expect(memoDto).toEqual({
 			collection: "memo",
-			tag: "ts",
-			page: 2,
-			pageSize: 50,
+			slug: "hello",
+			title: "안녕",
+			publishedAt: DATE.toISOString(),
+			tags: [{ slug: "typescript", label: "TypeScript" }],
 		});
 	});
 
-	it("질의 스키마는 지원하지 않는 컬렉션과 범위 밖 값을 거부한다", () => {
-		expect(publicEntriesQuerySchema.safeParse({ collection: "category" }).success).toBe(false);
-		expect(publicEntriesQuerySchema.safeParse({ pageSize: "101" }).success).toBe(false);
-		expect(publicEntriesQuerySchema.safeParse({ page: "0" }).success).toBe(false);
-		expect(publicEntriesQuerySchema.safeParse({ category: "" }).success).toBe(false);
+	it("SEO 메타는 입력했을 때만 실린다", () => {
+		expect(Object.hasOwn(dtoOf(entry("post"), { body: false }), "seo")).toBe(false);
+
+		const dto = dtoOf(
+			entry("post", { metadata: { title: "안녕", seoTitle: "검색 제목", canonicalUrl: "/posts/hello" } }),
+			{ body: false },
+		);
+
+		expect(dto.seo).toEqual({ title: "검색 제목", canonicalUrl: "/posts/hello" });
+	});
+
+	it("카테고리를 풀 수 없는 게시글·발행일이 없는 글은 숨긴다(null)", () => {
+		expect(toPublicEntryDto(entry("post", { relations: {} }), { body: false })).toBeNull();
+		expect(toPublicEntryDto(entry("memo", { publishedAt: null }), { body: false })).toBeNull();
 	});
 });

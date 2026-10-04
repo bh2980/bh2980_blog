@@ -4,6 +4,7 @@ import Footer from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { entryPath } from "@/libs/contents/entry-path";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
@@ -114,7 +115,7 @@ export async function HomeView({ locale }: { locale: Locale }) {
 									<li key={post.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
 										<Link
-											href={{ pathname: href(`/posts/${post.slug}`) }}
+											href={{ pathname: entryPath(locale, "post", post.slug) as Route }}
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
 											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
@@ -161,7 +162,7 @@ export async function HomeView({ locale }: { locale: Locale }) {
 									<li key={memo.slug} className="group">
 										<Separator className="my-1 group-first:hidden" />
 										<Link
-											href={{ pathname: href(`/memos/${memo.slug}`) }}
+											href={{ pathname: entryPath(locale, "memo", memo.slug) as Route }}
 											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
 										>
 											{memo.status === "published" && (
