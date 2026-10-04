@@ -124,6 +124,77 @@ const components = { marks: { note } };
   잇기 명령(`findAnchor`·`startLinkFromText`·`unlinkRef`)도 같은 진입점에 있다.
 - 코드 블록 안 글자 툴팁(코드 펜스 주석 `// @char Tooltip`)은 본체 코드 블록 기능이라 본문 툴팁과 따로다(마크 `codeTooltip`).
 
+## 글 검사(맞춤법 등)
+
+본체는 검사기를 하나도 갖지 않고 버튼·밑줄·결과 창만 그린다. 사이트·확장이 검사기(유료 API, 브라우저에서 도는 npm 패키지
+등)를 만들어 확장점 `textCheckers`에 넣으면, 글의 언어를 검사하는 검사기마다 도구 모음 버튼(이름 `label`, 아이콘 `icon`)이
+생기고 결과는 물결 밑줄·결과 창·목록으로 보인다. 여러 확장이 검사기를 넣으면 모두 모인다. 검사기가 없으면 아무것도 보이지 않는다.
+바른 검사기는 `@bh2980/cms-bareun`이다.
+
+```tsx
+"use client";
+import { defineTextChecker } from "@bh2980/cms/client";
+import type { CmsAdminComponents } from "@bh2980/cms-admin";
+
+const myChecker = defineTextChecker({
+	id: "my-words",
+	label: "금지어 검사", // 도구 모음 버튼 이름
+	icon: "ban", // lucide 이름이나 컴포넌트. 없으면 맞춤법 아이콘
+	locales: ["ko"], // 없으면 모든 언어
+	limits: { maxChars: 10_000, maxSegments: 50 }, // 넘으면 나눠 보낸다
+	// auto: true, // 입력을 멈추면 바뀐 문단만 저절로 검사(기본은 끔)
+	check: async (segments, { signal }) => [
+		// { segmentId, start, end, message, suggestions: [], severity: "error" | "warning" | "info", ruleId?, category?, source?, url? }
+	],
+});
+
+const components: CmsAdminComponents = { textCheckers: [myChecker] };
+```
+
+- 검사 단위는 문단(제목·목록 항목·표 칸 등 글이 든 블록) 하나다: `{ id, text, locale }`. 결과의 `start`·`end`는 그 문단 안의
+  UTF-16 위치(JS 문자열 인덱스, `end` 미포함)다.
+- 코드 블록·수식·코드 펜스 블록·블록 속성은 보내지 않는다. 인라인 코드와 주소는 `￼` 한 글자로 바꿔 보내고, 그 글자에 걸친
+  결과는 버린다. 링크는 글자만 보낸다.
+- 검사기 버튼은 고른 글자가 있으면 그 범위에 걸친 문단만, 없으면 문서 전체를 그 검사기로 검사한다. 결과는 물결 밑줄로 보이고,
+  밑줄을 누르면 설명·바꿀 글 후보·"무시"가 뜬다. 버튼 옆 숫자를 누르면 결과 목록이다. 결과 범위 안을 고치면 그 결과는 사라진다.
+- 같은 검사기·언어·글자의 문단은 다시 보내지 않는다(편집 화면을 여는 동안). 다시 검사하거나 화면을 닫으면 진행 중인 요청을
+  `signal`로 끊는다.
+- `auto: true`는 유료·호출 제한 API면 비용이 들 수 있어 기본으로 끈다. 켜면 입력을 1.5초 멈춘 뒤, 연 뒤로 바뀐 문단만 보낸다.
+
+### 키가 필요한 API
+
+API 키는 브라우저에 두지 않는다. 브라우저는 `remoteTextChecker`로 사이트 경로에 `{ segments }`를 보내고, 경로가 키로 API를
+불러 `{ issues }`를 돌려준다. `textCheckRoute`는 관리자 로그인·같은 출처를 확인하고 요청 크기(기본 100문단·20,000자)를 막는다.
+
+```ts
+// 관리자 컴포넌트(브라우저)
+import { remoteTextChecker } from "@bh2980/cms/client";
+const checker = remoteTextChecker({ id: "bareun", label: "바른", locales: ["ko"], url: "/api/text-check" });
+
+// app/api/text-check/route.ts(서버)
+import { textCheckRoute } from "@bh2980/cms/plugin/server";
+export const POST = textCheckRoute({
+	limits: { maxChars: 20_000 },
+	check: async (segments, { signal }) => callProvider(segments, process.env.MY_API_KEY, signal), // TextIssue[]
+});
+```
+
+### 검사기를 붙일 때
+
+- 위치 단위가 다르면 검사기 쪽에서 UTF-16으로 바꾼다. 바이트(UTF-8)·코드 포인트·문장 기준 위치를 그대로 쓰면 이모지·한글 뒤에서
+  밑줄이 어긋난다.
+- 바른(Bareun): 요청에 `encoding_type: UTF16`을 주면 `begin_offset`·`length`를 그대로 쓸 수 있다. 중첩 결과(`nested`)는 펼친다.
+- LanguageTool·Yahoo 같은 위치 기반 API: 문단을 이어 보낼 때는 돌아온 위치를 문단별로 다시 나눈다. 요청 크기·분당 호출 한도는
+  `limits`와 서버 경로에서 맞춘다.
+- textlint: `range`(`[start, end]`)를 그대로 쓴다. `fix.text`는 후보로 쓰되 `fix.range`가 표시 범위보다 넓을 수 있다.
+- hunspell 계열(nspell·typo-js): 낱말 단위라 `Intl.Segmenter({ granularity: "word" })` 등으로 낱말을 나눠 검사하고 위치를 직접
+  센다. 띄어쓰기·문법은 보지 못한다.
+- 위치 없이 틀린 낱말만 주는 검사기는 문단 글자에서 낱말을 찾아 위치를 정한다(같은 낱말이 여럿이면 차례대로).
+
+`examples/other-site`의 `app/(admin)/studio/admin-components.tsx`가 브라우저에서 도는 작은 금지어 검사기 예시다.
+
+밑줄 스타일은 `@bh2980/cms-admin/styles.css`에 들어 있다.
+
 ## 플러그인 화면
 
 플러그인 정의의 `admin`이 불러오는 모듈은 `defineAdminPlugin()`(`@bh2980/cms-admin/plugins`)을 기본 내보내기로 준다.

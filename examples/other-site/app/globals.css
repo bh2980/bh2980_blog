@@ -5,5 +5,4 @@
 @import "@bh2980/cms/render.css";
 @import "@bh2980/cms-blocks/styles.css";
 @import "@bh2980/cms-seo/styles.css";
-@import "@bh2980/cms-text-check/styles.css";
 @plugin "@tailwindcss/typography";

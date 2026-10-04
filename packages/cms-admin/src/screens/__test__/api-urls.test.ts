@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const PACKAGES = path.resolve(__dirname, "../../../..");
 /** 서버 경로 정의·설명이라 주소 글자가 남아도 되는 곳. */
-const ALLOWED = [/\/cms\/src\//, /\/(plugin|server)\.ts$/, /\/bareun\/(route|options|index)\.ts$/];
+const ALLOWED = [/\/cms\/src\//, /\/(plugin|server)\.ts$/, /\/cms-bareun\/src\/(route|options|index)\.ts$/];
 
 const sources = (dir: string): string[] =>
 	readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

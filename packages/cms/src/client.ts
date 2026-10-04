@@ -29,3 +29,6 @@ export * from "./schema/collection";
 export * from "./schema/derive";
 export * from "./schema/fields";
 export * from "./schema/walk";
+export * from "./text-check/normalize";
+export * from "./text-check/remote";
+export * from "./text-check/types";

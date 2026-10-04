@@ -13,11 +13,11 @@
 		"lint": "pnpm exec biome check .",
 		"lint:fix": "pnpm exec biome check . --write",
 		"check:korean": "node scripts/check-korean.mjs",
-		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck && pnpm --filter @bh2980/cms-text-check typecheck && pnpm --filter @bh2980/cms-seo typecheck",
+		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck && pnpm --filter @bh2980/cms-bareun typecheck && pnpm --filter @bh2980/cms-seo typecheck",
 		"prepare": "husky",
-		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-text-check build && pnpm --filter @bh2980/cms-seo build",
+		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-bareun build && pnpm --filter @bh2980/cms-seo build",
 		"example:check": "node scripts/check-example.mjs",
-		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-blocks cms-ai cms-text-check cms-seo; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
+		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-blocks cms-ai cms-bareun cms-seo; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1136.0",
@@ -28,7 +28,7 @@
 		"@bh2980/cms-ai": "workspace:*",
 		"@bh2980/cms-blocks": "workspace:*",
 		"@bh2980/cms-seo": "workspace:*",
-		"@bh2980/cms-text-check": "workspace:*",
+		"@bh2980/cms-bareun": "workspace:*",
 		"@shikijs/langs": "^3.21.0",
 		"@shikijs/themes": "^3.21.0",
 		"@shikijs/transformers": "^3.22.0",

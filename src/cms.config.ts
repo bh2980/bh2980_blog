@@ -1,8 +1,8 @@
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 import { aiPlugin } from "@bh2980/cms-ai";
+import { bareun } from "@bh2980/cms-bareun";
 import { blocks } from "@bh2980/cms-blocks";
 import { seo, seoFields } from "@bh2980/cms-seo";
-import { bareun } from "@bh2980/cms-text-check/bareun";
 import { legacyListColumns } from "@/cms/legacy-list-columns";
 import { DEFAULT_LOCALE, LOCALE_INFO, LOCALES } from "@/libs/i18n/locales";
 

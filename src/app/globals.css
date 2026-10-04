@@ -3,7 +3,6 @@
 /* CMS 관리자 화면 토큰·스타일(관리자 패키지가 준다). 블록 확장의 편집기 모양(콜아웃·글자색 등)은 블록 확장 패키지가 준다. */
 @import "@bh2980/cms-admin/styles.css";
 @import "@bh2980/cms-blocks/styles.css";
-@import "@bh2980/cms-text-check/styles.css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *, .kui-scheme--dark, .kui-scheme--dark *));

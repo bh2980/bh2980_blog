@@ -1,6 +1,6 @@
 "use client";
 
-import type { Field } from "@bh2980/cms/client";
+import type { Field, TextChecker } from "@bh2980/cms/client";
 import type { ListEntriesItem } from "@bh2980/cms/runtime";
 import type { Editor, NodeViewProps } from "@tiptap/react";
 import type { LucideIcon } from "lucide-react";
@@ -17,6 +17,7 @@ import {
 import type { EditorMarkSpec } from "./editor/added-marks";
 import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 import type { ActiveInlineMark } from "./editor/inline-marks";
+import { useTextCheckEditor } from "./editor/text-check/extension";
 import type { BlockAction } from "./editor/tiptap-editor";
 import type { EntryData, EntryForm } from "./screens/entries/entry-form";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
@@ -164,6 +165,11 @@ export interface CmsAdminComponents {
 	/** 편집 화면 확장(툴바·블록 동작). */
 	readonly editorExtensions?: readonly EditorExtension[];
 	/**
+	 * 글 검사기(맞춤법·문장 등, `defineTextChecker`·`remoteTextChecker`). 편집기가 검사기마다 도구 모음 버튼을 만들고
+	 * 결과를 물결 밑줄·결과 창으로 그린다. 그 글의 언어를 검사하는 검사기가 없으면 아무것도 보이지 않는다.
+	 */
+	readonly textCheckers?: readonly TextChecker[];
+	/**
 	 * 글자 꾸밈 확장(블록 이름 → 모양·서식 도구·버블·슬래시 메뉴). 블록 확장의 글자 꾸밈(`syntax.kind: "text"`) 블록이 넣는다.
 	 * 등록하지 않은 꾸밈은 기본 모양(꾸밈 없는 글자)으로 저장·편집되고 도구가 없다.
 	 */
@@ -241,6 +247,7 @@ export function CmsAdminComponentsProvider({
 			blockEditors: { ...parent.blockEditors, ...components.blockEditors },
 			blockViews: { ...parent.blockViews, ...components.blockViews },
 			editorExtensions: [...(parent.editorExtensions ?? []), ...(components.editorExtensions ?? [])],
+			textCheckers: [...(parent.textCheckers ?? []), ...(components.textCheckers ?? [])],
 			marks: { ...parent.marks, ...components.marks },
 			icons: { ...parent.icons, ...components.icons },
 			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
@@ -253,11 +260,16 @@ export function CmsAdminComponentsProvider({
 
 export const useCmsAdminComponents = () => useContext(CmsAdminComponentsContext);
 
-/** 등록된 편집 화면 확장을 모두 불러 하나로 합친다. */
+const NO_CHECKERS: readonly TextChecker[] = [];
+
+/** 등록된 편집 화면 확장과 글 검사 화면을 모두 불러 하나로 합친다. */
 export function useEditorExtensions(context: EditorExtensionContext): Required<EditorExtensionResult> {
-	const { editorExtensions = [] } = useCmsAdminComponents();
+	const { editorExtensions = [], textCheckers = NO_CHECKERS } = useCmsAdminComponents();
 	// 확장 목록은 관리자 화면이 떠 있는 동안 같다. 매 렌더 같은 순서로 같은 수의 훅을 부른다.
-	const results = editorExtensions.map((extension) => extension(context));
+	const results = [
+		...editorExtensions.map((extension) => extension(context)),
+		useTextCheckEditor(textCheckers, context),
+	];
 	const editorCallbacks = results.flatMap((result) => (result.onEditor ? [result.onEditor] : []));
 	const callbacksRef = useRef(editorCallbacks);
 	callbacksRef.current = editorCallbacks;

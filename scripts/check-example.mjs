@@ -82,7 +82,7 @@ const exampleConfig = readFileSync(configPath, "utf8");
 const allExtensions = exampleConfig
 	.replace(
 		'import { blocks } from "@bh2980/cms-blocks";',
-		'import { aiPlugin } from "@bh2980/cms-ai";\nimport { blocks } from "@bh2980/cms-blocks";\nimport { bareun } from "@bh2980/cms-text-check/bareun";',
+		'import { aiPlugin } from "@bh2980/cms-ai";\nimport { blocks } from "@bh2980/cms-blocks";\nimport { bareun } from "@bh2980/cms-bareun";',
 	)
 	.replace(/plugins: \[[^\n]*\],/, "plugins: [...blocks(), seo(), aiPlugin(), bareun()],");
 if (allExtensions === exampleConfig || !allExtensions.includes("aiPlugin()")) {

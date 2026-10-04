@@ -80,7 +80,7 @@ describe("관리자 CSS 가두기", () => {
 		const variable = new RegExp(`\\(\\s*--(?:color-)?(?:${TOKENS})(?![\\w-])`, "g");
 		const dark = /(?<=[\s"'`:!([])dark:(?=[^\s,])/g;
 		const orientation = /(?<![\w-])(?:group-|peer-|in-|has-)*data-(?:horizontal|vertical)(?![\w-[])/g;
-		for (const pkg of ["cms", "cms-admin", "cms-blocks", "cms-seo", "cms-ai", "cms-text-check"]) {
+		for (const pkg of ["cms", "cms-admin", "cms-blocks", "cms-seo", "cms-ai", "cms-bareun"]) {
 			const root = path.join(packagesDir, pkg, "src");
 			for (const file of sourceFiles(root)) {
 				const text = readFileSync(file, "utf8");

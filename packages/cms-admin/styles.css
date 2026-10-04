@@ -178,3 +178,20 @@ html:has(.cms-admin) body {
 .cms-admin .tabular {
 	font-variant-numeric: tabular-nums;
 }
+
+/* 글 검사(맞춤법 등) 결과 밑줄(편집기 장식). 심각도마다 색이 다르다. */
+.cms-admin .cms-text-issue {
+	text-decoration-line: underline;
+	text-decoration-style: wavy;
+	text-decoration-thickness: 1px;
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--cms-warning);
+	cursor: pointer;
+}
+.cms-admin .cms-text-issue[data-severity="error"] {
+	text-decoration-color: var(--cms-destructive);
+}
+.cms-admin .cms-text-issue[data-severity="info"] {
+	text-decoration-color: var(--cms-primary);
+}

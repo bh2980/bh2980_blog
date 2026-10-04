@@ -85,3 +85,7 @@ export {
 	type ViewField,
 } from "./schema/fields";
 export { fieldWithRole, type StoredField, valueFieldsOf, valueWithRole } from "./schema/walk";
+// 글 검사기 약속(설정 파일이 읽는 확장도 쓰므로 사이트 설정을 읽지 않는다).
+export * from "./text-check/normalize";
+export * from "./text-check/remote";
+export * from "./text-check/types";
