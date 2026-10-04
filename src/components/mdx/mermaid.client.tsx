@@ -7,6 +7,8 @@ import type { ClassNameValue } from "tailwind-merge";
 import { cn } from "@/utils/cn";
 
 interface MermaidProps {
+	/** 코드 펜스 원문(본체 `remarkFenceBlocksToMdx`). 없으면 자식 글자를 쓴다. */
+	source?: string;
 	children?: ReactNode;
 	className?: ClassNameValue;
 }
@@ -31,11 +33,11 @@ const isDarkFromDom = (element: HTMLElement | null) => {
 	return typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
 };
 
-export const Mermaid = ({ children, className }: MermaidProps) => {
+export const Mermaid = ({ source, children, className }: MermaidProps) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [error, setError] = useState<Error>();
 	const { resolvedTheme } = useTheme();
-	const chart = useMemo(() => Children.toArray(children).map(extractText).join("\n"), [children]);
+	const chart = useMemo(() => source ?? Children.toArray(children).map(extractText).join("\n"), [source, children]);
 
 	useEffect(() => {
 		if (!ref.current || !chart.trim()) return;
