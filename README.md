@@ -65,7 +65,7 @@
 
 ## Development
 
-CMS 패키지(`@monti-cms/*`)는 비공개 저장소 `monti-cms/monti`에서 받습니다. 설치하는 환경(CI·Vercel)에는 읽기 토큰 `MONTI_READ_TOKEN`이 필요합니다. 패키지 소스와 이슈는 [Monti 저장소](https://github.com/monti-cms/monti)에서 다룹니다.
+CMS 패키지(`@monti-cms/*`)는 공개 저장소 `monti-cms/monti`에서 받습니다. 패키지 소스와 이슈는 [Monti 저장소](https://github.com/monti-cms/monti)에서 다룹니다.
 
 `CMS_DATABASE_URL`에 Neon PostgreSQL 연결 문자열을 설정한 뒤 실행합니다. `CMS_SCHEMA`는 선택 항목이며, 생략하면 `public` 스키마를 사용합니다. 별도의 `CMS_PUBLIC_REPOSITORY` 설정은 필요하지 않습니다. 비밀값은 `.env.local`에 두고 저장소에 커밋하지 마세요. R2 업로드와 관리자 인증을 검증하려면 각 서비스의 서버 환경값도 필요합니다.
 

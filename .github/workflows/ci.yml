@@ -23,9 +23,6 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      # Monti는 비공개 저장소라 설치 전에 읽기 토큰을 git 주소에 걸어 둔다.
-      - name: Monti 저장소 읽기 권한
-        run: git config --global url."https://x-access-token:${{ secrets.MONTI_READ_TOKEN }}@github.com/monti-cms/".insteadOf "https://github.com/monti-cms/"
       - run: pnpm install --frozen-lockfile
       # 고치지 않고 검사만 한다.
       - run: pnpm lint
@@ -56,8 +53,5 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      # Monti는 비공개 저장소라 설치 전에 읽기 토큰을 git 주소에 걸어 둔다.
-      - name: Monti 저장소 읽기 권한
-        run: git config --global url."https://x-access-token:${{ secrets.MONTI_READ_TOKEN }}@github.com/monti-cms/".insteadOf "https://github.com/monti-cms/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:run

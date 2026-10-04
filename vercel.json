@@ -1,3 +1,0 @@
-{
-	"installCommand": "sh scripts/vercel-install.sh"
-}
