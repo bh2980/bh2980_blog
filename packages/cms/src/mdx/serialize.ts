@@ -642,7 +642,11 @@ const serializeBlock = (node: CmsNode, indent = ""): string => {
 		case "image":
 			return indent + serializeImage(node);
 		case "html":
-			return indent + String(node.attrs?.value ?? "");
+			// 여러 줄 원문(되돌린 미등록 지시자 등)은 줄마다 들여 써야 목록 안에서도 같은 블록으로 다시 읽힌다.
+			return String(node.attrs?.value ?? "")
+				.split("\n")
+				.map((line) => (line ? indent + line : line))
+				.join("\n");
 		case "mdxEsm":
 			return indent + String(node.attrs?.value ?? "");
 		case "mdxExpression":

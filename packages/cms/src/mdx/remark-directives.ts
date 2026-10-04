@@ -14,7 +14,7 @@
  * 두 shape로 갈라지면 한쪽만 고치는 실수가 난다.
  */
 
-import type { Root, RootContent } from "mdast";
+import type { Paragraph, Root, RootContent } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import type { VFile } from "vfile";
 import { DIRECTIVE_BY_NAME, type DirectiveDefinition } from "./directives";
@@ -28,7 +28,7 @@ type DirectiveNode = {
 	attributes?: Record<string, string | null> | null;
 	children?: unknown[];
 	position?: {
-		start?: { offset?: number };
+		start?: { offset?: number; column?: number };
 		end?: { offset?: number };
 	};
 };
@@ -51,10 +51,31 @@ const originalSource = (node: DirectiveNode, source: string): string => {
 };
 
 /**
+ * 블록 지시자의 원문. 둘째 줄부터는 바깥 블록이 붙인 접두(인용 `> `·목록 들여쓰기)를 지시자가 시작한 칸까지 걷어 낸다.
+ * 그대로 두면 바깥 블록을 다시 쓸 때 접두가 한 번 더 붙어 저장할 때마다 겹친다(`> > `).
+ */
+const blockSource = (node: DirectiveNode, source: string): string => {
+	const original = originalSource(node, source);
+	const width = (node.position?.start?.column ?? 1) - 1;
+	if (width <= 0) return original;
+	return original
+		.split("\n")
+		.map((line, index) => (index > 0 && /^[ \t>]*$/.test(line.slice(0, width)) ? line.slice(width) : line))
+		.join("\n");
+};
+
+/**
+ * 되돌린 블록 지시자 문단에 붙이는 표시(`paragraph.data`). 공개 렌더에는 그냥 글 문단이지만, 쓰기 경로
+ * (`toDocument`)는 이 문단을 원문 블록(`html`)으로 옮겨 이스케이프 없이 그대로 쓴다. 원문은 마크다운으로 읽힌 글이 아니라서
+ * 글처럼 이스케이프하면 다시 읽을 때 풀리지 않고 저장할 때마다 백슬래시가 는다(`\{` → `\\\{`).
+ */
+export const DEMOTED_DIRECTIVE_SOURCE = "cmsDemotedDirectiveSource";
+
+/**
  * 미등록 directive를 본문 텍스트로 되돌린다.
  *
  * - 텍스트 directive → `text` (문장 안이므로 문맥이 같다)
- * - 리프·컨테이너 directive → `paragraph(text)` (블록 문맥)
+ * - 리프·컨테이너 directive → `paragraph(text)` (블록 문맥). 쓰기 경로가 원문 그대로 쓰도록 {@link DEMOTED_DIRECTIVE_SOURCE}를 붙인다.
  * - 미등록 부모는 **subtree 전체를 원문으로 보존**하고 자식 순회를 멈춘다(내부를 변환하면 계약이 깨진다).
  */
 export const remarkDemoteUnknownDirectives =
@@ -67,11 +88,15 @@ export const remarkDemoteUnknownDirectives =
 			if (DIRECTIVE_BY_NAME.has(directive.name)) return;
 			if (!parent || index == null) return;
 
-			const original = originalSource(directive, source);
 			const replacement: RootContent =
 				directive.type === "textDirective"
-					? { type: "text", value: original }
-					: { type: "paragraph", children: [{ type: "text", value: original }] };
+					? { type: "text", value: originalSource(directive, source) }
+					: {
+							type: "paragraph",
+							// mdast의 문단 data 타입에는 없는 이름이라 넓혀 둔다. 공개 렌더(mdast → hast)는 모르는 data를 무시한다.
+							data: { [DEMOTED_DIRECTIVE_SOURCE]: true } as Paragraph["data"],
+							children: [{ type: "text", value: blockSource(directive, source) }],
+						};
 
 			(parent.children as RootContent[]).splice(index, 1, replacement);
 			return [SKIP, index];
