@@ -18,23 +18,23 @@ importers:
         specifier: ^1.8.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.2.9)(date-fns@4.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@monti-cms/admin':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/admin
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)
       '@monti-cms/ai':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai(19776b99d08263b0f19e0b4c7478229b)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/ai
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0)
       '@monti-cms/bareun':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/bareun
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/bareun(@monti-cms/admin@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9))(@monti-cms/core@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/bareun
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/bareun(@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17))(@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@monti-cms/blocks':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/blocks
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/blocks(fceaf455adc0aaa42d5dfded640bea93)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/blocks
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/blocks(737a97fa327111057ab6d6c92f15d145)
       '@monti-cms/core':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/core
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@monti-cms/seo':
-        specifier: file:/private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/seo
-        version: file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/seo(b9dba55a2d54420eb249685489049afa)
+        specifier: github:monti-cms/monti#release/v0.1.0&path:/seo
+        version: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/seo(@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17))(@monti-cms/ai@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0))(@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@shikijs/langs':
         specifier: ^3.21.0
         version: 3.21.0
@@ -882,8 +882,9 @@ packages:
   '@mermaid-js/parser@0.6.3':
     resolution: {integrity: sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA==}
 
-  '@monti-cms/admin@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin, type: directory}
+  '@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin':
+    resolution: {path: /admin, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     peerDependencies:
       '@monti-cms/core': ^0.1.0
       '@tanstack/react-query': ^5.104.0
@@ -897,8 +898,9 @@ packages:
       react-dom: '>=19'
       sonner: ^2.0.8
 
-  '@monti-cms/ai@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai, type: directory}
+  '@monti-cms/ai@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai':
+    resolution: {path: /ai, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     peerDependencies:
       '@monti-cms/admin': ^0.1.0
       '@monti-cms/core': ^0.1.0
@@ -911,16 +913,18 @@ packages:
       react: '>=19'
       sonner: ^2.0.8
 
-  '@monti-cms/bareun@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/bareun':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/bareun, type: directory}
+  '@monti-cms/bareun@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/bareun':
+    resolution: {path: /bareun, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     peerDependencies:
       '@monti-cms/admin': ^0.1.0
       '@monti-cms/core': ^0.1.0
       next: '>=16'
       react: '>=19'
 
-  '@monti-cms/blocks@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/blocks':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/blocks, type: directory}
+  '@monti-cms/blocks@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/blocks':
+    resolution: {path: /blocks, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     peerDependencies:
       '@monti-cms/admin': ^0.1.0
       '@monti-cms/ai': ^0.1.0
@@ -940,8 +944,9 @@ packages:
       recharts:
         optional: true
 
-  '@monti-cms/core@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core, type: directory}
+  '@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core':
+    resolution: {path: /core, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     hasBin: true
     peerDependencies:
       '@aws-sdk/client-s3': ^3.1136.0
@@ -957,8 +962,9 @@ packages:
       next-auth:
         optional: true
 
-  '@monti-cms/seo@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/seo':
-    resolution: {directory: ../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/seo, type: directory}
+  '@monti-cms/seo@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/seo':
+    resolution: {path: /seo, tarball: https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2}
+    version: 0.1.0
     peerDependencies:
       '@monti-cms/admin': ^0.1.0
       '@monti-cms/ai': ^0.1.0
@@ -4649,13 +4655,13 @@ snapshots:
     dependencies:
       langium: 3.3.1
 
-  '@monti-cms/admin@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)':
+  '@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)':
     dependencies:
       '@base-ui/react': 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.2.9)(date-fns@4.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@dnd-kit/core': 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@dnd-kit/utilities': 3.2.2(react@19.2.3)
-      '@monti-cms/core': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@monti-cms/core': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@tanstack/react-query': 5.104.0(react@19.2.3)
       '@tanstack/react-table': 9.2.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
@@ -4688,11 +4694,11 @@ snapshots:
       - '@types/react-dom'
       - date-fns
 
-  '@monti-cms/ai@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai(19776b99d08263b0f19e0b4c7478229b)':
+  '@monti-cms/ai@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0)':
     dependencies:
       '@ai-sdk/openai-compatible': 3.0.61(zod@4.3.6)
-      '@monti-cms/admin': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)
-      '@monti-cms/core': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@monti-cms/admin': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)
+      '@monti-cms/core': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@tanstack/react-query': 5.104.0(react@19.2.3)
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
@@ -4704,28 +4710,28 @@ snapshots:
       sonner: 2.0.8(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod: 4.3.6
 
-  ? '@monti-cms/bareun@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/bareun(@monti-cms/admin@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9))(@monti-cms/core@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)'
-  : dependencies:
-      '@monti-cms/admin': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)
-      '@monti-cms/core': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+  '@monti-cms/bareun@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/bareun(@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17))(@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@monti-cms/admin': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)
+      '@monti-cms/core': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       next: 16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
 
-  '@monti-cms/blocks@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/blocks(fceaf455adc0aaa42d5dfded640bea93)':
+  '@monti-cms/blocks@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/blocks(737a97fa327111057ab6d6c92f15d145)':
     dependencies:
-      '@monti-cms/admin': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)
-      '@monti-cms/core': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@monti-cms/admin': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)
+      '@monti-cms/core': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
       '@tiptap/react': 3.31.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       lucide-react: 0.562.0(react@19.2.3)
       react: 19.2.3
     optionalDependencies:
-      '@monti-cms/ai': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai(19776b99d08263b0f19e0b4c7478229b)
+      '@monti-cms/ai': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0)
       mermaid: 11.12.2
       recharts: 3.8.1(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react-is@17.0.2)(react@19.2.3)(redux@5.0.1)
 
-  '@monti-cms/core@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
+  '@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@shikijs/langs': 3.21.0
       '@shikijs/themes': 3.21.0
@@ -4766,13 +4772,13 @@ snapshots:
       - pg-native
       - supports-color
 
-  '@monti-cms/seo@file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/seo(b9dba55a2d54420eb249685489049afa)':
+  '@monti-cms/seo@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/seo(@monti-cms/admin@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17))(@monti-cms/ai@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0))(@monti-cms/core@https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@monti-cms/admin': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/admin(775f7a981888fddeede07c9778388fd9)
-      '@monti-cms/core': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@monti-cms/admin': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/admin(26d10509f63964d90cb424c32ef21a17)
+      '@monti-cms/core': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/core(@aws-sdk/client-s3@3.1136.0)(@aws-sdk/s3-request-presigner@3.1136.0)(@types/react@19.2.9)(next-auth@5.0.0-beta.32(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     optionalDependencies:
-      '@monti-cms/ai': file:../../../../../../../private/tmp/claude-501/-Users-bh2980-Desktop-bh2980-blog--claude-worktrees-monti-cms-monorepo-split-094de1/c1469d57-c001-4006-a26a-aa03ca4af759/scratchpad/rel/ai(19776b99d08263b0f19e0b4c7478229b)
+      '@monti-cms/ai': https://codeload.github.com/monti-cms/monti/tar.gz/2fcb013513f73abf37da0b295dcc245a9dd668f2#path:/ai(a68aed4f7837c014bbf5b83dfdd589f0)
 
   '@next/env@16.3.8': {}
 
