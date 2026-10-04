@@ -404,6 +404,7 @@ M10까지 끝낸 뒤 전체를 리뷰했다(본체·관리자·확장·블로그
 | M16-6 | **(완료) 맞춤법 검사 틀을 옮김.** `@bh2980/cms-text-check`의 `.`·`/extension`·`/server`·`/styles.css`, 관리자 패키지에서 text-check 진입점·코드·밑줄 CSS 제거. 원래 내용: **맞춤법 검사 틀을 `@bh2980/cms-text-check`로.** 관리자 `src/text-check`와 밑줄 CSS를 옮기고 바른은 `/bareun` | 관리자 공개 진입점에 text-check 없음 |
 | M16-7 | **(완료) 플러그인 겹침·실패.** 화면 경로·API 경로·이름이 본체나 다른 플러그인과 겹치면 오류(`plugin/collisions`), `features`는 플러그인 이름 아래, 모듈 import 실패는 캐시하지 않음, `getPluginOptions`, `"cmsPlugin": true` 표시로 찾기. 원래 내용: **플러그인 겹침·실패.** 플러그인 화면·API 경로가 본체나 다른 플러그인과 겹치면 시작할 때 오류, 기능 표시(`features`)는 플러그인 이름 아래로, 플러그인 화면 모듈 import 실패를 캐시하지 않기. 확장이 제 설정을 읽는 공식 방법(`getPluginOptions`). `withCms`는 이름 앞머리 대신 패키지 표시(`"cmsPlugin": true`)로 플러그인을 찾는다 | 제3자 플러그인이 같은 방법으로 붙는다 |
 | M16-8 | **(완료) 공개 진입점 줄이기.** `./ui/*`·`./lib/utils/cn`·`./screens/entries/entry-form`·`./shell`·`./confirm-dialog`·`./icons`·`./hooks/use-debounced`를 `./kit` 하나로, 확장 27개 파일을 옮김. 원래 내용: **공개 진입점 줄이기.** `./ui/*`·`./lib/utils/cn`·`./screens/entries/entry-form`·`./shell` 등을 확장용 묶음 `./kit` 하나로 | 확장들이 `./kit`만 쓴다 |
+| M16-9 | **맞춤법 검사 그리기를 본체로(2026-10-04 사용자 결정, 할 일).** 검사기 약속(타입·`defineTextChecker`·`remoteTextChecker`)과 서버 경로 도우미(`textCheckRoute`)는 `@bh2980/cms`(`/client`·`/plugin/server`), 밑줄·버튼·결과 창(extract·run·use-text-check·controls·plugin·밑줄 CSS·문구)은 `@bh2980/cms-admin` 편집기로 옮기고 확장점 `textCheckers`로 검사기를 받는다(검사기가 없으면 안 보임). `@bh2980/cms-text-check`는 바른만 남겨 `@bh2980/cms-bareun`(`.`·`/server`·`/admin`)으로 이름을 바꾼다. 블로그·예시 앱·CI·check-example·루트 스크립트 갱신 | 바른 확장에 검사 함수·서버 경로만 남는다 |
 
 #### M17. 미디어·서버 설정
 
@@ -629,7 +630,7 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | M13 | 완료 (2026-10-04). 운영 `pnpm cms:db:migrate` 필요(M13-4) |
 | M14 | 완료 (2026-10-04) |
 | M15 | 완료 (2026-10-04) |
-| M16~M17 | 완료 |
+| M16~M17 | 완료(M16-9만 남음) |
 | M7-4 레포 나누기 → M18 | M17 뒤, 사용자 승인 후 |
 
 ---
