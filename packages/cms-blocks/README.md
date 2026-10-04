@@ -49,7 +49,11 @@ export default defineConfig({
 - 글자색 고르기 목록은 `color({ palette })`(없으면 기본 8색 `DEFAULT_TEXT_PALETTE`). 본문에는 헥스 값이 저장되므로 목록을 바꿔도
   이미 쓴 글은 그대로다. 공개 화면은 `@bh2980/cms-blocks/color`의 `cleanTextColor`·`textColorProps`로 그리고, 색은
   `styles.css`의 `.cms-color`가 테마에 맞춰 고른다.
-- 공개 화면: 사이트가 위 이름의 MDX 컴포넌트를 그린다. 코드 펜스 블록은 `remarkFenceBlocksToMdx`(`@bh2980/cms/mdx`)가
+- 공개 화면: 각 확장이 기본 공개 컴포넌트를 준다(플러그인 `render`, `@bh2980/cms/render`의 `renderMdx`가 자동으로 쓴다).
+  탭 전환·툴팁·코드 연결·Mermaid·차트는 브라우저에서 움직이는 부분만 `"use client"` 파일로 나뉜다. Mermaid·차트는 선택 의존성
+  `mermaid`·`recharts`를 앱이 설치해야 그려지고(서버·불러오기 전에는 원문), 사이트 언어(`locale`)에 맞춰 콜아웃 기본 제목·접기
+  기본 제목·차트 오류 문구가 나온다. 모양은 `styles.css`의 `cms-block-*` 클래스(Tailwind 없이)이고, `renderMdx({ components })`로 같은
+  이름의 컴포넌트(`Callout`·`Tabs` …)를 넘기면 그것이 이긴다. 코드 펜스 블록은 `remarkFenceBlocksToMdx`(`@bh2980/cms/mdx`)가
   `<Mermaid source="…" />`로 바꾼다. 단 너비는 `@bh2980/cms-blocks/columns`의 `parseColumnWidths`·`columnsGridTemplate`로,
   차트 문법·크기는 `@bh2980/cms-blocks/chart`의 `parseChartDsl`·`normalizeChartDsl`·`resolvePieGeometry`로 읽는다.
 - 편집기 모양 바꾸기: `styles.css`의 변수(`--cms-callout-note`·`-tip`·`-info`·`-warning`·`-danger`, `--chart-1`~`5`)를 앱에서 정한다.

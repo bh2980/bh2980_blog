@@ -10,7 +10,7 @@ export { tabBlock, tabsBlock } from "./definition";
  * plugins: [tabs()]
  * ```
  *
- * 공개 화면은 사이트가 `Tabs`·`Tab` 컴포넌트로 그린다.
+ * 공개 화면은 이 확장이 기본 공개 컴포넌트를 준다(`render`, `@bh2980/cms/render`가 쓴다). 사이트는 같은 이름의 컴포넌트로 덮어쓸 수 있다.
  */
 export const tabs = () =>
 	definePlugin({
@@ -18,4 +18,5 @@ export const tabs = () =>
 		options: {},
 		blocks: [tabsBlock, tabBlock],
 		admin: () => import("@bh2980/cms-blocks/tabs/admin"),
+		render: () => import("@bh2980/cms-blocks/tabs/render"),
 	});

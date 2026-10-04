@@ -19,10 +19,10 @@ import {
 	YAxis,
 } from "recharts";
 import { normalizeChartDsl, parseChartDsl } from "./dsl";
+import { estimateYAxisWidth, formatChartValue, toChartConfig } from "./helpers";
 import { CHART_LEGEND_HEIGHT, resolvePieGeometry } from "./layout";
-import type { CartesianChartSpec, ChartRenderError, NormalizedChartSpec, PieChartSpec } from "./types";
+import type { CartesianChartSpec, ChartRenderError, PieChartSpec } from "./types";
 import {
-	type ChartConfig,
 	ChartContainer,
 	ChartLegend,
 	ChartLegendContent,
@@ -36,33 +36,6 @@ import {
  * 공급자가 `fencePreviews.chart`로 미리보기를 열 때만 불러온다. 사이트는 같은 이름으로 자기 렌더러를 넣어 바꿀 수 있다.
  * 색은 계열의 테마 변수(`--chart-1`~`--chart-5`)다.
  */
-
-const toChartConfig = (spec: NormalizedChartSpec): ChartConfig => {
-	if (spec.type === "pie" && spec.labelKey) {
-		return Object.fromEntries(
-			spec.data.map((row) => [
-				String(row[spec.labelKey] ?? ""),
-				{ label: String(row[spec.labelKey] ?? ""), color: String(row.fill ?? "var(--chart-1)") },
-			]),
-		);
-	}
-	return Object.fromEntries(
-		spec.series.map((series) => [series.key, { label: series.label, color: `var(--${series.colorToken})` }]),
-	);
-};
-
-/** Y축 눈금 글자 폭(px)을 데이터에서 어림한다. 눈금은 데이터 최댓값보다 한 단계 크게 잡힐 수 있다(예: 95 → 100). */
-const Y_AXIS_CHAR_WIDTH = 7;
-const Y_AXIS_TICK_GAP = 14;
-const estimateYAxisWidth = (spec: CartesianChartSpec) => {
-	const values = spec.data.flatMap((row) =>
-		spec.series.map((series) => Number(row[series.key])).filter((value) => Number.isFinite(value)),
-	);
-	if (spec.options.yRange) values.push(spec.options.yRange.min, spec.options.yRange.max);
-	const labels = values.flatMap((value) => [String(value), String(Math.round(value * 1.25))]);
-	const longest = Math.max(1, ...labels.map((label) => label.length));
-	return longest * Y_AXIS_CHAR_WIDTH + Y_AXIS_TICK_GAP;
-};
 
 function ChartErrorCard({ errors }: { errors: ChartRenderError[] }) {
 	return (
@@ -86,9 +59,6 @@ function ChartErrorCard({ errors }: { errors: ChartRenderError[] }) {
 
 const CARTESIAN = { bar: BarChart, line: LineChart, area: AreaChart } as const;
 
-const formatValue = (value: unknown) =>
-	value == null || value === false ? "" : typeof value === "number" ? value.toLocaleString() : String(value);
-
 const VALUE_LABEL_CLASS = "fill-foreground font-medium text-[11px]";
 
 /** 값 글자(`show values`). */
@@ -97,7 +67,7 @@ const valueLabel = (spec: CartesianChartSpec) =>
 		<LabelList
 			position="top"
 			offset={spec.type === "bar" ? 8 : 10}
-			formatter={formatValue}
+			formatter={formatChartValue}
 			className={VALUE_LABEL_CLASS}
 		/>
 	) : null;

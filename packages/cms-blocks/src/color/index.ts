@@ -17,7 +17,7 @@ export interface ColorOptions {
  * plugins: [color({ palette: [...] })]
  * ```
  *
- * 편집기에는 서식 도구·글자 버블의 `글자색`이 생긴다. 공개 화면은 사이트가 `Color` 컴포넌트로 그리고(`textColorProps`),
+ * 편집기에는 서식 도구·글자 버블의 `글자색`이 생긴다. 공개 화면은 이 확장의 기본 `Color` 컴포넌트가 그리고(`textColorProps`),
  * 색은 이 패키지의 `styles.css`(`.cms-color`)가 테마에 맞춰 고른다.
  */
 export const color = (options: ColorOptions = {}) =>
@@ -27,4 +27,5 @@ export const color = (options: ColorOptions = {}) =>
 		blocks: [colorBlock],
 		validate: () => validateTextPalette(options.palette),
 		admin: () => import("@bh2980/cms-blocks/color/admin"),
+		render: () => import("@bh2980/cms-blocks/color/render"),
 	});

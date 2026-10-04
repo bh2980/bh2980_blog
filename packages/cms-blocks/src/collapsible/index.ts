@@ -10,7 +10,7 @@ export { collapsibleBlock } from "./definition";
  * plugins: [collapsible()]
  * ```
  *
- * 공개 화면은 사이트가 `Collapsible` 컴포넌트로 그린다.
+ * 공개 화면은 이 확장이 기본 공개 컴포넌트를 준다(`render`, `@bh2980/cms/render`가 쓴다). 사이트는 같은 이름의 컴포넌트로 덮어쓸 수 있다.
  */
 export const collapsible = () =>
 	definePlugin({
@@ -18,4 +18,5 @@ export const collapsible = () =>
 		options: {},
 		blocks: [collapsibleBlock],
 		admin: () => import("@bh2980/cms-blocks/collapsible/admin"),
+		render: () => import("@bh2980/cms-blocks/collapsible/render"),
 	});
