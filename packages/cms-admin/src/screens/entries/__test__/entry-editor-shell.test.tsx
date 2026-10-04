@@ -1,8 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsAdminComponentsProvider, type EntryActionExtension } from "../../../admin-components";
-import { Button } from "../../../ui/button";
-import { DropdownMenuItem } from "../../../ui/dropdown-menu";
 import { EntryEditorShell } from "../entry-editor-shell";
 import { EMPTY_FORM, formFingerprint, formFromEntry } from "../entry-form";
 
@@ -544,45 +541,6 @@ describe("entry editor shell", () => {
 		await waitFor(() => expect(deleteLocalBackup).toHaveBeenCalledWith(`${ADMIN}:entry-1`));
 		expect(screen.queryByRole("dialog")).toBeNull();
 		expect(methodCalls("PATCH")).toHaveLength(1);
-	});
-
-	it("renders what an entry action extension registers and lets it lock the entry", async () => {
-		let current: Record<string, unknown> = { ...entry, lockedBy: "hold" };
-		serve((input, init) => {
-			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(current);
-		});
-		const hold: EntryActionExtension = {
-			name: "hold",
-			use: (context) => ({
-				publishMenu: <DropdownMenuItem>보류 발행</DropdownMenuItem>,
-				notice: context.entry?.lockedBy ? <output aria-label="보류">보류 중</output> : null,
-				lockedAction: (
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => {
-							current = { ...current, lockedBy: null, version: 5 };
-							void context.reload();
-						}}
-					>
-						보류 해제
-					</Button>
-				),
-			}),
-		};
-		render(
-			<CmsAdminComponentsProvider components={{ entryActions: [hold] }}>
-				<EntryEditorShell mode="edit" initialEntryId="entry-1" adminId={ADMIN} />
-			</CmsAdminComponentsProvider>,
-		);
-		expect(await screen.findByRole("status", { name: "보류" })).toBeTruthy();
-		expect(((await editorTitle()) as HTMLInputElement).readOnly).toBe(true);
-		expect(screen.queryByRole("button", { name: "발행" })).toBeNull();
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "보류 해제" }));
-		await waitFor(() => expect(screen.queryByRole("status", { name: "보류" })).toBeNull());
-		expect((screen.getByRole("button", { name: "발행" }) as HTMLButtonElement).disabled).toBe(false);
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
-		expect(await screen.findByRole("menuitem", { name: "보류 발행" })).toBeTruthy();
 	});
 
 	it("fills an empty post summary from the body before publishing", async () => {

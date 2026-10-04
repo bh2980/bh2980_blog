@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 import type { BlockDefinition } from "../blocks/define";
 import type { CollectionsConfig } from "../config/define";
 
@@ -63,37 +63,6 @@ export interface PluginDatabase {
 	readonly schema: string;
 }
 
-/** 본체가 연 트랜잭션 안의 DB(글 갈고리가 받는다). `schema`는 검사한 스키마 이름이다. */
-export interface PluginTransaction {
-	readonly client: Pick<PoolClient, "query">;
-	readonly schema: string;
-}
-
-/** 글 상태 바뀜. 원문의 상태를 바꿔 번역본도 함께 바뀌면 묶음의 글이 모두 온다. */
-export interface EntryStatusChange {
-	readonly entryIds: readonly string[];
-	readonly status: "published" | "archived" | "trashed";
-}
-
-/**
- * 글 갈고리. 본체가 글을 바꾸는 트랜잭션 안에서 부른다. 던지면 그 변경이 취소된다.
- * 예: 예약 확장은 예약이 걸린 글을 잠그고, 글이 발행·보관·휴지통으로 가면 예약을 취소한다.
- */
-export interface EntryHooks {
-	/**
-	 * 넘긴 글 가운데 편집을 막을 글. 막힌 글은 본문·속성이 바뀌는 저장, 저장하며 바로 발행, 일괄 작업이 `locked`로
-	 * 거부되고, 관리자 화면은 읽기 전용으로 연다(글 조회 응답의 `lockedBy`가 이 플러그인 이름이다).
-	 */
-	readonly locked?: (db: PluginTransaction, entryIds: readonly string[]) => Promise<readonly string[]>;
-	/** 글 상태가 바뀐 뒤(같은 트랜잭션). */
-	readonly afterStatusChange?: (db: PluginTransaction, change: EntryStatusChange) => Promise<void>;
-}
-
-/** 플러그인 이름을 붙인 글 갈고리(저장소가 받는다). */
-export interface NamedEntryHooks extends EntryHooks {
-	readonly name: string;
-}
-
 export interface CmsServerPlugin {
 	/** 본체 경로에 없는 주소를 이 경로표에서 찾는다. */
 	readonly routes?: readonly PluginRoute[];
@@ -101,8 +70,6 @@ export interface CmsServerPlugin {
 	readonly migrate?: (db: PluginDatabase) => Promise<void>;
 	/** 관리자 메타 API(`/v1/meta`)의 `features`에 더할 값. */
 	readonly features?: () => Promise<Readonly<Record<string, boolean>>>;
-	/** 글 갈고리(잠금·상태 바뀜 알림). */
-	readonly entryHooks?: EntryHooks;
 }
 
 /**

@@ -5,7 +5,6 @@ import { DEFAULT_LOCALE } from "../../../core/locales";
 import { prepareSnapshot, validateForPublish } from "../../../core/snapshot";
 import { type Collection, type Reference, ServiceError } from "../../../core/types";
 import type { StoreContext } from "./context";
-import { createEntryHookRunner } from "./entry-hooks";
 import { CmsError } from "./errors";
 import { type AddressRow, loadEntry, lockEntryForUpdate, readBody, readReferences, writeBody } from "./rows";
 import type { Entry, EntryStatus } from "./types";
@@ -17,11 +16,10 @@ export interface PublishOptions {
 }
 
 /**
- * 발행 트랜잭션의 공통 규칙. 발행·레코드 복원과 플러그인의 발행(예: 예약 실행)이 같은 검증을 쓴다.
+ * 발행 트랜잭션의 공통 규칙. 발행·레코드 복원이 같은 검증을 쓴다.
  */
 export function createPublishing(ctx: StoreContext) {
 	const { qSchema, hooks } = ctx;
-	const entryHooks = createEntryHookRunner(ctx);
 
 	/** 저장된 최신 초안을 트랜잭션 안에서 다시 검증한다. 참조 대상·내부 링크 주소를 잠근다. */
 	const validateStoredWorkingForPublish = async (client: PoolClient, entryId: string) => {
@@ -239,9 +237,6 @@ export function createPublishing(ctx: StoreContext) {
 			 FROM "${qSchema}".entry_references WHERE entry_id = $1 AND state = 'working'`,
 			[id],
 		);
-
-		// 플러그인이 발행을 알아야 할 때(예: 예약 확장은 대기 중인 예약을 취소한다).
-		await entryHooks.statusChanged(client, { entryIds: [id], status: "published" });
 
 		const entry = await loadEntry(client, id, qSchema);
 		if (hooks.beforePublishCommit) await hooks.beforePublishCommit(entry, client);

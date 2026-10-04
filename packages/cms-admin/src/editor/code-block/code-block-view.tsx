@@ -77,7 +77,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 		},
 	});
 
-	// 읽기 전용(예약 잠금·휴지통·원문 모드)이면 언어·경로·효과 도구를 숨기고 줄을 고르지 않는다.
+	// 읽기 전용(휴지통·원문 모드)이면 언어·경로·효과 도구를 숨기고 줄을 고르지 않는다.
 	const editable = useEditorEditable(editor);
 	const pos = typeof getPos === "function" ? getPos() : undefined;
 	const base = typeof pos === "number" ? pos + 1 : null;

@@ -3,10 +3,7 @@ import { createBulkService } from "../bulk-service";
 import type { Reference } from "../index";
 import { ServiceError } from "../index";
 
-/**
- * TW-1b (부분): 예약 글 처리(Q3) 결정과 무관한 케이스만 단언한다.
- * 예약 글이 섞인 publish 케이스는 아래 describe.skip에 보류한다.
- */
+/** TW-1b: 일괄 상태 변경. */
 
 type EntryState = {
 	version: number;
@@ -25,9 +22,8 @@ class FakeStoreError extends Error {
 	}
 }
 
-const newFakeLifecycleStore = (seed: Record<string, EntryState>, scheduled: readonly string[] = []) => {
+const newFakeLifecycleStore = (seed: Record<string, EntryState>) => {
 	const entries = new Map<string, EntryState>(Object.entries(seed));
-	const scheduledIds = new Set(scheduled);
 	const bump = (entryId: string, expectedVersion: number, status: EntryState["status"]) => {
 		const found = entries.get(entryId);
 		if (!found) throw new ServiceError("not_found");
@@ -41,15 +37,6 @@ const newFakeLifecycleStore = (seed: Record<string, EntryState>, scheduled: read
 		entries,
 		async getWorkingReferences() {
 			return [] as Reference[];
-		},
-		/** 번역본 예약: 원문 id → 예약된 번역본이 있는지. */
-		translationScheduled: new Set<string>(),
-		async lockedBy(params: { entryId: string; includeTranslations?: boolean }) {
-			if (params.includeTranslations && this.translationScheduled.has(params.entryId)) return "schedule";
-			return scheduledIds.has(params.entryId) ? "schedule" : null;
-		},
-		unschedule(entryId: string) {
-			scheduledIds.delete(entryId);
 		},
 		async getWorking() {
 			throw new ServiceError("invalid_input");
@@ -148,49 +135,6 @@ describe("M4-TW-1b Bulk lifecycle ops contract", () => {
 			],
 		});
 	});
-
-	describe("scheduled entries in bulk (Q3 결정: (A) 항목별 실패)", () => {
-		it("scheduled entries fail per-item as locked without executing; others proceed", async () => {
-			const store = newFakeLifecycleStore(
-				{ e1: { version: 2, status: "draft" }, e2: { version: 2, status: "draft" } },
-				["e2"],
-			);
-			const bulk = createBulkService(store);
-			const out = await bulk.run({
-				op: "publish",
-				items: [
-					{ id: "e1", expectedVersion: 2 },
-					{ id: "e2", expectedVersion: 2 },
-				],
-			});
-			expect(out).toEqual({
-				results: [
-					{ id: "e1", ok: true, version: 3 },
-					{ id: "e2", ok: false, error: "locked" },
-				],
-			});
-			// e2 untouched: version bumped only for e1
-			expect(store.entries.get("e2")?.status).toBe("draft");
-			expect(store.entries.get("e2")?.version).toBe(2);
-		});
-
-		it("scheduled entry in bulk archive is locked (schedule preserved, not cancelled)", async () => {
-			const store = newFakeLifecycleStore({ e1: { version: 1, status: "draft" } }, ["e1"]);
-			const bulk = createBulkService(store);
-			const out = await bulk.run({ op: "archive", items: [{ id: "e1", expectedVersion: 1 }] });
-			expect(out).toEqual({ results: [{ id: "e1", ok: false, error: "locked" }] });
-			expect(store.entries.get("e1")?.status).toBe("draft");
-		});
-
-		it("rerun after unschedule succeeds", async () => {
-			const store = newFakeLifecycleStore({ e1: { version: 1, status: "draft" } }, ["e1"]);
-			const bulk = createBulkService(store);
-			await bulk.run({ op: "archive", items: [{ id: "e1", expectedVersion: 1 }] });
-			store.unschedule("e1");
-			const out = await bulk.run({ op: "archive", items: [{ id: "e1", expectedVersion: 1 }] });
-			expect(out).toEqual({ results: [{ id: "e1", ok: true, version: 2 }] });
-		});
-	});
 });
 
 describe("v2 A3 bulk permanentDelete", () => {
@@ -243,21 +187,5 @@ describe("v2 A3 bulk permanentDelete", () => {
 			{ id: "source", ok: true, version: 2 },
 			{ id: "translation-removed-with-source", ok: true, version: 3 },
 		]);
-	});
-});
-
-describe("v3 번역 묶음 일괄 작업", () => {
-	it("원문 보관·휴지통은 번역본 예약도 잠금으로 보고, 발행은 원문 예약만 본다", async () => {
-		const store = newFakeLifecycleStore({
-			source: { version: 1, status: "draft" },
-		});
-		store.translationScheduled.add("source");
-		const bulk = createBulkService(store);
-		for (const op of ["archive", "trash"] as const) {
-			const out = await bulk.run({ op, items: [{ id: "source", expectedVersion: 1 }] });
-			expect(out.results).toEqual([{ id: "source", ok: false, error: "locked" }]);
-		}
-		const published = await bulk.run({ op: "publish", items: [{ id: "source", expectedVersion: 1 }] });
-		expect(published.results).toEqual([{ id: "source", ok: true, version: 2 }]);
 	});
 });

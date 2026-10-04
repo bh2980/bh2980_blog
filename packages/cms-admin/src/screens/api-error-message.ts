@@ -46,7 +46,6 @@ const ERROR_LABELS: Record<string, string> = {
 	source_trashed: "원문이 휴지통에 있습니다. 원문을 먼저 복원하세요.",
 	in_use: "다른 콘텐츠가 사용 중이라 진행할 수 없습니다. 사용처를 먼저 정리하세요.",
 	invalid_status: "현재 상태에서는 할 수 없는 작업입니다.",
-	locked: "예약된 글입니다. 예약을 해제한 뒤 편집하세요.",
 	folder_name_conflict: "같은 위치에 같은 이름의 폴더가 있습니다. 이름을 바꾼 뒤 다시 시도하세요.",
 	version_required: "버전 정보가 없습니다. 화면을 새로고침하세요.",
 	unauthorized: "로그인이 만료되었습니다. 다시 로그인하세요.",

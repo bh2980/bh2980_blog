@@ -6,8 +6,6 @@ export * from "../core/types";
 export interface StorePort<T = unknown> {
 	getWorkingReferences(params: { entryId: string }): Promise<Reference[]>;
 	getWorking(params: { entryId: string }): Promise<WorkingCopy>;
-	/** `includeTranslations`면 원문의 번역본 예약도 본다(원문 보관·휴지통이 묶음에 적용되므로, v3). */
-	lockedBy(params: { entryId: string; includeTranslations?: boolean }): Promise<string | null>;
 	archiveEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
 	unarchiveEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;
 	trashEntry(params: { id: string; expectedVersion: number }): Promise<{ version: number }>;

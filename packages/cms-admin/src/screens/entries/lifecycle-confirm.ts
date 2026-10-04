@@ -49,13 +49,13 @@ export function lifecycleConfirm(
 		case "archive":
 			return {
 				title: LIFECYCLE_LABEL.archive,
-				description: `${target} 보관할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
+				description: `${target} 보관할까요? 공개가 종료됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
 				confirmLabel: LIFECYCLE_LABEL.archive,
 			};
 		case "trash":
 			return {
 				title: LIFECYCLE_LABEL.trash,
-				description: `${target} 휴지통으로 이동할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다.${usageNote}${hasGroup ? ` ${otherLocales.join("·")} 번역본도 함께 휴지통으로 이동합니다.` : ""}`,
+				description: `${target} 휴지통으로 이동할까요? 공개가 종료됩니다.${usageNote}${hasGroup ? ` ${otherLocales.join("·")} 번역본도 함께 휴지통으로 이동합니다.` : ""}`,
 				confirmLabel: LIFECYCLE_LABEL.trash,
 				destructive: true,
 			};

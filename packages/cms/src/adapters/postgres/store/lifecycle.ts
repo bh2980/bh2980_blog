@@ -1,7 +1,6 @@
 import type { PoolClient } from "pg";
 import { isItemCollection } from "../../../core/collections";
 import { type StoreContext, withTransaction } from "./context";
-import { createEntryHookRunner } from "./entry-hooks";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
 import { loadEntry, lockEntryForUpdate } from "./rows";
@@ -15,7 +14,6 @@ type LifecycleParams = { id: string; expectedVersion: number };
  */
 export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 	const { pool, qSchema } = ctx;
-	const entryHooks = createEntryHookRunner(ctx);
 
 	const transition = (
 		params: LifecycleParams,
@@ -71,7 +69,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 	};
 
 	return {
-		/** 초안/발행 → 보관. 공개를 끝낸다(플러그인에 알린다). record 컬렉션은 보관이 없다. */
+		/** 초안/발행 → 보관. 공개를 끝낸다. record 컬렉션은 보관이 없다. */
 		archiveEntry: (params: LifecycleParams) =>
 			transition(params, ["draft", "published"], async (client, locked) => {
 				if (isItemCollection(locked.collection)) {
@@ -86,7 +84,6 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 				);
 				const ids = members.map((member) => member.id);
 				await setMembersStatus(client, ids, "archived");
-				await entryHooks.statusChanged(client, { entryIds: [params.id, ...ids], status: "archived" });
 			}),
 
 		/** 보관 → 초안. 자동으로 다시 공개하지 않는다. */
@@ -105,7 +102,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 			}),
 
 		/**
-		 * → 휴지통. 공개를 끝낸다(플러그인에 알린다).
+		 * → 휴지통. 공개를 끝낸다.
 		 * 사용 중인 분류 항목(record 컬렉션: 태그·카테고리 등)은 참조를 먼저 해제해야 한다(§6.1).
 		 */
 		trashEntry: (params: LifecycleParams) =>
@@ -122,7 +119,6 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 					.filter((member) => member.status !== "trashed")
 					.map((member) => member.id);
 				await setMembersStatus(client, ids, "trashed", ", trashed_at = NOW()");
-				await entryHooks.statusChanged(client, { entryIds: [params.id, ...ids], status: "trashed" });
 			}),
 
 		/**

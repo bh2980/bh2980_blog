@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_LOCALE, FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
+import { FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -88,7 +88,7 @@ interface CmsEditorProps {
 	sourceView?: ReactNode;
 	onCompositionStart?: () => void;
 	onCompositionEnd?: () => void;
-	/** 예약 잠금·휴지통처럼 편집할 수 없는 상태면 false다. */
+	/** 휴지통처럼 편집할 수 없는 상태면 false다. */
 	editable?: boolean;
 	/** 블록 손잡이 옆에 더 붙일 동작(번역본의 `번역` 등). 그 블록에서 쓸 수 있을 때만 보인다. */
 	blockActions?: readonly BlockAction[];

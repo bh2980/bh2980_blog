@@ -5,7 +5,6 @@ import { createFolderOps } from "./store/folders";
 import { createLifecycleOps } from "./store/lifecycle";
 import { createListOps } from "./store/list";
 import { createMediaOps } from "./store/media";
-import { createPluginTransactionOps } from "./store/plugin-transaction";
 import { createPreferenceOps } from "./store/preferences";
 import { createPublicReadOps } from "./store/public-read";
 import { createPublishing } from "./store/publish";
@@ -29,7 +28,7 @@ export function createContentStore(pool: Pool, options?: { schema?: string } & C
 	const ctx: StoreContext = {
 		pool,
 		qSchema: validateSchemaName(options?.schema),
-		hooks: { beforePublishCommit: options?.beforePublishCommit, entryHooks: options?.entryHooks },
+		hooks: { beforePublishCommit: options?.beforePublishCommit },
 	};
 	const publishing = createPublishing(ctx);
 
@@ -41,7 +40,6 @@ export function createContentStore(pool: Pool, options?: { schema?: string } & C
 		...createPublicReadOps(ctx),
 		...createPreferenceOps(ctx),
 		...createTransferOps(ctx),
-		...createPluginTransactionOps(ctx, publishing),
 		...createMediaOps(ctx),
 		...createTemplateOps(ctx),
 	};

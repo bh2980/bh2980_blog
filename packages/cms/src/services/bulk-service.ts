@@ -89,7 +89,7 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 			}
 			try {
 				if (request.op === "permanentDelete") {
-					// 휴지통으로 옮길 때 예약이 취소되므로 예약 잠금은 확인하지 않는다. 휴지통 여부·참조는 저장소가 검사한다.
+					// 휴지통 여부·참조는 저장소가 검사한다.
 					try {
 						await storePort.permanentDeleteEntry({ id: item.id, expectedVersion: item.expectedVersion });
 					} catch (error) {
@@ -101,13 +101,6 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 					continue;
 				}
 				if (LIFECYCLE_OPS.includes(request.op)) {
-					// 사용자 결정 Q3-A: 플러그인이 잠근 글(예: 예약 대기)은 일괄 상태 변경을 실행하지 않고 항목별 `locked`로
-					// 표시한다. 잠금을 조용히 풀지 않도록 편집 화면에서 먼저 풀게 한다.
-					const groupWide = request.op === "archive" || request.op === "trash";
-					if (await storePort.lockedBy({ entryId: item.id, includeTranslations: groupWide })) {
-						results.push({ id: item.id, ok: false, error: "locked" });
-						continue;
-					}
 					const lifecycleParams = { id: item.id, expectedVersion: item.expectedVersion };
 					const acted =
 						request.op === "archive"

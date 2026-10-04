@@ -36,8 +36,6 @@ describe("관리자 API 경로표", () => {
 		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/public"))).toBe(false);
 		// AI 경로는 AI 플러그인이 더한다(`@bh2980/cms-ai`).
 		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/ai"))).toBe(false);
-		// 예약 경로는 예약 확장이 더한다(`@bh2980/cms-schedule`).
-		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.includes("schedule"))).toBe(false);
 		expect(CMS_ROUTE_PATTERNS).toHaveLength(23);
 	});
 

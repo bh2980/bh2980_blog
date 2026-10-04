@@ -1,6 +1,6 @@
-import { valueFieldsOf } from "@bh2980/cms";
+import { type CollectionsConfig, valueFieldsOf } from "@bh2980/cms";
 // AI 플러그인은 고를 수 있는 의존성이라 타입만 읽는다(이 파일은 AI 플러그인 코드를 불러오지 않는다).
-import type { AiActionDefinition, AiActionFactory, AiAttach, AiContribution, AiSiteView } from "@bh2980/cms-ai";
+import type { AiActionDefinition, AiContribution } from "@bh2980/cms-ai";
 import { SEO_DEFAULT_LIMITS, SEO_ROLES } from "./fields";
 
 /**
@@ -17,8 +17,21 @@ const fieldInput = {
 
 const lines = (...text: string[]) => text.join("\n");
 
+/**
+ * AI 플러그인이 넘기는 사이트 보기(`AiSiteView`) 중 이 파일이 읽는 것과 붙을 곳(`AiAttach`)의 모양. 여기 적어 배포 타입 선언이
+ * AI 플러그인을 가리키지 않게 한다(AI 플러그인이 없는 사이트도 타입 검사를 통과한다). 맞는 모양인지는 `satisfies`가 확인한다.
+ */
+export interface SeoSiteView {
+	readonly collections: CollectionsConfig;
+}
+export interface FieldAttach {
+	readonly slot: "field";
+	readonly field: string;
+	readonly collections: readonly string[];
+}
+
 /** 그 역할 필드가 있는 컬렉션과 필드. 필드 이름마다 붙을 곳 하나, 길이는 필드 `max` → 권장 글자 수 → 기본값. */
-function roleTargets(site: AiSiteView, role: string, fallback: number) {
+function roleTargets(site: SeoSiteView, role: string, fallback: number) {
 	const byName = new Map<string, string[]>();
 	const limits: number[] = [];
 	for (const [collection, schema] of Object.entries(site.collections)) {
@@ -30,15 +43,15 @@ function roleTargets(site: AiSiteView, role: string, fallback: number) {
 			(typeof found.field.inputOptions?.limit === "number" ? found.field.inputOptions.limit : undefined);
 		if (limit !== undefined) limits.push(limit);
 	}
-	const attach: AiAttach[] = [...byName].map(([field, collections]) => ({ slot: "field", field, collections }));
+	const attach: FieldAttach[] = [...byName].map(([field, collections]) => ({ slot: "field", field, collections }));
 	return { attach, max: limits.length > 0 ? Math.min(...limits) : fallback };
 }
 
 export const seoAi = {
 	/** 검색 결과에 보일 제목 후보. 검색 제목 역할(`seoTitle`) 필드에 붙는다. */
 	title:
-		(options: { readonly prompt?: string; readonly maxLength?: number } = {}): AiActionFactory =>
-		(site) => {
+		(options: { readonly prompt?: string; readonly maxLength?: number } = {}) =>
+		(site: SeoSiteView) => {
 			const { attach, max } = roleTargets(site, SEO_ROLES.title, SEO_DEFAULT_LIMITS.title);
 			if (attach.length === 0) return undefined;
 			const limit = options.maxLength ?? max;
@@ -63,8 +76,8 @@ export const seoAi = {
 
 	/** 검색 결과에 보일 설명. 검색 설명 역할(`seoDescription`) 필드에 붙는다. */
 	description:
-		(options: { readonly prompt?: string; readonly maxLength?: number } = {}): AiActionFactory =>
-		(site) => {
+		(options: { readonly prompt?: string; readonly maxLength?: number } = {}) =>
+		(site: SeoSiteView) => {
 			const { attach, max } = roleTargets(site, SEO_ROLES.description, SEO_DEFAULT_LIMITS.description);
 			if (attach.length === 0) return undefined;
 			const limit = options.maxLength ?? max;

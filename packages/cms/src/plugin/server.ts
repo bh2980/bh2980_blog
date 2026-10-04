@@ -1,6 +1,6 @@
 import { cmsConfig } from "../config/resolved";
 import { cmsServerConfig } from "../server/resolved";
-import type { CmsPlugin, CmsServerPlugin, NamedEntryHooks, PluginDatabase, PluginRoute } from "./define";
+import type { CmsPlugin, CmsServerPlugin, PluginDatabase, PluginRoute } from "./define";
 
 /** 사이트 설정의 플러그인. 플러그인이 없는 설정은 빈 튜플 타입이라 넓혀 읽는다. */
 const PLUGINS: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
@@ -38,11 +38,4 @@ export async function pluginFeatures(): Promise<Record<string, boolean>> {
 	const plugins = await loadServerPlugins();
 	const features = await Promise.all(plugins.map((plugin) => plugin.features?.().catch(() => ({})) ?? {}));
 	return Object.assign({}, ...features);
-}
-
-/** 플러그인의 글 갈고리(플러그인 순서대로). 저장소가 글을 바꿀 때 부른다. */
-export async function pluginEntryHooks(): Promise<readonly NamedEntryHooks[]> {
-	return (await loadServerPlugins()).flatMap((plugin) =>
-		plugin.entryHooks ? [{ name: plugin.name, ...plugin.entryHooks }] : [],
-	);
 }

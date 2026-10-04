@@ -7,6 +7,10 @@ import { unwrapDefault } from "./interop";
  *
  * 저작 API(`@bh2980/cms` 진입점)는 이 파일을 import하지 않는다. 설정 파일이 저작 API를 import하므로 순환이 생긴다.
  */
-export const cmsConfig = unwrapDefault(config);
-
 export type ResolvedConfig = typeof config;
+
+/**
+ * 타입을 `ResolvedConfig`로 적어 둔다. 적지 않으면 배포 타입 선언(`dist/*.d.ts`)에 빌드 때 쓴 빈 설정의 타입이 굳어
+ * 앱의 컬렉션 이름이 `string`으로 뭉개진다.
+ */
+export const cmsConfig: ResolvedConfig = unwrapDefault(config);

@@ -21,7 +21,8 @@
 	"peerDependencies": {
 		"@bh2980/cms": "workspace:^",
 		"@bh2980/cms-admin": "workspace:^",
-		"react": ">=19"
+		"react": ">=19",
+		"next": ">=16"
 	},
 	"devDependencies": {
 		"@bh2980/cms": "workspace:*",

@@ -10,12 +10,7 @@ export {
 	type SlugsInUseParams,
 } from "./adapters/postgres/store/content-lookup";
 export { withTransaction } from "./adapters/postgres/store/context";
-export {
-	CmsError,
-	isTransactionConflict,
-	isUniqueViolation,
-	mapEntryWriteError,
-} from "./adapters/postgres/store/errors";
+export { CmsError } from "./adapters/postgres/store/errors";
 export { getCmsContentStore, getCmsMediaStore, getCmsSecret } from "./container";
 export { HttpError, handleApiError } from "./http/v1/error-handler";
 export * from "./http/v1/handler";

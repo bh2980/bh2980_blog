@@ -35,15 +35,11 @@ export {
 	type CmsPlugin,
 	type CmsServerPlugin,
 	definePlugin,
-	type EntryHooks,
-	type EntryStatusChange,
-	type NamedEntryHooks,
 	type PluginConfigView,
 	type PluginDatabase,
 	type PluginNamed,
 	type PluginNavItem,
 	type PluginRoute,
-	type PluginTransaction,
 } from "./plugin/define";
 export {
 	type CollectionSchema,

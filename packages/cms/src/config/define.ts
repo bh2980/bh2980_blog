@@ -108,7 +108,7 @@ export interface CmsConfig<
 	readonly defaultLocale: NoInfer<Locale>;
 	readonly site?: SiteConfig;
 	/**
-	 * 날짜·시각을 입력하고 보이는 시간대(IANA, 예: `Asia/Seoul`). 발행일·예약 시각 입력이 이 시간대의 벽시계다.
+	 * 날짜·시각을 입력하고 보이는 시간대(IANA, 예: `Asia/Seoul`). 발행일 입력이 이 시간대의 벽시계다.
 	 * 없으면 `UTC`.
 	 */
 	readonly timeZone?: string;

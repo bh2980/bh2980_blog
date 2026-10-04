@@ -1,5 +1,5 @@
 // AI 플러그인은 고를 수 있는 의존성이라 타입만 읽는다(블록 확장은 AI 플러그인 코드를 불러오지 않는다).
-import type { AiActionDefinition, AiContribution, AiValidator } from "@bh2980/cms-ai";
+import type { AiActionDefinition, AiContribution } from "@bh2980/cms-ai";
 
 /**
  * Mermaid 블록의 AI 기능(`@bh2980/cms-ai`를 쓰는 사이트만). `mermaid()` 플러그인이 `contributes.ai`로 더하므로 AI 플러그인을
@@ -12,8 +12,17 @@ import type { AiActionDefinition, AiContribution, AiValidator } from "@bh2980/cm
 
 const lines = (...text: string[]) => text.join("\n");
 
-/** 코드 검사(`@bh2980/cms-ai`의 `defineValidator`와 같은 모양). */
-const codeCheck = (check: Omit<AiValidator, "kind">): AiValidator => ({ kind: "code", ...check });
+/**
+ * 코드 검사(`@bh2980/cms-ai`의 `AiValidator`·`defineValidator`와 같은 모양). 모양을 여기 적어 배포 타입 선언이 AI 플러그인을
+ * 가리키지 않게 한다(AI 플러그인이 없는 사이트도 타입 검사를 통과한다). 맞는 모양인지는 아래 `satisfies`가 확인한다.
+ */
+export interface CodeCheck {
+	readonly kind: "code";
+	readonly name: string;
+	readonly label: string;
+	readonly run: (value: string) => string | undefined;
+}
+const codeCheck = (check: Omit<CodeCheck, "kind">): CodeCheck => ({ kind: "code", ...check });
 
 /** Mermaid가 아는 다이어그램 종류(첫 줄의 첫 낱말). */
 const DIAGRAM_TYPES = new Set([

@@ -21,7 +21,7 @@ export function postgres(options: PostgresOptions): DatabaseAdapter {
 	const schema = options.schema ? { schema: options.schema } : undefined;
 	return {
 		name: "postgres",
-		createStore: (storeOptions) => createContentStore(getPool(), { ...schema, ...storeOptions }),
+		createStore: () => createContentStore(getPool(), schema),
 		migrate: () => migrateContentStore(getPool(), schema),
 		pluginDatabase: () => ({ pool: getPool(), schema: validateSchemaName(options.schema) }),
 		close: async () => {

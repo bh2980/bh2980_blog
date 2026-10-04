@@ -148,7 +148,6 @@ export const BULK_ERROR_LABEL: Record<string, string> = {
 	not_found: "삭제되었거나 없습니다.",
 	invalid_input: "이 항목에는 적용할 수 없습니다.",
 	invalid_status: "현재 상태에서는 할 수 없는 작업입니다.",
-	locked: "예약된 글입니다. 편집 화면에서 예약을 해제하세요.",
 	publish_validation_failed: "발행 검증을 통과하지 못했습니다.",
 	slug_conflict: "같은 주소가 이미 사용 중입니다.",
 	in_use: "다른 콘텐츠가 사용 중입니다.",

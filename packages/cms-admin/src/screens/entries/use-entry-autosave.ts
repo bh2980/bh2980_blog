@@ -51,7 +51,7 @@ interface Options {
 	/** 불러온 항목. 새 글이면 `null`이고 명시적으로 저장하거나 발행할 때 만든다. */
 	entry: EntryData | null;
 	initialForm: EntryForm;
-	/** 예약 잠금·휴지통처럼 저장하면 안 되는 상태면 false다. */
+	/** 휴지통처럼 저장하면 안 되는 상태면 false다. */
 	enabled: boolean;
 	/** 새 글을 처음 저장할 때 넣을 폴더(목록에서 연 위치). */
 	newEntryFolderId?: string | null;

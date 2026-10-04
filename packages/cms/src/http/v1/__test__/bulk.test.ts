@@ -25,7 +25,6 @@ const TAG_2 = "44444444-4444-4444-8444-444444444444";
 const E1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STALE = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const MISSING = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-const SCHEDULED = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 const working = (version: number) => ({
 	collection: "post",
@@ -46,9 +45,6 @@ vi.mock("../../../container", () => ({
 		saveWorkingWithReferences: vi.fn().mockImplementation(({ entryId, expectedVersion }) => {
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
 			return Promise.resolve({ version: 4, id: entryId });
-		}),
-		lockedBy: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
-			return Promise.resolve(entryId === SCHEDULED ? "schedule" : null);
 		}),
 		archiveEntry: vi.fn().mockImplementation(({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
@@ -141,25 +137,6 @@ describe("M4-BE-1a Bulk route contract", () => {
 			results: [
 				{ id: E1, ok: true, version: 4 },
 				{ id: E1, ok: false, error: "conflict" },
-			],
-		});
-	});
-
-	it("reports scheduled entries as locked without executing", async () => {
-		const res = await postBulk(
-			postReq({
-				op: "publish",
-				items: [
-					{ id: E1, expectedVersion: 3 },
-					{ id: SCHEDULED, expectedVersion: 3 },
-				],
-			}),
-		);
-		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({
-			results: [
-				{ id: E1, ok: true, version: 4 },
-				{ id: SCHEDULED, ok: false, error: "locked" },
 			],
 		});
 	});

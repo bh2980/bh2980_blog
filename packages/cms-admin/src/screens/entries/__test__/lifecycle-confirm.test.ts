@@ -20,7 +20,7 @@ describe("상태 전환 확인 문구", () => {
 			{ state: "draft" },
 		] as never);
 		expect(confirm.description).toBe(
-			"이 글을 보관할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다. 공개본에서 이 글을 참조하는 콘텐츠가 2개 있습니다.",
+			"이 글을 보관할까요? 공개가 종료됩니다. 공개본에서 이 글을 참조하는 콘텐츠가 2개 있습니다.",
 		);
 	});
 
@@ -28,8 +28,7 @@ describe("상태 전환 확인 문구", () => {
 		const confirm = lifecycleConfirm("trash", source, []);
 		expect(confirm).toEqual({
 			title: "휴지통으로 이동",
-			description:
-				"이 글을 휴지통으로 이동할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다. EN 번역본도 함께 휴지통으로 이동합니다.",
+			description: "이 글을 휴지통으로 이동할까요? 공개가 종료됩니다. EN 번역본도 함께 휴지통으로 이동합니다.",
 			confirmLabel: "휴지통으로 이동",
 			destructive: true,
 		});
@@ -37,13 +36,13 @@ describe("상태 전환 확인 문구", () => {
 
 	it("원문을 보관하면 번역본도 보관한다고 알린다", () => {
 		expect(lifecycleConfirm("archive", source, []).description).toBe(
-			"이 글을 보관할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다. 번역본도 함께 보관합니다.",
+			"이 글을 보관할까요? 공개가 종료됩니다. 번역본도 함께 보관합니다.",
 		);
 	});
 
 	it("번역본을 옮길 때는 묶음 안내가 없다", () => {
 		expect(lifecycleConfirm("trash", translation, []).description).toBe(
-			"이 번역본을 휴지통으로 이동할까요? 공개가 종료되고 대기 중인 예약이 취소됩니다.",
+			"이 번역본을 휴지통으로 이동할까요? 공개가 종료됩니다.",
 		);
 	});
 

@@ -237,7 +237,6 @@ describe("any site: entry editor", () => {
 		workingSlug: "any-entry",
 		publishedSlug: null,
 		working: { metadata: { title: "Any title" }, mdx: "Body" },
-		schedule: { pending: null, last: null, runnerConfigured: true },
 	};
 
 	it("opens an entry with the title field's label and saves only schema fields", async () => {

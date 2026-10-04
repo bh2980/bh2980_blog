@@ -23,7 +23,6 @@
 	"dependencies": {
 		"@ai-sdk/openai-compatible": "^3.0.61",
 		"ai": "^7.0.124",
-		"lucide-react": "^0.562.0",
 		"zod": "^4.2.1"
 	},
 	"peerDependencies": {
@@ -35,7 +34,8 @@
 		"@tiptap/react": "^3.31.3",
 		"next": ">=16",
 		"react": ">=19",
-		"sonner": "^2.0.8"
+		"sonner": "^2.0.8",
+		"lucide-react": ">=0.562.0"
 	},
 	"devDependencies": {
 		"@bh2980/cms": "workspace:*",
@@ -52,6 +52,7 @@
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"jsdom": "^27.4.0",
+		"lucide-react": "^0.562.0",
 		"next": "16.3.8",
 		"next-auth": "5.0.0-beta.32",
 		"next-themes": "^0.4.6",

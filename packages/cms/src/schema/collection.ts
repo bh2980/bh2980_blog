@@ -4,7 +4,7 @@ import type { BacklinkField, Field, SlugField, ValueField, ValueOf } from "./fie
  * 컬렉션 종류(§5.2).
  *
  * - `document`(문서): 본문을 쓰고 초안과 공개본을 나눈다. 명시적 발행으로 공개한다(예: 게시글).
- * - `item`(항목): 작은 폼에서 저장하면 곧바로 현재 값(공개)에 반영한다. 발행·예약·보관·번역본이 없다(예: 태그).
+ * - `item`(항목): 작은 폼에서 저장하면 곧바로 현재 값(공개)에 반영한다. 발행·보관·번역본이 없다(예: 태그).
  */
 export type CollectionKind = "document" | "item";
 

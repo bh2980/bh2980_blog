@@ -19,9 +19,6 @@ const newFakeStore = (seed: Record<string, Working>) => {
 		async getWorkingReferences() {
 			return [] as Reference[];
 		},
-		async lockedBy() {
-			return null;
-		},
 		async archiveEntry() {
 			throw new ServiceError("invalid_input");
 		},

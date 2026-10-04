@@ -36,8 +36,7 @@ export default defineConfig(({ mode }) => ({
 			"@": path.resolve(__dirname, "./src"),
 			"@cms-config": path.resolve(__dirname, "./src/cms.config.ts"),
 			"@cms-server": path.resolve(__dirname, "./src/cms.server.ts"),
-			// `server-only`는 next의 의존성으로만 설치되어 루트에서 해석되지 않는다.
-			// Next 빌드에는 영향이 없고, 테스트만 스텁으로 대체한다.
+			// `server-only`는 React 서버 환경 밖에서 불러오면 오류를 던진다. Next 빌드에는 영향이 없고, 테스트만 스텁으로 대체한다.
 			"server-only": path.resolve(__dirname, "./src/test/stubs/server-only.ts"),
 		},
 	},

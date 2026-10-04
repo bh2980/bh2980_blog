@@ -2,7 +2,6 @@ import type { ContentStore, Entry } from "./adapters/postgres/content-store";
 import { CmsError } from "./adapters/postgres/store/errors";
 import type { MediaStore } from "./adapters/r2/types";
 import { adminHref } from "./core/admin-paths";
-import { pluginEntryHooks } from "./plugin/server";
 import type { CmsAuth } from "./server/define";
 import { cmsServerConfig } from "./server/resolved";
 import { createContentService } from "./services/content-service";
@@ -22,7 +21,7 @@ declare global {
 }
 
 export function getCmsContentStore(): ContentStore {
-	global.__cmsStore ??= cmsServerConfig.database.createStore({ entryHooks: pluginEntryHooks });
+	global.__cmsStore ??= cmsServerConfig.database.createStore();
 	return global.__cmsStore;
 }
 

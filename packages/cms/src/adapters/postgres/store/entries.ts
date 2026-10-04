@@ -13,7 +13,6 @@ import {
 } from "../../../core/types";
 import { commonFieldKeys, fieldValueError, storedField } from "../../../schema/derive";
 import { type StoreContext, withTransaction } from "./context";
-import { createEntryHookRunner } from "./entry-hooks";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
 import {
@@ -38,7 +37,6 @@ function assertTitleValue(collection: string, title: string): void {
 export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 	const { pool, qSchema } = ctx;
 	const { publishWithinTransaction, lockDraftReferenceTargets } = publishing;
-	const entryHooks = createEntryHookRunner(ctx);
 
 	const assertFolder = async (client: PoolClient, folderId: string | null | undefined, collection: string) => {
 		if (!folderId) return;
@@ -205,12 +203,6 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 						params.snapshot.metadata,
 					);
 
-					// 플러그인이 잠근 글(예: 예약 대기)은 같은 내용 저장만 받는다.
-					const isLocked = (await entryHooks.lockedBy(client, [params.entryId])).size > 0;
-					if (isLocked && params.publishImmediately) {
-						throw new CmsError("Entry is locked for editing", "locked");
-					}
-
 					await assertFolder(client, params.folderId, params.snapshot.collection);
 
 					const body = await readBody(client, qSchema, params.entryId, "working");
@@ -234,9 +226,6 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 					);
 					const folderChanged = params.folderId !== undefined;
 
-					if (isLocked && (!bodyIdentical || !refsEqual)) {
-						throw new CmsError("Entry is locked for editing", "locked");
-					}
 					await lockDraftReferenceTargets(client, params.references);
 
 					let version = locked.version;
@@ -287,23 +276,6 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 
 		getWorkingReferences: async (params: { entryId: string }): Promise<Reference[]> =>
 			readReferences(pool, qSchema, params.entryId, "working"),
-
-		/**
-		 * 이 글을 잠근 플러그인 이름(`EntryHooks.locked`). 잠기지 않았으면 `null`이다.
-		 * `includeTranslations`면 번역본까지 본다(원문의 보관·휴지통은 번역본에도 적용된다, v3).
-		 */
-		lockedBy: async (params: { entryId: string; includeTranslations?: boolean }): Promise<string | null> => {
-			const ids = params.includeTranslations
-				? (
-						await pool.query<{ id: string }>(
-							`SELECT id FROM "${qSchema}".entries WHERE id = $1 OR translation_group_id = $1 ORDER BY id`,
-							[params.entryId],
-						)
-					).rows.map((row) => row.id)
-				: [params.entryId];
-			const locked = await entryHooks.lockedBy(pool, ids);
-			return locked.get(params.entryId) ?? locked.values().next().value ?? null;
-		},
 
 		getWorking: async (params: { entryId: string }): Promise<WorkingCopy> => {
 			const res = await pool.query<{

@@ -35,7 +35,7 @@ export const useContainerValues = ({ node, updateAttributes }: Pick<NodeViewProp
 };
 
 /**
- * 편집기를 고칠 수 있는가. 잠금(예약·휴지통·원문 모드)이 바뀌면 다시 그린다.
+ * 편집기를 고칠 수 있는가. 잠금(휴지통·원문 모드)이 바뀌면 다시 그린다.
  * 노드 뷰는 `editor.isEditable`을 그릴 때 한 번 읽으면 잠금이 바뀌어도 따라가지 않으므로 이것을 쓴다.
  */
 export function useEditorEditable(editor: Editor | null | undefined): boolean {

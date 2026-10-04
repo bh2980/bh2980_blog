@@ -1,4 +1,4 @@
-import { cmsConfig } from "../config/resolved";
+import { cmsConfig, type ResolvedConfig } from "../config/resolved";
 import { isUuid } from "../core/ids";
 import { slugify } from "../core/slug";
 import type { CollectionSchema } from "./collection";
@@ -22,7 +22,8 @@ export type { StoredField } from "./walk";
  * 서버(스냅샷 검증)와 브라우저(속성 패널·폼 변환)가 같은 규칙을 쓴다.
  */
 
-const SCHEMAS = cmsConfig.collections;
+// 타입을 적어 배포 타입 선언에 빌드 때의 설정 타입이 굳지 않게 한다(`config/resolved.ts`).
+const SCHEMAS: ResolvedConfig["collections"] = cmsConfig.collections;
 
 export type SchemaCollection = keyof typeof SCHEMAS & string;
 /** 관계 대상 컬렉션. 정의의 `to`·`from`은 문자열이고, `defineConfig`가 실제 컬렉션인지 확인했다. */

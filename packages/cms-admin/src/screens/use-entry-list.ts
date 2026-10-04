@@ -342,8 +342,8 @@ export function useEntryList(mode: ListMode) {
 			title: "휴지통으로 이동",
 			description:
 				targets.length === 1
-					? `${titleOf(targets)}을(를) 휴지통으로 옮길까요? 공개가 종료되고 예약이 취소됩니다.`
-					: `선택한 항목 ${targets.length}개를 휴지통으로 옮길까요? 공개가 종료되고 예약이 취소됩니다.`,
+					? `${titleOf(targets)}을(를) 휴지통으로 옮길까요? 공개가 종료됩니다.`
+					: `선택한 항목 ${targets.length}개를 휴지통으로 옮길까요? 공개가 종료됩니다.`,
 			confirmLabel: "휴지통으로 이동",
 			destructive: true,
 		});
@@ -355,8 +355,8 @@ export function useEntryList(mode: ListMode) {
 			title: "보관",
 			description:
 				targets.length === 1
-					? `${titleOf(targets)}을(를) 보관할까요? 공개가 종료되고 예약이 취소됩니다.`
-					: `선택한 글 ${targets.length}개를 보관할까요? 공개가 종료되고 예약이 취소됩니다.`,
+					? `${titleOf(targets)}을(를) 보관할까요? 공개가 종료됩니다.`
+					: `선택한 글 ${targets.length}개를 보관할까요? 공개가 종료됩니다.`,
 			confirmLabel: "보관",
 		});
 		if (ok) await bulk("archive", "보관", targets);

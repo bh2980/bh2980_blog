@@ -79,8 +79,6 @@ export interface EntryData {
 	publishedSlug: string | null;
 	working: { metadata: Record<string, unknown>; mdx: string; translation?: TranslationState | null };
 	published?: { metadata: Record<string, unknown>; mdx: string };
-	/** 이 글을 잠근 플러그인 이름(서버 글 갈고리, 예: 예약 대기). 잠기면 편집 화면이 읽기 전용이다. */
-	lockedBy?: string | null;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
