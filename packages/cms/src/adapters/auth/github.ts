@@ -15,6 +15,11 @@ export interface GithubAuthOptions {
 	 * `basePath: "/api/auth"`로 두고 `app/api/auth/[...nextauth]/route.ts`에서 `@bh2980/cms/runtime`의 `handlers`를 내보낸다.
 	 */
 	readonly basePath?: string;
+	/**
+	 * 로그인 세션 서명 값(NextAuth `secret`). 저장 값 암호화 키(서버 설정 `secret`)와 따로 둔다: 이 값을 바꾸면 로그인만 풀리고,
+	 * 암호화 키를 바꾸면 저장한 AI 서비스 키를 다시 넣어야 한다. 없으면 NextAuth가 `AUTH_SECRET` 환경 변수를 읽는다.
+	 */
+	readonly secret?: string;
 }
 
 type NextAuthResult = ReturnType<typeof createGithubNextAuth>;

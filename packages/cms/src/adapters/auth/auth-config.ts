@@ -21,6 +21,8 @@ export interface GithubCredentials {
 	readonly basePath: string;
 	/** 관리자 로그인 화면 주소(예: `/admin/login`). */
 	readonly signInPage: string;
+	/** 로그인 세션 서명 값. 없으면 NextAuth가 `AUTH_SECRET`을 읽는다. */
+	readonly secret?: string;
 }
 
 /** GitHub OAuth로 로그인하는 NextAuth 설정. 세션에는 GitHub 숫자 ID(`githubId`)를 담는다. */
@@ -29,8 +31,10 @@ export const githubAuthConfig = ({
 	clientSecret,
 	basePath,
 	signInPage,
+	secret,
 }: GithubCredentials): NextAuthConfig => ({
 	basePath,
+	...(secret ? { secret } : {}),
 	providers: [
 		GitHub({
 			clientId,

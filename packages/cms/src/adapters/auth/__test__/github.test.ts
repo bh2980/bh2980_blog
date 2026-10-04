@@ -26,5 +26,18 @@ describe("GitHub 로그인 경로", () => {
 		});
 		expect(config.basePath).toBe("/api/cms/auth");
 		expect(config.pages?.signIn).toBe("/studio/login");
+		// 서명 값을 주지 않으면 NextAuth가 AUTH_SECRET을 읽게 비워 둔다.
+		expect(config.secret).toBeUndefined();
+	});
+
+	it("로그인 서명 값을 받으면 NextAuth에 넘긴다(저장 값 암호화 키와 따로)", () => {
+		const config = githubAuthConfig({
+			clientId: "id",
+			clientSecret: "secret",
+			basePath: "/api/cms/auth",
+			signInPage: "/admin/login",
+			secret: "login-only",
+		});
+		expect(config.secret).toBe("login-only");
 	});
 });

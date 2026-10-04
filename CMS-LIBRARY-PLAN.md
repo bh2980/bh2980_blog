@@ -365,7 +365,7 @@ M10까지 끝낸 뒤 전체를 리뷰했다(본체·관리자·확장·블로그
 | M13-2 | **(완료) 프록시 뒤 같은 출처 검사.** 받는 호스트 = `X-Forwarded-Host` 첫 값·`Host`·`nextUrl.host`·`site.url` 호스트. 원래 내용: `x-forwarded-host`를 먼저 보고 `site.url` 호스트도 허용 | `Host`를 바꾸는 프록시 뒤에서 저장이 된다(테스트) |
 | M13-3 | **(완료) DB 스키마 옵션 마무리.** 마이그레이션이 잠금을 건 뒤 `CREATE SCHEMA IF NOT EXISTS`. README에 한 줄. 원래 내용: 기본은 `public` 그대로. `schema`를 적으면 마이그레이션이 `CREATE SCHEMA IF NOT EXISTS`로 만든다(지금은 직접 만들어 둬야 한다). 이미 앱 표가 있는 DB에 붙일 때는 `schema`를 쓰라고 README에 한 줄 | `schema: "cms"`만 적고 `cms migrate`가 된다 |
 | M13-4 | **(완료) 마이그레이션 단계화.** 예전 한 덩어리 SQL을 순서 그대로 9단계(`0001_tables`…`0009_locales`)와 `seed_initial_body_templates`로 나눠 `cms_migrations`에 기록하고, 안 돈 단계만 한 트랜잭션에서 돈다(`pg_advisory_xact_lock(hashtext("cms_migrate:<스키마>"))`). 단계 기록이 없는 예전 저장소(운영)는 처음 한 번 모든 단계가 돈다(모두 다시 돌아도 같은 결과). 예전 코드·새 코드·예전 뒤 새 코드가 만든 열·제약·색인이 같음을 격리 스키마에서 확인했다. 플러그인은 `PluginDatabase.once(name, run)`(같은 잠금·트랜잭션), cms-ai의 예전 AI 기능 옮기기가 이것을 쓴다(이름은 예전 기록과 같게). 언어 코드는 BCP 47 모양만(`^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$`, 주소·DB 기본값에 들어간다). 원래 내용: 번호 붙은 단계 기록, 동시 실행 잠금(`pg_advisory_xact_lock`), 블로그 과거 이전(`category`·`tag` 행 옮기기 등)은 예전 단계로 떼기. 플러그인에 "한 번만 실행" 도구(`db.once(name, fn)`)를 주고 cms-ai가 본체 `cms_migrations`를 직접 만지지 않게. 언어 코드 형식 검사 | 여러 번·동시에 돌려도 같다. 운영과 같은 모양 데이터로 격리 스키마에서 이전 확인 |
-| M13-5 | **비밀 값 나누기.** `githubAuth({ secret })`로 로그인 비밀을 받는다(NextAuth가 `AUTH_SECRET`을 직접 읽지 않게). `cms init` 템플릿은 로그인용과 저장 값 암호화용(`CMS_SECRET`)을 나눈다. **블로그는 지금 값을 그대로 넘겨 저장된 AI 키를 계속 푼다** | 본체가 환경 변수를 읽지 않는다 |
+| M13-5 | **(완료) 비밀 값 나누기.** `githubAuth({ secret })`가 NextAuth `secret`으로 넘긴다(없으면 NextAuth가 `AUTH_SECRET`). `cms init` 템플릿·예시 앱·README는 `AUTH_SECRET`(로그인)과 `CMS_SECRET`(서버 설정 `secret`, 저장 값 암호화)을 나눈다. 블로그는 둘 다 지금 `AUTH_SECRET`을 넘겨 그대로 동작한다. 원래 내용: `githubAuth({ secret })`로 로그인 비밀을 받는다(NextAuth가 `AUTH_SECRET`을 직접 읽지 않게). `cms init` 템플릿은 로그인용과 저장 값 암호화용(`CMS_SECRET`)을 나눈다. **블로그는 지금 값을 그대로 넘겨 저장된 AI 키를 계속 푼다** | 본체가 환경 변수를 읽지 않는다 |
 
 #### M14. 공개 화면 읽기·그리기 (큼)
 
@@ -626,7 +626,8 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | M10 | 완료 (M10-1~4) |
 | M11 | 완료 (2026-10-04) |
 | M12 | 완료 (2026-10-04) |
-| M13~M17 | 계획 확정, 시작 전 |
+| M13 | 완료 (2026-10-04). 운영 `pnpm cms:db:migrate` 필요(M13-4) |
+| M14~M17 | 계획 확정, 진행 중 |
 | M7-4 레포 나누기 → M18 | M17 뒤, 사용자 승인 후 |
 
 ---

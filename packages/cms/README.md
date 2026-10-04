@@ -96,7 +96,8 @@ export default defineConfig({
 | --- | --- |
 | `CMS_DATABASE_URL` | Postgres 연결 주소 |
 | `CMS_SCHEMA` | 선택. 스키마 이름(없으면 `public`). 이미 앱 표가 있는 DB에 붙일 때는 따로 두는 편이 안전하다. `cms migrate`가 없으면 만든다 |
-| `AUTH_SECRET` | 임의의 긴 값. 로그인 세션·AI 키 암호화 |
+| `AUTH_SECRET` | 임의의 긴 값. 로그인 세션 서명(`githubAuth({ secret })`) |
+| `CMS_SECRET` | 임의의 긴 값(`AUTH_SECRET`과 다르게). 저장 값(AI 서비스 키) 암호화(서버 설정 `secret`). 바꾸면 저장한 키를 다시 넣는다 |
 | `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET` | GitHub OAuth 앱. 콜백 주소는 `<사이트 주소>/api/cms/auth/callback/github` |
 | `CMS_ADMIN_GITHUB_ID` | 관리자 GitHub 숫자 ID |
 | `CMS_DEV_AUTH_BYPASS` | 선택. `1`이면 `next dev`에서 로그인 없이 관리자 |
@@ -368,8 +369,8 @@ export const myPlugin = () =>
 |---|---|
 | `database` | 콘텐츠 저장소. `postgres({ connectionString, schema })` |
 | `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
-| `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath? })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로") |
-| `secret` | AI 서비스 키를 DB에 암호화해 둘 때 쓰는 키. 바꾸면 저장된 키를 다시 넣어야 한다. |
+| `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath?, secret })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로"), `secret`은 로그인 세션 서명 값(없으면 NextAuth가 `AUTH_SECRET`을 읽는다) |
+| `secret` | 저장 값(AI 서비스 키)을 DB에 암호화해 둘 때 쓰는 키. 로그인 서명 값과 따로 둔다. 바꾸면 저장된 키를 다시 넣어야 한다. |
 
 다른 저장소·로그인을 쓰려면 `DatabaseAdapter`·`MediaAdapter`·`AuthAdapter`를 직접 만들어 넣는다.
 

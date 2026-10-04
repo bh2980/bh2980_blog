@@ -13,6 +13,7 @@ export default defineServerConfig({
 		adminIds: [process.env.CMS_ADMIN_GITHUB_ID],
 		// 로컬 개발(`next dev`)에서만 로그인 없이 관리자로 본다.
 		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1",
+		secret: process.env.AUTH_SECRET,
 	}),
-	secret: process.env.AUTH_SECRET,
+	secret: process.env.CMS_SECRET,
 });

@@ -55,8 +55,10 @@ export default defineServerConfig({
 		clientSecret: process.env.AUTH_GITHUB_SECRET,
 		adminIds: [process.env.CMS_ADMIN_GITHUB_ID], // 관리자 GitHub 숫자 ID
 		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1", // next dev에서만 로그인 없이 관리자로 본다
+		secret: process.env.AUTH_SECRET, // 로그인 세션 서명
 	}),
-	secret: process.env.AUTH_SECRET,
+	// 저장 값(AI 서비스 키) 암호화 키. 바꾸면 저장한 키를 다시 넣어야 한다. 로그인 값과 따로 둔다.
+	secret: process.env.CMS_SECRET,
 	// media: r2Storage({ ... }), // 이미지·파일 올리기(S3 호환 저장소). @bh2980/cms/server에서 가져온다
 });
 `;
@@ -108,7 +110,8 @@ export const INSTALL_COMMANDS = [
 export const ENV_VARS: readonly { readonly name: string; readonly note: string }[] = [
 	{ name: "CMS_DATABASE_URL", note: "Postgres 연결 주소" },
 	{ name: "CMS_SCHEMA", note: "선택. 같은 DB를 나눠 쓸 때 스키마 이름(없으면 public)" },
-	{ name: "AUTH_SECRET", note: "임의의 긴 값. 로그인 세션·AI 키 암호화" },
+	{ name: "AUTH_SECRET", note: "임의의 긴 값. 로그인 세션 서명" },
+	{ name: "CMS_SECRET", note: "임의의 긴 값(AUTH_SECRET과 다르게). 저장 값(AI 서비스 키) 암호화" },
 	{ name: "AUTH_GITHUB_ID", note: "GitHub OAuth 앱 Client ID" },
 	{ name: "AUTH_GITHUB_SECRET", note: "GitHub OAuth 앱 Client secret" },
 	{ name: "CMS_ADMIN_GITHUB_ID", note: "관리자 GitHub 숫자 ID" },
