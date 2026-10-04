@@ -95,7 +95,7 @@ export default defineConfig({
 | 이름 | 뜻 |
 | --- | --- |
 | `CMS_DATABASE_URL` | Postgres 연결 주소 |
-| `CMS_SCHEMA` | 선택. 같은 DB를 나눠 쓸 때 스키마 이름(없으면 `public`) |
+| `CMS_SCHEMA` | 선택. 스키마 이름(없으면 `public`). 이미 앱 표가 있는 DB에 붙일 때는 따로 두는 편이 안전하다. `cms migrate`가 없으면 만든다 |
 | `AUTH_SECRET` | 임의의 긴 값. 로그인 세션·AI 키 암호화 |
 | `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET` | GitHub OAuth 앱. 콜백 주소는 `<사이트 주소>/api/cms/auth/callback/github` |
 | `CMS_ADMIN_GITHUB_ID` | 관리자 GitHub 숫자 ID |
@@ -106,6 +106,8 @@ pnpm exec cms migrate
 ```
 
 표를 만들거나 최신 모양으로 맞춘다(플러그인 표 포함). 여러 번 돌려도 결과가 같고, 패키지를 올린 뒤에도 다시 돌린다.
+본체 변경은 번호 붙은 단계로 `cms_migrations`에 남아 아직 돌지 않은 단계만 돌고(한 트랜잭션), 같은 스키마에 동시에 돌려도
+하나씩 돈다. 플러그인은 한 번만 할 일을 `db.once(이름, 함수)`로 맡긴다.
 
 - 환경 파일: 기본으로 `.env.local`·`.env`(있는 것만)를 읽는다. 셸에서 준 값이 이기고 앞 파일이 뒤 파일을 이긴다.
   `--env-file <파일>`(여러 번)로 고르고 `--no-env-file`이면 읽지 않는다.

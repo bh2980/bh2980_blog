@@ -52,6 +52,19 @@ describe("defineConfig", () => {
 		);
 	});
 
+	it("rejects locale codes that are not BCP 47 shaped (they go into URLs and SQL defaults)", () => {
+		for (const code of ["pt-BR", "zh-Hant", "ko"]) {
+			expect(() =>
+				defineConfig({ collections: { topic }, locales: [{ code, name: code }], defaultLocale: code }),
+			).not.toThrow();
+		}
+		for (const code of ["EN", "en_US", "e'n", "english language"]) {
+			expect(() =>
+				defineConfig({ collections: { topic }, locales: [{ code, name: code }], defaultLocale: code }),
+			).toThrow(/locale code/);
+		}
+	});
+
 	it("checks the admin locale and fillFromBody.maxLength", () => {
 		expect(() =>
 			defineConfig({ collections: { topic }, locales, defaultLocale: "en", admin: { locale: "not a locale!" } }),

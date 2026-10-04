@@ -6,7 +6,7 @@ import {
 	type Entry,
 	migrateContentStore,
 } from "@bh2980/cms/runtime";
-import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "@bh2980/cms/testing";
+import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool, pluginDatabaseFor } from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -30,7 +30,7 @@ describe("AI 기능 고친 값 저장소", () => {
 	/** 본체 표를 만들고 AI 플러그인 표를 만든다(`cms:db:migrate`와 같은 순서). */
 	const migrate = async () => {
 		await migrateContentStore(pool, { schema: schemaName });
-		await migrateAi({ pool, schema: schemaName });
+		await migrateAi(pluginDatabaseFor(pool, schemaName));
 	};
 
 	beforeAll(async () => {
@@ -39,7 +39,7 @@ describe("AI 기능 고친 값 저장소", () => {
 		schemaName = isolated.schemaName;
 		await migrate();
 		content = createContentStore(pool, { schema: schemaName });
-		store = createAiStore({ pool, schema: schemaName });
+		store = createAiStore(pluginDatabaseFor(pool, schemaName));
 	});
 
 	afterAll(async () => {
@@ -127,7 +127,7 @@ describe("AI 기능 고친 값 저장소", () => {
 			metadata: { title: "주소 확인" },
 			mdx: "",
 		});
-		const lookup = createContentLookup({ pool, schema: schemaName });
+		const lookup = createContentLookup(pluginDatabaseFor(pool, schemaName));
 		const slugs = ["used-address", "free-address"];
 		expect(await lookup.slugsInUse({ collection: "category", locale: "ko", slugs })).toEqual(new Set(["used-address"]));
 		expect(await lookup.slugsInUse({ collection: "category", locale: "en", slugs })).toEqual(new Set());

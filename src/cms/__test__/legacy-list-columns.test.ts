@@ -3,6 +3,7 @@ import {
 	createIsolatedTestPool,
 	dropIsolatedTestPool,
 	migrateContentStore,
+	pluginDatabaseFor,
 } from "@bh2980/cms/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -66,7 +67,7 @@ describe("블로그의 예전 목록 열 이름 옮기기", () => {
 				 VALUES ('a', $1, NOW()), ('b', $2, NOW())`,
 				[JSON.stringify(legacy), JSON.stringify(current)],
 			);
-			expect(await migrateLegacyListColumns({ pool, schema: schemaName })).toBe(1);
+			expect(await migrateLegacyListColumns(pluginDatabaseFor(pool, schemaName))).toBe(1);
 			const rows = await pool.query<{ user_id: string; preferences: unknown }>(
 				`SELECT user_id, preferences FROM "${schemaName}".user_preferences ORDER BY user_id`,
 			);
@@ -74,7 +75,7 @@ describe("블로그의 예전 목록 열 이름 옮기기", () => {
 				{ user_id: "a", preferences: { collections: { post: { columns: { order: ["categoryId", "title"] } } } } },
 				{ user_id: "b", preferences: current },
 			]);
-			expect(await migrateLegacyListColumns({ pool, schema: schemaName })).toBe(0);
+			expect(await migrateLegacyListColumns(pluginDatabaseFor(pool, schemaName))).toBe(0);
 		});
 	});
 });

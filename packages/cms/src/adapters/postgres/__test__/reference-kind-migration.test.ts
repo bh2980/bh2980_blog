@@ -56,6 +56,9 @@ describe("entry_references kind migration", () => {
 		);
 	};
 
+	/** 단계 기록을 지워 단계 기록이 생기기 전 저장소처럼 만든다. */
+	const forgetSteps = () => pool.query(`DELETE FROM "${schemaName}".cms_migrations`);
+
 	it("new stores only allow entry and media references", async () => {
 		const defs = await constraintDefs();
 		expect(defs.map((row) => row.def).join("\n")).not.toContain("category");
@@ -97,6 +100,8 @@ describe("entry_references kind migration", () => {
 		const before = await store.getWorkingReferences({ entryId: source });
 		expect(before.every((reference) => reference.kind === "entry")).toBe(true);
 
+		// 예전 저장소에는 단계 기록이 없다(이 단계가 아직 돌지 않았다).
+		await forgetSteps();
 		await migrateContentStore(pool, { schema: schemaName });
 		const read = async () =>
 			(
@@ -135,7 +140,9 @@ describe("entry_references kind migration", () => {
 			/entry_references_kind_check/,
 		);
 
-		// 여러 번 돌려도 같다.
+		// 여러 번 돌려도 같다(단계 기록이 없어 다시 돌아도).
+		await migrateContentStore(pool, { schema: schemaName });
+		await forgetSteps();
 		await migrateContentStore(pool, { schema: schemaName });
 		expect(await read()).toEqual(after);
 		expect(await constraintDefs()).toEqual(defs);

@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import type { BlockDefinition } from "../blocks/define";
 import type { CollectionsConfig } from "../config/define";
 
@@ -66,6 +66,12 @@ export interface PluginRoute {
 export interface PluginDatabase {
 	readonly pool: Pool;
 	readonly schema: string;
+	/**
+	 * 한 번만 하는 일(예전 데이터 옮기기 등). 이름을 본체 마이그레이션 기록에 남겨 다시 돌지 않고, 동시에 불러도 한 번만 돈다.
+	 * `run`은 트랜잭션 안에서 받은 `client`로 쓴다(실패하면 되돌리고 기록하지 않는다). 이름 앞에 플러그인 이름을 붙인다.
+	 * @returns 이번에 돌았는가
+	 */
+	readonly once: (name: string, run: (client: PoolClient) => Promise<void>) => Promise<boolean>;
 }
 
 export interface CmsServerPlugin {

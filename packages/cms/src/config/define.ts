@@ -6,6 +6,9 @@ import { type CollectionSchema, normalizeCollection } from "../schema/collection
 import { RESERVED_METADATA_KEYS, SUMMARY_ROLE } from "../schema/fields";
 import { valueFieldsOf } from "../schema/walk";
 
+/** 언어 코드 모양(BCP 47의 언어와 지역·문자 부분). */
+const LOCALE_CODE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+
 /**
  * 사이트 설정(`cms.config.ts`) 규격. 블로그마다 컬렉션·언어를 여기에 적고 `defineConfig`로 감싸 기본 내보내기로 둔다.
  *
@@ -210,6 +213,12 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 	const codes = config.locales.map((locale) => locale.code);
 	if (codes.length === 0) throw new Error("cms.config: `locales` is empty");
 	if (new Set(codes).size !== codes.length) throw new Error("cms.config: `locales` has duplicate codes");
+	// 언어 코드는 주소·DB 기본값(마이그레이션)에 그대로 들어간다. BCP 47 모양(`ko`, `en`, `pt-BR`, `zh-Hant`)만 받는다.
+	for (const code of codes) {
+		if (!LOCALE_CODE.test(code)) {
+			throw new Error(`cms.config: locale code "${code}" must look like "en", "pt-BR" or "zh-Hant"`);
+		}
+	}
 	if (!codes.includes(config.defaultLocale)) {
 		throw new Error(`cms.config: defaultLocale "${config.defaultLocale}" is not in \`locales\``);
 	}
