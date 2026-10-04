@@ -24,12 +24,15 @@
 	}
 }
 
-/* 어두운 테마 코드 색(shiki 두 테마) */
+/* 어두운 테마 코드 색(shiki 두 테마). shiki가 밝은 색을 인라인 style로 넣어 !important로만 덮을 수 있다. */
 :where(.dark, [data-theme="dark"]) .shiki {
+	/* biome-ignore lint/complexity/noImportantStyles: 인라인 style을 덮는다 */
 	color: var(--shiki-dark) !important;
+	/* biome-ignore lint/complexity/noImportantStyles: 인라인 style을 덮는다 */
 	background-color: var(--shiki-dark-bg) !important;
 }
 :where(.dark, [data-theme="dark"]) .shiki span {
+	/* biome-ignore lint/complexity/noImportantStyles: 인라인 style을 덮는다 */
 	color: var(--shiki-dark) !important;
 }
 
