@@ -1,4 +1,8 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { toast } from "sonner";
+import { mediaMessages } from "./messages";
+
+const t = createTranslator(mediaMessages);
 
 /** 미디어 목록 API의 한 항목. */
 export interface MediaItem {
@@ -24,7 +28,7 @@ export interface MediaUsage {
 	title: string | null;
 	collection: string;
 	/** 한쪽에서만 쓰일 때의 안내. 둘 다에서 쓰이면 없다. */
-	note?: "발행 전" | "공개 글에만";
+	note?: "beforePublish" | "publishedOnly";
 }
 
 /**
@@ -49,7 +53,7 @@ export function mediaUsages(media: Pick<MediaItem, "references">): MediaUsage[] 
 		}
 	}
 	return [...byEntry.values()].map(({ states, ...usage }) =>
-		states.size === 2 ? usage : { ...usage, note: states.has("working") ? "발행 전" : "공개 글에만" },
+		states.size === 2 ? usage : { ...usage, note: states.has("working") ? "beforePublish" : "publishedOnly" },
 	);
 }
 
@@ -58,14 +62,22 @@ export const usageCount = (media: MediaItem) => mediaUsages(media).length || med
 
 /** 목록·타일에 붙는 사용 여부. */
 export const usageLabel = (media: MediaItem) =>
-	media.status === "deleting" ? "삭제 중" : media.referencesCount > 0 ? `사용 ${usageCount(media)}` : "미사용";
+	media.status === "deleting"
+		? t("usage.deleting")
+		: media.referencesCount > 0
+			? t("usage.count", { count: usageCount(media) })
+			: t("usage.none");
+
+/** 사용처 안내(`note`)의 글자. */
+export const usageNoteLabel = (note: NonNullable<MediaUsage["note"]>) =>
+	t(note === "beforePublish" ? "usage.note.beforePublish" : "usage.note.publishedOnly");
 
 export async function copyText(text: string, success: string) {
 	try {
 		await navigator.clipboard.writeText(text);
 		toast.success(success);
 	} catch {
-		toast.error("복사하지 못했습니다.");
+		toast.error(t("common.copyFailed"));
 	}
 }
 

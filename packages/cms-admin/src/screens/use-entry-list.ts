@@ -5,6 +5,7 @@ import {
 	adminEntryEditHref,
 	adminHref,
 	COLLECTION_DEFINITIONS,
+	createTranslator,
 	isDocumentCollection,
 	isItemCollection,
 } from "@bh2980/cms/client";
@@ -25,6 +26,7 @@ import {
 	listStateToSearchParams,
 	parseListState,
 } from "./list-state";
+import { screensMessages } from "./messages";
 import type { RecordTarget } from "./record-panel";
 import type { MenuAction } from "./shared/action-menu";
 import { useConfirm } from "./shared/confirm-dialog";
@@ -40,6 +42,8 @@ import {
 } from "./shared/list-cache";
 import { useFolderActions } from "./shared/use-folder-actions";
 import { type TaxonomyOptions, useTaxonomyOptions } from "./shared/use-taxonomy";
+
+const t = createTranslator(screensMessages);
 
 export type ListMode = "list" | "trash";
 
@@ -92,7 +96,7 @@ function useListState(mode: ListMode) {
 			collections: { ...current?.collections, [collection]: { ...current?.collections?.[collection], ...patch } },
 		}));
 		void cmsFetch("/api/cms/v1/preferences", { method: "PUT", json: { collections: { [collection]: patch } } }).catch(
-			() => toast.error("목록 설정을 저장하지 못했습니다."),
+			() => toast.error(t("list.prefsSaveFailed")),
 		);
 	};
 
@@ -119,7 +123,7 @@ function useEntriesData(state: ListState, mode: ListMode) {
 	const entriesQuery = useQuery({
 		queryKey: listKey,
 		queryFn: ({ signal }) =>
-			cmsFetch<EntriesPage>(`/api/cms/v1/entries?${apiQuery}`, { signal, fallback: "목록을 불러오지 못했습니다." }),
+			cmsFetch<EntriesPage>(`/api/cms/v1/entries?${apiQuery}`, { signal, fallback: t("list.loadFailed") }),
 		// 다른 컬렉션의 줄은 열 구성이 달라 남기지 않는다.
 		placeholderData: (previous, previousQuery) =>
 			previousQuery && new URLSearchParams(String(previousQuery.queryKey.at(-1))).get("collection") === collection
@@ -133,8 +137,7 @@ function useEntriesData(state: ListState, mode: ListMode) {
 		listKey,
 		items: entriesQuery.data?.items ?? [],
 		total: entriesQuery.data?.total ?? 0,
-		errorMessage:
-			entriesQuery.error && !entriesQuery.data ? errorText(entriesQuery.error, "목록을 불러오지 못했습니다.") : null,
+		errorMessage: entriesQuery.error && !entriesQuery.data ? errorText(entriesQuery.error, t("list.loadFailed")) : null,
 		isLoading: entriesQuery.isPending,
 		isRefreshing: entriesQuery.isPlaceholderData,
 		retry: () => void entriesQuery.refetch(),
@@ -146,11 +149,11 @@ function announce(label: string, results: BulkItemResult[], items: BulkSelection
 	const failures = results.filter((result): result is Extract<BulkItemResult, { ok: false }> => !result.ok);
 	const ok = results.length - failures.length;
 	if (failures.length === 0) {
-		toast.success(`${ok}개 항목을 ${label}했습니다.`);
+		toast.success(t("bulk.success", { count: ok, label }));
 		return;
 	}
-	const titleOf = (id: string) => items.find((item) => item.id === id)?.title || "제목 없음";
-	toast.error(ok > 0 ? `${ok}개는 ${label}했고 ${failures.length}개는 하지 못했습니다.` : `${label}하지 못했습니다.`, {
+	const titleOf = (id: string) => items.find((item) => item.id === id)?.title || t("common.untitled");
+	toast.error(ok > 0 ? t("bulk.partial", { ok, label, failed: failures.length }) : t("bulk.failed", { label }), {
 		description: failures
 			.slice(0, 3)
 			.map((failure) => `${titleOf(failure.id)} — ${describeBulkFailure(failure)}`)
@@ -219,7 +222,7 @@ function useEntryMutations({
 			const results = await mutateEntries(op, targets, () => runBulk(op, targets, params), params);
 			announce(label, results, targets);
 		} catch (error) {
-			toast.error(errorText(error, `${label}하지 못했습니다.`));
+			toast.error(errorText(error, t("bulk.failed", { label })));
 		}
 	};
 
@@ -241,7 +244,7 @@ function useEntryMutations({
 			}
 			return out;
 		});
-		announce("복원", results, targets);
+		announce(t("bulk.restore"), results, targets);
 	};
 
 	return { mutateEntries, bulk, restore, invalidateEntries };
@@ -330,49 +333,49 @@ export function useEntryList(mode: ListMode) {
 	const moveEntries = (folderId: string | null, entries: DraggedEntry[]) =>
 		void bulk(
 			"folder.move",
-			"옮김",
+			t("bulk.move"),
 			entries.map((entry) => ({ ...entry, title: items.find((item) => item.id === entry.id)?.title })),
 			{ folderId },
 		);
 
-	const titleOf = (targets: BulkSelection[]) => `'${targets[0]?.title || "제목 없음"}'`;
+	const titleOf = (targets: BulkSelection[]) => `'${targets[0]?.title || t("common.untitled")}'`;
 
 	const confirmTrash = async (targets: BulkSelection[]) => {
 		const ok = await confirm({
-			title: "휴지통으로 이동",
+			title: t("bulk.trash"),
 			description:
 				targets.length === 1
-					? `${titleOf(targets)}을(를) 휴지통으로 옮길까요? 공개가 종료됩니다.`
-					: `선택한 항목 ${targets.length}개를 휴지통으로 옮길까요? 공개가 종료됩니다.`,
-			confirmLabel: "휴지통으로 이동",
+					? t("trash.askOne", { title: titleOf(targets) })
+					: t("trash.askMany", { count: targets.length }),
+			confirmLabel: t("bulk.trash"),
 			destructive: true,
 		});
-		if (ok) await bulk("trash", "휴지통으로 이동", targets);
+		if (ok) await bulk("trash", t("bulk.trash"), targets);
 	};
 
 	const confirmArchive = async (targets: BulkSelection[]) => {
 		const ok = await confirm({
-			title: "보관",
+			title: t("archive.title"),
 			description:
 				targets.length === 1
-					? `${titleOf(targets)}을(를) 보관할까요? 공개가 종료됩니다.`
-					: `선택한 글 ${targets.length}개를 보관할까요? 공개가 종료됩니다.`,
-			confirmLabel: "보관",
+					? t("archive.askOne", { title: titleOf(targets) })
+					: t("archive.askMany", { count: targets.length }),
+			confirmLabel: t("archive.title"),
 		});
-		if (ok) await bulk("archive", "보관", targets);
+		if (ok) await bulk("archive", t("bulk.archive"), targets);
 	};
 
 	const confirmPermanentDelete = async (targets: BulkSelection[]) => {
 		const ok = await confirm({
-			title: "영구 삭제",
+			title: t("delete.title"),
 			description:
 				targets.length === 1
-					? `${titleOf(targets)}을(를) 영구 삭제할까요? 되돌릴 수 없습니다.`
-					: `선택한 항목 ${targets.length}개를 영구 삭제할까요? 되돌릴 수 없습니다. 다른 콘텐츠가 쓰는 항목은 삭제하지 않고 사유를 보여 줍니다.`,
-			confirmLabel: "영구 삭제",
+					? t("delete.askOne", { title: titleOf(targets) })
+					: t("delete.askMany", { count: targets.length }),
+			confirmLabel: t("delete.title"),
 			destructive: true,
 		});
-		if (ok) await bulk("permanentDelete", "영구 삭제", targets);
+		if (ok) await bulk("permanentDelete", t("bulk.permanentDelete"), targets);
 	};
 
 	const duplicate = async (item: ListEntriesItem) => {
@@ -380,12 +383,12 @@ export function useEntryList(mode: ListMode) {
 			const copy = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${item.id}/duplicate`, {
 				method: "POST",
 				json: { title: copyTitle(item.collection, item.title) },
-				fallback: "복제하지 못했습니다.",
+				fallback: t("duplicate.failed"),
 			});
-			toast.success(`'${item.title || "제목 없음"}'을(를) 복제했습니다.`);
+			toast.success(t("duplicate.done", { title: item.title || t("common.untitled") }));
 			router.push(adminEntryEditHref(copy.id) as Route);
 		} catch (error) {
-			toast.error(errorText(error, "복제하지 못했습니다."));
+			toast.error(errorText(error, t("duplicate.failed")));
 		}
 	};
 

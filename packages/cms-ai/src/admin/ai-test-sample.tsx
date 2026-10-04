@@ -1,13 +1,16 @@
 "use client";
 
-import { DEFAULT_LOCALE, isUuid, LOCALES, localeLabel, PREFIXED_LOCALES } from "@bh2980/cms/client";
+import { createTranslator, DEFAULT_LOCALE, isUuid, LOCALES, localeLabel, PREFIXED_LOCALES } from "@bh2980/cms/client";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Textarea } from "@bh2980/cms-admin/ui/textarea";
 import type { AiInputKind } from "../action";
 import type { AiActionView } from "../actions";
+import { aiCommonMessages } from "./ai-common.messages";
 import type { AiRunEnv } from "./ai-slot-provider";
 import { OptionSelect } from "./custom-editor";
+
+const t = createTranslator(aiCommonMessages);
 
 /**
  * AI 화면 `시험`의 예시 입력. 기능 정의의 입력마다 종류에 맞는 칸을 하나씩 보인다(입력 이름은 보지 않는다).
@@ -105,7 +108,7 @@ export function SampleInputs({
 		const value = sampleValue(values, defaults, field.name);
 		const common = {
 			"aria-label": field.label,
-			placeholder: field.kind === "image" ? `${field.label} · 미디어 ID 또는 경로` : field.label,
+			placeholder: field.kind === "image" ? t("sampleMediaId", { label: field.label }) : field.label,
 			value,
 		};
 		switch (field.kind) {

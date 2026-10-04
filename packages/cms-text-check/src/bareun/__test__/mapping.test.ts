@@ -1,6 +1,11 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { describe, expect, it } from "vitest";
 import { type BareunResponse, bareunIssues, joinSegments } from "../mapping";
+import { bareunMessages } from "../messages";
 import sample from "./fixtures/bareun-sample.json";
+
+// 분류 이름은 설정의 관리자 언어를 따르므로 사전에서 같은 말을 고른다(설명은 바른이 주는 한국어 글 그대로다).
+const t = createTranslator(bareunMessages);
 
 // 실제 바른 응답(요청 글은 세 문단을 `\n`으로 이은 것, 셋째 문단 첫 글자는 숨긴 자리 `￼`).
 const segments = sample.request.split("\n").map((text, index) => ({ id: `p-${index}`, text, locale: "ko" }));
@@ -41,7 +46,7 @@ describe("bareunIssues", () => {
 			segmentId: "p-0",
 			start: 12,
 			end: 17,
-			message: "표준어: ‘-읍니다’는 비표준어이고 ‘-습니다’가 표준어이다.",
+			message: `${t("category.STANDARD")}: ‘-읍니다’는 비표준어이고 ‘-습니다’가 표준어이다.`,
 			suggestions: ["갔습니다."],
 			severity: "error",
 			ruleId: "STANDARD-읍니다",
@@ -49,7 +54,7 @@ describe("bareunIssues", () => {
 			source: "bareun",
 		});
 		expect(spacing).toMatchObject({
-			message: "띄어쓰기: 형태상 띄어 쓸 수 있지만, 짧은 단어는 붙여쓰도록 사전에 등재되어 있다.",
+			message: `${t("category.SPACING")}: 형태상 띄어 쓸 수 있지만, 짧은 단어는 붙여쓰도록 사전에 등재되어 있다.`,
 			severity: "error",
 			category: "spacing",
 			ruleId: "붙여쓰기_등재된단어",
@@ -103,11 +108,17 @@ describe("bareunIssues", () => {
 			["confirm", "warning"],
 			["thinking", "warning"],
 		]);
-		expect(issues[0]).toMatchObject({ start: 0, end: 1, message: "오타", suggestions: ["까"] });
+		expect(issues[0]).toMatchObject({ start: 0, end: 1, message: t("category.TYPO"), suggestions: ["까"] });
 		expect(issues[0]?.ruleId).toBeUndefined();
-		expect(issues[1]).toMatchObject({ message: "문법: 첫 문장이다.", suggestions: ["너"] });
+		expect(issues[1]).toMatchObject({ message: `${t("category.GRAMMER")}: 첫 문장이다.`, suggestions: ["너"] });
 		// 원문과 같은 후보는 뺀다.
 		expect(issues[6]?.suggestions).toEqual([]);
+	});
+
+	it("모든 분류 코드가 영어·한국어 이름을 가진다", () => {
+		const kinds = Object.keys(bareunMessages.messages.en).filter((key) => key.startsWith("category."));
+		expect(kinds).toHaveLength(11);
+		for (const key of kinds) expect(bareunMessages.messages.ko?.[key as never], key).toBeDefined();
 	});
 
 	it("결과가 없으면 빈 배열이다", () => {

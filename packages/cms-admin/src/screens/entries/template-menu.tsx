@@ -13,6 +13,7 @@ import {
 import { IconButton } from "../../ui/icon-button";
 import { cmsFetch } from "../admin-api";
 import { useConfirm } from "../shared/confirm-dialog";
+import { t } from "./translate";
 
 type Template = { id: string; name: string; mdx: string };
 
@@ -54,9 +55,9 @@ export function TemplateMenu({
 		if (
 			currentMdx.trim() &&
 			!(await confirm({
-				title: "템플릿 적용",
-				description: `지금 본문을 '${template.name}' 템플릿으로 바꿀까요? 쓴 본문은 사라집니다.`,
-				confirmLabel: "적용",
+				title: t("template.applyTitle"),
+				description: t("template.applyAsk", { name: template.name }),
+				confirmLabel: t("template.apply"),
 				destructive: true,
 			}))
 		) {
@@ -68,22 +69,26 @@ export function TemplateMenu({
 	return (
 		<>
 			<DropdownMenu open={open} onOpenChange={openMenu}>
-				<IconButton label="템플릿" disabled={disabled} trigger={(button) => <DropdownMenuTrigger render={button} />}>
+				<IconButton
+					label={t("template.menu")}
+					disabled={disabled}
+					trigger={(button) => <DropdownMenuTrigger render={button} />}
+				>
 					<LayoutTemplate aria-hidden className="size-4" />
 				</IconButton>
 				<DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
 					{loadFailed ? (
 						<>
-							<DropdownMenuItem disabled>템플릿을 불러오지 못했습니다.</DropdownMenuItem>
+							<DropdownMenuItem disabled>{t("template.loadFailed")}</DropdownMenuItem>
 							<DropdownMenuItem closeOnClick={false} onClick={() => void load()}>
 								<RefreshCw aria-hidden />
-								다시 시도
+								{t("retry")}
 							</DropdownMenuItem>
 						</>
 					) : templates === null ? (
-						<DropdownMenuItem disabled>불러오는 중…</DropdownMenuItem>
+						<DropdownMenuItem disabled>{t("loading")}</DropdownMenuItem>
 					) : templates.length === 0 ? (
-						<DropdownMenuItem disabled>템플릿이 없습니다.</DropdownMenuItem>
+						<DropdownMenuItem disabled>{t("template.none")}</DropdownMenuItem>
 					) : (
 						templates.map((template) => (
 							<DropdownMenuItem key={template.id} onClick={() => void choose(template)}>
@@ -95,7 +100,7 @@ export function TemplateMenu({
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onClick={() => window.open(adminHref("/templates"), "_blank", "noopener")}>
 						<Settings aria-hidden />
-						템플릿 관리
+						{t("template.manage")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

@@ -13,8 +13,8 @@ describe("미디어 사용처 묶기", () => {
 		});
 		expect(usages).toEqual([
 			{ entryId: "a", title: "발행한 글", collection: "post" },
-			{ entryId: "b", title: "새 글", collection: "post", note: "발행 전" },
-			{ entryId: "c", title: "뺀 글", collection: "post", note: "공개 글에만" },
+			{ entryId: "b", title: "새 글", collection: "post", note: "beforePublish" },
+			{ entryId: "c", title: "뺀 글", collection: "post", note: "publishedOnly" },
 		]);
 	});
 });

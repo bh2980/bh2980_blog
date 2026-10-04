@@ -31,6 +31,7 @@ export {
 	type SeedTemplate,
 	type SiteConfig,
 } from "./config/define";
+export { createActiveTranslator } from "./i18n/active";
 export {
 	defineMessages,
 	josa,
@@ -38,6 +39,7 @@ export {
 	type MessageDict,
 	type MessageValue,
 	type MessageVars,
+	translate,
 } from "./i18n/define";
 export {
 	type CmsPlugin,

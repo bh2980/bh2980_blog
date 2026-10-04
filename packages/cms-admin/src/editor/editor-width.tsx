@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { MoveHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -10,6 +11,9 @@ import {
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * 편집기 본문 폭. 편집할 때 보이는 폭만 바꾸고 저장되는 글·공개 화면과는 상관없다.
@@ -25,7 +29,12 @@ export const EDITOR_WIDTHS = {
 
 export type EditorWidth = keyof typeof EDITOR_WIDTHS;
 
-const LABELS: Record<EditorWidth, string> = { narrow: "좁게", normal: "보통", wide: "넓게", full: "꽉 차게" };
+const LABELS: Record<EditorWidth, string> = {
+	narrow: t("editorWidth.narrow"),
+	normal: t("editorWidth.normal"),
+	wide: t("editorWidth.wide"),
+	full: t("editorWidth.full"),
+};
 const STORAGE_KEY = "cms:editor-width";
 const isEditorWidth = (value: unknown): value is EditorWidth =>
 	typeof value === "string" && Object.hasOwn(EDITOR_WIDTHS, value);
@@ -57,7 +66,7 @@ export function EditorWidthMenu({ value, onChange }: { value: EditorWidth; onCha
 	return (
 		<DropdownMenu>
 			<IconButton
-				label="본문 폭"
+				label={t("editorWidth.label")}
 				side="bottom"
 				className="text-muted-foreground"
 				onMouseDown={(event) => event.preventDefault()}
@@ -67,7 +76,7 @@ export function EditorWidthMenu({ value, onChange }: { value: EditorWidth; onCha
 			</IconButton>
 			<DropdownMenuContent align="end" className="w-36">
 				<DropdownMenuRadioGroup
-					aria-label="본문 폭"
+					aria-label={t("editorWidth.label")}
 					value={value}
 					onValueChange={(next) => isEditorWidth(next) && onChange(next)}
 				>

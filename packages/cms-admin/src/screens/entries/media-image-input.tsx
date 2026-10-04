@@ -9,6 +9,7 @@ import { cn } from "../../lib/utils/cn";
 import { Button } from "../../ui/button";
 import { cmsFetch } from "../admin-api";
 import type { FieldInputProps } from "./field-inputs";
+import { t } from "./translate";
 
 /** 미디어 ID → 공개 주소. 입력과 확장의 미리보기가 함께 쓴다. 불러오지 못하면 `null`. */
 const urls = new Map<string, string | null>();
@@ -85,7 +86,7 @@ export function MediaImageInput({ field, id, value, invalid, describedBy, contex
 					aria-describedby={describedBy}
 					onClick={() => setPicking(true)}
 				>
-					{mediaId ? "바꾸기" : "이미지 고르기"}
+					{mediaId ? t("media.change") : t("media.chooseImage")}
 				</Button>
 				{mediaId && (
 					<Button
@@ -96,7 +97,7 @@ export function MediaImageInput({ field, id, value, invalid, describedBy, contex
 						disabled={context.disabled}
 						onClick={() => onChange("")}
 					>
-						빼기
+						{t("media.remove")}
 					</Button>
 				)}
 			</div>
@@ -142,7 +143,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 			setFilename(file.name);
 			onChange(uploaded.mediaId);
 		} catch (cause) {
-			setError(cause instanceof Error ? cause.message : "올리지 못했습니다.");
+			setError(cause instanceof Error ? cause.message : t("media.uploadFailed"));
 		} finally {
 			setProgress(null);
 		}
@@ -167,7 +168,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 					aria-describedby={describedBy}
 					onClick={() => fileInput.current?.click()}
 				>
-					{progress !== null ? `업로드 중 · ${progress}%` : mediaId ? "바꾸기" : "파일 고르기"}
+					{progress !== null ? t("media.uploading", { progress }) : mediaId ? t("media.change") : t("media.chooseFile")}
 				</Button>
 				{mediaId && (
 					<Button
@@ -178,7 +179,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 						disabled={context.disabled}
 						onClick={() => onChange("")}
 					>
-						빼기
+						{t("media.remove")}
 					</Button>
 				)}
 			</div>

@@ -1,10 +1,9 @@
 "use client";
 
-import { LOCALES, localeLabel } from "@bh2980/cms/client";
+import { createTranslator, LOCALES, localeLabel } from "@bh2980/cms/client";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, ListFilter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";
-import { josa } from "../lib/utils/josa";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
@@ -14,9 +13,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
 import { type AdminListColumn, type ColumnFilter, columnConfig, isColumnFiltered } from "./list-columns";
 import { LIST_STATUSES, type ListState } from "./list-state";
+import { screensMessages } from "./messages";
 import { DateRangeCalendar } from "./shared/date-range-picker";
 import { STATUS_LABELS } from "./shared/entry-status";
 import type { TaxonomyOption, TaxonomyOptions } from "./shared/use-taxonomy";
+
+const t = createTranslator(screensMessages);
 
 function TextFilter({
 	value,
@@ -40,14 +42,14 @@ function TextFilter({
 			}}
 		>
 			<Input
-				aria-label={`${label} 필터`}
+				aria-label={t("filter.label", { label })}
 				value={draft}
 				placeholder={placeholder}
 				onChange={(event) => setDraft(event.target.value)}
 				className="h-8"
 			/>
 			<Button type="submit" size="sm">
-				적용
+				{t("filter.apply")}
 			</Button>
 		</form>
 	);
@@ -75,7 +77,7 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 		onChange({ statuses: on ? [...state.statuses, status] : state.statuses.filter((item) => item !== status) });
 	return (
 		<fieldset className="space-y-0.5">
-			<legend className="sr-only">상태</legend>
+			<legend className="sr-only">{t("column.status")}</legend>
 			{LIST_STATUSES.map((status) => (
 				<CheckRow
 					key={status}
@@ -85,7 +87,11 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 				/>
 			))}
 			<Separator className="my-1" />
-			<CheckRow label="수정 중" checked={state.hasChanges} onChange={(on) => onChange({ hasChanges: on })} />
+			<CheckRow
+				label={t("filter.editing")}
+				checked={state.hasChanges}
+				onChange={(on) => onChange({ hasChanges: on })}
+			/>
 		</fieldset>
 	);
 }
@@ -94,7 +100,7 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 function LocaleFilter({ state, onChange }: { state: ListState; onChange: (patch: Partial<ListState>) => void }) {
 	return (
 		<fieldset className="space-y-0.5">
-			<legend className="sr-only">언어</legend>
+			<legend className="sr-only">{t("column.locale")}</legend>
 			{LOCALES.map((locale) => (
 				<CheckRow
 					key={locale}
@@ -125,9 +131,9 @@ function TaxonomyFilter({
 	return (
 		<div className="space-y-2">
 			<Command className="bg-transparent p-0">
-				<CommandInput placeholder={`${label} 검색`} aria-label={`${label} 검색`} />
+				<CommandInput placeholder={t("filter.search", { label })} aria-label={t("filter.search", { label })} />
 				<CommandList className="mt-1 max-h-56">
-					<CommandEmpty>일치하는 {josa(label, "이", "가")} 없습니다.</CommandEmpty>
+					<CommandEmpty>{t("filter.empty", { label })}</CommandEmpty>
 					<CommandGroup className="space-y-0.5 p-0">
 						{options.map((option) => (
 							<CommandItem key={option.id} value={`${option.title} ${option.id}`} onSelect={() => toggle(option.id)}>
@@ -145,10 +151,10 @@ function TaxonomyFilter({
 			</Command>
 			<div className="flex justify-between">
 				<Button type="button" variant="ghost" size="sm" onClick={() => onChange(options.map((option) => option.id))}>
-					모두 선택
+					{t("filter.selectAll")}
 				</Button>
 				<Button type="button" variant="ghost" size="sm" onClick={() => onChange([])}>
-					모두 해제
+					{t("filter.clearAll")}
 				</Button>
 			</div>
 		</div>
@@ -171,7 +177,7 @@ function DateFilter({
 			<p className="px-1 text-muted-foreground text-xs">{label}</p>
 			<DateRangeCalendar from={from} to={to} onChange={onChange} />
 			<p className="px-1 text-xs" aria-live="polite">
-				{from || to ? `${from || "처음"} ~ ${to || "끝"}` : "기간을 고르지 않았습니다."}
+				{from || to ? `${from || t("filter.rangeStart")} ~ ${to || t("filter.rangeEnd")}` : t("filter.noRange")}
 			</p>
 		</div>
 	);
@@ -236,7 +242,7 @@ export function ColumnHeader({
 			onClick={() => sortField && onChange({ sortField, sortDirection: direction })}
 		>
 			{direction === "asc" ? <ArrowUpNarrowWide /> : <ArrowDownWideNarrow />}
-			{direction === "asc" ? "오름차순" : "내림차순"}
+			{direction === "asc" ? t("filter.sortAsc") : t("filter.sortDesc")}
 		</Button>
 	);
 
@@ -249,7 +255,7 @@ export function ColumnHeader({
 						variant="ghost"
 						size="sm"
 						className={cn("-ml-2 h-7 gap-1 px-2 font-normal text-muted-foreground text-xs", filtered && "text-primary")}
-						aria-label={`${config.label}${sorted ? `, ${sorted === "asc" ? "오름차순" : "내림차순"} 정렬` : ""}${filtered ? ", 필터 적용됨" : ""}`}
+						aria-label={`${config.label}${sorted ? t("filter.sortedSuffix", { direction: sorted === "asc" ? t("filter.sortAsc") : t("filter.sortDesc") }) : ""}${filtered ? t("filter.filteredSuffix") : ""}`}
 					/>
 				}
 			>
@@ -265,7 +271,7 @@ export function ColumnHeader({
 			<PopoverContent align="start" className="w-72 space-y-3 p-3">
 				{sortField && (
 					<fieldset className="flex flex-col gap-1">
-						<legend className="sr-only">{config.label} 정렬</legend>
+						<legend className="sr-only">{t("filter.sortLegend", { label: config.label })}</legend>
 						{sortButton("asc")}
 						{sortButton("desc")}
 					</fieldset>
@@ -305,7 +311,7 @@ export function ColumnHeader({
 						className="w-full"
 						onClick={() => onChange(clearPatchFor(filter, state))}
 					>
-						필터 해제
+						{t("filter.clear")}
 					</Button>
 				)}
 			</PopoverContent>

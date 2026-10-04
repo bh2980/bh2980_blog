@@ -1,5 +1,6 @@
 import type { BlockDefinition, CollectionsConfig } from "@bh2980/cms";
 import { z } from "zod";
+import { coreMessages } from "./core.messages";
 import {
 	type AiApply,
 	type AiCandidate,
@@ -17,6 +18,9 @@ import {
 	MAX_REQUEST_LENGTH,
 	migrateCheck,
 } from "./definition";
+import { lazyTranslator } from "./i18n";
+
+const t = lazyTranslator(coreMessages);
 
 /**
  * AI 기능 정의(v2 D, M2). 기능 하나는 이름(key)으로 사이트 설정의 `ai.actions`에 적는다.
@@ -192,7 +196,9 @@ export interface AiValidator {
 }
 
 /** 코드 검사를 만든다. 기능 정의의 `checks`에 정해진 검사와 함께 넣는다. */
-export const defineValidator = (check: Omit<AiValidator, "kind">): AiValidator => ({ kind: "code", ...check });
+// `label`을 읽을 때마다 지금 화면 언어로 고르는 접근자(`get label()`)를 값으로 굳히지 않으려고 속성 설명자째 옮긴다.
+export const defineValidator = (check: Omit<AiValidator, "kind">): AiValidator =>
+	Object.defineProperties({ kind: "code" }, Object.getOwnPropertyDescriptors(check)) as AiValidator;
 
 const isValidator = (check: AiCheckInput | AiValidator): check is AiValidator => "run" in check;
 
@@ -302,7 +308,7 @@ type PromptCheck<P extends string, I> = string extends P
 	: [Exclude<Placeholders<P>, LocaleInputNames<I> | `shared.${string}`>] extends [never]
 		? unknown
 		: {
-				readonly "지시문에는 언어 입력과 공통 문구만 {{이름}}으로 넣을 수 있다": Exclude<
+				readonly "The prompt can only use locale inputs and shared texts as {{name}}": Exclude<
 					Placeholders<P>,
 					LocaleInputNames<I> | `shared.${string}`
 				>;
@@ -524,7 +530,7 @@ export function renderPrompt(
 	const prompt = action.prompt.replace(PLACEHOLDER, (whole, name: string) => {
 		if (name.startsWith(SHARED_PREFIX)) {
 			const text = shared[name.slice(SHARED_PREFIX.length)];
-			return text === undefined ? whole : text.trim() || "(없음)";
+			return text === undefined ? whole : text.trim() || "(none)";
 		}
 		const value = values[name];
 		if (action.input[name]?.kind !== "locale" || typeof value !== "string") return whole;
@@ -533,9 +539,13 @@ export function renderPrompt(
 	});
 	const lines = Object.entries(action.input)
 		.filter(([name, spec]) => spec.kind === "locale" && !used.has(name) && typeof values[name] === "string")
-		.map(([name, spec]) => `${spec.label}: ${languageName(values[name] as string)}`);
+		.map(([name]) => `${name}: ${languageName(values[name] as string)}`);
 	const extra = action.askInstruction ? request?.trim() : "";
-	return [prompt, ...lines, ...(extra ? [`이번 요청(위 지시보다 우선):\n${extra}`] : [])].join("\n\n");
+	return [
+		prompt,
+		...lines,
+		...(extra ? [`Request for this run (takes priority over the instructions above):\n${extra}`] : []),
+	].join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -544,7 +554,7 @@ export function renderPrompt(
 
 const imageValueSchema = z
 	.object({ mediaId: z.uuid().optional(), src: z.string().max(2000).optional() })
-	.refine((value) => Boolean(value.mediaId || value.src), { message: "이미지가 없습니다." });
+	.refine((value) => Boolean(value.mediaId || value.src), { error: () => t("image.missing") });
 
 function inputValueSchema(spec: AiInputSpec): z.ZodType {
 	switch (spec.kind) {
@@ -602,7 +612,7 @@ export const aiRunBodySchema = z
 		stream: z.boolean().optional(),
 	})
 	.refine((body) => (body.input === undefined) !== (body.inputs === undefined), {
-		message: "input과 inputs 중 하나만 보낸다.",
+		error: () => t("run.inputOrInputs"),
 	});
 export type AiRunBody = z.output<typeof aiRunBodySchema>;
 

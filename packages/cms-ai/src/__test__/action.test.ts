@@ -18,8 +18,12 @@ import {
 } from "../action";
 import { legacyFeatureOverride } from "../actions";
 import type { AiCandidate } from "../definition";
+import { lazyTranslator } from "../i18n";
 import { aiPresets, KEBAB_PATTERN } from "../presets";
+import { presetMessages } from "../presets.messages";
 import { AI_ACTIONS, attachedTo } from "../registry";
+
+const presetText = lazyTranslator(presetMessages);
 
 /** 두 타입이 같은가(타입 검사용). */
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -57,7 +61,12 @@ describe("AI 기능 정의", () => {
 				{ kind: "maxLength", max: 40, enabled: true },
 			],
 		});
-		expect(action).toMatchObject({ label: "주소 추천", prompt: "바꾼 지시문", send: ["title"], apply: "replace" });
+		expect(action).toMatchObject({
+			label: presetText("label.slug"),
+			prompt: "바꾼 지시문",
+			send: ["title"],
+			apply: "replace",
+		});
 		// 필수 입력은 끌 수 없다.
 		expect(resolveAction("translate", build(aiPresets.translate()), { send: [] }).send).toEqual([
 			"block",
@@ -149,7 +158,9 @@ describe("AI 기능 정의", () => {
 				names,
 				" 짧게 ",
 			),
-		).toBe("English로 옮긴다.\n\n원문 언어: 한국어\n\n이번 요청(위 지시보다 우선):\n짧게");
+		).toBe(
+			"English로 옮긴다.\n\nfrom: 한국어\n\nRequest for this run (takes priority over the instructions above):\n짧게",
+		);
 		expect(renderPrompt({ prompt: "p", input, askInstruction: false }, {}, names, "무시")).toBe("p");
 	});
 
@@ -274,7 +285,7 @@ describe("AI 기능 정의", () => {
 			prompt: "운영자가 고친 지시문",
 			checks: [{ kind: "maxLength", max: 120, enabled: true }],
 		});
-		expect(legacyFeatureOverride("summary", { ...resolveAction("summary", build(aiPresets.summary())) })).toEqual({});
+		expect(legacyFeatureOverride("summary", { ...resolveAction("summary", AI_ACTIONS.summary as never) })).toEqual({});
 		expect(legacyFeatureOverride("mediaAlt", { prompt: "x" })).toBeNull();
 		expect(legacyFeatureOverride("translate", { inputs: [], prompt: AI_ACTIONS.translate?.prompt })).toEqual({});
 		expect(legacyFeatureOverride("slug", { checks: [{ kind: "pattern", pattern: "(" }] })).toEqual({});

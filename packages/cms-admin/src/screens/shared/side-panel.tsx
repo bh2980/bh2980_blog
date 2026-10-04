@@ -1,9 +1,13 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
 import { IconButton } from "../../ui/icon-button";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 /** 오른쪽 칸(분류 편집·미디어 상세·글 속성) 너비. 모든 오른쪽 칸이 같은 너비다. */
 export const SIDE_PANEL_WIDTH = "w-[22rem]";
@@ -35,7 +39,7 @@ export function SidePanelHeader({
 		<div className={cn("flex h-11 shrink-0 items-center gap-1 border-b pr-2 pl-4", className)}>
 			{title !== undefined && <h2 className="min-w-0 flex-1 truncate font-medium text-sm">{title}</h2>}
 			{children}
-			<IconButton label="닫기" side="bottom" onClick={onClose}>
+			<IconButton label={t("panel.close")} side="bottom" onClick={onClose}>
 				<X aria-hidden />
 			</IconButton>
 		</div>

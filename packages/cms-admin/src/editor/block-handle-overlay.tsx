@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { ArrowDown, ArrowUp, Copy, GripVertical, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -14,6 +15,9 @@ import {
 } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 interface BlockHandleOverlayProps {
 	coords: { top: number; left: number };
@@ -68,7 +72,7 @@ export function BlockHandleOverlay({
 			{/* 모달이 아니어야 한다: 핸들을 누르면 메뉴가 열리는데, 모달 배경이 dragover·drop을 가로채면 드래그가 끝나지 않는다. */}
 			<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
 				<IconButton
-					label="블록 조작"
+					label={t("blockHandle.label")}
 					side="bottom"
 					size="icon-xs"
 					draggable
@@ -86,23 +90,23 @@ export function BlockHandleOverlay({
 				<DropdownMenuContent align="start" side="right" className="w-56">
 					<DropdownMenuItem onClick={onMoveUp}>
 						<ArrowUp aria-hidden />
-						위로 이동
+						{t("blockHandle.moveUp")}
 						<DropdownMenuShortcut>⌥↑</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onMoveDown}>
 						<ArrowDown aria-hidden />
-						아래로 이동
+						{t("blockHandle.moveDown")}
 						<DropdownMenuShortcut>⌥↓</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onDuplicate}>
 						<Copy aria-hidden />
-						블록 복제
+						{t("blockHandle.duplicate")}
 						<DropdownMenuShortcut>⇧⌘D</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onClick={onDelete}>
 						<Trash2 aria-hidden />
-						삭제
+						{t("blockHandle.delete")}
 						<DropdownMenuShortcut>⇧⌘⌫</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				</DropdownMenuContent>

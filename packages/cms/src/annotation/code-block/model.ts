@@ -9,14 +9,55 @@
  * 이 파일은 사이트 설정을 읽지 않는다. 사이트의 줄 효과 목록은 `active.ts`다.
  */
 
+import { createActiveTranslator } from "../../i18n/active";
+import { codeBlockMessages } from "./messages";
+
+const t = createActiveTranslator(codeBlockMessages);
+
 /** 글자 효과: 주석 이름 ↔ 에디터 마크. */
 export const CODE_CHAR_EFFECTS = [
-	{ name: "strong", mark: "bold", label: "굵게" },
-	{ name: "em", mark: "italic", label: "기울임" },
-	{ name: "del", mark: "strike", label: "취소선" },
-	{ name: "u", mark: "underline", label: "밑줄" },
-	{ name: "Tooltip", mark: "codeTooltip", label: "툴팁" },
-	{ name: "fold", mark: "codeFold", label: "글자 접기" },
+	{
+		name: "strong",
+		mark: "bold",
+		get label() {
+			return t("charEffect.strong");
+		},
+	},
+	{
+		name: "em",
+		mark: "italic",
+		get label() {
+			return t("charEffect.em");
+		},
+	},
+	{
+		name: "del",
+		mark: "strike",
+		get label() {
+			return t("charEffect.del");
+		},
+	},
+	{
+		name: "u",
+		mark: "underline",
+		get label() {
+			return t("charEffect.u");
+		},
+	},
+	{
+		name: "Tooltip",
+		mark: "codeTooltip",
+		get label() {
+			return t("charEffect.Tooltip");
+		},
+	},
+	{
+		name: "fold",
+		mark: "codeFold",
+		get label() {
+			return t("charEffect.fold");
+		},
+	},
 ] as const;
 
 export type CodeCharEffectName = (typeof CODE_CHAR_EFFECTS)[number]["name"];
@@ -96,14 +137,14 @@ const MAX_RULE_MATCHES = 500;
 
 /** 정규식이 올바른지. 틀리면 이유를 돌려준다. */
 export function checkPattern(pattern: string, flags: string): string | null {
-	if (!pattern) return "정규식을 입력하세요.";
-	if (/[\n\r]/.test(pattern)) return "정규식에 줄바꿈을 넣을 수 없습니다.";
-	if (!/^[dgimsuvy]*$/.test(flags)) return "플래그는 g·i·m·s·u·y만 쓸 수 있습니다.";
+	if (!pattern) return t("pattern.empty");
+	if (/[\n\r]/.test(pattern)) return t("pattern.newline");
+	if (!/^[dgimsuvy]*$/.test(flags)) return t("pattern.flags");
 	try {
 		new RegExp(pattern, flags);
 		return null;
 	} catch (error) {
-		return error instanceof Error ? error.message : "올바르지 않은 정규식입니다.";
+		return error instanceof Error ? error.message : t("pattern.invalid");
 	}
 }
 
@@ -184,14 +225,14 @@ export function hasLineEffect(effects: readonly CodeLineEffect[], name: string, 
  * 공개 화면이 접기를 `<details>`로 감싸기 때문이다.
  */
 export function canAddCollapse(effects: readonly CodeLineEffect[], start: number, end: number): string | null {
-	if (end - start < 2) return "두 줄 이상 골라야 접을 수 있습니다.";
+	if (end - start < 2) return t("fold.minLines");
 	for (const effect of effects) {
 		if (effect.name !== COLLAPSE) continue;
-		if (effect.start === start && effect.end === end) return "이미 접은 범위입니다.";
+		if (effect.start === start && effect.end === end) return t("fold.exists");
 		const disjoint = effect.end <= start || end <= effect.start;
 		const inside = start >= effect.start && end <= effect.end;
 		const outside = effect.start >= start && effect.end <= end;
-		if (!disjoint && !inside && !outside) return "다른 접기 범위와 걸쳐 있습니다.";
+		if (!disjoint && !inside && !outside) return t("fold.overlaps");
 	}
 	return null;
 }

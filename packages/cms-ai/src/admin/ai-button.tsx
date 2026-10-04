@@ -1,12 +1,16 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { Button } from "@bh2980/cms-admin/ui/button";
 import { Spinner } from "@bh2980/cms-admin/ui/spinner";
 import { Sparkles } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import type { AiActionInputOf, AiActionKey, AiActionResultOf } from "../registry";
+import { aiCommonMessages } from "./ai-common.messages";
 import { useAiAction } from "./use-ai-action";
+
+const t = createTranslator(aiCommonMessages);
 
 export interface AiButtonProps<K extends AiActionKey> {
 	/** 부를 기능 이름(사이트 설정의 `aiPlugin({ actions })`). */
@@ -44,14 +48,14 @@ export function AiButton<K extends AiActionKey>({ action, input, onResult, child
 				try {
 					onResult(await ai.run(input()));
 				} catch (error) {
-					toast.error(error instanceof Error && error.message ? error.message : "실행하지 못했습니다.");
+					toast.error(error instanceof Error && error.message ? error.message : t("runFailed"));
 				} finally {
 					setRunning(false);
 				}
 			}}
 		>
 			{running ? <Spinner /> : <Sparkles aria-hidden />}
-			{running ? "실행 중…" : (children ?? label)}
+			{running ? t("running") : (children ?? label)}
 		</Button>
 	);
 }

@@ -1,4 +1,8 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { type CmsIssue, cmsApiErrorMessage, cmsApiIssues } from "./api-error-message";
+import { screensMessages } from "./messages";
+
+const t = createTranslator(screensMessages);
 
 /** 관리자 API 오류. 화면은 `message`를 그대로 보여 주고, 분기는 `status`·`code`로 한다. */
 export class CmsApiError extends Error {
@@ -22,7 +26,7 @@ export async function cmsFetch<T = unknown>(
 	url: string,
 	init: Omit<RequestInit, "body"> & { json?: unknown; fallback?: string } = {},
 ): Promise<T> {
-	const { json, fallback = "요청을 처리하지 못했습니다.", headers, ...rest } = init;
+	const { json, fallback = t("api.fallback"), headers, ...rest } = init;
 	const response = await fetch(url, {
 		...rest,
 		headers: json === undefined ? headers : { "Content-Type": "application/json", ...headers },
@@ -43,4 +47,4 @@ export async function cmsFetch<T = unknown>(
 }
 
 export const errorText = (error: unknown, fallback: string) =>
-	error instanceof CmsApiError ? error.message : error instanceof TypeError ? "네트워크 연결을 확인하세요." : fallback;
+	error instanceof CmsApiError ? error.message : error instanceof TypeError ? t("api.network") : fallback;

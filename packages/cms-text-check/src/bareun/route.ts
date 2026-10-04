@@ -1,7 +1,11 @@
+import { createActiveTranslator } from "@bh2980/cms";
 import { adminRoute, json } from "@bh2980/cms/plugin/server";
 import { textCheckRoute } from "@bh2980/cms-admin/text-check/server";
 import { checkWithBareun } from "./api";
+import { bareunMessages } from "./messages";
 import type { ResolvedBareunOptions } from "./options";
+
+const t = createActiveTranslator(bareunMessages);
 
 /**
  * 바른 검사 경로(`POST /api/cms/v1/text-check/bareun`). 관리자만 부를 수 있다. `{ segments }`를 받아 `{ issues }`를 돌려준다.
@@ -11,7 +15,7 @@ export function bareunRoute(options: ResolvedBareunOptions) {
 	// 키는 부를 때마다 서버 환경 변수에서 읽는다. 브라우저에는 보내지 않는다.
 	const readKey = () => process.env[options.apiKeyEnv]?.trim() || undefined;
 	const unavailable = adminRoute(async () =>
-		json({ code: "text_check_unavailable", message: "바른 API 키가 없습니다." }, { status: 503 }),
+		json({ code: "text_check_unavailable", message: t("error.keyMissing") }, { status: 503 }),
 	);
 	const check = textCheckRoute({
 		limits: options.limits,

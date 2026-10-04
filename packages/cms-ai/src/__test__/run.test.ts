@@ -87,16 +87,16 @@ describe("AI 기능 실행기", () => {
 		expect(text).toContain("<body>\n본문\n</body>");
 		expect(text).not.toContain("보내면 안 되는 요약");
 		expect(requests[0]?.system).toContain(preset("slug").prompt);
-		expect(requests[0]?.system).toContain("너는 개인 기술 블로그 CMS의 편집 보조 도구다.");
+		expect(requests[0]?.system).toContain("the CMS for this site: 개인 기술 블로그.");
 		// 언어를 모를 때 쓸 콘텐츠 언어: 요청에 없으면 사이트 기본 언어.
-		expect(requests[0]?.system).toContain("콘텐츠 언어: 한국어");
+		expect(requests[0]?.system).toContain("Content language: 한국어");
 	});
 
 	it('콘텐츠 언어는 편집 중인 글의 언어다(지시문의 "콘텐츠 언어" 자리)', async () => {
 		const { provider, requests } = stubProvider({ candidates: ["Alt"] });
 		await runAiAction(preset("imageAlt"), call({ image: { src: "/a.png" } }, { locale: "en" }), deps(provider));
-		expect(requests[0]?.system).toContain("콘텐츠 언어: English");
-		expect(preset("imageAlt").prompt).toContain("없으면 콘텐츠 언어");
+		expect(requests[0]?.system).toContain("Content language: English");
+		expect(preset("imageAlt").prompt).toContain("otherwise in the content language");
 		expect(preset("imageAlt").prompt).not.toContain("한국어");
 	});
 
@@ -108,7 +108,9 @@ describe("AI 기능 실행기", () => {
 			deps(provider),
 		);
 		expect(requests[0]?.system).toContain(preset("codeFold").prompt);
-		expect(requests[0]?.system).toContain("이번 요청(위 지시보다 우선):\ntailwind 클래스만");
+		expect(requests[0]?.system).toContain(
+			"Request for this run (takes priority over the instructions above):\ntailwind 클래스만",
+		);
 		expect(textOf(requests[0])).not.toContain("tailwind 클래스만");
 
 		await runAiAction(preset("slug"), call({ title: "t" }, {}, "무시될 요청"), deps(provider));
@@ -258,7 +260,7 @@ describe("AI 기능 실행기", () => {
 		);
 		await runAiAction(action, call({ title: "글", current: ["t2"] }), deps(provider));
 		expect(textOf(requests[0])).toContain("<choices>\nt1: React\n</choices>");
-		expect(requests[0]?.system).toContain("<choices>에 있는 값(콜론 앞)만 쓴다");
+		expect(requests[0]?.system).toContain("Use only the values in <choices> (before the colon)");
 	});
 
 	it("판단 방식(여러 개)은 선택지마다 따로 묻고 기준 확률 이상만 높은 순으로 돌려준다", async () => {
@@ -433,8 +435,10 @@ describe("AI 기능 실행기", () => {
 			deps(provider),
 		);
 		expect(result).toEqual({ kind: "mdx", text: "Hello **world**" });
-		expect(requests[0]?.system).toContain("원문 언어: 한국어\n\n대상 언어: English");
-		expect(requests[0]?.system).toContain("이번 요청(위 지시보다 우선):\n존댓말 없이");
+		expect(requests[0]?.system).toContain("from 한국어 to English");
+		expect(requests[0]?.system).toContain(
+			"Request for this run (takes priority over the instructions above):\n존댓말 없이",
+		);
 		expect(textOf(requests[0])).toContain("<block>\n안녕 **세계**\n</block>");
 
 		const broken = stubProvider({ mdx: "Hello world" });
@@ -479,7 +483,7 @@ describe("흘려받기(M8-1)·공통 문구(M8-4)", () => {
 		expect(result).toEqual({ kind: "mdx", text: "**다듬은** 글" });
 		// 공통 문구가 지시문에 들어가고, 답은 JSON이 아닌 일반 글로 받는다.
 		expect(requests[0]?.system).toContain("짧게 쓴다.");
-		expect(requests[0]?.system).toContain("결과 MDX만 답한다");
+		expect(requests[0]?.system).toContain("Answer with the resulting MDX only");
 	});
 
 	it("답 전체를 감싼 MDX 펜스만 벗기고, 다른 언어의 코드 블록은 그대로 둔다", () => {
@@ -498,9 +502,9 @@ describe("흘려받기(M8-1)·공통 문구(M8-4)", () => {
 		});
 	});
 
-	it("공통 문구가 비면 (없음)으로 넣고, 없는 공통 문구 이름은 그대로 둔다", async () => {
+	it("공통 문구가 비면 (none)으로 넣고, 없는 공통 문구 이름은 그대로 둔다", async () => {
 		const { provider, requests } = stubProvider({ streamText: "글" });
 		await streamAiAction(polish, call({ selection: "글" }), deps(provider, { shared: { styleGuide: "" } }), () => {});
-		expect(requests[0]?.system).toContain("문체 가이드:\n(없음)");
+		expect(requests[0]?.system).toContain("문체 가이드:\n(none)");
 	});
 });

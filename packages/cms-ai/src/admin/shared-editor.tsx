@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { Button } from "@bh2980/cms-admin/ui/button";
@@ -14,6 +15,9 @@ import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import type { AiSharedItem, AiSharedView } from "../shared";
 import { DETAIL_PANE, InlineError, ListRow, ListSkeleton, LoadError } from "./connection-editor";
+import { sharedMessages } from "./shared-editor.messages";
+
+const t = createTranslator(sharedMessages);
 
 export const AI_SHARED_KEY = ["cms", "ai", "shared"] as const;
 
@@ -26,15 +30,15 @@ const SHARED_API = "/api/cms/v1/ai/shared";
 export function useAiShared() {
 	return useQuery({
 		queryKey: AI_SHARED_KEY,
-		queryFn: ({ signal }) =>
-			cmsFetch<AiSharedView>(SHARED_API, { signal, fallback: "공통 문구를 불러올 수 없습니다." }),
+		queryFn: ({ signal }) => cmsFetch<AiSharedView>(SHARED_API, { signal, fallback: t("error.load") }),
 	});
 }
 
 /** 지시문에 넣는 모양. */
 const placeholderOf = (key: string) => `{{shared.${key}}}`;
 
-const detailOf = (item: AiSharedItem) => `${placeholderOf(item.key)}${item.source === "added" ? " · 직접 만듦" : ""}`;
+const detailOf = (item: AiSharedItem) =>
+	`${placeholderOf(item.key)}${item.source === "added" ? ` · ${t("detail.added")}` : ""}`;
 
 /**
  * AI 화면 `공통 문구` 탭(M8-4). 여러 기능의 지시문에 `{{shared.키}}`로 들어가는 문구(예: 문체 가이드)의 목록과 편집 칸이다.
@@ -64,18 +68,15 @@ export function SharedManager({
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			{query.error && !view && (
-				<LoadError
-					message={errorText(query.error, "공통 문구를 불러올 수 없습니다.")}
-					onRetry={() => void query.refetch()}
-				/>
+				<LoadError message={errorText(query.error, t("error.load"))} onRetry={() => void query.refetch()} />
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-72 shrink-0 flex-col border-r">
-					<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="공통 문구 목록">
+					<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label={t("list.label")}>
 						{query.isPending ? (
 							<ListSkeleton rows={2} />
 						) : view?.items.length === 0 ? (
-							<li className="px-3 py-6 text-center text-muted-foreground text-xs">공통 문구가 없습니다.</li>
+							<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
 						) : (
 							view?.items.map((item) => (
 								<ListRow
@@ -115,12 +116,12 @@ export function SharedManager({
 									<EmptyMedia variant="icon">
 										<Quote aria-hidden />
 									</EmptyMedia>
-									<EmptyTitle>문구를 고르세요</EmptyTitle>
+									<EmptyTitle>{t("empty.title")}</EmptyTitle>
 								</EmptyHeader>
 								<EmptyContent>
 									<Button type="button" size="sm" onClick={() => onOpen("new")}>
 										<Plus aria-hidden />
-										문구 추가
+										{t("action.add")}
 									</Button>
 								</EmptyContent>
 							</Empty>
@@ -158,7 +159,7 @@ function PlaceholderChip({ shareKey }: { shareKey: string }) {
 	return (
 		<div className="flex items-center gap-1">
 			<code className="rounded-md border bg-muted px-2 py-1 font-mono text-xs">{text}</code>
-			<IconButton label={copied ? "복사했습니다" : "복사"} size="icon-xs" onClick={() => void copy()}>
+			<IconButton label={copied ? t("copy.done") : t("copy.label")} size="icon-xs" onClick={() => void copy()}>
 				{copied ? <Check aria-hidden className="text-primary" /> : <Copy aria-hidden />}
 			</IconButton>
 		</div>
@@ -212,17 +213,17 @@ function SharedEditor({
 							text: draft.text,
 							...(fromConfig ? {} : { label: draft.label.trim() }),
 						},
-						fallback: "저장하지 못했습니다.",
+						fallback: t("error.save"),
 					})
 				: await cmsFetch<AiSharedView>(SHARED_API, {
 						method: "POST",
 						json: { expectedVersion: version, key, label: draft.label.trim(), text: draft.text },
-						fallback: "저장하지 못했습니다.",
+						fallback: t("error.save"),
 					});
 			onSaved(saved, key);
-			toast.success("저장했습니다.");
+			toast.success(t("toast.saved"));
 		} catch (saveError) {
-			setError(errorText(saveError, "저장하지 못했습니다."));
+			setError(errorText(saveError, t("error.save")));
 			onConflict();
 		} finally {
 			setSaving(false);
@@ -232,9 +233,9 @@ function SharedEditor({
 	const remove = async () => {
 		if (!item) return;
 		const ok = await confirm({
-			title: "문구 삭제",
-			description: `'${item.label}'을(를) 삭제할까요?`,
-			confirmLabel: "삭제",
+			title: t("confirm.title"),
+			description: t("confirm.description", { name: item.label }),
+			confirmLabel: t("action.delete"),
 			destructive: true,
 		});
 		if (!ok) return;
@@ -244,12 +245,12 @@ function SharedEditor({
 			onDeleted(
 				await cmsFetch<AiSharedView>(`${SHARED_API}?key=${encodeURIComponent(item.key)}&expectedVersion=${version}`, {
 					method: "DELETE",
-					fallback: "삭제하지 못했습니다.",
+					fallback: t("error.delete"),
 				}),
 			);
-			toast.success("삭제했습니다.");
+			toast.success(t("toast.deleted"));
 		} catch (deleteError) {
-			setError(errorText(deleteError, "삭제하지 못했습니다."));
+			setError(errorText(deleteError, t("error.delete")));
 			onConflict();
 		} finally {
 			setDeleting(false);
@@ -261,17 +262,17 @@ function SharedEditor({
 	return (
 		<div className={DETAIL_PANE}>
 			<div className="min-w-0">
-				<h2 className="truncate font-medium text-base">{(item ? item.label : draft.label.trim()) || "새 문구"}</h2>
+				<h2 className="truncate font-medium text-base">{(item ? item.label : draft.label.trim()) || t("new.title")}</h2>
 				{(shownKey || item?.source === "added") && (
 					<p className="truncate text-muted-foreground text-xs">
-						{item ? detailOf(item) : `${placeholderOf(shownKey)} · 직접 만듦`}
+						{item ? detailOf(item) : `${placeholderOf(shownKey)} · ${t("detail.added")}`}
 					</p>
 				)}
 			</div>
 
 			<FieldGroup className="gap-5">
 				<Field>
-					<FieldLabel htmlFor={ids.label}>이름</FieldLabel>
+					<FieldLabel htmlFor={ids.label}>{t("field.name")}</FieldLabel>
 					<Input
 						id={ids.label}
 						value={draft.label}
@@ -283,12 +284,12 @@ function SharedEditor({
 				</Field>
 				{item ? (
 					<Field role="group" aria-labelledby={ids.keyTitle}>
-						<FieldTitle id={ids.keyTitle}>키</FieldTitle>
+						<FieldTitle id={ids.keyTitle}>{t("field.key")}</FieldTitle>
 						<PlaceholderChip shareKey={item.key} />
 					</Field>
 				) : (
 					<Field>
-						<FieldLabel htmlFor={ids.key}>키</FieldLabel>
+						<FieldLabel htmlFor={ids.key}>{t("field.key")}</FieldLabel>
 						<Input
 							id={ids.key}
 							value={draft.key}
@@ -301,7 +302,7 @@ function SharedEditor({
 					</Field>
 				)}
 				<Field>
-					<FieldLabel htmlFor={ids.text}>내용</FieldLabel>
+					<FieldLabel htmlFor={ids.text}>{t("field.content")}</FieldLabel>
 					<Textarea
 						id={ids.text}
 						rows={PROMPT_ROWS}
@@ -322,11 +323,11 @@ function SharedEditor({
 					onClick={() => void save()}
 				>
 					<Save aria-hidden />
-					{saving ? "저장 중…" : "저장"}
+					{saving ? t("action.saving") : t("action.save")}
 				</Button>
 				{!item && (
 					<Button type="button" size="sm" variant="outline" onClick={onCancel}>
-						취소
+						{t("action.cancel")}
 					</Button>
 				)}
 				{item?.source === "config" && (
@@ -338,7 +339,7 @@ function SharedEditor({
 						onClick={() => set({ text: item.defaultText })}
 					>
 						<RotateCcw aria-hidden />
-						기본값으로
+						{t("action.resetDefault")}
 					</Button>
 				)}
 				{item?.source === "added" && (
@@ -351,7 +352,7 @@ function SharedEditor({
 						onClick={() => void remove()}
 					>
 						<Trash2 aria-hidden />
-						{deleting ? "삭제 중…" : "삭제"}
+						{deleting ? t("action.deleting") : t("action.delete")}
 					</Button>
 				)}
 			</div>

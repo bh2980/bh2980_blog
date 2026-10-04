@@ -1,21 +1,24 @@
-import { type CollectionsConfig, valueFieldsOf } from "@bh2980/cms";
+import { type CollectionsConfig, createActiveTranslator, valueFieldsOf } from "@bh2980/cms";
 // AI 플러그인은 고를 수 있는 의존성이라 타입만 읽는다(이 파일은 AI 플러그인 코드를 불러오지 않는다).
 import type { AiActionDefinition, AiContribution } from "@bh2980/cms-ai";
 import { SEO_DEFAULT_LIMITS, SEO_ROLES } from "./fields";
+import { seoMessages } from "./messages";
 
 /**
  * SEO 확장이 AI 플러그인에 더하는 기능(검색 제목·설명 추천). `seo()` 플러그인이 `contributes.ai`로 더하므로 AI 플러그인을
  * 쓰는 사이트에만 붙는다. 바꾸려면 `aiPlugin({ actions: { seoTitle: seoAi.title({ prompt }) } })`, 끄려면 `seoTitle: false`.
  */
 
-const fieldInput = {
-	title: { kind: "text", label: "제목" },
-	summary: { kind: "text", label: "요약" },
-	body: { kind: "mdx", label: "본문" },
-	current: { kind: "value", label: "현재 값" },
-} as const;
+// 이 기능들은 사이트 설정을 본 뒤에 만들어진다(`(site) => …`). 언어는 그때 고른다.
+const t = createActiveTranslator(seoMessages);
 
-const lines = (...text: string[]) => text.join("\n");
+const fieldInput = () =>
+	({
+		title: { kind: "text", label: t("ai.input.title") },
+		summary: { kind: "text", label: t("ai.input.summary") },
+		body: { kind: "mdx", label: t("ai.input.body") },
+		current: { kind: "value", label: t("ai.input.current") },
+	}) as const;
 
 /**
  * AI 플러그인이 넘기는 사이트 보기(`AiSiteView`) 중 이 파일이 읽는 것과 붙을 곳(`AiAttach`)의 모양. 여기 적어 배포 타입 선언이
@@ -56,20 +59,13 @@ export const seoAi = {
 			if (attach.length === 0) return undefined;
 			const limit = options.maxLength ?? max;
 			return {
-				label: "검색 제목 추천",
-				input: fieldInput,
+				label: t("ai.title.label"),
+				input: fieldInput(),
 				send: ["title", "summary", "body"],
 				result: "candidates",
 				askInstruction: true,
 				checks: [{ kind: "maxLength", max: limit }],
-				prompt:
-					options.prompt ??
-					lines(
-						"검색 결과에 보일 제목 후보 3개를 쓴다.",
-						`- ${limit}자 이내, 본문과 같은 언어`,
-						"- 글이 답하는 질문이나 핵심 키워드를 앞쪽에 둔다",
-						"- 과장하거나 낚는 표현은 쓰지 않는다",
-					),
+				prompt: options.prompt ?? t("ai.title.prompt", { limit }),
 				attach,
 			} satisfies AiActionDefinition;
 		},
@@ -82,19 +78,13 @@ export const seoAi = {
 			if (attach.length === 0) return undefined;
 			const limit = options.maxLength ?? max;
 			return {
-				label: "검색 설명 추천",
-				input: fieldInput,
+				label: t("ai.description.label"),
+				input: fieldInput(),
 				send: ["title", "summary", "body"],
 				result: "text",
 				askInstruction: true,
 				checks: [{ kind: "maxLength", max: limit }],
-				prompt:
-					options.prompt ??
-					lines(
-						"검색 결과에 제목 아래로 보일 설명을 쓴다.",
-						`- ${limit}자 이내, 1~2문장, 본문과 같은 언어`,
-						"- 검색한 사람이 이 글에서 무엇을 얻는지 드러낸다",
-					),
+				prompt: options.prompt ?? t("ai.description.prompt", { limit }),
 				attach,
 			} satisfies AiActionDefinition;
 		},

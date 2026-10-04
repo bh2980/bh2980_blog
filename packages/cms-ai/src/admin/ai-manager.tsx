@@ -1,6 +1,13 @@
 "use client";
 
-import { ADMIN_LOCALE, BLOCK_BY_NAME, CMS_TIME_ZONE, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
+import {
+	ADMIN_LOCALE,
+	BLOCK_BY_NAME,
+	CMS_TIME_ZONE,
+	COLLECTIONS,
+	createTranslator,
+	schemaOf,
+} from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
@@ -30,18 +37,9 @@ import { resolveAction } from "../action";
 import { draftCustomView, viewOf } from "../action-view";
 import type { AiActionView } from "../actions";
 import type { CustomBase } from "../custom";
-import {
-	ADDABLE_CHECKS,
-	type AddableCheckKind,
-	type AiCheck,
-	type AiRunResult,
-	CHECK_LABELS,
-	checkKey,
-	ENGINE_LABELS,
-	SLOT_LABELS,
-	SLOT_TARGETS,
-} from "../definition";
+import { ADDABLE_CHECKS, type AddableCheckKind, type AiCheck, type AiRunResult, checkKey } from "../definition";
 import { actionDefinition } from "../registry";
+import { aiManagerMessages } from "./ai-manager.messages";
 import { AI_ACTIONS_KEY, type AiActionsResponse, runAiAction, useAiActions } from "./ai-slot-provider";
 import { missingRequired, SampleInputs, sampleDefaults, sampleFields, sampleRun } from "./ai-test-sample";
 import {
@@ -54,30 +52,32 @@ import {
 	useAiSettings,
 } from "./connection-editor";
 import { CustomBaseFields, NEW_CUSTOM_BASE, OptionSelect } from "./custom-editor";
+import { checkLabel, engineLabel, slotLabel, slotTargetLabel } from "./labels.messages";
 import { ModelCombobox, useModelList } from "./model-combobox";
 import { PROMPT_ROWS, PROMPT_TEXTAREA, SharedManager, useAiShared } from "./shared-editor";
+
+const t = createTranslator(aiManagerMessages);
 
 /** 붙을 곳의 보이는 이름. 필드는 컬렉션 정의의 이름이다. */
 function placeLabel(action: Pick<AiActionView, "attach">): string {
 	const attach = action.attach[0];
-	if (!attach) return "직접 호출";
+	if (!attach) return t("place.direct");
 	switch (attach.slot) {
 		case "field": {
 			for (const collection of COLLECTIONS) {
 				const field = schemaOf(collection).fields[attach.field];
-				if (field) return `${SLOT_LABELS.field} · ${field.label}`;
+				if (field) return `${slotLabel("field")} · ${field.label}`;
 			}
-			return `${SLOT_LABELS.field} · ${attach.field}`;
+			return `${slotLabel("field")} · ${attach.field}`;
 		}
 		case "translation":
 		case "selection":
 		case "insert":
-			return SLOT_LABELS[attach.slot];
+			return slotLabel(attach.slot);
 		case "block":
-			return `${SLOT_LABELS.block} · ${BLOCK_BY_NAME.get(attach.block)?.label ?? attach.block}`;
+			return `${slotLabel("block")} · ${BLOCK_BY_NAME.get(attach.block)?.label ?? attach.block}`;
 		default: {
-			const targets: Readonly<Record<string, string>> = SLOT_TARGETS[attach.slot];
-			return `${SLOT_LABELS[attach.slot]} · ${targets[attach.target] ?? attach.target}`;
+			return `${slotLabel(attach.slot)} · ${slotTargetLabel(attach.slot, attach.target)}`;
 		}
 	}
 }
@@ -245,9 +245,9 @@ export function AiManager() {
 
 	const remove = async (feature: AiActionView) => {
 		const ok = await confirm({
-			title: "기능 삭제",
-			description: `'${feature.label}'을(를) 삭제할까요?`,
-			confirmLabel: "삭제",
+			title: t("remove.title"),
+			description: t("remove.description", { label: feature.label }),
+			confirmLabel: t("remove.confirm"),
 			destructive: true,
 		});
 		if (!ok) return;
@@ -256,15 +256,15 @@ export function AiManager() {
 		try {
 			await cmsFetch(`/api/cms/v1/ai/actions/${feature.key}?expectedVersion=${feature.version}`, {
 				method: "DELETE",
-				fallback: "삭제하지 못했습니다.",
+				fallback: t("remove.failed"),
 			});
 			queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
 				data ? { ...data, items: data.items.filter((item) => item.key !== feature.key) } : data,
 			);
 			setEditing(null);
-			toast.success("삭제했습니다.");
+			toast.success(t("remove.done"));
 		} catch (error) {
-			setFormError(errorText(error, "삭제하지 못했습니다."));
+			setFormError(errorText(error, t("remove.failed")));
 		} finally {
 			setDeleting(false);
 		}
@@ -279,7 +279,7 @@ export function AiManager() {
 				const created = await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
 					method: "POST",
 					json: { base: { ...editing.base, label: editing.base.label.trim() }, value: editing.spec },
-					fallback: "저장하지 못했습니다.",
+					fallback: t("save.failed"),
 				});
 				queryClient.setQueryData<AiActionsResponse>(AI_ACTIONS_KEY, (data) =>
 					data ? { ...data, items: [...data.items, created] } : data,
@@ -293,15 +293,15 @@ export function AiManager() {
 						value: editing.spec,
 						...(editing.base ? { base: { ...editing.base, label: editing.base.label.trim() } } : {}),
 					},
-					fallback: "저장하지 못했습니다.",
+					fallback: t("save.failed"),
 				});
 				replaceInCache(saved);
 				open(saved);
 			}
-			toast.success("저장했습니다.");
+			toast.success(t("save.done"));
 			void queryClient.invalidateQueries({ queryKey: AI_ACTIONS_KEY });
 		} catch (error) {
-			setFormError(errorText(error, "저장하지 못했습니다."));
+			setFormError(errorText(error, t("save.failed")));
 		} finally {
 			setSaving(false);
 		}
@@ -314,17 +314,17 @@ export function AiManager() {
 		tab === "features" ? (
 			<Button type="button" size="sm" onClick={() => void startNew()}>
 				<Plus aria-hidden />
-				기능 추가
+				{t("add.feature")}
 			</Button>
 		) : tab === "connections" ? (
 			<Button type="button" size="sm" onClick={() => void openConnection("new")}>
 				<Plus aria-hidden />
-				연결 추가
+				{t("add.connection")}
 			</Button>
 		) : (
 			<Button type="button" size="sm" onClick={() => void openShared("new")}>
 				<Plus aria-hidden />
-				문구 추가
+				{t("add.shared")}
 			</Button>
 		);
 	const count =
@@ -344,40 +344,46 @@ export function AiManager() {
 				<TabsList variant="line" className="h-10 w-full shrink-0 justify-start gap-4 border-b px-4">
 					<TabsTrigger value="features" className="flex-none px-0 text-xs">
 						<Sparkles aria-hidden />
-						기능
+						{t("tab.features")}
 					</TabsTrigger>
 					<TabsTrigger value="connections" className="flex-none px-0 text-xs">
 						<Plug aria-hidden />
-						연결
+						{t("tab.connections")}
 					</TabsTrigger>
 					<TabsTrigger value="shared" className="flex-none px-0 text-xs">
 						<Quote aria-hidden />
-						공통 문구
+						{t("tab.shared")}
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="features" className="flex min-h-0 flex-1 flex-col">
 					{featuresQuery.error && !featuresQuery.data && (
 						<LoadError
-							message={errorText(featuresQuery.error, "AI 기능 목록을 불러올 수 없습니다.")}
+							message={errorText(featuresQuery.error, t("list.loadFailed"))}
 							onRetry={() => void featuresQuery.refetch()}
 						/>
 					)}
 					<div className="flex min-h-0 flex-1 overflow-hidden">
 						<div className="flex w-72 shrink-0 flex-col border-r">
-							<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="AI 기능 목록">
+							<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label={t("list.label")}>
 								{featuresQuery.isPending ? (
 									<ListSkeleton rows={4} />
 								) : (
 									<>
 										{featuresQuery.data && features.length === 0 && !editing?.isNew && (
-											<li className="px-3 py-6 text-center text-muted-foreground text-xs">기능이 없습니다.</li>
+											<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
 										)}
 										{features.map((feature) => (
 											<ListRow
 												key={feature.key}
 												title={feature.label}
-												status={!feature.enabled ? "꺼짐" : usable.has(feature.key) ? null : "연결 필요"}
-												detail={`${placeLabel(feature)} · ${ENGINE_LABELS[feature.engine]}${feature.custom ? " · 직접 만듦" : ""}`}
+												status={
+													!feature.enabled
+														? t("status.off")
+														: usable.has(feature.key)
+															? null
+															: t("status.needsConnection")
+												}
+												detail={`${placeLabel(feature)} · ${engineLabel(feature.engine)}${feature.custom ? ` · ${t("detail.custom")}` : ""}`}
 												// 저장하지 않은 새 기능을 여는 동안은 목록의 다른 줄을 열린 줄로 보이지 않는다.
 												current={editing !== null && !editing.isNew && editing.feature.key === feature.key}
 												onClick={() => void openFeature(feature)}
@@ -385,9 +391,9 @@ export function AiManager() {
 										))}
 										{editing?.isNew && (
 											<ListRow
-												title={editing.base?.label.trim() || "새 기능"}
-												status="저장 안 함"
-												detail={`${placeLabel(editing.feature)} · ${ENGINE_LABELS[editing.feature.engine]}`}
+												title={editing.base?.label.trim() || t("title.new")}
+												status={t("status.unsaved")}
+												detail={`${placeLabel(editing.feature)} · ${engineLabel(editing.feature.engine)}`}
 												current
 												onClick={() => {}}
 											/>
@@ -428,12 +434,12 @@ export function AiManager() {
 											<EmptyMedia variant="icon">
 												<Sparkles aria-hidden />
 											</EmptyMedia>
-											<EmptyTitle>기능을 고르세요</EmptyTitle>
+											<EmptyTitle>{t("empty.pick")}</EmptyTitle>
 										</EmptyHeader>
 										<EmptyContent>
 											<Button type="button" size="sm" onClick={() => void startNew()}>
 												<Plus aria-hidden />
-												기능 추가
+												{t("add.feature")}
 											</Button>
 										</EmptyContent>
 									</Empty>
@@ -477,7 +483,7 @@ function OneOfInput({
 	const [text, setText] = useState(items.join("\n"));
 	return (
 		<Textarea
-			aria-label="선택지"
+			aria-label={t("check.options")}
 			rows={3}
 			value={text}
 			disabled={disabled}
@@ -520,7 +526,7 @@ function CheckRow({
 			</Label>
 			{check.kind === "pattern" && (
 				<Input
-					aria-label="형식 정규식"
+					aria-label={t("check.pattern")}
 					value={check.pattern}
 					disabled={!check.enabled}
 					onChange={(event) => onChange({ ...check, pattern: event.target.value })}
@@ -531,7 +537,7 @@ function CheckRow({
 				<span className="flex items-center gap-2">
 					<Input
 						type="number"
-						aria-label="최대 글자 수"
+						aria-label={t("check.maxChars")}
 						min={1}
 						max={5000}
 						value={check.max}
@@ -541,14 +547,20 @@ function CheckRow({
 						}
 						className="h-8 w-20 text-xs"
 					/>
-					<span className="text-muted-foreground">자 이하</span>
+					<span className="text-muted-foreground">{t("check.charsOrLess")}</span>
 				</span>
 			)}
 			{check.kind === "oneOf" && (
 				<OneOfInput items={check.items} disabled={!check.enabled} onChange={(items) => onChange({ ...check, items })} />
 			)}
 			{onRemove && (
-				<IconButton label={`${label} 검사 삭제`} size="icon-xs" destructive onClick={onRemove} className="ml-auto">
+				<IconButton
+					label={t("check.remove", { label })}
+					size="icon-xs"
+					destructive
+					onClick={onRemove}
+					className="ml-auto"
+				>
 					<Trash2 aria-hidden />
 				</IconButton>
 			)}
@@ -615,9 +627,9 @@ function FeatureEditor({
 		([, input]) => input.kind !== "locale" && !(deciding && input.kind === "image"),
 	);
 	const providerOptions = [
-		{ value: "", label: `첫 ${ENGINE_LABELS[feature.engine]} 연결` },
+		{ value: "", label: t("connection.first", { engine: engineLabel(feature.engine) }) },
 		...(spec.providerId && !providers.some((provider) => provider.id === spec.providerId)
-			? [{ value: spec.providerId, label: "삭제된 연결" }]
+			? [{ value: spec.providerId, label: t("connection.deleted") }]
 			: []),
 		...providers.map((provider) => ({ value: provider.id, label: provider.name })),
 	];
@@ -634,12 +646,12 @@ function FeatureEditor({
 			const options = {
 				draft: spec,
 				request: spec.askInstruction ? sample.request : undefined,
-				...(custom ? { draftBase: { ...custom.base, label: custom.base.label.trim() || "새 기능" } } : {}),
+				...(custom ? { draftBase: { ...custom.base, label: custom.base.label.trim() || t("title.new") } } : {}),
 			};
 			const { input, env } = sampleRun(feature, sampleInputs, sample.values, sampleStart);
 			setTest({ status: "done", result: await runAiAction(feature.key, input, { ...options, env }) });
 		} catch (runError) {
-			setTest({ status: "error", message: errorText(runError, "실행하지 못했습니다.") });
+			setTest({ status: "error", message: errorText(runError, t("test.failed")) });
 		}
 	};
 
@@ -648,15 +660,15 @@ function FeatureEditor({
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<div className="min-w-0 flex-1">
 					<h2 className="truncate font-medium text-base">
-						{(custom ? custom.base.label.trim() : feature.label) || "새 기능"}
+						{(custom ? custom.base.label.trim() : feature.label) || t("title.new")}
 					</h2>
 					<p className="truncate text-muted-foreground text-xs">
-						{placeLabel(feature)} · {ENGINE_LABELS[feature.engine]}
+						{placeLabel(feature)} · {engineLabel(feature.engine)}
 					</p>
 				</div>
 				<Label className="font-normal text-xs">
 					<Switch size="sm" checked={spec.enabled} onCheckedChange={(enabled) => set({ enabled })} />
-					켜기
+					{t("toggle.on")}
 				</Label>
 				<Label className="font-normal text-xs">
 					<Switch
@@ -664,25 +676,25 @@ function FeatureEditor({
 						checked={spec.askInstruction}
 						onCheckedChange={(askInstruction) => set({ askInstruction })}
 					/>
-					요청 받기
+					{t("toggle.ask")}
 				</Label>
 				{feature.apply !== "none" && (feature.result === "candidates" || feature.result === "text") && (
 					<Label className="font-normal text-xs">
 						<Switch size="sm" checked={spec.instant} onCheckedChange={(instant) => set({ instant })} />
-						바로 넣기
+						{t("toggle.instant")}
 					</Label>
 				)}
 			</div>
 
 			{custom && (
-				<section aria-label="기본 정보" className="rounded-md border p-3">
+				<section aria-label={t("section.basics")} className="rounded-md border p-3">
 					<CustomBaseFields base={custom.base} onChange={custom.onBaseChange} />
 				</section>
 			)}
 
 			<FieldGroup className="gap-5">
 				<Field>
-					<FieldLabel htmlFor={ids.provider}>연결</FieldLabel>
+					<FieldLabel htmlFor={ids.provider}>{t("field.connection")}</FieldLabel>
 					<div className="flex min-w-0 items-center gap-2">
 						<OptionSelect
 							id={ids.provider}
@@ -691,12 +703,12 @@ function FeatureEditor({
 							onChange={(value) => set({ providerId: value || null, modelName: "" })}
 						/>
 						<ModelCombobox
-							aria-label="모델"
+							aria-label={t("field.model")}
 							value={spec.modelName}
 							models={modelList.models}
 							loading={modelList.loading}
 							error={modelList.error}
-							placeholder={chosen?.defaultModel || "기본 모델"}
+							placeholder={chosen?.defaultModel || t("field.defaultModel")}
 							onChange={(modelName) => set({ modelName })}
 						/>
 					</div>
@@ -704,7 +716,7 @@ function FeatureEditor({
 
 				{inputs.length > 0 && (
 					<Field role="group" aria-labelledby={ids.sendTitle}>
-						<FieldTitle id={ids.sendTitle}>보낼 내용</FieldTitle>
+						<FieldTitle id={ids.sendTitle}>{t("field.send")}</FieldTitle>
 						<div className="flex flex-wrap gap-3">
 							{inputs.map(([name, input]) => (
 								<Label key={name} className="font-normal text-xs">
@@ -726,7 +738,7 @@ function FeatureEditor({
 
 				{deciding && (
 					<Field>
-						<FieldLabel htmlFor={ids.threshold}>기준 확률</FieldLabel>
+						<FieldLabel htmlFor={ids.threshold}>{t("field.threshold")}</FieldLabel>
 						<div className="flex items-center gap-2 text-xs">
 							<Input
 								id={ids.threshold}
@@ -739,33 +751,31 @@ function FeatureEditor({
 								}
 								className="h-8 w-20 text-xs md:text-xs"
 							/>
-							<span className="text-muted-foreground">% 이상</span>
+							<span className="text-muted-foreground">{t("field.percentOrMore")}</span>
 							<Input
 								type="number"
-								aria-label="최대 개수"
+								aria-label={t("field.maxCount")}
 								min={1}
 								max={20}
 								value={spec.maxCount}
 								onChange={(event) => set({ maxCount: Math.min(20, Math.max(1, Number(event.target.value) || 1)) })}
 								className="ml-3 h-8 w-16 text-xs md:text-xs"
 							/>
-							<span className="text-muted-foreground">개까지</span>
+							<span className="text-muted-foreground">{t("field.countUpTo")}</span>
 						</div>
 					</Field>
 				)}
 
 				<Field role="group" aria-labelledby={ids.checksTitle}>
-					<FieldTitle id={ids.checksTitle}>검사</FieldTitle>
+					<FieldTitle id={ids.checksTitle}>{t("field.checks")}</FieldTitle>
 					<div className="flex flex-col gap-1.5 text-xs">
-						<ul className="flex flex-col gap-1.5" aria-label="검사">
+						<ul className="flex flex-col gap-1.5" aria-label={t("field.checks")}>
 							{spec.checks.map((check, index) => (
 								<CheckRow
 									key={checkKey(check)}
 									check={check}
 									label={
-										check.kind === "code"
-											? (feature.validatorLabels[check.name] ?? check.name)
-											: CHECK_LABELS[check.kind]
+										check.kind === "code" ? (feature.validatorLabels[check.name] ?? check.name) : checkLabel(check.kind)
 									}
 									onChange={(next) => set({ checks: spec.checks.map((item, i) => (i === index ? next : item)) })}
 									onRemove={
@@ -784,7 +794,7 @@ function FeatureEditor({
 									}
 								>
 									<Plus aria-hidden />
-									검사 추가
+									{t("field.addCheck")}
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="start" className="min-w-32">
 									{addableChecks.map((kind) => (
@@ -793,7 +803,7 @@ function FeatureEditor({
 											onClick={() => set({ checks: [...spec.checks, ADDABLE_CHECKS[kind]] })}
 										>
 											<Plus aria-hidden />
-											{CHECK_LABELS[kind]}
+											{checkLabel(kind)}
 										</DropdownMenuItem>
 									))}
 								</DropdownMenuContent>
@@ -803,7 +813,7 @@ function FeatureEditor({
 				</Field>
 
 				<Field>
-					<FieldLabel htmlFor={ids.prompt}>{deciding ? "판단 기준" : "지시문"}</FieldLabel>
+					<FieldLabel htmlFor={ids.prompt}>{deciding ? t("field.criteria") : t("field.prompt")}</FieldLabel>
 					<Textarea
 						id={ids.prompt}
 						rows={PROMPT_ROWS}
@@ -824,11 +834,11 @@ function FeatureEditor({
 					onClick={onSave}
 				>
 					<Save aria-hidden />
-					{saving ? "저장 중…" : "저장"}
+					{saving ? t("button.saving") : t("button.save")}
 				</Button>
 				{custom?.isNew && (
 					<Button type="button" size="sm" variant="outline" onClick={custom.onCancel}>
-						취소
+						{t("button.cancel")}
 					</Button>
 				)}
 				{defaults && (
@@ -840,14 +850,16 @@ function FeatureEditor({
 						onClick={() => onChange({ ...defaults, enabled: spec.enabled })}
 					>
 						<RotateCcw aria-hidden />
-						기본값으로
+						{t("button.reset")}
 					</Button>
 				)}
 				{!custom?.isNew && (
 					<span className="ml-auto text-muted-foreground text-xs">
 						{feature.updatedAt
-							? `${new Date(feature.updatedAt).toLocaleString(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE })} 고침`
-							: "기본 설정"}
+							? t("meta.edited", {
+									time: new Date(feature.updatedAt).toLocaleString(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE }),
+								})
+							: t("meta.default")}
 					</span>
 				)}
 				{custom && !custom.isNew && (
@@ -860,14 +872,14 @@ function FeatureEditor({
 						onClick={custom.onDelete}
 					>
 						<Trash2 aria-hidden />
-						{deleting ? "삭제 중…" : "삭제"}
+						{deleting ? t("button.deleting") : t("button.delete")}
 					</Button>
 				)}
 			</div>
 
-			<section className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 text-xs" aria-label="시험">
+			<section className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 text-xs" aria-label={t("test.title")}>
 				<div className="flex items-center gap-2">
-					<span className="font-medium">시험</span>
+					<span className="font-medium">{t("test.title")}</span>
 					<Button
 						type="button"
 						size="xs"
@@ -877,13 +889,13 @@ function FeatureEditor({
 						onClick={() => void runTest()}
 					>
 						<Sparkles aria-hidden />
-						{testRunning ? "실행 중…" : "실행"}
+						{testRunning ? t("test.running") : t("test.run")}
 					</Button>
 				</div>
 				{spec.askInstruction && (
 					<Textarea
-						aria-label="추가 요청"
-						placeholder="추가 요청"
+						aria-label={t("test.request")}
+						placeholder={t("test.request")}
 						rows={2}
 						value={sample.request}
 						onChange={(event) => setSample({ ...sample, request: event.target.value })}
@@ -911,7 +923,7 @@ function FeatureEditor({
 				{test?.status === "done" &&
 					(test.result.kind === "candidates" ? (
 						test.result.items.length === 0 ? (
-							<p className="text-muted-foreground">맞는 결과가 없습니다.</p>
+							<p className="text-muted-foreground">{t("test.noResults")}</p>
 						) : (
 							<ul className="flex flex-wrap gap-1">
 								{test.result.items.map((item) => (

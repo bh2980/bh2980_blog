@@ -100,9 +100,9 @@ const STEPS: readonly MigrationStep[] = [
 		/** 관계 참조 종류를 entry·media로 줄인다(예전 category·tag 행 옮기기) */
 		run: (client, qSchema) =>
 			client.query(`
-			-- 관계 참조의 종류를 콘텐츠(entry)·미디어(media) 둘로 줄였다. 예전 저장소에 남은 category·tag 행을 entry 행으로 옮긴다.
-			-- 같은 콘텐츠·상태·대상의 예전 행(category·tag)과 entry 행은 한 행으로 합친다: 위치(occurrences)는 entry 행 것 뒤에
-			-- 없는 것만 붙이고, 하나라도 오래된 참조(is_stale)면 오래된 참조다(읽을 때 entry로 다루던 것과 같은 결과).
+			-- Reference kinds were reduced to entry and media. Move leftover category/tag rows from older stores into entry rows.
+			-- Old rows (category/tag) and entry rows with the same entry, state and target are merged into one row: occurrences are
+			-- appended after the entry row's, only those not present yet, and the row is stale if any of them is stale (same as reading them as entry).
 			WITH legacy AS (
 				SELECT r.entry_id, r.state, r.target_id,
 					COALESCE(jsonb_agg(o.value ORDER BY r.kind, o.ordinality) FILTER (WHERE o.value IS NOT NULL), '[]'::jsonb) AS occurrences,
@@ -124,7 +124,7 @@ const STEPS: readonly MigrationStep[] = [
 					'[]'::jsonb
 				);
 			DELETE FROM "${qSchema}".entry_references WHERE kind IN ('category', 'tag');
-			-- 예전 행이 없어졌으니 종류 제약을 entry·media로 좁힌다. 예전 제약(이름이 저장소마다 다를 수 있다)은 정의로 찾아 지운다.
+			-- With the old rows gone, narrow the kind constraint to entry and media. The old constraint (its name can differ per store) is found by definition and dropped.
 			DO $$
 			DECLARE
 				old_constraint record;
@@ -192,7 +192,7 @@ const STEPS: readonly MigrationStep[] = [
 		run: (client, qSchema) =>
 			client.query(`
 			ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
-			-- v3 번역 화면: 번역본의 번역 단위(원문 조각·번역). 원문은 NULL이다.
+			-- v3 translation screen: translation units of a translated entry (source fragment, translation). NULL for the source.
 			ALTER TABLE "${qSchema}".entry_bodies ADD COLUMN IF NOT EXISTS translation JSONB;
 		`),
 	},
@@ -217,13 +217,13 @@ const STEPS: readonly MigrationStep[] = [
 			);
 
 			DROP INDEX IF EXISTS "${qSchema}".body_templates_collection_name_idx;
-			-- 예전 메모·포스트에 같은 이름이 있으면 한쪽 이름만 구분해 본문과 ID를 모두 보존한다.
+			-- If old memos and posts share a name, rename only one of them so both the body and the ID are preserved.
 			WITH ranked AS (
 				SELECT id, ROW_NUMBER() OVER (PARTITION BY lower(name) ORDER BY created_at, id) AS position
 				FROM "${qSchema}".body_templates
 			)
 			UPDATE "${qSchema}".body_templates AS template
-			SET name = left(template.name, 50) || ' (통합 ' || template.id::text || ')'
+			SET name = left(template.name, 50) || ' (merged ' || template.id::text || ')'
 			FROM ranked WHERE template.id = ranked.id AND ranked.position > 1;
 			ALTER TABLE "${qSchema}".body_templates DROP COLUMN IF EXISTS for_collection;
 			CREATE UNIQUE INDEX IF NOT EXISTS body_templates_name_idx
@@ -260,7 +260,7 @@ const STEPS: readonly MigrationStep[] = [
 		/** 다국어: 언어별 문서·번역 묶음·언어별 주소 */
 		run: (client, qSchema) =>
 			client.query(`
-			-- v2 B4 다국어: 언어별 문서 + 번역 묶음. 번역 묶음 ID는 원문의 ID이고, 원문은 NULL(자기 자신)로 둔다.
+			-- v2 B4 multilingual: one document per language + translation group. The group ID is the source's ID; the source itself is NULL.
 			ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT '${DEFAULT_LOCALE}';
 			ALTER TABLE "${qSchema}".entries ADD COLUMN IF NOT EXISTS translation_group_id UUID REFERENCES "${qSchema}".entries(id) ON DELETE NO ACTION;
 			CREATE UNIQUE INDEX IF NOT EXISTS entries_translation_locale_key

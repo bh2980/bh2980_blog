@@ -2,6 +2,7 @@ import {
 	adminEntryEditHref,
 	COLLECTIONS,
 	type Collection,
+	createTranslator,
 	DEFAULT_COLLECTION,
 	DEFAULT_LOCALE,
 	isItemCollection,
@@ -15,8 +16,11 @@ import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminClientDashboard } from "../admin-dashboard";
 import { EntryEditorShell } from "../entries/entry-editor-shell";
+import { entryEditorShellMessages } from "../entries/entry-editor-shell.messages";
 import { copyTitle } from "../entries/entry-form";
+import { entriesMessages } from "../entries/messages";
 import { columnLabel, columnsFor } from "../list-columns";
+import { screensMessages } from "../messages";
 import { RecordPanel } from "../record-panel";
 import { AdminQueryProvider } from "../shared/query-provider";
 
@@ -24,6 +28,10 @@ import { AdminQueryProvider } from "../shared/query-provider";
  * 설정과 상관없는 관리자 화면 확인(M10-1 재발 방지). 컬렉션·필드 이름과 이름표를 적지 않고 지금 설정에서 읽는다.
  * 블로그 예시 설정과 다른 사이트 설정(`vitest.othersite.config.ts`) 둘 다로 돈다. 제목 필드 `title`만 이름으로 쓴다.
  */
+
+const t = createTranslator(screensMessages);
+const tEntries = createTranslator(entriesMessages);
+const tShell = createTranslator(entryEditorShellMessages);
 
 const content: Collection = DEFAULT_COLLECTION;
 const record = COLLECTIONS.find((name) => isItemCollection(name)) as Collection;
@@ -158,7 +166,7 @@ describe("any site: list screen", () => {
 			.join(" | ");
 		for (const column of columnsFor(content).defaults) expect(headers).toContain(columnLabel(content, column));
 		// 새 항목 버튼은 컬렉션 이름표를 쓴다.
-		expect(screen.getByRole("button", { name: `${schemaOf(content).label} 추가` })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("list.add", { label: schemaOf(content).label }) })).toBeTruthy();
 	});
 
 	it("duplicates a row with a copy title made by the admin", async () => {
@@ -177,7 +185,7 @@ describe("any site: list screen", () => {
 		await act(async () => {
 			fireEvent.contextMenu(row);
 		});
-		fireEvent.click(await screen.findByRole("menuitem", { name: "복제" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: t("menu.duplicate") }));
 		await waitFor(() => expect(calls("POST", "/api/cms/v1/entries/e1/duplicate")).toHaveLength(1));
 		expect(bodyOf(calls("POST", "/api/cms/v1/entries/e1/duplicate")[0])).toEqual({
 			title: copyTitle(content, "Alpha"),
@@ -188,15 +196,15 @@ describe("any site: list screen", () => {
 
 describe("any site: copy title", () => {
 	it("adds the copy suffix and stays within the title field's max", () => {
-		expect(copyTitle(content, "Alpha")).toBe("Alpha (복사)");
-		expect(copyTitle(content, "  ")).toBe("제목 없음 (복사)");
+		expect(copyTitle(content, "Alpha")).toBe(`Alpha${tEntries("copy.suffix")}`);
+		expect(copyTitle(content, "  ")).toBe(`${tEntries("untitled")}${tEntries("copy.suffix")}`);
 		const field = storedField(content, "title")?.field;
 		const max = field?.kind === "text" ? field.max : undefined;
 		const long = copyTitle(content, "x".repeat(500));
-		if (max === undefined) expect(long).toBe(`${"x".repeat(500)} (복사)`);
+		if (max === undefined) expect(long).toBe(`${"x".repeat(500)}${tEntries("copy.suffix")}`);
 		else {
 			expect(Array.from(long)).toHaveLength(max);
-			expect(long.endsWith(" (복사)")).toBe(true);
+			expect(long.endsWith(tEntries("copy.suffix"))).toBe(true);
 		}
 	});
 });
@@ -209,11 +217,11 @@ describe("any site: record panel", () => {
 				: undefined;
 		const onSaved = vi.fn();
 		render(<RecordPanel target={{ collection: record, id: null }} onClose={vi.fn()} onSaved={onSaved} />);
-		const panel = screen.getByRole("complementary", { name: `${schemaOf(record).label} 추가` });
+		const panel = screen.getByRole("complementary", { name: t("list.add", { label: schemaOf(record).label }) });
 		fireEvent.change(within(panel).getByRole("textbox", { name: new RegExp(titleLabel(record)) }), {
 			target: { value: "New record" },
 		});
-		fireEvent.click(within(panel).getByRole("button", { name: "저장" }));
+		fireEvent.click(within(panel).getByRole("button", { name: t("common.save") }));
 		await waitFor(() => expect(calls("POST", "/api/cms/v1/entries")).toHaveLength(1));
 		expect(bodyOf(calls("POST", "/api/cms/v1/entries")[0])).toEqual({
 			collection: record,
@@ -261,7 +269,7 @@ describe("any site: entry editor", () => {
 		}
 
 		fireEvent.change(title, { target: { value: "Changed title" } });
-		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		fireEvent.click(screen.getByRole("button", { name: tShell("save") }));
 		await waitFor(() => expect(calls("PATCH", "/api/cms/v1/entries/entry-1")).toHaveLength(1));
 		const body = bodyOf(calls("PATCH", "/api/cms/v1/entries/entry-1")[0]);
 		expect(body.metadata.title).toBe("Changed title");

@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type LucideIcon, MoreHorizontal } from "lucide-react";
 import { cloneElement, type ReactElement } from "react";
 import { useHydrated } from "../../lib/hooks/use-hydrated";
@@ -30,6 +31,9 @@ import {
 	DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import { IconButton } from "../../ui/icon-button";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 /**
  * 오른쪽 클릭 메뉴와 `⋯` 버튼이 함께 쓰는 메뉴 정의(v2 A2). 같은 목록을 두 곳에서 렌더해
@@ -83,7 +87,7 @@ function ContextItems({ actions }: { actions: MenuAction[] }) {
 						</ContextMenuSubTrigger>
 						<ContextMenuSubContent className="max-h-80 overflow-y-auto">
 							{action.items.length === 0 ? (
-								<ContextMenuItem disabled>{action.emptyLabel ?? "항목이 없습니다"}</ContextMenuItem>
+								<ContextMenuItem disabled>{action.emptyLabel ?? t("menu.empty")}</ContextMenuItem>
 							) : (
 								<ContextItems actions={action.items} />
 							)}
@@ -130,7 +134,7 @@ function DropdownItems({ actions }: { actions: MenuAction[] }) {
 						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent className="max-h-80 overflow-y-auto">
 							{action.items.length === 0 ? (
-								<DropdownMenuItem disabled>{action.emptyLabel ?? "항목이 없습니다"}</DropdownMenuItem>
+								<DropdownMenuItem disabled>{action.emptyLabel ?? t("menu.empty")}</DropdownMenuItem>
 							) : (
 								<DropdownItems actions={action.items} />
 							)}

@@ -1,11 +1,14 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { slugify } from "@bh2980/cms/client";
+import { createTranslator, slugify } from "@bh2980/cms/client";
 import { APICallError, generateText, NoObjectGeneratedError, Output, RetryError, streamText } from "ai";
 import { z } from "zod";
 import type { AiInputKind } from "./action";
 import type { AiModelInfo } from "./connection";
 import type { AiResult } from "./definition";
 import { AiError } from "./errors";
+import { providerMessages } from "./provider.messages";
+
+const t = createTranslator(providerMessages);
 
 /**
  * AI 서비스 포트. 연결(주소·키)과 모델 하나로 만든다. 연결은 AI 화면 설정(`settings.ts`)에서 받는다.
@@ -91,11 +94,11 @@ function providerError(status: number | undefined, detail: string): AiError {
 	const message = serviceMessage(detail);
 	console.error("AI provider error:", status, message);
 	const withDetail = (text: string) => (message ? `${text} — ${message}` : text);
-	if (status === 401 || status === 403) return new AiError("ai_unavailable", withDetail("AI 서비스 키를 확인하세요."));
-	if (status === 402) return new AiError("ai_unavailable", withDetail("AI 서비스 크레딧이 부족합니다."));
-	if (status === 404) return new AiError("ai_failed", withDetail("AI 서비스 주소나 모델 이름을 확인하세요."));
-	if (status === 429) return new AiError("ai_rate_limited", withDetail("AI 요청이 많습니다. 잠시 뒤 다시 시도하세요."));
-	return new AiError("ai_failed", withDetail("AI 서비스에 문제가 있습니다."));
+	if (status === 401 || status === 403) return new AiError("ai_unavailable", withDetail(t("service.key")));
+	if (status === 402) return new AiError("ai_unavailable", withDetail(t("service.credit")));
+	if (status === 404) return new AiError("ai_failed", withDetail(t("service.address")));
+	if (status === 429) return new AiError("ai_rate_limited", withDetail(t("service.rateLimited")));
+	return new AiError("ai_failed", withDetail(t("service.problem")));
 }
 
 const isAbort = (error: unknown) => error instanceof Error && error.name === "AbortError";
@@ -213,9 +216,9 @@ export function createGenerator(config: { baseUrl: string; apiKey: string; model
 					if (APICallError.isInstance(error)) {
 						throw providerError(error.statusCode, error.responseBody ?? error.message);
 					}
-					throw new AiError("ai_failed", "AI 답을 받는 중에 끊겼습니다.");
+					throw new AiError("ai_failed", t("streamCut"));
 				} else if (part.type === "finish" && part.finishReason === "length") {
-					throw new AiError("ai_failed", "AI 답이 길어 끝까지 받지 못했습니다.");
+					throw new AiError("ai_failed", t("tooLong"));
 				}
 			}
 		},
@@ -236,12 +239,9 @@ export function createGenerator(config: { baseUrl: string; apiKey: string; model
 				throw providerError(lastError.statusCode, lastError.responseBody ?? lastError.message);
 			}
 			if (isTruncated(lastError)) {
-				throw new AiError(
-					"ai_failed",
-					"AI 답이 길어 끝까지 받지 못했습니다. 생각을 오래 하는 모델이면 다른 모델을 골라 보세요.",
-				);
+				throw new AiError("ai_failed", t("tooLongModel"));
 			}
-			throw new AiError("ai_failed", "AI 답에서 결과를 읽지 못했습니다. 다른 모델을 골라 보세요.");
+			throw new AiError("ai_failed", t("unreadable"));
 		},
 	};
 }
@@ -266,7 +266,7 @@ export function createDecider(config: { url: string; apiKey: string; model: stri
 				});
 			} catch (error) {
 				if (isAbort(error)) throw error;
-				throw new AiError("ai_failed", "판단 모델 주소에 연결하지 못했습니다.");
+				throw new AiError("ai_failed", t("deciderUnreachable"));
 			}
 			const text = await response.text();
 			if (!response.ok) throw providerError(response.status, text);
@@ -281,7 +281,7 @@ export function createDecider(config: { url: string; apiKey: string; model: stri
 			);
 			if (!parsed.success) {
 				console.error("Decision response has an unexpected shape:", text.slice(0, 500));
-				throw new AiError("ai_failed", "판단 모델 답의 형식이 맞지 않습니다.");
+				throw new AiError("ai_failed", t("deciderShape"));
 			}
 			return parsed.data.answers;
 		},
@@ -298,7 +298,7 @@ export async function listModels(baseUrl: string, apiKey: string | null, signal?
 		});
 	} catch (error) {
 		if (isAbort(error)) throw error;
-		throw new AiError("ai_failed", "주소에 연결하지 못했습니다.");
+		throw new AiError("ai_failed", t("unreachable"));
 	}
 	if (response.status === 404) return [];
 	if (!response.ok) throw providerError(response.status, await response.text());
@@ -340,12 +340,12 @@ const startsWithWords = (mdx: string) => /^[\p{L}\p{N}]/u.test(mdx.trim());
 function fakeText(result: AiResult, hint: AiFakeHint, streaming: boolean): string {
 	if (hint.answer) return hint.answer();
 	const title = firstOf(hint, ["text"])?.trim().slice(0, 60);
-	if (result === "note") return "(fake) 메모";
-	if (result === "text") return `(fake) ${(title || firstOf(hint, ["mdx", "value"]) || "글").slice(0, 60)}`;
+	if (result === "note") return "(fake) note";
+	if (result === "text") return `(fake) ${(title || firstOf(hint, ["mdx", "value"]) || "text").slice(0, 60)}`;
 	const source = firstOf(hint, ["mdx"]);
 	if (source !== undefined) return streaming && startsWithWords(source) ? `(fake) ${source}` : source;
-	const heading = title || "새 글";
-	return `## ${heading}\n\n(fake) ${heading}에 대한 첫 문단입니다. 흘려받기로 조금씩 채워집니다.\n\n(fake) 두 번째 문단입니다.`;
+	const heading = title || "New post";
+	return `## ${heading}\n\n(fake) First paragraph about ${heading}. It fills in little by little while streaming.\n\n(fake) Second paragraph.`;
 }
 
 /** 가짜 후보. 기능이 정한 답(줄마다 하나), 선택지, 코드에서 찾을 정규식, 글로 만든 낱말 묶음 순으로 고른다. */

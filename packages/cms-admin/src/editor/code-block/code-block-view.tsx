@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	CODE_LINE_EFFECTS,
 	type CodeLineEffect,
@@ -32,8 +33,11 @@ import {
 import { CODE_LANGUAGE_OPTIONS } from "./languages";
 import { LineMenu } from "./line-menu";
 import { startLinkFromLines } from "./link-commands";
+import { codeBlockMessages } from "./messages";
 import { formatMeta, parseMeta } from "./meta";
 import { RulesPanel } from "./rules-panel";
+
+const t = createTranslator(codeBlockMessages);
 
 /** 한 줄 높이(px). 코드(`leading-6`)와 줄 번호 칸·줄 배경이 같은 높이를 쓴다. */
 const LINE_HEIGHT = 24;
@@ -229,8 +233,8 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 							items={languageOptions}
 							onValueChange={(value) => value && updateAttributes({ language: value })}
 						>
-							<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label="코드 언어">
-								<SelectValue placeholder="언어" />
+							<SelectTrigger size="sm" className="h-7 w-36 text-xs" aria-label={t("view.language")}>
+								<SelectValue placeholder={t("view.languagePlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
 								{CODE_LANGUAGE_OPTIONS.map((option) => (
@@ -241,11 +245,11 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 							</SelectContent>
 						</Select>
 						<Input
-							placeholder="파일 경로"
+							placeholder={t("view.filePath")}
 							value={parsedMeta.title}
 							onChange={(event) => setMeta({ title: event.target.value })}
 							className="h-7 w-48 text-xs"
-							aria-label="파일 경로"
+							aria-label={t("view.filePath")}
 						/>
 					</div>
 				) : (
@@ -259,14 +263,14 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						<Tooltip>
 							<TooltipTrigger render={<span className="flex items-center gap-1 px-1" />}>
 								<Info aria-hidden className="size-3.5" />
-								원문 편집
+								{t("view.rawMode")}
 							</TooltipTrigger>
-							<TooltipContent>에디터가 나타낼 수 없는 주석이 있습니다</TooltipContent>
+							<TooltipContent>{t("view.rawModeHint")}</TooltipContent>
 						</Tooltip>
 					) : (
 						<>
 							<IconButton
-								label="줄 효과"
+								label={t("view.lineEffects")}
 								size="icon-xs"
 								className="size-7"
 								disabled={!(picked ?? selectedLines)}
@@ -303,18 +307,18 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 										size="sm"
 										pressed={parsedMeta.showLineNumbers}
 										onPressedChange={(pressed) => setMeta({ showLineNumbers: pressed })}
-										aria-label="줄 번호"
+										aria-label={t("view.lineNumbers")}
 										className="size-7 min-w-7 p-0"
 									/>
 								}
 							>
 								<ListOrdered aria-hidden className="size-3.5" />
 							</TooltipTrigger>
-							<TooltipContent>줄 번호</TooltipContent>
+							<TooltipContent>{t("view.lineNumbers")}</TooltipContent>
 						</Tooltip>
 					)}
 					<IconButton
-						label={copied ? "복사했습니다" : "코드 복사"}
+						label={copied ? t("view.copied") : t("view.copy")}
 						size="icon-xs"
 						className="size-7"
 						onClick={handleCopy}
@@ -349,7 +353,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								key={line}
 								data-line={line}
 								data-anchored={anchored || undefined}
-								title={anchored ? "본문과 연결된 줄" : undefined}
+								title={anchored ? t("view.anchoredLine") : undefined}
 								onMouseDown={(event) => startLineDrag(line, event)}
 								onMouseEnter={() => extendLineDrag(line)}
 								onContextMenu={(event) => openLineMenuAt(line, event)}
@@ -364,7 +368,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								<span className="flex w-4 justify-center">
 									{collapse && (
 										<IconButton
-											label={collapse.open ? `${line + 1}번째 줄부터 접기` : `${line + 1}번째 줄부터 펼치기`}
+											label={t(collapse.open ? "view.collapseFrom" : "view.expandFrom", { line: line + 1 })}
 											side="left"
 											size="icon-xs"
 											aria-expanded={collapse.open}

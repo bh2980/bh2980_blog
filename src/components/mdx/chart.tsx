@@ -20,6 +20,7 @@ import {
 	type CartesianChartSpec,
 	CHART_LEGEND_HEIGHT,
 	type ChartRenderError,
+	chartErrorMessage,
 	type NormalizedChartSpec,
 	normalizeChartDsl,
 	type PieChartSpec,
@@ -89,7 +90,7 @@ const estimateYAxisWidth = (spec: CartesianChartSpec) => {
 };
 
 const ChartErrorCard = ({ errors }: { errors: ChartRenderError[] }) => {
-	const { t } = useTranslate();
+	const { t, locale } = useTranslate();
 	return (
 		<div className="not-prose my-6">
 			<Alert variant="danger">
@@ -98,8 +99,8 @@ const ChartErrorCard = ({ errors }: { errors: ChartRenderError[] }) => {
 				<AlertDescription>
 					<ul className="ml-4 list-disc space-y-1">
 						{errors.map((error) => (
-							<li key={`${error.line}-${error.message}`}>
-								{t("mdx.chartErrorLine", { line: error.line, message: error.message })}
+							<li key={`${error.line}-${error.code}-${JSON.stringify(error.values ?? {})}`}>
+								{t("mdx.chartErrorLine", { line: error.line, message: chartErrorMessage(error, locale) })}
 							</li>
 						))}
 					</ul>

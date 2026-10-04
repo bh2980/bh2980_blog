@@ -1,9 +1,12 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, isCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, createTranslator, isCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
 import { useQueries } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cmsFetch } from "../admin-api";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 /** record 컬렉션(§5.2) 이름. 관계 필드의 선택지와 추가(v2 B2)에 쓴다. */
 export type RecordCollection = string;
@@ -36,7 +39,11 @@ async function loadAll(collection: RecordCollection): Promise<TaxonomyOption[]> 
 		params.append("status", "published");
 		const data = await cmsFetch<ListResponse>(`/api/cms/v1/entries?${params.toString()}`);
 		options.push(
-			...data.items.map((item) => ({ id: item.id, title: item.title || item.slug || "이름 없음", slug: item.slug })),
+			...data.items.map((item) => ({
+				id: item.id,
+				title: item.title || item.slug || t("taxonomy.unnamed"),
+				slug: item.slug,
+			})),
 		);
 		if (options.length >= data.total || data.items.length === 0) break;
 	}
@@ -62,7 +69,7 @@ export function useTaxonomy(collection: RecordCollection, enabled = true) {
 			]);
 			setError(null);
 		} catch {
-			setError(`${labelOf(collection)} 목록을 불러오지 못했습니다.`);
+			setError(t("taxonomy.loadFailed", { label: labelOf(collection) }));
 		}
 	}, [collection]);
 

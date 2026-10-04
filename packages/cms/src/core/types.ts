@@ -11,7 +11,13 @@ import type { TranslationState } from "./translation/state";
 
 export type Issue = {
 	readonly code: string;
+	/**
+	 * 사이트 화면 언어의 안내. 코드·`params`에서 `cms.core` 사전으로 만들거나(표 검사), 대상 이름(속성 이름·주소·파서 오류)을
+	 * 담는다. 화면은 코드로 문구를 고르고 `message`는 덧붙인다.
+	 */
 	readonly message?: string;
+	/** 같은 코드 안의 갈래(`reason`)와 문구의 값 자리를 채우는 값. */
+	readonly params?: Readonly<Record<string, string | number>>;
 	/** 본문 문제의 위치. */
 	readonly position?: { readonly line: number; readonly column: number };
 	/** 메타데이터 문제의 필드 경로. */

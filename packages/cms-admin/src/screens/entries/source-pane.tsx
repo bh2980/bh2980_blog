@@ -8,6 +8,7 @@ import { buildEditorExtensions } from "../../editor/extensions";
 import { mdxToTiptap } from "../../editor/tiptap-content";
 import { cn } from "../../lib/utils/cn";
 import { IconButton } from "../../ui/icon-button";
+import { t } from "./translate";
 
 const PROSE =
 	"prose dark:prose-invert max-w-none text-base text-foreground leading-relaxed focus:outline-none " +
@@ -32,7 +33,7 @@ function PreviewEditor({ mdx, label }: { mdx: string; label: string }) {
 }
 
 /** 읽기 전용 MDX 미리보기. 글 모양 그대로 그린다. 내용이 바뀌면 편집기를 새로 만든다. */
-export function MdxPreview({ mdx, label = "미리보기" }: { mdx: string; label?: string }) {
+export function MdxPreview({ mdx, label = t("sourcePane.preview") }: { mdx: string; label?: string }) {
 	return <PreviewEditor key={mdx} mdx={mdx} label={label} />;
 }
 
@@ -57,15 +58,15 @@ export function SourcePane({
 	return (
 		<aside
 			ref={ref}
-			aria-label="원문 창"
+			aria-label={t("sourcePane.aria")}
 			className={cn("flex h-full min-w-0 flex-col overflow-y-auto border-r bg-background", className)}
 		>
 			<div
 				data-source-header
 				className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur"
 			>
-				<h2 className="flex-1 font-medium text-sm">{locale.toUpperCase()} 원문</h2>
-				<IconButton label="닫기" side="bottom" onClick={onClose}>
+				<h2 className="flex-1 font-medium text-sm">{t("sourcePane.heading", { locale: locale.toUpperCase() })}</h2>
+				<IconButton label={t("close")} side="bottom" onClick={onClose}>
 					<X aria-hidden className="size-4" />
 				</IconButton>
 			</div>
@@ -75,10 +76,10 @@ export function SourcePane({
 					!title && "text-muted-foreground/40",
 				)}
 			>
-				{title || "제목 없음"}
+				{title || t("untitled")}
 			</h1>
 			<div className="px-6 pt-6 pb-[35vh]">
-				<MdxPreview mdx={mdx} label="원문 본문" />
+				<MdxPreview mdx={mdx} label={t("sourcePane.body")} />
 			</div>
 		</aside>
 	);

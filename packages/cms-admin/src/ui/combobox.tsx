@@ -1,11 +1,15 @@
 "use client";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
+import { createTranslator } from "@bh2980/cms/client";
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./input-group";
+import { uiMessages } from "./messages";
+
+const t = createTranslator(uiMessages);
 
 const Combobox = ComboboxPrimitive.Root;
 
@@ -35,7 +39,7 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
 			{...props}
 		>
 			<XIcon className="pointer-events-none" aria-hidden />
-			<span className="sr-only">지우기</span>
+			<span className="sr-only">{t("clear")}</span>
 		</ComboboxPrimitive.Clear>
 	);
 }
@@ -221,7 +225,7 @@ function ComboboxChip({
 					data-slot="combobox-chip-remove"
 				>
 					<XIcon className="pointer-events-none" aria-hidden />
-					<span className="sr-only">선택 해제</span>
+					<span className="sr-only">{t("deselect")}</span>
 				</ComboboxPrimitive.ChipRemove>
 			)}
 		</ComboboxPrimitive.Chip>

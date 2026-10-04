@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { CellSelection } from "@tiptap/pm/tables";
@@ -19,7 +20,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Separator } from "../ui/separator";
 import { BLOCK_TOOLBAR } from "./blocks/shared";
+import { editorMessages } from "./messages";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
+
+const t = createTranslator(editorMessages);
 
 const chain = (editor: Editor) => editor.chain().focus();
 const isCellSelection = (editor: Editor): boolean => editor.state.selection instanceof CellSelection;
@@ -65,26 +69,56 @@ const fillTableWidth = (editor: Editor) => {
 /** 표 안에 커서가 있을 때 표 위에 뜨는 조작 도구(§4.1, v2 C6). 표 삭제는 블록 손잡이 메뉴에 있다. */
 const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	[
-		{ label: "↑행", title: "위에 행 추가", icon: BetweenHorizontalStart, run: (e) => chain(e).addRowBefore().run() },
-		{ label: "↓행", title: "아래에 행 추가", icon: BetweenHorizontalEnd, run: (e) => chain(e).addRowAfter().run() },
-		{ label: "←열", title: "왼쪽에 열 추가", icon: BetweenVerticalStart, run: (e) => chain(e).addColumnBefore().run() },
-		{ label: "→열", title: "오른쪽에 열 추가", icon: BetweenVerticalEnd, run: (e) => chain(e).addColumnAfter().run() },
-	],
-	[
-		{ label: "행 삭제", icon: Rows3, className: "text-destructive", run: (e) => chain(e).deleteRow().run() },
-		{ label: "열 삭제", icon: Columns3, className: "text-destructive", run: (e) => chain(e).deleteColumn().run() },
+		{
+			label: t("tableToolbar.addRowBeforeLabel"),
+			title: t("tableToolbar.addRowBefore"),
+			icon: BetweenHorizontalStart,
+			run: (e) => chain(e).addRowBefore().run(),
+		},
+		{
+			label: t("tableToolbar.addRowAfterLabel"),
+			title: t("tableToolbar.addRowAfter"),
+			icon: BetweenHorizontalEnd,
+			run: (e) => chain(e).addRowAfter().run(),
+		},
+		{
+			label: t("tableToolbar.addColumnBeforeLabel"),
+			title: t("tableToolbar.addColumnBefore"),
+			icon: BetweenVerticalStart,
+			run: (e) => chain(e).addColumnBefore().run(),
+		},
+		{
+			label: t("tableToolbar.addColumnAfterLabel"),
+			title: t("tableToolbar.addColumnAfter"),
+			icon: BetweenVerticalEnd,
+			run: (e) => chain(e).addColumnAfter().run(),
+		},
 	],
 	[
 		{
-			label: "셀 병합",
-			title: "셀 병합",
+			label: t("tableToolbar.deleteRow"),
+			icon: Rows3,
+			className: "text-destructive",
+			run: (e) => chain(e).deleteRow().run(),
+		},
+		{
+			label: t("tableToolbar.deleteColumn"),
+			icon: Columns3,
+			className: "text-destructive",
+			run: (e) => chain(e).deleteColumn().run(),
+		},
+	],
+	[
+		{
+			label: t("tableToolbar.mergeCells"),
+			title: t("tableToolbar.mergeCells"),
 			icon: TableCellsMerge,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().mergeCells(),
 			run: (e) => chain(e).mergeCells().run(),
 		},
 		{
-			label: "셀 나누기",
-			title: "셀 나누기",
+			label: t("tableToolbar.splitCell"),
+			title: t("tableToolbar.splitCell"),
 			icon: TableCellsSplit,
 			isDisabled: (e) => !isCellSelection(e) || !e.can().splitCell(),
 			run: (e) => chain(e).splitCell().run(),
@@ -92,8 +126,8 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 	],
 	[
 		{
-			label: "폭 채우기",
-			title: "폭 채우기",
+			label: t("tableToolbar.fillWidth"),
+			title: t("tableToolbar.fillWidth"),
 			icon: MoveHorizontal,
 			isDisabled: (e) => {
 				const table = findTable(e);
@@ -152,7 +186,7 @@ export function TableToolbar({ editor }: { editor: Editor }) {
 		// 위쪽 서식 도구(sticky)에 가리지 않게, 표가 위로 스크롤되면 서식 도구 바로 아래에 붙는다.
 		const formatBar = editor.view.dom
 			.closest("[data-cms-editor-shell]")
-			?.querySelector('[role="toolbar"][aria-label="서식 도구"]');
+			?.querySelector(`[role="toolbar"][aria-label="${t("toolbar.format")}"]`);
 		const minTop = (formatBar?.getBoundingClientRect().bottom ?? 0) + TOOLBAR_GAP;
 		const top = Math.min(Math.max(rect.top - height - TOOLBAR_GAP, minTop), rect.bottom - height);
 		const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
@@ -165,7 +199,7 @@ export function TableToolbar({ editor }: { editor: Editor }) {
 		<div
 			ref={toolbarRef}
 			role="toolbar"
-			aria-label="표 도구"
+			aria-label={t("tableToolbar.label")}
 			style={{ position: "fixed", top: position?.top ?? -9999, left: position?.left ?? -9999, zIndex: 30 }}
 			className={BLOCK_TOOLBAR}
 		>

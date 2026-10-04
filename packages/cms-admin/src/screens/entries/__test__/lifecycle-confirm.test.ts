@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LIFECYCLE_SUCCESS, lifecycleConfirm } from "../lifecycle-confirm";
+import { t } from "../translate";
 
 const source = {
 	id: "src",
@@ -20,34 +21,32 @@ describe("상태 전환 확인 문구", () => {
 			{ state: "draft" },
 		] as never);
 		expect(confirm.description).toBe(
-			"이 글을 보관할까요? 공개가 종료됩니다. 공개본에서 이 글을 참조하는 콘텐츠가 2개 있습니다.",
+			`${t("lifecycle.archive.ask", { translation: 0 })}${t("lifecycle.usage", { count: 2 })}`,
 		);
 	});
 
 	it("원문을 휴지통으로 보내면 휴지통에 없는 번역본 언어를 알린다", () => {
 		const confirm = lifecycleConfirm("trash", source, []);
 		expect(confirm).toEqual({
-			title: "휴지통으로 이동",
-			description: "이 글을 휴지통으로 이동할까요? 공개가 종료됩니다. EN 번역본도 함께 휴지통으로 이동합니다.",
-			confirmLabel: "휴지통으로 이동",
+			title: t("lifecycle.trash"),
+			description: `${t("lifecycle.trash.ask", { translation: 0 })}${t("lifecycle.trash.group", { locales: "EN" })}`,
+			confirmLabel: t("lifecycle.trash"),
 			destructive: true,
 		});
 	});
 
 	it("원문을 보관하면 번역본도 보관한다고 알린다", () => {
 		expect(lifecycleConfirm("archive", source, []).description).toBe(
-			"이 글을 보관할까요? 공개가 종료됩니다. 번역본도 함께 보관합니다.",
+			`${t("lifecycle.archive.ask", { translation: 0 })}${t("lifecycle.archive.group")}`,
 		);
 	});
 
 	it("번역본을 옮길 때는 묶음 안내가 없다", () => {
-		expect(lifecycleConfirm("trash", translation, []).description).toBe(
-			"이 번역본을 휴지통으로 이동할까요? 공개가 종료됩니다.",
-		);
+		expect(lifecycleConfirm("trash", translation, []).description).toBe(t("lifecycle.trash.ask", { translation: 1 }));
 	});
 
 	it("묻지 않는 전환도 끝나면 알릴 문구가 있다", () => {
-		expect(LIFECYCLE_SUCCESS.unarchive).toBe("보관을 해제했습니다.");
-		expect(LIFECYCLE_SUCCESS.restore).toBe("복원했습니다.");
+		expect(LIFECYCLE_SUCCESS.unarchive).toBe(t("lifecycle.success.unarchive"));
+		expect(LIFECYCLE_SUCCESS.restore).toBe(t("lifecycle.success.restore"));
 	});
 });

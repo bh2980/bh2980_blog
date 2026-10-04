@@ -1,12 +1,15 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, createTranslator, isCollection } from "@bh2980/cms/client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils/cn";
 import { CollectionIcon } from "../screens/shared/collection-icon";
 import { Spinner } from "../ui/spinner";
 import { type InternalLinkItem, internalLinkHref } from "./internal-link";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 interface InternalLinkPopupProps {
 	items: InternalLinkItem[];
@@ -21,7 +24,12 @@ interface InternalLinkPopupProps {
 function itemMeta(item: InternalLinkItem): string {
 	const collection = isCollection(item.collection) ? COLLECTION_DEFINITIONS[item.collection].label : item.collection;
 	// 초안 대상 링크는 편집 중 허용하되 표시한다. 발행하려면 대상이 공개되어야 한다(§6.2).
-	const status = item.status && item.status !== "published" ? (item.status === "draft" ? "초안" : item.status) : null;
+	const status =
+		item.status && item.status !== "published"
+			? item.status === "draft"
+				? t("internalLink.draft")
+				: item.status
+			: null;
 	// 링크가 실제로 가리킬 공개 경로(컬렉션 `path`)를 보인다.
 	return [collection, internalLinkHref(item), status].filter(Boolean).join(" · ");
 }
@@ -57,7 +65,7 @@ export function InternalLinkPopup({
 		<div
 			ref={listRef}
 			role="listbox"
-			aria-label="내부 글 링크"
+			aria-label={t("internalLink.label")}
 			aria-busy={isLoading}
 			tabIndex={-1}
 			style={{ position: "fixed", top: `${coords.top + 24}px`, left: `${coords.left}px`, zIndex: 9999 }}
@@ -101,10 +109,10 @@ export function InternalLinkPopup({
 			{isLoading ? (
 				<output className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
 					<Spinner className="size-3.5" />
-					검색 중…
+					{t("internalLink.searching")}
 				</output>
 			) : (
-				items.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">검색 결과가 없습니다.</p>
+				items.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">{t("internalLink.empty")}</p>
 			)}
 		</div>,
 		document.body,

@@ -357,7 +357,10 @@ describe("ContentService M2-TW-1 Contract", () => {
 				mdx: '<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />',
 			});
 			expect(snap.issues).toContainEqual(
-				expect.objectContaining({ code: "mdx_error", message: expect.stringContaining("폐기된") }),
+				expect.objectContaining({
+					code: "mdx_error",
+					params: expect.objectContaining({ reason: "retired_jsx_element", name: "ContentLink" }),
+				}),
 			);
 		});
 

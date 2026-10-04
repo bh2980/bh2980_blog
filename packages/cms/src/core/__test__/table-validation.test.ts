@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { contentCollection } from "../../../test/any-site";
+import { createTranslator } from "../../i18n";
+import { coreMessages } from "../messages";
 import { prepareSnapshot } from "../snapshot";
 
 describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
@@ -55,7 +57,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 
 		const tableWarnings = (snap.warnings ?? []).filter((w) => w.code === "invalid_table_span");
 		expect(tableWarnings.length).toBeGreaterThan(0);
-		expect(tableWarnings[0]?.message).toContain("초과합니다");
+		expect(tableWarnings[0]?.params).toMatchObject({ reason: "rowspan_overflow", rowspan: 5, rows: 2 });
 	});
 
 	it("병합 셀이 서로 겹치면 경고한다", async () => {
@@ -105,7 +107,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 
 		const tableWarnings = (snap.warnings ?? []).filter((w) => w.code === "invalid_table_span");
 		expect(tableWarnings.length).toBeGreaterThan(0);
-		expect(tableWarnings[0]?.message).toContain("열 수가 일치하지 않거나");
+		expect(tableWarnings[0]?.params).toMatchObject({ reason: "ragged_rows" });
 	});
 
 	it("잘못된 span 값(0 이하 또는 숫자가 아님)을 경고한다", async () => {
@@ -120,6 +122,8 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 
 		const tableWarnings = (snap.warnings ?? []).filter((w) => w.code === "invalid_table_span");
 		expect(tableWarnings.length).toBeGreaterThan(0);
-		expect(tableWarnings[0]?.message).toContain("잘못된 colspan 값입니다");
+		expect(tableWarnings[0]?.params).toMatchObject({ reason: "invalid_colspan", value: "0" });
+		// 문구는 코드에서 사전으로 만든다(사이트 화면 언어).
+		expect(tableWarnings[0]?.message).toBe(createTranslator(coreMessages)("table.invalid_colspan", { value: "0" }));
 	});
 });

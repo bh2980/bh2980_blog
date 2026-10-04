@@ -3,6 +3,7 @@
 import {
 	type AdminColumnSettings,
 	adminEntryEditHref,
+	createTranslator,
 	isItemCollection,
 	LOCALES,
 	localeLabel,
@@ -52,6 +53,7 @@ import {
 	knownColumnRecord,
 } from "./list-columns";
 import type { ListState } from "./list-state";
+import { screensMessages } from "./messages";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
@@ -60,6 +62,8 @@ import { formatDateOnly, formatDateTime, zonedYear } from "./shared/format-date"
 import { OPEN_ITEM } from "./shared/side-panel";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
 import type { TaxonomyOptions } from "./shared/use-taxonomy";
+
+const t = createTranslator(screensMessages);
 
 export { columnsFor };
 
@@ -143,7 +147,7 @@ function ColumnResizeHandle({
 		<div
 			role="separator"
 			aria-orientation="vertical"
-			aria-label={`${label} 열 너비 조절`}
+			aria-label={t("list.resizeColumn", { label })}
 			aria-valuenow={width}
 			aria-valuemin={MIN_COLUMN_SIZE}
 			aria-valuemax={MAX_COLUMN_SIZE}
@@ -191,7 +195,7 @@ function LocaleBadges({ translations }: { translations: readonly ListTranslation
 					return (
 						<span key={locale} className={cn(BADGE_CLASS, "border-dashed text-muted-foreground/70")}>
 							<span aria-hidden="true">{locale.toUpperCase()}</span>
-							<span className="sr-only">{name} 없음</span>
+							<span className="sr-only">{t("locale.hasNot", { name })}</span>
 						</span>
 					);
 				}
@@ -232,9 +236,7 @@ function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
 						className={cn(BADGE_CLASS, named ? BADGE_TONE.published : "border-dashed text-muted-foreground/70")}
 					>
 						<span aria-hidden="true">{locale.toUpperCase()}</span>
-						<span className="sr-only">
-							{localeLabel(locale)} {named ? "있음" : "없음"}
-						</span>
+						<span className="sr-only">{t(named ? "locale.has" : "locale.hasNot", { name: localeLabel(locale) })}</span>
 					</span>
 				);
 			})}
@@ -244,7 +246,7 @@ function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
 
 /** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
 function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
-	const label = isRecord && item.status === "published" ? "활성" : describeEntryStatus(item);
+	const label = isRecord && item.status === "published" ? t("list.statusActive") : describeEntryStatus(item);
 	const tone =
 		item.status === "published"
 			? item.hasUnpublishedChanges
@@ -389,7 +391,7 @@ export function AdminEntriesTable({
 		const cell = (item: ListEntriesItem, column: AdminListColumn) => {
 			switch (column) {
 				case "title": {
-					const title = item.title || <span className="text-muted-foreground italic">제목 없음</span>;
+					const title = item.title || <span className="text-muted-foreground italic">{t("common.untitled")}</span>;
 					if (isTrash) return <span className="font-medium">{title}</span>;
 					return isRecord ? (
 						<Button
@@ -413,7 +415,7 @@ export function AdminEntriesTable({
 								<span className="flex min-w-0 shrink items-center gap-1 text-muted-foreground text-xs">
 									<FolderIcon aria-hidden className="size-3 shrink-0" />
 									<span className="truncate">
-										<span className="sr-only">폴더: </span>
+										<span className="sr-only">{t("list.folderSr")}</span>
 										{folderName(item.folderId)}
 									</span>
 								</span>
@@ -433,7 +435,7 @@ export function AdminEntriesTable({
 							<abbr title={localeLabel(item.locale)} className="font-medium no-underline">
 								{item.locale.toUpperCase()}
 							</abbr>
-							{item.translationGroupId !== item.id && <span className="ml-1">번역</span>}
+							{item.translationGroupId !== item.id && <span className="ml-1">{t("list.translation")}</span>}
 						</span>
 					);
 				case "updatedAt":
@@ -465,14 +467,14 @@ export function AdminEntriesTable({
 						checked={table.getIsAllPageRowsSelected()}
 						indeterminate={table.getIsSomePageRowsSelected()}
 						onCheckedChange={(value) => table.toggleAllPageRowsSelected(value === true)}
-						aria-label="현재 페이지 전체 선택"
+						aria-label={t("list.selectAll")}
 					/>
 				),
 				cell: ({ row }) => (
 					<Checkbox
 						checked={row.getIsSelected()}
 						onCheckedChange={(value) => row.toggleSelected(value === true)}
-						aria-label={`${row.original.title ?? "제목 없음"} 선택`}
+						aria-label={t("list.rowSelect", { title: row.original.title ?? t("common.untitled") })}
 					/>
 				),
 			}),
@@ -499,13 +501,13 @@ export function AdminEntriesTable({
 				id: "actions",
 				size: 52,
 				enableResizing: false,
-				header: () => <span className="sr-only">작업</span>,
+				header: () => <span className="sr-only">{t("list.actions")}</span>,
 				cell: ({ row }) => (
 					<div className="flex items-center justify-end gap-1 whitespace-nowrap">
 						{isTrash && (
 							<>
 								<Button type="button" variant="ghost" size="xs" onClick={() => onRestore?.(row.original)}>
-									복원
+									{t("list.restore")}
 								</Button>
 								<Button
 									type="button"
@@ -514,11 +516,14 @@ export function AdminEntriesTable({
 									className="text-destructive"
 									onClick={() => onPermanentDelete?.(row.original)}
 								>
-									영구 삭제
+									{t("list.permanentDelete")}
 								</Button>
 							</>
 						)}
-						<MoreActionsButton actions={rowMenu(row.original)} label={`${row.original.title ?? "제목 없음"} 작업`} />
+						<MoreActionsButton
+							actions={rowMenu(row.original)}
+							label={t("list.rowActions", { title: row.original.title ?? t("common.untitled") })}
+						/>
 					</div>
 				),
 			}),
@@ -679,7 +684,7 @@ export function AdminEntriesTable({
 	const folderRowMenu = (folder: Folder): MenuAction[] =>
 		folderActions
 			? [
-					{ kind: "item", label: "열기", icon: FolderOpen, onSelect: () => onSelectFolder(folder.id) },
+					{ kind: "item", label: t("list.folderOpen"), icon: FolderOpen, onSelect: () => onSelectFolder(folder.id) },
 					{ kind: "separator" },
 					...folderMenuActions(folder, folders, folderActions),
 				]
@@ -688,12 +693,12 @@ export function AdminEntriesTable({
 	const pageHref = (page: number) => `?page=${page}`;
 
 	return (
-		<section aria-label="항목 목록" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+		<section aria-label={t("list.label")} className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			{errorMessage && (
 				<Alert variant="danger" className="mx-5 mt-3 flex w-auto items-center justify-between">
 					<AlertDescription className="col-start-auto">{errorMessage}</AlertDescription>
 					<Button type="button" variant="outline" size="xs" onClick={onRetry}>
-						다시 시도
+						{t("common.retry")}
 					</Button>
 				</Alert>
 			)}
@@ -775,7 +780,7 @@ export function AdminEntriesTable({
 										onClick={() => onSelectFolder(explorer.parent ?? "all")}
 										className="h-auto p-0 text-muted-foreground hover:text-foreground"
 									>
-										.. 상위 폴더
+										{t("list.folderUp")}
 									</Button>
 								</TableCell>
 							</TableRow>
@@ -798,7 +803,10 @@ export function AdminEntriesTable({
 									</Button>
 								</TableCell>
 								<TableCell className="text-right">
-									<MoreActionsButton actions={folderRowMenu(folder)} label={`'${folder.name}' 폴더 작업`} />
+									<MoreActionsButton
+										actions={folderRowMenu(folder)}
+										label={t("list.folderActions", { name: folder.name })}
+									/>
 								</TableCell>
 							</ActionContextMenu>
 						))}
@@ -816,8 +824,8 @@ export function AdminEntriesTable({
 								<TableCell colSpan={visibleCount} className="p-0">
 									<Empty className="py-10">
 										<EmptyHeader>
-											<EmptyTitle>{isTrash ? "휴지통이 비었습니다." : "조건에 맞는 항목이 없습니다."}</EmptyTitle>
-											{!isTrash && <EmptyDescription>필터를 해제하거나 항목을 추가해 보세요.</EmptyDescription>}
+											<EmptyTitle>{isTrash ? t("list.emptyTrash") : t("list.emptyNone")}</EmptyTitle>
+											{!isTrash && <EmptyDescription>{t("list.emptyHint")}</EmptyDescription>}
 										</EmptyHeader>
 									</Empty>
 								</TableCell>
@@ -844,7 +852,9 @@ export function AdminEntriesTable({
 												writeDraggedEntries(
 													event,
 													group.map((item) => ({ id: item.id, expectedVersion: item.version })),
-													group.length === 1 ? group[0]?.title || "제목 없음" : `${group.length}개 항목`,
+													group.length === 1
+														? group[0]?.title || t("common.untitled")
+														: t("list.itemsCount", { count: group.length }),
 												);
 											}}
 											onKeyDown={rowKeyDown(row.original)}
@@ -874,10 +884,13 @@ export function AdminEntriesTable({
 
 			<div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-5 text-muted-foreground text-xs">
 				<span className="tabular">
-					{total}개 중{" "}
-					{items.length > 0
-						? `${(state.page - 1) * state.pageSize + 1}–${Math.min(state.page * state.pageSize, total)}`
-						: "0"}
+					{t("list.range", {
+						total,
+						range:
+							items.length > 0
+								? `${(state.page - 1) * state.pageSize + 1}–${Math.min(state.page * state.pageSize, total)}`
+								: "0",
+					})}
 				</span>
 				<div className="flex items-center gap-2">
 					<Popover>
@@ -885,7 +898,7 @@ export function AdminEntriesTable({
 							render={<Button type="button" variant="ghost" size="xs" className="text-muted-foreground" />}
 						>
 							<Columns3 aria-hidden />
-							컬럼 설정
+							{t("list.columnSettings")}
 						</PopoverTrigger>
 						<PopoverContent align="end" className="w-64 p-3">
 							<ul className="space-y-1">
@@ -906,7 +919,7 @@ export function AdminEntriesTable({
 											<IconButton
 												size="icon-xs"
 												variant="outline"
-												label={`${columnLabel(collection, column)} 컬럼 위로`}
+												label={t("list.columnUp", { label: columnLabel(collection, column) })}
 												disabled={index === 0}
 												onClick={() => moveColumn(column, -1)}
 											>
@@ -915,7 +928,7 @@ export function AdminEntriesTable({
 											<IconButton
 												size="icon-xs"
 												variant="outline"
-												label={`${columnLabel(collection, column)} 컬럼 아래로`}
+												label={t("list.columnDown", { label: columnLabel(collection, column) })}
 												disabled={index === order.length - 1}
 												onClick={() => moveColumn(column, 1)}
 											>
@@ -929,16 +942,16 @@ export function AdminEntriesTable({
 					</Popover>
 					<Select
 						value={String(state.pageSize)}
-						items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size}개씩 보기` }))}
+						items={PAGE_SIZES.map((size) => ({ value: String(size), label: t("list.pageSizeOption", { size }) }))}
 						onValueChange={(value) => value && onPageSizeChange(Number(value) as PageSize)}
 					>
-						<SelectTrigger size="sm" aria-label="페이지 크기" className="h-7 border-0 text-xs shadow-none">
+						<SelectTrigger size="sm" aria-label={t("list.pageSize")} className="h-7 border-0 text-xs shadow-none">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
 							{PAGE_SIZES.map((size) => (
 								<SelectItem key={size} value={String(size)}>
-									{size}개씩 보기
+									{t("list.pageSizeOption", { size })}
 								</SelectItem>
 							))}
 						</SelectContent>

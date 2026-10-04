@@ -1,6 +1,6 @@
 "use client";
 
-import { isDocumentCollection, localeLabel } from "@bh2980/cms/client";
+import { createTranslator, isDocumentCollection, localeLabel } from "@bh2980/cms/client";
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -11,8 +11,11 @@ import { Switch } from "../ui/switch";
 import { clearPatchFor } from "./column-header";
 import { type ColumnFilter, columnLabel, columnsFor, filterFor, isColumnFiltered } from "./list-columns";
 import { clearFilters, type ListState } from "./list-state";
+import { screensMessages } from "./messages";
 import { STATUS_LABELS } from "./shared/entry-status";
 import type { TaxonomyOption, TaxonomyOptions } from "./shared/use-taxonomy";
+
+const t = createTranslator(screensMessages);
 
 export interface FilterChip {
 	key: string;
@@ -21,22 +24,23 @@ export interface FilterChip {
 }
 
 const nameOf = (options: readonly TaxonomyOption[], id: string) =>
-	options.find((option) => option.id === id)?.title ?? "알 수 없음";
+	options.find((option) => option.id === id)?.title ?? t("toolbar.unknown");
 
 function describe(filter: ColumnFilter, state: ListState, options: TaxonomyOptions) {
 	switch (filter.kind) {
 		case "text":
 			return `"${state[filter.key].trim()}"`;
 		case "status":
-			return [...state.statuses.map((status) => STATUS_LABELS[status]), ...(state.hasChanges ? ["수정 중"] : [])].join(
-				", ",
-			);
+			return [
+				...state.statuses.map((status) => STATUS_LABELS[status]),
+				...(state.hasChanges ? [t("filter.editing")] : []),
+			].join(", ");
 		case "relation":
 			return (state.relations[filter.field] ?? []).map((id) => nameOf(options[filter.field] ?? [], id)).join(", ");
 		case "locale":
 			return state.locales.map((locale) => localeLabel(locale)).join(", ");
 		case "date":
-			return `${state[filter.from] || "처음"} ~ ${state[filter.to] || "끝"}`;
+			return `${state[filter.from] || t("filter.rangeStart")} ~ ${state[filter.to] || t("filter.rangeEnd")}`;
 		case "none":
 			return "";
 	}
@@ -51,7 +55,7 @@ export function filterChips(state: ListState, options: TaxonomyOptions): FilterC
 	if (state.search.trim()) {
 		chips.push({
 			key: "search",
-			label: `${state.includeBody ? "본문 포함 검색" : "검색"}: "${state.search.trim()}"`,
+			label: `${state.includeBody ? t("toolbar.chipBodySearch") : t("toolbar.chipSearch")}: "${state.search.trim()}"`,
 			clear: { search: "", includeBody: false },
 		});
 	}
@@ -94,10 +98,10 @@ export function ListSearch({
 				</InputGroupAddon>
 				<InputGroupInput
 					type="search"
-					aria-label="제목·주소 검색"
+					aria-label={t("toolbar.searchLabel")}
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
-					placeholder={state.includeBody ? "제목·주소·본문 검색" : "제목·주소 검색"}
+					placeholder={state.includeBody ? t("toolbar.searchBodyPlaceholder") : t("toolbar.searchPlaceholder")}
 				/>
 			</InputGroup>
 			{isContent && allowBody && (
@@ -107,7 +111,7 @@ export function ListSearch({
 						checked={state.includeBody}
 						onCheckedChange={(checked) => onChange({ includeBody: checked === true })}
 					/>
-					본문 포함
+					{t("toolbar.includeBody")}
 				</Label>
 			)}
 		</div>
@@ -127,7 +131,7 @@ export function FilterChipBar({
 	const chips = filterChips(state, options);
 	if (chips.length === 0) return null;
 	return (
-		<ul aria-label="적용된 필터" className="flex min-h-11 flex-wrap items-center gap-1.5 border-b px-5 py-2">
+		<ul aria-label={t("toolbar.chips")} className="flex min-h-11 flex-wrap items-center gap-1.5 border-b px-5 py-2">
 			{chips.map((chip) => (
 				<li key={chip.key}>
 					<span className="inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 pr-0.5 pl-2 font-medium text-primary text-xs">
@@ -135,7 +139,7 @@ export function FilterChipBar({
 						<IconButton
 							size="icon-xs"
 							className="size-5 text-primary hover:bg-primary/15 hover:text-primary"
-							label="필터 해제"
+							label={t("filter.clear")}
 							onClick={() => onChange(chip.clear)}
 						>
 							<X aria-hidden />
@@ -160,7 +164,7 @@ export function FilterChipBar({
 						onChange(cleared);
 					}}
 				>
-					모두 해제
+					{t("filter.clearAll")}
 				</Button>
 			</li>
 		</ul>

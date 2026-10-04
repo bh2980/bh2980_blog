@@ -181,3 +181,23 @@ describe("번역 구조 검사", () => {
 		expect(readable.get("link")).toEqual(new Set(["title"]));
 	});
 });
+
+describe("구조 검사 실패 이유", () => {
+	it("이유 코드와 사전에서 만든 이유 문구를 함께 돌려준다", async () => {
+		const { createTranslator } = await import("../../../i18n");
+		const { translationMessages } = await import("../messages");
+		const t = createTranslator(translationMessages);
+		expect(compareStructure("a\n\n`x`", "a\n\n`y`")).toEqual({
+			ok: false,
+			code: "structure_changed",
+			reason: t("structure_changed"),
+		});
+		expect(compareStructure("a", "<Unknown />\n")).toMatchObject({ ok: false, code: "mdx_error" });
+		expect(compareStructure("<Unknown />\n", "a")).toEqual({
+			ok: false,
+			code: "source_unreadable",
+			reason: t("source_unreadable"),
+		});
+		expect(readableMdx("<Unknown />\n")).toMatchObject({ ok: false, code: "mdx_error" });
+	});
+});

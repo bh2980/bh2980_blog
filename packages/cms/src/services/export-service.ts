@@ -40,7 +40,7 @@ export const PUBLIC_METADATA_KEYS: Readonly<Record<string, readonly string[]>> =
 
 export function pickPublicMetadata(collection: string, metadata: Record<string, unknown>): Record<string, unknown> {
 	const allowed = PUBLIC_METADATA_KEYS[collection];
-	if (!allowed) throw new Error(`공개 metadata allowlist가 없는 컬렉션입니다: ${collection}`);
+	if (!allowed) throw new Error(`No public metadata allowlist for collection: ${collection}`);
 	const picked: Record<string, unknown> = {};
 	for (const key of allowed) {
 		if (metadata[key] !== undefined) picked[key] = metadata[key];
@@ -170,7 +170,7 @@ const bodyFile = (entry: ExportSnapshotEntry, state: "working" | "published"): {
 			metadata: body.metadata,
 			schemaVersion: body.schemaVersion,
 			contentHash: body.contentHash,
-			// 번역본만 가진다(v3). 원문 파일 모양은 그대로 둔다.
+			// Only translated entries have this (v3); the source file shape is unchanged.
 			...(body.translation ? { translation: body.translation } : {}),
 			updatedAt: iso(body.updatedAt),
 			createdAt: iso(entry.createdAt),

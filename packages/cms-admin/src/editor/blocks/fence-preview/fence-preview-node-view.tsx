@@ -1,9 +1,13 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../../lib/utils/cn";
+import { blocksMessages } from "../messages";
 import { SELECTED_RING, useEditorEditable } from "../shared";
+
+const t = createTranslator(blocksMessages);
 
 /** 코드로 쓰고 미리보기로 보는 블록(수식·코드 펜스 블록)의 이름과 입력 안내. */
 export interface FenceEditorMeta {
@@ -182,7 +186,9 @@ export function FencePreviewNodeView({
 				<div className="space-y-3">
 					<div className="flex items-center justify-between border-border/40 border-b pb-1 text-muted-foreground text-xs">
 						<span className="font-medium font-mono text-[11px]">{meta.label}</span>
-						<span className="text-[10px] text-muted-foreground/70">{isEditing ? "편집 중" : "선택됨"}</span>
+						<span className="text-[10px] text-muted-foreground/70">
+							{isEditing ? t("fence.editing") : t("fence.selected")}
+						</span>
 					</div>
 
 					{/* 미리보기 (상단 동시 표시) */}
@@ -191,7 +197,7 @@ export function FencePreviewNodeView({
 					{/* 원문 입력 칸 (모노, IME 안전) */}
 					<div className="space-y-1">
 						<label htmlFor={inputId} className="font-mono text-[11px] text-muted-foreground">
-							원문 코드
+							{t("fence.sourceCode")}
 						</label>
 						<textarea
 							id={inputId}
@@ -216,13 +222,13 @@ export function FencePreviewNodeView({
 					type="button"
 					onClick={handleClick}
 					className="w-full cursor-pointer border-0 bg-transparent p-0 text-left font-inherit outline-none"
-					aria-label={`${meta.label} 편집`}
+					aria-label={t("fence.edit", { label: meta.label })}
 				>
 					{draft.trim() ? (
 						renderPreview()
 					) : (
 						<div className="rounded border border-border/80 border-dashed p-4 text-center text-muted-foreground text-xs hover:border-foreground/30">
-							{meta.label} 입력
+							{t("fence.enter", { label: meta.label })}
 						</div>
 					)}
 				</button>

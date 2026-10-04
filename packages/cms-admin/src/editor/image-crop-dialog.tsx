@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	type CropBox,
 	formatCrop,
@@ -16,6 +17,9 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 export interface ImageCropDialogProps {
 	open: boolean;
@@ -200,7 +204,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 			<DialogContent className="max-w-2xl gap-4 p-5 sm:max-w-xl">
 				<form onSubmit={handleApply} className="contents">
 					<DialogHeader>
-						<DialogTitle>자르기·회전</DialogTitle>
+						<DialogTitle>{t("imageCrop.title")}</DialogTitle>
 					</DialogHeader>
 
 					{/* 이미지 영역 + 자르기 오버레이 (P1-2: 실제 이미지 크기에 맞춘 래퍼) */}
@@ -216,7 +220,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 								<img
 									ref={imgRef}
 									src={src}
-									alt="자르기 편집 대상"
+									alt={t("imageCrop.target")}
 									className="pointer-events-none block max-h-[360px] max-w-full select-none rounded"
 									draggable={false}
 								/>
@@ -250,28 +254,28 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 												data-slot="crop-handle-nw"
 												onPointerDown={(e) => handlePointerDown(e, "nw")}
 												className="absolute -top-1.5 -left-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-												aria-label="좌측 상단 핸들"
+												aria-label={t("imageCrop.handleNw")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-ne"
 												onPointerDown={(e) => handlePointerDown(e, "ne")}
 												className="absolute -top-1.5 -right-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-												aria-label="우측 상단 핸들"
+												aria-label={t("imageCrop.handleNe")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-sw"
 												onPointerDown={(e) => handlePointerDown(e, "sw")}
 												className="absolute -bottom-1.5 -left-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-												aria-label="좌측 하단 핸들"
+												aria-label={t("imageCrop.handleSw")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-se"
 												onPointerDown={(e) => handlePointerDown(e, "se")}
 												className="absolute -right-1.5 -bottom-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
-												aria-label="우측 하단 핸들"
+												aria-label={t("imageCrop.handleSe")}
 											/>
 										</div>
 									</>
@@ -282,14 +286,19 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 						<div className="flex w-full flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
 							<span>
 								{isFull
-									? "전체 이미지"
-									: `${cropDraft.width}% × ${cropDraft.height}% · 왼쪽 ${cropDraft.x}% · 위 ${cropDraft.y}%`}
+									? t("imageCrop.full")
+									: t("imageCrop.region", {
+											width: cropDraft.width,
+											height: cropDraft.height,
+											x: cropDraft.x,
+											y: cropDraft.y,
+										})}
 							</span>
 						</div>
 
 						{/* 키보드 수치 직접 입력 컨트롤 (P2) */}
 						<div className="flex w-full items-center justify-between gap-2 rounded-lg border bg-muted/10 p-2 text-xs">
-							<span className="font-medium text-muted-foreground">영역 %</span>
+							<span className="font-medium text-muted-foreground">{t("imageCrop.regionPercent")}</span>
 							<div className="flex items-center gap-2">
 								<div className="flex items-center gap-1">
 									<Label htmlFor="crop-input-x" className="text-muted-foreground text-xs">
@@ -302,7 +311,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 										max={99}
 										step={1}
 										value={cropDraft.x}
-										aria-label="자르기 X"
+										aria-label={t("imageCrop.x")}
 										onChange={(e) => handleNumericCropChange("x", Number(e.target.value))}
 										className="h-6 w-14 px-1.5 text-center text-xs"
 									/>
@@ -318,7 +327,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 										max={99}
 										step={1}
 										value={cropDraft.y}
-										aria-label="자르기 Y"
+										aria-label={t("imageCrop.y")}
 										onChange={(e) => handleNumericCropChange("y", Number(e.target.value))}
 										className="h-6 w-14 px-1.5 text-center text-xs"
 									/>
@@ -334,7 +343,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 										max={100}
 										step={1}
 										value={cropDraft.width}
-										aria-label="자르기 너비"
+										aria-label={t("imageCrop.width")}
 										onChange={(e) => handleNumericCropChange("width", Number(e.target.value))}
 										className="h-6 w-14 px-1.5 text-center text-xs"
 									/>
@@ -350,7 +359,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 										max={100}
 										step={1}
 										value={cropDraft.height}
-										aria-label="자르기 높이"
+										aria-label={t("imageCrop.height")}
 										onChange={(e) => handleNumericCropChange("height", Number(e.target.value))}
 										className="h-6 w-14 px-1.5 text-center text-xs"
 									/>
@@ -362,24 +371,24 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 					{/* 회전 컨트롤 */}
 					<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-2.5">
 						<div className="flex items-center gap-2 text-xs">
-							<span className="font-medium">회전</span>
+							<span className="font-medium">{t("imageCrop.rotate")}</span>
 							<span className="font-semibold text-primary">{rotateDraft}°</span>
 						</div>
 						<Button type="button" variant="outline" size="sm" onClick={handleRotate90}>
 							<RotateCw aria-hidden />
-							90° 회전
+							{t("imageCrop.rotate90")}
 						</Button>
 					</div>
 
 					<DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
 						<Button type="button" variant="ghost" disabled={isFull && rotateDraft === 0} onClick={handleResetAll}>
-							초기화
+							{t("imageCrop.reset")}
 						</Button>
 						<div className="flex items-center gap-2">
 							<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-								취소
+								{t("imageCrop.cancel")}
 							</Button>
-							<Button type="submit">적용</Button>
+							<Button type="submit">{t("imageCrop.apply")}</Button>
 						</div>
 					</DialogFooter>
 				</form>

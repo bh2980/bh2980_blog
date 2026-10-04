@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createTranslator } from "../../../i18n";
 import { annotationConfig, CODE_LINE_EFFECTS, isLineEffectName } from "../active";
 import { fromCodeFenceToCodeBlockDocument } from "../code-fence-to-document";
 import { createAnnotationConfig } from "../constants";
 import { fromCodeBlockDocumentToCodeFence } from "../document-to-code-fence";
 import { DEFAULT_CODE_LINE_EFFECTS, resolveCodeLineEffects, validateCodeBlockConfig } from "../line-effects";
+import { codeBlockMessages } from "../messages";
 import type { AnnotationConfigItem } from "../types";
 
 /** 정의 목록으로 바꾸기 전의 주석 설정(공개 화면 클래스가 그대로인지 본다). */
@@ -45,7 +47,14 @@ describe("코드 줄 효과 정의", () => {
 		expect(CODE_LINE_EFFECTS).toEqual(DEFAULT_CODE_LINE_EFFECTS);
 		expect(byName(annotationConfig.annotations)).toEqual(byName(BEFORE));
 		// 메뉴 이름은 괄호 없이 짧게 쓴다.
-		expect(DEFAULT_CODE_LINE_EFFECTS.map((effect) => effect.label)).toEqual(["강조", "추가", "삭제", "경고", "오류"]);
+		const t = createTranslator(codeBlockMessages);
+		expect(DEFAULT_CODE_LINE_EFFECTS.map((effect) => effect.label)).toEqual([
+			t("lineEffect.highlight"),
+			t("lineEffect.plus"),
+			t("lineEffect.minus"),
+			t("lineEffect.warning"),
+			t("lineEffect.error"),
+		]);
 	});
 
 	it("사이트 정의는 같은 이름을 그 자리에서 바꾸고 새 이름을 뒤에 붙인다", () => {

@@ -1,13 +1,17 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
+import { uiMessages } from "./messages";
+
+const t = createTranslator(uiMessages);
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
 	return (
 		<nav
 			role="navigation"
-			aria-label="페이지 이동"
+			aria-label={t("pagination.label")}
 			data-slot="pagination"
 			className={cn("mx-auto flex w-full justify-center", className)}
 			{...props}
@@ -44,11 +48,16 @@ function PaginationLink({ className, isActive, size = "icon", ...props }: Pagina
 
 function PaginationPrevious({
 	className,
-	text = "이전",
+	text = t("pagination.previous"),
 	...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
 	return (
-		<PaginationLink aria-label="이전 페이지" size="default" className={cn("pl-2!", className)} {...props}>
+		<PaginationLink
+			aria-label={t("pagination.previousPage")}
+			size="default"
+			className={cn("pl-2!", className)}
+			{...props}
+		>
 			<ChevronLeftIcon data-icon="inline-start" />
 			<span className="hidden sm:block">{text}</span>
 		</PaginationLink>
@@ -57,11 +66,11 @@ function PaginationPrevious({
 
 function PaginationNext({
 	className,
-	text = "다음",
+	text = t("pagination.next"),
 	...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
 	return (
-		<PaginationLink aria-label="다음 페이지" size="default" className={cn("pr-2!", className)} {...props}>
+		<PaginationLink aria-label={t("pagination.nextPage")} size="default" className={cn("pr-2!", className)} {...props}>
 			<span className="hidden sm:block">{text}</span>
 			<ChevronRightIcon data-icon="inline-end" />
 		</PaginationLink>
@@ -77,7 +86,7 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<"span"
 			{...props}
 		>
 			<MoreHorizontalIcon />
-			<span className="sr-only">다른 페이지</span>
+			<span className="sr-only">{t("pagination.more")}</span>
 		</span>
 	);
 }

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_FORM } from "../entry-form";
 import { EntryPicker, type FieldInputProps, OrderedEntryList } from "../field-inputs";
+import { t } from "../translate";
 
 /** 관계 대상(`post`)의 이름표. 입력 안내가 대상 컬렉션 이름표를 쓴다(설정에 없으면 컬렉션 이름). */
 const TARGET = isCollection("post") ? schemaOf("post").label : "post";
@@ -61,7 +62,9 @@ describe("대체 글(한 개 관계)", () => {
 		render(<EntryPicker {...props(field, null, onChange)} />);
 		await openList("최신 글");
 
-		await waitFor(async () => expect(await optionNames()).toEqual(["첫 글", "둘째 글 · 비공개", "셋째 글"]));
+		await waitFor(async () =>
+			expect(await optionNames()).toEqual(["첫 글", `둘째 글${t("entry.unpublished")}`, "셋째 글"]),
+		);
 		fireEvent.click(screen.getByRole("option", { name: "셋째 글" }));
 		expect(onChange).toHaveBeenCalledWith("p3");
 	});
@@ -79,7 +82,7 @@ describe("모음집 글 목록(순서 있는 여러 개 관계)", () => {
 
 	it("담긴 순서대로 번호와 제목을 보이고 비공개 글은 알린다", async () => {
 		render(<OrderedEntryList {...props(field, ["p3", "p2"])} />);
-		const list = await screen.findByRole("list", { name: `담긴 ${TARGET}` });
+		const list = await screen.findByRole("list", { name: t("entry.listAria", { target: TARGET }) });
 		await waitFor(() =>
 			expect(
 				within(list)
@@ -87,13 +90,13 @@ describe("모음집 글 목록(순서 있는 여러 개 관계)", () => {
 					.map((item) => item.textContent),
 			).toEqual([expect.stringContaining("1. 셋째 글"), expect.stringContaining("2. 둘째 글")]),
 		);
-		expect(within(list).getByText("· 비공개")).toBeTruthy();
+		expect(within(list).getByText(t("entry.unpublished").trim())).toBeTruthy();
 	});
 
 	it("글 추가·빼기 목록에서 체크하면 끝에 넣고, 체크를 풀면 뺀다", async () => {
 		const onChange = vi.fn();
 		const { rerender } = render(<OrderedEntryList {...props(field, ["p3"], onChange)} />);
-		await openList(`${TARGET} 추가·빼기`);
+		await openList(t("entry.editList", { target: TARGET }));
 		fireEvent.click(await screen.findByRole("option", { name: "첫 글" }));
 		expect(onChange).toHaveBeenLastCalledWith(["p3", "p1"]);
 
@@ -105,15 +108,15 @@ describe("모음집 글 목록(순서 있는 여러 개 관계)", () => {
 	it("위로·아래로·빼기 버튼으로 순서와 목록을 바꾼다", async () => {
 		const onChange = vi.fn();
 		render(<OrderedEntryList {...props(field, ["p1", "p2", "p3"], onChange)} />);
-		fireEvent.click(await screen.findByRole("button", { name: "셋째 글 위로" }));
+		fireEvent.click(await screen.findByRole("button", { name: t("entry.up", { title: "셋째 글" }) }));
 		expect(onChange).toHaveBeenLastCalledWith(["p1", "p3", "p2"]);
-		fireEvent.click(screen.getByRole("button", { name: "첫 글 빼기" }));
+		fireEvent.click(screen.getByRole("button", { name: t("entry.remove", { title: "첫 글" }) }));
 		expect(onChange).toHaveBeenLastCalledWith(["p2", "p3"]);
 	});
 
 	it("끌어서 옮기는 손잡이가 항목마다 있다", async () => {
 		render(<OrderedEntryList {...props(field, ["p1", "p2"])} />);
-		expect(await screen.findByRole("button", { name: "첫 글 끌어서 옮기기" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "둘째 글 끌어서 옮기기" })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: t("entry.drag", { title: "첫 글" }) })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("entry.drag", { title: "둘째 글" }) })).toBeTruthy();
 	});
 });

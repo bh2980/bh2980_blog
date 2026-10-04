@@ -1,4 +1,5 @@
 import { cmsConfig } from "../config/resolved";
+import { setActiveLocale } from "./active";
 import { type MessageBundle, type MessageVars, translate } from "./define";
 
 export * from "./define";
@@ -22,3 +23,6 @@ export const ADMIN_LANGUAGE: string = ADMIN_LANGUAGE_TAG.split("-")[0]?.toLowerC
 export function createTranslator<K extends string>(bundle: MessageBundle<K>, language: string = ADMIN_LANGUAGE) {
 	return (key: K, vars?: MessageVars): string => translate(bundle, language, key, vars, cmsConfig.admin?.messages);
 }
+
+// 설정 파일이 읽는 모듈(블록·줄 효과 정의)의 이름표도 같은 언어·덮어쓴 문구를 쓴다.
+setActiveLocale(ADMIN_LANGUAGE, cmsConfig.admin?.messages);

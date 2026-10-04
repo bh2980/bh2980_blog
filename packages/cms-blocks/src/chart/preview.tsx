@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { Alert, AlertDescription, AlertTitle } from "@bh2980/cms-admin/ui/alert";
 import { AlertOctagon } from "lucide-react";
@@ -19,8 +20,10 @@ import {
 	YAxis,
 } from "recharts";
 import { normalizeChartDsl, parseChartDsl } from "./dsl";
+import { chartErrorLine } from "./errors";
 import { estimateYAxisWidth, formatChartValue, toChartConfig } from "./helpers";
 import { CHART_LEGEND_HEIGHT, resolvePieGeometry } from "./layout";
+import { chartMessages } from "./messages";
 import type { CartesianChartSpec, ChartRenderError, PieChartSpec } from "./types";
 import {
 	ChartContainer,
@@ -37,17 +40,19 @@ import {
  * 색은 계열의 테마 변수(`--chart-1`~`--chart-5`)다.
  */
 
+const t = createTranslator(chartMessages);
+
 function ChartErrorCard({ errors }: { errors: ChartRenderError[] }) {
 	return (
 		<div className="not-prose my-6">
 			<Alert variant="danger">
 				<AlertOctagon />
-				<AlertTitle>차트 문법 오류</AlertTitle>
+				<AlertTitle>{t("error.title")}</AlertTitle>
 				<AlertDescription>
 					<ul className="ml-4 list-disc space-y-1">
 						{errors.map((error) => (
-							<li key={`${error.line}-${error.message}`}>
-								{error.line}줄: {error.message}
+							<li key={`${error.line}-${error.code}-${JSON.stringify(error.values ?? {})}`}>
+								{chartErrorLine(error, t)}
 							</li>
 						))}
 					</ul>

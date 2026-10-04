@@ -1,3 +1,6 @@
+import { createActiveTranslator } from "../../i18n/active";
+import { codeBlockMessages } from "./messages";
+
 /**
  * 코드 블록 줄 효과 정의(`// @line 이름 {2-4}`). 본체 기본(강조·추가·삭제·경고·오류)에 사이트 설정의
  * `codeBlock.lineEffects`를 더한다. 같은 이름이면 사이트 정의로 바꾼다.
@@ -36,18 +39,24 @@ export interface CodeBlockConfig {
 	readonly lineEffects?: readonly CodeLineEffectDefinition[];
 }
 
+const t = createActiveTranslator(codeBlockMessages);
+
 /** 본체 기본 줄 효과. 선언 순서가 줄 효과 메뉴의 순서다. */
 export const DEFAULT_CODE_LINE_EFFECTS: readonly CodeLineEffectDefinition[] = [
 	{
 		name: "highlight",
-		label: "강조",
+		get label() {
+			return t("lineEffect.highlight");
+		},
 		icon: "highlighter",
 		class: "inline-block w-full anno-mark-base bg-gray-400/20",
 		editor: { background: "bg-gray-400/20" },
 	},
 	{
 		name: "plus",
-		label: "추가",
+		get label() {
+			return t("lineEffect.plus");
+		},
 		icon: "plus",
 		class:
 			"inline-block w-full anno-mark-base anno-mark:content-['+'] anno-mark:text-gray-400 bg-green-400/10 shadow-[inset_2px_0_0_0_rgba(74,222,128,1)]",
@@ -58,7 +67,9 @@ export const DEFAULT_CODE_LINE_EFFECTS: readonly CodeLineEffectDefinition[] = [
 	},
 	{
 		name: "minus",
-		label: "삭제",
+		get label() {
+			return t("lineEffect.minus");
+		},
 		icon: "minus",
 		class:
 			"inline-block w-full anno-mark-base anno-mark:content-['-'] anno-mark:text-gray-400 bg-red-400/10 shadow-[inset_2px_0_0_0_rgba(239,68,68,1)]",
@@ -69,14 +80,18 @@ export const DEFAULT_CODE_LINE_EFFECTS: readonly CodeLineEffectDefinition[] = [
 	},
 	{
 		name: "warning",
-		label: "경고",
+		get label() {
+			return t("lineEffect.warning");
+		},
 		icon: "triangle-alert",
 		class: "underline decoration-wavy decoration-yellow-400/80",
 		editor: { wavy: "decoration-yellow-400/80" },
 	},
 	{
 		name: "error",
-		label: "오류",
+		get label() {
+			return t("lineEffect.error");
+		},
 		icon: "circle-x",
 		class: "underline decoration-wavy decoration-red-500",
 		editor: { wavy: "decoration-red-500" },

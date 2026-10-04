@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { coreMessages } from "./core.messages";
+import { lazyTranslator } from "./i18n";
+
+const t = lazyTranslator(coreMessages);
 
 /**
  * AI 공통 정의(v2 D). 기능 정의(`action.ts`)·실행기·관리자 화면이 함께 쓰는 선택지와 결과 모양이다.
@@ -76,7 +80,7 @@ const patternSchema = z
 				return false;
 			}
 		},
-		{ message: "올바르지 않은 정규식입니다." },
+		{ error: () => t("check.invalidRegex") },
 	);
 
 /** 검사 하나. 기능마다 정해 둔 검사를 켜고 끄며, 형식·길이는 값을 고친다. */
@@ -110,59 +114,14 @@ export function migrateCheck(value: unknown): unknown {
 	return name ? { kind: "code", name, ...(typeof enabled === "boolean" ? { enabled } : {}) } : value;
 }
 
-export const SLOT_LABELS: Record<AiSlot, string> = {
-	field: "필드",
-	image: "본문 이미지",
-	codeRules: "코드 블록 규칙",
-	media: "미디어 파일",
-	translation: "번역",
-	selection: "선택 영역 메뉴",
-	insert: "넣기 메뉴",
-	block: "블록",
-};
-
-/** 필드 밖 자리의 대상. 필드 자리의 대상은 컬렉션 정의의 필드 이름이다. */
-export const SLOT_TARGETS = {
-	image: { alt: "대체 텍스트", caption: "캡션" },
-	codeRules: { fold: "글자 접기 규칙" },
-	media: { filename: "파일 이름", defaultAlt: "기본 대체 텍스트", defaultCaption: "기본 캡션" },
-} as const satisfies Record<
-	Exclude<AiSlot, "field" | "translation" | "selection" | "insert" | "block">,
-	Record<string, string>
->;
-
-export const RESULT_LABELS: Record<AiResult, string> = {
-	candidates: "짧은 후보 여러 개",
-	text: "긴 글 하나",
-	mdx: "본문 조각",
-	note: "메모만",
-};
-
-export const APPLY_LABELS: Record<AiApply, string> = {
-	replace: "바꾸기",
-	append: "넣기",
-	none: "보기만",
-};
-
-export const CHECK_LABELS: Record<AiCheckKind, string> = {
-	pattern: "형식",
-	maxLength: "길이",
-	exists: "있는 값만",
-	oneOf: "선택지 안",
-};
-
 /** 관리자 화면에서 어느 기능에든 더할 수 있는 검사와 처음 값. 나머지는 기능 정의가 정한다. */
 export const ADDABLE_CHECKS = {
 	pattern: { kind: "pattern", enabled: true, pattern: ".+" },
 	maxLength: { kind: "maxLength", enabled: true, max: 100 },
-	oneOf: { kind: "oneOf", enabled: true, items: ["값"] },
+	oneOf: { kind: "oneOf", enabled: true, items: ["value"] },
 } as const satisfies Partial<Record<AiCheckKind, AiCheck>>;
 export type AddableCheckKind = keyof typeof ADDABLE_CHECKS;
 export const isAddableCheck = (kind: string): kind is AddableCheckKind => Object.hasOwn(ADDABLE_CHECKS, kind);
-
-export const ENGINE_LABELS: Record<AiEngine, string> = { generate: "생성", decide: "판단" };
-
-export const PICK_LABELS: Record<AiPick, string> = { one: "하나 고르기", many: "여러 개 고르기" };
 
 /** 판단 모델에 한 번에 물을 수 있는 선택지 수. */
 export const MAX_DECISION_OPTIONS = 255;

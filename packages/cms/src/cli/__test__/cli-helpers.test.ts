@@ -53,9 +53,11 @@ describe("cms 명령 도우미", () => {
 		const out: string[] = [];
 		const io = { cwd: tempDir({}), log: (m: string) => out.push(m), error: (m: string) => out.push(`E:${m}`) };
 		expect(await runCli([], io)).toBe(0);
-		expect(out.at(-1)).toContain("cms <명령>");
+		expect(out.at(-1)).toContain("Usage: cms <command>");
+		expect(out.at(-1)).toContain("--locale <code>");
+		expect(out.at(-1)).toContain("--time-zone <tz>");
 		expect(await runCli(["deploy"], io)).toBe(1);
-		expect(out.at(-1)).toContain("E:알 수 없는 명령: deploy");
+		expect(out.at(-1)).toContain("E:Unknown command: deploy");
 		expect(await runCli(["init"], io)).toBe(1); // package.json 없음
 		expect(out.at(-1)).toContain("E:package.json not found");
 	});

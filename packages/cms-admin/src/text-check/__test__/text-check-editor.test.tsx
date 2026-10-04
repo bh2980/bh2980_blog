@@ -1,14 +1,20 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import type { PluginKey } from "@tiptap/pm/state";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { CmsAdminComponentsProvider, useEditorExtensions } from "../../admin-components";
+import { editorMessages } from "../../editor/messages";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { pressOption } from "../../test/base-ui";
 import { textCheckExtension } from "../extension";
+import { textCheckMessages } from "../messages";
 import { type TextCheckPluginState, textCheckIssues } from "../plugin";
 import { defineTextChecker, type TextChecker, type TextCheckSegment } from "../types";
 import { AUTO_CHECK_DELAY } from "../use-text-check";
+
+const t = createTranslator(textCheckMessages);
+const tEditor = createTranslator(editorMessages);
 
 const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toastMock }));
@@ -104,7 +110,7 @@ const renderEditor = async (content: string, checkers: readonly TextChecker[], l
 			/>
 		</CmsAdminComponentsProvider>,
 	);
-	await screen.findByRole("toolbar", { name: "서식 도구" });
+	await screen.findByRole("toolbar", { name: tEditor("toolbar.format") });
 	await waitFor(() => expect(editor).not.toBeNull());
 	return { editor: editor as unknown as Editor, onChange };
 };
@@ -153,7 +159,7 @@ describe("맞춤법 검사 버튼", () => {
 				<Harness content={"틀린말\n"} locale="ko" onChange={vi.fn()} onReady={() => {}} />
 			</CmsAdminComponentsProvider>,
 		);
-		await screen.findByRole("toolbar", { name: "서식 도구" });
+		await screen.findByRole("toolbar", { name: tEditor("toolbar.format") });
 		await waitFor(() => expect(checkButton()).not.toBeNull());
 		expect(checkButton("다른 검사")).not.toBeNull();
 	});
@@ -171,7 +177,7 @@ describe("맞춤법 검사 버튼", () => {
 	it("누르면 문서 전체를 검사하고 밑줄과 결과 수를 보인다", async () => {
 		const checker = fakeChecker();
 		const { editor } = await renderEditor("첫 문단은 틀린말 입니다\n\n둘째 문단\n", [checker]);
-		expect(screen.queryByRole("button", { name: "검사 결과" })).toBeNull();
+		expect(screen.queryByRole("button", { name: t("results") })).toBeNull();
 
 		fireEvent.click(checkButton() as HTMLElement);
 
@@ -181,7 +187,7 @@ describe("맞춤법 검사 버튼", () => {
 		expect(sent.map((segment) => segment.text)).toEqual(["첫 문단은 틀린말 입니다", "둘째 문단"]);
 		expect(sent.every((segment) => segment.locale === "ko")).toBe(true);
 		expect(editor.view.dom.querySelector(".cms-text-issue")?.textContent).toBe("틀린말");
-		expect(screen.getByRole("button", { name: "검사 결과" }).textContent).toBe("1");
+		expect(screen.getByRole("button", { name: t("results") }).textContent).toBe("1");
 	});
 
 	it("고른 글자가 있으면 그 문단만 검사한다", async () => {
@@ -208,14 +214,14 @@ describe("맞춤법 검사 버튼", () => {
 		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 
 		clickIssue(editor);
-		const dialog = await screen.findByRole("dialog", { name: "검사 결과" });
+		const dialog = await screen.findByRole("dialog", { name: t("results") });
 		expect(within(dialog).getByText("맞춤법이 틀렸습니다.")).toBeTruthy();
 		expect(within(dialog).getByText("가짜 검사")).toBeTruthy();
 		fireEvent.click(within(dialog).getByRole("button", { name: "맞는 말" }));
 
 		await waitFor(() => expect(String(onChange.mock.lastCall?.[0])).toContain("이것은 맞는 말 입니다"));
 		expect(issuesOf(editor)).toHaveLength(0);
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "검사 결과" })).toBeNull());
+		await waitFor(() => expect(screen.queryByRole("dialog", { name: t("results") })).toBeNull());
 	});
 
 	it("무시하면 결과를 숨기고 다시 검사해도 보이지 않는다", async () => {
@@ -226,13 +232,13 @@ describe("맞춤법 검사 버튼", () => {
 
 		clickIssue(editor);
 		fireEvent.click(
-			within(await screen.findByRole("dialog", { name: "검사 결과" })).getByRole("button", { name: "무시" }),
+			within(await screen.findByRole("dialog", { name: t("results") })).getByRole("button", { name: t("ignore") }),
 		);
 		// 같은 검사기·규칙·글자는 모두 숨긴다.
 		expect(issuesOf(editor)).toHaveLength(0);
 
 		fireEvent.click(checkButton() as HTMLElement);
-		await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith("고칠 곳이 없습니다."));
+		await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith(t("nothingToFix")));
 		expect(issuesOf(editor)).toHaveLength(0);
 		// 같은 글자는 다시 보내지 않는다.
 		expect(checker.check).toHaveBeenCalledTimes(1);
@@ -243,13 +249,13 @@ describe("맞춤법 검사 버튼", () => {
 		fireEvent.click(checkButton() as HTMLElement);
 		await waitFor(() => expect(issuesOf(editor)).toHaveLength(1));
 
-		fireEvent.click(screen.getByRole("button", { name: "검사 결과" }));
+		fireEvent.click(screen.getByRole("button", { name: t("results") }));
 		pressOption(await screen.findByRole("menuitem", { name: /틀린말/ }));
 
 		const [issue] = issuesOf(editor);
 		await waitFor(() => expect(editor.state.selection.from).toBe(issue?.from));
 		expect(editor.state.selection.to).toBe(issue?.to);
-		expect(await screen.findByRole("dialog", { name: "검사 결과" })).toBeTruthy();
+		expect(await screen.findByRole("dialog", { name: t("results") })).toBeTruthy();
 	});
 
 	it("검사기가 실패하면 알림을 띄운다", async () => {
@@ -263,7 +269,7 @@ describe("맞춤법 검사 버튼", () => {
 		await renderEditor("틀린말\n", [failing]);
 		fireEvent.click(checkButton("고장") as HTMLElement);
 		await waitFor(() =>
-			expect(toastMock.error).toHaveBeenCalledWith("고장: 검사하지 못했습니다.", { description: "HTTP 500" }),
+			expect(toastMock.error).toHaveBeenCalledWith(t("failed", { label: "고장" }), { description: "HTTP 500" }),
 		);
 		expect(checkButton("고장")?.hasAttribute("disabled")).toBe(false);
 	});
@@ -280,7 +286,7 @@ describe("맞춤법 검사 버튼", () => {
 		});
 		await renderEditor("문단\n", [slow]);
 		fireEvent.click(checkButton("느림") as HTMLElement);
-		const busy = await screen.findByRole("button", { name: "검사 중…" });
+		const busy = await screen.findByRole("button", { name: t("running") });
 		expect(busy.hasAttribute("disabled")).toBe(true);
 		await act(async () => finish?.());
 		await waitFor(() => expect(checkButton("느림")).not.toBeNull());

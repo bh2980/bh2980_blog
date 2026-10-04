@@ -1,4 +1,7 @@
-import { defineBlock } from "@bh2980/cms";
+import { createActiveTranslator, defineBlock } from "@bh2980/cms";
+import { codeRefMessages } from "./messages";
+
+const t = createActiveTranslator(codeRefMessages);
 
 /**
  * 코드 연결(`:code-ref[글자]{to="c1"}`). 본문 글자와 같은 글 코드 블록의 줄을 잇는다. `to`는 코드 블록 줄 이름표
@@ -9,9 +12,20 @@ import { defineBlock } from "@bh2980/cms";
  */
 export const codeRefBlock = defineBlock({
 	name: "code-ref",
-	label: "코드 연결",
+	get label() {
+		return t("label");
+	},
 	syntax: { kind: "text", directive: "code-ref" },
 	component: "CodeRef",
-	attributes: { to: { type: "string", label: "연결할 코드 줄 이름", required: true, codeAnchor: true } },
+	attributes: {
+		to: {
+			type: "string",
+			get label() {
+				return t("to.label");
+			},
+			required: true,
+			codeAnchor: true,
+		},
+	},
 	editor: { view: "mark" },
 });

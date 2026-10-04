@@ -1,5 +1,6 @@
 import type { Root, RootContent } from "mdast";
 import { childRules } from "../blocks/derive";
+import { createTranslator } from "../i18n";
 import {
 	estreeToJson,
 	hasSpread,
@@ -10,9 +11,10 @@ import {
 } from "./expressions";
 import { parseYamlMapping, splitFrontmatter } from "./frontmatter";
 import { positionOf } from "./jsx";
+import { mdxMessages } from "./messages";
 import { parseMdxAst } from "./parse";
 import { EVENT_HANDLER_NAME, REGISTERED_JSX_NAMES, RETIRED_JSX_NAMES } from "./registry";
-import type { CmsMdxAnalysis, CmsMdxError } from "./types";
+import type { CmsMdxAnalysis, CmsMdxError, CmsMdxErrorCode } from "./types";
 
 type VisitNode =
 	| Root
@@ -51,26 +53,36 @@ const namedJsxChildren = (node: VisitNode, names: readonly string[]) => {
 
 type ErrorTarget = VisitNode | { position?: { start?: { line?: number; column?: number } } };
 
-const pushError = (errors: CmsMdxError[], message: string, node: ErrorTarget) => {
-	errors.push({ message, position: positionOf(node) });
+const t = createTranslator(mdxMessages);
+
+/** 문구가 있는 오류 코드(`mdx_syntax`는 파서가 준 말을 그대로 쓴다). */
+type MessageCode = Exclude<CmsMdxErrorCode, "mdx_syntax">;
+
+const pushError = (
+	errors: CmsMdxError[],
+	code: MessageCode,
+	node: ErrorTarget,
+	params?: Record<string, string | number>,
+) => {
+	errors.push({ code, ...(params ? { params } : {}), message: t(code, params), position: positionOf(node) });
 };
 
 const validateExpression = (errors: CmsMdxError[], estree: unknown, node: ErrorTarget, source: string) => {
 	const expression = programExpression(estree);
 	if (hasSpread(expression)) {
-		pushError(errors, "본문에서 spread 속성은 허용되지 않습니다.", node);
+		pushError(errors, "spread_attribute", node);
 		return;
 	}
 	if (isCallExpression(expression)) {
-		pushError(errors, "본문에서 함수 호출은 허용되지 않습니다.", node);
+		pushError(errors, "call_expression", node);
 		return;
 	}
 	if (isIdentifierExpression(expression)) {
-		pushError(errors, "본문에서 변수 참조는 허용되지 않습니다.", node);
+		pushError(errors, "identifier_reference", node);
 		return;
 	}
 	if (!isStaticEstree(expression)) {
-		pushError(errors, `지원하지 않는 표현식입니다: ${source}`, node);
+		pushError(errors, "unsupported_expression", node, { source });
 		return;
 	}
 	estreeToJson(expression);
@@ -82,11 +94,11 @@ const validateName = (errors: CmsMdxError[], node: VisitNode) => {
 	// fragment(`<>`)는 이름이 없어 대조할 수 없다 — 속성·표현식 검사는 그대로 적용한다.
 	if (!name) return;
 	if (RETIRED_JSX_NAMES.has(name)) {
-		pushError(errors, `폐기된 JSX 요소입니다: ${name} — directive 저장 형식으로 바꾸세요(§4.4).`, node);
+		pushError(errors, "retired_jsx_element", node, { name });
 		return;
 	}
 	if (!REGISTERED_JSX_NAMES.has(name)) {
-		pushError(errors, `허용되지 않은 JSX 요소입니다: ${name}`, node);
+		pushError(errors, "disallowed_jsx_element", node, { name });
 	}
 };
 
@@ -102,14 +114,14 @@ const validateAttributes = (errors: CmsMdxError[], node: VisitNode) => {
 		const target = attribute.position ? attribute : node;
 
 		if (attribute.type === "mdxJsxExpressionAttribute") {
-			pushError(errors, "본문에서 spread 속성은 허용되지 않습니다.", target);
+			pushError(errors, "spread_attribute", target);
 			continue;
 		}
 
 		if (attribute.type !== "mdxJsxAttribute") continue;
 
 		if (attribute.name && EVENT_HANDLER_NAME.test(attribute.name)) {
-			pushError(errors, `이벤트 핸들러 속성은 허용되지 않습니다: ${attribute.name}`, target);
+			pushError(errors, "event_handler_attribute", target, { name: attribute.name });
 		}
 
 		if (typeof attribute.value === "string" || attribute.value == null) continue;
@@ -121,7 +133,7 @@ const validateAttributes = (errors: CmsMdxError[], node: VisitNode) => {
 
 const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 	if (node.type === "mdxjsEsm") {
-		pushError(errors, "본문에서 import/export는 허용되지 않습니다.", node);
+		pushError(errors, "esm_not_allowed", node);
 	}
 
 	if (node.type === "mdxFlowExpression" || node.type === "mdxTextExpression") {
@@ -136,8 +148,9 @@ const validateNode = (errors: CmsMdxError[], node: VisitNode) => {
 		if (rule) {
 			const count = namedJsxChildren(node, rule.children).length;
 			if (count < rule.min || count > rule.max) {
-				const range = Number.isFinite(rule.max) ? `${rule.min}~${rule.max}개의` : `${rule.min}개 이상의`;
-				pushError(errors, `${node.name}는 ${range} ${rule.children.join("·")}만 허용합니다.`, node);
+				const base = { name: node.name as string, min: rule.min, children: rule.children.join("·") };
+				if (Number.isFinite(rule.max)) pushError(errors, "child_count_range", node, { ...base, max: rule.max });
+				else pushError(errors, "child_count_min", node, base);
 			}
 		}
 	}
@@ -163,8 +176,9 @@ export const analyze = (mdx: string, name?: string): CmsMdxAnalysis => {
 		tree = parseMdxAst(body);
 		validateNode(errors, tree);
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "MDX 구문을 분석할 수 없습니다.";
-		errors.push({ message, position: { line: 1, column: 1 } });
+		const position = { line: 1, column: 1 };
+		if (error instanceof Error) errors.push({ code: "mdx_syntax", message: error.message, position });
+		else errors.push({ code: "parse_failed", message: t("parse_failed"), position });
 	}
 
 	return {

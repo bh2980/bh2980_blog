@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import {
 	AlertDialog,
@@ -11,6 +12,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../../ui/alert-dialog";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 export interface ConfirmRequest {
 	title: string;
@@ -32,7 +36,7 @@ export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | 
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel type="button">취소</AlertDialogCancel>
+					<AlertDialogCancel type="button">{t("common.cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						type="button"
 						variant={request?.destructive ? "destructive" : "default"}
@@ -52,9 +56,9 @@ export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | 
 
 /** 저장하지 않은 내용을 버릴 때 묻는 말. 저장 단추가 있는 모든 편집 칸이 같은 말을 쓴다. */
 export const DISCARD_CONFIRM = {
-	title: "저장하지 않은 내용",
-	description: "저장하지 않은 내용이 있습니다. 버릴까요?",
-	confirmLabel: "버리기",
+	title: t("discard.title"),
+	description: t("discard.description"),
+	confirmLabel: t("discard.confirm"),
 	destructive: true,
 } as const satisfies Omit<ConfirmRequest, "onConfirm">;
 

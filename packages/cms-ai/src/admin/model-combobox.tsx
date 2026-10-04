@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
@@ -13,6 +14,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import type { AiModelInfo } from "../connection";
+import { aiCommonMessages } from "./ai-common.messages";
+
+const t = createTranslator(aiCommonMessages);
 
 /** 모델 목록을 받을 곳. 저장한 연결은 id로, 저장 전에는 주소·키로 받는다. */
 export type ModelSource = { providerId: string } | { url: string; apiKey?: string };
@@ -30,7 +34,7 @@ export function useModelList(source: ModelSource | null) {
 					method: "POST",
 					json: source,
 					signal,
-					fallback: "모델 목록을 받지 못했습니다.",
+					fallback: t("modelsFailed"),
 				})
 			).items,
 		enabled: source !== null,
@@ -40,7 +44,7 @@ export function useModelList(source: ModelSource | null) {
 	return {
 		models: query.data ?? null,
 		loading: query.isFetching,
-		error: query.error ? errorText(query.error, "모델 목록을 받지 못했습니다.") : null,
+		error: query.error ? errorText(query.error, t("modelsFailed")) : null,
 	};
 }
 
@@ -98,12 +102,12 @@ export function ModelCombobox({
 			<ComboboxInput
 				id={id}
 				aria-label={ariaLabel}
-				placeholder={loading ? "목록 받는 중…" : placeholder}
+				placeholder={loading ? t("modelsLoading") : placeholder}
 				showClear={Boolean(value)}
 				className="h-8 w-full min-w-0 [&_input]:font-mono [&_input]:text-xs"
 			/>
 			<ComboboxContent>
-				<ComboboxEmpty>{error ?? (loading ? "목록 받는 중…" : "모델 이름을 입력하세요.")}</ComboboxEmpty>
+				<ComboboxEmpty>{error ?? (loading ? t("modelsLoading") : t("modelsHint"))}</ComboboxEmpty>
 				<ComboboxList>
 					{(item: Item) => (
 						<ComboboxItem
@@ -111,7 +115,7 @@ export function ModelCombobox({
 							value={item}
 							className={cn("font-mono text-xs", item.custom && "text-primary")}
 						>
-							<span className="truncate">{item.custom ? `'${item.label}' 사용` : item.label}</span>
+							<span className="truncate">{item.custom ? t("modelUse", { label: item.label }) : item.label}</span>
 						</ComboboxItem>
 					)}
 				</ComboboxList>

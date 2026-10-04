@@ -1,14 +1,18 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import { PluginKey, type Transaction } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { type DocSegment, docRangeToSegment, extractSegments } from "./extract";
+import { textCheckMessages } from "./messages";
 import { createTextCheckPlugin, type TextCheckMeta, type TextCheckPluginState, textCheckIssues } from "./plugin";
 import { checkSegments, type DocTextIssue, ignoreKey, placeIssues, TextCheckCache } from "./run";
 import { supportsLocale, type TextChecker } from "./types";
+
+const t = createTranslator(textCheckMessages);
 
 /** 저절로 검사(`auto: true`)는 입력을 이만큼 멈추면 돈다. */
 export const AUTO_CHECK_DELAY = 1500;
@@ -141,7 +145,7 @@ export function useTextCheck(
 			const segments = extractSegments(doc, { locale, range });
 			if (segments.length === 0) {
 				manualRef.current = null;
-				toast("검사할 글이 없습니다.");
+				toast(t("nothingToCheck"));
 				return;
 			}
 			const scopes = range
@@ -160,8 +164,8 @@ export function useTextCheck(
 				const count = done.length > 0 ? place(editor, done, new Set(segments.map((segment) => segment.id)), scopes) : 0;
 				const [first] = failed;
 				if (first) {
-					toast.error(`${first.checker.label}: 검사하지 못했습니다.`, { description: errorMessage(first.error) });
-				} else if (count === 0) toast.success("고칠 곳이 없습니다.");
+					toast.error(t("failed", { label: first.checker.label }), { description: errorMessage(first.error) });
+				} else if (count === 0) toast.success(t("nothingToFix"));
 			} finally {
 				if (manualRef.current === controller) {
 					manualRef.current = null;
@@ -206,7 +210,7 @@ export function useTextCheck(
 			const [first] = failed;
 			if (first && !failedOnce) {
 				failedOnce = true;
-				toast.error(`${first.checker.label}: 검사하지 못했습니다.`, { description: errorMessage(first.error) });
+				toast.error(t("failed", { label: first.checker.label }), { description: errorMessage(first.error) });
 			}
 		};
 		const onTransaction = ({ transaction }: { transaction: Transaction }) => {

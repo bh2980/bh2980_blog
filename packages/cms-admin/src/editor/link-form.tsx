@@ -1,11 +1,15 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { Unlink } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 export function normalizeLinkHref(value: string): string | null {
 	const href = value.trim();
@@ -93,10 +97,10 @@ export function PopoverFormFooter({
 			)}
 			<div className="ml-auto flex items-center gap-2">
 				<Button type="button" variant="outline" size="sm" onClick={onCancel}>
-					취소
+					{t("popoverForm.cancel")}
 				</Button>
 				<Button type="submit" size="sm">
-					적용
+					{t("popoverForm.apply")}
 				</Button>
 			</div>
 		</div>
@@ -132,7 +136,7 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 		event.preventDefault();
 		const normalized = normalizeLinkHref(href);
 		if (!normalized) {
-			setError("http(s) 주소, 사이트 경로 또는 이메일 주소를 입력하세요.");
+			setError(t("link.invalid"));
 			return;
 		}
 		const command = editor.chain().focus().setTextSelection({ from: draft.from, to: draft.to });
@@ -163,20 +167,20 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 
 	return (
 		<form onSubmit={submit} onKeyDown={submitOnEnter} className="grid gap-3">
-			<p className="font-medium">{draft.existing ? "링크 수정" : "링크 넣기"}</p>
+			<p className="font-medium">{draft.existing ? t("link.edit") : t("link.add")}</p>
 			{needsText && (
 				<label htmlFor={`${id}-text`} className="grid gap-1.5 text-xs">
-					표시 텍스트
+					{t("link.text")}
 					<Input
 						id={`${id}-text`}
 						value={text}
 						onChange={(event) => setText(event.target.value)}
-						placeholder="링크 텍스트"
+						placeholder={t("link.textPlaceholder")}
 					/>
 				</label>
 			)}
 			<label htmlFor={`${id}-href`} className="grid gap-1.5 text-xs">
-				주소
+				{t("link.href")}
 				<Input
 					id={`${id}-href`}
 					autoFocus
@@ -192,7 +196,7 @@ export function LinkForm({ editor, draft, onDone }: LinkFormProps) {
 			</label>
 			{error && <PopoverFormError id={`${id}-error`}>{error}</PopoverFormError>}
 			<PopoverFormFooter
-				removeLabel="링크 해제"
+				removeLabel={t("link.remove")}
 				removeIcon={<Unlink aria-hidden />}
 				onRemove={draft.existing ? remove : undefined}
 				onCancel={onDone}

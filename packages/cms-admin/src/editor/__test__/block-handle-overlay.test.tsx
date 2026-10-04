@@ -1,6 +1,10 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BlockHandleOverlay } from "../block-handle-overlay";
+import { editorMessages } from "../messages";
+
+const t = createTranslator(editorMessages);
 
 describe("BlockHandleOverlay DropdownMenu 및 드래그 동작(v2 C1)", () => {
 	it("핸들 버튼이 draggable이고 dragstart/dragend 이벤트를 전달한다", () => {
@@ -19,7 +23,7 @@ describe("BlockHandleOverlay DropdownMenu 및 드래그 동작(v2 C1)", () => {
 			/>,
 		);
 
-		const trigger = screen.getByRole("button", { name: "블록 조작" });
+		const trigger = screen.getByRole("button", { name: t("blockHandle.label") });
 		expect(trigger.getAttribute("draggable")).toBe("true");
 
 		fireEvent.dragStart(trigger, {
@@ -50,27 +54,27 @@ describe("BlockHandleOverlay DropdownMenu 및 드래그 동작(v2 C1)", () => {
 			/>,
 		);
 
-		const trigger = screen.getByRole("button", { name: "블록 조작" });
+		const trigger = screen.getByRole("button", { name: t("blockHandle.label") });
 		fireEvent.click(trigger);
 		expect(trigger.getAttribute("aria-expanded")).toBe("true");
 
-		const upItem = await screen.findByRole("menuitem", { name: /위로 이동/ });
+		const upItem = await screen.findByRole("menuitem", { name: new RegExp(t("blockHandle.moveUp")) });
 		fireEvent.click(upItem);
 		expect(onMoveUp).toHaveBeenCalledOnce();
 
 		// 다음 메뉴 아이템 테스트를 위해 다시 클릭
 		fireEvent.click(trigger);
-		const downItem = await screen.findByRole("menuitem", { name: /아래로 이동/ });
+		const downItem = await screen.findByRole("menuitem", { name: new RegExp(t("blockHandle.moveDown")) });
 		fireEvent.click(downItem);
 		expect(onMoveDown).toHaveBeenCalledOnce();
 
 		fireEvent.click(trigger);
-		const dupItem = await screen.findByRole("menuitem", { name: /블록 복제/ });
+		const dupItem = await screen.findByRole("menuitem", { name: new RegExp(t("blockHandle.duplicate")) });
 		fireEvent.click(dupItem);
 		expect(onDuplicate).toHaveBeenCalledOnce();
 
 		fireEvent.click(trigger);
-		const delItem = await screen.findByRole("menuitem", { name: /삭제/ });
+		const delItem = await screen.findByRole("menuitem", { name: new RegExp(t("blockHandle.delete")) });
 		fireEvent.click(delItem);
 		expect(onDelete).toHaveBeenCalledOnce();
 

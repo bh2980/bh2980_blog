@@ -37,14 +37,17 @@ const escapeText = (value: string, inCode: boolean, inLabel = false) => {
 	return inLabel ? unbroken.replace(/\]/g, "\\]") : unbroken;
 };
 
+const DIRECTIVE_COLON = /(?<!\\):(?=[A-Za-z0-9_\-가-힣:])/g; // cms-allow-korean: Hangul in a name pattern, not UI text
+const DIRECTIVE_RUN = /^[A-Za-z0-9_\-가-힣:]+/; // cms-allow-korean: Hangul in a name pattern, not UI text
+
 /**
  * 등록된 지시자 이름이 뒤따르는 `:`를 `\:`로 이스케이프한다(§4.4).
  * 그대로 두면 재파싱 때 지시자로 읽힌다(`:br `, `:u[` 등). 미등록 이름(`:free를`)과
  * 시각·URL의 콜론(`12:30`, `https://`)은 건드리지 않는다. 이미 이스케이프된 `\:`는 둔다.
  */
 const escapeDirectiveColon = (value: string): string =>
-	value.replace(/(?<!\\):(?=[A-Za-z0-9_\-가-힣:])/g, (_match: string, offset: number, whole: string) => {
-		const run = /^[A-Za-z0-9_\-가-힣:]+/.exec(whole.slice(offset + 1))?.[0] ?? "";
+	value.replace(DIRECTIVE_COLON, (_match: string, offset: number, whole: string) => {
+		const run = DIRECTIVE_RUN.exec(whole.slice(offset + 1))?.[0] ?? "";
 		return DIRECTIVE_NAMES.has(run) ? "\\:" : ":";
 	});
 const fenceTicks = (value: string) => {

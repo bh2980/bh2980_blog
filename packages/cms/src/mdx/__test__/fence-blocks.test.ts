@@ -45,8 +45,8 @@ describe("코드 펜스 블록의 공개 렌더", () => {
 
 	it("더한 블록의 렌더러 이름은 본문 JSX로도 받는다", () => {
 		expect(analyze(`<${fenceBlock.component} source="chart bar" />\n`).errors).toEqual([]);
-		expect(analyze("<Unknown />\n").errors.map((error) => error.message)).toEqual([
-			"허용되지 않은 JSX 요소입니다: Unknown",
+		expect(analyze("<Unknown />\n").errors.map(({ code, params }) => ({ code, params }))).toEqual([
+			{ code: "disallowed_jsx_element", params: { name: "Unknown" } },
 		]);
 	});
 });

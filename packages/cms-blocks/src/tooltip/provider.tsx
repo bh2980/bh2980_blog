@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type CmsAdminComponents, CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 import {
 	addedMarkName,
@@ -16,14 +17,18 @@ import {
 import type { Editor } from "@tiptap/core";
 import { MessageSquareMore, Pencil, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { keywordList } from "../shared/text";
 import { tooltipBlock } from "./definition";
+import { tooltipMessages } from "./messages";
+
+const t = createTranslator(tooltipMessages);
 
 /** 편집기 마크 이름(`cmsTooltip`). */
 export const TOOLTIP_MARK = addedMarkName(tooltipBlock.name);
 /** 슬래시 메뉴가 서식 도구의 툴팁 입력을 여는 창 이벤트. */
 export const OPEN_TOOLTIP_EVENT = "cms:open-tooltip";
 
-const LABELS: MarkTextLabels = { name: "툴팁", field: "설명", empty: "설명을 입력하세요." };
+const LABELS: MarkTextLabels = { name: t("label"), field: t("content.label"), empty: t("field.empty") };
 const ICON_CLASS = "size-4";
 
 function TooltipToolbarButton({ editor }: { editor: Editor }) {
@@ -45,7 +50,7 @@ const openForm = (
 	form: { active: boolean; initial: string; range?: { from: number; to: number } },
 ) =>
 	openPanel({
-		label: "툴팁 편집",
+		label: t("panel.label"),
 		content: (
 			<MarkTextForm
 				editor={editor}
@@ -67,7 +72,7 @@ function TooltipBubbleButton(props: EditorBubbleProps) {
 	const active = editor.isActive(TOOLTIP_MARK);
 	return (
 		<BubbleButton
-			label={active ? "툴팁 수정" : "툴팁 넣기"}
+			label={active ? t("edit") : t("add")}
 			onClick={() => openForm(props, { active, initial: String(editor.getAttributes(TOOLTIP_MARK).content ?? "") })}
 		>
 			<MessageSquareMore aria-hidden className={ICON_CLASS} />
@@ -84,10 +89,10 @@ function TooltipDetail(props: EditorMarkDetailProps) {
 			<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={content}>
 				{content}
 			</span>
-			<BubbleButton label="툴팁 수정" onClick={() => openForm(props, { active: true, initial: content, range: mark })}>
+			<BubbleButton label={t("edit")} onClick={() => openForm(props, { active: true, initial: content, range: mark })}>
 				<Pencil aria-hidden className={ICON_CLASS} />
 			</BubbleButton>
-			<BubbleButton label="툴팁 해제" onClick={act(() => removeInlineMark(editor, mark))}>
+			<BubbleButton label={t("remove")} onClick={act(() => removeInlineMark(editor, mark))}>
 				<X aria-hidden className={ICON_CLASS} />
 			</BubbleButton>
 		</>
@@ -104,15 +109,16 @@ export const tooltipMarkExtension: EditorMarkExtension = {
 	insertActions: [
 		{
 			id: "tooltip",
-			title: "툴팁",
-			description: "글자에 설명 달기",
+			title: t("insert.title"),
+			description: t("insert.description"),
 			icon: MessageSquareMore,
-			keywords: ["툴팁", "tooltip", "설명", "주석"],
+			keywords: ["tooltip", ...keywordList(t("insert.keywords"))],
 			run: (editor, range) => {
 				// 슬래시는 빈 문단에서 입력하므로 선택 영역이 없다. 라벨 예시를 선택해 편집·설명 입력을 시작한다.
-				editor.chain().focus().deleteRange(range).insertContent("툴팁 텍스트").run();
+				const sample = t("insert.text");
+				editor.chain().focus().deleteRange(range).insertContent(sample).run();
 				const to = editor.state.selection.from;
-				editor.commands.setTextSelection({ from: to - "툴팁 텍스트".length, to });
+				editor.commands.setTextSelection({ from: to - sample.length, to });
 				window.dispatchEvent(new CustomEvent(OPEN_TOOLTIP_EVENT));
 			},
 		},

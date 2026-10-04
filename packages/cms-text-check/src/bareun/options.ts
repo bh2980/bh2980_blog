@@ -1,4 +1,9 @@
+import { createActiveTranslator } from "@bh2980/cms";
 import type { TextCheckerLimits } from "@bh2980/cms-admin/text-check";
+import { bareunMessages } from "./messages";
+
+// `bareun()`은 사이트 설정 파일에서 불리므로 기본 이름은 읽는 때에 화면 언어로 고른다.
+const t = createActiveTranslator(bareunMessages);
 
 /** 사이트 설정의 `plugins`에서 바른 검사기를 찾는 이름. */
 export const BAREUN_PLUGIN_NAME = "text-check-bareun";
@@ -14,7 +19,7 @@ export interface BareunOptions {
 	readonly apiKeyEnv?: string;
 	/** 바른 API 주소. 기본 `https://api.bareun.ai`. 직접 띄운 바른 서버를 쓸 때 바꾼다. */
 	readonly baseUrl?: string;
-	/** 도구 모음 버튼 이름이자 결과 창의 출처. 기본 "바른 맞춤법 검사". */
+	/** 도구 모음 버튼 이름이자 결과 창의 출처. 기본은 화면 언어의 "바른 맞춤법 검사". */
 	readonly label?: string;
 	/** 입력을 멈추면 바뀐 문단만 저절로 검사한다. 바른 API는 쓴 만큼 요금이 들어 기본은 끈다. */
 	readonly auto?: boolean;
@@ -46,10 +51,13 @@ export function resolveBareunOptions(options: BareunOptions = {}): ResolvedBareu
 		if (value !== undefined && (!Number.isInteger(value) || value <= 0))
 			throw new Error(`bareun: limits.${key} must be a positive integer`);
 	}
+	const label = options.label?.trim();
 	return {
 		apiKeyEnv,
 		baseUrl,
-		label: options.label?.trim() || "바른 맞춤법 검사",
+		get label() {
+			return label || t("label");
+		},
 		auto: options.auto ?? false,
 		customDictNames: [...(options.customDictNames ?? [])],
 		limits,

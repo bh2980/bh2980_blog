@@ -1,6 +1,8 @@
 // @vitest-environment node
+import { createTranslator } from "@bh2980/cms/client";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { bareunMessages } from "../messages";
 import { resolveBareunOptions } from "../options";
 import { bareunRoute } from "../route";
 import bareunServer from "../server";
@@ -89,7 +91,10 @@ describe("바른 검사 경로", () => {
 		vi.stubGlobal("fetch", fetchMock);
 		const res = await post({ segments });
 		expect(res.status).toBe(503);
-		expect(await res.json()).toEqual({ code: "text_check_unavailable", message: "바른 API 키가 없습니다." });
+		expect(await res.json()).toEqual({
+			code: "text_check_unavailable",
+			message: createTranslator(bareunMessages)("error.keyMissing"),
+		});
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 

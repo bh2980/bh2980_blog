@@ -1,4 +1,4 @@
-import { SITE_NAME } from "@bh2980/cms/client";
+import { createTranslator, SITE_NAME } from "@bh2980/cms/client";
 import { isCmsMediaConfigured } from "@bh2980/cms/runtime";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
@@ -8,10 +8,13 @@ import { AdminFeaturesProvider } from "../screens/shared/admin-features";
 import { AdminQueryProvider } from "../screens/shared/query-provider";
 import { Toaster } from "../ui/sonner";
 import { TooltipProvider } from "../ui/tooltip";
+import { nextMessages } from "./messages";
+
+const t = createTranslator(nextMessages);
 
 /** 관리자 화면 메타데이터. 앱의 관리자 레이아웃에서 `export const metadata = cmsAdminMetadata;`로 쓴다. */
 export const cmsAdminMetadata: Metadata = {
-	title: SITE_NAME ? `CMS 관리자 | ${SITE_NAME}` : "CMS 관리자",
+	title: SITE_NAME ? t("titleWithSite", { site: SITE_NAME }) : t("title"),
 	robots: { index: false, follow: false },
 };
 

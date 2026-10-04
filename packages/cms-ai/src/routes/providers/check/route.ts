@@ -22,7 +22,7 @@ export const POST = adminRoute(async ({ request }) => {
 		});
 		if (target.generator) {
 			await target.generator.generate({
-				system: '연결 확인 요청이다. 결과는 JSON {"ok": true} 모양으로 답한다.',
+				system: 'This is a connection check. Answer with the JSON {"ok": true}.',
 				content: [{ type: "text", text: "ping" }],
 				schema: z.object({ ok: z.boolean() }),
 				// 생각을 먼저 하는 모델은 짧은 답에도 출력 한도를 많이 쓴다.

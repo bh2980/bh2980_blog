@@ -2,6 +2,7 @@
 
 import {
 	contentPath,
+	createTranslator,
 	DEFAULT_LOCALE,
 	isCollection,
 	isLocale,
@@ -15,6 +16,9 @@ import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { MediaThumbnail } from "@bh2980/cms-admin/media";
 import type { EntryData, EntryForm } from "@bh2980/cms-admin/screens/entries/entry-form";
 import { SEO_ROLES } from "../fields";
+import { seoMessages } from "../messages";
+
+const t = createTranslator(seoMessages);
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 
@@ -61,7 +65,7 @@ export function SeoPreview({
 
 	return (
 		<div className="space-y-3">
-			<section aria-label="검색 결과 미리보기" className="space-y-1 rounded-lg border bg-muted/30 p-3">
+			<section aria-label={t("preview.search")} className="space-y-1 rounded-lg border bg-muted/30 p-3">
 				<p className="truncate text-[11px] text-muted-foreground">
 					{SITE_NAME}
 					{path
@@ -70,20 +74,22 @@ export function SeoPreview({
 						.map((part) => ` › ${decodeURIComponent(part)}`)}
 				</p>
 				<p className="line-clamp-2 font-medium text-[#1a0dab] text-sm leading-snug dark:text-[#8ab4f8]">
-					{title || "제목 없음"}
+					{title || t("preview.noTitle")}
 				</p>
 				<p className={cn("line-clamp-2 text-xs leading-relaxed", !description && "text-muted-foreground italic")}>
-					{description || "설명 없음"}
+					{description || t("preview.noDescription")}
 				</p>
-				{noindex && <p className="pt-1 font-medium text-[11px] text-amber-700 dark:text-amber-400">검색엔진에 숨김</p>}
+				{noindex && (
+					<p className="pt-1 font-medium text-[11px] text-amber-700 dark:text-amber-400">{t("preview.hidden")}</p>
+				)}
 			</section>
 
 			{hasImageField && (
-				<section aria-label="공유 미리보기" className="overflow-hidden rounded-lg border">
+				<section aria-label={t("preview.share")} className="overflow-hidden rounded-lg border">
 					{imageId && <MediaThumbnail mediaId={imageId} className="aspect-[1.91/1] w-full border-b" />}
 					<div className="space-y-0.5 p-3">
 						<p className="truncate text-[11px] text-muted-foreground">{SITE_NAME}</p>
-						<p className="line-clamp-2 font-medium text-sm leading-snug">{title || "제목 없음"}</p>
+						<p className="line-clamp-2 font-medium text-sm leading-snug">{title || t("preview.noTitle")}</p>
 						{description && <p className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">{description}</p>}
 					</div>
 				</section>

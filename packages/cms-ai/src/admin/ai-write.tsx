@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { EditorExtension, EditorInsertAction, EditorSelectionAction } from "@bh2980/cms-admin";
 import { type BlockAction, blockNodeName, MdxPreview, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { Button } from "@bh2980/cms-admin/ui/button";
@@ -10,8 +11,13 @@ import type { Editor, JSONContent } from "@tiptap/core";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiActionView } from "../actions";
+import { aiCommonMessages } from "./ai-common.messages";
 import { streamAiAction, useAiActions } from "./ai-slot-provider";
+import { aiWriteMessages } from "./ai-write.messages";
 import { diffWords } from "./word-diff";
+
+const t = createTranslator(aiWriteMessages);
+const common = createTranslator(aiCommonMessages);
 
 /**
  * 본문에 글을 쓰는 AI 기능(M8-2·M8-3·M9-3). 붙을 곳이 `selection`(선택 영역 메뉴, 예: 문체 다듬기)이면 고른 글을 다듬어
@@ -99,7 +105,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 			setState((current) => ({
 				status: "error",
 				text: "text" in current ? current.text : "",
-				message: error instanceof Error && error.message ? error.message : "실행하지 못했습니다.",
+				message: error instanceof Error && error.message ? error.message : common("runFailed"),
 			}));
 		}
 	};
@@ -118,7 +124,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 	const blockProblem = useMemo(() => {
 		if (job.mode !== "block" || state.status !== "done") return null;
 		const blocks = mdxToTiptap(state.text).content ?? [];
-		return blocks.length === 1 && blocks[0]?.type === job.nodeType ? null : "결과가 같은 블록 하나가 아닙니다.";
+		return blocks.length === 1 && blocks[0]?.type === job.nodeType ? null : t("blockMismatch");
 	}, [job, state]);
 
 	const apply = () => {
@@ -159,7 +165,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 						}}
 					>
 						<Textarea
-							aria-label="추가 요청"
+							aria-label={t("request")}
 							value={request}
 							rows={3}
 							onChange={(event) => setRequest(event.target.value)}
@@ -170,16 +176,14 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 									if (!running) void run();
 								}
 							}}
-							placeholder={
-								job.mode === "insert" ? "무엇을 쓸까요?" : job.mode === "block" ? "무엇을 바꿀까요?" : "추가 요청"
-							}
+							placeholder={job.mode === "insert" ? t("askWrite") : job.mode === "block" ? t("askChange") : t("request")}
 							className="max-h-48 min-h-20 resize-y text-sm"
 							autoFocus={!fixed}
 						/>
 						<div className="flex justify-end">
 							<Button type="submit" size="sm" disabled={running}>
 								{state.status === "idle" ? <Sparkles aria-hidden /> : <RefreshCw aria-hidden />}
-								{running ? "실행 중…" : state.status === "idle" ? "실행" : "다시 실행"}
+								{running ? t("running") : state.status === "idle" ? t("run") : t("runAgain")}
 							</Button>
 						</div>
 					</form>
@@ -191,15 +195,15 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 						className="min-w-0 gap-2"
 					>
 						<TabsList>
-							<TabsTrigger value="preview">미리보기</TabsTrigger>
-							<TabsTrigger value="source">{job.mode === "insert" ? "원문" : "바뀐 곳"}</TabsTrigger>
+							<TabsTrigger value="preview">{t("preview")}</TabsTrigger>
+							<TabsTrigger value="source">{job.mode === "insert" ? t("sourceInsert") : t("sourceChanges")}</TabsTrigger>
 						</TabsList>
 						<output aria-live="polite" className="block min-w-0">
 							{view === "preview" ? (
 								<ResultPreview job={job} text={result} done={state.status === "done"} />
 							) : (
 								<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed">
-									{diff ? <DiffText parts={diff} /> : result || "실행 중…"}
+									{diff ? <DiffText parts={diff} /> : result || t("running")}
 								</pre>
 							)}
 						</output>
@@ -221,11 +225,11 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 							onClick={() => void run()}
 						>
 							<RefreshCw aria-hidden />
-							{running ? "실행 중…" : "다시 실행"}
+							{running ? t("running") : t("runAgain")}
 						</Button>
 					)}
 					<Button type="button" variant="outline" size="sm" onClick={onClose}>
-						취소
+						{t("cancel")}
 					</Button>
 					<Button
 						type="button"
@@ -233,7 +237,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 						disabled={state.status !== "done" || !state.text || !!blockProblem}
 						onClick={apply}
 					>
-						{job.mode === "insert" ? "넣기" : "바꾸기"}
+						{job.mode === "insert" ? t("insert") : t("replace")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -269,21 +273,21 @@ const PANEL = "max-h-[50vh] min-h-48 overflow-y-auto rounded-md bg-muted/40 p-3"
  */
 function ResultPreview({ job, text, done }: { job: Job; text: string; done: boolean }) {
 	const after = done ? (
-		<MdxPreview mdx={text} label="바뀐 뒤" />
+		<MdxPreview mdx={text} label={t("after")} />
 	) : (
-		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || "실행 중…"}</pre>
+		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || t("running")}</pre>
 	);
 	if (job.mode === "insert") return <div className={PANEL}>{after}</div>;
 	return (
 		<div className="grid min-w-0 gap-3 sm:grid-cols-2">
 			<section className="min-w-0 space-y-1.5">
-				<h3 className="font-medium text-muted-foreground text-xs">지금</h3>
+				<h3 className="font-medium text-muted-foreground text-xs">{t("now")}</h3>
 				<div className={PANEL}>
-					<MdxPreview mdx={job.source} label="지금" />
+					<MdxPreview mdx={job.source} label={t("now")} />
 				</div>
 			</section>
 			<section className="min-w-0 space-y-1.5">
-				<h3 className="font-medium text-muted-foreground text-xs">바뀐 뒤</h3>
+				<h3 className="font-medium text-muted-foreground text-xs">{t("after")}</h3>
 				<div className={PANEL}>{after}</div>
 			</section>
 		</div>
@@ -344,7 +348,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 			usable.insert.map((action) => ({
 				id: `ai:${action.key}`,
 				title: action.label,
-				description: "AI 기능",
+				description: t("insertDescription"),
 				keywords: ["ai", action.label],
 				icon: "sparkles",
 				run: (current, range) => setJob({ mode: "insert", action, editor: current, from: range.from, to: range.to }),

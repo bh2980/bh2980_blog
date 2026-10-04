@@ -3,8 +3,13 @@
 import { diffSources, type SourceChange } from "@bh2980/cms/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { MdxPreview } from "./source-pane";
+import { t } from "./translate";
 
-const KIND_LABELS: Record<SourceChange["kind"], string> = { changed: "바뀜", added: "추가", removed: "삭제" };
+const KIND_LABELS: Record<SourceChange["kind"], string> = {
+	changed: t("sourceChange.changed"),
+	added: t("sourceChange.added"),
+	removed: t("sourceChange.removed"),
+};
 
 /** 머리 줄 조각(`{"title":..}`·`{"labels":[..]}`)의 글자. */
 const headerText = (source: string) => {
@@ -35,13 +40,13 @@ function ChangeItem({ change }: { change: SourceChange }) {
 			<div className="grid gap-3 md:grid-cols-2">
 				{before && (
 					<div className="min-w-0">
-						<p className="mb-1 text-muted-foreground text-xs">이전</p>
+						<p className="mb-1 text-muted-foreground text-xs">{t("sourceChange.before")}</p>
 						<UnitView unit={before} />
 					</div>
 				)}
 				{after && (
 					<div className="min-w-0">
-						<p className="mb-1 text-muted-foreground text-xs">지금</p>
+						<p className="mb-1 text-muted-foreground text-xs">{t("sourceChange.after")}</p>
 						<UnitView unit={after} />
 					</div>
 				)}
@@ -67,13 +72,13 @@ export function SourceChangeDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>원문 변경</DialogTitle>
-					<DialogDescription>마지막으로 확인한 원문과 지금 원문에서 바뀐 블록입니다.</DialogDescription>
+					<DialogTitle>{t("sourceChange.title")}</DialogTitle>
+					<DialogDescription>{t("sourceChange.description")}</DialogDescription>
 				</DialogHeader>
 				{changes === null ? (
-					<p className="text-muted-foreground text-sm">비교할 수 없습니다.</p>
+					<p className="text-muted-foreground text-sm">{t("sourceChange.cantCompare")}</p>
 				) : changes.length === 0 ? (
-					<p className="text-muted-foreground text-sm">바뀐 블록이 없습니다.</p>
+					<p className="text-muted-foreground text-sm">{t("sourceChange.none")}</p>
 				) : (
 					<ol className="flex flex-col gap-3">
 						{changes.map((change, index) => (

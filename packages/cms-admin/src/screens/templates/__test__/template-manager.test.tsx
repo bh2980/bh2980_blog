@@ -1,7 +1,13 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sharedMessages } from "../../shared/messages";
 import { AdminQueryProvider } from "../../shared/query-provider";
+import { templatesMessages } from "../messages";
 import { TemplateManager } from "../template-manager";
+
+const t = createTranslator(templatesMessages);
+const tShared = createTranslator(sharedMessages);
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), message: vi.fn() }));
 vi.mock("sonner", () => ({ Toaster: () => null, toast }));
@@ -56,34 +62,36 @@ describe("TemplateManager", () => {
 		renderManager();
 
 		expect(await screen.findByText("일반 게시글")).toBeTruthy();
-		expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("본문 템플릿2");
+		expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(`${t("title")}2`);
 		expect(screen.queryByText("포스트용")).toBeNull();
 	});
 
 	it("marks the open template and saves without closing", async () => {
 		renderManager();
 		fireEvent.click(await screen.findByRole("button", { name: /^일반 게시글/ }));
-		const name = await screen.findByRole("textbox", { name: "템플릿 이름" });
+		const name = await screen.findByRole("textbox", { name: t("edit.nameLabel") });
 		expect(screen.getByRole("button", { name: /^일반 게시글/ }).getAttribute("aria-current")).toBe("true");
 
 		fireEvent.change(name, { target: { value: "긴 글" } });
-		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		fireEvent.click(screen.getByRole("button", { name: t("common.save") }));
 
-		await waitFor(() => expect(toast.success).toHaveBeenCalledWith("저장했습니다."));
-		expect((screen.getByRole("textbox", { name: "템플릿 이름" }) as HTMLInputElement).value).toBe("긴 글");
+		await waitFor(() => expect(toast.success).toHaveBeenCalledWith(t("common.saved")));
+		expect((screen.getByRole("textbox", { name: t("edit.nameLabel") }) as HTMLInputElement).value).toBe("긴 글");
 	});
 
 	it("asks before discarding unsaved changes when opening another template", async () => {
 		renderManager();
 		fireEvent.click(await screen.findByRole("button", { name: /^일반 게시글/ }));
-		fireEvent.change(await screen.findByRole("textbox", { name: "템플릿 이름" }), { target: { value: "바꾼 이름" } });
+		fireEvent.change(await screen.findByRole("textbox", { name: t("edit.nameLabel") }), {
+			target: { value: "바꾼 이름" },
+		});
 
 		fireEvent.click(screen.getByRole("button", { name: /^메모/ }));
-		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" });
-		fireEvent.click(within(dialog).getByRole("button", { name: "버리기" }));
+		const dialog = await screen.findByRole("alertdialog", { name: tShared("discard.title") });
+		fireEvent.click(within(dialog).getByRole("button", { name: tShared("discard.confirm") }));
 
 		await waitFor(() =>
-			expect((screen.getByRole("textbox", { name: "템플릿 이름" }) as HTMLInputElement).value).toBe("메모"),
+			expect((screen.getByRole("textbox", { name: t("edit.nameLabel") }) as HTMLInputElement).value).toBe("메모"),
 		);
 	});
 
@@ -94,7 +102,7 @@ describe("TemplateManager", () => {
 		const alert = await screen.findByRole("alert", undefined, { timeout: 3000 });
 		expect(alert.textContent).toContain("서버 오류");
 		listFails = false;
-		fireEvent.click(within(alert).getByRole("button", { name: "다시 시도" }));
+		fireEvent.click(within(alert).getByRole("button", { name: t("common.retry") }));
 		expect(await screen.findByText("일반 게시글")).toBeTruthy();
 	});
 });

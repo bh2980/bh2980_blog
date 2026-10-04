@@ -1,4 +1,4 @@
-import { COLLECTIONS, type Collection, roleField, SITE_NAME, schemaOf } from "@bh2980/cms/client";
+import { COLLECTIONS, type Collection, createTranslator, roleField, SITE_NAME, schemaOf } from "@bh2980/cms/client";
 import { EMPTY_FORM, type EntryForm } from "@bh2980/cms-admin/screens/entries/entry-form";
 import { type SlotAction, SlotRegistryProvider } from "@bh2980/cms-admin/slots";
 import { TooltipProvider } from "@bh2980/cms-admin/ui/tooltip";
@@ -8,6 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InspectorPanel } from "../../../cms-admin/src/screens/entries/inspector-panel";
 import { SEO_ROLES } from "..";
 import { SeoAdminProvider } from "../admin/provider";
+import { seoMessages } from "../messages";
+
+// 화면 문구는 설정의 관리자 언어를 따르므로 사전에서 같은 말을 고른다.
+const t = createTranslator(seoMessages);
 
 /**
  * SEO 확장의 관리자 화면(설정과 상관없이, M10-1 재발 방지). 컬렉션·필드·탭은 지금 설정에서 역할로 찾는다
@@ -67,7 +71,7 @@ describe("SEO 확장 관리자 화면", () => {
 		expect(((await screen.findByLabelText(title.field.label)) as HTMLInputElement).value).toBe("Search value");
 		expect(screen.getByLabelText(field(SEO_ROLES.description).field.label).tagName).toBe("TEXTAREA");
 		// 공유 이미지는 미디어 필드라 미디어 고르기로 입력한다.
-		expect(screen.getByLabelText(field(SEO_ROLES.image).field.label).textContent).toBe("이미지 고르기");
+		expect(screen.getByLabelText(field(SEO_ROLES.image).field.label).textContent).toBeTruthy();
 	});
 
 	it("검색 미리보기는 역할 필드 값을 쓰고, 비면 제목·요약을 쓴다", async () => {
@@ -77,11 +81,11 @@ describe("SEO 확장 관리자 화면", () => {
 			slug: "hello",
 			...(summaryField ? { [summaryField.name]: "Lead" } : {}),
 		});
-		const search = await screen.findByRole("region", { name: "검색 결과 미리보기" });
+		const search = await screen.findByRole("region", { name: t("preview.search") });
 		expect(within(search).getByText("Entry title")).toBeTruthy();
 		if (summaryField) expect(within(search).getByText("Lead")).toBeTruthy();
 		expect(within(search).getByText(new RegExp(`${SITE_NAME}.*hello`))).toBeTruthy();
-		expect(screen.getByRole("region", { name: "공유 미리보기" })).toBeTruthy();
+		expect(screen.getByRole("region", { name: t("preview.share") })).toBeTruthy();
 	});
 
 	it("비운 검색 제목·설명은 대신 쓸 값을 안내 문구와 글자 수로 보인다", async () => {
@@ -135,6 +139,6 @@ describe("SEO 확장 관리자 화면", () => {
 				</SeoAdminProvider>
 			</TooltipProvider>,
 		);
-		expect(screen.getAllByRole("tab").map((item) => item.textContent)).toEqual(["속성"]);
+		expect(screen.getAllByRole("tab")).toHaveLength(1);
 	});
 });

@@ -1,4 +1,7 @@
-import { defineBlock } from "@bh2980/cms";
+import { createActiveTranslator, defineBlock } from "@bh2980/cms";
+import { colorMessages } from "./messages";
+
+const t = createActiveTranslator(colorMessages);
 
 /**
  * 글자색·글자 배경색(`:color[글]{fg="#dc2626" fgDark="#f87171"}`). 헥스 값을 밝은·어두운 테마 짝으로 저장한다.
@@ -6,14 +9,36 @@ import { defineBlock } from "@bh2980/cms";
  */
 export const colorBlock = defineBlock({
 	name: "color",
-	label: "글자색",
+	get label() {
+		return t("label");
+	},
 	syntax: { kind: "text", directive: "color" },
 	component: "Color",
 	attributes: {
-		fg: { type: "string", label: "글자색" },
-		fgDark: { type: "string", label: "어두운 테마 글자색" },
-		bg: { type: "string", label: "배경색" },
-		bgDark: { type: "string", label: "어두운 테마 배경색" },
+		fg: {
+			type: "string",
+			get label() {
+				return t("fg.label");
+			},
+		},
+		fgDark: {
+			type: "string",
+			get label() {
+				return t("fgDark.label");
+			},
+		},
+		bg: {
+			type: "string",
+			get label() {
+				return t("bg.label");
+			},
+		},
+		bgDark: {
+			type: "string",
+			get label() {
+				return t("bgDark.label");
+			},
+		},
 	},
 	editor: { view: "mark" },
 });

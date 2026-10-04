@@ -27,7 +27,7 @@ describe("EditorToggle", () => {
 		const toggle = new EditorToggle(disallowedSource);
 		expect(toggle.mode).toBe("source");
 		expect(toggle.errors.length).toBeGreaterThan(0);
-		expect(toggle.errors.some((error) => error.message.includes("이벤트 핸들러"))).toBe(true);
+		expect(toggle.errors.some((error) => error.code === "event_handler_attribute")).toBe(true);
 		expect(toggle.document).toBeNull();
 		expect(toggle.source).toBe(disallowedSource);
 	});

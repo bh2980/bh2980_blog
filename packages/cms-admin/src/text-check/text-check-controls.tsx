@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { posToDOMRect } from "@tiptap/core";
 import { CircleAlert, EyeOff, Info, Loader2, type LucideIcon, SpellCheck, TriangleAlert } from "lucide-react";
 import { useMemo, useRef } from "react";
@@ -9,10 +10,13 @@ import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
 import { Popover, PopoverContent } from "../ui/popover";
+import { textCheckMessages } from "./messages";
 import { textCheckIssues } from "./plugin";
 import type { DocTextIssue } from "./run";
 import type { TextChecker, TextIssueSeverity } from "./types";
 import type { TextCheckController } from "./use-text-check";
+
+const t = createTranslator(textCheckMessages);
 
 const SEVERITY_ICON: Readonly<Record<TextIssueSeverity, { icon: LucideIcon; className: string }>> = {
 	error: { icon: CircleAlert, className: "text-destructive" },
@@ -32,7 +36,7 @@ function CheckerButton({ checker, controller }: { checker: TextChecker; controll
 	const running = controller.running === checker.id;
 	return (
 		<IconButton
-			label={running ? "검사 중…" : checker.label}
+			label={running ? t("running") : checker.label}
 			side="bottom"
 			disabled={controller.running !== null || !controller.editor.isEditable}
 			// 고른 글자를 잃지 않게 편집기 초점을 지킨다.
@@ -56,7 +60,7 @@ export function TextCheckToolbar({ controller }: { controller: TextCheckControll
 			{count > 0 && (
 				<DropdownMenu>
 					<IconButton
-						label="검사 결과"
+						label={t("results")}
 						side="bottom"
 						size="sm"
 						className="h-8 min-w-8 px-1.5"
@@ -123,7 +127,7 @@ export function TextIssuePopover({ controller }: { controller: TextCheckControll
 				align="start"
 				initialFocus={open?.focus ?? false}
 				finalFocus={() => (returnFocusRef.current ? (editor.view.dom as HTMLElement) : false)}
-				aria-label="검사 결과"
+				aria-label={t("results")}
 				className="w-72 gap-3 p-3"
 			>
 				{issue && <IssueCard controller={controller} issue={issue} />}
@@ -153,7 +157,7 @@ function IssueCard({ controller, issue }: { controller: TextCheckController; iss
 							className="max-w-full"
 							onClick={() => controller.apply(issue, suggestion)}
 						>
-							<span className="truncate">{suggestion || "삭제"}</span>
+							<span className="truncate">{suggestion || t("delete")}</span>
 						</Button>
 					))}
 				</div>
@@ -167,12 +171,12 @@ function IssueCard({ controller, issue }: { controller: TextCheckController; iss
 						rel="noreferrer noopener"
 						className="text-primary text-xs underline-offset-2 hover:underline"
 					>
-						설명
+						{t("explain")}
 					</a>
 				)}
 				<Button type="button" variant="ghost" size="sm" onClick={() => controller.ignore(issue)}>
 					<EyeOff aria-hidden className="size-4" />
-					무시
+					{t("ignore")}
 				</Button>
 			</div>
 		</>

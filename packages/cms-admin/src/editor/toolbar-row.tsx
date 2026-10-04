@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import { Check, MoreHorizontal } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -12,8 +13,11 @@ import {
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
+import { editorMessages } from "./messages";
 import type { ToolbarItem } from "./toolbar-button";
 import { type FitItem, fitSlots, layoutKeys } from "./toolbar-fit";
+
+const t = createTranslator(editorMessages);
 
 /** 도구 하나. 좁으면 `priority`가 큰 것부터 "더보기" 메뉴(`menu`)로 들어간다. */
 export interface ToolbarSlot {
@@ -82,7 +86,7 @@ function OverflowMenu({ editor, children }: { editor: Editor; children: ReactNod
 	return (
 		<DropdownMenu>
 			<IconButton
-				label="더보기"
+				label={t("toolbarRow.more")}
 				side="bottom"
 				className="shrink-0"
 				disabled={!editor.isEditable}

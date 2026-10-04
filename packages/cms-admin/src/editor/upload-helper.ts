@@ -1,5 +1,8 @@
-import { fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
+import { createTranslator, fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
 import { cmsApiErrorMessage } from "../screens/api-error-message";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * 브라우저 이미지 업로드(§7.1·§7.2). 편집기와 미디어 라이브러리가 같이 쓴다.
@@ -70,20 +73,20 @@ export async function prepareUpload(
 	if (!options.optimize) return { file, optimized: false };
 	const policy = options.policy ?? DEFAULT_OPTIMIZE_POLICY;
 	if (!policy.formats.includes(file.type)) {
-		return { file, optimized: false, skippedReason: "이 형식은 원본을 유지합니다" };
+		return { file, optimized: false, skippedReason: t("upload.keepFormat") };
 	}
 	if (file.type === "image/webp" && (await isAnimatedWebp(file))) {
-		return { file, optimized: false, skippedReason: "애니메이션 이미지는 원본을 유지합니다" };
+		return { file, optimized: false, skippedReason: t("upload.keepAnimated") };
 	}
 	if (typeof createImageBitmap !== "function" || typeof document === "undefined") {
-		return { file, optimized: false, skippedReason: "이 브라우저는 변환을 지원하지 않습니다" };
+		return { file, optimized: false, skippedReason: t("upload.noConvert") };
 	}
 
 	let bitmap: ImageBitmap;
 	try {
 		bitmap = await createImageBitmap(file);
 	} catch {
-		return { file, optimized: false, skippedReason: "이미지를 읽을 수 없어 원본을 유지합니다" };
+		return { file, optimized: false, skippedReason: t("upload.unreadable") };
 	}
 	const scale = Math.min(1, policy.maxEdge / Math.max(bitmap.width, bitmap.height));
 	const width = Math.round(bitmap.width * scale);
@@ -97,10 +100,10 @@ export async function prepareUpload(
 	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, policy.outputType, policy.quality));
 	// WebP 인코딩을 지원하지 않는 브라우저는 PNG를 돌려준다.
 	if (!blob || blob.type !== policy.outputType) {
-		return { file, optimized: false, skippedReason: "이 브라우저는 WebP 변환을 지원하지 않습니다" };
+		return { file, optimized: false, skippedReason: t("upload.noWebp") };
 	}
 	if (scale === 1 && blob.size >= file.size) {
-		return { file, optimized: false, skippedReason: "원본이 더 작아 원본을 유지합니다", width, height };
+		return { file, optimized: false, skippedReason: t("upload.originalSmaller"), width, height };
 	}
 	return {
 		file: new File([blob], policy.rename(file.name), { type: policy.outputType }),
@@ -127,9 +130,9 @@ function putFile(ticket: UploadTicket, file: File, onProgress?: (loaded: number)
 		xhr.onload = () =>
 			xhr.status >= 200 && xhr.status < 300
 				? resolve()
-				: reject(new Error(`저장소 업로드에 실패했습니다 · ${xhr.status}`));
-		xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다"));
-		xhr.ontimeout = () => reject(new Error("업로드 시간이 초과되었습니다"));
+				: reject(new Error(t("upload.storageFailed", { status: xhr.status })));
+		xhr.onerror = () => reject(new Error(t("upload.networkError")));
+		xhr.ontimeout = () => reject(new Error(t("upload.timeout")));
 		xhr.send(file);
 	});
 }
@@ -163,7 +166,7 @@ export async function uploadImageFile(
 			...(original ? { original: { mimeType: original.type, byteSize: original.size } } : {}),
 		}),
 	});
-	if (!prepareRes.ok) throw new Error(await errorMessage(prepareRes, "업로드를 준비하지 못했습니다"));
+	if (!prepareRes.ok) throw new Error(await errorMessage(prepareRes, t("upload.prepareFailed")));
 	const ticket = (await prepareRes.json()) as UploadTicket & { mediaId: string; original?: UploadTicket };
 
 	const total = file.size + (original?.size ?? 0);
@@ -188,7 +191,7 @@ export async function uploadImageFile(
 		headers: { "Content-Type": "application/json" },
 		body: "{}",
 	});
-	if (!completeRes.ok) throw new Error(await errorMessage(completeRes, "업로드를 확인하지 못했습니다"));
+	if (!completeRes.ok) throw new Error(await errorMessage(completeRes, t("upload.completeFailed")));
 	const result = await completeRes.json();
 	return {
 		mediaId: result.mediaId,
@@ -212,8 +215,8 @@ export async function uploadAttachment(
 	onProgress?: (percent: number) => void,
 ): Promise<{ mediaId: string }> {
 	const mimeType = fileTypeFor(file.name);
-	if (!mimeType) throw new Error("올릴 수 없는 파일 형식입니다");
-	if (file.size > MAX_FILE_BYTES) throw new Error(`${MAX_FILE_BYTES / 1024 / 1024}MB보다 큰 파일은 올릴 수 없습니다`);
+	if (!mimeType) throw new Error(t("upload.unsupportedType"));
+	if (file.size > MAX_FILE_BYTES) throw new Error(t("upload.tooLarge", { mb: MAX_FILE_BYTES / 1024 / 1024 }));
 	const typed = file.type === mimeType ? file : new File([file], file.name, { type: mimeType });
 	const uploaded = await uploadImageFile(typed, onProgress);
 	return { mediaId: uploaded.mediaId };

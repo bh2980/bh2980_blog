@@ -3,6 +3,7 @@ import { chartAiContribution } from "./ai";
 import { chartBlock } from "./definition";
 
 export { chartBlock } from "./definition";
+export { chartMessages } from "./messages";
 
 /**
  * 차트 블록(` ```chart `). 사이트 설정의 `plugins`에 넣는다.
@@ -27,5 +28,6 @@ export const chart = () =>
 	});
 
 export * from "./dsl";
+export { type ChartMessageKey, type ChartText, chartErrorLine, chartErrorMessage } from "./errors";
 export * from "./layout";
 export * from "./types";

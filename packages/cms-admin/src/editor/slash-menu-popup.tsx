@@ -1,11 +1,15 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { Puzzle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils/cn";
 import { useIconByName } from "../screens/shared/collection-icon";
+import { editorMessages } from "./messages";
 import type { SlashCommandItem } from "./slash-command";
+
+const t = createTranslator(editorMessages);
 
 interface SlashMenuPopupProps {
 	items: SlashCommandItem[];
@@ -46,7 +50,7 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose
 		<div
 			ref={listRef}
 			role="listbox"
-			aria-label="블록 추가"
+			aria-label={t("slashMenu.label")}
 			tabIndex={-1}
 			style={{ position: "fixed", top: `${coords.top + 24}px`, left: `${coords.left}px`, zIndex: 9999 }}
 			onKeyDown={(event) => {

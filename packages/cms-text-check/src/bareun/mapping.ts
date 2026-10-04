@@ -1,9 +1,11 @@
+import { createActiveTranslator } from "@bh2980/cms";
 import {
 	PLACEHOLDER,
 	type TextIssue,
 	type TextIssueCategory,
 	type TextIssueSeverity,
 } from "@bh2980/cms-admin/text-check";
+import { bareunMessages } from "./messages";
 
 /**
  * 바른 응답(`CorrectError`)을 검사 결과(`TextIssue`)로 바꾼다. 문단은 `\n`으로 이어 한 번에 보내고(`joinSegments`),
@@ -54,19 +56,25 @@ export const SEGMENT_SEPARATOR = "\n";
 export const joinSegments = (segments: readonly BareunIssueSegment[]) =>
 	segments.map((segment) => segment.text).join(SEGMENT_SEPARATOR);
 
-const LABELS: Readonly<Record<string, string>> = {
-	TYPO: "오타",
-	SPACING: "띄어쓰기",
-	STANDARD: "표준어",
-	GRAMMER: "문법",
-	WORD: "맞춤법",
-	FOREIGN_WORD: "외래어 표기",
-	CONFUSABLE_WORDS: "헷갈리는 말",
-	SENTENCE: "문장",
-	CONFIRM: "확인 필요",
-	THINKING: "다시 생각해 볼 곳",
-	UNKNOWN: "확인 필요",
-};
+// 사이트 설정 파일이 읽는 모듈(`index.ts`)에 묶여 있어 화면 언어는 부를 때마다 고른다.
+const t = createActiveTranslator(bareunMessages);
+
+/** 바른 분류 코드. 이름은 문구 사전의 `category.<코드>`다. */
+const KINDS = new Set([
+	"TYPO",
+	"SPACING",
+	"STANDARD",
+	"GRAMMER",
+	"WORD",
+	"FOREIGN_WORD",
+	"CONFUSABLE_WORDS",
+	"SENTENCE",
+	"CONFIRM",
+	"THINKING",
+	"UNKNOWN",
+]);
+
+const labelOf = (kind: string) => t(KINDS.has(kind) ? (`category.${kind}` as "category.UNKNOWN") : "category.CONFIRM");
 
 const CATEGORIES: Readonly<Record<string, TextIssueCategory>> = {
 	SPACING: "spacing",
@@ -146,7 +154,7 @@ export function bareunIssues(segments: readonly BareunIssueSegment[], response: 
 		const first = revisions[0];
 		const kind = (first?.category ?? "UNKNOWN").toUpperCase();
 		const helpId = first?.helpId || undefined;
-		const label = LABELS[kind] ?? "확인 필요";
+		const label = labelOf(kind);
 		const comment = shortComment(helpId ? helps[helpId]?.comment : undefined);
 		const severity: TextIssueSeverity = ERRORS.has(kind) ? "error" : "warning";
 
@@ -154,7 +162,7 @@ export function bareunIssues(segments: readonly BareunIssueSegment[], response: 
 			segmentId: segment.id,
 			start,
 			end: end - segmentStart,
-			message: comment ? `${label}: ${comment}` : label,
+			message: comment ? t("issue.message", { label, comment }) : label,
 			suggestions,
 			severity,
 			...(helpId ? { ruleId: helpId } : {}),

@@ -1,6 +1,8 @@
+import { createTranslator } from "../../i18n";
 import { type AuthAdapter, CMS_AUTH_BASE_PATH, type CmsAuth } from "../../server/define";
 import type { createGithubNextAuth } from "./auth-config";
 import { isAllowedAdminId, isDevAuthBypassEnabled } from "./auth-gateway";
+import { authMessages } from "./messages";
 
 export interface GithubAuthOptions {
 	readonly clientId: string | undefined;
@@ -53,7 +55,7 @@ export function githubAuth(options: GithubAuthOptions): AuthAdapter {
 					if (!session) return null;
 					return { user: { id: session.user?.id, accountId: session.user?.githubId } };
 				},
-				providers: [{ id: "github", name: "GitHub", label: "GitHub으로 로그인" }],
+				providers: [{ id: "github", name: "GitHub", label: createTranslator(authMessages)("github.label") }],
 				signIn: async (provider = "github", signInOptions) => (await load()).signIn(provider, signInOptions),
 				signOut: async (signOutOptions) => (await load()).signOut(signOutOptions),
 				isAdmin: (userId) => isAllowedAdminId(userId, options.adminIds),

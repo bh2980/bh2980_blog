@@ -6,13 +6,14 @@ import { Sheet, SheetContent, SheetTitle } from "../../ui/sheet";
 import { RecordPanel } from "../record-panel";
 import { useConfirm } from "../shared/confirm-dialog";
 import type { EntryData, EntryFormPatch } from "./entry-form";
+import { t } from "./translate";
 
 type Request = { collection: Collection; initial: EntryFormPatch };
 
 /** 저장한 항목을 관계 선택지 모양으로. */
 export const optionOf = (saved: EntryData) => ({
 	id: saved.id,
-	title: String(saved.working?.metadata.title ?? "") || saved.workingSlug || "제목 없음",
+	title: String(saved.working?.metadata.title ?? "") || saved.workingSlug || t("untitled"),
 	slug: saved.publishedSlug ?? saved.workingSlug ?? null,
 });
 
@@ -58,7 +59,7 @@ export function useRecordCreator() {
 					showCloseButton={false}
 					className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:w-[22rem] data-[side=right]:sm:max-w-none"
 				>
-					<SheetTitle className="sr-only">분류 추가</SheetTitle>
+					<SheetTitle className="sr-only">{t("record.add")}</SheetTitle>
 					{request && (
 						<RecordPanel
 							target={{ collection: request.collection, id: null }}

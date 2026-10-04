@@ -1,12 +1,15 @@
 "use client";
 
-import { COLLECTIONS } from "@bh2980/cms/client";
+import { COLLECTIONS, createTranslator } from "@bh2980/cms/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "../../ui/sidebar";
 import { cmsFetch } from "../admin-api";
 import { AdminSidebar, type AdminSidebarProps } from "../admin-sidebar";
 import { TRASH_COUNT_KEY } from "./list-cache";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 interface AdminNavContextValue {
 	/** 모든 컬렉션의 휴지통 항목 수. 불러오기 전이면 null. */
@@ -77,7 +80,7 @@ export function AdminShell({
 			<AdminSidebar {...sidebar} trashCount={nav.trashCount} />
 			<SidebarInset className="min-w-0 overflow-hidden">
 				<header className="flex h-13 shrink-0 items-center gap-3 border-b px-4 lg:px-5">
-					<SidebarTrigger aria-label="사이드바 열기" className="-ml-1 text-muted-foreground md:hidden" />
+					<SidebarTrigger aria-label={t("shell.openSidebar")} className="-ml-1 text-muted-foreground md:hidden" />
 					<h1 className="flex min-w-0 flex-1 items-baseline gap-2 truncate font-semibold text-[15px]">
 						<span className="truncate">{title}</span>
 						{count !== undefined && <span className="tabular font-normal text-muted-foreground text-sm">{count}</span>}

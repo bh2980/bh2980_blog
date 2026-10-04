@@ -139,7 +139,12 @@ describe("블록 확장 공개 컴포넌트", () => {
 		expect(broken).toContain('role="alert"');
 		expect(broken).toContain("Chart syntax error");
 		expect(broken).toMatch(/<li>Line \d+: /);
-		expect(await html("```chart\nchart nope\n```", "ko")).toContain("차트 문법 오류");
+		// 오류 글은 파서가 준 코드와 값에서 글 언어로 만든다(관리자 언어가 아니다).
+		expect(broken).toContain("Unsupported chart type: nope");
+		const korean = await html("```chart\nchart nope\n```", "ko");
+		expect(korean).toContain("차트 문법 오류");
+		expect(korean).toContain("지원하지 않는 차트 타입입니다: nope");
+		expect(await html("```chart\nchart nope\n```", "ja")).toContain("サポートされていないグラフの種類です: nope");
 	});
 
 	it("사이트가 같은 이름의 컴포넌트를 넘기면 그것이 이긴다", async () => {

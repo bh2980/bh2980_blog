@@ -1,6 +1,7 @@
 import {
 	CHART_THEME_TOKENS,
 	CHART_TYPES,
+	type ChartDslErrorCode,
 	type ChartDslParseError,
 	type ChartDslParseResult,
 	type ChartThemeToken,
@@ -14,24 +15,28 @@ const isChartThemeToken = (value: string): value is ChartThemeToken =>
 
 const splitTableRow = (line: string) => line.split("|").map((item) => item.trim());
 
-const toError = (line: number, message: string): ChartDslParseError => ({ line, message });
+const toError = (
+	line: number,
+	code: ChartDslErrorCode,
+	values?: Readonly<Record<string, string | number>>,
+): ChartDslParseError => (values ? { line, code, values } : { line, code });
 const isBlankCell = (value: unknown) => typeof value === "string" && value.trim() === "";
-type ParsedNumericRange = { ok: true; value: { min: number; max: number } } | { ok: false; error: string };
+type ParsedNumericRange = { ok: true; value: { min: number; max: number } } | { ok: false; error: ChartDslErrorCode };
 
 const parseNumericRange = (value: string) => {
 	const [rawMin = "", rawMax = "", ...rest] = value.split(/\s+/).filter(Boolean);
 	if (!rawMin || !rawMax || rest.length > 0) {
-		return { ok: false, error: "y-range 줄은 y-range <min> <max> 형식이어야 합니다." } satisfies ParsedNumericRange;
+		return { ok: false, error: "y_range_format" } satisfies ParsedNumericRange;
 	}
 
 	const min = Number(rawMin);
 	const max = Number(rawMax);
 	if (!Number.isFinite(min) || !Number.isFinite(max)) {
-		return { ok: false, error: "y-range 값은 숫자여야 합니다." } satisfies ParsedNumericRange;
+		return { ok: false, error: "y_range_number" } satisfies ParsedNumericRange;
 	}
 
 	if (min >= max) {
-		return { ok: false, error: "y-range 는 min < max 이어야 합니다." } satisfies ParsedNumericRange;
+		return { ok: false, error: "y_range_order" } satisfies ParsedNumericRange;
 	}
 
 	return { ok: true, value: { min, max } } satisfies ParsedNumericRange;
@@ -54,13 +59,13 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 	const firstLine = lines[0]?.trim() ?? "";
 	const firstMatch = firstLine.match(/^chart\s+(\S+)$/);
 	if (!firstMatch) {
-		errors.push(toError(1, "첫 줄은 chart <type> 형식이어야 합니다."));
+		errors.push(toError(1, "first_line"));
 		return result;
 	}
 
 	const rawType = firstMatch[1];
 	if (!isChartType(rawType)) {
-		errors.push(toError(1, `지원하지 않는 차트 타입입니다: ${rawType}`));
+		errors.push(toError(1, "unsupported_type", { type: rawType }));
 		return result;
 	}
 
@@ -127,17 +132,17 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 			const [key = "", label = "", colorToken = ""] = splitTableRow(payload);
 
 			if (!key || !label || !colorToken) {
-				errors.push(toError(index + 1, "series 줄은 series <key> | <label> | <theme-token> 형식이어야 합니다."));
+				errors.push(toError(index + 1, "series_format"));
 				continue;
 			}
 
 			if (!isChartThemeToken(colorToken)) {
-				errors.push(toError(index + 1, "색상은 chart-1 ~ chart-5 토큰만 사용할 수 있습니다."));
+				errors.push(toError(index + 1, "series_color"));
 				continue;
 			}
 
 			if (result.series.some((series) => series.key === key)) {
-				errors.push(toError(index + 1, `series key ${key} 가 중복되었습니다.`));
+				errors.push(toError(index + 1, "series_duplicate", { key }));
 				continue;
 			}
 
@@ -145,17 +150,17 @@ export const parseChartDsl = (source: string): ChartDslParseResult => {
 			continue;
 		}
 
-		errors.push(toError(index + 1, `알 수 없는 헤더입니다: ${trimmed}`));
+		errors.push(toError(index + 1, "unknown_header", { header: trimmed }));
 	}
 
 	if (dataIndex === -1) {
-		errors.push(toError(lines.length, "data 섹션이 필요합니다."));
+		errors.push(toError(lines.length, "data_required"));
 		return result;
 	}
 
 	const tableHeaderLine = lines[dataIndex + 1]?.trim() ?? "";
 	if (!tableHeaderLine) {
-		errors.push(toError(dataIndex + 2, "data 헤더 행이 필요합니다."));
+		errors.push(toError(dataIndex + 2, "data_header_required"));
 		return result;
 	}
 
@@ -181,26 +186,26 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 
 	if (parsed.type === "pie") {
 		if (parsed.showValues) {
-			errors.push(toError(parsed.showValuesLine ?? 2, "pie 차트는 show-values 를 지원하지 않습니다."));
+			errors.push(toError(parsed.showValuesLine ?? 2, "pie_option", { option: "show-values" }));
 		}
 		if (parsed.hideGrid) {
-			errors.push(toError(parsed.hideGridLine ?? 2, "pie 차트는 hide-grid 를 지원하지 않습니다."));
+			errors.push(toError(parsed.hideGridLine ?? 2, "pie_option", { option: "hide-grid" }));
 		}
 		if (parsed.hideYAxis) {
-			errors.push(toError(parsed.hideYAxisLine ?? 2, "pie 차트는 hide-y-axis 를 지원하지 않습니다."));
+			errors.push(toError(parsed.hideYAxisLine ?? 2, "pie_option", { option: "hide-y-axis" }));
 		}
 		if (parsed.yRange) {
-			errors.push(toError(parsed.yRangeLine ?? 2, "pie 차트는 y-range 를 지원하지 않습니다."));
+			errors.push(toError(parsed.yRangeLine ?? 2, "pie_option", { option: "y-range" }));
 		}
 
 		const labelKey = parsed.labelKey;
 		const valueKey = parsed.valueKey;
 
 		if (!labelKey) {
-			errors.push(toError(2, "pie 차트는 label 필드가 필요합니다."));
+			errors.push(toError(2, "pie_label_required"));
 		}
 		if (!valueKey) {
-			errors.push(toError(3, "pie 차트는 value 필드가 필요합니다."));
+			errors.push(toError(3, "pie_value_required"));
 		}
 
 		if (!labelKey || !valueKey) {
@@ -208,14 +213,14 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 		}
 
 		if (!parsed.tableHeaders.includes(labelKey) || !parsed.tableHeaders.includes(valueKey)) {
-			errors.push(toError(dataHeaderLine, "data 헤더에 label/value 필드가 모두 포함되어야 합니다."));
+			errors.push(toError(dataHeaderLine, "pie_header_fields"));
 			return { errors };
 		}
 
 		const data = parsed.rows.map((row, index) => {
 			const record = Object.fromEntries(parsed.tableHeaders.map((header, cellIndex) => [header, row[cellIndex] ?? ""]));
 			if (isBlankCell(record[valueKey])) {
-				errors.push(toError(rowStartLine + index, `숫자 필드 ${valueKey} 는 비어 있을 수 없습니다.`));
+				errors.push(toError(rowStartLine + index, "number_empty", { field: valueKey }));
 				return {
 					[labelKey]: String(record[labelKey] ?? ""),
 					[valueKey]: Number.NaN,
@@ -224,7 +229,7 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 			}
 			const numericValue = Number(record[valueKey]);
 			if (!Number.isFinite(numericValue)) {
-				errors.push(toError(rowStartLine + index, `숫자 필드 ${valueKey} 는 숫자여야 합니다.`));
+				errors.push(toError(rowStartLine + index, "number_invalid", { field: valueKey }));
 			}
 
 			return {
@@ -255,10 +260,10 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 	}
 
 	if (!parsed.xKey) {
-		errors.push(toError(2, "x 필드가 필요합니다."));
+		errors.push(toError(2, "x_required"));
 	}
 	if (parsed.series.length === 0) {
-		errors.push(toError(3, "series 는 1개 이상 필요합니다."));
+		errors.push(toError(3, "series_required"));
 	}
 	const xKey = parsed.xKey;
 	if (!xKey || parsed.series.length === 0) {
@@ -269,7 +274,7 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 		!parsed.tableHeaders.includes(xKey) ||
 		!parsed.series.every((series) => parsed.tableHeaders.includes(series.key))
 	) {
-		errors.push(toError(dataHeaderLine, "data 헤더에 series key가 모두 포함되어야 합니다."));
+		errors.push(toError(dataHeaderLine, "series_header_keys"));
 		return { errors };
 	}
 
@@ -281,12 +286,12 @@ export const normalizeChartDsl = (parsed: ChartDslParseResult): NormalizeChartRe
 
 		for (const series of parsed.series) {
 			if (isBlankCell(record[series.key])) {
-				errors.push(toError(rowStartLine + index, `숫자 필드 ${series.key} 는 비어 있을 수 없습니다.`));
+				errors.push(toError(rowStartLine + index, "number_empty", { field: series.key }));
 				continue;
 			}
 			const numericValue = Number(record[series.key]);
 			if (!Number.isFinite(numericValue)) {
-				errors.push(toError(rowStartLine + index, `숫자 필드 ${series.key} 는 숫자여야 합니다.`));
+				errors.push(toError(rowStartLine + index, "number_invalid", { field: series.key }));
 				continue;
 			}
 			normalizedRow[series.key] = numericValue;

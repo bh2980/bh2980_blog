@@ -1,6 +1,10 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { useLayoutEffect, useRef, useState } from "react";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 const GAP = 4;
 const CHIP = "shrink-0 rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs";
@@ -62,7 +66,7 @@ export function FittingTags({ tags }: { tags: readonly { id: string; title: stri
 			{hidden > 0 && (
 				<span className="shrink-0 text-muted-foreground text-xs">
 					<span aria-hidden>+{hidden}</span>
-					<span className="sr-only">외 {hidden}개</span>
+					<span className="sr-only">{t("tags.more", { count: hidden })}</span>
 				</span>
 			)}
 			<span ref={measureRef} aria-hidden className="pointer-events-none invisible absolute top-0 left-0 flex gap-1">

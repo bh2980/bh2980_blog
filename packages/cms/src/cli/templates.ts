@@ -1,41 +1,64 @@
 import { DEFAULT_ADMIN_PATH } from "../config/define";
 
-/** `cms init`이 만드는 파일 내용. 앱이 바로 고쳐 쓰는 시작점이다. */
+/** `cms init`이 만드는 파일 내용(개발자가 읽는 글이라 영어다). 앱이 바로 고쳐 쓰는 시작점이다. */
 
-export function configTemplate(adminPath: string): string {
+/** `cms init`이 새 설정에 적는 기본값. 로그인·화면 글은 사이트 기본 언어를 따른다(M15). */
+export const DEFAULT_INIT_LOCALE = "en";
+export const DEFAULT_INIT_TIME_ZONE = "UTC";
+
+export interface ConfigTemplateOptions {
+	/** 사이트 기본 언어 코드(예: `en`, `ko`). */
+	readonly locale?: string;
+	/** 날짜·시각 시간대(IANA, 예: `UTC`, `Asia/Seoul`). */
+	readonly timeZone?: string;
+}
+
+/** 언어 코드의 그 언어 이름(예: `ko` → `한국어`). 모르면 코드를 그대로 쓴다. */
+function languageName(code: string): string {
+	try {
+		return new Intl.DisplayNames([code], { type: "language" }).of(code) ?? code;
+	} catch {
+		return code;
+	}
+}
+
+export function configTemplate(adminPath: string, options: ConfigTemplateOptions = {}): string {
+	const locale = options.locale ?? DEFAULT_INIT_LOCALE;
+	const timeZone = options.timeZone ?? DEFAULT_INIT_TIME_ZONE;
 	const admin =
 		adminPath === DEFAULT_ADMIN_PATH
 			? ""
-			: `\t// 관리자 화면 경로. 관리자 라우트 폴더((admin)${adminPath}/)와 같아야 한다.\n\tadmin: { path: "${adminPath}" },\n`;
+			: `\t// Admin screen path. Must match the admin route folder ((admin)${adminPath}/).\n\tadmin: { path: "${adminPath}" },\n`;
 	return `import { defineCollection, defineConfig, fields } from "@bh2980/cms";
-// 선택: 블록 확장(콜아웃·탭·Mermaid·차트 등)과 SEO 확장. 패키지를 설치한 뒤 주석을 푼다.
+// Optional: block extensions (callouts, tabs, Mermaid, charts, ...) and the SEO extension. Install the package, then uncomment.
 // import { blocks } from "@bh2980/cms-blocks";
 // import { seo, seoFields } from "@bh2980/cms-seo";
 
 /**
- * 사이트 설정. 서버와 관리자 화면이 함께 읽으므로 비밀 값은 넣지 않는다(비밀 값은 cms.server.ts).
- * 컬렉션 이름(아래 \`post\`)은 DB에 저장되므로 운영 중에 바꾸지 않는다. 필드는 자유롭게 더하고 고친다.
+ * Site config. The server and the admin screen both read it, so keep secrets out (they go in cms.server.ts).
+ * The collection name (\`post\` below) is stored in the database, so don't rename it in production. Add and edit fields freely.
  */
 const post = defineCollection({
-	label: "글",
-	kind: "document", // 본문·초안·발행. 태그 같은 작은 항목은 "item"
-	path: "/posts/:slug", // 공개 주소 모양. 본문 내부 링크·미리보기 주소에 쓴다
+	label: "Post",
+	kind: "document", // body, draft and publish. Use "item" for small entries like tags
+	path: "/posts/:slug", // public URL shape. Used for internal links in the body and preview URLs
 	icon: "file-text",
 	fields: {
-		// 제목 필드 이름은 \`title\`이다(이름표는 자유).
-		title: fields.text({ label: "제목", required: true, max: 200 }),
-		slug: fields.slug({ label: "주소", from: "title", required: true }),
-		summary: fields.text({ label: "요약", role: "summary", multiline: true, fillFromBody: true }),
-		// ...seoFields(), // SEO 탭: 검색 제목·설명·공유 이미지·검색에서 숨기기
+		// The title field is named \`title\` (the label is up to you).
+		title: fields.text({ label: "Title", required: true, max: 200 }),
+		slug: fields.slug({ label: "Slug", from: "title", required: true }),
+		summary: fields.text({ label: "Summary", role: "summary", multiline: true, fillFromBody: true }),
+		// ...seoFields(), // SEO tab: search title and description, share image, hide from search
 	},
 });
 
 export default defineConfig({
 	collections: { post },
-	locales: [{ code: "ko", name: "한국어" }],
-	defaultLocale: "ko",
-	site: { name: "내 사이트" },
-	timeZone: "Asia/Seoul",
+	// The admin screen language and date format follow the default locale (override with admin.locale).
+	locales: [{ code: ${JSON.stringify(locale)}, name: ${JSON.stringify(languageName(locale))} }],
+	defaultLocale: ${JSON.stringify(locale)},
+	site: { name: "My site" },
+	timeZone: ${JSON.stringify(timeZone)},
 ${admin}	// plugins: [...blocks(), seo()],
 });
 `;
@@ -44,22 +67,22 @@ ${admin}	// plugins: [...blocks(), seo()],
 export const SERVER_TEMPLATE = `import { defineServerConfig, githubAuth, postgres } from "@bh2980/cms/server";
 
 /**
- * 서버 설정. 저장소·로그인 연결과 비밀 값은 환경 변수(.env.local)에서 읽는다. 서버에서만 읽힌다.
- * 로그인 API는 관리자 API 라우트가 함께 받는다(/api/cms/auth/*). GitHub OAuth 앱의 콜백 주소는
- * <사이트 주소>/api/cms/auth/callback/github 이다.
+ * Server config. The database and sign-in connections and the secrets are read from environment variables (.env.local).
+ * Only the server reads it. The admin API route also serves the sign-in API (/api/cms/auth/*). The callback URL of the
+ * GitHub OAuth app is <site URL>/api/cms/auth/callback/github.
  */
 export default defineServerConfig({
 	database: postgres({ connectionString: process.env.CMS_DATABASE_URL, schema: process.env.CMS_SCHEMA }),
 	auth: githubAuth({
 		clientId: process.env.AUTH_GITHUB_ID,
 		clientSecret: process.env.AUTH_GITHUB_SECRET,
-		adminIds: [process.env.CMS_ADMIN_GITHUB_ID], // 관리자 GitHub 숫자 ID
-		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1", // next dev에서만 로그인 없이 관리자로 본다
-		secret: process.env.AUTH_SECRET, // 로그인 세션 서명
+		adminIds: [process.env.CMS_ADMIN_GITHUB_ID], // numeric GitHub ID of the admin
+		devBypass: process.env.CMS_DEV_AUTH_BYPASS === "1", // only in next dev: treat everyone as admin without signing in
+		secret: process.env.AUTH_SECRET, // signs the sign-in session
 	}),
-	// 저장 값(AI 서비스 키) 암호화 키. 바꾸면 저장한 키를 다시 넣어야 한다. 로그인 값과 따로 둔다.
+	// Encryption key for stored values (AI service keys). If you change it, enter the stored keys again. Keep it separate from the sign-in secret.
 	secret: process.env.CMS_SECRET,
-	// media: r2Storage({ ... }), // 이미지·파일 올리기(S3 호환 저장소). @bh2980/cms/server에서 가져온다
+	// media: r2Storage({ ... }), // image and file uploads (S3-compatible storage), imported from @bh2980/cms/server
 });
 `;
 
@@ -71,7 +94,7 @@ import type { ReactNode } from "react";
 
 export { cmsAdminMetadata as metadata } from "@bh2980/cms-admin/next";
 
-/** 관리자 화면(@bh2980/cms-admin). 사이트 컴포넌트는 CmsAdminComponentsProvider로 넣는다(관리자 README). */
+/** Admin screen (@bh2980/cms-admin). Pass site components with CmsAdminComponentsProvider (see the admin README). */
 export default function AdminLayout({ children }: { children: ReactNode }) {
 	return <CmsAdminLayout>{children}</CmsAdminLayout>;
 }
@@ -79,7 +102,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
 export const API_ROUTE_TEMPLATE = `import { createCmsRouteHandler } from "@bh2980/cms/next/route-handler";
 
-/** 관리자 API(/api/cms/v1/*)와 로그인(/api/cms/auth/*). */
+/** Admin API (/api/cms/v1/*) and sign-in (/api/cms/auth/*). */
 export const { GET, POST, PATCH, PUT, DELETE } = createCmsRouteHandler();
 `;
 
@@ -93,27 +116,30 @@ export default withCms(nextConfig, { config: "${config}", server: "${server}" })
 `;
 }
 
-/** 관리자 화면이 쓰는 스타일 줄. 앱의 Tailwind 입력 CSS에 `@import "tailwindcss";` 다음으로 넣는다. */
+/** Style lines the admin screen needs. Put them in the app's Tailwind input CSS after `@import "tailwindcss";`. */
 export const CSS_LINES = [
 	'@import "tw-animate-css";',
 	'@import "@bh2980/cms-admin/styles.css";',
 	'@plugin "@tailwindcss/typography";',
 ] as const;
 
-/** 앱이 설치할 패키지(관리자 패키지가 앱과 같은 하나를 써야 하는 것 포함). */
+/** Packages the app installs (including those the admin package must share with the app). */
 export const INSTALL_COMMANDS = [
 	"pnpm add @bh2980/cms @bh2980/cms-admin next-auth@5.0.0-beta.32 next-themes @tanstack/react-query sonner @tiptap/core @tiptap/pm @tiptap/react",
 	"pnpm add -D tw-animate-css @tailwindcss/typography",
 ] as const;
 
-/** `.env.local`에 둘 값. */
+/** Values for `.env.local`. */
 export const ENV_VARS: readonly { readonly name: string; readonly note: string }[] = [
-	{ name: "CMS_DATABASE_URL", note: "Postgres 연결 주소" },
-	{ name: "CMS_SCHEMA", note: "선택. 같은 DB를 나눠 쓸 때 스키마 이름(없으면 public)" },
-	{ name: "AUTH_SECRET", note: "임의의 긴 값. 로그인 세션 서명" },
-	{ name: "CMS_SECRET", note: "임의의 긴 값(AUTH_SECRET과 다르게). 저장 값(AI 서비스 키) 암호화" },
-	{ name: "AUTH_GITHUB_ID", note: "GitHub OAuth 앱 Client ID" },
-	{ name: "AUTH_GITHUB_SECRET", note: "GitHub OAuth 앱 Client secret" },
-	{ name: "CMS_ADMIN_GITHUB_ID", note: "관리자 GitHub 숫자 ID" },
-	{ name: "CMS_DEV_AUTH_BYPASS", note: "선택. 1이면 next dev에서 로그인 없이 관리자" },
+	{ name: "CMS_DATABASE_URL", note: "Postgres connection URL" },
+	{ name: "CMS_SCHEMA", note: "Optional. Schema name when sharing the database (public if empty)" },
+	{ name: "AUTH_SECRET", note: "A long random value. Signs the sign-in session" },
+	{
+		name: "CMS_SECRET",
+		note: "A long random value (different from AUTH_SECRET). Encrypts stored values (AI service keys)",
+	},
+	{ name: "AUTH_GITHUB_ID", note: "Client ID of the GitHub OAuth app" },
+	{ name: "AUTH_GITHUB_SECRET", note: "Client secret of the GitHub OAuth app" },
+	{ name: "CMS_ADMIN_GITHUB_ID", note: "Numeric GitHub ID of the admin" },
+	{ name: "CMS_DEV_AUTH_BYPASS", note: "Optional. 1 treats everyone as admin in next dev without signing in" },
 ];

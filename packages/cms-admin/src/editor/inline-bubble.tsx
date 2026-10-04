@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { charEffectByName } from "@bh2980/cms/code-block";
 import { type Editor, posToDOMRect } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
@@ -45,10 +46,17 @@ import {
 } from "./inline-marks";
 import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
 import { MarkTextForm, type MarkTextLabels } from "./mark-text-form";
+import { editorMessages } from "./messages";
 import { ToolbarButton } from "./toolbar-button";
 
+const t = createTranslator(editorMessages);
+
 /** 코드 안 글자 툴팁 폼 문구. */
-const CODE_TOOLTIP_LABELS: MarkTextLabels = { name: "툴팁", field: "설명", empty: "설명을 입력하세요." };
+const CODE_TOOLTIP_LABELS: MarkTextLabels = {
+	name: t("inlineBubble.tooltipName"),
+	field: t("inlineBubble.tooltipField"),
+	empty: t("inlineBubble.tooltipEmpty"),
+};
 
 type Panel =
 	| { kind: "link"; draft: LinkDraft }
@@ -230,7 +238,7 @@ export function InlineBubble({
 		// 위쪽 서식 도구(sticky)에 가리지 않게 한다. 위에 자리가 없으면 글자 아래에 띄운다.
 		const formatBar = editor.view.dom
 			.closest("[data-cms-editor-shell]")
-			?.querySelector('[role="toolbar"][aria-label="서식 도구"]');
+			?.querySelector(`[role="toolbar"][aria-label="${t("toolbar.format")}"]`);
 		const minTop = (formatBar?.getBoundingClientRect().bottom ?? 0) + GAP;
 		if (rect.bottom < minTop || rect.top > window.innerHeight) {
 			setPosition(null);
@@ -296,12 +304,12 @@ export function InlineBubble({
 						{href}
 					</a>
 					<BubbleButton
-						label="링크 수정"
+						label={t("link.edit")}
 						onClick={() => openLink({ from: mark.from, to: mark.to, existing: true, href })}
 					>
 						<Pencil aria-hidden className="size-4" />
 					</BubbleButton>
-					<BubbleButton label="링크 해제" onClick={act(() => removeInlineMark(editor, mark))}>
+					<BubbleButton label={t("link.remove")} onClick={act(() => removeInlineMark(editor, mark))}>
 						<Unlink aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -315,10 +323,10 @@ export function InlineBubble({
 					<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={content}>
 						{content}
 					</span>
-					<BubbleButton label="툴팁 수정" onClick={() => openCodeTooltip(mark)}>
+					<BubbleButton label={t("inlineBubble.tooltipEdit")} onClick={() => openCodeTooltip(mark)}>
 						<Pencil aria-hidden className="size-4" />
 					</BubbleButton>
-					<BubbleButton label="툴팁 해제" onClick={act(() => removeInlineMark(editor, mark))}>
+					<BubbleButton label={t("inlineBubble.tooltipRemove")} onClick={act(() => removeInlineMark(editor, mark))}>
 						<X aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -347,15 +355,15 @@ export function InlineBubble({
 			return (
 				<div key={mark.name} className="flex items-center gap-0.5">
 					<ChevronsLeftRightEllipsis aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
-					<span className="px-1 text-muted-foreground text-xs">글자 접기</span>
+					<span className="px-1 text-muted-foreground text-xs">{t("inlineBubble.fold")}</span>
 					<BubbleButton
-						label={open ? "접어 보기" : "펼쳐 보기"}
+						label={open ? t("inlineBubble.collapse") : t("inlineBubble.expand")}
 						onClick={act(() => setFoldOpen(editor.view, { ...region, open }, !open))}
 					>
 						{open ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
 					</BubbleButton>
 					<BubbleButton
-						label="처음부터 펼치기"
+						label={t("inlineBubble.openByDefault")}
 						pressed={publicOpen}
 						className="text-xs"
 						onClick={act(() => {
@@ -370,9 +378,9 @@ export function InlineBubble({
 								.run();
 						})}
 					>
-						처음부터 펼치기
+						{t("inlineBubble.openByDefault")}
 					</BubbleButton>
-					<BubbleButton label="글자 접기 해제" onClick={act(() => removeInlineMark(editor, mark))}>
+					<BubbleButton label={t("inlineBubble.foldRemove")} onClick={act(() => removeInlineMark(editor, mark))}>
 						<X aria-hidden className="size-4" />
 					</BubbleButton>
 				</div>
@@ -383,7 +391,7 @@ export function InlineBubble({
 		return (
 			<BubbleButton
 				key={mark.name}
-				label={`${tool.title ?? tool.label} 해제`}
+				label={t("markText.remove", { name: tool.title ?? tool.label })}
 				onClick={act(() => removeInlineMark(editor, mark))}
 				className="gap-0.5"
 			>
@@ -402,24 +410,28 @@ export function InlineBubble({
 			<div key={rule.id} className="flex items-center gap-0.5">
 				<Regex aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
 				<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={`/${rule.pattern}/${rule.flags}`}>
-					{label} 규칙 · {count}곳
+					{t("inlineBubble.ruleSummary", { label, count })}
 				</span>
 				{rule.name === "fold" && (
 					<BubbleButton
-						label={open ? "접어 보기" : "펼쳐 보기"}
+						label={open ? t("inlineBubble.collapse") : t("inlineBubble.expand")}
 						onClick={act(() => setFoldOpen(editor.view, { ...region, open }, !open))}
 					>
 						{open ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
 					</BubbleButton>
 				)}
 				<BubbleButton
-					label="개별 효과로 바꾸기"
+					label={t("inlineBubble.ruleExpand")}
 					className="text-xs"
 					onClick={act(() => expandRule(editor.view, blockPos, rule.id))}
 				>
-					개별로
+					{t("inlineBubble.ruleExpandShort")}
 				</BubbleButton>
-				<BubbleButton label="규칙 삭제" destructive onClick={act(() => removeRule(editor.view, blockPos, rule.id))}>
+				<BubbleButton
+					label={t("inlineBubble.ruleDelete")}
+					destructive
+					onClick={act(() => removeRule(editor.view, blockPos, rule.id))}
+				>
 					<Trash2 aria-hidden className="size-4" />
 				</BubbleButton>
 			</div>
@@ -470,7 +482,7 @@ export function InlineBubble({
 			<Separator orientation="vertical" className="mx-0.5 h-4" />
 			{inCode && allowsMark(editor.state, CODE_TOOLTIP_MARK_NAME) && (
 				<BubbleButton
-					label={editor.isActive(CODE_TOOLTIP_MARK_NAME) ? "툴팁 수정" : "툴팁 넣기"}
+					label={editor.isActive(CODE_TOOLTIP_MARK_NAME) ? t("inlineBubble.tooltipEdit") : t("inlineBubble.tooltipAdd")}
 					onClick={() => openCodeTooltip()}
 				>
 					<MessageSquareMore aria-hidden className="size-4" />
@@ -479,7 +491,7 @@ export function InlineBubble({
 			{linkTools.filter(({ bubble }) => (bubble.order ?? 1) < 0).map(renderTool)}
 			{allowsMark(editor.state, "link") && !inCode && (
 				<BubbleButton
-					label={editor.isActive("link") ? "링크 수정" : "링크 넣기"}
+					label={editor.isActive("link") ? t("link.edit") : t("link.add")}
 					onClick={() => openLink(linkDraftFromSelection(editor))}
 				>
 					<Link2 aria-hidden className="size-4" />
@@ -488,7 +500,7 @@ export function InlineBubble({
 			{linkTools.filter(({ bubble }) => (bubble.order ?? 1) >= 0).map(renderTool)}
 			{inCode && allowsMark(editor.state, "codeFold") && (
 				<BubbleButton
-					label="글자 접기"
+					label={t("inlineBubble.fold")}
 					pressed={editor.isActive("codeFold")}
 					onClick={() => editor.chain().focus().toggleMark("codeFold").run()}
 				>
@@ -507,7 +519,11 @@ export function InlineBubble({
 				ref={bubbleRef}
 				role="dialog"
 				aria-label={
-					panel.kind === "link" ? "링크 편집" : panel.kind === "codeTooltip" ? "툴팁 편집" : panel.panel.label
+					panel.kind === "link"
+						? t("inlineBubble.linkPanel")
+						: panel.kind === "codeTooltip"
+							? t("inlineBubble.tooltipPanel")
+							: panel.panel.label
 				}
 				data-cms-inline-bubble
 				style={style}
@@ -544,7 +560,7 @@ export function InlineBubble({
 			<div
 				ref={bubbleRef}
 				role="toolbar"
-				aria-label={target.kind === "selection" ? "인라인 서식" : "인라인 효과"}
+				aria-label={target.kind === "selection" ? t("inlineBubble.selectionLabel") : t("inlineBubble.effectLabel")}
 				data-cms-inline-bubble
 				style={style}
 				className={BLOCK_TOOLBAR}

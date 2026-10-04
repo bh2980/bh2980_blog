@@ -13,8 +13,6 @@ import { z } from "zod";
 export const AI_PROVIDER_KINDS = ["chat", "decisions"] as const;
 export type AiProviderKind = (typeof AI_PROVIDER_KINDS)[number];
 
-export const PROVIDER_KIND_LABELS: Record<AiProviderKind, string> = { chat: "생성", decisions: "판단" };
-
 /** 종류별 주소·모델 예시(입력 칸의 흐린 글자). */
 export const PROVIDER_EXAMPLES: Record<AiProviderKind, { url: string; model: string }> = {
 	chat: { url: "https://openrouter.ai/api/v1", model: "google/gemini-2.5-flash" },

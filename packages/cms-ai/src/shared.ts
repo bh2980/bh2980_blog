@@ -1,6 +1,10 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { z } from "zod";
 import { AiError } from "./errors";
 import { AI_SHARED } from "./registry";
+import { settingsMessages } from "./settings.messages";
+
+const t = createTranslator(settingsMessages);
 
 /**
  * 공통 문구(M8-4). 모든 기능의 지시문 `{{shared.키}}`에 들어간다. 두 가지가 있다.
@@ -46,13 +50,13 @@ export const SHARED_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 type AddedText = { key: string; label: string; text: string };
 type Stored = { texts: Record<string, string>; added: AddedText[] };
 
-const textSchema = z.string().max(MAX_SHARED_TEXT, `내용은 ${MAX_SHARED_TEXT}자까지 쓸 수 있습니다.`);
+const textSchema = z.string().max(MAX_SHARED_TEXT, t("shared.textTooLong", { max: MAX_SHARED_TEXT }));
 const labelSchema = z
 	.string()
 	.trim()
-	.min(1, "이름을 넣으세요.")
-	.max(MAX_SHARED_LABEL, `이름은 ${MAX_SHARED_LABEL}자까지 쓸 수 있습니다.`);
-const keySchema = z.string().regex(SHARED_KEY_PATTERN, "키는 영문자로 시작하고 영문자·숫자·_만 쓸 수 있습니다.");
+	.min(1, t("shared.labelRequired"))
+	.max(MAX_SHARED_LABEL, t("shared.labelTooLong", { max: MAX_SHARED_LABEL }));
+const keySchema = z.string().regex(SHARED_KEY_PATTERN, t("shared.keyFormat"));
 const addedSchema = z.object({ key: keySchema, label: labelSchema, text: textSchema });
 
 const storedSchema = z.object({ texts: z.record(z.string(), z.unknown()), added: z.array(z.unknown()) });
@@ -112,11 +116,11 @@ async function write(store: AiSharedStore, expectedVersion: number, stored: Stor
 }
 
 const invalid = (message: string) => new AiError("ai_invalid_input", message);
-const unknownKey = (key: string) => invalid(`없는 공통 문구입니다: ${key}`);
+const unknownKey = (key: string) => invalid(t("shared.unknown", { key }));
 
 function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
 	const parsed = schema.safeParse(input);
-	if (!parsed.success) throw invalid(parsed.error.issues[0]?.message ?? "공통 문구 형식이 맞지 않습니다.");
+	if (!parsed.success) throw invalid(parsed.error.issues[0]?.message ?? t("shared.invalid"));
 	return parsed.data;
 }
 
@@ -148,9 +152,9 @@ export async function addShared(store: AiSharedStore, expectedVersion: number, i
 	const item = parse(addedSchema, input);
 	const { stored } = await load(store);
 	if (isConfigKey(item.key) || stored.added.some((added) => added.key === item.key)) {
-		throw invalid(`이미 있는 키입니다: ${item.key}`);
+		throw invalid(t("shared.keyTaken", { key: item.key }));
 	}
-	if (stored.added.length >= MAX_ADDED_SHARED) throw invalid(`공통 문구는 ${MAX_ADDED_SHARED}개까지 더할 수 있습니다.`);
+	if (stored.added.length >= MAX_ADDED_SHARED) throw invalid(t("shared.tooMany", { max: MAX_ADDED_SHARED }));
 	return write(store, expectedVersion, { ...stored, added: [...stored.added, item] });
 }
 
@@ -214,10 +218,10 @@ export async function deleteShared(
 	key: string,
 	features: readonly { readonly label: string; readonly prompt: string }[],
 ): Promise<AiSharedView> {
-	if (isConfigKey(key)) throw invalid("설정에 적은 공통 문구는 삭제할 수 없습니다.");
+	if (isConfigKey(key)) throw invalid(t("shared.configCannotDelete"));
 	const { stored } = await load(store);
 	if (!stored.added.some((item) => item.key === key)) throw unknownKey(key);
 	const users = features.filter((feature) => usesShared(feature.prompt, key)).map((feature) => feature.label);
-	if (users.length > 0) throw invalid(`이 문구를 쓰는 기능이 있어 삭제할 수 없습니다: ${users.join(", ")}`);
+	if (users.length > 0) throw invalid(t("shared.inUse", { users: users.join(", ") }));
 	return write(store, expectedVersion, { ...stored, added: stored.added.filter((item) => item.key !== key) });
 }

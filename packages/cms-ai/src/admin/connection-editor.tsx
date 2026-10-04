@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { useDebounced } from "@bh2980/cms-admin/hooks/use-debounced";
@@ -21,11 +22,14 @@ import {
 	type AiProviderView,
 	type AiSettingsView,
 	PROVIDER_EXAMPLES,
-	PROVIDER_KIND_LABELS,
 } from "../connection";
 import { AI_ACTIONS_KEY } from "./ai-slot-provider";
+import { connectionMessages } from "./connection-editor.messages";
 import { OptionSelect } from "./custom-editor";
+import { providerKindLabel } from "./labels.messages";
 import { ModelCombobox, type ModelSource, useModelList } from "./model-combobox";
+
+const t = createTranslator(connectionMessages);
 
 export const AI_SETTINGS_KEY = ["cms", "ai", "settings"] as const;
 
@@ -33,7 +37,7 @@ export function useAiSettings() {
 	return useQuery({
 		queryKey: AI_SETTINGS_KEY,
 		queryFn: ({ signal }) =>
-			cmsFetch<AiSettingsView>("/api/cms/v1/ai/settings", { signal, fallback: "연결 목록을 불러올 수 없습니다." }),
+			cmsFetch<AiSettingsView>("/api/cms/v1/ai/settings", { signal, fallback: t("error.loadList") }),
 		// 기능을 열 때마다 다시 받지 않는다. 연결을 저장하면 응답으로 캐시를 바꾼다.
 		staleTime: 60_000,
 	});
@@ -51,7 +55,7 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
 		<Alert variant="danger" className="m-3 flex w-auto items-center justify-between gap-3">
 			<AlertDescription className="col-start-auto">{message}</AlertDescription>
 			<Button type="button" variant="outline" size="xs" onClick={onRetry}>
-				다시 시도
+				{t("action.retry")}
 			</Button>
 		</Alert>
 	);
@@ -170,25 +174,25 @@ export function ConnectionManager({
 		<div className="flex min-h-0 flex-1 flex-col">
 			{settingsQuery.error && !settings && (
 				<LoadError
-					message={errorText(settingsQuery.error, "연결 목록을 불러올 수 없습니다.")}
+					message={errorText(settingsQuery.error, t("error.loadList"))}
 					onRetry={() => void settingsQuery.refetch()}
 				/>
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-72 shrink-0 flex-col border-r">
-					{settings?.fake && <p className="border-b px-3 py-2 text-muted-foreground text-xs">가짜 연결 사용 중</p>}
-					<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label="연결 목록">
+					{settings?.fake && <p className="border-b px-3 py-2 text-muted-foreground text-xs">{t("badge.fake")}</p>}
+					<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label={t("list.label")}>
 						{settingsQuery.isPending ? (
 							<ListSkeleton rows={2} />
 						) : settings?.providers.length === 0 ? (
-							<li className="px-3 py-6 text-center text-muted-foreground text-xs">연결이 없습니다.</li>
+							<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
 						) : (
 							settings?.providers.map((provider) => (
 								<ListRow
 									key={provider.id}
 									title={provider.name}
-									status={provider.ready ? null : "설정 필요"}
-									detail={`${PROVIDER_KIND_LABELS[provider.kind]} · ${provider.defaultModel || "모델 없음"}`}
+									status={provider.ready ? null : t("status.needsSetup")}
+									detail={`${providerKindLabel(provider.kind)} · ${provider.defaultModel || t("model.none")}`}
 									current={selected === provider.id}
 									onClick={() => onOpen(provider.id)}
 								/>
@@ -222,12 +226,12 @@ export function ConnectionManager({
 									<EmptyMedia variant="icon">
 										<Plug aria-hidden />
 									</EmptyMedia>
-									<EmptyTitle>연결을 고르세요</EmptyTitle>
+									<EmptyTitle>{t("empty.title")}</EmptyTitle>
 								</EmptyHeader>
 								<EmptyContent>
 									<Button type="button" size="sm" onClick={() => onOpen("new")}>
 										<Plus aria-hidden />
-										연결 추가
+										{t("action.add")}
 									</Button>
 								</EmptyContent>
 							</Empty>
@@ -298,19 +302,19 @@ function ProviderEditor({
 				? await cmsFetch<AiSettingsView>(`/api/cms/v1/ai/providers/${provider.id}`, {
 						method: "PATCH",
 						json,
-						fallback: "저장하지 못했습니다.",
+						fallback: t("error.save"),
 					})
 				: await cmsFetch<AiSettingsView>("/api/cms/v1/ai/providers", {
 						method: "POST",
 						json,
-						fallback: "저장하지 못했습니다.",
+						fallback: t("error.save"),
 					});
 			// 새 연결은 목록 끝에 붙는다.
 			const id = provider?.id ?? saved.providers.at(-1)?.id ?? "";
 			onSaved(saved, id);
-			toast.success("저장했습니다.");
+			toast.success(t("toast.saved"));
 		} catch (saveError) {
-			setError(errorText(saveError, "저장하지 못했습니다."));
+			setError(errorText(saveError, t("error.save")));
 			onConflict();
 		} finally {
 			setSaving(false);
@@ -320,9 +324,9 @@ function ProviderEditor({
 	const remove = async () => {
 		if (!provider) return;
 		const ok = await confirm({
-			title: "연결 삭제",
-			description: `'${provider.name}'을(를) 삭제할까요? 이 연결을 고른 기능은 같은 방식의 첫 연결을 씁니다.`,
-			confirmLabel: "삭제",
+			title: t("confirm.title"),
+			description: t("confirm.description", { name: provider.name }),
+			confirmLabel: t("action.delete"),
 			destructive: true,
 		});
 		if (!ok) return;
@@ -332,12 +336,12 @@ function ProviderEditor({
 			onDeleted(
 				await cmsFetch<AiSettingsView>(`/api/cms/v1/ai/providers/${provider.id}?expectedVersion=${version}`, {
 					method: "DELETE",
-					fallback: "삭제하지 못했습니다.",
+					fallback: t("error.delete"),
 				}),
 			);
-			toast.success("삭제했습니다.");
+			toast.success(t("toast.deleted"));
 		} catch (deleteError) {
-			setError(errorText(deleteError, "삭제하지 못했습니다."));
+			setError(errorText(deleteError, t("error.delete")));
 			onConflict();
 		} finally {
 			setDeleting(false);
@@ -352,11 +356,11 @@ function ProviderEditor({
 				await cmsFetch<AiCheckResult>("/api/cms/v1/ai/providers/check", {
 					method: "POST",
 					json: { providerId: provider?.id, provider: draft },
-					fallback: "연결을 확인하지 못했습니다.",
+					fallback: t("error.check"),
 				}),
 			);
 		} catch (checkError) {
-			setCheck({ ok: false, message: errorText(checkError, "연결을 확인하지 못했습니다.") });
+			setCheck({ ok: false, message: errorText(checkError, t("error.check")) });
 		} finally {
 			setChecking(false);
 		}
@@ -366,16 +370,16 @@ function ProviderEditor({
 		<div className={DETAIL_PANE}>
 			<div className="min-w-0">
 				<h2 className="truncate font-medium text-base">
-					{(provider ? provider.name : draft.name.trim()) || "새 연결"}
+					{(provider ? provider.name : draft.name.trim()) || t("new.title")}
 				</h2>
 				<p className="truncate text-muted-foreground text-xs">
-					{PROVIDER_KIND_LABELS[draft.kind]} · {provider?.defaultModel || draft.defaultModel || "모델 없음"}
+					{providerKindLabel(draft.kind)} · {provider?.defaultModel || draft.defaultModel || t("model.none")}
 				</p>
 			</div>
 
 			<FieldGroup className="gap-5">
 				<Field>
-					<FieldLabel htmlFor={ids.name}>이름</FieldLabel>
+					<FieldLabel htmlFor={ids.name}>{t("field.name")}</FieldLabel>
 					<Input
 						id={ids.name}
 						value={draft.name}
@@ -385,17 +389,17 @@ function ProviderEditor({
 					/>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor={ids.kind}>방식</FieldLabel>
+					<FieldLabel htmlFor={ids.kind}>{t("field.kind")}</FieldLabel>
 					<OptionSelect
 						id={ids.kind}
 						value={draft.kind}
 						disabled={Boolean(provider)}
-						options={AI_PROVIDER_KINDS.map((kind) => ({ value: kind, label: PROVIDER_KIND_LABELS[kind] }))}
+						options={AI_PROVIDER_KINDS.map((kind) => ({ value: kind, label: providerKindLabel(kind) }))}
 						onChange={(kind) => set({ kind: kind as AiProviderKind })}
 					/>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor={ids.url}>주소</FieldLabel>
+					<FieldLabel htmlFor={ids.url}>{t("field.url")}</FieldLabel>
 					<Input
 						id={ids.url}
 						value={draft.url}
@@ -405,26 +409,32 @@ function ProviderEditor({
 					/>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor={ids.key}>키</FieldLabel>
+					<FieldLabel htmlFor={ids.key}>{t("field.key")}</FieldLabel>
 					<div className="flex items-center gap-2">
 						<Input
 							id={ids.key}
 							type="password"
 							autoComplete="off"
 							value={typeof draft.apiKey === "string" ? draft.apiKey : ""}
-							placeholder={draft.apiKey === null ? "비움" : provider?.keyHint ? `저장됨 ${provider.keyHint}` : "키"}
+							placeholder={
+								draft.apiKey === null
+									? t("key.cleared")
+									: provider?.keyHint
+										? t("key.saved", { hint: provider.keyHint })
+										: t("field.key")
+							}
 							onChange={(event) => set({ apiKey: event.target.value || undefined })}
 							className="h-8 font-mono text-xs md:text-xs"
 						/>
 						{provider?.keyHint && draft.apiKey !== null && (
 							<Button type="button" variant="ghost" size="xs" onClick={() => set({ apiKey: null })}>
-								비우기
+								{t("action.clear")}
 							</Button>
 						)}
 					</div>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor={ids.model}>기본 모델</FieldLabel>
+					<FieldLabel htmlFor={ids.model}>{t("field.model")}</FieldLabel>
 					<ModelCombobox
 						id={ids.model}
 						value={draft.defaultModel}
@@ -442,11 +452,11 @@ function ProviderEditor({
 			<div className="flex flex-wrap items-center gap-2">
 				<Button type="button" size="sm" disabled={saving || !dirty || !draft.name.trim()} onClick={() => void save()}>
 					<Save aria-hidden />
-					{saving ? "저장 중…" : "저장"}
+					{saving ? t("action.saving") : t("action.save")}
 				</Button>
 				{!provider && (
 					<Button type="button" size="sm" variant="outline" onClick={onCancel}>
-						취소
+						{t("action.cancel")}
 					</Button>
 				)}
 				<Button
@@ -457,7 +467,7 @@ function ProviderEditor({
 					onClick={() => void runCheck()}
 				>
 					<PlugZap aria-hidden />
-					{checking ? "확인 중…" : "연결 확인"}
+					{checking ? t("action.checking") : t("action.check")}
 				</Button>
 				{provider && (
 					<Button
@@ -469,7 +479,7 @@ function ProviderEditor({
 						onClick={() => void remove()}
 					>
 						<Trash2 aria-hidden />
-						{deleting ? "삭제 중…" : "삭제"}
+						{deleting ? t("action.deleting") : t("action.delete")}
 					</Button>
 				)}
 			</div>
@@ -478,7 +488,7 @@ function ProviderEditor({
 					className={cn("text-xs", check.ok ? "text-muted-foreground" : "text-destructive")}
 					role={check.ok ? undefined : "alert"}
 				>
-					{check.ok ? `연결됨 · ${check.model} · ${(check.ms / 1000).toFixed(1)}초` : check.message}
+					{check.ok ? t("check.ok", { model: check.model, seconds: (check.ms / 1000).toFixed(1) }) : check.message}
 				</p>
 			)}
 			{dialog}

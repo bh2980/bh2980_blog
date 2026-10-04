@@ -2,6 +2,7 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
+import { createTranslator } from "@bh2980/cms/client";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
@@ -9,10 +10,13 @@ import { useIsMobile } from "../lib/hooks/use-mobile";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Input } from "./input";
+import { uiMessages } from "./messages";
 import { Separator } from "./separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./sheet";
 import { Skeleton } from "./skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+
+const t = createTranslator(uiMessages);
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -184,8 +188,8 @@ function Sidebar({
 					side={side}
 				>
 					<SheetHeader className="sr-only">
-						<SheetTitle>사이드바</SheetTitle>
-						<SheetDescription>모바일 사이드바를 보여 줍니다.</SheetDescription>
+						<SheetTitle>{t("sidebar.title")}</SheetTitle>
+						<SheetDescription>{t("sidebar.description")}</SheetDescription>
 					</SheetHeader>
 					<div className="flex h-full w-full flex-col">{children}</div>
 				</SheetContent>
@@ -256,7 +260,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 			{...props}
 		>
 			<PanelLeftIcon />
-			<span className="sr-only">사이드바 열고 닫기</span>
+			<span className="sr-only">{t("sidebar.toggle")}</span>
 		</Button>
 	);
 }
@@ -268,10 +272,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
 		<button
 			data-sidebar="rail"
 			data-slot="sidebar-rail"
-			aria-label="사이드바 열고 닫기"
+			aria-label={t("sidebar.toggle")}
 			tabIndex={-1}
 			onClick={toggleSidebar}
-			title="사이드바 열고 닫기"
+			title={t("sidebar.toggle")}
 			className={cn(
 				"absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
 				"in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

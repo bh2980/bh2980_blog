@@ -1,11 +1,15 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { ComponentProps } from "react";
 import { useHydrated } from "../lib/hooks/use-hydrated";
 import { cn } from "../lib/utils/cn";
 import { Button, buttonVariants } from "./button";
+import { uiMessages } from "./messages";
+
+const t = createTranslator(uiMessages);
 
 /**
  * 밝은·어두운 테마 전환 버튼. 서버 렌더에서는 현재 테마를 알 수 없고, 서버에서 그린 버튼이
@@ -14,7 +18,7 @@ import { Button, buttonVariants } from "./button";
  */
 export function ThemeToggle({
 	className,
-	labels = { toLight: "라이트 모드로 전환", toDark: "다크 모드로 전환" },
+	labels = { toLight: t("theme.toLight"), toDark: t("theme.toDark") },
 	...props
 }: Omit<ComponentProps<typeof Button>, "onClick" | "children"> & {
 	/** 버튼 이름. 공개 블로그는 화면 언어의 문구를 넘긴다(v2 B4). */

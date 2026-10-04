@@ -1,10 +1,15 @@
+import { createTranslator } from "@bh2980/cms/client";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
+
 export type EntryStatus = "draft" | "published" | "archived" | "trashed";
 
 export const STATUS_LABELS: Record<EntryStatus, string> = {
-	draft: "초안",
-	published: "발행됨",
-	archived: "보관됨",
-	trashed: "휴지통",
+	draft: t("status.draft"),
+	published: t("status.published"),
+	archived: t("status.archived"),
+	trashed: t("status.trashed"),
 };
 
 /**
@@ -13,6 +18,6 @@ export const STATUS_LABELS: Record<EntryStatus, string> = {
  */
 export function describeEntryStatus(entry: { status: EntryStatus; hasUnpublishedChanges?: boolean }): string {
 	let label = STATUS_LABELS[entry.status] ?? entry.status;
-	if (entry.status === "published" && entry.hasUnpublishedChanges) label += " · 수정 중";
+	if (entry.status === "published" && entry.hasUnpublishedChanges) label += ` · ${t("status.editing")}`;
 	return label;
 }

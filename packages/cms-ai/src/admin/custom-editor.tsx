@@ -1,13 +1,16 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, COLLECTIONS, schemaOf } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, COLLECTIONS, createTranslator, schemaOf } from "@bh2980/cms/client";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import { Field, FieldLabel } from "@bh2980/cms-admin/ui/field";
 import { Input } from "@bh2980/cms-admin/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@bh2980/cms-admin/ui/select";
 import { useId } from "react";
 import { CUSTOM_BLOCKS, type CustomBase, type CustomSurface, customEngines, customResults } from "../custom";
-import { ENGINE_LABELS, RESULT_LABELS } from "../definition";
+import { customMessages } from "./custom-editor.messages";
+import { engineLabel, resultLabel, slotLabel, slotTargetLabel } from "./labels.messages";
+
+const t = createTranslator(customMessages);
 
 /** 화면 기능(D12·M8-5)의 기본 정보 고르기: 이름·붙을 곳·결과 모양. */
 
@@ -62,20 +65,41 @@ const FIELD_OPTIONS = COLLECTIONS.flatMap((collection) =>
 	}),
 );
 
-const PLACE_OPTIONS: ReadonlyArray<{ value: string; label: string; surface: CustomSurface | null }> = [
-	{ value: "field", label: "필드 옆", surface: null },
-	{ value: "selection", label: "선택 영역 메뉴", surface: { slot: "selection" } },
-	{ value: "insert", label: "넣기 메뉴", surface: { slot: "insert" } },
+/** 붙을 곳 고르기. 이름은 그리는 때의 언어로 만든다. */
+const placeOptionsOf = (): ReadonlyArray<{ value: string; label: string; surface: CustomSurface | null }> => [
+	{ value: "field", label: t("place.field"), surface: null },
+	{ value: "selection", label: slotLabel("selection"), surface: { slot: "selection" } },
+	{ value: "insert", label: slotLabel("insert"), surface: { slot: "insert" } },
 	...CUSTOM_BLOCKS.map((block) => ({
 		value: `block:${block.name}`,
-		label: `블록 · ${block.label}`,
+		label: `${slotLabel("block")} · ${block.label}`,
 		surface: { slot: "block", block: block.name } as const,
 	})),
-	{ value: "image:alt", label: "본문 이미지 · 대체 텍스트", surface: { slot: "image", target: "alt" } },
-	{ value: "image:caption", label: "본문 이미지 · 캡션", surface: { slot: "image", target: "caption" } },
-	{ value: "media:filename", label: "미디어 · 파일 이름", surface: { slot: "media", target: "filename" } },
-	{ value: "media:defaultAlt", label: "미디어 · 기본 대체 텍스트", surface: { slot: "media", target: "defaultAlt" } },
-	{ value: "media:defaultCaption", label: "미디어 · 기본 캡션", surface: { slot: "media", target: "defaultCaption" } },
+	{
+		value: "image:alt",
+		label: `${slotLabel("image")} · ${slotTargetLabel("image", "alt")}`,
+		surface: { slot: "image", target: "alt" },
+	},
+	{
+		value: "image:caption",
+		label: `${slotLabel("image")} · ${slotTargetLabel("image", "caption")}`,
+		surface: { slot: "image", target: "caption" },
+	},
+	{
+		value: "media:filename",
+		label: `${t("place.media")} · ${slotTargetLabel("media", "filename")}`,
+		surface: { slot: "media", target: "filename" },
+	},
+	{
+		value: "media:defaultAlt",
+		label: `${t("place.media")} · ${slotTargetLabel("media", "defaultAlt")}`,
+		surface: { slot: "media", target: "defaultAlt" },
+	},
+	{
+		value: "media:defaultCaption",
+		label: `${t("place.media")} · ${slotTargetLabel("media", "defaultCaption")}`,
+		surface: { slot: "media", target: "defaultCaption" },
+	},
 ];
 
 const placeValue = (surface: CustomSurface) =>
@@ -113,13 +137,14 @@ export const NEW_CUSTOM_BASE = (): CustomBase =>
 export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChange: (base: CustomBase) => void }) {
 	const ids = { label: useId(), place: useId(), field: useId(), result: useId(), engine: useId() };
 	const setSurface = (surface: CustomSurface) => onChange(fitted(base, surface));
+	const placeOptions = placeOptionsOf();
 	const engines = customEngines(base.surface);
 	const fieldValue =
 		base.surface.slot === "field" ? `${base.surface.collections?.[0] ?? ""}:${base.surface.field}` : "";
 	return (
 		<div className="grid gap-5 sm:grid-cols-2">
 			<Field className="sm:col-span-2">
-				<FieldLabel htmlFor={ids.label}>이름</FieldLabel>
+				<FieldLabel htmlFor={ids.label}>{t("field.name")}</FieldLabel>
 				<Input
 					id={ids.label}
 					value={base.label}
@@ -129,20 +154,20 @@ export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChang
 				/>
 			</Field>
 			<Field>
-				<FieldLabel htmlFor={ids.place}>붙을 곳</FieldLabel>
+				<FieldLabel htmlFor={ids.place}>{t("field.place")}</FieldLabel>
 				<OptionSelect
 					id={ids.place}
 					value={placeValue(base.surface)}
-					options={PLACE_OPTIONS}
+					options={placeOptions}
 					onChange={(value) => {
-						const option = PLACE_OPTIONS.find((item) => item.value === value);
+						const option = placeOptions.find((item) => item.value === value);
 						if (option) setSurface(option.surface ?? firstField());
 					}}
 				/>
 			</Field>
 			{base.surface.slot === "field" ? (
 				<Field>
-					<FieldLabel htmlFor={ids.field}>필드</FieldLabel>
+					<FieldLabel htmlFor={ids.field}>{t("field.field")}</FieldLabel>
 					<OptionSelect
 						id={ids.field}
 						value={fieldValue}
@@ -157,21 +182,21 @@ export function CustomBaseFields({ base, onChange }: { base: CustomBase; onChang
 				<div />
 			)}
 			<Field>
-				<FieldLabel htmlFor={ids.result}>결과</FieldLabel>
+				<FieldLabel htmlFor={ids.result}>{t("field.result")}</FieldLabel>
 				<OptionSelect
 					id={ids.result}
 					value={base.result}
-					options={customResults(base.surface).map((result) => ({ value: result, label: RESULT_LABELS[result] }))}
+					options={customResults(base.surface).map((result) => ({ value: result, label: resultLabel(result) }))}
 					onChange={(result) => onChange({ ...base, result: result as CustomBase["result"] })}
 				/>
 			</Field>
 			{engines.length > 1 && (
 				<Field>
-					<FieldLabel htmlFor={ids.engine}>방식</FieldLabel>
+					<FieldLabel htmlFor={ids.engine}>{t("field.engine")}</FieldLabel>
 					<OptionSelect
 						id={ids.engine}
 						value={base.engine ?? "generate"}
-						options={engines.map((engine) => ({ value: engine, label: ENGINE_LABELS[engine] }))}
+						options={engines.map((engine) => ({ value: engine, label: engineLabel(engine) }))}
 						onChange={(value) => {
 							const engine = value as NonNullable<CustomBase["engine"]>;
 							onChange({ ...base, engine: engine === "decide" ? engine : undefined });

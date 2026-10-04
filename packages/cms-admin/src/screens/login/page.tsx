@@ -1,10 +1,13 @@
-import { adminHref } from "@bh2980/cms/client";
+import { adminHref, createTranslator } from "@bh2980/cms/client";
 import { auth, authProviders, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@bh2980/cms/runtime";
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { loginMessages } from "./messages";
+
+const t = createTranslator(loginMessages);
 
 export default async function AdminLoginPage() {
 	if (isDevAuthBypassEnabled()) {
@@ -22,21 +25,21 @@ export default async function AdminLoginPage() {
 	const isUnauthorizedUser = Boolean(accountId && !isAllowedAdminId(accountId));
 	const providers = authProviders();
 	// 로그인 방식이 하나면 안내 문구에 그 이름을 쓴다(예: "GitHub 관리자 계정").
-	const providerName = providers.length === 1 ? `${providers[0]?.name} ` : "";
+	const provider = providers.length === 1 ? (providers[0]?.name ?? "") : "";
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center p-4">
 			<Card className="w-full max-w-sm">
 				<CardHeader className="text-center">
-					<CardTitle className="text-2xl">CMS 관리자</CardTitle>
-					<CardDescription>승인된 {providerName}관리자 계정으로 로그인해 주세요.</CardDescription>
+					<CardTitle className="text-2xl">{t("title")}</CardTitle>
+					<CardDescription>{t("description", { provider })}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{isUnauthorizedUser ? (
 						<Alert variant="danger" layout="stack" className="text-center">
-							<AlertTitle className="text-xs">접근 권한이 없습니다</AlertTitle>
+							<AlertTitle className="text-xs">{t("forbiddenTitle")}</AlertTitle>
 							<AlertDescription className="mt-1 text-xs">
-								로그인한 {providerName}계정 {accountId}에는 관리자 권한이 없습니다.
+								{t("forbidden", { provider, accountId: accountId ?? "" })}
 							</AlertDescription>
 							<form
 								action={async () => {
@@ -46,22 +49,22 @@ export default async function AdminLoginPage() {
 								className="mt-3"
 							>
 								<Button type="submit" variant="link" size="xs">
-									로그아웃
+									{t("signOut")}
 								</Button>
 							</form>
 						</Alert>
 					) : (
 						<div className="flex flex-col gap-2">
-							{providers.map((provider) => (
+							{providers.map((authProvider) => (
 								<form
-									key={provider.id}
+									key={authProvider.id}
 									action={async () => {
 										"use server";
-										await signIn(provider.id, { redirectTo: adminHref() });
+										await signIn(authProvider.id, { redirectTo: adminHref() });
 									}}
 								>
 									<Button type="submit" className="w-full">
-										{provider.label}
+										{t("signIn", { provider: authProvider.name })}
 									</Button>
 								</form>
 							))}

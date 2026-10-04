@@ -1,6 +1,6 @@
 "use client";
 
-import { adminHref } from "@bh2980/cms/client";
+import { adminHref, createTranslator } from "@bh2980/cms/client";
 import { CmsApiError, cmsFetch } from "@bh2980/cms-admin/api";
 import { SlotRegistryProvider, type SlotSource } from "@bh2980/cms-admin/slots";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,9 @@ import { type ReactNode, useMemo } from "react";
 import type { AiActionView } from "../actions";
 import type { AiRunContext, AiRunResult } from "../definition";
 import { attachedTo } from "../registry";
+import { aiCommonMessages } from "./ai-common.messages";
+
+const t = createTranslator(aiCommonMessages);
 
 export const AI_ACTIONS_KEY = ["cms", "ai", "actions"] as const;
 
@@ -24,7 +27,7 @@ export function useAiActions(enabled = true) {
 		queryFn: ({ signal }) =>
 			cmsFetch<AiActionsResponse>("/api/cms/v1/ai/actions", {
 				signal,
-				fallback: "AI 기능 목록을 불러올 수 없습니다.",
+				fallback: t("listFailed"),
 			}),
 		enabled,
 		staleTime: 60_000,
@@ -68,7 +71,7 @@ export async function runAiAction(
 		method: "POST",
 		json: { ...requestBody(action, options), input },
 		signal: options.signal,
-		fallback: "실행하지 못했습니다.",
+		fallback: t("runFailed"),
 	});
 	return response.result;
 }
@@ -82,7 +85,7 @@ export async function streamAiAction(
 	input: Readonly<Record<string, unknown>>,
 	options: AiRunOptions & { onText: (text: string) => void },
 ): Promise<AiRunResult> {
-	const fallback = "실행하지 못했습니다.";
+	const fallback = t("runFailed");
 	const response = await fetch("/api/cms/v1/ai/run", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -116,7 +119,7 @@ export async function streamAiAction(
 		}
 		if (done) break;
 	}
-	throw new CmsApiError(502, "ai_failed", "AI 답이 끝나기 전에 끊겼습니다.", [], {});
+	throw new CmsApiError(502, "ai_failed", t("streamCut"), [], {});
 }
 
 /** 같은 기능을 여러 입력에 돌린다(한 요청 최대 8개). 입력마다 결과나 실패 이유가 순서대로 온다. */
@@ -131,7 +134,7 @@ export async function runAiActionMany(
 			method: "POST",
 			json: { ...requestBody(action, options), inputs },
 			signal: options.signal,
-			fallback: "실행하지 못했습니다.",
+			fallback: t("runFailed"),
 		},
 	);
 	return response.results;

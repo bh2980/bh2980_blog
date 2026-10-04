@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	CODE_LINE_EFFECTS,
 	COLLAPSE,
@@ -13,6 +14,9 @@ import { Check, ChevronsDownUp, ChevronsUpDown, Code2, Eye, Highlighter } from "
 import { type CSSProperties, useEffect, useRef } from "react";
 import { cn } from "../../lib/utils/cn";
 import { useIconByName } from "../../screens/shared/collection-icon";
+import { codeBlockMessages } from "./messages";
+
+const t = createTranslator(codeBlockMessages);
 
 interface LineMenuProps {
 	/** 고른 줄 [start, end). */
@@ -106,7 +110,11 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 		<div
 			ref={ref}
 			role="menu"
-			aria-label={start + 1 === end ? `${start + 1}번째 줄 효과` : `${start + 1}–${end}번째 줄 효과`}
+			aria-label={
+				start + 1 === end
+					? t("lineMenu.lineEffects", { line: start + 1 })
+					: t("lineMenu.rangeEffects", { start: start + 1, end })
+			}
 			data-code-ui=""
 			contentEditable={false}
 			style={style}
@@ -131,9 +139,9 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 				<>
 					<MenuItem onSelect={() => onChange(lineEffects.filter((effect) => effect !== collapse))}>
 						<ChevronsUpDown aria-hidden className="size-3.5" />
-						접기 해제
+						{t("lineMenu.uncollapse")}
 						<span className="ml-auto text-muted-foreground">
-							{collapse.start + 1}–{collapse.end}줄
+							{t("lineMenu.collapsedRange", { start: collapse.start + 1, end: collapse.end })}
 						</span>
 					</MenuItem>
 					<CheckItem
@@ -141,7 +149,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 						onSelect={() => setCollapseOpen(collapse.attrs.open !== true)}
 					>
 						<Eye aria-hidden className="size-3.5" />
-						처음부터 펼치기
+						{t("lineMenu.openFromStart")}
 					</CheckItem>
 				</>
 			) : (
@@ -156,7 +164,8 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 						)
 					}
 				>
-					<ChevronsDownUp aria-hidden className="size-3.5" />이 줄들 접기
+					<ChevronsDownUp aria-hidden className="size-3.5" />
+					{t("lineMenu.collapse")}
 				</MenuItem>
 			)}
 			{onLinkText && (
@@ -164,7 +173,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 					<div aria-hidden className="my-0.5 h-px bg-border" />
 					<MenuItem onSelect={onLinkText}>
 						<Code2 aria-hidden className="size-3.5" />
-						본문 연결
+						{t("lineMenu.linkText")}
 					</MenuItem>
 				</>
 			)}

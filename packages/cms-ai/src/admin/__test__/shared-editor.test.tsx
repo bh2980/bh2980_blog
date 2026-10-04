@@ -1,19 +1,32 @@
 // @vitest-environment jsdom
+import { createTranslator } from "@bh2980/cms/client";
 import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sharedMessages as adminSharedMessages } from "../../../../cms-admin/src/screens/shared/messages";
 import type { AiSharedView } from "../../shared";
 import { SharedManager } from "../shared-editor";
+import { sharedMessages } from "../shared-editor.messages";
+
+const t = createTranslator(sharedMessages);
+const adminText = createTranslator(adminSharedMessages);
 
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body });
 
 const VIEW: AiSharedView = {
 	version: 2,
 	items: [
-		{ source: "config", key: "styleGuide", label: "문체 가이드", defaultText: "기본", text: "고침", overridden: true },
-		{ source: "added", key: "tone", label: "말투", text: "정중하게" },
+		{
+			source: "config",
+			key: "styleGuide",
+			label: "Style guide",
+			defaultText: "default",
+			text: "edited",
+			overridden: true,
+		},
+		{ source: "added", key: "tone", label: "Tone", text: "polite" },
 	],
 };
 
@@ -35,10 +48,7 @@ beforeEach(() => {
 		}
 		if (input === "/api/cms/v1/ai/shared" && init?.method === "PATCH") return json({ ...view, version: 3 });
 		if (input.startsWith("/api/cms/v1/ai/shared?") && init?.method === "DELETE") {
-			return json(
-				{ code: "ai_invalid_input", message: "이 문구를 쓰는 기능이 있어 삭제할 수 없습니다: 요약 만들기" },
-				400,
-			);
+			return json({ code: "ai_invalid_input", message: "Actions use this text, so it can't be deleted: Summary" }, 400);
 		}
 		throw new Error(`Unexpected fetch ${init?.method ?? "GET"} ${input}`);
 	});
@@ -57,7 +67,7 @@ function Harness() {
 	return (
 		<>
 			<button type="button" onClick={async () => (await confirmDiscard(dirty)) && setSelected("new")}>
-				머리 추가
+				add head
 			</button>
 			<SharedManager
 				selected={selected}
@@ -78,72 +88,74 @@ const renderManager = () =>
 			<Harness />
 		</QueryClientProvider>,
 	);
-const list = () => screen.getByRole("list", { name: "공통 문구 목록" });
+const list = () => screen.getByRole("list", { name: t("list.label") });
 const row = (name: string) => within(list()).getByRole("button", { name: new RegExp(name) });
 
 describe("AI 화면 공통 문구 탭", () => {
 	it("목록과 빈 상세를 보이고, 고른 문구를 열린 줄로 표시한다", async () => {
 		renderManager();
-		await screen.findByText("문구를 고르세요");
+		await screen.findByText(t("empty.title"));
 		expect(
 			within(list())
 				.getAllByRole("button")
 				.map((item) => item.textContent),
-		).toEqual(["문체 가이드{{shared.styleGuide}}", "말투{{shared.tone}} · 직접 만듦"]);
-		expect(screen.getByRole("button", { name: "문구 추가" })).toBeTruthy();
+		).toEqual(["Style guide{{shared.styleGuide}}", `Tone{{shared.tone}} · ${t("detail.added")}`]);
+		expect(screen.getByRole("button", { name: t("action.add") })).toBeTruthy();
 
-		fireEvent.click(row("문체 가이드"));
-		expect(await screen.findByRole("heading", { name: "문체 가이드" })).toBeTruthy();
-		expect(row("문체 가이드").getAttribute("aria-current")).toBe("true");
+		fireEvent.click(row("Style guide"));
+		expect(await screen.findByRole("heading", { name: "Style guide" })).toBeTruthy();
+		expect(row("Style guide").getAttribute("aria-current")).toBe("true");
 		// 설정 문구: 이름은 설정이 정하고, 기본값으로 되돌릴 수 있으며 삭제는 없다.
-		expect((screen.getByRole("textbox", { name: "이름" }) as HTMLInputElement).disabled).toBe(true);
+		expect((screen.getByRole("textbox", { name: t("field.name") }) as HTMLInputElement).disabled).toBe(true);
 		expect(screen.getByText("{{shared.styleGuide}}", { selector: "code" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "복사" })).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
-		fireEvent.click(screen.getByRole("button", { name: "기본값으로" }));
-		expect((screen.getByRole("textbox", { name: "내용" }) as HTMLTextAreaElement).value).toBe("기본");
+		expect(screen.getByRole("button", { name: t("copy.label") })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: t("action.delete") })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: t("action.resetDefault") }));
+		expect((screen.getByRole("textbox", { name: t("field.content") }) as HTMLTextAreaElement).value).toBe("default");
 
-		fireEvent.click(screen.getByRole("button", { name: "저장" }));
+		fireEvent.click(screen.getByRole("button", { name: t("action.save") }));
 		await waitFor(() => expect(calls("PATCH")).toHaveLength(1));
-		expect(bodyOf(calls("PATCH")[0])).toEqual({ expectedVersion: 2, key: "styleGuide", text: "기본" });
+		expect(bodyOf(calls("PATCH")[0])).toEqual({ expectedVersion: 2, key: "styleGuide", text: "default" });
 	});
 
 	it("저장하지 않은 내용이 있으면 다른 문구를 열기 전에 묻는다", async () => {
 		renderManager();
-		fireEvent.click(await screen.findByRole("button", { name: /말투/ }));
-		fireEvent.change(await screen.findByRole("textbox", { name: "내용" }), { target: { value: "바꿈" } });
-		fireEvent.click(row("문체 가이드"));
-		expect(await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" })).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "취소" }));
+		fireEvent.click(await screen.findByRole("button", { name: /Tone/ }));
+		fireEvent.change(await screen.findByRole("textbox", { name: t("field.content") }), {
+			target: { value: "changed" },
+		});
+		fireEvent.click(row("Style guide"));
+		expect(await screen.findByRole("alertdialog", { name: adminText("discard.title") })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: adminText("common.cancel") }));
 		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-		expect(screen.getByRole("heading", { name: "말투" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Tone" })).toBeTruthy();
 	});
 
 	it("새 문구는 키·이름·내용을 적어 저장하고, 저장한 문구를 연 채 둔다", async () => {
 		renderManager();
-		await screen.findByText("문구를 고르세요");
-		fireEvent.click(screen.getByRole("button", { name: "문구 추가" }));
-		const save = (await screen.findByRole("button", { name: "저장" })) as HTMLButtonElement;
+		await screen.findByText(t("empty.title"));
+		fireEvent.click(screen.getByRole("button", { name: t("action.add") }));
+		const save = (await screen.findByRole("button", { name: t("action.save") })) as HTMLButtonElement;
 		expect(save.disabled).toBe(true);
-		fireEvent.change(screen.getByRole("textbox", { name: "이름" }), { target: { value: "독자" } });
-		fireEvent.change(screen.getByRole("textbox", { name: "키" }), { target: { value: "reader" } });
-		fireEvent.change(screen.getByRole("textbox", { name: "내용" }), { target: { value: "개발자" } });
+		fireEvent.change(screen.getByRole("textbox", { name: t("field.name") }), { target: { value: "Reader" } });
+		fireEvent.change(screen.getByRole("textbox", { name: t("field.key") }), { target: { value: "reader" } });
+		fireEvent.change(screen.getByRole("textbox", { name: t("field.content") }), { target: { value: "developer" } });
 		fireEvent.click(save);
 		await waitFor(() => expect(calls("POST")).toHaveLength(1));
-		expect(bodyOf(calls("POST")[0])).toEqual({ expectedVersion: 2, key: "reader", label: "독자", text: "개발자" });
-		await waitFor(() => expect(row("독자").getAttribute("aria-current")).toBe("true"));
+		expect(bodyOf(calls("POST")[0])).toEqual({ expectedVersion: 2, key: "reader", label: "Reader", text: "developer" });
+		await waitFor(() => expect(row("Reader").getAttribute("aria-current")).toBe("true"));
 		expect(screen.getByText("{{shared.reader}}", { selector: "code" })).toBeTruthy();
 	});
 
 	it("더한 문구는 삭제를 묻고, 막히면 칸 안에 이유를 보인다", async () => {
 		renderManager();
-		fireEvent.click(await screen.findByRole("button", { name: /말투/ }));
-		expect(screen.queryByRole("button", { name: "기본값으로" })).toBeNull();
-		fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
-		const dialog = await screen.findByRole("alertdialog", { name: "문구 삭제" });
-		fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
+		fireEvent.click(await screen.findByRole("button", { name: /Tone/ }));
+		expect(screen.queryByRole("button", { name: t("action.resetDefault") })).toBeNull();
+		fireEvent.click(await screen.findByRole("button", { name: t("action.delete") }));
+		const dialog = await screen.findByRole("alertdialog", { name: t("confirm.title") });
+		fireEvent.click(within(dialog).getByRole("button", { name: t("action.delete") }));
 		expect((await screen.findByRole("alert")).textContent).toBe(
-			"이 문구를 쓰는 기능이 있어 삭제할 수 없습니다: 요약 만들기",
+			"Actions use this text, so it can't be deleted: Summary",
 		);
 		expect(calls("DELETE")[0]?.[0]).toBe("/api/cms/v1/ai/shared?key=tone&expectedVersion=2");
 	});
@@ -151,6 +163,6 @@ describe("AI 화면 공통 문구 탭", () => {
 	it("문구가 없으면 목록 자리에 한 줄로 알린다", async () => {
 		view = { version: 0, items: [] };
 		renderManager();
-		expect(await screen.findByText("공통 문구가 없습니다.")).toBeTruthy();
+		expect(await screen.findByText(t("list.empty"))).toBeTruthy();
 	});
 });

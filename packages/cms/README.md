@@ -32,13 +32,14 @@ allowBuilds:
 앱 폴더(`package.json`이 있는 곳)에서 돌린다. **있는 파일은 덮어쓰지 않고** "건너뛴 파일"로 알린다. 다시 돌려도 안전하다.
 
 ```sh
-pnpm exec cms init                       # 관리자 화면 /admin
+pnpm exec cms init                       # 관리자 화면 /admin, 영어(en), 시간대 UTC
 pnpm exec cms init --admin-path /studio  # 관리자 화면 경로를 바꿀 때
+pnpm exec cms init --locale ko --time-zone Asia/Seoul  # 사이트 기본 언어와 시간대를 정할 때
 ```
 
 | 하는 일 | 파일 |
 | --- | --- |
-| 사이트 설정(컬렉션 하나짜리 시작점) | `cms.config.ts` |
+| 사이트 설정(컬렉션 하나짜리 시작점, 영어 이름표) | `cms.config.ts` |
 | 서버 설정(DB·GitHub 로그인, 비밀 값은 환경 변수) | `cms.server.ts` |
 | 관리자 화면 | `app/(admin)/admin/[[...path]]/page.tsx`·`layout.tsx` |
 | 관리자 API와 로그인(`/api/cms/v1/*`·`/api/cms/auth/*`) | `app/api/cms/[...path]/route.ts` |
@@ -54,6 +55,10 @@ pnpm exec cms init --admin-path /studio  # 관리자 화면 경로를 바꿀 때
 들어간다. **관리자 경로는 사이트 설정 `admin.path`와 라우트 폴더가 같아야 한다.** 나중에 바꿀 때도 둘을 함께 바꾼다.
 관리자 API 경로(`/api/cms/v1`)는 바뀌지 않는다.
 
+`--locale <코드>`는 사이트 기본 언어(`defaultLocale`)이고 기본값은 `en`이다(`ko`처럼 소문자 언어 코드). 관리자 화면의 언어와
+날짜·숫자 표기가 이 언어를 따르고, 설정의 `admin.locale`로 따로 고를 수 있다. `--time-zone <시간대>`는 날짜·시각을 입력하고
+보이는 시간대(IANA 이름, 기본 `UTC`)다. 만든 설정 파일과 명령줄 도움말·결과는 개발자가 읽으므로 영어다.
+
 ### 3. 컬렉션 고치기
 
 `cms.config.ts`는 서버와 관리자 화면이 함께 읽는다. 비밀 값은 넣지 않는다. 만들어진 시작점은 이렇다.
@@ -62,24 +67,24 @@ pnpm exec cms init --admin-path /studio  # 관리자 화면 경로를 바꿀 때
 import { defineCollection, defineConfig, fields } from "@bh2980/cms";
 
 const post = defineCollection({
-	label: "글",
+	label: "Post",
 	kind: "document", // 본문·초안·발행. 태그 같은 작은 항목은 "item"
 	path: "/posts/:slug", // 공개 주소. 본문 내부 링크·미리보기 주소에 쓴다
 	icon: "file-text", // 관리자 사이드바 아이콘(lucide 이름)
 	fields: {
-		title: fields.text({ label: "제목", required: true, max: 200 }), // 제목 필드 이름은 `title`
-		slug: fields.slug({ label: "주소", from: "title", required: true }),
-		summary: fields.text({ label: "요약", role: "summary", multiline: true, fillFromBody: true }),
+		title: fields.text({ label: "Title", required: true, max: 200 }), // 제목 필드 이름은 `title`
+		slug: fields.slug({ label: "Slug", from: "title", required: true }),
+		summary: fields.text({ label: "Summary", role: "summary", multiline: true, fillFromBody: true }),
 	},
 	// layout·list를 적지 않으면 필드 순서대로 그리고 기본 목록 컬럼을 쓴다("컬렉션").
 });
 
 export default defineConfig({
 	collections: { post },
-	locales: [{ code: "ko", name: "한국어" }],
-	defaultLocale: "ko",
-	site: { name: "내 사이트" },
-	timeZone: "Asia/Seoul",
+	locales: [{ code: "en", name: "English" }],
+	defaultLocale: "en",
+	site: { name: "My site" },
+	timeZone: "UTC",
 });
 ```
 
@@ -394,7 +399,8 @@ export const myPlugin = () =>
 | `site.previewLocaleParam` | 미리보기 주소에 언어를 넘기는 쿼리 이름(기본 `locale`, 기본 언어가 아닐 때만 `?locale=en`). `false`면 `localePrefix` 규칙대로 경로에 넣는다(`/preview/en/posts/a`). |
 | `admin.path` | 관리자 화면 경로(기본 `/admin`). 앱의 관리자 라우트 폴더와 같아야 한다. `/`나 `/api` 아래는 안 된다. 화면 안 링크·로그인 이동·플러그인 화면 주소가 따른다. |
 | `codeBlock.lineEffects` | 코드 블록 줄 효과 더하기·바꾸기("코드 블록 줄 효과"). |
-| `admin.locale` | 관리자 화면의 날짜·숫자 표기 언어(BCP 47). 없으면 `ko-KR`. 시각은 `timeZone`으로 보인다. |
+| `admin.locale` | 관리자 화면 언어와 날짜·숫자 표기(BCP 47, 예: `en`·`ko-KR`). 없으면 사이트 기본 언어(`defaultLocale`). 시각은 `timeZone`으로 보인다. |
+| `admin.messages` | 화면 문구 덮어쓰기: 이름공간 → 키 → 문구. 본체 블록 이름표는 `"cms.blocks"`(`image.label`처럼 `<블록>.label`), 코드 블록 효과는 `"cms.code-block"`, 검사 오류 문구는 `"cms.mdx"`·`"cms.core"`·`"cms.translation"`이다. |
 | `admin.legacyBackupNames` | 예전 브라우저 복구본 DB 이름. 관리자 화면이 읽고 지우되 새로 만들지 않는다(지금 이름 `cms_backup`). |
 
 ### 컬렉션

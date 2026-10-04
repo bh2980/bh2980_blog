@@ -5,7 +5,7 @@ import { migrate } from "./migrate";
 /**
  * 명령줄 `cms`(패키지 `bin`). `bin/cms.mjs`가 tsx를 건 뒤 부른다.
  *
- * - `cms init [--admin-path /admin]`: Next 앱에 설정·라우트 파일을 만들고 tsconfig·CSS·next 설정을 잇는다.
+ * - `cms init [--admin-path /admin] [--locale en] [--time-zone UTC]`: Next 앱에 설정·라우트 파일을 만들고 tsconfig·CSS·next 설정을 잇는다.
  * - `cms migrate [--env-file .env.local] [--no-env-file] [--config <파일>] [--server <파일>]`: DB 표를 만든다.
  */
 
@@ -14,16 +14,18 @@ export { DEFAULT_ENV_FILES, loadEnvFiles } from "./env";
 export { formatInitReport, type InitOptions, type InitReport, initProject } from "./init";
 export { type MigrateOptions, migrate } from "./migrate";
 
-const HELP = `사용법: cms <명령> [옵션]
+const HELP = `Usage: cms <command> [options]
 
-명령:
-  init      Next 앱에 CMS 파일을 만든다(있는 파일은 덮어쓰지 않는다)
-              --admin-path <경로>   관리자 화면 경로(기본 /admin)
-  migrate   서버 설정의 DB에 표를 만들거나 최신 모양으로 맞춘다
-              --env-file <파일>     읽을 환경 파일(여러 번 가능, 기본 .env.local·.env)
-              --no-env-file         환경 파일을 읽지 않는다
-              --config <파일>       사이트 설정(기본: tsconfig paths의 @cms-config, ./cms.config.ts, ./src/cms.config.ts)
-              --server <파일>       서버 설정(기본: 같은 순서로 cms.server.ts)
+Commands:
+  init      Create the CMS files in a Next app (existing files are never overwritten)
+              --admin-path <path>   Admin screen path (default /admin)
+              --locale <code>       Default site language, also the admin language (default en)
+              --time-zone <tz>      IANA time zone for dates and times (default UTC)
+  migrate   Create or update the tables in the database of the server config
+              --env-file <file>     Env file to read (repeatable, default .env.local and .env)
+              --no-env-file         Don't read any env file
+              --config <file>       Site config (default: @cms-config in tsconfig paths, ./cms.config.ts, ./src/cms.config.ts)
+              --server <file>       Server config (default: cms.server.ts, looked up the same way)
 `;
 
 export interface CliIo {
@@ -40,8 +42,20 @@ export async function runCli(
 	const [command, ...rest] = argv;
 	try {
 		if (command === "init") {
-			const { values } = parseArgs({ args: [...rest], options: { "admin-path": { type: "string" } } });
-			io.log(formatInitReport(initProject({ cwd: io.cwd, adminPath: values["admin-path"] })));
+			const { values } = parseArgs({
+				args: [...rest],
+				options: { "admin-path": { type: "string" }, locale: { type: "string" }, "time-zone": { type: "string" } },
+			});
+			io.log(
+				formatInitReport(
+					initProject({
+						cwd: io.cwd,
+						adminPath: values["admin-path"],
+						locale: values.locale,
+						timeZone: values["time-zone"],
+					}),
+				),
+			);
 			return 0;
 		}
 		if (command === "migrate") {
@@ -67,7 +81,7 @@ export async function runCli(
 			io.log(HELP);
 			return 0;
 		}
-		io.error(`알 수 없는 명령: ${command}\n\n${HELP}`);
+		io.error(`Unknown command: ${command}\n\n${HELP}`);
 		return 1;
 	} catch (error) {
 		io.error(error instanceof Error ? error.message : String(error));

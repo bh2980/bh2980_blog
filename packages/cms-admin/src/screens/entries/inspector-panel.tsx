@@ -12,6 +12,7 @@ import { SidePanelHeader } from "../shared/side-panel";
 import { type EntryData, type EntryForm, type EntryFormPatch, formFromSourceMetadata } from "./entry-form";
 import { DEFAULT_TAB, tabOf, tabOfGroup, tabsOf } from "./layout-groups";
 import { SchemaFields } from "./schema-fields";
+import { t } from "./translate";
 
 const tabsFor = (collection: string) => (isCollection(collection) ? tabsOf(collection) : [DEFAULT_TAB]);
 const tabFor = (collection: string, path: string) => (isCollection(collection) ? tabOf(collection, path) : DEFAULT_TAB);
@@ -103,12 +104,12 @@ export function InspectorPanel({
 									values: formFromSourceMetadata(collection, entry.source.metadata),
 									note: (
 										<>
-											원문({localeLabel(entry.source.locale)}) 값입니다.{" "}
+											{t("inspector.source", { locale: localeLabel(entry.source.locale) })}{" "}
 											<Link
 												href={adminEntryEditHref(entry.source.id) as Route}
 												className="text-primary underline-offset-2 hover:underline"
 											>
-												원문에서 바꿉니다
+												{t("inspector.sourceLink")}
 											</Link>
 										</>
 									),
@@ -123,7 +124,7 @@ export function InspectorPanel({
 		<Tabs
 			value={tab}
 			onValueChange={(value) => setTab(String(value))}
-			aria-label="속성"
+			aria-label={t("tab.default")}
 			className="h-full w-full gap-0 overflow-hidden border-l bg-background text-sm"
 		>
 			<SidePanelHeader onClose={onClose}>

@@ -1,4 +1,6 @@
 import { defineBlock } from "@bh2980/cms";
+import { createTranslator } from "@bh2980/cms/client";
+import { charEffectByName } from "@bh2980/cms/code-block";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import React from "react";
@@ -8,6 +10,9 @@ import { addedMarkName, createAddedMark } from "../added-marks";
 import { buildEditorExtensions } from "../extensions";
 import { BubbleButton, InlineBubble } from "../inline-bubble";
 import { inlineBubbleTarget } from "../inline-marks";
+import { editorMessages } from "../messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * 사이트 설정과 상관없이 시험하는 글자 꾸밈(확장이 더하는 `:note[글]{text="…"}`). 편집기에 마크를 직접 더하고
@@ -125,11 +130,11 @@ describe("InlineBubble", () => {
 		focusAt(editor, { from: 1, to: 3 });
 		renderBubble(editor);
 
-		const toolbar = screen.getByRole("toolbar", { name: "인라인 서식" });
+		const toolbar = screen.getByRole("toolbar", { name: t("inlineBubble.selectionLabel") });
 		expect(toolbar).toBeTruthy();
-		act(() => fireEvent.click(screen.getByRole("button", { name: "기울임" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("inlineMarks.italic") })));
 		expect(editor.isActive("italic")).toBe(true);
-		expect(screen.getByRole("button", { name: "기울임" }).getAttribute("aria-pressed")).toBe("true");
+		expect(screen.getByRole("button", { name: t("inlineMarks.italic") }).getAttribute("aria-pressed")).toBe("true");
 	});
 
 	it("편집기에 초점이 없으면 띄우지 않는다", () => {
@@ -144,7 +149,9 @@ describe("InlineBubble", () => {
 		focusAt(editor, 5);
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "굵게 해제" })));
+		act(() =>
+			fireEvent.click(screen.getByRole("button", { name: t("markText.remove", { name: t("inlineMarks.bold") }) })),
+		);
 		expect(editor.getHTML()).not.toContain("<strong>");
 		expect(editor.state.selection.from).toBe(5);
 	});
@@ -155,11 +162,11 @@ describe("InlineBubble", () => {
 		renderBubble(editor);
 
 		expect(screen.getByRole("link", { name: "https://example.com" })).toBeTruthy();
-		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 수정" })));
-		const input = screen.getByLabelText("주소") as HTMLInputElement;
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("link.edit") })));
+		const input = screen.getByLabelText(t("link.href")) as HTMLInputElement;
 		expect(input.value).toBe("https://example.com");
 		act(() => fireEvent.change(input, { target: { value: "https://changed.dev" } }));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("popoverForm.apply") })));
 
 		expect(editor.getHTML()).toContain('href="https://changed.dev/"');
 		expect(editor.getHTML()).toContain(">마바</a>");
@@ -171,7 +178,7 @@ describe("InlineBubble", () => {
 		focusAt(editor, 8);
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 해제" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("link.remove") })));
 		expect(editor.getHTML()).not.toContain("<a");
 		expect(editor.getText()).toContain("마바");
 	});
@@ -228,10 +235,10 @@ describe("InlineBubble", () => {
 		// 글자를 고르면 등록한 버튼이 링크 앞(`order: -1`)에 온다.
 		focusAt(editor, { from: 1, to: 3 });
 		const { unmount } = renderWith();
-		const labels = [...screen.getByRole("toolbar", { name: "인라인 서식" }).querySelectorAll("button")].map((button) =>
-			button.getAttribute("aria-label"),
-		);
-		expect(labels.indexOf("메모 넣기")).toBe(labels.indexOf("링크 넣기") - 1);
+		const labels = [
+			...screen.getByRole("toolbar", { name: t("inlineBubble.selectionLabel") }).querySelectorAll("button"),
+		].map((button) => button.getAttribute("aria-label"));
+		expect(labels.indexOf("메모 넣기")).toBe(labels.indexOf(t("link.add")) - 1);
 		act(() => fireEvent.click(screen.getByRole("button", { name: "메모 넣기" })));
 		expect(screen.getByRole("dialog", { name: "메모 편집" })).toBeTruthy();
 		act(() => fireEvent.click(screen.getByRole("button", { name: "메모 적용" })));
@@ -251,9 +258,9 @@ describe("InlineBubble", () => {
 		focusAt(editor, { from: 1, to: 3 });
 		renderBubble(editor);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "링크 넣기" })));
-		act(() => fireEvent.change(screen.getByLabelText("주소"), { target: { value: "/posts/hello" } }));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "적용" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("link.add") })));
+		act(() => fireEvent.change(screen.getByLabelText(t("link.href")), { target: { value: "/posts/hello" } }));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("popoverForm.apply") })));
 		expect(editor.getHTML()).toMatch(/<a [^>]*href="\/posts\/hello"[^>]*>가나<\/a>/);
 	});
 
@@ -261,7 +268,7 @@ describe("InlineBubble", () => {
 		const editor = createEditor(HTML);
 		focusAt(editor, 5);
 		renderBubble(editor);
-		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
+		expect(screen.getByRole("toolbar", { name: t("inlineBubble.effectLabel") })).toBeTruthy();
 
 		act(() => {
 			editor.commands.insertContent("x");
@@ -271,7 +278,7 @@ describe("InlineBubble", () => {
 		act(() => {
 			editor.commands.setTextSelection(5);
 		});
-		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
+		expect(screen.getByRole("toolbar", { name: t("inlineBubble.effectLabel") })).toBeTruthy();
 	});
 
 	it("코드 블록에서는 코드가 받는 효과와 글자 접기만 보인다", () => {
@@ -279,11 +286,18 @@ describe("InlineBubble", () => {
 		focusAt(editor, { from: 6, to: 10 });
 		renderBubble(editor);
 
-		const toolbar = screen.getByRole("toolbar", { name: "인라인 서식" });
+		const toolbar = screen.getByRole("toolbar", { name: t("inlineBubble.selectionLabel") });
 		const labels = [...toolbar.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
-		expect(labels).toEqual(["굵게", "기울임", "밑줄", "취소선", "툴팁 넣기", "글자 접기"]);
+		expect(labels).toEqual([
+			t("inlineMarks.bold"),
+			t("inlineMarks.italic"),
+			t("inlineMarks.underline"),
+			t("inlineMarks.strike"),
+			t("inlineBubble.tooltipAdd"),
+			t("inlineBubble.fold"),
+		]);
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("inlineBubble.fold") })));
 		expect(editor.getHTML()).toMatch(/call\(<span data-code-fold=""[^>]*>a, b<\/span>\)/);
 	});
 
@@ -293,13 +307,15 @@ describe("InlineBubble", () => {
 		focusAt(editor, 6);
 		renderBubble(editor);
 
-		expect(screen.getByRole("toolbar", { name: "인라인 효과" })).toBeTruthy();
-		const openByDefault = screen.getByRole("button", { name: "처음부터 펼치기" });
+		expect(screen.getByRole("toolbar", { name: t("inlineBubble.effectLabel") })).toBeTruthy();
+		const openByDefault = screen.getByRole("button", { name: t("inlineBubble.openByDefault") });
 		expect(openByDefault.getAttribute("aria-pressed")).toBe("false");
 		act(() => fireEvent.click(openByDefault));
 		expect(editor.getHTML()).toContain('data-open="true"');
-		expect(screen.getByRole("button", { name: "처음부터 펼치기" }).getAttribute("aria-pressed")).toBe("true");
-		act(() => fireEvent.click(screen.getByRole("button", { name: "글자 접기 해제" })));
+		expect(screen.getByRole("button", { name: t("inlineBubble.openByDefault") }).getAttribute("aria-pressed")).toBe(
+			"true",
+		);
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("inlineBubble.foldRemove") })));
 		expect(editor.getHTML()).not.toContain("data-code-fold");
 	});
 
@@ -312,9 +328,11 @@ describe("InlineBubble", () => {
 		});
 		focusAt(editor, 3);
 		const { unmount } = renderBubble(editor);
-		expect(screen.getByText("글자 접기 규칙 · 2곳")).toBeTruthy();
+		expect(
+			screen.getByText(t("inlineBubble.ruleSummary", { label: charEffectByName("fold")?.label ?? "fold", count: 2 })),
+		).toBeTruthy();
 
-		act(() => fireEvent.click(screen.getByRole("button", { name: "개별 효과로 바꾸기" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("inlineBubble.ruleExpand") })));
 		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
 		expect(editor.getHTML().match(/data-code-fold/g)).toHaveLength(2);
 		unmount();
@@ -326,7 +344,7 @@ describe("InlineBubble", () => {
 		editor.commands.unsetMark("codeFold", { extendEmptyMarkRange: true });
 		focusAt(editor, 3);
 		renderBubble(editor);
-		act(() => fireEvent.click(screen.getByRole("button", { name: "규칙 삭제" })));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("inlineBubble.ruleDelete") })));
 		expect(editor.state.doc.child(0).attrs.rules).toEqual([]);
 	});
 });

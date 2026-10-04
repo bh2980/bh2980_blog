@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import { X } from "lucide-react";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useId, useState } from "react";
@@ -8,6 +9,9 @@ import { Textarea } from "../ui/textarea";
 import { Toggle } from "../ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { collapseToEnd, PopoverFormError, PopoverFormFooter, submitOnEnter } from "./link-form";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * 글자에 붙는 꾸밈 중 글 속성 하나를 가진 것(본문 툴팁 `content`, 코드 안 툴팁 등)을 넣고·고치고·해제하는 입력 폼과 팝오버.
@@ -72,7 +76,9 @@ export function MarkTextForm({ editor, mark, attribute, labels, active, initial,
 
 	return (
 		<form onSubmit={handleApply} onKeyDown={submitOnEnter} className="grid gap-3">
-			<p className="font-medium">{active ? `${labels.name} 수정` : `${labels.name} 넣기`}</p>
+			<p className="font-medium">
+				{active ? t("markText.edit", { name: labels.name }) : t("markText.add", { name: labels.name })}
+			</p>
 			<label htmlFor={`${id}-content`} className="grid gap-1.5 text-xs">
 				{labels.field}
 				<Textarea
@@ -91,7 +97,7 @@ export function MarkTextForm({ editor, mark, attribute, labels, active, initial,
 			</label>
 			{error && <PopoverFormError id={`${id}-error`}>{error}</PopoverFormError>}
 			<PopoverFormFooter
-				removeLabel={`${labels.name} 해제`}
+				removeLabel={t("markText.remove", { name: labels.name })}
 				removeIcon={<X aria-hidden />}
 				onRemove={active ? handleRemove : undefined}
 				onCancel={onDone}

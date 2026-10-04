@@ -60,6 +60,11 @@ describe("cms init", () => {
 		expect(config).toContain("// ...seoFields()");
 		expect(config).toContain("// plugins: [...blocks(), seo()]");
 		expect(config).not.toContain("admin: {"); // 기본 경로는 적지 않는다
+		// 기본은 영어·UTC(개발자가 읽는 파일이라 영어 글만 있다).
+		expect(config).toContain('locales: [{ code: "en", name: "English" }]');
+		expect(config).toContain('defaultLocale: "en"');
+		expect(config).toContain('timeZone: "UTC"');
+		expect(config).not.toMatch(/[가-힣]/); // cms-allow-korean: 만든 파일에 한국어가 없는지 확인
 		expect(read(dir, "cms.server.ts")).toContain("githubAuth({");
 		expect(read(dir, "app/(admin)/admin/[[...path]]/page.tsx")).toContain("CmsAdminPage as default");
 		expect(read(dir, "app/(admin)/admin/layout.tsx")).toContain("<CmsAdminLayout>");
@@ -78,7 +83,7 @@ describe("cms init", () => {
 		// 스타일 줄은 마지막 @import 다음에.
 		expect(read(dir, "app/globals.css").split("\n").slice(0, 5)).toEqual([
 			'@import "tailwindcss";',
-			"/* @bh2980/cms 관리자 화면 */",
+			"/* @bh2980/cms admin screen */",
 			'@import "tw-animate-css";',
 			'@import "@bh2980/cms-admin/styles.css";',
 			'@plugin "@tailwindcss/typography";',
@@ -115,7 +120,19 @@ describe("cms init", () => {
 		]);
 		expect(read(dir, "cms.config.ts")).toBe("// 사이트가 고친 설정\n");
 		expect(["tsconfig.json", "app/globals.css", "next.config.ts"].map((file) => read(dir, file))).toEqual(before);
-		expect(formatInitReport(report)).toContain("이미 있어 건너뛴 파일(덮어쓰지 않음):\n  - cms.config.ts");
+		expect(formatInitReport(report)).toContain("Skipped (already exist, not overwritten):\n  - cms.config.ts");
+	});
+
+	it("--locale·--time-zone은 사이트 기본 언어와 시간대로 적힌다", () => {
+		const dir = fakeApp();
+		initProject({ cwd: dir, locale: "ko", timeZone: "Asia/Seoul" });
+		const config = read(dir, "cms.config.ts");
+		expect(config).toContain('locales: [{ code: "ko", name: "한국어" }]');
+		expect(config).toContain('defaultLocale: "ko"');
+		expect(config).toContain('timeZone: "Asia/Seoul"');
+
+		expect(() => initProject({ cwd: fakeApp(), locale: "Korean" })).toThrow(/--locale/);
+		expect(() => initProject({ cwd: fakeApp(), timeZone: "Mars/Base" })).toThrow(/--time-zone/);
 	});
 
 	it("관리자 경로를 고르면 라우트 폴더와 사이트 설정이 그 경로를 따른다", () => {

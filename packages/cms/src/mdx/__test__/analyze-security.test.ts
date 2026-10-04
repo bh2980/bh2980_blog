@@ -7,9 +7,9 @@ const container = [...ADDED_BLOCKS, ...BLOCKS].find((block) => block.syntax.kind
 if (!container) throw new Error("analyze-security test: no container block");
 const Box = container.component;
 
-const errorText = (source: string) =>
+const errorCodes = (source: string) =>
 	analyze(source)
-		.errors.map((error) => error.message)
+		.errors.map((error) => error.code)
 		.join(" | ");
 
 /**
@@ -18,13 +18,13 @@ const errorText = (source: string) =>
  */
 describe("JSX 이벤트 핸들러 속성 거부", () => {
 	it("대소문자와 무관하게 이벤트 핸들러 속성을 거부한다", () => {
-		expect(errorText(`<${Box} onClick="x">a</${Box}>`)).toContain("이벤트 핸들러");
-		expect(errorText(`<${Box} onclick="x">a</${Box}>`)).toContain("이벤트 핸들러");
-		expect(errorText(`<${Box} onerror="x">a</${Box}>`)).toContain("이벤트 핸들러");
-		expect(errorText(`<${Box} ONERROR="x">a</${Box}>`)).toContain("이벤트 핸들러");
+		expect(errorCodes(`<${Box} onClick="x">a</${Box}>`)).toBe("event_handler_attribute");
+		expect(errorCodes(`<${Box} onclick="x">a</${Box}>`)).toBe("event_handler_attribute");
+		expect(errorCodes(`<${Box} onerror="x">a</${Box}>`)).toBe("event_handler_attribute");
+		expect(errorCodes(`<${Box} ONERROR="x">a</${Box}>`)).toBe("event_handler_attribute");
 	});
 
 	it("이벤트 핸들러가 아닌 속성은 통과시킨다", () => {
-		expect(errorText(`<${Box} title="t">a</${Box}>`)).toBe("");
+		expect(errorCodes(`<${Box} title="t">a</${Box}>`)).toBe("");
 	});
 });

@@ -2,6 +2,7 @@
 
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
+	createTranslator,
 	FILE_ACCEPT,
 	fileTypeFor,
 	isImageMime,
@@ -32,14 +33,17 @@ import { entryHref } from "../shared/entry-href";
 import { SIDE_PANEL_DOCK } from "../shared/side-panel";
 import { useDebounced } from "../shared/use-debounced";
 import { MediaDetailPanel } from "./media-detail-panel";
-import { type MediaItem, mediaUsages } from "./media-item";
+import { type MediaItem, mediaUsages, usageNoteLabel } from "./media-item";
 import { MediaGrid, MediaTable } from "./media-views";
+import { mediaMessages } from "./messages";
+
+const t = createTranslator(mediaMessages);
 
 const PAGE_SIZE = 30;
 const KIND_OPTIONS = [
-	{ value: "all", label: "모든 형식" },
-	{ value: "image", label: "이미지" },
-	{ value: "file", label: "파일" },
+	{ value: "all", label: t("library.kind.all") },
+	{ value: "image", label: t("library.kind.image") },
+	{ value: "file", label: t("library.kind.file") },
 ];
 
 const UPLOAD_ACCEPT = `${ALLOWED_IMAGE_MIME_TYPES.join(",")},${FILE_ACCEPT}`;
@@ -54,9 +58,9 @@ interface MediaPage {
 const isImageFile = (file: File) => isImageMime(file.type);
 
 const USED_OPTIONS = [
-	{ value: "all", label: "사용 여부 전체" },
-	{ value: "used", label: "사용 중" },
-	{ value: "unused", label: "미사용" },
+	{ value: "all", label: t("library.used.all") },
+	{ value: "used", label: t("library.used.used") },
+	{ value: "unused", label: t("library.used.unused") },
 ];
 
 type MediaView = "grid" | "list";
@@ -125,7 +129,7 @@ export function MediaLibrary() {
 	const total = mediaQuery.data?.total ?? 0;
 	const selected = items.find((item) => item.id === selectedId) ?? null;
 
-	const loadError = mediaQuery.error ? errorText(mediaQuery.error, "미디어를 불러오지 못했습니다.") : null;
+	const loadError = mediaQuery.error ? errorText(mediaQuery.error, t("library.loadFailed")) : null;
 
 	/** 상세 칸에 연다(닫으려면 null). 저장하지 않은 기본 설명이 있으면 버릴지 먼저 묻는다. */
 	const openDetail = async (id: string | null) => {
@@ -143,7 +147,7 @@ export function MediaLibrary() {
 		const list: File[] = [];
 		for (const file of Array.from(files)) {
 			if (isImageFile(file) || fileTypeFor(file.name)) list.push(file);
-			else toast.error(`'${file.name}'은(는) 올릴 수 없는 형식입니다.`);
+			else toast.error(t("library.unsupportedType", { name: file.name }));
 		}
 		if (list.length === 0) {
 			if (fileInputRef.current) fileInputRef.current.value = "";
@@ -160,12 +164,12 @@ export function MediaLibrary() {
 					await uploadAttachment(file, onProgress);
 				}
 			}
-			toast.success(`${list.length}개 파일을 올렸습니다.`);
+			toast.success(t("library.uploaded", { count: list.length }));
 			setPage(1);
 			await invalidateMedia();
 		} catch (error) {
 			// 실패한 업로드는 사용 가능 상태가 되지 않는다. 같은 파일로 다시 시도할 수 있다(§7.2).
-			toast.error(`업로드 실패: ${errorText(error, "오류가 발생했습니다.")} 다시 시도할 수 있습니다.`);
+			toast.error(t("library.uploadFailed", { error: errorText(error, t("library.unknownError")) }));
 		} finally {
 			setUpload(null);
 			if (fileInputRef.current) fileInputRef.current.value = "";
@@ -188,11 +192,11 @@ export function MediaLibrary() {
 			return null;
 		});
 		try {
-			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: "삭제하지 못했습니다." });
-			toast.success(`'${media.filename}'을(를) 삭제했습니다.`);
+			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: t("library.deleteFailed") });
+			toast.success(t("library.deleted", { name: media.filename }));
 		} catch (error) {
 			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
-			toast.error(errorText(error, "삭제하지 못했습니다."));
+			toast.error(errorText(error, t("library.deleteFailed")));
 		} finally {
 			void invalidateMedia();
 		}
@@ -203,19 +207,19 @@ export function MediaLibrary() {
 		await cmsFetch(`/api/cms/v1/media/${media.id}`, {
 			method: "PATCH",
 			json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
-			fallback: "저장하지 못했습니다.",
+			fallback: t("library.saveFailed"),
 		});
-		toast.success("저장했습니다.");
+		toast.success(t("library.saved"));
 		void invalidateMedia();
 	};
 
 	const rename = async (media: MediaItem, filename: string) => {
 		try {
 			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "PATCH", json: { filename } });
-			toast.success(`이름을 '${filename}'(으)로 바꿨습니다.`);
+			toast.success(t("library.renamed", { name: filename }));
 			await invalidateMedia();
 		} catch (error) {
-			toast.error(errorText(error, "이름을 바꾸지 못했습니다."));
+			toast.error(errorText(error, t("library.renameFailed")));
 		}
 	};
 
@@ -225,12 +229,14 @@ export function MediaLibrary() {
 				method: "POST",
 				json: {},
 			});
-			const text = `24시간 지난 미완료 업로드 ${result.removed}개를 정리했습니다.${result.failed.length ? ` ${result.failed.length}개는 다음에 다시 시도합니다.` : ""}`;
+			const text = result.failed.length
+				? t("library.cleanup.doneWithFailed", { removed: result.removed, failed: result.failed.length })
+				: t("library.cleanup.done", { removed: result.removed });
 			if (result.failed.length) toast.error(text);
 			else toast.success(text);
 			void invalidateMedia();
 		} catch (error) {
-			toast.error(errorText(error, "정리하지 못했습니다."));
+			toast.error(errorText(error, t("library.cleanup.failed")));
 		}
 	};
 
@@ -241,9 +247,9 @@ export function MediaLibrary() {
 
 	const requestDelete = async (media: MediaItem) => {
 		const ok = await confirm({
-			title: media.status === "deleting" ? "삭제 다시 시도" : "미디어 삭제",
-			description: `'${media.filename}' 파일을 삭제할까요? 템플릿이나 해석하지 못한 초안에서 쓰이면 삭제가 보류됩니다.`,
-			confirmLabel: "삭제",
+			title: media.status === "deleting" ? t("library.delete.retryTitle") : t("library.delete.title"),
+			description: t("library.delete.ask", { name: media.filename }),
+			confirmLabel: t("common.delete"),
 			destructive: true,
 		});
 		if (ok) await deleteMedia(media);
@@ -251,15 +257,15 @@ export function MediaLibrary() {
 
 	/** 미디어 타일의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
 	const mediaMenu = (media: MediaItem): MenuAction[] => [
-		{ kind: "item", label: "열기", icon: PanelRightOpen, onSelect: () => void openDetail(media.id) },
+		{ kind: "item", label: t("common.open"), icon: PanelRightOpen, onSelect: () => void openDetail(media.id) },
 		{
 			kind: "sub",
-			label: "사용처",
+			label: t("library.menu.usage"),
 			icon: Link2,
-			emptyLabel: "쓰는 글이 없습니다",
+			emptyLabel: t("library.menu.usageEmpty"),
 			items: mediaUsages(media).map((usage) => ({
 				kind: "item" as const,
-				label: `${usage.title || "제목 없음"}${usage.note ? ` · ${usage.note}` : ""}`,
+				label: `${usage.title || t("common.untitled")}${usage.note ? ` · ${usageNoteLabel(usage.note)}` : ""}`,
 				icon: FileText,
 				onSelect: () => window.location.assign(entryHref(usage.collection, usage.entryId)),
 			})),
@@ -267,7 +273,7 @@ export function MediaLibrary() {
 		{ kind: "separator" },
 		{
 			kind: "item",
-			label: "삭제",
+			label: t("common.delete"),
 			icon: Trash2,
 			shortcut: "Del",
 			destructive: true,
@@ -292,14 +298,14 @@ export function MediaLibrary() {
 
 	return (
 		<AdminShell
-			title="미디어"
+			title={t("title")}
 			count={mediaQuery.data ? total : undefined}
 			sidebar={{ activeNav: "media" }}
 			headerActions={
 				<div className="flex flex-wrap items-center gap-2">
 					<Label className="font-normal text-muted-foreground text-xs">
 						<Switch size="sm" checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
-						웹용 최적화
+						{t("library.optimize")}
 					</Label>
 					<input
 						ref={fileInputRef}
@@ -311,12 +317,14 @@ export function MediaLibrary() {
 					/>
 					<Button type="button" size="sm" disabled={upload !== null} onClick={() => fileInputRef.current?.click()}>
 						<Upload aria-hidden />
-						{upload ? `업로드 중 ${upload.current}/${upload.total} · ${upload.percent}%` : "파일 업로드"}
+						{upload
+							? t("library.uploadProgress", { current: upload.current, total: upload.total, percent: upload.percent })
+							: t("library.upload")}
 					</Button>
 					<Button type="button" size="sm" variant="outline" onClick={() => void cleanup()}>
-						미완료 업로드 정리
+						{t("library.cleanup")}
 					</Button>
-					<IconButton label="새로고침" variant="outline" onClick={() => void mediaQuery.refetch()}>
+					<IconButton label={t("library.refresh")} variant="outline" onClick={() => void mediaQuery.refetch()}>
 						<RefreshCw className={cn(mediaQuery.isFetching && "animate-spin")} aria-hidden />
 					</IconButton>
 				</div>
@@ -325,9 +333,9 @@ export function MediaLibrary() {
 			<div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 lg:px-6">
 				<Input
 					type="search"
-					aria-label="파일명 검색"
+					aria-label={t("library.search")}
 					value={search}
-					placeholder="파일명 검색"
+					placeholder={t("library.search")}
 					onChange={(event) => setFilter(() => setSearch(event.target.value))}
 					className="h-8 w-56"
 				/>
@@ -336,7 +344,7 @@ export function MediaLibrary() {
 					items={KIND_OPTIONS}
 					onValueChange={(value) => value && setFilter(() => setKind(value as typeof kind))}
 				>
-					<SelectTrigger size="sm" aria-label="형식">
+					<SelectTrigger size="sm" aria-label={t("library.kindLabel")}>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -352,7 +360,7 @@ export function MediaLibrary() {
 					items={USED_OPTIONS}
 					onValueChange={(value) => value && setFilter(() => setUsed(value as typeof used))}
 				>
-					<SelectTrigger size="sm" aria-label="사용 여부">
+					<SelectTrigger size="sm" aria-label={t("library.usedLabel")}>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -364,7 +372,7 @@ export function MediaLibrary() {
 					</SelectContent>
 				</Select>
 				<DateRangePicker
-					label="업로드일"
+					label={t("library.uploadedDate")}
 					from={uploadedFrom}
 					to={uploadedTo}
 					onChange={(from, to) =>
@@ -375,7 +383,7 @@ export function MediaLibrary() {
 					}
 				/>
 				<ToggleGroup
-					aria-label="보기"
+					aria-label={t("library.view")}
 					variant="outline"
 					size="sm"
 					spacing={0}
@@ -386,10 +394,10 @@ export function MediaLibrary() {
 					}}
 					className="ml-auto"
 				>
-					<ToggleGroupItem value="grid" aria-label="바둑판 보기">
+					<ToggleGroupItem value="grid" aria-label={t("library.viewGrid")}>
 						<LayoutGrid aria-hidden />
 					</ToggleGroupItem>
-					<ToggleGroupItem value="list" aria-label="목록 보기">
+					<ToggleGroupItem value="list" aria-label={t("library.viewList")}>
 						<List aria-hidden />
 					</ToggleGroupItem>
 				</ToggleGroup>
@@ -401,7 +409,7 @@ export function MediaLibrary() {
 						<Alert variant="danger" className="mb-4 flex w-auto items-center justify-between">
 							<AlertDescription className="col-start-auto">{loadError}</AlertDescription>
 							<Button type="button" variant="outline" size="xs" onClick={() => void mediaQuery.refetch()}>
-								다시 시도
+								{t("common.retry")}
 							</Button>
 						</Alert>
 					)}
@@ -418,7 +426,7 @@ export function MediaLibrary() {
 						) : (
 							<Empty className="py-16">
 								<EmptyHeader>
-									<EmptyTitle>조건에 맞는 미디어가 없습니다.</EmptyTitle>
+									<EmptyTitle>{t("library.empty")}</EmptyTitle>
 								</EmptyHeader>
 							</Empty>
 						)
@@ -427,9 +435,9 @@ export function MediaLibrary() {
 					) : (
 						<MediaTable {...viewProps} />
 					)}
-					<nav aria-label="페이지 이동" className="mt-4 flex items-center justify-end gap-2 text-xs">
+					<nav aria-label={t("library.pageNav")} className="mt-4 flex items-center justify-end gap-2 text-xs">
 						<Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-							이전
+							{t("library.prev")}
 						</Button>
 						<span className="tabular-nums">
 							{page} / {totalPages}
@@ -441,7 +449,7 @@ export function MediaLibrary() {
 							disabled={page >= totalPages}
 							onClick={() => setPage(page + 1)}
 						>
-							다음
+							{t("library.next")}
 						</Button>
 					</nav>
 				</div>

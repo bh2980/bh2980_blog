@@ -1,7 +1,8 @@
 import { type LayoutGroup, type SchemaCollection, schemaOf } from "@bh2980/cms/client";
+import { t } from "./translate";
 
 /** 기본 탭(`tab`이 없는 묶음과 필드). */
-export const DEFAULT_TAB = "속성";
+export const DEFAULT_TAB = t("tab.default");
 
 export const tabOfGroup = (group: LayoutGroup) => group.tab ?? DEFAULT_TAB;
 

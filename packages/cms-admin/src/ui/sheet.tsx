@@ -1,10 +1,14 @@
 "use client";
 
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
+import { createTranslator } from "@bh2980/cms/client";
 import { XIcon } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
+import { uiMessages } from "./messages";
+
+const t = createTranslator(uiMessages);
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
 	return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -64,7 +68,7 @@ function SheetContent({
 						render={<Button variant="ghost" className="absolute top-4 right-4" size="icon-sm" />}
 					>
 						<XIcon />
-						<span className="sr-only">닫기</span>
+						<span className="sr-only">{t("close")}</span>
 					</SheetPrimitive.Close>
 				)}
 			</SheetPrimitive.Popup>

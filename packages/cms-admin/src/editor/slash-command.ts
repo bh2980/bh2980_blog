@@ -1,5 +1,5 @@
 import type { BlockDefinition } from "@bh2980/cms/client";
-import { ADDED_BLOCKS, BLOCKS } from "@bh2980/cms/client";
+import { ADDED_BLOCKS, BLOCKS, createTranslator } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import {
 	Heading2,
@@ -24,6 +24,14 @@ import {
 	OPEN_FILE_PICKER_EVENT,
 	OPEN_IMAGE_DIALOG_EVENT,
 } from "./block-inserts";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
+/** 검색어 목록(쉼표로 이은 사전 값). */
+const keywordList = (key: Parameters<typeof t>[0]): string[] =>
+	t(key)
+		.split(",")
+		.map((word) => word.trim());
 
 export { OPEN_FILE_PICKER_EVENT, OPEN_IMAGE_DIALOG_EVENT } from "./block-inserts";
 
@@ -40,11 +48,16 @@ export interface SlashCommandItem {
 
 const HEADING_ICONS = { 2: Heading2, 3: Heading3, 4: Heading4 } as const;
 
-const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashCommandItem => ({
-	title: `제목 ${level}`,
+const heading = (level: 2 | 3 | 4): SlashCommandItem => ({
+	title: t(`slash.h${level}.title`),
 	icon: HEADING_ICONS[level],
-	description,
-	keywords: ["제목", `h${level}`, `heading${level}`, ...extra],
+	description: t(`slash.h${level}.description`),
+	keywords: [
+		...keywordList("slash.heading.keywords"),
+		`h${level}`,
+		`heading${level}`,
+		...keywordList(`slash.h${level}.keywords`),
+	],
 	action: (editor, range) => {
 		editor.chain().focus().deleteRange(range).toggleHeading({ level }).run();
 	},
@@ -55,105 +68,105 @@ const heading = (level: 2 | 3 | 4, description: string, extra: string[]): SlashC
  */
 export const BASE_SLASH_COMMANDS: SlashCommandItem[] = [
 	{
-		title: "문단",
-		description: "일반 본문",
+		title: t("slash.paragraph.title"),
+		description: t("slash.paragraph.description"),
 		icon: Pilcrow,
-		keywords: ["본문", "텍스트", "문단", "paragraph", "p"],
+		keywords: keywordList("slash.paragraph.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).setParagraph().run();
 		},
 	},
-	heading(2, "큰 섹션 제목", ["대제목"]),
-	heading(3, "중간 섹션 제목", ["중제목"]),
-	heading(4, "소제목", ["소제목"]),
+	heading(2),
+	heading(3),
+	heading(4),
 	{
-		title: "글머리 목록",
-		description: "순서 없는 목록",
+		title: t("slash.bullet.title"),
+		description: t("slash.bullet.description"),
 		icon: List,
-		keywords: ["목록", "불릿", "리스트", "bullet", "list", "ul"],
+		keywords: keywordList("slash.bullet.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleBulletList().run();
 		},
 	},
 	{
-		title: "번호 목록",
-		description: "순서 있는 목록",
+		title: t("slash.ordered.title"),
+		description: t("slash.ordered.description"),
 		icon: ListOrdered,
-		keywords: ["순서", "번호", "목록", "ordered", "numbered", "list", "ol"],
+		keywords: keywordList("slash.ordered.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleOrderedList().run();
 		},
 	},
 	{
-		title: "체크 목록",
-		description: "할 일 목록",
+		title: t("slash.todo.title"),
+		description: t("slash.todo.description"),
 		icon: ListTodo,
-		keywords: ["체크", "할일", "할 일", "목록", "todo", "task", "checklist"],
+		keywords: keywordList("slash.todo.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleTaskList().run();
 		},
 	},
 	{
-		title: "인용구",
-		description: "인용 문구",
+		title: t("slash.quote.title"),
+		description: t("slash.quote.description"),
 		icon: Quote,
-		keywords: ["인용", "인용구", "quote", "blockquote"],
+		keywords: keywordList("slash.quote.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleBlockquote().run();
 		},
 	},
 	{
-		title: "코드 블록",
-		description: "프로그래밍 코드",
+		title: t("slash.code.title"),
+		description: t("slash.code.description"),
 		icon: SquareCode,
-		keywords: ["코드", "코드블록", "code", "pre"],
+		keywords: keywordList("slash.code.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
 		},
 	},
 	{
-		title: "표",
-		description: "3×3 표",
+		title: t("slash.table.title"),
+		description: t("slash.table.description"),
 		icon: Table2,
-		keywords: ["표", "테이블", "table", "grid"],
+		keywords: keywordList("slash.table.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 		},
 	},
 	{
-		title: "구분선",
-		description: "가로 구분선",
+		title: t("slash.divider.title"),
+		description: t("slash.divider.description"),
 		icon: Minus,
-		keywords: ["구분선", "가로줄", "선", "divider", "hr"],
+		keywords: keywordList("slash.divider.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).setHorizontalRule().run();
 		},
 	},
 	{
-		title: "이미지",
-		description: "올리거나 라이브러리에서 고르기",
+		title: t("slash.image.title"),
+		description: t("slash.image.description"),
 		icon: Image,
-		keywords: ["이미지", "사진", "그림", "라이브러리", "image", "img", "photo", "media"],
+		keywords: keywordList("slash.image.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).run();
 			window.dispatchEvent(new CustomEvent(OPEN_IMAGE_DIALOG_EVENT));
 		},
 	},
 	{
-		title: "파일",
-		description: "첨부 파일 올리기",
+		title: t("slash.file.title"),
+		description: t("slash.file.description"),
 		icon: Paperclip,
-		keywords: ["파일", "첨부", "업로드", "file", "attachment", "upload", "pdf", "zip"],
+		keywords: keywordList("slash.file.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).run();
 			window.dispatchEvent(new CustomEvent(OPEN_FILE_PICKER_EVENT));
 		},
 	},
 	{
-		title: "내부 글 링크",
-		description: "제목으로 글 찾기",
+		title: t("slash.internalLink.title"),
+		description: t("slash.internalLink.description"),
 		icon: Link2,
-		keywords: ["링크", "내부", "글", "link", "internal"],
+		keywords: keywordList("slash.internalLink.keywords"),
 		action: (editor, range) => {
 			editor.chain().focus().deleteRange(range).insertContent("[[").run();
 		},
@@ -187,7 +200,7 @@ export function buildBlockSlashCommands(
 		items.push({
 			id: nodeView,
 			title: block.label,
-			description: block.description ?? `${block.label} 넣기`,
+			description: block.description ?? t("slash.blockDescription", { label: block.label }),
 			keywords: block.editor.keywords ? [...block.editor.keywords] : [block.label, block.name],
 			...(block.editor.icon ? { icon: block.editor.icon } : {}),
 			action,

@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	AttributeInput,
 	BlockSettings,
@@ -15,6 +16,9 @@ import { Switch } from "@bh2980/cms-admin/ui/switch";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { collapsibleMessages } from "./messages";
+
+const t = createTranslator(collapsibleMessages);
 
 /**
  * 접기 편집 화면(테마 색). 처음 모습은 `defaultOpen`을 따르고, 제목 옆 화살표로 편집 중에도 여닫는다.
@@ -60,7 +64,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 				<button
 					type="button"
 					aria-expanded={open}
-					aria-label={open ? "접기" : "펼치기"}
+					aria-label={open ? t("toggle.close") : t("toggle.open")}
 					onClick={toggle}
 					className="-m-1 rounded p-1 hover:bg-accent"
 				>
@@ -69,9 +73,9 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 					/>
 				</button>
 				<AttributeInput
-					aria-label="접기 제목"
+					aria-label={t("title.aria")}
 					value={typeof values.title === "string" ? values.title : ""}
-					placeholder="펼치기"
+					placeholder={t("title.placeholder")}
 					readOnly={!editable}
 					onCommit={(title) => setValue("title", title)}
 					onEnter={() => {
@@ -93,10 +97,10 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 				data-cms-collapsed={open ? undefined : ""}
 			/>
 			{editable ? (
-				<ContainerToolbar label="접기 도구">
+				<ContainerToolbar label={t("toolbar")}>
 					<BlockSettings>
 						<label htmlFor={defaultOpenId} className="flex items-center justify-between gap-2">
-							<span className="text-muted-foreground">처음부터 펼치기</span>
+							<span className="text-muted-foreground">{t("defaultOpen.label")}</span>
 							<Switch
 								id={defaultOpenId}
 								size="sm"

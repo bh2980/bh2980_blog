@@ -45,7 +45,7 @@ const originalSource = (node: DirectiveNode, source: string): string => {
 	const end = node.position?.end?.offset;
 	if (typeof start !== "number" || typeof end !== "number") {
 		// 원문을 보존할 수 없으면 조용히 잃는 것보다 멈추는 편이 낫다(analyze가 오류로 보고한다).
-		throw new Error(`지시자 위치를 알 수 없어 본문을 보존할 수 없습니다: :${node.name}`);
+		throw new Error(`Can't preserve the body: the position of directive :${node.name} is unknown`);
 	}
 	return source.slice(start, end);
 };

@@ -5,6 +5,7 @@ import { CmsAdminComponentsProvider, type FieldInputParts } from "../../../admin
 import { TooltipProvider } from "../../../ui/tooltip";
 import { EMPTY_FORM, type EntryForm } from "../entry-form";
 import { SchemaFields } from "../schema-fields";
+import { t } from "../translate";
 
 /**
  * 확장이 등록하는 입력 조각(`FieldInputParts`)과 미디어 필드의 기본 입력. 설정과 상관없이(M10-1) 지금 설정에서
@@ -110,14 +111,14 @@ describe("미디어 필드(`fields.media`)", () => {
 			title: "x",
 			[media.name]: "11111111-1111-4111-8111-111111111111",
 		});
-		expect(screen.getByRole("button", { name: media.field.label }).textContent).toBe("바꾸기");
-		fireEvent.click(screen.getByRole("button", { name: "빼기" }));
+		expect(screen.getByRole("button", { name: media.field.label }).textContent).toBe(t("media.change"));
+		fireEvent.click(screen.getByRole("button", { name: t("media.remove") }));
 		expect(onChange).toHaveBeenCalledWith({ [media.name]: "" });
 	});
 
 	it("비었으면 고르기 버튼이다", () => {
 		if (!media) return;
 		renderFields(media, { ...EMPTY_FORM, title: "x" });
-		expect(screen.getByRole("button", { name: media.field.label }).textContent).toBe("이미지 고르기");
+		expect(screen.getByRole("button", { name: media.field.label }).textContent).toBe(t("media.chooseImage"));
 	});
 });

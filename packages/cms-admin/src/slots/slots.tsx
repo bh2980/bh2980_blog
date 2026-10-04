@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { RefreshCw, Sparkles, X } from "lucide-react";
 import {
 	createContext,
@@ -17,6 +18,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
 import { Textarea } from "../ui/textarea";
+import { slotsMessages } from "./messages";
+
+const t = createTranslator(slotsMessages);
 
 /**
  * 화면 자리(slot). CMS 화면 곳곳에 이름 붙은 자리를 두고, 자리에 연결된 동작을 버튼으로 그린다.
@@ -177,8 +181,7 @@ export function SlotRegistryProvider({ sources, children }: { sources: readonly 
 /** 결과 후보 하나의 모양. AI 화면의 시험 결과도 같은 모양을 쓴다. */
 export const SLOT_CHIP = "inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5";
 
-const errorMessage = (error: unknown) =>
-	error instanceof Error && error.message ? error.message : "실행하지 못했습니다.";
+const errorMessage = (error: unknown) => (error instanceof Error && error.message ? error.message : t("failed"));
 
 /**
  * 자리 하나의 버튼(`trigger`)과 결과 칸(`panel`). 자리마다 버튼은 라벨 옆에, 결과는 입력 아래에 둔다.
@@ -298,11 +301,11 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 					<span className="truncate">{state.action.label}</span>
 					<span className="ml-auto flex items-center">
 						{state.status !== "running" && state.status !== "asking" && (
-							<IconButton label="다시 실행" size="icon-xs" onClick={() => void run(state.action, instruction)}>
+							<IconButton label={t("rerun")} size="icon-xs" onClick={() => void run(state.action, instruction)}>
 								<RefreshCw aria-hidden />
 							</IconButton>
 						)}
-						<IconButton label="닫기" size="icon-xs" onClick={close}>
+						<IconButton label={t("close")} size="icon-xs" onClick={close}>
 							<X aria-hidden />
 						</IconButton>
 					</span>
@@ -316,8 +319,8 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 						}}
 					>
 						<Textarea
-							aria-label="추가 요청"
-							placeholder="추가 요청"
+							aria-label={t("instruction")}
+							placeholder={t("instruction")}
 							value={instruction}
 							rows={2}
 							maxLength={1000}
@@ -342,7 +345,7 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 							disabled={state.status === "running"}
 						>
 							<Sparkles aria-hidden />
-							{state.status === "running" ? "실행 중…" : "실행"}
+							{state.status === "running" ? t("running") : t("run")}
 						</Button>
 					</form>
 				)}
@@ -367,7 +370,7 @@ function SlotResult({
 }) {
 	const { result, action } = state;
 	if (result.kind === "candidates") {
-		if (result.items.length === 0) return <p className="text-muted-foreground">맞는 결과가 없습니다.</p>;
+		if (result.items.length === 0) return <p className="text-muted-foreground">{t("noResults")}</p>;
 		return (
 			<ul className="flex flex-wrap gap-1">
 				{result.items.map((item) => (
@@ -391,7 +394,7 @@ function SlotResult({
 			<p className="whitespace-pre-wrap rounded border bg-background p-2">{result.text}</p>
 			{result.kind === "text" && action.apply !== "none" && (
 				<Button type="button" size="xs" variant="outline" className="self-start" onClick={() => onApply(result.text)}>
-					{action.apply === "append" ? "넣기" : "바꾸기"}
+					{action.apply === "append" ? t("insert") : t("replace")}
 				</Button>
 			)}
 		</div>

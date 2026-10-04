@@ -5,6 +5,7 @@ import { CmsAdminComponentsProvider, type FieldViewProps } from "../../../admin-
 import { TooltipProvider } from "../../../ui/tooltip";
 import { EMPTY_FORM, type EntryForm } from "../entry-form";
 import { InspectorPanel } from "../inspector-panel";
+import { t } from "../translate";
 
 /**
  * 필드 `tab`과 보기 필드(설정과 상관없이, M10-1 재발 방지). 컬렉션·필드·탭 이름은 지금 설정에서 찾는다
@@ -90,6 +91,6 @@ describe("속성 칸: 필드 `tab`", () => {
 		);
 		if (!plain || (schemaOf(plain).layout ?? []).some((group) => group.tab)) return;
 		renderPanel(plain, { ...EMPTY_FORM, title: "Plain" });
-		expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["속성"]);
+		expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([t("tab.default")]);
 	});
 });

@@ -1,8 +1,9 @@
 import { type CollectionsConfig, defineCollection, fields, valueFieldsOf } from "@bh2980/cms";
-import { COLLECTIONS, cmsConfig, roleField, schemaOf } from "@bh2980/cms/client";
+import { COLLECTIONS, cmsConfig, createTranslator, roleField, schemaOf } from "@bh2980/cms/client";
 import { describe, expect, it } from "vitest";
 import { AI_ACTIONS } from "../../../cms-ai/src/registry";
 import { SEO_DEFAULT_KEYS, SEO_ROLES, seo, seoFields, seoOf, validateSeoFields } from "..";
+import { seoMessages } from "../messages";
 
 /**
  * SEO 확장(M10-2). 필드 묶음·설정 검사·공개 화면 도우미는 테스트 안에서 만든 정의로, AI 기능은 지금 설정(블로그 예시·
@@ -20,6 +21,19 @@ describe("seoFields", () => {
 		// 숨기기는 언제나 공통 값이다.
 		expect(bundle.seoNoindex.localized).toBeUndefined();
 		expect(bundle.seoPreview).toMatchObject({ kind: "view", view: "search", tab: "SEO" });
+	});
+
+	it("기본 이름표는 필드를 만들 때가 아니라 읽을 때 관리자 언어로 고른다(사이트가 정한 이름표는 그대로)", () => {
+		const t = createTranslator(seoMessages);
+		const bundle = seoFields({ labels: { canonical: "Canonical" } });
+		expect(bundle.seoTitle.label).toBe(t("field.title"));
+		expect(bundle.seoImage.label).toBe(t("field.image"));
+		expect(bundle.seoNoindex.label).toBe(t("field.noindex"));
+		expect(bundle.seoNoindex.options).toEqual({ index: t("option.index"), noindex: t("option.noindex") });
+		expect(bundle.seoCanonical.label).toBe("Canonical");
+		// 모든 언어 사전이 영어와 같은 이름표를 가진다.
+		const missing = Object.keys(seoMessages.messages.en).filter((key) => !(key in (seoMessages.messages.ko ?? {})));
+		expect(missing.every((key) => key.endsWith(".prompt"))).toBe(true);
 	});
 
 	it("이름·이름표·탭·언어별 값·권장 글자 수를 바꾸고 자리를 뺀다(저장된 이름을 그대로 쓴다)", () => {
@@ -124,7 +138,7 @@ describe("지금 설정: AI 기능", () => {
 		const field = collection ? roleField(collection, SEO_ROLES.title)?.field : undefined;
 		const limit = field?.kind === "text" ? (field.max ?? field.inputOptions?.limit ?? 60) : 60;
 		expect(AI_ACTIONS.seoTitle?.checks).toEqual([{ kind: "maxLength", max: limit }]);
-		expect(AI_ACTIONS.seoTitle?.prompt).toContain(`${limit}자 이내`);
+		expect(AI_ACTIONS.seoTitle?.prompt).toContain(`${limit} characters`);
 	});
 
 	it("SEO 필드는 모두 제 탭에 있다", () => {

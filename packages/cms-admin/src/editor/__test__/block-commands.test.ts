@@ -1,9 +1,13 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { deleteBlock, duplicateBlock, moveBlock, topLevelBlockAt } from "../block-commands";
 import { isValidImageWidth } from "../image-node-view";
+import { editorMessages } from "../messages";
 import { prepareUpload } from "../upload-helper";
+
+const t = createTranslator(editorMessages);
 
 let editor: Editor | null = null;
 afterEach(() => {
@@ -85,7 +89,7 @@ describe("이미지 너비(§4.3)와 업로드 최적화(§7.1)", () => {
 		const webp = new File([bytes], "a.webp", { type: "image/webp" });
 		expect(await prepareUpload(webp, { optimize: true })).toMatchObject({
 			optimized: false,
-			skippedReason: "애니메이션 이미지는 원본을 유지합니다",
+			skippedReason: t("upload.keepAnimated"),
 		});
 	});
 });

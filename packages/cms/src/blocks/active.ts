@@ -1,3 +1,5 @@
+// 이름표(`block.label`)가 화면 언어를 알도록 사전 언어를 먼저 정한다.
+import "../i18n";
 import { cmsConfig } from "../config/resolved";
 import type { BlockDefinition } from "./define";
 import { addedBlocks, resolveBlocks } from "./resolve";

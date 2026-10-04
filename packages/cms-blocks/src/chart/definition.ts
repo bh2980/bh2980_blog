@@ -1,23 +1,43 @@
-import { defineBlock } from "@bh2980/cms";
+import { createActiveTranslator, defineBlock } from "@bh2980/cms";
+import { keywordList } from "../shared/text";
+import { chartMessages } from "./messages";
+
+const t = createActiveTranslator(chartMessages);
 
 /** 차트(` ```chart `). 차트 문법은 `parseChartDsl`이 읽는다. 편집기 미리보기는 확장이(사이트가 바꿀 수 있다), 공개 화면은 사이트가 그린다. */
 export const chartBlock = defineBlock({
 	name: "chart",
-	label: "차트",
-	description: "차트·그래프",
+	get label() {
+		return t("label");
+	},
+	get description() {
+		return t("description");
+	},
 	syntax: { kind: "fence", lang: "chart" },
 	component: "Chart",
 	attributes: {},
 	editor: {
 		view: "node",
 		insertable: true,
-		keywords: ["chart", "차트", "그래프"],
+		get keywords() {
+			return ["chart", ...keywordList(t("keywords"))];
+		},
 		icon: "chart-column",
-		placeholder: "차트 데이터를 입력하세요",
-		insert: {
-			code: ["chart bar", "x month", "series views | 조회수 | chart-1", "", "data", "month | views", "Jan | 1200"].join(
-				"\n",
-			),
+		get placeholder() {
+			return t("placeholder");
+		},
+		get insert() {
+			return {
+				code: [
+					"chart bar",
+					"x month",
+					`series views | ${t("insert.series")} | chart-1`,
+					"",
+					"data",
+					"month | views",
+					"Jan | 1200",
+				].join("\n"),
+			};
 		},
 	},
 });

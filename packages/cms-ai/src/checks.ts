@@ -1,4 +1,8 @@
+import { createTranslator } from "@bh2980/cms/client";
 import type { AiCandidate, AiCheck } from "./definition";
+import { runMessages } from "./run.messages";
+
+const t = createTranslator(runMessages);
 
 /**
  * 정해진 결과 검사(순수 함수). 기능에 적힌 검사 목록 중 켜 둔 것을 차례로 적용해, 통과하지 못한 후보는 버린다.
@@ -51,12 +55,13 @@ export function checkCandidates(checks: readonly AiCheck[], raw: readonly string
 
 /** 긴 글 결과의 검사. 통과하지 못하면 이유를 돌려준다. */
 export function checkText(checks: readonly AiCheck[], text: string): string | null {
-	if (!text.trim()) return "빈 결과입니다.";
+	if (!text.trim()) return t("emptyResult");
 	for (const check of checks) {
 		if (!check.enabled) continue;
-		if (check.kind === "pattern" && !matchesPattern(check.pattern, text.trim())) return "형식에 맞지 않습니다.";
-		if (check.kind === "maxLength" && Array.from(text.trim()).length > check.max) return `${check.max}자를 넘었습니다.`;
-		if (check.kind === "oneOf" && !check.items.includes(text.trim())) return "선택지에 없는 값입니다.";
+		if (check.kind === "pattern" && !matchesPattern(check.pattern, text.trim())) return t("check.format");
+		if (check.kind === "maxLength" && Array.from(text.trim()).length > check.max)
+			return t("check.maxLength", { max: check.max });
+		if (check.kind === "oneOf" && !check.items.includes(text.trim())) return t("check.oneOf");
 	}
 	return null;
 }

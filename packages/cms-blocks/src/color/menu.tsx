@@ -1,7 +1,7 @@
 "use client";
 
 import type { CmsPlugin } from "@bh2980/cms";
-import { cmsConfig } from "@bh2980/cms/client";
+import { cmsConfig, createTranslator } from "@bh2980/cms/client";
 import { addedMarkName } from "@bh2980/cms-admin/editor";
 import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
@@ -26,6 +26,9 @@ import {
 	textColorProps,
 } from "./colors";
 import { colorBlock } from "./definition";
+import { colorMessages } from "./messages";
+
+const t = createTranslator(colorMessages);
 
 /** 편집기 마크 이름(`cmsColor`). */
 export const COLOR_MARK_NAME = addedMarkName(colorBlock.name);
@@ -80,7 +83,7 @@ function Swatch({ kind, color }: { kind: ColorKind; color: ColorPair | null }) {
 				kind === "bg" && "![padding:0] !rounded-md",
 			)}
 		>
-			가
+			{t("sample")}
 		</span>
 	);
 }
@@ -99,7 +102,7 @@ function SwatchRow({
 }) {
 	const current = currentColor(editor)[kind] ?? null;
 	const options: { name: string; color: ColorPair | null }[] = [
-		{ name: "기본", color: null },
+		{ name: t("default"), color: null },
 		...PALETTE.map((color) => ({ name: color.name, color: color[kind] })),
 	];
 	return (
@@ -112,7 +115,7 @@ function SwatchRow({
 							render={
 								variant === "menu" ? (
 									<DropdownMenuItem
-										aria-label={`${kind === "fg" ? "글자색" : "배경색"} ${name}`}
+										aria-label={t("pick", { kind: t(kind === "fg" ? "fg.label" : "bg.label"), name })}
 										aria-checked={selected}
 										disabled={!editor.isEditable}
 										onClick={() => applyTextColor(editor, kind, color)}
@@ -121,7 +124,7 @@ function SwatchRow({
 								) : (
 									<button
 										type="button"
-										aria-label={`${kind === "fg" ? "글자색" : "배경색"} ${name}`}
+										aria-label={t("pick", { kind: t(kind === "fg" ? "fg.label" : "bg.label"), name })}
 										aria-pressed={selected}
 										disabled={!editor.isEditable}
 										onMouseDown={(event) => event.preventDefault()}
@@ -155,11 +158,11 @@ export function TextColorMenuItems({ editor }: { editor: Editor }) {
 	return (
 		<>
 			<DropdownMenuGroup>
-				<DropdownMenuLabel>글자색</DropdownMenuLabel>
+				<DropdownMenuLabel>{t("fg.label")}</DropdownMenuLabel>
 				<SwatchRow editor={editor} kind="fg" />
 			</DropdownMenuGroup>
 			<DropdownMenuGroup>
-				<DropdownMenuLabel>배경색</DropdownMenuLabel>
+				<DropdownMenuLabel>{t("bg.label")}</DropdownMenuLabel>
 				<SwatchRow editor={editor} kind="bg" />
 			</DropdownMenuGroup>
 		</>
@@ -170,9 +173,9 @@ export function TextColorMenuItems({ editor }: { editor: Editor }) {
 export function TextColorPanel({ editor, onPicked }: { editor: Editor; onPicked?: () => void }) {
 	return (
 		<div className="flex flex-col gap-1">
-			<p className="px-1 text-muted-foreground">글자색</p>
+			<p className="px-1 text-muted-foreground">{t("fg.label")}</p>
 			<SwatchRow editor={editor} kind="fg" variant="buttons" onPicked={onPicked} />
-			<p className="px-1 text-muted-foreground">배경색</p>
+			<p className="px-1 text-muted-foreground">{t("bg.label")}</p>
 			<SwatchRow editor={editor} kind="bg" variant="buttons" onPicked={onPicked} />
 		</div>
 	);
@@ -194,7 +197,7 @@ export function TextColorMenu({ editor }: { editor: Editor }) {
 	return (
 		<DropdownMenu>
 			<IconButton
-				label="글자색"
+				label={t("label")}
 				side="bottom"
 				disabled={!editor.isEditable}
 				onMouseDown={(event) => event.preventDefault()}

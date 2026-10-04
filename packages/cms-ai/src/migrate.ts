@@ -8,7 +8,7 @@ import { legacyFeatureOverride } from "./actions";
 export async function migrateAi({ pool, schema, once }: PluginDatabase): Promise<void> {
 	const qSchema = schema;
 	await pool.query(`
-		-- AI 기능의 고친 값(M2). 기능 정의는 사이트 설정에 있고, 관리자 화면에서 고친 값만 기능 이름별로 둔다.
+		-- Edited values of AI actions (M2). Definitions live in the site config; only values edited in the admin are stored per action name.
 		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_action_overrides (
 			key TEXT PRIMARY KEY,
 			value JSONB NOT NULL,
@@ -16,7 +16,7 @@ export async function migrateAi({ pool, schema, once }: PluginDatabase): Promise
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 
-		-- 화면 기능(M8-5): 관리자 AI 화면에서 만든 기능. 값은 기본 정보와 고친 값이다.
+		-- Actions made in the admin AI screen (M8-5). The value holds the basic info and the edited values.
 		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_custom_actions (
 			key TEXT PRIMARY KEY,
 			value JSONB NOT NULL,
@@ -25,7 +25,7 @@ export async function migrateAi({ pool, schema, once }: PluginDatabase): Promise
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 
-		-- v2 D AI 서비스 연결(주소·암호화한 키·모델). 한 줄만 쓴다(id = 'default'). 고친 공통 문구는 'shared' 줄이다.
+		-- AI service connections (address, encrypted key, model). One row (id = 'default'). Edited shared texts are the 'shared' row.
 		CREATE TABLE IF NOT EXISTS "${qSchema}".ai_settings (
 			id TEXT PRIMARY KEY,
 			value JSONB NOT NULL,

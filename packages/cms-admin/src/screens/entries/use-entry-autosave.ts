@@ -13,6 +13,7 @@ import {
 	translationPayload,
 } from "./entry-form";
 import { backupKey, deleteLocalBackup, saveLocalBackup } from "./local-backup";
+import { t } from "./translate";
 
 /** 브라우저 임시 저장은 입력이 멈추고 이만큼 지나면 마지막 상태 하나를 남긴다(입력마다 쓰지 않는다). */
 export const BACKUP_IDLE_MS = 5000;
@@ -35,14 +36,14 @@ export type SaveStatus =
 	| "session-expired";
 
 export const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
-	new: "저장 전",
-	saved: "서버에 저장됨",
-	dirty: "저장 전 변경사항",
-	saving: "저장 중",
-	"local-only": "브라우저에만 임시 저장됨",
-	failed: "저장 실패",
-	conflict: "충돌",
-	"session-expired": "세션 만료 — 다시 로그인하세요",
+	new: t("save.new"),
+	saved: t("save.saved"),
+	dirty: t("save.dirty"),
+	saving: t("save.saving"),
+	"local-only": t("save.local-only"),
+	failed: t("save.failed"),
+	conflict: t("save.conflict"),
+	"session-expired": t("save.session-expired"),
 };
 
 interface Options {
@@ -206,7 +207,7 @@ export function useEntryAutosave({
 		}
 		// 조합 중 저장은 글자 누락을 만든다. 저장 경로(`flush`·`retry`)는 조합이 끝나기를 먼저 기다린다.
 		if (composingRef.current) {
-			setLastError("한글 입력이 끝난 뒤 다시 저장하세요.");
+			setLastError(t("save.composing"));
 			return Promise.resolve(false);
 		}
 
@@ -239,7 +240,7 @@ export function useEntryAutosave({
 							mdx: snapshot.mdx,
 							...(translationPayload(snapshot) ? { translation: translationPayload(snapshot) } : {}),
 						},
-						fallback: "저장하지 못했습니다.",
+						fallback: t("saveFailed"),
 					},
 				);
 				if (isNew) {
@@ -285,7 +286,7 @@ export function useEntryAutosave({
 						return false;
 					}
 				}
-				setLastError(error instanceof CmsApiError ? error.message : "서버에 연결할 수 없습니다.");
+				setLastError(error instanceof CmsApiError ? error.message : t("save.offline"));
 				updateStatus(backupAvailable ? "local-only" : "failed");
 				return false;
 			} finally {

@@ -5,6 +5,7 @@ import {
 	adminHref,
 	bodyExcerpt,
 	previewHref as contentPreviewHref,
+	createTranslator,
 	DEFAULT_COLLECTION,
 	fillFromBodyFields,
 	fillFromBodyLength,
@@ -43,7 +44,6 @@ import { useEditorExtensions } from "../../admin-components";
 import { MdxSourceEditor } from "../../editor/mdx-source-editor";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
-import { josa } from "../../lib/utils/josa";
 import { Alert, AlertDescription } from "../../ui/alert";
 import { Button, buttonVariants } from "../../ui/button";
 import {
@@ -65,6 +65,7 @@ import { ConfirmDialog, type ConfirmRequest } from "../shared/confirm-dialog";
 import { entryHref } from "../shared/entry-href";
 import { describeEntryStatus } from "../shared/entry-status";
 import { SIDE_PANEL_WIDTH } from "../shared/side-panel";
+import { entryEditorShellMessages } from "./entry-editor-shell.messages";
 import {
 	copyTitle,
 	EMPTY_FORM,
@@ -84,6 +85,7 @@ import { InspectorPanel } from "./inspector-panel";
 import { LanguageTabs } from "./language-tabs";
 import {
 	type ConfirmedLifecycleAction,
+	LIFECYCLE_FAILED,
 	LIFECYCLE_LABEL,
 	LIFECYCLE_SUCCESS,
 	type LifecycleAction,
@@ -95,7 +97,10 @@ import { SourceChangeDialog } from "./source-change-dialog";
 import { SourcePane } from "./source-pane";
 import { useSourceSync } from "./source-sync";
 import { TemplateMenu } from "./template-menu";
+import { t as tc } from "./translate";
 import { SAVE_STATUS_LABELS, type SaveStatus, useEntryAutosave } from "./use-entry-autosave";
+
+const t = createTranslator(entryEditorShellMessages);
 
 interface EntryEditorShellProps {
 	mode: "new" | "edit";
@@ -192,7 +197,10 @@ function ToolbarToggle({
 }
 
 /** "먼저 저장하세요" 안내. 편집 화면 어디서 막혀도 같은 말을 쓴다. */
-const saveFirstMessage = (purpose: string) => `변경사항을 먼저 저장한 후 ${purpose}하세요.`;
+const saveFirstMessage = (purpose: Purpose) => t("saveFirst", { purpose });
+
+/** 막혔을 때 안내에 넣는 하려던 일. */
+type Purpose = "publish" | "duplicate" | LifecycleAction;
 
 /** 저장 상태 점의 색. 상태를 더하면 여기서 색을 정해야 한다. */
 const SAVE_STATUS_DOT: Record<SaveStatus, string> = {
@@ -208,7 +216,7 @@ const SAVE_STATUS_DOT: Record<SaveStatus, string> = {
 
 /** 머리글의 저장 상태. 좁은 화면에서는 점만 보이고 이름은 읽기 도구로 알린다. */
 function SaveStatusIndicator({ status, backupAvailable }: { status: SaveStatus; backupAvailable: boolean }) {
-	const label = `${SAVE_STATUS_LABELS[status]}${backupAvailable ? "" : " · 브라우저 복구 불가"}`;
+	const label = `${SAVE_STATUS_LABELS[status]}${backupAvailable ? "" : t("backupUnavailable")}`;
 	return (
 		<output
 			aria-live="polite"
@@ -379,14 +387,14 @@ export function EntryEditorShell({
 			);
 			setIncoming({ items: data.incomingReferences ?? [], loading: false, error: null });
 		} catch {
-			setIncoming({ items: [], loading: false, error: "사용처를 불러오지 못했습니다." });
+			setIncoming({ items: [], loading: false, error: t("usagesFailed") });
 		}
 	}, []);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: autosave methods are ref-backed and stable
 	const loadEntry = useCallback(
 		async (id: string) => {
-			const loaded = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, { fallback: "문서를 불러올 수 없습니다." });
+			const loaded = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, { fallback: t("loadFailed") });
 			if (isItemCollection(loaded.collection)) {
 				// 항목 컬렉션(태그·카테고리 등)은 목록의 작은 폼에서 연다(§5.2).
 				router.replace(entryHref(loaded.collection, loaded.id) as Route);
@@ -433,7 +441,7 @@ export function EntryEditorShell({
 					setRecovery({ kind: "conflict", backup, server: result.loaded });
 				}
 			} catch (error) {
-				if (!cancelled) setLoadError(errorText(error, "문서를 불러올 수 없습니다."));
+				if (!cancelled) setLoadError(errorText(error, t("loadFailed")));
 			} finally {
 				if (!cancelled) setIsLoading(false);
 			}
@@ -504,17 +512,15 @@ export function EntryEditorShell({
 	 * 안내는 누른 자리 가까이에 보인다. 머리 단추·메뉴는 토스트(기본), 창은 창 안이다.
 	 */
 	const ensureSaved = async (
-		purpose: string,
+		purpose: Purpose,
 		{ saveChanges = false, report = toast.error }: { saveChanges?: boolean; report?: (message: string) => void } = {},
 	) => {
 		if (autosave.status === "conflict") {
-			report(`편집 충돌을 해결한 후 ${purpose}하세요.`);
+			report(t("conflictFirst", { purpose }));
 			return null;
 		}
 		if (saveChanges && !(await autosave.flush())) {
-			report(
-				`변경사항이 서버에 저장되지 않아 ${purpose}하지 않았습니다. ${autosave.getLastError() ?? "저장 상태를 확인하세요."}`,
-			);
+			report(t("notSaved", { purpose, reason: autosave.getLastError() ?? t("checkSaveStatus") }));
 			return null;
 		}
 		const id = autosave.getEntryId();
@@ -527,9 +533,9 @@ export function EntryEditorShell({
 
 	const handleSaveNow = async () => {
 		if (isReadOnly) return;
-		if (await autosave.flush()) toast.success("저장했습니다.");
+		if (await autosave.flush()) toast.success(t("saved"));
 		// 실패하면 반드시 이유를 보인다(충돌은 충돌 창이 따로 뜬다).
-		else if (autosave.getStatus() !== "conflict") toast.error(autosave.getLastError() ?? "저장하지 못했습니다.");
+		else if (autosave.getStatus() !== "conflict") toast.error(autosave.getLastError() ?? tc("saveFailed"));
 	};
 
 	/**
@@ -545,7 +551,7 @@ export function EntryEditorShell({
 			return;
 		}
 		opened?.close();
-		toast.error(`저장하지 못해 미리보기를 열지 않았습니다. ${autosave.getLastError() ?? ""}`.trim());
+		toast.error(`${t("previewNotOpened")} ${autosave.getLastError() ?? ""}`.trim());
 	};
 
 	const handlePublish = async ({ resetPublishedAt = false }: { resetPublishedAt?: boolean } = {}) => {
@@ -557,37 +563,37 @@ export function EntryEditorShell({
 			const generated = bodyExcerpt(form.mdx, fillFromBodyLength(field));
 			if (!generated) {
 				setPublishIssues([{ code: "missing_field", message: field.label, path: name }]);
-				toast.error(`${josa(field.label, "을", "를")} 만들 본문이 없습니다. 직접 입력하세요.`);
+				toast.error(t("fillEmpty", { label: field.label }));
 				return;
 			}
 			setForm({ [name]: generated });
-			toast.message(`본문에서 ${josa(field.label, "을", "를")} 만들었습니다. 속성 패널에서 고칠 수 있습니다.`);
+			toast.message(t("fillDone", { label: field.label }));
 		}
 		// 막지는 않는다. 확인하지 않은 원문 변경이 있는 채로 나가는 것만 알린다.
-		if (sourceChanged) toast.warning("확인하지 않은 원문 변경이 있습니다.");
+		if (sourceChanged) toast.warning(t("sourceUnreviewed"));
 		setBusy("publish");
 		try {
-			const id = await ensureSaved("발행", { saveChanges: true });
+			const id = await ensureSaved("publish", { saveChanges: true });
 			if (!id) return;
 			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
 				method: "POST",
 				json: { expectedVersion: autosave.getVersion(), ...(resetPublishedAt ? { resetPublishedAt } : {}) },
-				fallback: "발행하지 못했습니다.",
+				fallback: t("publishFailed"),
 			});
 			autosave.setVersion(published.version);
 			setEntry((current) => ({ ...published, ...keepTranslationGroup(current, published) }));
 			void refreshIncoming(id);
 			const warnings = published.warnings ?? [];
 			if (warnings.length > 0) {
-				toast.warning(`발행되었습니다. 확인할 경고 ${warnings.length}건`, {
+				toast.warning(t("publishedWithWarnings", { count: warnings.length }), {
 					description: warnings.slice(0, 5).map(cmsIssueMessage).join("\n"),
 					duration: 10000,
 					action: warnings[0]?.position
-						? { label: "이동", onClick: () => focusIssue(warnings[0] as CmsIssue) }
+						? { label: t("go"), onClick: () => focusIssue(warnings[0] as CmsIssue) }
 						: undefined,
 				});
 			} else {
-				toast.success("발행되었습니다.");
+				toast.success(t("published"));
 			}
 		} catch (error) {
 			if (error instanceof CmsApiError && error.code === "conflict") {
@@ -597,10 +603,10 @@ export function EntryEditorShell({
 			}
 			if (error instanceof CmsApiError && error.issues.length > 0) {
 				setPublishIssues(error.issues);
-				toast.error("발행할 수 없습니다. 아래 문제를 수정하세요.");
+				toast.error(t("publishBlocked"));
 				return;
 			}
-			toast.error(errorText(error, "발행하지 못했습니다."));
+			toast.error(errorText(error, t("publishFailed")));
 		} finally {
 			setBusy(null);
 		}
@@ -610,7 +616,7 @@ export function EntryEditorShell({
 	const runLifecycle = async (action: LifecycleAction) => {
 		if (!entry || isSubmitting) return;
 		if (action !== "restore" && autosave.hasPendingChanges()) {
-			toast.error(saveFirstMessage(LIFECYCLE_LABEL[action]));
+			toast.error(saveFirstMessage(action));
 			return;
 		}
 		setBusy("status");
@@ -628,7 +634,7 @@ export function EntryEditorShell({
 			await loadEntry(entry.id);
 			toast.success(LIFECYCLE_SUCCESS[action]);
 		} catch (error) {
-			toast.error(errorText(error, `${LIFECYCLE_LABEL[action]}하지 못했습니다.`));
+			toast.error(errorText(error, LIFECYCLE_FAILED[action]));
 		} finally {
 			setBusy(null);
 		}
@@ -642,10 +648,9 @@ export function EntryEditorShell({
 	const confirmPermanentDelete = () => {
 		if (!entry) return;
 		setConfirm({
-			title: "영구 삭제",
-			description:
-				"이 글을 영구 삭제할까요? 되돌릴 수 없습니다. 공개된 적 있는 주소는 다른 글이 다시 쓸 수 없도록 기록만 남습니다.",
-			confirmLabel: "영구 삭제",
+			title: t("permanentDelete"),
+			description: t("permanentDeleteAsk"),
+			confirmLabel: t("permanentDelete"),
 			destructive: true,
 			onConfirm: async () => {
 				try {
@@ -655,14 +660,14 @@ export function EntryEditorShell({
 					await deleteLocalBackup(backupKey(adminId, entry.id, entry.collection));
 					router.push(adminHref(`?collection=${entry.collection}&status=trashed`) as Route);
 				} catch (error) {
-					toast.error(errorText(error, "삭제하지 못했습니다."));
+					toast.error(errorText(error, t("deleteFailed")));
 				}
 			},
 		});
 	};
 
 	const handleDuplicate = async () => {
-		const id = await ensureSaved("복제");
+		const id = await ensureSaved("duplicate");
 		if (!id) return;
 		try {
 			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, {
@@ -671,7 +676,7 @@ export function EntryEditorShell({
 			});
 			router.push(adminEntryEditHref(copy.id) as Route);
 		} catch (error) {
-			toast.error(errorText(error, "복제하지 못했습니다."));
+			toast.error(errorText(error, t("duplicateFailed")));
 		}
 	};
 
@@ -697,7 +702,7 @@ export function EntryEditorShell({
 	if (isLoading) {
 		return (
 			<div className="space-y-4 p-8" aria-busy>
-				<span className="sr-only">문서를 불러오는 중…</span>
+				<span className="sr-only">{t("loadingDocument")}</span>
 				<Skeleton className="h-8 w-1/2" />
 				<Skeleton className="h-4 w-full" />
 				<Skeleton className="h-4 w-5/6" />
@@ -711,13 +716,13 @@ export function EntryEditorShell({
 					<AlertDescription className="col-start-auto">{loadError}</AlertDescription>
 				</Alert>
 				<Link href={adminHref() as Route} className={buttonVariants({ variant: "outline" })}>
-					목록으로
+					{t("backToList")}
 				</Link>
 			</div>
 		);
 	}
 
-	const statusLabel = entry ? describeEntryStatus(entry) : "새 글";
+	const statusLabel = entry ? describeEntryStatus(entry) : t("newEntry");
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
@@ -731,7 +736,8 @@ export function EntryEditorShell({
 			/>
 		) : null;
 	// 제목 칸은 라이브러리 약속인 `title` 필드다. 이름표는 사이트가 정한다.
-	const titleLabel = (isCollection(collection) ? storedField(collection, "title")?.field.label : undefined) ?? "제목";
+	const titleLabel =
+		(isCollection(collection) ? storedField(collection, "title")?.field.label : undefined) ?? t("title");
 	const titleInput = (
 		<>
 			<FieldLabel htmlFor="cms-title-canvas" className="sr-only">
@@ -744,7 +750,7 @@ export function EntryEditorShell({
 				aria-invalid={Boolean(titleIssue) || undefined}
 				aria-describedby={titleIssue ? "cms-title-error" : undefined}
 				onChange={(event) => handleTitleChange(event.target.value)}
-				placeholder={translationSource?.title || "제목 없음"}
+				placeholder={translationSource?.title || tc("untitled")}
 				className="h-auto w-full rounded-none border-0 bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
 			/>
 			{titleIssue && (
@@ -756,8 +762,8 @@ export function EntryEditorShell({
 	);
 	const sourcePaneToggle = translationSource && (
 		<ToolbarToggle
-			label="원문"
-			text="원문"
+			label={tc("source")}
+			text={tc("source")}
 			icon={PanelLeft}
 			pressed={isSourcePaneOpen}
 			onPressedChange={toggleSourcePane}
@@ -765,7 +771,7 @@ export function EntryEditorShell({
 	);
 	const sourceModeToggle = (
 		<ToolbarToggle
-			label="MDX 원문"
+			label={t("mdxSource")}
 			icon={FileCode}
 			pressed={editorMode === "source"}
 			// 해석할 수 없는 본문은 시각 모드로 돌아가지 못한다.
@@ -777,7 +783,7 @@ export function EntryEditorShell({
 		<>
 			<MdxSourceEditor
 				id="cms-mdx-source"
-				aria-label="MDX 본문"
+				aria-label={t("mdxBody")}
 				aria-invalid={Boolean(bodyIssue) || !canUseVisual || undefined}
 				aria-describedby={bodyIssue ? "cms-mdx-error" : undefined}
 				value={form.mdx}
@@ -785,7 +791,7 @@ export function EntryEditorShell({
 				onChange={(event) => setForm({ mdx: event.target.value })}
 				onCompositionStart={() => autosave.setComposing(true)}
 				onCompositionEnd={() => autosave.setComposing(false)}
-				placeholder="MDX 원문을 작성하세요…"
+				placeholder={t("mdxPlaceholder")}
 				className="min-h-[calc(100vh-240px)] w-full flex-1 px-4"
 			/>
 			{bodyIssue && (
@@ -805,14 +811,14 @@ export function EntryEditorShell({
 							render={
 								<Link
 									href={adminHref(`?collection=${collection}`) as Route}
-									aria-label="목록으로"
+									aria-label={t("backToList")}
 									className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "size-8 text-muted-foreground")}
 								>
 									<ChevronLeft aria-hidden className="size-4" />
 								</Link>
 							}
 						/>
-						<TooltipContent side="bottom">목록으로</TooltipContent>
+						<TooltipContent side="bottom">{t("backToList")}</TooltipContent>
 					</Tooltip>
 					<span className="hidden rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs sm:inline-flex">
 						{statusLabel}
@@ -829,7 +835,7 @@ export function EntryEditorShell({
 							className="text-muted-foreground"
 							onClick={() => void autosave.retry(true)}
 						>
-							다시 시도
+							{tc("retry")}
 						</Button>
 					)}
 					{autosave.status === "session-expired" && (
@@ -839,19 +845,19 @@ export function EntryEditorShell({
 							rel="noreferrer"
 							className={buttonVariants({ variant: "link", size: "xs" })}
 						>
-							새 창에서 로그인
+							{t("signInNewWindow")}
 						</a>
 					)}
 
 					<ToolbarAction
-						label="저장"
+						label={t("save")}
 						icon={Save}
 						disabled={isReadOnly || isSubmitting || autosave.status === "saving"}
 						onClick={() => void handleSaveNow()}
 					/>
 					{previewHref && (
 						<ToolbarAction
-							label="미리보기"
+							label={t("preview")}
 							icon={Eye}
 							href={autosave.hasPendingChanges() ? undefined : previewHref}
 							onClick={() => void handlePreview(previewHref)}
@@ -866,7 +872,7 @@ export function EntryEditorShell({
 							disabled={isSubmitting}
 							onClick={() => void runLifecycle("restore")}
 						>
-							{busy === "status" ? "복원 중…" : "복원"}
+							{busy === "status" ? t("restoring") : LIFECYCLE_LABEL.restore}
 						</Button>
 					) : entry?.status === "archived" ? (
 						<Button
@@ -876,7 +882,7 @@ export function EntryEditorShell({
 							disabled={isSubmitting}
 							onClick={() => void runLifecycle("unarchive")}
 						>
-							{busy === "status" ? "보관 해제 중…" : "보관 해제"}
+							{busy === "status" ? t("unarchiving") : LIFECYCLE_LABEL.unarchive}
 						</Button>
 					) : !canResetPublishedAt ? (
 						<Button
@@ -887,7 +893,7 @@ export function EntryEditorShell({
 							disabled={isSubmitting}
 							onClick={() => void handlePublish()}
 						>
-							{busy === "publish" ? "발행 중…" : "발행"}
+							{busy === "publish" ? t("publishing") : t("publish")}
 						</Button>
 					) : (
 						// 이미 발행한 글은 발행과 "오늘 날짜로 다시 발행"을 한 단추로 묶는다.
@@ -901,12 +907,12 @@ export function EntryEditorShell({
 								disabled={isSubmitting}
 								onClick={() => void handlePublish()}
 							>
-								{busy === "publish" ? "발행 중…" : "발행"}
+								{busy === "publish" ? t("publishing") : t("publish")}
 							</Button>
 							<span aria-hidden className="h-4 w-px bg-primary-foreground/30" />
 							<DropdownMenu>
 								<IconButton
-									label="발행 방식"
+									label={t("publishOptions")}
 									side="bottom"
 									variant="default"
 									disabled={isSubmitting}
@@ -920,7 +926,7 @@ export function EntryEditorShell({
 									{canResetPublishedAt && (
 										<DropdownMenuItem onClick={() => void handlePublish({ resetPublishedAt: true })}>
 											<CalendarSync aria-hidden />
-											오늘 날짜로 다시 발행
+											{t("republish")}
 										</DropdownMenuItem>
 									)}
 								</DropdownMenuContent>
@@ -929,7 +935,7 @@ export function EntryEditorShell({
 					)}
 					<span aria-hidden className="mx-1 h-4 w-px bg-border" />
 					<IconButton
-						label="속성"
+						label={t("properties")}
 						side="bottom"
 						pressed={isInspectorOpen}
 						className="size-8 text-muted-foreground"
@@ -939,7 +945,7 @@ export function EntryEditorShell({
 					</IconButton>
 					<DropdownMenu>
 						<IconButton
-							label="더보기"
+							label={t("more")}
 							side="bottom"
 							className="size-8 text-muted-foreground"
 							trigger={(button) => <DropdownMenuTrigger render={button} />}
@@ -952,12 +958,12 @@ export function EntryEditorShell({
 								<>
 									<DropdownMenuItem onClick={() => void handleDuplicate()}>
 										<Copy aria-hidden />
-										복제
+										{t("duplicate")}
 									</DropdownMenuItem>
 									{(entry.status === "draft" || entry.status === "published") && (
 										<DropdownMenuItem onClick={() => confirmLifecycle("archive")}>
 											<Archive aria-hidden />
-											보관
+											{LIFECYCLE_LABEL.archive}
 										</DropdownMenuItem>
 									)}
 								</>
@@ -968,12 +974,12 @@ export function EntryEditorShell({
 									{isTrashed ? (
 										<DropdownMenuItem variant="destructive" onClick={confirmPermanentDelete}>
 											<Trash aria-hidden />
-											영구 삭제
+											{t("permanentDelete")}
 										</DropdownMenuItem>
 									) : (
 										<DropdownMenuItem variant="destructive" onClick={() => confirmLifecycle("trash")}>
 											<Trash2 aria-hidden />
-											휴지통으로 이동
+											{LIFECYCLE_LABEL.trash}
 										</DropdownMenuItem>
 									)}
 								</>
@@ -981,7 +987,7 @@ export function EntryEditorShell({
 							{entry && <DropdownMenuSeparator />}
 							<DropdownMenuItem onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
 								<SunMoon aria-hidden />
-								테마 전환
+								{t("toggleTheme")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -989,14 +995,16 @@ export function EntryEditorShell({
 			</header>
 
 			{isTrashed && (
-				<section aria-label="휴지통" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
-					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
+				<section
+					aria-label={t("trash")}
+					className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm"
+				>
+					<span>{t("trashNotice")}</span>
 				</section>
 			)}
 			{!canUseVisual && (
 				<output className="border-b bg-amber-500/10 px-4 py-2 text-sm">
-					해석할 수 없는 본문이 있어 원문 모드로만 편집합니다. 저장은 되지만 발행은 막힙니다 —{" "}
-					{sourceProblems[0] ? cmsIssueMessage(sourceProblems[0]) : ""}
+					{t("visualUnavailable")} {sourceProblems[0] ? cmsIssueMessage(sourceProblems[0]) : ""}
 				</output>
 			)}
 			{autosave.lastError && ["failed", "session-expired"].includes(autosave.status) && (
@@ -1005,7 +1013,7 @@ export function EntryEditorShell({
 				</p>
 			)}
 			{publishIssues.length > 0 && (
-				<ul className="max-h-36 overflow-y-auto border-b px-4 py-2 text-sm" aria-label="발행 검증 문제">
+				<ul className="max-h-36 overflow-y-auto border-b px-4 py-2 text-sm" aria-label={t("publishProblems")}>
 					{publishIssues.map((issue) => (
 						<li key={JSON.stringify(issue)}>
 							<Button
@@ -1024,9 +1032,9 @@ export function EntryEditorShell({
 
 			{sourceChanged && translationSource && (
 				<output className="flex flex-wrap items-center gap-2 border-b bg-amber-500/10 px-4 py-1.5 text-sm">
-					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">원문이 바뀌었습니다</span>
+					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">{t("sourceChanged")}</span>
 					<Button type="button" size="sm" variant="outline" onClick={() => setIsSourceCompareOpen(true)}>
-						비교
+						{t("compare")}
 					</Button>
 					<Button
 						type="button"
@@ -1039,7 +1047,7 @@ export function EntryEditorShell({
 							})
 						}
 					>
-						확인
+						{t("confirm")}
 					</Button>
 				</output>
 			)}

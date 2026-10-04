@@ -1,7 +1,11 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { describe, expect, it } from "vitest";
 import { checkCandidates, checkText } from "../checks";
 import type { AiCheck } from "../definition";
 import { KEBAB_PATTERN } from "../presets";
+import { runMessages } from "../run.messages";
+
+const t = createTranslator(runMessages);
 
 const on = <T extends Omit<AiCheck, "enabled">>(check: T) => ({ ...check, enabled: true }) as AiCheck;
 
@@ -40,7 +44,7 @@ describe("AI 결과 검사", () => {
 	});
 
 	it("긴 글은 형식·길이만 본다", () => {
-		expect(checkText([on({ kind: "maxLength", max: 5 })], "여섯 글자다")).toMatch("5자");
+		expect(checkText([on({ kind: "maxLength", max: 5 })], "여섯 글자다")).toBe(t("check.maxLength", { max: 5 }));
 		expect(checkText([on({ kind: "pattern", pattern: "^요약" })], "요약입니다")).toBeNull();
 		expect(checkText([], "  ")).toBeTruthy();
 	});

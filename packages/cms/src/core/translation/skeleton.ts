@@ -1,7 +1,9 @@
 import { BLOCKS } from "../../blocks/active";
 import type { BlockDefinition } from "../../blocks/define";
+import { createTranslator } from "../../i18n";
 import { analyze, toDocument } from "../../mdx";
 import type { CmsJsonValue, CmsNode } from "../../mdx/types";
+import { translationMessages } from "./messages";
 
 /**
  * 번역 결과의 구조 검사(v2 D2). 원문과 번역의 "글자를 뺀 뼈대"가 같은지 본다.
@@ -117,27 +119,38 @@ function skeletonOf(node: CmsNode): Skeleton {
 	};
 }
 
-export type StructureCheck = { ok: true } | { ok: false; reason: string };
+/** 구조 검사가 실패한 이유 코드. 이유 문구는 `reason`이다. */
+export type StructureFailCode = "mdx_error" | "source_unreadable" | "structure_changed";
+
+export type StructureCheck =
+	| { ok: true }
+	| { ok: false; code: StructureFailCode /** 사이트 화면 언어의 이유(`cms.translation` 사전). */; reason: string };
+
+const tTranslation = createTranslator(translationMessages);
+
+const mdxFailure = (message: string | undefined): StructureCheck => ({
+	ok: false,
+	code: "mdx_error",
+	reason: tTranslation("mdx_error", { message: message ?? tTranslation("unreadable") }),
+});
 
 /** 번역한 MDX가 원문 MDX와 같은 뼈대인가. MDX로 읽을 수 없으면 실패다. */
 export function compareStructure(sourceMdx: string, translatedMdx: string): StructureCheck {
 	const translated = analyze(translatedMdx);
-	if (translated.errors.length > 0) {
-		return { ok: false, reason: `MDX 오류: ${translated.errors[0]?.message ?? "읽을 수 없습니다."}` };
-	}
+	if (translated.errors.length > 0) return mdxFailure(translated.errors[0]?.message);
 	const source = analyze(sourceMdx);
-	if (source.errors.length > 0) return { ok: false, reason: "원문을 읽을 수 없습니다." };
+	if (source.errors.length > 0) {
+		return { ok: false, code: "source_unreadable", reason: tTranslation("source_unreadable") };
+	}
 	const a = skeletonOf(toDocument(source));
 	const b = skeletonOf(toDocument(translated));
 	return JSON.stringify(a) === JSON.stringify(b)
 		? { ok: true }
-		: { ok: false, reason: "원문과 구조(요소·링크·코드·속성)가 달라졌습니다." };
+		: { ok: false, code: "structure_changed", reason: tTranslation("structure_changed") };
 }
 
 /** MDX로 읽을 수 있는가(구조 검사를 끈 때도 본문에 넣으려면 읽을 수 있어야 한다). */
 export function readableMdx(mdx: string): StructureCheck {
 	const analysis = analyze(mdx);
-	return analysis.errors.length > 0
-		? { ok: false, reason: `MDX 오류: ${analysis.errors[0]?.message ?? "읽을 수 없습니다."}` }
-		: { ok: true };
+	return analysis.errors.length > 0 ? mdxFailure(analysis.errors[0]?.message) : { ok: true };
 }

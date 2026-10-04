@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type CmsAdminComponents, CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 import {
 	allowsMark,
@@ -14,6 +15,9 @@ import type { ReactNode } from "react";
 import { cleanTextColor, textColorProps } from "./colors";
 import { colorBlock } from "./definition";
 import { COLOR_MARK_NAME, TextColorIcon, TextColorMenu, TextColorMenuItems, TextColorPanel } from "./menu";
+import { colorMessages } from "./messages";
+
+const t = createTranslator(colorMessages);
 
 /** 편집기의 글자색 표시. 공개 화면과 같은 `.cms-color` 규칙(`styles.css`)이 테마에 맞는 색을 고른다. */
 export function colorMarkAttributes(attrs: MarkAttrs): Record<string, string> {
@@ -31,10 +35,10 @@ function ColorBubbleButton({ editor, inCode, openPanel, closePanel }: EditorBubb
 	if (inCode || !allowsMark(editor.state, COLOR_MARK_NAME)) return null;
 	return (
 		<BubbleButton
-			label="글자색"
+			label={t("label")}
 			onClick={() =>
 				openPanel({
-					label: "글자색",
+					label: t("label"),
 					size: "auto",
 					content: <TextColorPanel editor={editor} onPicked={closePanel} />,
 				})

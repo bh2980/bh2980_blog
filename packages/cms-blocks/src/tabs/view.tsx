@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	AttributeInput,
 	blockNodeName,
@@ -18,6 +19,9 @@ import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/re
 import { PencilLine, Plus, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { tabBlock, tabsBlock as tabsDefinition } from "./definition";
+import { tabsMessages } from "./messages";
+
+const t = createTranslator(tabsMessages);
 
 const MIN_TABS = tabsDefinition.children.min;
 const MAX_TABS = tabsDefinition.children.max;
@@ -101,10 +105,10 @@ export function TabsNodeView(props: NodeViewProps) {
 		const pos = getPos();
 		if (typeof pos !== "number" || node.childCount >= MAX_TABS) return;
 		let number = node.childCount + 1;
-		while (labels.includes(`탭 ${number}`)) number += 1;
+		while (labels.includes(t("tab.newName", { number }))) number += 1;
 		editor.commands.insertContentAt(pos + node.nodeSize - 1, {
 			type: blockNodeName(tabBlock),
-			attrs: { values: { label: `탭 ${number}` } },
+			attrs: { values: { label: t("tab.newName", { number }) } },
 			content: [{ type: "paragraph" }],
 		});
 		openTab(node.childCount);
@@ -145,7 +149,7 @@ export function TabsNodeView(props: NodeViewProps) {
 			<div contentEditable={false} className="not-prose">
 				<div
 					role="tablist"
-					aria-label="탭"
+					aria-label={t("list")}
 					className="relative inline-flex h-9 w-fit max-w-full items-center rounded-lg rounded-b-none border bg-muted p-[3px] text-muted-foreground"
 				>
 					{labels.map((label, index) =>
@@ -153,7 +157,7 @@ export function TabsNodeView(props: NodeViewProps) {
 							// biome-ignore lint/suspicious/noArrayIndexKey: 탭 위치가 곧 식별자다(이름은 겹칠 수 있다).
 							<div key={index} className={cn(TAB_TRIGGER, TAB_TRIGGER_ACTIVE)}>
 								<AttributeInput
-									aria-label="탭 이름"
+									aria-label={t("rename.aria")}
 									value={label}
 									required
 									autoFocus
@@ -178,7 +182,7 @@ export function TabsNodeView(props: NodeViewProps) {
 								className={cn(TAB_TRIGGER, index === current && TAB_TRIGGER_ACTIVE)}
 								onClick={() => openTab(index)}
 							>
-								{label || "이름 없음"}
+								{label || t("untitled")}
 							</button>
 						),
 					)}
@@ -189,18 +193,18 @@ export function TabsNodeView(props: NodeViewProps) {
 				className={cn("rounded-b-lg rounded-tr-lg border bg-muted px-4 py-3 text-sm", SHOW_ONLY_TAB[current])}
 			/>
 			{editable ? (
-				<ContainerToolbar label="탭 도구">
-					<ToolbarButton label="탭 추가" disabled={node.childCount >= MAX_TABS} onClick={addTab}>
+				<ContainerToolbar label={t("toolbar")}>
+					<ToolbarButton label={t("add")} disabled={node.childCount >= MAX_TABS} onClick={addTab}>
 						<Plus aria-hidden />
 					</ToolbarButton>
-					<ToolbarButton label="이 탭 이름 바꾸기" onClick={() => setRenaming(current)}>
+					<ToolbarButton label={t("rename")} onClick={() => setRenaming(current)}>
 						<PencilLine aria-hidden />
 					</ToolbarButton>
-					<ToolbarButton label="처음 열 탭" pressed={current === defaultIndex} onClick={() => toggleDefault(current)}>
+					<ToolbarButton label={t("default")} pressed={current === defaultIndex} onClick={() => toggleDefault(current)}>
 						<Star aria-hidden className={cn(current === defaultIndex && "fill-current")} />
 					</ToolbarButton>
 					<ToolbarButton
-						label="이 탭 삭제"
+						label={t("delete")}
 						destructive
 						disabled={node.childCount <= MIN_TABS}
 						onClick={() => removeTab(current)}

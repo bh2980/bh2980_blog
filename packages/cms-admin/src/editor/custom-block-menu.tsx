@@ -1,11 +1,15 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import { Puzzle } from "lucide-react";
 import { useIconByName } from "../screens/shared/collection-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { IconButton } from "../ui/icon-button";
+import { editorMessages } from "./messages";
 import { buildBlockSlashCommands } from "./slash-command";
+
+const t = createTranslator(editorMessages);
 
 const CUSTOM_BLOCKS = buildBlockSlashCommands();
 
@@ -40,7 +44,7 @@ export function CustomBlockMenu({ editor }: { editor: Editor }) {
 	return (
 		<DropdownMenu>
 			<IconButton
-				label="컴포넌트 넣기"
+				label={t("customBlockMenu.label")}
 				side="bottom"
 				disabled={!editor.isEditable}
 				onMouseDown={(event) => event.preventDefault()}

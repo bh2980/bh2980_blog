@@ -1,3 +1,4 @@
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	type AiActionDefinition,
 	type AiActionOverride,
@@ -9,6 +10,7 @@ import {
 	unknownPlaceholders,
 } from "./action";
 import { type AiActionView, readOverride, viewOf } from "./action-view";
+import { actionsMessages } from "./actions.messages";
 import {
 	type CustomBase,
 	type CustomValue,
@@ -23,6 +25,8 @@ import { migrateLegacyCheck } from "./definition";
 import { AiError } from "./errors";
 import { AI_ACTIONS, AI_SHARED_KEYS, actionDefinition } from "./registry";
 import { type AiSharedStore, loadSharedKeys } from "./shared";
+
+const t = createTranslator(actionsMessages);
 
 /**
  * 기능 정의(설정)와 고친 값(DB)을 합쳐 다룬다. 관리자 AI 화면·실행 API가 쓴다.
@@ -51,13 +55,13 @@ const readCustom = (value: unknown): CustomValue | null => {
 async function customRow(store: AiActionsStore, key: string): Promise<{ row: Row; value: CustomValue }> {
 	const row = (await store.listAiCustomActions()).find((item) => item.key === key);
 	const value = row ? readCustom(row.value) : null;
-	if (!row || !value) throw new AiError("ai_unknown_action", "알 수 없는 AI 기능입니다.");
+	if (!row || !value) throw new AiError("ai_unknown_action", t("unknownAction"));
 	return { row, value };
 }
 
 const definitionOf = (key: string): AiActionDefinition => {
 	const definition = actionDefinition(key);
-	if (!definition) throw new AiError("ai_unknown_action", "알 수 없는 AI 기능입니다.");
+	if (!definition) throw new AiError("ai_unknown_action", t("unknownAction"));
 	return definition;
 };
 
@@ -110,14 +114,11 @@ export function actionWithEdits(
 	if (!parsed.success) {
 		const issue = parsed.error.issues[0];
 		const where = issue?.path.length ? `${issue.path.join(".")}: ` : "";
-		throw new AiError("ai_invalid_input", `${where}${issue?.message ?? "값이 올바르지 않습니다."}`);
+		throw new AiError("ai_invalid_input", `${where}${issue?.message ?? t("invalidValue")}`);
 	}
 	const unknown = parsed.data.prompt ? unknownPlaceholders(parsed.data.prompt, definition.input, sharedKeys) : [];
 	if (unknown.length > 0) {
-		throw new AiError(
-			"ai_invalid_input",
-			`지시문에는 언어 입력과 공통 문구만 {{이름}}으로 넣을 수 있습니다: {{${unknown[0]}}}`,
-		);
+		throw new AiError("ai_invalid_input", t("unknownPlaceholder", { name: unknown[0] ?? "" }));
 	}
 	return resolveAction(key, definition, overrideFrom(definition, parsed.data));
 }
@@ -145,7 +146,7 @@ export async function actionWithDraft(
 function readBase(input: unknown): CustomBase {
 	const parsed = customBaseSchema.safeParse(input);
 	if (!parsed.success) {
-		throw new AiError("ai_invalid_input", parsed.error.issues[0]?.message ?? "기본 정보가 올바르지 않습니다.");
+		throw new AiError("ai_invalid_input", parsed.error.issues[0]?.message ?? t("invalidBase"));
 	}
 	const problem = surfaceProblem(parsed.data.surface);
 	if (problem) throw new AiError("ai_invalid_input", problem);
@@ -169,7 +170,7 @@ export async function createCustomAction(
 
 /** 화면 기능을 지운다. */
 export async function deleteCustomAction(store: AiActionsStore, key: string, expectedVersion: number): Promise<void> {
-	if (!isCustomKey(key)) throw new AiError("ai_invalid_input", "코드로 정한 기능은 지울 수 없습니다.");
+	if (!isCustomKey(key)) throw new AiError("ai_invalid_input", t("cannotDeleteCoded"));
 	await store.deleteAiCustomAction({ key, expectedVersion });
 }
 
@@ -202,7 +203,7 @@ export async function updateAction(
 
 /** 기본값으로 되돌린다. 켜짐 여부는 지금 값을 둔다. 화면 기능은 되돌릴 기본값이 없다. */
 export async function resetAction(store: AiActionsStore, key: string, expectedVersion: number): Promise<AiActionView> {
-	if (isCustomKey(key)) throw new AiError("ai_invalid_input", "직접 만든 기능은 되돌릴 기본값이 없습니다.");
+	if (isCustomKey(key)) throw new AiError("ai_invalid_input", t("noDefaultForCustom"));
 	const current = await getAction(store, key);
 	const definition = definitionOf(key);
 	const value = overrideFrom(definition, { enabled: current.enabled });

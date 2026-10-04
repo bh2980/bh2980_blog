@@ -1,4 +1,5 @@
-import type { CodeLineEffect, CodeRule } from "@bh2980/cms/code-block";
+import { createTranslator } from "@bh2980/cms/client";
+import { CODE_LINE_EFFECTS, type CodeLineEffect, type CodeRule } from "@bh2980/cms/code-block";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -8,6 +9,11 @@ import { findBlockDOM, refineBlock } from "../../drag";
 import { buildEditorExtensions } from "../../extensions";
 import { inlineBubbleTarget } from "../../inline-marks";
 import { mdxToTiptap, tiptapToMdx } from "../../tiptap-content";
+import { codeBlockMessages } from "../messages";
+
+const t = createTranslator(codeBlockMessages);
+/** 강조 효과 이름(효과 정의에서 온다). */
+const HIGHLIGHT_LABEL = CODE_LINE_EFFECTS.find((effect) => effect.name === "highlight")?.label ?? "";
 
 afterEach(cleanup);
 
@@ -73,33 +79,33 @@ const CODE = "```ts\nconst a = 1;\nconst b = 2;\nconst c = 3;\n```";
 describe("코드 블록 편집 화면", () => {
 	it("머리 도구에 언어·파일 경로·줄 효과·정규식 규칙·줄 번호·복사가 있다", async () => {
 		await mount(CODE);
-		expect(screen.getByLabelText("코드 언어")).toBeTruthy();
-		expect(screen.getByLabelText("파일 경로")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "줄 효과" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "정규식 규칙" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "줄 번호" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "코드 복사" })).toBeTruthy();
+		expect(screen.getByLabelText(t("view.language"))).toBeTruthy();
+		expect(screen.getByLabelText(t("view.filePath"))).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("view.lineEffects") })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("rulesPanel.title") })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("view.lineNumbers") })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("view.copy") })).toBeTruthy();
 	});
 
 	it("읽기 전용이면 언어·파일 경로·효과 도구를 숨기고 줄을 고르지 않는다", async () => {
 		const editor = await mount('```ts title="src/a.ts"\nconst a = 1;\n```');
 		act(() => editor.setEditable(false));
-		await waitFor(() => expect(screen.queryByLabelText("코드 언어")).toBeNull());
-		expect(screen.queryByLabelText("파일 경로")).toBeNull();
-		expect(screen.queryByRole("button", { name: "줄 효과" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "정규식 규칙" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "줄 번호" })).toBeNull();
+		await waitFor(() => expect(screen.queryByLabelText(t("view.language"))).toBeNull());
+		expect(screen.queryByLabelText(t("view.filePath"))).toBeNull();
+		expect(screen.queryByRole("button", { name: t("view.lineEffects") })).toBeNull();
+		expect(screen.queryByRole("button", { name: t("rulesPanel.title") })).toBeNull();
+		expect(screen.queryByRole("button", { name: t("view.lineNumbers") })).toBeNull();
 		expect(screen.getByText("src/a.ts")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "코드 복사" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: t("view.copy") })).toBeTruthy();
 		await openLineMenu(0);
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
 	it("파일 경로와 줄 번호 표시는 meta로 저장한다", async () => {
 		const editor = await mount(CODE);
-		fireEvent.change(screen.getByLabelText("파일 경로"), { target: { value: "src/a.ts" } });
-		await waitFor(() => expect((screen.getByLabelText("파일 경로") as HTMLInputElement).value).toBe("src/a.ts"));
-		act(() => fireEvent.click(screen.getByRole("button", { name: "줄 번호" })));
+		fireEvent.change(screen.getByLabelText(t("view.filePath")), { target: { value: "src/a.ts" } });
+		await waitFor(() => expect((screen.getByLabelText(t("view.filePath")) as HTMLInputElement).value).toBe("src/a.ts"));
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("view.lineNumbers") })));
 		await waitFor(() => expect(block(editor).attrs.meta).toBe('title="src/a.ts" lnum'));
 	});
 
@@ -114,13 +120,15 @@ describe("코드 블록 편집 화면", () => {
 			expect(document.querySelectorAll("[data-code-block-wrapper] .bg-primary\\/15")).toHaveLength(1),
 		);
 		await openLineMenu(1);
-		const menu = await screen.findByRole("menu", { name: "2번째 줄 효과" });
-		act(() => fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "강조" })));
+		const menu = await screen.findByRole("menu", { name: t("lineMenu.lineEffects", { line: 2 }) });
+		act(() => fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: HIGHLIGHT_LABEL })));
 
 		const effects = block(editor).attrs.lineEffects as CodeLineEffect[];
 		expect(effects.map(({ name, start, end }) => [name, start, end])).toEqual([["highlight", 1, 2]]);
 		await waitFor(() =>
-			expect(within(menu).getByRole("menuitemcheckbox", { name: "강조" }).getAttribute("aria-checked")).toBe("true"),
+			expect(within(menu).getByRole("menuitemcheckbox", { name: HIGHLIGHT_LABEL }).getAttribute("aria-checked")).toBe(
+				"true",
+			),
 		);
 		expect(tiptapToMdx(editor.getJSON())).toContain("// @line highlight {1-1}\nconst b = 2;");
 		// 효과를 바꿔도 고른 줄은 그대로다(이어서 다른 효과를 켤 수 있다).
@@ -134,8 +142,8 @@ describe("코드 블록 편집 화면", () => {
 		act(() => pickLines(0, 2));
 		// 고른 줄 안에서 오른쪽 클릭하면 고른 줄 전체가 대상이다.
 		await openLineMenu(1);
-		const menu = await screen.findByRole("menu", { name: "1–3번째 줄 효과" });
-		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: "이 줄들 접기" })));
+		const menu = await screen.findByRole("menu", { name: t("lineMenu.rangeEffects", { start: 1, end: 3 }) });
+		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: t("lineMenu.collapse") })));
 
 		expect((block(editor).attrs.lineEffects as CodeLineEffect[])[0]).toMatchObject({
 			name: "collapse",
@@ -144,21 +152,23 @@ describe("코드 블록 편집 화면", () => {
 		});
 		expect(tiptapToMdx(editor.getJSON())).toContain("// @line collapse {0-2}");
 		// 접기를 만든 뒤 커서가 접힌 줄에 있으면 펼쳐 둔다. 화살표로 접는다.
-		const toggle = await screen.findByRole("button", { name: /1번째 줄부터 (접기|펼치기)/ });
+		const toggle = await screen.findByRole("button", {
+			name: new RegExp(`^(${t("view.collapseFrom", { line: 1 })}|${t("view.expandFrom", { line: 1 })})$`),
+		});
 		if (toggle.getAttribute("aria-expanded") === "true") act(() => fireEvent.mouseDown(toggle));
 		await waitFor(() => expect(gutterLines()).toEqual([0]));
-		const expand = await screen.findByRole("button", { name: "1번째 줄부터 펼치기" });
+		const expand = await screen.findByRole("button", { name: t("view.expandFrom", { line: 1 }) });
 		act(() => fireEvent.mouseDown(expand));
 		await waitFor(() => expect(gutterLines()).toEqual([0, 1, 2]));
 	});
 
 	it("정규식 규칙을 더하면 맞는 곳 수를 보이고 규칙 그대로 저장한다", async () => {
 		const editor = await mount(CODE);
-		act(() => fireEvent.click(screen.getByRole("button", { name: "정규식 규칙" })));
-		const add = await screen.findByRole("button", { name: "규칙 추가" });
+		act(() => fireEvent.click(screen.getByRole("button", { name: t("rulesPanel.title") })));
+		const add = await screen.findByRole("button", { name: t("rulesPanel.add") });
 		act(() => fireEvent.click(add));
-		fireEvent.change(await screen.findByLabelText("정규식"), { target: { value: "const" } });
-		expect(await screen.findByText("3곳에 적용")).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText(t("rulesPanel.pattern")), { target: { value: "const" } });
+		expect(await screen.findByText(t("rulesPanel.matches", { count: 3 }))).toBeTruthy();
 
 		const rules = block(editor).attrs.rules as CodeRule[];
 		expect(rules[0]).toMatchObject({ scope: "document", name: "fold", pattern: "const", flags: "g" });
@@ -167,15 +177,15 @@ describe("코드 블록 편집 화면", () => {
 
 	it("에디터가 나타낼 수 없는 주석이 있으면 원문 편집으로 알린다", async () => {
 		await mount('```ts\n// @char Tooltip {0-3} content="하나"\n// @char Tooltip {2-5} content="둘"\nabcdef\n```');
-		expect(screen.getByText("원문 편집")).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "정규식 규칙" })).toBeNull();
+		expect(screen.getByText(t("view.rawMode"))).toBeTruthy();
+		expect(screen.queryByRole("button", { name: t("rulesPanel.title") })).toBeNull();
 	});
 
 	it("복사 버튼은 주석 줄을 뺀 코드를 복사한다", async () => {
 		const writeText = vi.fn().mockResolvedValue(undefined);
 		Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
 		await mount("```ts\n// @line plus\nconst a = 1;\n```");
-		await act(async () => fireEvent.click(screen.getByRole("button", { name: "코드 복사" })));
+		await act(async () => fireEvent.click(screen.getByRole("button", { name: t("view.copy") })));
 		expect(writeText).toHaveBeenCalledWith("const a = 1;");
 	});
 
@@ -187,7 +197,7 @@ describe("코드 블록 편집 화면", () => {
 			fireEvent.mouseUp(window);
 		});
 		await openLineMenu(2);
-		expect(await screen.findByRole("menu", { name: "1–3번째 줄 효과" })).toBeTruthy();
+		expect(await screen.findByRole("menu", { name: t("lineMenu.rangeEffects", { start: 1, end: 3 }) })).toBeTruthy();
 		expect(editor.state.selection.from).toBe(1);
 	});
 
@@ -195,9 +205,9 @@ describe("코드 블록 편집 화면", () => {
 		const editor = await mount("```ts\n// @line collapse {0-2}\na\nb\nc\nd\n```");
 		// 줄을 먼저 고르지 않아도 오른쪽 클릭한 줄이 대상이다.
 		await openLineMenu(0);
-		const menu = await screen.findByRole("menu", { name: "1번째 줄 효과" });
-		expect(within(menu).getByRole("menuitemcheckbox", { name: "처음부터 펼치기" })).toBeTruthy();
-		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: /접기 해제/ })));
+		const menu = await screen.findByRole("menu", { name: t("lineMenu.lineEffects", { line: 1 }) });
+		expect(within(menu).getByRole("menuitemcheckbox", { name: t("lineMenu.openFromStart") })).toBeTruthy();
+		act(() => fireEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(t("lineMenu.uncollapse")) })));
 		await waitFor(() => expect(block(editor).attrs.lineEffects).toEqual([]));
 	});
 

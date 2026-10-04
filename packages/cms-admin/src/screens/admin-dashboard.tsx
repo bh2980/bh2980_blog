@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdminColumnSettings } from "@bh2980/cms/client";
-import { adminHref, COLLECTION_DEFINITIONS, COLLECTIONS } from "@bh2980/cms/client";
+import { adminHref, COLLECTION_DEFINITIONS, COLLECTIONS, createTranslator } from "@bh2980/cms/client";
 import { FolderPlus, Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -14,10 +14,13 @@ import { AdminEntriesTable } from "./admin-entries-table";
 import { BulkBar, runBulk } from "./entries/bulk-bar";
 import { toSelection } from "./list-row-menu";
 import { FilterChipBar, ListSearch } from "./list-toolbar";
+import { screensMessages } from "./messages";
 import { RecordPanel } from "./record-panel";
 import { AdminNavProvider, AdminShell } from "./shared/admin-shell";
 import { SIDE_PANEL_DOCK } from "./shared/side-panel";
 import { type EntryList, useEntryList } from "./use-entry-list";
+
+const t = createTranslator(screensMessages);
 
 /** 목록 위 오른쪽: 검색과 추가 버튼(휴지통에는 추가가 없다). */
 function EntryListHeaderActions({ list }: { list: EntryList }) {
@@ -28,7 +31,7 @@ function EntryListHeaderActions({ list }: { list: EntryList }) {
 			{!isTrash && (
 				<Button type="button" size="sm" onClick={list.createNew}>
 					<Plus aria-hidden />
-					{list.label} 추가
+					{t("list.add", { label: list.label })}
 				</Button>
 			)}
 		</>
@@ -91,11 +94,11 @@ function EntryListBody({ list }: { list: EntryList }) {
 								: [
 										{
 											kind: "item",
-											label: state.folder === "all" ? "폴더 추가" : "하위 폴더 추가",
+											label: state.folder === "all" ? t("list.folderAdd") : t("list.folderAddChild"),
 											icon: FolderPlus,
 											onSelect: () => list.folderActions.requestCreate(state.folder === "all" ? null : state.folder),
 										},
-										{ kind: "item", label: `${list.label} 추가`, icon: Plus, onSelect: list.createNew },
+										{ kind: "item", label: t("list.add", { label: list.label }), icon: Plus, onSelect: list.createNew },
 									]
 						}
 						onDeleteKey={list.onDeleteKey}
@@ -122,7 +125,7 @@ function EntryListBody({ list }: { list: EntryList }) {
 						onSaved={(saved) => {
 							// 저장한 항목을 그대로 열어 둔다. 새 항목이면 만든 항목의 편집으로 바뀐다.
 							if (!record.id) list.showRecord({ collection: record.collection, id: saved.id });
-							toast.success("저장했습니다.");
+							toast.success(t("common.saved"));
 							void list.invalidateEntries();
 							list.reloadTaxonomies();
 						}}
@@ -146,7 +149,7 @@ function useDashboardMounted() {
 function DashboardLoading() {
 	return (
 		<div aria-busy="true" className="flex h-svh overflow-hidden">
-			<span className="sr-only">불러오는 중…</span>
+			<span className="sr-only">{t("dashboard.loading")}</span>
 			<div aria-hidden className="hidden w-64 shrink-0 space-y-2 border-r p-3 md:block">
 				<Skeleton className="mb-4 h-7 w-32" />
 				{Array.from({ length: 6 }, (_, index) => (
@@ -199,13 +202,16 @@ function TrashPage() {
 	const { state } = list;
 	return (
 		<AdminShell
-			title="휴지통"
+			title={t("dashboard.trash")}
 			count={list.data.total}
 			sidebar={{ activeNav: "trash" }}
 			headerActions={
 				<>
 					<EntryListHeaderActions list={list} />
-					<nav aria-label="휴지통 컬렉션" className="flex items-center gap-1 rounded-lg bg-muted p-[3px]">
+					<nav
+						aria-label={t("dashboard.trashCollections")}
+						className="flex items-center gap-1 rounded-lg bg-muted p-[3px]"
+					>
 						{COLLECTIONS.map((item) => (
 							<Link
 								key={item}

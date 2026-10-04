@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createTranslator } from "@bh2980/cms/client";
 import { z } from "zod";
 import type { ResolvedAiAction } from "./action";
 import type { AiProviderInput, AiProviderKind, AiProviderView, AiSettingsView } from "./connection";
@@ -13,6 +14,9 @@ import {
 	isFakeAi,
 } from "./provider";
 import { decryptSecret, encryptSecret, keyHint } from "./secret";
+import { settingsMessages } from "./settings.messages";
+
+const t = createTranslator(settingsMessages);
 
 /** 설정 저장소(콘텐츠 저장소의 일부). 테스트는 메모리 구현을 넘긴다. */
 export interface AiSettingsStore {
@@ -49,7 +53,7 @@ function readStored(value: unknown): StoredProvider[] {
 		return [
 			{
 				id: "legacy-chat",
-				name: "생성",
+				name: t("legacyGenerate"),
 				kind: "chat",
 				url: generate.baseUrl,
 				apiKey: generate.apiKey,
@@ -57,7 +61,7 @@ function readStored(value: unknown): StoredProvider[] {
 			},
 			{
 				id: "legacy-decisions",
-				name: "판단",
+				name: t("legacyDecide"),
 				kind: "decisions",
 				url: decide.url,
 				apiKey: decide.shareKey ? generate.apiKey : decide.apiKey,
@@ -147,7 +151,7 @@ export async function updateAiProvider(
 ): Promise<AiSettingsView> {
 	const { providers } = await load(store);
 	const current = providers.find((provider) => provider.id === id);
-	if (!current) throw new AiError("ai_failed", "없는 연결입니다.");
+	if (!current) throw new AiError("ai_failed", t("unknownConnection"));
 	// 주소를 바꾸면서 키를 새로 넣지 않으면, 예전 키를 다른 주소로 보내지 않도록 지운다.
 	const keepKey = input.apiKey === undefined && input.url.replace(/\/+$/, "") !== current.url ? null : current.apiKey;
 	return writeProviders(
@@ -241,9 +245,9 @@ export async function connectionForCheck(
 		? (await load(store)).providers.find((item) => item.id === params.providerId)
 		: undefined;
 	const apiKey = params.apiKey ?? (params.apiKey === undefined && saved?.url === url ? saved.key : null);
-	if (!url || !params.model) throw new AiError("ai_unavailable", "주소와 모델을 넣으세요.");
+	if (!url || !params.model) throw new AiError("ai_unavailable", t("urlAndModel"));
 	if (!apiKey) {
-		throw new AiError("ai_unavailable", saved?.apiKey && !saved.key ? "키를 다시 넣으세요." : "키를 넣으세요.");
+		throw new AiError("ai_unavailable", saved?.apiKey && !saved.key ? t("keyAgain") : t("key"));
 	}
 	const config = { apiKey, model: params.model };
 	return params.kind === "chat"

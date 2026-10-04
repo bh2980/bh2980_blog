@@ -83,8 +83,9 @@ aiPlugin({ actions: { diagramDraft: mermaidAi.draft({ prompt: "…" }), chartEdi
 두 기능은 결과 문법을 코드 검사(`mermaidSyntax`·`chartSyntax`)로 본다. 같은 검사를 다른 기능의 `checks`에 넣어 쓸 수 있다.
 개발 전용 가짜 연결(`CMS_AI_FAKE=1`)에는 기능 정의의 `fake`로 문법 검사를 통과하는 답을 준다(만들기는 예시 블록, 고치기는
 원래 블록에 한 줄을 더한 것).
-차트 지시문에는 차트 문법 설명(`CHART_SYNTAX_GUIDE`)이 들어간다. 차트 문법은 `@bh2980/cms-blocks/chart`의
-`parseChartDsl`·`normalizeChartDsl`이 읽는다.
+차트 지시문에는 차트 문법 설명(`chartSyntaxGuide()`)이 들어간다. 차트 문법은 `@bh2980/cms-blocks/chart`의
+`parseChartDsl`·`normalizeChartDsl`이 읽는다. 문법 오류는 줄 번호와 코드(`code`)·값(`values`)만 주고, 글은 쓰는 쪽이 `chartErrorLine`과
+문구 사전(`chartMessages`)으로 만든다(공개 화면은 글 언어, 편집기는 관리자 언어).
 
 ## 새 블록 만들기
 

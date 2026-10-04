@@ -1,7 +1,11 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../../ui/tooltip";
+import { slotsMessages } from "../messages";
 import { type SlotAction, SlotRegistryProvider, type SlotRequest, type SlotSource, useSlot } from "../slots";
+
+const t = createTranslator(slotsMessages);
 
 afterEach(cleanup);
 
@@ -78,7 +82,7 @@ describe("화면 자리", () => {
 		const button = screen.getByRole("button", { name: "주소 추천" }) as HTMLButtonElement;
 		fireEvent.click(button);
 		await waitFor(() => expect(button.disabled).toBe(true));
-		expect(screen.queryByRole("button", { name: "닫기" })).toBeNull();
+		expect(screen.queryByRole("button", { name: t("close") })).toBeNull();
 		finish({ kind: "text", text: "결과" });
 		expect(await screen.findByText("결과")).toBeTruthy();
 	});
@@ -99,7 +103,7 @@ describe("화면 자리", () => {
 		cleanup();
 		const empty = renderSlot([() => [action({ instant: true, run: async () => ({ kind: "candidates", items: [] }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
-		expect(await screen.findByText("맞는 결과가 없습니다.")).toBeTruthy();
+		expect(await screen.findByText(t("noResults"))).toBeTruthy();
 		expect(empty.apply).not.toHaveBeenCalled();
 	});
 
@@ -109,7 +113,7 @@ describe("화면 자리", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
 		expect(run).not.toHaveBeenCalled();
-		const input = screen.getByRole("textbox", { name: "추가 요청" });
+		const input = screen.getByRole("textbox", { name: t("instruction") });
 		fireEvent.change(input, { target: { value: "  tailwind 클래스만 " } });
 		// Enter는 줄바꿈이고 Cmd/Ctrl+Enter로 실행한다.
 		fireEvent.keyDown(input, { key: "Enter" });
@@ -119,7 +123,9 @@ describe("화면 자리", () => {
 		await screen.findByRole("button", { name: "react-query" });
 		expect(run.mock.calls[0]?.[0]).toEqual({ title: "제목", request: "tailwind 클래스만" });
 		// 결과를 본 뒤에도 요청은 남아 다시 실행할 수 있다.
-		expect((screen.getByRole("textbox", { name: "추가 요청" }) as HTMLInputElement).value).toBe("  tailwind 클래스만 ");
+		expect((screen.getByRole("textbox", { name: t("instruction") }) as HTMLInputElement).value).toBe(
+			"  tailwind 클래스만 ",
+		);
 	});
 
 	it("실패하면 이유를 보여 주고 값은 그대로 둔다", async () => {
@@ -140,14 +146,14 @@ describe("화면 자리", () => {
 	it("긴 글 결과는 바꾸기 버튼으로 넣고, 메모는 넣는 버튼이 없다", async () => {
 		const { apply } = renderSlot([() => [action({ run: async () => ({ kind: "text", text: "요약 글" }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
-		fireEvent.click(await screen.findByRole("button", { name: "바꾸기" }));
+		fireEvent.click(await screen.findByRole("button", { name: t("replace") }));
 		expect(apply).toHaveBeenCalledWith("요약 글", "replace");
 
 		cleanup();
 		renderSlot([() => [action({ apply: "none", run: async () => ({ kind: "note", text: "메모" }) })]]);
 		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
 		await waitFor(() => expect(screen.getByText("메모")).toBeTruthy());
-		expect(screen.queryByRole("button", { name: "바꾸기" })).toBeNull();
+		expect(screen.queryByRole("button", { name: t("replace") })).toBeNull();
 	});
 
 	it("만드는 중에 자리가 사라져도 요청을 멈추지 않고, 다시 그리면 결과가 남아 있다", async () => {

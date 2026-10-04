@@ -31,7 +31,8 @@ export function findAnchor(doc: PmNode, id: string): AnchorInfo | null {
 		if (node.type.name !== "codeBlock") return true;
 		const effect = lineEffectsOf(node).find((item) => item.name === ANCHOR && item.attrs.id === id);
 		if (effect) {
-			const title = /title=(?:"([^"]*)"|(\S+))/.exec(String(node.attrs.meta ?? ""));
+			// 큰따옴표는 \x22로 쓴다(글자 검사기가 정규식 속 홀수 개 따옴표를 문자열 시작으로 읽는다).
+			const title = /title=(?:\x22([^\x22]*)\x22|(\S+))/.exec(String(node.attrs.meta ?? ""));
 			found = { id, blockPos: pos, start: effect.start, end: effect.end, title: title?.[1] ?? title?.[2] ?? "" };
 		}
 		return false;

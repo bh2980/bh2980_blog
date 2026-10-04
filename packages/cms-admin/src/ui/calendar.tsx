@@ -5,6 +5,7 @@ import * as React from "react";
 import { type DayButton, DayPicker, getDefaultClassNames, type Locale } from "react-day-picker";
 import { cn } from "../lib/utils";
 import { Button, buttonVariants } from "./button";
+import { adminCalendarLocale } from "./calendar-locale";
 
 function Calendar({
 	className,
@@ -12,7 +13,7 @@ function Calendar({
 	showOutsideDays = true,
 	captionLayout = "label",
 	buttonVariant = "ghost",
-	locale,
+	locale = adminCalendarLocale,
 	formatters,
 	components,
 	...props

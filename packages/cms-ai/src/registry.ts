@@ -1,7 +1,8 @@
 import type { CmsPlugin, PluginNamed } from "@bh2980/cms";
-import { BLOCKS, cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
+import { ADMIN_LANGUAGE, BLOCKS, cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
 import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig, AiSharedText } from "./action";
 import type { AiSlot } from "./definition";
+import { setMessageContext } from "./i18n";
 import { AI_PLUGIN_NAME } from "./plugin-name";
 import type { DEFAULT_AI_ACTIONS } from "./presets";
 import { resolveAiActions } from "./resolve";
@@ -53,6 +54,9 @@ export type AiActionResultOf<K extends AiActionKey> = AiActionResult<KnownAction
 const plugins: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
 const aiConfig = plugins.find((plugin) => plugin.name === AI_PLUGIN_NAME)?.options as AiConfig | undefined;
 
+// 설정 파일이 읽는 모듈(프리셋·검사)은 설정을 읽을 수 없어 화면 언어를 여기서 받는다. 기능을 풀기 전에 넣는다.
+setMessageContext({ language: ADMIN_LANGUAGE, overrides: cmsConfig.admin?.messages });
+
 /** 실행할 기능(기본 기능 + 다른 플러그인이 더한 기능 + 설정의 기능, `resolveAiActions`). */
 export const AI_ACTIONS: Readonly<Record<string, AiActionDefinition>> = aiConfig
 	? resolveAiActions(
@@ -67,7 +71,7 @@ export const AI_SHARED: Readonly<Record<string, AiSharedText>> = aiConfig?.share
 export const AI_SHARED_KEYS: readonly string[] = Object.keys(AI_SHARED);
 
 /** 모든 기능 맨 앞 지시에 들어가는 사이트 소개. */
-export const AI_SITE_DESCRIPTION = aiConfig?.siteDescription?.trim() || "웹사이트";
+export const AI_SITE_DESCRIPTION = aiConfig?.siteDescription?.trim() || "website";
 
 export const actionDefinition = (key: string): AiActionDefinition | undefined =>
 	Object.hasOwn(AI_ACTIONS, key) ? AI_ACTIONS[key] : undefined;

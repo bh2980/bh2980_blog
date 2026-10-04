@@ -5,6 +5,12 @@
  * 직접 고른 색도 같은 모양으로 저장한다.
  */
 
+import { createActiveTranslator } from "@bh2980/cms";
+import { colorMessages } from "./messages";
+
+// 기본 색 이름은 글자를 읽는 때에 화면 언어로 고른다(설정 파일이 이 모듈을 불러오는 때에는 언어를 아직 모른다).
+const t = createActiveTranslator(colorMessages);
+
 export interface ColorPair {
 	readonly light: string;
 	readonly dark: string;
@@ -21,14 +27,70 @@ export interface PaletteColor {
 
 /** 기본 고르기 목록. 확장 옵션 `color({ palette })`로 바꾼다. */
 export const DEFAULT_TEXT_PALETTE: readonly PaletteColor[] = [
-	{ id: "gray", name: "회색", fg: { light: "#6b7280", dark: "#9ca3af" }, bg: { light: "#f1f2f4", dark: "#2f3237" } },
-	{ id: "red", name: "빨강", fg: { light: "#dc2626", dark: "#f87171" }, bg: { light: "#fee2e2", dark: "#4a1f1f" } },
-	{ id: "orange", name: "주황", fg: { light: "#ea580c", dark: "#fb923c" }, bg: { light: "#ffedd5", dark: "#4a2a14" } },
-	{ id: "yellow", name: "노랑", fg: { light: "#b45309", dark: "#facc15" }, bg: { light: "#fef3c7", dark: "#453a12" } },
-	{ id: "green", name: "초록", fg: { light: "#16a34a", dark: "#4ade80" }, bg: { light: "#dcfce7", dark: "#173d2a" } },
-	{ id: "blue", name: "파랑", fg: { light: "#2563eb", dark: "#60a5fa" }, bg: { light: "#dbeafe", dark: "#172f4d" } },
-	{ id: "purple", name: "보라", fg: { light: "#9333ea", dark: "#c084fc" }, bg: { light: "#f3e8ff", dark: "#33224d" } },
-	{ id: "pink", name: "분홍", fg: { light: "#db2777", dark: "#f472b6" }, bg: { light: "#fce7f3", dark: "#4a1d38" } },
+	{
+		id: "gray",
+		get name() {
+			return t("palette.gray");
+		},
+		fg: { light: "#6b7280", dark: "#9ca3af" },
+		bg: { light: "#f1f2f4", dark: "#2f3237" },
+	},
+	{
+		id: "red",
+		get name() {
+			return t("palette.red");
+		},
+		fg: { light: "#dc2626", dark: "#f87171" },
+		bg: { light: "#fee2e2", dark: "#4a1f1f" },
+	},
+	{
+		id: "orange",
+		get name() {
+			return t("palette.orange");
+		},
+		fg: { light: "#ea580c", dark: "#fb923c" },
+		bg: { light: "#ffedd5", dark: "#4a2a14" },
+	},
+	{
+		id: "yellow",
+		get name() {
+			return t("palette.yellow");
+		},
+		fg: { light: "#b45309", dark: "#facc15" },
+		bg: { light: "#fef3c7", dark: "#453a12" },
+	},
+	{
+		id: "green",
+		get name() {
+			return t("palette.green");
+		},
+		fg: { light: "#16a34a", dark: "#4ade80" },
+		bg: { light: "#dcfce7", dark: "#173d2a" },
+	},
+	{
+		id: "blue",
+		get name() {
+			return t("palette.blue");
+		},
+		fg: { light: "#2563eb", dark: "#60a5fa" },
+		bg: { light: "#dbeafe", dark: "#172f4d" },
+	},
+	{
+		id: "purple",
+		get name() {
+			return t("palette.purple");
+		},
+		fg: { light: "#9333ea", dark: "#c084fc" },
+		bg: { light: "#f3e8ff", dark: "#33224d" },
+	},
+	{
+		id: "pink",
+		get name() {
+			return t("palette.pink");
+		},
+		fg: { light: "#db2777", dark: "#f472b6" },
+		bg: { light: "#fce7f3", dark: "#4a1d38" },
+	},
 ];
 
 /** 본문 `:color`의 속성. 빈 값은 그 색을 쓰지 않는다는 뜻이다. */

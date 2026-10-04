@@ -1,6 +1,10 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FittingTags } from "../shared/fitting-tags";
+import { sharedMessages } from "../shared/messages";
+
+const t = createTranslator(sharedMessages);
 
 afterEach(() => {
 	cleanup();
@@ -27,19 +31,19 @@ describe("FittingTags", () => {
 	it("shows every tag when the column is wide enough", () => {
 		stubWidths(200);
 		render(<FittingTags tags={tags} />);
-		expect(screen.queryByText(/외 \d개/)).toBeNull();
+		expect(screen.queryByText(new RegExp(t("tags.more", { count: "\\d" })))).toBeNull();
 	});
 
 	it("keeps what fits and folds the rest into +N", () => {
 		// 40 + 4 + 40 + 4 + 16 = 104 ≤ 110 → 두 개 + `+1`.
 		stubWidths(110);
 		render(<FittingTags tags={tags} />);
-		expect(screen.getByText("외 1개")).toBeTruthy();
+		expect(screen.getByText(t("tags.more", { count: 1 }))).toBeTruthy();
 	});
 
 	it("always keeps at least one tag", () => {
 		stubWidths(30);
 		render(<FittingTags tags={tags} />);
-		expect(screen.getByText("외 2개")).toBeTruthy();
+		expect(screen.getByText(t("tags.more", { count: 2 }))).toBeTruthy();
 	});
 });

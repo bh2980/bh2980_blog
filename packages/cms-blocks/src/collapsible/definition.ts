@@ -1,22 +1,46 @@
-import { defineBlock } from "@bh2980/cms";
+import { createActiveTranslator, defineBlock } from "@bh2980/cms";
+import { keywordList } from "../shared/text";
+import { collapsibleMessages } from "./messages";
+
+const t = createActiveTranslator(collapsibleMessages);
 
 /** 접기(`:::collapsible{title="…"}`). 제목을 눌러 펼치는 영역이다. */
 export const collapsibleBlock = defineBlock({
 	name: "collapsible",
-	label: "접기",
-	description: "제목을 눌러 펼치는 영역",
+	get label() {
+		return t("label");
+	},
+	get description() {
+		return t("description");
+	},
 	syntax: { kind: "container", directive: "collapsible" },
 	component: "Collapsible",
 	attributes: {
-		title: { type: "string", label: "제목", translatable: true },
-		defaultOpen: { type: "boolean", label: "처음부터 펼치기", defaultValue: false },
+		title: {
+			type: "string",
+			get label() {
+				return t("title.label");
+			},
+			translatable: true,
+		},
+		defaultOpen: {
+			type: "boolean",
+			get label() {
+				return t("defaultOpen.label");
+			},
+			defaultValue: false,
+		},
 	},
 	translateInside: true,
 	editor: {
 		view: "node",
 		insertable: true,
-		keywords: ["collapsible", "접기", "펼치기"],
+		get keywords() {
+			return ["collapsible", ...keywordList(t("keywords"))];
+		},
 		icon: "chevrons-up-down",
-		insert: { values: { title: "접기 제목" }, text: "내용을 입력하세요" },
+		get insert() {
+			return { values: { title: t("insert.title") }, text: t("insert.text") };
+		},
 	},
 });

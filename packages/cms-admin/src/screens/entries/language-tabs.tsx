@@ -13,6 +13,7 @@ import { IconButton } from "../../ui/icon-button";
 import { cmsFetch, errorText } from "../admin-api";
 import { STATUS_LABELS } from "../shared/entry-status";
 import { type EntryData, isTranslationEntry } from "./entry-form";
+import { t } from "./translate";
 
 const STATUS_DOT: Record<string, string> = {
 	published: "bg-emerald-500",
@@ -46,25 +47,25 @@ export function LanguageTabs({
 		setCreating(target);
 		try {
 			if (!(await onBeforeCreate())) {
-				toast.error("변경사항을 먼저 저장한 후 번역본을 만드세요.");
+				toast.error(t("lang.saveFirst"));
 				return;
 			}
 			const created = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${entry.id}/translations`, {
 				method: "POST",
 				json: { locale: target },
-				fallback: "번역본을 만들지 못했습니다.",
+				fallback: t("lang.createFailed"),
 			});
-			toast.success(`${localeLabel(target)} 번역본을 만들었습니다.`);
+			toast.success(t("lang.created", { lang: localeLabel(target) }));
 			router.push(adminEntryEditHref(created.id) as Route);
 		} catch (error) {
-			toast.error(errorText(error, "번역본을 만들지 못했습니다."));
+			toast.error(errorText(error, t("lang.createFailed")));
 		} finally {
 			setCreating(null);
 		}
 	};
 
 	return (
-		<nav aria-label="언어" className="flex flex-wrap items-center gap-1 px-4 pt-2">
+		<nav aria-label={t("lang.nav")} className="flex flex-wrap items-center gap-1 px-4 pt-2">
 			{LOCALES.map((target) => {
 				const member = members.find((item) => item.locale === target);
 				if (!member) {
@@ -75,7 +76,7 @@ export function LanguageTabs({
 							size="sm"
 							variant="ghost"
 							disabled={createDisabled}
-							aria-label={`${localeLabel(target)} 번역본 추가`}
+							aria-label={t("lang.add", { lang: localeLabel(target) })}
 							className="h-7 gap-1 border border-dashed px-2 text-muted-foreground text-xs"
 							onClick={() => void create(target)}
 						>
@@ -92,7 +93,10 @@ export function LanguageTabs({
 							size="sm"
 							variant="ghost"
 							aria-current={current ? "page" : undefined}
-							aria-label={`${localeLabel(target)}${member.isSource ? " 원문" : ""} · ${STATUS_LABELS[member.status]}`}
+							aria-label={t(member.isSource ? "lang.currentSource" : "lang.current", {
+								lang: localeLabel(target),
+								status: STATUS_LABELS[member.status],
+							})}
 							className={cn("h-7 gap-1.5 px-2 text-xs", current ? "bg-muted text-foreground" : "text-muted-foreground")}
 							onClick={() => {
 								if (!current) router.push(adminEntryEditHref(member.id) as Route);
@@ -107,14 +111,14 @@ export function LanguageTabs({
 							</span>
 							{member.isSource && (
 								<span aria-hidden className="font-normal text-muted-foreground">
-									원문
+									{t("source")}
 								</span>
 							)}
 						</Button>
 						{current && isTranslation && entry.status !== "trashed" && (
 							<DropdownMenu>
 								<IconButton
-									label="번역본 메뉴"
+									label={t("lang.menu")}
 									className="size-7 text-muted-foreground"
 									trigger={(button) => <DropdownMenuTrigger render={button} />}
 								>
@@ -123,7 +127,7 @@ export function LanguageTabs({
 								<DropdownMenuContent align="start">
 									<DropdownMenuItem variant="destructive" onClick={onTrashTranslation}>
 										<Trash2 aria-hidden />
-										휴지통으로 이동
+										{t("lang.trash")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>

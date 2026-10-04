@@ -40,7 +40,7 @@ vi.mock("@cms-config", async () => {
 	};
 });
 
-const { layoutGroupsOf, tabOf, tabsOf } = await import("../layout-groups");
+const { DEFAULT_TAB, layoutGroupsOf, tabOf, tabsOf } = await import("../layout-groups");
 // 이 파일의 컬렉션은 위에서 바꾼 설정에만 있다.
 const page = "page" as Parameters<typeof layoutGroupsOf>[0];
 
@@ -61,15 +61,15 @@ describe("속성 칸 묶음과 탭(배치 `tab` 또는 필드 `tab`)", () => {
 			{ fields: ["title", "slug", "note"] },
 			{ group: "Search", tab: "Search", fields: ["metaTitle"] },
 		]);
-		expect(tabsOf(plain)).toEqual(["속성", "Search"]);
+		expect(tabsOf(plain)).toEqual([DEFAULT_TAB, "Search"]);
 	});
 
 	it("탭은 기본 탭 먼저, 나머지는 처음 나온 순서다. 필드가 든 탭을 찾는다", () => {
-		expect(tabsOf(page)).toEqual(["속성", "Extra", "Media", "Search"]);
+		expect(tabsOf(page)).toEqual([DEFAULT_TAB, "Extra", "Media", "Search"]);
 		expect(tabOf(page, "hero")).toBe("Media");
 		expect(tabOf(page, "alt")).toBe("Extra");
 		expect(tabOf(page, "metaTitle")).toBe("Search");
-		expect(tabOf(page, "note")).toBe("속성");
-		expect(tabOf(page, "title")).toBe("속성");
+		expect(tabOf(page, "note")).toBe(DEFAULT_TAB);
+		expect(tabOf(page, "title")).toBe(DEFAULT_TAB);
 	});
 });

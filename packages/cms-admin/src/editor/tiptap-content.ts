@@ -1,3 +1,4 @@
+import { createTranslator } from "@bh2980/cms/client";
 import type { CmsJsonValue, CmsMark, CmsNode } from "@bh2980/cms/mdx";
 import { TEXT_ALIGN_VALUES as ALIGN_VALUES, analyze, serialize, sortMarks, toDocument } from "@bh2980/cms/mdx";
 import type { JSONContent } from "@tiptap/core";
@@ -5,6 +6,9 @@ import { ADDED_MARK_BY_EDITOR_NAME, ADDED_MARKS, addedMarkName, markAttrsOf } fr
 import { PARENT_ONLY_TYPES } from "./blocks/added";
 import { type ConverterContext, converterForCms, converterForTiptap } from "./converters";
 import { asNumber, asString, brDirectiveNode } from "./converters/shared";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * CmsNode ↔ Tiptap JSONContent 변환. 시각 에디터의 적재/저장 경로다.
@@ -153,7 +157,7 @@ const inlineChildren = (nodes: CmsNode[]): JSONContent[] => {
 		}
 		// isMappableInline이 걸렀으므로 도달 불가. 인라인 자리에는 상자를 둘 수 없어서
 		// 여기가 실행되면 상위 블록 판정이 잘못된 것이다 — 조용히 넘기지 않고 드러낸다.
-		throw new Error(`에디터에 옮길 수 없는 인라인 노드: ${node.type}`);
+		throw new Error(t("tiptapContent.unmappableInline", { type: node.type }));
 	}
 	return out;
 };

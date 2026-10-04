@@ -22,13 +22,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../../lib/utils/cn";
-import { josa } from "../../lib/utils/josa";
 import { IconButton } from "../../ui/icon-button";
 import { CmsApiError, cmsFetch, errorText } from "../admin-api";
 import { type RecordCollection, useTaxonomy } from "../shared/use-taxonomy";
 import type { EntryForm, FormValue } from "./entry-form";
 import { useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
+import { t } from "./translate";
 
 /** 입력이 필드 밖에서 알아야 하는 값. 편집 화면이 채운다. */
 export interface FieldContext {
@@ -95,7 +95,9 @@ function useEntryOptions(field: RelationField) {
 				const data = await cmsFetch<{ items: { id: string; title: string | null; status: string }[]; total: number }>(
 					`/api/cms/v1/entries?${params}`,
 				);
-				all.push(...data.items.map((item) => ({ id: item.id, title: item.title || "제목 없음", status: item.status })));
+				all.push(
+					...data.items.map((item) => ({ id: item.id, title: item.title || t("untitled"), status: item.status })),
+				);
 				if (data.items.length === 0 || all.length >= data.total) break;
 			}
 			return all;
@@ -115,7 +117,8 @@ const targetLabel = (relation: RelationField) =>
 	isCollection(relation.to) ? schemaOf(relation.to).label : relation.to;
 
 /** 공개되지 않은 글은 이름 뒤에 표시한다. 모음집·대체 글의 공개 목록에서 빠지기 때문이다. */
-const entryLabel = (option: EntryOption) => (option.status === "published" ? option.title : `${option.title} · 비공개`);
+const entryLabel = (option: EntryOption) =>
+	option.status === "published" ? option.title : `${option.title}${t("entry.unpublished")}`;
 
 /** 한 개 관계(게시글·메모 대상). 누르면 전체 글 목록이 열리고 고른다. 대체 글(§6.4)이 쓴다. */
 export function EntryPicker({ field, id, value, invalid, describedBy, context, onChange }: FieldInputProps) {
@@ -126,7 +129,9 @@ export function EntryPicker({ field, id, value, invalid, describedBy, context, o
 		<RelationCombobox
 			id={id}
 			aria-label={field.label}
-			placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? `${targetLabel(relation)} 고르기`)}
+			placeholder={
+				options === null ? t("loading") : (relation.placeholder ?? t("entry.choose", { target: targetLabel(relation) }))
+			}
 			invalid={invalid}
 			describedBy={describedBy}
 			disabled={context.disabled || options === null}
@@ -162,7 +167,7 @@ function SortableEntryRow({
 		id: sortableId,
 		disabled,
 	});
-	const title = option?.title ?? "불러오는 중…";
+	const title = option?.title ?? t("loading");
 	return (
 		<li
 			ref={setNodeRef}
@@ -175,7 +180,7 @@ function SortableEntryRow({
 			<IconButton
 				ref={setActivatorNodeRef}
 				size="icon-xs"
-				label={`${title} 끌어서 옮기기`}
+				label={t("entry.drag", { title })}
 				disabled={disabled}
 				className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
 				{...attributes}
@@ -187,21 +192,26 @@ function SortableEntryRow({
 				{index + 1}. {title}
 				{/* 공개되지 않은 글은 모음집의 공개 목록에서 빠진다. */}
 				{option && option.status !== "published" && option.status !== "missing" && (
-					<span className="ml-1 text-amber-700 dark:text-amber-400">· 비공개</span>
+					<span className="ml-1 text-amber-700 dark:text-amber-400">{t("entry.unpublished")}</span>
 				)}
 			</span>
-			<IconButton size="icon-xs" label={`${title} 위로`} disabled={disabled || index === 0} onClick={() => onMove(-1)}>
+			<IconButton
+				size="icon-xs"
+				label={t("entry.up", { title })}
+				disabled={disabled || index === 0}
+				onClick={() => onMove(-1)}
+			>
 				<ArrowUp />
 			</IconButton>
 			<IconButton
 				size="icon-xs"
-				label={`${title} 아래로`}
+				label={t("entry.down", { title })}
 				disabled={disabled || index === count - 1}
 				onClick={() => onMove(1)}
 			>
 				<ArrowDown />
 			</IconButton>
-			<IconButton size="icon-xs" label={`${title} 빼기`} disabled={disabled} onClick={onRemove}>
+			<IconButton size="icon-xs" label={t("entry.remove", { title })} disabled={disabled} onClick={onRemove}>
 				<X />
 			</IconButton>
 		</li>
@@ -241,14 +251,14 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 	};
 	const target = targetLabel(relation);
 	const missing = (itemId: string): EntryOption | undefined =>
-		options === null ? undefined : { id: itemId, title: `찾을 수 없는 ${target}`, status: "missing" };
+		options === null ? undefined : { id: itemId, title: t("entry.missing", { target }), status: "missing" };
 
 	return (
 		<div className="space-y-2">
 			<RelationCombobox
 				id={id}
-				aria-label={`${target} 추가·빼기`}
-				placeholder={options === null ? "불러오는 중…" : (relation.placeholder ?? `${target} 추가·빼기`)}
+				aria-label={t("entry.editList", { target })}
+				placeholder={options === null ? t("loading") : (relation.placeholder ?? t("entry.editList", { target }))}
 				disabled={context.disabled || options === null}
 				multiple
 				showChips={false}
@@ -259,11 +269,11 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 				onValueChange={applySelection}
 			/>
 			{ids.length === 0 ? (
-				<p className="text-muted-foreground text-xs">담긴 {josa(target, "이", "가")} 없습니다.</p>
+				<p className="text-muted-foreground text-xs">{t("entry.empty", { target })}</p>
 			) : (
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
 					<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-						<ol aria-label={`담긴 ${target}`} className="space-y-1">
+						<ol aria-label={t("entry.listAria", { target })} className="space-y-1">
 							{ids.map((itemId, index) => (
 								<SortableEntryRow
 									key={sortableIds[index]}
@@ -372,7 +382,7 @@ export function BacklinkInput({
 			for (const reference of references) {
 				const viaField = reference.occurrences.some((occurrence) => occurrence.path === field.via);
 				if (reference.state === "working" && reference.sourceCollection === field.from && viaField) {
-					found.set(reference.sourceId, reference.sourceTitle || "제목 없음");
+					found.set(reference.sourceId, reference.sourceTitle || t("untitled"));
 				}
 			}
 			return [...found].map(([id, title]) => ({ id, title }));
@@ -393,7 +403,7 @@ export function BacklinkInput({
 			);
 			setFetched(membersOf(data.incomingReferences));
 		} catch (loadError) {
-			setError(errorText(loadError, "목록을 불러오지 못했습니다."));
+			setError(errorText(loadError, t("entry.loadFailed")));
 		}
 	}, [targetId, refreshShared, membersOf]);
 
@@ -423,7 +433,7 @@ export function BacklinkInput({
 						slug: record.workingSlug,
 						metadata: { ...record.working.metadata, [field.via]: change(ids) },
 					},
-					fallback: "저장하지 못했습니다.",
+					fallback: t("saveFailed"),
 				});
 				return;
 			} catch (saveError) {
@@ -472,7 +482,7 @@ export function BacklinkInput({
 	};
 
 	if (!targetId) {
-		return <p className="text-muted-foreground text-xs">초안을 저장하면 {field.label}에 넣을 수 있습니다.</p>;
+		return <p className="text-muted-foreground text-xs">{t("backlink.saveDraft", { label: field.label })}</p>;
 	}
 
 	const shown = optimistic ?? serverIds;
@@ -494,14 +504,14 @@ export function BacklinkInput({
 		for (const recordId of added) {
 			enqueue(
 				() => update(recordId, (ids) => (ids.includes(targetId) ? ids : [...ids, targetId])),
-				`${field.label}에 넣지 못했습니다.`,
+				t("backlink.addFailed", { label: field.label }),
 				(ids) => ids.filter((id) => id !== recordId),
 			);
 		}
 		for (const recordId of removed) {
 			enqueue(
 				() => update(recordId, (ids) => ids.filter((id) => id !== targetId)),
-				`${field.label}에서 빼지 못했습니다.`,
+				t("backlink.removeFailed", { label: field.label }),
 				(ids) => (ids.includes(recordId) ? ids : [...ids, recordId]),
 			);
 		}
@@ -512,7 +522,7 @@ export function BacklinkInput({
 			<RelationCombobox
 				multiple
 				aria-label={field.label}
-				placeholder={members === null || !kind.ready ? "불러오는 중…" : "검색하거나 추가"}
+				placeholder={members === null || !kind.ready ? t("loading") : t("relation.searchOrAdd")}
 				options={options}
 				value={shown}
 				disabled={disabled || members === null || !kind.ready}

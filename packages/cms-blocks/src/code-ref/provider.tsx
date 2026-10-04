@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type CmsAdminComponents, CmsAdminComponentsProvider } from "@bh2980/cms-admin";
 import {
 	addedMarkName,
@@ -17,6 +18,9 @@ import type { Editor } from "@tiptap/core";
 import { Code2, Unlink } from "lucide-react";
 import type { ReactNode } from "react";
 import { codeRefBlock } from "./definition";
+import { codeRefMessages } from "./messages";
+
+const t = createTranslator(codeRefMessages);
 
 /** 편집기 마크 이름(`cmsCodeRef`). */
 export const CODE_REF_MARK = addedMarkName(codeRefBlock.name);
@@ -35,7 +39,7 @@ function CodeRefBubbleButton({ editor, inCode }: EditorBubbleProps) {
 	if (inCode || !allowsMark(editor.state, CODE_REF_MARK) || !hasCodeBlock(editor)) return null;
 	return (
 		<BubbleButton
-			label="코드 연결"
+			label={t("link")}
 			onClick={() => {
 				const { from, to } = editor.state.selection;
 				startLinkFromText(editor.view, from, to);
@@ -49,22 +53,26 @@ function CodeRefBubbleButton({ editor, inCode }: EditorBubbleProps) {
 function CodeRefDetail({ editor, mark, act }: EditorMarkDetailProps) {
 	const anchor = findAnchor(editor.state.doc, String(mark.attrs.to ?? ""));
 	const where = anchor
-		? `${anchor.title ? `${anchor.title} ` : ""}${anchor.end - anchor.start === 1 ? `${anchor.start + 1}줄` : `${anchor.start + 1}–${anchor.end}줄`}`
+		? `${anchor.title ? `${anchor.title} ` : ""}${
+				anchor.end - anchor.start === 1
+					? t("line.one", { line: anchor.start + 1 })
+					: t("line.range", { from: anchor.start + 1, to: anchor.end })
+			}`
 		: null;
 	return (
 		<>
 			<Code2 aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
 			<span className={cn("max-w-56 truncate px-1 text-xs", where ? "text-muted-foreground" : "text-destructive")}>
-				{where ? `코드 ${where}` : "연결된 코드 줄이 없습니다"}
+				{where ? t("where", { where }) : t("none")}
 			</span>
 			<BubbleButton
-				label="코드 다시 연결"
+				label={t("relink")}
 				className="text-xs"
 				onClick={act(() => startLinkFromText(editor.view, mark.from, mark.to))}
 			>
-				다시 연결
+				{t("relink.text")}
 			</BubbleButton>
-			<BubbleButton label="코드 연결 해제" onClick={act(() => unlinkRef(editor.view, mark.from, mark.to))}>
+			<BubbleButton label={t("unlink")} onClick={act(() => unlinkRef(editor.view, mark.from, mark.to))}>
 				<Unlink aria-hidden className="size-4" />
 			</BubbleButton>
 		</>

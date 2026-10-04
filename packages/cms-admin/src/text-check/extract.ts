@@ -32,7 +32,7 @@ export interface ExtractOptions {
 }
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s￼]+/gi;
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"’”]+$/;
+const TRAILING_PUNCTUATION = /[.,;:!?)\]}\u0027\u0022’”]+$/;
 const LETTER = /\p{L}/u;
 
 const looksLikeUrl = (text: string) => /^(?:[a-z][a-z0-9+.-]*:|www\.|\/)\S*$/i.test(text.trim());

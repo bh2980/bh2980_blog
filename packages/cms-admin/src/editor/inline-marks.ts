@@ -1,3 +1,4 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { type CodeRule, ruleMatches } from "@bh2980/cms/code-block";
 import type { Editor } from "@tiptap/core";
 import type { Mark, ResolvedPos } from "@tiptap/pm/model";
@@ -6,7 +7,10 @@ import { Bold, CodeXml, Italic, Strikethrough, Subscript, Superscript, Underline
 import { CODE_TOOLTIP_MARK_NAME } from "./code-block/code-tooltip-mark";
 import { codeEffectsKey, rulesOf } from "./code-block/effects-plugin";
 import { selectedBlocks } from "./drag";
+import { editorMessages } from "./messages";
 import type { ToolbarItem } from "./toolbar-button";
+
+const t = createTranslator(editorMessages);
 
 export interface InlineMarkTool extends ToolbarItem {
 	/** 이 도구가 켜고 끄는 마크 이름. */
@@ -17,19 +21,43 @@ const chain = (editor: Editor) => editor.chain().focus();
 
 /** 켜고 끄기만 하는 인라인 효과. 상단 서식 도구와 인라인 버블이 함께 쓴다. */
 const MARK_TOOLS: Omit<InlineMarkTool, "isActive">[] = [
-	{ mark: "bold", label: "B", title: "굵게", icon: Bold, run: (e) => chain(e).toggleBold().run() },
-	{ mark: "italic", label: "i", title: "기울임", icon: Italic, run: (e) => chain(e).toggleItalic().run() },
-	{ mark: "underline", label: "U", title: "밑줄", icon: Underline, run: (e) => chain(e).toggleUnderline().run() },
-	{ mark: "strike", label: "S", title: "취소선", icon: Strikethrough, run: (e) => chain(e).toggleStrike().run() },
-	{ mark: "code", label: "</>", title: "인라인 코드", icon: CodeXml, run: (e) => chain(e).toggleCode().run() },
+	{ mark: "bold", label: "B", title: t("inlineMarks.bold"), icon: Bold, run: (e) => chain(e).toggleBold().run() },
+	{
+		mark: "italic",
+		label: "i",
+		title: t("inlineMarks.italic"),
+		icon: Italic,
+		run: (e) => chain(e).toggleItalic().run(),
+	},
+	{
+		mark: "underline",
+		label: "U",
+		title: t("inlineMarks.underline"),
+		icon: Underline,
+		run: (e) => chain(e).toggleUnderline().run(),
+	},
+	{
+		mark: "strike",
+		label: "S",
+		title: t("inlineMarks.strike"),
+		icon: Strikethrough,
+		run: (e) => chain(e).toggleStrike().run(),
+	},
+	{ mark: "code", label: "</>", title: t("inlineMarks.code"), icon: CodeXml, run: (e) => chain(e).toggleCode().run() },
 	{
 		mark: "superscript",
 		label: "x²",
-		title: "위첨자",
+		title: t("inlineMarks.superscript"),
 		icon: Superscript,
 		run: (e) => chain(e).toggleSuperscript().run(),
 	},
-	{ mark: "subscript", label: "x₂", title: "아래첨자", icon: Subscript, run: (e) => chain(e).toggleSubscript().run() },
+	{
+		mark: "subscript",
+		label: "x₂",
+		title: t("inlineMarks.subscript"),
+		icon: Subscript,
+		run: (e) => chain(e).toggleSubscript().run(),
+	},
 ];
 
 export const INLINE_MARK_TOOLS: InlineMarkTool[] = MARK_TOOLS.map((item) => ({

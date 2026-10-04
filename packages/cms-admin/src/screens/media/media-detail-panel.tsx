@@ -1,6 +1,6 @@
 "use client";
 
-import { fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
+import { createTranslator, fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
 import { Copy, ExternalLink } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { formatBytes } from "../../editor/upload-helper";
@@ -13,8 +13,11 @@ import { errorText } from "../admin-api";
 import { entryHref } from "../shared/entry-href";
 import { formatDateTime } from "../shared/format-date";
 import { SidePanelHeader } from "../shared/side-panel";
-import { copyText, type MediaItem, mediaUsages, usageCount, withExtension } from "./media-item";
+import { copyText, type MediaItem, mediaUsages, usageCount, usageNoteLabel, withExtension } from "./media-item";
 import { MediaThumb } from "./media-views";
+import { mediaMessages } from "./messages";
+
+const t = createTranslator(mediaMessages);
 
 /** 상세의 한 묶음. 제목은 작게, 내용은 그 아래에 둔다. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -78,7 +81,7 @@ export function MediaDetailPanel({
 			await onSaveDefaults(draft);
 			setSaved(draft);
 		} catch (error) {
-			setSaveError(errorText(error, "저장하지 못했습니다."));
+			setSaveError(errorText(error, t("library.saveFailed")));
 		} finally {
 			setIsSaving(false);
 		}
@@ -99,7 +102,10 @@ export function MediaDetailPanel({
 	});
 
 	return (
-		<aside aria-label="미디어 상세" className={cn("flex h-full flex-col border-l bg-background text-xs", className)}>
+		<aside
+			aria-label={t("detail.label")}
+			className={cn("flex h-full flex-col border-l bg-background text-xs", className)}
+		>
 			<SidePanelHeader title={media.filename} onClose={onClose} />
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
@@ -122,10 +128,10 @@ export function MediaDetailPanel({
 									type="button"
 									variant="outline"
 									size="xs"
-									onClick={() => void copyText(media.publicUrl as string, "주소를 복사했습니다.")}
+									onClick={() => void copyText(media.publicUrl as string, t("detail.copiedUrl"))}
 								>
 									<Copy aria-hidden />
-									주소 복사
+									{t("detail.copyUrl")}
 								</Button>
 								<a
 									href={media.publicUrl}
@@ -134,7 +140,7 @@ export function MediaDetailPanel({
 									className={buttonVariants({ variant: "outline", size: "xs" })}
 								>
 									<ExternalLink aria-hidden />
-									열기
+									{t("common.open")}
 								</a>
 							</>
 						)}
@@ -142,16 +148,16 @@ export function MediaDetailPanel({
 							type="button"
 							variant="outline"
 							size="xs"
-							aria-label="미디어 ID 복사"
-							onClick={() => void copyText(media.id, "미디어 ID를 복사했습니다.")}
+							aria-label={t("detail.copyIdLabel")}
+							onClick={() => void copyText(media.id, t("detail.copiedId"))}
 						>
 							<Copy aria-hidden />
-							ID 복사
+							{t("detail.copyId")}
 						</Button>
 					</div>
 				</div>
 
-				<Section title="정보">
+				<Section title={t("detail.section.info")}>
 					<dl className="space-y-3">
 						<SlotScope
 							key={`filename-${media.id}`}
@@ -161,7 +167,7 @@ export function MediaDetailPanel({
 								<div className="space-y-1">
 									<div className="flex items-start gap-1">
 										<div className="min-w-0 flex-1">
-											<Row label="파일 이름">{media.filename}</Row>
+											<Row label={t("detail.row.filename")}>{media.filename}</Row>
 										</div>
 										{isImage && trigger}
 									</div>
@@ -169,30 +175,32 @@ export function MediaDetailPanel({
 								</div>
 							)}
 						</SlotScope>
-						<Row label="형식">{isImage ? (media.mimeType ?? "—") : fileTypeLabel(media.filename, media.mimeType)}</Row>
+						<Row label={t("detail.row.type")}>
+							{isImage ? (media.mimeType ?? "—") : fileTypeLabel(media.filename, media.mimeType)}
+						</Row>
 						{isImage ? (
-							<Row label="공개용">
+							<Row label={t("detail.row.public")}>
 								{media.width}×{media.height} · {formatBytes(media.byteSize ?? 0)}
 							</Row>
 						) : (
-							<Row label="크기">{formatFileSize(media.byteSize ?? 0)}</Row>
+							<Row label={t("detail.row.size")}>{formatFileSize(media.byteSize ?? 0)}</Row>
 						)}
 						{isImage && media.original && (
-							<Row label="원본">
+							<Row label={t("detail.row.original")}>
 								{media.original.width}×{media.original.height} · {formatBytes(media.original.byteSize ?? 0)} ·{" "}
 								{media.original.mimeType}
 							</Row>
 						)}
-						<Row label="올린 날짜">{formatDateTime(media.createdAt)}</Row>
-						<Row label="미디어 ID">
+						<Row label={t("detail.row.uploadedAt")}>{formatDateTime(media.createdAt)}</Row>
+						<Row label={t("detail.row.id")}>
 							<code className="text-[11px]">{media.id}</code>
 						</Row>
 					</dl>
 				</Section>
 
 				{isImage && (
-					<Section title="기본 설명">
-						<p className="text-muted-foreground">본문에 넣을 때 복사되는 값입니다. 이미 쓴 본문은 바뀌지 않습니다.</p>
+					<Section title={t("detail.section.defaults")}>
+						<p className="text-muted-foreground">{t("detail.defaultsHelp")}</p>
 						<form
 							className="space-y-3"
 							onSubmit={(event) => {
@@ -207,7 +215,7 @@ export function MediaDetailPanel({
 								{({ trigger, panel }) => (
 									<Field>
 										<div className="flex items-center justify-between gap-2">
-											<FieldLabel htmlFor={altId}>기본 대체 텍스트</FieldLabel>
+											<FieldLabel htmlFor={altId}>{t("detail.defaultAlt")}</FieldLabel>
 											{trigger}
 										</div>
 										<Textarea
@@ -229,7 +237,7 @@ export function MediaDetailPanel({
 								{({ trigger, panel }) => (
 									<Field>
 										<div className="flex items-center justify-between gap-2">
-											<FieldLabel htmlFor={captionId}>기본 캡션</FieldLabel>
+											<FieldLabel htmlFor={captionId}>{t("detail.defaultCaption")}</FieldLabel>
 											{trigger}
 										</div>
 										<Textarea
@@ -251,16 +259,16 @@ export function MediaDetailPanel({
 							)}
 							<div className="flex justify-end">
 								<Button type="submit" size="sm" disabled={media.status !== "ready" || isSaving}>
-									{isSaving ? "저장 중…" : "저장"}
+									{isSaving ? t("common.saving") : t("common.save")}
 								</Button>
 							</div>
 						</form>
 					</Section>
 				)}
 
-				<Section title={`사용처 ${usageCount(media)}`}>
+				<Section title={t("detail.section.usage", { count: usageCount(media) })}>
 					{media.referencesCount === 0 ? (
-						<p className="text-muted-foreground">쓰는 글이 없습니다.</p>
+						<p className="text-muted-foreground">{t("detail.noUsage")}</p>
 					) : (
 						<ul className="space-y-1">
 							{mediaUsages(media).map((usage) => (
@@ -269,8 +277,10 @@ export function MediaDetailPanel({
 										href={entryHref(usage.collection, usage.entryId)}
 										className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
 									>
-										<span className="min-w-0 flex-1 truncate">{usage.title || "제목 없음"}</span>
-										{usage.note && <span className="shrink-0 text-muted-foreground text-xs">{usage.note}</span>}
+										<span className="min-w-0 flex-1 truncate">{usage.title || t("common.untitled")}</span>
+										{usage.note && (
+											<span className="shrink-0 text-muted-foreground text-xs">{usageNoteLabel(usage.note)}</span>
+										)}
 									</a>
 								</li>
 							))}
@@ -288,10 +298,10 @@ export function MediaDetailPanel({
 					disabled={media.referencesCount > 0}
 					onClick={onRequestDelete}
 				>
-					{media.status === "deleting" ? "삭제 다시 시도" : "삭제"}
+					{media.status === "deleting" ? t("detail.retryDelete") : t("common.delete")}
 				</Button>
 				{media.referencesCount > 0 && (
-					<p className="text-center text-[11px] text-muted-foreground">쓰이는 파일은 삭제할 수 없습니다.</p>
+					<p className="text-center text-[11px] text-muted-foreground">{t("detail.inUse")}</p>
 				)}
 			</div>
 		</aside>

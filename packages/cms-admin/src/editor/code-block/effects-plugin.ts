@@ -1,3 +1,4 @@
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	ANCHOR,
 	COLLAPSE,
@@ -14,6 +15,9 @@ import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/s
 import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { CODE_ANCHOR_REF } from "../added-marks";
+import { codeBlockMessages } from "./messages";
+
+const t = createTranslator(codeBlockMessages);
 
 /**
  * 코드 블록의 줄 효과·정규식 규칙·접기를 에디터에 보인다(v2 C5 코드 블록 재개발).
@@ -233,8 +237,9 @@ function foldWidget(region: FoldRegion) {
 			button.dataset.codeFoldToggle = region.kind;
 			button.className =
 				"mx-0.5 inline-flex h-5 items-center rounded bg-muted px-1 align-middle font-sans text-muted-foreground text-xs leading-none hover:bg-accent hover:text-foreground";
-			button.textContent = region.kind === "collapse" ? `⋯ ${region.hiddenLines}줄` : "…";
-			button.title = region.kind === "collapse" ? `접힌 ${region.hiddenLines}줄 펼치기` : "접힌 글자 펼치기";
+			button.textContent = region.kind === "collapse" ? `⋯ ${t("fold.lines", { count: region.hiddenLines })}` : "…";
+			button.title =
+				region.kind === "collapse" ? t("fold.expandLines", { count: region.hiddenLines }) : t("fold.expandText");
 			button.setAttribute("aria-label", button.title);
 			button.addEventListener("mousedown", (event) => {
 				event.preventDefault();
@@ -259,7 +264,9 @@ function blockDecorations(node: PmNode, pos: number, overrides: ReadonlyMap<stri
 		if (!style) continue;
 		const label = charEffectByName(rule.name)?.label ?? rule.name;
 		const title =
-			rule.name === "Tooltip" ? String(rule.attrs.content ?? "") : `${label} 규칙: /${rule.pattern}/${rule.flags}`;
+			rule.name === "Tooltip"
+				? String(rule.attrs.content ?? "")
+				: t("rule.title", { label, pattern: rule.pattern, flags: rule.flags });
 		for (const match of ruleMatches(rule, text, starts))
 			decorations.push(
 				Decoration.inline(base + match.from, base + match.to, {
@@ -438,7 +445,7 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 						decorations.push(
 							Decoration.inline(pos, pos + node.nodeSize, {
 								class: "decoration-wavy decoration-red-500",
-								title: "연결된 코드 줄이 없습니다",
+								title: t("anchor.missing"),
 							}),
 						);
 					return true;

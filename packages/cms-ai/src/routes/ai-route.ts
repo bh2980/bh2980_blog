@@ -1,9 +1,12 @@
-import { isCollection, localeName, schemaOf, storedField } from "@bh2980/cms/client";
+import { createTranslator, isCollection, localeName, schemaOf, storedField } from "@bh2980/cms/client";
 import { createContentLookup, getCmsContentStore, getCmsDatabase, getCmsMediaStore } from "@bh2980/cms/plugin/server";
 import { AiError } from "../errors";
 import type { AiOption, AiRunDeps } from "../run";
+import { runMessages } from "../run.messages";
 import type { AiRuntime } from "../settings";
 import { siteImageUrl } from "../site-image";
+
+const t = createTranslator(runMessages);
 
 /** 멀티모달 모델이 흔히 받는 이미지 형식과 크기. */
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -45,13 +48,12 @@ async function fetchSiteImage(url: URL, signal?: AbortSignal): Promise<LoadedIma
 	const response = await fetch(url, { signal, redirect: "error", cache: "no-store" }).catch(() => null);
 	if (!response?.ok) return null;
 	const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-	if (!IMAGE_TYPES.has(mimeType)) throw new AiError("ai_failed", "AI가 읽을 수 없는 이미지 형식입니다.");
+	if (!IMAGE_TYPES.has(mimeType)) throw new AiError("ai_failed", t("imageType"));
 	if (Number(response.headers.get("content-length") ?? 0) > MAX_IMAGE_BYTES) {
-		throw new AiError("ai_input_too_large", "이미지가 5MB를 넘어 보낼 수 없습니다.");
+		throw new AiError("ai_input_too_large", t("imageTooLarge"));
 	}
 	const bytes = await response.arrayBuffer();
-	if (bytes.byteLength > MAX_IMAGE_BYTES)
-		throw new AiError("ai_input_too_large", "이미지가 5MB를 넘어 보낼 수 없습니다.");
+	if (bytes.byteLength > MAX_IMAGE_BYTES) throw new AiError("ai_input_too_large", t("imageTooLarge"));
 	return {
 		mediaType: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
 		data: Buffer.from(bytes).toString("base64"),
@@ -73,16 +75,16 @@ export function aiRunDeps(runtime: AiRuntime, signal?: AbortSignal, origin?: str
 		loadImage: async ({ mediaId, src }) => {
 			if (!mediaId) {
 				const url = src && origin ? siteImageUrl(src, origin) : null;
-				if (!url) throw new AiError("ai_failed", "이 사이트의 이미지만 읽을 수 있습니다.");
+				if (!url) throw new AiError("ai_failed", t("siteImageOnly"));
 				return fetchSiteImage(url, signal);
 			}
 			const media = await store.getMediaAsset(mediaId);
 			if (!media || media.status !== "ready" || !media.storageKey) return null;
 			if (!media.mimeType || !IMAGE_TYPES.has(media.mimeType)) {
-				throw new AiError("ai_failed", "AI가 읽을 수 없는 이미지 형식입니다.");
+				throw new AiError("ai_failed", t("imageType"));
 			}
 			if ((media.byteSize ?? 0) > MAX_IMAGE_BYTES) {
-				throw new AiError("ai_input_too_large", "이미지가 5MB를 넘어 보낼 수 없습니다.");
+				throw new AiError("ai_input_too_large", t("imageTooLarge"));
 			}
 			const bytes = await getCmsMediaStore().readFile({ key: media.storageKey, maxBytes: MAX_IMAGE_BYTES, signal });
 			return {

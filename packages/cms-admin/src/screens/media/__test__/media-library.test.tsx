@@ -1,8 +1,13 @@
-import { adminEntryEditHref } from "@bh2980/cms/client";
+import { adminEntryEditHref, createTranslator } from "@bh2980/cms/client";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sharedMessages } from "../../shared/messages";
 import { AdminQueryProvider } from "../../shared/query-provider";
 import { MediaLibrary } from "../media-library";
+import { mediaMessages } from "../messages";
+
+const t = createTranslator(mediaMessages);
+const tShared = createTranslator(sharedMessages);
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), message: vi.fn() }));
 vi.mock("sonner", () => ({ Toaster: () => null, toast }));
@@ -78,20 +83,20 @@ const renderLibrary = async () => {
 };
 const openDetail = async (name: RegExp) => {
 	fireEvent.click(screen.getByRole("button", { name }));
-	return screen.findByRole("complementary", { name: "미디어 상세" });
+	return screen.findByRole("complementary", { name: t("detail.label") });
 };
 
 describe("미디어 라이브러리", () => {
 	it("목록을 불러와 사용 여부와 함께 보인다", async () => {
 		await renderLibrary();
-		expect(screen.getByRole("button", { name: /cat\.png$/ }).textContent).toContain("사용 1");
-		expect(screen.getByRole("button", { name: /dog\.png$/ }).textContent).toContain("미사용");
+		expect(screen.getByRole("button", { name: /cat\.png$/ }).textContent).toContain(t("usage.count", { count: 1 }));
+		expect(screen.getByRole("button", { name: /dog\.png$/ }).textContent).toContain(t("usage.none"));
 		expect(screen.getByRole("button", { name: /guide\.pdf$/ }).textContent).toContain("PDF");
 	});
 
 	it("검색·형식·사용 여부 조건을 목록 요청에 싣는다", async () => {
 		await renderLibrary();
-		fireEvent.change(screen.getByRole("searchbox", { name: "파일명 검색" }), { target: { value: "cat" } });
+		fireEvent.change(screen.getByRole("searchbox", { name: t("library.search") }), { target: { value: "cat" } });
 		await waitFor(() => expect(mediaRequests().at(-1)?.searchParams.get("search")).toBe("cat"));
 		expect(mediaRequests().at(-1)?.searchParams.get("page")).toBe("1");
 	});
@@ -108,39 +113,45 @@ describe("미디어 라이브러리", () => {
 				.getAttribute("href"),
 		).toBe(adminEntryEditHref("e1"));
 		// 쓰이는 파일은 지울 수 없다.
-		expect((within(detail).getByRole("button", { name: "삭제" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((within(detail).getByRole("button", { name: t("common.delete") }) as HTMLButtonElement).disabled).toBe(true);
 	});
 
 	it("이미지의 기본 대체 텍스트·캡션을 저장한다", async () => {
 		await renderLibrary();
 		const detail = await openDetail(/cat\.png$/);
-		const alt = within(detail).getByRole("textbox", { name: "기본 대체 텍스트" }) as HTMLInputElement;
+		const alt = within(detail).getByRole("textbox", { name: t("detail.defaultAlt") }) as HTMLInputElement;
 		expect(alt.value).toBe("고양이");
 		fireEvent.change(alt, { target: { value: "창가의 고양이" } });
-		fireEvent.change(within(detail).getByRole("textbox", { name: "기본 캡션" }), { target: { value: "캡션" } });
-		fireEvent.click(within(detail).getByRole("button", { name: "저장" }));
+		fireEvent.change(within(detail).getByRole("textbox", { name: t("detail.defaultCaption") }), {
+			target: { value: "캡션" },
+		});
+		fireEvent.click(within(detail).getByRole("button", { name: t("common.save") }));
 
 		await waitFor(() => expect(calls("PATCH", "/api/cms/v1/media/cat")).toHaveLength(1));
 		expect(JSON.parse(String(calls("PATCH", "/api/cms/v1/media/cat")[0]?.[1]?.body))).toEqual({
 			defaultAlt: "창가의 고양이",
 			defaultCaption: "캡션",
 		});
-		await waitFor(() => expect(toast.success).toHaveBeenCalledWith("저장했습니다."));
+		await waitFor(() => expect(toast.success).toHaveBeenCalledWith(t("library.saved")));
 	});
 
 	it("기본 설명을 고친 채 다른 파일을 열면 버릴지 묻는다", async () => {
 		await renderLibrary();
 		const detail = await openDetail(/cat\.png$/);
-		fireEvent.change(within(detail).getByRole("textbox", { name: "기본 캡션" }), { target: { value: "고친 캡션" } });
+		fireEvent.change(within(detail).getByRole("textbox", { name: t("detail.defaultCaption") }), {
+			target: { value: "고친 캡션" },
+		});
 
 		fireEvent.click(screen.getByRole("button", { name: /dog\.png$/ }));
-		const dialog = await screen.findByRole("alertdialog", { name: "저장하지 않은 내용" });
+		const dialog = await screen.findByRole("alertdialog", { name: tShared("discard.title") });
 		// 확인 창이 떠 있는 동안 상세 칸은 가려지지만 고친 값은 남아 있다.
 		expect(screen.getByDisplayValue("고친 캡션")).toBeTruthy();
-		fireEvent.click(within(dialog).getByRole("button", { name: "버리기" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: tShared("discard.confirm") }));
 		await waitFor(() =>
 			expect(
-				within(screen.getByRole("complementary", { name: "미디어 상세" })).getByRole("heading", { name: "dog.png" }),
+				within(screen.getByRole("complementary", { name: t("detail.label") })).getByRole("heading", {
+					name: "dog.png",
+				}),
 			).toBeTruthy(),
 		);
 	});
@@ -172,26 +183,26 @@ describe("미디어 라이브러리", () => {
 		expect(alert.textContent).toContain("서버 오류");
 		expect(toast.error).not.toHaveBeenCalled();
 		fail = false;
-		fireEvent.click(within(alert).getByRole("button", { name: "다시 시도" }));
+		fireEvent.click(within(alert).getByRole("button", { name: t("common.retry") }));
 		expect(await screen.findByRole("button", { name: /cat\.png$/ })).toBeTruthy();
 	});
 
 	it("파일은 기본 설명 칸 없이 크기를 보인다", async () => {
 		await renderLibrary();
 		const detail = await openDetail(/guide\.pdf$/);
-		expect(within(detail).queryByRole("textbox", { name: "기본 대체 텍스트" })).toBeNull();
+		expect(within(detail).queryByRole("textbox", { name: t("detail.defaultAlt") })).toBeNull();
 		expect(within(detail).getByText(/1\.4 ?MB|1\.5 ?MB/)).toBeTruthy();
 	});
 
 	it("쓰이지 않는 파일은 확인을 받고 지운다", async () => {
 		await renderLibrary();
 		const detail = await openDetail(/dog\.png$/);
-		fireEvent.click(within(detail).getByRole("button", { name: "삭제" }));
-		const dialog = await screen.findByRole("alertdialog", { name: "미디어 삭제" });
-		fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
+		fireEvent.click(within(detail).getByRole("button", { name: t("common.delete") }));
+		const dialog = await screen.findByRole("alertdialog", { name: t("library.delete.title") });
+		fireEvent.click(within(dialog).getByRole("button", { name: t("common.delete") }));
 
 		await waitFor(() => expect(calls("DELETE", "/api/cms/v1/media/dog")).toHaveLength(1));
-		await waitFor(() => expect(toast.success).toHaveBeenCalledWith("'dog.png'을(를) 삭제했습니다."));
+		await waitFor(() => expect(toast.success).toHaveBeenCalledWith(t("library.deleted", { name: "dog.png" })));
 	});
 
 	it("오른쪽 클릭 메뉴에 열기·사용처·삭제가 있다", async () => {
@@ -200,32 +211,41 @@ describe("미디어 라이브러리", () => {
 			fireEvent.contextMenu(screen.getByRole("button", { name: /cat\.png$/ }));
 		});
 		const items = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
-		expect(items).toEqual(["열기", "사용처", "삭제Del"]);
+		expect(items).toEqual([t("common.open"), t("library.menu.usage"), `${t("common.delete")}Del`]);
 	});
 
 	it("목록 보기로 바꾸면 이름·형식·크기·치수·사용·올린 날짜를 표로 보이고, 줄을 누르면 상세가 열린다", async () => {
 		await renderLibrary();
-		fireEvent.click(screen.getByRole("button", { name: "목록 보기" }));
+		fireEvent.click(screen.getByRole("button", { name: t("library.viewList") }));
 
-		const table = await screen.findByRole("table", { name: "미디어 목록" });
+		const table = await screen.findByRole("table", { name: t("views.table") });
 		expect(
 			within(table)
 				.getAllByRole("columnheader")
 				.map((header) => header.textContent),
-		).toEqual(["미리보기", "파일 이름", "형식", "크기", "치수", "사용", "올린 날짜", "작업"]);
+		).toEqual([
+			t("views.preview"),
+			t("views.filename"),
+			t("views.type"),
+			t("views.size"),
+			t("views.dimensions"),
+			t("views.usage"),
+			t("views.uploadedAt"),
+			t("views.actions"),
+		]);
 		const dogRow = within(table).getByRole("row", { name: /dog\.png/ });
 		expect(within(dogRow).getByText("640×480")).toBeTruthy();
-		expect(within(dogRow).getByText("미사용")).toBeTruthy();
+		expect(within(dogRow).getByText(t("usage.none"))).toBeTruthy();
 
 		fireEvent.click(dogRow);
-		const detail = await screen.findByRole("complementary", { name: "미디어 상세" });
+		const detail = await screen.findByRole("complementary", { name: t("detail.label") });
 		expect(within(detail).getByRole("heading", { name: "dog.png" })).toBeTruthy();
 	});
 
 	it("고른 보기를 이 브라우저에 기억한다", async () => {
 		await renderLibrary();
-		fireEvent.click(screen.getByRole("button", { name: "목록 보기" }));
-		await screen.findByRole("table", { name: "미디어 목록" });
+		fireEvent.click(screen.getByRole("button", { name: t("library.viewList") }));
+		await screen.findByRole("table", { name: t("views.table") });
 		cleanup();
 
 		render(
@@ -233,7 +253,7 @@ describe("미디어 라이브러리", () => {
 				<MediaLibrary />
 			</AdminQueryProvider>,
 		);
-		expect(await screen.findByRole("table", { name: "미디어 목록" })).toBeTruthy();
+		expect(await screen.findByRole("table", { name: t("views.table") })).toBeTruthy();
 		window.localStorage.removeItem("cms:media-view");
 	});
 });

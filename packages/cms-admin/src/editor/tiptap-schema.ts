@@ -1,3 +1,4 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { Node } from "@tiptap/core";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Subscript } from "@tiptap/extension-subscript";
@@ -11,7 +12,10 @@ import type { EditorView } from "@tiptap/pm/view";
 import { CmsCodeBlock } from "./code-block";
 import { CodeFoldMark } from "./code-block/code-fold-mark";
 import { CodeTooltipMark } from "./code-block/code-tooltip-mark";
+import { editorMessages } from "./messages";
 import { CmsUntranslatedMark } from "./untranslated-mark";
+
+const t = createTranslator(editorMessages);
 
 /**
  * Tiptap 스키마에 없는 CMS 블록(수식·차트·콜아웃·탭·머메이드·병합된 표 등)을 보존하는 읽기 전용 상자.
@@ -29,7 +33,7 @@ export const CmsOpaqueBlock = Node.create({
 	addAttributes() {
 		return {
 			source: { default: "" },
-			label: { default: "원문 블록" },
+			label: { default: t("opaqueBlock.label") },
 		};
 	},
 	parseHTML() {
@@ -38,14 +42,14 @@ export const CmsOpaqueBlock = Node.create({
 				tag: "div[data-cms-opaque]",
 				getAttrs: (element) => ({
 					source: element.getAttribute("data-source") ?? "",
-					label: element.getAttribute("data-label") ?? "원문 블록",
+					label: element.getAttribute("data-label") ?? t("opaqueBlock.label"),
 				}),
 			},
 		];
 	},
 	renderHTML({ node }) {
 		const source = String(node.attrs.source ?? "");
-		const label = String(node.attrs.label ?? "원문 블록");
+		const label = String(node.attrs.label ?? t("opaqueBlock.label"));
 		return [
 			"div",
 			{
@@ -55,7 +59,11 @@ export const CmsOpaqueBlock = Node.create({
 				class:
 					"my-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-900",
 			},
-			["div", { class: "text-xs font-medium text-neutral-500 dark:text-neutral-400" }, `${label} · 원문 모드에서 편집`],
+			[
+				"div",
+				{ class: "text-xs font-medium text-neutral-500 dark:text-neutral-400" },
+				t("opaqueBlock.editInSource", { label }),
+			],
 			["pre", { class: "mt-2 overflow-x-auto whitespace-pre-wrap text-xs" }, source],
 		];
 	},

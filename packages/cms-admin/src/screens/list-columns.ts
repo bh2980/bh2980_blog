@@ -1,6 +1,16 @@
 import type { ListSortField } from "@bh2980/cms/client";
-import { isCollection, isItemCollection, LOCALES, schemaOf, taxonomyFieldsOf } from "@bh2980/cms/client";
+import {
+	createTranslator,
+	isCollection,
+	isItemCollection,
+	LOCALES,
+	schemaOf,
+	taxonomyFieldsOf,
+} from "@bh2980/cms/client";
 import type { ListState } from "./list-state";
+import { screensMessages } from "./messages";
+
+const t = createTranslator(screensMessages);
 
 /**
  * 관리자 목록 컬럼. 콘텐츠 자체의 값(시스템 컬럼)과 분류 필드(분류용 컬렉션을 가리키는 관계 필드, 예: 태그·카테고리)다.
@@ -42,34 +52,34 @@ export interface ColumnConfig {
 /** 시스템 컬럼의 라벨·정렬·필터. */
 const SYSTEM_CONFIG: Record<SystemColumn, ColumnConfig> = {
 	title: {
-		label: "제목",
+		label: t("column.title"),
 		sortField: "title",
-		filter: { kind: "text", key: "titleContains", placeholder: "제목에 포함된 글자" },
+		filter: { kind: "text", key: "titleContains", placeholder: t("column.titlePlaceholder") },
 	},
-	status: { label: "상태", filter: { kind: "status" } },
-	locale: { label: "언어", filter: { kind: "locale" } },
+	status: { label: t("column.status"), filter: { kind: "status" } },
+	locale: { label: t("column.locale"), filter: { kind: "locale" } },
 	updatedAt: {
-		label: "수정일",
+		label: t("column.updatedAt"),
 		sortField: "updatedAt",
 		filter: { kind: "date", from: "updatedFrom", to: "updatedTo" },
 	},
 	publishedAt: {
-		label: "발행일",
+		label: t("column.publishedAt"),
 		sortField: "publishedAt",
 		filter: { kind: "date", from: "publishedFrom", to: "publishedTo" },
 	},
 	createdAt: {
-		label: "생성일",
+		label: t("column.createdAt"),
 		sortField: "createdAt",
 		filter: { kind: "date", from: "createdFrom", to: "createdTo" },
 	},
 	slug: {
-		label: "주소",
+		label: t("column.slug"),
 		sortField: "slug",
-		filter: { kind: "text", key: "slugContains", placeholder: "주소에 포함된 글자" },
+		filter: { kind: "text", key: "slugContains", placeholder: t("column.slugPlaceholder") },
 	},
 	// 폴더는 사이드바 탐색으로 거른다.
-	folder: { label: "폴더", filter: { kind: "none" } },
+	folder: { label: t("column.folder"), filter: { kind: "none" } },
 };
 
 const isSystemColumn = (column: string): column is SystemColumn => Object.hasOwn(SYSTEM_CONFIG, column);

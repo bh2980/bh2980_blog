@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { EditorExtension } from "@bh2980/cms-admin";
 import { errorText } from "@bh2980/cms-admin/api";
 import type { BlockAction } from "@bh2980/cms-admin/editor";
@@ -11,8 +12,11 @@ import { Languages, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { runAiActionMany, useAiActions } from "./ai-slot-provider";
+import { aiTranslateMessages } from "./ai-translate.messages";
 import { applyTranslation, collectUnits, type TranslateUnit, unitAt } from "./ai-translate-units";
 import { OptionSelect } from "./custom-editor";
+
+const t = createTranslator(aiTranslateMessages);
 
 /**
  * 번역본 에디터의 AI 번역(v2 D2). 안내 글(`untranslated`)이 남은 블록이 "아직 번역 안 된 곳"이다.
@@ -131,15 +135,15 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 				);
 				if (!result || controller.signal.aborted) return;
 				if ("error" in result) {
-					toast.error(`번역하지 못해 원문 틀로 두었습니다. ${result.error}`);
+					toast.error(t("toast.failedOne", { reason: result.error }));
 					return;
 				}
 				const applied = applyTranslation(editor, unit, result.mdx, pos);
-				if (applied === "changed") toast.message("그사이 블록이 바뀌어 넣지 않았습니다.");
-				else if (applied === "invalid") toast.error("번역 결과가 이 자리에 맞지 않아 원문 틀로 두었습니다.");
+				if (applied === "changed") toast.message(t("toast.blockChanged"));
+				else if (applied === "invalid") toast.error(t("toast.invalidOne"));
 			} catch (error) {
-				if (controller.signal.aborted) toast.message("번역을 멈췄습니다.");
-				else toast.error(errorText(error, "실행하지 못했습니다."));
+				if (controller.signal.aborted) toast.message(t("toast.stopped"));
+				else toast.error(errorText(error, t("runFailed")));
 			} finally {
 				if (blockAbortRef.current.get(pos) === controller) blockAbortRef.current.delete(pos);
 				setBusyBlocks((current) => new Set([...current].filter((item) => item !== pos)));
@@ -156,7 +160,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 			id: `b${index}`,
 		}));
 		if (blocks.length === 0) {
-			toast.message("번역할 블록이 없습니다.");
+			toast.message(t("toast.noBlocks"));
 			return;
 		}
 		const controller = new AbortController();
@@ -186,12 +190,12 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 						else {
 							const applied = applyTranslation(editor, block, result.mdx, null);
 							if (applied === "changed") skipped += 1;
-							else if (applied === "invalid") failures.push("번역 결과가 그 자리에 맞지 않습니다.");
+							else if (applied === "invalid") failures.push(t("toast.invalidMany"));
 						}
 					}
 				} catch (error) {
 					if (controller.signal.aborted) return;
-					fatal = errorText(error, "실행하지 못했습니다.");
+					fatal = errorText(error, t("runFailed"));
 				}
 				setProgress((current) => (current ? { ...current, done: current.done + group.length } : current));
 			}
@@ -199,13 +203,13 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		await Promise.all(Array.from({ length: Math.min(PARALLEL_REQUESTS, groups.length) }, worker));
 		setProgress(null);
 		abortRef.current = null;
-		if (controller.signal.aborted) toast.message("번역을 멈췄습니다. 번역한 블록은 그대로 둡니다.");
+		if (controller.signal.aborted) toast.message(t("toast.stoppedKeep"));
 		else if (fatal) toast.error(fatal);
 		else if (failures.length > 0 || skipped > 0) {
 			toast.warning(
-				`${blocks.length - failures.length - skipped}개 블록을 번역했습니다. ${failures.length + skipped}개는 원문 틀로 남겼습니다.${failures[0] ? ` · ${failures[0]}` : ""}`,
+				`${t("toast.partial", { done: blocks.length - failures.length - skipped, kept: failures.length + skipped })}${failures[0] ? ` · ${failures[0]}` : ""}`,
 			);
-		} else toast.success(`${blocks.length}개 블록을 번역했습니다.`);
+		} else toast.success(t("toast.all", { count: blocks.length }));
 	}, [locales, request, actionKey]);
 
 	const blockActions = useMemo<BlockAction[]>(
@@ -227,12 +231,12 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 			<span className="flex items-center gap-1">
 				{progress && (
 					<span className="text-muted-foreground text-xs tabular-nums">
-						번역 중 {progress.done}/{progress.total}
+						{t("progress", { done: progress.done, total: progress.total })}
 					</span>
 				)}
 				<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={stop}>
 					<Square aria-hidden className="size-4" />
-					중지
+					{t("stop")}
 				</Button>
 			</span>
 		) : (
@@ -241,7 +245,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 					render={<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" />}
 				>
 					<Languages aria-hidden className="size-4" />
-					모두 번역
+					{t("all")}
 				</PopoverTrigger>
 				<PopoverContent align="end" className="w-72 gap-2 p-3 text-xs">
 					<form
@@ -253,7 +257,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 					>
 						{features.length > 1 && (
 							<OptionSelect
-								aria-label="번역 기능"
+								aria-label={t("action")}
 								value={feature.key}
 								options={features.map((item) => ({ value: item.key, label: item.label }))}
 								onChange={setChosenKey}
@@ -261,8 +265,8 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 						)}
 						{feature.askInstruction && (
 							<Textarea
-								aria-label="추가 요청"
-								placeholder="추가 요청"
+								aria-label={t("request")}
+								placeholder={t("request")}
 								rows={3}
 								value={request}
 								onChange={(event) => setRequest(event.target.value)}
@@ -278,7 +282,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 						)}
 						<Button type="submit" size="sm" className="self-end">
 							<Languages aria-hidden />
-							실행
+							{t("run")}
 						</Button>
 					</form>
 				</PopoverContent>

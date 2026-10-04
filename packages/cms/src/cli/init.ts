@@ -8,6 +8,8 @@ import {
 	API_ROUTE_TEMPLATE,
 	CSS_LINES,
 	configTemplate,
+	DEFAULT_INIT_LOCALE,
+	DEFAULT_INIT_TIME_ZONE,
 	ENV_VARS,
 	INSTALL_COMMANDS,
 	nextConfigTemplate,
@@ -19,6 +21,10 @@ export interface InitOptions {
 	readonly cwd: string;
 	/** 관리자 화면 경로(기본 `/admin`). 다르면 사이트 설정에 `admin.path`를 적고 라우트 폴더도 그 경로로 만든다. */
 	readonly adminPath?: string;
+	/** 사이트 기본 언어 코드(기본 `en`). 관리자 화면 언어·날짜 표기도 이 언어를 따른다. */
+	readonly locale?: string;
+	/** 날짜·시각 시간대(IANA, 기본 `UTC`). */
+	readonly timeZone?: string;
 }
 
 export interface InitReport {
@@ -30,6 +36,16 @@ export interface InitReport {
 	readonly updated: string[];
 	/** 직접 할 일(자동으로 못 고친 것·설치·환경 변수·다음 단계). */
 	readonly todo: string[];
+}
+
+/** IANA 시간대 이름인가. */
+function isTimeZone(timeZone: string): boolean {
+	try {
+		new Intl.DateTimeFormat("en-US", { timeZone });
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** 경로를 `/`로 잇는다(보고와 설정 값은 운영체제와 상관없이 같다). */
@@ -47,6 +63,14 @@ const NEXT_CONFIGS = ["next.config.ts", "next.config.mjs", "next.config.js"];
 export function initProject(options: InitOptions): InitReport {
 	const { cwd } = options;
 	const adminPath = options.adminPath ?? DEFAULT_ADMIN_PATH;
+	const locale = options.locale ?? DEFAULT_INIT_LOCALE;
+	const timeZone = options.timeZone ?? DEFAULT_INIT_TIME_ZONE;
+	if (!/^[a-z]{2,3}$/.test(locale)) {
+		throw new Error(`--locale "${locale}" must be a lower-case language code like "en" or "ko"`);
+	}
+	if (!isTimeZone(timeZone)) {
+		throw new Error(`--time-zone "${timeZone}" must be an IANA time zone like "UTC" or "Asia/Seoul"`);
+	}
 	if (!isAdminPath(adminPath)) {
 		throw new Error(`--admin-path "${adminPath}" must be a path like "/admin" (not "/" and not under "/api")`);
 	}
@@ -75,12 +99,14 @@ export function initProject(options: InitOptions): InitReport {
 	const configFile = useSrc ? "src/cms.config.ts" : "cms.config.ts";
 	const serverFile = useSrc ? "src/cms.server.ts" : "cms.server.ts";
 	if (!exists(appDir))
-		report.todo.push(`App Router 폴더(${appDir})가 없어 새로 만들었다. Next App Router 앱인지 확인한다.`);
+		report.todo.push(
+			`The App Router folder (${appDir}) did not exist, so it was created. Check that this is a Next App Router app.`,
+		);
 
 	const hadConfig = exists(configFile);
-	create(configFile, configTemplate(adminPath));
+	create(configFile, configTemplate(adminPath, { locale, timeZone }));
 	if (hadConfig && adminPath !== DEFAULT_ADMIN_PATH && !read(configFile).includes(adminPath)) {
-		report.todo.push(`${configFile}에 admin: { path: "${adminPath}" }를 적는다(관리자 라우트 폴더와 같아야 한다).`);
+		report.todo.push(`Add admin: { path: "${adminPath}" } to ${configFile} (it must match the admin route folder).`);
 	}
 	create(serverFile, SERVER_TEMPLATE);
 	const adminDir = posix(path.join(appDir, "(admin)", ...adminPath.split("/").filter(Boolean), "[[...path]]"));
@@ -96,10 +122,10 @@ export function initProject(options: InitOptions): InitReport {
 	addWithCms(cwd, dotted(configFile), dotted(serverFile), report);
 
 	report.todo.push(
-		`패키지 설치: ${INSTALL_COMMANDS.join(" && ")}`,
-		[".env.local에 둘 값:", ...ENV_VARS.map((env) => `  ${env.name.padEnd(20)} ${env.note}`)].join("\n"),
-		"GitHub OAuth 앱 콜백 주소: <사이트 주소>/api/cms/auth/callback/github",
-		`${configFile}에서 컬렉션을 고친 뒤 \`cms migrate\`로 DB 표를 만들고, next dev에서 ${adminPath}를 연다.`,
+		`Install packages: ${INSTALL_COMMANDS.join(" && ")}`,
+		["Values for .env.local:", ...ENV_VARS.map((env) => `  ${env.name.padEnd(20)} ${env.note}`)].join("\n"),
+		"GitHub OAuth app callback URL: <site URL>/api/cms/auth/callback/github",
+		`Edit the collections in ${configFile}, run \`cms migrate\` to create the database tables, then open ${adminPath} in next dev.`,
 	);
 	return report;
 }
@@ -108,9 +134,9 @@ export function initProject(options: InitOptions): InitReport {
 function addTsconfigPaths(cwd: string, aliases: Readonly<Record<string, string>>, report: InitReport): void {
 	const file = path.join(cwd, "tsconfig.json");
 	const manual = () =>
-		`tsconfig.json compilerOptions.paths에 ${Object.entries(aliases)
+		`Add ${Object.entries(aliases)
 			.map(([alias, target]) => `"${alias}": ["${dotted(target)}"]`)
-			.join(", ")}를 더한다.`;
+			.join(", ")} to compilerOptions.paths in tsconfig.json.`;
 	if (!existsSync(file)) {
 		report.todo.push(manual());
 		return;
@@ -150,14 +176,14 @@ function addTsconfigPaths(cwd: string, aliases: Readonly<Record<string, string>>
 /** 전역 CSS(Tailwind 입력)에 관리자 스타일 줄을 더한다. 마지막 `@import` 다음에 넣고, 이미 있는 줄은 넣지 않는다. */
 function addCssLines(cwd: string, report: InitReport): void {
 	const file = CSS_CANDIDATES.find((candidate) => existsSync(path.join(cwd, candidate)));
-	const manual = `전역 CSS(Tailwind 입력)의 @import "tailwindcss"; 다음에 넣는다: ${CSS_LINES.join(" ")}`;
+	const manual = `Add these lines to the global CSS (the Tailwind input) after @import "tailwindcss";: ${CSS_LINES.join(" ")}`;
 	if (!file) {
 		report.todo.push(manual);
 		return;
 	}
 	const text = readFileSync(path.join(cwd, file), "utf8");
 	if (!/@import\s+["']tailwindcss["']/.test(text)) {
-		report.todo.push(`${file}에 Tailwind CSS 4(@import "tailwindcss";)가 없다. Tailwind 4를 설치한 뒤 ${manual}`);
+		report.todo.push(`${file} has no Tailwind CSS 4 (@import "tailwindcss";). Install Tailwind 4, then: ${manual}`);
 		return;
 	}
 	const missing = CSS_LINES.filter((line) => !text.includes(line.replace(/;$/, "")));
@@ -170,7 +196,7 @@ function addCssLines(cwd: string, report: InitReport): void {
 	lines.forEach((line, index) => {
 		if (/^@import\s/.test(line.trim())) last = index;
 	});
-	lines.splice(last + 1, 0, "/* @bh2980/cms 관리자 화면 */", ...missing);
+	lines.splice(last + 1, 0, "/* @bh2980/cms admin screen */", ...missing);
 	writeFileSync(path.join(cwd, file), lines.join("\n"));
 	report.updated.push(file);
 }
@@ -192,7 +218,7 @@ function addWithCms(cwd: string, config: string, server: string, report: InitRep
 	const exports = text.match(new RegExp(exportLine.source, "gm")) ?? [];
 	if (exports.length !== 1) {
 		report.todo.push(
-			`${file}의 설정을 감싼다: import { withCms } from "@bh2980/cms/next"; export default withCms(nextConfig, { config: "${config}", server: "${server}" });`,
+			`Wrap the config in ${file}: import { withCms } from "@bh2980/cms/next"; export default withCms(nextConfig, { config: "${config}", server: "${server}" });`,
 		);
 		return;
 	}
@@ -210,10 +236,10 @@ export function formatInitReport(report: InitReport): string {
 	const section = (title: string, items: readonly string[]) =>
 		items.length === 0 ? [] : [title, ...items.map((item) => `  - ${item.replaceAll("\n", "\n    ")}`), ""];
 	return [
-		...section("만든 파일:", report.created),
-		...section("고친 파일:", report.updated),
-		...section("이미 있어 건너뛴 파일(덮어쓰지 않음):", report.skipped),
-		...section("할 일:", report.todo),
+		...section("Created:", report.created),
+		...section("Updated:", report.updated),
+		...section("Skipped (already exist, not overwritten):", report.skipped),
+		...section("To do:", report.todo),
 	]
 		.join("\n")
 		.trimEnd();

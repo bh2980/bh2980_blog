@@ -1,6 +1,13 @@
 "use client";
 
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
+import {
+	createTranslator,
+	type FileKind,
+	fileKindOf,
+	fileTypeLabel,
+	formatFileSize,
+	isImageMime,
+} from "@bh2980/cms/client";
 import { File, FileArchive, FileText, FileType } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { cn } from "../../lib/utils/cn";
@@ -11,6 +18,9 @@ import { ActionContextMenu, type MenuAction, MoreActionsButton } from "../shared
 import { formatDateTime } from "../shared/format-date";
 import { OPEN_ITEM } from "../shared/side-panel";
 import { type MediaItem, usageLabel } from "./media-item";
+import { mediaMessages } from "./messages";
+
+const t = createTranslator(mediaMessages);
 
 const FILE_ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
 
@@ -85,7 +95,7 @@ export function MediaGrid({ items, selectedId, dimmed, onSelect, menuFor, onDele
 					</Button>
 					<MoreActionsButton
 						actions={menuFor(media)}
-						label={`'${media.filename}' 작업`}
+						label={t("views.itemActions", { name: media.filename })}
 						className="absolute top-1 right-1 size-7 bg-background/80"
 					/>
 				</ActionContextMenu>
@@ -97,20 +107,20 @@ export function MediaGrid({ items, selectedId, dimmed, onSelect, menuFor, onDele
 /** 목록 보기. 이름·형식·크기·치수·사용 여부·올린 날짜를 한 줄씩 보인다. */
 export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDeleteKey }: MediaViewProps) {
 	return (
-		<Table aria-label="미디어 목록" className={cn("text-xs transition-opacity", dimmed && "opacity-60")}>
+		<Table aria-label={t("views.table")} className={cn("text-xs transition-opacity", dimmed && "opacity-60")}>
 			<TableHeader>
 				<TableRow>
 					<TableHead className="w-12">
-						<span className="sr-only">미리보기</span>
+						<span className="sr-only">{t("views.preview")}</span>
 					</TableHead>
-					<TableHead>파일 이름</TableHead>
-					<TableHead className="w-28">형식</TableHead>
-					<TableHead className="w-24">크기</TableHead>
-					<TableHead className="w-28">치수</TableHead>
-					<TableHead className="w-20">사용</TableHead>
-					<TableHead className="w-40">올린 날짜</TableHead>
+					<TableHead>{t("views.filename")}</TableHead>
+					<TableHead className="w-28">{t("views.type")}</TableHead>
+					<TableHead className="w-24">{t("views.size")}</TableHead>
+					<TableHead className="w-28">{t("views.dimensions")}</TableHead>
+					<TableHead className="w-20">{t("views.usage")}</TableHead>
+					<TableHead className="w-40">{t("views.uploadedAt")}</TableHead>
 					<TableHead className="w-10">
-						<span className="sr-only">작업</span>
+						<span className="sr-only">{t("views.actions")}</span>
 					</TableHead>
 				</TableRow>
 			</TableHeader>
@@ -162,7 +172,11 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 								{formatDateTime(media.createdAt, { dateStyle: "medium", timeStyle: "short" })}
 							</TableCell>
 							<TableCell onClick={(event) => event.stopPropagation()}>
-								<MoreActionsButton actions={menuFor(media)} label={`'${media.filename}' 작업`} className="size-7" />
+								<MoreActionsButton
+									actions={menuFor(media)}
+									label={t("views.itemActions", { name: media.filename })}
+									className="size-7"
+								/>
 							</TableCell>
 						</ActionContextMenu>
 					);

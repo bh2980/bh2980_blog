@@ -1,11 +1,14 @@
 "use client";
 
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
+import { createTranslator, type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { FileArchive, FileText, FileType } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { SELECTED_RING, useEditorEditable } from "./blocks/shared";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 const ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };
 
@@ -38,12 +41,12 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 	const Icon = ICONS[fileKindOf(info?.mimeType)];
 	const details =
 		media === "failed"
-			? "파일을 찾을 수 없음"
+			? t("fileNode.notFound")
 			: info
 				? [fileTypeLabel(filename, info.mimeType), info.byteSize ? formatFileSize(info.byteSize) : null]
 						.filter(Boolean)
 						.join(" · ")
-				: "불러오는 중…";
+				: t("fileNode.loading");
 
 	return (
 		<NodeViewWrapper
@@ -56,9 +59,9 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 			<Icon aria-hidden className="size-8 shrink-0 text-muted-foreground" strokeWidth={1.5} />
 			<div className="min-w-0 flex-1">
 				<input
-					aria-label="보일 이름"
+					aria-label={t("fileNode.displayName")}
 					value={label}
-					placeholder={filename || "파일"}
+					placeholder={filename || t("fileNode.fallbackName")}
 					disabled={!editable}
 					// 입력 글자가 에디터 문서로 새지 않게 한다.
 					onKeyDown={(event) => event.stopPropagation()}

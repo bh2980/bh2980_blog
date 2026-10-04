@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, isCollection } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, createTranslator, isCollection } from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
 import { Folder as FolderIcon, FolderInput, FolderPlus, FolderUp, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -21,6 +21,9 @@ import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
 import { cmsFetch, errorText } from "../admin-api";
 import type { MenuAction } from "./action-menu";
+import { sharedMessages } from "./messages";
+
+const t = createTranslator(sharedMessages);
 
 type NameDialog = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: Folder };
 
@@ -52,19 +55,25 @@ export function moveTargetsFor(folder: Folder, folders: Folder[]): Folder[] {
 export function folderMenuActions(folder: Folder, folders: Folder[], actions: FolderActions): MenuAction[] {
 	const targets = moveTargetsFor(folder, folders);
 	return [
-		{ kind: "item", label: "하위 폴더 추가", icon: FolderPlus, onSelect: () => actions.requestCreate(folder.id) },
-		{ kind: "item", label: "이름 변경", icon: Pencil, shortcut: "F2", onSelect: () => actions.requestRename(folder) },
+		{ kind: "item", label: t("folder.addChild"), icon: FolderPlus, onSelect: () => actions.requestCreate(folder.id) },
+		{
+			kind: "item",
+			label: t("folder.rename"),
+			icon: Pencil,
+			shortcut: "F2",
+			onSelect: () => actions.requestRename(folder),
+		},
 		{
 			kind: "sub",
-			label: "이동",
+			label: t("folder.move"),
 			icon: FolderInput,
-			emptyLabel: "옮길 수 있는 폴더가 없습니다",
+			emptyLabel: t("folder.moveEmpty"),
 			items: [
 				...(folder.parentId
 					? [
 							{
 								kind: "item" as const,
-								label: "최상위",
+								label: t("folder.root"),
 								icon: FolderUp,
 								onSelect: () => void actions.moveFolder(folder, null),
 							},
@@ -81,7 +90,7 @@ export function folderMenuActions(folder: Folder, folders: Folder[], actions: Fo
 		{ kind: "separator" },
 		{
 			kind: "item",
-			label: "삭제",
+			label: t("common.delete"),
 			icon: Trash2,
 			shortcut: "Del",
 			destructive: true,
@@ -119,11 +128,13 @@ export function useFolderActions({
 		return target?.isConnected ? target : true;
 	};
 
-	const itemLabel = isCollection(collection) ? COLLECTION_DEFINITIONS[collection].label : "글";
+	const itemLabel = isCollection(collection) ? COLLECTION_DEFINITIONS[collection].label : t("folder.defaultItemLabel");
 	const folderName = (id: string | null) =>
-		id ? `'${folders.find((f) => f.id === id)?.name ?? "상위 폴더"}'` : `'${itemLabel}' 최상위`;
-	/** 옮겨 갈 곳 + 조사. 폴더 이름은 받침을 알 수 없어 `(으)로`를 붙인다. */
-	const toFolder = (id: string | null) => (id ? `${folderName(id)}(으)로` : `${folderName(id)}로`);
+		id
+			? `'${folders.find((f) => f.id === id)?.name ?? t("folder.parentFallback")}'`
+			: t("folder.rootName", { itemLabel });
+	/** 옮겨 갈 곳 + 조사(조사는 한국어 사전이 붙인다). */
+	const toFolder = (id: string | null) => t(id ? "folder.to.named" : "folder.to.root", { name: folderName(id) });
 
 	const requestCreate = (parentId: string | null) => {
 		rememberFocus();
@@ -147,7 +158,7 @@ export function useFolderActions({
 			const contents = await cmsFetch<DeleteDialog["contents"]>(`/api/cms/v1/folders/${folder.id}`);
 			setDeleteDialog({ folder, contents });
 		} catch (err) {
-			setError(errorText(err, "폴더 내용을 확인하지 못했습니다."));
+			setError(errorText(err, t("folder.loadFailed")));
 		}
 	};
 
@@ -157,12 +168,12 @@ export function useFolderActions({
 			await cmsFetch(`/api/cms/v1/folders/${folder.id}`, {
 				method: "PATCH",
 				json: { parentId, expectedVersion: folder.version },
-				fallback: "폴더를 옮기지 못했습니다.",
+				fallback: t("folder.moveFailed"),
 			});
-			toast.success(`'${folder.name}' 폴더를 ${toFolder(parentId)} 옮겼습니다.`);
+			toast.success(t("folder.moved", { name: folder.name, destination: toFolder(parentId) }));
 			await onChanged();
 		} catch (err) {
-			toast.error(errorText(err, "폴더를 옮기지 못했습니다."));
+			toast.error(errorText(err, t("folder.moveFailed")));
 		}
 	};
 
@@ -175,21 +186,21 @@ export function useFolderActions({
 				await cmsFetch("/api/cms/v1/folders", {
 					method: "POST",
 					json: { collection, name: name.trim(), parentId: nameDialog.parentId },
-					fallback: "폴더를 추가하지 못했습니다.",
+					fallback: t("folder.addFailed"),
 				});
-				toast.success(`'${name.trim()}' 폴더를 추가했습니다.`);
+				toast.success(t("folder.added", { name: name.trim() }));
 			} else {
 				await cmsFetch(`/api/cms/v1/folders/${nameDialog.folder.id}`, {
 					method: "PATCH",
 					json: { name: name.trim(), expectedVersion: nameDialog.folder.version },
-					fallback: "폴더 이름을 바꾸지 못했습니다.",
+					fallback: t("folder.renameFailed"),
 				});
-				toast.success("저장했습니다.");
+				toast.success(t("folder.saved"));
 			}
 			setNameDialog(null);
 			await onChanged();
 		} catch (err) {
-			setError(errorText(err, "폴더를 저장하지 못했습니다."));
+			setError(errorText(err, t("folder.saveFailed")));
 		} finally {
 			setIsBusy(false);
 		}
@@ -202,22 +213,23 @@ export function useFolderActions({
 		try {
 			await cmsFetch(`/api/cms/v1/folders/${deleteDialog.folder.id}?expectedVersion=${deleteDialog.folder.version}`, {
 				method: "DELETE",
-				fallback: "폴더를 삭제하지 못했습니다.",
+				fallback: t("folder.deleteFailed"),
 			});
 			const deletedId = deleteDialog.folder.id;
 			const moved = deleteDialog.contents;
 			toast.success(
-				`'${deleteDialog.folder.name}' 폴더를 삭제했습니다.${
-					moved && moved.entryCount + moved.childFolders.length > 0
-						? ` 안의 내용은 ${toFolder(deleteDialog.folder.parentId)} 옮겼습니다.`
-						: ""
-				}`,
+				moved && moved.entryCount + moved.childFolders.length > 0
+					? t("folder.deletedMoved", {
+							name: deleteDialog.folder.name,
+							destination: toFolder(deleteDialog.folder.parentId),
+						})
+					: t("folder.deleted", { name: deleteDialog.folder.name }),
 			);
 			setDeleteDialog(null);
 			await onChanged(deletedId);
 		} catch (err) {
 			// 자식 폴더 이름이 부모에서 겹치면 먼저 이름을 바꾸도록 안내한다(§3.3).
-			setError(errorText(err, "폴더를 삭제하지 못했습니다."));
+			setError(errorText(err, t("folder.deleteFailed")));
 		} finally {
 			setIsBusy(false);
 		}
@@ -231,12 +243,16 @@ export function useFolderActions({
 				<DialogContent className="max-w-sm" finalFocus={restoreFocus}>
 					<DialogHeader>
 						<DialogTitle>
-							{nameDialog?.mode === "rename" ? "폴더 이름 변경" : nameDialog?.parentId ? "하위 폴더 추가" : "폴더 추가"}
+							{nameDialog?.mode === "rename"
+								? t("folder.renameTitle")
+								: nameDialog?.parentId
+									? t("folder.addChild")
+									: t("folder.add")}
 						</DialogTitle>
 						<DialogDescription>
 							{nameDialog?.mode === "create"
-								? `위치: ${folderName(nameDialog.parentId)}`
-								: "같은 위치에 같은 이름의 폴더는 둘 수 없습니다."}
+								? t("folder.location", { name: folderName(nameDialog.parentId) })
+								: t("folder.uniqueName")}
 						</DialogDescription>
 					</DialogHeader>
 					<form
@@ -248,7 +264,7 @@ export function useFolderActions({
 					>
 						<Field data-invalid={Boolean(error) || undefined}>
 							<FieldLabel htmlFor="folder-name" className="sr-only">
-								폴더 이름
+								{t("folder.nameLabel")}
 							</FieldLabel>
 							<Input
 								id="folder-name"
@@ -268,10 +284,10 @@ export function useFolderActions({
 						</Field>
 						<DialogFooter>
 							<Button type="button" variant="outline" onClick={() => setNameDialog(null)}>
-								취소
+								{t("common.cancel")}
 							</Button>
 							<Button type="submit" disabled={!name.trim() || isBusy}>
-								{isBusy ? "저장 중…" : "저장"}
+								{isBusy ? t("common.saving") : t("common.save")}
 							</Button>
 						</DialogFooter>
 					</form>
@@ -281,18 +297,14 @@ export function useFolderActions({
 			<AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
 				<AlertDialogContent finalFocus={restoreFocus}>
 					<AlertDialogHeader>
-						<AlertDialogTitle>&apos;{deleteDialog?.folder.name}&apos; 폴더 삭제</AlertDialogTitle>
-						<AlertDialogDescription>
-							폴더를 삭제할까요? 안의 {itemLabel}·하위 폴더는 휴지통으로 가지 않고 {destination} 옮겨집니다.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t("folder.deleteTitle", { name: deleteDialog?.folder.name ?? "" })}</AlertDialogTitle>
+						<AlertDialogDescription>{t("folder.deleteAsk", { itemLabel, destination })}</AlertDialogDescription>
 					</AlertDialogHeader>
 					{deleteDialog?.contents ? (
 						<ul className="list-disc space-y-1 pl-5 text-sm">
+							<li>{t("folder.entryCount", { itemLabel, count: deleteDialog.contents.entryCount })}</li>
 							<li>
-								바로 든 {itemLabel} {deleteDialog.contents.entryCount}개
-							</li>
-							<li>
-								하위 폴더 {deleteDialog.contents.childFolders.length}개
+								{t("folder.childCount", { count: deleteDialog.contents.childFolders.length })}
 								{deleteDialog.contents.childFolders.length > 0 &&
 									`: ${deleteDialog.contents.childFolders.map((folder) => folder.name).join(", ")}`}
 							</li>
@@ -311,14 +323,14 @@ export function useFolderActions({
 						</p>
 					)}
 					<AlertDialogFooter>
-						<AlertDialogCancel type="button">취소</AlertDialogCancel>
+						<AlertDialogCancel type="button">{t("common.cancel")}</AlertDialogCancel>
 						<Button
 							type="button"
 							variant="destructive"
 							disabled={!deleteDialog?.contents || isBusy}
 							onClick={() => void confirmDelete()}
 						>
-							{isBusy ? "삭제 중…" : "삭제"}
+							{isBusy ? t("common.deleting") : t("common.delete")}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

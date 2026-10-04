@@ -118,7 +118,7 @@ describe("parseChartDsl", () => {
 
 	it("알 수 없는 차트 타입이면 오류를 반환한다", () => {
 		const parsed = parseChartDsl(["chart radar", "data", "a", "b"].join("\n"));
-		expect(parsed.errors).toEqual([{ line: 1, message: "지원하지 않는 차트 타입입니다: radar" }]);
+		expect(parsed.errors).toEqual([{ line: 1, code: "unsupported_type", values: { type: "radar" } }]);
 	});
 
 	it("series 색상 토큰이 허용 범위를 벗어나면 오류를 반환한다", () => {
@@ -126,7 +126,7 @@ describe("parseChartDsl", () => {
 			["chart area", "x month", "series views | 조회수 | blue", "", "data", "month | views", "Jan | 1200"].join("\n"),
 		);
 
-		expect(parsed.errors).toEqual([{ line: 3, message: "색상은 chart-1 ~ chart-5 토큰만 사용할 수 있습니다." }]);
+		expect(parsed.errors).toEqual([{ line: 3, code: "series_color" }]);
 	});
 
 	it("data 헤더와 series key가 일치하지 않으면 정규화 오류를 반환한다", () => {
@@ -138,7 +138,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(normalized.errors).toEqual([{ line: 6, message: "data 헤더에 series key가 모두 포함되어야 합니다." }]);
+		expect(normalized.errors).toEqual([{ line: 6, code: "series_header_keys" }]);
 	});
 
 	it("y-range 를 정규화 결과에 포함한다", () => {
@@ -220,7 +220,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 visitors 는 숫자여야 합니다." }]);
+		expect(normalized.errors).toEqual([{ line: 7, code: "number_invalid", values: { field: "visitors" } }]);
 	});
 
 	it("cartesian chart의 빈 숫자 셀은 오류를 반환한다", () => {
@@ -230,7 +230,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 views 는 비어 있을 수 없습니다." }]);
+		expect(normalized.errors).toEqual([{ line: 7, code: "number_empty", values: { field: "views" } }]);
 	});
 
 	it("pie chart의 빈 숫자 셀은 오류를 반환한다", () => {
@@ -240,7 +240,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(normalized.errors).toEqual([{ line: 7, message: "숫자 필드 visitors 는 비어 있을 수 없습니다." }]);
+		expect(normalized.errors).toEqual([{ line: 7, code: "number_empty", values: { field: "visitors" } }]);
 	});
 
 	it("잘못된 y-range 문법이면 오류를 반환한다", () => {
@@ -250,7 +250,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(parsed.errors).toEqual([{ line: 3, message: "y-range 값은 숫자여야 합니다." }]);
+		expect(parsed.errors).toEqual([{ line: 3, code: "y_range_number" }]);
 	});
 
 	it("y-range 의 min/max 순서가 잘못되면 오류를 반환한다", () => {
@@ -260,7 +260,7 @@ describe("parseChartDsl", () => {
 			),
 		);
 
-		expect(parsed.errors).toEqual([{ line: 3, message: "y-range 는 min < max 이어야 합니다." }]);
+		expect(parsed.errors).toEqual([{ line: 3, code: "y_range_order" }]);
 	});
 
 	it("pie chart에서 cartesian 전용 옵션을 쓰면 오류를 반환한다", () => {
@@ -283,10 +283,10 @@ describe("parseChartDsl", () => {
 		);
 
 		expect(normalized.errors).toEqual([
-			{ line: 2, message: "pie 차트는 show-values 를 지원하지 않습니다." },
-			{ line: 3, message: "pie 차트는 hide-grid 를 지원하지 않습니다." },
-			{ line: 4, message: "pie 차트는 hide-y-axis 를 지원하지 않습니다." },
-			{ line: 5, message: "pie 차트는 y-range 를 지원하지 않습니다." },
+			{ line: 2, code: "pie_option", values: { option: "show-values" } },
+			{ line: 3, code: "pie_option", values: { option: "hide-grid" } },
+			{ line: 4, code: "pie_option", values: { option: "hide-y-axis" } },
+			{ line: 5, code: "pie_option", values: { option: "y-range" } },
 		]);
 	});
 });

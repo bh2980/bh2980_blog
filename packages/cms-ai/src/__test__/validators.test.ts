@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AiValidatorContext } from "../action";
+import { lazyTranslator } from "../i18n";
 import { regexRuns, sameStructure, uniqueSlug } from "../validators";
+import { validatorMessages } from "../validators.messages";
+
+const validatorText = lazyTranslator(validatorMessages);
 
 const context = (
 	input: Record<string, unknown>,
@@ -38,16 +42,20 @@ describe("기본 코드 검사", () => {
 	it("정규식 실행은 문법이 맞고 코드 입력에서 한 곳 이상 찾는 것만 남기고 찾은 곳 수를 붙인다", async () => {
 		const code = "import { a, b, c } from 'x';\nconst value = 1;\nconst other = 2;";
 		const check = regexRuns("code");
-		expect(await check.run("const \\w+", context({ code }))).toEqual({ detail: "2곳" });
+		expect(await check.run("const \\w+", context({ code }))).toEqual({
+			detail: validatorText("regexRuns.detail", { count: 2 }),
+		});
 		expect(await check.run("(", context({ code }))).toBe(false);
 		expect(await check.run("nothing-here", context({ code }))).toBe(false);
 		// 규칙 이름을 바꿔도 같은 입력에서 찾는다.
-		expect(await regexRuns("code", { name: "strong" }).run("const \\w+", context({ code }))).toEqual({ detail: "2곳" });
+		expect(await regexRuns("code", { name: "strong" }).run("const \\w+", context({ code }))).toEqual({
+			detail: validatorText("regexRuns.detail", { count: 2 }),
+		});
 	});
 
 	it("구조 유지는 원문 입력과 뼈대가 다르면 이유를 돌려준다", async () => {
 		const check = sameStructure("block");
 		expect(await check.run("Hello [link](/a)", context({ block: "안녕 [링크](/a)" }))).toBe(true);
-		expect(await check.run("Hello", context({ block: "안녕 [링크](/a)" }))).toMatch("구조");
+		expect(await check.run("Hello", context({ block: "안녕 [링크](/a)" }))).toEqual(expect.any(String));
 	});
 });

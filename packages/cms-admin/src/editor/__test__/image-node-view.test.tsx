@@ -1,9 +1,15 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { NodeViewProps } from "@tiptap/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { blocksMessages } from "../blocks/messages";
 import { ALT_REQUIRED_MESSAGE } from "../image-insert-dialog";
 import { CmsImageNodeView } from "../image-node-view";
+import { editorMessages } from "../messages";
+
+const t = createTranslator(editorMessages);
+const tBlocks = createTranslator(blocksMessages);
 
 vi.mock("@tiptap/react", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@tiptap/react")>();
@@ -50,19 +56,19 @@ describe("CmsImageNodeView (v2 C2)", () => {
 	it("설정 팝오버에서 대체 텍스트를 비우면 그 자리에 오류를 보이고, 장식 이미지는 스위치로 켠다", async () => {
 		const { props, updateAttributes } = createProps({ alt: "" });
 		render(<CmsImageNodeView {...props} />);
-		fireEvent.click(screen.getByRole("button", { name: "설정" }));
+		fireEvent.click(screen.getByRole("button", { name: tBlocks("settings.label") }));
 		expect((await screen.findByRole("alert")).textContent).toBe(ALT_REQUIRED_MESSAGE);
-		fireEvent.click(screen.getByRole("switch", { name: "장식 이미지" }));
+		fireEvent.click(screen.getByRole("switch", { name: t("imageDialog.decorative") }));
 		expect(updateAttributes).toHaveBeenCalledWith({ decorative: true, alt: "" });
 	});
 
 	it("읽기 전용이면 도구 줄을 숨기고 삭제 버튼은 두지 않는다", () => {
 		const { props } = createProps({}, false);
 		render(<CmsImageNodeView {...props} />);
-		expect(screen.queryByRole("toolbar", { name: "이미지 도구" })).toBeNull();
+		expect(screen.queryByRole("toolbar", { name: t("imageNode.toolbar") })).toBeNull();
 		cleanup();
 		render(<CmsImageNodeView {...createProps().props} />);
-		expect(screen.getByRole("toolbar", { name: "이미지 도구" })).toBeTruthy();
+		expect(screen.getByRole("toolbar", { name: t("imageNode.toolbar") })).toBeTruthy();
 		expect(screen.queryByRole("button", { name: /삭제/ })).toBeNull();
 	});
 
@@ -70,8 +76,8 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: "500px" });
 		render(<CmsImageNodeView {...props} />);
 
-		const leftHandle = screen.getByLabelText("이미지 너비 조절 왼쪽");
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
+		const leftHandle = screen.getByLabelText(t("imageNode.resizeLeft"));
+		const rightHandle = screen.getByLabelText(t("imageNode.resizeRight"));
 		expect(leftHandle).toBeDefined();
 		expect(rightHandle).toBeDefined();
 
@@ -90,7 +96,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: "60%" });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
+		const rightHandle = screen.getByLabelText(t("imageNode.resizeRight"));
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
 			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 150 }));
@@ -115,19 +121,19 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps();
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
+		const cropBtn = screen.getByRole("button", { name: t("imageCrop.title") });
 		fireEvent.click(cropBtn);
 
 		// 다이얼로그 열림 확인
-		expect(screen.getByRole("dialog", { name: "자르기·회전" })).toBeDefined();
+		expect(screen.getByRole("dialog", { name: t("imageCrop.title") })).toBeDefined();
 
 		// 90도 회전 버튼 클릭
-		const rotateBtn = screen.getByRole("button", { name: "90° 회전" });
+		const rotateBtn = screen.getByRole("button", { name: t("imageCrop.rotate90") });
 		fireEvent.click(rotateBtn);
 		expect(screen.getByText("90°")).toBeDefined();
 
 		// 적용 버튼 클릭
-		const applyBtn = screen.getByRole("button", { name: "적용" });
+		const applyBtn = screen.getByRole("button", { name: t("imageCrop.apply") });
 		fireEvent.click(applyBtn);
 
 		expect(updateAttributes).toHaveBeenCalledWith({
@@ -140,7 +146,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: null });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
+		const rightHandle = screen.getByLabelText(t("imageNode.resizeRight"));
 		// 이동 없이 단순 클릭 후 놓음
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
@@ -154,7 +160,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ width: "400px" });
 		render(<CmsImageNodeView {...props} />);
 
-		const rightHandle = screen.getByLabelText("이미지 너비 조절 오른쪽");
+		const rightHandle = screen.getByLabelText(t("imageNode.resizeRight"));
 		fireEvent.pointerDown(rightHandle, { clientX: 100, pointerId: 1 });
 		act(() => {
 			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 200 }));
@@ -168,14 +174,14 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		const { props, updateAttributes } = createProps({ rotate: "90" });
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
+		const cropBtn = screen.getByRole("button", { name: t("imageCrop.title") });
 		fireEvent.click(cropBtn);
 
 		// X, Y, W, H 키보드 수치 입력 대안 (P2)
-		const inputX = screen.getByLabelText("자르기 X");
-		const inputY = screen.getByLabelText("자르기 Y");
-		const inputW = screen.getByLabelText("자르기 너비");
-		const inputH = screen.getByLabelText("자르기 높이");
+		const inputX = screen.getByLabelText(t("imageCrop.x"));
+		const inputY = screen.getByLabelText(t("imageCrop.y"));
+		const inputW = screen.getByLabelText(t("imageCrop.width"));
+		const inputH = screen.getByLabelText(t("imageCrop.height"));
 
 		fireEvent.change(inputX, { target: { value: "15" } });
 		fireEvent.change(inputY, { target: { value: "25" } });
@@ -183,7 +189,7 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		fireEvent.change(inputH, { target: { value: "60" } });
 
 		// 적용 버튼 클릭
-		const applyBtn = screen.getByRole("button", { name: "적용" });
+		const applyBtn = screen.getByRole("button", { name: t("imageCrop.apply") });
 		fireEvent.click(applyBtn);
 
 		expect(updateAttributes).toHaveBeenCalledWith({
@@ -199,15 +205,15 @@ describe("CmsImageNodeView (v2 C2)", () => {
 		});
 		render(<CmsImageNodeView {...props} />);
 
-		const cropBtn = screen.getByRole("button", { name: "자르기·회전" });
+		const cropBtn = screen.getByRole("button", { name: t("imageCrop.title") });
 		fireEvent.click(cropBtn);
 
 		// 초기화 버튼 클릭
-		const resetAllBtn = screen.getByRole("button", { name: "초기화" });
+		const resetAllBtn = screen.getByRole("button", { name: t("imageCrop.reset") });
 		fireEvent.click(resetAllBtn);
 
 		// 적용 버튼 클릭
-		const applyBtn = screen.getByRole("button", { name: "적용" });
+		const applyBtn = screen.getByRole("button", { name: t("imageCrop.apply") });
 		fireEvent.click(applyBtn);
 
 		expect(updateAttributes).toHaveBeenCalledWith({

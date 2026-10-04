@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { BodyTemplate } from "@bh2980/cms/runtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutTemplate, Plus, SquarePen, Trash2 } from "lucide-react";
@@ -18,11 +19,14 @@ import { AdminShell } from "../shared/admin-shell";
 import { useConfirm } from "../shared/confirm-dialog";
 import { formatDateOnly } from "../shared/format-date";
 import { OPEN_ITEM } from "../shared/side-panel";
+import { templatesMessages } from "./messages";
+
+const t = createTranslator(templatesMessages);
 
 const TEMPLATES_KEY = ["cms", "templates"] as const;
 
 /** 새 템플릿의 처음 본문. */
-const NEW_TEMPLATE_MDX = "## 서론\n\n내용을 입력하세요.\n\n## 본론\n\n- 항목 1\n- 항목 2\n\n## 결론\n\n마무리 요약.";
+const NEW_TEMPLATE_MDX = t("newMdx");
 
 export function TemplateManager() {
 	const queryClient = useQueryClient();
@@ -33,15 +37,13 @@ export function TemplateManager() {
 			(
 				await cmsFetch<{ items?: BodyTemplate[] }>("/api/cms/v1/templates", {
 					signal,
-					fallback: "템플릿 목록을 불러오지 못했습니다.",
+					fallback: t("list.loadFailed"),
 				})
 			).items ?? [],
 	});
 	const templates = templatesQuery.data ?? [];
 	const error =
-		templatesQuery.error && !templatesQuery.data
-			? errorText(templatesQuery.error, "템플릿 목록을 불러오지 못했습니다.")
-			: null;
+		templatesQuery.error && !templatesQuery.data ? errorText(templatesQuery.error, t("list.loadFailed")) : null;
 
 	// 편집 칸에 연 템플릿(새 템플릿은 id가 없다)과 고치는 값.
 	const [activeTemplate, setActiveTemplate] = useState<Partial<BodyTemplate> | null>(null);
@@ -82,7 +84,7 @@ export function TemplateManager() {
 	const handleSave = async () => {
 		if (!activeTemplate || isSaving) return;
 		if (!editName.trim()) {
-			setSaveError("템플릿 이름을 입력하세요.");
+			setSaveError(t("edit.nameRequired"));
 			return;
 		}
 
@@ -94,7 +96,7 @@ export function TemplateManager() {
 				const updated = await cmsFetch<BodyTemplate>(`/api/cms/v1/templates/${activeTemplate.id}`, {
 					method: "PATCH",
 					json: { name: editName.trim(), mdx: editMdx, expectedVersion: activeTemplate.version },
-					fallback: "저장하지 못했습니다.",
+					fallback: t("common.saveFailed"),
 				});
 				show(updated);
 				queryClient.setQueryData<BodyTemplate[]>(TEMPLATES_KEY, (current) =>
@@ -104,7 +106,7 @@ export function TemplateManager() {
 				const created = await cmsFetch<BodyTemplate>("/api/cms/v1/templates", {
 					method: "POST",
 					json: { name: editName.trim(), mdx: editMdx },
-					fallback: "저장하지 못했습니다.",
+					fallback: t("common.saveFailed"),
 				});
 				// 만든 템플릿을 그대로 열어 둔다.
 				show(created);
@@ -112,10 +114,10 @@ export function TemplateManager() {
 					current && !current.some((item) => item.id === created.id) ? [created, ...current] : current,
 				);
 			}
-			toast.success("저장했습니다.");
+			toast.success(t("common.saved"));
 			void invalidateTemplates();
 		} catch (err) {
-			setSaveError(errorText(err, "저장하지 못했습니다."));
+			setSaveError(errorText(err, t("common.saveFailed")));
 		} finally {
 			setIsSaving(false);
 		}
@@ -148,12 +150,12 @@ export function TemplateManager() {
 		try {
 			await cmsFetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
 				method: "DELETE",
-				fallback: "삭제하지 못했습니다.",
+				fallback: t("delete.failed"),
 			});
-			toast.success(`'${template.name}' 템플릿을 삭제했습니다.`);
+			toast.success(t("delete.done", { name: template.name }));
 		} catch (err) {
 			if (previous) queryClient.setQueryData(TEMPLATES_KEY, previous);
-			toast.error(errorText(err, "삭제하지 못했습니다."));
+			toast.error(errorText(err, t("delete.failed")));
 		} finally {
 			void invalidateTemplates();
 		}
@@ -161,9 +163,9 @@ export function TemplateManager() {
 
 	const requestDelete = async (template: BodyTemplate) => {
 		const ok = await confirm({
-			title: "템플릿 삭제",
-			description: `'${template.name}' 템플릿을 삭제할까요? 이 템플릿으로 쓴 글에는 영향이 없습니다.`,
-			confirmLabel: "삭제",
+			title: t("delete.title"),
+			description: t("delete.ask", { name: template.name }),
+			confirmLabel: t("common.delete"),
 			destructive: true,
 		});
 		if (ok) await deleteTemplate(template);
@@ -171,11 +173,11 @@ export function TemplateManager() {
 
 	/** 템플릿 목록 줄의 오른쪽 클릭·`⋯` 메뉴(v2 A2). */
 	const templateMenu = (template: BodyTemplate): MenuAction[] => [
-		{ kind: "item", label: "열기", icon: SquarePen, onSelect: () => void openTemplate(template) },
+		{ kind: "item", label: t("common.open"), icon: SquarePen, onSelect: () => void openTemplate(template) },
 		{ kind: "separator" },
 		{
 			kind: "item",
-			label: "삭제",
+			label: t("common.delete"),
 			icon: Trash2,
 			shortcut: "Del",
 			destructive: true,
@@ -185,13 +187,13 @@ export function TemplateManager() {
 
 	return (
 		<AdminShell
-			title="본문 템플릿"
+			title={t("title")}
 			count={templatesQuery.data ? templates.length : undefined}
 			sidebar={{ activeNav: "templates" }}
 			headerActions={
 				<Button type="button" size="sm" onClick={() => void openNew()}>
 					<Plus aria-hidden />
-					템플릿 추가
+					{t("common.add")}
 				</Button>
 			}
 		>
@@ -199,13 +201,13 @@ export function TemplateManager() {
 				<Alert variant="danger" className="mx-5 mt-3 flex w-auto items-center justify-between">
 					<AlertDescription className="col-start-auto">{error}</AlertDescription>
 					<Button type="button" variant="outline" size="xs" onClick={() => void templatesQuery.refetch()}>
-						다시 시도
+						{t("common.retry")}
 					</Button>
 				</Alert>
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-72 shrink-0 flex-col border-r">
-					<ul className="flex-1 divide-y overflow-y-auto" aria-label="템플릿 목록">
+					<ul className="flex-1 divide-y overflow-y-auto" aria-label={t("list.label")}>
 						{templatesQuery.isPending
 							? Array.from({ length: 3 }, (_, index) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: 자리표시
@@ -214,13 +216,13 @@ export function TemplateManager() {
 									</li>
 								))
 							: templates.length === 0
-								? !error && <li className="p-8 text-center text-muted-foreground text-xs">템플릿이 없습니다.</li>
-								: templates.map((t) => {
-										const isSelected = activeTemplate?.id === t.id;
+								? !error && <li className="p-8 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
+								: templates.map((row) => {
+										const isSelected = activeTemplate?.id === row.id;
 										return (
 											<ActionContextMenu
-												key={t.id}
-												actions={templateMenu(t)}
+												key={row.id}
+												actions={templateMenu(row)}
 												trigger={
 													<li
 														className={cn(
@@ -234,19 +236,22 @@ export function TemplateManager() {
 													variant="ghost"
 													type="button"
 													aria-current={isSelected ? "true" : undefined}
-													onClick={() => void openTemplate(t)}
+													onClick={() => void openTemplate(row)}
 													onKeyDown={(event) => {
 														if (event.key === "Delete") {
 															event.preventDefault();
-															void requestDelete(t);
+															void requestDelete(row);
 														}
 													}}
 													className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
 												>
-													<span className="truncate font-medium text-sm">{t.name}</span>
-													<span className="text-[11px] text-muted-foreground">{formatDateOnly(t.updatedAt)}</span>
+													<span className="truncate font-medium text-sm">{row.name}</span>
+													<span className="text-[11px] text-muted-foreground">{formatDateOnly(row.updatedAt)}</span>
 												</Button>
-												<MoreActionsButton actions={templateMenu(t)} label={`'${t.name}' 템플릿 작업`} />
+												<MoreActionsButton
+													actions={templateMenu(row)}
+													label={t("list.itemActions", { name: row.name })}
+												/>
 											</ActionContextMenu>
 										);
 									})}
@@ -257,13 +262,13 @@ export function TemplateManager() {
 					{activeTemplate ? (
 						// 본문 편집기 안에도 버튼·입력이 있어 <form>으로 감싸지 않는다. 이름 칸 Enter와 ⌘S가 저장한다.
 						<section
-							aria-label={activeTemplate.id ? "템플릿 편집" : "템플릿 추가"}
+							aria-label={activeTemplate.id ? t("edit.label") : t("edit.addLabel")}
 							className="flex h-full flex-1 flex-col overflow-hidden"
 						>
 							<div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
 								<Input
 									type="text"
-									aria-label="템플릿 이름"
+									aria-label={t("edit.nameLabel")}
 									value={editName}
 									onChange={(e) => setEditName(e.target.value)}
 									onKeyDown={(event) => {
@@ -272,15 +277,15 @@ export function TemplateManager() {
 										event.preventDefault();
 										void handleSave();
 									}}
-									placeholder="템플릿 이름"
+									placeholder={t("edit.nameLabel")}
 									className="h-8 min-w-0 max-w-2xl flex-1"
 								/>
 								<div className="flex items-center gap-2">
 									<Button type="button" variant="outline" size="sm" onClick={() => void closeEditor()}>
-										취소
+										{t("common.cancel")}
 									</Button>
 									<Button type="button" size="sm" disabled={isSaving} onClick={() => void handleSave()}>
-										{isSaving ? "저장 중…" : "저장"}
+										{isSaving ? t("common.saving") : t("common.save")}
 									</Button>
 								</div>
 							</div>
@@ -299,12 +304,12 @@ export function TemplateManager() {
 								<EmptyMedia variant="icon">
 									<LayoutTemplate aria-hidden />
 								</EmptyMedia>
-								<EmptyTitle>선택한 템플릿이 없습니다.</EmptyTitle>
+								<EmptyTitle>{t("edit.empty")}</EmptyTitle>
 							</EmptyHeader>
 							<EmptyContent>
 								<Button type="button" size="sm" onClick={() => void openNew()}>
 									<Plus aria-hidden />
-									템플릿 추가
+									{t("common.add")}
 								</Button>
 							</EmptyContent>
 						</Empty>

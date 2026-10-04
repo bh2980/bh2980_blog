@@ -1,7 +1,11 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { type Editor, Extension } from "@tiptap/core";
 import { Fragment, type Node as PmNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import { type TargetBlock, targetBlockAt } from "./drag/block-resolve";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /**
  * 블록 조작(§4.2): 위·아래 이동, 복제, 삭제. 블록 핸들 메뉴와 키보드 단축키가 같은 명령을 쓴다.
@@ -94,7 +98,7 @@ export const CmsBlockKeymap = Extension.create({
 });
 
 export const BLOCK_SHORTCUTS = [
-	{ keys: "Alt+↑ / Alt+↓", label: "블록 위·아래 이동" },
-	{ keys: "Mod+Shift+D", label: "블록 복제" },
-	{ keys: "Mod+Shift+Backspace", label: "블록 삭제" },
+	{ keys: "Alt+↑ / Alt+↓", label: t("blockShortcut.move") },
+	{ keys: "Mod+Shift+D", label: t("blockShortcut.duplicate") },
+	{ keys: "Mod+Shift+Backspace", label: t("blockShortcut.delete") },
 ] as const;

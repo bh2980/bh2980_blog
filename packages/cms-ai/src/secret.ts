@@ -1,6 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createTranslator } from "@bh2980/cms/client";
 import { getCmsSecret } from "@bh2980/cms/plugin/server";
 import { AiError } from "./errors";
+import { providerMessages } from "./provider.messages";
+
+const t = createTranslator(providerMessages);
 
 /**
  * AI 서비스 키 암호화. 서버 설정의 `secret`에서 만든 키로 AES-256-GCM 암호화해 DB에 둔다.
@@ -11,7 +15,7 @@ const PREFIX = "v1";
 
 function encryptionKey(): Buffer {
 	const secret = getCmsSecret();
-	if (!secret) throw new AiError("ai_unavailable", "서버 설정에 secret이 없어 키를 저장할 수 없습니다.");
+	if (!secret) throw new AiError("ai_unavailable", t("noSecret"));
 	return createHash("sha256").update(`cms-ai-key:${secret}`).digest();
 }
 

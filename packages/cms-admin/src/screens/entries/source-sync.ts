@@ -186,7 +186,7 @@ export function useSourceSync({
 			if (!syncScroll || !editorEl || !pane) return;
 			const editorBlocks = blocksOf(editorPM());
 			const paneBlocks = blocksOf(panePM());
-			const toolbar = editorEl.querySelector('[role="toolbar"][aria-label="서식 도구"]');
+			const toolbar = editorEl.querySelector('[role="toolbar"]');
 			const header = pane.querySelector("[data-source-header]");
 			const next = syncOffset({
 				editorBlocks: editorBlocks.map(boxOf),

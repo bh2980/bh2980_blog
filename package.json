@@ -12,6 +12,7 @@
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check .",
 		"lint:fix": "pnpm exec biome check . --write",
+		"check:korean": "node scripts/check-korean.mjs",
 		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck && pnpm --filter @bh2980/cms-text-check typecheck && pnpm --filter @bh2980/cms-seo typecheck",
 		"prepare": "husky",
 		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-text-check build && pnpm --filter @bh2980/cms-seo build",

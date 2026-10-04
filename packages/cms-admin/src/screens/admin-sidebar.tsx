@@ -7,6 +7,7 @@ import {
 	COLLECTIONS,
 	type Collection,
 	cmsConfig,
+	createTranslator,
 	SITE_HOME,
 	SITE_NAME,
 } from "@bh2980/cms/client";
@@ -49,11 +50,14 @@ import {
 import { Switch } from "../ui/switch";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { screensMessages } from "./messages";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { useAdminFeatures } from "./shared/admin-features";
 import { CollectionIcon, NamedIcon } from "./shared/collection-icon";
 import { type DraggedEntry, isEntryDrag, readDraggedEntries } from "./shared/entry-drag";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
+
+const t = createTranslator(screensMessages);
 
 /** 사이드바에서 지금 화면을 가리키는 값. 플러그인 화면은 그 화면 주소(`nav.path`, 예: `ai`)다. */
 export type AdminNavId = Collection | "media" | "templates" | "trash" | (string & {});
@@ -177,7 +181,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					{/* 폴더 아이콘이 펼침 단추를 겸한다. 하위 폴더가 있으면 올려 두거나 초점을 주면 화살표로 바뀐다. */}
 					{children.length > 0 ? (
 						<CollapsibleTrigger
-							aria-label={`${folder.name} 하위 폴더 ${isExpanded ? "접기" : "펼치기"}`}
+							aria-label={t(isExpanded ? "sidebar.folderCollapse" : "sidebar.folderExpand", { name: folder.name })}
 							className="group/toggle flex size-6 shrink-0 items-center justify-center rounded-md outline-hidden hover:bg-sidebar-foreground/10 focus-visible:ring-2 focus-visible:ring-sidebar-ring [&_svg]:size-4"
 						>
 							<span className="group-hover/toggle:hidden group-focus-visible/toggle:hidden">
@@ -208,7 +212,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					</SidebarMenuButton>
 					<MoreActionsButton
 						actions={actions}
-						label={`'${folder.name}' 폴더 작업`}
+						label={t("list.folderActions", { name: folder.name })}
 						className="size-6 shrink-0 text-sidebar-foreground/70"
 					/>
 				</ActionContextMenu>
@@ -223,15 +227,20 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 
 	const label = COLLECTION_DEFINITIONS[nav.collection].label;
 	const blankActions: MenuAction[] = [
-		{ kind: "item", label: "폴더 추가", icon: FolderPlus, onSelect: () => nav.folderActions.requestCreate(null) },
-		{ kind: "item", label: `${label} 추가`, icon: Plus, onSelect: nav.onCreateEntry },
+		{
+			kind: "item",
+			label: t("list.folderAdd"),
+			icon: FolderPlus,
+			onSelect: () => nav.folderActions.requestCreate(null),
+		},
+		{ kind: "item", label: t("list.add", { label }), icon: Plus, onSelect: nav.onCreateEntry },
 	];
 
 	return (
 		<SidebarGroup className="flex-1 group-data-[collapsible=icon]:hidden">
-			<SidebarGroupLabel>폴더</SidebarGroupLabel>
+			<SidebarGroupLabel>{t("sidebar.folders")}</SidebarGroupLabel>
 			<IconButton
-				label="폴더 추가"
+				label={t("list.folderAdd")}
 				side="right"
 				size="icon-xs"
 				className="absolute top-3.5 right-3 size-5 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden [&_svg]:size-4"
@@ -256,13 +265,13 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 							</SidebarMenuButton>
 						</ActionContextMenu>
 						{folders.length > 0 && (
-							<SidebarMenuSub aria-label={`${label} 폴더`} className={cn(TREE_LIST, "ml-1")}>
+							<SidebarMenuSub aria-label={t("sidebar.folderTree", { label })} className={cn(TREE_LIST, "ml-1")}>
 								{folders.filter((f) => !f.parentId).map(renderFolder)}
 							</SidebarMenuSub>
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">폴더가 없습니다.</p>}
+				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">{t("sidebar.noFolders")}</p>}
 				{folders.length > 0 && (
 					<Label className="mt-3 px-2 font-normal text-muted-foreground text-xs">
 						<Switch
@@ -270,7 +279,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 							checked={nav.includeDescendants}
 							onCheckedChange={(checked) => nav.onIncludeDescendantsChange(checked === true)}
 						/>
-						하위 폴더 포함
+						{t("sidebar.includeDescendants")}
 					</Label>
 				)}
 				{/* 빈 곳의 오른쪽 클릭 메뉴(v2 A2). 폴더 줄의 메뉴와 겹치지 않도록 목록 아래 빈 영역에만 붙인다. */}
@@ -284,7 +293,11 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarProps) {
 	const { isMobile, setOpenMobile, state } = useSidebar();
 	const features = useAdminFeatures();
-	const toggleLabel = isMobile ? "사이드바 닫기" : state === "collapsed" ? "사이드바 펼치기" : "사이드바 접기";
+	const toggleLabel = isMobile
+		? t("sidebar.close")
+		: state === "collapsed"
+			? t("sidebar.expand")
+			: t("sidebar.collapse");
 	const closeMobile = () => {
 		if (isMobile) setOpenMobile(false);
 	};
@@ -330,9 +343,9 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>컬렉션</SidebarGroupLabel>
+					<SidebarGroupLabel>{t("sidebar.collections")}</SidebarGroupLabel>
 					<SidebarGroupContent>
-						<SidebarMenu aria-label="컬렉션">
+						<SidebarMenu aria-label={t("sidebar.collections")}>
 							{COLLECTIONS.map((collection) =>
 								navLink(
 									adminHref(`?collection=${collection}`),
@@ -345,21 +358,23 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 					</SidebarGroupContent>
 				</SidebarGroup>
 				<SidebarGroup>
-					<SidebarGroupLabel>관리</SidebarGroupLabel>
+					<SidebarGroupLabel>{t("sidebar.manage")}</SidebarGroupLabel>
 					<SidebarGroupContent>
-						<SidebarMenu aria-label="관리">
-							{features.media && navLink(adminHref("/media"), "media", "미디어", <FileImage />)}
-							{navLink(adminHref("/templates"), "templates", "본문 템플릿", <LayoutTemplate />)}
+						<SidebarMenu aria-label={t("sidebar.manage")}>
+							{features.media && navLink(adminHref("/media"), "media", t("sidebar.media"), <FileImage />)}
+							{navLink(adminHref("/templates"), "templates", t("sidebar.templates"), <LayoutTemplate />)}
 							{PLUGIN_NAV.map((item) =>
 								navLink(adminHref(`/${item.path}`), item.path, item.label, <NamedIcon name={item.icon} />),
 							)}
 							{navLink(
 								adminHref("/trash"),
 								"trash",
-								"휴지통",
+								t("sidebar.trash"),
 								<Trash2 />,
 								trashCount ? (
-									<SidebarMenuBadge aria-label={`휴지통 ${trashCount}개`}>{trashCount}</SidebarMenuBadge>
+									<SidebarMenuBadge aria-label={t("sidebar.trashBadge", { count: trashCount })}>
+										{trashCount}
+									</SidebarMenuBadge>
 								) : null,
 							)}
 						</SidebarMenu>
@@ -374,16 +389,16 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						render={
 							<Link
 								href={SITE_HOME as Route}
-								aria-label="사이트 보기"
+								aria-label={t("sidebar.viewSite")}
 								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
 							/>
 						}
 					>
 						<Globe aria-hidden className="size-4" />
-						<span className="group-data-[collapsible=icon]:hidden">사이트 보기</span>
+						<span className="group-data-[collapsible=icon]:hidden">{t("sidebar.viewSite")}</span>
 					</TooltipTrigger>
 					<TooltipContent side="right" hidden={state !== "collapsed" || isMobile}>
-						사이트 보기
+						{t("sidebar.viewSite")}
 					</TooltipContent>
 				</Tooltip>
 				<ThemeToggle className="size-8 text-muted-foreground" />

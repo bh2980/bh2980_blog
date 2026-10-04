@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import type { Editor } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
@@ -9,6 +10,9 @@ import { type ComponentProps, type KeyboardEvent, type ReactNode, useEffect, use
 import { cn } from "../../lib/utils/cn";
 import { IconButton } from "../../ui/icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+import { blocksMessages } from "./messages";
+
+const t = createTranslator(blocksMessages);
 
 /** 고른 블록 테두리. 모든 블록이 같은 모양을 쓴다. */
 export const SELECTED_RING = "ring-2 ring-ring ring-offset-2 ring-offset-background";
@@ -237,7 +241,7 @@ export function ToolbarButton(props: ComponentProps<typeof IconButton>) {
  * 안의 칸은 `BlockSettingsField`로 줄을 맞춘다.
  */
 export function BlockSettings({
-	label = "설정",
+	label = t("settings.label"),
 	open,
 	onOpenChange,
 	children,

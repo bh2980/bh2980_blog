@@ -1,8 +1,10 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { useCmsAdminComponents } from "@bh2980/cms-admin";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { bareun } from "..";
 import bareunAdmin from "../admin";
+import { bareunMessages } from "../messages";
 import { bareunChecker } from "../provider";
 
 afterEach(cleanup);
@@ -38,7 +40,7 @@ describe("바른 검사기 관리자 쪽", () => {
 		expect(plugin.options).toEqual({
 			apiKeyEnv: "BAREUN_API_KEY",
 			baseUrl: "https://api.bareun.ai",
-			label: "바른 맞춤법 검사",
+			label: createTranslator(bareunMessages)("label"),
 			auto: false,
 			customDictNames: [],
 			limits: { maxSegments: 100, maxChars: 10_000 },

@@ -1,6 +1,6 @@
 "use client";
 
-import { FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
+import { createTranslator, FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -62,6 +62,7 @@ import { INLINE_MARK_TOOLS } from "./inline-marks";
 import { type InternalLinkItem, insertInternalLink, parseInternalLinkTrigger } from "./internal-link";
 import { InternalLinkPopup } from "./internal-link-popup";
 import { type LinkDraft, LinkForm, linkDraftFromSelection } from "./link-form";
+import { editorMessages } from "./messages";
 import {
 	filterCommands,
 	OPEN_FILE_PICKER_EVENT,
@@ -74,6 +75,8 @@ import { mdxToTiptap, tiptapToMdx } from "./tiptap-content";
 import { ToolbarButton, type ToolbarItem } from "./toolbar-button";
 import { type ToolbarEntry, ToolbarMenuGroup, ToolbarMenuItem, ToolbarMenuSection, ToolbarRow } from "./toolbar-row";
 import { uploadAttachment } from "./upload-helper";
+
+const t = createTranslator(editorMessages);
 
 interface CmsEditorProps {
 	content: string;
@@ -118,14 +121,14 @@ const chain = (editor: Editor) => editor.chain().focus();
 /** 블록 모양 드롭다운. 지금 블록의 모양 이름이 드롭다운 이름이 된다. */
 const BLOCK_STYLES: ToolbarItem[] = [
 	{
-		label: "문단",
+		label: t("toolbar.paragraph"),
 		icon: Pilcrow,
 		isActive: (e) => e.isActive("paragraph"),
 		run: (e) => chain(e).setParagraph().run(),
 	},
 	...([2, 3, 4] as const).map((level) => ({
 		label: `H${level}`,
-		title: `제목 ${level}`,
+		title: t("toolbar.heading", { level }),
 		icon: { 2: Heading2, 3: Heading3, 4: Heading4 }[level],
 		isActive: (e: Editor) => e.isActive("heading", { level }),
 		run: (e: Editor) => chain(e).setHeading({ level }).run(),
@@ -142,48 +145,53 @@ const PINNED_INLINE_MARKS = ["bold", "italic"];
 
 const ALIGN_TOOLS: ToolbarItem[] = [
 	{
-		label: "왼쪽",
-		title: "왼쪽 정렬",
+		label: t("toolbar.alignLeft"),
+		title: t("toolbar.alignLeftTitle"),
 		icon: AlignLeft,
 		isActive: (e) => e.isActive({ textAlign: "left" }),
 		run: (e) => chain(e).setTextAlign("left").run(),
 	},
 	{
-		label: "가운데",
-		title: "가운데 정렬",
+		label: t("toolbar.alignCenter"),
+		title: t("toolbar.alignCenterTitle"),
 		icon: AlignCenter,
 		isActive: (e) => e.isActive({ textAlign: "center" }),
 		run: (e) => chain(e).setTextAlign("center").run(),
 	},
 	{
-		label: "오른쪽",
-		title: "오른쪽 정렬",
+		label: t("toolbar.alignRight"),
+		title: t("toolbar.alignRightTitle"),
 		icon: AlignRight,
 		isActive: (e) => e.isActive({ textAlign: "right" }),
 		run: (e) => chain(e).setTextAlign("right").run(),
 	},
-	{ label: "자동", title: "정렬 해제", icon: RemoveFormatting, run: (e) => chain(e).unsetTextAlign().run() },
+	{
+		label: t("toolbar.alignAuto"),
+		title: t("toolbar.alignAutoTitle"),
+		icon: RemoveFormatting,
+		run: (e) => chain(e).unsetTextAlign().run(),
+	},
 ];
 
 /** 목록 드롭다운. 지금 블록의 목록 종류가 드롭다운 이름·아이콘이 된다. */
 const LIST_STYLES: ToolbarItem[] = [
 	{
-		label: "• 목록",
-		title: "글머리 목록",
+		label: t("toolbar.bulletLabel"),
+		title: t("toolbar.bullet"),
 		icon: List,
 		isActive: (e) => e.isActive("bulletList"),
 		run: (e) => chain(e).toggleBulletList().run(),
 	},
 	{
-		label: "1. 목록",
-		title: "번호 목록",
+		label: t("toolbar.orderedLabel"),
+		title: t("toolbar.ordered"),
 		icon: ListOrdered,
 		isActive: (e) => e.isActive("orderedList"),
 		run: (e) => chain(e).toggleOrderedList().run(),
 	},
 	{
-		label: "☑ 체크",
-		title: "체크 목록",
+		label: t("toolbar.todoLabel"),
+		title: t("toolbar.todo"),
 		icon: ListTodo,
 		isActive: (e) => e.isActive("taskList"),
 		run: (e) => chain(e).toggleTaskList().run(),
@@ -195,8 +203,8 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 	{
 		priority: 6,
 		tool: {
-			label: "“ 인용",
-			title: "인용구",
+			label: t("toolbar.quoteLabel"),
+			title: t("toolbar.quote"),
 			icon: Quote,
 			isActive: (e) => e.isActive("blockquote"),
 			run: (e) => chain(e).toggleBlockquote().run(),
@@ -205,7 +213,7 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 	{
 		priority: 3,
 		tool: {
-			label: "코드 블록",
+			label: t("toolbar.codeBlock"),
 			icon: SquareCode,
 			isActive: (e) => e.isActive("codeBlock"),
 			run: (e) => chain(e).toggleCodeBlock().run(),
@@ -214,14 +222,18 @@ const INSERT_TOOLS: { tool: ToolbarItem; priority: number }[] = [
 	{
 		priority: 7,
 		tool: {
-			label: "표",
+			label: t("toolbar.table"),
 			icon: Table2,
 			run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
 		},
 	},
 ];
 
-const DIVIDER_TOOL: ToolbarItem = { label: "구분선", icon: Minus, run: (e) => chain(e).setHorizontalRule().run() };
+const DIVIDER_TOOL: ToolbarItem = {
+	label: t("toolbar.divider"),
+	icon: Minus,
+	run: (e) => chain(e).setHorizontalRule().run(),
+};
 
 /** 글자 꾸밈 확장의 서식 도구 자리 이름(`mark:블록 이름`). */
 const markToolKey = (group: "format" | "link", name: string) => `mark-${group}:${name}`;
@@ -334,7 +346,7 @@ async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 		return data.items.map((item) => ({
 			id: item.id,
 			collection: item.collection,
-			title: item.title || "제목 없음",
+			title: item.title || t("toolbar.untitled"),
 			slug: item.slug ?? "",
 			status: item.status,
 		}));
@@ -502,7 +514,7 @@ export function CmsEditor({
 		content: initialContent,
 		editorProps: {
 			attributes: {
-				"aria-label": "본문 편집기",
+				"aria-label": t("toolbar.editorLabel"),
 				class:
 					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20 " +
 					// 표 열 너비 조절 손잡이(prosemirror-tables columnResizing)
@@ -601,7 +613,9 @@ export function CmsEditor({
 		},
 	});
 
-	const blockStyle = editor ? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? "문단") : "문단";
+	const blockStyle = editor
+		? (BLOCK_STYLES.find((item) => item.isActive?.(editor))?.label ?? t("toolbar.paragraph"))
+		: t("toolbar.paragraph");
 	const activeList = editor ? LIST_STYLES.find((item) => item.isActive?.(editor)) : undefined;
 	const activeAlign = editor ? ALIGN_TOOLS.find((item) => item.isActive?.(editor)) : undefined;
 
@@ -722,10 +736,10 @@ export function CmsEditor({
 			}
 			let position = at;
 			for (const file of files) {
-				const toastId = toast.loading(`'${file.name}' 올리는 중…`);
+				const toastId = toast.loading(t("toolbar.uploading", { name: file.name }));
 				try {
 					const { mediaId } = await uploadAttachment(file, (percent) =>
-						toast.loading(`'${file.name}' 올리는 중 · ${percent}%`, { id: toastId }),
+						toast.loading(t("toolbar.uploadingPercent", { name: file.name, percent }), { id: toastId }),
 					);
 					const node = { type: FILE_NODE_NAME, attrs: { mediaId, label: null } };
 					if (position === undefined) editor.chain().focus().insertContent(node).run();
@@ -733,9 +747,9 @@ export function CmsEditor({
 						editor.chain().focus().insertContentAt(position, node).run();
 						position = editor.state.selection.to;
 					}
-					toast.success(`'${file.name}'을(를) 올렸습니다.`, { id: toastId });
+					toast.success(t("toolbar.uploaded", { name: file.name }), { id: toastId });
 				} catch (error) {
-					toast.error(`'${file.name}'을(를) 올리지 못했습니다.`, {
+					toast.error(t("toolbar.uploadFailed", { name: file.name }), {
 						id: toastId,
 						description: error instanceof Error ? error.message : undefined,
 					});
@@ -854,11 +868,11 @@ export function CmsEditor({
 		<>
 			<DropdownMenuItem disabled={!canEdit} onClick={() => setImageDialog({ file: null })}>
 				<ImageIcon aria-hidden className="size-4" />
-				<span className="flex-1">이미지</span>
+				<span className="flex-1">{t("toolbar.image")}</span>
 			</DropdownMenuItem>
 			<DropdownMenuItem disabled={!canEdit} onClick={() => fileInputRef.current?.click()}>
 				<Paperclip aria-hidden className="size-4" />
-				<span className="flex-1">파일</span>
+				<span className="flex-1">{t("toolbar.file")}</span>
 			</DropdownMenuItem>
 		</>
 	);
@@ -871,7 +885,7 @@ export function CmsEditor({
 			fixed: true,
 			render: () => <ToolbarDropdown editor={editor} label={blockStyle} items={BLOCK_STYLES} />,
 		},
-		dropdownSlot("align", 9, "정렬", ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
+		dropdownSlot("align", 9, t("toolbar.align"), ALIGN_TOOLS, activeAlign?.icon ?? AlignLeft),
 		{ key: "divider-block", divider: true },
 		...INLINE_TOOLS.map((tool) =>
 			buttonSlot(tool, tool.mark, INLINE_PRIORITY[tool.mark] ?? 5, PINNED_INLINE_MARKS.includes(tool.mark)),
@@ -891,18 +905,25 @@ export function CmsEditor({
 				},
 			];
 		}),
-		dropdownSlot("script", 8, "첨자", SCRIPT_TOOLS, Superscript),
+		dropdownSlot("script", 8, t("toolbar.script"), SCRIPT_TOOLS, Superscript),
 		{ key: "divider-inline", divider: true },
 		{ key: "divider-list", divider: true },
 		{ key: "divider-insert", divider: true },
-		dropdownSlot("list", 2, activeList?.title ?? "목록", LIST_STYLES, activeList?.icon ?? List, "목록"),
+		dropdownSlot(
+			"list",
+			2,
+			activeList?.title ?? t("toolbar.list"),
+			LIST_STYLES,
+			activeList?.icon ?? List,
+			t("toolbar.list"),
+		),
 		...INSERT_TOOLS.map(({ tool, priority }) => buttonSlot(tool, tool.label, priority)),
 		{
 			key: "custom-block",
 			priority: 4,
 			render: () => <CustomBlockMenu editor={editor} />,
 			menu: () => (
-				<ToolbarMenuSection label="컴포넌트">
+				<ToolbarMenuSection label={t("toolbar.components")}>
 					<CustomBlockMenuItems editor={editor} />
 				</ToolbarMenuSection>
 			),
@@ -914,7 +935,7 @@ export function CmsEditor({
 			render: () => (
 				<DropdownMenu>
 					<IconButton
-						label="업로드"
+						label={t("toolbar.upload")}
 						side="bottom"
 						disabled={!canEdit}
 						onMouseDown={(event) => event.preventDefault()}
@@ -947,7 +968,7 @@ export function CmsEditor({
 											size="sm"
 											pressed={editor.isActive("link")}
 											disabled={!canEdit}
-											aria-label="링크"
+											aria-label={t("toolbar.link")}
 											onMouseDown={(event) => event.preventDefault()}
 											className="size-8 p-0"
 										/>
@@ -957,7 +978,7 @@ export function CmsEditor({
 								</PopoverTrigger>
 							}
 						/>
-						<TooltipContent side="bottom">링크</TooltipContent>
+						<TooltipContent side="bottom">{t("toolbar.link")}</TooltipContent>
 					</Tooltip>
 					<PopoverContent align="start" className="w-80">
 						{linkDraft && <LinkForm editor={editor} draft={linkDraft} onDone={() => setLinkDraft(null)} />}
@@ -1000,7 +1021,7 @@ export function CmsEditor({
 		>
 			<div
 				role="toolbar"
-				aria-label="서식 도구"
+				aria-label={t("toolbar.format")}
 				className="sticky top-0 z-10 w-full shrink-0 overflow-x-auto border-b bg-background/95 backdrop-blur"
 			>
 				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,

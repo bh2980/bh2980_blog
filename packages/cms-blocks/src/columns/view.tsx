@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	blockNodeName,
 	ContainerToolbar,
@@ -23,6 +24,9 @@ import {
 	parseColumnWidths,
 	toPercentWidths,
 } from "./layout";
+import { columnsMessages } from "./messages";
+
+const t = createTranslator(columnsMessages);
 
 const MIN_COLUMNS = columnsDefinition.children.min;
 const MAX_COLUMNS = columnsDefinition.children.max;
@@ -199,7 +203,7 @@ export function ColumnsNodeView(props: NodeViewProps) {
 							/>
 							<button
 								type="button"
-								aria-label={`${boundary.index + 1}번째와 ${boundary.index + 2}번째 단 사이 너비 조절`}
+								aria-label={t("resize", { from: boundary.index + 1, to: boundary.index + 2 })}
 								onPointerDown={(event) => startResize(boundary.index, event)}
 								onKeyDown={(event) => {
 									if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -218,18 +222,18 @@ export function ColumnsNodeView(props: NodeViewProps) {
 					))
 				: null}
 			{editable ? (
-				<ContainerToolbar label="단 나누기 도구" visible={!!draft}>
+				<ContainerToolbar label={t("toolbar")} visible={!!draft}>
 					<span className="px-1.5 text-muted-foreground text-xs tabular-nums">
-						{widths ? widths.join(" : ") : `${count}단`}
+						{widths ? widths.join(" : ") : t("count", { count })}
 					</span>
-					<ToolbarButton label="단 너비 똑같이 나누기" disabled={!saved} onClick={() => setColumns(null)}>
+					<ToolbarButton label={t("equalize")} disabled={!saved} onClick={() => setColumns(null)}>
 						<Columns2 aria-hidden />
 					</ToolbarButton>
-					<ToolbarButton label="단 추가" disabled={count >= MAX_COLUMNS} onClick={addColumn}>
+					<ToolbarButton label={t("add")} disabled={count >= MAX_COLUMNS} onClick={addColumn}>
 						<Plus aria-hidden />
 					</ToolbarButton>
 					<ToolbarButton
-						label={selectedIndex === -1 ? "마지막 단 삭제" : "이 단 삭제"}
+						label={selectedIndex === -1 ? t("deleteLast") : t("delete")}
 						destructive
 						disabled={count <= MIN_COLUMNS}
 						onClick={removeColumn}

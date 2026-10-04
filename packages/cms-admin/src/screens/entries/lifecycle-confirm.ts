@@ -1,6 +1,7 @@
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import type { ConfirmRequest } from "../shared/confirm-dialog";
 import { type EntryData, isTranslationEntry } from "./entry-form";
+import { t } from "./translate";
 
 /** 편집 화면의 상태 전환(§5.3). */
 export type LifecycleAction = "archive" | "unarchive" | "trash" | "restore";
@@ -10,18 +11,26 @@ export type ConfirmedLifecycleAction = Extract<LifecycleAction, "archive" | "tra
 
 /** 전환의 이름. 버튼·"먼저 저장하세요" 안내가 같은 말을 쓴다. */
 export const LIFECYCLE_LABEL: Record<LifecycleAction, string> = {
-	archive: "보관",
-	unarchive: "보관 해제",
-	trash: "휴지통으로 이동",
-	restore: "복원",
+	archive: t("lifecycle.archive"),
+	unarchive: t("lifecycle.unarchive"),
+	trash: t("lifecycle.trash"),
+	restore: t("lifecycle.restore"),
 };
 
 /** 전환이 끝난 뒤 알릴 문구. */
 export const LIFECYCLE_SUCCESS: Record<LifecycleAction, string> = {
-	archive: "보관했습니다.",
-	unarchive: "보관을 해제했습니다.",
-	trash: "휴지통으로 옮겼습니다.",
-	restore: "복원했습니다.",
+	archive: t("lifecycle.success.archive"),
+	unarchive: t("lifecycle.success.unarchive"),
+	trash: t("lifecycle.success.trash"),
+	restore: t("lifecycle.success.restore"),
+};
+
+/** 전환에 실패했을 때 알릴 문구. */
+export const LIFECYCLE_FAILED: Record<LifecycleAction, string> = {
+	archive: t("lifecycle.failed.archive"),
+	unarchive: t("lifecycle.failed.unarchive"),
+	trash: t("lifecycle.failed.trash"),
+	restore: t("lifecycle.failed.restore"),
 };
 
 /**
@@ -34,7 +43,7 @@ export function lifecycleConfirm(
 	incomingReferences: readonly Pick<IncomingReferenceItem, "state">[],
 ): Omit<ConfirmRequest, "onConfirm"> {
 	const publishedUsers = incomingReferences.filter((item) => item.state === "published").length;
-	const usageNote = publishedUsers > 0 ? ` 공개본에서 이 글을 참조하는 콘텐츠가 ${publishedUsers}개 있습니다.` : "";
+	const usageNote = publishedUsers > 0 ? t("lifecycle.usage", { count: publishedUsers }) : "";
 	const isTranslation = entry !== null && isTranslationEntry(entry);
 	const otherLocales =
 		entry && !isTranslation
@@ -43,19 +52,18 @@ export function lifecycleConfirm(
 					.map((member) => member.locale.toUpperCase())
 			: [];
 	const hasGroup = otherLocales.length > 0;
-	const target = isTranslation ? "이 번역본을" : "이 글을";
 
 	switch (action) {
 		case "archive":
 			return {
 				title: LIFECYCLE_LABEL.archive,
-				description: `${target} 보관할까요? 공개가 종료됩니다.${usageNote}${hasGroup ? " 번역본도 함께 보관합니다." : ""}`,
+				description: `${t("lifecycle.archive.ask", { translation: isTranslation ? 1 : 0 })}${usageNote}${hasGroup ? t("lifecycle.archive.group") : ""}`,
 				confirmLabel: LIFECYCLE_LABEL.archive,
 			};
 		case "trash":
 			return {
 				title: LIFECYCLE_LABEL.trash,
-				description: `${target} 휴지통으로 이동할까요? 공개가 종료됩니다.${usageNote}${hasGroup ? ` ${otherLocales.join("·")} 번역본도 함께 휴지통으로 이동합니다.` : ""}`,
+				description: `${t("lifecycle.trash.ask", { translation: isTranslation ? 1 : 0 })}${usageNote}${hasGroup ? t("lifecycle.trash.group", { locales: otherLocales.join("·") }) : ""}`,
 				confirmLabel: LIFECYCLE_LABEL.trash,
 				destructive: true,
 			};

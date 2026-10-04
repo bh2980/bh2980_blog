@@ -1,5 +1,9 @@
 import type { CodeRule } from "@bh2980/cms/code-block";
 import { defineValidator } from "./action";
+import { lazyTranslator } from "./i18n";
+import { validatorMessages } from "./validators.messages";
+
+const t = lazyTranslator(validatorMessages);
 
 /**
  * 기본 기능이 쓰는 코드 검사. 사이트 기능에도 그대로 넣을 수 있다.
@@ -14,7 +18,9 @@ import { defineValidator } from "./action";
 /** 같은 컬렉션·언어의 다른 항목이 이미 쓰는 주소(slug)는 뺀다. 컬렉션을 모르는 실행이면 보지 않는다. */
 export const uniqueSlug = defineValidator({
 	name: "unique-slug",
-	label: "중복 없음",
+	get label() {
+		return t("uniqueSlug.label");
+	},
 	run: async (value, context) => {
 		if (!context.collection) return true;
 		const slug = value.trim();
@@ -41,7 +47,9 @@ export interface RegexRunsRule {
 export const regexRuns = (input = "code", rule: RegexRunsRule = {}) =>
 	defineValidator({
 		name: "regex-runs",
-		label: "정규식 실행",
+		get label() {
+			return t("regexRuns.label");
+		},
 		run: async (value, context) => {
 			const { checkPattern, ruleMatches } = await import("@bh2980/cms/code-block");
 			if (checkPattern(value, "g")) return false;
@@ -57,7 +65,7 @@ export const regexRuns = (input = "code", rule: RegexRunsRule = {}) =>
 				},
 				typeof code === "string" ? code : "",
 			).length;
-			return count > 0 ? { detail: `${count}곳` } : false;
+			return count > 0 ? { detail: t("regexRuns.detail", { count }) } : false;
 		},
 	});
 
@@ -65,7 +73,9 @@ export const regexRuns = (input = "code", rule: RegexRunsRule = {}) =>
 export const sameStructure = (input: string) =>
 	defineValidator({
 		name: "same-structure",
-		label: "구조 유지",
+		get label() {
+			return t("sameStructure.label");
+		},
 		run: async (value, context) => {
 			const source = context.input[input];
 			if (typeof source !== "string") return true;

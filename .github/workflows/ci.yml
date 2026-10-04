@@ -26,6 +26,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # 고치지 않고 검사만 한다.
       - run: pnpm lint
+      # 패키지 실행 코드의 한국어 문구는 문구 사전(messages.ts)에만(M15-7).
+      - run: pnpm check:korean
       - run: pnpm typecheck
       - run: pnpm build:packages
 

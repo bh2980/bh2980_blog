@@ -1,4 +1,7 @@
-import { defineBlock } from "@bh2980/cms";
+import { createActiveTranslator, defineBlock } from "@bh2980/cms";
+import { tooltipMessages } from "./messages";
+
+const t = createActiveTranslator(tooltipMessages);
 
 /**
  * 툴팁(`:tooltip[글자]{content="설명"}`). 글자에 마우스를 올리면 설명을 보인다. 공개 화면은 사이트가 `Tooltip`
@@ -6,9 +9,20 @@ import { defineBlock } from "@bh2980/cms";
  */
 export const tooltipBlock = defineBlock({
 	name: "tooltip",
-	label: "툴팁",
+	get label() {
+		return t("label");
+	},
 	syntax: { kind: "text", directive: "tooltip" },
 	component: "Tooltip",
-	attributes: { content: { type: "string", label: "설명", required: true, translatable: true } },
+	attributes: {
+		content: {
+			type: "string",
+			get label() {
+				return t("content.label");
+			},
+			required: true,
+			translatable: true,
+		},
+	},
 	editor: { view: "mark" },
 });

@@ -1,7 +1,8 @@
+import { ADMIN_LANGUAGE } from "@bh2980/cms/client";
 import { describe, expect, it } from "vitest";
 import { cmsApiErrorMessage, cmsApiIssues, cmsIssueMessage } from "../api-error-message";
 
-describe("M10 publish feedback", () => {
+describe.runIf(ADMIN_LANGUAGE === "ko")("M10 publish feedback", () => {
 	it("keeps field paths for inline validation", () => {
 		const payload = {
 			issues: [
@@ -30,5 +31,18 @@ describe("M10 publish feedback", () => {
 		expect(cmsIssueMessage({ code: "image_media_not_ready", position: { line: 2, column: 1 } })).toBe(
 			"이미지가 아직 준비되지 않았습니다. (2행 1열)",
 		);
+	});
+});
+
+describe.runIf(ADMIN_LANGUAGE === "en")("API error messages (English admin)", () => {
+	it("fills field labels and positions in English", () => {
+		expect(cmsIssueMessage({ code: "missing_field", path: "title", message: "Headline" })).toBe(
+			"Fill in Headline. (title)",
+		);
+		expect(cmsIssueMessage({ code: "field_too_long", message: "Headline" })).toBe("Headline is too long.");
+		expect(cmsIssueMessage({ code: "mdx_error", position: { line: 4, column: 7 } })).toBe(
+			"Check the MDX syntax of the body. (line 4, column 7)",
+		);
+		expect(cmsApiErrorMessage({ code: "slug_conflict" }, "fallback")).toBe("This address (slug) is already in use.");
 	});
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
@@ -15,10 +16,13 @@ import { Switch } from "../ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { submitOnEnter } from "./link-form";
+import { editorMessages } from "./messages";
 import { formatBytes, type PreparedUpload, prepareUpload, uploadImageFile } from "./upload-helper";
 
+const t = createTranslator(editorMessages);
+
 /** 설명이 필요한 이미지에 대체 텍스트가 없을 때의 안내. 넣기 대화 상자와 이미지 설정이 같이 쓴다. */
-export const ALT_REQUIRED_MESSAGE = "대체 텍스트를 입력하거나 장식 이미지로 표시하세요.";
+export const ALT_REQUIRED_MESSAGE = t("imageDialog.altRequired");
 
 export interface ImageInsertion {
 	mediaId: string;
@@ -60,7 +64,7 @@ export function ImageInsertDialog({
 	onClose,
 	onInsert,
 	mode = "insert",
-	title = "이미지 넣기",
+	title = t("imageDialog.title"),
 }: ImageInsertDialogProps) {
 	const picking = mode === "pick";
 	const { media } = useAdminFeatures();
@@ -189,7 +193,7 @@ export function ImageInsertDialog({
 				publicUrl: uploaded.publicUrl,
 			});
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
+			setError(err instanceof Error ? err.message : t("imageDialog.uploadFailed"));
 		} finally {
 			setProgress(null);
 		}
@@ -205,7 +209,7 @@ export function ImageInsertDialog({
 					</DialogHeader>
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={onClose}>
-							닫기
+							{t("imageDialog.close")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -224,16 +228,16 @@ export function ImageInsertDialog({
 				>
 					<DialogHeader>
 						<DialogTitle>{title}</DialogTitle>
-						<DialogDescription>새 파일을 올리거나 미디어 라이브러리에서 고르세요.</DialogDescription>
+						<DialogDescription>{t("imageDialog.description")}</DialogDescription>
 					</DialogHeader>
 
 					<Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-						<TabsList variant="line" aria-label="이미지 출처">
+						<TabsList variant="line" aria-label={t("imageDialog.sourceLabel")}>
 							<TabsTrigger value="upload" disabled={isUploading}>
-								업로드
+								{t("imageDialog.upload")}
 							</TabsTrigger>
 							<TabsTrigger value="library" disabled={isUploading}>
-								라이브러리
+								{t("imageDialog.library")}
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
@@ -242,7 +246,7 @@ export function ImageInsertDialog({
 						<div className="space-y-2 text-sm">
 							<Input
 								type="file"
-								aria-label="이미지 파일"
+								aria-label={t("imageDialog.fileLabel")}
 								accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
 								disabled={isUploading}
 								onChange={(event) => setFile(event.target.files?.[0] ?? null)}
@@ -256,12 +260,12 @@ export function ImageInsertDialog({
 											disabled={isUploading}
 											onCheckedChange={(checked) => setOptimize(checked)}
 										/>
-										웹용 최적화
+										{t("imageDialog.optimize")}
 									</Label>
 									<p className="text-muted-foreground text-xs" aria-live="polite">
 										{prepared?.optimized
 											? `WebP · ${formatBytes(file.size)} → ${formatBytes(prepared.file.size)} · ${prepared.width}×${prepared.height}`
-											: `원본 유지 · ${formatBytes(file.size)}${prepared?.skippedReason ? ` · ${prepared.skippedReason}` : ""}`}
+											: `${t("imageDialog.keepOriginal", { size: formatBytes(file.size) })}${prepared?.skippedReason ? ` · ${prepared.skippedReason}` : ""}`}
 									</p>
 								</>
 							)}
@@ -269,12 +273,12 @@ export function ImageInsertDialog({
 					) : (
 						<div className="space-y-2">
 							<Label htmlFor={searchId} className="sr-only">
-								파일명 검색
+								{t("imageDialog.search")}
 							</Label>
 							<Input
 								id={searchId}
 								value={search}
-								placeholder="파일명 검색"
+								placeholder={t("imageDialog.search")}
 								onChange={(event) => setSearch(event.target.value)}
 							/>
 							<div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto" aria-busy={isLibraryLoading}>
@@ -284,15 +288,17 @@ export function ImageInsertDialog({
 								{libraryFailed && !isLibraryLoading && (
 									<Alert variant="danger" className="col-span-3">
 										<AlertDescription className="flex items-center justify-between gap-2">
-											미디어 목록을 불러오지 못했습니다.
+											{t("imageDialog.libraryFailed")}
 											<Button type="button" size="xs" variant="outline" onClick={() => setLibraryAttempt((n) => n + 1)}>
-												다시 시도
+												{t("imageDialog.retry")}
 											</Button>
 										</AlertDescription>
 									</Alert>
 								)}
 								{library.length === 0 && !isLibraryLoading && !libraryFailed && (
-									<p className="col-span-3 py-6 text-center text-muted-foreground text-sm">미디어가 없습니다.</p>
+									<p className="col-span-3 py-6 text-center text-muted-foreground text-sm">
+										{t("imageDialog.libraryEmpty")}
+									</p>
 								)}
 								{library.map((item) => (
 									<Button
@@ -310,7 +316,9 @@ export function ImageInsertDialog({
 											// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 											<img src={item.publicUrl} alt="" className="h-20 w-full object-cover" />
 										) : (
-											<span className="flex h-20 items-center justify-center bg-muted">미리보기 없음</span>
+											<span className="flex h-20 items-center justify-center bg-muted">
+												{t("imageDialog.noPreview")}
+											</span>
 										)}
 										<span className="block truncate px-1 py-0.5">{item.filename}</span>
 									</Button>
@@ -320,7 +328,7 @@ export function ImageInsertDialog({
 					)}
 
 					<div className={cn("space-y-2 text-sm", picking && "hidden")}>
-						<Label htmlFor={altId}>대체 텍스트</Label>
+						<Label htmlFor={altId}>{t("imageDialog.alt")}</Label>
 						<Textarea
 							id={altId}
 							value={alt}
@@ -348,9 +356,9 @@ export function ImageInsertDialog({
 								disabled={isUploading}
 								onCheckedChange={(checked) => setDecorative(checked)}
 							/>
-							장식 이미지
+							{t("imageDialog.decorative")}
 						</Label>
-						<Label htmlFor={captionId}>캡션</Label>
+						<Label htmlFor={captionId}>{t("imageDialog.caption")}</Label>
 						<Textarea
 							id={captionId}
 							value={caption}
@@ -363,7 +371,7 @@ export function ImageInsertDialog({
 
 					{isUploading && (
 						<output className="flex items-center gap-2 text-sm">
-							<Spinner /> 업로드 중 · {progress}%
+							<Spinner /> {t("imageDialog.uploading", { percent: progress ?? 0 })}
 						</output>
 					)}
 					{error && (
@@ -374,10 +382,18 @@ export function ImageInsertDialog({
 
 					<DialogFooter>
 						<Button type="button" variant="outline" disabled={isUploading} onClick={onClose}>
-							취소
+							{t("imageDialog.cancel")}
 						</Button>
 						<Button type="submit" disabled={isUploading || !hasImage}>
-							{tab === "upload" ? (error ? "다시 업로드" : picking ? "업로드" : "넣기") : picking ? "선택" : "넣기"}
+							{tab === "upload"
+								? error
+									? t("imageDialog.reupload")
+									: picking
+										? t("imageDialog.upload")
+										: t("imageDialog.insert")
+								: picking
+									? t("imageDialog.pick")
+									: t("imageDialog.insert")}
 						</Button>
 					</DialogFooter>
 				</form>

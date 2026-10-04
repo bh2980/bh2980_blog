@@ -16,6 +16,7 @@ import {
 	ComboboxValue,
 	useComboboxAnchor,
 } from "../../ui/combobox";
+import { t } from "./translate";
 
 export interface RelationOption {
 	value: string;
@@ -97,7 +98,7 @@ export function RelationCombobox({
 			onValueChange([...keep, createdId]);
 			setQuery("");
 		} catch (caught) {
-			setError(caught instanceof Error && caught.message ? caught.message : "추가하지 못했습니다.");
+			setError(caught instanceof Error && caught.message ? caught.message : t("relation.addFailed"));
 		} finally {
 			setIsCreating(false);
 		}
@@ -105,14 +106,14 @@ export function RelationCombobox({
 
 	const list = (
 		<ComboboxContent anchor={multiple ? anchor : undefined}>
-			<ComboboxEmpty>일치하는 항목이 없습니다.</ComboboxEmpty>
+			<ComboboxEmpty>{t("relation.empty")}</ComboboxEmpty>
 			<ComboboxList>
 				{(item: Item) => (
 					<ComboboxItem key={item.value} value={item} className={cn(item.create && "text-primary")}>
 						{item.create ? (
 							<>
 								<Plus aria-hidden />
-								<span className="truncate">'{item.label}' 추가</span>
+								<span className="truncate">{t("relation.create", { label: item.label })}</span>
 							</>
 						) : (
 							<span className="truncate">{item.label}</span>

@@ -27,7 +27,7 @@ describe("가짜 생성 모델(개발 전용)", () => {
 		} as const;
 		expect(await fake.generate(request("mdx", { inputs }))).toEqual({ mdx: "안녕 **세계**" });
 		expect(await fake.generate(request("text", { inputs }))).toEqual({ text: "(fake) React Hooks" });
-		expect(await fake.generate(request("note", { inputs }))).toEqual({ note: "(fake) 메모" });
+		expect(await fake.generate(request("note", { inputs }))).toEqual({ note: "(fake) note" });
 		expect(await fake.generate(request("candidates", { inputs: { heading: inputs.heading } }))).toEqual({
 			candidates: ["react-hooks", "react-hooks-guide", "fake-react-hooks"],
 		});

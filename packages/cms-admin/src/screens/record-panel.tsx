@@ -3,6 +3,7 @@
 import {
 	COLLECTION_DEFINITIONS,
 	type Collection,
+	createTranslator,
 	DEFAULT_LOCALE,
 	LOCALES,
 	type Locale,
@@ -29,8 +30,11 @@ import {
 	recordTranslationKey,
 } from "./entries/entry-form";
 import { RecordLocaleFields, SchemaFields } from "./entries/schema-fields";
+import { screensMessages } from "./messages";
 import { useConfirm } from "./shared/confirm-dialog";
 import { SidePanelHeader } from "./shared/side-panel";
+
+const t = createTranslator(screensMessages);
 
 export type RecordTarget = { collection: Collection; id: string | null };
 
@@ -77,12 +81,12 @@ export function RecordPanel({
 
 	const { collection, id } = target;
 	const label = COLLECTION_DEFINITIONS[collection].label;
-	const heading = id ? `${label} 편집` : `${label} 추가`;
+	const heading = id ? t("record.edit", { label }) : t("list.add", { label });
 	const title = form.title;
 	/** 주소를 비우면 만들 값의 안내. 주소 필드의 `from`이 없으면 필드의 안내 문구를 그대로 쓴다. */
 	const slugFrom = slugFieldOf(collection)?.from;
 	const slugHint = slugFrom
-		? `비우면 ${schemaOf(collection).fields[slugFrom]?.label ?? slugFrom}에서 만듭니다`
+		? t("record.slugHint", { name: schemaOf(collection).fields[slugFrom]?.label ?? slugFrom })
 		: undefined;
 
 	useEffect(() => {
@@ -100,7 +104,7 @@ export function RecordPanel({
 				setFormState(formFromEntry(entry));
 			})
 			.catch((err) => {
-				if (!cancelled) setError(errorText(err, `${label}을(를) 불러오지 못했습니다.`));
+				if (!cancelled) setError(errorText(err, t("record.loadFailed", { label })));
 			});
 		return () => {
 			cancelled = true;
@@ -137,12 +141,12 @@ export function RecordPanel({
 								slug: form.slug.trim() || slugFromValues(collection, form) || null,
 								metadata: built.metadata,
 							},
-							fallback: "저장하지 못했습니다.",
+							fallback: t("record.saveFailed"),
 						})
 					: await cmsFetch<EntryData>("/api/cms/v1/entries", {
 							method: "POST",
 							json: { collection, slug: form.slug.trim() || null, metadata: built.metadata, mdx: "" },
-							fallback: "저장하지 못했습니다.",
+							fallback: t("record.saveFailed"),
 						});
 			// 칸은 열린 채 남는다. 다음 저장이 새 판을 기준으로 하도록 받은 항목으로 바꾼다.
 			if (id) setLoaded(saved);
@@ -152,7 +156,7 @@ export function RecordPanel({
 			setError(
 				err instanceof CmsApiError && err.issues.length > 0
 					? err.issues.map(cmsIssueMessage).join("\n")
-					: errorText(err, "저장하지 못했습니다."),
+					: errorText(err, t("record.saveFailed")),
 			);
 		} finally {
 			setIsSaving(false);
@@ -182,7 +186,11 @@ export function RecordPanel({
 								<TabsTrigger
 									key={option}
 									value={option}
-									aria-label={option === DEFAULT_LOCALE ? name : `${name} · 번역 ${filled ? "있음" : "없음"}`}
+									aria-label={
+										option === DEFAULT_LOCALE
+											? name
+											: t(filled ? "record.translationOn" : "record.translationOff", { name })
+									}
 									className="flex-none gap-1.5 px-0 text-xs"
 								>
 									{name}
@@ -208,12 +216,12 @@ export function RecordPanel({
 								onChange={setForm}
 								slugPlaceholder={slugFromValues(collection, form) || slugHint}
 							/>
-							{id && <p className="text-muted-foreground text-xs">주소를 바꾸면 이전 주소는 새 주소로 연결됩니다.</p>}
+							{id && <p className="text-muted-foreground text-xs">{t("record.slugChange")}</p>}
 						</TabsContent>
 						{LOCALES.filter((option) => option !== DEFAULT_LOCALE).map((option) => (
 							<TabsContent key={option} value={option} className="space-y-4">
 								<p className="text-muted-foreground text-xs leading-relaxed">
-									비워 두면 {localeLabel(option)} 화면에서도 기본 언어 값을 씁니다. 주소와 연결은 모든 언어가 같습니다.
+									{t("record.localeEmpty", { name: localeLabel(option) })}
 								</p>
 								<RecordLocaleFields
 									collection={collection}
@@ -234,10 +242,10 @@ export function RecordPanel({
 					)}
 					<div className="flex justify-end gap-2">
 						<Button type="button" variant="outline" size="sm" onClick={() => void close()}>
-							취소
+							{t("common.cancel")}
 						</Button>
 						<Button type="submit" size="sm" disabled={!title.trim() || isSaving || Boolean(id && !loaded)}>
-							{isSaving ? "저장 중…" : "저장"}
+							{isSaving ? t("common.saving") : t("common.save")}
 						</Button>
 					</div>
 				</div>

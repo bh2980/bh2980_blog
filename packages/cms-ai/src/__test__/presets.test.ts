@@ -13,8 +13,10 @@ import { describe, expect, it } from "vitest";
 import { chart, mermaid } from "../../../cms-blocks/src";
 import { seo } from "../../../cms-seo/src";
 import type { AiActionDefinition, AiAttach } from "../action";
+import { lazyTranslator } from "../i18n";
 import { aiPlugin } from "../plugin";
 import { aiPresets, DEFAULT_AI_ACTIONS } from "../presets";
+import { presetMessages } from "../presets.messages";
 import { AI_ACTIONS } from "../registry";
 import { resolveAiActions } from "../resolve";
 
@@ -22,6 +24,8 @@ import { resolveAiActions } from "../resolve";
  * 기본 기능(프리셋)이 붙는 곳과 켜고 끄기(M10-2). 앞 묶음은 지금 설정(블로그 예시·다른 사이트 둘 다)에서 필드를 찾아
  * 확인하고, 뒤 묶음은 테스트 안에서 만든 작은 설정으로 확인한다.
  */
+
+const presetText = lazyTranslator(presetMessages);
 
 type FieldAttach = Extract<AiAttach, { slot: "field" }>;
 const fieldAttaches = (definition: AiActionDefinition | undefined): FieldAttach[] =>
@@ -56,7 +60,7 @@ describe("지금 설정: 기본 필드 기능은 필드 종류·역할·관계 �
 		expect(targets.length).toBeGreaterThan(0);
 		const summary = AI_ACTIONS.summary;
 		// 다른 사이트 설정은 요약 기능을 옵션으로 바꿨다(`maxLength: 200`).
-		if (summary?.prompt.includes("200자")) return;
+		if (summary?.prompt.includes("at most 200 characters")) return;
 		expect(pairs(summary)).toEqual(targets.map(({ pair }) => pair).sort());
 		const max = targets[0]?.definition.kind === "text" ? (targets[0].definition.max ?? 160) : 160;
 		expect(summary?.checks).toContainEqual({ kind: "maxLength", max });
@@ -155,23 +159,27 @@ describe("기본 기능 켜기·끄기·바꾸기(`resolveAiActions`)", () => {
 		expect(pairs(actions.slug)).toEqual(["note.slug"]);
 		expect(pairs(actions.summary)).toEqual(["note.lead"]);
 		expect(actions.summary?.checks).toEqual([{ kind: "maxLength", max: 90 }]);
-		expect(actions.summary?.prompt).toContain("90자 이내");
+		expect(actions.summary?.prompt).toContain("at most 90 characters");
 		expect(pairs(actions.tags)).toEqual(["note.labelIds"]);
-		expect(actions.tags).toMatchObject({ label: "라벨 추천", choices: { from: "collection", collection: "label" } });
+		expect(actions.tags).toMatchObject({
+			label: presetText("label.suggest", { name: "라벨" }),
+			choices: { from: "collection", collection: "label" },
+		});
 		expect(pairs(actions.category)).toEqual(["note.shelfId"]);
 		expect(actions.category).toMatchObject({ pick: "one", choices: { from: "collection", collection: "shelf" } });
-		expect(actions.category?.prompt).toBe("이 글이 들어갈 책장을 고른다.");
-		// 지시문에 사이트 종류("블로그")나 고정 언어("한국어")가 없다.
-		for (const definition of Object.values(actions)) {
-			expect(definition.prompt).not.toContain("블로그");
-			expect(definition.prompt).not.toContain("한국어");
+		expect(actions.category?.prompt).toBe("Choose the one that this content belongs to.");
+		// 기본 지시문은 영어이고 사이트 종류나 고정 언어를 정하지 않는다(말투·표기는 공통 문구 `styleGuide`가 맡는다).
+		for (const [key, definition] of Object.entries(actions)) {
+			expect(definition.prompt).not.toMatch(/blog|React Query|Korean/i);
+			// 번역의 번역할 속성 목록만 사이트의 블록 이름표가 들어간다.
+			if (key !== "translate") expect(definition.prompt).toMatch(/^[\x20-\x7E\n]*$/);
 		}
 	});
 
 	it("번역 지시문의 번역할 속성은 블록 정의에서 만든다. 언어가 하나면 번역 기능은 없다", () => {
 		const translate = resolveAiActions({}, site).translate;
 		expect(translate?.prompt).toContain("곁상자(heading)");
-		expect(translate?.prompt).toContain("이미지(alt·caption·title)");
+		expect(translate?.prompt).toContain(`${BLOCKS.find((block) => block.name === "image")?.label}(alt·caption·title)`);
 		expect(translate?.prompt).not.toContain("콜아웃");
 		expect(resolveAiActions({}, { ...site, locales: [{ code: "ko" }] }).translate).toBeUndefined();
 	});
@@ -194,11 +202,15 @@ describe("기본 기능 켜기·끄기·바꾸기(`resolveAiActions`)", () => {
 		expect(() => resolveAiActions({ actions: { nope: false } }, site)).toThrow(/does not exist/);
 	});
 
-	it("공통 문구 `styleGuide`가 있을 때만 문체 다듬기·초안 쓰기 지시문에 넣는다", () => {
-		expect(resolveAiActions({}, site).polish?.prompt).not.toContain("{{shared.");
-		const shared = { styleGuide: { label: "문체 가이드", text: "" } };
-		expect(resolveAiActions({ shared }, site).polish?.prompt).toContain("{{shared.styleGuide}}");
-		expect(resolveAiActions({ shared }, site).draft?.prompt).toContain("{{shared.styleGuide}}");
+	it("공통 문구 `styleGuide`가 있을 때만 글을 쓰는 기능의 지시문에 넣는다", () => {
+		const writing = ["slug", "summary", "imageAlt", "imageCaption", "mediaFilename", "translate", "polish", "draft"];
+		const without = resolveAiActions({}, site);
+		for (const key of writing) expect(without[key]?.prompt).not.toContain("{{shared.");
+		const shared = { styleGuide: { label: "Style guide", text: "" } };
+		const withGuide = resolveAiActions({ shared }, site);
+		for (const key of writing) expect(withGuide[key]?.prompt).toContain("{{shared.styleGuide}}");
+		// 고르는 기능(태그·분류)과 정규식 기능에는 문체가 없다.
+		for (const key of ["tags", "category", "codeFold"]) expect(withGuide[key]?.prompt).not.toContain("{{shared.");
 	});
 
 	it("필드 이름을 주면 그 필드에, 선택지를 주면 그 컬렉션을 가리키는 필드에 붙는다", () => {

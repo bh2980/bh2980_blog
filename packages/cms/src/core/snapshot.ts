@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { BLOCK_BY_NAME, invalidOptionAttributes } from "../blocks/derive";
+import { createTranslator } from "../i18n";
 import { analyze } from "../mdx/analyze";
 import { DIRECTIVE_BY_COMPONENT } from "../mdx/directives";
 import { isAllowedImageSrc } from "../mdx/image-src";
@@ -19,6 +20,7 @@ import { COLLECTION_DEFINITIONS, isCollection } from "./collections";
 import { isUuid } from "./ids";
 import { parseInternalLink } from "./links";
 import { PREFIXED_LOCALES } from "./locales";
+import { coreMessages } from "./messages";
 import { normalizeSlugInput } from "./slug";
 import { parseTranslationState } from "./translation/state";
 import {
@@ -237,6 +239,8 @@ function findNamedJsxChildren(node: MdxNode, name: string): MdxNode[] {
 	return found;
 }
 
+const tCore = createTranslator(coreMessages);
+
 /** 병합 한 칸이 걸칠 수 있는 최대 행·열 수. 편집기·공개 렌더의 표 열 한도와 같다. */
 const MAX_TABLE_SPAN = MAX_TABLE_COLUMNS;
 
@@ -248,6 +252,14 @@ function readSpan(cell: MdxNode, key: "colspan" | "rowspan"): { span: number } |
 	return Number.isNaN(parsed) || parsed < 1 || String(parsed) !== raw.trim() ? { invalid: raw } : { span: parsed };
 }
 
+type TableSpanReason =
+	| "invalid_colspan"
+	| "invalid_rowspan"
+	| "rowspan_overflow"
+	| "span_too_large"
+	| "span_overlap"
+	| "ragged_rows";
+
 /**
  * 표의 셀 병합(colspan·rowspan) 및 격자 구조를 검사하여 잘못된 span에 대해 경고한다(v2 C6).
  */
@@ -258,8 +270,14 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 
 	const grid: boolean[][] = Array.from({ length: totalRows }, () => []);
 	let hasSpanIssue = false;
-	const warn = (message: string) => {
-		warnings.push({ code: "invalid_table_span", message, path: "mdx", position });
+	const warn = (reason: TableSpanReason, params: Record<string, string | number> = {}) => {
+		warnings.push({
+			code: "invalid_table_span",
+			message: tCore(`table.${reason}`, params),
+			params: { reason, ...params },
+			path: "mdx",
+			position,
+		});
 		hasSpanIssue = true;
 	};
 
@@ -276,22 +294,19 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 
 			let cs = 1;
 			const colspan = readSpan(cell, "colspan");
-			if ("invalid" in colspan) warn(`잘못된 colspan 값입니다: ${colspan.invalid}`);
+			if ("invalid" in colspan) warn("invalid_colspan", { value: colspan.invalid });
 			else cs = colspan.span;
 
 			let rs = 1;
 			const rowspan = readSpan(cell, "rowspan");
-			if ("invalid" in rowspan) warn(`잘못된 rowspan 값입니다: ${rowspan.invalid}`);
+			if ("invalid" in rowspan) warn("invalid_rowspan", { value: rowspan.invalid });
 			else rs = rowspan.span;
 
 			// 외부 MDX의 거대한 span이 격자 계산을 폭증시키지 않도록 제한한다.
 			const overflowsRows = r + rs > totalRows;
 			if (cs > MAX_TABLE_SPAN || rs > MAX_TABLE_SPAN || c + cs > MAX_TABLE_SPAN || overflowsRows) {
-				warn(
-					overflowsRows
-						? `셀의 rowspan(${rs})이 표의 전체 행 수(${totalRows})를 초과합니다.`
-						: `셀 병합 범위가 표의 허용 크기(${MAX_TABLE_SPAN}열·${MAX_TABLE_SPAN}행)를 넘습니다.`,
-				);
+				if (overflowsRows) warn("rowspan_overflow", { rowspan: rs, rows: totalRows });
+				else warn("span_too_large", { max: MAX_TABLE_SPAN });
 				continue;
 			}
 
@@ -304,7 +319,7 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 					covered[c + dc] = true;
 				}
 			}
-			if (overlap) warn("표 셀의 병합 영역이 겹칩니다.");
+			if (overlap) warn("span_overlap");
 
 			c += cs;
 		}
@@ -320,12 +335,7 @@ function checkTableSpans(tableNode: MdxNode, position: { line: number; column: n
 			return false;
 		});
 		if (hasGapOrMismatch) {
-			warnings.push({
-				code: "invalid_table_span",
-				message: "표의 행마다 열 수가 일치하지 않거나 빈 칸이 있습니다.",
-				path: "mdx",
-				position,
-			});
+			warn("ragged_rows");
 		}
 	}
 }
@@ -456,6 +466,7 @@ export async function prepareSnapshot(
 	const mdxIssues: Issue[] = analysis.errors.map((e) => ({
 		code: "mdx_error",
 		message: e.message,
+		params: { reason: e.code, ...e.params },
 		position: e.position,
 	}));
 	let mdxHasError = analysis.errors.length > 0;
@@ -569,7 +580,12 @@ export async function prepareSnapshot(
 	const issues: Issue[] = [...mdxIssues, ...blockIssues];
 	const firstUntranslated = untranslated[0];
 	if (firstUntranslated) {
-		issues.push({ code: "untranslated_text", position: firstUntranslated, message: `${untranslated.length}곳` });
+		issues.push({
+			code: "untranslated_text",
+			position: firstUntranslated,
+			message: tCore("untranslatedCount", { count: untranslated.length }),
+			params: { count: untranslated.length },
+		});
 	}
 	if (analysis.frontmatter !== null) {
 		issues.push({ code: "frontmatter_present", path: "frontmatter", position: { line: 1, column: 1 } });

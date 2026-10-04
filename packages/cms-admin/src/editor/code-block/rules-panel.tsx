@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	CODE_CHAR_EFFECTS,
 	type CodeCharEffectName,
@@ -19,6 +20,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Switch } from "../../ui/switch";
 import { Textarea } from "../../ui/textarea";
+import { codeBlockMessages } from "./messages";
+
+const t = createTranslator(codeBlockMessages);
 
 interface RulesPanelProps {
 	rules: CodeRule[];
@@ -35,8 +39,8 @@ interface RulesPanelProps {
 
 const EFFECT_OPTIONS = CODE_CHAR_EFFECTS.map((effect) => ({ value: effect.name, label: effect.label }));
 const SCOPE_OPTIONS = [
-	{ value: "document", label: "코드 전체" },
-	{ value: "line", label: "한 줄만" },
+	{ value: "document", label: t("rulesPanel.scopeDocument") },
+	{ value: "line", label: t("rulesPanel.scopeLine") },
 ];
 
 function RuleRow({
@@ -55,14 +59,17 @@ function RuleRow({
 	const problem = checkPattern(rule.pattern, rule.flags);
 	const count = problem ? 0 : ruleMatches(rule, text).length;
 	return (
-		<li className="flex flex-col gap-1.5 rounded-md border p-2" aria-label={`규칙 /${rule.pattern}/`}>
+		<li
+			className="flex flex-col gap-1.5 rounded-md border p-2"
+			aria-label={t("rulesPanel.rule", { pattern: rule.pattern })}
+		>
 			<div className="flex items-center gap-1.5">
 				<Select
 					value={rule.name}
 					items={EFFECT_OPTIONS}
 					onValueChange={(value) => value && onChange({ ...rule, name: value as CodeCharEffectName, attrs: {} })}
 				>
-					<SelectTrigger size="sm" className="h-7 text-xs" aria-label="효과">
+					<SelectTrigger size="sm" className="h-7 text-xs" aria-label={t("rulesPanel.effect")}>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -85,7 +92,7 @@ function RuleRow({
 						)
 					}
 				>
-					<SelectTrigger size="sm" className="h-7 text-xs" aria-label="찾는 곳">
+					<SelectTrigger size="sm" className="h-7 text-xs" aria-label={t("rulesPanel.scope")}>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -98,7 +105,7 @@ function RuleRow({
 				</Select>
 				{rule.scope === "char" && (
 					<Input
-						aria-label="줄 번호"
+						aria-label={t("rulesPanel.lineNumber")}
 						type="number"
 						min={1}
 						max={lineCount}
@@ -110,23 +117,23 @@ function RuleRow({
 						className="h-7 w-14 px-1.5 text-xs"
 					/>
 				)}
-				<IconButton label="규칙 삭제" size="icon-xs" destructive onClick={onRemove} className="ml-auto">
+				<IconButton label={t("rulesPanel.remove")} size="icon-xs" destructive onClick={onRemove} className="ml-auto">
 					<Trash2 aria-hidden />
 				</IconButton>
 			</div>
 			<div className="flex items-center gap-1 font-mono text-xs">
 				<span className="text-muted-foreground">/</span>
 				<Input
-					aria-label="정규식"
+					aria-label={t("rulesPanel.pattern")}
 					value={rule.pattern}
-					placeholder="찾을 글자"
+					placeholder={t("rulesPanel.patternPlaceholder")}
 					onChange={(event) => onChange({ ...rule, pattern: event.target.value })}
 					className="h-7 flex-1 px-1.5 font-mono text-xs"
 					aria-invalid={!!problem && rule.pattern.length > 0}
 				/>
 				<span className="text-muted-foreground">/</span>
 				<Input
-					aria-label="플래그"
+					aria-label={t("rulesPanel.flags")}
 					value={rule.flags}
 					onChange={(event) => onChange({ ...rule, flags: event.target.value.replace(/[^a-z]/gi, "") })}
 					className="h-7 w-10 px-1.5 font-mono text-xs"
@@ -134,9 +141,9 @@ function RuleRow({
 			</div>
 			{rule.name === "Tooltip" && (
 				<Textarea
-					aria-label="툴팁 설명"
+					aria-label={t("rulesPanel.tooltipContent")}
 					value={String(rule.attrs.content ?? "")}
-					placeholder="툴팁 설명"
+					placeholder={t("rulesPanel.tooltipContent")}
 					rows={1}
 					onChange={(event) => onChange({ ...rule, attrs: { ...rule.attrs, content: event.target.value } })}
 					className="min-h-7 px-1.5 py-1 text-xs md:text-xs"
@@ -150,11 +157,11 @@ function RuleRow({
 						checked={rule.attrs.open === true}
 						onCheckedChange={(checked) => onChange({ ...rule, attrs: { ...rule.attrs, open: checked || undefined } })}
 					/>
-					처음부터 펼치기
+					{t("rulesPanel.openFromStart")}
 				</label>
 			)}
 			<p className={cn("text-[11px]", problem && rule.pattern ? "text-destructive" : "text-muted-foreground")}>
-				{problem ? (rule.pattern ? problem : "정규식을 입력하세요.") : `${count}곳에 적용`}
+				{problem ? (rule.pattern ? problem : t("rulesPanel.enterPattern")) : t("rulesPanel.matches", { count })}
 			</p>
 		</li>
 	);
@@ -190,7 +197,7 @@ export function RulesPanel({ rules, text, lineCount, selection, language, slotSc
 	return (
 		<Popover>
 			<IconButton
-				label="정규식 규칙"
+				label={t("rulesPanel.title")}
 				size="sm"
 				className={cn("h-7 min-w-7 gap-1 px-1.5 text-xs", rules.length > 0 && "text-foreground")}
 				trigger={(button) => <PopoverTrigger render={button} />}
@@ -200,7 +207,7 @@ export function RulesPanel({ rules, text, lineCount, selection, language, slotSc
 			</IconButton>
 			<PopoverContent align="end" className="w-96 gap-2 p-3 text-xs" data-code-ui="">
 				<div className="flex items-center justify-between gap-2">
-					<p className="font-semibold">정규식 규칙</p>
+					<p className="font-semibold">{t("rulesPanel.title")}</p>
 					{foldSlot.trigger}
 				</div>
 				{foldSlot.panel}
@@ -220,7 +227,7 @@ export function RulesPanel({ rules, text, lineCount, selection, language, slotSc
 				)}
 				<Button type="button" variant="outline" size="sm" onClick={addRule} className="self-start">
 					<Plus aria-hidden />
-					{selection?.text ? "고른 글자로 규칙 추가" : "규칙 추가"}
+					{selection?.text ? t("rulesPanel.addFromSelection") : t("rulesPanel.add")}
 				</Button>
 			</PopoverContent>
 		</Popover>

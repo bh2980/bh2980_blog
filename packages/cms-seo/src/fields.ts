@@ -1,4 +1,12 @@
-import { fields, type MediaField, type SelectField, type TextField, type ViewField } from "@bh2980/cms";
+import {
+	createActiveTranslator,
+	fields,
+	type MediaField,
+	type SelectField,
+	type TextField,
+	type ViewField,
+} from "@bh2980/cms";
+import { seoMessages } from "./messages";
 
 /**
  * SEO 필드 묶음(`seoFields`). 컬렉션 `fields`에 펼쳐 넣는다. 값은 필드 이름이 아니라 역할(`SEO_ROLES`)로 찾으므로 필드 이름·
@@ -31,13 +39,26 @@ export const SEO_DEFAULT_KEYS = {
 	canonical: "seoCanonical",
 } as const;
 
-/** 기본 이름표. */
+// 설정 파일이 이 모듈을 불러오는 때에는 화면 언어를 아직 모르므로, 기본 이름표는 글자를 읽는 때에 고른다.
+const t = createActiveTranslator(seoMessages);
+
+/** 기본 이름표(화면 언어를 따른다). */
 export const SEO_DEFAULT_LABELS = {
-	title: "검색 제목",
-	description: "검색 설명",
-	image: "공유 이미지",
-	noindex: "검색엔진에 숨기기",
-	canonical: "원본 주소",
+	get title() {
+		return t("field.title");
+	},
+	get description() {
+		return t("field.description");
+	},
+	get image() {
+		return t("field.image");
+	},
+	get noindex() {
+		return t("field.noindex");
+	},
+	get canonical() {
+		return t("field.canonical");
+	},
 } as const;
 
 /** 검색 결과에서 잘리지 않는 대략의 길이(Strapi·Yoast 등이 쓰는 기준). 글자 수 표시와 AI 추천 길이에 쓴다. */
@@ -91,7 +112,16 @@ export function seoFields<
 	const O extends SeoPart = never,
 >(options: SeoFieldsOptions<K, O> = {}): SeoFields<K, O> {
 	const key = (part: SeoPart) => options.keys?.[part] ?? SEO_DEFAULT_KEYS[part];
-	const label = (part: Exclude<SeoPart, "preview">) => options.labels?.[part] ?? SEO_DEFAULT_LABELS[part];
+	const custom = (part: Exclude<SeoPart, "preview">) => options.labels?.[part];
+	/** 사이트가 이름표를 정하지 않았으면 읽는 때에 화면 언어로 고른다(필드를 만드는 때에는 언어를 아직 모른다). */
+	const lazyLabel = <F extends { label: string }>(field: F, part: Exclude<SeoPart, "preview">): F =>
+		custom(part) === undefined
+			? Object.defineProperty(field, "label", {
+					get: () => SEO_DEFAULT_LABELS[part],
+					enumerable: true,
+					configurable: true,
+				})
+			: field;
 	const tab = options.tab ?? "SEO";
 	const localized = options.localized ?? true;
 	const limits = { ...SEO_DEFAULT_LIMITS, ...options.limits };
@@ -104,40 +134,62 @@ export function seoFields<
 			...(options.labels?.preview ? { label: options.labels.preview } : {}),
 		}),
 		/** 검색 결과 제목. 비우면 제목을 쓴다. */
-		[key("title")]: fields.text({
-			label: label("title"),
-			role: SEO_ROLES.title,
-			input: SEO_INPUTS.title,
-			inputOptions: { limit: limits.title },
-			...shared,
-		}),
+		[key("title")]: lazyLabel(
+			fields.text({
+				label: custom("title") ?? "",
+				role: SEO_ROLES.title,
+				input: SEO_INPUTS.title,
+				inputOptions: { limit: limits.title },
+				...shared,
+			}),
+			"title",
+		),
 		/** 검색 결과 설명. 비우면 요약을 쓴다. */
-		[key("description")]: fields.text({
-			label: label("description"),
-			role: SEO_ROLES.description,
-			multiline: true,
-			input: SEO_INPUTS.description,
-			inputOptions: { limit: limits.description },
-			...shared,
-		}),
+		[key("description")]: lazyLabel(
+			fields.text({
+				label: custom("description") ?? "",
+				role: SEO_ROLES.description,
+				multiline: true,
+				input: SEO_INPUTS.description,
+				inputOptions: { limit: limits.description },
+				...shared,
+			}),
+			"description",
+		),
 		/** 링크 미리보기·검색 결과 이미지. 비우면 사이트가 정한 기본 이미지를 쓴다. */
-		[key("image")]: fields.media({ label: label("image"), role: SEO_ROLES.image, accept: "image", ...shared }),
+		[key("image")]: lazyLabel(
+			fields.media({ label: custom("image") ?? "", role: SEO_ROLES.image, accept: "image", ...shared }),
+			"image",
+		),
 		/** `noindex`면 검색엔진에 숨긴다. */
-		[key("noindex")]: fields.select({
-			label: label("noindex"),
-			role: SEO_ROLES.noindex,
-			options: { index: "노출", noindex: "숨기기" },
-			defaultValue: "index",
-			input: SEO_INPUTS.noindex,
-			tab,
-		}),
+		[key("noindex")]: lazyLabel(
+			fields.select({
+				label: custom("noindex") ?? "",
+				role: SEO_ROLES.noindex,
+				options: {
+					get index() {
+						return t("option.index");
+					},
+					get noindex() {
+						return t("option.noindex");
+					},
+				},
+				defaultValue: "index",
+				input: SEO_INPUTS.noindex,
+				tab,
+			}),
+			"noindex",
+		),
 		/** 다른 곳에 먼저 올린 글의 주소(canonical). */
-		[key("canonical")]: fields.text({
-			label: label("canonical"),
-			role: SEO_ROLES.canonical,
-			placeholder: "https://",
-			...shared,
-		}),
+		[key("canonical")]: lazyLabel(
+			fields.text({
+				label: custom("canonical") ?? "",
+				role: SEO_ROLES.canonical,
+				placeholder: "https://",
+				...shared,
+			}),
+			"canonical",
+		),
 	};
 	for (const part of options.omit ?? []) delete result[key(part)];
 	return result as unknown as SeoFields<K, O>;

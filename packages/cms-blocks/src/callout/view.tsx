@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import {
 	AttributeInput,
 	ContainerToolbar,
@@ -18,7 +19,10 @@ import {
 } from "@bh2980/cms-admin/ui/dropdown-menu";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { calloutBlock } from "./definition";
+import { calloutMessages } from "./messages";
 import { CALLOUT_BOX_CLASS, CALLOUT_ICON_BY_VARIANT, type CalloutVariant, getDefaultCalloutTitle } from "./style";
+
+const t = createTranslator(calloutMessages);
 
 const VARIANT_OPTIONS = calloutBlock.attributes.variant.options as Record<CalloutVariant, string>;
 const isVariant = (value: unknown): value is CalloutVariant => typeof value === "string" && value in VARIANT_OPTIONS;
@@ -41,7 +45,7 @@ export function CalloutNodeView(props: NodeViewProps) {
 				<div className="flex items-center gap-2" contentEditable={false}>
 					<Icon aria-hidden data-callout-icon className="size-4 shrink-0" />
 					<AttributeInput
-						aria-label="콜아웃 제목"
+						aria-label={t("title.aria")}
 						value={typeof values.title === "string" ? values.title : ""}
 						placeholder={getDefaultCalloutTitle(variant)}
 						readOnly={!editable}
@@ -55,10 +59,10 @@ export function CalloutNodeView(props: NodeViewProps) {
 				<NodeViewContent className="mt-2 text-current text-sm [&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0 [&_p]:m-0 [&_p]:leading-relaxed" />
 			</div>
 			{editable ? (
-				<ContainerToolbar label="콜아웃 도구">
+				<ContainerToolbar label={t("toolbar")}>
 					<DropdownMenu>
 						<ToolbarButton
-							label={`콜아웃 종류 · ${VARIANT_OPTIONS[variant]}`}
+							label={t("variant.button", { variant: VARIANT_OPTIONS[variant] })}
 							trigger={(button) => <DropdownMenuTrigger render={button} />}
 						>
 							<Icon aria-hidden />

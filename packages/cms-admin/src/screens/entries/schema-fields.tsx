@@ -20,7 +20,6 @@ import {
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { type FieldInputParts, isFieldInputParts, useCmsAdminComponents } from "../../admin-components";
-import { josa } from "../../lib/utils/josa";
 import { type SlotRequest, useSlot } from "../../slots/slots";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
@@ -47,6 +46,7 @@ import { layoutGroupsOf } from "./layout-groups";
 import { MediaInput } from "./media-image-input";
 import { optionOf, useRecordCreator } from "./record-create-sheet";
 import { RelationCombobox } from "./relation-combobox";
+import { t } from "./translate";
 
 const fieldId = (name: string) => `cms-${name}`;
 
@@ -168,7 +168,7 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 				id={id}
 				multiple={Boolean(relation.many)}
 				aria-label={relation.label}
-				placeholder={relation.placeholder ?? (relation.createInline ? "검색하거나 추가" : "검색")}
+				placeholder={relation.placeholder ?? (relation.createInline ? t("relation.searchOrAdd") : t("relation.search"))}
 				options={options}
 				value={selected}
 				invalid={invalid}
@@ -360,7 +360,7 @@ export function SchemaFields({
 	const renderSlug = (name: string, field: SlugField) => {
 		const issue = issueFor(name);
 		const fromLabel = field.from ? (schema.fields[field.from]?.label ?? field.from) : "";
-		const regenerateLabel = `${josa(fromLabel, "으로", "로")} 다시 만들기`;
+		const regenerateLabel = t("relation.regenerate", { label: fromLabel });
 		return (
 			<FieldRow
 				key={name}

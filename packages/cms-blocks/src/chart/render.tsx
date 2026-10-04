@@ -9,7 +9,9 @@ function ChartError({ errors, labels }: { errors: readonly ChartRenderError[]; l
 			<strong>{labels.chartError}</strong>
 			<ul>
 				{errors.map((error) => (
-					<li key={`${error.line}-${error.message}`}>{labels.chartErrorLine(error.line, error.message)}</li>
+					<li key={`${error.line}-${error.code}-${JSON.stringify(error.values ?? {})}`}>
+						{labels.chartErrorLine(error)}
+					</li>
 				))}
 			</ul>
 		</div>

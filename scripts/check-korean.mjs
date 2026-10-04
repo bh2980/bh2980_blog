@@ -71,6 +71,28 @@ function stripComments(source) {
 			i += 1;
 			continue;
 		}
+		// 정규식 리터럴 안의 따옴표·백틱·`//`가 글자·주석 판별을 어긋나게 하지 않도록 통째로 건너뛴다.
+		if (
+			char === "/" &&
+			next !== "/" &&
+			next !== "*" &&
+			/(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|void|throw))\s*$/.test(out)
+		) {
+			let j = i + 1;
+			let inClass = false;
+			while (j < source.length && source[j] !== "\n") {
+				if (source[j] === "\\") j += 1;
+				else if (source[j] === "[") inClass = true;
+				else if (source[j] === "]") inClass = false;
+				else if (source[j] === "/" && !inClass) break;
+				j += 1;
+			}
+			if (source[j] === "/") {
+				out += source.slice(i, j + 1);
+				i = j + 1;
+				continue;
+			}
+		}
 		if (char === "/" && next === "/") {
 			const end = source.indexOf("\n", i);
 			const line = source.slice(i, end === -1 ? source.length : end);

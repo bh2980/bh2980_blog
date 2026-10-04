@@ -1,12 +1,16 @@
+import { createTranslator } from "@bh2980/cms/client";
 import { adminRoute, HttpError, json, parseWith, readJsonBody } from "@bh2980/cms/plugin/server";
 import { type AiRunBody, aiRunBodySchema, inputSchemaFor, type ResolvedAiAction } from "../../action";
 import { actionWithDraft, getAction } from "../../actions";
 import { AiError } from "../../errors";
 import { type AiCall, type AiRunDeps, runAiAction, streamAiAction } from "../../run";
+import { runMessages } from "../../run.messages";
 import { loadAiRuntime } from "../../settings";
 import { loadSharedTexts } from "../../shared";
 import { getAiStore } from "../../store";
 import { aiRunDeps } from "../ai-route";
+
+const t = createTranslator(runMessages);
 
 /** 묶음 실행에서 동시에 부르는 수. */
 const CONCURRENCY = 3;
@@ -47,7 +51,7 @@ function streamResponse(run: (send: (event: StreamEvent) => void) => Promise<voi
 				send({
 					type: "error",
 					code: known ? error.code : "ai_failed",
-					message: known ? error.message : "AI 답을 받지 못했습니다.",
+					message: known ? error.message : t("noAnswer"),
 				});
 			}
 			close();
@@ -71,7 +75,7 @@ export const POST = adminRoute(async ({ request }) => {
 		body.draft === undefined
 			? await getAction(store, body.action)
 			: await actionWithDraft(store, body.action, body.draft, body.draftBase);
-	if (body.draft === undefined && !action.enabled) throw new AiError("ai_unavailable", "꺼진 AI 기능입니다.");
+	if (body.draft === undefined && !action.enabled) throw new AiError("ai_unavailable", t("disabled"));
 
 	const runtime = await loadAiRuntime(store, action);
 	const deps = {
@@ -82,8 +86,8 @@ export const POST = adminRoute(async ({ request }) => {
 	const started = Date.now();
 
 	if (body.stream) {
-		if (body.inputs !== undefined) throw new AiError("ai_invalid_input", "흘려받기는 입력 하나만 보낸다.");
-		if (!deps.generator) throw new AiError("ai_unavailable", "생성 모델이 연결되어 있지 않습니다.");
+		if (body.inputs !== undefined) throw new AiError("ai_invalid_input", t("streamOneInput"));
+		if (!deps.generator) throw new AiError("ai_unavailable", t("noGenerator"));
 		const parsed = parseWith(inputSchemaFor(action.input), body.input, "Invalid AI input");
 		const call: AiCall = { input: parsed as Record<string, unknown>, env: body.env, request: body.request };
 		return streamResponse(async (send) => {

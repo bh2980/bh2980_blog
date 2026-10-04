@@ -1,6 +1,6 @@
 "use client";
 
-import type { BlockDefinition } from "@bh2980/cms/client";
+import { type BlockDefinition, createTranslator } from "@bh2980/cms/client";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import type { ReactNode } from "react";
 import { useCmsAdminComponents } from "../../../admin-components";
@@ -8,6 +8,7 @@ import { cn } from "../../../lib/utils/cn";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
 import { Switch } from "../../../ui/switch";
 import { type FenceEditorMeta, FencePreviewNodeView, LazyFencePreview } from "../fence-preview";
+import { blocksMessages } from "../messages";
 import {
 	AttributeInput,
 	BlockSettings,
@@ -19,6 +20,8 @@ import {
 	useEditorEditable,
 } from "../shared";
 import { addedBlockOfNode, isContainer } from "./shared";
+
+const t = createTranslator(blocksMessages);
 
 /** 사이트·블록 확장이 블록에 등록하는 편집 컴포넌트가 받는 값(`CmsAdminComponents.blockEditors`). */
 export interface CustomBlockEditorProps {
@@ -115,7 +118,7 @@ function DefaultCustomBlockEditor({ definition, values, setValue, content, edita
 	return (
 		<>
 			{editable && names.length > 0 && (
-				<ContainerToolbar label={`${definition.label} 도구`}>
+				<ContainerToolbar label={t("added.toolbar", { label: definition.label })}>
 					<BlockSettings>
 						{names.map((name) => (
 							<AttributeField
@@ -181,7 +184,7 @@ function FenceBlockNodeView(props: NodeViewProps & { readonly definition: BlockD
 				lang={lang}
 				label={definition.label}
 				value={value}
-				emptyText={definition.editor.placeholder ?? `${definition.label}을(를) 입력하세요`}
+				emptyText={definition.editor.placeholder ?? t("added.placeholder", { label: definition.label })}
 			/>
 		),
 	};

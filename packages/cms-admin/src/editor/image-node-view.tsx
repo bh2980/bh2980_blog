@@ -1,5 +1,6 @@
 "use client";
 
+import { createTranslator } from "@bh2980/cms/client";
 import { computeImageTransform, resolveImageUrl } from "@bh2980/cms/mdx";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Crop } from "lucide-react";
@@ -22,6 +23,9 @@ import {
 } from "./blocks/shared";
 import { ImageCropDialog } from "./image-crop-dialog";
 import { ALT_REQUIRED_MESSAGE } from "./image-insert-dialog";
+import { editorMessages } from "./messages";
+
+const t = createTranslator(editorMessages);
 
 /** §4.3 너비 입력: 1~100% 또는 4096 이하의 양의 정수 px. 빈 값은 본문에 맞춤이다. */
 export const isValidImageWidth = (value: string) => {
@@ -46,13 +50,13 @@ function surroundingText(editor: NodeViewProps["editor"], getPos: NodeViewProps[
 	const doc = editor.state.doc;
 	const before = doc.textBetween(Math.max(0, pos - AROUND_CHARS), pos, "\n", " ");
 	const after = doc.textBetween(pos + nodeSize, Math.min(doc.content.size, pos + nodeSize + AROUND_CHARS), "\n", " ");
-	return `${before.trim()}\n[이미지]\n${after.trim()}`;
+	return `${before.trim()}\n${t("imageNode.marker")}\n${after.trim()}`;
 }
 
 const ALIGN_TOOLS = [
-	{ value: "left", label: "왼쪽 정렬", icon: AlignLeft },
-	{ value: "center", label: "가운데 정렬", icon: AlignCenter },
-	{ value: "right", label: "오른쪽 정렬", icon: AlignRight },
+	{ value: "left", label: t("toolbar.alignLeftTitle"), icon: AlignLeft },
+	{ value: "center", label: t("toolbar.alignCenterTitle"), icon: AlignCenter },
+	{ value: "right", label: t("toolbar.alignRightTitle"), icon: AlignRight },
 ] as const;
 
 export function CmsImageNodeView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
@@ -135,18 +139,18 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 		canRender || isChecking
 			? null
 			: src
-				? "허용되지 않는 이미지 주소입니다"
+				? t("imageNode.urlNotAllowed")
 				: !mediaId
-					? "이미지 주소가 없습니다"
+					? t("imageNode.noUrl")
 					: mediaState?.status === "pending"
-						? "미디어가 아직 준비되지 않았습니다"
+						? t("imageNode.pending")
 						: mediaState?.status === "failed"
-							? "미디어 업로드에 실패했습니다"
+							? t("imageNode.failed")
 							: mediaState?.status === "missing"
-								? "미디어 파일을 찾을 수 없습니다"
+								? t("imageNode.missing")
 								: mediaState?.status === "lookup-failed"
-									? "미디어 상태를 확인할 수 없습니다"
-									: "미디어 주소를 해석할 수 없습니다";
+									? t("imageNode.lookupFailed")
+									: t("imageNode.unresolvable");
 
 	// 설명이 필요한 이미지는 대체 텍스트가 있어야 한다(넣기 대화 상자와 같은 규칙).
 	const altMissing = decorative !== true && !String(alt ?? "").trim();
@@ -247,7 +251,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 		>
 			{/* 블록 도구 줄: 정렬·설정·자르기. 삭제는 블록 손잡이 메뉴에 있다. */}
 			{isEditable && (
-				<ContainerToolbar label="이미지 도구">
+				<ContainerToolbar label={t("imageNode.toolbar")}>
 					{ALIGN_TOOLS.map((tool) => (
 						<ToolbarButton
 							key={tool.value}
@@ -260,7 +264,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 					))}
 					<Separator orientation="vertical" className="mx-0.5 data-vertical:h-4" />
 					<BlockSettings open={isEditing} onOpenChange={setIsEditing}>
-						<BlockSettingsField label="너비" htmlFor={widthInputId}>
+						<BlockSettingsField label={t("imageNode.width")} htmlFor={widthInputId}>
 							<Input
 								id={widthInputId}
 								value={widthDraft}
@@ -273,16 +277,16 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 									}
 								}}
 								className="h-7 text-xs"
-								placeholder="본문 맞춤"
+								placeholder={t("imageNode.widthPlaceholder")}
 							/>
 							{widthInvalid && (
 								<p id={widthErrorId} role="alert" className="text-destructive">
-									1~100% 또는 1~4096px로 입력하세요.
+									{t("imageNode.widthInvalid")}
 								</p>
 							)}
 						</BlockSettingsField>
 						<BlockSettingsField
-							label="대체 텍스트"
+							label={t("imageDialog.alt")}
 							htmlFor={altInputId}
 							action={decorative !== true ? altSlot.trigger : undefined}
 						>
@@ -304,7 +308,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 							{altSlot.panel}
 						</BlockSettingsField>
 						<label htmlFor={decorativeId} className="flex items-center justify-between gap-2">
-							<span className="text-muted-foreground">장식 이미지</span>
+							<span className="text-muted-foreground">{t("imageDialog.decorative")}</span>
 							<Switch
 								id={decorativeId}
 								size="sm"
@@ -316,7 +320,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 						</label>
 					</BlockSettings>
 					{canRender && (
-						<ToolbarButton label="자르기·회전" onClick={() => setIsCropDialogOpen(true)}>
+						<ToolbarButton label={t("imageCrop.title")} onClick={() => setIsCropDialogOpen(true)}>
 							<Crop aria-hidden />
 						</ToolbarButton>
 					)}
@@ -366,10 +370,10 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 					</div>
 				)
 			) : isChecking ? (
-				<Skeleton role="status" aria-label="불러오는 중" className="h-48 w-full rounded-md" />
+				<Skeleton role="status" aria-label={t("imageNode.loading")} className="h-48 w-full rounded-md" />
 			) : (
 				<div className="flex h-48 w-full items-center justify-center rounded-md bg-muted text-muted-foreground text-sm">
-					이미지를 불러올 수 없습니다
+					{t("imageNode.unavailable")}
 				</div>
 			)}
 			{resolveReason ? <p className="mt-1 text-center text-destructive text-xs">{resolveReason}</p> : null}
@@ -379,8 +383,8 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 				<Input
 					type="text"
 					value={caption || ""}
-					placeholder="캡션"
-					aria-label="이미지 캡션"
+					placeholder={t("imageDialog.caption")}
+					aria-label={t("imageNode.caption")}
 					readOnly={!isEditable}
 					onChange={(e) => updateAttributes({ caption: e.target.value })}
 					className={cn(
@@ -398,14 +402,14 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 					<button
 						type="button"
 						data-slot="resize-handle-left"
-						aria-label="이미지 너비 조절 왼쪽"
+						aria-label={t("imageNode.resizeLeft")}
 						onPointerDown={(e) => handleResizeStart(e, "left")}
 						className="absolute -bottom-1 -left-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>
 					<button
 						type="button"
 						data-slot="resize-handle-right"
-						aria-label="이미지 너비 조절 오른쪽"
+						aria-label={t("imageNode.resizeRight")}
 						onPointerDown={(e) => handleResizeStart(e, "right")}
 						className="absolute -right-1 -bottom-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>
