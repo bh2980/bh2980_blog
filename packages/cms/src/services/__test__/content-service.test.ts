@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import {
+	contentCollection,
+	otherContentCollection,
+	recordCollection,
+	requiredMetadata,
+	titleFieldOf,
+} from "../../../test/any-site";
+import { COLLECTIONS, type Collection, DOCUMENT_COLLECTIONS } from "../../core/collections";
+import { type StoredField, storedField, storedFields } from "../../schema/derive";
+import { isRequiredField } from "../../schema/fields";
 import type { PreparedSnapshot, Reference, ResolvedTargets, SaveDraftInput, ServiceInput, StorePort } from "../index";
 import {
 	createContentService,
@@ -9,101 +19,136 @@ import {
 	validateForPublish,
 } from "../index";
 
+/*
+ * 컬렉션·필드 이름은 지금 설정에서 찾는다(M10-1). 블로그 예시 설정에서는 본문 컬렉션이 게시글(`post`),
+ * 하나짜리 관계가 `categoryId`(→ category), 여러 개짜리 관계가 `tagIds`(→ tag), 두 번째 컬렉션이 메모(`memo`)다.
+ */
+const content = contentCollection;
+/** 조건부 필드에 딸리지 않은 저장 필드. */
+const topLevel = (collection: Collection): StoredField[] => storedFields(collection).filter(({ when }) => !when);
+const relationOf = (many: boolean) => {
+	for (const { name, field } of topLevel(content)) {
+		if (field.kind === "relation" && Boolean(field.many) === many) {
+			return { name, to: field.to as Collection, required: isRequiredField(field) };
+		}
+	}
+	throw new Error(`content-service: ${content} has no ${many ? "many" : "single"} relation field`);
+};
+const single = relationOf(false);
+const many = relationOf(true);
+/** 두 번째 컬렉션(블로그: 메모). 본문이 있는 문서 컬렉션이 하나뿐이면 첫 항목 컬렉션. */
+const second = otherContentCollection ?? recordCollection;
+/** 본문 컬렉션의 하나짜리 관계 필드가 없는 다른 컬렉션(블로그: 메모). */
+const withoutSingle = [second, ...COLLECTIONS].find(
+	(name) => name !== content && !storedField(name, single.name),
+) as Collection;
+/** 본문 컬렉션의 첫 선택 필드(블로그: 정책 `policy`). */
+const selectField = topLevel(content).find(({ field }) => field.kind === "select");
+/** 글자 수 한도가 없는 텍스트 필드(블로그: 요약 `summary`). 메타데이터 크기 한도를 시험한다. */
+const unboundedText = topLevel(content).find(
+	({ name, field }) => name !== "title" && field.kind === "text" && field.max === undefined,
+);
+/** 아직 공개되지 않은 글도 순서대로 담는 목록 관계(블로그: 모음집 `collection`의 `itemIds`). */
+const orderedList = (() => {
+	for (const collection of COLLECTIONS) {
+		for (const { name, field } of storedFields(collection)) {
+			if (field.kind === "relation" && field.many && field.allowUnpublished) {
+				return { collection, name, to: field.to as Collection };
+			}
+		}
+	}
+	return undefined;
+})();
+/** 목록 관계가 담지 못하는 컬렉션(블로그: 메모). */
+const notListable = [...DOCUMENT_COLLECTIONS, ...COLLECTIONS].find((name) => name !== orderedList?.to) as Collection;
+
+/** 타입이 컬렉션마다 다른 입력을 설정에서 찾은 이름으로 만든다. */
+const input = (value: {
+	collection: Collection;
+	slug: string | null;
+	metadata: Record<string, unknown>;
+	mdx: string;
+}): ServiceInput => value as unknown as ServiceInput;
+
+/** 컬렉션의 저장 필드를 모두 채운 메타데이터. 선택 필드는 첫 선택지이고 그 값에 딸린 조건부 필드도 채운다. */
+const canonicalMetadata = (collection: Collection): Record<string, unknown> => {
+	const metadata: Record<string, unknown> = {};
+	for (const { name, field, when } of storedFields(collection)) {
+		if (when && metadata[when.field] !== when.value) continue;
+		if (field.kind === "text") metadata[name] = name === "title" ? "T" : "S";
+		else if (field.kind === "select") metadata[name] = Object.keys(field.options)[0];
+		else if (field.kind === "relation") {
+			metadata[name] = field.many ? ["123e4567-e89b-12d3-a456-426614174001"] : "123e4567-e89b-12d3-a456-426614174000";
+		} else if (field.kind === "media") metadata[name] = "123e4567-e89b-12d3-a456-426614174002";
+	}
+	return metadata;
+};
+
 describe("ContentService M2-TW-1 Contract", () => {
 	describe("1. Metadata Allowlists & Collection Rules", () => {
 		it.each([
 			["unknown collection", { collection: "unknown", slug: "test", metadata: {}, mdx: "" }, "unknown_collection"],
 			[
-				"post with wrong title type",
-				{ collection: "post", slug: "valid", metadata: { title: 123 }, mdx: "" },
+				"content with wrong title type",
+				{ collection: content, slug: "valid", metadata: { title: 123 }, mdx: "" },
 				"invalid_metadata_type",
 			],
 			[
-				"post with wrong tagIds type",
-				{ collection: "post", slug: "valid", metadata: { tagIds: "tag-1" }, mdx: "" },
+				"content with wrong many-relation type",
+				{ collection: content, slug: "valid", metadata: { [many.name]: "tag-1" }, mdx: "" },
 				"invalid_metadata_type",
 			],
-			[
-				"post with unsupported policy value",
-				{ collection: "post", slug: "valid", metadata: { policy: "unsupported" }, mdx: "" },
-				"invalid_metadata_value",
-			],
+			...(selectField
+				? [
+						[
+							"content with unsupported select value",
+							{ collection: content, slug: "valid", metadata: { [selectField.name]: "unsupported" }, mdx: "" },
+							"invalid_metadata_value",
+						] as [string, unknown, string],
+					]
+				: []),
 			[
 				"non-JSON value in title",
-				{ collection: "post", slug: "valid", metadata: { title: () => {} }, mdx: "" },
+				{ collection: content, slug: "valid", metadata: { title: () => {} }, mdx: "" },
 				"invalid_metadata_type",
 			],
 			[
-				"cross-collection canonical key (categoryId on memo)",
-				{ collection: "memo", slug: "valid", metadata: { categoryId: "cat-1" }, mdx: "" },
+				"cross-collection canonical key (single relation on another collection)",
+				{ collection: withoutSingle, slug: "valid", metadata: { [single.name]: "cat-1" }, mdx: "" },
 				"invalid_metadata_key",
 			],
 			[
-				"unknown metadata key on category",
-				{ collection: "category", slug: "valid", metadata: { fakeKey: "fail" }, mdx: "" },
+				"unknown metadata key on a record",
+				{ collection: recordCollection, slug: "valid", metadata: { fakeKey: "fail" }, mdx: "" },
 				"invalid_metadata_key",
 			],
 			[
-				"post with system metadata createdAt",
-				{ collection: "post", slug: "valid", metadata: { createdAt: "2023-01-01" }, mdx: "" },
+				"content with system metadata createdAt",
+				{ collection: content, slug: "valid", metadata: { createdAt: "2023-01-01" }, mdx: "" },
 				"invalid_metadata_key",
 			],
 			[
-				"category with invented metadata index",
-				{ collection: "category", slug: "valid", metadata: { index: 1 }, mdx: "" },
+				"record with invented metadata index",
+				{ collection: recordCollection, slug: "valid", metadata: { index: 1 }, mdx: "" },
 				"invalid_metadata_key",
 			],
 		] satisfies Array<[string, unknown, string]>)("rejects %s", async (_, input, expectedCode) => {
 			await expect(prepareSnapshot(input as unknown as ServiceInput)).rejects.toMatchObject({ code: expectedCode });
 		});
 
-		it.each([
-			[
-				"post",
-				{
-					collection: "post",
-					slug: "p",
-					metadata: {
-						title: "T",
-						summary: "S",
-						categoryId: "123e4567-e89b-12d3-a456-426614174000",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-						policy: "normal",
-					},
-					mdx: "",
-				},
-			],
-			[
-				"memo",
-				{
-					collection: "memo",
-					slug: "m",
-					metadata: {
-						title: "T",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174001"],
-					},
-					mdx: "",
-				},
-			],
-			["category", { collection: "category", slug: "c", metadata: { title: "T" }, mdx: "" }],
-			["tag", { collection: "tag", slug: "t", metadata: { title: "T" }, mdx: "" }],
-			[
-				"collection",
-				{
-					collection: "collection",
-					slug: "col",
-					metadata: { title: "T", itemIds: ["123e4567-e89b-12d3-a456-426614174000"] },
-					mdx: "",
-				},
-			],
-		] satisfies Array<[string, ServiceInput]>)("permits canonical keys for %s", async (_, input) => {
+		it.each(
+			COLLECTIONS.map((collection) => [
+				collection,
+				input({ collection, slug: "s", metadata: canonicalMetadata(collection), mdx: "" }),
+			]),
+		)("permits canonical keys for %s", async (_, input) => {
 			const result = await prepareSnapshot(input);
 			expect(result.metadata).toEqual(input.metadata);
 		});
 
 		it("permits missing title/summary/category for draft preparation", async () => {
 			const result = await prepareSnapshot({
-				collection: "post",
+				collection: content,
 				slug: "draft-post",
 				metadata: {},
 				mdx: "",
@@ -119,7 +164,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			["cafe\u0301", "café"],
 		])("normalizes slug %j to %j", async (inputSlug, expectedSlug) => {
 			const result = await prepareSnapshot({
-				collection: "post",
+				collection: content,
 				slug: inputSlug,
 				metadata: {},
 				mdx: "",
@@ -134,130 +179,77 @@ describe("ContentService M2-TW-1 Contract", () => {
 			"test\u0000",
 		])("rejects forbidden characters in slug: %j", async (inputSlug) => {
 			await expect(
-				prepareSnapshot({ collection: "post", slug: inputSlug, metadata: {}, mdx: "" }),
+				prepareSnapshot({ collection: content, slug: inputSlug, metadata: {}, mdx: "" }),
 			).rejects.toMatchObject({ code: "invalid_slug_format" });
 		});
 
 		it("accepts exactly 200 Unicode code points and rejects 201", async () => {
 			const slug200 = "😀".repeat(200);
 			const slug201 = "😀".repeat(201);
-			const result = await prepareSnapshot({ collection: "post", slug: slug200, metadata: {}, mdx: "" });
+			const result = await prepareSnapshot({ collection: content, slug: slug200, metadata: {}, mdx: "" });
 			expect(result.slug).toBe(slug200);
-			await expect(prepareSnapshot({ collection: "post", slug: slug201, metadata: {}, mdx: "" })).rejects.toMatchObject(
-				{ code: "slug_too_long" },
-			);
+			await expect(
+				prepareSnapshot({ collection: content, slug: slug201, metadata: {}, mdx: "" }),
+			).rejects.toMatchObject({ code: "slug_too_long" });
 		});
 
-		it("accepts exactly 200 Unicode code points and rejects 201 for valid title key", async () => {
-			const title200 = "😀".repeat(200);
-			const title201 = "😀".repeat(201);
-			const result = await prepareSnapshot({
-				collection: "post",
-				slug: "valid",
-				metadata: { title: title200 },
-				mdx: "",
-			});
-			expect(result.metadata.title).toBe(title200);
-			await expect(
-				prepareSnapshot({ collection: "post", slug: "valid", metadata: { title: title201 }, mdx: "" }),
-			).rejects.toMatchObject({
-				code: "field_too_long",
-				issues: [{ code: "field_too_long", path: "title", message: "제목" }],
-			});
-		});
+		it.skipIf(titleFieldOf(content).max === undefined)(
+			"accepts exactly the title field's max Unicode code points and rejects one more",
+			async () => {
+				const { max = 0, label } = titleFieldOf(content);
+				const titleMax = "😀".repeat(max);
+				const titleOver = "😀".repeat(max + 1);
+				const result = await prepareSnapshot(
+					input({ collection: content, slug: "valid", metadata: { title: titleMax }, mdx: "" }),
+				);
+				expect(result.metadata.title).toBe(titleMax);
+				await expect(
+					prepareSnapshot(input({ collection: content, slug: "valid", metadata: { title: titleOver }, mdx: "" })),
+				).rejects.toMatchObject({
+					code: "field_too_long",
+					issues: [{ code: "field_too_long", path: "title", message: label }],
+				});
+			},
+		);
 
 		it("allows equal slug in two different collection inputs", async () => {
-			const result1 = await prepareSnapshot({ collection: "post", slug: "shared-slug", metadata: {}, mdx: "" });
-			const result2 = await prepareSnapshot({ collection: "memo", slug: "shared-slug", metadata: {}, mdx: "" });
+			const result1 = await prepareSnapshot({ collection: content, slug: "shared-slug", metadata: {}, mdx: "" });
+			const result2 = await prepareSnapshot(input({ collection: second, slug: "shared-slug", metadata: {}, mdx: "" }));
 			expect(result1.slug).toBe("shared-slug");
 			expect(result2.slug).toBe("shared-slug");
 		});
 	});
 
 	describe("3. Deterministic Hashing", () => {
-		it("computes exact known SHA-256 vector with key-order equivalence and metadata/MDX/schema changes", async () => {
-			const snap1 = await prepareSnapshot(
-				{
-					collection: "post",
-					slug: "a",
-					metadata: {
-						title: "A",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
-					},
-					mdx: "Hello",
-				},
-				{ schemaVersion: 1 },
-			);
-			const snap2 = await prepareSnapshot(
-				{
-					collection: "post",
-					slug: "a",
-					metadata: {
-						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
-						title: "A",
-					},
-					mdx: "Hello",
-				},
-				{ schemaVersion: 1 },
-			);
+		it("computes the SHA-256 vector with key-order equivalence and metadata/MDX/schema changes", async () => {
+			const ids = ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"];
+			const snapshotOf = (metadata: Record<string, unknown>, mdx = "Hello", schemaVersion = 1) =>
+				prepareSnapshot(input({ collection: content, slug: "a", metadata, mdx }), { schemaVersion });
+			const snap1 = await snapshotOf({ title: "A", [many.name]: ids });
+			const snap2 = await snapshotOf({ [many.name]: ids, title: "A" });
 
-			const expectedTuple = [
-				"cms-snapshot-v1",
-				1,
-				{ tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"], title: "A" },
-				"Hello",
-			];
+			// 메타데이터 키는 이름순으로 해시한다.
+			const sortedMetadata = Object.fromEntries(
+				Object.entries({ title: "A", [many.name]: ids }).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+			);
+			const expectedTuple = ["cms-snapshot-v1", 1, sortedMetadata, "Hello"];
 			const expectedHash = createHash("sha256").update(JSON.stringify(expectedTuple)).digest("hex");
 			expect(snap1.contentHash).toBe(expectedHash);
-			expect(snap1.contentHash).toBe("ce4f87281290c44253cb7844dd84e45cecc65aacb0bf2dfa5768da7e26ef921e");
 			expect(snap1.contentHash).toEqual(snap2.contentHash);
 
-			const snapDiffMdx = await prepareSnapshot(
-				{
-					collection: "post",
-					slug: "a",
-					metadata: {
-						title: "A",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
-					},
-					mdx: "Hello World",
-				},
-				{ schemaVersion: 1 },
-			);
+			const snapDiffMdx = await snapshotOf({ title: "A", [many.name]: ids }, "Hello World");
 			expect(snap1.contentHash).not.toEqual(snapDiffMdx.contentHash);
 
-			const snapDiffMetadata = await prepareSnapshot(
-				{
-					collection: "post",
-					slug: "a",
-					metadata: {
-						title: "B",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
-					},
-					mdx: "Hello",
-				},
-				{ schemaVersion: 1 },
-			);
+			const snapDiffMetadata = await snapshotOf({ title: "B", [many.name]: ids });
 			expect(snap1.contentHash).not.toEqual(snapDiffMetadata.contentHash);
 
-			const snapDiffSchema = await prepareSnapshot(
-				{
-					collection: "post",
-					slug: "a",
-					metadata: {
-						title: "A",
-						tagIds: ["123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174001"],
-					},
-					mdx: "Hello",
-				},
-				{ schemaVersion: 2 },
-			);
+			const snapDiffSchema = await snapshotOf({ title: "A", [many.name]: ids }, "Hello", 2);
 			expect(snap1.contentHash).not.toEqual(snapDiffSchema.contentHash);
 		});
 
 		it("rejects caller provided contentHash", async () => {
 			const input = {
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: {},
 				mdx: "Hello",
@@ -270,11 +262,11 @@ describe("ContentService M2-TW-1 Contract", () => {
 	describe("4. Reference Extraction", () => {
 		it("extracts ordered/deduplicated refs with occurrences from metadata relations", async () => {
 			const snap = await prepareSnapshot({
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: {
-					categoryId: "123e4567-e89b-12d3-a456-426614174001",
-					tagIds: [
+					[single.name]: "123e4567-e89b-12d3-a456-426614174001",
+					[many.name]: [
 						"123e4567-e89b-12d3-a456-426614174002",
 						"123e4567-e89b-12d3-a456-426614174003",
 						"123e4567-e89b-12d3-a456-426614174002",
@@ -291,7 +283,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				isStale: false,
 			});
 			expect(snap.references[0].occurrences).toHaveLength(1);
-			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "metadata", path: "categoryId" });
+			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "metadata", path: single.name });
 
 			expect(snap.references[1]).toMatchObject({
 				kind: "entry",
@@ -299,8 +291,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 				isStale: false,
 			});
 			expect(snap.references[1].occurrences).toHaveLength(2);
-			expect(snap.references[1].occurrences[0]).toMatchObject({ type: "metadata", path: "tagIds", ordinal: 0 });
-			expect(snap.references[1].occurrences[1]).toMatchObject({ type: "metadata", path: "tagIds", ordinal: 2 });
+			expect(snap.references[1].occurrences[0]).toMatchObject({ type: "metadata", path: many.name, ordinal: 0 });
+			expect(snap.references[1].occurrences[1]).toMatchObject({ type: "metadata", path: many.name, ordinal: 2 });
 
 			expect(snap.references[2]).toMatchObject({
 				kind: "entry",
@@ -308,18 +300,21 @@ describe("ContentService M2-TW-1 Contract", () => {
 				isStale: false,
 			});
 			expect(snap.references[2].occurrences).toHaveLength(1);
-			expect(snap.references[2].occurrences[0]).toMatchObject({ type: "metadata", path: "tagIds", ordinal: 1 });
+			expect(snap.references[2].occurrences[0]).toMatchObject({ type: "metadata", path: many.name, ordinal: 1 });
 		});
 
-		it("extracts ordered/deduplicated refs with occurrences from collection itemIds", async () => {
-			const snap = await prepareSnapshot({
-				collection: "collection",
-				slug: "a",
-				metadata: {
-					itemIds: ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174001"],
-				},
-				mdx: "",
-			});
+		it.skipIf(!orderedList)("extracts ordered/deduplicated refs with occurrences from an ordered list", async () => {
+			if (!orderedList) return;
+			const snap = await prepareSnapshot(
+				input({
+					collection: orderedList.collection,
+					slug: "a",
+					metadata: {
+						[orderedList.name]: ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174001"],
+					},
+					mdx: "",
+				}),
+			);
 			expect(snap.references).toHaveLength(1);
 			expect(snap.references[0]).toMatchObject({
 				kind: "entry",
@@ -327,14 +322,14 @@ describe("ContentService M2-TW-1 Contract", () => {
 				isStale: false,
 			});
 			expect(snap.references[0].occurrences).toHaveLength(2);
-			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "metadata", path: "itemIds", ordinal: 0 });
-			expect(snap.references[0].occurrences[1]).toMatchObject({ type: "metadata", path: "itemIds", ordinal: 1 });
+			expect(snap.references[0].occurrences[0]).toMatchObject({ type: "metadata", path: orderedList.name, ordinal: 0 });
+			expect(snap.references[0].occurrences[1]).toMatchObject({ type: "metadata", path: orderedList.name, ordinal: 1 });
 		});
 
 		it("extracts ordered/deduplicated refs with occurrences from Image", async () => {
 			const mdx =
 				'<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="987e4567-e89b-12d3-a456-426614174000" />\n<Image mediaId="123e4567-e89b-12d3-a456-426614174000" />';
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			const snap = await prepareSnapshot({ collection: content, slug: "a", metadata: {}, mdx });
 			expect(snap.references).toHaveLength(2);
 
 			expect(snap.references[0]).toMatchObject({
@@ -356,7 +351,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 		it("rejects retired ContentLink with a migration message", async () => {
 			const snap = await prepareSnapshot({
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: {},
 				mdx: '<ContentLink targetId="123e4567-e89b-12d3-a456-426614174000" />',
@@ -374,7 +369,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			["<File mediaId={dynamicId} />", "dynamic_reference_id"],
 			['<File mediaId="not-a-uuid" />', "invalid_reference_id"],
 		])("creates structured issues for dynamic IDs: %s", async (mdx, expectedIssue) => {
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			const snap = await prepareSnapshot({ collection: content, slug: "a", metadata: {}, mdx });
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: expectedIssue }));
 			expect(snap.references).toEqual([]);
 		});
@@ -383,7 +378,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			['<Image mediaId="987e4567-e89b-12d3-a456-426614174000" alt="a" />'],
 			['<File mediaId="987e4567-e89b-12d3-a456-426614174000" />'],
 		])("records a media reference for a registered media ID: %s", async (mdx) => {
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx });
+			const snap = await prepareSnapshot({ collection: content, slug: "a", metadata: {}, mdx });
 			expect(snap.issues).toEqual([]);
 			expect(snap.references).toEqual([
 				{
@@ -397,7 +392,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 		it("does not reference an external image src", async () => {
 			const snap = await prepareSnapshot({
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: {},
 				mdx: '<Image src="https://example.com/a.png" alt="a" />',
@@ -417,7 +412,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					occurrences: [{ type: "mdx", line: 1, column: 1 }],
 				},
 			];
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx }, { previousReferences });
+			const snap = await prepareSnapshot({ collection: content, slug: "a", metadata: {}, mdx }, { previousReferences });
 
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: "mdx_error" }));
 			expect(snap.mdx).toBe(mdx);
@@ -439,7 +434,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 					occurrences: [{ type: "mdx", line: 1, column: 1 }],
 				},
 			];
-			const snap = await prepareSnapshot({ collection: "post", slug: "a", metadata: {}, mdx }, { previousReferences });
+			const snap = await prepareSnapshot({ collection: content, slug: "a", metadata: {}, mdx }, { previousReferences });
 
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: "missing_media_id" }));
 			expect(snap.references).toHaveLength(1);
@@ -467,7 +462,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const service = createContentService(storePort);
 
 			await service.createDraft({
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: {},
 				mdx,
@@ -485,13 +480,13 @@ describe("ContentService M2-TW-1 Contract", () => {
 	});
 
 	describe("6. Publish validation tables", () => {
-		const validSnap: PreparedSnapshot = {
-			collection: "post",
+		const validSnap = {
+			collection: content,
 			slug: "valid-post",
 			metadata: {
 				title: "Title",
-				categoryId: "123e4567-e89b-12d3-a456-426614174001",
-				tagIds: ["123e4567-e89b-12d3-a456-426614174002"],
+				[single.name]: "123e4567-e89b-12d3-a456-426614174001",
+				[many.name]: ["123e4567-e89b-12d3-a456-426614174002"],
 			},
 			mdx: "Content",
 			schemaVersion: 1,
@@ -501,23 +496,23 @@ describe("ContentService M2-TW-1 Contract", () => {
 					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174001",
 					isStale: false,
-					occurrences: [{ type: "metadata", path: "categoryId" }],
+					occurrences: [{ type: "metadata", path: single.name }],
 				},
 				{
 					kind: "entry",
 					targetId: "123e4567-e89b-12d3-a456-426614174002",
 					isStale: false,
-					occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],
+					occurrences: [{ type: "metadata", path: many.name, ordinal: 0 }],
 				},
 			],
 			issues: [],
 			imageSources: [],
-		};
+		} as unknown as PreparedSnapshot;
 
 		const validResolvedTargets: ResolvedTargets = {
 			targets: [
-				{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "category" },
-				{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: "tag" },
+				{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: single.to },
+				{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: many.to },
 			],
 			media: [],
 		};
@@ -525,18 +520,23 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it.each([
 			[
 				"missing title",
-				{ ...validSnap, metadata: { categoryId: "123e4567-e89b-12d3-a456-426614174001" } },
+				{ ...validSnap, metadata: { [single.name]: "123e4567-e89b-12d3-a456-426614174001" } },
 				validResolvedTargets,
 				"missing_field",
 			],
 			["null slug", { ...validSnap, slug: null }, validResolvedTargets, "null_slug"],
 			["empty body", { ...validSnap, mdx: "" }, validResolvedTargets, "empty_body"],
-			[
-				"missing categoryId",
-				{ ...validSnap, metadata: { title: "Title" }, references: [] },
-				validResolvedTargets,
-				"missing_field",
-			],
+			// 하나짜리 관계가 발행 필수일 때만(블로그: 카테고리).
+			...(single.required
+				? [
+						[
+							"missing the required single relation",
+							{ ...validSnap, metadata: { title: "Title" }, references: [] },
+							validResolvedTargets,
+							"missing_field",
+						] as [string, PreparedSnapshot, ResolvedTargets, string],
+					]
+				: []),
 			[
 				"mdx issues",
 				{ ...validSnap, issues: [{ code: "mdx_error", message: "Error" }] },
@@ -565,7 +565,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 				{
 					targets: [
 						...validResolvedTargets.targets,
-						{ id: "123e4567-e89b-12d3-a456-426614174000", isPublished: false, collection: "post" },
+						{ id: "123e4567-e89b-12d3-a456-426614174000", isPublished: false, collection: content },
 					],
 					media: [],
 				},
@@ -588,29 +588,32 @@ describe("ContentService M2-TW-1 Contract", () => {
 				validResolvedTargets,
 				"unresolved_media",
 			],
-			["unresolved category", validSnap, { targets: [], media: [] }, "unresolved_reference"],
+			["unresolved single relation", validSnap, { targets: [], media: [] }, "unresolved_reference"],
 			[
-				"wrong-collection category",
+				"wrong-collection single relation",
 				validSnap,
-				{ targets: [{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "tag" }], media: [] },
+				{
+					targets: [{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: many.to }],
+					media: [],
+				},
 				"invalid_reference_collection",
 			],
 			[
-				"unresolved tag",
+				"unresolved many relation",
 				validSnap,
 				{
-					targets: [{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "category" }],
+					targets: [{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: single.to }],
 					media: [],
 				},
 				"unresolved_reference",
 			],
 			[
-				"wrong-collection tag",
+				"wrong-collection many relation",
 				validSnap,
 				{
 					targets: [
-						{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "category" },
-						{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: "post" },
+						{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: single.to },
+						{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: content },
 					],
 					media: [],
 				},
@@ -630,35 +633,40 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 	});
 
-	describe("7. Collection itemIds", () => {
+	// 아직 공개되지 않은 글도 순서대로 담는 목록 관계가 있는 설정만(블로그: 모음집 `itemIds`).
+	describe.skipIf(!orderedList)("7. Ordered list relation (collection itemIds)", () => {
+		const list = orderedList ?? { collection: content, name: "", to: content };
 		it("preserves declared order and duplicates conservatively, validates target collection", async () => {
-			const snap = await prepareSnapshot({
-				collection: "collection",
-				slug: "my-col",
-				metadata: {
-					itemIds: [
-						"123e4567-e89b-12d3-a456-426614174002",
-						"123e4567-e89b-12d3-a456-426614174001",
-						"123e4567-e89b-12d3-a456-426614174002",
-					],
-				},
-				mdx: "",
-			});
-			expect(Array.isArray(snap.metadata.itemIds)).toBe(true);
-			if (Array.isArray(snap.metadata.itemIds)) {
-				expect(snap.metadata.itemIds).toEqual([
+			const snap = await prepareSnapshot(
+				input({
+					collection: list.collection,
+					slug: "my-col",
+					metadata: {
+						[list.name]: [
+							"123e4567-e89b-12d3-a456-426614174002",
+							"123e4567-e89b-12d3-a456-426614174001",
+							"123e4567-e89b-12d3-a456-426614174002",
+						],
+					},
+					mdx: "",
+				}),
+			);
+			const items = snap.metadata[list.name as keyof typeof snap.metadata];
+			expect(Array.isArray(items)).toBe(true);
+			if (Array.isArray(items)) {
+				expect(items).toEqual([
 					"123e4567-e89b-12d3-a456-426614174002",
 					"123e4567-e89b-12d3-a456-426614174001",
 					"123e4567-e89b-12d3-a456-426614174002",
 				]);
 			}
 
-			const snapWithItems: PreparedSnapshot = {
-				collection: "collection",
+			const snapWithItems = {
+				collection: list.collection,
 				slug: "valid-col",
 				metadata: {
 					title: "T",
-					itemIds: ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002"],
+					[list.name]: ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002"],
 				},
 				mdx: "",
 				schemaVersion: 1,
@@ -666,12 +674,12 @@ describe("ContentService M2-TW-1 Contract", () => {
 				references: [],
 				issues: [],
 				imageSources: [],
-			};
+			} as unknown as PreparedSnapshot;
 
 			const validation = validateForPublish(snapWithItems, {
 				targets: [
-					{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "post" },
-					{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: "memo" },
+					{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: list.to },
+					{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: notListable },
 				],
 				media: [],
 			});
@@ -679,13 +687,13 @@ describe("ContentService M2-TW-1 Contract", () => {
 			expect(validation.issues).toContainEqual(expect.objectContaining({ code: "invalid_reference_collection" }));
 		});
 
-		it("is ready when all resolved IDs are published post targets, preserving order and duplicates", () => {
-			const snapWithItems: PreparedSnapshot = {
-				collection: "collection",
+		it("is ready when all resolved IDs are published list targets, preserving order and duplicates", () => {
+			const snapWithItems = {
+				collection: list.collection,
 				slug: "valid-col",
 				metadata: {
 					title: "Title",
-					itemIds: [
+					[list.name]: [
 						"123e4567-e89b-12d3-a456-426614174001",
 						"123e4567-e89b-12d3-a456-426614174002",
 						"123e4567-e89b-12d3-a456-426614174001",
@@ -700,25 +708,25 @@ describe("ContentService M2-TW-1 Contract", () => {
 						targetId: "123e4567-e89b-12d3-a456-426614174001",
 						isStale: false,
 						occurrences: [
-							{ type: "metadata", path: "itemIds", ordinal: 0 },
-							{ type: "metadata", path: "itemIds", ordinal: 2 },
+							{ type: "metadata", path: list.name, ordinal: 0 },
+							{ type: "metadata", path: list.name, ordinal: 2 },
 						],
 					},
 					{
 						kind: "entry",
 						targetId: "123e4567-e89b-12d3-a456-426614174002",
 						isStale: false,
-						occurrences: [{ type: "metadata", path: "itemIds", ordinal: 1 }],
+						occurrences: [{ type: "metadata", path: list.name, ordinal: 1 }],
 					},
 				],
 				issues: [],
 				imageSources: [],
-			};
+			} as unknown as PreparedSnapshot;
 
 			const validation = validateForPublish(snapWithItems, {
 				targets: [
-					{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: "post" },
-					{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: "post" },
+					{ id: "123e4567-e89b-12d3-a456-426614174001", isPublished: true, collection: list.to },
+					{ id: "123e4567-e89b-12d3-a456-426614174002", isPublished: true, collection: list.to },
 				],
 				media: [],
 			});
@@ -728,16 +736,19 @@ describe("ContentService M2-TW-1 Contract", () => {
 	});
 
 	describe("8. Publish preflight completeness", () => {
-		it("allows unpublished posts only through collection itemIds", async () => {
+		it.skipIf(!orderedList)("allows unpublished targets only through an ordered list relation", async () => {
+			if (!orderedList) return;
 			const id = "123e4567-e89b-12d3-a456-426614174099";
-			const snapshot = await prepareSnapshot({
-				collection: "collection",
-				slug: "series",
-				metadata: { title: "Series", itemIds: [id] },
-				mdx: "",
-			});
+			const snapshot = await prepareSnapshot(
+				input({
+					collection: orderedList.collection,
+					slug: "series",
+					metadata: { title: "Series", [orderedList.name]: [id] },
+					mdx: "",
+				}),
+			);
 			const validation = validateForPublish(snapshot, {
-				targets: [{ id, isPublished: false, collection: "post" }],
+				targets: [{ id, isPublished: false, collection: orderedList.to }],
 				media: [],
 			});
 			expect(validation.ready).toBe(true);
@@ -745,48 +756,25 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 		it("reports every unresolved reference with metadata occurrence", async () => {
 			const ids = ["123e4567-e89b-12d3-a456-426614174091", "123e4567-e89b-12d3-a456-426614174092"];
-			const snapshot = await prepareSnapshot({
-				collection: "memo",
-				slug: "memo",
-				metadata: { title: "Memo", tagIds: ids },
-				mdx: "Body",
-			});
+			const snapshot = await prepareSnapshot(
+				input({ collection: content, slug: "memo", metadata: { title: "Memo", [many.name]: ids }, mdx: "Body" }),
+			);
 			const validation = validateForPublish(snapshot, { targets: [], media: [] });
 			expect(validation.issues.filter((issue) => issue.code === "unresolved_reference")).toEqual([
-				expect.objectContaining({ path: "tagIds", ordinal: 0 }),
-				expect.objectContaining({ path: "tagIds", ordinal: 1 }),
-			]);
-		});
-
-		it("extracts only supported prose links and keeps source positions", async () => {
-			const snapshot = await prepareSnapshot({
-				collection: "memo",
-				slug: "memo",
-				metadata: { title: "Memo" },
-				mdx: [
-					"[relative](/posts/draft-post)",
-					"[absolute](https://bh2980.dev/memos/xxx-equal)",
-					"[www](https://www.bh2980.dev/posts/old%20slug)",
-					"[external](https://example.com/posts/not-internal)",
-					"```md",
-					"[code](/posts/not-a-link)",
-					"```",
-				].join("\n"),
-			});
-			expect((snapshot as any).internalLinks).toEqual([
-				expect.objectContaining({ collection: "post", slug: "draft-post", position: { line: 1, column: 1 } }),
-				expect.objectContaining({ collection: "memo", slug: "xxx-equal", position: { line: 2, column: 1 } }),
-				expect.objectContaining({ collection: "post", slug: "old slug", position: { line: 3, column: 1 } }),
+				expect.objectContaining({ path: many.name, ordinal: 0 }),
+				expect.objectContaining({ path: many.name, ordinal: 1 }),
 			]);
 		});
 
 		it("preserves MDX analyser positions in blocking issues", async () => {
-			const snapshot = await prepareSnapshot({
-				collection: "memo",
-				slug: "memo",
-				metadata: { title: "Memo" },
-				mdx: 'First line\n<ContentLink targetId="bad" />',
-			});
+			const snapshot = await prepareSnapshot(
+				input({
+					collection: content,
+					slug: "memo",
+					metadata: { title: "Memo" },
+					mdx: 'First line\n<ContentLink targetId="bad" />',
+				}),
+			);
 			expect(snapshot.issues).toContainEqual(
 				expect.objectContaining({ code: "mdx_error", position: { line: 2, column: 1 } }),
 			);
@@ -810,7 +798,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 			await expect(
 				service.saveDraft("123e4567-e89b-12d3-a456-426614174000", {
-					collection: "post",
+					collection: content,
 					slug: "a",
 					metadata: { title: "Title" },
 					mdx: "Hello",
@@ -858,7 +846,9 @@ describe("ContentService M2-TW-1 Contract", () => {
 				saveWorkingWithReferences: vi.fn(),
 			};
 			const service = createContentService(storePort);
-			await service.createDraft({ collection: "tag", slug: "", metadata: { title: "Hello World" }, mdx: "" });
+			await service.createDraft(
+				input({ collection: recordCollection, slug: "", metadata: { title: "Hello World" }, mdx: "" }),
+			);
 			expect(vi.mocked(storePort.createEntryWithReferences).mock.calls[0][0].snapshot.slug).toBe("hello-world");
 		});
 
@@ -876,7 +866,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const service = createContentService(storePort);
 
 			await service.createDraft({
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: { title: "Title" },
 				mdx: "Hello",
@@ -910,7 +900,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 			await expect(
 				serviceConflict.createDraft({
-					collection: "post",
+					collection: content,
 					slug: "a",
 					metadata: {},
 					mdx: "",
@@ -950,7 +940,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const service = createContentService(storePort);
 
 			await service.saveDraft("123e4567-e89b-12d3-a456-426614174000", {
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: { title: "Title" },
 				mdx: "</Invalid>",
@@ -986,7 +976,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const service = createContentService(storePort);
 
 			await service.saveDraft("123e4567-e89b-12d3-a456-426614174000", {
-				collection: "post",
+				collection: content,
 				slug: "a",
 				metadata: { title: "Title" },
 				mdx: "Hello",
@@ -1014,11 +1004,11 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const mdxExact = "a".repeat(2097152);
 			const mdxTooLarge = "a".repeat(2097153);
 			await expect(
-				prepareSnapshot({ collection: "post", slug: "valid", metadata: {}, mdx: mdxExact }),
+				prepareSnapshot({ collection: content, slug: "valid", metadata: {}, mdx: mdxExact }),
 			).resolves.toBeDefined();
 			await expect(
 				prepareSnapshot({
-					collection: "post",
+					collection: content,
 					slug: "valid",
 					metadata: {},
 					mdx: mdxTooLarge,
@@ -1026,37 +1016,29 @@ describe("ContentService M2-TW-1 Contract", () => {
 			).rejects.toMatchObject({ code: "mdx_too_large" });
 		});
 
-		it("accepts exact boundary and rejects +1-byte for metadata_too_large", async () => {
-			// Overhead of {"summary":""} is 14 bytes. 262144 - 14 = 262130
-			const boundaryString = "a".repeat(262130);
+		it.skipIf(!unboundedText)("accepts exact boundary and rejects +1-byte for metadata_too_large", async () => {
+			const name = unboundedText?.name ?? "";
+			// 블로그 {"summary":""}는 14바이트다. 262144 - 14 = 262130
+			const overhead = JSON.stringify({ [name]: "" }).length;
+			const boundaryString = "a".repeat(262144 - overhead);
 			await expect(
-				prepareSnapshot({
-					collection: "post",
-					slug: "valid",
-					metadata: { summary: boundaryString },
-					mdx: "",
-				}),
+				prepareSnapshot(input({ collection: content, slug: "valid", metadata: { [name]: boundaryString }, mdx: "" })),
 			).resolves.toBeDefined();
-			const tooLargeString = "a".repeat(262131);
+			const tooLargeString = "a".repeat(262144 - overhead + 1);
 			await expect(
-				prepareSnapshot({
-					collection: "post",
-					slug: "valid",
-					metadata: { summary: tooLargeString },
-					mdx: "",
-				}),
+				prepareSnapshot(input({ collection: content, slug: "valid", metadata: { [name]: tooLargeString }, mdx: "" })),
 			).rejects.toMatchObject({ code: "metadata_too_large" });
 		});
 
 		it.each([
-			["missing slug", { collection: "post", metadata: {}, mdx: "" }, "invalid_input"],
-			["extra key", { collection: "post", slug: "valid", metadata: {}, mdx: "", extra: 1 }, "invalid_input"],
+			["missing slug", { collection: content, metadata: {}, mdx: "" }, "invalid_input"],
+			["extra key", { collection: content, slug: "valid", metadata: {}, mdx: "", extra: 1 }, "invalid_input"],
 			[
 				"prototype-inherited required fields",
 				Object.create(
 					{ slug: "valid" },
 					{
-						collection: { value: "post", enumerable: true },
+						collection: { value: content, enumerable: true },
 						metadata: { value: {}, enumerable: true },
 						mdx: { value: "", enumerable: true },
 					},
@@ -1065,12 +1047,12 @@ describe("ContentService M2-TW-1 Contract", () => {
 			],
 			[
 				"symbol extra",
-				{ collection: "post", slug: "valid", metadata: {}, mdx: "", [Symbol("extra")]: 1 },
+				{ collection: content, slug: "valid", metadata: {}, mdx: "", [Symbol("extra")]: 1 },
 				"invalid_input",
 			],
 			[
 				"non-enumerable extra",
-				Object.defineProperty({ collection: "post", slug: "valid", metadata: {}, mdx: "" }, "hidden", {
+				Object.defineProperty({ collection: content, slug: "valid", metadata: {}, mdx: "" }, "hidden", {
 					value: 1,
 					enumerable: false,
 				}),
@@ -1081,14 +1063,17 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 
 		it("prevents mutation of snapshot via caller input mutation and deep freezes snapshot", async () => {
-			const tagIds = ["123e4567-e89b-12d3-a456-426614174001"];
-			const snap = await prepareSnapshot({ collection: "post", slug: "valid", metadata: { tagIds }, mdx: "" });
+			const ids = ["123e4567-e89b-12d3-a456-426614174001"];
+			const snap = await prepareSnapshot(
+				input({ collection: content, slug: "valid", metadata: { [many.name]: ids }, mdx: "" }),
+			);
 			const originalHash = snap.contentHash;
+			const snapIds = (snap.metadata as Record<string, unknown>)[many.name];
 
-			tagIds.push("123e4567-e89b-12d3-a456-426614174002");
-			expect(Array.isArray(snap.metadata.tagIds)).toBe(true);
-			if (Array.isArray(snap.metadata.tagIds)) {
-				expect(snap.metadata.tagIds).toHaveLength(1);
+			ids.push("123e4567-e89b-12d3-a456-426614174002");
+			expect(Array.isArray(snapIds)).toBe(true);
+			if (Array.isArray(snapIds)) {
+				expect(snapIds).toHaveLength(1);
 			}
 
 			expect(() => {
@@ -1101,9 +1086,9 @@ describe("ContentService M2-TW-1 Contract", () => {
 				(snap.references as unknown as { push: (a: unknown) => void }).push({});
 			}).toThrow();
 
-			// Regression assertion for pushing to metadata.tagIds
+			// Regression assertion for pushing to the many-relation array
 			expect(() => {
-				(snap.metadata.tagIds as unknown as { push: (a: string) => void }).push("new-tag");
+				(snapIds as unknown as { push: (a: string) => void }).push("new-tag");
 			}).toThrow();
 
 			expect(snap.contentHash).toBe(originalHash);
@@ -1116,7 +1101,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 			await expect(
 				prepareSnapshot({
-					collection: "post",
+					collection: content,
 					slug: "valid",
 					metadata: meta,
 					mdx: "",
@@ -1127,14 +1112,14 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("rejects metadata with getters without executing getter", async () => {
 			const spy = vi.fn();
 			const meta = { title: "valid" };
-			Object.defineProperty(meta, "summary", {
+			Object.defineProperty(meta, unboundedText?.name ?? "summary", {
 				get: spy,
 				enumerable: true,
 			});
 
 			await expect(
 				prepareSnapshot({
-					collection: "post",
+					collection: content,
 					slug: "valid",
 					metadata: meta,
 					mdx: "",
@@ -1149,9 +1134,9 @@ describe("ContentService M2-TW-1 Contract", () => {
 			delete sparseArray[0];
 			await expect(
 				prepareSnapshot({
-					collection: "post",
+					collection: content,
 					slug: "valid",
-					metadata: { tagIds: sparseArray },
+					metadata: { [many.name]: sparseArray },
 					mdx: "",
 				} as unknown as ServiceInput),
 			).rejects.toMatchObject({ code: "invalid_metadata_type" });
@@ -1196,7 +1181,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const customProtoInput = Object.create(
 				{ inherited: true },
 				{
-					collection: { value: "post", enumerable: true },
+					collection: { value: content, enumerable: true },
 					slug: { value: "valid", enumerable: true },
 					metadata: { value: {}, enumerable: true },
 					mdx: { value: "", enumerable: true },
@@ -1224,7 +1209,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			};
 			const service = createContentService(storePort);
 
-			const getterSpy = vi.fn(() => "post");
+			const getterSpy = vi.fn(() => content);
 			const inputWithGetter = {
 				get collection() {
 					return getterSpy();
@@ -1266,7 +1251,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const customProtoInput = Object.create(
 				{ inherited: true },
 				{
-					collection: { value: "post", enumerable: true },
+					collection: { value: content, enumerable: true },
 					slug: { value: "valid", enumerable: true },
 					metadata: { value: {}, enumerable: true },
 					mdx: { value: "", enumerable: true },
@@ -1297,7 +1282,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 			const getterSpy = vi.fn(() => 1);
 			const inputWithGetter = {
-				collection: "post",
+				collection: content,
 				slug: "valid",
 				metadata: {},
 				mdx: "",
@@ -1317,36 +1302,54 @@ describe("ContentService M2-TW-1 Contract", () => {
 	});
 	describe("11. 이미지 소스와 발행 경고 (M8-FE-2 · A3)", () => {
 		const mediaId = "987e4567-e89b-12d3-a456-426614174000";
-		// `post`는 `categoryId`를 요구해 발행 검사가 먼저 차단한다. 이미지 경고만 보려면 `memo`를 쓴다.
-		const draft = (mdx: string) => ({ collection: "memo" as const, slug: "a", metadata: { title: "T" }, mdx });
+		// 발행 필수 관계(블로그: 게시글의 `categoryId`)가 비면 발행 검사가 먼저 차단한다. 이미지 경고만 보려고
+		// 필수값을 채우고 그 관계 대상은 공개된 것으로 확인해 둔다.
+		const relationTargets: ResolvedTargets["targets"] = [];
+		const relationTarget = async (to: Collection) => {
+			const known = relationTargets.find((target) => target.collection === to);
+			if (known) return known.id;
+			const id = `123e4567-e89b-12d3-a456-4266141742${String(relationTargets.length).padStart(2, "0")}`;
+			relationTargets.push({ id, isPublished: true, collection: to });
+			return id;
+		};
+		const draftInput = async (mdx: string) => ({
+			collection: content,
+			slug: "a",
+			metadata: await requiredMetadata(content, "T", relationTarget),
+			mdx,
+		});
+		const draft = async (mdx: string) => input(await draftInput(mdx));
+		/** 필수 관계 참조를 뺀 이미지(미디어) 참조. */
+		const mediaReferences = (snap: PreparedSnapshot) =>
+			snap.references.filter((reference) => reference.kind === "media");
 
 		it("directive로 쓴 이미지도 미디어 참조를 수집한다", async () => {
-			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}" alt="설명"}`));
+			const snap = await prepareSnapshot(await draft(`::image{mediaId="${mediaId}" alt="설명"}`));
 
 			expect(snap.issues).toEqual([]);
-			expect(snap.references).toHaveLength(1);
-			expect(snap.references[0]).toMatchObject({ kind: "media", targetId: mediaId });
+			expect(mediaReferences(snap)).toHaveLength(1);
+			expect(mediaReferences(snap)[0]).toMatchObject({ kind: "media", targetId: mediaId });
 			expect(snap.imageSources).toEqual([{ mediaId, position: { line: 1, column: 1 } }]);
 		});
 
 		it("외부 src는 참조가 아니고 발행을 막지 않는다", async () => {
-			const snap = await prepareSnapshot(draft('::image{src="/images/a.png"}'));
+			const snap = await prepareSnapshot(await draft('::image{src="/images/a.png"}'));
 
 			expect(snap.issues).toEqual([]);
-			expect(snap.references).toEqual([]);
+			expect(mediaReferences(snap)).toEqual([]);
 			expect(snap.imageSources).toEqual([{ src: "/images/a.png", position: { line: 1, column: 1 } }]);
 		});
 
 		it("소스가 없는 이미지는 계속 차단한다(M7 무결성 유지)", async () => {
-			const snap = await prepareSnapshot(draft("::image{}"));
+			const snap = await prepareSnapshot(await draft("::image{}"));
 
 			expect(snap.issues).toContainEqual(expect.objectContaining({ code: "missing_media_id" }));
 			expect(snap.imageSources).toEqual([]);
 		});
 
 		it("허용되지 않는 src는 비차단 경고다(ready 유지)", async () => {
-			const snap = await prepareSnapshot(draft('::image{src="javascript:alert(1)"}'));
-			const validation = validateForPublish(snap, { targets: [], media: [] });
+			const snap = await prepareSnapshot(await draft('::image{src="javascript:alert(1)"}'));
+			const validation = validateForPublish(snap, { targets: relationTargets, media: [] });
 
 			expect(validation.ready).toBe(true);
 			expect(validation.warnings).toEqual([
@@ -1355,8 +1358,8 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 
 		it("미디어 상태·저장소 키로 경고를 만들고, 행이 없으면 경고하지 않는다", async () => {
-			const snap = await prepareSnapshot(draft(`::image{mediaId="${mediaId}"}`));
-			const targets: ResolvedTargets["targets"] = [];
+			const snap = await prepareSnapshot(await draft(`::image{mediaId="${mediaId}"}`));
+			const targets = relationTargets;
 
 			expect(validateForPublish(snap, { targets, media: [{ id: mediaId, status: "pending" }] }).warnings).toEqual([
 				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
@@ -1377,27 +1380,24 @@ describe("ContentService M2-TW-1 Contract", () => {
 		});
 
 		it("발행 응답용 경고는 DB 상태와 저장소 실물을 함께 본다", async () => {
-			const input = {
-				collection: "memo" as const,
-				slug: "a",
-				metadata: { title: "T" },
-				mdx: `::image{mediaId="${mediaId}"}`,
+			const publishInput = {
+				...(await draftInput(`::image{mediaId="${mediaId}"}`)),
 				getMediaAsset: async () => ({ status: "pending", storageKey: null }),
 			};
 
-			expect(await imageWarningsForPublish(input)).toEqual([
+			expect(await imageWarningsForPublish(publishInput)).toEqual([
 				expect.objectContaining({ code: "image_media_not_ready", message: "pending" }),
 			]);
 			expect(
 				await imageWarningsForPublish({
-					...input,
+					...publishInput,
 					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
 					headStorageKey: async () => true,
 				}),
 			).toEqual([]);
 			expect(
 				await imageWarningsForPublish({
-					...input,
+					...publishInput,
 					getMediaAsset: async () => ({ status: "ready", storageKey: "k/a.png" }),
 					headStorageKey: async () => false,
 				}),
@@ -1406,10 +1406,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 
 		it("경고 계산은 발행을 막지 않는다(실패 시 빈 배열)", async () => {
 			const warnings = await imageWarningsForPublish({
-				collection: "memo" as const,
-				slug: "a",
-				metadata: { title: "T" },
-				mdx: `::image{mediaId="${mediaId}"}`,
+				...(await draftInput(`::image{mediaId="${mediaId}"}`)),
 				getMediaAsset: async () => {
 					throw new Error("db down");
 				},

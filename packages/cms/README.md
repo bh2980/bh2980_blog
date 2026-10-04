@@ -472,5 +472,11 @@ pnpm --filter @bh2980/cms typecheck
 `title`·`slug` 말고는 다른 필드 이름, 영어만, 차트 + 사이트 블록, 글자 꾸밈 없음). 본체·관리자·AI 패키지마다 `vitest.othersite.config.ts`가 같은
 테스트를 이 설정으로 다시 돌린다(묶음 이름 `cms (other-site)`·`cms-admin (other-site)`·`cms-ai (other-site)`, 저장소 루트
 `pnpm test:run`이 함께 돈다. 패키지에서는 `pnpm test:other-site`). 새 테스트는 저절로 두 설정으로 돈다. 컬렉션·필드 이름은
-테스트에 적지 말고 설정에서 찾는다(`test/any-site.ts`, 예: `src/services/__test__/any-site.test.ts`). 블로그 예시 데이터를 그대로
-쓰는 테스트만 각 `vitest.othersite.config.ts`의 `BLOG_FIXTURE_TESTS`에 적어 뺀다.
+테스트에 적지 말고 설정에서 찾는다(`test/any-site.ts`: 컬렉션·관계 필드·두 번째 언어, 발행 필수값을 채우는 `fillRequiredMetadata`).
+설정에 없는 기능(두 번째 언어, 묶음 블록 등)이 필요한 경우는 `skipIf`로 감싼다. 본체 패키지에서 블로그 예시 데이터를 그대로 확인하는
+부분은 `*.blog.test.ts`에 두고 다른 사이트 실행·타입 검사에서 뺀다. 관리자·AI 패키지는 각 `vitest.othersite.config.ts`의
+`BLOG_FIXTURE_TESTS`에 적어 뺀다.
+
+**자동 검사(CI).** push·PR마다 `.github/workflows/ci.yml`이 lint(검사만)·타입 검사·패키지 빌드, 테스트(Postgres 17 서비스),
+예시 앱 묶음 검사(`pnpm example:check`)를 돈다. `pnpm example:check`는 패키지를 빌드해 묶고, 예시 앱을 저장소 밖 임시 폴더에
+그 묶음으로 설치해 `tsc`(`skipLibCheck: false`)와 `next build`를 예시 설정·확장을 모두 넣은 설정으로 한 번씩 돈다.

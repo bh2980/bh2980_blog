@@ -1,4 +1,46 @@
+import { contentCollection, defaultLocale, otherContentCollection, recordRelationField } from "../../../test/any-site";
 import type { ExportSnapshot } from "../../adapters/postgres/content-store";
+import { isItemCollection } from "../../core/collections";
+import { roleField, storedFields } from "../../schema/derive";
+
+/**
+ * 픽스처가 쓰는 컬렉션·언어·필드 이름은 지금 설정에서 찾는다(M10-1). 블로그 예시 설정에서는 공개 글이 게시글(`post`),
+ * 초안이 메모(`memo`)다. 본문이 있는 문서 컬렉션이 하나뿐인 설정은 둘 다 그 컬렉션이다.
+ */
+export const FIXTURE_CONTENT_COLLECTION = contentCollection;
+export const FIXTURE_DRAFT_COLLECTION = otherContentCollection ?? contentCollection;
+export const FIXTURE_LOCALE = defaultLocale;
+
+/** 공개 글 작업본이 가리키는 분류 관계(항목 컬렉션을 가리키는 여러 개짜리 관계 먼저). 참조 `kind`는 대상 컬렉션이다. */
+const fixtureRelation = (() => {
+	for (const { name, field } of storedFields(contentCollection)) {
+		if (field.kind === "relation" && field.many && isItemCollection(field.to)) return { name, to: field.to };
+	}
+	const found = recordRelationField(contentCollection);
+	return found ? { name: found.name, to: found.to as string } : { name: "relationIds", to: "relation" };
+})();
+export const FIXTURE_RELATION_KIND = fixtureRelation.to;
+
+/**
+ * 공개본에 담는 SEO 값(역할로 찾은 필드 이름 → 값). 설정에 없는 역할은 뺀다.
+ * M7-FE-2 SEO 메타가 공개 아카이브에 살아남는지 확인한다.
+ */
+export const FIXTURE_SEO_METADATA: Readonly<Record<string, string>> = Object.fromEntries(
+	(
+		[
+			["seoTitle", "검색 제목"],
+			["seoDescription", "검색 설명"],
+			["canonical", "https://dev.to/crosspost"],
+			["ogImage", "44444444-4444-4444-8444-444444444444"],
+		] as const
+	).flatMap(([role, value]) => {
+		const name = roleField(contentCollection, role)?.name;
+		return name ? [[name, value]] : [];
+	}),
+);
+
+/** 아카이브 안 항목 파일 경로. */
+export const fixtureEntryPath = (collection: string, id: string, file: string) => `entries/${collection}/${id}/${file}`;
 
 export const FIXTURE_TIME = new Date("2026-09-22T00:00:00.000Z");
 
@@ -20,8 +62,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 	entries: [
 		{
 			id: "11111111-1111-4111-8111-111111111111",
-			collection: "post",
-			locale: "ko",
+			collection: FIXTURE_CONTENT_COLLECTION,
+			locale: FIXTURE_LOCALE,
 			translationGroupId: "11111111-1111-4111-8111-111111111111",
 			status: "published",
 			version: 3,
@@ -32,18 +74,12 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			updatedAt: FIXTURE_TIME,
 			publishedAt: FIXTURE_TIME,
 			working: fixtureBody("working body", "게시글", "hash-working-1"),
-			published: fixtureBody("published body", "게시글", "hash-published-1", {
-				// M7-FE-2 SEO 메타가 공개 아카이브에 살아남는지 확인하는 픽스처
-				seoTitle: "검색 제목",
-				seoDescription: "검색 설명",
-				canonicalUrl: "https://dev.to/crosspost",
-				ogImageId: "44444444-4444-4444-8444-444444444444",
-			}),
+			published: fixtureBody("published body", "게시글", "hash-published-1", FIXTURE_SEO_METADATA),
 		},
 		{
 			id: "22222222-2222-4222-8222-222222222222",
-			collection: "memo",
-			locale: "ko",
+			collection: FIXTURE_DRAFT_COLLECTION,
+			locale: FIXTURE_LOCALE,
 			translationGroupId: "22222222-2222-4222-8222-222222222222",
 			status: "draft",
 			version: 1,
@@ -58,8 +94,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			// 보관된 글. published 본문이 남아 있어도 공개 아카이브에는 나가면 안 된다.
 			id: "88888888-8888-4888-8888-888888888888",
-			collection: "post",
-			locale: "ko",
+			collection: FIXTURE_CONTENT_COLLECTION,
+			locale: FIXTURE_LOCALE,
 			translationGroupId: "88888888-8888-4888-8888-888888888888",
 			status: "archived",
 			version: 2,
@@ -77,10 +113,10 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 		{
 			entryId: "11111111-1111-4111-8111-111111111111",
 			state: "working",
-			kind: "tag",
+			kind: FIXTURE_RELATION_KIND,
 			targetId: "33333333-3333-4333-8333-333333333333",
 			isStale: false,
-			occurrences: [{ type: "metadata", path: "tagIds", ordinal: 0 }],
+			occurrences: [{ type: "metadata", path: fixtureRelation.name, ordinal: 0 }],
 		},
 		{
 			entryId: "22222222-2222-4222-8222-222222222222",
@@ -112,7 +148,7 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 	folders: [
 		{
 			id: "55555555-5555-4555-8555-555555555555",
-			collection: "post",
+			collection: FIXTURE_CONTENT_COLLECTION,
 			parentId: null,
 			name: "루트",
 			position: 0,
@@ -121,8 +157,8 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 	],
 	addresses: [
 		{
-			collection: "post",
-			locale: "ko",
+			collection: FIXTURE_CONTENT_COLLECTION,
+			locale: FIXTURE_LOCALE,
 			slug: "old-slug",
 			entryId: "11111111-1111-4111-8111-111111111111",
 			type: "alias",

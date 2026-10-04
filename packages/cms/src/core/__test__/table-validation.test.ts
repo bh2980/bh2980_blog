@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { contentCollection } from "../../../test/any-site";
 import { prepareSnapshot } from "../snapshot";
 
 describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 	it("10억 열 병합은 빠르게 경고하고 격자를 만들지 않는다", async () => {
 		const mdx = "::::table\n:::row\n::cell[위험]{colspan=1000000000}\n:::\n::::";
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "huge-table",
 			metadata: { title: "표 테스트" },
 			mdx,
@@ -30,7 +31,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 		].join("\n");
 
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "valid-table",
 			metadata: { title: "표 테스트" },
 			mdx,
@@ -46,7 +47,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 		);
 
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "rowspan-overflow",
 			metadata: { title: "표 테스트" },
 			mdx,
@@ -72,7 +73,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 		].join("\n");
 
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "overlapping-cells",
 			metadata: { title: "표 테스트" },
 			mdx,
@@ -96,7 +97,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 		].join("\n");
 
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "mismatched-columns",
 			metadata: { title: "표 테스트" },
 			mdx,
@@ -111,7 +112,7 @@ describe("C6 표 셀 병합 발행 전 검사 (span 및 격자 경고)", () => {
 		const mdx = ["::::table", ":::row", "::cell[셀1]{colspan=0}", ":::", "::::"].join("\n");
 
 		const snap = await prepareSnapshot({
-			collection: "post",
+			collection: contentCollection,
 			slug: "invalid-span-value",
 			metadata: { title: "표 테스트" },
 			mdx,

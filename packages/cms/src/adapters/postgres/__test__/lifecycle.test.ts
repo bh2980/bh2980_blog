@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { contentCollection, fillRequiredMetadata, recordCollection } from "../../../../test/any-site";
 import { createContentStore, migrateContentStore } from "../content-store";
 import { seedEntry } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
+
+/** 컬렉션 이름은 지금 설정에서 찾는다(`test/any-site.ts`). 글은 본문이 있는 문서 컬렉션, 태그는 항목 컬렉션이다. */
+const content = contentCollection;
+const record = recordCollection;
 
 describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () => {
 	let pool: Pool;
@@ -17,26 +22,8 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		const categoryDraft = await seedEntry(store, {
-			collection: "category",
-			slug: "lifecycle-test-category",
-			metadata: { title: "Lifecycle category" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: "lifecycle-category-hash",
-		});
-		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-		// 게시글 발행에는 카테고리가 필요하다. 이 파일의 시나리오는 카테고리와 무관하므로 기본값을 채운다.
-		const withCategory = (snapshot: Record<string, any>) =>
-			snapshot?.collection === "post" && !snapshot.metadata?.categoryId
-				? { ...snapshot, metadata: { ...snapshot.metadata, categoryId: category.id } }
-				: snapshot;
-		const createWithReferences = store.createEntryWithReferences.bind(store);
-		store.createEntryWithReferences = (params: Record<string, any>) =>
-			createWithReferences({ ...params, snapshot: withCategory(params.snapshot) });
-		const saveWithReferences = store.saveWorkingWithReferences.bind(store);
-		store.saveWorkingWithReferences = (params: Record<string, any>) =>
-			saveWithReferences({ ...params, snapshot: withCategory(params.snapshot) });
+		// 글 발행에 필요한 값(블로그의 카테고리 등)은 이 파일의 시나리오와 무관하므로 저장소가 채운다.
+		fillRequiredMetadata(store);
 	});
 
 	afterAll(async () => {
@@ -49,7 +36,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 	describe("1. Lifecycle State Machine Transitions (§5.3)", () => {
 		it("draft -> published creates published body and sets status to published", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-publish-1",
 				metadata: { title: "Draft Post" },
 				mdx: "Content 1",
@@ -71,7 +58,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("published -> archive closes public visibility", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-archive-1",
 				metadata: { title: "To Archive" },
 				mdx: "Content",
@@ -95,7 +82,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("archived -> unarchive returns to draft without auto-publishing", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-unarchive-1",
 				metadata: { title: "To Unarchive" },
 				mdx: "Content",
@@ -123,7 +110,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("draft/published/archived -> trash hides from active list", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-trash-1",
 				metadata: { title: "To Trash" },
 				mdx: "Content",
@@ -141,7 +128,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("trashed -> restore returns to draft (for publish collection)", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-restore-1",
 				metadata: { title: "To Restore" },
 				mdx: "Content",
@@ -164,7 +151,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("trashed -> permanentDelete deletes entry but preserves address tombstone", async () => {
 			const entry = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "test-perm-delete-1",
 				metadata: { title: "Perm Delete" },
 				mdx: "Content",
@@ -192,7 +179,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			// Slug should still be reserved / conflict
 			await expect(
 				seedEntry(store, {
-					collection: "post",
+					collection: content,
 					slug: "test-perm-delete-1",
 					metadata: { title: "Reuse Slug Attempt" },
 					mdx: "Content",
@@ -206,7 +193,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 	describe("2. Transactional Target Recheck & Published References Rollback (§5.3)", () => {
 		it("publishes and copies working references to published references atomically", { timeout: 15000 }, async () => {
 			const tag = await seedEntry(store, {
-				collection: "tag",
+				collection: record,
 				slug: "tag-active",
 				metadata: { title: "Active Tag" },
 				mdx: "",
@@ -218,7 +205,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
 
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "post-with-ref",
 				metadata: { title: "Post" },
 				mdx: "Hello",
@@ -231,7 +218,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: post.id,
 				expectedVersion: post.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: "post-with-ref",
 					metadata: { title: "Post" },
 					mdx: "Hello",
@@ -268,7 +255,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("prevents trashing or deleting a tag still used by published entries", async () => {
 			const tag = await seedEntry(store, {
-				collection: "tag",
+				collection: record,
 				slug: `tag-in-use-${randomUUID()}`,
 				metadata: { title: "In-use tag" },
 				mdx: "",
@@ -277,7 +264,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			});
 			const publishedTag = await store.publishEntry({ id: tag.id, expectedVersion: tag.version });
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: `post-uses-tag-${randomUUID()}`,
 				metadata: { title: "Tagged post" },
 				mdx: "Tagged body.",
@@ -288,7 +275,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: post.id,
 				expectedVersion: post.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: post.workingSlug,
 					metadata: { title: "Tagged post" },
 					mdx: "Tagged body.",
@@ -317,7 +304,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: publishedPost.id,
 				expectedVersion: publishedPost.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: publishedPost.workingSlug,
 					metadata: { title: "Tagged post" },
 					mdx: "Tagged body.",
@@ -338,7 +325,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("does not publish a trashed entry", async () => {
 			const draft = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: `trashed-entry-${randomUUID()}`,
 				metadata: { title: "Trashed entry" },
 				mdx: "Body.",
@@ -353,7 +340,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("serializes tag deletion against a concurrent draft reference save", async () => {
 			const tagDraft = await seedEntry(store, {
-				collection: "tag",
+				collection: record,
 				slug: `tag-race-${randomUUID()}`,
 				metadata: { title: "Race tag" },
 				mdx: "",
@@ -362,7 +349,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			});
 			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: `post-tag-race-${randomUUID()}`,
 				metadata: { title: "Concurrent draft" },
 				mdx: "Draft.",
@@ -379,7 +366,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 					entryId: post.id,
 					expectedVersion: post.version,
 					snapshot: {
-						collection: "post",
+						collection: content,
 						slug: post.workingSlug,
 						metadata: { title: "Concurrent draft" },
 						mdx: "Draft.",
@@ -403,7 +390,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("blocks trashing or deleting a tag referenced by a draft", async () => {
 			const tagDraft = await seedEntry(store, {
-				collection: "tag",
+				collection: record,
 				slug: `tag-draft-use-${randomUUID()}`,
 				metadata: { title: "Draft-used tag" },
 				mdx: "",
@@ -412,7 +399,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			});
 			const tag = await store.publishEntry({ id: tagDraft.id, expectedVersion: tagDraft.version });
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: `draft-uses-tag-${randomUUID()}`,
 				metadata: { title: "Draft using tag" },
 				mdx: "Draft body.",
@@ -423,7 +410,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: post.id,
 				expectedVersion: post.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: post.workingSlug,
 					metadata: { title: "Draft using tag" },
 					mdx: "Draft body.",
@@ -448,7 +435,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 			{ timeout: 60000 },
 			async () => {
 				const tag = await seedEntry(store, {
-					collection: "tag",
+					collection: record,
 					slug: "tag-to-archive",
 					metadata: { title: "Tag" },
 					mdx: "",
@@ -457,7 +444,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				});
 				// 레코드 컬렉션은 보관할 수 없다. 공개되지 않은(초안) 태그를 대상으로 쓴다.
 				const post = await seedEntry(store, {
-					collection: "post",
+					collection: content,
 					slug: "post-rollback-test",
 					metadata: { title: "Prior Title" },
 					mdx: "Prior MDX",
@@ -473,7 +460,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 					entryId: post.id,
 					expectedVersion: firstPub.version,
 					snapshot: {
-						collection: "post",
+						collection: content,
 						slug: "post-rollback-test",
 						metadata: { title: "Broken Title" },
 						mdx: "Broken MDX",
@@ -511,7 +498,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 	describe("4. Timestamps (§5.5)", () => {
 		it("keeps the first publish time on re-publish and after archive", async () => {
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "post-timestamp-test",
 				metadata: { title: "Timestamp Post" },
 				mdx: "V1",
@@ -526,7 +513,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: post.id,
 				expectedVersion: pub1.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: "post-timestamp-test",
 					metadata: { title: "Timestamp Post V2" },
 					mdx: "V2",
@@ -550,7 +537,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 		it("resets the publish time to now only when asked, even without changes", async () => {
 			const original = new Date("2023-07-16T15:00:00Z");
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "post-reset-date",
 				metadata: { title: "Reset" },
 				mdx: "Body",
@@ -571,7 +558,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 				entryId: post.id,
 				expectedVersion: pub2.version,
 				snapshot: {
-					collection: "post",
+					collection: content,
 					slug: "post-reset-date",
 					metadata: { title: "Reset V2" },
 					mdx: "V2",
@@ -589,7 +576,7 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 
 		it("publishes with a publish time set beforehand (migrated drafts keep their original date)", async () => {
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "post-preset-date",
 				metadata: { title: "Migrated" },
 				mdx: "Body",
@@ -607,10 +594,10 @@ describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () =>
 	describe("5. M7-SEC-1 발행 경계", () => {
 		it("analyze 오류가 있는 본문은 publishEntry가 거부하고 상태를 바꾸지 않는다", async () => {
 			const post = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug: "post-broken-mdx",
 				metadata: { title: "Broken" },
-				mdx: "<Callout>",
+				mdx: "<Unclosed>",
 				schemaVersion: 1,
 				contentHash: "broken-hash",
 			});

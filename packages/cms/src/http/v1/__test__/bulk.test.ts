@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { contentCollection, requiredMetadata } from "../../../../test/any-site";
 import { CmsError } from "../../../adapters/postgres/content-store";
+import { isItemCollection } from "../../../core/collections";
+import { storedFields } from "../../../schema/derive";
 import { POST as postBulk } from "../bulk/route";
 
 const mockVerifyAdmin = vi.fn();
@@ -26,10 +29,19 @@ const E1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STALE = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const MISSING = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
+/** 항목 컬렉션을 가리키는 여러 개짜리 관계(블로그 예시 설정은 태그 `tagIds`). 컬렉션·필드 이름은 설정에서 찾는다. */
+const MANY_FIELD = storedFields(contentCollection).find(
+	({ field }) => field.kind === "relation" && field.many && isItemCollection(field.to),
+)?.name;
+if (!MANY_FIELD) throw new Error("bulk test: the content collection has no many relation to an item collection");
+
+/** 발행 필수값을 채운 작업본 메타데이터(관계는 `CAT_1`, 블로그 예시 설정은 카테고리). */
+let workingMetadata: Record<string, unknown> = {};
+
 const working = (version: number) => ({
-	collection: "post",
+	collection: contentCollection,
 	slug: "hello",
-	metadata: { title: "Hello", categoryId: CAT_1, tagIds: [TAG_1] },
+	metadata: { ...workingMetadata, [MANY_FIELD]: [TAG_1] },
 	mdx: "body",
 	version,
 	folderId: null,
@@ -70,6 +82,10 @@ const postReq = (body: unknown) =>
 	});
 
 describe("M4-BE-1a Bulk route contract", () => {
+	beforeAll(async () => {
+		workingMetadata = await requiredMetadata(contentCollection, "Hello", async () => CAT_1);
+	});
+
 	beforeEach(() => {
 		mockVerifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 	});
@@ -78,7 +94,7 @@ describe("M4-BE-1a Bulk route contract", () => {
 		const res = await postBulk(
 			postReq({
 				op: "relation.add",
-				field: "tagIds",
+				field: MANY_FIELD,
 				items: [
 					{ id: E1, expectedVersion: 3 },
 					{ id: STALE, expectedVersion: 2 },
@@ -101,7 +117,7 @@ describe("M4-BE-1a Bulk route contract", () => {
 		const res = await postBulk(
 			postReq({
 				op: "relation.add",
-				field: "tagIds",
+				field: MANY_FIELD,
 				items: Array.from({ length: 101 }, (_, i) => ({
 					id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
 					expectedVersion: 1,

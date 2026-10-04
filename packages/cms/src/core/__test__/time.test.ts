@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { cmsConfig } from "../../config/resolved";
 import { CMS_TIME_ZONE, formatDateTimeInput, parseDateTimeInput } from "../time";
 
 describe("날짜·시각 입력의 시간대", () => {
 	it("설정의 시간대 벽시계로 입력하고 UTC로 저장한다", () => {
-		expect(CMS_TIME_ZONE).toBe("Asia/Seoul");
-		expect(parseDateTimeInput("2026-02-13T00:21")).toBe("2026-02-12T15:21:00.000Z");
-		expect(formatDateTimeInput("2026-02-12T15:21:00.000Z")).toBe("2026-02-13T00:21");
+		// 설정의 시간대(없으면 UTC)가 기본값이다. 시간대 계산은 이름을 직접 넘겨 설정과 상관없이 확인한다.
+		expect(CMS_TIME_ZONE).toBe(cmsConfig.timeZone ?? "UTC");
+		expect(parseDateTimeInput("2026-02-13T00:21")).toBe(parseDateTimeInput("2026-02-13T00:21", CMS_TIME_ZONE));
+		expect(formatDateTimeInput(parseDateTimeInput("2026-02-13T00:21"))).toBe("2026-02-13T00:21");
+		expect(parseDateTimeInput("2026-02-13T00:21", "Asia/Seoul")).toBe("2026-02-12T15:21:00.000Z");
+		expect(formatDateTimeInput("2026-02-12T15:21:00.000Z", "Asia/Seoul")).toBe("2026-02-13T00:21");
 		expect(formatDateTimeInput(null)).toBe("");
 		expect(formatDateTimeInput("not a date")).toBe("");
 	});

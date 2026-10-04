@@ -1,7 +1,57 @@
 import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { ADDED_BLOCKS, BLOCKS } from "../../blocks/active";
+import type { BlockDefinition } from "../../blocks/define";
 import { analyze, serialize, toDocument } from "..";
 import { readSample, SAMPLES_DIR } from "./fixtures/samples";
+
+/**
+ * 사이트 블록 이름은 지금 설정에서 찾는다(블로그 예시 설정과 다른 사이트 설정 둘 다로 돈다). 설정에 그런 블록이 없으면
+ * 그 경우는 건너뛴다(예: 다른 사이트 설정에는 탭 묶음 같은 묶음 블록과 불리언 속성 블록이 없다).
+ */
+const stringAttributes = (block: BlockDefinition) =>
+	Object.entries(block.attributes).filter(([, attribute]) => attribute.type === "string");
+/** 본문을 담는 사이트 블록(자식 규칙·부모가 없는 컨테이너, 예: 콜아웃). */
+const bodyBlock = ADDED_BLOCKS.find(
+	(block) => block.syntax.kind === "container" && !block.children?.blocks && !block.parent,
+);
+/** 정해진 자식 블록만 담는 묶음 블록과 그 자식, 자식 개수 범위(예: 탭 묶음·탭 2~8개, 단 나누기·단 2~4개). */
+const groups = ADDED_BLOCKS.flatMap((block) => {
+	const child = BLOCKS.find((candidate) => candidate.name === block.children?.blocks?.[0]);
+	const { min, max } = block.children ?? {};
+	return block.syntax.kind === "container" && child && min && max !== undefined ? [{ block, child, min, max }] : [];
+});
+/** 불리언 속성이 있는 컨테이너 블록(예: 접기)과 그 속성 이름. */
+const booleanBlock = ADDED_BLOCKS.find(
+	(block) =>
+		block.syntax.kind === "container" &&
+		Object.values(block.attributes).some((attribute) => attribute.type === "boolean"),
+);
+const booleanAttribute = booleanBlock
+	? Object.entries(booleanBlock.attributes).find(([, attribute]) => attribute.type === "boolean")?.[0]
+	: undefined;
+
+/** 블록 JSX 여는 태그. 글 속성에 차례로 값을 넣는다(선택 값이 있으면 그중 하나). */
+const open = (block: BlockDefinition, ...values: string[]) => {
+	const props = stringAttributes(block)
+		.slice(0, values.length)
+		.map(([name, attribute], index) => {
+			const options = attribute.options ? Object.keys(attribute.options) : [];
+			const value = options.length > 0 ? (options.find((key) => key === values[index]) ?? options[0]) : values[index];
+			return ` ${name}="${value}"`;
+		})
+		.join("");
+	return `<${block.component}${props}>`;
+};
+const close = (block: BlockDefinition) => `</${block.component}>`;
+/** 묶음의 자식 JSX(필수 글 속성만 채운다, 예: 탭 이름). */
+const openChild = (child: BlockDefinition, value: string) => {
+	const props = stringAttributes(child)
+		.filter(([, attribute]) => attribute.required)
+		.map(([name]) => ` ${name}="${value}"`)
+		.join("");
+	return `<${child.component}${props}>`;
+};
 
 function fullRoundtrip(mdx: string): { firstDoc: unknown; secondDoc: unknown } {
 	const first = analyze(mdx);
@@ -68,82 +118,104 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
 	});
 
 	describe("중첩 JSX 컴포넌트", () => {
-		const NESTED = [
-			"<Tabs>",
-			'  <Tab label="robots.txt">',
-			'    ```text title="src/app/robots.txt"',
-			"    User-Agent: *",
-			"    ```",
-			"  </Tab>",
-			'  <Tab label="sitemap.ts">',
-			"    Callout은 Tab 안의 펜스 뒤에도 온다.",
-			"  </Tab>",
-			"</Tabs>",
-		].join("\n");
-
-		it("Tabs > Tab > 코드 펜스 > 주석이 중첩 구조의 의미를 유지한다", () => {
-			const text = JSON.stringify(fullRoundtrip(NESTED).secondDoc);
+		it.skipIf(!groups[0])("묶음 > 자식 > 코드 펜스 > 주석이 중첩 구조의 의미를 유지한다", () => {
+			const [group] = groups;
+			if (!group) return;
+			const { block: tabs, child: tab } = group;
+			const nested = [
+				open(tabs),
+				`  ${openChild(tab, "robots.txt")}`,
+				'    ```text title="src/app/robots.txt"',
+				"    User-Agent: *",
+				"    ```",
+				`  ${close(tab)}`,
+				`  ${openChild(tab, "sitemap.ts")}`,
+				"    sitemap.ts 문단은 펜스 뒤에도 온다.",
+				`  ${close(tab)}`,
+				close(tabs),
+			].join("\n");
+			const text = JSON.stringify(fullRoundtrip(nested).secondDoc);
 			expect(text).toContain("robots.txt");
 			expect(text).toContain("sitemap.ts");
 			expect(text).toContain("User-Agent: *");
 		});
 
-		it("Callout 안의 Tabs, Columns 안의 Callout도 유실되지 않는다", () => {
+		it.skipIf(!bodyBlock)("컨테이너 > 코드 펜스와 컨테이너 안의 컨테이너도 유지된다", () => {
+			if (!bodyBlock) return;
 			const mdx = [
-				'<Callout variant="note">',
-				"  <Tabs>",
-				'    <Tab label="a">바깥 Tab a</Tab>',
-				'    <Tab label="b">바깥 Tab b</Tab>',
-				"  </Tabs>",
-				"</Callout>",
-				"",
-				"<Columns>",
-				"  <Column>",
-				'    <Callout variant="info" title="안쪽 콜아웃">',
-				"      컬럼 안 문단이다.",
-				"    </Callout>",
-				"  </Column>",
-				"  <Column>두 번째 컬럼</Column>",
-				"</Columns>",
+				open(bodyBlock, "note"),
+				'  ```text title="src/app/robots.txt"',
+				"  User-Agent: *",
+				"  ```",
+				`  ${open(bodyBlock, "info", "안쪽 블록")}`,
+				"    안쪽 문단이다.",
+				`  ${close(bodyBlock)}`,
+				close(bodyBlock),
 			].join("\n");
 			const text = JSON.stringify(fullRoundtrip(mdx).secondDoc);
-			expect(text).toContain("안쪽 콜아웃");
-			expect(text).toContain("바깥 Tab a");
-			expect(text).toContain("두 번째 컬럼");
-			expect(text).toContain("note");
-			expect(text).toContain("info");
+			expect(text).toContain("robots.txt");
+			expect(text).toContain("User-Agent: *");
+			expect(text).toContain("안쪽 문단이다.");
 		});
 
-		it("defaultOpen={true} 같은 리터럴 속성이 유지된다", () => {
-			const mdx = ["<Collapsible defaultOpen={true}>", "펼친 상태로 저장된다.", "</Collapsible>"].join("\n");
+		it.skipIf(!bodyBlock || groups.length < 2)("Callout 안의 Tabs, Columns 안의 Callout도 유실되지 않는다", () => {
+			const [first, second] = groups;
+			if (!bodyBlock || !first || !second) return;
+			const { block: tabs, child: tab } = first;
+			const { block: columns, child: column } = second;
+			const mdx = [
+				open(bodyBlock, "note"),
+				`  ${open(tabs)}`,
+				`    ${openChild(tab, "a")}바깥 Tab a${close(tab)}`,
+				`    ${openChild(tab, "b")}바깥 Tab b${close(tab)}`,
+				`  ${close(tabs)}`,
+				close(bodyBlock),
+				"",
+				open(columns),
+				`  ${openChild(column, "c")}`,
+				`    ${open(bodyBlock, "info", "안쪽 콜아웃")}`,
+				"      컬럼 안 문단이다.",
+				`    ${close(bodyBlock)}`,
+				`  ${close(column)}`,
+				`  ${openChild(column, "d")}두 번째 컬럼${close(column)}`,
+				close(columns),
+			].join("\n");
 			const text = JSON.stringify(fullRoundtrip(mdx).secondDoc);
-			expect(text).toContain("defaultOpen");
+			expect(text).toContain("컬럼 안 문단이다.");
+			expect(text).toContain("바깥 Tab a");
+			expect(text).toContain("두 번째 컬럼");
+			// 속성 값(콜아웃이면 종류 note·info와 제목)도 남는다.
+			const [kind, title] = stringAttributes(bodyBlock);
+			const options = kind?.[1].options;
+			const optionValue = (value: string) => (options && !(value in options) ? Object.keys(options)[0] : value);
+			if (kind) expect(text).toContain(optionValue("note"));
+			if (kind) expect(text).toContain(optionValue("info"));
+			if (title) expect(text).toContain("안쪽 콜아웃");
+		});
+
+		it.skipIf(!booleanBlock || !booleanAttribute)("defaultOpen={true} 같은 리터럴 속성이 유지된다", () => {
+			if (!booleanBlock || !booleanAttribute) return;
+			const mdx = [
+				`<${booleanBlock.component} ${booleanAttribute}={true}>`,
+				"펼친 상태로 저장된다.",
+				close(booleanBlock),
+			].join("\n");
+			const text = JSON.stringify(fullRoundtrip(mdx).secondDoc);
+			expect(text).toContain(booleanAttribute);
 			expect(text).toContain("true");
 		});
 
-		it("Tab 개수 경계: 1개와 9개는 오류로 차단하고 2개·8개는 허용한다", () => {
-			const two = '<Tabs><Tab label="1">a</Tab><Tab label="2">b</Tab></Tabs>';
-			const eight = `<Tabs>${Array.from({ length: 8 }, (_, i) => `<Tab label="${i + 1}">a</Tab>`).join("")}</Tabs>`;
-			const one = '<Tabs><Tab label="1">a</Tab></Tabs>';
-			const nine = `<Tabs>${Array.from({ length: 9 }, (_, i) => `<Tab label="${i + 1}">a</Tab>`).join("")}</Tabs>`;
+		// 블로그 예시 설정: 탭 묶음(2~8개)·단 나누기(2~4개).
+		it.skipIf(groups.length === 0)("묶음 자식 개수 경계: 최소-1·최대+1은 오류로 차단하고 최소·최대는 허용한다", () => {
+			for (const { block, child, min, max } of groups) {
+				const groupOf = (count: number) =>
+					`${open(block)}${Array.from({ length: count }, (_, i) => `${openChild(child, `${i + 1}`)}a${close(child)}`).join("")}${close(block)}`;
 
-			fullRoundtrip(two);
-			fullRoundtrip(eight);
-			expect(analyze(one, "one-tab").errors ?? []).not.toEqual([]);
-			expect(analyze(nine, "nine-tabs").errors ?? []).not.toEqual([]);
-		});
-
-		it("Column 개수 경계: 1개·5개는 오류, 2개·4개는 허용된다", () => {
-			const two = "<Columns><Column>1</Column><Column>2</Column></Columns>";
-			const four = "<Columns><Column>1</Column><Column>2</Column><Column>3</Column><Column>4</Column></Columns>";
-			const one = "<Columns><Column>1</Column></Columns>";
-			const five =
-				"<Columns><Column>1</Column><Column>2</Column><Column>3</Column><Column>4</Column><Column>5</Column></Columns>";
-
-			fullRoundtrip(two);
-			fullRoundtrip(four);
-			expect(analyze(one, "one-column").errors ?? []).not.toEqual([]);
-			expect(analyze(five, "five-columns").errors ?? []).not.toEqual([]);
+				fullRoundtrip(groupOf(min));
+				fullRoundtrip(groupOf(max));
+				expect(analyze(groupOf(min - 1), `too-few-${block.name}`).errors ?? []).not.toEqual([]);
+				expect(analyze(groupOf(max + 1), `too-many-${block.name}`).errors ?? []).not.toEqual([]);
+			}
 		});
 	});
 
@@ -212,7 +284,8 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
 
 	describe("미지원 문법·오류(§4.4)", () => {
 		it("spread 속성은 오류 위치를 표시하고 원문을 삭제하지 않는다", () => {
-			const mdx = ["# 미지원", "", "<Callout {...props}>내용</Callout>"].join("\n");
+			const box = bodyBlock?.component ?? "TextAlign";
+			const mdx = ["# 미지원", "", `<${box} {...props}>내용</${box}>`].join("\n");
 			const analysis = analyze(mdx, "spread-props");
 			expect(analysis.errors ?? []).not.toEqual([]);
 			const hasPosition = (analysis.errors ?? []).some(
@@ -224,9 +297,15 @@ describe("MDX 왕복: analyze → toDocument → serialize → analyze", () => {
 		});
 
 		it("함수 호출 속성은 거부되고 원문은 보존된다", () => {
-			const mdx = ["<Tabs onChange={handle}>", '<Tab label="a">x</Tab>', '<Tab label="b">y</Tab>', "</Tabs>"].join(
-				"\n",
-			);
+			const [group] = groups;
+			const mdx = group
+				? [
+						`<${group.block.component} onChange={handle}>`,
+						`${openChild(group.child, "a")}x${close(group.child)}`,
+						`${openChild(group.child, "b")}y${close(group.child)}`,
+						close(group.block),
+					].join("\n")
+				: `<${bodyBlock?.component ?? "TextAlign"} onChange={handle}>x</${bodyBlock?.component ?? "TextAlign"}>`;
 			const analysis = analyze(mdx, "fn-prop");
 			expect(analysis.errors ?? []).not.toEqual([]);
 			expect(analysis.source).toContain("onChange={handle}");

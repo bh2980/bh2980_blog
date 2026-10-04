@@ -1,30 +1,52 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+	contentCollection,
+	fillRequiredMetadata,
+	recordCollection,
+	requiredFields,
+	requiredMetadata,
+} from "../../../../test/any-site";
+import { COLLECTIONS, type Collection } from "../../../core/collections";
+import { contentPath } from "../../../core/links";
+import { storedFields } from "../../../schema/derive";
 import { createContentService } from "../../../services/content-service";
 import { ServiceError } from "../../../services/types";
-import type { Entry, EntryMetadata } from "../content-store";
+import type { ContentStore, Entry, EntryMetadata } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { seedEntry, seedSave } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
+
+/** 발행 필수값 중 제목이 아닌 첫 필드(블로그는 카테고리). 빠지면 발행을 막는지 본다. */
+const missingRequired = requiredFields(contentCollection).find(({ name }) => name !== "title");
+
+/**
+ * 아직 공개되지 않은 글도 담을 수 있는 관계 필드(`allowUnpublished`, 블로그는 모음집의 `itemIds`)와 그 컬렉션.
+ * 조건부 필드에 딸렸으면 그 조건 값도 함께 넣어야 저장된다.
+ */
+const unpublishedRelation = (() => {
+	for (const collection of COLLECTIONS) {
+		for (const stored of storedFields(collection)) {
+			const { field } = stored;
+			if (field.kind === "relation" && field.allowUnpublished) {
+				return { ...stored, collection, to: field.to as Collection, many: Boolean(field.many) };
+			}
+		}
+	}
+	return undefined;
+})();
 
 describe("ContentStore (M1-DA-1 test-first)", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore>;
-	let categorySequence = 0;
+	let relationTarget: (to: Collection) => Promise<string>;
+	/** 발행 필수값을 채우지 않고 저장하는 저장소(필수값 검사를 시험할 때). */
+	let rawStore: ContentStore;
 
-	const createPublishedCategory = async () => {
-		const slug = `validation-category-${++categorySequence}`;
-		const draft = await seedEntry(store, {
-			collection: "category",
-			slug,
-			metadata: { title: "Validation category" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: `category-hash-${categorySequence}`,
-		});
-		return store.publishEntry({ id: draft.id, expectedVersion: draft.version });
-	};
+	/** 원시 스냅샷에 채워지는 메타데이터(제목 + 설정의 발행 필수값). */
+	const filled = (title: string, collection: Collection = contentCollection) =>
+		requiredMetadata(collection, title, relationTarget);
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -33,6 +55,10 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
+		// 발행 필수값(블로그의 카테고리 같은 것)은 설정에서 찾아 채운다.
+		const fill = fillRequiredMetadata(store);
+		relationTarget = fill.relationTarget;
+		rawStore = { ...store, createEntryWithReferences: fill.raw.createEntryWithReferences };
 	});
 
 	afterAll(async () => {
@@ -44,7 +70,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("creates a new entry with correct timestamp fields", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "test-timestamps",
 			metadata: { title: "Timestamps" },
 			mdx: "test",
@@ -64,7 +90,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("allows two drafts in the same collection with slug null and manages workingSlug/publishedSlug", async () => {
 		const draft1 = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: null,
 			metadata: { title: "Draft" },
 			mdx: "draft 1",
@@ -72,7 +98,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 			contentHash: "hash-slug-1",
 		});
 		const draft2 = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: null,
 			metadata: { title: "Draft" },
 			mdx: "draft 2",
@@ -114,7 +140,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("timestamps: publish behavior and immutability", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "time-test",
 			metadata: { title: "Draft" },
 			mdx: "time test",
@@ -153,7 +179,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("identical save leaves version, hash, and updatedAt unchanged", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "identical",
 			metadata: { title: "Draft" },
 			mdx: "draft content",
@@ -185,7 +211,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("same-hash correctness: changed metadata/MDX/schemaVersion with reused hash is published", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "republish-hash",
 			metadata: { title: "Hash Test" },
 			mdx: "hash test",
@@ -204,13 +230,13 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		});
 
 		const secondPublish = await store.publishEntry({ id: entry.id, expectedVersion: secondSave.version });
-		expect(secondPublish.published?.metadata).toEqual({ title: "Hash Test Changed" });
+		expect(secondPublish.published?.metadata).toEqual(await filled("Hash Test Changed"));
 		expect(secondPublish.published?.mdx).toBe("hash test changed");
 		expect(secondPublish.published?.schemaVersion).toBe(2);
 		expect(secondPublish.published?.contentHash).toBe("same-hash");
 
 		const reloaded = await store.getEntry(entry.id);
-		expect(reloaded.published?.metadata).toEqual({ title: "Hash Test Changed" });
+		expect(reloaded.published?.metadata).toEqual(await filled("Hash Test Changed"));
 		expect(reloaded.published?.mdx).toBe("hash test changed");
 		expect(reloaded.published?.schemaVersion).toBe(2);
 		expect(reloaded.published?.contentHash).toBe("same-hash");
@@ -218,7 +244,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("metadata JSON boundary: invalid value rejected with invalid_input", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "json-boundary",
 			metadata: { title: "JSON Boundary" },
 			mdx: "json",
@@ -249,12 +275,12 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		const reloaded = await store.getEntry(entry.id);
 		expect(reloaded.version).toBe(entry.version);
-		expect(reloaded.working.metadata).toEqual({ title: "JSON Boundary" });
+		expect(reloaded.working.metadata).toEqual(await filled("JSON Boundary"));
 	});
 
 	it("true simultaneous-writer test: resolves one conflict", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "simul-test",
 			metadata: { title: "Simultaneous" },
 			mdx: "simul",
@@ -306,7 +332,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("stale expectedVersion throws CmsError with code conflict and serverVersion", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "stale-test",
 			metadata: { title: "Initial" },
 			mdx: "initial",
@@ -348,7 +374,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("keeps working and published snapshots separate", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "separation-test",
 			metadata: { title: "Initial Draft" },
 			mdx: "initial draft",
@@ -369,7 +395,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		const reloaded = await store.getEntry(entry.id);
 
-		expect(reloaded.working.metadata).toEqual({ title: "Updated Draft" });
+		expect(reloaded.working.metadata).toEqual(await filled("Updated Draft"));
 		expect(reloaded.working.mdx).toBe("updated draft");
 		expect(reloaded.working.contentHash).toBe("hash-updated");
 		expect(reloaded.working.schemaVersion).toBe(2);
@@ -380,7 +406,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("republishing the same content hash does not replace the published snapshot", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "republish-hash-identical",
 			metadata: { title: "Hash Test" },
 			mdx: "hash test",
@@ -407,7 +433,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("a transaction failure during publish leaves the prior published snapshot intact", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "rollback-test",
 			metadata: { title: "First Publish" },
 			mdx: "first publish",
@@ -446,7 +472,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("published entry can clear its working slug, cannot publish without one, and keeps its public slug reserved", async () => {
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "clear-slug-test",
 			metadata: { title: "Clear" },
 			mdx: "test",
@@ -478,7 +504,7 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 		await expect(
 			seedEntry(store, {
-				collection: "memo",
+				collection: contentCollection,
 				slug: "clear-slug-test",
 				metadata: {},
 				mdx: "collision",
@@ -488,20 +514,24 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		).rejects.toThrow();
 	});
 
-	it("rejects invalid direct publication without creating a published snapshot", async () => {
-		const draft = await seedEntry(store, {
-			collection: "post",
-			slug: "validation-missing-category",
-			metadata: { title: "Missing category" },
+	it.skipIf(!missingRequired)("rejects invalid direct publication without creating a published snapshot", async () => {
+		const draft = await seedEntry(rawStore, {
+			collection: contentCollection,
+			slug: "validation-missing-required",
+			metadata: { title: "Missing required" },
 			mdx: "A valid body.",
 			schemaVersion: 1,
-			contentHash: "validation-missing-category-hash",
+			contentHash: "validation-missing-required-hash",
 		});
 
 		await expect(store.publishEntry({ id: draft.id, expectedVersion: draft.version })).rejects.toMatchObject({
 			code: "publish_validation_failed",
 			issues: expect.arrayContaining([
-				expect.objectContaining({ code: "missing_field", path: "categoryId", message: "카테고리" }),
+				expect.objectContaining({
+					code: "missing_field",
+					path: missingRequired?.name,
+					message: missingRequired?.field.label,
+				}),
 			]),
 		});
 		const unchanged = await store.getEntry(draft.id);
@@ -511,21 +541,26 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 
 	it("atomically publishes record creates and rolls invalid edits back", async () => {
 		const service = createContentService(store);
-		const badSlug = "validation-invalid-tag-create";
+		const badSlug = "validation-invalid-record-create";
 		await expect(
 			service.createDraft(
-				{ collection: "tag", slug: badSlug, metadata: { title: "" }, mdx: "" },
+				{ collection: recordCollection, slug: badSlug, metadata: { title: "" }, mdx: "" },
 				{ publishImmediately: true },
 			),
 		).rejects.toBeInstanceOf(ServiceError);
 		const notCreated = await pool.query(
-			`SELECT id FROM "${schemaName}".entries WHERE collection = 'tag' AND working_slug = $1`,
-			[badSlug],
+			`SELECT id FROM "${schemaName}".entries WHERE collection = $1 AND working_slug = $2`,
+			[recordCollection, badSlug],
 		);
 		expect(notCreated.rows).toHaveLength(0);
 
 		const published = await service.createDraft(
-			{ collection: "tag", slug: "validation-valid-tag", metadata: { title: "Valid tag" }, mdx: "" },
+			{
+				collection: recordCollection,
+				slug: "validation-valid-record",
+				metadata: await filled("Valid record", recordCollection),
+				mdx: "",
+			},
 			{ publishImmediately: true },
 		);
 		expect(published.status).toBe("published");
@@ -535,7 +570,13 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		await expect(
 			service.saveDraft(
 				published.id,
-				{ collection: "tag", expectedVersion: before.version, slug: null, metadata: { title: "" }, mdx: "" },
+				{
+					collection: recordCollection,
+					expectedVersion: before.version,
+					slug: null,
+					metadata: { title: "" },
+					mdx: "",
+				},
 				{ publishImmediately: true },
 			),
 		).rejects.toBeInstanceOf(ServiceError);
@@ -547,20 +588,20 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 	});
 
 	it("validates internal links against locked publication addresses", async () => {
-		const category = await createPublishedCategory();
 		const target = await seedEntry(store, {
-			collection: "post",
+			collection: contentCollection,
 			slug: "validation-link-target",
-			metadata: { title: "Target", categoryId: category.id },
+			metadata: { title: "Target" },
 			mdx: "Target body.",
 			schemaVersion: 1,
 			contentHash: "validation-link-target-hash",
 		});
 		const source = await seedEntry(store, {
-			collection: "post",
+			collection: contentCollection,
 			slug: "validation-link-source",
-			metadata: { title: "Source", categoryId: category.id },
-			mdx: "[Target](/posts/validation-link-target)",
+			metadata: { title: "Source" },
+			// 공개 주소 모양은 설정의 `path`를 따른다(블로그 `/posts/:slug`).
+			mdx: `[Target](${contentPath(contentCollection, "validation-link-target")})`,
 			schemaVersion: 1,
 			contentHash: "validation-link-source-hash",
 		});
@@ -575,32 +616,42 @@ describe("ContentStore (M1-DA-1 test-first)", () => {
 		expect(publishedSource.status).toBe("published");
 	});
 
-	it("allows draft post references only for collection itemIds", async () => {
-		const category = await createPublishedCategory();
-		const draftPost = await seedEntry(store, {
-			collection: "post",
-			slug: "validation-collection-draft-item",
-			metadata: { title: "Draft item", categoryId: category.id },
-			mdx: "Draft body.",
-			schemaVersion: 1,
-			contentHash: "validation-collection-draft-item-hash",
-		});
-		const service = createContentService(store);
-		const collectionDraft = await service.createDraft({
-			collection: "collection",
-			slug: "validation-collection",
-			metadata: { title: "Reading list", itemIds: [draftPost.id] },
-			mdx: "",
-		});
-		const published = await store.publishEntry({ id: collectionDraft.id, expectedVersion: collectionDraft.version });
-		expect(published.status).toBe("published");
-	});
+	it.skipIf(!unpublishedRelation)(
+		"allows draft references only through relations that allow unpublished targets",
+		async () => {
+			if (!unpublishedRelation) return;
+			const { collection, name, to, many, when } = unpublishedRelation;
+			const draftItem = await seedEntry(store, {
+				collection: to,
+				slug: "validation-collection-draft-item",
+				metadata: { title: "Draft item" },
+				mdx: "Draft body.",
+				schemaVersion: 1,
+				contentHash: "validation-collection-draft-item-hash",
+			});
+			expect(draftItem.status).toBe("draft");
+			const service = createContentService(store);
+			const collectionDraft = await service.createDraft({
+				collection,
+				slug: "validation-collection",
+				metadata: {
+					...(await filled("Reading list", collection)),
+					...(when ? { [when.field]: when.value } : {}),
+					[name]: many ? [draftItem.id] : draftItem.id,
+				},
+				mdx: "",
+			});
+			const published = await store.publishEntry({ id: collectionDraft.id, expectedVersion: collectionDraft.version });
+			expect(published.status).toBe("published");
+		},
+	);
 
 	it("metadata accepts valid own JSON keys named constructor and __proto__", async () => {
 		const metadata = JSON.parse('{"constructor":"val1","__proto__":"val2"}');
 
-		const entry = await seedEntry(store, {
-			collection: "memo",
+		// 원시 값 그대로 넣는다(발행 필수값을 채우지 않는다).
+		const entry = await seedEntry(rawStore, {
+			collection: contentCollection,
 			slug: "proto-test",
 			metadata,
 			mdx: "test",

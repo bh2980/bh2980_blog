@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
+import { contentCollection } from "../../../../../test/any-site";
 import { CmsError } from "../../../../adapters/postgres/content-store";
 import { PATCH as patchFolder } from "../[id]/route";
 import { GET as getFolders } from "../route";
@@ -40,7 +41,7 @@ vi.mock("../../../../container", () => {
 
 describe("M2-DA-2 Folders HTTP API Contract (H4 Optimistic Lock)", () => {
 	it("GET /folders returns list", async () => {
-		const req = new NextRequest("http://localhost/api/cms/v1/folders?collection=post");
+		const req = new NextRequest(`http://localhost/api/cms/v1/folders?collection=${contentCollection}`);
 		const res = await getFolders(req);
 		expect(res.status).toBe(200);
 		const data = await res.json();

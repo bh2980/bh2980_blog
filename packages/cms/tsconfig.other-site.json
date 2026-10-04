@@ -6,6 +6,6 @@
 			"@cms-server": ["./test/cms.server.ts"]
 		}
 	},
-	"include": ["src", "test/other-site.config.ts", "test/cms.server.ts"],
-	"exclude": ["src/**/__test__"]
+	"include": ["src", "test/other-site.config.ts", "test/cms.server.ts", "test/any-site.ts", "test/server-only.ts"],
+	"exclude": ["src/**/*.blog.test.ts"]
 }

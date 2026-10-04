@@ -1,6 +1,17 @@
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+	contentCollection,
+	defaultLocale,
+	otherContentCollection,
+	requiredFields,
+	requiredMetadata,
+	secondLocale,
+} from "../../../../test/any-site";
+import { COLLECTIONS, type Collection, isItemCollection } from "../../../core/collections";
+import { LOCALES } from "../../../core/locales";
+import { recordLocalizedFields, storedField, storedFields } from "../../../schema/derive";
 import type { Entry } from "../content-store";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { moveToFolder, seedEntry } from "./seed";
@@ -77,6 +88,46 @@ interface ExtendedContentStore {
 }
 
 // ---------------------------------------------------------------------------
+// 설정에서 찾는 컬렉션·필드(블로그 예시 설정과 다른 사이트 설정 둘 다로 돈다, `test/any-site.ts`)
+// ---------------------------------------------------------------------------
+
+/** 목록을 시험하는 문서 컬렉션(블로그의 게시글). */
+const content = contentCollection;
+
+type RelationInfo = { name: string; to: Collection; many: boolean };
+/** 조건부가 아닌, 항목 컬렉션을 가리키는 관계 필드. */
+const itemRelations: RelationInfo[] = storedFields(content).flatMap(({ name, field, when }) =>
+	!when && field.kind === "relation" && isItemCollection(field.to)
+		? [{ name, to: field.to as Collection, many: Boolean(field.many) }]
+		: [],
+);
+/** 하나를 고르는 관계(블로그의 카테고리)와 여러 개를 고르는 관계(블로그의 태그). */
+const singleRelation = itemRelations.find((relation) => !relation.many);
+const manyRelation = itemRelations.find((relation) => relation.many);
+/** 발행 필수라 픽스처가 늘 채우는 관계(블로그의 카테고리). */
+const filledRelation = requiredFields(content).flatMap(({ name, field }) =>
+	field.kind === "relation" ? [{ name, to: field.to as Collection, many: Boolean(field.many) }] : [],
+)[0];
+/** 필수 관계 대상 컬렉션(픽스처가 항목을 만든다). */
+const fixtureTargets = new Set(
+	requiredFields(content).flatMap(({ field }) => (field.kind === "relation" ? [field.to as string] : [])),
+);
+/** 컬렉션 분리 확인용: 픽스처가 항목을 만들지 않는 다른 컬렉션(블로그의 메모). */
+const isolatedCollection =
+	otherContentCollection ?? COLLECTIONS.find((name) => name !== content && !fixtureTargets.has(name));
+/** 필수 관계 필드가 없는 다른 컬렉션(블로그의 메모에는 카테고리가 없다). */
+const collectionWithoutFilledRelation = filledRelation
+	? COLLECTIONS.find((name) => name !== content && !storedField(name, filledRelation.name))
+	: undefined;
+/** 이름(`title`)이 언어별 값인 항목 컬렉션(블로그의 태그). */
+const localizedRecordCollection = COLLECTIONS.find(
+	(name) => isItemCollection(name) && recordLocalizedFields(name).includes("title"),
+);
+/** 기본·두 번째 언어가 아닌 언어(있으면). 빈 이름은 언어 목록에 들지 않는다. */
+const thirdLocale = LOCALES.find((code) => code !== defaultLocale && code !== secondLocale);
+const relationTargetTitle = (to: Collection) => `List test ${to}`;
+
+// ---------------------------------------------------------------------------
 // Error assertion helper — identity + code
 // ---------------------------------------------------------------------------
 
@@ -94,7 +145,32 @@ describe("listEntries contract", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore> & ExtendedContentStore;
-	let testCategoryId: string;
+	let relationTargets = new Map<Collection, Promise<string>>();
+
+	/** 관계 대상 컬렉션의 공개 항목 하나(테스트마다 새로 만든다). */
+	const relationTarget = (to: Collection): Promise<string> => {
+		const known = relationTargets.get(to);
+		if (known) return known;
+		const created = (async () => {
+			const draft = await seedEntry(store, {
+				collection: to,
+				slug: `list-test-${to}`,
+				metadata: await requiredMetadata(to, relationTargetTitle(to), relationTarget),
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			return (await store.publishEntry({ id: draft.id, expectedVersion: draft.version })).id;
+		})();
+		relationTargets.set(to, created);
+		return created;
+	};
+
+	/** 발행 필수값(블로그의 카테고리 등)을 채운 메타데이터. 제목은 주는 그대로(`null` 포함) 둔다. */
+	const metadataFor = async (collection: string, title: string | null) => ({
+		...(await requiredMetadata(collection as Collection, title ?? "", relationTarget)),
+		title,
+	});
 
 	beforeAll(async () => {
 		const url = process.env.CMS_TEST_DATABASE_URL;
@@ -131,16 +207,7 @@ describe("listEntries contract", () => {
 			} catch {
 				// Tables might not exist yet
 			}
-			const categoryDraft = await seedEntry(store, {
-				collection: "category",
-				slug: "list-test-category",
-				metadata: { title: "List test category" },
-				mdx: "",
-				schemaVersion: 1,
-				contentHash: uniqueHash(),
-			});
-			const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-			testCategoryId = category.id;
+			relationTargets = new Map();
 		}
 	});
 
@@ -167,7 +234,7 @@ describe("listEntries contract", () => {
 		const entry = await seedEntry(store, {
 			collection,
 			slug,
-			metadata: collection === "post" ? { title, categoryId: testCategoryId } : { title },
+			metadata: await metadataFor(collection, title),
 			mdx: opts.mdx ?? "default body",
 			schemaVersion: 1,
 			contentHash: uniqueHash(),
@@ -198,10 +265,18 @@ describe("listEntries contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("1. exact item keys, default pagination, collection isolation", async () => {
-		await seed("post", "le1a-slug", "Le1a Title");
-		await seed("memo", "le1b-slug", "Le1b Title");
+		await seed(content, "le1a-slug", "Le1a Title");
+		if (isolatedCollection) await seed(isolatedCollection, "le1b-slug", "Le1b Title");
 
-		const res = await store.listEntries({ collection: "post" });
+		const res = await store.listEntries({ collection: content });
+		// 관계 필드마다 값이 있고, 픽스처가 채운 필수 관계만 대상 제목과 함께 나온다.
+		const expectedRelations: Record<string, { id: string; title: string }[]> = {};
+		for (const { name, field } of storedFields(content)) {
+			if (field.kind !== "relation") continue;
+			const filled = requiredFields(content).some((required) => required.name === name);
+			const to = field.to as Collection;
+			expectedRelations[name] = filled ? [{ id: await relationTarget(to), title: relationTargetTitle(to) }] : [];
+		}
 
 		// pagination defaults
 		expect(res.page).toBe(1);
@@ -214,17 +289,13 @@ describe("listEntries contract", () => {
 		expect(item).toEqual(
 			expect.objectContaining({
 				id: expect.any(String),
-				collection: "post",
+				collection: content,
 				title: "Le1a Title",
 				slug: "le1a-slug",
 				status: "draft",
 				version: 1,
 				folderId: null,
-				relations: {
-					categoryId: [{ id: testCategoryId, title: "List test category" }],
-					tagIds: [],
-					replacementPostId: [],
-				},
+				relations: expectedRelations,
 				publishedAt: null,
 				createdAt: expect.any(Date),
 				updatedAt: expect.any(Date),
@@ -233,33 +304,40 @@ describe("listEntries contract", () => {
 		expect("body" in item).toBe(false);
 		expect("mdx" in item).toBe(false);
 
-		// collection isolation — memo not returned
-		const res2 = await store.listEntries({ collection: "memo" });
+		// collection isolation — 다른 컬렉션의 항목은 섞이지 않는다
+		if (!isolatedCollection) return;
+		const res2 = await store.listEntries({ collection: isolatedCollection });
 		expect(res2.total).toBe(1);
-		expect(res2.items[0].collection).toBe("memo");
+		expect(res2.items[0].collection).toBe(isolatedCollection);
 	});
 
-	it("1b. relation filters accept only the collection's relation fields", async () => {
-		await seed("post", "le1b-slug", "Le1b Title");
-		const byCategory = await store.listEntries({ collection: "post", relations: { categoryId: [testCategoryId] } });
-		expect(byCategory.items.map((item) => item.slug)).toContain("le1b-slug");
+	it.skipIf(!filledRelation)("1b. relation filters accept only the collection's relation fields", async () => {
+		const relation = filledRelation as RelationInfo;
+		await seed(content, "le1b-slug", "Le1b Title");
+		const targetId = await relationTarget(relation.to);
+		const byTarget = await store.listEntries({ collection: content, relations: { [relation.name]: [targetId] } });
+		expect(byTarget.items.map((item) => item.slug)).toContain("le1b-slug");
 		const elsewhere = await store.listEntries({
-			collection: "post",
-			relations: { categoryId: ["00000000-0000-4000-8000-000000000000"] },
+			collection: content,
+			relations: { [relation.name]: ["00000000-0000-4000-8000-000000000000"] },
 		});
 		expect(elsewhere.items.map((item) => item.slug)).not.toContain("le1b-slug");
-		const invalid: Record<string, string[]>[] = [{ title: [testCategoryId] }, { tagIds: ["not-a-uuid"] }];
+		const invalid: Record<string, string[]>[] = [
+			{ title: [targetId] },
+			{ [(manyRelation ?? relation).name]: ["not-a-uuid"] },
+		];
 		for (const relations of invalid) {
 			try {
-				await store.listEntries({ collection: "post", relations });
+				await store.listEntries({ collection: content, relations });
 				throw new Error("expected invalid_input");
 			} catch (err) {
 				expectCmsError(err, "invalid_input");
 			}
 		}
-		// 메모에는 카테고리 필드가 없다.
+		// 그 관계 필드가 없는 컬렉션에는 그 필터를 쓸 수 없다(블로그의 메모에는 카테고리 필드가 없다).
+		if (!collectionWithoutFilledRelation) return;
 		await expect(
-			store.listEntries({ collection: "memo", relations: { categoryId: [testCategoryId] } }),
+			store.listEntries({ collection: collectionWithoutFilledRelation, relations: { [relation.name]: [targetId] } }),
 		).rejects.toMatchObject({ code: "invalid_input" });
 	});
 
@@ -268,43 +346,43 @@ describe("listEntries contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("2. Korean case-insensitive substring over title+slug; Latin case-insensitive; MDX body excluded by default, searched only with includeBody=true, but never adds body to output", async () => {
-		await seed("post", "slug-한국어", "제목 테스트", {
+		await seed(content, "slug-한국어", "제목 테스트", {
 			mdx: '본문 내용 <Hidden attr="secret" /> [Link](http://example.com/url)',
 		});
-		await seed("post", "le2-other", "Unrelated Alpha title % _", { mdx: "body with % and _ chars" });
+		await seed(content, "le2-other", "Unrelated Alpha title % _", { mdx: "body with % and _ chars" });
 
 		// title search (Korean)
-		const byTitle = await store.listEntries({ collection: "post", search: "제목" });
+		const byTitle = await store.listEntries({ collection: content, search: "제목" });
 		expect(byTitle.items).toHaveLength(1);
 		expect(byTitle.items[0].title).toBe("제목 테스트");
 
 		// slug search (Korean)
-		const bySlug = await store.listEntries({ collection: "post", search: "한국어" });
+		const bySlug = await store.listEntries({ collection: content, search: "한국어" });
 		expect(bySlug.items).toHaveLength(1);
 		expect(bySlug.items[0].slug).toBe("slug-한국어");
 
 		// Latin case-insensitive: seed has "Alpha" in title, search "alpha" (lowercase)
-		const byAlpha = await store.listEntries({ collection: "post", search: "alpha" });
+		const byAlpha = await store.listEntries({ collection: content, search: "alpha" });
 		expect(byAlpha.items).toHaveLength(1);
 		expect(byAlpha.items[0].title).toBe("Unrelated Alpha title % _");
 
 		// % and _ are literal
-		const byPct = await store.listEntries({ collection: "post", search: "%" });
+		const byPct = await store.listEntries({ collection: content, search: "%" });
 		expect(byPct.items).toHaveLength(1);
 		expect(byPct.items[0].slug).toBe("le2-other");
 
 		// MDX syntax tokens should NOT match in body search
-		const byAttr = await store.listEntries({ collection: "post", search: "secret", includeBody: true });
+		const byAttr = await store.listEntries({ collection: content, search: "secret", includeBody: true });
 		expect(byAttr.items).toHaveLength(0);
-		const byUrl = await store.listEntries({ collection: "post", search: "example", includeBody: true });
+		const byUrl = await store.listEntries({ collection: content, search: "example", includeBody: true });
 		expect(byUrl.items).toHaveLength(0);
 
 		// body NOT searched by default
-		const noBodySearch = await store.listEntries({ collection: "post", search: "본문" });
+		const noBodySearch = await store.listEntries({ collection: content, search: "본문" });
 		expect(noBodySearch.items).toHaveLength(0);
 
 		// body IS searched with includeBody=true
-		const withBody = await store.listEntries({ collection: "post", search: "본문", includeBody: true });
+		const withBody = await store.listEntries({ collection: content, search: "본문", includeBody: true });
 		expect(withBody.items).toHaveLength(1);
 		expect(withBody.items[0].slug).toBe("slug-한국어");
 
@@ -314,7 +392,7 @@ describe("listEntries contract", () => {
 
 		// Valid collection post plus SQL-looking malicious search string safely returns 0 items, proving parameterization
 		const maliciousSearch = await store.listEntries({
-			collection: "post",
+			collection: content,
 			search: "'; DROP TABLE entries;--",
 		});
 		expect(maliciousSearch.items).toHaveLength(0);
@@ -323,7 +401,7 @@ describe("listEntries contract", () => {
 		let colErr: unknown;
 		try {
 			await store.listEntries({
-				collection: "'; DROP TABLE entries;--" as unknown as "post",
+				collection: "'; DROP TABLE entries;--" as unknown as string,
 			});
 		} catch (e) {
 			colErr = e;
@@ -339,7 +417,7 @@ describe("listEntries contract", () => {
 
 	it("2b. Visible body search: syntax-only needles/URL must not match; nested visible text/link label/fenced code must match", async () => {
 		const slug = "d2-body-search";
-		await seed("post", slug, "Body Search Title", {
+		await seed(content, slug, "Body Search Title", {
 			mdx: `
 {/* SecretComment123 */}
 export const meta = { val: "ExportedVar456" };
@@ -354,7 +432,7 @@ console.log("FencedCode000");
 		});
 
 		const expectMatch = async (needle: string, shouldMatch: boolean, withBody: boolean) => {
-			const res = await store.listEntries({ collection: "post", search: needle, includeBody: withBody });
+			const res = await store.listEntries({ collection: content, search: needle, includeBody: withBody });
 			const found = res.items.some((i) => i.slug === slug);
 			expect(found).toBe(shouldMatch);
 		};
@@ -380,23 +458,23 @@ console.log("FencedCode000");
 	// -----------------------------------------------------------------------
 
 	it("2b. titleContains matches only the title and slugContains only the slug; both AND with search", async () => {
-		await seed("post", "alpha-slug", "베타 제목");
-		await seed("post", "beta-slug", "알파 제목");
+		await seed(content, "alpha-slug", "베타 제목");
+		await seed(content, "beta-slug", "알파 제목");
 
-		const byTitle = await store.listEntries({ collection: "post", titleContains: "베타" });
+		const byTitle = await store.listEntries({ collection: content, titleContains: "베타" });
 		expect(byTitle.items.map((item) => item.slug)).toEqual(["alpha-slug"]);
 
-		const bySlug = await store.listEntries({ collection: "post", slugContains: "beta" });
+		const bySlug = await store.listEntries({ collection: content, slugContains: "beta" });
 		expect(bySlug.items.map((item) => item.slug)).toEqual(["beta-slug"]);
 
 		// 제목 필터는 slug를, 주소 필터는 제목을 보지 않는다.
-		expect((await store.listEntries({ collection: "post", titleContains: "slug" })).items).toHaveLength(0);
-		expect((await store.listEntries({ collection: "post", slugContains: "제목" })).items).toHaveLength(0);
+		expect((await store.listEntries({ collection: content, titleContains: "slug" })).items).toHaveLength(0);
+		expect((await store.listEntries({ collection: content, slugContains: "제목" })).items).toHaveLength(0);
 
-		const anded = await store.listEntries({ collection: "post", search: "알파", slugContains: "alpha" });
+		const anded = await store.listEntries({ collection: content, search: "알파", slugContains: "alpha" });
 		expect(anded.items).toHaveLength(0);
 
-		const literal = await store.listEntries({ collection: "post", titleContains: "%" });
+		const literal = await store.listEntries({ collection: content, titleContains: "%" });
 		expect(literal.items).toHaveLength(0);
 	});
 
@@ -405,38 +483,38 @@ console.log("FencedCode000");
 	// -----------------------------------------------------------------------
 
 	it("3. draft/published status filter; folder undefined=all, null=unfiled, folderId=direct, includeDescendants", async () => {
-		const f3a = await store.createFolder({ collection: "post", parentId: null, name: "F3a" });
-		const f3b = await store.createFolder({ collection: "post", parentId: f3a.id, name: "F3b" });
+		const f3a = await store.createFolder({ collection: content, parentId: null, name: "F3a" });
+		const f3b = await store.createFolder({ collection: content, parentId: f3a.id, name: "F3b" });
 
-		await seed("post", "le3-unfiled", "unfiled draft");
-		await seed("post", "le3-pub-f3a", "pub in f3a", { status: "published", folderId: f3a.id });
-		await seed("post", "le3-pub-f3b", "pub in f3b", { status: "published", folderId: f3b.id });
+		await seed(content, "le3-unfiled", "unfiled draft");
+		await seed(content, "le3-pub-f3a", "pub in f3a", { status: "published", folderId: f3a.id });
+		await seed(content, "le3-pub-f3b", "pub in f3b", { status: "published", folderId: f3b.id });
 
 		// status filtering
-		const drafts = await store.listEntries({ collection: "post", statuses: ["draft"] });
+		const drafts = await store.listEntries({ collection: content, statuses: ["draft"] });
 		expect(drafts.items.map((i) => i.slug)).toEqual(["le3-unfiled"]);
 
-		const pubs = await store.listEntries({ collection: "post", statuses: ["published"] });
+		const pubs = await store.listEntries({ collection: content, statuses: ["published"] });
 		expect(pubs.items.map((i) => i.slug).sort()).toEqual(["le3-pub-f3a", "le3-pub-f3b"]);
 
 		// multiple statuses
-		const both = await store.listEntries({ collection: "post", statuses: ["draft", "published"] });
+		const both = await store.listEntries({ collection: content, statuses: ["draft", "published"] });
 		expect(both.items).toHaveLength(3);
 
 		// folderId undefined → all
-		const all = await store.listEntries({ collection: "post" });
+		const all = await store.listEntries({ collection: content });
 		expect(all.items).toHaveLength(3);
 
 		// folderId null → unfiled
-		const unfiled = await store.listEntries({ collection: "post", folderId: null });
+		const unfiled = await store.listEntries({ collection: content, folderId: null });
 		expect(unfiled.items.map((i) => i.slug)).toEqual(["le3-unfiled"]);
 
 		// direct folder
-		const direct = await store.listEntries({ collection: "post", folderId: f3a.id, includeDescendants: false });
+		const direct = await store.listEntries({ collection: content, folderId: f3a.id, includeDescendants: false });
 		expect(direct.items.map((i) => i.slug)).toEqual(["le3-pub-f3a"]);
 
 		// descendants
-		const desc = await store.listEntries({ collection: "post", folderId: f3a.id, includeDescendants: true });
+		const desc = await store.listEntries({ collection: content, folderId: f3a.id, includeDescendants: true });
 		expect(desc.items.map((i) => i.slug).sort()).toEqual(["le3-pub-f3a", "le3-pub-f3b"]);
 	}, 60_000);
 
@@ -445,19 +523,19 @@ console.log("FencedCode000");
 	// -----------------------------------------------------------------------
 
 	it("4. predicates are AND, multiple statuses are OR; collection is mandatory; when search is supplied it remains AND with other predicates", async () => {
-		const f4 = await store.createFolder({ collection: "post", parentId: null, name: "F4" });
+		const f4 = await store.createFolder({ collection: content, parentId: null, name: "F4" });
 
 		// Fixture names chosen so none contains a substring of another:
 		// "alpha" is unique, "zeta" is unique
-		await seed("post", "le4-df", "alpha draft in folder", { status: "draft", folderId: f4.id });
-		await seed("post", "le4-pf", "alpha pub in folder", { status: "published", folderId: f4.id });
-		await seed("post", "le4-du", "alpha draft unfiled", { status: "draft" });
-		await seed("post", "le4-zeta", "zeta draft in folder", { status: "draft", folderId: f4.id });
+		await seed(content, "le4-df", "alpha draft in folder", { status: "draft", folderId: f4.id });
+		await seed(content, "le4-pf", "alpha pub in folder", { status: "published", folderId: f4.id });
+		await seed(content, "le4-du", "alpha draft unfiled", { status: "draft" });
+		await seed(content, "le4-zeta", "zeta draft in folder", { status: "draft", folderId: f4.id });
 
 		// Predicates AND, multiple statuses OR:
 		// (draft OR published) AND folder=F4 AND search="alpha"
 		const res = await store.listEntries({
-			collection: "post",
+			collection: content,
 			search: "alpha",
 			statuses: ["draft", "published"],
 			folderId: f4.id,
@@ -472,9 +550,9 @@ console.log("FencedCode000");
 
 	it("5. all sort fields/directions, NULLS LAST both dirs, deterministic id tie-break; malicious sort rejects invalid_input", async () => {
 		// Seed entries and capture IDs for deterministic assertions
-		const e5a = await seed("post", null, null);
-		const e5b = await seed("post", "le5-a", "B-title");
-		const e5c = await seed("post", "le5-b", "A-title");
+		const e5a = await seed(content, null, null);
+		const e5b = await seed(content, "le5-a", "B-title");
+		const e5c = await seed(content, "le5-b", "A-title");
 
 		const seededIds = [e5a.id, e5b.id, e5c.id];
 
@@ -507,50 +585,51 @@ console.log("FencedCode000");
 		]);
 
 		// --- default sort: updatedAt DESC then id ASC ---
-		const defaultSort = await store.listEntries({ collection: "post" });
+		const defaultSort = await store.listEntries({ collection: content });
 		expect(defaultSort.items.map((i) => i.id)).toEqual([seededIds[2], seededIds[1], seededIds[0]]);
 
 		// --- createdAt ASC: e5a (Jan 1) → e5b (Jan 2) → e5c (Jan 3) ---
-		const caAsc = await store.listEntries({ collection: "post", sort: { field: "createdAt", direction: "asc" } });
+		const caAsc = await store.listEntries({ collection: content, sort: { field: "createdAt", direction: "asc" } });
 		expect(caAsc.items.map((i) => i.id)).toEqual([seededIds[0], seededIds[1], seededIds[2]]);
 
 		// --- createdAt DESC: e5c → e5b → e5a ---
-		const caDesc = await store.listEntries({ collection: "post", sort: { field: "createdAt", direction: "desc" } });
+		const caDesc = await store.listEntries({ collection: content, sort: { field: "createdAt", direction: "desc" } });
 		expect(caDesc.items.map((i) => i.id)).toEqual([seededIds[2], seededIds[1], seededIds[0]]);
 
 		// --- updatedAt ASC: e5a (Jun 1) → e5b (Jun 2) → e5c (Jun 3) ---
-		const uaAsc = await store.listEntries({ collection: "post", sort: { field: "updatedAt", direction: "asc" } });
+		const uaAsc = await store.listEntries({ collection: content, sort: { field: "updatedAt", direction: "asc" } });
 		expect(uaAsc.items.map((i) => i.id)).toEqual([seededIds[0], seededIds[1], seededIds[2]]);
 
 		// --- updatedAt DESC: e5c → e5b → e5a ---
-		const uaDesc = await store.listEntries({ collection: "post", sort: { field: "updatedAt", direction: "desc" } });
+		const uaDesc = await store.listEntries({ collection: content, sort: { field: "updatedAt", direction: "desc" } });
 		expect(uaDesc.items.map((i) => i.id)).toEqual([seededIds[2], seededIds[1], seededIds[0]]);
 
 		// --- Tied group for id ASC tie-break ---
 		// Force all three to identical created_at
-		await pool.query(`UPDATE "${schemaName}".entries SET created_at = $1 WHERE collection = 'post'`, [
+		await pool.query(`UPDATE "${schemaName}".entries SET created_at = $1 WHERE collection = $2`, [
 			new Date("2020-01-01T00:00:00Z"),
+			content,
 		]);
-		const tied = await store.listEntries({ collection: "post", sort: { field: "createdAt", direction: "asc" } });
+		const tied = await store.listEntries({ collection: content, sort: { field: "createdAt", direction: "asc" } });
 		expect(tied.items).toHaveLength(3);
 		const tiedIds = tied.items.map((i) => i.id);
 		const sortedIds = [...tiedIds].sort();
 		expect(tiedIds).toEqual(sortedIds);
 
 		// --- slug ASC: NULLS LAST → le5-a, le5-b, null ---
-		const slugAsc = await store.listEntries({ collection: "post", sort: { field: "slug", direction: "asc" } });
+		const slugAsc = await store.listEntries({ collection: content, sort: { field: "slug", direction: "asc" } });
 		expect(slugAsc.items.map((i) => i.slug)).toEqual(["le5-a", "le5-b", null]);
 
 		// --- slug DESC: NULLS LAST → le5-b, le5-a, null ---
-		const slugDesc = await store.listEntries({ collection: "post", sort: { field: "slug", direction: "desc" } });
+		const slugDesc = await store.listEntries({ collection: content, sort: { field: "slug", direction: "desc" } });
 		expect(slugDesc.items.map((i) => i.slug)).toEqual(["le5-b", "le5-a", null]);
 
 		// --- title ASC: NULLS LAST → A-title, B-title, null ---
-		const titleAsc = await store.listEntries({ collection: "post", sort: { field: "title", direction: "asc" } });
+		const titleAsc = await store.listEntries({ collection: content, sort: { field: "title", direction: "asc" } });
 		expect(titleAsc.items.map((i) => i.title)).toEqual(["A-title", "B-title", null]);
 
 		// --- title DESC: NULLS LAST → B-title, A-title, null ---
-		const titleDesc = await store.listEntries({ collection: "post", sort: { field: "title", direction: "desc" } });
+		const titleDesc = await store.listEntries({ collection: content, sort: { field: "title", direction: "desc" } });
 		expect(titleDesc.items.map((i) => i.title)).toEqual(["B-title", "A-title", null]);
 
 		// Malicious runtime sort field → invalid_input, no schema mutation
@@ -564,7 +643,7 @@ console.log("FencedCode000");
 		};
 		let sortErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", sort: badSort });
+			await store.listEntries({ collection: content, sort: badSort });
 		} catch (e) {
 			sortErr = e;
 		}
@@ -573,7 +652,7 @@ console.log("FencedCode000");
 		// invalid runtime direction
 		let dirErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", sort: { field: "title", direction: "drop" as "asc" } });
+			await store.listEntries({ collection: content, sort: { field: "title", direction: "drop" as "asc" } });
 		} catch (e) {
 			dirErr = e;
 		}
@@ -582,7 +661,7 @@ console.log("FencedCode000");
 		// invalid status
 		let statusErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", statuses: ["draft", "invalid" as "published"] });
+			await store.listEntries({ collection: content, statuses: ["draft", "invalid" as "published"] });
 		} catch (e) {
 			statusErr = e;
 		}
@@ -601,16 +680,17 @@ console.log("FencedCode000");
 	it("6. 26 entries pageSize=25: exact total/page metadata, no omission/duplicate, deterministic repeat; page<1 / invalid pageSize reject invalid_input", async () => {
 		// Create 26 entries concurrently with bounded Promise.all
 		await Promise.all(
-			Array.from({ length: 26 }, (_, i) => seed("post", `le6-s${String(i).padStart(2, "0")}`, `Title ${i}`)),
+			Array.from({ length: 26 }, (_, i) => seed(content, `le6-s${String(i).padStart(2, "0")}`, `Title ${i}`)),
 		);
 
 		// Force identical updatedAt for deterministic tie-break test
-		await pool.query(`UPDATE "${schemaName}".entries SET updated_at = $1 WHERE collection = 'post'`, [
+		await pool.query(`UPDATE "${schemaName}".entries SET updated_at = $1 WHERE collection = $2`, [
 			new Date("2023-06-01T00:00:00Z"),
+			content,
 		]);
 
 		const p1 = await store.listEntries({
-			collection: "post",
+			collection: content,
 			page: 1,
 			pageSize: 25,
 			sort: { field: "updatedAt", direction: "desc" },
@@ -621,7 +701,7 @@ console.log("FencedCode000");
 		expect(p1.items).toHaveLength(25);
 
 		const p2 = await store.listEntries({
-			collection: "post",
+			collection: content,
 			page: 2,
 			pageSize: 25,
 			sort: { field: "updatedAt", direction: "desc" },
@@ -641,7 +721,7 @@ console.log("FencedCode000");
 
 		// Deterministic repeat
 		const p1Again = await store.listEntries({
-			collection: "post",
+			collection: content,
 			page: 1,
 			pageSize: 25,
 			sort: { field: "updatedAt", direction: "desc" },
@@ -651,7 +731,7 @@ console.log("FencedCode000");
 		// Reject page < 1
 		let pageErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", page: 0 });
+			await store.listEntries({ collection: content, page: 0 });
 		} catch (e) {
 			pageErr = e;
 		}
@@ -660,7 +740,7 @@ console.log("FencedCode000");
 		// Reject page noninteger
 		let pageFloatErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", page: 1.5 });
+			await store.listEntries({ collection: content, page: 1.5 });
 		} catch (e) {
 			pageFloatErr = e;
 		}
@@ -669,7 +749,7 @@ console.log("FencedCode000");
 		// Reject invalid pageSize (not 25|50|100)
 		let sizeErr: unknown;
 		try {
-			await store.listEntries({ collection: "post", pageSize: 30 as unknown as 25 });
+			await store.listEntries({ collection: content, pageSize: 30 as unknown as 25 });
 		} catch (e) {
 			sizeErr = e;
 		}
@@ -679,156 +759,167 @@ console.log("FencedCode000");
 	// 7  List authority
 	// -----------------------------------------------------------------------
 
-	it("7. List authority: working metadata is authoritative for categoryId and ordered tagIds; publishedAt is the column", async () => {
-		await seedEntry(store, {
-			collection: "post",
-			slug: "d1-direct",
-			metadata: { categoryId: "cat-1", tagIds: ["tag-a", "tag-b"] },
-			mdx: "body",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-
-		const targetCat = await seedEntry(store, {
-			collection: "category",
-			slug: "cat-real",
-			metadata: {},
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-		const targetTag1 = await seedEntry(store, {
-			collection: "tag",
-			slug: "tag-real1",
-			metadata: {},
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-		const targetTag2 = await seedEntry(store, {
-			collection: "tag",
-			slug: "tag-real2",
-			metadata: {},
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-
-		await store.createEntryWithReferences({
-			snapshot: {
-				collection: "post",
-				slug: "d1-ref",
-				metadata: { categoryId: "cat-meta", tagIds: ["tag-meta1", "tag-meta2"] },
+	it.skipIf(!singleRelation || !manyRelation)(
+		"7. List authority: working metadata is authoritative for the single relation and the ordered many relation; publishedAt is the column",
+		async () => {
+			const single = singleRelation as RelationInfo;
+			const many = manyRelation as RelationInfo;
+			await seedEntry(store, {
+				collection: content,
+				slug: "d1-direct",
+				metadata: { [single.name]: "cat-1", [many.name]: ["tag-a", "tag-b"] },
 				mdx: "body",
 				schemaVersion: 1,
 				contentHash: randomBytes(16).toString("hex"),
-				references: [],
-				issues: [],
-			},
-			references: [
-				{ kind: "entry", targetId: targetCat.id, isStale: true, occurrences: [] },
-				{ kind: "entry", targetId: targetTag2.id, isStale: true, occurrences: [] },
-				{ kind: "entry", targetId: targetTag1.id, isStale: true, occurrences: [] },
-			],
-		});
+			});
 
-		const histDate = "2019-01-01T00:00:00.000Z";
-		const histE = await seedEntry(store, {
-			collection: "post",
-			slug: "d1-hist",
-			metadata: { title: "Historical date", categoryId: testCategoryId },
-			mdx: "body",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-		// 이관한 글처럼 발행일을 미리 넣어 두면 발행해도 그대로다.
-		await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [histE.id, histDate]);
-		await store.publishEntry({ id: histE.id, expectedVersion: histE.version });
+			const targetCat = await seedEntry(store, {
+				collection: single.to,
+				slug: "cat-real",
+				metadata: {},
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
+			const targetTag1 = await seedEntry(store, {
+				collection: many.to,
+				slug: "tag-real1",
+				metadata: {},
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
+			const targetTag2 = await seedEntry(store, {
+				collection: many.to,
+				slug: "tag-real2",
+				metadata: {},
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
 
-		const noMetaE = await seedEntry(store, {
-			collection: "post",
-			slug: "d1-nometa",
-			metadata: { title: "No explicit published date", categoryId: testCategoryId },
-			mdx: "body",
-			schemaVersion: 1,
-			contentHash: randomBytes(16).toString("hex"),
-		});
-		const pubNoMetaE = await store.publishEntry({ id: noMetaE.id, expectedVersion: noMetaE.version });
+			await store.createEntryWithReferences({
+				snapshot: {
+					collection: content,
+					slug: "d1-ref",
+					metadata: { [single.name]: "cat-meta", [many.name]: ["tag-meta1", "tag-meta2"] },
+					mdx: "body",
+					schemaVersion: 1,
+					contentHash: randomBytes(16).toString("hex"),
+					references: [],
+					issues: [],
+				},
+				references: [
+					{ kind: "entry", targetId: targetCat.id, isStale: true, occurrences: [] },
+					{ kind: "entry", targetId: targetTag2.id, isStale: true, occurrences: [] },
+					{ kind: "entry", targetId: targetTag1.id, isStale: true, occurrences: [] },
+				],
+			});
 
-		const list = await store.listEntries({ collection: "post" });
+			const histDate = "2019-01-01T00:00:00.000Z";
+			const histE = await seedEntry(store, {
+				collection: content,
+				slug: "d1-hist",
+				metadata: await metadataFor(content, "Historical date"),
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
+			// 이관한 글처럼 발행일을 미리 넣어 두면 발행해도 그대로다.
+			await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [histE.id, histDate]);
+			await store.publishEntry({ id: histE.id, expectedVersion: histE.version });
 
-		const getBySlug = (s: string) => {
-			const item = list.items.find((i) => i.slug === s);
-			if (!item) throw new Error(`Missing ${s}`);
-			return item;
-		};
+			const noMetaE = await seedEntry(store, {
+				collection: content,
+				slug: "d1-nometa",
+				metadata: await metadataFor(content, "No explicit published date"),
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: randomBytes(16).toString("hex"),
+			});
+			const pubNoMetaE = await store.publishEntry({ id: noMetaE.id, expectedVersion: noMetaE.version });
 
-		const iDirect = getBySlug("d1-direct");
-		const ids = (item: typeof iDirect, field: string) => item.relations[field]?.map((value) => value.id);
-		expect(ids(iDirect, "categoryId")).toEqual(["cat-1"]);
-		expect(ids(iDirect, "tagIds")).toEqual(["tag-a", "tag-b"]);
-		expect(iDirect.publishedAt).toBeNull();
+			const list = await store.listEntries({ collection: content });
 
-		const iRef = getBySlug("d1-ref");
-		expect(ids(iRef, "categoryId")).toEqual(["cat-meta"]);
-		expect(ids(iRef, "tagIds")).toEqual(["tag-meta1", "tag-meta2"]);
-		expect(iRef.publishedAt).toBeNull();
+			const getBySlug = (s: string) => {
+				const item = list.items.find((i) => i.slug === s);
+				if (!item) throw new Error(`Missing ${s}`);
+				return item;
+			};
 
-		const iHist = getBySlug("d1-hist");
-		expect(iHist.publishedAt?.toISOString()).toBe(histDate);
+			const iDirect = getBySlug("d1-direct");
+			const ids = (item: typeof iDirect, field: string) => item.relations[field]?.map((value) => value.id);
+			expect(ids(iDirect, single.name)).toEqual(["cat-1"]);
+			expect(ids(iDirect, many.name)).toEqual(["tag-a", "tag-b"]);
+			expect(iDirect.publishedAt).toBeNull();
 
-		const iNoMeta = getBySlug("d1-nometa");
-		expect(iNoMeta.publishedAt).toBeInstanceOf(Date);
-		expect(Math.abs((iNoMeta.publishedAt as Date).getTime() - (pubNoMetaE.publishedAt as Date).getTime())).toBeLessThan(
-			5000,
-		);
+			const iRef = getBySlug("d1-ref");
+			expect(ids(iRef, single.name)).toEqual(["cat-meta"]);
+			expect(ids(iRef, many.name)).toEqual(["tag-meta1", "tag-meta2"]);
+			expect(iRef.publishedAt).toBeNull();
 
-		for (const i of [iDirect, iRef, iHist, iNoMeta]) {
-			expect("body" in i).toBe(false);
-			expect("mdx" in i).toBe(false);
-		}
-	}, 60_000);
+			const iHist = getBySlug("d1-hist");
+			expect(iHist.publishedAt?.toISOString()).toBe(histDate);
 
-	it("resolves tag names in metadata order without changing tag IDs", async () => {
-		const firstTag = await seedEntry(store, {
-			collection: "tag",
-			slug: "first-tag",
-			metadata: { title: "First tag" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: uniqueHash(),
-		});
-		const secondTag = await seedEntry(store, {
-			collection: "tag",
-			slug: "second-tag",
-			metadata: { title: "Second tag" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: uniqueHash(),
-		});
-		const post = await seedEntry(store, {
-			collection: "post",
-			slug: "tagged-post",
-			metadata: { title: "Tagged", tagIds: [secondTag.id, firstTag.id] },
-			mdx: "body",
-			schemaVersion: 1,
-			contentHash: uniqueHash(),
-		});
+			const iNoMeta = getBySlug("d1-nometa");
+			expect(iNoMeta.publishedAt).toBeInstanceOf(Date);
+			expect(
+				Math.abs((iNoMeta.publishedAt as Date).getTime() - (pubNoMetaE.publishedAt as Date).getTime()),
+			).toBeLessThan(5000);
 
-		const result = await store.listEntries({ collection: "post" });
-		const item = result.items.find((entry) => entry.id === post.id);
-		expect(item?.relations.tagIds).toEqual([
-			{ id: secondTag.id, title: "Second tag" },
-			{ id: firstTag.id, title: "First tag" },
-		]);
-	}, 30_000);
+			for (const i of [iDirect, iRef, iHist, iNoMeta]) {
+				expect("body" in i).toBe(false);
+				expect("mdx" in i).toBe(false);
+			}
+		},
+		60_000,
+	);
+
+	it.skipIf(!manyRelation)(
+		"resolves tag names in metadata order without changing tag IDs",
+		async () => {
+			const many = manyRelation as RelationInfo;
+			const firstTag = await seedEntry(store, {
+				collection: many.to,
+				slug: "first-tag",
+				metadata: { title: "First tag" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const secondTag = await seedEntry(store, {
+				collection: many.to,
+				slug: "second-tag",
+				metadata: { title: "Second tag" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const post = await seedEntry(store, {
+				collection: content,
+				slug: "tagged-post",
+				metadata: { title: "Tagged", [many.name]: [secondTag.id, firstTag.id] },
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+
+			const result = await store.listEntries({ collection: content });
+			const item = result.items.find((entry) => entry.id === post.id);
+			expect(item?.relations[many.name]).toEqual([
+				{ id: secondTag.id, title: "Second tag" },
+				{ id: firstTag.id, title: "First tag" },
+			]);
+		},
+		30_000,
+	);
 
 	it("8. publishedAt sort and range use the published_at column; entries without it come last", async () => {
 		const entry = async (slug: string, publishedAt?: string) => {
 			const created = await seedEntry(store, {
-				collection: "post",
+				collection: content,
 				slug,
-				metadata: { title: slug, categoryId: testCategoryId },
+				metadata: await metadataFor(content, slug),
 				mdx: "body",
 				schemaVersion: 1,
 				contentHash: uniqueHash(),
@@ -850,43 +941,51 @@ console.log("FencedCode000");
 		await store.publishEntry({ id: published.id, expectedVersion: published.version });
 
 		const order = async (direction: "asc" | "desc") =>
-			(await store.listEntries({ collection: "post", sort: { field: "publishedAt", direction } as never })).items.map(
+			(await store.listEntries({ collection: content, sort: { field: "publishedAt", direction } as never })).items.map(
 				(item) => item.slug,
 			);
 		expect(await order("desc")).toEqual(["p-now", "d-2025", "d-2024", "d-2023", "d-none"]);
 		expect(await order("asc")).toEqual(["d-2023", "d-2024", "d-2025", "p-now", "d-none"]);
 
 		const inRange = await store.listEntries({
-			collection: "post",
+			collection: content,
 			publishedAt: { from: new Date("2024-01-01T00:00:00Z"), to: new Date("2025-12-31T00:00:00Z") },
 		} as never);
 		expect(inRange.items.map((item) => item.slug).sort()).toEqual(["d-2024", "d-2025"]);
 	}, 30_000);
 
-	it("9. record collections list the locales that have a name (the default locale is the record's own title)", async () => {
-		const named = await seedEntry(store, {
-			collection: "tag",
-			slug: "tag-react",
-			metadata: { title: "리액트", translations: { en: { title: "React" }, ja: { title: " " } } },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: uniqueHash(),
-		});
-		const plain = await seedEntry(store, {
-			collection: "tag",
-			slug: "tag-plain",
-			metadata: { title: "그냥" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: uniqueHash(),
-		});
-		const { items } = await store.listEntries({ collection: "tag" });
-		const localesOf = (id: string) =>
-			(items.find((item) => item.id === id) as { recordLocales?: string[] })?.recordLocales;
-		expect(localesOf(named.id)).toEqual(["ko", "en"]);
-		expect(localesOf(plain.id)).toEqual(["ko"]);
+	// 언어별 이름이 있는 항목 컬렉션과 두 번째 언어가 있어야 한다.
+	it.skipIf(!secondLocale || !localizedRecordCollection)(
+		"9. record collections list the locales that have a name (the default locale is the record's own title)",
+		async () => {
+			const records = localizedRecordCollection as Collection;
+			const translations: Record<string, { title: string }> = { [secondLocale as string]: { title: "React" } };
+			if (thirdLocale) translations[thirdLocale] = { title: " " };
+			const named = await seedEntry(store, {
+				collection: records,
+				slug: "tag-react",
+				metadata: { title: "리액트", translations },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const plain = await seedEntry(store, {
+				collection: records,
+				slug: "tag-plain",
+				metadata: { title: "그냥" },
+				mdx: "",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const { items } = await store.listEntries({ collection: records });
+			const localesOf = (id: string) =>
+				(items.find((item) => item.id === id) as { recordLocales?: string[] })?.recordLocales;
+			expect(localesOf(named.id)).toEqual(LOCALES.filter((code) => code === defaultLocale || code === secondLocale));
+			expect(localesOf(plain.id)).toEqual([defaultLocale]);
 
-		const posts = await store.listEntries({ collection: "post" });
-		expect(posts.items.every((item) => !("recordLocales" in item))).toBe(true);
-	}, 30_000);
+			const posts = await store.listEntries({ collection: content });
+			expect(posts.items.every((item) => !("recordLocales" in item))).toBe(true);
+		},
+		30_000,
+	);
 });

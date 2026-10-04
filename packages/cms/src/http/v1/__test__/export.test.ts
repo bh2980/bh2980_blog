@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "../../../adapters/auth";
-import { makeExportFixtureSnapshot } from "../../../services/__test__/export-fixture";
+import {
+	FIXTURE_DRAFT_COLLECTION,
+	fixtureEntryPath,
+	makeExportFixtureSnapshot,
+} from "../../../services/__test__/export-fixture";
 import { readZipArchive } from "../../../services/zip";
 import { GET, POST } from "../export/route";
 
@@ -27,6 +31,8 @@ vi.mock("../../../container", () => ({
 }));
 
 const decoder = new TextDecoder();
+/** 픽스처 초안의 작업본 파일(블로그 예시 설정은 메모, 다른 설정은 그 설정의 컬렉션). */
+const DRAFT_WORKING = fixtureEntryPath(FIXTURE_DRAFT_COLLECTION, "22222222-2222-4222-8222-222222222222", "working.mdx");
 
 const request = (url: string, init?: ConstructorParameters<typeof NextRequest>[1]) => new NextRequest(url, init);
 
@@ -67,7 +73,7 @@ describe("GET/POST /api/cms/v1/export", () => {
 		const manifest = JSON.parse(findFile(zip, "manifest.json"));
 		expect(manifest.scope).toBe("admin");
 		expect(manifest.counts.entries).toBe(3);
-		expect(findFile(zip, "entries/memo/22222222-2222-4222-8222-222222222222/working.mdx")).toBe("draft secret body");
+		expect(findFile(zip, DRAFT_WORKING)).toBe("draft secret body");
 	});
 
 	it("public 내보내기는 초안을 제외하고 working 계열 값을 담지 않는다", async () => {
@@ -77,7 +83,7 @@ describe("GET/POST /api/cms/v1/export", () => {
 
 		const zip = new Uint8Array(await res.arrayBuffer());
 		const paths = readZipArchive(zip).map((entry) => entry.path);
-		expect(paths).not.toContain("entries/memo/22222222-2222-4222-8222-222222222222/working.mdx");
+		expect(paths).not.toContain(DRAFT_WORKING);
 		expect(paths.some((path) => path.includes("11111111-1111-4111-8111-111111111111"))).toBe(true);
 
 		for (const path of paths.filter((item) => item.endsWith(".json"))) {

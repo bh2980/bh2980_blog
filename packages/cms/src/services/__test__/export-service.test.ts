@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { recordCollection } from "../../../test/any-site";
 import {
 	buildExportArchive,
 	canonicalJson,
@@ -7,7 +8,20 @@ import {
 	publicExportEntrySchema,
 } from "../export-service";
 import { readZipArchive } from "../zip";
-import { FIXTURE_TIME as FIXED_TIME, fixtureBody, makeExportFixtureSnapshot as makeSnapshot } from "./export-fixture";
+import {
+	FIXTURE_CONTENT_COLLECTION as CONTENT,
+	FIXTURE_DRAFT_COLLECTION as DRAFT,
+	fixtureEntryPath as entryPath,
+	FIXTURE_TIME as FIXED_TIME,
+	FIXTURE_RELATION_KIND,
+	FIXTURE_SEO_METADATA,
+	fixtureBody,
+	makeExportFixtureSnapshot as makeSnapshot,
+} from "./export-fixture";
+
+const PUBLISHED_ID = "11111111-1111-4111-8111-111111111111";
+const DRAFT_ID = "22222222-2222-4222-8222-222222222222";
+const ARCHIVED_ID = "88888888-8888-4888-8888-888888888888";
 
 const decoder = new TextDecoder();
 
@@ -31,19 +45,19 @@ describe("export archive builder", () => {
 		expect(archive.paths).toEqual(
 			[
 				"addresses.json",
-				"entries/memo/22222222-2222-4222-8222-222222222222/references.json",
-				"entries/memo/22222222-2222-4222-8222-222222222222/working.json",
-				"entries/memo/22222222-2222-4222-8222-222222222222/working.mdx",
-				"entries/post/11111111-1111-4111-8111-111111111111/published.json",
-				"entries/post/11111111-1111-4111-8111-111111111111/published.mdx",
-				"entries/post/11111111-1111-4111-8111-111111111111/references.json",
-				"entries/post/11111111-1111-4111-8111-111111111111/working.json",
-				"entries/post/11111111-1111-4111-8111-111111111111/working.mdx",
-				"entries/post/88888888-8888-4888-8888-888888888888/published.json",
-				"entries/post/88888888-8888-4888-8888-888888888888/published.mdx",
-				"entries/post/88888888-8888-4888-8888-888888888888/references.json",
-				"entries/post/88888888-8888-4888-8888-888888888888/working.json",
-				"entries/post/88888888-8888-4888-8888-888888888888/working.mdx",
+				entryPath(DRAFT, DRAFT_ID, "references.json"),
+				entryPath(DRAFT, DRAFT_ID, "working.json"),
+				entryPath(DRAFT, DRAFT_ID, "working.mdx"),
+				entryPath(CONTENT, PUBLISHED_ID, "published.json"),
+				entryPath(CONTENT, PUBLISHED_ID, "published.mdx"),
+				entryPath(CONTENT, PUBLISHED_ID, "references.json"),
+				entryPath(CONTENT, PUBLISHED_ID, "working.json"),
+				entryPath(CONTENT, PUBLISHED_ID, "working.mdx"),
+				entryPath(CONTENT, ARCHIVED_ID, "published.json"),
+				entryPath(CONTENT, ARCHIVED_ID, "published.mdx"),
+				entryPath(CONTENT, ARCHIVED_ID, "references.json"),
+				entryPath(CONTENT, ARCHIVED_ID, "working.json"),
+				entryPath(CONTENT, ARCHIVED_ID, "working.mdx"),
 				"folders.json",
 				"manifest.json",
 				"media.json",
@@ -51,12 +65,10 @@ describe("export archive builder", () => {
 				"templates.json",
 			].sort(),
 		);
-		expect(archive.text("entries/memo/22222222-2222-4222-8222-222222222222/working.mdx")).toBe("draft secret body");
-		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/working.mdx")).toBe("working body");
-		expect(archive.text("entries/post/11111111-1111-4111-8111-111111111111/published.mdx")).toBe("published body");
-		expect(archive.text("entries/post/88888888-8888-4888-8888-888888888888/published.mdx")).toBe(
-			"archived published body",
-		);
+		expect(archive.text(entryPath(DRAFT, DRAFT_ID, "working.mdx"))).toBe("draft secret body");
+		expect(archive.text(entryPath(CONTENT, PUBLISHED_ID, "working.mdx"))).toBe("working body");
+		expect(archive.text(entryPath(CONTENT, PUBLISHED_ID, "published.mdx"))).toBe("published body");
+		expect(archive.text(entryPath(CONTENT, ARCHIVED_ID, "published.mdx"))).toBe("archived published body");
 		expect(manifest.counts).toMatchObject({
 			entries: 3,
 			workingBodies: 3,
@@ -77,8 +89,8 @@ describe("export archive builder", () => {
 
 		expect(archive.paths).toEqual(
 			[
-				"entries/post/11111111-1111-4111-8111-111111111111/published.json",
-				"entries/post/11111111-1111-4111-8111-111111111111/published.mdx",
+				entryPath(CONTENT, PUBLISHED_ID, "published.json"),
+				entryPath(CONTENT, PUBLISHED_ID, "published.mdx"),
 				"manifest.json",
 				"media.json",
 			].sort(),
@@ -136,7 +148,7 @@ describe("export archive builder", () => {
 		const changedReferences = {
 			...snapshot,
 			references: snapshot.references.map((reference) =>
-				reference.entryId === "11111111-1111-4111-8111-111111111111" && reference.kind === "tag"
+				reference.entryId === "11111111-1111-4111-8111-111111111111" && reference.kind === FIXTURE_RELATION_KIND
 					? { ...reference, targetId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
 					: reference,
 			),
@@ -178,7 +190,7 @@ describe("export archive builder", () => {
 	it("공개 projection 스키마는 초안 필드가 섞이면 거부한다", () => {
 		const valid = publicExportEntrySchema.safeParse({
 			id: "11111111-1111-4111-8111-111111111111",
-			collection: "post",
+			collection: CONTENT,
 			slug: "s",
 			publishedAt: null,
 			updatedAt: "2026-09-22T00:00:00.000Z",
@@ -191,7 +203,7 @@ describe("export archive builder", () => {
 
 		const withWorking = publicExportEntrySchema.safeParse({
 			id: "11111111-1111-4111-8111-111111111111",
-			collection: "post",
+			collection: CONTENT,
 			slug: "s",
 			publishedAt: null,
 			updatedAt: "2026-09-22T00:00:00.000Z",
@@ -225,10 +237,10 @@ describe("export archive builder", () => {
 		};
 
 		const admin = readAll(buildExportArchive(withInternals, { scope: "admin", exportedAt: FIXED_TIME }).zip);
-		expect(admin.text("entries/post/11111111-1111-4111-8111-111111111111/published.json")).toContain("internalNote");
+		expect(admin.text(entryPath(CONTENT, PUBLISHED_ID, "published.json"))).toContain("internalNote");
 
 		const publicArchive = readAll(buildExportArchive(withInternals, { scope: "public", exportedAt: FIXED_TIME }).zip);
-		const publicJson = publicArchive.text("entries/post/11111111-1111-4111-8111-111111111111/published.json");
+		const publicJson = publicArchive.text(entryPath(CONTENT, PUBLISHED_ID, "published.json"));
 		expect(publicJson).not.toContain("internalNote");
 		expect(publicJson).not.toContain("storageKey");
 		expect(JSON.parse(publicJson).metadata.title).toBe("게시글");
@@ -270,21 +282,19 @@ describe("export archive builder", () => {
 		}
 	});
 
-	it("public 아카이브는 SEO metadata를 그대로 내보낸다", () => {
+	it.skipIf(Object.keys(FIXTURE_SEO_METADATA).length === 0)("public 아카이브는 SEO metadata를 그대로 내보낸다", () => {
 		const { zip } = buildExportArchive(makeSnapshot(), { scope: "public", exportedAt: FIXED_TIME });
 		const archive = readAll(zip);
-		const parsed = JSON.parse(archive.text("entries/post/11111111-1111-4111-8111-111111111111/published.json")) as {
+		const parsed = JSON.parse(archive.text(entryPath(CONTENT, PUBLISHED_ID, "published.json"))) as {
 			metadata: Record<string, unknown>;
 		};
 
-		expect(parsed.metadata.seoTitle).toBe("검색 제목");
-		expect(parsed.metadata.seoDescription).toBe("검색 설명");
-		expect(parsed.metadata.canonicalUrl).toBe("https://dev.to/crosspost");
-		expect(parsed.metadata.ogImageId).toBe("44444444-4444-4444-8444-444444444444");
-		// SEO 키는 컬렉션 allowlist에 있어야 하고, 관리자 컬렉션에는 열리지 않는다.
-		expect(PUBLIC_METADATA_KEYS.post).toEqual(
-			expect.arrayContaining(["seoTitle", "seoDescription", "canonicalUrl", "ogImageId"]),
-		);
-		expect(PUBLIC_METADATA_KEYS.category).not.toEqual(expect.arrayContaining(["seoTitle"]));
+		for (const [name, value] of Object.entries(FIXTURE_SEO_METADATA)) {
+			expect(parsed.metadata[name]).toBe(value);
+		}
+		// SEO 키는 컬렉션 allowlist에 있어야 하고, 분류 같은 항목 컬렉션에는 열리지 않는다.
+		const seoKeys = Object.keys(FIXTURE_SEO_METADATA);
+		expect(PUBLIC_METADATA_KEYS[CONTENT]).toEqual(expect.arrayContaining(seoKeys));
+		for (const key of seoKeys) expect(PUBLIC_METADATA_KEYS[recordCollection]).not.toContain(key);
 	});
 });

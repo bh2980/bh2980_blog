@@ -1,5 +1,13 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+	contentCollection,
+	fillRequiredMetadata,
+	otherContentCollection,
+	recordCollection,
+	requiredMetadata,
+} from "../../../../test/any-site";
+import type { Collection } from "../../../core/collections";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { seedEntry, seedSave } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
@@ -14,7 +22,9 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: ReturnType<typeof createContentStore>;
-	let testCategoryId: string;
+	let relationTarget: (to: Collection) => Promise<string>;
+	/** 같은 slug를 넣어 볼 다른 컬렉션(블로그는 메모). 문서 컬렉션이 하나뿐인 설정은 항목 컬렉션을 쓴다. */
+	const elsewhere = otherContentCollection ?? recordCollection;
 
 	beforeAll(async () => {
 		const isolated = await createIsolatedTestPool();
@@ -23,16 +33,8 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		const categoryDraft = await seedEntry(store, {
-			collection: "category",
-			slug: "working-slug-test-category",
-			metadata: { title: "Working slug category" },
-			mdx: "",
-			schemaVersion: 1,
-			contentHash: "working-slug-category-hash",
-		});
-		const category = await store.publishEntry({ id: categoryDraft.id, expectedVersion: categoryDraft.version });
-		testCategoryId = category.id;
+		// 발행 필수값(블로그의 카테고리 같은 것)은 설정에서 찾아 채운다.
+		relationTarget = fillRequiredMetadata(store).relationTarget;
 	});
 
 	afterAll(async () => {
@@ -43,11 +45,10 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	});
 
 	async function seedDraft(slug: string, mdx: string, metadata: Record<string, unknown> = { title: slug }) {
-		const postMetadata = { ...metadata, categoryId: metadata.categoryId ?? testCategoryId };
 		const entry = await seedEntry(store, {
-			collection: "post",
+			collection: contentCollection,
 			slug: null,
-			metadata: postMetadata,
+			metadata,
 			mdx,
 			schemaVersion: 1,
 			contentHash: `hash-${slug}`,
@@ -56,7 +57,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 		return await seedSave(store, entry.id, {
 			expectedVersion: entry.version,
 			slug,
-			metadata: postMetadata,
+			metadata,
 			mdx,
 			schemaVersion: 1,
 			contentHash: `hash-${slug}-saved`,
@@ -66,15 +67,17 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	it("초안을 working 본문과 함께 돌려준다 — 공개 조회는 같은 slug를 못 본다", async () => {
 		await seedDraft("draft-only-post", "초안 본문");
 
-		const found = await store.getWorkingEntryBySlug({ collection: "post", slug: "draft-only-post" });
+		const found = await store.getWorkingEntryBySlug({ collection: contentCollection, slug: "draft-only-post" });
 
 		expect(found?.status).toBe("draft");
 		expect(found?.workingSlug).toBe("draft-only-post");
 		expect(found?.working.mdx).toBe("초안 본문");
-		expect(found?.working.metadata).toEqual({ title: "draft-only-post", categoryId: testCategoryId });
+		expect(found?.working.metadata).toEqual(
+			await requiredMetadata(contentCollection, "draft-only-post", relationTarget),
+		);
 
 		// 공개 경로는 여전히 초안을 반환하지 않는다(이 변경으로 공개 계약이 넓어지지 않았다).
-		expect(await store.getPublishedEntryBySlug({ collection: "post", slug: "draft-only-post" })).toEqual({
+		expect(await store.getPublishedEntryBySlug({ collection: contentCollection, slug: "draft-only-post" })).toEqual({
 			status: "not_found",
 		});
 	});
@@ -94,7 +97,7 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 			contentHash: "hash-edited-after-publish",
 		});
 
-		const found = await store.getWorkingEntryBySlug({ collection: "post", slug: "edited-after-publish" });
+		const found = await store.getWorkingEntryBySlug({ collection: contentCollection, slug: "edited-after-publish" });
 
 		expect(found?.status).toBe("published");
 		expect(found?.working.mdx).toBe("발행 후 편집 본문");
@@ -102,30 +105,32 @@ describe("M9-FE-1 getWorkingEntryBySlug", () => {
 	});
 
 	it("없는 slug는 null이다", async () => {
-		expect(await store.getWorkingEntryBySlug({ collection: "post", slug: "does-not-exist" })).toBeNull();
+		expect(await store.getWorkingEntryBySlug({ collection: contentCollection, slug: "does-not-exist" })).toBeNull();
 	});
 
 	it("다른 컬렉션의 같은 slug는 찾지 않는다", async () => {
-		const memo = await seedEntry(store, {
-			collection: "memo",
+		const other = await seedEntry(store, {
+			collection: elsewhere,
 			slug: "shared-slug",
 			metadata: { title: "메모" },
 			mdx: "메모 본문",
 			schemaVersion: 1,
 			contentHash: "hash-memo-shared",
 		});
-		expect(memo.workingSlug).toBe("shared-slug");
+		expect(other.workingSlug).toBe("shared-slug");
 
-		expect(await store.getWorkingEntryBySlug({ collection: "memo", slug: "shared-slug" })).not.toBeNull();
-		expect(await store.getWorkingEntryBySlug({ collection: "post", slug: "shared-slug" })).toBeNull();
+		expect(await store.getWorkingEntryBySlug({ collection: elsewhere, slug: "shared-slug" })).not.toBeNull();
+		expect(await store.getWorkingEntryBySlug({ collection: contentCollection, slug: "shared-slug" })).toBeNull();
 	});
 
 	it("잘못된 입력은 조용히 null이 아니라 invalid_input으로 거부한다", async () => {
-		await expect(store.getWorkingEntryBySlug({ collection: "post", slug: "" })).rejects.toBeInstanceOf(CmsError);
-		await expect(store.getWorkingEntryBySlug({ collection: "post", slug: "  " })).rejects.toMatchObject({
+		await expect(store.getWorkingEntryBySlug({ collection: contentCollection, slug: "" })).rejects.toBeInstanceOf(
+			CmsError,
+		);
+		await expect(store.getWorkingEntryBySlug({ collection: contentCollection, slug: "  " })).rejects.toMatchObject({
 			code: "invalid_input",
 		});
-		await expect(store.getWorkingEntryBySlug({ collection: "post" } as never)).rejects.toMatchObject({
+		await expect(store.getWorkingEntryBySlug({ collection: contentCollection } as never)).rejects.toMatchObject({
 			code: "invalid_input",
 		});
 	});

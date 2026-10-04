@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { ADDED_BLOCKS, BLOCKS } from "../../blocks/active";
 import { analyze } from "../analyze";
+
+/** 본문을 담는 블록의 공개 컴포넌트 이름. 사이트가 더한 컨테이너 블록이 있으면 그것을, 없으면 본체 블록을 쓴다. */
+const container = [...ADDED_BLOCKS, ...BLOCKS].find((block) => block.syntax.kind === "container" && !block.parent);
+if (!container) throw new Error("analyze-security test: no container block");
+const Box = container.component;
 
 const errorText = (source: string) =>
 	analyze(source)
@@ -12,13 +18,13 @@ const errorText = (source: string) =>
  */
 describe("JSX 이벤트 핸들러 속성 거부", () => {
 	it("대소문자와 무관하게 이벤트 핸들러 속성을 거부한다", () => {
-		expect(errorText('<Callout onClick="x">a</Callout>')).toContain("이벤트 핸들러");
-		expect(errorText('<Callout onclick="x">a</Callout>')).toContain("이벤트 핸들러");
-		expect(errorText('<Callout onerror="x">a</Callout>')).toContain("이벤트 핸들러");
-		expect(errorText('<Callout ONERROR="x">a</Callout>')).toContain("이벤트 핸들러");
+		expect(errorText(`<${Box} onClick="x">a</${Box}>`)).toContain("이벤트 핸들러");
+		expect(errorText(`<${Box} onclick="x">a</${Box}>`)).toContain("이벤트 핸들러");
+		expect(errorText(`<${Box} onerror="x">a</${Box}>`)).toContain("이벤트 핸들러");
+		expect(errorText(`<${Box} ONERROR="x">a</${Box}>`)).toContain("이벤트 핸들러");
 	});
 
 	it("이벤트 핸들러가 아닌 속성은 통과시킨다", () => {
-		expect(errorText('<Callout title="t">a</Callout>')).toBe("");
+		expect(errorText(`<${Box} title="t">a</${Box}>`)).toBe("");
 	});
 });

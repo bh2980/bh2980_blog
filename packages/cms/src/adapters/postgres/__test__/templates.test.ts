@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { cmsConfig } from "../../../config/resolved";
 import { type ContentStore, createContentStore, migrateContentStore } from "../content-store";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
+
+/** 사이트 설정의 초기 본문 템플릿(`seed.templates`). 없는 설정이면 넣기 시험은 건너뛴다. */
+const SEEDED = cmsConfig.seed?.templates ?? [];
 
 describe("M5-BE-2 Body Templates Store Contract", () => {
 	let pool: Pool;
@@ -25,39 +29,40 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 		await closeGlobalPool();
 	});
 
-	it("1. seeds templates for both editor types without reviving deleted templates", async () => {
-		const templates = await store.listTemplates();
-		expect(templates.length).toBeGreaterThanOrEqual(2);
+	// 하나를 지우고 남은 하나가 그대로인지 보려면 템플릿이 둘 이상 있어야 한다.
+	it.skipIf(SEEDED.length < 2)(
+		"1. seeds templates for both editor types without reviving deleted templates",
+		async () => {
+			const templates = await store.listTemplates();
+			expect(templates.length).toBeGreaterThanOrEqual(SEEDED.length);
 
-		const algo = templates.find((t) => t.name === "알고리즘 풀이");
-		if (!algo) throw new Error("알고리즘 풀이 템플릿이 없습니다.");
-		expect(algo.mdx).toContain("## 문제");
-		expect(algo.mdx).toContain("## 풀이");
+			// 설정의 템플릿이 이름·본문 그대로 들어간다.
+			for (const seed of SEEDED) {
+				const found = templates.find((t) => t.name === seed.name);
+				if (!found) throw new Error(`${seed.name} 템플릿이 없습니다.`);
+				expect(found.mdx).toBe(seed.mdx);
+			}
+			const [first, second] = SEEDED.map((seed) => templates.find((t) => t.name === seed.name));
+			if (!first || !second) throw new Error("시드 템플릿이 없습니다.");
 
-		const tc = templates.find((t) => t.name === "Type Challenge 풀이");
-		if (!tc) throw new Error("Type Challenge 풀이 템플릿이 없습니다.");
-		expect(tc.mdx).toContain("### 질문");
-		expect(tc.mdx).toContain("### 풀이");
+			// Delete one template
+			await store.deleteTemplate({ id: first.id, expectedVersion: first.version });
 
-		const postDefault = templates.find((t) => t.name === "일반 게시글");
-		if (!postDefault) throw new Error("일반 게시글 템플릿이 없습니다.");
-		expect(postDefault.mdx).toContain("## 개요");
+			// Re-run migration
+			await migrateContentStore(pool, { schema: schemaName });
 
-		// Delete one template
-		await store.deleteTemplate({ id: algo.id, expectedVersion: algo.version });
+			// Verify deleted template did NOT resurrect (one-time seed guarantee)
+			const remaining = await store.listTemplates();
+			expect(remaining.find((t) => t.id === first.id)).toBeUndefined();
+			expect(remaining.find((t) => t.id === second.id)).toBeDefined();
+		},
+	);
 
-		// Re-run migration
-		await migrateContentStore(pool, { schema: schemaName });
-
-		// Verify deleted template did NOT resurrect (one-time seed guarantee)
-		const remaining = await store.listTemplates();
-		expect(remaining.find((t) => t.id === algo.id)).toBeUndefined();
-		expect(remaining.find((t) => t.id === tc.id)).toBeDefined();
-	});
-
-	it("seed preserves same-name user templates and never resurrects deletions", async () => {
-		const seeded = (await store.listTemplates()).find((template) => template.name === "일반 게시글");
-		if (!seeded) throw new Error("일반 게시글 템플릿이 없습니다.");
+	it.skipIf(SEEDED.length === 0)("seed preserves same-name user templates and never resurrects deletions", async () => {
+		// 1번 시험이 첫 템플릿을 지웠으므로 마지막 템플릿으로 본다.
+		const name = SEEDED[SEEDED.length - 1]?.name;
+		const seeded = (await store.listTemplates()).find((template) => template.name === name);
+		if (!seeded) throw new Error(`${name} 템플릿이 없습니다.`);
 
 		const userId = randomUUID();
 		await pool.query(`UPDATE "${schemaName}".body_templates SET id = $1, mdx = $2 WHERE id = $3`, [
@@ -69,13 +74,13 @@ describe("M5-BE-2 Body Templates Store Contract", () => {
 		await pool.query(`DELETE FROM "${schemaName}".cms_migrations WHERE name = 'seed_initial_body_templates'`);
 		await migrateContentStore(pool, { schema: schemaName });
 
-		const preserved = (await store.listTemplates()).filter((template) => template.name === "일반 게시글");
+		const preserved = (await store.listTemplates()).filter((template) => template.name === name);
 		expect(preserved).toHaveLength(1);
 		expect(preserved[0]).toMatchObject({ id: userId, mdx: "사용자가 수정한 본문" });
 
 		await store.deleteTemplate({ id: userId, expectedVersion: preserved[0].version });
 		await migrateContentStore(pool, { schema: schemaName });
-		expect((await store.listTemplates()).some((template) => template.name === "일반 게시글")).toBe(false);
+		expect((await store.listTemplates()).some((template) => template.name === name)).toBe(false);
 	});
 
 	it("2. supports CRUD with optimistic concurrency (version checking)", async () => {

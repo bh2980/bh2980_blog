@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { defineBlock } from "../define";
+import { contentCollection, requiredMetadata } from "../../../test/any-site";
+import { ADDED_BLOCKS } from "../active";
+import { type BlockDefinition, defineBlock } from "../define";
 import { BUILTIN_BLOCKS } from "../definitions";
 import { resolveBlocks } from "../resolve";
 
@@ -113,21 +115,51 @@ describe("사이트 설정의 본문 블록", () => {
 });
 
 describe("사용자 블록 발행 검사", () => {
-	// 예시 설정(`test/cms.config.ts`)의 사용자 블록 `notice`(단계 선택 값)·`embed`(주소 필수).
+	// 블록은 지금 설정에서 찾는다(블로그 예시 설정은 콜아웃 종류·사용자 블록 `embed` 주소). 그런 블록이 없는 설정이면 건너뛴다.
+	const attributeOf = (block: BlockDefinition, pick: (attribute: BlockDefinition["attributes"][string]) => boolean) =>
+		Object.entries(block.attributes).find(([, attribute]) => attribute.type === "string" && pick(attribute));
+	const nonText = ADDED_BLOCKS.filter(
+		(block) => (block.syntax.kind === "leaf" || block.syntax.kind === "container") && !block.parent,
+	);
+	/** 선택 값 속성이 있는 블록. */
+	const choiceBlock = nonText.find((block) => attributeOf(block, (attribute) => Boolean(attribute.options)));
+	/** 필수 속성이 있는 블록(한 줄 블록 먼저). */
+	const requiredBlock = [...nonText]
+		.sort((a, b) => Number(b.syntax.kind === "leaf") - Number(a.syntax.kind === "leaf"))
+		.find((block) => attributeOf(block, (attribute) => Boolean(attribute.required) && !attribute.options));
+
+	/** 지시자 블록 한 개의 원문(속성 문자열을 받는다). */
+	const directive = (block: BlockDefinition, props: string) =>
+		block.syntax.kind === "leaf" ? `::${block.name}${props}\n` : `:::${block.name}${props}\n본문\n:::\n`;
+
 	const issuesOf = async (mdx: string) => {
 		const { prepareSnapshot } = await import("../../core/snapshot");
 		const snapshot = await prepareSnapshot({
-			collection: "memo",
+			collection: contentCollection,
 			slug: "custom-blocks",
-			metadata: { title: "사용자 블록" },
+			// 발행 필수 메타데이터는 채워 블록 검사만 본다(관계는 형식만 맞는 ID).
+			metadata: await requiredMetadata(
+				contentCollection,
+				"사용자 블록",
+				async () => "00000000-0000-4000-8000-000000000000",
+			),
 			mdx,
 		});
 		return snapshot.issues.map((issue) => issue.code);
 	};
 
-	it("선택 값 밖의 속성과 빠진 필수 속성을 막는다", async () => {
-		expect(await issuesOf(':::notice{level="danger"}\n본문\n:::\n')).toContain("invalid_block_attribute");
-		expect(await issuesOf("::embed\n")).toContain("missing_block_attribute");
-		expect(await issuesOf(':::notice{level="warn"}\n본문\n:::\n\n::embed{url="https://example.com"}\n')).toEqual([]);
+	it.skipIf(!choiceBlock)("선택 값 밖의 속성을 막는다", async () => {
+		if (!choiceBlock) return;
+		const [name, attribute] = attributeOf(choiceBlock, (candidate) => Boolean(candidate.options)) ?? [];
+		const valid = Object.keys(attribute?.options ?? {})[0];
+		expect(await issuesOf(directive(choiceBlock, `{${name}="not-an-option"}`))).toContain("invalid_block_attribute");
+		expect(await issuesOf(directive(choiceBlock, `{${name}="${valid}"}`))).toEqual([]);
+	});
+
+	it.skipIf(!requiredBlock)("빠진 필수 속성을 막는다", async () => {
+		if (!requiredBlock) return;
+		const [name] = attributeOf(requiredBlock, (attribute) => Boolean(attribute.required) && !attribute.options) ?? [];
+		expect(await issuesOf(directive(requiredBlock, ""))).toContain("missing_block_attribute");
+		expect(await issuesOf(directive(requiredBlock, `{${name}="https://example.com"}`))).toEqual([]);
 	});
 });

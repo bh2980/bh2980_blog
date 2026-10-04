@@ -7,11 +7,19 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { VFile } from "vfile";
 import { describe, expect, it } from "vitest";
+import { ADDED_BLOCKS } from "../../blocks/active";
 import { parseMdxAst } from "../parse";
 import { remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "../remark-directives";
 import { readSample, readSamples } from "./fixtures/samples";
 
 const DIRECTIVE_TYPES = ["containerDirective", "leafDirective", "textDirective"];
+
+/** 사이트가 더한 컨테이너 블록(설정에서 찾는다, 예: 콜아웃)과 그 글 속성(번역할 글자를 먼저). */
+const siteContainer = ADDED_BLOCKS.find((block) => block.syntax.kind === "container" && !block.parent);
+const siteAttribute = siteContainer
+	? (Object.entries(siteContainer.attributes).find(([, attribute]) => attribute.translatable) ??
+			Object.entries(siteContainer.attributes).find(([, attribute]) => attribute.type === "string"))?.[0]
+	: undefined;
 
 /**
  * directive 두 플러그인의 **순서**를 공개 체인과 같게 둔 최소 재현 체인이다(demote → 변환).
@@ -103,15 +111,23 @@ describe("미등록 directive 되돌리기", () => {
 });
 
 describe("등록 directive 처리", () => {
-	it("CMS 분석 트리도 등록 이름을 MDX 요소로 바꾼다(참조 수집·검증이 한 shape에서 돈다)", () => {
-		const tree = parseMdxAst(':::callout{title="제목"}\n본문\n:::');
+	it.skipIf(!siteContainer || !siteAttribute)(
+		"CMS 분석 트리도 등록 이름을 MDX 요소로 바꾼다(참조 수집·검증이 한 shape에서 돈다)",
+		() => {
+			if (!siteContainer || !siteAttribute) return;
+			const tree = parseMdxAst(`:::${siteContainer.name}{${siteAttribute}="제목"}\n본문\n:::`);
 
-		// 저장 문자열은 그대로이고, 분석기가 보는 트리만 공개 체인과 같은 모양이 된다.
-		expect(collectDirectiveNames(tree)).toEqual([]);
-		expect(collectJsx(tree)).toEqual([
-			expect.objectContaining({ type: "mdxJsxFlowElement", name: "Callout", attributes: { title: "제목" } }),
-		]);
-	});
+			// 저장 문자열은 그대로이고, 분석기가 보는 트리만 공개 체인과 같은 모양이 된다.
+			expect(collectDirectiveNames(tree)).toEqual([]);
+			expect(collectJsx(tree)).toEqual([
+				expect.objectContaining({
+					type: "mdxJsxFlowElement",
+					name: siteContainer.component,
+					attributes: { [siteAttribute]: "제목" },
+				}),
+			]);
+		},
+	);
 
 	it("분석 트리와 공개 렌더 트리가 같은 요소를 낸다", () => {
 		const body = [

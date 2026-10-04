@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { contentCollection } from "../../../../test/any-site";
 import { AuthError } from "../../../adapters/auth";
 import { CmsError } from "../../../adapters/postgres/content-store";
 import { PATCH as patchEntry } from "../entries/[id]/route";
@@ -31,7 +32,7 @@ vi.mock("../../../container", () => {
 			}
 			return Promise.resolve({
 				id,
-				collection: "post",
+				collection: contentCollection,
 				version: 1,
 				workingSlug: "my-post",
 				working: { metadata: { title: "Title" }, mdx: "Hello", schemaVersion: 1 },
@@ -108,7 +109,7 @@ describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", (
 				origin: "http://attacker.com",
 				"content-type": "application/json",
 			},
-			body: JSON.stringify({ collection: "post" }),
+			body: JSON.stringify({ collection: contentCollection }),
 		});
 		const res = await postEntries(req);
 		expect(res.status).toBe(403);
@@ -124,7 +125,7 @@ describe("M2-BE-3 HTTP API Contract (Updated with Security & Atomic Folders)", (
 				"content-type": "application/json",
 			},
 			body: JSON.stringify({
-				collection: "post",
+				collection: contentCollection,
 				slug: "test-slug",
 				metadata: { title: "Test Post" },
 				mdx: "# Test Content",

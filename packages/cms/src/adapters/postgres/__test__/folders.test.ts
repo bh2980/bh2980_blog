@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { contentCollection, fillRequiredMetadata } from "../../../../test/any-site";
 import { CmsError, createContentStore, migrateContentStore } from "../content-store";
 import { moveToFolder, seedEntry } from "./seed";
 
@@ -88,6 +89,10 @@ describe("Folders contract", () => {
 			} catch (_e) {
 				// Tables might not exist yet
 			}
+			// 발행 필수값(블로그의 카테고리 같은 것)은 설정에서 찾아 채운다. 위에서 글을 다 지웠으므로 관계 대상도
+			// 새로 만들게 저장소를 다시 만든다.
+			store = createContentStore(pool, { schema: schemaName }) as unknown as typeof store;
+			fillRequiredMetadata(store);
 		}
 	});
 
@@ -294,10 +299,10 @@ describe("Folders contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("4. move entry into folder and null: exact +1 each, wrong expected => CmsError conflict/serverVersion, cross-collection folder => invalid_input; full entry field comparisons", async () => {
-		const f4 = await store.createFolder({ collection: "memo", parentId: null, name: "F4" });
+		const f4 = await store.createFolder({ collection: contentCollection, parentId: null, name: "F4" });
 
 		const entry = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "fc4-slug",
 			metadata: { title: "FC4" },
 			mdx: "body text",
@@ -406,12 +411,12 @@ describe("Folders contract", () => {
 
 	it("5. delete non-root folder reparents direct entries and child folders to deleted parent; delete root reparents to null; never deletes entries; snapshot full entries/addresses/folder exact unchanged", async () => {
 		// Build tree: root → mid → leaf  (entries in mid)
-		const root = await store.createFolder({ collection: "memo", parentId: null, name: "Root5" });
-		const mid = await store.createFolder({ collection: "memo", parentId: root.id, name: "Mid5" });
-		const leaf = await store.createFolder({ collection: "memo", parentId: mid.id, name: "Leaf5" });
+		const root = await store.createFolder({ collection: contentCollection, parentId: null, name: "Root5" });
+		const mid = await store.createFolder({ collection: contentCollection, parentId: root.id, name: "Mid5" });
+		const leaf = await store.createFolder({ collection: contentCollection, parentId: mid.id, name: "Leaf5" });
 
 		const e5 = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "fc5-e",
 			metadata: { title: "E5" },
 			mdx: "e5 body",
@@ -434,7 +439,7 @@ describe("Folders contract", () => {
 		// Delete mid → leaf reparents to root, entry reparents to root
 		await store.deleteFolder({ id: mid.id });
 
-		const folders5 = await store.listFolders({ collection: "memo" });
+		const folders5 = await store.listFolders({ collection: contentCollection });
 		expect(folders5.find((f) => f.id === mid.id)).toBeUndefined();
 
 		const leafAfter = folders5.find((f) => f.id === leaf.id);
@@ -464,7 +469,7 @@ describe("Folders contract", () => {
 		// Now delete root → leaf reparents to null, entry reparents to null
 		await store.deleteFolder({ id: root.id });
 
-		const folders5b = await store.listFolders({ collection: "memo" });
+		const folders5b = await store.listFolders({ collection: contentCollection });
 		expect(folders5b.find((f) => f.id === root.id)).toBeUndefined();
 
 		const leafFinal = folders5b.find((f) => f.id === leaf.id);
@@ -486,17 +491,17 @@ describe("Folders contract", () => {
 	// -----------------------------------------------------------------------
 
 	it("6. delete collision => exact conflict and atomically unchanged folders/entries", async () => {
-		const parent = await store.createFolder({ collection: "memo", parentId: null, name: "P6" });
+		const parent = await store.createFolder({ collection: contentCollection, parentId: null, name: "P6" });
 
 		// "Dup" exists at root level
-		await store.createFolder({ collection: "memo", parentId: null, name: "Dup" });
+		await store.createFolder({ collection: contentCollection, parentId: null, name: "Dup" });
 
 		// "Dup" also under parent (same name, different parent = OK)
-		await store.createFolder({ collection: "memo", parentId: parent.id, name: "Dup" });
+		await store.createFolder({ collection: contentCollection, parentId: parent.id, name: "Dup" });
 
 		// Seed an entry in the to-be-deleted parent
 		const e6 = await seedEntry(store, {
-			collection: "memo",
+			collection: contentCollection,
 			slug: "fc6-e",
 			metadata: { title: "E6" },
 			mdx: "e6 body",
@@ -511,7 +516,7 @@ describe("Folders contract", () => {
 		});
 
 		// Capture raw folder rows + entry state before deletion attempt
-		const beforeFolders = await store.listFolders({ collection: "memo" });
+		const beforeFolders = await store.listFolders({ collection: contentCollection });
 		const beforeEntry = await store.getEntry(e6.id);
 		const beforeEntryDb = await pool.query<{
 			folder_id: string | null;
@@ -541,7 +546,7 @@ describe("Folders contract", () => {
 		expectCmsError(delErr, "folder_name_conflict");
 
 		// All folders unchanged
-		const afterFolders = await store.listFolders({ collection: "memo" });
+		const afterFolders = await store.listFolders({ collection: contentCollection });
 		expect(afterFolders).toEqual(beforeFolders);
 
 		// Entry version, folder, timestamps, body, address all exactly unchanged
