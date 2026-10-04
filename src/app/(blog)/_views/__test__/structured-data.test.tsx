@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type ArticleFacts, ArticleStructuredData, articleMetadata } from "../structured-data";
 
-vi.mock("@bh2980/cms/runtime", () => ({
+vi.mock("@monti-cms/core/runtime", () => ({
 	resolvePublicMediaUrl: async (id: string) => ({ url: `https://cdn.example/${id}.png` }),
 }));
 

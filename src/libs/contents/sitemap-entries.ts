@@ -1,4 +1,4 @@
-import { contentPath } from "@bh2980/cms/client";
+import { contentPath } from "@monti-cms/core/client";
 import type { MetadataRoute } from "next";
 import { DEFAULT_LOCALE, LOCALES, type Locale, localizePath } from "@/libs/i18n/locales";
 import type { Memo, Post } from "./types/contents";

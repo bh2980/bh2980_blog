@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getPreview, type ReadEntry } from "@bh2980/cms/read";
+import { getPreview, type ReadEntry } from "@monti-cms/core/read";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { readMetadataString, readMetadataStringArray } from "../metadata";
 import { excerptOf, isEvergreen, seoOfMemo, seoOfPost, titleOf, toCategory, toTag } from "../read-model";

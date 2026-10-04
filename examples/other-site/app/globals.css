@@ -1,8 +1,0 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "@bh2980/cms-admin/styles.css";
-/* 공개 화면 본문(코드 강조·줄 효과·기본 컴포넌트) */
-@import "@bh2980/cms/render.css";
-@import "@bh2980/cms-blocks/styles.css";
-@import "@bh2980/cms-seo/styles.css";
-@plugin "@tailwindcss/typography";

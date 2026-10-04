@@ -1,4 +1,4 @@
-import { definePlugin } from "@bh2980/cms";
+import { definePlugin } from "@monti-cms/core";
 
 /**
  * 이 블로그의 예전 목록 열 이름 옮기기(사이트 마이그레이션). 예전 관리자 화면은 분류 열 설정을 짧은 이름(`category`·`tags`)으로

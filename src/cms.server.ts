@@ -1,5 +1,5 @@
-import { r2Storage } from "@bh2980/cms/s3";
-import { defineServerConfig, githubAuth, postgres } from "@bh2980/cms/server";
+import { r2Storage } from "@monti-cms/core/s3";
+import { defineServerConfig, githubAuth, postgres } from "@monti-cms/core/server";
 import { toPublicEntryDto } from "@/libs/contents/public-api";
 
 /**

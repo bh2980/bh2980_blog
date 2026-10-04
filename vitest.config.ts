@@ -4,7 +4,6 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => ({
 	test: {
-		// 블로그와 CMS 패키지(`packages/*`)를 한 번에 돌린다. 패키지는 자기 설정 파일을 쓴다.
 		projects: [
 			{
 				extends: true,
@@ -14,14 +13,11 @@ export default defineConfig(({ mode }) => ({
 					globals: true,
 					include: ["src/**/*.{test,spec}.{ts,tsx}"],
 					setupFiles: ["./src/test/setup-dom.ts"],
-					// 두 묶음을 동시에 돌리면 무거운 화면 테스트가 제한 시간에 걸린다. 블로그 묶음을 먼저 돌린다.
-					sequence: { groupOrder: 0 },
 				},
 			},
-			"packages/*",
-			// 재발 방지(M10-1): 블로그와 다른 사이트 설정으로 본체·관리자·AI 테스트를 다시 돈다.
-			"packages/*/vitest.othersite.config.ts",
 		],
+		// Monti 패키지는 `@cms-config`·`@cms-server` 별칭을 불러온다. node_modules 안 코드는 vite를 거치지 않아 별칭이 안 먹으니 변환 대상에 넣는다.
+		server: { deps: { inline: [/@monti-cms\//] } },
 		testTimeout: 60000,
 		hookTimeout: 60000,
 		env: {

@@ -1,11 +1,11 @@
-import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
+import { type ContentStore, createContentStore, migrateContentStore } from "@monti-cms/core/runtime";
 import {
 	closeGlobalPool,
 	createIsolatedTestPool,
 	dropIsolatedTestPool,
 	seedEntry,
 	seedSave,
-} from "@bh2980/cms/testing";
+} from "@monti-cms/core/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresRepository } from "../postgres";
@@ -34,7 +34,7 @@ describe("M7-BE-2 공개 repository 통합 계약 (실DB)", () => {
 
 		await migrateContentStore(pool, { schema: schemaName });
 		store = createContentStore(pool, { schema: schemaName });
-		// 읽기 API(`@bh2980/cms/read`)는 컨테이너의 전역 저장소를 읽으므로 그 자리에 시험 저장소를 둔다.
+		// 읽기 API(`@monti-cms/core/read`)는 컨테이너의 전역 저장소를 읽으므로 그 자리에 시험 저장소를 둔다.
 		(globalThis as { __cmsStore?: ContentStore }).__cmsStore = store;
 		repository = new PostgresRepository();
 

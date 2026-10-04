@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getEntry, getTranslations, listEntries, type ReadEntry } from "@bh2980/cms/read";
+import { getEntry, getTranslations, listEntries, type ReadEntry } from "@monti-cms/core/read";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/libs/i18n/locales";
 import { isDefined } from "@/utils/is-defined";
 import type { ContentRepository } from "../contracts/repository";
@@ -11,7 +11,7 @@ import type { Category, Memo, Post, PublishedMemo, PublishedPost, Series, Tag } 
 import type { MemoListQuery, PostListQuery } from "../types/query";
 
 /**
- * M7-BE-1: CMS DB의 공개본만 읽는 ContentRepository 구현. 읽기는 라이브러리의 `@bh2980/cms/read`가 하고,
+ * M7-BE-1: CMS DB의 공개본만 읽는 ContentRepository 구현. 읽기는 라이브러리의 `@monti-cms/core/read`가 하고,
  * 이 파일은 그 결과를 이 블로그의 글·메모 모양으로 옮기기만 한다(옮기는 규칙은 `../read-model.ts`).
  *
  * - 초안·보관·휴지통은 반환하지 않는다(O1 A3). 호출자의 status 필터와 무관하게 공개본만 나온다.

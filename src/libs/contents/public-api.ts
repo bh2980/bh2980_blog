@@ -1,4 +1,4 @@
-import type { ReadEntry } from "@bh2980/cms/read";
+import type { ReadEntry } from "@monti-cms/core/read";
 import { categoryOf, excerptOf, isEvergreen, seoOfMemo, seoOfPost, tagsOf, titleOf } from "./read-model";
 import type { Category, SeoMetadata, Tag } from "./types/contents";
 

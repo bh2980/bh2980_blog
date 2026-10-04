@@ -1,4 +1,4 @@
-import { cleanTextColor, textColorProps } from "@bh2980/cms-blocks/color";
+import { cleanTextColor, textColorProps } from "@monti-cms/blocks/color";
 import type { PropsWithChildren } from "react";
 
 /** 글자색·글자 배경색(`:color[글]{fg bg …}`). 잘못된 값은 버리고, 색이 없으면 글만 그린다. */

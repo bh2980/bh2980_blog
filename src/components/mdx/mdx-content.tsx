@@ -1,5 +1,5 @@
-import type { ImageResolver } from "@bh2980/cms/mdx";
-import { type MdxComponents, mdxRehypePlugins, mdxRemarkPlugins, renderMdx } from "@bh2980/cms/render";
+import type { ImageResolver } from "@monti-cms/core/mdx";
+import { type MdxComponents, mdxRehypePlugins, mdxRemarkPlugins, renderMdx } from "@monti-cms/core/render";
 import type { ComponentProps } from "react";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
@@ -21,7 +21,7 @@ import { Tab, Tabs } from "./tabs";
 import { TextAlign } from "./text-align";
 import { Tooltip } from "./tooltip";
 
-/** 공개 렌더 체인의 remark·rehype 플러그인(본체 `@bh2980/cms/render`와 같다). 검수 러너가 같은 구성을 쓴다. */
+/** 공개 렌더 체인의 remark·rehype 플러그인(본체 `@monti-cms/core/render`와 같다). 검수 러너가 같은 구성을 쓴다. */
 export const MDX_REMARK_PLUGINS = mdxRemarkPlugins;
 export const MDX_REHYPE_PLUGINS = mdxRehypePlugins();
 

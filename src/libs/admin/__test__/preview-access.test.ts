@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockVerifyAdmin = vi.hoisted(() => vi.fn());
 
-vi.mock("@bh2980/cms/adapters/auth", () => ({
+vi.mock("@monti-cms/core/adapters/auth", () => ({
 	AuthError: class AuthError extends Error {
 		constructor(
 			public readonly code: "unauthorized" | "forbidden",
@@ -14,7 +14,7 @@ vi.mock("@bh2980/cms/adapters/auth", () => ({
 	authGateway: { verifyAdmin: () => mockVerifyAdmin() },
 }));
 
-import { AuthError } from "@bh2980/cms/adapters/auth";
+import { AuthError } from "@monti-cms/core/adapters/auth";
 import { canPreview, checkPreviewAccess } from "../preview-access";
 
 beforeEach(() => {

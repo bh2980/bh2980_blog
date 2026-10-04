@@ -1,5 +1,5 @@
 import "server-only";
-import { AuthError, authGateway } from "@bh2980/cms/runtime";
+import { AuthError, authGateway } from "@monti-cms/core/runtime";
 
 /**
  * M7-FE-1: 미리보기 접근 판정.

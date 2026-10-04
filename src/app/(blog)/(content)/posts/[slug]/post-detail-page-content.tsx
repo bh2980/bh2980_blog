@@ -1,4 +1,4 @@
-import { createPublicImageResolver } from "@bh2980/cms/render";
+import { createPublicImageResolver } from "@monti-cms/core/render";
 import { differenceInYears } from "date-fns";
 import { LanguageLinks } from "@/components/language-links";
 import { Callout } from "@/components/mdx/callout";

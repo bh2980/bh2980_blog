@@ -1,11 +1,11 @@
-import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
+import { type ContentStore, createContentStore, migrateContentStore } from "@monti-cms/core/runtime";
 import {
 	closeGlobalPool,
 	createIsolatedTestPool,
 	dropIsolatedTestPool,
 	seedEntry,
 	seedSave,
-} from "@bh2980/cms/testing";
+} from "@monti-cms/core/testing";
 import { NextRequest } from "next/server";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

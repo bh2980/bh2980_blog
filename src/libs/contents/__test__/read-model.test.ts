@@ -1,4 +1,4 @@
-import type { ReadEntry, ReadRelation } from "@bh2980/cms/read";
+import type { ReadEntry, ReadRelation } from "@monti-cms/core/read";
 import { describe, expect, it } from "vitest";
 import { toPublishedMemo, toPublishedPost } from "../read-model";
 

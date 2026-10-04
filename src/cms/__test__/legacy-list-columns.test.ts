@@ -4,7 +4,7 @@ import {
 	dropIsolatedTestPool,
 	migrateContentStore,
 	pluginDatabaseFor,
-} from "@bh2980/cms/testing";
+} from "@monti-cms/core/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateLegacyListColumns, renameLegacyColumns } from "../legacy-list-columns.server";

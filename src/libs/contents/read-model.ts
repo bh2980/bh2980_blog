@@ -1,5 +1,5 @@
-import { SUMMARY_ROLE, valueWithRole } from "@bh2980/cms";
-import type { ReadEntry, ReadRelation } from "@bh2980/cms/read";
+import { SUMMARY_ROLE, valueWithRole } from "@monti-cms/core";
+import type { ReadEntry, ReadRelation } from "@monti-cms/core/read";
 import { memo as memoSchema, post as postSchema } from "@/cms.config";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/libs/i18n/locales";
 import { POLICY_DEPRECATED, POLICY_EVERGREEN, readMetadataString } from "./metadata";
@@ -7,7 +7,7 @@ import { toSeoMetadata } from "./seo";
 import type { Category, PublishedMemo, PublishedPost, Tag } from "./types/contents";
 
 /**
- * 라이브러리 읽기 API(`@bh2980/cms/read`)의 `ReadEntry`를 이 블로그의 글·메모 모양으로 옮긴다.
+ * 라이브러리 읽기 API(`@monti-cms/core/read`)의 `ReadEntry`를 이 블로그의 글·메모 모양으로 옮긴다.
  * 공개 저장소(`repositories/postgres.ts`), 미리보기 초안(`repositories/draft-preview.ts`), 공개 JSON API(`public-api.ts`)가 함께 쓴다.
  * 서버 설정(`cms.server.ts`)도 읽으므로 저장소·`server-only` 모듈을 import하지 않는다.
  */

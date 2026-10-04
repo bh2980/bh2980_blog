@@ -1,6 +1,6 @@
 import "server-only";
 
-import { contentPath, parseContentPath } from "@bh2980/cms/client";
+import { contentPath, parseContentPath } from "@monti-cms/core/client";
 import { DEFAULT_LOCALE, type Locale, localizePath } from "@/libs/i18n/locales";
 import { getContentRepository } from "../get-content-repository";
 

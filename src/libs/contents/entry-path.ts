@@ -1,4 +1,4 @@
-import { contentPath } from "@bh2980/cms/client";
+import { contentPath } from "@monti-cms/core/client";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
 
 /**

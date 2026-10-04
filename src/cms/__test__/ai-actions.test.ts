@@ -1,6 +1,6 @@
-import type { CmsPlugin } from "@bh2980/cms";
-import { BLOCKS, getPluginOptions } from "@bh2980/cms/client";
-import { type AiConfig, resolveAiActions } from "@bh2980/cms-ai";
+import { type AiConfig, resolveAiActions } from "@monti-cms/ai";
+import type { CmsPlugin } from "@monti-cms/core";
+import { BLOCKS, getPluginOptions } from "@monti-cms/core/client";
 import { describe, expect, it } from "vitest";
 import cmsConfig from "@/cms.config";
 

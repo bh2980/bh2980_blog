@@ -1,6 +1,6 @@
 import "server-only";
 
-import { resolvePublicMediaUrl } from "@bh2980/cms/runtime";
+import { resolvePublicMediaUrl } from "@monti-cms/core/runtime";
 import { createImageOgResponse, createOgImageResponse } from "./og";
 import type { SeoMetadata } from "./types/contents";
 

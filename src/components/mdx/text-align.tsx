@@ -1,4 +1,4 @@
-import { TEXT_ALIGN_VALUES } from "@bh2980/cms/mdx";
+import { TEXT_ALIGN_VALUES } from "@monti-cms/core/mdx";
 import type { ReactNode } from "react";
 import { cn } from "@/utils/cn";
 
