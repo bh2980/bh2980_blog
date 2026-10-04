@@ -1,4 +1,5 @@
-import type { MetadataFor } from "@bh2980/cms/client";
+import { metadataFromForm } from "@monti-cms/admin/kit";
+import type { MetadataFor } from "@monti-cms/core/client";
 import {
 	COLLECTION_DEFINITIONS,
 	COLLECTIONS,
@@ -7,9 +8,8 @@ import {
 	relationsOf,
 	SYSTEM_LIST_COLUMNS,
 	storedFields,
-} from "@bh2980/cms/client";
-import { prepareSnapshot, validateForPublish } from "@bh2980/cms/runtime";
-import { metadataFromForm } from "@bh2980/cms-admin/kit";
+} from "@monti-cms/core/client";
+import { prepareSnapshot, validateForPublish } from "@monti-cms/core/runtime";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import cmsConfig from "@/cms.config";
 

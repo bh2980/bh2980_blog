@@ -7,7 +7,7 @@
 ![MDX](https://img.shields.io/badge/MDX-Content-1B1F24?style=flat-square&logo=mdx&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-CMS-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-개인 학습 기록과 지식 공유를 위한 기술 블로그입니다. Next.js 기반 공개 사이트와 PostgreSQL(Neon) 기반 자체 CMS를 함께 개발합니다.
+개인 학습 기록과 지식 공유를 위한 기술 블로그입니다. Next.js 기반 공개 사이트와 PostgreSQL(Neon) 기반 CMS를 씁니다. CMS는 별도 프로젝트 [Monti](https://github.com/monti-cms/monti)(`@monti-cms/*` 패키지)이며, 이 저장소는 그 패키지를 받아 씁니다.
 
 ## Tech Stack
 
@@ -15,7 +15,7 @@
 | :--- | :--- |
 | Framework | Next.js (App Router), React |
 | Language | TypeScript |
-| CMS | 자체 CMS (Next.js Route Handlers, `/admin`) |
+| CMS | [Monti](https://github.com/monti-cms/monti) (`@monti-cms/*`, Next.js Route Handlers, `/admin`) |
 | Database | PostgreSQL (Neon), `pg` |
 | Editor | Tiptap, MDX |
 | Media | Cloudflare R2 어댑터 |
@@ -30,7 +30,9 @@
 ├── public              # 정적 에셋
 ├── src
 │   ├── app             # 공개 페이지, /admin, CMS API, RSS, sitemap
-│   ├── cms             # 인증·PostgreSQL·R2 어댑터, 편집기, MDX, 서비스
+│   ├── cms             # 블로그 쪽 CMS 보조 코드와 테스트. CMS 본체는 Monti 패키지
+│   ├── cms.config.ts   # 컬렉션 정의·확장 설정
+│   ├── cms.server.ts   # 서버 어댑터(DB·R2·인증) 연결
 │   ├── components      # 공통 UI와 MDX 렌더러
 │   └── libs            # 공개 콘텐츠 조회, 주석, 차트, Mermaid 등
 └── package.json
@@ -43,7 +45,7 @@
 - **게시글 (Posts)**: 비교적 긴 호흡의 기술 문서와 정리 글. 카테고리 기반으로 분류합니다.
 - **메모 (Memos)**: 짧은 기록, 문제 해결 메모, 코드 스니펫. 태그 기반으로 탐색합니다.
 - **메타 데이터**: 태그, 카테고리, 발행일, OG 이미지, RSS, sitemap 정보를 함께 관리합니다.
-- **Admin UI**: `/admin`의 자체 관리자 화면에서 콘텐츠를 작성·정리·발행합니다. PostgreSQL이 CMS 데이터의 원본이고, 이미지 같은 파일은 R2에 둡니다.
+- **Admin UI**: Monti가 제공하는 `/admin` 관리자 화면에서 콘텐츠를 작성·정리·발행합니다. PostgreSQL이 CMS 데이터의 원본이고, 이미지 같은 파일은 R2에 둡니다.
 
 ## Key Implementations
 
@@ -55,7 +57,7 @@
 
 ## CMS 현황
 
-- **컬렉션 정의**: 게시글·메모·카테고리·태그·모음집의 필드를 `src/cms/schema/definitions.ts` 한 곳에서 정의하고, 입력 화면·검증·목록이 이 정의를 따릅니다.
+- **컬렉션 정의**: 게시글·메모·카테고리·태그·모음집의 필드를 `src/cms.config.ts` 한 곳에서 정의하고, 입력 화면·검증·목록이 이 정의를 따릅니다.
 - **편집기**: 블록 끌기, 이미지 크기·크롭·회전, 커스텀 블록(콜아웃·탭·단·Mermaid·차트·수식), 코드 블록 주석, 표 셀 병합을 지원합니다.
 - **다국어**: 글·메모는 언어별 번역본을 따로 발행하고, 분류 항목은 이름을 언어별로 둡니다. 기본 언어(`ko`)는 접두사 없는 주소, 그 밖은 `/en`·`/ja` 주소입니다.
 - **AI 보조**: 관리자 `AI` 화면에서 서비스 연결과 기능(주소·요약·태그·alt 추천, 본문 번역)을 정의합니다. 버튼을 눌렀을 때만 호출하고 결과는 제안으로만 보입니다.
@@ -63,11 +65,13 @@
 
 ## Development
 
+CMS 패키지(`@monti-cms/*`)는 공개 저장소 `monti-cms/monti`에서 받습니다. 패키지 소스와 이슈는 [Monti 저장소](https://github.com/monti-cms/monti)에서 다룹니다.
+
 `CMS_DATABASE_URL`에 Neon PostgreSQL 연결 문자열을 설정한 뒤 실행합니다. `CMS_SCHEMA`는 선택 항목이며, 생략하면 `public` 스키마를 사용합니다. 별도의 `CMS_PUBLIC_REPOSITORY` 설정은 필요하지 않습니다. 비밀값은 `.env.local`에 두고 저장소에 커밋하지 마세요. R2 업로드와 관리자 인증을 검증하려면 각 서비스의 서버 환경값도 필요합니다.
 
 ```bash
 pnpm install
-pnpm cms:db:migrate   # CMS 테이블 생성·최신 스키마 반영(추가 전용, 여러 번 실행해도 안전)
+pnpm cms:db:migrate   # `monti migrate`: CMS 테이블 생성·최신 스키마 반영(추가 전용, 여러 번 실행해도 안전)
 pnpm dev
 ```
 

@@ -1,4 +1,4 @@
-import type { CmsServerPlugin, PluginDatabase } from "@bh2980/cms";
+import type { CmsServerPlugin, PluginDatabase } from "@monti-cms/core";
 
 /** 예전 열 이름 → 지금 열 이름. */
 export const LEGACY_COLUMN_NAMES: Readonly<Record<string, string>> = { category: "categoryId", tags: "tagIds" };

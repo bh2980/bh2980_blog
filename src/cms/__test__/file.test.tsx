@@ -1,6 +1,6 @@
-import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
-import { prepareSnapshot } from "@bh2980/cms/runtime";
-import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@monti-cms/admin/editor";
+import { analyze, serialize, toDocument } from "@monti-cms/core/mdx";
+import { prepareSnapshot } from "@monti-cms/core/runtime";
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 

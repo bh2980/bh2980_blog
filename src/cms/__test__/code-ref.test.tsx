@@ -1,5 +1,5 @@
-import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
-import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@monti-cms/admin/editor";
+import { analyze, serialize, toDocument } from "@monti-cms/core/mdx";
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -23,7 +23,7 @@ describe("본문–코드 잇기 저장 형식", () => {
 		expect(analyzed.errors ?? []).toEqual([]);
 		const document = toDocument(analyzed);
 		const paragraph = document.content?.[0];
-		// 코드 연결은 블록 확장(`@bh2980/cms-blocks`의 `codeRef()`)이다. 문서 mark 이름은 블록 이름이다.
+		// 코드 연결은 블록 확장(`@monti-cms/blocks`의 `codeRef()`)이다. 문서 mark 이름은 블록 이름이다.
 		expect(paragraph?.content?.find((node) => node.marks?.length)?.marks).toEqual([
 			{ type: "code-ref", attrs: { to: "c1" } },
 		]);

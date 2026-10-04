@@ -1,4 +1,4 @@
-import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@bh2980/cms/mdx";
+import { boundedTableSpan, MAX_TABLE_COLUMNS, parseTableWidths } from "@monti-cms/core/mdx";
 import * as React from "react";
 import { cn } from "@/utils";
 

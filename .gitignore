@@ -46,7 +46,3 @@ artifacts/
 
 # 로컬 에이전트 도구 설정(측정 스크립트 등). 저장소에 커밋하지 않는다.
 .pi/
-
-# CMS 패키지 빌드 결과
-packages/*/dist
-packages/*/.build-stubs

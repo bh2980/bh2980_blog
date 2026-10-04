@@ -1,11 +1,11 @@
-import { type ContentStore, createContentStore, migrateContentStore } from "@bh2980/cms/runtime";
-import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool, seedEntry } from "@bh2980/cms/testing";
+import { type ContentStore, createContentStore, migrateContentStore } from "@monti-cms/core/runtime";
+import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool, seedEntry } from "@monti-cms/core/testing";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresRepository } from "../postgres";
 
 /**
- * M7-BE-1 / v2 B4: `PostgresRepository`의 공개 매핑. 라이브러리 읽기 API(`@bh2980/cms/read`)가 읽는 실제 DB
+ * M7-BE-1 / v2 B4: `PostgresRepository`의 공개 매핑. 라이브러리 읽기 API(`@monti-cms/core/read`)가 읽는 실제 DB
  * (`CMS_TEST_DATABASE_URL`의 격리 스키마)를 두고 확인한다. 읽기 API는 컨테이너의 전역 저장소를 쓰므로 그 자리에 시험 저장소를 둔다.
  */
 describe("PostgresRepository 공개 매핑 (실DB)", () => {

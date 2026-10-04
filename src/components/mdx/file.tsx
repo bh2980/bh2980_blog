@@ -1,5 +1,5 @@
-import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
-import type { ImageResolver } from "@bh2980/cms/mdx";
+import { type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@monti-cms/core/client";
+import type { ImageResolver } from "@monti-cms/core/mdx";
 import { Download, FileArchive, FileText, FileType } from "lucide-react";
 
 const ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: FileArchive, text: FileText };

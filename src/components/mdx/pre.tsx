@@ -1,4 +1,4 @@
-import { showsLineNumbers } from "@bh2980/cms/render/code";
+import { showsLineNumbers } from "@monti-cms/core/render/code";
 import { Folder } from "lucide-react";
 import { type CSSProperties, Fragment, type PropsWithChildren } from "react";
 import { cn } from "@/utils/cn";

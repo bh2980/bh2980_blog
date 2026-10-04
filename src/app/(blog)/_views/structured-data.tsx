@@ -1,4 +1,4 @@
-import { resolvePublicMediaUrl } from "@bh2980/cms/runtime";
+import { resolvePublicMediaUrl } from "@monti-cms/core/runtime";
 import type { Metadata } from "next";
 import type { SeoMetadata } from "@/libs/contents/types/contents";
 import { type Locale, localizePath } from "@/libs/i18n/locales";

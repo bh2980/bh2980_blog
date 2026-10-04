@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
 	entries: new Map<string, unknown>(),
 }));
 
-vi.mock("@bh2980/cms/read", () => ({
+vi.mock("@monti-cms/core/read", () => ({
 	getPreview: async (params: { collection: string; slug: string; locale?: string }) => {
 		state.calls.push(params);
 		return state.entries.get(`${params.collection}:${params.slug}`) ?? null;

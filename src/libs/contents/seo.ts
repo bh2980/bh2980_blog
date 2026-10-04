@@ -1,4 +1,4 @@
-import { seoOf } from "@bh2980/cms-seo";
+import { seoOf } from "@monti-cms/seo";
 import type { SeoMetadata } from "./types/contents";
 
 /** 경로 형식 canonical을 해석할 때만 쓰는 고정 origin. 실제 사이트 origin과 비교하지 않는다. */

@@ -1,8 +1,8 @@
-import { withTranslationHints } from "@bh2980/cms/client";
-import { analyze } from "@bh2980/cms/mdx";
-import { prepareSnapshot } from "@bh2980/cms/runtime";
-import { readSamples } from "@bh2980/cms/testing";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
+import { mdxToTiptap, tiptapToMdx } from "@monti-cms/admin/editor";
+import { withTranslationHints } from "@monti-cms/core/client";
+import { analyze } from "@monti-cms/core/mdx";
+import { prepareSnapshot } from "@monti-cms/core/runtime";
+import { readSamples } from "@monti-cms/core/testing";
 import { describe, expect, it } from "vitest";
 
 describe("새 번역본의 번역 안내(v3)", () => {

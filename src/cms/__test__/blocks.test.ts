@@ -1,4 +1,4 @@
-import { DIRECTIVES } from "@bh2980/cms/mdx";
+import { DIRECTIVES } from "@monti-cms/core/mdx";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -22,7 +22,7 @@ describe("블로그 설정의 지시자 표", () => {
 			["table", "container", "Table", []],
 			["row", "container", "TableRow", []],
 			["cell", "leaf", "TableCell", []],
-			// 블록 확장(`@bh2980/cms-blocks`). 블로그 설정의 `plugins` 순서다.
+			// 블록 확장(`@monti-cms/blocks`). 블로그 설정의 `plugins` 순서다.
 			["callout", "container", "Callout", []],
 			["collapsible", "container", "Collapsible", []],
 			["tabs", "container", "Tabs", []],

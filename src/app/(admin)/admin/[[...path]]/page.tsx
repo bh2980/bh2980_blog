@@ -1,1 +1,1 @@
-export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
+export { CmsAdminPage as default } from "@monti-cms/admin/next";

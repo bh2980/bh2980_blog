@@ -1,6 +1,6 @@
-import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
-import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
-import { colorMarkExtension } from "@bh2980/cms-blocks/color/admin";
+import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@monti-cms/admin/editor";
+import { colorMarkExtension } from "@monti-cms/blocks/color/admin";
+import { analyze, serialize, toDocument } from "@monti-cms/core/mdx";
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -19,7 +19,7 @@ describe("글자색 저장 형식", () => {
 	});
 
 	it("에디터에 올렸다 저장해도 원문이 그대로다", () => {
-		// 글자색은 블록 확장(`@bh2980/cms-blocks`의 `color()`)이고 편집기 모양도 확장이 준다.
+		// 글자색은 블록 확장(`@monti-cms/blocks`의 `color()`)이고 편집기 모양도 확장이 준다.
 		const editor = new Editor({
 			extensions: buildEditorExtensions({ color: colorMarkExtension }),
 			content: mdxToTiptap(SOURCE),

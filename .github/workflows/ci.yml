@@ -1,4 +1,4 @@
-# 자동 검사(M12). push마다 lint·타입 검사·패키지 빌드, 테스트(Postgres 서비스), 예시 앱 묶음 검사를 돈다.
+# 자동 검사. push마다 lint·타입 검사, 테스트(Postgres 서비스)를 돈다.
 name: CI
 
 # push 때만 돈다(PR 화면에는 그 커밋의 결과가 보인다). PR까지 걸면 같은 검사가 두 번 돈다.
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   check:
-    name: lint · typecheck · build
+    name: lint · typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -26,10 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # 고치지 않고 검사만 한다.
       - run: pnpm lint
-      # 패키지 실행 코드의 한국어 문구는 문구 사전(messages.ts)에만(M15-7).
-      - run: pnpm check:korean
       - run: pnpm typecheck
-      - run: pnpm build:packages
 
   test:
     name: test
@@ -58,16 +55,3 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:run
-
-  example:
-    name: example app (packed)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm example:check
