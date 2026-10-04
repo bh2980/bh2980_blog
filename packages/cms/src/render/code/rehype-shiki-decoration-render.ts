@@ -2,12 +2,25 @@ import type { Element, Root } from "hast";
 import { toString as hastToString } from "hast-util-to-string";
 import type { DecorationItem } from "shiki";
 import { visit } from "unist-util-visit";
-import { highlight } from "./code-highligher";
+import {
+	type CodeHighlighterOptions,
+	createCodeHighlighter,
+	highlight as defaultHighlight,
+	type HighlightFn,
+} from "./code-highlighter";
 import type { LineDecorationPayload, LineWrapperPayload, Meta } from "./transformers";
 
-type RehypeShikiDecorationRenderOptions = {
+export type RehypeShikiDecorationRenderOptions = CodeHighlighterOptions & {
 	ignoreLang?: (lang: string) => boolean;
+	/** 코드를 강조하는 함수. 주면 `langs`·`themes`·`langAlias`는 쓰지 않는다. */
+	highlight?: HighlightFn;
 };
+
+/** 코드 강조 설정(언어·테마·별칭). 안 주면 블로그 기본값이다. */
+export type CodeHighlightOptions = RehypeShikiDecorationRenderOptions;
+
+const hasHighlighterOptions = (options: CodeHighlighterOptions) =>
+	options.langs !== undefined || options.themes !== undefined || options.langAlias !== undefined;
 
 function findCodeChild(pre: Element): Element | null {
 	const child = pre.children?.find((c) => c?.type === "element" && c.tagName === "code");
@@ -25,7 +38,15 @@ function getLangFromCodeEl(codeEl: Element): string {
 }
 
 export function rehypeShikiDecorationRender(options: RehypeShikiDecorationRenderOptions = {}) {
+	// 언어·테마를 바꾼 경우에만 강조기를 새로 만든다(한 번만). 아니면 기본 강조기를 그대로 쓴다.
+	const customHighlight =
+		options.highlight || !hasHighlighterOptions(options)
+			? null
+			: createCodeHighlighter(options).then((highlighter) => highlighter.highlight);
+
 	return async (tree: Root) => {
+		const highlight = options.highlight ?? (await customHighlight) ?? defaultHighlight;
+
 		visit(tree, "element", (node, index, parent) => {
 			if (!parent || index == null) return;
 			if (node.tagName !== "pre") return;

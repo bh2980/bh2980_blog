@@ -1,6 +1,6 @@
 import type { Element } from "hast";
 import { describe, expect, it } from "vitest";
-import { highlight } from "../code-highligher";
+import { highlight } from "../code-highlighter";
 
 const hasIndentClass = (node: Element) => {
 	const value = node.properties?.class ?? node.properties?.className;

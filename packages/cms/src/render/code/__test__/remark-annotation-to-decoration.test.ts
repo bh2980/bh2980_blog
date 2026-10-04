@@ -22,7 +22,8 @@ const fullConfig: AnnotationConfig = {
 };
 
 const getCodeNode = (root: Root) => root.children[0] as Code;
-const getHProperties = (code: Code) => (code.data?.hProperties ?? {}) as Record<string, unknown>;
+const getHProperties = (code: Code) =>
+	((code.data as { hProperties?: unknown } | undefined)?.hProperties ?? {}) as Record<string, unknown>;
 
 describe("remarkAnnotationToShikiDecoration", () => {
 	it("mark annotation을 decoration으로 변환하고 annotation 라인을 제거한다", () => {

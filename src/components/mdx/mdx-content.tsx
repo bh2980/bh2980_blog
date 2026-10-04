@@ -1,6 +1,7 @@
 import { annotationConfig } from "@bh2980/cms/code-block";
 import type { ImageResolver } from "@bh2980/cms/mdx";
 import { analyze, remarkDemoteUnknownDirectives, remarkDirectivesToMdx } from "@bh2980/cms/mdx";
+import { rehypeShikiDecorationRender, remarkAnnotationToShikiDecoration } from "@bh2980/cms/render/code";
 import type { Root, Text } from "mdast";
 import { compileMDX } from "next-mdx-remote/rsc";
 import type { ComponentProps } from "react";
@@ -18,8 +19,6 @@ import { remarkChartToMdx } from "@/libs/chart";
 import { DEFAULT_LOCALE, type Locale } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
 import { remarkMermaidToMdx } from "@/libs/mermaid/remark-mermaid-to-mdx";
-import { rehypeShikiDecorationRender } from "@/libs/shiki/rehype-shiki-decoration-render";
-import { remarkAnnotationToShikiDecoration } from "@/libs/shiki/remark-annotation-to-decoration";
 import { a } from "./a";
 import { Callout } from "./callout";
 import { Chart } from "./chart";

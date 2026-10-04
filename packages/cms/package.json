@@ -14,13 +14,16 @@
 		"./read": "./src/read/index.ts",
 		"./mdx": "./src/mdx/index.ts",
 		"./code-block": "./src/code-block.ts",
+		"./render/code": "./src/render/code/index.ts",
+		"./render": "./src/render/index.tsx",
 		"./plugin/server": "./src/plugin-server.ts",
 		"./adapters/auth": "./src/adapters/auth/index.ts",
 		"./testing": "./src/testing.ts",
 		"./migrate": "./src/adapters/postgres/migrate-cli.ts",
 		"./register": "./src/register.ts",
 		"./cli": "./src/cli/index.ts",
-		"./stubs/missing-optional": "./stubs/missing-optional.cjs"
+		"./stubs/missing-optional": "./stubs/missing-optional.cjs",
+		"./render.css": "./render.css"
 	},
 	"bin": {
 		"cms": "./bin/cms.mjs"
@@ -36,16 +39,29 @@
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1136.0",
 		"@aws-sdk/s3-request-presigner": "^3.1136.0",
+		"@shikijs/langs": "^3.21.0",
+		"@shikijs/themes": "^3.21.0",
+		"@shikijs/transformers": "^3.22.0",
+		"@types/hast": "^3.0.4",
 		"@types/mdast": "^4.0.4",
 		"@types/pg": "^8.23.1",
 		"@types/unist": "^3.0.3",
+		"hast-util-to-string": "^3.0.1",
+		"katex": "^0.16.45",
+		"next-mdx-remote": "^6.0.0",
 		"pg": "^8.23.0",
+		"rehype-autolink-headings": "^7.1.0",
+		"rehype-katex": "^7.0.1",
+		"rehype-slug": "^6.0.0",
+		"remark-breaks": "^4.0.0",
 		"remark-directive": "^4.0.0",
+		"remark-flexible-toc": "^1.2.4",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
 		"remark-mdx": "^3.1.1",
 		"remark-parse": "^11.0.0",
 		"server-only": "^0.0.1",
+		"shiki": "^3.21.0",
 		"tsx": "^4.21.0",
 		"unified": "^11.0.5",
 		"unist-util-visit": "^5.0.0",
@@ -65,6 +81,7 @@
 	"devDependencies": {
 		"@types/node": "^20",
 		"@types/react": "^19",
+		"mdast-util-from-markdown": "^2.0.2",
 		"next": "16.3.8",
 		"next-auth": "5.0.0-beta.32",
 		"react": "19.2.3",
@@ -76,7 +93,8 @@
 		"bin",
 		"dist",
 		"stubs",
-		"README.md"
+		"README.md",
+		"render.css"
 	],
 	"publishConfig": {
 		"exports": {
@@ -100,13 +118,13 @@
 				"types": "./dist/client.d.ts",
 				"default": "./dist/client.js"
 			},
-			"./read": {
-				"types": "./dist/read/index.d.ts",
-				"default": "./dist/read/index.js"
-			},
 			"./runtime": {
 				"types": "./dist/runtime.d.ts",
 				"default": "./dist/runtime.js"
+			},
+			"./read": {
+				"types": "./dist/read/index.d.ts",
+				"default": "./dist/read/index.js"
 			},
 			"./mdx": {
 				"types": "./dist/mdx/index.d.ts",
@@ -115,6 +133,14 @@
 			"./code-block": {
 				"types": "./dist/code-block.d.ts",
 				"default": "./dist/code-block.js"
+			},
+			"./render/code": {
+				"types": "./dist/render/code/index.d.ts",
+				"default": "./dist/render/code/index.js"
+			},
+			"./render": {
+				"types": "./dist/render/index.d.ts",
+				"default": "./dist/render/index.js"
 			},
 			"./plugin/server": {
 				"types": "./dist/plugin-server.d.ts",
@@ -140,7 +166,8 @@
 				"types": "./dist/cli/index.d.ts",
 				"default": "./dist/cli/index.js"
 			},
-			"./stubs/missing-optional": "./stubs/missing-optional.cjs"
+			"./stubs/missing-optional": "./stubs/missing-optional.cjs",
+			"./render.css": "./render.css"
 		}
 	},
 	"sideEffects": false

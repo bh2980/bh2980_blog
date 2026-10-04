@@ -222,6 +222,18 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1136.0
         version: 3.1136.0
+      '@shikijs/langs':
+        specifier: ^3.21.0
+        version: 3.21.0
+      '@shikijs/themes':
+        specifier: ^3.21.0
+        version: 3.21.0
+      '@shikijs/transformers':
+        specifier: ^3.22.0
+        version: 3.22.0
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.4
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
@@ -231,12 +243,36 @@ importers:
       '@types/unist':
         specifier: ^3.0.3
         version: 3.0.3
+      hast-util-to-string:
+        specifier: ^3.0.1
+        version: 3.0.1
+      katex:
+        specifier: ^0.16.45
+        version: 0.16.45
+      next-mdx-remote:
+        specifier: ^6.0.0
+        version: 6.0.0(@types/react@19.2.9)(react@19.2.3)
       pg:
         specifier: ^8.23.0
         version: 8.23.0
+      rehype-autolink-headings:
+        specifier: ^7.1.0
+        version: 7.1.0
+      rehype-katex:
+        specifier: ^7.0.1
+        version: 7.0.1
+      rehype-slug:
+        specifier: ^6.0.0
+        version: 6.0.0
+      remark-breaks:
+        specifier: ^4.0.0
+        version: 4.0.0
       remark-directive:
         specifier: ^4.0.0
         version: 4.0.0
+      remark-flexible-toc:
+        specifier: ^1.2.4
+        version: 1.2.4(unified@11.0.5)
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
@@ -252,6 +288,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      shiki:
+        specifier: ^3.21.0
+        version: 3.21.0
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -274,6 +313,9 @@ importers:
       '@types/react':
         specifier: ^19
         version: 19.2.9
+      mdast-util-from-markdown:
+        specifier: ^2.0.2
+        version: 2.0.2
       next:
         specifier: 16.3.8
         version: 16.3.8(@types/node@20.19.30)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

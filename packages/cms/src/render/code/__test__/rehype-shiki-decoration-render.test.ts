@@ -1,11 +1,11 @@
 import type { Element, Root } from "hast";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../code-highligher", () => ({
+vi.mock("../code-highlighter", () => ({
 	highlight: vi.fn(),
 }));
 
-import { highlight } from "../code-highligher";
+import { highlight } from "../code-highlighter";
 import { rehypeShikiDecorationRender } from "../rehype-shiki-decoration-render";
 
 const highlightMock = vi.mocked(highlight);

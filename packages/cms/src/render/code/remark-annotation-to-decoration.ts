@@ -1,20 +1,17 @@
+import type { Code, Root } from "mdast";
+import type { DecorationItem } from "shiki";
+import { visit } from "unist-util-visit";
 import type {
 	AnnotationConfig,
 	AnnotationRegistry,
 	CodeBlockAnnotation,
 	CodeBlockDocument,
 	LineAnnotation,
-} from "@bh2980/cms/code-block";
-import {
-	createAnnotationRegistry,
-	fromCodeFenceToCodeBlockDocument,
-	supportsAnnotationScope,
-} from "@bh2980/cms/code-block";
-import type { Code, Root } from "mdast";
-import type { DecorationItem } from "shiki";
-import { visit } from "unist-util-visit";
+} from "../../code-block";
+import { createAnnotationRegistry, fromCodeFenceToCodeBlockDocument, supportsAnnotationScope } from "../../code-block";
 import { createAllowedRenderTagsFromConfig } from "./render-policy";
 
+type HProperties = { hProperties?: Record<string, unknown> };
 type AnnotationWithClass = { class: string };
 type AnnotationWithRender = { render: string };
 
@@ -196,9 +193,11 @@ export function remarkAnnotationToShikiDecoration(annotationConfig: AnnotationCo
 			const payload = fromCodeBlockDocumentToShikiAnnotationPayload(document, annotationConfig);
 
 			node.value = payload.code;
+			// `hProperties`는 mdast-util-to-hast가 읽는 값이라, 이 패키지는 그 타입을 끌어오지 않고 직접 좁힌다.
 			node.data ??= {};
-			node.data.hProperties = {
-				...node.data.hProperties,
+			const data = node.data as HProperties;
+			data.hProperties = {
+				...data.hProperties,
 				"data-decorations": JSON.stringify(payload.decorations),
 				"data-line-decorations": JSON.stringify(payload.lineDecorations),
 				"data-line-wrappers": JSON.stringify(payload.rowWrappers),

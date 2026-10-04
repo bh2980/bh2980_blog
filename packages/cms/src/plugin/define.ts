@@ -24,6 +24,11 @@ export interface CmsPlugin<Name extends string = string, Options = unknown> {
 	/** 관리자 화면 쪽(페이지·공급자). 기본 내보내기가 관리자 패키지의 `CmsAdminPlugin`이다. */
 	readonly admin?: () => Promise<{ readonly default: unknown }>;
 	/**
+	 * 공개 화면 쪽(본문 블록의 공개 컴포넌트). 기본 내보내기가 `(context) => 컴포넌트 표`이고 `@bh2980/cms/render`가 부른다
+	 * (`context`: 사이트 언어·이미지 해석기). 서버에서 읽히며 클라이언트 컴포넌트는 그 모듈이 `"use client"`로 나눈다.
+	 */
+	readonly render?: () => Promise<{ readonly default: unknown }>;
+	/**
 	 * 다른 플러그인에 더하는 것. 키는 받는 쪽이 정한 이름이고(예: AI 플러그인은 `ai: { actions }`를 읽는다), 본체는 읽지 않는다.
 	 * 받는 플러그인이 없으면 쓰이지 않는다. 그래서 확장은 받는 플러그인을 몰라도 기능을 더할 수 있다.
 	 */

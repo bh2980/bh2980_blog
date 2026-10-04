@@ -1,7 +1,7 @@
-import type { AnnotationConfig, CodeBlockDocument } from "@bh2980/cms/code-block";
-import { fromCodeFenceToCodeBlockDocument } from "@bh2980/cms/code-block";
 import type { DecorationItem } from "shiki";
 import { describe, expect, it } from "vitest";
+import type { AnnotationConfig, CodeBlockDocument } from "../../../code-block";
+import { fromCodeFenceToCodeBlockDocument } from "../../../code-block";
 import * as remarkModule from "../remark-annotation-to-decoration";
 
 type ComposePayloadResult = {
