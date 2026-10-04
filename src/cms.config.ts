@@ -205,7 +205,7 @@ export default defineConfig({
 	locales: LOCALES.map((code) => ({ code, name: LOCALE_INFO[code].nativeName, label: LOCALE_INFO[code].adminName })),
 	defaultLocale: DEFAULT_LOCALE,
 	// 본문에 전체 주소로 적은 링크도 내부 링크로 알아본다. 서버에서만 읽힌다(브라우저에서는 비어 있다).
-	site: { url: process.env.HOST_URL || undefined, name: "bh2980.dev", previewPath: "/preview" },
+	site: { url: process.env.HOST_URL || undefined, name: "bh2980.com", previewPath: "/preview" },
 	timeZone: "Asia/Seoul",
 	// 예전 브라우저 복구본 DB 이름(main에서 쓰던 이름). 남은 복구본을 읽고 지운다.
 	admin: { legacyBackupNames: ["bh2980_cms_backup"] },

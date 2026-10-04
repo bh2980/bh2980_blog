@@ -769,6 +769,46 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(pub3.publishedAt).toEqual(firstPublishedAt);
 		});
 
+		it("resets the publish time to now only when asked, even without changes", async () => {
+			const original = new Date("2023-07-16T15:00:00Z");
+			const post = await seedEntry(store, {
+				collection: "post",
+				slug: "post-reset-date",
+				metadata: { title: "Reset" },
+				mdx: "Body",
+				schemaVersion: 1,
+				contentHash: "ts-hash-reset",
+			});
+			await pool.query(`UPDATE "${schemaName}".entries SET published_at = $2 WHERE id = $1`, [post.id, original]);
+			const pub1 = await store.publishEntry({ id: post.id, expectedVersion: post.version });
+			expect(pub1.publishedAt).toEqual(original);
+
+			// 바뀐 것이 없는 다시 발행이어도 발행일만 바꾸고 버전을 올린다.
+			const before = Date.now();
+			const pub2 = await store.publishEntry({ id: post.id, expectedVersion: pub1.version, resetPublishedAt: true });
+			expect(pub2.version).toBe(pub1.version + 1);
+			expect(pub2.publishedAt?.getTime()).toBeGreaterThanOrEqual(before - 1000);
+
+			await store.saveWorkingWithReferences({
+				entryId: post.id,
+				expectedVersion: pub2.version,
+				snapshot: {
+					collection: "post",
+					slug: "post-reset-date",
+					metadata: { title: "Reset V2" },
+					mdx: "V2",
+					schemaVersion: 1,
+					contentHash: "ts-hash-reset-2",
+					issues: [],
+					references: [],
+				},
+				references: [],
+			});
+			await new Promise((r) => setTimeout(r, 20));
+			const pub3 = await store.publishEntry({ id: post.id, expectedVersion: pub2.version + 1, resetPublishedAt: true });
+			expect(pub3.publishedAt?.getTime()).toBeGreaterThan(pub2.publishedAt?.getTime() ?? 0);
+		});
+
 		it("publishes with a publish time set beforehand (migrated drafts keep their original date)", async () => {
 			const post = await seedEntry(store, {
 				collection: "post",

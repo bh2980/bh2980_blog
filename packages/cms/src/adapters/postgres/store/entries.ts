@@ -394,7 +394,7 @@ export function createEntryOps(ctx: StoreContext, publishing: Publishing) {
 			return res.rows[0] ? loadEntry(pool, res.rows[0].id, qSchema) : null;
 		},
 
-		publishEntry: async (params: { id: string; expectedVersion: number }): Promise<Entry> =>
+		publishEntry: async (params: { id: string; expectedVersion: number; resetPublishedAt?: boolean }): Promise<Entry> =>
 			withTransaction(pool, (client) => publishWithinTransaction(client, params.id, params), {
 				mapError: mapEntryWriteError,
 			}),

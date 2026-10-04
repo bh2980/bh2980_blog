@@ -13,6 +13,8 @@ export interface PublishOptions {
 	expectedVersion: number;
 	/** 예약 실행에서 부를 때 그 예약 ID. 수동 발행이면 대기 중인 예약을 취소한다. */
 	scheduleId?: string;
+	/** 다시 발행할 때 발행일을 지금으로 바꾼다. 없으면 처음 발행한 시각을 둔다. */
+	resetPublishedAt?: boolean;
 }
 
 /**
@@ -148,6 +150,7 @@ export function createPublishing(ctx: StoreContext) {
 	/**
 	 * 최신 초안을 현재 공개본으로 원자적으로 반영한다(§5.2, §9.2).
 	 * 발행일(`published_at`)은 처음 발행한 시각이다. 이미 값이 있으면(다시 발행, 이관한 글) 바꾸지 않는다.
+	 * `resetPublishedAt`이면 지금으로 바꾼다(바뀐 것이 없는 다시 발행이어도).
 	 */
 	const publishWithinTransaction = async (client: PoolClient, id: string, options: PublishOptions): Promise<Entry> => {
 		const locked = await lockEntryForUpdate(client, qSchema, id, options.expectedVersion);
@@ -183,8 +186,8 @@ export function createPublishing(ctx: StoreContext) {
 		if (!isRepublish) {
 			await client.query(
 				`UPDATE "${qSchema}".entries SET version = $1, status = 'published',
-				 published_at = COALESCE(published_at, $2) WHERE id = $3`,
-				[locked.version + 1, now, id],
+				 published_at = CASE WHEN $4 THEN $2 ELSE COALESCE(published_at, $2) END WHERE id = $3`,
+				[locked.version + 1, now, id, Boolean(options.resetPublishedAt)],
 			);
 			await writeBody(client, qSchema, id, "published", {
 				metadata: working.metadata,
@@ -219,6 +222,11 @@ export function createPublishing(ctx: StoreContext) {
 					throw new CmsError("Slug conflict", "slug_conflict");
 				}
 			}
+		} else if (options.resetPublishedAt) {
+			await client.query(
+				`UPDATE "${qSchema}".entries SET version = $1, status = 'published', published_at = $2 WHERE id = $3`,
+				[locked.version + 1, now, id],
+			);
 		} else {
 			await client.query(`UPDATE "${qSchema}".entries SET status = 'published' WHERE id = $1`, [id]);
 		}

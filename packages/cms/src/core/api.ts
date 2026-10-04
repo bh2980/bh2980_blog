@@ -117,8 +117,11 @@ export const patchEntryBodySchema = z.object({
 });
 export type PatchEntryBody = z.infer<typeof patchEntryBodySchema>;
 
-/** 버전만 받는 상태 전환(발행·보관·보관 해제·휴지통·복원). 발행일은 초안 메타데이터의 `publishedAt`이다. */
+/** 버전만 받는 상태 전환(보관·보관 해제·휴지통·복원). */
 export const versionBodySchema = z.object({ expectedVersion: expectedVersionSchema });
+
+/** 발행. `resetPublishedAt`이면 이미 발행한 글의 발행일을 지금으로 바꾼다. */
+export const publishBodySchema = versionBodySchema.extend({ resetPublishedAt: z.boolean().optional() });
 
 export const scheduleBodySchema = z.object({
 	expectedVersion: expectedVersionSchema,

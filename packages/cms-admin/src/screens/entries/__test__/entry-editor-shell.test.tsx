@@ -274,6 +274,31 @@ describe("entry editor shell", () => {
 		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({ expectedVersion: 4 });
 	});
 
+	it("republishes with today's date only from the publish menu of an already published entry", async () => {
+		const published = { ...entry, status: "published", publishedAt: "2024-01-01T00:00:00.000Z" };
+		serve((input) => {
+			if (input.endsWith("/publish")) return json({ ...published, version: 5, warnings: [] });
+		}, published);
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: "오늘 날짜로 다시 발행" }));
+
+		await waitFor(() => expect(methodCalls("POST", "/publish")).toHaveLength(1));
+		expect(JSON.parse(String(methodCalls("POST", "/publish")[0]?.[1]?.body))).toEqual({
+			expectedVersion: 4,
+			resetPublishedAt: true,
+		});
+	});
+
+	it("does not offer today's date before the first publish", async () => {
+		renderEdit();
+		await editorTitle();
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
+		await screen.findByRole("menuitem", { name: "발행 예약" });
+		expect(screen.queryByRole("menuitem", { name: "오늘 날짜로 다시 발행" })).toBeNull();
+	});
+
 	it("offers a same-version browser backup and deletes it when the server copy is kept", async () => {
 		const server = formFromEntry(entry as never);
 		getLocalBackup.mockResolvedValue({
@@ -607,7 +632,9 @@ describe("entry editor shell", () => {
 		expect(
 			within(screen.getByRole("toolbar", { name: "서식 도구" })).getByRole("button", { name: "MDX 원문" }),
 		).toBeTruthy();
-		expect(within(toolbar).getByRole("button", { name: "발행 예약" })).toBeTruthy();
+		fireEvent.click(within(toolbar).getByRole("button", { name: "발행 방식" }));
+		expect(screen.getByRole("menuitem", { name: "발행 예약" })).toBeTruthy();
+		fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
 		expect(within(toolbar).getByRole("link", { name: "미리보기" })).toBeTruthy();
 		fireEvent.click(within(toolbar).getByRole("button", { name: "더보기" }));
 		expect(screen.getByRole("menuitem", { name: "복제" })).toBeTruthy();
@@ -747,7 +774,8 @@ describe("발행 예약", () => {
 	};
 	const openSchedule = async () => {
 		await editorTitle();
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 예약" }));
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: "발행 예약" }));
 		return screen.findByRole("dialog", { name: "발행 예약" });
 	};
 

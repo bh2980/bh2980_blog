@@ -22,6 +22,8 @@ import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import {
 	Archive,
 	CalendarClock,
+	CalendarSync,
+	ChevronDown,
 	ChevronLeft,
 	Copy,
 	Eye,
@@ -566,7 +568,7 @@ export function EntryEditorShell({
 		toast.error(`저장하지 못해 미리보기를 열지 않았습니다. ${autosave.getLastError() ?? ""}`.trim());
 	};
 
-	const handlePublish = async () => {
+	const handlePublish = async ({ resetPublishedAt = false }: { resetPublishedAt?: boolean } = {}) => {
 		if (isSubmitting || isReadOnly) return;
 		setPublishIssues([]);
 		// §5.6: 본문에서 채우는 필드(`fillFromBody`)가 비었으면 본문에서 만들어 보여 준다. 만들 글이 없으면 직접 입력해야 한다.
@@ -589,7 +591,7 @@ export function EntryEditorShell({
 			if (!id) return;
 			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
 				method: "POST",
-				json: { expectedVersion: autosave.getVersion() },
+				json: { expectedVersion: autosave.getVersion(), ...(resetPublishedAt ? { resetPublishedAt } : {}) },
 				fallback: "발행하지 못했습니다.",
 			});
 			autosave.setVersion(published.version);
@@ -934,17 +936,6 @@ export function EntryEditorShell({
 							onClick={() => void handlePreview(previewHref)}
 						/>
 					)}
-					{!isReadOnly && entry?.status !== "archived" && (
-						<ToolbarAction
-							label="발행 예약"
-							icon={CalendarClock}
-							disabled={isSubmitting}
-							onClick={() => {
-								setScheduleError(null);
-								setScheduleOpen(true);
-							}}
-						/>
-					)}
 					{/* 하나만 바꾸는 전환(발행·보관 해제·복원·예약 해제)은 묻지 않고 바로 한다(§5). */}
 					{scheduleLocked ? (
 						<Button
@@ -977,17 +968,51 @@ export function EntryEditorShell({
 							{busy === "status" ? "보관 해제 중…" : "보관 해제"}
 						</Button>
 					) : (
-						<Button
-							id="cms-publish"
-							type="button"
-							size="sm"
-							className="ml-1"
-							disabled={isSubmitting}
-							onClick={() => void handlePublish()}
-						>
-							{busy === "publish" ? "발행 중…" : "발행"}
-						</Button>
+						// 발행과 발행 예약은 한 단추로 묶는다. 화살표 메뉴에 예약이 있다.
+						<div className="ml-1 flex items-center">
+							<Button
+								id="cms-publish"
+								type="button"
+								size="sm"
+								className="rounded-r-none"
+								disabled={isSubmitting}
+								onClick={() => void handlePublish()}
+							>
+								{busy === "publish" ? "발행 중…" : "발행"}
+							</Button>
+							<DropdownMenu>
+								<IconButton
+									label="발행 방식"
+									side="bottom"
+									variant="default"
+									disabled={isSubmitting}
+									className="w-7 rounded-l-none border-primary-foreground/25 border-l"
+									trigger={(button) => <DropdownMenuTrigger render={button} />}
+								>
+									<ChevronDown aria-hidden className="size-4" />
+								</IconButton>
+								<DropdownMenuContent align="end" className="w-48">
+									<DropdownMenuItem
+										onClick={() => {
+											setScheduleError(null);
+											setScheduleOpen(true);
+										}}
+									>
+										<CalendarClock aria-hidden />
+										발행 예약
+									</DropdownMenuItem>
+									{/* 처음 발행한 날을 그대로 두는 것이 기본이다. 고친 글을 새 글처럼 올릴 때만 고른다. */}
+									{entry?.publishedAt && (
+										<DropdownMenuItem onClick={() => void handlePublish({ resetPublishedAt: true })}>
+											<CalendarSync aria-hidden />
+											오늘 날짜로 다시 발행
+										</DropdownMenuItem>
+									)}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
 					)}
+					<span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
 					<IconButton
 						label="속성"
 						side="bottom"
