@@ -141,6 +141,33 @@ export interface CmsConfig<
 }
 
 const ROLE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/;
+
+/**
+ * 두 공개 주소 규칙(`/posts/:slug` 꼴)이 같은 주소를 만들 수 있는가. 같으면 본문 링크가 어느 컬렉션을 가리키는지 정할 수 없다.
+ * slug는 `/` 없는 한 마디 안에 있으므로 마디 수가 같고 마디마다 맞을 수 있으면 겹친다:
+ * 글자 마디끼리는 같아야 하고, slug 마디(`앞:slug뒤`)는 글자 마디가 그 앞뒤로 시작·끝나면(slug는 한 글자 이상),
+ * slug 마디끼리는 앞부분 하나가 다른 하나로 시작하고 뒷부분 하나가 다른 하나로 끝나면 맞을 수 있다.
+ */
+export function pathsOverlap(a: string, b: string): boolean {
+	const segments = (path: string) => path.replace(/\/+$/, "").split("/");
+	const left = segments(a);
+	const right = segments(b);
+	if (left.length !== right.length) return false;
+	return left.every((x, index) => {
+		const y = right[index] ?? "";
+		const xs = x.split(":slug");
+		const ys = y.split(":slug");
+		if (xs.length === 1 && ys.length === 1) return x === y;
+		if (xs.length === 1 || ys.length === 1) {
+			const literal = xs.length === 1 ? x : y;
+			const [prefix = "", suffix = ""] = xs.length === 1 ? ys : xs;
+			return literal.length > prefix.length + suffix.length && literal.startsWith(prefix) && literal.endsWith(suffix);
+		}
+		const [xp = "", xsuf = ""] = xs;
+		const [yp = "", ysuf = ""] = ys;
+		return (xp.startsWith(yp) || yp.startsWith(xp)) && (xsuf.endsWith(ysuf) || ysuf.endsWith(xsuf));
+	});
+}
 const checkTab = (at: string, tab: string | undefined) => {
 	if (tab !== undefined && (!tab.trim() || tab.length > 20)) throw new Error(`${at}.tab must be 1-20 characters`);
 };
@@ -309,8 +336,13 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			if (!Object.values(schema.fields).some((field) => field.kind === "slug")) {
 				throw new Error(`cms.config: ${collection}.path needs a slug field`);
 			}
-			const other = paths.get(path);
-			if (other) throw new Error(`cms.config: ${collection}.path is the same as ${other}.path`);
+			for (const [otherPath, other] of paths) {
+				if (pathsOverlap(path, otherPath)) {
+					throw new Error(
+						`cms.config: ${collection}.path "${path}" can make the same URL as ${other}.path "${otherPath}"`,
+					);
+				}
+			}
 			paths.set(path, collection);
 		}
 		for (const { name, field } of valueFieldsOf(schema)) {

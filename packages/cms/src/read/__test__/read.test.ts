@@ -14,8 +14,10 @@ import {
 	dropIsolatedTestPool,
 } from "../../adapters/postgres/__test__/test-database";
 import { type ContentStore, createContentStore, migrateContentStore } from "../../adapters/postgres/content-store";
+import { COLLECTIONS, type Collection, isItemCollection } from "../../core/collections";
 import { contentPath } from "../../core/links";
 import { localizePath } from "../../core/locales";
+import { recordLocalizedFields } from "../../schema/derive";
 
 const state = vi.hoisted(() => ({ store: null as unknown, admin: true }));
 
@@ -114,6 +116,45 @@ describe("공개 화면 읽기 @bh2980/cms/read", () => {
 			).rejects.toMatchObject({ code: "invalid_input" });
 		}
 	});
+
+	/** 이름을 언어별로 두는 항목 컬렉션(주제·분류 등). */
+	const localizedItemCollection = COLLECTIONS.find(
+		(name) => isItemCollection(name) && recordLocalizedFields(name).includes("title"),
+	);
+
+	it.skipIf(!localizedItemCollection || !secondLocale)(
+		"항목 컬렉션을 제목순으로 보면 그 언어의 이름으로 정렬한다",
+		async () => {
+			const collection = localizedItemCollection as Collection;
+			const language = secondLocale as string;
+			const item = async (slug: string, title: string, translated: string) => {
+				const draft = await store.createEntryWithReferences({
+					snapshot: {
+						collection,
+						slug,
+						metadata: { title, translations: { [language]: { title: translated } } },
+						mdx: "",
+						schemaVersion: 1,
+						contentHash: `hash-${slug}`,
+						references: [],
+						issues: [],
+						imageSources: [],
+					} as never,
+					references: [],
+				});
+				return store.publishEntry({ id: draft.id, expectedVersion: draft.version });
+			};
+			const first = await item("sort-item-a", "AAA sort", "ZZZ sort");
+			const second = await item("sort-item-b", "BBB sort", "YYY sort");
+			const order = async (locale?: string) =>
+				(await listEntries({ collection, locale, sort: "title", order: "asc", pageSize: 500 })).items
+					.map((entry) => entry.id)
+					.filter((id) => id === first.id || id === second.id);
+
+			expect(await order()).toEqual([first.id, second.id]);
+			expect(await order(language)).toEqual([second.id, first.id]);
+		},
+	);
 
 	it("글 하나: 관계를 공개 대상의 제목·주소로 풀고, 주소가 바뀌면 옛 주소는 이동을 알린다", async () => {
 		const target = relation ? await relationTarget(relation.to) : undefined;

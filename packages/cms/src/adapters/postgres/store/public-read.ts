@@ -1,6 +1,11 @@
 import { isCollection } from "../../../core/collections";
 import { DEFAULT_LOCALE } from "../../../core/locales";
-import { mergeTranslationMetadata, storedField } from "../../../schema/derive";
+import {
+	mergeTranslationMetadata,
+	RECORD_TRANSLATIONS_KEY,
+	recordLocalizedFields,
+	storedField,
+} from "../../../schema/derive";
 import { PUBLIC_COLLECTIONS } from "./constants";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
@@ -70,6 +75,11 @@ export interface PublishedPageParams {
 	/** 관계 필드 이름 → 고른 항목 ID. 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다. */
 	readonly where?: Readonly<Record<string, string | readonly string[]>>;
 	readonly sort?: PublishedSort;
+	/**
+	 * 제목 정렬에 쓸 화면 언어. 항목 컬렉션은 기본 언어 레코드 하나에 언어별 이름(`translations`)을 두므로 그 언어의 이름으로
+	 * 정렬한다(없으면 기본 이름). 없으면 `locale`이다.
+	 */
+	readonly titleLocale?: string;
 	readonly order?: "asc" | "desc";
 	/** 1부터. */
 	readonly page?: number;
@@ -226,11 +236,22 @@ export function createPublicReadOps(ctx: StoreContext) {
 				(await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count ${from}`, values)).rows[0]?.count ?? 0,
 			);
 			const mdxExpr = params.includeBody === true ? "b.mdx" : "''::text";
+			// 개수 질의에 쓰지 않는 값은 따로 붙인다(쓰지 않는 자리표시는 Postgres가 형식을 몰라 오류다).
+			const rowValues = [...values];
+			let orderBy = SORT_COLUMNS[sort];
+			if (
+				sort === "title" &&
+				isCollection(params.collection) &&
+				recordLocalizedFields(params.collection).includes("title")
+			) {
+				rowValues.push(params.titleLocale ?? params.locale ?? DEFAULT_LOCALE);
+				orderBy = `COALESCE(NULLIF(btrim(b.metadata->'${RECORD_TRANSLATIONS_KEY}'->$${rowValues.length}::text->>'title'), ''), b.metadata->>'title')`;
+			}
 			const rows = await pool.query<PublishedRow>(
 				`SELECT ${PUBLISHED_COLUMNS(mdxExpr)} ${from}
-				 ORDER BY ${SORT_COLUMNS[sort]} ${order} NULLS LAST, e.id ASC
+				 ORDER BY ${orderBy} ${order} NULLS LAST, e.id ASC
 				 LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
-				values,
+				rowValues,
 			);
 			return { items: rows.rows.map(mapPublishedRow), total, page, pageSize };
 		},

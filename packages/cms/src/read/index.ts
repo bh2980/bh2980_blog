@@ -218,6 +218,8 @@ export async function listEntries<C extends Collection>(params: {
 		locale,
 		where: params.where,
 		sort: params.sort,
+		// 항목 컬렉션의 제목 정렬은 보이는 이름(이 언어의 번역 이름)으로 한다.
+		titleLocale: params.locale ?? locale,
 		order: params.order,
 		page: params.page,
 		pageSize: params.pageSize,

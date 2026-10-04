@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defineCollection, defineConfig, definePlugin, fields } from "../..";
+import { pathsOverlap } from "../define";
 
 const title = fields.text({ label: "Title" });
 const slug = fields.slug({ label: "Slug", from: "title" });
@@ -39,6 +40,36 @@ describe("defineConfig", () => {
 		expect(() => defineCollection({ label: "Both", kind: "item", workflow: "publish", fields } as never)).toThrow(
 			/kind "item" and workflow "publish"/,
 		);
+	});
+
+	it("rejects collection paths that can make the same URL", () => {
+		expect(pathsOverlap("/posts/:slug", "/posts/:slug/")).toBe(true);
+		expect(pathsOverlap("/posts/:slug", "/posts/archive-:slug")).toBe(true);
+		expect(pathsOverlap("/posts/:slug", "/posts/archive")).toBe(true);
+		expect(pathsOverlap("/:slug", "/about")).toBe(true);
+		expect(pathsOverlap("/a-:slug", "/a-b-:slug.html")).toBe(true);
+		expect(pathsOverlap("/posts/:slug", "/memos/:slug")).toBe(false);
+		expect(pathsOverlap("/posts/:slug", "/posts/:slug/edit")).toBe(false);
+		expect(pathsOverlap("/p-:slug", "/q-:slug")).toBe(false);
+		expect(pathsOverlap("/:slug.html", "/:slug.json")).toBe(false);
+		expect(pathsOverlap("/posts/:slug", "/posts/")).toBe(false);
+
+		const page = (path: `/${string}:slug${string}`) =>
+			defineCollection({ label: "Page", kind: "document", path, fields: { title, slug }, list: { columns: [] } });
+		expect(() =>
+			defineConfig({
+				collections: { post: page("/posts/:slug"), archive: page("/posts/archive-:slug") },
+				locales,
+				defaultLocale: "en",
+			}),
+		).toThrow(/archive.path "\/posts\/archive-:slug" can make the same URL as post.path/);
+		expect(() =>
+			defineConfig({
+				collections: { post: page("/posts/:slug"), memo: page("/memos/:slug") },
+				locales,
+				defaultLocale: "en",
+			}),
+		).not.toThrow();
 	});
 
 	it("rejects a field named like a reserved metadata key (`translations`)", () => {

@@ -1,9 +1,9 @@
-# 자동 검사(M12). push·PR마다 lint·타입 검사·패키지 빌드, 테스트(Postgres 서비스), 예시 앱 묶음 검사를 돈다.
+# 자동 검사(M12). push마다 lint·타입 검사·패키지 빌드, 테스트(Postgres 서비스), 예시 앱 묶음 검사를 돈다.
 name: CI
 
+# push 때만 돈다(PR 화면에는 그 커밋의 결과가 보인다). PR까지 걸면 같은 검사가 두 번 돈다.
 on:
   push:
-  pull_request:
 
 concurrency:
   group: ci-${{ github.ref }}
