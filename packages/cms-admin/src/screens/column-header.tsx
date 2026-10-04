@@ -86,7 +86,6 @@ function StatusFilter({ state, onChange }: { state: ListState; onChange: (patch:
 			))}
 			<Separator className="my-1" />
 			<CheckRow label="수정 중" checked={state.hasChanges} onChange={(on) => onChange({ hasChanges: on })} />
-			<CheckRow label="예약됨" checked={state.scheduled} onChange={(on) => onChange({ scheduled: on })} />
 		</fieldset>
 	);
 }
@@ -192,7 +191,7 @@ export function clearPatchFor(filter: ColumnFilter, state: ListState): Partial<L
 		case "text":
 			return { [filter.key]: "" };
 		case "status":
-			return { statuses: [], hasChanges: false, scheduled: false };
+			return { statuses: [], hasChanges: false };
 		case "relation":
 			return clearRelation(state, filter.field);
 		case "locale":

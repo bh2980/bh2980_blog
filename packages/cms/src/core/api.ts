@@ -81,7 +81,6 @@ export const listEntriesQuerySchema = z.object({
 	includeDescendants: booleanQuery,
 	relation: relationFiltersSchema,
 	hasChanges: booleanQuery,
-	scheduled: booleanQuery,
 	createdFrom: dateQuery,
 	createdTo: dateQuery,
 	updatedFrom: dateQuery,
@@ -122,11 +121,6 @@ export const versionBodySchema = z.object({ expectedVersion: expectedVersionSche
 
 /** 발행. `resetPublishedAt`이면 이미 발행한 글의 발행일을 지금으로 바꾼다. */
 export const publishBodySchema = versionBodySchema.extend({ resetPublishedAt: z.boolean().optional() });
-
-export const scheduleBodySchema = z.object({
-	expectedVersion: expectedVersionSchema,
-	scheduledAt: z.iso.datetime({ offset: true }),
-});
 
 export const BULK_OPS = [
 	"relation.add",

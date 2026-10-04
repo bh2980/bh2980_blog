@@ -153,7 +153,7 @@ export function isColumnFiltered(state: ListState, filter: ColumnFilter): boolea
 		case "text":
 			return state[filter.key].trim() !== "";
 		case "status":
-			return state.statuses.length > 0 || state.hasChanges || state.scheduled;
+			return state.statuses.length > 0 || state.hasChanges;
 		case "relation":
 			return (state.relations[filter.field]?.length ?? 0) > 0;
 		case "locale":

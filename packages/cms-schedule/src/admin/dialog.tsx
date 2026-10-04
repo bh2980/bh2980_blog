@@ -1,12 +1,19 @@
 "use client";
 
 import { formatDateTimeInput } from "@bh2980/cms/client";
+import { Button } from "@bh2980/cms-admin/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@bh2980/cms-admin/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@bh2980/cms-admin/ui/field";
+import { Input } from "@bh2980/cms-admin/ui/input";
 import { useState } from "react";
-import { Button } from "../../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
-import { Field, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
-import type { EntryData } from "./entry-form";
+import type { EntrySchedule } from "../types";
 
 /** 설정 시간대(`timeZone`)의 시각 `2026-10-01 09:00`. */
 export const formatScheduleTime = (value: string | null | undefined) =>
@@ -90,7 +97,7 @@ export function ScheduleDialog({
 }
 
 /** 대기 중인 예약(편집 잠김)이나 마지막 예약 실패를 편집 화면 위에 알린다. */
-export function ScheduleNotice({ schedule }: { schedule: EntryData["schedule"] }) {
+export function ScheduleNotice({ schedule }: { schedule: EntrySchedule<string> | null }) {
 	if (schedule?.pending) {
 		return (
 			<section aria-label="예약" className="flex flex-wrap items-center gap-2 border-b bg-primary/10 px-4 py-2 text-sm">

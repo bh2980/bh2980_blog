@@ -1,10 +1,60 @@
 import { randomUUID } from "node:crypto";
-import { isItemCollection } from "../../../core/collections";
-import { type StoreContext, withTransaction } from "./context";
-import { CmsError, isTransactionConflict, isUniqueViolation, mapEntryWriteError } from "./errors";
-import type { Publishing } from "./publish";
-import { lockEntryForUpdate, mapScheduleRow, SCHEDULE_COLUMNS, type ScheduleRow } from "./rows";
-import type { EntrySchedule } from "./types";
+import type { EntryHooks, PluginDatabase } from "@bh2980/cms";
+import { isItemCollection } from "@bh2980/cms/client";
+import {
+	CmsError,
+	type getCmsContentStore,
+	isTransactionConflict,
+	isUniqueViolation,
+	mapEntryWriteError,
+	withTransaction,
+} from "@bh2980/cms/plugin/server";
+import type { ScheduleSummary } from "./types";
+
+/** 예약 표. 예전 본체 표와 같은 이름·모양이라 이미 있는 예약을 그대로 이어받는다. */
+export async function migrateSchedules({ pool, schema }: PluginDatabase): Promise<void> {
+	await pool.query(`
+		CREATE TABLE IF NOT EXISTS "${schema}".schedules (
+			id UUID PRIMARY KEY,
+			entry_id UUID NOT NULL REFERENCES "${schema}".entries(id) ON DELETE CASCADE,
+			scheduled_at TIMESTAMPTZ NOT NULL,
+			status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled', 'failed')),
+			created_at TIMESTAMPTZ NOT NULL,
+			completed_at TIMESTAMPTZ,
+			failure_code TEXT,
+			failure_detail TEXT
+		);
+		CREATE INDEX IF NOT EXISTS schedules_due_idx ON "${schema}".schedules(scheduled_at) WHERE status = 'pending';
+		CREATE UNIQUE INDEX IF NOT EXISTS schedules_active_entry_idx ON "${schema}".schedules(entry_id) WHERE status = 'pending';
+	`);
+}
+
+/**
+ * 본체 글 갈고리. 대기 중인 예약이 있는 글을 잠그고(편집·일괄 작업을 막는다), 글이 발행·보관·휴지통으로 가면
+ * 대기 중인 예약을 취소한다(남겨 두면 잠금이 풀리지 않는다). 예약 실행은 발행 전에 예약을 끝낸 것으로 바꿔 두어 취소되지 않는다.
+ */
+export const scheduleEntryHooks: EntryHooks = {
+	locked: async ({ client, schema }, entryIds) =>
+		(
+			await client.query<{ entry_id: string }>(
+				`SELECT entry_id FROM "${schema}".schedules WHERE entry_id = ANY($1::uuid[]) AND status = 'pending'`,
+				[entryIds],
+			)
+		).rows.map((row) => row.entry_id),
+	afterStatusChange: async ({ client, schema }, change) => {
+		await client.query(
+			`UPDATE "${schema}".schedules SET status = 'cancelled', completed_at = NOW(), failure_code = $2
+			 WHERE entry_id = ANY($1::uuid[]) AND status = 'pending'`,
+			[change.entryIds, change.status === "published" ? "superseded" : "entry_status_changed"],
+		);
+	},
+};
+
+/** 본체 저장소의 글 작업(같은 트랜잭션 안에서 잠그기·발행 검증·발행). */
+type EntryOps = Pick<
+	ReturnType<typeof getCmsContentStore>,
+	"lockEntryInTransaction" | "validateForPublishInTransaction" | "publishInTransaction"
+>;
 
 /** 실행 단계에서 난 실패만 예약에 기록한다. 이르거나 이미 끝난 예약 호출은 예약 상태를 바꾸지 않는다. */
 class ScheduleExecutionFailure extends Error {
@@ -25,12 +75,30 @@ const failureOf = (err: unknown): { code: string; detail: string } => {
 	};
 };
 
-/**
- * §5.4 예약. CMS는 실행기를 돌리지 않는다. 외부 실행기가 도래한 예약을 조회하고 예약 ID로 실행한다.
- */
-export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
-	const { pool, qSchema } = ctx;
+const SCHEDULE_COLUMNS = "id, status, scheduled_at, created_at, completed_at, failure_code, failure_detail";
 
+interface ScheduleRow {
+	id: string;
+	status: ScheduleSummary["status"];
+	scheduled_at: Date;
+	created_at: Date;
+	completed_at: Date | null;
+	failure_code: string | null;
+	failure_detail: string | null;
+}
+
+const mapScheduleRow = (row: ScheduleRow): ScheduleSummary => ({
+	id: row.id,
+	status: row.status,
+	scheduledAt: row.scheduled_at,
+	createdAt: row.created_at,
+	completedAt: row.completed_at,
+	failureCode: row.failure_code,
+	failureDetail: row.failure_detail,
+});
+
+/** 예약 저장소(§5.4). CMS는 실행기를 돌리지 않는다. 외부 실행기가 도래한 예약을 조회하고 예약 ID로 실행한다. */
+export function createScheduleStore({ pool, schema }: PluginDatabase, entries: EntryOps) {
 	return {
 		/** 저장된 초안을 발행 검증한 뒤 미래 시각의 새 예약을 만든다. 같은 글의 대기 예약은 하나뿐이다. */
 		createSchedule: async (params: {
@@ -46,25 +114,25 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 					if (!Number.isFinite(params.scheduledAt.getTime()) || params.scheduledAt.getTime() <= now.getTime()) {
 						throw new CmsError("scheduledAt must be in the future", "invalid_input");
 					}
-					const locked = await lockEntryForUpdate(client, qSchema, params.entryId, params.expectedVersion);
+					const locked = await entries.lockEntryInTransaction(client, params.entryId, params.expectedVersion);
 					if (isItemCollection(locked.collection)) {
 						throw new CmsError("Record collections are saved immediately and cannot be scheduled", "invalid_input");
 					}
 					if (locked.status !== "draft" && locked.status !== "published") {
 						throw new CmsError(`A ${locked.status} entry cannot be scheduled`, "invalid_status");
 					}
-					await publishing.validateStoredWorkingForPublish(client, params.entryId);
+					await entries.validateForPublishInTransaction(client, params.entryId);
 
 					const id = randomUUID();
 					await client.query(
-						`INSERT INTO "${qSchema}".schedules (id, entry_id, scheduled_at, status, created_at)
+						`INSERT INTO "${schema}".schedules (id, entry_id, scheduled_at, status, created_at)
 						 VALUES ($1, $2, $3, 'pending', $4)`,
 						[id, params.entryId, params.scheduledAt, now],
 					);
 					return { id, status: "pending", scheduledAt: params.scheduledAt };
 				},
 				{
-					// M7-TW-1: 같은 항목에 pending 예약은 하나만 존재한다(schedules_active_entry_idx).
+					// 같은 글에 대기 예약은 하나만 둔다(schedules_active_entry_idx).
 					mapError: (err) =>
 						isUniqueViolation(err, "schedules_active_entry_idx")
 							? new CmsError("Entry already has a pending schedule", "conflict")
@@ -75,7 +143,7 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 		/** 예약 해제. 대기 중인 예약이 없으면 `false`다. */
 		cancelSchedule: async (params: { scheduleId: string; entryId: string }): Promise<boolean> => {
 			const res = await pool.query(
-				`UPDATE "${qSchema}".schedules SET status = 'cancelled', completed_at = NOW()
+				`UPDATE "${schema}".schedules SET status = 'cancelled', completed_at = NOW()
 				 WHERE id = $1 AND entry_id = $2 AND status = 'pending'`,
 				[params.scheduleId, params.entryId],
 			);
@@ -83,11 +151,13 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 		},
 
 		/** 편집 화면의 예약 표시: 대기 중인 예약과 마지막으로 끝난 예약(성공·실패·취소). */
-		getEntrySchedule: async (params: { entryId: string }): Promise<EntrySchedule> => {
+		getEntrySchedule: async (params: {
+			entryId: string;
+		}): Promise<{ pending: ScheduleSummary | null; last: ScheduleSummary | null }> => {
 			const res = await pool.query<ScheduleRow>(
-				`(SELECT ${SCHEDULE_COLUMNS} FROM "${qSchema}".schedules WHERE entry_id = $1 AND status = 'pending' LIMIT 1)
+				`(SELECT ${SCHEDULE_COLUMNS} FROM "${schema}".schedules WHERE entry_id = $1 AND status = 'pending' LIMIT 1)
 				 UNION ALL
-				 (SELECT ${SCHEDULE_COLUMNS} FROM "${qSchema}".schedules WHERE entry_id = $1 AND status <> 'pending'
+				 (SELECT ${SCHEDULE_COLUMNS} FROM "${schema}".schedules WHERE entry_id = $1 AND status <> 'pending'
 				  ORDER BY COALESCE(completed_at, created_at) DESC, id DESC LIMIT 1)`,
 				[params.entryId],
 			);
@@ -100,7 +170,7 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 
 		getDueSchedules: async (): Promise<Array<{ id: string; entryId: string; scheduledAt: Date }>> => {
 			const res = await pool.query<{ id: string; entry_id: string; scheduled_at: Date }>(
-				`SELECT id, entry_id, scheduled_at FROM "${qSchema}".schedules
+				`SELECT id, entry_id, scheduled_at FROM "${schema}".schedules
 				 WHERE status = 'pending' AND scheduled_at <= $1 ORDER BY scheduled_at ASC`,
 				[new Date()],
 			);
@@ -115,7 +185,7 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 			try {
 				return await withTransaction(pool, async (client) => {
 					const previewRes = await client.query<{ entry_id: string; status: string; scheduled_at: Date }>(
-						`SELECT entry_id, status, scheduled_at FROM "${qSchema}".schedules WHERE id = $1`,
+						`SELECT entry_id, status, scheduled_at FROM "${schema}".schedules WHERE id = $1`,
 						[params.scheduleId],
 					);
 					const preview = previewRes.rows[0];
@@ -126,10 +196,10 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 					}
 					if (preview.scheduled_at.getTime() > Date.now()) throw new CmsError("Schedule is not due yet", "conflict");
 
-					// 예약 등록과 같은 순서(항목 → 예약)로 잠근 뒤 예약 행을 다시 확인한다.
-					const locked = await lockEntryForUpdate(client, qSchema, preview.entry_id);
+					// 예약 등록과 같은 순서(글 → 예약)로 잠근 뒤 예약 행을 다시 확인한다.
+					const locked = await entries.lockEntryInTransaction(client, preview.entry_id);
 					const schedRes = await client.query<{ entry_id: string; status: string; scheduled_at: Date }>(
-						`SELECT entry_id, status, scheduled_at FROM "${qSchema}".schedules WHERE id = $1 FOR UPDATE`,
+						`SELECT entry_id, status, scheduled_at FROM "${schema}".schedules WHERE id = $1 FOR UPDATE`,
 						[params.scheduleId],
 					);
 					const sched = schedRes.rows[0];
@@ -140,18 +210,17 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 					}
 					if (sched.scheduled_at.getTime() > Date.now()) throw new CmsError("Schedule is not due yet", "conflict");
 
+					// 발행보다 먼저 끝난 것으로 바꾼다. 발행 알림(글 갈고리)이 이 예약을 취소하지 않게 한다.
+					// 발행이 실패하면 트랜잭션이 되돌아가 대기로 남고, 아래에서 실패로 기록한다.
+					await client.query(`UPDATE "${schema}".schedules SET status = 'completed', completed_at = $1 WHERE id = $2`, [
+						new Date(),
+						params.scheduleId,
+					]);
 					try {
-						await publishing.publishWithinTransaction(client, sched.entry_id, {
-							expectedVersion: locked.version,
-							scheduleId: params.scheduleId,
-						});
+						await entries.publishInTransaction(client, sched.entry_id, { expectedVersion: locked.version });
 					} catch (err) {
 						throw new ScheduleExecutionFailure(err);
 					}
-					await client.query(
-						`UPDATE "${qSchema}".schedules SET status = 'completed', completed_at = $1 WHERE id = $2`,
-						[new Date(), params.scheduleId],
-					);
 					return { status: "completed" };
 				});
 			} catch (err) {
@@ -161,7 +230,7 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 				if (isTransactionConflict(err.cause)) throw cause;
 				const failure = failureOf(cause);
 				await pool.query(
-					`UPDATE "${qSchema}".schedules SET status = 'failed', completed_at = NOW(), failure_code = $2, failure_detail = $3
+					`UPDATE "${schema}".schedules SET status = 'failed', completed_at = NOW(), failure_code = $2, failure_detail = $3
 					 WHERE id = $1 AND status = 'pending'`,
 					[params.scheduleId, failure.code, failure.detail],
 				);
@@ -170,3 +239,5 @@ export function createScheduleOps(ctx: StoreContext, publishing: Publishing) {
 		},
 	};
 }
+
+export type ScheduleStore = ReturnType<typeof createScheduleStore>;

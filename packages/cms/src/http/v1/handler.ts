@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { z } from "zod";
-import { type AuthContext, AuthError, authGateway } from "../../adapters/auth";
+import { type AuthContext, authGateway } from "../../adapters/auth";
 import { HttpError, handleApiError } from "./error-handler";
 import { validateSameOrigin } from "./security";
 
@@ -27,28 +27,6 @@ export function adminRoute<P extends Params = Params>(
 			const auth = await authGateway.verifyAdmin();
 			const params = (await context?.params) ?? ({} as P);
 			return await handler({ request, params, auth });
-		} catch (error) {
-			return handleApiError(error);
-		}
-	};
-}
-
-/**
- * 외부 예약 실행기 전용 라우트. 관리자 세션 대신 `Authorization: Bearer <CMS_SCHEDULER_TOKEN>`만 받는다.
- * 토큰은 URL 쿼리나 브라우저 코드에 넣지 않는다(§10.2).
- */
-export function schedulerRoute<P extends Params = Params>(
-	handler: (input: { request: NextRequest; params: P }) => Promise<Response>,
-): (request: NextRequest, context?: HandlerContext<P>) => Promise<Response> {
-	return async (request, context) => {
-		try {
-			const header = request.headers.get("authorization");
-			const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
-			if (!authGateway.authorizeExecutor(token)) {
-				throw new AuthError("forbidden", "Invalid or missing CMS_SCHEDULER_TOKEN");
-			}
-			const params = (await context?.params) ?? ({} as P);
-			return await handler({ request, params });
 		} catch (error) {
 			return handleApiError(error);
 		}

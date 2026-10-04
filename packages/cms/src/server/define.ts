@@ -1,6 +1,6 @@
 import type { ContentStore } from "../adapters/postgres/content-store";
 import type { MediaStore } from "../adapters/r2/types";
-import type { PluginDatabase } from "../plugin/define";
+import type { NamedEntryHooks, PluginDatabase } from "../plugin/define";
 
 /**
  * 서버 설정(`cms.server.ts`) 규격. 저장소·미디어·로그인 연결과 비밀 값을 둔다. 서버에서만 읽는다.
@@ -12,7 +12,8 @@ import type { PluginDatabase } from "../plugin/define";
 /** 콘텐츠 저장소 연결. */
 export interface DatabaseAdapter {
 	readonly name: string;
-	createStore(): ContentStore;
+	/** 저장소를 만든다. `entryHooks`는 플러그인의 글 갈고리를 불러오는 함수다(본체가 넘긴다). */
+	createStore(options?: { readonly entryHooks?: () => Promise<readonly NamedEntryHooks[]> }): ContentStore;
 	/** 표를 만들거나 최신 모양으로 맞춘다(`cms:db:migrate`). 여러 번 실행해도 결과가 같다. */
 	migrate(): Promise<void>;
 	/** 플러그인이 자기 표를 만들고 읽을 연결(`CmsServerPlugin.migrate`·플러그인 API). */
@@ -98,8 +99,6 @@ export interface CmsServerConfig {
 	 * 없으면 AI 서비스 키를 저장할 수 없다.
 	 */
 	readonly secret?: string;
-	/** 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. 없으면 예약 실행 API를 막는다. */
-	readonly schedulerToken?: string;
 }
 
 /** 서버 설정을 정의한다. */

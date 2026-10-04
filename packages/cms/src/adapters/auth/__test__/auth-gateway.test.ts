@@ -4,7 +4,6 @@ import { AuthError, CmsAuthGateway, isAllowedAdminId, isDevAuthBypassEnabled } f
 import { githubAuth } from "../github";
 
 const ADMIN_ID = "12345678";
-const SCHEDULER_TOKEN = "secret-scheduler-token";
 
 /** 세션만 바꿔 끼우는 로그인 연결. 관리자 판정은 실제 `isAllowedAdminId`를 쓴다. */
 function fakeAuth(session: Awaited<ReturnType<CmsAuth["session"]>>, overrides: Partial<CmsAuth> = {}): CmsAuth {
@@ -21,11 +20,7 @@ function fakeAuth(session: Awaited<ReturnType<CmsAuth["session"]>>, overrides: P
 	};
 }
 
-const gatewayOf = (auth: CmsAuth, token: string | undefined = SCHEDULER_TOKEN) =>
-	new CmsAuthGateway(
-		() => auth,
-		() => token,
-	);
+const gatewayOf = (auth: CmsAuth) => new CmsAuthGateway(() => auth);
 
 async function expectAuthError(promise: Promise<unknown>, code: AuthError["code"]) {
 	await expect(promise).rejects.toThrow(AuthError);
@@ -95,24 +90,5 @@ describe("M2-BE-1 AuthGateway Contract", () => {
 		const result = await gatewayOf(auth).verifyAdmin();
 		expect(result).toEqual({ userId: ADMIN_ID, accountId: ADMIN_ID, isAdmin: true });
 		expect(auth.session).not.toHaveBeenCalled();
-	});
-
-	it("authorizeExecutor returns false when scheduler token is missing or incorrect", () => {
-		const gateway = gatewayOf(fakeAuth(null));
-		expect(gateway.authorizeExecutor()).toBe(false);
-		expect(gateway.authorizeExecutor("wrong-token")).toBe(false);
-		expect(gateway.authorizeExecutor(SCHEDULER_TOKEN)).toBe(true);
-
-		// M7-SEC-1: 길이 선검사 분기. `timingSafeEqual`는 길이가 다르면 throw 한다.
-		expect(gateway.authorizeExecutor(`${SCHEDULER_TOKEN}-longer`)).toBe(false);
-		expect(gateway.authorizeExecutor("short")).toBe(false);
-		expect(gateway.authorizeExecutor("secret-scheduler-tokeX")).toBe(false);
-		expect(gateway.authorizeExecutor(`  ${SCHEDULER_TOKEN}  `)).toBe(true);
-
-		const unset = new CmsAuthGateway(
-			() => fakeAuth(null),
-			() => undefined,
-		);
-		expect(unset.authorizeExecutor(SCHEDULER_TOKEN)).toBe(false);
 	});
 });

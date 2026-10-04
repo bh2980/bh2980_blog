@@ -16,8 +16,6 @@ declare namespace NodeJS {
 		CMS_ADMIN_GITHUB_ID: string;
 		/** 로컬 개발환경 한정 관리자 인증 우회. development 에서 "1"일 때만 유효. */
 		CMS_DEV_AUTH_BYPASS?: string;
-		/** 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. 없으면 예약 화면에 실행기 연결이 필요하다고 안내한다. */
-		CMS_SCHEDULER_TOKEN?: string;
 
 		CMS_R2_ACCOUNT_ID: string;
 		CMS_R2_ACCESS_KEY_ID: string;

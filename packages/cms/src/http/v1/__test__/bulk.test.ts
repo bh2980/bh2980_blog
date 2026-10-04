@@ -47,8 +47,8 @@ vi.mock("../../../container", () => ({
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);
 			return Promise.resolve({ version: 4, id: entryId });
 		}),
-		hasPendingSchedule: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
-			return Promise.resolve(entryId === SCHEDULED);
+		lockedBy: vi.fn().mockImplementation(({ entryId }: { entryId: string }) => {
+			return Promise.resolve(entryId === SCHEDULED ? "schedule" : null);
 		}),
 		archiveEntry: vi.fn().mockImplementation(({ id, expectedVersion }: { id: string; expectedVersion: number }) => {
 			if (expectedVersion !== 3) throw new CmsError("Conflict", "conflict", 9);

@@ -11,9 +11,9 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"lint": "pnpm exec biome check . --write",
-		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck && pnpm --filter @bh2980/cms-text-check typecheck && pnpm --filter @bh2980/cms-seo typecheck",
+		"typecheck": "pnpm exec tsc --noEmit && pnpm --filter @bh2980/cms typecheck && pnpm --filter @bh2980/cms-admin typecheck && pnpm --filter @bh2980/cms-blocks typecheck && pnpm --filter @bh2980/cms-ai typecheck && pnpm --filter @bh2980/cms-text-check typecheck && pnpm --filter @bh2980/cms-seo typecheck && pnpm --filter @bh2980/cms-schedule typecheck",
 		"prepare": "husky",
-		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-text-check build && pnpm --filter @bh2980/cms-seo build",
+		"build:packages": "pnpm --filter @bh2980/cms build && pnpm --filter @bh2980/cms-admin build && pnpm --filter @bh2980/cms-ai build && pnpm --filter @bh2980/cms-blocks build && pnpm --filter @bh2980/cms-text-check build && pnpm --filter @bh2980/cms-seo build && pnpm --filter @bh2980/cms-schedule build",
 		"example:pack": "pnpm build:packages && mkdir -p examples/other-site/vendor && for p in cms cms-admin cms-blocks cms-ai cms-text-check cms-seo; do pnpm --dir packages/$p pack --pack-destination ../../examples/other-site/vendor; done"
 	},
 	"dependencies": {

@@ -245,35 +245,30 @@ function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
 /** 상태를 아이콘 모양과 글자로 함께 보여 준다(색만으로 전달하지 않는다, §3.2). */
 function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: boolean }) {
 	const label = isRecord && item.status === "published" ? "활성" : describeEntryStatus(item);
-	const tone = item.scheduledAt
-		? "text-primary"
-		: item.status === "published"
+	const tone =
+		item.status === "published"
 			? item.hasUnpublishedChanges
 				? "text-amber-600 dark:text-amber-400"
 				: "text-emerald-600 dark:text-emerald-400"
 			: "text-muted-foreground";
-	const icon = item.scheduledAt ? (
-		<>
-			<circle cx="8" cy="8" r="5.5" />
-			<path d="M8 5.5V8l1.8 1.1" />
-		</>
-	) : item.status === "published" ? (
-		item.hasUnpublishedChanges ? (
+	const icon =
+		item.status === "published" ? (
+			item.hasUnpublishedChanges ? (
+				<>
+					<circle cx="8" cy="8" r="5.5" />
+					<path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none" />
+				</>
+			) : (
+				<circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="none" />
+			)
+		) : item.status === "archived" || item.status === "trashed" ? (
 			<>
 				<circle cx="8" cy="8" r="5.5" />
-				<path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none" />
+				<path d="M5 8h6" />
 			</>
 		) : (
-			<circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="none" />
-		)
-	) : item.status === "archived" || item.status === "trashed" ? (
-		<>
-			<circle cx="8" cy="8" r="5.5" />
-			<path d="M5 8h6" />
-		</>
-	) : (
-		<circle cx="8" cy="8" r="5.5" strokeDasharray="2.4 2.4" />
-	);
+			<circle cx="8" cy="8" r="5.5" strokeDasharray="2.4 2.4" />
+		);
 	return (
 		<span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-foreground/80">
 			<svg

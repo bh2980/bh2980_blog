@@ -94,20 +94,6 @@ export function createTransferOps(ctx: StoreContext) {
 					 FROM "${qSchema}".body_templates ORDER BY lower(name) ASC, id ASC`,
 					);
 
-					const schedulesRes = await client.query<{
-						id: string;
-						entry_id: string;
-						scheduled_at: Date;
-						status: string;
-						created_at: Date;
-						completed_at: Date | null;
-						failure_code: string | null;
-						failure_detail: string | null;
-					}>(
-						`SELECT id, entry_id, scheduled_at, status, created_at, completed_at, failure_code, failure_detail
-					 FROM "${qSchema}".schedules ORDER BY id ASC`,
-					);
-
 					const preferencesRes = await client.query<{ user_id: string; preferences: JsonObject; updated_at: Date }>(
 						`SELECT user_id, preferences, updated_at FROM "${qSchema}".user_preferences ORDER BY user_id ASC`,
 					);
@@ -171,16 +157,6 @@ export function createTransferOps(ctx: StoreContext) {
 						})),
 						media: mediaRes.rows.map(mapMediaRow),
 						templates: templatesRes.rows.map(mapTemplateRow),
-						schedules: schedulesRes.rows.map((row) => ({
-							id: row.id,
-							entryId: row.entry_id,
-							scheduledAt: row.scheduled_at,
-							status: row.status,
-							createdAt: row.created_at,
-							completedAt: row.completed_at,
-							failureCode: row.failure_code,
-							failureDetail: row.failure_detail,
-						})),
 						preferences: preferencesRes.rows.map((row) => ({
 							userId: row.user_id,
 							preferences: row.preferences,

@@ -2,6 +2,6 @@
 
 export * from "./adapters/postgres/__test__/seed";
 export * from "./adapters/postgres/__test__/test-database";
-export { migrateContentStore } from "./adapters/postgres/content-store";
+export { createContentStore, migrateContentStore } from "./adapters/postgres/content-store";
 export { createCmsRouteHandler, matchRoute } from "./http/router";
 export { readSamples } from "./mdx/__test__/fixtures/samples";

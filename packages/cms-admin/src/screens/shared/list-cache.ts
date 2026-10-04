@@ -44,7 +44,7 @@ export function applyOptimistic(
 			case "restore":
 				return null;
 			case "archive":
-				return hidesStatus("archived") ? null : { ...item, status: "archived", scheduledAt: null };
+				return hidesStatus("archived") ? null : { ...item, status: "archived" };
 			case "publish":
 				return hidesStatus("published") ? null : { ...item, status: "published", hasUnpublishedChanges: false };
 			case "folder.move": {

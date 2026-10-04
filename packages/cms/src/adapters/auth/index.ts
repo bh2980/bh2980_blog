@@ -1,5 +1,4 @@
 import { getCmsAuth } from "../../container";
-import { cmsServerConfig } from "../../server/resolved";
 import { type AuthGateway, CmsAuthGateway } from "./auth-gateway";
 
 /**
@@ -8,7 +7,7 @@ import { type AuthGateway, CmsAuthGateway } from "./auth-gateway";
  */
 export { type AuthContext, AuthError, type AuthGateway } from "./auth-gateway";
 
-export const authGateway: AuthGateway = new CmsAuthGateway(getCmsAuth, () => cmsServerConfig.schedulerToken);
+export const authGateway: AuthGateway = new CmsAuthGateway(getCmsAuth);
 
 /** 로그인 API 라우트 처리기. 로그인 경로를 기본(`/api/cms/auth`)과 다르게 둔 앱이 그 경로의 라우트 파일에서 내보낸다(예: `app/api/auth/[...nextauth]/route.ts`). */
 export const handlers = {

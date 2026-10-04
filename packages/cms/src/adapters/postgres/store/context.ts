@@ -1,8 +1,11 @@
 import type { Pool, PoolClient } from "pg";
+import type { NamedEntryHooks } from "../../../plugin/define";
 import type { Entry } from "./types";
 
 export type ContentStoreHooks = {
 	beforePublishCommit?: (entry: Entry, txClient: PoolClient) => Promise<void>;
+	/** 플러그인의 글 갈고리(잠금·상태 바뀜 알림). 처음 쓸 때 불러온다. */
+	entryHooks?: () => Promise<readonly NamedEntryHooks[]>;
 };
 
 /** 저장소 모듈이 공유하는 연결·스키마. SQL의 스키마 이름은 검증된 식별자만 쓴다. */

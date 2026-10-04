@@ -14,7 +14,6 @@ import type {
 	JsonValue,
 	MediaAssetRecord,
 	PublishedEntryRecord,
-	ScheduleSummary,
 } from "./types";
 
 /** 행 ↔ 도메인 객체 변환과 여러 모듈이 같이 쓰는 SQL 조각. */
@@ -215,28 +214,6 @@ export const mapTemplateRow = (row: TemplateRow): BodyTemplate => ({
 	version: row.version,
 	createdAt: row.created_at,
 	updatedAt: row.updated_at,
-});
-
-export const SCHEDULE_COLUMNS = "id, status, scheduled_at, created_at, completed_at, failure_code, failure_detail";
-
-export interface ScheduleRow {
-	id: string;
-	status: ScheduleSummary["status"];
-	scheduled_at: Date;
-	created_at: Date;
-	completed_at: Date | null;
-	failure_code: string | null;
-	failure_detail: string | null;
-}
-
-export const mapScheduleRow = (row: ScheduleRow): ScheduleSummary => ({
-	id: row.id,
-	status: row.status,
-	scheduledAt: row.scheduled_at,
-	createdAt: row.created_at,
-	completedAt: row.completed_at,
-	failureCode: row.failure_code,
-	failureDetail: row.failure_detail,
 });
 
 export function isReferencesEqual(a: readonly Reference[], b: readonly Reference[]): boolean {

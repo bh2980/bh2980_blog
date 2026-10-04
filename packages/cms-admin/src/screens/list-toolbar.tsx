@@ -28,11 +28,9 @@ function describe(filter: ColumnFilter, state: ListState, options: TaxonomyOptio
 		case "text":
 			return `"${state[filter.key].trim()}"`;
 		case "status":
-			return [
-				...state.statuses.map((status) => STATUS_LABELS[status]),
-				...(state.hasChanges ? ["수정 중"] : []),
-				...(state.scheduled ? ["예약됨"] : []),
-			].join(", ");
+			return [...state.statuses.map((status) => STATUS_LABELS[status]), ...(state.hasChanges ? ["수정 중"] : [])].join(
+				", ",
+			);
 		case "relation":
 			return (state.relations[filter.field] ?? []).map((id) => nameOf(options[filter.field] ?? [], id)).join(", ");
 		case "locale":

@@ -101,10 +101,10 @@ export const createBulkService = <T = unknown>(storePort: BulkStorePort<T>) => (
 					continue;
 				}
 				if (LIFECYCLE_OPS.includes(request.op)) {
-					// 사용자 결정 Q3-A: 예약된 글은 일괄 상태 변경을 실행하지 않고 항목별 `locked`로 표시한다.
-					// 예약을 조용히 취소하지 않도록 편집 화면에서 먼저 예약을 해제하게 한다.
+					// 사용자 결정 Q3-A: 플러그인이 잠근 글(예: 예약 대기)은 일괄 상태 변경을 실행하지 않고 항목별 `locked`로
+					// 표시한다. 잠금을 조용히 풀지 않도록 편집 화면에서 먼저 풀게 한다.
 					const groupWide = request.op === "archive" || request.op === "trash";
-					if (await storePort.hasPendingSchedule({ entryId: item.id, includeTranslations: groupWide })) {
+					if (await storePort.lockedBy({ entryId: item.id, includeTranslations: groupWide })) {
 						results.push({ id: item.id, ok: false, error: "locked" });
 						continue;
 					}

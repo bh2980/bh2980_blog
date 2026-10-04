@@ -1,11 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
 import type { AuthContext, CmsAuth } from "../../server/define";
 
 export type { AuthContext } from "../../server/define";
 
 export interface AuthGateway {
 	verifyAdmin(): Promise<AuthContext>;
-	authorizeExecutor(token?: string | null): boolean;
 }
 
 export class AuthError extends Error {
@@ -42,12 +40,9 @@ export function isDevAuthBypassEnabled(enabled: boolean | undefined): boolean {
 
 let devBypassWarned = false;
 
-/** 관리자 API·화면의 인증(§10.2)과 예약 실행기 토큰 확인. 로그인 방식은 서버 설정의 `auth`가 정한다. */
+/** 관리자 API·화면의 인증(§10.2). 로그인 방식은 서버 설정의 `auth`가 정한다. */
 export class CmsAuthGateway implements AuthGateway {
-	constructor(
-		private readonly getAuth: () => CmsAuth,
-		private readonly getSchedulerToken: () => string | undefined,
-	) {}
+	constructor(private readonly getAuth: () => CmsAuth) {}
 
 	async verifyAdmin(): Promise<AuthContext> {
 		const cmsAuth = this.getAuth();
@@ -70,21 +65,5 @@ export class CmsAuthGateway implements AuthGateway {
 		}
 
 		return { userId: session.user.id || accountId, accountId, isAdmin: true };
-	}
-
-	authorizeExecutor(token?: string | null): boolean {
-		const expected = this.getSchedulerToken()?.trim();
-		const provided = token?.trim();
-		if (!expected || !provided || provided.length !== expected.length) {
-			return false;
-		}
-
-		// M7-SEC-1: 스케줄러 라우트(`schedules/due`, `schedules/[id]/publish`)와 동일하게
-		// 길이 선검사 + 타이밍 안전 비교를 쓴다. 이전 구현은 `===` 였다.
-		try {
-			return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-		} catch {
-			return false;
-		}
 	}
 }

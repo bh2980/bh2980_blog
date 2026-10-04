@@ -14,7 +14,6 @@ const row = (id: string, patch: Partial<ListEntriesItem> = {}): ListEntriesItem 
 	folderId: null,
 	relations: {},
 	hasUnpublishedChanges: false,
-	scheduledAt: null,
 	publishedAt: null,
 	createdAt: new Date(0),
 	updatedAt: new Date(0),

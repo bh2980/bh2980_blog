@@ -84,7 +84,6 @@ export interface ExportManifest {
 		folders: number;
 		media: number;
 		templates: number;
-		schedules: number;
 		addresses: number;
 		preferences: number;
 		references: number;
@@ -362,21 +361,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			),
 		});
 		files.push({
-			path: "schedules.json",
-			data: jsonFile(
-				snapshot.schedules.map((schedule) => ({
-					id: schedule.id,
-					entryId: schedule.entryId,
-					scheduledAt: iso(schedule.scheduledAt),
-					status: schedule.status,
-					createdAt: iso(schedule.createdAt),
-					completedAt: iso(schedule.completedAt),
-					failureCode: schedule.failureCode,
-					failureDetail: schedule.failureDetail,
-				})),
-			),
-		});
-		files.push({
 			path: "preferences.json",
 			data: jsonFile(
 				snapshot.preferences.map((preference) => ({
@@ -407,7 +391,6 @@ export function buildExportArchive(snapshot: ExportSnapshot, options: BuildExpor
 			folders: scope === "admin" ? snapshot.folders.length : 0,
 			media: media.length,
 			templates: scope === "admin" ? snapshot.templates.length : 0,
-			schedules: scope === "admin" ? snapshot.schedules.length : 0,
 			addresses: scope === "admin" ? snapshot.addresses.length : 0,
 			preferences: scope === "admin" ? snapshot.preferences.length : 0,
 			references: scope === "admin" ? snapshot.references.length : 0,

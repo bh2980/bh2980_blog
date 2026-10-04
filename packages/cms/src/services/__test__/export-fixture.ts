@@ -174,17 +174,5 @@ export const makeExportFixtureSnapshot = (): ExportSnapshot => ({
 			updatedAt: FIXTURE_TIME,
 		},
 	],
-	schedules: [
-		{
-			id: "77777777-7777-4777-8777-777777777777",
-			entryId: "22222222-2222-4222-8222-222222222222",
-			scheduledAt: FIXTURE_TIME,
-			status: "pending",
-			createdAt: FIXTURE_TIME,
-			completedAt: null,
-			failureCode: null,
-			failureDetail: null,
-		},
-	],
 	preferences: [{ userId: "admin", preferences: { defaultPageSize: 25 }, updatedAt: FIXTURE_TIME }],
 });

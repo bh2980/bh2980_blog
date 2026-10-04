@@ -44,9 +44,9 @@ const newFakeLifecycleStore = (seed: Record<string, EntryState>, scheduled: read
 		},
 		/** 번역본 예약: 원문 id → 예약된 번역본이 있는지. */
 		translationScheduled: new Set<string>(),
-		async hasPendingSchedule(params: { entryId: string; includeTranslations?: boolean }) {
-			if (params.includeTranslations && this.translationScheduled.has(params.entryId)) return true;
-			return scheduledIds.has(params.entryId);
+		async lockedBy(params: { entryId: string; includeTranslations?: boolean }) {
+			if (params.includeTranslations && this.translationScheduled.has(params.entryId)) return "schedule";
+			return scheduledIds.has(params.entryId) ? "schedule" : null;
 		},
 		unschedule(entryId: string) {
 			scheduledIds.delete(entryId);

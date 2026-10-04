@@ -456,7 +456,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const mdx = "---\ntitle: test\n---\nHello";
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -799,7 +799,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const exactError = { code: "concurrent_modification", message: "Conflict" };
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue([]),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -826,7 +826,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("saveDraft invalid input preparation proves saveWorkingWithReferences is not called", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue([]),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -852,7 +852,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("createDraft makes an empty record slug from the slug field's `from`", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -869,7 +869,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("createDraft uses exactly one atomic call, no previous refs/contentHash, exact port error propagated", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -903,7 +903,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			const exactError = { code: "slug_conflict", message: "Duplicate" };
 			const conflictPort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -945,7 +945,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			];
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue(previousRefs),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -982,7 +982,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 			];
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn().mockResolvedValue(previousRefs),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -1170,7 +1170,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("createDraft(null) rejects with ServiceError code invalid_input, not native TypeError, and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -1192,7 +1192,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("createDraft custom-prototype input rejects invalid_input and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -1224,7 +1224,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("createDraft top-level accessor/getter property rejects without executing getter and no port call", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -1257,7 +1257,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("saveDraft null/custom-prototype input rejects invalid_input before getWorkingReferences or mutation", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),
@@ -1297,7 +1297,7 @@ describe("ContentService M2-TW-1 Contract", () => {
 		it("saveDraft expectedVersion accessor getter rejects without executing getter or Store calls", async () => {
 			const storePort: StorePort = {
 				getWorkingReferences: vi.fn(),
-				hasPendingSchedule: vi.fn(),
+				lockedBy: vi.fn(),
 				archiveEntry: vi.fn(),
 				unarchiveEntry: vi.fn(),
 				trashEntry: vi.fn(),

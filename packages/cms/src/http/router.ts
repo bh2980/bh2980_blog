@@ -9,7 +9,6 @@ import * as r14 from "./v1/entries/[id]/publish/route";
 import * as r15 from "./v1/entries/[id]/relations/route";
 import * as r16 from "./v1/entries/[id]/restore/route";
 import * as r11 from "./v1/entries/[id]/route";
-import * as r17 from "./v1/entries/[id]/schedule/route";
 import * as r18 from "./v1/entries/[id]/translations/route";
 import * as r19 from "./v1/entries/[id]/trash/route";
 import * as r20 from "./v1/entries/[id]/unarchive/route";
@@ -25,8 +24,6 @@ import * as r24 from "./v1/media/route";
 import * as r26 from "./v1/media/uploads/route";
 import * as r29 from "./v1/meta/route";
 import * as r30 from "./v1/preferences/route";
-import * as r32 from "./v1/schedules/[id]/publish/route";
-import * as r31 from "./v1/schedules/due/route";
 import * as r34 from "./v1/templates/[id]/route";
 import * as r33 from "./v1/templates/route";
 
@@ -49,7 +46,6 @@ const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
 	{ pattern: "v1/entries/[id]/publish", module: r14 },
 	{ pattern: "v1/entries/[id]/relations", module: r15 },
 	{ pattern: "v1/entries/[id]/restore", module: r16 },
-	{ pattern: "v1/entries/[id]/schedule", module: r17 },
 	{ pattern: "v1/entries/[id]/translations", module: r18 },
 	{ pattern: "v1/entries/[id]/trash", module: r19 },
 	{ pattern: "v1/entries/[id]/unarchive", module: r20 },
@@ -63,8 +59,6 @@ const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
 	{ pattern: "v1/media/[id]/complete", module: r28 },
 	{ pattern: "v1/meta", module: r29 },
 	{ pattern: "v1/preferences", module: r30 },
-	{ pattern: "v1/schedules/due", module: r31 },
-	{ pattern: "v1/schedules/[id]/publish", module: r32 },
 	{ pattern: "v1/templates", module: r33 },
 	{ pattern: "v1/templates/[id]", module: r34 },
 ];

@@ -216,40 +216,6 @@ describe("review regressions", () => {
 		expect(copy.working.contentHash).toBe(recomputed.contentHash);
 	});
 
-	it("a manual publish supersedes the pending schedule so the entry is no longer locked", async () => {
-		const draft = await service.createDraft({
-			collection: "post",
-			slug: unique("scheduled"),
-			metadata: { title: "s", categoryId },
-			mdx: "x",
-		});
-		await store.createSchedule({
-			entryId: draft.id,
-			expectedVersion: draft.version,
-			scheduledAt: new Date(Date.now() + 3600_000),
-		});
-		await store.publishEntry({ id: draft.id, expectedVersion: draft.version });
-		expect(await store.hasPendingSchedule({ entryId: draft.id })).toBe(false);
-		const { last } = await store.getEntrySchedule({ entryId: draft.id });
-		expect(last).toMatchObject({ status: "cancelled", failureCode: "superseded" });
-	});
-
-	it("rejects schedules in the past", async () => {
-		const draft = await service.createDraft({
-			collection: "post",
-			slug: unique("past"),
-			metadata: { title: "s", categoryId },
-			mdx: "x",
-		});
-		await expect(
-			store.createSchedule({
-				entryId: draft.id,
-				expectedVersion: draft.version,
-				scheduledAt: new Date(Date.now() - 1000),
-			}),
-		).rejects.toMatchObject({ code: "invalid_input" });
-	});
-
 	it("can return to a previous public slug of the same entry", async () => {
 		const post = await publishedPost();
 		const original = post.publishedSlug as string;
@@ -272,7 +238,7 @@ describe("review regressions", () => {
 		expect(final.publishedSlug).toBe(original);
 	});
 
-	it("filters the admin list by trash, tag, unpublished changes and schedule", async () => {
+	it("filters the admin list by trash, tag and unpublished changes", async () => {
 		const tag = await service.createDraft({
 			collection: "tag",
 			slug: null,
@@ -301,21 +267,6 @@ describe("review regressions", () => {
 		const trash = await store.listEntries({ collection: "post", statuses: ["trashed"] });
 		expect(trash.items.find((item) => item.id === tagged.id)?.trashedAt).toBeInstanceOf(Date);
 		expect(trashed.status).toBe("trashed");
-
-		const scheduled = await service.createDraft({
-			collection: "post",
-			slug: unique("sched-list"),
-			metadata: { title: "s", categoryId },
-			mdx: "x",
-		});
-		await store.createSchedule({
-			entryId: scheduled.id,
-			expectedVersion: scheduled.version,
-			scheduledAt: new Date(Date.now() + 3600_000),
-		});
-		const scheduledOnly = await store.listEntries({ collection: "post", scheduled: true });
-		expect(scheduledOnly.items.map((item) => item.id)).toEqual([scheduled.id]);
-		expect(scheduledOnly.items[0]?.scheduledAt).toBeInstanceOf(Date);
 	});
 
 	it("refuses to delete media that an unparsed draft or a template still mentions", async () => {

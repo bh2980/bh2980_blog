@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createContentStore, migrateContentStore } from "../content-store";
-import { moveToFolder, seedEntry } from "./seed";
+import { seedEntry } from "./seed";
 import { closeGlobalPool, createIsolatedTestPool, dropIsolatedTestPool } from "./test-database";
 
-describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contracts", () => {
+describe("M3-TW-1 Publishing, Lifecycle & Published-References Contracts", () => {
 	let pool: Pool;
 	let schemaName: string;
 	let store: any;
@@ -69,7 +69,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(published.publishedAt?.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
 		});
 
-		it("published -> archive closes public visibility and cancels any pending schedule", async () => {
+		it("published -> archive closes public visibility", async () => {
 			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-archive-1",
@@ -121,7 +121,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(unarch.status).toBe("draft");
 		});
 
-		it("draft/published/archived -> trash hides from active list and cancels schedule", async () => {
+		it("draft/published/archived -> trash hides from active list", async () => {
 			const entry = await seedEntry(store, {
 				collection: "post",
 				slug: "test-trash-1",
@@ -336,7 +336,7 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			expect(trashedTag.status).toBe("trashed");
 		});
 
-		it("does not publish or schedule a trashed entry", async () => {
+		it("does not publish a trashed entry", async () => {
 			const draft = await seedEntry(store, {
 				collection: "post",
 				slug: `trashed-entry-${randomUUID()}`,
@@ -349,13 +349,6 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			await expect(store.publishEntry({ id: trashed.id, expectedVersion: trashed.version })).rejects.toMatchObject({
 				code: "invalid_status",
 			});
-			await expect(
-				store.createSchedule({
-					entryId: trashed.id,
-					expectedVersion: trashed.version,
-					scheduledAt: new Date(Date.now() + 60_000),
-				}),
-			).rejects.toMatchObject({ code: "invalid_status" });
 		});
 
 		it("serializes tag deletion against a concurrent draft reference save", async () => {
@@ -515,221 +508,6 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 		);
 	});
 
-	describe("3. Scheduled Publishing (§5.4)", () => {
-		it("creates a schedule, locks entry body editing, allows folder move, and supports due execution", async () => {
-			const post = await seedEntry(store, {
-				collection: "post",
-				slug: "post-scheduled-1",
-				metadata: { title: "Scheduled Post" },
-				mdx: "Future MDX",
-				schemaVersion: 1,
-				contentHash: "sched-hash",
-			});
-
-			const futureDate = new Date(Date.now() + 3600 * 1000); // 1 hour later
-			const schedule = await store.createSchedule({
-				entryId: post.id,
-				expectedVersion: post.version,
-				scheduledAt: futureDate,
-			});
-
-			expect(schedule.id).toBeDefined();
-			expect(schedule.status).toBe("pending");
-
-			// Editing body while scheduled should throw error (locked)
-			await expect(
-				store.saveWorkingWithReferences({
-					entryId: post.id,
-					expectedVersion: post.version,
-					snapshot: {
-						collection: "post",
-						slug: "post-scheduled-1",
-						metadata: { title: "Edit Attempt" },
-						mdx: "Modified",
-						schemaVersion: 1,
-						contentHash: "modified-hash",
-						issues: [],
-						references: [],
-					},
-					references: [],
-				}),
-			).rejects.toThrow(/scheduled|locked/i);
-
-			// Moving folder while scheduled is allowed!
-			const folder = await store.createFolder({
-				collection: "post",
-				name: "News",
-				parentId: null,
-			});
-
-			const moved = await moveToFolder(store, {
-				entryId: post.id,
-				folderId: folder.id,
-				expectedVersion: post.version,
-			});
-			expect(moved.folderId).toBe(folder.id);
-
-			// Canceling/releasing schedule unlocks editing
-			await store.cancelSchedule({
-				scheduleId: schedule.id,
-				entryId: post.id,
-			});
-
-			// Now editing is unlocked!
-			await expect(
-				store.saveWorkingWithReferences({
-					entryId: post.id,
-					expectedVersion: post.version + 1, // incremented by folder move
-					snapshot: {
-						collection: "post",
-						slug: "post-scheduled-1",
-						metadata: { title: "Unlocked Edit" },
-						mdx: "Modified Unlocked",
-						schemaVersion: 1,
-						contentHash: "modified-hash-2",
-						issues: [],
-						references: [],
-					},
-					references: [],
-				}),
-			).resolves.not.toThrow();
-		});
-
-		it("같은 항목에 pending 예약은 두 개 만들 수 없다", async () => {
-			const post = await seedEntry(store, {
-				collection: "post",
-				slug: "post-schedule-duplicate-1",
-				metadata: { title: "Duplicate Schedule" },
-				mdx: "Content",
-				schemaVersion: 1,
-				contentHash: "dup-sched-hash",
-			});
-
-			const first = await store.createSchedule({
-				entryId: post.id,
-				expectedVersion: post.version,
-				scheduledAt: new Date(Date.now() + 3600 * 1000),
-			});
-			expect(first.status).toBe("pending");
-
-			// M7-TW-1: schedules_active_entry_idx(partial unique)가 막고, store는 이를 conflict로 매핑한다(500이 아니라 409).
-			await expect(
-				store.createSchedule({
-					entryId: post.id,
-					expectedVersion: post.version,
-					scheduledAt: new Date(Date.now() + 7200 * 1000),
-				}),
-			).rejects.toMatchObject({ code: "conflict" });
-
-			const { rows } = await pool.query<{ id: string }>(
-				`SELECT id FROM "${schemaName}".schedules WHERE entry_id = $1 AND status = 'pending'`,
-				[post.id],
-			);
-			expect(rows).toHaveLength(1);
-			expect(rows[0].id).toBe(first.id);
-		});
-
-		it("schedule registration refuses a body that cannot be published", async () => {
-			const post = await seedEntry(store, {
-				collection: "post",
-				slug: "post-invalid-schedule",
-				metadata: { title: "Invalid schedule" },
-				mdx: "<Callout>",
-				schemaVersion: 1,
-				contentHash: "invalid-schedule-hash",
-			});
-			await expect(
-				store.createSchedule({
-					entryId: post.id,
-					expectedVersion: post.version,
-					scheduledAt: new Date(Date.now() + 3600_000),
-				}),
-			).rejects.toMatchObject({ code: "publish_validation_failed" });
-			const schedules = await pool.query(`SELECT id FROM "${schemaName}".schedules WHERE entry_id = $1`, [post.id]);
-			expect(schedules.rows).toHaveLength(0);
-		});
-
-		it("revalidates scheduled publication, preserves the public body and records the failure", async () => {
-			const target = await seedEntry(store, {
-				collection: "post",
-				slug: `schedule-link-target-${randomUUID()}`,
-				metadata: { title: "Link target" },
-				mdx: "Target body.",
-				schemaVersion: 1,
-				contentHash: randomUUID(),
-			});
-			const publishedTarget = await store.publishEntry({ id: target.id, expectedVersion: target.version });
-			const post = await seedEntry(store, {
-				collection: "post",
-				slug: `schedule-revalidation-${randomUUID()}`,
-				metadata: { title: "Scheduled post" },
-				mdx: `Previously public. [link](/posts/${publishedTarget.publishedSlug})`,
-				schemaVersion: 1,
-				contentHash: randomUUID(),
-			});
-			const published = await store.publishEntry({ id: post.id, expectedVersion: post.version });
-			const schedule = await store.createSchedule({
-				entryId: post.id,
-				expectedVersion: published.version,
-				scheduledAt: new Date(Date.now() - 1000),
-				now: new Date(Date.now() - 60_000),
-			});
-			// 예약 중 링크 대상이 보관되면 실행은 실패해야 한다(§5.4).
-			await store.archiveEntry({ id: target.id, expectedVersion: publishedTarget.version });
-
-			await expect(store.executeSchedulePublish({ scheduleId: schedule.id })).rejects.toMatchObject({
-				code: "publish_validation_failed",
-			});
-			const unchanged = await store.getEntry(post.id);
-			expect(unchanged.status).toBe("published");
-			expect(unchanged.published?.mdx).toContain("Previously public.");
-
-			const { pending, last } = await store.getEntrySchedule({ entryId: post.id });
-			expect(pending).toBeNull();
-			expect(last).toMatchObject({ id: schedule.id, status: "failed", failureCode: "publish_validation_failed" });
-			expect(last?.failureDetail).toContain("unpublished_internal_link");
-		});
-
-		it("executor idempotency: executing due schedule publishes entry and duplicate call returns no-op", async () => {
-			const post = await seedEntry(store, {
-				collection: "post",
-				slug: "post-due-exec-1",
-				metadata: { title: "Due Post" },
-				mdx: "Due Content",
-				schemaVersion: 1,
-				contentHash: "due-hash",
-			});
-
-			const pastDate = new Date(Date.now() - 10000); // 10s ago (due)
-			const schedule = await store.createSchedule({
-				entryId: post.id,
-				expectedVersion: post.version,
-				scheduledAt: pastDate,
-				now: new Date(Date.now() - 60_000),
-			});
-
-			// Find due schedules
-			const dueSchedules = await store.getDueSchedules();
-			expect(dueSchedules.some((s: any) => s.id === schedule.id)).toBe(true);
-
-			// Execute schedule publish
-			const result = await store.executeSchedulePublish({
-				scheduleId: schedule.id,
-			});
-
-			expect(result.status).toBe("completed");
-
-			const publishedPost = await store.getEntry(post.id);
-			expect(publishedPost.status).toBe("published");
-
-			// Duplicate call: idempotent no-op (no error, remains completed)
-			const dupResult = await store.executeSchedulePublish({
-				scheduleId: schedule.id,
-			});
-			expect(dupResult.status).toBe("completed");
-		});
-	});
-
 	describe("4. Timestamps (§5.5)", () => {
 		it("keeps the first publish time on re-publish and after archive", async () => {
 			const post = await seedEntry(store, {
@@ -844,29 +622,102 @@ describe("M3-TW-1 Publishing, Lifecycle, Schedule & Published-References Contrac
 			const after = await store.getEntry(post.id);
 			expect(after.status).toBe("draft");
 		});
+	});
 
-		it("예정 시각 전에는 예약 발행이 거부되고 본문이 공개되지 않는다", async () => {
-			const post = await seedEntry(store, {
+	describe("6. 플러그인 글 갈고리", () => {
+		const locked = new Set<string>();
+		const changes: { entryIds: readonly string[]; status: string }[] = [];
+		let hooked: ReturnType<typeof createContentStore>;
+
+		beforeAll(() => {
+			hooked = createContentStore(pool, {
+				schema: schemaName,
+				entryHooks: async () => [
+					{
+						name: "test-lock",
+						locked: async (_db, ids) => ids.filter((id) => locked.has(id)),
+						afterStatusChange: async (_db, change) => {
+							changes.push(change);
+						},
+					},
+				],
+			});
+		});
+
+		// 만들기는 카테고리를 채워 주는 기본 저장소로 하고, 바꾸기는 갈고리를 단 저장소로 한다.
+		const post = (slug: string) =>
+			seedEntry(store, {
 				collection: "post",
-				slug: "post-not-due",
-				metadata: { title: "Not due" },
-				mdx: "정상 본문",
+				slug,
+				metadata: { title: slug },
+				mdx: "본문",
 				schemaVersion: 1,
-				contentHash: "not-due-hash",
+				contentHash: `hash-${slug}`,
 			});
 
-			const schedule = await store.createSchedule({
-				entryId: post.id,
-				expectedVersion: post.version,
-				scheduledAt: new Date(Date.now() + 3600 * 1000),
+		it("잠긴 글은 본문이 바뀌는 저장을 거부하고 같은 내용 저장은 받는다", async () => {
+			const entry = await post("hook-locked");
+			locked.add(entry.id);
+			expect(await hooked.lockedBy({ entryId: entry.id })).toBe("test-lock");
+			const snapshot = {
+				collection: "post" as const,
+				slug: "hook-locked",
+				metadata: entry.working.metadata as never,
+				mdx: "본문",
+				schemaVersion: 1,
+				contentHash: "hash-hook-locked",
+				issues: [],
+				references: [],
+				imageSources: [],
+			};
+			await expect(
+				hooked.saveWorkingWithReferences({
+					entryId: entry.id,
+					expectedVersion: entry.version,
+					snapshot: { ...snapshot, mdx: "바뀐 본문", contentHash: "hash-changed" },
+					references: [],
+				}),
+			).rejects.toMatchObject({ code: "locked" });
+			const same = await hooked.saveWorkingWithReferences({
+				entryId: entry.id,
+				expectedVersion: entry.version,
+				snapshot,
+				references: [],
 			});
+			expect(same.version).toBe(entry.version);
 
-			await expect(store.executeSchedulePublish({ scheduleId: schedule.id })).rejects.toMatchObject({
-				code: "conflict",
+			locked.delete(entry.id);
+			expect(await hooked.lockedBy({ entryId: entry.id })).toBeNull();
+		});
+
+		it("발행·보관·휴지통을 같은 트랜잭션에서 알린다", async () => {
+			const entry = await post("hook-status");
+			changes.length = 0;
+			const published = await hooked.publishEntry({ id: entry.id, expectedVersion: entry.version });
+			const archived = await hooked.archiveEntry({ id: entry.id, expectedVersion: published.version });
+			await hooked.trashEntry({ id: entry.id, expectedVersion: archived.version });
+			expect(changes).toEqual([
+				{ entryIds: [entry.id], status: "published" },
+				{ entryIds: [entry.id], status: "archived" },
+				{ entryIds: [entry.id], status: "trashed" },
+			]);
+		});
+
+		it("갈고리가 던지면 상태 변경이 취소된다", async () => {
+			const entry = await post("hook-throw");
+			const failing = createContentStore(pool, {
+				schema: schemaName,
+				entryHooks: async () => [
+					{
+						name: "test-throw",
+						afterStatusChange: async () => {
+							throw new Error("no");
+						},
+					},
+				],
 			});
-
-			const after = await store.getEntry(post.id);
-			expect(after.status).toBe("draft");
+			await expect(failing.publishEntry({ id: entry.id, expectedVersion: entry.version })).rejects.toThrow("no");
+			expect((await hooked.getEntry(entry.id)).status).toBe("draft");
 		});
 	});
 });

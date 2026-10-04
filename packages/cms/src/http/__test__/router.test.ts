@@ -27,7 +27,6 @@ describe("관리자 API 경로표", () => {
 		expect(matchRoute(["v1", "entries", "abc", "publish"])?.params).toEqual({ id: "abc" });
 		expect(matchRoute(["v1", "media", "uploads"])?.params).toEqual({});
 		expect(matchRoute(["v1", "media", "m1", "complete"])?.params).toEqual({ id: "m1" });
-		expect(matchRoute(["v1", "schedules", "due"])?.params).toEqual({});
 		expect(matchRoute(["v1", "entries", ""])).toBeNull();
 		expect(matchRoute(["v1", "nope"])).toBeNull();
 		expect(matchRoute(["v2", "entries"])).toBeNull();
@@ -37,7 +36,9 @@ describe("관리자 API 경로표", () => {
 		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/public"))).toBe(false);
 		// AI 경로는 AI 플러그인이 더한다(`@bh2980/cms-ai`).
 		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.startsWith("v1/ai"))).toBe(false);
-		expect(CMS_ROUTE_PATTERNS).toHaveLength(26);
+		// 예약 경로는 예약 확장이 더한다(`@bh2980/cms-schedule`).
+		expect(CMS_ROUTE_PATTERNS.some((pattern) => pattern.includes("schedule"))).toBe(false);
+		expect(CMS_ROUTE_PATTERNS).toHaveLength(23);
 	});
 
 	it("없는 경로는 404, 없는 메서드는 405, 맞는 경로는 그 라우트가 받는다", async () => {

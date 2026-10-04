@@ -19,8 +19,8 @@ const newFakeStore = (seed: Record<string, Working>) => {
 		async getWorkingReferences() {
 			return [] as Reference[];
 		},
-		async hasPendingSchedule() {
-			return false;
+		async lockedBy() {
+			return null;
 		},
 		async archiveEntry() {
 			throw new ServiceError("invalid_input");

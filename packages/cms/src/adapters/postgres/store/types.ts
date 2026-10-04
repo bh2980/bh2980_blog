@@ -195,8 +195,6 @@ export interface ListEntriesItem {
 	relations: Readonly<Record<string, readonly ListRelationValue[]>>;
 	/** 공개본이 있고 최신 초안이 공개본과 다르다(`발행됨 · 수정 중`). */
 	hasUnpublishedChanges: boolean;
-	/** 대기 중인 예약 시각. */
-	scheduledAt: Date | null;
 	publishedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -258,7 +256,6 @@ export interface ListEntriesParams {
 	/** 관계 필드 이름 → 고른 항목 ID. 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다(§3.2). */
 	relations?: Readonly<Record<string, readonly string[]>>;
 	hasUnpublishedChanges?: boolean;
-	scheduled?: boolean;
 	createdAt?: DateRange;
 	updatedAt?: DateRange;
 	publishedAt?: DateRange;
@@ -283,22 +280,6 @@ export interface IncomingReferenceItem {
 	kind: ReferenceKind;
 	isStale: boolean;
 	occurrences: readonly ReferenceOccurrence[];
-}
-
-export interface ScheduleSummary {
-	id: string;
-	status: "pending" | "completed" | "cancelled" | "failed";
-	scheduledAt: Date;
-	createdAt: Date;
-	completedAt: Date | null;
-	failureCode: string | null;
-	failureDetail: string | null;
-}
-
-/** 편집 화면용 예약 상태. 대기 중인 예약과 마지막으로 끝난 예약 결과를 함께 준다(§5.4). */
-export interface EntrySchedule {
-	pending: ScheduleSummary | null;
-	last: ScheduleSummary | null;
 }
 
 export interface ExportSnapshotBody {
@@ -346,17 +327,6 @@ export interface ExportSnapshotAddress {
 	type: string;
 }
 
-export interface ExportSnapshotSchedule {
-	id: string;
-	entryId: string;
-	scheduledAt: Date;
-	status: string;
-	createdAt: Date;
-	completedAt: Date | null;
-	failureCode: string | null;
-	failureDetail: string | null;
-}
-
 /** 관리자 백업·공개 projection의 공통 원본. 단일 REPEATABLE READ READ ONLY 스냅샷이다. */
 export interface ExportSnapshot {
 	entries: ExportSnapshotEntry[];
@@ -365,6 +335,5 @@ export interface ExportSnapshot {
 	addresses: ExportSnapshotAddress[];
 	media: MediaAssetRecord[];
 	templates: BodyTemplate[];
-	schedules: ExportSnapshotSchedule[];
 	preferences: { userId: string; preferences: JsonObject; updatedAt: Date }[];
 }

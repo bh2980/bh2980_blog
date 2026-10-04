@@ -5,10 +5,10 @@ import { createFolderOps } from "./store/folders";
 import { createLifecycleOps } from "./store/lifecycle";
 import { createListOps } from "./store/list";
 import { createMediaOps } from "./store/media";
+import { createPluginTransactionOps } from "./store/plugin-transaction";
 import { createPreferenceOps } from "./store/preferences";
 import { createPublicReadOps } from "./store/public-read";
 import { createPublishing } from "./store/publish";
-import { createScheduleOps } from "./store/schedules";
 import { createTemplateOps } from "./store/templates";
 import { createTransferOps } from "./store/transfer";
 
@@ -25,14 +25,11 @@ export { extractVisibleText, normalizeMetadata } from "./store/rows";
 export { migrateContentStore } from "./store/schema";
 export * from "./store/types";
 
-export function createContentStore(
-	pool: Pool,
-	options?: { schema?: string; beforePublishCommit?: ContentStoreHooks["beforePublishCommit"] },
-) {
+export function createContentStore(pool: Pool, options?: { schema?: string } & ContentStoreHooks) {
 	const ctx: StoreContext = {
 		pool,
 		qSchema: validateSchemaName(options?.schema),
-		hooks: { beforePublishCommit: options?.beforePublishCommit },
+		hooks: { beforePublishCommit: options?.beforePublishCommit, entryHooks: options?.entryHooks },
 	};
 	const publishing = createPublishing(ctx);
 
@@ -44,7 +41,7 @@ export function createContentStore(
 		...createPublicReadOps(ctx),
 		...createPreferenceOps(ctx),
 		...createTransferOps(ctx),
-		...createScheduleOps(ctx, publishing),
+		...createPluginTransactionOps(ctx, publishing),
 		...createMediaOps(ctx),
 		...createTemplateOps(ctx),
 	};

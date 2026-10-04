@@ -52,13 +52,7 @@ function assertParams(params: ListEntriesParams) {
 		if (params[key] !== undefined && typeof params[key] !== "string")
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
-	for (const key of [
-		"includeBody",
-		"includeDescendants",
-		"hasUnpublishedChanges",
-		"scheduled",
-		"groupTranslations",
-	] as const) {
+	for (const key of ["includeBody", "includeDescendants", "hasUnpublishedChanges", "groupTranslations"] as const) {
 		if (params[key] !== undefined && typeof params[key] !== "boolean")
 			throw new CmsError(`Invalid ${key}`, "invalid_input");
 	}
@@ -196,9 +190,6 @@ export function createListOps(ctx: StoreContext) {
 					"(p.entry_id IS NOT NULL AND (p.content_hash <> w.content_hash OR e.working_slug IS DISTINCT FROM cur.slug))";
 				conditions.push(params.hasUnpublishedChanges ? changed : `NOT ${changed}`);
 			}
-			if (params.scheduled !== undefined) {
-				conditions.push(`sch.scheduled_at IS ${params.scheduled ? "NOT NULL" : "NULL"}`);
-			}
 			const addRange = (column: string, range: DateRange | undefined) => {
 				if (range?.from) conditions.push(`${column} >= ${bind(range.from)}`);
 				if (range?.to) conditions.push(`${column} <= ${bind(range.to)}`);
@@ -223,7 +214,6 @@ export function createListOps(ctx: StoreContext) {
 				JOIN "${qSchema}".entry_bodies sw ON sw.entry_id = COALESCE(e.translation_group_id, e.id) AND sw.state = 'working'
 				LEFT JOIN "${qSchema}".entry_bodies p ON p.entry_id = e.id AND p.state = 'published'
 				LEFT JOIN "${qSchema}".content_addresses cur ON cur.entry_id = e.id AND cur.type = 'current'
-				LEFT JOIN "${qSchema}".schedules sch ON sch.entry_id = e.id AND sch.status = 'pending'
 				WHERE ${conditions.join(" AND ")}`;
 
 			const countRes = await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count ${from}`, values);
@@ -245,13 +235,11 @@ export function createListOps(ctx: StoreContext) {
 				metadata: Record<string, unknown>;
 				source_metadata: Record<string, unknown>;
 				has_changes: boolean;
-				scheduled_at: Date | null;
 			}>(
 				`SELECT e.id, e.collection, e.locale, COALESCE(e.translation_group_id, e.id) AS translation_group_id,
 				        e.status, e.version, e.folder_id, e.created_at, e.updated_at, e.published_at,
 				        e.trashed_at, e.working_slug, w.metadata, sw.metadata AS source_metadata,
-				        (p.entry_id IS NOT NULL AND (p.content_hash <> w.content_hash OR e.working_slug IS DISTINCT FROM cur.slug)) AS has_changes,
-				        sch.scheduled_at
+				        (p.entry_id IS NOT NULL AND (p.content_hash <> w.content_hash OR e.working_slug IS DISTINCT FROM cur.slug)) AS has_changes
 				 ${from}
 				 ORDER BY ${sortColumn} ${sortDir}, e.id ASC
 				 LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
@@ -280,7 +268,6 @@ export function createListOps(ctx: StoreContext) {
 					folderId: row.folder_id,
 					relationIdsByField,
 					hasUnpublishedChanges: row.has_changes,
-					scheduledAt: row.scheduled_at,
 					publishedAt: row.published_at,
 					createdAt: row.created_at,
 					updatedAt: row.updated_at,

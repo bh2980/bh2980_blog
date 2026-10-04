@@ -79,20 +79,8 @@ export interface EntryData {
 	publishedSlug: string | null;
 	working: { metadata: Record<string, unknown>; mdx: string; translation?: TranslationState | null };
 	published?: { metadata: Record<string, unknown>; mdx: string };
-	schedule?: {
-		pending: ScheduleInfo | null;
-		last: ScheduleInfo | null;
-		runnerConfigured: boolean;
-	};
-}
-
-export interface ScheduleInfo {
-	id: string;
-	status: "pending" | "completed" | "cancelled" | "failed";
-	scheduledAt: string;
-	completedAt: string | null;
-	failureCode: string | null;
-	failureDetail: string | null;
+	/** 이 글을 잠근 플러그인 이름(서버 글 갈고리, 예: 예약 대기). 잠기면 편집 화면이 읽기 전용이다. */
+	lockedBy?: string | null;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");

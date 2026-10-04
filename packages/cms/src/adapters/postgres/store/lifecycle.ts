@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg";
 import { isItemCollection } from "../../../core/collections";
 import { type StoreContext, withTransaction } from "./context";
+import { createEntryHookRunner } from "./entry-hooks";
 import { CmsError, mapEntryWriteError } from "./errors";
 import type { Publishing } from "./publish";
 import { loadEntry, lockEntryForUpdate } from "./rows";
@@ -14,6 +15,7 @@ type LifecycleParams = { id: string; expectedVersion: number };
  */
 export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 	const { pool, qSchema } = ctx;
+	const entryHooks = createEntryHookRunner(ctx);
 
 	const transition = (
 		params: LifecycleParams,
@@ -34,13 +36,6 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 				return loadEntry(client, params.id, qSchema);
 			},
 			{ mapError: mapEntryWriteError },
-		);
-
-	const cancelPendingSchedules = (client: PoolClient, id: string) =>
-		client.query(
-			`UPDATE "${qSchema}".schedules SET status = 'cancelled', completed_at = NOW(), failure_code = 'entry_status_changed'
-			 WHERE entry_id = $1 AND status = 'pending'`,
-			[id],
 		);
 
 	/**
@@ -65,9 +60,6 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 		);
 	};
 
-	const cancelMemberSchedules = (client: PoolClient, ids: readonly string[]) =>
-		Promise.all(ids.map((id) => cancelPendingSchedules(client, id)));
-
 	/** 공개된 적 있는 주소는 재사용 방지 기록만 남기고, 예약 주소는 해제한 뒤 콘텐츠를 지운다. */
 	const deleteEntryRow = async (client: PoolClient, id: string) => {
 		await client.query(`DELETE FROM "${qSchema}".content_addresses WHERE entry_id = $1 AND type = 'reservation'`, [id]);
@@ -79,7 +71,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 	};
 
 	return {
-		/** 초안/발행 → 보관. 공개를 끝내고 예약을 취소한다. record 컬렉션은 보관이 없다. */
+		/** 초안/발행 → 보관. 공개를 끝낸다(플러그인에 알린다). record 컬렉션은 보관이 없다. */
 		archiveEntry: (params: LifecycleParams) =>
 			transition(params, ["draft", "published"], async (client, locked) => {
 				if (isItemCollection(locked.collection)) {
@@ -89,13 +81,12 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 					locked.version + 1,
 					params.id,
 				]);
-				await cancelPendingSchedules(client, params.id);
 				const members = (await lockTranslations(client, params.id)).filter(
 					(member) => member.status === "draft" || member.status === "published",
 				);
 				const ids = members.map((member) => member.id);
 				await setMembersStatus(client, ids, "archived");
-				await cancelMemberSchedules(client, ids);
+				await entryHooks.statusChanged(client, { entryIds: [params.id, ...ids], status: "archived" });
 			}),
 
 		/** 보관 → 초안. 자동으로 다시 공개하지 않는다. */
@@ -114,7 +105,7 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 			}),
 
 		/**
-		 * → 휴지통. 공개를 끝내고 예약을 취소한다.
+		 * → 휴지통. 공개를 끝낸다(플러그인에 알린다).
 		 * 사용 중인 분류 항목(record 컬렉션: 태그·카테고리 등)은 참조를 먼저 해제해야 한다(§6.1).
 		 */
 		trashEntry: (params: LifecycleParams) =>
@@ -126,13 +117,12 @@ export function createLifecycleOps(ctx: StoreContext, publishing: Publishing) {
 					`UPDATE "${qSchema}".entries SET status = 'trashed', trashed_at = NOW(), version = $1 WHERE id = $2`,
 					[locked.version + 1, params.id],
 				);
-				await cancelPendingSchedules(client, params.id);
 				// 같은 트랜잭션의 NOW()는 같은 값이다. 복원할 때 이 시각으로 "함께 버린 번역본"을 찾는다.
 				const ids = (await lockTranslations(client, params.id))
 					.filter((member) => member.status !== "trashed")
 					.map((member) => member.id);
 				await setMembersStatus(client, ids, "trashed", ", trashed_at = NOW()");
-				await cancelMemberSchedules(client, ids);
+				await entryHooks.statusChanged(client, { entryIds: [params.id, ...ids], status: "trashed" });
 			}),
 
 		/**

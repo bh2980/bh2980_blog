@@ -48,7 +48,6 @@ describe("export archive builder", () => {
 				"manifest.json",
 				"media.json",
 				"preferences.json",
-				"schedules.json",
 				"templates.json",
 			].sort(),
 		);
@@ -64,7 +63,6 @@ describe("export archive builder", () => {
 			publishedBodies: 2,
 			folders: 1,
 			templates: 1,
-			schedules: 1,
 			addresses: 1,
 			preferences: 1,
 			references: 4,
@@ -102,7 +100,6 @@ describe("export archive builder", () => {
 			publishedBodies: 1,
 			folders: 0,
 			templates: 0,
-			schedules: 0,
 			addresses: 0,
 			preferences: 0,
 			references: 0,

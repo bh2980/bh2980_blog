@@ -16,6 +16,7 @@ import type { EditorMarkSpec } from "./editor/added-marks";
 import type { CustomBlockEditorProps } from "./editor/blocks/added/view";
 import type { ActiveInlineMark } from "./editor/inline-marks";
 import type { BlockAction } from "./editor/tiptap-editor";
+import type { CmsIssue } from "./screens/api-error-message";
 import type { EntryData, EntryForm } from "./screens/entries/entry-form";
 import type { FieldInputProps } from "./screens/entries/field-inputs";
 
@@ -72,6 +73,48 @@ export interface EditorExtensionResult {
 }
 
 export type EditorExtension = (context: EditorExtensionContext) => EditorExtensionResult;
+
+/**
+ * 글 동작 확장이 받는 지금 상황(예: 발행 예약). 매 렌더 부르는 훅이므로 안에서 React 훅을 써도 된다.
+ */
+export interface EntryActionContext {
+	/** 서버에 저장된 글. 새 글이면 `null`이다. */
+	readonly entry: EntryData | null;
+	readonly collection: string;
+	/** 지금 판(서버에 보낼 `expectedVersion`). */
+	readonly getVersion: () => number;
+	/**
+	 * 저장하지 않은 입력이 있으면 먼저 저장하라고 알리고 `null`을 돌려준다. 저장돼 있으면 글 ID다.
+	 * 알림은 `report`로 보낸다(없으면 토스트). 예: 창 안에 보이려면 창의 오류 상태를 넘긴다.
+	 */
+	readonly ensureSaved: (purpose: string, report?: (message: string) => void) => Promise<string | null>;
+	/** 서버에서 글을 다시 불러온다(잠금·상태가 바뀐 뒤). */
+	readonly reload: () => Promise<void>;
+	/** 서버가 준 발행 검사 문제를 편집 화면의 문제 목록에 보인다. */
+	readonly showIssues: (issues: readonly CmsIssue[]) => void;
+	/** 머리 단추가 일하는 중인가(발행·상태 바꾸기·확장 동작). 일하는 동안 다른 동작을 막는다. */
+	readonly busy: boolean;
+	/** 확장 동작을 하는 동안 머리 단추를 막는다. 끝나면 `false`로 돌린다. */
+	readonly setBusy: (busy: boolean) => void;
+}
+
+/** 글 동작 확장이 더하는 것. 편집 화면은 받은 것을 정해진 자리에 그리기만 한다. */
+export interface EntryActionResult {
+	/** 발행 단추 화살표 메뉴의 항목(`DropdownMenuItem`). 없으면 `null`. 항목이 하나도 없으면 화살표를 감춘다. */
+	readonly publishMenu?: ReactNode;
+	/** 머리글 아래 안내 띠(예: "예약됨"). */
+	readonly notice?: ReactNode;
+	/** 서버 글 갈고리로 이 확장이 글을 잠갔을 때(`entry.lockedBy`가 이 확장 이름) 발행 단추 자리에 그릴 단추. */
+	readonly lockedAction?: ReactNode;
+	/** 한 번만 그리는 요소(창 등). */
+	readonly overlay?: ReactNode;
+}
+
+/** 글 동작 확장. `name`은 서버 쪽 플러그인 이름과 같다(잠금 주인을 찾는다). */
+export interface EntryActionExtension {
+	readonly name: string;
+	readonly use: (context: EntryActionContext) => EntryActionResult;
+}
 
 /** 인라인 버블 안에 펼치는 입력 칸(링크 입력처럼). */
 export interface EditorBubblePanel {
@@ -176,6 +219,8 @@ export interface CmsAdminComponents {
 	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
 	 */
 	readonly fieldViews?: Readonly<Record<string, ComponentType<FieldViewProps>>>;
+	/** 글 동작 확장(발행 메뉴 항목·안내 띠·잠긴 동안의 단추). 확장이 등록한다. */
+	readonly entryActions?: readonly EntryActionExtension[];
 }
 
 /**
@@ -224,6 +269,7 @@ export function CmsAdminComponentsProvider({
 			marks: { ...parent.marks, ...components.marks },
 			icons: { ...parent.icons, ...components.icons },
 			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
+			entryActions: [...(parent.entryActions ?? []), ...(components.entryActions ?? [])],
 		}),
 		[parent, components],
 	);
@@ -253,4 +299,13 @@ export function useEditorExtensions(context: EditorExtensionContext): Required<E
 		insertActions: results.flatMap((result) => result.insertActions ?? []),
 		onEditor,
 	};
+}
+
+/** 등록된 글 동작 확장을 모두 부른다(확장 이름과 결과). */
+export function useEntryActions(
+	context: EntryActionContext,
+): readonly (EntryActionResult & { readonly name: string })[] {
+	const { entryActions = [] } = useCmsAdminComponents();
+	// 확장 목록은 관리자 화면이 떠 있는 동안 같다. 매 렌더 같은 순서로 같은 수의 훅을 부른다.
+	return entryActions.map((extension) => ({ name: extension.name, ...extension.use(context) }));
 }

@@ -20,7 +20,6 @@ const item = (id: string, fields: Partial<ListEntriesItem> = {}): ListEntriesIte
 	folderId: null,
 	relations: {},
 	hasUnpublishedChanges: false,
-	scheduledAt: null,
 	publishedAt: null,
 	createdAt: new Date("2026-01-01T00:00:00Z"),
 	updatedAt: new Date("2026-01-01T00:00:00Z"),
@@ -75,15 +74,9 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		expect(columnsFor("tag").available).not.toContain("tagIds");
 	});
 
-	it("states status in text, including unpublished changes and schedules", () => {
-		renderTable({
-			items: [
-				item("changed", { status: "published", hasUnpublishedChanges: true }),
-				item("scheduled", { scheduledAt: new Date("2030-01-01T00:00:00Z") }),
-			],
-		});
+	it("states status in text, including unpublished changes", () => {
+		renderTable({ items: [item("changed", { status: "published", hasUnpublishedChanges: true })] });
 		expect(screen.getByText("발행됨 · 수정 중")).toBeTruthy();
-		expect(screen.getByText("초안 · 예약 2030-01-01 09:00")).toBeTruthy();
 	});
 
 	it("sorts from the column header popup and exposes aria-sort on the header cell", async () => {
@@ -101,7 +94,7 @@ describe("admin entry list (v2 A1 Data Table)", () => {
 		fireEvent.click(await screen.findByRole("checkbox", { name: "초안" }));
 		expect(props.onStateChange).toHaveBeenCalledWith({ statuses: ["draft"] });
 		fireEvent.click(screen.getByRole("button", { name: "필터 해제" }));
-		expect(props.onStateChange).toHaveBeenLastCalledWith({ statuses: [], hasChanges: false, scheduled: false });
+		expect(props.onStateChange).toHaveBeenLastCalledWith({ statuses: [], hasChanges: false });
 	});
 
 	it("keeps filters on hidden columns visible as chips", () => {

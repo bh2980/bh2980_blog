@@ -37,7 +37,6 @@ export interface ListState {
 	/** 비어 있으면 휴지통을 뺀 전체다. 여러 값은 OR다. */
 	statuses: ListStatus[];
 	hasChanges: boolean;
-	scheduled: boolean;
 	/** 분류 필드 이름 → 고른 항목 ID(v2 A1). 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다. */
 	relations: Readonly<Record<string, readonly string[]>>;
 	/** 콘텐츠 언어(v2 B4). 비어 있으면 모든 언어다. */
@@ -64,7 +63,6 @@ export const DEFAULT_LIST_STATE: Omit<ListState, "collection"> = {
 	slugContains: "",
 	statuses: [],
 	hasChanges: false,
-	scheduled: false,
 	relations: {},
 	locales: [],
 	createdFrom: "",
@@ -130,7 +128,6 @@ export function parseListState(
 		slugContains: params.get("slug") ?? "",
 		statuses,
 		hasChanges: params.get("changes") === "1",
-		scheduled: params.get("scheduled") === "1",
 		relations: readRelations(params.getAll("relation"), isCollection(collection) ? collection : DEFAULT_COLLECTION),
 		locales: [...new Set(params.getAll("locale"))].filter(isLocale),
 		sortField: (LIST_SORT_FIELDS as readonly string[]).includes(sortField)
@@ -158,7 +155,6 @@ function appendFilterParams(params: URLSearchParams, state: ListState) {
 	set("slug", state.slugContains, "");
 	for (const status of state.statuses) params.append("status", status);
 	if (state.hasChanges) params.set("changes", "1");
-	if (state.scheduled) params.set("scheduled", "1");
 	appendRelations(params, state.relations);
 	for (const locale of state.locales) params.append("locale", locale);
 	for (const key of DATE_KEYS) set(key, state[key], "");
@@ -214,7 +210,6 @@ export function listStateToApiQuery(state: ListState, options: { trash?: boolean
 	if (options.trash) query.append("status", "trashed");
 	else for (const status of state.statuses) query.append("status", status);
 	if (state.hasChanges) query.set("hasChanges", "true");
-	if (state.scheduled) query.set("scheduled", "true");
 	appendRelations(query, state.relations);
 	for (const locale of state.locales) query.append("locale", locale);
 	for (const key of DATE_KEYS) {
@@ -232,7 +227,6 @@ export const activeFilterCount = (state: ListState) =>
 		state.slugContains.trim(),
 		state.statuses.length > 0,
 		state.hasChanges,
-		state.scheduled,
 		...Object.values(state.relations).map((ids) => ids.length > 0),
 		state.locales.length > 0,
 		...DATE_KEYS.map((key) => state[key]),
@@ -256,7 +250,6 @@ export function clearFilters(state: ListState): ListState {
 		slugContains: "",
 		statuses: [],
 		hasChanges: false,
-		scheduled: false,
 		relations: {},
 		locales: [],
 		createdFrom: "",

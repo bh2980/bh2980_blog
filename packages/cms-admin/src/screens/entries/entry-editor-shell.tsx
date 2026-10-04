@@ -21,7 +21,6 @@ import { analyze } from "@bh2980/cms/mdx";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
 import {
 	Archive,
-	CalendarClock,
 	CalendarSync,
 	ChevronDown,
 	ChevronLeft,
@@ -41,9 +40,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useEditorExtensions } from "../../admin-components";
+import { useEditorExtensions, useEntryActions } from "../../admin-components";
 import { MdxSourceEditor } from "../../editor/mdx-source-editor";
 import { CmsEditor } from "../../editor/tiptap-editor";
 import { cn } from "../../lib/utils/cn";
@@ -95,7 +94,6 @@ import {
 } from "./lifecycle-confirm";
 import { backupKey, deleteLocalBackup, getLocalBackup } from "./local-backup";
 import { ConflictDialog, type Recovery, RecoveryDialog } from "./recovery-dialogs";
-import { formatScheduleTime, ScheduleDialog, ScheduleNotice } from "./schedule-dialog";
 import { SourceChangeDialog } from "./source-change-dialog";
 import { SourcePane } from "./source-pane";
 import { useSourceSync } from "./source-sync";
@@ -239,12 +237,6 @@ function keepTranslationGroup(current: EntryData | null, next: EntryData): Pick<
 /**
  * 게시글·메모 편집 화면(§3.1, §5). 태그·카테고리·모음집(record 컬렉션)은 목록의 작은 폼에서 편집한다.
  */
-/** 설정 시간대의 이름(예: `한국 표준시`). 예약 시각 안내에 쓴다. */
-const timeZoneName = () =>
-	new Intl.DateTimeFormat(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE, timeZoneName: "long" })
-		.formatToParts(new Date())
-		.find((part) => part.type === "timeZoneName")?.value ?? CMS_TIME_ZONE;
-
 export function EntryEditorShell({
 	mode,
 	initialEntryId,
@@ -267,16 +259,13 @@ export function EntryEditorShell({
 	const sourcePaneRef = useRef<HTMLElement>(null);
 	const [isSlugTouched, setIsSlugTouched] = useState(mode === "edit");
 	/** 머리 단추가 하는 일. 하는 동안 단추를 막고 글자를 바꾼다. */
-	const [busy, setBusy] = useState<"publish" | "schedule" | "status" | null>(null);
+	const [busy, setBusy] = useState<"publish" | "status" | "extension" | null>(null);
 	const isSubmitting = busy !== null;
-	/** 예약 창 안에 보일 오류. 창을 연 채 오류를 창 밖에 보이지 않는다. */
-	const [scheduleError, setScheduleError] = useState<string | null>(null);
 	const [publishIssues, setPublishIssues] = useState<CmsIssue[]>([]);
 	const [pendingBodyPosition, setPendingBodyPosition] = useState<CmsIssue["position"]>();
 	const [pendingFieldPath, setPendingFieldPath] = useState<string | null>(null);
 	const [recovery, setRecovery] = useState<Recovery | null>(null);
 	const [conflict, setConflict] = useState<{ server: EntryData; local: EntryForm } | null>(null);
-	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 	const [incoming, setIncoming] = useState<{ items: IncomingReferenceItem[]; loading: boolean; error: string | null }>({
 		items: [],
@@ -284,9 +273,10 @@ export function EntryEditorShell({
 		error: null,
 	});
 
-	const scheduleLocked = Boolean(entry?.schedule?.pending);
 	const isTrashed = entry?.status === "trashed";
-	const isReadOnly = scheduleLocked || isTrashed;
+	/** 확장이 서버에서 잠근 글(예: 예약 대기). 잠긴 동안 편집하지 않는다. */
+	const lockedBy = entry?.lockedBy ?? null;
+	const isReadOnly = Boolean(lockedBy) || isTrashed;
 
 	const autosave = useEntryAutosave({
 		adminId,
@@ -295,11 +285,11 @@ export function EntryEditorShell({
 		initialForm: EMPTY_FORM,
 		enabled: !isReadOnly,
 		newEntryFolderId: folderId,
-		// 저장 응답에는 예약·번역 묶음 정보가 없다. 불러올 때 받은 값을 유지한다.
+		// 저장 응답에는 잠금·번역 묶음 정보가 없다. 불러올 때 받은 값을 유지한다.
 		onSaved: (saved) =>
 			setEntry((current) => ({
 				...saved,
-				schedule: current?.schedule ?? saved.schedule,
+				lockedBy: current?.lockedBy ?? null,
 				...keepTranslationGroup(current, saved),
 			})),
 		onConflict: (server, local) => setConflict({ server, local }),
@@ -521,7 +511,7 @@ export function EntryEditorShell({
 
 	/**
 	 * 명시적 발행만 현재 입력을 저장한다. 다른 작업은 미저장 입력이 있으면 먼저 저장하도록 안내한다.
-	 * 안내는 누른 자리 가까이에 보인다. 머리 단추·메뉴는 토스트(기본), 예약 창은 창 안이다.
+	 * 안내는 누른 자리 가까이에 보인다. 머리 단추·메뉴는 토스트(기본), 확장의 창은 창 안이다.
 	 */
 	const ensureSaved = async (
 		purpose: string,
@@ -595,12 +585,7 @@ export function EntryEditorShell({
 				fallback: "발행하지 못했습니다.",
 			});
 			autosave.setVersion(published.version);
-			// 수동 발행은 대기 중인 예약을 대신한다(서버가 예약을 취소한다).
-			setEntry((current) => ({
-				...published,
-				schedule: current?.schedule ? { ...current.schedule, pending: null } : published.schedule,
-				...keepTranslationGroup(current, published),
-			}));
+			setEntry((current) => ({ ...published, ...keepTranslationGroup(current, published) }));
 			void refreshIncoming(id);
 			const warnings = published.warnings ?? [];
 			if (warnings.length > 0) {
@@ -626,59 +611,6 @@ export function EntryEditorShell({
 				return;
 			}
 			toast.error(errorText(error, "발행하지 못했습니다."));
-		} finally {
-			setBusy(null);
-		}
-	};
-
-	const handleSchedule = async (dateTime: string) => {
-		if (isSubmitting) return;
-		setScheduleError(null);
-		const scheduledAt = parseDateTimeInput(dateTime);
-		if (!scheduledAt) {
-			setScheduleError(`예약 일시를 확인하세요. ${timeZoneName()} 기준입니다.`);
-			return;
-		}
-		if (Date.parse(scheduledAt) <= Date.now()) {
-			setScheduleError("예약은 미래 시각만 지정할 수 있습니다.");
-			return;
-		}
-		setBusy("schedule");
-		try {
-			const id = await ensureSaved("예약", { report: setScheduleError });
-			if (!id) return;
-			await cmsFetch(`/api/cms/v1/entries/${id}/schedule`, {
-				method: "POST",
-				json: { expectedVersion: autosave.getVersion(), scheduledAt },
-				fallback: "예약하지 못했습니다.",
-			});
-			setScheduleOpen(false);
-			await loadEntry(id);
-			toast.success(`${formatScheduleTime(scheduledAt)}에 발행하도록 예약했습니다.`);
-		} catch (error) {
-			// 발행 검사에 걸리면 창을 닫고 문제 목록을 보인다. 그 밖의 실패는 창 안에 보인다.
-			if (error instanceof CmsApiError && error.issues.length > 0) {
-				setPublishIssues(error.issues);
-				setScheduleOpen(false);
-				toast.error("예약할 수 없습니다. 아래 문제를 수정하세요.");
-				return;
-			}
-			setScheduleError(errorText(error, "예약하지 못했습니다."));
-		} finally {
-			setBusy(null);
-		}
-	};
-
-	const handleCancelSchedule = async () => {
-		const pending = entry?.schedule?.pending;
-		if (!entry || !pending || isSubmitting) return;
-		setBusy("status");
-		try {
-			await cmsFetch(`/api/cms/v1/entries/${entry.id}/schedule?scheduleId=${pending.id}`, { method: "DELETE" });
-			await loadEntry(entry.id);
-			toast.success("예약을 해제했습니다. 이제 편집할 수 있습니다.");
-		} catch (error) {
-			toast.error(errorText(error, "예약을 해제하지 못했습니다."));
 		} finally {
 			setBusy(null);
 		}
@@ -770,6 +702,26 @@ export function EntryEditorShell({
 		return () => window.removeEventListener("keydown", onKeyDown);
 	});
 
+	// 확장이 더하는 글 동작(예: 발행 예약). 편집 화면은 받은 것을 자리에 그리기만 한다.
+	const entryActions = useEntryActions({
+		entry,
+		collection,
+		getVersion: () => autosave.getVersion(),
+		ensureSaved: (purpose, report) => ensureSaved(purpose, report ? { report } : {}),
+		reload: async () => {
+			const id = autosave.getEntryId();
+			if (id) await loadEntry(id);
+		},
+		showIssues: (issues) => setPublishIssues([...issues]),
+		busy: isSubmitting,
+		setBusy: (on) => setBusy(on ? "extension" : null),
+	});
+	const lockedAction = lockedBy ? entryActions.find((action) => action.name === lockedBy)?.lockedAction : null;
+	const publishMenu = entryActions.flatMap((action) =>
+		action.publishMenu ? [<Fragment key={action.name}>{action.publishMenu}</Fragment>] : [],
+	);
+	const canResetPublishedAt = Boolean(entry?.publishedAt);
+
 	if (isLoading) {
 		return (
 			<div className="space-y-4 p-8" aria-busy>
@@ -793,10 +745,7 @@ export function EntryEditorShell({
 		);
 	}
 
-	const schedule = entry?.schedule;
-	const statusLabel = entry
-		? describeEntryStatus({ ...entry, scheduledAt: schedule?.pending?.scheduledAt ?? null })
-		: "새 글";
+	const statusLabel = entry ? describeEntryStatus(entry) : "새 글";
 	const canRetry = ["failed", "local-only", "session-expired"].includes(autosave.status);
 	const bodyIssue = publishIssues.find((issue) => issue.path === "mdx" || Boolean(issue.position));
 	const titleIssue = publishIssues.find((issue) => issue.path === "title");
@@ -936,17 +885,16 @@ export function EntryEditorShell({
 							onClick={() => void handlePreview(previewHref)}
 						/>
 					)}
-					{/* 하나만 바꾸는 전환(발행·보관 해제·복원·예약 해제)은 묻지 않고 바로 한다(§5). */}
-					{scheduleLocked ? (
-						<Button
-							type="button"
-							size="sm"
-							className="ml-1"
-							disabled={isSubmitting}
-							onClick={() => void handleCancelSchedule()}
-						>
-							{busy === "status" ? "예약 해제 중…" : "예약 해제"}
-						</Button>
+					{/* 하나만 바꾸는 전환(발행·보관 해제·복원)은 묻지 않고 바로 한다(§5). */}
+					{lockedBy ? (
+						// 잠근 확장이 단추를 주면(예: 예약 해제) 그것을, 아니면 막힌 발행 단추를 둔다.
+						<span className="ml-1 flex">
+							{lockedAction ?? (
+								<Button type="button" size="sm" disabled>
+									발행
+								</Button>
+							)}
+						</span>
 					) : isTrashed ? (
 						<Button
 							type="button"
@@ -967,8 +915,19 @@ export function EntryEditorShell({
 						>
 							{busy === "status" ? "보관 해제 중…" : "보관 해제"}
 						</Button>
+					) : publishMenu.length === 0 && !canResetPublishedAt ? (
+						<Button
+							id="cms-publish"
+							type="button"
+							size="sm"
+							className="ml-1"
+							disabled={isSubmitting}
+							onClick={() => void handlePublish()}
+						>
+							{busy === "publish" ? "발행 중…" : "발행"}
+						</Button>
 					) : (
-						// 발행과 발행 예약은 한 단추로 묶는다. 화살표 메뉴에 예약이 있다.
+						// 발행과 발행 방식(확장이 더한 항목·오늘 날짜로 다시 발행)은 한 단추로 묶는다.
 						// 한 단추처럼 보이게 바탕은 감싸는 칸이 칠하고, 두 단추는 사이의 가는 선으로만 나눈다.
 						<div className="ml-1 flex h-8 items-center overflow-hidden rounded-[min(var(--radius-md),10px)] bg-primary text-primary-foreground">
 							<Button
@@ -994,17 +953,9 @@ export function EntryEditorShell({
 									<ChevronDown aria-hidden className="size-3.5" />
 								</IconButton>
 								<DropdownMenuContent align="end" className="w-48">
-									<DropdownMenuItem
-										onClick={() => {
-											setScheduleError(null);
-											setScheduleOpen(true);
-										}}
-									>
-										<CalendarClock aria-hidden />
-										발행 예약
-									</DropdownMenuItem>
+									{publishMenu}
 									{/* 처음 발행한 날을 그대로 두는 것이 기본이다. 고친 글을 새 글처럼 올릴 때만 고른다. */}
-									{entry?.publishedAt && (
+									{canResetPublishedAt && (
 										<DropdownMenuItem onClick={() => void handlePublish({ resetPublishedAt: true })}>
 											<CalendarSync aria-hidden />
 											오늘 날짜로 다시 발행
@@ -1075,7 +1026,9 @@ export function EntryEditorShell({
 				</div>
 			</header>
 
-			<ScheduleNotice schedule={schedule} />
+			{entryActions.map((action) => (
+				<Fragment key={action.name}>{action.notice}</Fragment>
+			))}
 			{isTrashed && (
 				<section aria-label="휴지통" className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm">
 					<span>휴지통에 있는 글입니다. 복원하기 전에는 편집할 수 없습니다.</span>
@@ -1232,14 +1185,9 @@ export function EntryEditorShell({
 					void autosave.overwriteWithLocal(serverVersion);
 				}}
 			/>
-			<ScheduleDialog
-				open={scheduleOpen}
-				onOpenChange={setScheduleOpen}
-				runnerConfigured={schedule?.runnerConfigured}
-				submitting={busy === "schedule"}
-				error={scheduleError}
-				onSubmit={(dateTime) => void handleSchedule(dateTime)}
-			/>
+			{entryActions.map((action) => (
+				<Fragment key={action.name}>{action.overlay}</Fragment>
+			))}
 
 			<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
 			{translationSource && (

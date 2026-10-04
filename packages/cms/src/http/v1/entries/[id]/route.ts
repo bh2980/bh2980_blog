@@ -7,13 +7,13 @@ import { adminRoute, json, readVersionedBody, readVersionQuery } from "../../han
 type IdParams = { id: string };
 
 /**
- * 항목과 편집 화면에 필요한 예약 상태(§5.4), 번역 묶음(v2 B4).
+ * 항목과 편집 화면에 필요한 잠금(플러그인이 잠갔으면 그 이름 `lockedBy`), 번역 묶음(v2 B4).
  * 번역본이면 원문의 최신 초안 메타데이터(`source`)를 함께 준다. 번역본 속성 패널이 공통 값을 읽기 전용으로 보여 준다.
  */
 export const GET = adminRoute<IdParams>(async ({ params }) => {
 	const store = getCmsContentStore();
 	const entry = await store.getEntry(params.id);
-	const schedule = await store.getEntrySchedule({ entryId: params.id });
+	const lockedBy = await store.lockedBy({ entryId: params.id });
 	const translations = isItemCollection(entry.collection)
 		? null
 		: await store.getTranslationGroup({ entryId: entry.id });
@@ -21,7 +21,7 @@ export const GET = adminRoute<IdParams>(async ({ params }) => {
 		entry.translationGroupId !== entry.id ? await store.getEntry(entry.translationGroupId).catch(() => null) : null;
 	return json({
 		...entry,
-		schedule: { ...schedule, runnerConfigured: Boolean(process.env.CMS_SCHEDULER_TOKEN?.trim()) },
+		lockedBy,
 		translations: translations?.members ?? [],
 		...(source
 			? {

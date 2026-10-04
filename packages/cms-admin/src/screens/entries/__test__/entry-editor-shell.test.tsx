@@ -1,5 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CmsAdminComponentsProvider, type EntryActionExtension } from "../../../admin-components";
+import { Button } from "../../../ui/button";
+import { DropdownMenuItem } from "../../../ui/dropdown-menu";
 import { EntryEditorShell } from "../entry-editor-shell";
 import { EMPTY_FORM, formFingerprint, formFromEntry } from "../entry-form";
 
@@ -75,7 +78,6 @@ const entry = {
 	workingSlug: "test",
 	publishedSlug: null,
 	working: { metadata: { title: "테스트", categoryId: "cat-1", summary: "요약" }, mdx: "첫째 줄\n둘째 줄" },
-	schedule: { pending: null, last: null, runnerConfigured: true },
 };
 
 const json = (data: unknown, status = 200) => ({ ok: status < 400, status, json: async () => data });
@@ -291,12 +293,11 @@ describe("entry editor shell", () => {
 		});
 	});
 
-	it("does not offer today's date before the first publish", async () => {
+	it("shows a plain publish button when no extension adds a publish option and the entry was never published", async () => {
 		renderEdit();
 		await editorTitle();
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
-		await screen.findByRole("menuitem", { name: "발행 예약" });
-		expect(screen.queryByRole("menuitem", { name: "오늘 날짜로 다시 발행" })).toBeNull();
+		expect(screen.getByRole("button", { name: "발행" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "발행 방식" })).toBeNull();
 	});
 
 	it("offers a same-version browser backup and deletes it when the server copy is kept", async () => {
@@ -545,40 +546,43 @@ describe("entry editor shell", () => {
 		expect(methodCalls("PATCH")).toHaveLength(1);
 	});
 
-	it("locks a scheduled entry and unlocks it with 예약 해제", async () => {
-		let current: Record<string, unknown> & {
-			schedule: { pending: unknown; last: unknown; runnerConfigured: boolean };
-		} = {
-			...entry,
-			schedule: {
-				pending: {
-					id: "s1",
-					status: "pending",
-					scheduledAt: "2099-01-01T00:00:00.000Z",
-					completedAt: null,
-					failureCode: null,
-					failureDetail: null,
-				},
-				last: null,
-				runnerConfigured: false,
-			},
-		};
+	it("renders what an entry action extension registers and lets it lock the entry", async () => {
+		let current: Record<string, unknown> = { ...entry, lockedBy: "hold" };
 		serve((input, init) => {
 			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(current);
-			if (init?.method === "DELETE" && input.includes("/schedule?scheduleId=s1")) {
-				current = { ...current, version: 5, schedule: { ...current.schedule, pending: null } };
-				return json({ id: "s1", status: "cancelled" });
-			}
 		});
-		renderEdit();
-		const banner = await screen.findByRole("region", { name: "예약" });
-		expect(within(banner).getByText(/외부 실행기 연결 필요/)).toBeTruthy();
+		const hold: EntryActionExtension = {
+			name: "hold",
+			use: (context) => ({
+				publishMenu: <DropdownMenuItem>보류 발행</DropdownMenuItem>,
+				notice: context.entry?.lockedBy ? <output aria-label="보류">보류 중</output> : null,
+				lockedAction: (
+					<Button
+						type="button"
+						size="sm"
+						onClick={() => {
+							current = { ...current, lockedBy: null, version: 5 };
+							void context.reload();
+						}}
+					>
+						보류 해제
+					</Button>
+				),
+			}),
+		};
+		render(
+			<CmsAdminComponentsProvider components={{ entryActions: [hold] }}>
+				<EntryEditorShell mode="edit" initialEntryId="entry-1" adminId={ADMIN} />
+			</CmsAdminComponentsProvider>,
+		);
+		expect(await screen.findByRole("status", { name: "보류" })).toBeTruthy();
 		expect(((await editorTitle()) as HTMLInputElement).readOnly).toBe(true);
 		expect(screen.queryByRole("button", { name: "발행" })).toBeNull();
-		expect(within(banner).queryByRole("button")).toBeNull();
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "예약 해제" }));
-		await waitFor(() => expect(screen.queryByRole("region", { name: "예약" })).toBeNull());
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "보류 해제" }));
+		await waitFor(() => expect(screen.queryByRole("status", { name: "보류" })).toBeNull());
 		expect((screen.getByRole("button", { name: "발행" }) as HTMLButtonElement).disabled).toBe(false);
+		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
+		expect(await screen.findByRole("menuitem", { name: "보류 발행" })).toBeTruthy();
 	});
 
 	it("fills an empty post summary from the body before publishing", async () => {
@@ -632,9 +636,6 @@ describe("entry editor shell", () => {
 		expect(
 			within(screen.getByRole("toolbar", { name: "서식 도구" })).getByRole("button", { name: "MDX 원문" }),
 		).toBeTruthy();
-		fireEvent.click(within(toolbar).getByRole("button", { name: "발행 방식" }));
-		expect(screen.getByRole("menuitem", { name: "발행 예약" })).toBeTruthy();
-		fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
 		expect(within(toolbar).getByRole("link", { name: "미리보기" })).toBeTruthy();
 		fireEvent.click(within(toolbar).getByRole("button", { name: "더보기" }));
 		expect(screen.getByRole("menuitem", { name: "복제" })).toBeTruthy();
@@ -760,87 +761,6 @@ describe("템플릿", () => {
 		fireEvent.click(screen.getByRole("button", { name: "템플릿" }));
 
 		expect(await screen.findByRole("menuitem", { name: "템플릿이 없습니다." })).toBeTruthy();
-	});
-});
-
-describe("발행 예약", () => {
-	const pending = {
-		id: "s1",
-		status: "pending",
-		scheduledAt: "2099-01-01T00:00:00.000Z",
-		completedAt: null,
-		failureCode: null,
-		failureDetail: null,
-	};
-	const openSchedule = async () => {
-		await editorTitle();
-		fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "발행 방식" }));
-		fireEvent.click(await screen.findByRole("menuitem", { name: "발행 예약" }));
-		return screen.findByRole("dialog", { name: "발행 예약" });
-	};
-
-	it("설정 시간대의 미래 시각만 받고, 예약하면 잠긴 글을 다시 불러온다", async () => {
-		let current: unknown = entry;
-		serve((input, init) => {
-			if (input === "/api/cms/v1/entries/entry-1" && !init?.method) return json(current);
-			if (init?.method === "POST" && input === "/api/cms/v1/entries/entry-1/schedule") {
-				current = { ...entry, schedule: { pending, last: null, runnerConfigured: true } };
-				return json(pending);
-			}
-		});
-		renderEdit();
-		const dialog = await openSchedule();
-		const input = within(dialog).getByLabelText("예약 일시");
-
-		fireEvent.change(input, { target: { value: "2000-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
-		// 창을 연 채 오류를 창 밖에 보이지 않는다.
-		expect((await within(dialog).findByRole("alert")).textContent).toBe("예약은 미래 시각만 지정할 수 있습니다.");
-		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
-
-		fireEvent.change(input, { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
-
-		await waitFor(() => expect(methodCalls("POST", "/schedule")).toHaveLength(1));
-		expect(JSON.parse(String(methodCalls("POST", "/schedule")[0]?.[1]?.body))).toEqual({
-			expectedVersion: 4,
-			scheduledAt: "2099-01-01T00:00:00.000Z",
-		});
-		expect(await screen.findByRole("region", { name: "예약" })).toBeTruthy();
-		expect(success).toHaveBeenCalledWith("2099-01-01 09:00에 발행하도록 예약했습니다.");
-		expect(screen.queryByRole("dialog", { name: "발행 예약" })).toBeNull();
-	});
-
-	it("저장하지 않은 변경이 있으면 예약하지 않는다", async () => {
-		renderEdit();
-		fireEvent.change(await editorTitle(), { target: { value: "저장 안 한 수정" } });
-		const dialog = await openSchedule();
-		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
-
-		expect((await within(dialog).findByRole("alert")).textContent).toBe("변경사항을 먼저 저장한 후 예약하세요.");
-		expect(methodCalls("POST", "/schedule")).toHaveLength(0);
-	});
-
-	it("검사에 걸리면 창을 닫고 문제 목록을 보인다", async () => {
-		serve((_input, init) => {
-			if (init?.method === "POST")
-				return json(
-					{
-						code: "validation_failed",
-						message: "발행할 수 없습니다.",
-						issues: [{ code: "missing_field", path: "categoryId", message: "카테고리" }],
-					},
-					422,
-				);
-		});
-		renderEdit();
-		const dialog = await openSchedule();
-		fireEvent.change(within(dialog).getByLabelText("예약 일시"), { target: { value: "2099-01-01T09:00" } });
-		fireEvent.click(within(dialog).getByRole("button", { name: "예약" }));
-
-		expect(await screen.findByRole("list", { name: "발행 검증 문제" })).toBeTruthy();
-		await waitFor(() => expect(screen.queryByRole("dialog", { name: "발행 예약" })).toBeNull());
 	});
 });
 

@@ -18,7 +18,4 @@ export default defineServerConfig({
 	get secret() {
 		return process.env.AUTH_SECRET;
 	},
-	get schedulerToken() {
-		return process.env.CMS_SCHEDULER_TOKEN;
-	},
 });

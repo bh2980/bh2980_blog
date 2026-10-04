@@ -24,7 +24,6 @@ export const GET = adminRoute(async ({ request }) => {
 		includeDescendants: query.includeDescendants,
 		relations: query.relation,
 		hasUnpublishedChanges: query.hasChanges,
-		scheduled: query.scheduled,
 		createdAt: range(query.createdFrom, query.createdTo),
 		updatedAt: range(query.updatedFrom, query.updatedTo),
 		publishedAt: range(query.publishedFrom, query.publishedTo),

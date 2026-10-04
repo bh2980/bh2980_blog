@@ -212,6 +212,24 @@ export default defineConfig({
 
 자세한 것은 `@bh2980/cms-seo`의 README.
 
+### 발행 예약 (선택)
+
+```sh
+pnpm add @bh2980/cms-schedule
+```
+
+```ts
+// cms.config.ts
+import { schedule } from "@bh2980/cms-schedule";
+
+export default defineConfig({
+	// …
+	plugins: [schedule()],
+});
+```
+
+편집 화면 발행 메뉴에 "발행 예약"이 생긴다. 정해진 시각의 실행은 외부 실행기가 맡는다. 자세한 것은 `@bh2980/cms-schedule`의 README.
+
 ## 진입점
 
 | 진입점 | 쓰는 곳 | 내용 |
@@ -347,6 +365,11 @@ export const myPlugin = () =>
   확장은 받는 플러그인을 몰라도 기능을 더할 수 있다(블록 확장의 다이어그램 만들기, SEO 확장의 검색 제목 추천).
 - 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms migrate`가 본체 표 다음에 부른다.
 - 플러그인 코드는 `@bh2980/cms/plugin/server`의 `getCmsDatabase()`(DB 연결)와 본체 라우트 틀(`adminRoute` 등)을 쓴다.
+- 서버 쪽 `entryHooks`는 본체가 글을 바꾸는 트랜잭션 안에서 불린다. `locked`가 돌려준 글은 편집이 잠기고(본문이 바뀌는 저장·
+  저장하며 바로 발행·일괄 작업이 `locked`로 거부, 글 조회의 `lockedBy`가 플러그인 이름), `afterStatusChange`는 발행·보관·휴지통을
+  알린다. 같은 트랜잭션에서 발행하려면 본체 저장소의 `lockEntryInTransaction`·`validateForPublishInTransaction`·
+  `publishInTransaction`을 쓴다(예: 예약 확장).
+- 관리자 쪽 `entryActions`(`CmsAdminComponents`)는 편집 화면에 발행 메뉴 항목·안내 띠·잠긴 동안의 단추·창을 더한다.
 
 ## 서버 설정
 
@@ -356,7 +379,6 @@ export const myPlugin = () =>
 | `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
 | `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath? })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로") |
 | `secret` | AI 서비스 키를 DB에 암호화해 둘 때 쓰는 키. 바꾸면 저장된 키를 다시 넣어야 한다. |
-| `schedulerToken` | 외부 예약 실행기가 예약 발행 API를 부를 때 쓰는 토큰. |
 
 다른 저장소·로그인을 쓰려면 `DatabaseAdapter`·`MediaAdapter`·`AuthAdapter`를 직접 만들어 넣는다.
 

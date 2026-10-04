@@ -28,5 +28,4 @@ export default defineServerConfig({
 		basePath: "/api/auth",
 	}),
 	secret: process.env.AUTH_SECRET,
-	schedulerToken: process.env.CMS_SCHEDULER_TOKEN,
 });
