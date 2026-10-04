@@ -1,0 +1,24 @@
+/*
+ * @bh2980/cms-text-check 스타일. 앱의 Tailwind 입력 CSS에서 `@bh2980/cms-admin/styles.css` 다음에 import한다.
+ * 밑줄 색은 관리자 테마 색(--cms-warning·--cms-destructive·--cms-primary)에서 온다.
+ */
+
+/* 배포 묶음의 검사 화면에서 Tailwind 클래스를 찾는다(작업 공간 안에서는 앱이 소스를 바로 읽는다). */
+@source "./dist";
+
+/* 맞춤법·문장 검사 결과 밑줄(편집기 장식). 심각도마다 색이 다르다. */
+.cms-admin .cms-text-issue {
+	text-decoration-line: underline;
+	text-decoration-style: wavy;
+	text-decoration-thickness: 1px;
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--cms-warning);
+	cursor: pointer;
+}
+.cms-admin .cms-text-issue[data-severity="error"] {
+	text-decoration-color: var(--cms-destructive);
+}
+.cms-admin .cms-text-issue[data-severity="info"] {
+	text-decoration-color: var(--cms-primary);
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createTranslator } from "@bh2980/cms/client";
-import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
+import { useConfirm } from "@bh2980/cms-admin/kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";

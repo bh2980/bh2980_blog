@@ -105,7 +105,7 @@ export function ListSearch({
 				/>
 			</InputGroup>
 			{isContent && allowBody && (
-				<Label className="font-normal text-muted-foreground text-xs">
+				<Label className="font-normal text-cms-muted-foreground text-xs">
 					<Switch
 						size="sm"
 						checked={state.includeBody}
@@ -134,11 +134,11 @@ export function FilterChipBar({
 		<ul aria-label={t("toolbar.chips")} className="flex min-h-11 flex-wrap items-center gap-1.5 border-b px-5 py-2">
 			{chips.map((chip) => (
 				<li key={chip.key}>
-					<span className="inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 pr-0.5 pl-2 font-medium text-primary text-xs">
+					<span className="inline-flex h-6 items-center gap-1 rounded-md bg-cms-primary/10 pr-0.5 pl-2 font-medium text-cms-primary text-xs">
 						<span className="max-w-72 truncate">{chip.label}</span>
 						<IconButton
 							size="icon-xs"
-							className="size-5 text-primary hover:bg-primary/15 hover:text-primary"
+							className="size-5 text-cms-primary hover:bg-cms-primary/15 hover:text-cms-primary"
 							label={t("filter.clear")}
 							onClick={() => onChange(chip.clear)}
 						>
@@ -152,7 +152,7 @@ export function FilterChipBar({
 					type="button"
 					variant="ghost"
 					size="xs"
-					className="text-muted-foreground"
+					className="text-cms-muted-foreground"
 					onClick={() => {
 						const {
 							collection: _c,

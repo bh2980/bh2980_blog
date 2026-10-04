@@ -5,9 +5,11 @@ import {
 	adminEntryEditHref,
 	adminHref,
 	COLLECTION_DEFINITIONS,
+	cmsApiUrl,
 	createTranslator,
 	isDocumentCollection,
 	isItemCollection,
+	withBasePath,
 } from "@bh2980/cms/client";
 import type { Folder, ListEntriesItem } from "@bh2980/cms/runtime";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -84,7 +86,7 @@ function useListState(mode: ListMode) {
 	);
 
 	useEffect(() => {
-		cmsFetch<PreferencesBody>("/api/cms/v1/preferences")
+		cmsFetch<PreferencesBody>(cmsApiUrl("/v1/preferences"))
 			.then(setPreferences)
 			.catch(() => setPreferences({}));
 	}, []);
@@ -95,9 +97,10 @@ function useListState(mode: ListMode) {
 			...current,
 			collections: { ...current?.collections, [collection]: { ...current?.collections?.[collection], ...patch } },
 		}));
-		void cmsFetch("/api/cms/v1/preferences", { method: "PUT", json: { collections: { [collection]: patch } } }).catch(
-			() => toast.error(t("list.prefsSaveFailed")),
-		);
+		void cmsFetch(cmsApiUrl("/v1/preferences"), {
+			method: "PUT",
+			json: { collections: { [collection]: patch } },
+		}).catch(() => toast.error(t("list.prefsSaveFailed")));
 	};
 
 	return { state, update, columnSettings: collectionPrefs.columns, savePreferences };
@@ -113,7 +116,7 @@ function useEntriesData(state: ListState, mode: ListMode) {
 
 	const foldersQuery = useQuery({
 		queryKey: foldersKey(collection),
-		queryFn: ({ signal }) => cmsFetch<Folder[]>(`/api/cms/v1/folders?collection=${collection}`, { signal }),
+		queryFn: ({ signal }) => cmsFetch<Folder[]>(cmsApiUrl(`/v1/folders?collection=${collection}`), { signal }),
 		enabled: !isTrash,
 	});
 	const folders = useMemo(() => (isTrash ? [] : (foldersQuery.data ?? [])), [isTrash, foldersQuery.data]);
@@ -123,7 +126,7 @@ function useEntriesData(state: ListState, mode: ListMode) {
 	const entriesQuery = useQuery({
 		queryKey: listKey,
 		queryFn: ({ signal }) =>
-			cmsFetch<EntriesPage>(`/api/cms/v1/entries?${apiQuery}`, { signal, fallback: t("list.loadFailed") }),
+			cmsFetch<EntriesPage>(cmsApiUrl(`/v1/entries?${apiQuery}`), { signal, fallback: t("list.loadFailed") }),
 		// 다른 컬렉션의 줄은 열 구성이 달라 남기지 않는다.
 		placeholderData: (previous, previousQuery) =>
 			previousQuery && new URLSearchParams(String(previousQuery.queryKey.at(-1))).get("collection") === collection
@@ -232,7 +235,7 @@ function useEntryMutations({
 			const out: BulkItemResult[] = [];
 			for (const target of targets) {
 				try {
-					await cmsFetch(`/api/cms/v1/entries/${target.id}/restore`, {
+					await cmsFetch(cmsApiUrl(`/v1/entries/${target.id}/restore`), {
 						method: "POST",
 						json: { expectedVersion: target.expectedVersion },
 					});
@@ -380,7 +383,7 @@ export function useEntryList(mode: ListMode) {
 
 	const duplicate = async (item: ListEntriesItem) => {
 		try {
-			const copy = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${item.id}/duplicate`, {
+			const copy = await cmsFetch<{ id: string }>(cmsApiUrl(`/v1/entries/${item.id}/duplicate`), {
 				method: "POST",
 				json: { title: copyTitle(item.collection, item.title) },
 				fallback: t("duplicate.failed"),
@@ -409,7 +412,7 @@ export function useEntryList(mode: ListMode) {
 			{ mode, isRecord, isContent, folders, collection, options },
 			{
 				openEditor: (target) => router.push(editHref(target) as Route),
-				openInNewTab: (target) => window.open(editHref(target), "_blank", "noopener"),
+				openInNewTab: (target) => window.open(withBasePath(editHref(target)), "_blank", "noopener"),
 				openRecord: (target) => void openRecord({ collection, id: target.id }),
 				duplicate: (target) => void duplicate(target),
 				restore: (targets) => void restore(targets),

@@ -1,4 +1,4 @@
-import type { CmsPlugin } from "@bh2980/cms";
+import { assertPluginPagesFree, type CmsPlugin } from "@bh2980/cms";
 import { cmsConfig } from "@bh2980/cms/client";
 import type { ComponentType, ReactNode } from "react";
 
@@ -27,13 +27,27 @@ const PLUGINS: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
 
 let loaded: Promise<readonly (CmsAdminPlugin & { readonly name: string })[]> | undefined;
 
-/** 사이트 설정의 플러그인 관리자 쪽을 불러온다. 처음 부를 때 한 번 읽는다. */
+/**
+ * 사이트 설정의 플러그인 관리자 쪽을 불러온다. 성공하면 처음 한 번만 읽고 다시 쓴다.
+ * 불러오기가 실패하거나 화면 주소가 본체·다른 플러그인과 겹치면 기억하지 않아 다음에 다시 시도하고, 오류는 그대로 던진다.
+ */
 export function loadAdminPlugins(): Promise<readonly (CmsAdminPlugin & { readonly name: string })[]> {
 	loaded ??= Promise.all(
 		PLUGINS.map(async (plugin) => ({
 			name: plugin.name,
 			...((await plugin.admin?.())?.default as CmsAdminPlugin | undefined),
 		})),
-	);
+	)
+		.then((plugins) => {
+			assertPluginPagesFree(
+				plugins.flatMap((plugin) => Object.keys(plugin.pages ?? {}).map((path) => ({ plugin: plugin.name, path }))),
+			);
+			return plugins;
+		})
+		.catch((error) => {
+			loaded = undefined;
+			console.error("[cms-admin] failed to load admin plugins", error);
+			throw error;
+		});
 	return loaded;
 }

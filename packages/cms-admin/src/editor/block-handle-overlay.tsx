@@ -64,7 +64,7 @@ export function BlockHandleOverlay({
 					size="icon-xs"
 					disabled={action.busy}
 					onClick={action.onClick}
-					className="text-muted-foreground hover:text-foreground"
+					className="text-cms-muted-foreground hover:text-cms-foreground"
 				>
 					{action.busy ? <Spinner className="size-3" /> : action.icon}
 				</IconButton>
@@ -82,7 +82,7 @@ export function BlockHandleOverlay({
 						onDragStart?.(event);
 					}}
 					onDragEnd={onDragEnd}
-					className="cursor-grab text-muted-foreground active:cursor-grabbing"
+					className="cursor-grab text-cms-muted-foreground active:cursor-grabbing"
 					trigger={(button) => <DropdownMenuTrigger render={button} />}
 				>
 					<GripVertical aria-hidden />

@@ -2,8 +2,7 @@
 
 import { isCollection, roleValue, SUMMARY_ROLE } from "@bh2980/cms/client";
 import type { FieldInputParts, FieldInputProps } from "@bh2980/cms-admin";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Switch } from "@bh2980/cms-admin/ui/switch";
+import { cn, Switch } from "@bh2980/cms-admin/kit";
 import { SEO_DEFAULT_LIMITS } from "../fields";
 
 /** 권장 글자 수: 필드 `max` → `inputOptions.limit` → 기본값. */
@@ -20,8 +19,8 @@ function Counter({ length, limit }: { length: number; limit: number }) {
 	return (
 		<span
 			className={cn(
-				"text-[11px] text-muted-foreground tabular-nums",
-				length > limit && "text-amber-600 dark:text-amber-400",
+				"text-[11px] text-cms-muted-foreground tabular-nums",
+				length > limit && "cms-dark:text-amber-400 text-amber-600",
 			)}
 		>
 			{length}/{limit}

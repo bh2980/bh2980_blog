@@ -105,7 +105,7 @@ export function folderKeyHandler(folder: Folder, actions: FolderActions) {
  */
 const TREE_LIST = "mx-0 translate-x-0 gap-0 border-l-0 py-0 pr-0 pl-6";
 const TREE_ITEM =
-	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-sidebar-foreground/20 after:absolute after:top-3.5 after:h-px after:w-3.5 after:bg-sidebar-foreground/20 last:before:h-3.5";
+	"before:-left-3 after:-left-3 before:absolute before:top-0 before:h-full before:w-px before:bg-cms-sidebar-foreground/20 after:absolute after:top-3.5 after:h-px after:w-3.5 after:bg-cms-sidebar-foreground/20 last:before:h-3.5";
 
 function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: () => void }) {
 	const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -172,8 +172,8 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 							{...dropProps(folder.id, folder.id)}
 							data-active={isActive || undefined}
 							className={cn(
-								"group/folder flex h-7 items-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground",
-								dropTarget === folder.id && "ring-2 ring-sidebar-ring",
+								"group/folder flex h-7 items-center rounded-md text-cms-sidebar-foreground hover:bg-cms-sidebar-accent hover:text-cms-sidebar-accent-foreground data-active:bg-cms-sidebar-accent data-active:font-medium data-active:text-cms-sidebar-accent-foreground",
+								dropTarget === folder.id && "ring-2 ring-cms-sidebar-ring",
 							)}
 						/>
 					}
@@ -182,7 +182,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					{children.length > 0 ? (
 						<CollapsibleTrigger
 							aria-label={t(isExpanded ? "sidebar.folderCollapse" : "sidebar.folderExpand", { name: folder.name })}
-							className="group/toggle flex size-6 shrink-0 items-center justify-center rounded-md outline-hidden hover:bg-sidebar-foreground/10 focus-visible:ring-2 focus-visible:ring-sidebar-ring [&_svg]:size-4"
+							className="group/toggle flex size-6 shrink-0 items-center justify-center rounded-md outline-hidden hover:bg-cms-sidebar-foreground/10 focus-visible:ring-2 focus-visible:ring-cms-sidebar-ring [&_svg]:size-4"
 						>
 							<span className="group-hover/toggle:hidden group-focus-visible/toggle:hidden">
 								{isExpanded ? <FolderOpen aria-hidden /> : <FolderIcon aria-hidden />}
@@ -213,7 +213,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 					<MoreActionsButton
 						actions={actions}
 						label={t("list.folderActions", { name: folder.name })}
-						className="size-6 shrink-0 text-sidebar-foreground/70"
+						className="size-6 shrink-0 text-cms-sidebar-foreground/70"
 					/>
 				</ActionContextMenu>
 				{children.length > 0 && (
@@ -243,7 +243,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 				label={t("list.folderAdd")}
 				side="right"
 				size="icon-xs"
-				className="absolute top-3.5 right-3 size-5 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden [&_svg]:size-4"
+				className="absolute top-3.5 right-3 size-5 text-cms-sidebar-foreground hover:bg-cms-sidebar-accent hover:text-cms-sidebar-accent-foreground group-data-[collapsible=icon]:hidden [&_svg]:size-4"
 				onClick={() => nav.folderActions.requestCreate(null)}
 			>
 				<Plus aria-hidden />
@@ -258,7 +258,7 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 								isActive={currentFolder === "all"}
 								aria-current={currentFolder === "all" ? "true" : undefined}
 								onClick={() => select("all")}
-								className={cn(dropTarget === "root" && "ring-2 ring-sidebar-ring")}
+								className={cn(dropTarget === "root" && "ring-2 ring-cms-sidebar-ring")}
 							>
 								<CollectionIcon collection={nav.collection} />
 								<span>{label}</span>
@@ -271,9 +271,11 @@ function FolderTree({ nav, closeMobile }: { nav: FolderNavigation; closeMobile: 
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{folders.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">{t("sidebar.noFolders")}</p>}
+				{folders.length === 0 && (
+					<p className="px-2 py-2 text-cms-muted-foreground text-xs">{t("sidebar.noFolders")}</p>
+				)}
 				{folders.length > 0 && (
-					<Label className="mt-3 px-2 font-normal text-muted-foreground text-xs">
+					<Label className="mt-3 px-2 font-normal text-cms-muted-foreground text-xs">
 						<Switch
 							size="sm"
 							checked={nav.includeDescendants}
@@ -328,15 +330,17 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				>
 					<span
 						aria-hidden
-						className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary font-semibold text-sidebar-primary-foreground text-xs"
+						className="flex size-6 items-center justify-center rounded-md bg-cms-sidebar-primary font-semibold text-cms-sidebar-primary-foreground text-xs"
 					>
 						{(SITE_NAME || "CMS").slice(0, 1)}
 					</span>
-					<span className="font-semibold text-[13px] text-sidebar-accent-foreground">{SITE_NAME || "CMS"}</span>
+					<span className="font-semibold text-[13px] text-cms-sidebar-accent-foreground">{SITE_NAME || "CMS"}</span>
 				</Link>
 				<Tooltip>
 					<TooltipTrigger
-						render={<SidebarTrigger aria-label={toggleLabel} className="size-8 shrink-0 text-sidebar-foreground/70" />}
+						render={
+							<SidebarTrigger aria-label={toggleLabel} className="size-8 shrink-0 text-cms-sidebar-foreground/70" />
+						}
 					/>
 					<TooltipContent side="right">{toggleLabel}</TooltipContent>
 				</Tooltip>
@@ -382,7 +386,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 				</SidebarGroup>
 				{folderNav && <FolderTree nav={folderNav} closeMobile={closeMobile} />}
 			</SidebarContent>
-			<SidebarFooter className="flex-row items-center gap-1 border-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
+			<SidebarFooter className="flex-row items-center gap-1 border-cms-sidebar-border border-t px-3 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-2">
 				{/* 사이트 첫 화면(`site.home`, 기본 `/`). 관리자 화면이 사이트 앱 안에 있어 `/`가 사이트다. */}
 				<Tooltip>
 					<TooltipTrigger
@@ -390,7 +394,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 							<Link
 								href={SITE_HOME as Route}
 								aria-label={t("sidebar.viewSite")}
-								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+								className="flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-[13px] text-cms-muted-foreground hover:bg-cms-sidebar-accent hover:text-cms-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
 							/>
 						}
 					>
@@ -401,7 +405,7 @@ export function AdminSidebar({ activeNav, folderNav, trashCount }: AdminSidebarP
 						{t("sidebar.viewSite")}
 					</TooltipContent>
 				</Tooltip>
-				<ThemeToggle className="size-8 text-muted-foreground" />
+				<ThemeToggle className="size-8 text-cms-muted-foreground" />
 			</SidebarFooter>
 		</Sidebar>
 	);

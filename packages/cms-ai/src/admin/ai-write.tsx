@@ -3,10 +3,18 @@
 import { createTranslator } from "@bh2980/cms/client";
 import type { EditorExtension, EditorInsertAction, EditorSelectionAction } from "@bh2980/cms-admin";
 import { type BlockAction, blockNodeName, MdxPreview, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@bh2980/cms-admin/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
-import { Textarea } from "@bh2980/cms-admin/ui/textarea";
+import {
+	Button,
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	Textarea,
+} from "@bh2980/cms-admin/kit";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -202,7 +210,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 							{view === "preview" ? (
 								<ResultPreview job={job} text={result} done={state.status === "done"} />
 							) : (
-								<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed">
+								<pre className="max-h-[50vh] min-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-cms-muted/40 p-3 font-mono text-xs leading-relaxed">
 									{diff ? <DiffText parts={diff} /> : result || t("running")}
 								</pre>
 							)}
@@ -210,7 +218,7 @@ function WriteDialog({ job, getEntry, onClose }: { job: Job; getEntry: GetEntry;
 					</Tabs>
 				)}
 				{(state.status === "error" || blockProblem) && (
-					<p role="alert" className="text-destructive text-xs">
+					<p role="alert" className="text-cms-destructive text-xs">
 						{state.status === "error" ? state.message : blockProblem}
 					</p>
 				)}
@@ -253,19 +261,19 @@ function DiffText({ parts }: { parts: ReturnType<typeof diffWords> }) {
 			<span key={index}>{part.text}</span>
 		) : part.type === "del" ? (
 			// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
-			<del key={index} className="bg-destructive/15 text-destructive line-through">
+			<del key={index} className="bg-cms-destructive/15 text-cms-destructive line-through">
 				{part.text}
 			</del>
 		) : (
 			// biome-ignore lint/suspicious/noArrayIndexKey: 바뀐 곳 목록은 결과마다 새로 만든다
-			<ins key={index} className="bg-emerald-500/15 text-emerald-700 no-underline dark:text-emerald-400">
+			<ins key={index} className="bg-emerald-500/15 cms-dark:text-emerald-400 text-emerald-700 no-underline">
 				{part.text}
 			</ins>
 		),
 	);
 }
 
-const PANEL = "max-h-[50vh] min-h-48 overflow-y-auto rounded-md bg-muted/40 p-3";
+const PANEL = "max-h-[50vh] min-h-48 overflow-y-auto rounded-md bg-cms-muted/40 p-3";
 
 /**
  * 결과를 글 모양 그대로 그린다(다이어그램·차트는 그림으로). 쓰는 중에는 반쯤 쓴 코드가 그려지지 않으므로 원문을 보인다.
@@ -275,19 +283,19 @@ function ResultPreview({ job, text, done }: { job: Job; text: string; done: bool
 	const after = done ? (
 		<MdxPreview mdx={text} label={t("after")} />
 	) : (
-		<pre className="whitespace-pre-wrap font-mono text-muted-foreground text-xs">{text || t("running")}</pre>
+		<pre className="whitespace-pre-wrap font-mono text-cms-muted-foreground text-xs">{text || t("running")}</pre>
 	);
 	if (job.mode === "insert") return <div className={PANEL}>{after}</div>;
 	return (
 		<div className="grid min-w-0 gap-3 sm:grid-cols-2">
 			<section className="min-w-0 space-y-1.5">
-				<h3 className="font-medium text-muted-foreground text-xs">{t("now")}</h3>
+				<h3 className="font-medium text-cms-muted-foreground text-xs">{t("now")}</h3>
 				<div className={PANEL}>
 					<MdxPreview mdx={job.source} label={t("now")} />
 				</div>
 			</section>
 			<section className="min-w-0 space-y-1.5">
-				<h3 className="font-medium text-muted-foreground text-xs">{t("after")}</h3>
+				<h3 className="font-medium text-cms-muted-foreground text-xs">{t("after")}</h3>
 				<div className={PANEL}>{after}</div>
 			</section>
 		</div>
@@ -397,7 +405,7 @@ export const useAiWriteExtension: EditorExtension = ({ getEntry }) => {
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="gap-1.5 text-muted-foreground"
+						className="gap-1.5 text-cms-muted-foreground"
 						onClick={() => {
 							const { from, to } = editor.state.selection;
 							setJob({ mode: "insert", action: firstInsert, editor, from, to });

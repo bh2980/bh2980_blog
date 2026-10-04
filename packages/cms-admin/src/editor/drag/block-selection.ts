@@ -240,7 +240,7 @@ export function startMarquee(view: EditorView, event: MouseEvent): void {
 			box = document.createElement("div");
 			box.setAttribute("aria-hidden", "true");
 			box.dataset.cmsMarquee = "";
-			box.className = "pointer-events-none fixed z-50 rounded-sm border border-primary/60 bg-primary/10";
+			box.className = "pointer-events-none fixed z-50 rounded-sm border border-cms-primary/60 bg-cms-primary/10";
 			document.body.appendChild(box);
 		}
 		box.style.left = `${left}px`;

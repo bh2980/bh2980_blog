@@ -107,7 +107,7 @@ export function InspectorPanel({
 											{t("inspector.source", { locale: localeLabel(entry.source.locale) })}{" "}
 											<Link
 												href={adminEntryEditHref(entry.source.id) as Route}
-												className="text-primary underline-offset-2 hover:underline"
+												className="text-cms-primary underline-offset-2 hover:underline"
 											>
 												{t("inspector.sourceLink")}
 											</Link>
@@ -125,14 +125,14 @@ export function InspectorPanel({
 			value={tab}
 			onValueChange={(value) => setTab(String(value))}
 			aria-label={t("tab.default")}
-			className="h-full w-full gap-0 overflow-hidden border-l bg-background text-sm"
+			className="h-full w-full gap-0 overflow-hidden border-l bg-cms-background text-sm"
 		>
 			<SidePanelHeader onClose={onClose}>
 				<TabsList variant="line" className="h-full flex-1 justify-start gap-3">
 					{tabs.map((name) => (
 						<TabsTrigger key={name} value={name} className="flex-none px-0 text-xs">
 							{name}
-							{issuesIn(name) > 0 && <span aria-hidden className="size-1.5 rounded-full bg-destructive" />}
+							{issuesIn(name) > 0 && <span aria-hidden className="size-1.5 rounded-full bg-cms-destructive" />}
 						</TabsTrigger>
 					))}
 				</TabsList>

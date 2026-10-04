@@ -40,7 +40,7 @@ describe("AI 플러그인 등록", () => {
 	it("서버 쪽이 AI API 경로·표 만들기·메타 표시를 준다", async () => {
 		expect(aiServer.routes?.map((route) => route.pattern)).toContain("v1/ai/run");
 		expect(aiServer.migrate).toBeTypeOf("function");
-		expect(await aiServer.features?.()).toEqual({ ai: false });
+		expect(await aiServer.features?.()).toEqual({ ready: false });
 	});
 
 	it("본체 API 처리기가 본체 경로에 없는 주소를 플러그인 경로표에서 찾는다", async () => {

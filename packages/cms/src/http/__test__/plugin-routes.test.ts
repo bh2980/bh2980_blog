@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
 	verifyAdmin: vi.fn(),
 	privateGet: vi.fn(async () => new Response("private")),
 	publicPost: vi.fn(async () => new Response("public")),
+	extra: [] as { plugin: string; pattern: string; module: object }[],
 }));
 
 vi.mock("../../adapters/auth", async (importOriginal) => ({
@@ -14,8 +15,9 @@ vi.mock("../../adapters/auth", async (importOriginal) => ({
 
 vi.mock("../../plugin/server", () => ({
 	pluginRoutes: async () => [
-		{ pattern: "v1/example/private", module: { GET: mocks.privateGet, POST: mocks.privateGet } },
-		{ pattern: "v1/example/hook", module: { POST: mocks.publicPost }, public: true },
+		{ plugin: "example", pattern: "v1/example/private", module: { GET: mocks.privateGet, POST: mocks.privateGet } },
+		{ plugin: "example", pattern: "v1/example/hook", module: { POST: mocks.publicPost }, public: true },
+		...mocks.extra,
 	],
 }));
 
@@ -35,6 +37,7 @@ const call = (method: "GET" | "POST", path: string, headers: Record<string, stri
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mocks.extra = [];
 	mocks.verifyAdmin.mockResolvedValue({ userId: "u", accountId: "g", isAdmin: true });
 });
 
@@ -61,5 +64,35 @@ describe("플러그인 API 경로 기본 인증(M13-1)", () => {
 		mocks.verifyAdmin.mockRejectedValue(new AuthError("unauthorized", "Authentication required"));
 		expect(await (await call("POST", "v1/example/hook")).text()).toBe("public");
 		expect(mocks.verifyAdmin).not.toHaveBeenCalled();
+	});
+});
+
+describe("플러그인 경로 충돌(M16-7)", () => {
+	// 경로표는 처음 한 번 만들어 기억하므로 시험마다 라우터를 새로 읽는다.
+	const callFresh = async (path: string) => {
+		vi.resetModules();
+		const { createCmsRouteHandler: fresh } = await import("../router");
+		return fresh().GET(new NextRequest(`${ORIGIN}/api/cms/${path}`), {
+			params: Promise.resolve({ path: path.split("/") }),
+		});
+	};
+
+	it("본체 경로와 같은 플러그인 경로는 두 쪽 이름을 밝힌 오류다", async () => {
+		mocks.extra = [{ plugin: "evil", pattern: "v1/meta", module: { GET: mocks.privateGet } }];
+		await expect(callFresh("v1/example/private")).rejects.toThrow(
+			/route "v1\/meta" of plugin "evil" collides with the core route "v1\/meta"/,
+		);
+		expect(mocks.privateGet).not.toHaveBeenCalled();
+	});
+
+	it("다른 플러그인과 같은 경로도 오류다", async () => {
+		mocks.extra = [{ plugin: "other", pattern: "v1/example/private", module: { GET: mocks.privateGet } }];
+		await expect(callFresh("v1/example/private")).rejects.toThrow(
+			/of plugin "other" collides with the route "v1\/example\/private" of plugin "example"/,
+		);
+	});
+
+	it("충돌이 없으면 동작한다", async () => {
+		expect((await callFresh("v1/example/private")).status).toBe(200);
 	});
 });

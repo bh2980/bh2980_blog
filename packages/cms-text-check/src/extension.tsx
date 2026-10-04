@@ -1,9 +1,9 @@
 "use client";
 
 import { DEFAULT_LOCALE } from "@bh2980/cms/client";
+import type { EditorExtension } from "@bh2980/cms-admin";
 import type { Editor } from "@tiptap/core";
 import { useState } from "react";
-import type { EditorExtension } from "../admin-components";
 import { TextCheckToolbar, TextIssuePopover } from "./text-check-controls";
 import type { TextChecker } from "./types";
 import { useTextCheck } from "./use-text-check";

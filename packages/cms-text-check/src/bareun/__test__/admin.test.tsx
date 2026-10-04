@@ -2,8 +2,8 @@ import { createTranslator } from "@bh2980/cms/client";
 import { useCmsAdminComponents } from "@bh2980/cms-admin";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { bareun } from "..";
 import bareunAdmin from "../admin";
+import { bareun } from "../index";
 import { bareunMessages } from "../messages";
 import { bareunChecker } from "../provider";
 

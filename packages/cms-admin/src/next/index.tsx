@@ -10,5 +10,5 @@
  * export { CmsAdminPage as default } from "@bh2980/cms-admin/next";
  * ```
  */
-export { CmsAdminLayout, cmsAdminMetadata } from "./layout";
+export { CmsAdminLayout, type CmsAdminLayoutProps, cmsAdminMetadata } from "./layout";
 export { CmsAdminPage, type CmsAdminPageProps } from "./page";

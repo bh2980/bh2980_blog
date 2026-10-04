@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createR2MediaStore, detectImageDimensionsAndType } from "../media-store";
+import { createS3MediaStore, detectImageDimensionsAndType } from "../media-store";
 
 describe("R2 MediaStore (Unit & Contract)", () => {
 	it("detectImageDimensionsAndType detects PNG signatures and dimensions", () => {
@@ -102,8 +102,7 @@ describe("R2 MediaStore (Unit & Contract)", () => {
 	});
 
 	it("prepareUpload rejects disallowed mime types like SVG or PDF", async () => {
-		const store = createR2MediaStore({
-			accountId: "test-acc",
+		const store = createS3MediaStore({
 			accessKeyId: "test-key",
 			secretAccessKey: "test-sec",
 			bucket: "test-bucket",
@@ -122,8 +121,7 @@ describe("R2 MediaStore (Unit & Contract)", () => {
 	});
 
 	it("getPublicUrl constructs canonical URL from finalKey", () => {
-		const store = createR2MediaStore({
-			accountId: "test-acc",
+		const store = createS3MediaStore({
 			accessKeyId: "test-key",
 			secretAccessKey: "test-sec",
 			bucket: "test-bucket",
@@ -136,8 +134,7 @@ describe("R2 MediaStore (Unit & Contract)", () => {
 	});
 
 	it("promoteFile passes CopySourceIfMatch when expectedEtag is provided", async () => {
-		const store = createR2MediaStore({
-			accountId: "test-acc",
+		const store = createS3MediaStore({
 			accessKeyId: "test-key",
 			secretAccessKey: "test-sec",
 			bucket: "test-bucket",

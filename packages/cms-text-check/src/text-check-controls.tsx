@@ -1,15 +1,21 @@
 "use client";
 
 import { createTranslator } from "@bh2980/cms/client";
+import {
+	Button,
+	cn,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	IconButton,
+	Popover,
+	PopoverContent,
+	useIconByName,
+} from "@bh2980/cms-admin/kit";
 import { posToDOMRect } from "@tiptap/core";
 import { CircleAlert, EyeOff, Info, Loader2, type LucideIcon, SpellCheck, TriangleAlert } from "lucide-react";
 import { useMemo, useRef } from "react";
-import { cn } from "../lib/utils";
-import { useIconByName } from "../screens/shared/collection-icon";
-import { Button } from "../ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { IconButton } from "../ui/icon-button";
-import { Popover, PopoverContent } from "../ui/popover";
 import { textCheckMessages } from "./messages";
 import { textCheckIssues } from "./plugin";
 import type { DocTextIssue } from "./run";
@@ -19,9 +25,9 @@ import type { TextCheckController } from "./use-text-check";
 const t = createTranslator(textCheckMessages);
 
 const SEVERITY_ICON: Readonly<Record<TextIssueSeverity, { icon: LucideIcon; className: string }>> = {
-	error: { icon: CircleAlert, className: "text-destructive" },
-	warning: { icon: TriangleAlert, className: "text-warning" },
-	info: { icon: Info, className: "text-primary" },
+	error: { icon: CircleAlert, className: "text-cms-destructive" },
+	warning: { icon: TriangleAlert, className: "text-cms-warning" },
+	info: { icon: Info, className: "text-cms-primary" },
 };
 
 function SeverityIcon({ severity }: { severity: TextIssueSeverity }) {
@@ -67,7 +73,7 @@ export function TextCheckToolbar({ controller }: { controller: TextCheckControll
 						onMouseDown={(event) => event.preventDefault()}
 						trigger={(button) => <DropdownMenuTrigger render={button} />}
 					>
-						<span className="tabular rounded-full bg-muted px-1.5 font-medium text-xs leading-5">
+						<span className="tabular rounded-full bg-cms-muted px-1.5 font-medium text-xs leading-5">
 							{count > 99 ? "99+" : count}
 						</span>
 					</IconButton>
@@ -77,7 +83,7 @@ export function TextCheckToolbar({ controller }: { controller: TextCheckControll
 								<SeverityIcon severity={issue.severity} />
 								<span className="flex min-w-0 flex-1 flex-col">
 									<span className="truncate font-medium">{issue.text.trim() || issue.message}</span>
-									{issue.message && <span className="truncate text-muted-foreground text-xs">{issue.message}</span>}
+									{issue.message && <span className="truncate text-cms-muted-foreground text-xs">{issue.message}</span>}
 								</span>
 							</DropdownMenuItem>
 						))}
@@ -163,13 +169,15 @@ function IssueCard({ controller, issue }: { controller: TextCheckController; iss
 				</div>
 			)}
 			<div className="flex items-center gap-2">
-				<span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{checker?.label ?? issue.source}</span>
+				<span className="min-w-0 flex-1 truncate text-cms-muted-foreground text-xs">
+					{checker?.label ?? issue.source}
+				</span>
 				{issue.url && (
 					<a
 						href={issue.url}
 						target="_blank"
 						rel="noreferrer noopener"
-						className="text-primary text-xs underline-offset-2 hover:underline"
+						className="text-cms-primary text-xs underline-offset-2 hover:underline"
 					>
 						{t("explain")}
 					</a>

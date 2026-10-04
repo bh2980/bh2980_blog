@@ -40,7 +40,7 @@ const OVERFLOW_WIDTH = 32;
 const END_KEY = "end";
 
 export function ToolbarDivider() {
-	return <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-border" />;
+	return <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-cms-border" />;
 }
 
 /** 드롭다운·"더보기" 메뉴의 도구 한 줄. */

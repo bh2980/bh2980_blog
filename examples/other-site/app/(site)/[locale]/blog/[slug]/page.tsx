@@ -1,7 +1,6 @@
 import { isLocale } from "@bh2980/cms/client";
 import { getEntry } from "@bh2980/cms/read";
-import { renderMdx } from "@bh2980/cms/render";
-import { createPublicImageResolver } from "@bh2980/cms/runtime";
+import { createPublicImageResolver, renderMdx } from "@bh2980/cms/render";
 import { notFound, permanentRedirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";

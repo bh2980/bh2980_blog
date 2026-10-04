@@ -1,4 +1,5 @@
-import { defineServerConfig, githubAuth, postgres, r2Storage } from "../src/server";
+import { defineServerConfig, githubAuth, postgres } from "../src/server";
+import { r2Storage } from "../src/storage/s3";
 
 /**
  * 패키지 자체 테스트용 서버 설정. 저장소 테스트는 연결을 직접 만들고(`test-database.ts`), 이 설정은 연결 모음
@@ -7,7 +8,6 @@ import { defineServerConfig, githubAuth, postgres, r2Storage } from "../src/serv
 export default defineServerConfig({
 	database: postgres({ connectionString: process.env.CMS_TEST_DATABASE_URL }),
 	media: r2Storage({
-		accountId: undefined,
 		accessKeyId: undefined,
 		secretAccessKey: undefined,
 		bucket: undefined,

@@ -1,9 +1,7 @@
 "use client";
 
 import { createTranslator, DEFAULT_LOCALE, isUuid, LOCALES, localeLabel, PREFIXED_LOCALES } from "@bh2980/cms/client";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Input } from "@bh2980/cms-admin/ui/input";
-import { Textarea } from "@bh2980/cms-admin/ui/textarea";
+import { cn, Input, Textarea } from "@bh2980/cms-admin/kit";
 import type { AiInputKind } from "../action";
 import type { AiActionView } from "../actions";
 import { aiCommonMessages } from "./ai-common.messages";
@@ -120,7 +118,7 @@ export function SampleInputs({
 						value={value}
 						options={LOCALE_OPTIONS}
 						onChange={(next) => onChange(field.name, next)}
-						className="w-auto self-start bg-background"
+						className="w-auto self-start bg-cms-background"
 					/>
 				);
 			case "image":
@@ -130,7 +128,7 @@ export function SampleInputs({
 						key={field.name}
 						{...common}
 						onChange={(event) => onChange(field.name, event.target.value)}
-						className={cn("h-8 bg-background text-xs md:text-xs", field.kind === "image" && "font-mono")}
+						className={cn("h-8 bg-cms-background text-xs md:text-xs", field.kind === "image" && "font-mono")}
 					/>
 				);
 			default:
@@ -140,7 +138,7 @@ export function SampleInputs({
 						{...common}
 						rows={field.kind === "text" ? 2 : 4}
 						onChange={(event) => onChange(field.name, event.target.value)}
-						className={cn("bg-background text-xs md:text-xs", field.kind !== "text" && "font-mono")}
+						className={cn("bg-cms-background text-xs md:text-xs", field.kind !== "text" && "font-mono")}
 					/>
 				);
 		}

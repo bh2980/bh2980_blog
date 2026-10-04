@@ -91,7 +91,21 @@ export default defineConfig({
 컬렉션 이름(`post`)은 DB에 저장되므로 운영 중에 바꾸지 않는다. 필드 규칙은 아래 "설정"을 본다.
 
 서버 설정 `cms.server.ts`는 저장소·미디어·로그인 연결과 비밀 값이고 서버에서만 읽힌다. 연결은 처음 쓸 때 만들어 빌드 중에는
-환경 변수가 비어 있어도 된다. 이미지 올리기를 쓰려면 `media: r2Storage({ … })`(S3 호환)를 더한다.
+환경 변수가 비어 있어도 된다. 이미지 올리기를 쓰려면 `@bh2980/cms/s3`의 저장소를 `media`에 더하고 AWS SDK를 설치한다
+(`pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner`, 미디어를 쓰는 사이트만):
+
+```ts
+import { r2Storage, s3Storage } from "@bh2980/cms/s3";
+
+// Cloudflare R2
+media: r2Storage({ endpoint, bucket, accessKeyId, secretAccessKey, publicBaseUrl }),
+// AWS S3
+media: s3Storage({ endpoint: "https://s3.ap-northeast-2.amazonaws.com", region: "ap-northeast-2", bucket, accessKeyId, secretAccessKey, publicBaseUrl }),
+// MinIO 등 경로 방식
+media: s3Storage({ endpoint: "http://localhost:9000", forcePathStyle: true, bucket, accessKeyId, secretAccessKey, publicBaseUrl }),
+```
+
+다른 저장소는 `@bh2980/cms/server`의 `MediaStore` 계약을 구현한 `MediaAdapter`(`{ name, createStore() }`)를 넣는다.
 
 ### 4. 환경 변수와 `cms migrate`
 
@@ -157,7 +171,7 @@ CMS 패키지의 선택 의존성(예: 블록 확장의 `mermaid`·`recharts`)�
 ```css
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@bh2980/cms-admin/styles.css"; /* 관리자 화면이 쓰는 Tailwind 변형(dark·data-horizontal·data-vertical)도 정한다 */
+@import "@bh2980/cms-admin/styles.css"; /* `cms-*` 색과 `cms-dark`·`cms-horizontal`·`cms-vertical` 변형을 정한다(앱의 이름과 겹치지 않는다). Tailwind 4가 필요하다 */
 @plugin "@tailwindcss/typography";
 ```
 
@@ -234,12 +248,13 @@ export default defineConfig({
 | 진입점 | 쓰는 곳 | 내용 |
 | --- | --- | --- |
 | `@bh2980/cms` | `cms.config.ts` | `defineConfig`·`defineCollection`·`fields`·`defineBlock`·`definePlugin` |
-| `@bh2980/cms/server` | `cms.server.ts` | `defineServerConfig`·`postgres`·`r2Storage`·`githubAuth` |
+| `@bh2980/cms/server` | `cms.server.ts` | `defineServerConfig`·`postgres`·`githubAuth`, 저장소 계약 타입(`MediaStore` 등). 저장소 모듈은 처음 쓸 때 불러온다 |
+| `@bh2980/cms/s3` | `cms.server.ts` | `r2Storage`·`s3Storage`(S3 API 미디어 저장소, AWS SDK 선택 의존성) |
 | `@bh2980/cms/next` | `next.config.ts` | `withCms` |
 | `@bh2980/cms/next/route-handler` | 관리자 API 라우트 | `createCmsRouteHandler` |
 | `@bh2980/cms/render` | 공개 화면(서버 컴포넌트) | `renderMdx(mdx, options)` → `{ content, toc }`. 사이트 CSS에 `@import "@bh2980/cms/render.css";` |
 | `@bh2980/cms/read` | 공개 화면(서버 컴포넌트·sitemap·RSS) | `getEntry`·`listEntries`·`getTranslations`·`getPreview`: 공개본 읽기(관계·주소·옛 주소 이동·원문 대체) |
-| `@bh2980/cms/runtime` | 서버 코드(공개 화면 등) | 저장소·공개본 읽기·로그인·미리보기 권한·본문 이미지 |
+| `@bh2980/cms/runtime` | 서버 코드(크론 스크립트·사이트 테스트 포함) | 저장소·서비스·로그인 확인·미디어 공개 주소(`resolvePublicMediaUrl`). `server-only`를 쓰지 않아 Next 밖에서도 불러온다(`tsx --import @bh2980/cms/register`) |
 | `@bh2980/cms/client` | 화면 코드 | API 모양·컬렉션·언어·주소·블록·스키마 도우미 |
 | `@bh2980/cms/mdx`·`/code-block` | 공개 렌더러·편집기 | MDX 해석·직렬화, 코드 블록 주석 모델 |
 | `@bh2980/cms/plugin/server` | 플러그인 서버 쪽 | 라우트 틀·DB 연결·오류 |
@@ -329,7 +344,7 @@ codeBlock: {
 			label: "초점", // 줄 효과 메뉴 이름
 			icon: "eye", // 메뉴 아이콘(lucide 이름, 관리자 화면에 등록된 이름)
 			class: "bg-primary/10", // 공개 화면이 그 줄에 붙이는 클래스(사이트 Tailwind가 읽는 곳에 둔다)
-			editor: { background: "bg-primary/10" }, // 편집기 표시: background·wavy(물결 밑줄 색)·marker({ text, className })
+			editor: { background: "bg-cms-primary/10" }, // 편집기 표시(관리자 색은 `cms-*`, 어두운 테마는 `cms-dark:`): background·wavy(물결 밑줄 색)·marker({ text, className })
 		},
 	],
 },
@@ -375,7 +390,7 @@ export const myPlugin = () =>
 | 항목 | 뜻 |
 |---|---|
 | `database` | 콘텐츠 저장소. `postgres({ connectionString, schema })` |
-| `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
+| `media` | 이미지·첨부 파일 저장소. `@bh2980/cms/s3`의 `r2Storage`·`s3Storage`(`region`·`forcePathStyle`) 또는 `MediaStore` 계약을 구현한 연결. 없으면 미디어 기능을 못 쓴다. |
 | `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath?, secret })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로"), `secret`은 로그인 세션 서명 값(없으면 NextAuth가 `AUTH_SECRET`을 읽는다) |
 | `secret` | 저장 값(AI 서비스 키)을 DB에 암호화해 둘 때 쓰는 키. 로그인 서명 값과 따로 둔다. 바꾸면 저장된 키를 다시 넣어야 한다. |
 | `publicApi` | 선택. 공개 JSON API(`/api/cms/v1/public/entries`·`/entries/:collection/:slug`, 로그인 없이 공개본만, 캐시 안 함). `{ collections, filters?: { 질의이름: 관계필드 }, toJson?(entry, { body }) }` |
@@ -399,6 +414,7 @@ export const myPlugin = () =>
 | `site.previewLocaleParam` | 미리보기 주소에 언어를 넘기는 쿼리 이름(기본 `locale`, 기본 언어가 아닐 때만 `?locale=en`). `false`면 `localePrefix` 규칙대로 경로에 넣는다(`/preview/en/posts/a`). |
 | `admin.path` | 관리자 화면 경로(기본 `/admin`). 앱의 관리자 라우트 폴더와 같아야 한다. `/`나 `/api` 아래는 안 된다. 화면 안 링크·로그인 이동·플러그인 화면 주소가 따른다. |
 | `codeBlock.lineEffects` | 코드 블록 줄 효과 더하기·바꾸기("코드 블록 줄 효과"). |
+| `media` | 올릴 수 있는 미디어. `maxImageBytes`(기본 10MB)·`maxPixels`(기본 4천만)·`maxFileBytes`(기본 50MB)와 받을 형식 `imageTypes`(jpeg·png·webp·gif·avif 가운데)·`fileTypes`(pdf·zip·txt·md·csv·json 가운데, 빈 목록이면 첨부 파일을 받지 않음). 업로드 API·관리자 파일 고르기 창·`/v1/meta`가 따른다. |
 | `admin.locale` | 관리자 화면 언어와 날짜·숫자 표기(BCP 47, 예: `en`·`ko-KR`). 없으면 사이트 기본 언어(`defaultLocale`). 시각은 `timeZone`으로 보인다. |
 | `admin.messages` | 화면 문구 덮어쓰기: 이름공간 → 키 → 문구. 본체 블록 이름표는 `"cms.blocks"`(`image.label`처럼 `<블록>.label`), 코드 블록 효과는 `"cms.code-block"`, 검사 오류 문구는 `"cms.mdx"`·`"cms.core"`·`"cms.translation"`이다. |
 | `admin.legacyBackupNames` | 예전 브라우저 복구본 DB 이름. 관리자 화면이 읽고 지우되 새로 만들지 않는다(지금 이름 `cms_backup`). |

@@ -1,10 +1,17 @@
 "use client";
 
 import { COLLECTION_DEFINITIONS, COLLECTIONS, createTranslator, schemaOf } from "@bh2980/cms/client";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Field, FieldLabel } from "@bh2980/cms-admin/ui/field";
-import { Input } from "@bh2980/cms-admin/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@bh2980/cms-admin/ui/select";
+import {
+	cn,
+	Field,
+	FieldLabel,
+	Input,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@bh2980/cms-admin/kit";
 import { useId } from "react";
 import { CUSTOM_BLOCKS, type CustomBase, type CustomSurface, customEngines, customResults } from "../custom";
 import { customMessages } from "./custom-editor.messages";

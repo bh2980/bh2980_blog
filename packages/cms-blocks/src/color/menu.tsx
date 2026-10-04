@@ -1,19 +1,20 @@
 "use client";
 
-import type { CmsPlugin } from "@bh2980/cms";
-import { cmsConfig, createTranslator } from "@bh2980/cms/client";
+import { createTranslator, getPluginOptions } from "@bh2980/cms/client";
 import { addedMarkName } from "@bh2980/cms-admin/editor";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
+	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
-} from "@bh2980/cms-admin/ui/dropdown-menu";
-import { IconButton } from "@bh2980/cms-admin/ui/icon-button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@bh2980/cms-admin/ui/tooltip";
+	IconButton,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@bh2980/cms-admin/kit";
 import type { Editor } from "@tiptap/core";
 import { Baseline, Check } from "lucide-react";
 import {
@@ -35,11 +36,7 @@ export const COLOR_MARK_NAME = addedMarkName(colorBlock.name);
 
 /** 고르기 목록. 확장 옵션 `color({ palette })`, 없으면 기본 8색이다. */
 const PALETTE: readonly PaletteColor[] =
-	(
-		((cmsConfig.plugins ?? []) as readonly CmsPlugin[]).find((plugin) => plugin.name === "color")?.options as
-			| { palette?: readonly PaletteColor[] }
-			| undefined
-	)?.palette ?? DEFAULT_TEXT_PALETTE;
+	getPluginOptions<{ palette?: readonly PaletteColor[] }>("color")?.palette ?? DEFAULT_TEXT_PALETTE;
 
 type ColorKind = "fg" | "bg";
 
@@ -132,7 +129,7 @@ function SwatchRow({
 											applyTextColor(editor, kind, color);
 											onPicked?.();
 										}}
-										className="relative flex justify-center rounded-sm p-0.5 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+										className="relative flex justify-center rounded-sm p-0.5 outline-none hover:bg-cms-accent focus-visible:ring-2 focus-visible:ring-cms-ring"
 									/>
 								)
 							}
@@ -141,7 +138,7 @@ function SwatchRow({
 							{selected && (
 								<Check
 									aria-hidden
-									className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-primary p-px text-primary-foreground"
+									className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-cms-primary p-px text-cms-primary-foreground"
 								/>
 							)}
 						</TooltipTrigger>
@@ -173,9 +170,9 @@ export function TextColorMenuItems({ editor }: { editor: Editor }) {
 export function TextColorPanel({ editor, onPicked }: { editor: Editor; onPicked?: () => void }) {
 	return (
 		<div className="flex flex-col gap-1">
-			<p className="px-1 text-muted-foreground">{t("fg.label")}</p>
+			<p className="px-1 text-cms-muted-foreground">{t("fg.label")}</p>
 			<SwatchRow editor={editor} kind="fg" variant="buttons" onPicked={onPicked} />
-			<p className="px-1 text-muted-foreground">{t("bg.label")}</p>
+			<p className="px-1 text-cms-muted-foreground">{t("bg.label")}</p>
 			<SwatchRow editor={editor} kind="bg" variant="buttons" onPicked={onPicked} />
 		</div>
 	);

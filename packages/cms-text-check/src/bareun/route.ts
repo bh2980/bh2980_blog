@@ -1,6 +1,6 @@
 import { createActiveTranslator } from "@bh2980/cms";
 import { adminRoute, json } from "@bh2980/cms/plugin/server";
-import { textCheckRoute } from "@bh2980/cms-admin/text-check/server";
+import { textCheckRoute } from "../server";
 import { checkWithBareun } from "./api";
 import { bareunMessages } from "./messages";
 import type { ResolvedBareunOptions } from "./options";

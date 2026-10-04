@@ -1,7 +1,7 @@
 "use client";
 
 import { createTranslator } from "@bh2980/cms/client";
-import { RefreshCw, Sparkles, X } from "lucide-react";
+import { RefreshCw, X, Zap } from "lucide-react";
 import {
 	createContext,
 	type ReactNode,
@@ -33,11 +33,13 @@ const t = createTranslator(slotsMessages);
  */
 
 /**
- * 자리 이름. `field`는 필드 옆, `image`는 본문 이미지, `codeRules`는 코드 블록 규칙, `media`는 미디어 상세다.
+ * 본체가 쓰는 자리 이름. `field`는 필드 옆, `image`는 본문 이미지, `codeRules`는 코드 블록 규칙, `media`는 미디어 상세다.
  * `translation`은 번역본 편집기(블록 번역)다.
  */
-export const SLOT_NAMES = ["field", "image", "codeRules", "media", "translation"] as const;
-export type SlotName = (typeof SLOT_NAMES)[number];
+export const CORE_SLOT_NAMES = ["field", "image", "codeRules", "media", "translation"] as const;
+export type CoreSlotName = (typeof CORE_SLOT_NAMES)[number];
+/** 자리 이름. 어떤 문자열이든 되고, 본체는 `CORE_SLOT_NAMES`만 쓴다. 확장·사이트는 자기 이름의 자리를 둘 수 있다. */
+export type SlotName = string;
 
 /** 결과로 보여 줄 후보 하나. `value`가 적용될 값이고 `label`은 보이는 글자다. */
 export interface SlotCandidate {
@@ -92,7 +94,14 @@ export interface SlotRequest {
 
 export interface SlotAction {
 	id: string;
+	/** 버튼·메뉴 항목·결과 칸 머리에 보일 이름. */
 	label: string;
+	/** 버튼·메뉴 항목·결과 칸 머리의 아이콘. 없으면 기본 아이콘을 쓴다. */
+	icon?: ReactNode;
+	/** 동작이 여럿이라 한 메뉴로 묶일 때, 메뉴 버튼의 이름. 없으면 첫 동작의 `label`이다. */
+	menuLabel?: string;
+	/** 동작이 여럿이라 한 메뉴로 묶일 때, 메뉴 버튼의 아이콘. 없으면 첫 동작의 `icon`이다. */
+	menuIcon?: ReactNode;
 	/** 결과를 적용하는 방식. `none`이면 보여 주기만 한다. */
 	apply: SlotApplyMode | "none";
 	/** 실행할 때 추가 요청을 받는다. 누르면 바로 실행하지 않고 요청 입력을 먼저 연다. */
@@ -113,6 +122,9 @@ type RunState =
 	| { status: "error"; action: SlotAction; message: string };
 
 const IDLE: RunState = { status: "idle" };
+
+/** 동작이 아이콘을 주지 않았을 때의 아이콘. */
+const defaultIcon = <Zap aria-hidden />;
 
 /** 자리별 실행 상태. 화면 조각이 사라져도 남는다. */
 interface SlotRuns {
@@ -179,7 +191,7 @@ export function SlotRegistryProvider({ sources, children }: { sources: readonly 
 }
 
 /** 결과 후보 하나의 모양. AI 화면의 시험 결과도 같은 모양을 쓴다. */
-export const SLOT_CHIP = "inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5";
+export const SLOT_CHIP = "inline-flex max-w-full items-center gap-1 rounded-full border bg-cms-background px-2 py-0.5";
 
 const errorMessage = (error: unknown) => (error instanceof Error && error.message ? error.message : t("failed"));
 
@@ -256,27 +268,34 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 
 	const busy = state.status === "running";
 	const disabled = request.disabled || busy;
-	const triggerIcon = busy ? <Spinner className="size-3" /> : <Sparkles aria-hidden />;
+	const first = actions[0];
+	const triggerIcon = busy ? (
+		<Spinner className="size-3" />
+	) : actions.length === 1 ? (
+		(first?.icon ?? defaultIcon)
+	) : (
+		(first?.menuIcon ?? first?.icon ?? defaultIcon)
+	);
 	const trigger =
 		actions.length === 1 ? (
 			<IconButton
-				label={actions[0]?.label ?? "AI"}
+				label={first?.label ?? ""}
 				size="icon-xs"
 				side="bottom"
 				disabled={disabled}
 				onClick={() => actions[0] && start(actions[0])}
-				className="text-muted-foreground hover:text-foreground"
+				className="text-cms-muted-foreground hover:text-cms-foreground"
 			>
 				{triggerIcon}
 			</IconButton>
 		) : (
 			<DropdownMenu>
 				<IconButton
-					label="AI"
+					label={first?.menuLabel ?? first?.label ?? ""}
 					size="icon-xs"
 					side="bottom"
 					disabled={disabled}
-					className="text-muted-foreground hover:text-foreground"
+					className="text-cms-muted-foreground hover:text-cms-foreground"
 					trigger={(button) => <DropdownMenuTrigger render={button} />}
 				>
 					{triggerIcon}
@@ -284,7 +303,7 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 				<DropdownMenuContent align="end">
 					{actions.map((action) => (
 						<DropdownMenuItem key={action.id} onClick={() => start(action)}>
-							<Sparkles aria-hidden />
+							{action.icon ?? defaultIcon}
 							{action.label}
 						</DropdownMenuItem>
 					))}
@@ -295,9 +314,9 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 	// 만드는 동안은 버튼의 도는 아이콘으로 알린다. 결과 칸은 결과·오류가 나오거나 요청을 받을 때만 연다.
 	const panel =
 		state.status === "idle" || (state.status === "running" && !state.action.askInstruction) ? null : (
-			<div className="flex flex-col gap-1.5 rounded-md border bg-muted/30 p-2 text-xs" aria-live="polite">
-				<div className="flex items-center gap-1 text-muted-foreground">
-					<Sparkles aria-hidden className="size-3" />
+			<div className="flex flex-col gap-1.5 rounded-md border bg-cms-muted/30 p-2 text-xs" aria-live="polite">
+				<div className="flex items-center gap-1 text-cms-muted-foreground">
+					<span className="inline-flex shrink-0 items-center [&_svg]:size-3">{state.action.icon ?? defaultIcon}</span>
 					<span className="truncate">{state.action.label}</span>
 					<span className="ml-auto flex items-center">
 						{state.status !== "running" && state.status !== "asking" && (
@@ -335,7 +354,7 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 									if (state.status !== "running") void run(state.action, instruction);
 								}
 							}}
-							className="min-h-14 resize-y bg-background text-xs md:text-xs"
+							className="min-h-14 resize-y bg-cms-background text-xs md:text-xs"
 						/>
 						<Button
 							type="submit"
@@ -344,13 +363,13 @@ export function useSlot(request: SlotRequest): { trigger: ReactNode; panel: Reac
 							className="self-end"
 							disabled={state.status === "running"}
 						>
-							<Sparkles aria-hidden />
+							{state.action.icon ?? defaultIcon}
 							{state.status === "running" ? t("running") : t("run")}
 						</Button>
 					</form>
 				)}
 				{state.status === "error" && (
-					<p role="alert" className="text-destructive">
+					<p role="alert" className="text-cms-destructive">
 						{state.message}
 					</p>
 				)}
@@ -370,7 +389,7 @@ function SlotResult({
 }) {
 	const { result, action } = state;
 	if (result.kind === "candidates") {
-		if (result.items.length === 0) return <p className="text-muted-foreground">{t("noResults")}</p>;
+		if (result.items.length === 0) return <p className="text-cms-muted-foreground">{t("noResults")}</p>;
 		return (
 			<ul className="flex flex-wrap gap-1">
 				{result.items.map((item) => (
@@ -379,10 +398,10 @@ function SlotResult({
 							type="button"
 							onClick={() => onApply(item.value)}
 							title={item.label}
-							className={cn(SLOT_CHIP, "text-left hover:bg-accent")}
+							className={cn(SLOT_CHIP, "text-left hover:bg-cms-accent")}
 						>
 							<span className="truncate">{item.label}</span>
-							{item.detail && <span className="shrink-0 text-muted-foreground">{item.detail}</span>}
+							{item.detail && <span className="shrink-0 text-cms-muted-foreground">{item.detail}</span>}
 						</button>
 					</li>
 				))}
@@ -391,7 +410,7 @@ function SlotResult({
 	}
 	return (
 		<div className="flex flex-col gap-1.5">
-			<p className="whitespace-pre-wrap rounded border bg-background p-2">{result.text}</p>
+			<p className="whitespace-pre-wrap rounded border bg-cms-background p-2">{result.text}</p>
 			{result.kind === "text" && action.apply !== "none" && (
 				<Button type="button" size="xs" variant="outline" className="self-start" onClick={() => onApply(result.text)}>
 					{action.apply === "append" ? t("insert") : t("replace")}

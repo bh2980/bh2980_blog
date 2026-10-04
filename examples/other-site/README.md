@@ -29,7 +29,7 @@ pnpm 12는 esbuild 설치 스크립트를 허락하지 않으면 설치를 멈�
 | `cms.server.ts` | DB·GitHub 로그인(`cms init` 그대로) |
 | `app/(admin)/studio/` | 관리자 화면(`[[...path]]/page.tsx`·`layout.tsx`)과 맞춤법 검사 확장 예시(`admin-components.tsx`) |
 | `app/api/cms/[...path]/route.ts` | 관리자 API와 로그인(`/api/cms/auth/*`). 로그인 라우트 파일이 따로 없다 |
-| `app/globals.css` | Tailwind와 패키지 스타일 import만. 관리자 화면 변형(`dark` 등)은 관리자 패키지 스타일이 정한다 |
+| `app/globals.css` | Tailwind와 패키지 스타일 import만. 관리자 화면 색·변형(`cms-*`, `cms-dark` 등)은 관리자 패키지 스타일이 정하고 앱의 이름과 겹치지 않는다 |
 
 GitHub 로그인을 쓰려면 OAuth 앱의 콜백 주소를 `http://localhost:3000/api/cms/auth/callback/github`로 둔다.
 

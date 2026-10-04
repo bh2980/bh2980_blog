@@ -4,8 +4,10 @@ import {
 	isCollection,
 	isItemCollection,
 	LOCALES,
+	type StoredField,
 	schemaOf,
 	taxonomyFieldsOf,
+	valueFieldsOf,
 } from "@bh2980/cms/client";
 import type { ListState } from "./list-state";
 import { screensMessages } from "./messages";
@@ -84,15 +86,35 @@ const SYSTEM_CONFIG: Record<SystemColumn, ColumnConfig> = {
 
 const isSystemColumn = (column: string): column is SystemColumn => Object.hasOwn(SYSTEM_CONFIG, column);
 
-/** 컬럼 하나의 라벨·정렬·필터. 분류 필드는 필드 이름이 라벨이고 필드가 가리키는 컬렉션 항목으로 거른다. */
+/**
+ * 필드 컬럼의 필드: 시스템 컬럼이 아닌 이름의 저장 필드(글자·선택·미디어·관계). 분류 필드도 여기에 든다.
+ * 없는 이름이거나 저장하지 않는 필드면 `undefined`.
+ */
+export function fieldColumnOf(collection: string, column: AdminListColumn): StoredField | undefined {
+	if (isSystemColumn(column) || !isCollection(collection)) return undefined;
+	return valueFieldsOf(schemaOf(collection)).find((stored) => stored.name === column);
+}
+
+/**
+ * 컬럼 하나의 라벨·정렬·필터. 분류 필드는 필드 이름표가 라벨이고 필드가 가리키는 컬렉션 항목으로 거른다.
+ * 그 밖의 필드 컬럼도 이름표가 라벨이고 거르지 않는다.
+ */
 export function columnConfig(collection: string, column: AdminListColumn): ColumnConfig {
 	if (isSystemColumn(column)) return SYSTEM_CONFIG[column];
 	const taxonomy = taxonomyFieldsOf(collection).find((stored) => stored.name === column);
-	if (!taxonomy || taxonomy.field.kind !== "relation") return { label: column, filter: { kind: "none" } };
+	if (taxonomy?.field.kind === "relation") {
+		return {
+			label: taxonomy.field.label,
+			filter: { kind: "relation", field: column, collection: taxonomy.to },
+			many: taxonomy.field.many === true,
+		};
+	}
+	const stored = fieldColumnOf(collection, column);
+	if (!stored) return { label: column, filter: { kind: "none" } };
 	return {
-		label: taxonomy.field.label,
-		filter: { kind: "relation", field: column, collection: taxonomy.to },
-		many: taxonomy.field.many === true,
+		label: stored.field.label,
+		filter: { kind: "none" },
+		...(stored.field.kind === "relation" && stored.field.many ? { many: true } : {}),
 	};
 }
 
@@ -114,7 +136,10 @@ export function defaultListColumns(collection: string): AdminListColumn[] {
 	return ["title", "status", ...locale, ...taxonomy, "updatedAt", "publishedAt"];
 }
 
-/** 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`(없으면 기본 컬럼)에서 만든다. */
+/**
+ * 컬렉션에서 쓸 수 있는 컬럼과 기본 표시(§3.2). 컬렉션 정의(v2 B1)의 필드와 `list.columns`(없으면 기본 컬럼)에서 만든다.
+ * 시스템 컬럼과 분류 필드 말고 `list.columns`에 적은 필드(글자·선택·관계 등)도 컬럼으로 쓸 수 있다.
+ */
 export function columnsFor(collection: string): { available: AdminListColumn[]; defaults: AdminListColumn[] } {
 	if (!isCollection(collection)) return { available: [...SYSTEM_COLUMNS], defaults: ["title", "status"] };
 	const schema = schemaOf(collection);
@@ -127,9 +152,12 @@ export function columnsFor(collection: string): { available: AdminListColumn[]; 
 		return true;
 	});
 	const taxonomy = taxonomyFieldsOf(collection).map((stored) => stored.name);
-	// 분류 필드 컬럼은 언어 컬럼 뒤에 둔다.
+	// 목록 설정에 적은 그 밖의 필드(`defineConfig`가 저장 필드인지 확인했다).
+	const listed = [...new Set(schema.list?.columns ?? [])];
+	const fieldColumns = listed.filter((column) => !taxonomy.includes(column) && fieldColumnOf(collection, column));
+	// 분류 필드 컬럼은 언어 컬럼 뒤에 두고, 그 밖의 필드 컬럼이 그 뒤를 잇는다.
 	const at = system.indexOf("locale") + 1;
-	const available = [...system.slice(0, at), ...taxonomy, ...system.slice(at)];
+	const available = [...system.slice(0, at), ...taxonomy, ...fieldColumns, ...system.slice(at)];
 	const defaults = (schema.list?.columns ?? defaultListColumns(collection))
 		.map((column) => (column === slugField ? "slug" : column))
 		.filter((column) => available.includes(column));

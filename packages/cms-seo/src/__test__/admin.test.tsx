@@ -1,7 +1,6 @@
 import { COLLECTIONS, type Collection, createTranslator, roleField, SITE_NAME, schemaOf } from "@bh2980/cms/client";
-import { EMPTY_FORM, type EntryForm } from "@bh2980/cms-admin/screens/entries/entry-form";
+import { EMPTY_FORM, type EntryForm, TooltipProvider } from "@bh2980/cms-admin/kit";
 import { type SlotAction, SlotRegistryProvider } from "@bh2980/cms-admin/slots";
-import { TooltipProvider } from "@bh2980/cms-admin/ui/tooltip";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // 속성 칸은 공개 진입점이 아니라 관리자 패키지 소스에서 읽는다(테스트 전용).

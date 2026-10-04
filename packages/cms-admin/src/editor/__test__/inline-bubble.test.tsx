@@ -36,7 +36,7 @@ vi.mock("../../ui/tooltip", () => ({
 	}: {
 		render?: React.ReactElement<{ children?: React.ReactNode }>;
 		children?: React.ReactNode;
-	}) => (render ? React.cloneElement(render, {}, children ?? render.props.children) : <>{children}</>),
+	}) => (render ? React.cloneElement(render, {}, children ?? render.props.children) : children),
 	TooltipContent: () => null,
 	TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

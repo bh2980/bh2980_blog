@@ -10,8 +10,10 @@ export interface WithCmsOptions {
 }
 
 const PACKAGES = ["@bh2980/cms"];
-/** CMS 패키지 이름 앞부분. 이 패키지들의 선택 peer 의존성만 본다. */
-const CMS_SCOPE = "@bh2980/cms";
+/** 본체 쪽 패키지. 이 패키지들과 CMS 플러그인 패키지의 선택 peer 의존성만 본다. */
+const CORE_PACKAGES = ["@bh2980/cms", "@bh2980/cms-admin"];
+/** CMS 플러그인 패키지가 `package.json`에 적는 표시(`"cmsPlugin": true`). 이름은 따지지 않는다. */
+export const PLUGIN_MARKER = "cmsPlugin";
 /** 설치하지 않은 선택 의존성 대신 잇는 모듈(불러오면 설치하라는 오류를 낸다). */
 export const MISSING_OPTIONAL_MODULE = "@bh2980/cms/stubs/missing-optional";
 
@@ -36,7 +38,8 @@ const installedFrom = (from: string, name: string, boundary?: string): boolean =
 };
 
 /**
- * 앱이 설치한 CMS 패키지(`@bh2980/cms*`)의 선택 peer 의존성(`peerDependenciesMeta.optional`) 중 설치하지 않은 것.
+ * 앱이 설치한 CMS 패키지(본체·관리자 패키지와 `package.json`에 `"cmsPlugin": true`를 적은 플러그인 패키지)의 선택 peer 의존성
+ * (`peerDependenciesMeta.optional`) 중 설치하지 않은 것.
  * 예: 블록 확장의 Mermaid 미리보기는 `mermaid`를 미리보기를 열 때만 불러오지만, 번들러는 쓰지 않는 확장의 `import("mermaid")`도
  * 찾으려 해서 설치하지 않으면 빌드가 멈춘다.
  */
@@ -44,9 +47,10 @@ export function missingOptionalPeers(root: string, boundary?: string): string[] 
 	const app = readJson(path.join(root, "package.json"));
 	const deps = { ...(app?.dependencies as object), ...(app?.devDependencies as object) };
 	const missing = new Set<string>();
-	for (const name of Object.keys(deps).filter((dep) => dep.startsWith(CMS_SCOPE))) {
+	for (const name of Object.keys(deps)) {
 		const dir = path.join(root, "node_modules", name);
 		const meta = readJson(path.join(dir, "package.json"));
+		if (!CORE_PACKAGES.includes(name) && meta?.[PLUGIN_MARKER] !== true) continue;
 		const optional = Object.entries((meta?.peerDependenciesMeta ?? {}) as Record<string, { optional?: boolean }>)
 			.filter(([, value]) => value?.optional)
 			.map(([peer]) => peer);
@@ -74,6 +78,8 @@ export function withCms(nextConfig: NextConfig, options: WithCmsOptions): NextCo
 
 	return {
 		...nextConfig,
+		// Next `basePath`를 서버·브라우저 번들에 알린다(`cmsApiUrl()`·`withBasePath()`가 읽는다). 사이트 코드는 따로 할 일이 없다.
+		env: { ...nextConfig.env, NEXT_PUBLIC_CMS_BASE_PATH: nextConfig.basePath?.replace(/\/+$/, "") ?? "" },
 		transpilePackages: [...new Set([...(nextConfig.transpilePackages ?? []), ...PACKAGES])],
 		turbopack: {
 			...nextConfig.turbopack,

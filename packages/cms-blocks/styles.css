@@ -1,6 +1,7 @@
 /*
  * @bh2980/cms-blocks 스타일. 앱의 Tailwind 입력 CSS에서 `@bh2980/cms-admin/styles.css` 다음에 import한다.
- * 편집기 모양은 관리자 테마 색(--background·--foreground·--border·--muted-foreground·--destructive·--warning)에서 만든다.
+ * 편집기 모양은 관리자 테마 색(--cms-background·--cms-foreground·--cms-border·--cms-muted-foreground·--cms-destructive·--cms-warning)에서 만든다.
+ * 공개 화면에서는 관리자 색이 없으므로 콜아웃 강조색은 앱의 `--muted-foreground`·`--warning`·`--destructive`를 쓰고, 없으면 기본 색을 쓴다.
  * 아래 기본값은 모두 `:where()`로 두어 앱이 같은 변수를 정하면 앱 값이 이긴다.
  * 맨 아래 `cms-block-*` 구역은 공개 화면 기본 컴포넌트(`@bh2980/cms-blocks/<블록>/render`)의 모양이다. Tailwind 없이 쓰이고,
  * 어두운 테마는 `.dark`·`[data-theme="dark"]`다. 컴포넌트를 덮어쓴 사이트는 그 부분을 쓰지 않아도 된다.
@@ -11,11 +12,11 @@
 
 /* 기본값: 콜아웃 종류별 강조색과 차트 계열 색(`chart-1`~`chart-5`). */
 :where(:root) {
-	--cms-callout-note: var(--muted-foreground);
+	--cms-callout-note: var(--cms-muted-foreground, var(--muted-foreground));
 	--cms-callout-tip: oklch(0.6 0.15 155);
 	--cms-callout-info: oklch(0.6 0.14 240);
-	--cms-callout-warning: var(--warning, oklch(0.7 0.16 70));
-	--cms-callout-danger: var(--destructive, oklch(0.58 0.22 27));
+	--cms-callout-warning: var(--cms-warning, var(--warning, oklch(0.7 0.16 70)));
+	--cms-callout-danger: var(--cms-destructive, var(--destructive, oklch(0.58 0.22 27)));
 	--chart-1: oklch(0.65 0.17 265);
 	--chart-2: oklch(0.7 0.14 160);
 	--chart-3: oklch(0.75 0.15 70);
@@ -34,9 +35,9 @@
 /* 콜아웃 편집 화면(`callout/view.tsx`). 강조색을 테마 배경·테두리에 섞는다. 공개 화면 모양은 사이트가 정한다. */
 .cms-callout {
 	--cms-callout-accent: var(--cms-callout-note);
-	background-color: color-mix(in oklab, var(--cms-callout-accent) 10%, var(--background));
-	border-color: color-mix(in oklab, var(--cms-callout-accent) 40%, var(--border));
-	color: var(--foreground);
+	background-color: color-mix(in oklab, var(--cms-callout-accent) 10%, var(--cms-background));
+	border-color: color-mix(in oklab, var(--cms-callout-accent) 40%, var(--cms-border));
+	color: var(--cms-foreground);
 }
 .cms-callout[data-variant="tip"] {
 	--cms-callout-accent: var(--cms-callout-tip);
@@ -54,7 +55,7 @@
 	color: var(--cms-callout-accent);
 }
 .cms-callout :is(ul, ol) > li::marker {
-	color: var(--muted-foreground);
+	color: var(--cms-muted-foreground);
 }
 
 /* 글자색·글자 배경색(`:color`, 글자색 확장). 값은 밝은·어두운 테마 짝이고, 어두운 값이 없으면 밝은 값을 쓴다. */

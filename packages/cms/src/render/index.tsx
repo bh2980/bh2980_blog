@@ -57,7 +57,7 @@ const DEFAULT_LABELS: RenderLabels = {
 };
 
 export interface RenderMdxOptions {
-	/** 본문 이미지·파일 주소 해석기(`@bh2980/cms/runtime`의 `createPublicImageResolver(mdx)`). 없으면 바깥 `src`만. */
+	/** 본문 이미지·파일 주소 해석기(`createPublicImageResolver(mdx)`). 없으면 바깥 `src`만. */
 	readonly imageResolver?: ImageResolver;
 	/** 공개 화면의 언어. 블록 공개 컴포넌트가 받는다. */
 	readonly locale?: string;
@@ -195,3 +195,6 @@ export async function renderMdx(source: string, options: RenderMdxOptions = {}):
 }
 
 export type { TocItem } from "remark-flexible-toc";
+
+/** 공개 MDX가 등록 미디어를 공개 주소로 해석하는 해석기(서버 전용). */
+export { createPublicImageResolver } from "../mdx/public-image-resolver";

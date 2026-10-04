@@ -3,14 +3,14 @@
 /* CMS 관리자 화면 토큰·스타일(관리자 패키지가 준다). 블록 확장의 편집기 모양(콜아웃·글자색 등)은 블록 확장 패키지가 준다. */
 @import "@bh2980/cms-admin/styles.css";
 @import "@bh2980/cms-blocks/styles.css";
+@import "@bh2980/cms-text-check/styles.css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *, .kui-scheme--dark, .kui-scheme--dark *));
 
 /*
- * Base UI는 data-horizontal/data-vertical 대신 data-orientation을 붙이므로 shadcn 클래스를 여기에 맞춘다.
- * 관리자 패키지 스타일도 같은 변형을 정하지만 블로그 공개 화면 컴포넌트(separator)가 쓰므로
- * 블로그 것을 둔다. 어두운 테마(dark)도 블로그 것(코드 블록 테마 포함)이 관리자 패키지 것을 덮는다.
+ * Base UI는 data-horizontal/data-vertical 대신 data-orientation을 붙이므로 shadcn 클래스를 여기에 맞춘다(블로그 공개 화면
+ * 컴포넌트(separator)용). 관리자 패키지는 `cms-dark`·`cms-horizontal`·`cms-vertical`을 따로 정하므로 겹치지 않는다.
  */
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
 @custom-variant data-vertical (&[data-orientation="vertical"]);

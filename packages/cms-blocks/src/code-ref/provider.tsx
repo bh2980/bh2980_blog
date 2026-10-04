@@ -13,7 +13,7 @@ import {
 	startLinkFromText,
 	unlinkRef,
 } from "@bh2980/cms-admin/editor";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { cn } from "@bh2980/cms-admin/kit";
 import type { Editor } from "@tiptap/core";
 import { Code2, Unlink } from "lucide-react";
 import type { ReactNode } from "react";
@@ -61,8 +61,10 @@ function CodeRefDetail({ editor, mark, act }: EditorMarkDetailProps) {
 		: null;
 	return (
 		<>
-			<Code2 aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
-			<span className={cn("max-w-56 truncate px-1 text-xs", where ? "text-muted-foreground" : "text-destructive")}>
+			<Code2 aria-hidden className="mx-1 size-4 shrink-0 text-cms-muted-foreground" />
+			<span
+				className={cn("max-w-56 truncate px-1 text-xs", where ? "text-cms-muted-foreground" : "text-cms-destructive")}
+			>
 				{where ? t("where", { where }) : t("none")}
 			</span>
 			<BubbleButton
@@ -81,7 +83,7 @@ function CodeRefDetail({ editor, mark, act }: EditorMarkDetailProps) {
 
 /** 코드 연결 꾸밈의 편집기 등록. 테마 강조색 밑줄로 보인다. */
 export const codeRefMarkExtension: EditorMarkExtension = {
-	render: () => ({ class: "underline decoration-primary/60 decoration-solid underline-offset-4" }),
+	render: () => ({ class: "underline decoration-cms-primary/60 decoration-solid underline-offset-4" }),
 	bubble: { group: "link", order: 1, Button: CodeRefBubbleButton },
 	detail: CodeRefDetail,
 };

@@ -13,7 +13,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
 			data-slot="input-group"
 			role="group"
 			className={cn(
-				"group/input-group relative flex h-9 w-full min-w-0 items-center rounded-md border border-input shadow-xs outline-none transition-[color,box-shadow] in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-start]]:h-auto has-[>textarea]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:flex-col has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:bg-input/30 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+				"group/input-group relative flex h-9 w-full min-w-0 items-center rounded-md border border-cms-input cms-dark:bg-cms-input/30 shadow-xs outline-none transition-[color,box-shadow] in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-start]]:h-auto has-[>textarea]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:flex-col has-[[data-slot=input-group-control]:focus-visible]:border-cms-ring has-[[data-slot][aria-invalid=true]]:border-cms-destructive cms-dark:has-[[data-slot][aria-invalid=true]]:ring-cms-destructive/40 has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-cms-ring/50 has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-cms-destructive/20 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
 				className,
 			)}
 			{...props}
@@ -22,7 +22,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const inputGroupAddonVariants = cva(
-	"flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>svg:not([class*='size-'])]:size-4",
+	"flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-cms-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>svg:not([class*='size-'])]:size-4",
 	{
 		variants: {
 			align: {
@@ -100,7 +100,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
 	return (
 		<span
 			className={cn(
-				"flex items-center gap-2 text-muted-foreground text-sm [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none",
+				"flex items-center gap-2 text-cms-muted-foreground text-sm [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none",
 				className,
 			)}
 			{...props}
@@ -113,10 +113,10 @@ function InputGroupInput({ className, ...props }: React.ComponentProps<"input">)
 		<Input
 			data-slot="input-group-control"
 			className={cn(
-				"flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent",
+				"flex-1 rounded-none border-0 bg-transparent cms-dark:bg-transparent shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0",
 				// 브라우저 자동완성이 칠하는 배경이 칸 안 입력에만 깔려 묶음 테두리·버튼과 어긋나지 않게, 배경색 바뀜을 사실상 멈춘다
 				// (입력은 투명한 채로 묶음 배경을 그대로 보인다). 글자색도 테마 색을 쓴다.
-				"autofill:[-webkit-text-fill-color:var(--foreground)] autofill:[transition:background-color_100000s_ease-in-out_0s]",
+				"autofill:[-webkit-text-fill-color:var(--cms-foreground)] autofill:[transition:background-color_100000s_ease-in-out_0s]",
 				className,
 			)}
 			{...props}
@@ -129,7 +129,7 @@ function InputGroupTextarea({ className, ...props }: React.ComponentProps<"texta
 		<Textarea
 			data-slot="input-group-control"
 			className={cn(
-				"flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent",
+				"flex-1 resize-none rounded-none border-0 bg-transparent cms-dark:bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0",
 				className,
 			)}
 			{...props}

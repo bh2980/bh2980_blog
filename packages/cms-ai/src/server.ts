@@ -28,9 +28,9 @@ const aiServer: CmsServerPlugin = {
 		{ pattern: "v1/ai/shared", module: shared },
 	],
 	migrate: migrateAi,
-	// 관리자 메타 API의 `features.ai`: 연결이 하나라도 준비됐는가.
+	// 관리자 메타 API의 `features.ai.ready`: 연결이 하나라도 준비됐는가.
 	features: async () => ({
-		ai: await getAiSettingsView(getAiStore()).then(
+		ready: await getAiSettingsView(getAiStore()).then(
 			(view) => view.fake || view.providers.some((item) => item.ready),
 			() => false,
 		),

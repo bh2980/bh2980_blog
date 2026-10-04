@@ -1,6 +1,6 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { computeImageTransform, resolveImageUrl } from "@bh2980/cms/mdx";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { AlignCenter, AlignLeft, AlignRight, Crop } from "lucide-react";
@@ -115,7 +115,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 		}
 		let cancelled = false;
 		setMediaState({ status: "checking", publicUrl: null });
-		fetch(`/api/cms/v1/media/${encodeURIComponent(mediaId)}`)
+		fetch(cmsApiUrl(`/v1/media/${encodeURIComponent(mediaId)}`))
 			.then(async (response) => {
 				if (!response.ok) throw new Error("media_lookup_failed");
 				return (await response.json()) as { status?: string; publicUrl?: string | null };
@@ -262,7 +262,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 							<tool.icon aria-hidden />
 						</ToolbarButton>
 					))}
-					<Separator orientation="vertical" className="mx-0.5 data-vertical:h-4" />
+					<Separator orientation="vertical" className="mx-0.5 cms-vertical:h-4" />
 					<BlockSettings open={isEditing} onOpenChange={setIsEditing}>
 						<BlockSettingsField label={t("imageNode.width")} htmlFor={widthInputId}>
 							<Input
@@ -280,7 +280,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 								placeholder={t("imageNode.widthPlaceholder")}
 							/>
 							{widthInvalid && (
-								<p id={widthErrorId} role="alert" className="text-destructive">
+								<p id={widthErrorId} role="alert" className="text-cms-destructive">
 									{t("imageNode.widthInvalid")}
 								</p>
 							)}
@@ -301,14 +301,14 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 								className="min-h-0 text-xs md:text-xs"
 							/>
 							{altMissing && (
-								<p id={altErrorId} role="alert" className="text-destructive">
+								<p id={altErrorId} role="alert" className="text-cms-destructive">
 									{ALT_REQUIRED_MESSAGE}
 								</p>
 							)}
 							{altSlot.panel}
 						</BlockSettingsField>
 						<label htmlFor={decorativeId} className="flex items-center justify-between gap-2">
-							<span className="text-muted-foreground">{t("imageDialog.decorative")}</span>
+							<span className="text-cms-muted-foreground">{t("imageDialog.decorative")}</span>
 							<Switch
 								id={decorativeId}
 								size="sm"
@@ -332,7 +332,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 				transform.isTransformed ? (
 					<div
 						data-slot="image-transform-wrapper"
-						className="relative w-full max-w-full overflow-hidden rounded-md bg-muted"
+						className="relative w-full max-w-full overflow-hidden rounded-md bg-cms-muted"
 						style={{
 							width: previewWidth || width || "100%",
 							maxWidth: "100%",
@@ -354,7 +354,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 						/>
 					</div>
 				) : (
-					<div className="relative overflow-hidden rounded-md bg-muted">
+					<div className="relative overflow-hidden rounded-md bg-cms-muted">
 						{/* biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic and not next/image-compatible */}
 						<img
 							src={resolved && "url" in resolved ? resolved.url : ""}
@@ -372,11 +372,11 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 			) : isChecking ? (
 				<Skeleton role="status" aria-label={t("imageNode.loading")} className="h-48 w-full rounded-md" />
 			) : (
-				<div className="flex h-48 w-full items-center justify-center rounded-md bg-muted text-muted-foreground text-sm">
+				<div className="flex h-48 w-full items-center justify-center rounded-md bg-cms-muted text-cms-muted-foreground text-sm">
 					{t("imageNode.unavailable")}
 				</div>
 			)}
-			{resolveReason ? <p className="mt-1 text-center text-destructive text-xs">{resolveReason}</p> : null}
+			{resolveReason ? <p className="mt-1 text-center text-cms-destructive text-xs">{resolveReason}</p> : null}
 
 			{/* Caption Input / Display */}
 			<figcaption className={cn("mt-2 flex items-center gap-1", captionAlignClass)}>
@@ -388,7 +388,7 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 					readOnly={!isEditable}
 					onChange={(e) => updateAttributes({ caption: e.target.value })}
 					className={cn(
-						"h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-muted-foreground text-xs shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-xs dark:bg-transparent",
+						"h-auto w-full rounded-none border-0 bg-transparent cms-dark:bg-transparent px-0 py-0 text-cms-muted-foreground text-xs shadow-none placeholder:text-cms-muted-foreground/50 focus-visible:ring-0 md:text-xs",
 						captionAlignClass,
 					)}
 				/>
@@ -404,14 +404,14 @@ export function CmsImageNodeView({ node, updateAttributes, selected, editor, get
 						data-slot="resize-handle-left"
 						aria-label={t("imageNode.resizeLeft")}
 						onPointerDown={(e) => handleResizeStart(e, "left")}
-						className="absolute -bottom-1 -left-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
+						className="absolute -bottom-1 -left-1 z-20 size-3 cursor-ew-resize rounded-sm border border-cms-border bg-cms-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>
 					<button
 						type="button"
 						data-slot="resize-handle-right"
 						aria-label={t("imageNode.resizeRight")}
 						onPointerDown={(e) => handleResizeStart(e, "right")}
-						className="absolute -right-1 -bottom-1 z-20 size-3 cursor-ew-resize rounded-sm border border-border bg-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
+						className="absolute -right-1 -bottom-1 z-20 size-3 cursor-ew-resize rounded-sm border border-cms-border bg-cms-background p-0 opacity-0 shadow-sm transition-opacity hover:scale-125 group-focus-within:opacity-100 group-hover:opacity-100"
 					/>
 				</>
 			)}

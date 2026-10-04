@@ -9,7 +9,7 @@ import {
 	storedFields,
 } from "@bh2980/cms/client";
 import { prepareSnapshot, validateForPublish } from "@bh2980/cms/runtime";
-import { metadataFromForm } from "@bh2980/cms-admin/screens/entries/entry-form";
+import { metadataFromForm } from "@bh2980/cms-admin/kit";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import cmsConfig from "@/cms.config";
 

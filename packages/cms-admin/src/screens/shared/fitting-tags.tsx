@@ -7,7 +7,7 @@ import { sharedMessages } from "./messages";
 const t = createTranslator(sharedMessages);
 
 const GAP = 4;
-const CHIP = "shrink-0 rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs";
+const CHIP = "shrink-0 rounded bg-cms-muted px-1.5 py-0.5 text-cms-muted-foreground text-xs";
 
 /**
  * 칸 폭에 들어가는 만큼 태그를 보여 주고, 나머지는 `+N`으로 줄인다. 열 너비를 바꾸면 다시 잰다.
@@ -64,7 +64,7 @@ export function FittingTags({ tags }: { tags: readonly { id: string; title: stri
 				</span>
 			))}
 			{hidden > 0 && (
-				<span className="shrink-0 text-muted-foreground text-xs">
+				<span className="shrink-0 text-cms-muted-foreground text-xs">
 					<span aria-hidden>+{hidden}</span>
 					<span className="sr-only">{t("tags.more", { count: hidden })}</span>
 				</span>

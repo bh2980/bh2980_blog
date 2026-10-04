@@ -1,4 +1,4 @@
-import type { TextCheckSegment, TextIssue } from "@bh2980/cms-admin/text-check";
+import type { TextCheckSegment, TextIssue } from "../index";
 import { type BareunResponse, bareunIssues, joinSegments } from "./mapping";
 import type { ResolvedBareunOptions } from "./options";
 

@@ -9,19 +9,11 @@
 		"./next": "./src/next/index.tsx",
 		"./editor": "./src/editor/public.ts",
 		"./blocks": "./src/editor/blocks/public.ts",
-		"./text-check": "./src/text-check/index.ts",
-		"./text-check/extension": "./src/text-check/extension.tsx",
-		"./text-check/server": "./src/text-check/server.ts",
 		"./plugins": "./src/plugins.ts",
 		"./media": "./src/media.ts",
 		"./slots": "./src/slots/slots.tsx",
 		"./api": "./src/screens/admin-api.ts",
-		"./shell": "./src/screens/shared/admin-shell.tsx",
-		"./confirm-dialog": "./src/screens/shared/confirm-dialog.tsx",
-		"./hooks/use-debounced": "./src/screens/shared/use-debounced.ts",
-		"./screens/entries/entry-form": "./src/screens/entries/entry-form.ts",
-		"./lib/utils/cn": "./src/lib/utils/cn.ts",
-		"./ui/*": "./src/ui/*.tsx",
+		"./kit": "./src/kit.ts",
 		"./styles.css": "./styles.css"
 	},
 	"scripts": {
@@ -113,18 +105,6 @@
 				"types": "./dist/editor/blocks/public.d.ts",
 				"default": "./dist/editor/blocks/public.js"
 			},
-			"./text-check": {
-				"types": "./dist/text-check/index.d.ts",
-				"default": "./dist/text-check/index.js"
-			},
-			"./text-check/extension": {
-				"types": "./dist/text-check/extension.d.ts",
-				"default": "./dist/text-check/extension.js"
-			},
-			"./text-check/server": {
-				"types": "./dist/text-check/server.d.ts",
-				"default": "./dist/text-check/server.js"
-			},
 			"./plugins": {
 				"types": "./dist/plugins.d.ts",
 				"default": "./dist/plugins.js"
@@ -141,29 +121,9 @@
 				"types": "./dist/screens/admin-api.d.ts",
 				"default": "./dist/screens/admin-api.js"
 			},
-			"./shell": {
-				"types": "./dist/screens/shared/admin-shell.d.ts",
-				"default": "./dist/screens/shared/admin-shell.js"
-			},
-			"./confirm-dialog": {
-				"types": "./dist/screens/shared/confirm-dialog.d.ts",
-				"default": "./dist/screens/shared/confirm-dialog.js"
-			},
-			"./hooks/use-debounced": {
-				"types": "./dist/screens/shared/use-debounced.d.ts",
-				"default": "./dist/screens/shared/use-debounced.js"
-			},
-			"./screens/entries/entry-form": {
-				"types": "./dist/screens/entries/entry-form.d.ts",
-				"default": "./dist/screens/entries/entry-form.js"
-			},
-			"./lib/utils/cn": {
-				"types": "./dist/lib/utils/cn.d.ts",
-				"default": "./dist/lib/utils/cn.js"
-			},
-			"./ui/*": {
-				"types": "./dist/ui/*.d.ts",
-				"default": "./dist/ui/*.js"
+			"./kit": {
+				"types": "./dist/kit.d.ts",
+				"default": "./dist/kit.js"
 			},
 			"./styles.css": "./styles.css"
 		}

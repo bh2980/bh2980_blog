@@ -1,9 +1,16 @@
 import { createTranslator } from "@bh2980/cms/client";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../../ui/tooltip";
 import { slotsMessages } from "../messages";
-import { type SlotAction, SlotRegistryProvider, type SlotRequest, type SlotSource, useSlot } from "../slots";
+import {
+	CORE_SLOT_NAMES,
+	type SlotAction,
+	SlotRegistryProvider,
+	type SlotRequest,
+	type SlotSource,
+	useSlot,
+} from "../slots";
 
 const t = createTranslator(slotsMessages);
 
@@ -204,5 +211,58 @@ describe("화면 자리", () => {
 		fireEvent.click(screen.getAllByRole("button", { name: "주소 추천" })[0] as HTMLElement);
 		await screen.findByRole("button", { name: "react-query" });
 		expect(screen.getByTestId("b").textContent).not.toContain("react-query");
+	});
+
+	it("자리 이름은 열려 있다: 확장이 정한 이름의 자리에도 동작이 붙는다", async () => {
+		const source = vi.fn<SlotSource>(({ slot }) => (slot === "my-plugin/toolbar" ? [action()] : []));
+		const { apply } = renderSlot([source], { slot: "my-plugin/toolbar", target: "export", collection: undefined });
+		expect(source).toHaveBeenCalledWith({ slot: "my-plugin/toolbar", target: "export", collection: undefined });
+		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
+		fireEvent.click(await screen.findByRole("button", { name: "react-query" }));
+		expect(apply).toHaveBeenCalledWith("react-query", "replace");
+		expect([...CORE_SLOT_NAMES]).toEqual(["field", "image", "codeRules", "media", "translation"]);
+
+		cleanup();
+		renderSlot([source], { slot: "other", target: "export" });
+		expect(screen.getByTestId("trigger").childElementCount).toBe(0);
+	});
+
+	it("동작이 준 아이콘을 버튼·결과 칸 머리·실행 버튼에 쓰고, 없으면 AI가 아닌 기본 아이콘을 쓴다", async () => {
+		const icon = <svg data-testid="own-icon" aria-hidden />;
+		renderSlot([() => [action({ icon, askInstruction: true })]]);
+		expect(within(screen.getByTestId("trigger")).getByTestId("own-icon")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "주소 추천" }));
+		// 요청 입력이 열린 결과 칸: 머리와 실행 버튼에 같은 아이콘이다.
+		await screen.findByRole("textbox", { name: t("instruction") });
+		expect(screen.getAllByTestId("own-icon").length).toBe(3);
+		expect(document.querySelector(".lucide-sparkles")).toBeNull();
+
+		cleanup();
+		renderSlot([() => [action()]]);
+		expect(screen.getByTestId("trigger").querySelector("svg.lucide-zap")).toBeTruthy();
+		expect(document.querySelector(".lucide-sparkles")).toBeNull();
+	});
+
+	it("동작이 여럿이면 메뉴로 묶고, 메뉴 이름·아이콘은 동작이 정하며 항목마다 제 아이콘을 쓴다", async () => {
+		const first = action({
+			id: "a1",
+			label: "주소 추천",
+			icon: <svg data-testid="icon-a1" aria-hidden />,
+			menuLabel: "도우미",
+			menuIcon: <svg data-testid="menu-icon" aria-hidden />,
+		});
+		const second = action({ id: "a2", label: "요약 쓰기", icon: <svg data-testid="icon-a2" aria-hidden /> });
+		renderSlot([() => [first, second]]);
+		const menu = screen.getByRole("button", { name: "도우미" });
+		expect(within(menu).getByTestId("menu-icon")).toBeTruthy();
+		fireEvent.click(menu);
+		const item = await screen.findByRole("menuitem", { name: "요약 쓰기" });
+		expect(within(item).getByTestId("icon-a2")).toBeTruthy();
+		expect(within(await screen.findByRole("menuitem", { name: "주소 추천" })).getByTestId("icon-a1")).toBeTruthy();
+
+		// 메뉴 이름을 주지 않으면 첫 동작의 이름이다.
+		cleanup();
+		renderSlot([() => [action({ id: "b1", label: "주소 추천" }), action({ id: "b2", label: "요약 쓰기" })]]);
+		expect(screen.getByRole("button", { name: "주소 추천" })).toBeTruthy();
 	});
 });

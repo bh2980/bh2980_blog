@@ -1,6 +1,6 @@
 "use client";
 
-import { adminEntryEditHref, LOCALES, localeLabel } from "@bh2980/cms/client";
+import { adminEntryEditHref, cmsApiUrl, LOCALES, localeLabel } from "@bh2980/cms/client";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,7 @@ export function LanguageTabs({
 				toast.error(t("lang.saveFirst"));
 				return;
 			}
-			const created = await cmsFetch<{ id: string }>(`/api/cms/v1/entries/${entry.id}/translations`, {
+			const created = await cmsFetch<{ id: string }>(cmsApiUrl(`/v1/entries/${entry.id}/translations`), {
 				method: "POST",
 				json: { locale: target },
 				fallback: t("lang.createFailed"),
@@ -77,7 +77,7 @@ export function LanguageTabs({
 							variant="ghost"
 							disabled={createDisabled}
 							aria-label={t("lang.add", { lang: localeLabel(target) })}
-							className="h-7 gap-1 border border-dashed px-2 text-muted-foreground text-xs"
+							className="h-7 gap-1 border border-dashed px-2 text-cms-muted-foreground text-xs"
 							onClick={() => void create(target)}
 						>
 							<Plus aria-hidden className="size-3" />
@@ -97,20 +97,23 @@ export function LanguageTabs({
 								lang: localeLabel(target),
 								status: STATUS_LABELS[member.status],
 							})}
-							className={cn("h-7 gap-1.5 px-2 text-xs", current ? "bg-muted text-foreground" : "text-muted-foreground")}
+							className={cn(
+								"h-7 gap-1.5 px-2 text-xs",
+								current ? "bg-cms-muted text-cms-foreground" : "text-cms-muted-foreground",
+							)}
 							onClick={() => {
 								if (!current) router.push(adminEntryEditHref(member.id) as Route);
 							}}
 						>
 							<span
 								aria-hidden
-								className={cn("size-1.5 rounded-full", STATUS_DOT[member.status] ?? "bg-muted-foreground/50")}
+								className={cn("size-1.5 rounded-full", STATUS_DOT[member.status] ?? "bg-cms-muted-foreground/50")}
 							/>
 							<span aria-hidden className="font-medium">
 								{target.toUpperCase()}
 							</span>
 							{member.isSource && (
-								<span aria-hidden className="font-normal text-muted-foreground">
+								<span aria-hidden className="font-normal text-cms-muted-foreground">
 									{t("source")}
 								</span>
 							)}
@@ -119,7 +122,7 @@ export function LanguageTabs({
 							<DropdownMenu>
 								<IconButton
 									label={t("lang.menu")}
-									className="size-7 text-muted-foreground"
+									className="size-7 text-cms-muted-foreground"
 									trigger={(button) => <DropdownMenuTrigger render={button} />}
 								>
 									<MoreHorizontal aria-hidden className="size-3.5" />

@@ -1,14 +1,23 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
-import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
-import { Field, FieldGroup, FieldLabel, FieldTitle } from "@bh2980/cms-admin/ui/field";
-import { IconButton } from "@bh2980/cms-admin/ui/icon-button";
-import { Input } from "@bh2980/cms-admin/ui/input";
-import { Textarea } from "@bh2980/cms-admin/ui/textarea";
+import {
+	Button,
+	Empty,
+	EmptyContent,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+	Field,
+	FieldGroup,
+	FieldLabel,
+	FieldTitle,
+	IconButton,
+	Input,
+	Textarea,
+	useConfirm,
+} from "@bh2980/cms-admin/kit";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Plus, Quote, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -25,7 +34,7 @@ export const AI_SHARED_KEY = ["cms", "ai", "shared"] as const;
 export const PROMPT_ROWS = 8;
 export const PROMPT_TEXTAREA = "min-h-40 text-xs md:text-xs";
 
-const SHARED_API = "/api/cms/v1/ai/shared";
+const SHARED_API = cmsApiUrl("/v1/ai/shared");
 
 export function useAiShared() {
 	return useQuery({
@@ -76,7 +85,7 @@ export function SharedManager({
 						{query.isPending ? (
 							<ListSkeleton rows={2} />
 						) : view?.items.length === 0 ? (
-							<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
+							<li className="px-3 py-6 text-center text-cms-muted-foreground text-xs">{t("list.empty")}</li>
 						) : (
 							view?.items.map((item) => (
 								<ListRow
@@ -158,9 +167,9 @@ function PlaceholderChip({ shareKey }: { shareKey: string }) {
 	};
 	return (
 		<div className="flex items-center gap-1">
-			<code className="rounded-md border bg-muted px-2 py-1 font-mono text-xs">{text}</code>
+			<code className="rounded-md border bg-cms-muted px-2 py-1 font-mono text-xs">{text}</code>
 			<IconButton label={copied ? t("copy.done") : t("copy.label")} size="icon-xs" onClick={() => void copy()}>
-				{copied ? <Check aria-hidden className="text-primary" /> : <Copy aria-hidden />}
+				{copied ? <Check aria-hidden className="text-cms-primary" /> : <Copy aria-hidden />}
 			</IconButton>
 		</div>
 	);
@@ -264,7 +273,7 @@ function SharedEditor({
 			<div className="min-w-0">
 				<h2 className="truncate font-medium text-base">{(item ? item.label : draft.label.trim()) || t("new.title")}</h2>
 				{(shownKey || item?.source === "added") && (
-					<p className="truncate text-muted-foreground text-xs">
+					<p className="truncate text-cms-muted-foreground text-xs">
 						{item ? detailOf(item) : `${placeholderOf(shownKey)} · ${t("detail.added")}`}
 					</p>
 				)}
@@ -347,7 +356,7 @@ function SharedEditor({
 						type="button"
 						size="sm"
 						variant="ghost"
-						className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+						className="ml-auto text-cms-destructive hover:bg-cms-destructive/10 hover:text-cms-destructive"
 						disabled={deleting}
 						onClick={() => void remove()}
 					>

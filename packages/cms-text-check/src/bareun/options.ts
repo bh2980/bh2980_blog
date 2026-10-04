@@ -1,5 +1,5 @@
 import { createActiveTranslator } from "@bh2980/cms";
-import type { TextCheckerLimits } from "@bh2980/cms-admin/text-check";
+import type { TextCheckerLimits } from "../index";
 import { bareunMessages } from "./messages";
 
 // `bareun()`은 사이트 설정 파일에서 불리므로 기본 이름은 읽는 때에 화면 언어로 고른다.

@@ -13,6 +13,7 @@ export {
 	type FieldInputEntry,
 	type FieldInputParts,
 	type FieldViewProps,
+	type ListCellProps,
 	useCmsAdminComponents,
 } from "./admin-components";
 export type { CustomBlockEditorProps } from "./editor/blocks/added/view";

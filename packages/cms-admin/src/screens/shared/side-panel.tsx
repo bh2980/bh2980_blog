@@ -20,7 +20,7 @@ export const SIDE_PANEL_DOCK =
 	"absolute inset-y-0 right-0 z-20 w-full shadow-lg sm:w-[22rem] lg:static lg:shrink-0 lg:shadow-none";
 
 /** 목록에서 지금 연 항목(오른쪽 칸·편집 칸에 열린 것)의 배경. */
-export const OPEN_ITEM = "bg-accent text-accent-foreground";
+export const OPEN_ITEM = "bg-cms-accent text-cms-accent-foreground";
 
 /** 오른쪽 칸 머리. 제목과 닫기 버튼(이름은 늘 "닫기")이다. */
 export function SidePanelHeader({

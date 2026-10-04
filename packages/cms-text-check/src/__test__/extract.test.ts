@@ -1,7 +1,6 @@
+import { buildEditorExtensions, mdxToTiptap } from "@bh2980/cms-admin/editor";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildEditorExtensions } from "../../editor/extensions";
-import { mdxToTiptap } from "../../editor/tiptap-content";
 import { docRangeToSegment, extractSegments, PLACEHOLDER, segmentRangeToDoc } from "../extract";
 
 let editor: Editor | null = null;

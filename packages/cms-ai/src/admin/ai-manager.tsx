@@ -5,30 +5,41 @@ import {
 	BLOCK_BY_NAME,
 	CMS_TIME_ZONE,
 	COLLECTIONS,
+	cmsApiUrl,
 	createTranslator,
 	schemaOf,
 } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
-import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { AdminShell } from "@bh2980/cms-admin/shell";
-import { SLOT_CHIP } from "@bh2980/cms-admin/slots";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Checkbox } from "@bh2980/cms-admin/ui/checkbox";
 import {
+	AdminShell,
+	Button,
+	Checkbox,
+	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@bh2980/cms-admin/ui/dropdown-menu";
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
-import { Field, FieldGroup, FieldLabel, FieldTitle } from "@bh2980/cms-admin/ui/field";
-import { IconButton } from "@bh2980/cms-admin/ui/icon-button";
-import { Input } from "@bh2980/cms-admin/ui/input";
-import { Label } from "@bh2980/cms-admin/ui/label";
-import { Switch } from "@bh2980/cms-admin/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@bh2980/cms-admin/ui/tabs";
-import { Textarea } from "@bh2980/cms-admin/ui/textarea";
+	Empty,
+	EmptyContent,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+	Field,
+	FieldGroup,
+	FieldLabel,
+	FieldTitle,
+	IconButton,
+	Input,
+	Label,
+	Switch,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+	Textarea,
+	useConfirm,
+} from "@bh2980/cms-admin/kit";
+import { SLOT_CHIP } from "@bh2980/cms-admin/slots";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plug, Plus, Quote, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useId, useState } from "react";
@@ -254,7 +265,7 @@ export function AiManager() {
 		setDeleting(true);
 		setFormError(null);
 		try {
-			await cmsFetch(`/api/cms/v1/ai/actions/${feature.key}?expectedVersion=${feature.version}`, {
+			await cmsFetch(cmsApiUrl(`/v1/ai/actions/${feature.key}?expectedVersion=${feature.version}`), {
 				method: "DELETE",
 				fallback: t("remove.failed"),
 			});
@@ -276,7 +287,7 @@ export function AiManager() {
 		setFormError(null);
 		try {
 			if (editing.isNew && editing.base) {
-				const created = await cmsFetch<AiActionView>("/api/cms/v1/ai/actions", {
+				const created = await cmsFetch<AiActionView>(cmsApiUrl("/v1/ai/actions"), {
 					method: "POST",
 					json: { base: { ...editing.base, label: editing.base.label.trim() }, value: editing.spec },
 					fallback: t("save.failed"),
@@ -286,7 +297,7 @@ export function AiManager() {
 				);
 				open(created);
 			} else {
-				const saved = await cmsFetch<AiActionView>(`/api/cms/v1/ai/actions/${editing.feature.key}`, {
+				const saved = await cmsFetch<AiActionView>(cmsApiUrl(`/v1/ai/actions/${editing.feature.key}`), {
 					method: "PATCH",
 					json: {
 						expectedVersion: editing.feature.version,
@@ -370,7 +381,7 @@ export function AiManager() {
 								) : (
 									<>
 										{featuresQuery.data && features.length === 0 && !editing?.isNew && (
-											<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
+											<li className="px-3 py-6 text-center text-cms-muted-foreground text-xs">{t("list.empty")}</li>
 										)}
 										{features.map((feature) => (
 											<ListRow
@@ -547,7 +558,7 @@ function CheckRow({
 						}
 						className="h-8 w-20 text-xs"
 					/>
-					<span className="text-muted-foreground">{t("check.charsOrLess")}</span>
+					<span className="text-cms-muted-foreground">{t("check.charsOrLess")}</span>
 				</span>
 			)}
 			{check.kind === "oneOf" && (
@@ -662,7 +673,7 @@ function FeatureEditor({
 					<h2 className="truncate font-medium text-base">
 						{(custom ? custom.base.label.trim() : feature.label) || t("title.new")}
 					</h2>
-					<p className="truncate text-muted-foreground text-xs">
+					<p className="truncate text-cms-muted-foreground text-xs">
 						{placeLabel(feature)} · {engineLabel(feature.engine)}
 					</p>
 				</div>
@@ -751,7 +762,7 @@ function FeatureEditor({
 								}
 								className="h-8 w-20 text-xs md:text-xs"
 							/>
-							<span className="text-muted-foreground">{t("field.percentOrMore")}</span>
+							<span className="text-cms-muted-foreground">{t("field.percentOrMore")}</span>
 							<Input
 								type="number"
 								aria-label={t("field.maxCount")}
@@ -761,7 +772,7 @@ function FeatureEditor({
 								onChange={(event) => set({ maxCount: Math.min(20, Math.max(1, Number(event.target.value) || 1)) })}
 								className="ml-3 h-8 w-16 text-xs md:text-xs"
 							/>
-							<span className="text-muted-foreground">{t("field.countUpTo")}</span>
+							<span className="text-cms-muted-foreground">{t("field.countUpTo")}</span>
 						</div>
 					</Field>
 				)}
@@ -790,7 +801,7 @@ function FeatureEditor({
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={
-										<Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" />
+										<Button type="button" size="xs" variant="ghost" className="self-start text-cms-muted-foreground" />
 									}
 								>
 									<Plus aria-hidden />
@@ -854,7 +865,7 @@ function FeatureEditor({
 					</Button>
 				)}
 				{!custom?.isNew && (
-					<span className="ml-auto text-muted-foreground text-xs">
+					<span className="ml-auto text-cms-muted-foreground text-xs">
 						{feature.updatedAt
 							? t("meta.edited", {
 									time: new Date(feature.updatedAt).toLocaleString(ADMIN_LOCALE, { timeZone: CMS_TIME_ZONE }),
@@ -867,7 +878,7 @@ function FeatureEditor({
 						type="button"
 						size="sm"
 						variant="ghost"
-						className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+						className="text-cms-destructive hover:bg-cms-destructive/10 hover:text-cms-destructive"
 						disabled={deleting}
 						onClick={custom.onDelete}
 					>
@@ -877,7 +888,10 @@ function FeatureEditor({
 				)}
 			</div>
 
-			<section className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 text-xs" aria-label={t("test.title")}>
+			<section
+				className="flex flex-col gap-2 rounded-md border bg-cms-muted/30 p-3 text-xs"
+				aria-label={t("test.title")}
+			>
 				<div className="flex items-center gap-2">
 					<span className="font-medium">{t("test.title")}</span>
 					<Button
@@ -906,7 +920,7 @@ function FeatureEditor({
 								void runTest();
 							}
 						}}
-						className="min-h-14 resize-y bg-background text-xs md:text-xs"
+						className="min-h-14 resize-y bg-cms-background text-xs md:text-xs"
 					/>
 				)}
 				<SampleInputs
@@ -916,26 +930,26 @@ function FeatureEditor({
 					onChange={(name, value) => setSample({ ...sample, values: { ...sample.values, [name]: value } })}
 				/>
 				{test?.status === "error" && (
-					<p role="alert" className="text-destructive">
+					<p role="alert" className="text-cms-destructive">
 						{test.message}
 					</p>
 				)}
 				{test?.status === "done" &&
 					(test.result.kind === "candidates" ? (
 						test.result.items.length === 0 ? (
-							<p className="text-muted-foreground">{t("test.noResults")}</p>
+							<p className="text-cms-muted-foreground">{t("test.noResults")}</p>
 						) : (
 							<ul className="flex flex-wrap gap-1">
 								{test.result.items.map((item) => (
 									<li key={item.value} className={SLOT_CHIP}>
 										<span className="truncate">{item.label}</span>
-										{item.detail && <span className="shrink-0 text-muted-foreground">{item.detail}</span>}
+										{item.detail && <span className="shrink-0 text-cms-muted-foreground">{item.detail}</span>}
 									</li>
 								))}
 							</ul>
 						)
 					) : (
-						<p className="whitespace-pre-wrap rounded border bg-background p-2">{test.result.text}</p>
+						<p className="whitespace-pre-wrap rounded border bg-cms-background p-2">{test.result.text}</p>
 					))}
 			</section>
 		</div>

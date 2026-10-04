@@ -14,7 +14,7 @@ import {
 	valuesOf,
 	withValue,
 } from "@bh2980/cms-admin/blocks";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { cn } from "@bh2980/cms-admin/kit";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { PencilLine, Plus, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -43,9 +43,9 @@ const SHOW_ONLY_TAB = [
 
 // 편집기 탭 바 모양(테마 색). 공개 화면의 탭 모양은 사이트가 정한다.
 const TAB_TRIGGER =
-	"relative inline-flex h-[calc(100%-1px)] items-center justify-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2 py-1 font-medium text-foreground/60 text-sm transition-all hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground";
+	"relative inline-flex h-[calc(100%-1px)] items-center justify-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2 py-1 font-medium text-cms-foreground/60 text-sm transition-all hover:text-cms-foreground cms-dark:text-cms-muted-foreground cms-dark:hover:text-cms-foreground";
 const TAB_TRIGGER_ACTIVE =
-	"border-border! bg-background text-foreground shadow-sm dark:border-input dark:bg-input/30 dark:text-foreground";
+	"border-cms-border! bg-cms-background text-cms-foreground shadow-sm cms-dark:border-cms-input cms-dark:bg-cms-input/30 cms-dark:text-cms-foreground";
 
 const labelOf = (values: Record<string, unknown>) => (typeof values.label === "string" ? values.label : "");
 
@@ -150,7 +150,7 @@ export function TabsNodeView(props: NodeViewProps) {
 				<div
 					role="tablist"
 					aria-label={t("list")}
-					className="relative inline-flex h-9 w-fit max-w-full items-center rounded-lg rounded-b-none border bg-muted p-[3px] text-muted-foreground"
+					className="relative inline-flex h-9 w-fit max-w-full items-center rounded-lg rounded-b-none border bg-cms-muted p-[3px] text-cms-muted-foreground"
 				>
 					{labels.map((label, index) =>
 						renaming === index ? (
@@ -186,11 +186,11 @@ export function TabsNodeView(props: NodeViewProps) {
 							</button>
 						),
 					)}
-					<span className="pointer-events-none absolute right-0 -bottom-1 left-0 inline-block h-1 bg-muted" />
+					<span className="pointer-events-none absolute right-0 -bottom-1 left-0 inline-block h-1 bg-cms-muted" />
 				</div>
 			</div>
 			<NodeViewContent
-				className={cn("rounded-b-lg rounded-tr-lg border bg-muted px-4 py-3 text-sm", SHOW_ONLY_TAB[current])}
+				className={cn("rounded-b-lg rounded-tr-lg border bg-cms-muted px-4 py-3 text-sm", SHOW_ONLY_TAB[current])}
 			/>
 			{editable ? (
 				<ContainerToolbar label={t("toolbar")}>

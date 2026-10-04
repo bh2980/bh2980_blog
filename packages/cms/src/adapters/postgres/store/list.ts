@@ -35,6 +35,10 @@ const isDate = (value: unknown): value is Date => value instanceof Date && Numbe
 const relationFieldsOf = (collection: string): StoredField[] =>
 	storedFields(collection as Collection).filter((stored) => stored.field.kind === "relation");
 
+/** 목록 칸에 글자로 보여 줄 필드(관계는 `relations`가 따로 담는다). */
+const valueColumnFieldsOf = (collection: string): StoredField[] =>
+	storedFields(collection as Collection).filter((stored) => ["text", "select", "media"].includes(stored.field.kind));
+
 /** 관계 값을 읽을 초안. 언어별 값이 아니면 번역 묶음 공통 값이라 원문 초안(`sw`)에서 읽는다(v2 B4). */
 const relationSource = (stored: StoredField): "w" | "sw" => (stored.field.localized ? "w" : "sw");
 
@@ -256,6 +260,15 @@ export function createListOps(ctx: StoreContext) {
 						relationIds((relationSource(stored) === "w" ? meta : common)[stored.name]),
 					]),
 				);
+				const values = Object.fromEntries(
+					valueColumnFieldsOf(row.collection).flatMap((stored) => {
+						const { localized } = stored.field;
+						const value = localized
+							? (meta[stored.name] ?? (localized === "inherit" ? common[stored.name] : undefined))
+							: common[stored.name];
+						return typeof value === "string" && value !== "" ? [[stored.name, value]] : [];
+					}),
+				);
 				return {
 					id: row.id,
 					collection: row.collection,
@@ -267,6 +280,7 @@ export function createListOps(ctx: StoreContext) {
 					version: row.version,
 					folderId: row.folder_id,
 					relationIdsByField,
+					values,
 					hasUnpublishedChanges: row.has_changes,
 					publishedAt: row.published_at,
 					createdAt: row.created_at,

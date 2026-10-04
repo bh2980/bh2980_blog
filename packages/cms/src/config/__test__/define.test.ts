@@ -224,6 +224,47 @@ describe("defineConfig", () => {
 		);
 	});
 
+	it("checks list columns: system columns and stored fields are fine, anything else is an error", () => {
+		const article = (columns: readonly string[]) =>
+			defineCollection({
+				label: "Article",
+				kind: "document",
+				fields: {
+					title,
+					permalink: fields.slug({ label: "Permalink", from: "title" }),
+					format: fields.select({ label: "Format", options: { news: "News" }, defaultValue: "news" }),
+					related: fields.relation({ label: "Related", to: "topic", many: true }),
+					preview: fields.view({ view: "preview" }),
+					kind: fields.conditional(
+						fields.select({ label: "Kind", options: { video: "Video" }, defaultValue: "video" }),
+						{ video: { videoUrl: fields.text({ label: "Video URL" }) } },
+					),
+				},
+				list: { columns: columns as never },
+			});
+		const define = (columns: readonly string[]) =>
+			defineConfig({ collections: { article: article(columns), topic }, locales, defaultLocale: "en" });
+
+		expect(() =>
+			define(["title", "permalink", "slug", "format", "related", "kind", "videoUrl", "status", "updatedAt", "folder"]),
+		).not.toThrow();
+		expect(() => define(["title", "nope"])).toThrow(/article\.list\.columns has unknown column "nope"/);
+		// 시스템 컬럼 이름을 잘못 적은 경우도 같다.
+		expect(() => define(["updated"])).toThrow(/unknown column "updated".*updatedAt/);
+		expect(() => define(["title", "preview"])).toThrow(/"preview" is a view field that is not stored/);
+		expect(() => define(["title", "format", "format"])).toThrow(/lists "format" twice/);
+		// 주소 필드가 없으면 `slug`도 모르는 이름이다.
+		const noSlug = defineCollection({
+			label: "Note",
+			kind: "document",
+			fields: { title },
+			list: { columns: ["slug" as never] },
+		});
+		expect(() => defineConfig({ collections: { noSlug }, locales, defaultLocale: "en" })).toThrow(
+			/noSlug\.list\.columns has unknown column "slug"/,
+		);
+	});
+
 	it("checks field roles: one field per role, and the field kind fits", () => {
 		const article = (extra: Parameters<typeof defineCollection>[0]["fields"]) =>
 			defineCollection({ label: "Article", kind: "document", fields: { title, ...extra }, list: { columns: [] } });

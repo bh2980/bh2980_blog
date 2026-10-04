@@ -9,14 +9,14 @@ import {
 	ToolbarButton,
 	useContainerValues,
 } from "@bh2980/cms-admin/blocks";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
+	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
-} from "@bh2980/cms-admin/ui/dropdown-menu";
+} from "@bh2980/cms-admin/kit";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { calloutBlock } from "./definition";
 import { calloutMessages } from "./messages";

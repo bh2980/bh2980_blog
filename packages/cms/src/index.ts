@@ -42,6 +42,13 @@ export {
 	translate,
 } from "./i18n/define";
 export {
+	assertPluginNamesFree,
+	assertPluginPagesFree,
+	assertPluginRoutesFree,
+	CORE_ADMIN_PAGES,
+	CORE_FEATURE_KEYS,
+} from "./plugin/collisions";
+export {
 	type CmsPlugin,
 	type CmsServerPlugin,
 	definePlugin,

@@ -56,7 +56,7 @@ const article = defineCollection({
 		{ fields: ["title", "slug", "excerpt", "authorId", "topicIds"] },
 		{ group: "Presentation", fields: ["heroImage", "format"] },
 	],
-	list: { columns: ["title", "status", "authorId", "topicIds", "updatedAt"] },
+	list: { columns: ["title", "status", "authorId", "topicIds", "format", "updatedAt"] },
 });
 
 const topic = defineCollection({

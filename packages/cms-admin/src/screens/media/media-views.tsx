@@ -28,9 +28,9 @@ const FILE_ICONS: Record<FileKind, typeof FileText> = { pdf: FileType, archive: 
 export function MediaThumb({ media, iconClassName }: { media: MediaItem; iconClassName?: string }) {
 	if (!isImageMime(media.mimeType)) {
 		const Icon = FILE_ICONS[fileKindOf(media.mimeType)];
-		return <Icon className={cn("text-muted-foreground", iconClassName)} aria-hidden />;
+		return <Icon className={cn("text-cms-muted-foreground", iconClassName)} aria-hidden />;
 	}
-	if (!media.publicUrl) return <File className={cn("text-muted-foreground", iconClassName)} aria-hidden />;
+	if (!media.publicUrl) return <File className={cn("text-cms-muted-foreground", iconClassName)} aria-hidden />;
 	// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 	return <img src={media.publicUrl} alt="" loading="lazy" className="h-full w-full object-cover" />;
 }
@@ -72,17 +72,17 @@ export function MediaGrid({ items, selectedId, dimmed, onSelect, menuFor, onDele
 						onClick={() => onSelect(media)}
 						onKeyDown={deleteKey(media, onDeleteKey)}
 						className={cn(
-							"h-auto w-full flex-col items-stretch gap-0 overflow-hidden rounded-lg bg-card p-0 text-left font-normal",
+							"h-auto w-full flex-col items-stretch gap-0 overflow-hidden rounded-lg bg-cms-card p-0 text-left font-normal",
 							selectedId === media.id
-								? cn(OPEN_ITEM, "border-foreground/40 hover:bg-accent")
-								: "hover:border-foreground/30",
+								? cn(OPEN_ITEM, "border-cms-foreground/40 hover:bg-cms-accent")
+								: "hover:border-cms-foreground/30",
 						)}
 					>
-						<span className="relative flex aspect-square items-center justify-center bg-muted">
+						<span className="relative flex aspect-square items-center justify-center bg-cms-muted">
 							{isImageMime(media.mimeType) ? (
 								<MediaThumb media={media} iconClassName="size-10" />
 							) : (
-								<span className="flex flex-col items-center gap-1.5 text-muted-foreground">
+								<span className="flex flex-col items-center gap-1.5 text-cms-muted-foreground">
 									<MediaThumb media={media} iconClassName="size-10" />
 									<span className="font-medium text-[10px]">{fileTypeLabel(media.filename, media.mimeType)}</span>
 								</span>
@@ -96,7 +96,7 @@ export function MediaGrid({ items, selectedId, dimmed, onSelect, menuFor, onDele
 					<MoreActionsButton
 						actions={menuFor(media)}
 						label={t("views.itemActions", { name: media.filename })}
-						className="absolute top-1 right-1 size-7 bg-background/80"
+						className="absolute top-1 right-1 size-7 bg-cms-background/80"
 					/>
 				</ActionContextMenu>
 			))}
@@ -140,7 +140,7 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 							}
 						>
 							<TableCell className="py-1.5">
-								<span className="flex size-9 items-center justify-center overflow-hidden rounded border bg-muted">
+								<span className="flex size-9 items-center justify-center overflow-hidden rounded border bg-cms-muted">
 									<MediaThumb media={media} iconClassName="size-4" />
 								</span>
 							</TableCell>
@@ -158,17 +158,17 @@ export function MediaTable({ items, selectedId, dimmed, onSelect, menuFor, onDel
 									{media.filename}
 								</button>
 							</TableCell>
-							<TableCell className="text-muted-foreground">
+							<TableCell className="text-cms-muted-foreground">
 								{isImageMime(media.mimeType)
 									? (media.mimeType?.replace("image/", "").toUpperCase() ?? "—")
 									: fileTypeLabel(media.filename, media.mimeType)}
 							</TableCell>
 							<TableCell className="tabular-nums">{formatFileSize(media.byteSize ?? 0)}</TableCell>
-							<TableCell className="text-muted-foreground tabular-nums">
+							<TableCell className="text-cms-muted-foreground tabular-nums">
 								{media.width && media.height ? `${media.width}×${media.height}` : "—"}
 							</TableCell>
 							<TableCell>{usageLabel(media)}</TableCell>
-							<TableCell className="text-muted-foreground tabular-nums">
+							<TableCell className="text-cms-muted-foreground tabular-nums">
 								{formatDateTime(media.createdAt, { dateStyle: "medium", timeStyle: "short" })}
 							</TableCell>
 							<TableCell onClick={(event) => event.stopPropagation()}>

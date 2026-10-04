@@ -1,8 +1,7 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
 import {
 	Combobox,
 	ComboboxContent,
@@ -10,7 +9,8 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxList,
-} from "@bh2980/cms-admin/ui/combobox";
+	cn,
+} from "@bh2980/cms-admin/kit";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import type { AiModelInfo } from "../connection";
@@ -30,7 +30,7 @@ export function useModelList(source: ModelSource | null) {
 		queryKey: ["cms", "ai", "models", source],
 		queryFn: async ({ signal }) =>
 			(
-				await cmsFetch<{ items: AiModelInfo[] }>("/api/cms/v1/ai/models", {
+				await cmsFetch<{ items: AiModelInfo[] }>(cmsApiUrl("/v1/ai/models"), {
 					method: "POST",
 					json: source,
 					signal,
@@ -113,7 +113,7 @@ export function ModelCombobox({
 						<ComboboxItem
 							key={item.value}
 							value={item}
-							className={cn("font-mono text-xs", item.custom && "text-primary")}
+							className={cn("font-mono text-xs", item.custom && "text-cms-primary")}
 						>
 							<span className="truncate">{item.custom ? t("modelUse", { label: item.label }) : item.label}</span>
 						</ComboboxItem>

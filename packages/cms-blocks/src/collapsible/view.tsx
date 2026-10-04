@@ -11,8 +11,7 @@ import {
 	useContainerValues,
 	useSelectedChildIndex,
 } from "@bh2980/cms-admin/blocks";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Switch } from "@bh2980/cms-admin/ui/switch";
+import { cn, Switch } from "@bh2980/cms-admin/kit";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -52,13 +51,13 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 		<NodeViewWrapper
 			data-cms-container-node="cmsCollapsible"
 			data-cms-framed
-			className={cn("group/container relative my-6 rounded-md border bg-background", selected && SELECTED_RING)}
+			className={cn("group/container relative my-6 rounded-md border bg-cms-background", selected && SELECTED_RING)}
 		>
 			<div
 				contentEditable={false}
 				className={cn(
-					"not-prose flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-foreground text-sm",
-					open && "bg-muted",
+					"not-prose flex w-full items-center gap-2 rounded-md px-3 py-2 font-medium text-cms-foreground text-sm",
+					open && "bg-cms-muted",
 				)}
 			>
 				<button
@@ -66,10 +65,10 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 					aria-expanded={open}
 					aria-label={open ? t("toggle.close") : t("toggle.open")}
 					onClick={toggle}
-					className="-m-1 rounded p-1 hover:bg-accent"
+					className="-m-1 rounded p-1 hover:bg-cms-accent"
 				>
 					<ChevronRight
-						className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+						className={cn("size-4 shrink-0 text-cms-muted-foreground transition-transform", open && "rotate-90")}
 					/>
 				</button>
 				<AttributeInput
@@ -87,7 +86,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 			</div>
 			<NodeViewContent
 				className={cn(
-					"px-3 pt-2 pb-3 text-foreground",
+					"px-3 pt-2 pb-3 text-cms-foreground",
 					// 안쪽 첫·끝 블록의 prose 여백이 상자 안쪽 여백에 더해지지 않게 0으로 둔다(중첩 커스텀 블록은 react-renderer 안 래퍼가 여백을 가진다).
 					"[&>[data-node-view-content-react]>:first-child]:mt-0 [&>[data-node-view-content-react]>:last-child]:mb-0",
 					"[&>[data-node-view-content-react]>:first-child>[data-node-view-wrapper]]:mt-0 [&>[data-node-view-content-react]>:last-child>[data-node-view-wrapper]]:mb-0",
@@ -100,7 +99,7 @@ export function CollapsibleNodeView(props: NodeViewProps) {
 				<ContainerToolbar label={t("toolbar")}>
 					<BlockSettings>
 						<label htmlFor={defaultOpenId} className="flex items-center justify-between gap-2">
-							<span className="text-muted-foreground">{t("defaultOpen.label")}</span>
+							<span className="text-cms-muted-foreground">{t("defaultOpen.label")}</span>
 							<Switch
 								id={defaultOpenId}
 								size="sm"

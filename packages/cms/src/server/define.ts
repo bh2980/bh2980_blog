@@ -81,7 +81,7 @@ export interface CmsAuth {
 
 /** 로그인 연결을 만들 때 본체가 주는 값. */
 export interface AuthCreateContext {
-	/** 관리자 로그인 화면 주소(관리자 경로 + `/login`, 예: `/admin/login`). */
+	/** 관리자 로그인 화면 주소(관리자 경로 + `/login`, 예: `/admin/login`). Next `basePath`가 있으면 그것까지 포함한 브라우저 주소다. */
 	readonly loginPath: string;
 }
 

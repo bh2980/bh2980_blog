@@ -1,6 +1,6 @@
-import { detectImageDimensionsAndType } from "../../../adapters/r2/media-store";
 import type { AllowedMediaMime, MediaStore } from "../../../adapters/r2/types";
 import {
+	ALLOWED_FILE_MIME_TYPES,
 	ALLOWED_IMAGE_MIME_TYPES,
 	type AllowedFileMime,
 	isImageMime,
@@ -8,6 +8,7 @@ import {
 	MAX_MEDIA_BYTES,
 	MAX_MEDIA_PIXELS,
 } from "../../../core/api";
+import { detectImageDimensionsAndType } from "../../../media/image-detect";
 import { HttpError } from "../error-handler";
 
 export const UPLOAD_URL_TTL_SECONDS = 600;
@@ -78,8 +79,11 @@ export async function inspectUploadedFile(
 	if (!head) throw new HttpError(409, "upload_incomplete", "File has not been uploaded to storage yet");
 
 	if (declared && !isImageMime(declared)) {
+		if (!(ALLOWED_FILE_MIME_TYPES as readonly string[]).includes(declared)) {
+			throw new HttpError(415, "unsupported_media_type", `File type ${declared} is not allowed`);
+		}
 		if (head.contentLength > MAX_FILE_BYTES) {
-			throw new HttpError(413, "payload_too_large", "Uploaded file exceeds 50MiB limit");
+			throw new HttpError(413, "payload_too_large", `Uploaded file exceeds ${MAX_FILE_BYTES} bytes`);
 		}
 		const mimeType = declared as AllowedFileMime;
 		const sniff = mimeType === "application/pdf" || mimeType === "application/zip" ? 8 : TEXT_SNIFF_BYTES;
@@ -97,7 +101,7 @@ export async function inspectUploadedFile(
 	}
 
 	if (head.contentLength > MAX_MEDIA_BYTES) {
-		throw new HttpError(413, "payload_too_large", "Uploaded file exceeds 10MiB limit");
+		throw new HttpError(413, "payload_too_large", `Uploaded image exceeds ${MAX_MEDIA_BYTES} bytes`);
 	}
 	const bytes = await mediaStore.readFile({ key: stagingKey, maxBytes: MAX_MEDIA_BYTES + 1 });
 	const detected = detectImageDimensionsAndType(bytes);
@@ -105,7 +109,7 @@ export async function inspectUploadedFile(
 		throw new HttpError(415, "unsupported_media_type", "Uploaded file is not a valid or allowed image format");
 	}
 	if (detected.width * detected.height > MAX_MEDIA_PIXELS) {
-		throw new HttpError(413, "too_many_pixels", "Image exceeds the 40 megapixel limit");
+		throw new HttpError(413, "too_many_pixels", `Image exceeds ${MAX_MEDIA_PIXELS} pixels`);
 	}
 	return { head, detected };
 }

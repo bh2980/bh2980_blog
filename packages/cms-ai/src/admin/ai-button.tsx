@@ -1,8 +1,7 @@
 "use client";
 
 import { createTranslator } from "@bh2980/cms/client";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Spinner } from "@bh2980/cms-admin/ui/spinner";
+import { Button, Spinner } from "@bh2980/cms-admin/kit";
 import { Sparkles } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";

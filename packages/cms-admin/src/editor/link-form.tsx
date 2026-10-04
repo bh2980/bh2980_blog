@@ -88,7 +88,7 @@ export function PopoverFormFooter({
 					type="button"
 					variant="ghost"
 					size="sm"
-					className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+					className="text-cms-destructive hover:bg-cms-destructive/10 hover:text-cms-destructive"
 					onClick={onRemove}
 				>
 					{removeIcon}
@@ -110,7 +110,7 @@ export function PopoverFormFooter({
 /** 팝오버 입력 폼의 빨간 한 줄 오류. */
 export function PopoverFormError({ id, children }: { id: string; children: ReactNode }) {
 	return (
-		<p id={id} role="alert" className="text-destructive text-xs">
+		<p id={id} role="alert" className="text-cms-destructive text-xs">
 			{children}
 		</p>
 	);

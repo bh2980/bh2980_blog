@@ -3,6 +3,7 @@
 import {
 	COLLECTION_DEFINITIONS,
 	type Collection,
+	cmsApiUrl,
 	createTranslator,
 	DEFAULT_LOCALE,
 	LOCALES,
@@ -97,7 +98,7 @@ export function RecordPanel({
 		setIsDirty(false);
 		if (!id) return;
 		let cancelled = false;
-		cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`)
+		cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${id}`))
 			.then((entry) => {
 				if (cancelled) return;
 				setLoaded(entry);
@@ -134,7 +135,7 @@ export function RecordPanel({
 		try {
 			const saved =
 				id && loaded
-					? await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, {
+					? await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${id}`), {
 							method: "PATCH",
 							json: {
 								expectedVersion: loaded.version,
@@ -143,7 +144,7 @@ export function RecordPanel({
 							},
 							fallback: t("record.saveFailed"),
 						})
-					: await cmsFetch<EntryData>("/api/cms/v1/entries", {
+					: await cmsFetch<EntryData>(cmsApiUrl("/v1/entries"), {
 							method: "POST",
 							json: { collection, slug: form.slug.trim() || null, metadata: built.metadata, mdx: "" },
 							fallback: t("record.saveFailed"),
@@ -164,7 +165,7 @@ export function RecordPanel({
 	};
 
 	return (
-		<aside aria-label={heading} className={cn("flex h-full flex-col border-l bg-background text-sm", className)}>
+		<aside aria-label={heading} className={cn("flex h-full flex-col border-l bg-cms-background text-sm", className)}>
 			<SidePanelHeader title={heading} onClose={() => void close()} />
 			<form
 				className="flex min-h-0 flex-1 flex-col"
@@ -199,7 +200,7 @@ export function RecordPanel({
 											aria-hidden
 											className={cn(
 												"size-1.5 rounded-full",
-												filled ? "bg-emerald-500" : "border border-muted-foreground/50",
+												filled ? "bg-emerald-500" : "border border-cms-muted-foreground/50",
 											)}
 										/>
 									)}
@@ -216,11 +217,11 @@ export function RecordPanel({
 								onChange={setForm}
 								slugPlaceholder={slugFromValues(collection, form) || slugHint}
 							/>
-							{id && <p className="text-muted-foreground text-xs">{t("record.slugChange")}</p>}
+							{id && <p className="text-cms-muted-foreground text-xs">{t("record.slugChange")}</p>}
 						</TabsContent>
 						{LOCALES.filter((option) => option !== DEFAULT_LOCALE).map((option) => (
 							<TabsContent key={option} value={option} className="space-y-4">
-								<p className="text-muted-foreground text-xs leading-relaxed">
+								<p className="text-cms-muted-foreground text-xs leading-relaxed">
 									{t("record.localeEmpty", { name: localeLabel(option) })}
 								</p>
 								<RecordLocaleFields
@@ -236,7 +237,7 @@ export function RecordPanel({
 				</Tabs>
 				<div className="shrink-0 space-y-2 border-t px-4 py-3">
 					{error && (
-						<p role="alert" className="whitespace-pre-wrap text-destructive text-xs">
+						<p role="alert" className="whitespace-pre-wrap text-cms-destructive text-xs">
 							{error}
 						</p>
 					)}

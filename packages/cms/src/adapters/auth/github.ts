@@ -1,8 +1,12 @@
-import { createTranslator } from "../../i18n";
+import { withBasePath } from "../../core/base-path";
+import { createActiveTranslator } from "../../i18n/active";
 import { type AuthAdapter, CMS_AUTH_BASE_PATH, type CmsAuth } from "../../server/define";
 import type { createGithubNextAuth } from "./auth-config";
 import { isAllowedAdminId, isDevAuthBypassEnabled } from "./auth-gateway";
 import { authMessages } from "./messages";
+
+/** 화면 언어는 글자를 읽을 때 고른다. 사이트 설정을 읽는 `i18n` 대신 써서 `cms.server.ts`가 설정을 끌어오지 않게 한다(M17-3). */
+const t = createActiveTranslator(authMessages);
 
 export interface GithubAuthOptions {
 	readonly clientId: string | undefined;
@@ -38,7 +42,12 @@ export function githubAuth(options: GithubAuthOptions): AuthAdapter {
 			let nextAuth: Promise<NextAuthResult> | undefined;
 			const load = () => {
 				nextAuth ??= import("./auth-config").then((module) =>
-					module.createGithubNextAuth({ ...options, basePath, signInPage: loginPath }),
+					module.createGithubNextAuth({
+						...options,
+						// NextAuth는 브라우저가 보는 요청 주소로 경로를 가리므로 Next `basePath`까지 포함한다(`CmsAuth.basePath`는 앱 안 경로).
+						basePath: withBasePath(basePath),
+						signInPage: loginPath,
+					}),
 				);
 				return nextAuth;
 			};
@@ -55,7 +64,15 @@ export function githubAuth(options: GithubAuthOptions): AuthAdapter {
 					if (!session) return null;
 					return { user: { id: session.user?.id, accountId: session.user?.githubId } };
 				},
-				providers: [{ id: "github", name: "GitHub", label: createTranslator(authMessages)("github.label") }],
+				providers: [
+					{
+						id: "github",
+						name: "GitHub",
+						get label() {
+							return t("github.label");
+						},
+					},
+				],
 				signIn: async (provider = "github", signInOptions) => (await load()).signIn(provider, signInOptions),
 				signOut: async (signOutOptions) => (await load()).signOut(signOutOptions),
 				isAdmin: (userId) => isAllowedAdminId(userId, options.adminIds),

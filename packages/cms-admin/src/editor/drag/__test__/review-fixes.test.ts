@@ -8,7 +8,7 @@ import { canDropBlockNode } from "../drag-commands";
 
 const create = (content: string) => new Editor({ extensions: buildEditorExtensions(), content });
 const OPAQUE = '<div data-cms-opaque="true" data-raw-source=":::callout\n내용\n:::" data-line-start="1"></div>';
-const texts = (editor: Editor) => editor.state.doc.content.content.map((n) => n.type.name + ":" + n.textContent);
+const texts = (editor: Editor) => editor.state.doc.content.content.map((n) => `${n.type.name}:${n.textContent}`);
 
 describe("C1 리뷰 수정", () => {
 	it("원자 블록 바로 앞 위치는 그 블록을 가리킨다(첫 블록이 아니다)", () => {

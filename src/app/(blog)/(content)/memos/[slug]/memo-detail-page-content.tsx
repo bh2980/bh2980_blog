@@ -1,4 +1,4 @@
-import { createPublicImageResolver } from "@bh2980/cms/runtime";
+import { createPublicImageResolver } from "@bh2980/cms/render";
 import { LanguageLinks } from "@/components/language-links";
 import { renderMDX } from "@/components/mdx/mdx-content";
 import { TableOfContents } from "@/components/table-of-contents.client";

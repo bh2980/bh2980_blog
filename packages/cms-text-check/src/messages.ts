@@ -1,7 +1,7 @@
 import { defineMessages } from "@bh2980/cms";
 
 /** 글 검사(맞춤법 등) 버튼·결과·알림의 문구(M15). */
-export const textCheckMessages = defineMessages("cms-admin.text-check", {
+export const textCheckMessages = defineMessages("cms-text-check.core", {
 	en: {
 		running: "Checking…",
 		results: "Results",

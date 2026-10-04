@@ -1,6 +1,12 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, createTranslator, isCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
+import {
+	COLLECTION_DEFINITIONS,
+	cmsApiUrl,
+	createTranslator,
+	isCollection,
+	taxonomyFieldsOf,
+} from "@bh2980/cms/client";
 import { useQueries } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cmsFetch } from "../admin-api";
@@ -37,7 +43,7 @@ async function loadAll(collection: RecordCollection): Promise<TaxonomyOption[]> 
 			sortDirection: "asc",
 		});
 		params.append("status", "published");
-		const data = await cmsFetch<ListResponse>(`/api/cms/v1/entries?${params.toString()}`);
+		const data = await cmsFetch<ListResponse>(cmsApiUrl(`/v1/entries?${params.toString()}`));
 		options.push(
 			...data.items.map((item) => ({
 				id: item.id,

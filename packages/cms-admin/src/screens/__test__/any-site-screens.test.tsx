@@ -19,7 +19,7 @@ import { EntryEditorShell } from "../entries/entry-editor-shell";
 import { entryEditorShellMessages } from "../entries/entry-editor-shell.messages";
 import { copyTitle } from "../entries/entry-form";
 import { entriesMessages } from "../entries/messages";
-import { columnLabel, columnsFor } from "../list-columns";
+import { columnLabel, columnsFor, fieldColumnOf } from "../list-columns";
 import { screensMessages } from "../messages";
 import { RecordPanel } from "../record-panel";
 import { AdminQueryProvider } from "../shared/query-provider";
@@ -114,6 +114,7 @@ const item = (id: string, title: string): ListEntriesItem => ({
 	version: 1,
 	folderId: null,
 	relations: {},
+	values: {},
 	hasUnpublishedChanges: false,
 	publishedAt: null,
 	createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -167,6 +168,30 @@ describe("any site: list screen", () => {
 		for (const column of columnsFor(content).defaults) expect(headers).toContain(columnLabel(content, column));
 		// 새 항목 버튼은 컬렉션 이름표를 쓴다.
 		expect(screen.getByRole("button", { name: t("list.add", { label: schemaOf(content).label }) })).toBeTruthy();
+	});
+
+	// 목록 컬럼에 적은 선택·글자 필드(다른 사이트 설정의 `format`). 없는 설정이면 건너뛴다.
+	const listedSelect = columnsFor(content).defaults.flatMap((column) => {
+		const stored = fieldColumnOf(content, column);
+		return stored?.field.kind === "select" ? [{ column, field: stored.field }] : [];
+	})[0];
+	it.skipIf(!listedSelect)("draws a listed select field column with the option label", async () => {
+		const { column, field } = listedSelect as NonNullable<typeof listedSelect>;
+		const [value, label] = Object.entries(field.options)[1] ?? Object.entries(field.options)[0] ?? ["", ""];
+		nav.set(`collection=${content}`);
+		listed = [{ ...item("e1", "Alpha"), values: { [column]: value } }, item("e2", "Beta")];
+		render(
+			<AdminQueryProvider>
+				<AdminClientDashboard />
+			</AdminQueryProvider>,
+		);
+		const row = await screen.findByRole("row", { name: /Alpha/ });
+		expect(within(row).getByText(label)).toBeTruthy();
+		// 값이 없는 줄은 빈 칸 표시다.
+		expect(within(screen.getByRole("row", { name: /Beta/ })).queryByText(label)).toBeNull();
+		expect(
+			screen.getAllByRole("columnheader").some((header) => header.textContent?.includes(columnLabel(content, column))),
+		).toBe(true);
 	});
 
 	it("duplicates a row with a copy title made by the admin", async () => {

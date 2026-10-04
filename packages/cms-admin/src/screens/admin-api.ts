@@ -19,7 +19,7 @@ export class CmsApiError extends Error {
 }
 
 /**
- * `/api/cms/v1` 호출. `json`을 주면 JSON 본문으로 보낸다. 실패 응답은 {@link CmsApiError}로 던진다.
+ * 관리자 API 호출(주소는 `cmsApiUrl()`로 만든다). `json`을 주면 JSON 본문으로 보낸다. 실패 응답은 {@link CmsApiError}로 던진다.
  * 네트워크 오류는 원래 `TypeError`를 그대로 던져 호출자가 오프라인과 구분할 수 있게 한다.
  */
 export async function cmsFetch<T = unknown>(

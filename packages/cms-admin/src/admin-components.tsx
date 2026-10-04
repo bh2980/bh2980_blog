@@ -1,5 +1,7 @@
 "use client";
 
+import type { Field } from "@bh2980/cms/client";
+import type { ListEntriesItem } from "@bh2980/cms/runtime";
 import type { Editor, NodeViewProps } from "@tiptap/react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -176,6 +178,24 @@ export interface CmsAdminComponents {
 	 * 지금 입력 중인 값(`form`)과 저장된 항목(`entry`)을 받는다.
 	 */
 	readonly fieldViews?: Readonly<Record<string, ComponentType<FieldViewProps>>>;
+	/**
+	 * 목록 칸(이름 → 컴포넌트). 이름은 목록 컬럼 이름(`list.columns`에 적은 필드·시스템 컬럼 이름)이거나, 그 필드의 `input`
+	 * 이름이다(컬럼 이름이 먼저). 등록하지 않은 컬럼은 기본 칸이다: 선택은 선택지 이름표, 글자는 짧은 글, 관계는 이름, 날짜는 날짜.
+	 */
+	readonly listCells?: Readonly<Record<string, ComponentType<ListCellProps>>>;
+}
+
+/** 목록 칸 컴포넌트가 받는 값. */
+export interface ListCellProps {
+	readonly collection: string;
+	/** 컬럼 이름(필드 이름 또는 시스템 컬럼). */
+	readonly column: string;
+	/** 필드 컬럼이면 그 필드 정의. 시스템 컬럼이면 `undefined`. */
+	readonly field?: Field;
+	/** 그 줄의 항목. */
+	readonly entry: ListEntriesItem;
+	/** 필드 컬럼이면 글자로 저장된 값(관계는 `entry.relations`). 값이 없으면 `undefined`. */
+	readonly value?: string;
 }
 
 /**
@@ -224,6 +244,7 @@ export function CmsAdminComponentsProvider({
 			marks: { ...parent.marks, ...components.marks },
 			icons: { ...parent.icons, ...components.icons },
 			fieldViews: { ...parent.fieldViews, ...components.fieldViews },
+			listCells: { ...parent.listCells, ...components.listCells },
 		}),
 		[parent, components],
 	);

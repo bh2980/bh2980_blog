@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { cn } from "@bh2980/cms-admin/kit";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 /**

@@ -82,7 +82,7 @@ export default defineServerConfig({
 	}),
 	// Encryption key for stored values (AI service keys). If you change it, enter the stored keys again. Keep it separate from the sign-in secret.
 	secret: process.env.CMS_SECRET,
-	// media: r2Storage({ ... }), // image and file uploads (S3-compatible storage), imported from @bh2980/cms/server
+	// media: r2Storage({ ... }), // image and file uploads (S3-compatible storage), imported from @bh2980/cms/s3
 });
 `;
 

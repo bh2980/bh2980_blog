@@ -1,4 +1,4 @@
-import { adminHref, createTranslator } from "@bh2980/cms/client";
+import { adminHref, adminUrl, createTranslator } from "@bh2980/cms/client";
 import { auth, authProviders, isAllowedAdminId, isDevAuthBypassEnabled, signIn, signOut } from "@bh2980/cms/runtime";
 import type { Route } from "next";
 import { redirect } from "next/navigation";
@@ -44,7 +44,7 @@ export default async function AdminLoginPage() {
 							<form
 								action={async () => {
 									"use server";
-									await signOut({ redirectTo: adminHref("/login") });
+									await signOut({ redirectTo: adminUrl("/login") });
 								}}
 								className="mt-3"
 							>
@@ -60,7 +60,7 @@ export default async function AdminLoginPage() {
 									key={authProvider.id}
 									action={async () => {
 										"use server";
-										await signIn(authProvider.id, { redirectTo: adminHref() });
+										await signIn(authProvider.id, { redirectTo: adminUrl() });
 									}}
 								>
 									<Button type="submit" className="w-full">

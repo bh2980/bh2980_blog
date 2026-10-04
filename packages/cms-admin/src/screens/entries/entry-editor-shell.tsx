@@ -4,6 +4,7 @@ import {
 	adminEntryEditHref,
 	adminHref,
 	bodyExcerpt,
+	cmsApiUrl,
 	previewHref as contentPreviewHref,
 	createTranslator,
 	DEFAULT_COLLECTION,
@@ -14,6 +15,7 @@ import {
 	slugFieldOf,
 	slugFromValues,
 	storedField,
+	withBasePath,
 } from "@bh2980/cms/client";
 import { analyze } from "@bh2980/cms/mdx";
 import type { IncomingReferenceItem } from "@bh2980/cms/runtime";
@@ -127,7 +129,7 @@ function ToolbarAction({
 	onClick?: () => void;
 	disabled?: boolean;
 }) {
-	const className = "size-8 shrink-0 text-muted-foreground";
+	const className = "size-8 shrink-0 text-cms-muted-foreground";
 	const icon = <Icon aria-hidden className="size-4" />;
 	if (!href || disabled) {
 		return (
@@ -184,7 +186,7 @@ function ToolbarToggle({
 						pressed={pressed}
 						disabled={disabled}
 						onPressedChange={onPressedChange}
-						className="gap-1.5 text-muted-foreground aria-pressed:text-foreground"
+						className="gap-1.5 text-cms-muted-foreground aria-pressed:text-cms-foreground"
 					/>
 				}
 			>
@@ -204,14 +206,14 @@ type Purpose = "publish" | "duplicate" | LifecycleAction;
 
 /** 저장 상태 점의 색. 상태를 더하면 여기서 색을 정해야 한다. */
 const SAVE_STATUS_DOT: Record<SaveStatus, string> = {
-	new: "bg-muted-foreground/50",
+	new: "bg-cms-muted-foreground/50",
 	saved: "bg-emerald-500",
-	dirty: "bg-muted-foreground/50",
+	dirty: "bg-cms-muted-foreground/50",
 	saving: "animate-pulse bg-amber-500",
-	"local-only": "bg-muted-foreground/50",
-	failed: "bg-destructive",
-	conflict: "bg-destructive",
-	"session-expired": "bg-destructive",
+	"local-only": "bg-cms-muted-foreground/50",
+	failed: "bg-cms-destructive",
+	conflict: "bg-cms-destructive",
+	"session-expired": "bg-cms-destructive",
 };
 
 /** 머리글의 저장 상태. 좁은 화면에서는 점만 보이고 이름은 읽기 도구로 알린다. */
@@ -221,7 +223,7 @@ function SaveStatusIndicator({ status, backupAvailable }: { status: SaveStatus; 
 		<output
 			aria-live="polite"
 			aria-label={label}
-			className="mr-1 flex items-center gap-1.5 text-muted-foreground text-xs"
+			className="mr-1 flex items-center gap-1.5 text-cms-muted-foreground text-xs"
 		>
 			<span aria-hidden className={cn("size-2 rounded-full", SAVE_STATUS_DOT[status])} />
 			<span className="hidden lg:inline">{label}</span>
@@ -383,7 +385,7 @@ export function EntryEditorShell({
 		setIncoming((current) => ({ ...current, loading: true, error: null }));
 		try {
 			const data = await cmsFetch<{ incomingReferences: IncomingReferenceItem[] }>(
-				`/api/cms/v1/entries/${targetId}/relations`,
+				cmsApiUrl(`/v1/entries/${targetId}/relations`),
 			);
 			setIncoming({ items: data.incomingReferences ?? [], loading: false, error: null });
 		} catch {
@@ -394,7 +396,7 @@ export function EntryEditorShell({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: autosave methods are ref-backed and stable
 	const loadEntry = useCallback(
 		async (id: string) => {
-			const loaded = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}`, { fallback: t("loadFailed") });
+			const loaded = await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${id}`), { fallback: t("loadFailed") });
 			if (isItemCollection(loaded.collection)) {
 				// 항목 컬렉션(태그·카테고리 등)은 목록의 작은 폼에서 연다(§5.2).
 				router.replace(entryHref(loaded.collection, loaded.id) as Route);
@@ -575,7 +577,7 @@ export function EntryEditorShell({
 		try {
 			const id = await ensureSaved("publish", { saveChanges: true });
 			if (!id) return;
-			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(`/api/cms/v1/entries/${id}/publish`, {
+			const published = await cmsFetch<EntryData & { warnings?: CmsIssue[] }>(cmsApiUrl(`/v1/entries/${id}/publish`), {
 				method: "POST",
 				json: { expectedVersion: autosave.getVersion(), ...(resetPublishedAt ? { resetPublishedAt } : {}) },
 				fallback: t("publishFailed"),
@@ -597,7 +599,7 @@ export function EntryEditorShell({
 			}
 		} catch (error) {
 			if (error instanceof CmsApiError && error.code === "conflict") {
-				const server = await cmsFetch<EntryData>(`/api/cms/v1/entries/${autosave.getEntryId()}`).catch(() => null);
+				const server = await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${autosave.getEntryId()}`)).catch(() => null);
 				if (server) setConflict({ server, local: form });
 				return;
 			}
@@ -621,7 +623,7 @@ export function EntryEditorShell({
 		}
 		setBusy("status");
 		try {
-			await cmsFetch(`/api/cms/v1/entries/${entry.id}/${action}`, {
+			await cmsFetch(cmsApiUrl(`/v1/entries/${entry.id}/${action}`), {
 				method: "POST",
 				json: { expectedVersion: autosave.getVersion() },
 			});
@@ -654,7 +656,7 @@ export function EntryEditorShell({
 			destructive: true,
 			onConfirm: async () => {
 				try {
-					await cmsFetch(`/api/cms/v1/entries/${entry.id}?expectedVersion=${autosave.getVersion()}`, {
+					await cmsFetch(cmsApiUrl(`/v1/entries/${entry.id}?expectedVersion=${autosave.getVersion()}`), {
 						method: "DELETE",
 					});
 					await deleteLocalBackup(backupKey(adminId, entry.id, entry.collection));
@@ -670,7 +672,7 @@ export function EntryEditorShell({
 		const id = await ensureSaved("duplicate");
 		if (!id) return;
 		try {
-			const copy = await cmsFetch<EntryData>(`/api/cms/v1/entries/${id}/duplicate`, {
+			const copy = await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${id}/duplicate`), {
 				method: "POST",
 				json: { title: copyTitle(collection, formText(formRef.current, "title")) },
 			});
@@ -681,7 +683,9 @@ export function EntryEditorShell({
 	};
 
 	// 번역본은 원문과 slug를 같이 쓸 수 있어 언어를 함께 넘긴다(v2 B4).
-	const previewHref = entry ? contentPreviewHref(collection, entry.workingSlug, entry.locale) : null;
+	const previewPath = entry ? contentPreviewHref(collection, entry.workingSlug, entry.locale) : null;
+	// 새 탭으로 여는 주소라 Next가 `basePath`를 붙여 주지 않는다.
+	const previewHref = previewPath === null ? null : withBasePath(previewPath);
 
 	// Cmd/Ctrl+S 즉시 저장. 매 렌더의 최신 상태를 쓰도록 다시 등록한다.
 	useEffect(() => {
@@ -751,10 +755,10 @@ export function EntryEditorShell({
 				aria-describedby={titleIssue ? "cms-title-error" : undefined}
 				onChange={(event) => handleTitleChange(event.target.value)}
 				placeholder={translationSource?.title || tc("untitled")}
-				className="h-auto w-full rounded-none border-0 bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-[34px] dark:bg-transparent"
+				className="h-auto w-full rounded-none border-0 bg-transparent cms-dark:bg-transparent px-6 py-1 font-semibold text-[34px] leading-tight tracking-tight shadow-none placeholder:text-cms-muted-foreground/40 focus-visible:ring-0 md:text-[34px]"
 			/>
 			{titleIssue && (
-				<p id="cms-title-error" className="text-destructive text-sm">
+				<p id="cms-title-error" className="text-cms-destructive text-sm">
 					{cmsIssueMessage(titleIssue)}
 				</p>
 			)}
@@ -795,7 +799,7 @@ export function EntryEditorShell({
 				className="min-h-[calc(100vh-240px)] w-full flex-1 px-4"
 			/>
 			{bodyIssue && (
-				<p id="cms-mdx-error" className="mt-2 text-destructive text-sm">
+				<p id="cms-mdx-error" className="mt-2 text-cms-destructive text-sm">
 					{cmsIssueMessage(bodyIssue)}
 				</p>
 			)}
@@ -803,8 +807,8 @@ export function EntryEditorShell({
 	);
 
 	return (
-		<div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
-			<header className="z-20 flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-background/95 px-3 py-2 backdrop-blur sm:flex-nowrap lg:px-4">
+		<div className="flex h-screen w-full flex-col overflow-hidden bg-cms-background text-cms-foreground">
+			<header className="z-20 flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-cms-background/95 px-3 py-2 backdrop-blur sm:flex-nowrap lg:px-4">
 				<div className="flex min-w-0 items-center gap-2 text-[13px]">
 					<Tooltip>
 						<TooltipTrigger
@@ -812,7 +816,10 @@ export function EntryEditorShell({
 								<Link
 									href={adminHref(`?collection=${collection}`) as Route}
 									aria-label={t("backToList")}
-									className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "size-8 text-muted-foreground")}
+									className={cn(
+										buttonVariants({ variant: "ghost", size: "icon-sm" }),
+										"size-8 text-cms-muted-foreground",
+									)}
 								>
 									<ChevronLeft aria-hidden className="size-4" />
 								</Link>
@@ -820,7 +827,7 @@ export function EntryEditorShell({
 						/>
 						<TooltipContent side="bottom">{t("backToList")}</TooltipContent>
 					</Tooltip>
-					<span className="hidden rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs sm:inline-flex">
+					<span className="hidden rounded bg-cms-muted px-1.5 py-0.5 text-cms-muted-foreground text-xs sm:inline-flex">
 						{statusLabel}
 					</span>
 				</div>
@@ -832,7 +839,7 @@ export function EntryEditorShell({
 							type="button"
 							size="sm"
 							variant="ghost"
-							className="text-muted-foreground"
+							className="text-cms-muted-foreground"
 							onClick={() => void autosave.retry(true)}
 						>
 							{tc("retry")}
@@ -898,25 +905,25 @@ export function EntryEditorShell({
 					) : (
 						// 이미 발행한 글은 발행과 "오늘 날짜로 다시 발행"을 한 단추로 묶는다.
 						// 한 단추처럼 보이게 바탕은 감싸는 칸이 칠하고, 두 단추는 사이의 가는 선으로만 나눈다.
-						<div className="ml-1 flex h-8 items-center overflow-hidden rounded-[min(var(--radius-md),10px)] bg-primary text-primary-foreground">
+						<div className="ml-1 flex h-8 items-center overflow-hidden rounded-[min(var(--radius-md),10px)] bg-cms-primary text-cms-primary-foreground">
 							<Button
 								id="cms-publish"
 								type="button"
 								size="sm"
-								className="h-full rounded-none bg-transparent pr-2 pl-3 hover:bg-primary-foreground/10"
+								className="h-full rounded-none bg-transparent pr-2 pl-3 hover:bg-cms-primary-foreground/10"
 								disabled={isSubmitting}
 								onClick={() => void handlePublish()}
 							>
 								{busy === "publish" ? t("publishing") : t("publish")}
 							</Button>
-							<span aria-hidden className="h-4 w-px bg-primary-foreground/30" />
+							<span aria-hidden className="h-4 w-px bg-cms-primary-foreground/30" />
 							<DropdownMenu>
 								<IconButton
 									label={t("publishOptions")}
 									side="bottom"
 									variant="default"
 									disabled={isSubmitting}
-									className="h-full w-7 rounded-none bg-transparent hover:bg-primary-foreground/10 aria-expanded:bg-primary-foreground/10"
+									className="h-full w-7 rounded-none bg-transparent hover:bg-cms-primary-foreground/10 aria-expanded:bg-cms-primary-foreground/10"
 									trigger={(button) => <DropdownMenuTrigger render={button} />}
 								>
 									<ChevronDown aria-hidden className="size-3.5" />
@@ -933,12 +940,12 @@ export function EntryEditorShell({
 							</DropdownMenu>
 						</div>
 					)}
-					<span aria-hidden className="mx-1 h-4 w-px bg-border" />
+					<span aria-hidden className="mx-1 h-4 w-px bg-cms-border" />
 					<IconButton
 						label={t("properties")}
 						side="bottom"
 						pressed={isInspectorOpen}
-						className="size-8 text-muted-foreground"
+						className="size-8 text-cms-muted-foreground"
 						onClick={() => setIsInspectorOpen((open) => !open)}
 					>
 						<PanelRight aria-hidden className="size-4" />
@@ -947,7 +954,7 @@ export function EntryEditorShell({
 						<IconButton
 							label={t("more")}
 							side="bottom"
-							className="size-8 text-muted-foreground"
+							className="size-8 text-cms-muted-foreground"
 							trigger={(button) => <DropdownMenuTrigger render={button} />}
 						>
 							<MoreHorizontal aria-hidden className="size-4" />
@@ -997,7 +1004,7 @@ export function EntryEditorShell({
 			{isTrashed && (
 				<section
 					aria-label={t("trash")}
-					className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-sm"
+					className="flex flex-wrap items-center gap-2 border-b bg-cms-muted px-4 py-2 text-sm"
 				>
 					<span>{t("trashNotice")}</span>
 				</section>
@@ -1008,7 +1015,7 @@ export function EntryEditorShell({
 				</output>
 			)}
 			{autosave.lastError && ["failed", "session-expired"].includes(autosave.status) && (
-				<p role="alert" className="border-b px-4 py-2 text-destructive text-sm">
+				<p role="alert" className="border-b px-4 py-2 text-cms-destructive text-sm">
 					{autosave.lastError}
 				</p>
 			)}
@@ -1032,7 +1039,7 @@ export function EntryEditorShell({
 
 			{sourceChanged && translationSource && (
 				<output className="flex flex-wrap items-center gap-2 border-b bg-amber-500/10 px-4 py-1.5 text-sm">
-					<span className="flex-1 font-medium text-amber-700 dark:text-amber-400">{t("sourceChanged")}</span>
+					<span className="flex-1 font-medium cms-dark:text-amber-400 text-amber-700">{t("sourceChanged")}</span>
 					<Button type="button" size="sm" variant="outline" onClick={() => setIsSourceCompareOpen(true)}>
 						{t("compare")}
 					</Button>

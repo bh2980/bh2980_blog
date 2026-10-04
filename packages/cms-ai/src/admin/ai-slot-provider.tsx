@@ -1,9 +1,10 @@
 "use client";
 
-import { adminHref, createTranslator } from "@bh2980/cms/client";
+import { adminHref, cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { CmsApiError, cmsFetch } from "@bh2980/cms-admin/api";
 import { SlotRegistryProvider, type SlotSource } from "@bh2980/cms-admin/slots";
 import { useQuery } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
 import type { AiActionView } from "../actions";
@@ -25,7 +26,7 @@ export function useAiActions(enabled = true) {
 	return useQuery({
 		queryKey: AI_ACTIONS_KEY,
 		queryFn: ({ signal }) =>
-			cmsFetch<AiActionsResponse>("/api/cms/v1/ai/actions", {
+			cmsFetch<AiActionsResponse>(cmsApiUrl("/v1/ai/actions"), {
 				signal,
 				fallback: t("listFailed"),
 			}),
@@ -67,7 +68,7 @@ export async function runAiAction(
 	input: Readonly<Record<string, unknown>>,
 	options: AiRunOptions = {},
 ): Promise<AiRunResult> {
-	const response = await cmsFetch<{ result: AiRunResult }>("/api/cms/v1/ai/run", {
+	const response = await cmsFetch<{ result: AiRunResult }>(cmsApiUrl("/v1/ai/run"), {
 		method: "POST",
 		json: { ...requestBody(action, options), input },
 		signal: options.signal,
@@ -86,7 +87,7 @@ export async function streamAiAction(
 	options: AiRunOptions & { onText: (text: string) => void },
 ): Promise<AiRunResult> {
 	const fallback = t("runFailed");
-	const response = await fetch("/api/cms/v1/ai/run", {
+	const response = await fetch(cmsApiUrl("/v1/ai/run"), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ ...requestBody(action, options), input, stream: true }),
@@ -129,7 +130,7 @@ export async function runAiActionMany(
 	options: AiRunOptions = {},
 ): Promise<Array<{ result: AiRunResult } | { error: string }>> {
 	const response = await cmsFetch<{ results: Array<{ result: AiRunResult } | { error: string }> }>(
-		"/api/cms/v1/ai/run",
+		cmsApiUrl("/v1/ai/run"),
 		{
 			method: "POST",
 			json: { ...requestBody(action, options), inputs },
@@ -196,6 +197,8 @@ export function AiSlotProvider({ children }: { children: ReactNode }) {
 				.map((action) => ({
 					id: action.key,
 					label: action.label,
+					icon: <Sparkles aria-hidden />,
+					menuLabel: t("slotMenu"),
 					apply: action.apply,
 					askInstruction: action.askInstruction,
 					instant: action.instant,

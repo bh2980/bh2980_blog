@@ -1,4 +1,5 @@
 import type { BacklinkField, Field, SlugField, ValueField, ValueOf } from "./fields";
+import { valueFieldsOf } from "./walk";
 
 /**
  * 컬렉션 종류(§5.2).
@@ -24,6 +25,44 @@ export const kindOfWorkflow = (workflow: CollectionWorkflow): CollectionKind =>
 /** 목록의 시스템 컬럼. 필드가 아니라 콘텐츠 자체의 값이다. */
 export const SYSTEM_LIST_COLUMNS = ["status", "locale", "updatedAt", "createdAt", "publishedAt", "folder"] as const;
 export type SystemListColumn = (typeof SYSTEM_LIST_COLUMNS)[number];
+
+/**
+ * 목록 컬럼(`list.columns`)이 쓸 수 있는 이름인지 확인한다. 시스템 컬럼, 저장하는 필드 이름(조건부 필드에 딸린 필드 포함),
+ * 주소 필드 이름, 주소 필드가 있을 때의 `slug`만 된다. 모르는 이름이거나 저장하지 않는 필드(보기·반대 방향 관계)거나
+ * 같은 이름을 두 번 적으면 오류다. `defineConfig`가 부른다.
+ */
+export function validateListColumns(
+	collection: string,
+	schema: Pick<CollectionSchema, "fields"> & { readonly list?: { readonly columns: readonly string[] } },
+): void {
+	const columns = schema.list?.columns;
+	if (columns === undefined) return;
+	if (!Array.isArray(columns))
+		throw new Error(`cms.config: ${collection}.list.columns must be an array of column names`);
+	const stored = new Set(valueFieldsOf(schema).map((field) => field.name));
+	const slugFields = Object.entries(schema.fields).filter(([, field]) => field.kind === "slug");
+	const system = new Set<string>(SYSTEM_LIST_COLUMNS);
+	const seen = new Set<string>();
+	for (const column of columns) {
+		const at = `cms.config: ${collection}.list.columns`;
+		if (typeof column !== "string") throw new Error(`${at} must be an array of column names`);
+		const field = Object.hasOwn(schema.fields, column) ? schema.fields[column] : undefined;
+		const known =
+			system.has(column) ||
+			stored.has(column) ||
+			slugFields.some(([name]) => name === column) ||
+			(column === "slug" && slugFields.length > 0);
+		if (!known) {
+			if (field)
+				throw new Error(`${at} "${column}" is a ${field.kind} field that is not stored, so it cannot be a column`);
+			throw new Error(
+				`${at} has unknown column "${column}"; use a field name of ${collection} or one of: ${SYSTEM_LIST_COLUMNS.join(", ")}`,
+			);
+		}
+		if (seen.has(column)) throw new Error(`${at} lists "${column}" twice`);
+		seen.add(column);
+	}
+}
 
 export interface LayoutGroup<Name extends string = string> {
 	/** 속성 패널의 묶음 제목. 없으면 제목 없이 이어 그린다. */
@@ -71,7 +110,10 @@ export interface CollectionSchema<
 	 * 수정일·발행일, 항목은 제목·주소·언어·상태·수정일.
 	 */
 	readonly list?: {
-		/** 기본으로 보이는 목록 컬럼. 필드 이름 또는 시스템 컬럼. */
+		/**
+		 * 목록이 보여 줄 컬럼과 그 순서. 필드 이름 또는 시스템 컬럼이다. 모르는 이름은 `defineConfig`가 오류로 알린다.
+		 * 글자(`text`)·선택(`select`)·관계 필드는 기본 칸으로 그리고, 관리자 확장(`listCells`)이 칸 모양을 바꿀 수 있다.
+		 */
 		readonly columns: readonly string[];
 	};
 }

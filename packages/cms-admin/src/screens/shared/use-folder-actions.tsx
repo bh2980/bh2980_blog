@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTION_DEFINITIONS, createTranslator, isCollection } from "@bh2980/cms/client";
+import { COLLECTION_DEFINITIONS, cmsApiUrl, createTranslator, isCollection } from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
 import { Folder as FolderIcon, FolderInput, FolderPlus, FolderUp, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -155,7 +155,7 @@ export function useFolderActions({
 		setError(null);
 		setDeleteDialog({ folder, contents: null });
 		try {
-			const contents = await cmsFetch<DeleteDialog["contents"]>(`/api/cms/v1/folders/${folder.id}`);
+			const contents = await cmsFetch<DeleteDialog["contents"]>(cmsApiUrl(`/v1/folders/${folder.id}`));
 			setDeleteDialog({ folder, contents });
 		} catch (err) {
 			setError(errorText(err, t("folder.loadFailed")));
@@ -165,7 +165,7 @@ export function useFolderActions({
 	/** 폴더를 다른 부모(또는 최상위)로 옮긴다. 같은 이름이 있으면 서버가 거부하고 안내한다. */
 	const moveFolder = async (folder: Folder, parentId: string | null) => {
 		try {
-			await cmsFetch(`/api/cms/v1/folders/${folder.id}`, {
+			await cmsFetch(cmsApiUrl(`/v1/folders/${folder.id}`), {
 				method: "PATCH",
 				json: { parentId, expectedVersion: folder.version },
 				fallback: t("folder.moveFailed"),
@@ -183,14 +183,14 @@ export function useFolderActions({
 		setError(null);
 		try {
 			if (nameDialog.mode === "create") {
-				await cmsFetch("/api/cms/v1/folders", {
+				await cmsFetch(cmsApiUrl("/v1/folders"), {
 					method: "POST",
 					json: { collection, name: name.trim(), parentId: nameDialog.parentId },
 					fallback: t("folder.addFailed"),
 				});
 				toast.success(t("folder.added", { name: name.trim() }));
 			} else {
-				await cmsFetch(`/api/cms/v1/folders/${nameDialog.folder.id}`, {
+				await cmsFetch(cmsApiUrl(`/v1/folders/${nameDialog.folder.id}`), {
 					method: "PATCH",
 					json: { name: name.trim(), expectedVersion: nameDialog.folder.version },
 					fallback: t("folder.renameFailed"),
@@ -211,10 +211,13 @@ export function useFolderActions({
 		setIsBusy(true);
 		setError(null);
 		try {
-			await cmsFetch(`/api/cms/v1/folders/${deleteDialog.folder.id}?expectedVersion=${deleteDialog.folder.version}`, {
-				method: "DELETE",
-				fallback: t("folder.deleteFailed"),
-			});
+			await cmsFetch(
+				cmsApiUrl(`/v1/folders/${deleteDialog.folder.id}?expectedVersion=${deleteDialog.folder.version}`),
+				{
+					method: "DELETE",
+					fallback: t("folder.deleteFailed"),
+				},
+			);
 			const deletedId = deleteDialog.folder.id;
 			const moved = deleteDialog.contents;
 			toast.success(
@@ -318,7 +321,7 @@ export function useFolderActions({
 						)
 					)}
 					{error && (
-						<p role="alert" className="text-destructive text-sm">
+						<p role="alert" className="text-cms-destructive text-sm">
 							{error}
 						</p>
 					)}

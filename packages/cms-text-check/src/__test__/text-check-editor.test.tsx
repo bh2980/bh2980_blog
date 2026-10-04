@@ -1,12 +1,12 @@
 import { createTranslator } from "@bh2980/cms/client";
+import { CmsEditor } from "@bh2980/cms-admin/editor";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import type { PluginKey } from "@tiptap/pm/state";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { CmsAdminComponentsProvider, useEditorExtensions } from "../../admin-components";
-import { editorMessages } from "../../editor/messages";
-import { CmsEditor } from "../../editor/tiptap-editor";
-import { pressOption } from "../../test/base-ui";
+import { CmsAdminComponentsProvider, useEditorExtensions } from "../../../cms-admin/src/admin-components";
+import { editorMessages } from "../../../cms-admin/src/editor/messages";
+import { pressOption } from "../../../cms-admin/src/test/base-ui";
 import { textCheckExtension } from "../extension";
 import { textCheckMessages } from "../messages";
 import { type TextCheckPluginState, textCheckIssues } from "../plugin";

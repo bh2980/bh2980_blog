@@ -217,13 +217,13 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 
 	return (
 		<NodeViewWrapper
-			className="not-prose group/code relative my-4 flex w-full flex-col rounded-md border bg-muted/30 text-sm"
+			className="not-prose group/code relative my-4 flex w-full flex-col rounded-md border bg-cms-muted/30 text-sm"
 			data-code-block-wrapper=""
 		>
 			<div
 				data-code-ui=""
 				contentEditable={false}
-				className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b bg-muted/60 px-2 py-1 text-muted-foreground text-xs"
+				className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b bg-cms-muted/60 px-2 py-1 text-cms-muted-foreground text-xs"
 			>
 				{editable ? (
 					<div className="flex flex-wrap items-center gap-1.5">
@@ -324,7 +324,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						onClick={handleCopy}
 					>
 						{copied ? (
-							<Check aria-hidden className="size-3.5 text-primary" />
+							<Check aria-hidden className="size-3.5 text-cms-primary" />
 						) : (
 							<Copy aria-hidden className="size-3.5" />
 						)}
@@ -337,7 +337,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 					data-code-ui=""
 					data-code-gutter=""
 					contentEditable={false}
-					className="shrink-0 select-none rounded-bl-md border-r bg-muted/40 py-3 font-mono text-muted-foreground text-xs"
+					className="shrink-0 select-none rounded-bl-md border-r bg-cms-muted/40 py-3 font-mono text-cms-muted-foreground text-xs"
 				>
 					{rows.map((line) => {
 						const effects = effectsOnLine(lineEffects, line);
@@ -358,11 +358,11 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 								onMouseEnter={() => extendLineDrag(line)}
 								onContextMenu={(event) => openLineMenuAt(line, event)}
 								className={cn(
-									"flex h-6 cursor-pointer items-center gap-0.5 pr-1.5 pl-0.5 hover:bg-accent/60",
-									selected && "bg-primary/10 text-foreground",
-									whole && "bg-primary/20",
+									"flex h-6 cursor-pointer items-center gap-0.5 pr-1.5 pl-0.5 hover:bg-cms-accent/60",
+									selected && "bg-cms-primary/10 text-cms-foreground",
+									whole && "bg-cms-primary/20",
 									// 본문과 연결된 줄은 줄 번호 칸 왼쪽에 선을 긋는다.
-									anchored && "shadow-[inset_2px_0_0_0_var(--primary)]",
+									anchored && "shadow-[inset_2px_0_0_0_var(--cms-primary)]",
 								)}
 							>
 								<span className="flex w-4 justify-center">
@@ -377,7 +377,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 												event.stopPropagation();
 												setFoldOpen(editor.view, collapse, !collapse.open);
 											}}
-											className="size-4 rounded p-0 hover:bg-accent"
+											className="size-4 rounded p-0 hover:bg-cms-accent"
 										>
 											<ChevronRight
 												aria-hidden
@@ -417,7 +417,7 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 										className={cn(
 											"h-6",
 											...effects.map((effect) => editorLookOf(effect)?.background ?? ""),
-											(whole || pending || hovered) && "bg-primary/15",
+											(whole || pending || hovered) && "bg-cms-primary/15",
 										)}
 									>
 										{/* 물결 밑줄은 글자 조각(구문 색)마다 끊기지 않게 줄 전체에 한 번 긋는다. 같은 글자를 투명하게 겹쳐 길이를 맞춘다. */}
@@ -437,9 +437,9 @@ export function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 						</div>
 						<pre
 							className={cn(
-								"relative m-0 whitespace-pre bg-transparent px-4 py-3 font-mono text-foreground text-sm leading-6",
+								"relative m-0 whitespace-pre bg-transparent px-4 py-3 font-mono text-cms-foreground text-sm leading-6",
 								// 구문 색은 밝은 테마 색을 인라인으로 넣는다. 어두운 테마에서는 --shiki-dark로 바꾼다.
-								"dark:[&_.shiki-token]:text-(--shiki-dark)!",
+								"cms-dark:[&_.shiki-token]:text-(--shiki-dark)!",
 								// 줄 번호로 고른 동안에는 커서를 숨긴다(고른 줄은 줄 배경으로 보인다).
 								picked && "caret-transparent",
 							)}

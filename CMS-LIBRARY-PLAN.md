@@ -396,23 +396,23 @@ M10까지 끝낸 뒤 전체를 리뷰했다(본체·관리자·확장·블로그
 
 | ID | 할 일 | 완료 조건 |
 | --- | --- | --- |
-| M16-1 | **CSS 가두기.** 어두운 테마 변형과 둥글기·색 이름을 관리자 전용(`cms-dark`, `--cms-*`)으로 바꾸고 `.cms-admin` 밖에 걸리지 않게. Tailwind 요구는 선택 peer로 적는다(Q-M16 결정) | 시스템 다크 모드·shadcn 없는 사이트의 공개 화면이 그대로 |
-| M16-2 | **테마 공급자·알림 겹침.** 사이트에 테마 공급자가 있어도 관리자 다크가 동작(`[data-theme=dark]`도 받기), 레이아웃 옵션으로 공급자·Toaster 끄기 | 블로그·예시 앱 확인 |
-| M16-3 | **화면 자리(slot) 일반화.** 자리 이름을 열고, 아이콘·이름표는 동작이 정한다(반짝이·"AI" 고정 제거) | 본체에 AI 모양 없음 |
-| M16-4 | **목록 칸.** 선택·텍스트·날짜 필드 칸 기본 지원, `listCells` 확장점, 모르는 칸은 설정 오류 | 예시 앱 `format` 칸이 보인다 |
-| M16-5 | **API 주소 한곳.** `cmsApiUrl(path)`로 모으고 직접 `fetch` 6곳도. Next `basePath`를 API·`adminHref`·로그인 이동에 반영 | `basePath` 둔 예시 앱에서 동작 |
-| M16-6 | **맞춤법 검사 틀을 `@bh2980/cms-text-check`로.** 관리자 `src/text-check`와 밑줄 CSS를 옮기고 바른은 `/bareun` | 관리자 공개 진입점에 text-check 없음 |
-| M16-7 | **플러그인 겹침·실패.** 플러그인 화면·API 경로가 본체나 다른 플러그인과 겹치면 시작할 때 오류, 기능 표시(`features`)는 플러그인 이름 아래로, 플러그인 화면 모듈 import 실패를 캐시하지 않기. 확장이 제 설정을 읽는 공식 방법(`getPluginOptions`). `withCms`는 이름 앞머리 대신 패키지 표시(`"cmsPlugin": true`)로 플러그인을 찾는다 | 제3자 플러그인이 같은 방법으로 붙는다 |
-| M16-8 | **공개 진입점 줄이기.** `./ui/*`·`./lib/utils/cn`·`./screens/entries/entry-form`·`./shell` 등을 확장용 묶음 `./kit` 하나로 | 확장들이 `./kit`만 쓴다 |
+| M16-1 | **(완료) CSS 가두기.** 색 이름은 `cms-*`(`bg-cms-background` 등), 어두운 변형은 `cms-dark:`(`.dark`·`[data-theme=dark]`), 어두운 값·둥글기는 관리자가 있는 문서에만. 관리자를 떠나면 `html`의 `dark`·`color-scheme`을 지운다(예시 앱 공개 화면이 어두워지던 문제). Tailwind 4는 선택 요구로 README에. 원래 내용: **CSS 가두기.** 어두운 테마 변형과 둥글기·색 이름을 관리자 전용(`cms-dark`, `--cms-*`)으로 바꾸고 `.cms-admin` 밖에 걸리지 않게. Tailwind 요구는 선택 peer로 적는다(Q-M16 결정) | 시스템 다크 모드·shadcn 없는 사이트의 공개 화면이 그대로 |
+| M16-2 | **(완료) 테마 공급자·알림 겹침.** `<CmsAdminLayout themeProvider={false} toaster={false}>`, 끄면 사이트의 `.dark`·`[data-theme=dark]`를 따른다. 원래 내용: **테마 공급자·알림 겹침.** 사이트에 테마 공급자가 있어도 관리자 다크가 동작(`[data-theme=dark]`도 받기), 레이아웃 옵션으로 공급자·Toaster 끄기 | 블로그·예시 앱 확인 |
+| M16-3 | **(완료) 화면 자리(slot) 일반화.** 자리 이름은 아무 글자(`CORE_SLOT_NAMES`는 본체 자리), 동작이 `icon`·`menuLabel`·`menuIcon`을 정한다. 반짝이·"AI"는 `cms-ai`로. 원래 내용: **화면 자리(slot) 일반화.** 자리 이름을 열고, 아이콘·이름표는 동작이 정한다(반짝이·"AI" 고정 제거) | 본체에 AI 모양 없음 |
+| M16-4 | **(완료) 목록 칸.** 목록 행에 `values`(글자·선택·미디어 값), 기본 칸(선택 이름표·글자·미디어·관계), `listCells` 확장점, 모르는 칸·저장하지 않는 필드·중복은 설정 오류. 예시 앱 `format` 칸. 원래 내용: **목록 칸.** 선택·텍스트·날짜 필드 칸 기본 지원, `listCells` 확장점, 모르는 칸은 설정 오류 | 예시 앱 `format` 칸이 보인다 |
+| M16-5 | **(완료) API 주소 한곳.** `cmsApiUrl()`(약 60곳·직접 `fetch` 포함), `withCms`가 Next `basePath`를 `NEXT_PUBLIC_CMS_BASE_PATH`로 심고 `adminUrl`·로그인 이동·NextAuth 경로가 따른다. `/api/cms` 글자를 직접 쓰면 실패하는 테스트. 원래 내용: **API 주소 한곳.** `cmsApiUrl(path)`로 모으고 직접 `fetch` 6곳도. Next `basePath`를 API·`adminHref`·로그인 이동에 반영 | `basePath` 둔 예시 앱에서 동작 |
+| M16-6 | **(완료) 맞춤법 검사 틀을 옮김.** `@bh2980/cms-text-check`의 `.`·`/extension`·`/server`·`/styles.css`, 관리자 패키지에서 text-check 진입점·코드·밑줄 CSS 제거. 원래 내용: **맞춤법 검사 틀을 `@bh2980/cms-text-check`로.** 관리자 `src/text-check`와 밑줄 CSS를 옮기고 바른은 `/bareun` | 관리자 공개 진입점에 text-check 없음 |
+| M16-7 | **(완료) 플러그인 겹침·실패.** 화면 경로·API 경로·이름이 본체나 다른 플러그인과 겹치면 오류(`plugin/collisions`), `features`는 플러그인 이름 아래, 모듈 import 실패는 캐시하지 않음, `getPluginOptions`, `"cmsPlugin": true` 표시로 찾기. 원래 내용: **플러그인 겹침·실패.** 플러그인 화면·API 경로가 본체나 다른 플러그인과 겹치면 시작할 때 오류, 기능 표시(`features`)는 플러그인 이름 아래로, 플러그인 화면 모듈 import 실패를 캐시하지 않기. 확장이 제 설정을 읽는 공식 방법(`getPluginOptions`). `withCms`는 이름 앞머리 대신 패키지 표시(`"cmsPlugin": true`)로 플러그인을 찾는다 | 제3자 플러그인이 같은 방법으로 붙는다 |
+| M16-8 | **(완료) 공개 진입점 줄이기.** `./ui/*`·`./lib/utils/cn`·`./screens/entries/entry-form`·`./shell`·`./confirm-dialog`·`./icons`·`./hooks/use-debounced`를 `./kit` 하나로, 확장 27개 파일을 옮김. 원래 내용: **공개 진입점 줄이기.** `./ui/*`·`./lib/utils/cn`·`./screens/entries/entry-form`·`./shell` 등을 확장용 묶음 `./kit` 하나로 | 확장들이 `./kit`만 쓴다 |
 
 #### M17. 미디어·서버 설정
 
 | ID | 할 일 | 완료 조건 |
 | --- | --- | --- |
-| M17-1 | **미디어 저장소 계약 공개.** 이미지 검사 함수를 공통 위치로, `r2Storage`는 따로 진입점(AWS SDK는 쓸 때만), `region`·`forcePathStyle` 옵션, 쓰지 않는 `accountId` 빼기. `MediaStore` 계약 타입을 `/server`에서 내보낸다 | AWS SDK 없이 미디어 없는 사이트가 빌드된다. S3 호환 저장소 설정 예시 |
-| M17-2 | **Next 밖에서 `runtime`.** `server-only`를 쓰는 이미지 해석기를 따로 떼서 크론 스크립트·사이트 테스트에서 `@bh2980/cms/runtime`을 쓸 수 있게 | Node 스크립트에서 불러와진다 |
-| M17-3 | **서버 설정 가볍게.** `cms.server.ts`가 `postgres()`만 불러도 저장소·MDX 파서·사이트 설정을 끌어오지 않게 | |
-| M17-4 | **미디어 형식·크기 한도 설정** | 설정으로 바꿀 수 있다 |
+| M17-1 | **(완료) 미디어 저장소 계약 공개.** 이미지 판별은 `media/image-detect`로, `r2Storage`·`s3Storage`는 `@bh2980/cms/s3` 진입점으로(AWS SDK는 선택 peer), `region`·`forcePathStyle` 옵션, `accountId` 뺌, `MediaStore` 계약 타입은 `/server`에서. README에 S3·R2·MinIO 예시. 원래 내용: **미디어 저장소 계약 공개.** 이미지 검사 함수를 공통 위치로, `r2Storage`는 따로 진입점(AWS SDK는 쓸 때만), `region`·`forcePathStyle` 옵션, 쓰지 않는 `accountId` 빼기. `MediaStore` 계약 타입을 `/server`에서 내보낸다 | AWS SDK 없이 미디어 없는 사이트가 빌드된다. S3 호환 저장소 설정 예시 |
+| M17-2 | **(완료) Next 밖에서 `runtime`.** `resolvePublicMediaUrl`을 `server-only` 없는 모듈로 떼고 `createPublicImageResolver`는 `@bh2980/cms/render`로. Node 스크립트(`--import tsx`)에서 `@bh2980/cms/runtime`을 불러와 확인. 원래 내용: **Next 밖에서 `runtime`.** `server-only`를 쓰는 이미지 해석기를 따로 떼서 크론 스크립트·사이트 테스트에서 `@bh2980/cms/runtime`을 쓸 수 있게 | Node 스크립트에서 불러와진다 |
+| M17-3 | **(완료) 서버 설정 가볍게.** `postgres()`는 저장소 모듈을 처음 부를 때 불러오고(대리 저장소), `githubAuth`·`r2Storage`도 사이트 설정을 읽지 않는다(이름표는 읽을 때 번역, 주소 규칙은 `core/base-path`, 저장소는 지원 형식 전부를 받고 설정 한도는 업로드 API가 본다). 설정을 막은 테스트로 확인. 원래 내용: **서버 설정 가볍게.** `cms.server.ts`가 `postgres()`만 불러도 저장소·MDX 파서·사이트 설정을 끌어오지 않게 | |
+| M17-4 | **(완료) 미디어 형식·크기 한도 설정.** 사이트 설정 `media`(`maxImageBytes`·`maxPixels`·`maxFileBytes`·`imageTypes`·`fileTypes`, 형식은 지원 형식 가운데서). 업로드 API·완료 검사·`/v1/meta`(`fileBytes`·`fileTypes` 더함)·관리자 파일 고르기 창이 따른다. 원래 내용: **미디어 형식·크기 한도 설정** | 설정으로 바꿀 수 있다 |
 
 #### M18. 배포 준비 (레포를 나눈 뒤 새 레포에서)
 
@@ -629,7 +629,7 @@ M2(AI 재설계)를 패키지 이동(M3)보다 먼저 두는 이유: 가장 새�
 | M13 | 완료 (2026-10-04). 운영 `pnpm cms:db:migrate` 필요(M13-4) |
 | M14 | 완료 (2026-10-04) |
 | M15 | 완료 (2026-10-04) |
-| M16~M17 | 진행 중 |
+| M16~M17 | 완료 |
 | M7-4 레포 나누기 → M18 | M17 뒤, 사용자 승인 후 |
 
 ---

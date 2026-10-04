@@ -209,7 +209,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 
 					{/* 이미지 영역 + 자르기 오버레이 (P1-2: 실제 이미지 크기에 맞춘 래퍼) */}
 					<div className="flex flex-col items-center gap-2">
-						<div className="flex max-h-[380px] w-full items-center justify-center overflow-hidden rounded-md border bg-muted/30 p-1">
+						<div className="flex max-h-[380px] w-full items-center justify-center overflow-hidden rounded-md border bg-cms-muted/30 p-1">
 							<div
 								ref={containerRef}
 								onPointerDown={(e) => handlePointerDown(e)}
@@ -230,7 +230,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 									<>
 										{/* 어두운 반투명 배경 마스크 (영역 밖, P2 디자인 토큰 적용) */}
 										<div
-											className="pointer-events-none absolute inset-0 bg-foreground/40"
+											className="pointer-events-none absolute inset-0 bg-cms-foreground/40"
 											style={{
 												clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cropDraft.x}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y + cropDraft.height}%, ${cropDraft.x + cropDraft.width}% ${cropDraft.y}%, ${cropDraft.x}% ${cropDraft.y}%)`,
 											}}
@@ -240,7 +240,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 										<div
 											data-slot="crop-box"
 											onPointerDown={(e) => handlePointerDown(e, "move")}
-											className="absolute cursor-move border-2 border-primary shadow-sm"
+											className="absolute cursor-move border-2 border-cms-primary shadow-sm"
 											style={{
 												left: `${cropDraft.x}%`,
 												top: `${cropDraft.y}%`,
@@ -253,28 +253,28 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 												type="button"
 												data-slot="crop-handle-nw"
 												onPointerDown={(e) => handlePointerDown(e, "nw")}
-												className="absolute -top-1.5 -left-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												className="absolute -top-1.5 -left-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-cms-background bg-cms-primary p-0 shadow-sm"
 												aria-label={t("imageCrop.handleNw")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-ne"
 												onPointerDown={(e) => handlePointerDown(e, "ne")}
-												className="absolute -top-1.5 -right-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												className="absolute -top-1.5 -right-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-cms-background bg-cms-primary p-0 shadow-sm"
 												aria-label={t("imageCrop.handleNe")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-sw"
 												onPointerDown={(e) => handlePointerDown(e, "sw")}
-												className="absolute -bottom-1.5 -left-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												className="absolute -bottom-1.5 -left-1.5 size-3.5 cursor-nesw-resize rounded-sm border border-cms-background bg-cms-primary p-0 shadow-sm"
 												aria-label={t("imageCrop.handleSw")}
 											/>
 											<button
 												type="button"
 												data-slot="crop-handle-se"
 												onPointerDown={(e) => handlePointerDown(e, "se")}
-												className="absolute -right-1.5 -bottom-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-background bg-primary p-0 shadow-sm"
+												className="absolute -right-1.5 -bottom-1.5 size-3.5 cursor-nwse-resize rounded-sm border border-cms-background bg-cms-primary p-0 shadow-sm"
 												aria-label={t("imageCrop.handleSe")}
 											/>
 										</div>
@@ -283,7 +283,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 							</div>
 						</div>
 
-						<div className="flex w-full flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+						<div className="flex w-full flex-wrap items-center justify-between gap-2 text-cms-muted-foreground text-xs">
 							<span>
 								{isFull
 									? t("imageCrop.full")
@@ -297,11 +297,11 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 						</div>
 
 						{/* 키보드 수치 직접 입력 컨트롤 (P2) */}
-						<div className="flex w-full items-center justify-between gap-2 rounded-lg border bg-muted/10 p-2 text-xs">
-							<span className="font-medium text-muted-foreground">{t("imageCrop.regionPercent")}</span>
+						<div className="flex w-full items-center justify-between gap-2 rounded-lg border bg-cms-muted/10 p-2 text-xs">
+							<span className="font-medium text-cms-muted-foreground">{t("imageCrop.regionPercent")}</span>
 							<div className="flex items-center gap-2">
 								<div className="flex items-center gap-1">
-									<Label htmlFor="crop-input-x" className="text-muted-foreground text-xs">
+									<Label htmlFor="crop-input-x" className="text-cms-muted-foreground text-xs">
 										X
 									</Label>
 									<Input
@@ -317,7 +317,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 									/>
 								</div>
 								<div className="flex items-center gap-1">
-									<Label htmlFor="crop-input-y" className="text-muted-foreground text-xs">
+									<Label htmlFor="crop-input-y" className="text-cms-muted-foreground text-xs">
 										Y
 									</Label>
 									<Input
@@ -333,7 +333,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 									/>
 								</div>
 								<div className="flex items-center gap-1">
-									<Label htmlFor="crop-input-w" className="text-muted-foreground text-xs">
+									<Label htmlFor="crop-input-w" className="text-cms-muted-foreground text-xs">
 										W
 									</Label>
 									<Input
@@ -349,7 +349,7 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 									/>
 								</div>
 								<div className="flex items-center gap-1">
-									<Label htmlFor="crop-input-h" className="text-muted-foreground text-xs">
+									<Label htmlFor="crop-input-h" className="text-cms-muted-foreground text-xs">
 										H
 									</Label>
 									<Input
@@ -369,10 +369,10 @@ export function ImageCropDialog({ open, onOpenChange, src, crop, rotate, onApply
 					</div>
 
 					{/* 회전 컨트롤 */}
-					<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-2.5">
+					<div className="flex items-center justify-between rounded-lg border bg-cms-muted/20 p-2.5">
 						<div className="flex items-center gap-2 text-xs">
 							<span className="font-medium">{t("imageCrop.rotate")}</span>
-							<span className="font-semibold text-primary">{rotateDraft}°</span>
+							<span className="font-semibold text-cms-primary">{rotateDraft}°</span>
 						</div>
 						<Button type="button" variant="outline" size="sm" onClick={handleRotate90}>
 							<RotateCw aria-hidden />

@@ -1,5 +1,5 @@
 import type { CmsPlugin, PluginNamed } from "@bh2980/cms";
-import { ADMIN_LANGUAGE, BLOCKS, cmsConfig, type ResolvedConfig } from "@bh2980/cms/client";
+import { ADMIN_LANGUAGE, BLOCKS, cmsConfig, getPluginOptions, type ResolvedConfig } from "@bh2980/cms/client";
 import type { AiActionDefinition, AiActionInput, AiActionResult, AiAttach, AiConfig, AiSharedText } from "./action";
 import type { AiSlot } from "./definition";
 import { setMessageContext } from "./i18n";
@@ -52,7 +52,7 @@ export type AiActionResultOf<K extends AiActionKey> = AiActionResult<KnownAction
 /** 사이트 설정에 등록한 AI 플러그인의 설정. 등록하지 않았으면 `undefined`. */
 // 플러그인이 없는 설정은 빈 튜플 타입이라 넓혀 읽는다.
 const plugins: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
-const aiConfig = plugins.find((plugin) => plugin.name === AI_PLUGIN_NAME)?.options as AiConfig | undefined;
+const aiConfig = getPluginOptions<AiConfig>(AI_PLUGIN_NAME);
 
 // 설정 파일이 읽는 모듈(프리셋·검사)은 설정을 읽을 수 없어 화면 언어를 여기서 받는다. 기능을 풀기 전에 넣는다.
 setMessageContext({ language: ADMIN_LANGUAGE, overrides: cmsConfig.admin?.messages });
@@ -78,7 +78,8 @@ export const actionDefinition = (key: string): AiActionDefinition | undefined =>
 
 /** 화면 자리가 찾는 곳. 필드 자리는 필드 이름과 컬렉션, 나머지는 자리 안 대상이다. */
 export interface AiPlace {
-	readonly slot: AiSlot;
+	/** 자리 이름. 화면 자리 이름은 열려 있어서 AI가 모르는 이름도 올 수 있다(그 자리에는 붙지 않는다). */
+	readonly slot: AiSlot | (string & {});
 	readonly target?: string;
 	readonly collection?: string;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import type { BodyTemplate } from "@bh2980/cms/runtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutTemplate, Plus, SquarePen, Trash2 } from "lucide-react";
@@ -35,7 +35,7 @@ export function TemplateManager() {
 		queryKey: TEMPLATES_KEY,
 		queryFn: async ({ signal }) =>
 			(
-				await cmsFetch<{ items?: BodyTemplate[] }>("/api/cms/v1/templates", {
+				await cmsFetch<{ items?: BodyTemplate[] }>(cmsApiUrl("/v1/templates"), {
 					signal,
 					fallback: t("list.loadFailed"),
 				})
@@ -93,7 +93,7 @@ export function TemplateManager() {
 
 		try {
 			if (activeTemplate.id) {
-				const updated = await cmsFetch<BodyTemplate>(`/api/cms/v1/templates/${activeTemplate.id}`, {
+				const updated = await cmsFetch<BodyTemplate>(cmsApiUrl(`/v1/templates/${activeTemplate.id}`), {
 					method: "PATCH",
 					json: { name: editName.trim(), mdx: editMdx, expectedVersion: activeTemplate.version },
 					fallback: t("common.saveFailed"),
@@ -103,7 +103,7 @@ export function TemplateManager() {
 					current?.map((item) => (item.id === updated.id ? updated : item)),
 				);
 			} else {
-				const created = await cmsFetch<BodyTemplate>("/api/cms/v1/templates", {
+				const created = await cmsFetch<BodyTemplate>(cmsApiUrl("/v1/templates"), {
 					method: "POST",
 					json: { name: editName.trim(), mdx: editMdx },
 					fallback: t("common.saveFailed"),
@@ -148,7 +148,7 @@ export function TemplateManager() {
 		);
 		if (activeTemplate?.id === template.id) show(null);
 		try {
-			await cmsFetch(`/api/cms/v1/templates/${template.id}?expectedVersion=${template.version}`, {
+			await cmsFetch(cmsApiUrl(`/v1/templates/${template.id}?expectedVersion=${template.version}`), {
 				method: "DELETE",
 				fallback: t("delete.failed"),
 			});
@@ -216,7 +216,7 @@ export function TemplateManager() {
 									</li>
 								))
 							: templates.length === 0
-								? !error && <li className="p-8 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
+								? !error && <li className="p-8 text-center text-cms-muted-foreground text-xs">{t("list.empty")}</li>
 								: templates.map((row) => {
 										const isSelected = activeTemplate?.id === row.id;
 										return (
@@ -227,7 +227,7 @@ export function TemplateManager() {
 													<li
 														className={cn(
 															"group flex items-center justify-between gap-2 px-3 py-2 transition-colors",
-															isSelected ? OPEN_ITEM : "hover:bg-accent/50",
+															isSelected ? OPEN_ITEM : "hover:bg-cms-accent/50",
 														)}
 													/>
 												}
@@ -246,7 +246,7 @@ export function TemplateManager() {
 													className="h-auto min-w-0 flex-1 flex-col items-start gap-1.5 px-1 py-1 text-left font-normal hover:bg-transparent"
 												>
 													<span className="truncate font-medium text-sm">{row.name}</span>
-													<span className="text-[11px] text-muted-foreground">{formatDateOnly(row.updatedAt)}</span>
+													<span className="text-[11px] text-cms-muted-foreground">{formatDateOnly(row.updatedAt)}</span>
 												</Button>
 												<MoreActionsButton
 													actions={templateMenu(row)}
@@ -290,7 +290,7 @@ export function TemplateManager() {
 								</div>
 							</div>
 							{saveError && (
-								<p role="alert" className="border-b bg-destructive/10 px-6 py-2 text-destructive text-xs">
+								<p role="alert" className="border-b bg-cms-destructive/10 px-6 py-2 text-cms-destructive text-xs">
 									{saveError}
 								</p>
 							)}

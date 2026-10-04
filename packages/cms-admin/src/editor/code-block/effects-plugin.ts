@@ -224,7 +224,7 @@ const RULE_CLASS: Record<string, string> = {
 	del: "line-through",
 	u: "underline underline-offset-4",
 	Tooltip: "underline decoration-dotted underline-offset-4",
-	fold: "rounded-sm outline-1 outline-muted-foreground/50 outline-dashed -outline-offset-1",
+	fold: "rounded-sm outline-1 outline-cms-muted-foreground/50 outline-dashed -outline-offset-1",
 };
 
 function foldWidget(region: FoldRegion) {
@@ -236,7 +236,7 @@ function foldWidget(region: FoldRegion) {
 			button.contentEditable = "false";
 			button.dataset.codeFoldToggle = region.kind;
 			button.className =
-				"mx-0.5 inline-flex h-5 items-center rounded bg-muted px-1 align-middle font-sans text-muted-foreground text-xs leading-none hover:bg-accent hover:text-foreground";
+				"mx-0.5 inline-flex h-5 items-center rounded bg-cms-muted px-1 align-middle font-sans text-cms-muted-foreground text-xs leading-none hover:bg-cms-accent hover:text-cms-foreground";
 			button.textContent = region.kind === "collapse" ? `⋯ ${t("fold.lines", { count: region.hiddenLines })}` : "…";
 			button.title =
 				region.kind === "collapse" ? t("fold.expandLines", { count: region.hiddenLines }) : t("fold.expandText");
@@ -453,7 +453,7 @@ export function createCodeEffectsPlugin(): Plugin<CodeEffectsState> {
 				// 잇기 중(본문을 먼저 고름)이면 고른 글자를 칠해 둔다.
 				if (plugin?.linking?.kind === "text")
 					decorations.push(
-						Decoration.inline(plugin.linking.from, plugin.linking.to, { class: "rounded-sm bg-primary/15" }),
+						Decoration.inline(plugin.linking.from, plugin.linking.to, { class: "rounded-sm bg-cms-primary/15" }),
 					);
 				return decorations.length ? DecorationSet.create(state.doc, decorations) : DecorationSet.empty;
 			},

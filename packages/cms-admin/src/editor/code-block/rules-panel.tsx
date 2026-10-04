@@ -122,7 +122,7 @@ function RuleRow({
 				</IconButton>
 			</div>
 			<div className="flex items-center gap-1 font-mono text-xs">
-				<span className="text-muted-foreground">/</span>
+				<span className="text-cms-muted-foreground">/</span>
 				<Input
 					aria-label={t("rulesPanel.pattern")}
 					value={rule.pattern}
@@ -131,7 +131,7 @@ function RuleRow({
 					className="h-7 flex-1 px-1.5 font-mono text-xs"
 					aria-invalid={!!problem && rule.pattern.length > 0}
 				/>
-				<span className="text-muted-foreground">/</span>
+				<span className="text-cms-muted-foreground">/</span>
 				<Input
 					aria-label={t("rulesPanel.flags")}
 					value={rule.flags}
@@ -160,7 +160,7 @@ function RuleRow({
 					{t("rulesPanel.openFromStart")}
 				</label>
 			)}
-			<p className={cn("text-[11px]", problem && rule.pattern ? "text-destructive" : "text-muted-foreground")}>
+			<p className={cn("text-[11px]", problem && rule.pattern ? "text-cms-destructive" : "text-cms-muted-foreground")}>
 				{problem ? (rule.pattern ? problem : t("rulesPanel.enterPattern")) : t("rulesPanel.matches", { count })}
 			</p>
 		</li>
@@ -199,7 +199,7 @@ export function RulesPanel({ rules, text, lineCount, selection, language, slotSc
 			<IconButton
 				label={t("rulesPanel.title")}
 				size="sm"
-				className={cn("h-7 min-w-7 gap-1 px-1.5 text-xs", rules.length > 0 && "text-foreground")}
+				className={cn("h-7 min-w-7 gap-1 px-1.5 text-xs", rules.length > 0 && "text-cms-foreground")}
 				trigger={(button) => <PopoverTrigger render={button} />}
 			>
 				<Regex aria-hidden className="size-3.5" />

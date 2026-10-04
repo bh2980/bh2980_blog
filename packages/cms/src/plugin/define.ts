@@ -68,6 +68,11 @@ export interface PluginRoute {
 	readonly public?: boolean;
 }
 
+/** 어느 플러그인의 경로인지 붙인 `PluginRoute`(주소가 겹칠 때 오류에 이름을 쓴다). */
+export interface OwnedPluginRoute extends PluginRoute {
+	readonly plugin: string;
+}
+
 /** 플러그인이 쓰는 DB(지금은 Postgres만, D13). `schema`는 검사한 스키마 이름이라 SQL에 그대로 넣어도 된다. */
 export interface PluginDatabase {
 	readonly pool: Pool;
@@ -85,7 +90,7 @@ export interface CmsServerPlugin {
 	readonly routes?: readonly PluginRoute[];
 	/** `cms:db:migrate`가 본체 표 다음에 부른다. 여러 번 불러도 같은 결과여야 한다. */
 	readonly migrate?: (db: PluginDatabase) => Promise<void>;
-	/** 관리자 메타 API(`/v1/meta`)의 `features`에 더할 값. */
+	/** 관리자 메타 API(`/v1/meta`)의 `features.<플러그인 이름>`에 담을 값. 다른 플러그인·본체 이름과 섞이지 않는다. */
 	readonly features?: () => Promise<Readonly<Record<string, boolean>>>;
 	/** 저장 뒤 알림(서버 설정 `afterCommit`과 같다). 실패해도 저장은 그대로다. */
 	readonly afterCommit?: AfterCommit;

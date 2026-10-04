@@ -1,7 +1,6 @@
+import { buildEditorExtensions, mdxToTiptap } from "@bh2980/cms-admin/editor";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildEditorExtensions } from "../../editor/extensions";
-import { mdxToTiptap } from "../../editor/tiptap-content";
 import { extractSegments } from "../extract";
 import { createTextCheckPlugin, type TextCheckMeta, textCheckIssues, textCheckPluginKey } from "../plugin";
 import { checkSegments, chunkSegments, normalizeIssue, placeIssues, TextCheckCache } from "../run";

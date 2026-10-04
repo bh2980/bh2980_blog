@@ -291,7 +291,7 @@ export function InlineBubble({
 			const href = String(mark.attrs.href ?? "");
 			return (
 				<div key={mark.name} className="flex items-center gap-0.5">
-					<Link2 aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
+					<Link2 aria-hidden className="mx-1 size-4 shrink-0 text-cms-muted-foreground" />
 					<a
 						href={href}
 						target="_blank"
@@ -299,7 +299,7 @@ export function InlineBubble({
 						title={href}
 						// 누를 때 편집기 초점을 빼앗으면 버블이 먼저 사라져 링크가 열리지 않는다.
 						onMouseDown={(event) => event.preventDefault()}
-						className="max-w-56 truncate px-1 text-primary text-xs underline underline-offset-2"
+						className="max-w-56 truncate px-1 text-cms-primary text-xs underline underline-offset-2"
 					>
 						{href}
 					</a>
@@ -319,8 +319,8 @@ export function InlineBubble({
 			const content = String(mark.attrs.content ?? "");
 			return (
 				<div key={mark.name} className="flex items-center gap-0.5">
-					<MessageSquareMore aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
-					<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={content}>
+					<MessageSquareMore aria-hidden className="mx-1 size-4 shrink-0 text-cms-muted-foreground" />
+					<span className="max-w-48 truncate px-1 text-cms-muted-foreground text-xs" title={content}>
 						{content}
 					</span>
 					<BubbleButton label={t("inlineBubble.tooltipEdit")} onClick={() => openCodeTooltip(mark)}>
@@ -354,8 +354,8 @@ export function InlineBubble({
 			const type = editor.schema.marks.codeFold;
 			return (
 				<div key={mark.name} className="flex items-center gap-0.5">
-					<ChevronsLeftRightEllipsis aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
-					<span className="px-1 text-muted-foreground text-xs">{t("inlineBubble.fold")}</span>
+					<ChevronsLeftRightEllipsis aria-hidden className="mx-1 size-4 shrink-0 text-cms-muted-foreground" />
+					<span className="px-1 text-cms-muted-foreground text-xs">{t("inlineBubble.fold")}</span>
 					<BubbleButton
 						label={open ? t("inlineBubble.collapse") : t("inlineBubble.expand")}
 						onClick={act(() => setFoldOpen(editor.view, { ...region, open }, !open))}
@@ -396,7 +396,7 @@ export function InlineBubble({
 				className="gap-0.5"
 			>
 				<tool.icon aria-hidden className="size-4" />
-				<X aria-hidden className="size-3 text-muted-foreground" />
+				<X aria-hidden className="size-3 text-cms-muted-foreground" />
 			</BubbleButton>
 		);
 	};
@@ -408,8 +408,11 @@ export function InlineBubble({
 		const open = codeEffectsKey.getState(editor.state)?.overrides.get(region.key) ?? true;
 		return (
 			<div key={rule.id} className="flex items-center gap-0.5">
-				<Regex aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground" />
-				<span className="max-w-48 truncate px-1 text-muted-foreground text-xs" title={`/${rule.pattern}/${rule.flags}`}>
+				<Regex aria-hidden className="mx-1 size-4 shrink-0 text-cms-muted-foreground" />
+				<span
+					className="max-w-48 truncate px-1 text-cms-muted-foreground text-xs"
+					title={`/${rule.pattern}/${rule.flags}`}
+				>
 					{t("inlineBubble.ruleSummary", { label, count })}
 				</span>
 				{rule.name === "fold" && (
@@ -511,7 +514,7 @@ export function InlineBubble({
 	);
 
 	const style = { position: "fixed", top: position?.top ?? -9999, left: position?.left ?? -9999, zIndex: 40 } as const;
-	const surface = "rounded-md border bg-popover/95 text-popover-foreground shadow-sm backdrop-blur";
+	const surface = "rounded-md border bg-cms-popover/95 text-cms-popover-foreground shadow-sm backdrop-blur";
 
 	return createPortal(
 		panel ? (

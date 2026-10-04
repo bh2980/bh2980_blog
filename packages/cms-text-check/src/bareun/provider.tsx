@@ -1,9 +1,11 @@
 "use client";
 
+import { cmsApiUrl } from "@bh2980/cms/client";
+
 import { type CmsAdminComponents, CmsAdminComponentsProvider } from "@bh2980/cms-admin";
-import { remoteTextChecker } from "@bh2980/cms-admin/text-check";
-import { textCheckExtension } from "@bh2980/cms-admin/text-check/extension";
 import type { ReactNode } from "react";
+import { textCheckExtension } from "../extension";
+import { remoteTextChecker } from "../index";
 import { readBareunOptions } from "./config";
 import { BAREUN_CHECKER_ID, BAREUN_ROUTE } from "./options";
 
@@ -13,7 +15,7 @@ const options = readBareunOptions();
 export const bareunChecker = remoteTextChecker({
 	id: BAREUN_CHECKER_ID,
 	label: options.label,
-	url: `/api/cms/${BAREUN_ROUTE}`,
+	url: cmsApiUrl(`/${BAREUN_ROUTE}`),
 	locales: ["ko"],
 	auto: options.auto,
 	limits: options.limits,

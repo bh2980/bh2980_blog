@@ -1,8 +1,7 @@
 "use client";
 
 import { createTranslator } from "@bh2980/cms/client";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Alert, AlertDescription, AlertTitle } from "@bh2980/cms-admin/ui/alert";
+import { Alert, AlertDescription, AlertTitle, cn } from "@bh2980/cms-admin/kit";
 import { AlertOctagon } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -64,7 +63,7 @@ function ChartErrorCard({ errors }: { errors: ChartRenderError[] }) {
 
 const CARTESIAN = { bar: BarChart, line: LineChart, area: AreaChart } as const;
 
-const VALUE_LABEL_CLASS = "fill-foreground font-medium text-[11px]";
+const VALUE_LABEL_CLASS = "fill-cms-foreground font-medium text-[11px]";
 
 /** 값 글자(`show values`). */
 const valueLabel = (spec: CartesianChartSpec) =>

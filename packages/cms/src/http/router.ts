@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authGateway } from "../adapters/auth";
 import { getCmsAuth } from "../container";
+import { assertPluginRoutesFree } from "../plugin/collisions";
 import { pluginRoutes } from "../plugin/server";
 import { CMS_AUTH_BASE_PATH } from "../server/define";
 import * as r9 from "./v1/bulk/route";
@@ -85,7 +86,19 @@ const COMPILED = compile(ROUTES, false);
 let pluginCompiled: Promise<CompiledRoute[]> | undefined;
 const compiledPluginRoutes = () => {
 	// 플러그인 경로는 본체가 관리자 확인으로 감싼다(`public: true`만 뺀다). 빠뜨린 인증이 열린 경로가 되지 않게 한다.
-	pluginCompiled ??= pluginRoutes().then((routes) => compile(routes, true));
+	// 본체·다른 플러그인과 주소가 겹치면 오류다(본체가 먼저 맞아 플러그인 경로가 조용히 가려지지 않게). 실패는 기억하지 않는다.
+	pluginCompiled ??= pluginRoutes()
+		.then((routes) => {
+			assertPluginRoutesFree(
+				ROUTES.map((route) => route.pattern),
+				routes,
+			);
+			return compile(routes, true);
+		})
+		.catch((error) => {
+			pluginCompiled = undefined;
+			throw error;
+		});
 	return pluginCompiled;
 };
 

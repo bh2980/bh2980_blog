@@ -1,6 +1,6 @@
 "use client";
 
-import { createTranslator, fileTypeLabel, formatFileSize, isImageMime } from "@bh2980/cms/client";
+import { createTranslator, fileTypeLabel, formatFileSize, isImageMime, withBasePath } from "@bh2980/cms/client";
 import { Copy, ExternalLink } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { formatBytes } from "../../editor/upload-helper";
@@ -23,7 +23,7 @@ const t = createTranslator(mediaMessages);
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="space-y-3 border-t px-4 py-4">
-			<h3 className="font-medium text-[11px] text-muted-foreground uppercase tracking-wide">{title}</h3>
+			<h3 className="font-medium text-[11px] text-cms-muted-foreground uppercase tracking-wide">{title}</h3>
 			{children}
 		</section>
 	);
@@ -33,7 +33,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<div className="space-y-0.5">
-			<dt className="text-[11px] text-muted-foreground">{label}</dt>
+			<dt className="text-[11px] text-cms-muted-foreground">{label}</dt>
 			<dd className="break-all">{children}</dd>
 		</div>
 	);
@@ -104,18 +104,18 @@ export function MediaDetailPanel({
 	return (
 		<aside
 			aria-label={t("detail.label")}
-			className={cn("flex h-full flex-col border-l bg-background text-xs", className)}
+			className={cn("flex h-full flex-col border-l bg-cms-background text-xs", className)}
 		>
 			<SidePanelHeader title={media.filename} onClose={onClose} />
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<div className="space-y-3 p-4">
-					<div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-muted/50">
+					<div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-cms-muted/50">
 						{isImage && media.publicUrl ? (
 							// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 							<img src={media.publicUrl} alt="" className="max-h-full max-w-full object-contain" />
 						) : (
-							<span className="flex flex-col items-center gap-2 text-muted-foreground">
+							<span className="flex flex-col items-center gap-2 text-cms-muted-foreground">
 								<MediaThumb media={media} iconClassName="size-12" />
 								<span className="font-medium">{fileTypeLabel(media.filename, media.mimeType)}</span>
 							</span>
@@ -200,7 +200,7 @@ export function MediaDetailPanel({
 
 				{isImage && (
 					<Section title={t("detail.section.defaults")}>
-						<p className="text-muted-foreground">{t("detail.defaultsHelp")}</p>
+						<p className="text-cms-muted-foreground">{t("detail.defaultsHelp")}</p>
 						<form
 							className="space-y-3"
 							onSubmit={(event) => {
@@ -253,7 +253,7 @@ export function MediaDetailPanel({
 								)}
 							</SlotScope>
 							{saveError && (
-								<p role="alert" className="text-destructive">
+								<p role="alert" className="text-cms-destructive">
 									{saveError}
 								</p>
 							)}
@@ -268,18 +268,18 @@ export function MediaDetailPanel({
 
 				<Section title={t("detail.section.usage", { count: usageCount(media) })}>
 					{media.referencesCount === 0 ? (
-						<p className="text-muted-foreground">{t("detail.noUsage")}</p>
+						<p className="text-cms-muted-foreground">{t("detail.noUsage")}</p>
 					) : (
 						<ul className="space-y-1">
 							{mediaUsages(media).map((usage) => (
 								<li key={usage.entryId}>
 									<a
-										href={entryHref(usage.collection, usage.entryId)}
-										className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+										href={withBasePath(entryHref(usage.collection, usage.entryId))}
+										className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-cms-accent"
 									>
 										<span className="min-w-0 flex-1 truncate">{usage.title || t("common.untitled")}</span>
 										{usage.note && (
-											<span className="shrink-0 text-muted-foreground text-xs">{usageNoteLabel(usage.note)}</span>
+											<span className="shrink-0 text-cms-muted-foreground text-xs">{usageNoteLabel(usage.note)}</span>
 										)}
 									</a>
 								</li>
@@ -301,7 +301,7 @@ export function MediaDetailPanel({
 					{media.status === "deleting" ? t("detail.retryDelete") : t("common.delete")}
 				</Button>
 				{media.referencesCount > 0 && (
-					<p className="text-center text-[11px] text-muted-foreground">{t("detail.inUse")}</p>
+					<p className="text-center text-[11px] text-cms-muted-foreground">{t("detail.inUse")}</p>
 				)}
 			</div>
 		</aside>

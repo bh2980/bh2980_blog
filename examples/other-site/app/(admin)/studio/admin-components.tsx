@@ -1,13 +1,13 @@
 "use client";
 
 import { CmsAdminComponentsProvider } from "@bh2980/cms-admin";
-import { defineTextChecker, type TextIssue } from "@bh2980/cms-admin/text-check";
-import { textCheckExtension } from "@bh2980/cms-admin/text-check/extension";
+import { defineTextChecker, type TextIssue } from "@bh2980/cms-text-check";
+import { textCheckExtension } from "@bh2980/cms-text-check/extension";
 import type { ReactNode } from "react";
 
 /**
  * 맞춤법·문장 검사 확장 예시. 본체는 검사기를 넣지 않는다. 여기서는 금지어 목록만 보는 작은 검사기를 브라우저에서 돌린다.
- * 키가 필요한 API는 `remoteTextChecker({ url })` + 서버 경로(`textCheckRoute`)로 붙인다(관리자 README 참고).
+ * 키가 필요한 API는 `remoteTextChecker({ url })` + 서버 경로(`textCheckRoute`)로 붙인다(맞춤법 검사 패키지 README 참고).
  */
 const WORDS: Readonly<Record<string, { readonly message: string; readonly suggestions: readonly string[] }>> = {
 	alot: { message: "Write “a lot” as two words.", suggestions: ["a lot"] },

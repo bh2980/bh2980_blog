@@ -2,11 +2,13 @@
 
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
+	cmsApiUrl,
 	createTranslator,
 	FILE_ACCEPT,
 	fileTypeFor,
 	isImageMime,
 	parseDateTimeInput,
+	withBasePath,
 } from "@bh2980/cms/client";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, LayoutGrid, Link2, List, PanelRightOpen, RefreshCw, Trash2, Upload } from "lucide-react";
@@ -122,7 +124,7 @@ export function MediaLibrary() {
 	const debouncedQuery = useDebounced(query, 200);
 	const mediaQuery = useQuery({
 		queryKey: [...MEDIA_KEY, debouncedQuery],
-		queryFn: ({ signal }) => cmsFetch<MediaPage>(`/api/cms/v1/media?${debouncedQuery}`, { signal }),
+		queryFn: ({ signal }) => cmsFetch<MediaPage>(cmsApiUrl(`/v1/media?${debouncedQuery}`), { signal }),
 		placeholderData: keepPreviousData,
 	});
 	const items = mediaQuery.data?.items ?? [];
@@ -192,7 +194,7 @@ export function MediaLibrary() {
 			return null;
 		});
 		try {
-			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "DELETE", fallback: t("library.deleteFailed") });
+			await cmsFetch(cmsApiUrl(`/v1/media/${media.id}`), { method: "DELETE", fallback: t("library.deleteFailed") });
 			toast.success(t("library.deleted", { name: media.filename }));
 		} catch (error) {
 			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
@@ -204,7 +206,7 @@ export function MediaLibrary() {
 
 	/** 기본 설명 저장. 실패는 상세 칸 안에 보이도록 그대로 던진다. */
 	const saveDefaults = async (media: MediaItem, defaults: { alt: string; caption: string }) => {
-		await cmsFetch(`/api/cms/v1/media/${media.id}`, {
+		await cmsFetch(cmsApiUrl(`/v1/media/${media.id}`), {
 			method: "PATCH",
 			json: { defaultAlt: defaults.alt, defaultCaption: defaults.caption },
 			fallback: t("library.saveFailed"),
@@ -215,7 +217,7 @@ export function MediaLibrary() {
 
 	const rename = async (media: MediaItem, filename: string) => {
 		try {
-			await cmsFetch(`/api/cms/v1/media/${media.id}`, { method: "PATCH", json: { filename } });
+			await cmsFetch(cmsApiUrl(`/v1/media/${media.id}`), { method: "PATCH", json: { filename } });
 			toast.success(t("library.renamed", { name: filename }));
 			await invalidateMedia();
 		} catch (error) {
@@ -225,7 +227,7 @@ export function MediaLibrary() {
 
 	const cleanup = async () => {
 		try {
-			const result = await cmsFetch<{ removed: number; failed: string[] }>("/api/cms/v1/media/cleanup", {
+			const result = await cmsFetch<{ removed: number; failed: string[] }>(cmsApiUrl("/v1/media/cleanup"), {
 				method: "POST",
 				json: {},
 			});
@@ -267,7 +269,7 @@ export function MediaLibrary() {
 				kind: "item" as const,
 				label: `${usage.title || t("common.untitled")}${usage.note ? ` · ${usageNoteLabel(usage.note)}` : ""}`,
 				icon: FileText,
-				onSelect: () => window.location.assign(entryHref(usage.collection, usage.entryId)),
+				onSelect: () => window.location.assign(withBasePath(entryHref(usage.collection, usage.entryId))),
 			})),
 		},
 		{ kind: "separator" },
@@ -303,7 +305,7 @@ export function MediaLibrary() {
 			sidebar={{ activeNav: "media" }}
 			headerActions={
 				<div className="flex flex-wrap items-center gap-2">
-					<Label className="font-normal text-muted-foreground text-xs">
+					<Label className="font-normal text-cms-muted-foreground text-xs">
 						<Switch size="sm" checked={optimize} onCheckedChange={(checked) => setOptimize(checked === true)} />
 						{t("library.optimize")}
 					</Label>

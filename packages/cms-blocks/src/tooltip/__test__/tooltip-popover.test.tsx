@@ -1,12 +1,13 @@
 import { buildEditorExtensions } from "@bh2980/cms-admin/editor";
-import { TooltipProvider } from "@bh2980/cms-admin/ui/tooltip";
+import { TooltipProvider } from "@bh2980/cms-admin/kit";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OPEN_TOOLTIP_EVENT, tooltipMarkExtension } from "../provider";
 
-vi.mock("@bh2980/cms-admin/ui/tooltip", () => ({
+// 관리자 편집기 안의 툴팁 부품 파일을 바꾼다(확장용 묶음 `kit`과 본체 서식 도구가 같은 파일을 쓴다).
+vi.mock("../../../../cms-admin/src/ui/tooltip", () => ({
 	Tooltip: ({ children }: { children: React.ReactNode }) => children,
 	TooltipTrigger: ({
 		render,

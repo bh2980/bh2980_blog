@@ -1,22 +1,22 @@
 import {
-	ALLOWED_FILE_MIME_TYPES,
-	ALLOWED_IMAGE_MIME_TYPES,
 	type AllowedFileMime,
-	MAX_MEDIA_BYTES,
-} from "../../core/api";
+	type AllowedImageMimeType as AllowedImageMime,
+	SUPPORTED_FILE_MIME_TYPES,
+	SUPPORTED_IMAGE_MIME_TYPES,
+} from "../../core/media-types";
 
-export type AllowedImageMime = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
+export type { AllowedImageMime };
 /** 저장소가 받는 형식: 이미지와 첨부 파일(v3). */
 export type AllowedMediaMime = AllowedImageMime | AllowedFileMime;
 
-/** 허용 형식·크기는 API 계약(`core/api`)이 원천이다. */
-export const ALLOWED_IMAGE_MIMES: readonly AllowedImageMime[] = ALLOWED_IMAGE_MIME_TYPES;
+/**
+ * 저장소가 받는 형식은 본체가 판별할 수 있는 형식 전부다. 사이트 설정(`media`)으로 좁힌 형식·크기는 업로드 API가 본다.
+ * 저장소는 서버 설정(`cms.server.ts`)이 만들므로 사이트 설정을 읽지 않는다(M17-3).
+ */
 export const ALLOWED_MEDIA_MIMES: readonly AllowedMediaMime[] = [
-	...ALLOWED_IMAGE_MIME_TYPES,
-	...ALLOWED_FILE_MIME_TYPES,
+	...SUPPORTED_IMAGE_MIME_TYPES,
+	...SUPPORTED_FILE_MIME_TYPES,
 ];
-
-export const MAX_MEDIA_BYTE_SIZE = MAX_MEDIA_BYTES;
 
 export interface StoredFileHead {
 	key: string;
@@ -50,13 +50,19 @@ export interface PromoteFileInput {
 	contentDisposition?: string;
 }
 
+/** S3 API 저장소 연결(R2·S3·MinIO 등). */
 export interface MediaStoreConfig {
-	accountId: string;
 	accessKeyId: string;
 	secretAccessKey: string;
 	bucket: string;
+	/** S3 API 주소(R2: `https://<계정>.r2.cloudflarestorage.com`, AWS S3: `https://s3.<지역>.amazonaws.com`). */
 	endpoint: string;
+	/** 공개 주소의 앞부분(CDN·공개 버킷 주소). 올린 파일의 공개 주소는 `<publicBaseUrl>/<키>`다. */
 	publicBaseUrl: string;
+	/** 지역. R2는 `auto`(기본), AWS S3는 버킷 지역(예: `ap-northeast-2`). */
+	region?: string;
+	/** 경로 방식 주소(`<endpoint>/<버킷>/<키>`). MinIO 같은 저장소에서 켠다. */
+	forcePathStyle?: boolean;
 }
 
 export interface MediaStore {

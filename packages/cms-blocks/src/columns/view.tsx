@@ -12,7 +12,7 @@ import {
 	valuesOf,
 	withValue,
 } from "@bh2980/cms-admin/blocks";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import { cn } from "@bh2980/cms-admin/kit";
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Columns2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { type CSSProperties, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
@@ -197,7 +197,7 @@ export function ColumnsNodeView(props: NodeViewProps) {
 							<span
 								aria-hidden
 								className={cn(
-									"absolute top-3 bottom-0 left-0 w-0.5 -translate-x-1/2 rounded-full bg-primary opacity-0 transition-opacity group-hover/container:opacity-30",
+									"absolute top-3 bottom-0 left-0 w-0.5 -translate-x-1/2 rounded-full bg-cms-primary opacity-0 transition-opacity group-hover/container:opacity-30",
 									draft && "opacity-100 group-hover/container:opacity-100",
 								)}
 							/>
@@ -211,19 +211,19 @@ export function ColumnsNodeView(props: NodeViewProps) {
 									nudge(boundary.index, event.key === "ArrowLeft" ? -5 : 5);
 								}}
 								className={cn(
-									"pointer-events-auto absolute top-0 left-0 flex h-3 w-6 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center rounded-full border bg-popover opacity-0 shadow-sm transition-opacity",
-									"focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring group-hover/container:opacity-100",
+									"pointer-events-auto absolute top-0 left-0 flex h-3 w-6 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center rounded-full border bg-cms-popover opacity-0 shadow-sm transition-opacity",
+									"focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-cms-ring group-hover/container:opacity-100",
 									draft && "opacity-100",
 								)}
 							>
-								<GripVertical aria-hidden className="size-2.5 rotate-90 text-muted-foreground" />
+								<GripVertical aria-hidden className="size-2.5 rotate-90 text-cms-muted-foreground" />
 							</button>
 						</div>
 					))
 				: null}
 			{editable ? (
 				<ContainerToolbar label={t("toolbar")} visible={!!draft}>
-					<span className="px-1.5 text-muted-foreground text-xs tabular-nums">
+					<span className="px-1.5 text-cms-muted-foreground text-xs tabular-nums">
 						{widths ? widths.join(" : ") : t("count", { count })}
 					</span>
 					<ToolbarButton label={t("equalize")} disabled={!saved} onClick={() => setColumns(null)}>
@@ -251,7 +251,7 @@ export function ColumnNodeView() {
 	return (
 		<NodeViewWrapper
 			data-cms-container-node="cmsColumn"
-			className="h-full rounded-md outline-dashed outline-1 outline-transparent transition-colors focus-within:outline-ring/60 group-hover/container:outline-border"
+			className="h-full rounded-md outline-dashed outline-1 outline-transparent transition-colors focus-within:outline-cms-ring/60 group-hover/container:outline-cms-border"
 		>
 			<NodeViewContent className="min-h-8 px-2 py-1 [&>[data-node-view-content-react]>:first-child]:mt-0 [&>[data-node-view-content-react]>:last-child]:mb-0" />
 		</NodeViewWrapper>

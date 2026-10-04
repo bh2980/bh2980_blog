@@ -28,6 +28,7 @@ interface ListEntriesItem {
 	status: "draft" | "published";
 	folderId: string | null;
 	relations: Readonly<Record<string, readonly { id: string; title: string | null }[]>>;
+	values: Readonly<Record<string, string>>;
 	publishedAt: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -910,6 +911,40 @@ console.log("FencedCode000");
 				{ id: secondTag.id, title: "Second tag" },
 				{ id: firstTag.id, title: "First tag" },
 			]);
+		},
+		30_000,
+	);
+
+	/** 글자·선택 필드(제목 말고). 목록 칸의 값이 되는 필드다. */
+	const plainField = storedFields(content).find(
+		({ name, field, when }) => !when && name !== "title" && (field.kind === "select" || field.kind === "text"),
+	);
+
+	it.skipIf(!plainField)(
+		"lists the stored text of text and select fields as `values` (empty values are left out)",
+		async () => {
+			const stored = plainField as NonNullable<typeof plainField>;
+			const value = stored.field.kind === "select" ? (Object.keys(stored.field.options)[0] ?? "x") : "plain value";
+			const filled = await seedEntry(store, {
+				collection: content,
+				slug: "values-filled",
+				metadata: { title: "Has values", [stored.name]: value },
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const empty = await seedEntry(store, {
+				collection: content,
+				slug: "values-empty",
+				metadata: { title: "No values", [stored.name]: "" },
+				mdx: "body",
+				schemaVersion: 1,
+				contentHash: uniqueHash(),
+			});
+			const result = await store.listEntries({ collection: content });
+			const values = (id: string) => result.items.find((entry) => entry.id === id)?.values;
+			expect(values(filled.id)).toMatchObject({ title: "Has values", [stored.name]: value });
+			expect(values(empty.id)).toEqual({ title: "No values" });
 		},
 		30_000,
 	);

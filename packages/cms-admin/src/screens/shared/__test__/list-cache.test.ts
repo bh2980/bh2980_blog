@@ -13,6 +13,7 @@ const row = (id: string, patch: Partial<ListEntriesItem> = {}): ListEntriesItem 
 	version: 1,
 	folderId: null,
 	relations: {},
+	values: {},
 	hasUnpublishedChanges: false,
 	publishedAt: null,
 	createdAt: new Date(0),

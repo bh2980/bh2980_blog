@@ -117,7 +117,7 @@ describe("코드 블록 편집 화면", () => {
 		expect(editor.state.selection.empty).toBe(true);
 		expect(editor.state.selection.from).toBe(1 + "const a = 1;\n".length);
 		await waitFor(() =>
-			expect(document.querySelectorAll("[data-code-block-wrapper] .bg-primary\\/15")).toHaveLength(1),
+			expect(document.querySelectorAll("[data-code-block-wrapper] .bg-cms-primary\\/15")).toHaveLength(1),
 		);
 		await openLineMenu(1);
 		const menu = await screen.findByRole("menu", { name: t("lineMenu.lineEffects", { line: 2 }) });
@@ -133,7 +133,7 @@ describe("코드 블록 편집 화면", () => {
 		expect(tiptapToMdx(editor.getJSON())).toContain("// @line highlight {1-1}\nconst b = 2;");
 		// 효과를 바꿔도 고른 줄은 그대로다(이어서 다른 효과를 켤 수 있다).
 		await waitFor(() =>
-			expect(document.querySelectorAll("[data-code-block-wrapper] .bg-primary\\/15")).toHaveLength(1),
+			expect(document.querySelectorAll("[data-code-block-wrapper] .bg-cms-primary\\/15")).toHaveLength(1),
 		);
 	});
 
@@ -241,6 +241,6 @@ describe("코드 블록 편집 화면", () => {
 		await waitFor(() =>
 			expect(document.querySelector("[data-code-block-wrapper] pre")?.className).toContain("caret-transparent"),
 		);
-		expect(document.querySelectorAll("[data-code-block-wrapper] .bg-primary\\/15")).toHaveLength(1);
+		expect(document.querySelectorAll("[data-code-block-wrapper] .bg-cms-primary\\/15")).toHaveLength(1);
 	});
 });

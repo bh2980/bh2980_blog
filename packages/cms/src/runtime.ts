@@ -1,5 +1,6 @@
 /**
- * 서버 진입점. 공개 화면(서버 컴포넌트)이 공개본을 읽고, 미리보기 권한을 확인하고, 본문 이미지를 고칠 때 쓴다.
+ * 서버 진입점. 저장소·서비스·로그인 확인을 쓴다. Next 밖(크론 스크립트·사이트 테스트)에서도 불러올 수 있다
+ * (`server-only`를 쓰지 않는다). 공개 화면의 본문 이미지 해석기는 `@bh2980/cms/render`의 `createPublicImageResolver`다.
  * 브라우저 코드에서 import하지 않는다.
  */
 
@@ -7,5 +8,5 @@ export * from "./adapters/auth";
 export * from "./adapters/postgres/content-store";
 export * from "./container";
 export * from "./core/snapshot";
-export * from "./mdx/public-image-resolver";
+export { resolvePublicMediaUrl } from "./mdx/public-media-url";
 export * from "./services/content-service";

@@ -9,7 +9,7 @@ export interface RemoteTextCheckerOptions extends Omit<TextCheckerOptions, "chec
 
 /**
  * 사이트 서버 경로를 거치는 검사기. 키가 필요한 API(바른·LanguageTool 등)는 서버 경로에서 부르고,
- * 브라우저는 이 검사기로 문단만 보낸다. 서버 경로는 `@bh2980/cms-admin/text-check/server`의 `textCheckRoute`로 만든다.
+ * 브라우저는 이 검사기로 문단만 보낸다. 서버 경로는 `@bh2980/cms-text-check/server`의 `textCheckRoute`로 만든다.
  */
 export function remoteTextChecker({ url, headers, ...options }: RemoteTextCheckerOptions): TextChecker {
 	return defineTextChecker({

@@ -30,6 +30,7 @@ import { ArrowDown, ArrowUp, Columns3, Folder as FolderIcon, FolderOpen, FolderU
 import type { Route } from "next";
 import Link from "next/link";
 import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useCmsAdminComponents } from "../admin-components";
 import { cn } from "../lib/utils/cn";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -44,11 +45,13 @@ import { Skeleton } from "../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { folderKeyHandler } from "./admin-sidebar";
 import { ColumnHeader } from "./column-header";
+import { customListCell, DefaultFieldCell } from "./list-cells";
 import {
 	type AdminListColumn,
 	columnConfig,
 	columnLabel,
 	columnsFor,
+	fieldColumnOf,
 	filterFor,
 	knownColumnRecord,
 } from "./list-columns";
@@ -57,7 +60,6 @@ import { screensMessages } from "./messages";
 import { ActionContextMenu, type MenuAction, MoreActionsButton } from "./shared/action-menu";
 import { writeDraggedEntries } from "./shared/entry-drag";
 import { describeEntryStatus, STATUS_LABELS } from "./shared/entry-status";
-import { FittingTags } from "./shared/fitting-tags";
 import { formatDateOnly, formatDateTime, zonedYear } from "./shared/format-date";
 import { OPEN_ITEM } from "./shared/side-panel";
 import { type FolderActions, folderMenuActions } from "./shared/use-folder-actions";
@@ -92,13 +94,18 @@ const DEFAULT_COLUMN_SIZE: Partial<Record<string, number>> = {
 const DEFAULT_TITLE_SIZE = 320;
 const MANY_RELATION_SIZE = 200;
 const SINGLE_RELATION_SIZE = 112;
+const SELECT_SIZE = 132;
+const TEXT_SIZE = 200;
 
 function defaultColumnSize(collection: string, column: AdminListColumn): number {
 	const size = DEFAULT_COLUMN_SIZE[column];
 	if (size !== undefined) return size;
 	const config = columnConfig(collection, column);
-	if (config.filter.kind !== "relation") return DEFAULT_TITLE_SIZE;
-	return config.many ? MANY_RELATION_SIZE : SINGLE_RELATION_SIZE;
+	const kind = fieldColumnOf(collection, column)?.field.kind;
+	if (kind === "relation") return config.many ? MANY_RELATION_SIZE : SINGLE_RELATION_SIZE;
+	if (kind === "select") return SELECT_SIZE;
+	if (kind === "text" || kind === "media") return TEXT_SIZE;
+	return DEFAULT_TITLE_SIZE;
 }
 const MIN_COLUMN_SIZE = 72;
 const MAX_COLUMN_SIZE = 960;
@@ -166,9 +173,9 @@ function ColumnResizeHandle({
 		>
 			<span
 				className={cn(
-					"h-full w-px bg-transparent transition-colors group-hover/th:bg-border",
-					resizing && "bg-primary group-hover/th:bg-primary",
-					"[div:focus-visible>&]:bg-ring",
+					"h-full w-px bg-transparent transition-colors group-hover/th:bg-cms-border",
+					resizing && "bg-cms-primary group-hover/th:bg-cms-primary",
+					"[div:focus-visible>&]:bg-cms-ring",
 				)}
 			/>
 		</div>
@@ -178,10 +185,10 @@ function ColumnResizeHandle({
 const BADGE_CLASS = "inline-flex h-5 items-center rounded border px-1.5 font-medium text-[11px] leading-none";
 
 const BADGE_TONE: Record<"published" | "changed" | "draft" | "archived", string> = {
-	published: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-	changed: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-	draft: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-	archived: "border-transparent bg-muted text-muted-foreground",
+	published: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 cms-dark:text-emerald-400",
+	changed: "border-amber-500/30 bg-amber-500/10 text-amber-700 cms-dark:text-amber-400",
+	draft: "border-amber-500/30 bg-amber-500/10 text-amber-700 cms-dark:text-amber-400",
+	archived: "border-transparent bg-cms-muted text-cms-muted-foreground",
 };
 
 /** 번역 묶음의 언어별 상태. 있는 언어는 그 편집 화면으로 잇고, 없는 언어는 점선으로만 보인다. 색과 함께 글자로도 상태를 읽힌다. */
@@ -193,7 +200,7 @@ function LocaleBadges({ translations }: { translations: readonly ListTranslation
 				const member = translations.find((candidate) => candidate.locale === locale);
 				if (!member) {
 					return (
-						<span key={locale} className={cn(BADGE_CLASS, "border-dashed text-muted-foreground/70")}>
+						<span key={locale} className={cn(BADGE_CLASS, "border-dashed text-cms-muted-foreground/70")}>
 							<span aria-hidden="true">{locale.toUpperCase()}</span>
 							<span className="sr-only">{t("locale.hasNot", { name })}</span>
 						</span>
@@ -211,7 +218,7 @@ function LocaleBadges({ translations }: { translations: readonly ListTranslation
 					<Link
 						key={locale}
 						href={adminEntryEditHref(member.id) as Route}
-						className={cn(BADGE_CLASS, BADGE_TONE[tone], "hover:brightness-95 dark:hover:brightness-125")}
+						className={cn(BADGE_CLASS, BADGE_TONE[tone], "cms-dark:hover:brightness-125 hover:brightness-95")}
 					>
 						<span aria-hidden="true">{locale.toUpperCase()}</span>
 						<span className="sr-only">
@@ -233,7 +240,7 @@ function RecordLocaleBadges({ locales }: { locales: readonly string[] }) {
 				return (
 					<span
 						key={locale}
-						className={cn(BADGE_CLASS, named ? BADGE_TONE.published : "border-dashed text-muted-foreground/70")}
+						className={cn(BADGE_CLASS, named ? BADGE_TONE.published : "border-dashed text-cms-muted-foreground/70")}
 					>
 						<span aria-hidden="true">{locale.toUpperCase()}</span>
 						<span className="sr-only">{t(named ? "locale.has" : "locale.hasNot", { name: localeLabel(locale) })}</span>
@@ -250,9 +257,9 @@ function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: bool
 	const tone =
 		item.status === "published"
 			? item.hasUnpublishedChanges
-				? "text-amber-600 dark:text-amber-400"
-				: "text-emerald-600 dark:text-emerald-400"
-			: "text-muted-foreground";
+				? "text-amber-600 cms-dark:text-amber-400"
+				: "text-emerald-600 cms-dark:text-emerald-400"
+			: "text-cms-muted-foreground";
 	const icon =
 		item.status === "published" ? (
 			item.hasUnpublishedChanges ? (
@@ -272,7 +279,7 @@ function StatusLabel({ item, isRecord }: { item: ListEntriesItem; isRecord: bool
 			<circle cx="8" cy="8" r="5.5" strokeDasharray="2.4 2.4" />
 		);
 	return (
-		<span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-foreground/80">
+		<span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-cms-foreground/80">
 			<svg
 				aria-hidden="true"
 				focusable="false"
@@ -361,6 +368,7 @@ export function AdminEntriesTable({
 }: TableProps) {
 	const isTrash = mode === "trash";
 	const isRecord = isItemCollection(collection);
+	const { listCells } = useCmsAdminComponents();
 	const { available, defaults } = columnsFor(collection);
 	// 저장된 설정에서 지금 없는 컬럼(지운 필드 등)은 버린다.
 	const savedOrder = (columnSettings?.order ?? []).filter((column) => available.includes(column));
@@ -391,7 +399,7 @@ export function AdminEntriesTable({
 		const cell = (item: ListEntriesItem, column: AdminListColumn) => {
 			switch (column) {
 				case "title": {
-					const title = item.title || <span className="text-muted-foreground italic">{t("common.untitled")}</span>;
+					const title = item.title || <span className="text-cms-muted-foreground italic">{t("common.untitled")}</span>;
 					if (isTrash) return <span className="font-medium">{title}</span>;
 					return isRecord ? (
 						<Button
@@ -399,7 +407,7 @@ export function AdminEntriesTable({
 							variant="link"
 							size="sm"
 							onClick={() => onOpenRecord(item)}
-							className="h-auto p-0 font-medium text-foreground hover:text-primary"
+							className="h-auto p-0 font-medium text-cms-foreground hover:text-cms-primary"
 						>
 							{title}
 						</Button>
@@ -407,12 +415,12 @@ export function AdminEntriesTable({
 						<span className="flex min-w-0 items-center gap-2">
 							<Link
 								href={adminEntryEditHref(item.id) as Route}
-								className="truncate font-medium text-foreground hover:text-primary"
+								className="truncate font-medium text-cms-foreground hover:text-cms-primary"
 							>
 								{title}
 							</Link>
 							{showFolderBesideTitle && item.folderId && (
-								<span className="flex min-w-0 shrink items-center gap-1 text-muted-foreground text-xs">
+								<span className="flex min-w-0 shrink items-center gap-1 text-cms-muted-foreground text-xs">
 									<FolderIcon aria-hidden className="size-3 shrink-0" />
 									<span className="truncate">
 										<span className="sr-only">{t("list.folderSr")}</span>
@@ -431,7 +439,7 @@ export function AdminEntriesTable({
 					if (item.translations) return <LocaleBadges translations={item.translations} />;
 					// 번역본은 원문이 아니라는 표시를 함께 둔다(v2 B4).
 					return (
-						<span className="text-muted-foreground text-xs">
+						<span className="text-cms-muted-foreground text-xs">
 							<abbr title={localeLabel(item.locale)} className="font-medium no-underline">
 								{item.locale.toUpperCase()}
 							</abbr>
@@ -442,19 +450,33 @@ export function AdminEntriesTable({
 				case "createdAt":
 				case "publishedAt":
 					return (
-						<span className="tabular whitespace-nowrap text-muted-foreground text-xs">{formatDate(item[column])}</span>
+						<span className="tabular whitespace-nowrap text-cms-muted-foreground text-xs">
+							{formatDate(item[column])}
+						</span>
 					);
 				case "slug":
-					return <span className="font-mono text-muted-foreground text-xs">{item.slug || "—"}</span>;
+					return <span className="font-mono text-cms-muted-foreground text-xs">{item.slug || "—"}</span>;
 				case "folder":
-					return <span className="text-muted-foreground text-xs">{folderName(item.folderId)}</span>;
-				default: {
-					// 분류 필드 컬럼: 여러 개면 칩, 하나면 이름이다.
-					const values = (item.relations[column] ?? []).flatMap(({ id, title }) => (title ? [{ id, title }] : []));
-					if (!values.length) return <span className="text-muted-foreground">—</span>;
-					return columnConfig(collection, column).many ? <FittingTags tags={values} /> : values[0]?.title;
-				}
+					return <span className="text-cms-muted-foreground text-xs">{folderName(item.folderId)}</span>;
+				default:
+					// 필드 컬럼: 관계(분류 필드 포함)·선택·글자의 기본 칸.
+					return <DefaultFieldCell collection={collection} column={column} entry={item} />;
 			}
+		};
+		// 관리자 확장이 등록한 칸(`listCells`)은 기본 칸보다 먼저 쓴다.
+		const cellOf = (item: ListEntriesItem, column: AdminListColumn) => {
+			const Custom = customListCell(listCells, collection, column);
+			if (!Custom) return cell(item, column);
+			const stored = fieldColumnOf(collection, column);
+			return (
+				<Custom
+					collection={collection}
+					column={column}
+					field={stored?.field}
+					entry={item}
+					value={stored ? item.values[column] : undefined}
+				/>
+			);
 		};
 
 		return helper.columns([
@@ -494,7 +516,7 @@ export function AdminEntriesTable({
 							onChange={onStateChange}
 						/>
 					),
-					cell: ({ row }) => cell(row.original, column),
+					cell: ({ row }) => cellOf(row.original, column),
 				}),
 			),
 			helper.display({
@@ -513,7 +535,7 @@ export function AdminEntriesTable({
 									type="button"
 									variant="ghost"
 									size="xs"
-									className="text-destructive"
+									className="text-cms-destructive"
 									onClick={() => onPermanentDelete?.(row.original)}
 								>
 									{t("list.permanentDelete")}
@@ -543,6 +565,7 @@ export function AdminEntriesTable({
 		onRestore,
 		onPermanentDelete,
 		showFolderBesideTitle,
+		listCells,
 	]);
 
 	const rowSelection: RowSelectionState = Object.fromEntries([...selectedIds].map((id) => [id, true]));
@@ -709,7 +732,7 @@ export function AdminEntriesTable({
 					style={tableWidth ? { width: tableWidth } : undefined}
 					className="table-fixed [&_td:first-child]:pl-5 [&_td:last-child]:pr-4 [&_th:first-child]:pl-5 [&_th:last-child]:pr-4"
 				>
-					<TableHeader className="sticky top-0 z-10 bg-background [&_tr]:border-b">
+					<TableHeader className="sticky top-0 z-10 bg-cms-background [&_tr]:border-b">
 						{table.getHeaderGroups().map((group) => (
 							<TableRow key={group.id}>
 								{group.headers
@@ -723,7 +746,7 @@ export function AdminEntriesTable({
 												<TableHead
 													style={{ width: header.getSize() }}
 													className={cn(
-														"group/th relative h-9 font-normal text-muted-foreground text-xs",
+														"group/th relative h-9 font-normal text-cms-muted-foreground text-xs",
 														header.column.id === "select" && "w-10",
 													)}
 													aria-sort={active ? (state.sortDirection === "asc" ? "ascending" : "descending") : undefined}
@@ -769,7 +792,7 @@ export function AdminEntriesTable({
 					>
 						{explorer && explorer.parent !== null && (
 							<TableRow>
-								<TableCell className="text-center text-muted-foreground">
+								<TableCell className="text-center text-cms-muted-foreground">
 									<FolderUp aria-hidden className="mx-auto size-4" />
 								</TableCell>
 								<TableCell colSpan={visibleCount - 1}>
@@ -778,7 +801,7 @@ export function AdminEntriesTable({
 										variant="link"
 										size="sm"
 										onClick={() => onSelectFolder(explorer.parent ?? "all")}
-										className="h-auto p-0 text-muted-foreground hover:text-foreground"
+										className="h-auto p-0 text-cms-muted-foreground hover:text-cms-foreground"
 									>
 										{t("list.folderUp")}
 									</Button>
@@ -787,7 +810,7 @@ export function AdminEntriesTable({
 						)}
 						{explorer?.folders.map((folder) => (
 							<ActionContextMenu key={`folder-${folder.id}`} actions={folderRowMenu(folder)} trigger={<TableRow />}>
-								<TableCell className="text-center text-muted-foreground">
+								<TableCell className="text-center text-cms-muted-foreground">
 									<FolderIcon aria-hidden className="mx-auto size-4" />
 								</TableCell>
 								<TableCell colSpan={visibleCount - 2} className="font-medium">
@@ -797,7 +820,7 @@ export function AdminEntriesTable({
 										size="sm"
 										onClick={() => onSelectFolder(folder.id)}
 										onKeyDown={folderActions ? folderKeyHandler(folder, folderActions) : undefined}
-										className="h-auto p-0 font-medium text-foreground"
+										className="h-auto p-0 font-medium text-cms-foreground"
 									>
 										{folder.name}
 									</Button>
@@ -838,7 +861,7 @@ export function AdminEntriesTable({
 									trigger={
 										<TableRow
 											className={cn(
-												"h-11 data-[state=selected]:bg-primary/5",
+												"h-11 data-[state=selected]:bg-cms-primary/5",
 												row.original.id === openRecordId && OPEN_ITEM,
 											)}
 											aria-current={row.original.id === openRecordId ? "true" : undefined}
@@ -882,7 +905,7 @@ export function AdminEntriesTable({
 				)}
 			</div>
 
-			<div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-5 text-muted-foreground text-xs">
+			<div className="flex h-12 shrink-0 items-center justify-between gap-3 border-t px-5 text-cms-muted-foreground text-xs">
 				<span className="tabular">
 					{t("list.range", {
 						total,
@@ -895,7 +918,7 @@ export function AdminEntriesTable({
 				<div className="flex items-center gap-2">
 					<Popover>
 						<PopoverTrigger
-							render={<Button type="button" variant="ghost" size="xs" className="text-muted-foreground" />}
+							render={<Button type="button" variant="ghost" size="xs" className="text-cms-muted-foreground" />}
 						>
 							<Columns3 aria-hidden />
 							{t("list.columnSettings")}
@@ -905,7 +928,7 @@ export function AdminEntriesTable({
 								{order.map((column, index) => (
 									<li
 										key={column}
-										className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-accent"
+										className="flex items-center justify-between gap-2 rounded px-1 py-1 hover:bg-cms-accent"
 									>
 										<Label className="font-normal">
 											<Checkbox

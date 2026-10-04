@@ -1,16 +1,25 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { cmsFetch, errorText } from "@bh2980/cms-admin/api";
-import { useConfirm } from "@bh2980/cms-admin/confirm-dialog";
-import { useDebounced } from "@bh2980/cms-admin/hooks/use-debounced";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
-import { Alert, AlertDescription } from "@bh2980/cms-admin/ui/alert";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@bh2980/cms-admin/ui/empty";
-import { Field, FieldGroup, FieldLabel } from "@bh2980/cms-admin/ui/field";
-import { Input } from "@bh2980/cms-admin/ui/input";
-import { Skeleton } from "@bh2980/cms-admin/ui/skeleton";
+import {
+	Alert,
+	AlertDescription,
+	Button,
+	cn,
+	Empty,
+	EmptyContent,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+	Field,
+	FieldGroup,
+	FieldLabel,
+	Input,
+	Skeleton,
+	useConfirm,
+	useDebounced,
+} from "@bh2980/cms-admin/kit";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, Plus, Save, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
@@ -37,14 +46,14 @@ export function useAiSettings() {
 	return useQuery({
 		queryKey: AI_SETTINGS_KEY,
 		queryFn: ({ signal }) =>
-			cmsFetch<AiSettingsView>("/api/cms/v1/ai/settings", { signal, fallback: t("error.loadList") }),
+			cmsFetch<AiSettingsView>(cmsApiUrl("/v1/ai/settings"), { signal, fallback: t("error.loadList") }),
 		// 기능을 열 때마다 다시 받지 않는다. 연결을 저장하면 응답으로 캐시를 바꾼다.
 		staleTime: 60_000,
 	});
 }
 
 /** AI 화면 세 탭이 같이 쓰는 조각. 목록의 열린 항목 모양은 관리자 화면의 `OPEN_ITEM`과 같다. */
-export const OPEN_ITEM = "bg-accent text-accent-foreground";
+export const OPEN_ITEM = "bg-cms-accent text-cms-accent-foreground";
 
 /** 상세 칸의 틀(기능·연결·공통 문구가 같이 쓴다). */
 export const DETAIL_PANE = "mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 text-sm";
@@ -83,14 +92,14 @@ export function ListRow({
 				onClick={onClick}
 				className={cn(
 					"flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors",
-					current ? OPEN_ITEM : "hover:bg-accent/50",
+					current ? OPEN_ITEM : "hover:bg-cms-accent/50",
 				)}
 			>
 				<span className="flex w-full items-center gap-2">
 					<span className="truncate font-medium text-sm">{title}</span>
-					{status && <span className="ml-auto shrink-0 text-muted-foreground text-xs">{status}</span>}
+					{status && <span className="ml-auto shrink-0 text-cms-muted-foreground text-xs">{status}</span>}
 				</span>
-				<span className="w-full truncate text-muted-foreground text-xs">{detail}</span>
+				<span className="w-full truncate text-cms-muted-foreground text-xs">{detail}</span>
 			</button>
 		</li>
 	);
@@ -109,7 +118,7 @@ export function ListSkeleton({ rows }: { rows: number }) {
 /** 오류 한 줄(편집 칸 안). */
 export function InlineError({ children }: { children: ReactNode }) {
 	return (
-		<p role="alert" className="text-destructive text-xs">
+		<p role="alert" className="text-cms-destructive text-xs">
 			{children}
 		</p>
 	);
@@ -180,12 +189,12 @@ export function ConnectionManager({
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className="flex w-72 shrink-0 flex-col border-r">
-					{settings?.fake && <p className="border-b px-3 py-2 text-muted-foreground text-xs">{t("badge.fake")}</p>}
+					{settings?.fake && <p className="border-b px-3 py-2 text-cms-muted-foreground text-xs">{t("badge.fake")}</p>}
 					<ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-label={t("list.label")}>
 						{settingsQuery.isPending ? (
 							<ListSkeleton rows={2} />
 						) : settings?.providers.length === 0 ? (
-							<li className="px-3 py-6 text-center text-muted-foreground text-xs">{t("list.empty")}</li>
+							<li className="px-3 py-6 text-center text-cms-muted-foreground text-xs">{t("list.empty")}</li>
 						) : (
 							settings?.providers.map((provider) => (
 								<ListRow
@@ -299,12 +308,12 @@ function ProviderEditor({
 		try {
 			const json = { expectedVersion: version, provider: draft };
 			const saved = provider
-				? await cmsFetch<AiSettingsView>(`/api/cms/v1/ai/providers/${provider.id}`, {
+				? await cmsFetch<AiSettingsView>(cmsApiUrl(`/v1/ai/providers/${provider.id}`), {
 						method: "PATCH",
 						json,
 						fallback: t("error.save"),
 					})
-				: await cmsFetch<AiSettingsView>("/api/cms/v1/ai/providers", {
+				: await cmsFetch<AiSettingsView>(cmsApiUrl("/v1/ai/providers"), {
 						method: "POST",
 						json,
 						fallback: t("error.save"),
@@ -334,7 +343,7 @@ function ProviderEditor({
 		setError(null);
 		try {
 			onDeleted(
-				await cmsFetch<AiSettingsView>(`/api/cms/v1/ai/providers/${provider.id}?expectedVersion=${version}`, {
+				await cmsFetch<AiSettingsView>(cmsApiUrl(`/v1/ai/providers/${provider.id}?expectedVersion=${version}`), {
 					method: "DELETE",
 					fallback: t("error.delete"),
 				}),
@@ -353,7 +362,7 @@ function ProviderEditor({
 		setChecking(true);
 		try {
 			setCheck(
-				await cmsFetch<AiCheckResult>("/api/cms/v1/ai/providers/check", {
+				await cmsFetch<AiCheckResult>(cmsApiUrl("/v1/ai/providers/check"), {
 					method: "POST",
 					json: { providerId: provider?.id, provider: draft },
 					fallback: t("error.check"),
@@ -372,7 +381,7 @@ function ProviderEditor({
 				<h2 className="truncate font-medium text-base">
 					{(provider ? provider.name : draft.name.trim()) || t("new.title")}
 				</h2>
-				<p className="truncate text-muted-foreground text-xs">
+				<p className="truncate text-cms-muted-foreground text-xs">
 					{providerKindLabel(draft.kind)} · {provider?.defaultModel || draft.defaultModel || t("model.none")}
 				</p>
 			</div>
@@ -474,7 +483,7 @@ function ProviderEditor({
 						type="button"
 						size="sm"
 						variant="ghost"
-						className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+						className="ml-auto text-cms-destructive hover:bg-cms-destructive/10 hover:text-cms-destructive"
 						disabled={deleting}
 						onClick={() => void remove()}
 					>
@@ -485,7 +494,7 @@ function ProviderEditor({
 			</div>
 			{check && (
 				<p
-					className={cn("text-xs", check.ok ? "text-muted-foreground" : "text-destructive")}
+					className={cn("text-xs", check.ok ? "text-cms-muted-foreground" : "text-cms-destructive")}
 					role={check.ok ? undefined : "alert"}
 				>
 					{check.ok ? t("check.ok", { model: check.model, seconds: (check.ms / 1000).toFixed(1) }) : check.message}

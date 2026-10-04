@@ -193,6 +193,11 @@ export interface ListEntriesItem {
 	 * 이름을 찾지 못한 항목(지운 대상 등)은 `title: null`이다. 언어별이 아닌 관계는 원문 초안에서 읽는다(v2 B4).
 	 */
 	relations: Readonly<Record<string, readonly ListRelationValue[]>>;
+	/**
+	 * 필드 이름 → 글자로 저장된 값(글자·선택·미디어 필드). 목록의 필드 컬럼 기본 칸이 그린다. 값이 없는 필드는 빠진다.
+	 * 언어별이 아닌 필드는 원문 초안에서 읽는다(v2 B4).
+	 */
+	values: Readonly<Record<string, string>>;
 	/** 공개본이 있고 최신 초안이 공개본과 다르다(`발행됨 · 수정 중`). */
 	hasUnpublishedChanges: boolean;
 	publishedAt: Date | null;

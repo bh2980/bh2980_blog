@@ -1,9 +1,11 @@
 import { type CodeBlockConfig, validateCodeBlockConfig } from "../annotation/code-block/line-effects";
 import type { BlockDefinition } from "../blocks/define";
 import { resolveBlocks } from "../blocks/resolve";
+import { type MediaConfig, validateMediaConfig } from "../core/media-types";
 import type { MessageValue } from "../i18n/define";
+import { assertPluginNamesFree, assertPluginPagesFree } from "../plugin/collisions";
 import type { CmsPlugin } from "../plugin/define";
-import { type CollectionSchema, normalizeCollection } from "../schema/collection";
+import { type CollectionSchema, normalizeCollection, validateListColumns } from "../schema/collection";
 import { RESERVED_METADATA_KEYS, SUMMARY_ROLE } from "../schema/fields";
 import { valueFieldsOf } from "../schema/walk";
 
@@ -134,6 +136,8 @@ export interface CmsConfig<
 	readonly plugins?: Plugins;
 	/** 코드 블록 설정. 줄 효과(`lineEffects`)를 더하거나 본체 기본(강조·추가·삭제·경고·오류)을 바꾼다. */
 	readonly codeBlock?: CodeBlockConfig;
+	/** 올릴 수 있는 미디어 형식과 크기 한도. 없으면 지원 형식 전부, 이미지 10MB·4천만 픽셀, 첨부 파일 50MB. */
+	readonly media?: MediaConfig;
 }
 
 const ROLE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/;
@@ -296,6 +300,7 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 			);
 		}
 		validateFieldMeanings(collection, schema);
+		validateListColumns(collection, schema);
 		if (schema.path !== undefined) {
 			const { path } = schema;
 			if (!path.startsWith("/") || path.split(":slug").length !== 2 || /:(?!slug)/.test(path) || /[?#]/.test(path)) {
@@ -329,10 +334,15 @@ function validate(config: CmsConfig<CollectionsConfig, string, readonly CmsPlugi
 	const blockDefinitions = resolveBlocks(config);
 	const blocks = blockDefinitions.map((block) => block.name);
 	validateCodeBlockConfig(config.codeBlock);
+	validateMediaConfig(config.media);
 
 	const plugins = config.plugins ?? [];
 	const pluginNames = plugins.map((plugin) => plugin.name);
 	if (new Set(pluginNames).size !== pluginNames.length) throw new Error("cms.config: `plugins` has duplicate names");
+	assertPluginNamesFree(pluginNames);
+	assertPluginPagesFree(
+		plugins.flatMap((plugin) => (plugin.nav ?? []).map((item) => ({ plugin: plugin.name, path: item.path }))),
+	);
 	for (const plugin of plugins) {
 		plugin.validate?.({
 			collections: config.collections,

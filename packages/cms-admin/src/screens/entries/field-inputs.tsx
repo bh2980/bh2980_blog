@@ -1,7 +1,7 @@
 "use client";
 
 import type { BacklinkField, Collection, RelationField, ValueField } from "@bh2980/cms/client";
-import { isCollection, type SchemaCollection, schemaOf, storedField } from "@bh2980/cms/client";
+import { cmsApiUrl, isCollection, type SchemaCollection, schemaOf, storedField } from "@bh2980/cms/client";
 import {
 	closestCenter,
 	DndContext,
@@ -93,7 +93,7 @@ function useEntryOptions(field: RelationField) {
 				});
 				if (field.publishedOnly) params.set("status", "published");
 				const data = await cmsFetch<{ items: { id: string; title: string | null; status: string }[]; total: number }>(
-					`/api/cms/v1/entries?${params}`,
+					cmsApiUrl(`/v1/entries?${params}`),
 				);
 				all.push(
 					...data.items.map((item) => ({ id: item.id, title: item.title || t("untitled"), status: item.status })),
@@ -173,7 +173,7 @@ function SortableEntryRow({
 			ref={setNodeRef}
 			style={{ transform: CSS.Transform.toString(transform), transition }}
 			className={cn(
-				"flex items-center gap-1 rounded-md border bg-background px-1 py-1 text-xs",
+				"flex items-center gap-1 rounded-md border bg-cms-background px-1 py-1 text-xs",
 				isDragging && "relative z-10 shadow-md",
 			)}
 		>
@@ -182,7 +182,7 @@ function SortableEntryRow({
 				size="icon-xs"
 				label={t("entry.drag", { title })}
 				disabled={disabled}
-				className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+				className="cursor-grab touch-none text-cms-muted-foreground active:cursor-grabbing"
 				{...attributes}
 				{...listeners}
 			>
@@ -192,7 +192,7 @@ function SortableEntryRow({
 				{index + 1}. {title}
 				{/* 공개되지 않은 글은 모음집의 공개 목록에서 빠진다. */}
 				{option && option.status !== "published" && option.status !== "missing" && (
-					<span className="ml-1 text-amber-700 dark:text-amber-400">{t("entry.unpublished")}</span>
+					<span className="ml-1 cms-dark:text-amber-400 text-amber-700">{t("entry.unpublished")}</span>
 				)}
 			</span>
 			<IconButton
@@ -269,7 +269,7 @@ export function OrderedEntryList({ field, id, value, context, onChange }: FieldI
 				onValueChange={applySelection}
 			/>
 			{ids.length === 0 ? (
-				<p className="text-muted-foreground text-xs">{t("entry.empty", { target })}</p>
+				<p className="text-cms-muted-foreground text-xs">{t("entry.empty", { target })}</p>
 			) : (
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
 					<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
@@ -328,7 +328,7 @@ function useRecordKind(field: BacklinkField, options: readonly { id: string }[])
 		let cancelled = false;
 		void Promise.all(
 			missing.map((option) =>
-				cmsFetch<RecordEntry>(`/api/cms/v1/entries/${option.id}`)
+				cmsFetch<RecordEntry>(cmsApiUrl(`/v1/entries/${option.id}`))
 					.then((record) => {
 						const value = record.working.metadata[requirement.field];
 						return [option.id, typeof value === "string" ? value : (defaultValue ?? "")] as const;
@@ -399,7 +399,7 @@ export function BacklinkInput({
 		}
 		try {
 			const data = await cmsFetch<{ incomingReferences: IncomingReference[] }>(
-				`/api/cms/v1/entries/${targetId}/relations`,
+				cmsApiUrl(`/v1/entries/${targetId}/relations`),
 			);
 			setFetched(membersOf(data.incomingReferences));
 		} catch (loadError) {
@@ -422,11 +422,11 @@ export function BacklinkInput({
 	/** 상대 레코드의 관계 목록을 바꿔 바로 저장한다. record 컬렉션은 저장이 곧 공개 반영이다. */
 	const update = async (recordId: string, change: (ids: string[]) => string[]) => {
 		for (let attempt = 0; attempt < 2; attempt++) {
-			const record = await cmsFetch<RecordEntry>(`/api/cms/v1/entries/${recordId}`);
+			const record = await cmsFetch<RecordEntry>(cmsApiUrl(`/v1/entries/${recordId}`));
 			const current = record.working.metadata[field.via];
 			const ids = Array.isArray(current) ? current.filter((id): id is string => typeof id === "string") : [];
 			try {
-				await cmsFetch(`/api/cms/v1/entries/${recordId}`, {
+				await cmsFetch(cmsApiUrl(`/v1/entries/${recordId}`), {
 					method: "PATCH",
 					json: {
 						expectedVersion: record.version,
@@ -482,7 +482,7 @@ export function BacklinkInput({
 	};
 
 	if (!targetId) {
-		return <p className="text-muted-foreground text-xs">{t("backlink.saveDraft", { label: field.label })}</p>;
+		return <p className="text-cms-muted-foreground text-xs">{t("backlink.saveDraft", { label: field.label })}</p>;
 	}
 
 	const shown = optimistic ?? serverIds;
@@ -547,7 +547,7 @@ export function BacklinkInput({
 				}
 			/>
 			{error && (
-				<p role="alert" className="text-destructive text-xs">
+				<p role="alert" className="text-cms-destructive text-xs">
 					{error}
 				</p>
 			)}

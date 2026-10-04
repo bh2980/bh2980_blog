@@ -9,7 +9,7 @@ import {
 	type EditorMarkExtension,
 	type MarkAttrs,
 } from "@bh2980/cms-admin/editor";
-import { DropdownMenuSeparator } from "@bh2980/cms-admin/ui/dropdown-menu";
+import { DropdownMenuSeparator } from "@bh2980/cms-admin/kit";
 import type { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 import { cleanTextColor, textColorProps } from "./colors";

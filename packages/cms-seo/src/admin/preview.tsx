@@ -12,9 +12,9 @@ import {
 	SITE_NAME,
 } from "@bh2980/cms/client";
 import type { FieldViewProps } from "@bh2980/cms-admin";
-import { cn } from "@bh2980/cms-admin/lib/utils/cn";
+import type { EntryData, EntryForm } from "@bh2980/cms-admin/kit";
+import { cn } from "@bh2980/cms-admin/kit";
 import { MediaThumbnail } from "@bh2980/cms-admin/media";
-import type { EntryData, EntryForm } from "@bh2980/cms-admin/screens/entries/entry-form";
 import { SEO_ROLES } from "../fields";
 import { seoMessages } from "../messages";
 
@@ -65,22 +65,22 @@ export function SeoPreview({
 
 	return (
 		<div className="space-y-3">
-			<section aria-label={t("preview.search")} className="space-y-1 rounded-lg border bg-muted/30 p-3">
-				<p className="truncate text-[11px] text-muted-foreground">
+			<section aria-label={t("preview.search")} className="space-y-1 rounded-lg border bg-cms-muted/30 p-3">
+				<p className="truncate text-[11px] text-cms-muted-foreground">
 					{SITE_NAME}
 					{path
 						.split("/")
 						.filter(Boolean)
 						.map((part) => ` › ${decodeURIComponent(part)}`)}
 				</p>
-				<p className="line-clamp-2 font-medium text-[#1a0dab] text-sm leading-snug dark:text-[#8ab4f8]">
+				<p className="line-clamp-2 font-medium cms-dark:text-[#8ab4f8] text-[#1a0dab] text-sm leading-snug">
 					{title || t("preview.noTitle")}
 				</p>
-				<p className={cn("line-clamp-2 text-xs leading-relaxed", !description && "text-muted-foreground italic")}>
+				<p className={cn("line-clamp-2 text-xs leading-relaxed", !description && "text-cms-muted-foreground italic")}>
 					{description || t("preview.noDescription")}
 				</p>
 				{noindex && (
-					<p className="pt-1 font-medium text-[11px] text-amber-700 dark:text-amber-400">{t("preview.hidden")}</p>
+					<p className="pt-1 font-medium cms-dark:text-amber-400 text-[11px] text-amber-700">{t("preview.hidden")}</p>
 				)}
 			</section>
 
@@ -88,9 +88,11 @@ export function SeoPreview({
 				<section aria-label={t("preview.share")} className="overflow-hidden rounded-lg border">
 					{imageId && <MediaThumbnail mediaId={imageId} className="aspect-[1.91/1] w-full border-b" />}
 					<div className="space-y-0.5 p-3">
-						<p className="truncate text-[11px] text-muted-foreground">{SITE_NAME}</p>
+						<p className="truncate text-[11px] text-cms-muted-foreground">{SITE_NAME}</p>
 						<p className="line-clamp-2 font-medium text-sm leading-snug">{title || t("preview.noTitle")}</p>
-						{description && <p className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">{description}</p>}
+						{description && (
+							<p className="line-clamp-2 text-cms-muted-foreground text-xs leading-relaxed">{description}</p>
+						)}
 					</div>
 				</section>
 			)}

@@ -99,8 +99,8 @@ export function FieldRow({ id, label, required, issue, help, slot, aside, childr
 		);
 	}
 	const labelNode = (
-		<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
-			{label} {required && <span className="text-destructive">*</span>}
+		<FieldLabel htmlFor={id} className="font-semibold text-cms-muted-foreground text-xs">
+			{label} {required && <span className="text-cms-destructive">*</span>}
 		</FieldLabel>
 	);
 	return (
@@ -134,8 +134,8 @@ function SlotFieldRow({
 	return (
 		<UiField data-invalid={Boolean(issue) || undefined} className="gap-1.5">
 			<div className="flex min-h-6 items-center justify-between gap-2">
-				<FieldLabel htmlFor={id} className="font-semibold text-muted-foreground text-xs">
-					{label} {required && <span className="text-destructive">*</span>}
+				<FieldLabel htmlFor={id} className="font-semibold text-cms-muted-foreground text-xs">
+					{label} {required && <span className="text-cms-destructive">*</span>}
 				</FieldLabel>
 				{aside || trigger ? (
 					<span className="flex items-center gap-1">
@@ -188,7 +188,7 @@ function RecordRelationInput({ field, id, value, invalid, describedBy, context, 
 				}
 			/>
 			{records.error && (
-				<p role="alert" className="text-destructive text-xs">
+				<p role="alert" className="text-cms-destructive text-xs">
 					{records.error}
 				</p>
 			)}
@@ -505,7 +505,9 @@ export function SchemaFields({
 					}
 					return (
 						<section key={key} aria-label={group.group} className="space-y-4 border-t pt-4">
-							<h3 className="font-medium text-[11px] text-muted-foreground uppercase tracking-wide">{group.group}</h3>
+							<h3 className="font-medium text-[11px] text-cms-muted-foreground uppercase tracking-wide">
+								{group.group}
+							</h3>
 							{visible.map(renderField)}
 						</section>
 					);
@@ -543,7 +545,7 @@ function LayoutSection({ title, defaultOpen, children }: { title: string; defaul
 								type="button"
 								variant="ghost"
 								size="xs"
-								className="-ml-2 font-semibold text-muted-foreground text-xs"
+								className="-ml-2 font-semibold text-cms-muted-foreground text-xs"
 							/>
 						}
 					>

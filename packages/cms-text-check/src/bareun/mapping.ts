@@ -1,10 +1,5 @@
 import { createActiveTranslator } from "@bh2980/cms";
-import {
-	PLACEHOLDER,
-	type TextIssue,
-	type TextIssueCategory,
-	type TextIssueSeverity,
-} from "@bh2980/cms-admin/text-check";
+import { PLACEHOLDER, type TextIssue, type TextIssueCategory, type TextIssueSeverity } from "../index";
 import { bareunMessages } from "./messages";
 
 /**

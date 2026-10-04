@@ -98,13 +98,13 @@ const TABLE_TOOL_GROUPS: ToolbarItem[][] = [
 		{
 			label: t("tableToolbar.deleteRow"),
 			icon: Rows3,
-			className: "text-destructive",
+			className: "text-cms-destructive",
 			run: (e) => chain(e).deleteRow().run(),
 		},
 		{
 			label: t("tableToolbar.deleteColumn"),
 			icon: Columns3,
-			className: "text-destructive",
+			className: "text-cms-destructive",
 			run: (e) => chain(e).deleteColumn().run(),
 		},
 	],

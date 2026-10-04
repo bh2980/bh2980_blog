@@ -1,6 +1,6 @@
 "use client";
 
-import { adminHref } from "@bh2980/cms/client";
+import { adminUrl, cmsApiUrl } from "@bh2980/cms/client";
 import { FileText, LayoutTemplate, RefreshCw, Settings } from "lucide-react";
 import { useState } from "react";
 import {
@@ -38,7 +38,7 @@ export function TemplateMenu({
 	const load = async () => {
 		setLoadFailed(false);
 		try {
-			const data = await cmsFetch<{ items: Template[] }>("/api/cms/v1/templates");
+			const data = await cmsFetch<{ items: Template[] }>(cmsApiUrl("/v1/templates"));
 			setTemplates(data.items);
 		} catch {
 			setLoadFailed(true);
@@ -98,7 +98,7 @@ export function TemplateMenu({
 						))
 					)}
 					<DropdownMenuSeparator />
-					<DropdownMenuItem onClick={() => window.open(adminHref("/templates"), "_blank", "noopener")}>
+					<DropdownMenuItem onClick={() => window.open(adminUrl("/templates"), "_blank", "noopener")}>
 						<Settings aria-hidden />
 						{t("template.manage")}
 					</DropdownMenuItem>

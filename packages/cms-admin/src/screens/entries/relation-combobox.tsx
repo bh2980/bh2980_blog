@@ -109,7 +109,7 @@ export function RelationCombobox({
 			<ComboboxEmpty>{t("relation.empty")}</ComboboxEmpty>
 			<ComboboxList>
 				{(item: Item) => (
-					<ComboboxItem key={item.value} value={item} className={cn(item.create && "text-primary")}>
+					<ComboboxItem key={item.value} value={item} className={cn(item.create && "text-cms-primary")}>
 						{item.create ? (
 							<>
 								<Plus aria-hidden />
@@ -125,7 +125,7 @@ export function RelationCombobox({
 	);
 
 	const errorText = error && (
-		<p role="alert" className="text-destructive text-xs">
+		<p role="alert" className="text-cms-destructive text-xs">
 			{error}
 		</p>
 	);

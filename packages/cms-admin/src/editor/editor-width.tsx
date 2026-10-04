@@ -68,7 +68,7 @@ export function EditorWidthMenu({ value, onChange }: { value: EditorWidth; onCha
 			<IconButton
 				label={t("editorWidth.label")}
 				side="bottom"
-				className="text-muted-foreground"
+				className="text-cms-muted-foreground"
 				onMouseDown={(event) => event.preventDefault()}
 				trigger={(button) => <DropdownMenuTrigger render={button} />}
 			>

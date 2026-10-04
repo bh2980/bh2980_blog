@@ -4,9 +4,7 @@ import { createTranslator } from "@bh2980/cms/client";
 import type { EditorExtension } from "@bh2980/cms-admin";
 import { errorText } from "@bh2980/cms-admin/api";
 import type { BlockAction } from "@bh2980/cms-admin/editor";
-import { Button } from "@bh2980/cms-admin/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@bh2980/cms-admin/ui/popover";
-import { Textarea } from "@bh2980/cms-admin/ui/textarea";
+import { Button, Popover, PopoverContent, PopoverTrigger, Textarea } from "@bh2980/cms-admin/kit";
 import type { Editor } from "@tiptap/react";
 import { Languages, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -230,11 +228,11 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		running ? (
 			<span className="flex items-center gap-1">
 				{progress && (
-					<span className="text-muted-foreground text-xs tabular-nums">
+					<span className="text-cms-muted-foreground text-xs tabular-nums">
 						{t("progress", { done: progress.done, total: progress.total })}
 					</span>
 				)}
-				<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={stop}>
+				<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-cms-muted-foreground" onClick={stop}>
 					<Square aria-hidden className="size-4" />
 					{t("stop")}
 				</Button>
@@ -242,7 +240,7 @@ export function useAiTranslate(locales: { sourceLocale: string; targetLocale: st
 		) : (
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger
-					render={<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" />}
+					render={<Button type="button" size="sm" variant="ghost" className="gap-1.5 text-cms-muted-foreground" />}
 				>
 					<Languages aria-hidden className="size-4" />
 					{t("all")}

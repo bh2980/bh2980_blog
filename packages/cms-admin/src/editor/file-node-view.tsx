@@ -1,6 +1,13 @@
 "use client";
 
-import { createTranslator, type FileKind, fileKindOf, fileTypeLabel, formatFileSize } from "@bh2980/cms/client";
+import {
+	cmsApiUrl,
+	createTranslator,
+	type FileKind,
+	fileKindOf,
+	fileTypeLabel,
+	formatFileSize,
+} from "@bh2980/cms/client";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { FileArchive, FileText, FileType } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -24,7 +31,7 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 	useEffect(() => {
 		if (!mediaId) return;
 		let cancelled = false;
-		fetch(`/api/cms/v1/media/${encodeURIComponent(mediaId)}`)
+		fetch(cmsApiUrl(`/v1/media/${encodeURIComponent(mediaId)}`))
 			.then(async (response) => {
 				if (!response.ok) throw new Error("media_lookup_failed");
 				return (await response.json()) as MediaInfo;
@@ -52,11 +59,11 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 		<NodeViewWrapper
 			data-file-block
 			className={cn(
-				"not-prose my-6 flex items-center gap-3 rounded-lg border bg-card px-4 py-3",
+				"not-prose my-6 flex items-center gap-3 rounded-lg border bg-cms-card px-4 py-3",
 				selected && SELECTED_RING,
 			)}
 		>
-			<Icon aria-hidden className="size-8 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+			<Icon aria-hidden className="size-8 shrink-0 text-cms-muted-foreground" strokeWidth={1.5} />
 			<div className="min-w-0 flex-1">
 				<input
 					aria-label={t("fileNode.displayName")}
@@ -66,9 +73,11 @@ export function CmsFileNodeView({ node, updateAttributes, selected, editor }: No
 					// 입력 글자가 에디터 문서로 새지 않게 한다.
 					onKeyDown={(event) => event.stopPropagation()}
 					onChange={(event) => updateAttributes({ label: event.target.value || null })}
-					className="w-full truncate bg-transparent font-medium text-sm outline-none placeholder:text-foreground"
+					className="w-full truncate bg-transparent font-medium text-sm outline-none placeholder:text-cms-foreground"
 				/>
-				<p className={cn("text-muted-foreground text-xs", media === "failed" && "text-destructive")}>{details}</p>
+				<p className={cn("text-cms-muted-foreground text-xs", media === "failed" && "text-cms-destructive")}>
+					{details}
+				</p>
 			</div>
 		</NodeViewWrapper>
 	);

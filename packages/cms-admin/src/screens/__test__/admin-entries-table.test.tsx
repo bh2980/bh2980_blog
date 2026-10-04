@@ -19,6 +19,7 @@ const item = (id: string, fields: Partial<ListEntriesItem> = {}): ListEntriesIte
 	version: 1,
 	folderId: null,
 	relations: {},
+	values: {},
 	hasUnpublishedChanges: false,
 	publishedAt: null,
 	createdAt: new Date("2026-01-01T00:00:00Z"),

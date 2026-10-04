@@ -138,81 +138,51 @@ export default defineAdminPlugin({
 편집 화면 확장(`editorExtensions`)은 툴바 끝 요소·블록 손잡이 옆 동작·선택 영역 메뉴·슬래시 메뉴 동작을 더하는 훅이다. 필드 옆·본문 이미지·미디어·코드 블록
 자리에는 `SlotRegistryProvider`(`@bh2980/cms-admin/slots`)로 동작을 붙인다.
 
-## 맞춤법·문장 검사 확장
+화면을 관리자와 같은 모양으로 만들 때는 확장용 묶음 `@bh2980/cms-admin/kit`을 쓴다. 단추·입력 칸·대화상자·메뉴·표 같은 부품,
+`cn`, 확인 대화상자(`useConfirm`), 플러그인 화면 틀(`AdminShell`), 아이콘 찾기(`useIconByName`), `useDebounced`, 글 입력값 타입
+(`EntryForm`·`EntryData`)이 들어 있다. 관리자 내부 파일 경로(`ui/*`·`screens/*`)는 공개하지 않는다.
 
-본체 편집기는 검사기를 모르고, 확장이 준 버튼·창을 그리기만 한다. 사이트·확장이 검사기(유료 API, 브라우저에서 도는 npm 패키지
-등)를 만들어 `textCheckExtension({ checkers })`를 관리자 확장(`editorExtensions`)에 넣으면, 글의 언어를 검사하는 검사기마다
-도구 모음 버튼(이름 `label`, 아이콘 `icon`)이 생기고 결과는 물결 밑줄·결과 창·목록으로 보인다. 확장을 여럿 넣어도 밑줄은
-겹치지 않는다.
-
-```tsx
-"use client";
-import { defineTextChecker } from "@bh2980/cms-admin/text-check";
-import { textCheckExtension } from "@bh2980/cms-admin/text-check/extension";
-
-const myChecker = defineTextChecker({
-	id: "my-words",
-	label: "금지어 검사", // 도구 모음 버튼 이름
-	icon: "ban", // lucide 이름이나 컴포넌트. 없으면 맞춤법 아이콘
-	locales: ["ko"], // 없으면 모든 언어
-	limits: { maxChars: 10_000, maxSegments: 50 }, // 넘으면 나눠 보낸다
-	// auto: true, // 입력을 멈추면 바뀐 문단만 저절로 검사(기본은 끔)
-	check: async (segments, { signal }) => [
-		// { segmentId, start, end, message, suggestions: [], severity: "error" | "warning" | "info", ruleId?, category?, source?, url? }
-	],
-});
-
-const components = { editorExtensions: [textCheckExtension({ checkers: [myChecker] })] };
-```
-
-- 검사 단위는 문단(제목·목록 항목·표 칸 등 글이 든 블록) 하나다: `{ id, text, locale }`. 결과의 `start`·`end`는 그 문단 안의
-  UTF-16 위치(JS 문자열 인덱스, `end` 미포함)다.
-- 코드 블록·수식·코드 펜스 블록·블록 속성은 보내지 않는다. 인라인 코드와 주소는 `￼` 한 글자로 바꿔 보내고, 그 글자에 걸친
-  결과는 버린다. 링크는 글자만 보낸다.
-- 검사기 버튼은 고른 글자가 있으면 그 범위에 걸친 문단만, 없으면 문서 전체를 그 검사기로 검사한다. 결과는 물결 밑줄로 보이고,
-  밑줄을 누르면 설명·바꿀 글 후보·"무시"가 뜬다. 버튼 옆 숫자를 누르면 결과 목록이다. 결과 범위 안을 고치면 그 결과는 사라진다.
-- 같은 검사기·언어·글자의 문단은 다시 보내지 않는다(편집 화면을 여는 동안). 다시 검사하거나 화면을 닫으면 진행 중인 요청을
-  `signal`로 끊는다.
-- `auto: true`는 유료·호출 제한 API면 비용이 들 수 있어 기본으로 끈다. 켜면 입력을 1.5초 멈춘 뒤, 연 뒤로 바뀐 문단만 보낸다.
-
-### 키가 필요한 API
-
-API 키는 브라우저에 두지 않는다. 브라우저는 `remoteTextChecker`로 사이트 경로에 `{ segments }`를 보내고, 경로가 키로 API를
-불러 `{ issues }`를 돌려준다. `textCheckRoute`는 관리자 로그인·같은 출처를 확인하고 요청 크기(기본 100문단·20,000자)를 막는다.
-
-```ts
-// 관리자 컴포넌트(브라우저)
-import { remoteTextChecker } from "@bh2980/cms-admin/text-check";
-const checker = remoteTextChecker({ id: "bareun", label: "바른", locales: ["ko"], url: "/api/text-check" });
-
-// app/api/text-check/route.ts(서버)
-import { textCheckRoute } from "@bh2980/cms-admin/text-check/server";
-export const POST = textCheckRoute({
-	limits: { maxChars: 20_000 },
-	check: async (segments, { signal }) => callProvider(segments, process.env.MY_API_KEY, signal), // TextIssue[]
-});
-```
-
-### 검사기를 붙일 때
-
-- 위치 단위가 다르면 검사기 쪽에서 UTF-16으로 바꾼다. 바이트(UTF-8)·코드 포인트·문장 기준 위치를 그대로 쓰면 이모지·한글 뒤에서
-  밑줄이 어긋난다.
-- 바른(Bareun): 요청에 `encoding_type: UTF16`을 주면 `begin_offset`·`length`를 그대로 쓸 수 있다. 중첩 결과(`nested`)는 펼친다.
-- LanguageTool·Yahoo 같은 위치 기반 API: 문단을 이어 보낼 때는 돌아온 위치를 문단별로 다시 나눈다. 요청 크기·분당 호출 한도는
-  `limits`와 서버 경로에서 맞춘다.
-- textlint: `range`(`[start, end]`)를 그대로 쓴다. `fix.text`는 후보로 쓰되 `fix.range`가 표시 범위보다 넓을 수 있다.
-- hunspell 계열(nspell·typo-js): 낱말 단위라 `Intl.Segmenter({ granularity: "word" })` 등으로 낱말을 나눠 검사하고 위치를 직접
-  센다. 띄어쓰기·문법은 보지 못한다.
-- 위치 없이 틀린 낱말만 주는 검사기는 문단 글자에서 낱말을 찾아 위치를 정한다(같은 낱말이 여럿이면 차례대로).
-
-`examples/other-site`의 `app/(admin)/studio/admin-components.tsx`가 브라우저에서 도는 작은 금지어 검사기 예시다.
+| 진입점 | 내용 |
+|---|---|
+| `@bh2980/cms-admin` | 사이트 컴포넌트 넣기(`CmsAdminComponentsProvider`)·속성 칸·목록 칸 타입 |
+| `/next` | 관리자 레이아웃·페이지(앱 라우트에서 내보낸다) |
+| `/editor` | 편집기 확장 도우미(버블·슬래시 메뉴·코드 블록 잇기) |
+| `/blocks` | 블록 편집 화면 도우미 |
+| `/plugins` | `defineAdminPlugin` |
+| `/slots` | 화면 자리에 동작 붙이기 |
+| `/media` | 미디어 고르기·미리보기 |
+| `/api` | 관리자 API 부르기(`cmsFetch`) |
+| `/kit` | 확장용 부품·도우미 묶음 |
+| `/styles.css` | 관리자 스타일 |
 
 ## 스타일
 
-`@bh2980/cms-admin/styles.css`가 관리자 색 토큰, 배포 묶음의 Tailwind 클래스 찾기(`@source`), 관리자 화면이 쓰는 Tailwind
-변형(클래스 방식 `dark`, Base UI 방향 `data-horizontal`·`data-vertical`)을 준다. 앱 CSS에 변형을 따로 적지 않아도 된다.
-앱이 같은 이름의 변형을 다시 정하면(이 파일 import 뒤라서) 앱 것이 이긴다. 그때도 `.dark`는 어두운 테마로 남겨 둔다.
-앱 쪽 준비물(`tw-animate-css`·`@tailwindcss/typography`)은 `styles.css` 머리 주석에 적었다.
+관리자 화면의 CSS는 **Tailwind 4**를 선택 피어 요건으로 한다(`package.json`에 피어로 적지는 않는다). 관리자 화면을 쓰는 앱만 Tailwind 4가 필요하고,
+`@bh2980/cms` 본체와 읽기·공개 렌더만 쓰는 앱에는 필요 없다. 미리 만든(prebuilt) CSS는 주지 않는다. 앱의 Tailwind가 관리자 화면 클래스를 직접 만들므로
+앱에 `tailwindcss`·`@tailwindcss/postcss`(Tailwind 4), `tw-animate-css`, `@tailwindcss/typography`가 있어야 한다.
+
+`@bh2980/cms-admin/styles.css`가 주는 것(모두 `cms` 이름표가 붙어 앱의 이름과 겹치지 않는다):
+
+- **색 이름.** `bg-cms-background`·`text-cms-muted-foreground`·`border-cms-border` 같은 `cms-*` 색(값은 `--cms-*` 변수). 앱의 shadcn
+  이름(`bg-background` 등)과 변수(`--background` 등)는 건드리지 않는다. `--cms-*`는 관리자 화면이 있는 문서에만 걸린다.
+- **변형.** `cms-dark:`는 `html`(또는 상위 요소)의 `.dark` 또는 `[data-theme="dark"]`일 때, `cms-horizontal:`·`cms-vertical:`은 Base UI의
+  `data-orientation`일 때다. 앱의 `dark`·`data-horizontal` 정의와 따로 논다. 앱이 어떤 테마 방식(클래스·`data-theme`)을 쓰든 관리자 화면의
+  어두운 테마가 따라간다.
+- **그 밖에.** 배포 묶음의 Tailwind 클래스 찾기(`@source`), 테두리·포커스 윤곽 기본색, 관리자 문서의 둥글기(`--radius*`) 값(Tailwind 기본
+  이름이라 관리자가 있는 문서에서만 바뀐다).
+
+`CmsAdminLayout`의 선택 속성으로 관리자가 두는 공급자를 끌 수 있다. 사이트가 이미 `next-themes` 공급자나 `sonner` `Toaster`를 두었다면 겹치지 않게 끈다.
+
+```tsx
+<CmsAdminLayout themeProvider={false} toaster={false}>
+	{children}
+</CmsAdminLayout>
+```
+
+- `themeProvider`(기본 `true`): 관리자 화면이 `next-themes` 공급자(`attribute="class"`)를 둔다. 끄면 사이트의 공급자가 `html`에 붙이는
+  `.dark`·`[data-theme="dark"]`를 따른다. 켜 둔 채 관리자를 떠나면 공급자가 `html`에 남긴 `dark` 클래스와 `color-scheme`을 지운다
+  (지우지 않으면 같은 루트 레이아웃의 공개 화면이 어둡게 남는다).
+- `toaster`(기본 `true`): 관리자 화면이 `sonner`의 `Toaster`를 둔다. 끄면 사이트의 `Toaster`에 관리자 알림이 뜬다(같은 `sonner`를 쓸 때).
 
 ## 개발
 

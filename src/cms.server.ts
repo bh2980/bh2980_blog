@@ -1,4 +1,5 @@
-import { defineServerConfig, githubAuth, postgres, r2Storage } from "@bh2980/cms/server";
+import { r2Storage } from "@bh2980/cms/s3";
+import { defineServerConfig, githubAuth, postgres } from "@bh2980/cms/server";
 import { toPublicEntryDto } from "@/libs/contents/public-api";
 
 /**
@@ -12,7 +13,6 @@ export default defineServerConfig({
 		schema: process.env.CMS_SCHEMA,
 	}),
 	media: r2Storage({
-		accountId: process.env.CMS_R2_ACCOUNT_ID,
 		accessKeyId: process.env.CMS_R2_ACCESS_KEY_ID,
 		secretAccessKey: process.env.CMS_R2_SECRET_ACCESS_KEY,
 		bucket: process.env.CMS_R2_BUCKET,

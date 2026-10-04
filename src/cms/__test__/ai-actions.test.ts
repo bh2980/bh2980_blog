@@ -1,5 +1,5 @@
 import type { CmsPlugin } from "@bh2980/cms";
-import { BLOCKS } from "@bh2980/cms/client";
+import { BLOCKS, getPluginOptions } from "@bh2980/cms/client";
 import { type AiConfig, resolveAiActions } from "@bh2980/cms-ai";
 import { describe, expect, it } from "vitest";
 import cmsConfig from "@/cms.config";
@@ -10,7 +10,7 @@ import cmsConfig from "@/cms.config";
  */
 describe("블로그 AI 기능", () => {
 	const plugins: readonly CmsPlugin[] = cmsConfig.plugins ?? [];
-	const ai = plugins.find((plugin) => plugin.name === "ai")?.options as AiConfig;
+	const ai = getPluginOptions<AiConfig>("ai") as AiConfig;
 	const actions = resolveAiActions(
 		ai,
 		{ collections: cmsConfig.collections, blocks: BLOCKS, locales: cmsConfig.locales },

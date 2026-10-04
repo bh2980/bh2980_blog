@@ -201,7 +201,7 @@ describe("MathPreview 수식 렌더러 오류 처리", () => {
 		const { container } = render(<MathPreview value="\\invalidMacro{" />);
 
 		await waitFor(() => {
-			const errorBox = container.querySelector(".text-destructive");
+			const errorBox = container.querySelector(".text-cms-destructive");
 			expect(errorBox).not.toBeNull();
 			expect(errorBox?.textContent).toContain("KaTeX parse error");
 		});

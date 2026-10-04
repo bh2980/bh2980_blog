@@ -1,6 +1,6 @@
 "use client";
 
-import { adminEntryEditHref } from "@bh2980/cms/client";
+import { adminEntryEditHref, cmsApiUrl, withBasePath } from "@bh2980/cms/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CmsApiError, cmsFetch } from "../admin-api";
 import {
@@ -228,7 +228,7 @@ export function useEntryAutosave({
 				const isNew = !entryIdRef.current;
 				const newKey = backupKey(adminId, null, collection);
 				const saved = await cmsFetch<EntryData>(
-					isNew ? "/api/cms/v1/entries" : `/api/cms/v1/entries/${entryIdRef.current}`,
+					isNew ? cmsApiUrl("/v1/entries") : cmsApiUrl(`/v1/entries/${entryIdRef.current}`),
 					{
 						method: isNew ? "POST" : "PATCH",
 						json: {
@@ -246,7 +246,7 @@ export function useEntryAutosave({
 				if (isNew) {
 					entryIdRef.current = saved.id;
 					// 화면을 다시 마운트하지 않고 주소만 편집 주소로 바꾼다.
-					window.history.replaceState({ ...window.history.state }, "", adminEntryEditHref(saved.id));
+					window.history.replaceState({ ...window.history.state }, "", withBasePath(adminEntryEditHref(saved.id)));
 				}
 				versionRef.current = saved.version;
 				baseMetadataRef.current = saved.working?.metadata ?? built.metadata;
@@ -275,7 +275,7 @@ export function useEntryAutosave({
 					}
 					if (error.status === 409 && error.code === "conflict" && entryIdRef.current) {
 						updateStatus("conflict");
-						const server = await cmsFetch<EntryData>(`/api/cms/v1/entries/${entryIdRef.current}`).catch(() => null);
+						const server = await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${entryIdRef.current}`)).catch(() => null);
 						if (server) callbacksRef.current.onConflict(server, snapshot);
 						return false;
 					}
@@ -311,7 +311,7 @@ export function useEntryAutosave({
 		async (verify = true): Promise<boolean> => {
 			if (verify && entryIdRef.current) {
 				try {
-					const server = await cmsFetch<EntryData>(`/api/cms/v1/entries/${entryIdRef.current}`);
+					const server = await cmsFetch<EntryData>(cmsApiUrl(`/v1/entries/${entryIdRef.current}`));
 					if (server.version !== versionRef.current) {
 						updateStatus("conflict");
 						callbacksRef.current.onConflict(server, formRef.current);

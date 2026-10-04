@@ -88,9 +88,10 @@ describe("편집기 미리보기", () => {
 				</ChartProvider>
 			</MermaidProvider>,
 		);
-		await waitFor(() => expect(screen.getByText("mermaid: MermaidPreview")).toBeTruthy());
-		await waitFor(() => expect(screen.getByText("chart: ChartPreview")).toBeTruthy());
-	});
+		// 렌더러 모듈을 처음 불러오는 시간이 길어 기다리는 시간을 늘린다.
+		await waitFor(() => expect(screen.getByText("mermaid: MermaidPreview")).toBeTruthy(), { timeout: 15_000 });
+		await waitFor(() => expect(screen.getByText("chart: ChartPreview")).toBeTruthy(), { timeout: 15_000 });
+	}, 30_000);
 
 	it("사이트가 같은 이름으로 넣은 미리보기(안쪽 공급자)가 이긴다", async () => {
 		const Site = ({ children }: { children: ReactNode }) => (

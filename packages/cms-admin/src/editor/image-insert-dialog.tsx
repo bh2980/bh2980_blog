@@ -1,6 +1,6 @@
 "use client";
 
-import { createTranslator } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { MEDIA_NOT_CONFIGURED } from "../screens/api-error-message";
@@ -130,7 +130,7 @@ export function ImageInsertDialog({
 		const timer = setTimeout(() => {
 			const params = new URLSearchParams({ pageSize: "24", kind: "image" });
 			if (search.trim()) params.set("search", search.trim());
-			fetch(`/api/cms/v1/media?${params.toString()}`)
+			fetch(cmsApiUrl(`/v1/media?${params.toString()}`))
 				.then((res) => {
 					if (!res.ok) throw new Error(String(res.status));
 					return res.json();
@@ -262,7 +262,7 @@ export function ImageInsertDialog({
 										/>
 										{t("imageDialog.optimize")}
 									</Label>
-									<p className="text-muted-foreground text-xs" aria-live="polite">
+									<p className="text-cms-muted-foreground text-xs" aria-live="polite">
 										{prepared?.optimized
 											? `WebP · ${formatBytes(file.size)} → ${formatBytes(prepared.file.size)} · ${prepared.width}×${prepared.height}`
 											: `${t("imageDialog.keepOriginal", { size: formatBytes(file.size) })}${prepared?.skippedReason ? ` · ${prepared.skippedReason}` : ""}`}
@@ -296,7 +296,7 @@ export function ImageInsertDialog({
 									</Alert>
 								)}
 								{library.length === 0 && !isLibraryLoading && !libraryFailed && (
-									<p className="col-span-3 py-6 text-center text-muted-foreground text-sm">
+									<p className="col-span-3 py-6 text-center text-cms-muted-foreground text-sm">
 										{t("imageDialog.libraryEmpty")}
 									</p>
 								)}
@@ -309,14 +309,14 @@ export function ImageInsertDialog({
 										onClick={() => pick(item)}
 										className={cn(
 											"h-auto flex-col items-stretch gap-0 overflow-hidden p-0 text-left font-normal text-xs",
-											picked?.id === item.id && "ring-2 ring-primary",
+											picked?.id === item.id && "ring-2 ring-cms-primary",
 										)}
 									>
 										{item.publicUrl ? (
 											// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 											<img src={item.publicUrl} alt="" className="h-20 w-full object-cover" />
 										) : (
-											<span className="flex h-20 items-center justify-center bg-muted">
+											<span className="flex h-20 items-center justify-center bg-cms-muted">
 												{t("imageDialog.noPreview")}
 											</span>
 										)}
@@ -345,7 +345,7 @@ export function ImageInsertDialog({
 							className="min-h-0"
 						/>
 						{showAltError && (
-							<p id={altErrorId} role="alert" className="text-destructive text-xs">
+							<p id={altErrorId} role="alert" className="text-cms-destructive text-xs">
 								{ALT_REQUIRED_MESSAGE}
 							</p>
 						)}
@@ -375,7 +375,7 @@ export function ImageInsertDialog({
 						</output>
 					)}
 					{error && (
-						<p role="alert" className="text-destructive text-sm">
+						<p role="alert" className="text-cms-destructive text-sm">
 							{error}
 						</p>
 					)}

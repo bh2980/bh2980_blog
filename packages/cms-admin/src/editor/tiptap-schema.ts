@@ -57,11 +57,11 @@ export const CmsOpaqueBlock = Node.create({
 				"data-source": source,
 				"data-label": label,
 				class:
-					"my-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-900",
+					"my-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 cms-dark:border-neutral-700 cms-dark:bg-neutral-900",
 			},
 			[
 				"div",
-				{ class: "text-xs font-medium text-neutral-500 dark:text-neutral-400" },
+				{ class: "text-xs font-medium text-neutral-500 cms-dark:text-neutral-400" },
 				t("opaqueBlock.editInSource", { label }),
 			],
 			["pre", { class: "mt-2 overflow-x-auto whitespace-pre-wrap text-xs" }, source],

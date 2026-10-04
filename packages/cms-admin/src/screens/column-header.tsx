@@ -65,7 +65,7 @@ function CheckRow({
 	onChange: (next: boolean) => void;
 }) {
 	return (
-		<Label className="flex items-center gap-2 rounded-sm px-2 py-1.5 font-normal hover:bg-accent">
+		<Label className="flex items-center gap-2 rounded-sm px-2 py-1.5 font-normal hover:bg-cms-accent">
 			<Checkbox checked={checked} onCheckedChange={(next) => onChange(next === true)} />
 			{label}
 		</Label>
@@ -174,7 +174,7 @@ function DateFilter({
 }) {
 	return (
 		<div className="space-y-2">
-			<p className="px-1 text-muted-foreground text-xs">{label}</p>
+			<p className="px-1 text-cms-muted-foreground text-xs">{label}</p>
 			<DateRangeCalendar from={from} to={to} onChange={onChange} />
 			<p className="px-1 text-xs" aria-live="polite">
 				{from || to ? `${from || t("filter.rangeStart")} ~ ${to || t("filter.rangeEnd")}` : t("filter.noRange")}
@@ -254,7 +254,10 @@ export function ColumnHeader({
 						type="button"
 						variant="ghost"
 						size="sm"
-						className={cn("-ml-2 h-7 gap-1 px-2 font-normal text-muted-foreground text-xs", filtered && "text-primary")}
+						className={cn(
+							"-ml-2 h-7 gap-1 px-2 font-normal text-cms-muted-foreground text-xs",
+							filtered && "text-cms-primary",
+						)}
 						aria-label={`${config.label}${sorted ? t("filter.sortedSuffix", { direction: sorted === "asc" ? t("filter.sortAsc") : t("filter.sortDesc") }) : ""}${filtered ? t("filter.filteredSuffix") : ""}`}
 					/>
 				}

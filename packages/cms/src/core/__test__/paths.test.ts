@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cmsConfig } from "../../config/resolved";
 import {
 	ADMIN_PATH,
 	adminEntryEditHref,
 	adminHref,
 	adminHrefWith,
+	adminUrl,
+	cmsApiUrl,
+	cmsBasePath,
 	DEFAULT_ADMIN_PATH,
+	normalizeBasePath,
 	SITE_HOME,
+	withBasePath,
 } from "../admin-paths";
 import { previewHrefWith } from "../links";
 import { DEFAULT_LOCALE, LOCALES, localePrefix, localePrefixFor, localizePath, localizePathWith } from "../locales";
@@ -26,6 +31,39 @@ describe("관리자 주소(admin.path)", () => {
 		expect(adminHref("/login")).toBe(`${ADMIN_PATH}/login`);
 		expect(adminEntryEditHref("e1")).toBe(`${ADMIN_PATH}/entries/e1/edit`);
 		expect(SITE_HOME).toBe(cmsConfig.site?.home ?? "/");
+	});
+});
+
+describe("하위 경로(Next basePath)", () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it("basePath가 없으면 주소가 그대로다", () => {
+		vi.stubEnv("NEXT_PUBLIC_CMS_BASE_PATH", "");
+		expect(cmsBasePath()).toBe("");
+		expect(cmsApiUrl("/v1/entries?page=2")).toBe("/api/cms/v1/entries?page=2");
+		expect(withBasePath("/x")).toBe("/x");
+		expect(adminUrl("/login")).toBe(adminHref("/login"));
+	});
+
+	it("basePath가 있으면 API 주소와 브라우저 주소 앞에 붙고, Link용 adminHref는 그대로다", () => {
+		vi.stubEnv("NEXT_PUBLIC_CMS_BASE_PATH", "/blog");
+		expect(cmsApiUrl("/v1/entries/e1")).toBe("/blog/api/cms/v1/entries/e1");
+		expect(withBasePath("/preview/post/a")).toBe("/blog/preview/post/a");
+		expect(adminUrl()).toBe(`/blog${ADMIN_PATH}`);
+		expect(adminUrl("/login")).toBe(`/blog${ADMIN_PATH}/login`);
+		expect(adminHref("/login")).toBe(`${ADMIN_PATH}/login`);
+	});
+
+	it("basePath 값의 앞뒤 빗금을 고른다", () => {
+		expect(normalizeBasePath(undefined)).toBe("");
+		expect(normalizeBasePath("")).toBe("");
+		expect(normalizeBasePath("/")).toBe("");
+		expect(normalizeBasePath("blog/")).toBe("/blog");
+		expect(normalizeBasePath("/a/b//")).toBe("/a/b");
+	});
+
+	it("API 경로는 /로 시작해야 한다", () => {
+		expect(() => cmsApiUrl("v1/entries")).toThrow(/must start with/);
 	});
 });
 

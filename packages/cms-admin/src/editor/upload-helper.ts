@@ -1,4 +1,4 @@
-import { createTranslator, fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator, fileTypeFor, MAX_FILE_BYTES } from "@bh2980/cms/client";
 import { cmsApiErrorMessage } from "../screens/api-error-message";
 import { editorMessages } from "./messages";
 
@@ -156,7 +156,7 @@ export async function uploadImageFile(
 	const prepared: PreparedUpload = input instanceof File ? { file: input, optimized: false } : input;
 	const { file, original } = prepared;
 
-	const prepareRes = await fetch("/api/cms/v1/media/uploads", {
+	const prepareRes = await fetch(cmsApiUrl("/v1/media/uploads"), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
@@ -186,7 +186,7 @@ export async function uploadImageFile(
 			: Promise.resolve(),
 	]);
 
-	const completeRes = await fetch(`/api/cms/v1/media/${ticket.mediaId}/complete`, {
+	const completeRes = await fetch(cmsApiUrl(`/v1/media/${ticket.mediaId}/complete`), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: "{}",
@@ -208,7 +208,7 @@ export const formatBytes = (bytes: number) =>
 
 /**
  * 첨부 파일(v3)을 올린다. 형식은 파일 이름의 확장자로 정한다(브라우저가 코드 파일의 형식을 제각각 준다).
- * 받지 않는 형식이거나 50MiB를 넘으면 올리기 전에 거절한다.
+ * 받지 않는 형식이거나 사이트 설정 한도(`media.maxFileBytes`)를 넘으면 올리기 전에 거절한다.
  */
 export async function uploadAttachment(
 	file: File,

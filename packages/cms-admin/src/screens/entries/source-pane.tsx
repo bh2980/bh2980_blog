@@ -11,12 +11,12 @@ import { IconButton } from "../../ui/icon-button";
 import { t } from "./translate";
 
 const PROSE =
-	"prose dark:prose-invert max-w-none text-base text-foreground leading-relaxed focus:outline-none " +
+	"prose cms-dark:prose-invert max-w-none text-base text-cms-foreground leading-relaxed focus:outline-none " +
 	// 읽기 전용: 코드 블록 도구 줄은 숨기고, 접기 상자는 늘 펼쳐 보인다.
 	"[&_[data-code-ui]]:hidden [&_[data-cms-collapsed]]:block " +
 	// 번역 편집기에서 커서가 있는 블록에 대응하는 원문 블록(source-sync).
 	// 막대 없이 옅은 배경만 블록 둘레로 번지게 한다(그림자 퍼짐이라 자리를 밀지 않고 목록 점도 감싼다).
-	"[&_.cms-source-active]:rounded-sm [&_.cms-source-active]:bg-primary/8 [&_.cms-source-active]:shadow-[0_0_0_12px_color-mix(in_oklab,var(--color-primary)_8%,transparent)] [&_.cms-source-active]:transition-[background-color,box-shadow]";
+	"[&_.cms-source-active]:rounded-sm [&_.cms-source-active]:bg-cms-primary/8 [&_.cms-source-active]:shadow-[0_0_0_12px_color-mix(in_oklab,var(--color-cms-primary)_8%,transparent)] [&_.cms-source-active]:transition-[background-color,box-shadow]";
 
 function PreviewEditor({ mdx, label }: { mdx: string; label: string }) {
 	// 글자 꾸밈 확장(글자색 등)의 모양도 편집기와 같게 그린다.
@@ -59,11 +59,11 @@ export function SourcePane({
 		<aside
 			ref={ref}
 			aria-label={t("sourcePane.aria")}
-			className={cn("flex h-full min-w-0 flex-col overflow-y-auto border-r bg-background", className)}
+			className={cn("flex h-full min-w-0 flex-col overflow-y-auto border-r bg-cms-background", className)}
 		>
 			<div
 				data-source-header
-				className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur"
+				className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-cms-background/95 px-4 backdrop-blur"
 			>
 				<h2 className="flex-1 font-medium text-sm">{t("sourcePane.heading", { locale: locale.toUpperCase() })}</h2>
 				<IconButton label={t("close")} side="bottom" onClick={onClose}>
@@ -73,7 +73,7 @@ export function SourcePane({
 			<h1
 				className={cn(
 					"px-6 pt-12 pb-5 font-semibold text-[34px] leading-tight tracking-tight",
-					!title && "text-muted-foreground/40",
+					!title && "text-cms-muted-foreground/40",
 				)}
 			>
 				{title || t("untitled")}

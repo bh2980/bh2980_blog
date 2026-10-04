@@ -31,7 +31,7 @@ interface LineMenuProps {
 }
 
 const ITEM_CLASS =
-	"flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent disabled:pointer-events-none disabled:opacity-50";
+	"flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-cms-accent disabled:pointer-events-none disabled:opacity-50";
 
 interface ItemProps {
 	disabled?: boolean;
@@ -118,7 +118,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 			data-code-ui=""
 			contentEditable={false}
 			style={style}
-			className="absolute z-20 flex w-44 flex-col gap-0.5 rounded-md border bg-popover p-1 font-sans text-popover-foreground shadow-md"
+			className="absolute z-20 flex w-44 flex-col gap-0.5 rounded-md border bg-cms-popover p-1 font-sans text-cms-popover-foreground shadow-md"
 		>
 			{CODE_LINE_EFFECTS.map((effect) => {
 				const active = hasLineEffect(lineEffects, effect.name, start, end);
@@ -134,13 +134,13 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 					</CheckItem>
 				);
 			})}
-			<div aria-hidden className="my-0.5 h-px bg-border" />
+			<div aria-hidden className="my-0.5 h-px bg-cms-border" />
 			{collapse ? (
 				<>
 					<MenuItem onSelect={() => onChange(lineEffects.filter((effect) => effect !== collapse))}>
 						<ChevronsUpDown aria-hidden className="size-3.5" />
 						{t("lineMenu.uncollapse")}
-						<span className="ml-auto text-muted-foreground">
+						<span className="ml-auto text-cms-muted-foreground">
 							{t("lineMenu.collapsedRange", { start: collapse.start + 1, end: collapse.end })}
 						</span>
 					</MenuItem>
@@ -170,7 +170,7 @@ export function LineMenu({ start, end, lineEffects, onChange, onClose, onLinkTex
 			)}
 			{onLinkText && (
 				<>
-					<div aria-hidden className="my-0.5 h-px bg-border" />
+					<div aria-hidden className="my-0.5 h-px bg-cms-border" />
 					<MenuItem onSelect={onLinkText}>
 						<Code2 aria-hidden className="size-3.5" />
 						{t("lineMenu.linkText")}

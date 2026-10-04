@@ -1,7 +1,7 @@
 "use client";
 
 import type { BulkOp } from "@bh2980/cms/client";
-import { createTranslator, isItemCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator, isItemCollection, taxonomyFieldsOf } from "@bh2980/cms/client";
 import type { Folder } from "@bh2980/cms/runtime";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -140,7 +140,7 @@ export async function runBulk(
 	items: BulkSelection[],
 	params: { field?: string; ids?: string[]; id?: string | null; folderId?: string | null } = {},
 ): Promise<BulkItemResult[]> {
-	const data = await cmsFetch<{ results: BulkItemResult[] }>("/api/cms/v1/bulk", {
+	const data = await cmsFetch<{ results: BulkItemResult[] }>(cmsApiUrl("/v1/bulk"), {
 		method: "POST",
 		json: { op, items: items.map(({ id, expectedVersion }) => ({ id, expectedVersion })), ...params },
 		fallback: t("requestFailed"),
@@ -183,13 +183,13 @@ function ManyPicker({
 						aria-label={t("picker.aria", { label, names: names.length === 0 ? t("picker.none") : names.join(", ") })}
 						className={cn(
 							"max-w-56 justify-between gap-1.5 font-normal",
-							names.length === 0 && "text-muted-foreground",
+							names.length === 0 && "text-cms-muted-foreground",
 						)}
 					/>
 				}
 			>
 				<span className="truncate">{summary}</span>
-				<ChevronDownIcon aria-hidden className="size-4 text-muted-foreground" />
+				<ChevronDownIcon aria-hidden className="size-4 text-cms-muted-foreground" />
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0">
 				<Command>
@@ -337,9 +337,9 @@ export function BulkBar({
 			];
 
 	return (
-		<section aria-label={t("bar")} className="border-b bg-primary/5 px-5 py-2">
+		<section aria-label={t("bar")} className="border-b bg-cms-primary/5 px-5 py-2">
 			<div className="flex min-h-7 flex-wrap items-center gap-2 text-sm">
-				<span className="font-medium text-primary">{t("count", { count: selected.length })}</span>
+				<span className="font-medium text-cms-primary">{t("count", { count: selected.length })}</span>
 				<Button type="button" variant="ghost" size="xs" onClick={onClearSelection}>
 					{t("clear")}
 				</Button>
@@ -402,7 +402,7 @@ export function BulkBar({
 				</Button>
 
 				{results && (
-					<output className="text-muted-foreground text-xs">
+					<output className="text-cms-muted-foreground text-xs">
 						{t("result", { success: successes, failed: failures.length })}
 					</output>
 				)}
@@ -419,12 +419,12 @@ export function BulkBar({
 			</div>
 
 			{error && (
-				<p role="alert" className="pt-2 text-destructive text-xs">
+				<p role="alert" className="pt-2 text-cms-destructive text-xs">
 					{error}
 				</p>
 			)}
 			{failures.length > 0 && (
-				<ul className="flex flex-col gap-1 pt-2 text-destructive text-xs">
+				<ul className="flex flex-col gap-1 pt-2 text-cms-destructive text-xs">
 					{failures.map((failure) => (
 						<li key={failure.id}>
 							<span className="font-medium">{titleOf(failure.id)}</span> — {describeBulkFailure(failure)}

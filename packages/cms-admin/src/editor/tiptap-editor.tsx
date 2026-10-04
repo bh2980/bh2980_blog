@@ -1,6 +1,6 @@
 "use client";
 
-import { createTranslator, FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
+import { cmsApiUrl, createTranslator, FILE_ACCEPT, LINKABLE_COLLECTIONS } from "@bh2980/cms/client";
 import type { Editor, Range } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -338,7 +338,7 @@ async function searchLinkTargets(query: string): Promise<InternalLinkItem[]> {
 		const params = new URLSearchParams({ collection, pageSize: "25" });
 		if (query) params.set("search", query);
 		for (const status of ["draft", "published"]) params.append("status", status);
-		const res = await fetch(`/api/cms/v1/entries?${params.toString()}`);
+		const res = await fetch(cmsApiUrl(`/v1/entries?${params.toString()}`));
 		if (!res.ok) return [];
 		const data = (await res.json()) as {
 			items: { id: string; collection: string; title: string | null; slug: string | null; status: string }[];
@@ -516,16 +516,16 @@ export function CmsEditor({
 			attributes: {
 				"aria-label": t("toolbar.editorLabel"),
 				class:
-					"prose dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-foreground text-base leading-relaxed selection:bg-primary/20 " +
+					"prose cms-dark:prose-invert max-w-none min-h-full flex-1 p-6 focus:outline-none text-cms-foreground text-base leading-relaxed selection:bg-cms-primary/20 " +
 					// 표 열 너비 조절 손잡이(prosemirror-tables columnResizing)
-					"[&_.tableWrapper]:overflow-x-auto [&_td]:relative [&_th]:relative [&.resize-cursor]:cursor-col-resize [&_.column-resize-handle]:pointer-events-none [&_.column-resize-handle]:absolute [&_.column-resize-handle]:-right-px [&_.column-resize-handle]:top-0 [&_.column-resize-handle]:-bottom-px [&_.column-resize-handle]:w-0.5 [&_.column-resize-handle]:bg-primary " +
+					"[&_.tableWrapper]:overflow-x-auto [&_td]:relative [&_th]:relative [&.resize-cursor]:cursor-col-resize [&_.column-resize-handle]:pointer-events-none [&_.column-resize-handle]:absolute [&_.column-resize-handle]:-right-px [&_.column-resize-handle]:top-0 [&_.column-resize-handle]:-bottom-px [&_.column-resize-handle]:w-0.5 [&_.column-resize-handle]:bg-cms-primary " +
 					// 단 나누기 경계와 같은 모양: 얇은 선 + 첫 행 위쪽의 작은 손잡이.
-					"[&_tr:first-child_.column-resize-handle]:after:absolute [&_tr:first-child_.column-resize-handle]:after:top-0.5 [&_tr:first-child_.column-resize-handle]:after:left-1/2 [&_tr:first-child_.column-resize-handle]:after:h-3 [&_tr:first-child_.column-resize-handle]:after:w-6 [&_tr:first-child_.column-resize-handle]:after:-translate-x-1/2 [&_tr:first-child_.column-resize-handle]:after:rounded-full [&_tr:first-child_.column-resize-handle]:after:border [&_tr:first-child_.column-resize-handle]:after:bg-popover [&_tr:first-child_.column-resize-handle]:after:shadow-sm " +
+					"[&_tr:first-child_.column-resize-handle]:after:absolute [&_tr:first-child_.column-resize-handle]:after:top-0.5 [&_tr:first-child_.column-resize-handle]:after:left-1/2 [&_tr:first-child_.column-resize-handle]:after:h-3 [&_tr:first-child_.column-resize-handle]:after:w-6 [&_tr:first-child_.column-resize-handle]:after:-translate-x-1/2 [&_tr:first-child_.column-resize-handle]:after:rounded-full [&_tr:first-child_.column-resize-handle]:after:border [&_tr:first-child_.column-resize-handle]:after:bg-cms-popover [&_tr:first-child_.column-resize-handle]:after:shadow-sm " +
 					// 블록 선택(마키): 줄 뒤에 여백(-inset-1)을 둔 상자를 깔고 글자 선택 표시는 숨긴다. 목록 항목은 글머리표까지 덮는다.
 					// 글자 선택(primary 보라)과 헷갈리지 않게 다른 색(하늘)과 테두리로 "블록을 골랐다"는 것을 보여 준다.
-					"[&_.cms-block-selected]:relative [&_.cms-block-selected]:isolate [&_.cms-block-selected]:before:pointer-events-none [&_.cms-block-selected]:before:absolute [&_.cms-block-selected]:before:-inset-1 [&_.cms-block-selected]:before:-z-10 [&_.cms-block-selected]:before:rounded-md [&_.cms-block-selected]:before:bg-sky-500/10 [&_.cms-block-selected]:before:ring-1 [&_.cms-block-selected]:before:ring-sky-500/35 dark:[&_.cms-block-selected]:before:bg-sky-400/15 dark:[&_.cms-block-selected]:before:ring-sky-400/40 [&_li.cms-block-selected]:before:-left-7 [&.cms-block-range]:selection:bg-transparent " +
+					"[&_.cms-block-selected]:relative [&_.cms-block-selected]:isolate [&_.cms-block-selected]:before:pointer-events-none [&_.cms-block-selected]:before:absolute [&_.cms-block-selected]:before:-inset-1 [&_.cms-block-selected]:before:-z-10 [&_.cms-block-selected]:before:rounded-md [&_.cms-block-selected]:before:bg-sky-500/10 [&_.cms-block-selected]:before:ring-1 [&_.cms-block-selected]:before:ring-sky-500/35 cms-dark:[&_.cms-block-selected]:before:bg-sky-400/15 cms-dark:[&_.cms-block-selected]:before:ring-sky-400/40 [&_li.cms-block-selected]:before:-left-7 [&.cms-block-range]:selection:bg-transparent " +
 					// 셀을 끌어 여러 칸을 고르면(CellSelection) 고른 칸을 칠한다. 병합할 범위를 눈으로 확인한다.
-					"[&_.selectedCell]:bg-primary/15 [&_.selectedCell]:outline-1 [&_.selectedCell]:-outline-offset-1 [&_.selectedCell]:outline-primary/60",
+					"[&_.selectedCell]:bg-cms-primary/15 [&_.selectedCell]:outline-1 [&_.selectedCell]:-outline-offset-1 [&_.selectedCell]:outline-cms-primary/60",
 			},
 			handleKeyDown: (view, event) => {
 				// 한글 IME 조합 중에는 메뉴 탐색·확정을 처리하지 않는다(§4.2).
@@ -993,7 +993,7 @@ export function CmsEditor({
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: editor shell tracks IME and block hover state
 		<div
-			className="relative flex min-h-full w-full flex-1 flex-col bg-background"
+			className="relative flex min-h-full w-full flex-1 flex-col bg-cms-background"
 			data-cms-editor-shell
 			// 제목·본문·원문이 같은 폭(`--editor-width`)을 쓴다.
 			style={{ "--editor-width": EDITOR_WIDTHS[width] } as CSSProperties}
@@ -1022,7 +1022,7 @@ export function CmsEditor({
 			<div
 				role="toolbar"
 				aria-label={t("toolbar.format")}
-				className="sticky top-0 z-10 w-full shrink-0 overflow-x-auto border-b bg-background/95 backdrop-blur"
+				className="sticky top-0 z-10 w-full shrink-0 overflow-x-auto border-b bg-cms-background/95 backdrop-blur"
 			>
 				{/* 도구 묶음은 툴바 정중앙에 둔다. 오른쪽 끝 요소 폭만큼 양쪽을 똑같이 비우고,
 				    그래도 좁으면(번역 원문 칸을 연 때 등) 한 줄을 유지한 채 덜 쓰는 도구를 "더보기"로 접는다. */}
@@ -1037,7 +1037,7 @@ export function CmsEditor({
 			</div>
 
 			{titleField && (
-				<div className="mx-auto w-full max-w-(--editor-width) border-border/60 border-b px-4 pt-12 pb-5">
+				<div className="mx-auto w-full max-w-(--editor-width) border-cms-border/60 border-b px-4 pt-12 pb-5">
 					{titleField}
 				</div>
 			)}

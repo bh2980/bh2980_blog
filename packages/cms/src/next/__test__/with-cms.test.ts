@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { missingOptionalPeers } from "../with-cms";
+import { missingOptionalPeers, withCms } from "../with-cms";
 
 let dirs: string[] = [];
 afterEach(() => {
@@ -25,6 +25,7 @@ describe("withCms: 설치하지 않은 선택 의존성", () => {
 		const dir = app({
 			"package.json": { dependencies: { "@bh2980/cms-blocks": "x", "other-lib": "x" } },
 			"node_modules/@bh2980/cms-blocks/package.json": {
+				cmsPlugin: true,
 				peerDependenciesMeta: { mermaid: { optional: true }, recharts: { optional: true }, react: {} },
 			},
 			"node_modules/recharts/package.json": {},
@@ -32,6 +33,23 @@ describe("withCms: 설치하지 않은 선택 의존성", () => {
 			"node_modules/other-lib/package.json": { peerDependenciesMeta: { nodemailer: { optional: true } } },
 		});
 		expect(missingOptionalPeers(dir)).toEqual(["mermaid"]);
+	});
+
+	it("플러그인 패키지는 이름이 아니라 `cmsPlugin` 표시로 찾는다", () => {
+		const dir = app({
+			"package.json": {
+				dependencies: { "acme-cms-chart": "x", "@bh2980/cms-lookalike": "x", "@bh2980/cms-admin": "x" },
+			},
+			"node_modules/acme-cms-chart/package.json": {
+				cmsPlugin: true,
+				peerDependenciesMeta: { d3: { optional: true } },
+			},
+			// 이름이 비슷해도 표시가 없으면 플러그인이 아니다.
+			"node_modules/@bh2980/cms-lookalike/package.json": { peerDependenciesMeta: { nodemailer: { optional: true } } },
+			// 본체·관리자 패키지는 표시 없이도 본다.
+			"node_modules/@bh2980/cms-admin/package.json": { peerDependenciesMeta: { sonner: { optional: true } } },
+		});
+		expect(missingOptionalPeers(dir)).toEqual(["d3", "sonner"]);
 	});
 
 	it("package.json이 없거나 CMS 패키지가 없으면 빈 목록", () => {
@@ -46,9 +64,23 @@ describe("withCms: 설치하지 않은 선택 의존성", () => {
 		writeFileSync(path.join(root, "package.json"), JSON.stringify({ dependencies: { "@bh2980/cms-blocks": "x" } }));
 		writeFileSync(
 			path.join(root, "node_modules/@bh2980/cms-blocks/package.json"),
-			JSON.stringify({ peerDependenciesMeta: { mermaid: { optional: true } } }),
+			JSON.stringify({ cmsPlugin: true, peerDependenciesMeta: { mermaid: { optional: true } } }),
 		);
 		expect(missingOptionalPeers(root)).toEqual([]);
 		expect(missingOptionalPeers(root, realpathSync(root))).toEqual(["mermaid"]);
+	});
+});
+
+describe("withCms: basePath", () => {
+	const options = { config: "./cms.config.ts", server: "./cms.server.ts" };
+
+	it("Next basePath를 서버·브라우저 번들 환경 변수로 알린다", () => {
+		expect(withCms({ basePath: "/blog" }, options).env?.NEXT_PUBLIC_CMS_BASE_PATH).toBe("/blog");
+		expect(withCms({ basePath: "/blog/" }, options).env?.NEXT_PUBLIC_CMS_BASE_PATH).toBe("/blog");
+	});
+
+	it("basePath가 없으면 빈 값이고 앱의 다른 env는 그대로 둔다", () => {
+		const config = withCms({ env: { KEEP: "1" } }, options);
+		expect(config.env).toEqual({ KEEP: "1", NEXT_PUBLIC_CMS_BASE_PATH: "" });
 	});
 });

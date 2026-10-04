@@ -19,10 +19,10 @@ export const alertVariants = cva(
 				stack: "block",
 			},
 			variant: {
-				default: "border-border bg-card text-card-foreground",
+				default: "border-cms-border bg-cms-card text-cms-card-foreground",
 				danger: [
 					"bg-red-50 text-red-900 border-red-200 [&>svg]:text-red-700",
-					"dark:bg-red-400/25 dark:text-red-50 dark:border-red-300/70 dark:[&>svg]:text-red-100",
+					"cms-dark:bg-red-400/25 cms-dark:text-red-50 cms-dark:border-red-300/70 cms-dark:[&>svg]:text-red-100",
 				].join(" "),
 			},
 		},
@@ -59,7 +59,7 @@ function AlertDescription({ className, ...props }: React.ComponentProps<"div">) 
 		<div
 			data-slot="alert-description"
 			className={cn(
-				"col-start-2 grid justify-items-start gap-1 text-muted-foreground text-sm [&_p]:leading-relaxed",
+				"col-start-2 grid justify-items-start gap-1 text-cms-muted-foreground text-sm [&_p]:leading-relaxed",
 				className,
 			)}
 			{...props}

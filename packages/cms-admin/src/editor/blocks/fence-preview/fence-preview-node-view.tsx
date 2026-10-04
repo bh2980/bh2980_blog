@@ -178,25 +178,27 @@ export function FencePreviewNodeView({
 			data-fence-preview={kind}
 			onBlur={handleBlur}
 			className={cn(
-				"group relative my-4 rounded-md border border-border bg-card p-3 shadow-xs transition-colors",
+				"group relative my-4 rounded-md border border-cms-border bg-cms-card p-3 shadow-xs transition-colors",
 				isOpen && SELECTED_RING,
 			)}
 		>
 			{isOpen ? (
 				<div className="space-y-3">
-					<div className="flex items-center justify-between border-border/40 border-b pb-1 text-muted-foreground text-xs">
+					<div className="flex items-center justify-between border-cms-border/40 border-b pb-1 text-cms-muted-foreground text-xs">
 						<span className="font-medium font-mono text-[11px]">{meta.label}</span>
-						<span className="text-[10px] text-muted-foreground/70">
+						<span className="text-[10px] text-cms-muted-foreground/70">
 							{isEditing ? t("fence.editing") : t("fence.selected")}
 						</span>
 					</div>
 
 					{/* 미리보기 (상단 동시 표시) */}
-					<div className="min-h-[40px] rounded-md border border-border/40 bg-background/50 p-2">{renderPreview()}</div>
+					<div className="min-h-[40px] rounded-md border border-cms-border/40 bg-cms-background/50 p-2">
+						{renderPreview()}
+					</div>
 
 					{/* 원문 입력 칸 (모노, IME 안전) */}
 					<div className="space-y-1">
-						<label htmlFor={inputId} className="font-mono text-[11px] text-muted-foreground">
+						<label htmlFor={inputId} className="font-mono text-[11px] text-cms-muted-foreground">
 							{t("fence.sourceCode")}
 						</label>
 						<textarea
@@ -212,7 +214,7 @@ export function FencePreviewNodeView({
 							onCompositionStart={handleCompositionStart}
 							onCompositionEnd={handleCompositionEnd}
 							onKeyDown={handleKeyDown}
-							className="field-sizing-content min-h-[96px] w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-2 font-mono text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
+							className="field-sizing-content min-h-[96px] w-full resize-y rounded-md border border-cms-input bg-transparent px-2.5 py-2 font-mono text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-cms-muted-foreground/50 focus-visible:border-cms-ring focus-visible:ring-3 focus-visible:ring-cms-ring/50 md:text-sm"
 						/>
 					</div>
 				</div>
@@ -227,7 +229,7 @@ export function FencePreviewNodeView({
 					{draft.trim() ? (
 						renderPreview()
 					) : (
-						<div className="rounded border border-border/80 border-dashed p-4 text-center text-muted-foreground text-xs hover:border-foreground/30">
+						<div className="rounded border border-cms-border/80 border-dashed p-4 text-center text-cms-muted-foreground text-xs hover:border-cms-foreground/30">
 							{t("fence.enter", { label: meta.label })}
 						</div>
 					)}

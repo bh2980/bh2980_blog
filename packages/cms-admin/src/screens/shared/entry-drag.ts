@@ -13,7 +13,7 @@ export function writeDraggedEntries(event: React.DragEvent, entries: DraggedEntr
 	const image = document.createElement("div");
 	image.textContent = label;
 	image.className =
-		"pointer-events-none fixed -top-96 left-0 max-w-64 truncate rounded-md border bg-popover px-2.5 py-1 text-popover-foreground text-xs shadow-md";
+		"pointer-events-none fixed -top-96 left-0 max-w-64 truncate rounded-md border bg-cms-popover px-2.5 py-1 text-cms-popover-foreground text-xs shadow-md";
 	document.body.append(image);
 	event.dataTransfer.setDragImage?.(image, 12, 12);
 	// 브라우저는 끌기를 시작할 때 이미지를 찍어 두므로 바로 지워도 된다.

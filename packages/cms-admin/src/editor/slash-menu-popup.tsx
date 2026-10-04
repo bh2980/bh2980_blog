@@ -59,7 +59,7 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose
 					onClose();
 				}
 			}}
-			className="max-h-80 w-72 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+			className="max-h-80 w-72 overflow-y-auto rounded-lg border bg-cms-popover p-1 text-cms-popover-foreground shadow-lg"
 		>
 			{items.map((item, index) => (
 				<div
@@ -75,15 +75,15 @@ export function SlashMenuPopup({ items, coords, selectedIndex, onSelect, onClose
 					}}
 					className={cn(
 						"flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none",
-						index === selectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+						index === selectedIndex ? "bg-cms-accent text-cms-accent-foreground" : "hover:bg-cms-accent/50",
 					)}
 				>
-					<span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
+					<span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-cms-background text-cms-muted-foreground">
 						<ItemIcon icon={item.icon} />
 					</span>
 					<span className="min-w-0">
 						<span className="block truncate font-medium text-sm">{item.title}</span>
-						<span className="block truncate text-muted-foreground text-xs">{item.description}</span>
+						<span className="block truncate text-cms-muted-foreground text-xs">{item.description}</span>
 					</span>
 				</div>
 			))}

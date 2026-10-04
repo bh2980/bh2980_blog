@@ -1,6 +1,6 @@
 "use client";
 
-import { FILE_ACCEPT } from "@bh2980/cms/client";
+import { cmsApiUrl, FILE_ACCEPT } from "@bh2980/cms/client";
 import { FileIcon, ImageIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ImageInsertDialog } from "../../editor/image-insert-dialog";
@@ -37,7 +37,7 @@ export function useMediaUrl(mediaId: string): string | null {
 	useEffect(() => {
 		if (!mediaId || urls.has(mediaId) || loading.has(mediaId)) return;
 		loading.add(mediaId);
-		cmsFetch<{ publicUrl: string | null }>(`/api/cms/v1/media/${mediaId}`)
+		cmsFetch<{ publicUrl: string | null }>(cmsApiUrl(`/v1/media/${mediaId}`))
 			.then((media) => rememberMediaUrl(mediaId, media.publicUrl))
 			.catch(() => rememberMediaUrl(mediaId, null))
 			.finally(() => loading.delete(mediaId));
@@ -52,7 +52,7 @@ export function MediaThumbnail({ mediaId, className }: { mediaId: string; classN
 		// biome-ignore lint/performance/noImgElement: CMS media URLs are dynamic
 		<img src={url} alt="" className={cn("object-cover", className)} />
 	) : (
-		<div className={cn("flex items-center justify-center bg-muted text-muted-foreground", className)}>
+		<div className={cn("flex items-center justify-center bg-cms-muted text-cms-muted-foreground", className)}>
 			<ImageIcon aria-hidden className="size-4" />
 		</div>
 	);
@@ -128,7 +128,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 		setFilename(null);
 		if (!mediaId) return;
 		let cancelled = false;
-		cmsFetch<{ filename?: string }>(`/api/cms/v1/media/${mediaId}`)
+		cmsFetch<{ filename?: string }>(cmsApiUrl(`/v1/media/${mediaId}`))
 			.then((media) => !cancelled && setFilename(media.filename ?? null))
 			.catch(() => {});
 		return () => {
@@ -153,7 +153,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 			<div className="flex items-center gap-1.5">
 				{mediaId && (
 					<span className="flex min-w-0 flex-1 items-center gap-1 text-xs">
-						<FileIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+						<FileIcon aria-hidden className="size-3.5 shrink-0 text-cms-muted-foreground" />
 						<span className="truncate">{filename ?? mediaId}</span>
 					</span>
 				)}
@@ -197,7 +197,7 @@ function MediaFileInput({ id, value, invalid, describedBy, context, onChange }: 
 				}}
 			/>
 			{error && (
-				<p role="alert" className="text-destructive text-xs">
+				<p role="alert" className="text-cms-destructive text-xs">
 					{error}
 				</p>
 			)}

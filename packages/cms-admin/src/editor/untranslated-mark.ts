@@ -47,7 +47,7 @@ export const CmsUntranslatedMark = Mark.create({
 				"data-untranslated": "",
 				// 원문 글이라 번역 언어 맞춤법 검사 밑줄을 띄우지 않는다.
 				spellcheck: "false",
-				class: "text-muted-foreground/70",
+				class: "text-cms-muted-foreground/70",
 			}),
 			0,
 		];

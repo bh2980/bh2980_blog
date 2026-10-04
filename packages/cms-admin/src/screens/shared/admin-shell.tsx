@@ -1,6 +1,6 @@
 "use client";
 
-import { COLLECTIONS, createTranslator } from "@bh2980/cms/client";
+import { COLLECTIONS, cmsApiUrl, createTranslator } from "@bh2980/cms/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "../../ui/sidebar";
@@ -27,7 +27,7 @@ async function countTrash(): Promise<number> {
 	const totals = await Promise.all(
 		COLLECTIONS.map(async (collection) => {
 			const query = new URLSearchParams({ collection, status: "trashed", pageSize: "25" });
-			const data = await cmsFetch<{ total: number }>(`/api/cms/v1/entries?${query.toString()}`);
+			const data = await cmsFetch<{ total: number }>(cmsApiUrl(`/v1/entries?${query.toString()}`));
 			return data.total;
 		}),
 	);
@@ -80,10 +80,12 @@ export function AdminShell({
 			<AdminSidebar {...sidebar} trashCount={nav.trashCount} />
 			<SidebarInset className="min-w-0 overflow-hidden">
 				<header className="flex h-13 shrink-0 items-center gap-3 border-b px-4 lg:px-5">
-					<SidebarTrigger aria-label={t("shell.openSidebar")} className="-ml-1 text-muted-foreground md:hidden" />
+					<SidebarTrigger aria-label={t("shell.openSidebar")} className="-ml-1 text-cms-muted-foreground md:hidden" />
 					<h1 className="flex min-w-0 flex-1 items-baseline gap-2 truncate font-semibold text-[15px]">
 						<span className="truncate">{title}</span>
-						{count !== undefined && <span className="tabular font-normal text-muted-foreground text-sm">{count}</span>}
+						{count !== undefined && (
+							<span className="tabular font-normal text-cms-muted-foreground text-sm">{count}</span>
+						)}
 					</h1>
 					<div className="flex items-center gap-2">{headerActions}</div>
 				</header>

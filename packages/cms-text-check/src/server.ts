@@ -10,7 +10,7 @@ export {
 } from "./server-handler";
 
 /**
- * 맞춤법·문장 검사 서버 경로(`@bh2980/cms-admin/text-check/server`). 관리자만 부를 수 있고(본체 관리자 인증·동일 출처 검사),
+ * 맞춤법·문장 검사 서버 경로(`@bh2980/cms-text-check/server`). 관리자만 부를 수 있고(본체 관리자 인증·동일 출처 검사),
  * `{ segments }`를 받아 `{ issues }`를 돌려준다. 브라우저 쪽은 `remoteTextChecker({ url })`로 이 경로를 부른다.
  *
  * ```ts

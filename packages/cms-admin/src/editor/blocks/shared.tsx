@@ -15,11 +15,11 @@ import { blocksMessages } from "./messages";
 const t = createTranslator(blocksMessages);
 
 /** 고른 블록 테두리. 모든 블록이 같은 모양을 쓴다. */
-export const SELECTED_RING = "ring-2 ring-ring ring-offset-2 ring-offset-background";
+export const SELECTED_RING = "ring-2 ring-cms-ring ring-offset-2 ring-offset-cms-background";
 
 /** 블록 위에 뜨는 조작 도구 줄의 겉모양(블록 도구 줄·이미지·표가 같이 쓴다). */
 export const BLOCK_TOOLBAR =
-	"z-10 flex items-center gap-0.5 rounded-md border bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur";
+	"z-10 flex items-center gap-0.5 rounded-md border bg-cms-popover/95 p-0.5 text-cms-popover-foreground shadow-sm backdrop-blur";
 
 export type ContainerValues = Record<string, string | boolean>;
 
@@ -279,7 +279,7 @@ export function BlockSettingsField({
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex min-h-6 items-center justify-between gap-2">
-				<label htmlFor={htmlFor} className="text-muted-foreground text-xs">
+				<label htmlFor={htmlFor} className="text-cms-muted-foreground text-xs">
 					{label}
 				</label>
 				{action}

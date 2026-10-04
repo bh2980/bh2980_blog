@@ -4,6 +4,7 @@ import { defineMessages } from "@bh2980/cms";
 export const aiCommonMessages = defineMessages("cms-ai.admin.common", {
 	en: {
 		runFailed: "Couldn't run.",
+		slotMenu: "AI",
 		running: "Running…",
 		listFailed: "Couldn't load the AI actions.",
 		streamCut: "The AI answer was cut off before it finished.",
@@ -15,6 +16,7 @@ export const aiCommonMessages = defineMessages("cms-ai.admin.common", {
 	},
 	ko: {
 		runFailed: "실행하지 못했습니다.",
+		slotMenu: "AI",
 		running: "실행 중…",
 		listFailed: "AI 기능 목록을 불러올 수 없습니다.",
 		streamCut: "AI 답이 끝나기 전에 끊겼습니다.",
