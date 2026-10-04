@@ -23,6 +23,7 @@ export * from "./core/translation/skeleton";
 export * from "./core/translation/source-diff";
 export * from "./core/translation/state";
 export * from "./core/types";
+export * from "./i18n";
 export * from "./schema/collection";
 export * from "./schema/derive";
 export * from "./schema/fields";

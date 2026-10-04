@@ -1,6 +1,7 @@
 import { type CodeBlockConfig, validateCodeBlockConfig } from "../annotation/code-block/line-effects";
 import type { BlockDefinition } from "../blocks/define";
 import { resolveBlocks } from "../blocks/resolve";
+import type { MessageValue } from "../i18n/define";
 import type { CmsPlugin } from "../plugin/define";
 import { type CollectionSchema, normalizeCollection } from "../schema/collection";
 import { RESERVED_METADATA_KEYS, SUMMARY_ROLE } from "../schema/fields";
@@ -72,10 +73,15 @@ export interface AdminConfig {
 	 */
 	readonly path?: string;
 	/**
-	 * 관리자 화면의 날짜·숫자 표기 언어(BCP 47, 예: `en-US`). 없으면 `ko-KR`. 화면 글(버튼·안내)은 바꾸지 않는다.
-	 * 시각은 `timeZone`으로 보인다.
+	 * 관리자 화면 언어(BCP 47, 예: `en`, `ko-KR`). 화면 글과 날짜·숫자 표기가 따른다. 없으면 사이트 기본 언어(`defaultLocale`).
+	 * 사전이 없는 언어는 영어로 보인다. 시각은 `timeZone`으로 보인다.
 	 */
 	readonly locale?: string;
+	/**
+	 * 관리자 화면 문구 덮어쓰기: 이름공간 → 키 → 문구(`{이름}` 자리를 쓸 수 있다). 이름공간·키는 각 패키지의 사전
+	 * (`defineMessages`)에서 찾는다. 예: `{ "cms-admin.entries": { publish: "Ship it" } }`.
+	 */
+	readonly messages?: Readonly<Record<string, Readonly<Record<string, MessageValue>>>>;
 	/**
 	 * 예전 브라우저 복구본 DB 이름(IndexedDB). 관리자 화면이 이 이름으로 남은 복구본도 읽고 지우되 새로 만들지 않는다.
 	 * 지금 이름은 `cms_backup`이다. 예전 이름으로 쓰던 사이트만 적는다.

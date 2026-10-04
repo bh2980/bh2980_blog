@@ -32,6 +32,14 @@ export {
 	type SiteConfig,
 } from "./config/define";
 export {
+	defineMessages,
+	josa,
+	type MessageBundle,
+	type MessageDict,
+	type MessageValue,
+	type MessageVars,
+} from "./i18n/define";
+export {
 	type CmsPlugin,
 	type CmsServerPlugin,
 	definePlugin,
