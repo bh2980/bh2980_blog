@@ -12,5 +12,10 @@
 		}
 	},
 	"include": ["src", "build"],
-	"exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/__test__/**/*.test.*"]
+	"exclude": [
+		"src/**/*.test.ts",
+		"src/**/*.test.tsx",
+		"src/**/__test__/**/*.test.*",
+		"src/services/__test__/export-fixture.ts"
+	]
 }
