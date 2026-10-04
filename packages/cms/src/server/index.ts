@@ -5,6 +5,7 @@
 
 export { type GithubAuthOptions, githubAuth } from "../adapters/auth/github";
 export { type PostgresOptions, postgres } from "../adapters/postgres/adapter";
+export type { AfterCommit, ContentChange, ContentChangeKind } from "../adapters/postgres/store/after-commit";
 export { type R2Options, r2Storage } from "../adapters/r2/adapter";
 export {
 	type AuthAdapter,

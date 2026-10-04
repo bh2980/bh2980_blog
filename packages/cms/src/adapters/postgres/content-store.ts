@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { type AfterCommit, withAfterCommit } from "./store/after-commit";
 import { type ContentStoreHooks, type StoreContext, validateSchemaName } from "./store/context";
 import { createEntryOps } from "./store/entries";
 import { createFolderOps } from "./store/folders";
@@ -16,6 +17,7 @@ import { createTransferOps } from "./store/transfer";
  * 드라이버와 SQL은 `store/` 아래 모듈에만 있다. 업무 규칙(스냅샷·발행 검증)은 `core/`에서 가져온다.
  */
 
+export type { AfterCommit, ContentChange, ContentChangeKind } from "./store/after-commit";
 export { PUBLIC_COLLECTIONS } from "./store/constants";
 export type { ContentStoreHooks } from "./store/context";
 export { CmsError } from "./store/errors";
@@ -24,7 +26,10 @@ export { extractVisibleText, normalizeMetadata } from "./store/rows";
 export { migrateContentStore } from "./store/schema";
 export * from "./store/types";
 
-export function createContentStore(pool: Pool, options?: { schema?: string } & ContentStoreHooks) {
+export function createContentStore(
+	pool: Pool,
+	options?: { schema?: string; afterCommit?: AfterCommit } & ContentStoreHooks,
+) {
 	const ctx: StoreContext = {
 		pool,
 		qSchema: validateSchemaName(options?.schema),
@@ -32,7 +37,7 @@ export function createContentStore(pool: Pool, options?: { schema?: string } & C
 	};
 	const publishing = createPublishing(ctx);
 
-	return {
+	const store = {
 		...createEntryOps(ctx, publishing),
 		...createLifecycleOps(ctx, publishing),
 		...createListOps(ctx),
@@ -43,6 +48,7 @@ export function createContentStore(pool: Pool, options?: { schema?: string } & C
 		...createMediaOps(ctx),
 		...createTemplateOps(ctx),
 	};
+	return options?.afterCommit ? withAfterCommit(store, options.afterCommit) : store;
 }
 
 export type ContentStore = ReturnType<typeof createContentStore>;

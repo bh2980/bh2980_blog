@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { AfterCommit } from "../adapters/postgres/store/after-commit";
 import type { BlockDefinition } from "../blocks/define";
 import type { CollectionsConfig } from "../config/define";
 
@@ -81,6 +82,8 @@ export interface CmsServerPlugin {
 	readonly migrate?: (db: PluginDatabase) => Promise<void>;
 	/** 관리자 메타 API(`/v1/meta`)의 `features`에 더할 값. */
 	readonly features?: () => Promise<Readonly<Record<string, boolean>>>;
+	/** 저장 뒤 알림(서버 설정 `afterCommit`과 같다). 실패해도 저장은 그대로다. */
+	readonly afterCommit?: AfterCommit;
 }
 
 /**

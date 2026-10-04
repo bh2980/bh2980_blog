@@ -1,4 +1,6 @@
+import type { ContentChange } from "../adapters/postgres/store/after-commit";
 import { cmsConfig } from "../config/resolved";
+import type { CmsServerConfig } from "../server/define";
 import { cmsServerConfig } from "../server/resolved";
 import type { CmsPlugin, CmsServerPlugin, PluginDatabase, PluginRoute } from "./define";
 
@@ -38,4 +40,18 @@ export async function pluginFeatures(): Promise<Record<string, boolean>> {
 	const plugins = await loadServerPlugins();
 	const features = await Promise.all(plugins.map((plugin) => plugin.features?.().catch(() => ({})) ?? {}));
 	return Object.assign({}, ...features);
+}
+
+/** 서버 설정과 플러그인의 저장 뒤 알림을 차례로 부른다(하나가 실패해도 나머지는 부른다). */
+export async function notifyAfterCommit(change: ContentChange): Promise<void> {
+	const serverConfig: CmsServerConfig = cmsServerConfig;
+	const hooks = [serverConfig.afterCommit, ...(await loadServerPlugins()).map((plugin) => plugin.afterCommit)];
+	for (const hook of hooks) {
+		if (!hook) continue;
+		try {
+			await hook(change);
+		} catch (error) {
+			console.error("[cms] afterCommit failed", change.kind, change.entryId, error);
+		}
+	}
 }

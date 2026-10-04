@@ -1,4 +1,4 @@
-import type { ContentStore } from "../adapters/postgres/content-store";
+import type { AfterCommit, ContentStore } from "../adapters/postgres/content-store";
 import type { MediaStore } from "../adapters/r2/types";
 import type { PluginDatabase } from "../plugin/define";
 
@@ -12,7 +12,8 @@ import type { PluginDatabase } from "../plugin/define";
 /** 콘텐츠 저장소 연결. */
 export interface DatabaseAdapter {
 	readonly name: string;
-	createStore(): ContentStore;
+	/** 저장소를 만든다. `afterCommit`은 본체가 넘긴다(서버 설정·플러그인의 저장 뒤 알림). */
+	createStore(options?: { readonly afterCommit?: AfterCommit }): ContentStore;
 	/** 표를 만들거나 최신 모양으로 맞춘다(`cms:db:migrate`). 여러 번 실행해도 결과가 같다. */
 	migrate(): Promise<void>;
 	/** 플러그인이 자기 표를 만들고 읽을 연결(`CmsServerPlugin.migrate`·플러그인 API). */
@@ -98,6 +99,11 @@ export interface CmsServerConfig {
 	 * 없으면 AI 서비스 키를 저장할 수 없다.
 	 */
 	readonly secret?: string;
+	/**
+	 * 저장 뒤 알림(캐시 갱신·웹훅·검색 색인). 글을 만들고·저장하고·발행·보관·휴지통·복원·지운 변경이 커밋된 뒤 부른다.
+	 * 실패해도 저장은 그대로다(오류는 로그로만). 플러그인의 `afterCommit`도 함께 불린다.
+	 */
+	readonly afterCommit?: AfterCommit;
 }
 
 /** 서버 설정을 정의한다. */
