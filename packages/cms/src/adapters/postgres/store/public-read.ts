@@ -1,6 +1,6 @@
 import { isCollection } from "../../../core/collections";
 import { DEFAULT_LOCALE } from "../../../core/locales";
-import { mergeTranslationMetadata } from "../../../schema/derive";
+import { mergeTranslationMetadata, storedField } from "../../../schema/derive";
 import { PUBLIC_COLLECTIONS } from "./constants";
 import type { StoreContext } from "./context";
 import { CmsError } from "./errors";
@@ -59,6 +59,30 @@ function mapPublishedRow(row: PublishedRow): PublishedEntryRecord {
 			: row.metadata;
 	return mapPublishedEntryRow({ ...row, metadata });
 }
+
+/** 공개 목록 정렬. 발행일은 원문의 것, 수정일은 이 언어 본문의 것, 제목은 이 언어의 제목이다. */
+export type PublishedSort = "publishedAt" | "updatedAt" | "title";
+
+export interface PublishedPageParams {
+	readonly collection: string;
+	/** 이 언어의 콘텐츠만. 없으면 기본 언어다. */
+	readonly locale?: string;
+	/** 관계 필드 이름 → 고른 항목 ID. 같은 필드의 여러 값은 OR, 다른 필드끼리는 AND다. */
+	readonly where?: Readonly<Record<string, string | readonly string[]>>;
+	readonly sort?: PublishedSort;
+	readonly order?: "asc" | "desc";
+	/** 1부터. */
+	readonly page?: number;
+	/** 1~500. 기본 25. */
+	readonly pageSize?: number;
+	readonly includeBody?: boolean;
+}
+
+const SORT_COLUMNS: Record<PublishedSort, string> = {
+	publishedAt: "src.published_at",
+	updatedAt: "b.updated_at",
+	title: "b.metadata->>'title'",
+};
 
 /**
  * 공개 조회 전용(M7-BE-1). 공개 페이지·RSS·sitemap·OG가 요청마다 호출한다.
@@ -150,6 +174,105 @@ export function createPublicReadOps(ctx: StoreContext) {
 				status: row.is_alias ? "alias" : "current",
 				entry: mapPublishedRow(row),
 			};
+		},
+
+		/**
+		 * 한 컬렉션·언어의 공개본 한 쪽(관계 조건·정렬·쪽 나누기를 DB에서). 관계 조건은 관계 필드만 받는다.
+		 * 번역본의 공통 관계 값은 원문 공개본에서 읽는다(언어별 필드면 이 언어 본문에서).
+		 */
+		listPublishedPage: async (
+			params: PublishedPageParams,
+		): Promise<{ items: PublishedEntryRecord[]; total: number; page: number; pageSize: number }> => {
+			if (typeof params?.collection !== "string" || !isPublicCollection(params.collection)) {
+				throw new CmsError("Invalid collection", "invalid_input");
+			}
+			const page = params.page ?? 1;
+			const pageSize = params.pageSize ?? 25;
+			if (!Number.isInteger(page) || page < 1) throw new CmsError("Invalid page", "invalid_input");
+			if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 500) {
+				throw new CmsError("Invalid pageSize", "invalid_input");
+			}
+			const sort = params.sort ?? "publishedAt";
+			if (!(sort in SORT_COLUMNS)) throw new CmsError("Invalid sort", "invalid_input");
+			const order = params.order === "asc" ? "ASC" : "DESC";
+
+			const values: unknown[] = [params.collection, params.locale ?? DEFAULT_LOCALE];
+			const bind = (value: unknown) => {
+				values.push(value);
+				return `$${values.length}`;
+			};
+			const conditions = ["e.status = 'published'", "e.collection = $1", "e.locale = $2"];
+			for (const [field, raw] of Object.entries(params.where ?? {})) {
+				const stored = isCollection(params.collection) ? storedField(params.collection, field) : undefined;
+				if (stored?.field.kind !== "relation") throw new CmsError(`Invalid where field ${field}`, "invalid_input");
+				const ids = (typeof raw === "string" ? [raw] : [...raw]).filter((id) => typeof id === "string");
+				if (ids.length === 0) continue;
+				const metadata = stored.field.localized ? "b.metadata" : "sb.metadata";
+				conditions.push(
+					stored.field.many
+						? `COALESCE(${metadata}->${bind(field)}, '[]'::jsonb) ?| ${bind(ids)}::text[]`
+						: `${metadata}->>${bind(field)} = ANY(${bind(ids)}::text[])`,
+				);
+			}
+
+			const from = `FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".content_addresses a
+				   ON a.entry_id = e.id AND a.collection = e.collection AND a.type = 'current'
+				 JOIN "${qSchema}".entry_bodies b
+				   ON b.entry_id = e.id AND b.state = 'published'
+				 ${sourceJoin(qSchema)}
+				 WHERE ${conditions.join(" AND ")}`;
+			const total = Number(
+				(await pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count ${from}`, values)).rows[0]?.count ?? 0,
+			);
+			const mdxExpr = params.includeBody === true ? "b.mdx" : "''::text";
+			const rows = await pool.query<PublishedRow>(
+				`SELECT ${PUBLISHED_COLUMNS(mdxExpr)} ${from}
+				 ORDER BY ${SORT_COLUMNS[sort]} ${order} NULLS LAST, e.id ASC
+				 LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
+				values,
+			);
+			return { items: rows.rows.map(mapPublishedRow), total, page, pageSize };
+		},
+
+		/** 번역 묶음의 공개된 언어들(원문 포함). 원문이 공개돼 있지 않으면 비어 있다. */
+		listPublishedTranslations: async (params: {
+			translationGroupId: string;
+		}): Promise<{ id: string; collection: string; locale: string; slug: string }[]> => {
+			const res = await pool.query<{ id: string; collection: string; locale: string; slug: string }>(
+				`SELECT e.id, e.collection, e.locale, a.slug
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".content_addresses a
+				   ON a.entry_id = e.id AND a.collection = e.collection AND a.type = 'current'
+				 JOIN "${qSchema}".entries src ON src.id = COALESCE(e.translation_group_id, e.id) AND src.status = 'published'
+				 WHERE e.status = 'published' AND COALESCE(e.translation_group_id, e.id) = $1
+				 ORDER BY (e.translation_group_id IS NULL) DESC, e.locale`,
+				[params.translationGroupId],
+			);
+			return res.rows;
+		},
+
+		/**
+		 * 번역 묶음 ID들의 공개본(모든 언어). 관계를 풀 때 쓴다: 부르는 쪽이 언어를 고르고 없으면 원문을 쓴다.
+		 * 공개되지 않은 대상은 빠진다.
+		 */
+		listPublishedByGroups: async (params: {
+			translationGroupIds: readonly string[];
+		}): Promise<PublishedEntryRecord[]> => {
+			const ids = params.translationGroupIds.filter((id) => typeof id === "string");
+			if (ids.length === 0) return [];
+			const res = await pool.query<PublishedRow>(
+				`SELECT ${PUBLISHED_COLUMNS("''::text")}
+				 FROM "${qSchema}".entries e
+				 JOIN "${qSchema}".content_addresses a
+				   ON a.entry_id = e.id AND a.collection = e.collection AND a.type = 'current'
+				 JOIN "${qSchema}".entry_bodies b
+				   ON b.entry_id = e.id AND b.state = 'published'
+				 ${sourceJoin(qSchema)}
+				 WHERE e.status = 'published' AND COALESCE(e.translation_group_id, e.id) = ANY($1::uuid[])`,
+				[ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id))],
+			);
+			return res.rows.map(mapPublishedRow);
 		},
 	};
 }

@@ -232,6 +232,7 @@ export default defineConfig({
 | `@bh2980/cms/server` | `cms.server.ts` | `defineServerConfig`·`postgres`·`r2Storage`·`githubAuth` |
 | `@bh2980/cms/next` | `next.config.ts` | `withCms` |
 | `@bh2980/cms/next/route-handler` | 관리자 API 라우트 | `createCmsRouteHandler` |
+| `@bh2980/cms/read` | 공개 화면(서버 컴포넌트·sitemap·RSS) | `getEntry`·`listEntries`·`getTranslations`·`getPreview`: 공개본 읽기(관계·주소·옛 주소 이동·원문 대체) |
 | `@bh2980/cms/runtime` | 서버 코드(공개 화면 등) | 저장소·공개본 읽기·로그인·미리보기 권한·본문 이미지 |
 | `@bh2980/cms/client` | 화면 코드 | API 모양·컬렉션·언어·주소·블록·스키마 도우미 |
 | `@bh2980/cms/mdx`·`/code-block` | 공개 렌더러·편집기 | MDX 해석·직렬화, 코드 블록 주석 모델 |
