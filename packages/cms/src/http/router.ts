@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { authGateway } from "../adapters/auth";
 import { getCmsAuth } from "../container";
 import { pluginRoutes } from "../plugin/server";
 import { CMS_AUTH_BASE_PATH } from "../server/define";
@@ -24,6 +25,7 @@ import * as r24 from "./v1/media/route";
 import * as r26 from "./v1/media/uploads/route";
 import * as r29 from "./v1/meta/route";
 import * as r30 from "./v1/preferences/route";
+import { validateSameOrigin } from "./v1/security";
 import * as r34 from "./v1/templates/[id]/route";
 import * as r33 from "./v1/templates/route";
 
@@ -63,13 +65,22 @@ const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
 	{ pattern: "v1/templates/[id]", module: r34 },
 ];
 
-type CompiledRoute = { segments: string[]; module: RouteModule };
-const compile = (routes: ReadonlyArray<{ pattern: string; module: RouteModule }>): CompiledRoute[] =>
-	routes.map(({ pattern, module }) => ({ segments: pattern.split("/"), module }));
-const COMPILED = compile(ROUTES);
+type CompiledRoute = { segments: string[]; module: RouteModule; guarded: boolean };
+const compile = (
+	routes: ReadonlyArray<{ pattern: string; module: RouteModule; public?: boolean }>,
+	guarded: boolean,
+): CompiledRoute[] =>
+	routes.map((route) => ({
+		segments: route.pattern.split("/"),
+		module: route.module,
+		guarded: guarded && !route.public,
+	}));
+// 본체 경로는 각 라우트가 `adminRoute`로 스스로 감싼다.
+const COMPILED = compile(ROUTES, false);
 let pluginCompiled: Promise<CompiledRoute[]> | undefined;
 const compiledPluginRoutes = () => {
-	pluginCompiled ??= pluginRoutes().then(compile);
+	// 플러그인 경로는 본체가 관리자 확인으로 감싼다(`public: true`만 뺀다). 빠뜨린 인증이 열린 경로가 되지 않게 한다.
+	pluginCompiled ??= pluginRoutes().then((routes) => compile(routes, true));
 	return pluginCompiled;
 };
 
@@ -77,8 +88,8 @@ const compiledPluginRoutes = () => {
 export function matchRoute(
 	path: readonly string[],
 	routes: readonly CompiledRoute[] = COMPILED,
-): { module: RouteModule; params: Record<string, string> } | null {
-	for (const { segments, module } of routes) {
+): { module: RouteModule; params: Record<string, string>; guarded: boolean } | null {
+	for (const { segments, module, guarded } of routes) {
 		if (segments.length !== path.length) continue;
 		const params: Record<string, string> = {};
 		const matched = segments.every((segment, index) => {
@@ -89,7 +100,7 @@ export function matchRoute(
 			}
 			return segment === part;
 		});
-		if (matched) return { module, params };
+		if (matched) return { module, params, guarded };
 	}
 	return null;
 }
@@ -128,6 +139,14 @@ export function createCmsRouteHandler(): Record<Method, CmsRouteHandler> {
 			const handler = matched.module[method] as RouteHandler | undefined;
 			if (!handler) {
 				return handleApiError(new HttpError(405, "method_not_allowed", `${method} is not allowed here`));
+			}
+			if (matched.guarded) {
+				try {
+					validateSameOrigin(request);
+					await authGateway.verifyAdmin();
+				} catch (error) {
+					return handleApiError(error);
+				}
 			}
 			return handler(request, { params: Promise.resolve(matched.params) });
 		};

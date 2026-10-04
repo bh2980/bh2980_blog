@@ -51,10 +51,15 @@ export interface PluginConfigView {
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-/** 플러그인 API 경로 하나. `pattern`은 `/api/cms/` 뒤 주소(예: `v1/ai/run`)이고 `[이름]`은 한 칸이다. */
+/**
+ * 플러그인 API 경로 하나. `pattern`은 `/api/cms/` 뒤 주소(예: `v1/ai/run`)이고 `[이름]`은 한 칸이다.
+ * 본체가 관리자 로그인 확인과 같은 출처 검사로 감싼다. 로그인 없이 받아야 하는 경로(외부 실행기·웹훅 등)만 `public: true`로
+ * 빼고, 그때는 경로가 스스로 요청을 확인한다.
+ */
 export interface PluginRoute {
 	readonly pattern: string;
 	readonly module: Partial<Record<Method, unknown>>;
+	readonly public?: boolean;
 }
 
 /** 플러그인이 쓰는 DB(지금은 Postgres만, D13). `schema`는 검사한 스키마 이름이라 SQL에 그대로 넣어도 된다. */

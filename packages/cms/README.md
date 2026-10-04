@@ -354,7 +354,10 @@ export const myPlugin = () =>
 - `contributes`는 다른 플러그인에 더하는 것이다. 키와 모양은 받는 플러그인이 정하고 본체는 읽지 않는다. 예를 들어
   `contributes: { ai: { actions: { … } } }`는 AI 플러그인(`@bh2980/cms-ai`)이 있으면 그 기능을 더하고, 없으면 쓰이지 않는다.
   확장은 받는 플러그인을 몰라도 기능을 더할 수 있다(블록 확장의 다이어그램 만들기, SEO 확장의 검색 제목 추천).
-- 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. `migrate`는 `cms migrate`가 본체 표 다음에 부른다.
+- 서버 쪽 `routes`는 본체 경로(`/api/cms/v1/*`)에 없는 주소를 받는다. 본체가 관리자 로그인 확인과 같은 출처 검사로 감싸므로
+  인증을 빠뜨려도 열린 경로가 되지 않는다. 로그인 없이 받아야 하는 경로(외부 실행기·웹훅)만 `public: true`로 빼고 스스로 확인한다.
+  `migrate`는 `cms migrate`가 본체 표 다음에 부른다.
+- 같은 출처 검사는 `X-Forwarded-Host`(첫 값)·`Host`·`site.url`의 호스트를 받는다. `Host`를 바꾸는 프록시 뒤라면 `site.url`을 적는다.
 - 플러그인 코드는 `@bh2980/cms/plugin/server`의 `getCmsDatabase()`(DB 연결)와 본체 라우트 틀(`adminRoute` 등)을 쓴다.
 
 ## 서버 설정
