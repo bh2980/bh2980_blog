@@ -969,27 +969,29 @@ export function EntryEditorShell({
 						</Button>
 					) : (
 						// 발행과 발행 예약은 한 단추로 묶는다. 화살표 메뉴에 예약이 있다.
-						<div className="ml-1 flex items-center">
+						// 한 단추처럼 보이게 바탕은 감싸는 칸이 칠하고, 두 단추는 사이의 가는 선으로만 나눈다.
+						<div className="ml-1 flex h-8 items-center overflow-hidden rounded-[min(var(--radius-md),10px)] bg-primary text-primary-foreground">
 							<Button
 								id="cms-publish"
 								type="button"
 								size="sm"
-								className="rounded-r-none"
+								className="h-full rounded-none bg-transparent pr-2 pl-3 hover:bg-primary-foreground/10"
 								disabled={isSubmitting}
 								onClick={() => void handlePublish()}
 							>
 								{busy === "publish" ? "발행 중…" : "발행"}
 							</Button>
+							<span aria-hidden className="h-4 w-px bg-primary-foreground/30" />
 							<DropdownMenu>
 								<IconButton
 									label="발행 방식"
 									side="bottom"
 									variant="default"
 									disabled={isSubmitting}
-									className="w-7 rounded-l-none border-primary-foreground/25 border-l"
+									className="h-full w-7 rounded-none bg-transparent hover:bg-primary-foreground/10 aria-expanded:bg-primary-foreground/10"
 									trigger={(button) => <DropdownMenuTrigger render={button} />}
 								>
-									<ChevronDown aria-hidden className="size-4" />
+									<ChevronDown aria-hidden className="size-3.5" />
 								</IconButton>
 								<DropdownMenuContent align="end" className="w-48">
 									<DropdownMenuItem
@@ -1012,7 +1014,7 @@ export function EntryEditorShell({
 							</DropdownMenu>
 						</div>
 					)}
-					<span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
+					<span aria-hidden className="mx-1 h-4 w-px bg-border" />
 					<IconButton
 						label="속성"
 						side="bottom"
