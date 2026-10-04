@@ -3,6 +3,7 @@ import { annotationConfig } from "../annotation/code-block/active";
 import { fromCodeFenceToCodeBlockDocument } from "../annotation/code-block/code-fence-to-document";
 import { attributeRecord, readJsxAttributes } from "./jsx";
 import { BLOCK_JSX_NAMES, INLINE_JSX_MARKS, sortMarks } from "./registry";
+import { DEMOTED_DIRECTIVE_SOURCE } from "./remark-directives";
 import {
 	boundedTableSpan,
 	hasGfmHeaderLayout,
@@ -28,6 +29,7 @@ type MdastLike = {
 	align?: Array<string | null> | null;
 	children?: MdastLike[];
 	attributes?: unknown[];
+	data?: Record<string, unknown>;
 };
 
 const jsonClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -391,6 +393,11 @@ const convertBlocks = (nodes: MdastLike[]): CmsNode[] => {
 	for (const node of nodes) {
 		switch (node.type) {
 			case "paragraph":
+				// 미등록 블록 지시자는 원문 블록으로 옮겨 그대로 쓴다(`remark-directives.ts`). 글로 두면 저장할 때 이스케이프가 쌓인다.
+				if (node.data?.[DEMOTED_DIRECTIVE_SOURCE]) {
+					output.push({ type: "html", attrs: { value: node.children?.[0]?.value ?? "" } });
+					break;
+				}
 				output.push(...convertParagraph(node));
 				break;
 			case "heading":
