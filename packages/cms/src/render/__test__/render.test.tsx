@@ -68,6 +68,24 @@ describe("본문 그리기 @bh2980/cms/render", () => {
 		expect(markup).not.toContain("javascript:");
 	});
 
+	it("::file은 이름·형식·크기와 내려받기 링크를 그리고, 해석하지 못하면 이름만 남긴다", async () => {
+		const source = '::file{mediaId="11111111-1111-4111-8111-111111111111" label="발표 자료"}';
+		const ok = await html(source, {
+			imageResolver: () => ({
+				url: "https://cdn.example/a.pdf",
+				file: { filename: "deck.pdf", byteSize: 2_516_582, mimeType: "application/pdf" },
+			}),
+		});
+		expect(ok).toContain("발표 자료");
+		expect(ok).toContain("PDF · 2.4MB");
+		expect(ok).toMatch(/<a href="https:\/\/cdn\.example\/a\.pdf" download="deck\.pdf"/);
+
+		const unresolved = await html(source, { labels: { fileUnavailable: "파일 없음" } });
+		expect(unresolved).toContain("발표 자료");
+		expect(unresolved).toContain("파일 없음");
+		expect(unresolved).not.toContain("<a ");
+	});
+
 	it("코드 펜스는 강조하고, 미등록 지시자는 본문 글자로 남긴다", async () => {
 		const code = await html("```ts\nconst a = 1;\n```");
 		expect(code).toContain('class="shiki');

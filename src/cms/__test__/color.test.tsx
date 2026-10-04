@@ -2,20 +2,12 @@ import { analyze, serialize, toDocument } from "@bh2980/cms/mdx";
 import { buildEditorExtensions, mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
 import { colorMarkExtension } from "@bh2980/cms-blocks/color/admin";
 import { Editor } from "@tiptap/core";
-import type { ReactNode } from "react";
-import { renderToReadableStream } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { renderMDX } from "@/components/mdx/mdx-content";
 
 /** 글자색·배경색 저장 형식: `:color[글]{fg fgDark bg bgDark}`(헥스 값, 밝은·어두운 테마 짝). */
 const SOURCE = '빨간 :color[경고]{fg="#dc2626" fgDark="#f87171"}와 :color[**강조**]{bg="#fef3c7" bgDark="#453a12"} 글.';
 
-const render = async (element: ReactNode) => {
-	const stream = await renderToReadableStream(element);
-	await stream.allReady;
-	return await new Response(stream).text();
-};
-
+// 공개 화면 그리기는 `packages/cms-blocks/src/__test__/public-render.test.tsx`가 본다.
 describe("글자색 저장 형식", () => {
 	it("분석·직렬화를 지나도 원문이 그대로다", () => {
 		const analyzed = analyze(SOURCE);
@@ -46,16 +38,5 @@ describe("글자색 저장 형식", () => {
 		editor.commands.unsetMark("cmsColor");
 		expect(tiptapToMdx(editor.getJSON()).trimEnd()).toBe("빨간 경고와 **강조** 글.");
 		editor.destroy();
-	});
-
-	it("공개 렌더는 테마별 CSS 변수를 붙이고, 헥스가 아닌 값은 버린다", async () => {
-		const { content } = await renderMDX(`${SOURCE}\n\n:color[위험]{fg="red; background:url(x)"}`);
-		const html = await render(content);
-		expect(html).toContain('class="cms-color" style="--cms-fg:#dc2626;--cms-fg-dark:#f87171" data-fg=""');
-		expect(html).toMatch(
-			/<span class="cms-color" style="--cms-bg:#fef3c7;--cms-bg-dark:#453a12" data-bg=""><strong>강조<\/strong><\/span>/,
-		);
-		expect(html).toContain('<span class="cms-color">위험</span>');
-		expect(html).not.toContain("url(x)");
 	});
 });

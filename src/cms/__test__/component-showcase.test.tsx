@@ -1,29 +1,20 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { analyze } from "@bh2980/cms/mdx";
-import { mdxToTiptap, tiptapToMdx } from "@bh2980/cms-admin/editor";
-import { compileMDX } from "next-mdx-remote/rsc";
+import { renderMdx } from "@bh2980/cms/render";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { MDX_COMPONENTS, MDX_REHYPE_PLUGINS, MDX_REMARK_PLUGINS } from "@/components/mdx/mdx-content";
+import { createMdxComponents } from "@/components/mdx/mdx-content";
 
+// 에디터 왕복·검사·라이브러리 기본 모양은 `packages/cms-blocks/src/__test__/component-showcase.test.tsx`가 본다.
 const source = readFileSync(path.join(__dirname, "fixtures/component-showcase.mdx"), "utf8");
 
-describe("CMS 컴포넌트 샘플 글", () => {
-	it("에디터에서 열리고 공개 MDX 렌더러에서 모든 섹션을 표시한다", async () => {
-		const analysis = analyze(source);
-		expect(analysis.errors).toEqual([]);
-		const editorDocument = mdxToTiptap(source);
-		expect(editorDocument.content?.length).toBeGreaterThan(30);
-		expect(tiptapToMdx(editorDocument).trim()).toBe(source.trim());
-
+describe("CMS 컴포넌트 샘플 글(블로그 컴포넌트)", () => {
+	it("블로그 공개 컴포넌트가 모든 섹션을 표시한다", async () => {
 		// 공개 코드 블록의 pre는 async 컴포넌트라 정적 렌더 검사에서만 동기 대체한다.
-		const { content } = await compileMDX({
-			source,
-			options: { mdxOptions: { remarkPlugins: MDX_REMARK_PLUGINS(), rehypePlugins: MDX_REHYPE_PLUGINS } },
+		const { content } = await renderMdx(source, {
 			components: {
-				...MDX_COMPONENTS,
+				...createMdxComponents(),
 				pre: ({ children }: { children?: ReactNode }) => <div data-test-code-block>{children}</div>,
 			},
 		});

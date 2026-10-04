@@ -28,6 +28,7 @@ import { CmsCodeCollapse, CmsCodeFold } from "./components/code-lines";
 import { CmsFile } from "./components/file";
 import { CmsImage } from "./components/image";
 import { CmsLink } from "./components/link";
+import { CmsPre } from "./components/pre";
 import { CmsTable, CmsTableCell, CmsTableRow } from "./components/table";
 import { CmsTextAlign } from "./components/text-align";
 
@@ -40,6 +41,9 @@ export interface RenderLabels {
 	readonly fileUnavailable: string;
 	readonly download: string;
 	readonly showFoldedCode: string;
+	readonly copyCode: string;
+	readonly copied: string;
+	readonly codeNotes: string;
 }
 
 const DEFAULT_LABELS: RenderLabels = {
@@ -47,6 +51,9 @@ const DEFAULT_LABELS: RenderLabels = {
 	fileUnavailable: "File unavailable",
 	download: "Download",
 	showFoldedCode: "Show folded code",
+	copyCode: "Copy",
+	copied: "Copied",
+	codeNotes: "Code notes",
 };
 
 export interface RenderMdxOptions {
@@ -112,6 +119,9 @@ export function defaultMdxComponents(options: RenderMdxOptions = {}): MdxCompone
 		a: resolveHref
 			? (props: ComponentProps<typeof CmsLink>) => <CmsLink {...props} href={resolveHref(props.href ?? "")} />
 			: CmsLink,
+		pre: (props: ComponentProps<typeof CmsPre>) => (
+			<CmsPre {...props} copyLabel={labels.copyCode} copiedLabel={labels.copied} notesLabel={labels.codeNotes} />
+		),
 		collapse: CmsCodeCollapse,
 		fold: (props: ComponentProps<typeof CmsCodeFold>) => <CmsCodeFold {...props} label={labels.showFoldedCode} />,
 		// 번역 안내 글은 공개 화면에 보이지 않는다(남은 채로 발행하지 않게 발행 전 검사가 막는다).

@@ -13,7 +13,7 @@ import {
 	createContentStore,
 	migrateContentStore,
 } from "../../../../adapters/postgres/content-store";
-import { isItemCollection } from "../../../../core/collections";
+import { type Collection, isItemCollection } from "../../../../core/collections";
 import { storedFields } from "../../../../schema/derive";
 import type { PublicApiOptions } from "../options";
 
@@ -32,7 +32,7 @@ const relation = (() => {
 	const required = new Set(requiredFields(contentCollection).map(({ name }) => name));
 	for (const { name, field } of storedFields(contentCollection)) {
 		if (field.kind === "relation" && isItemCollection(field.to) && !required.has(name)) {
-			return { name, to: field.to, many: Boolean(field.many) };
+			return { name, to: field.to as Collection, many: Boolean(field.many) };
 		}
 	}
 	return undefined;
