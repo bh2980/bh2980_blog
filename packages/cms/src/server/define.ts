@@ -1,5 +1,6 @@
 import type { AfterCommit, ContentStore } from "../adapters/postgres/content-store";
 import type { MediaStore } from "../adapters/r2/types";
+import type { PublicApiOptions } from "../http/v1/public/options";
 import type { PluginDatabase } from "../plugin/define";
 
 /**
@@ -104,6 +105,8 @@ export interface CmsServerConfig {
 	 * 실패해도 저장은 그대로다(오류는 로그로만). 플러그인의 `afterCommit`도 함께 불린다.
 	 */
 	readonly afterCommit?: AfterCommit;
+	/** 공개 JSON API(`/api/cms/v1/public/*`). 없으면 끈다(404). */
+	readonly publicApi?: PublicApiOptions;
 }
 
 /** 서버 설정을 정의한다. */

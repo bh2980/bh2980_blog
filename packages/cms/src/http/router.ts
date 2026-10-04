@@ -25,6 +25,8 @@ import * as r24 from "./v1/media/route";
 import * as r26 from "./v1/media/uploads/route";
 import * as r29 from "./v1/meta/route";
 import * as r30 from "./v1/preferences/route";
+import * as rPublicEntry from "./v1/public/entries/[collection]/[slug]/route";
+import * as rPublicEntries from "./v1/public/entries/route";
 import { validateSameOrigin } from "./v1/security";
 import * as r34 from "./v1/templates/[id]/route";
 import * as r33 from "./v1/templates/route";
@@ -61,6 +63,9 @@ const ROUTES: ReadonlyArray<{ pattern: string; module: RouteModule }> = [
 	{ pattern: "v1/media/[id]/complete", module: r28 },
 	{ pattern: "v1/meta", module: r29 },
 	{ pattern: "v1/preferences", module: r30 },
+	// 공개 JSON API(로그인 없이 공개본만). 서버 설정 `publicApi`가 없으면 404다.
+	{ pattern: "v1/public/entries", module: rPublicEntries },
+	{ pattern: "v1/public/entries/[collection]/[slug]", module: rPublicEntry },
 	{ pattern: "v1/templates", module: r33 },
 	{ pattern: "v1/templates/[id]", module: r34 },
 ];

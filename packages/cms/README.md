@@ -373,6 +373,7 @@ export const myPlugin = () =>
 | `media` | 이미지·첨부 파일 저장소. `r2Storage({...})`(S3 호환). 없으면 미디어 기능을 못 쓴다. |
 | `auth` | 관리자 로그인. `githubAuth({ clientId, clientSecret, adminIds, devBypass, basePath?, secret })`. `basePath`는 로그인 API 경로(기본 `/api/cms/auth`, "로그인 경로"), `secret`은 로그인 세션 서명 값(없으면 NextAuth가 `AUTH_SECRET`을 읽는다) |
 | `secret` | 저장 값(AI 서비스 키)을 DB에 암호화해 둘 때 쓰는 키. 로그인 서명 값과 따로 둔다. 바꾸면 저장된 키를 다시 넣어야 한다. |
+| `publicApi` | 선택. 공개 JSON API(`/api/cms/v1/public/entries`·`/entries/:collection/:slug`, 로그인 없이 공개본만, 캐시 안 함). `{ collections, filters?: { 질의이름: 관계필드 }, toJson?(entry, { body }) }` |
 | `afterCommit` | 선택. 저장 뒤 알림 `(change) => …`: 글을 만들고·저장하고·발행·보관·휴지통·복원·지운 변경이 커밋된 뒤 `{ kind, entryId, collection, locale, translationGroupId, status, publishedSlug, workingSlug }`를 받는다. 캐시 갱신(`revalidatePath`)·웹훅·검색 색인 자리. 되돌린 변경은 오지 않고, 실패해도 저장은 그대로다. 플러그인도 `afterCommit`을 둘 수 있다 |
 
 다른 저장소·로그인을 쓰려면 `DatabaseAdapter`·`MediaAdapter`·`AuthAdapter`를 직접 만들어 넣는다.
