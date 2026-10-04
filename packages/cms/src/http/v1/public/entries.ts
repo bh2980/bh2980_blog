@@ -63,7 +63,8 @@ export async function GET(request: NextRequest): Promise<Response> {
 		}
 		const locale = isItemCollection(collection) ? DEFAULT_LOCALE : localeOf(params.get("locale"));
 		const result = await listEntries({ collection, locale, where, page, pageSize, sort: "publishedAt" });
-		return publicJson({ ...result, items: result.items.map((entry) => toJson(config)(entry, { body: false })) });
+		const items = result.items.map((entry) => toJson(config)(entry, { body: false })).filter((item) => item !== null);
+		return publicJson({ ...result, items });
 	} catch (error) {
 		return publicApiError(error);
 	}
@@ -81,8 +82,10 @@ export async function getOne(request: NextRequest, params: { collection: string;
 		if (!slug.trim()) return publicError("invalid_input", "slug is required");
 		const result = await getEntry({ collection, slug, locale: localeOf(request.nextUrl.searchParams.get("locale")) });
 		if (result.status === "not_found") return publicError("not_found", "Not found");
+		const entry = toJson(config)(result.entry, { body: true });
+		if (entry === null) return publicError("not_found", "Not found");
 		return publicJson({
-			entry: toJson(config)(result.entry, { body: true }),
+			entry,
 			address: { slug: result.entry.slug, isAlias: result.status === "redirect" },
 		});
 	} catch (error) {

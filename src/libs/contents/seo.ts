@@ -1,23 +1,6 @@
-import { readMetadataString } from "./metadata";
+import { seoOf } from "@bh2980/cms-seo";
 import type { SeoMetadata } from "./types/contents";
 
-/**
- * M7-FE-2: 공개 head용 SEO 값. 저장 위치는 CMS DB `entry_bodies.metadata`이며
- * 키 이름은 `seoTitle` / `seoDescription` / `canonicalUrl` / `ogImageId`다(O1 A6).
- *
- * 여기서는 metadata 레코드를 도메인 값으로 옮기기만 한다. 값이 없으면 키 자체를 만들지 않아
- * SEO를 입력하지 않은 글의 공개 객체 모양이 M7 이전과 동일하게 유지된다.
- */
-const SEO_KEYS = ["seoTitle", "seoDescription", "canonicalUrl", "ogImageId", "seoRobots"] as const;
-
-/**
- * canonical로 쓸 수 있는 값만 통과시킨다.
- * - 사이트 내 경로: `/posts/hello`
- * - 절대 URL: `https://example.com/posts/hello`
- *
- * `javascript:` 같은 스킴이나 `//host`(프로토콜 상대)는 무시한다. 잘못된 값이 들어와도
- * canonical이 사라질 뿐 폴백 주소가 유지되므로 head가 깨지지 않는다.
- */
 /** 경로 형식 canonical을 해석할 때만 쓰는 고정 origin. 실제 사이트 origin과 비교하지 않는다. */
 const CANONICAL_PATH_BASE = "https://canonical.invalid";
 
@@ -56,21 +39,27 @@ export function normalizeCanonicalUrl(value: string | null | undefined): string 
 	}
 }
 
-export function readSeoMetadata(metadata: Record<string, unknown>): SeoMetadata | undefined {
-	const title = readMetadataString(metadata, "seoTitle");
-	const description = readMetadataString(metadata, "seoDescription");
-	const canonicalUrl = normalizeCanonicalUrl(readMetadataString(metadata, "canonicalUrl"));
-	const ogImageId = readMetadataString(metadata, "ogImageId");
+/**
+ * 컬렉션 정의와 저장된 metadata에서 공개 head용 SEO 값을 읽는다(`seoOf`가 필드 역할로 값을 찾는다).
+ * 값이 없으면 `undefined`라서 SEO를 입력하지 않은 글에는 `seo` 키 자체가 없다.
+ *
+ * `seoOf`는 비어 있는 제목·설명을 글 제목·요약으로 채워 주지만, 여기서는 **입력한 값만** 담는다
+ * (폴백은 head를 만드는 쪽이 한다). 그래서 제목·요약을 빼고 넘긴다.
+ */
+export function toSeoMetadata(
+	schema: Parameters<typeof seoOf>[0],
+	metadata: Readonly<Record<string, unknown>>,
+): SeoMetadata | undefined {
+	const { title: _title, summary: _summary, ...explicit } = metadata;
+	const values = seoOf(schema, explicit);
+	const canonicalUrl = normalizeCanonicalUrl(values.canonical);
 
 	const seo: SeoMetadata = {};
-	if (title) seo.title = title;
-	if (description) seo.description = description;
+	if (values.title) seo.title = values.title;
+	if (values.description) seo.description = values.description;
 	if (canonicalUrl) seo.canonicalUrl = canonicalUrl;
-	if (ogImageId) seo.ogImageId = ogImageId;
-	if (readMetadataString(metadata, "seoRobots") === "noindex") seo.noindex = true;
+	if (values.imageId) seo.ogImageId = values.imageId;
+	if (values.noindex) seo.noindex = true;
 
 	return Object.keys(seo).length > 0 ? seo : undefined;
 }
-
-/** SEO 키가 공개 metadata allowlist·컬렉션 레지스트리와 어긋나지 않는지 확인할 때 쓰는 목록. */
-export const SEO_METADATA_KEYS: readonly string[] = SEO_KEYS;

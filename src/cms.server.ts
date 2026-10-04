@@ -1,4 +1,5 @@
 import { defineServerConfig, githubAuth, postgres, r2Storage } from "@bh2980/cms/server";
+import { toPublicEntryDto } from "@/libs/contents/public-api";
 
 /**
  * 이 블로그의 CMS 서버 설정. 저장소·미디어·관리자 로그인 연결과 비밀 값은 환경 변수에서 읽는다.
@@ -30,4 +31,13 @@ export default defineServerConfig({
 	}),
 	// 저장한 AI 서비스 키를 계속 풀도록 예전처럼 로그인과 같은 값을 쓴다(새 사이트는 CMS_SECRET을 따로 둔다).
 	secret: process.env.AUTH_SECRET,
+	// 공개 JSON API(`/api/cms/v1/public/entries`)는 본체가 `[...path]` 라우트에서 받는다. 응답 모양은 예전 이 블로그의 API와 같다.
+	publicApi: {
+		collections: ["post", "memo"],
+		defaultCollection: "post",
+		// `?category=<카테고리 주소>`, `?tag=<태그 주소>`. 메모에는 카테고리가 없어 그 조건은 건너뛴다.
+		filters: { category: "categoryId", tag: "tagIds" },
+		maxPageSize: 100,
+		toJson: toPublicEntryDto,
+	},
 });

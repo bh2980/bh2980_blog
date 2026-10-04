@@ -140,6 +140,16 @@ describe("공개 JSON API", () => {
 		expect((await get(`v1/public/entries/${contentCollection}/missing`)).status).toBe(404);
 	});
 
+	it("toJson이 null이면 그 글을 숨긴다(목록에서 빠지고 단건은 404)", async () => {
+		state.publicApi = {
+			collections: [contentCollection],
+			toJson: (entry) => (entry.slug === "public-2" ? null : { s: entry.slug }),
+		} satisfies PublicApiOptions;
+		const list = await get("v1/public/entries");
+		expect(list.body.items.map((item: { s: string }) => item.s)).not.toContain("public-2");
+		expect((await get(`v1/public/entries/${contentCollection}/public-2`)).status).toBe(404);
+	});
+
 	it("사이트가 응답 모양을 정할 수 있다(toJson)", async () => {
 		state.publicApi = {
 			collections: [contentCollection],

@@ -1,3 +1,4 @@
+import { contentPath } from "@bh2980/cms/client";
 import type { MetadataRoute } from "next";
 import { DEFAULT_LOCALE, LOCALES, type Locale, localizePath } from "@/libs/i18n/locales";
 import type { Memo, Post } from "./types/contents";
@@ -22,20 +23,22 @@ type Item = { locale: Locale; group: string; path: string; lastModified?: string
  */
 export function buildSitemapEntries({ hostUrl, posts, memos }: SitemapSource): MetadataRoute.Sitemap {
 	const absolute = (path: string) => (path === "/" ? hostUrl : new URL(`${hostUrl}${path}`).toString());
-	const toItems = (entries: readonly (Post | Memo)[], section: "/posts" | "/memos"): Item[] =>
+	const toItems = (entries: readonly (Post | Memo)[], collection: "post" | "memo"): Item[] =>
 		entries
 			.filter((entry) => entry.status === "published" && !entry.seo?.canonicalUrl && !entry.seo?.noindex)
-			.map((entry) => {
+			.flatMap((entry) => {
+				const path = contentPath(collection, entry.slug);
+				if (!path) return [];
 				const locale = entry.locale ?? DEFAULT_LOCALE;
 				return {
 					locale,
-					group: `${section}:${entry.translationGroupId ?? entry.slug}`,
-					path: localizePath(locale, `${section}/${entry.slug}`),
+					group: `${collection}:${entry.translationGroupId ?? entry.slug}`,
+					path: localizePath(locale, path),
 					lastModified: entry.status === "published" ? (entry.updatedAt ?? entry.publishedAt) : undefined,
 				};
 			});
 
-	const items = [...toItems(posts, "/posts"), ...toItems(memos, "/memos")];
+	const items = [...toItems(posts, "post"), ...toItems(memos, "memo")];
 	const locales = LOCALES.filter((locale) => locale === DEFAULT_LOCALE || items.some((item) => item.locale === locale));
 
 	const languagesOf = (members: readonly Item[]) => {
@@ -47,6 +50,7 @@ export function buildSitemapEntries({ hostUrl, posts, memos }: SitemapSource): M
 		return { languages };
 	};
 
+	// 첫 화면과 목록 화면 주소는 컬렉션 정의에 없는 사이트 고정 주소다.
 	const sections = ["/", "/posts", "/memos"].flatMap((path) => {
 		const members = locales.map((locale) => ({ locale, group: path, path: localizePath(locale, path) }));
 		return members.map((member) => {

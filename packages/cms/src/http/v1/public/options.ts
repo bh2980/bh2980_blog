@@ -16,7 +16,10 @@ export interface PublicApiOptions {
 	readonly filters?: Readonly<Record<string, string>>;
 	/** 쪽 크기 상한(기본 100). 기본 쪽 크기는 25. */
 	readonly maxPageSize?: number;
-	/** 응답의 글 모양. 없으면 기본 모양(`defaultPublicJson`). 본문은 단건에만 실린다(`body: true`). */
+	/**
+	 * 응답의 글 모양. 없으면 기본 모양(`defaultPublicJson`). 본문은 단건에만 실린다(`body: true`).
+	 * `null`을 돌려주면 그 글을 공개 API에서 숨긴다(목록에서 빠지고 단건은 404). 쪽의 `total`은 숨기기 전 개수다.
+	 */
 	readonly toJson?: (entry: ReadEntry, options: { readonly body: boolean }) => unknown;
 }
 
