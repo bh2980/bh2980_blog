@@ -75,7 +75,7 @@ export const CmsImage = ({
 			? { width: resolved.width, height: resolved.height }
 			: undefined;
 	const captionText = caption?.trim();
-	const captionClassName = "text-slate-500 text-sm dark:text-slate-400";
+	const captionClassName = "text-muted-foreground text-sm";
 	const captionAlignClass = CAPTION_ALIGN_CLASS[align ?? ""] ?? "text-center";
 
 	// 해석 실패: 장식 이미지는 캡션만 남긴다. 본문 이미지는 중립 플레이스홀더와 캡션을 남긴다.
@@ -90,8 +90,8 @@ export const CmsImage = ({
 					role="img"
 					aria-label={unavailableLabel}
 					className={cn(
-						"flex h-48 w-full items-center justify-center gap-2 rounded-md border border-dashed",
-						"border-slate-300 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500",
+						"flex h-48 w-full items-center justify-center gap-2 rounded-sm border border-dashed",
+						"bg-muted text-muted-foreground",
 					)}
 				>
 					<ImageOff className="h-5 w-5" aria-hidden />

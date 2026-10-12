@@ -40,7 +40,7 @@ describe("글 검색 정보(v3 SEO)", () => {
 	});
 
 	it("구조화 데이터는 글과 경로를 절대 주소로 내고, 고른 공유 이미지를 싣는다", async () => {
-		vi.stubEnv("HOST_URL", "https://bh2980.dev");
+		vi.stubEnv("HOST_URL", "https://www.bh2980.com");
 		const element = await ArticleStructuredData({
 			facts: { ...facts, seo: { ogImageId: "m1" } },
 			list: { name: "posts.title", path: "/posts" },
@@ -49,21 +49,21 @@ describe("글 검색 정보(v3 SEO)", () => {
 		expect(article).toMatchObject({
 			"@type": "BlogPosting",
 			headline: "SEO 해보기",
-			url: "https://bh2980.dev/posts/seo",
+			url: "https://www.bh2980.com/posts/seo",
 			datePublished: facts.publishedAt,
 			dateModified: facts.updatedAt,
 			keywords: "SEO, Next.js",
 			image: ["https://cdn.example/m1.png"],
 		});
 		expect(breadcrumb.itemListElement.map((item: { item: string }) => item.item)).toEqual([
-			"https://bh2980.dev/",
-			"https://bh2980.dev/posts",
-			"https://bh2980.dev/posts/seo",
+			"https://www.bh2980.com/",
+			"https://www.bh2980.com/posts",
+			"https://www.bh2980.com/posts/seo",
 		]);
 	});
 
 	it("검색엔진에 숨긴 글은 구조화 데이터를 내지 않는다", async () => {
-		vi.stubEnv("HOST_URL", "https://bh2980.dev");
+		vi.stubEnv("HOST_URL", "https://www.bh2980.com");
 		expect(
 			await ArticleStructuredData({
 				facts: { ...facts, seo: { noindex: true } },

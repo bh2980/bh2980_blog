@@ -49,9 +49,8 @@ export const a = ({ children, href, ...props }: ComponentPropsWithRef<"a">) => {
 			href={h}
 			{...props}
 			className={cn(
-				"text-current decoration-slate-300/50 underline-offset-4",
-				"hover:text-slate-900 hover:decoration-slate-900",
-				"dark:decoration-slate-500/50 dark:hover:text-slate-300 dark:hover:decoration-slate-300",
+				"text-current decoration-muted-foreground/50 underline-offset-4",
+				"hover:text-primary hover:decoration-primary",
 				"after:inline-block after:opacity-30 after:content-['↗'] hover:after:opacity-100",
 				props.className,
 			)}

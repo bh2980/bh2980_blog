@@ -49,18 +49,13 @@ export const TableOfContents = ({ toc, className }: { toc: TocItem[]; className?
 
 	return (
 		<nav className={cn("not-prose", className)}>
-			<ul
-				className={cn(
-					"flex flex-col gap-2 rounded-md bg-slate-100 p-5 text-slate-500 text-sm",
-					"dark:bg-slate-800 dark:text-slate-400",
-				)}
-			>
+			<ul className="flex flex-col gap-2 border-l py-1 pl-4 text-muted-foreground text-sm leading-relaxed">
 				{toc.map((item) => (
 					<li
 						key={item.href}
 						className={cn(
-							"cursor-pointer hover:text-accent-foreground",
-							activeId === item.href && "font-bold text-slate-600 dark:text-slate-300",
+							"cursor-pointer transition-colors hover:text-foreground",
+							activeId === item.href && "text-primary",
 						)}
 						style={{
 							marginLeft: `${item.depth * 12}px`,

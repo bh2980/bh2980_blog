@@ -1,6 +1,6 @@
-# bh2980.dev
+# bh2980.com
 
-[![Blog](https://img.shields.io/badge/blog-bh2980.dev-0f172a?style=flat-square)](https://bh2980.dev)
+[![Blog](https://img.shields.io/badge/blog-bh2980.com-0f172a?style=flat-square)](https://www.bh2980.com)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.2.3-20232A?style=flat-square&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)

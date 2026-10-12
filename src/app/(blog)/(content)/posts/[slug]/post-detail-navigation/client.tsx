@@ -1,10 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getHrefWithCurrentQuery } from "@/components/query-preserving-back-link.client";
-import { Separator } from "@/components/ui/separator";
 import type { Post } from "@/libs/contents/types/contents";
 import { useTranslate } from "@/libs/i18n/use-locale";
 
@@ -14,6 +12,7 @@ type PostDetailNavigationProps = {
 	detailPathnamePrefix?: string;
 };
 
+/** 모음집에 들지 않은 글의 이전·다음. 모음집 이동과 같은 한 줄 모양이다. */
 export const PostDetailNavigationClient = ({
 	currentSlug,
 	items,
@@ -28,38 +27,36 @@ export const PostDetailNavigationClient = ({
 	const nextPost =
 		currentIndex >= 0 && currentIndex + 1 < filteredItems.length ? filteredItems[currentIndex + 1] : null;
 
-	return (
-		<>
-			<Separator />
-			<nav aria-label={t("detail.pageNav")} className="flex flex-col gap-6">
-				<div className="flex">
-					{prevPost && (
-						<Link
-							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
-							className="flex flex-col gap-2 hover:underline"
-						>
-							<span className="inline-flex items-center gap-1 text-sm">
-								<ChevronLeft size={16} />
-								{t("detail.prev")}
-							</span>
-							<span>{prevPost.title}</span>
-						</Link>
-					)}
+	if (!prevPost && !nextPost) return null;
 
-					{nextPost && (
-						<Link
-							href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
-							className="ml-auto flex flex-col justify-end gap-2 hover:underline"
-						>
-							<span className="inline-flex items-center justify-end gap-1 text-sm">
-								{t("detail.next")}
-								<ChevronRight size={16} />
-							</span>
-							<span>{nextPost.title}</span>
-						</Link>
-					)}
-				</div>
-			</nav>
-		</>
+	return (
+		<nav aria-label={t("detail.pageNav")} className="grid grid-cols-2 items-baseline gap-x-6 border-t pt-6 text-sm">
+			{prevPost ? (
+				<Link
+					href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${prevPost.slug}`, searchParams)}
+					aria-label={`${t("detail.prev")}: ${prevPost.title}`}
+					className="group flex min-w-0 gap-2 text-foreground"
+				>
+					<span aria-hidden className="text-muted-foreground">
+						←
+					</span>
+					<span className="min-w-0 group-hover:underline">{prevPost.title}</span>
+				</Link>
+			) : (
+				<span aria-hidden />
+			)}
+			{nextPost ? (
+				<Link
+					href={getHrefWithCurrentQuery(`${detailPathnamePrefix}/${nextPost.slug}`, searchParams)}
+					aria-label={`${t("detail.next")}: ${nextPost.title}`}
+					className="group flex min-w-0 justify-end gap-2 text-right text-foreground"
+				>
+					<span className="min-w-0 group-hover:underline">{nextPost.title}</span>
+					<span aria-hidden className="text-muted-foreground">
+						→
+					</span>
+				</Link>
+			) : null}
+		</nav>
 	);
 };

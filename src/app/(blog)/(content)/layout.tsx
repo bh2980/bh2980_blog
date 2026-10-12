@@ -1,5 +1,5 @@
-import Footer from "@/components/footer";
 import Navigation from "@/components/navigation.client";
+import SiteFooter from "@/components/site-footer";
 
 export default function RootLayout({
 	children,
@@ -8,9 +8,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<>
-			<Navigation className="sticky top-0 z-10 border-b bg-slate-50/50 backdrop-blur-lg dark:border-slate-700 dark:bg-slate-900/50" />
-			<main className="flex-1">{children}</main>
-			<Footer />
+			<Navigation />
+			<main className="flex flex-1 flex-col">{children}</main>
+			<SiteFooter />
 		</>
 	);
 }

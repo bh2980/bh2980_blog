@@ -36,7 +36,7 @@ export function ThemeToggle({
 			className={className}
 			{...props}
 		>
-			{isDark ? <Moon aria-hidden className="h-5 w-5" /> : <Sun aria-hidden className="h-5 w-5" />}
+			{isDark ? <Moon aria-hidden className="size-4" /> : <Sun aria-hidden className="size-4" />}
 		</Button>
 	);
 }

@@ -77,9 +77,13 @@ export type DraftMemo = DraftState & BaseMemo;
 export type PublishedMemo = PublishedState & BaseMemo;
 export type Memo = DraftMemo | PublishedMemo;
 
-export type Series = {
+type BaseSeries = {
 	slug: string;
 	label: string;
 	description?: string;
-	items: Post[];
 };
+
+/** 모음집. 게시글 또는 메모 한 종류를 순서대로 담는다(`itemKind`). 항목은 이 언어로 공개된 것만이다. */
+export type PostSeries = BaseSeries & { kind: "post"; items: PublishedPost[] };
+export type MemoSeries = BaseSeries & { kind: "memo"; items: PublishedMemo[] };
+export type Series = PostSeries | MemoSeries;

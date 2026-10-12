@@ -136,7 +136,7 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					key={series.key}
 					dataKey={series.key}
 					fill={`var(--color-${series.key})`}
-					radius={8}
+					maxBarSize={36}
 					isAnimationActive={false}
 				>
 					{spec.options.showValues ? (
@@ -156,7 +156,7 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					type="monotone"
 					dataKey={series.key}
 					stroke={`var(--color-${series.key})`}
-					strokeWidth={2}
+					strokeWidth={1.75}
 					dot={false}
 					isAnimationActive={false}
 				>
@@ -178,7 +178,8 @@ const renderCartesianSeries = (spec: CartesianChartSpec) => {
 					dataKey={series.key}
 					stroke={`var(--color-${series.key})`}
 					fill={`var(--color-${series.key})`}
-					fillOpacity={0.24}
+					fillOpacity={0.12}
+					strokeWidth={1.5}
 					isAnimationActive={false}
 				>
 					{spec.options.showValues ? (
@@ -199,7 +200,15 @@ const ResponsivePie = ({ spec, legendHeight }: { spec: PieChartSpec; legendHeigh
 	const geometry = resolvePieGeometry(dimensions, spec.options.showLegend ? legendHeight : 0);
 
 	return (
-		<Pie data={spec.data} dataKey={spec.valueKey} nameKey={spec.labelKey} isAnimationActive={false} {...geometry} />
+		<Pie
+			data={spec.data}
+			dataKey={spec.valueKey}
+			nameKey={spec.labelKey}
+			stroke="var(--background)"
+			strokeWidth={2}
+			isAnimationActive={false}
+			{...geometry}
+		/>
 	);
 };
 
@@ -209,7 +218,11 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
 
 	return (
-		<ChartContainer config={config} className={cn("not-prose my-6 w-full min-w-0", className)}>
+		// 책 속 도판처럼 본문 폭을 다 채우지 않고 낮게 들인다
+		<ChartContainer
+			config={config}
+			className={cn("not-prose mx-auto my-10 aspect-[2/1] w-full min-w-0 max-w-[40rem]", className)}
+		>
 			<ChartComponent
 				accessibilityLayer
 				data={spec.data}
@@ -221,8 +234,14 @@ const CartesianChart = ({ spec, className }: { spec: CartesianChartSpec; classNa
 					bottom: 0,
 				}}
 			>
-				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} />}
-				<XAxis dataKey={spec.xKey} tickLine={false} tickMargin={10} axisLine={false} />
+				{/* 책 속 도표처럼: 점선 눈금, 바닥에는 먹색 기준선 하나 */}
+				{spec.options.hideGrid ? null : <CartesianGrid vertical={false} strokeDasharray="2 4" />}
+				<XAxis
+					dataKey={spec.xKey}
+					tickLine={false}
+					tickMargin={10}
+					axisLine={{ stroke: "var(--foreground)", strokeWidth: 1 }}
+				/>
 				<YAxis
 					hide={spec.options.hideYAxis}
 					width={estimateYAxisWidth(spec)}
@@ -251,7 +270,10 @@ const PieChartRenderer = ({ spec, className }: { spec: PieChartSpec; className?:
 	const [legendHeight, setLegendHeight] = useState(CHART_LEGEND_HEIGHT);
 
 	return (
-		<ChartContainer config={config} className={cn("not-prose my-6 w-full min-w-0", className)}>
+		<ChartContainer
+			config={config}
+			className={cn("not-prose mx-auto my-10 aspect-[4/3] w-full min-w-0 max-w-[24rem]", className)}
+		>
 			<PieChart>
 				<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey={spec.labelKey} />} />
 				{spec.options.showLegend ? (

@@ -5,5 +5,5 @@ export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default async function Image() {
-	return createOgImageResponse("메모장 | bh2980.dev");
+	return createOgImageResponse("메모 | bh2980.com");
 }

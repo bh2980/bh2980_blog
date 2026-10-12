@@ -31,13 +31,14 @@ function memo(slug: string, seo?: SeoMetadata): Memo {
 }
 
 describe("M7-FE-2 sitemap 항목", () => {
-	it("기본 주소 3개와 공개 글·메모를 담는다", () => {
+	it("기본 주소 4개와 공개 글·메모를 담는다", () => {
 		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [post("a")], memos: [memo("m")] });
 
 		expect(entries.map((entry) => entry.url)).toEqual([
 			HOST,
 			`${HOST}/posts`,
 			`${HOST}/memos`,
+			`${HOST}/series`,
 			`${HOST}/posts/a`,
 			`${HOST}/memos/m`,
 		]);
@@ -95,10 +96,10 @@ describe("M7-FE-2 sitemap 항목", () => {
 		expect(entries.map((entry) => entry.url)).toContain(`${HOST}/posts/c`);
 	});
 
-	it("글·메모가 없어도 기본 주소 3개는 남는다", () => {
+	it("글·메모가 없어도 기본 주소 4개는 남는다", () => {
 		const entries = buildSitemapEntries({ hostUrl: HOST, posts: [], memos: [] });
 
-		expect(entries.map((entry) => entry.url)).toEqual([HOST, `${HOST}/posts`, `${HOST}/memos`]);
+		expect(entries.map((entry) => entry.url)).toEqual([HOST, `${HOST}/posts`, `${HOST}/memos`, `${HOST}/series`]);
 	});
 });
 
@@ -116,6 +117,8 @@ describe("v2 B4 언어별 sitemap", () => {
 			`${HOST}/en/posts`,
 			`${HOST}/memos`,
 			`${HOST}/en/memos`,
+			`${HOST}/series`,
+			`${HOST}/en/series`,
 			`${HOST}/posts/hello`,
 			`${HOST}/en/posts/hello`,
 			`${HOST}/posts/only-ko`,

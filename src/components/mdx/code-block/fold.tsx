@@ -14,7 +14,7 @@ export const fold = ({ children, open }: { children: ReactNode; open?: boolean }
 			/>
 			<label
 				htmlFor={inputId}
-				className="inline cursor-pointer select-none text-slate-500 hover:text-slate-700 peer-checked:hidden dark:text-slate-400 dark:hover:text-slate-200"
+				className="inline cursor-pointer select-none text-muted-foreground hover:text-foreground peer-checked:hidden"
 			>
 				...
 			</label>

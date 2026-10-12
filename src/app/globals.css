@@ -38,6 +38,15 @@
 	}
 }
 
+/*
+ * 공개 블로그의 폭. 모든 쪽의 내용 폭은 768px 하나다(`max-w-reading`).
+ * `max-w-page`는 좌우 여백(px-6 = 1.5rem씩)을 더한 바깥 폭이라, `mx-auto max-w-page px-6` 안의 내용도 768px이 된다.
+ */
+@theme {
+	--container-page: 51rem;
+	--container-reading: 48rem;
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 
@@ -170,218 +179,120 @@
 	--color-destructive-foreground: var(--destructive-foreground);
 }
 
+/*
+ * 색 — 백상지(살짝 데운 흰 종이)·먹·남색. 포인트 색은 남색 하나(`--primary`)만 쓴다.
+ * 관리자 화면은 자기 색(`--cms-*`)을 따로 쓰므로 여기 값과 겹치지 않는다.
+ */
 :root {
 	--radius: 0.5rem;
-
-	--background: oklch(0.9842 0.0034 247.8575);
-
-	--foreground: oklch(0.2795 0.0368 260.031);
-
-	--card: oklch(1 0 0);
-
-	--card-foreground: oklch(0.2795 0.0368 260.031);
-
-	--popover: oklch(1 0 0);
-
-	--popover-foreground: oklch(0.2795 0.0368 260.031);
-
-	--primary: oklch(0.5854 0.2041 277.1173);
-
-	--primary-foreground: oklch(1 0 0);
-
-	--secondary: oklch(0.9276 0.0058 264.5313);
-
-	--secondary-foreground: oklch(0.3729 0.0306 259.7328);
-
-	--muted: oklch(0.967 0.0029 264.5419);
-
-	--muted-foreground: oklch(0.551 0.0234 264.3637);
-
-	--accent: oklch(0.9299 0.0334 272.7879);
-
-	--accent-foreground: oklch(0.3729 0.0306 259.7328);
-
-	--destructive: oklch(0.6368 0.2078 25.3313);
-
-	--border: oklch(0.8717 0.0093 258.3382);
-
-	--input: oklch(0.8717 0.0093 258.3382);
-
-	--ring: oklch(0.5854 0.2041 277.1173);
-
-	--chart-1: oklch(0.76 0.14 277);
-
-	--chart-2: oklch(0.66 0.18 277);
-
-	--chart-3: oklch(0.55 0.21 277);
-
-	--chart-4: oklch(0.44 0.18 277);
-
-	--chart-5: oklch(0.36 0.14 278);
-
-	--sidebar: oklch(0.967 0.0029 264.5419);
-
-	--sidebar-foreground: oklch(0.2795 0.0368 260.031);
-
-	--sidebar-primary: oklch(0.5854 0.2041 277.1173);
-
-	--sidebar-primary-foreground: oklch(1 0 0);
-
-	--sidebar-accent: oklch(0.9299 0.0334 272.7879);
-
-	--sidebar-accent-foreground: oklch(0.3729 0.0306 259.7328);
-
-	--sidebar-border: oklch(0.8717 0.0093 258.3382);
-
-	--sidebar-ring: oklch(0.5854 0.2041 277.1173);
-
-	--destructive-foreground: oklch(1 0 0);
-
+	--background: #f7f6f2;
+	--foreground: #1f2226;
+	--card: #f7f6f2;
+	--card-foreground: #1f2226;
+	--popover: #fbfaf7;
+	--popover-foreground: #1f2226;
+	--primary: #2f4a6b;
+	--primary-foreground: #f7f6f2;
+	--secondary: #eceae3;
+	--secondary-foreground: #1f2226;
+	--muted: #eceae3;
+	--muted-foreground: #5b5e63;
+	--accent: #eceae3;
+	--accent-foreground: #1f2226;
+	--destructive: #a8322a;
+	--destructive-foreground: #f7f6f2;
+	--border: #d8d6ce;
+	--input: #d8d6ce;
+	--ring: #2f4a6b;
+	/* 차트: 책 인쇄 잉크처럼 차분한 다섯 색(남색·인주·녹청·황토·먹회색) */
+	--chart-1: #2f4a6b;
+	--chart-2: #b0553f;
+	--chart-3: #4f7a6a;
+	--chart-4: #b58a3c;
+	--chart-5: #7a7d82;
+	--sidebar: #eceae3;
+	--sidebar-foreground: #1f2226;
+	--sidebar-primary: #2f4a6b;
+	--sidebar-primary-foreground: #f7f6f2;
+	--sidebar-accent: #e3e1d9;
+	--sidebar-accent-foreground: #1f2226;
+	--sidebar-border: #d8d6ce;
+	--sidebar-ring: #2f4a6b;
 	--font-sans: Inter, sans-serif;
-
 	--font-serif: Merriweather, serif;
-
 	--font-mono: JetBrains Mono, monospace;
-
 	--shadow-color: hsl(0 0% 0%);
-
 	--shadow-opacity: 0.1;
-
 	--shadow-blur: 8px;
-
 	--shadow-spread: -1px;
-
 	--shadow-offset-x: 0px;
-
 	--shadow-offset-y: 4px;
-
 	--letter-spacing: 0em;
-
 	--spacing: 0.25rem;
-
 	--shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-
 	--shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-
 	--shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 2px 4px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 4px 6px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 8px 10px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
-
 	--tracking-normal: 0em;
 }
 
 .dark,
 .kui-scheme--dark {
-	--background: oklch(0.2077 0.0398 265.7549);
-
-	--foreground: oklch(0.9288 0.0126 255.5078);
-
-	--card: oklch(0.2795 0.0368 260.031);
-
-	--card-foreground: oklch(0.9288 0.0126 255.5078);
-
-	--popover: oklch(0.2795 0.0368 260.031);
-
-	--popover-foreground: oklch(0.9288 0.0126 255.5078);
-
-	--primary: oklch(0.6801 0.1583 276.9349);
-
-	--primary-foreground: oklch(0.2077 0.0398 265.7549);
-
-	--secondary: oklch(0.3351 0.0331 260.912);
-
-	--secondary-foreground: oklch(0.8717 0.0093 258.3382);
-
-	--muted: oklch(0.2427 0.0381 259.9437);
-
-	--muted-foreground: oklch(0.7137 0.0192 261.3246);
-
-	--accent: oklch(0.3729 0.0306 259.7328);
-
-	--accent-foreground: oklch(0.8717 0.0093 258.3382);
-
-	--destructive: oklch(0.6368 0.2078 25.3313);
-
-	--border: oklch(0.4461 0.0263 256.8018);
-
-	--input: oklch(0.4461 0.0263 256.8018);
-
-	--ring: oklch(0.6801 0.1583 276.9349);
-
-	--chart-1: oklch(0.8 0.12 277);
-
-	--chart-2: oklch(0.7 0.16 277);
-
-	--chart-3: oklch(0.6 0.2 277);
-
-	--chart-4: oklch(0.5 0.18 277);
-
-	--chart-5: oklch(0.42 0.14 278);
-
-	--sidebar: oklch(0.2795 0.0368 260.031);
-
-	--sidebar-foreground: oklch(0.9288 0.0126 255.5078);
-
-	--sidebar-primary: oklch(0.6801 0.1583 276.9349);
-
-	--sidebar-primary-foreground: oklch(0.2077 0.0398 265.7549);
-
-	--sidebar-accent: oklch(0.3729 0.0306 259.7328);
-
-	--sidebar-accent-foreground: oklch(0.8717 0.0093 258.3382);
-
-	--sidebar-border: oklch(0.4461 0.0263 256.8018);
-
-	--sidebar-ring: oklch(0.6801 0.1583 276.9349);
-
-	--destructive-foreground: oklch(0.2077 0.0398 265.7549);
-
+	--background: #161719;
+	--foreground: #dcdad3;
+	--card: #161719;
+	--card-foreground: #dcdad3;
+	--popover: #1d1e21;
+	--popover-foreground: #dcdad3;
+	--primary: #8fb0d6;
+	--primary-foreground: #161719;
+	--secondary: #202124;
+	--secondary-foreground: #dcdad3;
+	--muted: #202124;
+	--muted-foreground: #9a9a96;
+	--accent: #26282b;
+	--accent-foreground: #dcdad3;
+	--destructive: #e0796e;
+	--destructive-foreground: #161719;
+	--border: #34363a;
+	--input: #34363a;
+	--ring: #8fb0d6;
+	--chart-1: #8fb0d6;
+	--chart-2: #e08a74;
+	--chart-3: #8cc0aa;
+	--chart-4: #d9b46a;
+	--chart-5: #a3a6aa;
+	--sidebar: #1d1e21;
+	--sidebar-foreground: #dcdad3;
+	--sidebar-primary: #8fb0d6;
+	--sidebar-primary-foreground: #161719;
+	--sidebar-accent: #26282b;
+	--sidebar-accent-foreground: #dcdad3;
+	--sidebar-border: #34363a;
+	--sidebar-ring: #8fb0d6;
 	--radius: 0.5rem;
-
 	--font-sans: Inter, sans-serif;
-
 	--font-serif: Merriweather, serif;
-
 	--font-mono: JetBrains Mono, monospace;
-
 	--shadow-color: hsl(0 0% 0%);
-
 	--shadow-opacity: 0.1;
-
 	--shadow-blur: 8px;
-
 	--shadow-spread: -1px;
-
 	--shadow-offset-x: 0px;
-
 	--shadow-offset-y: 4px;
-
 	--letter-spacing: 0em;
-
 	--spacing: 0.25rem;
-
 	--shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-
 	--shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-
 	--shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 2px 4px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 4px 6px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 8px 10px -2px hsl(0 0% 0% / 0.1);
-
 	--shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
 }
 
@@ -408,6 +319,12 @@
 	.kui-scheme--dark .shiki {
 		color: var(--shiki-dark) !important;
 		background-color: var(--shiki-dark-bg) !important;
+	}
+
+	/* 공개 화면의 코드 블록은 테마 배경 대신 종이보다 한 톤 짙은 바탕에 둔다(밝은·어두운 테마 모두) */
+	.blog .shiki,
+	html.dark .blog .shiki {
+		background-color: var(--muted) !important;
 	}
 
 	html.dark .shiki span,
@@ -457,7 +374,7 @@
 	}
 
 	.prose code:not(pre code) {
-		@apply rounded-sm border bg-slate-100 py-0.5 px-1.5 mx-0.5 before:content-none! after:content-none! dark:bg-slate-700 font-normal! text-current!;
+		@apply rounded-sm border bg-muted py-0.5 px-1.5 mx-0.5 before:content-none! after:content-none! font-normal! text-current!;
 		box-decoration-break: clone;
 		-webkit-box-decoration-break: clone;
 	}
@@ -535,4 +452,190 @@
 .prose .katex-display > .katex {
 	display: inline-block;
 	min-width: max-content;
+}
+
+/*
+ * 공개 블로그 — 정갈한 책. `(blog)/layout.tsx`의 `.blog` 안에만 건다(관리자 화면은 Pretendard 그대로).
+ * 본문은 고운바탕 17px·행간 2, 모든 쪽의 내용 폭은 768px. 문단 사이는 띄운다.
+ */
+@layer base {
+	/* 쪽마다 스크롤바가 생기고 사라져도 내용이 옆으로 밀리지 않게 자리를 늘 비워 둔다 */
+	html:has(.blog) {
+		scrollbar-gutter: stable;
+	}
+
+	body:has(.blog) {
+		background-color: var(--background);
+		color: var(--foreground);
+	}
+
+	.blog {
+		--font-book: var(--font-literata), var(--font-gowun-batang), "AppleMyungjo", serif;
+		--font-book-ja: var(--font-literata), var(--font-shippori-mincho), "Hiragino Mincho ProN", "Yu Mincho", serif;
+		--font-code: var(--font-plex-mono), var(--font-gowun-batang), monospace;
+		background-color: var(--background);
+		color: var(--foreground);
+		font-family: var(--font-book);
+		font-feature-settings: normal;
+		-webkit-font-feature-settings: normal;
+		/* 가는 명조 획이 더 가늘어지지 않게 시스템 기본 글자 다듬기를 쓴다 */
+		-webkit-font-smoothing: auto;
+		-moz-osx-font-smoothing: auto;
+		word-break: keep-all;
+		overflow-wrap: break-word;
+		text-autospace: normal;
+	}
+
+	/* 일본어는 띄어쓰기가 없어 어절 단위 줄바꿈을 끄고, 행간을 조금 더 둔다 */
+	.blog:lang(ja),
+	.blog :lang(ja) {
+		font-family: var(--font-book-ja);
+		word-break: normal;
+		line-break: strict;
+	}
+
+	.blog :is(h1, h2, h3, h4) {
+		text-wrap: balance;
+	}
+
+	.blog :is(code, kbd, samp, pre) {
+		font-family: var(--font-code);
+	}
+}
+
+/* 본문(`prose`)을 고치는 규칙. 타이포그래피 플러그인은 유틸리티 층에 있어 base 층에서는 이기지 못하므로 층 밖에 둔다. */
+.blog .prose {
+	--tw-prose-body: var(--foreground);
+	--tw-prose-headings: var(--foreground);
+	--tw-prose-lead: var(--muted-foreground);
+	--tw-prose-links: var(--primary);
+	--tw-prose-bold: var(--foreground);
+	--tw-prose-counters: var(--muted-foreground);
+	--tw-prose-bullets: var(--muted-foreground);
+	--tw-prose-hr: var(--border);
+	--tw-prose-quotes: var(--foreground);
+	--tw-prose-quote-borders: var(--border);
+	--tw-prose-captions: var(--muted-foreground);
+	--tw-prose-kbd: var(--foreground);
+	--tw-prose-code: var(--foreground);
+	--tw-prose-pre-code: inherit;
+	--tw-prose-pre-bg: var(--muted);
+	--tw-prose-th-borders: var(--border);
+	--tw-prose-td-borders: var(--border);
+	max-width: var(--container-reading);
+	font-size: 1.0625rem;
+	line-height: 2;
+	letter-spacing: -0.005em;
+}
+
+.blog .prose,
+.blog .prose * {
+	font-feature-settings: normal;
+	-webkit-font-feature-settings: normal;
+}
+
+.blog .prose :is(table, ol, ul) {
+	font-feature-settings: "tnum" 1 !important;
+	-webkit-font-feature-settings: "tnum" 1 !important;
+}
+
+.blog .prose:lang(ja),
+.blog .prose :lang(ja) {
+	line-height: 2.2;
+}
+
+.blog .prose p {
+	text-wrap: pretty;
+}
+
+.blog .prose :is(h1, h2, h3, h4) {
+	font-weight: 700;
+	letter-spacing: 0;
+	line-height: 1.5;
+}
+
+.blog .prose h1 {
+	font-size: 1.85em;
+	line-height: 1.45;
+}
+
+.blog .prose h2 {
+	font-size: 1.35em;
+	margin-top: 2.4em;
+}
+
+.blog .prose h3 {
+	font-size: 1.12em;
+}
+
+.blog .prose a {
+	text-decoration-thickness: 0.06em;
+	text-underline-offset: 0.22em;
+}
+
+.blog .prose blockquote {
+	font-style: normal;
+	font-weight: 400;
+	border-left-width: 1px;
+	color: var(--muted-foreground);
+}
+
+.blog .prose blockquote p:first-of-type::before,
+.blog .prose blockquote p:last-of-type::after {
+	content: none;
+}
+
+.blog .prose hr {
+	border: 0;
+	height: auto;
+	margin-block: 2.5em;
+	text-align: center;
+	color: var(--muted-foreground);
+}
+
+/* 장면 구분은 가는 선 대신 별 세 개 */
+.blog .prose hr::after {
+	content: "*  *  *";
+	white-space: pre;
+	letter-spacing: 0.4em;
+}
+
+.blog .prose pre {
+	font-size: 0.85rem;
+	line-height: 1.7;
+}
+
+/* 목록은 문단보다 촘촘하게. 행간이 넉넉해 항목 사이 여백을 거의 두지 않는다 */
+.blog .prose :is(ul, ol) {
+	margin-block: 1.1em;
+}
+
+.blog .prose li {
+	margin-block: 0.15em;
+}
+
+.blog .prose li :is(ul, ol) {
+	margin-block: 0.15em;
+}
+
+.blog .prose li > p {
+	margin-block: 0;
+}
+
+/* 가로로 넘치는 코드·표의 스크롤바는 얇게, 종이 선 색으로 */
+.blog :is(pre, .overflow-x-auto) {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--foreground) 22%, transparent) transparent;
+}
+
+.blog :is(pre, .overflow-x-auto)::-webkit-scrollbar {
+	height: 6px;
+}
+
+.blog :is(pre, .overflow-x-auto)::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.blog :is(pre, .overflow-x-auto)::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--foreground) 22%, transparent);
 }

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { entryPath } from "@/libs/contents/entry-path";
+import { SEOUL_TIME_ZONE } from "@/libs/contents/published-at";
 import { listCategories } from "@/libs/contents/services/category";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
-import { listTags } from "@/libs/contents/services/tag";
 import type { Locale } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
-import { MemoList } from "../(content)/memos/memo-list";
+import { type MemoItem, MemoList } from "../(content)/memos/memo-list";
 import { PostList } from "../(content)/posts/post-list";
 import { openGraphLocale, sectionAlternates } from "./i18n-metadata";
 
@@ -34,6 +35,19 @@ export async function PostsView({ locale }: { locale: Locale }) {
 	return <PostList categories={categoriesWithCount} posts={posts} />;
 }
 
+/** `yy. MM` (서울 시간 기준) */
+function formatYearMonth(value: string) {
+	const parts = new Intl.DateTimeFormat("ko-KR", {
+		year: "2-digit",
+		month: "2-digit",
+		timeZone: SEOUL_TIME_ZONE,
+	}).formatToParts(new Date(value));
+	const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+
+	// 한국어 형식은 `2-digit`을 줘도 달을 한 자리로 돌려주므로 직접 채운다
+	return `${pick("year")}. ${pick("month").padStart(2, "0")}`;
+}
+
 export function memosMetadata(locale: Locale): Metadata {
 	const t = translator(locale);
 	return {
@@ -45,7 +59,16 @@ export function memosMetadata(locale: Locale): Metadata {
 }
 
 export async function MemosView({ locale }: { locale: Locale }) {
-	const [memos, tags] = await Promise.all([listMemos({}, locale), listTags(locale)]);
+	const memos = await listMemos({}, locale);
 
-	return <MemoList memos={memos} tags={tags} />;
+	// 클라이언트 목록이 쓰는 값(주소·`yy. MM` 날짜)은 여기서 만들어 넘긴다
+	const items: MemoItem[] = memos.list.map((memo) => ({
+		slug: memo.slug,
+		title: memo.title,
+		href: entryPath(locale, "memo", memo.slug),
+		date: memo.status === "published" ? formatYearMonth(memo.publishedAt) : "",
+		tags: memo.tags.map((tag) => ({ slug: tag.slug, label: tag.label })),
+	}));
+
+	return <MemoList memos={items} />;
 }

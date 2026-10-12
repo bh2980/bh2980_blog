@@ -34,7 +34,7 @@ export const pre = async ({ children, title, showLineNumbers, lnum, code, classN
 	const showTitlebar = filePath && filePath.length > 0;
 
 	return (
-		<div className="group relative flex w-full flex-col overflow-hidden rounded-md border">
+		<div className="group relative flex w-full flex-col overflow-hidden rounded-sm border">
 			<div
 				className={cn(
 					"peer",
@@ -47,7 +47,7 @@ export const pre = async ({ children, title, showLineNumbers, lnum, code, classN
 					const isFile = arr.length - 1 === index;
 
 					return isFile ? (
-						<span key={folder} className="inline-flex items-center gap-1 font-semibold dark:text-slate-50">
+						<span key={folder} className="inline-flex items-center gap-1 font-semibold">
 							{folder}
 						</span>
 					) : (
@@ -67,7 +67,7 @@ export const pre = async ({ children, title, showLineNumbers, lnum, code, classN
 					"[&_>_code]:block [&_>_code]:min-w-fit",
 					numbered ? "[&_.line]:px-2 [&_.line]:before:mr-5" : "[&_.line]:px-5",
 					showTitlebar && "m-0! rounded-t-none",
-					"dark:bg-slate-800!",
+					"bg-muted!",
 					className,
 				)}
 				// CSS가 속성이 있기만 해도 줄 번호를 그린다. 꺼져 있으면 속성을 아예 두지 않는다.

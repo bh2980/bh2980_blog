@@ -6,7 +6,7 @@ import { translator } from "@/libs/i18n/translate";
 
 type MessageKey = Parameters<ReturnType<typeof translator>>[0];
 
-const SITE_NAME = "bh2980.dev";
+const SITE_NAME = "bh2980.com";
 const AUTHOR = "bh2980";
 
 /** 글·메모 상세가 검색 정보에 쓰는 값. */

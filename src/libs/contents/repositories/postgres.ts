@@ -65,23 +65,44 @@ function readLocalizedSummary(entry: ReadEntry, locale: Locale): string | null {
 	return readMetadataString(metadata, "summary");
 }
 
-/** 모음집. 항목은 이 언어 번역본이 공개된 글만 보여 준다(v2 B4). 기본 언어는 원문 그대로다. */
-function toSeries(entry: ReadEntry, postsByGroup: ReadonlyMap<string, PublishedPost>, locale: Locale): Series {
+/** 이 언어의 공개 글·메모를 번역 묶음 ID별로 모은 표. 모음집 항목을 고를 때 쓴다. */
+type ItemsByGroup = { post: ReadonlyMap<string, PublishedPost>; memo: ReadonlyMap<string, PublishedMemo> };
+
+/** 모음집이 담는 종류(`itemKind`). 값이 없던 예전 모음집은 게시글이다. */
+const seriesKindOf = (entry: ReadEntry): "post" | "memo" =>
+	(entry.metadata as Record<string, unknown>).itemKind === "memo" ? "memo" : "post";
+
+/** 모음집. 항목은 이 언어 번역본이 공개된 글·메모만 보여 준다(v2 B4). 기본 언어는 원문 그대로다. */
+function toSeries(entry: ReadEntry, items: ItemsByGroup, locale: Locale): Series {
 	const description = readLocalizedSummary(entry, locale);
+	const base = { slug: entry.slug, label: labelOf(entry), ...(description ? { description } : {}) };
+	if (seriesKindOf(entry) === "memo") {
+		return {
+			...base,
+			kind: "memo",
+			items: (entry.relations.memoIds ?? []).map((item) => items.memo.get(item.id)).filter(isDefined<PublishedMemo>),
+		};
+	}
 	return {
-		slug: entry.slug,
-		label: labelOf(entry),
-		...(description ? { description } : {}),
-		items: (entry.relations.itemIds ?? []).map((item) => postsByGroup.get(item.id)).filter(isDefined<PublishedPost>),
+		...base,
+		kind: "post",
+		items: (entry.relations.itemIds ?? []).map((item) => items.post.get(item.id)).filter(isDefined<PublishedPost>),
 	};
 }
 
 export class PostgresRepository implements ContentRepository {
-	/** 이 언어의 공개 게시글을 번역 묶음 ID별로 모은다. 모음집 항목을 고를 때 쓴다. */
-	private async loadPostsByGroup(locale: Locale): Promise<Map<string, PublishedPost>> {
-		const entries = await listAll({ collection: "post", locale });
-		const posts = entries.map(toPublishedPost).filter(isDefined<PublishedPost>);
-		return new Map(posts.map((post) => [post.translationGroupId ?? post.slug, post]));
+	/** 이 언어의 공개 글·메모를 번역 묶음 ID별로 모은다. 모음집 항목을 고를 때 쓴다. 필요한 종류만 읽는다. */
+	private async loadItemsByGroup(locale: Locale, kinds: ReadonlySet<"post" | "memo">): Promise<ItemsByGroup> {
+		const [postEntries, memoEntries] = await Promise.all([
+			kinds.has("post") ? listAll({ collection: "post", locale }) : [],
+			kinds.has("memo") ? listAll({ collection: "memo", locale }) : [],
+		]);
+		const posts = postEntries.map(toPublishedPost).filter(isDefined<PublishedPost>);
+		const memos = memoEntries.map(toPublishedMemo).filter(isDefined<PublishedMemo>);
+		return {
+			post: new Map(posts.map((post) => [post.translationGroupId ?? post.slug, post])),
+			memo: new Map(memos.map((memo) => [memo.translationGroupId ?? memo.slug, memo])),
+		};
 	}
 
 	async getPost(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<Post | null> {
@@ -163,12 +184,10 @@ export class PostgresRepository implements ContentRepository {
 	}
 
 	async listSeries(locale: Locale = DEFAULT_LOCALE): Promise<Series[]> {
-		const [seriesEntries, postsByGroup] = await Promise.all([
-			listAll({ collection: "collection", locale, sort: "updatedAt" }),
-			this.loadPostsByGroup(locale),
-		]);
+		const seriesEntries = await listAll({ collection: "collection", locale, sort: "updatedAt" });
+		const items = await this.loadItemsByGroup(locale, new Set(seriesEntries.map(seriesKindOf)));
 
-		return seriesEntries.map((entry) => toSeries(entry, postsByGroup, locale));
+		return seriesEntries.map((entry) => toSeries(entry, items, locale));
 	}
 
 	async getSeries(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<Series | null> {
@@ -176,7 +195,8 @@ export class PostgresRepository implements ContentRepository {
 		// 옛 주소(alias)로는 찾지 않는다. 정규 주소만 모음집 주소다.
 		if (result.status !== "found") return null;
 
-		return toSeries(result.entry, await this.loadPostsByGroup(locale), locale);
+		const items = await this.loadItemsByGroup(locale, new Set([seriesKindOf(result.entry)]));
+		return toSeries(result.entry, items, locale);
 	}
 
 	async listTranslations(

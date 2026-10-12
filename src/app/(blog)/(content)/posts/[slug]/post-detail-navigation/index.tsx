@@ -14,14 +14,7 @@ export const PostDetailNavigation = ({
 	detailPathnamePrefix = "/posts",
 }: PostDetailNavigationProps) => {
 	return (
-		<Suspense
-			fallback={
-				<>
-					<hr className="border-slate-200 dark:border-slate-800" />
-					<div aria-hidden="true" className="h-[5.5rem]" />
-				</>
-			}
-		>
+		<Suspense fallback={<div aria-hidden="true" className="h-14 border-t" />}>
 			<PostDetailNavigationClient currentSlug={currentSlug} items={items} detailPathnamePrefix={detailPathnamePrefix} />
 		</Suspense>
 	);
