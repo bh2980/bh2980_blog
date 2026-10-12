@@ -1,217 +1,151 @@
 import type { Metadata, Route } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import Footer from "@/components/footer";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { entryPath } from "@/libs/contents/entry-path";
 import { listMemos } from "@/libs/contents/services/memo";
 import { listPosts } from "@/libs/contents/services/post";
+import { listSeries } from "@/libs/contents/services/series";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
-import { formatPublishedAt } from "@/utils/format-published-at";
 import { openGraphLocale, sectionAlternates } from "./i18n-metadata";
+import { WORKS, type Work } from "./works";
 
 /** 첫 화면(v2 B4에서 언어를 받도록 옮겼다). 기본 언어 `/`와 `/en`·`/ja`가 함께 쓴다. */
 export async function homeMetadata(locale: Locale): Promise<Metadata> {
 	return {
 		alternates: sectionAlternates(locale, "/"),
-		openGraph: { type: "website", siteName: "bh2980.dev", ...openGraphLocale(locale) },
+		openGraph: { type: "website", siteName: "bh2980.com", ...openGraphLocale(locale) },
 	};
+}
+
+const COLUMN_ITEMS_COUNT = 3;
+
+type ColumnEntry = { key: string; title: string; description?: string; href: string };
+
+const focusRing = "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
+/** 홈의 한 칸. 제목과 짧은 설명 한 줄씩, 맨 아래에 전체로 가는 링크. */
+function Column({
+	label,
+	entries,
+	more,
+	empty,
+}: {
+	label: string;
+	entries: ColumnEntry[];
+	more?: { href: Route; label: string };
+	empty: string;
+}) {
+	return (
+		<section className="flex min-w-0 flex-col gap-3.5">
+			<h2 className="font-normal text-muted-foreground text-sm">{label}</h2>
+			{entries.length === 0 ? (
+				<p className="text-muted-foreground text-sm">{empty}</p>
+			) : (
+				<ul className="flex flex-col gap-4">
+					{entries.map((entry) => (
+						<li key={entry.key}>
+							<Link href={entry.href as Route} className={`group block ${focusRing}`}>
+								<span className="block text-[0.97rem] leading-normal transition-colors group-hover:text-primary">
+									{entry.title}
+								</span>
+								{entry.description && (
+									<span className="mt-0.5 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
+										{entry.description}
+									</span>
+								)}
+							</Link>
+						</li>
+					))}
+				</ul>
+			)}
+			{more && entries.length > 0 && (
+				<Link
+					href={more.href}
+					className={`self-start text-muted-foreground text-sm underline decoration-[0.06em] underline-offset-[0.25em] hover:text-foreground ${focusRing}`}
+				>
+					{more.label}
+				</Link>
+			)}
+		</section>
+	);
+}
+
+/** 액자 한 점(Lusion식). 작품 쪽 모양은 자유롭고, 홈은 가는 테두리와 설명 한 줄만 그린다. */
+function Frontispiece({ work }: { work: Work }) {
+	return (
+		<figure className="flex flex-col gap-2.5">
+			<Link
+				href={work.href as Route}
+				className={`relative block aspect-video w-full overflow-hidden border bg-muted ${focusRing}`}
+			>
+				{work.poster ? <Image src={work.poster} alt="" fill sizes="54rem" className="object-cover" /> : null}
+			</Link>
+			<figcaption className="flex flex-wrap items-baseline gap-x-2 text-muted-foreground text-sm">
+				<Link href={work.href as Route} className={`font-semibold text-foreground hover:text-primary ${focusRing}`}>
+					{work.title}
+				</Link>
+				<span>
+					{work.tools} · {work.year}
+				</span>
+			</figcaption>
+		</figure>
+	);
 }
 
 export async function HomeView({ locale }: { locale: Locale }) {
 	const t = translator(locale);
 	const href = (path: string) => localizePath(locale, path) as Route;
-	const [posts, memos] = await Promise.all([listPosts({}, locale), listMemos({}, locale)]);
-	const LATEST_ITEMS_COUNT = 3;
-	const FEATURED_TAGS_COUNT = 10;
-	const latestPosts = posts.list.slice(0, LATEST_ITEMS_COUNT);
-	const latestMemos = memos.list.slice(0, LATEST_ITEMS_COUNT);
-	const tagCountMap = new Map<string, { slug: string; label: string; count: number }>();
+	const [posts, memos, seriesList] = await Promise.all([
+		listPosts({}, locale),
+		listMemos({}, locale),
+		listSeries(locale),
+	]);
+	const [frontWork] = WORKS;
 
-	const allContent = [...posts.list, ...memos.list];
-
-	for (const item of allContent) {
-		for (const tag of item.tags ?? []) {
-			const existing = tagCountMap.get(tag.slug);
-			tagCountMap.set(tag.slug, { slug: tag.slug, label: tag.label, count: (existing?.count ?? 0) + 1 });
-		}
-	}
-
-	const featuredTags = Array.from(tagCountMap.values())
-		.toSorted((a, b) => b.count - a.count)
-		.slice(0, FEATURED_TAGS_COUNT);
+	const postEntries = posts.list.slice(0, COLUMN_ITEMS_COUNT).map((post) => ({
+		key: post.slug,
+		title: post.title,
+		description: post.excerpt,
+		href: entryPath(locale, "post", post.slug),
+	}));
+	const memoEntries = memos.list.slice(0, COLUMN_ITEMS_COUNT).map((memo) => ({
+		key: memo.slug,
+		title: memo.title,
+		description: memo.tags.map((tag) => tag.label).join(" · "),
+		href: entryPath(locale, "memo", memo.slug),
+	}));
+	const seriesEntries = seriesList.slice(0, COLUMN_ITEMS_COUNT).map((series) => ({
+		key: series.slug,
+		title: series.label,
+		description: series.description,
+		href: localizePath(locale, `/series/${series.slug}`),
+	}));
 
 	return (
-		<div className="flex flex-1 flex-col">
-			<section className="relative overflow-hidden border-slate-200 border-b bg-linear-to-b from-slate-50 via-white to-white dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
-				<div className="absolute inset-0">
-					<div className="pointer-events-none absolute -top-20 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-200/40 blur-3xl dark:bg-blue-500/10" />
-					<div className="pointer-events-none absolute right-[-5rem] -bottom-16 h-56 w-56 rounded-full bg-slate-200/60 blur-3xl dark:bg-slate-700/20" />
-				</div>
-				<div className="relative mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 pt-28 pb-16">
-					<Badge
-						variant="secondary"
-						className="w-fit bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
-					>
-						{t("home.badge")}
-					</Badge>
-					<div className="flex flex-col gap-4">
-						<h1 className="font-bold text-4xl text-slate-900 dark:text-slate-100">{t("home.greeting")}</h1>
-						<p className="text-balance text-lg text-slate-600 dark:text-slate-300">{t("home.intro")}</p>
-					</div>
-					<div className="flex flex-wrap gap-3">
-						<Link href={href("/posts")} className={buttonVariants({ size: "lg" })}>
-							{t("home.browsePosts")}
-						</Link>
-						<Link href={href("/memos")} className={buttonVariants({ variant: "outline", size: "lg" })}>
-							{t("home.browseMemos")}
-						</Link>
-					</div>
-				</div>
-			</section>
-
-			<section className="mx-auto w-full max-w-2xl px-6 py-10">
-				<div className="grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
-					<div className="grid gap-4 sm:grid-cols-3">
-						<div>
-							<p className="text-slate-500 text-sm dark:text-slate-400">{t("home.statPosts")}</p>
-							<p className="mt-2 font-semibold text-2xl text-slate-900 dark:text-slate-100">{posts.total}</p>
-						</div>
-						<div>
-							<p className="text-slate-500 text-sm dark:text-slate-400">{t("home.statMemos")}</p>
-							<p className="mt-2 font-semibold text-2xl text-slate-900 dark:text-slate-100">{memos.total}</p>
-						</div>
-						<div>
-							<p className="text-slate-500 text-sm dark:text-slate-400">{t("home.statTags")}</p>
-							<p className="mt-2 font-semibold text-2xl text-slate-900 dark:text-slate-100">{tagCountMap.size}</p>
-						</div>
-					</div>
-					<Separator />
-					<div className="flex flex-wrap gap-2 text-slate-500 text-sm dark:text-slate-400">
-						<span>{t("home.tagsNote")}</span>
-					</div>
-				</div>
-			</section>
-
-			<section className="mx-auto w-full max-w-2xl px-6 pb-12">
-				<div className="grid gap-10 md:grid-cols-2">
-					<div>
-						<div className="flex items-center justify-between">
-							<h2 className="font-semibold text-slate-900 text-xl dark:text-slate-100">{t("home.latestPosts")}</h2>
-							<Link
-								href={href("/posts")}
-								className="text-slate-500 text-sm hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-							>
-								전체 보기
-							</Link>
-						</div>
-						{latestPosts.length === 0 ? (
-							<p className="mt-4 text-slate-500 text-sm dark:text-slate-400">{t("home.noPosts")}</p>
-						) : (
-							<ul className="mt-4 flex flex-col">
-								{latestPosts.map((post) => (
-									<li key={post.slug} className="group">
-										<Separator className="my-1 group-first:hidden" />
-										<Link
-											href={{ pathname: entryPath(locale, "post", post.slug) as Route }}
-											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-										>
-											<div className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-												<span>{post.category.label}</span>
-												{post.status === "published" && (
-													<>
-														<span>·</span>
-														<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt, locale)}</time>
-													</>
-												)}
-											</div>
-											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
-												{post.title}
-											</h3>
-											{post.tags?.length ? (
-												<ul className="mt-2 flex flex-wrap gap-2 text-slate-500 text-xs dark:text-slate-400 [&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800">
-													{post.tags.map((tag) => (
-														<li key={tag.slug}>{`#${tag.label}`}</li>
-													))}
-												</ul>
-											) : null}
-										</Link>
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-
-					<div>
-						<div className="flex items-center justify-between">
-							<h2 className="font-semibold text-slate-900 text-xl dark:text-slate-100">{t("home.latestMemos")}</h2>
-							<Link
-								href={href("/memos")}
-								className="text-slate-500 text-sm hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-							>
-								전체 보기
-							</Link>
-						</div>
-						{latestMemos.length === 0 ? (
-							<p className="mt-4 text-slate-500 text-sm dark:text-slate-400">{t("home.noMemos")}</p>
-						) : (
-							<ul className="mt-4 flex flex-col">
-								{latestMemos.map((memo) => (
-									<li key={memo.slug} className="group">
-										<Separator className="my-1 group-first:hidden" />
-										<Link
-											href={{ pathname: entryPath(locale, "memo", memo.slug) as Route }}
-											className="block rounded-md p-3 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-										>
-											{memo.status === "published" && (
-												<div className="text-slate-500 text-xs dark:text-slate-400">
-													<time dateTime={memo.publishedAt}>{formatPublishedAt(memo.publishedAt, locale)}</time>
-												</div>
-											)}
-											<h3 className="mt-2 line-clamp-1 font-semibold text-slate-900 dark:text-slate-100">
-												{memo.title}
-											</h3>
-											{memo.tags?.length ? (
-												<ul className="mt-2 flex flex-wrap gap-2 text-slate-500 text-xs dark:text-slate-400 [&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800">
-													{memo.tags.map((tag) => (
-														<li key={tag.slug}>{`#${tag.label}`}</li>
-													))}
-												</ul>
-											) : (
-												<p className="mt-2 text-slate-400 text-xs">{t("home.noTagsOnMemo")}</p>
-											)}
-										</Link>
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-				</div>
-			</section>
-
-			<section className="mx-auto w-full max-w-2xl px-6 pb-16">
-				<div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 dark:border-slate-800 dark:bg-slate-900/70">
-					<div className="flex items-center justify-between">
-						<h2 className="font-semibold text-slate-900 text-xl dark:text-slate-100">{t("home.featuredTags")}</h2>
-					</div>
-					<div className="mt-4 flex flex-wrap gap-2">
-						{featuredTags.length === 0 ? (
-							<p className="text-slate-500 text-sm dark:text-slate-400">{t("home.noFeaturedTags")}</p>
-						) : (
-							featuredTags.map((tag) => (
-								<Badge key={tag.slug} variant="outline" className="gap-1">
-									<span>{tag.label}</span>
-									<span className="text-slate-400 text-xs">{`(${tag.count})`}</span>
-								</Badge>
-							))
-						)}
-					</div>
-				</div>
-			</section>
-
-			<Footer />
+		<div className="mx-auto flex w-full max-w-page flex-col gap-14 px-6 pt-8 pb-20">
+			<h1 className="sr-only">bh2980.com</h1>
+			{frontWork && <Frontispiece work={frontWork} />}
+			<div className="grid gap-10 sm:grid-cols-3 sm:gap-8">
+				<Column
+					label={t("home.posts")}
+					entries={postEntries}
+					more={{ href: href("/posts"), label: t("home.allPosts") }}
+					empty={t("home.noPosts")}
+				/>
+				<Column
+					label={t("home.memos")}
+					entries={memoEntries}
+					more={{ href: href("/memos"), label: t("home.allMemos", { count: memos.total }) }}
+					empty={t("home.noMemos")}
+				/>
+				<Column
+					label={t("home.series")}
+					entries={seriesEntries}
+					more={{ href: href("/series"), label: t("home.allSeries") }}
+					empty={t("home.noSeries")}
+				/>
+			</div>
 		</div>
 	);
 }

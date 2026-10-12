@@ -29,7 +29,7 @@ export function LanguageLinks({
 	return (
 		<nav
 			aria-label={t("language.switch")}
-			className={cn("not-prose flex items-center gap-2 text-slate-500 text-xs dark:text-slate-400", className)}
+			className={cn("not-prose flex items-center gap-2 text-muted-foreground text-xs", className)}
 		>
 			<Languages aria-hidden className="size-3.5" />
 			<ul className="flex flex-wrap items-center gap-2">
@@ -39,7 +39,7 @@ export function LanguageLinks({
 							href={link.href as Route}
 							hrefLang={link.locale}
 							lang={link.locale}
-							className="rounded-full border border-slate-200 px-2.5 py-1 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+							className="rounded-full border px-2.5 py-1 hover:bg-accent hover:text-accent-foreground"
 						>
 							{LOCALE_INFO[link.locale].nativeName}
 						</Link>

@@ -4,6 +4,7 @@ import { entryPath } from "@/libs/contents/entry-path";
 import { createLocalizedLinkResolver } from "@/libs/contents/services/localized-links";
 import { getMemo, listMemoTranslations } from "@/libs/contents/services/memo";
 import { getPost, listPosts, listPostTranslations } from "@/libs/contents/services/post";
+import { findSeriesPlaces } from "@/libs/contents/services/series";
 import { normalizeSlug } from "@/libs/contents/slug";
 import { type Locale, localizePath } from "@/libs/i18n/locales";
 import { translator } from "@/libs/i18n/translate";
@@ -126,8 +127,9 @@ export async function PostDetailView({ locale, slug }: { locale: Locale; slug: s
 	if (!post) return notFound();
 	redirectAlias(locale, POSTS, slug, post.slug);
 
-	const [postList, translations, resolveHref] = await Promise.all([
+	const [postList, seriesPlaces, translations, resolveHref] = await Promise.all([
 		listPosts({}, locale),
+		findSeriesPlaces("post", post, locale),
 		translationPaths(POSTS, post.translationGroupId),
 		createLocalizedLinkResolver(locale),
 	]);
@@ -141,9 +143,9 @@ export async function PostDetailView({ locale, slug }: { locale: Locale; slug: s
 			<PostDetailPageContent
 				post={post}
 				postList={postList.list}
+				seriesPlaces={seriesPlaces}
 				locale={locale}
 				detailPathnamePrefix={localizePath(locale, "/posts")}
-				listPathname={localizePath(locale, "/posts")}
 				languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
 				resolveHref={resolveHref}
 			/>
@@ -192,7 +194,8 @@ export async function MemoDetailView({ locale, slug }: { locale: Locale; slug: s
 	if (!memo) return notFound();
 	redirectAlias(locale, MEMOS, slug, memo.slug);
 
-	const [translations, resolveHref] = await Promise.all([
+	const [seriesPlaces, translations, resolveHref] = await Promise.all([
+		findSeriesPlaces("memo", memo, locale),
 		translationPaths(MEMOS, memo.translationGroupId),
 		createLocalizedLinkResolver(locale),
 	]);
@@ -205,8 +208,8 @@ export async function MemoDetailView({ locale, slug }: { locale: Locale; slug: s
 			/>
 			<MemoDetailPageContent
 				memo={memo}
+				seriesPlaces={seriesPlaces}
 				locale={locale}
-				listPathname={localizePath(locale, "/memos")}
 				languageLinks={translations.map((item) => ({ locale: item.locale, href: item.path }))}
 				resolveHref={resolveHref}
 			/>

@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { TooltipContent, Tooltip as TooltipRoot, TooltipTrigger } from "../ui/tooltip";
 import { useTouchLike } from "./use-touch-like";
 
-const tooltipTriggerClassName = "underline decoration-slate-900/30 decoration-dotted dark:decoration-slate-100/30";
+const tooltipTriggerClassName = "underline decoration-foreground/30 decoration-dotted";
 
 export const Tooltip = ({
 	content,

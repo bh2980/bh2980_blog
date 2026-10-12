@@ -35,7 +35,7 @@ const FOCUS_MS = 2500;
 
 function CodePreview({ preview }: { preview: CodePreviewData }) {
 	return (
-		<div className="overflow-hidden rounded-md border">
+		<div className="overflow-hidden rounded-sm border">
 			{preview.title && (
 				<div className="border-b bg-muted px-3 py-1.5 font-medium text-muted-foreground text-xs">{preview.title}</div>
 			)}

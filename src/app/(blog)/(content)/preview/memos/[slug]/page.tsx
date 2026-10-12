@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPreviewMemo } from "@/libs/contents/services/memo";
-import { DEFAULT_LOCALE, isLocale, localizePath } from "@/libs/i18n/locales";
+import { DEFAULT_LOCALE, isLocale } from "@/libs/i18n/locales";
 import { MemoDetailPageContent } from "../../../memos/[slug]/memo-detail-page-content";
 
 type PreviewMemoPageProps = {
@@ -19,5 +19,5 @@ export default async function PreviewMemoPage({ params, searchParams }: PreviewM
 		return notFound();
 	}
 
-	return <MemoDetailPageContent memo={memo} locale={locale} listPathname={localizePath(locale, "/memos")} />;
+	return <MemoDetailPageContent memo={memo} locale={locale} />;
 }

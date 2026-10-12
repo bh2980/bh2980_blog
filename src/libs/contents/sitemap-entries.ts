@@ -51,7 +51,7 @@ export function buildSitemapEntries({ hostUrl, posts, memos }: SitemapSource): M
 	};
 
 	// 첫 화면과 목록 화면 주소는 컬렉션 정의에 없는 사이트 고정 주소다.
-	const sections = ["/", "/posts", "/memos"].flatMap((path) => {
+	const sections = ["/", "/posts", "/memos", "/series"].flatMap((path) => {
 		const members = locales.map((locale) => ({ locale, group: path, path: localizePath(locale, path) }));
 		return members.map((member) => {
 			const alternates = languagesOf(members);

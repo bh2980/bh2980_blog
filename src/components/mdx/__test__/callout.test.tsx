@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { Callout } from "../callout";
 
 describe("Callout", () => {
-	it("variant에 맞는 기본 제목을 보여준다", () => {
+	it("제목이 없으면 기본 이름표 없이 본문만 보여준다", () => {
 		render(<Callout variant="warning">주의 내용</Callout>);
 
-		expect(screen.getByText("WARNING")).toBeTruthy();
+		expect(screen.queryByText("WARNING")).toBeNull();
 		expect(screen.getByText("주의 내용")).toBeTruthy();
 	});
 
@@ -21,14 +21,15 @@ describe("Callout", () => {
 		expect(screen.queryByText("WARNING")).toBeNull();
 	});
 
-	it("제목을 비우면 다시 기본 제목으로 돌아간다", () => {
+	it("빈칸뿐인 제목은 제목이 없는 것으로 본다", () => {
 		render(
 			<Callout variant="warning" title="   ">
 				주의 내용
 			</Callout>,
 		);
 
-		expect(screen.getByText("WARNING")).toBeTruthy();
+		expect(screen.queryByText("WARNING")).toBeNull();
+		expect(screen.getByText("주의 내용")).toBeTruthy();
 	});
 
 	it("callout 전체를 prose 스타일 바깥으로 렌더링한다", () => {

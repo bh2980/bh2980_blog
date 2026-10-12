@@ -23,7 +23,7 @@ export function CopyButton({ text, className }: { text: string; className?: stri
 	return (
 		<button
 			className={cn(
-				"absolute top-2 right-2 rounded border border-current/30 bg-current/10 p-2 hover:bg-current/20 dark:text-slate-200 dark:hover:bg-slate-400/20",
+				"absolute top-2 right-2 rounded border border-current/30 bg-current/10 p-2 hover:bg-current/20",
 				className,
 			)}
 			aria-label={t("mdx.copy")}

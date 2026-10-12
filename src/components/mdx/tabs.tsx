@@ -14,15 +14,19 @@ export const Tabs = ({ children, defaultValue }: PropsWithChildren & { defaultVa
 
 	return (
 		<TabsRoot defaultValue={tabDefault} className="my-6 w-full gap-0">
-			<TabsList className="relative rounded-b-none border">
+			{/* 글자 탭: 고른 탭에만 밑줄을 긋고, 내용은 상자 없이 아래에 놓는다 */}
+			<TabsList variant="line" className="h-auto w-full justify-start gap-5 rounded-none border-b p-0">
 				{childrenArray.map((child) => (
-					<TabsTrigger key={child.props.label} value={child.props.label} className="data-active:border-border!">
+					<TabsTrigger
+						key={child.props.label}
+						value={child.props.label}
+						className="flex-none rounded-none border-0 px-0 pt-0 pb-2 font-normal text-muted-foreground after:bottom-[-1px]! after:h-px! data-active:text-foreground"
+					>
 						{child.props.label}
 					</TabsTrigger>
 				))}
-				<span className="pointer-events-none absolute right-0 -bottom-1 left-0 inline-block h-1 bg-muted" />
 			</TabsList>
-			<div className="rounded-b-lg rounded-tr-lg border bg-muted px-4 py-3">{children}</div>
+			<div className="pt-4 [&_pre]:my-0">{children}</div>
 		</TabsRoot>
 	);
 };

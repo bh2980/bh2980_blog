@@ -32,7 +32,7 @@ export async function buildRssResponse(locale: Locale): Promise<Response> {
 		.sort((a, b) => b.date.getTime() - a.date.getTime());
 
 	const feed = new Feed({
-		title: "bh2980.dev",
+		title: "bh2980.com",
 		description: translator(locale)("site.description"),
 		id: homeUrl,
 		link: homeUrl,

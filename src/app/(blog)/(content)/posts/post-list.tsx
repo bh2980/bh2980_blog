@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useQueryState } from "nuqs";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { Category, ListResult, Post } from "@/libs/contents/types/contents";
 import { localizePath } from "@/libs/i18n/locales";
 import { useTranslate } from "@/libs/i18n/use-locale";
 import { cn } from "@/utils/cn";
-import { formatPublishedAt } from "@/utils/format-published-at";
+import { formatPublishedAtShort } from "@/utils/format-published-at";
 
 type PostListCategory = Category & {
 	count: number;
@@ -29,83 +28,74 @@ const PostListContent = ({ categories, posts, category, setCategory }: PostListC
 	const { locale, t } = useTranslate();
 	const postList = category ? posts.list.filter((post) => post.category.slug === category) : posts.list;
 
+	const filterClass = (active: boolean) =>
+		cn(
+			"h-auto rounded-none bg-transparent px-0 py-0.5 font-normal text-sm shadow-none hover:bg-transparent",
+			active
+				? "text-foreground underline decoration-1 underline-offset-[0.4em]"
+				: "text-muted-foreground hover:text-foreground",
+		);
+
 	return (
-		<div className="mx-auto max-w-2xl px-6 py-8 xl:py-12">
-			<div className="mb-6">
-				<h1 className="mb-4 font-bold text-3xl text-slate-900 dark:text-slate-100">{t("posts.title")}</h1>
-				<p className="mb-6 text-slate-600 dark:text-slate-300">{t("posts.description")}</p>
-				<div className="flex flex-wrap gap-2">
-					<Button
-						onClick={() => setCategory?.(null)}
-						className={cn(
-							!category && "border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
-							"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
-							"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
-						)}
-					>
-						{!category && <span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />}
-						<span className="inline-block">{t("posts.all", { count: posts.total })}</span>
+		<div className="mx-auto w-full max-w-page px-6 pt-14 pb-20">
+			<div className="mb-10">
+				<h1 className="mb-2 font-bold text-[1.6rem] leading-tight">{t("posts.title")}</h1>
+				<p className="mb-7 text-muted-foreground">{t("posts.description")}</p>
+				<div className="flex flex-wrap gap-x-5 gap-y-2">
+					<Button onClick={() => setCategory?.(null)} aria-pressed={!category} className={filterClass(!category)}>
+						{t("posts.all", { count: posts.total })}
 					</Button>
 					{categories.map((categoryItem) => (
 						<Button
 							key={categoryItem.slug}
 							onClick={() => setCategory?.(categoryItem.slug)}
-							className={cn(
-								category === categoryItem.slug &&
-									"border-slate-400 bg-slate-400/20! dark:border-slate-100/30 dark:bg-slate-100/15!",
-								"flex items-center justify-center rounded-full border bg-slate-50 px-3 py-1.5 font-medium text-slate-700 text-sm dark:bg-slate-800 dark:text-slate-300",
-								"hover:bg-slate-400/20 dark:hover:bg-slate-100/15",
-							)}
+							aria-pressed={category === categoryItem.slug}
+							className={filterClass(category === categoryItem.slug)}
 						>
-							{category === categoryItem.slug && (
-								<span className="inline-block h-2 w-2 rounded-full bg-slate-900 dark:bg-slate-300" />
-							)}
-							<span className="inline-block">
-								{categoryItem.label} ({categoryItem.count})
-							</span>
+							{categoryItem.label} ({categoryItem.count})
 						</Button>
 					))}
 				</div>
 			</div>
 			{postList.length === 0 ? (
-				<div className="py-12 text-center">
-					<p className="text-lg text-slate-500 dark:text-slate-400">{t("posts.empty")}</p>
-				</div>
+				<p className="py-12 text-center text-muted-foreground">{t("posts.empty")}</p>
 			) : (
-				<ul className="flex flex-col">
+				<ul className="flex flex-col border-b">
 					{postList.map((post) => (
-						<li key={post.slug} className="group">
-							<Separator className="my-1 group-first:hidden" />
+						<li key={post.slug} className="border-t">
 							<Link
 								href={{
 									pathname: localizePath(locale, `/posts/${post.slug}`),
 									query: category ? { category } : undefined,
 								}}
-								className="block rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+								className="group block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 							>
-								<article className="flex h-full flex-col gap-3 rounded-lg p-4">
-									<span className="flex gap-2 text-slate-500 text-xs dark:text-slate-400">
-										<span>{post.category.label}</span>
+								<article className="py-5">
+									<div className="flex items-baseline justify-between gap-4">
+										<h2 className="line-clamp-2 text-[1.2rem] leading-snug transition-colors group-hover:text-primary">
+											{post.title}
+										</h2>
 										{post.status === "published" && (
+											<time
+												dateTime={post.publishedAt}
+												className="shrink-0 whitespace-nowrap text-muted-foreground text-sm tabular-nums"
+											>
+												{formatPublishedAtShort(post.publishedAt)}
+											</time>
+										)}
+									</div>
+									{post.excerpt && <p className="mt-1.5 line-clamp-2 text-muted-foreground text-sm">{post.excerpt}</p>}
+									<p className="mt-1.5 flex flex-wrap gap-x-2 text-muted-foreground text-xs">
+										<span>{post.category.label}</span>
+										{post.tags && post.tags.length > 0 && (
 											<>
-												<span>·</span>
-												<time dateTime={post.publishedAt}>{formatPublishedAt(post.publishedAt, locale)}</time>
+												<span aria-hidden>·</span>
+												{post.tags.map((tag) => (
+													<span key={tag.slug}>{`#${tag.label}`}</span>
+												))}
 											</>
 										)}
-									</span>
-									<h2 className="line-clamp-1 font-semibold text-xl dark:text-slate-300">{post.title}</h2>
-									{post.tags?.length ? (
-										<ul
-											className={cn(
-												"!m-0 !p-0 flex list-none flex-wrap items-center gap-2 text-slate-500 text-xs dark:text-slate-400",
-												"[&_li]:rounded-full [&_li]:bg-slate-100 [&_li]:px-3 [&_li]:py-1.5 [&_li]:dark:bg-slate-800",
-											)}
-										>
-											{post.tags.map((tag) => (
-												<li key={tag.slug}>{`#${tag.label}`}</li>
-											))}
-										</ul>
-									) : null}
+									</p>
 								</article>
 							</Link>
 						</li>

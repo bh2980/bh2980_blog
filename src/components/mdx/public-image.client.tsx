@@ -52,7 +52,7 @@ export function PublicImage({
 			<div
 				role="img"
 				aria-label={decorative ? undefined : t("mdx.imageUnavailable")}
-				className="flex h-48 w-full items-center justify-center gap-2 rounded-md border border-slate-300 border-dashed bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
+				className="flex h-48 w-full items-center justify-center gap-2 rounded-sm border border-dashed bg-muted text-muted-foreground"
 			>
 				<ImageOff className="h-5 w-5" aria-hidden />
 				{decorative ? null : <span className="text-sm">{t("mdx.imageUnavailable")}</span>}
@@ -67,7 +67,7 @@ export function PublicImage({
 		return (
 			<div
 				data-slot="image-transform-wrapper"
-				className="relative max-w-full overflow-hidden rounded-md"
+				className="relative max-w-full overflow-hidden rounded-sm"
 				style={{
 					...style,
 					width,
@@ -78,7 +78,7 @@ export function PublicImage({
 				{/* biome-ignore lint/performance/noImgElement: the public URL is dynamic and not next/image-compatible */}
 				<img
 					alt={decorative ? "" : alt}
-					className="rounded-md"
+					className="rounded-sm"
 					loading="lazy"
 					onError={() => setFailed(true)}
 					onLoad={(e) => readNaturalSize(e.currentTarget)}
@@ -98,7 +98,7 @@ export function PublicImage({
 		// biome-ignore lint/performance/noImgElement: the public URL is dynamic and not next/image-compatible
 		<img
 			alt={decorative ? "" : alt}
-			className="h-auto max-w-full rounded-md"
+			className="h-auto max-w-full rounded-sm"
 			height={intrinsicSize?.height}
 			loading="lazy"
 			onError={() => setFailed(true)}

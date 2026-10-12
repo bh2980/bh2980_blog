@@ -25,3 +25,21 @@ export function formatPublishedAt(value: string, locale: Locale = DEFAULT_LOCALE
 
 	return locale === DEFAULT_LOCALE ? publishedAtFormatter.format(date) : formatDate(value, locale);
 }
+
+const shortPublishedAtFormatter = new Intl.DateTimeFormat("ko-KR", {
+	year: "numeric",
+	month: "2-digit",
+	day: "2-digit",
+	timeZone: SEOUL_TIME_ZONE,
+});
+
+/** 차례 같은 좁은 자리의 숫자 날짜(`2026. 10. 02`). 숫자만 쓰므로 언어와 상관없이 같은 모양이다. */
+export function formatPublishedAtShort(value: string) {
+	const date = new Date(value);
+
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+
+	return shortPublishedAtFormatter.format(date).replace(/\.$/, "");
+}

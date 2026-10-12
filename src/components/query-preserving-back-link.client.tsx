@@ -1,16 +1,4 @@
-"use client";
-
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { type ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
-import { useTranslate } from "@/libs/i18n/use-locale";
-
-type QueryPreservingBackLinkProps = {
-	pathname: string;
-	label?: string;
-	className?: string;
-	iconSize?: number;
-};
+import type { ReadonlyURLSearchParams } from "next/navigation";
 
 const getQueryObject = (searchParams: ReadonlyURLSearchParams) => {
 	const query = Object.fromEntries(
@@ -24,27 +12,10 @@ const getQueryObject = (searchParams: ReadonlyURLSearchParams) => {
 	return Object.keys(query).length > 0 ? query : undefined;
 };
 
+/** 현재 쿼리(카테고리 필터 등)를 유지한 채 다른 경로로 이동하는 href. */
 const getHrefWithCurrentQuery = (pathname: string, searchParams: ReadonlyURLSearchParams) => ({
 	pathname,
 	query: getQueryObject(searchParams),
 });
-
-export const QueryPreservingBackLink = ({
-	pathname,
-	label,
-	className,
-	iconSize = 16,
-}: QueryPreservingBackLinkProps) => {
-	const searchParams = useSearchParams();
-	const { t } = useTranslate();
-	const href = getHrefWithCurrentQuery(pathname, searchParams);
-
-	return (
-		<Link href={href} className={className}>
-			<ArrowLeft size={iconSize} />
-			<span>{label ?? t("detail.back")}</span>
-		</Link>
-	);
-};
 
 export { getHrefWithCurrentQuery };

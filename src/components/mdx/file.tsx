@@ -34,7 +34,7 @@ export function CmsFile({
 		: unavailableLabel;
 
 	return (
-		<div className="not-prose my-6 flex items-center gap-3 rounded-lg border bg-card px-4 py-3 text-card-foreground">
+		<div className="not-prose my-6 flex items-center gap-3 rounded-sm border bg-card px-4 py-3 text-card-foreground">
 			<Icon aria-hidden className="size-8 shrink-0 text-muted-foreground" strokeWidth={1.5} />
 			<div className="min-w-0 flex-1">
 				<p className="truncate font-medium text-sm">{name}</p>
@@ -45,7 +45,7 @@ export function CmsFile({
 					href={ok.url}
 					download={filename || undefined}
 					aria-label={`${name} ${downloadLabel}`}
-					className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 font-medium text-xs transition-colors hover:bg-muted"
+					className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
 				>
 					<Download aria-hidden className="size-3.5" />
 					{downloadLabel}

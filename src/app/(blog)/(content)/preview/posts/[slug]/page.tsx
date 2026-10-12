@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPreviewPost, listPreviewPosts } from "@/libs/contents/services/post";
-import { DEFAULT_LOCALE, isLocale, localizePath } from "@/libs/i18n/locales";
+import { DEFAULT_LOCALE, isLocale } from "@/libs/i18n/locales";
 import { PostDetailPageContent } from "../../../posts/[slug]/post-detail-page-content";
 
 type PreviewPostPageProps = {
@@ -22,12 +22,6 @@ export default async function PreviewPostPage({ params, searchParams }: PreviewP
 	const postList = await listPreviewPosts();
 
 	return (
-		<PostDetailPageContent
-			post={post}
-			postList={postList.list}
-			locale={locale}
-			detailPathnamePrefix="/preview/posts"
-			listPathname={localizePath(locale, "/posts")}
-		/>
+		<PostDetailPageContent post={post} postList={postList.list} locale={locale} detailPathnamePrefix="/preview/posts" />
 	);
 }
